@@ -1,0 +1,63 @@
+#ifndef _SURVIVE_INTERNAL_H
+#define _SURVIVE_INTERNAL_H
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <libusb-1.0/libusb.h>
+
+#define SV_INFO( x... ) printf( x )
+#define SV_ERROR( x... ) fprintf( stderr, x )
+
+//XXX TODO This one needs to be rewritten.
+#define SV_KILL()		exit(0)
+
+#define USB_DEV_HMD			0
+#define USB_DEV_LIGHTHOUSE	1
+#define USB_DEV_WATCHMAN1	2
+#define USB_DEV_WATCHMAN2	3
+#define MAX_USB_DEVS				4
+
+
+#define USB_IF_HMD			0
+#define USB_IF_LIGHTHOUSE 	1
+#define USB_IF_WATCHMAN1	2
+#define USB_IF_WATCHMAN2	3
+#define USB_IF_LIGHTCAP		4
+#define MAX_INTERFACES				5
+
+#define INTBUFFSIZE	64
+
+struct SurviveContext;
+struct SurviveUSBInterface;
+
+
+//XXX TODO: Roll this into the main structure.
+
+typedef void (*usb_callback)( struct SurviveUSBInterface * ti );
+
+struct SurviveUSBInterface
+{
+	struct libusb_transfer * transfer;
+	struct SurviveContext * ctx;
+	int actual_len;
+	uint8_t buffer[INTBUFFSIZE];
+	usb_callback cb;
+	int which_interface_am_i;
+	const char * hname; //human names
+};
+
+struct SurviveContext
+{
+    struct libusb_context* usbctx;
+	struct libusb_device_handle * udev[MAX_USB_DEVS];
+	struct SurviveUSBInterface uiface[MAX_INTERFACES];
+};
+
+void survive_usb_close( struct SurviveContext * t );
+int survive_usb_init( struct SurviveContext * t );
+int survive_usb_poll( struct SurviveContext * ctx );
+
+#endif
+
+
