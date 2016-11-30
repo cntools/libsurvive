@@ -99,20 +99,14 @@ static void handle_watchman( int whichwatch, uint8_t * readdata )
 		break;
 	case 0xf2: //Touch
 		break;
-	case 0xf4: //Analog
-		break;
-	case 0xf1: //Button down.  Much more to do!
-		break;
+	case 0xf3: //Button?
+		break; //...many more F's.
 	default:
-		printf( "BN: %d %d %d %d %02x: ", whichwatch, time1, sensor_id, time2, type );
+		//It's a light!
+		printf( "WM: %3d %3d %3d %3d %02x: ", whichwatch, time1, sensor_id, time2, type );
 		for( i = 0; i < 26; i++ )
 			printf( "%02x ", readdata[i] );
 		printf("\n" );
-		//It's a light!
-/*		printf( "WM: %d %d %d %d %02x: ", whichwatch, time1, sensor_id, time2, type );
-		for( i = 0; i < 26; i++ )
-			printf( "%02x ", readdata[i] );
-		printf("\n" );*/
 
 		break;
 
