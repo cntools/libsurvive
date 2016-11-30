@@ -3,10 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-struct SurviveContext * survive_init( )
+struct SurviveContext * survive_init( void(*ff)( struct SurviveContext * ctx, const char * fault ) )
 {
 	int r = 0;
 	struct SurviveContext * ret = calloc( 1, sizeof( struct SurviveContext  ) );
+	ret->faultfunction = ff;
 	if( r = survive_usb_init( ret ) )
 	{
 		return 0;

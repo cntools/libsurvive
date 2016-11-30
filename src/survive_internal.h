@@ -7,7 +7,7 @@
 #include <libusb-1.0/libusb.h>
 
 #define SV_INFO( x... ) printf( x )
-#define SV_ERROR( x... ) fprintf( stderr, x )
+#define SV_ERROR( x... ) { char stbuff[1024]; sprintf( stbuff, x ); ctx->faultfunction( ctx, stbuff ); }
 
 //XXX TODO This one needs to be rewritten.
 #define SV_KILL()		exit(0)
@@ -31,9 +31,6 @@
 struct SurviveContext;
 struct SurviveUSBInterface;
 
-
-//XXX TODO: Roll this into the main structure.
-
 typedef void (*usb_callback)( struct SurviveUSBInterface * ti );
 
 struct SurviveUSBInterface
@@ -43,20 +40,28 @@ struct SurviveUSBInterface
 	int actual_len;
 	uint8_t buffer[INTBUFFSIZE];
 	usb_callback cb;
-	int which_interface_am_i;
-	const char * hname; //human names
+	int which_interface_am_i;	//for indexing into uiface
+	const char * hname;			//human-readable names
 };
 
 struct SurviveContext
 {
+	//USB Subsystem
     struct libusb_context* usbctx;
+	void(*faultfunction)( struct SurviveContext * ctx, const char * fault );
 	struct libusb_device_handle * udev[MAX_USB_DEVS];
 	struct SurviveUSBInterface uiface[MAX_INTERFACES];
 };
 
+
+//USB Subsystem 
+
 void survive_usb_close( struct SurviveContext * t );
 int survive_usb_init( struct SurviveContext * t );
 int survive_usb_poll( struct SurviveContext * ctx );
+
+//Accept Data from backend.
+void survive_data_cb( struct SurviveUSBInterface * si );
 
 #endif
 
