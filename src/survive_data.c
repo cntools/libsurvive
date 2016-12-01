@@ -29,6 +29,26 @@ static void handle_lightdata( struct LightpulseStructure * p )
 	//printf( "%4d %4d (%6d %6d %6d %6d %6d) %10d %6d\n", p->id, p->type, p->unknown1, p->unknown2, p->unknown3, p->unknown4, p->unknown5, p->timestamp, p->unknown6 );
 }
 
+
+struct LightcapElement
+{
+	uint8_t sensor_id;
+	uint8_t type;
+	uint16_t length;
+	uint32_t timestamp;
+} __attribute__((packed));
+
+
+static void handle_lightcap( struct SurviveUSBInterface * si, struct LightcapElement * le )
+{
+	if( le->type != 0xfe || le->length < 1 ) return;
+	printf( "%3d %3d %6d %8d\n", le->sensor_id, le->type, le->length, le->timestamp );
+}
+
+
+
+
+
 /*
 struct vive_controller_analog_trigger_message {
 	__u8 squeeze;
@@ -103,10 +123,10 @@ static void handle_watchman( int whichwatch, uint8_t * readdata )
 		break; //...many more F's.
 	default:
 		//It's a light!
-		printf( "WM: %3d %3d %3d %3d %02x: ", whichwatch, time1, sensor_id, time2, type );
-		for( i = 0; i < 26; i++ )
-			printf( "%02x ", readdata[i] );
-		printf("\n" );
+		//printf( "WM: %3d %3d %3d %3d %02x: ", whichwatch, time1, sensor_id, time2, type );
+		//for( i = 0; i < 26; i++ )
+			//printf( "%02x ", readdata[i] );
+		//printf("\n" );
 
 		break;
 
@@ -191,12 +211,10 @@ void survive_data_cb( struct SurviveUSBInterface * si )
 	case USB_IF_LIGHTCAP:
 	{
 		int i;
-		for( i = 0; i < size; i++ )
+		for( i = 0; i < 7; i++ )
 		{
-			printf( "%02x ", si->buffer[i] );
+			handle_lightcap( si, &readdata[i*8] );
 		}
-		printf( "\n" );
-
 		break;
 	}
 	}

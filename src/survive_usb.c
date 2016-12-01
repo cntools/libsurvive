@@ -1,6 +1,7 @@
 #include "survive_internal.h"
 #include <libusb-1.0/libusb.h>
 #include <stdio.h>
+#include <unistd.h> //sleep if I ever use it.
 
 const short vidpids[] = {
 	0x0bb4, 0x2c87, 0, //The main HTC HMD device
@@ -81,6 +82,17 @@ static void debug_cb( struct SurviveUSBInterface * si )
 	printf( "\n" );
 }*/
 
+
+static inline int update_feature_report(libusb_device_handle* dev, uint16_t interface, uint8_t * data, int datalen ) {
+//	int xfer;
+//	int r = libusb_interrupt_transfer(dev, 0x01, data, datalen, &xfer, 1000);
+//	printf( "XFER: %d / R: %d\n", xfer, r );
+//	return xfer;
+	return libusb_control_transfer(dev, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_OUT,
+		0x09, 0x300 | data[0], interface, data, datalen, 1000 );
+}
+
+
 int survive_usb_init( struct SurviveContext * ctx )
 {
 	int r = libusb_init( &ctx->usbctx );
@@ -149,6 +161,19 @@ int survive_usb_init( struct SurviveContext * ctx )
 
         for (int j = 0; j < conf->bNumInterfaces; j++ )
 		{
+#if 0
+		    if (libusb_kernel_driver_active(ctx->udev[i], j) == 1) {
+		        ret = libusb_detach_kernel_driver(ctx->udev[i], j);
+		        if (ret != LIBUSB_SUCCESS) {
+		            SV_ERROR("Failed to unclaim interface %d for device %s "
+		                    "from the kernel.", j, devnames[i] );
+		            libusb_free_config_descriptor(conf);
+		            libusb_close(ctx->udev[i]);
+		            continue;
+		        }
+		    }
+#endif
+
 			if( libusb_claim_interface(ctx->udev[i], j) )
 			{
 				SV_ERROR( "Could not claim interface %d of %s", j, devnames[i] );
@@ -166,7 +191,49 @@ int survive_usb_init( struct SurviveContext * ctx )
 	if( AttachInterface( ctx, USB_IF_WATCHMAN2,  ctx->udev[USB_DEV_WATCHMAN2],  0x81, survive_data_cb, "Watchman 2" ) ) { return -9; }
 	if( AttachInterface( ctx, USB_IF_LIGHTCAP,   ctx->udev[USB_DEV_LIGHTHOUSE], 0x82, survive_data_cb, "Lightcap" ) ) { return -10; }
 
-	SV_INFO( "All devices attached.\n" );
+	SV_INFO( "All devices attached." );
+
+#if 1
+	{
+		//Magic from vl_magic.h, originally copywritten under LGPL. 
+		// * Copyright (C) 2013 Fredrik Hultin
+		// * Copyright (C) 2013 Jakob Bornecrantz
+
+		static uint8_t vive_magic_power_on[] = {
+			0x04, 0x78, 0x29, 0x38, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01,
+			0xa8, 0x0d, 0x76, 0x00, 0x40, 0xfc, 0x01, 0x05, 0xfa, 0xec, 0xd1, 0x6d, 0x00,
+			0x00, 0x6c, 0x00, 0x00, 0x00, 0x00, 0x00, 0xa8, 0x0d, 0x76, 0x00, 0x68, 0xfc,
+			0x01, 0x05, 0x2c, 0xb0, 0x2e, 0x65, 0x7a, 0x0d, 0x76, 0x00, 0x68, 0x54, 0x72,
+			0x00, 0x18, 0x54, 0x72, 0x00, 0x00, 0x6a, 0x72, 0x00, 0x00, 0x00, 0x00,
+		};
+
+		r = update_feature_report( ctx->udev[USB_DEV_HMD], 0, vive_magic_power_on, sizeof( vive_magic_power_on ) );
+		SV_INFO( "UCR: %d", r );
+		if( r != sizeof( vive_magic_power_on ) ) return 5;
+
+		static uint8_t vive_magic_enable_lighthouse[64] = { 0x04 };  //[64] wat?  Why did that fix it?
+		SV_INFO( "UCR: %d", r );
+		r = update_feature_report( ctx->udev[USB_DEV_LIGHTHOUSE], 0, vive_magic_enable_lighthouse, sizeof( vive_magic_enable_lighthouse ) );
+		if( r != sizeof( vive_magic_enable_lighthouse ) ) return 5;
+
+#if 0
+		for( i = 0; i < 256; i++ )
+		{
+			static uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0xff, 0, 0, 0, 0, 0, 0, 0 };
+			r = update_feature_report( ctx->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof( vive_controller_haptic_pulse ) );
+			SV_INFO( "UCR: %d", r );
+			if( r != sizeof( vive_controller_haptic_pulse ) ) return 5;
+			usleep( 1000 );
+		}
+#endif
+
+    //hret = hid_send_feature_report(drv->hmd_device, vive_magic_enable_lighthouse, sizeof(vive_magic_enable_lighthouse));
+    //vl_debug("enable lighthouse magic: %d\n", hret);
+	}
+#endif
+
+	SV_INFO( "Powered unit on." );
+
 
 
 	//libUSB initialized.  Continue.
