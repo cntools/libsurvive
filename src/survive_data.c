@@ -39,10 +39,49 @@ struct LightcapElement
 } __attribute__((packed));
 
 
-static void handle_lightcap( struct SurviveUSBInterface * si, struct LightcapElement * le )
+//XXX: TODO: Is the 'timestamp' in the middle of the pulse or beginning???
+static void handle_lightcap( struct SurviveObject * so, struct LightcapElement * le )
 {
-	if( le->type != 0xfe || le->length < 1 ) return;
-	printf( "%3d %3d %6d %8d\n", le->sensor_id, le->type, le->length, le->timestamp );
+	if( le->type != 0xfe || le->length < 50 ) return;
+
+	//le->timestamp += (le->length/2);
+
+	if( le->length > 900 ) //Pulse longer than 18us? 
+	{
+		int32_t deltat = le->timestamp - so->last_photo_time;
+		if( deltat > 2000 )		//New pulse.
+		{
+			so->last_photo_time = le->timestamp;
+			so->total_photo_time = 0;
+			so->total_photos = 0;
+		}
+		else
+		{
+			so->total_photo_time += deltat;
+			so->total_photos++;
+		}
+	}
+	else if( le->length < 900 && le->length > 50 && so->total_photos )
+	{
+		int32_t offset_from = le->timestamp - (so->total_photo_time/so->total_photos) - so->last_photo_time;
+		if( le->sensor_id == 9 )
+
+		if( offset_from > 200000 )
+		printf( "%3d %3d %3d %3d\n", le->sensor_id, le->type, le->length, offset_from );
+	}
+	else
+	{
+		//Runt pulse.
+	}
+/*
+	struct SurviveContext * ctx;
+	int last_photo_time;
+	int total_photos;
+	float total_photo_time;
+
+	int sensors;
+
+	printf( "%3d %3d %6d %8d\n", le->sensor_id, le->type, le->length, le->timestamp );*/
 }
 
 
@@ -213,7 +252,7 @@ void survive_data_cb( struct SurviveUSBInterface * si )
 		int i;
 		for( i = 0; i < 7; i++ )
 		{
-			handle_lightcap( si, &readdata[i*8] );
+			handle_lightcap( &si->ctx->headset, (struct LightcapElement*)&readdata[i*8] );
 		}
 		break;
 	}

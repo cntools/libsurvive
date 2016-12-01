@@ -45,11 +45,14 @@ struct SurviveUSBInterface
 	const char * hname;			//human-readable names
 };
 
-struct SurvivePhoto
+
+struct SurviveObject
 {
-	uint32_t last;
-	uint32_t lastcode;
-	uint32_t lastlength;
+	struct SurviveContext * ctx;
+	int32_t last_photo_time;
+	short total_photos;
+	int32_t total_photo_time;
+	int sensors;
 };
 
 struct SurviveContext
@@ -61,6 +64,8 @@ struct SurviveContext
 	struct libusb_device_handle * udev[MAX_USB_DEVS];
 	struct SurviveUSBInterface uiface[MAX_INTERFACES];
 
+	//Data Subsystem
+	struct SurviveObject headset;
 //	struct SurvivePhoto 
 };
 

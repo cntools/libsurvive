@@ -14,6 +14,9 @@ struct SurviveContext * survive_init( void(*ff)( struct SurviveContext * ctx, co
 		return 0;
 	}
 
+	ret->headset.sensors = 32;
+	ret->headset.ctx = ret;
+	//ret->headset->photos = malloc( ret->headset->sensors * sizeof(struct SurvivePhoto) );
 	return ret;
 }
 
