@@ -6,28 +6,8 @@
 
 #define POP1  (*(readdata++))
 #define POP2  (*(((uint16_t*)((readdata+=2)-2))))
-#define POP4  (*(((uint32_t*)readdata)++))
+#define POP4  (*(((uint32_t*)((readdata+=4)-4))))
 
-
-struct LightpulseStructure
-{
-	uint8_t id;			//Random divisible-by-2 numbers
-	uint8_t type;		//Always 0
-	int16_t unknown1;	//About  7,500
-	int16_t unknown2;   //About -3,600
-	int16_t unknown3;	//About 89 to 107
-	int16_t unknown4;	//Normally around 0.
-	int16_t unknown5;	//About -45, to -50
-	uint32_t timestamp;
-	uint8_t  unknown6;
-} __attribute__((packed));
-
-
-static void handle_lightdata( struct LightpulseStructure * p )
-{
-	//TODO: Wat?
-	//printf( "%4d %4d (%6d %6d %6d %6d %6d) %10d %6d\n", p->id, p->type, p->unknown1, p->unknown2, p->unknown3, p->unknown4, p->unknown5, p->timestamp, p->unknown6 );
-}
 
 
 struct LightcapElement
@@ -39,150 +19,195 @@ struct LightcapElement
 } __attribute__((packed));
 
 
-//XXX: TODO: Is the 'timestamp' in the middle of the pulse or beginning???
+
 static void handle_lightcap( struct SurviveObject * so, struct LightcapElement * le )
 {
-	if( le->type != 0xfe || le->length < 50 ) return;
+	struct SurviveContext * ct = so->ctx;
 
+	if( le->type != 0xfe || le->length < 50 ) return;
 	//le->timestamp += (le->length/2);
 
 	if( le->length > 900 ) //Pulse longer than 18us? 
 	{
-		int32_t deltat = le->timestamp - so->last_photo_time;
-		if( deltat > 2000 )		//New pulse.
+		int32_t deltat = (uint32_t)le->timestamp - (uint32_t)ct->last_photo_time;
+		if( deltat > 2000 || deltat < -2000 )		//New pulse. (may be inverted)
 		{
-			so->last_photo_time = le->timestamp;
-			so->total_photo_time = 0;
-			so->total_photos = 0;
+			ct->last_photo_time = le->timestamp;
+			ct->total_photo_time = 0;
+			ct->total_photos = 0;
+			ct->total_pulsecode_time = 0;
+			survive_light_process( so, le->sensor_id, -1, 0, le->timestamp );
 		}
 		else
 		{
-			so->total_photo_time += deltat;
-			so->total_photos++;
+			ct->total_pulsecode_time += le->length;
+			ct->total_photo_time += deltat;
+			ct->total_photos++;
 		}
 	}
-	else if( le->length < 900 && le->length > 50 && so->total_photos )
+	else if( le->length < 900 && le->length > 50 && ct->total_photos )
 	{
-		int32_t offset_from = le->timestamp - (so->total_photo_time/so->total_photos) - so->last_photo_time;
-		if( le->sensor_id == 9 )
+		int32_t dl = (ct->total_photo_time/ct->total_photos);
+		int32_t tpco = (ct->total_pulsecode_time/ct->total_photos);
+		//Adding length 
+		int32_t offset_from = le->timestamp - dl - ct->last_photo_time + le->length/2;
 
-		if( offset_from > 200000 )
-		printf( "%3d %3d %3d %3d\n", le->sensor_id, le->type, le->length, offset_from );
+		//Long pulse-code from IR flood.
+		//Make sure it fits nicely into a divisible-by-500 time.
+		int32_t acode = (tpco+125)/250;
+		if( acode & 1 ) return;
+		acode>>=1;
+
+		survive_light_process( so, le->sensor_id, acode, offset_from, le->timestamp );
 	}
 	else
 	{
 		//Runt pulse.
 	}
-/*
-	struct SurviveContext * ctx;
-	int last_photo_time;
-	int total_photos;
-	float total_photo_time;
-
-	int sensors;
-
-	printf( "%3d %3d %6d %8d\n", le->sensor_id, le->type, le->length, le->timestamp );*/
 }
 
 
 
-
-
-/*
-struct vive_controller_analog_trigger_message {
-	__u8 squeeze;
-	__u8 unknown[4];
-} __attribute__((packed));
-
-struct vive_controller_button_message {
-	__u8 buttons;
-} __attribute__((packed));
-
-struct vive_controller_touch_move_message {
-	__le16 pos[2];
-	__u8 unknown[4];
-} __attribute__((packed));
-
-struct vive_controller_touch_press_message {
-	__u8 buttons;
-	__le16 pos[2];
-	__u8 unknown[4];
-} __attribute__((packed));
-
-struct vive_controller_imu_message {
-	__u8 time3;
-	__le16 accel[3];
-	__le16 gyro[3];
-	__u8 unknown[4];
-} __attribute__((packed));
-
-struct vive_controller_ping_message {
-	__u8 charge : 7;
-	__u8 charging : 1;
-	__u8 unknown1[2];
-	__le16 accel[3];
-	__le16 gyro[3];
-	__u8 unknown2[5];
-} __attribute__((packed));
-
-struct vive_controller_message {
-	__u8 time1;
-	__u8 sensor_id;
-	__u8 time2;
-	__u8 type;
-	union {
-		struct vive_controller_analog_trigger_message analog_trigger;
-		struct vive_controller_button_message button;
-		struct vive_controller_touch_move_message touch_move;
-		struct vive_controller_touch_press_message touch_press;
-		struct vive_controller_imu_message imu;
-		struct vive_controller_ping_message ping;
-		__u8 unknown[25];
-	};
-} __attribute__((packed));
-*/
-
-static void handle_watchman( int whichwatch, uint8_t * readdata )
+static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 {
 	uint8_t time1 = POP1;
-	uint8_t sensor_id = POP1;
+	uint8_t qty = POP1;
 	uint8_t time2 = POP1;
 	uint8_t type = POP1;
 	int i;
+	qty-=2;
+	int propset = 0;
 
-	switch(type)
+	if( (type & 0xf0) == 0xf0 )
 	{
-	case 0xe1: //Ping
-		break;
-	case 0xe8: //IMU
-		break;
-	case 0xf2: //Touch
-		break;
-	case 0xf3: //Button?
-		break; //...many more F's.
-	default:
-		//It's a light!
-		//printf( "WM: %3d %3d %3d %3d %02x: ", whichwatch, time1, sensor_id, time2, type );
-		//for( i = 0; i < 26; i++ )
-			//printf( "%02x ", readdata[i] );
-		//printf("\n" );
+		propset |= 4;
+		//printf( "%02x %02x %02x %02x\n", qty, type, time1, time2 );
+		type &= ~0x10;
 
-		break;
+		if( type & 0x01 )
+		{
+			qty-=1;
+			w->buttonmask = POP1;
+			type &= ~0x01;
+		}
+		if( type & 0x04 ) 
+		{
+			qty-=1;
+			w->axis1 = ( POP1 ) * 256; 
+			type &= ~0x04;
+		}
+		if( type & 0x02 )
+		{
+			qty-=4;
+			w->axis2 = POP2;
+			w->axis3 = POP2;
+			type &= ~0x02;
+		}
 
-	};
+		//XXX TODO: Maybe more data is here?
+		if( type == 0xe0 )
+		{
+			type = 0x00;
+		}
+	}
 
-/*enum class vl_controller_type : uint8_t {
-    PING = 0xe1,
-    IMU = 0xe8,
-    TOUCH = 0xf2,
-    ANALOG_TRIGGER = 0xf4,*/
+	if( type == 0xe1 )
+	{
+		propset |= 1;
+		w->charging = readdata[0]>>7;
+		w->charge = POP1&0x7f; qty--;
+		w->ison = 1; 
+		if( qty )
+		{
+			qty--;
+			type = POP1; //IMU usually follows.
+		}
+	}
+
+	if( ( type & 0xe8 ) == 0xe8 )
+	{
+		propset |= 2;
+		survive_imu_process( w, (int16_t *)&readdata[1], (time1<<24)|(time2<<16)|readdata[0], 0 );
+		int16_t * k = (int16_t *)readdata+1;
+		//printf( "Match8 %d %d %d %d %d %3d %3d\n", qty, k[0], k[1], k[2], k[3], k[4], k[5] );
+		readdata += 13; qty -= 13;
+		type &= ~0xe8;
+		if( qty )
+		{
+			qty--;
+			type = POP1;
+		}
+	}
+
+
+	if( qty )
+	{
+		qty++;
+#if 0 //Doesn't work!!!!
+		int reads = qty/6;
+
+		int leds[6];
+		leds[0] = type;
+		for( i = 1; i < reads; i++ )
+		{
+			leds[i] = POP1;
+		}
+		for( i = 0; i < reads; i++ )
+		{
+			printf( "%02x: ", leds[i] );
+			for( i = 0; i < 5; i++ )
+			{
+				printf( "%02x ", POP1 );
+			}
+			printf( "\n" );
+		}
+#endif
+
+#if 0
+		printf( "POST %d: %4d %02x (%02x%02x) - ", propset, qty, type, time1, time2 );
+		for( i = 0; i < qty; i++ )
+		{
+			printf( "%02x ", readdata[i] );
+		}
+		printf("\n");
+#endif
+	}
+
+	return;
+	//NO, seriously, there is something wacky going on here.
+//	else if( type == 0xe8 && sensor_id == 15 )
+//	{
+//		printf( "IMU\n" );
+//	}
+
+/*
+	{
+		printf( "PSIDPIN:%3d ", qty );
+		w->charging = readdata[0]>>7;
+		w->charge = readdata[0]&0x7f;
+		w->ison = 1;
+		printf( "%02x/%02x/%02x/%02x: ", type, qty, time1, time2 );
+		for( i = 0; i < 25; i++ )
+		{
+			printf( "%02x ", readdata[i] );
+		}
+		printf("\n");
+
+/*
+		//WHAT IS THIS???
+		printf( "%02x/%02x/%02x/%02x: ", type, sensor_id, time1, time2 );
+		for( i = 0; i < 25; i++ )
+		{
+			printf( "%02x ", readdata[i] );
+		}
+		printf("\n");*/
 }
 
 
 void survive_data_cb( struct SurviveUSBInterface * si )
 {
 	int size = si->actual_len;
-
+	struct SurviveContext * ctx = si->ctx;
 #if 0
 	int i;
 	printf( "%16s: %d: ", si->hname, len );
@@ -205,18 +230,18 @@ void survive_data_cb( struct SurviveUSBInterface * si )
 	{
 	case USB_IF_HMD:
 	{
+		struct SurviveObject * headset = &ctx->headset;
 		readdata+=2;
-		int lens = POP1;		//Lens
-		int lens_sep = POP2;	//Lens Separation
+		headset->buttonmask = POP1;		//Lens
+		headset->axis2 = POP2;			//Lens Separation
 		readdata+=2;
-		int btn = POP1;			//Button
+		headset->buttonmask |= POP1;	//Button
 		readdata+=3;
-		readdata++;					//Proxchange, No change = 0, Decrease = 1, Increase = 2
+		readdata++;						//Proxchange, No change = 0, Decrease = 1, Increase = 2
 		readdata++;
-		int proximity = POP2;	//Proximity  	<< how close to face are you?  Less than 80 = not on face.
-		int ipd = POP2;			//IPD   		<< what is this?
-
-		//TODO: Store in thing.
+		headset->axis3 = POP2;			//Proximity  	<< how close to face are you?  Less than 80 = not on face.
+		headset->axis1 = POP2;			//IPD   		<< what is this?
+		headset->ison = 1;
 		break;
 	}
 	case USB_IF_LIGHTHOUSE:
@@ -224,35 +249,44 @@ void survive_data_cb( struct SurviveUSBInterface * si )
 		int i;
 		for( i = 0; i < 3; i++ )
 		{
-			handle_lightdata( (struct LightpulseStructure *)readdata );
-			readdata+= 17;
+			//handle_lightdata( (struct LightpulseStructure *)readdata );
+			int16_t * acceldata = (int16_t*)readdata;
+			readdata += 12;
+			uint32_t timecode = POP4;
+			survive_imu_process( &ctx->headset, acceldata, timecode, POP1 );
 		}
 		break;
 	}
 	case USB_IF_WATCHMAN1:
 	case USB_IF_WATCHMAN2:
 	{
+		struct SurviveObject * w = &ctx->watchman[si->which_interface_am_i-USB_IF_WATCHMAN1];
 		if( id == 35 )
 		{
-			handle_watchman( si->which_interface_am_i-USB_IF_WATCHMAN1, readdata);
+			handle_watchman( w, readdata);
 		}
 		else if( id == 36 )
 		{
-			handle_watchman( si->which_interface_am_i-USB_IF_WATCHMAN1, readdata);
-			handle_watchman( si->which_interface_am_i-USB_IF_WATCHMAN1, readdata+29 );
+			handle_watchman( w, readdata);
+			handle_watchman( w, readdata+29 );
+		}
+		else if( id == 38 )
+		{
+			w->ison = 0;
 		}
 		else
 		{
-			printf( "Unknown watchman code\n" );
+			SV_INFO( "Unknown watchman code %d\n", id );
 		}
 		break;
 	}
 	case USB_IF_LIGHTCAP:
 	{
+		//Done!
 		int i;
 		for( i = 0; i < 7; i++ )
 		{
-			handle_lightcap( &si->ctx->headset, (struct LightcapElement*)&readdata[i*8] );
+			handle_lightcap( &ctx->headset, (struct LightcapElement*)&readdata[i*8] );
 		}
 		break;
 	}

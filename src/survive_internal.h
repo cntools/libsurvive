@@ -49,9 +49,14 @@ struct SurviveUSBInterface
 struct SurviveObject
 {
 	struct SurviveContext * ctx;
-	int32_t last_photo_time;
-	short total_photos;
-	int32_t total_photo_time;
+	char    codename[4];
+	int16_t buttonmask;
+	int16_t axis1;
+	int16_t axis2;
+	int16_t axis3;
+	int8_t  charge;
+	int8_t  charging:1;
+	int8_t  ison:1;
 	int sensors;
 };
 
@@ -64,8 +69,15 @@ struct SurviveContext
 	struct libusb_device_handle * udev[MAX_USB_DEVS];
 	struct SurviveUSBInterface uiface[MAX_INTERFACES];
 
+	//Flood info, for calculating which laser is currently sweeping.
+	int32_t last_photo_time;
+	short total_photos;
+	int32_t total_photo_time;
+	int32_t total_pulsecode_time;
+
 	//Data Subsystem
 	struct SurviveObject headset;
+	struct SurviveObject watchman[2];
 //	struct SurvivePhoto 
 };
 
@@ -77,6 +89,11 @@ int survive_usb_poll( struct SurviveContext * ctx );
 
 //Accept Data from backend.
 void survive_data_cb( struct SurviveUSBInterface * si );
+
+//Accept higher-level data.
+void survive_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode );
+void survive_imu_process( struct SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id );
+
 
 #endif
 
