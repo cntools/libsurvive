@@ -70,6 +70,7 @@ struct SurviveContext
 	struct SurviveUSBInterface uiface[MAX_INTERFACES];
 
 	//Flood info, for calculating which laser is currently sweeping.
+	int8_t oldcode;
 	int32_t last_photo_time;
 	short total_photos;
 	int32_t total_photo_time;

@@ -247,14 +247,24 @@ void survive_data_cb( struct SurviveUSBInterface * si )
 	case USB_IF_LIGHTHOUSE:
 	{
 		int i;
+		//printf( "%d -> ", size );
 		for( i = 0; i < 3; i++ )
 		{
 			//handle_lightdata( (struct LightpulseStructure *)readdata );
 			int16_t * acceldata = (int16_t*)readdata;
 			readdata += 12;
 			uint32_t timecode = POP4;
-			survive_imu_process( &ctx->headset, acceldata, timecode, POP1 );
+			uint8_t code = POP1;
+			//printf( "%d ", code );
+			int8_t cd = code - ctx->oldcode;
+
+			if( cd > 0 )
+			{
+				ctx->oldcode = code;
+				survive_imu_process( &ctx->headset, acceldata, timecode, code );
+			}
 		}
+		//printf("\n" );
 		break;
 	}
 	case USB_IF_WATCHMAN1:
