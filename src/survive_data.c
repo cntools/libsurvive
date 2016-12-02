@@ -163,7 +163,7 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		}
 #endif
 
-#if 0
+#if 1
 		printf( "POST %d: %4d %02x (%02x%02x) - ", propset, qty, type, time1, time2 );
 		for( i = 0; i < qty; i++ )
 		{
