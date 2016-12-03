@@ -3,11 +3,11 @@
 
 #include "survive_internal.h"
 #include <stdint.h>
+#include <string.h>
 
 #define POP1  (*(readdata++))
 #define POP2  (*(((uint16_t*)((readdata+=2)-2))))
 #define POP4  (*(((uint32_t*)((readdata+=4)-4))))
-
 
 
 struct LightcapElement
@@ -70,6 +70,8 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 
 static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 {
+	uint8_t startread[29];
+	memcpy( startread, readdata, 29 );
 	uint8_t time1 = POP1;
 	uint8_t qty = POP1;
 	uint8_t time2 = POP1;
@@ -143,6 +145,12 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 	if( qty )
 	{
 		qty++;
+		readdata--;
+		*readdata = type;
+		//Put type back on stack.  It might have changed
+		//from above.
+
+
 #if 0 //Doesn't work!!!!
 		int reads = qty/6;
 
@@ -163,13 +171,33 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		}
 #endif
 
+		//What does post data look like?
+
+		//1) code, code, code,  PAAYYLOOAAADDD
+		//"code" typically has 2 or fewer bits in word set.
+		//  code = 0x00 = expect 5 bytes 
+		//  code = 0x08 = expect 5 bytes
+		//  code = 0x10 = expect 5 bytes
+		//  code = 0x5c = ???? ... 12?
+		//  code = 0x91 = ???? ... 25 bytes?
+
+
 #if 1
-		printf( "POST %d: %4d %02x (%02x%02x) - ", propset, qty, type, time1, time2 );
+		printf( "POST %d: %4d (%02x%02x) - ", propset, qty, time1, time2 );
 		for( i = 0; i < qty; i++ )
 		{
 			printf( "%02x ", readdata[i] );
 		}
 		printf("\n");
+#endif
+
+#if 0
+		printf( "  SRR: " );
+		for( i = 0; i < 29; i++ )
+		{
+			printf( "%02x ", startread[i] );
+		}
+		printf( "\n" );
 #endif
 	}
 

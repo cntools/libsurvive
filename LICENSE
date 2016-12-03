@@ -1,6 +1,20 @@
+NOTICE: Portions of this project are tightly based off of OSVR-Vive-Libre
+ which is under a forced-source license.  I have rewritten as much as I can
+ to avoid that, however, I may have made some mistakes.  Magic numbers
+ have not been modified as they cannot and (thankfully) are exempt from 
+ copyright law.
+
+NOTICE: Based off of https://github.com/collabora/OSVR-Vive-Libre
+ Originally Copyright 2016 Philipp Zabel
+ Originally Copyright 2016 Lubosz Sarnecki <lubosz.sarnecki@collabora.co.uk>
+ Originally Copyright (C) 2013 Fredrik Hultin
+ Originally Copyright (C) 2013 Jakob Bornecrantz
+
+All other code is:
+
 MIT License
 
-Copyright (c) 2016 CNLohr
+Copyright (c) <>< 2016 CNLohr
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -1,7 +1,21 @@
+//<>< (C) 2016 C. Lohr
+//
+//Based off of https://github.com/collabora/OSVR-Vive-Libre
+// Originally Copyright 2016 Philipp Zabel
+// Originally Copyright 2016 Lubosz Sarnecki <lubosz.sarnecki@collabora.co.uk>
+// Originally Copyright (C) 2013 Fredrik Hultin
+// Originally Copyright (C) 2013 Jakob Bornecrantz
+//
+//But, re-written as best as I can to get it put under a /real/ open souce license.
+//If there are portions of the code too similar to the original, I would like to know 
+//so they can be re-written.
+
+
 #include "survive_internal.h"
 #include <libusb-1.0/libusb.h>
 #include <stdio.h>
 #include <unistd.h> //sleep if I ever use it.
+
 
 const short vidpids[] = {
 	0x0bb4, 0x2c87, 0, //The main HTC HMD device
@@ -18,19 +32,20 @@ const char * devnames[] = {
 }; //length MAX_USB_INTERFACES
 
 
-static void handle_transfer(struct libusb_transfer* transfer) {
-    struct SurviveUSBInterface * iface = transfer->user_data;
+static void handle_transfer(struct libusb_transfer* transfer)
+{
+	struct SurviveUSBInterface * iface = transfer->user_data;
 	struct SurviveContext * ctx = iface->ctx;
 
 	if( transfer->status != LIBUSB_TRANSFER_COMPLETED )
 	{
-        SV_ERROR("Transfer problem %d with %s", transfer->status, iface->hname );
+		SV_ERROR("Transfer problem %d with %s", transfer->status, iface->hname );
 		SV_KILL();
 		return;
 	}
 
 	iface->actual_len = transfer->actual_length;
-    iface->cb( iface );
+	iface->cb( iface );
 
 	if( libusb_submit_transfer(transfer) )
 	{
@@ -60,7 +75,7 @@ static int AttachInterface( struct SurviveContext * ctx, int which_interface_am_
 	libusb_fill_interrupt_transfer( tx, devh, endpoint, iface->buffer, INTBUFFSIZE, handle_transfer, iface, 0);
 
 	int rc = libusb_submit_transfer( tx );
-    if( rc )
+	if( rc )
 	{
 		SV_ERROR( "Error: Could not submit transfer for %s (Code %d)", hname, rc );
 		return 6;
@@ -158,8 +173,7 @@ int survive_usb_init( struct SurviveContext * ctx )
 		}
 
 		libusb_set_auto_detach_kernel_driver( ctx->udev[i], 1 );
-
-        for (int j = 0; j < conf->bNumInterfaces; j++ )
+		for (int j = 0; j < conf->bNumInterfaces; j++ )
 		{
 #if 0
 		    if (libusb_kernel_driver_active(ctx->udev[i], j) == 1) {
@@ -226,9 +240,6 @@ int survive_usb_init( struct SurviveContext * ctx )
 			usleep( 1000 );
 		}
 #endif
-
-    //hret = hid_send_feature_report(drv->hmd_device, vive_magic_enable_lighthouse, sizeof(vive_magic_enable_lighthouse));
-    //vl_debug("enable lighthouse magic: %d\n", hret);
 	}
 #endif
 
