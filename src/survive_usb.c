@@ -1,4 +1,4 @@
-//<>< (C) 2016 C. Lohr
+//<>< (C) 2016 C. N. Lohr
 //
 //Based off of https://github.com/collabora/OSVR-Vive-Libre
 // Originally Copyright 2016 Philipp Zabel

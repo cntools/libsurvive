@@ -1,3 +1,5 @@
+//Copyright 2016 <>< C. N. Lohr
+
 #include <survive.h>
 #include "survive_internal.h"
 #include <stdio.h>

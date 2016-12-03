@@ -1,5 +1,16 @@
-
-//Based off of vl_hid_reports (HTC Vive USB HID reports).  Who would license a header un the GPL???
+//<>< (C) 2016 C. N. Lohr
+//
+//Based off of https://github.com/collabora/OSVR-Vive-Libre
+// Originally Copyright 2016 Philipp Zabel
+// Originally Copyright 2016 Lubosz Sarnecki <lubosz.sarnecki@collabora.co.uk>
+// Originally Copyright (C) 2013 Fredrik Hultin
+// Originally Copyright (C) 2013 Jakob Bornecrantz
+//
+//But, re-written as best as I can to get it put under a /real/ open souce license.
+//If there are portions of the code too similar to the original, I would like to know 
+//so they can be re-written.
+//
+//Mostly vased off of vl_hid_reports (HTC Vive USB HID reports).
 
 #include "survive_internal.h"
 #include <stdint.h>
