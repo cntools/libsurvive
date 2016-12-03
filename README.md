@@ -34,7 +34,7 @@ There is an internal representation and an external representation.  These lines
 It is written in some fairly stout "layers" which are basically just function calls:
 
 |  Layer | Description | Status |
-| ------------------------------------------------ |
+| ------- | ------------- | -------- |
 | survive_usb.c | Data is taken in at "survive_usb.c" from libusb. | Done |
 | survive_data.c | Raw HID messages are processed into logical "light" "analog" and "imu" messages. | Mostly done, Missing light data from controllers, and lighthouse data. |
 | survive_process.c | Process the high-level data into solutions for | Not yet started.  Will be done by ultramn |
