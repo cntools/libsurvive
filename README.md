@@ -7,11 +7,11 @@ High-performance HTC Vive Library
 
 I say "high-performance" really this project is based tightly off of OSVR-Vive-Libre, but, specifically is an attempt to:
 
-1) Minimize external libraries.  Actual reason for starting this: Downloading all of the libraries needed for OSVR-Vive-Libre maxed out my data plan.
-2) Put it under an open-source instead of a force-source license.  (GPL to MIT/X11)
-3) Write it in C.
-4) Avoid extra layers where convenient.
-5) (long shot) Make the vive vivable for use with Intel Integrated Graphics systems.
+1. Minimize external libraries.  Actual reason for starting this: Downloading all of the libraries needed for OSVR-Vive-Libre maxed out my data plan.
+2. Put it under an open-source instead of a force-source license.  (GPL to MIT/X11)
+3. Write it in C.
+4. Avoid extra layers where convenient.
+5. (long shot) Make the vive vivable for use with Intel Integrated Graphics systems.
 
 
 Will I succeed?  Probably not.
