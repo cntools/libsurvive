@@ -1,4 +1,4 @@
-//Copyright 2016 <>< C. N. Lohr
+//Copyright 2016 <>< C. N. Lohr, FULLY Under MIT/x11 License.
 
 #include <survive.h>
 #include "survive_internal.h"
