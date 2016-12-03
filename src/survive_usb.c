@@ -6,9 +6,9 @@
 // Originally Copyright (C) 2013 Fredrik Hultin
 // Originally Copyright (C) 2013 Jakob Bornecrantz
 //
-//But, re-written as best as I can to get it put under a /real/ open souce license.
-//If there are portions of the code too similar to the original, I would like to know 
-//so they can be re-written.
+//But, re-written as best as I can to get it put under an open souce license instead of a forced-source license.
+//If there are portions of the code too similar to the original, I would like to know  so they can be re-written.
+//All MIT/x11 Licensed Code in this file may be relicensed freely under the GPL or LGPL licenses.
 
 
 #include "survive_internal.h"

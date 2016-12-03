@@ -1,4 +1,5 @@
 //<>< (C) 2016 C. N. Lohr, FULLY Under MIT/x11 License.
+//All MIT/x11 Licensed Code in this file may be relicensed freely under the GPL or LGPL licenses.
 
 #include "survive_internal.h"
 
