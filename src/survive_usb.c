@@ -15,7 +15,8 @@
 #include <libusb-1.0/libusb.h>
 #include <stdio.h>
 #include <unistd.h> //sleep if I ever use it.
-
+#include <errno.h>
+#include <string.h>
 
 const short vidpids[] = {
 	0x0bb4, 0x2c87, 0, //The main HTC HMD device
@@ -105,6 +106,31 @@ static inline int update_feature_report(libusb_device_handle* dev, uint16_t inte
 //	return xfer;
 	return libusb_control_transfer(dev, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_OUT,
 		0x09, 0x300 | data[0], interface, data, datalen, 1000 );
+}
+
+
+static inline int getupdate_feature_report(libusb_device_handle* dev, uint16_t interface, uint8_t * data, int datalen ) {
+	int ret = libusb_control_transfer(dev, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_IN,
+		0x01, 0x300 | data[0], interface, data, datalen, 1000 );
+    if (ret < 0)
+        return -1;
+	return ret;
+}
+
+
+
+static inline int hid_get_feature_report_timeout(libusb_device_handle* device, uint16_t interface, unsigned char *buf, size_t len )
+{
+	int ret;
+    for (unsigned i = 0; i < 100; i++)
+	{
+        ret = getupdate_feature_report(device, interface, buf, len);
+		printf( "HUD: %d/%d %02x %02x %02x\n", ret, len, buf[0], buf[1], buf[2] );
+		if( ret != -1 || errno != EPIPE ) return ret;
+		usleep( 1000 );
+	}
+
+	return -1;
 }
 
 
@@ -271,4 +297,78 @@ int survive_usb_poll( struct SurviveContext * ctx )
 	}
 	return r;
 }
+
+
+int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, int iface )
+{
+	int i, ret, count = 0, size = 0;
+	uint8_t cfgbuff[64];
+	uint8_t compressed_data[8192];
+	uint8_t uncompressed_data[65536];
+	struct libusb_device_handle * dev = ctx->udev[devno];
+
+	cfgbuff[0] = 0x10;
+	if( ( ret = hid_get_feature_report_timeout( dev, iface, cfgbuff, sizeof( cfgbuff ) ) ) < 0 )
+	{
+		SV_ERROR( "Could not get survive config data for device %d:%d", devno, iface );
+		return -1;
+	}
+
+	cfgbuff[0] = 0x11;
+	do
+	{
+		if( (ret = hid_get_feature_report_timeout(dev, iface, cfgbuff, sizeof( cfgbuff ) ) ) < 0 )
+		{
+			SV_ERROR( "Could not read config data (after first packet) on device %d:%d (count: %d)\n", devno, iface, count );
+			return -2;
+		}
+
+		size = cfgbuff[1];
+		printf( "Tag: " );
+		for( i = 0; i < 64; i++ )
+			printf( "%02x ", cfgbuff[i] );
+		printf( "ret: %d %d\n", ret, size );
+
+		if( !size ) break;
+
+		if( size > 62 )
+		{
+			SV_ERROR( "Too much data on packet from config for device %d:%d (count: %d)", devno, iface, count );
+			return -3;
+		}
+
+		if( count + size >= sizeof( compressed_data ) )
+		{
+			SV_ERROR( "Configuration length too long %d:%d (count: %d)", devno, iface, count );
+			return -4;
+		}
+
+        memcpy( &compressed_data[count], cfgbuff + 2, size );
+		count += size;
+	} while( 1 );
+
+	if( count == 0 )
+	{
+		SV_ERROR( "Empty configuration for %d:%d", devno, iface );
+		return -5;
+	}
+
+	SV_INFO( "Got config data length %d", count );
+
+	int len = survive_simple_inflate( ctx, compressed_data, count, uncompressed_data, sizeof(uncompressed_data)-1 );
+	if( len <= 0 )
+	{
+		SV_ERROR( "Error: data for config descriptor %d:%d is bad.", devno, iface );
+		return -5;
+	}
+
+	config = malloc( len + 1 );
+	memcpy( config, uncompressed_data, len );
+	return len;
+}
+
+
+
+
+
 

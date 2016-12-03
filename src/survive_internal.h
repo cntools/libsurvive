@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <libusb-1.0/libusb.h>
+#include <zlib.h>
 
 #define SV_INFO( x... ) { char stbuff[1024]; sprintf( stbuff, x ); ctx->notefunction( ctx, stbuff ); }
 #define SV_ERROR( x... ) { char stbuff[1024]; sprintf( stbuff, x ); ctx->faultfunction( ctx, stbuff ); }
@@ -82,6 +83,7 @@ struct SurviveContext
 	struct libusb_device_handle * udev[MAX_USB_DEVS];
 	struct SurviveUSBInterface uiface[MAX_INTERFACES];
 
+
 	//Flood info, for calculating which laser is currently sweeping.
 	int8_t oldcode;
 	int32_t last_photo_time;
@@ -100,6 +102,7 @@ struct SurviveContext
 void survive_usb_close( struct SurviveContext * t );
 int survive_usb_init( struct SurviveContext * t );
 int survive_usb_poll( struct SurviveContext * ctx );
+int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, int interface );
 
 //Accept Data from backend.
 void survive_data_cb( struct SurviveUSBInterface * si );
@@ -107,6 +110,10 @@ void survive_data_cb( struct SurviveUSBInterface * si );
 //Accept higher-level data.
 void survive_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode );
 void survive_imu_process( struct SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id );
+
+
+//Util
+int survive_simple_inflate( struct SurviveContext * ctx, const char * input, int inlen, char * output, int outlen );
 
 
 #endif

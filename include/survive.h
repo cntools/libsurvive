@@ -9,5 +9,8 @@ struct SurviveContext * survive_init( void(*faultfunction)( struct SurviveContex
 void survive_close( struct SurviveContext * ctx );
 int survive_poll();
 
+
+int survive_simple_inflate( struct SurviveContext * ctx, const char * input, int inlen, char * output, int outlen );
+
 #endif
 
