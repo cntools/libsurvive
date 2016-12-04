@@ -65,7 +65,7 @@ static int AttachInterface( struct SurviveContext * ctx, int which_interface_am_
 	iface->hname = hname;
 	struct libusb_transfer * tx = iface->transfer = libusb_alloc_transfer(0);
 	iface->cb = cb;
-	printf( "%p %d %p %p\n", iface, which_interface_am_i, tx, devh );
+	//printf( "%p %d %p %p\n", iface, which_interface_am_i, tx, devh );
 
 	if (!iface->transfer)
 	{
@@ -125,7 +125,7 @@ static inline int hid_get_feature_report_timeout(libusb_device_handle* device, u
     for (unsigned i = 0; i < 100; i++)
 	{
         ret = getupdate_feature_report(device, interface, buf, len);
-		printf( "HUD: %d/%d %02x %02x %02x\n", ret, len, buf[0], buf[1], buf[2] );
+		//printf( "HUD: %d/%d %02x %02x %02x\n", ret, len, buf[0], buf[1], buf[2] );
 		if( ret != -1 || errno != EPIPE ) return ret;
 		usleep( 1000 );
 	}
@@ -298,7 +298,8 @@ int survive_usb_poll( struct SurviveContext * ctx )
 	return r;
 }
 
-
+#if 0
+//XXX THIS DOES NOT WORK!!! WHY???
 int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, int iface )
 {
 	int i, ret, count = 0, size = 0;
@@ -307,6 +308,7 @@ int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, 
 	uint8_t uncompressed_data[65536];
 	struct libusb_device_handle * dev = ctx->udev[devno];
 
+	cfgbuff[1] = 0xaa;
 	cfgbuff[0] = 0x10;
 	if( ( ret = hid_get_feature_report_timeout( dev, iface, cfgbuff, sizeof( cfgbuff ) ) ) < 0 )
 	{
@@ -314,6 +316,7 @@ int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, 
 		return -1;
 	}
 
+	cfgbuff[1] = 0xaa;
 	cfgbuff[0] = 0x11;
 	do
 	{
@@ -366,7 +369,7 @@ int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, 
 	memcpy( config, uncompressed_data, len );
 	return len;
 }
-
+#endif
 
 
 

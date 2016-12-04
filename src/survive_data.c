@@ -83,7 +83,7 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 	uint8_t startread[29];
 	memcpy( startread, readdata, 29 );
 
-#if 1
+#if 0
 	printf( "DAT:     " );
 		for( i = 0; i < 29; i++ )
 		{
@@ -209,7 +209,7 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		int mytime = (time1<<24)|(time2<<16)|(readdata[4]<<8)|(readdata[5]);
 		int diff = mytime - lasttime;
 		lasttime = mytime;
-		printf( "POST %d: %4d (%02x%02x) (%9d)- ", propset, qty, time1, time2, diff );
+		printf( "POST %d: %4d (%02x%02x) - ", propset, qty, time1, time2 );
 		for( i = 0; i < qty + 4; i++ )
 		{
 			printf( "%02x ", readdata[i] );

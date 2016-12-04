@@ -35,12 +35,13 @@ struct SurviveContext * survive_init( void(*ff)( struct SurviveContext * ctx, co
 		return 0;
 	}
 
+#if 0
 	//Next, pull out the config stuff.
-/*	char * ct0conf;
-	int len = survive_get_config( &ct0conf, ctx, 1, 0 );
+	char * ct0conf;
+	int len = survive_get_config( &ct0conf, ctx, 0, 0 );
 	printf( "%d\n", len );
 	puts( ct0conf );
-*/
+#endif
 
 	//ctx->headset->photos = malloc( ctx->headset->sensors * sizeof(struct SurvivePhoto) );
 	return ctx;
