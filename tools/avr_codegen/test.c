@@ -56,21 +56,21 @@ int main( )
 			marker--;
 			PORTB = 0;
 		} while( marker );
-		_delay_us(8);
+		_delay_us(80);
 		marker = 10;
 		do{
 			PORTB = _BV(4);
 			marker--;
 			PORTB = 0;
 		} while( marker );
-		_delay_us(16);
+/*		_delay_us(16);
 		marker = 20;
 		do{
 			PORTB = _BV(4);
 			marker--;
 			PORTB = 0;
 		} while( marker );
-
+*/
 		//  t b6 b5 b4 b3 b2 b1 b0    t b13 b12 b11 b10 b9 b8 b7
 		//  1 0  0  0  0  1  0  1     0  0   0   0   1   0  0  0
 		//			8       5               0             8

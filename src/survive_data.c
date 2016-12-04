@@ -232,7 +232,7 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		//  code = 0x91 = ???? ... 25 bytes?
 
 
-#if 0
+#if 1
 		static int lasttime;
 		//             good        good          maybe?         probably wrong
 		int mytimex = (time1<<24)|(time2<<16)|(readdata[4]<<8)|(readdata[5]);
@@ -288,7 +288,56 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 			return;
 		}
 
+		//What I think I know:
+		//	2 pulses: mytime pulse? deltime? deltime? pulse? deltime?
+		//	3 pulses: mytime pulse? deltime? deltime? pulse? deltime? deltime? pulse deltime?
+		// Maybe pulse codes are change in masks?
+		//One light on then off. Events (1358180290): 50/(  112/ 1714)50/(  107/   -1)
+		// LED 50 / LED 60
+		//  5a/(7 >< 90)60/( 7 <> 1719)5a/(7/90)60/(7/-1)
+		// 50 then 
+		// 7 later) 60 on
+		// 90 later, 60 only
+		// 7 later, 60 off.
+		// 1719 later, 50 on
+		// 7 later, 60 on.
+		// 90 later, 50 off
+		// 7 later, 60 off.
+
+		//TODO: Try to undertand multiple code.
+		//TODO: Make sure order of on/off is correct.
+		//TODO: Get some sleepeeepepepeppeepeppeepppepepepepepeppp
+
+
+		//I think the format is:
+		// mytime = start of events
+		//   mask = LEDs on.
+		//     parameter = delta
+		//   mask = Led mask switching
 		static int olddel = 0;
+
+		int lightmask = lights[lightno-1];
+
+		//
+		//
+		//
+
+		//Operting on mytime
+		printf( "Events (%10d): ", mytime );
+		for( i = 0; i < lightno; i++ )
+		{
+			int deltaA = parameters[parplace-i*2-1];
+			int deltaB = -1;
+			if( parplace-i*2-2 >= 0 )
+				deltaB = parameters[parplace-i*2-2];
+
+			printf( "%02x/(%5d/%5d)", lightmask, deltaA, deltaB );
+			if( lightno-i-2 >= 0 )
+			lightmask = lights[lightno-i-2];
+		}
+		printf( "\n");
+
+/*
 		for( i = 0; i < lightno; i++ )
 		{
 			struct LightcapElement le;
@@ -297,7 +346,6 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 			le.length = parameters[parplace-i*2-1];
 			le.timestamp = mytime;
 			handle_lightcap( w, &le );
-
 
 			int delta = le.timestamp - olddel;
 			olddel = le.timestamp;
@@ -308,6 +356,8 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 			if( pl>=0 )
 				mytime += parameters[parplace-i*2-2];
 		}
+*/
+
 
 #if 0
 		printf( "  SRR: " );
