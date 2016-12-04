@@ -18,6 +18,35 @@
 #define POP2  (*(((uint16_t*)((readdata+=2)-2))))
 #define POP4  (*(((uint32_t*)((readdata+=4)-4))))
 
+//Pass pointer to end-of-string
+int ARCANEPOP( uint8_t ** end, uint8_t * start )
+{
+	//78
+	//a8 03
+	uint8_t tnum;
+	uint32_t accumulator;
+
+	tnum = (*end)[0];
+	accumulator = (tnum&0x7f);
+	(*end)--;
+	if( ( tnum & 0x80 ) || ( *end == start ) )	return accumulator;
+
+	tnum = (*end)[0];
+	accumulator = (accumulator<<7)|(tnum&0x7f);
+	(*end)--;
+	if( ( tnum & 0x80 ) || ( *end == start ) )	return accumulator;
+
+	tnum = (*end)[0];
+	(*end)--;
+	accumulator = (accumulator<<7)|(tnum&0x7f);
+	if( ( tnum & 0x80 ) || ( *end == start ) )	return accumulator;
+
+	tnum = (*end)[0];
+	(*end)--;
+	accumulator = (accumulator<<7)|(tnum&0x7f);
+	return accumulator;
+}
+
 
 struct LightcapElement
 {
@@ -116,7 +145,7 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		if( type & 0x04 ) 
 		{
 			qty-=1;
-			w->axis1 = ( POP1 ) * 256; 
+			w->axis1 = ( POP1 ) * 128; 
 			type &= ~0x04;
 		}
 		if( type & 0x02 )
@@ -203,12 +232,12 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		//  code = 0x91 = ???? ... 25 bytes?
 
 
-#if 1
+#if 0
 		static int lasttime;
 		//             good        good          maybe?         probably wrong
-		int mytime = (time1<<24)|(time2<<16)|(readdata[4]<<8)|(readdata[5]);
-		int diff = mytime - lasttime;
-		lasttime = mytime;
+		int mytimex = (time1<<24)|(time2<<16)|(readdata[4]<<8)|(readdata[5]);
+		int diff = mytimex - lasttime;
+		lasttime = mytimex;
 		printf( "POST %d: %4d (%02x%02x) - ", propset, qty, time1, time2 );
 		for( i = 0; i < qty + 4; i++ )
 		{
@@ -216,6 +245,69 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		}
 		printf("\n");
 #endif
+
+
+		//XXX XXX XXX This code is awful.  Rejigger to make go fast.
+		uint8_t * end = &readdata[qty-4];
+		uint8_t * start = readdata;
+
+		//XXX TODO: Do something clever here to get the MSB for the timecode.  Can do by
+		//looking at the difference of the msb of the wrong packet and last OR difference from this
+		//and IMU timecode.
+		uint32_t imutime = (time1<<24) | (time2<<16);
+		uint32_t mytime = (end[1] << 0)|(end[2] << 8)|(end[3] << 16);
+		mytime |= (time1<<24);
+		int32_t tdiff = mytime - imutime;
+		if( tdiff > 0x7fffff )  { mytime -= 0x01000000; }
+		if( tdiff < -0x7fffff ) { mytime += 0x01000000; }
+
+		uint32_t  parameters[25];
+		int parplace = 0;
+
+		while( end != start )
+		{
+			uint32_t acpop = ARCANEPOP( &end, start );
+			parameters[parplace++] = acpop;
+			int remain = end - start + 1;
+			if( (parplace+1) / 2 >= remain ) break;
+		}
+
+		uint32_t lights[10];
+		int lightno = 0;
+
+		while( end >= start )
+		{
+			lights[lightno++] = end[0];
+			end--;
+		}
+
+		if( (parplace+1)/2 != lightno )
+		{
+			struct SurviveContext * ctx = w->ctx;
+			SV_INFO( "Watchman code count doesn't match" );
+			return;
+		}
+
+		static int olddel = 0;
+		for( i = 0; i < lightno; i++ )
+		{
+			struct LightcapElement le;
+			le.sensor_id = lights[lightno-i-1];
+			le.type = 0xfe; 
+			le.length = parameters[parplace-i*2-1];
+			le.timestamp = mytime;
+			handle_lightcap( w, &le );
+
+
+			int delta = le.timestamp - olddel;
+			olddel = le.timestamp;
+
+			printf( "LIGHTCAP: %02x %3d %10lu %d\n", le.sensor_id, le.length, le.timestamp, delta );
+
+			int pl = parplace-i*2-2;
+			if( pl>=0 )
+				mytime += parameters[parplace-i*2-2];
+		}
 
 #if 0
 		printf( "  SRR: " );
