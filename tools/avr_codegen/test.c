@@ -19,7 +19,7 @@ static void setup_clock( void )
 
 	CLKPR = 0x80;	/*Setup CLKPCE to be receptive*/
 	CLKPR = 0x00;	/*No scalar*/
-	OSCCAL = 0x60; //B8 is bottom E8 is top. 
+	OSCCAL = 0x30; //B8 is bottom E8 is top. 
 
 	//This is gonna be about 1.8 MHz, turns out that's probably better than the 2MHz suggestion from the lighthouse-redox people.
 }
@@ -28,7 +28,7 @@ int main( )
 {
 	cli();
 	setup_clock();
-	DDRB = _BV(4);
+	DDRB = _BV(4) | _BV(3) | _BV(1);
 	uint8_t marker;
 
 	while(1)
@@ -50,19 +50,53 @@ int main( )
 		//  14 = 0x95 0x01
 		//	15 = 0xa1 0x01
 		//0x10 = 0xab 0x01
-		marker = 10;
+		marker = 30;
 		do{
-			PORTB = _BV(4);
+			PORTB = _BV(3);   //4 = 0x40  3 = 0x48 1 = 0x50
+			marker--;
+			PORTB = 0;
+		} while( marker );
+		marker = 30;
+		do{
+			PORTB = _BV(3)|_BV(1);   //4 = 0x40  3 = 0x48 1 = 0x50
+			marker--;
+			PORTB = 0;
+		} while( marker );
+		marker = 30;
+		do{
+			PORTB = _BV(3);   //4 = 0x40  3 = 0x48 1 = 0x50
+			marker--;
+			PORTB = 0;
+		} while( marker );
+		do{
+			PORTB = _BV(3)|_BV(4);   //4 = 0x40  3 = 0x48 1 = 0x50
+			marker--;
+			PORTB = 0;
+		} while( marker );
+		do{
+			PORTB = _BV(3);   //4 = 0x40  3 = 0x48 1 = 0x50
 			marker--;
 			PORTB = 0;
 		} while( marker );
 		_delay_us(80);
-		marker = 10;
+
+/*
+		marker = 30;
 		do{
-			PORTB = _BV(4);
+			PORTB = _BV(0);
 			marker--;
 			PORTB = 0;
 		} while( marker );
+//		_delay_us(80);
+		marker = 10;
+		do{
+			PORTB = _BV(3);
+			marker--;
+			PORTB = 0;
+		} while( marker );
+
+*/
+
 /*		_delay_us(16);
 		marker = 20;
 		do{

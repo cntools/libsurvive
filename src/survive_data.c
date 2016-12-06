@@ -245,8 +245,6 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		}
 		printf("\n");
 #endif
-
-
 		//XXX XXX XXX This code is awful.  Rejigger to make go fast.
 		uint8_t * end = &readdata[qty-4];
 		uint8_t * start = readdata;
@@ -304,9 +302,39 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		// 90 later, 50 off
 		// 7 later, 60 off.
 
-		//TODO: Try to undertand multiple code.
-		//TODO: Make sure order of on/off is correct.
-		//TODO: Get some sleepeeepepepeppeepeppeepppepepepepepeppp
+		//Notes: All LEDs are divisble by 8.
+		//That leaves us 3 bits earlier in the message.
+		//
+		//
+
+		//Assumptions:  Bit 0 1
+//XXX DISCARD BETWEEN HERE
+		//More details.  Example:
+		//  40 only / 40 and 48 /  48 only
+		//   49/(  139/  102)41/(  130/   -1)
+		//  48 only / 48 and 40 /  40 only
+		//   41/(  129/  102)49/(  132/   -1)
+		//
+		//  00 then 08+00 then 08 only
+		//    09/(  133/  100)01/(  135/   -1)
+		//  08 then 08+00 then 00 only
+		//    01/(  133/  102)09/(  133/   -1)
+		//
+		// 10 then 10+00+08 then 00+08
+		//    0a/(  107/   20)73/(   93/   17)11/(  132/   -1)
+		// 08+00 then 10+08+00  then 10
+		//    6a/(   34/   35)12/(   86/  125)0a/(   20/   -1)
+		//
+		//  08 then 10+08 then 10
+		//    11/(  136/   97)09/(  136/   -1)
+
+		//  08 then nothing then 10
+		// 10/(  104/  161)08/(  102/   -1)
+		// 10/(  105/  425)08/(  102/   -1)  (LONGER DELAY BETWEEN)
+		// 10/(  369/  423)08/(  102/   -1)  (LONGER FIRST PULSE)
+		// 40 -> 48 -> 50 50/(  523/ 2260)48/(  520/ 2260)40/(  873/   -1)
+//AND HERE!!! XXX DISCARD
+
 
 
 		//I think the format is:
@@ -316,7 +344,7 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		//   mask = Led mask switching
 		static int olddel = 0;
 
-		int lightmask = lights[lightno-1];
+		int lightmask = lights[0];
 
 		//
 		//
@@ -333,9 +361,36 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 
 			printf( "%02x/(%5d/%5d)", lightmask, deltaA, deltaB );
 			if( lightno-i-2 >= 0 )
-			lightmask = lights[lightno-i-2];
+			lightmask = lights[i+1];
 		}
 		printf( "\n");
+
+		//Three distinct motions. 
+		// 40 nothing (long wait) 48 nothing 50 nothing (long pulse)
+		//    40/(  524/ 2262)48/(  522/  570)50/(  874/   -1)
+		// 40, 40+48, 48 only.
+		//   41/(  529/  517)49/(  875/   -1)
+		// 48, 48+40, 40 only
+		//   49/(  525/  518)41/(  877/   -1)
+		// 48 then 48+40 then 48 only  //XXX SERIOUSLY????
+		//   40/(  526/  524)4a/(  869/   -1)
+		// 48 then 48+50 then 50 only.
+		//   49/(  528/  518)51/(  881/   -1)
+		// 50 then 48+50 then 48 only.
+ 		//    51/(  528/  520)49/(  523/   -1)
+		// 48 then 48+50 then 50 only.
+		//    49/(  527/  518)51/(  532/   -1)
+		// 48 then 48+50 then 48 only //INCORRECT BELOW HERE XXX DO NOT TRUST!!!
+		//     50/(  527/  524)4a/(  515/   -1)  //No, really... wat?
+		// 50 then 48+50 then 50 only
+		//     48/(  529/  521)52/(  524/   -1)  // oh come on!
+		// 50 then 48+50 then 50 only then 50+40 then 50 only.
+		//     40/( 5364/ 2292)50/( 5363/283869)48/(  526/  521)52/(  522/   -1)
+
+
+
+
+
 
 /*
 		for( i = 0; i < lightno; i++ )
@@ -469,8 +524,6 @@ void survive_data_cb( struct SurviveUSBInterface * si )
 		}
 
 		//DONE OK.
-
-		//printf("\n" );
 		break;
 	}
 	case USB_IF_WATCHMAN1:

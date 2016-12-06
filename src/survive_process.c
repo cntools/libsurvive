@@ -13,6 +13,6 @@ void survive_imu_process( struct SurviveObject * so, int16_t * accelgyro, uint32
 {
 	if( so->codename[0] != 'H' )
 	{
-//		printf( "I %s %d %d %d %d %d %d %d %d\n", so->codename, timecode, accelgyro[0], accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4], accelgyro[5], id );
+		//printf( "I %s %d %d %d %d %d %d %d %d\n", so->codename, timecode, accelgyro[0], accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4], accelgyro[5], id );
 	}
 }
