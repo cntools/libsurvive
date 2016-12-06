@@ -1,5 +1,5 @@
 
-all : test.hex burn test.lst
+all : test.hex test.lst
 PART=attiny85
 PROGPART=t85
 
@@ -10,6 +10,7 @@ CC=avr-gcc
 
 test.hex : test.elf
 	avr-objcopy -j .text -j .data -O ihex test.elf test.hex 
+	avrdude -c usbtiny -p $(PROGPART) -V -U flash:w:test.hex
 
 test.elf : test.c
 	avr-gcc -I  -g $(CFLAGS)   -mmcu=$(PART) -Wl,-Map,test.map -o $@ test.c -L/usr/lib/binutils/avr/2.18

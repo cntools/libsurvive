@@ -26,6 +26,7 @@ static void setup_clock( void )
 
 int main( )
 {
+	int k;
 	cli();
 	setup_clock();
 	DDRB = _BV(4) | _BV(3) | _BV(1);
@@ -50,38 +51,30 @@ int main( )
 		//  14 = 0x95 0x01
 		//	15 = 0xa1 0x01
 		//0x10 = 0xab 0x01
-		marker = 30;
-		do{
-			PORTB = _BV(3);   //4 = 0x40  3 = 0x48 1 = 0x50
-			marker--;
-			PORTB = 0;
-		} while( marker );
-		marker = 30;
-/*		do{
-			PORTB = _BV(3)|_BV(1);   //4 = 0x40  3 = 0x48 1 = 0x50
-			marker--;
-			PORTB = 0;
-		} while( marker );
-		marker = 30;
-		do{
-			PORTB = _BV(3);   //4 = 0x40  3 = 0x48 1 = 0x50
-			marker--;
-			PORTB = 0;
-		} while( marker );
-		marker = 30;
-		do{
-			PORTB = _BV(3)|_BV(4);   //4 = 0x40  3 = 0x48 1 = 0x50
-			marker--;
-			PORTB = 0;
-		} while( marker );
-		marker = 30;
-		do{
-			PORTB = _BV(3);   //4 = 0x40  3 = 0x48 1 = 0x50
-			marker--;
-			PORTB = 0;
-		} while( marker );
-		_delay_us(80);
-*/
+
+		// 0x81 0x04
+		//  <-    <-
+
+		// First look at 0x04.  There will be another byte because it is less than
+		//  128!
+		// 0x04<<7 = 0x200 
+		//  Because 0x81 is  >= 128, it's a terminator.
+		// 0x200 | 0x81 = 0x281 << The actual value
+		// 
+
+		// _BV(x) is a synonym for (1<<x)
+		#define  LED48 _BV(3)
+		#define  LED40 _BV(4) 
+		#define  LED50 _BV(1) 
+		 //Marker = Length of time for following
+
+		#define DO_MARKER( time, LEDS ) \
+			marker = time; do { PORTB = LEDS; marker--; PORTB = 0; } while( marker );
+		DO_MARKER( 22, LED40 );
+		DO_MARKER( 22, LED50|LED40 );
+		DO_MARKER( 22, LED50 );
+
+
 /*
 		marker = 30;
 		do{
