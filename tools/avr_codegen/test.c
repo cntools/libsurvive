@@ -19,9 +19,7 @@ static void setup_clock( void )
 
 	CLKPR = 0x80;	/*Setup CLKPCE to be receptive*/
 	CLKPR = 0x00;	/*No scalar*/
-	OSCCAL = 0x30; //B8 is bottom E8 is top. 
-
-	//This is gonna be about 1.8 MHz, turns out that's probably better than the 2MHz suggestion from the lighthouse-redox people.
+	OSCCAL = 0x42; //B8 is bottom E8 is top. 
 }
 
 int main( )
@@ -30,6 +28,9 @@ int main( )
 	cli();
 	setup_clock();
 	DDRB = _BV(4) | _BV(3) | _BV(1);
+
+//	setup_spi();  //XXX WARNING: If you use this, you can't use LED50 since it's on the SPI bus.
+
 	uint8_t marker;
 
 	while(1)
@@ -70,11 +71,14 @@ int main( )
 
 		#define DO_MARKER( time, LEDS ) \
 			marker = time; do { PORTB = LEDS; marker--; PORTB = 0; } while( marker );
-		DO_MARKER( 22, LED40 );
-		DO_MARKER( 22, LED50|LED40 );
-		DO_MARKER( 22, LED50 );
+		DO_MARKER(20, LED40);
+		DO_MARKER(35, LED50|LED40);
+		DO_MARKER(25, LED50);
+		DO_MARKER(45, LED50|LED48);
+		DO_MARKER(60, LED50);
 
-
+//		sendhex2( 5 );
+//		sendchr('\n');
 /*
 		marker = 30;
 		do{
@@ -133,7 +137,8 @@ int main( )
 		
 
 		//_delay_us(1000000/60);
-		_delay_ms(10);
+		//_delay_ms(10); //actually 5.3ms
+		_delay_ms(32);
 	}
 
 	return 0;
