@@ -57,7 +57,7 @@ int main( )
 			PORTB = 0;
 		} while( marker );
 		marker = 30;
-		do{
+/*		do{
 			PORTB = _BV(3)|_BV(1);   //4 = 0x40  3 = 0x48 1 = 0x50
 			marker--;
 			PORTB = 0;
@@ -68,18 +68,20 @@ int main( )
 			marker--;
 			PORTB = 0;
 		} while( marker );
+		marker = 30;
 		do{
 			PORTB = _BV(3)|_BV(4);   //4 = 0x40  3 = 0x48 1 = 0x50
 			marker--;
 			PORTB = 0;
 		} while( marker );
+		marker = 30;
 		do{
 			PORTB = _BV(3);   //4 = 0x40  3 = 0x48 1 = 0x50
 			marker--;
 			PORTB = 0;
 		} while( marker );
 		_delay_us(80);
-
+*/
 /*
 		marker = 30;
 		do{
