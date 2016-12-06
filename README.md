@@ -4,7 +4,7 @@
 
 First livestream: https://www.youtube.com/watch?v=sv_AVI9kHN4
 
-Second livestream: (Currently processing by youtube)
+Second livestream: https://www.youtube.com/watch?v=gFyEbGQ88s4
 
 Notes from second livestream trying to reverse engineer the watchman protocol: https://gist.github.com/cnlohr/581c433f36f4249f8bbc9c2b6450ef0e
 
