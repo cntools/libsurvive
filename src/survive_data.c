@@ -308,7 +308,7 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 			offtimes[led] = mytime;
 			printf( "%d %d %d %d\n", led, ledtime, deltaA, deltaB );
 
-			if( deltaA )
+			if( deltaA )  //XXX TODO: This should just check to see if k != 0
 			{
 				mytime -= deltaA;
 
