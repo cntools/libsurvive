@@ -304,27 +304,37 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 
 			k++;
 
-			onleds[led] = ledtime+2;
+			onleds[led] = ledtime+1;
 			offtimes[led] = mytime;
 			printf( "%d %d %d %d\n", led, ledtime, deltaA, deltaB );
 
-			mytime -= deltaA;
-
-			for( j = 0; j < M_LEDS; j++ )
+			if( deltaA )
 			{
-				if( onleds[j] )
+				mytime -= deltaA;
+
+				for( j = 0; j < M_LEDS; j++ )
 				{
-					onleds[j]--;
-					if( !onleds[j] )
+					if( onleds[j] )
 					{
-						//Got a light event.
-						struct LightcapElement le;
-						le.type = 0xfe;
-						le.sensor_id = j;
-						le.timestamp = mytime;
-						le.length = offtimes[j] - mytime;
-						handle_lightcap( w, &le );
-						printf( "Light Event: LED %d @ %d, len %d (%d)\n", j, mytime, le.length, deltaB );
+						onleds[j]--;
+						if( !onleds[j] )
+						{
+							//Got a light event.
+							struct LightcapElement le;
+							le.type = 0xfe;
+							le.sensor_id = j;
+							le.timestamp = mytime;
+							if( offtimes[j] - mytime > 65535 ) 
+							{
+								printf( "OFLOW: LED %d @ %d, len %d\n", j, mytime, offtimes[j] - mytime );
+							}
+							else
+							{
+								le.length = offtimes[j] - mytime;
+								handle_lightcap( w, &le );
+								printf( "Light Event: LED %d @ %d, len %d\n", j, mytime, le.length );
+							}
+						}
 					}
 				}
 			}
@@ -341,9 +351,16 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 						le.type = 0xfe;
 						le.sensor_id = j;
 						le.timestamp = mytime;
-						le.length = offtimes[j] - mytime;
-						handle_lightcap( w, &le );
-						printf( "Light Event: LED %d @ %d, len %d (%d)\n", j, mytime, le.length, deltaB );
+						if( offtimes[j] - mytime > 65535 ) 
+						{
+							printf( "OFLOW: LED %d @ %d, len %d\n", j, mytime, offtimes[j] - mytime );
+						}
+						else
+						{
+							le.length = offtimes[j] - mytime;
+							handle_lightcap( w, &le );
+							printf( "Light Event: LED %d @ %d, len %d\n", j, mytime, le.length );
+						}
 					}
 				}
 			}
