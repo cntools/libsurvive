@@ -12,11 +12,11 @@ test.hex : test.elf
 	avr-objcopy -j .text -j .data -O ihex test.elf test.hex 
 	avrdude -c usbtiny -p $(PROGPART) -V -U flash:w:test.hex
 
-test.elf : test.c avr_print.c
-	avr-gcc -I  -g $(CFLAGS)   -mmcu=$(PART) -Wl,-Map,test.map -o $@ test.c avr_print.c -L/usr/lib/binutils/avr/2.18
+test.elf : test.c
+	avr-gcc -I  -g $(CFLAGS)   -mmcu=$(PART) -Wl,-Map,test.map -o $@ test.c -L/usr/lib/binutils/avr/2.18
 
-test.lst : test.c avr_print.c
-	avr-gcc -c -g -Wa,-a,-ad $(CFLAGS) test.c avr_print.c > $@
+test.lst : test.c
+	avr-gcc -c -g -Wa,-a,-ad $(CFLAGS) test.c > $@
 
 burn : test.hex
 	avrdude -c usbtiny -p $(PROGPART) -V -U flash:w:test.hex

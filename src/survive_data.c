@@ -194,6 +194,7 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 
 	if( qty )
 	{
+			int j;
 		qty++;
 		readdata--;
 		*readdata = type;
@@ -285,7 +286,99 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 			SV_INFO( "Watchman code count doesn't match" );
 			return;
 		}
+#if 1
+		//This is getting very close.
 
+		const int M_LEDS = 32;
+		uint8_t onleds[M_LEDS];
+		uint32_t offtimes[M_LEDS];
+		memset( onleds, 0, sizeof( onleds ) );
+		int k = 0;
+
+		for( i = lightno-1; i >= 0; i-- )
+		{
+			int led = lights[i]>>3;
+			int ledtime = lights[i]&0x07;
+			int deltaA = k?parameters[k*2-1]:0;
+			int deltaB = parameters[k*2+0];
+
+			k++;
+
+			onleds[led] = ledtime+2;
+			offtimes[led] = mytime;
+			printf( "%d %d %d %d\n", led, ledtime, deltaA, deltaB );
+
+			mytime -= deltaA;
+
+			for( j = 0; j < M_LEDS; j++ )
+			{
+				if( onleds[j] )
+				{
+					onleds[j]--;
+					if( !onleds[j] )
+					{
+						//Got a light event.
+						struct LightcapElement le;
+						le.type = 0xfe;
+						le.sensor_id = j;
+						le.timestamp = mytime;
+						le.length = offtimes[j] - mytime;
+						handle_lightcap( w, &le );
+						printf( "Light Event: LED %d @ %d, len %d (%d)\n", j, mytime, le.length, deltaB );
+					}
+				}
+			}
+			mytime -= deltaB;
+			for( j = 0; j < M_LEDS; j++ )
+			{
+				if( onleds[j] )
+				{
+					onleds[j]--;
+					if( !onleds[j] )
+					{
+						//Got a light event.
+						struct LightcapElement le;
+						le.type = 0xfe;
+						le.sensor_id = j;
+						le.timestamp = mytime;
+						le.length = offtimes[j] - mytime;
+						handle_lightcap( w, &le );
+						printf( "Light Event: LED %d @ %d, len %d (%d)\n", j, mytime, le.length, deltaB );
+					}
+				}
+			}
+		}
+
+		for( j = 0; j < M_LEDS; j++ )
+		{
+			if( onleds[j] )
+			{
+				fprintf(stderr, "ERROR: Too many LEDs found (%d = %d)\n", j, onleds[j] );
+			}
+		}
+
+#endif
+
+
+/*
+		static int olddel = 0;
+		int lightmask = lights[0];
+		//Operting on mytime
+		printf( "Events (%10d): ", mytime );
+		for( i = 0; i < lightno; i++ )
+		{
+			int deltaA = parameters[parplace-i*2-1];
+			int deltaB = -1;
+			if( parplace-i*2-2 >= 0 )
+				deltaB = parameters[parplace-i*2-2];
+
+			printf( "%02x/(%5d/%5d)", lightmask, deltaA, deltaB );
+			if( lightno-i-2 >= 0 )
+			lightmask = lights[i+1];
+		}
+		printf( "\n");
+
+*/
 		//What I think I know:
 		//	2 pulses: mytime pulse? deltime? deltime? pulse? deltime?
 		//	3 pulses: mytime pulse? deltime? deltime? pulse? deltime? deltime? pulse deltime?
@@ -342,8 +435,8 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		//   mask = LEDs on.
 		//     parameter = delta
 		//   mask = Led mask switching
+/*
 		static int olddel = 0;
-
 		int lightmask = lights[0];
 
 		//
@@ -364,7 +457,7 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 			lightmask = lights[i+1];
 		}
 		printf( "\n");
-
+*/
 		//Three distinct motions. 
 		// 40 nothing (long wait) 48 nothing 50 nothing (long pulse)
 		//    40/(  524/ 2262)48/(  522/  570)50/(  874/   -1)
