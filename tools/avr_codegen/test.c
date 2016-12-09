@@ -71,7 +71,7 @@ int main( )
 
 		#define DO_MARKER( time, LEDS ) \
 			marker = time; do { PORTB = LEDS; marker--; PORTB = 0; } while( marker );
-#if 1 //this breaks it?
+#if 0 //this breaks it?
 		DO_MARKER(20, LED50);
 		DO_MARKER(20, LED50|LED48);
 		DO_MARKER(20, LED48);
@@ -85,6 +85,20 @@ int main( )
 		DO_MARKER(20, LED40);
 		DO_MARKER(20, LED40|LED48);
 		DO_MARKER(20, LED40);
+#endif
+
+#if 1
+DO_MARKER(30, LED48);
+DO_MARKER(20, LED48|LED40|LED50);
+DO_MARKER(20, LED48|LED40);
+DO_MARKER(30, LED48);
+DO_MARKER(20, LED48|LED40);
+DO_MARKER(20, LED48|LED50);
+DO_MARKER(30, LED48);
+DO_MARKER(20, LED48|LED40);
+DO_MARKER(20, LED48|LED40|LED50);
+DO_MARKER(30, LED48);
+
 #endif
 
 #if 0

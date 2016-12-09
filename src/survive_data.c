@@ -18,35 +18,6 @@
 #define POP2  (*(((uint16_t*)((readdata+=2)-2))))
 #define POP4  (*(((uint32_t*)((readdata+=4)-4))))
 
-//Pass pointer to end-of-string
-int ARCANEPOP( uint8_t ** end, uint8_t * start )
-{
-	//78
-	//a8 03
-	uint8_t tnum;
-	uint32_t accumulator;
-
-	tnum = (*end)[0];
-	accumulator = (tnum&0x7f);
-	(*end)--;
-	if( ( tnum & 0x80 ) || ( *end == start ) )	return accumulator;
-
-	tnum = (*end)[0];
-	accumulator = (accumulator<<7)|(tnum&0x7f);
-	(*end)--;
-	if( ( tnum & 0x80 ) || ( *end == start ) )	return accumulator;
-
-	tnum = (*end)[0];
-	(*end)--;
-	accumulator = (accumulator<<7)|(tnum&0x7f);
-	if( ( tnum & 0x80 ) || ( *end == start ) )	return accumulator;
-
-	tnum = (*end)[0];
-	(*end)--;
-	accumulator = (accumulator<<7)|(tnum&0x7f);
-	return accumulator;
-}
-
 
 struct LightcapElement
 {
@@ -198,47 +169,9 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		qty++;
 		readdata--;
 		*readdata = type;
-		//Put type back on stack.  It might have changed
-		//from above.
-
-
-#if 0 //Doesn't work!!!!
-		int reads = qty/6;
-
-		int leds[6];
-		leds[0] = type;
-		for( i = 1; i < reads; i++ )
-		{
-			leds[i] = POP1;
-		}
-		for( i = 0; i < reads; i++ )
-		{
-			printf( "%02x: ", leds[i] );
-			for( i = 0; i < 5; i++ )
-			{
-				printf( "%02x ", POP1 );
-			}
-			printf( "\n" );
-		}
-#endif
-
-		//What does post data look like?
-
-		//1) code, code, code,  PAAYYLOOAAADDD
-		//"code" typically has 2 or fewer bits in word set.
-		//  code = 0x00 = expect 5 bytes 
-		//  code = 0x08 = expect 5 bytes
-		//  code = 0x10 = expect 5 bytes
-		//  code = 0x5c = ???? ... 12?
-		//  code = 0x91 = ???? ... 25 bytes?
-
 
 #if 1
-		static int lasttime;
 		//             good        good          maybe?         probably wrong
-		int mytimex = (time1<<24)|(time2<<16)|(readdata[4]<<8)|(readdata[5]);
-		int diff = mytimex - lasttime;
-		lasttime = mytimex;
 		printf( "POST %d: %4d (%02x%02x) - ", propset, qty, time1, time2 );
 		for( i = 0; i < qty + 4; i++ )
 		{
@@ -246,322 +179,115 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		}
 		printf("\n");
 #endif
-		//XXX XXX XXX This code is awful.  Rejigger to make go fast.
-		uint8_t * end = &readdata[qty-4];
-		uint8_t * start = readdata;
 
-		//XXX TODO: Do something clever here to get the MSB for the timecode.  Can do by
-		//looking at the difference of the msb of the wrong packet and last OR difference from this
-		//and IMU timecode.
-		uint32_t imutime = (time1<<24) | (time2<<16);
+		uint8_t * end = &readdata[qty];
 		uint32_t mytime = (end[1] << 0)|(end[2] << 8)|(end[3] << 16);
-		mytime |= (time1<<24);
-		int32_t tdiff = mytime - imutime;
-		if( tdiff > 0x7fffff )  { mytime -= 0x01000000; }
-		if( tdiff < -0x7fffff ) { mytime += 0x01000000; }
 
-		uint32_t  parameters[25];
-		int parplace = 0;
+		uint32_t times[20];
+		uint32_t time;
+		const int nrtime = sizeof(times)/sizeof(uint32_t);
+		int timecount = 0;
+		int leds;
+		int parameters;
+		int fault = 0;
 
-		while( end != start )
+		//First, pull off the times, starting with the current time, then all the delta times going backwards.
 		{
-			uint32_t acpop = ARCANEPOP( &end, start );
-			parameters[parplace++] = acpop;
-			int remain = end - start + 1;
-			if( (parplace+1) / 2 >= remain ) break;
-		}
+			uint8_t * mptr = readdata + qty-3-1; //-3 for timecode, -1 to advance.
+			uint32_t imutime = (time1<<24) | (time2<<16);
+			time = mptr[3]<<16 | mptr[2]<<8 | mptr[1];
+			time |= (time1<<24);
+			int32_t tdiff = time - imutime;
+			if( tdiff > 0x7fffff )  { time -= 0x01000000; }
+			if( tdiff < -0x7fffff ) { time += 0x01000000; }
 
-		uint32_t lights[10];
-		int lightno = 0;
 
-		while( end >= start )
-		{
-			lights[lightno++] = end[0];
-			end--;
-		}
 
-		if( (parplace+1)/2 != lightno )
-		{
-			struct SurviveContext * ctx = w->ctx;
-			SV_INFO( "Watchman code count doesn't match" );
-			return;
-		}
-#if 1
-		//This is getting very close.
+			times[timecount++] = time;
 
-		const int M_LEDS = 32;
-		uint8_t onleds[M_LEDS];
-		uint32_t offtimes[M_LEDS];
-		memset( onleds, 0, sizeof( onleds ) );
-		int k = 0;
-
-		for( i = lightno-1; i >= 0; i-- )
-		{
-			int led = lights[i]>>3;
-			int ledtime = lights[i]&0x07;
-			int deltaA = k?parameters[k*2-1]:0;
-			int deltaB = parameters[k*2+0];
-
-			k++;
-
-			onleds[led] = ledtime+1;
-			offtimes[led] = mytime;
-			printf( "%d %d %d %d\n", led, ledtime, deltaA, deltaB );
-
-			if( deltaA )  //XXX TODO: This should just check to see if k != 0
+			while( mptr - readdata > (timecount>>1) )
 			{
-				mytime -= deltaA;
-
-				for( j = 0; j < M_LEDS; j++ )
+				uint32_t arcane_value = 0;
+				//ArcanePop (Pop off values from the back, forward, checking if the MSB is set)
+				do
 				{
-					if( onleds[j] )
-					{
-						onleds[j]--;
-						if( !onleds[j] )
-						{
-							//Got a light event.
-							struct LightcapElement le;
-							le.type = 0xfe;
-							le.sensor_id = j;
-							le.timestamp = mytime;
-							if( offtimes[j] - mytime > 65535 ) 
-							{
-								printf( "OFLOW: LED %d @ %d, len %d\n", j, mytime, offtimes[j] - mytime );
-							}
-							else
-							{
-								le.length = offtimes[j] - mytime;
-								handle_lightcap( w, &le );
-								printf( "Light Event: LED %d @ %d, len %d\n", j, mytime, le.length );
-							}
-						}
-					}
-				}
+					uint8_t ap = *(mptr--);
+					arcane_value |= (ap&0x7f);
+					if( ap & 0x80 )  break;
+					arcane_value <<= 7;
+				} while(1);
+				times[timecount++] = (time -= arcane_value);
 			}
-			mytime -= deltaB;
-			for( j = 0; j < M_LEDS; j++ )
+
+			leds = timecount>>1;
+			//Check that the # of sensors at the beginning match the # of parameters we would expect.
+			if( timecount & 1 ) { fault = 1; goto end; }				//Inordinal LED count
+			if( leds != mptr - readdata + 1 ) { fault = 2; goto end; }	//LED Count does not line up with parameters
+		}
+
+
+		struct LightcapElement les[10];
+		int lese = 0; //les's end
+
+		//Second, go through all LEDs and extract the lightevent from them. 
+		{
+			uint8_t marked[nrtime];
+			memset( marked, 0, sizeof( marked ) );
+			int i, parpl = 0;
+			timecount--;
+			int timepl = 0;
+
+			//This works, but usually returns the values in reverse end-time order.
+			for( i = 0; i < leds; i++ )
 			{
-				if( onleds[j] )
+				int led = readdata[i];
+				int adv = led & 0x07;
+				led >>= 3;
+
+				while( marked[timepl] ) timepl++;
+				if( timepl > timecount ) { fault = 3; goto end; }         //Ran off max of list.
+				uint32_t endtime = times[timepl++];
+				int end = timepl + adv;
+				if( end > timecount ) { fault = 4; goto end; } //end referencing off list
+				if( marked[end] > 0 ) { fault = 5; goto end; } //Already marked trying to be used.
+				uint32_t starttime = times[end];
+				marked[end] = 1;
+				//printf( "LED: %d (adv %d) / st: %d en: %d len: %d / TC: %d\n", led, adv, starttime, endtime, endtime-starttime, end );
+
+
+				//Insert all lighting things into a sorted list.  This list will be
+				//reverse sorted, but that is to minimize operations.  To read it
+				//in sorted order simply read it back backwards.
+				//Use insertion sort, since we should most of the time, be in order.
+				struct LightcapElement * le = &les[lese++];
+				le->sensor_id = led;
+				le->type = 0xfe;
+
+				if( (uint32_t)(endtime - starttime) > 65535 ) { fault = 6; goto end; } //Length of pulse dumb.
+				le->length = endtime - starttime;
+				le->timestamp = starttime;
+				int swap = lese-2;
+				while( swap >= 0 && les[swap].timestamp < les[swap+1].timestamp )
 				{
-					onleds[j]--;
-					if( !onleds[j] )
-					{
-						//Got a light event.
-						struct LightcapElement le;
-						le.type = 0xfe;
-						le.sensor_id = j;
-						le.timestamp = mytime;
-						if( offtimes[j] - mytime > 65535 ) 
-						{
-							printf( "OFLOW: LED %d @ %d, len %d\n", j, mytime, offtimes[j] - mytime );
-						}
-						else
-						{
-							le.length = offtimes[j] - mytime;
-							handle_lightcap( w, &le );
-							printf( "Light Event: LED %d @ %d, len %d\n", j, mytime, le.length );
-						}
-					}
+					struct LightcapElement l;
+					memcpy( &l, &les[swap], sizeof( l ) );
+					memcpy( &les[swap], &les[swap+1], sizeof( l ) );
+					memcpy( &les[swap+1], &l, sizeof( l ) );
+					swap--;
 				}
 			}
 		}
 
-		for( j = 0; j < M_LEDS; j++ )
+		int i;
+		for( i = lese-1; i >= 0; i-- )
 		{
-			if( onleds[j] )
-			{
-				fprintf(stderr, "ERROR: Too many LEDs found (%d = %d)\n", j, onleds[j] );
-			}
+			printf( "%d: %d [%d]\n", les[i].sensor_id, les[i].length, les[i].timestamp );
 		}
 
-#endif
-
-
-/*
-		static int olddel = 0;
-		int lightmask = lights[0];
-		//Operting on mytime
-		printf( "Events (%10d): ", mytime );
-		for( i = 0; i < lightno; i++ )
-		{
-			int deltaA = parameters[parplace-i*2-1];
-			int deltaB = -1;
-			if( parplace-i*2-2 >= 0 )
-				deltaB = parameters[parplace-i*2-2];
-
-			printf( "%02x/(%5d/%5d)", lightmask, deltaA, deltaB );
-			if( lightno-i-2 >= 0 )
-			lightmask = lights[i+1];
-		}
-		printf( "\n");
-
-*/
-		//What I think I know:
-		//	2 pulses: mytime pulse? deltime? deltime? pulse? deltime?
-		//	3 pulses: mytime pulse? deltime? deltime? pulse? deltime? deltime? pulse deltime?
-		// Maybe pulse codes are change in masks?
-		//One light on then off. Events (1358180290): 50/(  112/ 1714)50/(  107/   -1)
-		// LED 50 / LED 60
-		//  5a/(7 >< 90)60/( 7 <> 1719)5a/(7/90)60/(7/-1)
-		// 50 then 
-		// 7 later) 60 on
-		// 90 later, 60 only
-		// 7 later, 60 off.
-		// 1719 later, 50 on
-		// 7 later, 60 on.
-		// 90 later, 50 off
-		// 7 later, 60 off.
-
-		//Notes: All LEDs are divisble by 8.
-		//That leaves us 3 bits earlier in the message.
-		//
-		//
-
-		//Assumptions:  Bit 0 1
-//XXX DISCARD BETWEEN HERE
-		//More details.  Example:
-		//  40 only / 40 and 48 /  48 only
-		//   49/(  139/  102)41/(  130/   -1)
-		//  48 only / 48 and 40 /  40 only
-		//   41/(  129/  102)49/(  132/   -1)
-		//
-		//  00 then 08+00 then 08 only
-		//    09/(  133/  100)01/(  135/   -1)
-		//  08 then 08+00 then 00 only
-		//    01/(  133/  102)09/(  133/   -1)
-		//
-		// 10 then 10+00+08 then 00+08
-		//    0a/(  107/   20)73/(   93/   17)11/(  132/   -1)
-		// 08+00 then 10+08+00  then 10
-		//    6a/(   34/   35)12/(   86/  125)0a/(   20/   -1)
-		//
-		//  08 then 10+08 then 10
-		//    11/(  136/   97)09/(  136/   -1)
-
-		//  08 then nothing then 10
-		// 10/(  104/  161)08/(  102/   -1)
-		// 10/(  105/  425)08/(  102/   -1)  (LONGER DELAY BETWEEN)
-		// 10/(  369/  423)08/(  102/   -1)  (LONGER FIRST PULSE)
-		// 40 -> 48 -> 50 50/(  523/ 2260)48/(  520/ 2260)40/(  873/   -1)
-//AND HERE!!! XXX DISCARD
-
-
-
-		//I think the format is:
-		// mytime = start of events
-		//   mask = LEDs on.
-		//     parameter = delta
-		//   mask = Led mask switching
-/*
-		static int olddel = 0;
-		int lightmask = lights[0];
-
-		//
-		//
-		//
-
-		//Operting on mytime
-		printf( "Events (%10d): ", mytime );
-		for( i = 0; i < lightno; i++ )
-		{
-			int deltaA = parameters[parplace-i*2-1];
-			int deltaB = -1;
-			if( parplace-i*2-2 >= 0 )
-				deltaB = parameters[parplace-i*2-2];
-
-			printf( "%02x/(%5d/%5d)", lightmask, deltaA, deltaB );
-			if( lightno-i-2 >= 0 )
-			lightmask = lights[i+1];
-		}
-		printf( "\n");
-*/
-		//Three distinct motions. 
-		// 40 nothing (long wait) 48 nothing 50 nothing (long pulse)
-		//    40/(  524/ 2262)48/(  522/  570)50/(  874/   -1)
-		// 40, 40+48, 48 only.
-		//   41/(  529/  517)49/(  875/   -1)
-		// 48, 48+40, 40 only
-		//   49/(  525/  518)41/(  877/   -1)
-		// 48 then 48+40 then 48 only  //XXX SERIOUSLY????
-		//   40/(  526/  524)4a/(  869/   -1)
-		// 48 then 48+50 then 50 only.
-		//   49/(  528/  518)51/(  881/   -1)
-		// 50 then 48+50 then 48 only.
- 		//    51/(  528/  520)49/(  523/   -1)
-		// 48 then 48+50 then 50 only.
-		//    49/(  527/  518)51/(  532/   -1)
-		// 48 then 48+50 then 48 only //INCORRECT BELOW HERE XXX DO NOT TRUST!!!
-		//     50/(  527/  524)4a/(  515/   -1)  //No, really... wat?
-		// 50 then 48+50 then 50 only
-		//     48/(  529/  521)52/(  524/   -1)  // oh come on!
-		// 50 then 48+50 then 50 only then 50+40 then 50 only.
-		//     40/( 5364/ 2292)50/( 5363/283869)48/(  526/  521)52/(  522/   -1)
-
-
-
-
-
-
-/*
-		for( i = 0; i < lightno; i++ )
-		{
-			struct LightcapElement le;
-			le.sensor_id = lights[lightno-i-1];
-			le.type = 0xfe; 
-			le.length = parameters[parplace-i*2-1];
-			le.timestamp = mytime;
-			handle_lightcap( w, &le );
-
-			int delta = le.timestamp - olddel;
-			olddel = le.timestamp;
-
-			printf( "LIGHTCAP: %02x %3d %10lu %d\n", le.sensor_id, le.length, le.timestamp, delta );
-
-			int pl = parplace-i*2-2;
-			if( pl>=0 )
-				mytime += parameters[parplace-i*2-2];
-		}
-*/
-
-
-#if 0
-		printf( "  SRR: " );
-		for( i = 0; i < 29; i++ )
-		{
-			printf( "%02x ", startread[i] );
-		}
-		printf( "\n" );
-#endif
+		return;
+	end:
+		printf( "FAULT: %d\n", fault );
 	}
-
-	return;
-	//NO, seriously, there is something wacky going on here.
-//	else if( type == 0xe8 && sensor_id == 15 )
-//	{
-//		printf( "IMU\n" );
-//	}
-
-/*
-	{
-		printf( "PSIDPIN:%3d ", qty );
-		w->charging = readdata[0]>>7;
-		w->charge = readdata[0]&0x7f;
-		w->ison = 1;
-		printf( "%02x/%02x/%02x/%02x: ", type, qty, time1, time2 );
-		for( i = 0; i < 25; i++ )
-		{
-			printf( "%02x ", readdata[i] );
-		}
-		printf("\n");
-
-/*
-		//WHAT IS THIS???
-		printf( "%02x/%02x/%02x/%02x: ", type, sensor_id, time1, time2 );
-		for( i = 0; i < 25; i++ )
-		{
-			printf( "%02x ", readdata[i] );
-		}
-		printf("\n");*/
 }
 
 
