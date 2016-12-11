@@ -14,7 +14,7 @@ static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
 int main()
 {
 	int i;
-	FILE * f = fopen( "test.config", "r" );
+	FILE * f = fopen( "test.config.json", "r" );
 	fseek( f, 0, SEEK_END );
 	int len = ftell( f );
 	fseek( f, 0, SEEK_SET );
