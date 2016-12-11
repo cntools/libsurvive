@@ -1,6 +1,5 @@
 #include "os_generic.h"
 
-
 #ifdef USE_WINDOWS
 
 #include <windows.h>
@@ -159,6 +158,7 @@ void OGDeleteSema( og_sema_t os )
 #include <pthread.h>
 #include <sys/time.h>
 #include <semaphore.h>
+#include <unistd.h>
 
 pthread_mutex_t g_RawMutexStart = PTHREAD_MUTEX_INITIALIZER;
 

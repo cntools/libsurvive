@@ -298,8 +298,7 @@ int survive_usb_poll( struct SurviveContext * ctx )
 	return r;
 }
 
-#if 0
-//XXX THIS DOES NOT WORK!!! WHY???
+
 int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, int iface )
 {
 	int i, ret, count = 0, size = 0;
@@ -327,10 +326,10 @@ int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, 
 		}
 
 		size = cfgbuff[1];
-		printf( "Tag: " );
-		for( i = 0; i < 64; i++ )
-			printf( "%02x ", cfgbuff[i] );
-		printf( "ret: %d %d\n", ret, size );
+//		printf( "Tag: " );
+//		for( i = 0; i < 64; i++ )
+//			printf( "%02x ", cfgbuff[i] );
+//		printf( "ret: %d %d\n", ret, size );
 
 		if( !size ) break;
 
@@ -365,13 +364,9 @@ int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, 
 		return -5;
 	}
 
-	config = malloc( len + 1 );
-	memcpy( config, uncompressed_data, len );
+	*config = malloc( len + 1 );
+	memcpy( *config, uncompressed_data, len );
 	return len;
 }
-#endif
-
-
-
 
 

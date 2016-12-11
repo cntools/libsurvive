@@ -35,7 +35,8 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 
 	if( le->type != 0xfe || le->length < 50 ) return;
 	//le->timestamp += (le->length/2);
-	if( le->length > 900 ) //Pulse longer than 18us? 
+
+	if( le->length > 2100 ) //Pulse longer indicates a sync pulse.
 	{
 		int32_t deltat = (uint32_t)le->timestamp - (uint32_t)ct->last_photo_time;
 		if( deltat > 2000 || deltat < -2000 )		//New pulse. (may be inverted)
@@ -65,8 +66,12 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 		int32_t acode = (tpco+125)/250;
 		if( acode & 1 ) return;
 		acode>>=1;
+		acode -= 6;
 
-		survive_light_process( so, le->sensor_id, acode, offset_from, le->timestamp );
+		if( offset_from < 380000 )
+		{
+			survive_light_process( so, le->sensor_id, acode, offset_from, le->timestamp );
+		}
 	}
 	else
 	{

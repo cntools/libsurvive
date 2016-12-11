@@ -26,6 +26,8 @@
 //XXX TODO This one needs to be rewritten.
 #define SV_KILL()		exit(0)
 
+#define SV_FLOAT  		double
+
 #define USB_DEV_HMD			0
 #define USB_DEV_LIGHTHOUSE	1
 #define USB_DEV_WATCHMAN1	2
@@ -72,6 +74,9 @@ struct SurviveObject
 	int8_t  charging:1;
 	int8_t  ison:1;
 	int sensors;
+
+	int nr_locations;
+	SV_FLOAT * sensor_locations;
 };
 
 struct SurviveContext
