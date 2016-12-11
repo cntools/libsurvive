@@ -14,7 +14,7 @@ void survive_light_process( struct SurviveObject * so, int sensor_id, int acode,
 
 	if( acode == 0 || acode == 2 ) //data = 0
 	{
-		printf( "L, X, %s, %d, %d, %d, %d\n", so->codename, timecode, sensor_id, acode, timeinsweep );
+//		printf( "L, X, %s, %d, %d, %d, %d\n", so->codename, timecode, sensor_id, acode, timeinsweep );
 		bufferpts[sensor_id*2+0] = (timeinsweep-170000)/100;
 		buffertimeto[sensor_id] = 0;
 		//printf( "X: %d\n",bufferpts[sensor_id*2+0] );
@@ -22,7 +22,7 @@ void survive_light_process( struct SurviveObject * so, int sensor_id, int acode,
 	}
 	if( acode == 1 || acode == 3 ) //data = 1
 	{
-		printf( "L, Y, %s, %d, %d, %d, %d\n", so->codename, timecode, sensor_id, acode, timeinsweep );
+//		printf( "L, Y, %s, %d, %d, %d, %d\n", so->codename, timecode, sensor_id, acode, timeinsweep );
 		bufferpts[sensor_id*2+1] = 480-(timeinsweep-140000)/100;
 		//printf( "Y: %d\n",bufferpts[sensor_id*2+1] );
 		buffertimeto[sensor_id] = 0;

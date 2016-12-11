@@ -10,8 +10,8 @@
 #include <zlib.h>
 
 static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
-	if (tok->type == JSMN_STRING && (int) strlen(s) == tok->end - tok->start &&
-			strncmp(json + tok->start, s, tok->end - tok->start) == 0) {
+ if (tok->type == JSMN_STRING && (int) strlen(s) == tok->end - tok->start &&
+    strncmp(json + tok->start, s, tok->end - tok->start) == 0) {
 		return 0;
 	}
 	return -1;
@@ -44,6 +44,7 @@ struct SurviveContext * survive_init( void(*ff)( struct SurviveContext * ctx, co
 		return 0;
 	}
 
+
 #if 1
 	//Next, pull out the config stuff.
 	{
@@ -51,6 +52,7 @@ struct SurviveContext * survive_init( void(*ff)( struct SurviveContext * ctx, co
 		int len = survive_get_config( &ct0conf, ctx, 1, 0 );
 		if( len > 0 )
 		{
+
 			//From JSMN example.
 			jsmn_parser p;
 			jsmntok_t t[4096];
@@ -65,12 +67,20 @@ struct SurviveContext * survive_init( void(*ff)( struct SurviveContext * ctx, co
 				SV_ERROR("Object expected in HMD configuration\n");
 				return 0;
 			}
+
 			for (i = 1; i < r; i++) {
+				jsmntok_t * tk = &t[i];
+
+				char ctxo[100];
+				int ilen = tk->end - tk->start;
+				if( ilen > 99 ) ilen = 99;
+				memcpy(ctxo, ct0conf + tk->start, ilen);
+				ctxo[ilen] = 0;
+//				printf( "%d / %d / %d / %d %s %d\n", tk->type, tk->start, tk->end, tk->size, ctxo, jsoneq(ct0conf, &t[i], "modelPoints") );
+
 				if (jsoneq(ct0conf, &t[i], "modelPoints") == 0) {
 					int k;
-					jsmntok_t * tk = &t[i+1];
-					//printf( "%d / %d / %d / %d\n", tk->type, tk->start, tk->end, tk->size );
-					int pts = tk->size;
+					int pts = t[i+1].size;
 
 					ctx->headset.nr_locations = 0;
 					ctx->headset.sensor_locations = malloc( sizeof( *ctx->headset.sensor_locations) * 32 * 3 );
@@ -78,7 +88,6 @@ struct SurviveContext * survive_init( void(*ff)( struct SurviveContext * ctx, co
 					for( k = 0; k < pts; k++ )
 					{
 						tk = &t[i+2+k*4];
-						//printf( "++%d / %d / %d / %d\n", tk->type, tk->start, tk->end, tk->size );
 				
 						float vals[3];
 						int m;
@@ -98,6 +107,7 @@ struct SurviveContext * survive_init( void(*ff)( struct SurviveContext * ctx, co
 							memcpy( ctt, ct0conf + tk->start, elemlen );
 							ctt[elemlen] = 0;
 							float f = atof( ctt );
+							//printf( "%f%c", f, (m==2)?'\n':',' );
 							int id = ctx->headset.nr_locations*3+m;
 							ctx->headset.sensor_locations[id] = f;
 						}
