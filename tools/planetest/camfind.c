@@ -40,7 +40,7 @@ int main()
 	memcpy( bestxyzypr, xyzypr, sizeof( xyzypr ) );
 
 	float fullrange = 5;
-	for( cycle = 0; cycle < 10; cycle ++ )
+	for( cycle = 0; cycle < 4; cycle ++ )
 	{
 //		for( axis = 0; axis < 3; axis++ )
 //		{
@@ -162,10 +162,12 @@ float RunTest( int print )
 		if( hmd_point_counts[k] == 0 ) continue;
 		int axis = k%2;
 		int pt = k/2;
-		float angle = (hmd_point_angles[k] - 200000) / 200000 * 3.1415926535;
+		float angle = (hmd_point_angles[k] - 200000) / 200000 * 3.1415926535/2;
 		if( axis == 0) angle = -angle;  //Flip coordinate systems
 		float thiseuler[3] = { 0, 0, 0 };
 		thiseuler[axis] = angle;  
+
+		if( print ) printf( "%d %d : angle: %f / ", axis, pt, angle );
 		//axis = 0: x changes.  +y is rotated plane normal.
 		//axis = 1: y changes.  +x is rotated plane normal.
 		float planequat[4];
@@ -179,9 +181,11 @@ float RunTest( int print )
 		float w0[] = { hmd_points[pt*3+0], hmd_points[pt*3+1], hmd_points[pt*3+2] };
 		//float w0[] = { 0, 0, 0 };
 		float d = plane_normal[0] * LighthousePos[0] + plane_normal[1] * LighthousePos[1] + plane_normal[2] * LighthousePos[2];
-		float D = plane_normal[0] * w0[0] + plane_normal[1] * w0[1] + plane_normal[2] * w0[2] - d;  //Point line distance assuming ||normal|| = 1.
+		float D = plane_normal[0] * w0[0]            + plane_normal[1] * w0[1]            + plane_normal[2] * w0[2] + d;
+			//Point line distance assuming ||normal|| = 1.
 
-		totprob += sqrt(D*D);
+		if( print ) printf( " %f %f -\n", d, D );
+		totprob += (D*D);
 		ict++;
 		if( print )
 		{
@@ -190,7 +194,7 @@ float RunTest( int print )
 
 		//printf( "  : %f %f %f %f  %f %f\n", plane_normal[0], plane_normal[1], plane_normal[2], 1.0, angle, hmd_point_angles[k] );
 	}
-	return totprob/ict;
+	return sqrt(totprob/ict);
 }
 
 
@@ -226,7 +230,7 @@ int LoadData( char Camera )
 
 
 	int xck = 0;
-	f = fopen( "second_full_test.csv", "r" );
+	f = fopen( "third_test_with_time_lengths.csv", "r" );
 	if( !f ) { fprintf( stderr, "Error: can't open two lighthouses test data.\n" ); return -11; }
 	while( !feof(f) && !ferror(f) )
 	{
@@ -242,8 +246,9 @@ int LoadData( char Camera )
 		int sensorid;
 		int offset;
 		int code;
-		int rk = sscanf( lineptr, "%9s %9s %9s %d %d %d %d\n", lf, xory, dev, &timestamp, &sensorid, &code, &offset );
-		if( lf[0] == Camera && rk == 7 )
+		int length;
+		int rk = sscanf( lineptr, "%9s %9s %9s %d %d %d %d %d\n", lf, xory, dev, &timestamp, &sensorid, &code, &offset, &length );
+		if( lf[0] == Camera && rk == 8 )
 		{
 			//calpts
 			if( xory[0] == 'X' )
