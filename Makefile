@@ -9,7 +9,10 @@ test : test.c lib/libsurvive.so redist/os_generic.o
 data_recorder : data_recorder.c lib/libsurvive.so redist/os_generic.o redist/DrawFunctions.o redist/XDriver.o
 	gcc -o $@ $^ $(LDFLAGS) $(CFLAGS)
 
-lib/libsurvive.so : src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o redist/jsmn.o $(DEBUGSTUFF)
+lib:
+	mkdir lib
+
+lib/libsurvive.so : src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o redist/jsmn.o $(DEBUGSTUFF) lib
 	gcc -o $@ $^ $(LDFLAGS) -shared
 
 clean :
