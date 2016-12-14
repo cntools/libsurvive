@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "linmath.h"
 #include <string.h>
+#include <math.h>
 
 #define PTS 32
 #define MAX_CHECKS 20000
@@ -12,27 +13,28 @@ int    hmd_point_counts[PTS*2];
 int LoadData( char Camera );
 
 //Values used for RunTest()
-float LighthousePos[3] = { 0, 0,0 };
+float LighthousePos[3] = { 0, 0, 0 };
 float LighthouseQuat[4] = { 1, 0, 0, 0 };
 
 //Actual values
-float xyzypr[6] = { 0, 0, 1, 0, 0, 0 };
+float xyzypr[6] = { 0, 0, 0, 0, 0, 0 };
 
 
 float RunOpti( int axis );
-float RunTest();
+float RunTest( int print );
+void PrintOpti();
 
 int main()
 {
 	int i;
 
-	if( LoadData( 'L' ) ) return 5;
+	if( LoadData( 'R' ) ) return 5;
 
 	int opti = 0;
 	int cycle = 0;
 	int axis = 0;
 
-	float dx;
+	float dx, dy, dz;
 
 	float bestxyzypr[6];
 	memcpy( bestxyzypr, xyzypr, sizeof( xyzypr ) );
@@ -40,30 +42,52 @@ int main()
 	float fullrange = 5;
 	for( cycle = 0; cycle < 10; cycle ++ )
 	{
-		for( axis = 0; axis < 3; axis++ )
-		{
+//		for( axis = 0; axis < 3; axis++ )
+//		{
 			float bestxyzyprrunning[6];
 			float beste = 1e20;
-			for( dx = -fullrange; dx < fullrange; dx += fullrange/100 )
+			for( dz = -fullrange; dz < fullrange; dz += fullrange/5 )
+			{
+			for( dy = -fullrange; dy < fullrange; dy += fullrange/5 )
+			{
+			for( dx = -fullrange; dx < fullrange; dx += fullrange/5 )
 			{
 				memcpy( xyzypr, bestxyzypr, sizeof( xyzypr ) );
-				xyzypr[axis] += dx;
+				xyzypr[0] += dx;
+				xyzypr[1] += dy;
+				xyzypr[2] += dz;
 				xyzypr[3] = 0;
 				xyzypr[4] = 0;
 				xyzypr[5] = 0;
 				float ft;
+				int reopt = 0;
+				for( reopt = 0; reopt < 10; reopt++ )
 				for( opti = 3; opti < 6; opti++ )
 				{
 					ft = RunOpti( opti );
 				}
 				if( ft < beste ) { beste = ft; memcpy( bestxyzyprrunning, xyzypr, sizeof( xyzypr ) ); }
-			}
-			printf( "%f %f %f %f %f %f = %f\n", xyzypr[0], xyzypr[1], xyzypr[2], xyzypr[3], xyzypr[4], xyzypr[5], beste );
+				//printf( "%f %f %f %f\n", xyzypr[0], xyzypr[1], xyzypr[2], ft );
+			}}}
 			memcpy( bestxyzypr, bestxyzyprrunning, sizeof( bestxyzypr ) );
-		}
+			printf( "%f %f %f %f %f %f = %f\n", bestxyzypr[0], bestxyzypr[1], bestxyzypr[2], bestxyzypr[3], bestxyzypr[4], bestxyzypr[5], beste );
+//		}
 
-		fullrange *= 0.2;
+		fullrange *= 0.3;
 	}
+
+	//Use bestxyzypr
+	memcpy( xyzypr, bestxyzypr, sizeof( xyzypr ) );
+	PrintOpti();
+}
+
+void PrintOpti()
+{
+	float xyzyprchange[6];
+	memcpy( xyzyprchange, xyzypr, sizeof( xyzypr ) );
+	quatfromeuler( LighthouseQuat, &xyzyprchange[3] );
+	memcpy( LighthousePos, &xyzyprchange[0], sizeof( LighthousePos ) );
+	float ft = RunTest(1);
 }
 
 
@@ -76,13 +100,14 @@ float RunOpti( int axis )
 	float fv = -1.3;
 	float bv = 0;
 
+
 	//Coarse linear search
 	for( i = 0; i < 26; i++ )
 	{
 		xyzyprchange[axis] = fv;
 		quatfromeuler( LighthouseQuat, &xyzyprchange[3] );
 		memcpy( LighthousePos, &xyzyprchange[0], sizeof( LighthousePos ) );
-		float ft = RunTest();
+		float ft = RunTest(0);
 		if( ft < minv ) { minv = ft; bv = fv; }
 		fv += 0.1;
 	}
@@ -100,19 +125,19 @@ float RunOpti( int axis )
 		fv = xyzyprchange[axis] = orig;
 		quatfromeuler( LighthouseQuat, &xyzyprchange[3] );
 		memcpy( LighthousePos, &xyzyprchange[0], sizeof( LighthousePos ) );
-		float ft = RunTest();
+		float ft = RunTest(0);
 		if( ft < minv ) { minv = ft; bv = fv; }
 
 		fv = xyzyprchange[axis] = orig + jumpamount;
 		quatfromeuler( LighthouseQuat, &xyzyprchange[3] );
 		memcpy( LighthousePos, &xyzyprchange[0], sizeof( LighthousePos ) );
-		ft = RunTest();
+		ft = RunTest(0);
 		if( ft < minv ) { minv = ft; bv = fv; }
 
 		fv = xyzyprchange[axis] = orig - jumpamount;
 		quatfromeuler( LighthouseQuat, &xyzyprchange[3] );
 		memcpy( LighthousePos, &xyzyprchange[0], sizeof( LighthousePos ) );
-		ft = RunTest();
+		ft = RunTest(0);
 		if( ft < minv ) { minv = ft; bv = fv; }
 
 		xyzyprchange[axis] = bv;
@@ -127,24 +152,25 @@ float RunOpti( int axis )
 }
 
 
-float RunTest()
+float RunTest( int print )
 {
 	int k;
 	float totprob = 0.0;
+	int ict = 0;
 	for( k = 0; k < 64; k++ )
 	{
 		if( hmd_point_counts[k] == 0 ) continue;
 		int axis = k%2;
 		int pt = k/2;
 		float angle = (hmd_point_angles[k] - 200000) / 200000 * 3.1415926535;
-		if( axis == 0 ) angle = -angle;
+		if( axis == 0) angle = -angle;  //Flip coordinate systems
 		float thiseuler[3] = { 0, 0, 0 };
 		thiseuler[axis] = angle;  
 		//axis = 0: x changes.  +y is rotated plane normal.
 		//axis = 1: y changes.  +x is rotated plane normal.
 		float planequat[4];
 		quatfromeuler( planequat, thiseuler );
-		quatrotateabout( planequat, planequat, LighthouseQuat );  //Order of rotations may be wrong.
+		quatrotateabout( planequat, LighthouseQuat, planequat );  //Order of rotations may be wrong.
 		float plane_normal[3] = { 0, 0, 0 };
 		plane_normal[!axis] = 1;
 		quatrotatevector( plane_normal, planequat, plane_normal );
@@ -155,11 +181,16 @@ float RunTest()
 		float d = plane_normal[0] * LighthousePos[0] + plane_normal[1] * LighthousePos[1] + plane_normal[2] * LighthousePos[2];
 		float D = plane_normal[0] * w0[0] + plane_normal[1] * w0[1] + plane_normal[2] * w0[2] - d;  //Point line distance assuming ||normal|| = 1.
 
-		totprob += D*D;
+		totprob += sqrt(D*D);
+		ict++;
+		if( print )
+		{
+			//printf( "%d %d ", pt, axis, hmd_points[ ); ///..x.x.x  XXX TODO check line intersection and planequat thing
+		}
 
 		//printf( "  : %f %f %f %f  %f %f\n", plane_normal[0], plane_normal[1], plane_normal[2], 1.0, angle, hmd_point_angles[k] );
 	}
-	return totprob;
+	return totprob/ict;
 }
 
 
