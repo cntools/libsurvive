@@ -162,8 +162,8 @@ float RunTest( int print )
 		if( hmd_point_counts[k] == 0 ) continue;
 		int axis = k%2;
 		int pt = k/2;
-		float angle = (hmd_point_angles[k] - 200000) / 200000 * 3.1415926535/2;
-		if( axis == 0) angle = -angle;  //Flip coordinate systems
+		float angle = (hmd_point_angles[k] - 200000) / 200000 * 3.1415926535/2;  //XXX XXX WRONG??? OR SOMETHING??? WHY DIV2 MAKE GOOD?
+		if( axis == 1) angle = -angle;  //Flip coordinate systems
 		float thiseuler[3] = { 0, 0, 0 };
 		thiseuler[axis] = angle;  
 
@@ -180,8 +180,8 @@ float RunTest( int print )
 		//plane_normal is our normal / LighthousePos is our point.
 		float w0[] = { hmd_points[pt*3+0], hmd_points[pt*3+1], hmd_points[pt*3+2] };
 		//float w0[] = { 0, 0, 0 };
-		float d = plane_normal[0] * LighthousePos[0] + plane_normal[1] * LighthousePos[1] + plane_normal[2] * LighthousePos[2];
-		float D = plane_normal[0] * w0[0]            + plane_normal[1] * w0[1]            + plane_normal[2] * w0[2] + d;
+		float d = -(plane_normal[0] * LighthousePos[0] + plane_normal[1] * LighthousePos[1] + plane_normal[2] * LighthousePos[2]);
+		float D =   plane_normal[0] * w0[0]            + plane_normal[1] * w0[1]            + plane_normal[2] * w0[2] + d;
 			//Point line distance assuming ||normal|| = 1.
 
 		if( print ) printf( " %f %f -\n", d, D );
