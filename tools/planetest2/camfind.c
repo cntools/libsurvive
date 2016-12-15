@@ -6,22 +6,25 @@
 
 #define PTS 32
 #define MAX_CHECKS 20000
+#define MIN_HITS_FOR_VALID 10
 
 FLT hmd_points[PTS*3];
 FLT hmd_norms[PTS*3];
 FLT hmd_point_angles[PTS*2];
-int    hmd_point_counts[PTS*2];
+int hmd_point_counts[PTS*2];
+int best_hmd_target = 0;
 int LoadData( char Camera );
 
 //Values used for RunTest()
 FLT LighthousePos[3] = { 0, 0, 0 };
 FLT LighthouseQuat[4] = { 1, 0, 0, 0 };
+FLT BarrelRotate[4];  //XXX TODO: Concatenate these.
 
-//Actual values
-FLT xyzypr[6] = { 0, 2, 2, 0, 0, 0 };
+//Actual values XXX TODO: I don't think this is needed.
+FLT xyz[3] = { 0, 0, 0 };
 
 
-FLT RunOpti( int axis );
+FLT RunOpti( int print );
 FLT RunTest( int print );
 void PrintOpti();
 
@@ -30,7 +33,7 @@ int main()
 	int i;
 
 	//Load either 'L' (LH1) or 'R' (LH2) data.
-	if( LoadData( 'R' ) ) return 5;
+	if( LoadData( 'L' ) ) return 5;
 
 	int opti = 0;
 	int cycle = 0;
@@ -38,165 +41,183 @@ int main()
 
 	FLT dx, dy, dz;
 
-	FLT bestxyzypr[6];
-	memcpy( bestxyzypr, xyzypr, sizeof( xyzypr ) );
+	FLT bestxyz[3];
+	memcpy( bestxyz, xyz, sizeof( xyz ) );
 
+	//STAGE1 1: Detemine vectoral position from lighthouse to target.  Does not determine lighthouse-target distance.
+	//This also is constantly optimizing the lighthouse quaternion for optimal spotting.
 	FLT fullrange = 5; //Maximum search space for positions.  (Relative to HMD)
-	for( cycle = 0; cycle < 20; cycle ++ )
+	for( cycle = 0; cycle < 30; cycle ++ )
 	{
 
 		//Adjust position, one axis at a time, over and over until we zero in.
-#define FULLSEARCH
-
-#ifndef FULLSEARCH
-		for( axis = 0; axis < 3; axis++ )
-#endif
 		{
-			FLT bestxyzyprrunning[6];
+			FLT bestxyzrunning[3];
 			FLT beste = 1e20;
 
+			FLT splits = 2;
+			if( cycle == 0 ) splits = 25;
+
 			//Try a bunch of points in this axis.
-#ifdef FULLSEARCH
-			for( dz = -fullrange; dz <= fullrange; dz += fullrange/3 )
-			for( dy = -fullrange; dy <= fullrange; dy += fullrange/3 )
-			for( dx = -fullrange; dx <= fullrange; dx += fullrange/3 )
+			for( dz = 0; dz <= fullrange; dz += fullrange/splits )
+			for( dy = -fullrange; dy <= fullrange; dy += fullrange/splits )
+			for( dx = -fullrange; dx <= fullrange; dx += fullrange/splits )
 			{
-#else
-			for( dx = -fullrange; dx <= fullrange; dx += fullrange/5 )
-			{
-#endif
 				//Specificially adjust one axis at a time, searching for the best.
-				memcpy( xyzypr, bestxyzypr, sizeof( xyzypr ) );
-#ifdef FULLSEARCH
-				xyzypr[0] += dx;
-				xyzypr[1] += dy;
-				xyzypr[2] += dz;
-#else
-				xyzypr[axis] += dx;
-#endif
-				//if( axis == 2 && xyzypr[2] < 0 ) continue;
+				memcpy( xyz, bestxyz, sizeof( xyz ) );
+				xyz[0] += dx;
+				xyz[1] += dy;
+				xyz[2] += dz;
+				//if( axis == 2 && xyz[2] < 0 ) continue;
 
-				xyzypr[3] = 0;
-				xyzypr[4] = 0;
-				xyzypr[5] = 0;
 				FLT ft;
-				int reopt = 0;
-
 				//Try refining the search for the best orientation several times.
-				for( reopt = 0; reopt < 4; reopt++ )
-				{
-					//XXX This search mechanism is insufficient :(
-					//Search through each axis every time.
-					for( opti = 3; opti < 6; opti++ )
-					{
-						ft = RunOpti( opti );
-					}
-					if( ft < beste ) { beste = ft; memcpy( bestxyzyprrunning, xyzypr, sizeof( xyzypr ) ); }
-				}
-				//printf( "  %f %f %f %f\n", xyzypr[0], xyzypr[1], xyzypr[2], ft );
-#ifndef FULLSEARCH
-				memcpy( bestxyzypr, bestxyzyprrunning, sizeof( bestxyzypr ) );
-#endif
+				ft = RunOpti(0);
+				if( ft < beste ) { beste = ft; memcpy( bestxyzrunning, xyz, sizeof( xyz ) ); }
+
+				//printf( "  %f %f %f %f\n", xyz[0], xyz[1], xyz[2], ft );
 			}
-#ifdef FULLSEARCH
-				memcpy( bestxyzypr, bestxyzyprrunning, sizeof( bestxyzypr ) );
-#endif
+			memcpy( bestxyz, bestxyzrunning, sizeof( bestxyz ) );
 
 			//Print out the quality of the lock this time.
-			FLT dist = sqrt(bestxyzypr[0]*bestxyzypr[0] + bestxyzypr[1]*bestxyzypr[1] + bestxyzypr[2]*bestxyzypr[2]);
-			printf( "%f %f %f (%f) %f %f %f = %f\n", bestxyzypr[0], bestxyzypr[1], bestxyzypr[2], dist, bestxyzypr[3], bestxyzypr[4], bestxyzypr[5], beste );
+			FLT dist = sqrt(bestxyz[0]*bestxyz[0] + bestxyz[1]*bestxyz[1] + bestxyz[2]*bestxyz[2]);
+			printf( "%f %f %f (%f) = %f\n", bestxyz[0], bestxyz[1], bestxyz[2], dist, beste );
 		}
-/*
-		if( bestxyzypr[2] < 0 )
-		{
-			bestxyzypr[0] *= -1;
-			bestxyzypr[1] *= -1;
-			bestxyzypr[2] *= -1;
-		}
-*/
+
 		//Every cycle, tighten up the search area.
 		fullrange *= 0.6;
 	}
 
-	//Use bestxyzypr
-	memcpy( xyzypr, bestxyzypr, sizeof( xyzypr ) );
+	//Use bestxyz
+	memcpy( LighthousePos, bestxyz, sizeof( xyz ) );
+	memcpy( xyz, bestxyz, sizeof( xyz ) );
 
+	//Optimize the quaternion for lighthouse rotation
+	RunOpti(1);
+
+	//STAGE 2: Determine optimal distance from target
+	{
+		FLT dist = 0.1;
+		FLT best_dist = 0;
+		FLT best_err = 1e20;
+		for( ; dist < 10; dist+=0.1 )
+		{
+			FLT nrmvect[3];
+			normalize3d( nrmvect, bestxyz );
+			scale3d( LighthousePos, nrmvect, dist );
+			FLT res = RunTest( 0 );
+			printf( "%f = %f\n", dist, res );
+			if( res < best_err )
+			{
+				best_dist = dist;
+				best_err = res;
+			}
+		}
+
+		best_dist = 3;
+		//Apply the best res.
+		normalize3d( LighthousePos, bestxyz );
+		scale3d( LighthousePos, LighthousePos, best_dist );
+		printf( "Best distance: %f\n", best_dist );
+	}
 
 	//Print out plane accuracies with these settings.
-	PrintOpti();
-}
-
-void PrintOpti()
-{
-	FLT xyzyprchange[6];
-	memcpy( xyzyprchange, xyzypr, sizeof( xyzypr ) );
-	quatfromeuler( LighthouseQuat, &xyzyprchange[3] );
-	memcpy( LighthousePos, &xyzyprchange[0], sizeof( LighthousePos ) );
 	FLT ft = RunTest(1);
 	printf( "Final RMS: %f\n", ft );
 }
 
-
-FLT RunOpti( int axis )
+FLT RunOpti( int print )
 {
-	FLT xyzyprchange[6];
-	memcpy( xyzyprchange, xyzypr, sizeof( xyzypr ) );
 	int i;
-	FLT minv = 1e20;
-	FLT fv = -3.3;
-	FLT bv = 0;
+	FLT UsToTarget[3];
 
-
-	//Coarse linear search first, try to figure out about where
-	for( i = 0; i < 33*2; i++ )
 	{
-		xyzyprchange[axis] = fv;
-		quatfromeuler( LighthouseQuat, &xyzyprchange[3] );
-		memcpy( LighthousePos, &xyzyprchange[0], sizeof( LighthousePos ) );
-		FLT ft = RunTest(0);
-		//printf( " %d / %f = %f\n", ft, fv );
-		if( ft < minv ) { minv = ft; bv = fv; }
-		fv += 0.1;
+		memcpy( LighthousePos, xyz, sizeof(xyz) );
+
+		//XXX TODO: We should use several points to determine initial rotation optimization to object.
+		//By using only one point the "best" we could be rotating somewhere wrong.  We do use
+		//several points for the rotate-about-this-vector rotation in stage 2.
+
+		//Find out where our ray shoots forth from.
+		FLT ax = hmd_point_angles[best_hmd_target*2+0];
+		FLT ay = hmd_point_angles[best_hmd_target*2+1];
+
+		//NOTE: Inputs may never be output with cross product.
+		//Create a fictitious normalized ray.  Imagine the lighthouse is pointed
+		//straight in the +z direction, this is the lighthouse ray to the point.
+		FLT RayShootOut[3] = { sin(ax), sin(ay), 0 };
+		RayShootOut[2] = sqrt( 1 - (RayShootOut[0]*RayShootOut[0] + RayShootOut[1]*RayShootOut[1]) );
+
+		//Find a ray from us to the target point.
+		sub3d( UsToTarget, &hmd_points[best_hmd_target*3], LighthousePos );
+		normalize3d( UsToTarget, UsToTarget );
+
+		FLT AxisToRotate[3];
+		cross3d( AxisToRotate, RayShootOut, UsToTarget );
+		//Rotate the lighthouse around this axis to point at the HMD.
+
+		FLT RotateAmount = acos( dot3d( RayShootOut, UsToTarget ) );
+		quatfromaxisangle( LighthouseQuat, AxisToRotate, RotateAmount ); //Tested, working!
 	}
 
-	xyzyprchange[axis] = bv;
-#if 1
-	//Now, do a more precise binary-ish search.
-	FLT jumpamount = 0.15;
-	for( i = 0; i < 20; i++ )
+	//Now our lighthouse's ray is pointed at the HMD's dot, but, we need to
+	//rotate the lighthouse such that it is oriented optimally.  We do this
+	//by finding what the optimal rotation aroud our face would be for all
+	//remaining points.
+	FLT rotate_radians = 0;
+	int points_found_to_rotate = 0;
+
+	float rots[PTS];
+	for( i = 0; i < PTS; i++ )
 	{
-		FLT orig = xyzyprchange[axis];
+		if( i == best_hmd_target ) continue;
+		int xhits = hmd_point_counts[i*2+0];
+		int yhits = hmd_point_counts[i*2+1];
+		int xyhits = (xhits<yhits)?xhits:yhits;
+		if( xyhits < MIN_HITS_FOR_VALID ) continue;
 
-		minv = 1e20;
+		//Find a point on the object to point at.
+		FLT HMDRayPoint[3];
+		sub3d( HMDRayPoint, &hmd_points[i*3], LighthousePos );
+		normalize3d( HMDRayPoint, HMDRayPoint );
 
-		//When searching, consider 'less' 'this' and 'more'
+		FLT RayShootOut[3] = { sin(hmd_point_angles[i*2+0]), sin(hmd_point_angles[i*2+1]), 0 };
+		RayShootOut[2] = sqrt( 1 - (RayShootOut[0]*RayShootOut[0] + RayShootOut[1]*RayShootOut[1]) );
+		//Find the corresponding vector from camera out if it was rotated by "RotateAmount"
+		quatrotatevector( RayShootOut, LighthouseQuat, RayShootOut );
 
-		fv = xyzyprchange[axis] = orig;
-		quatfromeuler( LighthouseQuat, &xyzyprchange[3] );
-		memcpy( LighthousePos, &xyzyprchange[0], sizeof( LighthousePos ) );
-		FLT ft = RunTest(0);
-		if( ft < minv ) { minv = ft; bv = fv; }
+		//Figure out rotation to rotate around UsToTarget, from RayShootOut to HMDRayPoint
+		FLT SphSurf_Point[3]; //Relative to our fixed point, how much to rotate?
+		FLT SphSurf_Ray[3];
+		sub3d( SphSurf_Point, HMDRayPoint, UsToTarget  );
+		sub3d( SphSurf_Ray,   RayShootOut, UsToTarget  );
+		normalize3d( SphSurf_Point, SphSurf_Point );
+		normalize3d( SphSurf_Ray, SphSurf_Ray );
 
-		fv = xyzyprchange[axis] = orig + jumpamount;
-		quatfromeuler( LighthouseQuat, &xyzyprchange[3] );
-		memcpy( LighthousePos, &xyzyprchange[0], sizeof( LighthousePos ) );
-		ft = RunTest(0);
-		if( ft < minv ) { minv = ft; bv = fv; }
-
-		fv = xyzyprchange[axis] = orig - jumpamount;
-		quatfromeuler( LighthouseQuat, &xyzyprchange[3] );
-		memcpy( LighthousePos, &xyzyprchange[0], sizeof( LighthousePos ) );
-		ft = RunTest(0);
-		if( ft < minv ) { minv = ft; bv = fv; }
-
-		xyzyprchange[axis] = bv;
-
-		//Tighten up search area.  Doing by 0.5 can cause unusual instabilities.
-		jumpamount *= 0.6;
+		FLT rotate = acos( dot3d( SphSurf_Point, SphSurf_Ray ) );
+		if( print ) printf( " %f ", rotate );
+		rotate_radians += rotate;
+		rots[points_found_to_rotate++] = rotate;
 	}
-#endif
-	xyzypr[axis] = bv;
-	return minv;
+
+	//Get average barrel rotation
+	rotate_radians/=points_found_to_rotate;
+
+	//Find the standard of deviation of our data.
+	float stddev = 0.0;
+	for( i = 0; i < points_found_to_rotate; i++ )
+	{
+		float dr = rots[i]-rotate_radians;
+		stddev += dr*dr;
+	}
+	stddev/=points_found_to_rotate;
+	stddev = sqrt(stddev);
+	if( print ) printf( " = %f\n", stddev );
+
+	quatfromaxisangle( BarrelRotate, UsToTarget, rotate_radians ); //Rotate around barrel
+	//quatrotateabout( LighthouseQuat, LighthouseQuat, BarrelRotate ); //Concatenate the rotation into the lighthouse quat rotation.
+
+	return stddev;
 }
 
 
@@ -205,7 +226,7 @@ FLT RunTest( int print )
 	int k;
 	FLT totprob = 0.0;
 	int ict = 0;
-	for( k = 0; k < 64; k++ )
+	for( k = 0; k < PTS*2; k++ )
 	{
 		if( hmd_point_counts[k] == 0 ) continue;
 		int axis = k%2;
@@ -215,18 +236,20 @@ FLT RunTest( int print )
 
 		//XXX TODO: This is critical.  We need to properly define the planes. 
 		FLT plane_normal[3] = { 0, 0, 0 };
-		if( axis == 0 )
+		if( axis == 1 )
 		{
 			plane_normal[1] = cos(angle);
 			plane_normal[2] =-sin(angle);
 		}
 		else
 		{
-			plane_normal[0] =-cos(angle);
+			plane_normal[0] = cos(angle);
 			plane_normal[2] =-sin(angle);
 		}
 
+
 		quatrotatevector( plane_normal, LighthouseQuat, plane_normal ); //Rotate plane normal by concatenated rotation.
+		quatrotatevector( plane_normal, BarrelRotate, plane_normal ); //Rotate plane normal by concatenated rotation.
 
 		//plane_normal is our normal / LighthousePos is our point.  
 		FLT w0[] = { hmd_points[pt*3+0], hmd_points[pt*3+1], hmd_points[pt*3+2] };
@@ -367,7 +390,7 @@ int LoadData( char Camera )
 		hmd_point_counts[pt*2+isy]++;
 		hmd_point_angles[pt*2+isy]+=ofs;
 	}
-	for( i = 0; i < 32; i++ )
+	for( i = 0; i < PTS; i++ )
 	{
 		if( hmd_point_counts[i*2+0] < 100 ) hmd_point_counts[i*2+0] = 0;
 		if( hmd_point_counts[i*2+1] < 100 ) hmd_point_counts[i*2+1] = 0;
@@ -378,6 +401,21 @@ int LoadData( char Camera )
 		hmd_point_angles[i*2+1] = (hmd_point_angles[i*2+1] - 200000) / 200000 * 3.1415926535/2; // Is it really 800,000 ticks per revolution?
 	}
 
+	int targpd;
+	int maxhits = 0;
+
+	for( targpd = 0; targpd < PTS; targpd++ )
+	{
+		int hits = hmd_point_counts[targpd*2+0];
+		if( hits > hmd_point_counts[targpd*2+1] ) hits = hmd_point_counts[targpd*2+1];
+		//Need an X and a Y lock.  
+
+		if( hits > maxhits ) { maxhits = hits; best_hmd_target = targpd; }
+	}
+	if( maxhits < MIN_HITS_FOR_VALID )
+	{
+		fprintf( stderr, "Error: Not enough data for a primary fix.\n" );
+	}
 
 
 

@@ -1,7 +1,7 @@
 all : camfind
 
-CFLAGS:=-g -O4 -DFLT=float -ffast-math
-LDFLAGS:=$(CFLAGS) -lm
+CFLAGS:=-g -O4 -DFLT=float -ffast-math -I../../redist -flto
+LDFLAGS:=$(CFLAGS) -lm 
 
 camfind : camfind.o ../../redist/linmath.c
 	gcc -o $@ $^  $(LDFLAGS)
