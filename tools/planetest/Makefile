@@ -1,6 +1,6 @@
 all : camfind
 
-CFLAGS:=-g -O4
+CFLAGS:=-g -O4 -DFLT=float -ffast-math
 LDFLAGS:=$(CFLAGS) -lm
 
 camfind : camfind.o linmath.o
