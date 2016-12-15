@@ -20,9 +20,6 @@ FLT LighthousePos[3] = { 0, 0, 0 };
 FLT LighthouseQuat[4] = { 1, 0, 0, 0 };
 FLT BarrelRotate[4];  //XXX TODO: Concatenate these.
 
-//Actual values XXX TODO: I don't think this is needed.
-FLT xyz[3] = { 0, 0, 0 };
-
 
 FLT RunOpti( int print );
 FLT RunTest( int print );
@@ -33,7 +30,7 @@ int main()
 	int i;
 
 	//Load either 'L' (LH1) or 'R' (LH2) data.
-	if( LoadData( 'L' ) ) return 5;
+	if( LoadData( 'R' ) ) return 5;
 
 	int opti = 0;
 	int cycle = 0;
@@ -42,7 +39,7 @@ int main()
 	FLT dx, dy, dz;
 
 	FLT bestxyz[3];
-	memcpy( bestxyz, xyz, sizeof( xyz ) );
+	memcpy( bestxyz, LighthousePos, sizeof( LighthousePos ) );
 
 	//STAGE1 1: Detemine vectoral position from lighthouse to target.  Does not determine lighthouse-target distance.
 	//This also is constantly optimizing the lighthouse quaternion for optimal spotting.
@@ -58,24 +55,23 @@ int main()
 			FLT splits = 2;
 			if( cycle == 0 ) splits = 25;
 
-			//Try a bunch of points in this axis.
+			//XXX TODO: Switch to polar coordinate search
 			for( dz = 0; dz <= fullrange; dz += fullrange/splits )
 			for( dy = -fullrange; dy <= fullrange; dy += fullrange/splits )
 			for( dx = -fullrange; dx <= fullrange; dx += fullrange/splits )
 			{
 				//Specificially adjust one axis at a time, searching for the best.
-				memcpy( xyz, bestxyz, sizeof( xyz ) );
-				xyz[0] += dx;
-				xyz[1] += dy;
-				xyz[2] += dz;
-				//if( axis == 2 && xyz[2] < 0 ) continue;
+				memcpy( LighthousePos, bestxyz, sizeof( LighthousePos ) );
+				LighthousePos[0] += dx;
+				LighthousePos[1] += dy;
+				LighthousePos[2] += dz;
 
 				FLT ft;
 				//Try refining the search for the best orientation several times.
 				ft = RunOpti(0);
-				if( ft < beste ) { beste = ft; memcpy( bestxyzrunning, xyz, sizeof( xyz ) ); }
+				if( ft < beste ) { beste = ft; memcpy( bestxyzrunning, LighthousePos, sizeof( LighthousePos ) ); }
 
-				//printf( "  %f %f %f %f\n", xyz[0], xyz[1], xyz[2], ft );
+				//printf( "  %f %f %f %f\n", LighthousePos[0], LighthousePos[1], LighthousePos[2], ft );
 			}
 			memcpy( bestxyz, bestxyzrunning, sizeof( bestxyz ) );
 
@@ -89,8 +85,7 @@ int main()
 	}
 
 	//Use bestxyz
-	memcpy( LighthousePos, bestxyz, sizeof( xyz ) );
-	memcpy( xyz, bestxyz, sizeof( xyz ) );
+	memcpy( LighthousePos, bestxyz, sizeof( LighthousePos ) );
 
 	//Optimize the quaternion for lighthouse rotation
 	RunOpti(1);
@@ -100,13 +95,12 @@ int main()
 		FLT dist = 0.1;
 		FLT best_dist = 0;
 		FLT best_err = 1e20;
-		for( ; dist < 10; dist+=0.1 )
+		for( ; dist < 10; dist+=0.01 )
 		{
 			FLT nrmvect[3];
 			normalize3d( nrmvect, bestxyz );
 			scale3d( LighthousePos, nrmvect, dist );
 			FLT res = RunTest( 0 );
-			printf( "%f = %f\n", dist, res );
 			if( res < best_err )
 			{
 				best_dist = dist;
@@ -114,7 +108,6 @@ int main()
 			}
 		}
 
-		best_dist = 3;
 		//Apply the best res.
 		normalize3d( LighthousePos, bestxyz );
 		scale3d( LighthousePos, LighthousePos, best_dist );
@@ -132,8 +125,6 @@ FLT RunOpti( int print )
 	FLT UsToTarget[3];
 
 	{
-		memcpy( LighthousePos, xyz, sizeof(xyz) );
-
 		//XXX TODO: We should use several points to determine initial rotation optimization to object.
 		//By using only one point the "best" we could be rotating somewhere wrong.  We do use
 		//several points for the rotate-about-this-vector rotation in stage 2.
@@ -156,7 +147,7 @@ FLT RunOpti( int print )
 		cross3d( AxisToRotate, RayShootOut, UsToTarget );
 		//Rotate the lighthouse around this axis to point at the HMD.
 
-		FLT RotateAmount = acos( dot3d( RayShootOut, UsToTarget ) );
+		FLT RotateAmount = -acos( dot3d( RayShootOut, UsToTarget ) );  //XXX TODO How to determine if negative.
 		quatfromaxisangle( LighthouseQuat, AxisToRotate, RotateAmount ); //Tested, working!
 	}
 
@@ -195,6 +186,9 @@ FLT RunOpti( int print )
 		normalize3d( SphSurf_Ray, SphSurf_Ray );
 
 		FLT rotate = acos( dot3d( SphSurf_Point, SphSurf_Ray ) );
+
+		//XXX TODO: How to determine if rotate amount should be negative!!!
+
 		if( print ) printf( " %f ", rotate );
 		rotate_radians += rotate;
 		rots[points_found_to_rotate++] = rotate;
