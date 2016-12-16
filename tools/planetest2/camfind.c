@@ -5,7 +5,7 @@
 #include <math.h>
 
 #define PTS 32
-#define MAX_CHECKS 20000
+#define MAX_CHECKS 30000
 #define MIN_HITS_FOR_VALID 10
 
 FLT hmd_points[PTS*3];
@@ -28,7 +28,7 @@ int main()
 	int i;
 
 	//Load either 'L' (LH1) or 'R' (LH2) data.
-	if( LoadData( 'R' ) ) return 5;
+	if( LoadData( 'L' ) ) return 5;
 
 	int opti = 0;
 	int cycle = 0;
@@ -38,17 +38,6 @@ int main()
 
 	FLT bestxyz[3];
 	memcpy( bestxyz, LighthousePos, sizeof( LighthousePos ) );
-
-	if( 0 )
-	{
-		LighthousePos[0] = .0531311;
-		LighthousePos[1] = 1.2911;
-		LighthousePos[2] = 2.902;
-		RunOpti(1);
-		FLT ft = RunTest(1);
-		printf( "Final RMS: %f\n", ft );
-		return 0;
-	}
 
 	//STAGE1 1: Detemine vectoral position from lighthouse to target.  Does not determine lighthouse-target distance.
 	//This also is constantly optimizing the lighthouse quaternion for optimal spotting.
@@ -231,7 +220,7 @@ FLT RunOpti( int print )
 		cross3d( xproduct, UsToTarget, RayShootOut );
 		FLT dist = magnitude3d( xproduct );
 		errorsq += dist*dist;
-		if( print ) printf( "%f (%d) ", dist, p );
+		if( print ) printf( "%f (%d(%d/%d))\n", dist, p, hmd_point_counts[p*2+0], hmd_point_counts[p*2+1] );
 	}
 	if( print ) printf( " = %f\n", sqrt( errorsq ) );
 	return sqrt(errorsq);
@@ -270,11 +259,6 @@ FLT RunTest( int print )
 
 		//plane_normal is our normal / LighthousePos is our point.  
 		FLT w0[] = { hmd_points[pt*3+0], hmd_points[pt*3+1], hmd_points[pt*3+2] };
-
-//May be able to remove this.
-//		FLT w0[] = { hmd_points[pt*3+0], hmd_points[pt*3+2],-hmd_points[pt*3+1] };  //XXX WRONG Why does this produce the right answers?
-
-		//FLT w0[] = { 0, 0, 0 };
 		FLT d = -(plane_normal[0] * LighthousePos[0] + plane_normal[1] * LighthousePos[1] + plane_normal[2] * LighthousePos[2]);
 		FLT D =   plane_normal[0] * w0[0]            + plane_normal[1] * w0[1]            + plane_normal[2] * w0[2] + d;
 			//Point line distance assuming ||normal|| = 1.
@@ -291,8 +275,9 @@ FLT RunTest( int print )
 	if( print )
 	{
 		int p;
-		printf( "Imagespace comparison:\n" );
+		printf( "POS:  %f %f %f %f\n", PFFOUR(LighthousePos ) );
 		printf( "QUAT: %f %f %f %f\n", PFFOUR(LighthouseQuat ) );
+		printf( "Imagespace comparison:\n" );
 		for( p = 0; p < 32; p++ )
 		{
 			if( hmd_point_counts[p*2+0] < MIN_HITS_FOR_VALID || hmd_point_counts[p*2+1] < MIN_HITS_FOR_VALID ) continue;
@@ -381,7 +366,7 @@ int LoadData( char Camera )
 
 
 	int xck = 0;
-	f = fopen( "third_test_with_time_lengths.csv", "r" );
+	f = fopen( "testfive.csv", "r" );
 	if( !f ) { fprintf( stderr, "Error: can't open two lighthouses test data.\n" ); return -11; }
 	while( !feof(f) && !ferror(f) )
 	{

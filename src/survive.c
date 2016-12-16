@@ -17,13 +17,29 @@ static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
 	return -1;
 }
 
-struct SurviveContext * survive_init( void(*ff)( struct SurviveContext * ctx, const char * fault ), void(*notefunction)( struct SurviveContext * ctx, const char * note ) )
+
+static void survivefault( struct SurviveContext * ctx, const char * fault )
+{
+	fprintf( stderr, "Error: %s\n", fault );
+	exit( -1 );
+}
+
+static void survivenote( struct SurviveContext * ctx, const char * fault )
+{
+	fprintf( stderr, "Info: %s\n", fault );
+}
+
+
+struct SurviveContext * survive_init()
 {
 	int r = 0;
-	struct SurviveContext * ctx = calloc( 1, sizeof( struct SurviveContext  ) );
+	struct SurviveContext * ctx = calloc( 1, sizeof( struct SurviveContext ) );
 
-	ctx->faultfunction = ff;
-	ctx->notefunction = notefunction;
+	ctx->faultfunction = survivefault;
+	ctx->notefunction = survivenote;
+
+	ctx->lightproc = survive_default_light_process;
+	ctx->imuproc = survive_default_imu_process;
 
 	ctx->headset.sensors = 32;
 	ctx->headset.ctx = ctx;
@@ -44,8 +60,6 @@ struct SurviveContext * survive_init( void(*ff)( struct SurviveContext * ctx, co
 		return 0;
 	}
 
-
-#if 1
 	//Next, pull out the config stuff.
 	{
 		char * ct0conf = 0;
@@ -123,12 +137,42 @@ struct SurviveContext * survive_init( void(*ff)( struct SurviveContext * ctx, co
 		}
 
 	}
-#endif
 
 	//ctx->headset->photos = malloc( ctx->headset->sensors * sizeof(struct SurvivePhoto) );
 	return ctx;
 }
 
+void survive_install_info_fn( struct SurviveContext * ctx,  text_feedback_fnptr fbp )
+{
+	if( fbp )
+		ctx->notefunction = fbp;
+	else
+		ctx->notefunction = survivenote;
+}
+
+void survive_install_error_fn( struct SurviveContext * ctx,  text_feedback_fnptr fbp )
+{
+	if( fbp )
+		ctx->faultfunction = fbp;
+	else
+		ctx->faultfunction = survivefault;
+}
+
+void survive_install_light_fn( struct SurviveContext * ctx, light_process_func fbp )
+{
+	if( fbp )
+		ctx->lightproc = fbp;
+	else
+		ctx->lightproc = survive_default_light_process;
+}
+
+void survive_install_imu_fn( struct SurviveContext * ctx,  imu_process_func fbp )
+{
+	if( fbp )
+		ctx->imuproc = fbp;
+	else
+		ctx->imuproc = survive_default_imu_process;
+}
 
 void survive_close( struct SurviveContext * ctx )
 {

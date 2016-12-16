@@ -2,7 +2,7 @@
 //portions from 
 //http://www.xmission.com/~georgeps/documentation/tutorials/Xlib_Beginner.html
 
-#define HAS_XINERAMA
+//#define HAS_XINERAMA
 
 #include "DrawFunctions.h"
 
