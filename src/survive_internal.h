@@ -113,7 +113,7 @@ int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, 
 void survive_data_cb( struct SurviveUSBInterface * si );
 
 //Accept higher-level data.
-void survive_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode );
+void survive_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length );
 void survive_imu_process( struct SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id );
 
 

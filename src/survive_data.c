@@ -41,11 +41,14 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 		int32_t deltat = (uint32_t)le->timestamp - (uint32_t)ct->last_photo_time;
 		if( deltat > 2000 || deltat < -2000 )		//New pulse. (may be inverted)
 		{
-			ct->last_photo_time = le->timestamp;
-			ct->total_photo_time = 0;
-			ct->total_photos = 0;
-			ct->total_pulsecode_time = 0;
-			survive_light_process( so, le->sensor_id, -1, 0, le->timestamp );
+			if( le->timestamp - ct->last_photo_time > 80000 )
+			{
+				ct->last_photo_time = le->timestamp;
+				ct->total_photo_time = 0;
+				ct->total_photos = 0;
+				ct->total_pulsecode_time = 0;
+				survive_light_process( so, le->sensor_id, -1, 0, le->timestamp, deltat );
+			}
 		}
 		else
 		{
@@ -54,7 +57,7 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 			ct->total_photos++;
 		}
 	}
-	else if( le->length < 900 && le->length > 50 && ct->total_photos )
+	else if( le->length < 1200 && le->length > 40 && ct->total_photos )
 	{
 		int32_t dl = (ct->total_photo_time/ct->total_photos);
 		int32_t tpco = (ct->total_pulsecode_time/ct->total_photos);
@@ -70,7 +73,7 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 
 		if( offset_from < 380000 )
 		{
-			survive_light_process( so, le->sensor_id, acode, offset_from, le->timestamp );
+			survive_light_process( so, le->sensor_id, acode, offset_from, le->timestamp, le->length );
 		}
 	}
 	else

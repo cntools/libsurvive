@@ -8,13 +8,13 @@ int bufferpts[32*2];
 char buffermts[32*128];
 int buffertimeto[32];
 
-void survive_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode  )
+void survive_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  )
 {
 	if( acode == -1 ) return;
 
 	if( acode == 0 || acode == 2 ) //data = 0
 	{
-		printf( "L, X, %s, %d, %d, %d, %d\n", so->codename, timecode, sensor_id, acode, timeinsweep );
+		printf( "L X %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
 		bufferpts[sensor_id*2+0] = (timeinsweep-100000)/500;
 		buffertimeto[sensor_id] = 0;
 		//printf( "X: %d\n",bufferpts[sensor_id*2+0] );
@@ -22,7 +22,7 @@ void survive_light_process( struct SurviveObject * so, int sensor_id, int acode,
 	}
 	if( acode == 1 || acode == 3 ) //data = 1
 	{
-		printf( "L, Y, %s, %d, %d, %d, %d\n", so->codename, timecode, sensor_id, acode, timeinsweep );
+		printf( "L Y %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
 		bufferpts[sensor_id*2+1] = (timeinsweep-100000)/500;
 		//printf( "Y: %d\n",bufferpts[sensor_id*2+1] );
 		buffertimeto[sensor_id] = 0;
@@ -33,7 +33,7 @@ void survive_light_process( struct SurviveObject * so, int sensor_id, int acode,
 
 	if( acode == 4 || acode == 6 ) //data = 0
 	{
-		printf( "R, X, %s, %d, %d, %d, %d\n", so->codename, timecode, sensor_id, acode, timeinsweep );
+		printf( "R X %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
 		bufferpts[sensor_id*2+0] = (timeinsweep-100000)/500;
 		buffertimeto[sensor_id] = 0;
 		//printf( "X: %d\n",bufferpts[sensor_id*2+0] );
@@ -41,7 +41,7 @@ void survive_light_process( struct SurviveObject * so, int sensor_id, int acode,
 	}
 	if( acode == 5 || acode == 7 ) //data = 1
 	{
-		printf( "R, Y, %s, %d, %d, %d, %d\n", so->codename, timecode, sensor_id, acode, timeinsweep );
+		printf( "R Y %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
 		bufferpts[sensor_id*2+1] = (timeinsweep-100000)/500;
 		//printf( "Y: %d\n",bufferpts[sensor_id*2+1] );
 		buffertimeto[sensor_id] = 0;
@@ -58,6 +58,6 @@ void survive_imu_process( struct SurviveObject * so, int16_t * accelgyro, uint32
 	//if( so->codename[0] == 'H' )
 	if( 1 )
 	{
-		printf( "I, %s, %d, %d, %d, %d, %d, %d, %d, %d\n", so->codename, timecode, accelgyro[0], accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4], accelgyro[5], id );
+		printf( "I %s %d %d %d %d %d %d %d %d\n", so->codename, timecode, accelgyro[0], accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4], accelgyro[5], id );
 	}
 }
