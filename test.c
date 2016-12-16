@@ -7,6 +7,7 @@
 #include <os_generic.h>
 #include <DrawFunctions.h>
 
+struct SurviveContext * ctx;
 
 void survivefault( struct SurviveContext * ctx, const char * fault )
 {
@@ -22,6 +23,16 @@ void survivenote( struct SurviveContext * ctx, const char * fault )
 
 void HandleKey( int keycode, int bDown )
 {
+	if( !bDown ) return;
+
+	if( keycode == 'O' || keycode == 'o' )
+	{
+		survive_usb_send_magic(ctx,1);
+	}
+	if( keycode == 'F' || keycode == 'f' )
+	{
+		survive_usb_send_magic(ctx,0);
+	}
 }
 
 void HandleButton( int x, int y, int button, int bDown )
@@ -91,7 +102,7 @@ int main()
 		printf( "%02x ", output[i] );
 	}
 	return 0;*/
-	struct SurviveContext * ctx = survive_init( &survivefault, &survivenote );
+	ctx = survive_init( &survivefault, &survivenote );
 
 	CNFGBGColor = 0x000000;
 	CNFGDialogColor = 0x444444;
