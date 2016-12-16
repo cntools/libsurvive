@@ -6,6 +6,12 @@
 //Yes, I know it's kind of arbitrary.
 #define DEFAULT_EPSILON 0.001
 
+//For printf
+#define PFTHREE(x) x[0], x[1], x[2]
+#define PFFOUR(x) x[0], x[1], x[2], x[3]
+
+#define LINMATHPI 3.141592653589
+
 //If you want, you can define FLT to be double for double precision.
 #ifndef FLT
 #define FLT float
@@ -30,8 +36,9 @@ int compare3d( const FLT * a, const FLT * b, FLT epsilon );
 
 void copy3d( FLT * out, const FLT * in );
 
+FLT magnitude3d( FLT * a );
 
-
+FLT anglebetween3d( FLT * a, FLT * b );
 
 //Quaternion things...
 
