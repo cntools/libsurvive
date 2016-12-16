@@ -41,11 +41,14 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 		int32_t deltat = (uint32_t)le->timestamp - (uint32_t)ct->last_photo_time;
 		if( deltat > 2000 || deltat < -2000 )		//New pulse. (may be inverted)
 		{
-			ct->last_photo_time = le->timestamp;
-			ct->total_photo_time = 0;
-			ct->total_photos = 0;
-			ct->total_pulsecode_time = 0;
-			survive_light_process( so, le->sensor_id, -1, 0, le->timestamp );
+			if( le->timestamp - ct->last_photo_time > 80000 )
+			{
+				ct->last_photo_time = le->timestamp;
+				ct->total_photo_time = 0;
+				ct->total_photos = 0;
+				ct->total_pulsecode_time = 0;
+				ct->lightproc( so, le->sensor_id, -1, 0, le->timestamp, deltat );
+			}
 		}
 		else
 		{
@@ -54,7 +57,7 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 			ct->total_photos++;
 		}
 	}
-	else if( le->length < 900 && le->length > 50 && ct->total_photos )
+	else if( le->length < 1200 && le->length > 40 && ct->total_photos )
 	{
 		int32_t dl = (ct->total_photo_time/ct->total_photos);
 		int32_t tpco = (ct->total_pulsecode_time/ct->total_photos);
@@ -70,7 +73,7 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 
 		if( offset_from < 380000 )
 		{
-			survive_light_process( so, le->sensor_id, acode, offset_from, le->timestamp );
+			ct->lightproc( so, le->sensor_id, acode, offset_from, le->timestamp, le->length );
 		}
 	}
 	else
@@ -155,7 +158,7 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 	if( ( ( type & 0xe8 ) == 0xe8 ) || doimu ) //Hmm, this looks kind of yucky... we can get e8's that are accelgyro's but, cleared by first propset.
 	{
 		propset |= 2;
-		survive_imu_process( w, (int16_t *)&readdata[1], (time1<<24)|(time2<<16)|readdata[0], 0 );
+		w->ctx->imuproc( w, (int16_t *)&readdata[1], (time1<<24)|(time2<<16)|readdata[0], 0 );
 		int16_t * k = (int16_t *)readdata+1;
 		//printf( "Match8 %d %d %d %d %d %3d %3d\n", qty, k[0], k[1], k[2], k[3], k[4], k[5] );
 		readdata += 13; qty -= 13;
@@ -174,16 +177,6 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		qty++;
 		readdata--;
 		*readdata = type;
-
-#if 1
-		//             good        good          maybe?         probably wrong
-		printf( "POST %d: %4d (%02x%02x) - ", propset, qty, time1, time2 );
-		for( i = 0; i < qty + 4; i++ )
-		{
-			printf( "%02x ", readdata[i] );
-		}
-		printf("\n");
-#endif
 
 		uint8_t * end = &readdata[qty];
 		uint32_t mytime = (end[1] << 0)|(end[2] << 8)|(end[3] << 16);
@@ -286,7 +279,8 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		int i;
 		for( i = lese-1; i >= 0; i-- )
 		{
-			printf( "%d: %d [%d]\n", les[i].sensor_id, les[i].length, les[i].timestamp );
+			//printf( "%d: %d [%d]\n", les[i].sensor_id, les[i].length, les[i].timestamp );
+			handle_lightcap( w, &les[i] );
 		}
 
 		return;
@@ -342,14 +336,6 @@ void survive_data_cb( struct SurviveUSBInterface * si )
 		//printf( "%d -> ", size );
 		for( i = 0; i < 3; i++ )
 		{
-/*
-			for( i = 0; i < 17; i++ )
-			{
-				printf( "%02x ", readdata[i] );
-			}
-			printf( "\n" );
-*/
-			//handle_lightdata( (struct LightpulseStructure *)readdata );
 			int16_t * acceldata = (int16_t*)readdata;
 			readdata += 12;
 			uint32_t timecode = POP4;
@@ -360,7 +346,7 @@ void survive_data_cb( struct SurviveUSBInterface * si )
 			if( cd > 0 )
 			{
 				ctx->oldcode = code;
-				survive_imu_process( &ctx->headset, acceldata, timecode, code );
+				ctx->imuproc( &ctx->headset, acceldata, timecode, code );
 			}
 		}
 

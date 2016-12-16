@@ -5,7 +5,7 @@
 #include <math.h>
 
 #define PTS 32
-#define MAX_CHECKS 20000
+#define MAX_CHECKS 30000
 #define MIN_HITS_FOR_VALID 10
 
 FLT hmd_points[PTS*3];
@@ -18,8 +18,6 @@ int LoadData( char Camera );
 //Values used for RunTest()
 FLT LighthousePos[3] = { 0, 0, 0 };
 FLT LighthouseQuat[4] = { 1, 0, 0, 0 };
-FLT BarrelRotate[4];  //XXX TODO: Concatenate these.
-
 
 FLT RunOpti( int print );
 FLT RunTest( int print );
@@ -30,7 +28,7 @@ int main()
 	int i;
 
 	//Load either 'L' (LH1) or 'R' (LH2) data.
-	if( LoadData( 'R' ) ) return 5;
+	if( LoadData( 'L' ) ) return 5;
 
 	int opti = 0;
 	int cycle = 0;
@@ -52,10 +50,14 @@ int main()
 			FLT bestxyzrunning[3];
 			FLT beste = 1e20;
 
-			FLT splits = 2;
-			if( cycle == 0 ) splits = 25;
 
-			//XXX TODO: Switch to polar coordinate search
+			FLT splits = 4;
+			if( cycle == 0 ) splits = 24;
+			if( cycle == 1 ) splits = 13;
+			if( cycle == 2 ) splits = 10;
+			if( cycle == 3 ) splits = 8;
+			if( cycle == 4 ) splits = 5;
+
 			for( dz = 0; dz <= fullrange; dz += fullrange/splits )
 			for( dy = -fullrange; dy <= fullrange; dy += fullrange/splits )
 			for( dx = -fullrange; dx <= fullrange; dx += fullrange/splits )
@@ -70,8 +72,6 @@ int main()
 				//Try refining the search for the best orientation several times.
 				ft = RunOpti(0);
 				if( ft < beste ) { beste = ft; memcpy( bestxyzrunning, LighthousePos, sizeof( LighthousePos ) ); }
-
-				//printf( "  %f %f %f %f\n", LighthousePos[0], LighthousePos[1], LighthousePos[2], ft );
 			}
 			memcpy( bestxyz, bestxyzrunning, sizeof( bestxyz ) );
 
@@ -81,7 +81,7 @@ int main()
 		}
 
 		//Every cycle, tighten up the search area.
-		fullrange *= 0.6;
+		fullrange *= 0.25;
 	}
 
 	//Use bestxyz
@@ -90,29 +90,7 @@ int main()
 	//Optimize the quaternion for lighthouse rotation
 	RunOpti(1);
 
-	//STAGE 2: Determine optimal distance from target
-	{
-		FLT dist = 0.1;
-		FLT best_dist = 0;
-		FLT best_err = 1e20;
-		for( ; dist < 10; dist+=0.01 )
-		{
-			FLT nrmvect[3];
-			normalize3d( nrmvect, bestxyz );
-			scale3d( LighthousePos, nrmvect, dist );
-			FLT res = RunTest( 0 );
-			if( res < best_err )
-			{
-				best_dist = dist;
-				best_err = res;
-			}
-		}
-
-		//Apply the best res.
-		normalize3d( LighthousePos, bestxyz );
-		scale3d( LighthousePos, LighthousePos, best_dist );
-		printf( "Best distance: %f\n", best_dist );
-	}
+	printf( "Best Quat: %f %f %f %f\n", PFFOUR( LighthouseQuat ) );
 
 	//Print out plane accuracies with these settings.
 	FLT ft = RunTest(1);
@@ -121,97 +99,131 @@ int main()
 
 FLT RunOpti( int print )
 {
-	int i;
+	int i, p;
 	FLT UsToTarget[3];
+	FLT LastUsToTarget[3];
+	FLT mux = .9;
+	quatsetnone( LighthouseQuat );
 
+	int first = 1, second = 0;
+
+	//First check to see if this is a valid viewpoint.
+
+	for( p = 0; p < 32; p++ )
 	{
-		//XXX TODO: We should use several points to determine initial rotation optimization to object.
-		//By using only one point the "best" we could be rotating somewhere wrong.  We do use
-		//several points for the rotate-about-this-vector rotation in stage 2.
+		if( hmd_point_counts[p*2+0] < MIN_HITS_FOR_VALID || hmd_point_counts[p*2+1] < MIN_HITS_FOR_VALID ) continue;
+		FLT me_to_dot[3];
+		sub3d( me_to_dot, LighthousePos, &hmd_points[p*3] );
+		float dot = dot3d( &hmd_norms[p*3], me_to_dot );
+		if( dot < -.01 ) { 	return 1000; }
+	}
+
+	int iters = 6;
+
+	for( i = 0; i < iters; i++ )
+	{
+		first = 1;
+		for( p = 0; p < 32; p++ )
+		{
+			if( hmd_point_counts[p*2+0] < MIN_HITS_FOR_VALID || hmd_point_counts[p*2+1] < MIN_HITS_FOR_VALID ) continue;
+
+			//Find out where our ray shoots forth from.
+			FLT ax = hmd_point_angles[p*2+0];
+			FLT ay = hmd_point_angles[p*2+1];
+
+			//NOTE: Inputs may never be output with cross product.
+			//Create a fictitious normalized ray.  Imagine the lighthouse is pointed
+			//straight in the +z direction, this is the lighthouse ray to the point.
+			FLT RayShootOut[3] = { sin(ax), sin(ay), 0 };
+			RayShootOut[2] = sqrt( 1 - (RayShootOut[0]*RayShootOut[0] + RayShootOut[1]*RayShootOut[1]) );
+			FLT RayShootOutWorld[3];
+
+			//Rotate that ray by the current rotation estimation.
+			quatrotatevector( RayShootOutWorld, LighthouseQuat, RayShootOut );
+
+			//Find a ray from us to the target point.
+			sub3d( UsToTarget, &hmd_points[p*3], LighthousePos );
+			if( magnitude3d( UsToTarget ) < 0.0001 ) { continue; }
+			normalize3d( UsToTarget, UsToTarget );
+
+			FLT RotatedLastUs[3];
+			quatrotatevector( RotatedLastUs, LighthouseQuat, LastUsToTarget );
+
+			//Rotate the lighthouse around this axis to point at the HMD.
+			//If it's the first time, the axis is synthesized, if it's after that, use most recent point.
+			FLT ConcatQuat[4];
+			FLT AxisToRotate[3];
+			if( first )
+			{
+				cross3d( AxisToRotate, RayShootOutWorld, UsToTarget );
+				if( magnitude3d(AxisToRotate) < 0.0001 ) break;
+				normalize3d( AxisToRotate, AxisToRotate );
+				//Don't need to worry about being negative, cross product will fix it.
+				FLT RotateAmount = anglebetween3d( RayShootOutWorld, UsToTarget );
+				quatfromaxisangle( ConcatQuat, AxisToRotate, RotateAmount );
+			}
+			else
+			{
+				FLT Target[3];
+				FLT Actual[3];
+
+				copy3d( AxisToRotate, LastUsToTarget );
+				//Us to target = normalized ray from us to where we should be.
+				//RayShootOut = where we would be pointing.
+				sub3d( Target, UsToTarget, AxisToRotate );  //XXX XXX XXX WARNING THIS MESSES STUFF UP.
+				sub3d( Actual, RayShootOutWorld, AxisToRotate );
+				if( magnitude3d( Actual ) < 0.0001 || magnitude3d( Target ) < 0.0001 ) { continue; }
+				normalize3d( Target, Target );
+				normalize3d( Actual, Actual );
+
+				cross3d( AxisToRotate, Actual, Target );  //XXX Check: AxisToRotate should be equal to LastUsToTarget.
+				if( magnitude3d( AxisToRotate ) < 0.000001 ) { continue; }
+				normalize3d( AxisToRotate,AxisToRotate );
+
+				//printf( "%f %f %f === %f %f %f : ", PFTHREE( AxisToRotate ), PFTHREE( LastUsToTarget ) );
+				FLT RotateAmount = anglebetween3d( Actual, Target ) * mux;
+				//printf( "FA: %f (O:%f)\n", acos( dot3d( Actual, Target ) ), RotateAmount );
+				quatfromaxisangle( ConcatQuat, AxisToRotate, RotateAmount );
+			}
+
+			quatrotateabout( LighthouseQuat, ConcatQuat, LighthouseQuat );  //Chekcked.  This appears to be 
+
+			mux = mux * 0.94;
+			if( second ) { second = 0; }
+			if( first ) { first = 0; second = 1; }
+			copy3d( LastUsToTarget, RayShootOutWorld );
+		}
+	}
+
+	//Step 2: Determine error.
+	float errorsq = 0.0;
+	int count = 0;
+	for( p = 0; p < 32; p++ )
+	{
+		if( hmd_point_counts[p*2+0] < MIN_HITS_FOR_VALID || hmd_point_counts[p*2+1] < MIN_HITS_FOR_VALID ) continue;
 
 		//Find out where our ray shoots forth from.
-		FLT ax = hmd_point_angles[best_hmd_target*2+0];
-		FLT ay = hmd_point_angles[best_hmd_target*2+1];
-
-		//NOTE: Inputs may never be output with cross product.
-		//Create a fictitious normalized ray.  Imagine the lighthouse is pointed
-		//straight in the +z direction, this is the lighthouse ray to the point.
+		FLT ax = hmd_point_angles[p*2+0];
+		FLT ay = hmd_point_angles[p*2+1];
 		FLT RayShootOut[3] = { sin(ax), sin(ay), 0 };
 		RayShootOut[2] = sqrt( 1 - (RayShootOut[0]*RayShootOut[0] + RayShootOut[1]*RayShootOut[1]) );
 
-		//Find a ray from us to the target point.
-		sub3d( UsToTarget, &hmd_points[best_hmd_target*3], LighthousePos );
-		normalize3d( UsToTarget, UsToTarget );
-
-		FLT AxisToRotate[3];
-		cross3d( AxisToRotate, RayShootOut, UsToTarget );
-		//Rotate the lighthouse around this axis to point at the HMD.
-
-		FLT RotateAmount = -acos( dot3d( RayShootOut, UsToTarget ) );  //XXX TODO How to determine if negative.
-		quatfromaxisangle( LighthouseQuat, AxisToRotate, RotateAmount ); //Tested, working!
-	}
-
-	//Now our lighthouse's ray is pointed at the HMD's dot, but, we need to
-	//rotate the lighthouse such that it is oriented optimally.  We do this
-	//by finding what the optimal rotation aroud our face would be for all
-	//remaining points.
-	FLT rotate_radians = 0;
-	int points_found_to_rotate = 0;
-
-	float rots[PTS];
-	for( i = 0; i < PTS; i++ )
-	{
-		if( i == best_hmd_target ) continue;
-		int xhits = hmd_point_counts[i*2+0];
-		int yhits = hmd_point_counts[i*2+1];
-		int xyhits = (xhits<yhits)?xhits:yhits;
-		if( xyhits < MIN_HITS_FOR_VALID ) continue;
-
-		//Find a point on the object to point at.
-		FLT HMDRayPoint[3];
-		sub3d( HMDRayPoint, &hmd_points[i*3], LighthousePos );
-		normalize3d( HMDRayPoint, HMDRayPoint );
-
-		FLT RayShootOut[3] = { sin(hmd_point_angles[i*2+0]), sin(hmd_point_angles[i*2+1]), 0 };
-		RayShootOut[2] = sqrt( 1 - (RayShootOut[0]*RayShootOut[0] + RayShootOut[1]*RayShootOut[1]) );
-		//Find the corresponding vector from camera out if it was rotated by "RotateAmount"
+		//Rotate that ray by the current rotation estimation.
 		quatrotatevector( RayShootOut, LighthouseQuat, RayShootOut );
 
-		//Figure out rotation to rotate around UsToTarget, from RayShootOut to HMDRayPoint
-		FLT SphSurf_Point[3]; //Relative to our fixed point, how much to rotate?
-		FLT SphSurf_Ray[3];
-		sub3d( SphSurf_Point, HMDRayPoint, UsToTarget  );
-		sub3d( SphSurf_Ray,   RayShootOut, UsToTarget  );
-		normalize3d( SphSurf_Point, SphSurf_Point );
-		normalize3d( SphSurf_Ray, SphSurf_Ray );
+		//Point-line distance.
+		//Line defined by LighthousePos & Direction: RayShootOut
 
-		FLT rotate = acos( dot3d( SphSurf_Point, SphSurf_Ray ) );
-
-		//XXX TODO: How to determine if rotate amount should be negative!!!
-
-		if( print ) printf( " %f ", rotate );
-		rotate_radians += rotate;
-		rots[points_found_to_rotate++] = rotate;
+		//Find a ray from us to the target point.
+		sub3d( UsToTarget, &hmd_points[p*3], LighthousePos );
+		FLT xproduct[3];
+		cross3d( xproduct, UsToTarget, RayShootOut );
+		FLT dist = magnitude3d( xproduct );
+		errorsq += dist*dist;
+		if( print ) printf( "%f (%d(%d/%d))\n", dist, p, hmd_point_counts[p*2+0], hmd_point_counts[p*2+1] );
 	}
-
-	//Get average barrel rotation
-	rotate_radians/=points_found_to_rotate;
-
-	//Find the standard of deviation of our data.
-	float stddev = 0.0;
-	for( i = 0; i < points_found_to_rotate; i++ )
-	{
-		float dr = rots[i]-rotate_radians;
-		stddev += dr*dr;
-	}
-	stddev/=points_found_to_rotate;
-	stddev = sqrt(stddev);
-	if( print ) printf( " = %f\n", stddev );
-
-	quatfromaxisangle( BarrelRotate, UsToTarget, rotate_radians ); //Rotate around barrel
-	//quatrotateabout( LighthouseQuat, LighthouseQuat, BarrelRotate ); //Concatenate the rotation into the lighthouse quat rotation.
-
-	return stddev;
+	if( print ) printf( " = %f\n", sqrt( errorsq ) );
+	return sqrt(errorsq);
 }
 
 
@@ -225,33 +237,28 @@ FLT RunTest( int print )
 		if( hmd_point_counts[k] == 0 ) continue;
 		int axis = k%2;
 		int pt = k/2;
+
 		FLT angle = hmd_point_angles[k];
-		if( print ) printf( "%d %d : angle: %f / ", axis, pt, angle );
+		if( print ) printf( "%3d %3d : angle: %10f / ", axis, pt, angle );
 
 		//XXX TODO: This is critical.  We need to properly define the planes. 
 		FLT plane_normal[3] = { 0, 0, 0 };
-		if( axis == 1 )
+		if( axis == 0 )
 		{
-			plane_normal[1] = cos(angle);
+			plane_normal[0] = cos(angle);
 			plane_normal[2] =-sin(angle);
 		}
 		else
 		{
-			plane_normal[0] = cos(angle);
+			plane_normal[1] = cos(angle);
 			plane_normal[2] =-sin(angle);
 		}
 
 
 		quatrotatevector( plane_normal, LighthouseQuat, plane_normal ); //Rotate plane normal by concatenated rotation.
-		quatrotatevector( plane_normal, BarrelRotate, plane_normal ); //Rotate plane normal by concatenated rotation.
 
 		//plane_normal is our normal / LighthousePos is our point.  
 		FLT w0[] = { hmd_points[pt*3+0], hmd_points[pt*3+1], hmd_points[pt*3+2] };
-
-//May be able to remove this.
-//		FLT w0[] = { hmd_points[pt*3+0], hmd_points[pt*3+2],-hmd_points[pt*3+1] };  //XXX WRONG Why does this produce the right answers?
-
-		//FLT w0[] = { 0, 0, 0 };
 		FLT d = -(plane_normal[0] * LighthousePos[0] + plane_normal[1] * LighthousePos[1] + plane_normal[2] * LighthousePos[2]);
 		FLT D =   plane_normal[0] * w0[0]            + plane_normal[1] * w0[1]            + plane_normal[2] * w0[2] + d;
 			//Point line distance assuming ||normal|| = 1.
@@ -259,11 +266,39 @@ FLT RunTest( int print )
 		FLT delta[] = { LighthousePos[0]-hmd_points[pt*3+0],LighthousePos[1]-hmd_points[pt*3+1],LighthousePos[2]-hmd_points[pt*3+2] };
 		FLT dot = delta[0] * hmd_norms[pt*3+0] + delta[1] * hmd_norms[pt*3+1] + delta[2] * hmd_norms[pt*3+2];
 //		if( dot < -0.04 ) totprob+=10000000000;
-		if( print ) printf( " %f %f N:%f\n", d, D, dot );
+		if( print ) printf( " %10f %10f N:%f\n", d, D, dot );
 		totprob += (D*D);  //Calculate RMS distance of incorrectitude.
 
 		ict++;
 	}
+
+	if( print )
+	{
+		int p;
+		printf( "POS:  %f %f %f %f\n", PFFOUR(LighthousePos ) );
+		printf( "QUAT: %f %f %f %f\n", PFFOUR(LighthouseQuat ) );
+		printf( "Imagespace comparison:\n" );
+		for( p = 0; p < 32; p++ )
+		{
+			if( hmd_point_counts[p*2+0] < MIN_HITS_FOR_VALID || hmd_point_counts[p*2+1] < MIN_HITS_FOR_VALID ) continue;
+
+			FLT us_to_targ[3];
+			sub3d( us_to_targ, &hmd_points[p*3] , LighthousePos );
+
+			//Unrotate us_to_targ.
+			FLT unrotate[4];
+			quatgetconjugate( unrotate, LighthouseQuat );
+
+			quatrotatevector( us_to_targ, unrotate, us_to_targ );
+			normalize3d( us_to_targ, us_to_targ );
+			FLT x = asin( us_to_targ[0] );
+			FLT y = asin( us_to_targ[1] );
+
+			printf( "%f %f %f %f\n", hmd_point_angles[p*2+0], hmd_point_angles[p*2+1], x, y );
+		}
+	}
+
+
 	return sqrt(totprob/ict);
 }
 
@@ -331,7 +366,7 @@ int LoadData( char Camera )
 
 
 	int xck = 0;
-	f = fopen( "third_test_with_time_lengths.csv", "r" );
+	f = fopen( "testfive.csv", "r" );
 	if( !f ) { fprintf( stderr, "Error: can't open two lighthouses test data.\n" ); return -11; }
 	while( !feof(f) && !ferror(f) )
 	{
@@ -415,3 +450,4 @@ int LoadData( char Camera )
 
 	return 0;
 }
+

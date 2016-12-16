@@ -63,7 +63,22 @@ void copy3d( FLT * out, const FLT * in )
 	out[2] = in[2];
 }
 
+FLT magnitude3d( FLT * a )
+{
+	return sqrt( a[0]*a[0] + a[1]*a[1] + a[2]*a[2] );
+}
 
+FLT anglebetween3d( FLT * a, FLT * b )
+{
+	FLT an[3];
+	FLT bn[3];
+	normalize3d( an, a );
+	normalize3d( bn, b );
+	FLT dot = dot3d( a, b );
+	if( dot < -0.9999999 ) return LINMATHPI;
+	if( dot >  0.9999999 ) return 0;
+	return acos( dot );
+}
 
 /////////////////////////////////////QUATERNIONS//////////////////////////////////////////
 //Originally from Mercury (Copyright (C) 2009 by Joshua Allen, Charles Lohr, Adam Lowman)
@@ -74,7 +89,7 @@ void copy3d( FLT * out, const FLT * in )
 
 void quatsetnone( FLT * q )
 {
-	q[0] = 0; q[1] = 0; q[2] = 0; q[3] = 1;
+	q[0] = 1; q[1] = 0; q[2] = 0; q[3] = 0;
 }
 
 void quatcopy( FLT * qout, const FLT * qin )

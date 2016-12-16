@@ -19,14 +19,13 @@
 #include <stdint.h>
 #include <libusb-1.0/libusb.h>
 #include <zlib.h>
+#include <survive.h>
 
 #define SV_INFO( x... ) { char stbuff[1024]; sprintf( stbuff, x ); ctx->notefunction( ctx, stbuff ); }
 #define SV_ERROR( x... ) { char stbuff[1024]; sprintf( stbuff, x ); ctx->faultfunction( ctx, stbuff ); }
 
 //XXX TODO This one needs to be rewritten.
 #define SV_KILL()		exit(0)
-
-#define SV_FLOAT  		double
 
 #define USB_DEV_HMD			0
 #define USB_DEV_LIGHTHOUSE	1
@@ -61,33 +60,20 @@ struct SurviveUSBInterface
 	const char * hname;			//human-readable names
 };
 
-
-struct SurviveObject
-{
-	struct SurviveContext * ctx;
-	char    codename[4];
-	int16_t buttonmask;
-	int16_t axis1;
-	int16_t axis2;
-	int16_t axis3;
-	int8_t  charge;
-	int8_t  charging:1;
-	int8_t  ison:1;
-	int sensors;
-
-	int nr_locations;
-	SV_FLOAT * sensor_locations;
-};
+//This is defined in survive.h
+struct SurviveObject;
 
 struct SurviveContext
 {
 	//USB Subsystem
     struct libusb_context* usbctx;
-	void(*faultfunction)( struct SurviveContext * ctx, const char * fault );
-	void(*notefunction)( struct SurviveContext * ctx, const char * fault );
 	struct libusb_device_handle * udev[MAX_USB_DEVS];
 	struct SurviveUSBInterface uiface[MAX_INTERFACES];
 
+	text_feedback_fnptr faultfunction;
+	text_feedback_fnptr notefunction;
+	light_process_func lightproc;
+	imu_process_func imuproc;
 
 	//Flood info, for calculating which laser is currently sweeping.
 	int8_t oldcode;
@@ -113,13 +99,8 @@ int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, 
 void survive_data_cb( struct SurviveUSBInterface * si );
 
 //Accept higher-level data.
-void survive_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode );
-void survive_imu_process( struct SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id );
-
-
-//Util
-int survive_simple_inflate( struct SurviveContext * ctx, const char * input, int inlen, char * output, int outlen );
-
+void survive_default_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length );
+void survive_default_imu_process( struct SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id );
 
 #endif
 
