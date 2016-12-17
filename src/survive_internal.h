@@ -75,17 +75,9 @@ struct SurviveContext
 	light_process_func lightproc;
 	imu_process_func imuproc;
 
-	//Flood info, for calculating which laser is currently sweeping.
-	int8_t oldcode;
-	int32_t last_photo_time;
-	short total_photos;
-	int32_t total_photo_time;
-	int32_t total_pulsecode_time;
-
 	//Data Subsystem
 	struct SurviveObject headset;
 	struct SurviveObject watchman[2];
-//	struct SurvivePhoto 
 };
 
 

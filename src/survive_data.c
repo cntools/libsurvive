@@ -28,41 +28,46 @@ struct LightcapElement
 } __attribute__((packed));
 
 
-
+//This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
 static void handle_lightcap( struct SurviveObject * so, struct LightcapElement * le )
 {
 	struct SurviveContext * ct = so->ctx;
+
+//	if( so->codename[0] == 'W' )
+//	{
+//		printf( "%s %d %d %d %d\n", so->codename, le->sensor_id, le->type, le->length, le->timestamp );
+//	}
 
 	if( le->type != 0xfe || le->length < 50 ) return;
 	//le->timestamp += (le->length/2);
 
 	if( le->length > 2100 ) //Pulse longer indicates a sync pulse.
 	{
-		int32_t deltat = (uint32_t)le->timestamp - (uint32_t)ct->last_photo_time;
+		int32_t deltat = (uint32_t)le->timestamp - (uint32_t)so->last_photo_time;
 		if( deltat > 2000 || deltat < -2000 )		//New pulse. (may be inverted)
 		{
-			if( le->timestamp - ct->last_photo_time > 80000 )
+			if( le->timestamp - so->last_photo_time > 80000 )
 			{
-				ct->last_photo_time = le->timestamp;
-				ct->total_photo_time = 0;
-				ct->total_photos = 0;
-				ct->total_pulsecode_time = 0;
+				so->last_photo_time = le->timestamp;
+				so->total_photo_time = 0;
+				so->total_photos = 0;
+				so->total_pulsecode_time = 0;
 				ct->lightproc( so, le->sensor_id, -1, 0, le->timestamp, deltat );
 			}
 		}
 		else
 		{
-			ct->total_pulsecode_time += le->length;
-			ct->total_photo_time += deltat;
-			ct->total_photos++;
+			so->total_pulsecode_time += le->length;
+			so->total_photo_time += deltat;
+			so->total_photos++;
 		}
 	}
-	else if( le->length < 1200 && le->length > 40 && ct->total_photos )
+	else if( le->length < 1200 && le->length > 40 && so->total_photos )
 	{
-		int32_t dl = (ct->total_photo_time/ct->total_photos);
-		int32_t tpco = (ct->total_pulsecode_time/ct->total_photos);
+		int32_t dl = (so->total_photo_time/so->total_photos);
+		int32_t tpco = (so->total_pulsecode_time/so->total_photos);
 		//Adding length 
-		int32_t offset_from = le->timestamp - dl - ct->last_photo_time + le->length/2;
+		int32_t offset_from = le->timestamp - dl - so->last_photo_time + le->length/2;
 
 		//Long pulse-code from IR flood.
 		//Make sure it fits nicely into a divisible-by-500 time.
@@ -341,11 +346,11 @@ void survive_data_cb( struct SurviveUSBInterface * si )
 			uint32_t timecode = POP4;
 			uint8_t code = POP1;
 			//printf( "%d ", code );
-			int8_t cd = code - ctx->oldcode;
+			int8_t cd = code - ctx->headset.oldcode;
 
 			if( cd > 0 )
 			{
-				ctx->oldcode = code;
+				ctx->headset.oldcode = code;
 				ctx->imuproc( &ctx->headset, acceldata, timecode, code );
 			}
 		}

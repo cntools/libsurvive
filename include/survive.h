@@ -7,23 +7,36 @@
 
 struct SurviveContext;
 
-//DANGER: This structure may be redefined 
+//DANGER: This structure may be redefined.  Note that it is logically split into 64-bit chunks
+//for optimization on 32- and 64-bit systems.
 
 struct SurviveObject
 {
 	struct SurviveContext * ctx;
-	char    codename[4];
+
+	char    codename[4];  //3 letters, null-terminated.  Currently HMD, WM0, WM1.
 	int16_t buttonmask;
 	int16_t axis1;
+
 	int16_t axis2;
 	int16_t axis3;
 	int8_t  charge;
 	int8_t  charging:1;
 	int8_t  ison:1;
-	int sensors;
+	int8_t  additional_flags:6;
+	int8_t sensors;
+	int8_t nr_locations;
 
-	int nr_locations;
 	SV_FLOAT * sensor_locations;
+
+	SV_FLOAT * sensor_normals;
+
+	//Flood info, for calculating which laser is currently sweeping.
+	int32_t last_photo_time;
+	int32_t total_photo_time;
+	int32_t total_pulsecode_time;
+	int16_t total_photos;
+	int8_t oldcode;
 };
 
 typedef void (*text_feedback_fnptr)( struct SurviveContext * ctx, const char * fault );

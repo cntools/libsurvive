@@ -44,7 +44,7 @@ void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int 
 	if( acode == 0 || acode == 2 ) //data = 0
 	{
 		printf( "L X %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
-		if( strcmp( so->codename, "HED" ) == 0 )
+		if( strcmp( so->codename, "HMD" ) == 0 )
 		{
 			bufferpts[sensor_id*2+0] = (timeinsweep-100000)/500;
 			buffertimeto[sensor_id] = 0;
@@ -53,7 +53,7 @@ void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int 
 	if( acode == 1 || acode == 3 ) //data = 1
 	{
 		printf( "L Y %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
-		if( strcmp( so->codename, "HED" ) == 0 )
+		if( strcmp( so->codename, "HMD" ) == 0 )
 		{
 			bufferpts[sensor_id*2+1] = (timeinsweep-100000)/500;
 			buffertimeto[sensor_id] = 0;
@@ -64,7 +64,7 @@ void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int 
 	if( acode == 4 || acode == 6 ) //data = 0
 	{
 		printf( "R X %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
-		if( strcmp( so->codename, "HED" ) == 0 )
+		if( strcmp( so->codename, "HMD" ) == 0 )
 		{
 			bufferpts[sensor_id*2+0] = (timeinsweep-100000)/500;
 			buffertimeto[sensor_id] = 0;
@@ -73,7 +73,7 @@ void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int 
 	if( acode == 5 || acode == 7 ) //data = 1
 	{
 		printf( "R Y %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
-		if( strcmp( so->codename, "HED" ) == 0 )
+		if( strcmp( so->codename, "HMD" ) == 0 )
 		{
 			bufferpts[sensor_id*2+1] = (timeinsweep-100000)/500;
 			buffertimeto[sensor_id] = 0;
