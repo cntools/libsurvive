@@ -12,7 +12,7 @@ Third livestream: https://www.youtube.com/watch?v=RExji5EtSzE
 
 Notes from second livestream trying to reverse engineer the watchman protocol: https://gist.github.com/cnlohr/581c433f36f4249f8bbc9c2b6450ef0e
 
-
+Please see the issues for what help needs to be done now!
 
 ## Introduction
 High-performance HTC Vive Library
