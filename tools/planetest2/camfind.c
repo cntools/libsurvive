@@ -82,13 +82,16 @@ int main()
 					float sk = ft*10.;
 					if( sk > 1 ) sk = 1;
 					uint8_t cell = (1.0 - sk) * 255;
-					if( dz == 0 && ( dx > -0.01 && dx < 0.4 ) && (dy > -0.01 && dy < 0.4 ) )
-					{
-						fprintf( f, "%c", 255 );
-					}
-					else
-						fprintf( f, "%c", cell );
+					FLT epsilon = 0.1;
 
+					if( dz == 0 ) { /* Why is dz special? ? */
+					  if ( dx > -epsilon && dx < epsilon )
+					    cell =  255;
+					  if ( dy > -epsilon && dy < epsilon )
+                                            cell = 128;
+					}
+
+					fprintf( f, "%c", cell );
 				}
 
 				if( ft < beste ) { beste = ft; memcpy( bestxyzrunning, LighthousePos, sizeof( LighthousePos ) ); }
