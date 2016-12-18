@@ -2,10 +2,11 @@
 #include <stdlib.h>
 #include "linmath.h"
 #include <string.h>
+#include <stdint.h>
 #include <math.h>
 
 #define PTS 32
-#define MAX_CHECKS 30000
+#define MAX_CHECKS 40000
 #define MIN_HITS_FOR_VALID 10
 
 FLT hmd_points[PTS*3];
@@ -28,7 +29,7 @@ int main()
 	int i;
 
 	//Load either 'L' (LH1) or 'R' (LH2) data.
-	if( LoadData( 'L' ) ) return 5;
+	if( LoadData( 'R' ) ) return 5;
 
 	int opti = 0;
 	int cycle = 0;
@@ -42,6 +43,7 @@ int main()
 	//STAGE1 1: Detemine vectoral position from lighthouse to target.  Does not determine lighthouse-target distance.
 	//This also is constantly optimizing the lighthouse quaternion for optimal spotting.
 	FLT fullrange = 5; //Maximum search space for positions.  (Relative to HMD)
+	
 	for( cycle = 0; cycle < 30; cycle ++ )
 	{
 
@@ -50,17 +52,21 @@ int main()
 			FLT bestxyzrunning[3];
 			FLT beste = 1e20;
 
-
+			FILE * f;
+			if( cycle == 0 )
+			{
+				f = fopen( "raw_data_lighthouse.dat", "wb" );
+			}
 			FLT splits = 4;
-			if( cycle == 0 ) splits = 24;
+			if( cycle == 0 ) splits = 32;
 			if( cycle == 1 ) splits = 13;
 			if( cycle == 2 ) splits = 10;
 			if( cycle == 3 ) splits = 8;
 			if( cycle == 4 ) splits = 5;
 
-			for( dz = 0; dz <= fullrange; dz += fullrange/splits )
-			for( dy = -fullrange; dy <= fullrange; dy += fullrange/splits )
-			for( dx = -fullrange; dx <= fullrange; dx += fullrange/splits )
+			for( dz = 0; dz < fullrange; dz += fullrange/splits )
+			for( dy = -fullrange; dy < fullrange; dy += fullrange/splits )
+			for( dx = -fullrange; dx < fullrange; dx += fullrange/splits )
 			{
 				//Specificially adjust one axis at a time, searching for the best.
 				memcpy( LighthousePos, bestxyz, sizeof( LighthousePos ) );
@@ -71,7 +77,29 @@ int main()
 				FLT ft;
 				//Try refining the search for the best orientation several times.
 				ft = RunOpti(0);
+				if( cycle == 0 )
+				{
+					float sk = ft*10.;
+					if( sk > 1 ) sk = 1;
+					uint8_t cell = (1.0 - sk) * 255;
+					FLT epsilon = 0.1;
+
+					if( dz == 0 ) { /* Why is dz special? ? */
+					  if ( dx > -epsilon && dx < epsilon )
+					    cell =  255;
+					  if ( dy > -epsilon && dy < epsilon )
+                                            cell = 128;
+					}
+
+					fprintf( f, "%c", cell );
+				}
+
 				if( ft < beste ) { beste = ft; memcpy( bestxyzrunning, LighthousePos, sizeof( LighthousePos ) ); }
+			}
+
+			if( cycle == 0 )
+			{
+				fclose( f );
 			}
 			memcpy( bestxyz, bestxyzrunning, sizeof( bestxyz ) );
 
@@ -366,7 +394,7 @@ int LoadData( char Camera )
 
 
 	int xck = 0;
-	f = fopen( "testfive.csv", "r" );
+	f = fopen( "livestream_test_2_x_axis.csv", "r" );
 	if( !f ) { fprintf( stderr, "Error: can't open two lighthouses test data.\n" ); return -11; }
 	while( !feof(f) && !ferror(f) )
 	{
