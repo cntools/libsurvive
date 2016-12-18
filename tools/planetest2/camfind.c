@@ -6,7 +6,7 @@
 #include <math.h>
 
 #define PTS 32
-#define MAX_CHECKS 30000
+#define MAX_CHECKS 40000
 #define MIN_HITS_FOR_VALID 10
 
 FLT hmd_points[PTS*3];
