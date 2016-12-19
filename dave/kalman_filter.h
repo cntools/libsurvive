@@ -1,6 +1,8 @@
 #ifndef __KALMAN_FILTER_H__
 #define __KALMAN_FILTER_H__
 
+#include "dclapack.h"
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Legend:
  *   xhat_k_km1    --   Predicted state at time 'k'   using information available at time 'k-1'
@@ -27,8 +29,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #define KAL_STRIDE 36
-#define KAL_MAT(_var)  float _var[KAL_STRIDE][KAL_STRIDE]
-#define KAL_VEC(_var)  float _var[KAL_STRIDE]
+#define KAL_MAT(_var)  float _var[ORDER][ORDER]
+#define KAL_VEC(_var)  float _var[ORDER][ORDER]
 
 void KalmanPredict(
     KAL_VEC(xhat_k_km1),    /* OUTPUT: (S)     Predicted state at time 'k' */
@@ -43,14 +45,15 @@ void KalmanPredict(
     int U);                 /* INPUT:          Size of control input vector */
 
 void KalmanUpdate(
-    KAL_VEC(xhat_k_k),      /* OUTPUT: Updated state at time 'k' */
-    KAL_MAT(P_k_k),         /* OUTPUT: Updated covariance at time 'k' */
-    KAL_VEC(xhat_k_km1),    /* INPUT:  Predicted state at time 'k' */
-    KAL_MAT(P_k_km1),       /* INPUT:  Predicted covariance at time 'k' */
-    KAL_MAT(H_k),           /* INPUT:  Observational model */
-    KAL_MAT(R_k),           /* INPUT:  Covariance of observational noise */
-    int B,                  /* INPUT:  Number of observations in observation vector */
-    int S);                 /* INPUT:  Number of measurements in the state vector */
+    KAL_VEC(xhat_k_k),      /* (S)     OUTPUT: Updated state at time 'k' */
+    KAL_MAT(P_k_k),         /* (S x S) OUTPUT: Updated covariance at time 'k' */
+    KAL_VEC(xhat_k_km1),    /* (S)     INPUT:  Predicted state at time 'k' */
+    KAL_MAT(P_k_km1),       /* (S x S) INPUT:  Predicted covariance at time 'k' */
+    KAL_VEC(z_k),           /* (B)     INPUT:  Observation vector */
+    KAL_MAT(H_k),           /* (B x S) INPUT:  Observational model */
+    KAL_MAT(R_k),           /* (S x S) INPUT:  Covariance of observational noise */
+    int B,                  /*         INPUT:  Number of observations in observation vector */
+    int S);                 /*         INPUT:  Number of measurements in the state vector */
 
 /* * * * * * * * * * * *
  * State vector format:
@@ -77,32 +80,32 @@ void KalmanUpdate(
 #define ST_KZ 11
 
 /* velocity state */
-#define ST_VX   0
-#define ST_VY   1
-#define ST_VZ   2
-#define ST_VIX  3
-#define ST_VIY  4
-#define ST_VIZ  5
-#define ST_VJX  6
-#define ST_VJY  7
-#define ST_VJZ  8
-#define ST_VKX  9
-#define ST_VKY 10
-#define ST_VKZ 11
+#define ST_VX  12
+#define ST_VY  13
+#define ST_VZ  14
+#define ST_VIX 15
+#define ST_VIY 16
+#define ST_VIZ 17
+#define ST_VJX 18
+#define ST_VJY 19
+#define ST_VJZ 20
+#define ST_VKX 21
+#define ST_VKY 22
+#define ST_VKZ 23
 
 /* acceleration state */
-#define ST_AX   0
-#define ST_AY   1
-#define ST_AZ   2
-#define ST_AIX  3
-#define ST_AIY  4
-#define ST_AIZ  5
-#define ST_AJX  6
-#define ST_AJY  7
-#define ST_AJZ  8
-#define ST_AKX  9
-#define ST_AKY 10
-#define ST_AKZ 11
+#define ST_AX  24
+#define ST_AY  25
+#define ST_AZ  26
+#define ST_AIX 27
+#define ST_AIY 28
+#define ST_AIZ 29
+#define ST_AJX 30
+#define ST_AJY 31
+#define ST_AJZ 32
+#define ST_AKX 33
+#define ST_AKY 34
+#define ST_AKZ 35
 
 
 /* * * * * * * * * * * *

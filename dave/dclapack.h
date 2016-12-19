@@ -11,6 +11,8 @@
 
 #include<stdio.h>
 
+#define _ABS(a)  ( (a)<=0 ? 0-(a) : (a) )
+
 /*
  * Prints a matrix A (n by m)
  */
@@ -39,6 +41,20 @@
 }
 
 /*
+ * B = Transpose(A)
+ *  A is (n by m)
+ *  B is (m by n)
+ */
+#define TRANSP(A,B,n,m) { \
+   int i,j; \
+   for (i=0; i<n; i++) { \
+      for (j=0; j<m; j++) { \
+         B[j][i] = A[i][j]; \
+      } \
+   } \
+}
+
+/*
  * Calculate L,U of a matrix A with pivot table
  */
 #define LU(A,L,U,Piv,n) { \
@@ -55,7 +71,7 @@
         \
         int max=i; \
 	for (j=i+1; j<n; j++) { \
-		if (U[j][i] > U[max][i]) { max = j; } \
+		if (_ABS(U[j][i]) > _ABS(U[max][i])) { max = j; } \
 	} \
 	_tempi=Piv[i]; Piv[i]=Piv[max]; Piv[max]=_tempi; \
 	for (k=i; k<n; k++) { \
@@ -181,6 +197,27 @@ PRINT(Ainv,n,n); \
             for (k=0; k<m; k++) { \
                 D[i][j] += A[i][k] * B[k][j]; \
             } \
+        } \
+    } \
+}
+
+/*
+ * Matrix Multiply D = alpha * A * B + beta * C
+ *  A (n by m)
+ *  B (m by p)
+ *  C (n by p)
+ *  D (n by p)
+ */
+#define GMULADD(A,B,C,D,alpha,beta,n,m,p) { \
+    int i,j,k; \
+    float sum; \
+    for (i=0; i<n; i++) { \
+        for (j=0; j<p; j++) { \
+            sum = 0.0f; \
+            for (k=0; k<m; k++) { \
+                sum += A[i][k] * B[k][j]; \
+            } \
+            D[i][j] = alpha * sum + beta * C[i][j]; \
         } \
     } \
 }
