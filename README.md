@@ -36,6 +36,7 @@ Definitely going to try!
 * libUSB
 * pthread
 * libX11 (where applicable)
+* zlib (may use puff.c if needed)
 
 If I ever get to video output... OpenGL.
 
