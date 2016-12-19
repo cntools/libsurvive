@@ -85,7 +85,7 @@ struct SurviveContext
 void survive_usb_close( struct SurviveContext * t );
 int survive_usb_init( struct SurviveContext * t );
 int survive_usb_poll( struct SurviveContext * ctx );
-int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, int interface );
+int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, int interface, int send_extra_magic );
 
 //Accept Data from backend.
 void survive_data_cb( struct SurviveUSBInterface * si );

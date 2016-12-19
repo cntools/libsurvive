@@ -98,6 +98,7 @@ static void debug_cb( struct SurviveUSBInterface * si )
 	printf( "\n" );
 }*/
 
+//XXX TODO: Redo this subsystem for setting/updating feature reports.
 
 static inline int update_feature_report(libusb_device_handle* dev, uint16_t interface, uint8_t * data, int datalen ) {
 //	int xfer;
@@ -110,8 +111,10 @@ static inline int update_feature_report(libusb_device_handle* dev, uint16_t inte
 
 
 static inline int getupdate_feature_report(libusb_device_handle* dev, uint16_t interface, uint8_t * data, int datalen ) {
+
 	int ret = libusb_control_transfer(dev, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_IN,
 		0x01, 0x300 | data[0], interface, data, datalen, 1000 );
+	if( ret == -9 ) return -9;
     if (ret < 0)
         return -1;
 	return ret;
@@ -125,8 +128,7 @@ static inline int hid_get_feature_report_timeout(libusb_device_handle* device, u
     for (unsigned i = 0; i < 100; i++)
 	{
         ret = getupdate_feature_report(device, interface, buf, len);
-		//printf( "HUD: %d/%d %02x %02x %02x\n", ret, len, buf[0], buf[1], buf[2] );
-		if( ret != -1 || errno != EPIPE ) return ret;
+		if( ret != -9 && ( ret != -1 || errno != EPIPE ) ) return ret;
 		usleep( 1000 );
 	}
 
@@ -265,11 +267,9 @@ int survive_usb_send_magic(struct SurviveContext * ctx, int turnon )
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 #endif
 		r = update_feature_report( ctx->udev[USB_DEV_HMD], 0, vive_magic_power_on, sizeof( vive_magic_power_on ) );
-		SV_INFO( "UCR: %d", r );
 		if( r != sizeof( vive_magic_power_on ) ) return 5;
 
 		static uint8_t vive_magic_enable_lighthouse[64] = { 0x04 };  //[64] wat?  Why did that fix it?
-		SV_INFO( "UCR: %d", r );
 		r = update_feature_report( ctx->udev[USB_DEV_LIGHTHOUSE], 0, vive_magic_enable_lighthouse, sizeof( vive_magic_enable_lighthouse ) );
 		if( r != sizeof( vive_magic_enable_lighthouse ) ) return 5;
 
@@ -337,7 +337,7 @@ int survive_usb_poll( struct SurviveContext * ctx )
 }
 
 
-int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, int iface )
+int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, int iface, int send_extra_magic )
 {
 	int i, ret, count = 0, size = 0;
 	uint8_t cfgbuff[64];
@@ -345,13 +345,49 @@ int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, 
 	uint8_t uncompressed_data[65536];
 	struct libusb_device_handle * dev = ctx->udev[devno];
 
-	cfgbuff[1] = 0xaa;
+	if( send_extra_magic )
+	{
+		uint8_t cfgbuffwide[65];
+
+		memset( cfgbuffwide, 0, sizeof( cfgbuff ) );
+		cfgbuffwide[0] = 0x01;
+		ret = hid_get_feature_report_timeout( dev, iface, cfgbuffwide, sizeof( cfgbuffwide ) );
+		usleep(1000);
+
+		int k;
+
+		//Switch mode to pull config?
+		for( k = 0; k < 10; k++ )
+		{
+			uint8_t cfgbuff_send[64] = { 
+				0xff, 0x83, 0x00, 0xb6, 0x5b, 0xb0, 0x78, 0x69,
+				0x0f, 0xf8, 0x78, 0x69, 0x0f, 0xa0, 0xf3, 0x18,
+				0x00, 0xe8,	0xf2, 0x18, 0x00, 0x27, 0x44, 0x5a,
+				0x0f, 0xf8, 0x78, 0x69, 0x0f, 0xf0, 0x77, 0x69,
+				0x0f, 0xf0, 0x77, 0x69, 0x0f, 0x50, 0xca, 0x45,
+				0x77, 0xa0, 0xf3, 0x18, 0x00, 0xf8, 0x78, 0x69,
+				0x0f, 0x00, 0x00, 0xa0, 0x0f, 0xa0, 0x9b, 0x0a,
+				0x01, 0x00, 0x00, 0x35, 0x00, 0x34, 0x02, 0x00
+			};
+
+			int rk = libusb_control_transfer(dev, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_OUT,
+			0x09, 0x300 | cfgbuff_send[0], iface, cfgbuff_send, 64, 1000 );
+			usleep(1000);
+		}
+
+		cfgbuffwide[0] = 0xff;
+		ret = hid_get_feature_report_timeout( dev, iface, cfgbuffwide, sizeof( cfgbuffwide ) );
+		usleep(1000);
+	}
+
+	memset( cfgbuff, 0, sizeof( cfgbuff ) );
 	cfgbuff[0] = 0x10;
 	if( ( ret = hid_get_feature_report_timeout( dev, iface, cfgbuff, sizeof( cfgbuff ) ) ) < 0 )
 	{
 		SV_ERROR( "Could not get survive config data for device %d:%d", devno, iface );
 		return -1;
 	}
+
 
 	cfgbuff[1] = 0xaa;
 	cfgbuff[0] = 0x11;
@@ -364,16 +400,12 @@ int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, 
 		}
 
 		size = cfgbuff[1];
-//		printf( "Tag: " );
-//		for( i = 0; i < 64; i++ )
-//			printf( "%02x ", cfgbuff[i] );
-//		printf( "ret: %d %d\n", ret, size );
 
 		if( !size ) break;
 
 		if( size > 62 )
 		{
-			SV_ERROR( "Too much data on packet from config for device %d:%d (count: %d)", devno, iface, count );
+			SV_ERROR( "Too much data (%d) on packet from config for device %d:%d (count: %d)", size, devno, iface, count );
 			return -3;
 		}
 

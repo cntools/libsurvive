@@ -68,10 +68,10 @@ static int ParsePoints( struct SurviveContext * ctx, char * ct0conf, SV_FLOAT **
 	return 0;
 }
 
-static int LoadConfig( struct SurviveContext * ctx, struct SurviveObject * so, int devno, int iface )
+static int LoadConfig( struct SurviveContext * ctx, struct SurviveObject * so, int devno, int iface, int extra_magic )
 {
 	char * ct0conf = 0;
-	int len = survive_get_config( &ct0conf, ctx, devno, iface );
+	int len = survive_get_config( &ct0conf, ctx, devno, iface, extra_magic );
 	if( len > 0 )
 	{
 
@@ -153,7 +153,9 @@ struct SurviveContext * survive_init()
 	}
 
 	//Next, pull out the config stuff.
-	if( LoadConfig( ctx, &ctx->headset, 1, 0 ) ) goto fail_gracefully;
+	if( LoadConfig( ctx, &ctx->headset, 1, 0, 0 ) ) goto fail_gracefully;
+	if( LoadConfig( ctx, &ctx->watchman[0], 2, 0, 1 ) ) goto fail_gracefully;
+	if( LoadConfig( ctx, &ctx->watchman[1], 3, 0, 1 ) ) goto fail_gracefully;
 
 /*
 	int i;
