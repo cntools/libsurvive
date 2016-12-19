@@ -26,7 +26,7 @@ I say "high-performance" really this project is based tightly off of OSVR-Vive-L
 5. (long shot) Make the vive vivable for use with Intel Integrated Graphics systems.
 
 
-Will I succeed?  Probably not.
+Will ~~I~~ we succeed?  Probably not.
 
 Definitely going to try!
 
@@ -35,7 +35,7 @@ Definitely going to try!
 
 * libUSB
 * pthread
-* (planned, may not be needed) lapack
+* libX11 (where applicable)
 
 If I ever get to video output... OpenGL.
 
