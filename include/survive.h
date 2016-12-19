@@ -24,19 +24,17 @@ struct SurviveObject
 	int8_t  charging:1;
 	int8_t  ison:1;
 	int8_t  additional_flags:6;
-	int8_t sensors;
-	int8_t nr_locations;
 
 	SV_FLOAT * sensor_locations;
-
 	SV_FLOAT * sensor_normals;
+	int8_t nr_locations;
 
 	//Flood info, for calculating which laser is currently sweeping.
+	int8_t oldcode;
+	int16_t total_photos;
 	int32_t last_photo_time;
 	int32_t total_photo_time;
 	int32_t total_pulsecode_time;
-	int16_t total_photos;
-	int8_t oldcode;
 };
 
 typedef void (*text_feedback_fnptr)( struct SurviveContext * ctx, const char * fault );
@@ -54,7 +52,7 @@ void survive_install_imu_fn( struct SurviveContext * ctx,  imu_process_func fbp 
 void survive_close( struct SurviveContext * ctx );
 int survive_poll();
 
-
+struct SurviveObject * survive_get_so_by_name( struct SurviveContext * ctx, const char * name );
 
 //Utilitiy functions.
 int survive_simple_inflate( struct SurviveContext * ctx, const char * input, int inlen, char * output, int outlen );

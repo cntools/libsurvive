@@ -29,13 +29,13 @@ static void survivenote( struct SurviveContext * ctx, const char * fault )
 	fprintf( stderr, "Info: %s\n", fault );
 }
 
-static int ParsePoints( struct SurviveContext * ctx, char * ct0conf, SV_FLOAT ** floats_out, jsmntok_t * t, int i )
+static int ParsePoints( struct SurviveContext * ctx, struct SurviveObject * so, char * ct0conf, SV_FLOAT ** floats_out, jsmntok_t * t, int i )
 {
 	int k;
 	int pts = t[i+1].size;
 	jsmntok_t * tk;
 
-	ctx->headset.nr_locations = 0;
+	so->nr_locations = 0;
 	*floats_out = malloc( sizeof( **floats_out ) * 32 * 3 );
 
 	for( k = 0; k < pts; k++ )
@@ -60,10 +60,10 @@ static int ParsePoints( struct SurviveContext * ctx, char * ct0conf, SV_FLOAT **
 			memcpy( ctt, ct0conf + tk->start, elemlen );
 			ctt[elemlen] = 0;
 			float f = atof( ctt );
-			int id = ctx->headset.nr_locations*3+m;
+			int id = so->nr_locations*3+m;
 			(*floats_out)[id] = f;
 		}
-		ctx->headset.nr_locations++;
+		so->nr_locations++;
 	}
 	return 0;
 }
@@ -72,6 +72,15 @@ static int LoadConfig( struct SurviveContext * ctx, struct SurviveObject * so, i
 {
 	char * ct0conf = 0;
 	int len = survive_get_config( &ct0conf, ctx, devno, iface, extra_magic );
+
+#if 0
+	char fname[100];
+	sprintf( fname, "%s_config.json", so->codename );
+	FILE * f = fopen( fname, "w" );
+	fwrite( ct0conf, strlen(ct0conf), 1, f );
+	fclose( f );
+#endif
+
 	if( len > 0 )
 	{
 
@@ -98,16 +107,18 @@ static int LoadConfig( struct SurviveContext * ctx, struct SurviveObject * so, i
 			if( ilen > 99 ) ilen = 99;
 			memcpy(ctxo, ct0conf + tk->start, ilen);
 			ctxo[ilen] = 0;
+
 //				printf( "%d / %d / %d / %d %s %d\n", tk->type, tk->start, tk->end, tk->size, ctxo, jsoneq(ct0conf, &t[i], "modelPoints") );
 //				printf( "%.*s\n", ilen, ct0conf + tk->start );
+
 			if (jsoneq(ct0conf, tk, "modelPoints") == 0) {
-				if( ParsePoints( ctx,  ct0conf, &ctx->headset.sensor_locations, t, i  ) )
+				if( ParsePoints( ctx, so, ct0conf, &so->sensor_locations, t, i  ) )
 				{
 					break;
 				}
 			}
 			if (jsoneq(ct0conf, tk, "modelNormals") == 0) {
-				if( ParsePoints( ctx,  ct0conf, &ctx->headset.sensor_normals, t, i  ) )
+				if( ParsePoints( ctx, so, ct0conf, &so->sensor_normals, t, i  ) )
 				{
 					break;
 				}
@@ -133,15 +144,12 @@ struct SurviveContext * survive_init()
 	ctx->lightproc = survive_default_light_process;
 	ctx->imuproc = survive_default_imu_process;
 
-	ctx->headset.sensors = 32;
 	ctx->headset.ctx = ctx;
 	memcpy( ctx->headset.codename, "HMD", 4 );
 
-	ctx->watchman[0].sensors = 16;
 	ctx->watchman[0].ctx = ctx;
 	memcpy( ctx->watchman[0].codename, "WM0", 4 );
 
-	ctx->watchman[1].sensors = 16;
 	ctx->watchman[1].ctx = ctx;
 	memcpy( ctx->watchman[1].codename, "WM1", 4 );
 
@@ -244,12 +252,19 @@ int survive_simple_inflate( struct SurviveContext * ctx, const char * input, int
 
     if( inflate( &zs, Z_FINISH) != Z_STREAM_END )
 	{
-		printf( "Zissue\n" );
         SV_INFO("survive_simple_inflate could not inflate." );
         return -1;
 	}
 	int len = zs.total_out;
 	inflateEnd( &zs );
 	return len;
+}
+
+struct SurviveObject * survive_get_so_by_name( struct SurviveContext * ctx, const char * name )
+{
+	if( strcmp( name, "HMD" ) == 0 ) return &ctx->headset;
+	if( strcmp( name, "WM0" ) == 0 ) return &ctx->watchman[0];
+	if( strcmp( name, "WM1" ) == 0 ) return &ctx->watchman[1];
+	return 0;
 }
 
