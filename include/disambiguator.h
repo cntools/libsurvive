@@ -1,3 +1,6 @@
+// (C) 2016 Julian Picht, MIT/x11 License.
+//
+//All MIT/x11 Licensed Code in this file may be relicensed freely under the GPL or LGPL licenses.
 #ifndef DISAMBIGUATOR_H
 #define DISAMBIGUATOR_H
 

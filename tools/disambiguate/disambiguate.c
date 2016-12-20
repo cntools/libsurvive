@@ -1,3 +1,7 @@
+// (C) 2016 Julian Picht, MIT/x11 License.
+//
+//All MIT/x11 Licensed Code in this file may be relicensed freely under the GPL or LGPL licenses.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,7 +10,7 @@
 
 int main() {
 
-	FILE * f = fopen( "raw_light_data_from_watchman.csv", "r" );
+	FILE * f = fopen( "raw_light_data_from_watchman.sorted.csv", "r" );
 	if (f == NULL) {
 		fprintf(stderr, "ERROR OPENING INPUT FILE\n");
 		return -1;

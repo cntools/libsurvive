@@ -1,3 +1,7 @@
+// (C) 2016 Julian Picht, MIT/x11 License.
+//
+//All MIT/x11 Licensed Code in this file may be relicensed freely under the GPL or LGPL licenses.
+
 #include "../include/disambiguator.h"
 #include <stdlib.h>
 #include <string.h>
