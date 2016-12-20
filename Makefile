@@ -1,7 +1,7 @@
 all : lib data_recorder test
 
-CFLAGS:=-Iinclude -fPIC -g -Os -Iredist
-LDFLAGS:=-lpthread -lusb-1.0 -lz -lX11
+CFLAGS:=-Iinclude -fPIC -g -Os -Iredist -flto
+LDFLAGS:=-lpthread -lusb-1.0 -lz -lX11 -flto
 
 test : test.c lib/libsurvive.so redist/os_generic.o
 	gcc -o $@ $^ $(LDFLAGS) $(CFLAGS)
@@ -16,7 +16,7 @@ lib/libsurvive.so : src/survive.o src/survive_usb.o src/survive_data.o src/survi
 	gcc -o $@ $^ $(LDFLAGS) -shared
 
 clean :
-	rm -rf *.o src/*.o *~ src/*~ test libsurvive.so
+	rm -rf *.o src/*.o *~ src/*~ test data_recorder lib/libsurvive.so
 
 
 
