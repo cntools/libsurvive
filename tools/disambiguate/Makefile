@@ -1,5 +1,5 @@
 disambiguate: disambiguate.c
-	gcc -g -o $@ $^ -lm
+	gcc -Wall -Wextra -Werror -g -o $@ $^ -lm
 
 test: disambiguate
 	./disambiguate | head -n 100
