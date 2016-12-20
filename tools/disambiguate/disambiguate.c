@@ -33,6 +33,7 @@ typedef struct disambiguator_ {
 	int scores[DIS_NUM_VALUES];
 	dis_state state;
 	long last;
+	int max_confidence;
 } disambiguator;
 
 typedef struct classified_pulse_ {
@@ -45,15 +46,22 @@ void disambiguator_init(disambiguator * d) {
 	memset(&(d->scores), 0x0, sizeof(d->times));
 	d->state = D_STATE_UNLOCKED;
 	d->last = 0;
+	d->max_confidence = 0;
 }
 
 void disambiguator_discard(disambiguator * d, long age) {
+	int confidence = 0;
 	for (unsigned int i = 0; i < DIS_NUM_VALUES; ++i) {
 		if (d->times[i] != 0 && d->times[i] < age) {
 			d->times[i] = 0;
 			d->scores[i] = 0;
+		} else {
+			if (d->scores[i] > confidence) {
+				confidence = d->scores[i];
+			}
 		}
 	}
+	d->max_confidence = confidence;
 }
 
 int disambiguator_find_nearest(disambiguator * d, long time, int max_diff) {
@@ -101,11 +109,18 @@ pulse_type disambiguator_step(disambiguator * d, long time, int length) {
 		if (d->scores[idx] >= 30) {
 			d->state = D_STATE_LOCKED;
 			// printf("MATCH: %li %d\n", time - d->times[idx], scores[idx]);
-			return P_SYNC;
 		}
+/*
+		for (unsigned int i = 0; i < DIS_NUM_VALUES; ++i) {
+			if (d->scores[i] > 0 && d->times[i] != 0)
+				printf("TS %2d %li %d\n", i, d->times[i], d->scores[i]);
+		}
+*/
 		d->times[idx] = time;
 		d->last = time;
-		return d->state == D_STATE_LOCKED ? P_SYNC : P_UNKNOWN;
+		return d->state == D_STATE_LOCKED ? (
+			d->scores[idx] >= d->max_confidence ? P_SYNC : P_SWEEP
+		) : P_UNKNOWN;
 	}
 
 	return d->state == D_STATE_LOCKED ? P_SWEEP : P_UNKNOWN;
@@ -125,9 +140,6 @@ int main() {
 	}
 
 	long last = 0;
-	int num = 0;
-	long data[12];
-	memset(&data, 0x0, sizeof(data));
 
 	disambiguator d;
 	disambiguator_init(&d);
@@ -140,16 +152,6 @@ int main() {
 
 		if (fscanf(f, "%s %d %d %d %li", controller, &sensor, &unknown, &length, &time) != 5) {
 			break;
-		}
-		if (length > 2750) {
-			char cc = length_to_pulse(length);
-			printf("PULSE %d %c%d ", length, cc & 0x1 ? 'j' : 'k', (cc >> 1) & 0x3);
-			for (int i = 0; i < 12; ++i) {
-				if (data[i] != 0)
-					printf("%8li ", (time-data[i]) % 400000);
-			}
-			printf("\n");
-			data[num++ % 12] = time;
 		}
 
 		switch (disambiguator_step(&d, time, length)) {
