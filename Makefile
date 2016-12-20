@@ -12,7 +12,7 @@ data_recorder : data_recorder.c lib/libsurvive.so redist/os_generic.o redist/Dra
 lib:
 	mkdir lib
 
-lib/libsurvive.so : src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o redist/jsmn.o $(DEBUGSTUFF)
+lib/libsurvive.so : src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o src/disambiguator.c redist/jsmn.o $(DEBUGSTUFF)
 	gcc -o $@ $^ $(LDFLAGS) -shared
 
 clean :
