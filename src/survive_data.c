@@ -52,7 +52,7 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 			so->d.code = ((le->length+125)/250) - 12;
 			break;
 		case P_SWEEP:
-			if (so->d.gcode & 1) return;
+			if (so->d.code & 1) return;
 			ct->lightproc( so, le->sensor_id, so->d.code >> 1, offset, le->timestamp, le->length );
 			break;
 	}
