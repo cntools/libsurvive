@@ -11,6 +11,7 @@
 //All MIT/x11 Licensed Code in this file may be relicensed freely under the GPL or LGPL licenses.
 
 #include "survive_internal.h"
+#include "disambiguator.h"
 #include <stdint.h>
 #include <string.h>
 
@@ -40,7 +41,23 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 
 	if( le->type != 0xfe || le->length < 50 ) return;
 	//le->timestamp += (le->length/2);
-
+#if 0
+	int32_t offset = le->timestamp - so->d->last;
+	switch( disambiguator_step( so->d, le->timestamp, le->length ) ) {
+		default:
+		case P_UNKNOWN:
+			// not currently locked
+		case P_SYNC:
+			ct->lightproc( so, le->sensor_id, -1, 0, le->timestamp, offset );
+			so->d->code = ((le->length+125)/250) - 12;
+			break;
+		case P_SWEEP:
+			if (so->d->code & 1) return;
+			ct->lightproc( so, le->sensor_id, so->d->code >> 1, offset, le->timestamp, le->length );
+			break;
+	}
+#endif
+#ifdef USE_OLD_DISAMBIGUATOR
 	if( le->length > 2100 ) //Pulse longer indicates a sync pulse.
 	{
 		int32_t deltat = (uint32_t)le->timestamp - (uint32_t)so->last_photo_time;
@@ -85,6 +102,7 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 	{
 		//Runt pulse.
 	}
+#endif
 }
 
 

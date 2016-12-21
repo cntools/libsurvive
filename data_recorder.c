@@ -33,57 +33,51 @@ void HandleMotion( int x, int y, int mask )
 {
 }
 
-int bufferpts[32*2];
-char buffermts[32*128];
-int buffertimeto[32];
+int bufferpts[32*2*3];
+char buffermts[32*128*3];
+int buffertimeto[32*3];
 
 void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  )
 {
 	if( acode == -1 ) return;
+//return;
+	int jumpoffset = sensor_id;
+	if( strcmp( so->codename, "WM0" ) == 0 ) jumpoffset += 32;
+	else if( strcmp( so->codename, "WM1" ) == 0 ) jumpoffset += 64;
+
 
 	if( acode == 0 || acode == 2 ) //data = 0
 	{
 		printf( "L X %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
-		if( strcmp( so->codename, "HMD" ) == 0 )
-		{
-			bufferpts[sensor_id*2+0] = (timeinsweep-100000)/500;
-			buffertimeto[sensor_id] = 0;
-		}
+		bufferpts[jumpoffset*2+0] = (timeinsweep-100000)/500;
+		buffertimeto[jumpoffset] = 0;
 	}
 	if( acode == 1 || acode == 3 ) //data = 1
 	{
 		printf( "L Y %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
-		if( strcmp( so->codename, "HMD" ) == 0 )
-		{
-			bufferpts[sensor_id*2+1] = (timeinsweep-100000)/500;
-			buffertimeto[sensor_id] = 0;
-		}
+		bufferpts[jumpoffset*2+1] = (timeinsweep-100000)/500;
+		buffertimeto[jumpoffset] = 0;
 	}
 
 
 	if( acode == 4 || acode == 6 ) //data = 0
 	{
 		printf( "R X %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
-		if( strcmp( so->codename, "HMD" ) == 0 )
-		{
-			bufferpts[sensor_id*2+0] = (timeinsweep-100000)/500;
-			buffertimeto[sensor_id] = 0;
-		}
+		bufferpts[jumpoffset*2+0] = (timeinsweep-100000)/500;
+		buffertimeto[jumpoffset] = 0;
 	}
 	if( acode == 5 || acode == 7 ) //data = 1
 	{
 		printf( "R Y %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
-		if( strcmp( so->codename, "HMD" ) == 0 )
-		{
-			bufferpts[sensor_id*2+1] = (timeinsweep-100000)/500;
-			buffertimeto[sensor_id] = 0;
-		}
+		bufferpts[jumpoffset*2+1] = (timeinsweep-100000)/500;
+		buffertimeto[jumpoffset] = 0;
 	}
 
 }
 
 void my_imu_process( struct SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id )
 {
+return;
 	//if( so->codename[0] == 'H' )
 	if( 1 )
 	{
@@ -105,9 +99,9 @@ void * GuiThread( void * v )
 		CNFGGetDimensions( &screenx, &screeny );
 
 		int i;
-		for( i = 0; i < 32; i++ )
+		for( i = 0; i < 32*3; i++ )
 		{
-			if( buffertimeto[i] < 5 )
+			if( buffertimeto[i] < 50 )
 			{
 				uint32_t color = i * 3231349;
 				uint8_t r = color & 0xff;
