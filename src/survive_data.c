@@ -42,18 +42,18 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 	if( le->type != 0xfe || le->length < 50 ) return;
 	//le->timestamp += (le->length/2);
 
-	int32_t offset = le->timestamp - so->d.last;
-	switch(disambiguator_step(&(so->d), le->timestamp, le->length)) {
+	int32_t offset = le->timestamp - so->d->last;
+	switch( disambiguator_step( so->d, le->timestamp, le->length ) ) {
 		default:
 		case P_UNKNOWN:
 			// not currently locked
 		case P_SYNC:
 			ct->lightproc( so, le->sensor_id, -1, 0, le->timestamp, offset );
-			so->d.code = ((le->length+125)/250) - 12;
+			so->d->code = ((le->length+125)/250) - 12;
 			break;
 		case P_SWEEP:
-			if (so->d.code & 1) return;
-			ct->lightproc( so, le->sensor_id, so->d.code >> 1, offset, le->timestamp, le->length );
+			if (so->d->code & 1) return;
+			ct->lightproc( so, le->sensor_id, so->d->code >> 1, offset, le->timestamp, le->length );
 			break;
 	}
 #if 0

@@ -18,21 +18,21 @@ typedef enum {
 	P_SWEEP = 2,
 } pulse_type;
 
-typedef struct disambiguator_ {
+struct disambiguator {
 	long times[DIS_NUM_VALUES];
 	int scores[DIS_NUM_VALUES];
 	dis_state state;
 	long last;
 	int max_confidence;
 	char code;
-} disambiguator;
+};
 
-typedef struct classified_pulse_ {
+struct classified_pulse_ {
 	pulse_type t;
 	int length;
-} classified_pulse;
+};
 
-void disambiguator_init(disambiguator * d);
-pulse_type disambiguator_step(disambiguator * d, long time, int length);
+void disambiguator_init( struct disambiguator * d);
+pulse_type disambiguator_step( struct disambiguator * d, long time, int length);
 
 #endif /* DISAMBIGUATOR_H */

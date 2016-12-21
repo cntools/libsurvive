@@ -1,7 +1,6 @@
 #ifndef _SURVIVE_H
 #define _SURVIVE_H
 
-#include "disambiguator.h"
 #include <stdint.h>
 
 #define SV_FLOAT  		double
@@ -38,7 +37,7 @@ struct SurviveObject
 	int32_t total_photo_time;
 	int32_t total_pulsecode_time;
 #else
-	disambiguator d;
+	struct disambiguator * d;
 #endif
 };
 

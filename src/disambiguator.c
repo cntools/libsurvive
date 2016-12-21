@@ -2,11 +2,11 @@
 //
 //All MIT/x11 Licensed Code in this file may be relicensed freely under the GPL or LGPL licenses.
 
-#include "../include/disambiguator.h"
+#include "disambiguator.h"
 #include <stdlib.h>
 #include <string.h>
 
-void disambiguator_init(disambiguator * d) {
+void disambiguator_init( struct disambiguator * d ) {
 	memset(&(d->times), 0x0, sizeof(d->times));
 	memset(&(d->scores), 0x0, sizeof(d->scores));
 	d->state = D_STATE_UNLOCKED;
@@ -14,9 +14,10 @@ void disambiguator_init(disambiguator * d) {
 	d->max_confidence = 0;
 }
 
-inline void disambiguator_discard(disambiguator * d, long age);
+inline void disambiguator_discard( struct disambiguator * d, long age );
 
-void disambiguator_discard(disambiguator * d, long age) {
+void disambiguator_discard( struct disambiguator * d, long age )
+{
 	int confidence = 0;
 	for (unsigned int i = 0; i < DIS_NUM_VALUES; ++i) {
 		if (d->times[i] != 0 && d->times[i] < age) {
@@ -31,9 +32,10 @@ void disambiguator_discard(disambiguator * d, long age) {
 	d->max_confidence = confidence;
 }
 
-inline int disambiguator_find_nearest(disambiguator * d, long time, int max_diff);
+inline int disambiguator_find_nearest( struct disambiguator * d, long time, int max_diff );
 
-int disambiguator_find_nearest(disambiguator * d, long time, int max_diff) {
+int disambiguator_find_nearest( struct disambiguator * d, long time, int max_diff )
+{
 	int diff = max_diff; // max allowed diff for a match
 	int idx = -1;
 	for (unsigned int i = 0; i < DIS_NUM_VALUES; ++i) {
@@ -49,7 +51,8 @@ int disambiguator_find_nearest(disambiguator * d, long time, int max_diff) {
 	return idx;
 }
 
-pulse_type disambiguator_step(disambiguator * d, long time, int length) {
+pulse_type disambiguator_step( struct disambiguator * d, long time, int length)
+{
 	if (length < 2750) {
 		return d->state == D_STATE_LOCKED ? P_SWEEP : P_UNKNOWN;
 	}
