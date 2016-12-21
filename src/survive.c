@@ -92,12 +92,12 @@ static int LoadConfig( struct SurviveContext * ctx, struct SurviveObject * so, i
 		int i;
 		int r = jsmn_parse(&p, ct0conf, len, t, sizeof(t)/sizeof(t[0]));	
 		if (r < 0) {
-			SV_ERROR("Failed to parse JSON in HMD configuration: %d\n", r);
-			return 0;
+			SV_INFO("Failed to parse JSON in HMD configuration: %d\n", r);
+			return -1;
 		}
 		if (r < 1 || t[0].type != JSMN_OBJECT) {
-			SV_ERROR("Object expected in HMD configuration\n");
-			return 0;
+			SV_INFO("Object expected in HMD configuration\n");
+			return -2;
 		}
 
 		for (i = 1; i < r; i++) {
@@ -166,8 +166,8 @@ struct SurviveContext * survive_init()
 
 	//Next, pull out the config stuff.
 	if( LoadConfig( ctx, &ctx->headset, 1, 0, 0 ) ) goto fail_gracefully;
-	if( LoadConfig( ctx, &ctx->watchman[0], 2, 0, 1 ) ) goto fail_gracefully;
-	if( LoadConfig( ctx, &ctx->watchman[1], 3, 0, 1 ) ) goto fail_gracefully;
+	if( LoadConfig( ctx, &ctx->watchman[0], 2, 0, 1 ) ) { SV_INFO( "Watchman 0 config issue." ); }
+	if( LoadConfig( ctx, &ctx->watchman[1], 3, 0, 1 ) ) { SV_INFO( "Watchman 1 config issue." ); }
 
 /*
 	int i;

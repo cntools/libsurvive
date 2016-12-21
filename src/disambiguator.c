@@ -56,10 +56,13 @@ pulse_type disambiguator_step( struct disambiguator * d, long time, int length)
 	if (length < 2750) {
 		return d->state == D_STATE_LOCKED ? P_SWEEP : P_UNKNOWN;
 	}
+	//printf( "%d %d\n", time, length );
+	//printf( "." );
+	//time -= length/2;
 
 	disambiguator_discard(d, time - 10000000);
 	int idx = disambiguator_find_nearest(d, time - 400000, 100);
-
+	
 	if (time - d->last > 401000) {
 		d->state = D_STATE_UNLOCKED;
 	}

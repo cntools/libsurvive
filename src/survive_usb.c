@@ -384,7 +384,7 @@ int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, 
 	cfgbuff[0] = 0x10;
 	if( ( ret = hid_get_feature_report_timeout( dev, iface, cfgbuff, sizeof( cfgbuff ) ) ) < 0 )
 	{
-		SV_ERROR( "Could not get survive config data for device %d:%d", devno, iface );
+		SV_INFO( "Could not get survive config data for device %d:%d", devno, iface );
 		return -1;
 	}
 
@@ -395,7 +395,7 @@ int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, 
 	{
 		if( (ret = hid_get_feature_report_timeout(dev, iface, cfgbuff, sizeof( cfgbuff ) ) ) < 0 )
 		{
-			SV_ERROR( "Could not read config data (after first packet) on device %d:%d (count: %d)\n", devno, iface, count );
+			SV_INFO( "Could not read config data (after first packet) on device %d:%d (count: %d)\n", devno, iface, count );
 			return -2;
 		}
 
@@ -405,13 +405,13 @@ int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, 
 
 		if( size > 62 )
 		{
-			SV_ERROR( "Too much data (%d) on packet from config for device %d:%d (count: %d)", size, devno, iface, count );
+			SV_INFO( "Too much data (%d) on packet from config for device %d:%d (count: %d)", size, devno, iface, count );
 			return -3;
 		}
 
 		if( count + size >= sizeof( compressed_data ) )
 		{
-			SV_ERROR( "Configuration length too long %d:%d (count: %d)", devno, iface, count );
+			SV_INFO( "Configuration length too long %d:%d (count: %d)", devno, iface, count );
 			return -4;
 		}
 
@@ -421,7 +421,7 @@ int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, 
 
 	if( count == 0 )
 	{
-		SV_ERROR( "Empty configuration for %d:%d", devno, iface );
+		SV_INFO( "Empty configuration for %d:%d", devno, iface );
 		return -5;
 	}
 
@@ -430,7 +430,7 @@ int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, 
 	int len = survive_simple_inflate( ctx, compressed_data, count, uncompressed_data, sizeof(uncompressed_data)-1 );
 	if( len <= 0 )
 	{
-		SV_ERROR( "Error: data for config descriptor %d:%d is bad.", devno, iface );
+		SV_INFO( "Error: data for config descriptor %d:%d is bad.", devno, iface );
 		return -5;
 	}
 

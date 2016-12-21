@@ -1,6 +1,6 @@
 all : lib data_recorder test
 
-CFLAGS:=-Iinclude -fPIC -g -Os -Iredist -flto
+CFLAGS:=-Iinclude -fPIC -g -Os -Iredist -flto -DUSE_OLD_DISAMBIGUATOR
 LDFLAGS:=-lpthread -lusb-1.0 -lz -lX11 -flto
 
 test : test.c lib/libsurvive.so redist/os_generic.o

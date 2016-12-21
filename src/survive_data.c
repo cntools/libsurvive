@@ -41,7 +41,7 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 
 	if( le->type != 0xfe || le->length < 50 ) return;
 	//le->timestamp += (le->length/2);
-
+#if 0
 	int32_t offset = le->timestamp - so->d->last;
 	switch( disambiguator_step( so->d, le->timestamp, le->length ) ) {
 		default:
@@ -56,7 +56,8 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 			ct->lightproc( so, le->sensor_id, so->d->code >> 1, offset, le->timestamp, le->length );
 			break;
 	}
-#if 0
+#endif
+#ifdef USE_OLD_DISAMBIGUATOR
 	if( le->length > 2100 ) //Pulse longer indicates a sync pulse.
 	{
 		int32_t deltat = (uint32_t)le->timestamp - (uint32_t)so->last_photo_time;

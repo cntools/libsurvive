@@ -31,7 +31,7 @@ struct SurviveObject
 
 	//Flood info, for calculating which laser is currently sweeping.
 	int8_t oldcode;
-#if 0
+#ifdef USE_OLD_DISAMBIGUATOR
 	int16_t total_photos;
 	int32_t last_photo_time;
 	int32_t total_photo_time;

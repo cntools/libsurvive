@@ -40,7 +40,7 @@ int buffertimeto[32*3];
 void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  )
 {
 	if( acode == -1 ) return;
-
+//return;
 	int jumpoffset = sensor_id;
 	if( strcmp( so->codename, "WM0" ) == 0 ) jumpoffset += 32;
 	else if( strcmp( so->codename, "WM1" ) == 0 ) jumpoffset += 64;
@@ -77,6 +77,7 @@ void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int 
 
 void my_imu_process( struct SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id )
 {
+return;
 	//if( so->codename[0] == 'H' )
 	if( 1 )
 	{
