@@ -39,6 +39,8 @@ struct SurviveObject
 #else
 	struct disambiguator * d;
 #endif
+
+	uint32_t last_lighttime;  //May be a 24- or 32- bit number depending on what device.
 };
 
 typedef void (*text_feedback_fnptr)( struct SurviveContext * ctx, const char * fault );

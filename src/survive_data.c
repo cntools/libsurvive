@@ -33,15 +33,12 @@ struct LightcapElement
 static void handle_lightcap( struct SurviveObject * so, struct LightcapElement * le )
 {
 	struct SurviveContext * ct = so->ctx;
-
-//	if( so->codename[0] == 'W' )
-//	{
-//		printf( "%s %d %d %d %d\n", so->codename, le->sensor_id, le->type, le->length, le->timestamp );
-//	}
-
-	if( le->type != 0xfe || le->length < 50 ) return;
-	//le->timestamp += (le->length/2);
-#if 0
+	int32_t deltat = (uint32_t)le->timestamp - (uint32_t)so->last_photo_time;
+	static int tsl = 0;
+//	printf( "%s %4d %5d %5d %d[%d] + %d %d %d %d (%d)\n", so->codename, le->sensor_id, le->type, le->length, le->timestamp, le->timestamp-tsl, so->last_photo_time, so->total_photo_time, so->total_photos, so->total_pulsecode_time, deltat );
+	tsl = le->timestamp;
+	if( le->type != 0xfe || le->length < 20 ) return;
+#ifndef USE_OLD_DISAMBIGUATOR
 	int32_t offset = le->timestamp - so->d->last;
 	switch( disambiguator_step( so->d, le->timestamp, le->length ) ) {
 		default:
@@ -56,44 +53,45 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 			ct->lightproc( so, le->sensor_id, so->d->code >> 1, offset, le->timestamp, le->length );
 			break;
 	}
-#endif
-#ifdef USE_OLD_DISAMBIGUATOR
+#else
 	if( le->length > 2100 ) //Pulse longer indicates a sync pulse.
 	{
 		int32_t deltat = (uint32_t)le->timestamp - (uint32_t)so->last_photo_time;
 		if( deltat > 2000 || deltat < -2000 )		//New pulse. (may be inverted)
 		{
-			if( le->timestamp - so->last_photo_time > 80000 )
+			if( le->timestamp - so->last_photo_time > 2500 )
 			{
 				so->last_photo_time = le->timestamp;
 				so->total_photo_time = 0;
 				so->total_photos = 0;
 				so->total_pulsecode_time = 0;
 				ct->lightproc( so, le->sensor_id, -1, 0, le->timestamp, deltat );
+				deltat = 0;
 			}
 		}
-		else
+
 		{
 			so->total_pulsecode_time += le->length;
 			so->total_photo_time += deltat;
 			so->total_photos++;
 		}
 	}
-	else if( le->length < 1200 && le->length > 40 && so->total_photos )
+	else if( le->length < 1400 && le->length > 40 && so->total_photos )
 	{
 		int32_t dl = (so->total_photo_time/so->total_photos);
 		int32_t tpco = (so->total_pulsecode_time/so->total_photos);
 		//Adding length 
 		int32_t offset_from = le->timestamp - dl - so->last_photo_time + le->length/2;
-
+//		printf( "%d // %d/%d = %d\n", offset_from, so->total_pulsecode_time,so->total_photos, so->total_pulsecode_time/so->total_photos );
 		//Long pulse-code from IR flood.
 		//Make sure it fits nicely into a divisible-by-500 time.
 		int32_t acode = (tpco+125)/250;
 		if( acode & 1 ) return;
+
 		acode>>=1;
 		acode -= 6;
 
-		if( offset_from < 380000 )
+		if( offset_from < 380000 && offset_from > 20000 )
 		{
 			ct->lightproc( so, le->sensor_id, acode, offset_from, le->timestamp, le->length );
 		}
@@ -196,35 +194,34 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 
 	if( qty )
 	{
-			int j;
+		int j;
 		qty++;
 		readdata--;
-		*readdata = type;
-
-		uint8_t * end = &readdata[qty];
-		uint32_t mytime = (end[1] << 0)|(end[2] << 8)|(end[3] << 16);
-
+		*readdata = type; //Put 'type' back on stack.
+		uint8_t * mptr = readdata + qty-3-1; //-3 for timecode, -1 to 
+		uint32_t mytime = (mptr[3] << 16)|(mptr[2] << 8)|(mptr[1] << 0);
 		uint32_t times[20];
-		uint32_t time;
 		const int nrtime = sizeof(times)/sizeof(uint32_t);
 		int timecount = 0;
 		int leds;
 		int parameters;
 		int fault = 0;
 
+		///Handle uint32_tifying (making sure we keep it incrementing)
+		uint32_t llt = w->last_lighttime;
+		int time_comp = llt & 0xffffff;
+		int diff = mytime - time_comp;
+		if( diff < 0 )
+		{
+			llt += 0x1000000;
+		}
+		llt = (llt & 0xff000000) | mytime;
+		mytime = w->last_lighttime = llt;
+		times[timecount++] = mytime;
+
+
 		//First, pull off the times, starting with the current time, then all the delta times going backwards.
 		{
-			uint8_t * mptr = readdata + qty-3-1; //-3 for timecode, -1 to advance.
-			uint32_t imutime = (time1<<24) | (time2<<16);
-			time = mptr[3]<<16 | mptr[2]<<8 | mptr[1];
-			time |= (time1<<24);
-			int32_t tdiff = time - imutime;
-			if( tdiff > 0x7fffff )  { time -= 0x01000000; }
-			if( tdiff < -0x7fffff ) { time += 0x01000000; }
-
-
-
-			times[timecount++] = time;
 
 			while( mptr - readdata > (timecount>>1) )
 			{
@@ -237,7 +234,7 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 					if( ap & 0x80 )  break;
 					arcane_value <<= 7;
 				} while(1);
-				times[timecount++] = (time -= arcane_value);
+				times[timecount++] = (mytime -= arcane_value);
 			}
 
 			leds = timecount>>1;
@@ -273,8 +270,6 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 				if( marked[end] > 0 ) { fault = 5; goto end; } //Already marked trying to be used.
 				uint32_t starttime = times[end];
 				marked[end] = 1;
-				//printf( "LED: %d (adv %d) / st: %d en: %d len: %d / TC: %d\n", led, adv, starttime, endtime, endtime-starttime, end );
-
 
 				//Insert all lighting things into a sorted list.  This list will be
 				//reverse sorted, but that is to minimize operations.  To read it
@@ -308,7 +303,10 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 
 		return;
 	end:
-		printf( "FAULT: %d\n", fault );
+		{
+			struct SurviveContext * ctx = w->ctx;
+			SV_INFO( "Light decoding fault: %d\n", fault );
+		}
 	}
 }
 
