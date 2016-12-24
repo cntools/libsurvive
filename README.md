@@ -14,6 +14,10 @@ Notes from second livestream trying to reverse engineer the watchman protocol: h
 
 Please see the issues for what help needs to be done now!
 
+## Extra resources
+
+HackADay article and video with Dr. Yates on how they made the Vive a thing. http://hackaday.com/2016/12/21/alan-yates-why-valves-lighthouse-cant-work/
+
 ## Introduction
 High-performance HTC Vive Library
 
