@@ -2,6 +2,8 @@
 
 **WARNING PROJECT NOT YET IN EXPERIMENTAL PHASE**
 
+Discord: https://discordapp.com/invite/7QbCAGS
+
 First livestream: https://www.youtube.com/watch?v=sv_AVI9kHN4
 
 Second livestream: https://www.youtube.com/watch?v=gFyEbGQ88s4
