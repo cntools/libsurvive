@@ -32,66 +32,74 @@ struct LightcapElement
 //This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
 static void handle_lightcap( struct SurviveObject * so, struct LightcapElement * le )
 {
-	struct SurviveContext * ct = so->ctx;
-	int32_t deltat = (uint32_t)le->timestamp - (uint32_t)so->last_photo_time;
-	static int tsl = 0;
-//	printf( "%s %4d %5d %5d %d[%d] + %d %d %d %d (%d)\n", so->codename, le->sensor_id, le->type, le->length, le->timestamp, le->timestamp-tsl, so->last_photo_time, so->total_photo_time, so->total_photos, so->total_pulsecode_time, deltat );
-	tsl = le->timestamp;
-	if( le->type != 0xfe || le->length < 20 ) return;
+       int32_t deltat = (uint32_t)le->timestamp - (uint32_t)so->last_photo_time;
+       static int tsl = 0;
+//     printf( "%s %4d %5d %5d %d[%d] + %d %d %d %d (%d)\n", so->codename, le->sensor_id, le->type, le->length, le->timestamp, le->timestamp-tsl, so->last_photo_time, so->total_photo_time, so->total_photos, so->total_pulsecode_time, deltat );
+       tsl = le->timestamp;
+       if( le->type != 0xfe || le->length < 20 ) return;
 #ifndef USE_OLD_DISAMBIGUATOR
 	int32_t offset = le->timestamp - so->d->last;
 	switch( disambiguator_step( so->d, le->timestamp, le->length ) ) {
-		default:
-		case P_UNKNOWN:
-			// not currently locked
-		case P_SYNC:
-			ct->lightproc( so, le->sensor_id, -1, 0, le->timestamp, offset );
-			so->d->code = ((le->length+125)/250) - 12;
-			break;
-		case P_SWEEP:
-			if (so->d->code & 1) return;
-			ct->lightproc( so, le->sensor_id, so->d->code >> 1, offset, le->timestamp, le->length );
-			break;
+	default:
+	case P_UNKNOWN:
+		// not currently locked
+	case P_SYNC:
+		ct->lightproc( so, le->sensor_id, -1, 0, le->timestamp, offset );
+		so->d->code = ((le->length+125)/250) - 12;
+		break;
+	case P_SWEEP:
+		if (so->d->code & 1) return;
+		ct->lightproc( so, le->sensor_id, so->d->code >> 1, offset, le->timestamp, le->length );
+		break;
 	}
 #else
+
+	struct SurviveContext * ct = so->ctx;
+
+//	if( so->codename[0] == 'W' )
+//	{
+//		printf( "%s %d %d %d %d\n", so->codename, le->sensor_id, le->type, le->length, le->timestamp );
+//	}
+
+	if( le->type != 0xfe || le->length < 50 ) return;
+	//le->timestamp += (le->length/2);
+
 	if( le->length > 2100 ) //Pulse longer indicates a sync pulse.
 	{
 		int32_t deltat = (uint32_t)le->timestamp - (uint32_t)so->last_photo_time;
 		if( deltat > 2000 || deltat < -2000 )		//New pulse. (may be inverted)
 		{
-			if( le->timestamp - so->last_photo_time > 2500 )
+			if( le->timestamp - so->last_photo_time > 80000 )
 			{
 				so->last_photo_time = le->timestamp;
 				so->total_photo_time = 0;
 				so->total_photos = 0;
 				so->total_pulsecode_time = 0;
 				ct->lightproc( so, le->sensor_id, -1, 0, le->timestamp, deltat );
-				deltat = 0;
 			}
 		}
-
+		else
 		{
 			so->total_pulsecode_time += le->length;
 			so->total_photo_time += deltat;
 			so->total_photos++;
 		}
 	}
-	else if( le->length < 1400 && le->length > 40 && so->total_photos )
+	else if( le->length < 1200 && le->length > 40 && so->total_photos )
 	{
 		int32_t dl = (so->total_photo_time/so->total_photos);
 		int32_t tpco = (so->total_pulsecode_time/so->total_photos);
 		//Adding length 
 		int32_t offset_from = le->timestamp - dl - so->last_photo_time + le->length/2;
-//		printf( "%d // %d/%d = %d\n", offset_from, so->total_pulsecode_time,so->total_photos, so->total_pulsecode_time/so->total_photos );
+
 		//Long pulse-code from IR flood.
 		//Make sure it fits nicely into a divisible-by-500 time.
 		int32_t acode = (tpco+125)/250;
 		if( acode & 1 ) return;
-
 		acode>>=1;
 		acode -= 6;
 
-		if( offset_from < 380000 && offset_from > 20000 )
+		if( offset_from < 380000 )
 		{
 			ct->lightproc( so, le->sensor_id, acode, offset_from, le->timestamp, le->length );
 		}
