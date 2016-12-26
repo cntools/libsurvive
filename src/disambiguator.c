@@ -58,15 +58,21 @@ void disambiguator_init( struct disambiguator * d ) {
 	d->max_confidence = 0;
 }
 
-inline void disambiguator_discard( struct disambiguator * d, uint32_t age );
+inline void disambiguator_discard( struct disambiguator * d );
 
 /**
  * Drop all data that is outdated
  * @param d
  * @param age Maximum age of data we care to keep
  */
-void disambiguator_discard( struct disambiguator * d, uint32_t age )
+void disambiguator_discard( struct disambiguator * d )
 {
+	long age;
+	if (d->state == D_STATE_LOCKED) {
+		age = d->last - 400000;
+	} else {
+		age = 1000000;
+	}
 	int confidence = 0;
 	for (unsigned int i = 0; i < DIS_NUM_VALUES; ++i) {
 		if (d->times[i] != 0 && d->times[i] < age) {
@@ -133,7 +139,7 @@ pulse_type disambiguator_step( struct disambiguator * d, uint32_t time, int leng
 	}
 
 	// discard all data, that is so old, we don't care about it anymore
-	disambiguator_discard(d, time - 10000000);
+	disambiguator_discard(d);
 
 	// find the best match for our timestamp and presumed offset
 	int idx = disambiguator_find_nearest(d, time - 400000, time - 20000, 100);
