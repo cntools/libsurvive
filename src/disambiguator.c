@@ -1,10 +1,54 @@
 // (C) 2016 Julian Picht, MIT/x11 License.
 //
-//All MIT/x11 Licensed Code in this file may be relicensed freely under the GPL or LGPL licenses.
+// All MIT/x11 Licensed Code in this file may be relicensed freely under the GPL or LGPL licenses.
+
+//
+// The theory behind this disambiguator is, that if we just track all pulses and if one could be a sync pulse, we look back in time,
+// if we saw as sync pulse X samples ago than it is probably a sync pulse.
+//
+// If the skip flag is set, X is 20000 else X is 400000
+//
 
 #include "disambiguator.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+
+typedef uint8_t pulse_data;
+
+/**
+ * Translate pulse length to pulse SKIP, DATA, AXIS
+ * @param length Length of the pulse in (1/48000000) seconds
+ * @return pulse data
+ */
+pulse_data get_pulse_data(uint32_t length) {
+	uint16_t temp = length - 2880;
+
+#if BETTER_SAFE_THAN_FAST
+	if (temp < 0 || length > 6525) {
+		return -1;
+	}
+#endif
+
+	if ((temp % 500) < 150) {
+		return temp / 500;
+	}
+
+	return -1;
+}
+
+const uint32_t pulse_types[] = {
+	0, 1, 0, 1,
+	2, 3, 2, 3,
+};
+
+#define PULSE_BIT_AXIS 0x1
+#define PULSE_BIT_DATA 0x2
+#define PULSE_BIT_SKIP 0x4
+
+#define PULSE_DATA(D) ((D >> 1)&0x1)
+#define PULSE_AXIS(D) (D&0x01)
+#define PULSE_SKIP(D) ((D >> 2)&0x1)
 
 void disambiguator_init( struct disambiguator * d ) {
 	memset(&(d->times), 0x0, sizeof(d->times));
@@ -14,9 +58,14 @@ void disambiguator_init( struct disambiguator * d ) {
 	d->max_confidence = 0;
 }
 
-inline void disambiguator_discard( struct disambiguator * d, long age );
+inline void disambiguator_discard( struct disambiguator * d, uint32_t age );
 
-void disambiguator_discard( struct disambiguator * d, long age )
+/**
+ * Drop all data that is outdated
+ * @param d
+ * @param age Maximum age of data we care to keep
+ */
+void disambiguator_discard( struct disambiguator * d, uint32_t age )
 {
 	int confidence = 0;
 	for (unsigned int i = 0; i < DIS_NUM_VALUES; ++i) {
@@ -32,9 +81,15 @@ void disambiguator_discard( struct disambiguator * d, long age )
 	d->max_confidence = confidence;
 }
 
-inline int disambiguator_find_nearest( struct disambiguator * d, long time, int max_diff );
+/**
+ * Find the index that has the best likelyhood too match up with the timestamp given
+ * @param time Rising edge time, where we expect to find the last sync pulse
+ * @param max_diff Maximum difference we are prepared to accept
+ * @return index inside d->times, if we found something, -1 otherwise
+ */
+inline int disambiguator_find_nearest( struct disambiguator * d, uint32_t time, int max_diff );
 
-int disambiguator_find_nearest( struct disambiguator * d, long time, int max_diff )
+int disambiguator_find_nearest( struct disambiguator * d, uint32_t time, int max_diff )
 {
 	int diff = max_diff; // max allowed diff for a match
 	int idx = -1;
@@ -42,31 +97,44 @@ int disambiguator_find_nearest( struct disambiguator * d, long time, int max_dif
 		if (d->times[i] == 0) continue;
 
 		int a = abs(d->times[i] - time);
+
+//		printf("T            %d %d %d\n", time, i, a);
 		if (a < diff) {
 			idx = i;
 			diff = a;
 		}
 	}
 
+	if (idx != -1) {
+//		printf("R            %d %d %d\n", time, idx, d->scores[idx]);
+	}
 	return idx;
 }
 
-pulse_type disambiguator_step( struct disambiguator * d, long time, int length)
+pulse_type disambiguator_step( struct disambiguator * d, uint32_t time, int length)
 {
+	// all smaller pulses are most probably sweeps
+	// TODO: check we are inside the time window of actual sweeps
 	if (length < 2750) {
 		return d->state == D_STATE_LOCKED ? P_SWEEP : P_UNKNOWN;
 	}
-	//printf( "%d %d\n", time, length );
-	//printf( "." );
-	//time -= length/2;
 
-	disambiguator_discard(d, time - 10000000);
-	int idx = disambiguator_find_nearest(d, time - 400000, 100);
-	
+	// where to expect the corresponding pulse
+	uint32_t expected_diff = 400000;
+
+	// we expected to see a sync pulse earlier ...
 	if (time - d->last > 401000) {
 		d->state = D_STATE_UNLOCKED;
 	}
+	
+	// discard all data, that is so old, we don't care about it anymore
+	disambiguator_discard(d, time - 10000000);
 
+	// find the best match for our timestamp and presumed offset
+	int idx = disambiguator_find_nearest(d, time - expected_diff, 100);
+
+	// We did not find a matching pulse, so try find a place to record the current
+	// one's time of arrival.
 	if (idx == -1) {
 		for (int i = 0; i < DIS_NUM_VALUES; ++i) {
 			if (d->times[i] == 0) {
@@ -78,7 +146,7 @@ pulse_type disambiguator_step( struct disambiguator * d, long time, int length)
 		return d->state == D_STATE_LOCKED ? P_SWEEP : P_UNKNOWN;
 	} else {
 		d->scores[idx]++;
-		if (d->scores[idx] >= 30) {
+		if (d->scores[idx] >= DIS_NUM_PULSES_BEFORE_LOCK) {
 			d->state = D_STATE_LOCKED;
 		}
 
