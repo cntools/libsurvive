@@ -41,15 +41,14 @@ int main() {
 			case P_UNKNOWN:
 				//printf("UNKN  %s %2d %d %d\n", controller, sensor, time - last, length);
 				continue;
-			case P_SYNC:
+			case P_MASTER:
+			case P_SLAVE:
 				{
-					double l = length;
-					char cc = round(l / 500) - 6;
-					int ll = (length+125)/250;
+					char cc = (length - 2750) / 500;
 					if (cc & 0x4) {
-						printf("SKIP  %s %2d %10d %5d %c%d %10d %d %d\n", controller, sensor, time, length, (cc & 0x1) ? 'k' : 'j', (cc >> 1) & 0x3, time-last, ll & 1, (ll >> 1) - 6);
+						printf("SKIP  %s %2d %10d %5d %c%d %10d\n", controller, sensor, time, length, (cc & 0x1) ? 'k' : 'j', (cc >> 1) & 0x3, time-last);
 					} else {
-						printf("SYNC  %s %2d %10d %5d %c%d %10d %d %d\n", controller, sensor, time, length, (cc & 0x1) ? 'k' : 'j', (cc >> 1) & 0x3, time-last, ll & 1, (ll >> 1) - 6);
+						printf("SYNC  %s %2d %10d %5d %c%d %10d\n", controller, sensor, time, length, (cc & 0x1) ? 'k' : 'j', (cc >> 1) & 0x3, time-last);
 						last = time;
 					}
 				}

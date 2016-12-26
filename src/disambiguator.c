@@ -83,55 +83,60 @@ void disambiguator_discard( struct disambiguator * d, uint32_t age )
 
 /**
  * Find the index that has the best likelyhood too match up with the timestamp given
- * @param time Rising edge time, where we expect to find the last sync pulse
+ * @param t1 Rising edge time, where we expect to find the last sync pulse, if this is a master pulse
+ * @param t2 Rising edge time, where we expect to find the last sync pulse, if this is a slave pulse
  * @param max_diff Maximum difference we are prepared to accept
  * @return index inside d->times, if we found something, -1 otherwise
  */
-inline int disambiguator_find_nearest( struct disambiguator * d, uint32_t time, int max_diff );
+inline int disambiguator_find_nearest( struct disambiguator * d, uint32_t t1, uint32_t t2, int max_diff );
 
-int disambiguator_find_nearest( struct disambiguator * d, uint32_t time, int max_diff )
+int disambiguator_find_nearest( struct disambiguator * d, uint32_t t1, uint32_t t2, int max_diff )
 {
 	int diff = max_diff; // max allowed diff for a match
 	int idx = -1;
 	for (unsigned int i = 0; i < DIS_NUM_VALUES; ++i) {
 		if (d->times[i] == 0) continue;
 
-		int a = abs(d->times[i] - time);
+		int a_1 = abs(d->times[i] - t1);
+		int a_2 = abs(d->times[i] - t2);
 
 //		printf("T            %d %d %d\n", time, i, a);
-		if (a < diff) {
+		if (a_1 < diff) {
 			idx = i;
-			diff = a;
+			diff = a_1;
+		} else if (a_2 < diff) {
+			idx = i;
+			diff = a_2;
 		}
 	}
 
-	if (idx != -1) {
-//		printf("R            %d %d %d\n", time, idx, d->scores[idx]);
-	}
+//	if (idx != -1) {
+//		printf("R            %d %d %d\n", idx, d->scores[idx], diff);
+//	}
+
 	return idx;
 }
 
 pulse_type disambiguator_step( struct disambiguator * d, uint32_t time, int length)
 {
+	uint32_t diff = time - d->last;
+
 	// all smaller pulses are most probably sweeps
 	// TODO: check we are inside the time window of actual sweeps
 	if (length < 2750) {
 		return d->state == D_STATE_LOCKED ? P_SWEEP : P_UNKNOWN;
 	}
 
-	// where to expect the corresponding pulse
-	uint32_t expected_diff = 400000;
-
 	// we expected to see a sync pulse earlier ...
 	if (time - d->last > 401000) {
 		d->state = D_STATE_UNLOCKED;
 	}
-	
+
 	// discard all data, that is so old, we don't care about it anymore
 	disambiguator_discard(d, time - 10000000);
 
 	// find the best match for our timestamp and presumed offset
-	int idx = disambiguator_find_nearest(d, time - expected_diff, 100);
+	int idx = disambiguator_find_nearest(d, time - 400000, time - 20000, 100);
 
 	// We did not find a matching pulse, so try find a place to record the current
 	// one's time of arrival.
@@ -150,10 +155,15 @@ pulse_type disambiguator_step( struct disambiguator * d, uint32_t time, int leng
 			d->state = D_STATE_LOCKED;
 		}
 
+		if (diff < 21000) {
+			return d->state == D_STATE_LOCKED ? P_SLAVE : P_UNKNOWN;
+		}
+
 		d->times[idx] = time;
 		d->last = time;
+
 		return d->state == D_STATE_LOCKED ? (
-			d->scores[idx] >= d->max_confidence ? P_SYNC : P_SWEEP
+			d->scores[idx] >= d->max_confidence ? P_MASTER : P_SWEEP
 		) : P_UNKNOWN;
 	}
 

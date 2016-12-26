@@ -24,8 +24,9 @@ typedef enum {
  */
 typedef enum {
 	P_UNKNOWN = 0,
-	P_SYNC = 1,
+	P_MASTER = 1,
 	P_SWEEP = 2,
+	P_SLAVE = 3,
 } pulse_type;
 
 /**
