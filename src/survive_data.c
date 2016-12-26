@@ -32,11 +32,13 @@ struct LightcapElement
 //This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
 static void handle_lightcap( struct SurviveObject * so, struct LightcapElement * le )
 {
-       int32_t deltat = (uint32_t)le->timestamp - (uint32_t)so->last_photo_time;
-       static int tsl = 0;
-//     printf( "%s %4d %5d %5d %d[%d] + %d %d %d %d (%d)\n", so->codename, le->sensor_id, le->type, le->length, le->timestamp, le->timestamp-tsl, so->last_photo_time, so->total_photo_time, so->total_photos, so->total_pulsecode_time, deltat );
-       tsl = le->timestamp;
-       if( le->type != 0xfe || le->length < 20 ) return;
+	struct SurviveContext * ct = so->ctx;
+	int32_t deltat = (uint32_t)le->timestamp - (uint32_t)so->last_photo_time;
+
+//	printf( "%s %d %d %d %d %d\n", so->codename, le->sensor_id, le->type, le->length, le->timestamp, le->timestamp-so->tsl );
+
+	so->tsl = le->timestamp;
+	if( le->type != 0xfe || le->length < 20 ) return;
 #ifndef USE_OLD_DISAMBIGUATOR
 	int32_t offset = le->timestamp - so->d->last;
 	switch( disambiguator_step( so->d, le->timestamp, le->length ) ) {
@@ -53,60 +55,53 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 		break;
 	}
 #else
-
-	struct SurviveContext * ct = so->ctx;
-
-//	if( so->codename[0] == 'W' )
-//	{
-//		printf( "%s %d %d %d %d\n", so->codename, le->sensor_id, le->type, le->length, le->timestamp );
-//	}
-
-	if( le->type != 0xfe || le->length < 50 ) return;
-	//le->timestamp += (le->length/2);
-
-	if( le->length > 2100 ) //Pulse longer indicates a sync pulse.
+	if( le->length > 2200 ) //Pulse longer indicates a sync pulse.
 	{
 		int32_t deltat = (uint32_t)le->timestamp - (uint32_t)so->last_photo_time;
 		if( deltat > 2000 || deltat < -2000 )		//New pulse. (may be inverted)
 		{
-			if( le->timestamp - so->last_photo_time > 80000 )
+			if( le->timestamp - so->last_photo_time > 1500 + so->last_photo_length )
 			{
 				so->last_photo_time = le->timestamp;
-				so->total_photo_time = 0;
-				so->total_photos = 0;
-				so->total_pulsecode_time = 0;
+				so->last_photo_length = le->length;
 				ct->lightproc( so, le->sensor_id, -1, 0, le->timestamp, deltat );
+				deltat = 0;
+			//	printf( "++ %d %d\n", so->last_photo_time, so->last_photo_length );
 			}
 		}
-		else
+		if( le->length > so->last_photo_length )
 		{
-			so->total_pulsecode_time += le->length;
-			so->total_photo_time += deltat;
-			so->total_photos++;
+			so->last_photo_time = le->timestamp;
+			so->last_photo_length = le->length;
+		//	printf( "+++ %d %d\n", so->last_photo_time, so->last_photo_length );
 		}
 	}
-	else if( le->length < 1200 && le->length > 40 && so->total_photos )
+	else if( le->length < 1800 && le->length > 40 && ( le->timestamp - so->last_photo_time < 380000 ) )
 	{
-		int32_t dl = (so->total_photo_time/so->total_photos);
-		int32_t tpco = (so->total_pulsecode_time/so->total_photos);
-		//Adding length 
-		int32_t offset_from = le->timestamp - dl - so->last_photo_time + le->length/2;
+		int32_t dl = so->last_photo_time;
+		int32_t tpco = so->last_photo_length;
 
+		//Adding length 
+		int32_t offset_from = le->timestamp - dl + le->length/2;
 		//Long pulse-code from IR flood.
 		//Make sure it fits nicely into a divisible-by-500 time.
-		int32_t acode = (tpco+125)/250;
+		int32_t acode = (tpco+125+50)/250;  //+10, seems ike that's
 		if( acode & 1 ) return;
-		acode>>=1;
+
+		acode >>= 1;
 		acode -= 6;
 
-		if( offset_from < 380000 )
+		//printf( "%s / %d %d ++ %d %d\n", so->codename, dl, tpco, offset_from, acode );
+
+		if( offset_from < 380000 && offset_from > 20000 )
 		{
 			ct->lightproc( so, le->sensor_id, acode, offset_from, le->timestamp, le->length );
 		}
 	}
 	else
 	{
-		//Runt pulse.
+		//printf( "FAIL %d   %d - %d = %d\n", le->length, so->last_photo_time, le->timestamp, so->last_photo_time - le->timestamp );
+		//Runt pulse, or no sync pulses available.
 	}
 #endif
 }
@@ -207,6 +202,18 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		readdata--;
 		*readdata = type; //Put 'type' back on stack.
 		uint8_t * mptr = readdata + qty-3-1; //-3 for timecode, -1 to 
+
+//#define DEBUG_WATCHMAN
+#ifdef DEBUG_WATCHMAN
+		printf( "_%s ", w->codename);
+		for( i = 0; i < qty; i++ )
+		{
+			printf( "%02x ", readdata[i] );
+		}
+		printf("\n");
+#endif
+
+
 		uint32_t mytime = (mptr[3] << 16)|(mptr[2] << 8)|(mptr[1] << 0);
 		uint32_t times[20];
 		const int nrtime = sizeof(times)/sizeof(uint32_t);
@@ -216,6 +223,7 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		int fault = 0;
 
 		///Handle uint32_tifying (making sure we keep it incrementing)
+		//XXX TODO: See if it is at all possible to resynchronize this to IMU Time.
 		uint32_t llt = w->last_lighttime;
 		int time_comp = llt & 0xffffff;
 		int diff = mytime - time_comp;
@@ -226,11 +234,12 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		llt = (llt & 0xff000000) | mytime;
 		mytime = w->last_lighttime = llt;
 		times[timecount++] = mytime;
-
+#ifdef DEBUG_WATCHMAN
+		printf( "_%s Packet Start Time: %d\n", w->codename, mytime );
+#endif	
 
 		//First, pull off the times, starting with the current time, then all the delta times going backwards.
 		{
-
 			while( mptr - readdata > (timecount>>1) )
 			{
 				uint32_t arcane_value = 0;
@@ -243,6 +252,9 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 					arcane_value <<= 7;
 				} while(1);
 				times[timecount++] = (mytime -= arcane_value);
+#ifdef DEBUG_WATCHMAN
+				printf( "_%s Time: %d  newtime: %d\n", w->codename, arcane_value, mytime );
+#endif
 			}
 
 			leds = timecount>>1;
@@ -290,6 +302,10 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 				if( (uint32_t)(endtime - starttime) > 65535 ) { fault = 6; goto end; } //Length of pulse dumb.
 				le->length = endtime - starttime;
 				le->timestamp = starttime;
+
+#ifdef DEBUG_WATCHMAN
+				printf( "_%s Event: %d %d %d-%d\n", w->codename, led, le->length, endtime, starttime );
+#endif
 				int swap = lese-2;
 				while( swap >= 0 && les[swap].timestamp < les[swap+1].timestamp )
 				{
