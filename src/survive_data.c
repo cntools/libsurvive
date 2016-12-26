@@ -215,6 +215,7 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 
 
 		uint32_t mytime = (mptr[3] << 16)|(mptr[2] << 8)|(mptr[1] << 0);
+
 		uint32_t times[20];
 		const int nrtime = sizeof(times)/sizeof(uint32_t);
 		int timecount = 0;
@@ -223,16 +224,20 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		int fault = 0;
 
 		///Handle uint32_tifying (making sure we keep it incrementing)
-		//XXX TODO: See if it is at all possible to resynchronize this to IMU Time.
 		uint32_t llt = w->last_lighttime;
-		int time_comp = llt & 0xffffff;
-		int diff = mytime - time_comp;
-		if( diff < 0 )
-		{
-			llt += 0x1000000;
-		}
-		llt = (llt & 0xff000000) | mytime;
-		mytime = w->last_lighttime = llt;
+		uint32_t imumsb = time1<<24;
+		mytime |= imumsb;
+
+		//Compare mytime to llt
+
+		int diff = mytime - llt;
+		if( diff < -0x1000000 )
+			mytime += 0x1000000;
+		else if( diff > 0x100000 )
+			mytime -= 0x1000000;
+
+		w->last_lighttime = mytime;
+
 		times[timecount++] = mytime;
 #ifdef DEBUG_WATCHMAN
 		printf( "_%s Packet Start Time: %d\n", w->codename, mytime );
