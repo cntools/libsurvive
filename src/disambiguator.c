@@ -161,6 +161,7 @@ pulse_type disambiguator_step( struct disambiguator * d, uint32_t time, int leng
 			d->state = D_STATE_LOCKED;
 		}
 
+		// if the offset is about 20000 ticks, then this is a slave pulse
 		if (diff < 21000) {
 			return d->state == D_STATE_LOCKED ? P_SLAVE : P_UNKNOWN;
 		}

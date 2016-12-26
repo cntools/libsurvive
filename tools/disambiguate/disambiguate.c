@@ -36,22 +36,18 @@ int main() {
 		lastl = time;
 		if (strcmp(controller, "HMD") != 0) continue;
 
+		char cc = (length - 2750) / 500;
 		switch (disambiguator_step(&d, time, length)) {
 			default:
 			case P_UNKNOWN:
 				//printf("UNKN  %s %2d %d %d\n", controller, sensor, time - last, length);
 				continue;
 			case P_MASTER:
+				printf("MASTR %s %2d %10d %5d %c%d %10d\n", controller, sensor, time, length, (cc & 0x1) ? 'k' : 'j', (cc >> 1) & 0x3, time-last);
+				last = time;
+				continue;
 			case P_SLAVE:
-				{
-					char cc = (length - 2750) / 500;
-					if (cc & 0x4) {
-						printf("SKIP  %s %2d %10d %5d %c%d %10d\n", controller, sensor, time, length, (cc & 0x1) ? 'k' : 'j', (cc >> 1) & 0x3, time-last);
-					} else {
-						printf("SYNC  %s %2d %10d %5d %c%d %10d\n", controller, sensor, time, length, (cc & 0x1) ? 'k' : 'j', (cc >> 1) & 0x3, time-last);
-						last = time;
-					}
-				}
+				printf("SLAVE %s %2d %10d %5d %c%d %10d\n", controller, sensor, time, length, (cc & 0x1) ? 'k' : 'j', (cc >> 1) & 0x3, time-last);
 				continue;
 			case P_SWEEP:
 				printf("SWEEP %s %2d %10d %5d\n", controller, sensor, time - last, length);
@@ -60,4 +56,3 @@ int main() {
 	}
 	fclose(f);
 }
-
