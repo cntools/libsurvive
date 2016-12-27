@@ -43,9 +43,13 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 	int32_t offset = le->timestamp - so->d->last;
 	switch( disambiguator_step( so->d, le->timestamp, le->length ) ) {
 	default:
+	case P_SLAVE:
+		// this is only interesting for the OOTX data
+		break;
 	case P_UNKNOWN:
 		// not currently locked
-	case P_SYNC:
+		break;
+	case P_MASTER:
 		ct->lightproc( so, le->sensor_id, -1, 0, le->timestamp, offset );
 		so->d->code = ((le->length+125)/250) - 12;
 		break;
