@@ -64,22 +64,24 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 		int32_t deltat = (uint32_t)le->timestamp - (uint32_t)so->last_photo_time;
 		if( deltat > 2000 || deltat < -2000 )		//New pulse. (may be inverted)
 		{
+			//See if this is a unique pulse, or another one in the same set we need to look at.
 			if( le->timestamp - so->last_photo_time > 1500 + so->last_photo_length )
 			{
 				so->last_photo_time = le->timestamp;
 				so->last_photo_length = le->length;
 				ct->lightproc( so, le->sensor_id, -1, 0, le->timestamp, deltat );
 				deltat = 0;
-			//	printf( "++ %d %d\n", so->last_photo_time, so->last_photo_length );
 			}
 		}
+
+		//Find longest pulse-length from device in our window and use that one.
 		if( le->length > so->last_photo_length )
 		{
 			so->last_photo_time = le->timestamp;
 			so->last_photo_length = le->length;
-		//	printf( "+++ %d %d\n", so->last_photo_time, so->last_photo_length );
 		}
 	}
+	//See if this is a valid actual pulse.
 	else if( le->length < 1800 && le->length > 40 && ( le->timestamp - so->last_photo_time < 380000 ) )
 	{
 		int32_t dl = so->last_photo_time;
@@ -97,6 +99,8 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 
 		//printf( "%s / %d %d ++ %d %d\n", so->codename, dl, tpco, offset_from, acode );
 
+
+		//Make sure pulse is in valid window
 		if( offset_from < 380000 && offset_from > 20000 )
 		{
 			ct->lightproc( so, le->sensor_id, acode, offset_from, le->timestamp, le->length );
