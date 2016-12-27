@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 typedef uint8_t pulse_data;
 
@@ -53,6 +54,7 @@ const uint32_t pulse_types[] = {
 void disambiguator_init( struct disambiguator * d ) {
 	memset(&(d->times), 0x0, sizeof(d->times));
 	memset(&(d->scores), 0x0, sizeof(d->scores));
+
 	d->state = D_STATE_UNLOCKED;
 	d->last = 0;
 	d->max_confidence = 0;
@@ -123,14 +125,22 @@ int disambiguator_find_nearest( struct disambiguator * d, uint32_t t1, uint32_t 
 	return idx;
 }
 
+pulse_type disambiguator_step_return_helper( struct disambiguator * d, bool sweep_possible ) {
+	if (d->state == D_STATE_LOCKED && sweep_possible) {
+		return P_SWEEP;
+	}
+	return P_UNKNOWN;
+}
+
 pulse_type disambiguator_step( struct disambiguator * d, uint32_t time, int length)
 {
 	uint32_t diff = time - d->last;
+	bool sweep_possible = (diff > 70000 && diff < 350000);
 
 	// all smaller pulses are most probably sweeps
 	// TODO: check we are inside the time window of actual sweeps
 	if (length < 2750) {
-		return d->state == D_STATE_LOCKED ? P_SWEEP : P_UNKNOWN;
+		return disambiguator_step_return_helper(d, sweep_possible);
 	}
 
 	// we expected to see a sync pulse earlier ...
@@ -142,7 +152,7 @@ pulse_type disambiguator_step( struct disambiguator * d, uint32_t time, int leng
 	disambiguator_discard(d);
 
 	// find the best match for our timestamp and presumed offset
-	int idx = disambiguator_find_nearest(d, time - 400000, time - 20000, 100);
+	int idx = disambiguator_find_nearest(d, time - 400000, time - 20000, 1000);
 
 	// We did not find a matching pulse, so try find a place to record the current
 	// one's time of arrival.
@@ -154,25 +164,34 @@ pulse_type disambiguator_step( struct disambiguator * d, uint32_t time, int leng
 			}
 		}
 
-		return d->state == D_STATE_LOCKED ? P_SWEEP : P_UNKNOWN;
+		return d->state == D_STATE_LOCKED && sweep_possible ? P_SWEEP : P_UNKNOWN;
 	} else {
 		d->scores[idx]++;
+
+		// we need to be reasonably sure, that we have the right pulses
 		if (d->scores[idx] >= DIS_NUM_PULSES_BEFORE_LOCK) {
 			d->state = D_STATE_LOCKED;
 		}
 
 		// if the offset is about 20000 ticks, then this is a slave pulse
 		if (diff < 21000) {
-			return d->state == D_STATE_LOCKED ? P_SLAVE : P_UNKNOWN;
+			if (d->state == D_STATE_LOCKED) {
+				return P_SLAVE;
+			}
+
+			return P_UNKNOWN;
 		}
 
 		d->times[idx] = time;
 		d->last = time;
 
-		return d->state == D_STATE_LOCKED ? (
-			d->scores[idx] >= d->max_confidence ? P_MASTER : P_SWEEP
-		) : P_UNKNOWN;
+		// TODO: why do we need to check the confidence level here?
+		if (d->state == D_STATE_LOCKED && d->scores[idx] >= d->max_confidence) {
+			return P_MASTER;
+		}
+
+		return P_UNKNOWN;
 	}
 
-	return d->state == D_STATE_LOCKED ? P_SWEEP : P_UNKNOWN;
+	return disambiguator_step_return_helper(d, sweep_possible);
 }
