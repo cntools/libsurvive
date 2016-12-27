@@ -6,7 +6,7 @@
 // The theory behind this disambiguator is, that if we just track all pulses and if one could be a sync pulse, we look back in time,
 // if we saw as sync pulse X samples ago than it is probably a sync pulse.
 //
-// If the skip flag is set, X is 20000 else X is 400000
+// X can be 20000 or 400000, depending if it came from the master or the slave.
 //
 
 #include "disambiguator.h"
