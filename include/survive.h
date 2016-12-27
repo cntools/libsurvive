@@ -35,6 +35,7 @@ struct SurviveObject
 	int32_t last_photo_time;
 	int32_t last_photo_length;
 #else
+	int32_t last_photo_time;
 	struct disambiguator * d;
 #endif
 
