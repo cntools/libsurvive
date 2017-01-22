@@ -31,13 +31,15 @@ struct SurviveObject
 
 	//Flood info, for calculating which laser is currently sweeping.
 	int8_t oldcode;
-#ifdef USE_OLD_DISAMBIGUATOR
-	int32_t last_photo_time;
-	int32_t last_photo_length;
-#else
-	int32_t last_photo_time;
-	struct disambiguator * d;
-#endif
+
+ #ifdef USE_OLD_DISAMBIGUATOR
+	uint32_t last_master_time;
+	uint32_t last_slave_time;
+ 	int32_t last_photo_length;
+ #else
+	uint32_t last_master_time;
+ 	struct disambiguator * d;
+ #endif
 
 	uint32_t last_lighttime;  //May be a 24- or 32- bit number depending on what device.
 
