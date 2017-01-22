@@ -6,7 +6,7 @@
 #include <math.h>
 
 #define PTS 32
-#define MAX_CHECKS 40000
+#define MAX_CHECKS 400000
 #define MIN_HITS_FOR_VALID 10
 
 FLT hmd_points[PTS*3];
@@ -336,13 +336,13 @@ int LoadData( char Camera )
 	int calpts[MAX_CHECKS*4]; //X (0) or Y (1), ID, offset
 	int calptscount;
 
-	FILE * f = fopen( "correct_hmd_points.csv", "r" );
+	FILE * f = fopen( "HMD_points.csv", "r" );
 	int pt = 0;
 	if( !f ) { fprintf( stderr, "error: can't open hmd points.\n" ); return -5; }
 	while(!feof(f) && !ferror(f) && pt < PTS)
 	{
 		float fa, fb, fc;
-		int r = fscanf( f,"%g,%g,%g\n", &fa, &fb, &fc );
+		int r = fscanf( f,"%g %g %g\n", &fa, &fb, &fc );
 		hmd_points[pt*3+0] = fa;
 		hmd_points[pt*3+1] = fb;
 		hmd_points[pt*3+2] = fc;
@@ -362,13 +362,13 @@ int LoadData( char Camera )
 	printf( "Loaded %d points\n", pt );
 
 
-	f = fopen( "hmd_normals.csv", "r" );
+	f = fopen( "HMD_normals.csv", "r" );
 	int nrm = 0;
 	if( !f ) { fprintf( stderr, "error: can't open hmd points.\n" ); return -5; }
 	while(!feof(f) && !ferror(f) && nrm < PTS)
 	{
 		float fa, fb, fc;
-		int r = fscanf( f,"%g,%g,%g\n", &fa, &fb, &fc );
+		int r = fscanf( f,"%g %g %g\n", &fa, &fb, &fc );
 		hmd_norms[nrm*3+0] = fa;
 		hmd_norms[nrm*3+1] = fb;
 		hmd_norms[nrm*3+2] = fc;
@@ -394,7 +394,7 @@ int LoadData( char Camera )
 
 
 	int xck = 0;
-	f = fopen( "livestream_test_2_x_axis.csv", "r" );
+	f = fopen( "find_lighthouses_with_watchmen.csv", "r" );
 	if( !f ) { fprintf( stderr, "Error: can't open two lighthouses test data.\n" ); return -11; }
 	while( !feof(f) && !ferror(f) )
 	{
