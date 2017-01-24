@@ -7,8 +7,8 @@ uint8_t lo[131072*4];
 
 int main()
 {
-	FILE * l = fopen( "l_lighthouse.dat", "rb" );
-	FILE * r = fopen( "r_lighthouse.dat", "rb" );
+	FILE * l = fopen( "L_lighthouse.dat", "rb" );
+	FILE * r = fopen( "R_lighthouse.dat", "rb" );
 	FILE * o = fopen( "dual_lighthouse.dat", "wb" );
 	fread( rd, 131072, 1, r );
 	fread( ld, 131072, 1, l );
