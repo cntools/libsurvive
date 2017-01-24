@@ -1,10 +1,10 @@
-all : camfind
+all : lighthousefind
 
 CFLAGS:=-g -O4 -DFLT=double -I../../redist -flto
 LDFLAGS:=$(CFLAGS) -lm 
 
-camfind : camfind.o ../../redist/linmath.c
+lighthousefind : lighthousefind.o ../../redist/linmath.c
 	gcc -o $@ $^  $(LDFLAGS)
 
 clean :
-	rm -rf *.o *~ camfind
+	rm -rf *.o *~ lighthousefind
