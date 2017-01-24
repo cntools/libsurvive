@@ -101,7 +101,7 @@ int main( int argc, char ** argv )
 		DATASWEEP[devnum][sensor][swe][num] = timeinsweep;
 		DATALENGTH[devnum][sensor][swe][num] = pulselength;
 	}
-	printf( "Read %d lines of data.\n", lineno );
+	fprintf( stderr, "Read %d lines of data.\n", lineno );
 
 	//Now, process the data.
 
