@@ -119,15 +119,52 @@ int main( int argc, char ** argv )
 		double sumlentime = 0;
 		int count = 0;
 
+
+		//First make a rough histogram to find the peak, discard points not anywhere close to peak.
+#define MAX_LENTIME 200000 //800000/4
+#define MAX_PERMISSABLE_TO_PEAK 40
+
+		int biggesttime = 0;
+		int biggesttimeplace = -1;
+
+		{
+			int bincounts[MAX_LENTIME];
+			for( i = 0; i < dpmax; i++ )
+			{
+				int sweeptime = DATASWEEP[dev][sen][swe][i]/4;
+				if( sweeptime < 0 || sweeptime > MAX_LENTIME ) 
+				{
+					DATASWEEP[dev][sen][swe][i] = -1;
+					continue;
+				}
+				int rc = bincounts[sweeptime]++;
+				if( rc > biggesttime )
+				{
+					biggesttime = rc;
+					biggesttimeplace = sweeptime;
+				}
+			}
+		}
+
 		for( i = 0; i < dpmax; i++ )
 		{
 			int sweeptime = DATASWEEP[dev][sen][swe][i];
 			int datalen = DATALENGTH[dev][sen][swe][i];
+			int dist_to_peak = sweeptime/4 - biggesttimeplace ;
+
+			if( sweeptime < 0 ) continue;
+			if( dist_to_peak > MAX_PERMISSABLE_TO_PEAK || dist_to_peak < -MAX_PERMISSABLE_TO_PEAK )
+			{
+				DATASWEEP[dev][sen][swe][i] = -1;
+				continue;
+			}
 
 			sumsweeptime += sweeptime;
 			sumlentime += datalen;
 			count++;
 		}
+
+		if( count < 50 ) continue;
 
 		double avgsweep = sumsweeptime / count;
 		double avglen = sumlentime / count;
@@ -135,7 +172,7 @@ int main( int argc, char ** argv )
 		double stddevtim = 0;
 		double stddevlen = 0;
 
-		#define HISTOGRAMSIZE 65
+		#define HISTOGRAMSIZE 31
 
 		int histo[HISTOGRAMSIZE];
 		memset( histo, 0, sizeof( histo ) );
@@ -144,6 +181,8 @@ int main( int argc, char ** argv )
 		{
 			int sweeptime = DATASWEEP[dev][sen][swe][i];
 			int datalen = DATALENGTH[dev][sen][swe][i];
+
+			if( sweeptime < 0 ) continue;
 
 			double Sdiff = sweeptime - avgsweep;
 			double Ldiff = datalen - avglen;
@@ -159,8 +198,15 @@ int main( int argc, char ** argv )
 
 			histo[llm]++;
 		}
+
 		stddevtim /= count;
 		stddevlen /= count;
+
+		if( stddevtim > 55 )
+		{
+			fprintf( stderr, "Warning: %s%s%02d dropped because stddev (%f) was too high.\n", Devices[dev], DevMap[swe], sen, stddevtim );
+			continue;
+		}
 
 		fprintf( hists, "%s%s%02d, ", Devices[dev], DevMap[swe], sen );
 
