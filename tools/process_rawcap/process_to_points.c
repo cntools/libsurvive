@@ -124,6 +124,7 @@ int main( int argc, char ** argv )
 #define MAX_LENTIME 200000 //800000/4
 #define MAX_PERMISSABLE_TO_PEAK 40
 
+		int cullcount = 0;
 		int biggesttime = 0;
 		int biggesttimeplace = -1;
 
@@ -156,6 +157,7 @@ int main( int argc, char ** argv )
 			if( dist_to_peak > MAX_PERMISSABLE_TO_PEAK || dist_to_peak < -MAX_PERMISSABLE_TO_PEAK )
 			{
 				DATASWEEP[dev][sen][swe][i] = -1;
+				cullcount++;
 				continue;
 			}
 
@@ -199,12 +201,18 @@ int main( int argc, char ** argv )
 			histo[llm]++;
 		}
 
+		if( cullcount > 100 )
+		{
+			fprintf( stderr, "WARNING: %s%s%02d has %d out-of-window hits broken disambiguator?\n", Devices[dev], DevMap[swe], sen, cullcount );
+			continue;
+		}
+
 		stddevtim /= count;
 		stddevlen /= count;
 
 		if( stddevtim > 55 )
 		{
-			fprintf( stderr, "Warning: %s%s%02d dropped because stddev (%f) was too high.\n", Devices[dev], DevMap[swe], sen, stddevtim );
+			fprintf( stderr, "DROPPED: %s%s%02d dropped because stddev (%f) was too high.\n", Devices[dev], DevMap[swe], sen, stddevtim );
 			continue;
 		}
 
