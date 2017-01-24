@@ -203,8 +203,7 @@ int main( int argc, char ** argv )
 
 		if( cullcount > 100 )
 		{
-			fprintf( stderr, "WARNING: %s%s%02d has %d out-of-window hits broken disambiguator?\n", Devices[dev], DevMap[swe], sen, cullcount );
-			continue;
+			fprintf( stderr, "WARNING: %s%s%02d has %d out-of-window hits. Broken disambiguator?\n", Devices[dev], DevMap[swe], sen, cullcount );
 		}
 
 		stddevtim /= count;
@@ -213,6 +212,12 @@ int main( int argc, char ** argv )
 		if( stddevtim > 55 )
 		{
 			fprintf( stderr, "DROPPED: %s%s%02d dropped because stddev (%f) was too high.\n", Devices[dev], DevMap[swe], sen, stddevtim );
+			continue;
+		}
+
+		if( count < 1000 )
+		{
+			fprintf( stderr, "DROPPED: %s%s%02d dropped because of insufficient (%d) points.\n", Devices[dev], DevMap[swe], sen, count );
 			continue;
 		}
 
