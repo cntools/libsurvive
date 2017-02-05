@@ -1,3 +1,8 @@
+//Don't use this. 
+// Use the following:
+//   ./data_recorder | socat - tcp-listen:5555,fork > /dev/null
+// SOCAT is better.
+
 //Blatantly ripped off of https://www.cs.cmu.edu/afs/cs/academic/class/15213-f99/www/class26/tcpserver.c
 
 #include <stdio.h>
