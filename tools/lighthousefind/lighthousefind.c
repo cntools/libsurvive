@@ -50,6 +50,7 @@ int main( int argc, char ** argv )
 	//This also is constantly optimizing the lighthouse quaternion for optimal spotting.
 	FLT fullrange = 5; //Maximum search space for positions.  (Relative to HMD)
 	
+	//Sweep whole area 30 times
 	for( cycle = 0; cycle < 30; cycle ++ )
 	{
 
@@ -65,6 +66,11 @@ int main( int argc, char ** argv )
 				sprintf( filename, "%c_lighthouse.dat", argv[1][0] );
 				f = fopen( filename, "wb" );
 			}
+
+			//We split the space into this many groups (times 2) and
+			//if we're on the first cycle, we want to do a very linear
+			//search.  As we refine our search we can then use a more
+			//binary search technique.
 			FLT splits = 4;
 			if( cycle == 0 ) splits = 32;
 			if( cycle == 1 ) splits = 13;
@@ -72,13 +78,14 @@ int main( int argc, char ** argv )
 			if( cycle == 3 ) splits = 8;
 			if( cycle == 4 ) splits = 5;
 
+			//Wwe search throug the whole space.
 			for( dz = 0; dz < fullrange; dz += fullrange/splits )
 			for( dy = -fullrange; dy < fullrange; dy += fullrange/splits )
 			for( dx = -fullrange; dx < fullrange; dx += fullrange/splits )
 			{
 				//Specificially adjust one axis at a time, searching for the best.
 				memcpy( LighthousePos, bestxyz, sizeof( LighthousePos ) );
-				LighthousePos[0] += dx;
+				LighthousePos[0] += dx;  //These are adjustments to the "best" from last frame.
 				LighthousePos[1] += dy;
 				LighthousePos[2] += dz;
 
@@ -144,7 +151,9 @@ FLT RunOpti( int print )
 	int first = 1, second = 0;
 
 	//First check to see if this is a valid viewpoint.
-
+	//If a sensor is pointed away from where we are testing a possible lighthouse position.
+	//BUT We get data from that light house, then we KNOW this is not a possible
+	//lighthouse position.
 	for( p = 0; p < 32; p++ )
 	{
 		if( hmd_point_counts[p*2+0] < MIN_HITS_FOR_VALID || hmd_point_counts[p*2+1] < MIN_HITS_FOR_VALID ) continue;
@@ -156,6 +165,8 @@ FLT RunOpti( int print )
 
 	int iters = 6;
 
+	//Iterate over a refinement of the quaternion that constitutes the
+	//lighthouse.
 	for( i = 0; i < iters; i++ )
 	{
 		first = 1;
@@ -344,6 +355,7 @@ int LoadData( char Camera, const char * datafile  )
 	int calpts[MAX_CHECKS*4]; //X (0) or Y (1), ID, offset
 	int calptscount;
 
+	//First, read the positions of all the sensors on the HMD.
 	FILE * f = fopen( "HMD_points.csv", "r" );
 	int pt = 0;
 	if( !f ) { fprintf( stderr, "error: can't open hmd points.\n" ); return -5; }
@@ -369,7 +381,7 @@ int LoadData( char Camera, const char * datafile  )
 	fclose( f );
 	printf( "Loaded %d points\n", pt );
 
-
+	//Read all the normals on the HMD into hmd_norms.
 	f = fopen( "HMD_normals.csv", "r" );
 	int nrm = 0;
 	if( !f ) { fprintf( stderr, "error: can't open hmd points.\n" ); return -5; }
@@ -400,11 +412,12 @@ int LoadData( char Camera, const char * datafile  )
 	fclose( f );
 	printf( "Loaded %d norms\n", nrm );
 
+	//Actually load the processed data!
 	int xck = 0;
 	f = fopen( datafile, "r" );
 	if( !f )
 	{
-		fprintf( stderr, "Error: cannot open processed_data.txt\n" );
+		fprintf( stderr, "Error: cannot open %s\n", datafile );
 		exit -11;
 	}
 	int lineno = 0;
