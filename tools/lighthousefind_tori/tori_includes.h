@@ -58,11 +58,6 @@ static const float DefaultPointsPerOuterDiameter = 60;
 
 
 
-typedef struct
-{
-    // row, column, (0,0) in upper left
-    double val[3][3];
-} Matrix3x3;
 
 
 //#define TORI_DEBUG

@@ -2,16 +2,24 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
+#include "linmath.h"
 #include "tori_includes.h"
-#include "find_tori_math.h"
 #include "visualization.h"
 
+
+static double distance(Point a, Point b)
+{
+    double x = a.x - b.x;
+    double y = a.y - b.y;
+    double z = a.z - b.z;
+    return sqrt(x*x + y*y + z*z);
+}
 
 Matrix3x3 GetRotationMatrixForTorus(Point a, Point b)
 {
     Matrix3x3 result;
-    double v1[3] = { 0, 0, 1 };
-    double v2[3] = { a.x - b.x, a.y - b.y, a.z - b.z };
+    FLT v1[3] = { 0, 0, 1 };
+    FLT v2[3] = { a.x - b.x, a.y - b.y, a.z - b.z };
 
     normalize_v3(v2);
 
@@ -25,11 +33,6 @@ Point RotateAndTranslatePoint(Point p, Matrix3x3 rot, Point newOrigin)
     Point q;
 
     double pf[3] = { p.x, p.y, p.z };
-    //float pq[3];
-
-    //q.x = rot.val[0][0] * p.x + rot.val[0][1] * p.y + rot.val[0][2] * p.z + newOrigin.x;
-    //q.y = rot.val[1][0] * p.x + rot.val[1][1] * p.y + rot.val[1][2] * p.z + newOrigin.y;
-    //q.z = rot.val[2][0] * p.x + rot.val[2][1] * p.y + rot.val[2][2] * p.z + newOrigin.z;
     q.x = rot.val[0][0] * p.x + rot.val[1][0] * p.y + rot.val[2][0] * p.z + newOrigin.x;
     q.y = rot.val[0][1] * p.x + rot.val[1][1] * p.y + rot.val[2][1] * p.z + newOrigin.y;
     q.z = rot.val[0][2] * p.x + rot.val[1][2] * p.y + rot.val[2][2] * p.z + newOrigin.z;

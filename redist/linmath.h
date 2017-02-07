@@ -10,12 +10,35 @@
 #define PFTHREE(x) x[0], x[1], x[2]
 #define PFFOUR(x) x[0], x[1], x[2], x[3]
 
-#define LINMATHPI 3.141592653589
+#define LINMATHPI ((FLT)3.141592653589)
 
-//If you want, you can define FLT to be double for double precision.
-#ifndef FLT
+//uncomment the following line to use double precision instead of single precision.
+//#define USE_DOUBLE
+
+#ifdef USE_DOUBLE
+
+#define FLT double
+#define FLT_SQRT sqrt
+#define FLT_SIN  sin
+#define FLT_COS  cos
+#define FLT_ACOS  acos
+#define FLT_ASIN  asin
+#define FLT_ATAN2  atan2
+#define FLT_FABS fabs
+
+#else
+
 #define FLT float
+#define FLT_SQRT sqrtf
+#define FLT_SIN  sinf
+#define FLT_COS  cosf
+#define FLT_ACOS  acosf
+#define FLT_ASIN  asinf
+#define FLT_ATAN2  atan2f
+#define FLT_FABS fabsf
+
 #endif
+
 
 
 //NOTE: Inputs may never be output with cross product.
@@ -63,6 +86,25 @@ void quatevenproduct( FLT * q, FLT * qa, FLT * qb );
 void quatoddproduct( FLT * outvec3, FLT * qa, FLT * qb );
 void quatslerp( FLT * q, const FLT * qa, const FLT * qb, FLT t );
 void quatrotatevector( FLT * vec3out, const FLT * quat, const FLT * vec3in );
+
+// Matrix Stuff
+
+typedef struct
+{
+    // row, column, (0,0) in upper left
+    FLT val[3][3];
+} Matrix3x3;
+
+Matrix3x3 inverseM33(const Matrix3x3 mat);
+void get_orthogonal_vector(FLT out[3], const FLT in[3]);
+void rotation_between_vecs_to_mat3(FLT m[3][3], const FLT v1[3], const FLT v2[3]);
+void unit_m3(FLT m[3][3]);
+FLT normalize_v3(FLT n[3]);
+void axis_angle_normalized_to_mat3_ex(
+    FLT mat[3][3],
+    const FLT axis[3],
+    const FLT angle_sin,
+    const FLT angle_cos);
 
 
 #endif

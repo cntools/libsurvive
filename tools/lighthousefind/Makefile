@@ -1,6 +1,6 @@
 all : lighthousefind
 
-CFLAGS:=-g -O4 -DFLT=double -I../../redist -flto
+CFLAGS:=-g -O4 -DUSE_DOUBLE -I../../redist -flto
 LDFLAGS:=$(CFLAGS) -lm 
 
 lighthousefind : lighthousefind.o ../../redist/linmath.c
