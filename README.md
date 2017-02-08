@@ -5,15 +5,15 @@
 Discord: https://discordapp.com/invite/7QbCAGS
 
 ## Livestream collection
-| Note                                   | Youtube URL                                 |
-| -------------------------------------- | ------------------------------------------- |
-| First livestream                       | https://www.youtube.com/watch?v=sv_AVI9kHN4 |
-| Second livestream                      | https://www.youtube.com/watch?v=gFyEbGQ88s4 |
-| Summary of first and second livestream | https://www.youtube.com/watch?v=oHJkpNakswM |
-| Third livestream                       | https://www.youtube.com/watch?v=RExji5EtSzE |
-| Fourth livestream                      | https://www.youtube.com/watch?v=fces1O7kWGY |
-| Fifth livestream                       | https://www.youtube.com/watch?v=hHt3twW5_fI |
-| Sixth livestream                       | https://www.youtube.com/watch?v=JsfkNRFkFM4 |
+| Note                                   | Youtube URL                                 | Run time |
+| -------------------------------------- | ------------------------------------------- | -------- |
+| First livestream                       | https://www.youtube.com/watch?v=sv_AVI9kHN4 | 5:01:25  |
+| Second livestream                      | https://www.youtube.com/watch?v=gFyEbGQ88s4 | 4:03:26  |
+| Summary of first and second livestream | https://www.youtube.com/watch?v=oHJkpNakswM | 23:00   |
+| Third livestream                       | https://www.youtube.com/watch?v=RExji5EtSzE | 4:11:16 |
+| Fourth livestream                      | https://www.youtube.com/watch?v=fces1O7kWGY | 4:50:33 |
+| Fifth livestream                       | https://www.youtube.com/watch?v=hHt3twW5_fI | 3:13:38 |
+| Sixth livestream                       | https://www.youtube.com/watch?v=JsfkNRFkFM4 | 3:44:49 |
 
 Notes from second livestream trying to reverse engineer the watchman protocol: https://gist.github.com/cnlohr/581c433f36f4249f8bbc9c2b6450ef0e
 
