@@ -8,23 +8,23 @@
 
 typedef struct
 {
-    double x;
-    double y;
-    double z;
+	double x;
+	double y;
+	double z;
 } Point;
 
 typedef struct
 {
-    Point point; // location of the sensor on the tracked object;
-    Point normal; // unit vector indicating the normal for the sensor
-    double theta; // "horizontal" angular measurement from lighthouse radians
-    double phi; // "vertical" angular measurement from lighthouse in radians.
+	Point point; // location of the sensor on the tracked object;
+	Point normal; // unit vector indicating the normal for the sensor
+	double theta; // "horizontal" angular measurement from lighthouse radians
+	double phi; // "vertical" angular measurement from lighthouse in radians.
 } TrackedSensor;
 
 typedef struct
 {
-    size_t numSensors;
-    TrackedSensor sensor[0];
+	size_t numSensors;
+	TrackedSensor sensor[0];
 } TrackedObject;
 
 
@@ -36,15 +36,14 @@ typedef struct
 
 typedef union
 {
-    struct
-    {
-        unsigned char Blue;
-        unsigned char Green;
-        unsigned char Red;
-        unsigned char Alpha;
-    };
-//    float float_value;
-    uint32_t long_value;
+	struct
+	{
+		unsigned char Blue;
+		unsigned char Green;
+		unsigned char Red;
+		unsigned char Alpha;
+	};
+	uint32_t long_value;
 } RGBValue;
 
 static RGBValue RED = { .Red = 255, .Green = 0, .Blue = 0, .Alpha = 125 };
@@ -55,10 +54,6 @@ static const double WORLD_BOUNDS = 100;
 #define MAX_TRACKED_POINTS 40
 
 static const float DefaultPointsPerOuterDiameter = 60;
-
-
-
-
 
 //#define TORI_DEBUG
 

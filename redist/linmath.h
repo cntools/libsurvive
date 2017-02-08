@@ -87,26 +87,22 @@ void quatoddproduct( FLT * outvec3, FLT * qa, FLT * qb );
 void quatslerp( FLT * q, const FLT * qa, const FLT * qb, FLT t );
 void quatrotatevector( FLT * vec3out, const FLT * quat, const FLT * vec3in );
 
-void getRotationTo(FLT *q, const FLT *src, const FLT *dest);
+void quatfrom2vectors(FLT *q, const FLT *src, const FLT *dest);
 
 // Matrix Stuff
 
 typedef struct
 {
-    // row, column, (0,0) in upper left
-    FLT val[3][3];
+	FLT val[3][3]; // row, column
 } Matrix3x3;
 
+void rotate_vec(FLT *out, const FLT *in, Matrix3x3 rot);
+void rotation_between_vecs_to_m3(Matrix3x3 *m, const FLT v1[3], const FLT v2[3]);
 Matrix3x3 inverseM33(const Matrix3x3 mat);
-void get_orthogonal_vector(FLT out[3], const FLT in[3]);
-void rotation_between_vecs_to_mat3(FLT m[3][3], const FLT v1[3], const FLT v2[3]);
-void unit_m3(FLT m[3][3]);
-FLT normalize_v3(FLT n[3]);
-void axis_angle_normalized_to_mat3_ex(
-    FLT mat[3][3],
-    const FLT axis[3],
-    const FLT angle_sin,
-    const FLT angle_cos);
+
+
+
+
 
 
 #endif
