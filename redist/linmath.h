@@ -59,7 +59,7 @@ int compare3d( const FLT * a, const FLT * b, FLT epsilon );
 
 void copy3d( FLT * out, const FLT * in );
 
-FLT magnitude3d( FLT * a );
+FLT magnitude3d(const FLT * a );
 
 FLT anglebetween3d( FLT * a, FLT * b );
 
@@ -86,6 +86,8 @@ void quatevenproduct( FLT * q, FLT * qa, FLT * qb );
 void quatoddproduct( FLT * outvec3, FLT * qa, FLT * qb );
 void quatslerp( FLT * q, const FLT * qa, const FLT * qb, FLT t );
 void quatrotatevector( FLT * vec3out, const FLT * quat, const FLT * vec3in );
+
+void getRotationTo(FLT *q, const FLT *src, const FLT *dest);
 
 // Matrix Stuff
 

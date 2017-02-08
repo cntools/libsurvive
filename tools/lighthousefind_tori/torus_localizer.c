@@ -25,6 +25,20 @@ Matrix3x3 GetRotationMatrixForTorus(Point a, Point b)
 
     rotation_between_vecs_to_mat3(result.val, v1, v2);
 
+    FLT result2[9];
+
+    rotation_between_vecs_to_m3(result2, v1, v2);
+
+    result.val[0][0] = result2[0];
+    result.val[0][1] = result2[1];
+    result.val[0][2] = result2[2];
+    result.val[1][0] = result2[3];
+    result.val[1][1] = result2[4];
+    result.val[1][2] = result2[5];
+    result.val[2][0] = result2[6];
+    result.val[2][1] = result2[7];
+    result.val[2][2] = result2[8];
+
     return result;
 }
 

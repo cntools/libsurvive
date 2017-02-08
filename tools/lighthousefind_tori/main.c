@@ -61,7 +61,7 @@ static void runTheNumbers()
 
     printf("Using %d sensors to find lighthouse.\n", sensorCount);
 
-    Point lh = SolveForLighthouse(to, 0);
+    Point lh = SolveForLighthouse(to, 1);
 
     printf("(%f, %f, %f)\n", lh.x, lh.y, lh.z);
 

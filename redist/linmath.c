@@ -64,7 +64,7 @@ void copy3d( FLT * out, const FLT * in )
 	out[2] = in[2];
 }
 
-FLT magnitude3d( FLT * a )
+FLT magnitude3d(const FLT * a )
 {
     return FLT_SQRT(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
 }
@@ -88,12 +88,17 @@ FLT anglebetween3d( FLT * a, FLT * b )
 
 
 
-void quatsetnone( FLT * q )
+void quatsetnone(FLT * q)
 {
-	q[0] = 1; q[1] = 0; q[2] = 0; q[3] = 0;
+    q[0] = 1; q[1] = 0; q[2] = 0; q[3] = 0;
 }
 
-void quatcopy( FLT * qout, const FLT * qin )
+void quatsetidentity(FLT * q)
+{
+    q[0] = 1; q[1] = 0; q[2] = 0; q[3] = 1;
+}
+
+void quatcopy(FLT * qout, const FLT * qin)
 {
 	qout[0] = qin[0];
 	qout[1] = qin[1];
@@ -162,47 +167,79 @@ void quatnormalize( FLT * qout, const FLT * qin )
 	quatscale( qout, qin, imag );
 }
 
-void quattomatrix( FLT * matrix44, const FLT * qin )
+void quattomatrix(FLT * matrix44, const FLT * qin)
 {
-	FLT q[4];
-	quatnormalize( q, qin );
-	
-	//Reduced calulation for speed
-	FLT xx = 2*q[0]*q[0];
-	FLT xy = 2*q[0]*q[1];
-	FLT xz = 2*q[0]*q[2];
-	FLT xw = 2*q[0]*q[3];
-	
-	FLT yy = 2*q[1]*q[1];
-	FLT yz = 2*q[1]*q[2];
-	FLT yw = 2*q[1]*q[3];
-	
-	FLT zz = 2*q[2]*q[2];
-	FLT zw = 2*q[2]*q[3];
+    FLT q[4];
+    quatnormalize(q, qin);
 
-	//opengl major
-	matrix44[0] = 1-yy-zz;
-	matrix44[1] = xy-zw;
-	matrix44[2] = xz+yw;
-	matrix44[3] = 0;
+    //Reduced calulation for speed
+    FLT xx = 2 * q[0] * q[0];
+    FLT xy = 2 * q[0] * q[1];
+    FLT xz = 2 * q[0] * q[2];
+    FLT xw = 2 * q[0] * q[3];
 
-	matrix44[4] = xy+zw;
-	matrix44[5] = 1-xx-zz;
-	matrix44[6] = yz-xw;
-	matrix44[7] = 0;
+    FLT yy = 2 * q[1] * q[1];
+    FLT yz = 2 * q[1] * q[2];
+    FLT yw = 2 * q[1] * q[3];
 
-	matrix44[8] = xz-yw;
-	matrix44[9] = yz+xw;
-	matrix44[10] = 1-xx-yy;
-	matrix44[11] = 0;
+    FLT zz = 2 * q[2] * q[2];
+    FLT zw = 2 * q[2] * q[3];
 
-	matrix44[12] = 0;
-	matrix44[13] = 0;
-	matrix44[14] = 0;
-	matrix44[15] = 1;
+    //opengl major
+    matrix44[0] = 1 - yy - zz;
+    matrix44[1] = xy - zw;
+    matrix44[2] = xz + yw;
+    matrix44[3] = 0;
+
+    matrix44[4] = xy + zw;
+    matrix44[5] = 1 - xx - zz;
+    matrix44[6] = yz - xw;
+    matrix44[7] = 0;
+
+    matrix44[8] = xz - yw;
+    matrix44[9] = yz + xw;
+    matrix44[10] = 1 - xx - yy;
+    matrix44[11] = 0;
+
+    matrix44[12] = 0;
+    matrix44[13] = 0;
+    matrix44[14] = 0;
+    matrix44[15] = 1;
 }
 
-void quatgetconjugate( FLT * qout, const FLT * qin )
+void quattomatrix33(FLT * matrix33, const FLT * qin)
+{
+    FLT q[4];
+    quatnormalize(q, qin);
+
+    //Reduced calulation for speed
+    FLT xx = 2 * q[0] * q[0];
+    FLT xy = 2 * q[0] * q[1];
+    FLT xz = 2 * q[0] * q[2];
+    FLT xw = 2 * q[0] * q[3];
+
+    FLT yy = 2 * q[1] * q[1];
+    FLT yz = 2 * q[1] * q[2];
+    FLT yw = 2 * q[1] * q[3];
+
+    FLT zz = 2 * q[2] * q[2];
+    FLT zw = 2 * q[2] * q[3];
+
+    //opengl major
+    matrix33[0] = 1 - yy - zz;
+    matrix33[1] = xy - zw;
+    matrix33[2] = xz + yw;
+
+    matrix33[3] = xy + zw;
+    matrix33[4] = 1 - xx - zz;
+    matrix33[5] = yz - xw;
+
+    matrix33[6] = xz - yw;
+    matrix33[7] = yz + xw;
+    matrix33[8] = 1 - xx - yy;
+}
+
+void quatgetconjugate(FLT * qout, const FLT * qin)
 {
 	qout[0] = qin[0];
 	qout[1] = -qin[1];
@@ -363,6 +400,78 @@ Matrix3x3 inverseM33(const Matrix3x3 mat)
     }
 
     return newMat;
+}
+
+void rotation_between_vecs_to_m3(FLT m[3][3], const FLT v1[3], const FLT v2[3])
+{
+    FLT q[4];
+
+    getRotationTo(q, v1, v2);
+
+    quattomatrix33(&(m[0][0]), q);
+}
+
+// This function based on code from Object-oriented Graphics Rendering Engine
+// Copyright(c) 2000 - 2012 Torus Knot Software Ltd
+// under MIT license
+// http://www.ogre3d.org/docs/api/1.9/_ogre_vector3_8h_source.html
+
+/** Gets the shortest arc quaternion to rotate this vector to the destination
+vector.
+@remarks
+If you call this with a dest vector that is close to the inverse
+of this vector, we will rotate 180 degrees around a generated axis if
+since in this case ANY axis of rotation is valid.
+*/
+void getRotationTo(FLT *q, const FLT *src, const FLT *dest)
+{
+    // Based on Stan Melax's article in Game Programming Gems
+
+    // Copy, since cannot modify local
+    FLT v0[3];
+    FLT v1[3];
+    normalize3d(v0, src);
+    normalize3d(v1, dest);
+
+    FLT d = dot3d(v0, v1);// v0.dotProduct(v1);
+    // If dot == 1, vectors are the same
+    if (d >= 1.0f)
+    {
+        quatsetidentity(q);
+        return;
+    }
+    if (d < (1e-6f - 1.0f))
+    {
+        // Generate an axis
+        FLT unitX[3] = { 1, 0, 0 };
+        FLT unitY[3] = { 0, 1, 0 };
+        
+        FLT axis[3];
+        cross3d(axis, unitX, src); // pick an angle
+        if ((axis[0] < 1.0e-35f) &&
+            (axis[1] < 1.0e-35f) &&
+            (axis[2] < 1.0e-35f)) // pick another if colinear
+        {
+            cross3d(axis, unitY, src);
+        }
+        normalize3d(axis, axis);
+        quatfromaxisangle(q, axis, LINMATHPI);
+    }
+    else
+    {
+        FLT s = FLT_SQRT((1 + d) * 2);
+        FLT invs = 1 / s;
+
+        FLT c[3];
+        cross3d(c, v0, v1);
+
+        q[0] = c[0] * invs;
+        q[1] = c[1] * invs;
+        q[2] = c[2] * invs;
+        q[3] = s * 0.5f;
+
+        quatnormalize(q, q);
+    }
 }
 
 /////////////////////////////////////Matrix Rotations////////////////////////////////////
