@@ -5,6 +5,7 @@
 #ifndef OOTX_DECODER_H
 #define OOTX_DECODER_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 typedef struct {

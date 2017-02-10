@@ -9,6 +9,7 @@
 
 #include <assert.h>
 #include "ootx_decoder.h"
+#include "crc32.h"
 
 //char* fmt_str = "L Y HMD %d 5 1 206230 %d\n";
 
@@ -103,7 +104,14 @@ void ootx_process_bit(uint32_t length) {
 			op.length = *(uint16_t*)buffer;
 			op.data = buffer+2;
 			op.crc32 = *(uint32_t*)(buffer+2+op.length);
-			if (ootx_packet_clbk) ootx_packet_clbk(&op);
+
+			uint32_t crc = crc32(0xffffffff,op.data,op.length);
+
+			if (crc != op.crc32) {
+				printf("CRC mismatch\n");
+			}
+
+			if ((crc == op.crc32) && ootx_packet_clbk) ootx_packet_clbk(&op);
 
 			ootx_reset_buffer();
 		}

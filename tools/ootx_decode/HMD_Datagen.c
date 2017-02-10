@@ -10,6 +10,8 @@
 #include <time.h>
 #include <stdlib.h>
 
+#include "crc32.h"
+
 uint32_t time_stamp = -525198892;
 
 char* fmt_str = "L Y HMD %d 5 1 206230 %d\n";
@@ -19,7 +21,7 @@ void print_preamble();
 void print_uint16(uint16_t d);
 void print_uint32(uint32_t d);
 void print_payload(char* data, uint16_t length);
-uint32_t crc32(uint32_t crc, uint8_t *buf, size_t size);
+
 
 int main(int argc, char* argv[])
 {
