@@ -14,8 +14,21 @@ typedef struct {
 	uint32_t crc32;
 } ootx_packet;
 
-void ootx_init_buffer();
-void ootx_process_bit(uint32_t length);
+typedef struct {
+	uint8_t* buffer;
+	uint16_t buf_offset;
+	uint8_t bits_written;
+	uint16_t* payload_size;
+
+	uint32_t preamble;
+	uint8_t bits_processed;
+	uint8_t found_preamble;
+} ootx_decoder_context;
+
+
+//void ootx_init_buffer();
+void ootx_process_bit(ootx_decoder_context *ctx, uint32_t length);
+void ootx_init_decoder_context(ootx_decoder_context *ctx);
 
 extern void (*ootx_packet_clbk)(ootx_packet* packet);
 

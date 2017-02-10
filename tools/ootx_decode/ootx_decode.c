@@ -22,7 +22,9 @@ void my_test(ootx_packet* packet) {
 
 int main(int argc, char* argv[])
 {
-	ootx_init_buffer();
+	ootx_decoder_context ctx;
+	ootx_init_decoder_context(&ctx);
+//	ootx_init_buffer();
 	ootx_packet_clbk = my_test;
 
 	char* line = NULL;
@@ -43,7 +45,7 @@ int main(int argc, char* argv[])
 			&ticks);
 //		printf("%d\n", ticks);
 
-		ootx_process_bit(ticks);
+		ootx_process_bit(&ctx, ticks);
 	}
 
 	return 0;
