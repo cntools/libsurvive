@@ -89,8 +89,11 @@ void raw_test() {
 			ootx_pump_greatest_bit(c_ctx);
 
 			uint16_t s = *(c_ctx->payload_size);
+			uint16_t fwv = *(c_ctx->buffer+2);
+			uint16_t pv = 0x3f & fwv;
+			fwv>>=6;
 //			uint16_t ss = (s>>8) | (s<<8);
-			if (c_ctx->found_preamble) printf("LH:%d s:%d 0x%x\t%s", current_lighthouse, s, s, line);
+			if (c_ctx->found_preamble) printf("LH:%d s:%d 0x%x fw:%d pv:%d %d\t%s", current_lighthouse, s, s, fwv, pv, c_ctx->buf_offset, line);
 
 			//change to newly found lighthouse
 			current_lighthouse = lh;
