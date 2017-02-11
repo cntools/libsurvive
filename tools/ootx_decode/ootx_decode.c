@@ -65,6 +65,7 @@ void raw_test() {
 	uint32_t delta = 0x00;
 
 	int8_t current_lighthouse = 0;
+	ootx_decoder_context *c_ctx = ctx;
 
 	while (getline(&line,&line_len,stdin)>0) {
 //		printf("%s\n", line);
@@ -80,14 +81,37 @@ void raw_test() {
 //		printf("%d\n", ticks);
 
 		int8_t lh = ootx_decode_lighthouse_number(current_lighthouse, ticks, delta);
+//		printf("lh:%d %s\n", lh, line);
+//		if (lh>0) continue;
 
 		if (lh > -1) {
+			//pump last bit
+			ootx_pump_greatest_bit(c_ctx);
+
+			uint16_t s = *(c_ctx->payload_size);
+//			uint16_t ss = (s>>8) | (s<<8);
+			if (c_ctx->found_preamble) printf("LH:%d s:%d 0x%x\t%s", current_lighthouse, s, s, line);
+
 			//change to newly found lighthouse
 			current_lighthouse = lh;
-//			printf("%d %d %d\n", ticks, delta, current_lighthouse);
-			ootx_process_bit(ctx+current_lighthouse, ticks);
-			printf("%d %d %d\n", current_lighthouse, *(ctx->payload_size), ctx->found_preamble);
+			c_ctx = ctx+current_lighthouse;
 		}
+
+		if (ticks>2000 && current_lighthouse==0) {
+			ootx_log_bit(c_ctx, ticks);
+		}
+
+		if (lh == -1) {
+//			printf("%d %d %d\n", ticks, delta, current_lighthouse);
+//			ootx_process_bit(ctx+current_lighthouse, ticks);
+
+		}
+//			printf("%d %d %d\n", ticks, delta, current_lighthouse);
+//			ootx_process_bit(ctx+current_lighthouse, ticks);
+
+			//we would expect a length of 40 bytes
+//			printf("%d %d %d\t%s\n", current_lighthouse, *(ctx->payload_size), ctx->found_preamble, line);
+//		}
 /*
 		if (current_lighthouse >= 0) {
 			ootx_process_bit(ctx+current_lighthouse, ticks);
@@ -103,6 +127,7 @@ int main(int argc, char* argv[])
 	ootx_init_decoder_context(ctx+1);
 
 	raw_test();
+//	hello_world_test();
 
 	return 0;
 }
