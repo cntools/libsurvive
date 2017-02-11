@@ -92,24 +92,23 @@ void ootx_log_bit(ootx_decoder_context *ctx, uint32_t ticks) {
 //	printf("%d %d %d\n", dbit, ctx->bit_count[0], ctx->bit_count[1]);
 }
 
-void ootx_pump_greatest_bit(ootx_decoder_context *ctx) {
+uint8_t ootx_pump_greatest_bit(ootx_decoder_context *ctx) {
 	//pump the bit
-	if (ctx->bit_count[0] > ctx->bit_count[1]) {
-//		printf("Pump 0x00\n");
-		ootx_pump_bit( ctx, 0x00 );
-	} else {
-//		printf("Pump 0xFF\n");
-		ootx_pump_bit( ctx, 0xFF );
-	}
+	uint8_t bit = 0x00;
+	if (ctx->bit_count[0] < ctx->bit_count[1]) bit = 0xFF;
+
+	ootx_pump_bit( ctx, bit );
 
 	ctx->bit_count[0] = 0;
 	ctx->bit_count[1] = 0;
+
+	return bit;
 }
 
 uint8_t ootx_detect_preamble(ootx_decoder_context *ctx, uint8_t dbit) {
 	ctx->preamble <<= 1;
 	ctx->preamble |= (0x01 & dbit);
-	if ((ctx->preamble & 0x0001ffff) == 0x00000001) return 1;
+	if ((ctx->preamble & 0x0003ffff) == 0x00000001) return 1;
 	return 0;
 }
 
@@ -183,7 +182,10 @@ void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
 
 		ootx_write_to_buffer(ctx, dbit);
 
-		if (ctx->buf_offset >= (*(ctx->payload_size)+6)) {
+		uint16_t padded_length = *(ctx->payload_size);
+		padded_length += (padded_length&0x01); //extra null byte if odd
+
+		if (ctx->buf_offset >= (padded_length+6)) {
 			/*	once we have a complete ootx packet, send it out in the callback */
 			ootx_packet op;
 

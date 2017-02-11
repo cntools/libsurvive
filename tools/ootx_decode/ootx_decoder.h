@@ -34,7 +34,7 @@ void ootx_init_decoder_context(ootx_decoder_context *ctx);
 int8_t ootx_decode_lighthouse_number(uint8_t last_num, uint32_t ticks, int32_t delta);
 
 void ootx_log_bit(ootx_decoder_context *ctx, uint32_t length);
-void ootx_pump_greatest_bit(ootx_decoder_context *ctx);
+uint8_t ootx_pump_greatest_bit(ootx_decoder_context *ctx);
 
 extern void (*ootx_packet_clbk)(ootx_packet* packet);
 

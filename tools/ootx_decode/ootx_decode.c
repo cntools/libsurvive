@@ -86,14 +86,19 @@ void raw_test() {
 
 		if (lh > -1) {
 			//pump last bit
-			ootx_pump_greatest_bit(c_ctx);
+//			printf("LH:%d ", current_lighthouse);
+			uint8_t bit = 0x01;
+
+			if (current_lighthouse==0) bit &= ootx_pump_greatest_bit(c_ctx);
 
 			uint16_t s = *(c_ctx->payload_size);
 			uint16_t fwv = *(c_ctx->buffer+2);
-			uint16_t pv = 0x3f & fwv;
-			fwv>>=6;
+			uint16_t pv = 0x3f & fwv; //protocol version
+			fwv>>=6; //firmware version
 //			uint16_t ss = (s>>8) | (s<<8);
-			if (c_ctx->found_preamble) printf("LH:%d s:%d 0x%x fw:%d pv:%d %d\t%s", current_lighthouse, s, s, fwv, pv, c_ctx->buf_offset, line);
+
+			//this will print after any messages from ootx_pump
+			if (c_ctx->found_preamble>0) printf("LH:%d s:%d 0x%x fw:%d pv:%d bo:%d bit:%d\t%s", current_lighthouse, s, s, fwv, pv, c_ctx->buf_offset, bit, line);
 
 			//change to newly found lighthouse
 			current_lighthouse = lh;
@@ -101,6 +106,7 @@ void raw_test() {
 		}
 
 		if (ticks>2000 && current_lighthouse==0) {
+			//only work with master lighthouse for now
 			ootx_log_bit(c_ctx, ticks);
 		}
 
