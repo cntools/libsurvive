@@ -98,7 +98,7 @@ void raw_test() {
 //			uint16_t ss = (s>>8) | (s<<8);
 
 			//this will print after any messages from ootx_pump
-			if (c_ctx->found_preamble>0) printf("LH:%d s:%d 0x%x fw:%d pv:%d bo:%d bit:%d\t%s", current_lighthouse, s, s, fwv, pv, c_ctx->buf_offset, bit, line);
+//			if (c_ctx->found_preamble>0) printf("LH:%d s:%d 0x%x fw:%d pv:%d bo:%d bit:%d\t%s", current_lighthouse, s, s, fwv, pv, c_ctx->buf_offset, bit, line);
 
 			//change to newly found lighthouse
 			current_lighthouse = lh;

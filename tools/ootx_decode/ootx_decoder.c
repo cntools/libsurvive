@@ -6,10 +6,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <zlib.h>
 #include <assert.h>
 #include "ootx_decoder.h"
-#include "crc32.h"
+//#include "crc32.h"
 
 //char* fmt_str = "L Y HMD %d 5 1 206230 %d\n";
 
@@ -153,6 +153,19 @@ void ootx_process_bit(ootx_decoder_context *ctx, uint32_t length) {
 	ootx_pump_bit( ctx, dbit );
 }
 
+void print_crc32(uint32_t crc) {
+//	uint8_t* p = (uint32_t*)&crc;
+//	uint8_t i = 0;
+
+	printf("%X\n", crc);
+}
+
+void write_to_file(uint8_t *d, uint16_t length){
+	FILE *fp = fopen("binary.data","w");
+	fwrite(d, length, 1, fp);
+	fclose(fp);
+}
+
 void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
 //	uint8_t dbit = ootx_decode_bit(length);
 	++(ctx->bits_processed);
@@ -191,12 +204,23 @@ void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
 
 			op.length = *(ctx->payload_size);
 			op.data = ctx->buffer+2;
-			op.crc32 = *(uint32_t*)(ctx->buffer+2+op.length);
+			op.crc32 = *(uint32_t*)(op.data+padded_length);
 
-			uint32_t crc = crc32(0xffffffff,op.data,op.length);
+			uint32_t crc = crc32( 0L, Z_NULL, 0 );
+			crc = crc32( crc, op.data,op.length);
+//			uint32_t crc = crc32(0xffffffff,op.data,op.length);
+
 
 			if (crc != op.crc32) {
 				printf("CRC mismatch\n");
+/*
+				printf("r:");
+				print_crc32(op.crc32);
+
+				printf("c:");
+				print_crc32(crc);
+//				write_to_file(op.data,op.length);
+*/
 			}
 
 			if ((crc == op.crc32) && ootx_packet_clbk) ootx_packet_clbk(&op);
