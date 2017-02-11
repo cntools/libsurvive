@@ -62,11 +62,15 @@ void ootx_reset_buffer(ootx_decoder_context *ctx) {
 
 void ootx_inc_buffer_offset(ootx_decoder_context *ctx) {
 	++(ctx->buf_offset);
-//	if (buf_offset>=MAX_BUFF_SIZE) buf_offset = 0;
+
+//	assert(ctx->buf_offset<MAX_BUFF_SIZE);
+
+	/* the buffer is going to overflow, wrap the buffer and don't write more data until the preamble is found again */
 	if(ctx->buf_offset>=MAX_BUFF_SIZE) {
+		ctx->buf_offset = 0;
 		ctx->found_preamble = 0;
 	}
-	assert(ctx->buf_offset<MAX_BUFF_SIZE);
+
 	ctx->buffer[ctx->buf_offset] = 0;
 }
 
@@ -99,12 +103,17 @@ void ootx_process_bit(ootx_decoder_context *ctx, uint32_t length) {
 		ctx->found_preamble = 1;
 	}
 	else if(ctx->bits_processed>16) {
-		//every 17th bit needs to be dropped
+		//every 17th bit needs to be dropped (sync bit)
 //		printf("drop %d\n", dbit);
 		ctx->bits_processed = 0;
 	}
-	else
+	else if (ctx->found_preamble > 0)
 	{
+		/*	only write to buffer if the preamble is found.
+			if the buffer overflows, found_preamble will be cleared
+			and writing will stop. data would be corrupted, so there is no point in continuing
+		*/
+
 		ootx_write_to_buffer(ctx, dbit);
 
 		if (ctx->buf_offset >= (*(ctx->payload_size)+6)) {
