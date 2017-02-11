@@ -10,12 +10,35 @@
 #define PFTHREE(x) x[0], x[1], x[2]
 #define PFFOUR(x) x[0], x[1], x[2], x[3]
 
-#define LINMATHPI 3.141592653589
+#define LINMATHPI ((FLT)3.141592653589)
 
-//If you want, you can define FLT to be double for double precision.
-#ifndef FLT
+//uncomment the following line to use double precision instead of single precision.
+//#define USE_DOUBLE
+
+#ifdef USE_DOUBLE
+
+#define FLT double
+#define FLT_SQRT sqrt
+#define FLT_SIN  sin
+#define FLT_COS  cos
+#define FLT_ACOS  acos
+#define FLT_ASIN  asin
+#define FLT_ATAN2  atan2
+#define FLT_FABS fabs
+
+#else
+
 #define FLT float
+#define FLT_SQRT sqrtf
+#define FLT_SIN  sinf
+#define FLT_COS  cosf
+#define FLT_ACOS  acosf
+#define FLT_ASIN  asinf
+#define FLT_ATAN2  atan2f
+#define FLT_FABS fabsf
+
 #endif
+
 
 
 //NOTE: Inputs may never be output with cross product.
@@ -36,7 +59,7 @@ int compare3d( const FLT * a, const FLT * b, FLT epsilon );
 
 void copy3d( FLT * out, const FLT * in );
 
-FLT magnitude3d( FLT * a );
+FLT magnitude3d(const FLT * a );
 
 FLT anglebetween3d( FLT * a, FLT * b );
 
@@ -63,6 +86,23 @@ void quatevenproduct( FLT * q, FLT * qa, FLT * qb );
 void quatoddproduct( FLT * outvec3, FLT * qa, FLT * qb );
 void quatslerp( FLT * q, const FLT * qa, const FLT * qb, FLT t );
 void quatrotatevector( FLT * vec3out, const FLT * quat, const FLT * vec3in );
+
+void quatfrom2vectors(FLT *q, const FLT *src, const FLT *dest);
+
+// Matrix Stuff
+
+typedef struct
+{
+	FLT val[3][3]; // row, column
+} Matrix3x3;
+
+void rotate_vec(FLT *out, const FLT *in, Matrix3x3 rot);
+void rotation_between_vecs_to_m3(Matrix3x3 *m, const FLT v1[3], const FLT v2[3]);
+Matrix3x3 inverseM33(const Matrix3x3 mat);
+
+
+
+
 
 
 #endif
