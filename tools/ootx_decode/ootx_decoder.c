@@ -21,7 +21,7 @@ void ootx_init_decoder_context(ootx_decoder_context *ctx) {
 	ctx->buf_offset = 0;
 	ctx->bits_written = 0;
 
-	ctx->preamble = 0x00;
+	ctx->preamble = 0XFFFFFFFF;
 	ctx->bits_processed = 0;
 	ctx->found_preamble = 0;
 
@@ -36,12 +36,27 @@ void ootx_init_buffer() {
 	*payload_size = 0;
 }
 */
-uint8_t ootx_decode_bit(uint32_t length) {
-	length = ((length/500)*500)+500;
 
-	length-=3000;
-	if (length>=2000) { length-=2000; }
-	if (length>=1000)  { return 0xFF; }
+/*
+	how to decode pulses
+	ticks>2000 && delta>100000== master lighthouse
+	ticks>2000 && delta>10000 == slave lighthouse
+*/
+
+int8_t ootx_decode_lighthouse_number(uint8_t last_num, uint32_t ticks, int32_t delta) {
+	if (ticks<2000) return -1; //sweep
+	if ((ticks > 2000) & (delta>100000)) return 0; //master
+	if ((ticks > 2000) & (delta>10000)) return last_num+1; //a slave
+	return -1;
+}
+
+
+uint8_t ootx_decode_bit(uint32_t ticks) {
+	ticks = ((ticks/500)*500)+500;
+
+	ticks-=3000;
+	if (ticks>=2000) { ticks-=2000; }
+	if (ticks>=1000)  { return 0xFF; }
 
 	return 0x00;
 }
@@ -97,7 +112,7 @@ void ootx_process_bit(ootx_decoder_context *ctx, uint32_t length) {
 	if ( ootx_detect_preamble(ctx, dbit) ) {
 		/*	data stream can start over at any time so we must
 			always look for preamble bits */
-//		printf("Preamble found\n");
+		printf("Preamble found\n");
 		ootx_reset_buffer(ctx);
 		ctx->bits_processed = 0;
 		ctx->found_preamble = 1;
