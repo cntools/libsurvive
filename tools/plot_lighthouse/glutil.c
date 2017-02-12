@@ -50,24 +50,23 @@ void DrawCoordinateSystem(
 	float x, float y, float z,
 	float qx, float qy, float qz, float qr)
 {
-	Quaternion i0,j0,k0;
-	Quaternion i, j, k;
-	Quaternion q;
-
-	// Calculate the i, j, and k vectors
-	QuaternionSet(i0, 1, 0, 0, 0);
-	QuaternionSet(j0, 0, 1, 0, 0);
-	QuaternionSet(k0, 0, 0, 1, 0);
-	QuaternionSet(q, qx, qy, qz, qr);
-	QuaternionRot(i, q, i0);
-	QuaternionRot(j, q, j0);
-	QuaternionRot(k, q, k0);
+	FLT i0[3],j0[3],k0[3];
+	FLT i[3],j[3],k[3];
+	FLT q[4];
 	
-	// Draw the coordinate system i red, j green, k blue
+	i0[0]=1.0; i0[1]=0.0; i0[2]=0.0;
+	j0[0]=0.0; j0[1]=1.0; j0[2]=0.0;
+	k0[0]=0.0; k0[1]=0.0; k0[2]=1.0;
+	q [0]=qr;  q [1]=qx;  q [2]=qy;  q [3]=qz;
+	
+	quatrotatevector(i, q, i0);
+	quatrotatevector(j, q, j0);
+	quatrotatevector(k, q, k0);
+
 	glBegin(GL_LINES);
-	glColor3f(1, 0, 0); glVertex3f(x,z,y); glVertex3f(x+i.i,z+i.k,y+i.j);
-	glColor3f(0, 1, 0); glVertex3f(x,z,y); glVertex3f(x+j.i,z+j.k,y+j.j);
-	glColor3f(0, 0, 1); glVertex3f(x,z,y); glVertex3f(x+k.i,z+k.k,y+k.j);
+	glColor3f(1, 0, 0); glVertex3f(x,z,y); glVertex3f(x+i[0],z+i[2],y+i[1]);
+	glColor3f(0, 1, 0); glVertex3f(x,z,y); glVertex3f(x+j[0],z+j[2],y+j[1]);
+	glColor3f(0, 0, 1); glVertex3f(x,z,y); glVertex3f(x+k[0],z+k[2],y+k[1]);
 	glEnd();
 }
 
