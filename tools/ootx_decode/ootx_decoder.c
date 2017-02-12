@@ -13,7 +13,7 @@
 
 //char* fmt_str = "L Y HMD %d 5 1 206230 %d\n";
 
-#define MAX_BUFF_SIZE 1024
+#define MAX_BUFF_SIZE 64
 
 void (*ootx_packet_clbk)(ootx_packet* packet) = NULL;
 void (*ootx_bad_crc_clbk)(ootx_packet* packet, uint32_t crc) = NULL;
