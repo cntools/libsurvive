@@ -197,7 +197,7 @@ void acode_test() {
 //		if (current_lighthouse==0) {
 			ootx_accumulate_bit(c_ctx, (acode & 0x02) >> 1);
 //		}
-	}	
+	}
 }
 
 int main(int argc, char* argv[])
@@ -208,6 +208,9 @@ int main(int argc, char* argv[])
 	raw_test();
 //	acode_test();
 //	hello_world_test();
+
+	ootx_free_decoder_context(ctx);
+	ootx_free_decoder_context(ctx+1);
 
 	return 0;
 }

@@ -33,6 +33,12 @@ void ootx_init_decoder_context(ootx_decoder_context *ctx) {
 	*(ctx->payload_size) = 0;
 }
 
+void ootx_free_decoder_context(ootx_decoder_context *ctx) {
+	free(ctx->buffer);
+	ctx->buffer = NULL;
+	ctx->payload_size = NULL;
+}
+
 /*
 	how to decode pulses
 	ticks>2000 && delta>100000== master lighthouse
