@@ -22,6 +22,10 @@ void my_test(ootx_packet* packet) {
 
 void my_test2(ootx_packet* packet) {
 	printf("completed ootx packet\n");
+
+	lighthouse_info_v6 lhi;
+	init_lighthouse_info_v6(&lhi,packet->data);
+	print_lighthouse_info_v6(&lhi);
 //	packet->data[packet->length] = 0;
 //	printf("%d %s 0x%X\n", packet->length, packet->data, packet->crc32);
 }
@@ -91,11 +95,10 @@ void raw_test() {
 
 			if (current_lighthouse==0) bit &= ootx_pump_greatest_bit(c_ctx);
 
-			uint16_t s = *(c_ctx->payload_size);
-			uint16_t fwv = *(c_ctx->buffer+2);
-			uint16_t pv = 0x3f & fwv; //protocol version
-			fwv>>=6; //firmware version
-//			uint16_t ss = (s>>8) | (s<<8);
+//			uint16_t s = *(c_ctx->payload_size);
+//			uint16_t fwv = *(c_ctx->buffer+2);
+//			uint16_t pv = 0x3f & fwv; //protocol version
+//			fwv>>=6; //firmware version
 
 			//this will print after any messages from ootx_pump
 //			if (c_ctx->found_preamble>0) printf("LH:%d s:%d 0x%x fw:%d pv:%d bo:%d bit:%d\t%s", current_lighthouse, s, s, fwv, pv, c_ctx->buf_offset, bit, line);

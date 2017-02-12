@@ -230,3 +230,111 @@ void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
 	}
 }
 
+uint8_t* get_ptr(uint8_t* data, uint8_t bytes, uint16_t* idx) {
+	uint8_t* x = data + *idx;
+	*idx += bytes;
+	return x;
+}
+
+float _to_float(uint8_t* data) {
+	uint16_t h = *(uint16_t*)(data);
+	uint16_t h_exp, h_sig;
+	uint32_t f_sgn, f_exp, f_sig;
+
+	h_exp = (h&0x7c00u);
+	f_sgn = ((uint32_t)h&0x8000u) << 16;
+	if (h_exp == 0x0000u) { /* 0 or subnormal */
+		h_sig = (h&0x03ffu);
+		/* Signed zero */
+		if (h_sig == 0) {
+			return f_sgn;
+		}
+		/* Subnormal */
+		h_sig <<= 1;
+		while ((h_sig&0x0400u) == 0) {
+			h_sig <<= 1;
+			h_exp++;
+		}
+		f_exp = ((uint32_t)(127 - 15 - h_exp)) << 23;
+		f_sig = ((uint32_t)(h_sig&0x03ffu)) << 13;
+			return f_sgn + f_exp + f_sig;
+	}
+	else if (h_exp == 0x7c00u) { /* inf or NaN */
+		/* All-ones exponent and a copy of the significand */
+		return f_sgn + 0x7f800000u + (((uint32_t)(h&0x03ffu)) << 13);
+	}
+	else { /* normalized */
+		/* Just need to adjust the exponent and shift */
+		return f_sgn + (((uint32_t)(h&0x7fffu) + 0x1c000u) << 13);
+	}
+}
+
+void init_lighthouse_info_v6(lighthouse_info_v6* lhi, uint8_t* data) {
+	uint16_t idx = 0;
+	/*
+	uint16_t fw_version;//Firmware version (bit 15..6), protocol version (bit 5..0)
+	uint32_t id; //Unique identifier of the base station
+	float fcal_0_phase; //"phase" for rotor 0
+	float fcal_1_phase; //"phase" for rotor 1
+	float fcal_0_tilt; //"tilt" for rotor 0
+	float fcal_1_tilt; //"tilt" for rotor 1
+	uint8_t sys_unlock_count; //Lowest 8 bits of the rotor desynchronization counter
+	uint8_t hw_version; //Hardware version
+	float fcal_0_curve; //"curve" for rotor 0
+	float fcal_1_curve; //"curve" for rotor 1
+	int8_t accel_dir_x; //"orientation vector"
+	int8_t accel_dir_y; //"orientation vector"
+	int8_t accel_dir_z; //"orientation vector"
+	float fcal_0_gibphase; //"gibbous phase" for rotor 0 (normalized angle)
+	float fcal_1_gibphase; //"gibbous phase" for rotor 1 (normalized angle)
+	float fcal_0_gibmag; //"gibbous magnitude" for rotor 0
+	float fcal_1_gibmag; //"gibbous magnitude" for rotor 1
+	uint8_t mode_current; //Currently selected mode (default: 0=A, 1=B, 2=C)
+	uint8_t sys_faults; //"fault detect flags" (should be 0)
+	*/
+
+	lhi->fw_version = *(uint16_t*)get_ptr(data,2,&idx);
+	lhi->id = *(uint32_t*)get_ptr(data,4,&idx);
+	lhi->fcal_0_phase = _to_float( get_ptr(data,2,&idx) );
+	lhi->fcal_1_phase = _to_float( get_ptr(data,2,&idx) );
+	lhi->fcal_0_tilt = _to_float( get_ptr(data,2,&idx) );
+	lhi->fcal_1_tilt = _to_float( get_ptr(data,2,&idx) );
+	lhi->sys_unlock_count = *get_ptr(data,1,&idx);
+	lhi->hw_version = *get_ptr(data,1,&idx);
+	lhi->fcal_0_curve = _to_float( get_ptr(data,2,&idx) );
+	lhi->fcal_1_curve = _to_float( get_ptr(data,2,&idx) );
+	lhi->accel_dir_x = *(int8_t*)get_ptr(data,1,&idx);
+	lhi->accel_dir_y = *(int8_t*)get_ptr(data,1,&idx);
+	lhi->accel_dir_z = *(int8_t*)get_ptr(data,1,&idx);
+	lhi->fcal_0_gibphase = _to_float( get_ptr(data,2,&idx) );
+	lhi->fcal_1_gibphase = _to_float( get_ptr(data,2,&idx) );
+	lhi->fcal_0_gibmag = _to_float( get_ptr(data,2,&idx) );
+	lhi->fcal_1_gibmag = _to_float( get_ptr(data,2,&idx) );
+	lhi->mode_current = *get_ptr(data,1,&idx);
+	lhi->sys_faults = *get_ptr(data,1,&idx);
+
+}
+
+void print_lighthouse_info_v6(lighthouse_info_v6* lhi) {
+
+	printf("\t%X\n\t%X\n\t%f\n\t%f\n\t%f\n\t%f\n\t%d\n\t%d\n\t%f\n\t%f\n\t%d\n\t%d\n\t%d\n\t%f\n\t%f\n\t%f\n\t%f\n\t%d\n\t%d\n",
+		lhi->fw_version,
+		lhi->id,
+		lhi->fcal_0_phase,
+		lhi->fcal_1_phase,
+		lhi->fcal_0_tilt,
+		lhi->fcal_1_tilt,
+		lhi->sys_unlock_count,
+		lhi->hw_version,
+		lhi->fcal_0_curve,
+		lhi->fcal_1_curve,
+		lhi->accel_dir_x,
+		lhi->accel_dir_y,
+		lhi->accel_dir_z,
+		lhi->fcal_0_gibphase,
+		lhi->fcal_1_gibphase,
+		lhi->fcal_0_gibmag,
+		lhi->fcal_1_gibmag,
+		lhi->mode_current,
+		lhi->sys_faults);
+}
