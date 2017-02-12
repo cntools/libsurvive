@@ -16,7 +16,7 @@
 #define MAX_BUFF_SIZE 1024
 
 void (*ootx_packet_clbk)(ootx_packet* packet) = NULL;
-void (*ootx_bad_crc_clbk)(ootx_packet* packet) = NULL;
+void (*ootx_bad_crc_clbk)(ootx_packet* packet, uint32_t crc) = NULL;
 
 void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit);
 
@@ -194,7 +194,7 @@ void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
 			crc = crc32( crc, op.data,op.length);
 
 			if (crc != op.crc32) {
-				if (ootx_bad_crc_clbk != NULL) ootx_bad_crc_clbk(&op);
+				if (ootx_bad_crc_clbk != NULL) ootx_bad_crc_clbk(&op,crc);
 			}
 			else if (ootx_packet_clbk != NULL) {
 				ootx_packet_clbk(&op);

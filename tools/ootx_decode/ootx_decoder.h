@@ -66,6 +66,6 @@ uint8_t ootx_pump_greatest_bit(ootx_decoder_context *ctx);
 uint8_t ootx_decode_bit(uint32_t length);
 
 extern void (*ootx_packet_clbk)(ootx_packet* packet);
-extern void (*ootx_bad_crc_clbk)(ootx_packet* packet);
+extern void (*ootx_bad_crc_clbk)(ootx_packet* packet, uint32_t crc);
 
 #endif
