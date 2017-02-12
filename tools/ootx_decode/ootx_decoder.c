@@ -84,12 +84,16 @@ uint8_t ootx_decode_bit(uint32_t ticks) {
 	return bits&0x02;
 }
 */
-
-void ootx_log_bit(ootx_decoder_context *ctx, uint32_t ticks) {
-	int8_t dbit = ootx_decode_bit(ticks);
+/*
+void ootx_accumulate_bit(ootx_decoder_context *ctx, uint32_t ticks) {
+	uint8_t dbit = ootx_decode_bit(ticks);
 //	printf("%d\n\n", dbit);
 	ctx->bit_count[(dbit&0x01)]++;
 //	printf("%d %d %d\n", dbit, ctx->bit_count[0], ctx->bit_count[1]);
+}
+*/
+void ootx_accumulate_bit(ootx_decoder_context *ctx, uint8_t bit) {
+	ctx->bit_count[bit&0x01]++;
 }
 
 uint8_t ootx_pump_greatest_bit(ootx_decoder_context *ctx) {
@@ -97,6 +101,7 @@ uint8_t ootx_pump_greatest_bit(ootx_decoder_context *ctx) {
 	uint8_t bit = 0x00;
 	if (ctx->bit_count[0] < ctx->bit_count[1]) bit = 0xFF;
 
+//	printf("pump %d\n", bit);
 	ootx_pump_bit( ctx, bit );
 
 	ctx->bit_count[0] = 0;
@@ -150,6 +155,7 @@ void ootx_write_to_buffer(ootx_decoder_context *ctx, uint8_t dbit) {
 
 void ootx_process_bit(ootx_decoder_context *ctx, uint32_t length) {
 	int8_t dbit = ootx_decode_bit(length);
+
 	ootx_pump_bit( ctx, dbit );
 }
 
