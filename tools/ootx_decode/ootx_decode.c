@@ -30,11 +30,38 @@ void my_test2(ootx_packet* packet) {
 //	printf("%d %s 0x%X\n", packet->length, packet->data, packet->crc32);
 }
 
+
+void print_crc32(uint32_t crc) {
+//	uint8_t* p = (uint32_t*)&crc;
+//	uint8_t i = 0;
+
+	printf("%X\n", crc);
+}
+
+void write_to_file(uint8_t *d, uint16_t length){
+	FILE *fp = fopen("binary.data","w");
+	fwrite(d, length, 1, fp);
+	fclose(fp);
+}
+
+void bad_crc(ootx_packet* packet) {
+	printf("CRC mismatch\n");
+/*
+	printf("r:");
+	print_crc32(op.crc32);
+
+	printf("c:");
+	print_crc32(crc);
+//	write_to_file(op.data,op.length);
+*/
+}
+
 ootx_decoder_context ctx[2];
 
 void hello_world_test() {
 //	ootx_init_buffer();
 	ootx_packet_clbk = my_test;
+	ootx_bad_crc_clbk = bad_crc;
 
 	char* line = NULL;
 	size_t line_len = 0;

@@ -16,6 +16,8 @@
 #define MAX_BUFF_SIZE 1024
 
 void (*ootx_packet_clbk)(ootx_packet* packet) = NULL;
+void (*ootx_bad_crc_clbk)(ootx_packet* packet) = NULL;
+
 void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit);
 
 void ootx_init_decoder_context(ootx_decoder_context *ctx) {
@@ -30,13 +32,6 @@ void ootx_init_decoder_context(ootx_decoder_context *ctx) {
 	ctx->payload_size = (uint16_t*)ctx->buffer;
 	*(ctx->payload_size) = 0;
 }
-/*
-void ootx_init_buffer() {
-	buffer = (uint8_t*)malloc(MAX_BUFF_SIZE);
-	payload_size = (uint16_t*)buffer;
-	*payload_size = 0;
-}
-*/
 
 /*
 	how to decode pulses
@@ -87,20 +82,7 @@ uint8_t ootx_decode_bit(uint32_t length) {
 
 	return 0x00;
 }
-/*
-uint8_t ootx_decode_bit(uint32_t ticks) {
-	int8_t bits = decode_internal(ticks);
-	return bits&0x02;
-}
-*/
-/*
-void ootx_accumulate_bit(ootx_decoder_context *ctx, uint32_t ticks) {
-	uint8_t dbit = ootx_decode_bit(ticks);
-//	printf("%d\n\n", dbit);
-	ctx->bit_count[(dbit&0x01)]++;
-//	printf("%d %d %d\n", dbit, ctx->bit_count[0], ctx->bit_count[1]);
-}
-*/
+
 void ootx_accumulate_bit(ootx_decoder_context *ctx, uint8_t bit) {
 	ctx->bit_count[bit&0x01]++;
 }
@@ -168,19 +150,6 @@ void ootx_process_bit(ootx_decoder_context *ctx, uint32_t length) {
 	ootx_pump_bit( ctx, dbit );
 }
 
-void print_crc32(uint32_t crc) {
-//	uint8_t* p = (uint32_t*)&crc;
-//	uint8_t i = 0;
-
-	printf("%X\n", crc);
-}
-
-void write_to_file(uint8_t *d, uint16_t length){
-	FILE *fp = fopen("binary.data","w");
-	fwrite(d, length, 1, fp);
-	fclose(fp);
-}
-
 void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
 //	uint8_t dbit = ootx_decode_bit(length);
 	++(ctx->bits_processed);
@@ -223,22 +192,13 @@ void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
 
 			uint32_t crc = crc32( 0L, Z_NULL, 0 );
 			crc = crc32( crc, op.data,op.length);
-//			uint32_t crc = crc32(0xffffffff,op.data,op.length);
-
 
 			if (crc != op.crc32) {
-				printf("CRC mismatch\n");
-/*
-				printf("r:");
-				print_crc32(op.crc32);
-
-				printf("c:");
-				print_crc32(crc);
-//				write_to_file(op.data,op.length);
-*/
+				if (ootx_bad_crc_clbk != NULL) ootx_bad_crc_clbk(&op);
 			}
-
-			if ((crc == op.crc32) && ootx_packet_clbk) ootx_packet_clbk(&op);
+			else if (ootx_packet_clbk != NULL) {
+				ootx_packet_clbk(&op);
+			}
 
 			ootx_reset_buffer(ctx);
 		}
