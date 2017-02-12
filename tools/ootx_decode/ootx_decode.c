@@ -110,7 +110,7 @@ void raw_test() {
 
 		if (ticks>2000 && current_lighthouse==0) {
 			//only work with master lighthouse for now
-			ootx_log_bit(c_ctx, ticks);
+			ootx_accumulate_bit(c_ctx, ootx_decode_bit(ticks) );
 		}
 
 		if (lh == -1) {
