@@ -1,4 +1,4 @@
-// (C) 2016 Joshua Allen, MIT/x11 License.
+// (C) 2017 Joshua Allen, MIT/x11 License.
 //
 //All MIT/x11 Licensed Code in this file may be relicensed freely under the GPL or LGPL licenses.
 
