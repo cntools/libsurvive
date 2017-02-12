@@ -91,45 +91,85 @@ void raw_test() {
 		if (lh > -1) {
 			//pump last bit
 //			printf("LH:%d ", current_lighthouse);
+			uint8_t bit = 0x01; //bit for debugging purposes
+
+//			if (current_lighthouse==1) bit &= ootx_pump_greatest_bit(c_ctx);
+			bit &= ootx_pump_greatest_bit(c_ctx);
+
+/*
+			uint16_t s = *(c_ctx->payload_size);
+			uint16_t fwv = *(c_ctx->buffer+2);
+			uint16_t pv = 0x3f & fwv; //protocol version
+			fwv>>=6; //firmware version
+
+			//this will print after any messages from ootx_pump
+			if (c_ctx->found_preamble>0) printf("LH:%d s:%d 0x%x fw:%d pv:%d bo:%d bit:%d\t%s", current_lighthouse, s, s, fwv, pv, c_ctx->buf_offset, bit, line);
+*/
+			//change to newly found lighthouse
+			current_lighthouse = lh;
+			c_ctx = ctx+current_lighthouse;
+		}
+
+//		if (ticks>2000 && current_lighthouse==1) {
+		if (ticks>2000) {
+				ootx_accumulate_bit(c_ctx, ootx_decode_bit(ticks) );
+		}
+	}	
+}
+
+void acode_test() {
+	ootx_packet_clbk = my_test2;
+
+	char* line = NULL;
+	size_t line_len = 0;
+	char trash[100] = "";
+	int32_t atime = 0x00;
+//	uint32_t ticks = 0x00;
+//	uint32_t delta = 0x00;
+	uint8_t acode = 0x00;
+	char lighthouse_code = '\0';
+
+	int8_t current_lighthouse = 0;
+	ootx_decoder_context *c_ctx = ctx;
+
+	while (getline(&line,&line_len,stdin)>0) {
+		//L X HMD -1842671365 18 0 175393 222
+		sscanf(line,"%c %s %s %d %s %hhu %s %s",
+			&lighthouse_code,
+			trash,
+			trash,
+			&atime,
+			trash,
+			&acode,
+			trash,
+			trash);
+
+		int8_t lh = lighthouse_code=='R'?0:1;
+//		printf("LH:%d bit:%d %s\n", lh, (acode & 0x02) >> 1,line);
+
+		if (lh != current_lighthouse) {
+			//pump last bit
 			uint8_t bit = 0x01;
 
 			if (current_lighthouse==0) bit &= ootx_pump_greatest_bit(c_ctx);
+//			ootx_pump_greatest_bit(c_ctx);
 
-//			uint16_t s = *(c_ctx->payload_size);
-//			uint16_t fwv = *(c_ctx->buffer+2);
-//			uint16_t pv = 0x3f & fwv; //protocol version
-//			fwv>>=6; //firmware version
+			uint16_t s = *(c_ctx->payload_size);
+			uint16_t fwv = *(c_ctx->buffer+2);
+			uint16_t pv = 0x3f & fwv; //protocol version
+			fwv>>=6; //firmware version
 
 			//this will print after any messages from ootx_pump
-//			if (c_ctx->found_preamble>0) printf("LH:%d s:%d 0x%x fw:%d pv:%d bo:%d bit:%d\t%s", current_lighthouse, s, s, fwv, pv, c_ctx->buf_offset, bit, line);
+			if (c_ctx->found_preamble>0) printf("LH:%d s:%d 0x%x fw:%d pv:%d bo:%d bit:%d\t%s", current_lighthouse, s, s, fwv, pv, c_ctx->buf_offset, bit, line);
 
 			//change to newly found lighthouse
 			current_lighthouse = lh;
 			c_ctx = ctx+current_lighthouse;
 		}
 
-		if (ticks>2000 && current_lighthouse==0) {
-			//only work with master lighthouse for now
-			ootx_accumulate_bit(c_ctx, ootx_decode_bit(ticks) );
-		}
-
-		if (lh == -1) {
-//			printf("%d %d %d\n", ticks, delta, current_lighthouse);
-//			ootx_process_bit(ctx+current_lighthouse, ticks);
-
-		}
-//			printf("%d %d %d\n", ticks, delta, current_lighthouse);
-//			ootx_process_bit(ctx+current_lighthouse, ticks);
-
-			//we would expect a length of 40 bytes
-//			printf("%d %d %d\t%s\n", current_lighthouse, *(ctx->payload_size), ctx->found_preamble, line);
+//		if (current_lighthouse==0) {
+			ootx_accumulate_bit(c_ctx, (acode & 0x02) >> 1);
 //		}
-/*
-		if (current_lighthouse >= 0) {
-			ootx_process_bit(ctx+current_lighthouse, ticks);
-		}
-
-*/
 	}	
 }
 
@@ -139,6 +179,7 @@ int main(int argc, char* argv[])
 	ootx_init_decoder_context(ctx+1);
 
 	raw_test();
+//	acode_test();
 //	hello_world_test();
 
 	return 0;

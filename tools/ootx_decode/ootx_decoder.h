@@ -63,6 +63,8 @@ int8_t ootx_decode_lighthouse_number(uint8_t last_num, uint32_t ticks, int32_t d
 void ootx_accumulate_bit(ootx_decoder_context *ctx, uint8_t bit);
 uint8_t ootx_pump_greatest_bit(ootx_decoder_context *ctx);
 
+uint8_t ootx_decode_bit(uint32_t length);
+
 extern void (*ootx_packet_clbk)(ootx_packet* packet);
 
 #endif

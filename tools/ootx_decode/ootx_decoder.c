@@ -45,12 +45,21 @@ void ootx_init_buffer() {
 */
 
 int8_t ootx_decode_lighthouse_number(uint8_t last_num, uint32_t ticks, int32_t delta) {
-	if (ticks<2000) return -1; //sweep
-	if (delta>100000) return 0; //master
-	if (delta>10000) return 1; //a slave
+	if (delta<18000) return -1; //sweep
+//	if (ticks<2000) return -1; //sweep
+//	printf ("%d\n", delta);
+
+
+	if (ticks>2000 && delta>100000) return 0; //master
+	if (delta>100000) return -1; //some kind of sweep related to the master
+
+	/*	slaves are tricky. The first few sensor readings can be confused because their tick count could be too low because of the previous master pulse?
+		so we have to ignore ticks completly
+	*/
+	if (delta>18000) return 1; //a slave, should be at least 20000 but there are some data issues
 	return -1;
 }
-
+/*
 uint8_t decode_internal(uint32_t length) {
 		uint16_t temp = length - 2880;
 //		printf
@@ -68,7 +77,7 @@ uint8_t decode_internal(uint32_t length) {
 	return -1;
 
 }
-
+*/
 uint8_t ootx_decode_bit(uint32_t length) {
 	length = ((length/500)*500)+500;
 
