@@ -9,8 +9,9 @@
 #include <stdint.h>
 #include <time.h>
 #include <stdlib.h>
+#include <zlib.h>
 
-#include "crc32.h"
+//this program is broken and does not produce useable data.
 
 uint32_t time_stamp = -525198892;
 
@@ -33,7 +34,8 @@ int main(int argc, char* argv[])
 	print_preamble();
 
 	uint16_t payload_lenth = strlen(str);
-	uint32_t crc = crc32(0xffffffff,(uint8_t*)str,payload_lenth);
+	uint32_t crc = crc32( 0L, Z_NULL, 0 );
+	crc = crc32( crc, (uint8_t*)str,payload_lenth);
 
 	print_uint16(payload_lenth);
 	print_payload(str,payload_lenth);
