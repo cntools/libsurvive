@@ -218,8 +218,22 @@ uint8_t* get_ptr(uint8_t* data, uint8_t bytes, uint16_t* idx) {
 }
 
 float _to_float(uint8_t* data) {
+	//this will not handle infinity, NaN, or denormalized floats
+
 	uint16_t x = *(uint16_t*)data;
-	return x;
+	float f = 0;
+
+	uint32_t *ftmp = (uint32_t*)&f; //use the allocated floating point memory
+
+	if (((x & 0x7c00) == 0x0000) && ((x & 0x03ff) == 0)) return f; //zero
+
+	//sign
+	*ftmp = x & 0x8000;
+	*ftmp <<= 16;
+
+	*ftmp += ((((uint32_t)(x & 0x7fff)) + 0x1c000) << 13);
+
+	return f;
 }
 
 void init_lighthouse_info_v6(lighthouse_info_v6* lhi, uint8_t* data) {
@@ -246,25 +260,25 @@ void init_lighthouse_info_v6(lighthouse_info_v6* lhi, uint8_t* data) {
 	uint8_t sys_faults; //"fault detect flags" (should be 0)
 	*/
 
-	lhi->fw_version = *(uint16_t*)get_ptr(data,2,&idx);
-	lhi->id = *(uint32_t*)get_ptr(data,4,&idx);
-	lhi->fcal_0_phase = _to_float( get_ptr(data,2,&idx) );
-	lhi->fcal_1_phase = _to_float( get_ptr(data,2,&idx) );
-	lhi->fcal_0_tilt = _to_float( get_ptr(data,2,&idx) );
-	lhi->fcal_1_tilt = _to_float( get_ptr(data,2,&idx) );
-	lhi->sys_unlock_count = *get_ptr(data,1,&idx);
-	lhi->hw_version = *get_ptr(data,1,&idx);
-	lhi->fcal_0_curve = _to_float( get_ptr(data,2,&idx) );
-	lhi->fcal_1_curve = _to_float( get_ptr(data,2,&idx) );
-	lhi->accel_dir_x = *(int8_t*)get_ptr(data,1,&idx);
-	lhi->accel_dir_y = *(int8_t*)get_ptr(data,1,&idx);
-	lhi->accel_dir_z = *(int8_t*)get_ptr(data,1,&idx);
-	lhi->fcal_0_gibphase = _to_float( get_ptr(data,2,&idx) );
-	lhi->fcal_1_gibphase = _to_float( get_ptr(data,2,&idx) );
-	lhi->fcal_0_gibmag = _to_float( get_ptr(data,2,&idx) );
-	lhi->fcal_1_gibmag = _to_float( get_ptr(data,2,&idx) );
-	lhi->mode_current = *get_ptr(data,1,&idx);
-	lhi->sys_faults = *get_ptr(data,1,&idx);
+	lhi->fw_version = *(uint16_t*)get_ptr(data,sizeof(uint16_t),&idx);
+	lhi->id = *(uint32_t*)get_ptr(data,sizeof(uint32_t),&idx);
+	lhi->fcal_0_phase = _to_float( get_ptr(data,sizeof(uint16_t),&idx) );
+	lhi->fcal_1_phase = _to_float( get_ptr(data,sizeof(uint16_t),&idx) );
+	lhi->fcal_0_tilt = _to_float( get_ptr(data,sizeof(uint16_t),&idx) );
+	lhi->fcal_1_tilt = _to_float( get_ptr(data,sizeof(uint16_t),&idx) );
+	lhi->sys_unlock_count = *get_ptr(data,sizeof(uint8_t),&idx);
+	lhi->hw_version = *get_ptr(data,sizeof(uint8_t),&idx);
+	lhi->fcal_0_curve = _to_float( get_ptr(data,sizeof(uint16_t),&idx) );
+	lhi->fcal_1_curve = _to_float( get_ptr(data,sizeof(uint16_t),&idx) );
+	lhi->accel_dir_x = *(int8_t*)get_ptr(data,sizeof(uint8_t),&idx);
+	lhi->accel_dir_y = *(int8_t*)get_ptr(data,sizeof(uint8_t),&idx);
+	lhi->accel_dir_z = *(int8_t*)get_ptr(data,sizeof(uint8_t),&idx);
+	lhi->fcal_0_gibphase = _to_float( get_ptr(data,sizeof(uint16_t),&idx) );
+	lhi->fcal_1_gibphase = _to_float( get_ptr(data,sizeof(uint16_t),&idx) );
+	lhi->fcal_0_gibmag = _to_float( get_ptr(data,sizeof(uint16_t),&idx) );
+	lhi->fcal_1_gibmag = _to_float( get_ptr(data,sizeof(uint16_t),&idx) );
+	lhi->mode_current = *get_ptr(data,sizeof(uint8_t),&idx);
+	lhi->sys_faults = *get_ptr(data,sizeof(uint8_t),&idx);
 
 }
 
