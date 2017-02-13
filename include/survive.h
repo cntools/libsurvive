@@ -32,16 +32,11 @@ struct SurviveObject
 	//Flood info, for calculating which laser is currently sweeping.
 	int8_t oldcode;
 
- #ifdef USE_OLD_DISAMBIGUATOR
-	uint32_t last_master_time;
-	uint32_t last_slave_time;
- 	int16_t last_master_length;
- 	int16_t last_slave_length;
-	int8_t   is_on_slave;
- #else
-	uint32_t last_master_time;
- 	struct disambiguator * d;
- #endif
+	uint32_t last_time[2];    //0 = master, 1 = slave.  Hardcoded, because it cannot simply be expanded.
+	uint32_t last_length[2];
+	int8_t   sync_set_number; //0 = master, 1 = slave, -1 = fault.  Possibly more lighthouses???
+	int8_t   did_handle_ootx;
+	uint32_t recent_sync_time;
 
 	uint32_t last_lighttime;  //May be a 24- or 32- bit number depending on what device.
 
