@@ -35,7 +35,9 @@ struct SurviveObject
  #ifdef USE_OLD_DISAMBIGUATOR
 	uint32_t last_master_time;
 	uint32_t last_slave_time;
- 	int32_t last_photo_length;
+ 	int16_t last_master_length;
+ 	int16_t last_slave_length;
+	int8_t   is_on_slave;
  #else
 	uint32_t last_master_time;
  	struct disambiguator * d;

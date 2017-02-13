@@ -62,38 +62,71 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 	if( le->length > 2200 ) //Pulse longer indicates a sync pulse.
 	{
 		int32_t deltat = (uint32_t)le->timestamp - (uint32_t)so->last_master_time;
-		if( deltat > 2000 || deltat < -2000 )		//New pulse. (may be inverted)
-		{
-			//See if this is a unique pulse, or another one in the same set we need to look at.
-			if( le->timestamp - so->last_master_time > 1500 + so->last_photo_length )
-			{
-				// check if it is a slave pulse
-				if (le->timestamp - so->last_master_time < 70000) {
-					so->last_slave_time = le->timestamp;
-					return;
-				}
+		//        if( so->codename[0] == 'W' )
 
-//				printf("%10u %10u %6u %6d\n", so->last_master_time, le->timestamp, (le->length - 2750)/500, (int32_t)le->timestamp - (int32_t)so->last_master_time);
-				so->last_master_time = le->timestamp;
-				so->last_photo_length = le->length;
-				ct->lightproc( so, le->sensor_id, -1, 0, le->timestamp, deltat );
-				deltat = 0;
+		if( deltat > 2000 )
+		{
+			//YUGH!!  This is really ugly, should refactor.
+
+			if( so->is_on_slave )
+			{
+				//Last was a slave.  If new pulse, switch back to master mode.
+				if( le->timestamp - so->last_slave_time > 1500 + so->last_slave_length )
+				{
+					so->is_on_slave = 0;
+					so->last_master_time = le->timestamp;
+					so->last_master_length = le->length;
+					ct->lightproc( so, le->sensor_id, -1, 0, le->timestamp, deltat );
+				}
+			}
+			else
+			{
+				//See if this is a unique pulse, or another one in the same set we need to look at.
+				if( le->timestamp - so->last_master_time > 1500 + so->last_master_length )
+				{
+					// check if it is a slave pulse
+					if (le->timestamp - so->last_master_time < 70000) {
+						so->last_slave_time = le->timestamp;
+						so->last_slave_length = le->length;
+						so->is_on_slave = 1;
+						return;
+					}
+
+					so->is_on_slave = 0;
+					so->last_master_time = le->timestamp;
+					so->last_master_length = le->length;
+					ct->lightproc( so, le->sensor_id, -1, 0, le->timestamp, deltat );
+					deltat = 0;
+				}
 			}
 		}
 
 		//Find longest pulse-length from device in our window and use that one.
-		if( le->length > so->last_photo_length )
+		if( so->is_on_slave )
 		{
 //			printf("%10u %10u %6d %6d\n", so->last_master_time, le->timestamp, (le->length - 2750)/500, (int32_t)le->timestamp - (int32_t)so->last_master_time);
-			so->last_master_time = le->timestamp;
-			so->last_photo_length = le->length;
+
+			if( le->length > so->last_slave_length )
+			{
+				so->last_slave_time = le->timestamp;
+				so->last_slave_length = le->length;
+			}
+		}
+		else
+		{
+			if( le->length > so->last_master_length )
+			{
+				so->last_master_time = le->timestamp;
+				so->last_master_length = le->length;
+			}
 		}
 	}
+
 	//See if this is a valid actual pulse.
 	else if( le->length < 1800 && le->length > 40 && ( le->timestamp - so->last_master_time < 380000 ) )
 	{
 		int32_t dl = so->last_master_time;
-		int32_t tpco = so->last_photo_length;
+		int32_t tpco = so->last_master_length;
 
 		//Adding length 
 		//Long pulse-code from IR flood.
@@ -103,8 +136,11 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 
 		acode >>= 1;
 		acode -= 6;
+
 		if (acode > 3) {
+			return;
 			dl = so->last_slave_time;
+			tpco = so->last_slave_length;
 		}
 
 		//printf( "%s / %d %d ++ %d %d\n", so->codename, dl, tpco, offset_from, acode );
