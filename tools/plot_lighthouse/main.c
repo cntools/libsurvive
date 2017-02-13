@@ -13,6 +13,11 @@
 #include "glutil.h"
 #include "fileutil.h"
 
+#ifdef LINUX
+#include <GL/freeglut.h>
+#endif
+
+
 // Required to set up a window
 #define WIDTH  800
 #define HEIGHT 600
@@ -73,7 +78,8 @@ float rotz=0.0f;
 void init()
 {    
 	int i,j;
-    
+//void quatrotatevector( FLT * vec3out, const FLT * quat, const FLT * vec3in );
+
 	// Load the lighthouses
 	LoadLighthousePos("L.txt", &houseL.x,&houseL.y,&houseL.z,&houseL.qi,&houseL.qj,&houseL.qk,&houseL.qreal);
 	LoadLighthousePos("R.txt", &houseR.x,&houseR.y,&houseR.z,&houseR.qi,&houseR.qj,&houseR.qk,&houseR.qreal);
@@ -86,14 +92,14 @@ void init()
 	// Spawn the thread to read the hmt angles
 	memset(read_hmdAngleViewed, 0, NUM_HMD*NUM_SWEEP*sizeof(int));
 	read_mutex  = OGCreateMutex();
-	for (i=0; i<32; i++) {
+	for (i=0; i<NUM_HMD; i++) {
 		for (j=0; j<4; j++) {
 			read_hmdAngles[j][i] = -9999.0;
 		}
 	}
 	read_thread = OGCreateThread(ThreadReadHmtAngles,NULL);	
 
-	for (i=0; i<32; i++) {
+	for (i=0; i<NUM_HMD; i++) {
 		if (hmdAngles[0][i]!=-9999.0 && hmdAngles[1][i]!=-9999.0 && hmdAngles[2][i]!=-9999.0 && hmdAngles[3][i]!=-9999.0)
 		{
 			printf("hmd %d lx %f ly %f rx %f ry %f\n",
@@ -220,43 +226,55 @@ void draw()
 	// Read the hmd angles
 	OGLockMutex(read_mutex);
 	for (i=0; i<4; i++) {
-		for (j=0; j<32; j++) {
+		for (j=0; j<NUM_HMD; j++) {
 			hmdAngles[i][j] = read_hmdAngles[i][j];
 		}
 	}
 	OGUnlockMutex(read_mutex);
 
-	// For every head mount angle
+	// Draw the hmd bearing angles
 	glBegin(GL_LINES);
-	for (i=0; i<32; i++) {
-	
-		// If the bearings exist
-		if (/*read_hmdAngleViewed[0][i] >= read_frameno-6 &&
-			read_hmdAngleViewed[1][i] >= read_frameno-6 &&
-			read_hmdAngleViewed[2][i] >= read_frameno-6 &&
-			read_hmdAngleViewed[3][i] >= read_frameno-6 &&*/
-			hmdAngles[0][i]!=-9999.0 && hmdAngles[1][i]!=-9999.0 && hmdAngles[2][i]!=-9999.0 && hmdAngles[3][i]!=-9999.0)
+	for (i=0; i<NUM_HMD; i++) {
+		const double dist=10.0;
+		
+		// If the left lighthouse sees it
+		if (read_hmdAngleViewed[SWEEP_LX][i] >= read_frameno-6 &&
+		    read_hmdAngleViewed[SWEEP_LY][i] >= read_frameno-6 &&
+		    hmdAngles[SWEEP_LX][i]!=-9999.0 && hmdAngles[SWEEP_LY][i]!=-9999.0)
 		{
 			// Get the hmd bearings
-			double Ldx,Ldy,Ldz,Rdx,Rdy,Rdz;
+			double Ldx,Ldy,Ldz;
 			HmdDir(hmdAngles[SWEEP_LX][i], hmdAngles[SWEEP_LY][i], &Ldx, &Ldy, &Ldz);
-			HmdDir(hmdAngles[SWEEP_RX][i], hmdAngles[SWEEP_RY][i], &Rdx, &Rdy, &Rdz);
-		
-			// Rotate by the lighthouse coordinate systems
-			Quaternion L0,L,R0,R,Lq,Rq;
-			QuaternionSet(L0,Ldx,Ldy,Ldz,0.0);
-			QuaternionSet(R0,Rdx,Rdy,Rdz,0.0);
-			QuaternionSet(Lq,houseL.qi,houseL.qj,houseL.qk,houseL.qreal);
-			QuaternionSet(Rq,houseR.qi,houseR.qj,houseR.qk,houseR.qreal);
-			QuaternionRot(L, Lq, L0);   // L is world space bearing from Left lighthouse to hmd
-			QuaternionRot(R, Rq, R0);   // R is world space bearing from Right lighthouse to hmd
-		
+
+			// Rotate the bearings by the lighthouse orientation
+			FLT L0[3],L[3],Lq[4];
+			L0[0]=Ldx; L0[1]=Ldy; L0[2]=Ldz;
+			Lq[0]=houseL.qreal; Lq[1]=houseL.qi; Lq[2]=houseL.qj; Lq[3]=houseL.qk;
+			quatrotatevector(L, Lq, L0);
+
 			// Plot the lines
-			const double dist=10.0;
 			glVertex3f(houseL.x, houseL.z, houseL.y);
-			glVertex3f(houseL.x+dist*L.i, houseL.z+dist*L.k, houseL.y+dist*L.j);
+			glVertex3f(houseL.x+dist*L[0], houseL.z+dist*L[2], houseL.y+dist*L[1]);
+		}
+		
+		// If the left lighthouse sees it
+		if (read_hmdAngleViewed[SWEEP_RX][i] >= read_frameno-6 &&
+		    read_hmdAngleViewed[SWEEP_RY][i] >= read_frameno-6 &&
+		    hmdAngles[SWEEP_RX][i]!=-9999.0 && hmdAngles[SWEEP_RY][i]!=-9999.0)
+		{
+			// Get the hmd bearings
+			double Rdx,Rdy,Rdz;
+			HmdDir(hmdAngles[SWEEP_RX][i], hmdAngles[SWEEP_RY][i], &Rdx, &Rdy, &Rdz);
+
+			// Rotate the bearings by the lighthouse orientation
+			FLT R0[3],R[3],Rq[4];
+			R0[0]=Rdx; R0[1]=Rdy; R0[2]=Rdz;
+			Rq[0]=houseR.qreal; Rq[1]=houseR.qi; Rq[2]=houseR.qj; Rq[3]=houseR.qk;
+			quatrotatevector(R, Rq, R0);
+
+			// Plot the lines
 			glVertex3f(houseR.x, houseR.z, houseR.y);
-			glVertex3f(houseR.x+dist*R.i, houseR.z+dist*R.k, houseR.y+dist*R.j);
+			glVertex3f(houseR.x+dist*R[0], houseR.z+dist*R[2], houseR.y+dist*R[1]);
 		}
 	}
 	glEnd();

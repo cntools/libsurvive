@@ -8,7 +8,7 @@
 #include <jsmn.h>
 #include <string.h>
 #include <zlib.h>
-#include "disambiguator.h"
+
 
 static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
  if (tok->type == JSMN_STRING && (int) strlen(s) == tok->end - tok->start &&
@@ -147,21 +147,10 @@ struct SurviveContext * survive_init()
 
 	ctx->headset.ctx = ctx;
 	memcpy( ctx->headset.codename, "HMD", 4 );
-#ifndef USE_OLD_DISAMBIGUATOR
-	ctx->headset.d = calloc( 1, sizeof( struct disambiguator ) );
-#endif
-
 	ctx->watchman[0].ctx = ctx;
 	memcpy( ctx->watchman[0].codename, "WM0", 4 );
-#ifndef USE_OLD_DISAMBIGUATOR
-	ctx->watchman[0].d = calloc( 1, sizeof( struct disambiguator ) );
-#endif
-
 	ctx->watchman[1].ctx = ctx;
 	memcpy( ctx->watchman[1].codename, "WM1", 4 );
-#ifndef USE_OLD_DISAMBIGUATOR
-	ctx->watchman[1].d = calloc( 1, sizeof( struct disambiguator ) );
-#endif
 
 	//USB must happen last.
 	if( r = survive_usb_init( ctx ) )
