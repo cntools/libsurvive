@@ -110,7 +110,10 @@ void *ThreadReadHmtAngles(void *junk)
 		if ( xy[0]   =='Y' ) { sweepId++; }
 		double angle = (PI / 400000.0) * ( (double)timeInSweep-200000.0 );
 		
-		if ( strcmp(hmd,"HMD")!=0 ) { continue; }
+		if      ( strcmp(hmd,"HMD")==0 ) { id += 0;  } 
+		else if ( strcmp(hmd,"WM0")==0 ) { id += 32; }
+		else if ( strcmp(hmd,"WM1")==0 ) { id += 56; }
+		else    { continue; }
 		
 		if ( id<0 || id >NUM_HMD) { continue; }
 
