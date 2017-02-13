@@ -225,7 +225,7 @@ float _to_float(uint8_t* data) {
 
 	uint32_t *ftmp = (uint32_t*)&f; //use the allocated floating point memory
 
-	if (((x & 0x7c00) == 0x0000) && ((x & 0x03ff) == 0)) return f; //zero
+	if ((x & 0x7FFF) == 0) return f; //zero
 
 	//sign
 	*ftmp = x & 0x8000;
