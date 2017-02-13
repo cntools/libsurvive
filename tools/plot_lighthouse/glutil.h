@@ -10,7 +10,8 @@
 #define glutil_h
 
 #include <stdio.h>
-#include "quaternion.h"
+//#include "quaternion.h"
+#include "linmath.h"
 
 #include <stdio.h>
 #ifdef __APPLE__

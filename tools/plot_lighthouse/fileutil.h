@@ -2,7 +2,7 @@
 #define _fileutil_h_
 
 #include <pthread.h>
-#include "../../redist/os_generic.h"
+#include "os_generic.h"
 
 void LoadLighthousePos(
 	const char *path, 
@@ -10,7 +10,8 @@ void LoadLighthousePos(
 	float *qi, float *qj, float *qk, float *qreal);
 
 
-#define NUM_HMD   32
+// first 32 are hmd, next 24 wm0 next 24 wm1
+#define NUM_HMD   80
 #define NUM_SWEEP 4
 #define SWEEP_LX  0
 #define SWEEP_LY  1
