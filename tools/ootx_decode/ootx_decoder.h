@@ -55,14 +55,10 @@ typedef struct {
 void init_lighthouse_info_v6(lighthouse_info_v6* lhi, uint8_t* data);
 void print_lighthouse_info_v6(lighthouse_info_v6* lhi);
 
-//void ootx_init_buffer();
-void ootx_process_bit(ootx_decoder_context *ctx, uint32_t length);
 void ootx_init_decoder_context(ootx_decoder_context *ctx);
-int8_t ootx_decode_lighthouse_number(uint8_t last_num, uint32_t ticks, int32_t delta);
 void ootx_free_decoder_context(ootx_decoder_context *ctx);
 
-void ootx_accumulate_bit(ootx_decoder_context *ctx, uint8_t bit);
-uint8_t ootx_pump_greatest_bit(ootx_decoder_context *ctx);
+uint8_t ootx_process_bit(ootx_decoder_context *ctx, uint32_t length);
 
 uint8_t ootx_decode_bit(uint32_t length);
 

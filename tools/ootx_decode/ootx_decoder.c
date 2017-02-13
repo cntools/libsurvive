@@ -39,55 +39,16 @@ void ootx_free_decoder_context(ootx_decoder_context *ctx) {
 	ctx->payload_size = NULL;
 }
 
-/*
-	how to decode pulses
-	ticks>2000 && delta>100000== master lighthouse
-	ticks>2000 && delta>10000 == slave lighthouse
-*/
-
-int8_t ootx_decode_lighthouse_number(uint8_t last_num, uint32_t ticks, int32_t delta) {
-	if (delta<18000) return -1; //sweep
-//	if (ticks<2000) return -1; //sweep
-//	printf ("%d\n", delta);
-
-
-	if (ticks>2000 && delta>100000) return 0; //master
-	if (delta>100000) return -1; //some kind of sweep related to the master
-
-	/*	slaves are tricky. The first few sensor readings can be confused because their tick count could be too low because of the previous master pulse?
-		so we have to ignore ticks completly
-	*/
-	if (delta>18000) return 1; //a slave, should be at least 20000 but there are some data issues
-	return -1;
-}
-
 uint8_t ootx_decode_bit(uint32_t length) {
 	uint8_t t = (length - 2750) / 500; //why 2750?
-//	return ((t & 0x02)>0)?0xFF:0x00;
+//	return ((t & 0x02)>0)?0xFF:0x00; //easier if we need to bitshift right
 	return ((t & 0x02)>>1);
-}
-
-void ootx_accumulate_bit(ootx_decoder_context *ctx, uint8_t bit) {
-	ctx->bit_count[bit&0x01]++;
-}
-
-uint8_t ootx_pump_greatest_bit(ootx_decoder_context *ctx) {
-	//pump the bit
-	uint8_t bit = 0x00;
-	if (ctx->bit_count[0] < ctx->bit_count[1]) bit = 0xFF;
-
-//	printf("pump %d\n", bit);
-	ootx_pump_bit( ctx, bit );
-
-	ctx->bit_count[0] = 0;
-	ctx->bit_count[1] = 0;
-
-	return bit;
 }
 
 uint8_t ootx_detect_preamble(ootx_decoder_context *ctx, uint8_t dbit) {
 	ctx->preamble <<= 1;
-	ctx->preamble |= (0x01 & dbit);
+//	ctx->preamble |= (0x01 & dbit);
+	ctx->preamble |= dbit;
 	if ((ctx->preamble & 0x0003ffff) == 0x00000001) return 1;
 	return 0;
 }
@@ -115,11 +76,11 @@ void ootx_inc_buffer_offset(ootx_decoder_context *ctx) {
 
 void ootx_write_to_buffer(ootx_decoder_context *ctx, uint8_t dbit) {
 	uint8_t *current_byte = ctx->buffer + ctx->buf_offset;
-//	printf("%d\n", dbit);
-//	*current_byte >>= 1;
-//	*current_byte |= (0x80 & dbit);
+
 	*current_byte <<= 1;
-	*current_byte |= (0x01 & dbit);
+//	*current_byte |= (0x01 & dbit);
+	*current_byte |= dbit;
+
 	++(ctx->bits_written);
 	if (ctx->bits_written>7) {
 		ctx->bits_written=0;
@@ -128,18 +89,15 @@ void ootx_write_to_buffer(ootx_decoder_context *ctx, uint8_t dbit) {
 	}
 }
 
-void ootx_process_bit(ootx_decoder_context *ctx, uint32_t length) {
+uint8_t ootx_process_bit(ootx_decoder_context *ctx, uint32_t length) {
 	uint8_t dbit = ootx_decode_bit(length);
-
 	ootx_pump_bit( ctx, dbit );
+	return dbit;
 }
 
 void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
 //	uint8_t dbit = ootx_decode_bit(length);
 	++(ctx->bits_processed);
-
-//	printf("z %d %d\n", bits_processed,dbit);
-//	printf("d %d\n", bits_processed,dbit);
 
 	if ( ootx_detect_preamble(ctx, dbit) ) {
 		/*	data stream can start over at any time so we must
