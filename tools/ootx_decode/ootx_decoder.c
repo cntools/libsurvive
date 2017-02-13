@@ -60,33 +60,11 @@ int8_t ootx_decode_lighthouse_number(uint8_t last_num, uint32_t ticks, int32_t d
 	if (delta>18000) return 1; //a slave, should be at least 20000 but there are some data issues
 	return -1;
 }
-/*
-uint8_t decode_internal(uint32_t length) {
-		uint16_t temp = length - 2880;
-//		printf
 
-#if BETTER_SAFE_THAN_FAST
-	if (temp < 0 || length > 6525) {
-		return -1;
-	}
-#endif
-
-	if ((temp % 500) < 150) {
-		return temp / 500;
-	}
-
-	return -1;
-
-}
-*/
 uint8_t ootx_decode_bit(uint32_t length) {
-	length = ((length/500)*500)+500;
-
-	length-=3000;
-	if (length>=2000) { length-=2000; }
-	if (length>=1000)  { return 0xFF; }
-
-	return 0x00;
+	uint8_t t = (length - 2750) / 500; //why 2750?
+//	return ((t & 0x02)>0)?0xFF:0x00;
+	return ((t & 0x02)>>1);
 }
 
 void ootx_accumulate_bit(ootx_decoder_context *ctx, uint8_t bit) {
@@ -151,7 +129,7 @@ void ootx_write_to_buffer(ootx_decoder_context *ctx, uint8_t dbit) {
 }
 
 void ootx_process_bit(ootx_decoder_context *ctx, uint32_t length) {
-	int8_t dbit = ootx_decode_bit(length);
+	uint8_t dbit = ootx_decode_bit(length);
 
 	ootx_pump_bit( ctx, dbit );
 }
