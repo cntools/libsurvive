@@ -135,8 +135,10 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 			int32_t delta1 = so->last_time[0] - so->recent_sync_time;
 			int32_t delta2 = so->last_time[1] - so->last_time[0];
 
+			//XXX Axlecrusher -> Add your code here!!!
 			ctx->lightproc( so, -1, acode_array[0], delta1, so->last_time[0], so->last_length[0] );
 			ctx->lightproc( so, -2, acode_array[1], delta2, so->last_time[1], so->last_length[1] );
+
 			so->recent_sync_time = so->last_time[1];
 
 			//Throw out everything if our sync pulses look like they're bad.

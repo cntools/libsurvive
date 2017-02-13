@@ -13,6 +13,11 @@
 #include "glutil.h"
 #include "fileutil.h"
 
+#ifdef LINUX
+#include <GL/freeglut.h>
+#endif
+
+
 // Required to set up a window
 #define WIDTH  800
 #define HEIGHT 600
