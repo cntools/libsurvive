@@ -400,6 +400,285 @@ double pythAngleBetweenSensors2(TrackedSensor *a, TrackedSensor *b)
 	double pythAngle = sqrt(SQUARED(p*adjP) + SQUARED(d*adjd));
 	return pythAngle;
 }
+
+Point GetInitialEstimate(TrackedObject *obj, PointsAndAngle *pna, size_t pnaCount, FILE *logFile)
+{
+	Point **pointCloud = malloc(sizeof(void*)* pnaCount);
+
+
+	for (unsigned int i = 0; i < pnaCount; i++)
+	{
+		torusGenerator(pna[i].a, pna[i].b, pna[i].angle, &(pointCloud[i]));
+		if (logFile)
+		{
+			writePointCloud(logFile, pointCloud[i], COLORS[i%MAX_COLORS]);
+		}
+
+	}
+
+	Point bestMatchA = findBestPointMatch(pointCloud[0], pointCloud, pnaCount);
+
+	for (unsigned int i = 0; i < pnaCount; i++)
+	{
+		free(pointCloud[i]);
+		pointCloud[i] = NULL;
+	}
+
+	if (logFile)
+	{
+		markPointWithStar(logFile, bestMatchA, 0xFF0000);
+	}
+#ifdef TORI_DEBUG
+	printf("(%f,%f,%f)\n", bestMatchA.x, bestMatchA.y, bestMatchA.z);
+#endif
+
+	return bestMatchA;
+}
+
+Point RefineEstimateUsingPointCloud(Point initialEstimate, PointsAndAngle *pna, size_t pnaCount, TrackedObject *obj, FILE *logFile)
+{
+	// Now, let's add an extra patch or torus near the point we just found.
+
+	double toroidalAngle = 0;
+	double poloidalAngle = 0;
+
+
+
+	Point **pointCloud2 = malloc(sizeof(void*)* pnaCount);
+
+	for (unsigned int i = 0; i < pnaCount; i++)
+	{
+		estimateToroidalAndPoloidalAngleOfPoint(
+			pna[i].a,
+			pna[i].b,
+			pna[i].angle,
+			initialEstimate,
+			&toroidalAngle,
+			&poloidalAngle);
+
+		partialTorusGenerator(pna[i].a, pna[i].b, toroidalAngle - 0.1, toroidalAngle + 0.1, poloidalAngle - 0.2, poloidalAngle + 0.2, pna[i].angle, 800, &(pointCloud2[i]));
+
+		if (logFile)
+		{
+			writePointCloud(logFile, pointCloud2[i], COLORS[i%MAX_COLORS]);
+		}
+
+	}
+
+	Point bestMatchB = findBestPointMatch(pointCloud2[0], pointCloud2, pnaCount);
+
+	for (unsigned int i = 0; i < pnaCount; i++)
+	{
+		free(pointCloud2[i]);
+		pointCloud2[i] = NULL;
+	}
+
+	if (logFile)
+	{
+		markPointWithStar(logFile, bestMatchB, 0x00FF00);
+	}
+#ifdef TORI_DEBUG
+	printf("(%f,%f,%f)\n", bestMatchB.x, bestMatchB.y, bestMatchB.z);
+#endif
+
+	Point **pointCloud3 = malloc(sizeof(void*)* pnaCount);
+
+	for (unsigned int i = 0; i < pnaCount; i++)
+	{
+		estimateToroidalAndPoloidalAngleOfPoint(
+			pna[i].a,
+			pna[i].b,
+			pna[i].angle,
+			bestMatchB,
+			&toroidalAngle,
+			&poloidalAngle);
+
+		partialTorusGenerator(pna[i].a, pna[i].b, toroidalAngle - 0.05, toroidalAngle + 0.05, poloidalAngle - 0.1, poloidalAngle + 0.1, pna[i].angle, 3000, &(pointCloud3[i]));
+
+		if (logFile)
+		{
+			writePointCloud(logFile, pointCloud3[i], COLORS[i%MAX_COLORS]);
+		}
+
+	}
+
+	Point bestMatchC = findBestPointMatch(pointCloud3[0], pointCloud3, pnaCount);
+
+	for (unsigned int i = 0; i < pnaCount; i++)
+	{
+		free(pointCloud3[i]);
+		pointCloud3[i] = NULL;
+	}
+
+	if (logFile)
+	{
+		markPointWithStar(logFile, bestMatchC, 0xFFFFFF);
+	}
+#ifdef TORI_DEBUG
+	printf("(%f,%f,%f)\n", bestMatchC.x, bestMatchC.y, bestMatchC.z);
+#endif
+
+
+
+
+	return bestMatchC;
+}
+
+Point calculateTorusPointFromAngles(PointsAndAngle *pna, double toroidalAngle, double poloidalAngle)
+{
+	Point result;
+
+	double distanceBetweenPoints = distance(pna->a, pna->b);
+	Point m = midpoint(pna->a, pna->b);
+	Matrix3x3 rot = GetRotationMatrixForTorus(pna->a, pna->b);
+
+	double toroidalRadius = distanceBetweenPoints / (2 * tan(pna->angle));
+	double poloidalRadius = sqrt(pow(toroidalRadius, 2) + pow(distanceBetweenPoints / 2, 2));
+
+	result.x = (toroidalRadius + poloidalRadius*cos(poloidalAngle))*cos(toroidalAngle);
+	result.y = (toroidalRadius + poloidalRadius*cos(poloidalAngle))*sin(toroidalAngle);
+	result.z = poloidalRadius*sin(poloidalAngle);
+	result = RotateAndTranslatePoint(result, rot, m);
+
+	return result;
+}
+
+FLT getPointFitnessForPna(Point pointIn, PointsAndAngle *pna)
+{
+
+	double toroidalAngle = 0;
+	double poloidalAngle = 0;
+
+	estimateToroidalAndPoloidalAngleOfPoint(
+		pna->a,
+		pna->b,
+		pna->angle,
+		pointIn,
+		&toroidalAngle,
+		&poloidalAngle);
+
+	Point torusPoint = calculateTorusPointFromAngles(pna, toroidalAngle, poloidalAngle);
+
+	return distance(pointIn, torusPoint);
+}
+
+//Point RefineEstimateUsingPointCloud(Point initialEstimate, PointsAndAngle *pna, size_t pnaCount, TrackedObject *obj, FILE *logFile)
+//
+FLT getPointFitness(Point pointIn, PointsAndAngle *pna, size_t pnaCount)
+{
+	FLT fitness;
+
+	FLT resultSum=0;
+
+	for (size_t i = 0; i < pnaCount; i++)
+	{
+		fitness = getPointFitnessForPna(pointIn, &(pna[i]));
+		//printf("Distance[%d]: %f\n", i, fitness);
+		resultSum += SQUARED(fitness);
+	}
+
+	return 1/FLT_SQRT(resultSum);
+}
+
+Point getGradient(Point pointIn, PointsAndAngle *pna, size_t pnaCount, FLT precision)
+{
+	Point result;
+
+	Point tmpXplus = pointIn;
+	Point tmpXminus = pointIn;
+	tmpXplus.x = pointIn.x + precision;
+	tmpXminus.x = pointIn.x - precision;
+	result.x = getPointFitness(tmpXplus, pna, pnaCount) - getPointFitness(tmpXminus, pna, pnaCount);
+
+	Point tmpYplus = pointIn;
+	Point tmpYminus = pointIn;
+	tmpYplus.y = pointIn.y + precision;
+	tmpYminus.y = pointIn.y - precision;
+	result.y = getPointFitness(tmpYplus, pna, pnaCount) - getPointFitness(tmpYminus, pna, pnaCount);
+
+	Point tmpZplus = pointIn;
+	Point tmpZminus = pointIn;
+	tmpZplus.z = pointIn.z + precision;
+	tmpZminus.z = pointIn.z - precision;
+	result.z = getPointFitness(tmpZplus, pna, pnaCount) - getPointFitness(tmpZminus, pna, pnaCount);
+
+	return result;
+}
+
+Point getNormalizedVector(Point vectorIn, FLT desiredMagnitude)
+{
+	FLT distanceIn = sqrt(SQUARED(vectorIn.x) + SQUARED(vectorIn.y) + SQUARED(vectorIn.z));
+
+	FLT scale = desiredMagnitude / distanceIn;
+
+	Point result = vectorIn;
+
+	result.x *= scale;
+	result.y *= scale;
+	result.z *= scale;
+
+	return result;
+}
+
+Point getAvgPoints(Point a, Point b)
+{
+	Point result;
+	result.x = (a.x + b.x) / 2;
+	result.y = (a.y + b.y) / 2;
+	result.z = (a.z + b.z) / 2;
+	return result;
+}
+
+// 0.95 is good value for descent
+// 0.1 is a good value for starting precision.
+static Point RefineEstimateUsingGradientDescent(Point initialEstimate, PointsAndAngle *pna, size_t pnaCount, FILE *logFile, FLT descent, FLT startingPrecision)
+{
+	int i = 0;
+	FLT lastMatchFitness = getPointFitness(initialEstimate, pna, pnaCount);
+	Point lastPoint = initialEstimate;
+	Point lastGradient = getGradient(lastPoint, pna, pnaCount, .00000001 /*somewhat arbitrary*/);
+
+	for (FLT f = startingPrecision; f > 0.0001; f *= descent)
+	{
+		Point gradient = getGradient(lastPoint, pna, pnaCount, f/1000 /*somewhat arbitrary*/);
+		gradient = getNormalizedVector(gradient, f);
+
+		//printf("Gradient: (%f, %f, %f)\n", gradient.x, gradient.y, gradient.z);
+
+		// gradient = getAvgPoints(gradient, lastGradient); // doesn't seem to help much.  might hurt in some cases.
+
+		Point newPoint;
+		newPoint.x = lastPoint.x + gradient.x;
+		newPoint.y = lastPoint.y + gradient.y;
+		newPoint.z = lastPoint.z + gradient.z;
+
+		FLT newMatchFitness = getPointFitness(newPoint, pna, pnaCount);
+
+		if (newMatchFitness > lastMatchFitness)
+		{
+			lastMatchFitness = newMatchFitness;
+			lastPoint = newPoint;
+			//printf("%f\n", newMatchFitness);
+			lastGradient = gradient;
+
+			if (logFile)
+			{
+				writePoint(logFile, lastPoint.x, lastPoint.y, lastPoint.z, 0xFFFFFF);
+			}
+		}
+		else
+		{
+			//printf("-");
+		}
+
+		i++;
+	}
+
+	//printf("i = %d\n", i);
+
+	return lastPoint;
+}
+
 Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 {
 	PointsAndAngle pna[MAX_POINT_PAIRS];
@@ -423,132 +702,30 @@ Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 		}
 	}
 
-	Point **pointCloud = malloc(sizeof(void*)* pnaCount);
-
-	FILE *f = NULL;
+	FILE *logFile = NULL;
 	if (doLogOutput)
 	{
-		f = fopen("pointcloud2.pcd", "wb");
-		writePcdHeader(f);
-		writeAxes(f);
+		logFile = fopen("pointcloud2.pcd", "wb");
+		writePcdHeader(logFile);
+		writeAxes(logFile);
 	}
 
-	for (unsigned int i = 0; i < pnaCount; i++)
+	Point initialEstimate = GetInitialEstimate(obj, pna, pnaCount, logFile);
+
+	//Point refinedEstimatePc = RefineEstimateUsingPointCloud(initialEstimate, pna, pnaCount, obj, logFile);
+
+	Point refinedEstimageGd = RefineEstimateUsingGradientDescent(initialEstimate, pna, pnaCount, logFile, 0.95, 0.1);
+
+	//FLT fitPc = getPointFitness(refinedEstimatePc, pna, pnaCount);
+	FLT fitGd = getPointFitness(refinedEstimageGd, pna, pnaCount);
+
+	if (logFile)
 	{
-		torusGenerator(pna[i].a, pna[i].b, pna[i].angle, &(pointCloud[i]));
-		if (doLogOutput)
-		{
-			writePointCloud(f, pointCloud[i], COLORS[i%MAX_COLORS]);
-		}
-
+		updateHeader(logFile);
+		fclose(logFile);
 	}
 
-	Point bestMatchA = findBestPointMatch(pointCloud[0], pointCloud, pnaCount);
-
-	for (unsigned int i = 0; i < pnaCount; i++)
-	{
-		free(pointCloud[i]);
-		pointCloud[i] = NULL;
-	}
-
-	if (doLogOutput)
-	{
-		markPointWithStar(f, bestMatchA, 0xFF0000);
-	}
-#ifdef TORI_DEBUG
-	printf("(%f,%f,%f)\n", bestMatchA.x, bestMatchA.y, bestMatchA.z);
-#endif
-	// Now, let's add an extra patch or torus near the point we just found.
-
-	double toroidalAngle = 0;
-	double poloidalAngle = 0;
-
-
-
-	Point **pointCloud2 = malloc(sizeof(void*)* pnaCount);
-
-	for (unsigned int i = 0; i < pnaCount; i++)
-	{
-		estimateToroidalAndPoloidalAngleOfPoint(
-			pna[i].a,
-			pna[i].b,
-			pna[i].angle,
-			bestMatchA,
-			&toroidalAngle,
-			&poloidalAngle);
-
-		partialTorusGenerator(pna[i].a, pna[i].b, toroidalAngle - 0.1, toroidalAngle + 0.1, poloidalAngle - 0.2, poloidalAngle + 0.2, pna[i].angle, 800, &(pointCloud2[i]));
-
-		if (doLogOutput)
-		{
-			writePointCloud(f, pointCloud2[i], COLORS[i%MAX_COLORS]);
-		}
-
-	}
-
-	Point bestMatchB = findBestPointMatch(pointCloud2[0], pointCloud2, pnaCount);
-
-	for (unsigned int i = 0; i < pnaCount; i++)
-	{
-		free(pointCloud2[i]);
-		pointCloud2[i] = NULL;
-	}
-
-	if (doLogOutput)
-	{
-		markPointWithStar(f, bestMatchB, 0x00FF00);
-	}
-#ifdef TORI_DEBUG
-	printf("(%f,%f,%f)\n", bestMatchB.x, bestMatchB.y, bestMatchB.z);
-#endif
-
-	Point **pointCloud3 = malloc(sizeof(void*)* pnaCount);
-
-	for (unsigned int i = 0; i < pnaCount; i++)
-	{
-		estimateToroidalAndPoloidalAngleOfPoint(
-			pna[i].a,
-			pna[i].b,
-			pna[i].angle,
-			bestMatchB,
-			&toroidalAngle,
-			&poloidalAngle);
-
-		partialTorusGenerator(pna[i].a, pna[i].b, toroidalAngle - 0.05, toroidalAngle + 0.05, poloidalAngle - 0.1, poloidalAngle + 0.1, pna[i].angle, 3000, &(pointCloud3[i]));
-
-		if (doLogOutput)
-		{
-			writePointCloud(f, pointCloud3[i], COLORS[i%MAX_COLORS]);
-		}
-
-	}
-
-	Point bestMatchC = findBestPointMatch(pointCloud3[0], pointCloud3, pnaCount);
-
-	for (unsigned int i = 0; i < pnaCount; i++)
-	{
-		free(pointCloud3[i]);
-		pointCloud3[i] = NULL;
-	}
-
-	if (doLogOutput)
-	{
-		markPointWithStar(f, bestMatchC, 0xFFFFFF);
-	}
-#ifdef TORI_DEBUG
-	printf("(%f,%f,%f)\n", bestMatchC.x, bestMatchC.y, bestMatchC.z);
-#endif
-
-
-	if (doLogOutput)
-	{
-		updateHeader(f);
-		fclose(f);
-	}
-
-
-
-	return bestMatchC;
+	return refinedEstimageGd;
 }
 
 static Point makeUnitPoint(Point *p)
