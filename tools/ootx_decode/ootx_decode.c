@@ -1,4 +1,4 @@
-// (C) 2016 Joshua Allen, MIT/x11 License.
+// (C) 2017 Joshua Allen, MIT/x11 License.
 //
 //All MIT/x11 Licensed Code in this file may be relicensed freely under the GPL or LGPL licenses.
 
@@ -12,9 +12,6 @@
 
 #include "ootx_decoder.h"
 
-//char* fmt_str = "L Y HMD %d 5 1 206230 %d\n";
-//extern std::istream cin;
-
 void my_test(ootx_packet* packet) {
 	packet->data[packet->length] = 0;
 	printf("%d %s 0x%X\n", packet->length, packet->data, packet->crc32);
@@ -22,79 +19,91 @@ void my_test(ootx_packet* packet) {
 
 void my_test2(ootx_packet* packet) {
 	printf("completed ootx packet\n");
+
+	lighthouse_info_v6 lhi;
+	init_lighthouse_info_v6(&lhi,packet->data);
+	print_lighthouse_info_v6(&lhi);
 //	packet->data[packet->length] = 0;
 //	printf("%d %s 0x%X\n", packet->length, packet->data, packet->crc32);
 }
 
-ootx_decoder_context ctx[2];
 
-void hello_world_test() {
-//	ootx_init_buffer();
-	ootx_packet_clbk = my_test;
+void print_crc32(uint32_t crc) {
+//	uint8_t* p = (uint32_t*)&crc;
+//	uint8_t i = 0;
 
-	char* line = NULL;
-	size_t line_len = 0;
-	char trash[100] = "";
-	uint32_t ticks = 0x00;
-
-	while (getline(&line,&line_len,stdin)>0) {
-//		printf("%s\n", line);
-		sscanf(line,"%s %s %s %s %s %s %s %d",
-			trash,
-			trash,
-			trash,
-			trash,
-			trash,
-			trash,
-			trash,
-			&ticks);
-//		printf("%d\n", ticks);
-
-		ootx_process_bit(ctx, ticks);
-	}
+	printf("%X\n", crc);
 }
 
-void raw_test() {
+void write_to_file(uint8_t *d, uint16_t length){
+	FILE *fp = fopen("binary.data","w");
+	fwrite(d, length, 1, fp);
+	fclose(fp);
+}
+
+void bad_crc(ootx_packet* packet, uint32_t crc) {
+	printf("CRC mismatch\n");
+
+	printf("r:");
+	print_crc32(packet->crc32);
+
+	printf("c:");
+	print_crc32(crc);
+	write_to_file(packet->data,packet->length);
+}
+
+ootx_decoder_context ctx[2];
+
+void cnlohr_code_test() {
 	ootx_packet_clbk = my_test2;
+	ootx_bad_crc_clbk = bad_crc;
 
 	char* line = NULL;
 	size_t line_len = 0;
 	char trash[100] = "";
-	int32_t atime = 0x00;
+	int8_t lh_id = 0x00;
 	uint32_t ticks = 0x00;
-	uint32_t delta = 0x00;
+	int32_t delta = 0x00;
 
-	int8_t current_lighthouse = 0;
+	ootx_decoder_context *c_ctx = ctx;
 
 	while (getline(&line,&line_len,stdin)>0) {
-//		printf("%s\n", line);
-
-		//HMD 20 0 5881 765645903 -5
-		sscanf(line,"%s %s %s %d %d %d",
+			//R Y HMD -1575410734 -2 7 19714 6485
+			sscanf(line,"%s %s %s %s %hhd %s %d %d",
 			trash,
 			trash,
 			trash,
-			&ticks,
-			&atime,
-			&delta);
-//		printf("%d\n", ticks);
+			trash,
+			&lh_id,
+			trash, //sensor id?
+			&delta,
+			&ticks);
 
-		int8_t lh = ootx_decode_lighthouse_number(current_lighthouse, ticks, delta);
+//		int8_t lh = lighthouse_code=='R'?0:1;
+//		printf("LH:%d %s\n", lh_id, line);
+		int8_t lh = (lh_id*-1)-1;
+		if (lh_id < 0) {
+//			uint8_t bit = 0x01; //bit for debugging purposes
 
-		if (lh > -1) {
 			//change to newly found lighthouse
-			current_lighthouse = lh;
-//			printf("%d %d %d\n", ticks, delta, current_lighthouse);
-			ootx_process_bit(ctx+current_lighthouse, ticks);
-			printf("%d %d %d\n", current_lighthouse, *(ctx->payload_size), ctx->found_preamble);
-		}
-/*
-		if (current_lighthouse >= 0) {
-			ootx_process_bit(ctx+current_lighthouse, ticks);
-		}
+			c_ctx = ctx+lh;
 
-*/
-	}	
+//			uint8_t dbit = ootx_decode_bit(ticks);
+//			printf("LH:%d ticks:%d bit:%X %s", lh, ticks, dbit, line);
+
+			ootx_process_bit(c_ctx, ticks);
+
+/*
+			uint16_t s = *(c_ctx->payload_size);
+			uint16_t fwv = *(c_ctx->buffer+2);
+			uint16_t pv = 0x3f & fwv; //protocol version
+			fwv>>=6; //firmware version
+
+			//this will print after any messages from ootx_pump
+//			if (c_ctx->found_preamble>0) printf("LH:%d s:%d 0x%x fw:%d pv:%d bo:%d bit:%d\t%s", current_lighthouse, s, s, fwv, pv, c_ctx->buf_offset, bit, line);
+*/	
+		}
+	}
 }
 
 int main(int argc, char* argv[])
@@ -102,7 +111,10 @@ int main(int argc, char* argv[])
 	ootx_init_decoder_context(ctx);
 	ootx_init_decoder_context(ctx+1);
 
-	raw_test();
+	cnlohr_code_test();
+
+	ootx_free_decoder_context(ctx);
+	ootx_free_decoder_context(ctx+1);
 
 	return 0;
 }
