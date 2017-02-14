@@ -40,41 +40,6 @@ int buffertimeto[32*3];
 void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  )
 {
 	survive_default_light_process( so, sensor_id, acode, timeinsweep, timecode, length );
-
-	if( acode == -1 ) return;
-//return;
-	int jumpoffset = sensor_id;
-	if( strcmp( so->codename, "WM0" ) == 0 ) jumpoffset += 32;
-	else if( strcmp( so->codename, "WM1" ) == 0 ) jumpoffset += 64;
-
-
-	if( acode == 0 || acode == 2 ) //data = 0
-	{
-		printf( "L X %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
-		bufferpts[jumpoffset*2+0] = (timeinsweep-100000)/500;
-		buffertimeto[jumpoffset] = 0;
-	}
-	if( acode == 1 || acode == 3 ) //data = 1
-	{
-		printf( "L Y %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
-		bufferpts[jumpoffset*2+1] = (timeinsweep-100000)/500;
-		buffertimeto[jumpoffset] = 0;
-	}
-
-
-	if( acode == 4 || acode == 6 ) //data = 0
-	{
-		printf( "R X %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
-		bufferpts[jumpoffset*2+0] = (timeinsweep-100000)/500;
-		buffertimeto[jumpoffset] = 0;
-	}
-	if( acode == 5 || acode == 7 ) //data = 1
-	{
-		printf( "R Y %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
-		bufferpts[jumpoffset*2+1] = (timeinsweep-100000)/500;
-		buffertimeto[jumpoffset] = 0;
-	}
-
 }
 
 void my_imu_process( struct SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id )
@@ -137,6 +102,7 @@ int main()
 	survive_install_light_fn( ctx,  my_light_process );
 	survive_install_imu_fn( ctx,  my_imu_process );
 
+	survive_cal_install( ctx );
 
 	CNFGBGColor = 0x000000;
 	CNFGDialogColor = 0x444444;
