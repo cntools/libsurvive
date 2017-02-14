@@ -13,6 +13,10 @@ void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 	int id = ct->user1;
 
 	printf( "Got OOTX packet %d %p\n", id, cd );
+
+	lighthouse_info_v6 v6;
+	init_lighthouse_info_v6(&v6, packet->data);
+	print_lighthouse_info_v6(&v6);
 }
 
 
@@ -54,11 +58,11 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 		if( sensor_id < 0 )
 		{
 			int lhid = -sensor_id-1;
-			if( lhid >= NUM_LIGHTHOUSES-1 && so->codename[0] == 'H' )
+			if( lhid < NUM_LIGHTHOUSES && so->codename[0] == 'H' )
 			{
-				uint8_t dbit = (acode & 2)?0xff:0x00;
-				printf( "%s %d %d %d\n", so->codename, lhid, acode, dbit );
-				ootx_process_bit( &cd->ootx_decoders[lhid], dbit );
+				uint8_t dbit = (acode & 2)>>1;
+				//printf( "%s %d %d %d\n", so->codename, lhid, acode, dbit );
+				ootx_pump_bit( &cd->ootx_decoders[lhid], dbit );
 			}
 		}
 			
