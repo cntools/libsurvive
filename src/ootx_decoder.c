@@ -55,7 +55,7 @@ uint8_t ootx_detect_preamble(ootx_decoder_context *ctx, uint8_t dbit) {
 
 void ootx_reset_buffer(ootx_decoder_context *ctx) {
 	ctx->buf_offset = 0;
-	ctx->buffer[ctx->buf_offset] = 0;
+	ctx->buffer[0] = 0;
 	ctx->bits_written = 0;
 	*(ctx->payload_size) = 0;
 }
