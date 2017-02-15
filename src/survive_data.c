@@ -81,7 +81,7 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 			else
 			{
 				ssn = ++so->sync_set_number;
-				if( so->sync_set_number > 1 )
+				if( so->sync_set_number >= NUM_LIGHTHOUSES )
 				{
 					SV_INFO( "Warning.  Received an extra, unassociated sync pulse." );
 					ssn = so->sync_set_number = -1;
@@ -106,11 +106,19 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 			}
 		}
 	}
+
+
+
 	//See if this is a valid actual pulse.
 	else if( le->length < 1800 && le->length > 40 && delta > 30000 && ssn >= 0 )
 	{
 		int32_t dl = so->last_time[0];
 		int32_t tpco = so->last_length[0];
+
+
+#if NUM_LIGHTHOUSES != 2
+		#error You are going to have to fix the code around here to allow for something other than two base stations.
+#endif
 
 		//Adding length 
 		//Long pulse-code from IR flood.
@@ -128,6 +136,7 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 		acode_array[0] = (acode_array[0]>>1) - 6;
 		acode_array[1] = (acode_array[1]>>1) - 6;
 
+
 		int acode = acode_array[0];
 
 		if( !so->did_handle_ootx )
@@ -135,7 +144,6 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 			int32_t delta1 = so->last_time[0] - so->recent_sync_time;
 			int32_t delta2 = so->last_time[1] - so->last_time[0];
 
-			//XXX Axlecrusher -> Add your code here!!!
 			ctx->lightproc( so, -1, acode_array[0], delta1, so->last_time[0], so->last_length[0] );
 			ctx->lightproc( so, -2, acode_array[1], delta2, so->last_time[1], so->last_length[1] );
 

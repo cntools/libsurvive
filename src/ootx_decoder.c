@@ -15,8 +15,8 @@
 
 #define MAX_BUFF_SIZE 64
 
-void (*ootx_packet_clbk)(ootx_packet* packet) = NULL;
-void (*ootx_bad_crc_clbk)(ootx_packet* packet, uint32_t crc) = NULL;
+void (*ootx_packet_clbk)(ootx_decoder_context * ctx, ootx_packet* packet) = NULL;
+void (*ootx_bad_crc_clbk)(ootx_decoder_context * ctx, ootx_packet* packet, uint32_t crc) = NULL;
 
 void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit);
 
@@ -102,7 +102,7 @@ void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
 	if ( ootx_detect_preamble(ctx, dbit) ) {
 		/*	data stream can start over at any time so we must
 			always look for preamble bits */
-		printf("Preamble found\n");
+		//printf("Preamble found\n");
 		ootx_reset_buffer(ctx);
 		ctx->bits_processed = 0;
 		ctx->found_preamble = 1;
@@ -110,6 +110,11 @@ void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
 	else if(ctx->bits_processed>16) {
 		//every 17th bit needs to be dropped (sync bit)
 //		printf("drop %d\n", dbit);
+		if( !dbit )
+		{
+			printf("Bad sync bit\n");
+			ootx_reset_buffer(ctx);
+		}
 		ctx->bits_processed = 0;
 	}
 	else if (ctx->found_preamble > 0)
@@ -124,6 +129,14 @@ void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
 		uint16_t padded_length = *(ctx->payload_size);
 		padded_length += (padded_length&0x01); //extra null byte if odd
 
+/*		int k;
+		printf( ":" );
+		for( k = 0; k < 36; k++ )
+		{
+			printf( "%02x ", ctx->buffer[k] );
+		}
+		printf( "\n" );*/
+
 		if (ctx->buf_offset >= (padded_length+6)) {
 			/*	once we have a complete ootx packet, send it out in the callback */
 			ootx_packet op;
@@ -136,10 +149,10 @@ void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
 			crc = crc32( crc, op.data,op.length);
 
 			if (crc != op.crc32) {
-				if (ootx_bad_crc_clbk != NULL) ootx_bad_crc_clbk(&op,crc);
+				if (ootx_bad_crc_clbk != NULL) ootx_bad_crc_clbk(ctx, &op,crc);
 			}
 			else if (ootx_packet_clbk != NULL) {
-				ootx_packet_clbk(&op);
+				ootx_packet_clbk(ctx,&op);
 			}
 
 			ootx_reset_buffer(ctx);

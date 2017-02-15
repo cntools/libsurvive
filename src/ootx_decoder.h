@@ -25,6 +25,9 @@ typedef struct {
 	uint8_t found_preamble;
 
 	uint8_t bit_count[2];
+
+	void * user;
+	int user1;
 } ootx_decoder_context;
 
 
@@ -59,10 +62,11 @@ void ootx_init_decoder_context(ootx_decoder_context *ctx);
 void ootx_free_decoder_context(ootx_decoder_context *ctx);
 
 uint8_t ootx_process_bit(ootx_decoder_context *ctx, uint32_t length);
+void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit);
 
 uint8_t ootx_decode_bit(uint32_t length);
 
-extern void (*ootx_packet_clbk)(ootx_packet* packet);
-extern void (*ootx_bad_crc_clbk)(ootx_packet* packet, uint32_t crc);
+extern void (*ootx_packet_clbk)(ootx_decoder_context *ctx, ootx_packet* packet);
+extern void (*ootx_bad_crc_clbk)(ootx_decoder_context *ctx, ootx_packet* packet, uint32_t crc);
 
 #endif
