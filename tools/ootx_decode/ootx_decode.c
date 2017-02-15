@@ -64,18 +64,19 @@ void cnlohr_code_test() {
 	int8_t lh_id = 0x00;
 	uint32_t ticks = 0x00;
 	int32_t delta = 0x00;
+	uint8_t acode = 0x00;
 
 	ootx_decoder_context *c_ctx = ctx;
 
 	while (getline(&line,&line_len,stdin)>0) {
 			//R Y HMD -1575410734 -2 7 19714 6485
-			sscanf(line,"%s %s %s %s %hhd %s %d %d",
+			sscanf(line,"%s %s %s %s %hhd %hhd %d %d",
 			trash,
 			trash,
 			trash,
 			trash,
 			&lh_id,
-			trash, //sensor id?
+			&acode,
 			&delta,
 			&ticks);
 
@@ -91,8 +92,8 @@ void cnlohr_code_test() {
 //			uint8_t dbit = ootx_decode_bit(ticks);
 //			printf("LH:%d ticks:%d bit:%X %s", lh, ticks, dbit, line);
 
-			ootx_process_bit(c_ctx, ticks);
-
+//			ootx_process_bit(c_ctx, ticks);
+			ootx_pump_bit( c_ctx, (acode&0x02)>>1 );
 /*
 			uint16_t s = *(c_ctx->payload_size);
 			uint16_t fwv = *(c_ctx->buffer+2);
