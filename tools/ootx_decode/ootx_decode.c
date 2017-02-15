@@ -12,12 +12,12 @@
 
 #include "ootx_decoder.h"
 
-void my_test(ootx_packet* packet) {
+void my_test(ootx_decoder_context *ctx, ootx_packet* packet) {
 	packet->data[packet->length] = 0;
 	printf("%d %s 0x%X\n", packet->length, packet->data, packet->crc32);
 }
 
-void my_test2(ootx_packet* packet) {
+void my_test2(ootx_decoder_context *ctx, ootx_packet* packet) {
 	printf("completed ootx packet\n");
 
 	lighthouse_info_v6 lhi;
@@ -41,7 +41,7 @@ void write_to_file(uint8_t *d, uint16_t length){
 	fclose(fp);
 }
 
-void bad_crc(ootx_packet* packet, uint32_t crc) {
+void bad_crc(ootx_decoder_context *ctx, ootx_packet* packet, uint32_t crc) {
 	printf("CRC mismatch\n");
 
 	printf("r:");
