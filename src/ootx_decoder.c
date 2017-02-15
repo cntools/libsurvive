@@ -167,20 +167,27 @@ uint8_t* get_ptr(uint8_t* data, uint8_t bytes, uint16_t* idx) {
 }
 
 float _half_to_float(uint8_t* data) {
-	//this will not handle infinity, NaN, or denormalized floats
+	//this will not handle denormalized floats
 
 	uint16_t x = *(uint16_t*)data;
 	float f = 0;
 
 	uint32_t *ftmp = (uint32_t*)&f; //use the allocated floating point memory
 
-	if ((x & 0x7FFF) == 0) return f; //zero
-
 	//sign
 	*ftmp = x & 0x8000;
 	*ftmp <<= 16;
 
-	*ftmp += ((((uint32_t)(x & 0x7fff)) + 0x1c000) << 13);
+	if ((x & 0x7FFF) == 0) return f; //signed zero
+
+	if((x&0x7c00) == 0x7c00) {
+		//for infinity, fraction is 0 (just copy in 0 bits)
+		//for NaN, fraction is anything non zero (copy in bits, no need to shift)
+		*ftmp |= 0x7f800000 | (x & 0x3ff);
+		return f;
+	}
+
+	*ftmp += ((((uint32_t)(x & 0x7fff)) + 0x1c000u) << 13);
 
 	return f;
 }
