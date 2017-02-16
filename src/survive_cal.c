@@ -8,7 +8,11 @@
 #include <math.h>
 #include <string.h>
 
+#define PTS_BEFORE_COMMON 32
+#define NEEDED_COMMON_POINTS 20
+
 static void handle_calibration( struct SurviveCalData *cd );
+static void reset_calibration( struct SurviveCalData * cd );
 
 void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 {
@@ -49,7 +53,14 @@ int survive_cal_get_status( struct SurviveContext * ctx, char * description, int
 	case 1:
 		return snprintf( description, description_length, "Collecting OOTX Data (%d:%d)", cd->ootx_decoders[0].buf_offset, cd->ootx_decoders[1].buf_offset );
 	case 2:
-		return snprintf( description, description_length, "Collecting Sweep Data %d/%d", cd->peak_counts, DRPTS );
+		if( cd->found_common )
+		{
+			return snprintf( description, description_length, "Collecting Sweep Data %d/%d", cd->peak_counts, DRPTS );
+		}
+		else
+		{
+			return snprintf( description, description_length, "Searching for common watchman cal %d/%d", cd->peak_counts, PTS_BEFORE_COMMON );
+		}
 	default:
 		return snprintf( description, description_length, "Unkown calibration state" );
 	}
@@ -141,18 +152,44 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 			if( ct >= DRPTS )
 				handle_calibration( cd ); //This will also reset all cals.
 		}
+
+		//TODO: Determine if there is a sensor on a watchman visible from both lighthouses.
+		if( sensid >= 32 && !cd->found_common )
+		{
+			int k;
+			int ok = 1;
+			for( k = 0; k < NUM_LIGHTHOUSES; k++ )
+			{
+
+				if( cd->all_counts[sensid][k][0] < NEEDED_COMMON_POINTS || cd->all_counts[sensid][k][1] < NEEDED_COMMON_POINTS )
+				{
+					ok = 0;
+					break;
+				}
+			}
+			if( ok ) cd->found_common = 1;
+		}
+
+		if( cd->peak_counts > PTS_BEFORE_COMMON && !cd->found_common )
+		{
+			reset_calibration( cd );
+		}
+
 		break;
 	}
 	}
 }
 
+static void reset_calibration( struct SurviveCalData * cd )
+{
+	memset( cd->all_counts, 0, sizeof( cd->all_counts ) );
+	cd->peak_counts = 0;
+	cd->found_common = 0;
+}
 
 static void handle_calibration( struct SurviveCalData *cd )
 {
 	//Do stuff.
 
-	memset( cd->all_lengths, 0, sizeof( cd->all_lengths ) );
-	memset( cd->all_angles, 0, sizeof( cd->all_angles ) );
-	memset( cd->all_counts, 0, sizeof( cd->all_counts ) );
-	cd->peak_counts = 0;
+	reset_calibration( cd );
 }

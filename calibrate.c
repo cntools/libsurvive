@@ -126,7 +126,7 @@ void * GuiThread( void * v )
 		survive_cal_get_status( ctx, caldesc, sizeof( caldesc ) );
 		CNFGPenX = 3;
 		CNFGPenY = 3;
-		CNFGDrawText( caldesc, 2 );
+		CNFGDrawText( caldesc, 4 );
 
 
 		CNFGSwapBuffers();

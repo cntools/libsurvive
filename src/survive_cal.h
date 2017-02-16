@@ -35,11 +35,6 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 
 struct SurviveCalData
 {
-	//Stage:
-	// 0: Idle
-	// 1: Collecting OOTX data.
-	int stage;
-
 	//OOTX Data is sync'd off of the sync pulses coming from the lighthouses.
 	ootx_decoder_context ootx_decoders[NUM_LIGHTHOUSES];
 
@@ -47,7 +42,13 @@ struct SurviveCalData
 	FLT all_lengths[MAX_TO_CAL][NUM_LIGHTHOUSES][2][DRPTS];
 	FLT all_angles[MAX_TO_CAL][NUM_LIGHTHOUSES][2][DRPTS];
 	int16_t all_counts[MAX_TO_CAL][NUM_LIGHTHOUSES][2];
-	int peak_counts;
+	int16_t peak_counts;
+	int8_t found_common;
+
+	//Stage:
+	// 0: Idle
+	// 1: Collecting OOTX data.
+	int8_t stage;
 };
 
 
