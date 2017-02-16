@@ -6,6 +6,9 @@
 #include "survive_cal.h"
 #include "survive_internal.h"
 #include <math.h>
+#include <string.h>
+
+static void handle_calibration( struct SurviveCalData *cd );
 
 void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 {
@@ -35,6 +38,22 @@ void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 	b->OOTXSet = 1;
 }
 
+int survive_cal_get_status( struct SurviveContext * ctx, char * description, int description_length )
+{
+	struct SurviveCalData * cd = ctx->calptr;
+
+	switch( cd->stage )
+	{
+	case 0:
+		return snprintf( description, description_length, "Not calibrating" );
+	case 1:
+		return snprintf( description, description_length, "Collecting OOTX Data (%d:%d)", cd->ootx_decoders[0].buf_offset, cd->ootx_decoders[1].buf_offset );
+	case 2:
+		return snprintf( description, description_length, "Collecting Sweep Data %d/%d", cd->peak_counts, DRPTS );
+	default:
+		return snprintf( description, description_length, "Unkown calibration state" );
+	}
+}
 
 void survive_cal_install( struct SurviveContext * ctx )
 {
@@ -104,10 +123,36 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 	case 0: //Default, inactive.
 		break;
 	case 2:
-		//if( sensor_id == 0 && so->codename[0] == 'H' ) printf( "%d %f %f\n", acode, length, angle );
+	{
+		int sensid = sensor_id;
+		if( strcmp( so->codename, "WM0" ) == 0 )
+			sensid += 32;
+		if( strcmp( so->codename, "WM1" ) == 1 )
+			sensid += 64;
+
+		int lighthouse = acode>>2;
+		int axis = acode & 1;
+		int ct = cd->all_counts[sensid][lighthouse][axis]++;
+		cd->all_lengths[sensid][lighthouse][axis][ct] = length;
+		cd->all_angles[sensid][lighthouse][axis][ct] = angle;
+		if( ct > cd->peak_counts )
+		{
+			cd->peak_counts = ct;
+			if( ct >= DRPTS )
+				handle_calibration( cd ); //This will also reset all cals.
+		}
 		break;
+	}
 	}
 }
 
 
+static void handle_calibration( struct SurviveCalData *cd )
+{
+	//Do stuff.
 
+	memset( cd->all_lengths, 0, sizeof( cd->all_lengths ) );
+	memset( cd->all_angles, 0, sizeof( cd->all_angles ) );
+	memset( cd->all_counts, 0, sizeof( cd->all_counts ) );
+	cd->peak_counts = 0;
+}

@@ -121,6 +121,13 @@ void * GuiThread( void * v )
 			}
 		}
 
+		CNFGColor( 0xffffff );
+		char caldesc[256];
+		survive_cal_get_status( ctx, caldesc, sizeof( caldesc ) );
+		CNFGPenX = 3;
+		CNFGPenY = 3;
+		CNFGDrawText( caldesc, 2 );
+
 
 		CNFGSwapBuffers();
 		OGUSleep( 10000 );

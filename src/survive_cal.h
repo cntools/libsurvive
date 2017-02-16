@@ -22,13 +22,16 @@
 #include "survive_internal.h"
 
 void survive_cal_install( struct SurviveContext * ctx );
-int survive_cal_get_status( struct SurviveContext * ctx, char * description, int max_data );
+int survive_cal_get_status( struct SurviveContext * ctx, char * description, int description_length );
 
 //void survive_cal_teardown( struct SurviveContext * ctx );
 
 //Called from survive_default_light_process
 void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  );
 void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle );
+
+#define MAX_TO_CAL 96
+#define DRPTS 512
 
 struct SurviveCalData
 {
@@ -37,9 +40,17 @@ struct SurviveCalData
 	// 1: Collecting OOTX data.
 	int stage;
 
-	//OOTX Data is sync'd off of 
+	//OOTX Data is sync'd off of the sync pulses coming from the lighthouses.
 	ootx_decoder_context ootx_decoders[NUM_LIGHTHOUSES];
+
+	//For statistics-gathering phase.
+	FLT all_lengths[MAX_TO_CAL][NUM_LIGHTHOUSES][2][DRPTS];
+	FLT all_angles[MAX_TO_CAL][NUM_LIGHTHOUSES][2][DRPTS];
+	int16_t all_counts[MAX_TO_CAL][NUM_LIGHTHOUSES][2];
+	int peak_counts;
 };
+
+
 
 #endif
 
