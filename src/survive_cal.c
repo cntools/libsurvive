@@ -12,11 +12,26 @@ void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 	struct SurviveCalData * cd = ctx->calptr;
 	int id = ct->user1;
 
-	printf( "Got OOTX packet %d %p\n", id, cd );
+	SV_INFO( "Got OOTX packet %d %p\n", id, cd );
 
 	lighthouse_info_v6 v6;
 	init_lighthouse_info_v6(&v6, packet->data);
-	print_lighthouse_info_v6(&v6);
+
+	struct BaseStationData * b = &ctx->bsd[id];
+	//print_lighthouse_info_v6(&v6);
+
+	b->BaseStationID = v6.id;
+	b->fcalphase[0] = v6.fcal_0_phase;
+	b->fcalphase[1] = v6.fcal_1_phase;
+	b->fcaltilt[0] = v6.fcal_0_tilt;
+	b->fcaltilt[1] = v6.fcal_1_tilt;
+	b->fcalcurve[0] = v6.fcal_0_curve;
+	b->fcalcurve[1] = v6.fcal_1_curve;
+	b->fcalgibpha[0] = v6.fcal_0_gibphase;
+	b->fcalgibpha[1] = v6.fcal_1_gibphase;
+	b->fcalgibmag[0] = v6.fcal_0_gibmag;
+	b->fcalgibmag[1] = v6.fcal_1_gibmag;
+	b->OOTXSet = 1;
 }
 
 
@@ -64,8 +79,14 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 				//printf( "%s %d %d %d\n", so->codename, lhid, acode, dbit );
 				ootx_pump_bit( &cd->ootx_decoders[lhid], dbit );
 			}
+			int i;
+			for( i = 0; i < NUM_LIGHTHOUSES; i++ )
+				if( ctx->bsd[i].OOTXSet == 0 ) break;
+			if( i == NUM_LIGHTHOUSES ) cd->stage = 2;  //If all lighthouses have their OOTX set, move on.
 		}
-			
+		break;
+
+	case 2:
 		break;
 	}
 }
