@@ -166,30 +166,54 @@ uint8_t* get_ptr(uint8_t* data, uint8_t bytes, uint16_t* idx) {
 	return x;
 }
 
+/* simply doing:
+float f = 0;
+uint32_t *ftmp = (uint32_t*)&f; //use the allocated floating point memory
+This can cause problem when strict aliasing (-O2) is used.
+Reads and writes to f and ftmp would be considered independent and could be 
+be reordered by the compiler. A union solves that problem.
+*/
+union iFloat {
+	uint32_t i;
+	float f;
+};
+
 float _half_to_float(uint8_t* data) {
-	//this will not handle denormalized floats
-
 	uint16_t x = *(uint16_t*)data;
-	float f = 0;
-
-	uint32_t *ftmp = (uint32_t*)&f; //use the allocated floating point memory
+	union iFloat fnum;
+	fnum.f = 0;
 
 	//sign
-	*ftmp = x & 0x8000;
-	*ftmp <<= 16;
+	fnum.i = (x & 0x8000)<<16;
 
-	if ((x & 0x7FFF) == 0) return f; //signed zero
+	if ((x & 0x7FFF) == 0) return fnum.f; //signed zero
 
-	if((x&0x7c00) == 0x7c00) {
-		//for infinity, fraction is 0 (just copy in 0 bits)
-		//for NaN, fraction is anything non zero (copy in bits, no need to shift)
-		*ftmp |= 0x7f800000 | (x & 0x3ff);
-		return f;
+	if ((x & 0x7c00) == 0) {
+		//denormalized
+		x = (x&0x3ff)<<1; //only mantissa, advance intrinsic bit forward
+		uint8_t e = 0;
+		//shift until intrinsic bit of mantissa overflows into exponent
+		//increment exponent each time
+		while ((x&0x0400) == 0) {
+			x<<=1;
+			e++;
+		}
+		fnum.i |= ((uint32_t)(112-e))<<23; //bias exponent to 127, half floats are biased 15 so only need to go 112 more.
+		fnum.i |= ((uint32_t)(x&0x3ff))<<13; //insert mantissa
+		return fnum.f;
 	}
 
-	*ftmp += ((((uint32_t)(x & 0x7fff)) + 0x1c000u) << 13);
+	if((x&0x7c00) == 0x7c00) {
+		//for infinity, fraction is 0
+		//for NaN, fraction is anything non zero
+		//we could just copy in bits and not shift, but the mantissa of a NaN can have meaning
+		fnum.i |= 0x7f800000 | ((uint32_t)(x & 0x3ff))<<13;
+		return fnum.f;
+	}
 
-	return f;
+	fnum.i |= ((((uint32_t)(x & 0x7fff)) + 0x1c000u) << 13);
+
+	return fnum.f;
 }
 
 void init_lighthouse_info_v6(lighthouse_info_v6* lhi, uint8_t* data) {
