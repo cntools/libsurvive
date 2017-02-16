@@ -559,7 +559,22 @@ FLT getPointFitnessForPna(Point pointIn, PointsAndAngle *pna)
 
 	Point torusPoint = calculateTorusPointFromAngles(pna, toroidalAngle, poloidalAngle);
 
-	return distance(pointIn, torusPoint);
+	FLT dist = distance(pointIn, torusPoint);
+
+	// This is some voodoo black magic.  This is here to solve the problem that the origin 
+	// (which is near the center of all the tori) erroniously will rank as a good match.
+	// through a lot of empiracle testing on how to compensate for this, the "fudge factor"
+	// below ended up being the best fit.  As simple as it is, I have a strong suspicion
+	// that there's some crazy complex thesis-level math that could be used to derive this
+	// but it works so we'll run with it.
+	// Note that this may be resulting in a skewing of the found location by several millimeters.
+	// it is not clear if this is actually removing existing skew (to get a more accurate value)
+	// or if it is introducing an undesirable skew.
+	double fudge = FLT_SIN((poloidalAngle - M_PI) / 2);
+	//fudge *= fudge;
+	dist = dist / fudge;
+
+	return dist;
 }
 
 //Point RefineEstimateUsingPointCloud(Point initialEstimate, PointsAndAngle *pna, size_t pnaCount, TrackedObject *obj, FILE *logFile)
@@ -640,7 +655,7 @@ static Point RefineEstimateUsingGradientDescent(Point initialEstimate, PointsAnd
 
 	for (FLT f = startingPrecision; f > 0.0001; f *= descent)
 	{
-		Point gradient = getGradient(lastPoint, pna, pnaCount, f/1000 /*somewhat arbitrary*/);
+		Point gradient = getGradient(lastPoint, pna, pnaCount, f / 1000 /*somewhat arbitrary*/);
 		gradient = getNormalizedVector(gradient, f);
 
 		//printf("Gradient: (%f, %f, %f)\n", gradient.x, gradient.y, gradient.z);
@@ -679,9 +694,193 @@ static Point RefineEstimateUsingGradientDescent(Point initialEstimate, PointsAnd
 	return lastPoint;
 }
 
+// This is modifies the basic gradient descent algorithm to better handle the shallow valley case,
+// which appears to be typical of this convergence.  
+static Point RefineEstimateUsingModifiedGradientDescent1(Point initialEstimate, PointsAndAngle *pna, size_t pnaCount, FILE *logFile)
+{
+	int i = 0;
+	FLT lastMatchFitness = getPointFitness(initialEstimate, pna, pnaCount);
+	Point lastPoint = initialEstimate;
+	//Point lastGradient = getGradient(lastPoint, pna, pnaCount, .00000001 /*somewhat arbitrary*/);
+
+	// The values below are somewhat magic, and definitely tunable
+	// The initial vlue of g will represent the biggest step that the gradient descent can take at first.
+	//   bigger values may be faster, especially when the initial guess is wildly off.
+	//   The downside to a bigger starting guess is that if we've picked a good guess at the local minima
+	//   if there are other local minima, we may accidentally jump to such a local minima and get stuck there.
+	//   That's fairly unlikely with the lighthouse problem, from expereince.
+	//   The other downside is that if it's too big, we may have to spend a few iterations before it gets down
+	//   to a size that doesn't jump us out of our minima.
+	// The terminal value of g represents how close we want to get to the local minima before we're "done"
+	// The change in value of g for each iteration is intentionally very close to 1.
+	//   in fact, it probably could probably be 1 without any issue.  The main place where g is decremented
+	//   is in the block below when we've made a jump that results in a worse fitness than we're starting at.
+	//   In those cases, we don't take the jump, and instead lower the value of g and try again.
+	for (FLT g = 0.2; g > 0.00001; g *= 0.99)
+	{
+		i++;
+		Point point1 = lastPoint;
+		// let's get 3 iterations of gradient descent here.
+		Point gradient1 = getGradient(point1, pna, pnaCount, g / 1000 /*somewhat arbitrary*/);
+		Point gradientN1 = getNormalizedVector(gradient1, g);
+
+		Point point2;
+		point2.x = point1.x + gradientN1.x;
+		point2.y = point1.y + gradientN1.y;
+		point2.z = point1.z + gradientN1.z;
+
+		Point gradient2 = getGradient(point2, pna, pnaCount, g / 1000 /*somewhat arbitrary*/);
+		Point gradientN2 = getNormalizedVector(gradient2, g);
+
+		Point point3;
+		point3.x = point2.x + gradientN2.x;
+		point3.y = point2.y + gradientN2.y;
+		point3.z = point2.z + gradientN2.z;
+
+		// remember that gradient descent has a tendency to zig-zag when it encounters a narrow valley?
+		// Well, solving the lighthouse problem presents a very narrow valley, and the zig-zag of a basic
+		// gradient descent is kinda horrible here.  Instead, think about the shape that a zig-zagging 
+		// converging gradient descent makes.  Instead of using the gradient as the best indicator of 
+		// the direction we should follow, we're looking at one side of the zig-zag pattern, and specifically
+		// following *that* vector.  As it turns out, this works *amazingly* well.  
+
+		Point specialGradient = { .x = point3.x - point1.x, .y = point3.y - point1.y, .z = point3.y - point1.y };
+
+		// The second parameter to this function is very much a tunable parameter.  Different values will result
+		// in a different number of iterations before we get to the minimum.  Numbers between 3-10 seem to work well
+		// It's not clear what would be optimum here.
+		specialGradient = getNormalizedVector(specialGradient, g/4);
+
+		Point point4;
+
+		point4.x = point3.x + specialGradient.x;
+		point4.y = point3.y + specialGradient.y;
+		point4.z = point3.z + specialGradient.z;
+
+		FLT newMatchFitness = getPointFitness(point4, pna, pnaCount);
+
+		if (newMatchFitness > lastMatchFitness)
+		{
+			if (logFile)
+			{
+				writePoint(logFile, lastPoint.x, lastPoint.y, lastPoint.z, 0xFFFFFF);
+			}
+
+			lastMatchFitness = newMatchFitness;
+			lastPoint = point4;
+			printf("+");
+		}
+		else
+		{
+			printf("-");
+			g *= 0.7;
+
+		}
+
+
+	}
+	printf("\ni=%d\n", i);
+
+	return lastPoint;
+}
+
+// This torus generator creates a point cloud of the given torus, and attempts to keep the 
+// density of the points fairly uniform across the surface of the torus.
+void AnalyzeToroidalImpact(
+	Point p1,
+	Point p2,
+	double lighthouseAngle,
+	double *vals,
+	PointsAndAngle *pna, 
+	size_t pnaCount)
+{
+	double poloidalRadius = 0;
+	double toroidalRadius = 0;
+
+	Point m = midpoint(p1, p2);
+	double distanceBetweenPoints = distance(p1, p2);
+
+	// ideally should only need to be lighthouseAngle, but increasing it here keeps us from accidentally
+	// thinking the tori converge at the location of the tracked object instead of at the lighthouse.
+	double centralAngleToIgnore = lighthouseAngle * 3;
+
+	Matrix3x3 rot = GetRotationMatrixForTorus(p1, p2);
+
+	toroidalRadius = distanceBetweenPoints / (2 * tan(lighthouseAngle));
+
+	poloidalRadius = sqrt(pow(toroidalRadius, 2) + pow(distanceBetweenPoints / 2, 2));
+
+	unsigned int pointCount = 0;
+
+	size_t currentPoint = 0;
+	
+	for (size_t ps = 0; ps < 180; ps++)
+	{
+
+		//for (double toroidalStep = toroidalStartAngle; toroidalStep < toroidalEndAngle; toroidalStep += M_PI / 40)
+		for (double toroidalStep = 0; toroidalStep < M_PI / 2; toroidalStep += M_PI / 180 * 2)
+		{
+			double poloidalStep = M_PI + M_PI / 180 * 2 * ps;
+			Point tmp;
+
+			tmp.x = (toroidalRadius + poloidalRadius*cos(poloidalStep))*cos(toroidalStep);
+			tmp.y = (toroidalRadius + poloidalRadius*cos(poloidalStep))*sin(toroidalStep);
+			tmp.z = poloidalRadius*sin(poloidalStep);
+			tmp = RotateAndTranslatePoint(tmp, rot, m);
+
+			vals[ps] += getPointFitness(tmp, pna, pnaCount);
+
+		}
+
+		vals[ps] = vals[ps] / 180; // average.
+	}
+
+}
+
+void AnalyzePoloidalImpact(TrackedObject *obj, PointsAndAngle *pna, size_t pnaCount, FILE *logFile)
+{
+	Point **pointCloud = malloc(sizeof(void*)* pnaCount);
+
+	double vals[200][180] = { 0 };
+
+
+	for (unsigned int i = 0; i < pnaCount; i++)
+	{
+		//double tmpVals[180] = { 0 };
+
+		AnalyzeToroidalImpact(
+			pna[i].a,
+			pna[i].b,
+			pna[i].angle,
+			vals[i],
+			pna,
+			pnaCount);
+
+
+		//for (int j = 0; j < 180; j++)
+		//{
+		//	vals[j] += tmpVals[j];
+		//}
+
+	}
+	
+	for (int i = 0; i < 180; i++)
+	{
+		printf("%d", i * 2);
+		for (unsigned int j = 0; j < pnaCount; j++)
+		{
+			printf(", %f", vals[j][i]);
+		}
+		printf("\n");
+	}
+}
+
+
 Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 {
 	PointsAndAngle pna[MAX_POINT_PAIRS];
+
+	Point avgNorm = { 0 };
 
 	size_t pnaCount = 0;
 	for (unsigned int i = 0; i < obj->numSensors; i++)
@@ -700,7 +899,17 @@ Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 				pnaCount++;
 			}
 		}
+
+		avgNorm.x += obj->sensor[i].normal.x;
+		avgNorm.y += obj->sensor[i].normal.y;
+		avgNorm.z += obj->sensor[i].normal.z;
 	}
+	avgNorm.x = avgNorm.x / obj->numSensors;
+	avgNorm.y = avgNorm.y / obj->numSensors;
+	avgNorm.z = avgNorm.z / obj->numSensors;
+
+	FLT avgNormF[3] = { avgNorm.x, avgNorm.y, avgNorm.z };
+
 
 	FILE *logFile = NULL;
 	if (doLogOutput)
@@ -710,21 +919,51 @@ Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 		writeAxes(logFile);
 	}
 
-	Point initialEstimate = GetInitialEstimate(obj, pna, pnaCount, logFile);
+	//Point initialEstimate = GetInitialEstimate(obj, pna, pnaCount, logFile);
 
 	//Point refinedEstimatePc = RefineEstimateUsingPointCloud(initialEstimate, pna, pnaCount, obj, logFile);
 
-	Point refinedEstimageGd = RefineEstimateUsingGradientDescent(initialEstimate, pna, pnaCount, logFile, 0.95, 0.1);
+	//Point refinedEstimageGd = RefineEstimateUsingGradientDescent(initialEstimate, pna, pnaCount, logFile, 0.95, 0.1);
+
+	// Point refinedEstimageGd = RefineEstimateUsingModifiedGradientDescent1(initialEstimate, pna, pnaCount, logFile);
+
+	// AnalyzePoloidalImpact(obj, pna, pnaCount, logFile);
+
+	// arbitrarily picking a value of 8 meters out to start from.
+	// intentionally picking the direction of the average normal vector of the sensors that see the lighthouse
+	// since this is least likely to pick the incorrect "mirror" point that would send us 
+	// back into the search for the correct point (see "if (a1 > M_PI / 2)" below)
+	Point p1 = getNormalizedVector(avgNorm, 8); 
+
+	Point refinedEstimageGd = RefineEstimateUsingModifiedGradientDescent1(p1, pna, pnaCount, logFile);
+
+	FLT pf1[3] = { refinedEstimageGd.x, refinedEstimageGd.y, refinedEstimageGd.z };
+
+	FLT a1 = anglebetween3d(pf1, avgNormF);
+
+	if (a1 > M_PI / 2)
+	{
+		Point p2 = { .x = -refinedEstimageGd.x, .y = -refinedEstimageGd.y, .z = -refinedEstimageGd.z };
+		refinedEstimageGd = RefineEstimateUsingModifiedGradientDescent1(p2, pna, pnaCount, logFile);
+
+		//FLT pf2[3] = { refinedEstimageGd2.x, refinedEstimageGd2.y, refinedEstimageGd2.z };
+
+		//FLT a2 = anglebetween3d(pf2, avgNormF);
+
+	}
 
 	//FLT fitPc = getPointFitness(refinedEstimatePc, pna, pnaCount);
 	FLT fitGd = getPointFitness(refinedEstimageGd, pna, pnaCount);
+	//FLT fitGd2 = getPointFitness(refinedEstimageGd2, pna, pnaCount);
+
+	printf("Fitness is %f\n", fitGd);
 
 	if (logFile)
 	{
 		updateHeader(logFile);
 		fclose(logFile);
 	}
-
+	//fgetc(stdin);
 	return refinedEstimageGd;
 }
 

@@ -4,13 +4,15 @@
 #include <stddef.h>
 #include <math.h>
 #include <stdint.h>
+#include "linmath.h"
 
+#define PointToFlts(x) ((FLT*)(x))
 
 typedef struct
 {
-	double x;
-	double y;
-	double z;
+	FLT x;
+	FLT y;
+	FLT z;
 } Point;
 
 typedef struct
