@@ -5,6 +5,7 @@
 
 #include "survive_cal.h"
 #include "survive_internal.h"
+#include <math.h>
 
 void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 {
@@ -23,8 +24,8 @@ void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 	b->BaseStationID = v6.id;
 	b->fcalphase[0] = v6.fcal_0_phase;
 	b->fcalphase[1] = v6.fcal_1_phase;
-	b->fcaltilt[0] = v6.fcal_0_tilt;
-	b->fcaltilt[1] = v6.fcal_1_tilt;
+	b->fcaltilt[0] = tan(v6.fcal_0_tilt);
+	b->fcaltilt[1] = tan(v6.fcal_1_tilt);  //XXX??? Is this right? See https://github.com/cnlohr/libsurvive/issues/18
 	b->fcalcurve[0] = v6.fcal_0_curve;
 	b->fcalcurve[1] = v6.fcal_1_curve;
 	b->fcalgibpha[0] = v6.fcal_0_gibphase;
@@ -76,7 +77,6 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 			if( lhid < NUM_LIGHTHOUSES && so->codename[0] == 'H' )
 			{
 				uint8_t dbit = (acode & 2)>>1;
-				//printf( "%s %d %d %d\n", so->codename, lhid, acode, dbit );
 				ootx_pump_bit( &cd->ootx_decoders[lhid], dbit );
 			}
 			int i;
@@ -85,9 +85,29 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 			if( i == NUM_LIGHTHOUSES ) cd->stage = 2;  //If all lighthouses have their OOTX set, move on.
 		}
 		break;
-
-	case 2:
+	case 2:      //Taking in angle data.
 		break;
 	}
 }
+
+void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle )
+{
+	struct SurviveContext * ctx = so->ctx;
+	struct SurviveCalData * cd = ctx->calptr;
+
+	if( !cd ) return;
+
+	switch( cd->stage )
+	{
+	default:
+	case 1:	//Collecting OOTX data. (Don't do anything here, yet.)
+	case 0: //Default, inactive.
+		break;
+	case 2:
+		//if( sensor_id == 0 && so->codename[0] == 'H' ) printf( "%d %f %f\n", acode, length, angle );
+		break;
+	}
+}
+
+
 

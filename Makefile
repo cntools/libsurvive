@@ -1,7 +1,7 @@
 all : lib data_recorder test calibrate
 
 CFLAGS:=-Iinclude -fPIC -g -Os -Iredist -flto
-LDFLAGS:=-lpthread -lusb-1.0 -lz -lX11 -flto
+LDFLAGS:=-lpthread -lusb-1.0 -lz -lX11 -lm -flto
 
 # unused: redist/crc32.c
 

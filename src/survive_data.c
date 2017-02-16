@@ -37,36 +37,34 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 //	printf( "%s %d %d %d %d %d\n", so->codename, le->sensor_id, le->type, le->length, le->timestamp, le->timestamp-so->tsl );
 
 	so->tsl = le->timestamp;
-	if( le->length < 20 ) return;
+	if( le->length < 20 ) return;  ///Assuming 20 is an okay value for here.
 
 	//The sync pulse finder is taking Charles's old disambiguator code and mixing it with a more linear
 	//version of Julian Picht's disambiguator, available in 488c5e9.  Removed afterwards into this
 	//unified driver.
-
-
 	int ssn = so->sync_set_number;
 	if( ssn < 0 ) ssn = 0;
 	int last_sync_time  =  so->last_time  [ssn];
 	int last_sync_length = so->last_length[ssn];
 	int32_t delta = le->timestamp - last_sync_time;  //Handle time wrapping (be sure to be int32)
 
-	if( delta < -500000 || delta > 500000 )
+	if( delta < -so->pulsedist_max_ticks || delta > so->pulsedist_max_ticks )
 	{
 		//Reset pulse, etc.
 		so->sync_set_number = -1;
-		delta = 500000;
+		delta = so->pulsedist_max_ticks;
 	}
 
 
-	if( le->length > 2200 ) //Pulse longer indicates a sync pulse.
+	if( le->length > so->pulselength_min_sync ) //Pulse longer indicates a sync pulse.
 	{
-		int is_new_pulse = delta > 1500 + last_sync_length;
+		int is_new_pulse = delta > so->pulselength_min_sync /*1500*/ + last_sync_length;
 
 		so->did_handle_ootx = 0;
 
 		if( is_new_pulse )
 		{
-			int is_master_sync_pulse = delta > 40000;
+			int is_master_sync_pulse = delta > so->pulse_in_clear_time /*40000*/; 
 
 			if( is_master_sync_pulse )
 			{
@@ -110,7 +108,7 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 
 
 	//See if this is a valid actual pulse.
-	else if( le->length < 1800 && le->length > 40 && delta > 30000 && ssn >= 0 )
+	else if( le->length < so->pulse_max_for_sweep && delta > so->pulse_in_clear_time && ssn >= 0 )
 	{
 		int32_t dl = so->last_time[0];
 		int32_t tpco = so->last_length[0];
@@ -123,10 +121,13 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 		//Adding length 
 		//Long pulse-code from IR flood.
 		//Make sure it fits nicely into a divisible-by-500 time.
+
+		int32_t main_divisor = so->timebase_hz / 384000; //125 @ 48 MHz.
+
 		int32_t acode_array[2] =
 			{
-				(so->last_length[0]+125+50)/250,
-				(so->last_length[1]+125+50)/250,
+				(so->last_length[0]+main_divisor+50)/(main_divisor*2),  //+50 adds a small offset and seems to help always get it right. 
+				(so->last_length[1]+main_divisor+50)/(main_divisor*2),	//Check the +50 in the future to see how well this works on a variety of hardware.
 			};
 
 		//XXX: TODO: Capture error count here.
@@ -150,14 +151,19 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 			so->recent_sync_time = so->last_time[1];
 
 			//Throw out everything if our sync pulses look like they're bad.
-			if( delta1 < 375000 || delta1 > 385000 )
+
+			int32_t center_1 = so->timecenter_ticks*2 - so->pulse_synctime_offset;
+			int32_t center_2 = so->pulse_synctime_offset;
+			int32_t slack = so->pulse_synctime_slack;
+
+			if( delta1 < center_1 - slack || delta1 > center_1 + slack )
 			{
 				//XXX: TODO: Count faults.
 				so->sync_set_number = -1;
 				return;
 			}
 
-			if( delta2 < 15000 || delta2 > 25000 )
+			if( delta2 < center_2 - slack || delta2 > center_2 + slack )
 			{
 				//XXX: TODO: Count faults.
 				so->sync_set_number = -1;

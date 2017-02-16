@@ -21,17 +21,35 @@ void survive_default_light_process( struct SurviveObject * so, int sensor_id, in
 
 	//No loner need sync information past this point.
 	if( sensor_id < 0 ) return;
-
-	float angle = (timeinsweep - 200000) * (1./200000. * 3.14159265359/2.0);
+	FLT angle = (timeinsweep - so->timecenter_ticks) * (1./so->timecenter_ticks * 3.14159265359/2.0);
 
 	//Need to now do angle correction.
 #if 1
 	struct BaseStationData * bsd = &ctx->bsd[base_station];
 
+	//XXX TODO: This seriously needs to be worked on.  See: https://github.com/cnlohr/libsurvive/issues/18
+	angle += bsd->fcalphase[axis];
+//	angle += bsd->fcaltilt[axis] * predicted_angle(axis1);
+	
 	//TODO!!!
 #endif
-	
+
+	FLT length_sec = length / (FLT)so->timebase_hz;
+	ctx->angleproc( so, sensor_id, acode, timecode, length_sec, angle );
 }
+
+
+void survive_default_angle_process( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle )
+{
+	struct SurviveContext * ctx = so->ctx;
+	if( ctx->calptr )
+	{
+		survive_cal_angle( so, sensor_id, acode, timecode, length, angle );
+	}
+
+	//TODO: Writeme!
+}	
+
 
 void survive_default_imu_process( struct SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id )
 {

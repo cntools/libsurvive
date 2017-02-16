@@ -85,6 +85,10 @@ return;
 }
 
 
+void my_angle_process( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle )
+{
+	survive_default_angle_process( so, sensor_id, acode, timecode, length, angle );
+}
 
 
 void * GuiThread( void * v )
@@ -125,12 +129,14 @@ void * GuiThread( void * v )
 
 
 
+
 int main()
 {
 	ctx = survive_init( );
 
 	survive_install_light_fn( ctx,  my_light_process );
 	survive_install_imu_fn( ctx,  my_imu_process );
+	survive_install_angle_fn( ctx, my_angle_process );
 
 	survive_cal_install( ctx );
 

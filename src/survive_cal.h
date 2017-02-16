@@ -28,6 +28,7 @@ int survive_cal_get_status( struct SurviveContext * ctx, char * description, int
 
 //Called from survive_default_light_process
 void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  );
+void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle );
 
 struct SurviveCalData
 {
