@@ -42,6 +42,15 @@ Matrix3x3 GetRotationMatrixForTorus(Point a, Point b)
 //
 //}
 
+typedef struct
+{
+	Point a;
+	Point b;
+	double angle;
+	Matrix3x3 rotation;
+} PointsAndAngle;
+
+
 Point RotateAndTranslatePoint(Point p, Matrix3x3 rot, Point newOrigin)
 {
 	Point q;
@@ -214,9 +223,7 @@ void torusGenerator(Point p1, Point p2, double lighthouseAngle, Point **pointClo
 // That way, the caller doesn't have to draw the entire torus in high resolution, just the part of the torus
 // that is most likely to contain the best solution.
 void estimateToroidalAndPoloidalAngleOfPoint(
-	Point torusP1,
-	Point torusP2,
-	double lighthouseAngle,
+	PointsAndAngle *pna,
 	Point point,
 	double *toroidalAngle,
 	double *toroidalSin,
@@ -225,7 +232,7 @@ void estimateToroidalAndPoloidalAngleOfPoint(
 {
 	// this is the rotation matrix that shows how to rotate the torus from being in a simple "default" orientation
 	// into the coordinate system of the tracked object
-	Matrix3x3 rot = GetRotationMatrixForTorus(torusP1, torusP2);
+	Matrix3x3 rot = pna->rotation;
 
 	// We take the inverse of the rotation matrix, and this now defines a rotation matrix that will take us from
 	// the tracked object coordinate system into the "easy" or "default" coordinate system of the torus.
@@ -236,7 +243,7 @@ void estimateToroidalAndPoloidalAngleOfPoint(
 	origin.y = 0;
 	origin.z = 0;
 
-	Point m = midpoint(torusP1, torusP2);
+	Point m = midpoint(pna->a, pna->b);
 
 	// in this new coordinate system, we'll rename all of the points we care about to have an "F" after them
 	// This will be their representation in the "friendly" coordinate system
@@ -303,8 +310,8 @@ void estimateToroidalAndPoloidalAngleOfPoint(
 	// this as a 2D problem.  I think we're getting close...
 
 	// I stole these lines from the torus generator.  Gonna need the poloidal radius.
-	double distanceBetweenPoints = distance(torusP1, torusP2); // we don't care about the coordinate system of these points because we're just getting distance.
-	double toroidalRadius = distanceBetweenPoints / (2 * tan(lighthouseAngle));
+	double distanceBetweenPoints = distance(pna->a, pna->b); // we don't care about the coordinate system of these points because we're just getting distance.
+	double toroidalRadius = distanceBetweenPoints / (2 * tan(pna->angle));
 	double poloidalRadius = sqrt(SQUARED(toroidalRadius) + SQUARED(distanceBetweenPoints / 2));
 
 	// The center of the polidal circle already lies on the z axis at this point, so we won't shift z at all. 
@@ -390,13 +397,6 @@ Point findBestPointMatch(Point *masterCloud, Point** clouds, int numClouds)
 
 #define MAX_POINT_PAIRS 100
 
-typedef struct
-{
-	Point a;
-	Point b;
-	double angle;
-} PointsAndAngle;
-
 double angleBetweenSensors(TrackedSensor *a, TrackedSensor *b)
 {
 	double angle = acos(cos(a->phi - b->phi)*cos(a->theta - b->theta));
@@ -465,9 +465,7 @@ Point RefineEstimateUsingPointCloud(Point initialEstimate, PointsAndAngle *pna, 
 	for (unsigned int i = 0; i < pnaCount; i++)
 	{
 		estimateToroidalAndPoloidalAngleOfPoint(
-			pna[i].a,
-			pna[i].b,
-			pna[i].angle,
+			&(pna[i]),
 			initialEstimate,
 			&toroidalAngle,
 			&toroidalSin,
@@ -504,9 +502,7 @@ Point RefineEstimateUsingPointCloud(Point initialEstimate, PointsAndAngle *pna, 
 	for (unsigned int i = 0; i < pnaCount; i++)
 	{
 		estimateToroidalAndPoloidalAngleOfPoint(
-			pna[i].a,
-			pna[i].b,
-			pna[i].angle,
+			&(pna[i]),
 			bestMatchB,
 			&toroidalAngle,
 			&toroidalSin,
@@ -550,7 +546,7 @@ Point calculateTorusPointFromAngles(PointsAndAngle *pna, double toroidalAngle, d
 
 	double distanceBetweenPoints = distance(pna->a, pna->b);
 	Point m = midpoint(pna->a, pna->b);
-	Matrix3x3 rot = GetRotationMatrixForTorus(pna->a, pna->b);
+	Matrix3x3 rot = pna->rotation;
 
 	double toroidalRadius = distanceBetweenPoints / (2 * tan(pna->angle));
 	double poloidalRadius = sqrt(SQUARED(toroidalRadius) + SQUARED(distanceBetweenPoints / 2));
@@ -574,9 +570,7 @@ FLT getPointFitnessForPna(Point pointIn, PointsAndAngle *pna)
 	double poloidalAngle = 0;
 
 	estimateToroidalAndPoloidalAngleOfPoint(
-		pna->a,
-		pna->b,
-		pna->angle,
+		pna,
 		pointIn,
 		&toroidalAngle,
 		&toroidalSin,
@@ -921,6 +915,8 @@ Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 				pna[pnaCount].angle = pythAngleBetweenSensors2(&obj->sensor[i], &obj->sensor[j]);
 
 				double pythAngle = sqrt(SQUARED(obj->sensor[i].phi - obj->sensor[j].phi) + SQUARED(obj->sensor[i].theta - obj->sensor[j].theta));
+
+				pna[pnaCount].rotation = GetRotationMatrixForTorus(pna[pnaCount].a, pna[pnaCount].b);
 
 				pnaCount++;
 			}
