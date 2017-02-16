@@ -26,8 +26,8 @@ Matrix3x3 GetRotationMatrixForTorus(Point a, Point b)
 	rotation_between_vecs_to_m3(&result, v1, v2);
 
 	// Useful for debugging...
-	FLT v2b[3];
-	rotate_vec(v2b, v1, result);
+	//FLT v2b[3];
+	//rotate_vec(v2b, v1, result);
 
 	return result;
 }
