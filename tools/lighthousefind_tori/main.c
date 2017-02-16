@@ -64,7 +64,18 @@ static void runTheNumbers()
 
 	printf("Using %d sensors to find lighthouse.\n", sensorCount);
 
-	Point lh = SolveForLighthouse(to, 1);
+	Point lh;
+	for (int i = 0; i < 200; i++)
+	{
+		lh = SolveForLighthouse(to, 0);
+		//(0.156754, -2.403268, 2.280167)
+		assert(fabs((lh.x / 0.156754) - 1) < 0.00001);
+		assert(fabs((lh.y / -2.403268) - 1) < 0.00001);
+		assert(fabs((lh.z / 2.280167) - 1) < 0.00001);
+		assert(lh.x > 0);
+		assert(lh.y < 0);
+		assert(lh.z > 0);
+	}
 
 	printf("(%f, %f, %f)\n", lh.x, lh.y, lh.z);
 

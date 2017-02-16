@@ -122,7 +122,7 @@ void partialTorusGenerator(
 
 	toroidalRadius = distanceBetweenPoints / (2 * tan(lighthouseAngle));
 
-	poloidalRadius = sqrt(pow(toroidalRadius, 2) + pow(distanceBetweenPoints / 2, 2));
+	poloidalRadius = sqrt(SQUARED(toroidalRadius) + SQUARED(distanceBetweenPoints / 2));
 
 	double poloidalPrecision = M_PI * 2 / toroidalPrecision;
 
@@ -291,7 +291,7 @@ void estimateToroidalAndPoloidalAngleOfPoint(
 	// I stole these lines from the torus generator.  Gonna need the poloidal radius.
 	double distanceBetweenPoints = distance(torusP1, torusP2); // we don't care about the coordinate system of these points because we're just getting distance.
 	double toroidalRadius = distanceBetweenPoints / (2 * tan(lighthouseAngle));
-	double poloidalRadius = sqrt(pow(toroidalRadius, 2) + pow(distanceBetweenPoints / 2, 2));
+	double poloidalRadius = sqrt(SQUARED(toroidalRadius) + SQUARED(distanceBetweenPoints / 2));
 
 	// The center of the polidal circle already lies on the z axis at this point, so we won't shift z at all. 
 	// The shift along the X axis will be the toroidal radius.  
@@ -533,7 +533,7 @@ Point calculateTorusPointFromAngles(PointsAndAngle *pna, double toroidalAngle, d
 	Matrix3x3 rot = GetRotationMatrixForTorus(pna->a, pna->b);
 
 	double toroidalRadius = distanceBetweenPoints / (2 * tan(pna->angle));
-	double poloidalRadius = sqrt(pow(toroidalRadius, 2) + pow(distanceBetweenPoints / 2, 2));
+	double poloidalRadius = sqrt(SQUARED(toroidalRadius) + SQUARED(distanceBetweenPoints / 2));
 
 	result.x = (toroidalRadius + poloidalRadius*cos(poloidalAngle))*cos(toroidalAngle);
 	result.y = (toroidalRadius + poloidalRadius*cos(poloidalAngle))*sin(toroidalAngle);
@@ -808,7 +808,7 @@ void AnalyzeToroidalImpact(
 
 	toroidalRadius = distanceBetweenPoints / (2 * tan(lighthouseAngle));
 
-	poloidalRadius = sqrt(pow(toroidalRadius, 2) + pow(distanceBetweenPoints / 2, 2));
+	poloidalRadius = sqrt(SQUARED(toroidalRadius) + SQUARED(distanceBetweenPoints / 2));
 
 	unsigned int pointCount = 0;
 
