@@ -75,7 +75,7 @@ FLT anglebetween3d( FLT * a, FLT * b )
 	FLT bn[3];
 	normalize3d( an, a );
 	normalize3d( bn, b );
-	FLT dot = dot3d( a, b );
+	FLT dot = dot3d(an, bn);
 	if( dot < -0.9999999 ) return LINMATHPI;
 	if( dot >  0.9999999 ) return 0;
 	return FLT_ACOS(dot);
