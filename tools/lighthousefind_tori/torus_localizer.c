@@ -219,6 +219,8 @@ void estimateToroidalAndPoloidalAngleOfPoint(
 	double lighthouseAngle,
 	Point point,
 	double *toroidalAngle,
+	double *toroidalSin,
+	double *toroidalCos,
 	double *poloidalAngle)
 {
 	// this is the rotation matrix that shows how to rotate the torus from being in a simple "default" orientation
@@ -256,11 +258,23 @@ void estimateToroidalAndPoloidalAngleOfPoint(
 	// We will "flatten" the z dimension to only look at the x and y values.  Then, we just need to measure the 
 	// angle between a vector to pointF and a vector along the x axis.  
 
-	*toroidalAngle = atan(pointF.y / pointF.x);
-	if (pointF.x < 0)
-	{
-		*toroidalAngle += M_PI;
-	}
+	FLT toroidalHyp = FLT_SQRT(SQUARED(pointF.y) + SQUARED(pointF.x));
+
+	*toroidalSin = pointF.y / toroidalHyp;
+
+	*toroidalCos = pointF.x / toroidalHyp;
+
+	//*toroidalAngle = atan(pointF.y / pointF.x);
+	//if (pointF.x < 0)
+	//{
+	//	*toroidalAngle += M_PI;
+	//}
+
+	//assert(*toroidalSin / FLT_SIN(*toroidalAngle) - 1 < 0.000001);
+	//assert(*toroidalSin / FLT_SIN(*toroidalAngle) - 1 > -0.000001);
+
+	//assert(*toroidalCos / FLT_COS(*toroidalAngle) - 1 < 0.000001);
+	//assert(*toroidalCos / FLT_COS(*toroidalAngle) - 1 > -0.000001);
 
 	// SCORE!! We've got the toroidal angle.  We're half done!
 
@@ -442,6 +456,8 @@ Point RefineEstimateUsingPointCloud(Point initialEstimate, PointsAndAngle *pna, 
 	double toroidalAngle = 0;
 	double poloidalAngle = 0;
 
+	double toroidalCos = 0;
+	double toroidalSin = 0;
 
 
 	Point **pointCloud2 = malloc(sizeof(void*)* pnaCount);
@@ -454,6 +470,8 @@ Point RefineEstimateUsingPointCloud(Point initialEstimate, PointsAndAngle *pna, 
 			pna[i].angle,
 			initialEstimate,
 			&toroidalAngle,
+			&toroidalSin,
+			&toroidalCos,
 			&poloidalAngle);
 
 		partialTorusGenerator(pna[i].a, pna[i].b, toroidalAngle - 0.1, toroidalAngle + 0.1, poloidalAngle - 0.2, poloidalAngle + 0.2, pna[i].angle, 800, &(pointCloud2[i]));
@@ -491,6 +509,8 @@ Point RefineEstimateUsingPointCloud(Point initialEstimate, PointsAndAngle *pna, 
 			pna[i].angle,
 			bestMatchB,
 			&toroidalAngle,
+			&toroidalSin,
+			&toroidalCos,
 			&poloidalAngle);
 
 		partialTorusGenerator(pna[i].a, pna[i].b, toroidalAngle - 0.05, toroidalAngle + 0.05, poloidalAngle - 0.1, poloidalAngle + 0.1, pna[i].angle, 3000, &(pointCloud3[i]));
@@ -524,7 +544,7 @@ Point RefineEstimateUsingPointCloud(Point initialEstimate, PointsAndAngle *pna, 
 	return bestMatchC;
 }
 
-Point calculateTorusPointFromAngles(PointsAndAngle *pna, double toroidalAngle, double poloidalAngle)
+Point calculateTorusPointFromAngles(PointsAndAngle *pna, double toroidalAngle, double toroidalSin, double toroidalCos, double poloidalAngle)
 {
 	Point result;
 
@@ -535,8 +555,10 @@ Point calculateTorusPointFromAngles(PointsAndAngle *pna, double toroidalAngle, d
 	double toroidalRadius = distanceBetweenPoints / (2 * tan(pna->angle));
 	double poloidalRadius = sqrt(SQUARED(toroidalRadius) + SQUARED(distanceBetweenPoints / 2));
 
-	result.x = (toroidalRadius + poloidalRadius*cos(poloidalAngle))*cos(toroidalAngle);
-	result.y = (toroidalRadius + poloidalRadius*cos(poloidalAngle))*sin(toroidalAngle);
+	//result.x = (toroidalRadius + poloidalRadius*cos(poloidalAngle))*cos(toroidalAngle);
+	//result.y = (toroidalRadius + poloidalRadius*cos(poloidalAngle))*sin(toroidalAngle);
+	result.x = (toroidalRadius + poloidalRadius*cos(poloidalAngle))*toroidalCos;
+	result.y = (toroidalRadius + poloidalRadius*cos(poloidalAngle))*toroidalSin;
 	result.z = poloidalRadius*sin(poloidalAngle);
 	result = RotateAndTranslatePoint(result, rot, m);
 
@@ -547,6 +569,8 @@ FLT getPointFitnessForPna(Point pointIn, PointsAndAngle *pna)
 {
 
 	double toroidalAngle = 0;
+	double toroidalSin = 0;
+	double toroidalCos = 0;
 	double poloidalAngle = 0;
 
 	estimateToroidalAndPoloidalAngleOfPoint(
@@ -555,9 +579,11 @@ FLT getPointFitnessForPna(Point pointIn, PointsAndAngle *pna)
 		pna->angle,
 		pointIn,
 		&toroidalAngle,
+		&toroidalSin,
+		&toroidalCos,
 		&poloidalAngle);
 
-	Point torusPoint = calculateTorusPointFromAngles(pna, toroidalAngle, poloidalAngle);
+	Point torusPoint = calculateTorusPointFromAngles(pna, toroidalAngle, toroidalSin, toroidalCos, poloidalAngle);
 
 	FLT dist = distance(pointIn, torusPoint);
 
