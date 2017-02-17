@@ -36,9 +36,11 @@ typedef struct
 {
 	Point a;
 	Point b;
-	double angle;
+	FLT angle;
+	FLT tanAngle; // tangent of angle
 	Matrix3x3 rotation;
-	Matrix3x3 invRotation;
+	Matrix3x3 invRotation; // inverse of rotation
+
 } PointsAndAngle;
 
 
@@ -188,7 +190,7 @@ void estimateToroidalAndPoloidalAngleOfPoint(
 
 	// I stole these lines from the torus generator.  Gonna need the poloidal radius.
 	double distanceBetweenPoints = distance(pna->a, pna->b); // we don't care about the coordinate system of these points because we're just getting distance.
-	double toroidalRadius = distanceBetweenPoints / (2 * tan(pna->angle));
+	double toroidalRadius = distanceBetweenPoints / (2 * pna->tanAngle);
 	double poloidalRadius = sqrt(SQUARED(toroidalRadius) + SQUARED(distanceBetweenPoints / 2));
 
 	// The center of the polidal circle already lies on the z axis at this point, so we won't shift z at all. 
@@ -252,7 +254,7 @@ Point calculateTorusPointFromAngles(PointsAndAngle *pna, double toroidalAngle, d
 	Point m = midpoint(pna->a, pna->b);
 	Matrix3x3 rot = pna->rotation;
 
-	double toroidalRadius = distanceBetweenPoints / (2 * tan(pna->angle));
+	double toroidalRadius = distanceBetweenPoints / (2 * pna->tanAngle);
 	double poloidalRadius = sqrt(SQUARED(toroidalRadius) + SQUARED(distanceBetweenPoints / 2));
 
 	result.x = (toroidalRadius + poloidalRadius*cos(poloidalAngle))*toroidalCos;
@@ -463,6 +465,8 @@ Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 {
 	PointsAndAngle pna[MAX_POINT_PAIRS];
 
+	volatile size_t sizeNeeded = sizeof(pna);
+
 	Point avgNorm = { 0 };
 
 	size_t pnaCount = 0;
@@ -476,6 +480,7 @@ Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 				pna[pnaCount].b = obj->sensor[j].point;
 
 				pna[pnaCount].angle = pythAngleBetweenSensors2(&obj->sensor[i], &obj->sensor[j]);
+				pna[pnaCount].tanAngle = FLT_TAN(pna[pnaCount].angle);
 
 				double pythAngle = sqrt(SQUARED(obj->sensor[i].phi - obj->sensor[j].phi) + SQUARED(obj->sensor[i].theta - obj->sensor[j].theta));
 
