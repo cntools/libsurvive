@@ -38,6 +38,7 @@ typedef struct
 	Point b;
 	double angle;
 	Matrix3x3 rotation;
+	Matrix3x3 invRotation;
 } PointsAndAngle;
 
 
@@ -107,16 +108,13 @@ void estimateToroidalAndPoloidalAngleOfPoint(
 	double *toroidalAngle,
 	double *toroidalSin,
 	double *toroidalCos,
-	double *poloidalAngle)
+	double *poloidalAngle,
+	double *poloidalSin)
 {
-	// this is the rotation matrix that shows how to rotate the torus from being in a simple "default" orientation
-	// into the coordinate system of the tracked object
-	Matrix3x3 rot = pna->rotation;
-
 	// We take the inverse of the rotation matrix, and this now defines a rotation matrix that will take us from
 	// the tracked object coordinate system into the "easy" or "default" coordinate system of the torus.
 	// Using this will allow us to derive angles much more simply by being in a "friendly" coordinate system.
-	rot = inverseM33(rot);
+	Matrix3x3 rot = pna->invRotation;
 	Point origin;
 	origin.x = 0;
 	origin.y = 0;
@@ -204,11 +202,21 @@ void estimateToroidalAndPoloidalAngleOfPoint(
 	// Okay, almost there.  If we treat pointH as a vector on the XZ plane, if we get its angle,
 	// that will be the poloidal angle we're looking for.  (crosses fingers)
 
+	FLT poloidalHyp = FLT_SQRT(SQUARED(pointH.z) + SQUARED(pointH.x));
+
+	*poloidalSin = pointH.z / poloidalHyp;
+
+
 	*poloidalAngle = atan(pointH.z / pointH.x);
 	if (pointH.x < 0)
 	{
 		*poloidalAngle += M_PI;
 	}
+
+	//assert(*toroidalSin / FLT_SIN(*toroidalAngle) - 1 < 0.000001);
+	//assert(*toroidalSin / FLT_SIN(*toroidalAngle) - 1 > -0.000001);
+
+
 
 	// Wow, that ended up being not so much code, but a lot of interesting trig.
 	// can't remember the last time I spent so much time working through each line of code.
@@ -236,7 +244,7 @@ double pythAngleBetweenSensors2(TrackedSensor *a, TrackedSensor *b)
 	return pythAngle;
 }
 
-Point calculateTorusPointFromAngles(PointsAndAngle *pna, double toroidalAngle, double toroidalSin, double toroidalCos, double poloidalAngle)
+Point calculateTorusPointFromAngles(PointsAndAngle *pna, double toroidalAngle, double toroidalSin, double toroidalCos, double poloidalAngle, double poloidalSin)
 {
 	Point result;
 
@@ -249,7 +257,7 @@ Point calculateTorusPointFromAngles(PointsAndAngle *pna, double toroidalAngle, d
 
 	result.x = (toroidalRadius + poloidalRadius*cos(poloidalAngle))*toroidalCos;
 	result.y = (toroidalRadius + poloidalRadius*cos(poloidalAngle))*toroidalSin;
-	result.z = poloidalRadius*sin(poloidalAngle);
+	result.z = poloidalRadius*poloidalSin;
 	result = RotateAndTranslatePoint(result, rot, m);
 
 	return result;
@@ -262,6 +270,7 @@ FLT getPointFitnessForPna(Point pointIn, PointsAndAngle *pna)
 	double toroidalSin = 0;
 	double toroidalCos = 0;
 	double poloidalAngle = 0;
+	double poloidalSin = 0;
 
 	estimateToroidalAndPoloidalAngleOfPoint(
 		pna,
@@ -269,9 +278,10 @@ FLT getPointFitnessForPna(Point pointIn, PointsAndAngle *pna)
 		&toroidalAngle,
 		&toroidalSin,
 		&toroidalCos,
-		&poloidalAngle);
+		&poloidalAngle,
+		&poloidalSin);
 
-	Point torusPoint = calculateTorusPointFromAngles(pna, toroidalAngle, toroidalSin, toroidalCos, poloidalAngle);
+	Point torusPoint = calculateTorusPointFromAngles(pna, toroidalAngle, toroidalSin, toroidalCos, poloidalAngle, poloidalSin);
 
 	FLT dist = distance(pointIn, torusPoint);
 
@@ -299,7 +309,6 @@ FLT getPointFitness(Point pointIn, PointsAndAngle *pna, size_t pnaCount)
 	for (size_t i = 0; i < pnaCount; i++)
 	{
 		fitness = getPointFitnessForPna(pointIn, &(pna[i]));
-		//printf("Distance[%d]: %f\n", i, fitness);
 		resultSum += SQUARED(fitness);
 	}
 
@@ -471,6 +480,8 @@ Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 				double pythAngle = sqrt(SQUARED(obj->sensor[i].phi - obj->sensor[j].phi) + SQUARED(obj->sensor[i].theta - obj->sensor[j].theta));
 
 				pna[pnaCount].rotation = GetRotationMatrixForTorus(pna[pnaCount].a, pna[pnaCount].b);
+				pna[pnaCount].invRotation = inverseM33(pna[pnaCount].rotation);
+
 
 				pnaCount++;
 			}
