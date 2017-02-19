@@ -60,10 +60,10 @@ void writePcdHeader(FILE * file)
 	fprintf(file, "SIZE 4 4 4 4\n");
 	fprintf(file, "TYPE F F F U\n");
 	fprintf(file, "COUNT 1 1 1 1\n");
-	fprintf(file, "WIDTH		\n");
+	fprintf(file, "WIDTH        \n");
 	fprintf(file, "HEIGHT 1\n");
 	fprintf(file, "VIEWPOINT 0 0 0 1 0 0 0\n");
-	fprintf(file, "POINTS		\n");
+	fprintf(file, "POINTS        \n");
 	fprintf(file, "DATA ascii\n");
 
 	//fprintf(file, "100000.0, 100000.0, 100000\n");

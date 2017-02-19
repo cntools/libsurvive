@@ -125,7 +125,8 @@ static inline int getupdate_feature_report(libusb_device_handle* dev, uint16_t i
 static inline int hid_get_feature_report_timeout(libusb_device_handle* device, uint16_t interface, unsigned char *buf, size_t len )
 {
 	int ret;
-    for (unsigned i = 0; i < 100; i++)
+	uint8_t i = 0;
+    for (i = 0; i < 100; i++)
 	{
         ret = getupdate_feature_report(device, interface, buf, len);
 		if( ret != -9 && ( ret != -1 || errno != EPIPE ) ) return ret;
@@ -146,6 +147,7 @@ int survive_usb_init( struct SurviveContext * ctx )
 	}
 
 	int i;
+	int16_t j;
 	libusb_device** devs;
 	int ret = libusb_get_device_list(ctx->usbctx, &devs);
 
@@ -201,7 +203,7 @@ int survive_usb_init( struct SurviveContext * ctx )
 		}
 
 		libusb_set_auto_detach_kernel_driver( ctx->udev[i], 1 );
-		for (int j = 0; j < conf->bNumInterfaces; j++ )
+		for (j = 0; j < conf->bNumInterfaces; j++ )
 		{
 #if 0
 		    if (libusb_kernel_driver_active(ctx->udev[i], j) == 1) {

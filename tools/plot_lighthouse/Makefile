@@ -1,7 +1,7 @@
 UNAME := $(shell uname)
 
 ifeq ($(UNAME), Linux)
-CFLAGS:= -I../../redist -lGL -lGLU -lglut
+CFLAGS:= -lGL -lGLU -lglut -I../../redist -DLINUX -lm -lpthread
 endif
 
 # Darwin is Mac OSX !!

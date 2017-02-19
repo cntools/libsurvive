@@ -62,6 +62,22 @@ struct SurviveUSBInterface
 
 //This is defined in survive.h
 struct SurviveObject;
+struct SurviveCalData;
+
+struct BaseStationData
+{
+	uint8_t PositionSet:1;
+	float Position[3];
+	float Quaternion[4];
+
+	uint8_t OOTXSet:1;
+	uint32_t BaseStationID;
+	float fcalphase[2];
+	float fcaltilt[2];
+	float fcalcurve[2];
+	float fcalgibpha[2];
+	float fcalgibmag[2];
+};
 
 struct SurviveContext
 {
@@ -70,14 +86,22 @@ struct SurviveContext
 	struct libusb_device_handle * udev[MAX_USB_DEVS];
 	struct SurviveUSBInterface uiface[MAX_INTERFACES];
 
-	text_feedback_fnptr faultfunction;
-	text_feedback_fnptr notefunction;
+	text_feedback_func faultfunction;
+	text_feedback_func notefunction;
 	light_process_func lightproc;
 	imu_process_func imuproc;
+	angle_process_func angleproc;
 
-	//Data Subsystem
+
+	//Calibration data:
+	struct BaseStationData bsd[NUM_LIGHTHOUSES];
+
+	struct SurviveCalData * calptr; //If and only if the calibration subsystem is attached.
+
+	//Data Subsystem.  These should be last, as there may be additional surviveobjects.
 	struct SurviveObject headset;
-	struct SurviveObject watchman[2];
+	struct SurviveObject watchman[2]; //Currently only two supported watchmen.
+
 };
 
 
@@ -90,9 +114,6 @@ int survive_get_config( char ** config, struct SurviveContext * ctx, int devno, 
 //Accept Data from backend.
 void survive_data_cb( struct SurviveUSBInterface * si );
 
-//Accept higher-level data.
-void survive_default_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length );
-void survive_default_imu_process( struct SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id );
 
 #endif
 

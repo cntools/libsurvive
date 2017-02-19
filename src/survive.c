@@ -8,7 +8,7 @@
 #include <jsmn.h>
 #include <string.h>
 #include <zlib.h>
-#include "disambiguator.h"
+
 
 static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
  if (tok->type == JSMN_STRING && (int) strlen(s) == tok->end - tok->start &&
@@ -30,7 +30,7 @@ static void survivenote( struct SurviveContext * ctx, const char * fault )
 	fprintf( stderr, "Info: %s\n", fault );
 }
 
-static int ParsePoints( struct SurviveContext * ctx, struct SurviveObject * so, char * ct0conf, SV_FLOAT ** floats_out, jsmntok_t * t, int i )
+static int ParsePoints( struct SurviveContext * ctx, struct SurviveObject * so, char * ct0conf, FLT ** floats_out, jsmntok_t * t, int i )
 {
 	int k;
 	int pts = t[i+1].size;
@@ -43,7 +43,7 @@ static int ParsePoints( struct SurviveContext * ctx, struct SurviveObject * so, 
 	{
 		tk = &t[i+2+k*4];
 
-		float vals[3];
+		FLT vals[3];
 		int m;
 		for( m = 0; m < 3; m++ )
 		{
@@ -60,7 +60,7 @@ static int ParsePoints( struct SurviveContext * ctx, struct SurviveObject * so, 
 
 			memcpy( ctt, ct0conf + tk->start, elemlen );
 			ctt[elemlen] = 0;
-			float f = atof( ctt );
+			FLT f = atof( ctt );
 			int id = so->nr_locations*3+m;
 			(*floats_out)[id] = f;
 		}
@@ -144,24 +144,14 @@ struct SurviveContext * survive_init()
 
 	ctx->lightproc = survive_default_light_process;
 	ctx->imuproc = survive_default_imu_process;
+	ctx->angleproc = survive_default_angle_process;
 
 	ctx->headset.ctx = ctx;
 	memcpy( ctx->headset.codename, "HMD", 4 );
-#ifndef USE_OLD_DISAMBIGUATOR
-	ctx->headset.d = calloc( 1, sizeof( struct disambiguator ) );
-#endif
-
 	ctx->watchman[0].ctx = ctx;
 	memcpy( ctx->watchman[0].codename, "WM0", 4 );
-#ifndef USE_OLD_DISAMBIGUATOR
-	ctx->watchman[0].d = calloc( 1, sizeof( struct disambiguator ) );
-#endif
-
 	ctx->watchman[1].ctx = ctx;
 	memcpy( ctx->watchman[1].codename, "WM1", 4 );
-#ifndef USE_OLD_DISAMBIGUATOR
-	ctx->watchman[1].d = calloc( 1, sizeof( struct disambiguator ) );
-#endif
 
 	//USB must happen last.
 	if( r = survive_usb_init( ctx ) )
@@ -175,6 +165,18 @@ struct SurviveContext * survive_init()
 	if( LoadConfig( ctx, &ctx->watchman[0], 2, 0, 1 ) ) { SV_INFO( "Watchman 0 config issue." ); }
 	if( LoadConfig( ctx, &ctx->watchman[1], 3, 0, 1 ) ) { SV_INFO( "Watchman 1 config issue." ); }
 
+	ctx->headset.timebase_hz = ctx->watchman[0].timebase_hz = ctx->watchman[1].timebase_hz = 48000000;
+	ctx->headset.pulsedist_max_ticks = ctx->watchman[0].pulsedist_max_ticks = ctx->watchman[1].pulsedist_max_ticks = 500000;
+	ctx->headset.pulselength_min_sync = ctx->watchman[0].pulselength_min_sync = ctx->watchman[1].pulselength_min_sync = 2200;
+	ctx->headset.pulse_in_clear_time = ctx->watchman[0].pulse_in_clear_time = ctx->watchman[1].pulse_in_clear_time = 35000;
+	ctx->headset.pulse_max_for_sweep = ctx->watchman[0].pulse_max_for_sweep = ctx->watchman[1].pulse_max_for_sweep = 1800;
+
+	ctx->headset.pulse_synctime_offset = ctx->watchman[0].pulse_synctime_offset = ctx->watchman[1].pulse_synctime_offset = 20000;
+	ctx->headset.pulse_synctime_slack = ctx->watchman[0].pulse_synctime_slack = ctx->watchman[1].pulse_synctime_slack = 5000;
+
+	ctx->headset.timecenter_ticks     = ctx->headset.timebase_hz / 240;
+	ctx->watchman[0].timecenter_ticks = ctx->watchman[0].timebase_hz / 240;
+	ctx->watchman[1].timecenter_ticks = ctx->watchman[1].timebase_hz / 240;
 /*
 	int i;
 	int locs = ctx->headset.nr_locations;
@@ -206,7 +208,7 @@ fail_gracefully:
 	return 0;
 }
 
-void survive_install_info_fn( struct SurviveContext * ctx,  text_feedback_fnptr fbp )
+void survive_install_info_fn( struct SurviveContext * ctx,  text_feedback_func fbp )
 {
 	if( fbp )
 		ctx->notefunction = fbp;
@@ -214,7 +216,7 @@ void survive_install_info_fn( struct SurviveContext * ctx,  text_feedback_fnptr 
 		ctx->notefunction = survivenote;
 }
 
-void survive_install_error_fn( struct SurviveContext * ctx,  text_feedback_fnptr fbp )
+void survive_install_error_fn( struct SurviveContext * ctx,  text_feedback_func fbp )
 {
 	if( fbp )
 		ctx->faultfunction = fbp;
@@ -237,6 +239,17 @@ void survive_install_imu_fn( struct SurviveContext * ctx,  imu_process_func fbp 
 	else
 		ctx->imuproc = survive_default_imu_process;
 }
+
+
+void survive_install_angle_fn( struct SurviveContext * ctx,  angle_process_func fbp )
+{
+	if( fbp )
+		ctx->angleproc = fbp;
+	else
+		ctx->angleproc = survive_default_angle_process;
+}
+
+
 
 void survive_close( struct SurviveContext * ctx )
 {

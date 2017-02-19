@@ -51,6 +51,9 @@ static void runTheNumbers()
 			to->sensor[sensorCount].point.x = hmd_points[i * 3 + 0];
 			to->sensor[sensorCount].point.y = hmd_points[i * 3 + 1];
 			to->sensor[sensorCount].point.z = hmd_points[i * 3 + 2];
+			to->sensor[sensorCount].normal.x = hmd_norms[i * 3 + 0];
+			to->sensor[sensorCount].normal.y = hmd_norms[i * 3 + 1];
+			to->sensor[sensorCount].normal.z = hmd_norms[i * 3 + 2];
 			to->sensor[sensorCount].theta = hmd_point_angles[i * 2 + 0] + LINMATHPI / 2;
 			to->sensor[sensorCount].phi = hmd_point_angles[i * 2 + 1] + LINMATHPI / 2;
 			sensorCount++;

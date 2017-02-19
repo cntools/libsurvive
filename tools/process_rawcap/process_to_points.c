@@ -192,7 +192,8 @@ int main( int argc, char ** argv )
 			stddevtim += Sdiff * Sdiff;
 			stddevlen += Ldiff * Ldiff;
 
-			Sdiff/=4;
+			//Cast a wider net for the histogram.
+			//Sdiff/=4;
 
 			int llm = Sdiff + (HISTOGRAMSIZE/2.0);
 			if( llm < 0 ) llm = 0;
