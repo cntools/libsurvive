@@ -99,15 +99,9 @@ Point midpoint(Point a, Point b)
 // * And points and a lighthouse angle that implicitly define a torus
 // * for that torus, what is the toroidal angle of the plane that will go through that point in space
 // * and given that toroidal angle, what is the poloidal angle that will be directed toward that point in space?
-//
-// Given the toroidal and poloidal angles of a "good estimate" of a solution position, a caller of this function
-// will be able to "draw" the point cloud of a torus in just the surface of the torus near the point in space.
-// That way, the caller doesn't have to draw the entire torus in high resolution, just the part of the torus
-// that is most likely to contain the best solution.
 void estimateToroidalAndPoloidalAngleOfPoint(
 	PointsAndAngle *pna,
 	Point point,
-	double *toroidalAngle,
 	double *toroidalSin,
 	double *toroidalCos,
 	double *poloidalAngle,
@@ -228,34 +222,38 @@ void estimateToroidalAndPoloidalAngleOfPoint(
 
 #define MAX_POINT_PAIRS 100
 
-double angleBetweenSensors(TrackedSensor *a, TrackedSensor *b)
+FLT angleBetweenSensors(TrackedSensor *a, TrackedSensor *b)
 {
-	double angle = acos(cos(a->phi - b->phi)*cos(a->theta - b->theta));
-	double angle2 = acos(cos(b->phi - a->phi)*cos(b->theta - a->theta));
+	FLT angle = FLT_ACOS(FLT_COS(a->phi - b->phi)*FLT_COS(a->theta - b->theta));
+	FLT angle2 = FLT_ACOS(FLT_COS(b->phi - a->phi)*FLT_COS(b->theta - a->theta));
 
 	return angle;
 }
-double pythAngleBetweenSensors2(TrackedSensor *a, TrackedSensor *b)
-{
-	double p = (a->phi - b->phi);
-	double d = (a->theta - b->theta);
 
-	double adjd = sin((a->phi + b->phi) / 2);
-	double adjP = sin((a->theta + b->theta) / 2);
-	double pythAngle = sqrt(SQUARED(p*adjP) + SQUARED(d*adjd));
+// This provides a pretty good estimate of the angle above, probably better
+// the further away the lighthouse is.  But, it's not crazy-precise.
+// It's main advantage is speed.
+FLT pythAngleBetweenSensors2(TrackedSensor *a, TrackedSensor *b)
+{
+	FLT p = (a->phi - b->phi);
+	FLT d = (a->theta - b->theta);
+
+	FLT adjd = FLT_SIN((a->phi + b->phi) / 2);
+	FLT adjP = FLT_SIN((a->theta + b->theta) / 2);
+	FLT pythAngle = sqrt(SQUARED(p*adjP) + SQUARED(d*adjd));
 	return pythAngle;
 }
 
-Point calculateTorusPointFromAngles(PointsAndAngle *pna, double toroidalAngle, double toroidalSin, double toroidalCos, double poloidalAngle, double poloidalSin)
+Point calculateTorusPointFromAngles(PointsAndAngle *pna, FLT toroidalSin, FLT toroidalCos, FLT poloidalAngle, FLT poloidalSin)
 {
 	Point result;
 
-	double distanceBetweenPoints = distance(pna->a, pna->b);
+	FLT distanceBetweenPoints = distance(pna->a, pna->b);
 	Point m = midpoint(pna->a, pna->b);
 	Matrix3x3 rot = pna->rotation;
 
-	double toroidalRadius = distanceBetweenPoints / (2 * pna->tanAngle);
-	double poloidalRadius = sqrt(SQUARED(toroidalRadius) + SQUARED(distanceBetweenPoints / 2));
+	FLT toroidalRadius = distanceBetweenPoints / (2 * pna->tanAngle);
+	FLT poloidalRadius = FLT_SQRT(SQUARED(toroidalRadius) + SQUARED(distanceBetweenPoints / 2));
 
 	result.x = (toroidalRadius + poloidalRadius*cos(poloidalAngle))*toroidalCos;
 	result.y = (toroidalRadius + poloidalRadius*cos(poloidalAngle))*toroidalSin;
@@ -268,7 +266,6 @@ Point calculateTorusPointFromAngles(PointsAndAngle *pna, double toroidalAngle, d
 FLT getPointFitnessForPna(Point pointIn, PointsAndAngle *pna)
 {
 
-	double toroidalAngle = 0;
 	double toroidalSin = 0;
 	double toroidalCos = 0;
 	double poloidalAngle = 0;
@@ -277,13 +274,12 @@ FLT getPointFitnessForPna(Point pointIn, PointsAndAngle *pna)
 	estimateToroidalAndPoloidalAngleOfPoint(
 		pna,
 		pointIn,
-		&toroidalAngle,
 		&toroidalSin,
 		&toroidalCos,
 		&poloidalAngle,
 		&poloidalSin);
 
-	Point torusPoint = calculateTorusPointFromAngles(pna, toroidalAngle, toroidalSin, toroidalCos, poloidalAngle, poloidalSin);
+	Point torusPoint = calculateTorusPointFromAngles(pna, toroidalSin, toroidalCos, poloidalAngle, poloidalSin);
 
 	FLT dist = distance(pointIn, torusPoint);
 
@@ -478,8 +474,9 @@ Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 			{
 				pna[pnaCount].a = obj->sensor[i].point;
 				pna[pnaCount].b = obj->sensor[j].point;
-
-				pna[pnaCount].angle = pythAngleBetweenSensors2(&obj->sensor[i], &obj->sensor[j]);
+				
+				pna[pnaCount].angle = angleBetweenSensors(&obj->sensor[i], &obj->sensor[j]);
+				//pna[pnaCount].angle = pythAngleBetweenSensors2(&obj->sensor[i], &obj->sensor[j]);
 				pna[pnaCount].tanAngle = FLT_TAN(pna[pnaCount].angle);
 
 				double pythAngle = sqrt(SQUARED(obj->sensor[i].phi - obj->sensor[j].phi) + SQUARED(obj->sensor[i].theta - obj->sensor[j].theta));
