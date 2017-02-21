@@ -29,7 +29,7 @@ void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 	struct SurviveCalData * cd = ctx->calptr;
 	int id = ct->user1;
 
-	SV_INFO( "Got OOTX packet %d %p\n", id, cd );
+	SV_INFO( "Got OOTX packet %d %p", id, cd );
 
 	lighthouse_info_v6 v6;
 	init_lighthouse_info_v6(&v6, packet->data);
@@ -71,6 +71,11 @@ int survive_cal_get_status( struct SurviveContext * ctx, char * description, int
 		{
 			return snprintf( description, description_length, "%d Searching for common watchman cal %d/%d (%d/%d)", cd->stage, cd->peak_counts, PTS_BEFORE_COMMON, cd->times_found_common, NEEDED_TIMES_OF_COMMON );
 		}
+
+	case 5:
+		return snprintf( description, description_length, "%d LH Find complete.", cd->stage );
+
+	case 4:
 	default:
 		return snprintf( description, description_length, "%d Unkown calibration state", cd->stage );
 	}
@@ -183,23 +188,26 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 
 		if( cd->peak_counts >= PTS_BEFORE_COMMON )
 		{
-			SV_INFO( "Stage 2 cal: %d %d %d\n", cd->peak_counts, cd->found_common, cd->times_found_common );
+			int tfc = cd->times_found_common;
 			if( cd->found_common )
 			{
-				if( cd->times_found_common >= NEEDED_TIMES_OF_COMMON )
+				if( tfc >= NEEDED_TIMES_OF_COMMON )
 				{
+					SV_INFO( "Stage 2 moving to stage 3. %d %d %d", cd->peak_counts, cd->found_common, tfc );
 					reset_calibration( cd );
 					cd->stage = 3;
 					cd->found_common = 1;
 				}
 				else
 				{
-					cd->times_found_common++;
+					SV_INFO( "Stage 2 good - continuing. %d %d %d", cd->peak_counts, cd->found_common, tfc );
 					reset_calibration( cd );
+					cd->times_found_common = tfc+1;
 				}
 			}
 			else
 			{
+				SV_INFO( "Stage 2 bad - redoing. %d %d %d", cd->peak_counts, cd->found_common, tfc );
 				reset_calibration( cd );
 				cd->times_found_common = 0;
 			}
@@ -236,10 +244,20 @@ static void handle_calibration( struct SurviveCalData *cd )
 {
 	struct SurviveContext * ctx = cd->ctx;
 
+	#define MAX_CAL_PT_DAT (MAX_SENSORS_TO_CAL*NUM_LIGHTHOUSES*2)
+
+	FLT avgsweeps[MAX_CAL_PT_DAT];
+	FLT avglens[MAX_CAL_PT_DAT];
+	FLT stdsweeps[MAX_CAL_PT_DAT];
+	FLT stdlens[MAX_CAL_PT_DAT];
+	int ctsweeps[MAX_CAL_PT_DAT];
+
+	memset( ctsweeps, 0, sizeof( ctsweeps ) );
+
 	//Either advance to stage 4 or go resetting will go back to stage 2.
 	//What is stage 4?  Are we done then?
 
-	mkdir( "calinfo", 0666 );
+	mkdir( "calinfo", 0755 );
 	FILE * hists = fopen( "calinfo/histograms.csv", "w" );
 	FILE * ptinfo = fopen( "calinfo/ptinfo.csv", "w" );
 	int sen, axis, lh;
@@ -263,9 +281,9 @@ static void handle_calibration( struct SurviveCalData *cd )
 			sumlentime += datalen;
 		}
 
-		#define OUTLIER_ANGLE   0.01	//TODO: Tune
-		#define OUTLIER_LENGTH	0.01	//TODO: Tune
-		#define ANGLE_STDEV_TOO_HIGH 0.01 //TODO: Tune
+		#define OUTLIER_ANGLE   0.001	//TODO: Tune
+		#define OUTLIER_LENGTH	0.001	//TODO: Tune
+		#define ANGLE_STDEV_TOO_HIGH 0.000001 //TODO: Tune
 
 		FLT avgsweep = sumsweepangle / dpmax;
 		FLT avglen = sumlentime / dpmax;
@@ -322,11 +340,10 @@ static void handle_calibration( struct SurviveCalData *cd )
 		FLT stddevlen = 0;
 
 		#define HISTOGRAMSIZE   31
-		#define HISTOGRAMBINANG 0.001  //TODO: Tune
+		#define HISTOGRAMBINANG 0.00001  //TODO: Tune
 
 		int histo[HISTOGRAMSIZE];
 		memset( histo, 0, sizeof( histo ) );
-		count = 0;
 
 		for( i = 0; i < dpmax; i++ )
 		{
@@ -354,11 +371,11 @@ static void handle_calibration( struct SurviveCalData *cd )
 
 		if( stddevang > ANGLE_STDEV_TOO_HIGH )
 		{
-			SV_INFO( "DROPPED: %02d dropped because stddev (%f) was too high.\n", sen, stddevang );
+			SV_INFO( "DROPPED: %02d:%d:%d dropped because stddev (%f) was too high.", sen, lh, axis, stddevang );
 			continue;
 		}
 
-		fprintf( hists, "%02d, ", sen );
+		fprintf( hists, "%02d_%d_%d, ", sen, lh, axis );
 
 		for( i = 0; i < HISTOGRAMSIZE; i++ )
 		{
@@ -366,13 +383,54 @@ static void handle_calibration( struct SurviveCalData *cd )
 		}
 		fprintf( hists, "\n" );
 
-		fprintf( ptinfo, "%d %d %f %f %f %f %f %f\n", sen, count, avgsweep, avglen, stddevang, stddevang, max_outlier_length, max_outlier_angle );
+		fprintf( ptinfo, "%d %d %d %d %f %f %f %f %f %f\n", sen, lh, axis, count, avgsweep, avglen*1000000, stddevang*1000000000, stddevlen*1000000000, max_outlier_length*1000000000, max_outlier_angle*1000000000 );
+
+		int dataindex = sen*4+lh*2+axis;
+		avgsweeps[dataindex] = avgsweep;
+		avglens[dataindex] = avglen;
+		stdsweeps[dataindex] = stddevang;
+		stdlens[dataindex] = stddevlen;
+		ctsweeps[dataindex] = count;
 	}
 	fclose( hists );
 	fclose( ptinfo );
-	//XXX TODO More
 
-	reset_calibration( cd );
+	//Comb through data and make sure we still have a sensor on a WM that 
+	int bcp_senid = 0;
+	int bcp_count = 0;
+	for( sen = 0; sen < MAX_SENSORS_TO_CAL; sen++ )
+	{
+		int ct0 = ctsweeps[sen*4+0];
+		int ct1 = ctsweeps[sen*4+0];
+		int ct2 = ctsweeps[sen*4+0];
+		int ct3 = ctsweeps[sen*4+0];
+
+		if( ct0 > ct1 ) ct0 = ct1;
+		if( ct0 > ct2 ) ct0 = ct2;
+		if( ct0 > ct3 ) ct0 = ct3;
+
+		if( ct0 > bcp_count ) { bcp_count = ct0; bcp_senid = sen; }
+	}
+
+	if( bcp_count < DRPTS_NEEDED_FOR_AVG )
+	{
+		SV_INFO( "Stage 3 could not find a suitable common point on a watchman" );
+		reset_calibration( cd );
+		return;
+	}
+
+	cd->senid_of_checkpt = bcp_senid;
+
+	if( survive_cal_lhfind( cd ) == 0 )
+	{
+		SV_INFO( "Stage 4 succeeded." );
+		cd->stage = 5;
+	}
+	else
+	{
+		SV_INFO( "Stage 4 failed." );
+		reset_calibration( cd );
+	}
 }
 
 

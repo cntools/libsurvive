@@ -32,14 +32,14 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 
 #define MAX_SENSORS_TO_CAL 96
 #define DRPTS 512
-
+#define MAX_CAL_PT_DAT (MAX_SENSORS_TO_CAL*NUM_LIGHTHOUSES*2)
 struct SurviveCalData
 {
 	struct SurviveContext * ctx;
 	//OOTX Data is sync'd off of the sync pulses coming from the lighthouses.
 	ootx_decoder_context ootx_decoders[NUM_LIGHTHOUSES];
 
-	//For statistics-gathering phase.
+	//For statistics-gathering phase. (Stage 2/3)
 	FLT all_lengths[MAX_SENSORS_TO_CAL][NUM_LIGHTHOUSES][2][DRPTS];
 	FLT all_angles[MAX_SENSORS_TO_CAL][NUM_LIGHTHOUSES][2][DRPTS];
 	int16_t all_counts[MAX_SENSORS_TO_CAL][NUM_LIGHTHOUSES][2];
@@ -47,12 +47,25 @@ struct SurviveCalData
 	int8_t found_common;
 	int8_t times_found_common;
 
+	//For camfind (4+)
+	FLT avgsweeps[MAX_CAL_PT_DAT];
+	FLT avglens[MAX_CAL_PT_DAT];
+	FLT stdsweeps[MAX_CAL_PT_DAT];
+	FLT stdlens[MAX_CAL_PT_DAT];
+	int ctsweeps[MAX_CAL_PT_DAT];
+
+	int senid_of_checkpt; //This is a point on a watchman that can be used to check the lh solution.
+
 	//Stage:
 	// 0: Idle
 	// 1: Collecting OOTX data.
 	int8_t stage;
 };
 
+
+//The following function is not included in the core survive_cal and must be compiled from a camfind file.
+//It should use data for stage 4 and report if it found the 
+int survive_cal_lhfind( struct SurviveCalData * cd );
 
 
 #endif

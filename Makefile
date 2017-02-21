@@ -1,7 +1,10 @@
 all : lib data_recorder test calibrate
 
-CFLAGS:=-Iinclude -fPIC -g -Os -Iredist -flto
-LDFLAGS:=-lpthread -lusb-1.0 -lz -lX11 -lm -flto
+CFLAGS:=-Iinclude -fPIC -g -O0 -Iredist -flto
+LDFLAGS:=-lpthread -lusb-1.0 -lz -lX11 -lm -flto -g
+
+
+CALS:=src/survive_cal_lhfind.o src/survive_cal.o
 
 # unused: redist/crc32.c
 
@@ -17,7 +20,7 @@ calibrate :  calibrate.c lib/libsurvive.so redist/os_generic.c redist/DrawFuncti
 lib:
 	mkdir lib
 
-lib/libsurvive.so : src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o redist/jsmn.o src/survive_cal.o src/ootx_decoder.o $(DEBUGSTUFF)
+lib/libsurvive.so : src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o redist/jsmn.o src/ootx_decoder.o $(DEBUGSTUFF) $(CALS)
 	gcc -o $@ $^ $(LDFLAGS) -shared
 
 clean :
