@@ -177,7 +177,8 @@ static void handle_lightcap( struct SurviveObject * so, struct LightcapElement *
 		if (acode > 3) {
 			if( ssn == 0 )
 			{
-				SV_INFO( "Warning: got a slave marker but only got a master sync." );
+				//SV_INFO( "Warning: got a slave marker but only got a master sync." );
+				//This happens too frequently.  Consider further examination.
 			}
 			dl = so->last_time[1];
 			tpco = so->last_length[1];

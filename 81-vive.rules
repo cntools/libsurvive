@@ -1,0 +1,13 @@
+#libsurvive
+
+SUBSYSTEM=="usb", ATTR{idVendor}=="0bb4", ATTR{idProduct}=="2c87", MODE="0666" # HTC HMD
+SUBSYSTEM=="usb", ATTR{idVendor}=="28de", ATTR{idProduct}=="2000", MODE="0666" # Light input
+SUBSYSTEM=="usb", ATTR{idVendor}=="28de", ATTR{idProduct}=="2101", MODE="0666" # Watchman
+
+#SUBSYSTEM=="usb", ATTR{idVendor}=="abcd", GROUP="adm", MODE="0666"
+#SUBSYSTEM=="usb", ATTR{idProduct}=="f003", ATTRS{idVendor}=="abcd", MODE="0666", GROUP="colorchord"
+# OpenVR (SteamVR) / OSVR-HTC-Vive
+
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0bb4", ATTR{idProduct}=="2c87", MODE="0666" # HTC
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="28de", ATTR{idProduct}=="2000", MODE="0666" # Valve
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="28de", ATTR{idProduct}=="2101", MODE="0666" # Valve

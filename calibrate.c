@@ -7,6 +7,7 @@
 #include <survive.h>
 #include <string.h>
 #include <os_generic.h>
+#include "src/survive_cal.h"
 #include <DrawFunctions.h>
 
 struct SurviveContext * ctx;
