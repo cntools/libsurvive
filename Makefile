@@ -1,6 +1,6 @@
 all : lib data_recorder test calibrate
 
-CFLAGS:=-Iinclude -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE
+CFLAGS:=-Iinclude -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE -std=gnu99
 LDFLAGS:=-lpthread -lusb-1.0 -lz -lX11 -lm -flto -g
 
 
