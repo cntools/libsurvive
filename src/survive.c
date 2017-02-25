@@ -134,7 +134,7 @@ static int LoadConfig( struct SurviveContext * ctx, struct SurviveObject * so, i
 	return 0;
 }
 
-struct SurviveContext * survive_init()
+struct SurviveContext * survive_init( int headless )
 {
 	int r = 0;
 	struct SurviveContext * ctx = calloc( 1, sizeof( struct SurviveContext ) );
@@ -153,17 +153,20 @@ struct SurviveContext * survive_init()
 	ctx->watchman[1].ctx = ctx;
 	memcpy( ctx->watchman[1].codename, "WM1", 4 );
 
-	//USB must happen last.
-	if( r = survive_usb_init( ctx ) )
-	{
-		//TODO: Cleanup any libUSB stuff sitting around.
-		goto fail_gracefully;
-	}
+    if( !headless )
+    {
+	    //USB must happen last.
+	    if( r = survive_usb_init( ctx ) )
+	    {
+		    //TODO: Cleanup any libUSB stuff sitting around.
+		    goto fail_gracefully;
+	    }
 
-	//Next, pull out the config stuff.
-	if( LoadConfig( ctx, &ctx->headset, 1, 0, 0 ) ) goto fail_gracefully;
-	if( LoadConfig( ctx, &ctx->watchman[0], 2, 0, 1 ) ) { SV_INFO( "Watchman 0 config issue." ); }
-	if( LoadConfig( ctx, &ctx->watchman[1], 3, 0, 1 ) ) { SV_INFO( "Watchman 1 config issue." ); }
+	    //Next, pull out the config stuff.
+	    if( LoadConfig( ctx, &ctx->headset, 1, 0, 0 ) ) goto fail_gracefully;
+	    if( LoadConfig( ctx, &ctx->watchman[0], 2, 0, 1 ) ) { SV_INFO( "Watchman 0 config issue." ); }
+	    if( LoadConfig( ctx, &ctx->watchman[1], 3, 0, 1 ) ) { SV_INFO( "Watchman 1 config issue." ); }
+    }
 
 	ctx->headset.timebase_hz = ctx->watchman[0].timebase_hz = ctx->watchman[1].timebase_hz = 48000000;
 	ctx->headset.pulsedist_max_ticks = ctx->watchman[0].pulsedist_max_ticks = ctx->watchman[1].pulsedist_max_ticks = 500000;
@@ -253,12 +256,14 @@ void survive_install_angle_fn( struct SurviveContext * ctx,  angle_process_func 
 
 void survive_close( struct SurviveContext * ctx )
 {
-	survive_usb_close( ctx );
+    if( ctx->usbctx )
+    	survive_usb_close( ctx );
 }
 
 int survive_poll( struct SurviveContext * ctx )
 {
-	survive_usb_poll( ctx );
+    if( ctx->usbctx )
+    	survive_usb_poll( ctx );
 }
 
 int survive_simple_inflate( struct SurviveContext * ctx, const char * input, int inlen, char * output, int outlen )

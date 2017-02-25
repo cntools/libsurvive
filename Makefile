@@ -1,4 +1,4 @@
-all : lib data_recorder test calibrate
+all : lib data_recorder test calibrate calibrate_client
 
 CFLAGS:=-Iinclude -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE
 LDFLAGS:=-lpthread -lusb-1.0 -lz -lX11 -lm -flto -g
@@ -15,6 +15,9 @@ data_recorder : data_recorder.c lib/libsurvive.so redist/os_generic.o redist/Dra
 	gcc -o $@ $^ $(LDFLAGS) $(CFLAGS)
 
 calibrate :  calibrate.c lib/libsurvive.so redist/os_generic.c redist/DrawFunctions.c redist/XDriver.c
+	gcc -o $@ $^ $(LDFLAGS) $(CFLAGS)
+
+calibrate_client :  calibrate_client.c lib/libsurvive.so redist/os_generic.c redist/DrawFunctions.c redist/XDriver.c
 	gcc -o $@ $^ $(LDFLAGS) $(CFLAGS)
 
 lib:
