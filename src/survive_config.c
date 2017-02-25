@@ -163,7 +163,7 @@ void config_save(const char* path) {
 		if (config_values[i].type == CONFIG_FLOAT) {
 			fprintf(f, "\"%s\":\"%F\"\n", config_values[i].tag, config_values[i].numeric.f);
 		} else if (config_values[i].type == CONFIG_UINT32) {
-			fprintf(f, "\"%s\":\"%F\"\n", config_values[i].tag, config_values[i].numeric.i);
+			fprintf(f, "\"%s\":\"%d\"\n", config_values[i].tag, config_values[i].numeric.i);
 		} else if (config_values[i].type == CONFIG_STRING) {
 			fprintf(f, "\"%s\":\"%s\"\n", config_values[i].tag, config_values[i].str);
 		}
