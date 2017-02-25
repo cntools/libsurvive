@@ -42,7 +42,7 @@ int main()
 	int magicon = 0;
 	double Start = OGGetAbsoluteTime();
 
-	ctx = survive_init( );
+	ctx = survive_init( 0 );
 
 	if( !ctx )
 	{
