@@ -4,7 +4,11 @@
 #include <stdint.h>
 
 #ifndef FLT
+#ifdef USE_DOUBLE
 #define FLT double
+#else
+#define FLT float
+#endif
 #endif
 
 struct SurviveContext;
@@ -33,6 +37,7 @@ struct SurviveObject
 
 	FLT * sensor_locations;
 	FLT * sensor_normals;
+	int8_t nr_locations;
 
 	//Timing sensitive data (mostly for disambiguation)
 	int32_t timebase_hz;		//48,000,000 for normal vive hardware.  (checked)
@@ -43,7 +48,6 @@ struct SurviveObject
 	int32_t pulse_max_for_sweep; //1,800 for normal vive hardware.     (guessed)
 	int32_t pulse_synctime_offset; //20,000 for normal vive hardware.  (guessed)
 	int32_t pulse_synctime_slack; //5,000 for normal vive hardware.    (guessed)
-	int8_t nr_locations;
 
 	//Flood info, for calculating which laser is currently sweeping.
 	int8_t oldcode;
