@@ -20,7 +20,7 @@ calibrate :  calibrate.c lib/libsurvive.so redist/os_generic.c redist/DrawFuncti
 lib:
 	mkdir lib
 
-lib/libsurvive.so : src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o redist/jsmn.o src/ootx_decoder.o $(DEBUGSTUFF) $(CALS)
+lib/libsurvive.so : src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o redist/jsmn.o src/ootx_decoder.o src/survive_config.o $(DEBUGSTUFF) $(CALS)
 	gcc -o $@ $^ $(LDFLAGS) -shared
 
 clean :
