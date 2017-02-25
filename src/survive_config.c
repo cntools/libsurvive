@@ -1,3 +1,5 @@
+// (C) 2017 <>< Joshua Allen, Under MIT/x11 License.
+
 #include <string.h>
 #include <assert.h>
 #include "survive_config.h"
@@ -14,6 +16,7 @@ void config_init() {
 	for (i=0;i<MAX_CONFIG_ENTRIES;++i) {
 		config_values[i].str = NULL;
 		config_values[i].tag = NULL;
+		config_values[i].type = CONFIG_UNKNOWN;
 	}
 
 	used_entries = 0;
@@ -83,6 +86,7 @@ const char* config_read_str(const char *tag, const char *value, const char *def_
 	i = used_entries++;
 	sstrcpy(config_values[i].tag, tag);
 	sstrcpy(config_values[i].str, def_str);
+	config_values[i].type = CONFIG_STRING;
 
 	return config_values[i].str;
 }
@@ -99,6 +103,7 @@ uint32_t config_read_uint32(const char *tag, const uint32_t value, const uint32_
 	i = used_entries++;
 	sstrcpy(config_values[i].tag, tag);
 	config_values[i].numeric.i = def;
+	config_values[i].type = CONFIG_UINT32;
 
 	return config_values[i].numeric.i;
 }
@@ -115,6 +120,7 @@ FLT config_read_float(const char *tag, const FLT value, const FLT def) {
 	i = used_entries++;
 	sstrcpy(config_values[i].tag, tag);
 	config_values[i].numeric.f = def;
+	config_values[i].type = CONFIG_FLOAT;
 
 	return config_values[i].numeric.f;
 }
@@ -127,6 +133,7 @@ const char* config_set_str(const char *tag, const char* value) {
 	i = used_entries++;
 	sstrcpy(config_values[i].tag, tag);
 	sstrcpy(config_values[i].str, value);
+	config_values[i].type = CONFIG_STRING;
 
 	return value;
 }
@@ -139,6 +146,7 @@ const uint32_t config_set_uint32(const char *tag, const uint32_t value) {
 	i = used_entries++;
 	sstrcpy(config_values[i].tag, tag);
 	config_values[i].numeric.i = value;
+	config_values[i].type = CONFIG_UINT32;
 
 	return value;
 }
@@ -151,6 +159,7 @@ const FLT config_set_float(const char *tag, const FLT value) {
 	i = used_entries++;
 	sstrcpy(config_values[i].tag, tag);
 	config_values[i].numeric.f = value;
+	config_values[i].type = CONFIG_FLOAT;
 
 	return value;
 }
