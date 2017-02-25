@@ -146,7 +146,7 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 	int sensid = sensor_id;
 	if( strcmp( so->codename, "WM0" ) == 0 )
 		sensid += 32;
-	if( strcmp( so->codename, "WM1" ) == 1 )
+	if( strcmp( so->codename, "WM1" ) == 0 )
 		sensid += 64;
 
 	if( sensid >= MAX_SENSORS_TO_CAL || sensid < 0 ) return;
@@ -246,13 +246,15 @@ static void handle_calibration( struct SurviveCalData *cd )
 
 	#define MAX_CAL_PT_DAT (MAX_SENSORS_TO_CAL*NUM_LIGHTHOUSES*2)
 
+/*
 	FLT avgsweeps[MAX_CAL_PT_DAT];
 	FLT avglens[MAX_CAL_PT_DAT];
 	FLT stdsweeps[MAX_CAL_PT_DAT];
 	FLT stdlens[MAX_CAL_PT_DAT];
 	int ctsweeps[MAX_CAL_PT_DAT];
+*/
 
-	memset( ctsweeps, 0, sizeof( ctsweeps ) );
+	memset( cd->ctsweeps, 0, sizeof( cd->ctsweeps ) );
 
 	//Either advance to stage 4 or go resetting will go back to stage 2.
 	//What is stage 4?  Are we done then?
@@ -317,6 +319,7 @@ static void handle_calibration( struct SurviveCalData *cd )
 
 		if( count < DRPTS_NEEDED_FOR_AVG )
 		{
+			printf( "DPAVG %d\n", count );
 			//Not enough for this point to be considered.
 			continue;
 		}
@@ -385,12 +388,12 @@ static void handle_calibration( struct SurviveCalData *cd )
 
 		fprintf( ptinfo, "%d %d %d %d %f %f %f %f %f %f\n", sen, lh, axis, count, avgsweep, avglen*1000000, stddevang*1000000000, stddevlen*1000000000, max_outlier_length*1000000000, max_outlier_angle*1000000000 );
 
-		int dataindex = sen*4+lh*2+axis;
-		avgsweeps[dataindex] = avgsweep;
-		avglens[dataindex] = avglen;
-		stdsweeps[dataindex] = stddevang;
-		stdlens[dataindex] = stddevlen;
-		ctsweeps[dataindex] = count;
+		int dataindex = sen*(2*NUM_LIGHTHOUSES)+lh*2+axis;
+		cd->avgsweeps[dataindex] = avgsweep;
+		cd->avglens[dataindex] = avglen;
+		cd->stdsweeps[dataindex] = stddevang;
+		cd->stdlens[dataindex] = stddevlen;
+		cd->ctsweeps[dataindex] = count;
 	}
 	fclose( hists );
 	fclose( ptinfo );
@@ -400,10 +403,10 @@ static void handle_calibration( struct SurviveCalData *cd )
 	int bcp_count = 0;
 	for( sen = 0; sen < MAX_SENSORS_TO_CAL; sen++ )
 	{
-		int ct0 = ctsweeps[sen*4+0];
-		int ct1 = ctsweeps[sen*4+0];
-		int ct2 = ctsweeps[sen*4+0];
-		int ct3 = ctsweeps[sen*4+0];
+		int ct0 = cd->ctsweeps[sen*4+0];
+		int ct1 = cd->ctsweeps[sen*4+0];
+		int ct2 = cd->ctsweeps[sen*4+0];
+		int ct3 = cd->ctsweeps[sen*4+0];
 
 		if( ct0 > ct1 ) ct0 = ct1;
 		if( ct0 > ct2 ) ct0 = ct2;

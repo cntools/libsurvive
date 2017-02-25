@@ -67,16 +67,16 @@ struct SurviveCalData;
 struct BaseStationData
 {
 	uint8_t PositionSet:1;
-	float Position[3];
-	float Quaternion[4];
+	FLT Position[3];
+	FLT Quaternion[4];
 
 	uint8_t OOTXSet:1;
 	uint32_t BaseStationID;
-	float fcalphase[2];
-	float fcaltilt[2];
-	float fcalcurve[2];
-	float fcalgibpha[2];
-	float fcalgibmag[2];
+	FLT fcalphase[2];
+	FLT fcaltilt[2];
+	FLT fcalcurve[2];
+	FLT fcalgibpha[2];
+	FLT fcalgibmag[2];
 };
 
 struct SurviveContext
