@@ -15,7 +15,7 @@ typedef enum {
 /*
 typedef union {
 		uint32_t i;
-		float f;
+		FLT f;
 	} Numeric;
 */
 typedef struct {
@@ -23,7 +23,7 @@ typedef struct {
 	cval_type type;
 	union {
 		uint32_t i;
-		float f;
+		FLT f;
 	} numeric;
 	char *str;
 } config_val;
@@ -32,5 +32,14 @@ typedef struct {
 void config_open(const char* path, const char* mode);
 void config_close();
 void config_write_lighthouse(struct BaseStationData* bsd, uint8_t length);
+
+void config_save(const char* path);
+const FLT config_set_float(const char *tag, const FLT value);
+const uint32_t config_set_uint32(const char *tag, const uint32_t value);
+const char* config_set_str(const char *tag, const char* value);
+FLT config_read_float(const char *tag, const FLT value, const FLT def);
+
+uint32_t config_read_uint32(const char *tag, const uint32_t value, const uint32_t def);
+const char* config_read_str(const char *tag, const char *value, const char *def_str);
 
 #endif

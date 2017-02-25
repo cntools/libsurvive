@@ -19,11 +19,11 @@ void config_init() {
 	used_entries = 0;
 }
 
-void write_float(char* tag, float x) {
+void write_float(char* tag, FLT x) {
 	fprintf(config_file, "\"%s\":\"%f\"\n", tag, x);
 }
 
-void write_float_a(char* tag, float *x, uint8_t count) {
+void write_float_a(char* tag, FLT *x, uint8_t count) {
 	uint8_t i = 0;
 	char idx[4];
 	for (i=0;i<count;++i) {
@@ -47,15 +47,6 @@ void config_close() {
 
 void config_write_lighthouse(struct BaseStationData* bsd, uint8_t length) {
 	uint8_t i = 0;
-
-	float Position[3];
-	float Quaternion[4];
-	uint32_t BaseStationID;
-	float fcalphase[2];
-	float fcaltilt[2];
-	float fcalcurve[2];
-	float fcalgibpha[2];
-	float fcalgibmag[2];
 
 	for (i=0;i<length; ++i) {
 		write_uint32("id", bsd[i].BaseStationID);
@@ -112,7 +103,7 @@ uint32_t config_read_uint32(const char *tag, const uint32_t value, const uint32_
 	return config_values[i].numeric.i;
 }
 
-float config_read_float(const char *tag, const float value, const float def) {
+FLT config_read_float(const char *tag, const FLT value, const FLT def) {
 	uint16_t i = 0;
 	for (i=0;i<used_entries;++i) {
 		if ( strcmp(config_values[i].tag, tag) == 0 ) {
@@ -152,7 +143,7 @@ const uint32_t config_set_uint32(const char *tag, const uint32_t value) {
 	return value;
 }
 
-const float config_set_float(const char *tag, const float value) {
+const FLT config_set_float(const char *tag, const FLT value) {
 	uint16_t i = 0;
 
 	assert(used_entries<MAX_CONFIG_ENTRIES);
@@ -180,3 +171,4 @@ void config_save(const char* path) {
 
 	fclose(f);
 }
+
