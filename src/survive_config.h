@@ -10,7 +10,8 @@ typedef enum {
 	CONFIG_UNKNOWN = 0,
 	CONFIG_FLOAT = 1,
 	CONFIG_UINT32 = 2,
-	CONFIG_STRING = 3
+	CONFIG_STRING = 3,
+	CONFIG_FLOAT_ARRAY = 4,
 } cval_type;
 /*
 typedef union {
@@ -25,13 +26,15 @@ typedef struct {
 		uint32_t i;
 		FLT f;
 	} numeric;
-	char *str;
+	char *data;
+	uint32_t elements;
 } config_val;
 
-
+void config_init();
 void config_open(const char* path, const char* mode);
 void config_close();
 void config_write_lighthouse(struct BaseStationData* bsd, uint8_t length);
+void config_set_lighthouse(struct BaseStationData* bsd, uint8_t idx);
 
 void config_save(const char* path);
 const FLT config_set_float(const char *tag, const FLT value);
