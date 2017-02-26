@@ -1,8 +1,8 @@
 // (C) 2017 <>< Joshua Allen, Under MIT/x11 License.
-
 #include <string.h>
 #include <assert.h>
 #include "survive_config.h"
+#include <json_helpers.h>
 
 #define MAX_CONFIG_ENTRIES 100
 
@@ -227,22 +227,8 @@ const FLT* config_set_float_a(const char *tag, const FLT* values, uint8_t count)
 	return values;
 }
 
-void write_float_array(FILE* f, char* tag, FLT* v, uint8_t count) {
-	uint8_t i = 0;
-		printf("save float array\n");
-
-	fprintf(f, "\"%s\":[", tag);
-	for (i=0;i<count;++i) {
-//		if (i>0) {
-			fprintf(f, "\"%f\",", v[i]);
-//		} else {
-//			fprintf(f, "\"%f\"", v[i]);
-//		}
-	}
-
-	fseek(f,-1,SEEK_CUR);
-	fprintf(f, "]\n");
-
+void _json_write_float_array(FILE* f, const char* tag, FLT* v, uint8_t count) {
+	json_write_double_array(f,tag,v,count);
 }
 
 void config_save(const char* path) {
@@ -252,13 +238,13 @@ void config_save(const char* path) {
 
 	for (i=0;i<=used_entries;++i) {
 		if (config_values[i].type == CONFIG_FLOAT) {
-			fprintf(f, "\"%s\":\"%F\"\n", config_values[i].tag, config_values[i].numeric.f);
+			json_write_float(f, config_values[i].tag, config_values[i].numeric.f);
 		} else if (config_values[i].type == CONFIG_UINT32) {
-			fprintf(f, "\"%s\":\"%d\"\n", config_values[i].tag, config_values[i].numeric.i);
+			json_write_uint32(f, config_values[i].tag, config_values[i].numeric.i);
 		} else if (config_values[i].type == CONFIG_STRING) {
-			fprintf(f, "\"%s\":\"%s\"\n", config_values[i].tag, config_values[i].data);
+			json_write_str(f, config_values[i].tag, config_values[i].data);
 		} else if (config_values[i].type == CONFIG_FLOAT_ARRAY) {
-			write_float_array(f, config_values[i].tag, (FLT*)config_values[i].data, config_values[i].elements);
+			_json_write_float_array(f, config_values[i].tag, (FLT*)config_values[i].data, config_values[i].elements);
 		}
 	};
 
