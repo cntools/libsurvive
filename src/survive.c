@@ -136,11 +136,15 @@ void survive_close( struct SurviveContext * ctx )
 	int i;
 	for( i = 0; i < oldct; i++ )
 	{
-		ctx->driverpolls[i]( ctx, ctx->drivers[i] );
+		ctx->drivercloses[i]( ctx, ctx->drivers[i] );
 	}
 
-	//TODO: Free everything except for self.
-	//XXX Will leak memory.
+	free( ctx->objs );
+	free( ctx->drivers );
+	free( ctx->driverpolls );
+	free( ctx->drivermagics );
+	free( ctx->drivercloses );
+	free( ctx );
 }
 
 int survive_poll( struct SurviveContext * ctx )

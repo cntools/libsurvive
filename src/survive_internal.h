@@ -33,6 +33,10 @@
 struct SurviveContext;
 struct SurviveUSBInterface;
 
+typedef int (*DeviceDriverCb)( struct SurviveContext * ctx, void * driver );
+typedef int (*DeviceDriverMagicCb)( struct SurviveContext * ctx, void * driver, int magic_code, void * data, int datalen );
+
+
 //This is defined in survive.h
 struct SurviveObject;
 struct SurviveCalData;

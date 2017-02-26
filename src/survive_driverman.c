@@ -1,3 +1,8 @@
+// (C) 2017 <>< C. N. Lohr, Under MIT/x11 License.
+//
+// See notice in survive_driverman.h
+//
+
 #include "survive_driverman.h"
 #include <string.h>
 #include <stdio.h>
@@ -45,6 +50,5 @@ void   ListDrivers()
 	{
 		printf( " %s\n", DriverNames[i] );
 	}
-
 }
 
