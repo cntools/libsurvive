@@ -69,7 +69,7 @@ typedef void (*light_process_func)( struct SurviveObject * so, int sensor_id, in
 typedef void (*imu_process_func)( struct SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id );
 typedef void (*angle_process_func)( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle );
 
-struct SurviveContext * survive_init();
+struct SurviveContext * survive_init( int headless );
 
 //For any of these, you may pass in 0 for the function pointer to use default behavior.
 void survive_install_info_fn( struct SurviveContext * ctx,  text_feedback_func fbp );

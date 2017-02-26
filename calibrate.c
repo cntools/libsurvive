@@ -145,7 +145,7 @@ void * GuiThread( void * v )
 
 int main()
 {
-	ctx = survive_init( );
+	ctx = survive_init( 0 );
 
 	survive_install_light_fn( ctx,  my_light_process );
 	survive_install_imu_fn( ctx,  my_imu_process );

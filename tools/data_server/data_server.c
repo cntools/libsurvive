@@ -19,6 +19,7 @@
 #define MAX_CONNS 32
 
 int SocketList[MAX_CONNS];
+int droppedct[MAX_CONNS];
 
 void error(char *msg) {
 	perror(msg);
@@ -44,10 +45,17 @@ void * SendThread( void * v )
 			int ss = send( sockc, buff, rd, MSG_DONTWAIT | MSG_NOSIGNAL );
 			if( ss < rd )
 			{
-				fprintf( stderr, "Dropped %d\n", i );
-				close( SocketList[i] );
-				SocketList[i] = 0;
+                if( droppedct[i]++ > 20 )
+                {
+				    fprintf( stderr, "Dropped %d\n", i );
+				    close( SocketList[i] );
+				    SocketList[i] = 0;
+                }
 			}
+            else
+            {
+                droppedct[i] = 0;
+            }
 		}
 	}
 }
@@ -142,6 +150,7 @@ int main( int argc, char ** argv )
 			if( SocketList[il] == 0 )
 			{
 				SocketList[il] = childfd;
+                droppedct[il] = 0;
 				printf("Conn %s At %d\n", 
 					hostaddrp, il);
 				break;

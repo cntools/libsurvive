@@ -21,7 +21,7 @@ static void survivenote( struct SurviveContext * ctx, const char * fault )
 }
 
 
-struct SurviveContext * survive_init()
+struct SurviveContext * survive_init( int headless )
 {
 	int r = 0;
 	int i = 0;
@@ -36,6 +36,7 @@ struct SurviveContext * survive_init()
 
 	const char * DriverName;
 	while( ( DriverName = GetDriverNameMatching( "DriverReg", i++ ) ) )
+
 	{
 		DeviceDriver dd = GetDriver( DriverName );
 		printf( "Loading driver %s (%p) (%d)\n", DriverName, dd, i );
