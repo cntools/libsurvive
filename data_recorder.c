@@ -17,11 +17,11 @@ void HandleKey( int keycode, int bDown )
 
 	if( keycode == 'O' || keycode == 'o' )
 	{
-		survive_usb_send_magic(ctx,1);
+		survive_send_magic(ctx,1,0,0);
 	}
 	if( keycode == 'F' || keycode == 'f' )
 	{
-		survive_usb_send_magic(ctx,0);
+		survive_send_magic(ctx,0,0,0);
 	}
 }
 

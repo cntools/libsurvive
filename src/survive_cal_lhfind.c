@@ -156,8 +156,9 @@ static FLT RunOpti( struct SurviveCalData * cd, int lh, int print, FLT * Lightho
 	FLT LastUsToTarget[3];
 	FLT mux = .9;
 	quatsetnone( LighthouseQuat );
-	FLT * hmd_points  = cd->ctx->headset.sensor_locations;
-	FLT * hmd_normals = cd->ctx->headset.sensor_normals;
+	struct SurviveObject * hmd = cd->hmd;
+	FLT * hmd_points  = hmd->sensor_locations;
+	FLT * hmd_normals = hmd->sensor_normals;
 
 	int first = 1, second = 0;
 

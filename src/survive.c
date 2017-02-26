@@ -3,21 +3,11 @@
 
 #include <survive.h>
 #include "survive_internal.h"
+#include "survive_driverman.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <jsmn.h>
 #include <string.h>
 #include <zlib.h>
-
-
-static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
- if (tok->type == JSMN_STRING && (int) strlen(s) == tok->end - tok->start &&
-    strncmp(json + tok->start, s, tok->end - tok->start) == 0) {
-		return 0;
-	}
-	return -1;
-}
-
 
 static void survivefault( struct SurviveContext * ctx, const char * fault )
 {
@@ -30,113 +20,11 @@ static void survivenote( struct SurviveContext * ctx, const char * fault )
 	fprintf( stderr, "Info: %s\n", fault );
 }
 
-static int ParsePoints( struct SurviveContext * ctx, struct SurviveObject * so, char * ct0conf, FLT ** floats_out, jsmntok_t * t, int i )
-{
-	int k;
-	int pts = t[i+1].size;
-	jsmntok_t * tk;
-
-	so->nr_locations = 0;
-	*floats_out = malloc( sizeof( **floats_out ) * 32 * 3 );
-
-	for( k = 0; k < pts; k++ )
-	{
-		tk = &t[i+2+k*4];
-
-		FLT vals[3];
-		int m;
-		for( m = 0; m < 3; m++ )
-		{
-			char ctt[128];
-
-			tk++;
-			int elemlen = tk->end - tk->start;
-
-			if( tk->type != 4 || elemlen > sizeof( ctt )-1 )
-			{
-				SV_ERROR( "Parse error in JSON\n" );
-				return 1;
-			}
-
-			memcpy( ctt, ct0conf + tk->start, elemlen );
-			ctt[elemlen] = 0;
-			FLT f = atof( ctt );
-			int id = so->nr_locations*3+m;
-			(*floats_out)[id] = f;
-		}
-		so->nr_locations++;
-	}
-	return 0;
-}
-
-static int LoadConfig( struct SurviveContext * ctx, struct SurviveObject * so, int devno, int iface, int extra_magic )
-{
-	char * ct0conf = 0;
-	int len = survive_get_config( &ct0conf, ctx, devno, iface, extra_magic );
-
-#if 0
-	char fname[100];
-	sprintf( fname, "%s_config.json", so->codename );
-	FILE * f = fopen( fname, "w" );
-	fwrite( ct0conf, strlen(ct0conf), 1, f );
-	fclose( f );
-#endif
-
-	if( len > 0 )
-	{
-
-		//From JSMN example.
-		jsmn_parser p;
-		jsmntok_t t[4096];
-		jsmn_init(&p);
-		int i;
-		int r = jsmn_parse(&p, ct0conf, len, t, sizeof(t)/sizeof(t[0]));	
-		if (r < 0) {
-			SV_INFO("Failed to parse JSON in HMD configuration: %d\n", r);
-			return -1;
-		}
-		if (r < 1 || t[0].type != JSMN_OBJECT) {
-			SV_INFO("Object expected in HMD configuration\n");
-			return -2;
-		}
-
-		for (i = 1; i < r; i++) {
-			jsmntok_t * tk = &t[i];
-
-			char ctxo[100];
-			int ilen = tk->end - tk->start;
-			if( ilen > 99 ) ilen = 99;
-			memcpy(ctxo, ct0conf + tk->start, ilen);
-			ctxo[ilen] = 0;
-
-//				printf( "%d / %d / %d / %d %s %d\n", tk->type, tk->start, tk->end, tk->size, ctxo, jsoneq(ct0conf, &t[i], "modelPoints") );
-//				printf( "%.*s\n", ilen, ct0conf + tk->start );
-
-			if (jsoneq(ct0conf, tk, "modelPoints") == 0) {
-				if( ParsePoints( ctx, so, ct0conf, &so->sensor_locations, t, i  ) )
-				{
-					break;
-				}
-			}
-			if (jsoneq(ct0conf, tk, "modelNormals") == 0) {
-				if( ParsePoints( ctx, so, ct0conf, &so->sensor_normals, t, i  ) )
-				{
-					break;
-				}
-			}
-		}
-	}
-	else
-	{
-		//TODO: Cleanup any remaining USB stuff.
-		return 1;
-	}
-	return 0;
-}
 
 struct SurviveContext * survive_init()
 {
 	int r = 0;
+	int i = 0;
 	struct SurviveContext * ctx = calloc( 1, sizeof( struct SurviveContext ) );
 
 	ctx->faultfunction = survivefault;
@@ -146,66 +34,16 @@ struct SurviveContext * survive_init()
 	ctx->imuproc = survive_default_imu_process;
 	ctx->angleproc = survive_default_angle_process;
 
-	ctx->headset.ctx = ctx;
-	memcpy( ctx->headset.codename, "HMD", 4 );
-	ctx->watchman[0].ctx = ctx;
-	memcpy( ctx->watchman[0].codename, "WM0", 4 );
-	ctx->watchman[1].ctx = ctx;
-	memcpy( ctx->watchman[1].codename, "WM1", 4 );
-
-	//USB must happen last.
-	if( r = survive_usb_init( ctx ) )
+	const char * DriverName;
+	while( ( DriverName = GetDriverNameMatching( "DriverReg", i++ ) ) )
 	{
-		//TODO: Cleanup any libUSB stuff sitting around.
-		goto fail_gracefully;
+		DeviceDriver dd = GetDriver( DriverName );
+		printf( "Loading driver %s (%p) (%d)\n", DriverName, dd, i );
+		r = dd( ctx );
+		printf( "Driver %s reports status %d\n", DriverName, r );
 	}
-
-	//Next, pull out the config stuff.
-	if( LoadConfig( ctx, &ctx->headset, 1, 0, 0 ) ) goto fail_gracefully;
-	if( LoadConfig( ctx, &ctx->watchman[0], 2, 0, 1 ) ) { SV_INFO( "Watchman 0 config issue." ); }
-	if( LoadConfig( ctx, &ctx->watchman[1], 3, 0, 1 ) ) { SV_INFO( "Watchman 1 config issue." ); }
-
-	ctx->headset.timebase_hz = ctx->watchman[0].timebase_hz = ctx->watchman[1].timebase_hz = 48000000;
-	ctx->headset.pulsedist_max_ticks = ctx->watchman[0].pulsedist_max_ticks = ctx->watchman[1].pulsedist_max_ticks = 500000;
-	ctx->headset.pulselength_min_sync = ctx->watchman[0].pulselength_min_sync = ctx->watchman[1].pulselength_min_sync = 2200;
-	ctx->headset.pulse_in_clear_time = ctx->watchman[0].pulse_in_clear_time = ctx->watchman[1].pulse_in_clear_time = 35000;
-	ctx->headset.pulse_max_for_sweep = ctx->watchman[0].pulse_max_for_sweep = ctx->watchman[1].pulse_max_for_sweep = 1800;
-
-	ctx->headset.pulse_synctime_offset = ctx->watchman[0].pulse_synctime_offset = ctx->watchman[1].pulse_synctime_offset = 20000;
-	ctx->headset.pulse_synctime_slack = ctx->watchman[0].pulse_synctime_slack = ctx->watchman[1].pulse_synctime_slack = 5000;
-
-	ctx->headset.timecenter_ticks     = ctx->headset.timebase_hz / 240;
-	ctx->watchman[0].timecenter_ticks = ctx->watchman[0].timebase_hz / 240;
-	ctx->watchman[1].timecenter_ticks = ctx->watchman[1].timebase_hz / 240;
-/*
-	int i;
-	int locs = ctx->headset.nr_locations;
-	printf( "Locs: %d\n", locs );
-	if (ctx->headset.sensor_locations )
-	{
-		printf( "POSITIONS:\n" );
-		for( i = 0; i < locs*3; i+=3 )
-		{
-			printf( "%f %f %f\n", ctx->headset.sensor_locations[i+0], ctx->headset.sensor_locations[i+1], ctx->headset.sensor_locations[i+2] );
-		}
-	}
-	if( ctx->headset.sensor_normals )
-	{
-		printf( "NORMALS:\n" );
-		for( i = 0; i < locs*3; i+=3 )
-		{
-			printf( "%f %f %f\n", ctx->headset.sensor_normals[i+0], ctx->headset.sensor_normals[i+1], ctx->headset.sensor_normals[i+2] );
-		}
-	}
-*/
-
-	
 
 	return ctx;
-fail_gracefully:
-	survive_usb_close( ctx );
-	free( ctx );
-	return 0;
 }
 
 void survive_install_info_fn( struct SurviveContext * ctx,  text_feedback_func fbp )
@@ -249,17 +87,75 @@ void survive_install_angle_fn( struct SurviveContext * ctx,  angle_process_func 
 		ctx->angleproc = survive_default_angle_process;
 }
 
+int survive_add_object( struct SurviveContext * ctx, struct SurviveObject * obj )
+{
+	int oldct = ctx->objs_ct;
+	ctx->objs = realloc( ctx->objs, sizeof( struct SurviveObject * ) * (oldct+1) );
+	ctx->objs[oldct] = obj;
+	ctx->objs_ct = oldct+1;
+}
 
+void survive_add_driver( struct SurviveContext * ctx, void * payload, DeviceDriverCb poll, DeviceDriverCb close, DeviceDriverMagicCb magic )
+{
+	int oldct = ctx->driver_ct;
+	ctx->drivers = realloc( ctx->drivers, sizeof( void * ) * (oldct+1) );
+	ctx->driverpolls = realloc( ctx->driverpolls, sizeof( DeviceDriverCb * ) * (oldct+1) );
+	ctx->drivercloses = realloc( ctx->drivercloses, sizeof( DeviceDriverCb * ) * (oldct+1) );
+	ctx->drivermagics = realloc( ctx->drivermagics, sizeof( DeviceDriverMagicCb * ) * (oldct+1) );
+	ctx->drivers[oldct] = payload;
+	ctx->driverpolls[oldct] = poll;
+	ctx->drivercloses[oldct] = close;
+	ctx->drivermagics[oldct] = magic;
+	ctx->driver_ct = oldct+1;
+}
+
+int survive_send_magic( struct SurviveContext * ctx, int magic_code, void * data, int datalen )
+{
+	int oldct = ctx->driver_ct;
+	int i;
+	for( i = 0; i < oldct; i++ )
+	{
+		ctx->drivermagics[i]( ctx, ctx->drivers[i], magic_code, data, datalen );
+	}	
+}
 
 void survive_close( struct SurviveContext * ctx )
 {
-	survive_usb_close( ctx );
+	const char * DriverName;
+	int r = 0;
+	while( ( DriverName = GetDriverNameMatching( "DriverUnreg", r++ ) ) )
+	{
+		DeviceDriver dd = GetDriver( DriverName );
+		SV_INFO( "De-registering driver %s (%p)", DriverName, dd );
+		r = dd( ctx );
+		SV_INFO( "Driver %s reports status %d", DriverName, r );
+	}
+
+	int oldct = ctx->driver_ct;
+	int i;
+	for( i = 0; i < oldct; i++ )
+	{
+		ctx->driverpolls[i]( ctx, ctx->drivers[i] );
+	}
+
+	//TODO: Free everything except for self.
+	//XXX Will leak memory.
 }
 
 int survive_poll( struct SurviveContext * ctx )
 {
-	survive_usb_poll( ctx );
+	int oldct = ctx->driver_ct;
+	int i, r;
+
+	for( i = 0; i < oldct; i++ )
+	{
+		r = ctx->driverpolls[i]( ctx, ctx->drivers[i] );
+		if( r ) return r;
+	}
+
+	return 0;
 }
+
 
 int survive_simple_inflate( struct SurviveContext * ctx, const char * input, int inlen, char * output, int outlen )
 {
@@ -285,9 +181,12 @@ int survive_simple_inflate( struct SurviveContext * ctx, const char * input, int
 
 struct SurviveObject * survive_get_so_by_name( struct SurviveContext * ctx, const char * name )
 {
-	if( strcmp( name, "HMD" ) == 0 ) return &ctx->headset;
-	if( strcmp( name, "WM0" ) == 0 ) return &ctx->watchman[0];
-	if( strcmp( name, "WM1" ) == 0 ) return &ctx->watchman[1];
+	int i;
+	for( i = 0; i < ctx->objs_ct; i++ )
+	{
+		if( strcmp( ctx->objs[i]->codename, name ) == 0 )
+			return ctx->objs[i];
+	}
 	return 0;
 }
 
