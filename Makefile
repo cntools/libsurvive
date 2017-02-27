@@ -1,6 +1,6 @@
-all : lib data_recorder test calibrate
+all : lib data_recorder test calibrate calibrate_client
 
-CFLAGS:=-Iinclude -fPIC -g -O0 -Iredist -flto
+CFLAGS:=-Iinclude -I. -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE -std=gnu99
 LDFLAGS:=-lpthread -lusb-1.0 -lz -lX11 -lm -flto -g
 
 
@@ -17,10 +17,13 @@ data_recorder : data_recorder.c lib/libsurvive.so redist/os_generic.o redist/Dra
 calibrate :  calibrate.c lib/libsurvive.so redist/os_generic.c redist/DrawFunctions.c redist/XDriver.c
 	gcc -o $@ $^ $(LDFLAGS) $(CFLAGS)
 
+calibrate_client :  calibrate_client.c lib/libsurvive.so redist/os_generic.c redist/DrawFunctions.c redist/XDriver.c
+	gcc -o $@ $^ $(LDFLAGS) $(CFLAGS)
+
 lib:
 	mkdir lib
 
-lib/libsurvive.so : src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o redist/jsmn.o src/ootx_decoder.o $(DEBUGSTUFF) $(CALS)
+lib/libsurvive.so : src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o redist/jsmn.o src/ootx_decoder.o redist/linmath.o src/survive_driverman.o src/survive_vive.o $(DEBUGSTUFF) $(CALS)
 	gcc -o $@ $^ $(LDFLAGS) -shared
 
 clean :

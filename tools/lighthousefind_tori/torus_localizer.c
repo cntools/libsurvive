@@ -26,21 +26,23 @@ Matrix3x3 GetRotationMatrixForTorus(Point a, Point b)
 	rotation_between_vecs_to_m3(&result, v1, v2);
 
 	// Useful for debugging...
-	FLT v2b[3];
-	rotate_vec(v2b, v1, result);
+	//FLT v2b[3];
+	//rotate_vec(v2b, v1, result);
 
 	return result;
 }
 
-//void TestGetRotationMatrixForTorus()
-//{
-//	// a={x=0.079967096447944641 y=0.045225199311971664 z=0.034787099808454514 }
-//	// b={x=0.085181400179862976 y=0.017062099650502205 z=0.046403601765632629 }
-//
-//	// a={x=0.050822000950574875 y=0.052537899464368820 z=0.033285100013017654 }
-//	// b={x=0.085181400179862976 y=0.017062099650502205 z=0.046403601765632629 }
-//
-//}
+typedef struct
+{
+	Point a;
+	Point b;
+	FLT angle;
+	FLT tanAngle; // tangent of angle
+	Matrix3x3 rotation;
+	Matrix3x3 invRotation; // inverse of rotation
+
+} PointsAndAngle;
+
 
 Point RotateAndTranslatePoint(Point p, Matrix3x3 rot, Point newOrigin)
 {
@@ -92,149 +94,29 @@ Point midpoint(Point a, Point b)
 	return m;
 }
 
-
-
-
-// This torus generator creates a point cloud of the given torus, and attempts to keep the 
-// density of the points fairly uniform across the surface of the torus.
-void partialTorusGenerator(
-	Point p1,
-	Point p2,
-	double toroidalStartAngle,
-	double toroidalEndAngle,
-	double poloidalStartAngle,
-	double poloidalEndAngle,
-	double lighthouseAngle,
-	double toroidalPrecision,
-	Point **pointCloud)
-{
-	double poloidalRadius = 0;
-	double toroidalRadius = 0;
-
-	Point m = midpoint(p1, p2);
-	double distanceBetweenPoints = distance(p1, p2);
-
-	// ideally should only need to be lighthouseAngle, but increasing it here keeps us from accidentally
-	// thinking the tori converge at the location of the tracked object instead of at the lighthouse.
-	double centralAngleToIgnore = lighthouseAngle * 3;
-
-	Matrix3x3 rot = GetRotationMatrixForTorus(p1, p2);
-
-	toroidalRadius = distanceBetweenPoints / (2 * tan(lighthouseAngle));
-
-	poloidalRadius = sqrt(pow(toroidalRadius, 2) + pow(distanceBetweenPoints / 2, 2));
-
-	double poloidalPrecision = M_PI * 2 / toroidalPrecision;
-
-
-	unsigned int pointCount = 0;
-
-	// This loop tries to (cheaply) figure out an upper bound on the number of points we'll have in our point cloud
-	for (double poloidalStep = poloidalStartAngle; poloidalStep < poloidalEndAngle; poloidalStep += poloidalPrecision)
-	{
-		// here, we specify the number of steps that will occur on the toroidal circle for a given poloidal angle
-		// We do this so our point cloud will have a more even distribution of points across the surface of the torus.
-		double steps = (cos(poloidalStep) + 1) / 2 * toroidalPrecision;
-
-		double step_distance = 2 * M_PI / steps;
-
-		pointCount += (unsigned int)((toroidalEndAngle - toroidalStartAngle) / step_distance + 2);
-	}
-
-	*pointCloud = malloc(pointCount * sizeof(Point) );
-
-	assert(0 != *pointCloud);
-
-	(*pointCloud)[pointCount - 1].x = -1000;
-	(*pointCloud)[pointCount - 1].y = -1000;
-	(*pointCloud)[pointCount - 1].z = -1000; // need a better magic number or flag, but this'll do for now.
-
-	size_t currentPoint = 0;
-
-	for (double poloidalStep = poloidalStartAngle; poloidalStep < poloidalEndAngle; poloidalStep += poloidalPrecision)
-	{
-		// here, we specify the number of steps that will occur on the toroidal circle for a given poloidal angle
-		// We do this so our point cloud will have a more even distribution of points across the surface of the torus.
-		double steps = (cos(poloidalStep) + 1) / 2 * toroidalPrecision;
-
-		double step_distance = 2 * M_PI / steps;
-
-		//for (double toroidalStep = toroidalStartAngle; toroidalStep < toroidalEndAngle; toroidalStep += M_PI / 40)
-		for (double toroidalStep = toroidalStartAngle; toroidalStep < toroidalEndAngle; toroidalStep += step_distance)
-		{
-			if (currentPoint >= pointCount - 1)
-			{
-				int a = 0;
-			}
-			assert(currentPoint < pointCount - 1);
-			(*pointCloud)[currentPoint].x = (toroidalRadius + poloidalRadius*cos(poloidalStep))*cos(toroidalStep);
-			(*pointCloud)[currentPoint].y = (toroidalRadius + poloidalRadius*cos(poloidalStep))*sin(toroidalStep);
-			(*pointCloud)[currentPoint].z = poloidalRadius*sin(poloidalStep);
-			(*pointCloud)[currentPoint] = RotateAndTranslatePoint((*pointCloud)[currentPoint], rot, m);
-
-			// TODO: HACK!!! Instead of doing anything with normals, we're "assuming" that all sensors point directly up
-			// and hence we know that nothing with a negative z value is a possible lightouse location.
-			// Before this code can go live, we'll have to take the normals into account and remove this hack.
-			if ((*pointCloud)[currentPoint].z > 0)
-			{
-				currentPoint++;
-			}
-		}
-	}
-
-#ifdef TORI_DEBUG
-	printf("%d / %d\n", currentPoint, pointCount);
-#endif
-	(*pointCloud)[currentPoint].x = -1000;
-	(*pointCloud)[currentPoint].y = -1000;
-	(*pointCloud)[currentPoint].z = -1000;
-}
-
-void torusGenerator(Point p1, Point p2, double lighthouseAngle, Point **pointCloud)
-{
-
-	double centralAngleToIgnore = lighthouseAngle * 6;
-
-	centralAngleToIgnore = 20.0 / 180.0 * M_PI;
-
-	partialTorusGenerator(p1, p2, 0, M_PI * 2, centralAngleToIgnore + M_PI, M_PI * 3 - centralAngleToIgnore, lighthouseAngle, DefaultPointsPerOuterDiameter, pointCloud);
-
-	return;
-}
-
-
 // What we're doing here is:
 // * Given a point in space
 // * And points and a lighthouse angle that implicitly define a torus
 // * for that torus, what is the toroidal angle of the plane that will go through that point in space
 // * and given that toroidal angle, what is the poloidal angle that will be directed toward that point in space?
-//
-// Given the toroidal and poloidal angles of a "good estimate" of a solution position, a caller of this function
-// will be able to "draw" the point cloud of a torus in just the surface of the torus near the point in space.
-// That way, the caller doesn't have to draw the entire torus in high resolution, just the part of the torus
-// that is most likely to contain the best solution.
 void estimateToroidalAndPoloidalAngleOfPoint(
-	Point torusP1,
-	Point torusP2,
-	double lighthouseAngle,
+	PointsAndAngle *pna,
 	Point point,
-	double *toroidalAngle,
-	double *poloidalAngle)
+	double *toroidalSin,
+	double *toroidalCos,
+	double *poloidalAngle,
+	double *poloidalSin)
 {
-	// this is the rotation matrix that shows how to rotate the torus from being in a simple "default" orientation
-	// into the coordinate system of the tracked object
-	Matrix3x3 rot = GetRotationMatrixForTorus(torusP1, torusP2);
-
 	// We take the inverse of the rotation matrix, and this now defines a rotation matrix that will take us from
 	// the tracked object coordinate system into the "easy" or "default" coordinate system of the torus.
 	// Using this will allow us to derive angles much more simply by being in a "friendly" coordinate system.
-	rot = inverseM33(rot);
+	Matrix3x3 rot = pna->invRotation;
 	Point origin;
 	origin.x = 0;
 	origin.y = 0;
 	origin.z = 0;
 
-	Point m = midpoint(torusP1, torusP2);
+	Point m = midpoint(pna->a, pna->b);
 
 	// in this new coordinate system, we'll rename all of the points we care about to have an "F" after them
 	// This will be their representation in the "friendly" coordinate system
@@ -256,11 +138,23 @@ void estimateToroidalAndPoloidalAngleOfPoint(
 	// We will "flatten" the z dimension to only look at the x and y values.  Then, we just need to measure the 
 	// angle between a vector to pointF and a vector along the x axis.  
 
-	*toroidalAngle = atan(pointF.y / pointF.x);
-	if (pointF.x < 0)
-	{
-		*toroidalAngle += M_PI;
-	}
+	FLT toroidalHyp = FLT_SQRT(SQUARED(pointF.y) + SQUARED(pointF.x));
+
+	*toroidalSin = pointF.y / toroidalHyp;
+
+	*toroidalCos = pointF.x / toroidalHyp;
+
+	//*toroidalAngle = atan(pointF.y / pointF.x);
+	//if (pointF.x < 0)
+	//{
+	//	*toroidalAngle += M_PI;
+	//}
+
+	//assert(*toroidalSin / FLT_SIN(*toroidalAngle) - 1 < 0.000001);
+	//assert(*toroidalSin / FLT_SIN(*toroidalAngle) - 1 > -0.000001);
+
+	//assert(*toroidalCos / FLT_COS(*toroidalAngle) - 1 < 0.000001);
+	//assert(*toroidalCos / FLT_COS(*toroidalAngle) - 1 > -0.000001);
 
 	// SCORE!! We've got the toroidal angle.  We're half done!
 
@@ -289,9 +183,9 @@ void estimateToroidalAndPoloidalAngleOfPoint(
 	// this as a 2D problem.  I think we're getting close...
 
 	// I stole these lines from the torus generator.  Gonna need the poloidal radius.
-	double distanceBetweenPoints = distance(torusP1, torusP2); // we don't care about the coordinate system of these points because we're just getting distance.
-	double toroidalRadius = distanceBetweenPoints / (2 * tan(lighthouseAngle));
-	double poloidalRadius = sqrt(pow(toroidalRadius, 2) + pow(distanceBetweenPoints / 2, 2));
+	double distanceBetweenPoints = distance(pna->a, pna->b); // we don't care about the coordinate system of these points because we're just getting distance.
+	double toroidalRadius = distanceBetweenPoints / (2 * pna->tanAngle);
+	double poloidalRadius = sqrt(SQUARED(toroidalRadius) + SQUARED(distanceBetweenPoints / 2));
 
 	// The center of the polidal circle already lies on the z axis at this point, so we won't shift z at all. 
 	// The shift along the X axis will be the toroidal radius.  
@@ -304,11 +198,21 @@ void estimateToroidalAndPoloidalAngleOfPoint(
 	// Okay, almost there.  If we treat pointH as a vector on the XZ plane, if we get its angle,
 	// that will be the poloidal angle we're looking for.  (crosses fingers)
 
+	FLT poloidalHyp = FLT_SQRT(SQUARED(pointH.z) + SQUARED(pointH.x));
+
+	*poloidalSin = pointH.z / poloidalHyp;
+
+
 	*poloidalAngle = atan(pointH.z / pointH.x);
 	if (pointH.x < 0)
 	{
 		*poloidalAngle += M_PI;
 	}
+
+	//assert(*toroidalSin / FLT_SIN(*toroidalAngle) - 1 < 0.000001);
+	//assert(*toroidalSin / FLT_SIN(*toroidalAngle) - 1 > -0.000001);
+
+
 
 	// Wow, that ended up being not so much code, but a lot of interesting trig.
 	// can't remember the last time I spent so much time working through each line of code.
@@ -316,228 +220,44 @@ void estimateToroidalAndPoloidalAngleOfPoint(
 	return;
 }
 
-double FindSmallestDistance(Point p, Point* cloud)
-{
-	Point *cp = cloud;
-	double smallestDistance = 10000000000000.0;
-
-	while (cp->x != -1000 || cp->y != -1000 || cp->z != -1000)
-	{
-		double distance = (SQUARED(cp->x - p.x) + SQUARED(cp->y - p.y) + SQUARED(cp->z - p.z));
-		if (distance < smallestDistance)
-		{
-			smallestDistance = distance;
-		}
-		cp++;
-	}
-	smallestDistance = sqrt(smallestDistance);
-	return smallestDistance;
-}
-
-// Given a cloud and a list of clouds, find the point on masterCloud that best matches clouds.
-Point findBestPointMatch(Point *masterCloud, Point** clouds, int numClouds)
-{
-
-	Point bestMatch = { 0 };
-	double bestDistance = 10000000000000.0;
-	Point *cp = masterCloud;
-	int point = 0;
-	while (cp->x != -1000 || cp->y != -1000 || cp->z != -1000)
-	{
-		point++;
-#ifdef TORI_DEBUG
-		if (point % 100 == 0)
-		{
-			printf(".");
-		}
-#endif
-		double currentDistance = 0;
-		for (int i = 0; i < numClouds; i++)
-		{
-			if (clouds[i] == masterCloud)
-			{
-				continue;
-			}
-			Point* cloud = clouds[i];
-			currentDistance += FindSmallestDistance(*cp, cloud);
-		}
-
-		if (currentDistance < bestDistance)
-		{
-			bestDistance = currentDistance;
-			bestMatch = *cp;
-		}
-		cp++;
-	}
-
-	return bestMatch;
-}
-
-
 #define MAX_POINT_PAIRS 100
 
-typedef struct
+FLT angleBetweenSensors(TrackedSensor *a, TrackedSensor *b)
 {
-	Point a;
-	Point b;
-	double angle;
-} PointsAndAngle;
-
-double angleBetweenSensors(TrackedSensor *a, TrackedSensor *b)
-{
-	double angle = acos(cos(a->phi - b->phi)*cos(a->theta - b->theta));
-	double angle2 = acos(cos(b->phi - a->phi)*cos(b->theta - a->theta));
+	FLT angle = FLT_ACOS(FLT_COS(a->phi - b->phi)*FLT_COS(a->theta - b->theta));
+	FLT angle2 = FLT_ACOS(FLT_COS(b->phi - a->phi)*FLT_COS(b->theta - a->theta));
 
 	return angle;
 }
-double pythAngleBetweenSensors2(TrackedSensor *a, TrackedSensor *b)
-{
-	double p = (a->phi - b->phi);
-	double d = (a->theta - b->theta);
 
-	double adjd = sin((a->phi + b->phi) / 2);
-	double adjP = sin((a->theta + b->theta) / 2);
-	double pythAngle = sqrt(SQUARED(p*adjP) + SQUARED(d*adjd));
+// This provides a pretty good estimate of the angle above, probably better
+// the further away the lighthouse is.  But, it's not crazy-precise.
+// It's main advantage is speed.
+FLT pythAngleBetweenSensors2(TrackedSensor *a, TrackedSensor *b)
+{
+	FLT p = (a->phi - b->phi);
+	FLT d = (a->theta - b->theta);
+
+	FLT adjd = FLT_SIN((a->phi + b->phi) / 2);
+	FLT adjP = FLT_SIN((a->theta + b->theta) / 2);
+	FLT pythAngle = sqrt(SQUARED(p*adjP) + SQUARED(d*adjd));
 	return pythAngle;
 }
 
-Point GetInitialEstimate(TrackedObject *obj, PointsAndAngle *pna, size_t pnaCount, FILE *logFile)
-{
-	Point **pointCloud = malloc(sizeof(void*)* pnaCount);
-
-
-	for (unsigned int i = 0; i < pnaCount; i++)
-	{
-		torusGenerator(pna[i].a, pna[i].b, pna[i].angle, &(pointCloud[i]));
-		if (logFile)
-		{
-			writePointCloud(logFile, pointCloud[i], COLORS[i%MAX_COLORS]);
-		}
-
-	}
-
-	Point bestMatchA = findBestPointMatch(pointCloud[0], pointCloud, pnaCount);
-
-	for (unsigned int i = 0; i < pnaCount; i++)
-	{
-		free(pointCloud[i]);
-		pointCloud[i] = NULL;
-	}
-
-	if (logFile)
-	{
-		markPointWithStar(logFile, bestMatchA, 0xFF0000);
-	}
-#ifdef TORI_DEBUG
-	printf("(%f,%f,%f)\n", bestMatchA.x, bestMatchA.y, bestMatchA.z);
-#endif
-
-	return bestMatchA;
-}
-
-Point RefineEstimateUsingPointCloud(Point initialEstimate, PointsAndAngle *pna, size_t pnaCount, TrackedObject *obj, FILE *logFile)
-{
-	// Now, let's add an extra patch or torus near the point we just found.
-
-	double toroidalAngle = 0;
-	double poloidalAngle = 0;
-
-
-
-	Point **pointCloud2 = malloc(sizeof(void*)* pnaCount);
-
-	for (unsigned int i = 0; i < pnaCount; i++)
-	{
-		estimateToroidalAndPoloidalAngleOfPoint(
-			pna[i].a,
-			pna[i].b,
-			pna[i].angle,
-			initialEstimate,
-			&toroidalAngle,
-			&poloidalAngle);
-
-		partialTorusGenerator(pna[i].a, pna[i].b, toroidalAngle - 0.1, toroidalAngle + 0.1, poloidalAngle - 0.2, poloidalAngle + 0.2, pna[i].angle, 800, &(pointCloud2[i]));
-
-		if (logFile)
-		{
-			writePointCloud(logFile, pointCloud2[i], COLORS[i%MAX_COLORS]);
-		}
-
-	}
-
-	Point bestMatchB = findBestPointMatch(pointCloud2[0], pointCloud2, pnaCount);
-
-	for (unsigned int i = 0; i < pnaCount; i++)
-	{
-		free(pointCloud2[i]);
-		pointCloud2[i] = NULL;
-	}
-
-	if (logFile)
-	{
-		markPointWithStar(logFile, bestMatchB, 0x00FF00);
-	}
-#ifdef TORI_DEBUG
-	printf("(%f,%f,%f)\n", bestMatchB.x, bestMatchB.y, bestMatchB.z);
-#endif
-
-	Point **pointCloud3 = malloc(sizeof(void*)* pnaCount);
-
-	for (unsigned int i = 0; i < pnaCount; i++)
-	{
-		estimateToroidalAndPoloidalAngleOfPoint(
-			pna[i].a,
-			pna[i].b,
-			pna[i].angle,
-			bestMatchB,
-			&toroidalAngle,
-			&poloidalAngle);
-
-		partialTorusGenerator(pna[i].a, pna[i].b, toroidalAngle - 0.05, toroidalAngle + 0.05, poloidalAngle - 0.1, poloidalAngle + 0.1, pna[i].angle, 3000, &(pointCloud3[i]));
-
-		if (logFile)
-		{
-			writePointCloud(logFile, pointCloud3[i], COLORS[i%MAX_COLORS]);
-		}
-
-	}
-
-	Point bestMatchC = findBestPointMatch(pointCloud3[0], pointCloud3, pnaCount);
-
-	for (unsigned int i = 0; i < pnaCount; i++)
-	{
-		free(pointCloud3[i]);
-		pointCloud3[i] = NULL;
-	}
-
-	if (logFile)
-	{
-		markPointWithStar(logFile, bestMatchC, 0xFFFFFF);
-	}
-#ifdef TORI_DEBUG
-	printf("(%f,%f,%f)\n", bestMatchC.x, bestMatchC.y, bestMatchC.z);
-#endif
-
-
-
-
-	return bestMatchC;
-}
-
-Point calculateTorusPointFromAngles(PointsAndAngle *pna, double toroidalAngle, double poloidalAngle)
+Point calculateTorusPointFromAngles(PointsAndAngle *pna, FLT toroidalSin, FLT toroidalCos, FLT poloidalAngle, FLT poloidalSin)
 {
 	Point result;
 
-	double distanceBetweenPoints = distance(pna->a, pna->b);
+	FLT distanceBetweenPoints = distance(pna->a, pna->b);
 	Point m = midpoint(pna->a, pna->b);
-	Matrix3x3 rot = GetRotationMatrixForTorus(pna->a, pna->b);
+	Matrix3x3 rot = pna->rotation;
 
-	double toroidalRadius = distanceBetweenPoints / (2 * tan(pna->angle));
-	double poloidalRadius = sqrt(pow(toroidalRadius, 2) + pow(distanceBetweenPoints / 2, 2));
+	FLT toroidalRadius = distanceBetweenPoints / (2 * pna->tanAngle);
+	FLT poloidalRadius = FLT_SQRT(SQUARED(toroidalRadius) + SQUARED(distanceBetweenPoints / 2));
 
-	result.x = (toroidalRadius + poloidalRadius*cos(poloidalAngle))*cos(toroidalAngle);
-	result.y = (toroidalRadius + poloidalRadius*cos(poloidalAngle))*sin(toroidalAngle);
-	result.z = poloidalRadius*sin(poloidalAngle);
+	result.x = (toroidalRadius + poloidalRadius*cos(poloidalAngle))*toroidalCos;
+	result.y = (toroidalRadius + poloidalRadius*cos(poloidalAngle))*toroidalSin;
+	result.z = poloidalRadius*poloidalSin;
 	result = RotateAndTranslatePoint(result, rot, m);
 
 	return result;
@@ -546,18 +266,20 @@ Point calculateTorusPointFromAngles(PointsAndAngle *pna, double toroidalAngle, d
 FLT getPointFitnessForPna(Point pointIn, PointsAndAngle *pna)
 {
 
-	double toroidalAngle = 0;
+	double toroidalSin = 0;
+	double toroidalCos = 0;
 	double poloidalAngle = 0;
+	double poloidalSin = 0;
 
 	estimateToroidalAndPoloidalAngleOfPoint(
-		pna->a,
-		pna->b,
-		pna->angle,
+		pna,
 		pointIn,
-		&toroidalAngle,
-		&poloidalAngle);
+		&toroidalSin,
+		&toroidalCos,
+		&poloidalAngle,
+		&poloidalSin);
 
-	Point torusPoint = calculateTorusPointFromAngles(pna, toroidalAngle, poloidalAngle);
+	Point torusPoint = calculateTorusPointFromAngles(pna, toroidalSin, toroidalCos, poloidalAngle, poloidalSin);
 
 	FLT dist = distance(pointIn, torusPoint);
 
@@ -571,14 +293,11 @@ FLT getPointFitnessForPna(Point pointIn, PointsAndAngle *pna)
 	// it is not clear if this is actually removing existing skew (to get a more accurate value)
 	// or if it is introducing an undesirable skew.
 	double fudge = FLT_SIN((poloidalAngle - M_PI) / 2);
-	//fudge *= fudge;
 	dist = dist / fudge;
 
 	return dist;
 }
 
-//Point RefineEstimateUsingPointCloud(Point initialEstimate, PointsAndAngle *pna, size_t pnaCount, TrackedObject *obj, FILE *logFile)
-//
 FLT getPointFitness(Point pointIn, PointsAndAngle *pna, size_t pnaCount)
 {
 	FLT fitness;
@@ -588,7 +307,6 @@ FLT getPointFitness(Point pointIn, PointsAndAngle *pna, size_t pnaCount)
 	for (size_t i = 0; i < pnaCount; i++)
 	{
 		fitness = getPointFitnessForPna(pointIn, &(pna[i]));
-		//printf("Distance[%d]: %f\n", i, fitness);
 		resultSum += SQUARED(fitness);
 	}
 
@@ -644,55 +362,6 @@ Point getAvgPoints(Point a, Point b)
 	return result;
 }
 
-// 0.95 is good value for descent
-// 0.1 is a good value for starting precision.
-static Point RefineEstimateUsingGradientDescent(Point initialEstimate, PointsAndAngle *pna, size_t pnaCount, FILE *logFile, FLT descent, FLT startingPrecision)
-{
-	int i = 0;
-	FLT lastMatchFitness = getPointFitness(initialEstimate, pna, pnaCount);
-	Point lastPoint = initialEstimate;
-	Point lastGradient = getGradient(lastPoint, pna, pnaCount, .00000001 /*somewhat arbitrary*/);
-
-	for (FLT f = startingPrecision; f > 0.0001; f *= descent)
-	{
-		Point gradient = getGradient(lastPoint, pna, pnaCount, f / 1000 /*somewhat arbitrary*/);
-		gradient = getNormalizedVector(gradient, f);
-
-		//printf("Gradient: (%f, %f, %f)\n", gradient.x, gradient.y, gradient.z);
-
-		// gradient = getAvgPoints(gradient, lastGradient); // doesn't seem to help much.  might hurt in some cases.
-
-		Point newPoint;
-		newPoint.x = lastPoint.x + gradient.x;
-		newPoint.y = lastPoint.y + gradient.y;
-		newPoint.z = lastPoint.z + gradient.z;
-
-		FLT newMatchFitness = getPointFitness(newPoint, pna, pnaCount);
-
-		if (newMatchFitness > lastMatchFitness)
-		{
-			lastMatchFitness = newMatchFitness;
-			lastPoint = newPoint;
-			//printf("%f\n", newMatchFitness);
-			lastGradient = gradient;
-
-			if (logFile)
-			{
-				writePoint(logFile, lastPoint.x, lastPoint.y, lastPoint.z, 0xFFFFFF);
-			}
-		}
-		else
-		{
-			//printf("-");
-		}
-
-		i++;
-	}
-
-	//printf("i = %d\n", i);
-
-	return lastPoint;
-}
 
 // This is modifies the basic gradient descent algorithm to better handle the shallow valley case,
 // which appears to be typical of this convergence.  
@@ -701,7 +370,6 @@ static Point RefineEstimateUsingModifiedGradientDescent1(Point initialEstimate, 
 	int i = 0;
 	FLT lastMatchFitness = getPointFitness(initialEstimate, pna, pnaCount);
 	Point lastPoint = initialEstimate;
-	//Point lastGradient = getGradient(lastPoint, pna, pnaCount, .00000001 /*somewhat arbitrary*/);
 
 	// The values below are somewhat magic, and definitely tunable
 	// The initial vlue of g will represent the biggest step that the gradient descent can take at first.
@@ -768,11 +436,15 @@ static Point RefineEstimateUsingModifiedGradientDescent1(Point initialEstimate, 
 
 			lastMatchFitness = newMatchFitness;
 			lastPoint = point4;
+#ifdef TORI_DEBUG
 			printf("+");
+#endif
 		}
 		else
 		{
+#ifdef TORI_DEBUG
 			printf("-");
+#endif
 			g *= 0.7;
 
 		}
@@ -784,101 +456,12 @@ static Point RefineEstimateUsingModifiedGradientDescent1(Point initialEstimate, 
 	return lastPoint;
 }
 
-// This torus generator creates a point cloud of the given torus, and attempts to keep the 
-// density of the points fairly uniform across the surface of the torus.
-void AnalyzeToroidalImpact(
-	Point p1,
-	Point p2,
-	double lighthouseAngle,
-	double *vals,
-	PointsAndAngle *pna, 
-	size_t pnaCount)
-{
-	double poloidalRadius = 0;
-	double toroidalRadius = 0;
-
-	Point m = midpoint(p1, p2);
-	double distanceBetweenPoints = distance(p1, p2);
-
-	// ideally should only need to be lighthouseAngle, but increasing it here keeps us from accidentally
-	// thinking the tori converge at the location of the tracked object instead of at the lighthouse.
-	double centralAngleToIgnore = lighthouseAngle * 3;
-
-	Matrix3x3 rot = GetRotationMatrixForTorus(p1, p2);
-
-	toroidalRadius = distanceBetweenPoints / (2 * tan(lighthouseAngle));
-
-	poloidalRadius = sqrt(pow(toroidalRadius, 2) + pow(distanceBetweenPoints / 2, 2));
-
-	unsigned int pointCount = 0;
-
-	size_t currentPoint = 0;
-	
-	for (size_t ps = 0; ps < 180; ps++)
-	{
-
-		//for (double toroidalStep = toroidalStartAngle; toroidalStep < toroidalEndAngle; toroidalStep += M_PI / 40)
-		for (double toroidalStep = 0; toroidalStep < M_PI / 2; toroidalStep += M_PI / 180 * 2)
-		{
-			double poloidalStep = M_PI + M_PI / 180 * 2 * ps;
-			Point tmp;
-
-			tmp.x = (toroidalRadius + poloidalRadius*cos(poloidalStep))*cos(toroidalStep);
-			tmp.y = (toroidalRadius + poloidalRadius*cos(poloidalStep))*sin(toroidalStep);
-			tmp.z = poloidalRadius*sin(poloidalStep);
-			tmp = RotateAndTranslatePoint(tmp, rot, m);
-
-			vals[ps] += getPointFitness(tmp, pna, pnaCount);
-
-		}
-
-		vals[ps] = vals[ps] / 180; // average.
-	}
-
-}
-
-void AnalyzePoloidalImpact(TrackedObject *obj, PointsAndAngle *pna, size_t pnaCount, FILE *logFile)
-{
-	Point **pointCloud = malloc(sizeof(void*)* pnaCount);
-
-	double vals[200][180] = { 0 };
-
-
-	for (unsigned int i = 0; i < pnaCount; i++)
-	{
-		//double tmpVals[180] = { 0 };
-
-		AnalyzeToroidalImpact(
-			pna[i].a,
-			pna[i].b,
-			pna[i].angle,
-			vals[i],
-			pna,
-			pnaCount);
-
-
-		//for (int j = 0; j < 180; j++)
-		//{
-		//	vals[j] += tmpVals[j];
-		//}
-
-	}
-	
-	for (int i = 0; i < 180; i++)
-	{
-		printf("%d", i * 2);
-		for (unsigned int j = 0; j < pnaCount; j++)
-		{
-			printf(", %f", vals[j][i]);
-		}
-		printf("\n");
-	}
-}
-
 
 Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 {
 	PointsAndAngle pna[MAX_POINT_PAIRS];
+
+	volatile size_t sizeNeeded = sizeof(pna);
 
 	Point avgNorm = { 0 };
 
@@ -891,10 +474,16 @@ Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 			{
 				pna[pnaCount].a = obj->sensor[i].point;
 				pna[pnaCount].b = obj->sensor[j].point;
-
-				pna[pnaCount].angle = pythAngleBetweenSensors2(&obj->sensor[i], &obj->sensor[j]);
+				
+				pna[pnaCount].angle = angleBetweenSensors(&obj->sensor[i], &obj->sensor[j]);
+				//pna[pnaCount].angle = pythAngleBetweenSensors2(&obj->sensor[i], &obj->sensor[j]);
+				pna[pnaCount].tanAngle = FLT_TAN(pna[pnaCount].angle);
 
 				double pythAngle = sqrt(SQUARED(obj->sensor[i].phi - obj->sensor[j].phi) + SQUARED(obj->sensor[i].theta - obj->sensor[j].theta));
+
+				pna[pnaCount].rotation = GetRotationMatrixForTorus(pna[pnaCount].a, pna[pnaCount].b);
+				pna[pnaCount].invRotation = inverseM33(pna[pnaCount].rotation);
+
 
 				pnaCount++;
 			}
@@ -919,15 +508,9 @@ Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 		writeAxes(logFile);
 	}
 
-	//Point initialEstimate = GetInitialEstimate(obj, pna, pnaCount, logFile);
-
-	//Point refinedEstimatePc = RefineEstimateUsingPointCloud(initialEstimate, pna, pnaCount, obj, logFile);
-
-	//Point refinedEstimageGd = RefineEstimateUsingGradientDescent(initialEstimate, pna, pnaCount, logFile, 0.95, 0.1);
 
 	// Point refinedEstimageGd = RefineEstimateUsingModifiedGradientDescent1(initialEstimate, pna, pnaCount, logFile);
 
-	// AnalyzePoloidalImpact(obj, pna, pnaCount, logFile);
 
 	// arbitrarily picking a value of 8 meters out to start from.
 	// intentionally picking the direction of the average normal vector of the sensors that see the lighthouse
@@ -935,16 +518,16 @@ Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 	// back into the search for the correct point (see "if (a1 > M_PI / 2)" below)
 	Point p1 = getNormalizedVector(avgNorm, 8); 
 
-	Point refinedEstimageGd = RefineEstimateUsingModifiedGradientDescent1(p1, pna, pnaCount, logFile);
+	Point refinedEstimateGd = RefineEstimateUsingModifiedGradientDescent1(p1, pna, pnaCount, logFile);
 
-	FLT pf1[3] = { refinedEstimageGd.x, refinedEstimageGd.y, refinedEstimageGd.z };
+	FLT pf1[3] = { refinedEstimateGd.x, refinedEstimateGd.y, refinedEstimateGd.z };
 
 	FLT a1 = anglebetween3d(pf1, avgNormF);
 
 	if (a1 > M_PI / 2)
 	{
-		Point p2 = { .x = -refinedEstimageGd.x, .y = -refinedEstimageGd.y, .z = -refinedEstimageGd.z };
-		refinedEstimageGd = RefineEstimateUsingModifiedGradientDescent1(p2, pna, pnaCount, logFile);
+		Point p2 = { .x = -refinedEstimateGd.x, .y = -refinedEstimateGd.y, .z = -refinedEstimateGd.z };
+		refinedEstimateGd = RefineEstimateUsingModifiedGradientDescent1(p2, pna, pnaCount, logFile);
 
 		//FLT pf2[3] = { refinedEstimageGd2.x, refinedEstimageGd2.y, refinedEstimageGd2.z };
 
@@ -952,9 +535,7 @@ Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 
 	}
 
-	//FLT fitPc = getPointFitness(refinedEstimatePc, pna, pnaCount);
-	FLT fitGd = getPointFitness(refinedEstimageGd, pna, pnaCount);
-	//FLT fitGd2 = getPointFitness(refinedEstimageGd2, pna, pnaCount);
+	FLT fitGd = getPointFitness(refinedEstimateGd, pna, pnaCount);
 
 	printf("Fitness is %f\n", fitGd);
 
@@ -964,45 +545,6 @@ Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 		fclose(logFile);
 	}
 	//fgetc(stdin);
-	return refinedEstimageGd;
+	return refinedEstimateGd;
 }
-
-static Point makeUnitPoint(Point *p)
-{
-	Point newP;
-	double r = sqrt(p->x*p->x + p->y*p->y + p->z*p->z);
-	newP.x = p->x / r;
-	newP.y = p->y / r;
-	newP.z = p->z / r;
-
-	return newP;
-}
-
-static double getPhi(Point p)
-{
-	//	double phi = acos(p.z / (sqrt(p.x*p.x + p.y*p.y + p.z*p.z)));
-	//	double phi = atan(sqrt(p.x*p.x + p.y*p.y)/p.z);
-	double phi = atan(p.x / p.z);
-	return phi;
-}
-
-static double getTheta(Point p)
-{
-	//double theta = atan(p.y / p.x);
-	double theta = atan(p.x / p.y);
-	return theta;
-}
-
-// subtraction
-static Point PointSub(Point a, Point b)
-{
-	Point newPoint;
-
-	newPoint.x = a.x - b.x;
-	newPoint.y = a.y - b.y;
-	newPoint.z = a.z - b.z;
-
-	return newPoint;
-}
-
 

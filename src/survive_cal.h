@@ -31,7 +31,7 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle );
 
 #define MAX_SENSORS_TO_CAL 96
-#define DRPTS 512
+#define DRPTS 1024
 #define MAX_CAL_PT_DAT (MAX_SENSORS_TO_CAL*NUM_LIGHTHOUSES*2)
 struct SurviveCalData
 {
@@ -48,6 +48,7 @@ struct SurviveCalData
 	int8_t times_found_common;
 
 	//For camfind (4+)
+	//Index is calculated with:      int dataindex = sen*(2*NUM_LIGHTHOUSES)+lh*2+axis;
 	FLT avgsweeps[MAX_CAL_PT_DAT];
 	FLT avglens[MAX_CAL_PT_DAT];
 	FLT stdsweeps[MAX_CAL_PT_DAT];
@@ -55,6 +56,8 @@ struct SurviveCalData
 	int ctsweeps[MAX_CAL_PT_DAT];
 
 	int senid_of_checkpt; //This is a point on a watchman that can be used to check the lh solution.
+
+	struct SurviveObject * hmd;
 
 	//Stage:
 	// 0: Idle

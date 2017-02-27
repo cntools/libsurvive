@@ -42,7 +42,7 @@ int main()
 	int magicon = 0;
 	double Start = OGGetAbsoluteTime();
 
-	ctx = survive_init( );
+	ctx = survive_init( 0 );
 
 	if( !ctx )
 	{
@@ -59,7 +59,7 @@ int main()
 		double Now = OGGetAbsoluteTime();
 		if( Now > (Start+1) && !magicon )
 		{
-			survive_usb_send_magic(ctx,1);
+			survive_send_magic(ctx,1,0,0);
 			magicon = 1;
 		}
 		//Do stuff.

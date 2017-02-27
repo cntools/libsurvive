@@ -4,7 +4,11 @@
 #include <stdint.h>
 
 #ifndef FLT
+#ifdef USE_DOUBLE
 #define FLT double
+#else
+#define FLT float
+#endif
 #endif
 
 struct SurviveContext;
@@ -20,7 +24,8 @@ struct SurviveObject
 {
 	struct SurviveContext * ctx;
 
-	char    codename[4];  //3 letters, null-terminated.  Currently HMD, WM0, WM1.
+	char    codename[4];    //3 letters, null-terminated.  Currently HMD, WM0, WM1.
+	char    drivername[4];  //3 letters for driver.  Currently "HTC"
 	int16_t buttonmask;
 	int16_t axis1;
 
@@ -33,6 +38,7 @@ struct SurviveObject
 
 	FLT * sensor_locations;
 	FLT * sensor_normals;
+	int8_t nr_locations;
 
 	//Timing sensitive data (mostly for disambiguation)
 	int32_t timebase_hz;		//48,000,000 for normal vive hardware.  (checked)
@@ -43,7 +49,6 @@ struct SurviveObject
 	int32_t pulse_max_for_sweep; //1,800 for normal vive hardware.     (guessed)
 	int32_t pulse_synctime_offset; //20,000 for normal vive hardware.  (guessed)
 	int32_t pulse_synctime_slack; //5,000 for normal vive hardware.    (guessed)
-	int8_t nr_locations;
 
 	//Flood info, for calculating which laser is currently sweeping.
 	int8_t oldcode;
@@ -64,7 +69,7 @@ typedef void (*light_process_func)( struct SurviveObject * so, int sensor_id, in
 typedef void (*imu_process_func)( struct SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id );
 typedef void (*angle_process_func)( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle );
 
-struct SurviveContext * survive_init();
+struct SurviveContext * survive_init( int headless );
 
 //For any of these, you may pass in 0 for the function pointer to use default behavior.
 void survive_install_info_fn( struct SurviveContext * ctx,  text_feedback_func fbp );
@@ -81,8 +86,7 @@ struct SurviveObject * survive_get_so_by_name( struct SurviveContext * ctx, cons
 //Utilitiy functions.
 int survive_simple_inflate( struct SurviveContext * ctx, const char * input, int inlen, char * output, int outlen );
 
-//TODO: Need to make this do haptic responses for hands. 
-int survive_usb_send_magic( struct SurviveContext * ctx, int on );
+int survive_send_magic( struct SurviveContext * ctx, int magic_code, void * data, int datalen );
 
 //Install the calibrator.
 void survive_cal_install( struct SurviveContext * ctx );

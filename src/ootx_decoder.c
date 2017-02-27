@@ -112,7 +112,7 @@ void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
 //		printf("drop %d\n", dbit);
 		if( !dbit )
 		{
-			printf("Bad sync bit\n");
+			//printf("Bad sync bit\n");
 			ootx_reset_buffer(ctx);
 		}
 		ctx->bits_processed = 0;
