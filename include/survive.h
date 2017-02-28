@@ -24,7 +24,8 @@ struct SurviveObject
 {
 	struct SurviveContext * ctx;
 
-	char    codename[4];  //3 letters, null-terminated.  Currently HMD, WM0, WM1.
+	char    codename[4];    //3 letters, null-terminated.  Currently HMD, WM0, WM1.
+	char    drivername[4];  //3 letters for driver.  Currently "HTC"
 	int16_t buttonmask;
 	int16_t axis1;
 
@@ -85,8 +86,7 @@ struct SurviveObject * survive_get_so_by_name( struct SurviveContext * ctx, cons
 //Utilitiy functions.
 int survive_simple_inflate( struct SurviveContext * ctx, const char * input, int inlen, char * output, int outlen );
 
-//TODO: Need to make this do haptic responses for hands. 
-int survive_usb_send_magic( struct SurviveContext * ctx, int on );
+int survive_send_magic( struct SurviveContext * ctx, int magic_code, void * data, int datalen );
 
 //Install the calibrator.
 void survive_cal_install( struct SurviveContext * ctx );

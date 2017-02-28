@@ -57,6 +57,8 @@ struct SurviveCalData
 
 	int senid_of_checkpt; //This is a point on a watchman that can be used to check the lh solution.
 
+	struct SurviveObject * hmd;
+
 	//Stage:
 	// 0: Idle
 	// 1: Collecting OOTX data.

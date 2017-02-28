@@ -20,11 +20,11 @@ void HandleKey( int keycode, int bDown )
 
 	if( keycode == 'O' || keycode == 'o' )
 	{
-		survive_usb_send_magic(ctx,1);
+		survive_send_magic(ctx,1,0,0);
 	}
 	if( keycode == 'F' || keycode == 'f' )
 	{
-		survive_usb_send_magic(ctx,0);
+		survive_send_magic(ctx,0,0,0);
 	}
 }
 
@@ -42,6 +42,7 @@ int buffertimeto[32*3];
 
 void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  )
 {
+//	if( timeinsweep < 0 ) return;
 	survive_default_light_process( so, sensor_id, acode, timeinsweep, timecode, length );
 
 	if( acode == -1 ) return;
@@ -97,6 +98,10 @@ void my_angle_process( struct SurviveObject * so, int sensor_id, int acode, uint
 void * GuiThread( void * v )
 {
 	short screenx, screeny;
+	CNFGBGColor = 0x000000;
+	CNFGDialogColor = 0x444444;
+	CNFGSetup( "Survive GUI Debug", 640, 480 );
+
 	while(1)
 	{
 		CNFGHandleInput();
@@ -151,9 +156,6 @@ int main()
 
 	survive_cal_install( ctx );
 
-	CNFGBGColor = 0x000000;
-	CNFGDialogColor = 0x444444;
-	CNFGSetup( "Survive GUI Debug", 640, 480 );
 	OGCreateThread( GuiThread, 0 );
 	
 
@@ -167,5 +169,6 @@ int main()
 	{
 		//Do stuff.
 	}
+	printf( "Returned\n" );
 }
 

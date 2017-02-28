@@ -20,11 +20,11 @@ void HandleKey( int keycode, int bDown )
 
 	if( keycode == 'O' || keycode == 'o' )
 	{
-		survive_usb_send_magic(ctx,1);
+		survive_send_magic(ctx,1,0,0);
 	}
 	if( keycode == 'F' || keycode == 'f' )
 	{
-		survive_usb_send_magic(ctx,0);
+		survive_send_magic(ctx,0,0,0);
 	}
 }
 
@@ -150,6 +150,10 @@ int main()
 
 	survive_cal_install( ctx );
 
+	struct SurviveObject * hmd = survive_get_so_by_name( ctx, "HMD" );
+	struct SurviveObject * wm0 = survive_get_so_by_name( ctx, "WM0" );
+	struct SurviveObject * wm1 = survive_get_so_by_name( ctx, "WM1" );
+
 	CNFGBGColor = 0x000000;
 	CNFGDialogColor = 0x444444;
 	CNFGSetup( "Survive GUI Debug", 640, 480 );
@@ -198,11 +202,11 @@ int main()
 
 				struct SurviveObject * so = 0;
 				if( strcmp( dev, "HMD" ) == 0 )
-					so = &ctx->headset;
+					so = hmd;
 				if( strcmp( dev, "WM0" ) == 0 )
-					so = &ctx->watchman[0];
+					so = wm0;
 				if( strcmp( dev, "WM1" ) == 0 )
-					so = &ctx->watchman[1];
+					so = wm1;
 
 				if( so )
 					my_light_process( so, sensor_id, acode, timeinsweep, timecode, length );

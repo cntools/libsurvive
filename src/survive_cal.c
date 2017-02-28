@@ -101,6 +101,14 @@ void survive_cal_install( struct SurviveContext * ctx )
 	cd->stage = 1;
 	cd->ctx = ctx;
 
+	cd->hmd = survive_get_so_by_name( ctx, "HMD" );
+	if( !cd->hmd )
+	{
+		SV_ERROR( "Error: cannot find any devices labeled HMD. Required for calibration" );
+		free( cd );
+		return;
+	}
+
 	ootx_packet_clbk = ootx_packet_clbk_d;
 
 	ctx->calptr = cd;
