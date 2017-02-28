@@ -103,7 +103,7 @@ FLT config_read_float(config_group *cg, const char *tag, const FLT def) {
 
 	if (cv != NULL) return cv->numeric.f;
 
-	config_set_float(cg, tag, def);
+	return config_set_float(cg, tag, def);
 }
 
 config_entry* next_unused_entry(config_group *cg) {
