@@ -168,7 +168,11 @@ const FLT* config_set_float_a(config_group *cg, const char *tag, const FLT* valu
 }
 
 void _json_write_float_array(FILE* f, const char* tag, FLT* v, uint8_t count) {
-	json_write_double_array(f,tag,v,count);
+	if (sizeof(FLT) == sizeof(double)) {
+		json_write_double_array(f,tag,v,count);
+	} else if (sizeof(FLT) == sizeof(float)) {
+		json_write_double_array(f,tag,v,count);
+	}
 }
 
 void write_config_group(FILE* f, config_group *cg, char *tag) {
