@@ -10,6 +10,8 @@
 #include "src/survive_cal.h"
 #include <DrawFunctions.h>
 
+#include "src/survive_config.h"
+
 struct SurviveContext * ctx;
 
 void HandleKey( int keycode, int bDown )
@@ -152,6 +154,12 @@ int main()
 	CNFGDialogColor = 0x444444;
 	CNFGSetup( "Survive GUI Debug", 640, 480 );
 	OGCreateThread( GuiThread, 0 );
+
+	config_init();
+	config_set_str(&global_config_values, "Hello","World!");
+	const char *s = config_read_str(&global_config_values, "TestStr","This is a test.");
+	printf("%s\n", s);
+	config_save("config.json");
 	
 
 	if( !ctx )

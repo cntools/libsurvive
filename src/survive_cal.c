@@ -15,6 +15,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "survive_config.h"
+
 #define PTS_BEFORE_COMMON 32
 #define NEEDED_COMMON_POINTS 10
 #define NEEDED_TIMES_OF_COMMON 5
@@ -49,6 +51,9 @@ void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 	b->fcalgibmag[0] = v6.fcal_0_gibmag;
 	b->fcalgibmag[1] = v6.fcal_1_gibmag;
 	b->OOTXSet = 1;
+
+	config_set_lighthouse(b,id);
+	config_save("config.json");
 }
 
 int survive_cal_get_status( struct SurviveContext * ctx, char * description, int description_length )
