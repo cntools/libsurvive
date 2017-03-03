@@ -2,28 +2,12 @@
 #define _SURVIVE_H
 
 #include <stdint.h>
-
-#ifndef FLT
-#ifdef USE_DOUBLE
-#define FLT double
-#else
-#define FLT float
-#endif
-#endif
+#include "poser.h"
 
 struct SurviveContext;
 
 //DANGER: This structure may be redefined.  Note that it is logically split into 64-bit chunks
 //for optimization on 32- and 64-bit systems.
-
-//Careful with this, you can't just add another one right now, would take minor changes in survive_data.c and the cal tools.
-//It will also require a recompile.  TODO: revisit this and correct the comment once fixed.
-#define NUM_LIGHTHOUSES 2  
-
-struct SurviveObject;
-
-//XXX TODO -> Probably should be one function to take multiple types of input?
-typedef int (*ResolverCB)( struct SurviveObject * so );
 
 struct SurviveObject
 {
@@ -45,9 +29,10 @@ struct SurviveObject
 	FLT    PoseConfidence; //0..1
 	FLT    Position[3];
 	FLT    Rotation[4];
-	void * Resolver;
-	ResolverCB * PreferredResolverFn; //XXX TODO
+	void * PoserData;   //Initialized to zero, configured by poser, can be anything the poser wants.
+	PoserCB * PoserFn;
 
+	//Device-specific information about the location of the sensors.  This data will be used by the poser.
 	int8_t nr_locations;
 	FLT * sensor_locations;
 	FLT * sensor_normals;
@@ -76,14 +61,6 @@ struct SurviveObject
 	//Debug
 	int tsl;
 };
-
-
-
-
-typedef void (*text_feedback_func)( struct SurviveContext * ctx, const char * fault );
-typedef void (*light_process_func)( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length );
-typedef void (*imu_process_func)( struct SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id );
-typedef void (*angle_process_func)( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle );
 
 struct SurviveContext * survive_init( int headless );
 

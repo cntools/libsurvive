@@ -27,8 +27,6 @@
 //XXX TODO This one needs to be rewritten.
 #define SV_KILL()		exit(0)
 
-#define INTBUFFSIZE			64
-#define SENSORS_PER_OBJECT	32
 
 struct SurviveContext;
 struct SurviveUSBInterface;
