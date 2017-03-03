@@ -20,6 +20,11 @@ struct SurviveContext;
 //It will also require a recompile.  TODO: revisit this and correct the comment once fixed.
 #define NUM_LIGHTHOUSES 2  
 
+struct SurviveObject;
+
+//XXX TODO -> Probably should be one function to take multiple types of input?
+typedef int (*ResolverCB)( struct SurviveObject * so );
+
 struct SurviveObject
 {
 	struct SurviveContext * ctx;
@@ -36,9 +41,16 @@ struct SurviveObject
 	int8_t  ison:1;
 	int8_t  additional_flags:6;
 
+	//Pose Information, also "resolver" field.
+	FLT    PoseConfidence; //0..1
+	FLT    Position[3];
+	FLT    Rotation[4];
+	void * Resolver;
+	ResolverCB * PreferredResolverFn; //XXX TODO
+
+	int8_t nr_locations;
 	FLT * sensor_locations;
 	FLT * sensor_normals;
-	int8_t nr_locations;
 
 	//Timing sensitive data (mostly for disambiguation)
 	int32_t timebase_hz;		//48,000,000 for normal vive hardware.  (checked)
@@ -51,7 +63,7 @@ struct SurviveObject
 	int32_t pulse_synctime_slack; //5,000 for normal vive hardware.    (guessed)
 
 	//Flood info, for calculating which laser is currently sweeping.
-	int8_t oldcode;
+	int8_t   oldcode;
 	int8_t   sync_set_number; //0 = master, 1 = slave, -1 = fault. 
 	int8_t   did_handle_ootx; //If unset, will send lightcap data for sync pulses next time a sensor is hit.
 	uint32_t last_time[NUM_LIGHTHOUSES];
@@ -60,9 +72,13 @@ struct SurviveObject
 
 	uint32_t last_lighttime;  //May be a 24- or 32- bit number depending on what device.
 
+
 	//Debug
 	int tsl;
 };
+
+
+
 
 typedef void (*text_feedback_func)( struct SurviveContext * ctx, const char * fault );
 typedef void (*light_process_func)( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length );

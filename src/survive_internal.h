@@ -1,4 +1,4 @@
-//<>< (C) 2016 C. N. Lohr, MOSTLY Under MIT/x11 License.
+//<>< (C) 2016-2017 C. N. Lohr, MOSTLY Under MIT/x11 License.
 //
 //Based off of https://github.com/collabora/OSVR-Vive-Libre
 // Originally Copyright 2016 Philipp Zabel
@@ -35,7 +35,6 @@ struct SurviveUSBInterface;
 
 typedef int (*DeviceDriverCb)( struct SurviveContext * ctx, void * driver );
 typedef int (*DeviceDriverMagicCb)( struct SurviveContext * ctx, void * driver, int magic_code, void * data, int datalen );
-
 
 //This is defined in survive.h
 struct SurviveObject;
