@@ -3,7 +3,6 @@
 **WARNING PROJECT NOT YET IN EXPERIMENTAL PHASE**
 
 Discord: https://discordapp.com/invite/7QbCAGS
-Testing if git is linked to discord.
 
 ## Livestream collection
 | Note                                   | Youtube URL                                 | Run time |
