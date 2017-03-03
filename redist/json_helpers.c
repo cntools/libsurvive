@@ -23,7 +23,7 @@ void json_write_float_array(FILE* f, const char* tag, float* v, uint8_t count) {
 		str1=str2;
 		str2=NULL;
 	}
-	asprintf(&str2, "%s]", str1,v[i]);
+	asprintf(&str2, "%s]", str1);
 	fputs(str2,f);
 	free(str1);
 	free(str2);
@@ -45,7 +45,7 @@ void json_write_double_array(FILE* f, const char* tag, double* v, uint8_t count)
 		str1=str2;
 		str2=NULL;
 	}
-	asprintf(&str2, "%s]", str1,v[i]);
+	asprintf(&str2, "%s]", str1);
 	fputs(str2,f);
 	free(str1);
 	free(str2);
