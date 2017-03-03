@@ -19,6 +19,7 @@
 
 #define FLT double
 #define FLT_SQRT sqrt
+#define FLT_TAN tan
 #define FLT_SIN  sin
 #define FLT_COS  cos
 #define FLT_ACOS  acos
@@ -30,6 +31,7 @@
 
 #define FLT float
 #define FLT_SQRT sqrtf
+#define FLT_TAN tanf
 #define FLT_SIN  sinf
 #define FLT_COS  cosf
 #define FLT_ACOS  acosf

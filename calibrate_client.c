@@ -1,4 +1,4 @@
-//Data recorder mod with GUI showing light positions.
+//Totally hacky "client" for absorbing data from a network source of the vive data.
 
 #include <unistd.h>
 #include <stdio.h>
@@ -7,7 +7,10 @@
 #include <survive.h>
 #include <string.h>
 #include <os_generic.h>
+#include "src/survive_cal.h"
 #include <DrawFunctions.h>
+
+#include "src/survive_config.h"
 
 struct SurviveContext * ctx;
 
@@ -50,13 +53,11 @@ void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int 
 
 	if( acode == 0 || acode == 2 ) //data = 0
 	{
-		printf( "L X %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
 		bufferpts[jumpoffset*2+0] = (timeinsweep-100000)/500;
 		buffertimeto[jumpoffset] = 0;
 	}
 	if( acode == 1 || acode == 3 ) //data = 1
 	{
-		printf( "L Y %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
 		bufferpts[jumpoffset*2+1] = (timeinsweep-100000)/500;
 		buffertimeto[jumpoffset] = 0;
 	}
@@ -64,24 +65,21 @@ void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int 
 
 	if( acode == 4 || acode == 6 ) //data = 0
 	{
-		printf( "R X %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
 		bufferpts[jumpoffset*2+0] = (timeinsweep-100000)/500;
 		buffertimeto[jumpoffset] = 0;
 	}
 	if( acode == 5 || acode == 7 ) //data = 1
 	{
-		printf( "R Y %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
 		bufferpts[jumpoffset*2+1] = (timeinsweep-100000)/500;
 		buffertimeto[jumpoffset] = 0;
 	}
-
 }
 
 void my_imu_process( struct SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id )
 {
 	survive_default_imu_process( so, accelgyro, timecode, id );
 
-//return;
+return;
 	//if( so->codename[0] == 'H' )
 	if( 1 )
 	{
@@ -90,6 +88,10 @@ void my_imu_process( struct SurviveObject * so, int16_t * accelgyro, uint32_t ti
 }
 
 
+void my_angle_process( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle )
+{
+	survive_default_angle_process( so, sensor_id, acode, timecode, length, angle );
+}
 
 
 void * GuiThread( void * v )
@@ -122,6 +124,13 @@ void * GuiThread( void * v )
 			}
 		}
 
+		CNFGColor( 0xffffff );
+		char caldesc[256];
+		survive_cal_get_status( ctx, caldesc, sizeof( caldesc ) );
+		CNFGPenX = 3;
+		CNFGPenY = 3;
+		CNFGDrawText( caldesc, 4 );
+
 
 		CNFGSwapBuffers();
 		OGUSleep( 10000 );
@@ -130,18 +139,31 @@ void * GuiThread( void * v )
 
 
 
+
 int main()
 {
-	ctx = survive_init( 0 );
+	ctx = survive_init( 1 );
 
 	survive_install_light_fn( ctx,  my_light_process );
 	survive_install_imu_fn( ctx,  my_imu_process );
+	survive_install_angle_fn( ctx, my_angle_process );
 
+	survive_cal_install( ctx );
+
+	struct SurviveObject * hmd = survive_get_so_by_name( ctx, "HMD" );
+	struct SurviveObject * wm0 = survive_get_so_by_name( ctx, "WM0" );
+	struct SurviveObject * wm1 = survive_get_so_by_name( ctx, "WM1" );
 
 	CNFGBGColor = 0x000000;
 	CNFGDialogColor = 0x444444;
 	CNFGSetup( "Survive GUI Debug", 640, 480 );
 	OGCreateThread( GuiThread, 0 );
+
+	config_init();
+	config_set_str(&global_config_values, "Hello","World!");
+	const char *s = config_read_str(&global_config_values, "TestStr","This is a test.");
+	printf("%s\n", s);
+	config_save("config.json");
 	
 
 	if( !ctx )
@@ -152,6 +174,50 @@ int main()
 
 	while(survive_poll(ctx) == 0)
 	{
+		char * lineptr;
+		size_t n;
+		lineptr = 0;
+		n = 0;
+		ssize_t gl = getline( &lineptr, &n, stdin );
+//		printf( "%d %s\n", gl, lineptr );
+
+		switch( lineptr[0] )
+		{
+			case 'I': 
+				//IMU data
+				//I WM0 -695533550 -321 1357 -3928 -16 -2 -2 0
+				break;
+			case 'R': 
+			case 'L': 
+			{
+				//Light data
+				//R X HMD -878577652 -1 6 380498 6004
+				char lhn[10];
+				char beam[10];
+				char dev[10];
+				int timecode, sensor_id, acode, timeinsweep, length;
+
+				sscanf( lineptr, "%9s %9s %9s %d %d %d %d %d\n", 
+					lhn, beam, dev, &timecode, &sensor_id, &acode, &timeinsweep, &length );
+
+				struct SurviveObject * so = 0;
+				if( strcmp( dev, "HMD" ) == 0 )
+					so = hmd;
+				if( strcmp( dev, "WM0" ) == 0 )
+					so = wm0;
+				if( strcmp( dev, "WM1" ) == 0 )
+					so = wm1;
+
+				if( so )
+					my_light_process( so, sensor_id, acode, timeinsweep, timecode, length );
+
+				break;
+			}
+		}
+
+		free( lineptr );
+
+        //printf( "!!!\n" );
 		//Do stuff.
 	}
 }

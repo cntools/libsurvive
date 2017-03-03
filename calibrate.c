@@ -7,7 +7,10 @@
 #include <survive.h>
 #include <string.h>
 #include <os_generic.h>
+#include "src/survive_cal.h"
 #include <DrawFunctions.h>
+
+#include "src/survive_config.h"
 
 struct SurviveContext * ctx;
 
@@ -17,11 +20,11 @@ void HandleKey( int keycode, int bDown )
 
 	if( keycode == 'O' || keycode == 'o' )
 	{
-		survive_usb_send_magic(ctx,1);
+		survive_send_magic(ctx,1,0,0);
 	}
 	if( keycode == 'F' || keycode == 'f' )
 	{
-		survive_usb_send_magic(ctx,0);
+		survive_send_magic(ctx,0,0,0);
 	}
 }
 
@@ -39,6 +42,7 @@ int buffertimeto[32*3];
 
 void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  )
 {
+//	if( timeinsweep < 0 ) return;
 	survive_default_light_process( so, sensor_id, acode, timeinsweep, timecode, length );
 
 	if( acode == -1 ) return;
@@ -94,6 +98,10 @@ void my_angle_process( struct SurviveObject * so, int sensor_id, int acode, uint
 void * GuiThread( void * v )
 {
 	short screenx, screeny;
+	CNFGBGColor = 0x000000;
+	CNFGDialogColor = 0x444444;
+	CNFGSetup( "Survive GUI Debug", 640, 480 );
+
 	while(1)
 	{
 		CNFGHandleInput();
@@ -139,7 +147,8 @@ void * GuiThread( void * v )
 
 int main()
 {
-	ctx = survive_init( );
+	ctx = survive_init( 0 );
+	config_init();
 
 	survive_install_light_fn( ctx,  my_light_process );
 	survive_install_imu_fn( ctx,  my_imu_process );
@@ -147,9 +156,6 @@ int main()
 
 	survive_cal_install( ctx );
 
-	CNFGBGColor = 0x000000;
-	CNFGDialogColor = 0x444444;
-	CNFGSetup( "Survive GUI Debug", 640, 480 );
 	OGCreateThread( GuiThread, 0 );
 	
 
@@ -163,5 +169,6 @@ int main()
 	{
 		//Do stuff.
 	}
+	printf( "Returned\n" );
 }
 
