@@ -27,7 +27,7 @@ lib/libsurvive.so : src/survive.o src/survive_usb.o src/survive_data.o src/survi
 	gcc -o $@ $^ $(LDFLAGS) -shared
 
 clean :
-	rm -rf *.o src/*.o *~ src/*~ test data_recorder lib/libsurvive.so
+	rm -rf *.o src/*.o *~ src/*~ test data_recorder lib/libsurvive.so redist/*.o redist/*~
 
 
 

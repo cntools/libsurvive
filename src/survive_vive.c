@@ -20,6 +20,7 @@
 #include <unistd.h> //sleep if I ever use it.
 #include <errno.h>
 #include <string.h>
+#include <sys/stat.h>
 
 struct SurviveViveData;
 
@@ -976,6 +977,27 @@ static int LoadConfig( struct SurviveViveData * sv, struct SurviveObject * so, i
 		//TODO: Cleanup any remaining USB stuff.
 		return 1;
 	}
+
+	char fname[20];
+	mkdir( "calinfo", 0755 );
+
+	sprintf( fname, "calinfo/%s_points.csv", so->codename );
+	FILE * f = fopen( fname, "w" );
+	int j;
+	for( j = 0; j < so->nr_locations; j++ )
+	{
+		fprintf( f, "%f %f %f\n", so->sensor_locations[j*3+0], so->sensor_locations[j*3+1], so->sensor_locations[j*3+2] );
+	}
+	fclose( f );
+
+	sprintf( fname, "calinfo/%s_normals.csv", so->codename );
+	f = fopen( fname, "w" );
+	for( j = 0; j < so->nr_locations; j++ )
+	{
+		fprintf( f, "%f %f %f\n", so->sensor_normals[j*3+0], so->sensor_normals[j*3+1], so->sensor_normals[j*3+2] );
+	}
+	fclose( f );
+
 	return 0;
 }
 

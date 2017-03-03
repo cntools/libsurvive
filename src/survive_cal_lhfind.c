@@ -129,7 +129,7 @@ int survive_cal_lhfind( struct SurviveCalData * cd )
 			fullrange *= 0.25;
 		}
 
-		if( beste > 0.005 )
+		if( beste > 0.01 )
 		{
 			//Error too high
 			SV_ERROR( "LH: %d / Best E %f Error too high\n", lh, beste );
