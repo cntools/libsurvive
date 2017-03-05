@@ -11,7 +11,14 @@ void handle_lightcap( struct SurviveObject * so, struct LightcapElement * le )
 	struct SurviveContext * ctx = so->ctx;
 	//int32_t deltat = (uint32_t)le->timestamp - (uint32_t)so->last_master_time;
 
-//	printf( "%s %d %d %d %d %d\n", so->codename, le->sensor_id, le->type, le->length, le->timestamp, le->timestamp-so->tsl );
+	//if( so->codename[0] != 'H' )
+	//printf( "*** %s %d %d %d %d %d\n", so->codename, le->sensor_id, le->type, le->length, le->timestamp, le->timestamp-so->tsl );
+
+	if( le->sensor_id > SENSORS_PER_OBJECT )
+	{
+		return;
+	}
+
 
 	so->tsl = le->timestamp;
 	if( le->length < 20 ) return;  ///Assuming 20 is an okay value for here.
