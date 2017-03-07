@@ -14,7 +14,7 @@ config_group lh_config[MAX_LIGHTHOUSES]; //lighthouse configs
 
 //static uint16_t used_entries = 0;
 
-static FILE *config_file = NULL;
+//static FILE *config_file = NULL;
 const FLT* config_set_float_a(config_group *cg, const char *tag, const FLT* values, uint8_t count);
 
 void init_config_group(config_group *cg, uint16_t count) {
@@ -39,13 +39,6 @@ void config_init() {
 	}
 }
 
-void config_load(const char* path) {
-	config_file = fopen(path, "r");
-}
-
-void config_close() {
-	fclose(config_file);
-}
 
 void config_set_lighthouse(struct BaseStationData* bsd, uint8_t idx) {
 	config_group *cg = lh_config+idx;
