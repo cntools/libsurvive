@@ -53,7 +53,7 @@ void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 	b->OOTXSet = 1;
 
 	config_set_lighthouse(b,id);
-	config_save("config.json");
+//	config_save("config.json");
 }
 
 int survive_cal_get_status( struct SurviveContext * ctx, char * description, int description_length )

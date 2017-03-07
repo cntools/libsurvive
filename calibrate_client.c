@@ -142,6 +142,17 @@ void * GuiThread( void * v )
 
 int main()
 {
+
+	config_init();
+	config_read("config.json");
+	config_set_str(&global_config_values, "Hello","World!");
+	const char *s = config_read_str(&global_config_values, "test123","default");
+	printf("%s\n", s);
+
+
+//	config_save("config.json");
+
+	
 	ctx = survive_init( 1 );
 
 	survive_install_light_fn( ctx,  my_light_process );
@@ -158,13 +169,6 @@ int main()
 	CNFGDialogColor = 0x444444;
 	CNFGSetup( "Survive GUI Debug", 640, 480 );
 	OGCreateThread( GuiThread, 0 );
-
-	config_init();
-	config_set_str(&global_config_values, "Hello","World!");
-	const char *s = config_read_str(&global_config_values, "TestStr","This is a test.");
-	printf("%s\n", s);
-	config_save("config.json");
-	
 
 	if( !ctx )
 	{

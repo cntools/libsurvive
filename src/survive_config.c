@@ -109,6 +109,14 @@ FLT config_read_float(config_group *cg, const char *tag, const FLT def) {
 config_entry* next_unused_entry(config_group *cg) {
 	config_entry *cv = cg->config_entries + cg->used_entries;
 	assert(cg->used_entries < cg->max_entries);
+
+/*
+	if (cg->used_entries >= cg->max_entries) {
+		cg->max_entries+=10;
+		cg->config_entries = realloc(cg->config_entries, sizeof(config_entry)*cg->max_entries);
+	}
+*/
+
 	cg->used_entries++;
 	return cv;
 }
@@ -211,5 +219,54 @@ void config_save(const char* path) {
 	write_config_group(f,lh_config+1, "lighthouse1");
 
 	fclose(f);
+}
+
+void print_json_value(char* tag, char** values, uint16_t count) {
+	uint16_t i = 0;
+	for (i=0;i<count; ++i) {
+		printf("%s:%s \n", tag, values[i]);
+	}
+}
+
+config_group* cg_stack[10]; //handle 10 nested objects deep
+uint8_t cg_stack_head = 0;
+
+void handle_config_group(char* tag) {
+	cg_stack_head++;
+	if (strcmp("lighthouse0",tag) == 0) {
+		cg_stack[cg_stack_head] = lh_config;
+	} else if (strcmp("lighthouse1",tag) == 0) {
+		cg_stack[cg_stack_head] = lh_config+1;
+	} else {
+		cg_stack[cg_stack_head] = &global_config_values;
+	}
+}
+
+void pop_config_group() {
+	cg_stack_head--;
+}
+
+void handle_tag_value(char* tag, char** values, uint16_t count) {
+	print_json_value(tag,values,count);
+	config_group* cg = cg_stack[cg_stack_head];
+
+	//parse out numeric values
+
+	if (count == 1) config_set_str(cg,tag,values[0]);
+//	else if (count>1) config_set_str
+}
+
+void config_read(const char* path) {
+	json_begin_object = handle_config_group;
+	json_end_object = pop_config_group;
+	json_tag_value = handle_tag_value;
+
+	cg_stack[0] = &global_config_values;
+
+	json_load_file(path);
+
+	json_begin_object = NULL;
+	json_end_object = NULL;
+	json_tag_value = NULL;
 }
 

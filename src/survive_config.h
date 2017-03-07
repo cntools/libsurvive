@@ -37,7 +37,8 @@ extern config_group lh_config[2]; //lighthouse configs
 
 
 void config_init();
-void config_open(const char* path, const char* mode);
+//void config_open(const char* path, const char* mode);
+void config_read(const char* path);
 void config_close();
 //void config_write_lighthouse(struct BaseStationData* bsd, uint8_t length);
 void config_set_lighthouse(struct BaseStationData* bsd, uint8_t idx);
