@@ -4,14 +4,14 @@
 #include <stdint.h>
 #include "poser.h"
 
-struct SurviveContext;
+typedef struct SurviveContext SurviveContext;
 
 //DANGER: This structure may be redefined.  Note that it is logically split into 64-bit chunks
 //for optimization on 32- and 64-bit systems.
 
 struct SurviveObject
 {
-	struct SurviveContext * ctx;
+	SurviveContext * ctx;
 
 	char    codename[4];    //3 letters, null-terminated.  Currently HMD, WM0, WM1.
 	char    drivername[4];  //3 letters for driver.  Currently "HTC"
@@ -27,8 +27,8 @@ struct SurviveObject
 
 	//Pose Information, also "resolver" field.
 	FLT    PoseConfidence; //0..1
-	FLT    Position[3];
-	FLT    Rotation[4];
+	SurvivePose OutPose;
+	SurvivePose FromLHPose[NUM_LIGHTHOUSES]; //Optionally filled out by poser, contains computed position from each lighthouse.
 	void * PoserData;   //Initialized to zero, configured by poser, can be anything the poser wants.
 	PoserCB * PoserFn;
 

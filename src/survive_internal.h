@@ -29,20 +29,20 @@
 
 
 struct SurviveContext;
-struct SurviveUSBInterface;
+struct SurvivecalData;
 
 typedef int (*DeviceDriverCb)( struct SurviveContext * ctx, void * driver );
 typedef int (*DeviceDriverMagicCb)( struct SurviveContext * ctx, void * driver, int magic_code, void * data, int datalen );
 
 //This is defined in survive.h
-struct SurviveObject;
-struct SurviveCalData;
+typedef struct SurviveObject SurviveObject;
+typedef struct SurviveCalData SurviveCalData;
 
-struct BaseStationData
+typedef struct
 {
 	uint8_t PositionSet:1;
-	FLT Position[3];
-	FLT Quaternion[4];
+
+	SurvivePose Pose;
 
 	uint8_t OOTXSet:1;
 	uint32_t BaseStationID;
@@ -51,7 +51,7 @@ struct BaseStationData
 	FLT fcalcurve[2];
 	FLT fcalgibpha[2];
 	FLT fcalgibmag[2];
-};
+} BaseStationData;
 
 struct SurviveContext
 {
@@ -62,11 +62,11 @@ struct SurviveContext
 	angle_process_func angleproc;
 
 	//Calibration data:
-	struct BaseStationData bsd[NUM_LIGHTHOUSES];
+	BaseStationData bsd[NUM_LIGHTHOUSES];
 
-	struct SurviveCalData * calptr; //If and only if the calibration subsystem is attached.
+	SurviveCalData * calptr; //If and only if the calibration subsystem is attached.
 
-	struct SurviveObject ** objs;
+	SurviveObject ** objs;
 	int objs_ct;
 
 	void ** drivers;
@@ -76,25 +76,21 @@ struct SurviveContext
 	int driver_ct;
 };
 
-int survive_add_object( struct SurviveContext * ctx, struct SurviveObject * obj );
+int survive_add_object( SurviveContext * ctx, SurviveObject * obj );
 
-void survive_add_driver( struct SurviveContext * ctx, void * payload, DeviceDriverCb poll, DeviceDriverCb close, DeviceDriverMagicCb magic );
+void survive_add_driver( SurviveContext * ctx, void * payload, DeviceDriverCb poll, DeviceDriverCb close, DeviceDriverMagicCb magic );
 
 //For lightcap, etc.  Don't change this structure at all.  Regular vive is dependent on it being exactly as-is.
-struct LightcapElement
+typedef struct
 {
 	uint8_t sensor_id;
 	uint8_t type;
 	uint16_t length;
 	uint32_t timestamp;
-} __attribute__((packed));
+} __attribute__((packed))  LightcapElement;
 
 //This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
-void handle_lightcap( struct SurviveObject * so, struct LightcapElement * le );
-
-
-//Accept Data from backend.
-void survive_data_cb( struct SurviveUSBInterface * si );
+void handle_lightcap( SurviveObject * so, LightcapElement * le );
 
 
 #endif

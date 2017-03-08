@@ -24,13 +24,6 @@
 
 struct SurviveViveData;
 
-//USB Subsystem 
-void survive_usb_close( struct SurviveContext * t );
-int survive_usb_init( struct SurviveViveData * sv, struct SurviveObject * hmd, struct SurviveObject *wm0, struct SurviveObject * wm1 );
-int survive_usb_poll( struct SurviveContext * ctx );
-int survive_get_config( char ** config, struct SurviveViveData * ctx, int devno, int interface, int send_extra_magic );
-
-
 const short vidpids[] = {
 	0x0bb4, 0x2c87, 0, //The main HTC HMD device
 	0x28de, 0x2000, 0, //Valve lighthouse
@@ -60,15 +53,18 @@ const char * devnames[] = {
 #define USB_IF_LIGHTCAP		4
 #define MAX_INTERFACES				5
 
-typedef void (*usb_callback)( struct SurviveUSBInterface * ti );
+typedef struct SurviveUSBInterface SurviveUSBInterface;
+typedef struct SurviveViveData SurviveViveData;
+
+typedef void (*usb_callback)( SurviveUSBInterface * ti );
 
 struct SurviveUSBInterface
 {
-	struct SurviveViveData * sv;
-	struct SurviveContext * ctx;
+	SurviveViveData * sv;
+	SurviveContext * ctx;
 
 	struct libusb_transfer * transfer;
-	struct SurviveObject * assoc_obj;
+	SurviveObject * assoc_obj;
 	int actual_len;
 	uint8_t buffer[INTBUFFSIZE];
 	usb_callback cb;
@@ -78,15 +74,23 @@ struct SurviveUSBInterface
 
 struct SurviveViveData
 {
-	struct SurviveContext * ctx;
+	SurviveContext * ctx;
 
 	//XXX TODO: UN-STATICIFY THIS.
-	struct SurviveUSBInterface uiface[MAX_INTERFACES];
+	SurviveUSBInterface uiface[MAX_INTERFACES];
 	//USB Subsystem
 	struct libusb_context* usbctx;
 	struct libusb_device_handle * udev[MAX_USB_DEVS];
 
 };
+
+void survive_data_cb( SurviveUSBInterface * si );
+
+//USB Subsystem 
+void survive_usb_close( SurviveContext * t );
+int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *wm0, SurviveObject * wm1 );
+int survive_usb_poll( SurviveContext * ctx );
+int survive_get_config( char ** config, SurviveViveData * ctx, int devno, int interface, int send_extra_magic );
 
 
 
@@ -115,10 +119,10 @@ static void handle_transfer(struct libusb_transfer* transfer)
 
 
 
-static int AttachInterface( struct SurviveViveData * sv, struct SurviveObject * assocobj, int which_interface_am_i, libusb_device_handle * devh, int endpoint, usb_callback cb, const char * hname )
+static int AttachInterface( SurviveViveData * sv, SurviveObject * assocobj, int which_interface_am_i, libusb_device_handle * devh, int endpoint, usb_callback cb, const char * hname )
 {
-	struct SurviveContext * ctx = sv->ctx;
-	struct SurviveUSBInterface * iface = &sv->uiface[which_interface_am_i];
+	SurviveContext * ctx = sv->ctx;
+	SurviveUSBInterface * iface = &sv->uiface[which_interface_am_i];
 	iface->ctx = ctx;
 	iface->sv = sv;
 	iface->which_interface_am_i = which_interface_am_i;
@@ -680,7 +684,7 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		}
 
 
-		struct LightcapElement les[10];
+		LightcapElement les[10];
 		int lese = 0; //les's end
 
 		//Second, go through all LEDs and extract the lightevent from them. 
@@ -711,7 +715,7 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 				//reverse sorted, but that is to minimize operations.  To read it
 				//in sorted order simply read it back backwards.
 				//Use insertion sort, since we should most of the time, be in order.
-				struct LightcapElement * le = &les[lese++];
+				LightcapElement * le = &les[lese++];
 				le->sensor_id = led;
 				le->type = 0xfe;
 
@@ -725,7 +729,7 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 				int swap = lese-2;
 				while( swap >= 0 && les[swap].timestamp < les[swap+1].timestamp )
 				{
-					struct LightcapElement l;
+					LightcapElement l;
 					memcpy( &l, &les[swap], sizeof( l ) );
 					memcpy( &les[swap], &les[swap+1], sizeof( l ) );
 					memcpy( &les[swap+1], &l, sizeof( l ) );
@@ -744,17 +748,17 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		return;
 	end:
 		{
-			struct SurviveContext * ctx = w->ctx;
+			SurviveContext * ctx = w->ctx;
 			SV_INFO( "Light decoding fault: %d\n", fault );
 		}
 	}
 }
 
 
-void survive_data_cb( struct SurviveUSBInterface * si )
+void survive_data_cb( SurviveUSBInterface * si )
 {
 	int size = si->actual_len;
-	struct SurviveContext * ctx = si->ctx;
+	SurviveContext * ctx = si->ctx;
 #if 0
 	int i;
 	printf( "%16s: %d: ", si->hname, len );
@@ -767,7 +771,7 @@ void survive_data_cb( struct SurviveUSBInterface * si )
 #endif 
 
 	int iface = si->which_interface_am_i;
-	struct SurviveObject * obj = si->assoc_obj;
+	SurviveObject * obj = si->assoc_obj;
 	uint8_t * readdata = si->buffer;
 
 	int id = POP1;
@@ -818,7 +822,7 @@ void survive_data_cb( struct SurviveUSBInterface * si )
 	case USB_IF_WATCHMAN1:
 	case USB_IF_WATCHMAN2:
 	{
-		struct SurviveObject * w = obj;
+		SurviveObject * w = obj;
 		if( id == 35 )
 		{
 			handle_watchman( w, readdata);
@@ -844,7 +848,7 @@ void survive_data_cb( struct SurviveUSBInterface * si )
 		int i;
 		for( i = 0; i < 7; i++ )
 		{
-			handle_lightcap( obj, (struct LightcapElement*)&readdata[i*8] );
+			handle_lightcap( obj, (LightcapElement*)&readdata[i*8] );
 		}
 		break;
 	}
@@ -875,7 +879,7 @@ static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
 }
 
 
-static int ParsePoints( struct SurviveContext * ctx, struct SurviveObject * so, char * ct0conf, FLT ** floats_out, jsmntok_t * t, int i )
+static int ParsePoints( SurviveContext * ctx, SurviveObject * so, char * ct0conf, FLT ** floats_out, jsmntok_t * t, int i )
 {
 	int k;
 	int pts = t[i+1].size;
@@ -914,9 +918,9 @@ static int ParsePoints( struct SurviveContext * ctx, struct SurviveObject * so, 
 	return 0;
 }
 
-static int LoadConfig( struct SurviveViveData * sv, struct SurviveObject * so, int devno, int iface, int extra_magic )
+static int LoadConfig( SurviveViveData * sv, SurviveObject * so, int devno, int iface, int extra_magic )
 {
-	struct SurviveContext * ctx = sv->ctx;
+	SurviveContext * ctx = sv->ctx;
 	char * ct0conf = 0;
 	int len = survive_get_config( &ct0conf, sv, devno, iface, extra_magic );
 
@@ -1002,21 +1006,21 @@ static int LoadConfig( struct SurviveViveData * sv, struct SurviveObject * so, i
 }
 
 
-int survive_vive_close( struct SurviveContext * ctx, void * driver )
+int survive_vive_close( SurviveContext * ctx, void * driver )
 {
-	struct SurviveViveData * sv = driver;
+	SurviveViveData * sv = driver;
  
 	survive_vive_usb_close( sv );
 }
 
 
-int DriverRegHTCVive( struct SurviveContext * ctx )
+int DriverRegHTCVive( SurviveContext * ctx )
 {
 	int i, r;
-	struct SurviveObject * hmd = calloc( 1, sizeof( struct SurviveObject ) );
-	struct SurviveObject * wm0 = calloc( 1, sizeof( struct SurviveObject ) );
-	struct SurviveObject * wm1 = calloc( 1, sizeof( struct SurviveObject ) );
-	struct SurviveViveData * sv = calloc( 1, sizeof( struct SurviveViveData ) );
+	SurviveObject * hmd = calloc( 1, sizeof( SurviveObject ) );
+	SurviveObject * wm0 = calloc( 1, sizeof( SurviveObject ) );
+	SurviveObject * wm1 = calloc( 1, sizeof( SurviveObject ) );
+	SurviveViveData * sv = calloc( 1, sizeof( SurviveViveData ) );
 
 	sv->ctx = ctx;
 

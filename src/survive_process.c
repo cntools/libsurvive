@@ -6,9 +6,9 @@
 //XXX TODO: Once data is avialble in the context, use the stuff here to handle converting from time codes to
 //proper angles, then from there perform the rest of the solution. 
 
-void survive_default_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  )
+void survive_default_light_process( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  )
 {
-	struct SurviveContext * ctx = so->ctx;
+	SurviveContext * ctx = so->ctx;
 	int base_station = acode >> 2;
 	int axis = acode & 1;
 
@@ -25,7 +25,7 @@ void survive_default_light_process( struct SurviveObject * so, int sensor_id, in
 
 	//Need to now do angle correction.
 #if 1
-	struct BaseStationData * bsd = &ctx->bsd[base_station];
+	BaseStationData * bsd = &ctx->bsd[base_station];
 
 	//XXX TODO: This seriously needs to be worked on.  See: https://github.com/cnlohr/libsurvive/issues/18
 	angle += bsd->fcalphase[axis];
@@ -39,9 +39,9 @@ void survive_default_light_process( struct SurviveObject * so, int sensor_id, in
 }
 
 
-void survive_default_angle_process( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle )
+void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle )
 {
-	struct SurviveContext * ctx = so->ctx;
+	SurviveContext * ctx = so->ctx;
 	if( ctx->calptr )
 	{
 		survive_cal_angle( so, sensor_id, acode, timecode, length, angle );
@@ -51,7 +51,7 @@ void survive_default_angle_process( struct SurviveObject * so, int sensor_id, in
 }	
 
 
-void survive_default_imu_process( struct SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id )
+void survive_default_imu_process( SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id )
 {
 	//TODO: Writeme!
 }

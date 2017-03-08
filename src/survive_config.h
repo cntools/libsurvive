@@ -40,7 +40,7 @@ void config_init();
 //void config_open(const char* path, const char* mode);
 void config_read(const char* path);
 //void config_write_lighthouse(struct BaseStationData* bsd, uint8_t length);
-void config_set_lighthouse(struct BaseStationData* bsd, uint8_t idx);
+void config_set_lighthouse(BaseStationData* bsd, uint8_t idx);
 
 void config_save(const char* path);
 const FLT config_set_float(config_group *cg, const char *tag, const FLT value);
