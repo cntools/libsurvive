@@ -97,7 +97,7 @@ void getGradient(FLT *gradientOut, SensorAngles *angles, FLT *radii, size_t numR
 	for (size_t i = 0; i < numRadii; i++)
 	{
 		FLT tmpPlus[MAX_RADII];
-		memcpy(tmpPlus, radii, sizeof(&radii) * numRadii);
+		memcpy(tmpPlus, radii, sizeof(*radii) * numRadii);
 		tmpPlus[i] += precision;
 		gradientOut[i] = calculateFitness(angles, tmpPlus, pairs, numPairs) - baseline;
 	}
@@ -133,7 +133,7 @@ static RefineEstimateUsingGradientDescent(FLT *estimateOut, SensorAngles *angles
 	FLT lastMatchFitness = calculateFitness(angles, initialEstimate, pairs, numPairs);
 	if (estimateOut != initialEstimate)
 	{
-		memcpy(estimateOut, initialEstimate, sizeof(&estimateOut) * numRadii);
+		memcpy(estimateOut, initialEstimate, sizeof(*estimateOut) * numRadii);
 	}
 
 
@@ -150,14 +150,14 @@ static RefineEstimateUsingGradientDescent(FLT *estimateOut, SensorAngles *angles
 	//   in fact, it probably could probably be 1 without any issue.  The main place where g is decremented
 	//   is in the block below when we've made a jump that results in a worse fitness than we're starting at.
 	//   In those cases, we don't take the jump, and instead lower the value of g and try again.
-	for (FLT g = 0.4; g > 0.01; g *= 0.99)
+	for (FLT g = 0.4; g > 0.00001; g *= 0.99)
 	{
 		i++;
 
 		
 
 		FLT point1[MAX_RADII];
-		memcpy(point1, estimateOut, sizeof(&point1) * numRadii);
+		memcpy(point1, estimateOut, sizeof(*point1) * numRadii);
 
 		// let's get 3 iterations of gradient descent here.
 		FLT gradient1[MAX_RADII];
@@ -189,7 +189,7 @@ static RefineEstimateUsingGradientDescent(FLT *estimateOut, SensorAngles *angles
 		FLT specialGradient[MAX_RADII];
 		for (size_t i = 0; i < numRadii; i++)
 		{
-			specialGradient[i] = point3[i] - gradient1[i];
+			specialGradient[i] = point3[i] - point1[i];
 		}
 
 		// The second parameter to this function is very much a tunable parameter.  Different values will result
@@ -207,7 +207,7 @@ static RefineEstimateUsingGradientDescent(FLT *estimateOut, SensorAngles *angles
 
 		FLT newMatchFitness = calculateFitness(angles, point4, pairs, numPairs);
 
-		if (newMatchFitness > lastMatchFitness)
+		if (newMatchFitness < lastMatchFitness)
 		{
 			//if (logFile)
 			//{
@@ -215,7 +215,7 @@ static RefineEstimateUsingGradientDescent(FLT *estimateOut, SensorAngles *angles
 			//}
 
 			lastMatchFitness = newMatchFitness;
-			memcpy(estimateOut, point4, sizeof(&estimateOut) * numRadii);
+			memcpy(estimateOut, point4, sizeof(*estimateOut) * numRadii);
 
 #ifdef RADII_DEBUG
 			printf("+");
@@ -238,12 +238,19 @@ static RefineEstimateUsingGradientDescent(FLT *estimateOut, SensorAngles *angles
 
 void SolveForLighthouse(Point *objPosition, FLT *objOrientation, TrackedObject *obj)
 {
-	FLT estimate[MAX_RADII] = {1};
+	FLT estimate[MAX_RADII];
+
+	for (size_t i = 0; i < MAX_RADII; i++)
+	{
+		estimate[i] = 1;
+	}
 
 	SensorAngles angles[MAX_RADII];
 	PointPair pairs[MAX_POINT_PAIRS];
 
 	size_t pairCount = 0;
+
+	obj->numSensors = 4; // TODO: HACK!!!!
 
 	for (size_t i = 0; i < obj->numSensors; i++)
 	{
@@ -253,7 +260,7 @@ void SolveForLighthouse(Point *objPosition, FLT *objOrientation, TrackedObject *
 
 	for (size_t i = 0; i < obj->numSensors - 1; i++)
 	{
-		for (size_t j = i + i; j < obj->numSensors; j++)
+		for (size_t j = i + 1; j < obj->numSensors; j++)
 		{
 			pairs[pairCount].index1 = i;
 			pairs[pairCount].index2 = j;
@@ -261,6 +268,7 @@ void SolveForLighthouse(Point *objPosition, FLT *objOrientation, TrackedObject *
 			pairCount++;
 		}
 	}
+
 
 	RefineEstimateUsingGradientDescent(estimate, angles, estimate, obj->numSensors, pairs, pairCount, NULL);
 
