@@ -33,6 +33,26 @@ void init_config_group(config_group *cg, uint16_t count) {
 	}
 }
 
+void resize_config_group(config_group *cg, uint16_t count) {
+	uint16_t i = 0;
+
+	if (count > cg->max_entries) {
+		config_entry* ptr = realloc(cg->config_entries, sizeof(config_entry)*count);
+		assert(ptr!=NULL);
+
+		cg->config_entries = ptr;
+
+		for (i=cg->max_entries;i<count;++i) {
+			cg->config_entries[i].data = NULL;
+			cg->config_entries[i].tag = NULL;
+			cg->config_entries[i].type = CONFIG_UNKNOWN;
+			cg->config_entries[i].elements = 0;
+		}
+
+		cg->max_entries = count;
+	}
+}
+
 void config_init() {
 	uint16_t i = 0;
 	init_config_group(&global_config_values, MAX_CONFIG_ENTRIES);
@@ -59,7 +79,7 @@ void sstrcpy(char** dest, const char *src) {
 	uint32_t len = strlen(src)+1;
 	assert(dest!=NULL);
 
-	char* ptr = (char*)realloc(*dest, len); //acts like mallos if dest==NULL
+	char* ptr = (char*)realloc(*dest, len); //acts like malloc if dest==NULL
 	assert(ptr!=NULL);
 	*dest = ptr;
 
@@ -116,15 +136,12 @@ uint16_t config_read_float_array(config_group *cg, const char *tag, FLT** values
 }
 
 config_entry* next_unused_entry(config_group *cg) {
-	config_entry *cv = cg->config_entries + cg->used_entries;
-	assert(cg->used_entries < cg->max_entries);
+	config_entry *cv = NULL;
+//	assert(cg->used_entries < cg->max_entries);
 
-/*
-	if (cg->used_entries >= cg->max_entries) {
-		cg->max_entries+=10;
-		cg->config_entries = realloc(cg->config_entries, sizeof(config_entry)*cg->max_entries);
-	}
-*/
+	if (cg->used_entries >= cg->max_entries) resize_config_group(cg, cg->max_entries + 10);
+
+	cv = cg->config_entries + cg->used_entries;
 
 	cg->used_entries++;
 	return cv;
