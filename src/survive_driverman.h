@@ -10,29 +10,13 @@
 #ifndef SURVIVE_DRIVERMAN_H
 #define SURVIVE_DRIVERMAN_H
 
+#include "survive.h"
+
+//Very little here.  Mostly included in survive.h.
+
 //Driver registration
 #define MAX_DRIVERS 32
 
-void   RegisterDriver( const char * name, void * data );
-void * GetDriver( const char * name );
-const char * GetDriverNameMatching( const char * prefix, int place );
-void   ListDrivers();
-
-#define REGISTER_LINKTIME( func ) \
-	void __attribute__((constructor)) Register##func() { RegisterDriver( #func, &func ); }
-
-
-//
-// Specific types of drivers.
-//
-
-struct SurviveContext;
-
-//Device drivers (prefix your drivers with "DriverReg") i.e.
-//		REGISTER_LINKTIME( DriverRegHTCVive );
-typedef int (*DeviceDriver)( struct SurviveContext * ctx );
-
-//more driver types here? i.e. posefinders, etc.
 
 #endif
 

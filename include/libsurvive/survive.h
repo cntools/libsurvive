@@ -2,9 +2,8 @@
 #define _SURVIVE_H
 
 #include <stdint.h>
+#include "survive_types.h"
 #include "poser.h"
-
-typedef struct SurviveContext SurviveContext;
 
 //DANGER: This structure may be redefined.  Note that it is logically split into 64-bit chunks
 //for optimization on 32- and 64-bit systems.
@@ -25,7 +24,7 @@ struct SurviveObject
 	int8_t  ison:1;
 	int8_t  additional_flags:6;
 
-	//Pose Information, also "resolver" field.
+	//Pose Information, also "poser" field.
 	FLT    PoseConfidence; //0..1
 	SurvivePose OutPose;
 	SurvivePose FromLHPose[NUM_LIGHTHOUSES]; //Optionally filled out by poser, contains computed position from each lighthouse.
@@ -62,34 +61,102 @@ struct SurviveObject
 	int tsl;
 };
 
-struct SurviveContext * survive_init( int headless );
+
+struct BaseStationData
+{
+	uint8_t PositionSet:1;
+
+	SurvivePose Pose;
+
+	uint8_t OOTXSet:1;
+	uint32_t BaseStationID;
+	FLT fcalphase[2];
+	FLT fcaltilt[2];
+	FLT fcalcurve[2];
+	FLT fcalgibpha[2];
+	FLT fcalgibmag[2];
+};
+
+struct SurviveContext
+{
+	text_feedback_func faultfunction;
+	text_feedback_func notefunction;
+	light_process_func lightproc;
+	imu_process_func imuproc;
+	angle_process_func angleproc;
+
+	//Calibration data:
+	BaseStationData bsd[NUM_LIGHTHOUSES];
+
+	SurviveCalData * calptr; //If and only if the calibration subsystem is attached.
+
+	SurviveObject ** objs;
+	int objs_ct;
+
+	void ** drivers;
+	DeviceDriverCb * driverpolls;
+	DeviceDriverCb * drivercloses;
+	DeviceDriverMagicCb * drivermagics;
+	int driver_ct;
+};
+
+SurviveContext * survive_init( int headless );
 
 //For any of these, you may pass in 0 for the function pointer to use default behavior.
-void survive_install_info_fn( struct SurviveContext * ctx,  text_feedback_func fbp );
-void survive_install_error_fn( struct SurviveContext * ctx,  text_feedback_func fbp );
-void survive_install_light_fn( struct SurviveContext * ctx,  light_process_func fbp );
-void survive_install_imu_fn( struct SurviveContext * ctx,  imu_process_func fbp );
-void survive_install_angle_fn( struct SurviveContext * ctx,  angle_process_func fbp );
+void survive_install_info_fn( SurviveContext * ctx,  text_feedback_func fbp );
+void survive_install_error_fn( SurviveContext * ctx,  text_feedback_func fbp );
+void survive_install_light_fn( SurviveContext * ctx,  light_process_func fbp );
+void survive_install_imu_fn( SurviveContext * ctx,  imu_process_func fbp );
+void survive_install_angle_fn( SurviveContext * ctx,  angle_process_func fbp );
 
-void survive_close( struct SurviveContext * ctx );
+void survive_close( SurviveContext * ctx );
 int survive_poll();
 
-struct SurviveObject * survive_get_so_by_name( struct SurviveContext * ctx, const char * name );
+SurviveObject * survive_get_so_by_name( SurviveContext * ctx, const char * name );
 
 //Utilitiy functions.
-int survive_simple_inflate( struct SurviveContext * ctx, const char * input, int inlen, char * output, int outlen );
+int survive_simple_inflate( SurviveContext * ctx, const char * input, int inlen, char * output, int outlen );
 
-int survive_send_magic( struct SurviveContext * ctx, int magic_code, void * data, int datalen );
+int survive_send_magic( SurviveContext * ctx, int magic_code, void * data, int datalen );
 
 //Install the calibrator.
-void survive_cal_install( struct SurviveContext * ctx );
+void survive_cal_install( SurviveContext * ctx );
 
 //Call these from your callback if overridden.  
 //Accept higher-level data.
-void survive_default_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length );
-void survive_default_imu_process( struct SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id );
-void survive_default_angle_process( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle );
+void survive_default_light_process( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length );
+void survive_default_imu_process( SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id );
+void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle );
 
+
+////////////////////// Survive Drivers ////////////////////////////
+
+void   RegisterDriver( const char * name, void * data );
+void * GetDriver( const char * name );
+const char * GetDriverNameMatching( const char * prefix, int place );
+void   ListDrivers();
+
+#define REGISTER_LINKTIME( func ) \
+	void __attribute__((constructor)) Register##func() { RegisterDriver( #func, &func ); }
+
+int survive_add_object( SurviveContext * ctx, SurviveObject * obj );
+void survive_add_driver( SurviveContext * ctx, void * payload, DeviceDriverCb poll, DeviceDriverCb close, DeviceDriverMagicCb magic );
+
+
+////////////////////// Lightcap driver data ///////////////////////
+
+//For lightcap, etc.  Don't change this structure at all.  Regular vive is dependent on it being exactly as-is.
+//When you write drivers, you can use this to send survive lightcap data.
+typedef struct
+{
+	uint8_t sensor_id;
+	uint8_t type;      //Mostly unused.  Set to 255 to ignore it.
+	uint16_t length;
+	uint32_t timestamp;
+} __attribute__((packed))  LightcapElement;
+
+//This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
+void handle_lightcap( SurviveObject * so, LightcapElement * le );
 
 #endif
 
