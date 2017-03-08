@@ -59,11 +59,10 @@ void sstrcpy(char** dest, const char *src) {
 	uint32_t len = strlen(src)+1;
 	assert(dest!=NULL);
 
-	if (*dest == NULL) {
-		*dest = (char*)malloc(len);
-	} else {
-		*dest = (char*)realloc(*dest, len);
-	}
+	char* ptr = (char*)realloc(*dest, len); //acts like mallos if dest==NULL
+	assert(ptr!=NULL);
+	*dest = ptr;
+
 	strcpy(*dest,src);
 }
 
@@ -170,12 +169,10 @@ const FLT* config_set_float_a(config_group *cg, const char *tag, const FLT* valu
 
 	sstrcpy(&(cv->tag), tag);
 
-	if (cv->data == NULL) {
-		cv->data = (char*)malloc(sizeof(FLT)*count);
-	}
-	else {
-		cv->data = (char*)realloc(cv->data, sizeof(FLT)*count);
-	}
+	char* ptr = (char*)realloc(cv->data, sizeof(FLT)*count);
+	assert(ptr!=NULL);
+	cv->data = ptr;
+
 	printf("float array\n");
 
 	memcpy(cv->data,values,sizeof(FLT)*count);
