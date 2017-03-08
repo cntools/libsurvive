@@ -9,8 +9,6 @@
 #define MAX_CONFIG_ENTRIES 100
 #define MAX_LIGHTHOUSES 2
 
-
-
 config_group global_config_values;
 config_group lh_config[MAX_LIGHTHOUSES]; //lighthouse configs
 
@@ -19,6 +17,18 @@ config_group lh_config[MAX_LIGHTHOUSES]; //lighthouse configs
 //static FILE *config_file = NULL;
 const FLT* config_set_float_a(config_group *cg, const char *tag, const FLT* values, uint8_t count);
 
+void init_config_entry(config_entry* ce) {
+	ce->data = NULL;
+	ce->tag = NULL;
+	ce->type = CONFIG_UNKNOWN;
+	ce->elements = 0;
+}
+
+void destroy_config_entry(config_entry* ce) {
+	if (ce->tag!=NULL) free(ce->tag);
+	if (ce->data!=NULL) free(ce->data);
+}
+
 void init_config_group(config_group *cg, uint16_t count) {
 	uint16_t i = 0;
 	cg->config_entries = malloc(count*sizeof(config_entry));
@@ -26,10 +36,7 @@ void init_config_group(config_group *cg, uint16_t count) {
 	cg->max_entries = count;
 
 	for (i=0;i<count;++i) {
-		cg->config_entries[i].data = NULL;
-		cg->config_entries[i].tag = NULL;
-		cg->config_entries[i].type = CONFIG_UNKNOWN;
-		cg->config_entries[i].elements = 0;
+		init_config_entry(cg->config_entries+i);
 	}
 }
 
@@ -43,10 +50,7 @@ void resize_config_group(config_group *cg, uint16_t count) {
 		cg->config_entries = ptr;
 
 		for (i=cg->max_entries;i<count;++i) {
-			cg->config_entries[i].data = NULL;
-			cg->config_entries[i].tag = NULL;
-			cg->config_entries[i].type = CONFIG_UNKNOWN;
-			cg->config_entries[i].elements = 0;
+			init_config_entry(cg->config_entries+i);
 		}
 
 		cg->max_entries = count;
