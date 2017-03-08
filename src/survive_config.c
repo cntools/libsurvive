@@ -4,6 +4,8 @@
 #include "survive_config.h"
 #include <json_helpers.h>
 
+#include <errno.h>
+
 #define MAX_CONFIG_ENTRIES 100
 #define MAX_LIGHTHOUSES 2
 
@@ -97,6 +99,21 @@ FLT config_read_float(config_group *cg, const char *tag, const FLT def) {
 	if (cv != NULL) return cv->numeric.f;
 
 	return config_set_float(cg, tag, def);
+}
+
+uint16_t config_read_float_array(config_group *cg, const char *tag, FLT** values, const FLT* def, uint16_t count) {
+	config_entry *cv = find_config_entry(cg, tag);
+
+	if (cv != NULL) {
+		*values = (FLT*)cv->data;
+		return cv->elements;
+	}
+
+	if (def == NULL) return 0;
+
+	config_set_float_a(cg, tag, def, count);
+	*values = def;
+	return count;
 }
 
 config_entry* next_unused_entry(config_group *cg) {
@@ -239,13 +256,73 @@ void pop_config_group() {
 	cg_stack_head--;
 }
 
+
+int parse_floats(char* tag, char** values, uint16_t count) {
+	uint16_t i = 0;
+	FLT f[count];
+	char* end = NULL;
+	config_group* cg = cg_stack[cg_stack_head];
+
+	for(i=0;i<count;++i) {
+
+		#ifdef USE_DOUBLE
+		f[i] = strtod(values[i], &end);
+		#else
+		f[i] = strtof(values[i], &end);
+		#endif
+
+//		if (values[i] == end) return 0; //not a float
+		if (*end != '\0') return 0; //not an integer
+	}
+
+	if (count>1) {
+		config_set_float_a(cg, tag, f, count);
+	}
+	else {
+		config_set_float(cg, tag, f[0]);
+	}
+
+	return 1;
+}
+
+int parse_uint32(char* tag, char** values, uint16_t count) {
+	uint16_t i = 0;
+	uint32_t l[count];
+	char* end = NULL;
+	config_group* cg = cg_stack[cg_stack_head];
+
+/*
+	//look for non numeric values
+	for(end=values[0];*end!='\0';++end) {
+		if ((*end<48) || (*end>57)) return 0;
+	}
+
+	end=NULL;
+*/
+	for(i=0;i<count;++i) {
+		l[i] = strtol(values[i], &end, 10);
+//		if (values[i] == end) return 0; //not an integer
+		if (*end != '\0') return 0; //not an integer
+	}
+
+//	if (count>1)
+//		config_set_uint32_array(cg, tag, f, count);
+//	else
+		config_set_uint32(cg, tag, l[0]);
+
+	return 1;
+}
+
 void handle_tag_value(char* tag, char** values, uint16_t count) {
 	print_json_value(tag,values,count);
 	config_group* cg = cg_stack[cg_stack_head];
 
-	//parse out numeric values
+	if (parse_uint32(tag,values,count) > 0) return; //parse integers first, stricter rules
 
-	if (count == 1) config_set_str(cg,tag,values[0]);
+	if (parse_floats(tag,values,count) > 0) return;
+
+	//should probably also handle string arrays
+	config_set_str(cg,tag,values[0]);
 //	else if (count>1) config_set_str
 }
 

@@ -48,6 +48,7 @@ const uint32_t config_set_uint32(config_group *cg, const char *tag, const uint32
 const char* config_set_str(config_group *cg, const char *tag, const char* value);
 
 FLT config_read_float(config_group *cg, const char *tag, const FLT def);
+uint16_t config_read_float_array(config_group *cg, const char *tag, FLT** values, const FLT* def, uint16_t count);
 uint32_t config_read_uint32(config_group *cg, const char *tag, const uint32_t def);
 const char* config_read_str(config_group *cg, const char *tag, const char *def);
 

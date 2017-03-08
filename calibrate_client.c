@@ -149,6 +149,12 @@ int main()
 	const char *s = config_read_str(&global_config_values, "test123","default");
 	printf("%s\n", s);
 
+	FLT *f;
+
+	uint16_t fs = config_read_float_array(lh_config+1, "fcalgibpha", &f, NULL, 0);
+	printf("%d\n", fs);
+	printf("===> %f %f\n", f[0], f[1]);
+
 
 //	config_save("config.json");
 
