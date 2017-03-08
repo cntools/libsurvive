@@ -23,6 +23,8 @@ FLT LighthouseQuat[4] = { 1, 0, 0, 0 };
 FLT RunTest( int print );
 void PrintOpti();
 
+#define MAX_POINT_PAIRS 100
+
 typedef struct
 {
 	FLT x;
@@ -32,17 +34,32 @@ typedef struct
 
 typedef struct
 {
+	Point point; // location of the sensor on the tracked object;
+	Point normal; // unit vector indicating the normal for the sensor
+	double theta; // "horizontal" angular measurement from lighthouse radians
+	double phi; // "vertical" angular measurement from lighthouse in radians.
+} TrackedSensor;
+
+typedef struct
+{
+	size_t numSensors;
+	TrackedSensor sensor[0];
+} TrackedObject;
+
+typedef struct
+{
 	unsigned char index1;
 	unsigned char index2;
 	FLT KnownDistance;
 } PointPair;
 
-//typedef struct
-//{
-//	FLT radius;
-//	FLT HorizAngle;
-//	FLT VertAngle;
-//} RadiusGuess;
+static FLT distance(Point a, Point b)
+{
+	FLT x = a.x - b.x;
+	FLT y = a.y - b.y;
+	FLT z = a.z - b.z;
+	return FLT_SQRT(x*x + y*y + z*z);
+}
 
 typedef struct
 {
@@ -75,9 +92,9 @@ FLT calculateFitness(SensorAngles *angles, FLT *radii, PointPair *pairs, size_t 
 // note gradientOut will be of the same degree as numRadii
 void getGradient(FLT *gradientOut, SensorAngles *angles, FLT *radii, size_t numRadii, PointPair *pairs, size_t numPairs, const FLT precision)
 {
-	FLT baseline = calculateFitness(radii, pairs, numPairs);
+	FLT baseline = calculateFitness(angles, radii, pairs, numPairs);
 
-	for (size_t i = 0; i++; i < numRadii)
+	for (size_t i = 0; i < numRadii; i++)
 	{
 		FLT tmpPlus[MAX_RADII];
 		memcpy(tmpPlus, radii, sizeof(&radii) * numRadii);
@@ -114,7 +131,10 @@ static RefineEstimateUsingGradientDescent(FLT *estimateOut, SensorAngles *angles
 {
 	int i = 0;
 	FLT lastMatchFitness = calculateFitness(angles, initialEstimate, pairs, numPairs);
-	memcpy(estimateOut, initialEstimate, sizeof(&estimateOut) * numRadii);
+	if (estimateOut != initialEstimate)
+	{
+		memcpy(estimateOut, initialEstimate, sizeof(&estimateOut) * numRadii);
+	}
 
 
 	// The values below are somewhat magic, and definitely tunable
@@ -141,7 +161,7 @@ static RefineEstimateUsingGradientDescent(FLT *estimateOut, SensorAngles *angles
 
 		// let's get 3 iterations of gradient descent here.
 		FLT gradient1[MAX_RADII];
-		getGradient(&gradient1, angles, point1, numRadii, pairs, numPairs, g / 1000 /*somewhat arbitrary*/);
+		getGradient(gradient1, angles, point1, numRadii, pairs, numPairs, g / 1000 /*somewhat arbitrary*/);
 		normalizeAndMultiplyVector(gradient1, numRadii, g);
 
 		FLT point2[MAX_RADII];
@@ -150,7 +170,7 @@ static RefineEstimateUsingGradientDescent(FLT *estimateOut, SensorAngles *angles
 			point2[i] = point1[i] + gradient1[i];
 		}
 		FLT gradient2[MAX_RADII];
-		getGradient(&gradient2, angles, point2, numRadii, pairs, numPairs, g / 1000 /*somewhat arbitrary*/);
+		getGradient(gradient2, angles, point2, numRadii, pairs, numPairs, g / 1000 /*somewhat arbitrary*/);
 		normalizeAndMultiplyVector(gradient2, numRadii, g);
 
 		FLT point3[MAX_RADII];
@@ -195,7 +215,7 @@ static RefineEstimateUsingGradientDescent(FLT *estimateOut, SensorAngles *angles
 			//}
 
 			lastMatchFitness = newMatchFitness;
-			memcpy(estimateOut, point4, sizeof(&lastPoint) * numRadii);
+			memcpy(estimateOut, point4, sizeof(&estimateOut) * numRadii);
 
 #ifdef RADII_DEBUG
 			printf("+");
@@ -216,6 +236,94 @@ static RefineEstimateUsingGradientDescent(FLT *estimateOut, SensorAngles *angles
 	printf("\ni=%d\n", i);
 }
 
+void SolveForLighthouse(Point *objPosition, FLT *objOrientation, TrackedObject *obj)
+{
+	FLT estimate[MAX_RADII] = {1};
+
+	SensorAngles angles[MAX_RADII];
+	PointPair pairs[MAX_POINT_PAIRS];
+
+	size_t pairCount = 0;
+
+	for (size_t i = 0; i < obj->numSensors; i++)
+	{
+		angles[i].HorizAngle = obj->sensor[i].theta;
+		angles[i].VertAngle = obj->sensor[i].phi;
+	}
+
+	for (size_t i = 0; i < obj->numSensors - 1; i++)
+	{
+		for (size_t j = i + i; j < obj->numSensors; j++)
+		{
+			pairs[pairCount].index1 = i;
+			pairs[pairCount].index2 = j;
+			pairs[pairCount].KnownDistance = distance(obj->sensor[i].point, obj->sensor[j].point);
+			pairCount++;
+		}
+	}
+
+	RefineEstimateUsingGradientDescent(estimate, angles, estimate, obj->numSensors, pairs, pairCount, NULL);
+
+	// we should now have an estimate of the radii.
+
+	for (size_t i = 0; i < obj->numSensors; i++)
+	{
+		printf("radius[%d]: %f\n", i, estimate[i]);
+	}
+// (FLT *estimateOut, SensorAngles *angles, FLT *initialEstimate, size_t numRadii, PointPair *pairs, size_t numPairs, FILE *logFile)
+
+	getc(stdin);
+	return;
+}
+
+static void runTheNumbers()
+{
+	TrackedObject *to;
+
+	to = malloc(sizeof(TrackedObject) + (PTS * sizeof(TrackedSensor)));
+
+	int sensorCount = 0;
+
+	for (int i = 0; i < PTS; i++)
+	{
+		// if there are enough valid counts for both the x and y sweeps for sensor i
+		if ((hmd_point_counts[2 * i] > MIN_HITS_FOR_VALID) &&
+			(hmd_point_counts[2 * i + 1] > MIN_HITS_FOR_VALID))
+		{
+			to->sensor[sensorCount].point.x = hmd_points[i * 3 + 0];
+			to->sensor[sensorCount].point.y = hmd_points[i * 3 + 1];
+			to->sensor[sensorCount].point.z = hmd_points[i * 3 + 2];
+			to->sensor[sensorCount].normal.x = hmd_norms[i * 3 + 0];
+			to->sensor[sensorCount].normal.y = hmd_norms[i * 3 + 1];
+			to->sensor[sensorCount].normal.z = hmd_norms[i * 3 + 2];
+			to->sensor[sensorCount].theta = hmd_point_angles[i * 2 + 0] + LINMATHPI / 2;
+			to->sensor[sensorCount].phi = hmd_point_angles[i * 2 + 1] + LINMATHPI / 2;
+			sensorCount++;
+		}
+	}
+
+	to->numSensors = sensorCount;
+
+	printf("Using %d sensors to find lighthouse.\n", sensorCount);
+
+	Point lh;
+	for (int i = 0; i < 1; i++)
+	{
+		SolveForLighthouse(&lh, NULL, to);
+		//(0.156754, -2.403268, 2.280167)
+		//assert(fabs((lh.x / 0.1419305302702402) - 1) < 0.00001);
+		//assert(fabs((lh.y / 2.5574949720325431) - 1) < 0.00001);
+		//assert(fabs((lh.z / 2.2451193935772080) - 1) < 0.00001);
+		//assert(lh.x > 0);
+		//assert(lh.y > 0);
+		//assert(lh.z > 0);
+	}
+
+	printf("(%f, %f, %f)\n", lh.x, lh.y, lh.z);
+
+	//printTrackedObject(to);
+	free(to);
+}
 
 int main( int argc, char ** argv )
 {
@@ -229,7 +337,7 @@ int main( int argc, char ** argv )
 	//Load either 'L' (LH1) or 'R' (LH2) data.
 	if( LoadData( argv[1][0], argv[2] ) ) return 5;
 
-
+	runTheNumbers();
 
 
 	
