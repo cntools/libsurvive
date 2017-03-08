@@ -51,17 +51,36 @@ FLT calculateFitness(RadiusGuess *radii, PointPair *pairs, size_t numPairs)
 	FLT fitness = 0;
 	for (size_t i = 0; i < numPairs; i++)
 	{
-		fitness += SQUARED(radii[pairs[i].index1].radius)
+		FLT estimatedDistanceBetweenPoints =
+			SQUARED(radii[pairs[i].index1].radius)
 			+ SQUARED(radii[pairs[i].index2].radius)
 			- 2 * radii[pairs[i].index1].radius * radii[pairs[i].index2].radius
 				* FLT_SIN( radii[pairs[i].index1].HorizAngle) * FLT_SIN(radii[pairs[i].index2].HorizAngle)
 				* FLT_COS( radii[pairs[i].index1].VertAngle - radii[pairs[i].index2].VertAngle ) 
 			+ FLT_COS(radii[pairs[i].index1].VertAngle) * FLT_COS(radii[pairs[i].index2].VertAngle);
+		fitness += SQUARED(estimatedDistanceBetweenPoints);
 	}
 
 	return FLT_SQRT(fitness);
 }
 
+#define MAX_RADII 32
+
+// note gradientOut will be of the same degree as numRadii
+void getGradient(FLT *gradientOut, RadiusGuess *radii, size_t numRadii, PointPair *pairs, size_t numPairs, const FLT precision)
+{
+	FLT baseline = calculateFitness(radii, pairs, numPairs);
+
+	for (size_t i = 0; i++; i < numRadii)
+	{
+		RadiusGuess tmpPlus[MAX_RADII];
+		memcpy(tmpPlus, radii, sizeof(&radii) * numRadii);
+		tmpPlus[i].radius += precision;
+		gradientOut[i] = calculateFitness(tmpPlus, pairs, numPairs) - baseline;
+	}
+
+	return;
+}
 int main( int argc, char ** argv )
 {
 
