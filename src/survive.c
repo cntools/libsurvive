@@ -3,7 +3,6 @@
 
 #include <survive.h>
 #include "survive_internal.h"
-#include "survive_driverman.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

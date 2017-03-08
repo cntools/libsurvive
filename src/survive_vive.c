@@ -10,14 +10,12 @@
 //If there are portions of the code too similar to the original, I would like to know  so they can be re-written.
 //All MIT/x11 Licensed Code in this file may be relicensed freely under the GPL or LGPL licenses.
 
-#include "survive_internal.h"
-#include "survive_driverman.h"
+#include <survive.h>
 #include <jsmn.h>
-
-#include "survive_internal.h"
 #include <libusb-1.0/libusb.h>
 #include <stdio.h>
-#include <unistd.h> //sleep if I ever use it.
+#include <stdlib.h>
+#include <unistd.h>
 #include <errno.h>
 #include <string.h>
 #include <sys/stat.h>

@@ -103,6 +103,7 @@ struct SurviveContext
 SurviveContext * survive_init( int headless );
 
 //For any of these, you may pass in 0 for the function pointer to use default behavior.
+//In general unless you are doing wacky things like recording or playing back data, you won't need to use this.
 void survive_install_info_fn( SurviveContext * ctx,  text_feedback_func fbp );
 void survive_install_error_fn( SurviveContext * ctx,  text_feedback_func fbp );
 void survive_install_light_fn( SurviveContext * ctx,  light_process_func fbp );
@@ -120,7 +121,7 @@ int survive_simple_inflate( SurviveContext * ctx, const char * input, int inlen,
 int survive_send_magic( SurviveContext * ctx, int magic_code, void * data, int datalen );
 
 //Install the calibrator.
-void survive_cal_install( SurviveContext * ctx );
+void survive_cal_install( SurviveContext * ctx );  //XXX This will be removed if not already done so.
 
 //Call these from your callback if overridden.  
 //Accept higher-level data.
@@ -132,18 +133,17 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 ////////////////////// Survive Drivers ////////////////////////////
 
 void   RegisterDriver( const char * name, void * data );
-void * GetDriver( const char * name );
-const char * GetDriverNameMatching( const char * prefix, int place );
-void   ListDrivers();
 
 #define REGISTER_LINKTIME( func ) \
 	void __attribute__((constructor)) Register##func() { RegisterDriver( #func, &func ); }
 
+
+
+///////////////////////// General stuff for writing drivers ///////
+
+//For device drivers to call.  This actually attaches them.
 int survive_add_object( SurviveContext * ctx, SurviveObject * obj );
 void survive_add_driver( SurviveContext * ctx, void * payload, DeviceDriverCb poll, DeviceDriverCb close, DeviceDriverMagicCb magic );
-
-
-////////////////////// Lightcap driver data ///////////////////////
 
 //For lightcap, etc.  Don't change this structure at all.  Regular vive is dependent on it being exactly as-is.
 //When you write drivers, you can use this to send survive lightcap data.
@@ -157,6 +157,10 @@ typedef struct
 
 //This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
 void handle_lightcap( SurviveObject * so, LightcapElement * le );
+
+#define SV_INFO( x... ) { char stbuff[1024]; sprintf( stbuff, x ); ctx->notefunction( ctx, stbuff ); }
+#define SV_ERROR( x... ) { char stbuff[1024]; sprintf( stbuff, x ); ctx->faultfunction( ctx, stbuff ); }
+#define SV_KILL()		exit(0)  //XXX This should likely be re-defined.
 
 #endif
 
