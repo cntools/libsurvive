@@ -29,7 +29,7 @@ typedef struct SurviveCalData SurviveCalData;   //XXX Warning: This may be remov
 
 typedef void (*text_feedback_func)( SurviveContext * ctx, const char * fault );
 typedef void (*light_process_func)( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length );
-typedef void (*imu_process_func)( SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id );
+typedef void (*imu_process_func)( SurviveObject * so, int mask, FLT * accelgyro, uint32_t timecode, int id );
 typedef void (*angle_process_func)( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle );
 
 

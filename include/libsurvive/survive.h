@@ -29,7 +29,7 @@ struct SurviveObject
 	SurvivePose OutPose;
 	SurvivePose FromLHPose[NUM_LIGHTHOUSES]; //Optionally filled out by poser, contains computed position from each lighthouse.
 	void * PoserData;   //Initialized to zero, configured by poser, can be anything the poser wants.
-	PoserCB * PoserFn;
+	PoserCB PoserFn;
 
 	//Device-specific information about the location of the sensors.  This data will be used by the poser.
 	int8_t nr_locations;
@@ -126,7 +126,7 @@ void survive_cal_install( SurviveContext * ctx );  //XXX This will be removed if
 //Call these from your callback if overridden.  
 //Accept higher-level data.
 void survive_default_light_process( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length );
-void survive_default_imu_process( SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id );
+void survive_default_imu_process( SurviveObject * so, int mode, FLT * accelgyro, uint32_t timecode, int id );
 void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle );
 
 

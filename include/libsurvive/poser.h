@@ -9,6 +9,7 @@ typedef enum PoserType_t
 	POSERDATA_IMU,
 	POSERDATA_LIGHT,		//Single lighting event.  
 	POSERDATA_FULL_SCENE, 	//Full, statified X, Y sweep data for both lighthouses.
+	POSERDATA_DISASSOCIATE, //If you get this, it doesn't contain data.  It just tells you to please disassociate from the current SurviveObject and delete your poserdata.
 } PoserType;
 
 typedef struct
@@ -24,6 +25,7 @@ typedef struct
 	FLT accel[3];
 	FLT gyro[3];
 	FLT mag[3];
+	uint32_t timecode; //In object-local ticks.
 } PoserDataIMU;
 
 typedef struct
@@ -47,7 +49,7 @@ typedef struct
 	PoserDataIMU lastimu;
 } PoserDataFullScene;
 
-//When you register your posers using the internal system, 
+//When you write your posers, use the following definition, and register with REGISTER_LINKTIME.
 typedef int (*PoserCB)( SurviveObject * so, PoserData * pd );
 
 

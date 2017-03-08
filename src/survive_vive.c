@@ -595,7 +595,13 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 	if( ( ( type & 0xe8 ) == 0xe8 ) || doimu ) //Hmm, this looks kind of yucky... we can get e8's that are accelgyro's but, cleared by first propset.
 	{
 		propset |= 2;
-		w->ctx->imuproc( w, (int16_t *)&readdata[1], (time1<<24)|(time2<<16)|readdata[0], 0 );
+		//XXX XXX BIG TODO!!! Actually recal gyro data.
+		FLT agm[9] = { readdata[1], readdata[2], readdata[3],
+						readdata[4], readdata[5], readdata[6],
+						0,0,0 };
+
+		w->ctx->imuproc( w, 3, agm, (time1<<24)|(time2<<16)|readdata[0], 0 );
+
 		int16_t * k = (int16_t *)readdata+1;
 		//printf( "Match8 %d %d %d %d %d %3d %3d\n", qty, k[0], k[1], k[2], k[3], k[4], k[5] );
 		readdata += 13; qty -= 13;
@@ -810,7 +816,13 @@ void survive_data_cb( SurviveUSBInterface * si )
 			if( cd > 0 )
 			{
 				obj->oldcode = code;
-				ctx->imuproc( obj, acceldata, timecode, code );
+
+				//XXX XXX BIG TODO!!! Actually recal gyro data.
+				FLT agm[9] = { acceldata[0], acceldata[1], acceldata[2],
+								acceldata[3], acceldata[4], acceldata[5],
+								0,0,0 };
+
+				ctx->imuproc( obj, 3, agm, timecode, code );
 			}
 		}
 

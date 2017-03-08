@@ -23,7 +23,7 @@ calibrate_client :  calibrate_client.c lib/libsurvive.so redist/os_generic.c red
 lib:
 	mkdir lib
 
-lib/libsurvive.so : src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o redist/jsmn.o src/ootx_decoder.o redist/linmath.o src/survive_driverman.o src/survive_vive.o src/survive_config.o redist/json_helpers.o $(DEBUGSTUFF) $(CALS)
+lib/libsurvive.so : src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o redist/jsmn.o src/ootx_decoder.o redist/linmath.o src/survive_driverman.o src/survive_vive.o src/survive_config.o redist/json_helpers.o src/PoserDummy.o $(DEBUGSTUFF) $(CALS)
 	gcc -o $@ $^ $(LDFLAGS) -shared
 
 clean :

@@ -2,6 +2,8 @@
 
 // All OOTX code was written by J. Allen. Rest of the code is probably mostly CNLohr.
 
+//XXX XXX XXX Warning:  This subsystem will likely be mostly re-written.
+
 #ifndef _SURVIVE_CAL_H
 #define _SURVIVE_CAL_H
 

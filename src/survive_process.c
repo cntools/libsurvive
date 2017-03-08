@@ -46,13 +46,34 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 	{
 		survive_cal_angle( so, sensor_id, acode, timecode, length, angle );
 	}
-
-	//TODO: Writeme!
+	if( so->PoserFn )
+	{
+		PoserDataLight l = {
+			.pt = POSERDATA_LIGHT,
+			.sensor_id = sensor_id,
+			.acode = acode,
+			.timecode = timecode,
+			.length = length,
+			.angle = angle,
+		};
+		so->PoserFn( so, (PoserData *)&l );
+	}
 }	
 
 
-void survive_default_imu_process( SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id )
+void survive_default_imu_process( SurviveObject * so, int mask, FLT * accelgyromag, uint32_t timecode, int id )
 {
-	//TODO: Writeme!
+	if( so->PoserFn )
+	{
+		PoserDataIMU imu = {
+			.pt = POSERDATA_IMU,
+			.datamask = mask,
+			.accel = { accelgyromag[0], accelgyromag[1], accelgyromag[2] },
+			.gyro = {  accelgyromag[3], accelgyromag[4], accelgyromag[5] },
+			.mag = {   accelgyromag[6], accelgyromag[7], accelgyromag[8] },
+			.timecode = timecode,
+		};
+		so->PoserFn( so, (PoserData *)&imu );
+	}
 }
 
