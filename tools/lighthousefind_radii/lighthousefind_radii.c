@@ -37,27 +37,33 @@ typedef struct
 	FLT KnownDistance;
 } PointPair;
 
+//typedef struct
+//{
+//	FLT radius;
+//	FLT HorizAngle;
+//	FLT VertAngle;
+//} RadiusGuess;
+
 typedef struct
 {
-	FLT radius;
 	FLT HorizAngle;
 	FLT VertAngle;
-} RadiusGuess;
+} SensorAngles;
 
 #define SQUARED(x) ((x)*(x))
 
-FLT calculateFitness(RadiusGuess *radii, PointPair *pairs, size_t numPairs)
+FLT calculateFitness(SensorAngles *angles, FLT *radii, PointPair *pairs, size_t numPairs)
 {
 	FLT fitness = 0;
 	for (size_t i = 0; i < numPairs; i++)
 	{
 		FLT estimatedDistanceBetweenPoints =
-			SQUARED(radii[pairs[i].index1].radius)
-			+ SQUARED(radii[pairs[i].index2].radius)
-			- 2 * radii[pairs[i].index1].radius * radii[pairs[i].index2].radius
-				* FLT_SIN( radii[pairs[i].index1].HorizAngle) * FLT_SIN(radii[pairs[i].index2].HorizAngle)
-				* FLT_COS( radii[pairs[i].index1].VertAngle - radii[pairs[i].index2].VertAngle ) 
-			+ FLT_COS(radii[pairs[i].index1].VertAngle) * FLT_COS(radii[pairs[i].index2].VertAngle);
+			SQUARED(radii[pairs[i].index1])
+			+ SQUARED(radii[pairs[i].index2])
+			- 2 * radii[pairs[i].index1] * radii[pairs[i].index2]
+				* FLT_SIN(angles[pairs[i].index1].HorizAngle) * FLT_SIN(angles[pairs[i].index2].HorizAngle)
+				* FLT_COS(angles[pairs[i].index1].VertAngle - angles[pairs[i].index2].VertAngle)
+			+ FLT_COS(angles[pairs[i].index1].VertAngle) * FLT_COS(angles[pairs[i].index2].VertAngle);
 		fitness += SQUARED(estimatedDistanceBetweenPoints);
 	}
 
@@ -67,20 +73,150 @@ FLT calculateFitness(RadiusGuess *radii, PointPair *pairs, size_t numPairs)
 #define MAX_RADII 32
 
 // note gradientOut will be of the same degree as numRadii
-void getGradient(FLT *gradientOut, RadiusGuess *radii, size_t numRadii, PointPair *pairs, size_t numPairs, const FLT precision)
+void getGradient(FLT *gradientOut, SensorAngles *angles, FLT *radii, size_t numRadii, PointPair *pairs, size_t numPairs, const FLT precision)
 {
 	FLT baseline = calculateFitness(radii, pairs, numPairs);
 
 	for (size_t i = 0; i++; i < numRadii)
 	{
-		RadiusGuess tmpPlus[MAX_RADII];
+		FLT tmpPlus[MAX_RADII];
 		memcpy(tmpPlus, radii, sizeof(&radii) * numRadii);
-		tmpPlus[i].radius += precision;
-		gradientOut[i] = calculateFitness(tmpPlus, pairs, numPairs) - baseline;
+		tmpPlus[i] += precision;
+		gradientOut[i] = calculateFitness(angles, tmpPlus, pairs, numPairs) - baseline;
 	}
 
 	return;
 }
+
+void normalizeAndMultiplyVector(FLT *vectorToNormalize, size_t count, FLT desiredMagnitude)
+{
+	FLT distanceIn = 0;
+	
+	for (size_t i = 0; i < count; i++)
+	{
+		distanceIn += SQUARED(vectorToNormalize[i]);
+	}
+	distanceIn = FLT_SQRT(distanceIn);
+
+
+	FLT scale = desiredMagnitude / distanceIn;
+
+	for (size_t i = 0; i < count; i++)
+	{
+		vectorToNormalize[i] *= scale;
+	}
+
+	return;
+}
+
+
+static RefineEstimateUsingGradientDescent(FLT *estimateOut, SensorAngles *angles, FLT *initialEstimate, size_t numRadii, PointPair *pairs, size_t numPairs, FILE *logFile)
+{
+	int i = 0;
+	FLT lastMatchFitness = calculateFitness(angles, initialEstimate, pairs, numPairs);
+	memcpy(estimateOut, initialEstimate, sizeof(&estimateOut) * numRadii);
+
+
+	// The values below are somewhat magic, and definitely tunable
+	// The initial vlue of g will represent the biggest step that the gradient descent can take at first.
+	//   bigger values may be faster, especially when the initial guess is wildly off.
+	//   The downside to a bigger starting guess is that if we've picked a good guess at the local minima
+	//   if there are other local minima, we may accidentally jump to such a local minima and get stuck there.
+	//   That's fairly unlikely with the lighthouse problem, from expereince.
+	//   The other downside is that if it's too big, we may have to spend a few iterations before it gets down
+	//   to a size that doesn't jump us out of our minima.
+	// The terminal value of g represents how close we want to get to the local minima before we're "done"
+	// The change in value of g for each iteration is intentionally very close to 1.
+	//   in fact, it probably could probably be 1 without any issue.  The main place where g is decremented
+	//   is in the block below when we've made a jump that results in a worse fitness than we're starting at.
+	//   In those cases, we don't take the jump, and instead lower the value of g and try again.
+	for (FLT g = 0.4; g > 0.01; g *= 0.99)
+	{
+		i++;
+
+		
+
+		FLT point1[MAX_RADII];
+		memcpy(point1, estimateOut, sizeof(&point1) * numRadii);
+
+		// let's get 3 iterations of gradient descent here.
+		FLT gradient1[MAX_RADII];
+		getGradient(&gradient1, angles, point1, numRadii, pairs, numPairs, g / 1000 /*somewhat arbitrary*/);
+		normalizeAndMultiplyVector(gradient1, numRadii, g);
+
+		FLT point2[MAX_RADII];
+		for (size_t i = 0; i < numRadii; i++)
+		{
+			point2[i] = point1[i] + gradient1[i];
+		}
+		FLT gradient2[MAX_RADII];
+		getGradient(&gradient2, angles, point2, numRadii, pairs, numPairs, g / 1000 /*somewhat arbitrary*/);
+		normalizeAndMultiplyVector(gradient2, numRadii, g);
+
+		FLT point3[MAX_RADII];
+		for (size_t i = 0; i < numRadii; i++)
+		{
+			point3[i] = point2[i] + gradient2[i];
+		}
+
+		// remember that gradient descent has a tendency to zig-zag when it encounters a narrow valley?
+		// Well, solving the lighthouse problem presents a very narrow valley, and the zig-zag of a basic
+		// gradient descent is kinda horrible here.  Instead, think about the shape that a zig-zagging 
+		// converging gradient descent makes.  Instead of using the gradient as the best indicator of 
+		// the direction we should follow, we're looking at one side of the zig-zag pattern, and specifically
+		// following *that* vector.  As it turns out, this works *amazingly* well.  
+
+		FLT specialGradient[MAX_RADII];
+		for (size_t i = 0; i < numRadii; i++)
+		{
+			specialGradient[i] = point3[i] - gradient1[i];
+		}
+
+		// The second parameter to this function is very much a tunable parameter.  Different values will result
+		// in a different number of iterations before we get to the minimum.  Numbers between 3-10 seem to work well
+		// It's not clear what would be optimum here.
+		normalizeAndMultiplyVector(specialGradient, numRadii, g/4);
+
+
+		FLT point4[MAX_RADII];
+		for (size_t i = 0; i < numRadii; i++)
+		{
+			point4[i] = point3[i] + specialGradient[i];
+		}
+
+
+		FLT newMatchFitness = calculateFitness(angles, point4, pairs, numPairs);
+
+		if (newMatchFitness > lastMatchFitness)
+		{
+			//if (logFile)
+			//{
+			//	writePoint(logFile, lastPoint.x, lastPoint.y, lastPoint.z, 0xFFFFFF);
+			//}
+
+			lastMatchFitness = newMatchFitness;
+			memcpy(estimateOut, point4, sizeof(&lastPoint) * numRadii);
+
+#ifdef RADII_DEBUG
+			printf("+");
+#endif
+		}
+		else
+		{
+#ifdef RADII_DEBUG
+			printf("-");
+#endif
+			// if it wasn't a match, back off on the distance we jump
+			g *= 0.7;
+
+		}
+
+
+	}
+	printf("\ni=%d\n", i);
+}
+
+
 int main( int argc, char ** argv )
 {
 
