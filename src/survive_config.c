@@ -25,8 +25,8 @@ void init_config_entry(config_entry* ce) {
 }
 
 void destroy_config_entry(config_entry* ce) {
-	if (ce->tag!=NULL) free(ce->tag);
-	if (ce->data!=NULL) free(ce->data);
+	if (ce->tag!=NULL) { free(ce->tag); ce->tag=NULL; }
+	if (ce->data!=NULL) { free(ce->data); ce->data=NULL; }
 }
 
 void init_config_group(config_group *cg, uint16_t count) {
