@@ -10,6 +10,8 @@
 #include "src/survive_cal.h"
 #include <DrawFunctions.h>
 
+#include "src/survive_config.h"
+
 struct SurviveContext * ctx;
 
 void HandleKey( int keycode, int bDown )
@@ -74,15 +76,14 @@ void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int 
 	}
 }
 
-void my_imu_process( struct SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id )
+void my_imu_process( struct SurviveObject * so, int mask, FLT * accelgyro, uint32_t timecode, int id )
 {
-	survive_default_imu_process( so, accelgyro, timecode, id );
+	survive_default_imu_process( so, mask, accelgyro, timecode, id );
 
-return;
 	//if( so->codename[0] == 'H' )
-	if( 1 )
+	if( 0 )
 	{
-		printf( "I %s %d %d %d %d %d %d %d %d\n", so->codename, timecode, accelgyro[0], accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4], accelgyro[5], id );
+		printf( "I %s %d %f %f %f %f %f %f %d\n", so->codename, timecode, accelgyro[0], accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4], accelgyro[5], id );
 	}
 }
 
@@ -146,6 +147,7 @@ void * GuiThread( void * v )
 int main()
 {
 	ctx = survive_init( 0 );
+	config_init();
 
 	survive_install_light_fn( ctx,  my_light_process );
 	survive_install_imu_fn( ctx,  my_imu_process );

@@ -1,0 +1,172 @@
+// (C) 2017 <>< Joshua Allen, Under MIT/x11 License.
+
+#define _GNU_SOURCE
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "json_helpers.h"
+#include <jsmn.h>
+
+
+void json_write_float_array(FILE* f, const char* tag, float* v, uint8_t count) {
+	uint8_t i = 0;
+	char * str1 = NULL;
+	char * str2 = NULL;
+	asprintf(&str1,"\"%s\":[", tag);
+
+	for (i=0;i<count;++i) {
+		if ( (i+1) < count) {
+			asprintf(&str2, "%s\"%f\"", str1,v[i]);
+		} else {
+			asprintf(&str2, "%s\"%f\",", str1,v[i]);
+		}
+		free(str1);
+		str1=str2;
+		str2=NULL;
+	}
+	asprintf(&str2, "%s]", str1);
+	fputs(str2,f);
+	free(str1);
+	free(str2);
+}
+
+void json_write_double_array(FILE* f, const char* tag, double* v, uint8_t count) {
+	uint8_t i = 0;
+	char * str1 = NULL;
+	char * str2 = NULL;
+	asprintf(&str1,"\"%s\":[", tag);
+
+	for (i=0;i<count;++i) {
+		if (i<(count-1)) {
+			asprintf(&str2, "%s\"%f\",", str1,v[i]);
+		} else {
+			asprintf(&str2, "%s\"%f\"", str1,v[i]);
+		}
+		free(str1);
+		str1=str2;
+		str2=NULL;
+	}
+	asprintf(&str2, "%s]", str1);
+	fputs(str2,f);
+	free(str1);
+	free(str2);
+}
+
+void json_write_uint32(FILE* f, const char* tag, uint32_t v) {
+	fprintf(f, "\"%s\":\"%d\"", tag, v);
+}
+
+void json_write_float(FILE* f, const char* tag, float v) {
+	fprintf(f, "\"%s\":\"%f\"", tag, v);
+}
+
+void json_write_str(FILE* f, const char* tag, const char* v) {
+	fprintf(f, "\"%s\":\"%s\"", tag, v);
+}
+
+
+
+
+void (*json_begin_object)(char* tag) = NULL;
+void (*json_end_object)() = NULL;
+void (*json_tag_value)(char* tag, char** values, uint16_t count) = NULL;
+
+uint32_t JSON_STRING_LEN;
+
+char* load_file_to_mem(const char* path) {
+	FILE * f = fopen( path, "r" );
+	fseek( f, 0, SEEK_END );
+	int len = ftell( f );
+	fseek( f, 0, SEEK_SET );
+	char * JSON_STRING = malloc( len );
+	fread( JSON_STRING, len, 1, f );
+	fclose( f );
+	return JSON_STRING;
+}
+
+static char* substr(const char* str, uint32_t start, uint32_t end, uint32_t npos) {
+	uint32_t l = end-start+1;
+
+	if (end<=start || end>=npos) return NULL;
+
+	char* x = malloc(l);
+	memcpy(x,str+start,l);
+	x[l-1] = '\0';
+	return x;
+}
+
+static uint16_t json_load_array(const char* JSON_STRING, jsmntok_t* tokens, uint16_t size, char* tag) {
+	jsmntok_t* t = tokens;
+	uint16_t i = 0;
+
+	char* values[size];
+
+	for (i=0;i<size;++i) {
+		t = tokens+i;
+		values[i] = substr(JSON_STRING, t->start, t->end, JSON_STRING_LEN);
+	}
+
+	if (json_tag_value != NULL) json_tag_value(tag, values, i);
+
+	for (i=0;i<size;++i) free(values[i]);
+
+	return size;
+}
+
+void json_load_file(const char* path) {
+	uint32_t i = 0;
+	char* JSON_STRING = load_file_to_mem(path);
+	JSON_STRING_LEN = strlen(JSON_STRING);
+
+	jsmn_parser parser;
+	jsmn_init(&parser);
+
+	uint32_t items = jsmn_parse(&parser, JSON_STRING, JSON_STRING_LEN, NULL, 0);
+	jsmntok_t* tokens = malloc(items * sizeof(jsmntok_t));
+
+	jsmn_init(&parser);
+	items = jsmn_parse(&parser, JSON_STRING, JSON_STRING_LEN, tokens, items);
+
+	int16_t children = -1;
+
+	for (i=0; i<items; i+=2)
+	{
+		//increment i on each successful tag + values combination, not individual tokens
+		jsmntok_t* tag_t = tokens+i;
+		jsmntok_t* value_t = tokens+i+1;
+
+		char* tag = substr(JSON_STRING, tag_t->start, tag_t->end, JSON_STRING_LEN);
+		char* value = substr(JSON_STRING, value_t->start, value_t->end, JSON_STRING_LEN);
+
+		printf("%d %d c:%d %d %s \n", tag_t->start, tag_t->end, tag_t->size, tag_t->type, tag);
+
+
+		if (value_t->type == JSMN_ARRAY) {
+			i += json_load_array(JSON_STRING, tokens+i+2,value_t->size, tag); //look at array children
+		} else if (value_t->type == JSMN_OBJECT) {
+			printf("Begin Object\n");
+			if (json_begin_object != NULL) json_begin_object(tag);
+			children = value_t->size +1; //+1 to account for this loop where we are not yed parsing children
+//			i += decode_jsmn_object(JSON_STRING, tokens+i+2,value_t->size);
+		}
+		else {
+			if (json_tag_value != NULL) json_tag_value(tag, &value, 1);
+		}
+
+		if (children>=0) children--;
+		if (children == 0) {
+			children = -1;
+			printf("End Object\n");
+			if (json_end_object!=NULL) json_end_object();
+		}
+
+//		printf("%d %s \n", value_t->type, tag);
+
+		free(tag);
+		free(value);
+	}
+
+	free(JSON_STRING);
+}
+

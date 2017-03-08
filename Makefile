@@ -1,6 +1,6 @@
 all : lib data_recorder test calibrate calibrate_client
 
-CFLAGS:=-Iinclude -I. -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE -std=gnu99
+CFLAGS:=-Iinclude/libsurvive -I. -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE -std=gnu99
 LDFLAGS:=-lpthread -lusb-1.0 -lz -lX11 -lm -flto -g
 
 
@@ -23,11 +23,11 @@ calibrate_client :  calibrate_client.c lib/libsurvive.so redist/os_generic.c red
 lib:
 	mkdir lib
 
-lib/libsurvive.so : src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o redist/jsmn.o src/ootx_decoder.o redist/linmath.o src/survive_driverman.o src/survive_vive.o $(DEBUGSTUFF) $(CALS)
+lib/libsurvive.so : src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o redist/jsmn.o src/ootx_decoder.o redist/linmath.o src/survive_driverman.o src/survive_vive.o src/survive_config.o redist/json_helpers.o src/PoserDummy.o $(DEBUGSTUFF) $(CALS)
 	gcc -o $@ $^ $(LDFLAGS) -shared
 
 clean :
-	rm -rf *.o src/*.o *~ src/*~ test data_recorder lib/libsurvive.so
+	rm -rf *.o src/*.o *~ src/*~ test data_recorder lib/libsurvive.so redist/*.o redist/*~
 
 
 

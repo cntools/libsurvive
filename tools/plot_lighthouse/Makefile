@@ -6,7 +6,7 @@ endif
 
 # Darwin is Mac OSX !!
 ifeq ($(UNAME), Darwin)
-CFLAGS:= -w -framework OpenGL -framework GLUT
+CFLAGS:= -I../../redist -w -framework OpenGL -framework GLUT
 endif
 
 all:

@@ -10,6 +10,8 @@
 #include "src/survive_cal.h"
 #include <DrawFunctions.h>
 
+#include "src/survive_config.h"
+
 struct SurviveContext * ctx;
 
 void HandleKey( int keycode, int bDown )
@@ -73,15 +75,14 @@ void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int 
 	}
 }
 
-void my_imu_process( struct SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id )
+void my_imu_process( struct SurviveObject * so, int mask, FLT * accelgyro, uint32_t timecode, int id )
 {
-	survive_default_imu_process( so, accelgyro, timecode, id );
+	survive_default_imu_process( so, mask, accelgyro, timecode, id );
 
-return;
 	//if( so->codename[0] == 'H' )
-	if( 1 )
+	if( 0 )
 	{
-		printf( "I %s %d %d %d %d %d %d %d %d\n", so->codename, timecode, accelgyro[0], accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4], accelgyro[5], id );
+		printf( "I %s %d %f %f %f %f %f %f %d\n", so->codename, timecode, accelgyro[0], accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4], accelgyro[5], id );
 	}
 }
 
@@ -140,6 +141,23 @@ void * GuiThread( void * v )
 
 int main()
 {
+
+	config_init();
+	config_read("config.json");
+	config_set_str(&global_config_values, "Hello","World!");
+	const char *s = config_read_str(&global_config_values, "test123","default");
+	printf("%s\n", s);
+
+	FLT *f;
+
+	uint16_t fs = config_read_float_array(lh_config+1, "fcalgibpha", &f, NULL, 0);
+	printf("%d\n", fs);
+	printf("===> %f %f\n", f[0], f[1]);
+
+
+//	config_save("config.json");
+
+	
 	ctx = survive_init( 1 );
 
 	survive_install_light_fn( ctx,  my_light_process );
@@ -156,7 +174,6 @@ int main()
 	CNFGDialogColor = 0x444444;
 	CNFGSetup( "Survive GUI Debug", 640, 480 );
 	OGCreateThread( GuiThread, 0 );
-	
 
 	if( !ctx )
 	{

@@ -7,13 +7,13 @@
 #define MIN_HITS_FOR_VALID 10
 
 
-FLT static RunOpti(  struct SurviveCalData * cd, int lh, int print, FLT * LighthousePos, FLT * LighthouseQuat );
+FLT static RunOpti(  SurviveCalData * cd, int lh, int print, FLT * LighthousePos, FLT * LighthouseQuat );
 
 //Values used for RunTest()
 
-int survive_cal_lhfind( struct SurviveCalData * cd )
+int survive_cal_lhfind( SurviveCalData * cd )
 {
-	struct SurviveContext * ctx = cd->ctx;
+	SurviveContext * ctx = cd->ctx;
 	int cycle, i;
 	int lh = 0;
 	FLT dx, dy, dz;
@@ -129,7 +129,7 @@ int survive_cal_lhfind( struct SurviveCalData * cd )
 			fullrange *= 0.25;
 		}
 
-		if( beste > 0.005 )
+		if( beste > 0.01 )
 		{
 			//Error too high
 			SV_ERROR( "LH: %d / Best E %f Error too high\n", lh, beste );
@@ -137,8 +137,8 @@ int survive_cal_lhfind( struct SurviveCalData * cd )
 		}
 
 		cd->ctx->bsd[lh].PositionSet = 1;
-		copy3d( cd->ctx->bsd[lh].Position, LighthousePos );
-		quatcopy( cd->ctx->bsd[lh].Quaternion, LighthouseQuat );
+		copy3d( cd->ctx->bsd[lh].Pose.Pos, LighthousePos );
+		quatcopy( cd->ctx->bsd[lh].Pose.Rot, LighthouseQuat );
 	}
 
 	return 0; //Return 0 if success.
@@ -149,14 +149,14 @@ int survive_cal_lhfind( struct SurviveCalData * cd )
 
 
 
-static FLT RunOpti( struct SurviveCalData * cd, int lh, int print, FLT * LighthousePos, FLT * LighthouseQuat )
+static FLT RunOpti( SurviveCalData * cd, int lh, int print, FLT * LighthousePos, FLT * LighthouseQuat )
 {
 	int i, p;
 	FLT UsToTarget[3];
 	FLT LastUsToTarget[3];
 	FLT mux = .9;
 	quatsetnone( LighthouseQuat );
-	struct SurviveObject * hmd = cd->hmd;
+	SurviveObject * hmd = cd->hmd;
 	FLT * hmd_points  = hmd->sensor_locations;
 	FLT * hmd_normals = hmd->sensor_normals;
 
