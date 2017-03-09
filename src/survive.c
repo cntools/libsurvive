@@ -3,11 +3,12 @@
 
 #include <survive.h>
 #include "survive_internal.h"
-#include "survive_driverman.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <zlib.h>
+
+#include "survive_config.h"
 
 static void survivefault( struct SurviveContext * ctx, const char * fault )
 {
@@ -21,11 +22,19 @@ static void survivenote( struct SurviveContext * ctx, const char * fault )
 }
 
 
-struct SurviveContext * survive_init( int headless )
+SurviveContext * survive_init( int headless )
 {
 	int r = 0;
 	int i = 0;
-	struct SurviveContext * ctx = calloc( 1, sizeof( struct SurviveContext ) );
+	SurviveContext * ctx = calloc( 1, sizeof( SurviveContext ) );
+
+	ctx->global_config_values = malloc( sizeof(config_group) );
+	ctx->lh_config = malloc( sizeof(config_group) * NUM_LIGHTHOUSES);
+
+	init_config_group(ctx->global_config_values,10);
+	init_config_group(ctx->lh_config,10);
+
+	config_read(ctx, "config.json");
 
 	ctx->faultfunction = survivefault;
 	ctx->notefunction = survivenote;
@@ -36,7 +45,6 @@ struct SurviveContext * survive_init( int headless )
 
 	const char * DriverName;
 	while( ( DriverName = GetDriverNameMatching( "DriverReg", i++ ) ) )
-
 	{
 		DeviceDriver dd = GetDriver( DriverName );
 		printf( "Loading driver %s (%p) (%d)\n", DriverName, dd, i );
@@ -44,10 +52,34 @@ struct SurviveContext * survive_init( int headless )
 		printf( "Driver %s reports status %d\n", DriverName, r );
 	}
 
+	i = 0;
+	const char * PreferredPoser = config_read_str( ctx->global_config_values, "DefualtPoser", "PoserDummy" );
+	PoserCB PreferredPoserCB = 0;
+	const char * FirstPoser = 0;
+	printf( "Available posers:\n" );
+	while( ( DriverName = GetDriverNameMatching( "Poser", i++ ) ) )
+	{
+		PoserCB p = GetDriver( DriverName );
+		if( !PreferredPoserCB ) PreferredPoserCB = p;
+		int ThisPoser = strcmp( DriverName, PreferredPoser ) == 0;
+		printf( "\t%c%s\n", ThisPoser?'*':' ', DriverName );
+		if( ThisPoser ) PreferredPoserCB = p;
+	}
+	printf( "Totals %d posers.  Using selected poser (or first!).\n", i-1 );
+	if( !PreferredPoserCB )
+	{
+		SV_ERROR( "Error.  Cannot find any valid poser." );
+	}
+
+	for( i = 0; i < ctx->objs_ct; i++ )
+	{
+		ctx->objs[i]->PoserFn = PreferredPoserCB;
+	}
+
 	return ctx;
 }
 
-void survive_install_info_fn( struct SurviveContext * ctx,  text_feedback_func fbp )
+void survive_install_info_fn( SurviveContext * ctx,  text_feedback_func fbp )
 {
 	if( fbp )
 		ctx->notefunction = fbp;
@@ -55,7 +87,7 @@ void survive_install_info_fn( struct SurviveContext * ctx,  text_feedback_func f
 		ctx->notefunction = survivenote;
 }
 
-void survive_install_error_fn( struct SurviveContext * ctx,  text_feedback_func fbp )
+void survive_install_error_fn( SurviveContext * ctx,  text_feedback_func fbp )
 {
 	if( fbp )
 		ctx->faultfunction = fbp;
@@ -63,7 +95,7 @@ void survive_install_error_fn( struct SurviveContext * ctx,  text_feedback_func 
 		ctx->faultfunction = survivefault;
 }
 
-void survive_install_light_fn( struct SurviveContext * ctx, light_process_func fbp )
+void survive_install_light_fn( SurviveContext * ctx, light_process_func fbp )
 {
 	if( fbp )
 		ctx->lightproc = fbp;
@@ -71,7 +103,7 @@ void survive_install_light_fn( struct SurviveContext * ctx, light_process_func f
 		ctx->lightproc = survive_default_light_process;
 }
 
-void survive_install_imu_fn( struct SurviveContext * ctx,  imu_process_func fbp )
+void survive_install_imu_fn( SurviveContext * ctx,  imu_process_func fbp )
 {
 	if( fbp )
 		ctx->imuproc = fbp;
@@ -80,7 +112,7 @@ void survive_install_imu_fn( struct SurviveContext * ctx,  imu_process_func fbp 
 }
 
 
-void survive_install_angle_fn( struct SurviveContext * ctx,  angle_process_func fbp )
+void survive_install_angle_fn( SurviveContext * ctx,  angle_process_func fbp )
 {
 	if( fbp )
 		ctx->angleproc = fbp;
@@ -88,15 +120,15 @@ void survive_install_angle_fn( struct SurviveContext * ctx,  angle_process_func 
 		ctx->angleproc = survive_default_angle_process;
 }
 
-int survive_add_object( struct SurviveContext * ctx, struct SurviveObject * obj )
+int survive_add_object( SurviveContext * ctx, SurviveObject * obj )
 {
 	int oldct = ctx->objs_ct;
-	ctx->objs = realloc( ctx->objs, sizeof( struct SurviveObject * ) * (oldct+1) );
+	ctx->objs = realloc( ctx->objs, sizeof( SurviveObject * ) * (oldct+1) );
 	ctx->objs[oldct] = obj;
 	ctx->objs_ct = oldct+1;
 }
 
-void survive_add_driver( struct SurviveContext * ctx, void * payload, DeviceDriverCb poll, DeviceDriverCb close, DeviceDriverMagicCb magic )
+void survive_add_driver( SurviveContext * ctx, void * payload, DeviceDriverCb poll, DeviceDriverCb close, DeviceDriverMagicCb magic )
 {
 	int oldct = ctx->driver_ct;
 	ctx->drivers = realloc( ctx->drivers, sizeof( void * ) * (oldct+1) );
@@ -110,7 +142,7 @@ void survive_add_driver( struct SurviveContext * ctx, void * payload, DeviceDriv
 	ctx->driver_ct = oldct+1;
 }
 
-int survive_send_magic( struct SurviveContext * ctx, int magic_code, void * data, int datalen )
+int survive_send_magic( SurviveContext * ctx, int magic_code, void * data, int datalen )
 {
 	int oldct = ctx->driver_ct;
 	int i;
@@ -120,7 +152,7 @@ int survive_send_magic( struct SurviveContext * ctx, int magic_code, void * data
 	}	
 }
 
-void survive_close( struct SurviveContext * ctx )
+void survive_close( SurviveContext * ctx )
 {
 	const char * DriverName;
 	int r = 0;
@@ -134,16 +166,33 @@ void survive_close( struct SurviveContext * ctx )
 
 	int oldct = ctx->driver_ct;
 	int i;
+
+	for( i = 0; i < ctx->objs_ct; i++ )
+	{
+		PoserData pd;
+		pd.pt = POSERDATA_DISASSOCIATE;
+		if( ctx->objs[i]->PoserFn ) ctx->objs[i]->PoserFn( ctx->objs[i], &pd );
+	}
+
 	for( i = 0; i < oldct; i++ )
 	{
 		ctx->drivercloses[i]( ctx, ctx->drivers[i] );
 	}
+
+
+	config_save(ctx, "config.json");
+
+	destroy_config_group(ctx->global_config_values);
+	destroy_config_group(ctx->lh_config);
 
 	free( ctx->objs );
 	free( ctx->drivers );
 	free( ctx->driverpolls );
 	free( ctx->drivermagics );
 	free( ctx->drivercloses );
+	free( ctx->global_config_values );
+	free( ctx->lh_config );
+
 	free( ctx );
 }
 

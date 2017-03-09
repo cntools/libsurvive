@@ -93,11 +93,6 @@ void quatsetnone(FLT * q)
 	q[0] = 1; q[1] = 0; q[2] = 0; q[3] = 0;
 }
 
-void quatsetidentity(FLT * q)
-{
-	q[0] = 1; q[1] = 0; q[2] = 0; q[3] = 1;
-}
-
 void quatcopy(FLT * qout, const FLT * qin)
 {
 	qout[0] = qin[0];
@@ -447,7 +442,7 @@ void quatfrom2vectors(FLT *q, const FLT *src, const FLT *dest)
 	// If dot == 1, vectors are the same
 	if (d >= 1.0f)
 	{
-		quatsetidentity(q);
+		quatsetnone(q);
 		return;
 	}
 	if (d < (1e-6f - 1.0f))

@@ -27,8 +27,8 @@ static void reset_calibration( struct SurviveCalData * cd );
 
 void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 {
-	struct SurviveContext * ctx = (struct SurviveContext*)(ct->user);
-	struct SurviveCalData * cd = ctx->calptr;
+	SurviveContext * ctx = (SurviveContext*)(ct->user);
+	SurviveCalData * cd = ctx->calptr;
 	int id = ct->user1;
 
 	SV_INFO( "Got OOTX packet %d %p", id, cd );
@@ -36,7 +36,7 @@ void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 	lighthouse_info_v6 v6;
 	init_lighthouse_info_v6(&v6, packet->data);
 
-	struct BaseStationData * b = &ctx->bsd[id];
+	BaseStationData * b = &ctx->bsd[id];
 	//print_lighthouse_info_v6(&v6);
 
 	b->BaseStationID = v6.id;
@@ -52,8 +52,8 @@ void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 	b->fcalgibmag[1] = v6.fcal_1_gibmag;
 	b->OOTXSet = 1;
 
-	config_set_lighthouse(b,id);
-	config_save("config.json");
+	config_set_lighthouse(ctx->lh_config,b,id);
+//	config_save("config.json");
 }
 
 int survive_cal_get_status( struct SurviveContext * ctx, char * description, int description_length )

@@ -3,7 +3,7 @@
 // See notice in survive_driverman.h
 //
 
-#include "survive_driverman.h"
+#include "survive_internal.h"
 #include <string.h>
 #include <stdio.h>
 

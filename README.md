@@ -14,6 +14,7 @@ Discord: https://discordapp.com/invite/7QbCAGS
 | Fourth livestream                      | https://www.youtube.com/watch?v=fces1O7kWGY | 4:50:33 |
 | Fifth livestream                       | https://www.youtube.com/watch?v=hHt3twW5_fI | 3:13:38 |
 | Sixth livestream                       | https://www.youtube.com/watch?v=JsfkNRFkFM4 | 3:44:49 |
+| Seventh livestream                     | https://www.youtube.com/watch?v=EKSHvO3QSWY | 1:17:21 |
 
 Notes from second livestream trying to reverse engineer the watchman protocol: https://gist.github.com/cnlohr/581c433f36f4249f8bbc9c2b6450ef0e
 

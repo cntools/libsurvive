@@ -2,6 +2,8 @@
 
 // All OOTX code was written by J. Allen. Rest of the code is probably mostly CNLohr.
 
+//XXX XXX XXX Warning:  This subsystem will likely be mostly re-written.
+
 #ifndef _SURVIVE_CAL_H
 #define _SURVIVE_CAL_H
 
@@ -21,21 +23,21 @@
 #include "ootx_decoder.h"
 #include "survive_internal.h"
 
-void survive_cal_install( struct SurviveContext * ctx );
-int survive_cal_get_status( struct SurviveContext * ctx, char * description, int description_length );
+void survive_cal_install( SurviveContext * ctx );
+int survive_cal_get_status( SurviveContext * ctx, char * description, int description_length );
 
 //void survive_cal_teardown( struct SurviveContext * ctx );
 
 //Called from survive_default_light_process
-void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  );
-void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle );
+void survive_cal_light( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  );
+void survive_cal_angle( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle );
 
 #define MAX_SENSORS_TO_CAL 96
 #define DRPTS 1024
 #define MAX_CAL_PT_DAT (MAX_SENSORS_TO_CAL*NUM_LIGHTHOUSES*2)
 struct SurviveCalData
 {
-	struct SurviveContext * ctx;
+	SurviveContext * ctx;
 	//OOTX Data is sync'd off of the sync pulses coming from the lighthouses.
 	ootx_decoder_context ootx_decoders[NUM_LIGHTHOUSES];
 
@@ -57,7 +59,7 @@ struct SurviveCalData
 
 	int senid_of_checkpt; //This is a point on a watchman that can be used to check the lh solution.
 
-	struct SurviveObject * hmd;
+	SurviveObject * hmd;
 
 	//Stage:
 	// 0: Idle
@@ -68,7 +70,7 @@ struct SurviveCalData
 
 //The following function is not included in the core survive_cal and must be compiled from a camfind file.
 //It should use data for stage 4 and report if it found the 
-int survive_cal_lhfind( struct SurviveCalData * cd );
+int survive_cal_lhfind( SurviveCalData * cd );
 
 
 #endif

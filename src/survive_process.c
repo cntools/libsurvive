@@ -6,9 +6,9 @@
 //XXX TODO: Once data is avialble in the context, use the stuff here to handle converting from time codes to
 //proper angles, then from there perform the rest of the solution. 
 
-void survive_default_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  )
+void survive_default_light_process( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  )
 {
-	struct SurviveContext * ctx = so->ctx;
+	SurviveContext * ctx = so->ctx;
 	int base_station = acode >> 2;
 	int axis = acode & 1;
 
@@ -25,7 +25,7 @@ void survive_default_light_process( struct SurviveObject * so, int sensor_id, in
 
 	//Need to now do angle correction.
 #if 1
-	struct BaseStationData * bsd = &ctx->bsd[base_station];
+	BaseStationData * bsd = &ctx->bsd[base_station];
 
 	//XXX TODO: This seriously needs to be worked on.  See: https://github.com/cnlohr/libsurvive/issues/18
 	angle += bsd->fcalphase[axis];
@@ -39,20 +39,41 @@ void survive_default_light_process( struct SurviveObject * so, int sensor_id, in
 }
 
 
-void survive_default_angle_process( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle )
+void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle )
 {
-	struct SurviveContext * ctx = so->ctx;
+	SurviveContext * ctx = so->ctx;
 	if( ctx->calptr )
 	{
 		survive_cal_angle( so, sensor_id, acode, timecode, length, angle );
 	}
-
-	//TODO: Writeme!
+	if( so->PoserFn )
+	{
+		PoserDataLight l = {
+			.pt = POSERDATA_LIGHT,
+			.sensor_id = sensor_id,
+			.acode = acode,
+			.timecode = timecode,
+			.length = length,
+			.angle = angle,
+		};
+		so->PoserFn( so, (PoserData *)&l );
+	}
 }	
 
 
-void survive_default_imu_process( struct SurviveObject * so, int16_t * accelgyro, uint32_t timecode, int id )
+void survive_default_imu_process( SurviveObject * so, int mask, FLT * accelgyromag, uint32_t timecode, int id )
 {
-	//TODO: Writeme!
+	if( so->PoserFn )
+	{
+		PoserDataIMU imu = {
+			.pt = POSERDATA_IMU,
+			.datamask = mask,
+			.accel = { accelgyromag[0], accelgyromag[1], accelgyromag[2] },
+			.gyro = {  accelgyromag[3], accelgyromag[4], accelgyromag[5] },
+			.mag = {   accelgyromag[6], accelgyromag[7], accelgyromag[8] },
+			.timecode = timecode,
+		};
+		so->PoserFn( so, (PoserData *)&imu );
+	}
 }
 

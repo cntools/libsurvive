@@ -4,33 +4,75 @@
 #include "survive_config.h"
 #include <json_helpers.h>
 
-#define MAX_CONFIG_ENTRIES 100
-#define MAX_LIGHTHOUSES 2
+#include <errno.h>
 
+//#define MAX_CONFIG_ENTRIES 100
+//#define MAX_LIGHTHOUSES 2
 
-
-config_group global_config_values;
-config_group lh_config[MAX_LIGHTHOUSES]; //lighthouse configs
+//config_group global_config_values;
+//config_group lh_config[MAX_LIGHTHOUSES]; //lighthouse configs
 
 //static uint16_t used_entries = 0;
 
-static FILE *config_file = NULL;
+//static FILE *config_file = NULL;
 const FLT* config_set_float_a(config_group *cg, const char *tag, const FLT* values, uint8_t count);
+
+void init_config_entry(config_entry* ce) {
+	ce->data = NULL;
+	ce->tag = NULL;
+	ce->type = CONFIG_UNKNOWN;
+	ce->elements = 0;
+}
+
+void destroy_config_entry(config_entry* ce) {
+	if (ce->tag!=NULL) { free(ce->tag); ce->tag=NULL; }
+	if (ce->data!=NULL) { free(ce->data); ce->data=NULL; }
+}
 
 void init_config_group(config_group *cg, uint16_t count) {
 	uint16_t i = 0;
-	cg->config_entries = malloc(count*sizeof(config_entry));
 	cg->used_entries = 0;
 	cg->max_entries = count;
+	cg->config_entries = NULL;
+
+	if (count==0) return;
+
+	cg->config_entries = malloc(count*sizeof(config_entry));
 
 	for (i=0;i<count;++i) {
-		cg->config_entries[i].data = NULL;
-		cg->config_entries[i].tag = NULL;
-		cg->config_entries[i].type = CONFIG_UNKNOWN;
-		cg->config_entries[i].elements = 0;
+		init_config_entry(cg->config_entries+i);
 	}
 }
 
+void destroy_config_group(config_group* cg) {
+	uint16_t i = 0;
+	if (cg->config_entries==NULL) return;
+
+	for (i=0;i<cg->max_entries;++i) {
+		destroy_config_entry(cg->config_entries+i);
+	}
+
+	free(cg->config_entries);
+}
+
+void resize_config_group(config_group *cg, uint16_t count) {
+	uint16_t i = 0;
+
+	if (count > cg->max_entries) {
+		config_entry* ptr = realloc(cg->config_entries, sizeof(config_entry)*count);
+		assert(ptr!=NULL);
+
+		cg->config_entries = ptr;
+
+		for (i=cg->max_entries;i<count;++i) {
+			init_config_entry(cg->config_entries+i);
+		}
+
+		cg->max_entries = count;
+	}
+}
+
+/*
 void config_init() {
 	uint16_t i = 0;
 	init_config_group(&global_config_values, MAX_CONFIG_ENTRIES);
@@ -38,21 +80,13 @@ void config_init() {
 		init_config_group(lh_config+i, 9);
 	}
 }
+*/
 
-void config_load(const char* path) {
-	config_file = fopen(path, "r");
-}
-
-void config_close() {
-	fclose(config_file);
-}
-
-void config_set_lighthouse(struct BaseStationData* bsd, uint8_t idx) {
+void config_set_lighthouse(config_group* lh_config, BaseStationData* bsd, uint8_t idx) {
 	config_group *cg = lh_config+idx;
 	config_set_uint32(cg,"index", idx);
 	config_set_uint32(cg,"id", bsd->BaseStationID);
-	config_set_float_a(cg,"position", bsd->Position, 3);
-	config_set_float_a(cg,"quaternion", bsd->Quaternion, 4);
+	config_set_float_a(cg,"pose", &bsd->Pose.Pos[0], 7);
 	config_set_float_a(cg,"fcalphase", bsd->fcalphase, 2);
 	config_set_float_a(cg,"fcaltilt", bsd->fcaltilt,2);
 	config_set_float_a(cg,"fcalcurve", bsd->fcalcurve,2);
@@ -64,11 +98,10 @@ void sstrcpy(char** dest, const char *src) {
 	uint32_t len = strlen(src)+1;
 	assert(dest!=NULL);
 
-	if (*dest == NULL) {
-		*dest = (char*)malloc(len);
-	} else {
-		*dest = (char*)realloc(*dest, len);
-	}
+	char* ptr = (char*)realloc(*dest, len); //acts like malloc if dest==NULL
+	assert(ptr!=NULL);
+	*dest = ptr;
+
 	strcpy(*dest,src);
 }
 
@@ -106,9 +139,29 @@ FLT config_read_float(config_group *cg, const char *tag, const FLT def) {
 	return config_set_float(cg, tag, def);
 }
 
+uint16_t config_read_float_array(config_group *cg, const char *tag, const FLT** values, const FLT* def, uint16_t count) {
+	config_entry *cv = find_config_entry(cg, tag);
+
+	if (cv != NULL) {
+		*values = (FLT*)cv->data;
+		return cv->elements;
+	}
+
+	if (def == NULL) return 0;
+
+	config_set_float_a(cg, tag, def, count);
+	*values = def;
+	return count;
+}
+
 config_entry* next_unused_entry(config_group *cg) {
-	config_entry *cv = cg->config_entries + cg->used_entries;
-	assert(cg->used_entries < cg->max_entries);
+	config_entry *cv = NULL;
+//	assert(cg->used_entries < cg->max_entries);
+
+	if (cg->used_entries >= cg->max_entries) resize_config_group(cg, cg->max_entries + 10);
+
+	cv = cg->config_entries + cg->used_entries;
+
 	cg->used_entries++;
 	return cv;
 }
@@ -152,12 +205,10 @@ const FLT* config_set_float_a(config_group *cg, const char *tag, const FLT* valu
 
 	sstrcpy(&(cv->tag), tag);
 
-	if (cv->data == NULL) {
-		cv->data = (char*)malloc(sizeof(FLT)*count);
-	}
-	else {
-		cv->data = (char*)realloc(cv->data, sizeof(FLT)*count);
-	}
+	char* ptr = (char*)realloc(cv->data, sizeof(FLT)*count);
+	assert(ptr!=NULL);
+	cv->data = ptr;
+
 	printf("float array\n");
 
 	memcpy(cv->data,values,sizeof(FLT)*count);
@@ -201,15 +252,129 @@ void write_config_group(FILE* f, config_group *cg, char *tag) {
 	}
 }
 
-void config_save(const char* path) {
+//struct SurviveContext;
+SurviveContext* survive_context;
+
+void config_save(SurviveContext* sctx, const char* path) {
 	uint16_t i = 0;
 
 	FILE* f = fopen(path, "w");
 
-	write_config_group(f,&global_config_values, NULL);
-	write_config_group(f,lh_config, "lighthouse0");
-	write_config_group(f,lh_config+1, "lighthouse1");
+	write_config_group(f,sctx->global_config_values, NULL);
+	write_config_group(f,sctx->lh_config, "lighthouse0");
+	write_config_group(f,sctx->lh_config+1, "lighthouse1");
 
 	fclose(f);
+}
+
+void print_json_value(char* tag, char** values, uint16_t count) {
+	uint16_t i = 0;
+	for (i=0;i<count; ++i) {
+		printf("%s:%s \n", tag, values[i]);
+	}
+}
+
+config_group* cg_stack[10]; //handle 10 nested objects deep
+uint8_t cg_stack_head = 0;
+
+void handle_config_group(char* tag) {
+	cg_stack_head++;
+	if (strcmp("lighthouse0",tag) == 0) {
+		cg_stack[cg_stack_head] = survive_context->lh_config;
+	} else if (strcmp("lighthouse1",tag) == 0) {
+		cg_stack[cg_stack_head] = survive_context->lh_config+1;
+	} else {
+		cg_stack[cg_stack_head] = survive_context->global_config_values;
+	}
+}
+
+void pop_config_group() {
+	cg_stack_head--;
+}
+
+
+int parse_floats(char* tag, char** values, uint16_t count) {
+	uint16_t i = 0;
+	FLT f[count];
+	char* end = NULL;
+	config_group* cg = cg_stack[cg_stack_head];
+
+	for(i=0;i<count;++i) {
+
+		#ifdef USE_DOUBLE
+		f[i] = strtod(values[i], &end);
+		#else
+		f[i] = strtof(values[i], &end);
+		#endif
+
+//		if (values[i] == end) return 0; //not a float
+		if (*end != '\0') return 0; //not an integer
+	}
+
+	if (count>1) {
+		config_set_float_a(cg, tag, f, count);
+	}
+	else {
+		config_set_float(cg, tag, f[0]);
+	}
+
+	return 1;
+}
+
+int parse_uint32(char* tag, char** values, uint16_t count) {
+	uint16_t i = 0;
+	uint32_t l[count];
+	char* end = NULL;
+	config_group* cg = cg_stack[cg_stack_head];
+
+/*
+	//look for non numeric values
+	for(end=values[0];*end!='\0';++end) {
+		if ((*end<48) || (*end>57)) return 0;
+	}
+
+	end=NULL;
+*/
+	for(i=0;i<count;++i) {
+		l[i] = strtol(values[i], &end, 10);
+//		if (values[i] == end) return 0; //not an integer
+		if (*end != '\0') return 0; //not an integer
+	}
+
+//	if (count>1)
+//		config_set_uint32_array(cg, tag, f, count);
+//	else
+		config_set_uint32(cg, tag, l[0]);
+
+	return 1;
+}
+
+void handle_tag_value(char* tag, char** values, uint16_t count) {
+	print_json_value(tag,values,count);
+	config_group* cg = cg_stack[cg_stack_head];
+
+	if (parse_uint32(tag,values,count) > 0) return; //parse integers first, stricter rules
+
+	if (parse_floats(tag,values,count) > 0) return;
+
+	//should probably also handle string arrays
+	config_set_str(cg,tag,values[0]);
+//	else if (count>1) config_set_str
+}
+
+void config_read(SurviveContext* sctx, const char* path) {
+	survive_context = sctx;
+
+	json_begin_object = handle_config_group;
+	json_end_object = pop_config_group;
+	json_tag_value = handle_tag_value;
+
+	cg_stack[0] = sctx->global_config_values;
+
+	json_load_file(path);
+
+	json_begin_object = NULL;
+	json_end_object = NULL;
+	json_tag_value = NULL;
 }
 
