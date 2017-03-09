@@ -69,7 +69,7 @@ typedef struct
 
 #define SQUARED(x) ((x)*(x))
 
-FLT calculateFitness(SensorAngles *angles, FLT *radii, PointPair *pairs, size_t numPairs)
+FLT calculateFitnessOld(SensorAngles *angles, FLT *radii, PointPair *pairs, size_t numPairs)
 {
 	FLT fitness = 0;
 	for (size_t i = 0; i < numPairs; i++)
@@ -78,10 +78,62 @@ FLT calculateFitness(SensorAngles *angles, FLT *radii, PointPair *pairs, size_t 
 			SQUARED(radii[pairs[i].index1])
 			+ SQUARED(radii[pairs[i].index2])
 			- 2 * radii[pairs[i].index1] * radii[pairs[i].index2]
-				* FLT_SIN(angles[pairs[i].index1].HorizAngle) * FLT_SIN(angles[pairs[i].index2].HorizAngle)
-				* FLT_COS(angles[pairs[i].index1].VertAngle - angles[pairs[i].index2].VertAngle)
+			* FLT_SIN(angles[pairs[i].index1].HorizAngle) * FLT_SIN(angles[pairs[i].index2].HorizAngle)
+			* FLT_COS(angles[pairs[i].index1].VertAngle - angles[pairs[i].index2].VertAngle)
 			+ FLT_COS(angles[pairs[i].index1].VertAngle) * FLT_COS(angles[pairs[i].index2].VertAngle);
 		fitness += SQUARED(estimatedDistanceBetweenPoints - pairs[i].KnownDistance);
+	}
+
+	return FLT_SQRT(fitness);
+}
+
+FLT calculateFitness(SensorAngles *angles, FLT *radii, PointPair *pairs, size_t numPairs)
+{
+	FLT fitness = 0;
+	for (size_t i = 0; i < numPairs; i++)
+	{
+		// These are the vectors that represent the direction for the two points.  
+		// TODO: optimize by precomputing the tangent.
+		FLT v1[3], v2[3], diff[3];
+
+		v1[0] = 1;
+		v2[0] = 1;
+		v1[1] = tan(angles[pairs[i].index1].HorizAngle); // can be precomputed
+		v2[1] = tan(angles[pairs[i].index2].HorizAngle); // can be precomputed
+		v1[2] = tan(angles[pairs[i].index1].VertAngle);  // can be precomputed
+		v2[2] = tan(angles[pairs[i].index2].VertAngle);  // can be precomputed
+
+		// Now, normalize the vectors
+		normalize3d(v1, v1); // can be precomputed
+		normalize3d(v2, v2); // can be precomputed
+
+		// Now, given the specified radii, find where the new points are
+		scale3d(v1, v1, radii[pairs[i].index1]);
+		scale3d(v2, v2, radii[pairs[i].index2]);
+
+		// Cool, now find the vector between these two points
+		// TODO: optimize the following two funcs into one.
+		sub3d(diff, v1, v2);
+
+		FLT distance = magnitude3d(diff);
+
+		FLT t1 = magnitude3d(v1);
+		FLT t2 = magnitude3d(v2);
+
+
+
+		FLT estimatedDistanceBetweenPoints =
+
+			SQUARED(radii[pairs[i].index1])
+			+ SQUARED(radii[pairs[i].index2])
+			- 2 * radii[pairs[i].index1] * radii[pairs[i].index2]
+			* FLT_SIN(angles[pairs[i].index1].HorizAngle) * FLT_SIN(angles[pairs[i].index2].HorizAngle)
+			* FLT_COS(angles[pairs[i].index1].VertAngle - angles[pairs[i].index2].VertAngle)
+			+ FLT_COS(angles[pairs[i].index1].VertAngle) * FLT_COS(angles[pairs[i].index2].VertAngle);
+
+
+		//fitness += SQUARED(estimatedDistanceBetweenPoints - pairs[i].KnownDistance);
+		fitness += SQUARED(distance - pairs[i].KnownDistance);
 	}
 
 	return FLT_SQRT(fitness);
@@ -221,7 +273,7 @@ static RefineEstimateUsingGradientDescent(FLT *estimateOut, SensorAngles *angles
 #ifdef RADII_DEBUG
 			printf("+ %d %0.9f (%0.9f) ", i, newMatchFitness, g);
 #endif
-			g = g * 1.1;
+			g = g * 1.05;
 		}
 		else
 		{
@@ -279,7 +331,7 @@ void SolveForLighthouse(Point *objPosition, FLT *objOrientation, TrackedObject *
 
 	size_t pairCount = 0;
 
-	obj->numSensors = 4; // TODO: HACK!!!!
+	obj->numSensors = 7; // TODO: HACK!!!!
 
 	for (size_t i = 0; i < obj->numSensors; i++)
 	{
