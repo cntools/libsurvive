@@ -314,6 +314,7 @@ PRINT(ab,2,1);
     T[2][0]=R[2][0]; T[2][1]=R[2][1]; T[2][2]=R[2][2]; T[2][3]=trans[2];
     T[3][0]=0.0;     T[3][1]=0.0;     T[3][2]=0.0;     T[3][3]=1.0;
 
+    PRINT_MAT(T,4,4);
     //-------------------
     // Plot the output points
     //-------------------
@@ -321,11 +322,11 @@ PRINT(ab,2,1);
         float Tx = T[0][0]*X_in[0][i] + T[0][1]*X_in[1][i] + T[0][2]*X_in[2][i] + T[0][3];
         float Ty = T[1][0]*X_in[0][i] + T[1][1]*X_in[1][i] + T[1][2]*X_in[2][i] + T[1][3];
         float Tz = T[2][0]*X_in[0][i] + T[2][1]*X_in[1][i] + T[2][2]*X_in[2][i] + T[2][3];
-        S_out[0][i] = asin(Tx / Ty);   // horiz
-        S_out[1][i] = asin(Tz / Ty);   // vert
+        S_out[0][i] = atan2(Tx, Ty);   // horiz
+        S_out[1][i] = atan2(Tz, Ty);   // vert
         //S_out[0][i] = Tx;
         //S_out[1][i] = Tz;
-//        printf("point %i Txyz %f %f %f in %f %f out %f %f morph %f %f\n", i, Tx,Ty,Tz, S_in[0][i], S_in[1][i], S_out[0][i], S_out[1][i], S_morph[0][i], S_morph[1][i]);
+        printf("point %i Txyz %f %f %f in %f %f out %f %f morph %f %f\n", i, Tx,Ty,Tz, S_in[0][i], S_in[1][i], S_out[0][i], S_out[1][i], S_morph[0][i], S_morph[1][i]);
     }
 
 //    printf("xbar %f %f %f\n", xbar[0], xbar[1], xbar[2]);
@@ -603,7 +604,7 @@ int main()
     //--------------------------------------------------    
     
     int loop;
-    for (loop=0; loop<1000000; loop++)
+    for (loop=0; loop<1; loop++)
     {
         // Run OrthoSolve
         OrthoSolve(
