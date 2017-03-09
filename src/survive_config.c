@@ -66,12 +66,11 @@ void config_init() {
 }
 
 
-void config_set_lighthouse(struct BaseStationData* bsd, uint8_t idx) {
+void config_set_lighthouse(BaseStationData* bsd, uint8_t idx) {
 	config_group *cg = lh_config+idx;
 	config_set_uint32(cg,"index", idx);
 	config_set_uint32(cg,"id", bsd->BaseStationID);
-	config_set_float_a(cg,"position", bsd->Position, 3);
-	config_set_float_a(cg,"quaternion", bsd->Quaternion, 4);
+	config_set_float_a(cg,"pose", &bsd->Pose.Pos[0], 7);
 	config_set_float_a(cg,"fcalphase", bsd->fcalphase, 2);
 	config_set_float_a(cg,"fcaltilt", bsd->fcaltilt,2);
 	config_set_float_a(cg,"fcalcurve", bsd->fcalcurve,2);

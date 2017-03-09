@@ -6,9 +6,9 @@
 #include <string.h>
 
 //This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
-void handle_lightcap( struct SurviveObject * so, struct LightcapElement * le )
+void handle_lightcap( SurviveObject * so, LightcapElement * le )
 {
-	struct SurviveContext * ctx = so->ctx;
+	SurviveContext * ctx = so->ctx;
 	//int32_t deltat = (uint32_t)le->timestamp - (uint32_t)so->last_master_time;
 
 	//if( so->codename[0] != 'H' )
