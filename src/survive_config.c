@@ -9,8 +9,8 @@
 #define MAX_CONFIG_ENTRIES 100
 #define MAX_LIGHTHOUSES 2
 
-config_group global_config_values;
-config_group lh_config[MAX_LIGHTHOUSES]; //lighthouse configs
+//config_group global_config_values;
+//config_group lh_config[MAX_LIGHTHOUSES]; //lighthouse configs
 
 //static uint16_t used_entries = 0;
 
@@ -40,6 +40,17 @@ void init_config_group(config_group *cg, uint16_t count) {
 	}
 }
 
+void destroy_config_group(config_group* cg) {
+	uint16_t i = 0;
+	if (cg->config_entries==NULL) return;
+
+	for (i=0;i<cg->max_entries;++i) {
+		destroy_config_entry(cg->config_entries+i);
+	}
+
+	free(cg->config_entries);
+}
+
 void resize_config_group(config_group *cg, uint16_t count) {
 	uint16_t i = 0;
 
@@ -57,6 +68,7 @@ void resize_config_group(config_group *cg, uint16_t count) {
 	}
 }
 
+/*
 void config_init() {
 	uint16_t i = 0;
 	init_config_group(&global_config_values, MAX_CONFIG_ENTRIES);
@@ -64,9 +76,9 @@ void config_init() {
 		init_config_group(lh_config+i, 9);
 	}
 }
+*/
 
-
-void config_set_lighthouse(BaseStationData* bsd, uint8_t idx) {
+void config_set_lighthouse(config_group* lh_config, BaseStationData* bsd, uint8_t idx) {
 	config_group *cg = lh_config+idx;
 	config_set_uint32(cg,"index", idx);
 	config_set_uint32(cg,"id", bsd->BaseStationID);
@@ -123,7 +135,7 @@ FLT config_read_float(config_group *cg, const char *tag, const FLT def) {
 	return config_set_float(cg, tag, def);
 }
 
-uint16_t config_read_float_array(config_group *cg, const char *tag, FLT** values, const FLT* def, uint16_t count) {
+uint16_t config_read_float_array(config_group *cg, const char *tag, const FLT** values, const FLT* def, uint16_t count) {
 	config_entry *cv = find_config_entry(cg, tag);
 
 	if (cv != NULL) {
@@ -236,14 +248,17 @@ void write_config_group(FILE* f, config_group *cg, char *tag) {
 	}
 }
 
-void config_save(const char* path) {
+//struct SurviveContext;
+SurviveContext* survive_context;
+
+void config_save(SurviveContext* sctx, const char* path) {
 	uint16_t i = 0;
 
 	FILE* f = fopen(path, "w");
 
-	write_config_group(f,&global_config_values, NULL);
-	write_config_group(f,lh_config, "lighthouse0");
-	write_config_group(f,lh_config+1, "lighthouse1");
+	write_config_group(f,sctx->global_config_values, NULL);
+	write_config_group(f,sctx->lh_config, "lighthouse0");
+	write_config_group(f,sctx->lh_config+1, "lighthouse1");
 
 	fclose(f);
 }
@@ -261,11 +276,11 @@ uint8_t cg_stack_head = 0;
 void handle_config_group(char* tag) {
 	cg_stack_head++;
 	if (strcmp("lighthouse0",tag) == 0) {
-		cg_stack[cg_stack_head] = lh_config;
+		cg_stack[cg_stack_head] = survive_context->lh_config;
 	} else if (strcmp("lighthouse1",tag) == 0) {
-		cg_stack[cg_stack_head] = lh_config+1;
+		cg_stack[cg_stack_head] = survive_context->lh_config+1;
 	} else {
-		cg_stack[cg_stack_head] = &global_config_values;
+		cg_stack[cg_stack_head] = survive_context->global_config_values;
 	}
 }
 
@@ -343,12 +358,14 @@ void handle_tag_value(char* tag, char** values, uint16_t count) {
 //	else if (count>1) config_set_str
 }
 
-void config_read(const char* path) {
+void config_read(SurviveContext* sctx, const char* path) {
+	survive_context = sctx;
+
 	json_begin_object = handle_config_group;
 	json_end_object = pop_config_group;
 	json_tag_value = handle_tag_value;
 
-	cg_stack[0] = &global_config_values;
+	cg_stack[0] = sctx->global_config_values;
 
 	json_load_file(path);
 

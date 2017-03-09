@@ -77,6 +77,8 @@ struct BaseStationData
 	FLT fcalgibmag[2];
 };
 
+struct config_group;
+
 struct SurviveContext
 {
 	text_feedback_func faultfunction;
@@ -84,6 +86,9 @@ struct SurviveContext
 	light_process_func lightproc;
 	imu_process_func imuproc;
 	angle_process_func angleproc;
+
+	struct config_group* global_config_values;
+	struct config_group* lh_config; //lighthouse configs
 
 	//Calibration data:
 	BaseStationData bsd[NUM_LIGHTHOUSES];

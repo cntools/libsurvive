@@ -8,6 +8,8 @@
 #include <string.h>
 #include <zlib.h>
 
+#include "survive_config.h"
+
 static void survivefault( struct SurviveContext * ctx, const char * fault )
 {
 	fprintf( stderr, "Error: %s\n", fault );
@@ -26,6 +28,14 @@ SurviveContext * survive_init( int headless )
 	int i = 0;
 	SurviveContext * ctx = calloc( 1, sizeof( SurviveContext ) );
 
+	ctx->global_config_values = malloc( sizeof(config_group) );
+	ctx->lh_config = malloc( sizeof(config_group) * NUM_LIGHTHOUSES);
+
+	init_config_group(ctx->global_config_values,10);
+	init_config_group(ctx->lh_config,10);
+
+	config_read(ctx, "config.json");
+
 	ctx->faultfunction = survivefault;
 	ctx->notefunction = survivenote;
 
@@ -43,7 +53,7 @@ SurviveContext * survive_init( int headless )
 	}
 
 	i = 0;
-	const char * PreferredPoser = "PoserDummy"; //config_read_str( cg, "DefualtPoser", "PoserDummy" ); /XXX Axlecrusher, can you add config stuff for this?
+	const char * PreferredPoser = config_read_str( ctx->global_config_values, "DefualtPoser", "PoserDummy" );
 	PoserCB PreferredPoserCB = 0;
 	const char * FirstPoser = 0;
 	printf( "Available posers:\n" );
@@ -169,11 +179,20 @@ void survive_close( SurviveContext * ctx )
 		ctx->drivercloses[i]( ctx, ctx->drivers[i] );
 	}
 
+
+	config_save(ctx, "config.json");
+
+	destroy_config_group(ctx->global_config_values);
+	destroy_config_group(ctx->lh_config);
+
 	free( ctx->objs );
 	free( ctx->drivers );
 	free( ctx->driverpolls );
 	free( ctx->drivermagics );
 	free( ctx->drivercloses );
+	free( ctx->global_config_values );
+	free( ctx->lh_config );
+
 	free( ctx );
 }
 
