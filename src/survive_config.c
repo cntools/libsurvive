@@ -6,8 +6,8 @@
 
 #include <errno.h>
 
-#define MAX_CONFIG_ENTRIES 100
-#define MAX_LIGHTHOUSES 2
+//#define MAX_CONFIG_ENTRIES 100
+//#define MAX_LIGHTHOUSES 2
 
 //config_group global_config_values;
 //config_group lh_config[MAX_LIGHTHOUSES]; //lighthouse configs
