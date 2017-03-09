@@ -81,7 +81,7 @@ FLT calculateFitness(SensorAngles *angles, FLT *radii, PointPair *pairs, size_t 
 				* FLT_SIN(angles[pairs[i].index1].HorizAngle) * FLT_SIN(angles[pairs[i].index2].HorizAngle)
 				* FLT_COS(angles[pairs[i].index1].VertAngle - angles[pairs[i].index2].VertAngle)
 			+ FLT_COS(angles[pairs[i].index1].VertAngle) * FLT_COS(angles[pairs[i].index2].VertAngle);
-		fitness += SQUARED(estimatedDistanceBetweenPoints);
+		fitness += SQUARED(estimatedDistanceBetweenPoints - pairs[i].KnownDistance);
 	}
 
 	return FLT_SQRT(fitness);
@@ -99,7 +99,7 @@ void getGradient(FLT *gradientOut, SensorAngles *angles, FLT *radii, size_t numR
 		FLT tmpPlus[MAX_RADII];
 		memcpy(tmpPlus, radii, sizeof(*radii) * numRadii);
 		tmpPlus[i] += precision;
-		gradientOut[i] = calculateFitness(angles, tmpPlus, pairs, numPairs) - baseline;
+		gradientOut[i] = -(calculateFitness(angles, tmpPlus, pairs, numPairs) - baseline);
 	}
 
 	return;
@@ -150,7 +150,7 @@ static RefineEstimateUsingGradientDescent(FLT *estimateOut, SensorAngles *angles
 	//   in fact, it probably could probably be 1 without any issue.  The main place where g is decremented
 	//   is in the block below when we've made a jump that results in a worse fitness than we're starting at.
 	//   In those cases, we don't take the jump, and instead lower the value of g and try again.
-	for (FLT g = 0.4; g > 0.00001; g *= 0.99)
+	for (FLT g = 0.4; g > 0.00001; g *= 0.9999)
 	{
 		i++;
 
@@ -218,13 +218,15 @@ static RefineEstimateUsingGradientDescent(FLT *estimateOut, SensorAngles *angles
 			memcpy(estimateOut, point4, sizeof(*estimateOut) * numRadii);
 
 #ifdef RADII_DEBUG
-			printf("+");
+			printf("+ %0.9f (%0.9f): %f, %f, %f, %f\n", newMatchFitness, g, estimateOut[0], estimateOut[1], estimateOut[2], estimateOut[3]);
 #endif
 		}
 		else
 		{
 #ifdef RADII_DEBUG
-			printf("-");
+//			printf("-");
+			printf("- %0.9f (%0.9f): %f, %f, %f, %f\n", newMatchFitness, g, estimateOut[0], estimateOut[1], estimateOut[2], estimateOut[3]);
+
 #endif
 			// if it wasn't a match, back off on the distance we jump
 			g *= 0.7;
@@ -242,7 +244,7 @@ void SolveForLighthouse(Point *objPosition, FLT *objOrientation, TrackedObject *
 
 	for (size_t i = 0; i < MAX_RADII; i++)
 	{
-		estimate[i] = 1;
+		estimate[i] = 2.4;
 	}
 
 	SensorAngles angles[MAX_RADII];
