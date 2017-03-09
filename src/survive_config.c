@@ -31,9 +31,13 @@ void destroy_config_entry(config_entry* ce) {
 
 void init_config_group(config_group *cg, uint16_t count) {
 	uint16_t i = 0;
-	cg->config_entries = malloc(count*sizeof(config_entry));
 	cg->used_entries = 0;
 	cg->max_entries = count;
+	cg->config_entries = NULL;
+
+	if (count==0) return;
+
+	cg->config_entries = malloc(count*sizeof(config_entry));
 
 	for (i=0;i<count;++i) {
 		init_config_entry(cg->config_entries+i);
