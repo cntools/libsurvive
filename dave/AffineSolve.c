@@ -142,7 +142,7 @@ void OrthoSolve(
     MUL(S,Xt,SXt,2,nPoints,3);
     INV(XXt,invXXt,3);
     MUL(SXt,invXXt,M,2,3,3);
-PRINT(M,2,3);
+//PRINT(M,2,3);
 
 // Double checking work
 FLOAT S_morph[2][MAX_POINTS];
@@ -201,15 +201,15 @@ for (i=0; i<nPoints; i++) { S_morph[0][i]+=sbar[0]; S_morph[1][i]+=sbar[1]; }
     FLOAT uhat_len = sqrt( uhat[0][0]*uhat[0][0] + uhat[1][0]*uhat[1][0] );
     FLOAT rhat_len = sqrt( rhat[0][0]*rhat[0][0] + rhat[1][0]*rhat[1][0] );
     FLOAT urhat_len = 0.5 * (uhat_len + rhat_len);
-    
-    printf("fhat %f %f (len %f)\n", fhat[0][0], fhat[1][0], fhat_len);
-    printf("uhat %f %f (len %f)\n", uhat[0][0], uhat[1][0], uhat_len);
-    printf("rhat %f %f (len %f)\n", rhat[0][0], rhat[1][0], rhat_len);
-
+/*    
+printf("fhat %f %f (len %f)\n", fhat[0][0], fhat[1][0], fhat_len);
+printf("uhat %f %f (len %f)\n", uhat[0][0], uhat[1][0], uhat_len);
+printf("rhat %f %f (len %f)\n", rhat[0][0], rhat[1][0], rhat_len);
+*/
     FLOAT ydist1 = 1.0 /  uhat_len; //0.25*PI / uhat_len;
     FLOAT ydist2 = 1.0 /  rhat_len; //0.25*PI / rhat_len;
     FLOAT ydist  = 1.0 / urhat_len;
-    printf("ydist1 %f ydist2 %f ydist %f\n", ydist1, ydist2, ydist);
+//    printf("ydist1 %f ydist2 %f ydist %f\n", ydist1, ydist2, ydist);
 
     //--------------------
     // Rescale the axies to be of the proper length
@@ -243,7 +243,7 @@ for (i=0; i<nPoints; i++) { S_morph[0][i]+=sbar[0]; S_morph[1][i]+=sbar[1]; }
                 FLOAT cx,cy,cz;
                 CrossProduct(cx,cy,cz,x[0][0],x_y,x[2][0],y[0][0],y_y,y[2][0]);
                 FLOAT hand = cx*z[0][0] + cy*y_y + cz*z[2][0];
-                printf("err %f hand %f\n", err, hand);
+//                printf("err %f hand %f\n", err, hand);
                 
                 // If we are the best right-handed frame so far
                 if (hand > 0 && err < bestErr) { x[1][0]=x_y; y[1][0]=y_y; z[1][0]=z_y; bestErr=err; }
@@ -253,15 +253,15 @@ for (i=0; i<nPoints; i++) { S_morph[0][i]+=sbar[0]; S_morph[1][i]+=sbar[1]; }
         }
         x_y = -x_y;
     }
-    printf("bestErr %f\n", bestErr);
-
+//    printf("bestErr %f\n", bestErr);
+/*
     for (i=0; i<nPoints; i++) {
         float x1 = x[0][0]*X[0][i] + y[0][0]*X[1][i] + z[0][0]*X[2][i];
         float y1 = x[1][0]*X[0][i] + y[1][0]*X[1][i] + z[1][0]*X[2][i];
         float z1 = x[2][0]*X[0][i] + y[2][0]*X[1][i] + z[2][0]*X[2][i];
         printf("x1z1 %f %f y1 %f\n", x1, z1, y1);
     }
-
+*/
 /*    
     //--------------------
     // Combine uhat and rhat to figure out the unit x-vector
@@ -289,7 +289,7 @@ PRINT(ab,2,1);
 */
     // Store into the rotation matrix
     for (i=0; i<3; i++) { R[i][0] = x[i][0]; R[i][1] = y[i][0]; R[i][2] = z[i][0]; }
-PRINT(R,3,3);
+//PRINT(R,3,3);
 
     //-------------------
     // Calculate the translation of the centroid
@@ -325,11 +325,11 @@ PRINT(R,3,3);
         S_out[1][i] = asin(Tz / Ty);   // vert
         //S_out[0][i] = Tx;
         //S_out[1][i] = Tz;
-        printf("point %i Txyz %f %f %f in %f %f out %f %f morph %f %f\n", i, Tx,Ty,Tz, S_in[0][i], S_in[1][i], S_out[0][i], S_out[1][i], S_morph[0][i], S_morph[1][i]);
+//        printf("point %i Txyz %f %f %f in %f %f out %f %f morph %f %f\n", i, Tx,Ty,Tz, S_in[0][i], S_in[1][i], S_out[0][i], S_out[1][i], S_morph[0][i], S_morph[1][i]);
     }
 
-    printf("xbar %f %f %f\n", xbar[0], xbar[1], xbar[2]);
-    printf("trans %f %f %f dist: %f\n", trans[0], trans[1], trans[2], transdist);
+//    printf("xbar %f %f %f\n", xbar[0], xbar[1], xbar[2]);
+//    printf("trans %f %f %f dist: %f\n", trans[0], trans[1], trans[2], transdist);
 }
 
 void AffineSolve(
@@ -602,13 +602,17 @@ int main()
     // Run the "OrthoSolve" and then the "AffineSolve"
     //--------------------------------------------------    
     
-    // Run OrthoSolve
-    OrthoSolve(
-        Tortho,     // OUTPUT: 4x4 transformation matrix
-        S_out,      // OUTPUT: array of output screenspace points
-        S_in,       // INPUT:  array of screenspace points
-        X_in,       // INPUT:  array of offsets
-        nPoints);
+    int loop;
+    for (loop=0; loop<1000000; loop++)
+    {
+        // Run OrthoSolve
+        OrthoSolve(
+            Tortho,     // OUTPUT: 4x4 transformation matrix
+            S_out,      // OUTPUT: array of output screenspace points
+            S_in,       // INPUT:  array of screenspace points
+            X_in,       // INPUT:  array of offsets
+            nPoints);
+    }
 
     // Run the calculation for Tcalc
     //int run;
