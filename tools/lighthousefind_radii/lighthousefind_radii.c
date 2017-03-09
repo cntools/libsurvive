@@ -207,6 +207,7 @@ static RefineEstimateUsingGradientDescent(FLT *estimateOut, SensorAngles *angles
 
 		FLT newMatchFitness = calculateFitness(angles, point4, pairs, numPairs);
 
+
 		if (newMatchFitness < lastMatchFitness)
 		{
 			//if (logFile)
@@ -218,20 +219,46 @@ static RefineEstimateUsingGradientDescent(FLT *estimateOut, SensorAngles *angles
 			memcpy(estimateOut, point4, sizeof(*estimateOut) * numRadii);
 
 #ifdef RADII_DEBUG
-			printf("+ %0.9f (%0.9f): %f, %f, %f, %f\n", newMatchFitness, g, estimateOut[0], estimateOut[1], estimateOut[2], estimateOut[3]);
+			printf("+ %d %0.9f (%0.9f) ", i, newMatchFitness, g);
 #endif
+			g = g * 1.1;
 		}
 		else
 		{
 #ifdef RADII_DEBUG
 //			printf("-");
-			printf("- %0.9f (%0.9f): %f, %f, %f, %f\n", newMatchFitness, g, estimateOut[0], estimateOut[1], estimateOut[2], estimateOut[3]);
-
+			printf("- %d %0.9f (%0.9f) ", i, newMatchFitness, g);
 #endif
 			// if it wasn't a match, back off on the distance we jump
 			g *= 0.7;
 
 		}
+
+#ifdef RADII_DEBUG
+		FLT avg=0;
+		FLT diffFromAvg[MAX_RADII];
+
+		for (size_t m = 0; m < numRadii; m++)
+		{
+			avg += estimateOut[m];
+		}
+		avg = avg / numRadii;
+
+		for (size_t m = 0; m < numRadii; m++)
+		{
+			diffFromAvg[m] = estimateOut[m] - avg;;
+		}
+		printf("[avg:%f] ", avg);
+
+		for (size_t x = 0; x < numRadii; x++)
+		{
+			printf("%f, ", diffFromAvg[x]);
+			//printf("%f, ", estimateOut[x]);
+		}
+		printf("\n");
+
+
+#endif
 
 
 	}
