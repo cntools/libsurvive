@@ -261,6 +261,7 @@ printf("rhat %f %f (len %f)\n", rhat[0][0], rhat[1][0], rhat_len);
     //-------------------------
     FLOAT ydist2;
     FLOAT bestBestErr = 9999.0;
+    FLOAT bestYdist = 0;
     for (ydist2=ydist-0.1; ydist2<ydist+0.1; ydist2+=0.0001)
     {
         FLOAT x2[3][1] = { {M[0][0]*ydist2}, {0.0}, {M[1][0]*ydist2} };
@@ -309,9 +310,10 @@ printf("rhat %f %f (len %f)\n", rhat[0][0], rhat[1][0], rhat_len);
             memcpy(y,y2,3*sizeof(FLOAT));
             memcpy(z,z2,3*sizeof(FLOAT));
             bestBestErr = bestErr;
+            bestYdist = ydist2;
         }
     }
-
+    ydist = bestYdist;
 
 /*
     for (i=0; i<nPoints; i++) {
