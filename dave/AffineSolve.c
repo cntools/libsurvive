@@ -242,7 +242,7 @@ printf("rhat %f %f (len %f)\n", rhat[0][0], rhat[1][0], rhat_len);
                 // Calculate the handedness
                 FLOAT cx,cy,cz;
                 CrossProduct(cx,cy,cz,x[0][0],x_y,x[2][0],y[0][0],y_y,y[2][0]);
-                FLOAT hand = cx*z[0][0] + cy*y_y + cz*z[2][0];
+                FLOAT hand = cx*z[0][0] + cy*z_y + cz*z[2][0];
 //                printf("err %f hand %f\n", err, hand);
                 
                 // If we are the best right-handed frame so far
