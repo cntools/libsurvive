@@ -7,12 +7,12 @@
 #include "visualization.h"
 
 
-static double distance(Point a, Point b)
+static FLT distance(Point a, Point b)
 {
-	double x = a.x - b.x;
-	double y = a.y - b.y;
-	double z = a.z - b.z;
-	return sqrt(x*x + y*y + z*z);
+	FLT x = a.x - b.x;
+	FLT y = a.y - b.y;
+	FLT z = a.z - b.z;
+	return FLT_SQRT(x*x + y*y + z*z);
 }
 
 Matrix3x3 GetRotationMatrixForTorus(Point a, Point b)
@@ -454,6 +454,137 @@ static Point RefineEstimateUsingModifiedGradientDescent1(Point initialEstimate, 
 	printf("\ni=%d\n", i);
 
 	return lastPoint;
+}
+
+
+// interesting-- this is one place where we could use any sensors that are only hit by
+// just an x or y axis to make our estimate better.  TODO: bring that data to this fn.
+FLT RotationEstimateFitness(Point lhPoint, FLT *quaternion, TrackedObject *obj)
+{
+	for (size_t i = 0; i < obj->numSensors; i++)
+	{
+		// first, get the normal of the plane for the horizonal sweep
+		FLT theta = obj->sensor[i].theta;
+		// make two vectors that lie on the plane
+		FLT t1[3] = { 1, tan(theta), 0 };
+		FLT t2[3] = { 1, tan(theta), 1 };
+
+		FLT tNorm[3];
+
+		// the normal is the cross of two vectors on the plane.
+		cross3d(tNorm, t1, t2);
+
+		// distance for this plane is d= fabs(A*x + B*y)/sqrt(A^2+B^2) (z term goes away since this plane is "vertical")
+		// where A is 
+		//FLT d = 
+	}
+}
+
+static Point RefineRotationEstimate(Point initialEstimate, PointsAndAngle *pna, size_t pnaCount, FILE *logFile)
+{
+	int i = 0;
+	FLT lastMatchFitness = getPointFitness(initialEstimate, pna, pnaCount);
+	Point lastPoint = initialEstimate;
+
+	// The values below are somewhat magic, and definitely tunable
+	// The initial vlue of g will represent the biggest step that the gradient descent can take at first.
+	//   bigger values may be faster, especially when the initial guess is wildly off.
+	//   The downside to a bigger starting guess is that if we've picked a good guess at the local minima
+	//   if there are other local minima, we may accidentally jump to such a local minima and get stuck there.
+	//   That's fairly unlikely with the lighthouse problem, from expereince.
+	//   The other downside is that if it's too big, we may have to spend a few iterations before it gets down
+	//   to a size that doesn't jump us out of our minima.
+	// The terminal value of g represents how close we want to get to the local minima before we're "done"
+	// The change in value of g for each iteration is intentionally very close to 1.
+	//   in fact, it probably could probably be 1 without any issue.  The main place where g is decremented
+	//   is in the block below when we've made a jump that results in a worse fitness than we're starting at.
+	//   In those cases, we don't take the jump, and instead lower the value of g and try again.
+	for (FLT g = 0.2; g > 0.00001; g *= 0.99)
+	{
+		i++;
+		Point point1 = lastPoint;
+		// let's get 3 iterations of gradient descent here.
+		Point gradient1 = getGradient(point1, pna, pnaCount, g / 1000 /*somewhat arbitrary*/);
+		Point gradientN1 = getNormalizedVector(gradient1, g);
+
+		Point point2;
+		point2.x = point1.x + gradientN1.x;
+		point2.y = point1.y + gradientN1.y;
+		point2.z = point1.z + gradientN1.z;
+
+		Point gradient2 = getGradient(point2, pna, pnaCount, g / 1000 /*somewhat arbitrary*/);
+		Point gradientN2 = getNormalizedVector(gradient2, g);
+
+		Point point3;
+		point3.x = point2.x + gradientN2.x;
+		point3.y = point2.y + gradientN2.y;
+		point3.z = point2.z + gradientN2.z;
+
+		// remember that gradient descent has a tendency to zig-zag when it encounters a narrow valley?
+		// Well, solving the lighthouse problem presents a very narrow valley, and the zig-zag of a basic
+		// gradient descent is kinda horrible here.  Instead, think about the shape that a zig-zagging 
+		// converging gradient descent makes.  Instead of using the gradient as the best indicator of 
+		// the direction we should follow, we're looking at one side of the zig-zag pattern, and specifically
+		// following *that* vector.  As it turns out, this works *amazingly* well.  
+
+		Point specialGradient = { .x = point3.x - point1.x, .y = point3.y - point1.y, .z = point3.y - point1.y };
+
+		// The second parameter to this function is very much a tunable parameter.  Different values will result
+		// in a different number of iterations before we get to the minimum.  Numbers between 3-10 seem to work well
+		// It's not clear what would be optimum here.
+		specialGradient = getNormalizedVector(specialGradient, g / 4);
+
+		Point point4;
+
+		point4.x = point3.x + specialGradient.x;
+		point4.y = point3.y + specialGradient.y;
+		point4.z = point3.z + specialGradient.z;
+
+		FLT newMatchFitness = getPointFitness(point4, pna, pnaCount);
+
+		if (newMatchFitness > lastMatchFitness)
+		{
+			if (logFile)
+			{
+				writePoint(logFile, lastPoint.x, lastPoint.y, lastPoint.z, 0xFFFFFF);
+			}
+
+			lastMatchFitness = newMatchFitness;
+			lastPoint = point4;
+#ifdef TORI_DEBUG
+			printf("+");
+#endif
+		}
+		else
+		{
+#ifdef TORI_DEBUG
+			printf("-");
+#endif
+			g *= 0.7;
+
+		}
+
+
+	}
+	printf("\ni=%d\n", i);
+
+	return lastPoint;
+}
+
+void SolveForRotation(FLT rotOut[4], TrackedObject *obj, Point lh)
+{
+
+	// Step 1, create initial quaternion for guess.  
+	// This should have the lighthouse directly facing the tracked object.
+	Point trackedObjRelativeToLh = { .x = -lh.x, .y = -lh.y, .z = -lh.z };
+	FLT theta = atan2(-lh.x, -lh.y);
+	FLT zAxis[3] = { 0, 0, 1 };
+	FLT quat1[4];
+	quatfromaxisangle(quat1, zAxis, theta);
+	// not correcting for phi, but that's less important.
+
+	// Step 2, optimize the quaternion to match the data.
+
 }
 
 
