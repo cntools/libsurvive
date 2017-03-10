@@ -206,8 +206,8 @@ printf("fhat %f %f (len %f)\n", fhat[0][0], fhat[1][0], fhat_len);
 printf("uhat %f %f (len %f)\n", uhat[0][0], uhat[1][0], uhat_len);
 printf("rhat %f %f (len %f)\n", rhat[0][0], rhat[1][0], rhat_len);
 */
-    FLOAT ydist1 = 1.0 /  uhat_len; //0.25*PI / uhat_len;
-    FLOAT ydist2 = 1.0 /  rhat_len; //0.25*PI / rhat_len;
+//    FLOAT ydist1 = 1.0 /  uhat_len; //0.25*PI / uhat_len;
+//    FLOAT ydist2 = 1.0 /  rhat_len; //0.25*PI / rhat_len;
     FLOAT ydist  = 1.0 / urhat_len;
 //    printf("ydist1 %f ydist2 %f ydist %f\n", ydist1, ydist2, ydist);
 
@@ -223,7 +223,7 @@ printf("rhat %f %f (len %f)\n", rhat[0][0], rhat[1][0], rhat_len);
     FLOAT x_y = sqrt(1.0 - x[0][0]*x[0][0] - x[2][0]*x[2][0]);
     FLOAT y_y = sqrt(1.0 - y[0][0]*y[0][0] - y[2][0]*y[2][0]);
     FLOAT z_y = sqrt(1.0 - z[0][0]*z[0][0] - z[2][0]*z[2][0]);
-
+/*
     // Exhaustively flip the minus sign of the z axis until we find the right one . . .
     FLOAT bestErr = 9999.0;
     FLOAT xy_dot2 = x[0][0]*y[0][0] + x[2][0]*y[2][0];
@@ -243,7 +243,7 @@ printf("rhat %f %f (len %f)\n", rhat[0][0], rhat[1][0], rhat_len);
                 FLOAT cx,cy,cz;
                 CrossProduct(cx,cy,cz,x[0][0],x_y,x[2][0],y[0][0],y_y,y[2][0]);
                 FLOAT hand = cx*z[0][0] + cy*z_y + cz*z[2][0];
-//                printf("err %f hand %f\n", err, hand);
+                printf("err %f hand %f\n", err, hand);
                 
                 // If we are the best right-handed frame so far
                 if (hand > 0 && err < bestErr) { x[1][0]=x_y; y[1][0]=y_y; z[1][0]=z_y; bestErr=err; }
@@ -253,7 +253,66 @@ printf("rhat %f %f (len %f)\n", rhat[0][0], rhat[1][0], rhat_len);
         }
         x_y = -x_y;
     }
-//    printf("bestErr %f\n", bestErr);
+    printf("bestErr %f\n", bestErr);
+*/
+
+    //-------------------------
+    // A test version of the rescaling to the proper length
+    //-------------------------
+    FLOAT ydist2;
+    FLOAT bestBestErr = 9999.0;
+    for (ydist2=ydist-0.1; ydist2<ydist+0.1; ydist2+=0.0001)
+    {
+        FLOAT x2[3][1] = { {M[0][0]*ydist2}, {0.0}, {M[1][0]*ydist2} };
+        FLOAT y2[3][1] = { {M[0][1]*ydist2}, {0.0}, {M[1][1]*ydist2} };
+        FLOAT z2[3][1] = { {M[0][2]*ydist2}, {0.0}, {M[1][2]*ydist2} };
+
+        // we know the distance into (or out of) the camera for the z axis,
+        //  but we don't know which direction . . .
+        FLOAT x_y = sqrt(1.0 - x2[0][0]*x2[0][0] - x2[2][0]*x2[2][0]);
+        FLOAT y_y = sqrt(1.0 - y2[0][0]*y2[0][0] - y2[2][0]*y2[2][0]);
+        FLOAT z_y = sqrt(1.0 - z2[0][0]*z2[0][0] - z2[2][0]*z2[2][0]);
+
+        // Exhaustively flip the minus sign of the z axis until we find the right one . . .
+        FLOAT bestErr = 9999.0;
+        FLOAT xy_dot2 = x2[0][0]*y2[0][0] + x2[2][0]*y2[2][0];
+        FLOAT yz_dot2 = y2[0][0]*z2[0][0] + y2[2][0]*z2[2][0];
+        FLOAT zx_dot2 = z2[0][0]*x2[0][0] + z2[2][0]*x2[2][0];
+        for (i=0;i<2;i++) {
+            for (j=0;j<2;j++) {
+                for(k=0;k<2;k++) {
+            
+                    // Calculate the error term
+                    FLOAT xy_dot = xy_dot2 + x_y*y_y;
+                    FLOAT yz_dot = yz_dot2 + y_y*z_y;
+                    FLOAT zx_dot = zx_dot2 + z_y*x_y;
+                    FLOAT err = _ABS(xy_dot) + _ABS(yz_dot) + _ABS(zx_dot);
+                
+                    // Calculate the handedness
+                    FLOAT cx,cy,cz;
+                    CrossProduct(cx,cy,cz,x2[0][0],x_y,x2[2][0],y2[0][0],y_y,y2[2][0]);
+                    FLOAT hand = cx*z2[0][0] + cy*z_y + cz*z2[2][0];
+//                  printf("err %f hand %f\n", err, hand);
+                
+                    // If we are the best right-handed frame so far
+                    if (hand > 0 && err < bestErr) { x2[1][0]=x_y; y2[1][0]=y_y; z2[1][0]=z_y; bestErr=err; }
+                    z_y = -z_y;
+                }
+                y_y = -y_y;
+            }
+            x_y = -x_y;
+        }
+        printf("ydist2 %f bestErr %f\n",ydist2,bestErr);
+        
+        if (bestErr < bestBestErr) {
+            memcpy(x,x2,3*sizeof(FLOAT));
+            memcpy(y,y2,3*sizeof(FLOAT));
+            memcpy(z,z2,3*sizeof(FLOAT));
+            bestBestErr = bestErr;
+        }
+    }
+
+
 /*
     for (i=0; i<nPoints; i++) {
         float x1 = x[0][0]*X[0][i] + y[0][0]*X[1][i] + z[0][0]*X[2][i];
