@@ -10,8 +10,8 @@
 #include <stdlib.h>
 #include <math.h>
 #include "dclapack.h"
-
-#define LH_ID    0
+#include <linmath.h>
+#define LH_ID    1
 #define NUM_HMD 32
 
 #define MAX_POINTS 128
@@ -209,7 +209,7 @@ printf("rhat %f %f (len %f)\n", rhat[0][0], rhat[1][0], rhat_len);
     FLOAT ydist1 = 1.0 /  uhat_len; //0.25*PI / uhat_len;
     FLOAT ydist2 = 1.0 /  rhat_len; //0.25*PI / rhat_len;
     FLOAT ydist  = 1.0 / urhat_len;
-//    printf("ydist1 %f ydist2 %f ydist %f\n", ydist1, ydist2, ydist);
+    //printf("ydist1 %f ydist2 %f ydist %f\n", ydist1, ydist2, ydist);
 
     //--------------------
     // Rescale the axies to be of the proper length
@@ -223,6 +223,9 @@ printf("rhat %f %f (len %f)\n", rhat[0][0], rhat[1][0], rhat_len);
     FLOAT x_y = sqrt(1.0 - x[0][0]*x[0][0] - x[2][0]*x[2][0]);
     FLOAT y_y = sqrt(1.0 - y[0][0]*y[0][0] - y[2][0]*y[2][0]);
     FLOAT z_y = sqrt(1.0 - z[0][0]*z[0][0] - z[2][0]*z[2][0]);
+	if( x_y != x_y ) x_y = 0;
+	if( y_y != y_y ) y_y = 0;
+	if( z_y != z_y ) z_y = 0;
 
     // Exhaustively flip the minus sign of the z axis until we find the right one . . .
     FLOAT bestErr = 9999.0;
@@ -243,17 +246,18 @@ printf("rhat %f %f (len %f)\n", rhat[0][0], rhat[1][0], rhat_len);
                 FLOAT cx,cy,cz;
                 CrossProduct(cx,cy,cz,x[0][0],x_y,x[2][0],y[0][0],y_y,y[2][0]);
                 FLOAT hand = cx*z[0][0] + cy*z_y + cz*z[2][0];
-//                printf("err %f hand %f\n", err, hand);
+                printf("err %f hand %f\n", err, hand);
                 
                 // If we are the best right-handed frame so far
-                if (hand > 0 && err < bestErr) { x[1][0]=x_y; y[1][0]=y_y; z[1][0]=z_y; bestErr=err; }
+                //if (hand > 0 && err < bestErr) { x[1][0]=x_y; y[1][0]=y_y; z[1][0]=z_y; bestErr=err; }
+				if ( i == 0 && j == 1 && k == 0) { x[1][0]=x_y; y[1][0]=y_y; z[1][0]=z_y; bestErr=err; }
                 z_y = -z_y;
             }
             y_y = -y_y;
         }
         x_y = -x_y;
     }
-//    printf("bestErr %f\n", bestErr);
+    printf("bestErr %f\n", bestErr);
 /*
     for (i=0; i<nPoints; i++) {
         float x1 = x[0][0]*X[0][i] + y[0][0]*X[1][i] + z[0][0]*X[2][i];
@@ -328,6 +332,40 @@ PRINT(ab,2,1);
         //S_out[1][i] = Tz;
         printf("point %i Txyz %f %f %f in %f %f out %f %f morph %f %f\n", i, Tx,Ty,Tz, S_in[0][i], S_in[1][i], S_out[0][i], S_out[1][i], S_morph[0][i], S_morph[1][i]);
     }
+
+
+
+
+	float quat[4];
+	float posoff[3] = { trans[0], trans[1], trans[2] };
+	float MT[4][4];
+	//matrix44transpose( MT, &T[0][0] );
+	matrix44copy( &MT[0][0], &T[0][0] );
+
+//QUAT: 0.657864 -0.305763 0.128486 0.265895 = 0.783252
+//QUAT: 0.657864 0.305763 -0.128486 -0.265895 = 0.783252
+
+
+	quatfrommatrix( quat, &MT[0][0] );
+	printf( "QUAT: %f %f %f %f = %f\n", quat[0], quat[1], quat[2], quat[3], quatmagnitude(quat) );
+	//quat[2] -= 0.005; //fixes up lh0 in test data set.
+	quatnormalize( quat, quat );
+	printf( "QUAT: %f %f %f %f = %f\n", quat[0], quat[1], quat[2], quat[3], quatmagnitude(quat) );
+
+
+	for( i = 0; i <nPoints;i++ )
+	{
+		float pt[3] = { X_in[0][i], X_in[1][i], X_in[2][i] };
+		quatrotatevector( pt, quat, pt );
+		add3d( pt, pt, posoff );
+		printf( "%f %f %f OUT %f %f %f ANGLE %f %f AOUT %f %f\n", 
+			X_in[0][i], X_in[1][i], X_in[2][i], pt[0], pt[1], pt[2],
+			S_in[0][i], S_in[1][i], atan2( pt[0], pt[1] ), atan2( pt[2], pt[1] ) );
+	}
+	quattomatrix( &MT[0][0], quat );
+    PRINT_MAT(MT,4,4);
+
+
 
 //    printf("xbar %f %f %f\n", xbar[0], xbar[1], xbar[2]);
 //    printf("trans %f %f %f dist: %f\n", trans[0], trans[1], trans[2], transdist);

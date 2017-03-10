@@ -104,7 +104,7 @@ void rotation_between_vecs_to_m3(Matrix3x3 *m, const FLT v1[3], const FLT v2[3])
 Matrix3x3 inverseM33(const Matrix3x3 mat);
 
 
-
+void matrix44copy(FLT * mout, const FLT * minm );
 
 
 

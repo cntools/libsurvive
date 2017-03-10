@@ -3,6 +3,7 @@
 #include "linmath.h"
 #include <math.h>
 #include <float.h>
+#include <string.h>
 
 void cross3d( FLT * out, const FLT * a, const FLT * b )
 {
@@ -299,14 +300,9 @@ void quatadd( FLT * qout, const FLT * a, const FLT * b )
 	qout[3] = a[3] + b[3];
 }
 
-void quatrotateabout( FLT * qout, const FLT * a, const FLT * b )
+void quatrotateabout( FLT * qout, const FLT * q1, const FLT * q2 )
 {
-	FLT q1[4];
-	FLT q2[4];
-
-	//quatnormalize( q1, a );
-	//quatnormalize( q2, b );
-
+	//NOTE: Does not normalize
 	qout[0] = (q1[0]*q2[0])-(q1[1]*q2[1])-(q1[2]*q2[2])-(q1[3]*q2[3]);
 	qout[1] = (q1[0]*q2[1])+(q1[1]*q2[0])+(q1[2]*q2[3])-(q1[3]*q2[2]);
 	qout[2] = (q1[0]*q2[2])-(q1[1]*q2[3])+(q1[2]*q2[0])+(q1[3]*q2[1]);
@@ -396,7 +392,7 @@ void quatrotatevector( FLT * vec3out, const FLT * quat, const FLT * vec3in )
 	vquat[3] = vec3in[2];
 
 	quatrotateabout( tquat, quat, vquat );
-	quatgetreciprocal( qrecp, quat );
+	quatgetconjugate( qrecp, quat );
 	quatrotateabout( vquat, tquat, qrecp );
 
 	vec3out[0] = vquat[1];
@@ -513,6 +509,11 @@ void quatfrom2vectors(FLT *q, const FLT *src, const FLT *dest)
 		quatnormalize(q, q);
 	}
 
+}
+
+void matrix44copy(FLT * mout, const FLT * minm )
+{
+	memcpy( mout, minm, sizeof( FLT ) * 16 );
 }
 
 ///////////////////////////////////////Matrix Rotations////////////////////////////////////
