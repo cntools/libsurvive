@@ -53,7 +53,7 @@ SurviveContext * survive_init( int headless )
 	}
 
 	i = 0;
-	const char * PreferredPoser = config_read_str( ctx->global_config_values, "DefualtPoser", "PoserDummy" );
+	const char * PreferredPoser = config_read_str( ctx->global_config_values, "DefaultPoser", "PoserDummy" );
 	PoserCB PreferredPoserCB = 0;
 	const char * FirstPoser = 0;
 	printf( "Available posers:\n" );

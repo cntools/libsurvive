@@ -12,7 +12,7 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 	//int32_t deltat = (uint32_t)le->timestamp - (uint32_t)so->last_master_time;
 
 	//if( so->codename[0] != 'H' )
-	printf( "*** %s %d %d %d %d %d\n", so->codename, le->sensor_id, le->type, le->length, le->timestamp, le->timestamp-so->tsl );
+//	printf( "*** %s %d %d %d %d %d\n", so->codename, le->sensor_id, le->type, le->length, le->timestamp, le->timestamp-so->tsl );
 
 	if( le->sensor_id > SENSORS_PER_OBJECT )
 	{

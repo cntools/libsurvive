@@ -7,6 +7,16 @@ int main()
 	FLT e[3] = { 1,1,3.14 };
 	FLT q[4];
 	FLT m[16];
+	FLT pt[3] = { 1, 1, 1 };
+
+	q[0] = 0;
+	q[1] = 0;
+	q[2] = 0;
+	q[3] = 1;
+
+	quatrotatevector( pt, q, pt );
+	printf( "%f %f %f\n", PFTHREE( pt ) );
+	printf( "\n" );
 
 	quatfromeuler( q, e );
 	printf( "%f %f %f %f\n\n", PFFOUR( q ) );
@@ -32,9 +42,9 @@ int main()
 
 
 	//Try setting up a pose.
-	FLT mypose[7] = { 0, 0, 10, q[0], q[1], q[2], q[3] );
-	ApplyPoseToPoint( FLT * pout, const FLT * pin, const FLT * pose );
-void InvertPose( FLT * poseout, const FLT * pose );
+//	FLT mypose[7] = { 0, 0, 10, q[0], q[1], q[2], q[3] );
+//	ApplyPoseToPoint( FLT * pout, const FLT * pin, const FLT * pose );
+//void InvertPose( FLT * poseout, const FLT * pose );
 	
 	
 }

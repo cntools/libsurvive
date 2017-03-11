@@ -13,6 +13,7 @@
 #include "src/survive_config.h"
 
 struct SurviveContext * ctx;
+int  quit = 0;
 
 void HandleKey( int keycode, int bDown )
 {
@@ -25,6 +26,10 @@ void HandleKey( int keycode, int bDown )
 	if( keycode == 'F' || keycode == 'f' )
 	{
 		survive_send_magic(ctx,0,0,0);
+	}
+	if( keycode == 'Q' || keycode == 'q' )
+	{
+		quit = 1;
 	}
 }
 
@@ -163,10 +168,13 @@ int main()
 		return 1;
 	}
 
-	while(survive_poll(ctx) == 0)
+	while(survive_poll(ctx) == 0 && !quit)
 	{
 		//Do stuff.
 	}
+
+	survive_close( ctx );
+
 	printf( "Returned\n" );
 }
 

@@ -129,12 +129,14 @@ int survive_cal_lhfind( SurviveCalData * cd )
 			fullrange *= 0.25;
 		}
 
-		if( beste > 0.01 )
+		if( beste > 0.1 )
 		{
 			//Error too high
 			SV_ERROR( "LH: %d / Best E %f Error too high\n", lh, beste );
 			return -1;
 		}
+
+		RunOpti(cd, lh, 1, LighthousePos, LighthouseQuat);
 
 		cd->ctx->bsd[lh].PositionSet = 1;
 		copy3d( cd->ctx->bsd[lh].Pose.Pos, LighthousePos );
@@ -198,6 +200,7 @@ static FLT RunOpti( SurviveCalData * cd, int lh, int print, FLT * LighthousePos,
 			RayShootOut[2] = sqrt( 1 - (RayShootOut[0]*RayShootOut[0] + RayShootOut[1]*RayShootOut[1]) );
 			FLT RayShootOutWorld[3];
 
+			quatnormalize( LighthouseQuat, LighthouseQuat );
 			//Rotate that ray by the current rotation estimation.
 			quatrotatevector( RayShootOutWorld, LighthouseQuat, RayShootOut );
 
@@ -207,6 +210,7 @@ static FLT RunOpti( SurviveCalData * cd, int lh, int print, FLT * LighthousePos,
 			normalize3d( UsToTarget, UsToTarget );
 
 			FLT RotatedLastUs[3];
+			quatnormalize( LighthouseQuat, LighthouseQuat );
 			quatrotatevector( RotatedLastUs, LighthouseQuat, LastUsToTarget );
 
 			//Rotate the lighthouse around this axis to point at the HMD.
@@ -221,6 +225,7 @@ static FLT RunOpti( SurviveCalData * cd, int lh, int print, FLT * LighthousePos,
 				//Don't need to worry about being negative, cross product will fix it.
 				FLT RotateAmount = anglebetween3d( RayShootOutWorld, UsToTarget );
 				quatfromaxisangle( ConcatQuat, AxisToRotate, RotateAmount );
+				quatnormalize( ConcatQuat, ConcatQuat );
 			}
 			else
 			{
@@ -244,9 +249,13 @@ static FLT RunOpti( SurviveCalData * cd, int lh, int print, FLT * LighthousePos,
 				FLT RotateAmount = anglebetween3d( Actual, Target ) * mux;
 				//printf( "FA: %f (O:%f)\n", acos( dot3d( Actual, Target ) ), RotateAmount );
 				quatfromaxisangle( ConcatQuat, AxisToRotate, RotateAmount );
+				quatnormalize( ConcatQuat, ConcatQuat );
 			}
 
-			quatrotateabout( LighthouseQuat, ConcatQuat, LighthouseQuat );  //Chekcked.  This appears to be 
+
+			quatnormalize( ConcatQuat, ConcatQuat );
+			quatnormalize( LighthouseQuat, LighthouseQuat );
+			quatrotateabout( LighthouseQuat, ConcatQuat, LighthouseQuat );  //Checked.  This appears to be 
 
 			mux = mux * 0.94;
 			if( second ) { second = 0; }
