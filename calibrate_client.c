@@ -141,7 +141,7 @@ void * GuiThread( void * v )
 
 int main()
 {
-
+/*
 	config_init();
 	config_read("config.json");
 	config_set_str(&global_config_values, "Hello","World!");
@@ -156,7 +156,7 @@ int main()
 
 
 //	config_save("config.json");
-
+*/
 	
 	ctx = survive_init( 1 );
 

@@ -24,6 +24,13 @@ Please see the issues for what help needs to be done now!
 
 HackADay article and video with Dr. Yates on how they made the Vive a thing. http://hackaday.com/2016/12/21/alan-yates-why-valves-lighthouse-cant-work/
 
+## Getting things working
+
+There are two things you should consider doing to your system before running libsurvive.
+
+(1) Install the udev rules:  ```cp usefulfiles/81-vive.rules to /etc/udev/rules.d/``` and reboot.
+(2) If you are running on an NVIDIA Card, you will need to AllowHMD to true.  Add the following line to your /etc/X11/xorg.conf device section:  ```Option "AllowHMD" "yes"```
+
 ## Introduction
 High-performance HTC Vive Library
 

@@ -3,6 +3,7 @@
 #include "linmath.h"
 #include <math.h>
 #include <float.h>
+#include <string.h>
 
 void cross3d( FLT * out, const FLT * a, const FLT * b )
 {
@@ -152,7 +153,7 @@ FLT quatmagnitude( const FLT * q )
 
 FLT quatinvsqmagnitude( const FLT * q )
 {
-	return ((FLT)1.)/((q[0]*q[0])+(q[1]*q[1])+(q[2]*q[2])+(q[3]*q[3]));
+	return ((FLT)1.)/FLT_SQRT((q[0]*q[0])+(q[1]*q[1])+(q[2]*q[2])+(q[3]*q[3]));
 }
 
 
@@ -168,17 +169,17 @@ void quattomatrix(FLT * matrix44, const FLT * qin)
 	quatnormalize(q, qin);
 
 	//Reduced calulation for speed
-	FLT xx = 2 * q[0] * q[0];
-	FLT xy = 2 * q[0] * q[1];
-	FLT xz = 2 * q[0] * q[2];
-	FLT xw = 2 * q[0] * q[3];
+	FLT xx = 2 * q[1] * q[1];
+	FLT xy = 2 * q[1] * q[2];
+	FLT xz = 2 * q[1] * q[3];
+	FLT xw = 2 * q[1] * q[0];
 
-	FLT yy = 2 * q[1] * q[1];
-	FLT yz = 2 * q[1] * q[2];
-	FLT yw = 2 * q[1] * q[3];
+	FLT yy = 2 * q[2] * q[2];
+	FLT yz = 2 * q[2] * q[3];
+	FLT yw = 2 * q[2] * q[0];
 
-	FLT zz = 2 * q[2] * q[2];
-	FLT zw = 2 * q[2] * q[3];
+	FLT zz = 2 * q[3] * q[3];
+	FLT zw = 2 * q[3] * q[0];
 
 	//opengl major
 	matrix44[0] = 1 - yy - zz;
@@ -201,6 +202,40 @@ void quattomatrix(FLT * matrix44, const FLT * qin)
 	matrix44[14] = 0;
 	matrix44[15] = 1;
 }
+
+
+void quatfrommatrix( FLT * q, const FLT * matrix44 )
+{
+	//Algorithm from http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
+	float tr = matrix44[0] + matrix44[5] + matrix44[10];
+
+	if (tr > 0) {
+		float S = sqrt(tr+1.0) * 2; // S=4*qw
+		q[0] = 0.25 * S;
+		q[1] = (matrix44[9] - matrix44[6]) / S;
+		q[2] = (matrix44[2] - matrix44[8]) / S;
+		q[3] = (matrix44[4] - matrix44[1]) / S;
+	} else if ((matrix44[0] > matrix44[5])&(matrix44[0] > matrix44[10])) {
+		float S = sqrt(1.0 + matrix44[0] - matrix44[5] - matrix44[10]) * 2; // S=4*qx
+		q[0] = (matrix44[9] - matrix44[6]) / S;
+		q[1] = 0.25 * S;
+		q[2] = (matrix44[1] + matrix44[4]) / S;
+		q[3] = (matrix44[2] + matrix44[8]) / S;
+	} else if (matrix44[5] > matrix44[10]) {
+		float S = sqrt(1.0 + matrix44[5] - matrix44[0] - matrix44[10]) * 2; // S=4*qy
+		q[0] = (matrix44[2] - matrix44[8]) / S;
+		q[1] = (matrix44[1] + matrix44[4]) / S;
+		q[2] = 0.25 * S;
+		q[3] = (matrix44[6] + matrix44[9]) / S;
+	} else {
+		float S = sqrt(1.0 + matrix44[10] - matrix44[0] - matrix44[5]) * 2; // S=4*qz
+		q[0] = (matrix44[4] - matrix44[1]) / S;
+		q[1] = (matrix44[2] + matrix44[8]) / S;
+		q[2] = (matrix44[6] + matrix44[9]) / S;
+		q[3] = 0.25 * S;
+	}
+}
+
 
 void quattomatrix33(FLT * matrix33, const FLT * qin)
 {
@@ -265,14 +300,9 @@ void quatadd( FLT * qout, const FLT * a, const FLT * b )
 	qout[3] = a[3] + b[3];
 }
 
-void quatrotateabout( FLT * qout, const FLT * a, const FLT * b )
+void quatrotateabout( FLT * qout, const FLT * q1, const FLT * q2 )
 {
-	FLT q1[4];
-	FLT q2[4];
-
-	quatnormalize( q1, a );
-	quatnormalize( q2, b );
-
+	//NOTE: Does not normalize
 	qout[0] = (q1[0]*q2[0])-(q1[1]*q2[1])-(q1[2]*q2[2])-(q1[3]*q2[3]);
 	qout[1] = (q1[0]*q2[1])+(q1[1]*q2[0])+(q1[2]*q2[3])-(q1[3]*q2[2]);
 	qout[2] = (q1[0]*q2[2])-(q1[1]*q2[3])+(q1[2]*q2[0])+(q1[3]*q2[1]);
@@ -362,7 +392,7 @@ void quatrotatevector( FLT * vec3out, const FLT * quat, const FLT * vec3in )
 	vquat[3] = vec3in[2];
 
 	quatrotateabout( tquat, quat, vquat );
-	quatgetreciprocal( qrecp, quat );
+	quatgetconjugate( qrecp, quat );
 	quatrotateabout( vquat, tquat, qrecp );
 
 	vec3out[0] = vquat[1];
@@ -479,5 +509,10 @@ void quatfrom2vectors(FLT *q, const FLT *src, const FLT *dest)
 		quatnormalize(q, q);
 	}
 
+}
+
+void matrix44copy(FLT * mout, const FLT * minm )
+{
+	memcpy( mout, minm, sizeof( FLT ) * 16 );
 }
 

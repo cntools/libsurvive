@@ -76,6 +76,7 @@ uint32_t JSON_STRING_LEN;
 
 char* load_file_to_mem(const char* path) {
 	FILE * f = fopen( path, "r" );
+	if (f==NULL) return NULL;
 	fseek( f, 0, SEEK_END );
 	int len = ftell( f );
 	fseek( f, 0, SEEK_SET );
@@ -116,7 +117,10 @@ static uint16_t json_load_array(const char* JSON_STRING, jsmntok_t* tokens, uint
 
 void json_load_file(const char* path) {
 	uint32_t i = 0;
+
 	char* JSON_STRING = load_file_to_mem(path);
+	if (JSON_STRING==NULL) return;
+
 	JSON_STRING_LEN = strlen(JSON_STRING);
 
 	jsmn_parser parser;

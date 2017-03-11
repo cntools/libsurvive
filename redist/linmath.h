@@ -7,8 +7,8 @@
 #define DEFAULT_EPSILON 0.001
 
 //For printf
-#define PFTHREE(x) x[0], x[1], x[2]
-#define PFFOUR(x) x[0], x[1], x[2], x[3]
+#define PFTHREE(x) (x)[0], (x)[1], (x)[2]
+#define PFFOUR(x) (x)[0], (x)[1], (x)[2], (x)[3]
 
 #define LINMATHPI ((FLT)3.141592653589)
 
@@ -76,6 +76,7 @@ FLT quatmagnitude( const FLT * q );
 FLT quatinvsqmagnitude( const FLT * q );
 void quatnormalize( FLT * qout, const FLT * qin );  //Safe for in to be same as out.
 void quattomatrix( FLT * matrix44, const FLT * q );
+void quatfrommatrix( FLT * q, const FLT * matrix44 );
 void quatgetconjugate( FLT * qout, const FLT * qin );
 void quatgetreciprocal( FLT * qout, const FLT * qin );
 void quatsub( FLT * qout, const FLT * a, const FLT * b );
@@ -103,7 +104,7 @@ void rotation_between_vecs_to_m3(Matrix3x3 *m, const FLT v1[3], const FLT v2[3])
 Matrix3x3 inverseM33(const Matrix3x3 mat);
 
 
-
+void matrix44copy(FLT * mout, const FLT * minm );
 
 
 

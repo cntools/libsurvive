@@ -52,7 +52,7 @@ void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 	b->fcalgibmag[1] = v6.fcal_1_gibmag;
 	b->OOTXSet = 1;
 
-	config_set_lighthouse(b,id);
+	config_set_lighthouse(ctx->lh_config,b,id);
 //	config_save("config.json");
 }
 
