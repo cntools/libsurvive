@@ -140,7 +140,7 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 void   RegisterDriver( const char * name, void * data );
 
 #define REGISTER_LINKTIME( func ) \
-	void __attribute__((constructor)) Register##func() { RegisterDriver( #func, &func ); }
+	void __attribute__((constructor)) LTRegister##func() { RegisterDriver( #func, &func ); }
 
 
 

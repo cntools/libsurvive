@@ -89,8 +89,12 @@ void quatevenproduct( FLT * q, FLT * qa, FLT * qb );
 void quatoddproduct( FLT * outvec3, FLT * qa, FLT * qb );
 void quatslerp( FLT * q, const FLT * qa, const FLT * qb, FLT t );
 void quatrotatevector( FLT * vec3out, const FLT * quat, const FLT * vec3in );
-
 void quatfrom2vectors(FLT *q, const FLT *src, const FLT *dest);
+
+//Poses are Position: [x, y, z]  Quaternion: [q, x, y, z]
+void ApplyPoseToPoint( FLT * pout, const FLT * pin, const FLT * pose );
+void InvertPose( FLT * poseout, const FLT * pose );
+
 
 // Matrix Stuff
 
