@@ -31,6 +31,8 @@ static void reset_calibration( struct SurviveCalData * cd );
 
 void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 {
+	static uint8_t lighthouses_completed = 0;
+
 	SurviveContext * ctx = (SurviveContext*)(ct->user);
 	SurviveCalData * cd = ctx->calptr;
 	int id = ct->user1;
@@ -57,7 +59,11 @@ void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 	b->OOTXSet = 1;
 
 	config_set_lighthouse(ctx->lh_config,b,id);
-//	config_save("config.json");
+	lighthouses_completed++;
+
+	if (lighthouses_completed >= NUM_LIGHTHOUSES) {
+		config_save(ctx, "config.json");
+	}
 }
 
 int survive_cal_get_status( struct SurviveContext * ctx, char * description, int description_length )
