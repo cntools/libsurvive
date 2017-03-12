@@ -307,7 +307,7 @@ static void handle_calibration( struct SurviveCalData *cd )
 	for( axis = 0; axis < 2; axis++ )
 	{
 		int dpmax = cd->all_counts[sen][lh][axis];
-		if( dpmax < 50 ) continue;
+		if( dpmax < MIN_PTS_BEFORE_CAL ) continue;
 		int i;
 
 		FLT sumsweepangle = 0;
@@ -512,27 +512,34 @@ static void handle_calibration( struct SurviveCalData *cd )
 				lhp->Pos[1] = objfromlh->Pos[1];
 				lhp->Pos[2] = objfromlh->Pos[2];
 
-				lhp->Rot[0] = objfromlh->Rot[0]*-1;
+				lhp->Rot[0] = objfromlh->Rot[0];
 				lhp->Rot[1] = objfromlh->Rot[1];
 				lhp->Rot[2] = objfromlh->Rot[2];
 				lhp->Rot[3] = objfromlh->Rot[3];
 
 				//Write lhp from the inverse of objfromlh
-				quatrotatevector( lhp->Pos, lhp->Rot, lhp->Pos );
+				//quatrotatevector( lhp->Pos, lhp->Rot, lhp->Pos );
 
 
 				fprintf( stderr, "%f %f %f\n", objfromlh->Pos[0], objfromlh->Pos[1], objfromlh->Pos[2] );
 				fprintf( stderr, "%f %f %f %f\n", objfromlh->Rot[0], objfromlh->Rot[1], objfromlh->Rot[2], objfromlh->Rot[3] );
 				fprintf( stderr, "%f %f %f\n", lhp->Pos[0], lhp->Pos[1], lhp->Pos[2] );
 				/*
-					-0.074179 2.793859 0.519508
-					-0.092802 0.087361 0.872115 0.472409
-					0.379494 1.906039 2.074617
+					-0.204066 3.238746 -0.856369
+					0.812203 -0.264897 0.505599 0.120520
+					-0.204066 3.238746 -0.856369
 
-					0.695987 3.346798 -0.776169
-					-0.258207 0.966008 -0.008604 0.009116
-					0.614156 -2.521008 2.356952
+					0.020036 3.162476 -0.117896
+					-0.322354 0.450869 0.346281 0.756898
+					0.020036 3.162476 -0.117896
+				*/
 
+				/* Facing up, moved -x 1m.
+					====> 0.446818 -0.309120 -0.747630 ====> -0.222356 -0.701865 -0.558656
+					====> -0.341064 0.099785 0.887015 ====> 0.619095 0.727263 0.029786 
+						IN PLACE, but rotated 90 * up.
+					====> 0.374516 -0.370583 -0.606996 ====> -0.120238 -0.670330 -0.426896
+					====> -0.231758 0.070437 0.765982 ====> 0.497615 0.625761 0.078759 
 				*/
 
 				printf( "\n" );
@@ -551,21 +558,17 @@ static void handle_calibration( struct SurviveCalData *cd )
 					objfromlh->Pos[1],
 					objfromlh->Pos[2] };
 
-				FLT rot[4] = { objfromlh->Rot[0]*-1,
-					objfromlh->Rot[1],
-					objfromlh->Rot[2],
-					objfromlh->Rot[3] };
-
-				fprintf( stderr, "====> %f %f %f ",
-					pos[0], pos[1], pos[2] );
-
-				quatrotatevector( pos, rot, pos );
 				pos[0] -= lhp->Pos[0];
 				pos[1] -= lhp->Pos[1];
 				pos[2] -= lhp->Pos[2];
 
+				FLT rot[4] = { 
+					lhp->Rot[0],
+					lhp->Rot[1],
+					lhp->Rot[2],
+					lhp->Rot[3] };
 
-				quatrotatevector( lhp->Pos, objfromlh->Rot, lhp->Pos );
+				quatrotatevector( pos, rot, pos );
 
 				fprintf( stderr, "====> %f %f %f ",
 					pos[0], pos[1], pos[2] );

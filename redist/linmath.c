@@ -516,3 +516,27 @@ void matrix44copy(FLT * mout, const FLT * minm )
 	memcpy( mout, minm, sizeof( FLT ) * 16 );
 }
 
+void matrix44transpose(FLT * mout, const FLT * minm )
+{
+	mout[0] = minm[0];
+	mout[1] = minm[4];
+	mout[2] = minm[8];
+	mout[3] = minm[12];
+
+	mout[4] = minm[1];
+	mout[5] = minm[5];
+	mout[6] = minm[9];
+	mout[7] = minm[13];
+
+	mout[8] = minm[2];
+	mout[9] = minm[6];
+	mout[10] = minm[10];
+	mout[11] = minm[14];
+
+	mout[12] = minm[3];
+	mout[13] = minm[7];
+	mout[14] = minm[11];
+	mout[15] = minm[15];
+
+}
+

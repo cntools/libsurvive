@@ -33,7 +33,9 @@ void survive_cal_light( SurviveObject * so, int sensor_id, int acode, int timein
 void survive_cal_angle( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle );
 
 #define MAX_SENSORS_TO_CAL 96
-#define DRPTS 128
+
+#define MIN_PTS_BEFORE_CAL 24
+#define DRPTS 32
 #define MAX_CAL_PT_DAT (MAX_SENSORS_TO_CAL*NUM_LIGHTHOUSES*2)
 struct SurviveCalData
 {

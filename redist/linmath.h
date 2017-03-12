@@ -110,7 +110,7 @@ Matrix3x3 inverseM33(const Matrix3x3 mat);
 
 
 void matrix44copy(FLT * mout, const FLT * minm );
-
+void matrix44transpose(FLT * mout, const FLT * minm );
 
 
 #endif

@@ -74,13 +74,13 @@ int PoserDaveOrtho( SurviveObject * so, PoserData * pd )
 			FLT S_out[2][SENSORS_PER_OBJECT];
 			OrthoSolve( tOut, S_out, S_in, X_in, max_hits );
 
-			//Now, we need to solve where we are as a function of where
+						//Now, we need to solve where we are as a function of where
 			//the lighthouses are.
 			FLT quat[4];
 			FLT posoff[3] = { tOut[0][3], tOut[1][3], tOut[2][3] };
 			FLT MT[4][4];
-			//matrix44transpose( MT, &T[0][0] );
-			matrix44copy( &MT[0][0], &tOut[0][0] );
+			matrix44transpose( MT, &tOut[0][0] );
+			//matrix44copy( &MT[0][0], &tOut[0][0] );
 
 			quatfrommatrix( quat, &MT[0][0] );
 			//printf( "QUAT: %f %f %f %f = %f\n", quat[0], quat[1], quat[2], quat[3], quatmagnitude(quat) );
