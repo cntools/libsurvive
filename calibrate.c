@@ -41,9 +41,12 @@ void HandleMotion( int x, int y, int mask )
 {
 }
 
-int bufferpts[32*2*3];
+//int bufferpts[32*2*3][2];
+int bufferpts[32*2*3][2];
+
+
 char buffermts[32*128*3];
-int buffertimeto[32*3];
+int buffertimeto[32*3][2];
 
 void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  )
 {
@@ -59,25 +62,25 @@ void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int 
 
 	if( acode == 0 || acode == 2 ) //data = 0
 	{
-		bufferpts[jumpoffset*2+0] = (timeinsweep-100000)/500;
-		buffertimeto[jumpoffset] = 0;
+		bufferpts[jumpoffset*2+0][0] = (timeinsweep-100000)/500;
+		buffertimeto[jumpoffset][0] = 0;
 	}
 	if( acode == 1 || acode == 3 ) //data = 1
 	{
-		bufferpts[jumpoffset*2+1] = (timeinsweep-100000)/500;
-		buffertimeto[jumpoffset] = 0;
+		bufferpts[jumpoffset*2+1][0] = (timeinsweep-100000)/500;
+		buffertimeto[jumpoffset][0] = 0;
 	}
 
 
 	if( acode == 4 || acode == 6 ) //data = 0
 	{
-		bufferpts[jumpoffset*2+0] = (timeinsweep-100000)/500;
-		buffertimeto[jumpoffset] = 0;
+		bufferpts[jumpoffset*2+0][1] = (timeinsweep-100000)/500;
+		buffertimeto[jumpoffset][1] = 0;
 	}
 	if( acode == 5 || acode == 7 ) //data = 1
 	{
-		bufferpts[jumpoffset*2+1] = (timeinsweep-100000)/500;
-		buffertimeto[jumpoffset] = 0;
+		bufferpts[jumpoffset*2+1][1] = (timeinsweep-100000)/500;
+		buffertimeto[jumpoffset][1] = 0;
 	}
 }
 
@@ -113,23 +116,26 @@ void * GuiThread( void * v )
 		CNFGColor( 0xFFFFFF );
 		CNFGGetDimensions( &screenx, &screeny );
 
-		int i;
+		int i,nn;
 		for( i = 0; i < 32*3; i++ )
 		{
-			if( buffertimeto[i] < 50 )
+			for( nn = 0; nn < 2; nn++ )
 			{
-				uint32_t color = i * 3231349;
-				uint8_t r = color & 0xff;
-				uint8_t g = (color>>8) & 0xff;
-				uint8_t b = (color>>16) & 0xff;
-				r = (r * (5-buffertimeto[i])) / 5 ;
-				g = (g * (5-buffertimeto[i])) / 5 ;
-				b = (b * (5-buffertimeto[i])) / 5 ;
-				CNFGColor( (b<<16) | (g<<8) | r );
-				CNFGTackRectangle( bufferpts[i*2+0], bufferpts[i*2+1], bufferpts[i*2+0] + 5, bufferpts[i*2+1] + 5 );
-				CNFGPenX = bufferpts[i*2+0]; CNFGPenY = bufferpts[i*2+1];
-				CNFGDrawText( buffermts, 2 );			
-				buffertimeto[i]++;
+				if( buffertimeto[i][nn] < 50 )
+				{
+					uint32_t color = i * 3231349;
+					uint8_t r = color & 0xff;
+					uint8_t g = (color>>8) & 0xff;
+					uint8_t b = (color>>16) & 0xff;
+					r = (r * (5-buffertimeto[i][nn])) / 5 ;
+					g = (g * (5-buffertimeto[i][nn])) / 5 ;
+					b = (b * (5-buffertimeto[i][nn])) / 5 ;
+					CNFGColor( (b<<16) | (g<<8) | r );
+					CNFGTackRectangle( bufferpts[i*2+0][nn], bufferpts[i*2+1][nn], bufferpts[i*2+0][nn] + 5, bufferpts[i*2+1][nn] + 5 );
+					CNFGPenX = bufferpts[i*2+0][nn]; CNFGPenY = bufferpts[i*2+1][nn];
+					CNFGDrawText( buffermts, 2 );			
+					buffertimeto[i][nn]++;
+				}
 			}
 		}
 
