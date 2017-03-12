@@ -59,6 +59,7 @@ void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int 
 	if( strcmp( so->codename, "WM0" ) == 0 ) jumpoffset += 32;
 	else if( strcmp( so->codename, "WM1" ) == 0 ) jumpoffset += 64;
 
+	if( jumpoffset < 0 ) return;
 
 	if( acode == 0 || acode == 2 ) //data = 0
 	{
