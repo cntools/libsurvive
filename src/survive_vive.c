@@ -27,6 +27,7 @@ const short vidpids[] = {
 	0x28de, 0x2000, 0, //Valve lighthouse
 	0x28de, 0x2101, 0, //Valve Watchman
 	0x28de, 0x2101, 1, //Valve Watchman
+	0x28de, 0x2022, 0, //HTC Tracker
 }; //length MAX_USB_INTERFACES*2
 
 const char * devnames[] = {
@@ -34,6 +35,7 @@ const char * devnames[] = {
 	"Lighthouse",
 	"Watchman 1",
 	"Watchman 2",
+	"Tracker 0",
 }; //length MAX_USB_INTERFACES
 
 
@@ -41,15 +43,17 @@ const char * devnames[] = {
 #define USB_DEV_LIGHTHOUSE	1
 #define USB_DEV_WATCHMAN1	2
 #define USB_DEV_WATCHMAN2	3
-#define MAX_USB_DEVS				4
+#define USB_DEV_TRACKER0	4
+#define MAX_USB_DEVS		5
 
 
 #define USB_IF_HMD			0
 #define USB_IF_LIGHTHOUSE 	1
 #define USB_IF_WATCHMAN1	2
 #define USB_IF_WATCHMAN2	3
-#define USB_IF_LIGHTCAP		4
-#define MAX_INTERFACES				5
+#define USB_IF_TRACKER0		4
+#define USB_IF_LIGHTCAP		5
+#define MAX_INTERFACES		6
 
 typedef struct SurviveUSBInterface SurviveUSBInterface;
 typedef struct SurviveViveData SurviveViveData;
@@ -86,7 +90,7 @@ void survive_data_cb( SurviveUSBInterface * si );
 
 //USB Subsystem 
 void survive_usb_close( SurviveContext * t );
-int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *wm0, SurviveObject * wm1 );
+int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *wm0, SurviveObject * wm1, SurviveObject * tr0 );
 int survive_usb_poll( SurviveContext * ctx );
 int survive_get_config( char ** config, SurviveViveData * ctx, int devno, int interface, int send_extra_magic );
 
@@ -200,7 +204,7 @@ static inline int hid_get_feature_report_timeout(libusb_device_handle* device, u
 }
 
 
-int survive_usb_init( struct SurviveViveData * sv, struct SurviveObject * hmd, struct SurviveObject *wm0, struct SurviveObject * wm1 )
+int survive_usb_init( struct SurviveViveData * sv, struct SurviveObject * hmd, struct SurviveObject *wm0, struct SurviveObject * wm1, struct SurviveObject * tr0 )
 {
 	struct SurviveContext * ctx = sv->ctx;
 	int r = libusb_init( &sv->usbctx );
@@ -249,15 +253,15 @@ int survive_usb_init( struct SurviveViveData * sv, struct SurviveObject * hmd, s
 
 		if( d == 0 )
 		{
-			SV_ERROR( "Couldn't find device %s (%04x:%04x.%d)", devnames[i], vid, pid, which );
-			return -99;
+			SV_INFO( "Did not find device %s (%04x:%04x.%d)", devnames[i], vid, pid, which );
+			sv->udev[i] = 0;
+			continue;
 		}
 
 		struct libusb_config_descriptor *conf;
 		ret = libusb_get_config_descriptor(d, 0, &conf);
 		if( ret )
 			continue;
-
 		ret = libusb_open(d, &sv->udev[i]);
 
 		if( !sv->udev[i] || ret )
@@ -293,13 +297,14 @@ int survive_usb_init( struct SurviveViveData * sv, struct SurviveObject * hmd, s
 	}
 	libusb_free_device_list( devs, 1 );
 
-	if( AttachInterface( sv, hmd, USB_IF_HMD,        sv->udev[USB_DEV_HMD],        0x81, survive_data_cb, "Mainboard" ) ) { return -6; }
-	if( AttachInterface( sv, hmd, USB_IF_LIGHTHOUSE, sv->udev[USB_DEV_LIGHTHOUSE], 0x81, survive_data_cb, "Lighthouse" ) ) { return -7; }
-	if( AttachInterface( sv, wm0, USB_IF_WATCHMAN1,  sv->udev[USB_DEV_WATCHMAN1],  0x81, survive_data_cb, "Watchman 1" ) ) { return -8; }
-	if( AttachInterface( sv, wm1, USB_IF_WATCHMAN2,  sv->udev[USB_DEV_WATCHMAN2],  0x81, survive_data_cb, "Watchman 2" ) ) { return -9; }
-	if( AttachInterface( sv, hmd, USB_IF_LIGHTCAP,   sv->udev[USB_DEV_LIGHTHOUSE], 0x82, survive_data_cb, "Lightcap" ) ) { return -10; }
+	if( sv->udev[USB_DEV_HMD] && AttachInterface( sv, hmd, USB_IF_HMD,        sv->udev[USB_DEV_HMD],        0x81, survive_data_cb, "Mainboard" ) ) { return -6; }
+	if( sv->udev[USB_DEV_LIGHTHOUSE] && AttachInterface( sv, hmd, USB_IF_LIGHTHOUSE, sv->udev[USB_DEV_LIGHTHOUSE], 0x81, survive_data_cb, "Lighthouse" ) ) { return -7; }
+	if( sv->udev[USB_DEV_WATCHMAN1] && AttachInterface( sv, wm0, USB_IF_WATCHMAN1,  sv->udev[USB_DEV_WATCHMAN1],  0x81, survive_data_cb, "Watchman 1" ) ) { return -8; }
+	if( sv->udev[USB_DEV_WATCHMAN2] && AttachInterface( sv, wm1, USB_IF_WATCHMAN2, sv->udev[USB_DEV_WATCHMAN2], 0x81, survive_data_cb, "Watchman 2")) { return -9; }
+	if( sv->udev[USB_DEV_TRACKER0] && AttachInterface( sv, tr0, USB_IF_TRACKER0, sv->udev[USB_DEV_TRACKER0], 0x81, survive_data_cb, "Tracker 1")) { return -10; }
+	if( sv->udev[USB_DEV_LIGHTHOUSE] && AttachInterface( sv, hmd, USB_IF_LIGHTCAP, sv->udev[USB_DEV_LIGHTHOUSE], 0x82, survive_data_cb, "Lightcap")) { return -12; }
 
-	SV_INFO( "All devices attached." );
+	SV_INFO( "All enumerated devices attached." );
 
 
 	//libUSB initialized.  Continue.
@@ -1030,6 +1035,7 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	SurviveObject * hmd = calloc( 1, sizeof( SurviveObject ) );
 	SurviveObject * wm0 = calloc( 1, sizeof( SurviveObject ) );
 	SurviveObject * wm1 = calloc( 1, sizeof( SurviveObject ) );
+	SurviveObject * tr0 = calloc( 1, sizeof( SurviveObject ) );
 	SurviveViveData * sv = calloc( 1, sizeof( SurviveViveData ) );
 
 	sv->ctx = ctx;
@@ -1043,18 +1049,22 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	wm1->ctx = ctx;
 	memcpy( wm1->codename, "WM1", 4 );
 	memcpy( wm1->drivername, "HTC", 4 );
+	tr0->ctx = ctx;
+	memcpy( tr0->codename, "TR0", 4 );
+	memcpy( tr0->drivername, "HTC", 4 );
 
 	//USB must happen last.
-	if( r = survive_usb_init( sv, hmd, wm0, wm1 ) )
+	if( r = survive_usb_init( sv, hmd, wm0, wm1, tr0) )
 	{
 		//TODO: Cleanup any libUSB stuff sitting around.
 		goto fail_gracefully;
 	}
 
 	//Next, pull out the config stuff.
-	if( LoadConfig( sv, hmd, 1, 0, 0 ) ) goto fail_gracefully;
-	if( LoadConfig( sv, wm0, 2, 0, 1 ) ) { SV_INFO( "Watchman 0 config issue." ); }
-	if( LoadConfig( sv, wm1, 3, 0, 1 ) ) { SV_INFO( "Watchman 1 config issue." ); }
+	if( sv->udev[USB_DEV_HMD]       && LoadConfig( sv, hmd, 1, 0, 0 )) { SV_INFO( "HMD config issue." ); }
+	if( sv->udev[USB_DEV_WATCHMAN1] && LoadConfig( sv, wm0, 2, 0, 1 )) { SV_INFO( "Watchman 0 config issue." ); }
+	if( sv->udev[USB_DEV_WATCHMAN2] && LoadConfig( sv, wm1, 3, 0, 1 )) { SV_INFO( "Watchman 1 config issue." ); }
+	if( sv->udev[USB_DEV_TRACKER0]  && LoadConfig( sv, tr0, 4, 0, 1 )) { SV_INFO( "Tracker 0 config issue." ); }
 
 	hmd->timebase_hz = wm0->timebase_hz = wm1->timebase_hz = 48000000;
 	hmd->pulsedist_max_ticks = wm0->pulsedist_max_ticks = wm1->pulsedist_max_ticks = 500000;
