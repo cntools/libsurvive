@@ -342,12 +342,18 @@ int survive_vive_send_magic(struct SurviveContext * ctx, void * drv, int magic_c
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  0x00, 0x7a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 #endif
-		r = update_feature_report( sv->udev[USB_DEV_HMD], 0, vive_magic_power_on, sizeof( vive_magic_power_on ) );
-		if( r != sizeof( vive_magic_power_on ) ) return 5;
+		if (sv->udev[USB_DEV_HMD])
+		{
+			r = update_feature_report( sv->udev[USB_DEV_HMD], 0, vive_magic_power_on, sizeof( vive_magic_power_on ) );
+			if( r != sizeof( vive_magic_power_on ) ) return 5;
+		}
 
-		static uint8_t vive_magic_enable_lighthouse[64] = { 0x04 };  //[64] wat?  Why did that fix it?
-		r = update_feature_report( sv->udev[USB_DEV_LIGHTHOUSE], 0, vive_magic_enable_lighthouse, sizeof( vive_magic_enable_lighthouse ) );
-		if( r != sizeof( vive_magic_enable_lighthouse ) ) return 5;
+		if (sv->udev[USB_DEV_LIGHTHOUSE])
+		{
+			static uint8_t vive_magic_enable_lighthouse[64] = { 0x04 };  //[64] wat?  Why did that fix it?
+			r = update_feature_report( sv->udev[USB_DEV_LIGHTHOUSE], 0, vive_magic_enable_lighthouse, sizeof( vive_magic_enable_lighthouse ) );
+			if( r != sizeof( vive_magic_enable_lighthouse ) ) return 5;
+		}
 
 #if 0
 		for( i = 0; i < 256; i++ )
@@ -384,10 +390,12 @@ int survive_vive_send_magic(struct SurviveContext * ctx, void * drv, int magic_c
 //		SV_INFO( "UCR: %d", r );
 //		if( r != sizeof( vive_magic_power_off1 ) ) return 5;
 
-		r = update_feature_report( sv->udev[USB_DEV_HMD], 0, vive_magic_power_off2, sizeof( vive_magic_power_off2 ) );
-		SV_INFO( "UCR: %d", r );
-		if( r != sizeof( vive_magic_power_off2 ) ) return 5;
-
+		if (sv->udev[USB_DEV_HMD])
+		{
+			r = update_feature_report( sv->udev[USB_DEV_HMD], 0, vive_magic_power_off2, sizeof( vive_magic_power_off2 ) );
+			SV_INFO( "UCR: %d", r );
+			if( r != sizeof( vive_magic_power_off2 ) ) return 5;
+		}
 	}
 
 }
@@ -857,6 +865,22 @@ void survive_data_cb( SurviveUSBInterface * si )
 		}
 		break;
 	}
+	case USB_IF_TRACKER0:
+	{
+		SurviveObject * w = obj;
+		if( id == 32 )
+		{
+			// TODO: Looks like this will need to be handle_tracker, since
+			// it appears the interface is sufficiently different.
+			// More work needd to reverse engineer it.
+			handle_watchman( w, readdata);
+		}
+		else
+		{
+			SV_INFO( "Unknown tracker code %d\n", id );
+		}
+		break;
+	}
 	case USB_IF_LIGHTCAP:
 	{
 		//Done!
@@ -1101,10 +1125,11 @@ int DriverRegHTCVive( SurviveContext * ctx )
 */
 
 	//Add the drivers.
+	if( sv->udev[USB_DEV_HMD]       ) { survive_add_object( ctx, hmd ); }
+	if( sv->udev[USB_DEV_WATCHMAN1] ) { survive_add_object( ctx, wm0 ); }
+	if( sv->udev[USB_DEV_WATCHMAN2] ) { survive_add_object( ctx, wm1 ); }
+	if( sv->udev[USB_DEV_TRACKER0]  ) { survive_add_object( ctx, tr0 ); }
 
-	survive_add_object( ctx, hmd );
-	survive_add_object( ctx, wm0 );
-	survive_add_object( ctx, wm1 );
 	survive_add_driver( ctx, sv, survive_vive_usb_poll, survive_vive_close, survive_vive_send_magic );
 
 	return 0;
@@ -1112,6 +1137,7 @@ fail_gracefully:
 	free( hmd );
 	free( wm0 );
 	free( wm1 );
+	free( tr0 );
 	survive_vive_usb_close( sv );
 	free( sv );
 	return -1;

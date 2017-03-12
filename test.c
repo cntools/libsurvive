@@ -17,6 +17,8 @@ static void dump_iface( struct SurviveObject * so, const char * prefix )
 	FILE * f;
 	char fname[1024];
 
+	if (!so) { return; }
+
 	sprintf( fname, "%s_points.csv", prefix );
 	f = fopen( fname, "w" );
 	for( i = 0; i < so->nr_locations; i++ )
@@ -53,6 +55,7 @@ int main()
 	dump_iface( survive_get_so_by_name( ctx, "HMD" ), "HMD" );
 	dump_iface( survive_get_so_by_name( ctx, "WM0" ), "WM0" );
 	dump_iface( survive_get_so_by_name( ctx, "WM1" ), "WM1" );
+	dump_iface( survive_get_so_by_name( ctx, "TR0" ), "TR0" );
 
 	while(survive_poll(ctx) == 0)
 	{
