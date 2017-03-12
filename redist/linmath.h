@@ -92,6 +92,7 @@ void quatrotatevector( FLT * vec3out, const FLT * quat, const FLT * vec3in );
 void quatfrom2vectors(FLT *q, const FLT *src, const FLT *dest);
 
 //Poses are Position: [x, y, z]  Quaternion: [q, x, y, z]
+//XXX TODO Write these!
 void ApplyPoseToPoint( FLT * pout, const FLT * pin, const FLT * pose );
 void InvertPose( FLT * poseout, const FLT * pose );
 

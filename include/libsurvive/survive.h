@@ -26,8 +26,8 @@ struct SurviveObject
 
 	//Pose Information, also "poser" field.
 	FLT    PoseConfidence; //0..1
-	SurvivePose OutPose;
-	SurvivePose FromLHPose[NUM_LIGHTHOUSES]; //Optionally filled out by poser, contains computed position from each lighthouse.
+	SurvivePose OutPose; //Final pose? (some day, one can dream!)
+	SurvivePose FromLHPose[NUM_LIGHTHOUSES]; //Filled out by poser, contains computed position from each lighthouse. 
 	void * PoserData;   //Initialized to zero, configured by poser, can be anything the poser wants.
 	PoserCB PoserFn;
 
@@ -92,7 +92,6 @@ struct SurviveContext
 
 	//Calibration data:
 	BaseStationData bsd[NUM_LIGHTHOUSES];
-
 	SurviveCalData * calptr; //If and only if the calibration subsystem is attached.
 
 	SurviveObject ** objs;

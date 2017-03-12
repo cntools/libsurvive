@@ -31,8 +31,7 @@ int main()
 	printf( "E: %f %f %f\n", e[0], e[1], e[2] );
 
 
-	FLT p[3] = { 0, 0, 1 };
-	printf( "%f %f %f\n", PFTHREE( p ) );
+	FLT pfromlh[3] = { 0, 1, 0 };
 	quatrotatevector( p, q, p );
 	printf( "%f %f %f\n", PFTHREE( p ) );
 	printf( "Flipping rotation\n" );

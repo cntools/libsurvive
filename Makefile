@@ -5,11 +5,10 @@ CC:=gcc
 CFLAGS:=-Iinclude/libsurvive -I. -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE -std=gnu99
 LDFLAGS:=-lpthread -lusb-1.0 -lz -lX11 -lm -flto -g
 
-CALS:=src/survive_cal_lhfind.o src/survive_cal.o
-POSERS:=src/poser_dummy.o
+POSERS:=src/poser_dummy.o src/poser_daveortho.o
 REDISTS:=redist/json_helpers.o redist/linmath.o redist/jsmn.o
-LIBSURVIVE_CORE:=src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o src/ootx_decoder.o src/survive_driverman.o src/survive_vive.o src/survive_config.o 
-LIBSURVIVE_O:=$(CALS) $(POSERS) $(REDISTS) $(LIBSURVIVE_CORE)
+LIBSURVIVE_CORE:=src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o src/ootx_decoder.o src/survive_driverman.o src/survive_vive.o src/survive_config.o src/survive_cal.o
+LIBSURVIVE_O:=$(POSERS) $(REDISTS) $(LIBSURVIVE_CORE)
 LIBSURVIVE_C:=$(LIBSURVIVE_O:.o=.c)
 
 GRAPHICS_LOFI:=redist/DrawFunctions.o redist/XDriver.o

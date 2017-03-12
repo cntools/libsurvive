@@ -11,7 +11,7 @@
 #include <math.h>
 #include "dclapack.h"
 #include <linmath.h>
-#define LH_ID    1
+#define LH_ID    0
 #define NUM_HMD 32
 
 #define MAX_POINTS 128

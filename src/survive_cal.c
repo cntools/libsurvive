@@ -14,6 +14,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <linmath.h>
 
 #include "survive_config.h"
 
@@ -21,6 +22,9 @@
 #define NEEDED_COMMON_POINTS 10
 #define NEEDED_TIMES_OF_COMMON 5
 #define DRPTS_NEEDED_FOR_AVG ((int)(DRPTS*3/4))
+
+
+
 
 static void handle_calibration( struct SurviveCalData *cd );
 static void reset_calibration( struct SurviveCalData * cd );
@@ -109,6 +113,23 @@ void survive_cal_install( struct SurviveContext * ctx )
 		return;
 	}
 
+
+
+	const char * DriverName;
+	const char * PreferredPoser = config_read_str( ctx->global_config_values, "ConfigPoser", "PoserDaveOrtho" );
+	PoserCB PreferredPoserCB = 0;
+	const char * FirstPoser = 0;
+	printf( "Available posers:\n" );
+	i = 0;	
+	while( ( DriverName = GetDriverNameMatching( "Poser", i++ ) ) )
+	{
+		PoserCB p = GetDriver( DriverName );
+		if( !PreferredPoserCB ) PreferredPoserCB = p;
+		int ThisPoser = strcmp( DriverName, PreferredPoser ) == 0;
+		if( ThisPoser ) PreferredPoserCB = p;
+	}
+	cd->ConfigPoserFn = PreferredPoserCB;
+	printf( "Got config poser: %p\n", cd->ConfigPoserFn );
 	ootx_packet_clbk = ootx_packet_clbk_d;
 
 	ctx->calptr = cd;
@@ -201,7 +222,7 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 
 		if( cd->peak_counts >= PTS_BEFORE_COMMON )
 		{
-			int tfc = cd->times_found_common;
+/*			int tfc = cd->times_found_common;
 			if( cd->found_common )
 			{
 				if( tfc >= NEEDED_TIMES_OF_COMMON )
@@ -223,7 +244,12 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 				SV_INFO( "Stage 2 bad - redoing. %d %d %d", cd->peak_counts, cd->found_common, tfc );
 				reset_calibration( cd );
 				cd->times_found_common = 0;
-			}
+			}*/
+
+			SV_INFO( "Stage 2 moving to stage 3. %d %d", cd->peak_counts, cd->found_common );
+			reset_calibration( cd );
+			cd->stage = 3;
+			cd->found_common = 1;
 		}			
 
 		break;
@@ -410,8 +436,10 @@ static void handle_calibration( struct SurviveCalData *cd )
 	}
 	fclose( hists );
 	fclose( ptinfo );
-
+/*
 	//Comb through data and make sure we still have a sensor on a WM that 
+	//We don't do this anymore.
+
 	int bcp_senid = 0;
 	int bcp_count = 0;
 	for( sen = 0; sen < MAX_SENSORS_TO_CAL; sen++ )
@@ -434,13 +462,121 @@ static void handle_calibration( struct SurviveCalData *cd )
 		reset_calibration( cd );
 		return;
 	}
-
 	cd->senid_of_checkpt = bcp_senid;
-
-	if( survive_cal_lhfind( cd ) == 0 )
+*/
+	
+	int i, j;
+	PoserDataFullScene fsd;
+	fsd.pt = POSERDATA_FULL_SCENE;
+	for( j = 0; j < NUM_LIGHTHOUSES; j++ )
+	for( i = 0; i < SENSORS_PER_OBJECT; i++ )
 	{
-		SV_INFO( "Stage 4 succeeded." );
-		cd->stage = 5;
+		int gotdata = 0;
+
+		int dataindex = i*(2*NUM_LIGHTHOUSES)+j*2+0;
+
+		if( cd->ctsweeps[dataindex+0] < DRPTS_NEEDED_FOR_AVG ||
+			cd->ctsweeps[dataindex+1] < DRPTS_NEEDED_FOR_AVG )
+		{
+			fsd.lengths[i][j][0] = -1;
+			fsd.lengths[i][j][1] = -1;
+			continue;
+		}
+		fsd.lengths[i][j][0] = cd->avglens[dataindex+0];
+		fsd.lengths[i][j][1] = cd->avglens[dataindex+1];
+		fsd.angles[i][j][0] = cd->avgsweeps[dataindex+0];
+		fsd.angles[i][j][1] = cd->avgsweeps[dataindex+1];
+	}
+
+	cd->ConfigPoserFn( cd->hmd, (PoserData*)&fsd );
+	if( 1 )
+	{
+		static int notfirstcal = 0;
+		SV_INFO( "Stage 4 succeeded. Inverting %d", notfirstcal );
+
+		if( !notfirstcal )
+		{
+			//  XXX This part is /all/ wrong.
+			//  XXX This part is /all/ wrong.
+			//  XXX This part is /all/ wrong.
+
+			//OK! We've arrived.  Now, we have to get the LH's pose from.
+			int lh;
+			for( lh = 0; lh < NUM_LIGHTHOUSES; lh++ )
+			{
+				SurvivePose * objfromlh = &cd->hmd->FromLHPose[lh];
+				SurvivePose * lhp = &ctx->bsd[lh].Pose;
+
+
+				lhp->Pos[0] = objfromlh->Pos[0];
+				lhp->Pos[1] = objfromlh->Pos[1];
+				lhp->Pos[2] = objfromlh->Pos[2];
+
+				lhp->Rot[0] = objfromlh->Rot[0]*-1;
+				lhp->Rot[1] = objfromlh->Rot[1];
+				lhp->Rot[2] = objfromlh->Rot[2];
+				lhp->Rot[3] = objfromlh->Rot[3];
+
+				//Write lhp from the inverse of objfromlh
+				quatrotatevector( lhp->Pos, lhp->Rot, lhp->Pos );
+
+
+				fprintf( stderr, "%f %f %f\n", objfromlh->Pos[0], objfromlh->Pos[1], objfromlh->Pos[2] );
+				fprintf( stderr, "%f %f %f %f\n", objfromlh->Rot[0], objfromlh->Rot[1], objfromlh->Rot[2], objfromlh->Rot[3] );
+				fprintf( stderr, "%f %f %f\n", lhp->Pos[0], lhp->Pos[1], lhp->Pos[2] );
+				/*
+					-0.074179 2.793859 0.519508
+					-0.092802 0.087361 0.872115 0.472409
+					0.379494 1.906039 2.074617
+
+					0.695987 3.346798 -0.776169
+					-0.258207 0.966008 -0.008604 0.009116
+					0.614156 -2.521008 2.356952
+
+				*/
+
+				printf( "\n" );
+
+			}
+			notfirstcal = 1;
+		}
+		else
+		{
+			for( lh = 0; lh < NUM_LIGHTHOUSES; lh++ )
+			{
+				SurvivePose * objfromlh = &cd->hmd->FromLHPose[lh];
+				SurvivePose * lhp = &ctx->bsd[lh].Pose;
+
+				FLT pos[3] = { objfromlh->Pos[0],
+					objfromlh->Pos[1],
+					objfromlh->Pos[2] };
+
+				FLT rot[4] = { objfromlh->Rot[0]*-1,
+					objfromlh->Rot[1],
+					objfromlh->Rot[2],
+					objfromlh->Rot[3] };
+
+				fprintf( stderr, "====> %f %f %f ",
+					pos[0], pos[1], pos[2] );
+
+				quatrotatevector( pos, rot, pos );
+				pos[0] -= lhp->Pos[0];
+				pos[1] -= lhp->Pos[1];
+				pos[2] -= lhp->Pos[2];
+
+
+				quatrotatevector( lhp->Pos, objfromlh->Rot, lhp->Pos );
+
+				fprintf( stderr, "====> %f %f %f ",
+					pos[0], pos[1], pos[2] );
+					
+			}
+		}
+		fprintf( stderr, "\n" );
+
+
+		reset_calibration( cd );
+//		cd->stage = 5;
 	}
 	else
 	{
