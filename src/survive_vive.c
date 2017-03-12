@@ -89,8 +89,7 @@ void survive_usb_close( SurviveContext * t );
 int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *wm0, SurviveObject * wm1 );
 int survive_usb_poll( SurviveContext * ctx );
 int survive_get_config( char ** config, SurviveViveData * ctx, int devno, int interface, int send_extra_magic );
-
-
+int survive_vive_send_magic(struct SurviveContext * ctx, void * drv, int magic_code, void * data, int datalen );
 
 
 static void handle_transfer(struct libusb_transfer* transfer)
@@ -301,6 +300,7 @@ int survive_usb_init( struct SurviveViveData * sv, struct SurviveObject * hmd, s
 
 	SV_INFO( "All devices attached." );
 
+	survive_vive_send_magic(ctx, sv, 1, 0, 0 );
 
 	//libUSB initialized.  Continue.
 	return 0;

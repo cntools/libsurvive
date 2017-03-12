@@ -209,8 +209,6 @@ const FLT* config_set_float_a(config_group *cg, const char *tag, const FLT* valu
 	assert(ptr!=NULL);
 	cv->data = ptr;
 
-	printf("float array\n");
-
 	memcpy(cv->data,values,sizeof(FLT)*count);
 	cv->type = CONFIG_FLOAT_ARRAY;
 	cv->elements = count;

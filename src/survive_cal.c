@@ -508,22 +508,24 @@ static void handle_calibration( struct SurviveCalData *cd )
 				SurvivePose * lhp = &ctx->bsd[lh].Pose;
 
 
-				lhp->Pos[0] = objfromlh->Pos[0];
+/*				lhp->Pos[0] = objfromlh->Pos[0];
 				lhp->Pos[1] = objfromlh->Pos[1];
-				lhp->Pos[2] = objfromlh->Pos[2];
+				lhp->Pos[2] = objfromlh->Pos[2];*/
 
-				lhp->Rot[0] = objfromlh->Rot[0];
+				lhp->Rot[0] =-objfromlh->Rot[0];
 				lhp->Rot[1] = objfromlh->Rot[1];
 				lhp->Rot[2] = objfromlh->Rot[2];
 				lhp->Rot[3] = objfromlh->Rot[3];
+
+				quatrotatevector( lhp->Pos, lhp->Rot, objfromlh->Pos );
 
 				//Write lhp from the inverse of objfromlh
 				//quatrotatevector( lhp->Pos, lhp->Rot, lhp->Pos );
 
 
-				fprintf( stderr, "%f %f %f\n", objfromlh->Pos[0], objfromlh->Pos[1], objfromlh->Pos[2] );
-				fprintf( stderr, "%f %f %f %f\n", objfromlh->Rot[0], objfromlh->Rot[1], objfromlh->Rot[2], objfromlh->Rot[3] );
-				fprintf( stderr, "%f %f %f\n", lhp->Pos[0], lhp->Pos[1], lhp->Pos[2] );
+				fprintf( stderr, "%f, %f, %f\n", objfromlh->Pos[0], objfromlh->Pos[1], objfromlh->Pos[2] );
+				fprintf( stderr, "%f, %f, %f, %f\n", objfromlh->Rot[0], objfromlh->Rot[1], objfromlh->Rot[2], objfromlh->Rot[3] );
+
 				/*
 					-0.204066 3.238746 -0.856369
 					0.812203 -0.264897 0.505599 0.120520
@@ -554,23 +556,26 @@ static void handle_calibration( struct SurviveCalData *cd )
 				SurvivePose * objfromlh = &cd->hmd->FromLHPose[lh];
 				SurvivePose * lhp = &ctx->bsd[lh].Pose;
 
-				FLT pos[3] = { objfromlh->Pos[0],
-					objfromlh->Pos[1],
-					objfromlh->Pos[2] };
+				FLT pos[3];
+				quatrotatevector( pos, lhp->Rot, objfromlh->Pos );
 
 				pos[0] -= lhp->Pos[0];
 				pos[1] -= lhp->Pos[1];
 				pos[2] -= lhp->Pos[2];
 
-				FLT rot[4] = { 
-					lhp->Rot[0],
-					lhp->Rot[1],
-					lhp->Rot[2],
-					lhp->Rot[3] };
+				//FLT rot[4] = { 
+				//	[0],
+				//	lhp->Rot[1],
+				//	lhp->Rot[2],
+				//	lhp->Rot[3] };
+				//quatrotatevector( pos, lhp->Rot, pos );
 
-				quatrotatevector( pos, rot, pos );
+				fprintf( stderr, "%f, %f, %f\n", objfromlh->Pos[0], objfromlh->Pos[1], objfromlh->Pos[2] );
+				fprintf( stderr, "%f, %f, %f, %f\n", objfromlh->Rot[0], objfromlh->Rot[1], objfromlh->Rot[2], objfromlh->Rot[3] );
+				fprintf( stderr, "%f, %f, %f\n", lhp->Pos[0], lhp->Pos[1], lhp->Pos[2] );
+				fprintf( stderr, "%f, %f, %f, %f\n", lhp->Rot[0], lhp->Rot[1], lhp->Rot[2], lhp->Rot[3] );
 
-				fprintf( stderr, "====> %f %f %f ",
+				fprintf( stderr, "====> %f %f %f\n",
 					pos[0], pos[1], pos[2] );
 					
 			}

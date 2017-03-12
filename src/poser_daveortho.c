@@ -79,10 +79,13 @@ int PoserDaveOrtho( SurviveObject * so, PoserData * pd )
 			FLT quat[4];
 			FLT posoff[3] = { tOut[0][3], tOut[1][3], tOut[2][3] };
 			FLT MT[4][4];
-			matrix44transpose( MT, &tOut[0][0] );
-			//matrix44copy( &MT[0][0], &tOut[0][0] );
+
+			//matrix44transpose( MT, &tOut[0][0] );
+			matrix44copy( &MT[0][0], &tOut[0][0] );
 
 			quatfrommatrix( quat, &MT[0][0] );
+
+
 			//printf( "QUAT: %f %f %f %f = %f\n", quat[0], quat[1], quat[2], quat[3], quatmagnitude(quat) );
 			//quat[2] -= 0.005; //fixes up lh0 in test data set.
 			quatnormalize( quat, quat );
@@ -319,7 +322,7 @@ printf("rhat %f %f (len %f)\n", rhat[0][0], rhat[1][0], rhat_len);
     FLT ydist2 = ydist;
     FLT bestBestErr = 9999.0;
     FLT bestYdist = 0;
-    //for (ydist2=ydist-0.1; ydist2<ydist+0.1; ydist2+=0.0001)
+    for (ydist2=ydist-0.1; ydist2<ydist+0.1; ydist2+=0.0001)
     {
         FLT x2[3][1] = { {M[0][0]*ydist2}, {0.0}, {M[1][0]*ydist2} };
         FLT y2[3][1] = { {M[0][1]*ydist2}, {0.0}, {M[1][1]*ydist2} };

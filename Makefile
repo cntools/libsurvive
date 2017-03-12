@@ -5,7 +5,7 @@ CC:=gcc
 CFLAGS:=-Iinclude/libsurvive -I. -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE -std=gnu99
 LDFLAGS:=-lpthread -lusb-1.0 -lz -lX11 -lm -flto -g
 
-POSERS:=src/poser_dummy.o src/poser_daveortho.o
+POSERS:=src/poser_dummy.o src/poser_daveortho.o src/poser_charlesslow.o
 REDISTS:=redist/json_helpers.o redist/linmath.o redist/jsmn.o
 LIBSURVIVE_CORE:=src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o src/ootx_decoder.o src/survive_driverman.o src/survive_vive.o src/survive_config.o src/survive_cal.o
 LIBSURVIVE_O:=$(POSERS) $(REDISTS) $(LIBSURVIVE_CORE)
