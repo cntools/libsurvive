@@ -59,7 +59,6 @@ void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int 
 	if( strcmp( so->codename, "WM0" ) == 0 ) jumpoffset += 32;
 	else if( strcmp( so->codename, "WM1" ) == 0 ) jumpoffset += 64;
 
-	if( jumpoffset < 0 ) return;
 
 	if( acode == 0 || acode == 2 ) //data = 0
 	{
@@ -102,6 +101,7 @@ void my_angle_process( struct SurviveObject * so, int sensor_id, int acode, uint
 	survive_default_angle_process( so, sensor_id, acode, timecode, length, angle );
 }
 
+char* sensor_name[32];
 
 void * GuiThread( void * v )
 {
@@ -125,16 +125,25 @@ void * GuiThread( void * v )
 				if( buffertimeto[i][nn] < 50 )
 				{
 					uint32_t color = i * 3231349;
-					uint8_t r = color & 0xff;
-					uint8_t g = (color>>8) & 0xff;
-					uint8_t b = (color>>16) & 0xff;
-					r = (r * (5-buffertimeto[i][nn])) / 5 ;
-					g = (g * (5-buffertimeto[i][nn])) / 5 ;
-					b = (b * (5-buffertimeto[i][nn])) / 5 ;
+					uint8_t r = 0xff;
+					uint8_t g = 0x00;
+					uint8_t b = 0xff;
+
+					if (nn==0) b = 0; //lighthouse B
+					if (nn==1) r = 0; //lighthouse C
+
+//					r = (r * (5-buffertimeto[i][nn])) / 5 ;
+//					g = (g * (5-buffertimeto[i][nn])) / 5 ;
+//					b = (b * (5-buffertimeto[i][nn])) / 5 ;
 					CNFGColor( (b<<16) | (g<<8) | r );
 					CNFGTackRectangle( bufferpts[i*2+0][nn], bufferpts[i*2+1][nn], bufferpts[i*2+0][nn] + 5, bufferpts[i*2+1][nn] + 5 );
 					CNFGPenX = bufferpts[i*2+0][nn]; CNFGPenY = bufferpts[i*2+1][nn];
-					CNFGDrawText( buffermts, 2 );			
+					CNFGDrawText( buffermts, 2 );
+
+					if (i<32) {
+						CNFGPenX = bufferpts[i*2+0][nn]+5; CNFGPenY = bufferpts[i*2+1][nn]+5;
+						CNFGDrawText( sensor_name[i], 2 );
+					}
 					buffertimeto[i][nn]++;
 				}
 			}
@@ -159,6 +168,12 @@ void * GuiThread( void * v )
 int main()
 {
 	ctx = survive_init( 0 );
+
+	uint8_t i =0;
+	for (i=0;i<32;++i) {
+		sensor_name[i] = malloc(3);
+		sprintf(sensor_name[i],"%d",i);
+	}
 
 	survive_install_light_fn( ctx,  my_light_process );
 	survive_install_imu_fn( ctx,  my_imu_process );
