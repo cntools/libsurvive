@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <zlib.h>
 
 #include "survive_config.h"
 
@@ -211,6 +210,40 @@ int survive_poll( struct SurviveContext * ctx )
 }
 
 
+struct SurviveObject * survive_get_so_by_name( struct SurviveContext * ctx, const char * name )
+{
+	int i;
+	for( i = 0; i < ctx->objs_ct; i++ )
+	{
+		if( strcmp( ctx->objs[i]->codename, name ) == 0 )
+			return ctx->objs[i];
+	}
+	return 0;
+}
+
+#ifdef NOZLIB
+
+#include <puff.h>
+
+		
+int survive_simple_inflate( struct SurviveContext * ctx, const char * input, int inlen, char * output, int outlen )
+{
+	unsigned long ol = outlen;
+	unsigned long il = inlen;
+	int ret = puff( output, &ol, input, &il );
+	if( ret == 0 )
+		return ol;
+	else
+	{
+		SV_INFO( "puff returned error code %d\n", ret );
+		return -5;
+	}
+}
+ 
+#else
+	
+#include <zlib.h>
+
 int survive_simple_inflate( struct SurviveContext * ctx, const char * input, int inlen, char * output, int outlen )
 {
 	z_stream zs; //Zlib stream.  May only be used by configuration at beginning and by USB thread periodically.
@@ -233,14 +266,4 @@ int survive_simple_inflate( struct SurviveContext * ctx, const char * input, int
 	return len;
 }
 
-struct SurviveObject * survive_get_so_by_name( struct SurviveContext * ctx, const char * name )
-{
-	int i;
-	for( i = 0; i < ctx->objs_ct; i++ )
-	{
-		if( strcmp( ctx->objs[i]->codename, name ) == 0 )
-			return ctx->objs[i];
-	}
-	return 0;
-}
-
+#endif

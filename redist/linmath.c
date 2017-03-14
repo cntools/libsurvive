@@ -1,7 +1,7 @@
 //Copyright 2013,2016 <>< C. N. Lohr.  This file licensed under the terms of the MIT license.
 
-#include "linmath.h"
 #include <math.h>
+#include "linmath.h"
 #include <float.h>
 #include <string.h>
 
