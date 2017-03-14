@@ -35,7 +35,10 @@ void survive_cal_angle( SurviveObject * so, int sensor_id, int acode, uint32_t t
 #define MAX_SENSORS_TO_CAL 96
 
 #define MIN_PTS_BEFORE_CAL 24
-#define DRPTS 32
+#define DRPTS 128
+
+#define POSE_OBJECTS 3
+
 #define MAX_CAL_PT_DAT (MAX_SENSORS_TO_CAL*NUM_LIGHTHOUSES*2)
 struct SurviveCalData
 {
@@ -61,7 +64,7 @@ struct SurviveCalData
 
 	int senid_of_checkpt; //This is a point on a watchman that can be used to check the lh solution.
 
-	SurviveObject * hmd;
+	SurviveObject * poseobjects[POSE_OBJECTS];
 
 	PoserCB ConfigPoserFn;
 

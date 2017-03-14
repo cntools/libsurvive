@@ -8,8 +8,6 @@
 #include <dclapack.h>
 #include <linmath.h>
 
-static int LH_ID;
-
 typedef struct
 {
 	int something;
@@ -44,6 +42,17 @@ int PoserCharlesSlow( SurviveObject * so, PoserData * pd )
 	case POSERDATA_FULL_SCENE:
 	{
 		PoserDataFullScene * fs = (PoserDataFullScene*)pd;
+
+
+
+		int p;
+		FLT * hmd_points  = so->sensor_locations;
+
+		for( p = 0; p < so->nr_locations; p++ )
+		{
+			printf( "%f %f %f\n", hmd_points[p*3+0], hmd_points[p*3+1], hmd_points[p*3+2] );
+		}
+
 
 		int lh, cycle;
 		FLT dz, dy, dx;
@@ -99,7 +108,7 @@ int PoserCharlesSlow( SurviveObject * so, PoserData * pd )
 					if( cycle == 4 ) splits = 5;
 
 					//Wwe search throug the whole space.
-					for( dz = 0; dz < fullrange; dz += fullrange/splits )
+					for( dz = -fullrange; dz < fullrange; dz += fullrange/splits )
 					for( dy = -fullrange; dy < fullrange; dy += fullrange/splits )
 					for( dx = -fullrange; dx < fullrange; dx += fullrange/splits )
 					{
@@ -181,7 +190,7 @@ int PoserCharlesSlow( SurviveObject * so, PoserData * pd )
 #endif
 		}
 
-		break;
+		return 0;
 	}
 	case POSERDATA_DISASSOCIATE:
 	{
@@ -191,7 +200,7 @@ int PoserCharlesSlow( SurviveObject * so, PoserData * pd )
 		break;
 	}
 	}
-
+	return -1;
 }
 
 
@@ -208,6 +217,7 @@ static FLT RunOpti( SurviveObject * hmd, PoserDataFullScene * fs, int lh, int pr
 	quatsetnone( LighthouseQuat );
 	FLT * hmd_points  = hmd->sensor_locations;
 	FLT * hmd_normals = hmd->sensor_normals;
+	int dpts = hmd->nr_locations;
 
 	int first = 1, second = 0;
 
@@ -215,7 +225,7 @@ static FLT RunOpti( SurviveObject * hmd, PoserDataFullScene * fs, int lh, int pr
 	//If a sensor is pointed away from where we are testing a possible lighthouse position.
 	//BUT We get data from that light house, then we KNOW this is not a possible
 	//lighthouse position.
-	for( p = 0; p < 32; p++ )
+	for( p = 0; p < dpts; p++ )
 	{
 		int dataindex = p*(2*NUM_LIGHTHOUSES)+lh*2;
 		if( fs->lengths[p][lh][0] < 0 || fs->lengths[p][lh][1] < 0 ) continue;
@@ -231,7 +241,7 @@ static FLT RunOpti( SurviveObject * hmd, PoserDataFullScene * fs, int lh, int pr
 	for( i = 0; i < iters; i++ )
 	{
 		first = 1;
-		for( p = 0; p < 32; p++ )
+		for( p = 0; p < dpts; p++ )
 		{
 			int dataindex = p*(2*NUM_LIGHTHOUSES)+lh*2;
 			if( fs->lengths[p][lh][0] < 0 || fs->lengths[p][lh][1] < 0 ) continue;
@@ -313,7 +323,7 @@ static FLT RunOpti( SurviveObject * hmd, PoserDataFullScene * fs, int lh, int pr
 	//Step 2: Determine error.
 	float errorsq = 0.0;
 	int count = 0;
-	for( p = 0; p < 32; p++ )
+	for( p = 0; p < dpts; p++ )
 	{
 		int dataindex = p*(2*NUM_LIGHTHOUSES)+lh*2;
 		if( fs->lengths[p][lh][0] < 0 || fs->lengths[p][lh][1] < 0 ) continue;

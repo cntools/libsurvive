@@ -20,6 +20,8 @@
 
 #define PTS_BEFORE_COMMON 32
 #define NEEDED_COMMON_POINTS 10
+#define MIN_SENSORS_VISIBLE_PER_LH_FOR_CAL 4
+
 #define NEEDED_TIMES_OF_COMMON 5
 #define DRPTS_NEEDED_FOR_AVG ((int)(DRPTS*3/4))
 
@@ -111,7 +113,19 @@ void survive_cal_install( struct SurviveContext * ctx )
 	cd->stage = 1;
 	cd->ctx = ctx;
 
-	cd->hmd = survive_get_so_by_name( ctx, "HMD" );
+	cd->poseobjects[0] = survive_get_so_by_name( ctx, "HMD" );
+	cd->poseobjects[1] = survive_get_so_by_name( ctx, "WM0" );
+	cd->poseobjects[2] = survive_get_so_by_name( ctx, "WM1" );
+
+	if( cd->poseobjects[0] == 0 || cd->poseobjects[1] == 0 || cd->poseobjects[2] == 0 )
+	{
+		SV_ERROR( "Error: cannot find all devices needed for calibration." );
+		free( cd );
+		return;
+	}
+
+//XXX TODO MWTourney, work on your code here.
+/*
 	if( !cd->hmd )
 	{
 		cd->hmd = survive_get_so_by_name( ctx, "TR0" );
@@ -124,11 +138,11 @@ void survive_cal_install( struct SurviveContext * ctx )
 		}
 		SV_INFO( "HMD not found, calibrating using Tracker" );
 	}
-
+*/
 
 
 	const char * DriverName;
-	const char * PreferredPoser = config_read_str( ctx->global_config_values, "ConfigPoser", "PoserDaveOrtho" );
+	const char * PreferredPoser = config_read_str( ctx->global_config_values, "ConfigPoser", "PoserCharlesSlow" );
 	PoserCB PreferredPoserCB = 0;
 	const char * FirstPoser = 0;
 	printf( "Available posers:\n" );
@@ -158,6 +172,7 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 	switch( cd->stage )
 	{
 	default:
+	case 2: //Taking in angle data. We don't care about light data anymore.
 	case 0: //Default, inactive.
 		break;
 
@@ -176,8 +191,6 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 				if( ctx->bsd[i].OOTXSet == 0 ) break;
 			if( i == NUM_LIGHTHOUSES ) cd->stage = 2;  //If all lighthouses have their OOTX set, move on.
 		}
-		break;
-	case 2:      //Taking in angle data.
 		break;
 	}
 }
@@ -211,13 +224,17 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 		int ct = cd->all_counts[sensid][lighthouse][axis]++;
 		cd->all_lengths[sensid][lighthouse][axis][ct] = length;
 		cd->all_angles[sensid][lighthouse][axis][ct] = angle;
+
+		int dev = sensid / 32;
+
 		if( ct > cd->peak_counts )
 		{
 			cd->peak_counts = ct;
 		}
 
+
 		//Determine if there is a sensor on a watchman visible from both lighthouses.
-		if( sensid >= 32 )
+/*		if( sensid >= 32 )
 		{
 			int k;
 			int ok = 1;
@@ -230,11 +247,32 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 				}
 			}
 			if( ok ) cd->found_common = 1;
-		}
+		}*/
 
 		if( cd->peak_counts >= PTS_BEFORE_COMMON )
 		{
-/*			int tfc = cd->times_found_common;
+			int min_peaks = PTS_BEFORE_COMMON;
+			int i, j, k;
+			cd->found_common = 1;
+			for( i = 0; i < MAX_SENSORS_TO_CAL/SENSORS_PER_OBJECT; i++ )
+			for( j = 0; j < NUM_LIGHTHOUSES; j++ )
+			{
+				int sensors_visible = 0;
+				for( k = 0; k < SENSORS_PER_OBJECT; k++ )
+				{
+					if( cd->all_counts[k+i*SENSORS_PER_OBJECT][j][0] > NEEDED_COMMON_POINTS && 
+						cd->all_counts[k+i*SENSORS_PER_OBJECT][j][1] > NEEDED_COMMON_POINTS )
+						sensors_visible++;
+				}
+				if( sensors_visible < MIN_SENSORS_VISIBLE_PER_LH_FOR_CAL ) 
+				{
+					printf( "Dev %d, LH %d not enough visible points found.\n", i, j );
+					cd->found_common = 0;
+					return;
+				}
+			}
+			
+			int tfc = cd->times_found_common;
 			if( cd->found_common )
 			{
 				if( tfc >= NEEDED_TIMES_OF_COMMON )
@@ -256,12 +294,12 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 				SV_INFO( "Stage 2 bad - redoing. %d %d %d", cd->peak_counts, cd->found_common, tfc );
 				reset_calibration( cd );
 				cd->times_found_common = 0;
-			}*/
+			}
 
-			SV_INFO( "Stage 2 moving to stage 3. %d %d", cd->peak_counts, cd->found_common );
+/*			SV_INFO( "Stage 2 moving to stage 3. %d %d", cd->peak_counts, cd->found_common );
 			reset_calibration( cd );
 			cd->stage = 3;
-			cd->found_common = 1;
+			cd->found_common = 1;*/
 		}			
 
 		break;
@@ -355,8 +393,6 @@ static void handle_calibration( struct SurviveCalData *cd )
 			FLT Sdiff2 = Sdiff * Sdiff;
 			FLT Ldiff2 = Ldiff * Ldiff;
 
-			if( Sdiff2 > max_outlier_angle ) max_outlier_angle = Sdiff2;
-			if( Ldiff2 > max_outlier_length ) max_outlier_length = Ldiff2;
 
 			if( Sdiff2 > OUTLIER_ANGLE || Ldiff2 > OUTLIER_LENGTH )
 			{
@@ -364,6 +400,8 @@ static void handle_calibration( struct SurviveCalData *cd )
 			}
 			else
 			{
+				if( Sdiff2 > max_outlier_angle ) max_outlier_angle = Sdiff2;
+				if( Ldiff2 > max_outlier_length ) max_outlier_length = Ldiff2;
 				count++;
 			}
 		}
@@ -448,161 +486,69 @@ static void handle_calibration( struct SurviveCalData *cd )
 	}
 	fclose( hists );
 	fclose( ptinfo );
-/*
-	//Comb through data and make sure we still have a sensor on a WM that 
-	//We don't do this anymore.
 
-	int bcp_senid = 0;
-	int bcp_count = 0;
-	for( sen = 0; sen < MAX_SENSORS_TO_CAL; sen++ )
+	int obj;
+
+	//Poses of lighthouses relative to objects.
+	SurvivePose  objphl[POSE_OBJECTS][NUM_LIGHTHOUSES];
+
+	FILE * fobjp = fopen( "calinfo/objposes.csv", "w" );
+
+	for( obj = 0; obj < POSE_OBJECTS; obj++ )
 	{
-		int ct0 = cd->ctsweeps[sen*4+0];
-		int ct1 = cd->ctsweeps[sen*4+0];
-		int ct2 = cd->ctsweeps[sen*4+0];
-		int ct3 = cd->ctsweeps[sen*4+0];
-
-		if( ct0 > ct1 ) ct0 = ct1;
-		if( ct0 > ct2 ) ct0 = ct2;
-		if( ct0 > ct3 ) ct0 = ct3;
-
-		if( ct0 > bcp_count ) { bcp_count = ct0; bcp_senid = sen; }
-	}
-
-	if( bcp_count < DRPTS_NEEDED_FOR_AVG )
-	{
-		SV_INFO( "Stage 3 could not find a suitable common point on a watchman" );
-		reset_calibration( cd );
-		return;
-	}
-	cd->senid_of_checkpt = bcp_senid;
-*/
-	
-	int i, j;
-	PoserDataFullScene fsd;
-	fsd.pt = POSERDATA_FULL_SCENE;
-	for( j = 0; j < NUM_LIGHTHOUSES; j++ )
-	for( i = 0; i < SENSORS_PER_OBJECT; i++ )
-	{
-		int gotdata = 0;
-
-		int dataindex = i*(2*NUM_LIGHTHOUSES)+j*2+0;
-
-		if( cd->ctsweeps[dataindex+0] < DRPTS_NEEDED_FOR_AVG ||
-			cd->ctsweeps[dataindex+1] < DRPTS_NEEDED_FOR_AVG )
+		int i, j;
+		PoserDataFullScene fsd;
+		fsd.pt = POSERDATA_FULL_SCENE;
+		for( j = 0; j < NUM_LIGHTHOUSES; j++ )
+		for( i = 0; i < SENSORS_PER_OBJECT; i++ )
 		{
-			fsd.lengths[i][j][0] = -1;
-			fsd.lengths[i][j][1] = -1;
-			continue;
-		}
-		fsd.lengths[i][j][0] = cd->avglens[dataindex+0];
-		fsd.lengths[i][j][1] = cd->avglens[dataindex+1];
-		fsd.angles[i][j][0] = cd->avgsweeps[dataindex+0];
-		fsd.angles[i][j][1] = cd->avgsweeps[dataindex+1];
-	}
+			int gotdata = 0;
 
-	cd->ConfigPoserFn( cd->hmd, (PoserData*)&fsd );
-	if( 1 )
-	{
-		static int notfirstcal = 0;
-		SV_INFO( "Stage 4 succeeded. Inverting %d", notfirstcal );
+			int dataindex = (i+obj*32)*(2*NUM_LIGHTHOUSES)+j*2+0;
 
-		if( !notfirstcal )
-		{
-			//  XXX This part is /all/ wrong.
-			//  XXX This part is /all/ wrong.
-			//  XXX This part is /all/ wrong.
-
-			//OK! We've arrived.  Now, we have to get the LH's pose from.
-			int lh;
-			for( lh = 0; lh < NUM_LIGHTHOUSES; lh++ )
+			if( cd->ctsweeps[dataindex+0] < DRPTS_NEEDED_FOR_AVG ||
+				cd->ctsweeps[dataindex+1] < DRPTS_NEEDED_FOR_AVG )
 			{
-				SurvivePose * objfromlh = &cd->hmd->FromLHPose[lh];
-				SurvivePose * lhp = &ctx->bsd[lh].Pose;
-
-
-/*				lhp->Pos[0] = objfromlh->Pos[0];
-				lhp->Pos[1] = objfromlh->Pos[1];
-				lhp->Pos[2] = objfromlh->Pos[2];*/
-
-				lhp->Rot[0] =-objfromlh->Rot[0];
-				lhp->Rot[1] = objfromlh->Rot[1];
-				lhp->Rot[2] = objfromlh->Rot[2];
-				lhp->Rot[3] = objfromlh->Rot[3];
-
-				quatrotatevector( lhp->Pos, lhp->Rot, objfromlh->Pos );
-
-				//Write lhp from the inverse of objfromlh
-				//quatrotatevector( lhp->Pos, lhp->Rot, lhp->Pos );
-
-
-				fprintf( stderr, "%f, %f, %f\n", objfromlh->Pos[0], objfromlh->Pos[1], objfromlh->Pos[2] );
-				fprintf( stderr, "%f, %f, %f, %f\n", objfromlh->Rot[0], objfromlh->Rot[1], objfromlh->Rot[2], objfromlh->Rot[3] );
-
-				/*
-					-0.204066 3.238746 -0.856369
-					0.812203 -0.264897 0.505599 0.120520
-					-0.204066 3.238746 -0.856369
-
-					0.020036 3.162476 -0.117896
-					-0.322354 0.450869 0.346281 0.756898
-					0.020036 3.162476 -0.117896
-				*/
-
-				/* Facing up, moved -x 1m.
-					====> 0.446818 -0.309120 -0.747630 ====> -0.222356 -0.701865 -0.558656
-					====> -0.341064 0.099785 0.887015 ====> 0.619095 0.727263 0.029786 
-						IN PLACE, but rotated 90 * up.
-					====> 0.374516 -0.370583 -0.606996 ====> -0.120238 -0.670330 -0.426896
-					====> -0.231758 0.070437 0.765982 ====> 0.497615 0.625761 0.078759 
-				*/
-
-				printf( "\n" );
-
+				fsd.lengths[i][j][0] = -1;
+				fsd.lengths[i][j][1] = -1;
+				continue;
 			}
-			notfirstcal = 1;
+			fsd.lengths[i][j][0] = cd->avglens[dataindex+0];
+			fsd.lengths[i][j][1] = cd->avglens[dataindex+1];
+			fsd.angles[i][j][0] = cd->avgsweeps[dataindex+0];
+			fsd.angles[i][j][1] = cd->avgsweeps[dataindex+1];
 		}
-		else
+
+		int r = cd->ConfigPoserFn( cd->poseobjects[obj], (PoserData*)&fsd );
+		if( r )
 		{
-			for( lh = 0; lh < NUM_LIGHTHOUSES; lh++ )
-			{
-				SurvivePose * objfromlh = &cd->hmd->FromLHPose[lh];
-				SurvivePose * lhp = &ctx->bsd[lh].Pose;
-
-				FLT pos[3];
-				quatrotatevector( pos, lhp->Rot, objfromlh->Pos );
-
-				pos[0] -= lhp->Pos[0];
-				pos[1] -= lhp->Pos[1];
-				pos[2] -= lhp->Pos[2];
-
-				//FLT rot[4] = { 
-				//	[0],
-				//	lhp->Rot[1],
-				//	lhp->Rot[2],
-				//	lhp->Rot[3] };
-				//quatrotatevector( pos, lhp->Rot, pos );
-
-				fprintf( stderr, "%f, %f, %f\n", objfromlh->Pos[0], objfromlh->Pos[1], objfromlh->Pos[2] );
-				fprintf( stderr, "%f, %f, %f, %f\n", objfromlh->Rot[0], objfromlh->Rot[1], objfromlh->Rot[2], objfromlh->Rot[3] );
-				fprintf( stderr, "%f, %f, %f\n", lhp->Pos[0], lhp->Pos[1], lhp->Pos[2] );
-				fprintf( stderr, "%f, %f, %f, %f\n", lhp->Rot[0], lhp->Rot[1], lhp->Rot[2], lhp->Rot[3] );
-
-				fprintf( stderr, "====> %f %f %f\n",
-					pos[0], pos[1], pos[2] );
-					
-			}
+			SV_INFO( "Failed calibration on dev %d\n", obj );
+			reset_calibration( cd );
+			cd->stage = 2;
+			fclose( fobjp );
+			return;
 		}
-		fprintf( stderr, "\n" );
 
 
-		reset_calibration( cd );
-//		cd->stage = 5;
+		int lh;
+		for( lh = 0; lh < NUM_LIGHTHOUSES; lh++ )
+		{
+			SurvivePose * objfromlh = &cd->poseobjects[obj]->FromLHPose[lh];  //The pose is here
+			SurvivePose * lhp = &ctx->bsd[lh].Pose; //Need to somehow put pose here.
+
+			memcpy( &objphl[obj][lh], objfromlh, sizeof( SurvivePose ) );
+
+			fprintf( fobjp, "%f %f %f\n", objfromlh->Pos[0], objfromlh->Pos[1], objfromlh->Pos[2] );
+			fprintf( fobjp, "%f %f %f %f\n", objfromlh->Rot[0], objfromlh->Rot[1], objfromlh->Rot[2], objfromlh->Rot[3] );
+		}
 	}
-	else
-	{
-		SV_INFO( "Stage 4 failed." );
-		reset_calibration( cd );
-	}
+	fclose( fobjp );
+
+
+
+	SV_INFO( "Stage 4 succeeded." );
+	reset_calibration( cd );
+	cd->stage = 5;
 }
 
 

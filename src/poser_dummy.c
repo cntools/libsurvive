@@ -44,7 +44,7 @@ int PoserDummy( SurviveObject * so, PoserData * pd )
 		break;
 	}
 	}
-
+	return 0;
 }
 
 
