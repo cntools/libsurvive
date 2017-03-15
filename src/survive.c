@@ -9,6 +9,23 @@
 
 #include "survive_config.h"
 
+#ifdef RUNTIME_SYMNUM
+#include <symbol_enumerator.h>
+static int did_runtime_symnum;
+int SymnumCheck( const char * path, const char * name, void * location, long size )
+{
+	printf( "--->%s\n", name );
+	if( strncmp( name, "REGISTER", 8 ) == 0 )
+	{
+		typedef void (*sf)();
+		sf fn = (sf)location;
+		fn();
+	}
+	return 0;
+}
+
+#endif
+
 static void survivefault( struct SurviveContext * ctx, const char * fault )
 {
 	fprintf( stderr, "Error: %s\n", fault );
@@ -23,6 +40,10 @@ static void survivenote( struct SurviveContext * ctx, const char * fault )
 
 SurviveContext * survive_init( int headless )
 {
+#ifdef RUNTIME_SYMNUM
+	EnumerateSymbols( SymnumCheck );
+#endif
+
 	int r = 0;
 	int i = 0;
 	SurviveContext * ctx = calloc( 1, sizeof( SurviveContext ) );

@@ -87,8 +87,6 @@ int EnumerateSymbols( SymEnumeratorCallback cb )
 #include <limits.h>
 #include <string.h>
 
-#include "elf_enum.h"
-
 #ifndef __GNUC__
 #define __int128_t long long long
 #endif
