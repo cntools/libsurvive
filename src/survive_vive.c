@@ -242,13 +242,14 @@ static void debug_cb( struct SurviveUSBInterface * si )
 static inline int update_feature_report(USBHANDLE dev, uint16_t interface, uint8_t * data, int datalen )
 {
 	int r = hid_send_feature_report( dev, data, datalen );
-	printf( "HUR: (%p) %d (%d) [%d]\n", dev, r, datalen, data[0] );
+//	printf( "HUR: (%p) %d (%d) [%d]\n", dev, r, datalen, data[0] );
 	return r;
 }
 static inline int getupdate_feature_report(USBHANDLE dev, uint16_t interface, uint8_t * data, int datalen ) 
 {
 	int r = hid_get_feature_report( dev, data, datalen );
-	printf( "HGR: (%p) %d (%d) (%d)\n", dev, r, datalen, data[0] );
+//	printf( "HGR: (%p) %d (%d) (%d)\n", dev, r, datalen, data[0] );
+	if( r == -1 ) return -9; //Pretend it's not a critical error
 	return r;
 }
 
@@ -280,7 +281,7 @@ static inline int hid_get_feature_report_timeout(USBHANDLE device, uint16_t inte
 {
 	int ret;
 	uint8_t i = 0;
-    for (i = 0; i < 100; i++)
+    for (i = 0; i < 50; i++)
 	{
         ret = getupdate_feature_report(device, interface, buf, len);
 		if( ret != -9 && ( ret != -1 || errno != EPIPE ) ) return ret;
@@ -635,7 +636,6 @@ int survive_get_config( char ** config, struct SurviveViveData * sv, int devno, 
 		//XXX TODO WRITEME
 		for( k = 0; k < 10; k++ )
 		{
-			update_feature_report( dev, iface, cfgbuff_send, sizeof( cfgbuff_send ) );
 			OGUSleep( 1000);
 		}
 	

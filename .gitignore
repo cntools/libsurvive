@@ -3,3 +3,5 @@ lib
 test
 windows/calibrate.exe
 windows/calinfo/1.json.gz
+windows/calibrate.def
+windows/calinfo/3.json.gz
