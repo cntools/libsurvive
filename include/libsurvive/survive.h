@@ -50,8 +50,8 @@ struct SurviveObject
 	int8_t   oldcode;
 	int8_t   sync_set_number; //0 = master, 1 = slave, -1 = fault. 
 	int8_t   did_handle_ootx; //If unset, will send lightcap data for sync pulses next time a sensor is hit.
-	uint32_t last_time[NUM_LIGHTHOUSES];
-	uint32_t last_length[NUM_LIGHTHOUSES];
+	uint32_t last_sync_time[NUM_LIGHTHOUSES];
+	uint32_t last_sync_length[NUM_LIGHTHOUSES];
 	uint32_t recent_sync_time;
 
 	uint32_t last_lighttime;  //May be a 24- or 32- bit number depending on what device.
