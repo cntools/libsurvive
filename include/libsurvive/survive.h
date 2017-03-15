@@ -136,10 +136,38 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 
 ////////////////////// Survive Drivers ////////////////////////////
 
+// The following macros were taken from StackOverflow here: 
+// http://stackoverflow.com/questions/1113409/attribute-constructor-equivalent-in-vc
+// The author, Joe Lowe explicitly released this code into the public domain as part of his post.
+#ifdef __cplusplus
+#define INITIALIZER(f) \
+        static void f(void); \
+        struct f##_t_ { f##_t_(void) { f(); } }; static f##_t_ f##_; \
+        static void f(void)
+#elif defined(_MSC_VER)
+#pragma section(".CRT$XCU",read)
+#define INITIALIZER2_(f,p) \
+        static void f(void); \
+        __declspec(allocate(".CRT$XCU")) void (*f##_)(void) = f; \
+        __pragma(comment(linker,"/include:" p #f "_")) \
+        static void f(void)
+#ifdef _WIN64
+#define INITIALIZER(f) INITIALIZER2_(f,"")
+#else
+#define INITIALIZER(f) INITIALIZER2_(f,"_")
+#endif
+#else
+#define INITIALIZER(f) \
+        static void f(void) __attribute__((constructor)); \
+        static void f(void)
+#endif
+// End macros from StackOverflow.
+
+
 void   RegisterDriver( const char * name, void * data );
 
 #define REGISTER_LINKTIME( func ) \
-	void __attribute__((constructor)) REGISTER##func() { RegisterDriver( #func, &func ); }
+	INITIALIZER(LTRegister##func) { RegisterDriver( #func, &func ); }
 
 
 
@@ -151,19 +179,29 @@ void survive_add_driver( SurviveContext * ctx, void * payload, DeviceDriverCb po
 
 //For lightcap, etc.  Don't change this structure at all.  Regular vive is dependent on it being exactly as-is.
 //When you write drivers, you can use this to send survive lightcap data.
+#ifdef _WIN32
+#pragma pack(push,1)
+#endif
 typedef struct
 {
 	uint8_t sensor_id;
 	uint8_t type;      //Mostly unused.  Set to 255 to ignore it.
 	uint16_t length;
 	uint32_t timestamp;
-} __attribute__((packed))  LightcapElement;
+} 
+#ifdef __linux__ 
+__attribute__((packed))
+#endif
+LightcapElement;
+#ifdef _WIN32
+#pragma pack(pop)
+#endif
 
 //This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
 void handle_lightcap( SurviveObject * so, LightcapElement * le );
 
-#define SV_INFO( x... ) { char stbuff[1024]; sprintf( stbuff, x ); ctx->notefunction( ctx, stbuff ); }
-#define SV_ERROR( x... ) { char stbuff[1024]; sprintf( stbuff, x ); ctx->faultfunction( ctx, stbuff ); }
+#define SV_INFO( ... ) { char stbuff[1024]; sprintf( stbuff, __VA_ARGS__ ); ctx->notefunction( ctx, stbuff ); }
+#define SV_ERROR( ... ) { char stbuff[1024]; sprintf( stbuff, __VA_ARGS__ ); ctx->faultfunction( ctx, stbuff ); }
 #define SV_KILL()		exit(0)  //XXX This should likely be re-defined.
 
 #endif

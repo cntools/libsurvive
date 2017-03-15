@@ -3,7 +3,7 @@
 #include <assert.h>
 #include "survive_config.h"
 #include <json_helpers.h>
-
+#include <malloc.h> //for alloca
 #include <errno.h>
 
 //#define MAX_CONFIG_ENTRIES 100
@@ -293,7 +293,8 @@ void pop_config_group() {
 
 int parse_floats(char* tag, char** values, uint16_t count) {
 	uint16_t i = 0;
-	FLT f[count];
+	FLT *f;
+	f = alloca(sizeof(FLT) * count);
 	char* end = NULL;
 	config_group* cg = cg_stack[cg_stack_head];
 
@@ -321,7 +322,8 @@ int parse_floats(char* tag, char** values, uint16_t count) {
 
 int parse_uint32(char* tag, char** values, uint16_t count) {
 	uint16_t i = 0;
-	uint32_t l[count];
+	FLT *l;
+	l = alloca(sizeof(FLT) * count);
 	char* end = NULL;
 	config_group* cg = cg_stack[cg_stack_head];
 
