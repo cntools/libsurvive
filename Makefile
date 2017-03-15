@@ -2,7 +2,7 @@ all : lib data_recorder test calibrate calibrate_client
 
 CC:=gcc
 
-CFLAGS:=-Iinclude/libsurvive -I. -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE -std=gnu99
+CFLAGS:=-Iinclude/libsurvive -I. -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic
 LDFLAGS:=-lpthread -lusb-1.0 -lz -lX11 -lm -flto -g
 
 POSERS:=src/poser_dummy.o src/poser_daveortho.o src/poser_charlesslow.o
@@ -36,6 +36,10 @@ lib:
 
 lib/libsurvive.so : $(LIBSURVIVE_O)
 	$(CC) -o $@ $^ $(LDFLAGS) -shared
+
+
+calibrate_tcc : $(LIBSURVIVE_C)
+	tcc -DRUNTIME_SYMNUM $(CFLAGS) -o $@ $^ $(LDFLAGS) calibrate.c redist/XDriver.c redist/os_generic.c redist/DrawFunctions.c redist/symbol_enumerator.c
 
 clean :
 	rm -rf *.o src/*.o *~ src/*~ test data_recorder lib/libsurvive.so redist/*.o redist/*~

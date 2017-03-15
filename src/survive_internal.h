@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <zlib.h>
 #include <survive.h>
 
 

@@ -25,7 +25,7 @@
 #define FLT_ACOS  acos
 #define FLT_ASIN  asin
 #define FLT_ATAN2  atan2
-#define FLT_FABS fabs
+#define FLT_FABS__ fabs
 
 #else
 
@@ -37,10 +37,15 @@
 #define FLT_ACOS  acosf
 #define FLT_ASIN  asinf
 #define FLT_ATAN2  atan2f
-#define FLT_FABS fabsf
+#define FLT_FABS__ fabsf
 
 #endif
 
+#ifdef TCC
+#define FLT_FABS(x) (((x)<0)?(-(x)):(x))
+#else
+#define FLT_FABS FLT_FABS__
+#endif
 
 
 //NOTE: Inputs may never be output with cross product.

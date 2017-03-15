@@ -1,9 +1,17 @@
 //Copyright 2013,2016 <>< C. N. Lohr.  This file licensed under the terms of the MIT license.
 
 #include <math.h>
-#include "linmath.h"
 #include <float.h>
 #include <string.h>
+#include "linmath.h"
+
+#define FLT float
+#define LINMATHPI ((FLT)3.141592653589)
+#define DEFAULT_EPSILON 0.001
+void quatnormalize( FLT * qout, const FLT * qin );
+void quatscale( FLT * qout, const FLT * qin, FLT s );
+void quatfrom2vectors(FLT *q, const FLT *src, const FLT *dest);
+
 
 void cross3d( FLT * out, const FLT * a, const FLT * b )
 {

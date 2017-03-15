@@ -6,10 +6,14 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <zlib.h>
 #include <assert.h>
 #include "ootx_decoder.h"
-//#include "crc32.h"
+
+#ifdef NOZLIB
+#include "crc32.h"
+#else
+#include <zlib.h>
+#endif
 
 //char* fmt_str = "L Y HMD %d 5 1 206230 %d\n";
 
@@ -145,7 +149,7 @@ void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
 			op.data = ctx->buffer+2;
 			op.crc32 = *(uint32_t*)(op.data+padded_length);
 
-			uint32_t crc = crc32( 0L, Z_NULL, 0 );
+			uint32_t crc = crc32( 0L, 0 /*Z_NULL*/, 0 );
 			crc = crc32( crc, op.data,op.length);
 
 			if (crc != op.crc32) {

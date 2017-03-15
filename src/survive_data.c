@@ -13,11 +13,11 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 
 	//if( so->codename[0] != 'H' )
 
+
 	if( le->sensor_id > SENSORS_PER_OBJECT )
 	{
 		return;
 	}
-
 
 	so->tsl = le->timestamp;
 	if( le->length < 20 ) return;  ///Assuming 20 is an okay value for here.
