@@ -1081,8 +1081,8 @@ void survive_data_cb( SurviveUSBInterface * si )
 	}
 	case USB_IF_LIGHTCAP:
 	{
-		#ifdef HIDAPI
 		int i;
+		#ifdef HIDAPI
 		for( i = 0; i < 7; i++ )
 		{
 			LightcapElement le;
