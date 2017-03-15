@@ -347,8 +347,11 @@ static void handle_calibration( struct SurviveCalData *cd )
 
 	//Either advance to stage 4 or go resetting will go back to stage 2.
 	//What is stage 4?  Are we done then?
-
+#ifdef WINDOWS
+	mkdir( "calinfo" );
+#else
 	mkdir( "calinfo", 0755 );
+#endif
 	FILE * hists = fopen( "calinfo/histograms.csv", "w" );
 	FILE * ptinfo = fopen( "calinfo/ptinfo.csv", "w" );
 	int sen, axis, lh;
