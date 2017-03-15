@@ -147,10 +147,10 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 #elif defined(_MSC_VER)
 #pragma section(".CRT$XCU",read)
 #define INITIALIZER2_(f,p) \
-        static void f(void); \
+        __declspec(dllexport)  void f(void); \
         __declspec(allocate(".CRT$XCU")) void (*f##_)(void) = f; \
         __pragma(comment(linker,"/include:" p #f "_")) \
-        static void f(void)
+         void f(void)
 #ifdef _WIN64
 #define INITIALIZER(f) INITIALIZER2_(f,"")
 #else
@@ -163,11 +163,19 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 #endif
 // End macros from StackOverflow.
 
+//static void foo(void)
+//{
+//	int a=0;
+//}
+//
+//INITIALIZER(foo);
+
 
 void   RegisterDriver( const char * name, void * data );
 
 #define REGISTER_LINKTIME( func ) \
-	INITIALIZER(LTRegister##func) { RegisterDriver( #func, &func ); }
+	__declspec(dllexport) void LTRegister##func() { RegisterDriver( #func, &func ); } \
+	INITIALIZER(LTRegister##func) 
 
 
 
