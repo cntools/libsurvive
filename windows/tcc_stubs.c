@@ -44,7 +44,7 @@ int vasprintf(char **strp, const char *fmt, va_list ap) {
         return -1;
     }
     size_t size = (size_t)len + 1;
-    char *str = malloc(size);
+    char *str = (char*)malloc(size);
     if (!str) {
         return -1;
     }
