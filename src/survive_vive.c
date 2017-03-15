@@ -38,6 +38,9 @@ const short vidpids[] = {
 	0x28de, 0x2101, 0, //Valve Watchman
 	0x28de, 0x2101, 1, //Valve Watchman
 	0x28de, 0x2022, 0, //HTC Tracker
+#ifdef HIDAPI
+	0x28de, 0x2000, 1, //Valve lighthouse(B) (only used on HIDAPI, for lightcap)
+#endif
 }; //length MAX_USB_INTERFACES*2
 
 const char * devnames[] = {
@@ -46,6 +49,9 @@ const char * devnames[] = {
 	"Watchman 1",
 	"Watchman 2",
 	"Tracker 0",
+#ifdef HIDAPI
+	"Lightcap",
+#endif
 }; //length MAX_USB_INTERFACES
 
 
@@ -54,7 +60,8 @@ const char * devnames[] = {
 #define USB_DEV_WATCHMAN1	2
 #define USB_DEV_WATCHMAN2	3
 #define USB_DEV_TRACKER0	4
-#define MAX_USB_DEVS		5
+#define USB_DEV_LIGHTHOUSEB 5
+#define MAX_USB_DEVS		6
 
 
 #define USB_IF_HMD			0
@@ -81,7 +88,9 @@ struct SurviveUSBInterface
 	SurviveViveData * sv;
 	SurviveContext * ctx;
 
-#ifndef HIDAPI
+#ifdef HIDAPI
+	USBHANDLE uh;
+#else
 	struct libusb_transfer * transfer;
 #endif
 	SurviveObject * assoc_obj;
@@ -124,11 +133,23 @@ void * HAPIReceiver( void * v )
 {
 	char buf[65];
 	int res;
+
 	SurviveUSBInterface * iface = v;
-	USBHANDLE * hp = &iface->sv->udev[iface->which_interface_am_i];
-	while( iface->actual_len = hid_read( *hp, iface->buffer, sizeof( iface->buffer ) ) > 0 )
+	USBHANDLE * hp = &iface->uh;
+	
+	while( (iface->actual_len = hid_read( *hp, iface->buffer, sizeof( iface->buffer ) )) > 0 )
 	{
+		//if( iface->actual_len  == 52 ) continue;
 		OGLockMutex( GlobalRXUSBMutx );
+#if 0
+		printf( "%d %d: ", iface->which_interface_am_i, iface->actual_len );
+		int i;
+		for( i = 0; i < iface->actual_len; i++ )
+		{
+			printf( "%02x ", iface->buffer[i] );
+		}
+		printf("\n" );
+#endif
 		survive_data_cb( iface );
 		OGUnlockMutex( GlobalRXUSBMutx );
 	}
@@ -175,7 +196,9 @@ static int AttachInterface( SurviveViveData * sv, SurviveObject * assocobj, int 
 
 #ifdef HIDAPI
 	//What do here?
+	iface->uh = devh;
 	sv->servicethread[which_interface_am_i] = OGCreateThread( HAPIReceiver, iface );
+	OGUSleep(100000);
 #else
 	struct libusb_transfer * tx = iface->transfer = libusb_alloc_transfer(0);
 	//printf( "%p %d %p %p\n", iface, which_interface_am_i, tx, devh );
@@ -215,24 +238,17 @@ static void debug_cb( struct SurviveUSBInterface * si )
 
 
 #ifdef HIDAPI
+
 static inline int update_feature_report(USBHANDLE dev, uint16_t interface, uint8_t * data, int datalen )
 {
-	uint8_t rrb[65];
-	if( datalen > 64 ) datalen = 64;
-	memcpy( rrb+1, data, datalen );
-	rrb[0] = interface;
-	int r = hid_send_feature_report( dev, rrb, datalen+1 );
-	printf( "HUR: (%p) %d (%d) [%d]\n", dev, r, datalen, rrb[0] );
+	int r = hid_send_feature_report( dev, data, datalen );
+	printf( "HUR: (%p) %d (%d) [%d]\n", dev, r, datalen, data[0] );
 	return r;
 }
 static inline int getupdate_feature_report(USBHANDLE dev, uint16_t interface, uint8_t * data, int datalen ) 
 {
-	uint8_t rrb[65];
-	if( datalen > 64 ) datalen = 64;
-	rrb[0] = interface;
-	int r = hid_get_feature_report( dev, rrb, datalen+1 );
-	printf( "HGR: (%p) %d (%d) (%d)\n", dev, r, datalen, rrb[0] );
-	memcpy( data, rrb+1, datalen );
+	int r = hid_get_feature_report( dev, data, datalen );
+	printf( "HGR: (%p) %d (%d) (%d)\n", dev, r, datalen, data[0] );
 	return r;
 }
 
@@ -278,6 +294,11 @@ int survive_usb_init( struct SurviveViveData * sv, struct SurviveObject * hmd, s
 {
 	struct SurviveContext * ctx = sv->ctx;
 #ifdef HIDAPI
+	if( !GlobalRXUSBMutx )
+	{
+		GlobalRXUSBMutx = OGCreateMutex();
+		OGLockMutex( GlobalRXUSBMutx );
+	}
 	int res, i;
 	res = hid_init();
 	if( res )
@@ -320,7 +341,7 @@ int survive_usb_init( struct SurviveViveData * sv, struct SurviveObject * hmd, s
 
 		if( !handle )
 		{
-			SV_INFO( "Warning: Could not find vive device %04x:%04x\n", vendor_id, product_id );
+			SV_INFO( "Warning: Could not find vive device %04x:%04x", vendor_id, product_id );
 			continue;
 		}
 	
@@ -328,13 +349,12 @@ int survive_usb_init( struct SurviveViveData * sv, struct SurviveObject * hmd, s
 		wchar_t wstr[255];
 
 		res = hid_get_serial_number_string(handle, wstr, 255);
-		wprintf(L"Serial Number String: (%d) %s for %04x:%04x\n", wstr[0], wstr,vendor_id, product_id);
+		wprintf(L"Serial Number String: (%d) %s for %04x:%04x@%d  (Dev: %p)\n", wstr[0], wstr,vendor_id, product_id, menum, handle);
 		
 		sv->udev[i] = handle;
 
 	}
 
-	
 #else
 	int r = libusb_init( &sv->usbctx );
 	if( r )
@@ -428,14 +448,17 @@ int survive_usb_init( struct SurviveViveData * sv, struct SurviveObject * hmd, s
 	libusb_free_device_list( devs, 1 );
 #endif
 
-
 	if( sv->udev[USB_DEV_HMD] && AttachInterface( sv, hmd, USB_IF_HMD,        sv->udev[USB_DEV_HMD],        0x81, survive_data_cb, "Mainboard" ) ) { return -6; }
 	if( sv->udev[USB_DEV_LIGHTHOUSE] && AttachInterface( sv, hmd, USB_IF_LIGHTHOUSE, sv->udev[USB_DEV_LIGHTHOUSE], 0x81, survive_data_cb, "Lighthouse" ) ) { return -7; }
 	if( sv->udev[USB_DEV_WATCHMAN1] && AttachInterface( sv, wm0, USB_IF_WATCHMAN1,  sv->udev[USB_DEV_WATCHMAN1],  0x81, survive_data_cb, "Watchman 1" ) ) { return -8; }
 	if( sv->udev[USB_DEV_WATCHMAN2] && AttachInterface( sv, wm1, USB_IF_WATCHMAN2, sv->udev[USB_DEV_WATCHMAN2], 0x81, survive_data_cb, "Watchman 2")) { return -9; }
 	if( sv->udev[USB_DEV_TRACKER0] && AttachInterface( sv, tr0, USB_IF_TRACKER0, sv->udev[USB_DEV_TRACKER0], 0x81, survive_data_cb, "Tracker 1")) { return -10; }
+#ifdef HIDAPI
+	//Tricky: use other interface for actual lightcap.  XXX THIS IS NOT YET RIGHT!!!
+	if( sv->udev[USB_DEV_LIGHTHOUSEB] && AttachInterface( sv, hmd, USB_IF_LIGHTCAP, sv->udev[USB_DEV_LIGHTHOUSEB], 0x82, survive_data_cb, "Lightcap")) { return -12; }
+#else
 	if( sv->udev[USB_DEV_LIGHTHOUSE] && AttachInterface( sv, hmd, USB_IF_LIGHTCAP, sv->udev[USB_DEV_LIGHTHOUSE], 0x82, survive_data_cb, "Lightcap")) { return -12; }
-
+#endif
 	SV_INFO( "All enumerated devices attached." );
 
 	survive_vive_send_magic(ctx, sv, 1, 0, 0 );
@@ -484,7 +507,7 @@ int survive_vive_send_magic(struct SurviveContext * ctx, void * drv, int magic_c
 		if (sv->udev[USB_DEV_LIGHTHOUSE])
 		{
 			static uint8_t vive_magic_enable_lighthouse[64] = { 0x04 };  //[64] wat?  Why did that fix it?
-			r = update_feature_report( sv->udev[USB_DEV_LIGHTHOUSE], 0, vive_magic_enable_lighthouse, sizeof( vive_magic_enable_lighthouse ) );
+			r = update_feature_report( sv->udev[USB_DEV_LIGHTHOUSE], 0, vive_magic_enable_lighthouse, sizeof( vive_magic_enable_lighthouse ) );				 ///XXX TODO: Shouldn't this be LIGHTHOUSEB for hidapi?
 			if( r != sizeof( vive_magic_enable_lighthouse ) ) return 5;
 		}
 
@@ -596,14 +619,7 @@ int survive_get_config( char ** config, struct SurviveViveData * sv, int devno, 
 		OGUSleep(1000);
 
 		int k;
-
-		#ifdef HIDAPI
-		//XXX TODO WRITEME
-		SV_INFO( "XXX TODO WRITEME" );
-		#else
-		//Switch mode to pull config?
-		for( k = 0; k < 10; k++ )
-		{
+		
 			uint8_t cfgbuff_send[64] = { 
 				0xff, 0x83, 0x00, 0xb6, 0x5b, 0xb0, 0x78, 0x69,
 				0x0f, 0xf8, 0x78, 0x69, 0x0f, 0xa0, 0xf3, 0x18,
@@ -614,7 +630,20 @@ int survive_get_config( char ** config, struct SurviveViveData * sv, int devno, 
 				0x0f, 0x00, 0x00, 0xa0, 0x0f, 0xa0, 0x9b, 0x0a,
 				0x01, 0x00, 0x00, 0x35, 0x00, 0x34, 0x02, 0x00
 			};
-
+			
+		#ifdef HIDAPI
+		//XXX TODO WRITEME
+		for( k = 0; k < 10; k++ )
+		{
+			update_feature_report( dev, iface, cfgbuff_send, sizeof( cfgbuff_send ) );
+			OGUSleep( 1000);
+		}
+	
+		#else
+		//Switch mode to pull config?
+		SV_INFO( "XXX TODO See if this can be update_feature_report" );
+		for( k = 0; k < 10; k++ )
+		{
 			int rk = libusb_control_transfer(dev, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_OUT,
 			0x09, 0x300 | cfgbuff_send[0], iface, cfgbuff_send, 64, 1000 );
 			OGUSleep(1000);
@@ -673,6 +702,12 @@ int survive_get_config( char ** config, struct SurviveViveData * sv, int devno, 
 
 	SV_INFO( "Got config data length %d", count );
 
+	char fstname[128];
+	sprintf( fstname, "calinfo/%d.json.gz", devno );
+	FILE * f = fopen( fstname, "wb" );
+	fwrite( compressed_data, count, 1, f );
+	fclose( f );
+	
 	int len = survive_simple_inflate( ctx, compressed_data, count, uncompressed_data, sizeof(uncompressed_data)-1 );
 	if( len <= 0 )
 	{
@@ -935,16 +970,6 @@ void survive_data_cb( SurviveUSBInterface * si )
 {
 	int size = si->actual_len;
 	SurviveContext * ctx = si->ctx;
-#if 0
-	int i;
-	printf( "%16s: %d: ", si->hname, len );
-	for( i = 0; i < size; i++ )
-	{
-		printf( "%02x ", si->buffer[i] );
-	}
-	printf( "\n" );
-	return;
-#endif 
 
 	int iface = si->which_interface_am_i;
 	SurviveObject * obj = si->assoc_obj;
@@ -953,6 +978,20 @@ void survive_data_cb( SurviveUSBInterface * si )
 	int id = POP1;
 //	printf( "%16s Size: %2d ID: %d / %d\n", si->hname, size, id, iface );
 
+
+#if 0
+	if(  si->which_interface_am_i == 5 )
+	{
+		int i;
+		printf( "%16s: %d: %d: %d: ", si->hname, id, size, sizeof(LightcapElement) );
+		for( i = 0; i < size-1; i++ )
+		{
+			printf( "%02x ", readdata[i] );
+		}
+		printf( "\n" );
+		
+	}
+#endif 
 
 	switch( si->which_interface_am_i )
 	{
@@ -1042,13 +1081,25 @@ void survive_data_cb( SurviveUSBInterface * si )
 	}
 	case USB_IF_LIGHTCAP:
 	{
-		//Done!
+		#ifdef HIDAPI
 		int i;
+		for( i = 0; i < 7; i++ )
+		{
+			LightcapElement le;
+			le.sensor_id = POP1;
+			le.type = 0xfe;
+			le.length = POP2;
+			le.timestamp = POP4;
+			if( le.sensor_id == 0xff ) break;
+			handle_lightcap( obj, &le );
+		}		
+		#else
 		for( i = 0; i < 7; i++ )
 		{
 			handle_lightcap( obj, (LightcapElement*)&readdata[i*8] );
 		}
 		break;
+		#endif
 	}
 	}
 }
@@ -1121,7 +1172,7 @@ static int LoadConfig( SurviveViveData * sv, SurviveObject * so, int devno, int 
 	SurviveContext * ctx = sv->ctx;
 	char * ct0conf = 0;
 	int len = survive_get_config( &ct0conf, sv, devno, iface, extra_magic );
-
+printf( "Loading config: %d\n", len );
 #if 0
 	char fname[100];
 	sprintf( fname, "%s_config.json", so->codename );
@@ -1181,11 +1232,7 @@ static int LoadConfig( SurviveViveData * sv, SurviveObject * so, int devno, int 
 	}
 
 	char fname[20];
-#ifdef WINDOWS
-	mkdir( "calinfo" );
-#else
-	mkdir( "calinfo", 0755 );
-#endif
+
 	sprintf( fname, "calinfo/%s_points.csv", so->codename );
 	FILE * f = fopen( fname, "w" );
 	int j;
@@ -1225,6 +1272,13 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	SurviveViveData * sv = calloc( 1, sizeof( SurviveViveData ) );
 
 	sv->ctx = ctx;
+	
+	#ifdef WINDOWS
+		mkdir( "calinfo" );
+	#else
+		mkdir( "calinfo", 0755 );
+	#endif
+
 
 	hmd->ctx = ctx;
 	memcpy( hmd->codename, "HMD", 4 );

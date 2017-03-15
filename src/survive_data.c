@@ -13,11 +13,11 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 
 	//if( so->codename[0] != 'H' )
 
+
 	if( le->sensor_id > SENSORS_PER_OBJECT )
 	{
 		return;
 	}
-
 
 	so->tsl = le->timestamp;
 	if( le->length < 20 ) return;  ///Assuming 20 is an okay value for here.
@@ -127,10 +127,8 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 		{
 			int32_t delta1 = so->last_time[0] - so->recent_sync_time;
 			int32_t delta2 = so->last_time[1] - so->last_time[0];
-
 			ctx->lightproc( so, -1, acode_array[0], delta1, so->last_time[0], so->last_length[0] );
 			ctx->lightproc( so, -2, acode_array[1], delta2, so->last_time[1], so->last_length[1] );
-
 			so->recent_sync_time = so->last_time[1];
 
 			//Throw out everything if our sync pulses look like they're bad.

@@ -168,7 +168,7 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 	struct SurviveCalData * cd = ctx->calptr;
 
 	if( !cd ) return;
-
+	
 	switch( cd->stage )
 	{
 	default:
@@ -193,6 +193,7 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 		}
 		break;
 	}
+	
 }
 
 void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle )

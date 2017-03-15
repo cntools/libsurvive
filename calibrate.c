@@ -51,7 +51,6 @@ void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int 
 {
 //	if( timeinsweep < 0 ) return;
 	survive_default_light_process( so, sensor_id, acode, timeinsweep, timecode, length );
-
 	if( sensor_id < 0 ) return;
 	if( acode == -1 ) return;
 //return;

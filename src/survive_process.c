@@ -11,7 +11,6 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 	SurviveContext * ctx = so->ctx;
 	int base_station = acode >> 2;
 	int axis = acode & 1;
-
 	if( ctx->calptr )
 	{
 		survive_cal_light( so, sensor_id, acode, timeinsweep, timecode, length );
