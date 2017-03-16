@@ -136,50 +136,12 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 
 ////////////////////// Survive Drivers ////////////////////////////
 
-// The following macros were taken from StackOverflow here: 
-// http://stackoverflow.com/questions/1113409/attribute-constructor-equivalent-in-vc
-// The author, Joe Lowe explicitly released this code into the public domain as part of his post.
-#ifdef __cplusplus
-#define INITIALIZER(f) \
-        static void f(void); \
-        struct f##_t_ { f##_t_(void) { f(); } }; static f##_t_ f##_; \
-        static void f(void)
-#elif defined(_MSC_VER)
-#pragma section(".CRT$XCU",read)
-#define INITIALIZER2_(f,p) \
-        __declspec(dllexport)  void f(void); \
-        __declspec(allocate(".CRT$XCU")) void (*f##_)(void) = f; \
-		volatile static void * LTRegistrationPinnerFor##f = &##f; \
-        __pragma(comment(linker,"/include:" p #f "_")) \
-         void f(void)
-#ifdef _WIN64
-#define INITIALIZER(f) INITIALIZER2_(f,"")
+#ifdef _WIN32
+#define REGISTER_LINKTIME( func )
 #else
-#define INITIALIZER(f) INITIALIZER2_(f,"_")
-#endif
-#else
-#define INITIALIZER(f) \
-        static void f(void) __attribute__((constructor)); \
-        static void f(void)
-#endif
-// End macros from StackOverflow.
-
-//static void foo(void)
-//{
-//	int a=0;
-//}
-//
-//INITIALIZER(foo);
-
-
-void   RegisterDriver( const char * name, void * data );
-
 #define REGISTER_LINKTIME( func ) \
-	__declspec(dllexport) void LTRegister##func() { RegisterDriver( #func, &func ); } \
-	INITIALIZER(LTRegister##func) 
-	
-
-	//void __attribute__((constructor)) LTRegister##func() { RegisterDriver(#func, &func); }
+	void __attribute__((constructor)) LTRegister##func() { RegisterDriver(#func, &func); }
+#endif
 
 
 

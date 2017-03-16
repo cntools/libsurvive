@@ -47,17 +47,17 @@ SurviveContext * survive_init( int headless )
 		did_runtime_symnum = 1;
 	}
 #endif
-//#ifdef MANUAL_REGISTRATION
-//	// note: this manual registration is currently only in use on builds using Visual Studio.
-//
-//#define MANUAL_DRIVER_REGISTRATION(func) int func( SurviveObject * so, PoserData * pd ); RegisterDriver( #func, &func);
-//
-//	MANUAL_DRIVER_REGISTRATION(PoserCharlesSlow)
-//	MANUAL_DRIVER_REGISTRATION(PoserDaveOrtho)
-//	MANUAL_DRIVER_REGISTRATION(PoserDummy)
-//	MANUAL_DRIVER_REGISTRATION(DriverRegHTCVive)
-//
-//#endif
+#ifdef MANUAL_REGISTRATION
+	// note: this manual registration is currently only in use on builds using Visual Studio.
+
+#define MANUAL_DRIVER_REGISTRATION(func) int func( SurviveObject * so, PoserData * pd ); RegisterDriver( #func, &func);
+
+	MANUAL_DRIVER_REGISTRATION(PoserCharlesSlow)
+	MANUAL_DRIVER_REGISTRATION(PoserDaveOrtho)
+	MANUAL_DRIVER_REGISTRATION(PoserDummy)
+	MANUAL_DRIVER_REGISTRATION(DriverRegHTCVive)
+
+#endif
 
 	int r = 0;
 	int i = 0;
