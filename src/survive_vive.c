@@ -59,9 +59,13 @@ const char * devnames[] = {
 #define USB_DEV_WATCHMAN1	2
 #define USB_DEV_WATCHMAN2	3
 #define USB_DEV_TRACKER0	4
+
+#ifdef HIDAPI
 #define USB_DEV_LIGHTHOUSEB 5
 #define MAX_USB_DEVS		6
-
+#else
+#define MAX_USB_DEVS		5
+#endif
 
 #define USB_IF_HMD			0
 #define USB_IF_LIGHTHOUSE 	1
@@ -402,6 +406,7 @@ int survive_usb_init( struct SurviveViveData * sv, struct SurviveObject * hmd, s
 
 		if( d == 0 )
 		{
+			printf( "!!%p  %d %04x %04x %d\n", devnames[i], i, vid, pid, which );
 			SV_INFO( "Did not find device %s (%04x:%04x.%d)", devnames[i], vid, pid, which );
 			sv->udev[i] = 0;
 			continue;
@@ -1199,7 +1204,7 @@ printf( "Loading config: %d\n", len );
 		return 1;
 	}
 
-	char fname[20];
+	char fname[64];
 
 	sprintf( fname, "calinfo/%s_points.csv", so->codename );
 	FILE * f = fopen( fname, "w" );

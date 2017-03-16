@@ -2,7 +2,7 @@ all : lib data_recorder test calibrate calibrate_client
 
 CC:=gcc
 
-CFLAGS:=-Iinclude/libsurvive -I. -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic
+CFLAGS:=-Iinclude/libsurvive -I. -fPIC -g -O3 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic
 LDFLAGS:=-lpthread -lusb-1.0 -lz -lX11 -lm -flto -g
 
 POSERS:=src/poser_dummy.o src/poser_daveortho.o src/poser_charlesslow.o
