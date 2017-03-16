@@ -149,6 +149,7 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 #define INITIALIZER2_(f,p) \
         __declspec(dllexport)  void f(void); \
         __declspec(allocate(".CRT$XCU")) void (*f##_)(void) = f; \
+		volatile static void * LTRegistrationPinnerFor##f = &##f; \
         __pragma(comment(linker,"/include:" p #f "_")) \
          void f(void)
 #ifdef _WIN64
@@ -176,6 +177,9 @@ void   RegisterDriver( const char * name, void * data );
 #define REGISTER_LINKTIME( func ) \
 	__declspec(dllexport) void LTRegister##func() { RegisterDriver( #func, &func ); } \
 	INITIALIZER(LTRegister##func) 
+	
+
+	//void __attribute__((constructor)) LTRegister##func() { RegisterDriver(#func, &func); }
 
 
 

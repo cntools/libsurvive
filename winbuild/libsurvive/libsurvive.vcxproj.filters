@@ -81,6 +81,9 @@
     <ClCompile Include="..\..\windows\hid.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\redist\linmath.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\ootx_decoder.h">
@@ -123,6 +126,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\windows\hidapi.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\redist\linmath.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
