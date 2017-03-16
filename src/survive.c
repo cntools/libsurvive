@@ -14,8 +14,7 @@
 static int did_runtime_symnum;
 int SymnumCheck( const char * path, const char * name, void * location, long size )
 {
-	printf("%s\n", name);
-	if( strncmp( name, "LTRegister", 8 ) == 0 )
+	if( strncmp( name, "REGISTER", 8 ) == 0 )
 	{
 		typedef void (*sf)();
 		sf fn = (sf)location;
