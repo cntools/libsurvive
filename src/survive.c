@@ -252,6 +252,7 @@ struct SurviveObject * survive_get_so_by_name( struct SurviveContext * ctx, cons
 		
 int survive_simple_inflate( struct SurviveContext * ctx, const char * input, int inlen, char * output, int outlen )
 {
+	//Tricky: we actually get 2 bytes of data on the front.  I don't know what it's for. 0x78 0x9c - puff doesn't deal with it well.
 	unsigned long ol = outlen;
 	unsigned long il = inlen-2;
 	int ret = puff( output, &ol, input+2, &il );
