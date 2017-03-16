@@ -18,7 +18,9 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <os_generic.h>
+#ifndef __FreeBSD__
 #include <malloc.h> // for alloca
+#endif
 
 #ifdef HIDAPI
 #if defined(WINDOWS) || defined(WIN32) || defined (_WIN32)
@@ -27,7 +29,11 @@
 #endif
 #include <hidapi.h>
 #else
+#ifdef __FreeBSD__
+#include <libusb.h>
+#else
 #include <libusb-1.0/libusb.h>
+#endif
 #endif
 
 struct SurviveViveData;

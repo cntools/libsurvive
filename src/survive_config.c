@@ -3,7 +3,11 @@
 #include <assert.h>
 #include "survive_config.h"
 #include <json_helpers.h>
+#ifdef __FreeBSD__
+#include <stdlib.h>
+#else
 #include <malloc.h> //for alloca
+#endif
 #include <errno.h>
 
 //#define MAX_CONFIG_ENTRIES 100

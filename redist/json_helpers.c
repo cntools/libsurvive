@@ -7,7 +7,9 @@
 #include <string.h>
 #include "json_helpers.h"
 #include <jsmn.h>
+#ifndef __FreeBSD__
 #include <malloc.h>
+#endif
 
 #ifdef _WIN32
 #include <stdarg.h>
