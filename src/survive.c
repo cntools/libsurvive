@@ -253,8 +253,8 @@ struct SurviveObject * survive_get_so_by_name( struct SurviveContext * ctx, cons
 int survive_simple_inflate( struct SurviveContext * ctx, const char * input, int inlen, char * output, int outlen )
 {
 	unsigned long ol = outlen;
-	unsigned long il = inlen;
-	int ret = puff( output, &ol, input, &il );
+	unsigned long il = inlen-2;
+	int ret = puff( output, &ol, input+2, &il );
 	if( ret == 0 )
 		return ol;
 	else

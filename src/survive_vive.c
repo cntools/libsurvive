@@ -711,7 +711,7 @@ int survive_get_config( char ** config, struct SurviveViveData * sv, int devno, 
 	int len = survive_simple_inflate( ctx, compressed_data, count, uncompressed_data, sizeof(uncompressed_data)-1 );
 	if( len <= 0 )
 	{
-		SV_INFO( "Error: data for config descriptor %d:%d is bad.", devno, iface );
+		SV_INFO( "Error: data for config descriptor %d:%d is bad. (%d)", devno, iface, len );
 		return -5;
 	}
 
