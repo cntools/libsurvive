@@ -1082,24 +1082,28 @@ void survive_data_cb( SurviveUSBInterface * si )
 	case USB_IF_LIGHTCAP:
 	{
 		int i;
-		#ifdef HIDAPI
-		for( i = 0; i < 7; i++ )
+		
+		if( si->buffer[0] == 0x25 )  //Once the valve drivers run, they somehow put the HMD into 7-byte-width messages.
 		{
-			LightcapElement le;
-			le.sensor_id = POP1;
-			le.type = 0xfe;
-			le.length = POP2;
-			le.timestamp = POP4;
-			if( le.sensor_id == 0xff ) break;
-			handle_lightcap( obj, &le );
-		}		
-		#else
-		for( i = 0; i < 7; i++ )
-		{
-			handle_lightcap( obj, (LightcapElement*)&readdata[i*8] );
+			for( i = 0; i < 9; i++ )
+			{
+				LightcapElement le;
+				le.sensor_id = POP1;
+				le.type = 0xfe;
+				le.length = POP2;
+				le.timestamp = POP4;
+				if( le.sensor_id == 0xff ) break;
+				handle_lightcap( obj, &le );
+			}		
 		}
-		break;
-		#endif
+		else //Otherwise, we're in the old mode.
+		{
+			for( i = 0; i < 7; i++ )
+			{
+				handle_lightcap( obj, (LightcapElement*)&readdata[i*8] );
+			}
+			break;
+		}
 	}
 	}
 }
