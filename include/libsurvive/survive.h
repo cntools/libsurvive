@@ -154,7 +154,6 @@ void survive_add_driver( SurviveContext * ctx, void * payload, DeviceDriverCb po
 typedef struct
 {
 	uint8_t sensor_id;
-	uint8_t type;      //Mostly unused.  Set to 255 to ignore it.
 	uint16_t length;
 	uint32_t timestamp;
 } __attribute__((packed))  LightcapElement;
