@@ -267,7 +267,7 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 				}
 				if( sensors_visible < MIN_SENSORS_VISIBLE_PER_LH_FOR_CAL ) 
 				{
-					printf( "Dev %d, LH %d not enough visible points found.\n", i, j );
+					//printf( "Dev %d, LH %d not enough visible points found.\n", i, j );
 					cd->found_common = 0;
 					return;
 				}

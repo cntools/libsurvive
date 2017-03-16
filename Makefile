@@ -2,14 +2,24 @@ all : lib data_recorder test calibrate calibrate_client
 
 CC:=gcc
 
-CFLAGS:=-Iinclude/libsurvive -I. -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic
+CFLAGS:=-Iinclude/libsurvive -I. -fPIC -g -O3 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic
 LDFLAGS:=-lpthread -lusb-1.0 -lz -lX11 -lm -flto -g
 
 POSERS:=src/poser_dummy.o src/poser_daveortho.o src/poser_charlesslow.o
 REDISTS:=redist/json_helpers.o redist/linmath.o redist/jsmn.o
 LIBSURVIVE_CORE:=src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o src/ootx_decoder.o src/survive_driverman.o src/survive_vive.o src/survive_config.o src/survive_cal.o
+LIBSURVIVE_CORE:=$(LIBSURVIVE_CORE)
 LIBSURVIVE_O:=$(POSERS) $(REDISTS) $(LIBSURVIVE_CORE)
 LIBSURVIVE_C:=$(LIBSURVIVE_O:.o=.c)
+
+#Useful Preprocessor Directives:
+# -DUSE_DOUBLE = use double instead of float for most operations.
+# -DNOZLIB = use puff.c
+# -DTCC = various things needed for TCC.
+# -DWINDOWS -DWIN32 = Building for Windows
+# -DHIDAPI = Build vive driver to use USBHID instead of interrupt/control messages.
+# -DRUNTIME_SYMNUM = Don't assume __attribute__((constructor)) works.  Instead comb for anything starting with REGISTER.
+
 
 GRAPHICS_LOFI:=redist/DrawFunctions.o redist/XDriver.o
 

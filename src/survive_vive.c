@@ -17,10 +17,10 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <os_generic.h>
 #include <malloc.h> // for alloca
 
 #ifdef HIDAPI
-#include <os_generic.h>
 #if defined(WINDOWS) || defined(WIN32) || defined (_WIN32)
 #include <windows.h>
 #undef WCHAR_MAX
@@ -60,9 +60,13 @@ const char * devnames[] = {
 #define USB_DEV_WATCHMAN1	2
 #define USB_DEV_WATCHMAN2	3
 #define USB_DEV_TRACKER0	4
+
+#ifdef HIDAPI
 #define USB_DEV_LIGHTHOUSEB 5
 #define MAX_USB_DEVS		6
-
+#else
+#define MAX_USB_DEVS		5
+#endif
 
 #define USB_IF_HMD			0
 #define USB_IF_LIGHTHOUSE 	1
@@ -401,6 +405,7 @@ int survive_usb_init( struct SurviveViveData * sv, struct SurviveObject * hmd, s
 
 		if( d == 0 )
 		{
+			printf( "!!%p  %d %04x %04x %d\n", devnames[i], i, vid, pid, which );
 			SV_INFO( "Did not find device %s (%04x:%04x.%d)", devnames[i], vid, pid, which );
 			sv->udev[i] = 0;
 			continue;
@@ -478,36 +483,23 @@ int survive_vive_send_magic(struct SurviveContext * ctx, void * drv, int magic_c
 
 	if( turnon )
 	{
-		//Magic from vl_magic.h, originally copywritten under LGPL. 
-		// * Copyright (C) 2013 Fredrik Hultin
-		// * Copyright (C) 2013 Jakob Bornecrantz
-#if 0
-		static uint8_t vive_magic_power_on[] = {
-			0x04, 0x78, 0x29, 0x38, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01,
-			0xa8, 0x0d, 0x76, 0x00, 0x40, 0xfc, 0x01, 0x05, 0xfa, 0xec, 0xd1, 0x6d, 0x00,
-			0x00, 0x6c, 0x00, 0x00, 0x00, 0x00, 0x00, 0xa8, 0x0d, 0x76, 0x00, 0x68, 0xfc,
-			0x01, 0x05, 0x2c, 0xb0, 0x2e, 0x65, 0x7a, 0x0d, 0x76, 0x00, 0x68, 0x54, 0x72,
-			0x00, 0x18, 0x54, 0x72, 0x00, 0x00, 0x6a, 0x72, 0x00, 0x00, 0x00, 0x00,
-		};
-#else
 		//From actual steam.
-		static uint8_t vive_magic_power_on[64] = {   0x04, 0x78, 0x29, 0x38,
-			0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00,	 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  0x00, 0x7a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-#endif
 		if (sv->udev[USB_DEV_HMD])
 		{
+			static uint8_t vive_magic_power_on[64] = {  0x04, 0x78, 0x29, 0x38 };
 			r = update_feature_report( sv->udev[USB_DEV_HMD], 0, vive_magic_power_on, sizeof( vive_magic_power_on ) );
 			if( r != sizeof( vive_magic_power_on ) ) return 5;
 		}
 
 		if (sv->udev[USB_DEV_LIGHTHOUSE])
 		{
-			static uint8_t vive_magic_enable_lighthouse[64] = { 0x04 };  //[64] wat?  Why did that fix it?
-			r = update_feature_report( sv->udev[USB_DEV_LIGHTHOUSE], 0, vive_magic_enable_lighthouse, sizeof( vive_magic_enable_lighthouse ) );				 ///XXX TODO: Shouldn't this be LIGHTHOUSEB for hidapi?
+			static uint8_t vive_magic_enable_lighthouse[5] = { 0x04 };
+			r = update_feature_report( sv->udev[USB_DEV_LIGHTHOUSE], 0, vive_magic_enable_lighthouse, sizeof( vive_magic_enable_lighthouse ) );
 			if( r != sizeof( vive_magic_enable_lighthouse ) ) return 5;
+
+			static uint8_t vive_magic_enable_lighthouse2[5] = { 0x07, 0x02 };  //Switch to 0x25 mode (able to get more light updates)
+			r = update_feature_report( sv->udev[USB_DEV_LIGHTHOUSE], 0, vive_magic_enable_lighthouse2, sizeof( vive_magic_enable_lighthouse2 ) );
+			if( r != sizeof( vive_magic_enable_lighthouse2 ) ) return 5;
 		}
 
 #if 0
@@ -619,16 +611,7 @@ int survive_get_config( char ** config, struct SurviveViveData * sv, int devno, 
 
 		int k;
 		
-			uint8_t cfgbuff_send[64] = { 
-				0xff, 0x83, 0x00, 0xb6, 0x5b, 0xb0, 0x78, 0x69,
-				0x0f, 0xf8, 0x78, 0x69, 0x0f, 0xa0, 0xf3, 0x18,
-				0x00, 0xe8,	0xf2, 0x18, 0x00, 0x27, 0x44, 0x5a,
-				0x0f, 0xf8, 0x78, 0x69, 0x0f, 0xf0, 0x77, 0x69,
-				0x0f, 0xf0, 0x77, 0x69, 0x0f, 0x50, 0xca, 0x45,
-				0x77, 0xa0, 0xf3, 0x18, 0x00, 0xf8, 0x78, 0x69,
-				0x0f, 0x00, 0x00, 0xa0, 0x0f, 0xa0, 0x9b, 0x0a,
-				0x01, 0x00, 0x00, 0x35, 0x00, 0x34, 0x02, 0x00
-			};
+		uint8_t cfgbuff_send[64] = { 0xff, 0x83 };
 			
 		#ifdef HIDAPI
 		//XXX TODO WRITEME
@@ -709,7 +692,7 @@ int survive_get_config( char ** config, struct SurviveViveData * sv, int devno, 
 	int len = survive_simple_inflate( ctx, compressed_data, count, uncompressed_data, sizeof(uncompressed_data)-1 );
 	if( len <= 0 )
 	{
-		SV_INFO( "Error: data for config descriptor %d:%d is bad.", devno, iface );
+		SV_INFO( "Error: data for config descriptor %d:%d is bad. (%d)", devno, iface, len );
 		return -5;
 	}
 
@@ -924,7 +907,6 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 				//Use insertion sort, since we should most of the time, be in order.
 				LightcapElement * le = &les[lese++];
 				le->sensor_id = led;
-				le->type = 0xfe;
 
 				if( (uint32_t)(endtime - starttime) > 65535 ) { fault = 6; goto end; } //Length of pulse dumb.
 				le->length = endtime - starttime;
@@ -1078,24 +1060,16 @@ void survive_data_cb( SurviveUSBInterface * si )
 	case USB_IF_LIGHTCAP:
 	{
 		int i;
-		#ifdef HIDAPI
-		for( i = 0; i < 7; i++ )
+		for( i = 0; i < 9; i++ )
 		{
 			LightcapElement le;
 			le.sensor_id = POP1;
-			le.type = 0xfe;
 			le.length = POP2;
 			le.timestamp = POP4;
 			if( le.sensor_id == 0xff ) break;
 			handle_lightcap( obj, &le );
 		}		
-		#else
-		for( i = 0; i < 7; i++ )
-		{
-			handle_lightcap( obj, (LightcapElement*)&readdata[i*8] );
-		}
 		break;
-		#endif
 	}
 	}
 }
@@ -1226,7 +1200,7 @@ printf( "Loading config: %d\n", len );
 		return 1;
 	}
 
-	char fname[20];
+	char fname[64];
 
 	sprintf( fname, "calinfo/%s_points.csv", so->codename );
 	FILE * f = fopen( fname, "w" );

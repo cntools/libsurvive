@@ -25,10 +25,10 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 	//The sync pulse finder is taking Charles's old disambiguator code and mixing it with a more linear
 	//version of Julian Picht's disambiguator, available in 488c5e9.  Removed afterwards into this
 	//unified driver.
-	int ssn = so->sync_set_number;
+	int ssn = so->sync_set_number; //lighthouse number
 	if( ssn < 0 ) ssn = 0;
-	int last_sync_time  =  so->last_time  [ssn];
-	int last_sync_length = so->last_length[ssn];
+	int last_sync_time  =  so->last_sync_time  [ssn];
+	int last_sync_length = so->last_sync_length[ssn];
 	int32_t delta = le->timestamp - last_sync_time;  //Handle time wrapping (be sure to be int32)
 
 	if( delta < -so->pulsedist_max_ticks || delta > so->pulsedist_max_ticks )
@@ -36,12 +36,15 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 		//Reset pulse, etc.
 		so->sync_set_number = -1;
 		delta = so->pulsedist_max_ticks;
+//		return; //if we don't know what lighthouse this is we don't care to do much else
 	}
 
 
 	if( le->length > so->pulselength_min_sync ) //Pulse longer indicates a sync pulse.
 	{
 		int is_new_pulse = delta > so->pulselength_min_sync /*1500*/ + last_sync_length;
+
+		printf("m sync %d %d %d %d\n", le->sensor_id, so->last_sync_time[ssn], le->timestamp, delta);
 
 		so->did_handle_ootx = 0;
 
@@ -52,8 +55,8 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 			if( is_master_sync_pulse )
 			{
 				ssn = so->sync_set_number = 0;
-				so->last_time[ssn] = le->timestamp;
-				so->last_length[ssn] = le->length;
+				so->last_sync_time[ssn] = le->timestamp;
+				so->last_sync_length[ssn] = le->length;
 			}
 			else if( so->sync_set_number == -1 )
 			{
@@ -69,8 +72,8 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 				}
 				else
 				{
-					so->last_time[ssn] = le->timestamp;
-					so->last_length[ssn] = le->length;
+					so->last_sync_time[ssn] = le->timestamp;
+					so->last_sync_length[ssn] = le->length;
 				}
 			}
 		}
@@ -79,10 +82,10 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 			//Find the longest pulse.
 			if( le->length > last_sync_length )
 			{
-				if( so->last_time[ssn] > le->timestamp )
+				if( so->last_sync_time[ssn] > le->timestamp )
 				{
-					so->last_time[ssn] = le->timestamp;
-					so->last_length[ssn] = le->length;
+					so->last_sync_time[ssn] = le->timestamp;
+					so->last_sync_length[ssn] = le->length;
 				}
 			}
 		}
@@ -93,8 +96,8 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 	//See if this is a valid actual pulse.
 	else if( le->length < so->pulse_max_for_sweep && delta > so->pulse_in_clear_time && ssn >= 0 )
 	{
-		int32_t dl = so->last_time[0];
-		int32_t tpco = so->last_length[0];
+		int32_t dl = so->last_sync_time[0];
+		int32_t tpco = so->last_sync_length[0];
 
 
 #if NUM_LIGHTHOUSES != 2
@@ -109,8 +112,8 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 
 		int32_t acode_array[2] =
 			{
-				(so->last_length[0]+main_divisor+50)/(main_divisor*2),  //+50 adds a small offset and seems to help always get it right. 
-				(so->last_length[1]+main_divisor+50)/(main_divisor*2),	//Check the +50 in the future to see how well this works on a variety of hardware.
+				(so->last_sync_length[0]+main_divisor+50)/(main_divisor*2),  //+50 adds a small offset and seems to help always get it right. 
+				(so->last_sync_length[1]+main_divisor+50)/(main_divisor*2),	//Check the +50 in the future to see how well this works on a variety of hardware.
 			};
 
 		//XXX: TODO: Capture error count here.
@@ -125,11 +128,13 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 
 		if( !so->did_handle_ootx )
 		{
-			int32_t delta1 = so->last_time[0] - so->recent_sync_time;
-			int32_t delta2 = so->last_time[1] - so->last_time[0];
-			ctx->lightproc( so, -1, acode_array[0], delta1, so->last_time[0], so->last_length[0] );
-			ctx->lightproc( so, -2, acode_array[1], delta2, so->last_time[1], so->last_length[1] );
-			so->recent_sync_time = so->last_time[1];
+			int32_t delta1 = so->last_sync_time[0] - so->recent_sync_time;
+			int32_t delta2 = so->last_sync_time[1] - so->last_sync_time[0];
+
+			ctx->lightproc( so, -1, acode_array[0], delta1, so->last_sync_time[0], so->last_sync_length[0] );
+			ctx->lightproc( so, -2, acode_array[1], delta2, so->last_sync_time[1], so->last_sync_length[1] );
+
+			so->recent_sync_time = so->last_sync_time[1];
 
 			//Throw out everything if our sync pulses look like they're bad.
 
@@ -161,8 +166,8 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 				//SV_INFO( "Warning: got a slave marker but only got a master sync." );
 				//This happens too frequently.  Consider further examination.
 			}
-			dl = so->last_time[1];
-			tpco = so->last_length[1];
+			dl = so->last_sync_time[1];
+			tpco = so->last_sync_length[1];
 		}
 
 		int32_t offset_from = le->timestamp - dl + le->length/2;
