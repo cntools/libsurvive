@@ -55,7 +55,8 @@ SurviveContext * survive_init( int headless )
 	ctx->lh_config = malloc( sizeof(config_group) * NUM_LIGHTHOUSES);
 
 	init_config_group(ctx->global_config_values,10);
-	init_config_group(ctx->lh_config,10);
+	init_config_group(&ctx->lh_config[0],10);
+	init_config_group(&ctx->lh_config[1],10);
 
 	config_read(ctx, "config.json");
 
