@@ -44,6 +44,8 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 	{
 		int is_new_pulse = delta > so->pulselength_min_sync /*1500*/ + last_sync_length;
 
+		printf("m sync %d %d %d %d\n", le->sensor_id, so->last_sync_time[ssn], le->timestamp, delta);
+
 		so->did_handle_ootx = 0;
 
 		if( is_new_pulse )
