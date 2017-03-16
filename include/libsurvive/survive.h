@@ -138,8 +138,12 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 
 void   RegisterDriver( const char * name, void * data );
 
+#ifdef _WIN32
+#define REGISTER_LINKTIME( func )
+#else
 #define REGISTER_LINKTIME( func ) \
-	void __attribute__((constructor)) REGISTER##func() { RegisterDriver( #func, &func ); }
+	void __attribute__((constructor)) REGISTER##func() { RegisterDriver(#func, &func); }
+#endif
 
 
 
@@ -151,18 +155,28 @@ void survive_add_driver( SurviveContext * ctx, void * payload, DeviceDriverCb po
 
 //For lightcap, etc.  Don't change this structure at all.  Regular vive is dependent on it being exactly as-is.
 //When you write drivers, you can use this to send survive lightcap data.
+#ifdef _WIN32
+#pragma pack(push,1)
+#endif
 typedef struct
 {
 	uint8_t sensor_id;
 	uint16_t length;
 	uint32_t timestamp;
-} __attribute__((packed))  LightcapElement;
+} 
+#ifdef __linux__ 
+__attribute__((packed))
+#endif
+LightcapElement;
+#ifdef _WIN32
+#pragma pack(pop)
+#endif
 
 //This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
 void handle_lightcap( SurviveObject * so, LightcapElement * le );
 
-#define SV_INFO( x... ) { char stbuff[1024]; sprintf( stbuff, x ); ctx->notefunction( ctx, stbuff ); }
-#define SV_ERROR( x... ) { char stbuff[1024]; sprintf( stbuff, x ); ctx->faultfunction( ctx, stbuff ); }
+#define SV_INFO( ... ) { char stbuff[1024]; sprintf( stbuff, __VA_ARGS__ ); ctx->notefunction( ctx, stbuff ); }
+#define SV_ERROR( ... ) { char stbuff[1024]; sprintf( stbuff, __VA_ARGS__ ); ctx->faultfunction( ctx, stbuff ); }
 #define SV_KILL()		exit(0)  //XXX This should likely be re-defined.
 
 #endif

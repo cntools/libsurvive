@@ -1,7 +1,7 @@
 #ifndef _OS_GENERIC_H
 #define _OS_GENERIC_H
 
-#if defined( WIN32 ) || defined (WINDOWS)
+#if defined( WIN32 ) || defined (WINDOWS) || defined( _WIN32)
 #define USE_WINDOWS
 #endif
 

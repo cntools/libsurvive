@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "symbol_enumerator.h"
 
-#if defined( WIN32 ) || defined( WINDOWS ) || defined( USE_WINDOWS )
+#if defined( WIN32 ) || defined( WINDOWS ) || defined( USE_WINDOWS ) || defined( _WIN32 )
 
 #include <windows.h>
 

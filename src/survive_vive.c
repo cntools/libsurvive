@@ -18,9 +18,10 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <os_generic.h>
+#include <malloc.h> // for alloca
 
 #ifdef HIDAPI
-#if defined(WINDOWS) || defined(WIN32)
+#if defined(WINDOWS) || defined(WIN32) || defined (_WIN32)
 #include <windows.h>
 #undef WCHAR_MAX
 #endif
@@ -128,14 +129,12 @@ void survive_data_cb( SurviveUSBInterface * si );
 void survive_usb_close( SurviveContext * t );
 int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *wm0, SurviveObject * wm1, SurviveObject * tr0 );
 int survive_usb_poll( SurviveContext * ctx );
-int survive_get_config( char ** config, SurviveViveData * ctx, int devno, int interface, int send_extra_magic );
+int survive_get_config( char ** config, SurviveViveData * ctx, int devno, int iface, int send_extra_magic );
 int survive_vive_send_magic(struct SurviveContext * ctx, void * drv, int magic_code, void * data, int datalen );
 
 #ifdef HIDAPI
 void * HAPIReceiver( void * v )
 {
-	char buf[65];
-	int res;
 
 	SurviveUSBInterface * iface = v;
 	USBHANDLE * hp = &iface->uh;
@@ -242,13 +241,13 @@ static void debug_cb( struct SurviveUSBInterface * si )
 
 #ifdef HIDAPI
 
-static inline int update_feature_report(USBHANDLE dev, uint16_t interface, uint8_t * data, int datalen )
+static inline int update_feature_report(USBHANDLE dev, uint16_t iface, uint8_t * data, int datalen )
 {
 	int r = hid_send_feature_report( dev, data, datalen );
 //	printf( "HUR: (%p) %d (%d) [%d]\n", dev, r, datalen, data[0] );
 	return r;
 }
-static inline int getupdate_feature_report(USBHANDLE dev, uint16_t interface, uint8_t * data, int datalen ) 
+static inline int getupdate_feature_report(USBHANDLE dev, uint16_t iface, uint8_t * data, size_t datalen ) 
 {
 	int r = hid_get_feature_report( dev, data, datalen );
 //	printf( "HGR: (%p) %d (%d) (%d)\n", dev, r, datalen, data[0] );
@@ -280,13 +279,13 @@ static inline int getupdate_feature_report(libusb_device_handle* dev, uint16_t i
 
 #endif
 
-static inline int hid_get_feature_report_timeout(USBHANDLE device, uint16_t interface, unsigned char *buf, size_t len )
+static inline int hid_get_feature_report_timeout(USBHANDLE device, uint16_t iface, unsigned char *buf, size_t len )
 {
 	int ret;
 	uint8_t i = 0;
     for (i = 0; i < 50; i++)
 	{
-        ret = getupdate_feature_report(device, interface, buf, len);
+        ret = getupdate_feature_report(device, iface, buf, len);
 		if( ret != -9 && ( ret != -1 || errno != EPIPE ) ) return ret;
 		OGUSleep( 1000 );
 	}
@@ -595,7 +594,7 @@ int survive_vive_usb_poll( struct SurviveContext * ctx, void * v )
 int survive_get_config( char ** config, struct SurviveViveData * sv, int devno, int iface, int send_extra_magic )
 {
 	struct SurviveContext * ctx = sv->ctx;
-	int i, ret, count = 0, size = 0;
+	int ret, count = 0, size = 0;
 	uint8_t cfgbuff[64];
 	uint8_t compressed_data[8192];
 	uint8_t uncompressed_data[65536];
@@ -712,14 +711,13 @@ int survive_get_config( char ** config, struct SurviveViveData * sv, int devno, 
 
 static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 {
-	int i;
 
 	uint8_t startread[29];
 	memcpy( startread, readdata, 29 );
 
 #if 0
 	printf( "DAT:     " );
-		for( i = 0; i < 29; i++ )
+		for(int i = 0; i < 29; i++ )
 		{
 			printf( "%02x ", readdata[i] );
 		}
@@ -805,7 +803,6 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 
 	if( qty )
 	{
-		int j;
 		qty++;
 		readdata--;
 		*readdata = type; //Put 'type' back on stack.
@@ -828,7 +825,6 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		const int nrtime = sizeof(times)/sizeof(uint32_t);
 		int timecount = 0;
 		int leds;
-		int parameters;
 		int fault = 0;
 
 		///Handle uint32_tifying (making sure we keep it incrementing)
@@ -882,7 +878,8 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 
 		//Second, go through all LEDs and extract the lightevent from them. 
 		{
-			uint8_t marked[nrtime];
+			uint8_t *marked;
+			marked = alloca(nrtime);
 			memset( marked, 0, sizeof( marked ) );
 			int i, parpl = 0;
 			timecount--;
@@ -1114,7 +1111,6 @@ static int ParsePoints( SurviveContext * ctx, SurviveObject * so, char * ct0conf
 	{
 		tk = &t[i+2+k*4];
 
-		FLT vals[3];
 		int m;
 		for( m = 0; m < 3; m++ )
 		{
@@ -1237,7 +1233,7 @@ int survive_vive_close( SurviveContext * ctx, void * driver )
 
 int DriverRegHTCVive( SurviveContext * ctx )
 {
-	int i, r;
+	int r;
 	SurviveObject * hmd = calloc( 1, sizeof( SurviveObject ) );
 	SurviveObject * wm0 = calloc( 1, sizeof( SurviveObject ) );
 	SurviveObject * wm1 = calloc( 1, sizeof( SurviveObject ) );
@@ -1246,7 +1242,9 @@ int DriverRegHTCVive( SurviveContext * ctx )
 
 	sv->ctx = ctx;
 	
-	#ifdef WINDOWS
+	#ifdef _WIN32
+		CreateDirectoryA("calinfo", NULL);
+	#elif defined WINDOWS
 		mkdir( "calinfo" );
 	#else
 		mkdir( "calinfo", 0755 );

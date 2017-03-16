@@ -7,7 +7,42 @@
 #include <string.h>
 #include "json_helpers.h"
 #include <jsmn.h>
+#include <malloc.h>
 
+#ifdef _WIN32
+#include <stdarg.h>
+
+// Windows doesn't provide asprintf, so we need to make it.
+int asprintf(char **strp, const char *fmt, ...)
+{
+	char* buff = NULL;
+	va_list listPointer;
+	va_start( listPointer, fmt );
+
+	size_t lenNeeded = _vscprintf(fmt, listPointer) + 1; // add one for a terminating null
+
+	if (lenNeeded > 1)
+	{
+		buff = (char*)malloc(lenNeeded);
+		if (buff)
+		{
+			int bytesWritten = _vsnprintf(buff, lenNeeded, fmt, listPointer);
+			if (bytesWritten < 0)			
+			{
+				free(buff);
+				buff = NULL;
+			}
+		}
+	}
+
+	if (strp)
+	{
+		*strp = buff;
+	}
+	return (int)lenNeeded;
+}
+
+#endif
 
 void json_write_float_array(FILE* f, const char* tag, float* v, uint8_t count) {
 	uint8_t i = 0;
@@ -101,7 +136,8 @@ static uint16_t json_load_array(const char* JSON_STRING, jsmntok_t* tokens, uint
 	jsmntok_t* t = tokens;
 	uint16_t i = 0;
 
-	char* values[size];
+	char** values;
+	values = alloca(sizeof(char*) * size);
 
 	for (i=0;i<size;++i) {
 		t = tokens+i;
