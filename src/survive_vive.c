@@ -17,10 +17,9 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/stat.h>
-
+#include <os_generic.h>
 
 #ifdef HIDAPI
-#include <os_generic.h>
 #if defined(WINDOWS) || defined(WIN32)
 #include <windows.h>
 #undef WCHAR_MAX
