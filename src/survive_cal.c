@@ -30,6 +30,11 @@ int mkdir(const char *);
 #define DRPTS_NEEDED_FOR_AVG ((int)(DRPTS*3/4))
 
 
+	//at stage 1, is when it branches to stage two or stage 7
+	//stage 2 checks for the presence of two watchmen and an HMD visible to both lighthouses.
+	//Stage 3 collects a bunch of data for statistical averageing
+	//stage 4 does the calculation for the poses (NOT DONE!)
+	//Stage 5 = System Calibrate.d
 
 
 static void handle_calibration( struct SurviveCalData *cd );
@@ -117,16 +122,35 @@ void survive_cal_install( struct SurviveContext * ctx )
 	cd->stage = 1;
 	cd->ctx = ctx;
 
-	cd->poseobjects[0] = survive_get_so_by_name( ctx, "HMD" );
-	cd->poseobjects[1] = survive_get_so_by_name( ctx, "WM0" );
-	cd->poseobjects[2] = survive_get_so_by_name( ctx, "WM1" );
+	cd->numPoseObjects = 0;
 
-	if( cd->poseobjects[0] == 0 || cd->poseobjects[1] == 0 || cd->poseobjects[2] == 0 )
+	for (int i=0; i < ctx->objs_ct; i++)
 	{
-		SV_ERROR( "Error: cannot find all devices needed for calibration." );
-		free( cd );
-		return;
+		// This would be a place where we could conditionally decide if we 
+		// want to include a certain device in the calibration routine.
+		if (1)
+		{
+			cd->poseobjects[i] = ctx->objs[i];
+			cd->numPoseObjects++;
+
+			SV_INFO("Calibration is using %s", cd->poseobjects[i]->codename);
+		}
 	}
+
+	// If we want to mandate that certain devices have been found
+
+
+
+	//cd->poseobjects[0] = survive_get_so_by_name( ctx, "HMD" );
+	//cd->poseobjects[1] = survive_get_so_by_name( ctx, "WM0" );
+	//cd->poseobjects[2] = survive_get_so_by_name( ctx, "WM1" );
+
+	//if( cd->poseobjects[0] == 0 || cd->poseobjects[1] == 0 || cd->poseobjects[2] == 0 )
+	//{
+	//	SV_ERROR( "Error: cannot find all devices needed for calibration." );
+	//	free( cd );
+	//	return;
+	//}
 
 //XXX TODO MWTourney, work on your code here.
 /*
@@ -185,7 +209,9 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 		if( sensor_id < 0 )
 		{
 			int lhid = -sensor_id-1;
-			if( lhid < NUM_LIGHTHOUSES && so->codename[0] == 'H' )
+			// Take the OOTX data from the first device. 
+			// TODO: Improve this so we'll watch all devices looking for OOTX data.  Why limit ourselves to just one?
+			if( lhid < NUM_LIGHTHOUSES && so == cd->poseobjects[0]  ) 
 			{
 				uint8_t dbit = (acode & 2)>>1;
 				ootx_pump_bit( &cd->ootx_decoders[lhid], dbit );
@@ -193,7 +219,9 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 			int i;
 			for( i = 0; i < NUM_LIGHTHOUSES; i++ )
 				if( ctx->bsd[i].OOTXSet == 0 ) break;
-			if( i == NUM_LIGHTHOUSES ) cd->stage = 2;  //If all lighthouses have their OOTX set, move on.
+			//if( i == NUM_LIGHTHOUSES ) cd->stage = 2;  //If all lighthouses have their OOTX set, move on.         <------- Revert This!!!!! 
+			if( i == 1 ) 
+				cd->stage = 2;  //If all lighthouses have their OOTX set, move on.
 		}
 		break;
 	}
@@ -498,11 +526,11 @@ static void handle_calibration( struct SurviveCalData *cd )
 	int obj;
 
 	//Poses of lighthouses relative to objects.
-	SurvivePose  objphl[POSE_OBJECTS][NUM_LIGHTHOUSES];
+	SurvivePose  objphl[MAX_POSE_OBJECTS][NUM_LIGHTHOUSES];
 
 	FILE * fobjp = fopen( "calinfo/objposes.csv", "w" );
 
-	for( obj = 0; obj < POSE_OBJECTS; obj++ )
+	for( obj = 0; obj < cd->numPoseObjects; obj++ )
 	{
 		int i, j;
 		PoserDataFullScene fsd;

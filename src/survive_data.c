@@ -5,9 +5,87 @@
 #include <stdint.h>
 #include <string.h>
 
+int getAcodeFromSyncPulse(int pulseLen)
+{
+	if (pulseLen < 3125) return 0;
+	if (pulseLen < 3625) return 1;
+	if (pulseLen < 4125) return 2;
+	if (pulseLen < 4625) return 3;
+	if (pulseLen < 5125) return 4;
+	if (pulseLen < 5625) return 5;
+	if (pulseLen < 6125) return 6;
+	return 7;
+}
+void handle_lightcap2_sync(SurviveObject * so, LightcapElement * le )
+{
+	fprintf(stderr, "%d\n", le->length);
+
+	if (le->timestamp - so->recent_sync_time < 24000)
+	{
+		// I do believe we are lighthouse B		
+		so->last_sync_time[1] = so->recent_sync_time = le->timestamp;
+		so->last_sync_length[1] = le->length;
+		if (le->length < 4625) // max non-skip pulse + 1/4 the difference in time between pulses.  
+		{
+			so->sync_set_number = 1;
+			so->ctx->lightproc(so, -2, getAcodeFromSyncPulse(le->length), le->length, le->timestamp, le->length); // Don't think I got this quite right.
+		}
+	}
+	else
+	{
+		// looks like this is the first sync pulse.  Cool!
+		if (le->length < 4625) // max non-skip pulse + 1/4 the difference in time between pulses.  
+		{
+			so->sync_set_number = 1;
+			so->ctx->lightproc(so, -1, getAcodeFromSyncPulse(le->length), le->length, le->timestamp, le->length); // Don't think I got this quite right.
+		}		
+	}
+
+
+//			ctx->lightproc( so, -2, acode_array[1], delta2, so->last_sync_time[1], so->last_sync_length[1] );
+
+
+//	typedef void (*light_process_func)( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length );
+
+}
+
+void handle_lightcap2_sweep(SurviveObject * so, LightcapElement * le )
+{
+
+}
+
+void handle_lightcap2( SurviveObject * so, LightcapElement * le )
+{
+	SurviveContext * ctx = so->ctx;
+
+	if( le->sensor_id > SENSORS_PER_OBJECT )
+	{
+		return;
+	}
+
+	if (le->length > 6750)
+	{
+		// Should never get a reading so high.  Odd.
+		return;
+	}
+	if (le->length >= 2750)
+	{
+		// Looks like a sync pulse, process it!
+		handle_lightcap2_sync(so, le);
+	}
+
+	// must be a sweep pulse, process it!
+	handle_lightcap2_sweep(so, le);
+
+}
+
+
 //This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
 void handle_lightcap( SurviveObject * so, LightcapElement * le )
 {
+	handle_lightcap2(so,le);
+	return;
+
 	SurviveContext * ctx = so->ctx;
 	//int32_t deltat = (uint32_t)le->timestamp - (uint32_t)so->last_master_time;
 
