@@ -25,6 +25,11 @@ uint32_t CNFGColor( uint32_t RGB )
 	return CNFGLastColor;
 }
 
+void CNFGTackPixel( short x, short y )
+{
+	buffer[bufferx*y+x] = CNFGLastColor;
+}
+
 void CNFGTackSegment( short x1, short y1, short x2, short y2 )
 {
 	short tx, ty;
