@@ -1,4 +1,6 @@
+#ifdef __linux__
 #include <unistd.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -56,6 +58,7 @@ int main()
 	dump_iface( survive_get_so_by_name( ctx, "WM0" ), "WM0" );
 	dump_iface( survive_get_so_by_name( ctx, "WM1" ), "WM1" );
 	dump_iface( survive_get_so_by_name( ctx, "TR0" ), "TR0" );
+	dump_iface( survive_get_so_by_name( ctx, "WW0" ), "WW0" );
 
 	while(survive_poll(ctx) == 0)
 	{
