@@ -18,7 +18,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <os_generic.h>
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h> // for alloca
 #endif
 
@@ -625,6 +625,7 @@ int survive_vive_usb_poll( struct SurviveContext * ctx, void * v )
 	}
 	return r;
 #endif
+	return 0;
 }
 
 
@@ -1113,9 +1114,12 @@ void survive_data_cb( SurviveUSBInterface * si )
 	}
 	case USB_IF_W_WATCHMAN1_LIGHTCAP:
 	{
-		int i;
+		int i=0;
 		for( i = 0; i < 7; i++ )
 		{
+			unsigned short *sensorId = (unsigned short *)readdata;
+			unsigned short *length = (unsigned short *)(&(readdata[2]));
+			unsigned long *time = (unsigned long *)(&(readdata[4]));
 			LightcapElement le;
 			le.sensor_id = POP2;
 			le.length = POP2;
@@ -1282,7 +1286,6 @@ int survive_vive_close( SurviveContext * ctx, void * driver )
 	SurviveViveData * sv = driver;
  
 	survive_vive_usb_close( sv );
-
 	return 0;
 }
 

@@ -7,7 +7,7 @@
 #include <string.h>
 #include <os_generic.h>
 #include "src/survive_cal.h"
-#include <DrawFunctions.h>
+#include <CNFGFunctions.h>
 
 #include "src/survive_config.h"
 
@@ -37,6 +37,10 @@ void HandleButton( int x, int y, int button, int bDown )
 }
 
 void HandleMotion( int x, int y, int mask )
+{
+}
+
+void HandleDestroy()
 {
 }
 

@@ -7,10 +7,35 @@
 #include <survive.h>
 
 #include <os_generic.h>
-#include <DrawFunctions.h>
+#include <CNFGFunctions.h>
 
 struct SurviveContext * ctx;
 
+void HandleKey( int keycode, int bDown )
+{
+	if( !bDown ) return;
+
+	if( keycode == 'O' || keycode == 'o' )
+	{
+		survive_send_magic(ctx,1,0,0);
+	}
+	if( keycode == 'F' || keycode == 'f' )
+	{
+		survive_send_magic(ctx,0,0,0);
+	}
+}
+
+void HandleButton( int x, int y, int button, int bDown )
+{
+}
+
+void HandleMotion( int x, int y, int mask )
+{
+}
+
+void HandleDestroy()
+{
+}
 
 
 static void dump_iface( struct SurviveObject * so, const char * prefix )

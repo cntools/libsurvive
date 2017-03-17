@@ -7,11 +7,11 @@
 #include <string.h>
 #include "json_helpers.h"
 #include <jsmn.h>
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h>
 #endif
 
-#ifdef _WIN32
+#ifdef _MSC_VER
 #include <stdarg.h>
 
 // Windows doesn't provide asprintf, so we need to make it.
@@ -107,7 +107,7 @@ void json_write_str(FILE* f, const char* tag, const char* v) {
 
 void (*json_begin_object)(char* tag) = NULL;
 void (*json_end_object)() = NULL;
-void (*json_tag_value)(char* tag, char** values, uint16_t count) = NULL;
+void (*json_tag_value)(char* tag, char** values, uint8_t count) = NULL;
 
 uint32_t JSON_STRING_LEN;
 
@@ -146,7 +146,7 @@ static uint16_t json_load_array(const char* JSON_STRING, jsmntok_t* tokens, uint
 		values[i] = substr(JSON_STRING, t->start, t->end, JSON_STRING_LEN);
 	}
 
-	if (json_tag_value != NULL) json_tag_value(tag, values, i);
+	if (json_tag_value != NULL) json_tag_value(tag, values, (uint8_t)i);
 
 	for (i=0;i<size;++i) free(values[i]);
 
@@ -159,12 +159,13 @@ void json_load_file(const char* path) {
 	char* JSON_STRING = load_file_to_mem(path);
 	if (JSON_STRING==NULL) return;
 
-	JSON_STRING_LEN = strlen(JSON_STRING);
+	JSON_STRING_LEN = (uint32_t)strlen(JSON_STRING);
 
 	jsmn_parser parser;
 	jsmn_init(&parser);
 
-	uint32_t items = jsmn_parse(&parser, JSON_STRING, JSON_STRING_LEN, NULL, 0);
+	int32_t items = jsmn_parse(&parser, JSON_STRING, JSON_STRING_LEN, NULL, 0);
+	if (items < 0) return;
 	jsmntok_t* tokens = malloc(items * sizeof(jsmntok_t));
 
 	jsmn_init(&parser);
@@ -172,7 +173,7 @@ void json_load_file(const char* path) {
 
 	int16_t children = -1;
 
-	for (i=0; i<items; i+=2)
+	for (i=0; i<(int)items; i+=2)
 	{
 		//increment i on each successful tag + values combination, not individual tokens
 		jsmntok_t* tag_t = tokens+i;

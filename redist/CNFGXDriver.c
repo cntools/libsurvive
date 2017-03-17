@@ -4,7 +4,7 @@
 
 //#define HAS_XINERAMA
 
-#include "DrawFunctions.h"
+#include "CNFGFunctions.h"
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -29,8 +29,18 @@ int FullScreen = 0;
 
 void CNFGGetDimensions( short * x, short * y )
 {
+	static int lastx;
+	static int lasty;
+
 	*x = CNFGWinAtt.width;
 	*y = CNFGWinAtt.height;
+
+	if( lastx != *x || lasty != *y )
+	{
+		lastx = *x;
+		lasty = *y;
+		CNFGInternalResize( lastx, lasty );
+	}
 }
 
 static void InternalLinkScreenAndGo( const char * WindowName )
@@ -286,5 +296,9 @@ void CNFGTackPoly( RDPoint * points, int verts )
 	XFillPolygon(CNFGDisplay, CNFGPixmap, CNFGGC, (XPoint *)points, 3, Convex, CoordModeOrigin );
 }
 
+void CNFGInternalResize( short x, short y ) { }
+
+#else
+#include "CNFGRasterizer.h"
 #endif
 

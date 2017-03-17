@@ -34,7 +34,6 @@ void CNFGClearFrame();
 void CNFGSwapBuffers();
 
 void CNFGGetDimensions( short * x, short * y );
-void CNFGTearDown();
 void CNFGSetup( const char * WindowName, int w, int h );
 void CNFGSetupFullscreen( const char * WindowName, int screen_number );
 void CNFGHandleInput();
@@ -44,6 +43,11 @@ void CNFGHandleInput();
 void HandleKey( int keycode, int bDown );
 void HandleButton( int x, int y, int button, int bDown );
 void HandleMotion( int x, int y, int mask );
+void HandleDestroy();
+
+
+//Internal function for resizing rasterizer for rasterizer-mode.
+void CNFGInternalResize( short x, short y ); //don't call this.
 
 
 #ifdef __cplusplus

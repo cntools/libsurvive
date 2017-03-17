@@ -9,7 +9,7 @@
 #include <survive.h>
 #include <string.h>
 #include <os_generic.h>
-#include <DrawFunctions.h>
+#include <CNFGFunctions.h>
 
 struct SurviveContext * ctx;
 
@@ -32,6 +32,10 @@ void HandleButton( int x, int y, int button, int bDown )
 }
 
 void HandleMotion( int x, int y, int mask )
+{
+}
+
+void HandleDestroy()
 {
 }
 

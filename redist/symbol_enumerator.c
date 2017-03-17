@@ -51,9 +51,13 @@ BOOL WINAPI SymEnumSymbols(
 );
 
 BOOL WINAPI SymInitialize(
-  HANDLE hProcess,
-  PCTSTR UserSearchPath,
-  BOOL   fInvadeProcess
+	HANDLE hProcess,
+	PCTSTR UserSearchPath,
+	BOOL   fInvadeProcess
+);
+
+BOOL WINAPI SymCleanup(
+	HANDLE hProcess
 );
 
 BOOL CALLBACK __cdecl mycb(
