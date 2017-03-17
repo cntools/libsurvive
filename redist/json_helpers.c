@@ -7,7 +7,7 @@
 #include <string.h>
 #include "json_helpers.h"
 #include <jsmn.h>
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h>
 #endif
 

@@ -18,7 +18,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <os_generic.h>
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h> // for alloca
 #endif
 

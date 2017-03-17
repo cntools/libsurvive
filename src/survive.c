@@ -9,6 +9,10 @@
 
 #include "survive_config.h"
 
+#ifdef __APPLE__
+#define z_const const
+#endif
+
 #ifdef RUNTIME_SYMNUM
 #include <symbol_enumerator.h>
 static int did_runtime_symnum;
