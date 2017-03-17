@@ -16,3 +16,6 @@ windows/calinfo - Copy/WM1_points.csv
 windows/udev[USB_DEV_LIGHTHOUSE]
 windows/udev[USB_DEV_LIGHTHOUSE]
 windows/config.json
+*.ipch
+winbuild/.vs/libsurvive/v15/.suo
+*.tlog

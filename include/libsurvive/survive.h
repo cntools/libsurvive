@@ -136,10 +136,12 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 
 ////////////////////// Survive Drivers ////////////////////////////
 
-void   RegisterDriver( const char * name, void * data );
+void   RegisterDriver(const char * name, void * data);
 
 #ifdef _WIN32
-#define REGISTER_LINKTIME( func )
+#define REGISTER_LINKTIME( func ) \
+	__pragma(comment(linker,"/export:REGISTER"#func));\
+	void REGISTER##func() { RegisterDriver(#func, &func); }
 #else
 #define REGISTER_LINKTIME( func ) \
 	void __attribute__((constructor)) REGISTER##func() { RegisterDriver(#func, &func); }
