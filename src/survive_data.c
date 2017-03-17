@@ -39,7 +39,6 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 //		return; //if we don't know what lighthouse this is we don't care to do much else
 	}
 
-	printf("m sync %d %d %d %d\n", le->sensor_id, so->last_sync_time[ssn], le->timestamp, delta);
 
 	if( le->length > so->pulselength_min_sync ) //Pulse longer indicates a sync pulse.
 	{
