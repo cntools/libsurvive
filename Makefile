@@ -13,13 +13,13 @@ UNAME=$(shell uname)
 
 # Mac OSX
 ifeq ($(UNAME), Darwin)
-DRAWFUNCTIONS_C=redist/RawDrawNull.c
-GRAPHICS_LOFI:=redist/RawDrawNull.o
+DRAWFUNCTIONS=redist/DrawFunctions.c redist/RawDrawNull.c
+GRAPHICS_LOFI:=redist/DrawFunctions.o redist/RawDrawNull.o
 
 # Linux / FreeBSD
 else
 LDFLAGS:=$(LDFLAGS) -lX11
-DRAWFUNCTIONS_C=redist/XDriver.c redist/DrawFunctions.c
+DRAWFUNCTIONS=redist/DrawFunctions.c redist/XDriver.c
 GRAPHICS_LOFI:=redist/DrawFunctions.o redist/XDriver.o
 
 endif
