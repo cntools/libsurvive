@@ -5,6 +5,19 @@
 #include <stdint.h>
 #include <string.h>
 
+
+int32_t decode_acode(uint32_t length, int32_t main_divisor) {
+	//+50 adds a small offset and seems to help always get it right. 
+	//Check the +50 in the future to see how well this works on a variety of hardware.
+
+	int32_t acode = (length+main_divisor+50)/(main_divisor*2);
+	if( acode & 1 ) return -1;
+
+	return (acode>>1) - 6;
+}
+
+}
+
 //This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
 void handle_lightcap( SurviveObject * so, LightcapElement * le )
 {
@@ -112,17 +125,13 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 
 		int32_t acode_array[2] =
 			{
-				(so->last_sync_length[0]+main_divisor+50)/(main_divisor*2),  //+50 adds a small offset and seems to help always get it right. 
-				(so->last_sync_length[1]+main_divisor+50)/(main_divisor*2),	//Check the +50 in the future to see how well this works on a variety of hardware.
+				decode_acode(so->last_sync_length[0],main_divisor),
+				decode_acode(so->last_sync_length[1],main_divisor)
 			};
 
 		//XXX: TODO: Capture error count here.
-		if( acode_array[0] & 1 ) return;
-		if( acode_array[1] & 1 ) return;
-
-		acode_array[0] = (acode_array[0]>>1) - 6;
-		acode_array[1] = (acode_array[1]>>1) - 6;
-
+		if( acode_array[0] < 0 ) return;
+		if( acode_array[1] < 0 ) return;
 
 		int acode = acode_array[0];
 
