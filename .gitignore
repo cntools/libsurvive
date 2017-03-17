@@ -2,20 +2,11 @@
 lib
 test
 windows/calibrate.exe
-windows/calinfo/1.json.gz
+windows/calinfo/*
 windows/calibrate.def
-windows/calinfo/3.json.gz
-windows/calinfo/WM1_points.csv
-windows/calinfo/HMD_normals.csv
-windows/calinfo/WM0_points.csv
-windows/calinfo/WM1_normals.csv
-windows/calinfo/HMD_points.csv
-windows/calinfo/WM0_normals.csv
-windows/calinfo/2.json.gz
-windows/calinfo - Copy/WM1_points.csv
-windows/udev[USB_DEV_LIGHTHOUSE]
 windows/udev[USB_DEV_LIGHTHOUSE]
 windows/config.json
+winbuild/x64
 *.ipch
 winbuild/.vs/libsurvive/v15/.suo
 *.tlog
