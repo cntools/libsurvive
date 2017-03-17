@@ -1,6 +1,6 @@
 # libsurvive
 
-**WARNING PROJECT NOT YET IN EXPERIMENTAL PHASE**
+**WARNING PROJECT IN EXPERIMENTAL PHASE**
 
 Discord: https://discordapp.com/invite/7QbCAGS
 
@@ -40,8 +40,7 @@ I say "high-performance" really this project is based tightly off of OSVR-Vive-L
 2. Put it under an open-source instead of a force-source license.  (GPL to MIT/X11)
 3. Write it in C.
 4. Avoid extra layers where convenient.
-5. (long shot) Make the vive vivable for use with Intel Integrated Graphics systems.
-
+5. (long shot) Make the vive vivable for use with Intel Integrated Graphics systems. [It works with HD4000 using DisplayPort. See "Intel Integrated Graphics" section below.]
 
 Will ~~I~~ we succeed?  Probably not.
 
@@ -50,7 +49,7 @@ Definitely going to try!
 
 ## External dependencies
 
-* libUSB
+* libUSB (hidapi ???)
 * pthread
 * libX11 (where applicable)
 * zlib (may use puff.c if needed)
@@ -71,7 +70,10 @@ It is written in some fairly stout "layers" which are basically just function ca
 
 I may or may not read data from the Vive regarding configuration.  If I do, it would be added to the survive_usb.c
 
+## Intel Integrated Graphics
 
+The limiting factor for Vive viability on a given computer is the maximum available pixel clock frequency, and frequency limitations of the HDMI port, and HDMI and DisplayPort video cables. DisplayPort can support higher frequencies than HDMI, on Ivy Bridge HD4000 graphics. In fact, the vive works with HD4000 graphics using DisplayPort, with native EDID resolution (2160x1200@90Hz).
 
+To support the Vive on HDMI, you either need a newer version of HDMI, or you need to define a custom resolution that respects pixel clock and video port limits, and is also accepted and displayed by the Vive. So far, we have not had success using custom resolutions on linux or on Windows. Windows imposes additional limitations in the form of restriction of WHQL certified drivers forbidden from using custom display resolutions (only allowing those defined by EDID in the monitor). Intel has released uncertified beta drivers for Haswell and newer processors, which should be able to support custom resolutions for the Vive (untested at this time).
 
-
+but HDMI will require non-certified drivers to allow custom resolutions (due to WHQL restrictions). Haswell (Iris) graphics and later can use the new intel beta drivers to allow custom resolutions.]
