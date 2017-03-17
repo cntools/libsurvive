@@ -8,7 +8,7 @@
 #include <string.h>
 #include <os_generic.h>
 #include "src/survive_cal.h"
-#include <DrawFunctions.h>
+#include <CNFGFunctions.h>
 
 #include "src/survive_config.h"
 
