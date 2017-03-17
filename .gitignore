@@ -7,8 +7,10 @@ windows/calibrate.def
 windows/udev[USB_DEV_LIGHTHOUSE]
 windows/config.json
 winbuild/x64/*
-winbuild/x64/calibrate/*
-winbuild/x64/libsurvive/*
+winbuild/calibrate/x64/*
+winbuild/libsurvive/x64/*
+winbuild/.vs/*
+*.user
 *.ipch
 winbuild/.vs/libsurvive/v15/.suo
 *.tlog
