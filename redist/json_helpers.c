@@ -173,7 +173,7 @@ void json_load_file(const char* path) {
 
 	int16_t children = -1;
 
-	for (i=0; i<items; i+=2)
+	for (i=0; i<(int)items; i+=2)
 	{
 		//increment i on each successful tag + values combination, not individual tokens
 		jsmntok_t* tag_t = tokens+i;

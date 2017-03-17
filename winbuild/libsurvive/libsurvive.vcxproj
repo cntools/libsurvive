@@ -141,6 +141,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\redist\crc32.c" />
     <ClCompile Include="..\..\redist\DrawFunctions.c" />
+    <ClCompile Include="..\..\redist\hid-windows.c" />
     <ClCompile Include="..\..\redist\jsmn.c" />
     <ClCompile Include="..\..\redist\json_helpers.c" />
     <ClCompile Include="..\..\redist\linmath.c" />
@@ -160,7 +161,6 @@
     <ClCompile Include="..\..\src\survive_process.c" />
     <ClCompile Include="..\..\src\survive_usb.c" />
     <ClCompile Include="..\..\src\survive_vive.c" />
-    <ClCompile Include="..\hid.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\libsurvive\poser.h" />

@@ -81,7 +81,7 @@
     <ClCompile Include="..\..\redist\linmath.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\hid.c">
+    <ClCompile Include="..\..\redist\hid-windows.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

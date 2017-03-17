@@ -11,4 +11,4 @@ set EXEC=..\calibrate.c %RD%WinDriver.c %RD%os_generic.c %RD%DrawFunctions.c
 set CFLAGS=-DNOZLIB -DTCC -DWINDOWS -DHIDAPI -DWIN32 -DRUNTIME_SYMNUM -O0 -g -rdynamic -I..\redist -I..\include\libsurvive -I..\src -I.
 set LDFLAGS=-lkernel32 -lgdi32 -luser32 -lsetupapi -ldbghelp
 @echo on
-%TCC% -v %CFLAGS% %SOURCES% %REDIST% %EXEC% %LDFLAGS% tcc_stubs.c hid.c -o calibrate.exe
+%TCC% -v %CFLAGS% %SOURCES% %REDIST% %EXEC% %LDFLAGS% tcc_stubs.c %RD%hid-windows.c -o calibrate.exe
