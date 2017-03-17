@@ -11,7 +11,7 @@
 #include <malloc.h>
 #endif
 
-#ifdef _WIN32
+#ifdef _MSC_VER
 #include <stdarg.h>
 
 // Windows doesn't provide asprintf, so we need to make it.
