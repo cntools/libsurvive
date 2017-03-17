@@ -1,5 +1,4 @@
 #ifdef RASTERIZER
-#include "Rasterizer.h"
 #include "DrawFunctions.h"
 #include <stdio.h>
 #include <stdlib.h>
