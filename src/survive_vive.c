@@ -550,7 +550,7 @@ int survive_vive_send_magic(struct SurviveContext * ctx, void * drv, int magic_c
 			if( r != sizeof( vive_magic_power_off2 ) ) return 5;
 		}
 	}
-
+	return 0;
 }
 
 void survive_vive_usb_close( struct SurviveViveData * sv )
@@ -594,6 +594,7 @@ int survive_vive_usb_poll( struct SurviveContext * ctx, void * v )
 	}
 	return r;
 #endif
+	return 0;
 }
 
 
@@ -1234,6 +1235,7 @@ int survive_vive_close( SurviveContext * ctx, void * driver )
 	SurviveViveData * sv = driver;
  
 	survive_vive_usb_close( sv );
+	return 0;
 }
 
 

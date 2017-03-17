@@ -165,6 +165,7 @@ int survive_add_object( SurviveContext * ctx, SurviveObject * obj )
 	ctx->objs = realloc( ctx->objs, sizeof( SurviveObject * ) * (oldct+1) );
 	ctx->objs[oldct] = obj;
 	ctx->objs_ct = oldct+1;
+	return 0;
 }
 
 void survive_add_driver( SurviveContext * ctx, void * payload, DeviceDriverCb poll, DeviceDriverCb close, DeviceDriverMagicCb magic )
@@ -188,7 +189,8 @@ int survive_send_magic( SurviveContext * ctx, int magic_code, void * data, int d
 	for( i = 0; i < oldct; i++ )
 	{
 		ctx->drivermagics[i]( ctx, ctx->drivers[i], magic_code, data, datalen );
-	}	
+	}
+	return 0;
 }
 
 void survive_close( SurviveContext * ctx )

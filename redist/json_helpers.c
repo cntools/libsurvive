@@ -107,7 +107,7 @@ void json_write_str(FILE* f, const char* tag, const char* v) {
 
 void (*json_begin_object)(char* tag) = NULL;
 void (*json_end_object)() = NULL;
-void (*json_tag_value)(char* tag, char** values, uint16_t count) = NULL;
+void (*json_tag_value)(char* tag, char** values, uint8_t count) = NULL;
 
 uint32_t JSON_STRING_LEN;
 
@@ -146,7 +146,7 @@ static uint16_t json_load_array(const char* JSON_STRING, jsmntok_t* tokens, uint
 		values[i] = substr(JSON_STRING, t->start, t->end, JSON_STRING_LEN);
 	}
 
-	if (json_tag_value != NULL) json_tag_value(tag, values, i);
+	if (json_tag_value != NULL) json_tag_value(tag, values, (uint8_t)i);
 
 	for (i=0;i<size;++i) free(values[i]);
 
@@ -159,7 +159,7 @@ void json_load_file(const char* path) {
 	char* JSON_STRING = load_file_to_mem(path);
 	if (JSON_STRING==NULL) return;
 
-	JSON_STRING_LEN = strlen(JSON_STRING);
+	JSON_STRING_LEN = (uint32_t)strlen(JSON_STRING);
 
 	jsmn_parser parser;
 	jsmn_init(&parser);

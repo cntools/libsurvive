@@ -33,7 +33,7 @@ void destroy_config_entry(config_entry* ce) {
 	if (ce->data!=NULL) { free(ce->data); ce->data=NULL; }
 }
 
-void init_config_group(config_group *cg, uint16_t count) {
+void init_config_group(config_group *cg, uint8_t count) {
 	uint16_t i = 0;
 	cg->used_entries = 0;
 	cg->max_entries = count;
@@ -99,7 +99,7 @@ void config_set_lighthouse(config_group* lh_config, BaseStationData* bsd, uint8_
 }
 
 void sstrcpy(char** dest, const char *src) {
-	uint32_t len = strlen(src)+1;
+	uint32_t len = (uint32_t)strlen(src)+1;
 	assert(dest!=NULL);
 
 	char* ptr = (char*)realloc(*dest, len); //acts like malloc if dest==NULL
@@ -143,7 +143,7 @@ FLT config_read_float(config_group *cg, const char *tag, const FLT def) {
 	return config_set_float(cg, tag, def);
 }
 
-uint16_t config_read_float_array(config_group *cg, const char *tag, const FLT** values, const FLT* def, uint16_t count) {
+uint16_t config_read_float_array(config_group *cg, const char *tag, const FLT** values, const FLT* def, uint8_t count) {
 	config_entry *cv = find_config_entry(cg, tag);
 
 	if (cv != NULL) {
@@ -237,7 +237,7 @@ void write_config_group(FILE* f, config_group *cg, char *tag) {
 
 	for (i=0;i < cg->used_entries;++i) {
 		if (cg->config_entries[i].type == CONFIG_FLOAT) {
-			json_write_float(f, cg->config_entries[i].tag, cg->config_entries[i].numeric.f);
+			json_write_float(f, cg->config_entries[i].tag, (float)cg->config_entries[i].numeric.f);
 		} else if (cg->config_entries[i].type == CONFIG_UINT32) {
 			json_write_uint32(f, cg->config_entries[i].tag, cg->config_entries[i].numeric.i);
 		} else if (cg->config_entries[i].type == CONFIG_STRING) {
@@ -295,7 +295,7 @@ void pop_config_group() {
 }
 
 
-int parse_floats(char* tag, char** values, uint16_t count) {
+int parse_floats(char* tag, char** values, uint8_t count) {
 	uint16_t i = 0;
 	FLT *f;
 	f = alloca(sizeof(FLT) * count);
@@ -348,12 +348,12 @@ int parse_uint32(char* tag, char** values, uint16_t count) {
 //	if (count>1)
 //		config_set_uint32_array(cg, tag, f, count);
 //	else
-		config_set_uint32(cg, tag, l[0]);
+		config_set_uint32(cg, tag, (uint32_t)l[0]);
 
 	return 1;
 }
 
-void handle_tag_value(char* tag, char** values, uint16_t count) {
+void handle_tag_value(char* tag, char** values, uint8_t count) {
 	print_json_value(tag,values,count);
 	config_group* cg = cg_stack[cg_stack_head];
 

@@ -31,7 +31,7 @@ void * GetDriver( const char * element )
 const char * GetDriverNameMatching( const char * prefix, int place )
 {
 	int i;
-	int prefixlen = strlen( prefix );
+	int prefixlen = (int)strlen( prefix );
 
 	for( i = 0; i < NrDrivers; i++ )
 	{

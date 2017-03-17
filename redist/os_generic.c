@@ -55,6 +55,7 @@ void * OGJoinThread( og_thread_t ot )
 {
 	WaitForSingleObject( ot, INFINITE );
 	CloseHandle( ot );
+	return 0;
 }
 
 void OGCancelThread( og_thread_t ot )

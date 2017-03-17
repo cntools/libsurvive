@@ -120,7 +120,7 @@ int PoserDaveOrtho( SurviveObject * so, PoserData * pd )
 		break;
 	}
 	}
-
+	return 0;
 }
 
 

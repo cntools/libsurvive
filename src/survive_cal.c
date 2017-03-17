@@ -18,6 +18,10 @@
 
 #include "survive_config.h"
 
+#ifdef WINDOWS
+int mkdir(const char *);
+#endif
+
 #define PTS_BEFORE_COMMON 32
 #define NEEDED_COMMON_POINTS 10
 #define MIN_SENSORS_VISIBLE_PER_LH_FOR_CAL 4
@@ -455,7 +459,7 @@ static void handle_calibration( struct SurviveCalData *cd )
 			stddevang += Sdiff2;
 			stddevlen += Ldiff2;
 
-			int llm = Sdiff / HISTOGRAMBINANG + (HISTOGRAMSIZE/2.0);
+			int llm = (int)( Sdiff / HISTOGRAMBINANG + (HISTOGRAMSIZE/2.0) );
 			if( llm < 0 ) llm = 0;
 			if( llm >= HISTOGRAMSIZE ) llm = HISTOGRAMSIZE-1;
 

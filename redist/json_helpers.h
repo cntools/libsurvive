@@ -14,7 +14,7 @@ void json_write_str(FILE* f, const char* tag, const char* v);
 void json_load_file(const char* path);
 extern void (*json_begin_object)(char* tag);
 extern void (*json_end_object)();
-extern void (*json_tag_value)(char* tag, char** values, uint16_t count);
+extern void (*json_tag_value)(char* tag, char** values, uint8_t count);
 
 
 #endif

@@ -123,9 +123,9 @@ int PoserCharlesSlow( SurviveObject * so, PoserData * pd )
 						ft = RunOpti(so, fs, lh, 0, LighthousePos, LighthouseQuat);
 						if( cycle == 0 )
 						{
-							float sk = ft*10.;
+							FLT sk = ft*10.;
 							if( sk > 1 ) sk = 1;
-							uint8_t cell = (1.0 - sk) * 255;
+							uint8_t cell = (uint8_t)((1.0 - sk) * 255);
 							FLT epsilon = 0.1;
 
 							if( dz == 0 ) { /* Why is dz special? ? */
@@ -231,7 +231,7 @@ static FLT RunOpti( SurviveObject * hmd, PoserDataFullScene * fs, int lh, int pr
 		if( fs->lengths[p][lh][0] < 0 || fs->lengths[p][lh][1] < 0 ) continue;
 		FLT me_to_dot[3];
 		sub3d( me_to_dot, LighthousePos, &hmd_points[p*3] );
-		float dot = dot3d( &hmd_normals[p*3], me_to_dot );
+		FLT dot = dot3d( &hmd_normals[p*3], me_to_dot );
 		if( dot < -.01 ) { 	return 1000; }
 	}
 	int iters = 6;
@@ -321,7 +321,7 @@ static FLT RunOpti( SurviveObject * hmd, PoserDataFullScene * fs, int lh, int pr
 	}
 
 	//Step 2: Determine error.
-	float errorsq = 0.0;
+	FLT errorsq = 0.0;
 	int count = 0;
 	for( p = 0; p < dpts; p++ )
 	{

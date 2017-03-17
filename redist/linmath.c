@@ -207,28 +207,28 @@ void quattomatrix(FLT * matrix44, const FLT * qin)
 void quatfrommatrix( FLT * q, const FLT * matrix44 )
 {
 	//Algorithm from http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
-	float tr = matrix44[0] + matrix44[5] + matrix44[10];
+	FLT tr = matrix44[0] + matrix44[5] + matrix44[10];
 
 	if (tr > 0) {
-		float S = sqrt(tr+1.0) * 2; // S=4*qw
-		q[0] = 0.25 * S;
+		FLT S = FLT_SQRT(tr+1.0) * 2.; // S=4*qw
+		q[0] = 0.25f * S;
 		q[1] = (matrix44[9] - matrix44[6]) / S;
 		q[2] = (matrix44[2] - matrix44[8]) / S;
 		q[3] = (matrix44[4] - matrix44[1]) / S;
 	} else if ((matrix44[0] > matrix44[5])&(matrix44[0] > matrix44[10])) {
-		float S = sqrt(1.0 + matrix44[0] - matrix44[5] - matrix44[10]) * 2; // S=4*qx
+		FLT S = FLT_SQRT(1.0 + matrix44[0] - matrix44[5] - matrix44[10]) * 2.; // S=4*qx
 		q[0] = (matrix44[9] - matrix44[6]) / S;
-		q[1] = 0.25 * S;
+		q[1] = 0.25f * S;
 		q[2] = (matrix44[1] + matrix44[4]) / S;
 		q[3] = (matrix44[2] + matrix44[8]) / S;
 	} else if (matrix44[5] > matrix44[10]) {
-		float S = sqrt(1.0 + matrix44[5] - matrix44[0] - matrix44[10]) * 2; // S=4*qy
+		FLT S = FLT_SQRT(1.0 + matrix44[5] - matrix44[0] - matrix44[10]) * 2.; // S=4*qy
 		q[0] = (matrix44[2] - matrix44[8]) / S;
 		q[1] = (matrix44[1] + matrix44[4]) / S;
-		q[2] = 0.25 * S;
+		q[2] = 0.25f * S;
 		q[3] = (matrix44[6] + matrix44[9]) / S;
 	} else {
-		float S = sqrt(1.0 + matrix44[10] - matrix44[0] - matrix44[5]) * 2; // S=4*qz
+		FLT S = FLT_SQRT(1.0 + matrix44[10] - matrix44[0] - matrix44[5]) * 2.; // S=4*qz
 		q[0] = (matrix44[4] - matrix44[1]) / S;
 		q[1] = (matrix44[2] + matrix44[8]) / S;
 		q[2] = (matrix44[6] + matrix44[9]) / S;
