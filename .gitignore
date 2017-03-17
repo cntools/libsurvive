@@ -7,6 +7,8 @@ windows/calibrate.def
 windows/udev[USB_DEV_LIGHTHOUSE]
 windows/config.json
 winbuild/x64/*
+winbuild/calibrate/calinfo/*
+winbuild/calibrate/config.json
 winbuild/calibrate/x64/*
 winbuild/libsurvive/x64/*
 winbuild/.vs/*
