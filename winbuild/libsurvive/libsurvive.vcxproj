@@ -139,8 +139,9 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\redist\CNFGFunctions.c" />
+    <ClCompile Include="..\..\redist\CNFGWinDriver.c" />
     <ClCompile Include="..\..\redist\crc32.c" />
-    <ClCompile Include="..\..\redist\DrawFunctions.c" />
     <ClCompile Include="..\..\redist\hid-windows.c" />
     <ClCompile Include="..\..\redist\jsmn.c" />
     <ClCompile Include="..\..\redist\json_helpers.c" />
@@ -148,7 +149,6 @@
     <ClCompile Include="..\..\redist\os_generic.c" />
     <ClCompile Include="..\..\redist\puff.c" />
     <ClCompile Include="..\..\redist\symbol_enumerator.c" />
-    <ClCompile Include="..\..\redist\WinDriver.c" />
     <ClCompile Include="..\..\src\ootx_decoder.c" />
     <ClCompile Include="..\..\src\poser_charlesslow.c" />
     <ClCompile Include="..\..\src\poser_daveortho.c" />
@@ -166,8 +166,8 @@
     <ClInclude Include="..\..\include\libsurvive\poser.h" />
     <ClInclude Include="..\..\include\libsurvive\survive.h" />
     <ClInclude Include="..\..\include\libsurvive\survive_types.h" />
+    <ClInclude Include="..\..\redist\CNFGFunctions.h" />
     <ClInclude Include="..\..\redist\crc32.h" />
-    <ClInclude Include="..\..\redist\DrawFunctions.h" />
     <ClInclude Include="..\..\redist\jsmn.h" />
     <ClInclude Include="..\..\redist\json_helpers.h" />
     <ClInclude Include="..\..\redist\linmath.h" />

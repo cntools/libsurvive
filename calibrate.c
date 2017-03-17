@@ -40,6 +40,10 @@ void HandleMotion( int x, int y, int mask )
 {
 }
 
+void HandleDestroy()
+{
+}
+
 //int bufferpts[32*2*3][2];
 int bufferpts[32*2*3][2];
 

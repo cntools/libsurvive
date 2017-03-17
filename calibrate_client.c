@@ -35,6 +35,9 @@ void HandleButton( int x, int y, int button, int bDown )
 void HandleMotion( int x, int y, int mask )
 {
 }
+void HandleDestroy()
+{
+}
 
 int bufferpts[32*2*3];
 char buffermts[32*128*3];
