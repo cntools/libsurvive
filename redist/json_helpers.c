@@ -164,7 +164,8 @@ void json_load_file(const char* path) {
 	jsmn_parser parser;
 	jsmn_init(&parser);
 
-	uint32_t items = jsmn_parse(&parser, JSON_STRING, JSON_STRING_LEN, NULL, 0);
+	int32_t items = jsmn_parse(&parser, JSON_STRING, JSON_STRING_LEN, NULL, 0);
+	if (items < 0) return;
 	jsmntok_t* tokens = malloc(items * sizeof(jsmntok_t));
 
 	jsmn_init(&parser);

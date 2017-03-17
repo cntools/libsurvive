@@ -78,10 +78,10 @@
     <ClCompile Include="..\..\redist\symbol_enumerator.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\windows\hid.c">
+    <ClCompile Include="..\..\redist\linmath.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\redist\linmath.c">
+    <ClCompile Include="..\hid.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -125,10 +125,10 @@
     <ClInclude Include="..\..\redist\symbol_enumerator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\windows\hidapi.h">
+    <ClInclude Include="..\..\redist\linmath.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\redist\linmath.h">
+    <ClInclude Include="..\hidapi.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

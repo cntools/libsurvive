@@ -1,11 +1,11 @@
 *.o
 lib
 test
-windows/calibrate.exe
-windows/calinfo/*
-windows/calibrate.def
-windows/udev[USB_DEV_LIGHTHOUSE]
-windows/config.json
+winbuild/calibrate.exe
+winbuild/calinfo/*
+winbuild/calibrate.def
+winbuild/udev[USB_DEV_LIGHTHOUSE]
+winbuild/config.json
 winbuild/x64/*
 winbuild/calibrate/calinfo/*
 winbuild/calibrate/config.json
@@ -16,3 +16,5 @@ winbuild/.vs/*
 *.ipch
 winbuild/.vs/libsurvive/v15/.suo
 *.tlog
+winbuild/calibrate.exe
+winbuild/calibrate.def

@@ -78,7 +78,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>USE_DOUBLE;RUNTIME_SYMNUM;RUNTIME_SYMNUMX;NOZLIB;_CRT_SECURE_NO_WARNINGS;HIDAPI;WINDOWS;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\windows;..\..\include\libsurvive;..\..\redist;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\winbuild;..\..\include\libsurvive;..\..\redist;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -92,7 +92,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>USE_DOUBLE;RUNTIME_SYMNUM;RUNTIME_SYMNUMX;NOZLIB;_CRT_SECURE_NO_WARNINGS;HIDAPI;WINDOWS;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\windows;..\..\include\libsurvive;..\..\redist;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\winbuild;..\..\include\libsurvive;..\..\redist;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -108,7 +108,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>USE_DOUBLE;RUNTIME_SYMNUM;RUNTIME_SYMNUMX;NOZLIB;_CRT_SECURE_NO_WARNINGS;HIDAPI;WINDOWS;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\windows;..\..\include\libsurvive;..\..\redist;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\winbuild;..\..\include\libsurvive;..\..\redist;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -126,7 +126,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>USE_DOUBLE;RUNTIME_SYMNUM;RUNTIME_SYMNUMX;NOZLIB;_CRT_SECURE_NO_WARNINGS;HIDAPI;WINDOWS;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\windows;..\..\include\libsurvive;..\..\redist;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\winbuild;..\..\include\libsurvive;..\..\redist;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -160,7 +160,7 @@
     <ClCompile Include="..\..\src\survive_process.c" />
     <ClCompile Include="..\..\src\survive_usb.c" />
     <ClCompile Include="..\..\src\survive_vive.c" />
-    <ClCompile Include="..\..\windows\hid.c" />
+    <ClCompile Include="..\hid.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\libsurvive\poser.h" />
@@ -177,7 +177,7 @@
     <ClInclude Include="..\..\src\survive_cal.h" />
     <ClInclude Include="..\..\src\survive_config.h" />
     <ClInclude Include="..\..\src\survive_internal.h" />
-    <ClInclude Include="..\..\windows\hidapi.h" />
+    <ClInclude Include="..\hidapi.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
