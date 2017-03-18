@@ -8,16 +8,30 @@
 //This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
 void handle_lightcap( SurviveObject * so, LightcapElement * le )
 {
-	SurviveContext * ctx = so->ctx;
+	SurviveContext * ctx = so->ctx;	
 	//int32_t deltat = (uint32_t)le->timestamp - (uint32_t)so->last_master_time;
-
-	//if( so->codename[0] != 'H' )
-
 
 	if( le->sensor_id > SENSORS_PER_OBJECT )
 	{
 		return;
 	}
+
+#if 0
+	if( so->codename[0] == 'H' )
+	{
+		static int lt;
+		static int last;
+		if( le->length > 1000 )
+		{
+			int dl = le->timestamp - lt;
+			lt = le->timestamp;
+			if( dl > 10000 || dl < -10000 )
+				printf( "+++%s %3d %5d %9d  ", so->codename, le->sensor_id, le->length, dl );
+			if( dl > 100000 ) printf(" \n" );
+		}
+		last=le->length;
+	}
+#endif
 
 	so->tsl = le->timestamp;
 	if( le->length < 20 ) return;  ///Assuming 20 is an okay value for here.
