@@ -771,7 +771,7 @@ static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 	qty-=2;
 	int propset = 0;
 	int doimu = 0;
-
+	int i;
 
 	if( (type & 0xf0) == 0xf0 )
 	{
@@ -916,11 +916,12 @@ static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 		LightcapElement les[10];
 		int lese = 0; //les's end
 
+
 		//Second, go through all LEDs and extract the lightevent from them. 
 		{
 			uint8_t *marked;
 			marked = alloca(nrtime);
-			memset( marked, 0, sizeof( nrtime ) );
+			memset( marked, 0, nrtime );
 			int i, parpl = 0;
 			timecount--;
 			int timepl = 0;
@@ -933,6 +934,17 @@ static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 				led >>= 3;
 
 				while( marked[timepl] ) timepl++;
+
+#ifdef DEBUG_WATCHMAN
+				int i;
+				printf( "TP %d   TC: %d : ", timepl, timecount );
+				for( i = 0; i < nrtime; i++ )
+				{
+					printf( "%d", marked[i] );
+				}
+				printf( "\n" );
+#endif
+
 				if( timepl > timecount ) { fault = 3; goto end; }         //Ran off max of list.
 				uint32_t endtime = times[timepl++];
 
