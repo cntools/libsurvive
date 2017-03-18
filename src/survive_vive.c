@@ -920,7 +920,7 @@ static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 		{
 			uint8_t *marked;
 			marked = alloca(nrtime);
-			memset( marked, 0, sizeof( marked ) );
+			memset( marked, 0, sizeof( nrtime ) );
 			int i, parpl = 0;
 			timecount--;
 			int timepl = 0;
@@ -935,6 +935,7 @@ static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 				while( marked[timepl] ) timepl++;
 				if( timepl > timecount ) { fault = 3; goto end; }         //Ran off max of list.
 				uint32_t endtime = times[timepl++];
+
 				int end = timepl + adv;
 				if( end > timecount ) { fault = 4; goto end; } //end referencing off list
 				if( marked[end] > 0 ) { fault = 5; goto end; } //Already marked trying to be used.
@@ -978,7 +979,7 @@ static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 	end:
 		{
 			SurviveContext * ctx = w->ctx;
-			SV_INFO( "Light decoding fault: %d\n", fault );
+			SV_INFO( "Light decoding fault: %d", fault );
 		}
 	}
 }
