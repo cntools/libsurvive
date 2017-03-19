@@ -16,8 +16,6 @@ int32_t decode_acode(uint32_t length, int32_t main_divisor) {
 	return (acode>>1) - 6;
 }
 
-}
-
 //This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
 void handle_lightcap( SurviveObject * so, LightcapElement * le )
 {
