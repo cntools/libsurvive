@@ -1,8 +1,10 @@
 # libsurvive
 
-**WARNING PROJECT IN EXPERIMENTAL PHASE**
+![Logo](https://cloud.githubusercontent.com/assets/2748168/24084003/9095c98a-0cb8-11e7-88a3-575f9f4c7bb4.png)
 
-Discord: https://discordapp.com/invite/7QbCAGS
+An Open-Source tool for working with lighthouse-based trakcing data, including support for the HTC Vive, which is still in the experimental phase.
+
+Most of the development is discussed on Discord.  Join the chat and discussion here: https://discordapp.com/invite/7QbCAGS
 
 ## Livestream collection
 | Note                                   | Youtube URL                                 | Run time |
