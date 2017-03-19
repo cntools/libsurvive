@@ -272,6 +272,7 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 				if( sensors_visible < MIN_SENSORS_VISIBLE_PER_LH_FOR_CAL ) 
 				{
 					//printf( "Dev %d, LH %d not enough visible points found.\n", i, j );
+					reset_calibration( cd );
 					cd->found_common = 0;
 					return;
 				}
@@ -440,7 +441,7 @@ static void handle_calibration( struct SurviveCalData *cd )
 		FLT stddevlen = 0;
 
 		#define HISTOGRAMSIZE   31
-		#define HISTOGRAMBINANG 0.00001  //TODO: Tune
+		#define HISTOGRAMBINANG ((3.14159)/400000.0)  //TODO: Tune
 
 		int histo[HISTOGRAMSIZE];
 		memset( histo, 0, sizeof( histo ) );

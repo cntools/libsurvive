@@ -35,7 +35,9 @@ void survive_cal_angle( SurviveObject * so, int sensor_id, int acode, uint32_t t
 #define MAX_SENSORS_TO_CAL 96
 
 #define MIN_PTS_BEFORE_CAL 24
-#define DRPTS 128
+
+
+#define DRPTS 1024  //Number of samples required in collection phase.
 
 #define POSE_OBJECTS 3
 
