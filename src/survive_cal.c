@@ -196,6 +196,21 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 			if( i == NUM_LIGHTHOUSES ) cd->stage = 2;  //If all lighthouses have their OOTX set, move on.
 		}
 		break;
+	case 3: //Look for light sync lengths.
+	{
+		if( acode >= -2 ) break;
+		else if( acode < -4 ) break;
+		int lh = (-acode) - 3;
+
+		if( strcmp( so->codename, "WM0" ) == 0 )
+			sensor_id += 32;
+		if( strcmp( so->codename, "WM1" ) == 0 )
+			sensor_id += 64;
+
+		cd->all_sync_times[sensor_id][lh][cd->all_sync_counts[sensor_id][lh]++] = length;
+		break;
+	}
+
 	}
 	
 }
@@ -333,6 +348,8 @@ static void reset_calibration( struct SurviveCalData * cd )
 	cd->found_common = 0;
 	cd->times_found_common = 0;
 	cd->stage = 2;
+
+	memset( cd->all_sync_counts, 0, sizeof( cd->all_sync_counts ) );
 }
 
 static void handle_calibration( struct SurviveCalData *cd )
@@ -358,9 +375,45 @@ static void handle_calibration( struct SurviveCalData *cd )
 #else
 	mkdir( "calinfo", 0755 );
 #endif
+	int sen, axis, lh;
+	FLT temp_syncs[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES];
+
+	//Just to get it out of the way early, we'll calculate the sync-pulse-lengths here.
+	FILE * sync_time_info = fopen( "calinfo/synctime.csv", "w" );
+
+	for( sen = 0; sen < MAX_SENSORS_TO_CAL; sen++ )
+	for( lh = 0; lh < NUM_LIGHTHOUSES; lh++ )
+	{
+		int count = cd->all_sync_counts[sen][lh];
+		int i;
+		double totaltime;
+
+		totaltime = 0;
+
+		if( count < 20 ) continue;
+		for( i = 0; i < count; i++ )
+		{
+			totaltime += cd->all_sync_times[sen][lh][i];
+		}
+		FLT avg = totaltime/count;
+
+		double stddev = 0.0;
+		for( i = 0; i < count; i++ )
+		{
+			stddev += (cd->all_sync_times[sen][lh][i] - avg)*(cd->all_sync_times[sen][lh][i] - avg);
+		}
+		stddev /= count;
+
+		fprintf( sync_time_info, "%d %d %f %d %f\n", sen, lh, totaltime/count, count, stddev );
+	}
+
+	fclose( sync_time_info );
+
+
+
+
 	FILE * hists = fopen( "calinfo/histograms.csv", "w" );
 	FILE * ptinfo = fopen( "calinfo/ptinfo.csv", "w" );
-	int sen, axis, lh;
 	for( sen = 0; sen < MAX_SENSORS_TO_CAL; sen++ )
 	for( lh = 0; lh < NUM_LIGHTHOUSES; lh++ )
 	for( axis = 0; axis < 2; axis++ )
@@ -526,6 +579,7 @@ static void handle_calibration( struct SurviveCalData *cd )
 			fsd.lengths[i][j][1] = cd->avglens[dataindex+1];
 			fsd.angles[i][j][0] = cd->avgsweeps[dataindex+0];
 			fsd.angles[i][j][1] = cd->avgsweeps[dataindex+1];
+			fsd.synctimes[i][j] = temp_syncs[i][j];
 		}
 
 		int r = cd->ConfigPoserFn( cd->poseobjects[obj], (PoserData*)&fsd );

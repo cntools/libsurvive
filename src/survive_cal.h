@@ -56,6 +56,9 @@ struct SurviveCalData
 	int8_t found_common;
 	int8_t times_found_common;
 
+	FLT all_sync_times[MAX_SENSORS_TO_CAL][NUM_LIGHTHOUSES][DRPTS];
+	int16_t all_sync_counts[MAX_SENSORS_TO_CAL][NUM_LIGHTHOUSES];
+
 	//For camfind (4+)
 	//Index is calculated with:      int dataindex = sen*(2*NUM_LIGHTHOUSES)+lh*2+axis;
 	FLT avgsweeps[MAX_CAL_PT_DAT];

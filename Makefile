@@ -32,6 +32,12 @@ LIBSURVIVE_CORE:=$(LIBSURVIVE_CORE)
 LIBSURVIVE_O:=$(POSERS) $(REDISTS) $(LIBSURVIVE_CORE)
 LIBSURVIVE_C:=$(LIBSURVIVE_O:.o=.c)
 
+
+#If you want to use HIDAPI on Linux.
+#CFLAGS:=$(CFLAGS) -DHIDAPI
+#REDISTS:=$(REDISTS) redist/hid-linux.o
+#LDFLAGS:=$(LDFLAGS) -ludev
+
 #Useful Preprocessor Directives:
 # -DUSE_DOUBLE = use double instead of float for most operations.
 # -DNOZLIB = use puff.c

@@ -69,7 +69,7 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 	{
 		int is_new_pulse = delta > so->pulselength_min_sync /*1500*/ + last_sync_length;
 
-		//printf("m sync %d %d %d %d\n", le->sensor_id, so->last_sync_time[ssn], le->timestamp, delta);
+
 
 		so->did_handle_ootx = 0;
 
@@ -113,6 +113,14 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 					so->last_sync_length[ssn] = le->length;
 				}
 			}
+		}
+
+		//Extra tidbit for storing length-of-sync-pulses.
+		{
+			int32_t main_divisor = so->timebase_hz / 384000; //125 @ 48 MHz.
+			int base_station = is_new_pulse;
+			printf( "%s %d %d %d\n", so->codename, le->sensor_id, so->sync_set_number, le->length );
+			ctx->lightproc( so, le->sensor_id, -3 - so->sync_set_number, 0, le->timestamp, le->length );
 		}
 	}
 
