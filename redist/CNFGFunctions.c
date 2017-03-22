@@ -274,6 +274,10 @@ void CNFGDrawTextbox( int x, int y, const char * text, int textsize )
 
 #ifdef CNFGOGL
 
+#ifdef _MSC_VER
+#include <windows.h>
+#pragma comment( lib, "OpenGL32.lib" )
+#endif
 #include <GL/gl.h>
 
 uint32_t CNFGColor( uint32_t RGB )
