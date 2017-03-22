@@ -1,4 +1,4 @@
-//Copyright (c) 2011 <>< Charles Lohr - Under the MIT/x11 or NewBSD License you choose.
+//Copyright (c) 2011, 2017 <>< Charles Lohr - Under the MIT/x11 or NewBSD License you choose.
 
 #ifndef _DRAWFUCNTIONS_H
 #define _DRAWFUCNTIONS_H
@@ -49,6 +49,11 @@ void HandleDestroy();
 //Internal function for resizing rasterizer for rasterizer-mode.
 void CNFGInternalResize( short x, short y ); //don't call this.
 
+//Not available on all systems.  Use The OGL portion with care.
+#ifdef CNFGOGL
+void   CNFGSetVSync( int vson );
+void * CNFGGetExtension( const char * extname );
+#endif
 
 #ifdef __cplusplus
 };

@@ -270,3 +270,85 @@ void CNFGDrawTextbox( int x, int y, const char * text, int textsize )
 	CNFGPenY = y + textsize;
 	CNFGDrawText( text, textsize );
 }
+
+
+#ifdef CNFGOGL
+
+#include <GL/gl.h>
+
+uint32_t CNFGColor( uint32_t RGB )
+{
+	unsigned char red = RGB & 0xFF;
+	unsigned char grn = ( RGB >> 8 ) & 0xFF;
+	unsigned char blu = ( RGB >> 16 ) & 0xFF;
+	glColor3ub( red, grn, blu );
+}
+
+void CNFGClearFrame()
+{
+	short w, h;
+	unsigned char red = CNFGBGColor & 0xFF;
+	unsigned char grn = ( CNFGBGColor >> 8 ) & 0xFF;
+	unsigned char blu = ( CNFGBGColor >> 16 ) & 0xFF;
+	glClearColor( red/255.0, grn/255.0, blu/255.0, 1.0 );
+	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+	CNFGGetDimensions( &w, &h );
+	glMatrixMode( GL_PROJECTION );
+	glLoadIdentity();
+	glViewport( 0, 0, w, h );
+	glOrtho( 0, w, h, 0, 1, -1 );
+	glMatrixMode( GL_MODELVIEW );
+	glLoadIdentity();
+}
+
+
+void CNFGTackSegment( short x1, short y1, short x2, short y2 )
+{
+	if( x1 == x2 && y1 == y2 )
+	{
+		glBegin( GL_POINTS );
+		glVertex2f( x1+.5, y1+.5 );
+		glEnd();		
+	}
+	else
+	{
+		glBegin( GL_LINES );
+		glVertex2f( x1+.5, y1+.5 );
+		glVertex2f( x2+.5, y2+.5 );
+		glEnd();
+	}
+}
+
+void CNFGTackPixel( short x1, short y1 )
+{
+	glBegin( GL_POINTS );
+	glVertex2f( x1, y1 );
+	glEnd();
+}
+
+void CNFGTackRectangle( short x1, short y1, short x2, short y2 )
+{
+	glBegin( GL_QUADS );
+	glVertex2f( x1, y1 );
+	glVertex2f( x2, y1 );
+	glVertex2f( x2, y2 );
+	glVertex2f( x1, y2 );
+	glEnd();
+}
+
+void CNFGTackPoly( RDPoint * points, int verts )
+{
+	int i;
+	glBegin( GL_TRIANGLE_FAN );
+	glVertex2f( points[0].x, points[0].y );
+	for( i = 1; i < verts; i++ )
+	{
+		glVertex2f( points[i].x, points[i].y );
+	}
+	glEnd();
+}
+
+void CNFGInternalResize( short x, short y ) { }
+
+
+#endif

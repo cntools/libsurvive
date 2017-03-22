@@ -1,4 +1,4 @@
-//Copyright (c) 2011 <>< Charles Lohr - Under the MIT/x11 or NewBSD License you choose.
+//Copyright (c) 2011, 2017 <>< Charles Lohr - Under the MIT/x11 or NewBSD License you choose.
 //portions from 
 //http://www.xmission.com/~georgeps/documentation/tutorials/Xlib_Beginner.html
 
@@ -25,6 +25,17 @@ Window CNFGWindow;
 Pixmap CNFGPixmap;
 GC     CNFGGC;
 GC     CNFGWindowGC;
+Visual * CNFGVisual;
+
+
+#ifdef CNFGOGL
+#include <GL/glx.h>
+#include <GL/glxext.h>
+
+GLXContext CNFGCtx;
+void * CNFGGetExtension( const char * extname ) { return glXGetProcAddressARB((const GLubyte *) extname); }
+#endif
+
 int FullScreen = 0;
 
 void CNFGGetDimensions( short * x, short * y )
@@ -86,7 +97,7 @@ void CNFGSetupFullscreen( const char * WindowName, int screen_no )
 		exit( 1 );
 	}
 
- 	Visual * visual = DefaultVisual(CNFGDisplay, screen);
+ 	CNFGVisual = DefaultVisual(CNFGDisplay, screen);
 	CNFGWinAtt.depth = DefaultDepth(CNFGDisplay, screen);
 
 	if (XineramaQueryExtension(CNFGDisplay, &a, &b ) &&
@@ -117,7 +128,9 @@ void CNFGSetupFullscreen( const char * WindowName, int screen_no )
 
 	CNFGWindow = XCreateWindow(CNFGDisplay, XRootWindow(CNFGDisplay, screen),
 		xpos, ypos, CNFGWinAtt.width, CNFGWinAtt.height,
-		0, CNFGWinAtt.depth, InputOutput, visual, CWBorderPixel | CWEventMask | CWOverrideRedirect | CWSaveUnder, &setwinattr);
+		0, CNFGWinAtt.depth, InputOutput, CNFGVisual, 
+		CWBorderPixel | CWEventMask | CWOverrideRedirect | CWSaveUnder, 
+		&setwinattr);
 
 	XMapWindow(CNFGDisplay, CNFGWindow);
 	XSetInputFocus( CNFGDisplay, CNFGWindow,   RevertToParent, CurrentTime );
@@ -155,7 +168,31 @@ void CNFGSetup( const char * WindowName, int w, int h )
 	XGetWindowAttributes( CNFGDisplay, RootWindow(CNFGDisplay, 0), &CNFGWinAtt );
 
 	int depth = CNFGWinAtt.depth;
-	CNFGWindow = XCreateWindow(CNFGDisplay, RootWindow(CNFGDisplay, 0), 1, 1, w, h, 0, depth, InputOutput, CopyFromParent, 0, 0 );
+	int screen = DefaultScreen(CNFGDisplay);
+ 	CNFGVisual = DefaultVisual(CNFGDisplay, screen);
+
+#ifdef CNFGOGL
+	int attribs[] = { GLX_RGBA,
+		GLX_DOUBLEBUFFER, 
+		GLX_RED_SIZE, 1,
+		GLX_GREEN_SIZE, 1,
+		GLX_BLUE_SIZE, 1,
+		GLX_DEPTH_SIZE, 1,
+		None };
+	XVisualInfo * vis = glXChooseVisual(CNFGDisplay, screen, attribs);
+	CNFGVisual = vis->visual;
+	depth = vis->depth;
+	CNFGCtx = glXCreateContext( CNFGDisplay, vis, NULL, True );
+#endif
+
+	XSetWindowAttributes attr;
+	attr.background_pixel = 0;
+	attr.border_pixel = 0;
+	attr.colormap = XCreateColormap( CNFGDisplay, RootWindow(CNFGDisplay, 0), CNFGVisual, AllocNone);
+	attr.event_mask = StructureNotifyMask | ExposureMask | KeyPressMask;
+	int mask = CWBackPixel | CWBorderPixel | CWColormap | CWEventMask;
+
+	CNFGWindow = XCreateWindow(CNFGDisplay, RootWindow(CNFGDisplay, 0), 1, 1, w, h, 0, depth, InputOutput, CNFGVisual, mask, &attr );
 	XMapWindow(CNFGDisplay, CNFGWindow);
 	XFlush(CNFGDisplay);
 
@@ -163,7 +200,12 @@ void CNFGSetup( const char * WindowName, int w, int h )
 
 	Atom WM_DELETE_WINDOW = XInternAtom( CNFGDisplay, "WM_DELETE_WINDOW", False );
 	XSetWMProtocols( CNFGDisplay, CNFGWindow, &WM_DELETE_WINDOW, 1 );
+
 	XSelectInput( CNFGDisplay, CNFGWindow, KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask | ExposureMask | PointerMotionMask );
+
+#ifdef CNFGOGL
+	glXMakeCurrent( CNFGDisplay, CNFGWindow, CNFGCtx );
+#endif
 }
 
 void CNFGHandleInput()
@@ -226,7 +268,6 @@ void CNFGUpdateScreenWithBitmap( unsigned long * data, int w, int h )
 	if( !xi )
 	{
 		int screen = DefaultScreen(CNFGDisplay);
-		Visual * visual = DefaultVisual(CNFGDisplay, screen);
 		depth = DefaultDepth(CNFGDisplay, screen)/8;
 //		xi = XCreateImage(CNFGDisplay, DefaultVisual( CNFGDisplay, DefaultScreen(CNFGDisplay) ), depth*8, ZPixmap, 0, (char*)data, w, h, 32, w*4 );
 //		lw = w;
@@ -236,7 +277,7 @@ void CNFGUpdateScreenWithBitmap( unsigned long * data, int w, int h )
 	if( lw != w || lh != h )
 	{
 		if( xi ) free( xi );
-		xi = XCreateImage(CNFGDisplay, DefaultVisual( CNFGDisplay, DefaultScreen(CNFGDisplay) ), depth*8, ZPixmap, 0, (char*)data, w, h, 32, w*4 );
+		xi = XCreateImage(CNFGDisplay, CNFGVisual, depth*8, ZPixmap, 0, (char*)data, w, h, 32, w*4 );
 		lw = w;
 		lh = h;
 	}
@@ -247,7 +288,25 @@ void CNFGUpdateScreenWithBitmap( unsigned long * data, int w, int h )
 }
 
 
-#ifndef RASTERIZER
+#ifdef CNFGOGL
+
+void   CNFGSetVSync( int vson )
+{
+	void (*glfn)( int );
+	glfn = (void (*)( int ))CNFGGetExtension( "glXSwapIntervalMESA" );	if( glfn ) glfn( vson );
+	glfn = (void (*)( int ))CNFGGetExtension( "glXSwapIntervalSGI" );	if( glfn ) glfn( vson );
+	glfn = (void (*)( int ))CNFGGetExtension( "glXSwapIntervalEXT" );	if( glfn ) glfn( vson );
+}
+
+void CNFGSwapBuffers()
+{
+	glFlush();
+	glFinish();
+	glXSwapBuffers( CNFGDisplay, CNFGWindow );
+}
+#endif
+
+#if !defined( RASTERIZER ) && !defined( CNFGOGL)
 
 
 uint32_t CNFGColor( uint32_t RGB )
@@ -301,4 +360,5 @@ void CNFGInternalResize( short x, short y ) { }
 #else
 #include "CNFGRasterizer.h"
 #endif
+
 
