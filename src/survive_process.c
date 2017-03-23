@@ -16,6 +16,9 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 		survive_cal_light( so, sensor_id, acode, timeinsweep, timecode, length, lh);
 	}
 
+	//We don't use sync times, yet.
+	if( acode < -1 ) return;
+
 	if( base_station > NUM_LIGHTHOUSES ) return;
 
 	//No loner need sync information past this point.

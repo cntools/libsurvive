@@ -35,7 +35,9 @@ void survive_cal_angle( SurviveObject * so, int sensor_id, int acode, uint32_t t
 #define MAX_SENSORS_TO_CAL 96
 
 #define MIN_PTS_BEFORE_CAL 24
-#define DRPTS 128
+
+
+#define DRPTS 32  //Number of samples required in collection phase.
 
 #define MAX_POSE_OBJECTS 10
 
@@ -53,6 +55,9 @@ struct SurviveCalData
 	int16_t peak_counts;
 	int8_t found_common;
 	int8_t times_found_common;
+
+	FLT all_sync_times[MAX_SENSORS_TO_CAL][NUM_LIGHTHOUSES][DRPTS];
+	int16_t all_sync_counts[MAX_SENSORS_TO_CAL][NUM_LIGHTHOUSES];
 
 	//For camfind (4+)
 	//Index is calculated with:      int dataindex = sen*(2*NUM_LIGHTHOUSES)+lh*2+axis;

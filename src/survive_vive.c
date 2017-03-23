@@ -141,10 +141,10 @@ void survive_data_cb( SurviveUSBInterface * si );
 
 //USB Subsystem 
 void survive_usb_close( SurviveContext * t );
-int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *wm0, SurviveObject * wm1, SurviveObject * tr0, struct SurviveObject * ww0 );
+int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *wm0, SurviveObject * wm1, SurviveObject * tr0 , SurviveObject * ww0 );
 int survive_usb_poll( SurviveContext * ctx );
 int survive_get_config( char ** config, SurviveViveData * ctx, int devno, int iface, int send_extra_magic );
-int survive_vive_send_magic(struct SurviveContext * ctx, void * drv, int magic_code, void * data, int datalen );
+int survive_vive_send_magic(SurviveContext * ctx, void * drv, int magic_code, void * data, int datalen );
 
 #ifdef HIDAPI
 void * HAPIReceiver( void * v )
@@ -177,8 +177,8 @@ void * HAPIReceiver( void * v )
 #else
 static void handle_transfer(struct libusb_transfer* transfer)
 {
-	struct SurviveUSBInterface * iface = transfer->user_data;
-	struct SurviveContext * ctx = iface->ctx;
+	SurviveUSBInterface * iface = transfer->user_data;
+	SurviveContext * ctx = iface->ctx;
 
 	if( transfer->status != LIBUSB_TRANSFER_COMPLETED )
 	{
@@ -307,9 +307,9 @@ static inline int hid_get_feature_report_timeout(USBHANDLE device, uint16_t ifac
 	return -1;
 }
 
-int survive_usb_init( struct SurviveViveData * sv, struct SurviveObject * hmd, struct SurviveObject *wm0, struct SurviveObject * wm1, struct SurviveObject * tr0 , struct SurviveObject * ww0 )
+int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *wm0, SurviveObject * wm1, SurviveObject * tr0 , SurviveObject * ww0 )
 {
-	struct SurviveContext * ctx = sv->ctx;
+	SurviveContext * ctx = sv->ctx;
 #ifdef HIDAPI
 	if( !GlobalRXUSBMutx )
 	{
@@ -488,10 +488,10 @@ int survive_usb_init( struct SurviveViveData * sv, struct SurviveObject * hmd, s
 	return 0;
 }
 
-int survive_vive_send_magic(struct SurviveContext * ctx, void * drv, int magic_code, void * data, int datalen )
+int survive_vive_send_magic(SurviveContext * ctx, void * drv, int magic_code, void * data, int datalen )
 {
 	int r;
-	struct SurviveViveData * sv = drv;
+	SurviveViveData * sv = drv;
 	printf( "*CALLING %p %p\n", ctx, sv );
 
 	//XXX TODO: Handle haptics, etc.
@@ -583,7 +583,7 @@ int survive_vive_send_magic(struct SurviveContext * ctx, void * drv, int magic_c
 	return 0;
 }
 
-void survive_vive_usb_close( struct SurviveViveData * sv )
+void survive_vive_usb_close( SurviveViveData * sv )
 {
 	int i;
 #ifdef HIDAPI
@@ -608,7 +608,7 @@ void survive_vive_usb_close( struct SurviveViveData * sv )
 #endif
 }
 
-int survive_vive_usb_poll( struct SurviveContext * ctx, void * v )
+int survive_vive_usb_poll( SurviveContext * ctx, void * v )
 {
 #ifdef HIDAPI
 	OGUnlockMutex( GlobalRXUSBMutx );
@@ -616,11 +616,11 @@ int survive_vive_usb_poll( struct SurviveContext * ctx, void * v )
 	OGUnlockMutex( GlobalRXUSBMutx );
 	return 0;
 #else
-	struct SurviveViveData * sv = v;
+	SurviveViveData * sv = v;
 	int r = libusb_handle_events( sv->usbctx );
 	if( r )
 	{
-		struct SurviveContext * ctx = sv->ctx;
+		SurviveContext * ctx = sv->ctx;
 		SV_ERROR( "Libusb poll failed." );
 	}
 	return r;
@@ -629,9 +629,9 @@ int survive_vive_usb_poll( struct SurviveContext * ctx, void * v )
 }
 
 
-int survive_get_config( char ** config, struct SurviveViveData * sv, int devno, int iface, int send_extra_magic )
+int survive_get_config( char ** config, SurviveViveData * sv, int devno, int iface, int send_extra_magic )
 {
-	struct SurviveContext * ctx = sv->ctx;
+	SurviveContext * ctx = sv->ctx;
 	int ret, count = 0, size = 0;
 	uint8_t cfgbuff[64];
 	uint8_t compressed_data[8192];
@@ -749,7 +749,7 @@ int survive_get_config( char ** config, struct SurviveViveData * sv, int devno, 
 #define POP2  (*(((uint16_t*)((readdata+=2)-2))))
 #define POP4  (*(((uint32_t*)((readdata+=4)-4))))
 
-static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
+static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 {
 
 	uint8_t startread[29];
@@ -771,7 +771,7 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 	qty-=2;
 	int propset = 0;
 	int doimu = 0;
-
+	int i;
 
 	if( (type & 0xf0) == 0xf0 )
 	{
@@ -916,11 +916,12 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 		LightcapElement les[10];
 		int lese = 0; //les's end
 
+
 		//Second, go through all LEDs and extract the lightevent from them. 
 		{
 			uint8_t *marked;
 			marked = alloca(nrtime);
-			memset( marked, 0, sizeof( marked ) );
+			memset( marked, 0, nrtime );
 			int i, parpl = 0;
 			timecount--;
 			int timepl = 0;
@@ -933,8 +934,20 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 				led >>= 3;
 
 				while( marked[timepl] ) timepl++;
+
+#ifdef DEBUG_WATCHMAN
+				int i;
+				printf( "TP %d   TC: %d : ", timepl, timecount );
+				for( i = 0; i < nrtime; i++ )
+				{
+					printf( "%d", marked[i] );
+				}
+				printf( "\n" );
+#endif
+
 				if( timepl > timecount ) { fault = 3; goto end; }         //Ran off max of list.
 				uint32_t endtime = times[timepl++];
+
 				int end = timepl + adv;
 				if( end > timecount ) { fault = 4; goto end; } //end referencing off list
 				if( marked[end] > 0 ) { fault = 5; goto end; } //Already marked trying to be used.
@@ -978,7 +991,7 @@ static void handle_watchman( struct SurviveObject * w, uint8_t * readdata )
 	end:
 		{
 			SurviveContext * ctx = w->ctx;
-			SV_INFO( "Light decoding fault: %d\n", fault );
+			SV_INFO( "Light decoding fault: %d", fault );
 		}
 	}
 }
@@ -1015,7 +1028,7 @@ void survive_data_cb( SurviveUSBInterface * si )
 	{
 	case USB_IF_HMD:
 	{
-		struct SurviveObject * headset = obj;
+		SurviveObject * headset = obj;
 		readdata+=2;
 		headset->buttonmask = POP1;		//Lens
 		headset->axis2 = POP2;			//Lens Separation

@@ -265,7 +265,8 @@ printf("rhat %f %f (len %f)\n", rhat[0][0], rhat[1][0], rhat_len);
 //    FLT ydist1 = 1.0 /  uhat_len; //0.25*PI / uhat_len;
 //    FLT ydist2 = 1.0 /  rhat_len; //0.25*PI / rhat_len;
     FLT ydist  = 1.0 / urhat_len;
-    //printf("ydist1 %f ydist2 %f ydist %f\n", ydist1, ydist2, ydist);
+    printf("ydist %f\n", ydist);
+//    printf("ydist1 %f ydist2 %f ydist %f\n", ydist1, ydist2, ydist);
 
     //--------------------
     // Rescale the axies to be of the proper length
@@ -282,7 +283,7 @@ printf("rhat %f %f (len %f)\n", rhat[0][0], rhat[1][0], rhat_len);
 	if( x_y != x_y ) x_y = 0;
 	if( y_y != y_y ) y_y = 0;
 	if( z_y != z_y ) z_y = 0;
-/*
+
     // Exhaustively flip the minus sign of the z axis until we find the right one . . .
     FLT bestErr = 9999.0;
     FLT xy_dot2 = x[0][0]*y[0][0] + x[2][0]*y[2][0];
@@ -302,7 +303,7 @@ printf("rhat %f %f (len %f)\n", rhat[0][0], rhat[1][0], rhat_len);
                 FLT cx,cy,cz;
                 CrossProduct(cx,cy,cz,x[0][0],x_y,x[2][0],y[0][0],y_y,y[2][0]);
                 FLT hand = cx*z[0][0] + cy*z_y + cz*z[2][0];
-                printf("err %f hand %f\n", err, hand);
+//                printf("err %f hand %f\n", err, hand);
                 
                 // If we are the best right-handed frame so far
                 //if (hand > 0 && err < bestErr) { x[1][0]=x_y; y[1][0]=y_y; z[1][0]=z_y; bestErr=err; }
@@ -313,9 +314,9 @@ printf("rhat %f %f (len %f)\n", rhat[0][0], rhat[1][0], rhat_len);
         }
         x_y = -x_y;
     }
-    printf("bestErr %f\n", bestErr);
-*/
+//    printf("bestErr %f\n", bestErr);
 
+/*
     //-------------------------
     // A test version of the rescaling to the proper length
     //-------------------------
@@ -338,7 +339,7 @@ printf("rhat %f %f (len %f)\n", rhat[0][0], rhat[1][0], rhat_len);
 		if( y_y != y_y ) y_y = 0;
 		if( z_y != z_y ) z_y = 0;
 
-		printf( "---> %f %f %f\n", x_y, y_y, z_y );
+//		printf( "---> %f %f %f\n", x_y, y_y, z_y );
 
         // Exhaustively flip the minus sign of the z axis until we find the right one . . .
         FLT bestErr = 9999.0;
@@ -359,7 +360,7 @@ printf("rhat %f %f (len %f)\n", rhat[0][0], rhat[1][0], rhat_len);
                     FLT cx,cy,cz;
                     CrossProduct(cx,cy,cz,x2[0][0],x_y,x2[2][0],y2[0][0],y_y,y2[2][0]);
                     FLT hand = cx*z2[0][0] + cy*z_y + cz*z2[2][0];
-                  printf("err %f hand %f\n", err, hand);
+                  //printf("err %f hand %f\n", err, hand);
                 
                     // If we are the best right-handed frame so far
                     if (hand > 0 && err < bestErr) { x2[1][0]=x_y; y2[1][0]=y_y; z2[1][0]=z_y; bestErr=err; }
@@ -380,7 +381,7 @@ printf("rhat %f %f (len %f)\n", rhat[0][0], rhat[1][0], rhat_len);
         }
     }
     ydist = bestYdist;
-
+*/
 /*
     for (i=0; i<nPoints; i++) {
         FLT x1 = x[0][0]*X[0][i] + y[0][0]*X[1][i] + z[0][0]*X[2][i];
@@ -441,7 +442,71 @@ PRINT(ab,2,1);
     T[2][0]=R[2][0]; T[2][1]=R[2][1]; T[2][2]=R[2][2]; T[2][3]=trans[2];
     T[3][0]=0.0;     T[3][1]=0.0;     T[3][2]=0.0;     T[3][3]=1.0;
 
-    PRINT_MAT(T,4,4);
+
+	FLT T2[4][4];
+
+	//-------------------
+	// Orthogonalize the matrix
+	//-------------------
+	FLT temp[4][4];
+	FLT quat[4], quatNorm[4];
+	FLT euler[3];
+
+
+	//-------------------
+	// Orthogonalize the matrix
+	//-------------------
+
+	PRINT_MAT(T,4,4);
+matrix44transpose(T2, T);
+//matrix44copy(T2,T);
+	cross3d( &T2[0][0], &T2[1][0], &T2[2][0] );
+	cross3d( &T2[2][0], &T2[0][0], &T2[1][0] );
+	normalize3d( &T2[0][0], &T2[0][0] );
+	normalize3d( &T2[1][0], &T2[1][0] );
+	normalize3d( &T2[2][0], &T2[2][0] );
+//matrix44copy(T2,T);
+matrix44transpose(T, T2);
+	PRINT_MAT(T,4,4);
+
+
+
+	//memcpy(T2,T,16*sizeof(float));
+//	matrix44copy(T2,T);
+	matrix44transpose(T2,T);
+	quatfrommatrix( quat, &T2[0][0] );
+	quatnormalize(quatNorm,quat);
+	quattoeuler(euler,quatNorm);
+	quattomatrix( T2, quatNorm );
+	printf("rot %f %f %f len %f\n", euler[0], euler[1], euler[2], quatmagnitude(quat));
+	PRINT(T,4,4);
+
+//	matrix44copy(temp,T2);
+	matrix44transpose(temp,T2);
+
+	memcpy(T2,temp,16*sizeof(float));
+	for (i=0; i<3; i++) {
+		for (j=0; j<3; j++) {
+			T[i][j] = T2[j][i];
+		}
+	}
+	PRINT(T2,4,4);
+
+
+/*
+    CrossProduct(T[0][2],T[1][2],T[2][2],  T[0][0],T[1][0],T[2][0],  T[0][1],T[1][1],T[2][1]);
+    CrossProduct(T[0][0],T[1][0],T[2][0],  T[0][1],T[1][1],T[2][1],  T[0][2],T[1][2],T[2][2]);
+    CrossProduct(T[0][1],T[1][1],T[2][1],  T[0][2],T[1][2],T[2][2],  T[0][0],T[1][0],T[2][0]);
+	float xlen = sqrt(T[0][0]*T[0][0] + T[1][0]*T[1][0] + T[2][0]*T[2][0]);
+	float ylen = sqrt(T[0][1]*T[0][1] + T[1][1]*T[1][1] + T[2][1]*T[2][1]);
+	float zlen = sqrt(T[0][2]*T[0][2] + T[1][0]*T[1][2] + T[2][2]*T[2][2]);
+	T[0][0]/=xlen; T[1][0]/=xlen; T[2][0]/=xlen;
+	T[0][1]/=ylen; T[1][1]/=ylen; T[2][1]/=ylen;
+	T[0][2]/=zlen; T[1][2]/=zlen; T[2][2]/=zlen;
+*/
+
+
+ //   PRINT_MAT(T,4,4);
     //-------------------
     // Plot the output points
     //-------------------
@@ -453,7 +518,7 @@ PRINT(ab,2,1);
         S_out[1][i] = atan2(Tz, Ty);   // vert
         //S_out[0][i] = Tx;
         //S_out[1][i] = Tz;
-        printf("point %i Txyz %f %f %f in %f %f out %f %f morph %f %f\n", i, Tx,Ty,Tz, S_in[0][i], S_in[1][i], S_out[0][i], S_out[1][i], S_morph[0][i], S_morph[1][i]);
+//        printf("point %i Txyz %f %f %f in %f %f out %f %f morph %f %f\n", i, Tx,Ty,Tz, S_in[0][i], S_in[1][i], S_out[0][i], S_out[1][i], S_morph[0][i], S_morph[1][i]);
     }
 
 }

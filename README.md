@@ -1,8 +1,10 @@
 # libsurvive
 
-**WARNING PROJECT IN EXPERIMENTAL PHASE**
+![Logo](https://cloud.githubusercontent.com/assets/2748168/24084003/9095c98a-0cb8-11e7-88a3-575f9f4c7bb4.png)
 
-Discord: https://discordapp.com/invite/7QbCAGS
+An Open-Source tool for working with lighthouse-based trakcing data, including support for the HTC Vive, which is still in the experimental phase.
+
+Most of the development is discussed on Discord.  Join the chat and discussion here: https://discordapp.com/invite/7QbCAGS
 
 ## Livestream collection
 | Note                                   | Youtube URL                                 | Run time |
@@ -40,7 +42,7 @@ I say "high-performance" really this project is based tightly off of OSVR-Vive-L
 2. Put it under an open-source instead of a force-source license.  (GPL to MIT/X11)
 3. Write it in C.
 4. Avoid extra layers where convenient.
-5. (long shot) Make the vive vivable for use with Intel Integrated Graphics systems. [It works with HD4000 using DisplayPort. See "Intel Integrated Graphics" section below.]
+5. (long shot) Make the vive viable for use with Intel Integrated Graphics systems. [It works with HD4000 using DisplayPort. See "Intel Integrated Graphics" section below.]
 
 Will ~~I~~ we succeed?  Probably not.
 
@@ -72,8 +74,12 @@ I may or may not read data from the Vive regarding configuration.  If I do, it w
 
 ## Intel Integrated Graphics
 
-The limiting factor for Vive viability on a given computer is the maximum available pixel clock frequency, and frequency limitations of the HDMI port, and HDMI and DisplayPort video cables. DisplayPort can support higher frequencies than HDMI, on Ivy Bridge HD4000 graphics. In fact, the vive works with HD4000 graphics using DisplayPort, with native EDID resolution (2160x1200@90Hz).
+The limiting factor for Vive viability on a given computer is the maximum available pixel clock frequency, and frequency limitations of the HDMI port, and HDMI and DisplayPort video cables. DisplayPort can support higher frequencies than HDMI, on Ivy Bridge HD4000 graphics. In fact, the Vive works with HD4000 graphics using DisplayPort, with native EDID resolution (2160x1200@90Hz).
 
 To support the Vive on HDMI, you either need a newer version of HDMI, or you need to define a custom resolution that respects pixel clock and video port limits, and is also accepted and displayed by the Vive. So far, we have not had success using custom resolutions on linux or on Windows. Windows imposes additional limitations in the form of restriction of WHQL certified drivers forbidden from using custom display resolutions (only allowing those defined by EDID in the monitor). Intel has released uncertified beta drivers for Haswell and newer processors, which should be able to support custom resolutions for the Vive (untested at this time).
 
-but HDMI will require non-certified drivers to allow custom resolutions (due to WHQL restrictions). Haswell (Iris) graphics and later can use the new intel beta drivers to allow custom resolutions.]
+
+
+## Addendum and notes
+
+Thanks to Mr. Fault for our logo!

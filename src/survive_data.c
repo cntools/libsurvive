@@ -255,23 +255,46 @@ void handle_lightcap2( SurviveObject * so, LightcapElement * le )
 
 }
 
+int32_t decode_acode(uint32_t length, int32_t main_divisor) {
+	//+50 adds a small offset and seems to help always get it right. 
+	//Check the +50 in the future to see how well this works on a variety of hardware.
+
+	int32_t acode = (length+main_divisor+50)/(main_divisor*2);
+	if( acode & 1 ) return -1;
+
+	return (acode>>1) - 6;
+}
 
 //This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
 void handle_lightcap( SurviveObject * so, LightcapElement * le )
 {
-	handle_lightcap2(so,le);
-	return;
-
 	SurviveContext * ctx = so->ctx;
+//	handle_lightcap2(so,le);
+//	return;
+
 	//int32_t deltat = (uint32_t)le->timestamp - (uint32_t)so->last_master_time;
-
-	//if( so->codename[0] != 'H' )
-
 
 	if( le->sensor_id > SENSORS_PER_OBJECT )
 	{
 		return;
 	}
+
+#if 0
+	if( so->codename[0] == 'H' )
+	{
+		static int lt;
+		static int last;
+		if( le->length > 1000 )
+		{
+			int dl = le->timestamp - lt;
+			lt = le->timestamp;
+			if( dl > 10000 || dl < -10000 )
+				printf( "+++%s %3d %5d %9d  ", so->codename, le->sensor_id, le->length, dl );
+			if( dl > 100000 ) printf(" \n" );
+		}
+		last=le->length;
+	}
+#endif
 
 	so->tsl = le->timestamp;
 	if( le->length < 20 ) return;  ///Assuming 20 is an okay value for here.
@@ -298,7 +321,7 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 	{
 		int is_new_pulse = delta > so->pulselength_min_sync /*1500*/ + last_sync_length;
 
-		//printf("m sync %d %d %d %d\n", le->sensor_id, so->last_sync_time[ssn], le->timestamp, delta);
+
 
 		so->did_handle_ootx = 0;
 
@@ -343,6 +366,14 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 				}
 			}
 		}
+
+		//Extra tidbit for storing length-of-sync-pulses.
+		{
+			int32_t main_divisor = so->timebase_hz / 384000; //125 @ 48 MHz.
+			int base_station = is_new_pulse;
+			//printf( "%s %d %d %d\n", so->codename, le->sensor_id, so->sync_set_number, le->length );
+			ctx->lightproc( so, le->sensor_id, -3 - so->sync_set_number, 0, le->timestamp, le->length );
+	}
 	}
 
 
@@ -366,17 +397,13 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 
 		int32_t acode_array[2] =
 			{
-				(so->last_sync_length[0]+main_divisor+50)/(main_divisor*2),  //+50 adds a small offset and seems to help always get it right. 
-				(so->last_sync_length[1]+main_divisor+50)/(main_divisor*2),	//Check the +50 in the future to see how well this works on a variety of hardware.
+				decode_acode(so->last_sync_length[0],main_divisor),
+				decode_acode(so->last_sync_length[1],main_divisor)
 			};
 
 		//XXX: TODO: Capture error count here.
-		if( acode_array[0] & 1 ) return;
-		if( acode_array[1] & 1 ) return;
-
-		acode_array[0] = (acode_array[0]>>1) - 6;
-		acode_array[1] = (acode_array[1]>>1) - 6;
-
+		if( acode_array[0] < 0 ) return;
+		if( acode_array[1] < 0 ) return;
 
 		int acode = acode_array[0];
 

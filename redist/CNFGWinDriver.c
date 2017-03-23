@@ -13,7 +13,6 @@ static HWND lsHWND;
 static HDC lsWindowHDC;
 static HDC lsHDC;
 
-
 #ifdef RASTERIZER
 #include "CNFGRasterizer.h"
 
@@ -32,12 +31,32 @@ static void InternalHandleResize();
 #endif
 
 
+#ifdef CNFGOGL
+#include <GL/gl.h>
+static HGLRC           hRC=NULL; 
+static void InternalHandleResize() { }
+void CNFGSwapBuffers()
+{
+	SwapBuffers(lsWindowHDC);
+}
+#endif
+
 void CNFGGetDimensions( short * x, short * y )
 {
+	static int lastx, lasty;
+	RECT window;
+	GetClientRect( lsHWND, &window );
+	bufferx = ( window.right - window.left);
+	buffery = ( window.bottom - window.top);
+	if( bufferx != lastx || buffery != lasty )
+	{
+		lastx = bufferx;
+		lasty = buffery;
+		InternalHandleResize();
+	}
 	*x = bufferx;
 	*y = buffery;
 }
-
 
 
 void CNFGUpdateScreenWithBitmap( unsigned long * data, int w, int h )
@@ -126,8 +145,48 @@ void CNFGSetup( const char * name_of_window, int width, int height )
 		hInstance,
 		NULL);               //no parameters to pass
 
-
 	lsWindowHDC = GetDC( lsHWND );
+
+#ifdef CNFGOGL
+	//From NeHe
+	static  PIXELFORMATDESCRIPTOR pfd =
+	{
+		sizeof(PIXELFORMATDESCRIPTOR),
+		1,
+		PFD_DRAW_TO_WINDOW |
+		PFD_SUPPORT_OPENGL |
+		PFD_DOUBLEBUFFER,
+		PFD_TYPE_RGBA,
+		32,
+		0, 0, 0, 0, 0, 0, 
+		0,
+		0,
+		0,
+		0, 0, 0, 0,
+		16,
+		0,
+		0,
+		PFD_MAIN_PLANE,
+		0,
+		0, 0, 0
+	};
+	GLuint      PixelFormat = ChoosePixelFormat( lsWindowHDC, &pfd );
+	if( !SetPixelFormat( lsWindowHDC, PixelFormat, &pfd ) )
+	{
+		MessageBox( 0, "Could not create PFD for OpenGL Context\n", 0, 0 );
+		exit( -1 );
+	}
+	if (!(hRC=wglCreateContext(lsWindowHDC)))                   // Are We Able To Get A Rendering Context?
+	{
+		MessageBox( 0, "Could not create OpenGL Context\n", 0, 0 );
+		exit( -1 );
+	}
+	if(!wglMakeCurrent(lsWindowHDC,hRC))                        // Try To Activate The Rendering Context
+	{
+		MessageBox( 0, "Could not current OpenGL Context\n", 0, 0 );
+		exit( -1 );
+	}
+#endif
 
 	lsHDC = CreateCompatibleDC( lsWindowHDC );
 	lsBitmap = CreateCompatibleBitmap( lsWindowHDC, bufferx, buffery );
@@ -182,6 +241,7 @@ void CNFGHandleInput()
 	}
 }
 
+#ifndef CNFGOGL
 
 #ifndef RASTERIZER
 
@@ -237,8 +297,7 @@ void CNFGClearFrame()
 	DeleteObject( lsClearBrush  );
 	lsClearBrush = CreateSolidBrush( CNFGBGColor );
 	SelectObject( lsHDC, lsClearBrush );
-
-	FillRect( lsHDC, &r, lsClearBrush );
+	FillRect( lsHDC, &r, lsClearBrush);
 }
 
 void CNFGTackPoly( RDPoint * points, int verts )
@@ -285,5 +344,7 @@ void CNFGSwapBuffers()
 }
 
 void CNFGInternalResize( short bufferx, short  buffery ) { }
+#endif
+
 #endif
 
