@@ -11,10 +11,13 @@
 #include <math.h>
 #include "dclapack.h"
 #include <linmath.h>
+#define RegisterDriver(a,b)
+#include "poser_daveortho.c"
 #define LH_ID    0
 #define NUM_HMD 32
+#define INDIR "full_test_triangle_on_floor/"
 
-#define MAX_POINTS 128
+#define MAX_POINTS SENSORS_PER_OBJECT
 //#define _ABS(a)  ( (a)<=0 ? -(a) : (a) )
 #define _SIGN(a) ( (a)<=0 ? -1.0f : 1.0f )
 #define RANDF  ( (float)rand() / (float)RAND_MAX )
@@ -31,7 +34,7 @@ float hmd_pos[NUM_HMD][3];
 void ReadHmdPoints()
 {
     int i;
-    FILE *fin = fopen("HMD_points.csv","r");
+    FILE *fin = fopen(INDIR "HMD_points.csv","r");
     if (fin==NULL) {
         printf("ERROR: could not open HMD_points.csv for reading\n");
         exit(1);
@@ -52,7 +55,7 @@ void ReadPtinfo()
     for (i=0; i<NUM_HMD; i++) { hmd_angle[i][0]=-9999.0; hmd_angle[i][1]=-9999.0; }
 
     // Read ptinfo.csv
-    FILE *fin = fopen("ptinfo.csv", "r");
+    FILE *fin = fopen(INDIR "ptinfo.csv", "r");
     if (fin==NULL) { printf("ERROR: could not open ptinfo.csv for reading\n"); exit(1); }
     while (!feof(fin))
     {
@@ -74,6 +77,350 @@ void ReadPtinfo()
     fclose(fin);
 }
 
+void AffineSolve(
+    float T[4][4],           // OUTPUT: transform
+    float O[MAX_POINTS][4],  // INPUT:  points, offsets
+    float N[MAX_POINTS][3],  // INPUT:  plane normals
+    float D[MAX_POINTS],     // INPUT:  plane offsets
+    int nPoints, int nIter,
+    float stepSizeRot, float stepSizePos, float falloff, int constrain)
+{
+    int i,j,k,iter;
+    //T[3][3] = 1.0f;
+    
+    printf("iter x y z error\n");
+    
+    float gradDot     = 1.0;
+    float prevGradDot = 1.0;
+    float de_dT[3][4];  // the gradient
+    float conj[3][4];   // the conjugate
+    float errorSq=0.0;
+    for (iter=0; iter<nIter; iter++)
+    {
+        //----------------------------------
+        // Calculate the gradient direction
+        //----------------------------------
+        errorSq = 0.0;
+        memset(de_dT, 0, 3*4*sizeof(float));
+        for (i=0; i<nPoints; i++)
+        {
+            // What is the plane deviation error
+            float Ei = -D[i];
+            for (j=0; j<3; j++) {
+                float Tj_oi = 0.0f;
+                for (k=0; k<4; k++) {
+                    Tj_oi += T[j][k] * O[i][k];
+                }
+                Ei += N[i][j] * Tj_oi;
+            }
+//            printf("E[%d] %f\n", i, Ei);
+        
+            // Figure out contribution to the error
+            for (j=0; j<3; j++) {
+                for (k=0; k<4; k++) {
+                    de_dT[j][k] += N[i][j] * O[i][k] * Ei;
+                }
+            }
+            
+            errorSq += Ei*Ei;
+        }
+
+//        printf("%d %f %f %f %f\n", iter, T[0][3], T[1][3], T[2][3], sqrt(errorSq));
+//exit(1);
+        // Constrain the gradient (such that dot products are zero)
+        if (constrain)
+        {
+            float T0T1 = 0.0, T1T2 = 0.0, T2T0 = 0.0;
+            for (k=0; k<3; k++) {
+                T0T1 += T[0][k] * T[1][k];
+                T1T2 += T[1][k] * T[2][k];
+                T2T0 += T[2][k] * T[0][k];
+            }
+//            printf("T0T1 %f T1T2 %f T2T0 %f\n", T0T1, T1T2, T2T0);
+            for (k=0; k<3; k++) {
+                de_dT[0][k] += ORTHOG_PENALTY * 2.0 * T0T1 * T[1][k];
+                de_dT[0][k] += ORTHOG_PENALTY * 2.0 * T2T0 * T[2][k];
+                de_dT[1][k] += ORTHOG_PENALTY * 2.0 * T1T2 * T[2][k];
+                de_dT[1][k] += ORTHOG_PENALTY * 2.0 * T0T1 * T[0][k];
+                de_dT[2][k] += ORTHOG_PENALTY * 2.0 * T1T2 * T[1][k];
+                de_dT[2][k] += ORTHOG_PENALTY * 2.0 * T2T0 * T[0][k];
+            }
+        }
+
+        // Calculate the gradient dot product
+        //  (used by conjugate gradient method)
+        prevGradDot = gradDot;
+        gradDot = 0.0;
+        for (j=0; j<3; j++) {
+            for (k=0; k<4; k++) {
+                gradDot += de_dT[j][k] * de_dT[j][k];
+            }
+        }
+
+//        printf("Iter %d error %f gradDot %f prevGradDot %f\n", iter, sqrt(errorSq), gradDot, prevGradDot);
+
+        //----------------------------------
+        // Calculate the conjugate direction
+        //----------------------------------
+//        if (iter==0) {
+            // First iteration, just use the gradient
+            for (j=0; j<3; j++) {
+                for (k=0; k<4; k++) {
+                    conj[j][k] = -de_dT[j][k];
+                }
+            }
+/*        } else {
+            // Calculate "beta" for Fletcher Reeves method
+            float beta = gradDot / prevGradDot;
+//printf("gradDot %f prevGradDot %f beta %f\n", gradDot, prevGradDot, beta);
+
+            // Update the conjugate
+            for (j=0; j<3; j++) {
+                for (k=0; k<4; k++) {
+                    conj[j][k] = beta*conj[j][k] - de_dT[j][k];
+                }
+            }            
+        }
+*/
+
+//        PRINT_MAT(de_dT,4,4);
+//        exit(1);
+
+        //----------------------------------
+        // How large is the gradient ?
+        //----------------------------------
+        
+        double gradSizeRot = 0.0;
+        double gradSizePos = 0.0;
+        for (j=0; j<3; j++) {
+            for (k=0; k<3; k++) {
+                gradSizeRot += _ABS(conj[j][k]);
+            }
+            gradSizePos += _ABS(conj[j][k]);
+        }
+        if (gradSizeRot <= TOO_SMALL && gradSizePos <= TOO_SMALL) { break; }  // Quit, we've totally converged
+        
+        //----------------------------------
+        // Descend in the gradient direction
+        //----------------------------------
+        if (gradSizeRot > TOO_SMALL) {
+            float scaleRot = stepSizeRot / gradSizeRot;
+            for (j=0; j<3; j++) {
+                for (k=0; k<3; k++) {
+                    T[j][k] += scaleRot * conj[j][k];
+                }
+            }
+            stepSizeRot *= falloff;
+        }
+        
+        if (gradSizePos > TOO_SMALL) {
+            float scalePos = stepSizePos / gradSizePos;
+            for (j=0; j<3; j++) {
+                T[j][3] += scalePos * conj[j][3];
+            }
+            stepSizePos *= falloff;
+        }
+        
+        // Constrain the gradient (such that scaling is one)
+        if (constrain)
+        {
+            // Measure the scales
+            float len[3] = {0.0, 0.0, 0.0};
+            for (j=0; j<3; j++) {
+                double lenSq = 0.0;
+                for (k=0; k<3; k++) { lenSq += (double)T[j][k] * (double)T[j][k]; }
+                len[j] = sqrt(lenSq);
+            }
+            
+            // How far off is the scale?
+            float xzLen = 0.5 * (len[0] + len[2]);
+            if (xzLen > TOO_SMALL) {
+                float inv_xzLen = 1.0 / xzLen;
+                for (j=0; j<3; j++) {
+                    T[3][j] *= inv_xzLen;
+                }
+            }
+            
+            // Rescale the thing
+            for (j=0; j<3; j++)
+            {
+                if (len[j] > TOO_SMALL) {
+                    float inv_len = 1.0 / len[j];
+                    for (k=0; k<3; k++) { T[j][k] *= inv_len; }
+                }
+            }
+        }
+    }
+    float dist = sqrt(T[0][3]*T[0][3] + T[1][3]*T[1][3] + T[2][3]*T[2][3]);
+    printf("AffineSolve: pos: %f %f %f dist: %f\n", T[0][3], T[1][3], T[2][3], dist);
+}
+
+int main()
+{
+    int i,j,k,sen,axis;
+        
+    // Read the data files
+    ReadHmdPoints();
+    ReadPtinfo();
+
+    //-------------------------
+    // Package the lighthouse data for "AffineSolve"
+    //-------------------------
+
+    // Data for the "iterative" affine solve formula
+    float Tcalc[4][4];
+    float O[MAX_POINTS][4];
+    float N[MAX_POINTS][3];
+    float D[MAX_POINTS];
+    int nPlanes = 0;
+
+    for (sen=0; sen<NUM_HMD; sen++)
+    {
+        for (axis=0; axis<2; axis++)
+        {
+            if (hmd_angle[sen][axis] != -9999.0)
+            {
+                // Set the offset
+                O[nPlanes][0] = hmd_pos[sen][0];
+                O[nPlanes][1] = hmd_pos[sen][1];
+                O[nPlanes][2] = hmd_pos[sen][2];
+                O[nPlanes][3] = 1.0;
+        
+                // Calculate the plane equation
+                if (axis == 0) {   // Horizontal
+                    N[nPlanes][0] = -cos(hmd_angle[sen][axis]);
+                    N[nPlanes][1] = -sin(hmd_angle[sen][axis]);
+                    N[nPlanes][2] = 0.0;
+                    D[nPlanes]    = 0.0;
+                } else {           // Vertical
+                    N[nPlanes][0] = 0.0;
+                    N[nPlanes][1] = -sin(hmd_angle[sen][axis]);
+                    N[nPlanes][2] =  cos(hmd_angle[sen][axis]);
+                    D[nPlanes]    = 0.0;
+                }
+
+                printf("plane %d O %.3f %.3f %.3f %.3f  N %.3f %.3f %.3f  D %.3f\n",
+                    nPlanes,
+                    O[nPlanes][0], O[nPlanes][1], O[nPlanes][2], O[nPlanes][3], 
+                    N[nPlanes][0], N[nPlanes][1], N[nPlanes][2], 
+                    D[nPlanes]);
+                nPlanes++;
+            }
+        }
+    }
+
+    
+    printf("nPlanes %d\n", nPlanes);
+        
+    //}
+    
+    PRINT_MAT(Tcalc,4,4);
+
+    
+    //--------------------------------------------------
+    // Package the data for "OrthoSolve"
+    //--------------------------------------------------
+
+    // Data for the "fake" ortho solve formula
+    float Tortho[4][4];         // OUTPUT: 4x4 transformation matrix
+    FLOAT S_out[2][MAX_POINTS];  // INPUT:  array of screenspace points
+    FLOAT S_in[2][MAX_POINTS];  // INPUT:  array of screenspace points
+    FLOAT X_in[3][MAX_POINTS];  // INPUT:  array of offsets
+    int nPoints=0;  
+
+    // Transform into the "OrthoSolve" format
+    for (sen=0; sen<NUM_HMD; sen++)
+    {
+        if (hmd_angle[sen][0] != -9999.0 && hmd_angle[sen][1] != -9999.0)
+        {
+            S_in[0][nPoints] = hmd_angle[sen][0];
+            S_in[1][nPoints] = hmd_angle[sen][1];
+            X_in[0][nPoints] = hmd_pos[sen][0];
+            X_in[1][nPoints] = hmd_pos[sen][1];
+            X_in[2][nPoints] = hmd_pos[sen][2];
+            nPoints++;
+        }
+    }
+    printf("OrthoSolve nPoints %d\n", nPoints);
+    
+    //--------------------------------------------------
+    // Run the "OrthoSolve" and then the "AffineSolve"
+    //--------------------------------------------------    
+    
+    int loop;
+    for (loop=0; loop<1; loop++)
+    {
+        // Run OrthoSolve
+        OrthoSolve(
+            Tortho,     // OUTPUT: 4x4 transformation matrix
+            S_out,      // OUTPUT: array of output screenspace points
+            S_in,       // INPUT:  array of screenspace points
+            X_in,       // INPUT:  array of offsets
+            nPoints);
+			printf( "POS: %f %f %f\n", Tortho[0][3], Tortho[1][3], Tortho[2][3]);
+
+		// Come up with rotation and transposed version of Tortho
+		FLT TorthoTr[4][4], Rortho[4][4], RorthoTr[4][4];
+		TRANSP(Tortho,TorthoTr,4,4);
+		memcpy(Rortho,Tortho,4*4*sizeof(FLT));
+		Rortho[3][0]=0.0;  Rortho[3][1]=0.0;  Rortho[3][2]=0.0;
+		TRANSP(Rortho,RorthoTr,4,4);
+		PRINT(Tortho,4,4);
+		PRINT(Rortho,4,4);
+
+		// Print out some quaternions
+		FLT Tquat[4], TquatTr[4], Rquat[4], RquatTr[4];
+		quatfrommatrix(Tquat,   &Tortho[0][0] );
+		quatfrommatrix(TquatTr, &TorthoTr[0][0] );
+		quatfrommatrix(Rquat,   &Rortho[0][0] );
+		quatfrommatrix(RquatTr, &RorthoTr[0][0] );
+		printf( "Tquat  : %f %f %f %f = %f\n", Tquat  [0], Tquat  [1], Tquat  [2], Tquat  [3], quatmagnitude(Tquat));
+		printf( "TquatTr: %f %f %f %f = %f\n", TquatTr[0], TquatTr[1], TquatTr[2], TquatTr[3], quatmagnitude(TquatTr));
+		printf( "Rquat  : %f %f %f %f = %f\n", Rquat  [0], Rquat  [1], Rquat  [2], Rquat  [3], quatmagnitude(Rquat));
+		printf( "RquatTr: %f %f %f %f = %f\n", RquatTr[0], RquatTr[1], RquatTr[2], RquatTr[3], quatmagnitude(RquatTr));
+
+		// Flip y and z axies
+		FLT T2[4][4] = {
+			{ Tortho[0][0], -Tortho[0][2], -Tortho[0][1], 0.0 },
+			{ Tortho[1][0], -Tortho[1][2], -Tortho[1][1], 0.0 },
+			{ Tortho[2][0], -Tortho[2][2], -Tortho[2][1], 0.0 },
+			{          0.0,           0.0,           0.0, 1.0 } };
+PRINT(T2,4,4);
+
+		// Print out the quaternions
+		FLT T2quat[4];
+		quatfrommatrix(T2quat,   &T2[0][0] );
+		printf( "T2quat : %f %f %f %f = %f\n", T2quat [0], T2quat [1], T2quat [2], T2quat [3], quatmagnitude(T2quat));
+    }
+
+    // Run the calculation for Tcalc
+    //int run;
+    //for (run=0; run<100; run++) {
+/*
+    // Initialize Tcalc to the identity matrix
+    memcpy(Tcalc, Tortho, 4*4*sizeof(float));
+    //memset(Tcalc, 0, 4*4*sizeof(float));
+    //for (i=0; i<4; i++) { Tcalc[i][i] = 1.0f; }
+
+    // Solve it!
+    AffineSolve(
+        Tcalc,           // OUTPUT: transform
+        O,  // INPUT:  points, offsets
+        N,  // INPUT:  plane normals
+        D,     // INPUT:  plane offsets
+        nPlanes, NITER,
+        STEP_SIZE_ROT, STEP_SIZE_POS, FALLOFF,
+        1);
+*/
+    // insert code here...
+    return 0;
+}
+
+
+
+
+
+#if 0
 #define PRINT_MAT(A,M,N) { \
     int m,n; \
     printf(#A "\n"); \
@@ -433,308 +780,4 @@ PRINT(ab,2,1);
 //    printf("xbar %f %f %f\n", xbar[0], xbar[1], xbar[2]);
 //    printf("trans %f %f %f dist: %f\n", trans[0], trans[1], trans[2], transdist);
 }
-
-void AffineSolve(
-    float T[4][4],           // OUTPUT: transform
-    float O[MAX_POINTS][4],  // INPUT:  points, offsets
-    float N[MAX_POINTS][3],  // INPUT:  plane normals
-    float D[MAX_POINTS],     // INPUT:  plane offsets
-    int nPoints, int nIter,
-    float stepSizeRot, float stepSizePos, float falloff, int constrain)
-{
-    int i,j,k,iter;
-    //T[3][3] = 1.0f;
-    
-    printf("iter x y z error\n");
-    
-    float gradDot     = 1.0;
-    float prevGradDot = 1.0;
-    float de_dT[3][4];  // the gradient
-    float conj[3][4];   // the conjugate
-    float errorSq=0.0;
-    for (iter=0; iter<nIter; iter++)
-    {
-        //----------------------------------
-        // Calculate the gradient direction
-        //----------------------------------
-        errorSq = 0.0;
-        memset(de_dT, 0, 3*4*sizeof(float));
-        for (i=0; i<nPoints; i++)
-        {
-            // What is the plane deviation error
-            float Ei = -D[i];
-            for (j=0; j<3; j++) {
-                float Tj_oi = 0.0f;
-                for (k=0; k<4; k++) {
-                    Tj_oi += T[j][k] * O[i][k];
-                }
-                Ei += N[i][j] * Tj_oi;
-            }
-//            printf("E[%d] %f\n", i, Ei);
-        
-            // Figure out contribution to the error
-            for (j=0; j<3; j++) {
-                for (k=0; k<4; k++) {
-                    de_dT[j][k] += N[i][j] * O[i][k] * Ei;
-                }
-            }
-            
-            errorSq += Ei*Ei;
-        }
-
-//        printf("%d %f %f %f %f\n", iter, T[0][3], T[1][3], T[2][3], sqrt(errorSq));
-//exit(1);
-        // Constrain the gradient (such that dot products are zero)
-        if (constrain)
-        {
-            float T0T1 = 0.0, T1T2 = 0.0, T2T0 = 0.0;
-            for (k=0; k<3; k++) {
-                T0T1 += T[0][k] * T[1][k];
-                T1T2 += T[1][k] * T[2][k];
-                T2T0 += T[2][k] * T[0][k];
-            }
-//            printf("T0T1 %f T1T2 %f T2T0 %f\n", T0T1, T1T2, T2T0);
-            for (k=0; k<3; k++) {
-                de_dT[0][k] += ORTHOG_PENALTY * 2.0 * T0T1 * T[1][k];
-                de_dT[0][k] += ORTHOG_PENALTY * 2.0 * T2T0 * T[2][k];
-                de_dT[1][k] += ORTHOG_PENALTY * 2.0 * T1T2 * T[2][k];
-                de_dT[1][k] += ORTHOG_PENALTY * 2.0 * T0T1 * T[0][k];
-                de_dT[2][k] += ORTHOG_PENALTY * 2.0 * T1T2 * T[1][k];
-                de_dT[2][k] += ORTHOG_PENALTY * 2.0 * T2T0 * T[0][k];
-            }
-        }
-
-        // Calculate the gradient dot product
-        //  (used by conjugate gradient method)
-        prevGradDot = gradDot;
-        gradDot = 0.0;
-        for (j=0; j<3; j++) {
-            for (k=0; k<4; k++) {
-                gradDot += de_dT[j][k] * de_dT[j][k];
-            }
-        }
-
-//        printf("Iter %d error %f gradDot %f prevGradDot %f\n", iter, sqrt(errorSq), gradDot, prevGradDot);
-
-        //----------------------------------
-        // Calculate the conjugate direction
-        //----------------------------------
-//        if (iter==0) {
-            // First iteration, just use the gradient
-            for (j=0; j<3; j++) {
-                for (k=0; k<4; k++) {
-                    conj[j][k] = -de_dT[j][k];
-                }
-            }
-/*        } else {
-            // Calculate "beta" for Fletcher Reeves method
-            float beta = gradDot / prevGradDot;
-//printf("gradDot %f prevGradDot %f beta %f\n", gradDot, prevGradDot, beta);
-
-            // Update the conjugate
-            for (j=0; j<3; j++) {
-                for (k=0; k<4; k++) {
-                    conj[j][k] = beta*conj[j][k] - de_dT[j][k];
-                }
-            }            
-        }
-*/
-
-//        PRINT_MAT(de_dT,4,4);
-//        exit(1);
-
-        //----------------------------------
-        // How large is the gradient ?
-        //----------------------------------
-        
-        double gradSizeRot = 0.0;
-        double gradSizePos = 0.0;
-        for (j=0; j<3; j++) {
-            for (k=0; k<3; k++) {
-                gradSizeRot += _ABS(conj[j][k]);
-            }
-            gradSizePos += _ABS(conj[j][k]);
-        }
-        if (gradSizeRot <= TOO_SMALL && gradSizePos <= TOO_SMALL) { break; }  // Quit, we've totally converged
-        
-        //----------------------------------
-        // Descend in the gradient direction
-        //----------------------------------
-        if (gradSizeRot > TOO_SMALL) {
-            float scaleRot = stepSizeRot / gradSizeRot;
-            for (j=0; j<3; j++) {
-                for (k=0; k<3; k++) {
-                    T[j][k] += scaleRot * conj[j][k];
-                }
-            }
-            stepSizeRot *= falloff;
-        }
-        
-        if (gradSizePos > TOO_SMALL) {
-            float scalePos = stepSizePos / gradSizePos;
-            for (j=0; j<3; j++) {
-                T[j][3] += scalePos * conj[j][3];
-            }
-            stepSizePos *= falloff;
-        }
-        
-        // Constrain the gradient (such that scaling is one)
-        if (constrain)
-        {
-            // Measure the scales
-            float len[3] = {0.0, 0.0, 0.0};
-            for (j=0; j<3; j++) {
-                double lenSq = 0.0;
-                for (k=0; k<3; k++) { lenSq += (double)T[j][k] * (double)T[j][k]; }
-                len[j] = sqrt(lenSq);
-            }
-            
-            // How far off is the scale?
-            float xzLen = 0.5 * (len[0] + len[2]);
-            if (xzLen > TOO_SMALL) {
-                float inv_xzLen = 1.0 / xzLen;
-                for (j=0; j<3; j++) {
-                    T[3][j] *= inv_xzLen;
-                }
-            }
-            
-            // Rescale the thing
-            for (j=0; j<3; j++)
-            {
-                if (len[j] > TOO_SMALL) {
-                    float inv_len = 1.0 / len[j];
-                    for (k=0; k<3; k++) { T[j][k] *= inv_len; }
-                }
-            }
-        }
-    }
-    float dist = sqrt(T[0][3]*T[0][3] + T[1][3]*T[1][3] + T[2][3]*T[2][3]);
-    printf("AffineSolve: pos: %f %f %f dist: %f\n", T[0][3], T[1][3], T[2][3], dist);
-}
-
-int main()
-{
-    int i,j,k,sen,axis;
-        
-    // Read the data files
-    ReadHmdPoints();
-    ReadPtinfo();
-
-    //-------------------------
-    // Package the lighthouse data for "AffineSolve"
-    //-------------------------
-
-    // Data for the "iterative" affine solve formula
-    float Tcalc[4][4];
-    float O[MAX_POINTS][4];
-    float N[MAX_POINTS][3];
-    float D[MAX_POINTS];
-    int nPlanes = 0;
-
-    for (sen=0; sen<NUM_HMD; sen++)
-    {
-        for (axis=0; axis<2; axis++)
-        {
-            if (hmd_angle[sen][axis] != -9999.0)
-            {
-                // Set the offset
-                O[nPlanes][0] = hmd_pos[sen][0];
-                O[nPlanes][1] = hmd_pos[sen][1];
-                O[nPlanes][2] = hmd_pos[sen][2];
-                O[nPlanes][3] = 1.0;
-        
-                // Calculate the plane equation
-                if (axis == 0) {   // Horizontal
-                    N[nPlanes][0] = -cos(hmd_angle[sen][axis]);
-                    N[nPlanes][1] = -sin(hmd_angle[sen][axis]);
-                    N[nPlanes][2] = 0.0;
-                    D[nPlanes]    = 0.0;
-                } else {           // Vertical
-                    N[nPlanes][0] = 0.0;
-                    N[nPlanes][1] = -sin(hmd_angle[sen][axis]);
-                    N[nPlanes][2] =  cos(hmd_angle[sen][axis]);
-                    D[nPlanes]    = 0.0;
-                }
-
-                printf("plane %d O %.3f %.3f %.3f %.3f  N %.3f %.3f %.3f  D %.3f\n",
-                    nPlanes,
-                    O[nPlanes][0], O[nPlanes][1], O[nPlanes][2], O[nPlanes][3], 
-                    N[nPlanes][0], N[nPlanes][1], N[nPlanes][2], 
-                    D[nPlanes]);
-                nPlanes++;
-            }
-        }
-    }
-
-    
-    printf("nPlanes %d\n", nPlanes);
-        
-    //}
-    
-    PRINT_MAT(Tcalc,4,4);
-
-    
-    //--------------------------------------------------
-    // Package the data for "OrthoSolve"
-    //--------------------------------------------------
-
-    // Data for the "fake" ortho solve formula
-    float Tortho[4][4];         // OUTPUT: 4x4 transformation matrix
-    FLOAT S_out[2][MAX_POINTS];  // INPUT:  array of screenspace points
-    FLOAT S_in[2][MAX_POINTS];  // INPUT:  array of screenspace points
-    FLOAT X_in[3][MAX_POINTS];  // INPUT:  array of offsets
-    int nPoints=0;  
-
-    // Transform into the "OrthoSolve" format
-    for (sen=0; sen<NUM_HMD; sen++)
-    {
-        if (hmd_angle[sen][0] != -9999.0 && hmd_angle[sen][1] != -9999.0)
-        {
-            S_in[0][nPoints] = hmd_angle[sen][0];
-            S_in[1][nPoints] = hmd_angle[sen][1];
-            X_in[0][nPoints] = hmd_pos[sen][0];
-            X_in[1][nPoints] = hmd_pos[sen][1];
-            X_in[2][nPoints] = hmd_pos[sen][2];
-            nPoints++;
-        }
-    }
-    printf("OrthoSolve nPoints %d\n", nPoints);
-    
-    //--------------------------------------------------
-    // Run the "OrthoSolve" and then the "AffineSolve"
-    //--------------------------------------------------    
-    
-    int loop;
-    for (loop=0; loop<1; loop++)
-    {
-        // Run OrthoSolve
-        OrthoSolve(
-            Tortho,     // OUTPUT: 4x4 transformation matrix
-            S_out,      // OUTPUT: array of output screenspace points
-            S_in,       // INPUT:  array of screenspace points
-            X_in,       // INPUT:  array of offsets
-            nPoints);
-    }
-
-    // Run the calculation for Tcalc
-    //int run;
-    //for (run=0; run<100; run++) {
-/*
-    // Initialize Tcalc to the identity matrix
-    memcpy(Tcalc, Tortho, 4*4*sizeof(float));
-    //memset(Tcalc, 0, 4*4*sizeof(float));
-    //for (i=0; i<4; i++) { Tcalc[i][i] = 1.0f; }
-
-    // Solve it!
-    AffineSolve(
-        Tcalc,           // OUTPUT: transform
-        O,  // INPUT:  points, offsets
-        N,  // INPUT:  plane normals
-        D,     // INPUT:  plane offsets
-        nPlanes, NITER,
-        STEP_SIZE_ROT, STEP_SIZE_POS, FALLOFF,
-        1);
-*/
-    // insert code here...
-    return 0;
-}
+#endif
