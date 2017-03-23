@@ -208,13 +208,14 @@ void handle_lightcap2_sweep(SurviveObject * so, LightcapElement * le )
 	// assume that the longest (i.e. strongest signal) is most likely 
 	// the non-reflected signal. 
 
-	if (le->length < 80)
-	{
-		// this is a low-quality read.  Better to throw it out than to use it.
-		//fprintf(stderr, "%2d %d\n", le->sensor_id, le->length);
-		return;
-	}
-	fprintf(stderr, "%2d %d\n", le->sensor_id, le->length);
+	//if (le->length < 80)
+	//{
+	//	// this is a low-quality read.  Better to throw it out than to use it.
+	//	//fprintf(stderr, "%2d %d\n", le->sensor_id, le->length);
+	//	return;
+	//}
+	//fprintf(stderr, "%2d %d\n", le->sensor_id, le->length);
+	//fprintf(stderr, ".");
 
 	if (lcd->sweep.sweep_len[le->sensor_id] < le->length)
 	{
@@ -269,8 +270,8 @@ int32_t decode_acode(uint32_t length, int32_t main_divisor) {
 void handle_lightcap( SurviveObject * so, LightcapElement * le )
 {
 	SurviveContext * ctx = so->ctx;
-//	handle_lightcap2(so,le);
-//	return;
+	handle_lightcap2(so,le);
+	return;
 
 	//int32_t deltat = (uint32_t)le->timestamp - (uint32_t)so->last_master_time;
 
@@ -373,7 +374,7 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 			int base_station = is_new_pulse;
 			//printf( "%s %d %d %d\n", so->codename, le->sensor_id, so->sync_set_number, le->length );
 			ctx->lightproc( so, le->sensor_id, -3 - so->sync_set_number, 0, le->timestamp, le->length, base_station);
-	}
+		}
 	}
 
 

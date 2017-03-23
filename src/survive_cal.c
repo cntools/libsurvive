@@ -155,7 +155,7 @@ void survive_cal_install( struct SurviveContext * ctx )
 	{
 		if (requiredTrackersFound != ((strlen(RequiredTrackersForCal) + 1) / 4))
 		{
-			SV_ERROR( "Error: cannot find all devices needed for calibration." );
+			SV_ERROR( "Error: Did not find all devices required for calibration." );
 			free( cd );
 			return;
 		}
@@ -201,7 +201,7 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 		if( sensor_id < 0 )
 		{
 			int lhid = -sensor_id-1;
-			// Take the OOTX data from the first device. 
+			// Take the OOTX data from the first device.  (if using HMD, WM0, WM1 only, this will be HMD)
 			if( lhid < NUM_LIGHTHOUSES && so == cd->poseobjects[0]  ) 
 			{
 				uint8_t dbit = (acode & 2)>>1;

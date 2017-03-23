@@ -340,7 +340,7 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 			if (cur_dev->vendor_id == vendor_id &&
 				cur_dev->product_id == product_id)
 			{
-				if( menum == enumid )
+				if( cur_dev->interface_number == enumid )
 				{
 					path_to_open = cur_dev->path;
 					break;
@@ -521,12 +521,21 @@ int survive_vive_send_magic(SurviveContext * ctx, void * drv, int magic_code, vo
 
 		if (sv->udev[USB_DEV_W_WATCHMAN1])
 		{
+			//static uint8_t vive_magic_power_on[64] = {  0x04, 0x78, 0x29, 0x38 };
+			static uint8_t vive_magic_power_on[5] = { 0x04 };
+			//static uint8_t vive_magic_power_on[5] = { 0x04, 0x00, 0xc3, 0xe2, 0x04 };
+			r = update_feature_report( sv->udev[USB_DEV_W_WATCHMAN1], 0, vive_magic_power_on, sizeof( vive_magic_power_on ) );
+			if( r != sizeof( vive_magic_power_on ) ) return 5;
+		}
+		if (sv->udev[USB_DEV_W_WATCHMAN1_LIGHTCAP])
+		{
+			//static uint8_t vive_magic_enable_lighthouse[64] = {  0x04, 0x78, 0x29, 0x38 };
 			static uint8_t vive_magic_enable_lighthouse[5] = { 0x04 };
-			r = update_feature_report( sv->udev[USB_DEV_W_WATCHMAN1], 0, vive_magic_enable_lighthouse, sizeof( vive_magic_enable_lighthouse ) );
+			r = update_feature_report( sv->udev[USB_DEV_W_WATCHMAN1_LIGHTCAP], 0, vive_magic_enable_lighthouse, sizeof( vive_magic_enable_lighthouse ) );
 			if( r != sizeof( vive_magic_enable_lighthouse ) ) return 5;
 
 			static uint8_t vive_magic_enable_lighthouse2[5] = { 0x07, 0x02 };  //Switch to 0x25 mode (able to get more light updates)
-			r = update_feature_report( sv->udev[USB_DEV_W_WATCHMAN1], 0, vive_magic_enable_lighthouse2, sizeof( vive_magic_enable_lighthouse2 ) );
+			r = update_feature_report( sv->udev[USB_DEV_W_WATCHMAN1_LIGHTCAP], 0, vive_magic_enable_lighthouse2, sizeof( vive_magic_enable_lighthouse2 ) );
 			if( r != sizeof( vive_magic_enable_lighthouse2 ) ) return 5;
 		}
 
@@ -534,7 +543,8 @@ int survive_vive_send_magic(SurviveContext * ctx, void * drv, int magic_code, vo
 		for( int i = 0; i < 256; i++ )
 		{
 			static uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0xff, 0, 0, 0, 0, 0, 0, 0 };
-			r = update_feature_report( sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof( vive_controller_haptic_pulse ) );
+			//r = update_feature_report( sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof( vive_controller_haptic_pulse ) );
+			r = update_feature_report( sv->udev[USB_DEV_W_WATCHMAN1_LIGHTCAP], 0, vive_controller_haptic_pulse, sizeof( vive_controller_haptic_pulse ) );
 			SV_INFO( "UCR: %d", r );
 			if( r != sizeof( vive_controller_haptic_pulse ) ) return 5;
 			OGUSleep( 1000 );
