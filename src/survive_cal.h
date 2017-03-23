@@ -29,7 +29,7 @@ int survive_cal_get_status( SurviveContext * ctx, char * description, int descri
 //void survive_cal_teardown( struct SurviveContext * ctx );
 
 //Called from survive_default_light_process
-void survive_cal_light( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  );
+void survive_cal_light( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length, uint32_t lighthouse);
 void survive_cal_angle( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle );
 
 #define MAX_SENSORS_TO_CAL 96

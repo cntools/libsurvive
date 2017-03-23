@@ -190,7 +190,7 @@ void survive_cal_install( struct SurviveContext * ctx )
 }
 
 
-void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length, int lh)
+void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length, uint32_t lh)
 {
 	struct SurviveContext * ctx = so->ctx;
 	struct SurviveCalData * cd = ctx->calptr;

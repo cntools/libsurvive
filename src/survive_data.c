@@ -12,11 +12,6 @@ typedef struct
 } lightcaps_sweep_data;
 typedef struct
 {
-	lightcaps_sweep_data sweep;
-} lightcap2_data;
-
-typedef struct
-{
 	int recent_sync_time;
 	int activeLighthouse;
 	int activeSweepStartTime;
@@ -28,7 +23,14 @@ typedef struct
 
 } lightcap2_global_data;
 
-static lightcap2_global_data lcgd = { 0 };
+typedef struct
+{
+	lightcaps_sweep_data sweep;
+	lightcap2_global_data global;
+} lightcap2_data;
+
+
+//static lightcap2_global_data lcgd = { 0 };
 
 int handle_lightcap2_getAcodeFromSyncPulse(int pulseLen)
 {
@@ -65,13 +67,13 @@ void handle_lightcap2_process_sweep_data(SurviveObject *so)
 		{
 			if (lcd->sweep.sweep_len[i] != 0) // if the sensor was hit, process it
 			{
-				int offset_from = lcd->sweep.sweep_time[i] - lcgd.activeSweepStartTime + lcd->sweep.sweep_len[i] / 2;
+				int offset_from = lcd->sweep.sweep_time[i] - lcd->global.activeSweepStartTime + lcd->sweep.sweep_len[i] / 2;
 
 				if (offset_from < 380000 && offset_from > 70000)
 				{
-					if (longest_pulse *10 / 8 < -lcd->sweep.sweep_len[i]) 
+					if (longest_pulse *10 / 8 < lcd->sweep.sweep_len[i]) 
 					{
-						so->ctx->lightproc(so, i, lcgd.activeAcode, offset_from, lcd->sweep.sweep_time[i], lcd->sweep.sweep_len[i], lcgd.activeLighthouse);
+						so->ctx->lightproc(so, i, lcd->global.activeAcode, offset_from, lcd->sweep.sweep_time[i], lcd->sweep.sweep_len[i], lcd->global.activeLighthouse);
 					}
 				}
 			}
@@ -94,54 +96,54 @@ void handle_lightcap2_sync(SurviveObject * so, LightcapElement * le )
 	// Process any sweep data we have
 	handle_lightcap2_process_sweep_data(so);
 
-	int time_since_last_sync = (le->timestamp - lcgd.recent_sync_time);
+	int time_since_last_sync = (le->timestamp - lcd->global.recent_sync_time);
 
 	//fprintf(stderr, "            %2d %8d %d\n", le->sensor_id, time_since_last_sync, le->length);
 	// need to store up sync pulses, so we can take the earliest starting time for all sensors.
 	if (time_since_last_sync < 2400)
 	{
-		lcgd.recent_sync_time = le->timestamp;
+		lcd->global.recent_sync_time = le->timestamp;
 		// it's the same sync pulse;
 		so->sync_set_number = 1;
 		so->recent_sync_time = le->timestamp;
 
-		lcgd.lh_pulse_len[lcgd.current_lh] = le->length;
-		lcgd.lh_start_time[lcgd.current_lh] = le->timestamp;
+		lcd->global.lh_pulse_len[lcd->global.current_lh] = le->length;
+		lcd->global.lh_start_time[lcd->global.current_lh] = le->timestamp;
 
 		int acode = handle_lightcap2_getAcodeFromSyncPulse(le->length);
 		if (!(acode >> 2 & 1)) // if the skip bit is not set
 		{
-			lcgd.activeLighthouse = lcgd.current_lh;
-			lcgd.activeSweepStartTime = le->timestamp;
-			lcgd.activeAcode = acode;
+			lcd->global.activeLighthouse = lcd->global.current_lh;
+			lcd->global.activeSweepStartTime = le->timestamp;
+			lcd->global.activeAcode = acode;
 		}
 		else
 		{
-			lcgd.activeLighthouse = -1;
-			lcgd.activeSweepStartTime = 0;
-			lcgd.activeAcode = 0;
+			lcd->global.activeLighthouse = -1;
+			lcd->global.activeSweepStartTime = 0;
+			lcd->global.activeAcode = 0;
 		}
 	}
 	else if (time_since_last_sync < 24000)
 	{
-		lcgd.recent_sync_time = le->timestamp;
+		lcd->global.recent_sync_time = le->timestamp;
 		// I do believe we are lighthouse B		
-		lcgd.current_lh = 1;
-		lcgd.lh_pulse_len[lcgd.current_lh] = le->length;
-		lcgd.lh_start_time[lcgd.current_lh] = le->timestamp;
+		lcd->global.current_lh = 1;
+		lcd->global.lh_pulse_len[lcd->global.current_lh] = le->length;
+		lcd->global.lh_start_time[lcd->global.current_lh] = le->timestamp;
 
 		int acode = handle_lightcap2_getAcodeFromSyncPulse(le->length);
 
 		if (!(acode >> 2 & 1)) // if the skip bit is not set
 		{
-			if (lcgd.activeLighthouse != -1)
+			if (lcd->global.activeLighthouse != -1)
 			{
 				// hmm, it appears we got two non-skip pulses at the same time.  That should never happen
 				fprintf(stderr, "WARNING: Two non-skip pulses received on the same cycle!\n");
 			}
-			lcgd.activeLighthouse = 1;
-			lcgd.activeSweepStartTime = le->timestamp;
-			lcgd.activeAcode = acode;
+			lcd->global.activeLighthouse = 1;
+			lcd->global.activeSweepStartTime = le->timestamp;
+			lcd->global.activeAcode = acode;
 		}
 
 	}
@@ -151,49 +153,49 @@ void handle_lightcap2_sync(SurviveObject * so, LightcapElement * le )
 
 		// first, send out the sync pulse data for the last round (for OOTX decoding
 		{
-			if (lcgd.lh_pulse_len[0] != 0)
+			if (lcd->global.lh_pulse_len[0] != 0)
 			{
 				so->ctx->lightproc(
 					so,
 					-1,
-					handle_lightcap2_getAcodeFromSyncPulse(lcgd.lh_pulse_len[0]),
-					lcgd.lh_pulse_len[0],
-					lcgd.lh_start_time[0],
+					handle_lightcap2_getAcodeFromSyncPulse(lcd->global.lh_pulse_len[0]),
+					lcd->global.lh_pulse_len[0],
+					lcd->global.lh_start_time[0],
 					0,
 					0);
 			}
-			if (lcgd.lh_pulse_len[1] != 0)
+			if (lcd->global.lh_pulse_len[1] != 0)
 			{
 				so->ctx->lightproc(
 					so,
 					-2,
-					handle_lightcap2_getAcodeFromSyncPulse(lcgd.lh_pulse_len[1]),
-					lcgd.lh_pulse_len[1],
-					lcgd.lh_start_time[1],
+					handle_lightcap2_getAcodeFromSyncPulse(lcd->global.lh_pulse_len[1]),
+					lcd->global.lh_pulse_len[1],
+					lcd->global.lh_start_time[1],
 					0,
 					1);
 			}
 		}
 
 		// initialize here.
-		memset(&lcgd, 0, sizeof(lcgd));
-		lcgd.activeLighthouse = -1; 
+		memset(&lcd->global, 0, sizeof(lcd->global));
+		lcd->global.activeLighthouse = -1; 
 
 
 
-		lcgd.recent_sync_time = le->timestamp;
+		lcd->global.recent_sync_time = le->timestamp;
 		// I do believe we are lighthouse A		
-		lcgd.current_lh = 0;
-		lcgd.lh_pulse_len[lcgd.current_lh] = le->length;
-		lcgd.lh_start_time[lcgd.current_lh] = le->timestamp;
+		lcd->global.current_lh = 0;
+		lcd->global.lh_pulse_len[lcd->global.current_lh] = le->length;
+		lcd->global.lh_start_time[lcd->global.current_lh] = le->timestamp;
 
 		int acode = handle_lightcap2_getAcodeFromSyncPulse(le->length);
 
 		if (!(acode >> 2 & 1)) // if the skip bit is not set
 		{
-			lcgd.activeLighthouse = 0;
-			lcgd.activeSweepStartTime = le->timestamp;
-			lcgd.activeAcode = acode;
+			lcd->global.activeLighthouse = 0;
+			lcd->global.activeSweepStartTime = le->timestamp;
+			lcd->global.activeAcode = acode;
 		}
 	}
 }
@@ -383,8 +385,8 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 			int32_t delta1 = so->last_sync_time[0] - so->recent_sync_time;
 			int32_t delta2 = so->last_sync_time[1] - so->last_sync_time[0];
 
-			ctx->lightproc( so, -1, acode_array[0], delta1, so->last_sync_time[0], so->last_sync_length[0] );
-			ctx->lightproc( so, -2, acode_array[1], delta2, so->last_sync_time[1], so->last_sync_length[1] );
+			ctx->lightproc( so, -1, acode_array[0], delta1, so->last_sync_time[0], so->last_sync_length[0], 0 );
+			ctx->lightproc( so, -2, acode_array[1], delta2, so->last_sync_time[1], so->last_sync_length[1], 1 );
 
 			so->recent_sync_time = so->last_sync_time[1];
 
@@ -427,7 +429,7 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 		//Make sure pulse is in valid window
 		if( offset_from < 380000 && offset_from > 70000 )
 		{
-			ctx->lightproc( so, le->sensor_id, acode, offset_from, le->timestamp, le->length );
+			ctx->lightproc( so, le->sensor_id, acode, offset_from, le->timestamp, le->length, so->sync_set_number );
 		}
 	}
 	else
