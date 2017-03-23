@@ -71,7 +71,7 @@ void handle_lightcap2_process_sweep_data(SurviveObject *so)
 
 				if (offset_from < 380000 && offset_from > 70000)
 				{
-					if (longest_pulse *10 / 8 < lcd->sweep.sweep_len[i]) 
+					//if (longest_pulse *10 / 8 < lcd->sweep.sweep_len[i]) 
 					{
 						so->ctx->lightproc(so, i, lcd->global.activeAcode, offset_from, lcd->sweep.sweep_time[i], lcd->sweep.sweep_len[i], lcd->global.activeLighthouse);
 					}
