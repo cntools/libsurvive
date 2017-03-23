@@ -117,7 +117,8 @@ char* load_file_to_mem(const char* path) {
 	fseek( f, 0, SEEK_END );
 	int len = ftell( f );
 	fseek( f, 0, SEEK_SET );
-	char * JSON_STRING = malloc( len );
+	char * JSON_STRING = malloc( len + 1);
+	memset(JSON_STRING,0,len+1); 
 	fread( JSON_STRING, len, 1, f );
 	fclose( f );
 	return JSON_STRING;

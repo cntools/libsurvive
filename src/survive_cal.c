@@ -124,50 +124,42 @@ void survive_cal_install( struct SurviveContext * ctx )
 
 	cd->numPoseObjects = 0;
 
-	for (int i=0; i < ctx->objs_ct; i++)
+	const char * RequiredTrackersForCal = config_read_str( ctx->global_config_values, "RequiredTrackersForCal", "HMD,WM0,WM1" );
+	const uint32_t AllowAllTrackersForCal = config_read_uint32( ctx->global_config_values, "AllowAllTrackersForCal", 0 );
+	size_t requiredTrackersFound = 0;
+
+	for (int j=0; j < ctx->objs_ct; j++)
 	{
-		// This would be a place where we could conditionally decide if we 
-		// want to include a certain device in the calibration routine.
-		if (1)
+		// Add the tracker if we allow all trackers for calibration, or if it's in the list 
+		// of required trackers.
+		int isRequiredTracker = strstr(RequiredTrackersForCal, ctx->objs[j]->codename) != NULL;
+
+		if (isRequiredTracker)
 		{
-			cd->poseobjects[i] = ctx->objs[i];
+			requiredTrackersFound++;
+		}
+
+		if (AllowAllTrackersForCal || isRequiredTracker)
+		{
+			cd->poseobjects[j] = ctx->objs[j];
 			cd->numPoseObjects++;
 
-			SV_INFO("Calibration is using %s", cd->poseobjects[i]->codename);
+			SV_INFO("Calibration is using %s", cd->poseobjects[j]->codename);
 		}
+
 	}
 
 	// If we want to mandate that certain devices have been found
 
-
-
-	//cd->poseobjects[0] = survive_get_so_by_name( ctx, "HMD" );
-	//cd->poseobjects[1] = survive_get_so_by_name( ctx, "WM0" );
-	//cd->poseobjects[2] = survive_get_so_by_name( ctx, "WM1" );
-
-	//if( cd->poseobjects[0] == 0 || cd->poseobjects[1] == 0 || cd->poseobjects[2] == 0 )
-	//{
-	//	SV_ERROR( "Error: cannot find all devices needed for calibration." );
-	//	free( cd );
-	//	return;
-	//}
-
-//XXX TODO MWTourney, work on your code here.
-/*
-	if( !cd->hmd )
+	if (strlen(RequiredTrackersForCal) > 0)
 	{
-		cd->hmd = survive_get_so_by_name( ctx, "TR0" );
-
-		if( !cd->hmd )
+		if (requiredTrackersFound != ((strlen(RequiredTrackersForCal) + 1) / 4))
 		{
-			SV_ERROR( "Error: cannot find any devices labeled HMD. Required for calibration" );
+			SV_ERROR( "Error: cannot find all devices needed for calibration." );
 			free( cd );
 			return;
 		}
-		SV_INFO( "HMD not found, calibrating using Tracker" );
 	}
-*/
-
 
 	const char * DriverName;
 	const char * PreferredPoser = config_read_str( ctx->global_config_values, "ConfigPoser", "PoserCharlesSlow" );

@@ -372,7 +372,7 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 			int32_t main_divisor = so->timebase_hz / 384000; //125 @ 48 MHz.
 			int base_station = is_new_pulse;
 			//printf( "%s %d %d %d\n", so->codename, le->sensor_id, so->sync_set_number, le->length );
-			ctx->lightproc( so, le->sensor_id, -3 - so->sync_set_number, 0, le->timestamp, le->length );
+			ctx->lightproc( so, le->sensor_id, -3 - so->sync_set_number, 0, le->timestamp, le->length, base_station);
 	}
 	}
 
