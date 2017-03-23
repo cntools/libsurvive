@@ -190,7 +190,7 @@ void survive_cal_install( struct SurviveContext * ctx )
 }
 
 
-void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  )
+void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length, int lh)
 {
 	struct SurviveContext * ctx = so->ctx;
 	struct SurviveCalData * cd = ctx->calptr;
@@ -210,7 +210,6 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 		{
 			int lhid = -sensor_id-1;
 			// Take the OOTX data from the first device. 
-			// TODO: Improve this so we'll watch all devices looking for OOTX data.  Why limit ourselves to just one?
 			if( lhid < NUM_LIGHTHOUSES && so == cd->poseobjects[0]  ) 
 			{
 				uint8_t dbit = (acode & 2)>>1;
@@ -219,9 +218,9 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 			int i;
 			for( i = 0; i < NUM_LIGHTHOUSES; i++ )
 				if( ctx->bsd[i].OOTXSet == 0 ) break;
-			//if( i == NUM_LIGHTHOUSES ) cd->stage = 2;  //If all lighthouses have their OOTX set, move on.         <------- Revert This!!!!! 
-			if( i == 1 ) 
-				cd->stage = 2;  //If all lighthouses have their OOTX set, move on.
+			if( i == NUM_LIGHTHOUSES ) cd->stage = 2;  //If all lighthouses have their OOTX set, move on.         <------- Revert This!!!!! 
+			//if( i == 1 ) 
+				//cd->stage = 2;  //If all lighthouses have their OOTX set, move on.
 		}
 		break;
 	}

@@ -51,10 +51,10 @@ int bufferpts[32*2*3][2];
 char buffermts[32*128*3];
 int buffertimeto[32*3][2];
 
-void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  )
+void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length, int lh)
 {
 //	if( timeinsweep < 0 ) return;
-	survive_default_light_process( so, sensor_id, acode, timeinsweep, timecode, length );
+	survive_default_light_process( so, sensor_id, acode, timeinsweep, timecode, length, lh);
 	if( sensor_id < 0 ) return;
 	if( acode == -1 ) return;
 //return;

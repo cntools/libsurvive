@@ -5,7 +5,32 @@
 #include <stdint.h>
 #include <string.h>
 
-int getAcodeFromSyncPulse(int pulseLen)
+typedef struct
+{
+	unsigned int sweep_time[SENSORS_PER_OBJECT];
+	unsigned int sweep_len[SENSORS_PER_OBJECT];
+} lightcaps_sweep_data;
+typedef struct
+{
+	lightcaps_sweep_data sweep;
+} lightcap2_data;
+
+typedef struct
+{
+	int recent_sync_time;
+	int activeLighthouse;
+	int activeSweepStartTime;
+	int activeAcode;
+
+	int lh_pulse_len[NUM_LIGHTHOUSES];
+	int lh_start_time[NUM_LIGHTHOUSES];
+	int current_lh; // used knowing which sync pulse we're looking at.
+
+} lightcap2_global_data;
+
+static lightcap2_global_data lcgd = { 0 };
+
+int handle_lightcap2_getAcodeFromSyncPulse(int pulseLen)
 {
 	if (pulseLen < 3125) return 0;
 	if (pulseLen < 3625) return 1;
@@ -16,47 +41,200 @@ int getAcodeFromSyncPulse(int pulseLen)
 	if (pulseLen < 6125) return 6;
 	return 7;
 }
-void handle_lightcap2_sync(SurviveObject * so, LightcapElement * le )
+void handle_lightcap2_process_sweep_data(SurviveObject *so)
 {
-	fprintf(stderr, "%d\n", le->length);
+	lightcap2_data *lcd = so->disambiguator_data;
 
-	if (le->timestamp - so->recent_sync_time < 24000)
+	// look at all of the sensors we found, and process the ones that were hit.
+	// TODO: find the sensor(s) with the longest pulse length, and assume 
+	// those are the "highest quality".  Then, reject any pulses that are sufficiently
+	// different from those values, assuming that they are reflections.
 	{
-		// I do believe we are lighthouse B		
-		so->last_sync_time[1] = so->recent_sync_time = le->timestamp;
-		so->last_sync_length[1] = le->length;
-		if (le->length < 4625) // max non-skip pulse + 1/4 the difference in time between pulses.  
+		unsigned int longest_pulse = 0;
+		unsigned int timestamp_of_longest_pulse = 0;
+		for (int i = 0; i < SENSORS_PER_OBJECT; i++)
 		{
-			so->sync_set_number = 1;
-			so->ctx->lightproc(so, -2, getAcodeFromSyncPulse(le->length), le->length, le->timestamp, le->length); // Don't think I got this quite right.
+			if (lcd->sweep.sweep_len[i] > longest_pulse)
+			{
+				longest_pulse = lcd->sweep.sweep_len[i];
+				timestamp_of_longest_pulse = lcd->sweep.sweep_time[i];
+			}
+		}
+
+		for (int i = 0; i < SENSORS_PER_OBJECT; i++)
+		{
+			if (lcd->sweep.sweep_len[i] != 0) // if the sensor was hit, process it
+			{
+				int offset_from = lcd->sweep.sweep_time[i] - lcgd.activeSweepStartTime + lcd->sweep.sweep_len[i] / 2;
+
+				if (offset_from < 380000 && offset_from > 70000)
+				{
+					int timeDelta = abs(timestamp_of_longest_pulse - lcd->sweep.sweep_time[i]);
+					if (timeDelta < 15000) // if this sweep point is within ~7 degrees of the point with the longest pulse.
+					{
+						so->ctx->lightproc(so, i, lcgd.activeAcode, offset_from, lcd->sweep.sweep_time[i], lcd->sweep.sweep_len[i], lcgd.activeLighthouse);
+					}
+				}
+			}
 		}
 	}
-	else
+	// clear out sweep data (could probably limit this to only after a "first" sync.  
+	// this is slightly more robust, so doing it here for now.
+	memset(&(((lightcap2_data*)so->disambiguator_data)->sweep), 0, sizeof(lightcaps_sweep_data));
+}
+void handle_lightcap2_sync(SurviveObject * so, LightcapElement * le )
+{
+	//fprintf(stderr, "%6.6d %4.4d \n", le->timestamp - so->recent_sync_time, le->length);
+	lightcap2_data *lcd = so->disambiguator_data;
+
+	//static unsigned int recent_sync_time = 0;
+	//static unsigned int recent_sync_count = -1;
+	//static unsigned int activeSweepStartTime;
+
+
+	// Process any sweep data we have
+	handle_lightcap2_process_sweep_data(so);
+
+	int time_since_last_sync = (le->timestamp - lcgd.recent_sync_time);
+
+	fprintf(stderr, "            %2d %8d %d\n", le->sensor_id, time_since_last_sync, le->length);
+	// need to store up sync pulses, so we can take the earliest starting time for all sensors.
+	if (time_since_last_sync < 2400)
+	{
+		lcgd.recent_sync_time = le->timestamp;
+		// it's the same sync pulse;
+		so->sync_set_number = 1;
+		//so->ctx->lightproc(so, recent_sync_count, getAcodeFromSyncPulse(le->length), le->length, le->timestamp, le->length); // Don't think I got this quite right.
+		so->recent_sync_time = le->timestamp;
+
+		lcgd.lh_pulse_len[lcgd.current_lh] = le->length;
+		lcgd.lh_start_time[lcgd.current_lh] = le->timestamp;
+
+		int acode = handle_lightcap2_getAcodeFromSyncPulse(le->length);
+		if (!(acode >> 2 & 1)) // if the skip bit is not set
+		{
+			lcgd.activeLighthouse = lcgd.current_lh;
+			lcgd.activeSweepStartTime = le->timestamp;
+			lcgd.activeAcode = acode;
+		}
+		else
+		{
+			lcgd.activeLighthouse = -1;
+			lcgd.activeSweepStartTime = 0;
+			lcgd.activeAcode = 0;
+		}
+	}
+	else if (time_since_last_sync < 24000)
+	{
+		//recent_sync_count--;
+		lcgd.recent_sync_time = le->timestamp;
+		// I do believe we are lighthouse B		
+		lcgd.current_lh = 1;
+		lcgd.lh_pulse_len[lcgd.current_lh] = le->length;
+		lcgd.lh_start_time[lcgd.current_lh] = le->timestamp;
+
+		int acode = handle_lightcap2_getAcodeFromSyncPulse(le->length);
+
+		//{
+			//fprintf(stderr, "2");
+			//so->ctx->lightproc(so, -2, acode, le->length, le->timestamp, le->length); // Don't think I got this quite right.
+
+
+		//}
+		if (!(acode >> 2 & 1)) // if the skip bit is not set
+		{
+			if (lcgd.activeLighthouse != -1)
+			{
+				// hmm, it appears we got two non-skip pulses at the same time.  That should never happen
+				fprintf(stderr, "WARNING: Two non-skip pulses received on the same cycle!\n");
+			}
+			lcgd.activeLighthouse = 1;
+			lcgd.activeSweepStartTime = le->timestamp;
+			lcgd.activeAcode = acode;
+		}
+
+	}
+	else if (time_since_last_sync > 370000)
 	{
 		// looks like this is the first sync pulse.  Cool!
-		if (le->length < 4625) // max non-skip pulse + 1/4 the difference in time between pulses.  
+
+		// first, send out the sync pulse data for the last round (for OOTX decoding
 		{
-			so->sync_set_number = 1;
-			so->ctx->lightproc(so, -1, getAcodeFromSyncPulse(le->length), le->length, le->timestamp, le->length); // Don't think I got this quite right.
-		}		
+			if (lcgd.lh_pulse_len[0] != 0)
+			{
+				so->ctx->lightproc(
+					so,
+					-1,
+					handle_lightcap2_getAcodeFromSyncPulse(lcgd.lh_pulse_len[0]),
+					lcgd.lh_pulse_len[0],
+					lcgd.lh_start_time[0],
+					0,
+					0);
+			}
+			if (lcgd.lh_pulse_len[1] != 0)
+			{
+				so->ctx->lightproc(
+					so,
+					-2,
+					handle_lightcap2_getAcodeFromSyncPulse(lcgd.lh_pulse_len[1]),
+					lcgd.lh_pulse_len[1],
+					lcgd.lh_start_time[1],
+					0,
+					1);
+			}
+		}
+
+		// initialize here.
+		memset(&lcgd, 0, sizeof(lcgd));
+		lcgd.activeLighthouse = -1; 
+
+
+
+		lcgd.recent_sync_time = le->timestamp;
+		// I do believe we are lighthouse A		
+		lcgd.current_lh = 0;
+		lcgd.lh_pulse_len[lcgd.current_lh] = le->length;
+		lcgd.lh_start_time[lcgd.current_lh] = le->timestamp;
+
+		int acode = handle_lightcap2_getAcodeFromSyncPulse(le->length);
+		//{
+		//	so->ctx->lightproc(so, -1, acode, le->length, le->timestamp, le->length); // Don't think I got this quite right.
+		//}	
+
+		if (!(acode >> 2 & 1)) // if the skip bit is not set
+		{
+			lcgd.activeLighthouse = 0;
+			lcgd.activeSweepStartTime = le->timestamp;
+			lcgd.activeAcode = acode;
+		}
+
 	}
-
-
-//			ctx->lightproc( so, -2, acode_array[1], delta2, so->last_sync_time[1], so->last_sync_length[1] );
-
-
-//	typedef void (*light_process_func)( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length );
 
 }
 
 void handle_lightcap2_sweep(SurviveObject * so, LightcapElement * le )
 {
+	lightcap2_data *lcd = so->disambiguator_data;
 
+	// If we see multiple "hits" on the sweep for a given sensor,
+	// assume that the longest (i.e. strongest signal) is most likely 
+	// the non-reflected signal. 
+	if (lcd->sweep.sweep_len[le->sensor_id] < le->length)
+	{
+		lcd->sweep.sweep_len[le->sensor_id] = le->length;
+		lcd->sweep.sweep_time[le->sensor_id] = le->timestamp;
+	}
 }
 
 void handle_lightcap2( SurviveObject * so, LightcapElement * le )
 {
 	SurviveContext * ctx = so->ctx;
+
+	if (so->disambiguator_data == NULL)
+	{
+		so->disambiguator_data = malloc(sizeof(lightcap2_data));
+		memset(so->disambiguator_data, 0, sizeof(lightcap2_data));
+	}
 
 	if( le->sensor_id > SENSORS_PER_OBJECT )
 	{
@@ -72,6 +250,7 @@ void handle_lightcap2( SurviveObject * so, LightcapElement * le )
 	{
 		// Looks like a sync pulse, process it!
 		handle_lightcap2_sync(so, le);
+		return;
 	}
 
 	// must be a sweep pulse, process it!

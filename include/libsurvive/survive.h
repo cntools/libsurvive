@@ -47,6 +47,7 @@ struct SurviveObject
 	int32_t pulse_synctime_slack; //5,000 for normal vive hardware.    (guessed)
 
 	//Flood info, for calculating which laser is currently sweeping.
+	void * disambiguator_data;
 	int8_t   oldcode;
 	int8_t   sync_set_number; //0 = master, 1 = slave, -1 = fault. 
 	int8_t   did_handle_ootx; //If unset, will send lightcap data for sync pulses next time a sensor is hit.
@@ -129,7 +130,7 @@ void survive_cal_install( SurviveContext * ctx );  //XXX This will be removed if
 
 //Call these from your callback if overridden.  
 //Accept higher-level data.
-void survive_default_light_process( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length );
+void survive_default_light_process( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length , int lh);
 void survive_default_imu_process( SurviveObject * so, int mode, FLT * accelgyro, uint32_t timecode, int id );
 void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle );
 

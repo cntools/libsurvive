@@ -6,14 +6,14 @@
 //XXX TODO: Once data is avialble in the context, use the stuff here to handle converting from time codes to
 //proper angles, then from there perform the rest of the solution. 
 
-void survive_default_light_process( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  )
+void survive_default_light_process( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length, int lh)
 {
 	SurviveContext * ctx = so->ctx;
-	int base_station = acode >> 2;
+	int base_station = lh;
 	int axis = acode & 1;
 	if( ctx->calptr )
 	{
-		survive_cal_light( so, sensor_id, acode, timeinsweep, timecode, length );
+		survive_cal_light( so, sensor_id, acode, timeinsweep, timecode, length, lh);
 	}
 
 	if( base_station > NUM_LIGHTHOUSES ) return;
