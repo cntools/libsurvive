@@ -37,16 +37,16 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 #endif
 
 	FLT length_sec = length / (FLT)so->timebase_hz;
-	ctx->angleproc( so, sensor_id, acode, timecode, length_sec, angle );
+	ctx->angleproc( so, sensor_id, acode, timecode, length_sec, angle, lh);
 }
 
 
-void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle )
+void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh)
 {
 	SurviveContext * ctx = so->ctx;
 	if( ctx->calptr )
 	{
-		survive_cal_angle( so, sensor_id, acode, timecode, length, angle );
+		survive_cal_angle( so, sensor_id, acode, timecode, length, angle, lh );
 	}
 	if( so->PoserFn )
 	{

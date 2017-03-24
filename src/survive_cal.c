@@ -220,10 +220,13 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 		else if( acode < -4 ) break;
 		int lh = (-acode) - 3;
 
-		if( strcmp( so->codename, "WM0" ) == 0 )
-			sensor_id += 32;
-		if( strcmp( so->codename, "WM1" ) == 0 )
-			sensor_id += 64;
+		for (int i=0; i < min(MAX_DEVICES_TO_CAL, cd->numPoseObjects); i++)
+		{
+			if( strcmp( so->codename, cd->poseobjects[i]->codename ) == 0 )
+			{
+				sensor_id += i*32;
+			}
+		}
 
 		cd->all_sync_times[sensor_id][lh][cd->all_sync_counts[sensor_id][lh]++] = length;
 		break;
@@ -233,7 +236,7 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 	
 }
 
-void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle )
+void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh )
 {
 	struct SurviveContext * ctx = so->ctx;
 	struct SurviveCalData * cd = ctx->calptr;
@@ -241,14 +244,18 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 	if( !cd ) return;
 
 	int sensid = sensor_id;
-	if( strcmp( so->codename, "WM0" ) == 0 )
-		sensid += 32;
-	if( strcmp( so->codename, "WM1" ) == 0 )
-		sensid += 64;
+
+	for (int i=0; i < min(MAX_DEVICES_TO_CAL, cd->numPoseObjects); i++)
+	{
+		if( strcmp( so->codename, cd->poseobjects[i]->codename ) == 0 )
+		{
+			sensid += i*32;
+		}
+	}
 
 	if( sensid >= MAX_SENSORS_TO_CAL || sensid < 0 ) return;
 
-	int lighthouse = acode>>2;
+	int lighthouse = lh;
 	int axis = acode & 1;
 
 	switch( cd->stage )
@@ -292,7 +299,8 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 			int min_peaks = PTS_BEFORE_COMMON;
 			int i, j, k;
 			cd->found_common = 1;
-			for( i = 0; i < MAX_SENSORS_TO_CAL/SENSORS_PER_OBJECT; i++ )
+			for( i = 0; i < cd->numPoseObjects; i++ )
+			//for( i = 0; i < MAX_SENSORS_TO_CAL/SENSORS_PER_OBJECT; i++ )
 			for( j = 0; j < NUM_LIGHTHOUSES; j++ )
 			{
 				int sensors_visible = 0;

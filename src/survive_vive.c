@@ -834,7 +834,6 @@ static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 	qty-=2;
 	int propset = 0;
 	int doimu = 0;
-	int i;
 
 	if( (type & 0xf0) == 0xf0 )
 	{
@@ -911,10 +910,9 @@ static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 		*readdata = type; //Put 'type' back on stack.
 		uint8_t * mptr = readdata + qty-3-1; //-3 for timecode, -1 to 
 
-//#define DEBUG_WATCHMAN
 #ifdef DEBUG_WATCHMAN
 		printf( "_%s ", w->codename);
-		for( i = 0; i < qty; i++ )
+		for(int i = 0; i < qty; i++ )
 		{
 			printf( "%02x ", readdata[i] );
 		}
@@ -1198,7 +1196,7 @@ void survive_data_cb( SurviveUSBInterface * si )
 			unsigned short *length = (unsigned short *)(&(readdata[2]));
 			unsigned long *time = (unsigned long *)(&(readdata[4]));
 			LightcapElement le;
-			le.sensor_id = POP2;
+			le.sensor_id = (uint8_t)POP2;
 			le.length = POP2;
 			le.timestamp = POP4;
 			if( le.sensor_id == 0xff ) break;

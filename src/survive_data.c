@@ -25,7 +25,7 @@ typedef struct
 
 typedef struct
 {
-	float acode_offset;
+	double acode_offset;
 } lightcap2_global_data;
 
 typedef struct
@@ -40,11 +40,11 @@ typedef struct
 
 int handle_lightcap2_getAcodeFromSyncPulse(SurviveObject * so, int pulseLen)
 {
-	float oldOffset = ((lightcap2_data*)so->disambiguator_data)->global.acode_offset;
+	double oldOffset = ((lightcap2_data*)so->disambiguator_data)->global.acode_offset;
 
 	int modifiedPulseLen = pulseLen - (int)oldOffset;
 
-	float newOffset = (((pulseLen) + 250) % 500) - 250;
+	double newOffset = (((pulseLen) + 250) % 500) - 250;
 
 	((lightcap2_data*)so->disambiguator_data)->global.acode_offset = oldOffset * 0.9 + newOffset * 0.1;
 

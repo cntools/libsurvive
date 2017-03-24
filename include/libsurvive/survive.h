@@ -132,7 +132,7 @@ void survive_cal_install( SurviveContext * ctx );  //XXX This will be removed if
 //Accept higher-level data.
 void survive_default_light_process( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length , uint32_t lh);
 void survive_default_imu_process( SurviveObject * so, int mode, FLT * accelgyro, uint32_t timecode, int id );
-void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle );
+void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh );
 
 
 ////////////////////// Survive Drivers ////////////////////////////

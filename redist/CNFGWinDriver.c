@@ -232,7 +232,7 @@ void CNFGHandleInput()
 		case WM_MBUTTONUP:		HandleButton( (msg.lParam & 0xFFFF), (msg.lParam>>16) & 0xFFFF, 3, 0 ); break;
 		case WM_KEYDOWN:
 		case WM_KEYUP:
-			HandleKey( tolower( msg.wParam ), (msg.message==WM_KEYDOWN) );
+			HandleKey( tolower( (int)(msg.wParam) ), (msg.message==WM_KEYDOWN) );
 			break;
 		default:
 			DispatchMessage(&msg);
