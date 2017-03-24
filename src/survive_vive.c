@@ -531,9 +531,10 @@ int survive_vive_send_magic(SurviveContext * ctx, void * drv, int magic_code, vo
 			r = update_feature_report( sv->udev[USB_DEV_W_WATCHMAN1], 0, vive_magic_power_on, sizeof( vive_magic_power_on ) );
 			if( r != sizeof( vive_magic_power_on ) ) return 5;
 		}
+
+#ifdef HIDAPI
 		if (sv->udev[USB_DEV_W_WATCHMAN1_LIGHTCAP])
 		{
-			//static uint8_t vive_magic_enable_lighthouse[64] = {  0x04, 0x78, 0x29, 0x38 };
 			static uint8_t vive_magic_enable_lighthouse[5] = { 0x04 };
 			r = update_feature_report( sv->udev[USB_DEV_W_WATCHMAN1_LIGHTCAP], 0, vive_magic_enable_lighthouse, sizeof( vive_magic_enable_lighthouse ) );
 			if( r != sizeof( vive_magic_enable_lighthouse ) ) return 5;
@@ -543,12 +544,27 @@ int survive_vive_send_magic(SurviveContext * ctx, void * drv, int magic_code, vo
 			if( r != sizeof( vive_magic_enable_lighthouse2 ) ) return 5;
 		}
 
+#else
+		if (sv->udev[USB_DEV_W_WATCHMAN1])
+		{
+			static uint8_t vive_magic_enable_lighthouse[5] = { 0x04 };
+			r = update_feature_report( sv->udev[USB_DEV_W_WATCHMAN1], 0, vive_magic_enable_lighthouse, sizeof( vive_magic_enable_lighthouse ) );
+			if( r != sizeof( vive_magic_enable_lighthouse ) ) return 5;
+
+			static uint8_t vive_magic_enable_lighthouse2[5] = { 0x07, 0x02 };  //Switch to 0x25 mode (able to get more light updates)
+			r = update_feature_report( sv->udev[USB_DEV_W_WATCHMAN1], 0, vive_magic_enable_lighthouse2, sizeof( vive_magic_enable_lighthouse2 ) );
+			if( r != sizeof( vive_magic_enable_lighthouse2 ) ) return 5;
+		}
+
+#endif
+
 		if (sv->udev[USB_DEV_TRACKER0])
 		{
 			static uint8_t vive_magic_power_on[5] = { 0x04 };
 			r = update_feature_report( sv->udev[USB_DEV_TRACKER0], 0, vive_magic_power_on, sizeof( vive_magic_power_on ) );
 			if( r != sizeof( vive_magic_power_on ) ) return 5;
 		}
+#ifdef HIDAPI
 		if (sv->udev[USB_DEV_TRACKER0_LIGHTCAP])
 		{
 			static uint8_t vive_magic_enable_lighthouse[5] = { 0x04 };
@@ -559,6 +575,19 @@ int survive_vive_send_magic(SurviveContext * ctx, void * drv, int magic_code, vo
 			r = update_feature_report( sv->udev[USB_DEV_TRACKER0_LIGHTCAP], 0, vive_magic_enable_lighthouse2, sizeof( vive_magic_enable_lighthouse2 ) );
 			if( r != sizeof( vive_magic_enable_lighthouse2 ) ) return 5;
 		}
+#else
+		if (sv->udev[USB_DEV_TRACKER0])
+		{
+			static uint8_t vive_magic_enable_lighthouse[5] = { 0x04 };
+			r = update_feature_report( sv->udev[USB_DEV_TRACKER0], 0, vive_magic_enable_lighthouse, sizeof( vive_magic_enable_lighthouse ) );
+			if( r != sizeof( vive_magic_enable_lighthouse ) ) return 5;
+
+			static uint8_t vive_magic_enable_lighthouse2[5] = { 0x07, 0x02 };  //Switch to 0x25 mode (able to get more light updates)
+			r = update_feature_report( sv->udev[USB_DEV_TRACKER0], 0, vive_magic_enable_lighthouse2, sizeof( vive_magic_enable_lighthouse2 ) );
+			if( r != sizeof( vive_magic_enable_lighthouse2 ) ) return 5;
+		}
+
+#endif
 
 #if 0
 		for( int i = 0; i < 256; i++ )
