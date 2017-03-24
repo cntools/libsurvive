@@ -141,10 +141,17 @@ void survive_cal_install( struct SurviveContext * ctx )
 
 		if (AllowAllTrackersForCal || isRequiredTracker)
 		{
-			cd->poseobjects[j] = ctx->objs[j];
-			cd->numPoseObjects++;
+			if (MAX_DEVICES_TO_CAL < cd->numPoseObjects)
+			{
+				cd->poseobjects[j] = ctx->objs[j];
+				cd->numPoseObjects++;
 
-			SV_INFO("Calibration is using %s", cd->poseobjects[j]->codename);
+				SV_INFO("Calibration is using %s", cd->poseobjects[j]->codename);
+			}
+			else
+			{
+				SV_ERROR("Calibration is NOT using %s; device count exceeds MAX_DEVICES_TO_CAL", cd->poseobjects[j]->codename);
+			}
 		}
 
 	}
@@ -220,7 +227,7 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 		else if( acode < -4 ) break;
 		int lh = (-acode) - 3;
 
-		for (int i=0; i < min(MAX_DEVICES_TO_CAL, cd->numPoseObjects); i++)
+		for (int i=0; i < cd->numPoseObjects; i++)
 		{
 			if( strcmp( so->codename, cd->poseobjects[i]->codename ) == 0 )
 			{
@@ -234,6 +241,7 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 
 	}
 	
+
 }
 
 void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh )
@@ -245,7 +253,7 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 
 	int sensid = sensor_id;
 
-	for (int i=0; i < min(MAX_DEVICES_TO_CAL, cd->numPoseObjects); i++)
+	for (int i=0; i < cd->numPoseObjects; i++)
 	{
 		if( strcmp( so->codename, cd->poseobjects[i]->codename ) == 0 )
 		{
