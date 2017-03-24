@@ -90,9 +90,9 @@ void my_imu_process( struct SurviveObject * so, int mask, FLT * accelgyro, uint3
 }
 
 
-void my_angle_process( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle )
+void my_angle_process( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh )
 {
-	survive_default_angle_process( so, sensor_id, acode, timecode, length, angle );
+	survive_default_angle_process( so, sensor_id, acode, timecode, length, angle, lh );
 }
 
 

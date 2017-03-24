@@ -141,7 +141,7 @@ void survive_cal_install( struct SurviveContext * ctx )
 
 		if (AllowAllTrackersForCal || isRequiredTracker)
 		{
-			if (MAX_DEVICES_TO_CAL < cd->numPoseObjects)
+			if (MAX_DEVICES_TO_CAL > cd->numPoseObjects)
 			{
 				cd->poseobjects[j] = ctx->objs[j];
 				cd->numPoseObjects++;
@@ -150,7 +150,7 @@ void survive_cal_install( struct SurviveContext * ctx )
 			}
 			else
 			{
-				SV_ERROR("Calibration is NOT using %s; device count exceeds MAX_DEVICES_TO_CAL", cd->poseobjects[j]->codename);
+				SV_INFO("Calibration is NOT using %s; device count exceeds MAX_DEVICES_TO_CAL", ctx->objs[j]->codename);
 			}
 		}
 
