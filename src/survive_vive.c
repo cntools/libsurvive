@@ -479,6 +479,9 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 #ifdef HIDAPI
 	//Tricky: use other interface for actual lightcap.  XXX THIS IS NOT YET RIGHT!!!
 	if( sv->udev[USB_DEV_LIGHTHOUSEB] && AttachInterface( sv, hmd, USB_IF_LIGHTCAP, sv->udev[USB_DEV_LIGHTHOUSEB], 0x82, survive_data_cb, "Lightcap")) { return -12; }
+
+	// This is a HACK!  But it works.  Need to investigate further
+	sv->uiface[USB_DEV_TRACKER0_LIGHTCAP].actual_len = 64;
 	if( sv->udev[USB_DEV_TRACKER0_LIGHTCAP] && AttachInterface( sv, tr0, USB_IF_TRACKER0_LIGHTCAP, sv->udev[USB_DEV_TRACKER0_LIGHTCAP], 0x82, survive_data_cb, "Tracker 1 Lightcap")) { return -13; }
 	if( sv->udev[USB_DEV_W_WATCHMAN1_LIGHTCAP] && AttachInterface( sv, ww0, USB_IF_W_WATCHMAN1_LIGHTCAP, sv->udev[USB_DEV_W_WATCHMAN1_LIGHTCAP], 0x82, survive_data_cb, "Wired Watchman 1 Lightcap")) { return -13; }
 #else
@@ -564,18 +567,18 @@ int survive_vive_send_magic(SurviveContext * ctx, void * drv, int magic_code, vo
 			r = update_feature_report( sv->udev[USB_DEV_TRACKER0], 0, vive_magic_power_on, sizeof( vive_magic_power_on ) );
 			if( r != sizeof( vive_magic_power_on ) ) return 5;
 		}
-#ifdef HIDAPI
-		if (sv->udev[USB_DEV_TRACKER0_LIGHTCAP])
-		{
-			static uint8_t vive_magic_enable_lighthouse[5] = { 0x04 };
-			r = update_feature_report( sv->udev[USB_DEV_TRACKER0_LIGHTCAP], 0, vive_magic_enable_lighthouse, sizeof( vive_magic_enable_lighthouse ) );
-			if( r != sizeof( vive_magic_enable_lighthouse ) ) return 5;
-
-			static uint8_t vive_magic_enable_lighthouse2[5] = { 0x07, 0x02 };  //Switch to 0x25 mode (able to get more light updates)
-			r = update_feature_report( sv->udev[USB_DEV_TRACKER0_LIGHTCAP], 0, vive_magic_enable_lighthouse2, sizeof( vive_magic_enable_lighthouse2 ) );
-			if( r != sizeof( vive_magic_enable_lighthouse2 ) ) return 5;
-		}
-#else
+//#ifdef HIDAPI
+//		if (sv->udev[USB_DEV_TRACKER0_LIGHTCAP])
+//		{
+//			static uint8_t vive_magic_enable_lighthouse[5] = { 0x04 };
+//			r = update_feature_report( sv->udev[USB_DEV_TRACKER0_LIGHTCAP], 0, vive_magic_enable_lighthouse, sizeof( vive_magic_enable_lighthouse ) );
+//			if( r != sizeof( vive_magic_enable_lighthouse ) ) return 5;
+//
+//			static uint8_t vive_magic_enable_lighthouse2[5] = { 0x07, 0x02 };  //Switch to 0x25 mode (able to get more light updates)
+//			r = update_feature_report( sv->udev[USB_DEV_TRACKER0_LIGHTCAP], 0, vive_magic_enable_lighthouse2, sizeof( vive_magic_enable_lighthouse2 ) );
+//			if( r != sizeof( vive_magic_enable_lighthouse2 ) ) return 5;
+//		}
+//#else		
 		if (sv->udev[USB_DEV_TRACKER0])
 		{
 			static uint8_t vive_magic_enable_lighthouse[5] = { 0x04 };
@@ -587,7 +590,7 @@ int survive_vive_send_magic(SurviveContext * ctx, void * drv, int magic_code, vo
 			if( r != sizeof( vive_magic_enable_lighthouse2 ) ) return 5;
 		}
 
-#endif
+//#endif
 
 #if 0
 		for( int i = 0; i < 256; i++ )
@@ -1186,6 +1189,7 @@ void survive_data_cb( SurviveUSBInterface * si )
 		break;
 	}
 	case USB_IF_W_WATCHMAN1_LIGHTCAP:
+	case USB_IF_TRACKER0_LIGHTCAP:
 	{
 		int i=0;
 		for( i = 0; i < 7; i++ )

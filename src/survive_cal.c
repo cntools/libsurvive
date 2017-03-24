@@ -200,6 +200,7 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 		//Collecting OOTX data.
 		if( sensor_id < 0 )
 		{
+				//fprintf(stderr, "%s\n", so->codename);
 			int lhid = -sensor_id-1;
 			// Take the OOTX data from the first device.  (if using HMD, WM0, WM1 only, this will be HMD)
 			if( lhid < NUM_LIGHTHOUSES && so == cd->poseobjects[0]  ) 
@@ -210,9 +211,7 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 			int i;
 			for( i = 0; i < NUM_LIGHTHOUSES; i++ )
 				if( ctx->bsd[i].OOTXSet == 0 ) break;
-			if( i == NUM_LIGHTHOUSES ) cd->stage = 2;  //If all lighthouses have their OOTX set, move on.         <------- Revert This!!!!! 
-			//if( i == 1 ) 
-				//cd->stage = 2;  //If all lighthouses have their OOTX set, move on.
+			if( i == NUM_LIGHTHOUSES ) cd->stage = 2;  //TODO: Make this configuratble to allow single lighthouse.
 		}
 		break;
 	case 3: //Look for light sync lengths.
