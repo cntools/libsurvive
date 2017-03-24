@@ -215,7 +215,7 @@ void quatfrommatrix( FLT * q, const FLT * matrix44 )
 		q[1] = (matrix44[9] - matrix44[6]) / S;
 		q[2] = (matrix44[2] - matrix44[8]) / S;
 		q[3] = (matrix44[4] - matrix44[1]) / S;
-	} else if ((matrix44[0] > matrix44[5])&(matrix44[0] > matrix44[10])) {
+	} else if ((matrix44[0] > matrix44[5])&&(matrix44[0] > matrix44[10])) {
 		FLT S = FLT_SQRT(1.0 + matrix44[0] - matrix44[5] - matrix44[10]) * 2.; // S=4*qx
 		q[0] = (matrix44[9] - matrix44[6]) / S;
 		q[1] = 0.25f * S;
