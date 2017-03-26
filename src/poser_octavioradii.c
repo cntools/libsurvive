@@ -350,7 +350,7 @@ static RefineEstimateUsingGradientDescentRadii(FLT *estimateOut, SensorAngles *a
 		{
 //#ifdef RADII_DEBUG
 			//			printf("-");
-			printf("- %d %0.9f (%0.9f) [%0.9f] \n", i, newMatchFitness, g, estimateOut[0]);
+			//printf("- %d %0.9f (%0.9f) [%0.9f] \n", i, newMatchFitness, g, estimateOut[0]);
 //#endif
 			// if it wasn't a match, back off on the distance we jump
 			g *= 0.7;
@@ -394,7 +394,7 @@ void SolveForLighthouseRadii(Point *objPosition, FLT *objOrientation, TrackedObj
 
 	for (size_t i = 0; i < MAX_RADII; i++)
 	{
-		estimate[i] = 2.2;
+		estimate[i] = 2.38;
 	}
 
 	SensorAngles angles[MAX_RADII];
