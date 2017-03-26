@@ -153,6 +153,7 @@
     <ClCompile Include="..\..\src\poser_charlesslow.c" />
     <ClCompile Include="..\..\src\poser_daveortho.c" />
     <ClCompile Include="..\..\src\poser_dummy.c" />
+    <ClCompile Include="..\..\src\poser_turveytori.c" />
     <ClCompile Include="..\..\src\survive.c" />
     <ClCompile Include="..\..\src\survive_cal.c" />
     <ClCompile Include="..\..\src\survive_config.c" />
