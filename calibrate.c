@@ -51,36 +51,36 @@ int bufferpts[32*2*3][2];
 char buffermts[32*128*3];
 int buffertimeto[32*3][2];
 
-void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  )
+void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length, uint32_t lh)
 {
 //	if( timeinsweep < 0 ) return;
-	survive_default_light_process( so, sensor_id, acode, timeinsweep, timecode, length );
+	survive_default_light_process( so, sensor_id, acode, timeinsweep, timecode, length, lh);
 	if( sensor_id < 0 ) return;
 	if( acode < 0 ) return;
 //return;
 	int jumpoffset = sensor_id;
-	if( strcmp( so->codename, "WM0" ) == 0 ) jumpoffset += 32;
+	if( strcmp( so->codename, "WM0" ) == 0 || strcmp( so->codename, "WW0" ) == 0) jumpoffset += 32;
 	else if( strcmp( so->codename, "WM1" ) == 0 ) jumpoffset += 64;
 
 
-	if( acode == 0 || acode == 2 ) //data = 0
+	if( acode % 2 == 0 && lh == 0) //data = 0
 	{
 		bufferpts[jumpoffset*2+0][0] = (timeinsweep-100000)/500;
 		buffertimeto[jumpoffset][0] = 0;
 	}
-	if( acode == 1 || acode == 3 ) //data = 1
+	if(  acode % 2 == 1 && lh == 0 ) //data = 1
 	{
 		bufferpts[jumpoffset*2+1][0] = (timeinsweep-100000)/500;
 		buffertimeto[jumpoffset][0] = 0;
 	}
 
 
-	if( acode == 4 || acode == 6 ) //data = 0
+	if( acode % 2 == 0 && lh == 1 ) //data = 0
 	{
 		bufferpts[jumpoffset*2+0][1] = (timeinsweep-100000)/500;
 		buffertimeto[jumpoffset][1] = 0;
 	}
-	if( acode == 5 || acode == 7 ) //data = 1
+	if( acode % 2 == 1 && lh == 1 ) //data = 1
 	{
 		bufferpts[jumpoffset*2+1][1] = (timeinsweep-100000)/500;
 		buffertimeto[jumpoffset][1] = 0;
@@ -99,9 +99,9 @@ void my_imu_process( struct SurviveObject * so, int mask, FLT * accelgyro, uint3
 }
 
 
-void my_angle_process( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle )
+void my_angle_process( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh)
 {
-	survive_default_angle_process( so, sensor_id, acode, timecode, length, angle );
+	survive_default_angle_process( so, sensor_id, acode, timecode, length, angle, lh );
 }
 
 char* sensor_name[32];

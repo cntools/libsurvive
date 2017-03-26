@@ -47,6 +47,7 @@ const short vidpids[] = {
 	0x28de, 0x2012, 0, //Valve Watchman, USB connected
 #ifdef HIDAPI
 	0x28de, 0x2000, 1, //Valve HMD lighthouse(B) (only used on HIDAPI, for lightcap)
+	0x28de, 0x2022, 1, //HTC Tracker (only used on HIDAPI, for lightcap)
 	0x28de, 0x2012, 1, //Valve Watchman, USB connected (only used on HIDAPI, for lightcap)
 #endif
 }; //length MAX_USB_INTERFACES*2
@@ -60,6 +61,7 @@ const char * devnames[] = {
 	"Wired Watchman 1",
 #ifdef HIDAPI
 	"HMD Lightcap",
+	"Tracker 0 Lightcap",
 	"Wired Watchman 1 Lightcap",
 #endif
 }; //length MAX_USB_INTERFACES
@@ -74,8 +76,9 @@ const char * devnames[] = {
 
 #ifdef HIDAPI
 #define USB_DEV_LIGHTHOUSEB 6
-#define USB_DEV_W_WATCHMAN1_LIGHTCAP 7
-#define MAX_USB_DEVS		8
+#define USB_DEV_TRACKER0_LIGHTCAP 7
+#define USB_DEV_W_WATCHMAN1_LIGHTCAP 8
+#define MAX_USB_DEVS		9
 #else
 #define MAX_USB_DEVS		6
 #endif
@@ -87,8 +90,9 @@ const char * devnames[] = {
 #define USB_IF_TRACKER0		4
 #define USB_IF_W_WATCHMAN1	5
 #define USB_IF_LIGHTCAP		6
-#define USB_IF_W_WATCHMAN1_LIGHTCAP		7
-#define MAX_INTERFACES		8
+#define USB_IF_TRACKER0_LIGHTCAP		7
+#define USB_IF_W_WATCHMAN1_LIGHTCAP		8
+#define MAX_INTERFACES		9
 
 typedef struct SurviveUSBInterface SurviveUSBInterface;
 typedef struct SurviveViveData SurviveViveData;
@@ -340,7 +344,7 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 			if (cur_dev->vendor_id == vendor_id &&
 				cur_dev->product_id == product_id)
 			{
-				if( menum == enumid )
+				if( cur_dev->interface_number == enumid )
 				{
 					path_to_open = cur_dev->path;
 					break;
@@ -475,9 +479,14 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 #ifdef HIDAPI
 	//Tricky: use other interface for actual lightcap.  XXX THIS IS NOT YET RIGHT!!!
 	if( sv->udev[USB_DEV_LIGHTHOUSEB] && AttachInterface( sv, hmd, USB_IF_LIGHTCAP, sv->udev[USB_DEV_LIGHTHOUSEB], 0x82, survive_data_cb, "Lightcap")) { return -12; }
+
+	// This is a HACK!  But it works.  Need to investigate further
+	sv->uiface[USB_DEV_TRACKER0_LIGHTCAP].actual_len = 64;
+	if( sv->udev[USB_DEV_TRACKER0_LIGHTCAP] && AttachInterface( sv, tr0, USB_IF_TRACKER0_LIGHTCAP, sv->udev[USB_DEV_TRACKER0_LIGHTCAP], 0x82, survive_data_cb, "Tracker 1 Lightcap")) { return -13; }
 	if( sv->udev[USB_DEV_W_WATCHMAN1_LIGHTCAP] && AttachInterface( sv, ww0, USB_IF_W_WATCHMAN1_LIGHTCAP, sv->udev[USB_DEV_W_WATCHMAN1_LIGHTCAP], 0x82, survive_data_cb, "Wired Watchman 1 Lightcap")) { return -13; }
 #else
 	if( sv->udev[USB_DEV_LIGHTHOUSE] && AttachInterface( sv, hmd, USB_IF_LIGHTCAP, sv->udev[USB_DEV_LIGHTHOUSE], 0x82, survive_data_cb, "Lightcap")) { return -12; }
+	if( sv->udev[USB_DEV_TRACKER0] && AttachInterface( sv, ww0, USB_IF_TRACKER0_LIGHTCAP, sv->udev[USB_DEV_TRACKER0], 0x82, survive_data_cb, "Tracker 0 Lightcap")) { return -13; }
 	if( sv->udev[USB_DEV_W_WATCHMAN1] && AttachInterface( sv, ww0, USB_IF_W_WATCHMAN1_LIGHTCAP, sv->udev[USB_DEV_W_WATCHMAN1], 0x82, survive_data_cb, "Wired Watchman 1 Lightcap")) { return -13; }
 #endif
 	SV_INFO( "All enumerated devices attached." );
@@ -521,6 +530,26 @@ int survive_vive_send_magic(SurviveContext * ctx, void * drv, int magic_code, vo
 
 		if (sv->udev[USB_DEV_W_WATCHMAN1])
 		{
+			static uint8_t vive_magic_power_on[5] = { 0x04 };
+			r = update_feature_report( sv->udev[USB_DEV_W_WATCHMAN1], 0, vive_magic_power_on, sizeof( vive_magic_power_on ) );
+			if( r != sizeof( vive_magic_power_on ) ) return 5;
+		}
+
+#ifdef HIDAPI
+		if (sv->udev[USB_DEV_W_WATCHMAN1_LIGHTCAP])
+		{
+			static uint8_t vive_magic_enable_lighthouse[5] = { 0x04 };
+			r = update_feature_report( sv->udev[USB_DEV_W_WATCHMAN1_LIGHTCAP], 0, vive_magic_enable_lighthouse, sizeof( vive_magic_enable_lighthouse ) );
+			if( r != sizeof( vive_magic_enable_lighthouse ) ) return 5;
+
+			static uint8_t vive_magic_enable_lighthouse2[5] = { 0x07, 0x02 };  //Switch to 0x25 mode (able to get more light updates)
+			r = update_feature_report( sv->udev[USB_DEV_W_WATCHMAN1_LIGHTCAP], 0, vive_magic_enable_lighthouse2, sizeof( vive_magic_enable_lighthouse2 ) );
+			if( r != sizeof( vive_magic_enable_lighthouse2 ) ) return 5;
+		}
+
+#else
+		if (sv->udev[USB_DEV_W_WATCHMAN1])
+		{
 			static uint8_t vive_magic_enable_lighthouse[5] = { 0x04 };
 			r = update_feature_report( sv->udev[USB_DEV_W_WATCHMAN1], 0, vive_magic_enable_lighthouse, sizeof( vive_magic_enable_lighthouse ) );
 			if( r != sizeof( vive_magic_enable_lighthouse ) ) return 5;
@@ -530,23 +559,57 @@ int survive_vive_send_magic(SurviveContext * ctx, void * drv, int magic_code, vo
 			if( r != sizeof( vive_magic_enable_lighthouse2 ) ) return 5;
 		}
 
+#endif
+
+		if (sv->udev[USB_DEV_TRACKER0])
+		{
+			static uint8_t vive_magic_power_on[5] = { 0x04 };
+			r = update_feature_report( sv->udev[USB_DEV_TRACKER0], 0, vive_magic_power_on, sizeof( vive_magic_power_on ) );
+			if( r != sizeof( vive_magic_power_on ) ) return 5;
+		}
+//#ifdef HIDAPI
+//		if (sv->udev[USB_DEV_TRACKER0_LIGHTCAP])
+//		{
+//			static uint8_t vive_magic_enable_lighthouse[5] = { 0x04 };
+//			r = update_feature_report( sv->udev[USB_DEV_TRACKER0_LIGHTCAP], 0, vive_magic_enable_lighthouse, sizeof( vive_magic_enable_lighthouse ) );
+//			if( r != sizeof( vive_magic_enable_lighthouse ) ) return 5;
+//
+//			static uint8_t vive_magic_enable_lighthouse2[5] = { 0x07, 0x02 };  //Switch to 0x25 mode (able to get more light updates)
+//			r = update_feature_report( sv->udev[USB_DEV_TRACKER0_LIGHTCAP], 0, vive_magic_enable_lighthouse2, sizeof( vive_magic_enable_lighthouse2 ) );
+//			if( r != sizeof( vive_magic_enable_lighthouse2 ) ) return 5;
+//		}
+//#else		
+		if (sv->udev[USB_DEV_TRACKER0])
+		{
+			static uint8_t vive_magic_enable_lighthouse[5] = { 0x04 };
+			r = update_feature_report( sv->udev[USB_DEV_TRACKER0], 0, vive_magic_enable_lighthouse, sizeof( vive_magic_enable_lighthouse ) );
+			if( r != sizeof( vive_magic_enable_lighthouse ) ) return 5;
+
+			static uint8_t vive_magic_enable_lighthouse2[5] = { 0x07, 0x02 };  //Switch to 0x25 mode (able to get more light updates)
+			r = update_feature_report( sv->udev[USB_DEV_TRACKER0], 0, vive_magic_enable_lighthouse2, sizeof( vive_magic_enable_lighthouse2 ) );
+			if( r != sizeof( vive_magic_enable_lighthouse2 ) ) return 5;
+		}
+
+//#endif
+
 #if 0
 		for( int i = 0; i < 256; i++ )
 		{
 			static uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0xff, 0, 0, 0, 0, 0, 0, 0 };
-			r = update_feature_report( sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof( vive_controller_haptic_pulse ) );
+			//r = update_feature_report( sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof( vive_controller_haptic_pulse ) );
+			r = update_feature_report( sv->udev[USB_DEV_W_WATCHMAN1_LIGHTCAP], 0, vive_controller_haptic_pulse, sizeof( vive_controller_haptic_pulse ) );
 			SV_INFO( "UCR: %d", r );
 			if( r != sizeof( vive_controller_haptic_pulse ) ) return 5;
 			OGUSleep( 1000 );
 		}
 #endif
 
-		if (sv->udev[USB_DEV_TRACKER0])
-		{
-			static uint8_t vive_magic_power_on[64] = {  0x04, 0x78, 0x29, 0x38 };
-			r = update_feature_report( sv->udev[USB_DEV_TRACKER0], 0, vive_magic_power_on, sizeof( vive_magic_power_on ) );
-			if( r != sizeof( vive_magic_power_on ) ) return 5;
-		}
+		//if (sv->udev[USB_DEV_TRACKER0])
+		//{
+		//	static uint8_t vive_magic_power_on[64] = {  0x04, 0x78, 0x29, 0x38 };
+		//	r = update_feature_report( sv->udev[USB_DEV_TRACKER0], 0, vive_magic_power_on, sizeof( vive_magic_power_on ) );
+		//	if( r != sizeof( vive_magic_power_on ) ) return 5;
+		//}
 
 		SV_INFO( "Powered unit on." );
 	}
@@ -771,7 +834,6 @@ static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 	qty-=2;
 	int propset = 0;
 	int doimu = 0;
-	int i;
 
 	if( (type & 0xf0) == 0xf0 )
 	{
@@ -848,10 +910,9 @@ static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 		*readdata = type; //Put 'type' back on stack.
 		uint8_t * mptr = readdata + qty-3-1; //-3 for timecode, -1 to 
 
-//#define DEBUG_WATCHMAN
 #ifdef DEBUG_WATCHMAN
 		printf( "_%s ", w->codename);
-		for( i = 0; i < qty; i++ )
+		for(int i = 0; i < qty; i++ )
 		{
 			printf( "%02x ", readdata[i] );
 		}
@@ -1126,6 +1187,7 @@ void survive_data_cb( SurviveUSBInterface * si )
 		break;
 	}
 	case USB_IF_W_WATCHMAN1_LIGHTCAP:
+	case USB_IF_TRACKER0_LIGHTCAP:
 	{
 		int i=0;
 		for( i = 0; i < 7; i++ )
@@ -1134,7 +1196,7 @@ void survive_data_cb( SurviveUSBInterface * si )
 			unsigned short *length = (unsigned short *)(&(readdata[2]));
 			unsigned long *time = (unsigned long *)(&(readdata[4]));
 			LightcapElement le;
-			le.sensor_id = POP2;
+			le.sensor_id = (uint8_t)POP2;
 			le.length = POP2;
 			le.timestamp = POP4;
 			if( le.sensor_id == 0xff ) break;

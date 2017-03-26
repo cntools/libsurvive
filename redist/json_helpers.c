@@ -117,7 +117,8 @@ char* load_file_to_mem(const char* path) {
 	fseek( f, 0, SEEK_END );
 	int len = ftell( f );
 	fseek( f, 0, SEEK_SET );
-	char * JSON_STRING = malloc( len );
+	char * JSON_STRING = malloc( len + 1);
+	memset(JSON_STRING,0,len+1); 
 	fread( JSON_STRING, len, 1, f );
 	fclose( f );
 	return JSON_STRING;
@@ -173,7 +174,7 @@ void json_load_file(const char* path) {
 
 	int16_t children = -1;
 
-	for (i=0; i<(int)items; i+=2)
+	for (i=0; i<(unsigned int)items; i+=2)
 	{
 		//increment i on each successful tag + values combination, not individual tokens
 		jsmntok_t* tag_t = tokens+i;

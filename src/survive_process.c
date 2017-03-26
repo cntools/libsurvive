@@ -6,14 +6,14 @@
 //XXX TODO: Once data is avialble in the context, use the stuff here to handle converting from time codes to
 //proper angles, then from there perform the rest of the solution. 
 
-void survive_default_light_process( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  )
+void survive_default_light_process( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length, uint32_t lh)
 {
 	SurviveContext * ctx = so->ctx;
-	int base_station = acode >> 2;
+	int base_station = lh;
 	int axis = acode & 1;
 	if( ctx->calptr )
 	{
-		survive_cal_light( so, sensor_id, acode, timeinsweep, timecode, length );
+		survive_cal_light( so, sensor_id, acode, timeinsweep, timecode, length, lh);
 	}
 
 	//We don't use sync times, yet.
@@ -37,16 +37,16 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 #endif
 
 	FLT length_sec = length / (FLT)so->timebase_hz;
-	ctx->angleproc( so, sensor_id, acode, timecode, length_sec, angle );
+	ctx->angleproc( so, sensor_id, acode, timecode, length_sec, angle, lh);
 }
 
 
-void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle )
+void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh)
 {
 	SurviveContext * ctx = so->ctx;
 	if( ctx->calptr )
 	{
-		survive_cal_angle( so, sensor_id, acode, timecode, length, angle );
+		survive_cal_angle( so, sensor_id, acode, timecode, length, angle, lh );
 	}
 	if( so->PoserFn )
 	{
