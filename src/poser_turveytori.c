@@ -299,7 +299,7 @@ void estimateToroidalAndPoloidalAngleOfPoint(
 FLT angleBetweenSensors(TrackedSensor *a, TrackedSensor *b)
 {
 	FLT angle = FLT_ACOS(FLT_COS(a->phi - b->phi)*FLT_COS(a->theta - b->theta));
-	FLT angle2 = FLT_ACOS(FLT_COS(b->phi - a->phi)*FLT_COS(b->theta - a->theta));
+	//FLT angle2 = FLT_ACOS(FLT_COS(b->phi - a->phi)*FLT_COS(b->theta - a->theta));
 
 	return angle;
 }
