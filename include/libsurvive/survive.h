@@ -32,9 +32,9 @@ struct SurviveObject
 	PoserCB PoserFn;
 
 	//Device-specific information about the location of the sensors.  This data will be used by the poser.
-	int8_t nr_locations;
-	FLT * sensor_locations;
-	FLT * sensor_normals;
+	int8_t nr_locations; // sensor count
+	FLT * sensor_locations; // size is nr_locations*3.  Contains x,y,z values for each sensor
+	FLT * sensor_normals;// size is nrlocations*3.  cointains normal vector for each sensor
 
 	//Timing sensitive data (mostly for disambiguation)
 	int32_t timebase_hz;		//48,000,000 for normal vive hardware.  (checked)
