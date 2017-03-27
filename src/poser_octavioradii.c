@@ -24,14 +24,11 @@ FLT hmd_norms[PTS * 3];
 FLT hmd_point_angles[PTS * 2];
 int hmd_point_counts[PTS * 2];
 int best_hmd_target = 0;
-int LoadData(char Camera, const char * FileData);
 
 //Values used for RunTest()
 FLT LighthousePos[3] = { 0, 0, 0 };
 FLT LighthouseQuat[4] = { 1, 0, 0, 0 };
 
-FLT RunTest(int print);
-void PrintOpti();
 
 #define MAX_POINT_PAIRS 100
 
@@ -410,9 +407,9 @@ void SolveForLighthouseRadii(Point *objPosition, FLT *objOrientation, TrackedObj
 		angles[i].VertAngle = obj->sensor[i].phi;
 	}
 
-	for (size_t i = 0; i < obj->numSensors - 1; i++)
+	for (unsigned char i = 0; i < obj->numSensors - 1; i++)
 	{
-		for (size_t j = i + 1; j < obj->numSensors; j++)
+		for (unsigned char j = i + 1; j < obj->numSensors; j++)
 		{
 			pairs[pairCount].index1 = i;
 			pairs[pairCount].index2 = j;
@@ -426,7 +423,7 @@ void SolveForLighthouseRadii(Point *objPosition, FLT *objOrientation, TrackedObj
 
 	// we should now have an estimate of the radii.
 
-	for (size_t i = 0; i < obj->numSensors; i++)
+	for (int i = 0; i < obj->numSensors; i++)
 	{
 		printf("radius[%d]: %f\n", i, estimate[i]);
 	}
@@ -494,7 +491,7 @@ int PoserOctavioRadii( SurviveObject * so, PoserData * pd )
 			Point position;
 			FLT orientation[4];
 
-			SolveForLighthouseRadii(&position, &orientation, to);
+			SolveForLighthouseRadii(&position, orientation, to);
 		}
 		{
 			int sensorCount = 0;
@@ -521,7 +518,7 @@ int PoserOctavioRadii( SurviveObject * so, PoserData * pd )
 			Point position;
 			FLT orientation[4];
 
-			SolveForLighthouseRadii(&position, &orientation, to);
+			SolveForLighthouseRadii(&position, orientation, to);
 		}
 		//printf( "Full scene data.\n" );
 		break;

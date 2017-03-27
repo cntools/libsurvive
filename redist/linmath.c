@@ -82,6 +82,28 @@ FLT anglebetween3d( FLT * a, FLT * b )
 	return FLT_ACOS(dot);
 }
 
+// algorithm found here: http://inside.mines.edu/fs_home/gmurray/ArbitraryAxisRotation/
+void rotatearoundaxis(FLT *outvec3, FLT *invec3, FLT *axis, FLT angle)
+{
+	// TODO: this really should be external.
+	normalize3d(axis, axis);
+
+	FLT s = FLT_SIN(angle);
+	FLT c = FLT_COS(angle);
+
+	FLT u=axis[0];
+	FLT v=axis[1];
+	FLT w=axis[2];
+
+	FLT x=invec3[0];
+	FLT y=invec3[1];
+	FLT z=invec3[2];
+
+	outvec3[0] = u*(u*x + v*y + w*z)*(1-c)   +   x*c   +   (-w*y + v*z)*s;
+	outvec3[1] = v*(u*x + v*y + w*z)*(1-c)   +   y*c   +   ( w*x - u*z)*s;
+	outvec3[2] = w*(u*x + v*y + w*z)*(1-c)   +   z*c   +   (-v*x + u*y)*s;
+}
+
 /////////////////////////////////////QUATERNIONS//////////////////////////////////////////
 //Originally from Mercury (Copyright (C) 2009 by Joshua Allen, Charles Lohr, Adam Lowman)
 //Under the mit/X11 license.
