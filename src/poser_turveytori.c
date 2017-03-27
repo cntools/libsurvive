@@ -646,7 +646,8 @@ FLT RotationEstimateFitness(Point lhPoint, FLT *quaternion, TrackedObject *obj)
 		FLT sensor_in_lh_reference_frame[3];
 		sub3d(sensor_in_lh_reference_frame, sensor_in_obj_reference_frame, (FLT[3]){lhPoint.x, lhPoint.y, lhPoint.z});
 
-		quatrotatevector(sensor_in_lh_reference_frame, quaternion, sensor_in_lh_reference_frame);
+		//quatrotatevector(sensor_in_lh_reference_frame, quaternion, sensor_in_lh_reference_frame);
+		rotatearoundaxis(sensor_in_lh_reference_frame, sensor_in_lh_reference_frame, quaternion, quaternion[3]);
 
 		// now the we've got the location of the sensor in the lighthouses's reference frame, given lhPoint and quaternion inputs.
 
@@ -666,7 +667,7 @@ FLT RotationEstimateFitness(Point lhPoint, FLT *quaternion, TrackedObject *obj)
 
 	fitness = FLT_SQRT(fitness);
 
-	return fitness;
+	return 1/fitness;
 }
 
 void getRotationGradient(FLT *gradientOut, Point lhPoint, FLT *quaternion, TrackedObject *obj, FLT precision)
@@ -693,10 +694,18 @@ void getRotationGradient(FLT *gradientOut, Point lhPoint, FLT *quaternion, Track
 	return;
 }
 
+//void getNormalizedAndScaledRotationGradient(FLT *vectorToScale, FLT desiredMagnitude)
+//{
+//	quatnormalize(vectorToScale, vectorToScale);
+//	quatscale(vectorToScale, vectorToScale, desiredMagnitude);
+//	return;
+//}
 void getNormalizedAndScaledRotationGradient(FLT *vectorToScale, FLT desiredMagnitude)
 {
 	quatnormalize(vectorToScale, vectorToScale);
 	quatscale(vectorToScale, vectorToScale, desiredMagnitude);
+	//vectorToScale[3] = desiredMagnitude;
+
 	return;
 }
 
@@ -723,8 +732,8 @@ static void RefineRotationEstimate(FLT *rotOut, Point lhPoint, FLT *initialEstim
 	for (FLT g = 0.2; g > 0.00001; g *= 0.99)
 	{
 		i++;
-		FLT point1[3];
-		copy3d(point1, rotOut);
+		FLT point1[4];
+		quatcopy(point1, rotOut);
 		// let's get 3 iterations of gradient descent here.
 		FLT gradient1[4];
 		
@@ -733,7 +742,7 @@ static void RefineRotationEstimate(FLT *rotOut, Point lhPoint, FLT *initialEstim
 
 		FLT point2[4];
 		quatadd(point2, gradient1, point1);
-		quatnormalize(point2,point2);
+		//quatnormalize(point2,point2);
 
 		FLT gradient2[4];
 		getRotationGradient(gradient2, lhPoint, point2, obj, g/1000);
@@ -741,7 +750,7 @@ static void RefineRotationEstimate(FLT *rotOut, Point lhPoint, FLT *initialEstim
 
 		FLT point3[4];
 		quatadd(point3, gradient2, point2);
-		quatnormalize(point3,point3);
+		//quatnormalize(point3,point3);
 
 		// remember that gradient descent has a tendency to zig-zag when it encounters a narrow valley?
 		// Well, solving the lighthouse problem presents a very narrow valley, and the zig-zag of a basic
@@ -760,7 +769,7 @@ static void RefineRotationEstimate(FLT *rotOut, Point lhPoint, FLT *initialEstim
 
 		FLT point4[4];
 		quatadd(point4, specialGradient, point3);
-		quatnormalize(point4,point4);
+		//quatnormalize(point4,point4);
 
 		FLT newMatchFitness = RotationEstimateFitness(lhPoint, point4, obj);
 
@@ -770,13 +779,13 @@ static void RefineRotationEstimate(FLT *rotOut, Point lhPoint, FLT *initialEstim
 			lastMatchFitness = newMatchFitness;
 			quatcopy(rotOut, point4);
 //#ifdef TORI_DEBUG
-			printf("+");
+			printf("+ %8.8f, %f\n", newMatchFitness, point4[3]);
 //#endif
 		}
 		else
 		{
 //#ifdef TORI_DEBUG
-			printf("-");
+			printf("-         , %f\n", point4[3]);
 //#endif
 			g *= 0.7;
 
@@ -794,7 +803,7 @@ void SolveForRotation(FLT rotOut[4], TrackedObject *obj, Point lh)
 	// This should have the lighthouse directly facing the tracked object.
 	Point trackedObjRelativeToLh = { .x = -lh.x,.y = -lh.y,.z = -lh.z };
 	FLT theta = atan2(-lh.x, -lh.y);
-	FLT zAxis[4] = { 0, 0, 1 ,0};
+	FLT zAxis[4] = { 0, 0, 1 , theta};
 	//FLT quat1[4];
 	//quatfromaxisangle(quat1, zAxis, theta);
 	// not correcting for phi, but that's less important.
