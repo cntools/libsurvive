@@ -602,7 +602,7 @@ FLT RotationEstimateFitnessOld(Point lhPoint, FLT *quaternion, TrackedObject *ob
 
 // interesting-- this is one place where we could use any sensors that are only hit by
 // just an x or y axis to make our estimate better.  TODO: bring that data to this fn.
-FLT RotationEstimateFitness(Point lhPoint, FLT *quaternion, TrackedObject *obj)
+FLT RotationEstimateFitnessAxisAngle(Point lhPoint, FLT *quaternion, TrackedObject *obj)
 {
 	FLT fitness = 0;
 	for (size_t i = 0; i < obj->numSensors; i++)
@@ -670,26 +670,121 @@ FLT RotationEstimateFitness(Point lhPoint, FLT *quaternion, TrackedObject *obj)
 	return 1/fitness;
 }
 
-void getRotationGradient(FLT *gradientOut, Point lhPoint, FLT *quaternion, TrackedObject *obj, FLT precision)
+// interesting-- this is one place where we could use any sensors that are only hit by
+// just an x or y axis to make our estimate better.  TODO: bring that data to this fn.
+FLT RotationEstimateFitnessQuaternion(Point lhPoint, FLT *quaternion, TrackedObject *obj)
+{
+	FLT fitness = 0;
+	for (size_t i = 0; i < obj->numSensors; i++)
+	{
+		// first, get the normal of the plane for the horizonal sweep
+		FLT theta = obj->sensor[i].theta;
+		// make two vectors that lie on the plane
+		FLT t1H[3] = { 1, tan(theta-LINMATHPI/2), 0 };
+		FLT t2H[3] = { 1, tan(theta-LINMATHPI/2), 1 };
+
+		FLT tNormH[3];
+
+		// the normal is the cross of two vectors on the plane.
+		cross3d(tNormH, t1H, t2H);
+
+		normalize3d(tNormH, tNormH);
+
+		// Now do the same for the vertical sweep
+
+		// first, get the normal of the plane for the horizonal sweep
+		FLT phi = obj->sensor[i].phi;
+		// make two vectors that lie on the plane
+		FLT t1V[3] = { 0, 1, tan(phi-LINMATHPI/2)};
+		FLT t2V[3] = { 1, 1, tan(phi-LINMATHPI/2)};
+
+		FLT tNormV[3];
+
+		// the normal is the cross of two vectors on the plane.
+		cross3d(tNormV, t1V, t2V);
+
+		normalize3d(tNormV, tNormV);
+
+
+		// First, where is the sensor in the object's reference frame?
+		FLT sensor_in_obj_reference_frame[3] = {obj->sensor->point.x, obj->sensor->point.y, obj->sensor->point.z};
+		// Where is the point, in the reference frame of the lighthouse?
+		// This has two steps, first we translate from the object's location being the
+		// origin to the lighthouse being the origin.
+		// And second, we apply the quaternion to rotate into the proper reference frame for the lighthouse.
+
+		FLT sensor_in_lh_reference_frame[3];
+		sub3d(sensor_in_lh_reference_frame, sensor_in_obj_reference_frame, (FLT[3]){lhPoint.x, lhPoint.y, lhPoint.z});
+
+		quatrotatevector(sensor_in_lh_reference_frame, quaternion, sensor_in_lh_reference_frame);
+		//rotatearoundaxis(sensor_in_lh_reference_frame, sensor_in_lh_reference_frame, quaternion, quaternion[3]);
+
+		// now the we've got the location of the sensor in the lighthouses's reference frame, given lhPoint and quaternion inputs.
+
+		// We need an arbitrary vector from the plane to the point.  
+		// Since the plane goes through the origin, this is trivial.
+		// The sensor point itself is such a vector!
+
+		// And go calculate the distances!
+		// TODO: don't need to ABS these because we square them below.
+		FLT dH = FLT_FABS(dot3d(sensor_in_lh_reference_frame, tNormH));
+		FLT dV = FLT_FABS(dot3d(sensor_in_lh_reference_frame, tNormV));
+
+		
+		fitness += SQUARED(dH);
+		fitness += SQUARED(dV);
+	}
+
+	fitness = FLT_SQRT(fitness);
+
+	return 1/fitness;
+}
+
+
+void getRotationGradientQuaternion(FLT *gradientOut, Point lhPoint, FLT *quaternion, TrackedObject *obj, FLT precision)
 {
 
-	FLT baseFitness = RotationEstimateFitness(lhPoint, quaternion, obj);
+	FLT baseFitness = RotationEstimateFitnessQuaternion(lhPoint, quaternion, obj);
 
 	FLT tmp0plus[4];
 	quatadd(tmp0plus, quaternion, (FLT[4]){precision, 0, 0, 0});
-	gradientOut[0] = RotationEstimateFitness(lhPoint, tmp0plus, obj) - baseFitness;
+	gradientOut[0] = RotationEstimateFitnessQuaternion(lhPoint, tmp0plus, obj) - baseFitness;
 
 	FLT tmp1plus[4];
 	quatadd(tmp1plus, quaternion, (FLT[4]){0, precision, 0, 0});
-	gradientOut[1] = RotationEstimateFitness(lhPoint, tmp1plus, obj) - baseFitness;
+	gradientOut[1] = RotationEstimateFitnessQuaternion(lhPoint, tmp1plus, obj) - baseFitness;
 
 	FLT tmp2plus[4];
 	quatadd(tmp2plus, quaternion, (FLT[4]){0, 0, precision, 0});
-	gradientOut[2] = RotationEstimateFitness(lhPoint, tmp2plus, obj) - baseFitness;
+	gradientOut[2] = RotationEstimateFitnessQuaternion(lhPoint, tmp2plus, obj) - baseFitness;
 
 	FLT tmp3plus[4];
 	quatadd(tmp3plus, quaternion, (FLT[4]){0, 0, 0, precision});
-	gradientOut[3] = RotationEstimateFitness(lhPoint, tmp3plus, obj) - baseFitness;
+	gradientOut[3] = RotationEstimateFitnessQuaternion(lhPoint, tmp3plus, obj) - baseFitness;
+
+	return;
+}
+
+void getRotationGradientAxisAngle(FLT *gradientOut, Point lhPoint, FLT *quaternion, TrackedObject *obj, FLT precision)
+{
+
+	FLT baseFitness = RotationEstimateFitnessAxisAngle(lhPoint, quaternion, obj);
+
+	FLT tmp0plus[4];
+	quatadd(tmp0plus, quaternion, (FLT[4]){precision, 0, 0, 0});
+	gradientOut[0] = RotationEstimateFitnessAxisAngle(lhPoint, tmp0plus, obj) - baseFitness;
+
+	FLT tmp1plus[4];
+	quatadd(tmp1plus, quaternion, (FLT[4]){0, precision, 0, 0});
+	gradientOut[1] = RotationEstimateFitnessAxisAngle(lhPoint, tmp1plus, obj) - baseFitness;
+
+	FLT tmp2plus[4];
+	quatadd(tmp2plus, quaternion, (FLT[4]){0, 0, precision, 0});
+	gradientOut[2] = RotationEstimateFitnessAxisAngle(lhPoint, tmp2plus, obj) - baseFitness;
+
+	FLT tmp3plus[4];
+	quatadd(tmp3plus, quaternion, (FLT[4]){0, 0, 0, precision});
+	gradientOut[3] = RotationEstimateFitnessAxisAngle(lhPoint, tmp3plus, obj) - baseFitness;
 
 	return;
 }
@@ -709,10 +804,20 @@ void getNormalizedAndScaledRotationGradient(FLT *vectorToScale, FLT desiredMagni
 	return;
 }
 
-static void RefineRotationEstimate(FLT *rotOut, Point lhPoint, FLT *initialEstimate, TrackedObject *obj)
+static void WhereIsTheTrackedObjectAxisAngle(FLT *rotation, Point lhPoint)
+{
+	FLT reverseRotation[4] = {rotation[0], rotation[1], rotation[2], -rotation[3]};
+	FLT objPoint[3] = {lhPoint.x, lhPoint.y, lhPoint.z};
+	
+	rotatearoundaxis(objPoint, objPoint, reverseRotation, reverseRotation[3]);
+
+	printf("The tracked object is at location (%f, %f, %f)\n", objPoint[0], objPoint[1], objPoint[2]);
+}
+
+static void RefineRotationEstimateAxisAngle(FLT *rotOut, Point lhPoint, FLT *initialEstimate, TrackedObject *obj)
 {
 	int i = 0;
-	FLT lastMatchFitness = RotationEstimateFitness(lhPoint, initialEstimate, obj);
+	FLT lastMatchFitness = RotationEstimateFitnessAxisAngle(lhPoint, initialEstimate, obj);
 
 	quatcopy(rotOut, initialEstimate);
 
@@ -729,7 +834,7 @@ static void RefineRotationEstimate(FLT *rotOut, Point lhPoint, FLT *initialEstim
 	//   in fact, it probably could probably be 1 without any issue.  The main place where g is decremented
 	//   is in the block below when we've made a jump that results in a worse fitness than we're starting at.
 	//   In those cases, we don't take the jump, and instead lower the value of g and try again.
-	for (FLT g = 0.2; g > 0.000000001; g *= 0.99)
+	for (FLT g = 0.1; g > 0.000000001; g *= 0.99)
 	{
 		i++;
 		FLT point1[4];
@@ -737,19 +842,26 @@ static void RefineRotationEstimate(FLT *rotOut, Point lhPoint, FLT *initialEstim
 		// let's get 3 iterations of gradient descent here.
 		FLT gradient1[4];
 		
-		getRotationGradient(gradient1, lhPoint, point1, obj, g/1000);
+		normalize3d(point1, point1);
+
+		getRotationGradientAxisAngle(gradient1, lhPoint, point1, obj, g/10000);
 		getNormalizedAndScaledRotationGradient(gradient1,g);
 
 		FLT point2[4];
 		quatadd(point2, gradient1, point1);
 		//quatnormalize(point2,point2);
 
+		normalize3d(point1, point1);
+
 		FLT gradient2[4];
-		getRotationGradient(gradient2, lhPoint, point2, obj, g/1000);
+		getRotationGradientAxisAngle(gradient2, lhPoint, point2, obj, g/10000);
 		getNormalizedAndScaledRotationGradient(gradient2,g);
 
 		FLT point3[4];
 		quatadd(point3, gradient2, point2);
+
+		normalize3d(point1, point1);
+
 		//quatnormalize(point3,point3);
 
 		// remember that gradient descent has a tendency to zig-zag when it encounters a narrow valley?
@@ -770,8 +882,9 @@ static void RefineRotationEstimate(FLT *rotOut, Point lhPoint, FLT *initialEstim
 		FLT point4[4];
 		quatadd(point4, specialGradient, point3);
 		//quatnormalize(point4,point4);
+		normalize3d(point1, point1);
 
-		FLT newMatchFitness = RotationEstimateFitness(lhPoint, point4, obj);
+		FLT newMatchFitness = RotationEstimateFitnessAxisAngle(lhPoint, point4, obj);
 
 		if (newMatchFitness > lastMatchFitness)
 		{
@@ -797,15 +910,114 @@ static void RefineRotationEstimate(FLT *rotOut, Point lhPoint, FLT *initialEstim
 	}
 	printf("\nRi=%d\n", i);
 }
-
-static void WhereIsTheTrackedObject(FLT *rotation, Point lhPoint)
+static void WhereIsTheTrackedObjectQuaternion(FLT *rotation, Point lhPoint)
 {
 	FLT reverseRotation[4] = {rotation[0], rotation[1], rotation[2], -rotation[3]};
 	FLT objPoint[3] = {lhPoint.x, lhPoint.y, lhPoint.z};
 	
-	rotatearoundaxis(objPoint, objPoint, reverseRotation, reverseRotation[3]);
-
+	//rotatearoundaxis(objPoint, objPoint, reverseRotation, reverseRotation[3]);
+	quatrotatevector(objPoint, rotation, objPoint);
 	printf("The tracked object is at location (%f, %f, %f)\n", objPoint[0], objPoint[1], objPoint[2]);
+}
+
+
+
+static void RefineRotationEstimateQuaternion(FLT *rotOut, Point lhPoint, FLT *initialEstimate, TrackedObject *obj)
+{
+	int i = 0;
+	FLT lastMatchFitness = RotationEstimateFitnessQuaternion(lhPoint, initialEstimate, obj);
+
+	quatcopy(rotOut, initialEstimate);
+
+	// The values below are somewhat magic, and definitely tunable
+	// The initial vlue of g will represent the biggest step that the gradient descent can take at first.
+	//   bigger values may be faster, especially when the initial guess is wildly off.
+	//   The downside to a bigger starting guess is that if we've picked a good guess at the local minima
+	//   if there are other local minima, we may accidentally jump to such a local minima and get stuck there.
+	//   That's fairly unlikely with the lighthouse problem, from expereince.
+	//   The other downside is that if it's too big, we may have to spend a few iterations before it gets down
+	//   to a size that doesn't jump us out of our minima.
+	// The terminal value of g represents how close we want to get to the local minima before we're "done"
+	// The change in value of g for each iteration is intentionally very close to 1.
+	//   in fact, it probably could probably be 1 without any issue.  The main place where g is decremented
+	//   is in the block below when we've made a jump that results in a worse fitness than we're starting at.
+	//   In those cases, we don't take the jump, and instead lower the value of g and try again.
+	for (FLT g = 0.1; g > 0.000000001; g *= 0.99)
+	{
+		i++;
+		FLT point1[4];
+		quatcopy(point1, rotOut);
+		// let's get 3 iterations of gradient descent here.
+		FLT gradient1[4];
+		
+		//normalize3d(point1, point1);
+
+		getRotationGradientQuaternion(gradient1, lhPoint, point1, obj, g/10000);
+		getNormalizedAndScaledRotationGradient(gradient1,g);
+
+		FLT point2[4];
+		quatadd(point2, gradient1, point1);
+		quatnormalize(point2,point2);
+
+		//normalize3d(point1, point1);
+
+		FLT gradient2[4];
+		getRotationGradientQuaternion(gradient2, lhPoint, point2, obj, g/10000);
+		getNormalizedAndScaledRotationGradient(gradient2,g);
+
+		FLT point3[4];
+		quatadd(point3, gradient2, point2);
+
+		//normalize3d(point1, point1);
+
+		quatnormalize(point3,point3);
+
+		// remember that gradient descent has a tendency to zig-zag when it encounters a narrow valley?
+		// Well, solving the lighthouse problem presents a very narrow valley, and the zig-zag of a basic
+		// gradient descent is kinda horrible here.  Instead, think about the shape that a zig-zagging 
+		// converging gradient descent makes.  Instead of using the gradient as the best indicator of 
+		// the direction we should follow, we're looking at one side of the zig-zag pattern, and specifically
+		// following *that* vector.  As it turns out, this works *amazingly* well.  
+
+		FLT specialGradient[4];
+		quatsub(specialGradient,point3,point1);
+
+		// The second parameter to this function is very much a tunable parameter.  Different values will result
+		// in a different number of iterations before we get to the minimum.  Numbers between 3-10 seem to work well
+		// It's not clear what would be optimum here.
+		getNormalizedAndScaledRotationGradient(specialGradient,g/4);
+
+		FLT point4[4];
+		quatadd(point4, specialGradient, point3);
+		quatnormalize(point4,point4);
+		//normalize3d(point1, point1);
+
+		FLT newMatchFitness = RotationEstimateFitnessQuaternion(lhPoint, point4, obj);
+
+		if (newMatchFitness > lastMatchFitness)
+		{
+
+			lastMatchFitness = newMatchFitness;
+			quatcopy(rotOut, point4);
+//#ifdef TORI_DEBUG
+			//printf("+  %8.8f, (%8.8f, %8.8f, %8.8f) %f\n", newMatchFitness, point4[0], point4[1], point4[2], point4[3]);
+//#endif
+			g *= 1.02;
+			printf("+");
+			WhereIsTheTrackedObjectQuaternion(rotOut, lhPoint);
+		}
+		else
+		{
+//#ifdef TORI_DEBUG
+			//printf("-         , %f\n", point4[3]);
+//#endif
+			g *= 0.7;
+			printf("-");
+		}
+
+
+	}
+	printf("\nRi=%d  Fitness=%3f\n", i, lastMatchFitness);
 }
 
 
@@ -816,16 +1028,23 @@ void SolveForRotation(FLT rotOut[4], TrackedObject *obj, Point lh)
 	// This should have the lighthouse directly facing the tracked object.
 	Point trackedObjRelativeToLh = { .x = -lh.x,.y = -lh.y,.z = -lh.z };
 	FLT theta = atan2(-lh.x, -lh.y);
-	FLT zAxis[4] = { 0, 0, 1 , theta};
-	//FLT quat1[4];
-	//quatfromaxisangle(quat1, zAxis, theta);
+	FLT zAxis[4] = { 0, 0, 1 , theta-LINMATHPI/2};
+	FLT quat1[4];
+	quatfromaxisangle(quat1, zAxis, theta);
+
+	//quatfrom2vectors(0,0)
 	// not correcting for phi, but that's less important.
 
 
-	// Step 2, optimize the quaternion to match the data.
-	RefineRotationEstimate(rotOut, lh, zAxis, obj);
+	// Step 2, optimize the axis/ angle to match the data.
+	RefineRotationEstimateAxisAngle(rotOut, lh, zAxis, obj);
 
-	WhereIsTheTrackedObject(rotOut, lh);
+	WhereIsTheTrackedObjectAxisAngle(rotOut, lh);
+
+	//// Step 2, optimize the quaternion to match the data.
+	//RefineRotationEstimateQuaternion(rotOut, lh, quat1, obj);
+
+	//WhereIsTheTrackedObjectQuaternion(rotOut, lh);
 
 }
 
