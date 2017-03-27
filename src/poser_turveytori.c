@@ -729,7 +729,7 @@ static void RefineRotationEstimate(FLT *rotOut, Point lhPoint, FLT *initialEstim
 	//   in fact, it probably could probably be 1 without any issue.  The main place where g is decremented
 	//   is in the block below when we've made a jump that results in a worse fitness than we're starting at.
 	//   In those cases, we don't take the jump, and instead lower the value of g and try again.
-	for (FLT g = 0.2; g > 0.00001; g *= 0.99)
+	for (FLT g = 0.2; g > 0.000000001; g *= 0.99)
 	{
 		i++;
 		FLT point1[4];
@@ -781,7 +781,7 @@ static void RefineRotationEstimate(FLT *rotOut, Point lhPoint, FLT *initialEstim
 //#ifdef TORI_DEBUG
 			printf("+  %8.8f, (%8.8f, %8.8f, %8.8f) %f\n", newMatchFitness, point4[0], point4[1], point4[2], point4[3]);
 //#endif
-			g *= 1.03;
+			g *= 1.02;
 
 		}
 		else
