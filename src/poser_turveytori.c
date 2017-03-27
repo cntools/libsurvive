@@ -600,9 +600,47 @@ FLT RotationEstimateFitnessOld(Point lhPoint, FLT *quaternion, TrackedObject *ob
 	return fitness;
 }
 
+FLT RotationEstimateFitnessAxisAngle(Point lh, FLT *AxisAngle, TrackedObject *obj)
+{
+	// For this fitness calculator, we're going to use the rotation information to figure out where
+	// we expect to see the tracked object sensors, and we'll do a sum of squares to grade
+	// the quality of the guess formed by the AxisAngle;
+
+	FLT fitness = 0;
+
+	// for each point in the tracked object
+	for (int i=0; i< obj->numSensors; i++)
+	{
+
+
+		
+		// let's see... we need to figure out where this sensor should be in the LH reference frame.
+		FLT sensorLocation[3] = {obj->sensor[i].point.x-lh.x, obj->sensor[i].point.y-lh.y, obj->sensor[i].point.z-lh.z};
+
+		// And this puppy needs to be rotated...
+
+		rotatearoundaxis(sensorLocation, sensorLocation, AxisAngle, AxisAngle[3]);
+
+		// Now, the vector indicating the position of the sensor, as seen by the lighthouse is:
+		FLT realVectFromLh[3] = {1, tan(obj->sensor[i].theta - LINMATHPI/2), tan(obj->sensor[i].phi - LINMATHPI/2)};
+
+		// and the vector we're calculating given the rotation passed in is the same as the sensor location:
+		FLT calcVectFromLh[3] = {sensorLocation[0], sensorLocation[1], sensorLocation[2]};
+
+		FLT angleBetween = anglebetween3d( realVectFromLh, calcVectFromLh );
+
+		fitness += SQUARED(angleBetween);
+	}
+
+	return 1/FLT_SQRT(fitness);
+}
+
+// This figures out how far away from the scanned planes each point is, then does a sum of squares
+// for the fitness.
+// 
 // interesting-- this is one place where we could use any sensors that are only hit by
 // just an x or y axis to make our estimate better.  TODO: bring that data to this fn.
-FLT RotationEstimateFitnessAxisAngle(Point lhPoint, FLT *quaternion, TrackedObject *obj)
+FLT RotationEstimateFitnessAxisAngleOriginal(Point lhPoint, FLT *quaternion, TrackedObject *obj)
 {
 	FLT fitness = 0;
 	for (size_t i = 0; i < obj->numSensors; i++)
@@ -892,7 +930,7 @@ static void RefineRotationEstimateAxisAngle(FLT *rotOut, Point lhPoint, FLT *ini
 			lastMatchFitness = newMatchFitness;
 			quatcopy(rotOut, point4);
 //#ifdef TORI_DEBUG
-			printf("+  %8.8f, (%8.8f, %8.8f, %8.8f) %f\n", newMatchFitness, point4[0], point4[1], point4[2], point4[3]);
+			//printf("+  %8.8f, (%8.8f, %8.8f, %8.8f) %f\n", newMatchFitness, point4[0], point4[1], point4[2], point4[3]);
 //#endif
 			g *= 1.02;
 
@@ -900,7 +938,7 @@ static void RefineRotationEstimateAxisAngle(FLT *rotOut, Point lhPoint, FLT *ini
 		else
 		{
 //#ifdef TORI_DEBUG
-			printf("-         , %f\n", point4[3]);
+			//printf("-         , %f\n", point4[3]);
 //#endif
 			g *= 0.7;
 
