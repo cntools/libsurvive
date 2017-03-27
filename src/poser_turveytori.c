@@ -535,23 +535,69 @@ static Point RefineEstimateUsingModifiedGradientDescent1(Point initialEstimate, 
 // just an x or y axis to make our estimate better.  TODO: bring that data to this fn.
 FLT RotationEstimateFitness(Point lhPoint, FLT *quaternion, TrackedObject *obj)
 {
+	FLT fitness = 0;
 	for (size_t i = 0; i < obj->numSensors; i++)
 	{
 		// first, get the normal of the plane for the horizonal sweep
 		FLT theta = obj->sensor[i].theta;
 		// make two vectors that lie on the plane
-		FLT t1[3] = { 1, tan(theta), 0 };
-		FLT t2[3] = { 1, tan(theta), 1 };
+		FLT t1H[3] = { 1, tan(theta), 0 };
+		FLT t2H[3] = { 1, tan(theta), 1 };
 
-		FLT tNorm[3];
+		FLT tNormH[3];
 
 		// the normal is the cross of two vectors on the plane.
-		cross3d(tNorm, t1, t2);
+		cross3d(tNormH, t1H, t2H);
 
-		// distance for this plane is d= fabs(A*x + B*y)/sqrt(A^2+B^2) (z term goes away since this plane is "vertical")
-		// where A is 
-		//FLT d = 
+		normalize3d(tNormH, tNormH);
+
+		// Now do the same for the vertical sweep
+
+		// first, get the normal of the plane for the horizonal sweep
+		FLT phi = obj->sensor[i].phi;
+		// make two vectors that lie on the plane
+		FLT t1V[3] = { 0, 1, tan(phi)};
+		FLT t2V[3] = { 1, 1, tan(phi)};
+
+		FLT tNormV[3];
+
+		// the normal is the cross of two vectors on the plane.
+		cross3d(tNormV, t1V, t2V);
+
+		normalize3d(tNormV, tNormV);
+
+
+		// First, where is the sensor in the object's reference frame?
+		FLT sensor_in_obj_reference_frame[3] = {obj->sensor->point.x, obj->sensor->point.y, obj->sensor->point.z};
+		// Where is the point, in the reference frame of the lighthouse?
+		// This has two steps, first we translate from the object's location being the
+		// origin to the lighthouse being the origin.
+		// And second, we apply the quaternion to rotate into the proper reference frame for the lighthouse.
+
+		FLT sensor_in_lh_reference_frame[3];
+		sub3d(sensor_in_lh_reference_frame, sensor_in_obj_reference_frame, (FLT[3]){lhPoint.x, lhPoint.y, lhPoint.z});
+
+		quatrotatevector(sensor_in_lh_reference_frame, quaternion, sensor_in_lh_reference_frame);
+
+		// now the we've got the location of the sensor in the lighthouses's reference frame, given lhPoint and quaternion inputs.
+
+		// We need an arbitrary vector from the plane to the point.  
+		// Since the plane goes through the origin, this is trivial.
+		// The sensor point itself is such a vector!
+
+		// And go calculate the distances!
+		// TODO: don't need to ABS these because we square them below.
+		FLT dH = FLT_FABS(dot3d(sensor_in_lh_reference_frame, tNormH));
+		FLT dV = FLT_FABS(dot3d(sensor_in_lh_reference_frame, tNormV));
+
+		
+		fitness += SQUARED(dH);
+		fitness += SQUARED(dV);
 	}
+
+	fitness = FLT_SQRT(fitness);
+
+	return fitness;
 }
 
 static Point RefineRotationEstimate(Point initialEstimate, PointsAndAngle *pna, size_t pnaCount, FILE *logFile)
