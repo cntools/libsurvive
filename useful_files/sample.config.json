@@ -1,8 +1,8 @@
-"_Comment0":"This file must be named config.json and placed in the same directory as the executable"
+"_Comment0":"This file must be named config.json and placed in the same directory as the executable",
 "_Comment1":"Valid Posers Are: PoserCharlesSlow, PoserDaveOrtho, PoserDummy, PoserOctavioRadii, PoserTurveyTori",
 "DefaultPoser":"PoserTurveyTori",
-"ConfigPoser":"PoserTurveyTori"
-"_Comment2":"RequiredTrackersForCal takes a comma separated list of devices required for calibration to pass.  Valid options are: HMD,WM0,WM1,TR0,WW0"
+"ConfigPoser":"PoserTurveyTori",
+"_Comment2":"RequiredTrackersForCal takes a comma separated list of devices required for calibration to pass.  Valid options are: HMD,WM0,WM1,TR0,WW0",
 "RequiredTrackersForCal":"",
-"_Comment3":"If set, AllowAllTrackersForCal will use all trackers for calibration.  Otherwise only required trackers will be used."
+"_Comment3":"If set, AllowAllTrackersForCal will use all trackers for calibration.  Otherwise only required trackers will be used.",
 "AllowAllTrackersForCal":"1",
