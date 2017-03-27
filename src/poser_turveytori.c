@@ -779,8 +779,10 @@ static void RefineRotationEstimate(FLT *rotOut, Point lhPoint, FLT *initialEstim
 			lastMatchFitness = newMatchFitness;
 			quatcopy(rotOut, point4);
 //#ifdef TORI_DEBUG
-			printf("+ %8.8f, %f\n", newMatchFitness, point4[3]);
+			printf("+  %8.8f, (%8.8f, %8.8f, %8.8f) %f\n", newMatchFitness, point4[0], point4[1], point4[2], point4[3]);
 //#endif
+			g *= 1.03;
+
 		}
 		else
 		{
@@ -795,6 +797,17 @@ static void RefineRotationEstimate(FLT *rotOut, Point lhPoint, FLT *initialEstim
 	}
 	printf("\nRi=%d\n", i);
 }
+
+static void WhereIsTheTrackedObject(FLT *rotation, Point lhPoint)
+{
+	FLT reverseRotation[4] = {rotation[0], rotation[1], rotation[2], -rotation[3]};
+	FLT objPoint[3] = {lhPoint.x, lhPoint.y, lhPoint.z};
+	
+	rotatearoundaxis(objPoint, objPoint, reverseRotation, reverseRotation[3]);
+
+	printf("The tracked object is at location (%f, %f, %f)\n", objPoint[0], objPoint[1], objPoint[2]);
+}
+
 
 void SolveForRotation(FLT rotOut[4], TrackedObject *obj, Point lh)
 {
@@ -811,6 +824,8 @@ void SolveForRotation(FLT rotOut[4], TrackedObject *obj, Point lh)
 
 	// Step 2, optimize the quaternion to match the data.
 	RefineRotationEstimate(rotOut, lh, zAxis, obj);
+
+	WhereIsTheTrackedObject(rotOut, lh);
 
 }
 

@@ -85,6 +85,9 @@ FLT anglebetween3d( FLT * a, FLT * b )
 // algorithm found here: http://inside.mines.edu/fs_home/gmurray/ArbitraryAxisRotation/
 void rotatearoundaxis(FLT *outvec3, FLT *invec3, FLT *axis, FLT angle)
 {
+	// TODO: this really should be external.
+	normalize3d(axis, axis);
+
 	FLT s = FLT_SIN(angle);
 	FLT c = FLT_COS(angle);
 
