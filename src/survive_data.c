@@ -154,8 +154,14 @@ void handle_lightcap2_sync(SurviveObject * so, LightcapElement * le )
 		{
 			if (lcd->per_sweep.activeLighthouse != -1)
 			{
-				// hmm, it appears we got two non-skip pulses at the same time.  That should never happen
-				fprintf(stderr, "WARNING: Two non-skip pulses received on the same cycle!\n");
+				static int pulseWarningCount=0;
+
+				if (pulseWarningCount < 5)
+				{
+					pulseWarningCount++;
+					// hmm, it appears we got two non-skip pulses at the same time.  That should never happen
+					fprintf(stderr, "WARNING: Two non-skip pulses received on the same cycle!\n");
+				}
 			}
 			lcd->per_sweep.activeLighthouse = 1;
 			lcd->per_sweep.activeSweepStartTime = le->timestamp;

@@ -1221,7 +1221,7 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 			pd->down[1] = pd->down[1] * 0.98 + 0.2 * tmpImu->accel[1];
 			pd->down[2] = pd->down[2] * 0.98 + 0.2 * tmpImu->accel[2];
 		}
-		//printf( "IMU:%s (%f %f %f) (%f %f %f)\n", so->codename, imu->accel[0], imu->accel[1], imu->accel[2], imu->gyro[0], imu->gyro[1], imu->gyro[2] );
+		printf( "IMU:%s (%f %f %f) (%f %f %f)\n", so->codename, imu->accel[0], imu->accel[1], imu->accel[2], imu->gyro[0], imu->gyro[1], imu->gyro[2] );
 		break;
 	}
 	case POSERDATA_LIGHT:
