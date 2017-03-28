@@ -1199,42 +1199,51 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 {
 	PoserType pt = poserData->pt;
 	SurviveContext * ctx = so->ctx;
-	ToriData * pd = so->PoserData;
+	ToriData * td = so->PoserData;
 
 
-	if (!pd)
+	if (!td)
 	{
-		so->PoserData = pd = malloc(sizeof(ToriData));
-		memset(pd, 0, sizeof(ToriData));
+		so->PoserData = td = malloc(sizeof(ToriData));
+		memset(td, 0, sizeof(ToriData));
 	}
 
 	switch( pt )
 	{
 	case POSERDATA_IMU:
 	{
-		PoserDataIMU * tmpImu = (PoserDataIMU*)pd;
+		PoserDataIMU * tmpImu = (PoserDataIMU*)poserData;
 		
 		// store off data we can use for figuring out what direction is down when doing calibration.
-		if (tmpImu->datamask & 1) // accelerometer data is present
+		//TODO: looks like the data mask isn't getting set correctly.
+		//if (tmpImu->datamask & 1) // accelerometer data is present
 		{
-			pd->down[0] = pd->down[0] * 0.98 + 0.2 * tmpImu->accel[0];
-			pd->down[1] = pd->down[1] * 0.98 + 0.2 * tmpImu->accel[1];
-			pd->down[2] = pd->down[2] * 0.98 + 0.2 * tmpImu->accel[2];
+			td->down[0] = td->down[0] * 0.98 + 0.02 * tmpImu->accel[0];
+			td->down[1] = td->down[1] * 0.98 + 0.02 * tmpImu->accel[1];
+			td->down[2] = td->down[2] * 0.98 + 0.02 * tmpImu->accel[2];
 		}
-		printf( "IMU:%s (%f %f %f) (%f %f %f)\n", so->codename, imu->accel[0], imu->accel[1], imu->accel[2], imu->gyro[0], imu->gyro[1], imu->gyro[2] );
+		//printf( "IMU:%s (%f %f %f) (%f %f %f)\n", so->codename, tmpImu->accel[0], tmpImu->accel[1], tmpImu->accel[2], tmpImu->gyro[0], tmpImu->gyro[1], tmpImu->gyro[2] );
+		//printf( "Down: (%f %f %f)\n", td->down[0], td->down[1], td->down[2] );
 		break;
 	}
 	case POSERDATA_LIGHT:
 	{
-		PoserDataLight * l = (PoserDataLight*)pd;
+		PoserDataLight * l = (PoserDataLight*)poserData;
 		//printf( "LIG:%s %d @ %f rad, %f s (AC %d) (TC %d)\n", so->codename, l->sensor_id, l->angle, l->length, l->acode, l->timecode );
+		if (0 == l->lh)
+		{
+			if (l->acode & 0x1)
+			{
+				printf("%2d: %8f\n", l->sensor_id, l->angle);
+			}
+		}
 		break;
 	}
 	case POSERDATA_FULL_SCENE:
 	{
 		TrackedObject *to;
 
-		PoserDataFullScene * fs = (PoserDataFullScene*)pd;
+		PoserDataFullScene * fs = (PoserDataFullScene*)poserData;
 
 		to = malloc(sizeof(TrackedObject) + (SENSORS_PER_OBJECT * sizeof(TrackedSensor)));
 
@@ -1245,7 +1254,8 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 		// let's get the quaternion that represents this rotation.
 		FLT downQuat[4];
 		FLT negZ[3] = { 0,0,-1 };
-		quatfrom2vectors(downQuat, negZ, pd->down);
+		//quatfrom2vectors(downQuat, negZ, td->down);
+		quatfrom2vectors(downQuat, td->down, negZ);
 
 		{
 			int sensorCount = 0;
@@ -1313,7 +1323,7 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 	}
 	case POSERDATA_DISASSOCIATE:
 	{
-		free( pd );
+		free( so->PoserData );
 		so->PoserData = NULL;
 		//printf( "Need to disassociate.\n" );
 		break;

@@ -57,6 +57,7 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 			.timecode = timecode,
 			.length = length,
 			.angle = angle,
+			.lh = lh,
 		};
 		so->PoserFn( so, (PoserData *)&l );
 	}

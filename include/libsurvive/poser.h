@@ -32,7 +32,8 @@ typedef struct
 {
 	PoserType pt;
 	int sensor_id;
-	int acode;			//OOTX Code associated with this sweep. base_station = acode >> 2;  axis = acode & 1;
+	int acode;			//OOTX Code associated with this sweep. bit 1 indicates vertical(1) or horizontal(0) sweep
+	int lh;             //Lighthouse making this sweep
 	uint32_t timecode;  //In object-local ticks.
 	FLT length;			//In seconds
 	FLT angle;			//In radians from center of lighthouse.
