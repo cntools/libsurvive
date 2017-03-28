@@ -71,6 +71,7 @@ static const float DefaultPointsPerOuterDiameter = 60;
 
 typedef struct
 {
+	FLT down[3];  // populated by the IMU for posing
 	int something;
 	//Stuff
 } ToriData;
@@ -1194,23 +1195,32 @@ Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 
 
 
-int PoserTurveyTori( SurviveObject * so, PoserData * pd )
+int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 {
-	PoserType pt = pd->pt;
+	PoserType pt = poserData->pt;
 	SurviveContext * ctx = so->ctx;
-	ToriData * dd = so->PoserData;
+	ToriData * pd = so->PoserData;
 
-	if (!dd)
+
+	if (!pd)
 	{
-		so->PoserData = dd = malloc(sizeof(ToriData));
-		memset(dd, 0, sizeof(ToriData));
+		so->PoserData = pd = malloc(sizeof(ToriData));
+		memset(pd, 0, sizeof(ToriData));
 	}
 
 	switch( pt )
 	{
 	case POSERDATA_IMU:
 	{
-		PoserDataIMU * imu = (PoserDataIMU*)pd;
+		PoserDataIMU * tmpImu = (PoserDataIMU*)pd;
+		
+		// store off data we can use for figuring out what direction is down when doing calibration.
+		if (tmpImu->datamask & 1) // accelerometer data is present
+		{
+			pd->down[0] = pd->down[0] * 0.98 + 0.2 * tmpImu->accel[0];
+			pd->down[1] = pd->down[1] * 0.98 + 0.2 * tmpImu->accel[1];
+			pd->down[2] = pd->down[2] * 0.98 + 0.2 * tmpImu->accel[2];
+		}
 		//printf( "IMU:%s (%f %f %f) (%f %f %f)\n", so->codename, imu->accel[0], imu->accel[1], imu->accel[2], imu->gyro[0], imu->gyro[1], imu->gyro[2] );
 		break;
 	}
@@ -1228,30 +1238,40 @@ int PoserTurveyTori( SurviveObject * so, PoserData * pd )
 
 		to = malloc(sizeof(TrackedObject) + (SENSORS_PER_OBJECT * sizeof(TrackedSensor)));
 
-		//FLT  lengths[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];
-		//FLT  angles[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];  //2 Axes  (Angles in LH space)
-		//FLT  synctimes[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES];
+		// if we rotate the internal reference frame of of the tracked object from having -z being arbitrary
+		// to being the down direction as defined by the accelerometer, then when we have come up
+		// with world coordinate system, it will have Z oriented correctly.
 
-		//to->numSensors = so->nr_locations;
+		// let's get the quaternion that represents this rotation.
+		FLT downQuat[4];
+		FLT negZ[3] = { 0,0,-1 };
+		quatfrom2vectors(downQuat, negZ, pd->down);
+
 		{
 			int sensorCount = 0;
+
 
 			for (int i = 0; i < so->nr_locations; i++)
 			{
 				if (fs->lengths[i][0][0] != -1 && fs->lengths[i][0][1] != -1) //lh 0
 				{
-					to->sensor[sensorCount].normal.x = so->sensor_normals[i * 3 + 0];
-					to->sensor[sensorCount].normal.y = so->sensor_normals[i * 3 + 1];
-					to->sensor[sensorCount].normal.z = so->sensor_normals[i * 3 + 2];
-					to->sensor[sensorCount].point.x = so->sensor_locations[i * 3 + 0];
-					to->sensor[sensorCount].point.y = so->sensor_locations[i * 3 + 1];
-					to->sensor[sensorCount].point.z = so->sensor_locations[i * 3 + 2];
+					FLT norm[3] = { so->sensor_normals[i * 3 + 0] , so->sensor_normals[i * 3 + 1] , so->sensor_normals[i * 3 + 2] };
+					FLT point[3] = { so->sensor_locations[i * 3 + 0] , so->sensor_locations[i * 3 + 1] , so->sensor_locations[i * 3 + 2] };
+
+					quatrotatevector(norm, downQuat, norm);
+					quatrotatevector(point, downQuat, point);
+
+					to->sensor[sensorCount].normal.x = norm[0];
+					to->sensor[sensorCount].normal.y = norm[1];
+					to->sensor[sensorCount].normal.z = norm[2];
+					to->sensor[sensorCount].point.x = point[0];
+					to->sensor[sensorCount].point.y = point[1];
+					to->sensor[sensorCount].point.z = point[2];
 					to->sensor[sensorCount].theta = fs->angles[i][0][0] + LINMATHPI / 2; // lighthouse 0, angle 0 (horizontal)
 					to->sensor[sensorCount].phi = fs->angles[i][0][1] + LINMATHPI / 2; // lighthosue 0, angle 1 (vertical)
 					sensorCount++;
 				}
 			}
-
 			to->numSensors = sensorCount;
 
 			SolveForLighthouse(to, 0);
@@ -1264,12 +1284,18 @@ int PoserTurveyTori( SurviveObject * so, PoserData * pd )
 			{
 				if (fs->lengths[i][lh][0] != -1 && fs->lengths[i][lh][1] != -1) 
 				{
-					to->sensor[sensorCount].normal.x = so->sensor_normals[i * 3 + 0];
-					to->sensor[sensorCount].normal.y = so->sensor_normals[i * 3 + 1];
-					to->sensor[sensorCount].normal.z = so->sensor_normals[i * 3 + 2];
-					to->sensor[sensorCount].point.x = so->sensor_locations[i * 3 + 0];
-					to->sensor[sensorCount].point.y = so->sensor_locations[i * 3 + 1];
-					to->sensor[sensorCount].point.z = so->sensor_locations[i * 3 + 2];
+					FLT norm[3] = { so->sensor_normals[i * 3 + 0] , so->sensor_normals[i * 3 + 1] , so->sensor_normals[i * 3 + 2] };
+					FLT point[3] = { so->sensor_locations[i * 3 + 0] , so->sensor_locations[i * 3 + 1] , so->sensor_locations[i * 3 + 2] };
+
+					quatrotatevector(norm, downQuat, norm);
+					quatrotatevector(point, downQuat, point);
+
+					to->sensor[sensorCount].normal.x = norm[0];
+					to->sensor[sensorCount].normal.y = norm[1];
+					to->sensor[sensorCount].normal.z = norm[2];
+					to->sensor[sensorCount].point.x = point[0];
+					to->sensor[sensorCount].point.y = point[1];
+					to->sensor[sensorCount].point.z = point[2];
 					to->sensor[sensorCount].theta = fs->angles[i][lh][0] + LINMATHPI / 2; // lighthouse 0, angle 0 (horizontal)
 					to->sensor[sensorCount].phi = fs->angles[i][lh][1] + LINMATHPI / 2; // lighthosue 0, angle 1 (vertical)
 					sensorCount++;
@@ -1280,13 +1306,15 @@ int PoserTurveyTori( SurviveObject * so, PoserData * pd )
 
 			SolveForLighthouse(to, 0);
 		}
+
+		free(to);
 		//printf( "Full scene data.\n" );
 		break;
 	}
 	case POSERDATA_DISASSOCIATE:
 	{
-		free( dd );
-		so->PoserData = 0;
+		free( pd );
+		so->PoserData = NULL;
 		//printf( "Need to disassociate.\n" );
 		break;
 	}
