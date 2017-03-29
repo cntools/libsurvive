@@ -1190,7 +1190,7 @@ static Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 
 	printf("(%4.4f, %4.4f, %4.4f) Dist: %8.8f Fit:%4f  ", refinedEstimateGd.x, refinedEstimateGd.y, refinedEstimateGd.z, distance, fitGd);
 
-	if (fitGd > 5)
+	//if (fitGd > 5)
 	{
 		FLT distance = FLT_SQRT(SQUARED(refinedEstimateGd.x) + SQUARED(refinedEstimateGd.y) + SQUARED(refinedEstimateGd.z));
 		printf("(%4.4f, %4.4f, %4.4f) Dist: %8.8f Fit:%4f  ", refinedEstimateGd.x, refinedEstimateGd.y, refinedEstimateGd.z, distance, fitGd);
@@ -1351,7 +1351,7 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 					counter++;
 
 					// let's just do this occasionally for now...
-					if (counter % 4 == 0)
+					if (counter % 1 == 0)
 						QuickPose(so);
 				}
 				// axis changed, time to increment the circular buffer index.
