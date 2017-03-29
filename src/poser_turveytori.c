@@ -71,8 +71,14 @@ static const float DefaultPointsPerOuterDiameter = 60;
 
 typedef struct
 {
+	FLT down[3];  // populated by the IMU for posing
 	int something;
 	//Stuff
+
+#define OLD_ANGLES_BUFF_LEN 3
+	FLT oldAngles[SENSORS_PER_OBJECT][2][NUM_LIGHTHOUSES][OLD_ANGLES_BUFF_LEN]; // sensor, sweep axis, lighthouse, instance
+	int angleIndex[NUM_LIGHTHOUSES][2]; // index into circular buffer ahead. separate index for each axis.
+	int lastAxis[NUM_LIGHTHOUSES];
 } ToriData;
 
 
@@ -525,7 +531,7 @@ static Point RefineEstimateUsingModifiedGradientDescent1(Point initialEstimate, 
 
 
 	}
-	printf("\ni=%d\n", i);
+	printf(" i=%d ", i);
 
 	return lastPoint;
 }
@@ -844,12 +850,12 @@ void getNormalizedAndScaledRotationGradient(FLT *vectorToScale, FLT desiredMagni
 
 static void WhereIsTheTrackedObjectAxisAngle(FLT *rotation, Point lhPoint)
 {
-	FLT reverseRotation[4] = {rotation[0], rotation[1], rotation[2], -rotation[3]};
+	FLT reverseRotation[4] = {rotation[0], rotation[1], rotation[2], rotation[3]};
 	FLT objPoint[3] = {lhPoint.x, lhPoint.y, lhPoint.z};
 	
 	rotatearoundaxis(objPoint, objPoint, reverseRotation, reverseRotation[3]);
 
-	printf("The tracked object is at location (%f, %f, %f)\n", objPoint[0], objPoint[1], objPoint[2]);
+	printf("{%8.8f, %8.8f, %8.8f}  ", objPoint[0], objPoint[1], objPoint[2]);
 }
 
 static void RefineRotationEstimateAxisAngle(FLT *rotOut, Point lhPoint, FLT *initialEstimate, TrackedObject *obj)
@@ -872,7 +878,7 @@ static void RefineRotationEstimateAxisAngle(FLT *rotOut, Point lhPoint, FLT *ini
 	//   in fact, it probably could probably be 1 without any issue.  The main place where g is decremented
 	//   is in the block below when we've made a jump that results in a worse fitness than we're starting at.
 	//   In those cases, we don't take the jump, and instead lower the value of g and try again.
-	for (FLT g = 0.1; g > 0.000000001; g *= 0.99)
+	for (FLT g = 0.1; g > 0.000000001 || i > 10000; g *= 0.99)
 	{
 		i++;
 		FLT point1[4];
@@ -946,7 +952,7 @@ static void RefineRotationEstimateAxisAngle(FLT *rotOut, Point lhPoint, FLT *ini
 
 
 	}
-	printf("\nRi=%d\n", i);
+	printf(" Ri=%d ", i);
 }
 static void WhereIsTheTrackedObjectQuaternion(FLT *rotation, Point lhPoint)
 {
@@ -955,7 +961,7 @@ static void WhereIsTheTrackedObjectQuaternion(FLT *rotation, Point lhPoint)
 	
 	//rotatearoundaxis(objPoint, objPoint, reverseRotation, reverseRotation[3]);
 	quatrotatevector(objPoint, rotation, objPoint);
-	printf("The tracked object is at location (%f, %f, %f)\n", objPoint[0], objPoint[1], objPoint[2]);
+	printf("(%f, %f, %f)\n", objPoint[0], objPoint[1], objPoint[2]);
 }
 
 
@@ -1055,7 +1061,7 @@ static void RefineRotationEstimateQuaternion(FLT *rotOut, Point lhPoint, FLT *in
 
 
 	}
-	printf("\nRi=%d  Fitness=%3f\n", i, lastMatchFitness);
+	printf("Ri=%3d  Fitness=%3f ", i, lastMatchFitness);
 }
 
 
@@ -1087,8 +1093,23 @@ void SolveForRotation(FLT rotOut[4], TrackedObject *obj, Point lh)
 }
 
 
-Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
+static Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 {
+	//printf("Solving for Lighthouse\n");
+
+	//printf("obj->numSensors = %d;\n", obj->numSensors);
+
+	//for (int i=0; i < obj->numSensors; i++)
+	//{
+	//	printf("obj->sensor[%d].normal.x = %f;\n", i, obj->sensor[i].normal.x);
+	//	printf("obj->sensor[%d].normal.y = %f;\n", i, obj->sensor[i].normal.y);
+	//	printf("obj->sensor[%d].normal.z = %f;\n", i, obj->sensor[i].normal.z);
+	//	printf("obj->sensor[%d].point.x = %f;\n", i, obj->sensor[i].point.x);
+	//	printf("obj->sensor[%d].point.y = %f;\n", i, obj->sensor[i].point.y);
+	//	printf("obj->sensor[%d].point.z = %f;\n", i, obj->sensor[i].point.z);
+	//	printf("obj->sensor[%d].phi = %f;\n", i, obj->sensor[i].phi);
+	//	printf("obj->sensor[%d].theta = %f;\n\n", i, obj->sensor[i].theta);
+	//}
 	PointsAndAngle pna[MAX_POINT_PAIRS];
 
 	volatile size_t sizeNeeded = sizeof(pna);
@@ -1167,13 +1188,17 @@ Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 
 	FLT fitGd = getPointFitness(refinedEstimateGd, pna, pnaCount);
 
-	FLT distance = FLT_SQRT(SQUARED(refinedEstimateGd.x) + SQUARED(refinedEstimateGd.y) + SQUARED(refinedEstimateGd.z));
-	printf("(%4.4f, %4.4f, %4.4f)\n", refinedEstimateGd.x, refinedEstimateGd.y, refinedEstimateGd.z);
-	printf("Distance is %f,   Fitness is %f\n", distance, fitGd);
+	printf("(%4.4f, %4.4f, %4.4f) Dist: %8.8f Fit:%4f  ", refinedEstimateGd.x, refinedEstimateGd.y, refinedEstimateGd.z, distance, fitGd);
 
-	FLT rot[4];
-	SolveForRotation(rot, obj, refinedEstimateGd);
+	//if (fitGd > 5)
+	{
+		FLT distance = FLT_SQRT(SQUARED(refinedEstimateGd.x) + SQUARED(refinedEstimateGd.y) + SQUARED(refinedEstimateGd.z));
+		printf("(%4.4f, %4.4f, %4.4f) Dist: %8.8f Fit:%4f  ", refinedEstimateGd.x, refinedEstimateGd.y, refinedEstimateGd.z, distance, fitGd);
+		//printf("Distance is %f,   Fitness is %f\n", distance, fitGd);
 
+		FLT rot[4];
+		SolveForRotation(rot, obj, refinedEstimateGd);
+	}
 	if (logFile)
 	{
 		updateHeader(logFile);
@@ -1190,69 +1215,214 @@ Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 
 
 
-
-
-
-
-int PoserTurveyTori( SurviveObject * so, PoserData * pd )
+static void QuickPose(SurviveObject *so)
 {
-	PoserType pt = pd->pt;
-	SurviveContext * ctx = so->ctx;
-	ToriData * dd = so->PoserData;
+	ToriData * td = so->PoserData;
 
-	if (!dd)
+
+	//for (int i=0; i < so->nr_locations; i++)
+	//{
+	//	FLT x0=td->oldAngles[i][0][0][td->angleIndex[0][0]];
+	//	FLT y0=td->oldAngles[i][1][0][td->angleIndex[0][1]];
+	//	FLT x1=td->oldAngles[i][0][1][td->angleIndex[1][0]];
+	//	FLT y1=td->oldAngles[i][1][1][td->angleIndex[1][1]];
+	//	//printf("%2d: %8.8f, %8.8f   %8.8f, %8.8f   \n", 
+	//	//	i,
+	//	//	x0,
+	//	//	y0,
+	//	//	x1,
+	//	//	y1
+	//	//	);
+	//	printf("%2d: %8.8f, %8.8f   \n", 
+	//		i,
+	//		x0,
+	//		y0
+	//		);
+	//}
+	//printf("\n");
+
+	TrackedObject *to;
+
+	to = malloc(sizeof(TrackedObject) + (SENSORS_PER_OBJECT * sizeof(TrackedSensor)));
+
 	{
-		so->PoserData = dd = malloc(sizeof(ToriData));
-		memset(dd, 0, sizeof(ToriData));
+		int sensorCount = 0;
+
+		for (int i = 0; i < so->nr_locations; i++)
+		{
+			int lh = 0;
+			int angleIndex0 = (td->angleIndex[lh][0] + 1 + OLD_ANGLES_BUFF_LEN) % OLD_ANGLES_BUFF_LEN;
+			int angleIndex1 = (td->angleIndex[lh][1] + 1 + OLD_ANGLES_BUFF_LEN) % OLD_ANGLES_BUFF_LEN;
+			if (td->oldAngles[i][0][lh][angleIndex0] != 0 && td->oldAngles[i][1][lh][angleIndex1] != 0) 
+			{
+				FLT norm[3] = { so->sensor_normals[i * 3 + 0] , so->sensor_normals[i * 3 + 1] , so->sensor_normals[i * 3 + 2] };
+				FLT point[3] = { so->sensor_locations[i * 3 + 0] , so->sensor_locations[i * 3 + 1] , so->sensor_locations[i * 3 + 2] };
+
+				to->sensor[sensorCount].normal.x = norm[0];
+				to->sensor[sensorCount].normal.y = norm[1];
+				to->sensor[sensorCount].normal.z = norm[2];
+				to->sensor[sensorCount].point.x = point[0];
+				to->sensor[sensorCount].point.y = point[1];
+				to->sensor[sensorCount].point.z = point[2];
+				to->sensor[sensorCount].theta = td->oldAngles[i][0][lh][angleIndex0] + LINMATHPI / 2; // lighthouse 0, angle 0 (horizontal)
+				to->sensor[sensorCount].phi = td->oldAngles[i][1][lh][angleIndex1] + LINMATHPI / 2; // lighthouse 0, angle 1 (vertical)
+
+				//printf("%2d: %8.8f, %8.8f   \n", 
+				//	i,
+				//	to->sensor[sensorCount].theta,
+				//	to->sensor[sensorCount].phi
+				//	);
+
+				sensorCount++;
+			}
+		}
+		to->numSensors = sensorCount;
+
+		if (sensorCount > 4)
+		{
+			SolveForLighthouse(to, 0);
+			printf("!\n");
+		}
+
+		
+	}
+
+
+	free(to);
+
+}
+
+
+
+int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
+{
+	PoserType pt = poserData->pt;
+	SurviveContext * ctx = so->ctx;
+	ToriData * td = so->PoserData;
+
+
+	if (!td)
+	{
+		so->PoserData = td = malloc(sizeof(ToriData));
+		memset(td, 0, sizeof(ToriData));
 	}
 
 	switch( pt )
 	{
 	case POSERDATA_IMU:
 	{
-		PoserDataIMU * imu = (PoserDataIMU*)pd;
-		//printf( "IMU:%s (%f %f %f) (%f %f %f)\n", so->codename, imu->accel[0], imu->accel[1], imu->accel[2], imu->gyro[0], imu->gyro[1], imu->gyro[2] );
+		PoserDataIMU * tmpImu = (PoserDataIMU*)poserData;
+		
+		// store off data we can use for figuring out what direction is down when doing calibration.
+		//TODO: looks like the data mask isn't getting set correctly.
+		//if (tmpImu->datamask & 1) // accelerometer data is present
+		{
+			td->down[0] = td->down[0] * 0.98 + 0.02 * tmpImu->accel[0];
+			td->down[1] = td->down[1] * 0.98 + 0.02 * tmpImu->accel[1];
+			td->down[2] = td->down[2] * 0.98 + 0.02 * tmpImu->accel[2];
+		}
+		//printf( "IMU:%s (%f %f %f) (%f %f %f)\n", so->codename, tmpImu->accel[0], tmpImu->accel[1], tmpImu->accel[2], tmpImu->gyro[0], tmpImu->gyro[1], tmpImu->gyro[2] );
+		//printf( "Down: (%f %f %f)\n", td->down[0], td->down[1], td->down[2] );
 		break;
 	}
 	case POSERDATA_LIGHT:
 	{
-		PoserDataLight * l = (PoserDataLight*)pd;
+		PoserDataLight * l = (PoserDataLight*)poserData;
+
+		if (l->lh >= NUM_LIGHTHOUSES || l->lh < 0)
+		{
+			// should never happen.  Famous last words...
+			break;
+		}
+		int axis = l->acode & 0x1;
 		//printf( "LIG:%s %d @ %f rad, %f s (AC %d) (TC %d)\n", so->codename, l->sensor_id, l->angle, l->length, l->acode, l->timecode );
+		if ((td->lastAxis[l->lh] != (l->acode & 0x1)) )
+		{
+			int foo = l->acode & 0x1;
+			//printf("%d", foo);
+
+
+			//if (axis)
+			{
+				if (0 == l->lh && axis) // only once per full cycle...
+				{
+					static unsigned int counter = 1;
+
+					counter++;
+
+					// let's just do this occasionally for now...
+					if (counter % 1 == 0)
+						QuickPose(so);
+				}
+				// axis changed, time to increment the circular buffer index.
+				td->angleIndex[l->lh][axis]++;
+				td->angleIndex[l->lh][axis] = td->angleIndex[l->lh][axis] % OLD_ANGLES_BUFF_LEN;
+
+				// and clear out the data.
+				for (int i=0; i < SENSORS_PER_OBJECT; i++)
+				{
+					td->oldAngles[i][axis][l->lh][td->angleIndex[l->lh][axis]] = 0;
+				}
+
+			}
+			td->lastAxis[l->lh] = axis;
+		}
+
+		td->oldAngles[l->sensor_id][axis][l->lh][td->angleIndex[l->lh][axis]] = l->angle;
 		break;
 	}
 	case POSERDATA_FULL_SCENE:
 	{
 		TrackedObject *to;
 
-		PoserDataFullScene * fs = (PoserDataFullScene*)pd;
+		PoserDataFullScene * fs = (PoserDataFullScene*)poserData;
 
 		to = malloc(sizeof(TrackedObject) + (SENSORS_PER_OBJECT * sizeof(TrackedSensor)));
 
-		//FLT  lengths[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];
-		//FLT  angles[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];  //2 Axes  (Angles in LH space)
-		//FLT  synctimes[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES];
+		// if we rotate the internal reference frame of of the tracked object from having -z being arbitrary
+		// to being the down direction as defined by the accelerometer, then when we have come up
+		// with world coordinate system, it will have Z oriented correctly.
 
-		//to->numSensors = so->nr_locations;
+		// let's get the quaternion that represents this rotation.
+		FLT downQuat[4];
+		FLT negZ[3] = { 0,0,-1 };
+		//quatfrom2vectors(downQuat, negZ, td->down);
+		quatfrom2vectors(downQuat, td->down, negZ);
+
 		{
 			int sensorCount = 0;
+
 
 			for (int i = 0; i < so->nr_locations; i++)
 			{
 				if (fs->lengths[i][0][0] != -1 && fs->lengths[i][0][1] != -1) //lh 0
 				{
-					to->sensor[sensorCount].normal.x = so->sensor_normals[i * 3 + 0];
-					to->sensor[sensorCount].normal.y = so->sensor_normals[i * 3 + 1];
-					to->sensor[sensorCount].normal.z = so->sensor_normals[i * 3 + 2];
-					to->sensor[sensorCount].point.x = so->sensor_locations[i * 3 + 0];
-					to->sensor[sensorCount].point.y = so->sensor_locations[i * 3 + 1];
-					to->sensor[sensorCount].point.z = so->sensor_locations[i * 3 + 2];
+					FLT norm[3] = { so->sensor_normals[i * 3 + 0] , so->sensor_normals[i * 3 + 1] , so->sensor_normals[i * 3 + 2] };
+					FLT point[3] = { so->sensor_locations[i * 3 + 0] , so->sensor_locations[i * 3 + 1] , so->sensor_locations[i * 3 + 2] };
+
+					quatrotatevector(norm, downQuat, norm);
+					quatrotatevector(point, downQuat, point);
+
+					to->sensor[sensorCount].normal.x = norm[0];
+					to->sensor[sensorCount].normal.y = norm[1];
+					to->sensor[sensorCount].normal.z = norm[2];
+					to->sensor[sensorCount].point.x = point[0];
+					to->sensor[sensorCount].point.y = point[1];
+					to->sensor[sensorCount].point.z = point[2];
 					to->sensor[sensorCount].theta = fs->angles[i][0][0] + LINMATHPI / 2; // lighthouse 0, angle 0 (horizontal)
-					to->sensor[sensorCount].phi = fs->angles[i][0][1] + LINMATHPI / 2; // lighthosue 0, angle 1 (vertical)
+					to->sensor[sensorCount].phi = fs->angles[i][0][1] + LINMATHPI / 2; // lighthouse 0, angle 1 (vertical)
+
+					//printf("%2d: %8.8f, %8.8f   \n", 
+					//	i,
+					//	to->sensor[sensorCount].theta,
+					//	to->sensor[sensorCount].phi
+					//	);
+
 					sensorCount++;
 				}
 			}
-
 			to->numSensors = sensorCount;
+
 
 			SolveForLighthouse(to, 0);
 		}
@@ -1264,12 +1434,18 @@ int PoserTurveyTori( SurviveObject * so, PoserData * pd )
 			{
 				if (fs->lengths[i][lh][0] != -1 && fs->lengths[i][lh][1] != -1) 
 				{
-					to->sensor[sensorCount].normal.x = so->sensor_normals[i * 3 + 0];
-					to->sensor[sensorCount].normal.y = so->sensor_normals[i * 3 + 1];
-					to->sensor[sensorCount].normal.z = so->sensor_normals[i * 3 + 2];
-					to->sensor[sensorCount].point.x = so->sensor_locations[i * 3 + 0];
-					to->sensor[sensorCount].point.y = so->sensor_locations[i * 3 + 1];
-					to->sensor[sensorCount].point.z = so->sensor_locations[i * 3 + 2];
+					FLT norm[3] = { so->sensor_normals[i * 3 + 0] , so->sensor_normals[i * 3 + 1] , so->sensor_normals[i * 3 + 2] };
+					FLT point[3] = { so->sensor_locations[i * 3 + 0] , so->sensor_locations[i * 3 + 1] , so->sensor_locations[i * 3 + 2] };
+
+					quatrotatevector(norm, downQuat, norm);
+					quatrotatevector(point, downQuat, point);
+
+					to->sensor[sensorCount].normal.x = norm[0];
+					to->sensor[sensorCount].normal.y = norm[1];
+					to->sensor[sensorCount].normal.z = norm[2];
+					to->sensor[sensorCount].point.x = point[0];
+					to->sensor[sensorCount].point.y = point[1];
+					to->sensor[sensorCount].point.z = point[2];
 					to->sensor[sensorCount].theta = fs->angles[i][lh][0] + LINMATHPI / 2; // lighthouse 0, angle 0 (horizontal)
 					to->sensor[sensorCount].phi = fs->angles[i][lh][1] + LINMATHPI / 2; // lighthosue 0, angle 1 (vertical)
 					sensorCount++;
@@ -1280,13 +1456,15 @@ int PoserTurveyTori( SurviveObject * so, PoserData * pd )
 
 			SolveForLighthouse(to, 0);
 		}
+
+		free(to);
 		//printf( "Full scene data.\n" );
 		break;
 	}
 	case POSERDATA_DISASSOCIATE:
 	{
-		free( dd );
-		so->PoserData = 0;
+		free( so->PoserData );
+		so->PoserData = NULL;
 		//printf( "Need to disassociate.\n" );
 		break;
 	}

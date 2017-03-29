@@ -4,8 +4,12 @@
 
 typedef struct
 {
-	int something;
-	//Stuff
+#define OLD_ANGLES_BUFF_LEN 3
+	FLT oldAngles[SENSORS_PER_OBJECT][2][NUM_LIGHTHOUSES][OLD_ANGLES_BUFF_LEN]; // sensor, sweep axis, lighthouse, instance
+	int angleIndex[NUM_LIGHTHOUSES][2]; // index into circular buffer ahead. separate index for each axis.
+	int lastAxis[NUM_LIGHTHOUSES];
+
+	int hitCount[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];
 } OctavioRadiiData;
 
 #include <stdio.h>
@@ -45,6 +49,7 @@ typedef struct
 	Point normal; // unit vector indicating the normal for the sensor
 	double theta; // "horizontal" angular measurement from lighthouse radians
 	double phi; // "vertical" angular measurement from lighthouse in radians.
+	int id;
 } TrackedSensor;
 
 typedef struct
@@ -382,10 +387,10 @@ static RefineEstimateUsingGradientDescentRadii(FLT *estimateOut, SensorAngles *a
 
 
 	}
-	printf("\ni=%d\n", i);
+	printf(" i=%d ", i);
 }
 
-void SolveForLighthouseRadii(Point *objPosition, FLT *objOrientation, TrackedObject *obj)
+static void SolveForLighthouseRadii(Point *objPosition, FLT *objOrientation, TrackedObject *obj)
 {
 	FLT estimate[MAX_RADII];
 
@@ -393,6 +398,12 @@ void SolveForLighthouseRadii(Point *objPosition, FLT *objOrientation, TrackedObj
 	{
 		estimate[i] = 2.38;
 	}
+
+
+	//for (int i=0; i < obj->numSensors; i++)
+	//{
+	//	printf("%d, ", obj->sensor[i].id);
+	//}
 
 	SensorAngles angles[MAX_RADII];
 	PointPair pairs[MAX_POINT_PAIRS];
@@ -423,14 +434,106 @@ void SolveForLighthouseRadii(Point *objPosition, FLT *objOrientation, TrackedObj
 
 	// we should now have an estimate of the radii.
 
-	for (int i = 0; i < obj->numSensors; i++)
+	//for (int i = 0; i < obj->numSensors; i++)
+	for (int i = 0; i < 1; i++)
 	{
 		printf("radius[%d]: %f\n", i, estimate[i]);
 	}
+
 	// (FLT *estimateOut, SensorAngles *angles, FLT *initialEstimate, size_t numRadii, PointPair *pairs, size_t numPairs, FILE *logFile)
 
 	return;
 }
+
+static void QuickPose(SurviveObject *so)
+{
+	OctavioRadiiData * td = so->PoserData;
+
+
+	//for (int i=0; i < so->nr_locations; i++)
+	//{
+	//	FLT x0=td->oldAngles[i][0][0][td->angleIndex[0][0]];
+	//	FLT y0=td->oldAngles[i][1][0][td->angleIndex[0][1]];
+	//	//FLT x1=td->oldAngles[i][0][1][td->angleIndex[1][0]];
+	//	//FLT y1=td->oldAngles[i][1][1][td->angleIndex[1][1]];
+	//	//printf("%2d: %8.8f, %8.8f   %8.8f, %8.8f   \n", 
+	//	//	i,
+	//	//	x0,
+	//	//	y0,
+	//	//	x1,
+	//	//	y1
+	//	//	);
+	//	printf("%2d: %8.8f, %8.8f   \n", 
+	//		i,
+	//		x0,
+	//		y0
+	//		);
+	//}
+	//printf("\n");
+
+	TrackedObject *to;
+
+	to = malloc(sizeof(TrackedObject) + (SENSORS_PER_OBJECT * sizeof(TrackedSensor)));
+
+	{
+		int sensorCount = 0;
+
+		for (int i = 0; i < so->nr_locations; i++)
+		{
+			int lh = 0;
+			//printf("%d[%d], ",i,td->hitCount[i][lh][0]);
+
+			int angleIndex0 = (td->angleIndex[lh][0] + 1 + OLD_ANGLES_BUFF_LEN) % OLD_ANGLES_BUFF_LEN;
+			int angleIndex1 = (td->angleIndex[lh][1] + 1 + OLD_ANGLES_BUFF_LEN) % OLD_ANGLES_BUFF_LEN;
+			if ((td->oldAngles[i][0][lh][angleIndex0] != 0 && td->oldAngles[i][1][lh][angleIndex1] != 0))
+				
+				
+			{
+				if (td->hitCount[i][lh][0] > 10 && td->hitCount[i][lh][1] > 10)
+				{
+					FLT norm[3] = { so->sensor_normals[i * 3 + 0] , so->sensor_normals[i * 3 + 1] , so->sensor_normals[i * 3 + 2] };
+					FLT point[3] = { so->sensor_locations[i * 3 + 0] , so->sensor_locations[i * 3 + 1] , so->sensor_locations[i * 3 + 2] };
+
+					to->sensor[sensorCount].normal.x = norm[0];
+					to->sensor[sensorCount].normal.y = norm[1];
+					to->sensor[sensorCount].normal.z = norm[2];
+					to->sensor[sensorCount].point.x = point[0];
+					to->sensor[sensorCount].point.y = point[1];
+					to->sensor[sensorCount].point.z = point[2];
+					to->sensor[sensorCount].theta = td->oldAngles[i][0][lh][angleIndex0] + LINMATHPI / 2; // lighthouse 0, angle 0 (horizontal)
+					to->sensor[sensorCount].phi = td->oldAngles[i][1][lh][angleIndex1] + LINMATHPI / 2; // lighthouse 0, angle 1 (vertical)
+					to->sensor[sensorCount].id=i;
+
+
+
+					//printf("%2d: %8.8f, %8.8f   \n", 
+					//	i,
+					//	to->sensor[sensorCount].theta,
+					//	to->sensor[sensorCount].phi
+					//	);
+
+					sensorCount++;
+				}
+			}
+		}
+		//printf("\n");
+		to->numSensors = sensorCount;
+
+		if (sensorCount > 4)
+		{
+			FLT pos[3];
+			FLT orient[4];
+			SolveForLighthouseRadii(pos, orient, to);
+		}
+
+		
+	}
+
+
+	free(to);
+
+}
+
 
 int PoserOctavioRadii( SurviveObject * so, PoserData * pd )
 {
@@ -438,7 +541,12 @@ int PoserOctavioRadii( SurviveObject * so, PoserData * pd )
 	SurviveContext * ctx = so->ctx;
 	OctavioRadiiData * dd = so->PoserData;
 
-	if( !dd ) so->PoserData = dd = malloc( sizeof(OctavioRadiiData) );
+	if( !dd )
+	{
+		so->PoserData = dd = malloc( sizeof(OctavioRadiiData) );
+		memset(dd, 0, sizeof(OctavioRadiiData));
+	}
+
 
 	switch( pt )
 	{
@@ -451,9 +559,81 @@ int PoserOctavioRadii( SurviveObject * so, PoserData * pd )
 	case POSERDATA_LIGHT:
 	{
 		PoserDataLight * l = (PoserDataLight*)pd;
+
+		if (l->lh >= NUM_LIGHTHOUSES || l->lh < 0)
+		{
+			// should never happen.  Famous last words...
+			break;
+		}
+		int axis = l->acode & 0x1;
+
+		//printf("%d ", l->sensor_id);
+
+
 		//printf( "LIG:%s %d @ %f rad, %f s (AC %d) (TC %d)\n", so->codename, l->sensor_id, l->angle, l->length, l->acode, l->timecode );
-		break;
-	}
+		if ((dd->lastAxis[l->lh] != (l->acode & 0x1)) )
+		{
+			int lastAxis = dd->lastAxis[l->lh];
+	//printf("\n");
+			//if (0 == l->lh)
+			//	printf("or[%d,%d] ", l->lh,lastAxis);
+
+			for (int i=0; i < SENSORS_PER_OBJECT; i++)
+			{
+	//FLT oldAngles[SENSORS_PER_OBJECT][2][NUM_LIGHTHOUSES][OLD_ANGLES_BUFF_LEN]; // sensor, sweep axis, lighthouse, instance
+				int index = dd->angleIndex[l->lh][axis];
+				if (dd->oldAngles[i][axis][l->lh][dd->angleIndex[l->lh][axis]] != 0)
+				{
+					//if (0 == l->lh)
+					//	printf("%d ", i);
+
+					dd->hitCount[i][l->lh][axis]++;
+				}
+				else
+				{
+					dd->hitCount[i][l->lh][axis] *= 0.5;
+				}
+			}
+			//if (0 == l->lh)
+			//	printf("\n");
+			//int foo = l->acode & 0x1;
+			//printf("%d", foo);
+
+
+			//if (axis)
+			{
+				if (0 == l->lh && axis) // only once per full cycle...
+				{
+					static unsigned int counter = 1;
+
+					counter++;
+
+					// let's just do this occasionally for now...
+					if (counter % 4 == 0)
+						QuickPose(so);
+				}
+				// axis changed, time to increment the circular buffer index.
+
+
+				dd->angleIndex[l->lh][axis]++;
+				dd->angleIndex[l->lh][axis] = dd->angleIndex[l->lh][axis] % OLD_ANGLES_BUFF_LEN;
+
+				// and clear out the data.
+				for (int i=0; i < SENSORS_PER_OBJECT; i++)
+				{
+					dd->oldAngles[i][axis][l->lh][dd->angleIndex[l->lh][axis]] = 0;
+				}
+
+			}
+			dd->lastAxis[l->lh] = axis;
+		}
+
+		//if (0 == l->lh)
+		//	printf("(%d) ", l->sensor_id);
+
+	//FLT oldAngles[SENSORS_PER_OBJECT][2][NUM_LIGHTHOUSES][OLD_ANGLES_BUFF_LEN]; // sensor, sweep axis, lighthouse, instance
+		dd->oldAngles[l->sensor_id][axis][l->lh][dd->angleIndex[l->lh][axis]] = l->angle;
+		break;	}
 	case POSERDATA_FULL_SCENE:
 	{
 		TrackedObject *to;
@@ -482,6 +662,7 @@ int PoserOctavioRadii( SurviveObject * so, PoserData * pd )
 					to->sensor[sensorCount].point.z = so->sensor_locations[i * 3 + 2];
 					to->sensor[sensorCount].theta = fs->angles[i][0][0] + LINMATHPI / 2; // lighthouse 0, angle 0 (horizontal)
 					to->sensor[sensorCount].phi = fs->angles[i][0][1] + LINMATHPI / 2; // lighthosue 0, angle 1 (vertical)
+					to->sensor[sensorCount].id=i;
 					sensorCount++;
 				}
 			}
@@ -509,6 +690,7 @@ int PoserOctavioRadii( SurviveObject * so, PoserData * pd )
 					to->sensor[sensorCount].point.z = so->sensor_locations[i * 3 + 2];
 					to->sensor[sensorCount].theta = fs->angles[i][lh][0] + LINMATHPI / 2; // lighthouse 0, angle 0 (horizontal)
 					to->sensor[sensorCount].phi = fs->angles[i][lh][1] + LINMATHPI / 2; // lighthosue 0, angle 1 (vertical)
+					to->sensor[sensorCount].id=i;
 					sensorCount++;
 				}
 			}

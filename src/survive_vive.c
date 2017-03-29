@@ -1105,6 +1105,7 @@ void survive_data_cb( SurviveUSBInterface * si )
 	}
 	case USB_IF_LIGHTHOUSE:
 	case USB_IF_W_WATCHMAN1:
+	case USB_IF_TRACKER0:
 	{
 		int i;
 		//printf( "%d -> ", size );
@@ -1153,22 +1154,6 @@ void survive_data_cb( SurviveUSBInterface * si )
 		else
 		{
 			SV_INFO( "Unknown watchman code %d\n", id );
-		}
-		break;
-	}
-	case USB_IF_TRACKER0:
-	{
-		SurviveObject * w = obj;
-		if( id == 32 )
-		{
-			// TODO: Looks like this will need to be handle_tracker, since
-			// it appears the interface is sufficiently different.
-			// More work needd to reverse engineer it.
-			//handle_wired_watchman( w, readdata, size);
-		}
-		else
-		{
-			SV_INFO( "Unknown tracker code %d\n", id );
 		}
 		break;
 	}

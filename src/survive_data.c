@@ -79,10 +79,40 @@ void handle_lightcap2_process_sweep_data(SurviveObject *so)
 			}
 		}
 
+		int allZero = 1;
+		for (int q=0; q< 32; q++)
+			if (lcd->sweep.sweep_len[q] != 0)
+				allZero=0;
+		//if (!allZero)
+		//	printf("a[%d]l[%d] ", lcd->per_sweep.activeAcode & 5,  lcd->per_sweep.activeLighthouse);
 		for (int i = 0; i < SENSORS_PER_OBJECT; i++)
 		{
+			{
+				static int counts[SENSORS_PER_OBJECT][2] = {0};
+
+				if (lcd->per_sweep.activeLighthouse == 0 && !allZero)
+				{
+					if (lcd->sweep.sweep_len[i] != 0)
+					{
+						//printf("%d  ", i);
+						//counts[i][lcd->per_sweep.activeAcode & 1] ++;
+					}
+					else
+					{
+						counts[i][lcd->per_sweep.activeAcode & 1] =0;
+					}
+
+					//if (counts[i][0] > 10 && counts[i][1] > 10)
+					//{
+						//printf("%d(%d,%d), ", i, counts[i][0], counts[i][1]);
+					//}
+				}
+			}
+
+
 			if (lcd->sweep.sweep_len[i] != 0) // if the sensor was hit, process it
 			{
+
 				int offset_from = lcd->sweep.sweep_time[i] - lcd->per_sweep.activeSweepStartTime + lcd->sweep.sweep_len[i] / 2;
 
 				if (offset_from < 380000 && offset_from > 70000)
@@ -94,6 +124,9 @@ void handle_lightcap2_process_sweep_data(SurviveObject *so)
 				}
 			}
 		}
+		//if (!allZero)
+		//	printf("   ..:..\n");
+
 	}
 	// clear out sweep data (could probably limit this to only after a "first" sync.  
 	// this is slightly more robust, so doing it here for now.
@@ -108,6 +141,7 @@ void handle_lightcap2_sync(SurviveObject * so, LightcapElement * le )
 	//static unsigned int recent_sync_count = -1;
 	//static unsigned int activeSweepStartTime;
 
+	int acode = handle_lightcap2_getAcodeFromSyncPulse(so, le->length);
 
 	// Process any sweep data we have
 	handle_lightcap2_process_sweep_data(so);
@@ -126,7 +160,6 @@ void handle_lightcap2_sync(SurviveObject * so, LightcapElement * le )
 		lcd->per_sweep.lh_pulse_len[lcd->per_sweep.current_lh] = le->length;
 		lcd->per_sweep.lh_start_time[lcd->per_sweep.current_lh] = le->timestamp;
 
-		int acode = handle_lightcap2_getAcodeFromSyncPulse(so, le->length);
 		if (!(acode >> 2 & 1)) // if the skip bit is not set
 		{
 			lcd->per_sweep.activeLighthouse = lcd->per_sweep.current_lh;
@@ -148,14 +181,18 @@ void handle_lightcap2_sync(SurviveObject * so, LightcapElement * le )
 		lcd->per_sweep.lh_pulse_len[lcd->per_sweep.current_lh] = le->length;
 		lcd->per_sweep.lh_start_time[lcd->per_sweep.current_lh] = le->timestamp;
 
-		int acode = handle_lightcap2_getAcodeFromSyncPulse(so, le->length);
-
 		if (!(acode >> 2 & 1)) // if the skip bit is not set
 		{
 			if (lcd->per_sweep.activeLighthouse != -1)
 			{
-				// hmm, it appears we got two non-skip pulses at the same time.  That should never happen
-				fprintf(stderr, "WARNING: Two non-skip pulses received on the same cycle!\n");
+				static int pulseWarningCount=0;
+
+				if (pulseWarningCount < 5)
+				{
+					pulseWarningCount++;
+					// hmm, it appears we got two non-skip pulses at the same time.  That should never happen
+					fprintf(stderr, "WARNING: Two non-skip pulses received on the same cycle!\n");
+				}
 			}
 			lcd->per_sweep.activeLighthouse = 1;
 			lcd->per_sweep.activeSweepStartTime = le->timestamp;
