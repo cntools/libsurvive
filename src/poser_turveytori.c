@@ -534,13 +534,13 @@ static Point RefineEstimateUsingModifiedGradientDescent1(Point initialEstimate, 
 		// very slowly, and we should just take what we've got and move on.
 		// This also seems to happen almost only when data is a little more "dirty"
 		// because the tracker is being rotated.  
-		if (i > 120)
+		if (i > 900)
 		{
 			//printf("i got big");
 			break;
 		}
 	}
-	printf(" i=%d ", i);
+	printf(" i=%3d ", i);
 
 	return lastPoint;
 }
