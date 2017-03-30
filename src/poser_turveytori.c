@@ -529,9 +529,18 @@ static Point RefineEstimateUsingModifiedGradientDescent1(Point initialEstimate, 
 
 		}
 
-
+		// from empiracle evidence, we're probably "good enough" at this point.
+		// So, even though we could still improve, we're likely to be improving
+		// very slowly, and we should just take what we've got and move on.
+		// This also seems to happen almost only when data is a little more "dirty"
+		// because the tracker is being rotated.  
+		if (i > 900)
+		{
+			//printf("i got big");
+			break;
+		}
 	}
-	printf(" i=%d ", i);
+	printf(" i=%3d ", i);
 
 	return lastPoint;
 }
@@ -950,7 +959,11 @@ static void RefineRotationEstimateAxisAngle(FLT *rotOut, Point lhPoint, FLT *ini
 
 		}
 
-
+		if (i > 1000)
+		{
+			//printf("Ri got big");
+			break;
+		}
 	}
 	printf(" Ri=%d ", i);
 }
@@ -1188,18 +1201,14 @@ static Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 
 	FLT fitGd = getPointFitness(refinedEstimateGd, pna, pnaCount);
 
-	printf("(%4.4f, %4.4f, %4.4f) Dist: %8.8f Fit:%4f  ", refinedEstimateGd.x, refinedEstimateGd.y, refinedEstimateGd.z, distance, fitGd);
+	FLT distance = FLT_SQRT(SQUARED(refinedEstimateGd.x) + SQUARED(refinedEstimateGd.y) + SQUARED(refinedEstimateGd.z));
+	printf(" SensorCount(%d) LhPos:(%4.4f, %4.4f, %4.4f) Dist: %8.8f ", obj->numSensors, refinedEstimateGd.x, refinedEstimateGd.y, refinedEstimateGd.z, distance);
+	//printf("Distance is %f,   Fitness is %f\n", distance, fitGd);
 
-	//if (fitGd > 5)
-	{
-		FLT distance = FLT_SQRT(SQUARED(refinedEstimateGd.x) + SQUARED(refinedEstimateGd.y) + SQUARED(refinedEstimateGd.z));
-		printf("(%4.4f, %4.4f, %4.4f) Dist: %8.8f Fit:%4f  ", refinedEstimateGd.x, refinedEstimateGd.y, refinedEstimateGd.z, distance, fitGd);
-		//printf("Distance is %f,   Fitness is %f\n", distance, fitGd);
+	FLT rot[4];
+	SolveForRotation(rot, obj, refinedEstimateGd);
 
-		FLT rot[4];
-		SolveForRotation(rot, obj, refinedEstimateGd);
-	}
-	if (logFile)
+		if (logFile)
 	{
 		updateHeader(logFile);
 		fclose(logFile);
@@ -1351,7 +1360,7 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 					counter++;
 
 					// let's just do this occasionally for now...
-					if (counter % 1 == 0)
+					if (counter % 2 == 0)
 						QuickPose(so);
 				}
 				// axis changed, time to increment the circular buffer index.
