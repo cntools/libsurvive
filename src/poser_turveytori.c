@@ -901,7 +901,7 @@ static void WhereIsTheTrackedObjectAxisAngle(FLT *rotation, Point lhPoint)
 	
 	rotatearoundaxis(objPoint, objPoint, reverseRotation, reverseRotation[3]);
 
-	printf("{%8.8f, %8.8f, %8.8f}  ", objPoint[0], objPoint[1], objPoint[2]);
+	printf("{% 08.8f, % 08.8f, % 08.8f}  ", objPoint[0], objPoint[1], objPoint[2]);
 }
 
 static void RefineRotationEstimateAxisAngle(FLT *rotOut, Point lhPoint, FLT *initialEstimate, TrackedObject *obj)
@@ -996,7 +996,7 @@ static void RefineRotationEstimateAxisAngle(FLT *rotOut, Point lhPoint, FLT *ini
 
 		}
 
-		if (i > 1000)
+		if (i > 998)
 		{
 			//printf("Ri got big");
 			break;
@@ -1255,7 +1255,7 @@ static Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 	FLT fitGd = getPointFitness(refinedEstimateGd, pna, pnaCount, 0);
 
 	FLT distance = FLT_SQRT(SQUARED(refinedEstimateGd.x) + SQUARED(refinedEstimateGd.y) + SQUARED(refinedEstimateGd.z));
-	printf(" la(%f) SnsrCnt(%d) LhPos:(%4.4f, %4.4f, %4.4f) Dist: %8.8f ", largestAngle, obj->numSensors, refinedEstimateGd.x, refinedEstimateGd.y, refinedEstimateGd.z, distance);
+	printf(" la(% 04.4f) SnsrCnt(%2d) LhPos:(% 04.4f, % 04.4f, % 04.4f) Dist: % 08.8f ", largestAngle, (int)obj->numSensors, refinedEstimateGd.x, refinedEstimateGd.y, refinedEstimateGd.z, distance);
 	//printf("Distance is %f,   Fitness is %f\n", distance, fitGd);
 
 	FLT rot[4];
