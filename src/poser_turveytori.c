@@ -1301,6 +1301,9 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 
 	quatrotatevector(wcPos, so->ctx->bsd[lh].Pose.Rot, objPos);
 
+	FLT newOrientation[4];
+	quatrotateabout(newOrientation, rotQuat, so->ctx->bsd[lh].Pose.Rot );
+
 	wcPos[0] += so->ctx->bsd[lh].Pose.Pos[0];
 	wcPos[1] += so->ctx->bsd[lh].Pose.Pos[1];
 	wcPos[2] += so->ctx->bsd[lh].Pose.Pos[2];
@@ -1308,6 +1311,11 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 	so->OutPose.Pos[0] = wcPos[0];
 	so->OutPose.Pos[1] = wcPos[1];
 	so->OutPose.Pos[2] = wcPos[2];
+
+	so->OutPose.Rot[0] = newOrientation[0];
+	so->OutPose.Rot[1] = newOrientation[1];
+	so->OutPose.Rot[2] = newOrientation[2];
+	so->OutPose.Rot[3] = newOrientation[3];
 
 	printf(" <% 04.4f, % 04.4f, % 04.4f >  ", wcPos[0], wcPos[1], wcPos[2]);
 
