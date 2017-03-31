@@ -1129,6 +1129,8 @@ static Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 
 	Point avgNorm = { 0 };
 
+	FLT smallestAngle = 20.0;
+
 	size_t pnaCount = 0;
 	for (unsigned int i = 0; i < obj->numSensors; i++)
 	{
@@ -1142,6 +1144,11 @@ static Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 				pna[pnaCount].angle = angleBetweenSensors(&obj->sensor[i], &obj->sensor[j]);
 				//pna[pnaCount].angle = pythAngleBetweenSensors2(&obj->sensor[i], &obj->sensor[j]);
 				pna[pnaCount].tanAngle = FLT_TAN(pna[pnaCount].angle);
+
+				if (pna[pnaCount].angle < smallestAngle)
+				{
+					smallestAngle = pna[pnaCount].angle;
+				}
 
 				double pythAngle = sqrt(SQUARED(obj->sensor[i].phi - obj->sensor[j].phi) + SQUARED(obj->sensor[i].theta - obj->sensor[j].theta));
 
@@ -1202,7 +1209,7 @@ static Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 	FLT fitGd = getPointFitness(refinedEstimateGd, pna, pnaCount);
 
 	FLT distance = FLT_SQRT(SQUARED(refinedEstimateGd.x) + SQUARED(refinedEstimateGd.y) + SQUARED(refinedEstimateGd.z));
-	printf(" SensorCount(%d) LhPos:(%4.4f, %4.4f, %4.4f) Dist: %8.8f ", obj->numSensors, refinedEstimateGd.x, refinedEstimateGd.y, refinedEstimateGd.z, distance);
+	printf(" sma(%d) SnsrCnt(%d) LhPos:(%4.4f, %4.4f, %4.4f) Dist: %8.8f ", smallestAngle, obj->numSensors, refinedEstimateGd.x, refinedEstimateGd.y, refinedEstimateGd.z, distance);
 	//printf("Distance is %f,   Fitness is %f\n", distance, fitGd);
 
 	FLT rot[4];
