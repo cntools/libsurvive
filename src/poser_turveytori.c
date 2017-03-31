@@ -8,6 +8,11 @@
 #include <stddef.h>
 #include <math.h>
 #include <stdint.h>
+#if defined(__FreeBSD__) || defined(__APPLE__)
+#include <stdlib.h>
+#else
+#include <malloc.h> //for alloca
+#endif
 
 
 #define PointToFlts(x) ((FLT*)(x))
@@ -120,7 +125,8 @@ typedef struct
 	FLT tanAngle; // tangent of angle
 	Matrix3x3 rotation;
 	Matrix3x3 invRotation; // inverse of rotation
-
+	char ai;
+	char bi;
 } PointsAndAngle;
 
 
@@ -378,21 +384,52 @@ FLT getPointFitnessForPna(Point pointIn, PointsAndAngle *pna)
 	return dist;
 }
 
-FLT getPointFitness(Point pointIn, PointsAndAngle *pna, size_t pnaCount)
+FLT getPointFitness(Point pointIn, PointsAndAngle *pna, size_t pnaCount, int deubgPrint)
 {
 	FLT fitness;
 
 	FLT resultSum = 0;
+	FLT *fitnesses = alloca(sizeof(FLT) * pnaCount);
+	int i=0, j=0;
+
+	FLT worstFitness = 0;
 
 	for (size_t i = 0; i < pnaCount; i++)
 	{
 		fitness = getPointFitnessForPna(pointIn, &(pna[i]));
-		resultSum += SQUARED(fitness);
+
+		if (worstFitness < fitness)
+		{
+			i = pna[i].ai;
+			j = pna[i].bi;
+			worstFitness = fitness;
+		}
+
+		fitnesses[i] = fitness;
+		if (deubgPrint)
+		{
+			printf("  [%d, %d](%f)\n", pna[i].ai, pna[i].bi, fitness);
+		}
 	}
 
+	for (size_t i = 0; i < pnaCount; i++)
+	{
+		// TODO:  This is an UGLY HACK!!!  It is NOT ROBUST and MUST BE BETTER
+		// Right now, we're just throwing away the single worst fitness value
+		// this works frequently, but we REALLY need to do a better job of determing
+		// exactly when we should throw away a bad value.  I'm thinking that decision 
+		// alone could be a master's thesis, so lots of work to be done.
+		// This is just a stupid general approach that helps in a lot of cases,
+		// but is NOT suitable for long term use.
+		//if (pna[i].bi != i && pna[i].bi != j && pna[i].ai != i && pna[i].ai != j)
+		if (fitnesses[i] != worstFitness)
+			resultSum += SQUARED(fitnesses[i]);
+	}
 	return 1 / FLT_SQRT(resultSum);
 }
 
+// TODO: Use a central point instead of separate "minus" points for each axis.  This will reduce
+// the number of fitness calls by 1/3.
 Point getGradient(Point pointIn, PointsAndAngle *pna, size_t pnaCount, FLT precision)
 {
 	Point result;
@@ -401,19 +438,19 @@ Point getGradient(Point pointIn, PointsAndAngle *pna, size_t pnaCount, FLT preci
 	Point tmpXminus = pointIn;
 	tmpXplus.x = pointIn.x + precision;
 	tmpXminus.x = pointIn.x - precision;
-	result.x = getPointFitness(tmpXplus, pna, pnaCount) - getPointFitness(tmpXminus, pna, pnaCount);
+	result.x = getPointFitness(tmpXplus, pna, pnaCount, 0) - getPointFitness(tmpXminus, pna, pnaCount, 0);
 
 	Point tmpYplus = pointIn;
 	Point tmpYminus = pointIn;
 	tmpYplus.y = pointIn.y + precision;
 	tmpYminus.y = pointIn.y - precision;
-	result.y = getPointFitness(tmpYplus, pna, pnaCount) - getPointFitness(tmpYminus, pna, pnaCount);
+	result.y = getPointFitness(tmpYplus, pna, pnaCount, 0) - getPointFitness(tmpYminus, pna, pnaCount, 0);
 
 	Point tmpZplus = pointIn;
 	Point tmpZminus = pointIn;
 	tmpZplus.z = pointIn.z + precision;
 	tmpZminus.z = pointIn.z - precision;
-	result.z = getPointFitness(tmpZplus, pna, pnaCount) - getPointFitness(tmpZminus, pna, pnaCount);
+	result.z = getPointFitness(tmpZplus, pna, pnaCount, 0) - getPointFitness(tmpZminus, pna, pnaCount, 0);
 
 	return result;
 }
@@ -448,7 +485,7 @@ Point getAvgPoints(Point a, Point b)
 static Point RefineEstimateUsingModifiedGradientDescent1(Point initialEstimate, PointsAndAngle *pna, size_t pnaCount, FILE *logFile)
 {
 	int i = 0;
-	FLT lastMatchFitness = getPointFitness(initialEstimate, pna, pnaCount);
+	FLT lastMatchFitness = getPointFitness(initialEstimate, pna, pnaCount, 0);
 	Point lastPoint = initialEstimate;
 
 	// The values below are somewhat magic, and definitely tunable
@@ -505,7 +542,7 @@ static Point RefineEstimateUsingModifiedGradientDescent1(Point initialEstimate, 
 		point4.y = point3.y + specialGradient.y;
 		point4.z = point3.z + specialGradient.z;
 
-		FLT newMatchFitness = getPointFitness(point4, pna, pnaCount);
+		FLT newMatchFitness = getPointFitness(point4, pna, pnaCount, 0);
 
 		if (newMatchFitness > lastMatchFitness)
 		{
@@ -534,7 +571,7 @@ static Point RefineEstimateUsingModifiedGradientDescent1(Point initialEstimate, 
 		// very slowly, and we should just take what we've got and move on.
 		// This also seems to happen almost only when data is a little more "dirty"
 		// because the tracker is being rotated.  
-		if (i > 900)
+		if (i > 120)
 		{
 			//printf("i got big");
 			break;
@@ -1130,6 +1167,7 @@ static Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 	Point avgNorm = { 0 };
 
 	FLT smallestAngle = 20.0;
+	FLT largestAngle = 0;
 
 	size_t pnaCount = 0;
 	for (unsigned int i = 0; i < obj->numSensors; i++)
@@ -1150,10 +1188,18 @@ static Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 					smallestAngle = pna[pnaCount].angle;
 				}
 
+				if (pna[pnaCount].angle > largestAngle)
+				{
+					largestAngle = pna[pnaCount].angle;
+				}
+
 				double pythAngle = sqrt(SQUARED(obj->sensor[i].phi - obj->sensor[j].phi) + SQUARED(obj->sensor[i].theta - obj->sensor[j].theta));
 
 				pna[pnaCount].rotation = GetRotationMatrixForTorus(pna[pnaCount].a, pna[pnaCount].b);
 				pna[pnaCount].invRotation = inverseM33(pna[pnaCount].rotation);
+				pna[pnaCount].ai = i;
+				pna[pnaCount].bi = j;
+
 
 
 				pnaCount++;
@@ -1206,10 +1252,10 @@ static Point SolveForLighthouse(TrackedObject *obj, char doLogOutput)
 
 	}
 
-	FLT fitGd = getPointFitness(refinedEstimateGd, pna, pnaCount);
+	FLT fitGd = getPointFitness(refinedEstimateGd, pna, pnaCount, 0);
 
 	FLT distance = FLT_SQRT(SQUARED(refinedEstimateGd.x) + SQUARED(refinedEstimateGd.y) + SQUARED(refinedEstimateGd.z));
-	printf(" sma(%d) SnsrCnt(%d) LhPos:(%4.4f, %4.4f, %4.4f) Dist: %8.8f ", smallestAngle, obj->numSensors, refinedEstimateGd.x, refinedEstimateGd.y, refinedEstimateGd.z, distance);
+	printf(" la(%f) SnsrCnt(%d) LhPos:(%4.4f, %4.4f, %4.4f) Dist: %8.8f ", largestAngle, obj->numSensors, refinedEstimateGd.x, refinedEstimateGd.y, refinedEstimateGd.z, distance);
 	//printf("Distance is %f,   Fitness is %f\n", distance, fitGd);
 
 	FLT rot[4];
