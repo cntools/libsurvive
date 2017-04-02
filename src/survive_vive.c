@@ -68,14 +68,14 @@ const char * devnames[] = {
 
 
 #define USB_DEV_HMD			0
-#define USB_DEV_LIGHTHOUSE	1
+#define USB_DEV_HMD_IMU_LH	1
 #define USB_DEV_WATCHMAN1	2
 #define USB_DEV_WATCHMAN2	3
 #define USB_DEV_TRACKER0	4
 #define USB_DEV_W_WATCHMAN1	5 // Wired Watchman attached via USB
 
 #ifdef HIDAPI
-#define USB_DEV_LIGHTHOUSEB 6
+#define USB_DEV_HMD_IMU_LHB 6
 #define USB_DEV_TRACKER0_LIGHTCAP 7
 #define USB_DEV_W_WATCHMAN1_LIGHTCAP 8
 #define MAX_USB_DEVS		9
@@ -84,7 +84,7 @@ const char * devnames[] = {
 #endif
 
 #define USB_IF_HMD			0
-#define USB_IF_LIGHTHOUSE 	1
+#define USB_IF_HMD_IMU_LH 	1
 #define USB_IF_WATCHMAN1	2
 #define USB_IF_WATCHMAN2	3
 #define USB_IF_TRACKER0		4
@@ -471,14 +471,14 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 #endif
 
 	if( sv->udev[USB_DEV_HMD] && AttachInterface( sv, hmd, USB_IF_HMD,        sv->udev[USB_DEV_HMD],        0x81, survive_data_cb, "Mainboard" ) ) { return -6; }
-	if( sv->udev[USB_DEV_LIGHTHOUSE] && AttachInterface( sv, hmd, USB_IF_LIGHTHOUSE, sv->udev[USB_DEV_LIGHTHOUSE], 0x81, survive_data_cb, "Lighthouse" ) ) { return -7; }
+	if( sv->udev[USB_DEV_HMD_IMU_LH] && AttachInterface( sv, hmd, USB_IF_HMD_IMU_LH, sv->udev[USB_DEV_HMD_IMU_LH], 0x81, survive_data_cb, "Lighthouse" ) ) { return -7; }
 	if( sv->udev[USB_DEV_WATCHMAN1] && AttachInterface( sv, wm0, USB_IF_WATCHMAN1,  sv->udev[USB_DEV_WATCHMAN1],  0x81, survive_data_cb, "Watchman 1" ) ) { return -8; }
 	if( sv->udev[USB_DEV_WATCHMAN2] && AttachInterface( sv, wm1, USB_IF_WATCHMAN2, sv->udev[USB_DEV_WATCHMAN2], 0x81, survive_data_cb, "Watchman 2")) { return -9; }
 	if( sv->udev[USB_DEV_TRACKER0] && AttachInterface( sv, tr0, USB_IF_TRACKER0, sv->udev[USB_DEV_TRACKER0], 0x81, survive_data_cb, "Tracker 1")) { return -10; }
 	if( sv->udev[USB_DEV_W_WATCHMAN1] && AttachInterface( sv, ww0, USB_IF_W_WATCHMAN1, sv->udev[USB_DEV_W_WATCHMAN1], 0x81, survive_data_cb, "Wired Watchman 1")) { return -11; }
 #ifdef HIDAPI
 	//Tricky: use other interface for actual lightcap.  XXX THIS IS NOT YET RIGHT!!!
-	if( sv->udev[USB_DEV_LIGHTHOUSEB] && AttachInterface( sv, hmd, USB_IF_LIGHTCAP, sv->udev[USB_DEV_LIGHTHOUSEB], 0x82, survive_data_cb, "Lightcap")) { return -12; }
+	if( sv->udev[USB_DEV_HMD_IMU_LHB] && AttachInterface( sv, hmd, USB_IF_LIGHTCAP, sv->udev[USB_DEV_HMD_IMU_LHB], 0x82, survive_data_cb, "Lightcap")) { return -12; }
 
 	// This is a HACK!  But it works.  Need to investigate further
 	sv->uiface[USB_DEV_TRACKER0_LIGHTCAP].actual_len = 64;
@@ -517,14 +517,14 @@ int survive_vive_send_magic(SurviveContext * ctx, void * drv, int magic_code, vo
 			if( r != sizeof( vive_magic_power_on ) ) return 5;
 		}
 
-		if (sv->udev[USB_DEV_LIGHTHOUSE])
+		if (sv->udev[USB_DEV_HMD_IMU_LH])
 		{
 			static uint8_t vive_magic_enable_lighthouse[5] = { 0x04 };
-			r = update_feature_report( sv->udev[USB_DEV_LIGHTHOUSE], 0, vive_magic_enable_lighthouse, sizeof( vive_magic_enable_lighthouse ) );
+			r = update_feature_report( sv->udev[USB_DEV_HMD_IMU_LH], 0, vive_magic_enable_lighthouse, sizeof( vive_magic_enable_lighthouse ) );
 			if( r != sizeof( vive_magic_enable_lighthouse ) ) return 5;
 
 			static uint8_t vive_magic_enable_lighthouse2[5] = { 0x07, 0x02 };  //Switch to 0x25 mode (able to get more light updates)
-			r = update_feature_report( sv->udev[USB_DEV_LIGHTHOUSE], 0, vive_magic_enable_lighthouse2, sizeof( vive_magic_enable_lighthouse2 ) );
+			r = update_feature_report( sv->udev[USB_DEV_HMD_IMU_LH], 0, vive_magic_enable_lighthouse2, sizeof( vive_magic_enable_lighthouse2 ) );
 			if( r != sizeof( vive_magic_enable_lighthouse2 ) ) return 5;
 		}
 
@@ -1103,7 +1103,7 @@ void survive_data_cb( SurviveUSBInterface * si )
 		headset->ison = 1;
 		break;
 	}
-	case USB_IF_LIGHTHOUSE:
+	case USB_IF_HMD_IMU_LH:
 	case USB_IF_W_WATCHMAN1:
 	case USB_IF_TRACKER0:
 	{
@@ -1395,7 +1395,7 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	}
 
 	//Next, pull out the config stuff.
-	if( sv->udev[USB_DEV_HMD]       && LoadConfig( sv, hmd, 1, 0, 0 )) { SV_INFO( "HMD config issue." ); }
+	if( sv->udev[USB_DEV_HMD_IMU_LH]       && LoadConfig( sv, hmd, 1, 0, 0 )) { SV_INFO( "HMD config issue." ); }
 	if( sv->udev[USB_DEV_WATCHMAN1] && LoadConfig( sv, wm0, 2, 0, 1 )) { SV_INFO( "Watchman 0 config issue." ); }
 	if( sv->udev[USB_DEV_WATCHMAN2] && LoadConfig( sv, wm1, 3, 0, 1 )) { SV_INFO( "Watchman 1 config issue." ); }
 	if( sv->udev[USB_DEV_TRACKER0]  && LoadConfig( sv, tr0, 4, 0, 0 )) { SV_INFO( "Tracker 0 config issue." ); }
@@ -1450,7 +1450,7 @@ int DriverRegHTCVive( SurviveContext * ctx )
 */
 
 	//Add the drivers.
-	if( sv->udev[USB_DEV_HMD]       ) { survive_add_object( ctx, hmd ); }
+	if( sv->udev[USB_DEV_HMD_IMU_LH]       ) { survive_add_object( ctx, hmd ); }
 	if( sv->udev[USB_DEV_WATCHMAN1] ) { survive_add_object( ctx, wm0 ); }
 	if( sv->udev[USB_DEV_WATCHMAN2] ) { survive_add_object( ctx, wm1 ); }
 	if( sv->udev[USB_DEV_TRACKER0]  ) { survive_add_object( ctx, tr0 ); }
