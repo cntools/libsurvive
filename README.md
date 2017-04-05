@@ -60,20 +60,16 @@ If I ever get to video output... OpenGL.
 
 ## Architecture
 
-There is an internal representation and an external representation.  These lines may get blurred.  Internal representation lives in .h files in the ```src/``` folder. External lives in ```include/``` folder.  
-
-It is written in some fairly stout "layers" which are basically just function calls:
-
-|  Layer | Description | Status |
-| ------- | ------------- | -------- |
-| survive_usb.c | Data is taken in at "survive_usb.c" from libusb. | Done |
-| survive_data.c | Raw HID messages are processed into logical "light" "analog" and "imu" messages. | Mostly done, Missing light data from controllers, and lighthouse data. |
-| survive_process.c | Process the high-level data into solutions for | Not yet started.  Will be done by ultramn |
 
 <TABLE><TR><TH>Description</TH><TH>Diagram</TH>
 </TR><TR>
 <TD WIDTH=50%>
-LibSurvive use a fairly straightforward architecture.
+
+### Layout
+
+In the src/ folder you'll find most of the internal code that is part of libsurvive.  The redist/ folder contains code that libsurvive uses that was copied from other projects.  Libsurvive links to other libraries, but very few.  You'll find that most of the functionality lies within libsurvive or in the redist folder.  For the user-facing headers you can find them in the include/ folder.
+
+### Logical Data Flow
 
 There are device drivers, such as survive_vive.c which connect to physical devices, via libUSB, hidapi or another method and collect raw IMU and lightcap data.  Lightcap data is specically a sensor ID, light pulse length (in ticks) and the time of the light pulse (in ticks).  The driver also must provide locations of the sensors to populate the SurviveObject structures of whatever sensors that driver is responsible for.
 
@@ -87,8 +83,6 @@ Angleproc may also be overridden by the user for similar purposes to for "anglep
 </TABLE>
 
 <!--<TABLE BORDER=1><TR><TD>TEST</TD><TD>HELLO</TD></TR></TABLE>  -->
-
-I may or may not read data from the Vive regarding configuration.  If I do, it would be added to the survive_usb.c
 
 ## Intel Integrated Graphics
 
