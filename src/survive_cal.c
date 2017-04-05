@@ -30,6 +30,11 @@ int mkdir(const char *);
 #define DRPTS_NEEDED_FOR_AVG ((int)(DRPTS*3/4))
 
 
+	//at stage 1, is when it branches to stage two or stage 7
+	//stage 2 checks for the presence of two watchmen and an HMD visible to both lighthouses.
+	//Stage 3 collects a bunch of data for statistical averageing
+	//stage 4 does the calculation for the poses (NOT DONE!)
+	//Stage 5 = System Calibrate.d
 
 
 static void handle_calibration( struct SurviveCalData *cd );
@@ -117,33 +122,51 @@ void survive_cal_install( struct SurviveContext * ctx )
 	cd->stage = 1;
 	cd->ctx = ctx;
 
-	cd->poseobjects[0] = survive_get_so_by_name( ctx, "HMD" );
-	cd->poseobjects[1] = survive_get_so_by_name( ctx, "WM0" );
-	cd->poseobjects[2] = survive_get_so_by_name( ctx, "WM1" );
+	cd->numPoseObjects = 0;
 
-	if( cd->poseobjects[0] == 0 || cd->poseobjects[1] == 0 || cd->poseobjects[2] == 0 )
+	const char * RequiredTrackersForCal = config_read_str( ctx->global_config_values, "RequiredTrackersForCal", "HMD,WM0,WM1" );
+	const uint32_t AllowAllTrackersForCal = config_read_uint32( ctx->global_config_values, "AllowAllTrackersForCal", 0 );
+	size_t requiredTrackersFound = 0;
+
+	for (int j=0; j < ctx->objs_ct; j++)
 	{
-		SV_ERROR( "Error: cannot find all devices needed for calibration." );
-		free( cd );
-		return;
+		// Add the tracker if we allow all trackers for calibration, or if it's in the list 
+		// of required trackers.
+		int isRequiredTracker = strstr(RequiredTrackersForCal, ctx->objs[j]->codename) != NULL;
+
+		if (isRequiredTracker)
+		{
+			requiredTrackersFound++;
+		}
+
+		if (AllowAllTrackersForCal || isRequiredTracker)
+		{
+			if (MAX_DEVICES_TO_CAL > cd->numPoseObjects)
+			{
+				cd->poseobjects[j] = ctx->objs[j];
+				cd->numPoseObjects++;
+
+				SV_INFO("Calibration is using %s", cd->poseobjects[j]->codename);
+			}
+			else
+			{
+				SV_INFO("Calibration is NOT using %s; device count exceeds MAX_DEVICES_TO_CAL", ctx->objs[j]->codename);
+			}
+		}
+
 	}
 
-//XXX TODO MWTourney, work on your code here.
-/*
-	if( !cd->hmd )
-	{
-		cd->hmd = survive_get_so_by_name( ctx, "TR0" );
+	// If we want to mandate that certain devices have been found
 
-		if( !cd->hmd )
+	if (strlen(RequiredTrackersForCal) > 0)
+	{
+		if (requiredTrackersFound != ((strlen(RequiredTrackersForCal) + 1) / 4))
 		{
-			SV_ERROR( "Error: cannot find any devices labeled HMD. Required for calibration" );
+			SV_ERROR( "Error: Did not find all devices required for calibration." );
 			free( cd );
 			return;
 		}
-		SV_INFO( "HMD not found, calibrating using Tracker" );
 	}
-*/
-
 
 	const char * DriverName;
 	const char * PreferredPoser = config_read_str( ctx->global_config_values, "ConfigPoser", "PoserCharlesSlow" );
@@ -166,7 +189,7 @@ void survive_cal_install( struct SurviveContext * ctx )
 }
 
 
-void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  )
+void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length, uint32_t lh)
 {
 	struct SurviveContext * ctx = so->ctx;
 	struct SurviveCalData * cd = ctx->calptr;
@@ -184,8 +207,10 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 		//Collecting OOTX data.
 		if( sensor_id < 0 )
 		{
+				//fprintf(stderr, "%s\n", so->codename);
 			int lhid = -sensor_id-1;
-			if( lhid < NUM_LIGHTHOUSES && so->codename[0] == 'H' )
+			// Take the OOTX data from the first device.  (if using HMD, WM0, WM1 only, this will be HMD)
+			if( lhid < NUM_LIGHTHOUSES && so == cd->poseobjects[0]  ) 
 			{
 				uint8_t dbit = (acode & 2)>>1;
 				ootx_pump_bit( &cd->ootx_decoders[lhid], dbit );
@@ -193,7 +218,7 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 			int i;
 			for( i = 0; i < NUM_LIGHTHOUSES; i++ )
 				if( ctx->bsd[i].OOTXSet == 0 ) break;
-			if( i == NUM_LIGHTHOUSES ) cd->stage = 2;  //If all lighthouses have their OOTX set, move on.
+			if( i == NUM_LIGHTHOUSES ) cd->stage = 2;  //TODO: Make this configuratble to allow single lighthouse.
 		}
 		break;
 	case 3: //Look for light sync lengths.
@@ -202,10 +227,13 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 		else if( acode < -4 ) break;
 		int lh = (-acode) - 3;
 
-		if( strcmp( so->codename, "WM0" ) == 0 )
-			sensor_id += 32;
-		if( strcmp( so->codename, "WM1" ) == 0 )
-			sensor_id += 64;
+		for (int i=0; i < cd->numPoseObjects; i++)
+		{
+			if( strcmp( so->codename, cd->poseobjects[i]->codename ) == 0 )
+			{
+				sensor_id += i*32;
+			}
+		}
 
 		cd->all_sync_times[sensor_id][lh][cd->all_sync_counts[sensor_id][lh]++] = length;
 		break;
@@ -213,9 +241,10 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 
 	}
 	
+
 }
 
-void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle )
+void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh )
 {
 	struct SurviveContext * ctx = so->ctx;
 	struct SurviveCalData * cd = ctx->calptr;
@@ -223,14 +252,18 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 	if( !cd ) return;
 
 	int sensid = sensor_id;
-	if( strcmp( so->codename, "WM0" ) == 0 )
-		sensid += 32;
-	if( strcmp( so->codename, "WM1" ) == 0 )
-		sensid += 64;
+
+	for (int i=0; i < cd->numPoseObjects; i++)
+	{
+		if( strcmp( so->codename, cd->poseobjects[i]->codename ) == 0 )
+		{
+			sensid += i*32;
+		}
+	}
 
 	if( sensid >= MAX_SENSORS_TO_CAL || sensid < 0 ) return;
 
-	int lighthouse = acode>>2;
+	int lighthouse = lh;
 	int axis = acode & 1;
 
 	switch( cd->stage )
@@ -274,7 +307,8 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 			int min_peaks = PTS_BEFORE_COMMON;
 			int i, j, k;
 			cd->found_common = 1;
-			for( i = 0; i < MAX_SENSORS_TO_CAL/SENSORS_PER_OBJECT; i++ )
+			for( i = 0; i < cd->numPoseObjects; i++ )
+			//for( i = 0; i < MAX_SENSORS_TO_CAL/SENSORS_PER_OBJECT; i++ )
 			for( j = 0; j < NUM_LIGHTHOUSES; j++ )
 			{
 				int sensors_visible = 0;
@@ -552,11 +586,11 @@ static void handle_calibration( struct SurviveCalData *cd )
 	int obj;
 
 	//Poses of lighthouses relative to objects.
-	SurvivePose  objphl[POSE_OBJECTS][NUM_LIGHTHOUSES];
+	SurvivePose  objphl[MAX_POSE_OBJECTS][NUM_LIGHTHOUSES];
 
 	FILE * fobjp = fopen( "calinfo/objposes.csv", "w" );
 
-	for( obj = 0; obj < POSE_OBJECTS; obj++ )
+	for( obj = 0; obj < cd->numPoseObjects; obj++ )
 	{
 		int i, j;
 		PoserDataFullScene fsd;

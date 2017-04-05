@@ -29,17 +29,19 @@ int survive_cal_get_status( SurviveContext * ctx, char * description, int descri
 //void survive_cal_teardown( struct SurviveContext * ctx );
 
 //Called from survive_default_light_process
-void survive_cal_light( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  );
-void survive_cal_angle( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle );
+void survive_cal_light( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length, uint32_t lighthouse);
+void survive_cal_angle( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh );
 
-#define MAX_SENSORS_TO_CAL 96
+#define MAX_SENSORS_PER_DEVICE 32
+#define MAX_DEVICES_TO_CAL 3
+#define MAX_SENSORS_TO_CAL (MAX_SENSORS_PER_DEVICE * MAX_DEVICES_TO_CAL)
 
 #define MIN_PTS_BEFORE_CAL 24
 
 
 #define DRPTS 32  //Number of samples required in collection phase.
 
-#define POSE_OBJECTS 3
+#define MAX_POSE_OBJECTS 10
 
 #define MAX_CAL_PT_DAT (MAX_SENSORS_TO_CAL*NUM_LIGHTHOUSES*2)
 struct SurviveCalData
@@ -69,7 +71,9 @@ struct SurviveCalData
 
 	int senid_of_checkpt; //This is a point on a watchman that can be used to check the lh solution.
 
-	SurviveObject * poseobjects[POSE_OBJECTS];
+	SurviveObject * poseobjects[MAX_POSE_OBJECTS];
+
+	size_t numPoseObjects;
 
 	PoserCB ConfigPoserFn;
 

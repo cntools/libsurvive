@@ -456,41 +456,73 @@ PRINT(ab,2,1);
 	//-------------------
 	// Orthogonalize the matrix
 	//-------------------
-
-	PRINT_MAT(T,4,4);
-matrix44transpose(T2, T);
-//matrix44copy(T2,T);
-	cross3d( &T2[0][0], &T2[1][0], &T2[2][0] );
-	cross3d( &T2[2][0], &T2[0][0], &T2[1][0] );
-	normalize3d( &T2[0][0], &T2[0][0] );
-	normalize3d( &T2[1][0], &T2[1][0] );
-	normalize3d( &T2[2][0], &T2[2][0] );
-//matrix44copy(T2,T);
-matrix44transpose(T, T2);
 	PRINT_MAT(T,4,4);
 
+#if 1
+//	matrix44transpose(T2, T);  //Transpose so we are
+	matrix44copy(T2,T);
+	cross3d( &T2[1][0], &T2[0][0], &T2[2][0] );
+	cross3d( &T2[2][0], &T2[1][0], &T2[0][0] ); //Replace axes in-place.
+	matrix44copy(T,T2);
+//	matrix44transpose(T, T2);
 
+#endif
 
-	//memcpy(T2,T,16*sizeof(float));
-//	matrix44copy(T2,T);
+	normalize3d( &T[0][0], &T[0][0] );
+	normalize3d( &T[1][0], &T[1][0] );
+	normalize3d( &T[2][0], &T[2][0] );
+	//Change handedness
+
+	T[1][0]*=-1;
+	T[1][1]*=-1;
+	T[1][2]*=-1;
+
+/*
+	//Check Orthogonality.  Yep. It's orthogonal.
+	FLT tmp[3];
+	cross3d( tmp, &T[0][0], &T[1][0] );
+	printf( "M3: %f\n", magnitude3d( tmp ) );
+	cross3d( tmp, &T[2][0], &T[1][0] );
+	printf( "M3: %f\n", magnitude3d( tmp ) );
+	cross3d( tmp, &T[2][0], &T[0][0] );
+	printf( "M3: %f\n", magnitude3d( tmp ) );
+*/
+
+//	PRINT_MAT(T,4,4);
+
+#if 1
+
+	//matrix44copy(T2,T);
 	matrix44transpose(T2,T);
+
 	quatfrommatrix( quat, &T2[0][0] );
+	printf( "QM: %f\n", quatmagnitude( quat ) );
 	quatnormalize(quatNorm,quat);
 	quattoeuler(euler,quatNorm);
-	quattomatrix( T2, quatNorm );
+	quattomatrix( &T2[0][0], quatNorm );
+
+	PRINT_MAT(T2,4,4);
 	printf("rot %f %f %f len %f\n", euler[0], euler[1], euler[2], quatmagnitude(quat));
-	PRINT(T,4,4);
+//	PRINT(T,4,4);
 
 //	matrix44copy(temp,T2);
 	matrix44transpose(temp,T2);
 
-	memcpy(T2,temp,16*sizeof(float));
+
+//	matrix44transpose(T2, temp);
+//	memcpy(T2,temp,16*sizeof(float));
 	for (i=0; i<3; i++) {
 		for (j=0; j<3; j++) {
-			T[i][j] = T2[j][i];
+			T[i][j] = temp[i][j];
 		}
 	}
-	PRINT(T2,4,4);
+
+/*	PRINT(T2,4,4); */
+#endif
+
+	T[1][0]*=-1;
+	T[1][1]*=-1;
+	T[1][2]*=-1;
 
 
 /*
