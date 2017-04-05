@@ -70,6 +70,24 @@ It is written in some fairly stout "layers" which are basically just function ca
 | survive_data.c | Raw HID messages are processed into logical "light" "analog" and "imu" messages. | Mostly done, Missing light data from controllers, and lighthouse data. |
 | survive_process.c | Process the high-level data into solutions for | Not yet started.  Will be done by ultramn |
 
+<TABLE><TR><TH>Description</TH><TH>Diagram</TH>
+</TR><TR>
+<TD WIDTH=50%>
+LibSurvive use a fairly straightforward architecture.
+
+There are device drivers, such as survive_vive.c which connect to physical devices, via libUSB, hidapi or another method and collect raw IMU and lightcap data.  Lightcap data is specically a sensor ID, light pulse length (in ticks) and the time of the light pulse (in ticks).  The driver also must provide locations of the sensors to populate the SurviveObject structures of whatever sensors that driver is responsible for.
+
+Once this data is collected, the light pulses are disambiguated (see survive_data.c) into OOTX sync pulses (id -1, -2 depending on lighthouse) as well as sweep pulses which provide the time of a sweep pulse passing the sensor.  This is passed off to "lightproc."  The default behavior for lightproc can be found in survive.c.  The user may override this, however, if they have interest in the raw pulse information for whatever reason.  The default behavior for lightproc determines the time delta between the sync pulse and the sweep pulse time and derives angle.  The derivation for the angle is simply calculated by the time difference between the sync pulse and the sweep pulse.   It then calls "angleproc"  (not implemented yet: Using OOTX data from lighthouses to correct and tweak angles)
+
+Angleproc may also be overridden by the user for similar purposes to for "angleproc" which passes its information off to a calibrator (if running) as well as to whatever posers are enabled.  The posers will take this data and determine position from it.
+
+</TD>
+<TD WIDTH=50%><img src=https://raw.githubusercontent.com/cnlohr/libsurvive/master/useful_files/FunctionalSystem.png width=400></TD>
+</TR>
+</TABLE>
+
+<!--<TABLE BORDER=1><TR><TD>TEST</TD><TD>HELLO</TD></TR></TABLE>  -->
+
 I may or may not read data from the Vive regarding configuration.  If I do, it would be added to the survive_usb.c
 
 ## Intel Integrated Graphics
