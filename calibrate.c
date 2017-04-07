@@ -62,27 +62,26 @@ void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int 
 	if( strcmp( so->codename, "WM0" ) == 0 || strcmp( so->codename, "WW0" ) == 0) jumpoffset += 32;
 	else if( strcmp( so->codename, "WM1" ) == 0 ) jumpoffset += 64;
 
-
 	if( acode % 2 == 0 && lh == 0) //data = 0
 	{
-		bufferpts[jumpoffset*2+0][0] = (timeinsweep-100000)/500;
+		bufferpts[jumpoffset*2+0][0] = (timeinsweep-100000)/300;
 		buffertimeto[jumpoffset][0] = 0;
 	}
 	if(  acode % 2 == 1 && lh == 0 ) //data = 1
 	{
-		bufferpts[jumpoffset*2+1][0] = (timeinsweep-100000)/500;
+		bufferpts[jumpoffset*2+1][0] = (timeinsweep-100000)/300;
 		buffertimeto[jumpoffset][0] = 0;
 	}
 
 
 	if( acode % 2 == 0 && lh == 1 ) //data = 0
 	{
-		bufferpts[jumpoffset*2+0][1] = (timeinsweep-100000)/500;
+		bufferpts[jumpoffset*2+0][1] = (timeinsweep-100000)/300;
 		buffertimeto[jumpoffset][1] = 0;
 	}
 	if( acode % 2 == 1 && lh == 1 ) //data = 1
 	{
-		bufferpts[jumpoffset*2+1][1] = (timeinsweep-100000)/500;
+		bufferpts[jumpoffset*2+1][1] = (timeinsweep-100000)/300;
 		buffertimeto[jumpoffset][1] = 0;
 	}
 }
