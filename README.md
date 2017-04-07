@@ -44,22 +44,17 @@ I say "high-performance" really this project is based tightly off of OSVR-Vive-L
 4. Avoid extra layers where convenient.
 5. (long shot) Make the vive viable for use with Intel Integrated Graphics systems. [It works with HD4000 using DisplayPort. See "Intel Integrated Graphics" section below.]
 
-Will ~~I~~ we succeed?  Probably not.
-
-Definitely going to try!
+Will ~~I~~ we succeed?  Probably not.  ~~Definitely going to try!~~ Though it's looking like we might.
 
 
 ## External dependencies
 
-* libUSB (hidapi ???)
+* libUSB (Linux) or hidapi (Win, OSX; included in redist)
 * pthread
-* libX11 (where applicable)
-* zlib (may use puff.c if needed)
-
-If I ever get to video output... OpenGL.
+* libX11 (Linux) or Native (win32) or OpenGL (OSX)
+* zlib (Linux) or puff.c (win32, included in redist)
 
 ## Architecture
-
 
 <TABLE><TR><TH>Description</TH><TH>Diagram</TH>
 </TR><TR>
@@ -82,7 +77,31 @@ Angleproc may also be overridden by the user for similar purposes to for "anglep
 </TR>
 </TABLE>
 
-<!--<TABLE BORDER=1><TR><TD>TEST</TD><TD>HELLO</TD></TR></TABLE>  -->
+## Lists of components
+
+Component Type | Component | Description | Authors
+--- | --- | --- | ---
+Poser | src/poser_charlesslow.c | A very slow, but exhaustive poser system. Calibration only. | @cnlohr
+Poser | src/poser_daveortho.c | A very fast system using orthograpic view and affine transformations. Calibration only (for now) | @ultramn
+Poser | src/poser_dummy.c | Template for posers | @cnlohr
+Poser | src/poser_octavioradii.c | ... | @mwturvey and Octavio
+Poser | src/poser_turveytori.c | ... | @mwturvey
+Disambiguator | src/survive_data.c (currently #ifdefed out) | The old disambiguator - very fast, but slightly buggy. |  @cnlohr
+Disambiguator | src/survive_data.c (current disambiguator) | More complicated but much more robust disambiguator |  @mwturvey
+Dismabiguator | superceded disambiguator | A more sophisticated disambiguator, development abandoned.  Removed from tree. |  @jpicht
+Driver | src/survive_vive.c | Driver for HTC Vive HMD, Watchmen (wired+wireless) and Tracker | @cnlohr
+OOTX Decoder | src/ootx_decoder.c | The system that takes the pulse-codes from the sync pulses from the lighthouses and get [OOTX Data](https://github.com/nairol/LighthouseRedox/blob/master/docs/Light%20Emissions.md) | @axlecrusher
+
+## Component Pluggability Matrix
+
+Component Type | Pluggability method
+--- | ---
+Driver | Dynamically loadable runtime, can co-exist with other drivers.
+Poser | Selectable by configuration at runtime
+Disambiguator | Selectable by #define
+OOTX Decoder | Not Pluggable
+
+
 
 ## Intel Integrated Graphics
 
@@ -95,3 +114,4 @@ To support the Vive on HDMI, you either need a newer version of HDMI, or you nee
 ## Addendum and notes
 
 Thanks to Mr. Fault for our logo!
+Special thanks to @nairol for an extreme amount of detail in reverse engineering the existing HTC Vive system on his https://github.com/nairol/LighthouseRedox project.
