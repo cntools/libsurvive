@@ -5,6 +5,10 @@
 #include <stdint.h>
 #include <string.h>
 
+#define USE_TURVEYBIGUATOR
+
+#ifdef USE_TURVEYBIGUATOR
+
 typedef struct
 {
 	unsigned int sweep_time[SENSORS_PER_OBJECT];
@@ -311,6 +315,9 @@ void handle_lightcap2( SurviveObject * so, LightcapElement * le )
 
 }
 
+
+#endif
+
 int32_t decode_acode(uint32_t length, int32_t main_divisor) {
 	//+50 adds a small offset and seems to help always get it right. 
 	//Check the +50 in the future to see how well this works on a variety of hardware.
@@ -325,8 +332,12 @@ int32_t decode_acode(uint32_t length, int32_t main_divisor) {
 void handle_lightcap( SurviveObject * so, LightcapElement * le )
 {
 	SurviveContext * ctx = so->ctx;
+
+#ifdef USE_TURVEYBIGUATOR
 	handle_lightcap2(so,le);
 	return;
+
+#else
 
 	//int32_t deltat = (uint32_t)le->timestamp - (uint32_t)so->last_master_time;
 
@@ -377,8 +388,6 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 	{
 		int is_new_pulse = delta > so->pulselength_min_sync /*1500*/ + last_sync_length;
 
-
-
 		so->did_handle_ootx = 0;
 
 		if( is_new_pulse )
@@ -398,6 +407,7 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 			else
 			{
 				ssn = ++so->sync_set_number;
+
 				if( so->sync_set_number >= NUM_LIGHTHOUSES )
 				{
 					SV_INFO( "Warning.  Received an extra, unassociated sync pulse." );
@@ -431,8 +441,6 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 			ctx->lightproc( so, le->sensor_id, -3 - so->sync_set_number, 0, le->timestamp, le->length, base_station);
 		}
 	}
-
-
 
 	//See if this is a valid actual pulse.
 	else if( le->length < so->pulse_max_for_sweep && delta > so->pulse_in_clear_time && ssn >= 0 )
@@ -496,7 +504,6 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 			so->did_handle_ootx = 1;
 		}
 
-
 		if (acode > 3) {
 			if( ssn == 0 )
 			{
@@ -512,7 +519,7 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 		//Make sure pulse is in valid window
 		if( offset_from < 380000 && offset_from > 70000 )
 		{
-			ctx->lightproc( so, le->sensor_id, acode, offset_from, le->timestamp, le->length, so->sync_set_number );
+			ctx->lightproc( so, le->sensor_id, acode, offset_from, le->timestamp, le->length, !(acode>>2) );
 		}
 	}
 	else
@@ -520,6 +527,8 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 		//printf( "FAIL %d   %d - %d = %d\n", le->length, so->last_photo_time, le->timestamp, so->last_photo_time - le->timestamp );
 		//Runt pulse, or no sync pulses available.
 	}
+#endif
+
 }
 
 
