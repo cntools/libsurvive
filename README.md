@@ -84,7 +84,7 @@ Component Type | Component | Description | Authors
 Poser | [poser_charlesslow.c](src/poser_charlesslow.c) | A very slow, but exhaustive poser system. Calibration only. | [@cnlohr](https://github.com/cnlohr) and [@mwturvey](https://github.com/mwturvey)
 Poser | [poser_daveortho.c](src/poser_daveortho.c) | A very fast system using orthograpic view and affine transformations. Calibration only (for now) | [@ultramn](https://github.com/ultramn)
 Poser | [poser_dummy.c](src/poser_dummy.c) | Template for posers | [@cnlohr](https://github.com/cnlohr)
-Poser | [poser_octavioradii.c](src/poser_octavioradii.c) | ... | [@mwturvey](https://github.com/mwturvey) and Octavio
+Poser | [poser_octavioradii.c](src/poser_octavioradii.c) | ... | [@mwturvey](https://github.com/mwturvey) and [@octavio2895](https://github.com/octavio2895)
 Poser | [poser_turveytori.c](src/poser_turveytori.c) | ... | [@mwturvey](https://github.com/mwturvey)
 Disambiguator | [survive_data.c](src/survive_data.c) (currently #ifdefed out) | The old disambiguator - very fast, but slightly buggy. | [@cnlohr](https://github.com/cnlohr)
 Disambiguator | [survive_data.c](src/survive_data.c) (current disambiguator) | More complicated but much more robust disambiguator | [@mwturvey](https://github.com/mwturvey)
