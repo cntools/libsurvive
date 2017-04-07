@@ -81,7 +81,7 @@ Angleproc may also be overridden by the user for similar purposes to for "anglep
 
 Component Type | Component | Description | Authors
 --- | --- | --- | ---
-Poser | [poser_charlesslow.c](src/poser_charlesslow.c) | A very slow, but exhaustive poser system. Calibration only. | [@cnlohr](https://github.com/cnlohr) and [@mwturvey](https://github.com/mwturvey)
+Poser | [poser_charlesslow.c](src/poser_charlesslow.c) | A very slow, but exhaustive poser system. Calibration only. | [@cnlohr](https://github.com/cnlohr)
 Poser | [poser_daveortho.c](src/poser_daveortho.c) | A very fast system using orthograpic view and affine transformations. Calibration only (for now) | [@ultramn](https://github.com/ultramn)
 Poser | [poser_dummy.c](src/poser_dummy.c) | Template for posers | [@cnlohr](https://github.com/cnlohr)
 Poser | [poser_octavioradii.c](src/poser_octavioradii.c) | ... | [@mwturvey](https://github.com/mwturvey) and [@octavio2895](https://github.com/octavio2895)
@@ -89,7 +89,7 @@ Poser | [poser_turveytori.c](src/poser_turveytori.c) | ... | [@mwturvey](https:/
 Disambiguator | [survive_data.c](src/survive_data.c) (currently #ifdefed out) | The old disambiguator - very fast, but slightly buggy. | [@cnlohr](https://github.com/cnlohr)
 Disambiguator | [survive_data.c](src/survive_data.c) (current disambiguator) | More complicated but much more robust disambiguator | [@mwturvey](https://github.com/mwturvey)
 Dismabiguator | superceded disambiguator | A more sophisticated disambiguator, development abandoned.  Removed from tree. |  [@jpicht](https://github.com/jpicht)
-Driver | [survive_vive.c](src/survive_vive.c) | Driver for HTC Vive HMD, Watchmen (wired+wireless) and Tracker | [@cnlohr](https://github.com/cnlohr)
+Driver | [survive_vive.c](src/survive_vive.c) | Driver for HTC Vive HMD, Watchmen (wired+wireless) and Tracker | [@cnlohr](https://github.com/cnlohr) and [@mwturvey](https://github.com/mwturvey)
 OOTX Decoder | [ootx_decoder.c](src/ootx_decoder.c) | The system that takes the pulse-codes from the sync pulses from the lighthouses and get [OOTX Data](https://github.com/nairol/LighthouseRedox/blob/master/docs/Light%20Emissions.md) | [@axlecrusher](https://github.com/axlecrusher)
 
 ## Component Pluggability Matrix
