@@ -460,10 +460,10 @@ PRINT(ab,2,1);
 
 #if 1
 //	matrix44transpose(T2, T);  //Transpose so we are
-	matrix44copy(T2,T);
+	matrix44copy((FLT*)T2,(FLT*)T);
 	cross3d( &T2[1][0], &T2[0][0], &T2[2][0] );
 	cross3d( &T2[2][0], &T2[1][0], &T2[0][0] ); //Replace axes in-place.
-	matrix44copy(T,T2);
+	matrix44copy((FLT*)T,(FLT*)T2);
 //	matrix44transpose(T, T2);
 
 #endif
@@ -493,7 +493,7 @@ PRINT(ab,2,1);
 #if 1
 
 	//matrix44copy(T2,T);
-	matrix44transpose(T2,T);
+	matrix44transpose((FLT*)T2,(FLT*)T);
 
 	quatfrommatrix( quat, &T2[0][0] );
 	printf( "QM: %f\n", quatmagnitude( quat ) );
@@ -506,7 +506,7 @@ PRINT(ab,2,1);
 //	PRINT(T,4,4);
 
 //	matrix44copy(temp,T2);
-	matrix44transpose(temp,T2);
+	matrix44transpose((FLT*)temp,(FLT*)T2);
 
 
 //	matrix44transpose(T2, temp);
