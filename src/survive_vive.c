@@ -723,11 +723,9 @@ int survive_get_config( char ** config, SurviveViveData * sv, int devno, int ifa
 	
 		#else
 		//Switch mode to pull config?
-		SV_INFO( "XXX TODO See if this can be update_feature_report" );
 		for( k = 0; k < 10; k++ )
 		{
-			int rk = libusb_control_transfer(dev, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_OUT,
-			0x09, 0x300 | cfgbuff_send[0], iface, cfgbuff_send, 64, 1000 );
+			update_feature_report( dev, iface, cfgbuff_send, 64 );
 			OGUSleep(1000);
 		}
 		#endif
