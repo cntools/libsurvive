@@ -360,7 +360,10 @@ int parse_uint32(char* tag, char** values, uint16_t count) {
 }
 
 void handle_tag_value(char* tag, char** values, uint8_t count) {
-	print_json_value(tag,values,count);
+
+	//Uncomment for more debugging of input configuration.
+	//print_json_value(tag,values,count);
+
 	config_group* cg = cg_stack[cg_stack_head];
 
 	if (NULL != *values){	
