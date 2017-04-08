@@ -24,7 +24,7 @@ typedef struct
 //	int lh_pulse_len[NUM_LIGHTHOUSES];
 	int lh_start_time[NUM_LIGHTHOUSES];
 	int lh_max_pulse_length[NUM_LIGHTHOUSES];
-	uint16_t lh_acode[NUM_LIGHTHOUSES];
+	int8_t lh_acode[NUM_LIGHTHOUSES];
 	int current_lh; // used knowing which sync pulse we're looking at.
 
 } lightcap2_per_sweep_data;
@@ -96,7 +96,8 @@ void handle_lightcap2_process_sweep_data(SurviveObject *so)
 			{
 				static int counts[SENSORS_PER_OBJECT][2] = {0};
 
-				if (lcd->per_sweep.activeLighthouse == 0 && !allZero)
+//				if (lcd->per_sweep.activeLighthouse == 0 && !allZero)
+				if (lcd->per_sweep.activeLighthouse > -1 && !allZero)
 				{
 					if (lcd->sweep.sweep_len[i] != 0)
 					{
@@ -226,6 +227,9 @@ void handle_lightcap2_sync(SurviveObject * so, LightcapElement * le )
 	}
 	else if (time_since_last_sync > 370000)
 	{
+		// XXX CAUTION: if we lose sight of a lighthouse then, the remaining lighthouse will default to master
+		//this should probably be fixed. Maybe some kind of timing based guess at which lighthouse.
+
 		// looks like this is the first sync pulse.  Cool!
 
 		// first, send out the sync pulse data for the last round (for OOTX decoding
@@ -258,6 +262,10 @@ void handle_lightcap2_sync(SurviveObject * so, LightcapElement * le )
 		// initialize here.
 		memset(&lcd->per_sweep, 0, sizeof(lcd->per_sweep));
 		lcd->per_sweep.activeLighthouse = -1; 
+
+		for (uint8_t i=0; i < NUM_LIGHTHOUSES;++i) {
+			lcd->per_sweep.lh_acode[i] = -1;
+		}
 
 		lcd->per_sweep.recent_sync_time = le->timestamp;
 		// I do believe we are lighthouse A		
@@ -303,9 +311,9 @@ void handle_lightcap2_sweep(SurviveObject * so, LightcapElement * le )
 	lcd->per_sweep.activeSweepStartTime = 0;
 	lcd->per_sweep.activeAcode = 0;
 
-	for (uint8_t i=0; i< NUM_LIGHTHOUSES;++i) {
+	for (uint8_t i=0; i < NUM_LIGHTHOUSES;++i) {
 		int acode = lcd->per_sweep.lh_acode[i];
-		if ((acode>0) && (!(acode >> 2 & 1))) {
+		if ( (acode>=0) && !(acode >> 2 & 1)) {
 			lcd->per_sweep.activeLighthouse = i;
 			lcd->per_sweep.activeSweepStartTime = lcd->per_sweep.lh_start_time[i];
 			lcd->per_sweep.activeAcode = acode;
@@ -314,7 +322,7 @@ void handle_lightcap2_sweep(SurviveObject * so, LightcapElement * le )
 
 	if (lcd->per_sweep.activeLighthouse < 0) {
 		fprintf(stderr, "WARNING: No active lighthouse!\n");
-		fprintf(stderr, "            %2d %8d\n", le->sensor_id, le->length);
+		fprintf(stderr, "            %2d %8d %d %d\n", le->sensor_id, le->length,lcd->per_sweep.lh_acode[0],lcd->per_sweep.lh_acode[1]);
 		return;
 	}
 
