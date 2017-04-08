@@ -65,9 +65,63 @@ int handle_lightcap2_getAcodeFromSyncPulse(SurviveObject * so, int pulseLen)
 	if (pulseLen < 6250 - ACODE_OFFSET) return 6;
 	return 7;
 }
+
+uint8_t remove_outliers(SurviveObject *so) {
+	lightcap2_data *lcd = so->disambiguator_data;
+
+	uint32_t sum = 0;
+	uint8_t non_zero_count = 0;
+	uint32_t mean = 0;
+
+	for (int i = 0; i < SENSORS_PER_OBJECT; i++)
+	{
+		if (lcd->sweep.sweep_len[i] > 0) {
+			sum += lcd->sweep.sweep_len[i];
+			++non_zero_count;
+		}
+	}
+
+	if (non_zero_count==0) return 0;
+
+	mean = sum/non_zero_count;
+
+	float standard_deviation = 0.0f;
+	sum = 0;
+	for (int i = 0; i < SENSORS_PER_OBJECT; i++)
+	{
+		uint16_t len = lcd->sweep.sweep_len[i];
+		if (len > 0) {
+			sum += (len - mean)*(len - mean);
+		}
+	}
+	standard_deviation = sqrt( ((float)sum)/((float)non_zero_count) );
+
+//	printf("%f\n", standard_deviation);
+
+	float fake_tao_test = standard_deviation*2;
+	uint8_t removed_outliers = 0;
+
+	for (int i = 0; i < SENSORS_PER_OBJECT; i++)
+	{
+		uint16_t len = lcd->sweep.sweep_len[i];
+		if (len == 0) continue;
+
+		if ( abs(len-mean) > fake_tao_test )
+		{
+//			fprintf(stderr, "removing %d\n", len);
+			lcd->sweep.sweep_len[i] = 0;
+			removed_outliers = 1;
+		}
+	}
+
+	return removed_outliers;
+}
+
 void handle_lightcap2_process_sweep_data(SurviveObject *so)
 {
 	lightcap2_data *lcd = so->disambiguator_data;
+
+	while(remove_outliers(so));
 
 	// look at all of the sensors we found, and process the ones that were hit.
 	// TODO: find the sensor(s) with the longest pulse length, and assume 
@@ -93,6 +147,7 @@ void handle_lightcap2_process_sweep_data(SurviveObject *so)
 		//	printf("a[%d]l[%d] ", lcd->per_sweep.activeAcode & 5,  lcd->per_sweep.activeLighthouse);
 		for (int i = 0; i < SENSORS_PER_OBJECT; i++)
 		{
+
 			{
 				static int counts[SENSORS_PER_OBJECT][2] = {0};
 
@@ -119,10 +174,10 @@ void handle_lightcap2_process_sweep_data(SurviveObject *so)
 
 			if (lcd->sweep.sweep_len[i] != 0) // if the sensor was hit, process it
 			{
-
+//printf("%4d\n", lcd->sweep.sweep_len[i]);
 				int offset_from = lcd->sweep.sweep_time[i] - lcd->per_sweep.activeSweepStartTime + lcd->sweep.sweep_len[i] / 2;
 
-				if (offset_from < 380000 && offset_from > 70000)
+//				if (offset_from < 380000 && offset_from > 70000)
 				{
 					//if (longest_pulse *10 / 8 < lcd->sweep.sweep_len[i]) 
 					{
@@ -134,7 +189,9 @@ void handle_lightcap2_process_sweep_data(SurviveObject *so)
 		//if (!allZero)
 		//	printf("   ..:..\n");
 
+//		if (!allZero) printf("\n");
 	}
+
 	// clear out sweep data (could probably limit this to only after a "first" sync.  
 	// this is slightly more robust, so doing it here for now.
 	memset(&(((lightcap2_data*)so->disambiguator_data)->sweep), 0, sizeof(lightcaps_sweep_data));
@@ -156,7 +213,7 @@ void handle_lightcap2_sync(SurviveObject * so, LightcapElement * le )
 	int time_since_last_sync = (le->timestamp - lcd->per_sweep.recent_sync_time);
 
 
-	fprintf(stderr, "            %2d %8d %d\n", le->sensor_id, time_since_last_sync, le->length);
+//	fprintf(stderr, "            %2d %8d %d\n", le->sensor_id, time_since_last_sync, le->length);
 	// need to store up sync pulses, so we can take the earliest starting time for all sensors.
 	if (time_since_last_sync < 2400)
 	{
