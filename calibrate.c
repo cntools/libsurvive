@@ -131,8 +131,8 @@ void * GuiThread( void * v )
 					uint8_t g = 0x00;
 					uint8_t b = 0xff;
 
-					if (nn==0) b = 0; //lighthouse B
-					if (nn==1) r = 0; //lighthouse C
+					if (nn==0) b = 0; //lighthouse B, red, master
+					if (nn==1) r = 0; //lighthouse C, blue, slave
 
 //					r = (r * (5-buffertimeto[i][nn])) / 5 ;
 //					g = (g * (5-buffertimeto[i][nn])) / 5 ;
