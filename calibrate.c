@@ -138,6 +138,9 @@ void * GuiThread( void * v )
 //					g = (g * (5-buffertimeto[i][nn])) / 5 ;
 //					b = (b * (5-buffertimeto[i][nn])) / 5 ;
 					CNFGColor( (b<<16) | (g<<8) | r );
+
+					if (bufferpts[i*2+0][nn] == 0 || bufferpts[i*2+1][nn]==0) continue; //do not draw if aither coordinate is 0
+
 					CNFGTackRectangle( bufferpts[i*2+0][nn], bufferpts[i*2+1][nn], bufferpts[i*2+0][nn] + 5, bufferpts[i*2+1][nn] + 5 );
 					CNFGPenX = bufferpts[i*2+0][nn]; CNFGPenY = bufferpts[i*2+1][nn];
 					CNFGDrawText( buffermts, 2 );
