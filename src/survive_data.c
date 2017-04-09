@@ -4,16 +4,25 @@
 #include "survive_internal.h"
 #include <stdint.h>
 #include <string.h>
+#include <math.h>
 
 #define USE_TURVEYBIGUATOR
 
 #ifdef USE_TURVEYBIGUATOR
 
+static const float tau_table[33] = { 0, 0, 0, 1.151140982, 1.425, 1.5712213707, 1.656266074, 1.7110275587, 1.7490784054,
+	1.7770229476, 1.798410005, 1.8153056661, 1.8289916275, 1.8403044103, 1.8498129961, 1.8579178211,
+	1.864908883, 1.8710013691, 1.8763583296, 1.881105575, 1.885341741, 1.8891452542, 1.8925792599,
+	1.8956951735, 1.8985352854, 1.9011347009, 1.9035228046, 1.9057243816, 1.9077604832, 1.9096491058,
+	1.9114057255, 1.9130437248, 1.914574735
+};
+
 typedef struct
 {
 	unsigned int sweep_time[SENSORS_PER_OBJECT];
-	unsigned int sweep_len[SENSORS_PER_OBJECT];
+	uint16_t sweep_len[SENSORS_PER_OBJECT]; //might want to align this to cache lines, will be hot for frequent access
 } lightcaps_sweep_data;
+
 typedef struct
 {
 	int recent_sync_time;
@@ -73,12 +82,16 @@ uint8_t remove_outliers(SurviveObject *so) {
 	uint8_t non_zero_count = 0;
 	uint32_t mean = 0;
 
-	for (int i = 0; i < SENSORS_PER_OBJECT; i++)
+	uint16_t* min = NULL;
+	uint16_t* max = NULL;
+	uint8_t found_first = 0;
+
+	//future: https://gcc.gnu.org/projects/tree-ssa/vectorization.html#vectorizab
+
+	for (uint8_t i = 0; i < SENSORS_PER_OBJECT; i++)
 	{
-		if (lcd->sweep.sweep_len[i] > 0) {
-			sum += lcd->sweep.sweep_len[i];
-			++non_zero_count;
-		}
+		sum += lcd->sweep.sweep_len[i];
+		if (lcd->sweep.sweep_len[i] > 0) ++non_zero_count;
 	}
 
 	if (non_zero_count==0) return 0;
@@ -87,34 +100,59 @@ uint8_t remove_outliers(SurviveObject *so) {
 
 	float standard_deviation = 0.0f;
 	sum = 0;
-	for (int i = 0; i < SENSORS_PER_OBJECT; i++)
+	for (uint8_t i = 0; i < SENSORS_PER_OBJECT; i++)
 	{
 		uint16_t len = lcd->sweep.sweep_len[i];
 		if (len > 0) {
 			sum += (len - mean)*(len - mean);
+
+			if (found_first==0) {
+				max = min = lcd->sweep.sweep_len + i;
+				found_first=1;
+			} else {
+				if(lcd->sweep.sweep_len[i] < *min) min=lcd->sweep.sweep_len + i;
+				if(lcd->sweep.sweep_len[i] > *max) max=lcd->sweep.sweep_len + i;
+			}
 		}
 	}
-	standard_deviation = sqrt( ((float)sum)/((float)non_zero_count) );
+	standard_deviation = sqrtf( ((float)sum)/((float)non_zero_count) );
 
 //	printf("%f\n", standard_deviation);
 
-	float fake_tao_test = standard_deviation*2;
-	uint8_t removed_outliers = 0;
+	float tau_test = standard_deviation;
 
-	for (int i = 0; i < SENSORS_PER_OBJECT; i++)
+	if (non_zero_count > 2) tau_test = standard_deviation*tau_table[non_zero_count];
+
+//	uint8_t removed_outliers = 0;
+
+	uint32_t d1 = *min - mean;
+	uint32_t d2 = *max - mean;
+
+	if (d1>d2 && d1>tau_test) {
+		*min = 0;
+		return 1;
+	}
+	else if (d2>tau_test) {
+		*max = 0;
+		return 1;
+	}
+
+	return 0;
+/*
+	for (uint8_t i = 0; i < SENSORS_PER_OBJECT; i++)
 	{
 		uint16_t len = lcd->sweep.sweep_len[i];
 		if (len == 0) continue;
 
-		if ( abs(len-mean) > fake_tao_test )
+		if ( abs(len-mean) > tau_test )
 		{
 //			fprintf(stderr, "removing %d\n", len);
 			lcd->sweep.sweep_len[i] = 0;
 			removed_outliers = 1;
 		}
 	}
-
-	return removed_outliers;
+*/
+//	return removed_outliers;
 }
 
 void handle_lightcap2_process_sweep_data(SurviveObject *so)
@@ -250,7 +288,7 @@ void handle_lightcap2_sync(SurviveObject * so, LightcapElement * le )
 	}
 	else if (time_since_last_sync < 24000)
 	{
-		lcd->per_sweep.activeLighthouse != -1;
+		lcd->per_sweep.activeLighthouse = -1;
 
 		lcd->per_sweep.recent_sync_time = le->timestamp;
 		// I do believe we are lighthouse B		
