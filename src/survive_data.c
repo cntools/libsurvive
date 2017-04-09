@@ -125,12 +125,14 @@ uint8_t remove_outliers(SurviveObject *so) {
 
 //	uint8_t removed_outliers = 0;
 
-	uint32_t d1 = *min - mean;
-	uint32_t d2 = *max - mean;
+	uint32_t d1 = abs(*min - mean);
+	uint32_t d2 = abs(*max - mean);
 
-	if (d1>d2 && d1>tau_test) {
-		*min = 0;
-		return 1;
+	if (d1>d2) {
+		if (d1 > tau_test) {
+			*min = 0;
+			return 1;
+		}
 	}
 	else if (d2>tau_test) {
 		*max = 0;
