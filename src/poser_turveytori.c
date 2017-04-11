@@ -436,23 +436,25 @@ Point getGradient(Point pointIn, PointsAndAngle *pna, size_t pnaCount, FLT preci
 {
 	Point result;
 
+	FLT baseFitness = getPointFitness(pointIn, pna, pnaCount, 0);
+
 	Point tmpXplus = pointIn;
 	Point tmpXminus = pointIn;
 	tmpXplus.x = pointIn.x + precision;
 	tmpXminus.x = pointIn.x - precision;
-	result.x = getPointFitness(tmpXplus, pna, pnaCount, 0) - getPointFitness(tmpXminus, pna, pnaCount, 0);
+	result.x = baseFitness - getPointFitness(tmpXminus, pna, pnaCount, 0);
 
 	Point tmpYplus = pointIn;
 	Point tmpYminus = pointIn;
 	tmpYplus.y = pointIn.y + precision;
 	tmpYminus.y = pointIn.y - precision;
-	result.y = getPointFitness(tmpYplus, pna, pnaCount, 0) - getPointFitness(tmpYminus, pna, pnaCount, 0);
+	result.y = baseFitness - getPointFitness(tmpYminus, pna, pnaCount, 0);
 
 	Point tmpZplus = pointIn;
 	Point tmpZminus = pointIn;
 	tmpZplus.z = pointIn.z + precision;
 	tmpZminus.z = pointIn.z - precision;
-	result.z = getPointFitness(tmpZplus, pna, pnaCount, 0) - getPointFitness(tmpZminus, pna, pnaCount, 0);
+	result.z = baseFitness - getPointFitness(tmpZminus, pna, pnaCount, 0);
 
 	return result;
 }
@@ -1518,7 +1520,7 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 				counter++;
 
 				// let's just do this occasionally for now...
-				if (counter % 2 == 0)
+				//if (counter % 1 == 0)
 					QuickPose(so, 0);
 			}
 			// axis changed, time to increment the circular buffer index.
