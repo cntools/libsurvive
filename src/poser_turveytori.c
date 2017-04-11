@@ -83,6 +83,9 @@ typedef struct
 	FLT oldAngles[SENSORS_PER_OBJECT][2][NUM_LIGHTHOUSES][OLD_ANGLES_BUFF_LEN]; // sensor, sweep axis, lighthouse, instance
 	int angleIndex[NUM_LIGHTHOUSES][2]; // index into circular buffer ahead. separate index for each axis.
 	int lastAxis[NUM_LIGHTHOUSES];
+
+	Point lastLhPos[NUM_LIGHTHOUSES];
+	FLT lastLhRotAxisAngle[NUM_LIGHTHOUSES][4];
 } ToriData;
 
 
@@ -433,23 +436,25 @@ Point getGradient(Point pointIn, PointsAndAngle *pna, size_t pnaCount, FLT preci
 {
 	Point result;
 
+	FLT baseFitness = getPointFitness(pointIn, pna, pnaCount, 0);
+
 	Point tmpXplus = pointIn;
 	Point tmpXminus = pointIn;
 	tmpXplus.x = pointIn.x + precision;
 	tmpXminus.x = pointIn.x - precision;
-	result.x = getPointFitness(tmpXplus, pna, pnaCount, 0) - getPointFitness(tmpXminus, pna, pnaCount, 0);
+	result.x = baseFitness - getPointFitness(tmpXminus, pna, pnaCount, 0);
 
 	Point tmpYplus = pointIn;
 	Point tmpYminus = pointIn;
 	tmpYplus.y = pointIn.y + precision;
 	tmpYminus.y = pointIn.y - precision;
-	result.y = getPointFitness(tmpYplus, pna, pnaCount, 0) - getPointFitness(tmpYminus, pna, pnaCount, 0);
+	result.y = baseFitness - getPointFitness(tmpYminus, pna, pnaCount, 0);
 
 	Point tmpZplus = pointIn;
 	Point tmpZminus = pointIn;
 	tmpZplus.z = pointIn.z + precision;
 	tmpZminus.z = pointIn.z - precision;
-	result.z = getPointFitness(tmpZplus, pna, pnaCount, 0) - getPointFitness(tmpZminus, pna, pnaCount, 0);
+	result.z = baseFitness - getPointFitness(tmpZminus, pna, pnaCount, 0);
 
 	return result;
 }
@@ -1144,6 +1149,8 @@ void SolveForRotation(FLT rotOut[4], TrackedObject *obj, Point lh)
 
 static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *obj, SurviveObject *so, char doLogOutput, int lh, int setLhCalibration)
 {
+	ToriData *toriData = so->PoserData;
+
 	//printf("Solving for Lighthouse\n");
 
 	//printf("obj->numSensors = %d;\n", obj->numSensors);
@@ -1234,6 +1241,14 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 	// back into the search for the correct point (see "if (a1 > M_PI / 2)" below)
 	Point p1 = getNormalizedAndScaledVector(avgNorm, 8);
 
+	// if the last lighthouse position has been populated (extremely rare it would be 0)
+	if (toriData->lastLhPos[lh].x != 0)
+	{
+		p1.x = toriData->lastLhPos[lh].x;
+		p1.y = toriData->lastLhPos[lh].y;
+		p1.z = toriData->lastLhPos[lh].z;
+	}
+
 	Point refinedEstimateGd = RefineEstimateUsingModifiedGradientDescent1(p1, pna, pnaCount, logFile);
 
 	FLT pf1[3] = { refinedEstimateGd.x, refinedEstimateGd.y, refinedEstimateGd.z };
@@ -1258,10 +1273,28 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 	//printf("Distance is %f,   Fitness is %f\n", distance, fitGd);
 
 	FLT rot[4]; // this is axis/ angle rotation, not a quaternion!
+
+	if (toriData->lastLhRotAxisAngle[lh][0] != 0)
+	{
+		rot[0] = toriData->lastLhRotAxisAngle[lh][0];
+		rot[1] = toriData->lastLhRotAxisAngle[lh][1];
+		rot[2] = toriData->lastLhRotAxisAngle[lh][2];
+		rot[3] = toriData->lastLhRotAxisAngle[lh][3];
+	}
+
+
 	SolveForRotation(rot, obj, refinedEstimateGd);
 	FLT objPos[3];
 
+	{
+		toriData->lastLhRotAxisAngle[lh][0] = rot[0];
+		toriData->lastLhRotAxisAngle[lh][1] = rot[1];
+		toriData->lastLhRotAxisAngle[lh][2] = rot[2];
+		toriData->lastLhRotAxisAngle[lh][3] = rot[3];
+	}
+
 	WhereIsTheTrackedObjectAxisAngle(objPos, rot, refinedEstimateGd);
+
 
 	FLT rotQuat[4];
 
@@ -1324,6 +1357,11 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 		updateHeader(logFile);
 		fclose(logFile);
 	}
+
+
+	toriData->lastLhPos[lh].x = refinedEstimateGd.x;
+	toriData->lastLhPos[lh].y = refinedEstimateGd.y;
+	toriData->lastLhPos[lh].z = refinedEstimateGd.z;
 
 	return refinedEstimateGd;
 }
@@ -1482,7 +1520,7 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 				counter++;
 
 				// let's just do this occasionally for now...
-				if (counter % 2 == 0)
+				//if (counter % 1 == 0)
 					QuickPose(so, 0);
 			}
 			// axis changed, time to increment the circular buffer index.
