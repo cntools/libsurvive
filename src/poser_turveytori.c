@@ -83,6 +83,9 @@ typedef struct
 	FLT oldAngles[SENSORS_PER_OBJECT][2][NUM_LIGHTHOUSES][OLD_ANGLES_BUFF_LEN]; // sensor, sweep axis, lighthouse, instance
 	int angleIndex[NUM_LIGHTHOUSES][2]; // index into circular buffer ahead. separate index for each axis.
 	int lastAxis[NUM_LIGHTHOUSES];
+
+	Point lastLhPos[NUM_LIGHTHOUSES];
+	FLT lastLhRotAxisAngle[NUM_LIGHTHOUSES][4];
 } ToriData;
 
 
@@ -1144,6 +1147,8 @@ void SolveForRotation(FLT rotOut[4], TrackedObject *obj, Point lh)
 
 static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *obj, SurviveObject *so, char doLogOutput, int lh, int setLhCalibration)
 {
+	ToriData *toriData = so->PoserData;
+
 	//printf("Solving for Lighthouse\n");
 
 	//printf("obj->numSensors = %d;\n", obj->numSensors);
@@ -1234,6 +1239,14 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 	// back into the search for the correct point (see "if (a1 > M_PI / 2)" below)
 	Point p1 = getNormalizedAndScaledVector(avgNorm, 8);
 
+	// if the last lighthouse position has been populated (extremely rare it would be 0)
+	if (toriData->lastLhPos[lh].x != 0)
+	{
+		p1.x = toriData->lastLhPos[lh].x;
+		p1.y = toriData->lastLhPos[lh].y;
+		p1.z = toriData->lastLhPos[lh].z;
+	}
+
 	Point refinedEstimateGd = RefineEstimateUsingModifiedGradientDescent1(p1, pna, pnaCount, logFile);
 
 	FLT pf1[3] = { refinedEstimateGd.x, refinedEstimateGd.y, refinedEstimateGd.z };
@@ -1258,10 +1271,28 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 	//printf("Distance is %f,   Fitness is %f\n", distance, fitGd);
 
 	FLT rot[4]; // this is axis/ angle rotation, not a quaternion!
+
+	if (toriData->lastLhRotAxisAngle[lh][0] != 0)
+	{
+		rot[0] = toriData->lastLhRotAxisAngle[lh][0];
+		rot[1] = toriData->lastLhRotAxisAngle[lh][1];
+		rot[2] = toriData->lastLhRotAxisAngle[lh][2];
+		rot[3] = toriData->lastLhRotAxisAngle[lh][3];
+	}
+
+
 	SolveForRotation(rot, obj, refinedEstimateGd);
 	FLT objPos[3];
 
+	{
+		toriData->lastLhRotAxisAngle[lh][0] = rot[0];
+		toriData->lastLhRotAxisAngle[lh][1] = rot[1];
+		toriData->lastLhRotAxisAngle[lh][2] = rot[2];
+		toriData->lastLhRotAxisAngle[lh][3] = rot[3];
+	}
+
 	WhereIsTheTrackedObjectAxisAngle(objPos, rot, refinedEstimateGd);
+
 
 	FLT rotQuat[4];
 
@@ -1324,6 +1355,11 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 		updateHeader(logFile);
 		fclose(logFile);
 	}
+
+
+	toriData->lastLhPos[lh].x = refinedEstimateGd.x;
+	toriData->lastLhPos[lh].y = refinedEstimateGd.y;
+	toriData->lastLhPos[lh].z = refinedEstimateGd.z;
 
 	return refinedEstimateGd;
 }
