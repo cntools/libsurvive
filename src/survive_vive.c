@@ -54,7 +54,7 @@ const short vidpids[] = {
 
 const char * devnames[] = {
 	"HMD",
-	"Lighthouse",
+	"HMD IMU & LH",
 	"Watchman 1",
 	"Watchman 2",
 	"Tracker 0",
@@ -370,6 +370,7 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 		wchar_t wstr[255];
 
 		res = hid_get_serial_number_string(handle, wstr, 255);
+		printf("Found %s. ", devnames[i]);
 		wprintf(L"Serial Number String: (%d) %s for %04x:%04x@%d  (Dev: %p)\n", wstr[0], wstr,vendor_id, product_id, menum, handle);
 		
 		sv->udev[i] = handle;

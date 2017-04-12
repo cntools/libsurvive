@@ -67,6 +67,7 @@ int handle_lightcap2_getAcodeFromSyncPulse(SurviveObject * so, int pulseLen)
 }
 
 uint8_t remove_outliers(SurviveObject *so) {
+	return 0; // disabling this for now because it seems remove almost all the points for wired watchman and wired tracker.
 	lightcap2_data *lcd = so->disambiguator_data;
 
 	uint32_t sum = 0;
