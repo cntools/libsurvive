@@ -5,6 +5,10 @@
 #include "survive_types.h"
 #include "poser.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //DANGER: This structure may be redefined.  Note that it is logically split into 64-bit chunks
 //for optimization on 32- and 64-bit systems.
 
@@ -116,7 +120,7 @@ void survive_install_imu_fn( SurviveContext * ctx,  imu_process_func fbp );
 void survive_install_angle_fn( SurviveContext * ctx,  angle_process_func fbp );
 
 void survive_close( SurviveContext * ctx );
-int survive_poll();
+int survive_poll( SurviveContext * ctx );
 
 SurviveObject * survive_get_so_by_name( SurviveContext * ctx, const char * name );
 
@@ -127,6 +131,9 @@ int survive_send_magic( SurviveContext * ctx, int magic_code, void * data, int d
 
 //Install the calibrator.
 void survive_cal_install( SurviveContext * ctx );  //XXX This will be removed if not already done so.
+
+// Read back a human-readable string description of the calibration status
+int survive_cal_get_status( struct SurviveContext * ctx, char * description, int description_length );
 
 //Call these from your callback if overridden.  
 //Accept higher-level data.
@@ -173,6 +180,10 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le );
 #define SV_INFO( ... ) { char stbuff[1024]; sprintf( stbuff, __VA_ARGS__ ); ctx->notefunction( ctx, stbuff ); }
 #define SV_ERROR( ... ) { char stbuff[1024]; sprintf( stbuff, __VA_ARGS__ ); ctx->faultfunction( ctx, stbuff ); }
 #define SV_KILL()		exit(0)  //XXX This should likely be re-defined.
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif
 
