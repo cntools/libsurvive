@@ -4,6 +4,7 @@
 #include "survive_internal.h"
 #include <stdint.h>
 #include <string.h>
+#include <math.h> /* for sqrt */
 
 #define USE_TURVEYBIGUATOR
 
