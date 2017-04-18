@@ -3,6 +3,11 @@
 
 #include "survive_types.h"
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum PoserType_t
 {
 	POSERDATA_NONE = 0,
@@ -54,5 +59,9 @@ typedef struct
 //When you write your posers, use the following definition, and register with REGISTER_LINKTIME.
 typedef int (*PoserCB)( SurviveObject * so, PoserData * pd );
 
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif

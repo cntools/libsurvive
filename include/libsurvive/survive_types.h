@@ -1,6 +1,11 @@
 #ifndef _SURVIVE_TYPES_H
 #define _SURVIVE_TYPES_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #ifndef FLT
 #ifdef USE_DOUBLE
 #define FLT double
@@ -39,6 +44,9 @@ typedef int (*DeviceDriver)( SurviveContext * ctx );
 typedef int (*DeviceDriverCb)( struct SurviveContext * ctx, void * driver );
 typedef int (*DeviceDriverMagicCb)( struct SurviveContext * ctx, void * driver, int magic_code, void * data, int datalen );
 
+#ifdef __cplusplus
+};
+#endif
 
 #endif
 

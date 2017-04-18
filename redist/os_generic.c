@@ -151,8 +151,9 @@ void OGDeleteSema( og_sema_t os )
 
 #else
 
-#define _GNU_SOURCE
-
+#ifndef _GNU_SOURCE
+#  define _GNU_SOURCE
+#endif
 
 #include <sys/stat.h>
 #include <stdlib.h>
@@ -198,7 +199,7 @@ double OGGetFileTime( const char * file )
 
 og_thread_t OGCreateThread( void * (routine)( void * ), void * parameter )
 {
-	pthread_t * ret = malloc( sizeof( pthread_t ) );
+	pthread_t * ret = (pthread_t *)malloc( sizeof( pthread_t ) );
 	int r = pthread_create( ret, 0, routine, parameter );
 	if( r )
 	{
@@ -277,7 +278,7 @@ void OGDeleteMutex( og_mutex_t om )
 
 og_sema_t OGCreateSema()
 {
-	sem_t * sem = malloc( sizeof( sem_t ) );
+	sem_t * sem = (sem_t *)malloc( sizeof( sem_t ) );
 	sem_init( sem, 0, 0 );
 	return (og_sema_t)sem;
 }
@@ -285,24 +286,24 @@ og_sema_t OGCreateSema()
 int OGGetSema( og_sema_t os )
 {
 	int valp;
-	sem_getvalue( os, &valp );
+	sem_getvalue( (sem_t *)os, &valp );
 	return valp;
 }
 
 
 void OGLockSema( og_sema_t os )
 {
-	sem_wait( os );
+	sem_wait( (sem_t *)os );
 }
 
 void OGUnlockSema( og_sema_t os )
 {
-	sem_post( os );
+	sem_post( (sem_t *)os );
 }
 
 void OGDeleteSema( og_sema_t os )
 {
-	sem_destroy( os );
+	sem_destroy( (sem_t *)os );
 	free(os);
 }
 
