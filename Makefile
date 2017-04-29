@@ -25,7 +25,7 @@ GRAPHICS_LOFI:=redist/CNFGFunctions.o redist/CNFGXDriver.o
 endif
 
 
-POSERS:=src/poser_dummy.o src/poser_daveortho.o src/poser_charlesslow.o
+POSERS:=src/poser_dummy.o src/poser_daveortho.o src/poser_charlesslow.o src/poser_octavioradii.o src/poser_turveytori.o
 REDISTS:=redist/json_helpers.o redist/linmath.o redist/jsmn.o redist/os_generic.o
 LIBSURVIVE_CORE:=src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o src/ootx_decoder.o src/survive_driverman.o src/survive_vive.o src/survive_config.o src/survive_cal.o
 
