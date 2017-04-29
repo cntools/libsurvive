@@ -29,18 +29,18 @@ HackADay article and video with Dr. Yates on how they made the Vive a thing. htt
 
 ## Nomenclature
 
-WRT = With Respect To
-PoV / POV = Point of View (typically WRT to a LH, sometimes (though rarely) a sensor)
-LH = Lighthouse = Base Station = A device that produces a 1.8 MHz modulated sync pulse in IR and then sweeps the scene with laser planes.
-Sync Pulse = A pulse of modulated IR data sent from a ligthhouse, typically by the floodlight aspect of a lighthouse.
-Sweep Pulse = The evenlope created by a laser sweeping over a light sensor.
-OOTX = Omnidirectional Optical Transmitter = Data encoded in the sync pulses of the LHs.
-HMD = Headset = Main sensor receiver with a visual display for a human.
-WM = Watchman = Controller = The HTC Vive controller.
-TR = Tracker = Official HTC Tracker.
-LightcapElement = A single pulse of light, including a timestamp, source sensor and length of pulse.
-Disambiguator = System that accepts lightcap elements and pulls out OOTX data and relative sweep times of sweep pulses.
-Poser = Device to convert series of angles from a LH's PoV
+* WRT = With Respect To
+* PoV / POV = Point of View (typically WRT to a LH, sometimes (though rarely) a sensor)
+* LH = Lighthouse = Base Station = A device that produces a 1.8 MHz modulated sync pulse in IR and then sweeps the scene with laser planes.
+* Sync Pulse = A pulse of modulated IR data sent from a ligthhouse, typically by the floodlight aspect of a lighthouse.
+* Sweep Pulse = The evenlope created by a laser sweeping over a light sensor.
+* OOTX = Omnidirectional Optical Transmitter = Data encoded in the sync pulses of the LHs.
+* HMD = Headset = Main sensor receiver with a visual display for a human.
+* WM = Watchman = Controller = The HTC Vive controller.
+* TR = Tracker = Official HTC Tracker.
+* LightcapElement = A single pulse of light, including a timestamp, source sensor and length of pulse.
+* Disambiguator = System that accepts lightcap elements and pulls out OOTX data and relative sweep times of sweep pulses.
+* Poser = Device to convert series of angles from a LH's PoV
 
 ## Getting things working
 
