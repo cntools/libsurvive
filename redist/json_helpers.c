@@ -50,44 +50,46 @@ void json_write_float_array(FILE* f, const char* tag, float* v, uint8_t count) {
 	uint8_t i = 0;
 	char * str1 = NULL;
 	char * str2 = NULL;
-	asprintf(&str1,"\"%s\":[", tag);
+	if( asprintf(&str1,"\"%s\":[", tag) < 0 ) goto giveup;
 
 	for (i=0;i<count;++i) {
 		if ( (i+1) < count) {
-			asprintf(&str2, "%s\"%f\"", str1,v[i]);
+			if( asprintf(&str2, "%s\"%f\"", str1,v[i]) < 0 ) goto giveup;
 		} else {
-			asprintf(&str2, "%s\"%f\",", str1,v[i]);
+			if( asprintf(&str2, "%s\"%f\",", str1,v[i]) < 0 ) goto giveup;
 		}
 		free(str1);
 		str1=str2;
 		str2=NULL;
 	}
-	asprintf(&str2, "%s]", str1);
+	if( asprintf(&str2, "%s]", str1) < 0 ) goto giveup;
 	fputs(str2,f);
-	free(str1);
-	free(str2);
+giveup:
+	if( str1 ) free(str1);
+	if( str2 ) free(str2);
 }
 
 void json_write_double_array(FILE* f, const char* tag, double* v, uint8_t count) {
 	uint8_t i = 0;
 	char * str1 = NULL;
 	char * str2 = NULL;
-	asprintf(&str1,"\"%s\":[", tag);
+	if( asprintf(&str1,"\"%s\":[", tag) < 0 ) goto giveup;
 
 	for (i=0;i<count;++i) {
 		if (i<(count-1)) {
-			asprintf(&str2, "%s\"%f\",", str1,v[i]);
+			if( asprintf(&str2, "%s\"%f\",", str1,v[i]) < 0 ) goto giveup;
 		} else {
-			asprintf(&str2, "%s\"%f\"", str1,v[i]);
+			if( asprintf(&str2, "%s\"%f\"", str1,v[i]) < 0 ) goto giveup;
 		}
 		free(str1);
 		str1=str2;
 		str2=NULL;
 	}
-	asprintf(&str2, "%s]", str1);
+	if( asprintf(&str2, "%s]", str1) < 0 ) goto giveup;
 	fputs(str2,f);
-	free(str1);
-	free(str2);
+giveup:
+	if( str1 ) free(str1);
+	if( str2 ) free(str2);
 }
 
 void json_write_uint32(FILE* f, const char* tag, uint32_t v) {
@@ -119,7 +121,7 @@ char* load_file_to_mem(const char* path) {
 	fseek( f, 0, SEEK_SET );
 	char * JSON_STRING = malloc( len + 1);
 	memset(JSON_STRING,0,len+1); 
-	fread( JSON_STRING, len, 1, f );
+	int i = fread( JSON_STRING, len, 1, f ); i = i; //Ignore return value.
 	fclose( f );
 	return JSON_STRING;
 }
