@@ -1165,7 +1165,7 @@ void survive_data_cb( SurviveUSBInterface * si )
 			le.sensor_id = POP1;
 			le.length = POP2;
 			le.timestamp = POP4;
-			if( le.sensor_id > 0xfd ) break;
+			if( le.sensor_id > 0xfd ) continue;
 			handle_lightcap( obj, &le );
 		}		
 		break;
@@ -1183,7 +1183,7 @@ void survive_data_cb( SurviveUSBInterface * si )
 			le.sensor_id = (uint8_t)POP2;
 			le.length = POP2;
 			le.timestamp = POP4;
-			if( le.sensor_id > 0xfd ) break;
+			if( le.sensor_id > 0xfd ) continue;  //
 			handle_lightcap( obj, &le );
 		}		
 		break;
