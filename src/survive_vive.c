@@ -344,7 +344,8 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 			if (cur_dev->vendor_id == vendor_id &&
 				cur_dev->product_id == product_id)
 			{
-				if( cur_dev->interface_number == enumid )
+				if( cur_dev->interface_number == enumid ||
+					cur_dev->interface_number == -1 && menum == enumid)
 				{
 					path_to_open = cur_dev->path;
 					break;
