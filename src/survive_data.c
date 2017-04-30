@@ -432,12 +432,58 @@ void handle_lightcap2( SurviveObject * so, LightcapElement * le )
 int32_t decode_acode(uint32_t length, int32_t main_divisor) {
 	//+50 adds a small offset and seems to help always get it right. 
 	//Check the +50 in the future to see how well this works on a variety of hardware.
-
+	if( !main_divisor ) return -1;
 	int32_t acode = (length+main_divisor+50)/(main_divisor*2);
 	if( acode & 1 ) return -1;
 
 	return (acode>>1) - 6;
 }
+
+
+void HandleOOTX( SurviveContext * ctx, SurviveObject * so )
+{
+	int32_t main_divisor = so->timebase_hz / 384000; //125 @ 48 MHz.
+
+	int32_t acode_array[2] =
+		{
+			decode_acode(so->last_sync_length[0],main_divisor),
+			decode_acode(so->last_sync_length[1],main_divisor)
+		};
+
+
+	int32_t delta1 = so->last_sync_time[0] - so->recent_sync_time;
+	int32_t delta2 = so->last_sync_time[1] - so->last_sync_time[0];
+
+	//printf( "%p %p %d %d %d  %p\n", ctx, so, so->last_sync_time[0], acode_array, so->last_sync_length[0], ctx->lightproc );
+	if( acode_array[0] >= 0 ) ctx->lightproc( so, -1, acode_array[0], delta1, so->last_sync_time[0], so->last_sync_length[0], 0 );
+	if( acode_array[1] >= 0 ) ctx->lightproc( so, -2, acode_array[1], delta2, so->last_sync_time[1], so->last_sync_length[1], 1 );
+
+	so->recent_sync_time = so->last_sync_time[1];
+
+/*
+	//Throw out everything if our sync pulses look like they're bad.
+	//This actually doesn't seem to hold anymore, now that we're looking for multiple LHs.
+	int32_t center_1 = so->timecenter_ticks*2 - so->pulse_synctime_offset;
+	int32_t center_2 = so->pulse_synctime_offset;
+	int32_t slack = so->pulse_synctime_slack;
+
+	if( delta1 < center_1 - slack || delta1 > center_1 + slack )
+	{
+		//XXX: TODO: Count faults.
+		so->sync_set_number = -1;
+		return;
+	}
+
+	if( delta2 < center_2 - slack || delta2 > center_2 + slack )
+	{
+		//XXX: TODO: Count faults.
+		so->sync_set_number = -1;
+		return;
+	}
+*/
+	so->did_handle_ootx = 1;
+}
+		
 
 //This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
 void handle_lightcap( SurviveObject * so, LightcapElement * le )
@@ -502,8 +548,17 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 	if( le->length > so->pulselength_min_sync ) //Pulse longer indicates a sync pulse.
 	{
 		int is_new_pulse = delta > so->pulselength_min_sync /*1500*/ + last_sync_length;
-		//printf( "INP: %d %d\n", is_new_pulse, so->sync_set_number );
+
+		//TRICKY: If we didn't see anything from the other lighthouse, we might just not see it... But, we still have to send our sync
+		//information to the rest of libsurvive.  This could be turned into a function and combined with the code below.
+		if( !so->did_handle_ootx && is_new_pulse )
+		{
+			HandleOOTX( ctx, so );
+		}
 		so->did_handle_ootx = 0;
+
+
+		//printf( "INP: %d %d\n", is_new_pulse, so->sync_set_number );
 
 		if( is_new_pulse )
 		{
@@ -563,6 +618,7 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 
 #if 0
 		//Extra tidbit for storing length-of-sync-pulses, if you want to try to use this to determine AoI or distance to LH.
+		//We don't actually use this anywhere, and I doubt we ever will?  Though, it could be useful at a later time to improve tracking.
 		{
 			int32_t main_divisor = so->timebase_hz / 384000; //125 @ 48 MHz.
 			int base_station = is_new_pulse;
@@ -590,71 +646,20 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 		//Make sure it fits nicely into a divisible-by-500 time.
 
 		int32_t main_divisor = so->timebase_hz / 384000; //125 @ 48 MHz.
-
-		int32_t acode_array[2] =
-			{
-				decode_acode(so->last_sync_length[0],main_divisor),
-				decode_acode(so->last_sync_length[1],main_divisor)
-			};
-
-		//printf( "%d %d\n", acode_array[0], acode_array[1] );
-
-		//XXX: TODO: Capture error count here.
-		//if( acode_array[0] < 0 ) return;
-		//if( acode_array[1] < 0 ) return;
-
-		int acode = acode_array[0];
+		int acode = decode_acode(so->last_sync_length[0],main_divisor);
 
 		if( !so->did_handle_ootx )
-		{
-			int32_t delta1 = so->last_sync_time[0] - so->recent_sync_time;
-			int32_t delta2 = so->last_sync_time[1] - so->last_sync_time[0];
-
-			//printf( "%p %p %d %d %d  %p\n", ctx, so, so->last_sync_time[0], acode_array, so->last_sync_length[0], ctx->lightproc );
-			if( acode_array[0] >= 0 ) ctx->lightproc( so, -1, acode_array[0], delta1, so->last_sync_time[0], so->last_sync_length[0], 0 );
-			if( acode_array[1] >= 0 ) ctx->lightproc( so, -2, acode_array[1], delta2, so->last_sync_time[1], so->last_sync_length[1], 1 );
-
-			so->recent_sync_time = so->last_sync_time[1];
-
-			//Throw out everything if our sync pulses look like they're bad.
-/*
-			int32_t center_1 = so->timecenter_ticks*2 - so->pulse_synctime_offset;
-			int32_t center_2 = so->pulse_synctime_offset;
-			int32_t slack = so->pulse_synctime_slack;
-
-			if( delta1 < center_1 - slack || delta1 > center_1 + slack )
-			{
-				//XXX: TODO: Count faults.
-				so->sync_set_number = -1;
-				return;
-			}
-
-			if( delta2 < center_2 - slack || delta2 > center_2 + slack )
-			{
-				//XXX: TODO: Count faults.
-				so->sync_set_number = -1;
-				return;
-			}
-*/
-			so->did_handle_ootx = 1;
-		}
-
-		if (acode > 3) {
-			if( ssn == 0 )
-			{
-				//SV_INFO( "Warning: got a slave marker but only got a master sync." );
-				//This happens too frequently.  Consider further examination.
-			}
-			dl = so->last_sync_time[1];
-			tpco = so->last_sync_length[1];
-		}
+			HandleOOTX( ctx, so );
 
 		int32_t offset_from = le->timestamp - dl + le->length/2;
 
 		//Make sure pulse is in valid window
-		if( offset_from < so->timecenter_ticks*2-so->pulse_in_clear_time && offset_from > so->pulse_in_clear_time && acode >= 0 )
+		if( offset_from < so->timecenter_ticks*2-so->pulse_in_clear_time && offset_from > so->pulse_in_clear_time )
 		{
-			ctx->lightproc( so, le->sensor_id, acode, offset_from, le->timestamp, le->length, !(acode>>2) );
+			int whichlh;
+			if( acode < 0 ) whichlh = 1;
+			else whichlh = !(acode>>2);
+			ctx->lightproc( so, le->sensor_id, acode, offset_from, le->timestamp, le->length, whichlh );
 		}
 	}
 	else
