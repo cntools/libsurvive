@@ -6,7 +6,7 @@
 #include <string.h>
 #include <math.h> /* for sqrt */
 
-#define USE_TURVEYBIGUATOR
+//#define USE_TURVEYBIGUATOR
 
 #ifdef USE_TURVEYBIGUATOR
 
@@ -449,6 +449,7 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 	return;
 
 #else
+	//printf( "LE%3d%6d%12d\n", le->sensor_id, le->length, le->timestamp );
 
 	//int32_t deltat = (uint32_t)le->timestamp - (uint32_t)so->last_master_time;
 
@@ -482,6 +483,9 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 	//unified driver.
 	int ssn = so->sync_set_number; //lighthouse number
 	if( ssn < 0 ) ssn = 0;
+#ifdef DEBUG
+	if( ssn >= NUM_LIGHTHOUSES ) { SV_INFO( "ALGORITHMIC WARNING: ssn exceeds NUM_LIGHTHOUSES" ); }
+#endif
 	int last_sync_time  =  so->last_sync_time  [ssn];
 	int last_sync_length = so->last_sync_length[ssn];
 	int32_t delta = le->timestamp - last_sync_time;  //Handle time wrapping (be sure to be int32)
@@ -498,16 +502,29 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 	if( le->length > so->pulselength_min_sync ) //Pulse longer indicates a sync pulse.
 	{
 		int is_new_pulse = delta > so->pulselength_min_sync /*1500*/ + last_sync_length;
-
+		//printf( "INP: %d %d\n", is_new_pulse, so->sync_set_number );
 		so->did_handle_ootx = 0;
 
 		if( is_new_pulse )
 		{
 			int is_master_sync_pulse = delta > so->pulse_in_clear_time /*40000*/; 
+			int is_pulse_from_same_lh_as_last_sweep;
+			int tp = delta % ( so->timecenter_ticks * 2);
+			is_pulse_from_same_lh_as_last_sweep = tp < so->pulse_synctime_slack && tp > -so->pulse_synctime_slack;
 
-			if( is_master_sync_pulse )
+			if( is_master_sync_pulse )  //Could also be called by slave if no master was seen.
 			{
-				ssn = so->sync_set_number = 0;
+				ssn = so->sync_set_number = is_pulse_from_same_lh_as_last_sweep?(so->sync_set_number):0; //If repeated lighthouse, just back off one.
+				if( ssn < 0 ) { SV_INFO( "SEVERE WARNING: Pulse codes for tracking not able to be backed out.\n" ); ssn = 0; }
+				if( ssn != 0 )
+				{
+					//If it's the slave that is repeated, be sure to zero out its sync info.
+					so->last_sync_length[0] = 0;
+				}
+				else
+				{
+					so->last_sync_length[1] = 0;
+				}
 				so->last_sync_time[ssn] = le->timestamp;
 				so->last_sync_length[ssn] = le->length;
 			}
@@ -544,14 +561,18 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 			}
 		}
 
-		//Extra tidbit for storing length-of-sync-pulses.
+#if 0
+		//Extra tidbit for storing length-of-sync-pulses, if you want to try to use this to determine AoI or distance to LH.
 		{
 			int32_t main_divisor = so->timebase_hz / 384000; //125 @ 48 MHz.
 			int base_station = is_new_pulse;
-			//printf( "%s %d %d %d\n", so->codename, le->sensor_id, so->sync_set_number, le->length );
-			ctx->lightproc( so, le->sensor_id, -3 - so->sync_set_number, 0, le->timestamp, le->length, base_station);
+			printf( "%s %d %d %d\n", so->codename, le->sensor_id, so->sync_set_number, le->length ); //XXX sync_set_number is wrong here.
+			ctx->lightproc( so, le->sensor_id, -3 - so->sync_set_number, 0, le->timestamp, le->length, base_station); //XXX sync_set_number is wrong here.
 		}
+#endif
 	}
+
+	//Any else- statements below here are 
 
 	//See if this is a valid actual pulse.
 	else if( le->length < so->pulse_max_for_sweep && delta > so->pulse_in_clear_time && ssn >= 0 )
@@ -576,9 +597,11 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 				decode_acode(so->last_sync_length[1],main_divisor)
 			};
 
+		//printf( "%d %d\n", acode_array[0], acode_array[1] );
+
 		//XXX: TODO: Capture error count here.
-		if( acode_array[0] < 0 ) return;
-		if( acode_array[1] < 0 ) return;
+		//if( acode_array[0] < 0 ) return;
+		//if( acode_array[1] < 0 ) return;
 
 		int acode = acode_array[0];
 
@@ -587,13 +610,14 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 			int32_t delta1 = so->last_sync_time[0] - so->recent_sync_time;
 			int32_t delta2 = so->last_sync_time[1] - so->last_sync_time[0];
 
-			ctx->lightproc( so, -1, acode_array[0], delta1, so->last_sync_time[0], so->last_sync_length[0], 0 );
-			ctx->lightproc( so, -2, acode_array[1], delta2, so->last_sync_time[1], so->last_sync_length[1], 1 );
+			//printf( "%p %p %d %d %d  %p\n", ctx, so, so->last_sync_time[0], acode_array, so->last_sync_length[0], ctx->lightproc );
+			if( acode_array[0] >= 0 ) ctx->lightproc( so, -1, acode_array[0], delta1, so->last_sync_time[0], so->last_sync_length[0], 0 );
+			if( acode_array[1] >= 0 ) ctx->lightproc( so, -2, acode_array[1], delta2, so->last_sync_time[1], so->last_sync_length[1], 1 );
 
 			so->recent_sync_time = so->last_sync_time[1];
 
 			//Throw out everything if our sync pulses look like they're bad.
-
+/*
 			int32_t center_1 = so->timecenter_ticks*2 - so->pulse_synctime_offset;
 			int32_t center_2 = so->pulse_synctime_offset;
 			int32_t slack = so->pulse_synctime_slack;
@@ -611,7 +635,7 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 				so->sync_set_number = -1;
 				return;
 			}
-
+*/
 			so->did_handle_ootx = 1;
 		}
 
@@ -628,7 +652,7 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 		int32_t offset_from = le->timestamp - dl + le->length/2;
 
 		//Make sure pulse is in valid window
-		if( offset_from < 380000 && offset_from > 70000 )
+		if( offset_from < so->timecenter_ticks*2-so->pulse_in_clear_time && offset_from > so->pulse_in_clear_time && acode >= 0 )
 		{
 			ctx->lightproc( so, le->sensor_id, acode, offset_from, le->timestamp, le->length, !(acode>>2) );
 		}
@@ -639,7 +663,6 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 		//Runt pulse, or no sync pulses available.
 	}
 #endif
-
 }
 
 
