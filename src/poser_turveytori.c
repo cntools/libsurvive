@@ -1520,7 +1520,7 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 				counter++;
 
 				// let's just do this occasionally for now...
-				//if (counter % 1 == 0)
+				if (counter % 4 == 0)
 					QuickPose(so, 0);
 			}
 			// axis changed, time to increment the circular buffer index.
