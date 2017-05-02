@@ -520,17 +520,15 @@ void quatfrom2vectors(FLT *q, const FLT *src, const FLT *dest)
 		FLT invs = 1 / s;
 
 		FLT c[3];
-		//cross3d(c, v0, v1);
-		cross3d(c, v1, v0);
+		cross3d(c, v0, v1);
 
-		q[0] = c[0] * invs;
-		q[1] = c[1] * invs;
-		q[2] = c[2] * invs;
-		q[3] = s * 0.5f;
+		q[0] = s * 0.5f;
+		q[1] = c[0] * invs;
+		q[2] = c[1] * invs;
+		q[3] = c[2] * invs;
 
 		quatnormalize(q, q);
 	}
-
 }
 
 void matrix44copy(FLT * mout, const FLT * minm )
