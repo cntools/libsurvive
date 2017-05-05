@@ -1127,6 +1127,17 @@ void survive_data_cb( SurviveUSBInterface * si )
 								acceldata[3], acceldata[4], acceldata[5],
 								0,0,0 };
 
+				//1G for accelerometer, from MPU6500 datasheet
+				//this can change if the firmware changes the sensitivity.
+				agm[0]/=8192.0f;
+				agm[1]/=8192.0f;
+				agm[2]/=8192.0f;
+
+				//1000 deg/s for gyroscope, from MPU6500 datasheet
+				agm[3]/=65.5f;
+				agm[4]/=65.5f;
+				agm[5]/=65.5f;
+
 				ctx->imuproc( obj, 3, agm, timecode, code );
 			}
 		}
