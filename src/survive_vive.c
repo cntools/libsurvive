@@ -1133,6 +1133,7 @@ void survive_data_cb( SurviveUSBInterface * si )
 				agm[1]/=8192.0f;
 				agm[2]/=8192.0f;
 
+				//65.5 deg/s for gyroscope, from MPU6500 datasheet
 				//1000 deg/s for gyroscope, from MPU6500 datasheet
 				agm[3]/=65.5f;
 				agm[4]/=65.5f;
