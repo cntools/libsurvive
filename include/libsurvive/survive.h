@@ -62,6 +62,12 @@ struct SurviveObject
 	uint32_t last_lighttime;  //May be a 24- or 32- bit number depending on what device.
 
 
+	FLT* acc_bias; // size is FLT*3. contains x,y,z
+	FLT* acc_scale; // size is FLT*3. contains x,y,z
+	FLT* gyro_bias; // size is FLT*3. contains x,y,z
+	FLT* gyro_scale; // size is FLT*3. contains x,y,z
+
+
 	//Debug
 	int tsl;
 };
