@@ -924,16 +924,16 @@ static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 		calibrate_acc(w, agm);
 
 		//I don't understand where these numbers come from but the data from the WMD seems to max out at 255...
-		agm[0]/=255.0f;
-		agm[1]/=255.0f;
-		agm[2]/=255.0f;
+		agm[0]*=(1.0f/255.0f);
+		agm[1]*=(1.0f/255.0f);
+		agm[2]*=(1.0f/255.0f);
 
 		calibrate_gyro(w, agm+3);
 
 		//I don't understand where these numbers come from but the data from the WMD seems to max out at 255...
-		agm[3]/=255.0f;
-		agm[4]/=255.0f;
-		agm[5]/=255.0f;
+		agm[3]*=(1.0f/255.0f);
+		agm[4]*=(1.0f/255.0f);
+		agm[5]*=(1.0f/255.0f);
 
 		w->ctx->imuproc( w, 3, agm, (time1<<24)|(time2<<16)|readdata[0], 0 );
 
