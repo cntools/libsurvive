@@ -1080,7 +1080,7 @@ void calibrate_gyro(SurviveObject* so, FLT* agm) {
 		agm[2] -= so->gyro_bias[2];
 	}
 
-	if (so->gyro_bias != NULL) {
+	if (so->gyro_scale != NULL) {
 		agm[0] *= so->gyro_scale[0];
 		agm[1] *= so->gyro_scale[1];
 		agm[2] *= so->gyro_scale[2];
