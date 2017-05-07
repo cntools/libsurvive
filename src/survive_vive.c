@@ -814,6 +814,35 @@ int survive_get_config( char ** config, SurviveViveData * sv, int devno, int ifa
 #define POP2  (*(((uint16_t*)((readdata+=2)-2))))
 #define POP4  (*(((uint32_t*)((readdata+=4)-4))))
 
+void calibrate_acc(SurviveObject* so, FLT* agm) {
+	if (so->acc_bias != NULL) {
+		agm[0] -= so->acc_bias[0];
+		agm[1] -= so->acc_bias[1];
+		agm[2] -= so->acc_bias[2];
+	}
+
+	if (so->acc_scale != NULL) {
+		agm[0] *= so->acc_scale[0];
+		agm[1] *= so->acc_scale[1];
+		agm[2] *= so->acc_scale[2];
+	}
+}
+
+void calibrate_gyro(SurviveObject* so, FLT* agm) {
+	if (so->gyro_bias != NULL) {
+		agm[0] -= so->gyro_bias[0];
+		agm[1] -= so->gyro_bias[1];
+		agm[2] -= so->gyro_bias[2];
+	}
+
+	if (so->gyro_scale != NULL) {
+		agm[0] *= so->gyro_scale[0];
+		agm[1] *= so->gyro_scale[1];
+		agm[2] *= so->gyro_scale[2];
+	}
+}
+
+
 static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 {
 
@@ -890,6 +919,21 @@ static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 		FLT agm[9] = { readdata[1], readdata[2], readdata[3],
 						readdata[4], readdata[5], readdata[6],
 						0,0,0 };
+
+//		if (w->acc_scale) printf("%f %f %f\n",w->acc_scale[0],w->acc_scale[1],w->acc_scale[2]);
+		calibrate_acc(w, agm);
+
+		//I don't understand where these numbers come from but the data from the WMD seems to max out at 255...
+		agm[0]/=255.0f;
+		agm[1]/=255.0f;
+		agm[2]/=255.0f;
+
+		calibrate_gyro(w, agm+3);
+
+		//I don't understand where these numbers come from but the data from the WMD seems to max out at 255...
+		agm[3]/=255.0f;
+		agm[4]/=255.0f;
+		agm[5]/=255.0f;
 
 		w->ctx->imuproc( w, 3, agm, (time1<<24)|(time2<<16)|readdata[0], 0 );
 
@@ -1058,35 +1102,6 @@ static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 		}
 	}
 }
-
-void calibrate_acc(SurviveObject* so, FLT* agm) {
-	if (so->acc_bias != NULL) {
-		agm[0] -= so->acc_bias[0];
-		agm[1] -= so->acc_bias[1];
-		agm[2] -= so->acc_bias[2];
-	}
-
-	if (so->acc_scale != NULL) {
-		agm[0] *= so->acc_scale[0];
-		agm[1] *= so->acc_scale[1];
-		agm[2] *= so->acc_scale[2];
-	}
-}
-
-void calibrate_gyro(SurviveObject* so, FLT* agm) {
-	if (so->gyro_bias != NULL) {
-		agm[0] -= so->gyro_bias[0];
-		agm[1] -= so->gyro_bias[1];
-		agm[2] -= so->gyro_bias[2];
-	}
-
-	if (so->gyro_scale != NULL) {
-		agm[0] *= so->gyro_scale[0];
-		agm[1] *= so->gyro_scale[1];
-		agm[2] *= so->gyro_scale[2];
-	}
-}
-
 
 void survive_data_cb( SurviveUSBInterface * si )
 {
