@@ -1085,6 +1085,7 @@ void calibrate_gyro(SurviveObject* so, FLT* agm) {
 		agm[1] *= so->gyro_scale[1];
 		agm[2] *= so->gyro_scale[2];
 	}
+
 }
 
 
@@ -1157,21 +1158,22 @@ void survive_data_cb( SurviveUSBInterface * si )
 								acceldata[3], acceldata[4], acceldata[5],
 								0,0,0 };
 
+				agm[0]*=(float)(1./8192.0);
+				agm[1]*=(float)(1./8192.0);
+				agm[2]*=(float)(1./8192.0);
 				calibrate_acc(obj, agm);
 
 				//1G for accelerometer, from MPU6500 datasheet
 				//this can change if the firmware changes the sensitivity.
-				agm[0]/=8192.0f;
-				agm[1]/=8192.0f;
-				agm[2]/=8192.0f;
 
+
+				agm[3]*=(float)((1./32.768)*(3.14159/180.));
+				agm[4]*=(float)((1./32.768)*(3.14159/180.));
+				agm[5]*=(float)((1./32.768)*(3.14159/180.));
 				calibrate_gyro(obj, agm+3);
 
 				//65.5 deg/s for gyroscope, from MPU6500 datasheet
 				//1000 deg/s for gyroscope, from MPU6500 datasheet
-				agm[3]/=65.5f;
-				agm[4]/=65.5f;
-				agm[5]/=65.5f;
 
 				ctx->imuproc( obj, 3, agm, timecode, code );
 			}
@@ -1363,6 +1365,9 @@ printf( "Loading config: %d\n", len );
 				FLT* values = NULL;
 				if ( parse_float_array(ct0conf, tk+2, &values, count) >0 ) {
 					so->acc_bias = values;
+					so->acc_bias[0] *= .125; //XXX Wat?  Observed by CNL.  Biasing by more than this seems to hose things.
+					so->acc_bias[1] *= .125;
+					so->acc_bias[2] *= .125;
 				}
 			}
 			if (jsoneq(ct0conf, tk, "acc_scale") == 0) {
