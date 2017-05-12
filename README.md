@@ -129,5 +129,5 @@ To support the Vive on HDMI, you either need a newer version of HDMI, or you nee
 
 ## Addendum and notes
 
-Thanks to Mr. Fault for our logo!
+Thanks to Mr. Faul for our logo!
 Special thanks to @nairol for an extreme amount of detail in reverse engineering the existing HTC Vive system on his https://github.com/nairol/LighthouseRedox project.
