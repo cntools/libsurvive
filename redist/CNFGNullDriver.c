@@ -1,6 +1,6 @@
 //Copyright (c) 2017 <>< Charles Lohr - Under the MIT/x11 or NewBSD License you choose.
 
-#include "DrawFunctions.h"
+#include "CNFGFunctions.h"
 
 static int w, h;
 void CNFGGetDimensions( short * x, short * y )
