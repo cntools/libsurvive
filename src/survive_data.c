@@ -468,6 +468,7 @@ void handle_lightcap2( SurviveObject * so, LightcapElement * le )
 
 #endif
 
+
 int32_t decode_acode(uint32_t length, int32_t main_divisor) {
 	//+50 adds a small offset and seems to help always get it right. 
 	//Check the +50 in the future to see how well this works on a variety of hardware.
@@ -477,6 +478,10 @@ int32_t decode_acode(uint32_t length, int32_t main_divisor) {
 
 	return (acode>>1) - 6;
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
+///////The charles disambiguator.  Don't use this, mostly here for debugging.///////////////////////////////////////////////////////	
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
 
 
 void HandleOOTX( SurviveContext * ctx, SurviveObject * so )
@@ -499,30 +504,9 @@ void HandleOOTX( SurviveContext * ctx, SurviveObject * so )
 
 	so->recent_sync_time = so->last_sync_time[1];
 
-/*
-	//Throw out everything if our sync pulses look like they're bad.
-	//This actually doesn't seem to hold anymore, now that we're looking for multiple LHs.
-	int32_t center_1 = so->timecenter_ticks*2 - so->pulse_synctime_offset;
-	int32_t center_2 = so->pulse_synctime_offset;
-	int32_t slack = so->pulse_synctime_slack;
-
-	if( delta1 < center_1 - slack || delta1 > center_1 + slack )
-	{
-		//XXX: TODO: Count faults.
-		so->sync_set_number = -1;
-		return;
-	}
-
-	if( delta2 < center_2 - slack || delta2 > center_2 + slack )
-	{
-		//XXX: TODO: Count faults.
-		so->sync_set_number = -1;
-		return;
-	}
-*/
 	so->did_handle_ootx = 1;
 }
-		
+
 
 //This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
 void handle_lightcap( SurviveObject * so, LightcapElement * le )
@@ -588,16 +572,8 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 	{
 		int is_new_pulse = delta > so->pulselength_min_sync /*1500*/ + last_sync_length;
 
-		//TRICKY: If we didn't see anything from the other lighthouse, we might just not see it... But, we still have to send our sync
-		//information to the rest of libsurvive.  This could be turned into a function and combined with the code below.
-		if( !so->did_handle_ootx && is_new_pulse )
-		{
-			HandleOOTX( ctx, so );
-		}
-		so->did_handle_ootx = 0;
 
 
-		//printf( "INP: %d %d\n", is_new_pulse, so->sync_set_number );
 
 		if( is_new_pulse )
 		{
@@ -605,6 +581,16 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 			int is_pulse_from_same_lh_as_last_sweep;
 			int tp = delta % ( so->timecenter_ticks * 2);
 			is_pulse_from_same_lh_as_last_sweep = tp < so->pulse_synctime_slack && tp > -so->pulse_synctime_slack;
+
+			if( !so->did_handle_ootx )
+			{
+				HandleOOTX( ctx, so );
+			}
+			if( !is_master_sync_pulse )
+			{
+				so->did_handle_ootx = 0;
+			}
+
 
 			if( is_master_sync_pulse )  //Could also be called by slave if no master was seen.
 			{
