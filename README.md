@@ -7,6 +7,9 @@ An Open-Source tool for working with lighthouse-based tracking data, including s
 Most of the development is discussed on Discord.  Join the chat and discussion here: https://discordapp.com/invite/7QbCAGS
 
 ## Livestream collection
+
+If you are an individual who bothers going back and watching some of these, PLEASE PLEASE PLEASE add a note to https://github.com/cnlohr/libsurvive/issues/66 whenever something interesting happens.  I want to make a highlight reel, but I don't want to sit through all the videos.
+
 | Note                                   | Youtube URL                                 | Run time |
 | -------------------------------------- | ------------------------------------------- | -------- |
 | First livestream                       | https://www.youtube.com/watch?v=sv_AVI9kHN4 | 5:01:25  |
