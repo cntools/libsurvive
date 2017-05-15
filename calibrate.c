@@ -1,4 +1,4 @@
-//Data recorder mod with GUI showing light positions.
+// recorder mod with GUI showing light positions.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -102,7 +102,7 @@ void my_angle_process( struct SurviveObject * so, int sensor_id, int acode, uint
 
 char* sensor_name[32];
 
-void * GuiThread( void * v )
+void * GuiThread( void * jnk )
 {
 	short screenx, screeny;
 	CNFGBGColor = 0x000000;
@@ -161,10 +161,9 @@ void * GuiThread( void * v )
 	}
 }
 
+int SurviveThreadLoaded=0;
 
-
-
-int main()
+void * SurviveThread(void *jnk)
 {
 	ctx = survive_init( 0 );
 
@@ -180,14 +179,13 @@ int main()
 
 	survive_cal_install( ctx );
 
-	OGCreateThread( GuiThread, 0 );
-	
-
 	if( !ctx )
 	{
 		fprintf( stderr, "Fatal. Could not start\n" );
 		return 1;
 	}
+
+	SurviveThreadLoaded=1;
 
 	while(survive_poll(ctx) == 0 && !quit)
 	{
@@ -195,8 +193,21 @@ int main()
 	}
 
 	survive_close( ctx );
+}
 
+
+int main()
+{
+	// Create the survive thread
+    OGCreateThread( SurviveThread, 0 );
+
+	// Wait for the survive thread to load
+	while(!SurviveThreadLoaded){ OGUSleep(100); }
+
+	// Run the GUI in the main thread
+	GuiThread(0);	
 	printf( "Returned\n" );
+	return 0;
 }
 
 
