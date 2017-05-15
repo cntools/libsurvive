@@ -20,7 +20,8 @@ Most of the development is discussed on Discord.  Join the chat and discussion h
 | Eighth livestream                      | https://www.youtube.com/watch?v=nSbEltdH9vM | 6:06:36 |
 | Ninth livestream                       | https://www.youtube.com/watch?v=60sGTd8T-KY | 3:28:44 |
 | Ninth B livestream                     | https://www.youtube.com/watch?v=IIYj1Ig_gz8 | 2:25:33 |
-| Tenth livestream                       | https://www.youtube.com/watch?v=boXRdXca6Qc | ?:??:?? |
+| May 2017 Summary                       | https://www.youtube.com/watch?v=dVXpHKktbzM | 5:58    |
+| Tenth livestream                       | https://www.youtube.com/watch?v=8hqviGMlU7I | 3:30:46 |
 
 Notes from second livestream trying to reverse engineer the watchman protocol: https://gist.github.com/cnlohr/581c433f36f4249f8bbc9c2b6450ef0e
 
