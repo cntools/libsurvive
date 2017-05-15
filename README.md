@@ -34,6 +34,8 @@ Please see the issues for what help needs to be done now!
 
 HackADay article and video with Dr. Yates on how they made the Vive a thing. http://hackaday.com/2016/12/21/alan-yates-why-valves-lighthouse-cant-work/
 
+Excellent article written by Oliver Kreylos showing just how amazing the lighthouse system really is.  Likely the best/most detailed review on the performance *and* accuracy of the lighthouse system. http://doc-ok.org/?p=1478  
+
 
 ## Nomenclature
 
