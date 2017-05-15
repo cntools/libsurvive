@@ -149,7 +149,7 @@ void *SurviveThread(void *junk)
 	if( !ctx )
 	{
 		fprintf( stderr, "Fatal. Could not start\n" );
-		return 1;
+		exit(1);
 	}
 
 	SurviveThreadLoaded = 1;
