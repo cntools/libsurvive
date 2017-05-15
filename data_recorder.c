@@ -94,6 +94,10 @@ void my_imu_process( struct SurviveObject * so, int mask, FLT * accelgyro, uint3
 
 void * GuiThread( void * v )
 {
+	CNFGBGColor = 0x000000;
+	CNFGDialogColor = 0x444444;
+	CNFGSetup( "Survive GUI Debug", 640, 480 );
+
 	short screenx, screeny;
 	while(1)
 	{
@@ -122,27 +126,19 @@ void * GuiThread( void * v )
 			}
 		}
 
-
 		CNFGSwapBuffers();
 		OGUSleep( 10000 );
 	}
 }
 
+int SurviveThreadLoaded=0;
 
-
-int main()
+void *SurviveThread(void *junk)
 {
 	ctx = survive_init( 0 );
 
 	survive_install_light_fn( ctx,  my_light_process );
 	survive_install_imu_fn( ctx,  my_imu_process );
-
-
-	CNFGBGColor = 0x000000;
-	CNFGDialogColor = 0x444444;
-	CNFGSetup( "Survive GUI Debug", 640, 480 );
-	OGCreateThread( GuiThread, 0 );
-	
 
 	if( !ctx )
 	{
@@ -150,9 +146,26 @@ int main()
 		return 1;
 	}
 
+	SurviveThreadLoaded = 1;
+
 	while(survive_poll(ctx) == 0)
 	{
+        printf("Do stuff.\n");
 		//Do stuff.
 	}
+
+    return 0;
+}
+
+int main()
+{
+    // Create the libsurvive thread
+    OGCreateThread(SurviveThread, 0);
+    
+	// Wait for the survive thread to load
+	while (!SurviveThreadLoaded) { OGUSleep(100); }
+	
+    // Run the Gui in the main thread
+    GuiThread(0);
 }
 
