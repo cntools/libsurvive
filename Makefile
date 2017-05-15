@@ -4,6 +4,7 @@ CC:=gcc
 
 
 CFLAGS:=-Iinclude/libsurvive -I. -fPIC -g -O3 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic
+#LDFLAGS:=-L/usr/local/lib -lpthread -lusb-1.0 -lz -lm -flto -g
 LDFLAGS:=-L/usr/local/lib -lpthread -lusb-1.0 -lz -lm -flto -g
 
 #----------
@@ -13,8 +14,12 @@ UNAME=$(shell uname)
 
 # Mac OSX
 ifeq ($(UNAME), Darwin)
-DRAWFUNCTIONS=redist/DrawFunctions.c redist/RawDrawNull.c
-GRAPHICS_LOFI:=redist/DrawFunctions.o redist/RawDrawNull.o
+CFLAGS:=$(CFLAGS) -DRASTERIZER -DHIDAPI -I/usr/local/include -x objective-c
+LDFLAGS:=$(LDFLAGS) -framework OpenGL -framework Cocoa -framework IOKit
+#DRAWFUNCTIONS=redist/DrawFunctions.c redist/RawDrawNull.c
+#GRAPHICS_LOFI:=redist/DrawFunctions.o redist/RawDrawNull.o
+DRAWFUNCTIONS=redist/DrawFunctions.c redist/CocoaDriver.m redist/RawDrawRasterizer.c
+GRAPHICS_LOFI:=redist/DrawFunctions.o redist/CocoaDriver.o redist/RawDrawRasterizer.o
 
 # Linux / FreeBSD
 else
@@ -27,6 +32,9 @@ endif
 
 POSERS:=src/poser_dummy.o src/poser_daveortho.o src/poser_charlesslow.o
 REDISTS:=redist/json_helpers.o redist/linmath.o redist/jsmn.o redist/os_generic.o
+ifeq ($(UNAME), Darwin)
+REDISTS:=$(REDISTS) redist/hid-osx.c
+endif
 LIBSURVIVE_CORE:=src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o src/ootx_decoder.o src/survive_driverman.o src/survive_vive.o src/survive_config.o src/survive_cal.o
 LIBSURVIVE_CORE:=$(LIBSURVIVE_CORE)
 LIBSURVIVE_O:=$(POSERS) $(REDISTS) $(LIBSURVIVE_CORE)
@@ -43,6 +51,9 @@ LIBSURVIVE_C:=$(LIBSURVIVE_O:.o=.c)
 
 
 # unused: redist/crc32.c
+
+testCocoa : testCocoa.c $(DRAWFUNCTIONS)
+	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
 
 test : test.c ./lib/libsurvive.so redist/os_generic.o
 	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
@@ -71,7 +82,7 @@ calibrate_tcc : $(LIBSURVIVE_C)
 	tcc -DRUNTIME_SYMNUM $(CFLAGS) -o $@ $^ $(LDFLAGS) calibrate.c redist/os_generic.c $(DRAWFUNCTIONS) redist/symbol_enumerator.c
 
 clean :
-	rm -rf *.o src/*.o *~ src/*~ test data_recorder lib/libsurvive.so redist/*.o redist/*~
+	rm -rf *.o src/*.o *~ src/*~ test data_recorder calibrate lib/libsurvive.so redist/*.o redist/*~
 
 
 
