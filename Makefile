@@ -5,7 +5,7 @@ CC:=gcc
 
 CFLAGS:=-Iinclude/libsurvive -I. -fPIC -g -O3 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic
 #LDFLAGS:=-L/usr/local/lib -lpthread -lusb-1.0 -lz -lm -flto -g
-LDFLAGS:=-L/usr/local/lib -lpthread -lusb-1.0 -lz -lm -flto -g
+LDFLAGS:=-L/usr/local/lib -lpthread -lz -lm -flto -g
 
 #----------
 # Platform specific changes to CFLAGS/LDFLAGS
