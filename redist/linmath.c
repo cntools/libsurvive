@@ -82,6 +82,28 @@ FLT anglebetween3d( FLT * a, FLT * b )
 	return FLT_ACOS(dot);
 }
 
+// algorithm found here: http://inside.mines.edu/fs_home/gmurray/ArbitraryAxisRotation/
+void rotatearoundaxis(FLT *outvec3, FLT *invec3, FLT *axis, FLT angle)
+{
+	// TODO: this really should be external.
+	normalize3d(axis, axis);
+
+	FLT s = FLT_SIN(angle);
+	FLT c = FLT_COS(angle);
+
+	FLT u=axis[0];
+	FLT v=axis[1];
+	FLT w=axis[2];
+
+	FLT x=invec3[0];
+	FLT y=invec3[1];
+	FLT z=invec3[2];
+
+	outvec3[0] = u*(u*x + v*y + w*z)*(1-c)   +   x*c   +   (-w*y + v*z)*s;
+	outvec3[1] = v*(u*x + v*y + w*z)*(1-c)   +   y*c   +   ( w*x - u*z)*s;
+	outvec3[2] = w*(u*x + v*y + w*z)*(1-c)   +   z*c   +   (-v*x + u*y)*s;
+}
+
 /////////////////////////////////////QUATERNIONS//////////////////////////////////////////
 //Originally from Mercury (Copyright (C) 2009 by Joshua Allen, Charles Lohr, Adam Lowman)
 //Under the mit/X11 license.
@@ -215,7 +237,7 @@ void quatfrommatrix( FLT * q, const FLT * matrix44 )
 		q[1] = (matrix44[9] - matrix44[6]) / S;
 		q[2] = (matrix44[2] - matrix44[8]) / S;
 		q[3] = (matrix44[4] - matrix44[1]) / S;
-	} else if ((matrix44[0] > matrix44[5])&(matrix44[0] > matrix44[10])) {
+	} else if ((matrix44[0] > matrix44[5])&&(matrix44[0] > matrix44[10])) {
 		FLT S = FLT_SQRT(1.0 + matrix44[0] - matrix44[5] - matrix44[10]) * 2.; // S=4*qx
 		q[0] = (matrix44[9] - matrix44[6]) / S;
 		q[1] = 0.25f * S;
@@ -498,17 +520,15 @@ void quatfrom2vectors(FLT *q, const FLT *src, const FLT *dest)
 		FLT invs = 1 / s;
 
 		FLT c[3];
-		//cross3d(c, v0, v1);
-		cross3d(c, v1, v0);
+		cross3d(c, v0, v1);
 
-		q[0] = c[0] * invs;
-		q[1] = c[1] * invs;
-		q[2] = c[2] * invs;
-		q[3] = s * 0.5f;
+		q[0] = s * 0.5f;
+		q[1] = c[0] * invs;
+		q[2] = c[1] * invs;
+		q[3] = c[2] * invs;
 
 		quatnormalize(q, q);
 	}
-
 }
 
 void matrix44copy(FLT * mout, const FLT * minm )

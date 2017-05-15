@@ -1,12 +1,22 @@
+//Don't call this file yourself.  It is intended to be included in any drivers which want to support the rasterizer plugin.
+
 #ifdef RASTERIZER
-#include "DrawFunctions.h"
-#include <stdio.h>
+#include "CNFGFunctions.h"
 #include <stdlib.h>
 #include <stdint.h>
 
 static uint32_t * buffer = 0;
 static short bufferx;
 static short buffery;
+
+
+void CNFGInternalResize( short x, short y )
+{
+	bufferx = x;
+	buffery = y;
+	if( buffer ) free( buffer );
+	buffer = malloc( bufferx * buffery * 4 );
+}
 
 static uint32_t SWAPS( uint32_t r )
 {
@@ -22,11 +32,6 @@ uint32_t CNFGColor( uint32_t RGB )
 {
 	CNFGLastColor = SWAPS(RGB);
 	return CNFGLastColor;
-}
-
-void CNFGTackPixel( short x, short y )
-{
-	buffer[bufferx*y+x] = CNFGLastColor;
 }
 
 void CNFGTackSegment( short x1, short y1, short x2, short y2 )
@@ -53,11 +58,11 @@ void CNFGTackSegment( short x1, short y1, short x2, short y2 )
 
 		for( tx = minx; tx <= maxx; tx++ )
 		{
-			thisy += slope;
 			ty = thisy;
 			if( tx < 0 || ty < 0 || ty >= buffery ) continue;
 			if( tx >= bufferx ) break;
 			buffer[ty * bufferx + tx] = CNFGLastColor;
+			thisy += slope;
 		}
 	}
 	else
@@ -71,15 +76,14 @@ void CNFGTackSegment( short x1, short y1, short x2, short y2 )
 
 		for( ty = miny; ty <= maxy; ty++ )
 		{
-			thisx += slope;
 			tx = thisx;
 			if( ty < 0 || tx < 0 || tx >= bufferx ) continue;
 			if( ty >= buffery ) break;
 			buffer[ty * bufferx + tx] = CNFGLastColor;
+			thisx += slope;
 		}
 	}
 }
-
 void CNFGTackRectangle( short x1, short y1, short x2, short y2 )
 {
 	short minx = (x1<x2)?x1:x2;
@@ -216,7 +220,6 @@ void CNFGClearFrame()
 	{
 		bufferx = x;
 		buffery = y;
-		printf( "MALLOCING: %d\n", x * y );
 		buffer = malloc( x * y * 8 );
 	}
 
@@ -229,9 +232,15 @@ void CNFGClearFrame()
 	}
 }
 
+void CNFGTackPixel( short x, short y )
+{
+	if( x < 0 || y < 0 || x >= bufferx || y >= buffery ) return;
+	buffer[x+bufferx*y] = CNFGLastColor;
+}
+
 void CNFGSwapBuffers()
 {
-	CNFGUpdateScreenWithBitmap( buffer, bufferx, buffery );
+	CNFGUpdateScreenWithBitmap( (long unsigned int*)buffer, bufferx, buffery );
 }
 
 

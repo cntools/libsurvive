@@ -1,6 +1,11 @@
 #ifndef _SURVIVE_TYPES_H
 #define _SURVIVE_TYPES_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #ifndef FLT
 #ifdef USE_DOUBLE
 #define FLT double
@@ -28,9 +33,9 @@ typedef struct BaseStationData BaseStationData;
 typedef struct SurviveCalData SurviveCalData;   //XXX Warning: This may be removed.  Check at a later time for its defunctness.
 
 typedef void (*text_feedback_func)( SurviveContext * ctx, const char * fault );
-typedef void (*light_process_func)( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length );
+typedef void (*light_process_func)( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length, uint32_t lighthouse);
 typedef void (*imu_process_func)( SurviveObject * so, int mask, FLT * accelgyro, uint32_t timecode, int id );
-typedef void (*angle_process_func)( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle );
+typedef void (*angle_process_func)( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh);
 
 
 //Device drivers (prefix your drivers with "DriverReg") i.e.
@@ -39,6 +44,9 @@ typedef int (*DeviceDriver)( SurviveContext * ctx );
 typedef int (*DeviceDriverCb)( struct SurviveContext * ctx, void * driver );
 typedef int (*DeviceDriverMagicCb)( struct SurviveContext * ctx, void * driver, int magic_code, void * data, int datalen );
 
+#ifdef __cplusplus
+};
+#endif
 
 #endif
 

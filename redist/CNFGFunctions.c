@@ -21,14 +21,13 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include "DrawFunctions.h"
+#include "CNFGFunctions.h"
 #include <stdio.h>
 
 int CNFGPenX, CNFGPenY;
 uint32_t CNFGBGColor;
 uint32_t CNFGLastColor;
 uint32_t CNFGDialogColor; //background for boxes
-
 const unsigned short FontCharMap[256] = {
 	65535, 0, 10, 20, 32, 44, 56, 68, 70, 65535, 65535, 80, 92, 65535, 104, 114, 
 	126, 132, 138, 148, 156, 166, 180, 188, 200, 206, 212, 218, 224, 228, 238, 244, 
@@ -68,7 +67,7 @@ const unsigned char FontCharData[1902] = {
 	0x23, 0x14, 0x14, 0x03, 0x10, 0x94, 0x00, 0x01, 0x23, 0x24, 0x04, 0x03, 0x03, 0x21, 0x21, 0xa0, 
 	0x21, 0x10, 0x10, 0x01, 0x01, 0x12, 0x12, 0x03, 0x03, 0x14, 0x14, 0x23, 0x02, 0xa4, 0x10, 0x91, 
 	0x10, 0x01, 0x01, 0x03, 0x03, 0x94, 0x10, 0x21, 0x21, 0x23, 0x23, 0x94, 0x01, 0x23, 0x11, 0x13, 
-	0x21, 0x03, 0x02, 0xa2, 0x02, 0x22, 0x11, 0x93, 0x31, 0xc0, 0x03, 0xa1, 0x00, 0x20, 0x20, 0x24, 
+	0x21, 0x03, 0x02, 0xa2, 0x02, 0x22, 0x11, 0x93, 0x04, 0x93, 0x03, 0xa1, 0x00, 0x20, 0x20, 0x24, 
 	0x24, 0x04, 0x04, 0x00, 0x12, 0x92, 0x01, 0x10, 0x10, 0x14, 0x04, 0xa4, 0x01, 0x10, 0x10, 0x21, 
 	0x21, 0x22, 0x22, 0x04, 0x04, 0xa4, 0x00, 0x20, 0x20, 0x24, 0x24, 0x04, 0x12, 0xa2, 0x00, 0x02, 
 	0x02, 0x22, 0x20, 0xa4, 0x20, 0x00, 0x00, 0x02, 0x02, 0x22, 0x22, 0x24, 0x24, 0x84, 0x20, 0x02, 
@@ -208,11 +207,7 @@ void CNFGDrawText( const char * text, int scale )
 				int x2 = (int)((((*(lmap+1)) & 0x70)>>4)*scale + iox);
 				int y2 = (int)(((*(lmap+1)) & 0x0f)*scale + ioy);
 				lmap++;
-				if(x1 == x2 && y1 == y2){
-					CNFGTackPixel( x1, y1 );
-				} else {
-					CNFGTackSegment( x1, y1, x2, y2 );
-				}
+				CNFGTackSegment( x1, y1, x2, y2 );
 				bQuit = *lmap & 0x80;
 				lmap++;
 			} while( !bQuit );
@@ -275,3 +270,89 @@ void CNFGDrawTextbox( int x, int y, const char * text, int textsize )
 	CNFGPenY = y + textsize;
 	CNFGDrawText( text, textsize );
 }
+
+
+#ifdef CNFGOGL
+
+#ifdef _MSC_VER
+#include <windows.h>
+#pragma comment( lib, "OpenGL32.lib" )
+#endif
+#include <GL/gl.h>
+
+uint32_t CNFGColor( uint32_t RGB )
+{
+	unsigned char red = RGB & 0xFF;
+	unsigned char grn = ( RGB >> 8 ) & 0xFF;
+	unsigned char blu = ( RGB >> 16 ) & 0xFF;
+	glColor3ub( red, grn, blu );
+}
+
+void CNFGClearFrame()
+{
+	short w, h;
+	unsigned char red = CNFGBGColor & 0xFF;
+	unsigned char grn = ( CNFGBGColor >> 8 ) & 0xFF;
+	unsigned char blu = ( CNFGBGColor >> 16 ) & 0xFF;
+	glClearColor( red/255.0, grn/255.0, blu/255.0, 1.0 );
+	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+	CNFGGetDimensions( &w, &h );
+	glMatrixMode( GL_PROJECTION );
+	glLoadIdentity();
+	glViewport( 0, 0, w, h );
+	glOrtho( 0, w, h, 0, 1, -1 );
+	glMatrixMode( GL_MODELVIEW );
+	glLoadIdentity();
+}
+
+
+void CNFGTackSegment( short x1, short y1, short x2, short y2 )
+{
+	if( x1 == x2 && y1 == y2 )
+	{
+		glBegin( GL_POINTS );
+		glVertex2f( x1+.5, y1+.5 );
+		glEnd();		
+	}
+	else
+	{
+		glBegin( GL_LINES );
+		glVertex2f( x1+.5, y1+.5 );
+		glVertex2f( x2+.5, y2+.5 );
+		glEnd();
+	}
+}
+
+void CNFGTackPixel( short x1, short y1 )
+{
+	glBegin( GL_POINTS );
+	glVertex2f( x1, y1 );
+	glEnd();
+}
+
+void CNFGTackRectangle( short x1, short y1, short x2, short y2 )
+{
+	glBegin( GL_QUADS );
+	glVertex2f( x1, y1 );
+	glVertex2f( x2, y1 );
+	glVertex2f( x2, y2 );
+	glVertex2f( x1, y2 );
+	glEnd();
+}
+
+void CNFGTackPoly( RDPoint * points, int verts )
+{
+	int i;
+	glBegin( GL_TRIANGLE_FAN );
+	glVertex2f( points[0].x, points[0].y );
+	for( i = 1; i < verts; i++ )
+	{
+		glVertex2f( points[i].x, points[i].y );
+	}
+	glEnd();
+}
+
+void CNFGInternalResize( short x, short y ) { }
+
+
+#endif

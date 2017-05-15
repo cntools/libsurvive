@@ -14,31 +14,33 @@ UNAME=$(shell uname)
 
 # Mac OSX
 ifeq ($(UNAME), Darwin)
+
 CFLAGS:=$(CFLAGS) -DRASTERIZER -DHIDAPI -I/usr/local/include -x objective-c
 LDFLAGS:=$(LDFLAGS) -framework OpenGL -framework Cocoa -framework IOKit
-#DRAWFUNCTIONS=redist/DrawFunctions.c redist/RawDrawNull.c
-#GRAPHICS_LOFI:=redist/DrawFunctions.o redist/RawDrawNull.o
-DRAWFUNCTIONS=redist/DrawFunctions.c redist/CocoaDriver.m redist/RawDrawRasterizer.c
-GRAPHICS_LOFI:=redist/DrawFunctions.o redist/CocoaDriver.o redist/RawDrawRasterizer.o
+DRAWFUNCTIONS=redist/CNFGFunctions.c redist/CocoaDriver.m
+GRAPHICS_LOFI:=redist/CNFGFunctions.o redist/CocoaDriver.o
 
 # Linux / FreeBSD
 else
 LDFLAGS:=$(LDFLAGS) -lX11
-DRAWFUNCTIONS=redist/DrawFunctions.c redist/XDriver.c
-GRAPHICS_LOFI:=redist/DrawFunctions.o redist/XDriver.o
+DRAWFUNCTIONS=redist/CNFGFunctions.c redist/CNFGXDriver.c
+GRAPHICS_LOFI:=redist/CNFGFunctions.o redist/CNFGXDriver.o
 
 endif
 
 
-POSERS:=src/poser_dummy.o src/poser_daveortho.o src/poser_charlesslow.o
+POSERS:=src/poser_dummy.o src/poser_daveortho.o src/poser_charlesslow.o src/poser_octavioradii.o src/poser_turveytori.o
 REDISTS:=redist/json_helpers.o redist/linmath.o redist/jsmn.o redist/os_generic.o
 ifeq ($(UNAME), Darwin)
 REDISTS:=$(REDISTS) redist/hid-osx.c
 endif
 LIBSURVIVE_CORE:=src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o src/ootx_decoder.o src/survive_driverman.o src/survive_vive.o src/survive_config.o src/survive_cal.o
-LIBSURVIVE_CORE:=$(LIBSURVIVE_CORE)
-LIBSURVIVE_O:=$(POSERS) $(REDISTS) $(LIBSURVIVE_CORE)
-LIBSURVIVE_C:=$(LIBSURVIVE_O:.o=.c)
+
+
+#If you want to use HIDAPI on Linux.
+#CFLAGS:=$(CFLAGS) -DHIDAPI
+#REDISTS:=$(REDISTS) redist/hid-linux.o
+#LDFLAGS:=$(LDFLAGS) -ludev
 
 #Useful Preprocessor Directives:
 # -DUSE_DOUBLE = use double instead of float for most operations.
@@ -50,6 +52,11 @@ LIBSURVIVE_C:=$(LIBSURVIVE_O:.o=.c)
 
 
 
+
+LIBSURVIVE_CORE:=$(LIBSURVIVE_CORE)
+LIBSURVIVE_O:=$(POSERS) $(REDISTS) $(LIBSURVIVE_CORE)
+LIBSURVIVE_C:=$(LIBSURVIVE_O:.o=.c)
+
 # unused: redist/crc32.c
 
 testCocoa : testCocoa.c $(DRAWFUNCTIONS)
@@ -58,10 +65,10 @@ testCocoa : testCocoa.c $(DRAWFUNCTIONS)
 test : test.c ./lib/libsurvive.so redist/os_generic.o
 	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
 
-data_recorder : data_recorder.c ./lib/libsurvive.so redist/os_generic.c $(GRAPHICS_LOFI)
+data_recorder : data_recorder.c ./lib/libsurvive.so redist/os_generic.c $(DRAWFUNCTIONS)
 	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
 
-calibrate :  calibrate.c ./lib/libsurvive.so redist/os_generic.c $(GRAPHICS_LOFI)
+calibrate :  calibrate.c ./lib/libsurvive.so redist/os_generic.c $(DRAWFUNCTIONS)
 	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
 
 calibrate_client :  calibrate_client.c ./lib/libsurvive.so redist/os_generic.c $(GRAPHICS_LOFI)

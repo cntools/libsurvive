@@ -5,6 +5,10 @@
 #include "survive_types.h"
 #include "poser.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //DANGER: This structure may be redefined.  Note that it is logically split into 64-bit chunks
 //for optimization on 32- and 64-bit systems.
 
@@ -32,13 +36,13 @@ struct SurviveObject
 	PoserCB PoserFn;
 
 	//Device-specific information about the location of the sensors.  This data will be used by the poser.
-	int8_t nr_locations;
-	FLT * sensor_locations;
-	FLT * sensor_normals;
+	int8_t nr_locations; // sensor count
+	FLT * sensor_locations; // size is nr_locations*3.  Contains x,y,z values for each sensor
+	FLT * sensor_normals;// size is nrlocations*3.  cointains normal vector for each sensor
 
 	//Timing sensitive data (mostly for disambiguation)
 	int32_t timebase_hz;		//48,000,000 for normal vive hardware.  (checked)
-	int32_t timecenter_ticks; 	//200,000 for normal vive hardware.     (checked)
+	int32_t timecenter_ticks; 	//200,000 for normal vive hardware.     (checked)  (This doubles-up as 2x this = full sweep length)
 	int32_t pulsedist_max_ticks; //500,000 for normal vive hardware.   (guessed)
 	int32_t pulselength_min_sync; //2,200 for normal vive hardware.    (guessed)
 	int32_t pulse_in_clear_time; //35,000 for normal vive hardware.    (guessed)
@@ -47,6 +51,7 @@ struct SurviveObject
 	int32_t pulse_synctime_slack; //5,000 for normal vive hardware.    (guessed)
 
 	//Flood info, for calculating which laser is currently sweeping.
+	void * disambiguator_data;
 	int8_t   oldcode;
 	int8_t   sync_set_number; //0 = master, 1 = slave, -1 = fault. 
 	int8_t   did_handle_ootx; //If unset, will send lightcap data for sync pulses next time a sensor is hit.
@@ -55,6 +60,12 @@ struct SurviveObject
 	uint32_t recent_sync_time;
 
 	uint32_t last_lighttime;  //May be a 24- or 32- bit number depending on what device.
+
+
+	FLT* acc_bias; // size is FLT*3. contains x,y,z
+	FLT* acc_scale; // size is FLT*3. contains x,y,z
+	FLT* gyro_bias; // size is FLT*3. contains x,y,z
+	FLT* gyro_scale; // size is FLT*3. contains x,y,z
 
 
 	//Debug
@@ -115,7 +126,7 @@ void survive_install_imu_fn( SurviveContext * ctx,  imu_process_func fbp );
 void survive_install_angle_fn( SurviveContext * ctx,  angle_process_func fbp );
 
 void survive_close( SurviveContext * ctx );
-int survive_poll();
+int survive_poll( SurviveContext * ctx );
 
 SurviveObject * survive_get_so_by_name( SurviveContext * ctx, const char * name );
 
@@ -127,11 +138,14 @@ int survive_send_magic( SurviveContext * ctx, int magic_code, void * data, int d
 //Install the calibrator.
 void survive_cal_install( SurviveContext * ctx );  //XXX This will be removed if not already done so.
 
+// Read back a human-readable string description of the calibration status
+int survive_cal_get_status( struct SurviveContext * ctx, char * description, int description_length );
+
 //Call these from your callback if overridden.  
 //Accept higher-level data.
-void survive_default_light_process( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length );
+void survive_default_light_process( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length , uint32_t lh);
 void survive_default_imu_process( SurviveObject * so, int mode, FLT * accelgyro, uint32_t timecode, int id );
-void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle );
+void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh );
 
 
 ////////////////////// Survive Drivers ////////////////////////////
@@ -172,6 +186,10 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le );
 #define SV_INFO( ... ) { char stbuff[1024]; sprintf( stbuff, __VA_ARGS__ ); ctx->notefunction( ctx, stbuff ); }
 #define SV_ERROR( ... ) { char stbuff[1024]; sprintf( stbuff, __VA_ARGS__ ); ctx->faultfunction( ctx, stbuff ); }
 #define SV_KILL()		exit(0)  //XXX This should likely be re-defined.
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif
 

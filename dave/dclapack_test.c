@@ -1,6 +1,6 @@
 #define FLOAT float
 #define ORDER 50
-#include "dclapack.h"
+#include "../redist/dclapack.h"
 
 #include <stdio.h>
 #include <stdlib.h>

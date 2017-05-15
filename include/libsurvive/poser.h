@@ -3,6 +3,11 @@
 
 #include "survive_types.h"
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum PoserType_t
 {
 	POSERDATA_NONE = 0,
@@ -32,7 +37,8 @@ typedef struct
 {
 	PoserType pt;
 	int sensor_id;
-	int acode;			//OOTX Code associated with this sweep. base_station = acode >> 2;  axis = acode & 1;
+	int acode;			//OOTX Code associated with this sweep. bit 1 indicates vertical(1) or horizontal(0) sweep
+	int lh;             //Lighthouse making this sweep
 	uint32_t timecode;  //In object-local ticks.
 	FLT length;			//In seconds
 	FLT angle;			//In radians from center of lighthouse.
@@ -45,6 +51,7 @@ typedef struct
 	//If "lengths[...]" < 0, means not a valid piece of sweep information.
 	FLT  lengths[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];
 	FLT  angles [SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];  //2 Axes  (Angles in LH space)
+	FLT  synctimes[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES];
 
 	PoserDataIMU lastimu;
 } PoserDataFullScene;
@@ -52,5 +59,9 @@ typedef struct
 //When you write your posers, use the following definition, and register with REGISTER_LINKTIME.
 typedef int (*PoserCB)( SurviveObject * so, PoserData * pd );
 
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif

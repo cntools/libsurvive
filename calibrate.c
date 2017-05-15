@@ -7,7 +7,7 @@
 #include <string.h>
 #include <os_generic.h>
 #include "src/survive_cal.h"
-#include <DrawFunctions.h>
+#include <CNFGFunctions.h>
 
 #include "src/survive_config.h"
 
@@ -40,6 +40,10 @@ void HandleMotion( int x, int y, int mask )
 {
 }
 
+void HandleDestroy()
+{
+}
+
 //int bufferpts[32*2*3][2];
 int bufferpts[32*2*3][2];
 
@@ -47,38 +51,37 @@ int bufferpts[32*2*3][2];
 char buffermts[32*128*3];
 int buffertimeto[32*3][2];
 
-void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  )
+void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length, uint32_t lh)
 {
 //	if( timeinsweep < 0 ) return;
-	survive_default_light_process( so, sensor_id, acode, timeinsweep, timecode, length );
+	survive_default_light_process( so, sensor_id, acode, timeinsweep, timecode, length, lh);
 	if( sensor_id < 0 ) return;
-	if( acode == -1 ) return;
+	if( acode < 0 ) return;
 //return;
 	int jumpoffset = sensor_id;
-	if( strcmp( so->codename, "WM0" ) == 0 ) jumpoffset += 32;
+	if( strcmp( so->codename, "WM0" ) == 0 || strcmp( so->codename, "WW0" ) == 0) jumpoffset += 32;
 	else if( strcmp( so->codename, "WM1" ) == 0 ) jumpoffset += 64;
 
-
-	if( acode == 0 || acode == 2 ) //data = 0
+	if( acode % 2 == 0 && lh == 0) //data = 0
 	{
-		bufferpts[jumpoffset*2+0][0] = (timeinsweep-100000)/500;
+		bufferpts[jumpoffset*2+0][0] = (timeinsweep-100000)/300;
 		buffertimeto[jumpoffset][0] = 0;
 	}
-	if( acode == 1 || acode == 3 ) //data = 1
+	if(  acode % 2 == 1 && lh == 0 ) //data = 1
 	{
-		bufferpts[jumpoffset*2+1][0] = (timeinsweep-100000)/500;
+		bufferpts[jumpoffset*2+1][0] = (timeinsweep-100000)/300;
 		buffertimeto[jumpoffset][0] = 0;
 	}
 
 
-	if( acode == 4 || acode == 6 ) //data = 0
+	if( acode % 2 == 0 && lh == 1 ) //data = 0
 	{
-		bufferpts[jumpoffset*2+0][1] = (timeinsweep-100000)/500;
+		bufferpts[jumpoffset*2+0][1] = (timeinsweep-100000)/300;
 		buffertimeto[jumpoffset][1] = 0;
 	}
-	if( acode == 5 || acode == 7 ) //data = 1
+	if( acode % 2 == 1 && lh == 1 ) //data = 1
 	{
-		bufferpts[jumpoffset*2+1][1] = (timeinsweep-100000)/500;
+		bufferpts[jumpoffset*2+1][1] = (timeinsweep-100000)/300;
 		buffertimeto[jumpoffset][1] = 0;
 	}
 }
@@ -95,9 +98,9 @@ void my_imu_process( struct SurviveObject * so, int mask, FLT * accelgyro, uint3
 }
 
 
-void my_angle_process( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle )
+void my_angle_process( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh)
 {
-	survive_default_angle_process( so, sensor_id, acode, timecode, length, angle );
+	survive_default_angle_process( so, sensor_id, acode, timecode, length, angle, lh );
 }
 
 char* sensor_name[32];
@@ -128,13 +131,16 @@ void * GuiThread( void * jnk )
 					uint8_t g = 0x00;
 					uint8_t b = 0xff;
 
-					if (nn==0) b = 0; //lighthouse B
-					if (nn==1) r = 0; //lighthouse C
+					if (nn==0) b = 0; //lighthouse B, red, master
+					if (nn==1) r = 0; //lighthouse C, blue, slave
 
 //					r = (r * (5-buffertimeto[i][nn])) / 5 ;
 //					g = (g * (5-buffertimeto[i][nn])) / 5 ;
 //					b = (b * (5-buffertimeto[i][nn])) / 5 ;
 					CNFGColor( (b<<16) | (g<<8) | r );
+
+					if (bufferpts[i*2+0][nn] == 0 || bufferpts[i*2+1][nn]==0) continue; //do not draw if aither coordinate is 0
+
 					CNFGTackRectangle( bufferpts[i*2+0][nn], bufferpts[i*2+1][nn], bufferpts[i*2+0][nn] + 5, bufferpts[i*2+1][nn] + 5 );
 					CNFGPenX = bufferpts[i*2+0][nn]; CNFGPenY = bufferpts[i*2+1][nn];
 					CNFGDrawText( buffermts, 2 );

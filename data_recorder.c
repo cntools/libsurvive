@@ -1,13 +1,15 @@
 //Data recorder mod with GUI showing light positions.
 
+#ifdef __linux__
 #include <unistd.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <survive.h>
 #include <string.h>
 #include <os_generic.h>
-#include <DrawFunctions.h>
+#include <CNFGFunctions.h>
 
 struct SurviveContext * ctx;
 
@@ -33,13 +35,17 @@ void HandleMotion( int x, int y, int mask )
 {
 }
 
+void HandleDestroy()
+{
+}
+
 int bufferpts[32*2*3];
 char buffermts[32*128*3];
 int buffertimeto[32*3];
 
-void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  )
+void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length, uint32_t lh)
 {
-	survive_default_light_process( so, sensor_id, acode, timeinsweep, timecode, length );
+	survive_default_light_process( so, sensor_id, acode, timeinsweep, timecode, length, lh);
 
 	if( acode == -1 ) return;
 //return;

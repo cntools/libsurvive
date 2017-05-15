@@ -8,7 +8,7 @@
 #include <string.h>
 #include <os_generic.h>
 #include "src/survive_cal.h"
-#include <DrawFunctions.h>
+#include <CNFGFunctions.h>
 
 #include "src/survive_config.h"
 
@@ -35,14 +35,17 @@ void HandleButton( int x, int y, int button, int bDown )
 void HandleMotion( int x, int y, int mask )
 {
 }
+void HandleDestroy()
+{
+}
 
 int bufferpts[32*2*3];
 char buffermts[32*128*3];
 int buffertimeto[32*3];
 
-void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length  )
+void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length, uint32_t lh)
 {
-	survive_default_light_process( so, sensor_id, acode, timeinsweep, timecode, length );
+	survive_default_light_process( so, sensor_id, acode, timeinsweep, timecode, length, lh);
 
 	if( acode == -1 ) return;
 //return;
@@ -87,9 +90,9 @@ void my_imu_process( struct SurviveObject * so, int mask, FLT * accelgyro, uint3
 }
 
 
-void my_angle_process( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle )
+void my_angle_process( struct SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh )
 {
-	survive_default_angle_process( so, sensor_id, acode, timecode, length, angle );
+	survive_default_angle_process( so, sensor_id, acode, timecode, length, angle, lh );
 }
 
 
@@ -157,7 +160,7 @@ int main()
 
 //	config_save("config.json");
 */
-	
+
 	ctx = survive_init( 1 );
 
 	survive_install_light_fn( ctx,  my_light_process );
@@ -216,9 +219,12 @@ int main()
 					so = wm0;
 				if( strcmp( dev, "WM1" ) == 0 )
 					so = wm1;
+				uint32_t lh = 0;
+				if (lineptr[0] == 'r')
+					lh = 1;
 
 				if( so )
-					my_light_process( so, sensor_id, acode, timeinsweep, timecode, length );
+					my_light_process( so, sensor_id, acode, timeinsweep, timecode, length, lh );
 
 				break;
 			}

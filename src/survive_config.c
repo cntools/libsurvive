@@ -175,7 +175,13 @@ const char* config_set_str(config_group *cg, const char *tag, const char* value)
 	if (cv == NULL) cv = next_unused_entry(cg);
 
 	sstrcpy(&(cv->tag), tag);
-	sstrcpy(&(cv->data), value);
+
+	if (NULL != value){
+		sstrcpy(&(cv->data), value);
+	}
+	else {
+		sstrcpy(&(cv->data), "");
+	}
 	cv->type = CONFIG_STRING;
 
 	return value;
@@ -354,12 +360,17 @@ int parse_uint32(char* tag, char** values, uint16_t count) {
 }
 
 void handle_tag_value(char* tag, char** values, uint8_t count) {
-	print_json_value(tag,values,count);
+
+	//Uncomment for more debugging of input configuration.
+	//print_json_value(tag,values,count);
+
 	config_group* cg = cg_stack[cg_stack_head];
 
+	if (NULL != *values){	
 	if (parse_uint32(tag,values,count) > 0) return; //parse integers first, stricter rules
 
 	if (parse_floats(tag,values,count) > 0) return;
+	}
 
 	//should probably also handle string arrays
 	config_set_str(cg,tag,values[0]);
