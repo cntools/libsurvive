@@ -456,6 +456,7 @@ void CNFGSetup( const char * WindowName, int sw, int sh )
     app_window = [[[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, sw, sh)
         styleMask:NSTitledWindowMask backing:NSBackingStoreBuffered defer:NO]
             autorelease];
+
     app_oglView = [[[MyOpenGLView alloc] initWithFrame:NSMakeRect(0, 0, sw, sh) ] autorelease];
     [app_window setContentView:app_oglView];
     [app_window cascadeTopLeftFromPoint:NSMakePoint(20,20)];
@@ -467,7 +468,6 @@ void CNFGSetup( const char * WindowName, int sw, int sh )
     
     oglCompatibilityInit(sw*sh);       // Initialize the OpenGL compatibility layer
 
-
         //--------------------
         // Clear the screen to black
         //--------------------
@@ -478,6 +478,7 @@ void CNFGSetup( const char * WindowName, int sw, int sh )
 
         // Peek at the next event
         app_currDate = [[NSDate alloc] init];
+
         NSEvent *event =
             [NSApp
                 nextEventMatchingMask:NSAnyEventMask
@@ -485,14 +486,13 @@ void CNFGSetup( const char * WindowName, int sw, int sh )
                 inMode:NSEventTrackingRunLoopMode
                 dequeue:YES];
         [app_currDate release];
-
+		
         [NSApp updateWindows];
 
         glClearColor(0.0,0.0,0.0,0.0);
         glClear(GL_COLOR_BUFFER_BIT);
 
         [app_oglContext flushBuffer];
-
 
     // Set up a 2D projection
     //oglMatrixMode(OGL_PROJECTION);						// Select The Projection Matrix

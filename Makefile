@@ -17,8 +17,10 @@ ifeq ($(UNAME), Darwin)
 
 CFLAGS:=$(CFLAGS) -DRASTERIZER -DHIDAPI -I/usr/local/include -x objective-c
 LDFLAGS:=$(LDFLAGS) -framework OpenGL -framework Cocoa -framework IOKit
-DRAWFUNCTIONS=redist/CNFGFunctions.c redist/CocoaDriver.m
-GRAPHICS_LOFI:=redist/CNFGFunctions.o redist/CocoaDriver.o
+#DRAWFUNCTIONS=redist/CNFGFunctions.c redist/CocoaDriver.m
+#GRAPHICS_LOFI:=redist/CNFGFunctions.o redist/CocoaDriver.o
+DRAWFUNCTIONS=redist/CNFGFunctions.c redist/CNFGCocoaNSImageDriver.m
+GRAPHICS_LOFI:=redist/CNFGFunctions.o redist/CNFGCocoaNSImageDriver.o
 
 # Linux / FreeBSD
 else
@@ -90,7 +92,7 @@ calibrate_tcc : $(LIBSURVIVE_C)
 	tcc -DRUNTIME_SYMNUM $(CFLAGS) -o $@ $^ $(LDFLAGS) calibrate.c redist/os_generic.c $(DRAWFUNCTIONS) redist/symbol_enumerator.c
 
 clean :
-	rm -rf *.o src/*.o *~ src/*~ test data_recorder calibrate lib/libsurvive.so redist/*.o redist/*~
+	rm -rf *.o src/*.o *~ src/*~ test data_recorder calibrate testCocoa lib/libsurvive.so redist/*.o redist/*~
 
 
 
