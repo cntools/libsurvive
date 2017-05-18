@@ -22,7 +22,8 @@ GRAPHICS_LOFI:=redist/CNFGFunctions.o redist/CocoaDriver.o
 
 # Linux / FreeBSD
 else
-LDFLAGS:=$(LDFLAGS) -lX11
+
+LDFLAGS:=$(LDFLAGS) -lX11 -lusb-1.0
 DRAWFUNCTIONS=redist/CNFGFunctions.c redist/CNFGXDriver.c
 GRAPHICS_LOFI:=redist/CNFGFunctions.o redist/CNFGXDriver.o
 

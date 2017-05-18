@@ -188,7 +188,7 @@ void * SurviveThread(void *jnk)
 	if( !ctx )
 	{
 		fprintf( stderr, "Fatal. Could not start\n" );
-		return 1;
+		exit( 1 );
 	}
 
 	SurviveThreadLoaded=1;
@@ -199,6 +199,7 @@ void * SurviveThread(void *jnk)
 	}
 
 	survive_close( ctx );
+	return 0;
 }
 
 

@@ -7,6 +7,9 @@ An Open-Source tool for working with lighthouse-based tracking data, including s
 Most of the development is discussed on Discord.  Join the chat and discussion here: https://discordapp.com/invite/7QbCAGS
 
 ## Livestream collection
+
+If you are an individual who bothers going back and watching some of these, PLEASE PLEASE PLEASE add a note to https://github.com/cnlohr/libsurvive/issues/66 whenever something interesting happens.  I want to make a highlight reel, but I don't want to sit through all the videos.
+
 | Note                                   | Youtube URL                                 | Run time |
 | -------------------------------------- | ------------------------------------------- | -------- |
 | First livestream                       | https://www.youtube.com/watch?v=sv_AVI9kHN4 | 5:01:25  |
@@ -20,7 +23,8 @@ Most of the development is discussed on Discord.  Join the chat and discussion h
 | Eighth livestream                      | https://www.youtube.com/watch?v=nSbEltdH9vM | 6:06:36 |
 | Ninth livestream                       | https://www.youtube.com/watch?v=60sGTd8T-KY | 3:28:44 |
 | Ninth B livestream                     | https://www.youtube.com/watch?v=IIYj1Ig_gz8 | 2:25:33 |
-| Tenth livestream                       | https://www.youtube.com/watch?v=boXRdXca6Qc | ?:??:?? |
+| May 2017 Summary                       | https://www.youtube.com/watch?v=dVXpHKktbzM | 5:58    |
+| Tenth livestream                       | https://www.youtube.com/watch?v=8hqviGMlU7I | 3:30:46 |
 
 Notes from second livestream trying to reverse engineer the watchman protocol: https://gist.github.com/cnlohr/581c433f36f4249f8bbc9c2b6450ef0e
 
@@ -29,6 +33,8 @@ Please see the issues for what help needs to be done now!
 ## Extra resources
 
 HackADay article and video with Dr. Yates on how they made the Vive a thing. http://hackaday.com/2016/12/21/alan-yates-why-valves-lighthouse-cant-work/
+
+Excellent article written by Oliver Kreylos showing just how amazing the lighthouse system really is.  Likely the best/most detailed review on the performance *and* accuracy of the lighthouse system. http://doc-ok.org/?p=1478  
 
 
 ## Nomenclature
