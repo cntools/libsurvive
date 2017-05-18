@@ -40,15 +40,32 @@ void KalmanUpdate(
 {
     // UPDATE PHASE
     //   Measurement residual:       yhat_k = zk - Hk * xhat_k_km1
-    GMULADD(H_k,xhat_k_km1,z_k,D,-1.0f,1.0f,S,S,1);
+    KAL_MAT(yhat_k);        /* (B x 1) */
+    GMULADD(H_k,xhat_k_km1,z_k,yhat_k,-1.0f,1.0f,B,S,1);
 
     //   Residual covariance:           S_k = H_k * P_k_km1 * H_k' + R_k
-
+    KAL_MAT(H_k_transp);            /* (S x B) */
+    KAL_MAT(P_k_km1__H_k_transp);   /* (S x B) */
+    KAL_MAT(S_k);                   /* (B x B) */
+    TRANSP(H_k,H_k_transp,B,S);
+    MUL(P_k_km1,H_k_transp,P_k_km1__H_k_transp,S,S,B);
+    MULADD(H_k,P_k_km1__H_k_transp,R_k,S_k,B,S,B);
 
     //   Optimal Kalman gain:           K_k = P_k_km1 * H_k' * inv(S_k)
+    KAL_MAT(K_k);        /* (S x B) */
+    KAL_MAT(S_k_inv);    /* (B x B) */
+    INV(S_k,S_k_inv,B);
+    MUL(P_K_km1__H_k_transp,S_k_inv,K_k,S,B,B);
+
     //   Updated state esti:       xhat_k_k = xhat_k_km1 + K_k * yhat_k
+    MULADD(K_k,yhat_k,xhat_k_km1,S,B,1);
+
     //   Updated covariance:          P_k_k = (I - K_k * H_k) * P_k_km1
-    
+    KAL_MAT(Ident);      /* (S x S) */
+    KAL_MAT(I_minus_K_k_H_k);
+    IDENTITY(Ident,S);
+    GMULADD(K_k,H_k,Ident,I_minus_K_k_H_k,1.0,-1.0,S,B,S);
+    MUL(I_minus_K_k_H_k,P_k_km1,P_k_k,S,S,1);
 }
 
 
