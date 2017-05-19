@@ -1552,10 +1552,10 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 		// with world coordinate system, it will have Z oriented correctly.
 
 		// let's get the quaternion that represents this rotation.
-		FLT downQuat[4];
+		//FLT downQuat[4];
 		FLT negZ[3] = { 0,0,1 };
 		//quatfrom2vectors(downQuat, negZ, td->down);
-		quatfrom2vectors(downQuat, td->down, negZ);
+		//quatfrom2vectors(downQuat, td->down, negZ);
 
 		{
 			int sensorCount = 0;
