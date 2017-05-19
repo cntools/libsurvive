@@ -46,6 +46,7 @@ void HandleDestroy()
 
 //int bufferpts[32*2*3][2];
 int bufferpts[32*2*3][2];
+FLT objPos[3];
 
 
 char buffermts[32*128*3];
@@ -61,6 +62,14 @@ void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int 
 	int jumpoffset = sensor_id;
 	if( strcmp( so->codename, "WM0" ) == 0 || strcmp( so->codename, "WW0" ) == 0) jumpoffset += 32;
 	else if( strcmp( so->codename, "WM1" ) == 0 ) jumpoffset += 64;
+
+	// If this is the first tracked object and the pose has been set to something...
+	if (so == so->ctx->objs[0] && so->OutPose.Pos[0] != 0)
+	{
+		objPos[0] = so->OutPose.Pos[0];
+		objPos[1] = so->OutPose.Pos[1];
+		objPos[2] = so->OutPose.Pos[2];
+	}
 
 	if( acode % 2 == 0 && lh == 0) //data = 0
 	{
@@ -149,6 +158,35 @@ void * GuiThread( void * jnk )
 						CNFGPenX = bufferpts[i*2+0][nn]+5; CNFGPenY = bufferpts[i*2+1][nn]+5;
 						CNFGDrawText( sensor_name[i], 2 );
 					}
+
+					if (objPos[0] != 0)
+					{
+						const FLT toScale = 2.0 / 480.0; // 2 meters across 480 pixels
+						const int centerX = 640 / 2;
+						const int centerY = 480 / 2;
+
+						const FLT sizeScale = 1.0 / 40.0;
+						const int  minRectSize = 10; 
+
+						uint8_t r = 0xff;
+						uint8_t g = 0xff;
+						uint8_t b = 0xff;
+
+						CNFGColor((b << 16) | (g << 8) | r);
+
+						int x1, x2, y1, y2;
+
+						x1 = centerX - minRectSize - ((objPos[2] * 40.0)) + (objPos[0] * 200.0);
+						y1 = centerY - minRectSize - ((objPos[2] * 40.0)) + (objPos[1] * 200.0);
+						x2 = centerX + minRectSize + ((objPos[2] * 40.0)) + (objPos[0] * 200.0);
+						y2 = centerY + minRectSize + ((objPos[2] * 40.0)) + (objPos[1] * 200.0);
+
+						CNFGTackRectangle(x1,y1,x2,y2);
+					}
+
+					//CNFGTackRectangle(bufferpts[i * 2 + 0][nn], bufferpts[i * 2 + 1][nn], bufferpts[i * 2 + 0][nn] + 5, bufferpts[i * 2 + 1][nn] + 5);
+
+
 					buffertimeto[i][nn]++;
 				}
 			}
