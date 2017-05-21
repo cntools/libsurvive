@@ -386,13 +386,20 @@ FLT getPointFitnessForPna(Point pointIn, PointsAndAngle *pna)
 	return dist;
 }
 
+int compareFlts(const void * b, const void * a)
+{
+	FLT a2 = *(const FLT*)a;
+	FLT b2 = *(const FLT*)b;
+	return (a2 > b2) - (a2 < b2);
+}
+
 FLT getPointFitness(Point pointIn, PointsAndAngle *pna, size_t pnaCount, int deubgPrint)
 {
 	FLT fitness;
 
 	FLT resultSum = 0;
 	FLT *fitnesses = alloca(sizeof(FLT) * pnaCount);
-	int i=0, j=0;
+	int i = 0, j = 0;
 
 	FLT worstFitness = 0;
 
@@ -414,18 +421,18 @@ FLT getPointFitness(Point pointIn, PointsAndAngle *pna, size_t pnaCount, int deu
 		}
 	}
 
-	for (size_t i = 0; i < pnaCount; i++)
+
+	qsort(fitnesses, pnaCount, sizeof(FLT), compareFlts);
+
+	//printf("wf[%f]\n", worstFitness);
+
+
+    // Note that we're only using the best 70% of the tori.
+    // This is to remove any "bad" outliers.
+    // TODO: better algorithms exist.
+	for (size_t i = 0; i < (size_t)(pnaCount * 0.70); i++)
 	{
-		// TODO:  This is an UGLY HACK!!!  It is NOT ROBUST and MUST BE BETTER
-		// Right now, we're just throwing away the single worst fitness value
-		// this works frequently, but we REALLY need to do a better job of determing
-		// exactly when we should throw away a bad value.  I'm thinking that decision 
-		// alone could be a master's thesis, so lots of work to be done.
-		// This is just a stupid general approach that helps in a lot of cases,
-		// but is NOT suitable for long term use.
-		//if (pna[i].bi != i && pna[i].bi != j && pna[i].ai != i && pna[i].ai != j)
-		if (fitnesses[i] != worstFitness)
-			resultSum += SQUARED(fitnesses[i]);
+		resultSum += SQUARED(fitnesses[i]);
 	}
 	return 1 / FLT_SQRT(resultSum);
 }
@@ -1522,6 +1529,16 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 				// let's just do this occasionally for now...
 				if (counter % 4 == 0)
 					QuickPose(so, 0);
+			}
+			if (1 == l->lh && axis) // only once per full cycle...
+			{
+				static unsigned int counter = 1;
+
+				counter++;
+
+				// let's just do this occasionally for now...
+				if (counter % 4 == 0)
+					QuickPose(so, 1);
 			}
 			// axis changed, time to increment the circular buffer index.
 			td->angleIndex[l->lh][axis]++;

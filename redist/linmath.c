@@ -259,35 +259,37 @@ void quatfrommatrix( FLT * q, const FLT * matrix44 )
 }
 
 
+// Algorithm from http://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToMatrix/
 void quattomatrix33(FLT * matrix33, const FLT * qin)
 {
 	FLT q[4];
 	quatnormalize(q, qin);
 
 	//Reduced calulation for speed
-	FLT xx = 2 * q[0] * q[0];
-	FLT xy = 2 * q[0] * q[1];
-	FLT xz = 2 * q[0] * q[2];
-	FLT xw = 2 * q[0] * q[3];
+	FLT xx = 2 * q[1] * q[1];
+	FLT xy = 2 * q[1] * q[2];
+	FLT xz = 2 * q[1] * q[3];
+	FLT xw = 2 * q[1] * q[0];
 
-	FLT yy = 2 * q[1] * q[1];
-	FLT yz = 2 * q[1] * q[2];
-	FLT yw = 2 * q[1] * q[3];
+	FLT yy = 2 * q[2] * q[2];
+	FLT yz = 2 * q[2] * q[3];
+	FLT yw = 2 * q[2] * q[0];
 
-	FLT zz = 2 * q[2] * q[2];
-	FLT zw = 2 * q[2] * q[3];
+	FLT zz = 2 * q[3] * q[3];
+	FLT zw = 2 * q[3] * q[0];
+
 
 	//opengl major
 	matrix33[0] = 1 - yy - zz;
-	matrix33[1] = xy - zw;
-	matrix33[2] = xz + yw;
+	matrix33[1] = xy + zw;
+	matrix33[2] = xz - yw;
 
-	matrix33[3] = xy + zw;
+	matrix33[3] = xy - zw;
 	matrix33[4] = 1 - xx - zz;
-	matrix33[5] = yz - xw;
+	matrix33[5] = yz + xw;
 
-	matrix33[6] = xz - yw;
-	matrix33[7] = yz + xw;
+	matrix33[6] = xz + yw;
+	matrix33[7] = yz - xw;
 	matrix33[8] = 1 - xx - yy;
 }
 
