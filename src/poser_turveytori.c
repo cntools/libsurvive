@@ -1569,10 +1569,10 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 		// with world coordinate system, it will have Z oriented correctly.
 
 		// let's get the quaternion that represents this rotation.
-		//FLT downQuat[4];
+		FLT downQuat[4];
 		FLT negZ[3] = { 0,0,1 };
 		//quatfrom2vectors(downQuat, negZ, td->down);
-		//quatfrom2vectors(downQuat, td->down, negZ);
+		quatfrom2vectors(downQuat, td->down, negZ);
 
 		{
 			int sensorCount = 0;
@@ -1585,8 +1585,8 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 					FLT norm[3] = { so->sensor_normals[i * 3 + 0] , so->sensor_normals[i * 3 + 1] , so->sensor_normals[i * 3 + 2] };
 					FLT point[3] = { so->sensor_locations[i * 3 + 0] , so->sensor_locations[i * 3 + 1] , so->sensor_locations[i * 3 + 2] };
 
-					//quatrotatevector(norm, downQuat, norm);
-					//quatrotatevector(point, downQuat, point);
+					quatrotatevector(norm, downQuat, norm);
+					quatrotatevector(point, downQuat, point);
 
 					to->sensor[sensorCount].normal.x = norm[0];
 					to->sensor[sensorCount].normal.y = norm[1];
@@ -1617,8 +1617,8 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 					FLT norm[3] = { so->sensor_normals[i * 3 + 0] , so->sensor_normals[i * 3 + 1] , so->sensor_normals[i * 3 + 2] };
 					FLT point[3] = { so->sensor_locations[i * 3 + 0] , so->sensor_locations[i * 3 + 1] , so->sensor_locations[i * 3 + 2] };
 
-					//quatrotatevector(norm, downQuat, norm);
-					//quatrotatevector(point, downQuat, point);
+					quatrotatevector(norm, downQuat, norm);
+					quatrotatevector(point, downQuat, point);
 
 					to->sensor[sensorCount].normal.x = norm[0];
 					to->sensor[sensorCount].normal.y = norm[1];
