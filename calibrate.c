@@ -8,6 +8,7 @@
 #include <os_generic.h>
 #include "src/survive_cal.h"
 #include <CNFGFunctions.h>
+#include <linmath.h>
 
 #include "src/survive_config.h"
 
@@ -46,7 +47,7 @@ void HandleDestroy()
 
 //int bufferpts[32*2*3][2];
 int bufferpts[32*2*3][2];
-FLT objPos[3];
+SurvivePose objPose[2];
 
 
 char buffermts[32*128*3];
@@ -64,11 +65,27 @@ void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int 
 	else if( strcmp( so->codename, "WM1" ) == 0 ) jumpoffset += 64;
 
 	// If this is the first tracked object and the pose has been set to something...
-	if (so == so->ctx->objs[0] && so->OutPose.Pos[0] != 0)
+	if (so == so->ctx->objs[0] && so->FromLHPose[0].Pos[0] != 0)
 	{
-		objPos[0] = so->OutPose.Pos[0];
-		objPos[1] = so->OutPose.Pos[1];
-		objPos[2] = so->OutPose.Pos[2];
+		objPose[0].Pos[0] = so->FromLHPose[0].Pos[0];
+		objPose[0].Pos[1] = so->FromLHPose[0].Pos[1];
+		objPose[0].Pos[2] = so->FromLHPose[0].Pos[2];
+
+		objPose[0].Rot[0] = so->FromLHPose[0].Rot[0];
+		objPose[0].Rot[1] = so->FromLHPose[0].Rot[1];
+		objPose[0].Rot[2] = so->FromLHPose[0].Rot[2];
+		objPose[0].Rot[3] = so->FromLHPose[0].Rot[3];
+	}
+	if (so == so->ctx->objs[0] && so->FromLHPose[1].Pos[0] != 0)
+	{
+		objPose[1].Pos[0] = so->FromLHPose[1].Pos[0];
+		objPose[1].Pos[1] = so->FromLHPose[1].Pos[1];
+		objPose[1].Pos[2] = so->FromLHPose[1].Pos[2];
+
+		objPose[1].Rot[0] = so->FromLHPose[1].Rot[0];
+		objPose[1].Rot[1] = so->FromLHPose[1].Rot[1];
+		objPose[1].Rot[2] = so->FromLHPose[1].Rot[2];
+		objPose[1].Rot[3] = so->FromLHPose[1].Rot[3];
 	}
 
 	if( acode % 2 == 0 && lh == 0) //data = 0
@@ -113,6 +130,117 @@ void my_angle_process( struct SurviveObject * so, int sensor_id, int acode, uint
 }
 
 char* sensor_name[32];
+
+void DisplayPose(SurvivePose pose, size_t xResolution, size_t yResolution)
+{
+	const FLT toScale = 2.0 / yResolution; // 2 meters across yResolution pixels
+	const int windowCenterX = xResolution / 2;
+	const int windowCenterY = yResolution / 2;
+
+	const FLT sizeScale = 100.0; // used to indicate change in size with change in Z
+	const int  minRectSize = 10; // size at z=0
+
+	uint8_t r = 0xff;
+	uint8_t g = 0xff;
+	uint8_t b = 0xff;
+
+	CNFGColor((b << 16) | (g << 8) | r);
+
+	int x1, x2, y1, y2;
+
+	x1 = windowCenterX - minRectSize - ((pose.Pos[2] * 40.0)) + (pose.Pos[0] * sizeScale);
+	y1 = windowCenterY - minRectSize - ((pose.Pos[2] * 40.0)) + (pose.Pos[1] * sizeScale);
+	x2 = windowCenterX + minRectSize + ((pose.Pos[2] * 40.0)) + (pose.Pos[0] * sizeScale);
+	y2 = windowCenterY + minRectSize + ((pose.Pos[2] * 40.0)) + (pose.Pos[1] * sizeScale);
+	FLT xCenter = windowCenterX + (pose.Pos[0] * sizeScale);
+	FLT yCenter = windowCenterY + (pose.Pos[1] * sizeScale);
+
+
+	//CNFGTackSegment(x1, yCenter, x2, yCenter);
+	//CNFGTackSegment(xCenter, y1, xCenter, y2);
+
+	//CNFGTackSegment((x2 - xCenter) / 3 + windowCenterX + (pose.Pos[0] * sizeScale), y1, (xCenter - x2) / 3 + windowCenterX + (pose.Pos[0] * sizeScale), y1);
+	quatnormalize(pose.Rot, pose.Rot);
+	// line for the (-x,0) to (+x,0)
+	{
+		FLT tmp1[3];
+		FLT tmp1out[3];
+		FLT tmp2[3];
+		FLT tmp2out[3];
+
+		tmp1[0] = -minRectSize - ((pose.Pos[2] * 40.0));
+		tmp1[1] = 0;
+		tmp1[2] = 0;
+
+		quatrotatevector(&tmp1out, pose.Rot, tmp1);
+
+		tmp2[0] = minRectSize + ((pose.Pos[2] * 40.0));
+		tmp2[1] = 0;
+		tmp2[2] = 0;
+
+		quatrotatevector(&tmp2out, pose.Rot, tmp2);
+
+		CNFGTackSegment(
+			windowCenterX + (pose.Pos[0] * sizeScale) + tmp1out[0],
+			windowCenterY + (pose.Pos[1] * sizeScale) + tmp1out[1],
+			windowCenterX + (pose.Pos[0] * sizeScale) + tmp2out[0],
+			windowCenterY + (pose.Pos[1] * sizeScale) + tmp2out[1]);
+	}
+
+	// line for the (0,-y) to (0,+y))
+	{
+		FLT tmp1[3];
+		FLT tmp1out[3];
+		FLT tmp2[3];
+		FLT tmp2out[3];
+
+		tmp1[0] = 0,
+		tmp1[1] = -minRectSize - ((pose.Pos[2] * 40.0));
+		tmp1[2] = 0;
+
+		quatrotatevector(&tmp1out, pose.Rot, tmp1);
+
+		tmp2[0] = 0;
+		tmp2[1] = minRectSize + ((pose.Pos[2] * 40.0));
+		tmp2[2] = 0;
+
+		quatrotatevector(&tmp2out, pose.Rot, tmp2);
+
+		CNFGTackSegment(
+			windowCenterX + (pose.Pos[0] * sizeScale) + tmp1out[0],
+			windowCenterY + (pose.Pos[1] * sizeScale) + tmp1out[1],
+			windowCenterX + (pose.Pos[0] * sizeScale) + tmp2out[0],
+			windowCenterY + (pose.Pos[1] * sizeScale) + tmp2out[1]);
+	}
+
+	// Small line to indicate (0,+y) 
+	{
+		FLT tmp1[3];
+		FLT tmp1out[3];
+		FLT tmp2[3];
+		FLT tmp2out[3];
+
+		tmp1[1] = minRectSize + ((pose.Pos[2] * 40.0));
+		tmp1[2] = 0;
+		tmp1[0] = tmp1[1] * 0.3;
+
+		quatrotatevector(&tmp1out, pose.Rot, tmp1);
+
+		tmp2[1] = minRectSize + ((pose.Pos[2] * 40.0));
+		tmp2[2] = 0;
+		tmp2[0] = -(tmp1[1] * 0.3);
+
+		quatrotatevector(&tmp2out, pose.Rot, tmp2);
+
+		CNFGTackSegment(
+			windowCenterX + (pose.Pos[0] * sizeScale) + tmp1out[0],
+			windowCenterY + (pose.Pos[1] * sizeScale) + tmp1out[1],
+			windowCenterX + (pose.Pos[0] * sizeScale) + tmp2out[0],
+			windowCenterY + (pose.Pos[1] * sizeScale) + tmp2out[1]);
+	}
+
+
+}
 
 void * GuiThread( void * jnk )
 {
@@ -159,31 +287,35 @@ void * GuiThread( void * jnk )
 						CNFGDrawText( sensor_name[i], 2 );
 					}
 
-					if (objPos[0] != 0)
+					for (int lh = 0; lh < 2; lh++)
 					{
-						const FLT toScale = 2.0 / 480.0; // 2 meters across 480 pixels
-						const int centerX = 640 / 2;
-						const int centerY = 480 / 2;
+						DisplayPose(objPose[lh], 640, 480);
 
-						const FLT sizeScale = 1.0 / 40.0;
-						const int  minRectSize = 10; 
+						//if (objPose[lh].Pos[0] != 0)
+						//{
+						//	const FLT toScale = 2.0 / 480.0; // 2 meters across 480 pixels
+						//	const int centerX = 640 / 2;
+						//	const int centerY = 480 / 2;
 
-						uint8_t r = 0xff;
-						uint8_t g = 0xff;
-						uint8_t b = 0xff;
+						//	const FLT sizeScale = 1.0 / 40.0;
+						//	const int  minRectSize = 10;
 
-						CNFGColor((b << 16) | (g << 8) | r);
+						//	uint8_t r = 0xff;
+						//	uint8_t g = 0xff;
+						//	uint8_t b = 0xff;
 
-						int x1, x2, y1, y2;
+						//	CNFGColor((b << 16) | (g << 8) | r);
 
-						x1 = centerX - minRectSize - ((objPos[2] * 40.0)) + (objPos[0] * 200.0);
-						y1 = centerY - minRectSize - ((objPos[2] * 40.0)) + (objPos[1] * 200.0);
-						x2 = centerX + minRectSize + ((objPos[2] * 40.0)) + (objPos[0] * 200.0);
-						y2 = centerY + minRectSize + ((objPos[2] * 40.0)) + (objPos[1] * 200.0);
+						//	int x1, x2, y1, y2;
 
-						CNFGTackRectangle(x1,y1,x2,y2);
+						//	x1 = centerX - minRectSize - ((objPose[lh].Pos[2] * 40.0)) + (objPose[lh].Pos[0] * 200.0);
+						//	y1 = centerY - minRectSize - ((objPose[lh].Pos[2] * 40.0)) + (objPose[lh].Pos[1] * 200.0);
+						//	x2 = centerX + minRectSize + ((objPose[lh].Pos[2] * 40.0)) + (objPose[lh].Pos[0] * 200.0);
+						//	y2 = centerY + minRectSize + ((objPose[lh].Pos[2] * 40.0)) + (objPose[lh].Pos[1] * 200.0);
+
+						//	CNFGTackRectangle(x1, y1, x2, y2);
+						//}
 					}
-
 					//CNFGTackRectangle(bufferpts[i * 2 + 0][nn], bufferpts[i * 2 + 1][nn], bufferpts[i * 2 + 0][nn] + 5, bufferpts[i * 2 + 1][nn] + 5);
 
 
