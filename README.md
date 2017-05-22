@@ -56,7 +56,7 @@ Excellent article written by Oliver Kreylos showing just how amazing the lightho
 
 There are two things you should consider doing to your system before running libsurvive.
 
-(1) Install the udev rules:  ```cp usefulfiles/81-vive.rules to /etc/udev/rules.d/``` and reboot.
+(1) Install the udev rules:  ```cp useful_files/81-vive.rules to /etc/udev/rules.d/``` and reboot.
 (2) If you are running on an NVIDIA Card, you will need to AllowHMD to true.  Add the following line to your /etc/X11/xorg.conf device section:  ```Option "AllowHMD" "yes"```
 
 ## Introduction
