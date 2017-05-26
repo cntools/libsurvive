@@ -386,7 +386,7 @@ FLT getPointFitnessForPna(Point pointIn, PointsAndAngle *pna)
 	return dist;
 }
 
-int compareFlts(const void * b, const void * a)
+int compareFlts(const void * a, const void * b)
 {
 	FLT a2 = *(const FLT*)a;
 	FLT b2 = *(const FLT*)b;
@@ -411,7 +411,7 @@ FLT getPointFitness(Point pointIn, PointsAndAngle *pna, size_t pnaCount, int deu
 			worstFitness = fitness;
 		}
 
-		fitnesses[i] = fitness;
+		fitnesses[i] = FLT_FABS(fitness);
 		if (deubgPrint)
 		{
 			printf("  [%d, %d](%f)\n", pna[i].ai, pna[i].bi, fitness);
@@ -1534,7 +1534,7 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 				counter++;
 
 				// let's just do this occasionally for now...
-				if (counter % 12 == 0)
+				if (counter % 4 == 0)
 					QuickPose(so, 0);
 			}
 			if (1 == l->lh && axis) // only once per full cycle...
@@ -1544,7 +1544,7 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 				counter++;
 
 				// let's just do this occasionally for now...
-				if (counter % 12 == 0)
+				if (counter % 4 == 0)
 					QuickPose(so, 1);
 			}
 			// axis changed, time to increment the circular buffer index.
