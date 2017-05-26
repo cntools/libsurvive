@@ -399,7 +399,6 @@ FLT getPointFitness(Point pointIn, PointsAndAngle *pna, size_t pnaCount, int deu
 
 	FLT resultSum = 0;
 	FLT *fitnesses = alloca(sizeof(FLT) * pnaCount);
-	int i = 0, j = 0;
 
 	FLT worstFitness = 0;
 
@@ -409,8 +408,6 @@ FLT getPointFitness(Point pointIn, PointsAndAngle *pna, size_t pnaCount, int deu
 
 		if (worstFitness < fitness)
 		{
-			i = pna[i].ai;
-			j = pna[i].bi;
 			worstFitness = fitness;
 		}
 
@@ -1537,7 +1534,7 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 				counter++;
 
 				// let's just do this occasionally for now...
-				if (counter % 4 == 0)
+				if (counter % 12 == 0)
 					QuickPose(so, 0);
 			}
 			if (1 == l->lh && axis) // only once per full cycle...
@@ -1547,7 +1544,7 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 				counter++;
 
 				// let's just do this occasionally for now...
-				if (counter % 4 == 0)
+				if (counter % 12 == 0)
 					QuickPose(so, 1);
 			}
 			// axis changed, time to increment the circular buffer index.
