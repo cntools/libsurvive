@@ -104,6 +104,45 @@ void rotatearoundaxis(FLT *outvec3, FLT *invec3, FLT *axis, FLT angle)
 	outvec3[2] = w*(u*x + v*y + w*z)*(1-c)   +   z*c   +   (-v*x + u*y)*s;
 }
 
+void angleaxisfrom2vect(FLT *angle, FLT *axis, FLT *src, FLT *dest)
+{
+	FLT v0[3];
+	FLT v1[3];
+	normalize3d(v0, src);
+	normalize3d(v1, dest);
+
+	FLT d = dot3d(v0, v1);// v0.dotProduct(v1);
+
+	// If dot == 1, vectors are the same
+	// If dot == -1, vectors are opposite
+	if (FLT_FABS(d - 1) < DEFAULT_EPSILON)
+	{
+		axis[0] = 0;
+		axis[1] = 1;
+		axis[2] = 0;
+		*angle = 0;
+		return;
+	}
+	else if (FLT_FABS(d + 1) < DEFAULT_EPSILON)
+	{
+		axis[0] = 0;
+		axis[1] = 1;
+		axis[2] = 0;
+		*angle = LINMATHPI;
+		return;
+	}
+
+	FLT v0Len = magnitude3d(v0);
+	FLT v1Len = magnitude3d(v1);
+
+	*angle = FLT_ACOS(d / (v0Len * v1Len));
+
+	//cross3d(c, v0, v1);
+	cross3d(axis, v1, v0);
+
+}
+
+
 /////////////////////////////////////QUATERNIONS//////////////////////////////////////////
 //Originally from Mercury (Copyright (C) 2009 by Joshua Allen, Charles Lohr, Adam Lowman)
 //Under the mit/X11 license.

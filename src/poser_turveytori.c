@@ -1471,22 +1471,22 @@ static void QuickPose(SurviveObject *so, int lh)
 			// it basically ignores all the logic to find the most reliable data points
 			// and just grabs a sample and uses it.
 
-			static int countdown = 5;
+			//static int countdown = 5;
 
-			if (countdown > 0 && so->ctx->objs[0] == so)
-			{
-				SolveForLighthouse(pos, quat, to, so, 0, lh, 1);
-				countdown--;
-			}
-			else
-			{
-				SolveForLighthouse(pos, quat, to, so, 0, lh, 0);
-			}
+			//if (countdown > 0 && so->ctx->objs[0] == so)
+			//{
+			//	SolveForLighthouse(pos, quat, to, so, 0, lh, 1);
+			//	countdown--;
+			//}
+			//else
+			//{
+			//	SolveForLighthouse(pos, quat, to, so, 0, lh, 0);
+			//}
 			
 
 
 
-			//SolveForLighthouse(pos, quat, to, so, 0, lh, 0);
+			SolveForLighthouse(pos, quat, to, so, 0, lh, 0);
 			printf("!\n");
 		}
 
@@ -1600,6 +1600,11 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 		//quatfrom2vectors(downQuat, negZ, td->down);
 		quatfrom2vectors(downQuat, td->down, negZ);
 
+		FLT angle;
+		FLT axis[3];
+		angleaxisfrom2vect(&angle, &axis, td->down, negZ);
+		//angleaxisfrom2vect(&angle, &axis, negZ, td->down);
+
 		{
 			int sensorCount = 0;
 
@@ -1611,8 +1616,12 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 					FLT norm[3] = { so->sensor_normals[i * 3 + 0] , so->sensor_normals[i * 3 + 1] , so->sensor_normals[i * 3 + 2] };
 					FLT point[3] = { so->sensor_locations[i * 3 + 0] , so->sensor_locations[i * 3 + 1] , so->sensor_locations[i * 3 + 2] };
 
-					quatrotatevector(norm, downQuat, norm);
-					quatrotatevector(point, downQuat, point);
+					//quatrotatevector(norm, downQuat, norm);
+					//quatrotatevector(point, downQuat, point);
+
+					rotatearoundaxis(norm, norm, axis, angle);
+					rotatearoundaxis(point, point, axis, angle);
+
 
 					to->sensor[sensorCount].normal.x = norm[0];
 					to->sensor[sensorCount].normal.y = norm[1];
@@ -1643,8 +1652,12 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 					FLT norm[3] = { so->sensor_normals[i * 3 + 0] , so->sensor_normals[i * 3 + 1] , so->sensor_normals[i * 3 + 2] };
 					FLT point[3] = { so->sensor_locations[i * 3 + 0] , so->sensor_locations[i * 3 + 1] , so->sensor_locations[i * 3 + 2] };
 
-					quatrotatevector(norm, downQuat, norm);
-					quatrotatevector(point, downQuat, point);
+					//quatrotatevector(norm, downQuat, norm);
+					//quatrotatevector(point, downQuat, point);
+
+					rotatearoundaxis(norm, norm, axis, angle);
+					rotatearoundaxis(point, point, axis, angle);
+
 
 					to->sensor[sensorCount].normal.x = norm[0];
 					to->sensor[sensorCount].normal.y = norm[1];

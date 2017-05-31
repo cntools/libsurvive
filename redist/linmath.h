@@ -71,6 +71,8 @@ FLT magnitude3d(const FLT * a );
 FLT anglebetween3d( FLT * a, FLT * b );
 
 void rotatearoundaxis(FLT *outvec3, FLT *invec3, FLT *axis, FLT angle);
+void angleaxisfrom2vect(FLT *angle, FLT *axis, FLT *src, FLT *dest);
+
 //Quaternion things...
 
 void quatsetnone( FLT * q );
