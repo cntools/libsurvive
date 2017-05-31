@@ -1467,7 +1467,26 @@ static void QuickPose(SurviveObject *so, int lh)
 		{
 			FLT pos[3], quat[4];
 
-			SolveForLighthouse(pos, quat, to, so, 0, lh, 0);
+			// TODO: This countdown stuff is a total hack!
+			// it basically ignores all the logic to find the most reliable data points
+			// and just grabs a sample and uses it.
+
+			static int countdown = 5;
+
+			if (countdown > 0 && so->ctx->objs[0] == so)
+			{
+				SolveForLighthouse(pos, quat, to, so, 0, lh, 1);
+				countdown--;
+			}
+			else
+			{
+				SolveForLighthouse(pos, quat, to, so, 0, lh, 0);
+			}
+			
+
+
+
+			//SolveForLighthouse(pos, quat, to, so, 0, lh, 0);
 			printf("!\n");
 		}
 

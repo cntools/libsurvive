@@ -134,8 +134,8 @@ char* sensor_name[32];
 void DisplayPose(SurvivePose pose, size_t xResolution, size_t yResolution)
 {
 	const FLT toScale = 2.0 / yResolution; // 2 meters across yResolution pixels
-	const int windowCenterX = xResolution / 2;
-	const int windowCenterY = yResolution / 2;
+	const int windowCenterX = (int)xResolution / 2;
+	const int windowCenterY = (int)yResolution / 2;
 
 	const FLT sizeScale = 100.0; // used to indicate change in size with change in Z
 	const int  minRectSize = 10; // size at z=0
@@ -148,10 +148,10 @@ void DisplayPose(SurvivePose pose, size_t xResolution, size_t yResolution)
 
 	int x1, x2, y1, y2;
 
-	x1 = windowCenterX - minRectSize - ((pose.Pos[2] * 40.0)) + (pose.Pos[0] * sizeScale);
-	y1 = windowCenterY - minRectSize - ((pose.Pos[2] * 40.0)) + (pose.Pos[1] * sizeScale);
-	x2 = windowCenterX + minRectSize + ((pose.Pos[2] * 40.0)) + (pose.Pos[0] * sizeScale);
-	y2 = windowCenterY + minRectSize + ((pose.Pos[2] * 40.0)) + (pose.Pos[1] * sizeScale);
+	x1 = (int)(windowCenterX - minRectSize - ((pose.Pos[2] * 40.0)) + (pose.Pos[0] * sizeScale));
+	y1 = (int)(windowCenterY - minRectSize - ((pose.Pos[2] * 40.0)) + (pose.Pos[1] * sizeScale));
+	x2 = (int)(windowCenterX + minRectSize + ((pose.Pos[2] * 40.0)) + (pose.Pos[0] * sizeScale));
+	y2 = (int)(windowCenterY + minRectSize + ((pose.Pos[2] * 40.0)) + (pose.Pos[1] * sizeScale));
 	FLT xCenter = windowCenterX + (pose.Pos[0] * sizeScale);
 	FLT yCenter = windowCenterY + (pose.Pos[1] * sizeScale);
 
@@ -172,19 +172,19 @@ void DisplayPose(SurvivePose pose, size_t xResolution, size_t yResolution)
 		tmp1[1] = 0;
 		tmp1[2] = 0;
 
-		quatrotatevector(&tmp1out, pose.Rot, tmp1);
+		quatrotatevector(tmp1out, pose.Rot, tmp1);
 
 		tmp2[0] = minRectSize + ((pose.Pos[2] * 40.0));
 		tmp2[1] = 0;
 		tmp2[2] = 0;
 
-		quatrotatevector(&tmp2out, pose.Rot, tmp2);
+		quatrotatevector(tmp2out, pose.Rot, tmp2);
 
 		CNFGTackSegment(
-			windowCenterX + (pose.Pos[0] * sizeScale) + tmp1out[0],
-			windowCenterY + (pose.Pos[1] * sizeScale) + tmp1out[1],
-			windowCenterX + (pose.Pos[0] * sizeScale) + tmp2out[0],
-			windowCenterY + (pose.Pos[1] * sizeScale) + tmp2out[1]);
+			(short)(windowCenterX + (pose.Pos[0] * sizeScale) + tmp1out[0]),
+			(short)(windowCenterY + (pose.Pos[1] * sizeScale) + tmp1out[1]),
+			(short)(windowCenterX + (pose.Pos[0] * sizeScale) + tmp2out[0]),
+			(short)(windowCenterY + (pose.Pos[1] * sizeScale) + tmp2out[1]));
 	}
 
 	// line for the (0,-y) to (0,+y))
@@ -198,19 +198,19 @@ void DisplayPose(SurvivePose pose, size_t xResolution, size_t yResolution)
 		tmp1[1] = -minRectSize - ((pose.Pos[2] * 40.0));
 		tmp1[2] = 0;
 
-		quatrotatevector(&tmp1out, pose.Rot, tmp1);
+		quatrotatevector(tmp1out, pose.Rot, tmp1);
 
 		tmp2[0] = 0;
 		tmp2[1] = minRectSize + ((pose.Pos[2] * 40.0));
 		tmp2[2] = 0;
 
-		quatrotatevector(&tmp2out, pose.Rot, tmp2);
+		quatrotatevector(tmp2out, pose.Rot, tmp2);
 
 		CNFGTackSegment(
-			windowCenterX + (pose.Pos[0] * sizeScale) + tmp1out[0],
-			windowCenterY + (pose.Pos[1] * sizeScale) + tmp1out[1],
-			windowCenterX + (pose.Pos[0] * sizeScale) + tmp2out[0],
-			windowCenterY + (pose.Pos[1] * sizeScale) + tmp2out[1]);
+			(short)(windowCenterX + (pose.Pos[0] * sizeScale) + tmp1out[0]),
+			(short)(windowCenterY + (pose.Pos[1] * sizeScale) + tmp1out[1]),
+			(short)(windowCenterX + (pose.Pos[0] * sizeScale) + tmp2out[0]),
+			(short)(windowCenterY + (pose.Pos[1] * sizeScale) + tmp2out[1]));
 	}
 
 	// Small line to indicate (0,+y) 
@@ -224,19 +224,19 @@ void DisplayPose(SurvivePose pose, size_t xResolution, size_t yResolution)
 		tmp1[2] = 0;
 		tmp1[0] = tmp1[1] * 0.3;
 
-		quatrotatevector(&tmp1out, pose.Rot, tmp1);
+		quatrotatevector(tmp1out, pose.Rot, tmp1);
 
 		tmp2[1] = minRectSize + ((pose.Pos[2] * 40.0));
 		tmp2[2] = 0;
 		tmp2[0] = -(tmp1[1] * 0.3);
 
-		quatrotatevector(&tmp2out, pose.Rot, tmp2);
+		quatrotatevector(tmp2out, pose.Rot, tmp2);
 
 		CNFGTackSegment(
-			windowCenterX + (pose.Pos[0] * sizeScale) + tmp1out[0],
-			windowCenterY + (pose.Pos[1] * sizeScale) + tmp1out[1],
-			windowCenterX + (pose.Pos[0] * sizeScale) + tmp2out[0],
-			windowCenterY + (pose.Pos[1] * sizeScale) + tmp2out[1]);
+			(short)(windowCenterX + (pose.Pos[0] * sizeScale) + tmp1out[0]),
+			(short)(windowCenterY + (pose.Pos[1] * sizeScale) + tmp1out[1]),
+			(short)(windowCenterX + (pose.Pos[0] * sizeScale) + tmp2out[0]),
+			(short)(windowCenterY + (pose.Pos[1] * sizeScale) + tmp2out[1]));
 	}
 
 
