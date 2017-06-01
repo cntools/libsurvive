@@ -1366,7 +1366,7 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 	wcPos[2] += so->ctx->bsd[lh].Pose.Pos[2];
 
 	FLT newOrientation[4];
-	//quatrotateabout(newOrientation, rotQuat, so->ctx->bsd[lh].Pose.Rot); // turns the wrong way 
+	quatrotateabout(newOrientation, rotQuat, so->ctx->bsd[lh].Pose.Rot); // turns the wrong way 
 	//quatrotateabout(newOrientation, so->ctx->bsd[lh].Pose.Rot, rotQuat); // turns the wrong way 
 
 	FLT invRot[4];
@@ -1382,7 +1382,7 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 
 	//FLT invRot[4];
 	//quatgetreciprocal(invRot, rotQuat);
-	quatrotateabout(newOrientation, invRot, invPoseRot);  // turns correctly, rotations aligned  <-- This seems to be the best.
+	//quatrotateabout(newOrientation, invRot, invPoseRot);  // turns correctly, rotations aligned  <-- This seems to be the best.
 	//quatrotateabout(newOrientation, invPoseRot, invRot);  // turns correctly, rotations aligned, (x & y flipped?)
 
 	so->OutPose.Pos[0] = wcPos[0];
