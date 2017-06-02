@@ -1151,7 +1151,7 @@ void SolveForRotation(FLT rotOut[4], TrackedObject *obj, Point lh)
 }
 
 
-static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *obj, SurviveObject *so, char doLogOutput, int lh, int setLhCalibration)
+static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *obj, SurviveObject *so, char doLogOutput,const int lh,const int setLhCalibration)
 {
 	ToriData *toriData = so->PoserData;
 
@@ -1384,6 +1384,8 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 	//quatgetreciprocal(invRot, rotQuat);
 	//quatrotateabout(newOrientation, invRot, invPoseRot);  // turns correctly, rotations aligned  <-- This seems to be the best.
 	//quatrotateabout(newOrientation, invPoseRot, invRot);  // turns correctly, rotations aligned, (x & y flipped?)
+
+	quatnormalize(newOrientation, newOrientation);
 
 	so->OutPose.Pos[0] = wcPos[0];
 	so->OutPose.Pos[1] = wcPos[1];
@@ -1641,7 +1643,7 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 
 		FLT angle;
 		FLT axis[3];
-		angleaxisfrom2vect(&angle, &axis, td->down, negZ);
+		angleaxisfrom2vect(&angle, axis, td->down, negZ);
 		//angleaxisfrom2vect(&angle, &axis, negZ, td->down);
 
 		{
