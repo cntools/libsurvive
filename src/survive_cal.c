@@ -218,7 +218,7 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 			int i;
 			for( i = 0; i < NUM_LIGHTHOUSES; i++ )
 				if( ctx->bsd[i].OOTXSet == 0 ) break;
-			if( i == NUM_LIGHTHOUSES ) cd->stage = 2;  //TODO: Make this configuratble to allow single lighthouse.
+			if( i == ctx->activeLighthouses ) cd->stage = 2;  //TODO: Make this configuratble to allow single lighthouse.
 		}
 		break;
 	case 3: //Look for light sync lengths.
@@ -309,7 +309,7 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 			cd->found_common = 1;
 			for( i = 0; i < cd->numPoseObjects; i++ )
 			//for( i = 0; i < MAX_SENSORS_TO_CAL/SENSORS_PER_OBJECT; i++ )
-			for( j = 0; j < NUM_LIGHTHOUSES; j++ )
+			for( j = 0; j < ctx->activeLighthouses; j++ )
 			{
 				int sensors_visible = 0;
 				for( k = 0; k < SENSORS_PER_OBJECT; k++ )

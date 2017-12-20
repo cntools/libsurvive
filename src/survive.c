@@ -75,6 +75,8 @@ SurviveContext * survive_init( int headless )
 
 	config_read(ctx, "config.json");
 
+	ctx->activeLighthouses = config_read_uint32(ctx->global_config_values, "LighthouseCount", 2);
+
 	ctx->faultfunction = survivefault;
 	ctx->notefunction = survivenote;
 
