@@ -102,6 +102,7 @@ struct SurviveContext
 	struct config_group* lh_config; //lighthouse configs
 
 	//Calibration data:
+	int activeLighthouses;
 	BaseStationData bsd[NUM_LIGHTHOUSES];
 	SurviveCalData * calptr; //If and only if the calibration subsystem is attached.
 

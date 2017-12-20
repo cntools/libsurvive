@@ -14,6 +14,7 @@
 
 struct SurviveContext * ctx;
 int  quit = 0;
+static LighthouseCount = 0;
 
 void HandleKey( int keycode, int bDown )
 {
@@ -342,6 +343,7 @@ int SurviveThreadLoaded=0;
 void * SurviveThread(void *jnk)
 {
 	ctx = survive_init( 0 );
+
 
 	uint8_t i =0;
 	for (i=0;i<32;++i) {
