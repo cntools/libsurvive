@@ -96,7 +96,8 @@ SurviveContext * survive_init( int headless )
 	}
 
 	i = 0;
-	const char * PreferredPoser = config_read_str( ctx->global_config_values, "DefaultPoser", "PoserDummy" );
+	//const char * PreferredPoser = config_read_str(ctx->global_config_values, "DefaultPoser", "PoserDummy");
+	const char * PreferredPoser = config_read_str(ctx->global_config_values, "DefaultPoser", "PoserTurveyTori");
 	PoserCB PreferredPoserCB = 0;
 	const char * FirstPoser = 0;
 	printf( "Available posers:\n" );
@@ -118,6 +119,9 @@ SurviveContext * survive_init( int headless )
 	{
 		ctx->objs[i]->PoserFn = PreferredPoserCB;
 	}
+
+	// saving the config extra to make sure that the user has a config file they can change.
+	config_save(ctx, "config.json");
 
 	return ctx;
 }

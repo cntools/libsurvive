@@ -15,6 +15,8 @@
 #endif
 
 
+static int ttDebug = 0;
+
 #define PointToFlts(x) ((FLT*)(x))
 
 typedef struct
@@ -412,7 +414,7 @@ FLT getPointFitness(Point pointIn, PointsAndAngle *pna, size_t pnaCount, int deu
 		}
 
 		fitnesses[i] = FLT_FABS(fitness);
-		if (deubgPrint)
+		if (0)
 		{
 			printf("  [%d, %d](%f)\n", pna[i].ai, pna[i].bi, fitness);
 		}
@@ -585,7 +587,7 @@ static Point RefineEstimateUsingModifiedGradientDescent1(Point initialEstimate, 
 			break;
 		}
 	}
-	printf(" i=%3d ", i);
+	if (ttDebug) printf(" i=%3d ", i);
 
 	return lastPoint;
 }
@@ -910,7 +912,7 @@ static void WhereIsTheTrackedObjectAxisAngle(FLT *posOut, FLT *rotation, Point l
 	
 	rotatearoundaxis(posOut, posOut, rotation, rotation[3]);
 
-	printf("{% 04.4f, % 04.4f, % 04.4f}  ", posOut[0], posOut[1], posOut[2]);
+	if (ttDebug) printf("{% 04.4f, % 04.4f, % 04.4f}  ", posOut[0], posOut[1], posOut[2]);
 }
 
 static void RefineRotationEstimateAxisAngle(FLT *rotOut, Point lhPoint, FLT *initialEstimate, TrackedObject *obj)
@@ -1011,7 +1013,7 @@ static void RefineRotationEstimateAxisAngle(FLT *rotOut, Point lhPoint, FLT *ini
 			break;
 		}
 	}
-	printf(" Ri=%d ", i);
+	if (ttDebug) printf(" Ri=%d ", i);
 }
 static void WhereIsTheTrackedObjectQuaternion(FLT *rotation, Point lhPoint)
 {
@@ -1020,7 +1022,7 @@ static void WhereIsTheTrackedObjectQuaternion(FLT *rotation, Point lhPoint)
 	
 	//rotatearoundaxis(objPoint, objPoint, reverseRotation, reverseRotation[3]);
 	quatrotatevector(objPoint, rotation, objPoint);
-	printf("(%f, %f, %f)\n", objPoint[0], objPoint[1], objPoint[2]);
+	if (ttDebug) printf("(%f, %f, %f)\n", objPoint[0], objPoint[1], objPoint[2]);
 }
 
 
@@ -1106,7 +1108,7 @@ static void RefineRotationEstimateQuaternion(FLT *rotOut, Point lhPoint, FLT *in
 			//printf("+  %8.8f, (%8.8f, %8.8f, %8.8f) %f\n", newMatchFitness, point4[0], point4[1], point4[2], point4[3]);
 //#endif
 			g *= 1.02;
-			printf("+");
+			if (ttDebug) printf("+");
 			WhereIsTheTrackedObjectQuaternion(rotOut, lhPoint);
 		}
 		else
@@ -1115,12 +1117,12 @@ static void RefineRotationEstimateQuaternion(FLT *rotOut, Point lhPoint, FLT *in
 			//printf("-         , %f\n", point4[3]);
 //#endif
 			g *= 0.7;
-			printf("-");
+			if (ttDebug) printf("-");
 		}
 
 
 	}
-	printf("Ri=%3d  Fitness=%3f ", i, lastMatchFitness);
+	if (ttDebug) printf("Ri=%3d  Fitness=%3f ", i, lastMatchFitness);
 }
 
 
@@ -1280,7 +1282,7 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 	FLT fitGd = getPointFitness(refinedEstimateGd, pna, pnaCount, 0);
 
 	FLT distance = FLT_SQRT(SQUARED(refinedEstimateGd.x) + SQUARED(refinedEstimateGd.y) + SQUARED(refinedEstimateGd.z));
-	printf(" la(% 04.4f) SnsrCnt(%2d) LhPos:(% 04.4f, % 04.4f, % 04.4f) Dist: % 08.8f ", largestAngle, (int)obj->numSensors, refinedEstimateGd.x, refinedEstimateGd.y, refinedEstimateGd.z, distance);
+	if (ttDebug) printf(" la(% 04.4f) SnsrCnt(%2d) LhPos:(% 04.4f, % 04.4f, % 04.4f) Dist: % 08.8f ", largestAngle, (int)obj->numSensors, refinedEstimateGd.x, refinedEstimateGd.y, refinedEstimateGd.z, distance);
 	//printf("Distance is %f,   Fitness is %f\n", distance, fitGd);
 
 	FLT rot[4]; // this is axis/ angle rotation, not a quaternion!
@@ -1405,7 +1407,16 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 	so->FromLHPose[lh].Rot[2] = so->OutPose.Rot[2];
 	so->FromLHPose[lh].Rot[3] = so->OutPose.Rot[3];
 
-	printf(" <% 04.4f, % 04.4f, % 04.4f >  ", wcPos[0], wcPos[1], wcPos[2]);
+	if (ttDebug) printf(" <% 04.4f, % 04.4f, % 04.4f >  ", wcPos[0], wcPos[1], wcPos[2]);
+
+	posOut[0] = wcPos[0];
+	posOut[1] = wcPos[1];
+	posOut[2] = wcPos[2];
+
+	quatOut[0] = so->OutPose.Rot[0];
+	quatOut[1] = so->OutPose.Rot[1];
+	quatOut[2] = so->OutPose.Rot[2];
+	quatOut[3] = so->OutPose.Rot[3];
 
 	if (logFile)
 	{
@@ -1417,6 +1428,7 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 	toriData->lastLhPos[lh].x = refinedEstimateGd.x;
 	toriData->lastLhPos[lh].y = refinedEstimateGd.y;
 	toriData->lastLhPos[lh].z = refinedEstimateGd.z;
+
 
 	return refinedEstimateGd;
 }
@@ -1528,7 +1540,10 @@ static void QuickPose(SurviveObject *so, int lh)
 
 
 			SolveForLighthouse(pos, quat, to, so, 0, lh, 0);
-			printf("!\n");
+
+			printf("P&O: [% 08.8f,% 08.8f,% 08.8f] [% 08.8f,% 08.8f,% 08.8f,% 08.8f]\n", pos[0], pos[1], pos[2], quat[0], quat[1], quat[2], quat[3]);
+
+			if (ttDebug) printf("!\n");
 		}
 
 		
@@ -1547,6 +1562,14 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 	SurviveContext * ctx = so->ctx;
 	ToriData * td = so->PoserData;
 
+	static int firstRun = 1;
+
+	if (firstRun)
+	{
+		ttDebug = config_read_uint32(ctx->global_config_values, "TurveyToriDebug", 0);
+
+		firstRun = 0;
+	}
 
 	if (!td)
 	{
