@@ -103,7 +103,7 @@ void config_read_lighthouse(config_group* lh_config, BaseStationData* bsd, uint8
 		}
 	}
 
-	assert(found); // throw an assertion if we didn't find it...  Is this good?  not necessarily?
+//	assert(found); // throw an assertion if we didn't find it...  Is this good?  not necessarily?
 	if (!found)
 	{
 		return;

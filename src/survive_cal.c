@@ -124,8 +124,11 @@ void survive_cal_install( struct SurviveContext * ctx )
 
 	cd->numPoseObjects = 0;
 
-	const char * RequiredTrackersForCal = config_read_str( ctx->global_config_values, "RequiredTrackersForCal", "HMD,WM0,WM1" );
-	const uint32_t AllowAllTrackersForCal = config_read_uint32( ctx->global_config_values, "AllowAllTrackersForCal", 0 );
+	// setting the required trackers for calibration to be permissive to make it easier for a newbie to start-- 
+	// basically, libsurvive will detect whatever they have plugged in and start using that.  
+//	const char * RequiredTrackersForCal = config_read_str(ctx->global_config_values, "RequiredTrackersForCal", "HMD,WM0,WM1");	
+	const char * RequiredTrackersForCal = config_read_str(ctx->global_config_values, "RequiredTrackersForCal", ""); 
+	const uint32_t AllowAllTrackersForCal = config_read_uint32( ctx->global_config_values, "AllowAllTrackersForCal", 1 );
 	size_t requiredTrackersFound = 0;
 
 	for (int j=0; j < ctx->objs_ct; j++)
@@ -169,7 +172,8 @@ void survive_cal_install( struct SurviveContext * ctx )
 	}
 
 	const char * DriverName;
-	const char * PreferredPoser = config_read_str( ctx->global_config_values, "ConfigPoser", "PoserCharlesSlow" );
+//	const char * PreferredPoser = config_read_str(ctx->global_config_values, "ConfigPoser", "PoserCharlesSlow");
+	const char * PreferredPoser = config_read_str(ctx->global_config_values, "ConfigPoser", "PoserTurveyTori");
 	PoserCB PreferredPoserCB = 0;
 	const char * FirstPoser = 0;
 	printf( "Available posers:\n" );
