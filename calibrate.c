@@ -238,30 +238,30 @@ void DisplayPose(SurvivePose pose, size_t xResolution, size_t yResolution)
 			yResolution -(short)(windowCenterY + (pose.Pos[1] * sizeScale) + tmp2out[1]));
 	}
 
-	// Small line to indicate (0,+y) 
+	// Small line to indicate (+x,0)
 	{
 		FLT tmp1[3];
 		FLT tmp1out[3];
 		FLT tmp2[3];
 		FLT tmp2out[3];
 
-		tmp1[1] = minRectSize + ((pose.Pos[2] * 40.0));
+		tmp1[0] = minRectSize + ((pose.Pos[2] * 40.0));
 		tmp1[2] = 0;
-		tmp1[0] = tmp1[1] * 0.3;
+		tmp1[1] = tmp1[0] * 0.3;
 
 		quatrotatevector(tmp1out, pose.Rot, tmp1);
 
-		tmp2[1] = minRectSize + ((pose.Pos[2] * 40.0));
+		tmp2[0] = minRectSize + ((pose.Pos[2] * 40.0));
 		tmp2[2] = 0;
-		tmp2[0] = -(tmp1[1] * 0.3);
+		tmp2[1] = -(tmp1[0] * 0.3);
 
 		quatrotatevector(tmp2out, pose.Rot, tmp2);
 
 		CNFGTackSegment(
 			(short)(windowCenterX + (pose.Pos[0] * sizeScale) + tmp1out[0]),
-			yResolution -(short)(windowCenterY + (pose.Pos[1] * sizeScale) + tmp1out[1]),
+			yResolution - (short)(windowCenterY + (pose.Pos[1] * sizeScale) + tmp1out[1]),
 			(short)(windowCenterX + (pose.Pos[0] * sizeScale) + tmp2out[0]),
-			yResolution -(short)(windowCenterY + (pose.Pos[1] * sizeScale) + tmp2out[1]));
+			yResolution - (short)(windowCenterY + (pose.Pos[1] * sizeScale) + tmp2out[1]));
 	}
 
 
