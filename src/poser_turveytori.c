@@ -1161,8 +1161,8 @@ static void RefineRotationEstimateQuaternion(FLT *rotOut, Point lhPoint, FLT *in
 //#ifdef TORI_DEBUG
 			//printf("+  %8.8f, (%8.8f, %8.8f, %8.8f) %f\n", newMatchFitness, point4[0], point4[1], point4[2], point4[3]);
 //#endif
-			g *= 1.02;
-			 printf("+");
+			g *= 1.04;
+			 //printf("+");
 			//WhereIsTheTrackedObjectQuaternion(rotOut, lhPoint);
 		}
 		else
@@ -1171,7 +1171,8 @@ static void RefineRotationEstimateQuaternion(FLT *rotOut, Point lhPoint, FLT *in
 			//printf("-         , %f\n", point4[3]);
 //#endif
 			g *= 0.7;
-			printf("-");
+			//printf("-");
+			//printf("%3f", lastMatchFitness);
 		}
 
 
@@ -1404,8 +1405,6 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 	//	toriData->lastLhRotQuat[lh][3] = rotQuat[3];
 	//}
 
-	WhereIsTheTrackedObjectAxisAngle(objPos2, rot, refinedEstimateGd);
-	WhereIsTheTrackedObjectQuaternion(objPos, rotQuat, refinedEstimateGd);
 
 
 	FLT rotQuat2[4];
@@ -1414,6 +1413,10 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 	quatfromaxisangle(rotQuat2, rot, rot[3]);
 	axisanglefromquat(&(rot2[3]), rot2, rotQuat);
 
+
+//	WhereIsTheTrackedObjectAxisAngle(objPos, rot, refinedEstimateGd); // this is the original axis angle one
+	WhereIsTheTrackedObjectAxisAngle(objPos, rot2, refinedEstimateGd); // this one is axis angle, but using data derived by quaternions.
+	//	WhereIsTheTrackedObjectQuaternion(objPos, rotQuat, refinedEstimateGd);  <--------------This is hte one we need to use, might need to be fixed.
 
 	//{
 		//FLT tmpPos[3] = {refinedEstimateGd.x, refinedEstimateGd.y, refinedEstimateGd.z};
