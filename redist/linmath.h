@@ -72,6 +72,8 @@ FLT anglebetween3d( FLT * a, FLT * b );
 
 void rotatearoundaxis(FLT *outvec3, FLT *invec3, FLT *axis, FLT angle);
 void angleaxisfrom2vect(FLT *angle, FLT *axis, FLT *src, FLT *dest);
+void axisanglefromquat(FLT *angle, FLT *axis, FLT *quat);
+
 
 //Quaternion things...
 

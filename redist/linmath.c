@@ -143,6 +143,42 @@ void angleaxisfrom2vect(FLT *angle, FLT *axis, FLT *src, FLT *dest)
 }
 
 
+void axisanglefromquat(FLT *angle, FLT *axis, FLT *q)
+{
+	// this way might be fine, too.
+	//FLT dist = FLT_SQRT((q[1] * q[1]) + (q[2] * q[2]) + (q[3] * q[3]));
+	//
+	//*angle = 2 * FLT_ATAN2(dist, q[0]);
+
+	//axis[0] = q[1] / dist;
+	//axis[1] = q[2] / dist;
+	//axis[2] = q[3] / dist;
+	
+
+	// Good mathematical foundation for this algorithm found here:
+	// http://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToAngle/index.htm
+
+	FLT tmp[4] = { q[0], q[1], q[2], q[3] };
+
+	quatnormalize(tmp, q);
+
+	if (FLT_FABS(q[0] - 1) < FLT_EPSILON)
+	{
+		// we have a degenerate case where we're rotating approx. 0 degrees
+		*angle = 0;
+		axis[0] = 1;
+		axis[1] = 0;
+		axis[2] = 0;
+		return;
+	}
+
+	axis[0] = tmp[1] / sqrt(1 - (tmp[0] * tmp[0]));
+	axis[1] = tmp[2] / sqrt(1 - (tmp[0] * tmp[0]));
+	axis[2] = tmp[3] / sqrt(1 - (tmp[0] * tmp[0]));
+
+	*angle = 2 * FLT_ACOS(tmp[0]);
+}
+
 /////////////////////////////////////QUATERNIONS//////////////////////////////////////////
 //Originally from Mercury (Copyright (C) 2009 by Joshua Allen, Charles Lohr, Adam Lowman)
 //Under the mit/X11 license.
