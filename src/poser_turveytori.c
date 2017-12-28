@@ -1777,8 +1777,8 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 					FLT norm[3] = { so->sensor_normals[i * 3 + 0] , so->sensor_normals[i * 3 + 1] , so->sensor_normals[i * 3 + 2] };
 					FLT point[3] = { so->sensor_locations[i * 3 + 0] , so->sensor_locations[i * 3 + 1] , so->sensor_locations[i * 3 + 2] };
 
-					//quatrotatevector(norm, downQuat, norm);
-					//quatrotatevector(point, downQuat, point);
+					quatrotatevector(norm, downQuat, norm);
+					quatrotatevector(point, downQuat, point);
 
 					//rotatearoundaxis(norm, norm, axis, angle);
 					//rotatearoundaxis(point, point, axis, angle);
@@ -1813,8 +1813,8 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 					FLT norm[3] = { so->sensor_normals[i * 3 + 0] , so->sensor_normals[i * 3 + 1] , so->sensor_normals[i * 3 + 2] };
 					FLT point[3] = { so->sensor_locations[i * 3 + 0] , so->sensor_locations[i * 3 + 1] , so->sensor_locations[i * 3 + 2] };
 
-					//quatrotatevector(norm, downQuat, norm);
-					//quatrotatevector(point, downQuat, point);
+					quatrotatevector(norm, downQuat, norm);
+					quatrotatevector(point, downQuat, point);
 
 					//rotatearoundaxis(norm, norm, axis, angle);
 					//rotatearoundaxis(point, point, axis, angle);
@@ -1840,9 +1840,9 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 		}
 
 
-		// This code block rotates the lighthouse fixes to accound for any time the tracked object
+		// This code block rotates the lighthouse fixes to account for any time the tracked object
 		// is oriented other than +z = up
-		// This REALLY DOESN'T WORK!!!
+		 //This REALLY DOESN'T WORK!!!
 		//{
 		//	for (int lh = 0; lh < 2; lh++)
 		//	{
