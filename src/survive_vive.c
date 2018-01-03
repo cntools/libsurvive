@@ -939,6 +939,14 @@ void registerButtonEvent(SurviveObject *so, buttonEvent *event)
 					entry->eventType = BUTTON_EVENT_BUTTON_UP;
 				}
 				entry->buttonId = a;
+				if (entry->buttonId == 0)
+				{
+					// this fixes 2 issues.  First, is the a button id of 0 indicates no button pressed.
+					// second is that the trigger shows up as button 0 coming from the wireless controller,
+					// but we infer it from the position on the wired controller.  On the wired, we treat it
+					// as buttonId 24 (look further down in this function)
+					entry->buttonId = 24;
+				}
 				incrementAndPostButtonQueue(so->ctx);
 				entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
 			}
@@ -1049,31 +1057,46 @@ static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 
 	if( (type & 0xf0) == 0xf0 )
 	{
+		buttonEvent bEvent;
+		memset(&bEvent, 0, sizeof(bEvent));
+
 		propset |= 4;
 		//printf( "%02x %02x %02x %02x\n", qty, type, time1, time2 );
 		type &= ~0x10;
 
 		if( type & 0x01 )
 		{
+			
 			qty-=1;
-			w->buttonmask = POP1;
+			bEvent.pressedButtonsValid = 1;
+			bEvent.pressedButtons = POP1;
 
-			printf("buttonmask is %d\n", w->buttonmask);
+			//printf("buttonmask is %d\n", w->buttonmask);
 			type &= ~0x01;
 		}
 		if( type & 0x04 ) 
 		{
 			qty-=1;
-			w->axis1 = ( POP1 ) * 128; 
+			bEvent.triggerHighResValid = 1;
+			bEvent.triggerHighRes = ( POP1 ) * 128;
 			type &= ~0x04;
 		}
 		if( type & 0x02 )
 		{
 			qty-=4;
-			w->axis2 = POP2;
-			w->axis3 = POP2;
+			bEvent.touchpadHorizontalValid = 1;
+			bEvent.touchpadVerticalValid = 1;
+
+			bEvent.touchpadHorizontal = POP2;
+			bEvent.touchpadVertical = POP2;
 			type &= ~0x02;
 		}
+
+		if (bEvent.pressedButtonsValid || bEvent.triggerHighResValid || bEvent.touchpadHorizontalValid)
+		{
+			registerButtonEvent(w, &bEvent);
+		}
+
 
 		//XXX TODO: Is this correct?  It looks SO WACKY
 		type &= 0x7f;
