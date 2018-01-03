@@ -619,18 +619,31 @@ int survive_vive_send_magic(SurviveContext * ctx, void * drv, int magic_code, vo
 
 //#endif
 
-#if 0
-		for( int i = 0; i < 256; i++ )
+//#if 0		
+		for (int i = 0; i < 0xff; i++)
 		{
-			static uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0xff, 0, 0, 0, 0, 0, 0, 0 };
+			//uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0x7, 0 /*right*/, 0xFF /*period on*/, 0xFF/*period on*/, 0xFF/*period off*/, 0xFF/*period off*/, 0xFF /* repeat Count */, 0xFF /* repeat count */ };
+			//uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0x07, 0x00, 0xf4, 0x01, 0xb5, 0xa2, 0x01, 0x00 }; // data taken from Nairol's captures
+			uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0x07, 0x00, 0xf4, 0x01, 0xb5, 0xa2, 0x01, 0x00 }; 
 			//r = update_feature_report( sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof( vive_controller_haptic_pulse ) );
-			r = update_feature_report( sv->udev[USB_DEV_W_WATCHMAN1_LIGHTCAP], 0, vive_controller_haptic_pulse, sizeof( vive_controller_haptic_pulse ) );
-			SV_INFO( "UCR: %d", r );
-			if( r != sizeof( vive_controller_haptic_pulse ) ) return 5;
-			OGUSleep( 1000 );
+			r = update_feature_report(sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof(vive_controller_haptic_pulse));
+			SV_INFO("UCR: %d", r);
+			if (r != sizeof(vive_controller_haptic_pulse)) printf("HAPTIC FAILED **************************\n"); // return 5;
+			OGUSleep(1000);
+		}
+//#endif
+
+#if 0
+		// working code to turn off a wireless controller:
+		{
+			uint8_t vive_controller_off[64] = { 0xff, 0x9f, 0x04, 'o', 'f', 'f', '!' };
+			//r = update_feature_report( sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof( vive_controller_haptic_pulse ) );
+			r = update_feature_report(sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_off, sizeof(vive_controller_off));
+			SV_INFO("UCR: %d", r);
+			if (r != sizeof(vive_controller_off)) printf("OFF FAILED **************************\n"); // return 5;
+			OGUSleep(1000);
 		}
 #endif
-
 		//if (sv->udev[USB_DEV_TRACKER0])
 		//{
 		//	static uint8_t vive_magic_power_on[64] = {  0x04, 0x78, 0x29, 0x38 };
