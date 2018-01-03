@@ -865,6 +865,162 @@ void calibrate_gyro(SurviveObject* so, FLT* agm) {
 	}
 }
 
+typedef struct 
+{
+	// could use a bitfield here, but since this data is short-lived,
+	// the space savings probably isn't worth the processing overhead.
+	uint8_t pressedButtonsValid;
+	uint8_t triggerOfBatteryValid;
+	uint8_t batteryChargeValid;
+	uint8_t hardwareIdValid;
+	uint8_t touchpadHorizontalValid;
+	uint8_t touchpadVerticalValid;
+	uint8_t triggerHighResValid;
+
+	uint32_t pressedButtons;
+	uint16_t triggerOrBattery;
+	uint8_t  batteryCharge;
+	uint32_t hardwareId;
+	uint16_t touchpadHorizontal;
+	uint16_t touchpadVertical;
+	uint16_t triggerHighRes;
+} buttonEvent;
+
+void incrementAndPostButtonQueue(SurviveContext *ctx)
+{
+	ButtonQueueEntry *entry = &(ctx->buttonQueue.entry[ctx->buttonQueue.nextWriteIndex]);
+
+	if (OGGetSema(ctx->buttonQueue.buttonservicesem) >= BUTTON_QUEUE_MAX_LEN)
+	{
+		// There's not enough space to write this entry.  Clear it out and move along
+		memset(entry, 0, sizeof(ButtonQueueEntry));
+		return;
+	}
+	entry->isPopulated = 1;
+	ctx->buttonQueue.nextWriteIndex++;
+	// if we've exceeded the size of the buffer, loop around to the beginning.
+	if (ctx->buttonQueue.nextWriteIndex >= BUTTON_QUEUE_MAX_LEN)
+	{
+		ctx->buttonQueue.nextWriteIndex = 0;
+	}
+	OGUnlockSema(ctx->buttonQueue.buttonservicesem);
+
+	// clear out any old data in the entry so we always start with a clean slate.
+	entry = &(ctx->buttonQueue.entry[ctx->buttonQueue.nextWriteIndex]);
+	memset(entry, 0, sizeof(ButtonQueueEntry));
+}
+
+// important!  This must be the only place that we're posting to the buttonEntryQueue
+// if that ever needs to be changed, you will have to add locking so that only one
+// thread is posting at a time.
+void registerButtonEvent(SurviveObject *so, buttonEvent *event)
+{
+	ButtonQueueEntry *entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+
+	memset(entry, 0, sizeof(ButtonQueueEntry));
+
+	entry->so = so;
+	if (event->pressedButtonsValid)
+	{
+		//printf("trigger %8.8x\n", event->triggerHighRes);
+		for (int a=0; a < 16; a++)
+		{
+			if (((event->pressedButtons) & (1<<a)) != ((so->buttonmask) & (1<<a)))
+			{
+				// Hey, the button did something
+				if (event->pressedButtons & (1 << a))
+				{
+					// it went down
+					entry->eventType = BUTTON_EVENT_BUTTON_DOWN;
+				}
+				else
+				{
+					// it went up
+					entry->eventType = BUTTON_EVENT_BUTTON_UP;
+				}
+				entry->buttonId = a;
+				incrementAndPostButtonQueue(so->ctx);
+				entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+			}
+		}
+		// if the trigger button is depressed & it wasn't before
+		if ((((event->pressedButtons) & (0xff000000)) == 0xff000000) &&
+			((so->buttonmask) & (0xff000000)) != 0xff000000)
+		{
+			entry->eventType = BUTTON_EVENT_BUTTON_DOWN;
+			entry->buttonId = 24;
+			incrementAndPostButtonQueue(so->ctx);
+			entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+		}
+		// if the trigger button isn't depressed but it was before
+		else if ((((event->pressedButtons) & (0xff000000)) != 0xff000000) &&
+			((so->buttonmask) & (0xff000000)) == 0xff000000)
+		{
+			entry->eventType = BUTTON_EVENT_BUTTON_UP;
+			entry->buttonId = 24;
+			incrementAndPostButtonQueue(so->ctx);
+			entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+		}
+	}
+	if (event->triggerHighResValid)
+	{
+		if (so->axis1 != event->triggerHighRes)
+		{
+			entry->eventType = BUTTON_EVENT_AXIS_CHANGED;
+			entry->axis1Id = 1;
+			entry->axis1Val = event->triggerHighRes;
+			incrementAndPostButtonQueue(so->ctx);
+			entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+
+		}
+	}
+	if ((event->touchpadHorizontalValid) && (event->touchpadVerticalValid))
+	{
+		if ((so->axis2 != event->touchpadHorizontal) ||
+			(so->axis3 != event->touchpadVertical))
+		{
+			entry->eventType = BUTTON_EVENT_AXIS_CHANGED;
+			entry->axis1Id = 2;
+			entry->axis1Val = event->touchpadHorizontal;
+			entry->axis2Id = 3;
+			entry->axis2Val = event->touchpadVertical;
+			incrementAndPostButtonQueue(so->ctx);
+			entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+
+		}
+	}
+
+	if (event->pressedButtonsValid)
+	{
+		so->buttonmask = event->pressedButtons;
+	}
+	if (event->batteryChargeValid)
+	{
+		so->charge = event->batteryCharge;
+	}
+	if (event->touchpadHorizontalValid)
+	{
+		so->axis2 = event->touchpadHorizontal;
+	}
+	if (event->touchpadVerticalValid)
+	{
+		so->axis3 = event->touchpadVertical;
+	}
+	if (event->triggerHighResValid)
+	{
+		so->axis1 = event->triggerHighRes;
+	}
+}
+
+uint8_t isPopulated;  //probably can remove this given the semaphore in the parent struct.   helps with debugging
+uint8_t eventType;
+uint8_t buttonId;
+uint8_t axis1Id;
+uint16_t axis1Val;
+uint8_t axis2Id;
+uint16_t axis2Val;
+SurviveObject *so;
+
 
 static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 {
@@ -885,6 +1041,8 @@ static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 	uint8_t qty = POP1;
 	uint8_t time2 = POP1;
 	uint8_t type = POP1;
+
+
 	qty-=2;
 	int propset = 0;
 	int doimu = 0;
@@ -899,6 +1057,8 @@ static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 		{
 			qty-=1;
 			w->buttonmask = POP1;
+
+			printf("buttonmask is %d\n", w->buttonmask);
 			type &= ~0x01;
 		}
 		if( type & 0x04 ) 
@@ -1237,7 +1397,7 @@ void survive_data_cb( SurviveUSBInterface * si )
 		}
 		else if( id == 38 )
 		{
-			w->ison = 0;
+			w->ison = 0; // turning off
 		}
 		else
 		{
@@ -1304,32 +1464,53 @@ void survive_data_cb( SurviveUSBInterface * si )
 			//0x3E	uint8	1	someBitFieldMaybe	0x00 : ping / 0x64 : user input
 			//0x3F ? 1 ? unknown
 
-			typedef struct
-			{
-				//uint8_t reportId;
-				uint16_t reportType;
-				uint32_t reportCount;
-				uint32_t pressedButtons;
-				uint16_t triggerOrBattery;
-				uint16_t batteryCharge;
-				uint32_t hardwareId;
-				int16_t  touchpadHorizontal;
-				int16_t  touchpadVertical;
-				uint16_t unknown1;
-				uint16_t triggerHighRes;
-				uint8_t  unknown2;
-				uint8_t  unknown3;
-				uint8_t  unknown4;
-				uint16_t triggerRaw;
-				uint8_t  unknown5;
-				uint8_t  unknown6; // maybe some bitfield?
-				uint8_t  unknown7;
-			} usb_buttons_raw;
+			//typedef struct
+			//{
+			//	//uint8_t reportId;
+			//	uint16_t reportType;
+			//	uint32_t reportCount;
+			//	uint32_t pressedButtons;
+			//	uint16_t  triggerOrBattery;
+			//	uint8_t batteryCharge;
+			//	uint32_t hardwareId;
+			//	int16_t  touchpadHorizontal;
+			//	int16_t  touchpadVertical;
+			//	uint16_t unknown1;
+			//	uint16_t triggerHighRes;
+			//	uint8_t  unknown2;
+			//	uint8_t  unknown3;
+			//	uint8_t  unknown4;
+			//	uint16_t triggerRaw;
+			//	uint8_t  unknown5;
+			//	uint8_t  unknown6; // maybe some bitfield?
+			//	uint8_t  unknown7;
+			//} usb_buttons_raw;
 
-			usb_buttons_raw *raw = (usb_buttons_raw*) readdata;
-			if (raw->reportType == 0x100)
+			//usb_buttons_raw *raw = (usb_buttons_raw*) readdata;
+			if (*((uint16_t*)(&(readdata[0x0]))) == 0x100)
 			{
-				printf("Buttons: %8.8x\n", raw->pressedButtons);
+				buttonEvent bEvent;
+				memset(&bEvent, 0, sizeof(bEvent));
+
+				bEvent.pressedButtonsValid = 1;
+				bEvent.pressedButtons = *((uint32_t*)(&(readdata[0x07])));
+				bEvent.triggerHighResValid = 1;
+				//bEvent.triggerHighRes = raw->triggerHighRes; 
+				//bEvent.triggerHighRes = (raw->pressedButtons & 0xff000000) >> 24; // this seems to provide the same data at 2x the resolution as above
+				//bEvent.triggerHighRes = raw->triggerRaw;
+				
+				bEvent.triggerHighRes = *((uint16_t*)(&(readdata[0x19])));
+				bEvent.touchpadHorizontalValid = 1;
+				//bEvent.touchpadHorizontal = raw->touchpadHorizontal;
+				bEvent.touchpadHorizontal = *((int16_t*)(&(readdata[0x13])));
+				bEvent.touchpadVerticalValid = 1;
+				//bEvent.touchpadVertical = raw->touchpadVertical;
+				bEvent.touchpadVertical = *((int16_t*)(&(readdata[0x15])));
+
+				//printf("%4.4x\n", bEvent.triggerHighRes);
+				registerButtonEvent(obj, &bEvent);
+
+				//printf("Buttons: %8.8x\n", raw->pressedButtons);
 			}
 			int a = 0;
 		}

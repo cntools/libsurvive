@@ -40,6 +40,45 @@ static void survivenote( struct SurviveContext * ctx, const char * fault )
 	fprintf( stderr, "Info: %s\n", fault );
 }
 
+static void button_servicer(void * context)
+{
+	SurviveContext *ctx = (SurviveContext*)context;
+
+	while (1)
+	{
+		OGLockSema(ctx->buttonQueue.buttonservicesem);
+
+		if (ctx->isClosing)
+		{
+			// we're shutting down.  Close.
+			return;
+		}
+
+		ButtonQueueEntry *entry = &(ctx->buttonQueue.entry[ctx->buttonQueue.nextReadIndex]);
+		if (entry->isPopulated == 0)
+		{
+			// should never happen.  indicates failure of code pushing stuff onto
+			// the buttonQueue
+			// if it does happen, it will kill all future button input
+			printf("ERROR: Unpopulated ButtonQueueEntry!");
+			return; 
+		}
+
+		printf("ButtonEntry: eventType:%x, buttonId:%d, axis1:%d, axis1Val:%8.8x, axis2:%d, axis2Val:%8.8x\n",
+			entry->eventType,
+			entry->buttonId,
+			entry->axis1Id,
+			entry->axis1Val,
+			entry->axis2Id,
+			entry->axis2Val);
+
+		ctx->buttonQueue.nextReadIndex++;
+		if (ctx->buttonQueue.nextReadIndex >= BUTTON_QUEUE_MAX_LEN)
+		{
+			ctx->buttonQueue.nextReadIndex = 0;
+		}
+	};
+}
 
 SurviveContext * survive_init( int headless )
 {
@@ -65,6 +104,8 @@ SurviveContext * survive_init( int headless )
 	int r = 0;
 	int i = 0;
 	SurviveContext * ctx = calloc( 1, sizeof( SurviveContext ) );
+
+	ctx->isClosing = 0;
 
 	ctx->global_config_values = malloc( sizeof(config_group) );
 	ctx->lh_config = malloc( sizeof(config_group) * NUM_LIGHTHOUSES);
@@ -122,6 +163,14 @@ SurviveContext * survive_init( int headless )
 
 	// saving the config extra to make sure that the user has a config file they can change.
 	config_save(ctx, "config.json");
+
+	// initialize the button queue
+	memset(&(ctx->buttonQueue), 0, sizeof(ctx->buttonQueue));
+
+	ctx->buttonQueue.buttonservicesem = OGCreateSema();	
+
+	// start the thread to process button data
+	ctx->buttonservicethread = OGCreateThread(button_servicer, ctx);
 
 	return ctx;
 }
@@ -205,6 +254,12 @@ void survive_close( SurviveContext * ctx )
 {
 	const char * DriverName;
 	int r = 0;
+
+	ctx->isClosing = 1;
+
+	// unlock/ post to button service semaphore so the thread can kill itself
+	OGUnlockSema(ctx->buttonQueue.buttonservicesem);
+
 	while( ( DriverName = GetDriverNameMatching( "DriverUnreg", r++ ) ) )
 	{
 		DeviceDriver dd = GetDriver( DriverName );

@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "survive_types.h"
 #include "poser.h"
+#include "os_generic.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,7 +19,7 @@ struct SurviveObject
 
 	char    codename[4];    //3 letters, null-terminated.  Currently HMD, WM0, WM1.
 	char    drivername[4];  //3 letters for driver.  Currently "HTC"
-	int16_t buttonmask;
+	int32_t buttonmask;
 	int16_t axis1;
 
 	int16_t axis2;
@@ -90,6 +91,37 @@ struct BaseStationData
 
 struct config_group;
 
+#define BUTTON_QUEUE_MAX_LEN 32
+
+#define BUTTON_EVENT_BUTTON_NONE   0
+#define BUTTON_EVENT_BUTTON_DOWN   1
+#define BUTTON_EVENT_BUTTON_UP     2
+#define BUTTON_EVENT_AXIS_CHANGED  3
+
+// note: buttonId and axisId are 1-indexed values.
+// a value of 0 for an id means that no data is present in that value
+// additionally, when x and y values are both present in axis data,
+// axis1 will be x, axis2 will be y.
+typedef struct
+{
+	uint8_t isPopulated;  //probably can remove this given the semaphore in the parent struct.   helps with debugging
+	uint8_t eventType;
+	uint8_t buttonId;
+	uint8_t axis1Id;
+	uint16_t axis1Val;
+	uint8_t axis2Id;
+	uint16_t axis2Val;
+	SurviveObject *so;
+} ButtonQueueEntry;
+
+typedef struct
+{
+	uint8_t nextReadIndex; //init to 0
+	uint8_t nextWriteIndex; // init to 0
+	og_sema_t buttonservicesem;
+	ButtonQueueEntry entry[BUTTON_QUEUE_MAX_LEN];
+} ButtonQueue;
+
 struct SurviveContext
 {
 	text_feedback_func faultfunction;
@@ -114,6 +146,12 @@ struct SurviveContext
 	DeviceDriverCb * drivercloses;
 	DeviceDriverMagicCb * drivermagics;
 	int driver_ct;
+
+	uint8_t isClosing; // flag to indicate if threads should terminate themselves
+
+	og_thread_t buttonservicethread;
+	ButtonQueue buttonQueue;
+
 };
 
 SurviveContext * survive_init( int headless );
