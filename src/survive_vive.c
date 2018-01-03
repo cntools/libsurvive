@@ -51,6 +51,11 @@ const short vidpids[] = {
 	0x28de, 0x2000, 1, //Valve HMD lighthouse(B) (only used on HIDAPI, for lightcap)
 	0x28de, 0x2022, 1, //HTC Tracker (only used on HIDAPI, for lightcap)
 	0x28de, 0x2012, 1, //Valve Watchman, USB connected (only used on HIDAPI, for lightcap)
+
+	0x28de, 0x2000, 2, //Valve HMD lighthouse(B) (only used on HIDAPI, for lightcap)
+	0x28de, 0x2022, 2, //HTC Tracker (only used on HIDAPI, for lightcap)
+	0x28de, 0x2012, 2, //Valve Watchman, USB connected (only used on HIDAPI, for lightcap)
+
 #endif
 }; //length MAX_USB_INTERFACES*2
 
@@ -65,6 +70,10 @@ const char * devnames[] = {
 	"HMD Lightcap",
 	"Tracker 0 Lightcap",
 	"Wired Watchman 1 Lightcap",
+
+	"HMD Buttons",
+	"Tracker 0 Buttons",
+	"Wired Watchman 1 Buttons",
 #endif
 }; //length MAX_USB_INTERFACES
 
@@ -80,7 +89,12 @@ const char * devnames[] = {
 #define USB_DEV_HMD_IMU_LHB 6
 #define USB_DEV_TRACKER0_LIGHTCAP 7
 #define USB_DEV_W_WATCHMAN1_LIGHTCAP 8
-#define MAX_USB_DEVS		9
+
+#define USB_DEV_HMD_BUTTONS 9
+#define USB_DEV_TRACKER0_BUTTONS 10
+#define USB_DEV_W_WATCHMAN1_BUTTONS 11
+
+#define MAX_USB_DEVS		12
 #else
 #define MAX_USB_DEVS		6
 #endif
@@ -94,7 +108,10 @@ const char * devnames[] = {
 #define USB_IF_LIGHTCAP		6
 #define USB_IF_TRACKER0_LIGHTCAP		7
 #define USB_IF_W_WATCHMAN1_LIGHTCAP		8
-#define MAX_INTERFACES		9
+#define USB_IF_HMD_BUTTONS		9
+#define USB_IF_TRACKER0_BUTTONS		10
+#define USB_IF_W_WATCHMAN1_BUTTONS		11
+#define MAX_INTERFACES		12
 
 typedef struct SurviveUSBInterface SurviveUSBInterface;
 typedef struct SurviveViveData SurviveViveData;
@@ -487,7 +504,13 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 	// This is a HACK!  But it works.  Need to investigate further
 	sv->uiface[USB_DEV_TRACKER0_LIGHTCAP].actual_len = 64;
 	if( sv->udev[USB_DEV_TRACKER0_LIGHTCAP] && AttachInterface( sv, tr0, USB_IF_TRACKER0_LIGHTCAP, sv->udev[USB_DEV_TRACKER0_LIGHTCAP], 0x82, survive_data_cb, "Tracker 1 Lightcap")) { return -13; }
+
 	if( sv->udev[USB_DEV_W_WATCHMAN1_LIGHTCAP] && AttachInterface( sv, ww0, USB_IF_W_WATCHMAN1_LIGHTCAP, sv->udev[USB_DEV_W_WATCHMAN1_LIGHTCAP], 0x82, survive_data_cb, "Wired Watchman 1 Lightcap")) { return -13; }
+
+
+	if (sv->udev[USB_DEV_TRACKER0_BUTTONS] && AttachInterface(sv, tr0, USB_IF_TRACKER0_BUTTONS, sv->udev[USB_DEV_TRACKER0_BUTTONS], 0x83, survive_data_cb, "Tracker 1 Buttons")) { return -13; }
+	if (sv->udev[USB_DEV_W_WATCHMAN1_BUTTONS] && AttachInterface(sv, ww0, USB_IF_W_WATCHMAN1_BUTTONS, sv->udev[USB_DEV_W_WATCHMAN1_BUTTONS], 0x83, survive_data_cb, "Wired Watchman 1 BUTTONS")) { return -13; }
+
 #else
 	if( sv->udev[USB_DEV_HMD_IMU_LH] && AttachInterface( sv, hmd, USB_IF_LIGHTCAP, sv->udev[USB_DEV_HMD_IMU_LH], 0x82, survive_data_cb, "Lightcap")) { return -12; }
 	if( sv->udev[USB_DEV_TRACKER0] && AttachInterface( sv, ww0, USB_IF_TRACKER0_LIGHTCAP, sv->udev[USB_DEV_TRACKER0], 0x82, survive_data_cb, "Tracker 0 Lightcap")) { return -13; }
@@ -842,6 +865,170 @@ void calibrate_gyro(SurviveObject* so, FLT* agm) {
 	}
 }
 
+typedef struct 
+{
+	// could use a bitfield here, but since this data is short-lived,
+	// the space savings probably isn't worth the processing overhead.
+	uint8_t pressedButtonsValid;
+	uint8_t triggerOfBatteryValid;
+	uint8_t batteryChargeValid;
+	uint8_t hardwareIdValid;
+	uint8_t touchpadHorizontalValid;
+	uint8_t touchpadVerticalValid;
+	uint8_t triggerHighResValid;
+
+	uint32_t pressedButtons;
+	uint16_t triggerOrBattery;
+	uint8_t  batteryCharge;
+	uint32_t hardwareId;
+	uint16_t touchpadHorizontal;
+	uint16_t touchpadVertical;
+	uint16_t triggerHighRes;
+} buttonEvent;
+
+void incrementAndPostButtonQueue(SurviveContext *ctx)
+{
+	ButtonQueueEntry *entry = &(ctx->buttonQueue.entry[ctx->buttonQueue.nextWriteIndex]);
+
+	if (OGGetSema(ctx->buttonQueue.buttonservicesem) >= BUTTON_QUEUE_MAX_LEN)
+	{
+		// There's not enough space to write this entry.  Clear it out and move along
+		memset(entry, 0, sizeof(ButtonQueueEntry));
+		return;
+	}
+	entry->isPopulated = 1;
+	ctx->buttonQueue.nextWriteIndex++;
+	// if we've exceeded the size of the buffer, loop around to the beginning.
+	if (ctx->buttonQueue.nextWriteIndex >= BUTTON_QUEUE_MAX_LEN)
+	{
+		ctx->buttonQueue.nextWriteIndex = 0;
+	}
+	OGUnlockSema(ctx->buttonQueue.buttonservicesem);
+
+	// clear out any old data in the entry so we always start with a clean slate.
+	entry = &(ctx->buttonQueue.entry[ctx->buttonQueue.nextWriteIndex]);
+	memset(entry, 0, sizeof(ButtonQueueEntry));
+}
+
+// important!  This must be the only place that we're posting to the buttonEntryQueue
+// if that ever needs to be changed, you will have to add locking so that only one
+// thread is posting at a time.
+void registerButtonEvent(SurviveObject *so, buttonEvent *event)
+{
+	ButtonQueueEntry *entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+
+	memset(entry, 0, sizeof(ButtonQueueEntry));
+
+	entry->so = so;
+	if (event->pressedButtonsValid)
+	{
+		//printf("trigger %8.8x\n", event->triggerHighRes);
+		for (int a=0; a < 16; a++)
+		{
+			if (((event->pressedButtons) & (1<<a)) != ((so->buttonmask) & (1<<a)))
+			{
+				// Hey, the button did something
+				if (event->pressedButtons & (1 << a))
+				{
+					// it went down
+					entry->eventType = BUTTON_EVENT_BUTTON_DOWN;
+				}
+				else
+				{
+					// it went up
+					entry->eventType = BUTTON_EVENT_BUTTON_UP;
+				}
+				entry->buttonId = a;
+				if (entry->buttonId == 0)
+				{
+					// this fixes 2 issues.  First, is the a button id of 0 indicates no button pressed.
+					// second is that the trigger shows up as button 0 coming from the wireless controller,
+					// but we infer it from the position on the wired controller.  On the wired, we treat it
+					// as buttonId 24 (look further down in this function)
+					entry->buttonId = 24;
+				}
+				incrementAndPostButtonQueue(so->ctx);
+				entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+			}
+		}
+		// if the trigger button is depressed & it wasn't before
+		if ((((event->pressedButtons) & (0xff000000)) == 0xff000000) &&
+			((so->buttonmask) & (0xff000000)) != 0xff000000)
+		{
+			entry->eventType = BUTTON_EVENT_BUTTON_DOWN;
+			entry->buttonId = 24;
+			incrementAndPostButtonQueue(so->ctx);
+			entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+		}
+		// if the trigger button isn't depressed but it was before
+		else if ((((event->pressedButtons) & (0xff000000)) != 0xff000000) &&
+			((so->buttonmask) & (0xff000000)) == 0xff000000)
+		{
+			entry->eventType = BUTTON_EVENT_BUTTON_UP;
+			entry->buttonId = 24;
+			incrementAndPostButtonQueue(so->ctx);
+			entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+		}
+	}
+	if (event->triggerHighResValid)
+	{
+		if (so->axis1 != event->triggerHighRes)
+		{
+			entry->eventType = BUTTON_EVENT_AXIS_CHANGED;
+			entry->axis1Id = 1;
+			entry->axis1Val = event->triggerHighRes;
+			incrementAndPostButtonQueue(so->ctx);
+			entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+
+		}
+	}
+	if ((event->touchpadHorizontalValid) && (event->touchpadVerticalValid))
+	{
+		if ((so->axis2 != event->touchpadHorizontal) ||
+			(so->axis3 != event->touchpadVertical))
+		{
+			entry->eventType = BUTTON_EVENT_AXIS_CHANGED;
+			entry->axis1Id = 2;
+			entry->axis1Val = event->touchpadHorizontal;
+			entry->axis2Id = 3;
+			entry->axis2Val = event->touchpadVertical;
+			incrementAndPostButtonQueue(so->ctx);
+			entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+
+		}
+	}
+
+	if (event->pressedButtonsValid)
+	{
+		so->buttonmask = event->pressedButtons;
+	}
+	if (event->batteryChargeValid)
+	{
+		so->charge = event->batteryCharge;
+	}
+	if (event->touchpadHorizontalValid)
+	{
+		so->axis2 = event->touchpadHorizontal;
+	}
+	if (event->touchpadVerticalValid)
+	{
+		so->axis3 = event->touchpadVertical;
+	}
+	if (event->triggerHighResValid)
+	{
+		so->axis1 = event->triggerHighRes;
+	}
+}
+
+uint8_t isPopulated;  //probably can remove this given the semaphore in the parent struct.   helps with debugging
+uint8_t eventType;
+uint8_t buttonId;
+uint8_t axis1Id;
+uint16_t axis1Val;
+uint8_t axis2Id;
+uint16_t axis2Val;
+SurviveObject *so;
+
 
 static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 {
@@ -862,35 +1049,54 @@ static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 	uint8_t qty = POP1;
 	uint8_t time2 = POP1;
 	uint8_t type = POP1;
+
+
 	qty-=2;
 	int propset = 0;
 	int doimu = 0;
 
 	if( (type & 0xf0) == 0xf0 )
 	{
+		buttonEvent bEvent;
+		memset(&bEvent, 0, sizeof(bEvent));
+
 		propset |= 4;
 		//printf( "%02x %02x %02x %02x\n", qty, type, time1, time2 );
 		type &= ~0x10;
 
 		if( type & 0x01 )
 		{
+			
 			qty-=1;
-			w->buttonmask = POP1;
+			bEvent.pressedButtonsValid = 1;
+			bEvent.pressedButtons = POP1;
+
+			//printf("buttonmask is %d\n", w->buttonmask);
 			type &= ~0x01;
 		}
 		if( type & 0x04 ) 
 		{
 			qty-=1;
-			w->axis1 = ( POP1 ) * 128; 
+			bEvent.triggerHighResValid = 1;
+			bEvent.triggerHighRes = ( POP1 ) * 128;
 			type &= ~0x04;
 		}
 		if( type & 0x02 )
 		{
 			qty-=4;
-			w->axis2 = POP2;
-			w->axis3 = POP2;
+			bEvent.touchpadHorizontalValid = 1;
+			bEvent.touchpadVerticalValid = 1;
+
+			bEvent.touchpadHorizontal = POP2;
+			bEvent.touchpadVertical = POP2;
 			type &= ~0x02;
 		}
+
+		if (bEvent.pressedButtonsValid || bEvent.triggerHighResValid || bEvent.touchpadHorizontalValid)
+		{
+			registerButtonEvent(w, &bEvent);
+		}
+
 
 		//XXX TODO: Is this correct?  It looks SO WACKY
 		type &= 0x7f;
@@ -1192,7 +1398,10 @@ void survive_data_cb( SurviveUSBInterface * si )
 				ctx->imuproc( obj, 3, agm, timecode, code );
 			}
 		}
-
+		if (id != 32)
+		{
+			int a=0; // set breakpoint here
+		}
 		//DONE OK.
 		break;
 	}
@@ -1211,7 +1420,7 @@ void survive_data_cb( SurviveUSBInterface * si )
 		}
 		else if( id == 38 )
 		{
-			w->ison = 0;
+			w->ison = 0; // turning off
 		}
 		else
 		{
@@ -1250,7 +1459,94 @@ void survive_data_cb( SurviveUSBInterface * si )
 			handle_lightcap( obj, &le );
 		}		
 		break;
+
+		if (id != 33)
+		{
+			int a = 0; // breakpoint here
+		}
 	}
+	case USB_IF_TRACKER0_BUTTONS:
+	case USB_IF_W_WATCHMAN1_BUTTONS:
+	{
+		if (1 == id)
+		{
+			//0x00	uint8	1	reportID	HID report identifier(= 1)
+			//0x02	uint16	2	reportType(? )	0x0B04: Ping(every second) / 0x3C01 : User input
+			//0x04	uint32	4	reportCount	Counter that increases with every report
+			//0x08	uint32	4	pressedButtons	Bit field, see below for individual buttons
+			//0x0C	uint16	2	triggerOrBattery	Analog trigger value(user input) / Battery voltage ? (ping)
+			//0x0E	uint8	1	batteryCharge	Bit 7 : Charging / Bit 6..0 : Battery charge in percent
+			//0x10	uint32	4	hardwareID	Hardware ID(user input) / 0x00000000 (ping)
+			//0x14	int16	2	touchpadHorizontal	Horizontal thumb position(Left : -32768 / Right : 32767)
+			//0x16	int16	2	touchpadVertical	Vertical thumb position(Bottom : -32768 / Top : 32767)
+			//0x18 ? 2 ? unknown
+			//0x1A	uint16	2	triggerHighRes	Analog trigger value with higher resolution
+			//0x1C ? 24 ? unknown
+			//0x34	uint16	2	triggerRawMaybe	Analog trigger value, maybe raw sensor data
+			//0x36 ? 8 ? unknown
+			//0x3E	uint8	1	someBitFieldMaybe	0x00 : ping / 0x64 : user input
+			//0x3F ? 1 ? unknown
+
+			//typedef struct
+			//{
+			//	//uint8_t reportId;
+			//	uint16_t reportType;
+			//	uint32_t reportCount;
+			//	uint32_t pressedButtons;
+			//	uint16_t  triggerOrBattery;
+			//	uint8_t batteryCharge;
+			//	uint32_t hardwareId;
+			//	int16_t  touchpadHorizontal;
+			//	int16_t  touchpadVertical;
+			//	uint16_t unknown1;
+			//	uint16_t triggerHighRes;
+			//	uint8_t  unknown2;
+			//	uint8_t  unknown3;
+			//	uint8_t  unknown4;
+			//	uint16_t triggerRaw;
+			//	uint8_t  unknown5;
+			//	uint8_t  unknown6; // maybe some bitfield?
+			//	uint8_t  unknown7;
+			//} usb_buttons_raw;
+
+			//usb_buttons_raw *raw = (usb_buttons_raw*) readdata;
+			if (*((uint16_t*)(&(readdata[0x0]))) == 0x100)
+			{
+				buttonEvent bEvent;
+				memset(&bEvent, 0, sizeof(bEvent));
+
+				bEvent.pressedButtonsValid = 1;
+				bEvent.pressedButtons = *((uint32_t*)(&(readdata[0x07])));
+				bEvent.triggerHighResValid = 1;
+				//bEvent.triggerHighRes = raw->triggerHighRes; 
+				//bEvent.triggerHighRes = (raw->pressedButtons & 0xff000000) >> 24; // this seems to provide the same data at 2x the resolution as above
+				//bEvent.triggerHighRes = raw->triggerRaw;
+				
+				bEvent.triggerHighRes = *((uint16_t*)(&(readdata[0x19])));
+				bEvent.touchpadHorizontalValid = 1;
+				//bEvent.touchpadHorizontal = raw->touchpadHorizontal;
+				bEvent.touchpadHorizontal = *((int16_t*)(&(readdata[0x13])));
+				bEvent.touchpadVerticalValid = 1;
+				//bEvent.touchpadVertical = raw->touchpadVertical;
+				bEvent.touchpadVertical = *((int16_t*)(&(readdata[0x15])));
+
+				//printf("%4.4x\n", bEvent.triggerHighRes);
+				registerButtonEvent(obj, &bEvent);
+
+				//printf("Buttons: %8.8x\n", raw->pressedButtons);
+			}
+			int a = 0;
+		}
+		else
+		{
+			int a = 0;// breakpoint here
+		}
+	}
+	default:
+	{
+		int a = 0; // breakpoint here
+	}
+
 	}
 }
 
