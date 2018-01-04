@@ -63,6 +63,17 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 	}
 }	
 
+void survive_default_button_process(SurviveObject * so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val)
+{
+	// do nothing.
+	printf("ButtonEntry: eventType:%x, buttonId:%d, axis1:%d, axis1Val:%8.8x, axis2:%d, axis2Val:%8.8x\n",
+		eventType,
+		buttonId,
+		axis1Id,
+		axis1Val,
+		axis2Id,
+		axis2Val);
+}
 
 void survive_default_imu_process( SurviveObject * so, int mask, FLT * accelgyromag, uint32_t timecode, int id )
 {

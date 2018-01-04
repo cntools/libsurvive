@@ -93,10 +93,7 @@ struct config_group;
 
 #define BUTTON_QUEUE_MAX_LEN 32
 
-#define BUTTON_EVENT_BUTTON_NONE   0
-#define BUTTON_EVENT_BUTTON_DOWN   1
-#define BUTTON_EVENT_BUTTON_UP     2
-#define BUTTON_EVENT_AXIS_CHANGED  3
+
 
 // note: buttonId and axisId are 1-indexed values.
 // a value of 0 for an id means that no data is present in that value
@@ -129,6 +126,7 @@ struct SurviveContext
 	light_process_func lightproc;
 	imu_process_func imuproc;
 	angle_process_func angleproc;
+	button_process_func buttonproc;
 
 	struct config_group* global_config_values;
 	struct config_group* lh_config; //lighthouse configs
@@ -163,6 +161,7 @@ void survive_install_error_fn( SurviveContext * ctx,  text_feedback_func fbp );
 void survive_install_light_fn( SurviveContext * ctx,  light_process_func fbp );
 void survive_install_imu_fn( SurviveContext * ctx,  imu_process_func fbp );
 void survive_install_angle_fn( SurviveContext * ctx,  angle_process_func fbp );
+void survive_install_button_fn( SurviveContext * ctx, button_process_func fbp );
 
 void survive_close( SurviveContext * ctx );
 int survive_poll( SurviveContext * ctx );
@@ -185,6 +184,7 @@ int survive_cal_get_status( struct SurviveContext * ctx, char * description, int
 void survive_default_light_process( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length , uint32_t lh);
 void survive_default_imu_process( SurviveObject * so, int mode, FLT * accelgyro, uint32_t timecode, int id );
 void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh );
+void survive_default_button_process(SurviveObject * so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val);
 
 
 ////////////////////// Survive Drivers ////////////////////////////
