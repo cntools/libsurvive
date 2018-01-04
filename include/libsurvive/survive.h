@@ -19,6 +19,7 @@ struct SurviveObject
 
 	char    codename[4];    //3 letters, null-terminated.  Currently HMD, WM0, WM1.
 	char    drivername[4];  //3 letters for driver.  Currently "HTC"
+	void    *driver;
 	int32_t buttonmask;
 	int16_t axis1;
 
@@ -68,6 +69,7 @@ struct SurviveObject
 	FLT* gyro_bias; // size is FLT*3. contains x,y,z
 	FLT* gyro_scale; // size is FLT*3. contains x,y,z
 
+	haptic_func haptic;
 
 	//Debug
 	int tsl;
@@ -178,6 +180,9 @@ void survive_cal_install( SurviveContext * ctx );  //XXX This will be removed if
 
 // Read back a human-readable string description of the calibration status
 int survive_cal_get_status( struct SurviveContext * ctx, char * description, int description_length );
+
+// Induce haptic feedback
+int survive_haptic(SurviveObject * so, uint8_t reserved, uint16_t pulseHigh, uint16_t pulseLow, uint16_t repeatCount);
 
 //Call these from your callback if overridden.  
 //Accept higher-level data.

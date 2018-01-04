@@ -620,17 +620,24 @@ int survive_vive_send_magic(SurviveContext * ctx, void * drv, int magic_code, vo
 //#endif
 
 #if 0		
-		for (int i = 0; i < 0xf; i++)
+		for (int j=0; j < 40; j++)
 		{
-			//uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0x7, 0 /*right*/, 0xFF /*period on*/, 0xFF/*period on*/, 0xFF/*period off*/, 0xFF/*period off*/, 0xFF /* repeat Count */, 0xFF /* repeat count */ };
-			//uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0x07, 0x00, 0xf4, 0x01, 0xb5, 0xa2, 0x01, 0x00 }; // data taken from Nairol's captures
-			uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0x07, 0x00, 0xf4, 0x01, 0xb5, 0xa2, 0x01, 0x00 }; 
-			r = update_feature_report( sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof( vive_controller_haptic_pulse ) );
-			r = getupdate_feature_report(sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof(vive_controller_haptic_pulse));
-			SV_INFO("UCR: %d", r);
-			if (r != sizeof(vive_controller_haptic_pulse)) printf("HAPTIC FAILED **************************\n"); // return 5;
-			OGUSleep(1000);
+			for (int i = 0; i < 0x1; i++)
+			{
+				//uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0x7, 0 /*right*/, 0xFF /*period on*/, 0xFF/*period on*/, 0xFF/*period off*/, 0xFF/*period off*/, 0xFF /* repeat Count */, 0xFF /* repeat count */ };
+				//uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0x07, 0x00, 0xf4, 0x01, 0xb5, 0xa2, 0x01, 0x00 }; // data taken from Nairol's captures
+				uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0x07, 0x00, 0xf4, 0x01, 0xb5, 0xa2, 0x01* j, 0x00 }; 
+				r = update_feature_report( sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof( vive_controller_haptic_pulse ) );
+				r = getupdate_feature_report(sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof(vive_controller_haptic_pulse));
+				SV_INFO("UCR: %d", r);
+				if (r != sizeof(vive_controller_haptic_pulse)) printf("HAPTIC FAILED **************************\n"); // return 5;
+				OGUSleep(5000);
+			}
+
+			OGUSleep(20000);
 		}
+
+
 #endif
 
 #if 0
@@ -684,6 +691,54 @@ int survive_vive_send_magic(SurviveContext * ctx, void * drv, int magic_code, vo
 		}
 	}
 	return 0;
+}
+
+int survive_vive_send_haptic(SurviveObject * so, uint8_t reserved, uint16_t pulseHigh, uint16_t pulseLow, uint16_t repeatCount)
+{
+	SurviveViveData *sv = (SurviveViveData*)so->driver;
+
+	if (NULL == sv)
+	{
+		return -500;
+	}
+
+	int r;
+	uint8_t vive_controller_haptic_pulse[64] = { 
+		0xff, 0x8f, 0x07, 0x00, 
+		pulseHigh & 0xff00 >> 8,  pulseHigh & 0xff,
+		pulseLow & 0xff00 >> 8,  pulseLow & 0xff,
+		repeatCount & 0xff00 >> 8,  repeatCount & 0xff,
+	};
+
+	r = update_feature_report(sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof(vive_controller_haptic_pulse));
+	r = getupdate_feature_report(sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof(vive_controller_haptic_pulse));
+	//SV_INFO("UCR: %d", r);
+	if (r != sizeof(vive_controller_haptic_pulse)) 
+	{
+		printf("HAPTIC FAILED **************************\n"); 
+		return -1;
+	}
+
+	return 0;
+
+	//for (int j = 0; j < 40; j++)
+	//{
+	//	for (int i = 0; i < 0x1; i++)
+	//	{
+	//		//uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0x7, 0 /*right*/, 0xFF /*period on*/, 0xFF/*period on*/, 0xFF/*period off*/, 0xFF/*period off*/, 0xFF /* repeat Count */, 0xFF /* repeat count */ };
+	//		//uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0x07, 0x00, 0xf4, 0x01, 0xb5, 0xa2, 0x01, 0x00 }; // data taken from Nairol's captures
+	//		uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0x07, 0x00, 0xf4, 0x01, 0xb5, 0xa2, 0x01 * j, 0x00 };
+	//		r = update_feature_report(sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof(vive_controller_haptic_pulse));
+	//		r = getupdate_feature_report(sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof(vive_controller_haptic_pulse));
+	//		if (r != sizeof(vive_controller_haptic_pulse)) printf("HAPTIC FAILED **************************\n"); // return 5;
+	//		OGUSleep(5000);
+	//	}
+
+	//	OGUSleep(20000);
+	//}
+
+	////OGUSleep(5000);
+	//return 0;
 }
 
 void survive_vive_usb_close( SurviveViveData * sv )
@@ -903,9 +958,10 @@ void incrementAndPostButtonQueue(SurviveContext *ctx)
 {
 	ButtonQueueEntry *entry = &(ctx->buttonQueue.entry[ctx->buttonQueue.nextWriteIndex]);
 
-	if (OGGetSema(ctx->buttonQueue.buttonservicesem) >= BUTTON_QUEUE_MAX_LEN)
+	if (OGGetSema(ctx->buttonQueue.buttonservicesem) >= BUTTON_QUEUE_MAX_LEN-1)
 	{
 		// There's not enough space to write this entry.  Clear it out and move along
+		//printf("Button Buffer Full\n");
 		memset(entry, 0, sizeof(ButtonQueueEntry));
 		return;
 	}
@@ -1759,6 +1815,9 @@ void init_SurviveObject(SurviveObject* so) {
 	so->acc_bias = NULL;
 	so->gyro_scale = NULL;
 	so->gyro_bias = NULL;
+	so->haptic = NULL;
+	so->PoserData = NULL;
+	so->disambiguator_data = NULL;
 }
 
 int DriverRegHTCVive( SurviveContext * ctx )
@@ -1789,18 +1848,23 @@ int DriverRegHTCVive( SurviveContext * ctx )
 
 
 	hmd->ctx = ctx;
+	hmd->driver = sv;
 	memcpy( hmd->codename, "HMD", 4 );
 	memcpy( hmd->drivername, "HTC", 4 );
 	wm0->ctx = ctx;
+	wm0->driver = sv;
 	memcpy( wm0->codename, "WM0", 4 );
 	memcpy( wm0->drivername, "HTC", 4 );
 	wm1->ctx = ctx;
+	wm1->driver = sv;
 	memcpy( wm1->codename, "WM1", 4 );
 	memcpy( wm1->drivername, "HTC", 4 );
 	tr0->ctx = ctx;
+	tr0->driver = sv;
 	memcpy( tr0->codename, "TR0", 4 );
 	memcpy( tr0->drivername, "HTC", 4 );
 	ww0->ctx = ctx;
+	ww0->driver = sv;
 	memcpy( ww0->codename, "WW0", 4 );
 	memcpy( ww0->drivername, "HTC", 4 );
 
@@ -1844,6 +1908,9 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	wm1->timecenter_ticks = wm1->timebase_hz / 240;
 	tr0->timecenter_ticks = tr0->timebase_hz / 240;
 	ww0->timecenter_ticks = ww0->timebase_hz / 240;
+
+	wm0->haptic = survive_vive_send_haptic;
+	wm1->haptic = survive_vive_send_haptic;
 /*
 	int i;
 	int locs = hmd->nr_locations;
