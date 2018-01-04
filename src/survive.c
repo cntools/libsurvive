@@ -64,13 +64,25 @@ static void button_servicer(void * context)
 			return; 
 		}
 
-		printf("ButtonEntry: eventType:%x, buttonId:%d, axis1:%d, axis1Val:%8.8x, axis2:%d, axis2Val:%8.8x\n",
-			entry->eventType,
-			entry->buttonId,
-			entry->axis1Id,
-			entry->axis1Val,
-			entry->axis2Id,
-			entry->axis2Val);
+		//printf("ButtonEntry: eventType:%x, buttonId:%d, axis1:%d, axis1Val:%8.8x, axis2:%d, axis2Val:%8.8x\n",
+		//	entry->eventType,
+		//	entry->buttonId,
+		//	entry->axis1Id,
+		//	entry->axis1Val,
+		//	entry->axis2Id,
+		//	entry->axis2Val);
+
+		button_process_func butt_func = ctx->buttonproc;
+		if (butt_func)
+		{
+			butt_func(entry->so,
+				entry->eventType,
+				entry->buttonId,
+				entry->axis1Id,
+				entry->axis1Val,
+				entry->axis2Id,
+				entry->axis2Val);
+		}
 
 		ctx->buttonQueue.nextReadIndex++;
 		if (ctx->buttonQueue.nextReadIndex >= BUTTON_QUEUE_MAX_LEN)
@@ -171,6 +183,7 @@ SurviveContext * survive_init( int headless )
 
 	// start the thread to process button data
 	ctx->buttonservicethread = OGCreateThread(button_servicer, ctx);
+	survive_install_button_fn(ctx, NULL);
 
 	return ctx;
 }
@@ -214,6 +227,15 @@ void survive_install_angle_fn( SurviveContext * ctx,  angle_process_func fbp )
 		ctx->angleproc = fbp;
 	else
 		ctx->angleproc = survive_default_angle_process;
+}
+
+void survive_install_button_fn(SurviveContext * ctx, button_process_func fbp)
+{
+	if (fbp)
+		ctx->buttonproc = fbp;
+	else
+		ctx->buttonproc = survive_default_button_process;
+
 }
 
 int survive_add_object( SurviveContext * ctx, SurviveObject * obj )
