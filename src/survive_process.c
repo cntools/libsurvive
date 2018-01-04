@@ -66,13 +66,25 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 void survive_default_button_process(SurviveObject * so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val)
 {
 	// do nothing.
-	printf("ButtonEntry: eventType:%x, buttonId:%d, axis1:%d, axis1Val:%8.8x, axis2:%d, axis2Val:%8.8x\n",
-		eventType,
-		buttonId,
-		axis1Id,
-		axis1Val,
-		axis2Id,
-		axis2Val);
+	//printf("ButtonEntry: eventType:%x, buttonId:%d, axis1:%d, axis1Val:%8.8x, axis2:%d, axis2Val:%8.8x\n",
+	//	eventType,
+	//	buttonId,
+	//	axis1Id,
+	//	axis1Val,
+	//	axis2Id,
+	//	axis2Val);
+	if (buttonId == 24 && eventType == 1) // trigger engage
+	{
+		for (int j = 0; j < 40; j++)
+		{
+			for (int i = 0; i < 0x1; i++)
+			{
+				survive_haptic(so, 0, 0xf401, 0xb5a2, 0x0100);
+				OGUSleep(5000);
+			}
+			OGUSleep(20000);
+		}
+	}
 }
 
 void survive_default_imu_process( SurviveObject * so, int mask, FLT * accelgyromag, uint32_t timecode, int id )

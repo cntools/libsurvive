@@ -60,7 +60,7 @@ static void button_servicer(void * context)
 			// should never happen.  indicates failure of code pushing stuff onto
 			// the buttonQueue
 			// if it does happen, it will kill all future button input
-			printf("ERROR: Unpopulated ButtonQueueEntry!");
+			printf("ERROR: Unpopulated ButtonQueueEntry! NextReadIndex=%d\n", ctx->buttonQueue.nextReadIndex);
 			return; 
 		}
 
@@ -271,6 +271,17 @@ int survive_send_magic( SurviveContext * ctx, int magic_code, void * data, int d
 	}
 	return 0;
 }
+
+int survive_haptic(SurviveObject * so, uint8_t reserved, uint16_t pulseHigh, uint16_t pulseLow, uint16_t repeatCount)
+{
+	if (NULL == so || NULL == so->haptic)
+	{
+		return -404;
+	}
+
+	return so->haptic(so, reserved, pulseHigh, pulseLow, repeatCount);
+}
+
 
 void survive_close( SurviveContext * ctx )
 {
