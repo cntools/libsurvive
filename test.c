@@ -85,6 +85,8 @@ int main()
 	dump_iface( survive_get_so_by_name( ctx, "TR0" ), "TR0" );
 	dump_iface( survive_get_so_by_name( ctx, "WW0" ), "WW0" );
 
+	survive_cal_install(ctx);
+
 	while(survive_poll(ctx) == 0)
 	{
 		double Now = OGGetAbsoluteTime();

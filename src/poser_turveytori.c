@@ -1856,6 +1856,18 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 		//	}
 		//}
 
+		for (int i=0; i < ctx->activeLighthouses; i++)
+		{ 
+			printf("Lighthouse Pose: [%1.1x][% 08.8f,% 08.8f,% 08.8f] [% 08.8f,% 08.8f,% 08.8f,% 08.8f]\n",
+				i,
+				ctx->bsd[i].Pose.Pos[0],
+				ctx->bsd[i].Pose.Pos[1],
+				ctx->bsd[i].Pose.Pos[2],
+				ctx->bsd[i].Pose.Rot[0],
+				ctx->bsd[i].Pose.Rot[1],
+				ctx->bsd[i].Pose.Rot[2],
+				ctx->bsd[i].Pose.Rot[3]);
+		}
 		config_set_lighthouse(ctx->lh_config, ctx->bsd[0], 0);
 		config_set_lighthouse(ctx->lh_config, ctx->bsd[1], 1);
 
