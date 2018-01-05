@@ -184,6 +184,7 @@ SurviveContext * survive_init( int headless )
 	// start the thread to process button data
 	ctx->buttonservicethread = OGCreateThread(button_servicer, ctx);
 	survive_install_button_fn(ctx, NULL);
+	survive_install_raw_pose_fn(ctx, NULL);
 
 	return ctx;
 }
@@ -235,9 +236,15 @@ void survive_install_button_fn(SurviveContext * ctx, button_process_func fbp)
 		ctx->buttonproc = fbp;
 	else
 		ctx->buttonproc = survive_default_button_process;
-
 }
 
+void survive_install_raw_pose_fn(SurviveContext * ctx, raw_pose_func fbp)
+{
+	if (fbp)
+		ctx->rawposeproc = fbp;
+	else
+		ctx->rawposeproc = survive_default_raw_pose_process;
+}
 int survive_add_object( SurviveContext * ctx, SurviveObject * obj )
 {
 	int oldct = ctx->objs_ct;
