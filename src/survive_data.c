@@ -419,8 +419,8 @@ void handle_lightcap2_sweep(SurviveObject * so, LightcapElement * le )
 	}
 
 	if (lcd->per_sweep.activeLighthouse < 0) {
-		fprintf(stderr, "WARNING: No active lighthouse!\n");
-		fprintf(stderr, "            %2d %8d %d %d\n", le->sensor_id, le->length,lcd->per_sweep.lh_acode[0],lcd->per_sweep.lh_acode[1]);
+		//fprintf(stderr, "WARNING: No active lighthouse!\n");
+		//fprintf(stderr, "            %2d %8d %d %d\n", le->sensor_id, le->length,lcd->per_sweep.lh_acode[0],lcd->per_sweep.lh_acode[1]);
 		return;
 	}
 

@@ -1177,7 +1177,7 @@ static void RefineRotationEstimateQuaternion(FLT *rotOut, Point lhPoint, FLT *in
 
 
 	}
-	printf("Ri=%3d  Fitness=%3f ", i, lastMatchFitness);
+	if (ttDebug) printf("Ri=%3d  Fitness=%3f ", i, lastMatchFitness);
 }
 
 
@@ -1638,7 +1638,11 @@ static void QuickPose(SurviveObject *so, int lh)
 
 			SolveForLighthouse(pos, quat, to, so, 0, lh, 0);
 
-			printf("P&O: [% 08.8f,% 08.8f,% 08.8f] [% 08.8f,% 08.8f,% 08.8f,% 08.8f]\n", pos[0], pos[1], pos[2], quat[0], quat[1], quat[2], quat[3]);
+			//printf("P&O: [% 08.8f,% 08.8f,% 08.8f] [% 08.8f,% 08.8f,% 08.8f,% 08.8f]\n", pos[0], pos[1], pos[2], quat[0], quat[1], quat[2], quat[3]);
+			if (so->ctx->rawposeproc)
+			{
+				so->ctx->rawposeproc(so, lh, pos, quat);
+			}
 
 			if (ttDebug) printf("!\n");
 		}
@@ -1852,6 +1856,18 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 		//	}
 		//}
 
+		for (int i=0; i < ctx->activeLighthouses; i++)
+		{ 
+			printf("Lighthouse Pose: [%1.1x][% 08.8f,% 08.8f,% 08.8f] [% 08.8f,% 08.8f,% 08.8f,% 08.8f]\n",
+				i,
+				ctx->bsd[i].Pose.Pos[0],
+				ctx->bsd[i].Pose.Pos[1],
+				ctx->bsd[i].Pose.Pos[2],
+				ctx->bsd[i].Pose.Rot[0],
+				ctx->bsd[i].Pose.Rot[1],
+				ctx->bsd[i].Pose.Rot[2],
+				ctx->bsd[i].Pose.Rot[3]);
+		}
 		config_set_lighthouse(ctx->lh_config, ctx->bsd[0], 0);
 		config_set_lighthouse(ctx->lh_config, ctx->bsd[1], 1);
 
