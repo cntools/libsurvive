@@ -958,7 +958,7 @@ void incrementAndPostButtonQueue(SurviveContext *ctx)
 {
 	ButtonQueueEntry *entry = &(ctx->buttonQueue.entry[ctx->buttonQueue.nextWriteIndex]);
 
-	if (OGGetSema(ctx->buttonQueue.buttonservicesem) >= BUTTON_QUEUE_MAX_LEN-1)
+	if ((ctx->buttonQueue.nextWriteIndex+1)% BUTTON_QUEUE_MAX_LEN == ctx->buttonQueue.nextReadIndex)
 	{
 		// There's not enough space to write this entry.  Clear it out and move along
 		//printf("Button Buffer Full\n");
