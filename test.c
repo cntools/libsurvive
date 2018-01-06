@@ -37,6 +37,69 @@ void HandleDestroy()
 {
 }
 
+void testprog_button_process(SurviveObject * so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val)
+{
+	survive_default_button_process(so, eventType, buttonId, axis1Id, axis1Val, axis2Id, axis2Val);
+	
+	// do nothing.
+	printf("ButtonEntry: eventType:%x, buttonId:%d, axis1:%d, axis1Val:%8.8x, axis2:%d, axis2Val:%8.8x\n",
+		eventType,
+		buttonId,
+		axis1Id,
+		axis1Val,
+		axis2Id,
+		axis2Val);
+
+	// Note: the code for haptic feedback is not yet written to support wired USB connections to the controller.  
+	// Work is still needed to reverse engineer that USB protocol.
+
+	// let's do some haptic feedback if the trigger is pushed
+	if (buttonId == 24 && eventType == 1) // trigger engage
+	{
+		for (int j = 0; j < 6; j++)
+		{
+			for (int i = 0; i < 0x5; i++)
+			{
+				survive_haptic(so, 0, 0xf401, 0xb5a2, 0x0100);
+				//survive_haptic(so, 0, 0xf401, 0xb5a2, 0x0100);
+				OGUSleep(1000);
+			}
+			OGUSleep(20000);
+		}
+	}
+
+	// let's do some haptic feedback if the touchpad is pressed.
+	if (buttonId == 2 && eventType == 1) // trigger engage
+	{
+		for (int j = 0; j < 6; j++)
+		{
+			for (int i = 0; i < 0x1; i++)
+			{
+				survive_haptic(so, 0, 0xf401, 0x05a2, 0xf100);
+				//survive_haptic(so, 0, 0xf401, 0xb5a2, 0x0100);
+				OGUSleep(5000);
+			}
+			OGUSleep(20000);
+		}
+	}
+}
+
+void testprog_raw_pose_process(SurviveObject * so, uint8_t lighthouse, FLT *pos, FLT *quat)
+{
+	survive_default_raw_pose_process(so, lighthouse, pos, quat);
+
+	// print the pose;
+	printf("Pose: [%1.1x][%s][% 08.8f,% 08.8f,% 08.8f] [% 08.8f,% 08.8f,% 08.8f,% 08.8f]\n", lighthouse, so->codename, pos[0], pos[1], pos[2], quat[0], quat[1], quat[2], quat[3]);
+}
+
+void testprog_imu_process(SurviveObject * so, int mask, FLT * accelgyromag, uint32_t timecode, int id)
+{
+	survive_default_imu_process(so, mask, accelgyromag, timecode, id);
+
+	// so something here, like printing out the data...
+
+}
+
 
 static void dump_iface( struct SurviveObject * so, const char * prefix )
 {
@@ -73,6 +136,10 @@ int main()
 
 	ctx = survive_init( 0 );
 
+	survive_install_button_fn(ctx, testprog_button_process);
+	survive_install_raw_pose_fn(ctx, testprog_raw_pose_process);
+	survive_install_imu_fn(ctx, testprog_imu_process);
+
 	if( !ctx )
 	{
 		fprintf( stderr, "Fatal. Could not start\n" );
@@ -89,12 +156,12 @@ int main()
 
 	while(survive_poll(ctx) == 0)
 	{
-		double Now = OGGetAbsoluteTime();
-		if( Now > (Start+1) && !magicon )
-		{
-			survive_send_magic(ctx,1,0,0);
-			magicon = 1;
-		}
+		//double Now = OGGetAbsoluteTime();
+		//if( Now > (Start+1) && !magicon )
+		//{
+		//	survive_send_magic(ctx,1,0,0);
+		//	magicon = 1;
+		//}
 		//Do stuff.
 	}
 }
