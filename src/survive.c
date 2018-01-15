@@ -182,7 +182,7 @@ SurviveContext * survive_init( int headless )
 	ctx->buttonQueue.buttonservicesem = OGCreateSema();	
 
 	// start the thread to process button data
-	ctx->buttonservicethread = OGCreateThread(button_servicer, ctx);
+	ctx->buttonservicethread = OGCreateThread(&button_servicer, ctx);
 	survive_install_button_fn(ctx, NULL);
 	survive_install_raw_pose_fn(ctx, NULL);
 

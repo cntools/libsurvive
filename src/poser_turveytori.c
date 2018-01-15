@@ -1,4 +1,5 @@
 #include <survive.h>
+#include <src/survive_config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1868,8 +1869,8 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 				ctx->bsd[i].Pose.Rot[2],
 				ctx->bsd[i].Pose.Rot[3]);
 		}
-		config_set_lighthouse(ctx->lh_config, ctx->bsd[0], 0);
-		config_set_lighthouse(ctx->lh_config, ctx->bsd[1], 1);
+		config_set_lighthouse(ctx->lh_config, &ctx->bsd[0], 0);
+		config_set_lighthouse(ctx->lh_config, &ctx->bsd[1], 1);
 
 		config_save(ctx, "config.json");
 
