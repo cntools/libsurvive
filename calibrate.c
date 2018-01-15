@@ -14,7 +14,7 @@
 
 struct SurviveContext * ctx;
 int  quit = 0;
-static LighthouseCount = 0;
+static int LighthouseCount = 0;
 
 void HandleKey( int keycode, int bDown )
 {
