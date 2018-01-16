@@ -1050,7 +1050,7 @@ static void WhereIsTheTrackedObjectQuaternion(FLT *posOut, FLT *rotation, Point 
 
 	quatgetreciprocal(inverseRotation, rotation);
 
-	FLT objPoint[3] = { lhPoint.x, lhPoint.y, lhPoint.z };
+	//FLT objPoint[3] = { lhPoint.x, lhPoint.y, lhPoint.z };
 
 	//rotatearoundaxis(objPoint, objPoint, reverseRotation, reverseRotation[3]);
 	quatrotatevector(posOut, inverseRotation, posOut);
@@ -1186,7 +1186,7 @@ void SolveForRotation(FLT rotOut[4], TrackedObject *obj, Point lh)
 
 	// Step 1, create initial quaternion for guess.  
 	// This should have the lighthouse directly facing the tracked object.
-	Point trackedObjRelativeToLh = { .x = -lh.x,.y = -lh.y,.z = -lh.z };
+	//Point trackedObjRelativeToLh = { .x = -lh.x,.y = -lh.y,.z = -lh.z };
 	FLT theta = atan2(-lh.x, -lh.y);
 	FLT zAxis[4] = { 0, 0, 1 , theta - LINMATHPI / 2 };
 	FLT quat1[4];
@@ -1200,6 +1200,7 @@ void SolveForRotation(FLT rotOut[4], TrackedObject *obj, Point lh)
 	RefineRotationEstimateAxisAngle(rotOut, lh, zAxis, obj);
 
 
+	// TODO:  Need to use the quaternion version here!!!
 	//// Step 2, optimize the quaternion to match the data.
 	//RefineRotationEstimateQuaternion(rotOut, lh, quat1, obj);
 
