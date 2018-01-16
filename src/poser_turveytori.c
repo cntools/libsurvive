@@ -1,5 +1,5 @@
 #include <survive.h>
-#include <src/survive_config.h>
+#include "survive_config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -785,7 +785,6 @@ FLT RotationEstimateFitnessQuaternion(Point lhPoint, FLT *quaternion, TrackedObj
 
 		FLT throwaway = RotationEstimateFitnessAxisAngle(lhPoint, axisAngle, obj);
 
-		int a = throwaway;
 		return throwaway;
 	}
 
@@ -1051,7 +1050,7 @@ static void WhereIsTheTrackedObjectQuaternion(FLT *posOut, FLT *rotation, Point 
 
 	quatgetreciprocal(inverseRotation, rotation);
 
-	FLT objPoint[3] = { lhPoint.x, lhPoint.y, lhPoint.z };
+	//FLT objPoint[3] = { lhPoint.x, lhPoint.y, lhPoint.z };
 
 	//rotatearoundaxis(objPoint, objPoint, reverseRotation, reverseRotation[3]);
 	quatrotatevector(posOut, inverseRotation, posOut);
@@ -1187,7 +1186,7 @@ void SolveForRotation(FLT rotOut[4], TrackedObject *obj, Point lh)
 
 	// Step 1, create initial quaternion for guess.  
 	// This should have the lighthouse directly facing the tracked object.
-	Point trackedObjRelativeToLh = { .x = -lh.x,.y = -lh.y,.z = -lh.z };
+	//Point trackedObjRelativeToLh = { .x = -lh.x,.y = -lh.y,.z = -lh.z };
 	FLT theta = atan2(-lh.x, -lh.y);
 	FLT zAxis[4] = { 0, 0, 1 , theta - LINMATHPI / 2 };
 	FLT quat1[4];
@@ -1201,6 +1200,7 @@ void SolveForRotation(FLT rotOut[4], TrackedObject *obj, Point lh)
 	RefineRotationEstimateAxisAngle(rotOut, lh, zAxis, obj);
 
 
+	// TODO:  Need to use the quaternion version here!!!
 	//// Step 2, optimize the quaternion to match the data.
 	//RefineRotationEstimateQuaternion(rotOut, lh, quat1, obj);
 
@@ -1397,7 +1397,7 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 	SolveForRotationQuat(rotQuat, obj, refinedEstimateGd);
 	SolveForRotation(rot, obj, refinedEstimateGd);
 	FLT objPos[3];
-	FLT objPos2[3];
+	//FLT objPos2[3];
 
 	//{
 	//	toriData->lastLhRotQuat[lh][0] = rotQuat[0];

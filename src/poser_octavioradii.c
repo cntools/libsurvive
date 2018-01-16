@@ -591,7 +591,7 @@ int PoserOctavioRadii( SurviveObject * so, PoserData * pd )
 				}
 				else
 				{
-					dd->hitCount[i][l->lh][axis] *= 0.5;
+					dd->hitCount[i][l->lh][axis] = (int)((double)dd->hitCount[i][l->lh][axis] * 0.5);
 				}
 			}
 			//if (0 == l->lh)

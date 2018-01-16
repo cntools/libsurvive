@@ -121,7 +121,7 @@ char* load_file_to_mem(const char* path) {
 	fseek( f, 0, SEEK_SET );
 	char * JSON_STRING = malloc( len + 1);
 	memset(JSON_STRING,0,len+1); 
-	int i = fread( JSON_STRING, len, 1, f ); i = i; //Ignore return value.
+	size_t i = fread( JSON_STRING, len, 1, f ); i = i; //Ignore return value.
 	fclose( f );
 	return JSON_STRING;
 }
@@ -193,7 +193,7 @@ void json_load_file(const char* path) {
 		} else if (value_t->type == JSMN_OBJECT) {
 			printf("Begin Object\n");
 			if (json_begin_object != NULL) json_begin_object(tag);
-			children = value_t->size +1; //+1 to account for this loop where we are not yed parsing children
+			children = (int16_t)(value_t->size +1); //+1 to account for this loop where we are not yed parsing children
 //			i += decode_jsmn_object(JSON_STRING, tokens+i+2,value_t->size);
 		}
 		else {

@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "survive_config.h"
+#include "os_generic.h"
 
 #ifdef __APPLE__
 #define z_const const
@@ -40,7 +41,7 @@ static void survivenote( struct SurviveContext * ctx, const char * fault )
 	fprintf( stderr, "Info: %s\n", fault );
 }
 
-static void button_servicer(void * context)
+static void *button_servicer(void * context)
 {
 	SurviveContext *ctx = (SurviveContext*)context;
 
@@ -51,7 +52,7 @@ static void button_servicer(void * context)
 		if (ctx->isClosing)
 		{
 			// we're shutting down.  Close.
-			return;
+			return NULL;
 		}
 
 		ButtonQueueEntry *entry = &(ctx->buttonQueue.entry[ctx->buttonQueue.nextReadIndex]);
@@ -61,7 +62,7 @@ static void button_servicer(void * context)
 			// the buttonQueue
 			// if it does happen, it will kill all future button input
 			printf("ERROR: Unpopulated ButtonQueueEntry! NextReadIndex=%d\n", ctx->buttonQueue.nextReadIndex);
-			return; 
+			return NULL;
 		}
 
 		//printf("ButtonEntry: eventType:%x, buttonId:%d, axis1:%d, axis1Val:%8.8x, axis2:%d, axis2Val:%8.8x\n",
@@ -90,6 +91,7 @@ static void button_servicer(void * context)
 			ctx->buttonQueue.nextReadIndex = 0;
 		}
 	};
+	return NULL;
 }
 
 SurviveContext * survive_init( int headless )
@@ -182,7 +184,7 @@ SurviveContext * survive_init( int headless )
 	ctx->buttonQueue.buttonservicesem = OGCreateSema();	
 
 	// start the thread to process button data
-	ctx->buttonservicethread = OGCreateThread(&button_servicer, ctx);
+	ctx->buttonservicethread = OGCreateThread(button_servicer, ctx);
 	survive_install_button_fn(ctx, NULL);
 	survive_install_raw_pose_fn(ctx, NULL);
 
