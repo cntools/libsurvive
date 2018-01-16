@@ -121,7 +121,7 @@ char* load_file_to_mem(const char* path) {
 	fseek( f, 0, SEEK_SET );
 	char * JSON_STRING = malloc( len + 1);
 	memset(JSON_STRING,0,len+1); 
-	int i = fread( JSON_STRING, len, 1, f ); i = i; //Ignore return value.
+	size_t i = fread( JSON_STRING, len, 1, f ); i = i; //Ignore return value.
 	fclose( f );
 	return JSON_STRING;
 }

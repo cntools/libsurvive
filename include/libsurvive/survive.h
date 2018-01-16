@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include "survive_types.h"
 #include "poser.h"
-#include "os_generic.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -117,7 +116,7 @@ typedef struct
 {
 	uint8_t nextReadIndex; //init to 0
 	uint8_t nextWriteIndex; // init to 0
-	og_sema_t buttonservicesem;
+	void* buttonservicesem;
 	ButtonQueueEntry entry[BUTTON_QUEUE_MAX_LEN];
 } ButtonQueue;
 
@@ -150,7 +149,7 @@ struct SurviveContext
 
 	uint8_t isClosing; // flag to indicate if threads should terminate themselves
 
-	og_thread_t buttonservicethread;
+	void* buttonservicethread;
 	ButtonQueue buttonQueue;
 
 };

@@ -187,7 +187,7 @@ uint16_t config_read_float_array(config_group *cg, const char *tag, FLT* values,
 	config_entry *cv = find_config_entry(cg, tag);
 
 	if (cv != NULL) {
-		for (int i=0; i < CFG_MIN(count, cv->elements); i++)
+		for (unsigned int i=0; i < CFG_MIN(count, cv->elements); i++)
 		{
 			values[i] = ((double*)cv->data)[i];
 		}

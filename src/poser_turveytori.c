@@ -1,5 +1,5 @@
 #include <survive.h>
-#include <src/survive_config.h>
+#include "survive_config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -785,7 +785,6 @@ FLT RotationEstimateFitnessQuaternion(Point lhPoint, FLT *quaternion, TrackedObj
 
 		FLT throwaway = RotationEstimateFitnessAxisAngle(lhPoint, axisAngle, obj);
 
-		int a = throwaway;
 		return throwaway;
 	}
 
@@ -1397,7 +1396,7 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 	SolveForRotationQuat(rotQuat, obj, refinedEstimateGd);
 	SolveForRotation(rot, obj, refinedEstimateGd);
 	FLT objPos[3];
-	FLT objPos2[3];
+	//FLT objPos2[3];
 
 	//{
 	//	toriData->lastLhRotQuat[lh][0] = rotQuat[0];
