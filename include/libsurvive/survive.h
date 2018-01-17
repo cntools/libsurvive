@@ -152,6 +152,8 @@ struct SurviveContext
 	void* buttonservicethread;
 	ButtonQueue buttonQueue;
 
+	void *user_ptr;
+
 };
 
 SurviveContext * survive_init( int headless );
