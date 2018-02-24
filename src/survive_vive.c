@@ -902,8 +902,16 @@ int survive_get_config( char ** config, SurviveViveData * sv, int devno, int ifa
 ///////////////////////////////////////////////////////////////////////////////
 
 #define POP1  (*(readdata++))
-#define POP2  (*(((uint16_t*)((readdata+=2)-2))))
-#define POP4  (*(((uint32_t*)((readdata+=4)-4))))
+
+
+struct __attribute__((__packed__)) unaligned_16_t {
+    uint16_t v;
+};
+struct __attribute__((__packed__)) unaligned_32_t {
+    uint32_t v;
+};
+#define POP2  ((((( struct unaligned_16_t*)((readdata+=2)-2))))->v)
+#define POP4  ((((( struct unaligned_32_t*)((readdata+=4)-4))))->v)
 
 void calibrate_acc(SurviveObject* so, FLT* agm) {
 	if (so->acc_bias != NULL) {
@@ -1431,7 +1439,7 @@ void survive_data_cb( SurviveUSBInterface * si )
 		//printf( "%d -> ", size );
 		for( i = 0; i < 3; i++ )
 		{
-			int16_t * acceldata = (int16_t*)readdata;
+            struct unaligned_16_t * acceldata = (struct unaligned_16_t *)readdata;
 			readdata += 12;
 			uint32_t timecode = POP4;
 			uint8_t code = POP1;
@@ -1443,8 +1451,8 @@ void survive_data_cb( SurviveUSBInterface * si )
 				obj->oldcode = code;
 
 				//XXX XXX BIG TODO!!! Actually recal gyro data.
-				FLT agm[9] = { acceldata[0], acceldata[1], acceldata[2],
-								acceldata[3], acceldata[4], acceldata[5],
+				FLT agm[9] = { acceldata[0].v, acceldata[1].v, acceldata[2].v,
+								acceldata[3].v, acceldata[4].v, acceldata[5].v,
 								0,0,0 };
 
 				agm[0]*=(float)(1./8192.0);
