@@ -51,14 +51,14 @@ struct SurviveCalData
 	ootx_decoder_context ootx_decoders[NUM_LIGHTHOUSES];
 
 	//For statistics-gathering phase. (Stage 2/3)
-	FLT all_lengths[MAX_SENSORS_TO_CAL][NUM_LIGHTHOUSES][2][DRPTS];
-	FLT all_angles[MAX_SENSORS_TO_CAL][NUM_LIGHTHOUSES][2][DRPTS];
+	FLT all_lengths[MAX_SENSORS_TO_CAL][NUM_LIGHTHOUSES][2][DRPTS + 1];
+	FLT all_angles[MAX_SENSORS_TO_CAL][NUM_LIGHTHOUSES][2][DRPTS + 1];
 	int16_t all_counts[MAX_SENSORS_TO_CAL][NUM_LIGHTHOUSES][2];
 	int16_t peak_counts;
 	int8_t found_common;
 	int8_t times_found_common;
 
-	FLT all_sync_times[MAX_SENSORS_TO_CAL][NUM_LIGHTHOUSES][DRPTS];
+	FLT all_sync_times[MAX_SENSORS_TO_CAL][NUM_LIGHTHOUSES][DRPTS + 1];
 	int16_t all_sync_counts[MAX_SENSORS_TO_CAL][NUM_LIGHTHOUSES];
 
 	//For camfind (4+)

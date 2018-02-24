@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <linmath.h>
+#include <assert.h>
 
 #include "survive_config.h"
 

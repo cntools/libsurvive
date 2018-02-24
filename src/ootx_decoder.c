@@ -182,8 +182,13 @@ union iFloat {
 	float f;
 };
 
+
+struct __attribute__((__packed__)) unaligned_16_t {
+	uint16_t v;
+};
+
 float _half_to_float(uint8_t* data) {
-	uint16_t x = *(uint16_t*)data;
+	uint16_t x = ((struct unaligned_16_t*)data)->v;
 	union iFloat fnum;
 	fnum.f = 0;
 
