@@ -135,7 +135,140 @@ The limiting factor for Vive viability on a given computer is the maximum availa
 
 To support the Vive on HDMI, you either need a newer version of HDMI, or you need to define a custom resolution that respects pixel clock and video port limits, and is also accepted and displayed by the Vive. So far, we have not had success using custom resolutions on linux or on Windows. Windows imposes additional limitations in the form of restriction of WHQL certified drivers forbidden from using custom display resolutions (only allowing those defined by EDID in the monitor). Intel has released uncertified beta drivers for Haswell and newer processors, which should be able to support custom resolutions for the Vive (untested at this time).
 
+# Getting Started
 
+## General Information
+
+The default configuration of libsurvive requires both basestations and both controllers to be active, but currently libsurvive can not make proper use of both basestations at the same time - it outputs a different pose for each basestation and does not fuse the data for one more accurate pose. This will hopefully be implemented soon. For now it's a good idea to change the configuration to only require one basestation.
+
+Here is an example of a default configuration file that libsurvive will create as `config.json` in the current working directory when any libsurvive client is executed:
+
+```
+"LighthouseCount":"2",
+"DefaultPoser":"PoserTurveyTori",
+"RequiredTrackersForCal":"",
+"AllowAllTrackersForCal":"1",
+"ConfigPoser":"PoserTurveyTori",
+"TurveyToriDebug":"0"
+"lighthouse0":{
+"index":"0",
+"id":"138441170",
+"pose":["0.000000","0.000000","0.000000","0.000000","0.000000","0.000000","0.000000"],
+"fcalphase":["-0.011757","0.020172"],
+"fcaltilt":["-0.003302","-0.001370"],
+"fcalcurve":["0.000323","-0.002600"],
+"fcalgibpha":["-4.316406","0.740723"],
+"fcalgibmag":["0.001188","-0.009270"]
+}
+"lighthouse1":{
+"index":"-1"
+}
+```
+
+To make libsurvive calibrate and run with one basestations, `LighthouseCount` needs to be changed to `1`.
+
+It may be annoying to always require the controllers for calibration. To make libsurvive calibrate by using the HMD, `RequiredTrackersForCal` needs to be changed to the magic string `HMD`. The strings for the controllers are `WM0` and `WM1`, short for  "Watchman". Other possible values are `WW0` (Wired Watchman) for a controller directly connected with USB or `TR0` for a Vive tracker directly connected with USB (When connected wirelessly, the tracker uses the dongles, so uses `WM0` or `WM1`).
+
+Lastly, to ensure libsurvive calibrates using the HMD, `AllowAllTrackersForCal` can be changed to `0`.
+
+Here is an example for such an altered `config.json` file
+
+```
+"LighthouseCount":"1",
+"DefaultPoser":"PoserTurveyTori",
+"RequiredTrackersForCal":"HMD",
+"AllowAllTrackersForCal":"0",
+"ConfigPoser":"PoserTurveyTori",
+"TurveyToriDebug":"0"
+"lighthouse0":{
+"index":"0",
+"id":"138441170",
+"pose":["0.000000","0.000000","0.000000","0.000000","0.000000","0.000000","0.000000"],
+"fcalphase":["-0.011757","0.020172"],
+"fcaltilt":["-0.003302","-0.001370"],
+"fcalcurve":["0.000323","-0.002600"],
+"fcalgibpha":["-4.316406","0.740723"],
+"fcalgibmag":["0.001188","-0.009270"]
+}
+"lighthouse1":{
+"index":"-1"
+}
+```
+
+Running libsurvive's `./test` with this `config.json` in the same directory should now go through the calibration and start printing poses with only the HMD and only one lighthouse basestation active. Enabling and tracking controllers will still work with this configuration.
+
+**For best results the HMD should not be moved while calibrating!**
+
+The important calibration steps are denoted by libsurvive printing
+
+```
+Info: Stage 2 good - continuing. 32 1 0
+Info: Stage 2 good - continuing. 32 1 1
+Info: Stage 2 good - continuing. 32 1 2
+Info: Stage 2 good - continuing. 32 1 3
+Info: Stage 2 good - continuing. 32 1 4
+Info: Stage 2 moving to stage 3. 32 1 5
+Lighthouse Pose: [0][ 0.28407975, 0.93606335,-0.37406892] [ 0.05594964,-0.33792987, 0.93887696, 0.03439615]
+Info: Stage 4 succeeded.
+```
+
+If libsurvive does not print these steps, make sure that the lighthouse basestation is visible to enough sensors on the HMD.
+
+Sometimes libsurvive goes very quickly through these steps and fills in all pose values as `NaN` or `-NaN`. This appears to be a bug in libsurvive that has not be found yet. Reflective surfaces nearby may trigger this problem more often.
+
+[Here is a short demo video how successfuly running ./test should look like](https://haagch.frickel.club/Peek%202018-02-21%2023-23.webm).
+
+## Using libsurvive in your own application
+
+Example code for libsurvive can be found in [test.c](https://github.com/cnlohr/libsurvive/blob/master/test.c). [calibrate.c](https://github.com/cnlohr/libsurvive/blob/master/calibrate.c) may contain some interesting code too.
+
+Here is minimal example that demonstrates using libsurvive's callback functionality to fill in pose data into a user defined data structure that is stored in libsurvive's SurviveContext.
+
+```c
+#include <stdio.h>
+#include <string.h>
+#include <survive.h>
+
+typedef struct {
+	double rotation[4];
+	double pos[3];
+} libsurvive_hmd;
+
+void testprog_raw_pose_process(SurviveObject *so, uint8_t lighthouse, FLT *pos, FLT *quat) {
+	survive_default_raw_pose_process(so, lighthouse, pos, quat);
+	printf("(Callback) Pose: [%1.1x][%s][% 08.8f,% 08.8f,% 08.8f] [% 08.8f,% 08.8f,% 08.8f,% 08.8f]\n", lighthouse, so->codename, pos[0], pos[1], pos[2], quat[0], quat[1], quat[2], quat[3]);
+	if (strcmp(so->codename, "HMD") == 0 && lighthouse == 0) {
+		libsurvive_hmd *hmd = so->ctx->user_ptr;
+		hmd->pos[0] = pos[0]; hmd->pos[1] = pos[1]; hmd->pos[2] = pos[2];
+		hmd->rotation[0] = quat[0]; hmd->rotation[1] = quat[1]; hmd->rotation[2] = quat[2]; hmd->rotation[3] = quat[3];
+	}
+}
+
+int main(int argc, char** argv) {
+	struct SurviveContext *ctx = survive_init( 0 );
+	survive_install_raw_pose_fn(ctx, testprog_raw_pose_process);
+	survive_cal_install(ctx);
+	libsurvive_hmd *hmd = &(libsurvive_hmd) { 0 };
+	ctx->user_ptr = hmd;
+	while(survive_poll(ctx) == 0) {
+		//printf("(Main) HMD Pose: [% 08.8f,% 08.8f,% 08.8f] [% 08.8f,% 08.8f,% 08.8f,% 08.8f]\n", hmd->pos[0], hmd->pos[1], hmd->pos[2], hmd->rotation[0], hmd->rotation[1], hmd->rotation[2], hmd->rotation[3]);
+	}
+	return 0;
+}
+```
+
+Compiling this minimal example only requires the include path for survive.h as well as the libsurvive library: `gcc demo.c -Iinclude/libsurvive/ -Llib -lsurvive -Wl,-rpath=./lib -o libsurvive-demo`.
+
+ As mentioned, only the pose from lighthouse number `0` is used. Since the callback is called for all tracked devices, `so->codename` can be used to differentiate between devices like `HMD`, `WM0`, etc.
+
+# FAQ
+
+* The tracking quality is bad/jitters/too slow!
+ * libsurvive is still a work in progress. For example the Vive contains a calibration blob that still needs to be decoded. Hopefully it will enable better tracking.
+* What VR software can I use with libsurvive?
+ * There is an unofficial [OpenHMD/libsurvive fork](https://github.com/ChristophHaag/OpenHMD/tree/libsurvive) that replaces OpenHMD's Vive driver with libsurvive. OpenHMD will not merge this branch as it depends on libsurvive as an external dependency, but it may pave the way for more code sharing.
+   * This OpenHMD/libsurvive fork can be plugged into [SteamVR-OpenHMD](https://github.com/ChristophHaag/SteamVR-OpenHMD) which allows SteamVR to use OpenHMD drivers.
+   * Godot 3.x has a [native OpenHMD plugin](https://github.com/BastiaanOlij/godot_openhmd) though it needs work for building and running properly and it is still missing motion controller support.
 
 ## Addendum and notes
 
