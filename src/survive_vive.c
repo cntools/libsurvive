@@ -903,15 +903,20 @@ int survive_get_config( char ** config, SurviveViveData * sv, int devno, int ifa
 
 #define POP1  (*(readdata++))
 
-
 struct __attribute__((__packed__)) unaligned_16_t {
-    uint16_t v;
+    int16_t v;
 };
 struct __attribute__((__packed__)) unaligned_32_t {
+    int32_t v;
+};
+struct __attribute__((__packed__)) unaligned_u16_t {
+    uint16_t v;
+};
+struct __attribute__((__packed__)) unaligned_u32_t {
     uint32_t v;
 };
-#define POP2  ((((( struct unaligned_16_t*)((readdata+=2)-2))))->v)
-#define POP4  ((((( struct unaligned_32_t*)((readdata+=4)-4))))->v)
+#define POP2  ((((( struct unaligned_u16_t*)((readdata+=2)-2))))->v)
+#define POP4  ((((( struct unaligned_u32_t*)((readdata+=4)-4))))->v)
 
 void calibrate_acc(SurviveObject* so, FLT* agm) {
 	if (so->acc_bias != NULL) {
