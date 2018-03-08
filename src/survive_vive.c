@@ -24,6 +24,7 @@
 
 #include "json_helpers.h"
 #include "survive_default_devices.h"
+#include "survive_config.h"
 
 #ifdef HIDAPI
 #if defined(WINDOWS) || defined(WIN32) || defined (_WIN32)
@@ -1687,8 +1688,14 @@ void init_SurviveObject(SurviveObject* so) {
 
 int DriverRegHTCVive( SurviveContext * ctx )
 {
-	int r;
-
+	const char* playback_dir = config_read_str(ctx->global_config_values,
+						   "PlaybackDir", "");
+	if(strlen(playback_dir) != 0) {
+	  SV_INFO("Playback is active; disabling USB driver");
+	  return 0;
+	}
+	
+	int r;	
 	SurviveViveData * sv = calloc(1, sizeof(SurviveViveData) );
 	SurviveObject * hmd = survive_create_hmd(ctx, "HTC", sv);
 	SurviveObject * wm0 = survive_create_wm0(ctx, "HTC", sv, 0);
