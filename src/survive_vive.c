@@ -1648,53 +1648,6 @@ void survive_data_cb( SurviveUSBInterface * si )
 
 
 
-static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
- if (tok->type == JSMN_STRING && (int) strlen(s) == tok->end - tok->start &&
-    strncmp(json + tok->start, s, tok->end - tok->start) == 0) {
-		return 0;
-	}
-	return -1;
-}
-
-
-static int ParsePoints( SurviveContext * ctx, SurviveObject * so, char * ct0conf, FLT ** floats_out, jsmntok_t * t, int i )
-{
-	int k;
-	int pts = t[i+1].size;
-	jsmntok_t * tk;
-
-	so->nr_locations = 0;
-	*floats_out = malloc( sizeof( **floats_out ) * 32 * 3 );
-
-	for( k = 0; k < pts; k++ )
-	{
-		tk = &t[i+2+k*4];
-
-		int m;
-		for( m = 0; m < 3; m++ )
-		{
-			char ctt[128];
-
-			tk++;
-			int elemlen = tk->end - tk->start;
-
-			if( tk->type != 4 || elemlen > sizeof( ctt )-1 )
-			{
-				SV_ERROR( "Parse error in JSON\n" );
-				return 1;
-			}
-
-			memcpy( ctt, ct0conf + tk->start, elemlen );
-			ctt[elemlen] = 0;
-			FLT f = atof( ctt );
-			int id = so->nr_locations*3+m;
-			(*floats_out)[id] = f;
-		}
-		so->nr_locations++;
-	}
-	return 0;
-}
-
 static int LoadConfig( SurviveViveData * sv, SurviveObject * so, int devno, int iface, int extra_magic )
 {
 	SurviveContext * ctx = sv->ctx;
@@ -1709,111 +1662,8 @@ static int LoadConfig( SurviveViveData * sv, SurviveObject * so, int devno, int 
 	  fwrite( ct0conf, strlen(ct0conf), 1, f );
 	  fclose( f );
 	}
-	
-	if( len > 0 )
-	{
 
-		//From JSMN example.
-		jsmn_parser p;
-		jsmntok_t t[4096];
-		jsmn_init(&p);
-		int i;
-		int r = jsmn_parse(&p, ct0conf, len, t, sizeof(t)/sizeof(t[0]));	
-		if (r < 0) {
-			SV_INFO("Failed to parse JSON in HMD configuration: %d\n", r);
-			return -1;
-		}
-		if (r < 1 || t[0].type != JSMN_OBJECT) {
-			SV_INFO("Object expected in HMD configuration\n");
-			return -2;
-		}
-
-		for (i = 1; i < r; i++) {
-			jsmntok_t * tk = &t[i];
-
-			char ctxo[100];
-			int ilen = tk->end - tk->start;
-			if( ilen > 99 ) ilen = 99;
-			memcpy(ctxo, ct0conf + tk->start, ilen);
-			ctxo[ilen] = 0;
-
-//				printf( "%d / %d / %d / %d %s %d\n", tk->type, tk->start, tk->end, tk->size, ctxo, jsoneq(ct0conf, &t[i], "modelPoints") );
-//				printf( "%.*s\n", ilen, ct0conf + tk->start );
-
-			if (jsoneq(ct0conf, tk, "modelPoints") == 0) {
-				if( ParsePoints( ctx, so, ct0conf, &so->sensor_locations, t, i  ) )
-				{
-					break;
-				}
-			}
-			if (jsoneq(ct0conf, tk, "modelNormals") == 0) {
-				if( ParsePoints( ctx, so, ct0conf, &so->sensor_normals, t, i  ) )
-				{
-					break;
-				}
-			}
-
-
-			if (jsoneq(ct0conf, tk, "acc_bias") == 0) {
-				int32_t count = (tk+1)->size;
-				FLT* values = NULL;
-				if ( parse_float_array(ct0conf, tk+2, &values, count) >0 ) {
-					so->acc_bias = values;
-					so->acc_bias[0] *= .125; //XXX Wat?  Observed by CNL.  Biasing by more than this seems to hose things.
-					so->acc_bias[1] *= .125;
-					so->acc_bias[2] *= .125;
-				}
-			}
-			if (jsoneq(ct0conf, tk, "acc_scale") == 0) {
-				int32_t count = (tk+1)->size;
-				FLT* values = NULL;
-				if ( parse_float_array(ct0conf, tk+2, &values, count) >0 ) {
-					so->acc_scale = values;
-				}
-			}
-
-			if (jsoneq(ct0conf, tk, "gyro_bias") == 0) {
-				int32_t count = (tk+1)->size;
-				FLT* values = NULL;
-				if ( parse_float_array(ct0conf, tk+2, &values, count) >0 ) {
-					so->gyro_bias = values;
-				}
-			}
-			if (jsoneq(ct0conf, tk, "gyro_scale") == 0) {
-				int32_t count = (tk+1)->size;
-				FLT* values = NULL;
-				if ( parse_float_array(ct0conf, tk+2, &values, count) >0 ) {
-					so->gyro_scale = values;
-				}
-			}
-		}
-	}
-	else
-	{
-		//TODO: Cleanup any remaining USB stuff.
-		return 1;
-	}
-
-	char fname[64];
-
-	sprintf( fname, "calinfo/%s_points.csv", so->codename );
-	FILE * f = fopen( fname, "w" );
-	int j;
-	for( j = 0; j < so->nr_locations; j++ )
-	{
-		fprintf( f, "%f %f %f\n", so->sensor_locations[j*3+0], so->sensor_locations[j*3+1], so->sensor_locations[j*3+2] );
-	}
-	fclose( f );
-
-	sprintf( fname, "calinfo/%s_normals.csv", so->codename );
-	f = fopen( fname, "w" );
-	for( j = 0; j < so->nr_locations; j++ )
-	{
-		fprintf( f, "%f %f %f\n", so->sensor_normals[j*3+0], so->sensor_normals[j*3+1], so->sensor_normals[j*3+2] );
-	}
-	fclose( f );
-
-	return 0;
+	return survive_load_htc_config_format(ct0conf, len, so);
 }
 
 
@@ -1869,27 +1719,6 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	if( sv->udev[USB_DEV_WATCHMAN2] && LoadConfig( sv, wm1, 3, 0, 1 )) { SV_INFO( "Watchman 1 config issue." ); }
 	if( sv->udev[USB_DEV_TRACKER0]  && LoadConfig( sv, tr0, 4, 0, 0 )) { SV_INFO( "Tracker 0 config issue." ); }
 	if( sv->udev[USB_DEV_W_WATCHMAN1]  && LoadConfig( sv, ww0, 5, 0, 0 )) { SV_INFO( "Wired Watchman 0 config issue." ); }
-/*
-	int i;
-	int locs = hmd->nr_locations;
-	printf( "Locs: %d\n", locs );
-	if (hmd->sensor_locations )
-	{
-		printf( "POSITIONS:\n" );
-		for( i = 0; i < locs*3; i+=3 )
-		{
-			printf( "%f %f %f\n", hmd->sensor_locations[i+0], hmd->sensor_locations[i+1], hmd->sensor_locations[i+2] );
-		}
-	}
-	if( hmd->sensor_normals )
-	{
-		printf( "NORMALS:\n" );
-		for( i = 0; i < locs*3; i+=3 )
-		{
-			printf( "%f %f %f\n", hmd->sensor_normals[i+0], hmd->sensor_normals[i+1], hmd->sensor_normals[i+2] );
-		}
-	}
-*/
 	
 	//Add the drivers.
 	if( sv->udev[USB_DEV_HMD_IMU_LH]       ) { survive_add_object( ctx, hmd ); }
