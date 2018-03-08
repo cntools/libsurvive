@@ -14,6 +14,12 @@ extern "C" {
 #endif
 #endif
 
+#define float_format "%f"
+#define double_format "%lf"
+#define _FLT_format2(f) f##_format
+#define _FLT_format(f) _FLT_format2(f)
+#define FLT_format _FLT_format(FLT)
+  
 typedef struct SurvivePose
 {
 	FLT  Pos[3];

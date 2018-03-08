@@ -23,6 +23,7 @@
 #endif
 
 #include "json_helpers.h"
+#include "survive_default_devices.h"
 
 #ifdef HIDAPI
 #if defined(WINDOWS) || defined(WIN32) || defined (_WIN32)
@@ -1699,15 +1700,16 @@ static int LoadConfig( SurviveViveData * sv, SurviveObject * so, int devno, int 
 	SurviveContext * ctx = sv->ctx;
 	char * ct0conf = 0;
 	int len = survive_get_config( &ct0conf, sv, devno, iface, extra_magic );
-printf( "Loading config: %d\n", len );
-#if 0
-	char fname[100];
-	sprintf( fname, "%s_config.json", so->codename );
-	FILE * f = fopen( fname, "w" );
-	fwrite( ct0conf, strlen(ct0conf), 1, f );
-	fclose( f );
-#endif
+	printf( "Loading config: %d\n", len );
 
+	{
+	  char raw_fname[100];
+	  sprintf( raw_fname, "%s_config.json", so->codename );
+	  FILE * f = fopen( raw_fname, "w" );
+	  fwrite( ct0conf, strlen(ct0conf), 1, f );
+	  fclose( f );
+	}
+	
 	if( len > 0 )
 	{
 
@@ -1836,18 +1838,13 @@ void init_SurviveObject(SurviveObject* so) {
 int DriverRegHTCVive( SurviveContext * ctx )
 {
 	int r;
-	SurviveObject * hmd = calloc( 1, sizeof( SurviveObject ) );
-	SurviveObject * wm0 = calloc( 1, sizeof( SurviveObject ) );
-	SurviveObject * wm1 = calloc( 1, sizeof( SurviveObject ) );
-	SurviveObject * tr0 = calloc( 1, sizeof( SurviveObject ) );
-	SurviveObject * ww0 = calloc( 1, sizeof( SurviveObject ) );
-	SurviveViveData * sv = calloc( 1, sizeof( SurviveViveData ) );
 
-	init_SurviveObject(hmd);
-	init_SurviveObject(wm0);
-	init_SurviveObject(wm1);
-	init_SurviveObject(tr0);
-	init_SurviveObject(ww0);
+	SurviveViveData * sv = calloc(1, sizeof(SurviveViveData) );
+	SurviveObject * hmd = survive_create_hmd(ctx, "HTC", sv);
+	SurviveObject * wm0 = survive_create_wm0(ctx, "HTC", sv, 0);
+	SurviveObject * wm1 = survive_create_wm1(ctx, "HTC", sv, 0);
+	SurviveObject * tr0 = survive_create_tr0(ctx, "HTC", sv);
+	SurviveObject * ww0 = survive_create_ww0(ctx, "HTC", sv);
 
 	sv->ctx = ctx;
 	
@@ -1858,28 +1855,6 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	#else
 		mkdir( "calinfo", 0755 );
 	#endif
-
-
-	hmd->ctx = ctx;
-	hmd->driver = sv;
-	memcpy( hmd->codename, "HMD", 4 );
-	memcpy( hmd->drivername, "HTC", 4 );
-	wm0->ctx = ctx;
-	wm0->driver = sv;
-	memcpy( wm0->codename, "WM0", 4 );
-	memcpy( wm0->drivername, "HTC", 4 );
-	wm1->ctx = ctx;
-	wm1->driver = sv;
-	memcpy( wm1->codename, "WM1", 4 );
-	memcpy( wm1->drivername, "HTC", 4 );
-	tr0->ctx = ctx;
-	tr0->driver = sv;
-	memcpy( tr0->codename, "TR0", 4 );
-	memcpy( tr0->drivername, "HTC", 4 );
-	ww0->ctx = ctx;
-	ww0->driver = sv;
-	memcpy( ww0->codename, "WW0", 4 );
-	memcpy( ww0->drivername, "HTC", 4 );
 
 	//USB must happen last.
 	if( r = survive_usb_init( sv, hmd, wm0, wm1, tr0, ww0) )
@@ -1894,36 +1869,6 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	if( sv->udev[USB_DEV_WATCHMAN2] && LoadConfig( sv, wm1, 3, 0, 1 )) { SV_INFO( "Watchman 1 config issue." ); }
 	if( sv->udev[USB_DEV_TRACKER0]  && LoadConfig( sv, tr0, 4, 0, 0 )) { SV_INFO( "Tracker 0 config issue." ); }
 	if( sv->udev[USB_DEV_W_WATCHMAN1]  && LoadConfig( sv, ww0, 5, 0, 0 )) { SV_INFO( "Wired Watchman 0 config issue." ); }
-
-	hmd->timebase_hz = wm0->timebase_hz = wm1->timebase_hz = 48000000;
-	tr0->timebase_hz = ww0->timebase_hz = hmd->timebase_hz;
-
-	hmd->pulsedist_max_ticks = wm0->pulsedist_max_ticks = wm1->pulsedist_max_ticks = 500000;
-	tr0->pulsedist_max_ticks = ww0->pulsedist_max_ticks = hmd->pulsedist_max_ticks;
-
-	hmd->pulselength_min_sync = wm0->pulselength_min_sync = wm1->pulselength_min_sync = 2200;
-	tr0->pulselength_min_sync = ww0->pulselength_min_sync = hmd->pulselength_min_sync;
-
-	hmd->pulse_in_clear_time = wm0->pulse_in_clear_time = wm1->pulse_in_clear_time = 35000;
-	tr0->pulse_in_clear_time = ww0->pulse_in_clear_time = hmd->pulse_in_clear_time;
-
-	hmd->pulse_max_for_sweep = wm0->pulse_max_for_sweep = wm1->pulse_max_for_sweep = 1800;
-	tr0->pulse_max_for_sweep = ww0->pulse_max_for_sweep = hmd->pulse_max_for_sweep;
-
-	hmd->pulse_synctime_offset = wm0->pulse_synctime_offset = wm1->pulse_synctime_offset = 20000;
-	tr0->pulse_synctime_offset = ww0->pulse_synctime_offset = hmd->pulse_synctime_offset;
-
-	hmd->pulse_synctime_slack = wm0->pulse_synctime_slack = wm1->pulse_synctime_slack = 5000;
-	tr0->pulse_synctime_slack = ww0->pulse_synctime_slack = hmd->pulse_synctime_slack;
-
-	hmd->timecenter_ticks = hmd->timebase_hz / 240;
-	wm0->timecenter_ticks = wm0->timebase_hz / 240;
-	wm1->timecenter_ticks = wm1->timebase_hz / 240;
-	tr0->timecenter_ticks = tr0->timebase_hz / 240;
-	ww0->timecenter_ticks = ww0->timebase_hz / 240;
-
-	wm0->haptic = survive_vive_send_haptic;
-	wm1->haptic = survive_vive_send_haptic;
 /*
 	int i;
 	int locs = hmd->nr_locations;
@@ -1945,7 +1890,7 @@ int DriverRegHTCVive( SurviveContext * ctx )
 		}
 	}
 */
-
+	
 	//Add the drivers.
 	if( sv->udev[USB_DEV_HMD_IMU_LH]       ) { survive_add_object( ctx, hmd ); }
 	if( sv->udev[USB_DEV_WATCHMAN1] ) { survive_add_object( ctx, wm0 ); }
@@ -1953,7 +1898,15 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	if( sv->udev[USB_DEV_TRACKER0]  ) { survive_add_object( ctx, tr0 ); }
 	if( sv->udev[USB_DEV_W_WATCHMAN1]  ) { survive_add_object( ctx, ww0 ); }
 
-	survive_add_driver( ctx, sv, survive_vive_usb_poll, survive_vive_close, survive_vive_send_magic );
+	if( sv->udev[USB_DEV_HMD_IMU_LH] ||
+	    sv->udev[USB_DEV_WATCHMAN1]  ||
+	    sv->udev[USB_DEV_WATCHMAN2]  ||
+	    sv->udev[USB_DEV_TRACKER0]   ||
+	    sv->udev[USB_DEV_W_WATCHMAN1] ) {
+	  survive_add_driver( ctx, sv, survive_vive_usb_poll, survive_vive_close, survive_vive_send_magic );
+	} else {
+	  fprintf(stderr, "No USB devices detected\n");
+	}
 
 	return 0;
 fail_gracefully:

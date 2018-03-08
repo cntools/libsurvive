@@ -3,6 +3,7 @@
 #ifdef __linux__
 #include <unistd.h>
 #endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -10,8 +11,13 @@
 #include <string.h>
 #include <os_generic.h>
 #include <CNFGFunctions.h>
+#include <time.h>
+#include <sys/time.h>
+#include <stdarg.h>
 
 struct SurviveContext * ctx;
+
+FILE* output_file = 0;
 
 void HandleKey( int keycode, int bDown )
 {
@@ -43,56 +49,70 @@ int bufferpts[32*2*3];
 char buffermts[32*128*3];
 int buffertimeto[32*3];
 
+uint64_t timestamp_in_us() {
+  static uint64_t start_time_us = 0;  
+  struct timeval tv;
+  gettimeofday(&tv,NULL);
+  uint64_t now = (uint64_t)tv.tv_sec * 1000000L + tv.tv_usec;
+  if(start_time_us == 0)
+    start_time_us = now;
+  return now - start_time_us;
+}
+
+int write_to_output(const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    fprintf(output_file, "%lu ", timestamp_in_us());
+    vfprintf(output_file, format, args);
+
+    va_end(args);
+}
+
 void my_light_process( struct SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length, uint32_t lh)
 {
 	survive_default_light_process( so, sensor_id, acode, timeinsweep, timecode, length, lh);
 
-	if( acode == -1 ) return;
-//return;
+	if( acode == -1 ) {
+	  write_to_output(  "A %s %d %d %d %u %u %u\n", so->codename, sensor_id, acode, timeinsweep, timecode, length, lh );
+	  return;
+	}
+
 	int jumpoffset = sensor_id;
 	if( strcmp( so->codename, "WM0" ) == 0 ) jumpoffset += 32;
 	else if( strcmp( so->codename, "WM1" ) == 0 ) jumpoffset += 64;
 
+	const char* LH_ID = 0;
+	const char* LH_Axis = 0;
+	
+	switch(acode) {
+	case 0:
+	case 2:
+	  bufferpts[jumpoffset*2+0] = (timeinsweep-100000)/500;
+	  LH_ID = "L"; LH_Axis = "X"; break;
+	case 1:
+	case 3:
+	  bufferpts[jumpoffset*2+1] = (timeinsweep-100000)/500;	  
+	  LH_ID = "L"; LH_Axis = "Y"; break;	  
+	case 4:
+	case 6:
+	  bufferpts[jumpoffset*2+0] = (timeinsweep-100000)/500;	  
+	  LH_ID = "R"; LH_Axis = "X"; break;	  
+	case 5:
+	case 7:
+	  bufferpts[jumpoffset*2+1] = (timeinsweep-100000)/500;	  
+	  LH_ID = "R"; LH_Axis = "Y"; break;
+	}       
 
-	if( acode == 0 || acode == 2 ) //data = 0
-	{
-		printf( "L X %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
-		bufferpts[jumpoffset*2+0] = (timeinsweep-100000)/500;
-		buffertimeto[jumpoffset] = 0;
-	}
-	if( acode == 1 || acode == 3 ) //data = 1
-	{
-		printf( "L Y %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
-		bufferpts[jumpoffset*2+1] = (timeinsweep-100000)/500;
-		buffertimeto[jumpoffset] = 0;
-	}
-
-
-	if( acode == 4 || acode == 6 ) //data = 0
-	{
-		printf( "R X %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
-		bufferpts[jumpoffset*2+0] = (timeinsweep-100000)/500;
-		buffertimeto[jumpoffset] = 0;
-	}
-	if( acode == 5 || acode == 7 ) //data = 1
-	{
-		printf( "R Y %s %d %d %d %d %d\n", so->codename, timecode, sensor_id, acode, timeinsweep, length );
-		bufferpts[jumpoffset*2+1] = (timeinsweep-100000)/500;
-		buffertimeto[jumpoffset] = 0;
-	}
+	write_to_output(  "%s %s %s %u %d %d %d %u %u\n", LH_ID, LH_Axis, so->codename, timecode, sensor_id, acode, timeinsweep, length, lh );
+	buffertimeto[jumpoffset] = 0;
 
 }
 
 void my_imu_process( struct SurviveObject * so, int mask, FLT * accelgyro, uint32_t timecode, int id )
 {
 	survive_default_imu_process( so, mask, accelgyro, timecode, id );
-
-//return;
-	//if( so->codename[0] == 'H' )
-	if( 1 )
-	{
-		printf( "I %s %d %f %f %f %f %f %f %d\n", so->codename, timecode, accelgyro[0], accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4], accelgyro[5], id );
-	}
+	write_to_output(  "I %s %d %u %.17g %.17g %.17g %.17g %.17g %.17g %d\n", so->codename, mask, timecode, accelgyro[0], accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4], accelgyro[5], id );	  
 }
 
 
@@ -156,22 +176,30 @@ void *SurviveThread(void *junk)
 
 	while(survive_poll(ctx) == 0)
 	{
-        printf("Do stuff.\n");
-		//Do stuff.
 	}
 
     return 0;
 }
 
-int main()
+int main(int argc, char** argv)
 {
-    // Create the libsurvive thread
-    OGCreateThread(SurviveThread, 0);
+  if(argc > 1) {
+    output_file = fopen(argv[1], "w");
+    if(output_file == 0) {
+      fprintf(stderr, "Could not open %s for writing", argv[1]);
+      return -1;
+    }
+  } else {
+      output_file = stdout;
+  }
+
+  // Create the libsurvive thread
+  OGCreateThread(SurviveThread, 0);
     
-	// Wait for the survive thread to load
-	while (!SurviveThreadLoaded) { OGUSleep(100); }
+  // Wait for the survive thread to load
+  while (!SurviveThreadLoaded) { OGUSleep(100); }
 	
-    // Run the Gui in the main thread
-    GuiThread(0);
+  // Run the Gui in the main thread
+  GuiThread(0);
 }
 
