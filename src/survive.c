@@ -94,7 +94,14 @@ static void *button_servicer(void * context)
 	return NULL;
 }
 
-SurviveContext * survive_init( int headless )
+void survive_verify_FLT_size(uint32_t user_size) {
+  if(sizeof(FLT) != user_size) {
+    fprintf(stderr, "FLT type incompatible; the shared library has FLT size %lu vs user program %u\n", sizeof(FLT), user_size);
+    exit(-1);
+  }
+}
+
+SurviveContext * survive_init_internal( int headless )
 {
 #ifdef RUNTIME_SYMNUM
 	if( !did_runtime_symnum )

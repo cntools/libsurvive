@@ -156,7 +156,15 @@ struct SurviveContext
 
 };
 
-SurviveContext * survive_init( int headless );
+SurviveContext * survive_init_internal( int headless );
+
+// Baked in size of FLT to verify users of the library have the correct setting. 
+void survive_verify_FLT_size(uint32_t user_size);
+  
+static inline SurviveContext * survive_init( int headless ) {
+  survive_verify_FLT_size(sizeof(FLT));
+  return survive_init_internal( headless );
+}
 
 //For any of these, you may pass in 0 for the function pointer to use default behavior.
 //In general unless you are doing wacky things like recording or playing back data, you won't need to use this.
