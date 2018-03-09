@@ -10,6 +10,8 @@
 #include "survive_config.h"
 #include "survive_default_devices.h"
 
+#include "redist/os_generic.h"
+
 struct SurvivePlaybackData {
   SurviveContext * ctx;
   const char* playback_dir; 
@@ -17,19 +19,16 @@ struct SurvivePlaybackData {
   int lineno;
 
   FLT time_factor;
-  uint64_t next_time_us; 
+  double next_time_us; 
 };
 typedef struct SurvivePlaybackData SurvivePlaybackData;
 
 
-uint64_t timestamp_in_us() {
-  static uint64_t start_time_us = 0;
-  struct timeval tv;
-  gettimeofday(&tv,NULL);
-  uint64_t now = (uint64_t)tv.tv_sec * 1000000L + tv.tv_usec;
-  if(start_time_us == 0)
-    start_time_us = now;
-  return now - start_time_us;
+double timestamp_in_us() {
+  static double start_time_us = 0;
+  if(start_time_us == 0.)
+    start_time_us = OGGetAbsoluteTime();
+  return OGGetAbsoluteTime() - start_time_us;
 }
 
 static int parse_and_run_imu(const char* line, SurvivePlaybackData* driver) {  
@@ -110,8 +109,7 @@ static int playback_poll( struct SurviveContext * ctx, void * _driver ) {
 	ssize_t r = getdelim( &line, &n, ' ', f );
 	if( r <= 0 ) return 0;
 
-	uint64_t timestamp;
-	if(sscanf(line, "%lu", &driver->next_time_us) != 1) {
+	if(sscanf(line, "%lf", &driver->next_time_us) != 1) {
 	  free(line);
 	  return 0;
 	}

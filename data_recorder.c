@@ -15,6 +15,8 @@
 #include <sys/time.h>
 #include <stdarg.h>
 
+#include "redist/os_generic.h"
+
 struct SurviveContext * ctx;
 
 FILE* output_file = 0;
@@ -49,21 +51,18 @@ int bufferpts[32*2*3];
 char buffermts[32*128*3];
 int buffertimeto[32*3];
 
-uint64_t timestamp_in_us() {
-  static uint64_t start_time_us = 0;  
-  struct timeval tv;
-  gettimeofday(&tv,NULL);
-  uint64_t now = (uint64_t)tv.tv_sec * 1000000L + tv.tv_usec;
+double timestamp_in_us() {
+  static double start_time_us = 0;
   if(start_time_us == 0)
-    start_time_us = now;
-  return now - start_time_us;
+    start_time_us = OGGetAbsoluteTime();
+  return OGGetAbsoluteTime() - start_time_us;
 }
 
 int write_to_output(const char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    fprintf(output_file, "%lu ", timestamp_in_us());
+    fprintf(output_file, "%.17g ", timestamp_in_us());
     vfprintf(output_file, format, args);
 
     va_end(args);
