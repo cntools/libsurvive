@@ -23,6 +23,8 @@
 #endif
 
 #include "json_helpers.h"
+#include "survive_default_devices.h"
+#include "survive_config.h"
 
 #ifdef HIDAPI
 #if defined(WINDOWS) || defined(WIN32) || defined (_WIN32)
@@ -1647,171 +1649,22 @@ void survive_data_cb( SurviveUSBInterface * si )
 
 
 
-static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
- if (tok->type == JSMN_STRING && (int) strlen(s) == tok->end - tok->start &&
-    strncmp(json + tok->start, s, tok->end - tok->start) == 0) {
-		return 0;
-	}
-	return -1;
-}
-
-
-static int ParsePoints( SurviveContext * ctx, SurviveObject * so, char * ct0conf, FLT ** floats_out, jsmntok_t * t, int i )
-{
-	int k;
-	int pts = t[i+1].size;
-	jsmntok_t * tk;
-
-	so->nr_locations = 0;
-	*floats_out = malloc( sizeof( **floats_out ) * 32 * 3 );
-
-	for( k = 0; k < pts; k++ )
-	{
-		tk = &t[i+2+k*4];
-
-		int m;
-		for( m = 0; m < 3; m++ )
-		{
-			char ctt[128];
-
-			tk++;
-			int elemlen = tk->end - tk->start;
-
-			if( tk->type != 4 || elemlen > sizeof( ctt )-1 )
-			{
-				SV_ERROR( "Parse error in JSON\n" );
-				return 1;
-			}
-
-			memcpy( ctt, ct0conf + tk->start, elemlen );
-			ctt[elemlen] = 0;
-			FLT f = atof( ctt );
-			int id = so->nr_locations*3+m;
-			(*floats_out)[id] = f;
-		}
-		so->nr_locations++;
-	}
-	return 0;
-}
-
 static int LoadConfig( SurviveViveData * sv, SurviveObject * so, int devno, int iface, int extra_magic )
 {
 	SurviveContext * ctx = sv->ctx;
 	char * ct0conf = 0;
 	int len = survive_get_config( &ct0conf, sv, devno, iface, extra_magic );
-printf( "Loading config: %d\n", len );
-#if 0
-	char fname[100];
-	sprintf( fname, "%s_config.json", so->codename );
-	FILE * f = fopen( fname, "w" );
-	fwrite( ct0conf, strlen(ct0conf), 1, f );
-	fclose( f );
-#endif
+	printf( "Loading config: %d\n", len );
 
-	if( len > 0 )
 	{
-
-		//From JSMN example.
-		jsmn_parser p;
-		jsmntok_t t[4096];
-		jsmn_init(&p);
-		int i;
-		int r = jsmn_parse(&p, ct0conf, len, t, sizeof(t)/sizeof(t[0]));	
-		if (r < 0) {
-			SV_INFO("Failed to parse JSON in HMD configuration: %d\n", r);
-			return -1;
-		}
-		if (r < 1 || t[0].type != JSMN_OBJECT) {
-			SV_INFO("Object expected in HMD configuration\n");
-			return -2;
-		}
-
-		for (i = 1; i < r; i++) {
-			jsmntok_t * tk = &t[i];
-
-			char ctxo[100];
-			int ilen = tk->end - tk->start;
-			if( ilen > 99 ) ilen = 99;
-			memcpy(ctxo, ct0conf + tk->start, ilen);
-			ctxo[ilen] = 0;
-
-//				printf( "%d / %d / %d / %d %s %d\n", tk->type, tk->start, tk->end, tk->size, ctxo, jsoneq(ct0conf, &t[i], "modelPoints") );
-//				printf( "%.*s\n", ilen, ct0conf + tk->start );
-
-			if (jsoneq(ct0conf, tk, "modelPoints") == 0) {
-				if( ParsePoints( ctx, so, ct0conf, &so->sensor_locations, t, i  ) )
-				{
-					break;
-				}
-			}
-			if (jsoneq(ct0conf, tk, "modelNormals") == 0) {
-				if( ParsePoints( ctx, so, ct0conf, &so->sensor_normals, t, i  ) )
-				{
-					break;
-				}
-			}
-
-
-			if (jsoneq(ct0conf, tk, "acc_bias") == 0) {
-				int32_t count = (tk+1)->size;
-				FLT* values = NULL;
-				if ( parse_float_array(ct0conf, tk+2, &values, count) >0 ) {
-					so->acc_bias = values;
-					so->acc_bias[0] *= .125; //XXX Wat?  Observed by CNL.  Biasing by more than this seems to hose things.
-					so->acc_bias[1] *= .125;
-					so->acc_bias[2] *= .125;
-				}
-			}
-			if (jsoneq(ct0conf, tk, "acc_scale") == 0) {
-				int32_t count = (tk+1)->size;
-				FLT* values = NULL;
-				if ( parse_float_array(ct0conf, tk+2, &values, count) >0 ) {
-					so->acc_scale = values;
-				}
-			}
-
-			if (jsoneq(ct0conf, tk, "gyro_bias") == 0) {
-				int32_t count = (tk+1)->size;
-				FLT* values = NULL;
-				if ( parse_float_array(ct0conf, tk+2, &values, count) >0 ) {
-					so->gyro_bias = values;
-				}
-			}
-			if (jsoneq(ct0conf, tk, "gyro_scale") == 0) {
-				int32_t count = (tk+1)->size;
-				FLT* values = NULL;
-				if ( parse_float_array(ct0conf, tk+2, &values, count) >0 ) {
-					so->gyro_scale = values;
-				}
-			}
-		}
-	}
-	else
-	{
-		//TODO: Cleanup any remaining USB stuff.
-		return 1;
+	  char raw_fname[100];
+	  sprintf( raw_fname, "%s_config.json", so->codename );
+	  FILE * f = fopen( raw_fname, "w" );
+	  fwrite( ct0conf, strlen(ct0conf), 1, f );
+	  fclose( f );
 	}
 
-	char fname[64];
-
-	sprintf( fname, "calinfo/%s_points.csv", so->codename );
-	FILE * f = fopen( fname, "w" );
-	int j;
-	for( j = 0; j < so->nr_locations; j++ )
-	{
-		fprintf( f, "%f %f %f\n", so->sensor_locations[j*3+0], so->sensor_locations[j*3+1], so->sensor_locations[j*3+2] );
-	}
-	fclose( f );
-
-	sprintf( fname, "calinfo/%s_normals.csv", so->codename );
-	f = fopen( fname, "w" );
-	for( j = 0; j < so->nr_locations; j++ )
-	{
-		fprintf( f, "%f %f %f\n", so->sensor_normals[j*3+0], so->sensor_normals[j*3+1], so->sensor_normals[j*3+2] );
-	}
-	fclose( f );
-
-	return 0;
+	return survive_load_htc_config_format(ct0conf, len, so);
 }
 
 
@@ -1835,19 +1688,20 @@ void init_SurviveObject(SurviveObject* so) {
 
 int DriverRegHTCVive( SurviveContext * ctx )
 {
-	int r;
-	SurviveObject * hmd = calloc( 1, sizeof( SurviveObject ) );
-	SurviveObject * wm0 = calloc( 1, sizeof( SurviveObject ) );
-	SurviveObject * wm1 = calloc( 1, sizeof( SurviveObject ) );
-	SurviveObject * tr0 = calloc( 1, sizeof( SurviveObject ) );
-	SurviveObject * ww0 = calloc( 1, sizeof( SurviveObject ) );
-	SurviveViveData * sv = calloc( 1, sizeof( SurviveViveData ) );
-
-	init_SurviveObject(hmd);
-	init_SurviveObject(wm0);
-	init_SurviveObject(wm1);
-	init_SurviveObject(tr0);
-	init_SurviveObject(ww0);
+	const char* playback_dir = config_read_str(ctx->global_config_values,
+						   "PlaybackDir", "");
+	if(strlen(playback_dir) != 0) {
+	  SV_INFO("Playback is active; disabling USB driver");
+	  return 0;
+	}
+	
+	int r;	
+	SurviveViveData * sv = calloc(1, sizeof(SurviveViveData) );
+	SurviveObject * hmd = survive_create_hmd(ctx, "HTC", sv);
+	SurviveObject * wm0 = survive_create_wm0(ctx, "HTC", sv, 0);
+	SurviveObject * wm1 = survive_create_wm1(ctx, "HTC", sv, 0);
+	SurviveObject * tr0 = survive_create_tr0(ctx, "HTC", sv);
+	SurviveObject * ww0 = survive_create_ww0(ctx, "HTC", sv);
 
 	sv->ctx = ctx;
 	
@@ -1858,28 +1712,6 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	#else
 		mkdir( "calinfo", 0755 );
 	#endif
-
-
-	hmd->ctx = ctx;
-	hmd->driver = sv;
-	memcpy( hmd->codename, "HMD", 4 );
-	memcpy( hmd->drivername, "HTC", 4 );
-	wm0->ctx = ctx;
-	wm0->driver = sv;
-	memcpy( wm0->codename, "WM0", 4 );
-	memcpy( wm0->drivername, "HTC", 4 );
-	wm1->ctx = ctx;
-	wm1->driver = sv;
-	memcpy( wm1->codename, "WM1", 4 );
-	memcpy( wm1->drivername, "HTC", 4 );
-	tr0->ctx = ctx;
-	tr0->driver = sv;
-	memcpy( tr0->codename, "TR0", 4 );
-	memcpy( tr0->drivername, "HTC", 4 );
-	ww0->ctx = ctx;
-	ww0->driver = sv;
-	memcpy( ww0->codename, "WW0", 4 );
-	memcpy( ww0->drivername, "HTC", 4 );
 
 	//USB must happen last.
 	if( r = survive_usb_init( sv, hmd, wm0, wm1, tr0, ww0) )
@@ -1894,58 +1726,7 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	if( sv->udev[USB_DEV_WATCHMAN2] && LoadConfig( sv, wm1, 3, 0, 1 )) { SV_INFO( "Watchman 1 config issue." ); }
 	if( sv->udev[USB_DEV_TRACKER0]  && LoadConfig( sv, tr0, 4, 0, 0 )) { SV_INFO( "Tracker 0 config issue." ); }
 	if( sv->udev[USB_DEV_W_WATCHMAN1]  && LoadConfig( sv, ww0, 5, 0, 0 )) { SV_INFO( "Wired Watchman 0 config issue." ); }
-
-	hmd->timebase_hz = wm0->timebase_hz = wm1->timebase_hz = 48000000;
-	tr0->timebase_hz = ww0->timebase_hz = hmd->timebase_hz;
-
-	hmd->pulsedist_max_ticks = wm0->pulsedist_max_ticks = wm1->pulsedist_max_ticks = 500000;
-	tr0->pulsedist_max_ticks = ww0->pulsedist_max_ticks = hmd->pulsedist_max_ticks;
-
-	hmd->pulselength_min_sync = wm0->pulselength_min_sync = wm1->pulselength_min_sync = 2200;
-	tr0->pulselength_min_sync = ww0->pulselength_min_sync = hmd->pulselength_min_sync;
-
-	hmd->pulse_in_clear_time = wm0->pulse_in_clear_time = wm1->pulse_in_clear_time = 35000;
-	tr0->pulse_in_clear_time = ww0->pulse_in_clear_time = hmd->pulse_in_clear_time;
-
-	hmd->pulse_max_for_sweep = wm0->pulse_max_for_sweep = wm1->pulse_max_for_sweep = 1800;
-	tr0->pulse_max_for_sweep = ww0->pulse_max_for_sweep = hmd->pulse_max_for_sweep;
-
-	hmd->pulse_synctime_offset = wm0->pulse_synctime_offset = wm1->pulse_synctime_offset = 20000;
-	tr0->pulse_synctime_offset = ww0->pulse_synctime_offset = hmd->pulse_synctime_offset;
-
-	hmd->pulse_synctime_slack = wm0->pulse_synctime_slack = wm1->pulse_synctime_slack = 5000;
-	tr0->pulse_synctime_slack = ww0->pulse_synctime_slack = hmd->pulse_synctime_slack;
-
-	hmd->timecenter_ticks = hmd->timebase_hz / 240;
-	wm0->timecenter_ticks = wm0->timebase_hz / 240;
-	wm1->timecenter_ticks = wm1->timebase_hz / 240;
-	tr0->timecenter_ticks = tr0->timebase_hz / 240;
-	ww0->timecenter_ticks = ww0->timebase_hz / 240;
-
-	wm0->haptic = survive_vive_send_haptic;
-	wm1->haptic = survive_vive_send_haptic;
-/*
-	int i;
-	int locs = hmd->nr_locations;
-	printf( "Locs: %d\n", locs );
-	if (hmd->sensor_locations )
-	{
-		printf( "POSITIONS:\n" );
-		for( i = 0; i < locs*3; i+=3 )
-		{
-			printf( "%f %f %f\n", hmd->sensor_locations[i+0], hmd->sensor_locations[i+1], hmd->sensor_locations[i+2] );
-		}
-	}
-	if( hmd->sensor_normals )
-	{
-		printf( "NORMALS:\n" );
-		for( i = 0; i < locs*3; i+=3 )
-		{
-			printf( "%f %f %f\n", hmd->sensor_normals[i+0], hmd->sensor_normals[i+1], hmd->sensor_normals[i+2] );
-		}
-	}
-*/
-
+	
 	//Add the drivers.
 	if( sv->udev[USB_DEV_HMD_IMU_LH]       ) { survive_add_object( ctx, hmd ); }
 	if( sv->udev[USB_DEV_WATCHMAN1] ) { survive_add_object( ctx, wm0 ); }
@@ -1953,7 +1734,15 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	if( sv->udev[USB_DEV_TRACKER0]  ) { survive_add_object( ctx, tr0 ); }
 	if( sv->udev[USB_DEV_W_WATCHMAN1]  ) { survive_add_object( ctx, ww0 ); }
 
-	survive_add_driver( ctx, sv, survive_vive_usb_poll, survive_vive_close, survive_vive_send_magic );
+	if( sv->udev[USB_DEV_HMD_IMU_LH] ||
+	    sv->udev[USB_DEV_WATCHMAN1]  ||
+	    sv->udev[USB_DEV_WATCHMAN2]  ||
+	    sv->udev[USB_DEV_TRACKER0]   ||
+	    sv->udev[USB_DEV_W_WATCHMAN1] ) {
+	  survive_add_driver( ctx, sv, survive_vive_usb_poll, survive_vive_close, survive_vive_send_magic );
+	} else {
+	  fprintf(stderr, "No USB devices detected\n");
+	}
 
 	return 0;
 fail_gracefully:
