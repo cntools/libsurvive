@@ -252,7 +252,7 @@ static void normalizeAndMultiplyVector(FLT *vectorToNormalize, size_t count, FLT
 }
 
 
-static RefineEstimateUsingGradientDescentRadii(FLT *estimateOut, SensorAngles *angles, FLT *initialEstimate, size_t numRadii, PointPair *pairs, size_t numPairs, FILE *logFile)
+static void RefineEstimateUsingGradientDescentRadii(FLT *estimateOut, SensorAngles *angles, FLT *initialEstimate, size_t numRadii, PointPair *pairs, size_t numPairs, FILE *logFile)
 {
 	int i = 0;
 	FLT lastMatchFitness = calculateFitness(angles, initialEstimate, pairs, numPairs);
@@ -521,9 +521,9 @@ static void QuickPose(SurviveObject *so)
 
 		if (sensorCount > 4)
 		{
-			FLT pos[3];
+			Point pos;
 			FLT orient[4];
-			SolveForLighthouseRadii(pos, orient, to);
+			SolveForLighthouseRadii(&pos, orient, to);
 		}
 
 		
@@ -591,7 +591,7 @@ int PoserOctavioRadii( SurviveObject * so, PoserData * pd )
 				}
 				else
 				{
-					dd->hitCount[i][l->lh][axis] *= 0.5;
+					dd->hitCount[i][l->lh][axis] = (int)((double)dd->hitCount[i][l->lh][axis] * 0.5);
 				}
 			}
 			//if (0 == l->lh)

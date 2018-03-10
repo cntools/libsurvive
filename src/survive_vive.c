@@ -23,6 +23,8 @@
 #endif
 
 #include "json_helpers.h"
+#include "survive_default_devices.h"
+#include "survive_config.h"
 
 #ifdef HIDAPI
 #if defined(WINDOWS) || defined(WIN32) || defined (_WIN32)
@@ -51,6 +53,11 @@ const short vidpids[] = {
 	0x28de, 0x2000, 1, //Valve HMD lighthouse(B) (only used on HIDAPI, for lightcap)
 	0x28de, 0x2022, 1, //HTC Tracker (only used on HIDAPI, for lightcap)
 	0x28de, 0x2012, 1, //Valve Watchman, USB connected (only used on HIDAPI, for lightcap)
+
+	0x28de, 0x2000, 2, //Valve HMD lighthouse(B) (only used on HIDAPI, for lightcap)
+	0x28de, 0x2022, 2, //HTC Tracker (only used on HIDAPI, for lightcap)
+	0x28de, 0x2012, 2, //Valve Watchman, USB connected (only used on HIDAPI, for lightcap)
+
 #endif
 }; //length MAX_USB_INTERFACES*2
 
@@ -65,6 +72,10 @@ const char * devnames[] = {
 	"HMD Lightcap",
 	"Tracker 0 Lightcap",
 	"Wired Watchman 1 Lightcap",
+
+	"HMD Buttons",
+	"Tracker 0 Buttons",
+	"Wired Watchman 1 Buttons",
 #endif
 }; //length MAX_USB_INTERFACES
 
@@ -80,7 +91,12 @@ const char * devnames[] = {
 #define USB_DEV_HMD_IMU_LHB 6
 #define USB_DEV_TRACKER0_LIGHTCAP 7
 #define USB_DEV_W_WATCHMAN1_LIGHTCAP 8
-#define MAX_USB_DEVS		9
+
+#define USB_DEV_HMD_BUTTONS 9
+#define USB_DEV_TRACKER0_BUTTONS 10
+#define USB_DEV_W_WATCHMAN1_BUTTONS 11
+
+#define MAX_USB_DEVS		12
 #else
 #define MAX_USB_DEVS		6
 #endif
@@ -94,7 +110,10 @@ const char * devnames[] = {
 #define USB_IF_LIGHTCAP		6
 #define USB_IF_TRACKER0_LIGHTCAP		7
 #define USB_IF_W_WATCHMAN1_LIGHTCAP		8
-#define MAX_INTERFACES		9
+#define USB_IF_HMD_BUTTONS		9
+#define USB_IF_TRACKER0_BUTTONS		10
+#define USB_IF_W_WATCHMAN1_BUTTONS		11
+#define MAX_INTERFACES		12
 
 typedef struct SurviveUSBInterface SurviveUSBInterface;
 typedef struct SurviveViveData SurviveViveData;
@@ -292,8 +311,8 @@ static inline int getupdate_feature_report(libusb_device_handle* dev, uint16_t i
 	int ret = libusb_control_transfer(dev, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_IN,
 		0x01, 0x300 | data[0], interface, data, datalen, 1000 );
 	if( ret == -9 ) return -9;
-    if (ret < 0)
-        return -1;
+	if (ret < 0)
+		return -1;
 	return ret;
 }
 
@@ -427,7 +446,6 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 
 		if( d == 0 )
 		{
-			printf( "!!%p  %d %04x %04x %d\n", devnames[i], i, vid, pid, which );
 			SV_INFO( "Did not find device %s (%04x:%04x.%d)", devnames[i], vid, pid, which );
 			sv->udev[i] = 0;
 			continue;
@@ -487,10 +505,16 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 	// This is a HACK!  But it works.  Need to investigate further
 	sv->uiface[USB_DEV_TRACKER0_LIGHTCAP].actual_len = 64;
 	if( sv->udev[USB_DEV_TRACKER0_LIGHTCAP] && AttachInterface( sv, tr0, USB_IF_TRACKER0_LIGHTCAP, sv->udev[USB_DEV_TRACKER0_LIGHTCAP], 0x82, survive_data_cb, "Tracker 1 Lightcap")) { return -13; }
+
 	if( sv->udev[USB_DEV_W_WATCHMAN1_LIGHTCAP] && AttachInterface( sv, ww0, USB_IF_W_WATCHMAN1_LIGHTCAP, sv->udev[USB_DEV_W_WATCHMAN1_LIGHTCAP], 0x82, survive_data_cb, "Wired Watchman 1 Lightcap")) { return -13; }
+
+
+	if (sv->udev[USB_DEV_TRACKER0_BUTTONS] && AttachInterface(sv, tr0, USB_IF_TRACKER0_BUTTONS, sv->udev[USB_DEV_TRACKER0_BUTTONS], 0x83, survive_data_cb, "Tracker 1 Buttons")) { return -13; }
+	if (sv->udev[USB_DEV_W_WATCHMAN1_BUTTONS] && AttachInterface(sv, ww0, USB_IF_W_WATCHMAN1_BUTTONS, sv->udev[USB_DEV_W_WATCHMAN1_BUTTONS], 0x83, survive_data_cb, "Wired Watchman 1 BUTTONS")) { return -13; }
+
 #else
 	if( sv->udev[USB_DEV_HMD_IMU_LH] && AttachInterface( sv, hmd, USB_IF_LIGHTCAP, sv->udev[USB_DEV_HMD_IMU_LH], 0x82, survive_data_cb, "Lightcap")) { return -12; }
-	if( sv->udev[USB_DEV_TRACKER0] && AttachInterface( sv, ww0, USB_IF_TRACKER0_LIGHTCAP, sv->udev[USB_DEV_TRACKER0], 0x82, survive_data_cb, "Tracker 0 Lightcap")) { return -13; }
+	if( sv->udev[USB_DEV_TRACKER0] && AttachInterface( sv, tr0, USB_IF_TRACKER0_LIGHTCAP, sv->udev[USB_DEV_TRACKER0], 0x82, survive_data_cb, "Tracker 0 Lightcap")) { return -13; }
 	if( sv->udev[USB_DEV_W_WATCHMAN1] && AttachInterface( sv, ww0, USB_IF_W_WATCHMAN1_LIGHTCAP, sv->udev[USB_DEV_W_WATCHMAN1], 0x82, survive_data_cb, "Wired Watchman 1 Lightcap")) { return -13; }
 #endif
 	SV_INFO( "All enumerated devices attached." );
@@ -596,18 +620,38 @@ int survive_vive_send_magic(SurviveContext * ctx, void * drv, int magic_code, vo
 
 //#endif
 
-#if 0
-		for( int i = 0; i < 256; i++ )
+#if 0		
+		for (int j=0; j < 40; j++)
 		{
-			static uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0xff, 0, 0, 0, 0, 0, 0, 0 };
-			//r = update_feature_report( sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof( vive_controller_haptic_pulse ) );
-			r = update_feature_report( sv->udev[USB_DEV_W_WATCHMAN1_LIGHTCAP], 0, vive_controller_haptic_pulse, sizeof( vive_controller_haptic_pulse ) );
-			SV_INFO( "UCR: %d", r );
-			if( r != sizeof( vive_controller_haptic_pulse ) ) return 5;
-			OGUSleep( 1000 );
+			for (int i = 0; i < 0x1; i++)
+			{
+				//uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0x7, 0 /*right*/, 0xFF /*period on*/, 0xFF/*period on*/, 0xFF/*period off*/, 0xFF/*period off*/, 0xFF /* repeat Count */, 0xFF /* repeat count */ };
+				//uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0x07, 0x00, 0xf4, 0x01, 0xb5, 0xa2, 0x01, 0x00 }; // data taken from Nairol's captures
+				uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0x07, 0x00, 0xf4, 0x01, 0xb5, 0xa2, 0x01* j, 0x00 }; 
+				r = update_feature_report( sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof( vive_controller_haptic_pulse ) );
+				r = getupdate_feature_report(sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof(vive_controller_haptic_pulse));
+				SV_INFO("UCR: %d", r);
+				if (r != sizeof(vive_controller_haptic_pulse)) printf("HAPTIC FAILED **************************\n"); // return 5;
+				OGUSleep(5000);
+			}
+
+			OGUSleep(20000);
 		}
+
+
 #endif
 
+#if 0
+		//// working code to turn off a wireless controller:
+		//{
+		//	uint8_t vive_controller_off[64] = { 0xff, 0x9f, 0x04, 'o', 'f', 'f', '!' };
+		//	//r = update_feature_report( sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof( vive_controller_haptic_pulse ) );
+		//	r = update_feature_report(sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_off, sizeof(vive_controller_off));
+		//	SV_INFO("UCR: %d", r);
+		//	if (r != sizeof(vive_controller_off)) printf("OFF FAILED **************************\n"); // return 5;
+		//	OGUSleep(1000);
+		//}
+#endif
 		//if (sv->udev[USB_DEV_TRACKER0])
 		//{
 		//	static uint8_t vive_magic_power_on[64] = {  0x04, 0x78, 0x29, 0x38 };
@@ -648,6 +692,54 @@ int survive_vive_send_magic(SurviveContext * ctx, void * drv, int magic_code, vo
 		}
 	}
 	return 0;
+}
+
+int survive_vive_send_haptic(SurviveObject * so, uint8_t reserved, uint16_t pulseHigh, uint16_t pulseLow, uint16_t repeatCount)
+{
+	SurviveViveData *sv = (SurviveViveData*)so->driver;
+
+	if (NULL == sv)
+	{
+		return -500;
+	}
+
+	int r;
+	uint8_t vive_controller_haptic_pulse[64] = { 
+		0xff, 0x8f, 0x07, 0x00, 
+		pulseHigh & 0xff00 >> 8,  pulseHigh & 0xff,
+		pulseLow & 0xff00 >> 8,  pulseLow & 0xff,
+		repeatCount & 0xff00 >> 8,  repeatCount & 0xff,
+	};
+
+	r = update_feature_report(sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof(vive_controller_haptic_pulse));
+	r = getupdate_feature_report(sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof(vive_controller_haptic_pulse));
+	//SV_INFO("UCR: %d", r);
+	if (r != sizeof(vive_controller_haptic_pulse)) 
+	{
+		printf("HAPTIC FAILED **************************\n"); 
+		return -1;
+	}
+
+	return 0;
+
+	//for (int j = 0; j < 40; j++)
+	//{
+	//	for (int i = 0; i < 0x1; i++)
+	//	{
+	//		//uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0x7, 0 /*right*/, 0xFF /*period on*/, 0xFF/*period on*/, 0xFF/*period off*/, 0xFF/*period off*/, 0xFF /* repeat Count */, 0xFF /* repeat count */ };
+	//		//uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0x07, 0x00, 0xf4, 0x01, 0xb5, 0xa2, 0x01, 0x00 }; // data taken from Nairol's captures
+	//		uint8_t vive_controller_haptic_pulse[64] = { 0xff, 0x8f, 0x07, 0x00, 0xf4, 0x01, 0xb5, 0xa2, 0x01 * j, 0x00 };
+	//		r = update_feature_report(sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof(vive_controller_haptic_pulse));
+	//		r = getupdate_feature_report(sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof(vive_controller_haptic_pulse));
+	//		if (r != sizeof(vive_controller_haptic_pulse)) printf("HAPTIC FAILED **************************\n"); // return 5;
+	//		OGUSleep(5000);
+	//	}
+
+	//	OGUSleep(20000);
+	//}
+
+	////OGUSleep(5000);
+	//return 0;
 }
 
 void survive_vive_usb_close( SurviveViveData * sv )
@@ -811,8 +903,21 @@ int survive_get_config( char ** config, SurviveViveData * sv, int devno, int ifa
 ///////////////////////////////////////////////////////////////////////////////
 
 #define POP1  (*(readdata++))
-#define POP2  (*(((uint16_t*)((readdata+=2)-2))))
-#define POP4  (*(((uint32_t*)((readdata+=4)-4))))
+
+struct __attribute__((__packed__)) unaligned_16_t {
+    int16_t v;
+};
+struct __attribute__((__packed__)) unaligned_32_t {
+    int32_t v;
+};
+struct __attribute__((__packed__)) unaligned_u16_t {
+    uint16_t v;
+};
+struct __attribute__((__packed__)) unaligned_u32_t {
+    uint32_t v;
+};
+#define POP2  ((((( struct unaligned_u16_t*)((readdata+=2)-2))))->v)
+#define POP4  ((((( struct unaligned_u32_t*)((readdata+=4)-4))))->v)
 
 void calibrate_acc(SurviveObject* so, FLT* agm) {
 	if (so->acc_bias != NULL) {
@@ -842,6 +947,171 @@ void calibrate_gyro(SurviveObject* so, FLT* agm) {
 	}
 }
 
+typedef struct 
+{
+	// could use a bitfield here, but since this data is short-lived,
+	// the space savings probably isn't worth the processing overhead.
+	uint8_t pressedButtonsValid;
+	uint8_t triggerOfBatteryValid;
+	uint8_t batteryChargeValid;
+	uint8_t hardwareIdValid;
+	uint8_t touchpadHorizontalValid;
+	uint8_t touchpadVerticalValid;
+	uint8_t triggerHighResValid;
+
+	uint32_t pressedButtons;
+	uint16_t triggerOrBattery;
+	uint8_t  batteryCharge;
+	uint32_t hardwareId;
+	uint16_t touchpadHorizontal;
+	uint16_t touchpadVertical;
+	uint16_t triggerHighRes;
+} buttonEvent;
+
+void incrementAndPostButtonQueue(SurviveContext *ctx)
+{
+	ButtonQueueEntry *entry = &(ctx->buttonQueue.entry[ctx->buttonQueue.nextWriteIndex]);
+
+	if ((ctx->buttonQueue.nextWriteIndex+1)% BUTTON_QUEUE_MAX_LEN == ctx->buttonQueue.nextReadIndex)
+	{
+		// There's not enough space to write this entry.  Clear it out and move along
+		//printf("Button Buffer Full\n");
+		memset(entry, 0, sizeof(ButtonQueueEntry));
+		return;
+	}
+	entry->isPopulated = 1;
+	ctx->buttonQueue.nextWriteIndex++;
+	// if we've exceeded the size of the buffer, loop around to the beginning.
+	if (ctx->buttonQueue.nextWriteIndex >= BUTTON_QUEUE_MAX_LEN)
+	{
+		ctx->buttonQueue.nextWriteIndex = 0;
+	}
+	OGUnlockSema(ctx->buttonQueue.buttonservicesem);
+
+	// clear out any old data in the entry so we always start with a clean slate.
+	entry = &(ctx->buttonQueue.entry[ctx->buttonQueue.nextWriteIndex]);
+	memset(entry, 0, sizeof(ButtonQueueEntry));
+}
+
+// important!  This must be the only place that we're posting to the buttonEntryQueue
+// if that ever needs to be changed, you will have to add locking so that only one
+// thread is posting at a time.
+void registerButtonEvent(SurviveObject *so, buttonEvent *event)
+{
+	ButtonQueueEntry *entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+
+	memset(entry, 0, sizeof(ButtonQueueEntry));
+
+	entry->so = so;
+	if (event->pressedButtonsValid)
+	{
+		//printf("trigger %8.8x\n", event->triggerHighRes);
+		for (int a=0; a < 16; a++)
+		{
+			if (((event->pressedButtons) & (1<<a)) != ((so->buttonmask) & (1<<a)))
+			{
+				// Hey, the button did something
+				if (event->pressedButtons & (1 << a))
+				{
+					// it went down
+					entry->eventType = BUTTON_EVENT_BUTTON_DOWN;
+				}
+				else
+				{
+					// it went up
+					entry->eventType = BUTTON_EVENT_BUTTON_UP;
+				}
+				entry->buttonId = a;
+				if (entry->buttonId == 0)
+				{
+					// this fixes 2 issues.  First, is the a button id of 0 indicates no button pressed.
+					// second is that the trigger shows up as button 0 coming from the wireless controller,
+					// but we infer it from the position on the wired controller.  On the wired, we treat it
+					// as buttonId 24 (look further down in this function)
+					entry->buttonId = 24;
+				}
+				incrementAndPostButtonQueue(so->ctx);
+				entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+			}
+		}
+		// if the trigger button is depressed & it wasn't before
+		if ((((event->pressedButtons) & (0xff000000)) == 0xff000000) &&
+			((so->buttonmask) & (0xff000000)) != 0xff000000)
+		{
+			entry->eventType = BUTTON_EVENT_BUTTON_DOWN;
+			entry->buttonId = 24;
+			incrementAndPostButtonQueue(so->ctx);
+			entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+		}
+		// if the trigger button isn't depressed but it was before
+		else if ((((event->pressedButtons) & (0xff000000)) != 0xff000000) &&
+			((so->buttonmask) & (0xff000000)) == 0xff000000)
+		{
+			entry->eventType = BUTTON_EVENT_BUTTON_UP;
+			entry->buttonId = 24;
+			incrementAndPostButtonQueue(so->ctx);
+			entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+		}
+	}
+	if (event->triggerHighResValid)
+	{
+		if (so->axis1 != event->triggerHighRes)
+		{
+			entry->eventType = BUTTON_EVENT_AXIS_CHANGED;
+			entry->axis1Id = 1;
+			entry->axis1Val = event->triggerHighRes;
+			incrementAndPostButtonQueue(so->ctx);
+			entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+
+		}
+	}
+	if ((event->touchpadHorizontalValid) && (event->touchpadVerticalValid))
+	{
+		if ((so->axis2 != event->touchpadHorizontal) ||
+			(so->axis3 != event->touchpadVertical))
+		{
+			entry->eventType = BUTTON_EVENT_AXIS_CHANGED;
+			entry->axis1Id = 2;
+			entry->axis1Val = event->touchpadHorizontal;
+			entry->axis2Id = 3;
+			entry->axis2Val = event->touchpadVertical;
+			incrementAndPostButtonQueue(so->ctx);
+			entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+
+		}
+	}
+
+	if (event->pressedButtonsValid)
+	{
+		so->buttonmask = event->pressedButtons;
+	}
+	if (event->batteryChargeValid)
+	{
+		so->charge = event->batteryCharge;
+	}
+	if (event->touchpadHorizontalValid)
+	{
+		so->axis2 = event->touchpadHorizontal;
+	}
+	if (event->touchpadVerticalValid)
+	{
+		so->axis3 = event->touchpadVertical;
+	}
+	if (event->triggerHighResValid)
+	{
+		so->axis1 = event->triggerHighRes;
+	}
+}
+
+uint8_t isPopulated;  //probably can remove this given the semaphore in the parent struct.   helps with debugging
+uint8_t eventType;
+uint8_t buttonId;
+uint8_t axis1Id;
+uint16_t axis1Val;
+uint8_t axis2Id;
+uint16_t axis2Val;
+SurviveObject *so;
+
 
 static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 {
@@ -862,35 +1132,54 @@ static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 	uint8_t qty = POP1;
 	uint8_t time2 = POP1;
 	uint8_t type = POP1;
+
+
 	qty-=2;
 	int propset = 0;
 	int doimu = 0;
 
 	if( (type & 0xf0) == 0xf0 )
 	{
+		buttonEvent bEvent;
+		memset(&bEvent, 0, sizeof(bEvent));
+
 		propset |= 4;
 		//printf( "%02x %02x %02x %02x\n", qty, type, time1, time2 );
 		type &= ~0x10;
 
 		if( type & 0x01 )
 		{
+			
 			qty-=1;
-			w->buttonmask = POP1;
+			bEvent.pressedButtonsValid = 1;
+			bEvent.pressedButtons = POP1;
+
+			//printf("buttonmask is %d\n", w->buttonmask);
 			type &= ~0x01;
 		}
 		if( type & 0x04 ) 
 		{
 			qty-=1;
-			w->axis1 = ( POP1 ) * 128; 
+			bEvent.triggerHighResValid = 1;
+			bEvent.triggerHighRes = ( POP1 ) * 128;
 			type &= ~0x04;
 		}
 		if( type & 0x02 )
 		{
 			qty-=4;
-			w->axis2 = POP2;
-			w->axis3 = POP2;
+			bEvent.touchpadHorizontalValid = 1;
+			bEvent.touchpadVerticalValid = 1;
+
+			bEvent.touchpadHorizontal = POP2;
+			bEvent.touchpadVertical = POP2;
 			type &= ~0x02;
 		}
+
+		if (bEvent.pressedButtonsValid || bEvent.triggerHighResValid || bEvent.touchpadHorizontalValid)
+		{
+			registerButtonEvent(w, &bEvent);
+		}
+
 
 		//XXX TODO: Is this correct?  It looks SO WACKY
 		type &= 0x7f;
@@ -1156,7 +1445,7 @@ void survive_data_cb( SurviveUSBInterface * si )
 		//printf( "%d -> ", size );
 		for( i = 0; i < 3; i++ )
 		{
-			int16_t * acceldata = (int16_t*)readdata;
+            struct unaligned_16_t * acceldata = (struct unaligned_16_t *)readdata;
 			readdata += 12;
 			uint32_t timecode = POP4;
 			uint8_t code = POP1;
@@ -1168,8 +1457,8 @@ void survive_data_cb( SurviveUSBInterface * si )
 				obj->oldcode = code;
 
 				//XXX XXX BIG TODO!!! Actually recal gyro data.
-				FLT agm[9] = { acceldata[0], acceldata[1], acceldata[2],
-								acceldata[3], acceldata[4], acceldata[5],
+				FLT agm[9] = { acceldata[0].v, acceldata[1].v, acceldata[2].v,
+								acceldata[3].v, acceldata[4].v, acceldata[5].v,
 								0,0,0 };
 
 				agm[0]*=(float)(1./8192.0);
@@ -1192,7 +1481,10 @@ void survive_data_cb( SurviveUSBInterface * si )
 				ctx->imuproc( obj, 3, agm, timecode, code );
 			}
 		}
-
+		if (id != 32)
+		{
+			int a=0; // set breakpoint here
+		}
 		//DONE OK.
 		break;
 	}
@@ -1211,7 +1503,7 @@ void survive_data_cb( SurviveUSBInterface * si )
 		}
 		else if( id == 38 )
 		{
-			w->ison = 0;
+			w->ison = 0; // turning off
 		}
 		else
 		{
@@ -1250,190 +1542,128 @@ void survive_data_cb( SurviveUSBInterface * si )
 			handle_lightcap( obj, &le );
 		}		
 		break;
-	}
-	}
-}
 
-
-
-
-
-
-
-
-
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-
-
-static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
- if (tok->type == JSMN_STRING && (int) strlen(s) == tok->end - tok->start &&
-    strncmp(json + tok->start, s, tok->end - tok->start) == 0) {
-		return 0;
-	}
-	return -1;
-}
-
-
-static int ParsePoints( SurviveContext * ctx, SurviveObject * so, char * ct0conf, FLT ** floats_out, jsmntok_t * t, int i )
-{
-	int k;
-	int pts = t[i+1].size;
-	jsmntok_t * tk;
-
-	so->nr_locations = 0;
-	*floats_out = malloc( sizeof( **floats_out ) * 32 * 3 );
-
-	for( k = 0; k < pts; k++ )
-	{
-		tk = &t[i+2+k*4];
-
-		int m;
-		for( m = 0; m < 3; m++ )
+		if (id != 33)
 		{
-			char ctt[128];
-
-			tk++;
-			int elemlen = tk->end - tk->start;
-
-			if( tk->type != 4 || elemlen > sizeof( ctt )-1 )
-			{
-				SV_ERROR( "Parse error in JSON\n" );
-				return 1;
-			}
-
-			memcpy( ctt, ct0conf + tk->start, elemlen );
-			ctt[elemlen] = 0;
-			FLT f = atof( ctt );
-			int id = so->nr_locations*3+m;
-			(*floats_out)[id] = f;
+			int a = 0; // breakpoint here
 		}
-		so->nr_locations++;
 	}
-	return 0;
+	case USB_IF_TRACKER0_BUTTONS:
+	case USB_IF_W_WATCHMAN1_BUTTONS:
+	{
+		if (1 == id)
+		{
+			//0x00	uint8	1	reportID	HID report identifier(= 1)
+			//0x02	uint16	2	reportType(? )	0x0B04: Ping(every second) / 0x3C01 : User input
+			//0x04	uint32	4	reportCount	Counter that increases with every report
+			//0x08	uint32	4	pressedButtons	Bit field, see below for individual buttons
+			//0x0C	uint16	2	triggerOrBattery	Analog trigger value(user input) / Battery voltage ? (ping)
+			//0x0E	uint8	1	batteryCharge	Bit 7 : Charging / Bit 6..0 : Battery charge in percent
+			//0x10	uint32	4	hardwareID	Hardware ID(user input) / 0x00000000 (ping)
+			//0x14	int16	2	touchpadHorizontal	Horizontal thumb position(Left : -32768 / Right : 32767)
+			//0x16	int16	2	touchpadVertical	Vertical thumb position(Bottom : -32768 / Top : 32767)
+			//0x18 ? 2 ? unknown
+			//0x1A	uint16	2	triggerHighRes	Analog trigger value with higher resolution
+			//0x1C ? 24 ? unknown
+			//0x34	uint16	2	triggerRawMaybe	Analog trigger value, maybe raw sensor data
+			//0x36 ? 8 ? unknown
+			//0x3E	uint8	1	someBitFieldMaybe	0x00 : ping / 0x64 : user input
+			//0x3F ? 1 ? unknown
+
+			//typedef struct
+			//{
+			//	//uint8_t reportId;
+			//	uint16_t reportType;
+			//	uint32_t reportCount;
+			//	uint32_t pressedButtons;
+			//	uint16_t  triggerOrBattery;
+			//	uint8_t batteryCharge;
+			//	uint32_t hardwareId;
+			//	int16_t  touchpadHorizontal;
+			//	int16_t  touchpadVertical;
+			//	uint16_t unknown1;
+			//	uint16_t triggerHighRes;
+			//	uint8_t  unknown2;
+			//	uint8_t  unknown3;
+			//	uint8_t  unknown4;
+			//	uint16_t triggerRaw;
+			//	uint8_t  unknown5;
+			//	uint8_t  unknown6; // maybe some bitfield?
+			//	uint8_t  unknown7;
+			//} usb_buttons_raw;
+
+			//usb_buttons_raw *raw = (usb_buttons_raw*) readdata;
+			if (*((uint16_t*)(&(readdata[0x0]))) == 0x100)
+			{
+				buttonEvent bEvent;
+				memset(&bEvent, 0, sizeof(bEvent));
+
+				bEvent.pressedButtonsValid = 1;
+				bEvent.pressedButtons = *((uint32_t*)(&(readdata[0x07])));
+				bEvent.triggerHighResValid = 1;
+				//bEvent.triggerHighRes = raw->triggerHighRes; 
+				//bEvent.triggerHighRes = (raw->pressedButtons & 0xff000000) >> 24; // this seems to provide the same data at 2x the resolution as above
+				//bEvent.triggerHighRes = raw->triggerRaw;
+				
+				bEvent.triggerHighRes = *((uint16_t*)(&(readdata[0x19])));
+				bEvent.touchpadHorizontalValid = 1;
+				//bEvent.touchpadHorizontal = raw->touchpadHorizontal;
+				bEvent.touchpadHorizontal = *((int16_t*)(&(readdata[0x13])));
+				bEvent.touchpadVerticalValid = 1;
+				//bEvent.touchpadVertical = raw->touchpadVertical;
+				bEvent.touchpadVertical = *((int16_t*)(&(readdata[0x15])));
+
+				//printf("%4.4x\n", bEvent.triggerHighRes);
+				registerButtonEvent(obj, &bEvent);
+
+				//printf("Buttons: %8.8x\n", raw->pressedButtons);
+			}
+			int a = 0;
+		}
+		else
+		{
+			int a = 0;// breakpoint here
+		}
+	}
+	default:
+	{
+		int a = 0; // breakpoint here
+	}
+
+	}
 }
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+
 
 static int LoadConfig( SurviveViveData * sv, SurviveObject * so, int devno, int iface, int extra_magic )
 {
 	SurviveContext * ctx = sv->ctx;
 	char * ct0conf = 0;
 	int len = survive_get_config( &ct0conf, sv, devno, iface, extra_magic );
-printf( "Loading config: %d\n", len );
-#if 0
-	char fname[100];
-	sprintf( fname, "%s_config.json", so->codename );
-	FILE * f = fopen( fname, "w" );
-	fwrite( ct0conf, strlen(ct0conf), 1, f );
-	fclose( f );
-#endif
+	printf( "Loading config: %d\n", len );
 
-	if( len > 0 )
 	{
-
-		//From JSMN example.
-		jsmn_parser p;
-		jsmntok_t t[4096];
-		jsmn_init(&p);
-		int i;
-		int r = jsmn_parse(&p, ct0conf, len, t, sizeof(t)/sizeof(t[0]));	
-		if (r < 0) {
-			SV_INFO("Failed to parse JSON in HMD configuration: %d\n", r);
-			return -1;
-		}
-		if (r < 1 || t[0].type != JSMN_OBJECT) {
-			SV_INFO("Object expected in HMD configuration\n");
-			return -2;
-		}
-
-		for (i = 1; i < r; i++) {
-			jsmntok_t * tk = &t[i];
-
-			char ctxo[100];
-			int ilen = tk->end - tk->start;
-			if( ilen > 99 ) ilen = 99;
-			memcpy(ctxo, ct0conf + tk->start, ilen);
-			ctxo[ilen] = 0;
-
-//				printf( "%d / %d / %d / %d %s %d\n", tk->type, tk->start, tk->end, tk->size, ctxo, jsoneq(ct0conf, &t[i], "modelPoints") );
-//				printf( "%.*s\n", ilen, ct0conf + tk->start );
-
-			if (jsoneq(ct0conf, tk, "modelPoints") == 0) {
-				if( ParsePoints( ctx, so, ct0conf, &so->sensor_locations, t, i  ) )
-				{
-					break;
-				}
-			}
-			if (jsoneq(ct0conf, tk, "modelNormals") == 0) {
-				if( ParsePoints( ctx, so, ct0conf, &so->sensor_normals, t, i  ) )
-				{
-					break;
-				}
-			}
-
-
-			if (jsoneq(ct0conf, tk, "acc_bias") == 0) {
-				int32_t count = (tk+1)->size;
-				FLT* values = NULL;
-				if ( parse_float_array(ct0conf, tk+2, &values, count) >0 ) {
-					so->acc_bias = values;
-					so->acc_bias[0] *= .125; //XXX Wat?  Observed by CNL.  Biasing by more than this seems to hose things.
-					so->acc_bias[1] *= .125;
-					so->acc_bias[2] *= .125;
-				}
-			}
-			if (jsoneq(ct0conf, tk, "acc_scale") == 0) {
-				int32_t count = (tk+1)->size;
-				FLT* values = NULL;
-				if ( parse_float_array(ct0conf, tk+2, &values, count) >0 ) {
-					so->acc_scale = values;
-				}
-			}
-
-			if (jsoneq(ct0conf, tk, "gyro_bias") == 0) {
-				int32_t count = (tk+1)->size;
-				FLT* values = NULL;
-				if ( parse_float_array(ct0conf, tk+2, &values, count) >0 ) {
-					so->gyro_bias = values;
-				}
-			}
-			if (jsoneq(ct0conf, tk, "gyro_scale") == 0) {
-				int32_t count = (tk+1)->size;
-				FLT* values = NULL;
-				if ( parse_float_array(ct0conf, tk+2, &values, count) >0 ) {
-					so->gyro_scale = values;
-				}
-			}
-		}
-	}
-	else
-	{
-		//TODO: Cleanup any remaining USB stuff.
-		return 1;
+	  char raw_fname[100];
+	  sprintf( raw_fname, "%s_config.json", so->codename );
+	  FILE * f = fopen( raw_fname, "w" );
+	  fwrite( ct0conf, strlen(ct0conf), 1, f );
+	  fclose( f );
 	}
 
-	char fname[64];
-
-	sprintf( fname, "calinfo/%s_points.csv", so->codename );
-	FILE * f = fopen( fname, "w" );
-	int j;
-	for( j = 0; j < so->nr_locations; j++ )
-	{
-		fprintf( f, "%f %f %f\n", so->sensor_locations[j*3+0], so->sensor_locations[j*3+1], so->sensor_locations[j*3+2] );
-	}
-	fclose( f );
-
-	sprintf( fname, "calinfo/%s_normals.csv", so->codename );
-	f = fopen( fname, "w" );
-	for( j = 0; j < so->nr_locations; j++ )
-	{
-		fprintf( f, "%f %f %f\n", so->sensor_normals[j*3+0], so->sensor_normals[j*3+1], so->sensor_normals[j*3+2] );
-	}
-	fclose( f );
-
-	return 0;
+	return survive_load_htc_config_format(ct0conf, len, so);
 }
 
 
@@ -1450,23 +1680,27 @@ void init_SurviveObject(SurviveObject* so) {
 	so->acc_bias = NULL;
 	so->gyro_scale = NULL;
 	so->gyro_bias = NULL;
+	so->haptic = NULL;
+	so->PoserData = NULL;
+	so->disambiguator_data = NULL;
 }
 
 int DriverRegHTCVive( SurviveContext * ctx )
 {
-	int r;
-	SurviveObject * hmd = calloc( 1, sizeof( SurviveObject ) );
-	SurviveObject * wm0 = calloc( 1, sizeof( SurviveObject ) );
-	SurviveObject * wm1 = calloc( 1, sizeof( SurviveObject ) );
-	SurviveObject * tr0 = calloc( 1, sizeof( SurviveObject ) );
-	SurviveObject * ww0 = calloc( 1, sizeof( SurviveObject ) );
-	SurviveViveData * sv = calloc( 1, sizeof( SurviveViveData ) );
-
-	init_SurviveObject(hmd);
-	init_SurviveObject(wm0);
-	init_SurviveObject(wm1);
-	init_SurviveObject(tr0);
-	init_SurviveObject(ww0);
+	const char* playback_dir = config_read_str(ctx->global_config_values,
+						   "PlaybackDir", "");
+	if(strlen(playback_dir) != 0) {
+	  SV_INFO("Playback is active; disabling USB driver");
+	  return 0;
+	}
+	
+	int r;	
+	SurviveViveData * sv = calloc(1, sizeof(SurviveViveData) );
+	SurviveObject * hmd = survive_create_hmd(ctx, "HTC", sv);
+	SurviveObject * wm0 = survive_create_wm0(ctx, "HTC", sv, 0);
+	SurviveObject * wm1 = survive_create_wm1(ctx, "HTC", sv, 0);
+	SurviveObject * tr0 = survive_create_tr0(ctx, "HTC", sv);
+	SurviveObject * ww0 = survive_create_ww0(ctx, "HTC", sv);
 
 	sv->ctx = ctx;
 	
@@ -1477,23 +1711,6 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	#else
 		mkdir( "calinfo", 0755 );
 	#endif
-
-
-	hmd->ctx = ctx;
-	memcpy( hmd->codename, "HMD", 4 );
-	memcpy( hmd->drivername, "HTC", 4 );
-	wm0->ctx = ctx;
-	memcpy( wm0->codename, "WM0", 4 );
-	memcpy( wm0->drivername, "HTC", 4 );
-	wm1->ctx = ctx;
-	memcpy( wm1->codename, "WM1", 4 );
-	memcpy( wm1->drivername, "HTC", 4 );
-	tr0->ctx = ctx;
-	memcpy( tr0->codename, "TR0", 4 );
-	memcpy( tr0->drivername, "HTC", 4 );
-	ww0->ctx = ctx;
-	memcpy( ww0->codename, "WW0", 4 );
-	memcpy( ww0->drivername, "HTC", 4 );
 
 	//USB must happen last.
 	if( r = survive_usb_init( sv, hmd, wm0, wm1, tr0, ww0) )
@@ -1508,55 +1725,7 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	if( sv->udev[USB_DEV_WATCHMAN2] && LoadConfig( sv, wm1, 3, 0, 1 )) { SV_INFO( "Watchman 1 config issue." ); }
 	if( sv->udev[USB_DEV_TRACKER0]  && LoadConfig( sv, tr0, 4, 0, 0 )) { SV_INFO( "Tracker 0 config issue." ); }
 	if( sv->udev[USB_DEV_W_WATCHMAN1]  && LoadConfig( sv, ww0, 5, 0, 0 )) { SV_INFO( "Wired Watchman 0 config issue." ); }
-
-	hmd->timebase_hz = wm0->timebase_hz = wm1->timebase_hz = 48000000;
-	tr0->timebase_hz = ww0->timebase_hz = hmd->timebase_hz;
-
-	hmd->pulsedist_max_ticks = wm0->pulsedist_max_ticks = wm1->pulsedist_max_ticks = 500000;
-	tr0->pulsedist_max_ticks = ww0->pulsedist_max_ticks = hmd->pulsedist_max_ticks;
-
-	hmd->pulselength_min_sync = wm0->pulselength_min_sync = wm1->pulselength_min_sync = 2200;
-	tr0->pulselength_min_sync = ww0->pulselength_min_sync = hmd->pulselength_min_sync;
-
-	hmd->pulse_in_clear_time = wm0->pulse_in_clear_time = wm1->pulse_in_clear_time = 35000;
-	tr0->pulse_in_clear_time = ww0->pulse_in_clear_time = hmd->pulse_in_clear_time;
-
-	hmd->pulse_max_for_sweep = wm0->pulse_max_for_sweep = wm1->pulse_max_for_sweep = 1800;
-	tr0->pulse_max_for_sweep = ww0->pulse_max_for_sweep = hmd->pulse_max_for_sweep;
-
-	hmd->pulse_synctime_offset = wm0->pulse_synctime_offset = wm1->pulse_synctime_offset = 20000;
-	tr0->pulse_synctime_offset = ww0->pulse_synctime_offset = hmd->pulse_synctime_offset;
-
-	hmd->pulse_synctime_slack = wm0->pulse_synctime_slack = wm1->pulse_synctime_slack = 5000;
-	tr0->pulse_synctime_slack = ww0->pulse_synctime_slack = hmd->pulse_synctime_slack;
-
-	hmd->timecenter_ticks = hmd->timebase_hz / 240;
-	wm0->timecenter_ticks = wm0->timebase_hz / 240;
-	wm1->timecenter_ticks = wm1->timebase_hz / 240;
-	tr0->timecenter_ticks = tr0->timebase_hz / 240;
-	ww0->timecenter_ticks = ww0->timebase_hz / 240;
-/*
-	int i;
-	int locs = hmd->nr_locations;
-	printf( "Locs: %d\n", locs );
-	if (hmd->sensor_locations )
-	{
-		printf( "POSITIONS:\n" );
-		for( i = 0; i < locs*3; i+=3 )
-		{
-			printf( "%f %f %f\n", hmd->sensor_locations[i+0], hmd->sensor_locations[i+1], hmd->sensor_locations[i+2] );
-		}
-	}
-	if( hmd->sensor_normals )
-	{
-		printf( "NORMALS:\n" );
-		for( i = 0; i < locs*3; i+=3 )
-		{
-			printf( "%f %f %f\n", hmd->sensor_normals[i+0], hmd->sensor_normals[i+1], hmd->sensor_normals[i+2] );
-		}
-	}
-*/
-
+	
 	//Add the drivers.
 	if( sv->udev[USB_DEV_HMD_IMU_LH]       ) { survive_add_object( ctx, hmd ); }
 	if( sv->udev[USB_DEV_WATCHMAN1] ) { survive_add_object( ctx, wm0 ); }
@@ -1564,7 +1733,15 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	if( sv->udev[USB_DEV_TRACKER0]  ) { survive_add_object( ctx, tr0 ); }
 	if( sv->udev[USB_DEV_W_WATCHMAN1]  ) { survive_add_object( ctx, ww0 ); }
 
-	survive_add_driver( ctx, sv, survive_vive_usb_poll, survive_vive_close, survive_vive_send_magic );
+	if( sv->udev[USB_DEV_HMD_IMU_LH] ||
+	    sv->udev[USB_DEV_WATCHMAN1]  ||
+	    sv->udev[USB_DEV_WATCHMAN2]  ||
+	    sv->udev[USB_DEV_TRACKER0]   ||
+	    sv->udev[USB_DEV_W_WATCHMAN1] ) {
+	  survive_add_driver( ctx, sv, survive_vive_usb_poll, survive_vive_close, survive_vive_send_magic );
+	} else {
+	  fprintf(stderr, "No USB devices detected\n");
+	}
 
 	return 0;
 fail_gracefully:

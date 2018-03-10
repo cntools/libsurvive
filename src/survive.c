@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "survive_config.h"
+#include "os_generic.h"
 
 #ifdef __APPLE__
 #define z_const const
@@ -40,8 +41,69 @@ static void survivenote( struct SurviveContext * ctx, const char * fault )
 	fprintf( stderr, "Info: %s\n", fault );
 }
 
+static void *button_servicer(void * context)
+{
+	SurviveContext *ctx = (SurviveContext*)context;
 
-SurviveContext * survive_init( int headless )
+	while (1)
+	{
+		OGLockSema(ctx->buttonQueue.buttonservicesem);
+
+		if (ctx->isClosing)
+		{
+			// we're shutting down.  Close.
+			return NULL;
+		}
+
+		ButtonQueueEntry *entry = &(ctx->buttonQueue.entry[ctx->buttonQueue.nextReadIndex]);
+		if (entry->isPopulated == 0)
+		{
+			// should never happen.  indicates failure of code pushing stuff onto
+			// the buttonQueue
+			// if it does happen, it will kill all future button input
+			printf("ERROR: Unpopulated ButtonQueueEntry! NextReadIndex=%d\n", ctx->buttonQueue.nextReadIndex);
+			return NULL;
+		}
+
+		//printf("ButtonEntry: eventType:%x, buttonId:%d, axis1:%d, axis1Val:%8.8x, axis2:%d, axis2Val:%8.8x\n",
+		//	entry->eventType,
+		//	entry->buttonId,
+		//	entry->axis1Id,
+		//	entry->axis1Val,
+		//	entry->axis2Id,
+		//	entry->axis2Val);
+
+		button_process_func butt_func = ctx->buttonproc;
+		if (butt_func)
+		{
+			butt_func(entry->so,
+				entry->eventType,
+				entry->buttonId,
+				entry->axis1Id,
+				entry->axis1Val,
+				entry->axis2Id,
+				entry->axis2Val);
+		}
+
+		ctx->buttonQueue.nextReadIndex++;
+		if (ctx->buttonQueue.nextReadIndex >= BUTTON_QUEUE_MAX_LEN)
+		{
+			ctx->buttonQueue.nextReadIndex = 0;
+		}
+	};
+	return NULL;
+}
+
+void survive_verify_FLT_size(uint32_t user_size) {
+  if(sizeof(FLT) != user_size) {
+    fprintf(stderr, "FLT type incompatible; the shared library libsurvive has FLT size %lu vs user program %u\n", sizeof(FLT), user_size);
+    fprintf(stderr, "Add '#define FLT %s' before including survive.h or recompile the shared library with the appropriate flag. \n",
+	    sizeof(FLT) == sizeof(double) ? "double" : "float");
+    exit(-1);
+  }
+}
+
+SurviveContext * survive_init_internal( int headless )
 {
 #ifdef RUNTIME_SYMNUM
 	if( !did_runtime_symnum )
@@ -66,6 +128,8 @@ SurviveContext * survive_init( int headless )
 	int i = 0;
 	SurviveContext * ctx = calloc( 1, sizeof( SurviveContext ) );
 
+	ctx->isClosing = 0;
+
 	ctx->global_config_values = malloc( sizeof(config_group) );
 	ctx->lh_config = malloc( sizeof(config_group) * NUM_LIGHTHOUSES);
 
@@ -74,6 +138,10 @@ SurviveContext * survive_init( int headless )
 	init_config_group(&ctx->lh_config[1],10);
 
 	config_read(ctx, "config.json");
+
+	ctx->activeLighthouses = config_read_uint32(ctx->global_config_values, "LighthouseCount", 2);
+	config_read_lighthouse(ctx->lh_config, &(ctx->bsd[0]), 0);
+	config_read_lighthouse(ctx->lh_config, &(ctx->bsd[1]), 1);
 
 	ctx->faultfunction = survivefault;
 	ctx->notefunction = survivenote;
@@ -92,7 +160,8 @@ SurviveContext * survive_init( int headless )
 	}
 
 	i = 0;
-	const char * PreferredPoser = config_read_str( ctx->global_config_values, "DefaultPoser", "PoserDummy" );
+	//const char * PreferredPoser = config_read_str(ctx->global_config_values, "DefaultPoser", "PoserDummy");
+	const char * PreferredPoser = config_read_str(ctx->global_config_values, "DefaultPoser", "PoserTurveyTori");
 	PoserCB PreferredPoserCB = 0;
 	const char * FirstPoser = 0;
 	printf( "Available posers:\n" );
@@ -114,6 +183,19 @@ SurviveContext * survive_init( int headless )
 	{
 		ctx->objs[i]->PoserFn = PreferredPoserCB;
 	}
+
+	// saving the config extra to make sure that the user has a config file they can change.
+	config_save(ctx, "config.json");
+
+	// initialize the button queue
+	memset(&(ctx->buttonQueue), 0, sizeof(ctx->buttonQueue));
+
+	ctx->buttonQueue.buttonservicesem = OGCreateSema();	
+
+	// start the thread to process button data
+	ctx->buttonservicethread = OGCreateThread(button_servicer, ctx);
+	survive_install_button_fn(ctx, NULL);
+	survive_install_raw_pose_fn(ctx, NULL);
 
 	return ctx;
 }
@@ -159,6 +241,21 @@ void survive_install_angle_fn( SurviveContext * ctx,  angle_process_func fbp )
 		ctx->angleproc = survive_default_angle_process;
 }
 
+void survive_install_button_fn(SurviveContext * ctx, button_process_func fbp)
+{
+	if (fbp)
+		ctx->buttonproc = fbp;
+	else
+		ctx->buttonproc = survive_default_button_process;
+}
+
+void survive_install_raw_pose_fn(SurviveContext * ctx, raw_pose_func fbp)
+{
+	if (fbp)
+		ctx->rawposeproc = fbp;
+	else
+		ctx->rawposeproc = survive_default_raw_pose_process;
+}
 int survive_add_object( SurviveContext * ctx, SurviveObject * obj )
 {
 	int oldct = ctx->objs_ct;
@@ -193,10 +290,27 @@ int survive_send_magic( SurviveContext * ctx, int magic_code, void * data, int d
 	return 0;
 }
 
+int survive_haptic(SurviveObject * so, uint8_t reserved, uint16_t pulseHigh, uint16_t pulseLow, uint16_t repeatCount)
+{
+	if (NULL == so || NULL == so->haptic)
+	{
+		return -404;
+	}
+
+	return so->haptic(so, reserved, pulseHigh, pulseLow, repeatCount);
+}
+
+
 void survive_close( SurviveContext * ctx )
 {
 	const char * DriverName;
 	int r = 0;
+
+	ctx->isClosing = 1;
+
+	// unlock/ post to button service semaphore so the thread can kill itself
+	OGUnlockSema(ctx->buttonQueue.buttonservicesem);
+
 	while( ( DriverName = GetDriverNameMatching( "DriverUnreg", r++ ) ) )
 	{
 		DeviceDriver dd = GetDriver( DriverName );

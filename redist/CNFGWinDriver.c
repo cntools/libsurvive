@@ -54,8 +54,8 @@ void CNFGGetDimensions( short * x, short * y )
 		lasty = buffery;
 		InternalHandleResize();
 	}
-	*x = bufferx;
-	*y = buffery;
+	*x = (short)bufferx;
+	*y = (short)buffery;
 }
 
 
@@ -212,7 +212,6 @@ void CNFGSetup( const char * name_of_window, int width, int height )
 
 void CNFGHandleInput()
 {
-	int ldown = 0;
 
 	MSG msg;
 	while( PeekMessage( &msg, lsHWND, 0, 0xFFFF, 1 ) )

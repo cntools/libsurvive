@@ -18,7 +18,8 @@ struct SurviveObject
 
 	char    codename[4];    //3 letters, null-terminated.  Currently HMD, WM0, WM1.
 	char    drivername[4];  //3 letters for driver.  Currently "HTC"
-	int16_t buttonmask;
+	void    *driver;
+	int32_t buttonmask;
 	int16_t axis1;
 
 	int16_t axis2;
@@ -67,6 +68,7 @@ struct SurviveObject
 	FLT* gyro_bias; // size is FLT*3. contains x,y,z
 	FLT* gyro_scale; // size is FLT*3. contains x,y,z
 
+	haptic_func haptic;
 
 	//Debug
 	int tsl;
@@ -90,6 +92,34 @@ struct BaseStationData
 
 struct config_group;
 
+#define BUTTON_QUEUE_MAX_LEN 32
+
+
+
+// note: buttonId and axisId are 1-indexed values.
+// a value of 0 for an id means that no data is present in that value
+// additionally, when x and y values are both present in axis data,
+// axis1 will be x, axis2 will be y.
+typedef struct
+{
+	uint8_t isPopulated;  //probably can remove this given the semaphore in the parent struct.   helps with debugging
+	uint8_t eventType;
+	uint8_t buttonId;
+	uint8_t axis1Id;
+	uint16_t axis1Val;
+	uint8_t axis2Id;
+	uint16_t axis2Val;
+	SurviveObject *so;
+} ButtonQueueEntry;
+
+typedef struct
+{
+	uint8_t nextReadIndex; //init to 0
+	uint8_t nextWriteIndex; // init to 0
+	void* buttonservicesem;
+	ButtonQueueEntry entry[BUTTON_QUEUE_MAX_LEN];
+} ButtonQueue;
+
 struct SurviveContext
 {
 	text_feedback_func faultfunction;
@@ -97,11 +127,14 @@ struct SurviveContext
 	light_process_func lightproc;
 	imu_process_func imuproc;
 	angle_process_func angleproc;
+	button_process_func buttonproc;
+	raw_pose_func rawposeproc;
 
 	struct config_group* global_config_values;
 	struct config_group* lh_config; //lighthouse configs
 
 	//Calibration data:
+	int activeLighthouses;
 	BaseStationData bsd[NUM_LIGHTHOUSES];
 	SurviveCalData * calptr; //If and only if the calibration subsystem is attached.
 
@@ -113,9 +146,25 @@ struct SurviveContext
 	DeviceDriverCb * drivercloses;
 	DeviceDriverMagicCb * drivermagics;
 	int driver_ct;
+
+	uint8_t isClosing; // flag to indicate if threads should terminate themselves
+
+	void* buttonservicethread;
+	ButtonQueue buttonQueue;
+
+	void *user_ptr;
+
 };
 
-SurviveContext * survive_init( int headless );
+SurviveContext * survive_init_internal( int headless );
+
+// Baked in size of FLT to verify users of the library have the correct setting. 
+void survive_verify_FLT_size(uint32_t user_size);
+  
+static inline SurviveContext * survive_init( int headless ) {
+  survive_verify_FLT_size(sizeof(FLT));
+  return survive_init_internal( headless );
+}
 
 //For any of these, you may pass in 0 for the function pointer to use default behavior.
 //In general unless you are doing wacky things like recording or playing back data, you won't need to use this.
@@ -124,6 +173,8 @@ void survive_install_error_fn( SurviveContext * ctx,  text_feedback_func fbp );
 void survive_install_light_fn( SurviveContext * ctx,  light_process_func fbp );
 void survive_install_imu_fn( SurviveContext * ctx,  imu_process_func fbp );
 void survive_install_angle_fn( SurviveContext * ctx,  angle_process_func fbp );
+void survive_install_button_fn(SurviveContext * ctx, button_process_func fbp);
+void survive_install_raw_pose_fn(SurviveContext * ctx, raw_pose_func fbp);
 
 void survive_close( SurviveContext * ctx );
 int survive_poll( SurviveContext * ctx );
@@ -141,11 +192,16 @@ void survive_cal_install( SurviveContext * ctx );  //XXX This will be removed if
 // Read back a human-readable string description of the calibration status
 int survive_cal_get_status( struct SurviveContext * ctx, char * description, int description_length );
 
+// Induce haptic feedback
+int survive_haptic(SurviveObject * so, uint8_t reserved, uint16_t pulseHigh, uint16_t pulseLow, uint16_t repeatCount);
+
 //Call these from your callback if overridden.  
 //Accept higher-level data.
 void survive_default_light_process( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length , uint32_t lh);
 void survive_default_imu_process( SurviveObject * so, int mode, FLT * accelgyro, uint32_t timecode, int id );
 void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh );
+void survive_default_button_process(SurviveObject * so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val);
+void survive_default_raw_pose_process(SurviveObject * so, uint8_t lighthouse, FLT *position, FLT *quaternion);
 
 
 ////////////////////// Survive Drivers ////////////////////////////

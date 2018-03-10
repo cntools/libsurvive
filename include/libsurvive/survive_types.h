@@ -14,6 +14,12 @@ extern "C" {
 #endif
 #endif
 
+#define float_format "%f"
+#define double_format "%lf"
+#define _FLT_format2(f) f##_format
+#define _FLT_format(f) _FLT_format2(f)
+#define FLT_format _FLT_format(FLT)
+  
 typedef struct SurvivePose
 {
 	FLT  Pos[3];
@@ -27,6 +33,12 @@ typedef struct SurvivePose
 #define INTBUFFSIZE			64
 #define SENSORS_PER_OBJECT	32
 
+// These are used for the eventType of button_process_func
+#define BUTTON_EVENT_BUTTON_NONE   0
+#define BUTTON_EVENT_BUTTON_DOWN   1
+#define BUTTON_EVENT_BUTTON_UP     2
+#define BUTTON_EVENT_AXIS_CHANGED  3
+
 typedef struct SurviveObject SurviveObject;
 typedef struct SurviveContext SurviveContext;
 typedef struct BaseStationData BaseStationData;
@@ -36,7 +48,10 @@ typedef void (*text_feedback_func)( SurviveContext * ctx, const char * fault );
 typedef void (*light_process_func)( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length, uint32_t lighthouse);
 typedef void (*imu_process_func)( SurviveObject * so, int mask, FLT * accelgyro, uint32_t timecode, int id );
 typedef void (*angle_process_func)( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh);
+typedef void(*button_process_func)(SurviveObject * so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val);
+typedef void(*raw_pose_func)(SurviveObject * so, uint8_t lighthouse, FLT *position, FLT *quaternion);
 
+typedef int(*haptic_func)(SurviveObject * so, uint8_t reserved, uint16_t pulseHigh , uint16_t pulseLow, uint16_t repeatCount);
 
 //Device drivers (prefix your drivers with "DriverReg") i.e.
 //		REGISTER_LINKTIME( DriverRegHTCVive );

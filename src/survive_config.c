@@ -86,6 +86,42 @@ void config_init() {
 }
 */
 
+void config_read_lighthouse(config_group* lh_config, BaseStationData* bsd, uint8_t idx) {
+	config_group *cg = lh_config + idx;
+	uint8_t found = 0;
+	for (int i = 0; i < NUM_LIGHTHOUSES; i++)
+	{
+		uint32_t tmpIdx = 0xffffffff;
+		cg = lh_config + idx;
+
+		tmpIdx = config_read_uint32(cg, "index", 0xffffffff);
+
+		if (tmpIdx == idx && i == idx) // assumes that lighthouses are stored in the config in order.
+		{
+			found = 1;
+			break;
+		}
+	}
+
+//	assert(found); // throw an assertion if we didn't find it...  Is this good?  not necessarily?
+	if (!found)
+	{
+		return;
+	}
+
+
+	FLT defaults[7] = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
+
+	bsd->BaseStationID = config_read_uint32(cg, "id", 0);
+	config_read_float_array(cg, "pose", &bsd->Pose.Pos[0], defaults, 7);
+	config_read_float_array(cg, "fcalphase", bsd->fcalphase, defaults, 2);
+	config_read_float_array(cg, "fcaltilt", bsd->fcaltilt, defaults, 2);
+	config_read_float_array(cg, "fcalcurve", bsd->fcalcurve, defaults, 2);
+	config_read_float_array(cg, "fcalgibpha", bsd->fcalgibpha, defaults, 2);
+	config_read_float_array(cg, "fcalgibmag", bsd->fcalgibmag, defaults, 2);
+}
+
+
 void config_set_lighthouse(config_group* lh_config, BaseStationData* bsd, uint8_t idx) {
 	config_group *cg = lh_config+idx;
 	config_set_uint32(cg,"index", idx);
@@ -143,18 +179,28 @@ FLT config_read_float(config_group *cg, const char *tag, const FLT def) {
 	return config_set_float(cg, tag, def);
 }
 
-uint16_t config_read_float_array(config_group *cg, const char *tag, const FLT** values, const FLT* def, uint8_t count) {
+// TODO: Do something better than this:
+#define CFG_MIN(x,y) ((x) < (y)? (x): (y))
+
+
+uint16_t config_read_float_array(config_group *cg, const char *tag, FLT* values, const FLT* def, uint8_t count) {
 	config_entry *cv = find_config_entry(cg, tag);
 
 	if (cv != NULL) {
-		*values = (FLT*)cv->data;
+		for (unsigned int i=0; i < CFG_MIN(count, cv->elements); i++)
+		{
+			values[i] = ((double*)cv->data)[i];
+		}
 		return cv->elements;
 	}
 
 	if (def == NULL) return 0;
 
 	config_set_float_a(cg, tag, def, count);
-	*values = def;
+	for (int i = 0; i < count; i++)
+	{
+		values[i] = def[i];
+	}
 	return count;
 }
 

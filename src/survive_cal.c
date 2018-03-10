@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <linmath.h>
+#include <assert.h>
 
 #include "survive_config.h"
 
@@ -124,8 +125,11 @@ void survive_cal_install( struct SurviveContext * ctx )
 
 	cd->numPoseObjects = 0;
 
-	const char * RequiredTrackersForCal = config_read_str( ctx->global_config_values, "RequiredTrackersForCal", "HMD,WM0,WM1" );
-	const uint32_t AllowAllTrackersForCal = config_read_uint32( ctx->global_config_values, "AllowAllTrackersForCal", 0 );
+	// setting the required trackers for calibration to be permissive to make it easier for a newbie to start-- 
+	// basically, libsurvive will detect whatever they have plugged in and start using that.  
+//	const char * RequiredTrackersForCal = config_read_str(ctx->global_config_values, "RequiredTrackersForCal", "HMD,WM0,WM1");	
+	const char * RequiredTrackersForCal = config_read_str(ctx->global_config_values, "RequiredTrackersForCal", ""); 
+	const uint32_t AllowAllTrackersForCal = config_read_uint32( ctx->global_config_values, "AllowAllTrackersForCal", 1 );
 	size_t requiredTrackersFound = 0;
 
 	for (int j=0; j < ctx->objs_ct; j++)
@@ -169,7 +173,8 @@ void survive_cal_install( struct SurviveContext * ctx )
 	}
 
 	const char * DriverName;
-	const char * PreferredPoser = config_read_str( ctx->global_config_values, "ConfigPoser", "PoserCharlesSlow" );
+//	const char * PreferredPoser = config_read_str(ctx->global_config_values, "ConfigPoser", "PoserCharlesSlow");
+	const char * PreferredPoser = config_read_str(ctx->global_config_values, "ConfigPoser", "PoserTurveyTori");
 	PoserCB PreferredPoserCB = 0;
 	const char * FirstPoser = 0;
 	printf( "Available posers:\n" );
@@ -218,7 +223,7 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 			int i;
 			for( i = 0; i < NUM_LIGHTHOUSES; i++ )
 				if( ctx->bsd[i].OOTXSet == 0 ) break;
-			if( i == NUM_LIGHTHOUSES ) cd->stage = 2;  //TODO: Make this configuratble to allow single lighthouse.
+			if( i == ctx->activeLighthouses ) cd->stage = 2;  //TODO: Make this configuratble to allow single lighthouse.
 		}
 		break;
 	case 3: //Look for light sync lengths.
@@ -309,7 +314,7 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 			cd->found_common = 1;
 			for( i = 0; i < cd->numPoseObjects; i++ )
 			//for( i = 0; i < MAX_SENSORS_TO_CAL/SENSORS_PER_OBJECT; i++ )
-			for( j = 0; j < NUM_LIGHTHOUSES; j++ )
+			for( j = 0; j < ctx->activeLighthouses; j++ )
 			{
 				int sensors_visible = 0;
 				for( k = 0; k < SENSORS_PER_OBJECT; k++ )

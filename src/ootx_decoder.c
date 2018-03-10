@@ -44,7 +44,7 @@ void ootx_free_decoder_context(ootx_decoder_context *ctx) {
 }
 
 uint8_t ootx_decode_bit(uint32_t length) {
-	uint8_t t = (length - 2750) / 500; //why 2750?
+	uint8_t t = (uint8_t)((length - 2750) / 500); //why 2750?
 //	return ((t & 0x02)>0)?0xFF:0x00; //easier if we need to bitshift right
 	return ((t & 0x02)>>1);
 }
@@ -182,8 +182,13 @@ union iFloat {
 	float f;
 };
 
+
+struct __attribute__((__packed__)) unaligned_u16_t {
+	uint16_t v;
+};
+
 float _half_to_float(uint8_t* data) {
-	uint16_t x = *(uint16_t*)data;
+	uint16_t x = ((struct unaligned_u16_t*)data)->v;
 	union iFloat fnum;
 	fnum.f = 0;
 
