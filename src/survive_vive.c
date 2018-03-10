@@ -446,7 +446,6 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 
 		if( d == 0 )
 		{
-			printf( "!!%p  %d %04x %04x %d\n", devnames[i], i, vid, pid, which );
 			SV_INFO( "Did not find device %s (%04x:%04x.%d)", devnames[i], vid, pid, which );
 			sv->udev[i] = 0;
 			continue;
