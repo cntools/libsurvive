@@ -79,6 +79,8 @@ Will ~~I~~ we succeed?  Probably not.  ~~Definitely going to try!~~ Though it's 
 * pthread
 * libX11 (Linux) or Native (win32) or OpenGL (OSX)
 * zlib (Linux) or puff.c (win32, included in redist)
+* Optionally OpenGL.
+On Debian, ```sudo apt-get install build-essential zlib1g-dev libx11-dev libusb-1.0-0-dev freeglut3-dev``` should be sufficient.
 
 ## Architecture
 
