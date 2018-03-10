@@ -180,20 +180,24 @@ int survive_load_htc_config_format(char *ct0conf, int len, SurviveObject *so) {
 	sprintf(fname, "calinfo/%s_points.csv", so->codename);
 	FILE *f = fopen(fname, "w");
 	int j;
-	for (j = 0; j < so->nr_locations; j++) {
-		fprintf(f, "%f %f %f\n", so->sensor_locations[j * 3 + 0],
-				so->sensor_locations[j * 3 + 1],
-				so->sensor_locations[j * 3 + 2]);
+	if(f) {
+	  for (j = 0; j < so->nr_locations; j++) {
+	    fprintf(f, "%f %f %f\n", so->sensor_locations[j * 3 + 0],
+		    so->sensor_locations[j * 3 + 1],
+		    so->sensor_locations[j * 3 + 2]);
+	  }
+	  fclose(f);
 	}
-	fclose(f);
 
-	sprintf(fname, "calinfo/%s_normals.csv", so->codename);
-	f = fopen(fname, "w");
-	for (j = 0; j < so->nr_locations; j++) {
-		fprintf(f, "%f %f %f\n", so->sensor_normals[j * 3 + 0],
-				so->sensor_normals[j * 3 + 1], so->sensor_normals[j * 3 + 2]);
+	if(f) {
+	  sprintf(fname, "calinfo/%s_normals.csv", so->codename);
+	  f = fopen(fname, "w");
+	  for (j = 0; j < so->nr_locations; j++) {
+	    fprintf(f, "%f %f %f\n", so->sensor_normals[j * 3 + 0],
+		    so->sensor_normals[j * 3 + 1], so->sensor_normals[j * 3 + 2]);
+	  }
+	  fclose(f);
 	}
-	fclose(f);
 
 	return 0;
 }
