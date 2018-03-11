@@ -677,7 +677,13 @@ static void handle_calibration( struct SurviveCalData *cd )
 						reproj_err += sqrt(err);
 					}
 
-					reproj_err = reproj_err / cnt;
+					// This represents the average distance we were off in our
+					// reprojection.
+					// Different libraries have slightly different variations on
+					// this theme,
+					// but this one has an intuitive meaning
+					reproj_err = (reproj_err / cnt);
+
 					SV_INFO("Reproject error was %.13g for lighthouse %d",
 							reproj_err, lh);
 				}
