@@ -491,6 +491,7 @@ void quatrotatevector( FLT * vec3out, const FLT * quat, const FLT * vec3in )
 	vquat[3] = vec3in[2];
 
 	//XXX WARNING: This code is probably SLOW.  See this:  https://github.com/axlecrusher/hgengine3/blob/master/Mercury3/basic_light1_v.glsl
+	//See: http://www.geeks3d.com/20141201/how-to-rotate-a-vertex-by-a-quaternion-in-glsl/
 
 	quatrotateabout( tquat, quat, vquat );
 	quatgetconjugate( qrecp, quat );

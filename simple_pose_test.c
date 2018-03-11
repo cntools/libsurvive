@@ -126,7 +126,7 @@ void *GUIThread(void*v)
 		CNFGGetDimensions( &screenx, &screeny );
 
 		int x, y;
-		float eye[3] = { 8, 8, 8};
+		float eye[3] = { sin(TimeSinceStart)*4, cos(TimeSinceStart)*4, 4};
 		float at[3] = { 0,0, 0 };
 		float up[3] = { 0,0, 1 };
 
@@ -141,6 +141,7 @@ void *GUIThread(void*v)
 		tdLookAt( gSMatrix, eye, at, up );
 
 		CNFGColor( 0x00ffff ); DrawLineSegment( hpos[0], hpos[1], hpos[2], hpos2[0], hpos2[1], hpos2[2] );
+		CNFGColor( 0xff00ff ); DrawLineSegment( hpos[0], hpos[1], hpos[2], hpos[0], hpos[1], hpos[2] );
 		CNFGColor( 0x0000ff ); DrawLineSegment( 0, 0, 0, 1, 0, 0  );
 		CNFGColor( 0xff0000 ); DrawLineSegment( 0, 0, 0, 0, 1, 0  );
 		CNFGColor( 0x00ff00 ); DrawLineSegment( 0, 0, 0, 0, 0, 1  );
