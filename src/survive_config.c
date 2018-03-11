@@ -119,6 +119,7 @@ void config_read_lighthouse(config_group* lh_config, BaseStationData* bsd, uint8
 	config_read_float_array(cg, "fcalcurve", bsd->fcalcurve, defaults, 2);
 	config_read_float_array(cg, "fcalgibpha", bsd->fcalgibpha, defaults, 2);
 	config_read_float_array(cg, "fcalgibmag", bsd->fcalgibmag, defaults, 2);
+	bsd->PositionSet = config_read_uint32(cg, "PositionSet", 0);
 }
 
 
@@ -132,6 +133,7 @@ void config_set_lighthouse(config_group* lh_config, BaseStationData* bsd, uint8_
 	config_set_float_a(cg,"fcalcurve", bsd->fcalcurve,2);
 	config_set_float_a(cg,"fcalgibpha", bsd->fcalgibpha,2);
 	config_set_float_a(cg,"fcalgibmag", bsd->fcalgibmag,2);
+	config_set_uint32(cg, "PositionSet", bsd->PositionSet);
 }
 
 void sstrcpy(char** dest, const char *src) {
