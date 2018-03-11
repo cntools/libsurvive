@@ -86,9 +86,8 @@ void survive_reproject_from_pose_with_config(
 	for (int i = 0; i < 3; i++)
 		t_pt[i] = t_pt[i] - tvec[i];
 
-	// If +Z is up, this is right
-	FLT x = t_pt[0] / t_pt[2];
-	FLT y = t_pt[1] / t_pt[2];
+	FLT x = -t_pt[0] / -t_pt[2];
+	FLT y = t_pt[1] / -t_pt[2];
 
 	double ang_x = atan(x);
 	double ang_y = atan(y);
