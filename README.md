@@ -298,9 +298,9 @@ Given an HMD:
  * pointed FACE DOWN at the lighthouse
  * 1M above the lighthouse
 
-Will produce a pose of [[0, 0, -1] [0, 0, 0, 1]* ].  NOTE: The quaternion is inverted.  This is the pose of the OBJECT in WORLD space. For our example, the lighthouse is at 0,0,0 in world space.  In practicality, the lighthouse will be at some other place in the scene.
+   Will produce a pose of [[0, 0, -1] [0, 0, 0, 1]* ].  NOTE: The quaternion is inverted.  This is the pose of the OBJECT in WORLD space. For our example, the lighthouse is at 0,0,0 in world space.  In practicality, the lighthouse will be at some other place in the scene.
 
-The idea is you should be able to take a coordinate local to the HMD and then use ```ApplyPoseToPoint``` to transform that point into world space, by applying the output of the poser.
+   The idea is you should be able to take a coordinate local to the HMD and then use ```ApplyPoseToPoint``` to transform that point into world space, by applying the output of the poser.
 
 5) Defining the value of ```pose``` in ```BaseStationData```: This pose will convert something in lighthouse-local space into a position in world space.  When calibrating, if you have an object you want to define as 0,0,0... You will need to take its pose and invert it.
 
@@ -308,6 +308,7 @@ The idea is you should be able to take a coordinate local to the HMD and then us
 
 
 General information for LH pose:
+
 ![LHPose](https://raw.githubusercontent.com/cnlohr/libsurvive/master/useful_files/lighthouse_pose.jpg)
 
 ![TrackerCF](https://raw.githubusercontent.com/cnlohr/libsurvive/master/useful_files/tracker_coordinate_frame.png)
@@ -324,9 +325,9 @@ There is also a config variable -- `PlaybackFactor` -- which adjusts the speed a
 
 # FAQ
 
-* The tracking quality is bad/jitters/too slow!
+ * The tracking quality is bad/jitters/too slow!
  * libsurvive is still a work in progress. For example the Vive contains a calibration blob that still needs to be decoded. Hopefully it will enable better tracking.
-* What VR software can I use with libsurvive?
+ * What VR software can I use with libsurvive?
  * There is an unofficial [OpenHMD/libsurvive fork](https://github.com/ChristophHaag/OpenHMD/tree/libsurvive) that replaces OpenHMD's Vive driver with libsurvive. OpenHMD will not merge this branch as it depends on libsurvive as an external dependency, but it may pave the way for more code sharing.
    * This OpenHMD/libsurvive fork can be plugged into [SteamVR-OpenHMD](https://github.com/ChristophHaag/SteamVR-OpenHMD) which allows SteamVR to use OpenHMD drivers.
    * Godot 3.x has a [native OpenHMD plugin](https://github.com/BastiaanOlij/godot_openhmd) though it needs work for building and running properly and it is still missing motion controller support.
