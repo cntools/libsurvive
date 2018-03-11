@@ -90,6 +90,9 @@
     <ClCompile Include="..\..\src\poser_octavioradii.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\survive_default_devices.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\ootx_decoder.h">
@@ -136,6 +139,9 @@
     </ClInclude>
     <ClInclude Include="..\..\redist\CNFGFunctions.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\survive_default_devices.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

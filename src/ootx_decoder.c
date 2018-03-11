@@ -182,10 +182,15 @@ union iFloat {
 	float f;
 };
 
-
+#ifndef _MSC_VER
 struct __attribute__((__packed__)) unaligned_u16_t {
 	uint16_t v;
 };
+#else
+struct unaligned_u16_t {
+	uint16_t v;
+};
+#endif
 
 float _half_to_float(uint8_t* data) {
 	uint16_t x = ((struct unaligned_u16_t*)data)->v;
