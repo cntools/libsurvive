@@ -2,6 +2,7 @@
 //All MIT/x11 Licensed Code in this file may be relicensed freely under the GPL or LGPL licenses.
 
 #include "survive_cal.h"
+#include "survive_config.h"
 
 //XXX TODO: Once data is avialble in the context, use the stuff here to handle converting from time codes to
 //proper angles, then from there perform the rest of the solution. 
@@ -106,6 +107,18 @@ void survive_default_raw_pose_process(SurviveObject *so, uint8_t lighthouse, Sur
 	// print the pose;
 	//printf("Pose: [%1.1x][%s][% 08.8f,% 08.8f,% 08.8f] [% 08.8f,% 08.8f,% 08.8f,% 08.8f]\n", lighthouse, so->codename, pos[0], pos[1], pos[2], quat[0], quat[1], quat[2], quat[3]);
 
+}
+
+void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *pose) {
+	if (pose) {
+		ctx->bsd[lighthouse].Pose = *pose;
+		ctx->bsd[lighthouse].PositionSet = 1;
+	} else {
+		ctx->bsd[lighthouse].PositionSet = 0;
+	}
+
+	config_set_lighthouse(ctx->lh_config, &ctx->bsd[lighthouse], lighthouse);
+	config_save(ctx, "config.json");
 }
 
 void survive_default_imu_process( SurviveObject * so, int mask, FLT * accelgyromag, uint32_t timecode, int id )

@@ -129,6 +129,7 @@ struct SurviveContext
 	angle_process_func angleproc;
 	button_process_func buttonproc;
 	raw_pose_func rawposeproc;
+	lighthouse_pose_func lighthouseposeproc;
 
 	struct config_group* global_config_values;
 	struct config_group* lh_config; //lighthouse configs
@@ -175,6 +176,7 @@ void survive_install_imu_fn( SurviveContext * ctx,  imu_process_func fbp );
 void survive_install_angle_fn( SurviveContext * ctx,  angle_process_func fbp );
 void survive_install_button_fn(SurviveContext * ctx, button_process_func fbp);
 void survive_install_raw_pose_fn(SurviveContext * ctx, raw_pose_func fbp);
+void survive_install_lighthouse_pose_fn(SurviveContext *ctx, lighthouse_pose_func fbp);
 
 void survive_close( SurviveContext * ctx );
 int survive_poll( SurviveContext * ctx );
@@ -202,6 +204,7 @@ void survive_default_imu_process( SurviveObject * so, int mode, FLT * accelgyro,
 void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh );
 void survive_default_button_process(SurviveObject * so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val);
 void survive_default_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose);
+void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *pose);
 
 ////////////////////// Survive Drivers ////////////////////////////
 

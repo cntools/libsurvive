@@ -1436,17 +1436,17 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 			printf("Warning: resetting base station calibration data");
 		}
 
+		SurvivePose lighthousePose;
 		FLT invRot[4];
-		quatgetreciprocal(invRot, rotQuat);
+		quatgetreciprocal(invRot, lighthousePose.Rot);
 
-		so->ctx->bsd[lh].Pose.Pos[0] = refinedEstimateGd.x;
-		so->ctx->bsd[lh].Pose.Pos[1] = refinedEstimateGd.y;
-		so->ctx->bsd[lh].Pose.Pos[2] = refinedEstimateGd.z;
-		so->ctx->bsd[lh].Pose.Rot[0] = invRot[0];
-		so->ctx->bsd[lh].Pose.Rot[1] = invRot[1];
-		so->ctx->bsd[lh].Pose.Rot[2] = invRot[2];
-		so->ctx->bsd[lh].Pose.Rot[3] = invRot[3];
-		so->ctx->bsd[lh].PositionSet = 1;
+		lighthousePose.Pos[0] = refinedEstimateGd.x;
+		lighthousePose.Pos[1] = refinedEstimateGd.y;
+		lighthousePose.Pos[2] = refinedEstimateGd.z;
+
+		if (so->ctx->lighthouseposeproc) {
+			so->ctx->lighthouseposeproc(so->ctx, lh, &lighthousePose);
+		}
 	}
 
 

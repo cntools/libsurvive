@@ -84,6 +84,13 @@ void testprog_button_process(SurviveObject * so, uint8_t eventType, uint8_t butt
 	}
 }
 
+void testprog_lighthouse_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *pose) {
+	survive_default_lighthouse_pose_process(ctx, lighthouse, pose);
+
+	printf("Lighthouse: [%1.1x][% 08.8f,% 08.8f,% 08.8f] [% 08.8f,% 08.8f,% 08.8f,% 08.8f]\n", lighthouse, pose->Pos[0],
+		   pose->Pos[1], pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
+}
+
 void testprog_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose) {
 	survive_default_raw_pose_process(so, lighthouse, pose);
 
@@ -139,6 +146,7 @@ int main()
 	survive_install_button_fn(ctx, testprog_button_process);
 	survive_install_raw_pose_fn(ctx, testprog_raw_pose_process);
 	survive_install_imu_fn(ctx, testprog_imu_process);
+	survive_install_lighthouse_pose_fn(ctx, testprog_lighthouse_process);
 
 	if( !ctx )
 	{

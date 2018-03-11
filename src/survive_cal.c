@@ -651,9 +651,6 @@ static void handle_calibration( struct SurviveCalData *cd )
 			fprintf( fobjp, "%f %f %f %f\n", objfromlh->Rot[0], objfromlh->Rot[1], objfromlh->Rot[2], objfromlh->Rot[3] );
 
 			if (ctx->bsd[lh].PositionSet) {
-				config_set_lighthouse(ctx->lh_config, &ctx->bsd[0], 0);
-				config_set_lighthouse(ctx->lh_config, &ctx->bsd[1], 1);
-
 				if (compute_reprojection_error) {
 					FLT reproj_err = 0;
 					size_t cnt = 0;
@@ -690,7 +687,6 @@ static void handle_calibration( struct SurviveCalData *cd )
 			}
 		}
 
-		config_save(ctx, "config.json");
 	}
 	fclose( fobjp );
 
