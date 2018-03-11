@@ -80,7 +80,6 @@ struct BaseStationData
 	uint8_t PositionSet:1;
 
 	SurvivePose Pose;
-
 	uint8_t OOTXSet:1;
 	uint32_t BaseStationID;
 	FLT fcalphase[2];
@@ -88,6 +87,7 @@ struct BaseStationData
 	FLT fcalcurve[2];
 	FLT fcalgibpha[2];
 	FLT fcalgibmag[2];
+	int8_t  accel[3]; //"Up" vector
 };
 
 struct config_group;

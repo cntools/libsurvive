@@ -278,6 +278,46 @@ This gives you a directory -- my_playback -- with all the device configurations 
 
 To actually replay it, put that directory path in the 'PlaybackDir' configuration value in config.json and run libsurvive as usual. Note that this will purposefully stop the USB devices from loading as to not confuse the library with inconsistent data.
 
+## Notes about coordinate frames.
+
+BELOW IS NOT FINALIZED!!!!
+
+1) We are using the right-hand rule. 
+
+2) All "poses" should be handled as a SurvivePose, which is effectively a FLT[7], with xyz, wxyz.  The first is a positional offset, and the second is the rotation. 
+
+3) Though this is not universal, consider using SurvivePose* for all situations where a true pose used instead of passing around a FLT* or FLT[7].
+
+4) All posers should; given a lighthouse:
+ * at 0, 0, 0
+ * laying on its back
+ * pointed upward
+ * receiving a "up" vector from the accelerometer of (0,0,-127)
+
+Given an HMD:
+ * pointed FACE DOWN at the lighthouse
+ * 1M above the lighthouse
+
+Will produce a pose of [[0, 0, -1] [0, 0, 0, 1]* ].  NOTE: The quaternion is inverted.  This is the pose of the OBJECT in WORLD space. For our example, the lighthouse is at 0,0,0 in world space.  In practicality, the lighthouse will be at some other place in the scene.
+
+The idea is you should be able to take a coordinate local to the HMD and then use ```ApplyPoseToPoint``` to transform that point into world space, by applying the output of the poser.
+
+5) Defining the value of ```pose``` in ```BaseStationData```: This pose will convert something in lighthouse-local space into a position in world space.  When calibrating, if you have an object you want to define as 0,0,0... You will need to take its pose and invert it.
+
+6) Posers will take into account the ```pose``` of various lighthouses, if NOT in calibration and return poses of objects in world space assuming the lighthoses are set up. **** TODO: Consider performance of different ways of storing this data.
+
+
+General information for LH pose:
+![LHPose](https://raw.githubusercontent.com/cnlohr/libsurvive/master/useful_files/lighthouse_pose.jpg)
+
+![TrackerCF](https://raw.githubusercontent.com/cnlohr/libsurvive/master/useful_files/tracker_coordinate_frame.png)
+
+![HMDCF](https://raw.githubusercontent.com/cnlohr/libsurvive/master/useful_files/hmd_coordinate_frame.jpeg)
+
+
+NOTE: This is NOT currently correct.
+
+
 ## Playback speed
 
 There is also a config variable -- `PlaybackFactor` -- which adjusts the speed at which playback happens. A value of 1 emulates the same time the events file took to create, a value of 0 streams the data in as fast as possible. 
