@@ -53,7 +53,7 @@ double timestamp_in_us() {
 int write_to_output(const char *format, ...) {
 	va_list args;
 	va_start(args, format);
-	fprintf(output_file, "%.17g ", timestamp_in_us());
+	fprintf(output_file, "%0.6f ", timestamp_in_us());
 	vfprintf(output_file, format, args);
 
 	va_end(args);
@@ -116,7 +116,7 @@ void my_light_process(struct SurviveObject *so, int sensor_id, int acode,
 void my_imu_process(struct SurviveObject *so, int mask, FLT *accelgyro,
 					uint32_t timecode, int id) {
 	survive_default_imu_process(so, mask, accelgyro, timecode, id);
-	write_to_output("I %s %d %u %.17g %.17g %.17g %.17g %.17g %.17g %d\n",
+	write_to_output("I %s %d %u %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %d\n",
 					so->codename, mask, timecode, accelgyro[0], accelgyro[1],
 					accelgyro[2], accelgyro[3], accelgyro[4], accelgyro[5], id);
 }

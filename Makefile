@@ -41,9 +41,9 @@ LIBSURVIVE_CORE:=src/survive.o src/survive_usb.o src/survive_data.o src/survive_
 
 
 #If you want to use HIDAPI on Linux.
-#CFLAGS:=$(CFLAGS) -DHIDAPI
-#REDISTS:=$(REDISTS) redist/hid-linux.o
-#LDFLAGS:=$(LDFLAGS) -ludev
+CFLAGS:=$(CFLAGS) -DHIDAPI
+REDISTS:=$(REDISTS) redist/hid-linux.o
+LDFLAGS:=$(LDFLAGS) -ludev
 
 #Useful Preprocessor Directives:
 # -DUSE_DOUBLE = use double instead of float for most operations.
