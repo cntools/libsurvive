@@ -1,4 +1,4 @@
-all : lib data_recorder test calibrate calibrate_client
+all : lib data_recorder test calibrate calibrate_client simple_pose_test
 
 CC:=gcc
 
@@ -26,7 +26,7 @@ GRAPHICS_LOFI:=redist/CNFGFunctions.o redist/CNFGCocoaNSImageDriver.o
 else
 
 LDFLAGS:=$(LDFLAGS) -lX11 -lusb-1.0
-DRAWFUNCTIONS=redist/CNFGFunctions.c redist/CNFGXDriver.c
+DRAWFUNCTIONS=redist/CNFGFunctions.c redist/CNFGXDriver.c redist/CNFG3D.c
 GRAPHICS_LOFI:=redist/CNFGFunctions.o redist/CNFGXDriver.o
 
 endif
@@ -41,9 +41,9 @@ LIBSURVIVE_CORE:=src/survive.o src/survive_usb.o src/survive_data.o src/survive_
 
 
 #If you want to use HIDAPI on Linux.
-CFLAGS:=$(CFLAGS) -DHIDAPI
-REDISTS:=$(REDISTS) redist/hid-linux.o
-LDFLAGS:=$(LDFLAGS) -ludev
+#CFLAGS:=$(CFLAGS) -DHIDAPI
+#REDISTS:=$(REDISTS) redist/hid-linux.o
+#LDFLAGS:=$(LDFLAGS) -ludev
 
 #Useful Preprocessor Directives:
 # -DUSE_DOUBLE = use double instead of float for most operations.
@@ -62,10 +62,13 @@ LIBSURVIVE_C:=$(LIBSURVIVE_O:.o=.c)
 
 # unused: redist/crc32.c
 
-testCocoa : testCocoa.c $(DRAWFUNCTIONS)
+testCocoa : testCocoa.c
 	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
 
 test : test.c ./lib/libsurvive.so redist/os_generic.o
+	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
+
+simple_pose_test : simple_pose_test.c ./lib/libsurvive.so redist/os_generic.o $(DRAWFUNCTIONS)
 	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
 
 data_recorder : data_recorder.c ./lib/libsurvive.so redist/os_generic.c $(DRAWFUNCTIONS)
@@ -92,7 +95,7 @@ calibrate_tcc : $(LIBSURVIVE_C)
 	tcc -DRUNTIME_SYMNUM $(CFLAGS) -o $@ $^ $(LDFLAGS) calibrate.c redist/os_generic.c $(DRAWFUNCTIONS) redist/symbol_enumerator.c
 
 clean :
-	rm -rf *.o src/*.o *~ src/*~ test data_recorder calibrate testCocoa lib/libsurvive.so redist/*.o redist/*~
+	rm -rf *.o src/*.o *~ src/*~ test simple_pose_test data_recorder calibrate testCocoa lib/libsurvive.so redist/*.o redist/*~
 
 
 

@@ -138,7 +138,6 @@ SurviveContext * survive_init_internal( int headless )
 	init_config_group(&ctx->lh_config[1],10);
 
 	config_read(ctx, "config.json");
-
 	ctx->activeLighthouses = config_read_uint32(ctx->global_config_values, "LighthouseCount", 2);
 	config_read_lighthouse(ctx->lh_config, &(ctx->bsd[0]), 0);
 	config_read_lighthouse(ctx->lh_config, &(ctx->bsd[1]), 1);
@@ -150,16 +149,19 @@ SurviveContext * survive_init_internal( int headless )
 	ctx->imuproc = survive_default_imu_process;
 	ctx->angleproc = survive_default_angle_process;
 
-	const char * DriverName;
-	while( ( DriverName = GetDriverNameMatching( "DriverReg", i++ ) ) )
-	{
-		DeviceDriver dd = GetDriver( DriverName );
-		printf( "Loading driver %s (%p) (%d)\n", DriverName, dd, i );
-		r = dd( ctx );
-		printf( "Driver %s reports status %d\n", DriverName, r );
-	}
+
+	// initialize the button queue
+	memset(&(ctx->buttonQueue), 0, sizeof(ctx->buttonQueue));
+	ctx->buttonQueue.buttonservicesem = OGCreateSema();	
+
+	// start the thread to process button data
+	ctx->buttonservicethread = OGCreateThread(button_servicer, ctx);
+	survive_install_button_fn(ctx, NULL);
+	survive_install_raw_pose_fn(ctx, NULL);
 
 	i = 0;
+	const char * DriverName;
+
 	//const char * PreferredPoser = config_read_str(ctx->global_config_values, "DefaultPoser", "PoserDummy");
 	const char * PreferredPoser = config_read_str(ctx->global_config_values, "DefaultPoser", "PoserTurveyTori");
 	PoserCB PreferredPoserCB = 0;
@@ -179,6 +181,17 @@ SurviveContext * survive_init_internal( int headless )
 		SV_ERROR( "Error.  Cannot find any valid poser." );
 	}
 
+	i = 0;
+	while( ( DriverName = GetDriverNameMatching( "DriverReg", i++ ) ) )
+	{
+		DeviceDriver dd = GetDriver( DriverName );
+		printf( "Loading driver %s (%p) (%d)\n", DriverName, dd, i );
+		r = dd( ctx );
+		printf( "Driver %s reports status %d\n", DriverName, r );
+	}
+printf( "REGISTERING DRIVERS\n" );
+
+	//Apply poser to objects.
 	for( i = 0; i < ctx->objs_ct; i++ )
 	{
 		ctx->objs[i]->PoserFn = PreferredPoserCB;
@@ -187,15 +200,6 @@ SurviveContext * survive_init_internal( int headless )
 	// saving the config extra to make sure that the user has a config file they can change.
 	config_save(ctx, "config.json");
 
-	// initialize the button queue
-	memset(&(ctx->buttonQueue), 0, sizeof(ctx->buttonQueue));
-
-	ctx->buttonQueue.buttonservicesem = OGCreateSema();	
-
-	// start the thread to process button data
-	ctx->buttonservicethread = OGCreateThread(button_servicer, ctx);
-	survive_install_button_fn(ctx, NULL);
-	survive_install_raw_pose_fn(ctx, NULL);
 
 	return ctx;
 }

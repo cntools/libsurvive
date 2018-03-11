@@ -59,6 +59,7 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 			.angle = angle,
 			.lh = lh,
 		};
+
 		so->PoserFn( so, (PoserData *)&l );
 	}
 }	
@@ -101,7 +102,7 @@ void survive_default_button_process(SurviveObject * so, uint8_t eventType, uint8
 	//}
 }
 
-void survive_default_raw_pose_process(SurviveObject * so, uint8_t lighthouse, FLT *pos, FLT *quat)
+void survive_default_raw_pose_process(SurviveObject * so, uint8_t lighthouse, FLT *pose)
 {
 	// print the pose;
 	//printf("Pose: [%1.1x][%s][% 08.8f,% 08.8f,% 08.8f] [% 08.8f,% 08.8f,% 08.8f,% 08.8f]\n", lighthouse, so->codename, pos[0], pos[1], pos[2], quat[0], quat[1], quat[2], quat[3]);

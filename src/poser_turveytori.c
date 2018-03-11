@@ -1616,7 +1616,7 @@ static void QuickPose(SurviveObject *so, int lh)
 
 		if (sensorCount > 4)
 		{
-			FLT pos[3], quat[4];
+			FLT pose[7];
 
 			// TODO: This countdown stuff is a total hack!
 			// it basically ignores all the logic to find the most reliable data points
@@ -1637,12 +1637,12 @@ static void QuickPose(SurviveObject *so, int lh)
 
 
 
-			SolveForLighthouse(pos, quat, to, so, 0, lh, 0);
+			SolveForLighthouse(&pose[0], &pose[3], to, so, 0, lh, 0);
 
 			//printf("P&O: [% 08.8f,% 08.8f,% 08.8f] [% 08.8f,% 08.8f,% 08.8f,% 08.8f]\n", pos[0], pos[1], pos[2], quat[0], quat[1], quat[2], quat[3]);
 			if (so->ctx->rawposeproc)
 			{
-				so->ctx->rawposeproc(so, lh, pos, quat);
+				so->ctx->rawposeproc(so, lh, pose);
 			}
 
 			if (ttDebug) printf("!\n");

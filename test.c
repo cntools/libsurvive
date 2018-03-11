@@ -84,12 +84,12 @@ void testprog_button_process(SurviveObject * so, uint8_t eventType, uint8_t butt
 	}
 }
 
-void testprog_raw_pose_process(SurviveObject * so, uint8_t lighthouse, FLT *pos, FLT *quat)
+void testprog_raw_pose_process(SurviveObject * so, uint8_t lighthouse, FLT *pose)
 {
-	survive_default_raw_pose_process(so, lighthouse, pos, quat);
+	survive_default_raw_pose_process(so, lighthouse, pose);
 
 	// print the pose;
-	printf("Pose: [%1.1x][%s][% 08.8f,% 08.8f,% 08.8f] [% 08.8f,% 08.8f,% 08.8f,% 08.8f]\n", lighthouse, so->codename, pos[0], pos[1], pos[2], quat[0], quat[1], quat[2], quat[3]);
+	printf("Pose: [%1.1x][%s][% 08.8f,% 08.8f,% 08.8f] [% 08.8f,% 08.8f,% 08.8f,% 08.8f]\n", lighthouse, so->codename, pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
 }
 
 void testprog_imu_process(SurviveObject * so, int mask, FLT * accelgyromag, uint32_t timecode, int id)

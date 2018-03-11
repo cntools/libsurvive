@@ -490,6 +490,8 @@ void quatrotatevector( FLT * vec3out, const FLT * quat, const FLT * vec3in )
 	vquat[2] = vec3in[1];
 	vquat[3] = vec3in[2];
 
+	//XXX WARNING: This code is probably SLOW.  See this:  https://github.com/axlecrusher/hgengine3/blob/master/Mercury3/basic_light1_v.glsl
+
 	quatrotateabout( tquat, quat, vquat );
 	quatgetconjugate( qrecp, quat );
 	quatrotateabout( vquat, tquat, qrecp );
@@ -635,5 +637,13 @@ void matrix44transpose(FLT * mout, const FLT * minm )
 	mout[14] = minm[11];
 	mout[15] = minm[15];
 
+}
+
+void ApplyPoseToPoint( FLT * pout, const FLT * pin, const FLT * pose )
+{
+	FLT v3o[3];
+	quatrotatevector( v3o, &pose[3], pin );
+	for(int i = 0; i < 3; i++)
+		pout[i] = pose[i] + v3o[i];
 }
 
