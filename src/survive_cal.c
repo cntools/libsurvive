@@ -604,7 +604,7 @@ static void handle_calibration( struct SurviveCalData *cd )
 	{
 		int i, j;
 		PoserDataFullScene fsd;
-		fsd.pt = POSERDATA_FULL_SCENE;
+		fsd.hdr.pt = POSERDATA_FULL_SCENE;
 		for( j = 0; j < NUM_LIGHTHOUSES; j++ )
 		for( i = 0; i < SENSORS_PER_OBJECT; i++ )
 		{

@@ -20,12 +20,11 @@ typedef enum PoserType_t
 typedef struct
 {
 	PoserType pt;
-	uint8_t data[0];
 } PoserData;
 
 typedef struct
 {
-	PoserType pt;
+	PoserData hdr;
 	uint8_t datamask;  //0 = accel present, 1 = gyro present, 2 = mag present.
 	FLT accel[3];
 	FLT gyro[3];
@@ -35,7 +34,7 @@ typedef struct
 
 typedef struct
 {
-	PoserType pt;
+	PoserData hdr;
 	int sensor_id;
 	int acode;			//OOTX Code associated with this sweep. bit 1 indicates vertical(1) or horizontal(0) sweep
 	int lh;             //Lighthouse making this sweep
@@ -46,7 +45,7 @@ typedef struct
 
 typedef struct
 {
-	PoserType pt;
+	PoserData hdr;
 
 	//If "lengths[...]" < 0, means not a valid piece of sweep information.
 	FLT  lengths[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];

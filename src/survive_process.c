@@ -52,7 +52,10 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 	if( so->PoserFn )
 	{
 		PoserDataLight l = {
-			.pt = POSERDATA_LIGHT,
+			.hdr =
+				{
+					.pt = POSERDATA_LIGHT,
+				},
 			.sensor_id = sensor_id,
 			.acode = acode,
 			.timecode = timecode,
@@ -126,11 +129,14 @@ void survive_default_imu_process( SurviveObject * so, int mask, FLT * accelgyrom
 	if( so->PoserFn )
 	{
 		PoserDataIMU imu = {
-			.pt = POSERDATA_IMU,
+			.hdr =
+				{
+					.pt = POSERDATA_IMU,
+				},
 			.datamask = mask,
-			.accel = { accelgyromag[0], accelgyromag[1], accelgyromag[2] },
-			.gyro = {  accelgyromag[3], accelgyromag[4], accelgyromag[5] },
-			.mag = {   accelgyromag[6], accelgyromag[7], accelgyromag[8] },
+			.accel = {accelgyromag[0], accelgyromag[1], accelgyromag[2]},
+			.gyro = {accelgyromag[3], accelgyromag[4], accelgyromag[5]},
+			.mag = {accelgyromag[6], accelgyromag[7], accelgyromag[8]},
 			.timecode = timecode,
 		};
 		so->PoserFn( so, (PoserData *)&imu );
