@@ -174,9 +174,7 @@ int PoserCharlesSlow( SurviveObject * so, PoserData * pd )
 			quatrotateabout(tmp, lighthousePose.Rot, rt);
 			memcpy(lighthousePose.Rot, tmp, sizeof(FLT) * 4);
 
-			if (ctx->lighthouseposeproc) {
-				ctx->lighthouseposeproc(ctx, lh, &lighthousePose);
-			}
+			PoserData_lighthouse_pose_func(pd, so, lh, &lighthousePose);
 #define ALT_COORDS
 
 #ifdef ALT_COORDS
