@@ -304,8 +304,7 @@ Given an HMD:
 
 5) Defining the value of ```pose``` in ```BaseStationData```: This pose will convert something in lighthouse-local space into a position in world space.  When calibrating, if you have an object you want to define as 0,0,0... You will need to take its pose and invert it.
 
-6) Posers will take into account the ```pose``` of various lighthouses, if NOT in calibration and return poses of objects in world space assuming the lighthoses are set up. **** TODO: Consider performance of different ways of storing this data.
-
+6) Posers will take into account the ```pose``` of various lighthouses, if NOT in calibration and return poses of objects in world space assuming the lighthoses are set up.
 
 General information for LH pose:
 

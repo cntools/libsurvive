@@ -69,8 +69,8 @@ void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 	b->fcalgibmag[0] = v6.fcal_0_gibmag;
 	b->fcalgibmag[1] = v6.fcal_1_gibmag;
 	b->accel[0] = accel_dir_x;
-	b->accel[1] = accel_dir_x;
-	b->accel[2] = accel_dir_x;
+	b->accel[1] = accel_dir_y;
+	b->accel[2] = accel_dir_z;
 	b->OOTXSet = 1;
 
 	config_set_lighthouse(ctx->lh_config,b,id);
