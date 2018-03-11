@@ -102,10 +102,21 @@ void quatrotatevector( FLT * vec3out, const FLT * quat, const FLT * vec3in );
 void quatfrom2vectors(FLT *q, const FLT *src, const FLT *dest);
 
 //Poses are Position: [x, y, z]  Quaternion: [q, x, y, z]
-//XXX TODO Write these!
-void ApplyPoseToPoint( FLT * pout, const FLT * pin, const FLT * pose );
-void InvertPose( FLT * poseout, const FLT * pose );
+typedef FLT *LINMATH_POSE;
 
+// Points are [x, y, z]
+typedef FLT *LINMATH_POINT;
+
+// This is the quat equivalent of 'pout = pose * pin' if pose were a 4x4 matrix in homogenous space
+void ApplyPoseToPoint(LINMATH_POINT pout, const LINMATH_POSE pose, const LINMATH_POINT pin);
+
+// This is the quat equivalent of 'pout = lhs_pose * rhs_pose' if poses were a 4x4 matrix in homogenous space
+void ApplyPoseToPose(LINMATH_POSE pout, const LINMATH_POSE lhs_pose, const LINMATH_POSE rhs_pose);
+
+// This is the quat equivlant of 'pose_in^-1'; so that ApplyPoseToPose(..., InvertPose(..., pose_in), pose_in) ==
+// Identity ( [0, 0, 0], [1, 0, 0, 0] )
+// by definition.
+void InvertPose(LINMATH_POSE poseout, const LINMATH_POSE pose_in);
 
 // Matrix Stuff
 

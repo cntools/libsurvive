@@ -634,9 +634,19 @@ void matrix44transpose(FLT * mout, const FLT * minm )
 
 }
 
-void ApplyPoseToPoint( FLT * pout, const FLT * pin, const FLT * pose )
-{
+void ApplyPoseToPoint(LINMATH_POINT pout, const LINMATH_POSE pose, const LINMATH_POINT pin) {
 	quatrotatevector( pout, &pose[3], pin );
 	add3d( pout, pout, &pose[0] );
 }
 
+void ApplyPoseToPose(LINMATH_POSE pout, const LINMATH_POSE lhs_pose, const LINMATH_POSE rhs_pose) {
+	ApplyPoseToPoint(pout, lhs_pose, rhs_pose);
+	quatrotateabout(&pout[3], &lhs_pose[3], &rhs_pose[3]);
+}
+
+void InvertPose(LINMATH_POSE poseout, const LINMATH_POSE pose) {
+	quatgetreciprocal(&poseout[3], &pose[3]);
+
+	quatrotatevector(&poseout[0], &poseout[3], &pose[0]);
+	scale3d(&poseout[0], &poseout[0], -1);
+}

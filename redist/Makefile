@@ -1,8 +1,11 @@
-all : jsmntest
+all : jsmntest lintest
 
 jsmntest : jsmntest.c jsmn.c
-	gcc -o $@ $^
+	gcc -g -O0 -o $@ $^
+
+lintest : lintest.c linmath.c linmath.h
+	gcc -g -O0 -o $@ $^ -lm
 
 clean :
-	rm -rf *.o *~ jsmntest
+	rm -rf *.o *~ jsmntest lintest
 

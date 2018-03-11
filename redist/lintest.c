@@ -1,8 +1,112 @@
 #include "linmath.h"
+#include <assert.h>
+#include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
+
+bool assertFLTEquals(FLT a, FLT b) { return fabs(a - b) < 0.0001; }
+
+int assertFLTAEquals(FLT *a, FLT *b, int length) {
+	for (int i = 0; i < length; i++) {
+		if (assertFLTEquals(a[i], b[i]) != true) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+void printFLTA(FLT *a, int length) {
+	for (int i = 0; i < length; i++)
+		fprintf(stderr, "%.7f ", a[i]);
+}
+
+#define ASSERT_FLTA_EQUALS(a, b, l)                                                                                    \
+	if (assertFLTAEquals(a, b, l) != -1) {                                                                             \
+		fprintf(stderr, "Where '" #a "'= ");                                                                           \
+		printFLTA(a, l);                                                                                               \
+		fprintf(stderr, "\nWhere '" #b "'= ");                                                                         \
+		printFLTA(b, l);                                                                                               \
+		fprintf(stderr, "\n");                                                                                         \
+		assert(assertFLTAEquals(a, b, l) == -1);                                                                       \
+	}
+
+void testInvertPose() {
+
+	FLT rotAroundYOffset[7] = {1, 1, 1, .5, 0, .5, 0};
+	FLT pose_out[7];
+
+	{
+		FLT expected[] = {1, -1, -1, 0.7071068, 0, -0.7071068, 0};
+		InvertPose(pose_out, rotAroundYOffset);
+		ASSERT_FLTA_EQUALS(pose_out, expected, 7);
+
+		FLT identity[] = {0, 0, 0, 1, 0, 0, 0};
+		ApplyPoseToPose(pose_out, expected, rotAroundYOffset);
+		quatnormalize(&pose_out[3], &pose_out[3]);
+		ASSERT_FLTA_EQUALS(pose_out, identity, 7);
+	}
+}
+
+void testApplyPoseToPose() {
+	FLT rotAroundYOffset[7] = {1, 1, 1, 0, 0, 1, 0};
+	FLT pose_out[7];
+
+	{
+		FLT pt[] = {0, 1, 0, 0, 0, 1, 0};
+		FLT expected[] = {1, 2, 1, -1, 0, 0, 0};
+		ApplyPoseToPose(pose_out, rotAroundYOffset, pt);
+		quatnormalize(&pose_out[3], &pose_out[3]);
+		ASSERT_FLTA_EQUALS(pose_out, expected, 7);
+	}
+
+	{
+		FLT pt[] = {0, 1, 0, 0, 1, 0, 0};
+		FLT expected[] = {1, 2, 1, 0, 0, 0, -1};
+		ApplyPoseToPose(pose_out, rotAroundYOffset, pt);
+		ASSERT_FLTA_EQUALS(pose_out, expected, 7);
+	}
+}
+
+void testApplyPoseToPoint() {
+	FLT rotAroundY[7] = {0, 0, 0, 0, 0, 1, 0};
+	FLT pt_out[3];
+
+	{
+		FLT pt[3] = {0, 1, 0};
+		FLT expected[3] = {0, 1, 0};
+		ApplyPoseToPoint(pt_out, rotAroundY, pt);
+		ASSERT_FLTA_EQUALS(pt_out, expected, 3);
+	}
+
+	{
+		FLT pt[3] = {1, 1, 0};
+		FLT expected[3] = {-1, 1, 0};
+		ApplyPoseToPoint(pt_out, rotAroundY, pt);
+		ASSERT_FLTA_EQUALS(pt_out, expected, 3);
+	}
+
+	FLT rotAroundYOffset[7] = {1, 1, 1, 0, 0, 1, 0};
+
+	{
+		FLT pt[3] = {0, 1, 0};
+		FLT expected[3] = {1, 2, 1};
+		ApplyPoseToPoint(pt_out, rotAroundYOffset, pt);
+		ASSERT_FLTA_EQUALS(pt_out, expected, 3);
+	}
+
+	{
+		FLT pt[3] = {1, 1, 0};
+		FLT expected[3] = {0, 2, 1};
+		ApplyPoseToPoint(pt_out, rotAroundYOffset, pt);
+		ASSERT_FLTA_EQUALS(pt_out, expected, 3);
+	}
+}
 
 int main()
 {
+	testInvertPose();
+	testApplyPoseToPoint();
+	testApplyPoseToPose();
 #if 1
 
 #define NONTRANSPOSED_DAVE
