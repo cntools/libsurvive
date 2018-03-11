@@ -263,6 +263,25 @@ Compiling this minimal example only requires the include path for survive.h as w
 
  As mentioned, only the pose from lighthouse number `0` is used. Since the callback is called for all tracked devices, `so->codename` can be used to differentiate between devices like `HMD`, `WM0`, etc.
 
+# Playback
+
+libsurvive has an integrated tool that allows you to record and playback streams from all supported devices. To save off a stream, invoke it as follows:
+
+```
+make
+mkdir my_playback
+./datarecorder my_playback/events
+cp *_config.json my_playback
+```
+
+This gives you a directory -- my_playback -- with all the device configurations and events file you need to replay it.
+
+To actually replay it, put that directory path in the 'PlaybackDir' configuration value in config.json and run libsurvive as usual. Note that this will purposefully stop the USB devices from loading as to not confuse the library with inconsistent data.
+
+## Playback speed
+
+There is also a config variable -- `PlaybackFactor` -- which adjusts the speed at which playback happens. A value of 1 emulates the same time the events file took to create, a value of 0 streams the data in as fast as possible. 
+
 # FAQ
 
 * The tracking quality is bad/jitters/too slow!
