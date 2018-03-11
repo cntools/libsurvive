@@ -904,6 +904,7 @@ int survive_get_config( char ** config, SurviveViveData * sv, int devno, int ifa
 
 #define POP1  (*(readdata++))
 
+#ifndef _MSC_VER
 struct __attribute__((__packed__)) unaligned_16_t {
     int16_t v;
 };
@@ -916,6 +917,21 @@ struct __attribute__((__packed__)) unaligned_u16_t {
 struct __attribute__((__packed__)) unaligned_u32_t {
     uint32_t v;
 };
+#else
+struct unaligned_16_t {
+	int16_t v;
+};
+struct unaligned_32_t {
+	int32_t v;
+};
+struct unaligned_u16_t {
+	uint16_t v;
+};
+struct unaligned_u32_t {
+	uint32_t v;
+};
+#endif
+
 #define POP2  ((((( struct unaligned_u16_t*)((readdata+=2)-2))))->v)
 #define POP4  ((((( struct unaligned_u32_t*)((readdata+=4)-4))))->v)
 

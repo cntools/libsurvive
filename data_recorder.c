@@ -12,8 +12,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <survive.h>
-#include <sys/time.h>
+
 #include <time.h>
+
+#ifndef _MSC_VER
+#include <sys/time.h>
+#endif
 
 #include "redist/os_generic.h"
 
@@ -50,7 +54,7 @@ double timestamp_in_us() {
 	return OGGetAbsoluteTime() - start_time_us;
 }
 
-int write_to_output(const char *format, ...) {
+void write_to_output(const char *format, ...) {
 	va_list args;
 	va_start(args, format);
 	fprintf(output_file, "%0.6f ", timestamp_in_us());
