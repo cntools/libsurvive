@@ -482,24 +482,18 @@ void quatslerp( FLT * q, const FLT * qa, const FLT * qb, FLT t )
 
 void quatrotatevector( FLT * vec3out, const FLT * quat, const FLT * vec3in )
 {
-	FLT tquat[4];
-	FLT vquat[4];
-	FLT qrecp[4];
-	vquat[0] = 0;
-	vquat[1] = vec3in[0];
-	vquat[2] = vec3in[1];
-	vquat[3] = vec3in[2];
-
-	//XXX WARNING: This code is probably SLOW.  See this:  https://github.com/axlecrusher/hgengine3/blob/master/Mercury3/basic_light1_v.glsl
 	//See: http://www.geeks3d.com/20141201/how-to-rotate-a-vertex-by-a-quaternion-in-glsl/
 
-	quatrotateabout( tquat, quat, vquat );
-	quatgetconjugate( qrecp, quat );
-	quatrotateabout( vquat, tquat, qrecp );
-
-	vec3out[0] = vquat[1];
-	vec3out[1] = vquat[2];
-	vec3out[2] = vquat[3];
+	FLT tmp[3];
+	FLT tmp2[3];
+	cross3d( tmp, &quat[1], vec3in );
+	tmp[0] += vec3in[0] * quat[0];
+	tmp[1] += vec3in[1] * quat[0];
+	tmp[2] += vec3in[2] * quat[0];
+	cross3d( tmp2, &quat[1], tmp );
+	vec3out[0] = vec3in[0] + 2 * tmp2[0];
+	vec3out[1] = vec3in[1] + 2 * tmp2[1];
+	vec3out[2] = vec3in[2] + 2 * tmp2[2];
 }
 
 
@@ -642,9 +636,7 @@ void matrix44transpose(FLT * mout, const FLT * minm )
 
 void ApplyPoseToPoint( FLT * pout, const FLT * pin, const FLT * pose )
 {
-	FLT v3o[3];
-	quatrotatevector( v3o, &pose[3], pin );
-	for(int i = 0; i < 3; i++)
-		pout[i] = pose[i] + v3o[i];
+	quatrotatevector( pout, &pose[3], pin );
+	add3d( pout, pout, &pose[0] );
 }
 

@@ -23,7 +23,7 @@ extern "C" {
 typedef struct SurvivePose
 {
 	FLT  Pos[3];
-	FLT  Rot[4];
+	FLT  Rot[4]; //This is the [wxyz] quaternion, in wxyz format.
 } SurvivePose;
 
 //Careful with this, you can't just add another one right now, would take minor changes in survive_data.c and the cal tools.
