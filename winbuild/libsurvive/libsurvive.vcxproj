@@ -162,12 +162,14 @@
     <ClCompile Include="..\..\src\survive_default_devices.c" />
     <ClCompile Include="..\..\src\survive_driverman.c" />
     <ClCompile Include="..\..\src\survive_process.c" />
+    <ClCompile Include="..\..\src\survive_reproject.c" />
     <ClCompile Include="..\..\src\survive_usb.c" />
     <ClCompile Include="..\..\src\survive_vive.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\libsurvive\poser.h" />
     <ClInclude Include="..\..\include\libsurvive\survive.h" />
+    <ClInclude Include="..\..\include\libsurvive\survive_reproject.h" />
     <ClInclude Include="..\..\include\libsurvive\survive_types.h" />
     <ClInclude Include="..\..\redist\CNFGFunctions.h" />
     <ClInclude Include="..\..\redist\crc32.h" />

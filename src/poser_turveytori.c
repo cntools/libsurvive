@@ -679,7 +679,7 @@ FLT RotationEstimateFitnessAxisAngle(Point lh, FLT *AxisAngle, TrackedObject *ob
 
 		
 		// let's see... we need to figure out where this sensor should be in the LH reference frame.
-		FLT sensorLocation[3] = {obj->sensor[i].point.x-lh.x, obj->sensor[i].point.y-lh.y, obj->sensor[i].point.z-lh.z};
+		FLT sensorLocation[3] = { obj->sensor[i].point.x - lh.x, obj->sensor[i].point.y - lh.y, obj->sensor[i].point.z - lh.z };
 
 		// And this puppy needs to be rotated...
 
@@ -690,6 +690,8 @@ FLT RotationEstimateFitnessAxisAngle(Point lh, FLT *AxisAngle, TrackedObject *ob
 
 		// and the vector we're calculating given the rotation passed in is the same as the sensor location:
 		FLT calcVectFromLh[3] = {sensorLocation[0], sensorLocation[1], sensorLocation[2]};
+
+		
 
 		FLT angleBetween = anglebetween3d( realVectFromLh, calcVectFromLh );
 
@@ -1325,16 +1327,19 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 
 	// arbitrarily picking a value of 8 meters out to start from.
 	// intentionally picking the direction of the average normal vector of the sensors that see the lighthouse
-	// since this is least likely to pick the incorrect "mirror" point that would send us 
-	// back into the search for the correct point (see "if (a1 > M_PI / 2)" below)
+	// since this is least likely to converge to the incorrect "mirror" point
+	// If we inadvertently pick that, we would incur the added expense of coming 
+	// back into the search a second time to get the correct location (see "if (a1 > M_PI / 2)" below)
 	Point p1 = getNormalizedAndScaledVector(avgNorm, 8);
 
 	// if the last lighthouse position has been populated (extremely rare it would be 0)
+	// use that instead.  
 	if (toriData->lastLhPos[lh].x != 0)
 	{
 		p1.x = toriData->lastLhPos[lh].x;
 		p1.y = toriData->lastLhPos[lh].y;
 		p1.z = toriData->lastLhPos[lh].z;
+		// TODO: If we're in here, we probably didn't need to do the getNormalizedAndScaledVector above...
 	}
 
 	// refinedEstimateGd is the estimate for the location of the lighthouse in the tracked 
@@ -1367,7 +1372,7 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 	if (ttDebug) printf(" la(% 04.4f) SnsrCnt(%2d) LhPos:(% 04.4f, % 04.4f, % 04.4f) Dist: % 08.8f ", largestAngle, (int)obj->numSensors, refinedEstimateGd.x, refinedEstimateGd.y, refinedEstimateGd.z, distance);
 	//printf("Distance is %f,   Fitness is %f\n", distance, fitGd);
 
-	FLT rot[4]; // this is axis/ angle rotation, not a quaternion!
+//	FLT rot[4]; // this is axis/ angle rotation, not a quaternion!
 	FLT rotQuat[4]; // this is a quaternion!
 
 	// if we've already guessed at the rotation of the lighthouse,
@@ -1395,7 +1400,7 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 	// TODO: I believe this could be radically improved
 	// using an SVD.  
 	SolveForRotationQuat(rotQuat, obj, refinedEstimateGd);
-	SolveForRotation(rot, obj, refinedEstimateGd);
+//	SolveForRotation(rot, obj, refinedEstimateGd);
 	FLT objPos[3];
 	//FLT objPos2[3];
 
@@ -1408,10 +1413,11 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 
 
 
-	FLT rotQuat2[4];
+//	FLT rotQuat2[4];
 	FLT rot2[4];
 
-	quatfromaxisangle(rotQuat2, rot, rot[3]);
+
+//	quatfromaxisangle(rotQuat2, rot, rot[3]);
 	axisanglefromquat(&(rot2[3]), rot2, rotQuat);
 
 
@@ -1419,13 +1425,15 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 	WhereIsTheTrackedObjectAxisAngle(objPos, rot2, refinedEstimateGd); // this one is axis angle, but using data derived by quaternions.
 	//	WhereIsTheTrackedObjectQuaternion(objPos, rotQuat, refinedEstimateGd);  <--------------This is hte one we need to use, might need to be fixed.
 
-	//{
-		//FLT tmpPos[3] = {refinedEstimateGd.x, refinedEstimateGd.y, refinedEstimateGd.z};
 
-		//quatrotatevector(tmpPos, rotQuat, tmpPos);
-	//}
-
-	//static int foo = 0;
+	// Apply a rotation of the lighthouse here to get things consistent with the other posers.
+//	FLT saneLHPoseAdjustment[4] = { 0.7071,0,-0.7071,0 };
+//	FLT saneLHPoseAdjustment[4] = { 0.7071,0,0, -0.7071 };
+//	FLT saneLHPoseAdjustment[4] = { 0, -0.7071, 0.7071, 0 };
+	//	FLT saneLHPoseAdjustment[4] = { 0,1,0,0 };
+//	FLT saneLHPoseAdjustment[4] = { 1,0,0,0 };
+//	FLT saneLHPoseAdjustment[4] = { 0.5,-0.5,0.5,-0.5 };
+	FLT saneLHPoseAdjustment[4] = { 0.5,0.5,-0.5,-0.5 };
 
 	//if (0 == foo)
 	if (setLhCalibration)
@@ -1437,7 +1445,14 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 		}
 
 		FLT invRot[4];
-		quatgetreciprocal(invRot, rotQuat);
+		FLT invSaneLHPoseAdjustment[4];
+
+		quatgetreciprocal(invSaneLHPoseAdjustment, saneLHPoseAdjustment);
+
+		quatrotateabout(invRot, invSaneLHPoseAdjustment, rotQuat);
+		quatgetreciprocal(invRot, invRot);
+
+//		quatgetreciprocal(invRot, rotQuat);
 
 		so->ctx->bsd[lh].Pose.Pos[0] = refinedEstimateGd.x;
 		so->ctx->bsd[lh].Pose.Pos[1] = refinedEstimateGd.y;
@@ -1460,14 +1475,25 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 	// in the world reference frame.
 	// The result is the position of the tracked object
 	// in the world reference frame.
-	quatrotatevector(wcPos, so->ctx->bsd[lh].Pose.Rot, objPos);
+	FLT lhQuat[4] = {
+		so->ctx->bsd[lh].Pose.Rot[0],
+		so->ctx->bsd[lh].Pose.Rot[1],
+		so->ctx->bsd[lh].Pose.Rot[2],
+		so->ctx->bsd[lh].Pose.Rot[3]
+	};
+
+	quatrotateabout(lhQuat, saneLHPoseAdjustment, lhQuat);
+
+
+	quatrotatevector(wcPos, lhQuat, objPos);
+	//quatrotatevector(wcPos, so->ctx->bsd[lh].Pose.Rot, objPos);
 	wcPos[0] += so->ctx->bsd[lh].Pose.Pos[0];
 	wcPos[1] += so->ctx->bsd[lh].Pose.Pos[1];
 	wcPos[2] += so->ctx->bsd[lh].Pose.Pos[2];
 
 	FLT newOrientation[4];
 	//quatrotateabout(newOrientation, rotQuat, so->ctx->bsd[lh].Pose.Rot); // turns the wrong way 
-	quatrotateabout(newOrientation, so->ctx->bsd[lh].Pose.Rot, rotQuat); // turns the wrong way 
+	quatrotateabout(newOrientation, lhQuat, rotQuat); // turns the wrong way 
 
 	FLT invRot[4];
 	quatgetreciprocal(invRot, rotQuat);
@@ -1475,7 +1501,7 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 	//quatrotateabout(newOrientation, so->ctx->bsd[lh].Pose.Rot, invRot); // turns correctly, rotations not aligned
 
 	FLT invPoseRot[4];
-	quatgetreciprocal(invPoseRot, so->ctx->bsd[lh].Pose.Rot);
+	quatgetreciprocal(invPoseRot, lhQuat);
 
 	//quatrotateabout(newOrientation, rotQuat, invPoseRot); // turns the wrong way, rotations not aligned
 	//quatrotateabout(newOrientation, invPoseRot, rotQuat); // turns the wrong way, rotations not aligned

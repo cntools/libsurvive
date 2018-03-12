@@ -93,6 +93,9 @@
     <ClCompile Include="..\..\src\survive_default_devices.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\survive_reproject.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\ootx_decoder.h">
@@ -142,6 +145,9 @@
     </ClInclude>
     <ClInclude Include="..\..\src\survive_default_devices.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\libsurvive\survive_reproject.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
