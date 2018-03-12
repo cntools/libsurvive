@@ -169,6 +169,7 @@ int PoserCharlesSlow( SurviveObject * so, PoserData * pd )
 			copy3d( ctx->bsd[lh].Pose.Pos, LighthousePos );
 			quatcopy( ctx->bsd[lh].Pose.Rot, LighthouseQuat );			
 #define ALT_COORDS
+
 #ifdef ALT_COORDS
 			so->FromLHPose[lh].Pos[0] = LighthousePos[0];
 			so->FromLHPose[lh].Pos[1] = LighthousePos[1];
@@ -188,6 +189,11 @@ int PoserCharlesSlow( SurviveObject * so, PoserData * pd )
 			so->FromLHPose[lh].Rot[2] = LighthouseQuat[2];
 			so->FromLHPose[lh].Rot[3] = LighthouseQuat[3];
 #endif
+
+			const FLT rt[4] = {0, 0, 1, 0};
+			FLT tmp[4];
+			quatrotateabout(tmp, so->ctx->bsd[lh].Pose.Rot, rt);
+			memcpy(so->ctx->bsd[lh].Pose.Rot, tmp, sizeof(FLT) * 4);
 		}
 
 		return 0;

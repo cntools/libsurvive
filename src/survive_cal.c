@@ -10,6 +10,8 @@
 
 #include "survive_cal.h"
 #include "survive_internal.h"
+#include "survive_reproject.h"
+
 #include <math.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -634,6 +636,8 @@ static void handle_calibration( struct SurviveCalData *cd )
 			return;
 		}
 
+		int compute_reprojection_error = config_read_uint32(
+			ctx->global_config_values, "ComputeReprojectError", 0);
 
 		int lh;
 		for( lh = 0; lh < NUM_LIGHTHOUSES; lh++ )
@@ -645,7 +649,48 @@ static void handle_calibration( struct SurviveCalData *cd )
 
 			fprintf( fobjp, "%f %f %f\n", objfromlh->Pos[0], objfromlh->Pos[1], objfromlh->Pos[2] );
 			fprintf( fobjp, "%f %f %f %f\n", objfromlh->Rot[0], objfromlh->Rot[1], objfromlh->Rot[2], objfromlh->Rot[3] );
+
+			if (ctx->bsd[lh].PositionSet) {
+				config_set_lighthouse(ctx->lh_config, &ctx->bsd[0], 0);
+				config_set_lighthouse(ctx->lh_config, &ctx->bsd[1], 1);
+
+				if (compute_reprojection_error) {
+					FLT reproj_err = 0;
+					size_t cnt = 0;
+					SurviveObject *so = cd->poseobjects[obj];
+					for (size_t idx = 0; idx < so->nr_locations; idx++) {
+						FLT *lengths = fsd.lengths[idx][lh];
+						FLT *pt = fsd.angles[idx][lh];
+						if (lengths[0] < 0 || lengths[1] < 0)
+							continue;
+
+						cnt++;
+						FLT reproj_pt[2];
+						survive_reproject(ctx, lh, so->sensor_locations,
+										  reproj_pt);
+
+						FLT err = 0;
+						for (int dim = 0; dim < 2; dim++) {
+							err += (reproj_pt[dim] - pt[dim]) *
+								   (reproj_pt[dim] - pt[dim]);
+						}
+						reproj_err += sqrt(err);
+					}
+
+					// This represents the average distance we were off in our
+					// reprojection.
+					// Different libraries have slightly different variations on
+					// this theme,
+					// but this one has an intuitive meaning
+					reproj_err = (reproj_err / cnt);
+
+					SV_INFO("Reproject error was %.13g for lighthouse %d",
+							reproj_err, lh);
+				}
+			}
 		}
+
+		config_save(ctx, "config.json");
 	}
 	fclose( fobjp );
 
