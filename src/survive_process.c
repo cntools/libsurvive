@@ -2,6 +2,7 @@
 //All MIT/x11 Licensed Code in this file may be relicensed freely under the GPL or LGPL licenses.
 
 #include "survive_cal.h"
+#include "survive_config.h"
 
 //XXX TODO: Once data is avialble in the context, use the stuff here to handle converting from time codes to
 //proper angles, then from there perform the rest of the solution. 
@@ -51,7 +52,10 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 	if( so->PoserFn )
 	{
 		PoserDataLight l = {
-			.pt = POSERDATA_LIGHT,
+			.hdr =
+				{
+					.pt = POSERDATA_LIGHT,
+				},
 			.sensor_id = sensor_id,
 			.acode = acode,
 			.timecode = timecode,
@@ -108,16 +112,31 @@ void survive_default_raw_pose_process(SurviveObject *so, uint8_t lighthouse, Sur
 
 }
 
+void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *pose) {
+	if (pose) {
+		ctx->bsd[lighthouse].Pose = *pose;
+		ctx->bsd[lighthouse].PositionSet = 1;
+	} else {
+		ctx->bsd[lighthouse].PositionSet = 0;
+	}
+
+	config_set_lighthouse(ctx->lh_config, &ctx->bsd[lighthouse], lighthouse);
+	config_save(ctx, "config.json");
+}
+
 void survive_default_imu_process( SurviveObject * so, int mask, FLT * accelgyromag, uint32_t timecode, int id )
 {
 	if( so->PoserFn )
 	{
 		PoserDataIMU imu = {
-			.pt = POSERDATA_IMU,
+			.hdr =
+				{
+					.pt = POSERDATA_IMU,
+				},
 			.datamask = mask,
-			.accel = { accelgyromag[0], accelgyromag[1], accelgyromag[2] },
-			.gyro = {  accelgyromag[3], accelgyromag[4], accelgyromag[5] },
-			.mag = {   accelgyromag[6], accelgyromag[7], accelgyromag[8] },
+			.accel = {accelgyromag[0], accelgyromag[1], accelgyromag[2]},
+			.gyro = {accelgyromag[3], accelgyromag[4], accelgyromag[5]},
+			.mag = {accelgyromag[6], accelgyromag[7], accelgyromag[8]},
 			.timecode = timecode,
 		};
 		so->PoserFn( so, (PoserData *)&imu );

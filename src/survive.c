@@ -148,7 +148,7 @@ SurviveContext * survive_init_internal( int headless )
 	ctx->lightproc = survive_default_light_process;
 	ctx->imuproc = survive_default_imu_process;
 	ctx->angleproc = survive_default_angle_process;
-
+	ctx->lighthouseposeproc = survive_default_lighthouse_pose_process;
 
 	// initialize the button queue
 	memset(&(ctx->buttonQueue), 0, sizeof(ctx->buttonQueue));
@@ -260,6 +260,14 @@ void survive_install_raw_pose_fn(SurviveContext * ctx, raw_pose_func fbp)
 	else
 		ctx->rawposeproc = survive_default_raw_pose_process;
 }
+
+void survive_install_lighthouse_pose_fn(SurviveContext *ctx, lighthouse_pose_func fbp) {
+	if (fbp)
+		ctx->lighthouseposeproc = fbp;
+	else
+		ctx->lighthouseposeproc = survive_default_lighthouse_pose_process;
+}
+
 int survive_add_object( SurviveContext * ctx, SurviveObject * obj )
 {
 	int oldct = ctx->objs_ct;

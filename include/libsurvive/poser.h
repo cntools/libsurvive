@@ -17,15 +17,23 @@ typedef enum PoserType_t
 	POSERDATA_DISASSOCIATE, //If you get this, it doesn't contain data.  It just tells you to please disassociate from the current SurviveObject and delete your poserdata.
 } PoserType;
 
-typedef struct
-{
-	PoserType pt;
-	uint8_t data[0];
-} PoserData;
+typedef void (*poser_raw_pose_func)(SurviveObject *so, uint8_t lighthouse, FLT *pose, void *user);
+typedef void (*poser_lighthouse_pose_func)(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose, void *user);
 
 typedef struct
 {
 	PoserType pt;
+	poser_raw_pose_func rawposeproc;
+	poser_lighthouse_pose_func lighthouseposeproc;
+	void *userdata;
+} PoserData;
+
+void PoserData_poser_raw_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse, FLT *pose);
+void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse, SurvivePose *pose);
+
+typedef struct
+{
+	PoserData hdr;
 	uint8_t datamask;  //0 = accel present, 1 = gyro present, 2 = mag present.
 	FLT accel[3];
 	FLT gyro[3];
@@ -35,7 +43,7 @@ typedef struct
 
 typedef struct
 {
-	PoserType pt;
+	PoserData hdr;
 	int sensor_id;
 	int acode;			//OOTX Code associated with this sweep. bit 1 indicates vertical(1) or horizontal(0) sweep
 	int lh;             //Lighthouse making this sweep
@@ -46,7 +54,7 @@ typedef struct
 
 typedef struct
 {
-	PoserType pt;
+	PoserData hdr;
 
 	//If "lengths[...]" < 0, means not a valid piece of sweep information.
 	FLT  lengths[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];
