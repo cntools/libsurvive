@@ -42,8 +42,7 @@ void HandleDestroy()
 FLT hpos[3];
 FLT hpos2[3];
 
-void testprog_raw_pose_process(SurviveObject * so, uint8_t lighthouse, FLT *pose)
-{
+void testprog_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose) {
 	survive_default_raw_pose_process(so, lighthouse, pose );
 
 	if( lighthouse != 0 || strcmp( so->codename, "HMD" ) != 0 )
@@ -65,13 +64,14 @@ void testprog_raw_pose_process(SurviveObject * so, uint8_t lighthouse, FLT *pose
 	hy = pos[1];
 	hz = pos[2];*/
 
-	printf("Pose: [%1.1x][%s][% 08.8f,% 08.8f,% 08.8f] [ang:%08.2f %08.2f %08.2f %08.2f]\n", lighthouse, so->codename, pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6] );
+	printf("Pose: [%1.1x][%s][% 08.8f,% 08.8f,% 08.8f] [ang:%08.2f %08.2f %08.2f %08.2f]\n", lighthouse, so->codename,
+		   pose->Pos[0], pose->Pos[1], pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
 
-	hpos[0] = pose[0];
-	hpos[1] = pose[1];
-	hpos[2] = pose[2];
+	hpos[0] = pose->Pos[0];
+	hpos[1] = pose->Pos[1];
+	hpos[2] = pose->Pos[2];
 	FLT hposin[3] = { 0, 0, 1 };
-	ApplyPoseToPoint(hpos2, pose, hposin);
+	ApplyPoseToPoint(hpos2, &pose->Pos[0], hposin);
 
 	fflush(stdout);
 }
