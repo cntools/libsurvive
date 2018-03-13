@@ -1437,7 +1437,7 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 
 		SurvivePose lighthousePose;
 		FLT invRot[4];
-		quatgetreciprocal(invRot, lighthousePose.Rot);
+		quatgetreciprocal(lighthousePose.Rot, rotQuat);
 
 		lighthousePose.Pos[0] = refinedEstimateGd.x;
 		lighthousePose.Pos[1] = refinedEstimateGd.y;
