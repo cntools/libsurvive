@@ -11,7 +11,7 @@
 #include "survive_config.h"
 #include "survive_default_devices.h"
 
-#include "redist/os_generic.h"
+#include "os_generic.h"
 
 struct SurvivePlaybackData {
 	SurviveContext *ctx;
