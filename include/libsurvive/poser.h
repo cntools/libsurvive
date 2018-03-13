@@ -17,7 +17,7 @@ typedef enum PoserType_t
 	POSERDATA_DISASSOCIATE, //If you get this, it doesn't contain data.  It just tells you to please disassociate from the current SurviveObject and delete your poserdata.
 } PoserType;
 
-typedef void (*poser_raw_pose_func)(SurviveObject *so, uint8_t lighthouse, FLT *pose, void *user);
+typedef void (*poser_raw_pose_func)(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose, void *user);
 typedef void (*poser_lighthouse_pose_func)(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose, void *user);
 
 typedef struct
@@ -28,7 +28,7 @@ typedef struct
 	void *userdata;
 } PoserData;
 
-void PoserData_poser_raw_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse, FLT *pose);
+void PoserData_poser_raw_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse, SurvivePose *pose);
 void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse, SurvivePose *pose);
 
 typedef struct

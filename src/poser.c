@@ -3,7 +3,7 @@
 #include "poser.h"
 #include "survive_internal.h"
 
-void PoserData_poser_raw_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse, FLT *pose) {
+void PoserData_poser_raw_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse, SurvivePose *pose) {
 	if (poser_data->rawposeproc) {
 		poser_data->rawposeproc(so, lighthouse, pose, poser_data->userdata);
 	} else {
