@@ -1,6 +1,6 @@
 all : lib data_recorder test calibrate calibrate_client simple_pose_test
 
-CC:=gcc
+CC?=gcc
 
 
 CFLAGS:=-Iinclude/libsurvive -fPIC -g -O3 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic
