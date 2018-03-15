@@ -62,6 +62,16 @@ void write_to_output(const char *format, ...) {
 
 	va_end(args);
 }
+void my_lighthouse_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *pose) {
+	survive_default_lighthouse_pose_process(ctx, lighthouse, pose);
+	write_to_output("LH_POSE %d %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\n", lighthouse, pose->Pos[0], pose->Pos[1],
+					pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
+}
+void testprog_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose) {
+	survive_default_raw_pose_process(so, lighthouse, pose);
+	write_to_output("POSE %s %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\n", so->codename, pose->Pos[0], pose->Pos[1],
+					pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
+}
 
 void my_light_process(struct SurviveObject *so, int sensor_id, int acode,
 					  int timeinsweep, uint32_t timecode, uint32_t length,
@@ -69,13 +79,14 @@ void my_light_process(struct SurviveObject *so, int sensor_id, int acode,
 	survive_default_light_process(so, sensor_id, acode, timeinsweep, timecode,
 								  length, lh);
 
-	if (acode == -1) {
+	if (acode == -1 || sensor_id < 0) {
 		write_to_output("A %s %d %d %d %u %u %u\n", so->codename, sensor_id,
 						acode, timeinsweep, timecode, length, lh);
 		return;
 	}
 
 	int jumpoffset = sensor_id;
+
 	if (strcmp(so->codename, "WM0") == 0)
 		jumpoffset += 32;
 	else if (strcmp(so->codename, "WM1") == 0)
@@ -170,7 +181,8 @@ void *SurviveThread(void *junk) {
 
 	survive_install_light_fn(ctx, my_light_process);
 	survive_install_imu_fn(ctx, my_imu_process);
-
+	survive_install_lighthouse_pose_fn(ctx, my_lighthouse_process);
+	survive_cal_install(ctx);
 	if (!ctx) {
 		fprintf(stderr, "Fatal. Could not start\n");
 		exit(1);
@@ -194,7 +206,8 @@ int main(int argc, char **argv) {
 	} else {
 		output_file = stdout;
 	}
-
+	SurviveThread(0);
+	/*
 	// Create the libsurvive thread
 	OGCreateThread(SurviveThread, 0);
 
@@ -205,4 +218,5 @@ int main(int argc, char **argv) {
 
 	// Run the Gui in the main thread
 	GuiThread(0);
+	*/
 }

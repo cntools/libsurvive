@@ -297,7 +297,9 @@ int survive_send_magic( SurviveContext * ctx, int magic_code, void * data, int d
 	int i;
 	for( i = 0; i < oldct; i++ )
 	{
-		ctx->drivermagics[i]( ctx, ctx->drivers[i], magic_code, data, datalen );
+		if (ctx->drivermagics[i]) {
+			ctx->drivermagics[i](ctx, ctx->drivers[i], magic_code, data, datalen);
+		}
 	}
 	return 0;
 }

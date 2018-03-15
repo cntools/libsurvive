@@ -300,6 +300,37 @@ void quattomatrix(FLT * matrix44, const FLT * qin)
 	matrix44[15] = 1;
 }
 
+void quatfrommatrix33(FLT *q, const FLT *m) {
+	FLT m00 = m[0], m01 = m[1], m02 = m[2], m10 = m[3], m11 = m[4], m12 = m[5], m20 = m[6], m21 = m[7], m22 = m[8];
+
+	FLT tr = m00 + m11 + m22;
+
+	if (tr > 0) {
+		FLT S = sqrt(tr + 1.0) * 2; // S=4*qw
+		q[0] = 0.25 * S;
+		q[1] = (m21 - m12) / S;
+		q[2] = (m02 - m20) / S;
+		q[3] = (m10 - m01) / S;
+	} else if ((m00 > m11) & (m00 > m22)) {
+		FLT S = sqrt(1.0 + m00 - m11 - m22) * 2; // S=4*q[1]
+		q[0] = (m21 - m12) / S;
+		q[1] = 0.25 * S;
+		q[2] = (m01 + m10) / S;
+		q[3] = (m02 + m20) / S;
+	} else if (m11 > m22) {
+		FLT S = sqrt(1.0 + m11 - m00 - m22) * 2; // S=4*q[2]
+		q[0] = (m02 - m20) / S;
+		q[1] = (m01 + m10) / S;
+		q[2] = 0.25 * S;
+		q[3] = (m12 + m21) / S;
+	} else {
+		FLT S = sqrt(1.0 + m22 - m00 - m11) * 2; // S=4*q[3]
+		q[0] = (m10 - m01) / S;
+		q[1] = (m02 + m20) / S;
+		q[2] = (m12 + m21) / S;
+		q[3] = 0.25 * S;
+	}
+}
 
 void quatfrommatrix( FLT * q, const FLT * matrix44 )
 {
