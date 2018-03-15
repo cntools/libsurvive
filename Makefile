@@ -2,7 +2,7 @@ all : lib data_recorder test calibrate calibrate_client simple_pose_test
 
 CC?=gcc
 
-CFLAGS:=-Iinclude/libsurvive -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic -fsanitize=address -fsanitize=undefined  -llapacke  -lcblas -lm
+CFLAGS:=-Iinclude/libsurvive -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic -llapacke  -lcblas -lm
 #LDFLAGS:=-L/usr/local/lib -lpthread -lusb-1.0 -lz -lm -flto -g
 LDFLAGS:=-L/usr/local/lib -lpthread -lz -lm -flto -g
 
@@ -92,14 +92,6 @@ test_epnp: ./src/epnp/test_epnp.c ./lib/libsurvive.so
 test_epnp_ocv: ./src/epnp/test_epnp.c ./src/epnp/epnp.c
 	$(CC) -o $@ $^ -DWITH_OPENCV -lpthread -lz -lm -flto -g -lX11 -lusb-1.0 -Iinclude/libsurvive -fPIC -g -O4 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic -fsanitize=address -fsanitize=undefined   -llapack -lm -lopencv_core
 
-
-unit_test_epnp: ./src/epnp/unit_test_epnp.c ./lib/libsurvive.so 
-	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
-
-test_epnp_results: test_epnp test_epnp_ocv
-	-./test_epnp_ocv > opencv_output
-	-./test_epnp > our_output
-
 lib:
 	mkdir lib
 
@@ -111,7 +103,7 @@ calibrate_tcc : $(LIBSURVIVE_C)
 	tcc -DRUNTIME_SYMNUM $(CFLAGS) -o $@ $^ $(LDFLAGS) calibrate.c redist/os_generic.c $(DRAWFUNCTIONS) redist/symbol_enumerator.c
 
 clean :
-	rm -rf *.o src/*.o *~ src/*~ test simple_pose_test data_recorder calibrate testCocoa lib/libsurvive.so redist/*.o redist/*~
+	rm -rf *.o src/*.o *~ src/*~ test simple_pose_test data_recorder calibrate testCocoa lib/libsurvive.so test_minimal_cv test_epnp test_epnp_ocv calibrate_client redist/*.o redist/*~
 
 
 
