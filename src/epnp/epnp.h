@@ -46,6 +46,7 @@ typedef struct {
 	double cws_determinant;
 } epnp;
 
+void epnp_dtor(epnp *self);
 void epnp_set_internal_parameters(epnp *self, double uc, double vc, double fu, double fv);
 void epnp_set_maximum_number_of_correspondences(epnp *self, int n);
 void epnp_reset_correspondences(epnp *self);

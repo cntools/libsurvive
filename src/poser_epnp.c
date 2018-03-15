@@ -85,6 +85,8 @@ static int opencv_solver_fullscene(SurviveObject *so, PoserDataFullScene *pdfs) 
 
 		SurvivePose lighthouse = solve_correspondence(so, &pnp, true);
 		PoserData_lighthouse_pose_func(&pdfs->hdr, so, lh, &lighthouse);
+
+		epnp_dtor(&pnp);
 	}
 	return 0;
 }
@@ -137,6 +139,8 @@ int PoserEPNP(SurviveObject *so, PoserData *pd) {
 				quatrotateabout(txPose.Rot, so->ctx->bsd[lh].Pose.Rot, pose.Rot);
 				PoserData_poser_raw_pose_func(pd, so, lh, &txPose);
 			}
+
+			epnp_dtor(&pnp);
 		}
 
 		return 0;

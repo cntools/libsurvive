@@ -340,7 +340,8 @@ void survive_close( SurviveContext * ctx )
 	{
 		PoserData pd;
 		pd.pt = POSERDATA_DISASSOCIATE;
-		if( ctx->objs[i]->PoserFn ) ctx->objs[i]->PoserFn( ctx->objs[i], &pd );
+		if (ctx->objs[i]->PoserFn)
+			ctx->objs[i]->PoserFn(ctx->objs[i], &pd);
 	}
 
 	for( i = 0; i < oldct; i++ )
@@ -353,6 +354,10 @@ void survive_close( SurviveContext * ctx )
 
 	destroy_config_group(ctx->global_config_values);
 	destroy_config_group(ctx->lh_config);
+
+	for (i = 0; i < ctx->objs_ct; i++) {
+		free(ctx->objs[i]);
+	}
 
 	free( ctx->objs );
 	free( ctx->drivers );

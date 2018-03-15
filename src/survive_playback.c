@@ -160,6 +160,7 @@ static int playback_close(struct SurviveContext *ctx, void *_driver) {
 	if (driver->playback_file)
 		fclose(driver->playback_file);
 	driver->playback_file = 0;
+
 	return 0;
 }
 
@@ -184,7 +185,11 @@ static int LoadConfig(SurvivePlaybackData *sv, SurviveObject *so) {
 	ct0conf[len] = 0;
 
 	printf("Loading config: %d\n", len);
-	return survive_load_htc_config_format(ct0conf, len, so);
+	int rtn = survive_load_htc_config_format(ct0conf, len, so);
+
+	free(ct0conf);
+
+	return rtn;
 }
 
 int DriverRegPlayback(SurviveContext *ctx) {
@@ -217,20 +222,14 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	SurviveObject *tr0 = survive_create_tr0(ctx, "Playback", sp);
 	SurviveObject *ww0 = survive_create_ww0(ctx, "Playback", sp);
 
-	if (!LoadConfig(sp, hmd)) {
-		survive_add_object(ctx, hmd);
-	}
-	if (!LoadConfig(sp, wm0)) {
-		survive_add_object(ctx, wm0);
-	}
-	if (!LoadConfig(sp, wm1)) {
-		survive_add_object(ctx, wm1);
-	}
-	if (!LoadConfig(sp, tr0)) {
-		survive_add_object(ctx, tr0);
-	}
-	if (!LoadConfig(sp, ww0)) {
-		survive_add_object(ctx, ww0);
+	SurviveObject *objs[] = {hmd, wm0, wm1, tr0, ww0, 0};
+
+	for (SurviveObject **obj = objs; *obj; obj++) {
+		if (!LoadConfig(sp, *obj)) {
+			survive_add_object(ctx, *obj);
+		} else {
+			free(*obj);
+		}
 	}
 
 	survive_add_driver(ctx, sp, playback_poll, playback_close, 0);

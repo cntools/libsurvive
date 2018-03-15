@@ -28,29 +28,7 @@ const int CV_64F = 0;
 typedef double doublereal;
 
 #define F77_FUNC(func) func##_
-/*
-extern int F77_FUNC(dgetrs)(char *trans, int *n, int *nrhs, double *a, int *lda, int *ipiv, double *b, int *ldb, int
-*info);
 
-extern int F77_FUNC(dgetri)(int *n, double *a, int *lda, int *ipiv, double *work, int *lwork, int *info);
-extern int F77_FUNC(dgetrf)(int *m, int *n, double *a, int *lda, int *ipiv, int *info); /* blocked LU
-
-extern int F77_FUNC(dgesvd)(char *jobu, char *jobvt,
-				int *m, int *n,
-				double *a, int *lda, double *s, double *u, int *ldu,
-				double *vt, int *ldvt, double *work, int *lwork,
-				int *info);
-
-extern int F77_FUNC(dgesdd)(char *jobz,
-				int *m, int *n, double *a, int *lda,
-		   double *s, double *u, int *ldu, double *vt, int *ldvt,
-		   double *work, int *lwork, int *iwork, int *info);
-
-extern int dgemm_(char *transa, char *transb, lapack_lapack_int *m, lapack_lapack_int *
-	n, lapack_lapack_int *k, double *alpha, double *a, lapack_lapack_int *lda,
-	double *b, lapack_lapack_int *ldb, double *beta, double *c, lapack_lapack_int
-	   *ldc);
-*/
 void cvGEMM(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src3, double beta, CvMat *dst, int tABC) {
 	lapack_int rows1 = src1->rows;
 	lapack_int cols1 = src1->cols;
@@ -85,7 +63,7 @@ void cvMulTransposed(const CvMat *src, CvMat *dst, int order, const CvMat *delta
 	lapack_int drows = dst->rows;
 	assert(drows == cols);
 	assert(order == 1 ? (dst->cols == src->cols) : (dst->cols == src->rows));
-	assert(delta == 0); // THIS ISN'T IMPLEMENTED YET
+	assert(delta == 0 && "This isn't implemented yet");
 	double beta = 0;
 
 	bool isAT = order == 1;
@@ -93,16 +71,12 @@ void cvMulTransposed(const CvMat *src, CvMat *dst, int order, const CvMat *delta
 
 	lapack_int dstCols = dst->cols;
 
-	cblas_dgemm(CblasRowMajor, isAT ? CblasTrans : CblasNoTrans, isBT ? CblasTrans : CblasNoTrans,
-				cols, // isAT ? cols : rows,
-				dstCols,
-				rows, // isAT ? rows : cols,
+	cblas_dgemm(CblasRowMajor, isAT ? CblasTrans : CblasNoTrans, isBT ? CblasTrans : CblasNoTrans, cols, dstCols, rows,
 				scale,
 
 				src->data.db, cols, src->data.db, cols, beta,
 
 				dst->data.db, dstCols);
-	// const CvMat* delta, double scale
 }
 
 void *cvAlloc(size_t size) { return malloc(size); }
@@ -242,13 +216,14 @@ double cvInvert(const CvMat *srcarr, CvMat *dstarr, int method) {
 		free(ipiv);
 
 	} else if (method == DECOMP_SVD) {
-
+		// TODO: There is no way this needs this many allocations,
+		// but in my defense I was very tired when I wrote this code
 		CvMat *w = cvCreateMat(1, MIN(dstarr->rows, dstarr->cols), dstarr->type);
 		CvMat *u = cvCreateMat(dstarr->cols, dstarr->cols, dstarr->type);
 		CvMat *v = cvCreateMat(dstarr->rows, dstarr->rows, dstarr->type);
-		cvSVD(dstarr, w, u, v, 0);
-
 		CvMat *um = cvCreateMat(w->cols, w->cols, w->type);
+
+		cvSVD(dstarr, w, u, v, 0);
 
 		cvSetZero(um);
 		for (int i = 0; i < w->cols; i++) {
@@ -258,6 +233,12 @@ double cvInvert(const CvMat *srcarr, CvMat *dstarr, int method) {
 		CvMat *tmp = cvCreateMat(dstarr->cols, dstarr->rows, dstarr->type);
 		cvGEMM(v, um, 1, 0, 0, tmp, GEMM_1_T);
 		cvGEMM(tmp, u, 1, 0, 0, dstarr, GEMM_2_T);
+
+		cvReleaseMat(&tmp);
+		cvReleaseMat(&w);
+		cvReleaseMat(&u);
+		cvReleaseMat(&v);
+		cvReleaseMat(&um);
 	}
 	return 0;
 }
@@ -333,11 +314,9 @@ int cvSolve(const CvMat *Aarr, const CvMat *xarr, CvMat *Barr, int method) {
 		assert(Barr->cols == xCpy->cols);
 		xCpy->rows = acols;
 		cvCopyTo(xCpy, Barr);
-/*
-Barr->data = xCpy->data;
-Barr->rows = acols;
-Barr->cols = xCpy->cols;
-*/
+
+		cvReleaseMat(&aCpy);
+		cvReleaseMat(&xCpy);
 #ifdef DEBUG_PRINT
 		print_mat(Barr);
 #endif

@@ -210,6 +210,7 @@ void json_load_file(const char* path) {
 		free(value);
 	}
 
+	free(tokens);
 	free(JSON_STRING);
 }
 
