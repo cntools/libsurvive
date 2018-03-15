@@ -67,7 +67,7 @@ void my_lighthouse_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose 
 	write_to_output("LH_POSE %d %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\n", lighthouse, pose->Pos[0], pose->Pos[1],
 					pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
 }
-void testprog_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose) {
+void my_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose) {
 	survive_default_raw_pose_process(so, lighthouse, pose);
 	write_to_output("POSE %s %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\n", so->codename, pose->Pos[0], pose->Pos[1],
 					pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
@@ -182,6 +182,7 @@ void *SurviveThread(void *junk) {
 	survive_install_light_fn(ctx, my_light_process);
 	survive_install_imu_fn(ctx, my_imu_process);
 	survive_install_lighthouse_pose_fn(ctx, my_lighthouse_process);
+	survive_install_raw_pose_fn(ctx, my_raw_pose_process);
 	survive_cal_install(ctx);
 	if (!ctx) {
 		fprintf(stderr, "Fatal. Could not start\n");

@@ -388,7 +388,7 @@ void cvSVD(CvMat *aarr, CvMat *warr, CvMat *uarr, CvMat *varr, int flags) {
 	lapack_int ulda = uarr ? uarr->cols : 1;
 	lapack_int plda = varr ? varr->cols : acols;
 
-	double *superb = malloc(MIN(arows, acols));
+	double *superb = malloc(sizeof(double) * MIN(arows, acols));
 	inf = LAPACKE_dgesvd(LAPACK_ROW_MAJOR, jobu, jobvt, arows, acols, aarr->data.db, acols, warr ? warr->data.db : 0,
 						 uarr ? uarr->data.db : 0, ulda, varr ? varr->data.db : 0, plda, superb);
 

@@ -79,12 +79,7 @@ void epnp_compute_rho(epnp *self, double *rho) {
 
 	CvMat cws = cvMat(4, 3, CV_64F, self->cws);
 	CvMat ccs = cvMat(4, 3, CV_64F, self->ccs);
-	printf("Rho:\n");
-	print_mat(&cws);
-	print_mat(&ccs);
-
 	CvMat pws = cvMat(self->maximum_number_of_correspondences, 3, CV_64F, self->pws);
-	print_mat(&pws);
 }
 
 void epnp_set_internal_parameters(epnp *self, double uc, double vc, double fu, double fv) {
@@ -149,13 +144,10 @@ void epnp_choose_control_points(epnp *self) {
 			PW0->data.db[3 * i + j] = self->pws[3 * i + j] - self->cws[0][j];
 
 	cvMulTransposed(PW0, &PW0tPW0, 1, 0, 1);
-	printf("PW0tPW0\n");
-	print_mat(&PW0tPW0);
 
 	cvSVD(&PW0tPW0, &DC, &UCt, 0, CV_SVD_MODIFY_A | CV_SVD_U_T);
 	assert(UCt.data.db == uct);
-	print_mat(&DC);
-	print_mat(&UCt);
+
 	cvReleaseMat(&PW0);
 
 	for (int i = 1; i < 4; i++) {
@@ -174,18 +166,7 @@ void epnp_compute_barycentric_coordinates(epnp *self) {
 		for (int j = 1; j < 4; j++)
 			cc[3 * i + j - 1] = self->cws[j][i] - self->cws[0][i];
 
-	printf("CC_inv\n");
-	print_mat(&CC);
 	cvInvert(&CC, &CC_inv, 1);
-
-	/*    double gt[] = {
-	  -0.39443, 0.639333, 1.16496 ,
-	  -0.550589, -1.45206, 0.610476 ,
-	  3.54726, -0.682609, 1.57564
-	};
-	for(int i = 0;i < 9;i++) CC_inv.data.db[i] = gt[i];
-	*/
-	print_mat(&CC_inv);
 
 	double *ci = cc_inv;
 	for (int i = 0; i < self->number_of_correspondences; i++) {
@@ -289,10 +270,7 @@ void find_betas_approx_1(const CvMat *L_6x10, const CvMat *Rho, double *betas) {
 		cvmSet(&L_6x4, i, 3, cvmGet(L_6x10, i, 6));
 	}
 
-	print_mat(&L_6x4);
 	cvSolve(&L_6x4, Rho, &B4, CV_SVD);
-	print_mat(Rho);
-	print_mat(&B4);
 
 	assert(B4.data.db == b4);
 
@@ -512,8 +490,6 @@ double epnp_compute_pose(epnp *self, double R[3][3], double t[3]) {
 	for (int i = 0; i < self->number_of_correspondences; i++)
 		epnp_fill_M(self, M, 2 * i, self->alphas + 4 * i, self->us[2 * i], self->us[2 * i + 1]);
 
-	printf("M\n");
-	print_mat(M);
 
 	double mtm[12 * 12], d[12], ut[12 * 12];
 	CvMat MtM = cvMat(12, 12, CV_64F, mtm);
@@ -552,9 +528,6 @@ double epnp_compute_pose(epnp *self, double R[3][3], double t[3]) {
 		   for(int i = 0;i < 144;i++) ut[i] = gt[i];*/
 	assert(Ut.data.db == ut);
 
-	print_mat(&Ut);
-	print_mat(&D);
-
 	double l_6x10[6 * 10], rho[6];
 	CvMat L_6x10 = cvMat(6, 10, CV_64F, l_6x10);
 	CvMat Rho = cvMat(6, 1, CV_64F, rho);
@@ -570,17 +543,14 @@ double epnp_compute_pose(epnp *self, double R[3][3], double t[3]) {
 	gauss_newton(&L_6x10, &Rho, Betas[1]);
 
 	rep_errors[1] = epnp_compute_R_and_t(self, ut, Betas[1], Rs[1], ts[1]);
-	printf("r1: %f\n", rep_errors[1]);
 
 	find_betas_approx_2(&L_6x10, &Rho, Betas[2]);
 	gauss_newton(&L_6x10, &Rho, Betas[2]);
 	rep_errors[2] = epnp_compute_R_and_t(self, ut, Betas[2], Rs[2], ts[2]);
-	printf("r2: %f\n", rep_errors[2]);
 
 	epnp_find_betas_approx_3(self, &L_6x10, &Rho, Betas[3]);
 	gauss_newton(&L_6x10, &Rho, Betas[3]);
 	rep_errors[3] = epnp_compute_R_and_t(self, ut, Betas[3], Rs[3], ts[3]);
-	printf("r3: %f\n", rep_errors[3]);
 
 	int N = 1;
 	if (rep_errors[2] < rep_errors[1])

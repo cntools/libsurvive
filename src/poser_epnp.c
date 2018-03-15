@@ -1,4 +1,4 @@
-#include "PersistentScene.h"
+#include "persistent_scene.h"
 
 #ifndef USE_DOUBLE
 #define FLT double
@@ -89,6 +89,19 @@ static int opencv_solver_fullscene(SurviveObject *so, PoserDataFullScene *pdfs) 
 	return 0;
 }
 
+struct add_correspondence_for_lh {
+	epnp *pnp;
+	int lh;
+};
+
+void add_correspondence_for_lh(SurviveObject *so, int lh, int sensor_idx, FLT *angles, void *_user) {
+	struct add_correspondence_for_lh *user = (struct add_correspondence_for_lh *)_user;
+	if (user->lh == lh)
+		epnp_add_correspondence(user->pnp, so->sensor_locations[sensor_idx * 3 + 0],
+								so->sensor_locations[sensor_idx * 3 + 1], so->sensor_locations[sensor_idx * 3 + 2],
+								tan(angles[0]), tan(angles[1]));
+}
+
 int PoserEPNP(SurviveObject *so, PoserData *pd) {
 	switch (pd->pt) {
 	case POSERDATA_IMU: {
@@ -97,28 +110,36 @@ int PoserEPNP(SurviveObject *so, PoserData *pd) {
 		return 0;
 	}
 	case POSERDATA_LIGHT: {
-		/*
-		PersistentScene* scene;
-		   PoserDataLight * lightData = pd;
+		static PersistentScene _scene = {.tolerance = 1500000};
+		PersistentScene *scene = &_scene;
+		PoserDataLight *lightData = (PoserDataLight *)pd;
 
-		   PersistentScene_add(scene, so, lightData);
+		PersistentScene_add(scene, so, lightData);
 
-		   if (so->ctx->bsd[lh].PositionSet) {
-			  auto pose = solve_correspondence(so, cal_objectPoints, cal_imagePoints, false);
+		int lh = lightData->lh;
+		if (so->ctx->bsd[lh].PositionSet) {
+			epnp pnp = {.fu = 1, .fv = 1};
+			epnp_set_maximum_number_of_correspondences(&pnp, so->nr_locations);
 
-			  SurvivePose txPose = {};
-			  quatrotatevector(txPose.Pos, so->ctx->bsd[lh].Pose.Rot, pose.Pos);
-			  for (int i = 0; i < 3; i++) {
-				  txPose.Pos[i] += so->ctx->bsd[lh].Pose.Pos[i];
-			  }
-			  quatrotateabout(txPose.Rot, so->ctx->bsd[lh].Pose.Rot, pose.Rot);
+			struct add_correspondence_for_lh user = {.lh = lh, .pnp = &pnp};
+			PersistentScene_ForEachCorrespondence(scene, add_correspondence_for_lh, so, lightData->timecode, &user);
 
-			  // scene->integratePose(txPose, lightData->timecode);
-			  // txPose = scene->currentPose;
-			  PoserData_poser_raw_pose_func(pd, so, lh, &txPose);
-		  }
-		*/
-		return -1;
+			if (pnp.number_of_correspondences > 4) {
+
+				SurvivePose pose = solve_correspondence(so, &pnp, false);
+
+				SurvivePose txPose = {};
+				quatrotatevector(txPose.Pos, so->ctx->bsd[lh].Pose.Rot, pose.Pos);
+				for (int i = 0; i < 3; i++) {
+					txPose.Pos[i] += so->ctx->bsd[lh].Pose.Pos[i];
+				}
+
+				quatrotateabout(txPose.Rot, so->ctx->bsd[lh].Pose.Rot, pose.Rot);
+				PoserData_poser_raw_pose_func(pd, so, lh, &txPose);
+			}
+		}
+
+		return 0;
 	}
 	case POSERDATA_FULL_SCENE: {
 		return opencv_solver_fullscene(so, (PoserDataFullScene *)(pd));
