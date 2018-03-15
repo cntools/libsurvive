@@ -65,7 +65,7 @@ static int ParsePoints(SurviveContext *ctx, SurviveObject *so, char *ct0conf,
 	int pts = t[i + 1].size;
 	jsmntok_t *tk;
 
-	so->nr_locations = 0;
+	so->sensor_ct = 0;
 	*floats_out = malloc(sizeof(**floats_out) * 32 * 3);
 
 	for (k = 0; k < pts; k++) {
@@ -86,10 +86,10 @@ static int ParsePoints(SurviveContext *ctx, SurviveObject *so, char *ct0conf,
 			memcpy(ctt, ct0conf + tk->start, elemlen);
 			ctt[elemlen] = 0;
 			FLT f = atof(ctt);
-			int id = so->nr_locations * 3 + m;
+			int id = so->sensor_ct * 3 + m;
 			(*floats_out)[id] = f;
 		}
-		so->nr_locations++;
+		so->sensor_ct++;
 	}
 	return 0;
 }
@@ -181,7 +181,7 @@ int survive_load_htc_config_format(char *ct0conf, int len, SurviveObject *so) {
 	FILE *f = fopen(fname, "w");
 	int j;
 	if(f) {
-	  for (j = 0; j < so->nr_locations; j++) {
+	  for (j = 0; j < so->sensor_ct; j++) {
 	    fprintf(f, "%f %f %f\n", so->sensor_locations[j * 3 + 0],
 		    so->sensor_locations[j * 3 + 1],
 		    so->sensor_locations[j * 3 + 2]);
@@ -192,7 +192,7 @@ int survive_load_htc_config_format(char *ct0conf, int len, SurviveObject *so) {
 	if(f) {
 	  sprintf(fname, "calinfo/%s_normals.csv", so->codename);
 	  f = fopen(fname, "w");
-	  for (j = 0; j < so->nr_locations; j++) {
+	  for (j = 0; j < so->sensor_ct; j++) {
 	    fprintf(f, "%f %f %f\n", so->sensor_normals[j * 3 + 0],
 		    so->sensor_normals[j * 3 + 1], so->sensor_normals[j * 3 + 2]);
 	  }

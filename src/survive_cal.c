@@ -655,7 +655,7 @@ static void handle_calibration( struct SurviveCalData *cd )
 					FLT reproj_err = 0;
 					size_t cnt = 0;
 					SurviveObject *so = cd->poseobjects[obj];
-					for (size_t idx = 0; idx < so->nr_locations; idx++) {
+					for (size_t idx = 0; idx < so->sensor_ct; idx++) {
 						FLT *lengths = fsd.lengths[idx][lh];
 						FLT *pt = fsd.angles[idx][lh];
 						if (lengths[0] < 0 || lengths[1] < 0)

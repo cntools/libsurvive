@@ -48,7 +48,7 @@ int PoserCharlesSlow( SurviveObject * so, PoserData * pd )
 		int p;
 		FLT * hmd_points  = so->sensor_locations;
 
-		for( p = 0; p < so->nr_locations; p++ )
+		for( p = 0; p < so->sensor_ct; p++ )
 		{
 			printf( "%f %f %f\n", hmd_points[p*3+0], hmd_points[p*3+1], hmd_points[p*3+2] );
 		}
@@ -225,7 +225,7 @@ static FLT RunOpti( SurviveObject * hmd, PoserDataFullScene * fs, int lh, int pr
 	quatsetnone( LighthouseQuat );
 	FLT * hmd_points  = hmd->sensor_locations;
 	FLT * hmd_normals = hmd->sensor_normals;
-	int dpts = hmd->nr_locations;
+	int dpts = hmd->sensor_ct;
 
 	int first = 1, second = 0;
 

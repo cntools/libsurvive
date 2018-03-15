@@ -450,7 +450,7 @@ static void QuickPose(SurviveObject *so)
 	OctavioRadiiData * td = so->PoserData;
 
 
-	//for (int i=0; i < so->nr_locations; i++)
+	//for (int i=0; i < so->sensor_ct; i++)
 	//{
 	//	FLT x0=td->oldAngles[i][0][0][td->angleIndex[0][0]];
 	//	FLT y0=td->oldAngles[i][1][0][td->angleIndex[0][1]];
@@ -478,7 +478,7 @@ static void QuickPose(SurviveObject *so)
 	{
 		int sensorCount = 0;
 
-		for (int i = 0; i < so->nr_locations; i++)
+		for (int i = 0; i < so->sensor_ct; i++)
 		{
 			int lh = 0;
 			//printf("%d[%d], ",i,td->hitCount[i][lh][0]);
@@ -646,11 +646,11 @@ int PoserOctavioRadii( SurviveObject * so, PoserData * pd )
 		//FLT  angles[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];  //2 Axes  (Angles in LH space)
 		//FLT  synctimes[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES];
 
-		//to->numSensors = so->nr_locations;
+		//to->numSensors = so->sensor_ct;
 		{
 			int sensorCount = 0;
 
-			for (int i = 0; i < so->nr_locations; i++)
+			for (int i = 0; i < so->sensor_ct; i++)
 			{
 				if (fs->lengths[i][0][0] != -1 && fs->lengths[i][0][1] != -1) //lh 0
 				{
@@ -678,7 +678,7 @@ int PoserOctavioRadii( SurviveObject * so, PoserData * pd )
 			int sensorCount = 0;
 			int lh = 1;
 
-			for (int i = 0; i < so->nr_locations; i++)
+			for (int i = 0; i < so->sensor_ct; i++)
 			{
 				if (fs->lengths[i][lh][0] != -1 && fs->lengths[i][lh][1] != -1)
 				{

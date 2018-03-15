@@ -118,7 +118,7 @@ static void dump_iface( struct SurviveObject * so, const char * prefix )
 
 	sprintf( fname, "%s_points.csv", prefix );
 	f = fopen( fname, "w" );
-	for( i = 0; i < so->nr_locations; i++ )
+	for( i = 0; i < so->sensor_ct; i++ )
 	{
 		fprintf( f, "%g %g %g\n", so->sensor_locations[i*3+0], so->sensor_locations[i*3+1], so->sensor_locations[i*3+2] );
 	}
@@ -126,7 +126,7 @@ static void dump_iface( struct SurviveObject * so, const char * prefix )
 
 	sprintf( fname, "%s_normals.csv", prefix );
 	f = fopen( fname, "w" );
-	for( i = 0; i < so->nr_locations; i++ )
+	for( i = 0; i < so->sensor_ct; i++ )
 	{
 		fprintf( f, "%g %g %g\n", so->sensor_normals[i*3+0], so->sensor_normals[i*3+1], so->sensor_normals[i*3+2] );
 	}
