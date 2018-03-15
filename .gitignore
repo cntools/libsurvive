@@ -18,3 +18,10 @@ winbuild/.vs/libsurvive/v15/.suo
 *.tlog
 winbuild/calibrate.exe
 winbuild/calibrate.def
+*~
+*/#*#
+*.so
+calinfo
+calibrate_client
+calibrate
+test
