@@ -4,10 +4,12 @@
 #include <lapacke.h>
 
 #include "math.h"
-#include "opencv_shim.h"
+#include "minimal_opencv.h"
 #include "stdbool.h"
 #include "stdio.h"
+#include "string.h"
 
+#include <limits.h>
 //#define DEBUG_PRINT
 
 int cvRound(float f) { return roundf(f); }
@@ -16,18 +18,11 @@ int cvRound(float f) { return roundf(f); }
 const int DECOMP_SVD = 1;
 const int DECOMP_LU = 2;
 
-#include "shim_types_c.h"
-
 void print_mat(const CvMat *M);
+
 void cvCopyTo(const CvMat *srcarr, CvMat *dstarr) {
 	memcpy(dstarr->data.db, srcarr->data.db, sizeof(double) * dstarr->rows * dstarr->cols);
 }
-/*
-const int CV_64F = 0;
-*/
-typedef double doublereal;
-
-#define F77_FUNC(func) func##_
 
 void cvGEMM(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src3, double beta, CvMat *dst, int tABC) {
 	lapack_int rows1 = src1->rows;
@@ -82,7 +77,7 @@ void cvMulTransposed(const CvMat *src, CvMat *dst, int order, const CvMat *delta
 void *cvAlloc(size_t size) { return malloc(size); }
 
 static void icvCheckHuge(CvMat *arr) {
-	if ((int64)arr->step * arr->rows > INT_MAX)
+	if ((int64_t)arr->step * arr->rows > INT_MAX)
 		arr->type &= ~CV_MAT_CONT_FLAG;
 }
 
@@ -128,7 +123,7 @@ static inline int cvAlign(int size, int align) {
 	return (size + align - 1) & -align;
 }
 
-void cvCreateData(CvArr *arr) {
+void cvCreateData(CvMat *arr) {
 	if (CV_IS_MAT_HDR_Z(arr)) {
 		size_t step, total_size;
 		CvMat *mat = (CvMat *)arr;
@@ -143,38 +138,15 @@ void cvCreateData(CvArr *arr) {
 		if (step == 0)
 			step = CV_ELEM_SIZE(mat->type) * mat->cols;
 
-		int64 _total_size = (int64)step * mat->rows + sizeof(int) + CV_MALLOC_ALIGN;
+		int64_t _total_size = (int64_t)step * mat->rows + sizeof(int) + CV_MALLOC_ALIGN;
 		total_size = (size_t)_total_size;
-		if (_total_size != (int64)total_size)
+		if (_total_size != (int64_t)total_size)
 			CV_Error(CV_StsNoMem, "Too big buffer is allocated");
 		mat->refcount = (int *)cvAlloc((size_t)total_size);
 		mat->data.ptr = (uchar *)cvAlignPtr(mat->refcount + 1, CV_MALLOC_ALIGN);
 		*mat->refcount = 1;
 	} else if (CV_IS_MATND_HDR(arr)) {
-		CvMatND *mat = (CvMatND *)arr;
-		size_t total_size = CV_ELEM_SIZE(mat->type);
-
-		if (mat->dim[0].size == 0)
-			return;
-
-		if (mat->data.ptr != 0)
-			CV_Error(CV_StsError, "Data is already allocated");
-
-		if (CV_IS_MAT_CONT(mat->type)) {
-			total_size = (size_t)mat->dim[0].size * (mat->dim[0].step != 0 ? (size_t)mat->dim[0].step : total_size);
-		} else {
-			int i;
-			for (i = mat->dims - 1; i >= 0; i--) {
-				size_t size = (size_t)mat->dim[i].step * mat->dim[i].size;
-
-				if (total_size < size)
-					total_size = size;
-			}
-		}
-
-		mat->refcount = (int *)cvAlloc(total_size + sizeof(int) + CV_MALLOC_ALIGN);
-		mat->data.ptr = (uchar *)cvAlignPtr(mat->refcount + 1, CV_MALLOC_ALIGN);
-		*mat->refcount = 1;
+		assert("There is no support for ND types");
 	} else
 		CV_Error(CV_StsBadArg, "unrecognized or unsupported array type");
 }

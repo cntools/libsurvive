@@ -29,7 +29,7 @@
 #define epnp_h
 
 #ifndef WITH_OPENCV
-#include "opencv_shim.h"
+#include "../../redist/minimal_opencv.h"
 #else
 #include <opencv/cv.h>
 #endif
