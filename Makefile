@@ -2,8 +2,7 @@ all : lib data_recorder test calibrate calibrate_client simple_pose_test
 
 CC?=gcc
 
-
-CFLAGS:=-Iinclude/libsurvive -fPIC -g -O3 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic
+CFLAGS:=-Iinclude/libsurvive -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic -fsanitize=address -fsanitize=undefined  -llapacke  -lcblas -lm
 #LDFLAGS:=-L/usr/local/lib -lpthread -lusb-1.0 -lz -lm -flto -g
 LDFLAGS:=-L/usr/local/lib -lpthread -lz -lm -flto -g
 
@@ -37,7 +36,7 @@ REDISTS:=redist/json_helpers.o redist/linmath.o redist/jsmn.o redist/os_generic.
 ifeq ($(UNAME), Darwin)
 REDISTS:=$(REDISTS) redist/hid-osx.c
 endif
-LIBSURVIVE_CORE:=src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o src/ootx_decoder.o src/survive_driverman.o src/survive_default_devices.o src/survive_vive.o src/survive_playback.o src/survive_config.o src/survive_cal.o src/survive_reproject.o src/poser.o
+LIBSURVIVE_CORE:=src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o src/ootx_decoder.o src/survive_driverman.o src/survive_default_devices.o src/survive_vive.o src/survive_playback.o src/survive_config.o src/survive_cal.o src/survive_reproject.o src/poser.o src/poser_imu.o src/survive_imu.o src/epnp/epnp.c src/epnp/opencv_shim.c
 
 
 #If you want to use HIDAPI on Linux.
@@ -83,6 +82,23 @@ calibrate_client :  calibrate_client.c ./lib/libsurvive.so redist/os_generic.c $
 ## Still not working!!! Don't use.
 static_calibrate : calibrate.c redist/os_generic.c $(DRAWFUNCTIONS) $(LIBSURVIVE_C)
 	tcc -o $@ $^ $(CFLAGS) $(LDFLAGS) -DTCC
+
+test_minimal_cv: ./src/epnp/test_minimal_cv.c ./lib/libsurvive.so 
+	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
+
+test_epnp: ./src/epnp/test_epnp.c ./lib/libsurvive.so 
+	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
+
+test_epnp_ocv: ./src/epnp/test_epnp.c ./src/epnp/epnp.c
+	$(CC) -o $@ $^ -DWITH_OPENCV -lpthread -lz -lm -flto -g -lX11 -lusb-1.0 -Iinclude/libsurvive -fPIC -g -O4 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic -fsanitize=address -fsanitize=undefined   -llapack -lm -lopencv_core
+
+
+unit_test_epnp: ./src/epnp/unit_test_epnp.c ./lib/libsurvive.so 
+	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
+
+test_epnp_results: test_epnp test_epnp_ocv
+	-./test_epnp_ocv > opencv_output
+	-./test_epnp > our_output
 
 lib:
 	mkdir lib
