@@ -122,21 +122,23 @@ var sensorGeometry = new THREE.SphereGeometry(.01, 32, 16);
 
 function create_object(info) {
 	var group = new THREE.Group();
+	group.colors = [];
+	if (info.config && info.config.lighthouse_config) {
+		for (var idx in info.config.lighthouse_config.modelPoints) {
+			var p = info.config.lighthouse_config.modelPoints[idx];
+			var color = 0xFFFFFF; // / info.points.length * idx;
+			if (idx === 10)
+				color = 0x00ff00;
+			if (idx === 12)
+				color = 0x0000ff;
+			var sensorMaterial = new THREE.MeshLambertMaterial({color : color});
+			var newSensor = new THREE.Mesh(sensorGeometry, sensorMaterial);
+			newSensor.position.set(p[0], p[1], p[2]);
 
-	for (var idx in info.points) {
-		var p = info.points[idx];
-		var color = 0xFFFFFF; // / info.points.length * idx;
-		if (idx == 10)
-			color = 0x00ff00;
-		if (idx == 12)
-			color = 0x0000ff;
-		var sensorMaterial = new THREE.MeshLambertMaterial({color : color});
-		var newSensor = new THREE.Mesh(sensorGeometry, sensorMaterial);
-		newSensor.position.set(p[0], p[1], p[2]);
-
-		group.add(newSensor);
+			group.colors[idx] = sensorMaterial;
+			group.add(newSensor);
 		}
-
+		}
 	var axes = new THREE.AxesHelper(1);
 	group.add(axes);
 
@@ -154,21 +156,29 @@ $(function() {
 			"LH_POSE" : function(v) {
 				return {
 					type : "lighthouse_pose",
-					lighthouse : parseInt(v[2]),
+					lighthouse : parseInt(v[1]),
 					position : [ parseFloat(v[3]), parseFloat(v[4]), parseFloat(v[5]) ],
 					quat : [ parseFloat(v[6]), parseFloat(v[7]), parseFloat(v[8]), parseFloat(v[9]) ]
 				};
 			},
 			"POSE" : function(v) {
 				return {
-					type: "pose", tracker: v[2], position: [ parseFloat(v[3]), parseFloat(v[4]), parseFloat(v[5]) ],
+					type: "pose", tracker: v[1], position: [ parseFloat(v[3]), parseFloat(v[4]), parseFloat(v[5]) ],
 						quat: [ parseFloat(v[6]), parseFloat(v[7]), parseFloat(v[8]), parseFloat(v[9]) ]
 				}
+			},
+			"CONFIG" : function(v) {
+				var configStr = s.slice(3).join(' ');
+				var config = JSON.parse(configStr);
+
+				return { type: "htc_config", config: config }
+
 			}
 		};
-		if (command_mappings[s[1]]) {
-			var rtn = command_mappings[s[1]](s);
+		if (command_mappings[s[2]]) {
+			var rtn = command_mappings[s[2]](s);
 			rtn.time = parseFloat(s[0]);
+			rtn.tracker = s[1];
 			return rtn;
 			}
 		return {};
@@ -194,16 +204,13 @@ $(function() {
 
 		// console.log(obj);
 		if (obj.type === "pose") {
-			if (!objs[obj.tracker]) {
-				create_object(obj);
+			if (objs[obj.tracker]) {
+				objs[obj.tracker].position.set(obj.position[0], obj.position[1], obj.position[2]);
+				objs[obj.tracker].quaternion.set(obj.quat[1], obj.quat[2], obj.quat[3], obj.quat[0]);
 			}
-
-			objs[obj.tracker].position.set(obj.position[0], obj.position[1], obj.position[2]);
-			objs[obj.tracker].quaternion.set(obj.quat[1], obj.quat[2], obj.quat[3], obj.quat[0]);
-
 		} else if (obj.type === "lighthouse_pose") {
 			add_lighthouse(obj.lighthouse, obj.position, obj.quat);
-		} else if (obj.type === "tracker_calibration") {
+		} else if (obj.type === "htc_config") {
 			create_object(obj);
 		} else if (obj.type === "imu") {
 			if (objs[obj.tracker]) {
