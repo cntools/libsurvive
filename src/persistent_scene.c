@@ -21,7 +21,7 @@ void PersistentScene_add(PersistentScene *self, SurviveObject *so, PoserDataLigh
 void PersistentScene_ForEachCorrespondence(PersistentScene *self, PersistentScene_ForEachCorrespondence_fn fn,
 										   SurviveObject *so, uint32_t timecode_now, void *user) {
 	for (int lh = 0; lh < NUM_LIGHTHOUSES; lh++) {
-		for (size_t i = 0; i < so->nr_locations; i++) {
+		for (size_t i = 0; i < so->sensor_ct; i++) {
 			if (PersistentScene_isStillValid(self, timecode_now, i, lh)) {
 				double *pts = self->angles[i][lh];
 				fn(so, lh, i, pts, user);

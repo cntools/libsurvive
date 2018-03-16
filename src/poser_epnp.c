@@ -64,9 +64,9 @@ static int opencv_solver_fullscene(SurviveObject *so, PoserDataFullScene *pdfs) 
 
 	for (int lh = 0; lh < 2; lh++) {
 		epnp pnp = {.fu = 1, .fv = 1};
-		epnp_set_maximum_number_of_correspondences(&pnp, so->nr_locations);
+		epnp_set_maximum_number_of_correspondences(&pnp, so->sensor_ct);
 
-		for (size_t i = 0; i < so->nr_locations; i++) {
+		for (size_t i = 0; i < so->sensor_ct; i++) {
 			FLT *lengths = pdfs->lengths[i][lh];
 			FLT *ang = pdfs->angles[i][lh];
 			if (lengths[0] < 0 || lengths[1] < 0)
@@ -121,7 +121,7 @@ int PoserEPNP(SurviveObject *so, PoserData *pd) {
 		int lh = lightData->lh;
 		if (so->ctx->bsd[lh].PositionSet) {
 			epnp pnp = {.fu = 1, .fv = 1};
-			epnp_set_maximum_number_of_correspondences(&pnp, so->nr_locations);
+			epnp_set_maximum_number_of_correspondences(&pnp, so->sensor_ct);
 
 			struct add_correspondence_for_lh user = {.lh = lh, .pnp = &pnp};
 			PersistentScene_ForEachCorrespondence(scene, add_correspondence_for_lh, so, lightData->timecode, &user);
