@@ -41,8 +41,7 @@ typedef struct
 	uint32_t timecode; //In object-local ticks.
 } PoserDataIMU;
 
-typedef struct
-{
+typedef struct PoserDataLight {
 	PoserData hdr;
 	int sensor_id;
 	int acode;			//OOTX Code associated with this sweep. bit 1 indicates vertical(1) or horizontal(0) sweep

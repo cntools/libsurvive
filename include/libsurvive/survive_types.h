@@ -1,6 +1,8 @@
 #ifndef _SURVIVE_TYPES_H
 #define _SURVIVE_TYPES_H
 
+#include "stdint.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

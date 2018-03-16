@@ -1,4 +1,3 @@
-#include "persistent_scene.h"
 
 #ifndef USE_DOUBLE
 #define FLT double
@@ -91,17 +90,18 @@ static int opencv_solver_fullscene(SurviveObject *so, PoserDataFullScene *pdfs) 
 	return 0;
 }
 
-struct add_correspondence_for_lh {
-	epnp *pnp;
-	int lh;
-};
-
-void add_correspondence_for_lh(SurviveObject *so, int lh, int sensor_idx, FLT *angles, void *_user) {
-	struct add_correspondence_for_lh *user = (struct add_correspondence_for_lh *)_user;
-	if (user->lh == lh)
-		epnp_add_correspondence(user->pnp, so->sensor_locations[sensor_idx * 3 + 0],
-								so->sensor_locations[sensor_idx * 3 + 1], so->sensor_locations[sensor_idx * 3 + 2],
-								tan(angles[0]), tan(angles[1]));
+static void add_correspondences(SurviveObject *so, epnp *pnp, SurviveSensorActivations *scene,
+								const PoserDataLight *lightData) {
+	int lh = lightData->lh;
+	for (size_t sensor_idx = 0; sensor_idx < so->sensor_ct; sensor_idx++) {
+		if (SurviveSensorActivations_isPairValid(scene, SurviveSensorActivations_default_tolerance, lightData->timecode,
+												 sensor_idx, lh)) {
+			double *angles = scene->angles[sensor_idx][lh];
+			epnp_add_correspondence(pnp, so->sensor_locations[sensor_idx * 3 + 0],
+									so->sensor_locations[sensor_idx * 3 + 1], so->sensor_locations[sensor_idx * 3 + 2],
+									tan(angles[0]), tan(angles[1]));
+		}
+	}
 }
 
 int PoserEPNP(SurviveObject *so, PoserData *pd) {
@@ -112,19 +112,15 @@ int PoserEPNP(SurviveObject *so, PoserData *pd) {
 		return 0;
 	}
 	case POSERDATA_LIGHT: {
-		static PersistentScene _scene = {.tolerance = 1500000};
-		PersistentScene *scene = &_scene;
+		SurviveSensorActivations *scene = &so->activations;
 		PoserDataLight *lightData = (PoserDataLight *)pd;
-
-		PersistentScene_add(scene, so, lightData);
 
 		int lh = lightData->lh;
 		if (so->ctx->bsd[lh].PositionSet) {
 			epnp pnp = {.fu = 1, .fv = 1};
 			epnp_set_maximum_number_of_correspondences(&pnp, so->sensor_ct);
 
-			struct add_correspondence_for_lh user = {.lh = lh, .pnp = &pnp};
-			PersistentScene_ForEachCorrespondence(scene, add_correspondence_for_lh, so, lightData->timecode, &user);
+			add_correspondences(so, &pnp, scene, lightData);
 
 			if (pnp.number_of_correspondences > 4) {
 

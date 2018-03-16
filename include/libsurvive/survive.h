@@ -1,13 +1,42 @@
 #ifndef _SURVIVE_H
 #define _SURVIVE_H
 
-#include <stdint.h>
-#include "survive_types.h"
 #include "poser.h"
+#include "survive_types.h"
+#include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * This struct encodes what the last effective angles seen on a sensor were, and when they occured.
+ */
+typedef struct {
+	FLT angles[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];		   // 2 Axes (Angles in LH space)
+	uint32_t timecode[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2]; // Timecode per axis in ticks
+} SurviveSensorActivations;
+
+struct PoserDataLight;
+/**
+ * Adds a lightData packet to the table.
+ */
+void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLight *lightData);
+
+/**
+ * Returns true iff both angles for the given sensor and lighthouse were seen at most `tolerance` ticks before the given
+ * `timecode_now`.
+ */
+bool SurviveSensorActivations_isPairValid(const SurviveSensorActivations *self, uint32_t tolerance,
+										  uint32_t timecode_now, uint32_t sensor_idx, int lh);
+
+/**
+ * Default tolerance that gives a somewhat accuate representation of current state.
+ *
+ * Don't rely on this to be a given value.
+ */
+extern uint32_t SurviveSensorActivations_default_tolerance;
 
 //DANGER: This structure may be redefined.  Note that it is logically split into 64-bit chunks
 //for optimization on 32- and 64-bit systems.
@@ -70,6 +99,7 @@ struct SurviveObject
 
 	haptic_func haptic;
 
+	SurviveSensorActivations activations;
 	//Debug
 	int tsl;
 };
