@@ -142,6 +142,7 @@ struct SurviveUSBInterface
 	usb_callback cb;
 	int which_interface_am_i;	//for indexing into uiface
 	const char * hname;			//human-readable names
+	size_t packet_count;
 };
 
 struct SurviveViveData
@@ -155,6 +156,7 @@ struct SurviveViveData
 	og_thread_t servicethread[MAX_USB_DEVS];
 #else
 	struct libusb_context* usbctx;
+	size_t read_count;
 #endif
 };
 
@@ -214,6 +216,7 @@ static void handle_transfer(struct libusb_transfer* transfer)
 
 	iface->actual_len = transfer->actual_length;
 	iface->cb( iface );
+	iface->packet_count++;
 
 	if( libusb_submit_transfer(transfer) )
 	{
@@ -776,6 +779,7 @@ int survive_vive_usb_poll( SurviveContext * ctx, void * v )
 	return 0;
 #else
 	SurviveViveData * sv = v;
+	sv->read_count++;
 	int r = libusb_handle_events( sv->usbctx );
 	if( r )
 	{
