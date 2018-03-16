@@ -185,9 +185,6 @@ void json_load_file(const char* path) {
 		char* tag = substr(JSON_STRING, tag_t->start, tag_t->end, JSON_STRING_LEN);
 		char* value = substr(JSON_STRING, value_t->start, value_t->end, JSON_STRING_LEN);
 
-		printf("%d %d c:%d %d %s \n", tag_t->start, tag_t->end, tag_t->size, tag_t->type, tag);
-
-
 		if (value_t->type == JSMN_ARRAY) {
 			i += json_load_array(JSON_STRING, tokens+i+2,value_t->size, tag); //look at array children
 		} else if (value_t->type == JSMN_OBJECT) {
@@ -213,6 +210,7 @@ void json_load_file(const char* path) {
 		free(value);
 	}
 
+	free(tokens);
 	free(JSON_STRING);
 }
 

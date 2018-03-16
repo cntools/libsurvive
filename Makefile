@@ -1,9 +1,8 @@
 all : lib data_recorder test calibrate calibrate_client simple_pose_test
 
-CC:=gcc
+CC?=gcc
 
-
-CFLAGS:=-Iinclude/libsurvive -fPIC -g -O3 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic
+CFLAGS:=-Iinclude/libsurvive -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic -llapacke  -lcblas -lm
 #LDFLAGS:=-L/usr/local/lib -lpthread -lusb-1.0 -lz -lm -flto -g
 LDFLAGS:=-L/usr/local/lib -lpthread -lz -lm -flto -g
 
@@ -31,13 +30,12 @@ GRAPHICS_LOFI:=redist/CNFGFunctions.o redist/CNFGXDriver.o
 
 endif
 
-
-POSERS:=src/poser_dummy.o src/poser_daveortho.o src/poser_charlesslow.o src/poser_octavioradii.o src/poser_turveytori.o
-REDISTS:=redist/json_helpers.o redist/linmath.o redist/jsmn.o redist/os_generic.o
+POSERS:=src/poser_dummy.o src/poser_daveortho.o src/poser_charlesslow.o src/poser_octavioradii.o src/poser_turveytori.o src/poser_epnp.o
+REDISTS:=redist/json_helpers.o redist/linmath.o redist/jsmn.o redist/os_generic.o redist/minimal_opencv.o
 ifeq ($(UNAME), Darwin)
 REDISTS:=$(REDISTS) redist/hid-osx.c
 endif
-LIBSURVIVE_CORE:=src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o src/ootx_decoder.o src/survive_driverman.o src/survive_default_devices.o src/survive_vive.o src/survive_playback.o src/survive_config.o src/survive_cal.o src/survive_reproject.o src/poser.o
+LIBSURVIVE_CORE:=src/survive.o src/survive_usb.o src/survive_data.o src/survive_process.o src/ootx_decoder.o src/survive_driverman.o src/survive_default_devices.o src/survive_vive.o src/survive_playback.o src/survive_config.o src/survive_cal.o src/survive_reproject.o src/poser.o src/epnp/epnp.c src/persistent_scene.o 
 
 
 #If you want to use HIDAPI on Linux.
@@ -84,6 +82,15 @@ calibrate_client :  calibrate_client.c ./lib/libsurvive.so redist/os_generic.c $
 static_calibrate : calibrate.c redist/os_generic.c $(DRAWFUNCTIONS) $(LIBSURVIVE_C)
 	tcc -o $@ $^ $(CFLAGS) $(LDFLAGS) -DTCC
 
+test_minimal_cv: ./src/epnp/test_minimal_cv.c ./lib/libsurvive.so 
+	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
+
+test_epnp: ./src/epnp/test_epnp.c ./lib/libsurvive.so 
+	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
+
+test_epnp_ocv: ./src/epnp/test_epnp.c ./src/epnp/epnp.c
+	$(CC) -o $@ $^ -DWITH_OPENCV -lpthread -lz -lm -flto -g -lX11 -lusb-1.0 -Iinclude/libsurvive -fPIC -g -O4 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic -fsanitize=address -fsanitize=undefined   -llapack -lm -lopencv_core
+
 lib:
 	mkdir lib
 
@@ -95,7 +102,7 @@ calibrate_tcc : $(LIBSURVIVE_C)
 	tcc -DRUNTIME_SYMNUM $(CFLAGS) -o $@ $^ $(LDFLAGS) calibrate.c redist/os_generic.c $(DRAWFUNCTIONS) redist/symbol_enumerator.c
 
 clean :
-	rm -rf *.o src/*.o *~ src/*~ test simple_pose_test data_recorder calibrate testCocoa lib/libsurvive.so redist/*.o redist/*~
+	rm -rf *.o src/*.o *~ src/*~ test simple_pose_test data_recorder calibrate testCocoa lib/libsurvive.so test_minimal_cv test_epnp test_epnp_ocv calibrate_client redist/*.o redist/*~
 
 
 

@@ -87,6 +87,7 @@ FLT quatinvsqmagnitude( const FLT * q );
 void quatnormalize( FLT * qout, const FLT * qin );  //Safe for in to be same as out.
 void quattomatrix( FLT * matrix44, const FLT * q );
 void quatfrommatrix( FLT * q, const FLT * matrix44 );
+void quatfrommatrix33(FLT *q, const FLT *matrix33);
 void quatgetconjugate( FLT * qout, const FLT * qin );
 void quatgetreciprocal( FLT * qout, const FLT * qin );
 void quatsub( FLT * qout, const FLT * a, const FLT * b );
