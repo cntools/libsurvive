@@ -16,4 +16,4 @@ void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 }
 
 // Roughly 31ms at a 48mhz clock rate
-uint32_t SurviveSensorActivations_default_tolerance = 1500000;
+uint32_t SurviveSensorActivations_default_tolerance = 500000;
