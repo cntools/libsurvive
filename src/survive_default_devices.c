@@ -94,7 +94,7 @@ static int ParsePoints(SurviveContext *ctx, SurviveObject *so, char *ct0conf,
 	return 0;
 }
 
-int survive_load_htc_config_format(char *ct0conf, int len, SurviveObject *so) {
+int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	if (len == 0)
 		return -1;
 

@@ -38,11 +38,10 @@ static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver) {
 	int mask;
 	int id;
 
-	int rr =
-		sscanf(line, "I %s %d %d " FLT_format " " FLT_format " " FLT_format
-					 " " FLT_format " " FLT_format " " FLT_format "%d",
-			   dev, &mask, &timecode, &accelgyro[0], &accelgyro[1],
-			   &accelgyro[2], &accelgyro[3], &accelgyro[4], &accelgyro[5], &id);
+	int rr = sscanf(line, "%s I %d %d " FLT_format " " FLT_format " " FLT_format " " FLT_format " " FLT_format
+						  " " FLT_format "%d",
+					dev, &mask, &timecode, &accelgyro[0], &accelgyro[1], &accelgyro[2], &accelgyro[3], &accelgyro[4],
+					&accelgyro[5], &id);
 
 	if (rr != 10) {
 		fprintf(stderr, "Warning:  On line %d, only %d values read: '%s'\n",
@@ -52,8 +51,12 @@ static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver) {
 
 	SurviveObject *so = survive_get_so_by_name(driver->ctx, dev);
 	if (!so) {
-		fprintf(stderr, "Could not find device named %s from lineno %d\n", dev,
-				driver->lineno);
+		static bool display_once = false;
+		SurviveContext *ctx = driver->ctx;
+		if (display_once == false) {
+			SV_ERROR("Could not find device named %s from lineno %d\n", dev, driver->lineno);
+		}
+		display_once = true;
 		return -1;
 	}
 
@@ -73,9 +76,8 @@ static int parse_and_run_lightcode(const char *line,
 	uint32_t pulselength = 0;
 	uint32_t lh = 0;
 
-	int rr =
-		sscanf(line, "%8s %8s %8s %u %d %d %d %u %u\n", lhn, axn, dev,
-			   &timecode, &sensor, &acode, &timeinsweep, &pulselength, &lh);
+	int rr = sscanf(line, "%8s %8s %8s %u %d %d %d %u %u\n", dev, lhn, axn, &timecode, &sensor, &acode, &timeinsweep,
+					&pulselength, &lh);
 
 	if (rr != 9) {
 		fprintf(stderr, "Warning:  On line %d, only %d values read: '%s'\n",
@@ -85,8 +87,13 @@ static int parse_and_run_lightcode(const char *line,
 
 	SurviveObject *so = survive_get_so_by_name(driver->ctx, dev);
 	if (!so) {
-		fprintf(stderr, "Could not find device named %s from lineno %d\n", dev,
-				driver->lineno);
+		static bool display_once = false;
+		SurviveContext *ctx = driver->ctx;
+		if (display_once == false) {
+			SV_ERROR("Could not find device named %s from lineno %d\n", dev, driver->lineno);
+		}
+		display_once = true;
+
 		return -1;
 	}
 
@@ -129,11 +136,15 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 		if (r <= 0)
 			return 0;
 
-		if ((line[0] != 'R' && line[0] != 'L' && line[0] != 'I') ||
-			line[1] != ' ')
+		char dev[10];
+		char op[10];
+		if (sscanf(line, "%8s %8s", dev, op) < 2)
 			return 0;
 
-		switch (line[0]) {
+		if ((op[0] != 'R' && op[0] != 'L' && op[0] != 'I') || op[1] != 0)
+			return 0;
+
+		switch (op[0]) {
 		case 'L':
 		case 'R':
 			parse_and_run_lightcode(line, driver);
@@ -185,7 +196,7 @@ static int LoadConfig(SurvivePlaybackData *sv, SurviveObject *so) {
 	ct0conf[len] = 0;
 
 	printf("Loading config: %d\n", len);
-	int rtn = survive_load_htc_config_format(ct0conf, len, so);
+	int rtn = ctx->configfunction(so, ct0conf, len);
 
 	free(ct0conf);
 
@@ -193,29 +204,28 @@ static int LoadConfig(SurvivePlaybackData *sv, SurviveObject *so) {
 }
 
 int DriverRegPlayback(SurviveContext *ctx) {
-	const char *playback_dir =
-		config_read_str(ctx->global_config_values, "PlaybackDir", "");
+	const char *playback_file = config_read_str(ctx->global_config_values, "PlaybackFile", "");
 
-	if (strlen(playback_dir) == 0) {
+	if (strlen(playback_file) == 0) {
 		return 0;
 	}
 
 	SurvivePlaybackData *sp = calloc(1, sizeof(SurvivePlaybackData));
 	sp->ctx = ctx;
-	sp->playback_dir = playback_dir;
+	sp->playback_dir = playback_file;
 	sp->time_factor =
 		config_read_float(ctx->global_config_values, "PlaybackFactor", 1.);
 
-	printf("%s\n", playback_dir);
+	printf("%s\n", playback_file);
 
-	char playback_file[100];
-	sprintf(playback_file, "%s/events", playback_dir);
 	sp->playback_file = fopen(playback_file, "r");
 	if (sp->playback_file == 0) {
 		fprintf(stderr, "Could not open playback events file %s",
 				playback_file);
 		return -1;
 	}
+
+	SV_INFO("Using playback file '%s'", playback_file);
 	SurviveObject *hmd = survive_create_hmd(ctx, "Playback", sp);
 	SurviveObject *wm0 = survive_create_wm0(ctx, "Playback", sp, 0);
 	SurviveObject *wm1 = survive_create_wm1(ctx, "Playback", sp, 0);
@@ -224,13 +234,48 @@ int DriverRegPlayback(SurviveContext *ctx) {
 
 	SurviveObject *objs[] = {hmd, wm0, wm1, tr0, ww0, 0};
 
+	FLT time;
+	while (!feof(sp->playback_file) && !ferror(sp->playback_file)) {
+		char *line = 0;
+		size_t n;
+		ssize_t r = getline(&line, &n, sp->playback_file);
+
+		if (r <= 0)
+			continue;
+
+		char dev[10];
+		char command[10];
+
+		if (sscanf(line, "%lf %s %s", &time, dev, command) != 3) {
+			break;
+		}
+
+		if (strcmp(command, "CONFIG") == 0) {
+			char *configStart = line;
+
+			// Skip three spaces
+			for (int i = 0; i < 3; i++) {
+				while (*(++configStart) != ' ')
+					;
+			}
+			size_t len = strlen(configStart);
+
+			for (SurviveObject **obj = objs; *obj; obj++) {
+				if (*obj && strcmp(dev, (*obj)->codename) == 0 && ctx->configfunction(*obj, configStart, len) == 0) {
+					SV_INFO("Found %s in playback file...", dev);
+					survive_add_object(ctx, *obj);
+					*obj = 0;
+				}
+			}
+		}
+	}
+
 	for (SurviveObject **obj = objs; *obj; obj++) {
-		if (!LoadConfig(sp, *obj)) {
-			survive_add_object(ctx, *obj);
-		} else {
+		if (*obj) {
 			free(*obj);
 		}
 	}
+	fseek(sp->playback_file, 0, SEEK_SET); // same as rewind(f);
 
 	survive_add_driver(ctx, sp, playback_poll, playback_close, 0);
 	return 0;

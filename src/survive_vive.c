@@ -1688,7 +1688,7 @@ static int LoadConfig( SurviveViveData * sv, SurviveObject * so, int devno, int 
 	  fclose( f );
 	}
 
-	return survive_load_htc_config_format(ct0conf, len, so);
+	return so->ctx->configfunction(so, ct0conf, len);
 }
 
 
@@ -1712,14 +1712,12 @@ void init_SurviveObject(SurviveObject* so) {
 
 int DriverRegHTCVive( SurviveContext * ctx )
 {
-	const char* playback_dir = config_read_str(ctx->global_config_values,
-						   "PlaybackDir", "");
+	const char *playback_dir = config_read_str(ctx->global_config_values, "PlaybackFile", "");
 	if(strlen(playback_dir) != 0) {
 	  SV_INFO("Playback is active; disabling USB driver");
 	  return 0;
 	}
-	
-	int r;	
+
 	SurviveViveData * sv = calloc(1, sizeof(SurviveViveData) );
 	SurviveObject * hmd = survive_create_hmd(ctx, "HTC", sv);
 	SurviveObject * wm0 = survive_create_wm0(ctx, "HTC", sv, 0);
@@ -1738,19 +1736,20 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	#endif
 
 	//USB must happen last.
-	if( r = survive_usb_init( sv, hmd, wm0, wm1, tr0, ww0) )
-	{
-		//TODO: Cleanup any libUSB stuff sitting around.
-		goto fail_gracefully;
+		if (survive_usb_init(sv, hmd, wm0, wm1, tr0, ww0)) {
+			// TODO: Cleanup any libUSB stuff sitting around.
+			goto fail_gracefully;
 	}
 
 	//Next, pull out the config stuff.
-	if( sv->udev[USB_DEV_HMD_IMU_LH]       && LoadConfig( sv, hmd, 1, 0, 0 )) { SV_INFO( "HMD config issue." ); }
+	if (sv->udev[USB_DEV_HMD_IMU_LH] && LoadConfig(sv, hmd, 1, 0, 0)) {
+		SV_INFO("HMD config issue.");
+	}
 	if( sv->udev[USB_DEV_WATCHMAN1] && LoadConfig( sv, wm0, 2, 0, 1 )) { SV_INFO( "Watchman 0 config issue." ); }
 	if( sv->udev[USB_DEV_WATCHMAN2] && LoadConfig( sv, wm1, 3, 0, 1 )) { SV_INFO( "Watchman 1 config issue." ); }
 	if( sv->udev[USB_DEV_TRACKER0]  && LoadConfig( sv, tr0, 4, 0, 0 )) { SV_INFO( "Tracker 0 config issue." ); }
 	if( sv->udev[USB_DEV_W_WATCHMAN1]  && LoadConfig( sv, ww0, 5, 0, 0 )) { SV_INFO( "Wired Watchman 0 config issue." ); }
-	
+
 	//Add the drivers.
 	if( sv->udev[USB_DEV_HMD_IMU_LH]       ) { survive_add_object( ctx, hmd ); }
 	if( sv->udev[USB_DEV_WATCHMAN1] ) { survive_add_object( ctx, wm0 ); }

@@ -7,8 +7,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "survive_config.h"
 #include "os_generic.h"
+#include "survive_config.h"
+#include "survive_default_devices.h"
 
 #ifdef __APPLE__
 #define z_const const
@@ -103,8 +104,7 @@ void survive_verify_FLT_size(uint32_t user_size) {
   }
 }
 
-SurviveContext * survive_init_internal( int headless )
-{
+SurviveContext *survive_init_internal(int headless, htc_config_func configFunc) {
 #ifdef RUNTIME_SYMNUM
 	if( !did_runtime_symnum )
 	{
@@ -149,6 +149,7 @@ SurviveContext * survive_init_internal( int headless )
 	ctx->imuproc = survive_default_imu_process;
 	ctx->angleproc = survive_default_angle_process;
 	ctx->lighthouseposeproc = survive_default_lighthouse_pose_process;
+	ctx->configfunction = configFunc ? configFunc : survive_default_htc_config_process;
 
 	// initialize the button queue
 	memset(&(ctx->buttonQueue), 0, sizeof(ctx->buttonQueue));
@@ -210,6 +211,13 @@ void survive_install_info_fn( SurviveContext * ctx,  text_feedback_func fbp )
 		ctx->notefunction = fbp;
 	else
 		ctx->notefunction = survivenote;
+}
+
+void survive_install_htc_config_fn(SurviveContext *ctx, htc_config_func fbp) {
+	if (fbp)
+		ctx->configfunction = fbp;
+	else
+		ctx->configfunction = survive_default_htc_config_process;
 }
 
 void survive_install_error_fn( SurviveContext * ctx,  text_feedback_func fbp )

@@ -269,14 +269,16 @@ libsurvive has an integrated tool that allows you to record and playback streams
 
 ```
 make
-mkdir my_playback
-./datarecorder my_playback/events
-cp *_config.json my_playback
+./data_recorder my_playback_file
 ```
 
-This gives you a directory -- my_playback -- with all the device configurations and events file you need to replay it.
+This gives you a file -- my_playback_file -- with all the device configurations and events file you need to replay it.
 
-To actually replay it, put that directory path in the 'PlaybackDir' configuration value in config.json and run libsurvive as usual. Note that this will purposefully stop the USB devices from loading as to not confuse the library with inconsistent data.
+To actually replay it, put that directory path in the 'PlaybackFile' configuration value in config.json and run libsurvive as usual. Note that this will purposefully stop the USB devices from loading as to not confuse the library with inconsistent data.
+
+## Playback speed
+
+There is also a config variable -- `PlaybackFactor` -- which adjusts the speed at which playback happens. A value of 1 emulates the same time the events file took to create, a value of 0 streams the data in as fast as possible. 
 
 ## Notes about coordinate frames.
 
@@ -316,11 +318,6 @@ General information for LH pose:
 
 
 NOTE: This is NOT currently correct.
-
-
-## Playback speed
-
-There is also a config variable -- `PlaybackFactor` -- which adjusts the speed at which playback happens. A value of 1 emulates the same time the events file took to create, a value of 0 streams the data in as fast as possible. 
 
 # FAQ
 

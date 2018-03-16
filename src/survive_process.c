@@ -3,6 +3,7 @@
 
 #include "survive_cal.h"
 #include "survive_config.h"
+#include "survive_default_devices.h"
 
 //XXX TODO: Once data is avialble in the context, use the stuff here to handle converting from time codes to
 //proper angles, then from there perform the rest of the solution. 
@@ -126,6 +127,9 @@ void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighth
 	config_save(ctx, "config.json");
 }
 
+int survive_default_htc_config_process(SurviveObject *so, char *ct0conf, int len) {
+	return survive_load_htc_config_format(so, ct0conf, len);
+}
 void survive_default_imu_process( SurviveObject * so, int mask, FLT * accelgyromag, uint32_t timecode, int id )
 {
 	if( so->PoserFn )

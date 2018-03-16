@@ -160,6 +160,7 @@ struct SurviveContext
 	button_process_func buttonproc;
 	raw_pose_func rawposeproc;
 	lighthouse_pose_func lighthouseposeproc;
+	htc_config_func configfunction;
 
 	struct config_group* global_config_values;
 	struct config_group* lh_config; //lighthouse configs
@@ -187,14 +188,18 @@ struct SurviveContext
 
 };
 
-SurviveContext * survive_init_internal( int headless );
+SurviveContext *survive_init_internal(int headless, htc_config_func cfcb);
 
 // Baked in size of FLT to verify users of the library have the correct setting. 
 void survive_verify_FLT_size(uint32_t user_size);
   
 static inline SurviveContext * survive_init( int headless ) {
   survive_verify_FLT_size(sizeof(FLT));
-  return survive_init_internal( headless );
+  return survive_init_internal(headless, 0);
+}
+static inline SurviveContext *survive_init_with_config_cb(int headless, htc_config_func cfcb) {
+	survive_verify_FLT_size(sizeof(FLT));
+	return survive_init_internal(headless, cfcb);
 }
 
 //For any of these, you may pass in 0 for the function pointer to use default behavior.
@@ -235,6 +240,7 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 void survive_default_button_process(SurviveObject * so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val);
 void survive_default_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose);
 void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *pose);
+int survive_default_htc_config_process(SurviveObject *so, char *ct0conf, int len);
 
 ////////////////////// Survive Drivers ////////////////////////////
 

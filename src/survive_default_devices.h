@@ -14,6 +14,5 @@ SurviveObject *survive_create_tr0(SurviveContext *ctx, const char *driver_name,
 SurviveObject *survive_create_ww0(SurviveContext *ctx, const char *driver_name,
 								  void *driver);
 
-int survive_load_htc_config_format(char *ct0conf, int length,
-								   SurviveObject *so);
+int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int length);
 #endif
