@@ -15,7 +15,7 @@
 static SurvivePose solve_correspondence(SurviveObject *so, epnp *pnp, bool cameraToWorld) {
 	SurvivePose rtn = {};
 	// std::cerr << "Solving for " << cal_imagePoints.size() << " correspondents" << std::endl;
-	if (pnp->number_of_correspondences <= 4) {
+	if (pnp->number_of_correspondences <= 3) {
 		SurviveContext *ctx = so->ctx;
 		SV_INFO("Can't solve for only %u points\n", pnp->number_of_correspondences);
 		return rtn;
@@ -115,30 +115,46 @@ int PoserEPNP(SurviveObject *so, PoserData *pd) {
 		SurviveSensorActivations *scene = &so->activations;
 		PoserDataLight *lightData = (PoserDataLight *)pd;
 
-		int lh = lightData->lh;
-		if (so->ctx->bsd[lh].PositionSet) {
-			epnp pnp = {.fu = 1, .fv = 1};
-			epnp_set_maximum_number_of_correspondences(&pnp, so->sensor_ct);
+		SurvivePose posers[2];
+		bool hasData[2] = {0, 0};
+		for (int lh = 0; lh < 1; lh++) {
+			if (so->ctx->bsd[lh].PositionSet) {
+				epnp pnp = {.fu = 1, .fv = 1};
+				epnp_set_maximum_number_of_correspondences(&pnp, so->sensor_ct);
 
-			add_correspondences(so, &pnp, scene, lightData);
+				add_correspondences(so, &pnp, scene, lightData);
 
-			if (pnp.number_of_correspondences > 4) {
+				if (pnp.number_of_correspondences > 4) {
 
-				SurvivePose pose = solve_correspondence(so, &pnp, false);
+					SurvivePose pose = solve_correspondence(so, &pnp, false);
 
-				SurvivePose txPose = {};
-				quatrotatevector(txPose.Pos, so->ctx->bsd[lh].Pose.Rot, pose.Pos);
-				for (int i = 0; i < 3; i++) {
-					txPose.Pos[i] += so->ctx->bsd[lh].Pose.Pos[i];
+					SurvivePose txPose = {};
+					quatrotatevector(txPose.Pos, so->ctx->bsd[lh].Pose.Rot, pose.Pos);
+					for (int i = 0; i < 3; i++) {
+						txPose.Pos[i] += so->ctx->bsd[lh].Pose.Pos[i];
+					}
+
+					quatrotateabout(txPose.Rot, so->ctx->bsd[lh].Pose.Rot, pose.Rot);
+
+					posers[lh] = txPose;
+					hasData[lh] = 1;
 				}
 
-				quatrotateabout(txPose.Rot, so->ctx->bsd[lh].Pose.Rot, pose.Rot);
-				PoserData_poser_raw_pose_func(pd, so, lh, &txPose);
+				epnp_dtor(&pnp);
 			}
-
-			epnp_dtor(&pnp);
 		}
 
+		if (hasData[0] && hasData[1]) {
+			SurvivePose interpolate = {0};
+			for (size_t i = 0; i < 3; i++) {
+				interpolate.Pos[i] = (posers[0].Pos[i] + posers[1].Pos[i]) / 2.;
+			}
+			quatslerp(interpolate.Rot, posers[0].Rot, posers[1].Rot, .5);
+			PoserData_poser_raw_pose_func(pd, so, lightData->lh, &interpolate);
+		} else {
+			if (hasData[lightData->lh])
+				PoserData_poser_raw_pose_func(pd, so, lightData->lh, &posers[lightData->lh]);
+		}
 		return 0;
 	}
 	case POSERDATA_FULL_SCENE: {
