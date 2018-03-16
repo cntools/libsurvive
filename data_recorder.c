@@ -202,6 +202,7 @@ void *SurviveThread(void *junk) {
 	survive_install_angle_fn(ctx, my_angle_process);
 	survive_install_info_fn(ctx, my_info_process);
 	survive_cal_install(ctx);
+
 	if (!ctx) {
 		fprintf(stderr, "Fatal. Could not start\n");
 		exit(1);

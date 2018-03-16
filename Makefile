@@ -2,7 +2,7 @@ all : lib data_recorder test calibrate calibrate_client simple_pose_test
 
 CC?=gcc
 
-CFLAGS:=-Iinclude/libsurvive -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic -llapacke  -lcblas -lm
+CFLAGS:=-Iinclude/libsurvive -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic -llapacke  -lcblas -lm 
 #LDFLAGS:=-L/usr/local/lib -lpthread -lusb-1.0 -lz -lm -flto -g
 LDFLAGS:=-L/usr/local/lib -lpthread -lz -lm -flto -g
 
@@ -30,7 +30,8 @@ GRAPHICS_LOFI:=redist/CNFGFunctions.o redist/CNFGXDriver.o
 
 endif
 
-POSERS:=src/poser_dummy.o src/poser_daveortho.o src/poser_charlesslow.o src/poser_octavioradii.o src/poser_turveytori.o src/poser_epnp.o
+SBA:=redist/sba/sba_chkjac.o  redist/sba/sba_crsm.o  redist/sba/sba_lapack.o  redist/sba/sba_levmar.o  redist/sba/sba_levmar_wrap.o
+POSERS:=src/poser_dummy.o src/poser_daveortho.o src/poser_charlesslow.o src/poser_octavioradii.o src/poser_turveytori.o src/poser_epnp.o src/poser_sba.o
 REDISTS:=redist/json_helpers.o redist/linmath.o redist/jsmn.o redist/os_generic.o redist/minimal_opencv.o
 ifeq ($(UNAME), Darwin)
 REDISTS:=$(REDISTS) redist/hid-osx.c
@@ -55,7 +56,7 @@ LIBSURVIVE_CORE:=src/survive.o src/survive_usb.o src/survive_data.o src/survive_
 
 
 LIBSURVIVE_CORE:=$(LIBSURVIVE_CORE)
-LIBSURVIVE_O:=$(POSERS) $(REDISTS) $(LIBSURVIVE_CORE)
+LIBSURVIVE_O:=$(POSERS) $(REDISTS) $(LIBSURVIVE_CORE) $(SBA)
 LIBSURVIVE_C:=$(LIBSURVIVE_O:.o=.c)
 
 # unused: redist/crc32.c
