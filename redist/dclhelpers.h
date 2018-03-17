@@ -3,11 +3,17 @@
 
 #define DCL_FLOAT FLT
 
+//Use this macro to safely 
+#define DMS( m ) ((m)[0]), (sizeof((m)[0])/sizeof((m)[0][0]))
+
 /* Prints matrix A of size[n][m] */
 void dclPrint( const DCL_FLOAT * A, int Ac, int n, int m );
 
 /* Returns the identity matrix */
-void dclIdentity( DCL_FLOAT * I, int Ic, int n );
+void dclIdentity( DCL_FLOAT * I, int Ic, int m, int n );
+
+/* Returns the zero matrix */
+void dclZero( DCL_FLOAT * I, int Ic, int m, int n );
 
 /* R = Transpose(A)
      A is (n by m)

@@ -5,15 +5,23 @@
 #include <alloca.h>
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 
 void dclPrint( const DCL_FLOAT * PMATRIX, int PMATRIXc, int n, int m )
 {
 	PRINT( PMATRIX, n, m );
 }
 
-void dclIdentity( DCL_FLOAT * I, int Ic, int n )
+void dclIdentity( DCL_FLOAT * I, int Ic, int m, int n )
 {
-	IDENTITY( I, n );
+	IDENTITY( I, m, n );
+}
+
+
+/* Returns the zero matrix */
+void dclZero( DCL_FLOAT * Z, int Zc, int m, int n )
+{
+	memset( Z, 0, m*n*sizeof(DCL_FLOAT) );
 }
 
 void dclTransp( DCL_FLOAT * R, int Rc, const DCL_FLOAT * A, int Ac, int n, int m )
@@ -103,7 +111,7 @@ void dcldgemm(
 	}
 	else
 		tb = B;
-	printf("%d %d %d\n", tac, tbc, Cc);
+
 	GMULADD(C, ta, tb, C, alpha, beta, m, n, k);
 }
 

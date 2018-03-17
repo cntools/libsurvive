@@ -37,9 +37,9 @@
 /*
  * Returns the identity matrix (with size n x n, but width Ic)
  */
-#define IDENTITY(I, n)                                                                                                 \
+#define IDENTITY(I, m, n)                                                                                              \
 	{                                                                                                                  \
-		for (int _i = 0; _i < (n); _i++) {                                                                             \
+		for (int _i = 0; _i < (m); _i++) {                                                                             \
 			for (int _j = 0; _j < _i; _j++) {                                                                          \
 				_(I, _i, _j) = 0.0f;                                                                                   \
 			}                                                                                                          \
@@ -48,6 +48,17 @@
 				_(I, _i, _j) = 0.0f;                                                                                   \
 			}                                                                                                          \
 		}                                                                                                              \
+	}
+
+
+/*
+ * Returns the identity matrix (with size n x n, but width Ic)
+ */
+#define ZERO(Z, m, n)                                                                                                  \
+	{                                                                                                                  \
+		for (int _i = 0; _i < (m); _i++)                                                                               \
+			for (int _j = 0; _j < (n); _j++)                                                                           \
+				_(Z, _i, _j) = 0.0f;                                                                                   \
 	}
 
 /*
@@ -79,7 +90,7 @@
 				_(U, _i, _j) = _(A, _i, _j);                                                                           \
 			}                                                                                                          \
 		}                                                                                                              \
-		IDENTITY(L, n);                                                                                                \
+		IDENTITY(L, n, n);                                                                                                \
                                                                                                                        \
 		for (_i = 0; _i < (n)-1; _i++) {                                                                               \
                                                                                                                        \
@@ -188,7 +199,7 @@
 #define INV(Ainv,A,n,ORDER) { \
 	INV_SETUP(ORDER) \
     int Piv[ORDER]; \
-    IDENTITY(I,n); \
+    IDENTITY(I,n,n); \
     LU(L,U,A,Piv,n); \
     PIVOT(Ipiv,I,Piv,n,n); \
     L_SUB(C,L,Ipiv,n,n); \
@@ -258,6 +269,7 @@ PRINT(Ainv,n,n); \
 				for (int _k = 0; _k < n; _k++) {                                                                       \
 					sum += _(A, _i, _k) * _(B, _k, _j);                                                                \
 				}                                                                                                      \
+				printf( "-> %d %d =   %f %f %f %f[%d %d]\n", _i, _j, alpha,sum,beta, _(C,_i,_j), _i, _j ); \
 				_(R, _i, _j) = alpha * sum + beta * _(C, _i, _j);                                                      \
 			}                                                                                                          \
 		}                                                                                                              \
