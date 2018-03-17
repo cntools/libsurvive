@@ -1,10 +1,6 @@
 #ifndef __DCLAPACK_H__
 #define __DCLAPACK_H__
 
-#ifndef ORDER
-#define ORDER 50
-#endif
-
 #ifndef FLOAT
 #define FLOAT float
 #endif
@@ -12,6 +8,13 @@
 #include<stdio.h>
 
 #define _ABS(a)  ( (a)<=0 ? 0-(a) : (a) )
+
+#ifdef DYNAMIC_INDEX
+	#define _(A,O,P) A[O*n+P]
+#else
+	#define _(A,O,P) A[O][P]
+#endif
+
 
 /*
  * Prints a matrix A (n by m)
@@ -21,7 +24,7 @@
     printf(#A "\n"); \
     for (i=0; i<n; i++) { \
         for (j=0; j<m; j++) { \
-            printf("%4.3f\t", A[i][j]); \
+            printf("%4.3f\t", _(A,i,j)); \
         } \
         printf("\n"); \
     } \
@@ -34,9 +37,9 @@
 #define IDENTITY(I,n) { \
     int i,j; \
     for (i=0; i<n; i++) { \
-        for (j=0; j<i; j++) { I[i][j]=0.0f; } \
-        I[i][i] = 1.0f; \
-        for (j=i+1; j<n; j++) { I[i][j]=0.0f; } \
+        for (j=0; j<i; j++) { _(I,i,j)=0.0f; } \
+        _(I,i,i) = 1.0f; \
+        for (j=i+1; j<n; j++) { _(I,i,j)=0.0f; } \
     } \
 }
 
@@ -49,7 +52,7 @@
    int i,j; \
    for (i=0; i<n; i++) { \
       for (j=0; j<m; j++) { \
-         B[j][i] = A[i][j]; \
+         _(B,j,i) = _(A,i,j); \
       } \
    } \
 }
@@ -62,7 +65,7 @@
     for (i=0; i<n; i++) { Piv[i]=i; } \
     for (i=0; i<n; i++) { \
         for (j=0; j<n; j++) { \
-            U[i][j] = A[i][j]; \
+            _(U,i,j) = _(A,i,j); \
         } \
     } \
     IDENTITY(L,n); \
@@ -71,22 +74,22 @@
         \
         int max=i; \
 	for (j=i+1; j<n; j++) { \
-		if (_ABS(U[j][i]) > _ABS(U[max][i])) { max = j; } \
+		if (_ABS( _(U,j,i)) > _ABS(_(U,max,i))) { max = j; } \
 	} \
 	_tempi=Piv[i]; Piv[i]=Piv[max]; Piv[max]=_tempi; \
 	for (k=i; k<n; k++) { \
-		_tempf=U[i][k]; U[i][k]=U[max][k]; U[max][k]=_tempf; \
+		_tempf=_(U,i,k); _(U,i,k)=_(U,max,k); _(U,max,k)=_tempf; \
 	} \
 	for (k=0; k<i; k++) { \
-		_tempf=L[i][k]; L[i][k]=L[max][k]; L[max][k]=_tempf; \
+		_tempf=_(L,i,k); _(L,i,k)=_(L,max,k); _(L,max,k)=_tempf; \
 	} \
         \
-        FLOAT invDiag = 1.0 / U[i][i]; \
+        FLOAT invDiag = 1.0 / _(U,i,i); \
         for (j=i+1; j<n; j++) { \
-            FLOAT scale = U[j][i] * invDiag; \
-            U[j][i] = 0.0; \
-            for (k=i+1; k<n; k++) { U[j][k] -= U[i][k]*scale; } \
-            L[j][i] = scale; \
+            FLOAT scale = _(U,j,i) * invDiag; \
+            _(U,j,i) = 0.0; \
+            for (k=i+1; k<n; k++) { _(U,j,k) -= _(U,i,k)*scale; } \
+            _(L,j,i) = scale; \
         } \
     } \
 }
@@ -100,7 +103,7 @@
     int i,j; \
     for (j=0; j<n; j++) { \
         for (i=0; i<m; i++) { \
-            B[j][i] = A[Piv[j]][i]; \
+            _(B,j,i) = _(A,Piv[j],i); \
         } \
     } \
 }
@@ -115,8 +118,8 @@
     for (i=0; i<m; i++) { \
         for (j=0; j<n; j++) { \
             float sum=0.0; \
-            for (k=0; k<j; k++) { sum += L[j][k]*X[k][i]; } \
-            X[j][i] = (B[j][i] - sum) / L[j][j]; \
+            for (k=0; k<j; k++) { sum += _(L,j,k)*_(X,k,i); } \
+            _(X,j,i) = (_(B,j,i) - sum) / _(L,j,j); \
         } \
     } \
 }
@@ -131,8 +134,8 @@
     for (i=0; i<m; i++) { \
         for (j=n-1; j>=0; j--) { \
             float sum=0.0; \
-            for (k=n-1; k>j; k--) { sum += U[j][k]*X[k][i]; } \
-            X[j][i] = (B[j][i] - sum) / U[j][j]; \
+            for (k=n-1; k>j; k--) { sum += _(U,j,k)*_(X,k,i); } \
+            _(X,j,i) = (_(B,j,i) - sum) / _(U,j,j); \
         } \
     } \
 }
@@ -140,12 +143,25 @@
 /*
  * Inverts a matrix X (n by n) using the method of LU decomposition
  */
-#define INV(A,Ainv,n) { \
+
+#ifdef DYNAMIC_INDEX
+	#define INV_SETUP(ORDER) \
+    FLOAT Ipiv[ORDER*ORDER]; \
+    FLOAT L[ORDER*ORDER]; \
+    FLOAT U[ORDER*ORDER]; \
+    FLOAT I[ORDER*ORDER]; \
+    FLOAT C[ORDER*ORDER];
+#else
+	#define INV_SETUP(ORDER) \
     FLOAT Ipiv[ORDER][ORDER]; \
     FLOAT L[ORDER][ORDER]; \
     FLOAT U[ORDER][ORDER]; \
     FLOAT I[ORDER][ORDER]; \
-    FLOAT C[ORDER][ORDER]; \
+    FLOAT C[ORDER][ORDER];
+#endif
+
+#define INV(A,Ainv,n,ORDER) { \
+	INV_SETUP(ORDER) \
     int Piv[ORDER]; \
     IDENTITY(I,n); \
     LU(A,L,U,Piv,n); \
@@ -174,9 +190,9 @@ PRINT(Ainv,n,n); \
     int i,j,k; \
     for (i=0; i<n; i++) { \
         for (j=0; j<p; j++) { \
-            C[i][j] = 0.0f; \
+            _(C,i,j) = 0.0f; \
             for (k=0; k<m; k++) { \
-                C[i][j] += A[i][k] * B[k][j]; \
+                _(C,i,j) += _(A,i,k) * _(B,k,j); \
             } \
         } \
     } \
@@ -193,9 +209,9 @@ PRINT(Ainv,n,n); \
     int i,j,k; \
     for (i=0; i<n; i++) { \
         for (j=0; j<p; j++) { \
-            D[i][j] = C[i][j]; \
+            _(D,i,j) = _(C,i,j); \
             for (k=0; k<m; k++) { \
-                D[i][j] += A[i][k] * B[k][j]; \
+                _(D,i,j) += _(A,i,k) * _(B,k,j); \
             } \
         } \
     } \
@@ -215,9 +231,9 @@ PRINT(Ainv,n,n); \
         for (j=0; j<p; j++) { \
             sum = 0.0f; \
             for (k=0; k<m; k++) { \
-                sum += A[i][k] * B[k][j]; \
+                sum += _(A,i,k) * _(B,k,j); \
             } \
-            D[i][j] = alpha * sum + beta * C[i][j]; \
+            _(D,i,j) = alpha * sum + beta * _(C,i,j); \
         } \
     } \
 }
