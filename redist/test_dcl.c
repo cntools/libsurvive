@@ -56,9 +56,32 @@ int main()
 			assert(fabs(R[3][j]) < .0000001);
 		}
 	}
-	// void dclTransp( DCL_FLOAT * R, int Rc, const DCL_FLOAT * A, int Ac, int n, int m );
 
-	//	dclIdentity( A[0], MATx, 5 );
-	//	dclPrint( A[0], MATx, MATx, MATy );
+
+	printf( "The following should be an identity matrix\n" );
+	dclPrint( MM[0], 3, 3, 3 );
+
+
+	//Currently failing test...
+	{
+		FLT em1[12][20];
+		FLT em2[20][12];
+		FLT emo[12][12];
+		int x, y;
+
+		for( y = 0; y < 12; y++ )
+		for( x = 0; x < 20; x++ )
+		{
+			em1[y][x] = (rand()%1000)/1000.0;
+			em2[x][y] = (rand()%1000)/1000.0;
+		}
+
+		int m = 12;
+		int n = 20;
+		int k = 12;
+		dcldgemm( 0, 0, m, n, k, 0.1, em1[0], 20, em2[0], 12, .1, emo[0], 12 );
+		dclPrint( emo[0], 12, 12, 12 );
+	}
+
 }
 
