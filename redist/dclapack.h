@@ -11,8 +11,10 @@
 
 #ifdef DYNAMIC_INDEX
 	#define _(A,O,P) A[O*n+P]
+	#define _I(A,O,P,n) A[O*n+P]
 #else
 	#define _(A,O,P) A[O][P]
+	#define _I(A,O,P,n) A[O][P]
 #endif
 
 
@@ -192,7 +194,7 @@ PRINT(Ainv,n,n); \
         for (j=0; j<p; j++) { \
             _(R,i,j) = 0.0f; \
             for (k=0; k<m; k++) { \
-                _(R,i,j) += _(A,i,k) * _(B,k,j); \
+                _(R,i,j) += _(A,i,k) * _I(B,k,j,m); \
             } \
         } \
     } \
@@ -211,7 +213,7 @@ PRINT(Ainv,n,n); \
         for (j=0; j<p; j++) { \
             _(R,i,j) = _(C,i,j); \
             for (k=0; k<m; k++) { \
-                _(R,i,j) += _(A,i,k) * _(B,k,j); \
+                _(R,i,j) += _(A,i,k) * _I(B,k,j,m); \
             } \
         } \
     } \
@@ -231,7 +233,7 @@ PRINT(Ainv,n,n); \
         for (j=0; j<p; j++) { \
             sum = 0.0f; \
             for (k=0; k<m; k++) { \
-                sum += _(A,i,k) * _(B,k,j); \
+                sum += _(A,i,k) * _I(B,k,j,m); \
             } \
             _(R,i,j) = alpha * sum + beta * _(C,i,j); \
         } \

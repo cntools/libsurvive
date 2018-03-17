@@ -60,4 +60,29 @@ void dclGMulAdd( DCL_FLOAT * R, const DCL_FLOAT * A, const DCL_FLOAT * B, const 
 	GMULADD(R,A,B,C,alpha,beta,n,m,p);
 }
 
+/* dclGMulAdd( R, ((transA)?TRANS(A):A, (transB)?TRANS(B):B), C, alpha, beta, n, m, p ); */
+void dcldgemm(
+	char transA,
+	char transB,
+	int m,
+	int n,
+	int k,
+	DCL_FLOAT alpha,
+	const DCL_FLOAT* A,
+	int lda, //must be n
+	const DCL_FLOAT* B,
+	int ldb, //must be m
+	DCL_FLOAT beta,
+	const DCL_FLOAT * C,
+	int ldc //must be n
+	 )
+{
+	DCL_FLOAT * ta;
+	DCL_FLOAT * tb;
+	if( transA )
+	{
+		ta = alloca( sizeof( DCL_FLOAT ) * n * m );
+		
+	}
+}
 

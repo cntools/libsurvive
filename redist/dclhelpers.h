@@ -57,5 +57,29 @@ void dclMulAdd( DCL_FLOAT * R, const DCL_FLOAT * A, const DCL_FLOAT * B, const D
     R (n by p) */
 void dclGMulAdd( DCL_FLOAT * R, const DCL_FLOAT * A, const DCL_FLOAT * B, const DCL_FLOAT * C, DCL_FLOAT alpha, DCL_FLOAT beta, int n, int m, int p );
 
+
+/********************************
+ * Auxiliary functionality in C *
+ ********************************/
+
+//Matches dgemm from lapack.
+void dcldgemm(
+	char transA,
+	char transB,
+	int m,
+	int n,
+	int k,
+	DCL_FLOAT alpha,
+	const DCL_FLOAT* A,
+	int lda, //must be n
+	const DCL_FLOAT* B,
+	int ldb, //must be m
+	DCL_FLOAT beta,
+	const DCL_FLOAT * C,
+	int ldc //must be n
+	 );
+
+
+
 #endif
 
