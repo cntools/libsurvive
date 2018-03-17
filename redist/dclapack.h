@@ -262,7 +262,7 @@ PRINT(Ainv,n,n); \
  */
 #define GMULADD(R, A, B, C, alpha, beta, m, n, p)                                                                      \
 	{                                                                                                                  \
-		float sum;                                                                                                     \
+		FLOAT sum;                                                                                                     \
 		for (int _i = 0; _i < m; _i++) {                                                                               \
 			for (int _j = 0; _j < p; _j++) {                                                                           \
 				sum = 0.0f;                                                                                            \
