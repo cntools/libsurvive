@@ -181,10 +181,10 @@ PRINT(Ainv,n,n); \
 */
 
 /*
- * Matrix Multiply C = A * B
+ * Matrix Multiply R = A * B
+ *  R (n by p)
  *  A (n by m)
  *  B (m by p)
- *  C (n by p)
  */
 #define MUL(R,A,B,n,m,p) { \
     int i,j,k; \
@@ -199,11 +199,11 @@ PRINT(Ainv,n,n); \
 }
 
 /*
- * Matrix Multiply D = A * B + C
+ * Matrix Multiply R = A * B + C
+ *  R (n by p)
  *  A (n by m)
  *  B (m by p)
  *  C (n by p)
- *  D (n by p)
  */
 #define MULADD(R,A,B,C,n,m,p) { \
     int i,j,k; \
@@ -218,11 +218,11 @@ PRINT(Ainv,n,n); \
 }
 
 /*
- * Matrix Multiply D = alpha * A * B + beta * C
+ * Matrix Multiply R = alpha * A * B + beta * C
+ *  R (n by p)
  *  A (n by m)
  *  B (m by p)
  *  C (n by p)
- *  D (n by p)
  */
 #define GMULADD(R,A,B,C,alpha,beta,n,m,p) { \
     int i,j,k; \
