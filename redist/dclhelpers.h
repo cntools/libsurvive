@@ -37,25 +37,25 @@ void dclUSub( DCL_FLOAT * X, const DCL_FLOAT * U, const DCL_FLOAT * B, int n, in
 /* Inverts a matrix X (n by n) using the method of LU decomposition */
 void dclInv( DCL_FLOAT * Ainv, const DCL_FLOAT * A, int n );
 
-/* Matrix Multiply C = A * B
+/* Matrix Multiply R = A * B
     A (n by m)
     B (m by p)
-    C (n by p) */
+    R (n by p) */
 void dclMul( DCL_FLOAT * R, const DCL_FLOAT * A, const DCL_FLOAT * B, int n, int m, int p );
 
-/* Matrix Multiply D = A * B + C
+/* Matrix Multiply R = A * B + C
     A (n by m)
     B (m by p)
     C (n by p)
-    D (n by p) */
+    R (n by p) */
 void dclMulAdd( DCL_FLOAT * R, const DCL_FLOAT * A, const DCL_FLOAT * B, const DCL_FLOAT * C, int n, int m, int p );
 
-/* Matrix Multiply D = alpha * A * B + beta * C
+/* Matrix Multiply R = alpha * A * B + beta * C
     A (n by m)
     B (m by p)
     C (n by p)
-    D (n by p) */
-void dclGMulAdd( DCL_FLOAT * D, const DCL_FLOAT * A, const DCL_FLOAT * B, const DCL_FLOAT * C, DCL_FLOAT alpha, DCL_FLOAT beta, int n, int m, int p );
+    R (n by p) */
+void dclGMulAdd( DCL_FLOAT * R, const DCL_FLOAT * A, const DCL_FLOAT * B, const DCL_FLOAT * C, DCL_FLOAT alpha, DCL_FLOAT beta, int n, int m, int p );
 
 #endif
 
