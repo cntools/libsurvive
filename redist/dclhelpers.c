@@ -69,34 +69,40 @@ void dcldgemm(
 	int k,
 	DCL_FLOAT alpha,
 	const DCL_FLOAT* A,
-	int lda, //must be n
+	int Ac, //must be n
 	const DCL_FLOAT* B,
-	int ldb, //must be m
+	int Bc, //must be m
 	DCL_FLOAT beta,
-	const DCL_FLOAT * C,
-	int ldc //must be n
+	DCL_FLOAT * C,
+	int Cc //must be n
 	 )
 {
 	const DCL_FLOAT * ta;
 	const DCL_FLOAT * tb;
+	int tac = Ac;
+	int tbc = Bc;
 	if( transA )
 	{
-		ta = alloca( sizeof( DCL_FLOAT ) * n * m );
-		//TRANSP(	ta, A, n, m );
+		DCL_FLOAT * la = alloca( sizeof( DCL_FLOAT ) * n * m );
+		const int lac = m;
+		TRANSP(	la, A, n, m );
+		ta = la;
+		tac = lac;
 	}
 	else
 		ta = A;
 
 	if( transB )
 	{
-		tb = alloca( sizeof( DCL_FLOAT ) * n * m );
-		//TRANSP(	tb, B, n, m );
+		DCL_FLOAT * lb = alloca( sizeof( DCL_FLOAT ) * n * m );
+		const int lbc = m;
+		TRANSP( lb, B, n, m );
+		tb = lb;
+		tbc = lbc;
 	}
 	else
 		tb = B;
 
-
-	//XXX Tricky: In here, A is mxn
-
+	GMULADD(C,ta,tb,C,alpha,beta,n,m,k);
 }
 

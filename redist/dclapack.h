@@ -9,10 +9,14 @@
 
 #define _ABS(a)  ( (a)<=0 ? 0-(a) : (a) )
 
+//Tricky: If you want to use this with pointers, instead of 2D arrays, you will
+//need to #define DYNAMIC_INDEX, as well as, for all arrays, suffix their name
+//with 'c'
+
 #ifdef DYNAMIC_INDEX
-	#define _(A,O,P) A[O*A##c+P]
+	#define _(AM,O,P) AM[O*AM##c+P]
 #else
-	#define _(A,O,P) A[O][P]
+	#define _(AM,O,P) AM[O][P]
 #endif
 
 

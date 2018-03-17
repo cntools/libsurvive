@@ -3,8 +3,6 @@
 
 #define DCL_FLOAT FLT
 
-//XXX XXX XXX WARNING XXX XXX XXX The argument order may be changing!!!
-
 /* Prints matrix A of size[n][m] */
 void dclPrint( const DCL_FLOAT * A, int Ac, int n, int m );
 
@@ -75,7 +73,7 @@ void dcldgemm(
 	const DCL_FLOAT* B,
 	int Bc,
 	DCL_FLOAT beta,
-	const DCL_FLOAT * C,
+	DCL_FLOAT * C,
 	int Cc
 	 );
 
