@@ -39,7 +39,9 @@ int main()
 		FLT x[4] = {7, 8, 9, 10};
 		FLT R[4];
 
-		dclMul(R, 1, A[0], 4, x, 1, 4, 1, 3);
+		// dclMul(R, 1, A[0], 4, x, 1, 4, 1, 3);
+		dcldgemm(0, 0, 4, 1, 3, 1, A[0], 4, x, 1, 0, R, 1);
+
 		dclPrint(x, 1, 4, 1);
 		dclPrint(R, 1, 4, 1);
 
