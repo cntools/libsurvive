@@ -82,6 +82,9 @@ Will ~~I~~ we succeed?  Probably not.  ~~Definitely going to try!~~ Though it's 
 * Optionally OpenGL.
 On Debian, ```sudo apt-get install build-essential zlib1g-dev libx11-dev libusb-1.0-0-dev freeglut3-dev``` should be sufficient.
 
+Temporarily needed packages: liblapack
+On Debian, ```sudo apt-get install liblapacke-dev```
+
 ## Architecture
 
 <TABLE><TR><TH>Description</TH><TH>Diagram</TH>
