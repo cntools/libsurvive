@@ -5,9 +5,9 @@
 #include "dclapack.h"
 #include <alloca.h>
 
-void dclPrint( const DCL_FLOAT * A, int Ac, int n, int m )
+void dclPrint( const DCL_FLOAT * PMATRIX, int PMATRIXc, int n, int m )
 {
-	PRINT( A, n, m );
+	PRINT( PMATRIX, n, m );
 }
 
 void dclIdentity( DCL_FLOAT * I, int Ic, int n )
