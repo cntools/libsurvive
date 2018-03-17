@@ -42,11 +42,6 @@ void compareToCblas() {
 				cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, 1.0, DMS(em1), DMS(em2), .1,
 							DMS(emo[z]));
 			}
-			/*void cblas_dgemm(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE TransA,
-		  CBLAS_TRANSPOSE TransB, const int M, const int N,
-		  const int K, const double alpha, const double *A,
-		  const int lda, const double *B, const int ldb,
-		  const double beta, double *C, const int ldc);*/
 		}
 
 		printf("%s Elapsed: %f\n", z ? "CBlas" : "dcl", times[z] = OGGetAbsoluteTime() - start);
@@ -54,6 +49,12 @@ void compareToCblas() {
 	printf("%fx difference\n", times[0] / times[1]);
 	dclPrint(emo[0][0], 12, 20, 12);
 	dclPrint(emo[1][0], 12, 20, 12);
+
+	for (int i = 0; i < m; i++) {
+		for (int j = 0; j < k; j++) {
+			assert(fabs(emo[0][i][j] - emo[1][i][j]) < .00001);
+		}
+	}
 }
 
 int main()
