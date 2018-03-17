@@ -9,46 +9,43 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void compareToCblas() {
-	FLT em1[12][20];
-	FLT em2[20][20];
-	FLT emo[2][20][20] = {};
-	int x, y;
+#include "minimal_opencv.h"
 
-	for (y = 0; y < 12; y++)
-		for (x = 0; x < 20; x++)
-			em1[y][x] = (rand() % 1000) / 1000.0;
+void fill_random(FLT *A, int ld, int m, int n) {
+	assert(ld == n);
+	for (int y = 0; y < m; y++)
+		for (int x = 0; x < n; x++)
+			A[y * ld + x] = (rand()) / (double)RAND_MAX;
+}
 
-	for (y = 0; y < 20; y++)
-		for (x = 0; x < 20; x++)
-			em2[y][x] = (rand() % 1000) / 1000.0;
-
-	int m = 12;
-	int n = 20;
-	int k = 20;
-
-	dclPrint(DMS(em1), 12, 20);
-	dclPrint(DMS(em2), 20, 12);
-
+void test_dcldgemm_speed(const char *name, char transA, char transB, int m, int n, int k, DCL_FLOAT alpha,
+						 const DCL_FLOAT *A, int Ac, const DCL_FLOAT *B, int Bc, DCL_FLOAT beta) {
+	printf("%s speed test:\n", name);
 	double times[2];
+	FLT emo[2][m][n];
+
 	for (int z = 0; z < 2; z++) {
 		double start = OGGetAbsoluteTime();
 		for (int i = 0; i < 100000; i++) {
-			dclZero(DMS(emo[z]), 20, 20);
+			dclZero(DMS(emo[z]), m, n);
 
 			if (z == 0) {
-				dcldgemm(0, 0, m, n, k, 1.0, DMS(em1), DMS(em2), .1, DMS(emo[z]));
+				dcldgemm(transA, transB, m, n, k, alpha, A, Ac, B, Bc, beta, DMS(emo[z]));
 			} else {
-				cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, 1.0, DMS(em1), DMS(em2), .1,
-							DMS(emo[z]));
+
+				cblas_dgemm(CblasRowMajor, transA == 1 ? CblasTrans : CblasNoTrans,
+							transB == 1 ? CblasTrans : CblasNoTrans, m, n, k, alpha, A, Ac, B, Bc, beta, emo[z][0], n);
 			}
 		}
 
-		printf("%s Elapsed: %f\n", z ? "CBlas" : "dcl", times[z] = OGGetAbsoluteTime() - start);
+		times[z] = OGGetAbsoluteTime() - start;
 	}
+
+	dclPrint(DMS(emo[0]), m, n);
+	dclPrint(DMS(emo[1]), m, n);
+	printf("dcl  Elapsed: %f\n", times[0]);
+	printf("cblas Elapsed: %f\n", times[1]);
 	printf("%fx difference\n", times[0] / times[1]);
-	dclPrint(emo[0][0], 12, 20, 12);
-	dclPrint(emo[1][0], 12, 20, 12);
 
 	for (int i = 0; i < m; i++) {
 		for (int j = 0; j < k; j++) {
@@ -57,12 +54,57 @@ void compareToCblas() {
 	}
 }
 
+void compareToCblas() {
+	srand(0);
+	int m = 12;
+	int n = 20;
+	int k = 20;
+
+	FLT em1[m][n];
+	FLT em2[n][k];
+
+	fill_random(DMS(em1), m, n);
+	fill_random(DMS(em2), n, k);
+
+	dclPrint(DMS(em1), m, n);
+	dclPrint(DMS(em2), n, k);
+
+	test_dcldgemm_speed("Simple", 0, 0, m, n, k, 1.0, DMS(em1), DMS(em2), .1);
+}
+
+void compareToCblasTrans() {
+	srand(0);
+	int m = 12;
+	int n = 20;
+	int k = n;
+
+	FLT em1[m][n];
+
+	fill_random(DMS(em1), m, n);
+
+	dclPrint(DMS(em1), m, n);
+
+	CvMat Em1 = cvMat(m, n, CV_64F, em1);
+	FLT em1tem1[n][n];
+	CvMat Em1tEm1 = cvMat(n, n, CV_64F, em1tem1);
+	cvMulTransposed(&Em1, &Em1tEm1, 1, 0, 1);
+	print_mat(&Em1tEm1);
+
+	test_dcldgemm_speed("Trans", 1, 0,
+						n, // # of rows in OP(A) == em1' -- 20
+						n, // # of cols in OP(B) == em1 -- 20
+						m, // # of cols in OP(A) == em1' -- 12
+						1.0,
+						DMS(em1), // Note that LD stays the same
+						DMS(em1), 0);
+}
+
 int main()
 {
 	FLT A[2][4]	= { { 0, 1, 2, 3 }, { 4, 5, 6, 7} };
 	FLT B[4][2];
 	dclPrint( A[0], 4, 2, 4 );
-	dclTransp( B[0], 2, A[0], 4, 2, 4 );
+	dclTransp(B[0], 2, A[0], 4, 2, 4);
 	dclPrint( B[0], 2, 4, 2 );
 
 	int i, j;
@@ -114,5 +156,6 @@ int main()
 	}
 
 	compareToCblas();
+	compareToCblasTrans();
 }
 

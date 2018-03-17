@@ -89,7 +89,7 @@ static_calibrate : calibrate.c redist/os_generic.c $(DRAWFUNCTIONS) $(LIBSURVIVE
 	sed -i 's/#/\/\/#/g' ./redist/dclhelpers_debuggable.c
 
 
-test_dcl: ./redist/test_dcl.c ./redist/dclhelpers.c ./redist/dclhelpers.h ./redist/dclapack.h redist/os_generic.c
+test_dcl: ./redist/test_dcl.c ./redist/dclhelpers.c ./redist/dclhelpers.h ./redist/dclapack.h redist/os_generic.c ./redist/minimal_opencv.c ./src/epnp/epnp.c
 	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS_RELEASE) -DFLT=double
 
 test_dcl_debug: ./redist/test_dcl.c ./redist/dclhelpers_debuggable.c ./redist/dclhelpers.h ./redist/dclapack.h redist/os_generic.c

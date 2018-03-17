@@ -44,11 +44,8 @@ void cvGEMM(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src
 		beta = 0;
 
 	cblas_dgemm(CblasRowMajor, (tABC & GEMM_1_T) ? CblasTrans : CblasNoTrans,
-				(tABC & GEMM_2_T) ? CblasTrans : CblasNoTrans, src1->rows, dst->cols, src1->cols, alpha,
-
-				src1->data.db, lda, src2->data.db, ldb, beta,
-
-				dst->data.db, dst->cols);
+				(tABC & GEMM_2_T) ? CblasTrans : CblasNoTrans, src1->rows, dst->cols, src1->cols, alpha, src1->data.db,
+				lda, src2->data.db, ldb, beta, dst->data.db, dst->cols);
 }
 
 void cvMulTransposed(const CvMat *src, CvMat *dst, int order, const CvMat *delta, double scale) {
@@ -67,11 +64,7 @@ void cvMulTransposed(const CvMat *src, CvMat *dst, int order, const CvMat *delta
 	lapack_int dstCols = dst->cols;
 
 	cblas_dgemm(CblasRowMajor, isAT ? CblasTrans : CblasNoTrans, isBT ? CblasTrans : CblasNoTrans, cols, dstCols, rows,
-				scale,
-
-				src->data.db, cols, src->data.db, cols, beta,
-
-				dst->data.db, dstCols);
+				scale, src->data.db, cols, src->data.db, cols, beta, dst->data.db, dstCols);
 }
 
 void *cvAlloc(size_t size) { return malloc(size); }

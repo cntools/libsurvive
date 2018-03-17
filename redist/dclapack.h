@@ -24,7 +24,7 @@
  */
 #define PRINT(A, m, n)                                                                                                 \
 	{                                                                                                                  \
-		printf(#A "\n");                                                                                               \
+		printf(#A " %dx%d\n", m, n);                                                                                   \
 		for (int _i = 0; _i < (m); _i++) {                                                                             \
 			for (int _j = 0; _j < (n); _j++) {                                                                         \
 				printf("%4.3f ", _(A, _i, _j));                                                                        \
