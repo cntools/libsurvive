@@ -1,13 +1,60 @@
 //gcc -msse2 -O3 -ftree-vectorize test_dcl.c dclhelpers.c os_generic.c -DFLT=double -lpthread -lcblas && valgrind ./a.out
 
-
 #include "dclhelpers.h"
+#include "os_generic.h"
 #include <assert.h>
+#include <cblas.h>
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
-#include "os_generic.h"
-#include <cblas.h>
+#include <stdlib.h>
+
+void compareToCblas() {
+	FLT em1[12][20];
+	FLT em2[20][20];
+	FLT emo[2][20][20] = {};
+	int x, y;
+
+	for (y = 0; y < 12; y++)
+		for (x = 0; x < 20; x++)
+			em1[y][x] = (rand() % 1000) / 1000.0;
+
+	for (y = 0; y < 20; y++)
+		for (x = 0; x < 20; x++)
+			em2[y][x] = (rand() % 1000) / 1000.0;
+
+	int m = 12;
+	int n = 20;
+	int k = 20;
+
+	dclPrint(DMS(em1), 12, 20);
+	dclPrint(DMS(em2), 20, 12);
+
+	double times[2];
+	for (int z = 0; z < 2; z++) {
+		double start = OGGetAbsoluteTime();
+		for (int i = 0; i < 100000; i++) {
+			dclZero(DMS(emo[z]), 20, 20);
+
+			if (z == 0) {
+				dcldgemm(0, 0, m, n, k, 1.0, DMS(em1), DMS(em2), .1, DMS(emo[z]));
+			} else {
+				cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, 1.0, DMS(em1), DMS(em2), .1,
+							DMS(emo[z]));
+			}
+			/*void cblas_dgemm(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE TransA,
+		  CBLAS_TRANSPOSE TransB, const int M, const int N,
+		  const int K, const double alpha, const double *A,
+		  const int lda, const double *B, const int ldb,
+		  const double beta, double *C, const int ldc);*/
+		}
+
+		printf("%s Elapsed: %f\n", z ? "CBlas" : "dcl", times[z] = OGGetAbsoluteTime() - start);
+	}
+	printf("%fx difference\n", times[0] / times[1]);
+	dclPrint(emo[0][0], 12, 20, 12);
+	dclPrint(emo[1][0], 12, 20, 12);
+}
 
 int main()
 {
@@ -65,61 +112,6 @@ int main()
 		}
 	}
 
-
-#if 1
-
-	//Currently failing test...
-	{
-//		FLT em1[3][4];
-//		FLT em2[4][2];
-//		FLT emo[4][2];
-
-		FLT em1[12][20];
-		FLT em2[20][20];
-		FLT emo[20][20];
-		int x, y;
-
-		for( y = 0; y < 12; y++ )
-		for( x = 0; x < 20; x++ )
-			em1[y][x] = (rand()%1000)/1000.0;
-
-		for( y = 0; y < 20; y++ )
-		for( x = 0; x < 20; x++ )
-			em2[y][x] = (rand()%1000)/1000.0;
-
-		for( y = 0; y < 20; y++ )
-		for( x = 0; x < 20; x++ )
-			emo[y][x] = 0;
-
-		int m = 12;
-		int n = 20;
-		int k = 12;
-
-		dclPrint( DMS(em1), 12, 20 );
-		dclPrint( DMS(em2), 20, 12 );
-
-		int i;
-		
-		double start = OGGetAbsoluteTime();
-		for( i = 0; i < 10000; i++ )
-		{
-			dclZero( DMS(emo), 20, 20 );
-
-			dcldgemm( 0, 0, m, n, k, 1.0, DMS(em1), DMS(em2), .1, DMS(emo) );
-			//cblas_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans, m, n, k, 1.0, DMS(em1), DMS(em2), .1, DMS(emo) );
-
-/*void cblas_dgemm(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE TransA,
-                 CBLAS_TRANSPOSE TransB, const int M, const int N,
-                 const int K, const double alpha, const double *A,
-                 const int lda, const double *B, const int ldb,
-                 const double beta, double *C, const int ldc);*/
-
-		}
-		printf( "Elapsed: %f\n", OGGetAbsoluteTime()-start );
-
-		dclPrint( emo[0], 12, 20, 12 );
-	}
-#endif
-
+	compareToCblas();
 }
 

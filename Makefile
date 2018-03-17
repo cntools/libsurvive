@@ -3,6 +3,7 @@ all : lib data_recorder test calibrate calibrate_client simple_pose_test
 CC?=gcc
 
 CFLAGS:=-Iinclude/libsurvive -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic -llapacke  -lcblas -lm
+CFLAGS_RELEASE:=-Iinclude/libsurvive -fPIC -msse2 -ftree-vectorize -O3 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic -llapacke  -lcblas -lm 
 #LDFLAGS:=-L/usr/local/lib -lpthread -lusb-1.0 -lz -lm -flto -g
 LDFLAGS:=-L/usr/local/lib -lpthread -lz -lm -flto -g
 
@@ -88,7 +89,10 @@ static_calibrate : calibrate.c redist/os_generic.c $(DRAWFUNCTIONS) $(LIBSURVIVE
 	sed -i 's/#/\/\/#/g' ./redist/dclhelpers_debuggable.c
 
 
-test_dcl: ./redist/test_dcl.c ./redist/dclhelpers_debuggable.c ./redist/dclhelpers.h ./redist/dclapack.h
+test_dcl: ./redist/test_dcl.c ./redist/dclhelpers.c ./redist/dclhelpers.h ./redist/dclapack.h redist/os_generic.c
+	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS_RELEASE) -DFLT=double
+
+test_dcl_debug: ./redist/test_dcl.c ./redist/dclhelpers_debuggable.c ./redist/dclhelpers.h ./redist/dclapack.h redist/os_generic.c
 	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS) -DFLT=double -fsanitize=address -fsanitize=undefined
 
 test_minimal_cv: ./src/epnp/test_minimal_cv.c ./lib/libsurvive.so 
