@@ -269,7 +269,6 @@ PRINT(Ainv,n,n); \
 				for (int _k = 0; _k < n; _k++) {                                                                       \
 					sum += _(A, _i, _k) * _(B, _k, _j);                                                                \
 				}                                                                                                      \
-				printf( "-> %d %d =   %f %f %f %f[%d %d]\n", _i, _j, alpha,sum,beta, _(C,_i,_j), _i, _j ); \
 				_(R, _i, _j) = alpha * sum + beta * _(C, _i, _j);                                                      \
 			}                                                                                                          \
 		}                                                                                                              \
