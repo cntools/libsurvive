@@ -69,7 +69,7 @@ test : test.c ./lib/libsurvive.so redist/os_generic.o
 simple_pose_test : simple_pose_test.c ./lib/libsurvive.so redist/os_generic.o $(DRAWFUNCTIONS)
 	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
 
-data_recorder : data_recorder.c ./lib/libsurvive.so redist/os_generic.c $(DRAWFUNCTIONS)
+data_recorder : data_recorder.c ./lib/libsurvive.so redist/os_generic.c
 	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
 
 calibrate :  calibrate.c ./lib/libsurvive.so redist/os_generic.c $(DRAWFUNCTIONS)
