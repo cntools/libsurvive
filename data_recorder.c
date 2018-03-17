@@ -85,6 +85,13 @@ void my_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pos
 					pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
 }
 
+void my_info_process(SurviveContext *ctx, const char *fault) { write_to_output("INFO LOG %s\n", fault); }
+void my_angle_process(struct SurviveObject *so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle,
+					  uint32_t lh) {
+	survive_default_angle_process(so, sensor_id, acode, timecode, length, angle, lh);
+	write_to_output("%s A %d %d %u %0.6f %0.6f %u\n", so->codename, sensor_id, acode, timecode, length, angle, lh);
+}
+
 void my_light_process(struct SurviveObject *so, int sensor_id, int acode,
 					  int timeinsweep, uint32_t timecode, uint32_t length,
 					  uint32_t lh) {
@@ -92,7 +99,7 @@ void my_light_process(struct SurviveObject *so, int sensor_id, int acode,
 								  length, lh);
 
 	if (acode == -1 || sensor_id < 0) {
-		write_to_output("%s A %d %d %d %u %u %u\n", so->codename, sensor_id, acode, timeinsweep, timecode, length, lh);
+		write_to_output("%s S %d %d %d %u %u %u\n", so->codename, sensor_id, acode, timeinsweep, timecode, length, lh);
 		return;
 	}
 
@@ -133,8 +140,8 @@ void my_light_process(struct SurviveObject *so, int sensor_id, int acode,
 		break;
 	}
 
-	write_to_output("%s %s %s %u %d %d %d %u %u\n", so->codename, LH_ID, LH_Axis, timecode, sensor_id, acode,
-					timeinsweep, length, lh);
+	write_to_output("%s %s %s %d %d %d %u %u %u\n", so->codename, LH_ID, LH_Axis, sensor_id, acode, timeinsweep,
+					timecode, length, lh);
 	buffertimeto[jumpoffset] = 0;
 }
 
@@ -192,7 +199,8 @@ void *SurviveThread(void *junk) {
 	survive_install_imu_fn(ctx, my_imu_process);
 	survive_install_lighthouse_pose_fn(ctx, my_lighthouse_process);
 	survive_install_raw_pose_fn(ctx, my_raw_pose_process);
-
+	survive_install_angle_fn(ctx, my_angle_process);
+	survive_install_info_fn(ctx, my_info_process);
 	survive_cal_install(ctx);
 	if (!ctx) {
 		fprintf(stderr, "Fatal. Could not start\n");

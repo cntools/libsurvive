@@ -70,14 +70,14 @@ static int parse_and_run_lightcode(const char *line,
 	char axn[10];
 	char dev[10];
 	uint32_t timecode = 0;
-	int sensor = 0;
+	int sensor_id = 0;
 	int acode = 0;
 	int timeinsweep = 0;
-	uint32_t pulselength = 0;
+	uint32_t length = 0;
 	uint32_t lh = 0;
 
-	int rr = sscanf(line, "%8s %8s %8s %u %d %d %d %u %u\n", dev, lhn, axn, &timecode, &sensor, &acode, &timeinsweep,
-					&pulselength, &lh);
+	int rr = sscanf(line, "%8s %8s %8s %u %d %d %d %u %u\n", dev, lhn, axn, &sensor_id, &acode, &timeinsweep, &timecode,
+					&length, &lh);
 
 	if (rr != 9) {
 		fprintf(stderr, "Warning:  On line %d, only %d values read: '%s'\n",
@@ -97,8 +97,7 @@ static int parse_and_run_lightcode(const char *line,
 		return -1;
 	}
 
-	driver->ctx->lightproc(so, sensor, acode, timeinsweep, timecode,
-						   pulselength, lh);
+	driver->ctx->lightproc(so, sensor_id, acode, timeinsweep, timecode, length, lh);
 	return 0;
 }
 

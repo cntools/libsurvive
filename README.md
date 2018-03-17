@@ -280,6 +280,22 @@ To actually replay it, put that directory path in the 'PlaybackFile' configurati
 
 There is also a config variable -- `PlaybackFactor` -- which adjusts the speed at which playback happens. A value of 1 emulates the same time the events file took to create, a value of 0 streams the data in as fast as possible. 
 
+# Visualization
+
+- Download and install: http://websocketd.com/
+- Build the repo
+- Run `data_recorder` through `websocketd` like so:
+
+``` websocketd --port=8080 ./data_recorder```
+
+- Navigate to the `/tools/viz/index.html` page in chrome.
+
+Nothing will happen until you connect to that page. When you do, the app lifetime will be bound to that session -- reloading the page will reload data_recorder. 
+
+The arrow keys will move you to the left / right / up / down and the UI response to orbital mouse controls. 
+
+![Visuzliation Screenshot](https://raw.githubusercontent.com/cnlohr/libsurvive/master/useful_files/viz_screenshot.jpg)
+
 ## Notes about coordinate frames.
 
 BELOW IS NOT FINALIZED!!!!
