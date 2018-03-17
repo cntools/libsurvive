@@ -82,6 +82,9 @@ calibrate_client :  calibrate_client.c ./lib/libsurvive.so redist/os_generic.c $
 static_calibrate : calibrate.c redist/os_generic.c $(DRAWFUNCTIONS) $(LIBSURVIVE_C)
 	tcc -o $@ $^ $(CFLAGS) $(LDFLAGS) -DTCC
 
+test_dcl: ./redist/test_dcl.c ./redist/dclhelpers.c
+	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS) -DFLT=double -fsanitize=address -fsanitize=undefined
+
 test_minimal_cv: ./src/epnp/test_minimal_cv.c ./lib/libsurvive.so 
 	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
 
