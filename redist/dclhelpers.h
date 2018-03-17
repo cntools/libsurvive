@@ -6,56 +6,56 @@
 //XXX XXX XXX WARNING XXX XXX XXX The argument order may be changing!!!
 
 /* Prints matrix A of size[n][m] */
-void dclPrint( const DCL_FLOAT * A, int n, int m );
+void dclPrint( const DCL_FLOAT * A, int Ac, int n, int m );
 
 /* Returns the identity matrix */
-void dclIdentity( DCL_FLOAT * A, int n );
+void dclIdentity( DCL_FLOAT * I, int Ic, int n );
 
 /* R = Transpose(A)
      A is (n by m)
      R is (m by n) */
-void dclTransp( DCL_FLOAT * R, const DCL_FLOAT * A, int n, int m );
+void dclTransp( DCL_FLOAT * R, int Rc, const DCL_FLOAT * A, int Ac, int n, int m );
 
 /* Calculate L,U of a matrix A with pivot table; the pivot table is output. */
-void dclLU( DCL_FLOAT * L, DCL_FLOAT * U, const DCL_FLOAT * A, int * Piv, int n );
+void dclLU( DCL_FLOAT * L, int Lc, DCL_FLOAT * U, int Uc, const DCL_FLOAT * A, int Ac, int * Piv, int n );
 
 /* Pivots a matrix to a different matrix
     R = Pivot(A) given table 'Piv'
     A and R are (n by m) */
-void dclPivot( DCL_FLOAT * R, const DCL_FLOAT * A, int * Piv, int n, int m );
+void dclPivot( DCL_FLOAT * R, int Rc, const DCL_FLOAT * A, int Ac, int * Piv, int n, int m );
 
 /* Solve LX=B for matrix X and B
     L is n by n (lower triangular)
     B is n by m */
-void dclLSub( DCL_FLOAT * X, const DCL_FLOAT * L, const DCL_FLOAT * B, int n, int m );
+void dclLSub( DCL_FLOAT * X, int Xc, const DCL_FLOAT * L, int Lc, const DCL_FLOAT * B, int Bc, int n, int m );
 
 /* Solve UX=B for matrix X and B
     U is n by n (upper triangular)
     B is n by m */
-void dclUSub( DCL_FLOAT * X, const DCL_FLOAT * U, const DCL_FLOAT * B, int n, int m );
+void dclUSub( DCL_FLOAT * X, int Xc, const DCL_FLOAT * U, int Uc, const DCL_FLOAT * B, int Bc, int n, int m );
 
 /* Inverts a matrix X (n by n) using the method of LU decomposition */
-void dclInv( DCL_FLOAT * Ainv, const DCL_FLOAT * A, int n );
+void dclInv( DCL_FLOAT * Ainv, int Ainvc, const DCL_FLOAT * A, int Ac, int n );
 
 /* Matrix Multiply R = A * B
     A (n by m)
     B (m by p)
     R (n by p) */
-void dclMul( DCL_FLOAT * R, const DCL_FLOAT * A, const DCL_FLOAT * B, int n, int m, int p );
+void dclMul( DCL_FLOAT * R, int Rc, const DCL_FLOAT * A, int Ac, const DCL_FLOAT * B, int Bc, int n, int m, int p );
 
 /* Matrix Multiply R = A * B + C
     A (n by m)
     B (m by p)
     C (n by p)
     R (n by p) */
-void dclMulAdd( DCL_FLOAT * R, const DCL_FLOAT * A, const DCL_FLOAT * B, const DCL_FLOAT * C, int n, int m, int p );
+void dclMulAdd( DCL_FLOAT * R, int Rc, const DCL_FLOAT * A, int Ac, const DCL_FLOAT * B, int Bc, const DCL_FLOAT * C, int Cc, int n, int m, int p );
 
 /* Matrix Multiply R = alpha * A * B + beta * C
     A (n by m)
     B (m by p)
     C (n by p)
     R (n by p) */
-void dclGMulAdd( DCL_FLOAT * R, const DCL_FLOAT * A, const DCL_FLOAT * B, const DCL_FLOAT * C, DCL_FLOAT alpha, DCL_FLOAT beta, int n, int m, int p );
+void dclGMulAdd( DCL_FLOAT * R, int Rc, const DCL_FLOAT * A, int Ac, const DCL_FLOAT * B, int Bc, const DCL_FLOAT * C, int Cc, DCL_FLOAT alpha, DCL_FLOAT beta, int n, int m, int p );
 
 
 /********************************
@@ -71,12 +71,12 @@ void dcldgemm(
 	int k,
 	DCL_FLOAT alpha,
 	const DCL_FLOAT* A,
-	int lda, //must be n
+	int Ac,
 	const DCL_FLOAT* B,
-	int ldb, //must be m
+	int Bc,
 	DCL_FLOAT beta,
 	const DCL_FLOAT * C,
-	int ldc //must be n
+	int Cc
 	 );
 
 

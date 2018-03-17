@@ -10,16 +10,14 @@
 #define _ABS(a)  ( (a)<=0 ? 0-(a) : (a) )
 
 #ifdef DYNAMIC_INDEX
-	#define _(A,O,P) A[O*n+P]
-	#define _I(A,O,P,n) A[O*n+P]
+	#define _(A,O,P) A[O*A##c+P]
 #else
 	#define _(A,O,P) A[O][P]
-	#define _I(A,O,P,n) A[O][P]
 #endif
 
 
 /*
- * Prints a matrix A (n by m)
+ * Prints a matrix A (n by m)  (with witdth Ac)
  */
 #define PRINT(A,n,m) { \
     int i,j; \
@@ -34,7 +32,7 @@
 } 
 
 /*
- * Returns the identity matrix
+ * Returns the identity matrix (with size n x n, but width Ic)
  */
 #define IDENTITY(I,n) { \
     int i,j; \
@@ -148,11 +146,11 @@
 
 #ifdef DYNAMIC_INDEX
 	#define INV_SETUP(ORDER) \
-    FLOAT Ipiv[ORDER*ORDER]; \
-    FLOAT L[ORDER*ORDER]; \
-    FLOAT U[ORDER*ORDER]; \
-    FLOAT I[ORDER*ORDER]; \
-    FLOAT C[ORDER*ORDER];
+    FLOAT Ipiv[ORDER*ORDER]; const int Ipivc = ORDER; \
+    FLOAT L[ORDER*ORDER]; const int Lc = ORDER; \
+    FLOAT U[ORDER*ORDER]; const int Uc = ORDER; \
+    FLOAT I[ORDER*ORDER]; const int Ic = ORDER; \
+    FLOAT C[ORDER*ORDER]; const int Cc = ORDER;
 #else
 	#define INV_SETUP(ORDER) \
     FLOAT Ipiv[ORDER][ORDER]; \
@@ -194,7 +192,7 @@ PRINT(Ainv,n,n); \
         for (j=0; j<p; j++) { \
             _(R,i,j) = 0.0f; \
             for (k=0; k<m; k++) { \
-                _(R,i,j) += _(A,i,k) * _I(B,k,j,m); \
+                _(R,i,j) += _(A,i,k) * _(B,k,j); \
             } \
         } \
     } \
@@ -213,7 +211,7 @@ PRINT(Ainv,n,n); \
         for (j=0; j<p; j++) { \
             _(R,i,j) = _(C,i,j); \
             for (k=0; k<m; k++) { \
-                _(R,i,j) += _(A,i,k) * _I(B,k,j,m); \
+                _(R,i,j) += _(A,i,k) * _(B,k,j); \
             } \
         } \
     } \
@@ -233,7 +231,7 @@ PRINT(Ainv,n,n); \
         for (j=0; j<p; j++) { \
             sum = 0.0f; \
             for (k=0; k<m; k++) { \
-                sum += _(A,i,k) * _I(B,k,j,m); \
+                sum += _(A,i,k) * _(B,k,j); \
             } \
             _(R,i,j) = alpha * sum + beta * _(C,i,j); \
         } \

@@ -3,59 +3,59 @@
 #define DYNAMIC_INDEX
 #include <stdio.h>
 #include "dclapack.h"
+#include <alloca.h>
 
-
-void dclPrint( const DCL_FLOAT * A, int n, int m )
+void dclPrint( const DCL_FLOAT * A, int Ac, int n, int m )
 {
 	PRINT( A, n, m );
 }
 
-void dclIdentity( DCL_FLOAT * A, int n )
+void dclIdentity( DCL_FLOAT * I, int Ic, int n )
 {
-	IDENTITY( A, n );
+	IDENTITY( I, n );
 }
 
-void dclTransp( DCL_FLOAT * R, const DCL_FLOAT * A, int n, int m )
+void dclTransp( DCL_FLOAT * R, int Rc, const DCL_FLOAT * A, int Ac, int n, int m )
 {
 	TRANSP(R,A,n,m);
 }
 
-void dclLU( DCL_FLOAT * L, DCL_FLOAT * U, const DCL_FLOAT * A, int * Piv, int n )
+void dclLU( DCL_FLOAT * L, int Lc, DCL_FLOAT * U, int Uc, const DCL_FLOAT * A, int Ac, int * Piv, int n )
 {
 	LU(L,U,A,Piv,n);
 }
 
-void dclPivot( DCL_FLOAT * R, const DCL_FLOAT * A, int * Piv, int n, int m )
+void dclPivot( DCL_FLOAT * R, int Rc, const DCL_FLOAT * A, int Ac, int * Piv, int n, int m )
 {
 	PIVOT(R,A,Piv,n,m);
 }
 
-void dclLSub( DCL_FLOAT * X, const DCL_FLOAT * L, const DCL_FLOAT * B, int n, int m )
+void dclLSub( DCL_FLOAT * X, int Xc, const DCL_FLOAT * L, int Lc, const DCL_FLOAT * B, int Bc, int n, int m )
 {
 	L_SUB(X,L,B,n,m);
 }
 
-void dclUSub( DCL_FLOAT * X, const DCL_FLOAT * U, const DCL_FLOAT * B, int n, int m )
+void dclUSub( DCL_FLOAT * X, int Xc, const DCL_FLOAT * U, int Uc, const DCL_FLOAT * B, int Bc, int n, int m )
 {
 	U_SUB(X,U,B,n,m);
 }
 
-void dclInv( DCL_FLOAT * Ainv, const DCL_FLOAT * A, int n )
+void dclInv( DCL_FLOAT * Ainv, int Ainvc, const DCL_FLOAT * A, int Ac, int n )
 {
 	INV(Ainv,A,n,n);
 }
 
-void dclMul( DCL_FLOAT * R, const DCL_FLOAT * A, const DCL_FLOAT * B, int n, int m, int p )
+void dclMul( DCL_FLOAT * R, int Rc, const DCL_FLOAT * A, int Ac, const DCL_FLOAT * B, int Bc, int n, int m, int p )
 {
 	MUL(R,A,B,n,m,p);
 }
 
-void dclMulAdd( DCL_FLOAT * R, const DCL_FLOAT * A, const DCL_FLOAT * B, const DCL_FLOAT * C, int n, int m, int p )
+void dclMulAdd( DCL_FLOAT * R, int Rc, const DCL_FLOAT * A, int Ac, const DCL_FLOAT * B, int Bc, const DCL_FLOAT * C, int Cc, int n, int m, int p )
 {
 	MULADD(R,A,B,C,n,m,p);
 }
 
-void dclGMulAdd( DCL_FLOAT * R, const DCL_FLOAT * A, const DCL_FLOAT * B, const DCL_FLOAT * C, DCL_FLOAT alpha, DCL_FLOAT beta, int n, int m, int p )
+void dclGMulAdd( DCL_FLOAT * R, int Rc, const DCL_FLOAT * A, int Ac, const DCL_FLOAT * B, int Bc, const DCL_FLOAT * C, int Cc, DCL_FLOAT alpha, DCL_FLOAT beta, int n, int m, int p )
 {
 	GMULADD(R,A,B,C,alpha,beta,n,m,p);
 }
@@ -77,12 +77,26 @@ void dcldgemm(
 	int ldc //must be n
 	 )
 {
-	DCL_FLOAT * ta;
-	DCL_FLOAT * tb;
+	const DCL_FLOAT * ta;
+	const DCL_FLOAT * tb;
 	if( transA )
 	{
 		ta = alloca( sizeof( DCL_FLOAT ) * n * m );
-		
+		//TRANSP(	ta, A, n, m );
 	}
+	else
+		ta = A;
+
+	if( transB )
+	{
+		tb = alloca( sizeof( DCL_FLOAT ) * n * m );
+		//TRANSP(	tb, B, n, m );
+	}
+	else
+		tb = B;
+
+
+	//XXX Tricky: In here, A is mxn
+
 }
 
