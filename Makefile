@@ -2,7 +2,9 @@ all : lib data_recorder test calibrate calibrate_client simple_pose_test
 
 CC?=gcc
 
-CFLAGS:=-Iinclude/libsurvive -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic -llapacke  -lcblas -lm -fsanitize=address -fsanitize=undefined
+CFLAGS:=-Iinclude/libsurvive -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic -llapacke  -lcblas -lm
+CFLAGS_RELEASE:=-Iinclude/libsurvive -fPIC -msse2 -ftree-vectorize -O3 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic -llapacke  -lcblas -lm 
+
 #LDFLAGS:=-L/usr/local/lib -lpthread -lusb-1.0 -lz -lm -flto -g
 LDFLAGS:=-L/usr/local/lib -lpthread -lz -lm -flto -g
 
@@ -70,7 +72,7 @@ test : test.c ./lib/libsurvive.so redist/os_generic.o
 simple_pose_test : simple_pose_test.c ./lib/libsurvive.so redist/os_generic.o $(DRAWFUNCTIONS)
 	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
 
-data_recorder : data_recorder.c ./lib/libsurvive.so redist/os_generic.c $(DRAWFUNCTIONS)
+data_recorder : data_recorder.c ./lib/libsurvive.so redist/os_generic.c
 	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)
 
 calibrate :  calibrate.c ./lib/libsurvive.so redist/os_generic.c $(DRAWFUNCTIONS)
@@ -82,6 +84,18 @@ calibrate_client :  calibrate_client.c ./lib/libsurvive.so redist/os_generic.c $
 ## Still not working!!! Don't use.
 static_calibrate : calibrate.c redist/os_generic.c $(DRAWFUNCTIONS) $(LIBSURVIVE_C)
 	tcc -o $@ $^ $(CFLAGS) $(LDFLAGS) -DTCC
+
+./redist/dclhelpers_debuggable.c : ./redist/dclhelpers.c ./redist/dclhelpers.h ./redist/dclapack.h
+	gcc -E ./redist/dclhelpers.c  > ./redist/dclhelpers_debuggable.c
+	clang-format -i ./redist/dclhelpers_debuggable.c
+	sed -i 's/#/\/\/#/g' ./redist/dclhelpers_debuggable.c
+
+
+test_dcl: ./redist/test_dcl.c ./redist/dclhelpers.c ./redist/dclhelpers.h ./redist/dclapack.h redist/os_generic.c ./redist/minimal_opencv.c ./src/epnp/epnp.c
+	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS_RELEASE) -DFLT=double
+
+test_dcl_debug: ./redist/test_dcl.c ./redist/dclhelpers_debuggable.c ./redist/dclhelpers.h ./redist/dclapack.h redist/os_generic.c
+	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS) -DFLT=double -fsanitize=address -fsanitize=undefined
 
 test_minimal_cv: ./src/epnp/test_minimal_cv.c ./lib/libsurvive.so 
 	$(CC) -o $@ $^ $(LDFLAGS) $(CFLAGS)

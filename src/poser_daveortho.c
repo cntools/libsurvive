@@ -193,17 +193,19 @@ void OrthoSolve(
     FLT invXXt[3][3];
     FLT SXt[2][3];
     FLT M[2][3];           // Morph matrix! (2 by 3)
-    TRANSP(X,Xt,3,nPoints);
-    MUL(X,Xt,XXt,3,nPoints,3);
-    MUL(S,Xt,SXt,2,nPoints,3);
-    INV(XXt,invXXt,3);
-    MUL(SXt,invXXt,M,2,3,3);
-//PRINT(M,2,3);
+	TRANSP(Xt, X, 3, nPoints);
+	MUL(XXt, X, Xt, 3, nPoints, 3);
+	MUL(SXt, S, Xt, 2, nPoints, 3);
+	INV(invXXt, XXt, 3, 3);
+	MUL(M, SXt, invXXt, 2, 3, 3);
+	// PRINT(M,2,3);
 
-// Double checking work
-FLT S_morph[2][SENSORS_PER_OBJECT];
-MUL(M,X,S_morph,2,3,nPoints);
-for (i=0; i<nPoints; i++) { S_morph[0][i]+=sbar[0]; S_morph[1][i]+=sbar[1]; }
+	// Double checking work
+	FLT S_morph[2][SENSORS_PER_OBJECT];
+	MUL(S_morph, M, X, 2, 3, nPoints);
+	for (i = 0; i < nPoints; i++) {
+		S_morph[0][i] += sbar[0];
+		S_morph[1][i] += sbar[1]; }
 
     //--------------------
     // Solve for the non-trivial vector
@@ -218,10 +220,10 @@ for (i=0; i<nPoints; i++) { S_morph[0][i]+=sbar[0]; S_morph[1][i]+=sbar[1]; }
     FLT B[3][1] = { {0.0}, {0.0}, {1.0} };
     FLT inv_uM[3][3];
     FLT uf[3][1];
-    INV(uM,inv_uM,3);
-    MUL(inv_uM,B,uf,3,3,1);
-    
-    //--------------------
+	INV(inv_uM, uM, 3, 3);
+	MUL(uf, inv_uM, B, 3, 3, 1);
+
+	//--------------------
     // Solve for unit length vector
     //  f that goes into the camera
     //--------------------
@@ -250,10 +252,10 @@ for (i=0; i<nPoints; i++) { S_morph[0][i]+=sbar[0]; S_morph[1][i]+=sbar[1]; }
     //  uhat,rhat
     //--------------------
     FLT uhat[2][1], rhat[2][1], fhat[2][1];
-    MUL(M,f,fhat,2,3,1);
-    MUL(M,u,uhat,2,3,1);
-    MUL(M,r,rhat,2,3,1);
-    FLT fhat_len = sqrt( fhat[0][0]*fhat[0][0] + fhat[1][0]*fhat[1][0] );
+	MUL(fhat, M, f, 2, 3, 1);
+	MUL(uhat, M, u, 2, 3, 1);
+	MUL(rhat, M, r, 2, 3, 1);
+	FLT fhat_len = sqrt( fhat[0][0]*fhat[0][0] + fhat[1][0]*fhat[1][0] );
     FLT uhat_len = sqrt( uhat[0][0]*uhat[0][0] + uhat[1][0]*uhat[1][0] );
     FLT rhat_len = sqrt( rhat[0][0]*rhat[0][0] + rhat[1][0]*rhat[1][0] );
     FLT urhat_len = 0.5 * (uhat_len + rhat_len);
