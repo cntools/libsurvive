@@ -175,10 +175,8 @@ double cvInvert(const CvMat *srcarr, CvMat *dstarr, int method) {
 		lapack_int *ipiv = malloc(sizeof(lapack_int) * MIN(srcarr->rows, srcarr->cols));
 		inf = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, rows, cols, a, lda, ipiv);
 		assert(inf == 0);
-		print_mat(dstarr);
 
 		inf = LAPACKE_dgetri(LAPACK_ROW_MAJOR, rows, a, lda, ipiv);
-		print_mat(dstarr);
 		assert(inf >= 0);
 		if (inf > 0) {
 			printf("Warning: Singular matrix: \n");

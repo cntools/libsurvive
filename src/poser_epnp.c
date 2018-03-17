@@ -37,8 +37,6 @@ static SurvivePose solve_correspondence(SurviveObject *so, epnp *pnp, bool camer
 		cvTranspose(&R, &R);
 		// Then 'tvec = -R * tvec'
 		cvGEMM(&R, &Tmp, -1, 0, 0, &T, 0);
-		print_mat(&R);
-		print_mat(&T);
 	}
 
 	FLT tmp[4];

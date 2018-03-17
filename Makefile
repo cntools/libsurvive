@@ -2,7 +2,7 @@ all : lib data_recorder test calibrate calibrate_client simple_pose_test
 
 CC?=gcc
 
-CFLAGS:=-Iinclude/libsurvive -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic -llapacke  -lcblas -lm 
+CFLAGS:=-Iinclude/libsurvive -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic -llapacke  -lcblas -lm -fsanitize=address -fsanitize=undefined
 #LDFLAGS:=-L/usr/local/lib -lpthread -lusb-1.0 -lz -lm -flto -g
 LDFLAGS:=-L/usr/local/lib -lpthread -lz -lm -flto -g
 
