@@ -1,5 +1,6 @@
 #include "dclhelpers.h"
 #include <assert.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -36,18 +37,24 @@ int main()
 		dclIdentity(A[0], 4, 3);
 		dclPrint(A[0], 4, 3, 4);
 
-		FLT x[4] = {7, 8, 9, 10};
-		FLT R[4];
+		FLT x[4][2] = {
+			{7, -7}, {8, -8}, {9, -9}, {10, -10},
+		};
+		FLT R[4][2];
 
+		printf("%p %p %p\n", A, x, R);
 		// dclMul(R, 1, A[0], 4, x, 1, 4, 1, 3);
-		dcldgemm(0, 0, 4, 1, 3, 1, A[0], 4, x, 1, 0, R, 1);
+		dcldgemm(0, 0, 3, 4, 2, 1, A[0], 4, x[0], 2, 0, R[0], 2);
 
-		dclPrint(x, 1, 4, 1);
-		dclPrint(R, 1, 4, 1);
+		dclPrint(x[0], 2, 4, 2);
+		dclPrint(R[0], 2, 4, 2);
 
-		for (int i = 0; i < 3; i++)
-			assert(R[i] == x[i]);
-		assert(R[3] == 0.);
+		for (int j = 0; j < 2; j++) {
+			for (int i = 0; i < 3; i++)
+				assert(R[i][j] == x[i][j]);
+
+			assert(fabs(R[3][j]) < .0000001);
+		}
 	}
 	// void dclTransp( DCL_FLOAT * R, int Rc, const DCL_FLOAT * A, int Ac, int n, int m );
 

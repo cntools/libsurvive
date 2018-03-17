@@ -224,22 +224,23 @@ PRINT(Ainv,n,n); \
 /*
  * Matrix Multiply R = alpha * A * B + beta * C
  *  R (n by p)
- *  A (n by m)
- *  B (m by p)
- *  C (n by p)
+ *  A (m by n)
+ *  B (n by p)
+ *  C (m by p)
  */
-#define GMULADD(R,A,B,C,alpha,beta,n,m,p) { \
-    int i,j,k; \
-    float sum; \
-    for (i=0; i<n; i++) { \
-        for (j=0; j<p; j++) { \
-            sum = 0.0f; \
-            for (k=0; k<m; k++) { \
-                sum += _(A,i,k) * _(B,k,j); \
-            } \
-            _(R,i,j) = alpha * sum + beta * _(C,i,j); \
-        } \
-    } \
-}
+#define GMULADD(R, A, B, C, alpha, beta, m, n, p)                                                                      \
+	{                                                                                                                  \
+		int _i, _j, _k;                                                                                                \
+		float sum;                                                                                                     \
+		for (_i = 0; _i < m; _i++) {                                                                                   \
+			for (_j = 0; _j < p; _j++) {                                                                               \
+				sum = 0.0f;                                                                                            \
+				for (_k = 0; _k < n; _k++) {                                                                           \
+					sum += _(A, _i, _k) * _(B, _k, _j);                                                                \
+				}                                                                                                      \
+				_(R, _i, _j) = alpha * sum + beta * _(C, _i, _j);                                                      \
+			}                                                                                                          \
+		}                                                                                                              \
+	}
 
 #endif

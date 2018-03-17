@@ -1,9 +1,10 @@
 #include "dclhelpers.h"
 #define FLOAT DCL_FLOAT
 #define DYNAMIC_INDEX
-#include <stdio.h>
 #include "dclapack.h"
 #include <alloca.h>
+#include <assert.h>
+#include <stdio.h>
 
 void dclPrint( const DCL_FLOAT * PMATRIX, int PMATRIXc, int n, int m )
 {
@@ -77,7 +78,7 @@ void dcldgemm(
 	int Cc //must be n
 	 )
 {
-	const DCL_FLOAT * ta;
+	const DCL_FLOAT *ta;
 	const DCL_FLOAT * tb;
 	int tac = Ac;
 	int tbc = Bc;
@@ -102,7 +103,7 @@ void dcldgemm(
 	}
 	else
 		tb = B;
-
-	GMULADD(C,ta,tb,C,alpha,beta,n,m,k);
+	printf("%d %d %d\n", tac, tbc, Cc);
+	GMULADD(C, ta, tb, C, alpha, beta, m, n, k);
 }
 
