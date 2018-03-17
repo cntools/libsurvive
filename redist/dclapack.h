@@ -44,15 +44,15 @@
 }
 
 /*
- * B = Transpose(A)
+ * R = Transpose(A)
  *  A is (n by m)
- *  B is (m by n)
+ *  R is (m by n)
  */
-#define TRANSP(A,B,n,m) { \
+#define TRANSP(R,A,n,m) { \
    int i,j; \
    for (i=0; i<n; i++) { \
       for (j=0; j<m; j++) { \
-         _(B,j,i) = _(A,i,j); \
+         _(R,j,i) = _(A,i,j); \
       } \
    } \
 }
@@ -60,7 +60,7 @@
 /*
  * Calculate L,U of a matrix A with pivot table
  */
-#define LU(A,L,U,Piv,n) { \
+#define LU(L,U,A,Piv,n) { \
     int i,j,k,_tempi; float _tempf; \
     for (i=0; i<n; i++) { Piv[i]=i; } \
     for (i=0; i<n; i++) { \
@@ -96,14 +96,14 @@
 
 /*
  * Pivots a matrix to a different matrix
- *  B = Pivot(A) given table 'Piv'
- *  A and B are (n by m)
+ *  R = Pivot(A) given table 'Piv'
+ *  A and R are (n by m)
  */
-#define PIVOT(A,B,Piv,n,m) { \
+#define PIVOT(R,A,Piv,n,m) { \
     int i,j; \
     for (j=0; j<n; j++) { \
         for (i=0; i<m; i++) { \
-            _(B,j,i) = _(A,Piv[j],i); \
+            _(R,j,i) = _(A,Piv[j],i); \
         } \
     } \
 }
@@ -113,7 +113,7 @@
  *  L is n by n (lower triangular)
  *  B is n by m
  */
-#define L_SUB(L,X,B,n,m) { \
+#define L_SUB(X,L,B,n,m) { \
     int i,j,k; \
     for (i=0; i<m; i++) { \
         for (j=0; j<n; j++) { \
@@ -129,7 +129,7 @@
  *  U is n by n (upper triangular)
  *  B is n by m
  */
-#define U_SUB(U,X,B,n,m) { \
+#define U_SUB(X,U,B,n,m) { \
     int i,j,k; \
     for (i=0; i<m; i++) { \
         for (j=n-1; j>=0; j--) { \
@@ -160,14 +160,14 @@
     FLOAT C[ORDER][ORDER];
 #endif
 
-#define INV(A,Ainv,n,ORDER) { \
+#define INV(Ainv,A,n,ORDER) { \
 	INV_SETUP(ORDER) \
     int Piv[ORDER]; \
     IDENTITY(I,n); \
-    LU(A,L,U,Piv,n); \
-    PIVOT(I,Ipiv,Piv,n,n); \
-    L_SUB(L,C,Ipiv,n,n); \
-    U_SUB(U,Ainv,C,n,n); \
+    LU(L,U,A,Piv,n); \
+    PIVOT(Ipiv,I,Piv,n,n); \
+    L_SUB(C,L,Ipiv,n,n); \
+    U_SUB(Ainv,U,C,n,n); \
 }
 
 /*
@@ -186,13 +186,13 @@ PRINT(Ainv,n,n); \
  *  B (m by p)
  *  C (n by p)
  */
-#define MUL(A,B,C,n,m,p) { \
+#define MUL(R,A,B,n,m,p) { \
     int i,j,k; \
     for (i=0; i<n; i++) { \
         for (j=0; j<p; j++) { \
-            _(C,i,j) = 0.0f; \
+            _(R,i,j) = 0.0f; \
             for (k=0; k<m; k++) { \
-                _(C,i,j) += _(A,i,k) * _(B,k,j); \
+                _(R,i,j) += _(A,i,k) * _(B,k,j); \
             } \
         } \
     } \
@@ -205,13 +205,13 @@ PRINT(Ainv,n,n); \
  *  C (n by p)
  *  D (n by p)
  */
-#define MULADD(A,B,C,D,n,m,p) { \
+#define MULADD(R,A,B,C,n,m,p) { \
     int i,j,k; \
     for (i=0; i<n; i++) { \
         for (j=0; j<p; j++) { \
-            _(D,i,j) = _(C,i,j); \
+            _(R,i,j) = _(C,i,j); \
             for (k=0; k<m; k++) { \
-                _(D,i,j) += _(A,i,k) * _(B,k,j); \
+                _(R,i,j) += _(A,i,k) * _(B,k,j); \
             } \
         } \
     } \
@@ -224,7 +224,7 @@ PRINT(Ainv,n,n); \
  *  C (n by p)
  *  D (n by p)
  */
-#define GMULADD(A,B,C,D,alpha,beta,n,m,p) { \
+#define GMULADD(R,A,B,C,alpha,beta,n,m,p) { \
     int i,j,k; \
     float sum; \
     for (i=0; i<n; i++) { \
@@ -233,7 +233,7 @@ PRINT(Ainv,n,n); \
             for (k=0; k<m; k++) { \
                 sum += _(A,i,k) * _(B,k,j); \
             } \
-            _(D,i,j) = alpha * sum + beta * _(C,i,j); \
+            _(R,i,j) = alpha * sum + beta * _(C,i,j); \
         } \
     } \
 }

@@ -15,49 +15,49 @@ void dclIdentity( DCL_FLOAT * A, int n )
 	IDENTITY( A, n );
 }
 
-void dclTransp( const DCL_FLOAT * A, DCL_FLOAT * B, int n, int m)
+void dclTransp( DCL_FLOAT * R, const DCL_FLOAT * A, int n, int m )
 {
-	TRANSP(A,B,n,m);
+	TRANSP(R,A,n,m);
 }
 
-void dclLU( const DCL_FLOAT * A, DCL_FLOAT * L, DCL_FLOAT * U, int * Piv, int n )
+void dclLU( DCL_FLOAT * L, DCL_FLOAT * U, const DCL_FLOAT * A, int * Piv, int n )
 {
-	LU(A,L,U,Piv,n);
+	LU(L,U,A,Piv,n);
 }
 
-void dclPivot( const DCL_FLOAT * A, DCL_FLOAT * B, int * Piv, int n, int m )
+void dclPivot( DCL_FLOAT * R, const DCL_FLOAT * A, int * Piv, int n, int m )
 {
-	PIVOT(A,B,Piv,n,m);
+	PIVOT(R,A,Piv,n,m);
 }
 
-void dclLSub( const DCL_FLOAT * L, DCL_FLOAT * X, const DCL_FLOAT * B, int n, int m )
+void dclLSub( DCL_FLOAT * X, const DCL_FLOAT * L, const DCL_FLOAT * B, int n, int m )
 {
-	L_SUB(L,X,B,n,m);
+	L_SUB(X,L,B,n,m);
 }
 
-void dclUSub( const DCL_FLOAT * U, DCL_FLOAT * X, const DCL_FLOAT * B, int n, int m )
+void dclUSub( DCL_FLOAT * X, const DCL_FLOAT * U, const DCL_FLOAT * B, int n, int m )
 {
-	U_SUB(U,X,B,n,m);
+	U_SUB(X,U,B,n,m);
 }
 
-void dclInv( const DCL_FLOAT * A, DCL_FLOAT * Ainv, int n )
+void dclInv( DCL_FLOAT * Ainv, const DCL_FLOAT * A, int n )
 {
-	INV(A,Ainv,n,n);
+	INV(Ainv,A,n,n);
 }
 
-void dclMul( const DCL_FLOAT * A, const DCL_FLOAT * B, DCL_FLOAT * C, int n, int m, int p )
+void dclMul( DCL_FLOAT * R, const DCL_FLOAT * A, const DCL_FLOAT * B, int n, int m, int p )
 {
-	MUL(A,B,C,n,m,p);
+	MUL(R,A,B,n,m,p);
 }
 
-void dclMulAdd( const DCL_FLOAT * A, const DCL_FLOAT * B, const DCL_FLOAT * C, DCL_FLOAT * D, int n, int m, int p )
+void dclMulAdd( DCL_FLOAT * R, const DCL_FLOAT * A, const DCL_FLOAT * B, const DCL_FLOAT * C, int n, int m, int p )
 {
-	MULADD(A,B,C,D,n,m,p);
+	MULADD(R,A,B,C,n,m,p);
 }
 
-void dclGMulAdd( const DCL_FLOAT * A, const DCL_FLOAT * B, const DCL_FLOAT * C, DCL_FLOAT * D, DCL_FLOAT alpha, DCL_FLOAT beta, int n, int m, int p )
+void dclGMulAdd( DCL_FLOAT * R, const DCL_FLOAT * A, const DCL_FLOAT * B, const DCL_FLOAT * C, DCL_FLOAT alpha, DCL_FLOAT beta, int n, int m, int p )
 {
-	GMULADD(A,B,C,D,alpha,beta,n,m,p);
+	GMULADD(R,A,B,C,alpha,beta,n,m,p);
 }
 
 
