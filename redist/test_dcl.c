@@ -95,16 +95,18 @@ int main()
 		int n = 20;
 		int k = 12;
 
-		dclPrint( em1[0], 20, 12, 20 );
-		dclPrint( em2[0], 12, 20, 12 );
+		dclPrint( DMS(em1), 12, 20 );
+		dclPrint( DMS(em2), 20, 12 );
 
 		int i;
 		
 		double start = OGGetAbsoluteTime();
 		for( i = 0; i < 10000; i++ )
 		{
+			dclZero( DMS(emo), 20, 20 );
+
 			dcldgemm( 0, 0, m, n, k, 1.0, DMS(em1), DMS(em2), .1, DMS(emo) );
-			//cblas_dgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, 1.0, DMS(em1), DMS(em2), .1, DMS(emo) );
+			//cblas_dgemm( CblasColMajor, CblasNoTrans, CblasNoTrans, m, n, k, 1.0, DMS(em1), DMS(em2), .1, DMS(emo) );
 
 /*void cblas_dgemm(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE TransA,
                  CBLAS_TRANSPOSE TransB, const int M, const int N,
