@@ -152,12 +152,12 @@ void *GUIThread(void*v)
 }
 
 
-int main()
+int main( int argc, char ** argv )
 {
 	int magicon = 0;
 	double Start = OGGetAbsoluteTime();
 
-	ctx = survive_init( 0 );
+	ctx = survive_init( argc, argv );
 
 	//survive_install_button_fn(ctx, testprog_button_process);
 	survive_install_raw_pose_fn(ctx, testprog_raw_pose_process);

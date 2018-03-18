@@ -178,8 +178,8 @@ void survive_cal_install( struct SurviveContext * ctx )
 	}
 
 	const char * DriverName;
-//	const char * PreferredPoser = config_read_str(ctx->global_config_values, "ConfigPoser", "PoserCharlesSlow");
-	const char * PreferredPoser = config_read_str(ctx->global_config_values, "ConfigPoser", "PoserTurveyTori");
+//	const char * PreferredPoser = survive_config_reads(ctx, "configposer", "PoserCharlesSlow");
+	const char * PreferredPoser = survive_config_reads(ctx, "configposer", "PoserTurveyTori");
 	PoserCB PreferredPoserCB = 0;
 	const char * FirstPoser = 0;
 	printf( "Available posers:\n" );

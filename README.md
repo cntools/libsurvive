@@ -149,8 +149,8 @@ The default configuration of libsurvive requires both basestations and both cont
 Here is an example of a default configuration file that libsurvive will create as `config.json` in the current working directory when any libsurvive client is executed:
 
 ```
-"LighthouseCount":"2",
-"DefaultPoser":"PoserTurveyTori",
+"lighthousecount":"2",
+"defaultposer":"PoserTurveyTori",
 "RequiredTrackersForCal":"",
 "AllowAllTrackersForCal":"1",
 "ConfigPoser":"PoserTurveyTori",
@@ -170,7 +170,7 @@ Here is an example of a default configuration file that libsurvive will create a
 }
 ```
 
-To make libsurvive calibrate and run with one basestations, `LighthouseCount` needs to be changed to `1`.
+To make libsurvive calibrate and run with one basestation, `lighthousecount` needs to be changed to `1`.
 
 It may be annoying to always require the controllers for calibration. To make libsurvive calibrate by using the HMD, `RequiredTrackersForCal` needs to be changed to the magic string `HMD`. The strings for the controllers are `WM0` and `WM1`, short for  "Watchman". Other possible values are `WW0` (Wired Watchman) for a controller directly connected with USB or `TR0` for a Vive tracker directly connected with USB (When connected wirelessly, the tracker uses the dongles, so uses `WM0` or `WM1`).
 
@@ -179,8 +179,8 @@ Lastly, to ensure libsurvive calibrates using the HMD, `AllowAllTrackersForCal` 
 Here is an example for such an altered `config.json` file
 
 ```
-"LighthouseCount":"1",
-"DefaultPoser":"PoserTurveyTori",
+"lighthousecount":"1",
+"defaultposer":"PoserTurveyTori",
 "RequiredTrackersForCal":"HMD",
 "AllowAllTrackersForCal":"0",
 "ConfigPoser":"PoserTurveyTori",

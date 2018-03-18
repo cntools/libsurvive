@@ -181,6 +181,36 @@ FLT config_read_float(config_group *cg, const char *tag, const FLT def) {
 	return config_set_float(cg, tag, def);
 }
 
+static config_entry * sc_search(SurviveContext * ctx, const char *tag )
+{
+	config_entry *cv = find_config_entry(ctx->temporary_config_values, tag);
+	if( !cv ) cv = find_config_entry(ctx->global_config_values, tag);
+	return cv;
+}
+
+FLT survive_config_readf( SurviveContext * ctx, const char *tag, FLT def )
+{
+	config_entry * cv = sc_search( ctx, tag );
+	if( !cv ) return def;
+	return cv->numeric.f;
+}
+
+uint32_t survive_config_readi( SurviveContext * ctx, const char *tag, uint32_t def )
+{
+	config_entry * cv = sc_search( ctx, tag );
+	if( !cv ) return def;
+	return cv->numeric.i;
+}
+
+const char * survive_config_reads( SurviveContext * ctx, const char *tag, const char *def )
+{
+	config_entry * cv = sc_search( ctx, tag );
+	if( !cv ) return def;
+	return cv->data;
+}
+
+
+
 // TODO: Do something better than this:
 #define CFG_MIN(x,y) ((x) < (y)? (x): (y))
 

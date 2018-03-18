@@ -142,7 +142,7 @@ void * GuiThread( void * v )
 
 
 
-int main()
+int main( int argc, char ** argv )
 {
 /*
 	config_init();
@@ -161,7 +161,7 @@ int main()
 //	config_save("config.json");
 */
 
-	ctx = survive_init( 1 );
+	ctx = survive_init( argc, argv );
 
 	survive_install_light_fn( ctx,  my_light_process );
 	survive_install_imu_fn( ctx,  my_imu_process );
