@@ -181,34 +181,6 @@ FLT config_read_float(config_group *cg, const char *tag, const FLT def) {
 	return config_set_float(cg, tag, def);
 }
 
-static config_entry * sc_search(SurviveContext * ctx, const char *tag )
-{
-	config_entry *cv = find_config_entry(ctx->temporary_config_values, tag);
-	if( !cv ) cv = find_config_entry(ctx->global_config_values, tag);
-	return cv;
-}
-
-FLT survive_config_readf( SurviveContext * ctx, const char *tag, FLT def )
-{
-	config_entry * cv = sc_search( ctx, tag );
-	if( !cv ) return def;
-	return cv->numeric.f;
-}
-
-uint32_t survive_config_readi( SurviveContext * ctx, const char *tag, uint32_t def )
-{
-	config_entry * cv = sc_search( ctx, tag );
-	if( !cv ) return def;
-	return cv->numeric.i;
-}
-
-const char * survive_config_reads( SurviveContext * ctx, const char *tag, const char *def )
-{
-	config_entry * cv = sc_search( ctx, tag );
-	if( !cv ) return def;
-	return cv->data;
-}
-
 
 
 // TODO: Do something better than this:
@@ -469,5 +441,86 @@ void config_read(SurviveContext* sctx, const char* path) {
 	json_begin_object = NULL;
 	json_end_object = NULL;
 	json_tag_value = NULL;
+}
+
+
+
+
+static config_entry * sc_search(SurviveContext * ctx, const char *tag )
+{
+	config_entry *cv = find_config_entry(ctx->temporary_config_values, tag);
+	if( !cv ) cv = find_config_entry(ctx->global_config_values, tag);
+	return cv;
+}
+
+
+
+FLT survive_configf( SurviveContext * ctx, const char *tag, char flags, FLT def )
+{
+	if( !(flags & SC_OVERRIDE) )
+	{
+		config_entry * cv = sc_search( ctx, tag );
+		if( cv )
+			return cv->numeric.f;
+	}
+
+	//If override is flagged, or, we can't find the variable, ,continue on.
+	if( flags & SC_SETCONFIG )
+	{
+		config_set_float( ctx->temporary_config_values, tag, def );
+		config_set_float( ctx->global_config_values, tag, def );
+	}
+	else if( flags & SC_SET )
+	{
+		config_set_float( ctx->temporary_config_values, tag, def );
+	}
+
+	return def;
+}
+
+uint32_t survive_configi( SurviveContext * ctx, const char *tag, char flags, uint32_t def )
+{
+	if( !(flags & SC_OVERRIDE) )
+	{
+		config_entry * cv = sc_search( ctx, tag );
+		if( cv )
+			return cv->numeric.i;
+	}
+
+	//If override is flagged, or, we can't find the variable, ,continue on.
+	if( flags & SC_SETCONFIG )
+	{
+		config_set_uint32( ctx->temporary_config_values, tag, def );
+		config_set_uint32( ctx->global_config_values, tag, def );
+	}
+	else if( flags & SC_SET )
+	{
+		config_set_uint32( ctx->temporary_config_values, tag, def );
+	}
+
+	return def;
+}
+
+const char * survive_configs( SurviveContext * ctx, const char *tag, char flags, const char *def )
+{
+	if( !(flags & SC_OVERRIDE) )
+	{
+		config_entry * cv = sc_search( ctx, tag );
+		if( cv )
+			return cv->data;
+	}
+
+	//If override is flagged, or, we can't find the variable, ,continue on.
+	if( flags & SC_SETCONFIG )
+	{
+		config_set_str( ctx->temporary_config_values, tag, def );
+		config_set_str( ctx->global_config_values, tag, def );
+	}
+	else if( flags & SC_SET )
+	{
+		config_set_str( ctx->temporary_config_values, tag, def );
+	}
+
+	return def;
 }
 

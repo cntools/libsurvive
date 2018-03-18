@@ -203,7 +203,7 @@ static int LoadConfig(SurvivePlaybackData *sv, SurviveObject *so) {
 }
 
 int DriverRegPlayback(SurviveContext *ctx) {
-	const char *playback_file = config_read_str(ctx->global_config_values, "PlaybackFile", "");
+	const char *playback_file = survive_configs(ctx, "playbackfile", SC_SETCONFIG, "");
 
 	if (strlen(playback_file) == 0) {
 		return 0;
@@ -212,8 +212,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	SurvivePlaybackData *sp = calloc(1, sizeof(SurvivePlaybackData));
 	sp->ctx = ctx;
 	sp->playback_dir = playback_file;
-	sp->time_factor =
-		config_read_float(ctx->global_config_values, "PlaybackFactor", 1.);
+	sp->time_factor = survive_configf(ctx, "playbackfactor", SC_SETCONFIG, 1.f);
 
 	printf("%s\n", playback_file);
 

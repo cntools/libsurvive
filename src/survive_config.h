@@ -1,5 +1,7 @@
 // (C) 2017 <>< Joshua Allen, Under MIT/x11 License.
-
+//
+// This header is for handling internal parameter values.  Most accesses should be done through functions like survive_config
+//
 
 #ifndef _SURVIVE_CONFIG_H
 #define _SURVIVE_CONFIG_H
@@ -57,11 +59,5 @@ FLT config_read_float(config_group *cg, const char *tag, const FLT def);
 uint16_t config_read_float_array(config_group *cg, const char *tag, FLT* values, const FLT* def, uint8_t count);
 uint32_t config_read_uint32(config_group *cg, const char *tag, const uint32_t def);
 const char* config_read_str(config_group *cg, const char *tag, const char *def);
-
-//These functions search both the stored-general and temporary sections for a parameter and return it.
-//FLT survive_config_readf( SurviveContext * ctx, const char *tag, FLT def );
-//uint32_t survive_config_readi( SurviveContext * ctx, const char *tag, uint32_t def );
-//const char * survive_config_reads( SurviveContext * ctx, const char *tag, const char *def );
-//They're actually defined in survive.h for users as well.
 
 #endif

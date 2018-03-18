@@ -1712,7 +1712,7 @@ void init_SurviveObject(SurviveObject* so) {
 
 int DriverRegHTCVive( SurviveContext * ctx )
 {
-	const char *playback_dir = config_read_str(ctx->global_config_values, "PlaybackFile", "");
+	const char *playback_dir = survive_configs(ctx, "playbackfile", SC_SETCONFIG, "");
 	if(strlen(playback_dir) != 0) {
 	  SV_INFO("Playback is active; disabling USB driver");
 	  return 0;
