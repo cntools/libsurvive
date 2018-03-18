@@ -8,6 +8,7 @@
 // to not include it at all on any stripped-down versions of libsurvive.
 //
 
+
 #include "survive_cal.h"
 #include "survive_internal.h"
 #include "survive_reproject.h"
@@ -178,8 +179,9 @@ void survive_cal_install( struct SurviveContext * ctx )
 	}
 
 	const char * DriverName;
-//	const char * PreferredPoser = survive_config_reads(ctx, "configposer", "PoserCharlesSlow");
-	const char * PreferredPoser = survive_config_reads(ctx, "configposer", "PoserTurveyTori");
+//	const char * PreferredPoser = survive_configs(ctx, "configposer", "PoserCharlesSlow");
+	const char * PreferredPoser = survive_configs(ctx, "configposer", SC_SETCONFIG, "PoserTurveyTori");
+
 	PoserCB PreferredPoserCB = 0;
 	const char * FirstPoser = 0;
 	printf( "Available posers:\n" );

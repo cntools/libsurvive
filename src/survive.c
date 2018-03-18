@@ -106,7 +106,6 @@ void survive_verify_FLT_size(uint32_t user_size) {
 
 SurviveContext * survive_init_internal( int argc, char * const * argv )
 {
-
 #ifdef RUNTIME_SYMNUM
 	if( !did_runtime_symnum )
 	{
@@ -134,14 +133,58 @@ SurviveContext * survive_init_internal( int argc, char * const * argv )
 	ctx->lh_config = malloc( sizeof(config_group) * NUM_LIGHTHOUSES);
 
 	//initdata
-	// ->argc ->argp
 	init_config_group(ctx->global_config_values,10);
 	init_config_group(ctx->temporary_config_values,20);
 	init_config_group(&ctx->lh_config[0],10);
 	init_config_group(&ctx->lh_config[1],10);
 
-	config_read(ctx, survive_config_reads( ctx, "configfile", "config.json" ) );
-	ctx->activeLighthouses = survive_config_readi( ctx, "lighthousecount", 2 );
+	//Process command-line parameters.
+	char * const * argvend = &argv[argc];
+	char * const * av = argv+1;
+	int showhelp = 0;
+	for( ; av != argvend; av++ )
+	{
+		if( (*av)[0] != '-' )
+			showhelp = 1;
+		else
+		{
+			const char * vartoupdate = 0;
+
+			switch( (*av)[1] )
+			{
+			case '-': vartoupdate = &(*av)[2];    break;
+			case 'h': showhelp = 1; break;
+			case 'p': vartoupdate = "defaultposer";	break;
+			case 'l': vartoupdate = "lighthousecount";  break;
+			case 'c': vartoupdate = "configfile";   break;
+			default:
+				fprintf( stderr, "Error: unknown parameter %s\n", *av );
+				showhelp = 1;
+			}
+
+			if( vartoupdate )
+			{
+				survive_configs( ctx, *av, SC_OVERRIDE, *(av+1) );
+				av++;
+			}
+		}
+	}
+	if( showhelp )
+	{
+		fprintf( stderr, "libsurvive - usage:\n" );
+		fprintf( stderr, " --[parameter] [value]   - sets parameter\n" );
+		fprintf( stderr, " -h                      - shows help.\n" );
+		fprintf( stderr, " -p [poser]              - use a specific defaultposer.\n" );
+		fprintf( stderr, " -l [lighthouse count]   - use a specific number of lighthoses.\n" );
+		fprintf( stderr, " -c [config file]        - set config file\n" );
+		fprintf( stderr, " -p [lighthouse count]   - use a specific number of lighthoses.\n" );
+
+		//XXX: TODO: Should this just exit(-1)?
+		return 0;
+	}
+
+	config_read(ctx, survive_configs( ctx, "configfile", SC_GET, "config.json" ) );
+	ctx->activeLighthouses = survive_configi( ctx, "lighthousecount", SC_SETCONFIG, 2 );
 
 	config_read_lighthouse(ctx->lh_config, &(ctx->bsd[0]), 0);
 	config_read_lighthouse(ctx->lh_config, &(ctx->bsd[1]), 1);
@@ -173,7 +216,7 @@ int survive_startup( SurviveContext * ctx )
 	const char * DriverName;
 
 	//const char * PreferredPoser = survive_config_reads(ctx->global_config_values, "defaultposer", "PoserDummy");
-	const char * PreferredPoser = survive_config_reads( ctx, "defaultposer", "PoserTurveyTori");
+	const char * PreferredPoser = survive_configs( ctx, "defaultposer", SC_SETCONFIG, "PoserTurveyTori");
 	PoserCB PreferredPoserCB = 0;
 	const char * FirstPoser = 0;
 	printf( "Available posers:\n" );
@@ -206,7 +249,7 @@ int survive_startup( SurviveContext * ctx )
 	}
 
 	// saving the config extra to make sure that the user has a config file they can change.
-	config_save(ctx, survive_config_reads( ctx, "configfile", "config.json" ) );
+	config_save(ctx, survive_configs( ctx, "configfile", SC_GET, "config.json" ) );
 
 	ctx->state = SURVIVE_RUNNING;
 
@@ -367,7 +410,7 @@ void survive_close( SurviveContext * ctx )
 	}
 
 
-	config_save(ctx, survive_config_reads( ctx, "configfile", "config.json" ) );
+	config_save(ctx, survive_configs( ctx, "configfile", SC_GET, "config.json" ) );
 
 	destroy_config_group(ctx->global_config_values);
 	destroy_config_group(ctx->temporary_config_values);

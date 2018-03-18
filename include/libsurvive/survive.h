@@ -226,9 +226,14 @@ int survive_simple_inflate( SurviveContext * ctx, const char * input, int inlen,
 int survive_send_magic( SurviveContext * ctx, int magic_code, void * data, int datalen );
 
 //These functions search both the stored-general and temporary sections for a parameter and return it.
-FLT survive_config_readf( SurviveContext * ctx, const char *tag, FLT def );
-uint32_t survive_config_readi( SurviveContext * ctx, const char *tag, uint32_t def );
-const char * survive_config_reads( SurviveContext * ctx, const char *tag, const char *def );
+#define SC_GET 0		//Get, only.
+#define SC_SET 1		//Set, if not present
+#define SC_OVERRIDE 2	//Set, to new default value.
+#define SC_SETCONFIG 4	//Set, both in-memory and config file.  Use in conjunction with SC_OVERRIDE.
+
+FLT survive_configf( SurviveContext * ctx, const char *tag, char flags, FLT def );
+uint32_t survive_configi( SurviveContext * ctx, const char *tag, char flags, uint32_t def );
+const char * survive_configs( SurviveContext * ctx, const char *tag, char flags, const char *def );
 
 
 //Install the calibrator.
@@ -248,7 +253,7 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 void survive_default_button_process(SurviveObject * so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val);
 void survive_default_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose);
 void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *pose);
-int survive_default_htc_config_process(SurviveObject *so, char *ct0conf, int len);
+int  survive_default_htc_config_process(SurviveObject *so, char *ct0conf, int len);
 
 
 
