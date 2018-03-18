@@ -166,6 +166,7 @@ struct SurviveContext
 
 	struct config_group* global_config_values;
 	struct config_group* lh_config; //lighthouse configs
+	struct config_group* temporary_config_values; //Set per-session, from command-line. Not saved but override global_config_values
 
 	//Calibration data:
 	int activeLighthouses;
@@ -195,16 +196,17 @@ void survive_verify_FLT_size(uint32_t user_size); // Baked in size of FLT to ver
 
 
 
-SurviveContext * survive_init_internal( int argc, char ** argv );
-static inline SurviveContext * survive_init( int argc, char ** argv )
+SurviveContext * survive_init_internal( int argc, char * const * argv );
+static inline SurviveContext * survive_init( int argc, char * const * argv )
 {
 	survive_verify_FLT_size(sizeof(FLT));
-	return survive_init_internal(initdata);
+	return survive_init_internal(argc, argv);
 }
 
 
 //For any of these, you may pass in 0 for the function pointer to use default behavior.
 //In general unless you are doing wacky things like recording or playing back data, you won't need to use this.
+void survive_install_htc_config_fn( SurviveContext *ctx, htc_config_func fbp );
 void survive_install_info_fn( SurviveContext * ctx,  text_feedback_func fbp );
 void survive_install_error_fn( SurviveContext * ctx,  text_feedback_func fbp );
 void survive_install_light_fn( SurviveContext * ctx,  light_process_func fbp );
@@ -221,8 +223,13 @@ SurviveObject * survive_get_so_by_name( SurviveContext * ctx, const char * name 
 
 //Utilitiy functions.
 int survive_simple_inflate( SurviveContext * ctx, const char * input, int inlen, char * output, int outlen );
-
 int survive_send_magic( SurviveContext * ctx, int magic_code, void * data, int datalen );
+
+//These functions search both the stored-general and temporary sections for a parameter and return it.
+FLT survive_config_readf( SurviveContext * ctx, const char *tag, FLT def );
+uint32_t survive_config_readi( SurviveContext * ctx, const char *tag, uint32_t def );
+const char * survive_config_reads( SurviveContext * ctx, const char *tag, const char *def );
+
 
 //Install the calibrator.
 void survive_cal_install( SurviveContext * ctx );  //XXX This will be removed if not already done so.
@@ -242,6 +249,8 @@ void survive_default_button_process(SurviveObject * so, uint8_t eventType, uint8
 void survive_default_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose);
 void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *pose);
 int survive_default_htc_config_process(SurviveObject *so, char *ct0conf, int len);
+
+
 
 ////////////////////// Survive Drivers ////////////////////////////
 

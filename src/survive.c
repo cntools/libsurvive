@@ -104,7 +104,7 @@ void survive_verify_FLT_size(uint32_t user_size) {
   }
 }
 
-SurviveContext * survive_init_internal( SurviveInitData * initdata )
+SurviveContext * survive_init_internal( int argc, char * const * argv )
 {
 
 #ifdef RUNTIME_SYMNUM
@@ -130,16 +130,19 @@ SurviveContext * survive_init_internal( SurviveInitData * initdata )
 	ctx->state = SURVIVE_STOPPED;
 
 	ctx->global_config_values = malloc( sizeof(config_group) );
+	ctx->temporary_config_values = malloc( sizeof(config_group) );
 	ctx->lh_config = malloc( sizeof(config_group) * NUM_LIGHTHOUSES);
 
 	//initdata
 	// ->argc ->argp
 	init_config_group(ctx->global_config_values,10);
+	init_config_group(ctx->temporary_config_values,20);
 	init_config_group(&ctx->lh_config[0],10);
 	init_config_group(&ctx->lh_config[1],10);
 
-	config_read(ctx, "config.json");
-	ctx->activeLighthouses = config_read_uint32(ctx->global_config_values, "LighthouseCount", 2);
+	config_read(ctx, survive_config_reads( ctx, "configfile", "config.json" ) );
+	ctx->activeLighthouses = survive_config_readi( ctx, "lighthousecount", 2 );
+
 	config_read_lighthouse(ctx->lh_config, &(ctx->bsd[0]), 0);
 	config_read_lighthouse(ctx->lh_config, &(ctx->bsd[1]), 1);
 
@@ -169,8 +172,8 @@ int survive_startup( SurviveContext * ctx )
 
 	const char * DriverName;
 
-	//const char * PreferredPoser = config_read_str(ctx->global_config_values, "DefaultPoser", "PoserDummy");
-	const char * PreferredPoser = config_read_str(ctx->global_config_values, "DefaultPoser", "PoserTurveyTori");
+	//const char * PreferredPoser = survive_config_reads(ctx->global_config_values, "defaultposer", "PoserDummy");
+	const char * PreferredPoser = survive_config_reads( ctx, "defaultposer", "PoserTurveyTori");
 	PoserCB PreferredPoserCB = 0;
 	const char * FirstPoser = 0;
 	printf( "Available posers:\n" );
@@ -203,7 +206,7 @@ int survive_startup( SurviveContext * ctx )
 	}
 
 	// saving the config extra to make sure that the user has a config file they can change.
-	config_save(ctx, "config.json");
+	config_save(ctx, survive_config_reads( ctx, "configfile", "config.json" ) );
 
 	ctx->state = SURVIVE_RUNNING;
 
@@ -364,9 +367,10 @@ void survive_close( SurviveContext * ctx )
 	}
 
 
-	config_save(ctx, "config.json");
+	config_save(ctx, survive_config_reads( ctx, "configfile", "config.json" ) );
 
 	destroy_config_group(ctx->global_config_values);
+	destroy_config_group(ctx->temporary_config_values);
 	destroy_config_group(ctx->lh_config);
 
 	for (i = 0; i < ctx->objs_ct; i++) {
@@ -379,6 +383,7 @@ void survive_close( SurviveContext * ctx )
 	free( ctx->drivermagics );
 	free( ctx->drivercloses );
 	free( ctx->global_config_values );
+	free( ctx->temporary_config_values );
 	free( ctx->lh_config );
 
 	free( ctx );
