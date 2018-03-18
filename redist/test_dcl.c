@@ -91,7 +91,7 @@ void compareToCblasTrans() {
 	cvMulTransposed(&Em1, &Em1tEm1, 1, 0, 1);
 	print_mat(&Em1tEm1);
 
-	test_dcldgemm_speed("Trans", 1, 0,
+	test_dcldgemm_speed("Trans", 0, 0,
 						n, // # of rows in OP(A) == em1' -- 20
 						n, // # of cols in OP(B) == em1 -- 20
 						m, // # of cols in OP(A) == em1' -- 12
