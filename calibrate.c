@@ -406,6 +406,9 @@ void * SurviveThread(void *jnk)
 	survive_install_imu_fn( ctx,  my_imu_process );
 	survive_install_angle_fn( ctx, my_angle_process );
 
+	survive_startup( ctx );
+
+
 	survive_cal_install( ctx );
 
 	if( !ctx )

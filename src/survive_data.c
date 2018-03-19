@@ -6,9 +6,83 @@
 #include <string.h>
 #include <math.h> /* for sqrt */
 
-#define USE_TURVEYBIGUATOR
+//#define USE_TURVEYBIGUATOR
+#define CHARLES_STATIBUATOR
 
-#ifdef USE_TURVEYBIGUATOR
+#if defined(USE_CHARLESSTATIBGUATOR)
+
+/*
+	The operating principle of 
+
+*/
+
+
+
+typedef struct
+{
+	uint32_t next_expected_time;
+} statbiguator_beamtracker;
+
+typedef struct
+{
+	statbiguator_beamtracker * beams;
+	
+	//NUM_LIGHTHOUSES first, then so->nr_locations
+
+} statbiguator_data;
+
+void handle_lightcap2( SurviveObject * so, LightcapElement * le )
+{
+	SurviveContext * ctx = so->ctx;
+
+	if (so->disambiguator_data == NULL)
+	{
+		fprintf(stderr, "Initializing Disambiguator Data\n");
+		so->disambiguator_data = malloc(sizeof(lightcap2_data));
+		memset(so->disambiguator_data, 0, sizeof(lightcap2_data));
+	}
+
+	
+	if( disambiguator_data
+}
+
+/*
+
+		ctx->lightproc( so, le->sensor_id, acode, offset_from, le->timestamp, le->length, whichlh );
+		// first, send out the sync pulse data for the last round (for OOTX decoding
+		{
+			if (lcd->per_sweep.lh_max_pulse_length[0] != 0)
+			{
+				so->ctx->lightproc(
+					so,
+					-1,
+					handle_lightcap2_getAcodeFromSyncPulse(so, lcd->per_sweep.lh_max_pulse_length[0]),
+					lcd->per_sweep.lh_max_pulse_length[0],
+					lcd->per_sweep.lh_start_time[0],
+					0,
+					0);
+			}
+			if (lcd->per_sweep.lh_max_pulse_length[1] != 0)
+			{
+				so->ctx->lightproc(
+					so,
+					-2,
+					handle_lightcap2_getAcodeFromSyncPulse(so, lcd->per_sweep.lh_max_pulse_length[1]),
+					lcd->per_sweep.lh_max_pulse_length[1],
+					lcd->per_sweep.lh_start_time[1],
+					0,
+					1);
+			}
+		}
+*/
+
+
+
+
+//	handle_lightcap2(so,le);
+
+
+#elif defined( USE_TURVEYBIGUATOR )
 
 static const float tau_table[33] = { 0, 0, 0, 1.151140982, 1.425, 1.5712213707, 1.656266074, 1.7110275587, 1.7490784054,
 	1.7770229476, 1.798410005, 1.8153056661, 1.8289916275, 1.8403044103, 1.8498129961, 1.8579178211,
@@ -469,6 +543,11 @@ void handle_lightcap2( SurviveObject * so, LightcapElement * le )
 #endif
 
 
+
+
+
+
+
 int32_t decode_acode(uint32_t length, int32_t main_divisor) {
 	//+50 adds a small offset and seems to help always get it right. 
 	//Check the +50 in the future to see how well this works on a variety of hardware.
@@ -513,7 +592,7 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 {
 	SurviveContext * ctx = so->ctx;
 
-#ifdef USE_TURVEYBIGUATOR
+#if defined (USE_TURVEYBIGUATOR) || defined(USE_CHARLESSTATIBGUATOR)
 	handle_lightcap2(so,le);
 	return;
 
@@ -605,7 +684,10 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 				{
 					so->last_sync_length[1] = 0;
 				}
+
+				//This is triggered on the first full sync pulse.
 				so->last_sync_time[ssn] = le->timestamp;
+				//printf( "A: %d\n", so->last_sync_time[ssn] );	
 				so->last_sync_length[ssn] = le->length;
 			}
 			else if( so->sync_set_number == -1 )
@@ -623,7 +705,9 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 				}
 				else
 				{
+					//This is triggered on the slave base station's sync pulse.
 					so->last_sync_time[ssn] = le->timestamp;
+					//printf( "B: %d\n", so->last_sync_time[ssn] );
 					so->last_sync_length[ssn] = le->length;
 				}
 			}
@@ -635,6 +719,7 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 			{
 				if( so->last_sync_time[ssn] > le->timestamp )
 				{
+					//printf( "C: %d\n", so->last_sync_time[ssn] );
 					so->last_sync_time[ssn] = le->timestamp;
 					so->last_sync_length[ssn] = le->length;
 				}
@@ -683,7 +768,7 @@ void handle_lightcap( SurviveObject * so, LightcapElement * le )
 		{
 			int whichlh;
 			if( acode < 0 ) whichlh = 1;
-			else whichlh = !(acode>>2);
+			else whichlh = (acode>>2);
 			ctx->lightproc( so, le->sensor_id, acode, offset_from, le->timestamp, le->length, whichlh );
 		}
 	}

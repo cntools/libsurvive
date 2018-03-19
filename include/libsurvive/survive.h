@@ -216,8 +216,8 @@ void survive_install_button_fn(SurviveContext * ctx, button_process_func fbp);
 void survive_install_raw_pose_fn(SurviveContext * ctx, raw_pose_func fbp);
 void survive_install_lighthouse_pose_fn(SurviveContext *ctx, lighthouse_pose_func fbp);
 int survive_startup( SurviveContext * ctx );
-void survive_close( SurviveContext * ctx );
 int survive_poll( SurviveContext * ctx );
+void survive_close( SurviveContext * ctx );
 
 SurviveObject * survive_get_so_by_name( SurviveContext * ctx, const char * name );
 

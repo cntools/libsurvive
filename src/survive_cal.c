@@ -119,6 +119,11 @@ void survive_cal_install( struct SurviveContext * ctx )
 	int i;
 	struct SurviveCalData * cd = ctx->calptr = calloc( 1, sizeof( struct SurviveCalData ) );
 
+	if( ctx->state != SURVIVE_RUNNING )
+	{
+		SV_ERROR( "Error: You cannot install a calibrator until the system is running." );
+	}
+
 	for( i = 0; i < NUM_LIGHTHOUSES; i++ )
 	{
 		ootx_init_decoder_context(&cd->ootx_decoders[i]);
@@ -182,19 +187,27 @@ void survive_cal_install( struct SurviveContext * ctx )
 //	const char * PreferredPoser = survive_configs(ctx, "configposer", "PoserCharlesSlow");
 	const char * PreferredPoser = survive_configs(ctx, "configposer", SC_SETCONFIG, "PoserTurveyTori");
 
-	PoserCB PreferredPoserCB = 0;
-	const char * FirstPoser = 0;
-	printf( "Available posers:\n" );
+	SV_INFO( "Trying to load poser %s for cal.", PreferredPoser );
+	PoserCB SelectedPoserCB = 0;
+	const char * SelectedPoserName = 0;
 	i = 0;	
 	while( ( DriverName = GetDriverNameMatching( "Poser", i++ ) ) )
 	{
 		PoserCB p = GetDriver( DriverName );
-		if( !PreferredPoserCB ) PreferredPoserCB = p;
+		if( !SelectedPoserCB )
+		{
+			SelectedPoserCB = p;
+			SelectedPoserName = DriverName;
+		}
 		int ThisPoser = strcmp( DriverName, PreferredPoser ) == 0;
-		if( ThisPoser ) PreferredPoserCB = p;
+		if( ThisPoser )
+		{
+			SelectedPoserCB = p;
+			SelectedPoserName = DriverName;
+		}
 	}
-	cd->ConfigPoserFn = PreferredPoserCB;
-	printf( "Got config poser: %p\n", cd->ConfigPoserFn );
+	cd->ConfigPoserFn = SelectedPoserCB;
+	SV_INFO( "Got config poser: %s (%p)", SelectedPoserName, cd->ConfigPoserFn );
 	ootx_packet_clbk = ootx_packet_clbk_d;
 
 	ctx->calptr = cd;
@@ -207,7 +220,7 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 	struct SurviveCalData * cd = ctx->calptr;
 
 	if( !cd ) return;
-	
+
 	switch( cd->stage )
 	{
 	default:
@@ -222,6 +235,7 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 				//fprintf(stderr, "%s\n", so->codename);
 			int lhid = -sensor_id-1;
 			// Take the OOTX data from the first device.  (if using HMD, WM0, WM1 only, this will be HMD)
+
 			if( lhid < NUM_LIGHTHOUSES && so == cd->poseobjects[0]  ) 
 			{
 				uint8_t dbit = (acode & 2)>>1;

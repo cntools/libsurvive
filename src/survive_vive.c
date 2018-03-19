@@ -339,6 +339,7 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 {
 	SurviveContext * ctx = sv->ctx;
 #ifdef HIDAPI
+	SV_INFO( "Vive starting in HIDAPI mode." );
 	if( !GlobalRXUSBMutx )
 	{
 		GlobalRXUSBMutx = OGCreateMutex();
@@ -403,6 +404,8 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 	}
 
 #else
+	SV_INFO( "Vive starting in libusb mode." );
+
 	int r = libusb_init( &sv->usbctx );
 	if( r )
 	{
@@ -495,6 +498,13 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 	libusb_free_device_list( devs, 1 );
 #endif
 
+	//Add the drivers - this must happen BEFORE we actually attach interfaces.
+	if( sv->udev[USB_DEV_HMD_IMU_LH]  ) { survive_add_object( ctx, hmd ); }
+	if( sv->udev[USB_DEV_WATCHMAN1]   ) { survive_add_object( ctx, wm0 ); }
+	if( sv->udev[USB_DEV_WATCHMAN2]   ) { survive_add_object( ctx, wm1 ); }
+	if( sv->udev[USB_DEV_TRACKER0]    ) { survive_add_object( ctx, tr0 ); }
+	if( sv->udev[USB_DEV_W_WATCHMAN1] ) { survive_add_object( ctx, ww0 ); }
+
 	if( sv->udev[USB_DEV_HMD] && AttachInterface( sv, hmd, USB_IF_HMD,        sv->udev[USB_DEV_HMD],        0x81, survive_data_cb, "Mainboard" ) ) { return -6; }
 	if( sv->udev[USB_DEV_HMD_IMU_LH] && AttachInterface( sv, hmd, USB_IF_HMD_IMU_LH, sv->udev[USB_DEV_HMD_IMU_LH], 0x81, survive_data_cb, "Lighthouse" ) ) { return -7; }
 	if( sv->udev[USB_DEV_WATCHMAN1] && AttachInterface( sv, wm0, USB_IF_WATCHMAN1,  sv->udev[USB_DEV_WATCHMAN1],  0x81, survive_data_cb, "Watchman 1" ) ) { return -8; }
@@ -532,7 +542,6 @@ int survive_vive_send_magic(SurviveContext * ctx, void * drv, int magic_code, vo
 {
 	int r;
 	SurviveViveData * sv = drv;
-	printf( "*CALLING %p %p\n", ctx, sv );
 
 	//XXX TODO: Handle haptics, etc.
 	int turnon = magic_code;
@@ -700,6 +709,7 @@ int survive_vive_send_magic(SurviveContext * ctx, void * drv, int magic_code, vo
 int survive_vive_send_haptic(SurviveObject * so, uint8_t reserved, uint16_t pulseHigh, uint16_t pulseLow, uint16_t repeatCount)
 {
 	SurviveViveData *sv = (SurviveViveData*)so->driver;
+	SurviveContext * ctx = so->ctx;
 
 	if (NULL == sv)
 	{
@@ -719,7 +729,7 @@ int survive_vive_send_haptic(SurviveObject * so, uint8_t reserved, uint16_t puls
 	//SV_INFO("UCR: %d", r);
 	if (r != sizeof(vive_controller_haptic_pulse)) 
 	{
-		printf("HAPTIC FAILED **************************\n"); 
+		SV_ERROR("HAPTIC FAILED **************************\n"); 
 		return -1;
 	}
 
@@ -1135,7 +1145,6 @@ SurviveObject *so;
 
 static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 {
-
 	uint8_t startread[29];
 	memcpy( startread, readdata, 29 );
 
@@ -1438,7 +1447,6 @@ void survive_data_cb( SurviveUSBInterface * si )
 		
 	}
 #endif 
-
 	switch( si->which_interface_am_i )
 	{
 	case USB_IF_HMD:
@@ -1673,7 +1681,7 @@ static int LoadConfig( SurviveViveData * sv, SurviveObject * so, int devno, int 
 	SurviveContext * ctx = sv->ctx;
 	char * ct0conf = 0;
 	int len = survive_get_config( &ct0conf, sv, devno, iface, extra_magic );
-	printf( "Loading config: %d\n", len );
+	SV_INFO( "Loading config: %d", len );
 
 	if( len < 0 )
 	{
@@ -1736,9 +1744,19 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	#endif
 
 	//USB must happen last.
-		if (survive_usb_init(sv, hmd, wm0, wm1, tr0, ww0)) {
+	if (survive_usb_init(sv, hmd, wm0, wm1, tr0, ww0)) {
 			// TODO: Cleanup any libUSB stuff sitting around.
 			goto fail_gracefully;
+	}
+
+	if( sv->udev[USB_DEV_HMD_IMU_LH] ||
+	    sv->udev[USB_DEV_WATCHMAN1]  ||
+	    sv->udev[USB_DEV_WATCHMAN2]  ||
+	    sv->udev[USB_DEV_TRACKER0]   ||
+	    sv->udev[USB_DEV_W_WATCHMAN1] ) {
+	  survive_add_driver( ctx, sv, survive_vive_usb_poll, survive_vive_close, survive_vive_send_magic );
+	} else {
+	  SV_ERROR("No USB devices detected");
 	}
 
 	//Next, pull out the config stuff.
@@ -1750,22 +1768,6 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	if( sv->udev[USB_DEV_TRACKER0]  && LoadConfig( sv, tr0, 4, 0, 0 )) { SV_INFO( "Tracker 0 config issue." ); }
 	if( sv->udev[USB_DEV_W_WATCHMAN1]  && LoadConfig( sv, ww0, 5, 0, 0 )) { SV_INFO( "Wired Watchman 0 config issue." ); }
 
-	//Add the drivers.
-	if( sv->udev[USB_DEV_HMD_IMU_LH]       ) { survive_add_object( ctx, hmd ); }
-	if( sv->udev[USB_DEV_WATCHMAN1] ) { survive_add_object( ctx, wm0 ); }
-	if( sv->udev[USB_DEV_WATCHMAN2] ) { survive_add_object( ctx, wm1 ); }
-	if( sv->udev[USB_DEV_TRACKER0]  ) { survive_add_object( ctx, tr0 ); }
-	if( sv->udev[USB_DEV_W_WATCHMAN1]  ) { survive_add_object( ctx, ww0 ); }
-
-	if( sv->udev[USB_DEV_HMD_IMU_LH] ||
-	    sv->udev[USB_DEV_WATCHMAN1]  ||
-	    sv->udev[USB_DEV_WATCHMAN2]  ||
-	    sv->udev[USB_DEV_TRACKER0]   ||
-	    sv->udev[USB_DEV_W_WATCHMAN1] ) {
-	  survive_add_driver( ctx, sv, survive_vive_usb_poll, survive_vive_close, survive_vive_send_magic );
-	} else {
-	  fprintf(stderr, "No USB devices detected\n");
-	}
 
 	return 0;
 fail_gracefully:
