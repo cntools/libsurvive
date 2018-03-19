@@ -449,7 +449,10 @@ void config_read(SurviveContext* sctx, const char* path) {
 static config_entry * sc_search(SurviveContext * ctx, const char *tag )
 {
 	config_entry *cv = find_config_entry(ctx->temporary_config_values, tag);
-	if( !cv ) cv = find_config_entry(ctx->global_config_values, tag);
+	if( !cv )
+	{
+		cv = find_config_entry(ctx->global_config_values, tag);
+	}
 	return cv;
 }
 

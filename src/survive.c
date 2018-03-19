@@ -164,13 +164,22 @@ SurviveContext * survive_init_internal( int argc, char * const * argv )
 
 			if( vartoupdate )
 			{
-				survive_configs( ctx, *av, SC_OVERRIDE, *(av+1) );
-				av++;
+				if( av+1 == argvend )
+				{
+					fprintf( stderr, "Error: expected parameter after %s\n", *av );
+					showhelp = 1;
+				}
+				else
+				{
+					survive_configs( ctx, *av+2, SC_OVERRIDE|SC_SET, *(av+1) );
+					av++;
+				}
 			}
 		}
 	}
 	if( showhelp )
 	{
+		//Can't use SV_ERROR here since we don't have a context to send to yet.
 		fprintf( stderr, "libsurvive - usage:\n" );
 		fprintf( stderr, " --[parameter] [value]   - sets parameter\n" );
 		fprintf( stderr, " -h                      - shows help.\n" );
@@ -178,8 +187,6 @@ SurviveContext * survive_init_internal( int argc, char * const * argv )
 		fprintf( stderr, " -l [lighthouse count]   - use a specific number of lighthoses.\n" );
 		fprintf( stderr, " -c [config file]        - set config file\n" );
 		fprintf( stderr, " -p [lighthouse count]   - use a specific number of lighthoses.\n" );
-
-		//XXX: TODO: Should this just exit(-1)?
 		return 0;
 	}
 
@@ -435,7 +442,7 @@ void survive_close( SurviveContext * ctx )
 int survive_poll( struct SurviveContext * ctx )
 {
 	int i, r;
-	if( ctx->state = SURVIVE_STOPPED )
+	if( ctx->state == SURVIVE_STOPPED )
 	{
 		r = survive_startup( ctx );
 		if( r )
