@@ -6,7 +6,7 @@
 #include <string.h>
 #include <math.h> /* for sqrt */
 
-//#define USE_TURVEYBIGUATOR
+#define USE_TURVEYBIGUATOR
 
 #ifdef USE_TURVEYBIGUATOR
 
