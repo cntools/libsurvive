@@ -160,7 +160,7 @@ int main( int argc, char ** argv )
 	dump_iface( survive_get_so_by_name( ctx, "WM1" ), "WM1" );
 	dump_iface( survive_get_so_by_name( ctx, "TR0" ), "TR0" );
 	dump_iface( survive_get_so_by_name( ctx, "WW0" ), "WW0" );
-
+	survive_startup(ctx);
 	survive_cal_install(ctx);
 
 	while(survive_poll(ctx) == 0)

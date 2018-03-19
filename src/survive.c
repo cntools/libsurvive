@@ -217,8 +217,6 @@ int survive_startup( SurviveContext * ctx )
 
 	// start the thread to process button data
 	ctx->buttonservicethread = OGCreateThread(button_servicer, ctx);
-	survive_install_button_fn(ctx, NULL);
-	survive_install_raw_pose_fn(ctx, NULL);
 
 	const char * DriverName;
 
