@@ -224,16 +224,16 @@ int survive_startup( SurviveContext * ctx )
 	const char * PreferredPoser = survive_configs( ctx, "defaultposer", SC_SETCONFIG, "PoserTurveyTori");
 	PoserCB PreferredPoserCB = 0;
 	const char * FirstPoser = 0;
-	printf( "Available posers:\n" );
+	SV_INFO( "Available posers:" );
 	while( ( DriverName = GetDriverNameMatching( "Poser", i++ ) ) )
 	{
 		PoserCB p = GetDriver( DriverName );
 		if( !PreferredPoserCB ) PreferredPoserCB = p;
 		int ThisPoser = strcmp( DriverName, PreferredPoser ) == 0;
-		printf( "\t%c%s\n", ThisPoser?'*':' ', DriverName );
+		SV_INFO( "\t%c%s", ThisPoser?'*':' ', DriverName );
 		if( ThisPoser ) PreferredPoserCB = p;
 	}
-	printf( "Totals %d posers.  Using selected poser (or first!).\n", i-1 );
+	SV_INFO( "Totals %d posers.  Using selected poser (or first!).", i-1 );
 	if( !PreferredPoserCB )
 	{
 		SV_ERROR( "Error.  Cannot find any valid poser." );
@@ -243,9 +243,9 @@ int survive_startup( SurviveContext * ctx )
 	while( ( DriverName = GetDriverNameMatching( "DriverReg", i++ ) ) )
 	{
 		DeviceDriver dd = GetDriver( DriverName );
-		printf( "Loading driver %s (%p) (%d)\n", DriverName, dd, i );
+		SV_INFO( "Loading driver %s (%p) (%d)", DriverName, dd, i );
 		r = dd( ctx );
-		printf( "Driver %s reports status %d\n", DriverName, r );
+		SV_INFO( "Driver %s reports status %d", DriverName, r );
 	}
 	//Apply poser to objects.
 	for( i = 0; i < ctx->objs_ct; i++ )
