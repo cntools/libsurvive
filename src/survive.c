@@ -203,6 +203,8 @@ SurviveContext * survive_init_internal( int argc, char * const * argv )
 	ctx->angleproc = survive_default_angle_process;
 	ctx->lighthouseposeproc = survive_default_lighthouse_pose_process;
 	ctx->configfunction = survive_default_htc_config_process;
+	ctx->rawposeproc = survive_default_raw_pose_process;
+
 	return ctx;
 }
 
