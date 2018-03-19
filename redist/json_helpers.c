@@ -188,7 +188,6 @@ void json_load_file(const char* path) {
 		if (value_t->type == JSMN_ARRAY) {
 			i += json_load_array(JSON_STRING, tokens+i+2,value_t->size, tag); //look at array children
 		} else if (value_t->type == JSMN_OBJECT) {
-			printf("Begin Object\n");
 			if (json_begin_object != NULL) json_begin_object(tag);
 			children = (int16_t)(value_t->size +1); //+1 to account for this loop where we are not yed parsing children
 //			i += decode_jsmn_object(JSON_STRING, tokens+i+2,value_t->size);
@@ -200,7 +199,6 @@ void json_load_file(const char* path) {
 		if (children>=0) children--;
 		if (children == 0) {
 			children = -1;
-			printf("End Object\n");
 			if (json_end_object!=NULL) json_end_object();
 		}
 

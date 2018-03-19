@@ -50,7 +50,7 @@ static void *button_servicer(void * context)
 	{
 		OGLockSema(ctx->buttonQueue.buttonservicesem);
 
-		if (ctx->isClosing)
+		if (ctx->state != SURVIVE_RUNNING)
 		{
 			// we're shutting down.  Close.
 			return NULL;
@@ -104,7 +104,8 @@ void survive_verify_FLT_size(uint32_t user_size) {
   }
 }
 
-SurviveContext *survive_init_internal(int headless, htc_config_func configFunc) {
+SurviveContext * survive_init_internal( int argc, char * const * argv )
+{
 #ifdef RUNTIME_SYMNUM
 	if( !did_runtime_symnum )
 	{
@@ -121,35 +122,94 @@ SurviveContext *survive_init_internal(int headless, htc_config_func configFunc) 
 	MANUAL_DRIVER_REGISTRATION(PoserDaveOrtho)
 	MANUAL_DRIVER_REGISTRATION(PoserDummy)
 	MANUAL_DRIVER_REGISTRATION(DriverRegHTCVive)
-
 #endif
 
-	int r = 0;
-	int i = 0;
 	SurviveContext * ctx = calloc( 1, sizeof( SurviveContext ) );
 
-	ctx->isClosing = 0;
+	ctx->state = SURVIVE_STOPPED;
 
 	ctx->global_config_values = malloc( sizeof(config_group) );
+	ctx->temporary_config_values = malloc( sizeof(config_group) );
 	ctx->lh_config = malloc( sizeof(config_group) * NUM_LIGHTHOUSES);
 
+	//initdata
 	init_config_group(ctx->global_config_values,10);
+	init_config_group(ctx->temporary_config_values,20);
 	init_config_group(&ctx->lh_config[0],10);
 	init_config_group(&ctx->lh_config[1],10);
 
-	config_read(ctx, "config.json");
-	ctx->activeLighthouses = config_read_uint32(ctx->global_config_values, "LighthouseCount", 2);
+	//Process command-line parameters.
+	char * const * argvend = &argv[argc];
+	char * const * av = argv+1;
+	int showhelp = 0;
+	for( ; av != argvend; av++ )
+	{
+		if( (*av)[0] != '-' )
+			showhelp = 1;
+		else
+		{
+			const char * vartoupdate = 0;
+
+			switch( (*av)[1] )
+			{
+			case '-': vartoupdate = &(*av)[2];    break;
+			case 'h': showhelp = 1; break;
+			case 'p': vartoupdate = "defaultposer";	break;
+			case 'l': vartoupdate = "lighthousecount";  break;
+			case 'c': vartoupdate = "configfile";   break;
+			default:
+				fprintf( stderr, "Error: unknown parameter %s\n", *av );
+				showhelp = 1;
+			}
+
+			if( vartoupdate )
+			{
+				if( av+1 == argvend )
+				{
+					fprintf( stderr, "Error: expected parameter after %s\n", *av );
+					showhelp = 1;
+				}
+				else
+				{
+					survive_configs( ctx, *av+2, SC_OVERRIDE|SC_SET, *(av+1) );
+					av++;
+				}
+			}
+		}
+	}
+	if( showhelp )
+	{
+		//Can't use SV_ERROR here since we don't have a context to send to yet.
+		fprintf( stderr, "libsurvive - usage:\n" );
+		fprintf( stderr, " --[parameter] [value]   - sets parameter\n" );
+		fprintf( stderr, " -h                      - shows help.\n" );
+		fprintf( stderr, " -p [poser]              - use a specific defaultposer.\n" );
+		fprintf( stderr, " -l [lighthouse count]   - use a specific number of lighthoses.\n" );
+		fprintf( stderr, " -c [config file]        - set config file\n" );
+		fprintf( stderr, " -p [lighthouse count]   - use a specific number of lighthoses.\n" );
+		return 0;
+	}
+
+	config_read(ctx, survive_configs( ctx, "configfile", SC_GET, "config.json" ) );
+	ctx->activeLighthouses = survive_configi( ctx, "lighthousecount", SC_SETCONFIG, 2 );
+
 	config_read_lighthouse(ctx->lh_config, &(ctx->bsd[0]), 0);
 	config_read_lighthouse(ctx->lh_config, &(ctx->bsd[1]), 1);
 
 	ctx->faultfunction = survivefault;
 	ctx->notefunction = survivenote;
-
 	ctx->lightproc = survive_default_light_process;
 	ctx->imuproc = survive_default_imu_process;
 	ctx->angleproc = survive_default_angle_process;
 	ctx->lighthouseposeproc = survive_default_lighthouse_pose_process;
-	ctx->configfunction = configFunc ? configFunc : survive_default_htc_config_process;
+	ctx->configfunction = survive_default_htc_config_process;
+	return ctx;
+}
+
+int survive_startup( SurviveContext * ctx )
+{
+	int r = 0;
+	int i = 0;
 
 	// initialize the button queue
 	memset(&(ctx->buttonQueue), 0, sizeof(ctx->buttonQueue));
@@ -160,11 +220,10 @@ SurviveContext *survive_init_internal(int headless, htc_config_func configFunc) 
 	survive_install_button_fn(ctx, NULL);
 	survive_install_raw_pose_fn(ctx, NULL);
 
-	i = 0;
 	const char * DriverName;
 
-	//const char * PreferredPoser = config_read_str(ctx->global_config_values, "DefaultPoser", "PoserDummy");
-	const char * PreferredPoser = config_read_str(ctx->global_config_values, "DefaultPoser", "PoserTurveyTori");
+	//const char * PreferredPoser = survive_config_reads(ctx->global_config_values, "defaultposer", "PoserDummy");
+	const char * PreferredPoser = survive_configs( ctx, "defaultposer", SC_SETCONFIG, "PoserTurveyTori");
 	PoserCB PreferredPoserCB = 0;
 	const char * FirstPoser = 0;
 	printf( "Available posers:\n" );
@@ -190,8 +249,6 @@ SurviveContext *survive_init_internal(int headless, htc_config_func configFunc) 
 		r = dd( ctx );
 		printf( "Driver %s reports status %d\n", DriverName, r );
 	}
-printf( "REGISTERING DRIVERS\n" );
-
 	//Apply poser to objects.
 	for( i = 0; i < ctx->objs_ct; i++ )
 	{
@@ -199,11 +256,13 @@ printf( "REGISTERING DRIVERS\n" );
 	}
 
 	// saving the config extra to make sure that the user has a config file they can change.
-	config_save(ctx, "config.json");
+	config_save(ctx, survive_configs( ctx, "configfile", SC_GET, "config.json" ) );
 
+	ctx->state = SURVIVE_RUNNING;
 
-	return ctx;
+	return 0;
 }
+
 
 void survive_install_info_fn( SurviveContext * ctx,  text_feedback_func fbp )
 {
@@ -328,7 +387,7 @@ void survive_close( SurviveContext * ctx )
 	const char * DriverName;
 	int r = 0;
 
-	ctx->isClosing = 1;
+	ctx->state = SURVIVE_CLOSING;
 
 	// unlock/ post to button service semaphore so the thread can kill itself
 	OGUnlockSema(ctx->buttonQueue.buttonservicesem);
@@ -358,9 +417,10 @@ void survive_close( SurviveContext * ctx )
 	}
 
 
-	config_save(ctx, "config.json");
+	config_save(ctx, survive_configs( ctx, "configfile", SC_GET, "config.json" ) );
 
 	destroy_config_group(ctx->global_config_values);
+	destroy_config_group(ctx->temporary_config_values);
 	destroy_config_group(ctx->lh_config);
 
 	for (i = 0; i < ctx->objs_ct; i++) {
@@ -373,6 +433,7 @@ void survive_close( SurviveContext * ctx )
 	free( ctx->drivermagics );
 	free( ctx->drivercloses );
 	free( ctx->global_config_values );
+	free( ctx->temporary_config_values );
 	free( ctx->lh_config );
 
 	free( ctx );
@@ -380,8 +441,15 @@ void survive_close( SurviveContext * ctx )
 
 int survive_poll( struct SurviveContext * ctx )
 {
-	int oldct = ctx->driver_ct;
 	int i, r;
+	if( ctx->state == SURVIVE_STOPPED )
+	{
+		r = survive_startup( ctx );
+		if( r )
+			return r;
+	}
+
+	int oldct = ctx->driver_ct;
 
 	for( i = 0; i < oldct; i++ )
 	{

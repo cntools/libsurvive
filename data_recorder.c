@@ -128,8 +128,9 @@ int main(int argc, char **argv) {
 		output_file = stdout;
 	}
 
-	ctx = survive_init_with_config_cb(0, my_config_process);
+	ctx = survive_init( argc, argv );
 
+	survive_install_htc_config_fn(ctx,my_config_process );
 	survive_install_light_fn(ctx, my_light_process);
 	survive_install_imu_fn(ctx, my_imu_process);
 	survive_install_lighthouse_pose_fn(ctx, my_lighthouse_process);
@@ -138,6 +139,8 @@ int main(int argc, char **argv) {
 	survive_install_info_fn(ctx, my_info_process);
 
 	survive_cal_install(ctx);
+
+	survive_startup(ctx);
 
 	if (!ctx) {
 		fprintf(stderr, "Fatal. Could not start\n");

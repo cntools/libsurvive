@@ -150,6 +150,8 @@ typedef struct
 	ButtonQueueEntry entry[BUTTON_QUEUE_MAX_LEN];
 } ButtonQueue;
 
+typedef enum { SURVIVE_STOPPED = 0, SURVIVE_RUNNING, SURVIVE_CLOSING, SURVIVE_STATE_MAX } SurviveState;
+
 struct SurviveContext
 {
 	text_feedback_func faultfunction;
@@ -164,6 +166,7 @@ struct SurviveContext
 
 	struct config_group* global_config_values;
 	struct config_group* lh_config; //lighthouse configs
+	struct config_group* temporary_config_values; //Set per-session, from command-line. Not saved but override global_config_values
 
 	//Calibration data:
 	int activeLighthouses;
@@ -179,31 +182,31 @@ struct SurviveContext
 	DeviceDriverMagicCb * drivermagics;
 	int driver_ct;
 
-	uint8_t isClosing; // flag to indicate if threads should terminate themselves
+	SurviveState state;
 
 	void* buttonservicethread;
 	ButtonQueue buttonQueue;
 
 	void *user_ptr;
-
 };
 
-SurviveContext *survive_init_internal(int headless, htc_config_func cfcb);
+void survive_verify_FLT_size(uint32_t user_size); // Baked in size of FLT to verify users of the library have the correct setting. 
 
-// Baked in size of FLT to verify users of the library have the correct setting. 
-void survive_verify_FLT_size(uint32_t user_size);
-  
-static inline SurviveContext * survive_init( int headless ) {
-  survive_verify_FLT_size(sizeof(FLT));
-  return survive_init_internal(headless, 0);
-}
-static inline SurviveContext *survive_init_with_config_cb(int headless, htc_config_func cfcb) {
+
+
+
+
+SurviveContext * survive_init_internal( int argc, char * const * argv );
+static inline SurviveContext * survive_init( int argc, char * const * argv )
+{
 	survive_verify_FLT_size(sizeof(FLT));
-	return survive_init_internal(headless, cfcb);
+	return survive_init_internal(argc, argv);
 }
+
 
 //For any of these, you may pass in 0 for the function pointer to use default behavior.
 //In general unless you are doing wacky things like recording or playing back data, you won't need to use this.
+void survive_install_htc_config_fn( SurviveContext *ctx, htc_config_func fbp );
 void survive_install_info_fn( SurviveContext * ctx,  text_feedback_func fbp );
 void survive_install_error_fn( SurviveContext * ctx,  text_feedback_func fbp );
 void survive_install_light_fn( SurviveContext * ctx,  light_process_func fbp );
@@ -212,22 +215,32 @@ void survive_install_angle_fn( SurviveContext * ctx,  angle_process_func fbp );
 void survive_install_button_fn(SurviveContext * ctx, button_process_func fbp);
 void survive_install_raw_pose_fn(SurviveContext * ctx, raw_pose_func fbp);
 void survive_install_lighthouse_pose_fn(SurviveContext *ctx, lighthouse_pose_func fbp);
-
-void survive_close( SurviveContext * ctx );
+int survive_startup( SurviveContext * ctx );
 int survive_poll( SurviveContext * ctx );
+void survive_close( SurviveContext * ctx );
 
 SurviveObject * survive_get_so_by_name( SurviveContext * ctx, const char * name );
 
 //Utilitiy functions.
 int survive_simple_inflate( SurviveContext * ctx, const char * input, int inlen, char * output, int outlen );
-
 int survive_send_magic( SurviveContext * ctx, int magic_code, void * data, int datalen );
+
+//These functions search both the stored-general and temporary sections for a parameter and return it.
+#define SC_GET 0		//Get, only.
+#define SC_SET 1		//Set, if not present
+#define SC_OVERRIDE 2	//Set, to new default value.
+#define SC_SETCONFIG 4	//Set, both in-memory and config file.  Use in conjunction with SC_OVERRIDE.
+
+FLT survive_configf( SurviveContext * ctx, const char *tag, char flags, FLT def );
+uint32_t survive_configi( SurviveContext * ctx, const char *tag, char flags, uint32_t def );
+const char * survive_configs( SurviveContext * ctx, const char *tag, char flags, const char *def );
+
 
 //Install the calibrator.
 void survive_cal_install( SurviveContext * ctx );  //XXX This will be removed if not already done so.
 
 // Read back a human-readable string description of the calibration status
-int survive_cal_get_status( struct SurviveContext * ctx, char * description, int description_length );
+int survive_cal_get_status( SurviveContext * ctx, char * description, int description_length );
 
 // Induce haptic feedback
 int survive_haptic(SurviveObject * so, uint8_t reserved, uint16_t pulseHigh, uint16_t pulseLow, uint16_t repeatCount);
@@ -240,7 +253,9 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 void survive_default_button_process(SurviveObject * so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val);
 void survive_default_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose);
 void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *pose);
-int survive_default_htc_config_process(SurviveObject *so, char *ct0conf, int len);
+int  survive_default_htc_config_process(SurviveObject *so, char *ct0conf, int len);
+
+
 
 ////////////////////// Survive Drivers ////////////////////////////
 

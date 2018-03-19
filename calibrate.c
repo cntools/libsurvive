@@ -14,7 +14,6 @@
 
 struct SurviveContext * ctx;
 int  quit = 0;
-static int LighthouseCount = 0;
 
 void HandleKey( int keycode, int bDown )
 {
@@ -389,10 +388,12 @@ void * GuiThread( void * jnk )
 }
 
 int SurviveThreadLoaded=0;
+int gargc;
+char * const * gargv;
 
 void * SurviveThread(void *jnk)
 {
-	ctx = survive_init( 0 );
+	ctx = survive_init( gargc, gargv );
 
 
 	uint8_t i =0;
@@ -404,6 +405,9 @@ void * SurviveThread(void *jnk)
 	survive_install_light_fn( ctx,  my_light_process );
 	survive_install_imu_fn( ctx,  my_imu_process );
 	survive_install_angle_fn( ctx, my_angle_process );
+
+	survive_startup( ctx );
+
 
 	survive_cal_install( ctx );
 
@@ -425,8 +429,10 @@ void * SurviveThread(void *jnk)
 }
 
 
-int main()
+int main( int argc, char ** argv )
 {
+	gargc = argc;
+	gargv = argv;
 	// Create the survive thread
     OGCreateThread( SurviveThread, 0 );
 

@@ -1,5 +1,7 @@
 // (C) 2017 <>< Joshua Allen, Under MIT/x11 License.
-
+//
+// This header is for handling internal parameter values.  Most accesses should be done through functions like survive_config
+//
 
 #ifndef _SURVIVE_CONFIG_H
 #define _SURVIVE_CONFIG_H
@@ -52,6 +54,7 @@ const FLT config_set_float(config_group *cg, const char *tag, const FLT value);
 const uint32_t config_set_uint32(config_group *cg, const char *tag, const uint32_t value);
 const char* config_set_str(config_group *cg, const char *tag, const char* value);
 
+//These functions look for a parameter in a specific group, and then chose the best to return. If the parameter does not exist, default will be written.
 FLT config_read_float(config_group *cg, const char *tag, const FLT def);
 uint16_t config_read_float_array(config_group *cg, const char *tag, FLT* values, const FLT* def, uint8_t count);
 uint32_t config_read_uint32(config_group *cg, const char *tag, const uint32_t def);
