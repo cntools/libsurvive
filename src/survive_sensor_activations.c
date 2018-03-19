@@ -6,6 +6,17 @@ bool SurviveSensorActivations_isPairValid(const SurviveSensorActivations *self, 
 	return !(timecode_now - data_timecode[0] > tolerance || timecode_now - data_timecode[1] > tolerance);
 }
 
+void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct PoserDataIMU *imuData) {
+	for (int i = 0; i < 3; i++) {
+		self->accel[i] = .98 * self->accel[i] + .02 * imuData->accel[i];
+	}
+	for (int i = 0; i < 3; i++) {
+		self->gyro[i] = .98 * self->gyro[i] + .02 * imuData->gyro[i];
+	}
+	for (int i = 0; i < 3; i++) {
+		self->mag[i] = .98 * self->mag[i] + .02 * imuData->mag[i];
+	}
+}
 void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLight *lightData) {
 	int axis = (lightData->acode & 1);
 	uint32_t *data_timecode = &self->timecode[lightData->sensor_id][lightData->lh][axis];

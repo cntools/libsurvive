@@ -31,8 +31,7 @@ typedef struct
 void PoserData_poser_raw_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse, SurvivePose *pose);
 void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse, SurvivePose *pose);
 
-typedef struct
-{
+typedef struct PoserDataIMU {
 	PoserData hdr;
 	uint8_t datamask;  //0 = accel present, 1 = gyro present, 2 = mag present.
 	FLT accel[3];

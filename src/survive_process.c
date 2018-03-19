@@ -132,19 +132,21 @@ int survive_default_htc_config_process(SurviveObject *so, char *ct0conf, int len
 }
 void survive_default_imu_process( SurviveObject * so, int mask, FLT * accelgyromag, uint32_t timecode, int id )
 {
-	if( so->PoserFn )
-	{
-		PoserDataIMU imu = {
-			.hdr =
-				{
-					.pt = POSERDATA_IMU,
-				},
-			.datamask = mask,
-			.accel = {accelgyromag[0], accelgyromag[1], accelgyromag[2]},
-			.gyro = {accelgyromag[3], accelgyromag[4], accelgyromag[5]},
-			.mag = {accelgyromag[6], accelgyromag[7], accelgyromag[8]},
-			.timecode = timecode,
-		};
+	PoserDataIMU imu = {
+		.hdr =
+			{
+				.pt = POSERDATA_IMU,
+			},
+		.datamask = mask,
+		.accel = {accelgyromag[0], accelgyromag[1], accelgyromag[2]},
+		.gyro = {accelgyromag[3], accelgyromag[4], accelgyromag[5]},
+		.mag = {accelgyromag[6], accelgyromag[7], accelgyromag[8]},
+		.timecode = timecode,
+	};
+
+	SurviveSensorActivations_add_imu(&so->activations, &imu);
+
+	if (so->PoserFn) {
 		so->PoserFn( so, (PoserData *)&imu );
 	}
 }

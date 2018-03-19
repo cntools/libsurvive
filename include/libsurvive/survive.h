@@ -16,13 +16,20 @@ extern "C" {
 typedef struct {
 	FLT angles[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];		   // 2 Axes (Angles in LH space)
 	uint32_t timecode[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2]; // Timecode per axis in ticks
+
+	FLT accel[3];
+	FLT gyro[3];
+	FLT mag[3];
 } SurviveSensorActivations;
 
 struct PoserDataLight;
+struct PoserDataIMU;
 /**
  * Adds a lightData packet to the table.
  */
 void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLight *lightData);
+
+void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct PoserDataIMU *imuData);
 
 /**
  * Returns true iff both angles for the given sensor and lighthouse were seen at most `tolerance` ticks before the given

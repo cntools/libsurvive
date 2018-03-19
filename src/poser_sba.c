@@ -26,8 +26,11 @@ void metric_function(int j, int i, double *aj, double *xij, void *adata) {
 	sba_context *ctx = (sba_context *)(adata);
 	SurviveObject *so = ctx->so;
 
-	survive_reproject_from_pose_with_config(so->ctx, &ctx->calibration_config, j, (SurvivePose *)aj,
-											&so->sensor_locations[i * 3], xij);
+	SurvivePose obj2world = so->OutPose;
+	FLT sensorInWorld[3] = {};
+	ApplyPoseToPoint(sensorInWorld, obj2world.Pos, &so->sensor_locations[i * 3]);
+	survive_reproject_from_pose_with_config(so->ctx, &ctx->calibration_config, j, (SurvivePose *)aj, sensorInWorld,
+											xij);
 }
 
 size_t construct_input(const SurviveObject *so, PoserDataFullScene *pdfs, char *vmask, double *meas) {
@@ -109,6 +112,7 @@ void str_metric_function(int j, int i, double *bi, double *xij, void *adata) {
 	survive_reproject_from_pose_with_config(so->ctx, &ctx->calibration_config, lh, camera, xyz, xij);
 }
 
+// Optimizes for object assuming given LH
 static double run_sba_find_3d_structure(survive_calibration_config options, PoserDataLight *pdl, SurviveObject *so,
 										SurviveSensorActivations *scene, int max_iterations /* = 50*/,
 										double max_reproj_error /* = 0.005*/) {
@@ -132,7 +136,7 @@ static double run_sba_find_3d_structure(survive_calibration_config options, Pose
 	failure_count = 0;
 
 	SurvivePose soLocation = so->OutPose;
-	bool currentPositionValid = quatmagnitude(&soLocation.Rot[0]);
+	bool currentPositionValid = quatmagnitude(&soLocation.Rot[0]) != 0;
 
 	{
 		const char *subposer = config_read_str(so->ctx->global_config_values, "SBASeedPoser", "PoserEPNP");
@@ -212,6 +216,7 @@ static double run_sba_find_3d_structure(survive_calibration_config options, Pose
 	return info[1] / meas_size * 2;
 }
 
+// Optimizes for LH position assuming object is posed at 0
 static double run_sba(survive_calibration_config options, PoserDataFullScene *pdfs, SurviveObject *so,
 					  int max_iterations /* = 50*/, double max_reproj_error /* = 0.005*/) {
 	double *covx = 0;

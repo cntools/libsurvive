@@ -280,18 +280,21 @@ $(function() {
 				create_object(obj);
 			} else if (obj.type === "imu") {
 				if (objs[obj.tracker]) {
-					if (!downAxes[obj.tracker]) {
+					if (!downAxes[obj.tracker] && objs[obj.tracker]) {
 						downAxes[obj.tracker] = new THREE.Geometry();
-						downAxes[obj.tracker].vertices.push(
-							new THREE.Vector3(0, 0, 0),
-							new THREE.Vector3(obj.accelgyro[0], obj.accelgyro[1], obj.accelgyro[2]));
+						downAxes[obj.tracker].vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0));
 
 						var line =
 							new THREE.Line(downAxes[obj.tracker], new THREE.LineBasicMaterial({color : 0xffffff}));
-						objs[obj.tracker].add(line);
-					} else {
+						scene.add(line);
+						}
+
+					if (objs[obj.tracker].position) {
 						var q = obj.accelgyro;
+
+						downAxes[obj.tracker].vertices[0] = objs[obj.tracker].position;
 						downAxes[obj.tracker].vertices[1].fromArray(q);
+						downAxes[obj.tracker].vertices[1].add(objs[obj.tracker].position);
 						downAxes[obj.tracker].verticesNeedUpdate = true;
 					}
 				}
@@ -382,6 +385,9 @@ init() {
 	var skyBoxMaterial = new THREE.MeshBasicMaterial({color : 0x888888, side : THREE.BackSide});
 	var skyBox = new THREE.Mesh(skyBoxGeometry, skyBoxMaterial);
 	scene.add(skyBox);
+
+	var axes = new THREE.AxesHelper(5);
+	scene.add(axes);
 }
 
 function animate() {
