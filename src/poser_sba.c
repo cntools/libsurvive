@@ -120,7 +120,7 @@ static double run_sba_find_3d_structure(survive_calibration_config options, Pose
 
 	static int failure_count = 500;
 	if (so->ctx->bsd[0].PositionSet == 0 || so->ctx->bsd[1].PositionSet == 0 || meas_size < 7) {
-		if (meas_size < 7 && failure_count++ == 500) {
+		if (so->ctx->bsd[0].PositionSet && so->ctx->bsd[1].PositionSet && failure_count++ == 500) {
 			SurviveContext *ctx = so->ctx;
 			SV_INFO("Can't solve for position with just %lu measurements", meas_size);
 			failure_count = 0;
