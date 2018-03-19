@@ -138,9 +138,9 @@ int main(int argc, char **argv) {
 	survive_install_angle_fn(ctx, my_angle_process);
 	survive_install_info_fn(ctx, my_info_process);
 
+	survive_startup(ctx);
 	survive_cal_install(ctx);
 
-	survive_startup(ctx);
 
 	if (!ctx) {
 		fprintf(stderr, "Fatal. Could not start\n");
