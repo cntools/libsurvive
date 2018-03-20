@@ -53,6 +53,7 @@ int PoserCharlesSlow( SurviveObject * so, PoserData * pd )
 			printf( "%f %f %f\n", hmd_points[p*3+0], hmd_points[p*3+1], hmd_points[p*3+2] );
 		}
 
+		SurvivePose additionalTx = {};
 
 		int lh, cycle;
 		FLT dz, dy, dx;
@@ -174,7 +175,7 @@ int PoserCharlesSlow( SurviveObject * so, PoserData * pd )
 			quatrotateabout(tmp, lighthousePose.Rot, rt);
 			memcpy(lighthousePose.Rot, tmp, sizeof(FLT) * 4);
 
-			PoserData_lighthouse_pose_func(pd, so, lh, &lighthousePose);
+			PoserData_lighthouse_pose_func(pd, so, lh, &additionalTx, &lighthousePose, 0);
 #define ALT_COORDS
 
 #ifdef ALT_COORDS

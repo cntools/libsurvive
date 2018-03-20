@@ -1235,7 +1235,7 @@ void SolveForRotationQuat(FLT rotOut[4], TrackedObject *obj, Point lh)
 }
 
 static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *obj, SurviveObject *so, PoserData *pd,
-								char doLogOutput, const int lh, const int setLhCalibration) {
+								char doLogOutput, SurvivePose *additionalTx, const int lh, const int setLhCalibration) {
 	ToriData *toriData = so->PoserData;
 
 	//printf("Solving for Lighthouse\n");
@@ -1443,7 +1443,11 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 		lighthousePose.Pos[1] = refinedEstimateGd.y;
 		lighthousePose.Pos[2] = refinedEstimateGd.z;
 
-		PoserData_lighthouse_pose_func(pd, so, lh, &lighthousePose);
+		SurvivePose assumedObj = {};
+		FLT negZ[3] = {0, 0, 1};
+		quatfrom2vectors(assumedObj.Rot, toriData->down, negZ);
+
+		PoserData_lighthouse_pose_func(pd, so, lh, additionalTx, &lighthousePose, &assumedObj);
 	}
 
 
@@ -1528,7 +1532,7 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 	return refinedEstimateGd;
 }
 
-static void QuickPose(SurviveObject *so, PoserData *pd, int lh) {
+static void QuickPose(SurviveObject *so, PoserData *pd, SurvivePose *additionalTx, int lh) {
 
 	ToriData * td = so->PoserData;
 
@@ -1622,7 +1626,7 @@ static void QuickPose(SurviveObject *so, PoserData *pd, int lh) {
 			//	SolveForLighthouse(pos, quat, to, so, 0, lh, 0);
 			//}
 
-	                SolveForLighthouse(&pose.Pos[0], &pose.Rot[0], to, so, pd, 0, lh, 0);
+			SolveForLighthouse(&pose.Pos[0], &pose.Rot[0], to, so, pd, 0, additionalTx, lh, 0);
 
 			//printf("P&O: [% 08.8f,% 08.8f,% 08.8f] [% 08.8f,% 08.8f,% 08.8f,% 08.8f]\n", pos[0], pos[1], pos[2], quat[0], quat[1], quat[2], quat[3]);
 			if (so->ctx->rawposeproc)
@@ -1693,6 +1697,8 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 		}
 		int axis = l->acode & 0x1;
 		//printf( "LIG:%s %d @ %f rad, %f s (AC %d) (TC %d)\n", so->codename, l->sensor_id, l->angle, l->length, l->acode, l->timecode );
+
+		SurvivePose additionalTx;
 		if ((td->lastAxis[l->lh] != (l->acode & 0x1)) )
 		{
 
@@ -1705,7 +1711,7 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 
 				// let's just do this occasionally for now...
 				if (counter % 4 == 0)
-					QuickPose(so, poserData, 0);
+					QuickPose(so, poserData, &additionalTx, 0);
 			}
 			if (1 == l->lh && axis) // only once per full cycle...
 			{
@@ -1715,7 +1721,7 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 
 				// let's just do this occasionally for now...
 				if (counter % 4 == 0)
-					QuickPose(so, poserData, 1);
+					QuickPose(so, poserData, &additionalTx, 1);
 			}
 			// axis changed, time to increment the circular buffer index.
 			td->angleIndex[l->lh][axis]++;
@@ -1755,7 +1761,7 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 		FLT axis[3];
 		angleaxisfrom2vect(&angle, axis, td->down, negZ);
 		//angleaxisfrom2vect(&angle, &axis, negZ, td->down);
-
+		SurvivePose additionalTx;
 		{
 			int sensorCount = 0;
 
@@ -1790,7 +1796,7 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 
 			FLT pos[3], quat[4];
 
-			SolveForLighthouse(pos, quat, to, so, poserData, 0, 0, 1);
+			SolveForLighthouse(pos, quat, to, so, poserData, 0, &additionalTx, 0, 1);
 		}
 		{
 			int sensorCount = 0;
@@ -1826,7 +1832,7 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 
 			FLT pos[3], quat[4];
 
-			SolveForLighthouse(pos, quat, to, so, poserData, 0, 1, 1);
+			SolveForLighthouse(pos, quat, to, so, poserData, 0, &additionalTx, 1, 1);
 		}
 
 

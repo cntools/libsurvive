@@ -18,7 +18,8 @@ typedef enum PoserType_t
 } PoserType;
 
 typedef void (*poser_raw_pose_func)(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose, void *user);
-typedef void (*poser_lighthouse_pose_func)(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose, void *user);
+typedef void (*poser_lighthouse_pose_func)(SurviveObject *so, uint8_t lighthouse, SurvivePose *lighthouse_pose,
+										   SurvivePose *object_pose, void *user);
 
 typedef struct
 {
@@ -29,7 +30,9 @@ typedef struct
 } PoserData;
 
 void PoserData_poser_raw_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse, SurvivePose *pose);
-void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse, SurvivePose *pose);
+void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse,
+									/* OUTPARAM */ SurvivePose *objUp2world, SurvivePose *lighthouse_poses,
+									SurvivePose *object_pose);
 
 typedef struct PoserDataIMU {
 	PoserData hdr;

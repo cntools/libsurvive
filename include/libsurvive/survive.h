@@ -259,7 +259,8 @@ void survive_default_imu_process( SurviveObject * so, int mode, FLT * accelgyro,
 void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh );
 void survive_default_button_process(SurviveObject * so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val);
 void survive_default_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose);
-void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *pose);
+void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lh_pose,
+											 SurvivePose *obj_pose);
 int  survive_default_htc_config_process(SurviveObject *so, char *ct0conf, int len);
 
 

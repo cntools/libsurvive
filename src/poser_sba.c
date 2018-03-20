@@ -20,13 +20,15 @@ typedef struct {
 	survive_calibration_config calibration_config;
 	PoserData *pdfs;
 	SurviveObject *so;
+	SurvivePose obj_pose;
+	SurvivePose camera_params[2];
 } sba_context;
 
 void metric_function(int j, int i, double *aj, double *xij, void *adata) {
 	sba_context *ctx = (sba_context *)(adata);
 	SurviveObject *so = ctx->so;
 
-	SurvivePose obj2world = so->OutPose;
+	SurvivePose obj2world = ctx->obj_pose;
 	FLT sensorInWorld[3] = {};
 	ApplyPoseToPoint(sensorInWorld, obj2world.Pos, &so->sensor_locations[i * 3]);
 	survive_reproject_from_pose_with_config(so->ctx, &ctx->calibration_config, j, (SurvivePose *)aj, sensorInWorld,
@@ -74,9 +76,10 @@ size_t construct_input_from_scene(const SurviveObject *so, PoserDataLight *pdl, 
 	return rtn;
 }
 
-void sba_set_cameras(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose, void *user) {
-	SurvivePose *poses = (SurvivePose *)(user);
-	poses[lighthouse] = *pose;
+void sba_set_cameras(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose, SurvivePose *obj_pose, void *user) {
+	sba_context *ctx = (sba_context *)user;
+	ctx->camera_params[lighthouse] = *pose;
+	ctx->obj_pose = *obj_pose;
 }
 
 typedef struct {
@@ -225,9 +228,10 @@ static double run_sba(survive_calibration_config options, PoserDataFullScene *pd
 	double *meas = malloc(sizeof(double) * 2 * so->sensor_ct * NUM_LIGHTHOUSES);
 	size_t meas_size = construct_input(so, pdfs, vmask, meas);
 
-	SurvivePose camera_params[2] = {so->ctx->bsd[0].Pose, so->ctx->bsd[1].Pose};
+	sba_context sbactx = {options, &pdfs->hdr, so, .camera_params = {so->ctx->bsd[0].Pose, so->ctx->bsd[1].Pose},
+						  .obj_pose = so->OutPose};
 
-	if (true || so->ctx->bsd[0].PositionSet == 0 || so->ctx->bsd[1].PositionSet == 0) {
+	{
 		const char *subposer = config_read_str(so->ctx->global_config_values, "SBASeedPoser", "PoserEPNP");
 		PoserCB driver = (PoserCB)GetDriver(subposer);
 		SurviveContext *ctx = so->ctx;
@@ -237,7 +241,7 @@ static double run_sba(survive_calibration_config options, PoserDataFullScene *pd
 			memset(&pdfs->hdr, 0, sizeof(pdfs->hdr)); // Clear callback functions
 			pdfs->hdr.pt = hdr.pt;
 			pdfs->hdr.lighthouseposeproc = sba_set_cameras;
-			pdfs->hdr.userdata = camera_params;
+			pdfs->hdr.userdata = &sbactx;
 			driver(so, &pdfs->hdr);
 			pdfs->hdr = hdr;
 		} else {
@@ -254,8 +258,6 @@ static double run_sba(survive_calibration_config options, PoserDataFullScene *pd
 	double opts[SBA_OPTSSZ] = {};
 	double info[SBA_INFOSZ] = {};
 
-	sba_context ctx = {options, &pdfs->hdr, so};
-
 	opts[0] = SBA_INIT_MU;
 	opts[1] = SBA_STOP_THRESH;
 	opts[2] = SBA_STOP_THRESH;
@@ -267,22 +269,23 @@ static double run_sba(survive_calibration_config options, PoserDataFullScene *pd
 								NUM_LIGHTHOUSES,					  // Number of cameras -- 2 lighthouses
 								0,									  // Number of cameras to not modify
 								vmask,								  // boolean vis mask
-								(double *)&camera_params[0],		  // camera parameters
+								(double *)&sbactx.camera_params[0],   // camera parameters
 								sizeof(SurvivePose) / sizeof(double), // The number of floats that are in a camera param
 								meas,								  // 2d points for 3d objs
 								covx, // covariance of measurement. Null sets to identity
 								2,	// 2 points per image
 								metric_function,
 								0,				// jacobia of metric_func
-								&ctx,			// user data
+								&sbactx,		// user data
 								max_iterations, // Max iterations
 								0,				// verbosity
 								opts,			// options
 								info);			// info
 
 	if (status >= 0) {
-		PoserData_lighthouse_pose_func(&pdfs->hdr, so, 0, &camera_params[0]);
-		PoserData_lighthouse_pose_func(&pdfs->hdr, so, 1, &camera_params[1]);
+		SurvivePose additionalTx = {};
+		PoserData_lighthouse_pose_func(&pdfs->hdr, so, 0, &additionalTx, &sbactx.camera_params[0], &sbactx.obj_pose);
+		PoserData_lighthouse_pose_func(&pdfs->hdr, so, 1, &additionalTx, &sbactx.camera_params[1], &sbactx.obj_pose);
 	}
 	// Docs say info[0] should be divided by meas; I don't buy it really...
 	// std::cerr << info[0] / meas.size() * 2 << " original reproj error" << std::endl;

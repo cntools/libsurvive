@@ -115,9 +115,10 @@ void survive_default_raw_pose_process(SurviveObject *so, uint8_t lighthouse, Sur
 	so->FromLHPose[lighthouse] = *pose;
 }
 
-void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *pose) {
-	if (pose) {
-		ctx->bsd[lighthouse].Pose = *pose;
+void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose,
+											 SurvivePose *object_pose) {
+	if (lighthouse_pose) {
+		ctx->bsd[lighthouse].Pose = *lighthouse_pose;
 		ctx->bsd[lighthouse].PositionSet = 1;
 	} else {
 		ctx->bsd[lighthouse].PositionSet = 0;

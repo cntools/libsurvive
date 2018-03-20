@@ -90,13 +90,13 @@ static int survive_standardize_calibration(SurviveObject* so,
 }
 */
 static int opencv_solver_fullscene(SurviveObject *so, PoserDataFullScene *pdfs) {
-	SurvivePose object2world = {};
+	SurvivePose object2world = {//.Rot = { 0.7325378, 0.4619398, 0.1913417, 0.4619398}
+								.Rot = {1.}};
 	const FLT up[3] = {0, 0, 1};
 
-	quatfrom2vectors(object2world.Rot, so->activations.accel, up);
-
-	FLT tx[4][4];
-	quattomatrix(tx, object2world.Rot);
+	SurvivePose actual;
+	// quatfrom2vectors(object2world.Rot, so->activations.accel, up);
+	// quatfrom2vectors(object2world.Rot, up, so->activations.accel);
 
 	SurvivePose additionalTx = {0};
 
@@ -122,26 +122,25 @@ static int opencv_solver_fullscene(SurviveObject *so, PoserDataFullScene *pdfs) 
 		}
 
 		SurvivePose lighthouse2object = solve_correspondence(so, &pnp, true);
-
+		FLT euler[3];
+		quattoeuler(euler, lighthouse2object.Rot);
 		SurvivePose lighthouse2world = {};
 		// Lighthouse is now a tx from camera -> object
 		ApplyPoseToPose(lighthouse2world.Pos, object2world.Pos, lighthouse2object.Pos);
 
-		if (quatmagnitude(additionalTx.Rot) == 0) {
+		if (false && quatmagnitude(additionalTx.Rot) == 0) {
 			SurvivePose desiredPose = lighthouse2world;
 			desiredPose.Pos[0] = 0.;
 
 			quatfrom2vectors(additionalTx.Rot, lighthouse2world.Pos, desiredPose.Pos);
 		}
-		SurvivePose finalTx = {};
-		ApplyPoseToPose(finalTx.Pos, additionalTx.Pos, lighthouse2world.Pos);
+		SurvivePose finalTx = lighthouse2world;
+		// ApplyPoseToPose(finalTx.Pos, additionalTx.Pos, lighthouse2world.Pos);
 
-		PoserData_lighthouse_pose_func(&pdfs->hdr, so, lh, &finalTx);
+		PoserData_lighthouse_pose_func(&pdfs->hdr, so, lh, &additionalTx, &finalTx, &object2world);
 
 		epnp_dtor(&pnp);
 	}
-
-	so->OutPose = object2world;
 
 	return 0;
 }
