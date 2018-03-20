@@ -62,8 +62,8 @@ int my_config_process(SurviveObject *so, char *ct0conf, int len) {
 	return survive_default_htc_config_process(so, ct0conf, len);
 }
 
-void my_lighthouse_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lh_pose, SurvivePose *pose) {
-	survive_default_lighthouse_pose_process(ctx, lighthouse, lh_pose, pose);
+void my_lighthouse_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lh_pose) {
+	survive_default_lighthouse_pose_process(ctx, lighthouse, lh_pose);
 	write_to_output("%d LH_POSE %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\n", lighthouse, lh_pose->Pos[0],
 					lh_pose->Pos[1], lh_pose->Pos[2], lh_pose->Rot[0], lh_pose->Rot[1], lh_pose->Rot[2],
 					lh_pose->Rot[3]);
