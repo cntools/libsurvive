@@ -22,6 +22,7 @@
 
 struct SurviveContext *ctx;
 
+bool alwaysWriteStdOut = false;
 FILE *output_file = 0;
 
 double timestamp_in_us() {
@@ -32,12 +33,21 @@ double timestamp_in_us() {
 }
 
 void write_to_output(const char *format, ...) {
+	double ts = timestamp_in_us();
+
 	va_list args;
 	va_start(args, format);
-	fprintf(output_file, "%0.6f ", timestamp_in_us());
+	fprintf(output_file, "%0.6f ", ts);
 	vfprintf(output_file, format, args);
-
 	va_end(args);
+
+	if (alwaysWriteStdOut) {
+		va_list args;
+		va_start(args, format);
+		fprintf(stdout, "%0.6f ", ts);
+		vfprintf(stdout, format, args);
+		va_end(args);
+	}
 }
 int my_config_process(SurviveObject *so, char *ct0conf, int len) {
 	char *buffer = malloc(len);
@@ -52,10 +62,11 @@ int my_config_process(SurviveObject *so, char *ct0conf, int len) {
 	return survive_default_htc_config_process(so, ct0conf, len);
 }
 
-void my_lighthouse_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *pose) {
-	survive_default_lighthouse_pose_process(ctx, lighthouse, pose);
-	write_to_output("%d LH_POSE %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\n", lighthouse, pose->Pos[0], pose->Pos[1],
-					pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
+void my_lighthouse_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lh_pose, SurvivePose *pose) {
+	survive_default_lighthouse_pose_process(ctx, lighthouse, lh_pose, pose);
+	write_to_output("%d LH_POSE %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\n", lighthouse, lh_pose->Pos[0],
+					lh_pose->Pos[1], lh_pose->Pos[2], lh_pose->Rot[0], lh_pose->Rot[1], lh_pose->Rot[2],
+					lh_pose->Rot[3]);
 }
 void my_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose) {
 	survive_default_raw_pose_process(so, lighthouse, pose);
@@ -70,11 +81,9 @@ void my_angle_process(struct SurviveObject *so, int sensor_id, int acode, uint32
 	write_to_output("%s A %d %d %u %0.6f %0.6f %u\n", so->codename, sensor_id, acode, timecode, length, angle, lh);
 }
 
-void my_light_process(struct SurviveObject *so, int sensor_id, int acode,
-					  int timeinsweep, uint32_t timecode, uint32_t length,
-					  uint32_t lh) {
-	survive_default_light_process(so, sensor_id, acode, timeinsweep, timecode,
-								  length, lh);
+void my_light_process(struct SurviveObject *so, int sensor_id, int acode, int timeinsweep, uint32_t timecode,
+					  uint32_t length, uint32_t lh) {
+	survive_default_light_process(so, sensor_id, acode, timeinsweep, timecode, length, lh);
 
 	if (acode == -1) {
 		write_to_output("%s S %d %d %d %u %u %u\n", so->codename, sensor_id, acode, timeinsweep, timecode, length, lh);
@@ -110,27 +119,31 @@ void my_light_process(struct SurviveObject *so, int sensor_id, int acode,
 					timecode, length, lh);
 }
 
-void my_imu_process(struct SurviveObject *so, int mask, FLT *accelgyro,
-					uint32_t timecode, int id) {
+void my_imu_process(struct SurviveObject *so, int mask, FLT *accelgyro, uint32_t timecode, int id) {
 	survive_default_imu_process(so, mask, accelgyro, timecode, id);
 	write_to_output("%s I %d %u %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %d\n", so->codename, mask, timecode, accelgyro[0],
 					accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4], accelgyro[5], id);
 }
 
 int main(int argc, char **argv) {
-	if (argc > 1) {
-		output_file = fopen(argv[1], "w");
+	ctx = survive_init(argc, argv);
+	if (ctx == 0) // implies -help or similiar
+		return 0;
+
+	const char *outfile = survive_configs(ctx, "o", SC_GET, "");
+	if (strlen(outfile) > 0) {
+		output_file = fopen(outfile, "w");
 		if (output_file == 0) {
-			fprintf(stderr, "Could not open %s for writing", argv[1]);
+			fprintf(stderr, "Could not open %s for writing\n", argv[1]);
 			return -1;
 		}
+		alwaysWriteStdOut = survive_configi(ctx, "stdout", SC_GET, 0);
 	} else {
 		output_file = stdout;
+		alwaysWriteStdOut = false;
 	}
 
-	ctx = survive_init( argc, argv );
-
-	survive_install_htc_config_fn(ctx,my_config_process );
+	survive_install_htc_config_fn(ctx, my_config_process);
 	survive_install_light_fn(ctx, my_light_process);
 	survive_install_imu_fn(ctx, my_imu_process);
 	survive_install_lighthouse_pose_fn(ctx, my_lighthouse_process);
@@ -139,7 +152,10 @@ int main(int argc, char **argv) {
 	survive_install_info_fn(ctx, my_info_process);
 
 	survive_startup(ctx);
-	survive_cal_install(ctx);
+	if (survive_configi(ctx, "calibrate", SC_GET, 1)) {
+		fprintf(stderr, "Installing calibration\n");
+		survive_cal_install(ctx);
+	}
 
 	if (!ctx) {
 		fprintf(stderr, "Fatal. Could not start\n");
