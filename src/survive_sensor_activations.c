@@ -3,7 +3,8 @@
 bool SurviveSensorActivations_isPairValid(const SurviveSensorActivations *self, uint32_t tolerance,
 										  uint32_t timecode_now, uint32_t idx, int lh) {
 	const uint32_t *data_timecode = self->timecode[idx][lh];
-	return !(timecode_now - data_timecode[0] > tolerance || timecode_now - data_timecode[1] > tolerance);
+	return !(timecode_now - data_timecode[0] > tolerance ||
+			 timecode_now - data_timecode[1] > tolerance);
 }
 
 void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLight *lightData) {
@@ -15,5 +16,4 @@ void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 	*data_timecode = lightData->timecode;
 }
 
-// Roughly 31ms at a 48mhz clock rate
-uint32_t SurviveSensorActivations_default_tolerance = 500000;
+uint32_t SurviveSensorActivations_default_tolerance = (uint32_t) (48000000/*mhz*/ * (16.7 * 2/*ms*/) / 1000);
