@@ -26,5 +26,4 @@ void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 	*data_timecode = lightData->timecode;
 }
 
-// Roughly 31ms at a 48mhz clock rate
-uint32_t SurviveSensorActivations_default_tolerance = 500000;
+uint32_t SurviveSensorActivations_default_tolerance = (uint32_t)(48000000 /*mhz*/ * (16.7 * 2 /*ms*/) / 1000);

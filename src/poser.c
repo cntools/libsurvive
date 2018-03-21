@@ -31,7 +31,9 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 		// We might want to go a step further and affix the first lighthouse in a given pose that preserves up so that
 		// it doesn't matter where on that surface the object is.
 
-		SurvivePose object2arb = *object_pose;
+		SurvivePose object2arb = {.Rot = {1.}};
+		if (object_pose)
+			object2arb = *object_pose;
 		SurvivePose lighthouse2arb = *lighthouse_pose;
 
 		// Start by just moving from whatever arbitrary space into object space.

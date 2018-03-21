@@ -41,6 +41,7 @@ typedef struct
 typedef struct
 {
 	double acode_offset;
+	int sent_out_ootx_bits;
 } lightcap2_global_data;
 
 typedef struct
@@ -218,7 +219,22 @@ void handle_lightcap2_process_sweep_data(SurviveObject *so)
 //printf("%4d\n", lcd->sweep.sweep_len[i]);
 				int offset_from = lcd->sweep.sweep_time[i] - lcd->per_sweep.activeSweepStartTime + lcd->sweep.sweep_len[i] / 2;
 
-//				if (offset_from < 380000 && offset_from > 70000)
+				// first, send out the sync pulse data for the last round (for OOTX decoding
+				if (!lcd->global.sent_out_ootx_bits) {
+					if (lcd->per_sweep.lh_max_pulse_length[0] != 0) {
+						so->ctx->lightproc(
+							so, -1, handle_lightcap2_getAcodeFromSyncPulse(so, lcd->per_sweep.lh_max_pulse_length[0]),
+							lcd->per_sweep.lh_max_pulse_length[0], lcd->per_sweep.lh_start_time[0], 0, 0);
+					}
+					if (lcd->per_sweep.lh_max_pulse_length[1] != 0) {
+						so->ctx->lightproc(
+							so, -2, handle_lightcap2_getAcodeFromSyncPulse(so, lcd->per_sweep.lh_max_pulse_length[1]),
+							lcd->per_sweep.lh_max_pulse_length[1], lcd->per_sweep.lh_start_time[1], 0, 1);
+					}
+					lcd->global.sent_out_ootx_bits = 1;
+				}
+
+				//				if (offset_from < 380000 && offset_from > 70000)
 				{
 					//if (longest_pulse *10 / 8 < lcd->sweep.sweep_len[i]) 
 					{
@@ -329,32 +345,7 @@ void handle_lightcap2_sync(SurviveObject * so, LightcapElement * le )
 		//this should probably be fixed. Maybe some kind of timing based guess at which lighthouse.
 
 		// looks like this is the first sync pulse.  Cool!
-
-		// first, send out the sync pulse data for the last round (for OOTX decoding
-		{
-			if (lcd->per_sweep.lh_max_pulse_length[0] != 0)
-			{
-				so->ctx->lightproc(
-					so,
-					-1,
-					handle_lightcap2_getAcodeFromSyncPulse(so, lcd->per_sweep.lh_max_pulse_length[0]),
-					lcd->per_sweep.lh_max_pulse_length[0],
-					lcd->per_sweep.lh_start_time[0],
-					0,
-					0);
-			}
-			if (lcd->per_sweep.lh_max_pulse_length[1] != 0)
-			{
-				so->ctx->lightproc(
-					so,
-					-2,
-					handle_lightcap2_getAcodeFromSyncPulse(so, lcd->per_sweep.lh_max_pulse_length[1]),
-					lcd->per_sweep.lh_max_pulse_length[1],
-					lcd->per_sweep.lh_start_time[1],
-					0,
-					1);
-			}
-		}
+		lcd->global.sent_out_ootx_bits = 0;
 
 		//fprintf(stderr, "************************************ Reinitializing Disambiguator!!!\n");
 		// initialize here.
@@ -384,7 +375,6 @@ void handle_lightcap2_sync(SurviveObject * so, LightcapElement * le )
 		}
 		*/
 	}
-
 //	printf("%d %d\n", acode, lcd->per_sweep.activeLighthouse );
 }
 
