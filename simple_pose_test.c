@@ -71,7 +71,7 @@ void testprog_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePos
 	hpos[1] = pose->Pos[1];
 	hpos[2] = pose->Pos[2];
 	FLT hposin[3] = { 0, 0, 1 };
-	ApplyPoseToPoint(hpos2, &pose->Pos[0], hposin);
+	ApplyPoseToPoint(hpos2, pose, hposin);
 
 	fflush(stdout);
 }

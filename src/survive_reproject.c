@@ -75,13 +75,13 @@ static FLT gibf(bool useSin, FLT v) {
 void survive_reproject_from_pose_with_config(
 	const SurviveContext *ctx, const survive_calibration_config *config,
 	int lighthouse, const SurvivePose *pose, const FLT *pt, FLT *out) {
-	FLT invq[4];
+	LinmathQuat invq;
 	quatgetreciprocal(invq, pose->Rot);
 
-	FLT tvec[3];
+	LinmathPoint3d tvec;
 	quatrotatevector(tvec, invq, pose->Pos);
 
-	FLT t_pt[3];
+	LinmathPoint3d t_pt;
 	quatrotatevector(t_pt, invq, pt);
 	for (int i = 0; i < 3; i++)
 		t_pt[i] = t_pt[i] - tvec[i];

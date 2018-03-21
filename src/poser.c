@@ -38,17 +38,17 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 
 		// Start by just moving from whatever arbitrary space into object space.
 		SurvivePose arb2object;
-		InvertPose(arb2object.Pos, object2arb.Pos);
+		InvertPose(&arb2object, &object2arb);
 
 		SurvivePose lighthouse2obj;
-		ApplyPoseToPose(lighthouse2obj.Pos, arb2object.Pos, lighthouse2arb.Pos);
+		ApplyPoseToPose(&lighthouse2obj, &arb2object, &lighthouse2arb);
 
 		// Now find the space with the same origin, but rotated so that gravity is up
 		SurvivePose lighthouse2objUp = {}, object2objUp = {};
 		quatfrom2vectors(object2objUp.Rot, so->activations.accel, up);
 
 		// Calculate the pose of the lighthouse in this space
-		ApplyPoseToPose(lighthouse2objUp.Pos, object2objUp.Pos, lighthouse2obj.Pos);
+		ApplyPoseToPose(&lighthouse2objUp, &object2objUp, &lighthouse2obj);
 
 		// Purposefully only set this once. It should only depend on the first (calculated) lighthouse
 		if (quatmagnitude(objUp2world->Rot) == 0) {
@@ -61,8 +61,8 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 
 		// Find find the poses that map to the above
 		SurvivePose obj2world, lighthouse2world;
-		ApplyPoseToPose(obj2world.Pos, objUp2world->Pos, object2objUp.Pos);
-		ApplyPoseToPose(lighthouse2world.Pos, objUp2world->Pos, lighthouse2objUp.Pos);
+		ApplyPoseToPose(&obj2world, objUp2world, &object2objUp);
+		ApplyPoseToPose(&lighthouse2world, objUp2world, &lighthouse2objUp);
 
 		so->ctx->lighthouseposeproc(so->ctx, lighthouse, &lighthouse2world, &obj2world);
 	}

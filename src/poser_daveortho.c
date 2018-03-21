@@ -105,7 +105,7 @@ int PoserDaveOrtho( SurviveObject * so, PoserData * pd )
 				SurvivePose lh2world = so->ctx->bsd[lhid].Pose;
 
 				SurvivePose obj2world;
-				ApplyPoseToPose(obj2world.Pos, lh2world.Pos, objpose.Pos);
+				ApplyPoseToPose(&obj2world, &lh2world, &objpose);
 				PoserData_poser_raw_pose_func(pd, so, lhid, &obj2world);
 
 				if (0) {
@@ -195,7 +195,7 @@ int PoserDaveOrtho( SurviveObject * so, PoserData * pd )
 			*/
 
 			SurvivePose poseout;
-			InvertPose(poseout.Pos, objpose.Pos);
+			InvertPose(&poseout, &objpose);
 			printf("INQUAT: %f %f %f %f = %f [%f %f %f]\n", objpose.Rot[0], objpose.Rot[1], objpose.Rot[2],
 				   objpose.Rot[3], quatmagnitude(objpose.Rot), objpose.Pos[0], objpose.Pos[1], objpose.Pos[2]);
 

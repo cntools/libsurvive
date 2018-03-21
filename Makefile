@@ -119,7 +119,8 @@ calibrate_tcc : $(LIBSURVIVE_C)
 clean :
 	rm -rf */*/*.o *.o src/*.o *~ src/*~ test simple_pose_test data_recorder calibrate testCocoa lib/libsurvive.so test_minimal_cv test_epnp test_epnp_ocv calibrate_client redist/*.o redist/*~ tools/data_server/data_server tools/lighthousefind/lighthousefind tools/lighthousefind_tori/lighthousefind-tori tools/plot_lighthouse/plot_lighthouse tools/process_rawcap/process_to_points redist/jsmntest redist/lintest
 
+.test_redist:
+	cd redist && make .run_tests;
 
-
-
+.run_tests: .test_redist
 

@@ -47,6 +47,14 @@
 #define FLT_FABS FLT_FABS__
 #endif
 
+typedef FLT LinmathQuat[4]; // This is the [wxyz] quaternion, in wxyz format.
+typedef FLT LinmathPoint3d[3];
+typedef FLT linmathVec3d[3];
+
+typedef struct LinmathPose {
+	LinmathPoint3d Pos;
+	LinmathQuat Rot;
+} LinmathPose;
 
 //NOTE: Inputs may never be output with cross product.
 void cross3d( FLT * out, const FLT * a, const FLT * b );
@@ -72,52 +80,48 @@ FLT anglebetween3d( FLT * a, FLT * b );
 
 void rotatearoundaxis(FLT *outvec3, FLT *invec3, FLT *axis, FLT angle);
 void angleaxisfrom2vect(FLT *angle, FLT *axis, FLT *src, FLT *dest);
-void axisanglefromquat(FLT *angle, FLT *axis, FLT *quat);
-
+void axisanglefromquat(FLT *angle, FLT *axis, LinmathQuat quat);
 
 //Quaternion things...
 
-void quatsetnone( FLT * q );
-void quatcopy( FLT * qout, const FLT * qin );
-void quatfromeuler( FLT * q, const FLT * euler );
-void quattoeuler( FLT * euler, const FLT * q );
-void quatfromaxisangle( FLT * q, const FLT * axis, FLT radians );
-FLT quatmagnitude( const FLT * q );
-FLT quatinvsqmagnitude( const FLT * q );
-void quatnormalize( FLT * qout, const FLT * qin );  //Safe for in to be same as out.
-void quattomatrix( FLT * matrix44, const FLT * q );
-void quatfrommatrix( FLT * q, const FLT * matrix44 );
-void quatfrommatrix33(FLT *q, const FLT *matrix33);
-void quatgetconjugate( FLT * qout, const FLT * qin );
-void quatgetreciprocal( FLT * qout, const FLT * qin );
-void quatsub( FLT * qout, const FLT * a, const FLT * b );
-void quatadd( FLT * qout, const FLT * a, const FLT * b );
-void quatrotateabout( FLT * qout, const FLT * a, const FLT * b );  //same as quat multiply, not piecewise multiply.
-void quatscale( FLT * qout, const FLT * qin, FLT s );
-FLT quatinnerproduct( const FLT * qa, const FLT * qb );
-void quatouterproduct( FLT * outvec3, FLT * qa, FLT * qb );
-void quatevenproduct( FLT * q, FLT * qa, FLT * qb );
-void quatoddproduct( FLT * outvec3, FLT * qa, FLT * qb );
-void quatslerp( FLT * q, const FLT * qa, const FLT * qb, FLT t );
-void quatrotatevector( FLT * vec3out, const FLT * quat, const FLT * vec3in );
-void quatfrom2vectors(FLT *q, const FLT *src, const FLT *dest);
+typedef FLT LinmathEulerAngle[3];
 
-//Poses are Position: [x, y, z]  Quaternion: [q, x, y, z]
-typedef FLT *LINMATH_POSE;
-
-// Points are [x, y, z]
-typedef FLT *LINMATH_POINT;
+void quatsetnone(LinmathQuat q);
+void quatcopy(LinmathQuat q, const LinmathQuat qin);
+void quatfromeuler(LinmathQuat q, const LinmathEulerAngle euler);
+void quattoeuler(LinmathEulerAngle euler, const LinmathQuat q);
+void quatfromaxisangle(LinmathQuat q, const FLT *axis, FLT radians);
+FLT quatmagnitude(const LinmathQuat q);
+FLT quatinvsqmagnitude(const LinmathQuat q);
+void quatnormalize(LinmathQuat qout, const LinmathQuat qin); // Safe for in to be same as out.
+void quattomatrix(FLT *matrix44, const LinmathQuat q);
+void quatfrommatrix(LinmathQuat q, const FLT *matrix44);
+void quatfrommatrix33(LinmathQuat q, const FLT *matrix33);
+void quatgetconjugate(LinmathQuat qout, const LinmathQuat qin);
+void quatgetreciprocal(LinmathQuat qout, const LinmathQuat qin);
+void quatsub(LinmathQuat qout, const LinmathQuat a, const LinmathQuat b);
+void quatadd(LinmathQuat qout, const LinmathQuat a, const LinmathQuat b);
+void quatrotateabout(LinmathQuat qout, const LinmathQuat a,
+					 const LinmathQuat b); // same as quat multiply, not piecewise multiply.
+void quatscale(LinmathQuat qout, const LinmathQuat qin, FLT s);
+FLT quatinnerproduct(const LinmathQuat qa, const LinmathQuat qb);
+void quatouterproduct(FLT *outvec3, LinmathQuat qa, LinmathQuat qb);
+void quatevenproduct(LinmathQuat q, LinmathQuat qa, LinmathQuat qb);
+void quatoddproduct(FLT *outvec3, LinmathQuat qa, LinmathQuat qb);
+void quatslerp(LinmathQuat q, const LinmathQuat qa, const LinmathQuat qb, FLT t);
+void quatrotatevector(FLT *vec3out, const LinmathQuat quat, const FLT *vec3in);
+void quatfrom2vectors(LinmathQuat q, const FLT *src, const FLT *dest);
 
 // This is the quat equivalent of 'pout = pose * pin' if pose were a 4x4 matrix in homogenous space
-void ApplyPoseToPoint(LINMATH_POINT pout, const LINMATH_POSE pose, const LINMATH_POINT pin);
+void ApplyPoseToPoint(LinmathPoint3d pout, const LinmathPose *pose, const LinmathPoint3d pin);
 
 // This is the quat equivalent of 'pout = lhs_pose * rhs_pose' if poses were a 4x4 matrix in homogenous space
-void ApplyPoseToPose(LINMATH_POSE pout, const LINMATH_POSE lhs_pose, const LINMATH_POSE rhs_pose);
+void ApplyPoseToPose(LinmathPose *pout, const LinmathPose *lhs_pose, const LinmathPose *rhs_pose);
 
 // This is the quat equivlant of 'pose_in^-1'; so that ApplyPoseToPose(..., InvertPose(..., pose_in), pose_in) ==
 // Identity ( [0, 0, 0], [1, 0, 0, 0] )
 // by definition.
-void InvertPose(LINMATH_POSE poseout, const LINMATH_POSE pose_in);
+void InvertPose(LinmathPose *poseout, const LinmathPose *pose_in);
 
 // Matrix Stuff
 

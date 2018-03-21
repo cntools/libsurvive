@@ -1,6 +1,7 @@
 #ifndef _SURVIVE_TYPES_H
 #define _SURVIVE_TYPES_H
 
+#include "linmath.h"
 #include "stdint.h"
 
 #ifdef __cplusplus
@@ -21,12 +22,8 @@ extern "C" {
 #define _FLT_format2(f) f##_format
 #define _FLT_format(f) _FLT_format2(f)
 #define FLT_format _FLT_format(FLT)
-  
-typedef struct SurvivePose
-{
-	FLT  Pos[3];
-	FLT  Rot[4]; //This is the [wxyz] quaternion, in wxyz format.
-} SurvivePose;
+
+typedef LinmathPose SurvivePose;
 
 //Careful with this, you can't just add another one right now, would take minor changes in survive_data.c and the cal tools.
 //It will also require a recompile.  TODO: revisit this and correct the comment once fixed.

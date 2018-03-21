@@ -36,7 +36,7 @@ void metric_function(int j, int i, double *aj, double *xij, void *adata) {
 
 	SurvivePose obj2world = ctx->obj_pose;
 	FLT sensorInWorld[3] = {};
-	ApplyPoseToPoint(sensorInWorld, obj2world.Pos, &so->sensor_locations[i * 3]);
+	ApplyPoseToPoint(sensorInWorld, &obj2world, &so->sensor_locations[i * 3]);
 	survive_reproject_from_pose_with_config(so->ctx, &ctx->calibration_config, j, (SurvivePose *)aj, sensorInWorld,
 											xij);
 }
@@ -134,7 +134,7 @@ void str_metric_function_single_sweep(int j, int i, double *bi, double *xij, voi
 
 	quatnormalize(obj.Rot, obj.Rot);
 	FLT xyz[3];
-	ApplyPoseToPoint(xyz, obj.Pos, &so->sensor_locations[sensor_idx * 3]);
+	ApplyPoseToPoint(xyz, &obj, &so->sensor_locations[sensor_idx * 3]);
 
 	// std::cerr << "Processing " << sensor_idx << ", " << lh << std::endl;
 	SurvivePose *camera = &so->ctx->bsd[lh].Pose;
@@ -157,7 +157,7 @@ void str_metric_function(int j, int i, double *bi, double *xij, void *adata) {
 
 	quatnormalize(obj.Rot, obj.Rot);
 	FLT xyz[3];
-	ApplyPoseToPoint(xyz, obj.Pos, &so->sensor_locations[sensor_idx * 3]);
+	ApplyPoseToPoint(xyz, &obj, &so->sensor_locations[sensor_idx * 3]);
 
 	// std::cerr << "Processing " << sensor_idx << ", " << lh << std::endl;
 	SurvivePose *camera = &so->ctx->bsd[lh].Pose;

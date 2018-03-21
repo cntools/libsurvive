@@ -183,24 +183,18 @@ void axisanglefromquat(FLT *angle, FLT *axis, FLT *q)
 //Originally from Mercury (Copyright (C) 2009 by Joshua Allen, Charles Lohr, Adam Lowman)
 //Under the mit/X11 license.
 
-
-
-
-void quatsetnone(FLT * q)
-{
+void quatsetnone(LinmathQuat q) {
 	q[0] = 1; q[1] = 0; q[2] = 0; q[3] = 0;
 }
 
-void quatcopy(FLT * qout, const FLT * qin)
-{
+void quatcopy(LinmathQuat qout, const LinmathQuat qin) {
 	qout[0] = qin[0];
 	qout[1] = qin[1];
 	qout[2] = qin[2];
 	qout[3] = qin[3];
 }
 
-void quatfromeuler( FLT * q, const FLT * euler )
-{
+void quatfromeuler(LinmathQuat q, const LinmathEulerAngle euler) {
 	FLT X = euler[0]/2.0f; //roll
 	FLT Y = euler[1]/2.0f; //pitch
 	FLT Z = euler[2]/2.0f; //yaw
@@ -221,16 +215,14 @@ void quatfromeuler( FLT * q, const FLT * euler )
 	quatnormalize( q, q );
 }
 
-void quattoeuler( FLT * euler, const FLT * q )
-{
+void quattoeuler(LinmathEulerAngle euler, const LinmathQuat q) {
 	//According to http://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles (Oct 26, 2009)
 	euler[0] = FLT_ATAN2(2 * (q[0] * q[1] + q[2] * q[3]), 1 - 2 * (q[1] * q[1] + q[2] * q[2]));
 	euler[1] = FLT_ASIN(2 * (q[0] * q[2] - q[3] * q[1]));
 	euler[2] = FLT_ATAN2(2 * (q[0] * q[3] + q[1] * q[2]), 1 - 2 * (q[2] * q[2] + q[3] * q[3]));
 }
 
-void quatfromaxisangle( FLT * q, const FLT * axis, FLT radians )
-{
+void quatfromaxisangle(LinmathQuat q, const FLT *axis, FLT radians) {
 	FLT v[3];
 	normalize3d( v, axis );
 	
@@ -243,25 +235,20 @@ void quatfromaxisangle( FLT * q, const FLT * axis, FLT radians )
 	quatnormalize( q, q );
 }
 
-FLT quatmagnitude( const FLT * q )
-{
+FLT quatmagnitude(const LinmathQuat q) {
 	return FLT_SQRT((q[0] * q[0]) + (q[1] * q[1]) + (q[2] * q[2]) + (q[3] * q[3]));
 }
 
-FLT quatinvsqmagnitude( const FLT * q )
-{
+FLT quatinvsqmagnitude(const LinmathQuat q) {
 	return ((FLT)1.)/FLT_SQRT((q[0]*q[0])+(q[1]*q[1])+(q[2]*q[2])+(q[3]*q[3]));
 }
 
-
-void quatnormalize( FLT * qout, const FLT * qin )
-{
+void quatnormalize(LinmathQuat qout, const LinmathQuat qin) {
 	FLT imag = quatinvsqmagnitude( qin );
 	quatscale( qout, qin, imag );
 }
 
-void quattomatrix(FLT * matrix44, const FLT * qin)
-{
+void quattomatrix(FLT *matrix44, const LinmathQuat qin) {
 	FLT q[4];
 	quatnormalize(q, qin);
 
@@ -332,8 +319,7 @@ void quatfrommatrix33(FLT *q, const FLT *m) {
 	}
 }
 
-void quatfrommatrix( FLT * q, const FLT * matrix44 )
-{
+void quatfrommatrix(LinmathQuat q, const FLT *matrix44) {
 	//Algorithm from http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
 	FLT tr = matrix44[0] + matrix44[5] + matrix44[10];
 
@@ -366,8 +352,7 @@ void quatfrommatrix( FLT * q, const FLT * matrix44 )
 
 
 // Algorithm from http://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToMatrix/
-void quattomatrix33(FLT * matrix33, const FLT * qin)
-{
+void quattomatrix33(FLT *matrix33, const LinmathQuat qin) {
 	FLT q[4];
 	quatnormalize(q, qin);
 
@@ -399,39 +384,34 @@ void quattomatrix33(FLT * matrix33, const FLT * qin)
 	matrix33[8] = 1 - xx - yy;
 }
 
-void quatgetconjugate(FLT * qout, const FLT * qin)
-{
+void quatgetconjugate(LinmathQuat qout, const LinmathQuat qin) {
 	qout[0] = qin[0];
 	qout[1] = -qin[1];
 	qout[2] = -qin[2];
 	qout[3] = -qin[3];
 }
 
-void quatgetreciprocal( FLT * qout, const FLT * qin )
-{
+void quatgetreciprocal(LinmathQuat qout, const LinmathQuat qin) {
 	FLT m = quatinvsqmagnitude(qin);
 	quatgetconjugate( qout, qin );
 	quatscale( qout, qout, m );
 }
 
-void quatsub( FLT * qout, const FLT * a, const FLT * b )
-{
+void quatsub(LinmathQuat qout, const FLT *a, const FLT *b) {
 	qout[0] = a[0] - b[0];
 	qout[1] = a[1] - b[1];
 	qout[2] = a[2] - b[2];
 	qout[3] = a[3] - b[3];
 }
 
-void quatadd( FLT * qout, const FLT * a, const FLT * b )
-{
+void quatadd(LinmathQuat qout, const FLT *a, const FLT *b) {
 	qout[0] = a[0] + b[0];
 	qout[1] = a[1] + b[1];
 	qout[2] = a[2] + b[2];
 	qout[3] = a[3] + b[3];
 }
 
-void quatrotateabout( FLT * qout, const FLT * q1, const FLT * q2 )
-{
+void quatrotateabout(LinmathQuat qout, const LinmathQuat q1, const LinmathQuat q2) {
 	//NOTE: Does not normalize
 	qout[0] = (q1[0]*q2[0])-(q1[1]*q2[1])-(q1[2]*q2[2])-(q1[3]*q2[3]);
 	qout[1] = (q1[0]*q2[1])+(q1[1]*q2[0])+(q1[2]*q2[3])-(q1[3]*q2[2]);
@@ -439,44 +419,37 @@ void quatrotateabout( FLT * qout, const FLT * q1, const FLT * q2 )
 	qout[3] = (q1[0]*q2[3])+(q1[1]*q2[2])-(q1[2]*q2[1])+(q1[3]*q2[0]);
 }
 
-void quatscale( FLT * qout, const FLT * qin, FLT s )
-{
+void quatscale(LinmathQuat qout, const LinmathQuat qin, FLT s) {
 	qout[0] = qin[0] * s;
 	qout[1] = qin[1] * s;
 	qout[2] = qin[2] * s;
 	qout[3] = qin[3] * s;
 }
 
-
-FLT quatinnerproduct( const FLT * qa, const FLT * qb )
-{
+FLT quatinnerproduct(const LinmathQuat qa, const LinmathQuat qb) {
 	return (qa[0]*qb[0])+(qa[1]*qb[1])+(qa[2]*qb[2])+(qa[3]*qb[3]);
 }
 
-void quatouterproduct( FLT * outvec3, FLT * qa, FLT * qb )
-{
+void quatouterproduct(FLT *outvec3, LinmathQuat qa, LinmathQuat qb) {
 	outvec3[0] = (qa[0]*qb[1])-(qa[1]*qb[0])-(qa[2]*qb[3])+(qa[3]*qb[2]);
 	outvec3[1] = (qa[0]*qb[2])+(qa[1]*qb[3])-(qa[2]*qb[0])-(qa[3]*qb[1]);
 	outvec3[2] = (qa[0]*qb[3])-(qa[1]*qb[2])+(qa[2]*qb[1])-(qa[3]*qb[0]);
 }
 
-void quatevenproduct( FLT * q, FLT * qa, FLT * qb )
-{
+void quatevenproduct(LinmathQuat q, LinmathQuat qa, LinmathQuat qb) {
 	q[0] = (qa[0]*qb[0])-(qa[1]*qb[1])-(qa[2]*qb[2])-(qa[3]*qb[3]);
 	q[1] = (qa[0]*qb[1])+(qa[1]*qb[0]);
 	q[2] = (qa[0]*qb[2])+(qa[2]*qb[0]);
 	q[3] = (qa[0]*qb[3])+(qa[3]*qb[0]);
 }
 
-void quatoddproduct( FLT * outvec3, FLT * qa, FLT * qb )
-{
+void quatoddproduct(FLT *outvec3, LinmathQuat qa, LinmathQuat qb) {
 	outvec3[0] = (qa[2]*qb[3])-(qa[3]*qb[2]);
 	outvec3[1] = (qa[3]*qb[1])-(qa[1]*qb[3]);
 	outvec3[2] = (qa[1]*qb[2])-(qa[2]*qb[1]);
 }
 
-void quatslerp( FLT * q, const FLT * qa, const FLT * qb, FLT t )
-{
+void quatslerp(LinmathQuat q, const LinmathQuat qa, const LinmathQuat qb, FLT t) {
 	FLT an[4];
 	FLT bn[4];
 	quatnormalize( an, qa );
@@ -511,8 +484,7 @@ void quatslerp( FLT * q, const FLT * qa, const FLT * qb, FLT t )
 	}
 }
 
-void quatrotatevector( FLT * vec3out, const FLT * quat, const FLT * vec3in )
-{
+void quatrotatevector(FLT *vec3out, const LinmathQuat quat, const FLT *vec3in) {
 	//See: http://www.geeks3d.com/20141201/how-to-rotate-a-vertex-by-a-quaternion-in-glsl/
 
 	FLT tmp[3];
@@ -665,19 +637,19 @@ void matrix44transpose(FLT * mout, const FLT * minm )
 
 }
 
-void ApplyPoseToPoint(LINMATH_POINT pout, const LINMATH_POSE pose, const LINMATH_POINT pin) {
-	quatrotatevector( pout, &pose[3], pin );
-	add3d( pout, pout, &pose[0] );
+void ApplyPoseToPoint(LinmathPoint3d pout, const LinmathPose *pose, const LinmathPoint3d pin) {
+	quatrotatevector(pout, pose->Rot, pin);
+	add3d(pout, pout, pose->Pos);
 }
 
-void ApplyPoseToPose(LINMATH_POSE pout, const LINMATH_POSE lhs_pose, const LINMATH_POSE rhs_pose) {
-	ApplyPoseToPoint(pout, lhs_pose, rhs_pose);
-	quatrotateabout(&pout[3], &lhs_pose[3], &rhs_pose[3]);
+void ApplyPoseToPose(LinmathPose *pout, const LinmathPose *lhs_pose, const LinmathPose *rhs_pose) {
+	ApplyPoseToPoint(pout->Pos, lhs_pose, rhs_pose->Pos);
+	quatrotateabout(pout->Rot, lhs_pose->Rot, rhs_pose->Rot);
 }
 
-void InvertPose(LINMATH_POSE poseout, const LINMATH_POSE pose) {
-	quatgetreciprocal(&poseout[3], &pose[3]);
+void InvertPose(LinmathPose *poseout, const LinmathPose *pose) {
+	quatgetreciprocal(poseout->Rot, pose->Rot);
 
-	quatrotatevector(&poseout[0], &poseout[3], &pose[0]);
-	scale3d(&poseout[0], &poseout[0], -1);
+	quatrotatevector(poseout->Pos, poseout->Rot, pose->Pos);
+	scale3d(poseout->Pos, poseout->Pos, -1);
 }
