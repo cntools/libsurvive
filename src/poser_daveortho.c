@@ -10,7 +10,6 @@
 
 //Dave talks about this poser here: https://www.youtube.com/watch?v=nSbEltdH9vM&feature=youtu.be&t=2h29m47s
 
-static int LH_ID;
 
 void OrthoSolve(
     FLT T[4][4],               // OUTPUT: 4x4 transformation matrix
@@ -47,8 +46,11 @@ int PoserDaveOrtho( SurviveObject * so, PoserData * pd )
 	case POSERDATA_LIGHT:
 	{
 		PoserDataLight * l = (PoserDataLight*)pd;
-		dd->lengths[l->sensor_id][l->lh][dd->nextaxis] = l->length;
-		dd->angles [l->sensor_id][l->lh][dd->nextaxis] = l->angle;
+		if( l->length > dd->lengths[l->sensor_id][l->lh][dd->nextaxis] )
+		{
+			dd->lengths[l->sensor_id][l->lh][dd->nextaxis] = l->length;
+			dd->angles [l->sensor_id][l->lh][dd->nextaxis] = l->angle;
+		}
 		break;
 	}
 	case POSERDATA_SYNC:
@@ -58,7 +60,7 @@ int PoserDaveOrtho( SurviveObject * so, PoserData * pd )
 
 		dd->nextaxis = l->acode & 1;
 
-		if( dd->nextaxis == 0 && l->lh == 0 &&  so->codename[0] == 'H' )
+		if( dd->nextaxis == 0 &&  so->codename[0] == 'H' )
 		{
 			int i;
 			int max_hits = 0;
@@ -80,40 +82,41 @@ int PoserDaveOrtho( SurviveObject * so, PoserData * pd )
 				}
 
 			}
-			if( max_hits )
+			if( max_hits > 2 )
 			{
+				//if( lhid == 0 ) { printf( "\033[H\033[2J" ); }
+				//printf( "%d\n", max_hits );
 				FLT tOut[4][4];
 				FLT S_out[2][SENSORS_PER_OBJECT];
 				OrthoSolve( tOut, S_out, S_in, X_in, max_hits );
 
 							//Now, we need to solve where we are as a function of where
 				//the lighthouses are.
-				FLT quat[4];
-				FLT posoff[3] = { tOut[0][3], tOut[1][3], tOut[2][3] };
+
+				SurvivePose objpose; 
 				FLT MT[4][4];
+
+				objpose.Pos[0] = tOut[0][3];
+				objpose.Pos[1] = tOut[1][3];
+				objpose.Pos[2] = tOut[2][3];
 
 				//matrix44transpose( MT, &tOut[0][0] );
 				matrix44copy( &MT[0][0], &tOut[0][0] );
 
-				quatfrommatrix( quat, &MT[0][0] );
-
+				quatfrommatrix( objpose.Rot, &MT[0][0] );
 
 				//printf( "QUAT: %f %f %f %f = %f\n", quat[0], quat[1], quat[2], quat[3], quatmagnitude(quat) );
 				//quat[2] -= 0.005; //fixes up lh0 in test data set.
-				quatnormalize( quat, quat );
-				printf( "QUAT: %f %f %f %f = %f [%f %f %f]\n", quat[0], quat[1], quat[2], quat[3], quatmagnitude(quat), posoff[0], posoff[1], posoff[2] );
-			
-if(0)
-				for( i = 0; i < max_hits;i++ )
+				quatnormalize( objpose.Rot, objpose.Rot );
+
+				SurvivePose poseout;
+				InvertPose(poseout.Pos, objpose.Pos);
+				if( 0 )
 				{
-					FLT pt[3] = { X_in[0][i], X_in[1][i], X_in[2][i] };
-					quatrotatevector( pt, quat, pt );
-					add3d( pt, pt, posoff );
-					printf( "OUT %f %f %f ANGLE %f %f AOUT %f %f\n", 
-						pt[0], pt[1], pt[2],
-						S_in[0][i], S_in[1][i], atan2( pt[0], pt[1] ), atan2( pt[2], pt[1] ) );
+					printf( "INQUAT: %f %f %f %f = %f [%f %f %f]\n", objpose.Rot[0], objpose.Rot[1], objpose.Rot[2], objpose.Rot[3], quatmagnitude(objpose.Rot), objpose.Pos[0], objpose.Pos[1], objpose.Pos[2] );
+					printf( "OUQUAT: %f %f %f %f = %f [%f %f %f]\n", poseout.Rot[0], poseout.Rot[1], poseout.Rot[2], poseout.Rot[3], quatmagnitude(poseout.Rot), poseout.Pos[0], poseout.Pos[1], poseout.Pos[2] );
 				}
-			}
+			}	
 		}
 
 		//if( so->codename[0] == 'H' ) printf( "LIG:%s %d @ %d rad, %f s (AX %d) (TC %d)\n", so->codename, l->sensor_id, l->lh, l->length, dd->nextaxis, l->timecode );
@@ -123,6 +126,8 @@ if(0)
 	case POSERDATA_FULL_SCENE:
 	{
 		PoserDataFullScene * fs = (PoserDataFullScene*)pd;
+		int LH_ID;
+		printf( "PDFS\n" );
 
 		for( LH_ID = 0; LH_ID < 2; LH_ID++ )
 		{
@@ -150,38 +155,53 @@ if(0)
 
 						//Now, we need to solve where we are as a function of where
 			//the lighthouses are.
-			FLT quat[4];
-			FLT posoff[3] = { tOut[0][3], tOut[1][3], tOut[2][3] };
+			//FLT quat[4];
+			//FLT posoff[3] = { tOut[0][3], tOut[1][3], tOut[2][3] };
+			SurvivePose objpose; 
 			FLT MT[4][4];
+
+			objpose.Pos[0] = tOut[0][3];
+			objpose.Pos[1] = tOut[1][3];
+			objpose.Pos[2] = tOut[2][3];
 
 			//matrix44transpose( MT, &tOut[0][0] );
 			matrix44copy( &MT[0][0], &tOut[0][0] );
 
-			quatfrommatrix( quat, &MT[0][0] );
-
+			quatfrommatrix( objpose.Rot, &MT[0][0] );
 
 			//printf( "QUAT: %f %f %f %f = %f\n", quat[0], quat[1], quat[2], quat[3], quatmagnitude(quat) );
 			//quat[2] -= 0.005; //fixes up lh0 in test data set.
-			quatnormalize( quat, quat );
-			printf( "QUAT: %f %f %f %f = %f [%f %f %f]\n", quat[0], quat[1], quat[2], quat[3], quatmagnitude(quat), posoff[0], posoff[1], posoff[2] );
+			quatnormalize( objpose.Rot, objpose.Rot );
+			printf( "QUAT: %f %f %f %f = %f [%f %f %f]\n", objpose.Rot[0], objpose.Rot[1], objpose.Rot[2], objpose.Rot[3], quatmagnitude(objpose.Rot), objpose.Pos[0], objpose.Pos[1], objpose.Pos[2] );
 			
-			for( i = 0; i < max_hits;i++ )
-			{
-				FLT pt[3] = { X_in[0][i], X_in[1][i], X_in[2][i] };
-				quatrotatevector( pt, quat, pt );
-				add3d( pt, pt, posoff );
-				printf( "OUT %f %f %f ANGLE %f %f AOUT %f %f\n", 
-					pt[0], pt[1], pt[2],
-					S_in[0][i], S_in[1][i], atan2( pt[0], pt[1] ), atan2( pt[2], pt[1] ) );
-			}
+			if( 0 );
+				for( i = 0; i < max_hits;i++ )
+				{
+					FLT pt[3] = { X_in[0][i], X_in[1][i], X_in[2][i] };
+					quatrotatevector( pt, objpose.Rot, pt );
+					add3d( pt, pt, objpose.Pos );
+					printf( "OUT %f %f %f ANGLE %f %f AOUT %f %f\n", 
+						pt[0], pt[1], pt[2],
+						S_in[0][i], S_in[1][i], atan2( pt[0], pt[1] ), atan2( pt[2], pt[1] ) );
+				}
 
-			so->FromLHPose[LH_ID].Pos[0] = posoff[0];
-			so->FromLHPose[LH_ID].Pos[1] = posoff[1];
-			so->FromLHPose[LH_ID].Pos[2] = posoff[2];
-			so->FromLHPose[LH_ID].Rot[0] = quat[0];
-			so->FromLHPose[LH_ID].Rot[1] = quat[1];
-			so->FromLHPose[LH_ID].Rot[2] = quat[2];
-			so->FromLHPose[LH_ID].Rot[3] = quat[3];
+			/*
+				so->FromLHPose[LH_ID].Pos[0] = objpose.Pos[0];
+				so->FromLHPose[LH_ID].Pos[1] = objpose.Pos[1];
+				so->FromLHPose[LH_ID].Pos[2] = objpose.Pos[2];
+				so->FromLHPose[LH_ID].Rot[0] = objpose.Rot[0];
+				so->FromLHPose[LH_ID].Rot[1] = objpose.Rot[1];
+				so->FromLHPose[LH_ID].Rot[2] = objpose.Rot[2];
+				so->FromLHPose[LH_ID].Rot[3] = objpose.Rot[3];
+			*/
+
+
+			SurvivePose poseout;
+			InvertPose(poseout.Pos, objpose.Pos);
+			printf( "INQUAT: %f %f %f %f = %f [%f %f %f]\n", objpose.Rot[0], objpose.Rot[1], objpose.Rot[2], objpose.Rot[3], quatmagnitude(objpose.Rot), objpose.Pos[0], objpose.Pos[1], objpose.Pos[2] );
+
+			PoserData_lighthouse_pose_func(&fs->hdr, so, LH_ID, &poseout);
+			printf( "OUQUAT: %f %f %f %f = %f [%f %f %f]\n", poseout.Rot[0], poseout.Rot[1], poseout.Rot[2], poseout.Rot[3], quatmagnitude(poseout.Rot), poseout.Pos[0], poseout.Pos[1], poseout.Pos[2] );
 		}
 
 		break;
@@ -340,8 +360,8 @@ printf("rhat %f %f (len %f)\n", rhat[0][0], rhat[1][0], rhat_len);
 */
 //    FLT ydist1 = 1.0 /  uhat_len; //0.25*PI / uhat_len;
 //    FLT ydist2 = 1.0 /  rhat_len; //0.25*PI / rhat_len;
-    FLT ydist  = 1.0 / urhat_len;
-    printf("ydist %f\n", ydist);
+    FLT ydist  = 1.0 / urhat_len;		//TRICKY XXX Dave operates with "y forward" for some reason...
+//    printf("ydist %f\n", ydist);
 //    printf("ydist1 %f ydist2 %f ydist %f\n", ydist1, ydist2, ydist);
 
     //--------------------
@@ -382,8 +402,8 @@ printf("rhat %f %f (len %f)\n", rhat[0][0], rhat[1][0], rhat_len);
 //                printf("err %f hand %f\n", err, hand);
                 
                 // If we are the best right-handed frame so far
-                //if (hand > 0 && err < bestErr) { x[1][0]=x_y; y[1][0]=y_y; z[1][0]=z_y; bestErr=err; }
-				if ( i == 0 && j == 1 && k == 0) { x[1][0]=x_y; y[1][0]=y_y; z[1][0]=z_y; bestErr=err; }
+                if (hand > 0 && err < bestErr) { x[1][0]=x_y; y[1][0]=y_y; z[1][0]=z_y; bestErr=err; }
+				//if ( i == 0 && j == 0 && k == 0) { x[1][0]=x_y; y[1][0]=y_y; z[1][0]=z_y; bestErr=err; }
                 z_y = -z_y;
             }
             y_y = -y_y;
@@ -522,18 +542,33 @@ PRINT(ab,2,1);
     T[3][0]=0.0;     T[3][1]=0.0;     T[3][2]=0.0;     T[3][3]=1.0;
 #else
 
-	//XXX XXX XXX FOR ANYONE LOOKING TO CONTROL THE COORDINATE FRAME, THESE ARE THE LINES!!!
+
+/* WRONG: This transposes.
     T[0][0]=-R[0][0]; T[0][1]=-R[0][1]; T[0][2]=-R[0][2]; T[0][3]=-trans[0];
-    T[2][0]=-R[1][0]; T[2][1]=-R[1][1]; T[2][2]=-R[1][2]; T[2][3]=-trans[1];
-    T[1][0]=R[2][0]; T[1][1]=R[2][1]; T[1][2]=R[2][2]; T[1][3]=trans[2];
+    T[2][0]= R[1][0]; T[2][1]= R[1][1]; T[2][2]= R[1][2]; T[2][3]=-trans[1];
+    T[1][0]= R[2][0]; T[1][1]= R[2][1]; T[1][2]= R[2][2]; T[1][3]=trans[2];
+    T[3][0]=0.0;     T[3][1]=0.0;     T[3][2]=0.0;     T[3][3]=1.0;
+*/
+
+
+	//XXX XXX XXX FOR ANYONE LOOKING TO CONTROL THE COORDINATE FRAME, THESE ARE THE LINES!!!
+
+
+/** This is probably all wonky and backwards  but "looks" right except with multiple transforms, perhaps it's transposed.
+    T[0][0]=-R[0][0]; T[0][1]= R[0][1]; T[0][2]= R[0][2]; T[0][3]=-trans[0];
+    T[2][0]=-R[1][0]; T[2][1]=-R[1][1]; T[2][2]= R[1][2]; T[2][3]=-trans[1];//This Z axis has problems with getting magnitudes. We can re=make it from the other two axes.
+    T[1][0]=-R[2][0]; T[1][1]= R[2][1]; T[1][2]=-R[2][2]; T[1][3]= trans[2];
+    T[3][0]=0.0;     T[3][1]=0.0;     T[3][2]=0.0;     T[3][3]=1.0;
+*/
+    T[0][0]=-R[0][0]; T[0][1]=-R[0][1]; T[0][2]=-R[0][2]; T[0][3]=-trans[0];
+    T[1][0]= R[2][0]; T[1][1]= R[2][1]; T[1][2]= R[2][2]; T[2][3]=-trans[1];
+    T[2][0]= R[1][0]; T[2][1]= R[1][1]; T[2][2]= R[1][2]; T[1][3]= trans[2];
     T[3][0]=0.0;     T[3][1]=0.0;     T[3][2]=0.0;     T[3][3]=1.0;
 
 #endif
 
 
 
-
-	FLT T2[4][4];
 
 	//-------------------
 	// Orthogonalize the matrix
@@ -546,32 +581,46 @@ PRINT(ab,2,1);
 	//-------------------
 	// Orthogonalize the matrix
 	//-------------------
-	//PRINT_MAT(T,4,4);
 
-#if 1
+	cross3d( &T[2][0], &T[0][0], &T[1][0] ); 	//Generate Z from X/Y because Z is kinda rekt.
+
+	//cross3d( &T[1][0], &T[2][0], &T[0][0] );	//Renormalize rotations...
+	//cross3d( &T[0][0], &T[1][0], &T[2][0] );	//Renormalize rotations...
+
+
+	//XXX XXX TODO
+	//We could further normalize things...
+
+
+
+#if 0
 //	matrix44transpose(T2, T);  //Transpose so we are
 	matrix44copy((FLT*)T2,(FLT*)T);
-	cross3d( &T2[2][0], &T2[1][0], &T2[0][0] ); //Replace axes in-place.
-	cross3d( &T2[1][0], &T2[0][0], &T2[2][0] );
+	cross3d( &T2[1][0], &T2[0][0], &T2[2][0] ); //Replace axes in-place.
+	cross3d( &T2[2][0], &T2[1][0], &T2[0][0] ); 
 //	matrix44copy((FLT*)T,(FLT*)T2);
 //	matrix44transpose(T, T2);
 	normalize3d( &T[0][0], &T2[0][0] );
 	normalize3d( &T[1][0], &T2[1][0] );
 	normalize3d( &T[2][0], &T2[2][0] );
-
-
 #else
-	normalize3d( &T[0][0], &T[0][0] );
-	normalize3d( &T[1][0], &T[1][0] );
-	normalize3d( &T[2][0], &T[2][0] );
+//	normalize3d( &T[0][0], &T[0][0] );
+//	normalize3d( &T[1][0], &T[1][0] );
+//	normalize3d( &T[2][0], &T[2][0] );
 #endif
 
-	//Fix handedness for rotations...
-	T[0][0]*=-1;
-	T[0][1]*=-1;
-	T[0][2]*=-1;
+//	printf( "      In Axis on headset      \n" );
+//	printf( "    x                  y                   z\n" );
+//	PRINT_MAT(T,4,4);
 
 //	PRINT_MAT(T,4,4);
+
+//	PRINT_MAT(T,4,4);
+
+	//Fix handedness for rotations...
+//	T[1][0]*=-1;
+//	T[1][1]*=-1;
+//	T[1][2]*=-1;
 
 
 //	PRINT_MAT(T,4,4);

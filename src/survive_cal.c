@@ -80,7 +80,7 @@ void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 	lighthouses_completed++;
 
 	if (lighthouses_completed >= NUM_LIGHTHOUSES) {
-		config_save(ctx, "config.json");
+			config_save(ctx, survive_configs( ctx, "configfile", SC_GET, "config.json" ) );
 	}
 }
 
@@ -139,8 +139,8 @@ void survive_cal_install( struct SurviveContext * ctx )
 	// setting the required trackers for calibration to be permissive to make it easier for a newbie to start-- 
 	// basically, libsurvive will detect whatever they have plugged in and start using that.  
 //	const char * RequiredTrackersForCal = config_read_str(ctx->global_config_values, "RequiredTrackersForCal", "HMD,WM0,WM1");	
-	const char * RequiredTrackersForCal = config_read_str(ctx->global_config_values, "RequiredTrackersForCal", ""); 
-	const uint32_t AllowAllTrackersForCal = config_read_uint32( ctx->global_config_values, "AllowAllTrackersForCal", 1 );
+	const char * RequiredTrackersForCal = survive_configs( ctx, "requiredtrackersforcal", SC_SETCONFIG, "" );
+	const uint32_t AllowAllTrackersForCal = survive_configi( ctx, "allowalltrackersforcal", SC_SETCONFIG, 1 );
 	size_t requiredTrackersFound = 0;
 
 	for (int j=0; j < ctx->objs_ct; j++)
@@ -334,22 +334,24 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 			int i, j, k;
 			cd->found_common = 1;
 			for( i = 0; i < cd->numPoseObjects; i++ )
-			//for( i = 0; i < MAX_SENSORS_TO_CAL/SENSORS_PER_OBJECT; i++ )
-			for( j = 0; j < ctx->activeLighthouses; j++ )
 			{
-				int sensors_visible = 0;
-				for( k = 0; k < SENSORS_PER_OBJECT; k++ )
+				//for( i = 0; i < MAX_SENSORS_TO_CAL/SENSORS_PER_OBJECT; i++ )
+				for( j = 0; j < ctx->activeLighthouses; j++ )
 				{
-					if( cd->all_counts[k+i*SENSORS_PER_OBJECT][j][0] > NEEDED_COMMON_POINTS && 
-						cd->all_counts[k+i*SENSORS_PER_OBJECT][j][1] > NEEDED_COMMON_POINTS )
-						sensors_visible++;
-				}
-				if( sensors_visible < MIN_SENSORS_VISIBLE_PER_LH_FOR_CAL ) 
-				{
-					//printf( "Dev %d, LH %d not enough visible points found.\n", i, j );
-					reset_calibration( cd );
-					cd->found_common = 0;
-					return;
+					int sensors_visible = 0;
+					for( k = 0; k < SENSORS_PER_OBJECT; k++ )
+					{
+						if( cd->all_counts[k+i*SENSORS_PER_OBJECT][j][0] > NEEDED_COMMON_POINTS && 
+							cd->all_counts[k+i*SENSORS_PER_OBJECT][j][1] > NEEDED_COMMON_POINTS )
+							sensors_visible++;
+					}
+					if( sensors_visible < MIN_SENSORS_VISIBLE_PER_LH_FOR_CAL ) 
+					{
+						//printf( "Dev %d, LH %d not enough visible points found.\n", i, j );
+						reset_calibration( cd );
+						cd->found_common = 0;
+						return;
+					}
 				}
 			}
 			
