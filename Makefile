@@ -39,7 +39,8 @@ REDISTS:=redist/json_helpers.o redist/linmath.o redist/jsmn.o redist/os_generic.
 ifeq ($(UNAME), Darwin)
 REDISTS:=$(REDISTS) redist/hid-osx.c
 endif
-LIBSURVIVE_CORE:=src/survive.o src/survive_usb.o src/survive_charlesbiguator.o src/survive_process.o src/ootx_decoder.o src/survive_driverman.o src/survive_default_devices.o src/survive_vive.o src/survive_playback.o src/survive_config.o src/survive_cal.o src/survive_reproject.o src/poser.o src/epnp/epnp.c src/survive_sensor_activations.o src/survive_turveybiguator.o src/survive_disambiguator.o
+
+LIBSURVIVE_CORE:=src/survive.o src/survive_usb.o src/survive_charlesbiguator.o src/survive_process.o src/ootx_decoder.o src/survive_driverman.o src/survive_default_devices.o src/survive_vive.o src/survive_playback.o src/survive_config.o src/survive_cal.o src/survive_reproject.o src/poser.o src/epnp/epnp.c src/survive_sensor_activations.o src/survive_turveybiguator.o src/survive_disambiguator.o  src/survive_imu.o src/poser_imu.o
 
 #If you want to use HIDAPI on Linux.
 #CFLAGS:=$(CFLAGS) -DHIDAPI

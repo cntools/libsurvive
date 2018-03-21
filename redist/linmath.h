@@ -49,7 +49,7 @@
 
 typedef FLT LinmathQuat[4]; // This is the [wxyz] quaternion, in wxyz format.
 typedef FLT LinmathPoint3d[3];
-typedef FLT linmathVec3d[3];
+typedef FLT LinmathVec3d[3];
 
 typedef struct LinmathPose {
 	LinmathPoint3d Pos;
