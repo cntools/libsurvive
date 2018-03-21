@@ -319,7 +319,7 @@ Given an HMD:
  * pointed FACE DOWN at the lighthouse
  * 1M above the lighthouse
 
-   Will produce a pose of [[0, 0, -1] [0, 0, 0, 1]* ].  NOTE: The quaternion is inverted.  This is the pose of the OBJECT in WORLD space. For our example, the lighthouse is at 0,0,0 in world space.  In practicality, the lighthouse will be at some other place in the scene.
+   Will produce a pose of [[0, 0, -1] [0, 1, 0, 0] ].  NOTE: The quaternion is inverted, so rotation axis is arbitrary, point is w is 0.  This is the pose of the OBJECT in WORLD space. For our example, the lighthouse is at 0,0,0 in world space.  In practicality, the lighthouse will be at some other place in the scene.
 
    The idea is you should be able to take a coordinate local to the HMD and then use ```ApplyPoseToPoint``` to transform that point into world space, by applying the output of the poser.
 

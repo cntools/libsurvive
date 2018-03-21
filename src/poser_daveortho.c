@@ -8,6 +8,8 @@
 #include <dclapack.h>
 #include <linmath.h>
 
+//Dave talks about this poser here: https://www.youtube.com/watch?v=nSbEltdH9vM&feature=youtu.be&t=2h29m47s
+
 static int LH_ID;
 
 void OrthoSolve(
@@ -20,7 +22,9 @@ void OrthoSolve(
 
 typedef struct
 {
-	int something;
+	int nextaxis;
+	float   lengths[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];
+	float   angles[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];
 	//Stuff
 } DummyData;
 
@@ -30,7 +34,7 @@ int PoserDaveOrtho( SurviveObject * so, PoserData * pd )
 	SurviveContext * ctx = so->ctx;
 	DummyData * dd = so->PoserData;
 
-	if( !dd ) so->PoserData = dd = malloc( sizeof( DummyData ) );
+	if( !dd ) so->PoserData = dd = calloc( sizeof( DummyData ), 1 );
 
 	switch( pt )
 	{
@@ -43,7 +47,77 @@ int PoserDaveOrtho( SurviveObject * so, PoserData * pd )
 	case POSERDATA_LIGHT:
 	{
 		PoserDataLight * l = (PoserDataLight*)pd;
-		//printf( "LIG:%s %d @ %f rad, %f s (AC %d) (TC %d)\n", so->codename, l->sensor_id, l->angle, l->length, l->acode, l->timecode );
+		dd->lengths[l->sensor_id][l->lh][dd->nextaxis] = l->length;
+		dd->angles [l->sensor_id][l->lh][dd->nextaxis] = l->angle;
+		break;
+	}
+	case POSERDATA_SYNC:
+	{
+		PoserDataLight * l = (PoserDataLight*)pd;
+		int lhid = l->lh;
+
+		dd->nextaxis = l->acode & 1;
+
+		if( dd->nextaxis == 0 && l->lh == 0 &&  so->codename[0] == 'H' )
+		{
+			int i;
+			int max_hits = 0;
+			FLT S_in[2][SENSORS_PER_OBJECT];
+			FLT X_in[3][SENSORS_PER_OBJECT];
+			for( i = 0; i < SENSORS_PER_OBJECT; i++ )
+			{
+				//Load all our valid points into something the LHFinder can use.
+				if( dd->lengths[i][lhid][0] > 0 && dd->lengths[i][lhid][1] > 0  )
+				{
+					S_in[0][max_hits] = dd->angles[i][lhid][0];
+					S_in[1][max_hits] = dd->angles[i][lhid][1];
+					dd->lengths[i][lhid][0] = -1;
+					dd->lengths[i][lhid][1] = -1;
+					X_in[0][max_hits] = so->sensor_locations[i*3+0];
+					X_in[1][max_hits] = so->sensor_locations[i*3+1];
+					X_in[2][max_hits] = so->sensor_locations[i*3+2];
+					max_hits++;
+				}
+
+			}
+			if( max_hits )
+			{
+				FLT tOut[4][4];
+				FLT S_out[2][SENSORS_PER_OBJECT];
+				OrthoSolve( tOut, S_out, S_in, X_in, max_hits );
+
+							//Now, we need to solve where we are as a function of where
+				//the lighthouses are.
+				FLT quat[4];
+				FLT posoff[3] = { tOut[0][3], tOut[1][3], tOut[2][3] };
+				FLT MT[4][4];
+
+				//matrix44transpose( MT, &tOut[0][0] );
+				matrix44copy( &MT[0][0], &tOut[0][0] );
+
+				quatfrommatrix( quat, &MT[0][0] );
+
+
+				//printf( "QUAT: %f %f %f %f = %f\n", quat[0], quat[1], quat[2], quat[3], quatmagnitude(quat) );
+				//quat[2] -= 0.005; //fixes up lh0 in test data set.
+				quatnormalize( quat, quat );
+				printf( "QUAT: %f %f %f %f = %f [%f %f %f]\n", quat[0], quat[1], quat[2], quat[3], quatmagnitude(quat), posoff[0], posoff[1], posoff[2] );
+			
+if(0)
+				for( i = 0; i < max_hits;i++ )
+				{
+					FLT pt[3] = { X_in[0][i], X_in[1][i], X_in[2][i] };
+					quatrotatevector( pt, quat, pt );
+					add3d( pt, pt, posoff );
+					printf( "OUT %f %f %f ANGLE %f %f AOUT %f %f\n", 
+						pt[0], pt[1], pt[2],
+						S_in[0][i], S_in[1][i], atan2( pt[0], pt[1] ), atan2( pt[2], pt[1] ) );
+				}
+			}
+		}
+
+		//if( so->codename[0] == 'H' ) printf( "LIG:%s %d @ %d rad, %f s (AX %d) (TC %d)\n", so->codename, l->sensor_id, l->lh, l->length, dd->nextaxis, l->timecode );
+
 		break;
 	}
 	case POSERDATA_FULL_SCENE:
@@ -148,7 +222,7 @@ REGISTER_LINKTIME( PoserDaveOrtho );
 
 void OrthoSolve(
     FLT T[4][4],               // OUTPUT: 4x4 transformation matrix
-    FLT S_out[2][SENSORS_PER_OBJECT],  // OUTPUT:  array of screenspace points
+    FLT S_out[2][SENSORS_PER_OBJECT],  // OUTPUT:  array of screenspace points  (May not be populated!!!)
     FLT S_in[2][SENSORS_PER_OBJECT],   // INPUT:  array of screenspace points
     FLT X_in[3][SENSORS_PER_OBJECT],   // INPUT:  array of offsets
     int nPoints)
@@ -437,12 +511,26 @@ PRINT(ab,2,1);
     FLT transdist = sqrt( trans[0]*trans[0] + trans[1]*trans[1] + trans[2]*trans[2] );
 
     //-------------------
-    // Pack into the 4x4 transformation matrix
+    // Pack into the 4x4 transformation matrix, and put into correct "world"-space. I.e. where is the object, relative to the lighthouse.
     //-------------------
+
+#if 0
+	//Don't do any transformation to the correct space.
     T[0][0]=R[0][0]; T[0][1]=R[0][1]; T[0][2]=R[0][2]; T[0][3]=trans[0];
     T[1][0]=R[1][0]; T[1][1]=R[1][1]; T[1][2]=R[1][2]; T[1][3]=trans[1];
     T[2][0]=R[2][0]; T[2][1]=R[2][1]; T[2][2]=R[2][2]; T[2][3]=trans[2];
     T[3][0]=0.0;     T[3][1]=0.0;     T[3][2]=0.0;     T[3][3]=1.0;
+#else
+
+	//XXX XXX XXX FOR ANYONE LOOKING TO CONTROL THE COORDINATE FRAME, THESE ARE THE LINES!!!
+    T[0][0]=-R[0][0]; T[0][1]=-R[0][1]; T[0][2]=-R[0][2]; T[0][3]=-trans[0];
+    T[2][0]=-R[1][0]; T[2][1]=-R[1][1]; T[2][2]=-R[1][2]; T[2][3]=-trans[1];
+    T[1][0]=R[2][0]; T[1][1]=R[2][1]; T[1][2]=R[2][2]; T[1][3]=trans[2];
+    T[3][0]=0.0;     T[3][1]=0.0;     T[3][2]=0.0;     T[3][3]=1.0;
+
+#endif
+
+
 
 
 	FLT T2[4][4];
@@ -450,47 +538,44 @@ PRINT(ab,2,1);
 	//-------------------
 	// Orthogonalize the matrix
 	//-------------------
-	FLT temp[4][4];
-	FLT quat[4], quatNorm[4];
-	FLT euler[3];
+	//FLT temp[4][4];
+	//FLT quat[4], quatNorm[4];
+	//FLT euler[3];
 
 
 	//-------------------
 	// Orthogonalize the matrix
 	//-------------------
-	PRINT_MAT(T,4,4);
+	//PRINT_MAT(T,4,4);
 
 #if 1
 //	matrix44transpose(T2, T);  //Transpose so we are
 	matrix44copy((FLT*)T2,(FLT*)T);
-	cross3d( &T2[1][0], &T2[0][0], &T2[2][0] );
 	cross3d( &T2[2][0], &T2[1][0], &T2[0][0] ); //Replace axes in-place.
-	matrix44copy((FLT*)T,(FLT*)T2);
+	cross3d( &T2[1][0], &T2[0][0], &T2[2][0] );
+//	matrix44copy((FLT*)T,(FLT*)T2);
 //	matrix44transpose(T, T2);
+	normalize3d( &T[0][0], &T2[0][0] );
+	normalize3d( &T[1][0], &T2[1][0] );
+	normalize3d( &T[2][0], &T2[2][0] );
 
-#endif
 
+#else
 	normalize3d( &T[0][0], &T[0][0] );
 	normalize3d( &T[1][0], &T[1][0] );
 	normalize3d( &T[2][0], &T[2][0] );
-	//Change handedness
+#endif
 
-	T[1][0]*=-1;
-	T[1][1]*=-1;
-	T[1][2]*=-1;
-
-/*
-	//Check Orthogonality.  Yep. It's orthogonal.
-	FLT tmp[3];
-	cross3d( tmp, &T[0][0], &T[1][0] );
-	printf( "M3: %f\n", magnitude3d( tmp ) );
-	cross3d( tmp, &T[2][0], &T[1][0] );
-	printf( "M3: %f\n", magnitude3d( tmp ) );
-	cross3d( tmp, &T[2][0], &T[0][0] );
-	printf( "M3: %f\n", magnitude3d( tmp ) );
-*/
+	//Fix handedness for rotations...
+	T[0][0]*=-1;
+	T[0][1]*=-1;
+	T[0][2]*=-1;
 
 //	PRINT_MAT(T,4,4);
+
+
+//	PRINT_MAT(T,4,4);
+#if 0
 
 #if 1
 
@@ -554,6 +639,7 @@ PRINT(ab,2,1);
         //S_out[1][i] = Tz;
 //        printf("point %i Txyz %f %f %f in %f %f out %f %f morph %f %f\n", i, Tx,Ty,Tz, S_in[0][i], S_in[1][i], S_out[0][i], S_out[1][i], S_morph[0][i], S_morph[1][i]);
     }
+#endif
 
 }
 

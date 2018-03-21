@@ -15,6 +15,7 @@ typedef enum PoserType_t
 	POSERDATA_LIGHT,		//Single lighting event.  
 	POSERDATA_FULL_SCENE, 	//Full, statified X, Y sweep data for both lighthouses.
 	POSERDATA_DISASSOCIATE, //If you get this, it doesn't contain data.  It just tells you to please disassociate from the current SurviveObject and delete your poserdata.
+	POSERDATA_SYNC,			//Sync pulse.
 } PoserType;
 
 typedef void (*poser_raw_pose_func)(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose, void *user);

@@ -19,7 +19,23 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 	}
 
 	//We don't use sync times, yet.
-	if( acode < -1 ) return;
+	if( sensor_id <= -1 )
+	{
+		if( so->PoserFn ) 
+		{
+			PoserDataLight l = {
+				.hdr = { .pt = POSERDATA_SYNC, },
+				.sensor_id = sensor_id,
+				.acode = acode,
+				.timecode = timecode,
+				.length = length,
+				.angle = 0,
+				.lh = lh,
+			};
+			so->PoserFn( so, (PoserData *)&l );
+		}
+		return;
+	}
 
 	if( base_station > NUM_LIGHTHOUSES ) return;
 
