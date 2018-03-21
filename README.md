@@ -274,12 +274,20 @@ libsurvive has an integrated tool that allows you to record and playback streams
 
 ```
 make
-./data_recorder my_playback_file
+./data_recorder -o my_playback_file
 ```
 
 This gives you a file -- my_playback_file -- with all the device configurations and events file you need to replay it.
 
-To actually replay it, put that directory path in the 'PlaybackFile' configuration value in config.json and run libsurvive as usual. Note that this will purposefully stop the USB devices from loading as to not confuse the library with inconsistent data.
+You can also just let it stream to standard output, but this tends to be a lot of information. 
+
+To actually replay it, put that directory path in the 'playbackfile' configuration value in config.json and run libsurvive as usual. Note that this will purposefully stop the USB devices from loading as to not confuse the library with inconsistent data.
+
+You can also replay it just with command line options:
+
+```
+./calibrate --playbackfile my_playback_file
+```
 
 ## Playback speed
 
