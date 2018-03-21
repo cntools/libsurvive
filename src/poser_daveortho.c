@@ -100,24 +100,19 @@ int PoserDaveOrtho( SurviveObject * so, PoserData * pd )
 
 				// printf( "QUAT: %f %f %f %f = %f\n", quat[0], quat[1], quat[2], quat[3], quatmagnitude(quat) );
 				// quat[2] -= 0.005; //fixes up lh0 in test data set.
+
 				quatnormalize(objpose.Rot, objpose.Rot);
-
-				SurvivePose poseout;
-				InvertPose(poseout.Pos, objpose.Pos);
-				SurvivePose pose2lh = objpose;
-				// SurvivePose pose2lh = poseout;
-
 				SurvivePose lh2world = so->ctx->bsd[lhid].Pose;
-				SurvivePose world2obj, obj2world;
-				ApplyPoseToPose(world2obj.Pos, lh2world.Pos, pose2lh.Pos);
-				InvertPose(obj2world.Pos, world2obj.Pos);
+
+				SurvivePose obj2world;
+				ApplyPoseToPose(obj2world.Pos, lh2world.Pos, objpose.Pos);
 				PoserData_poser_raw_pose_func(pd, so, lhid, &obj2world);
 
 				if (0) {
-					printf("INQUAT: %f %f %f %f = %f [%f %f %f]\n", objpose.Rot[0], objpose.Rot[1], objpose.Rot[2],
+					fprintf(stderr,"INQUAT: %f %f %f %f = %f [%f %f %f]\n", objpose.Rot[0], objpose.Rot[1], objpose.Rot[2],
 						   objpose.Rot[3], quatmagnitude(objpose.Rot), objpose.Pos[0], objpose.Pos[1], objpose.Pos[2]);
-					printf("OUQUAT: %f %f %f %f = %f [%f %f %f]\n", poseout.Rot[0], poseout.Rot[1], poseout.Rot[2],
-						   poseout.Rot[3], quatmagnitude(poseout.Rot), poseout.Pos[0], poseout.Pos[1], poseout.Pos[2]);
+				//	fprintf(stderr,"OUQUAT: %f %f %f %f = %f [%f %f %f]\n", poseout.Rot[0], poseout.Rot[1], poseout.Rot[2],
+				//		   poseout.Rot[3], quatmagnitude(poseout.Rot), poseout.Pos[0], poseout.Pos[1], poseout.Pos[2]);
 				}
 			}
 		}
@@ -131,7 +126,6 @@ int PoserDaveOrtho( SurviveObject * so, PoserData * pd )
 	{
 		PoserDataFullScene * fs = (PoserDataFullScene*)pd;
 		int LH_ID;
-		printf("PDFS\n");
 
 		SurvivePose alignLh0ToXAxis = {};
 		for( LH_ID = 0; LH_ID < 2; LH_ID++ )
@@ -206,6 +200,7 @@ int PoserDaveOrtho( SurviveObject * so, PoserData * pd )
 				   objpose.Rot[3], quatmagnitude(objpose.Rot), objpose.Pos[0], objpose.Pos[1], objpose.Pos[2]);
 
 			PoserData_lighthouse_pose_func(&fs->hdr, so, LH_ID, &alignLh0ToXAxis, &poseout, 0);
+
 			printf("OUQUAT: %f %f %f %f = %f [%f %f %f]\n", poseout.Rot[0], poseout.Rot[1], poseout.Rot[2],
 				   poseout.Rot[3], quatmagnitude(poseout.Rot), poseout.Pos[0], poseout.Pos[1], poseout.Pos[2]);
 		}
@@ -601,26 +596,14 @@ PRINT(ab,2,1);
 
 	cross3d(&T[2][0], &T[0][0], &T[1][0]); // Generate Z from X/Y because Z is kinda rekt.
 
-// cross3d( &T[1][0], &T[2][0], &T[0][0] );	//Renormalize rotations...
-// cross3d( &T[0][0], &T[1][0], &T[2][0] );	//Renormalize rotations...
+///XXX TODO: Characterize how important these last two steps are.  The matrix definitely is not normalized.
+#if 1
+	cross3d(&T[1][0], &T[2][0], &T[0][0] );	//Renormalize rotations...
+	cross3d(&T[0][0], &T[1][0], &T[2][0] );	//Renormalize rotations...
 
-// XXX XXX TODO
-// We could further normalize things...
-
-#if 0
-//	matrix44transpose(T2, T);  //Transpose so we are
-	matrix44copy((FLT*)T2,(FLT*)T);
-	cross3d( &T2[1][0], &T2[0][0], &T2[2][0] ); //Replace axes in-place.
-	cross3d( &T2[2][0], &T2[1][0], &T2[0][0] ); 
-//	matrix44copy((FLT*)T,(FLT*)T2);
-//	matrix44transpose(T, T2);
-	normalize3d( &T[0][0], &T2[0][0] );
-	normalize3d( &T[1][0], &T2[1][0] );
-	normalize3d( &T[2][0], &T2[2][0] );
-#else
-//	normalize3d( &T[0][0], &T[0][0] );
-//	normalize3d( &T[1][0], &T[1][0] );
-//	normalize3d( &T[2][0], &T[2][0] );
+	normalize3d( &T[0][0], &T[0][0] );
+	normalize3d( &T[1][0], &T[1][0] );
+	normalize3d( &T[2][0], &T[2][0] );
 #endif
 
 //	printf( "      In Axis on headset      \n" );
