@@ -56,6 +56,9 @@ typedef struct LinmathPose {
 	LinmathQuat Rot;
 } LinmathPose;
 
+extern LinmathQuat LinmathQuat_Identity;
+extern LinmathPose LinmathPose_Identity;
+
 //NOTE: Inputs may never be output with cross product.
 void cross3d( FLT * out, const FLT * a, const FLT * b );
 

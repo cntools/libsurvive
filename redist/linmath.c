@@ -653,3 +653,6 @@ void InvertPose(LinmathPose *poseout, const LinmathPose *pose) {
 	quatrotatevector(poseout->Pos, poseout->Rot, pose->Pos);
 	scale3d(poseout->Pos, poseout->Pos, -1);
 }
+
+LinmathQuat LinmathQuat_Identity = {1.0};
+LinmathPose LinmathPose_Identity = {.Rot = {1.0}};

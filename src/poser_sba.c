@@ -104,7 +104,10 @@ size_t construct_input_from_scene(const SurviveObject *so, PoserDataLight *pdl, 
 void sba_set_cameras(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose, SurvivePose *obj_pose, void *user) {
 	sba_context *ctx = (sba_context *)user;
 	ctx->camera_params[lighthouse] = *pose;
-	ctx->obj_pose = *obj_pose;
+	if (obj_pose)
+		ctx->obj_pose = *obj_pose;
+	else
+		ctx->obj_pose = LinmathPose_Identity;
 }
 
 typedef struct {
@@ -422,6 +425,9 @@ static double run_sba(survive_calibration_config options, PoserDataFullScene *pd
 		SurvivePose additionalTx = {};
 		PoserData_lighthouse_pose_func(&pdfs->hdr, so, 0, &additionalTx, &sbactx.camera_params[0], &sbactx.obj_pose);
 		PoserData_lighthouse_pose_func(&pdfs->hdr, so, 1, &additionalTx, &sbactx.camera_params[1], &sbactx.obj_pose);
+	} else {
+		SurviveContext *ctx = so->ctx;
+		SV_INFO("SBA was unable to run %d", status);
 	}
 	// Docs say info[0] should be divided by meas; I don't buy it really...
 	// std::cerr << info[0] / meas.size() * 2 << " original reproj error" << std::endl;
@@ -455,9 +461,10 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		return 0;
 	}
 	case POSERDATA_FULL_SCENE: {
+		SurviveContext *ctx = so->ctx;
 		PoserDataFullScene *pdfs = (PoserDataFullScene *)(pd);
 		survive_calibration_config config = *survive_calibration_default_config();
-		// std::cerr << "Running sba with " << config << std::endl;
+		SV_INFO("Running sba with %lu", survive_calibration_config_index(&config));
 		double error = run_sba(config, pdfs, so, 50, .005);
 		// std::cerr << "Average reproj error: " << error << std::endl;
 		return 0;
