@@ -139,8 +139,8 @@ SurviveContext * survive_init_internal( int argc, char * const * argv )
 	init_config_group(&ctx->lh_config[1],10);
 
 	//Process command-line parameters.
-	char * const * argvend = &argv[argc];
-	char * const * av = argv+1;
+	char *const *av = argv + 1;
+	char *const *argvend = av + argc;
 	int showhelp = 0;
 	for( ; av != argvend; av++ )
 	{
