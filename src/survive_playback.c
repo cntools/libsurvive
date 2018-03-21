@@ -12,6 +12,139 @@
 #include "survive_default_devices.h"
 
 #include "os_generic.h"
+#include "stdarg.h"
+
+typedef struct SurviveRecordingData {
+	bool alwaysWriteStdOut;
+	FILE *output_file;
+} SurviveRecordingData;
+
+static double timestamp_in_us() {
+	static double start_time_us = 0;
+	if (start_time_us == 0.)
+		start_time_us = OGGetAbsoluteTime();
+	return OGGetAbsoluteTime() - start_time_us;
+}
+
+static void write_to_output(SurviveRecordingData *recordingData, const char *format, ...) {
+	double ts = timestamp_in_us();
+
+	if (recordingData->output_file) {
+		va_list args;
+		va_start(args, format);
+		fprintf(recordingData->output_file, "%0.6f ", ts);
+		vfprintf(recordingData->output_file, format, args);
+		va_end(args);
+	}
+
+	if (recordingData->alwaysWriteStdOut) {
+		va_list args;
+		va_start(args, format);
+		fprintf(stdout, "%0.6f ", ts);
+		vfprintf(stdout, format, args);
+		va_end(args);
+	}
+}
+void survive_recording_config_process(SurviveObject *so, char *ct0conf, int len) {
+	SurviveRecordingData *recordingData = so->ctx->recptr;
+	if (recordingData == 0)
+		return;
+
+	char *buffer = malloc(len);
+	memcpy(buffer, ct0conf, len);
+	for (int i = 0; i < len; i++)
+		if (buffer[i] == '\n')
+			buffer[i] = ' ';
+
+	write_to_output(recordingData, "%s CONFIG %.*s\n", so->codename, len, buffer);
+}
+
+void survive_recording_lighthouse_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lh_pose,
+										  SurvivePose *obj) {
+	SurviveRecordingData *recordingData = ctx->recptr;
+	if (recordingData == 0)
+		return;
+
+	write_to_output(recordingData, "%d LH_POSE %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\n", lighthouse,
+					lh_pose->Pos[0], lh_pose->Pos[1], lh_pose->Pos[2], lh_pose->Rot[0], lh_pose->Rot[1],
+					lh_pose->Rot[2], lh_pose->Rot[3]);
+}
+void survive_recording_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose) {
+	SurviveRecordingData *recordingData = so->ctx->recptr;
+	if (recordingData == 0)
+		return;
+
+	write_to_output(recordingData, "%s POSE %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\n", so->codename, pose->Pos[0],
+					pose->Pos[1], pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
+}
+
+void survive_recording_info_process(SurviveContext *ctx, const char *fault) {
+	SurviveRecordingData *recordingData = ctx->recptr;
+	if (recordingData == 0)
+		return;
+
+	write_to_output(recordingData, "INFO LOG %s\n", fault);
+}
+
+void survive_recording_angle_process(struct SurviveObject *so, int sensor_id, int acode, uint32_t timecode, FLT length,
+									 FLT angle, uint32_t lh) {
+	SurviveRecordingData *recordingData = so->ctx->recptr;
+	if (recordingData == 0)
+		return;
+
+	write_to_output(recordingData, "%s A %d %d %u %0.6f %0.6f %u\n", so->codename, sensor_id, acode, timecode, length,
+					angle, lh);
+}
+
+void survive_recording_light_process(struct SurviveObject *so, int sensor_id, int acode, int timeinsweep,
+									 uint32_t timecode, uint32_t length, uint32_t lh) {
+	SurviveRecordingData *recordingData = so->ctx->recptr;
+	if (recordingData == 0)
+		return;
+
+	if (acode == -1) {
+		write_to_output(recordingData, "%s S %d %d %d %u %u %u\n", so->codename, sensor_id, acode, timeinsweep,
+						timecode, length, lh);
+		return;
+	}
+
+	const char *LH_ID = 0;
+	const char *LH_Axis = 0;
+
+	switch (acode) {
+	case 0:
+	case 2:
+		LH_ID = "L";
+		LH_Axis = "X";
+		break;
+	case 1:
+	case 3:
+		LH_ID = "L";
+		LH_Axis = "Y";
+		break;
+	case 4:
+	case 6:
+		LH_ID = "R";
+		LH_Axis = "X";
+		break;
+	case 5:
+	case 7:
+		LH_ID = "R";
+		LH_Axis = "Y";
+		break;
+	}
+	write_to_output(recordingData, "%s %s %s %d %d %d %u %u %u\n", so->codename, LH_ID, LH_Axis, sensor_id, acode,
+					timeinsweep, timecode, length, lh);
+}
+
+void survive_recording_imu_process(struct SurviveObject *so, int mask, FLT *accelgyro, uint32_t timecode, int id) {
+	SurviveRecordingData *recordingData = so->ctx->recptr;
+	if (recordingData == 0)
+		return;
+
+	write_to_output(recordingData, "%s I %d %u %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %d\n", so->codename, mask, timecode,
+					accelgyro[0], accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4], accelgyro[5], id);
+}
 
 struct SurvivePlaybackData {
 	SurviveContext *ctx;
@@ -23,13 +156,6 @@ struct SurvivePlaybackData {
 	double next_time_us;
 };
 typedef struct SurvivePlaybackData SurvivePlaybackData;
-
-double timestamp_in_us() {
-	static double start_time_us = 0;
-	if (start_time_us == 0.)
-		start_time_us = OGGetAbsoluteTime();
-	return OGGetAbsoluteTime() - start_time_us;
-}
 
 static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver) {
 	char dev[10];
@@ -174,7 +300,27 @@ static int playback_close(struct SurviveContext *ctx, void *_driver) {
 	return 0;
 }
 
+void install_recording(SurviveContext *ctx) {
+	const char *dataout_file = survive_configs(ctx, "dataoutfile", SC_SETCONFIG, "");
+	int record_to_stdout = survive_configi(ctx, "datastdout", SC_SETCONFIG, 0);
+
+	if (strlen(dataout_file) > 0 || record_to_stdout) {
+		ctx->recptr = calloc(1, sizeof(struct SurviveRecordingData));
+
+		ctx->recptr->output_file = fopen(dataout_file, "w");
+		if (ctx->recptr->output_file == 0 && !record_to_stdout) {
+			SV_INFO("Could not open %s for writing\n", dataout_file);
+			free(ctx->recptr);
+			ctx->recptr = 0;
+			return;
+		}
+		ctx->recptr->alwaysWriteStdOut = record_to_stdout;
+	}
+}
+
 int DriverRegPlayback(SurviveContext *ctx) {
+	install_recording(ctx);
+
 	const char *playback_file = survive_configs(ctx, "playbackfile", SC_SETCONFIG, "");
 
 	if (strlen(playback_file) == 0) {
