@@ -117,6 +117,8 @@ Poser | [poser_daveortho.c](src/poser_daveortho.c) | A very fast system using or
 Poser | [poser_dummy.c](src/poser_dummy.c) | Template for posers | [@cnlohr](https://github.com/cnlohr)
 Poser | [poser_octavioradii.c](src/poser_octavioradii.c) | A potentially very fast poser that works by finding the best fit of the distances from the lighthouse to each sensor that matches the known distances between sensors, given the known angles of a lighthouse sweep.  Incomplete- distances appear to be found correctly, but more work needed to turn this into a pose. | [@mwturvey](https://github.com/mwturvey) and [@octavio2895](https://github.com/octavio2895)
 Poser | [poser_turveytori.c](src/poser_turveytori.c) | A moderately fast, fairly high precision poser that works by determine the angle at the lighthouse between many sets of two sensors.  Using the inscirbed angle theorom, each set defines a torus of possible locations of the lighthouse.  Multiple sets define multiple tori, and this poser finds most likely location of the lighthouse using least-squares distance.   Best suited for calibration, but is can be used for real-time tracking on a powerful system.  | [@mwturvey](https://github.com/mwturvey)
+Poser | [poser_epnp.c](src/poser_epnp.c) | Reasonably fast and accurate calibration and tracker that uses the [EPNP algorithm](https://en.wikipedia.org/wiki/Perspective-n-Point#EPnP) to solve the perspective and points problem. Suitable for fast tracking, but does best with >5-6 sensor readings. | [@jdavidberger](https://github.com/jdavidberger)
+Poser | [poser_sba.c](src/poser_sba.c) | Reasonably fast and accurate calibration and tracker but is dependent on a 'seed' poser to give it an initial estimate. This then performs [bundle adjustment](https://en.wikipedia.org/wiki/Bundle_adjustment) to minimize reprojection error given both ligthhouse readings. This has the benefit of greatly increasing accuracy by incorporating all the light data that is available. Set 'SBASeedPoser' config option to specify the seed poser; default is EPNP. | [@jdavidberger](https://github.com/jdavidberger)
 Disambiguator | [survive_data.c](src/survive_data.c) (currently #ifdefed out) | The old disambiguator - very fast, but slightly buggy. | [@cnlohr](https://github.com/cnlohr)
 Disambiguator | [survive_data.c](src/survive_data.c) (current disambiguator) | More complicated but much more robust disambiguator | [@mwturvey](https://github.com/mwturvey)
 Dismabiguator | superceded disambiguator | A more sophisticated disambiguator, development abandoned.  Removed from tree. |  [@jpicht](https://github.com/jpicht)
@@ -272,12 +274,20 @@ libsurvive has an integrated tool that allows you to record and playback streams
 
 ```
 make
-./data_recorder my_playback_file
+./data_recorder -o my_playback_file
 ```
 
 This gives you a file -- my_playback_file -- with all the device configurations and events file you need to replay it.
 
-To actually replay it, put that directory path in the 'PlaybackFile' configuration value in config.json and run libsurvive as usual. Note that this will purposefully stop the USB devices from loading as to not confuse the library with inconsistent data.
+You can also just let it stream to standard output, but this tends to be a lot of information. 
+
+To actually replay it, put that directory path in the 'playbackfile' configuration value in config.json and run libsurvive as usual. Note that this will purposefully stop the USB devices from loading as to not confuse the library with inconsistent data.
+
+You can also replay it just with command line options:
+
+```
+./calibrate --playbackfile my_playback_file
+```
 
 ## Playback speed
 
