@@ -35,7 +35,10 @@ static void survivefault(struct SurviveContext *ctx, const char *fault) {
 	exit(-1);
 }
 
-static void survivenote(struct SurviveContext *ctx, const char *fault) { fprintf(stderr, "Info: %s\n", fault); }
+static void survivenote(struct SurviveContext *ctx, const char *fault) {
+  survive_recording_info_process(ctx, fault);
+  fprintf(stderr, "Info: %s\n", fault);
+}
 
 static void *button_servicer(void *context) {
 	SurviveContext *ctx = (SurviveContext *)context;
