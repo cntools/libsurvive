@@ -174,34 +174,6 @@ static int playback_close(struct SurviveContext *ctx, void *_driver) {
 	return 0;
 }
 
-static int LoadConfig(SurvivePlaybackData *sv, SurviveObject *so) {
-	SurviveContext *ctx = sv->ctx;
-	char *ct0conf = 0;
-
-	char fname[100];
-	sprintf(fname, "%s/%s_config.json", sv->playback_dir, so->codename);
-	FILE *f = fopen(fname, "r");
-
-	if (f == 0 || feof(f) || ferror(f))
-		return 1;
-
-	fseek(f, 0, SEEK_END);
-	int len = ftell(f);
-	fseek(f, 0, SEEK_SET); // same as rewind(f);
-
-	ct0conf = malloc(len + 1);
-	int read = fread(ct0conf, len, 1, f);
-	fclose(f);
-	ct0conf[len] = 0;
-
-	printf("Loading config: %d\n", len);
-	int rtn = ctx->configfunction(so, ct0conf, len);
-
-	free(ct0conf);
-
-	return rtn;
-}
-
 int DriverRegPlayback(SurviveContext *ctx) {
 	const char *playback_file = survive_configs(ctx, "playbackfile", SC_SETCONFIG, "");
 
@@ -277,8 +249,6 @@ int DriverRegPlayback(SurviveContext *ctx) {
 
 	survive_add_driver(ctx, sp, playback_poll, playback_close, 0);
 	return 0;
-fail_gracefully:
-	return -1;
 }
 
 REGISTER_LINKTIME(DriverRegPlayback);
