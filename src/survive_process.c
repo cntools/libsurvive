@@ -4,6 +4,7 @@
 #include "survive_cal.h"
 #include "survive_config.h"
 #include "survive_default_devices.h"
+#include "survive_playback.h"
 
 //XXX TODO: Once data is avialble in the context, use the stuff here to handle converting from time codes to
 //proper angles, then from there perform the rest of the solution. 
@@ -17,6 +18,8 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 	{
 		survive_cal_light( so, sensor_id, acode, timeinsweep, timecode, length, lh);
 	}
+
+	survive_recording_light_process(so, sensor_id, acode, timeinsweep, timecode, length, lh);
 
 	//We don't use sync times, yet.
 	if (sensor_id <= -1) {
@@ -79,6 +82,8 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 
 	SurviveSensorActivations_add(&so->activations, &l);
 
+	survive_recording_angle_process(so, sensor_id, acode, timecode, length, angle, lh);
+
 	if (ctx->calptr) {
 		survive_cal_angle(so, sensor_id, acode, timecode, length, angle, lh);
 	}
@@ -130,6 +135,7 @@ void survive_default_raw_pose_process(SurviveObject *so, uint8_t lighthouse, Sur
 	//printf("Pose: [%1.1x][%s][% 08.8f,% 08.8f,% 08.8f] [% 08.8f,% 08.8f,% 08.8f,% 08.8f]\n", lighthouse, so->codename, pos[0], pos[1], pos[2], quat[0], quat[1], quat[2], quat[3]);
 	so->OutPose = *pose;
 	so->FromLHPose[lighthouse] = *pose;
+	survive_recording_raw_pose_process(so, lighthouse, pose);
 }
 
 void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose,
@@ -143,9 +149,12 @@ void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighth
 
 	config_set_lighthouse(ctx->lh_config, &ctx->bsd[lighthouse], lighthouse);
 	config_save(ctx, "config.json");
+
+	survive_recording_lighthouse_process(ctx, lighthouse, lighthouse_pose, object_pose);
 }
 
 int survive_default_htc_config_process(SurviveObject *so, char *ct0conf, int len) {
+	survive_recording_config_process(so, ct0conf, len);
 	return survive_load_htc_config_format(so, ct0conf, len);
 }
 void survive_default_imu_process( SurviveObject * so, int mask, FLT * accelgyromag, uint32_t timecode, int id )
@@ -167,5 +176,7 @@ void survive_default_imu_process( SurviveObject * so, int mask, FLT * accelgyrom
 	if (so->PoserFn) {
 		so->PoserFn( so, (PoserData *)&imu );
 	}
+
+	survive_recording_imu_process(so, mask, accelgyromag, timecode, id);
 }
 

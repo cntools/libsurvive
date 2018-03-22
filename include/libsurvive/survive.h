@@ -159,6 +159,8 @@ typedef struct
 
 typedef enum { SURVIVE_STOPPED = 0, SURVIVE_RUNNING, SURVIVE_CLOSING, SURVIVE_STATE_MAX } SurviveState;
 
+struct SurviveRecordingData;
+
 struct SurviveContext
 {
 	text_feedback_func faultfunction;
@@ -180,7 +182,7 @@ struct SurviveContext
 	int activeLighthouses;
 	BaseStationData bsd[NUM_LIGHTHOUSES];
 	SurviveCalData * calptr; //If and only if the calibration subsystem is attached.
-
+	struct SurviveRecordingData *recptr; // Iff recording is attached
 	SurviveObject ** objs;
 	int objs_ct;
 
