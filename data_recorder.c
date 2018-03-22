@@ -1,51 +1,30 @@
-// Data recorder mod with GUI showing light positions.
-
-#ifdef __linux__
-#include <unistd.h>
-#endif
-
-#include <os_generic.h>
-#include <stdarg.h>
-#include <stdint.h>
+/**
+ * Most of the data recorder functionality lives in the library now; this just enables
+ * stdout by default if no record file is specified.
+ */
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <survive.h>
 
-#include <time.h>
-
-#ifndef _MSC_VER
-#include <sys/time.h>
-#endif
-
-#include "redist/os_generic.h"
-
-struct SurviveContext *ctx;
-
 int main(int argc, char **argv) {
-	ctx = survive_init(argc, argv);
+	SurviveContext *ctx = survive_init(argc, argv);
 	if (ctx == 0) // implies -help or similiar
 		return 0;
 
-	const char *outfile = survive_configs(ctx, "dataoutfile", SC_GET, "");
-
-	if (strlen(outfile) == 0) {
-		survive_configi(ctx, "datastdout", SC_SETCONFIG | SC_OVERRIDE, 1);
+	const char *dataout_file = survive_configs(ctx, "record", SC_SETCONFIG, "");
+	if (strlen(dataout_file) == 0) {
+		survive_configi(ctx, "record-stdout", SC_SET | SC_OVERRIDE, 1);
 	}
 
 	survive_startup(ctx);
 	if (survive_configi(ctx, "calibrate", SC_GET, 1)) {
-		fprintf(stderr, "Installing calibration\n");
+		SV_INFO("Installing calibration");
 		survive_cal_install(ctx);
-	}
-
-	if (!ctx) {
-		fprintf(stderr, "Fatal. Could not start\n");
-		exit(1);
 	}
 
 	while (survive_poll(ctx) == 0) {
 	}
 
+	survive_close(ctx);
 	return 0;
 }
