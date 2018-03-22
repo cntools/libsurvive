@@ -22,6 +22,8 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 
 		PoserData_poser_raw_pose_func(pd, so, -1, &dd->pose);
 
+		// if(magnitude3d(dd->pose.Pos) > 1)
+		// SV_ERROR("IMU drift");
 		return 0;
 	}
 	}

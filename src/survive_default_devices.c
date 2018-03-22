@@ -144,11 +144,10 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 			FLT *values = NULL;
 			if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {
 				so->acc_bias = values;
-				so->acc_bias[0] *= .125; // XXX Wat?  Observed by CNL.  Biasing
-										 // by more than this seems to hose
-										 // things.
-				so->acc_bias[1] *= .125;
-				so->acc_bias[2] *= .125;
+				const FLT bias_units = 1. / 1000.; // I deeply suspect bias is in milligravities -JB
+				so->acc_bias[0] *= bias_units;
+				so->acc_bias[1] *= bias_units;
+				so->acc_bias[2] *= bias_units;
 			}
 		}
 		if (jsoneq(ct0conf, tk, "acc_scale") == 0) {
