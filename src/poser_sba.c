@@ -10,11 +10,11 @@
 
 #include "assert.h"
 #include "linmath.h"
+#include "math.h"
 #include "string.h"
+#include "survive_cal.h"
 #include "survive_config.h"
 #include "survive_reproject.h"
-
-#include "math.h"
 
 typedef struct {
 	survive_calibration_config calibration_config;
@@ -442,22 +442,34 @@ static double run_sba(survive_calibration_config options, PoserDataFullScene *pd
 	return info[1] / meas_size * 2;
 }
 
+typedef struct SBAData {
+	int last_acode;
+	int last_lh;
+} SBAData;
+
 int PoserSBA(SurviveObject *so, PoserData *pd) {
+	if (so->PoserData == 0) {
+		so->PoserData = calloc(1, sizeof(SBAData));
+	}
+	SBAData *d = so->PoserData;
+	SurviveContext *ctx = so->ctx;
 	switch (pd->pt) {
 	case POSERDATA_LIGHT: {
+		// No poses if calibration is ongoing
+		if (ctx->calptr && ctx->calptr->stage < 5)
+			return 0;
 		SurviveSensorActivations *scene = &so->activations;
 		PoserDataLight *lightData = (PoserDataLight *)pd;
-		/*
-				static int last_acode = -1;
-				static int last_lh = -1;
-				if(last_lh != lightData->lh || last_acode != lightData->acode) {
-				*/
-		survive_calibration_config config = *survive_calibration_default_config();
-		FLT error = run_sba_find_3d_structure(config, lightData, so, scene, 50, .5);
-		/*}
-		last_lh = lightData->lh;
-		last_acode = lightData->acode;
-		 */
+
+		// only process sweeps
+		FLT error = -1;
+		if (d->last_lh != lightData->lh || d->last_acode != lightData->acode) {
+			survive_calibration_config config = *survive_calibration_default_config();
+			error = run_sba_find_3d_structure(config, lightData, so, scene, 50, .5);
+			d->last_lh = lightData->lh;
+			d->last_acode = lightData->acode;
+		}
+
 		return 0;
 	}
 	case POSERDATA_FULL_SCENE: {
