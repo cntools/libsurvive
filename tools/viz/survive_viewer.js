@@ -241,7 +241,7 @@ function parseLine(msg) {
 		}
 	return {};
 }
-
+var oldPoseTime = 0, poseCnt = 0;
 $(function() {
 	setTimeout(function() {
 		var ws;
@@ -267,8 +267,17 @@ $(function() {
 			// console.log(obj);
 			if (obj.type === "pose") {
 				if (objs[obj.tracker]) {
-					objs[obj.tracker].position.set(obj.position[0], obj.position[1], obj.position[2]);
+					var now = new Date().getTime();
+					if(oldPoseTime + 5000 < now) {
+						oldPoseTime = now;
+                        console.log( (poseCnt / 5) + "hz");
+                        poseCnt = 0;
+					}
+                    poseCnt++;
+                    objs[obj.tracker].position.set(obj.position[0], obj.position[1], obj.position[2]);
 					objs[obj.tracker].quaternion.set(obj.quat[1], obj.quat[2], obj.quat[3], obj.quat[0]);
+                    objs[obj.tracker].verticesNeedUpdate = true;
+                    timecode[obj.tracker] = obj.timecode;
 				}
 			} else if (obj.type === "info") {
 				var consoleDiv = $("#console");
@@ -295,7 +304,7 @@ $(function() {
 						downAxes[obj.tracker].vertices[0] = objs[obj.tracker].position;
 						downAxes[obj.tracker].vertices[1].fromArray(q);
 						downAxes[obj.tracker].vertices[1].add(objs[obj.tracker].position);
-						downAxes[obj.tracker].verticesNeedUpdate = true;
+                        downAxes[obj.tracker].verticesNeedUpdate = true;
 					}
 				}
 
@@ -306,7 +315,7 @@ $(function() {
 					angles[obj.tracker][obj.lighthouse][obj.sensor_id] || {};
 
 				angles[obj.tracker][obj.lighthouse][obj.sensor_id][obj.acode & 1] = [ obj.angle, obj.timecode ];
-				timecode[obj.tracker] = obj.timecode;
+                timecode[obj.tracker] = obj.timecode;
 			}
 
 			// ws.send("!");
