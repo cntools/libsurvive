@@ -10,6 +10,7 @@
 #include "os_generic.h"
 #include "survive_config.h"
 #include "survive_default_devices.h"
+#include "survive_playback.h"
 
 #ifdef __APPLE__
 #define z_const const
@@ -239,6 +240,9 @@ int survive_startup(SurviveContext *ctx) {
 	const char *DriverName;
 
 	i = 0;
+
+	survive_install_recording(ctx);
+
 	while ((DriverName = GetDriverNameMatching("DriverReg", i++))) {
 		DeviceDriver dd = GetDriver(DriverName);
 		SV_INFO("Loading driver %s (%p) (%d)", DriverName, dd, i);

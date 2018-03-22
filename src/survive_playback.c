@@ -300,9 +300,9 @@ static int playback_close(struct SurviveContext *ctx, void *_driver) {
 	return 0;
 }
 
-void install_recording(SurviveContext *ctx) {
-	const char *dataout_file = survive_configs(ctx, "dataoutfile", SC_SETCONFIG, "");
-	int record_to_stdout = survive_configi(ctx, "datastdout", SC_SETCONFIG, 0);
+void survive_install_recording(SurviveContext *ctx) {
+	const char *dataout_file = survive_configs(ctx, "record", SC_SETCONFIG, "");
+	int record_to_stdout = survive_configi(ctx, "record-stdout", SC_SETCONFIG, 0);
 
 	if (strlen(dataout_file) > 0 || record_to_stdout) {
 		ctx->recptr = calloc(1, sizeof(struct SurviveRecordingData));
@@ -314,14 +314,16 @@ void install_recording(SurviveContext *ctx) {
 			ctx->recptr = 0;
 			return;
 		}
+		SV_INFO("Recording to '%s'", dataout_file);
 		ctx->recptr->alwaysWriteStdOut = record_to_stdout;
+		if (record_to_stdout) {
+			SV_INFO("Recording to stdout");
+		}
 	}
 }
 
 int DriverRegPlayback(SurviveContext *ctx) {
-	install_recording(ctx);
-
-	const char *playback_file = survive_configs(ctx, "playbackfile", SC_SETCONFIG, "");
+	const char *playback_file = survive_configs(ctx, "playback", SC_SETCONFIG, "");
 
 	if (strlen(playback_file) == 0) {
 		return 0;
@@ -330,7 +332,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	SurvivePlaybackData *sp = calloc(1, sizeof(SurvivePlaybackData));
 	sp->ctx = ctx;
 	sp->playback_dir = playback_file;
-	sp->time_factor = survive_configf(ctx, "playbackfactor", SC_SETCONFIG, 1.f);
+	sp->time_factor = survive_configf(ctx, "playback-factor", SC_SETCONFIG, 1.f);
 
 	printf("%s\n", playback_file);
 
@@ -341,7 +343,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 		return -1;
 	}
 
-	SV_INFO("Using playback file '%s'", playback_file);
+	SV_INFO("Using playback file '%s' with timefactor of %f", playback_file, sp->time_factor);
 	SurviveObject *hmd = survive_create_hmd(ctx, "Playback", sp);
 	SurviveObject *wm0 = survive_create_wm0(ctx, "Playback", sp, 0);
 	SurviveObject *wm1 = survive_create_wm1(ctx, "Playback", sp, 0);
