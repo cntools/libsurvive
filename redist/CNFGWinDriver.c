@@ -106,7 +106,7 @@ LRESULT CALLBACK MyWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 }
 
 //This was from the article, too... well, mostly.
-void CNFGSetup( const char * name_of_window, int width, int height )
+int CNFGSetup( const char * name_of_window, int width, int height )
 {
 	static LPSTR szClassName = "MyClass";
 	RECT client, window;
@@ -208,10 +208,12 @@ void CNFGSetup( const char * name_of_window, int width, int height )
 	MoveWindow( lsHWND, window.left, window.top, bufferx + wd, buffery + hd, 1 );
 
 	InternalHandleResize();
+	return 0;
 }
 
 void CNFGHandleInput()
 {
+	int ldown = 0;
 
 	MSG msg;
 	while( PeekMessage( &msg, lsHWND, 0, 0xFFFF, 1 ) )
@@ -238,6 +240,7 @@ void CNFGHandleInput()
 			break;
 		}
 	}
+	return 0;
 }
 
 #ifndef CNFGOGL

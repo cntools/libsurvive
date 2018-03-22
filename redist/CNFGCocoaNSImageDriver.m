@@ -1,3 +1,6 @@
+//Copyright (c) 2017 <>< David Chapman - Under the MIT/x11 or NewBSD License you choose.
+//Copyright (C) 2017 Viknet, MIT/x11 License or NewBSD License you choose.
+
 #import <Cocoa/Cocoa.h>
 
 #define RASTERIZER
@@ -11,7 +14,7 @@ id app_imageView;
 NSAutoreleasePool *app_pool;
 int app_sw=0, app_sh=0;
 int app_mouseX=0, app_mouseY=0;
-char app_mouseDown[3] = {0,0,0};
+BOOL inFullscreen = false;
 
 void CNFGGetDimensions( short * x, short * y )
 {
@@ -19,10 +22,42 @@ void CNFGGetDimensions( short * x, short * y )
     *y = app_sh;
 }
 
-void CNFGSetup( const char * WindowName, int sw, int sh )
+void CNFGSetupFullscreen( const char * WindowName, int screen_number )
+{
+    app_sw=640; app_sh=480;
+    inFullscreen = YES;
+    [NSApplication sharedApplication];
+    [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+    app_menubar = [[NSMenu new] autorelease];
+    app_appMenuItem = [[NSMenuItem new] autorelease];
+    [app_menubar addItem:app_appMenuItem];
+    [NSApp setMainMenu:app_menubar];
+    app_appMenu = [[NSMenu new] autorelease];
+    app_appName = [[NSProcessInfo processInfo] processName];
+    app_quitTitle = [@"Quit " stringByAppendingString:app_appName];
+    app_quitMenuItem = [[[NSMenuItem alloc] initWithTitle:app_quitTitle
+        action:@selector(terminate:) keyEquivalent:@"q"] autorelease];
+    [app_appMenu addItem:app_quitMenuItem];
+    [app_appMenuItem setSubmenu:app_appMenu];
+
+    NSString *title = [[[NSString alloc] initWithCString: WindowName encoding: NSUTF8StringEncoding] autorelease];
+    app_imageView = [NSImageView new];
+    NSDictionary *fullScreenOptions = [[NSDictionary dictionaryWithObjectsAndKeys: 
+        [NSNumber numberWithInt: 
+            (NSApplicationPresentationAutoHideMenuBar | NSApplicationPresentationAutoHideDock) ],
+        NSFullScreenModeApplicationPresentationOptions, nil] retain];
+    [app_imageView enterFullScreenMode:[[NSScreen screens] objectAtIndex:screen_number] withOptions:fullScreenOptions];
+    [app_imageView unregisterDraggedTypes];
+    CGSize app_imageSize = [app_imageView frame].size;
+    app_sw = app_imageSize.width; app_sh = app_imageSize.height;
+    [NSApp finishLaunching];
+    [NSApp updateWindows];
+    app_pool = [NSAutoreleasePool new];
+}
+
+int CNFGSetup( const char * WindowName, int sw, int sh )
 {
     app_sw=sw; app_sh=sh;
-    [NSAutoreleasePool new];
     [NSApplication sharedApplication];
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
     app_menubar = [[NSMenu new] autorelease];
@@ -40,10 +75,9 @@ void CNFGSetup( const char * WindowName, int sw, int sh )
         styleMask:NSWindowStyleMaskBorderless | NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable backing:NSBackingStoreBuffered defer:NO]
             autorelease];
 
-    app_imageView = [[NSImageView alloc] init];
-
-    NSString *title = [[NSString alloc] initWithCString: WindowName encoding: NSUTF8StringEncoding];
+    NSString *title = [[[NSString alloc] initWithCString: WindowName encoding: NSUTF8StringEncoding] autorelease];
     [app_window setTitle:title];
+    app_imageView = [NSImageView new];
     [app_window setContentView:app_imageView];
     [app_window cascadeTopLeftFromPoint:NSMakePoint(20,20)];
     [app_window makeKeyAndOrderFront:nil];
@@ -51,6 +85,7 @@ void CNFGSetup( const char * WindowName, int sw, int sh )
     [NSApp finishLaunching];
     [NSApp updateWindows];
     app_pool = [[NSAutoreleasePool alloc] init];
+	return 0;
 }
 
 #define XK_Left                          0xff51  /* Move left, left arrow */
@@ -59,12 +94,6 @@ void CNFGSetup( const char * WindowName, int sw, int sh )
 #define XK_Down                          0xff54  /* Move down, down arrow */
 #define KEY_UNDEFINED 255
 #define KEY_LEFT_MOUSE 0
-
-// NSEvent enum types
-#define EVENT_KEY_DOWN        10
-#define EVENT_KEY_UP          11
-#define EVENT_LEFT_MOUSE_DOWN 1
-#define EVENT_LEFT_MOUSE_UP   2
 
 static int keycode(key)
 {
@@ -80,31 +109,13 @@ static int keycode(key)
 
 void CNFGHandleInput()
 {
-printf("CNFGHandleInput\n");
-
     // Quit if no open windows left
-    if ([[NSApp windows] count] == 0) [NSApp terminate: nil];
-    //----------------------
-    // Check for mouse motion (NOTE: the mouse move event
-    //  has complex behavior after a mouse click.
-    //  we can work around this by checking mouse motion explicitly)
-    //----------------------
-    NSPoint location = [app_window mouseLocationOutsideOfEventStream];
-    if ((int)location.x != app_mouseX || (int)location.y != app_mouseY) {
-        app_mouseX = (int)location.x;
-        app_mouseY = (int)location.y;
-        if (app_mouseX >= 0 && app_mouseX < app_sw &&
-            app_mouseY >= 0 && app_mouseY < app_sh)
-        {
-            HandleMotion(app_mouseX, app_mouseY, app_mouseDown[0]||app_mouseDown[1]||app_mouseDown[2]);
-        }
-    }
+    // if ([[NSApp windows] count] == 0) [NSApp terminate: nil];
 
     //----------------------
     // Peek at the next event
     //----------------------
     NSDate *app_currDate = [NSDate new];
-
     // If we have events, handle them!
     NSEvent *event;
     for (;(event = [NSApp
@@ -113,6 +124,7 @@ printf("CNFGHandleInput\n");
                     inMode:NSDefaultRunLoopMode
                     dequeue:YES]);)
     {
+        NSPoint local_point;
         NSEventType type = [event type];
         switch (type)
         {
@@ -130,14 +142,34 @@ printf("CNFGHandleInput\n");
                 }
                 break;
                     
+            case NSEventTypeMouseMoved:
+            case NSEventTypeLeftMouseDragged:
+            case NSEventTypeRightMouseDragged:
+            case NSEventTypeOtherMouseDragged:
+                if (inFullscreen){
+                    local_point = [NSEvent mouseLocation];
+                } else {
+                    if ([event window] == nil) break;
+                    NSPoint event_location = event.locationInWindow;
+                    local_point = [app_imageView convertPoint:event_location fromView:nil];
+                }
+                app_mouseX = fmax(fmin(local_point.x, app_sw), 0);
+                // Y coordinate must be inversed?
+                app_mouseY = fmax(fmin(app_sh - local_point.y, app_sh), 0);
+                HandleMotion(app_mouseX, app_mouseY, [NSEvent pressedMouseButtons]);
+                break;  
+
             case NSEventTypeLeftMouseDown:
-                HandleButton(app_mouseX, app_mouseY, KEY_LEFT_MOUSE, 1);
-                app_mouseDown[0]=1;
+            case NSEventTypeRightMouseDown:
+            case NSEventTypeOtherMouseDown:
+                // Button number start from 1?
+                HandleButton(app_mouseX, app_mouseY, event.buttonNumber+1, 1); 
                 break;
                     
             case NSEventTypeLeftMouseUp:
-                HandleButton(app_mouseX, app_mouseY, KEY_LEFT_MOUSE, 0);
-                app_mouseDown[0]=0;
+            case NSEventTypeRightMouseUp:
+            case NSEventTypeOtherMouseUp:
+                HandleButton(app_mouseX, app_mouseY, event.buttonNumber+1, 0);
                 break;
 
             default:
@@ -166,4 +198,3 @@ void CNFGUpdateScreenWithBitmap( unsigned long * data, int w, int h )
     [app_imageView setNeedsDisplay:YES];
     [bitmap release];
 }
-

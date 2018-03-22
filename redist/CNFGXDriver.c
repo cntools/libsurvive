@@ -161,7 +161,7 @@ void CNFGTearDown()
 	CNFGClassHint = NULL;
 }
 
-void CNFGSetup( const char * WindowName, int w, int h )
+int CNFGSetup( const char * WindowName, int w, int h )
 {
 	CNFGDisplay = XOpenDisplay(NULL);
 	atexit( CNFGTearDown );
@@ -206,6 +206,7 @@ void CNFGSetup( const char * WindowName, int w, int h )
 #ifdef CNFGOGL
 	glXMakeCurrent( CNFGDisplay, CNFGWindow, CNFGCtx );
 #endif
+	return 0;
 }
 
 void CNFGHandleInput()

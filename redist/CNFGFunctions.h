@@ -34,7 +34,7 @@ void CNFGClearFrame();
 void CNFGSwapBuffers();
 
 void CNFGGetDimensions( short * x, short * y );
-void CNFGSetup( const char * WindowName, int w, int h );
+int CNFGSetup( const char * WindowName, int w, int h ); //return 0 if ok.
 void CNFGSetupFullscreen( const char * WindowName, int screen_number );
 void CNFGHandleInput();
 

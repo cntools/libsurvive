@@ -23,10 +23,11 @@ void CNFGTearDown()
 {
 }
 
-void CNFGSetup( const char * WindowName, int sw, int sh )
+int CNFGSetup( const char * WindowName, int sw, int sh )
 {
 	w = sw;
 	h = sh;
+	return 0;
 }
 
 void CNFGHandleInput()
@@ -38,13 +39,13 @@ void CNFGUpdateScreenWithBitmap( unsigned long * data, int w, int h )
 {
 }
 
-
 #ifndef RASTERIZER
 
 
 uint32_t CNFGColor( uint32_t RGB )
 {
 }
+#endif
 
 void CNFGClearFrame()
 {
@@ -69,6 +70,4 @@ void CNFGTackRectangle( short x1, short y1, short x2, short y2 )
 void CNFGTackPoly( RDPoint * points, int verts )
 {
 }
-
-#endif
 
