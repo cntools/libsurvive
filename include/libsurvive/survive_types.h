@@ -53,6 +53,16 @@ typedef void (*raw_pose_func)(SurviveObject *so, uint8_t lighthouse, SurvivePose
 typedef void (*lighthouse_pose_func)(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose,
 									 SurvivePose *object_pose);
 
+// For lightcap, etc.  Don't change this structure at all.  Regular vive is dependent on it being exactly as-is.
+// When you write drivers, you can use this to send survive lightcap data.
+typedef struct {
+	uint8_t sensor_id;
+	uint16_t length;
+	uint32_t timestamp;
+} LightcapElement;
+
+typedef void (*handle_lightcap_func)(SurviveObject *so, LightcapElement *le);
+
 typedef int(*haptic_func)(SurviveObject * so, uint8_t reserved, uint16_t pulseHigh , uint16_t pulseLow, uint16_t repeatCount);
 
 //Device drivers (prefix your drivers with "DriverReg") i.e.

@@ -195,6 +195,33 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 	return ctx;
 }
 
+static void *setup_func_by_name(SurviveContext *ctx, const char *name, const char *configname, const char *configdef) {
+	const char *Preferred = survive_configs(ctx, configname, SC_SETCONFIG, configdef);
+	const char *DriverName = 0;
+	const char *picked = 0;
+	int i = 0;
+	void *func = 0;
+	int prefixLen = strlen(name);
+
+	SV_INFO("Available %s:", name);
+	while ((DriverName = GetDriverNameMatching(name, i++))) {
+		void *p = GetDriver(DriverName);
+
+		bool match = strcmp(DriverName, Preferred) == 0 || strcmp(DriverName + prefixLen, Preferred) == 0;
+		SV_INFO("\t%c%s", match ? '*' : ' ', DriverName + prefixLen);
+		if (!func || match) {
+			func = p;
+			picked = (DriverName + prefixLen);
+		}
+	}
+	if (!func) {
+		SV_ERROR("Error.  Cannot find any valid %s.", name);
+	}
+	SV_INFO("Totals %d %ss.  Using %s.", i - 1, name, picked);
+
+	return func;
+}
+
 int survive_startup(SurviveContext *ctx) {
 	int r = 0;
 	int i = 0;
@@ -206,26 +233,10 @@ int survive_startup(SurviveContext *ctx) {
 	// start the thread to process button data
 	ctx->buttonservicethread = OGCreateThread(button_servicer, ctx);
 
-	const char *DriverName;
+	PoserCB PreferredPoserCB = setup_func_by_name(ctx, "Poser", "defaultposer", "PoserTurveyTori");
+	ctx->lightcapfunction = setup_func_by_name(ctx, "Disambiguator", "disambiguator", "Turvey");
 
-	// const char * PreferredPoser = survive_config_reads(ctx->global_config_values, "defaultposer", "PoserDummy");
-	const char *PreferredPoser = survive_configs(ctx, "defaultposer", SC_SETCONFIG, "PoserTurveyTori");
-	PoserCB PreferredPoserCB = 0;
-	const char *FirstPoser = 0;
-	SV_INFO("Available posers:");
-	while ((DriverName = GetDriverNameMatching("Poser", i++))) {
-		PoserCB p = GetDriver(DriverName);
-		if (!PreferredPoserCB)
-			PreferredPoserCB = p;
-		int ThisPoser = strcmp(DriverName, PreferredPoser) == 0;
-		SV_INFO("\t%c%s", ThisPoser ? '*' : ' ', DriverName);
-		if (ThisPoser)
-			PreferredPoserCB = p;
-	}
-	SV_INFO("Totals %d posers.  Using selected poser (or first!).", i - 1);
-	if (!PreferredPoserCB) {
-		SV_ERROR("Error.  Cannot find any valid poser.");
-	}
+	const char *DriverName;
 
 	i = 0;
 	while ((DriverName = GetDriverNameMatching("DriverReg", i++))) {
@@ -234,6 +245,7 @@ int survive_startup(SurviveContext *ctx) {
 		r = dd(ctx);
 		SV_INFO("Driver %s reports status %d", DriverName, r);
 	}
+
 	// Apply poser to objects.
 	for (i = 0; i < ctx->objs_ct; i++) {
 		ctx->objs[i]->PoserFn = PreferredPoserCB;

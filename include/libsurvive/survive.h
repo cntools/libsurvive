@@ -170,6 +170,7 @@ struct SurviveContext
 	raw_pose_func rawposeproc;
 	lighthouse_pose_func lighthouseposeproc;
 	htc_config_func configfunction;
+	handle_lightcap_func lightcapfunction;
 
 	struct config_group* global_config_values;
 	struct config_group* lh_config; //lighthouse configs
@@ -285,17 +286,6 @@ void   RegisterDriver(const char * name, void * data);
 //For device drivers to call.  This actually attaches them.
 int survive_add_object( SurviveContext * ctx, SurviveObject * obj );
 void survive_add_driver( SurviveContext * ctx, void * payload, DeviceDriverCb poll, DeviceDriverCb close, DeviceDriverMagicCb magic );
-
-//For lightcap, etc.  Don't change this structure at all.  Regular vive is dependent on it being exactly as-is.
-//When you write drivers, you can use this to send survive lightcap data.
-typedef struct
-{
-	uint8_t sensor_id;
-	uint16_t length;
-	uint32_t timestamp;
-} 
-LightcapElement;
-
 
 //This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
 void handle_lightcap( SurviveObject * so, LightcapElement * le );

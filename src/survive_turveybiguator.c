@@ -282,7 +282,6 @@ static void handle_lightcap2_sync(SurviveObject *so, LightcapElement *le) {
 	// static unsigned int recent_sync_time = 0;
 	// static unsigned int recent_sync_count = -1;
 	// static unsigned int activeSweepStartTime;
-
 	int acode = handle_lightcap2_getAcodeFromSyncPulse(so, le->length); // acode for this sensor reading
 
 	// Process any sweep data we have
@@ -435,7 +434,7 @@ static void handle_lightcap2_sweep(SurviveObject *so, LightcapElement *le) {
 	}
 }
 
-void handle_lightcap_turveybiguator(SurviveObject *so, LightcapElement *le) {
+void DisambiguatorTurvey(SurviveObject *so, LightcapElement *le) {
 	SurviveContext *ctx = so->ctx;
 
 	if (so->disambiguator_data == NULL) {
@@ -463,3 +462,4 @@ void handle_lightcap_turveybiguator(SurviveObject *so, LightcapElement *le) {
 	handle_lightcap2_sweep(so, le);
 }
 
+REGISTER_LINKTIME(DisambiguatorTurvey);

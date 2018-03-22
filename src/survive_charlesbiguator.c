@@ -45,7 +45,7 @@ static void HandleOOTX(SurviveContext *ctx, SurviveObject *so) {
 }
 
 // This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
-void handle_lightcap_charlesbiguator(SurviveObject *so, LightcapElement *le) {
+void DisambiguatorCharles(SurviveObject *so, LightcapElement *le) {
 	SurviveContext *ctx = so->ctx;
 	//	static int32_t last;
 	//	printf( "%d %lu %d %d\n", le->timestamp-last, le->timestamp, le->length, le->sensor_id );
@@ -191,3 +191,5 @@ void handle_lightcap_charlesbiguator(SurviveObject *so, LightcapElement *le) {
 		// Runt pulse, or no sync pulses available.
 	}
 }
+
+REGISTER_LINKTIME(DisambiguatorCharles);
