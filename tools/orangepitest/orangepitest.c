@@ -16,7 +16,7 @@ float Heightmap[HMX*HMY];
 
 void DrawFrame( int offsetx, int lscreenx, FLT * eye, FLT * at, FLT * up )
 {
-	float scale = .05;
+	float scale = .02;
 	int x, y;
 	float fdt = ((iframeno++)%(360*10))/10.0;
 //	float eye[3] = { (float)sin(fdt*(3.14159/180.0))*1, (float)cos(fdt*(3.14159/180.0))*1, 1 };
@@ -102,19 +102,19 @@ void DrawFrame( int offsetx, int lscreenx, FLT * eye, FLT * at, FLT * up )
 //		if( ptc[2] < 0 ) continue;
 //		if( ptd[2] < 0 ) continue;
 
-/*
-		pto[0].x = pta[0]+offsetx; pto[0].y = pta[1];
-		pto[1].x = ptb[0]+offsetx; pto[1].y = ptb[1];
-		pto[2].x = ptd[0]+offsetx; pto[2].y = ptd[1];
-
-		pto[3].x = ptc[0]+offsetx; pto[3].y = ptc[1];
-		pto[4].x = ptd[0]+offsetx; pto[4].y = ptd[1];
-		pto[5].x = pta[0]+offsetx; pto[5].y = pta[1];
-*/
 
 		pta[0] += offsetx;
 		ptb[0] += offsetx;
 		ptc[0] += offsetx;
+		ptd[0] += offsetx;
+
+		pto[0].x = pta[0]; pto[0].y = pta[1];
+		pto[1].x = ptb[0]; pto[1].y = ptb[1];
+		pto[2].x = ptd[0]; pto[2].y = ptd[1];
+
+		pto[3].x = ptc[0]; pto[3].y = ptc[1];
+		pto[4].x = ptd[0]; pto[4].y = ptd[1];
+		pto[5].x = pta[0]; pto[5].y = pta[1];
 
 //		CNFGColor(((x+y)&1)?0xFFFFFF:0x000000);
 
@@ -122,13 +122,9 @@ void DrawFrame( int offsetx, int lscreenx, FLT * eye, FLT * at, FLT * up )
 		if( bright < 0 ) bright = 0;
 		CNFGColor( (int)( bright * 50 ) );
 
-//		CNFGTackPoly( &pto[0], 3 );		CNFGTackPoly( &pto[3], 3 );
-		CNFGTackSegment( pta[0], pta[1], ptb[0], ptb[1] );
-//		CNFGTackSegment( ptb[0], ptb[1], ptc[0], ptc[1] );
-//		CNFGTackSegment( ptc[0], ptc[1], ptd[0], ptd[1] );
-//		CNFGTackSegment( ptd[0], ptd[1], pta[0], pta[1] );
-		CNFGTackSegment( pta[0], pta[1], ptc[0], ptc[1] );
-//		CNFGTackSegment( ptd[0], ptd[1], ptb[0], ptb[1] );
+		CNFGTackPoly( &pto[0], 3 );		CNFGTackPoly( &pto[3], 3 );
+//		CNFGTackSegment( pta[0], pta[1], ptb[0], ptb[1] );
+//		CNFGTackSegment( pta[0], pta[1], ptc[0], ptc[1] );
 		
 	}
  
@@ -154,7 +150,7 @@ SurvivePose phmd;
 void my_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose) {
 	survive_default_raw_pose_process(so, lighthouse, pose);
 	memcpy( &phmd , pose, sizeof( phmd ) );
-	printf("%s POSE %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\n", so->codename, pose->Pos[0], pose->Pos[1],	pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
+	//printf("%s POSE %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\n", so->codename, pose->Pos[0], pose->Pos[1],	pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
 }
 
 
@@ -219,12 +215,14 @@ int main( int argc, char ** argv )
 		CNFGColor( 0xFFFFFF );
 		CNFGGetDimensions( &screenx, &screeny );
 
+		double p[3] = { 1, 1, 1} ;
 		double eye1[3] = { 1, 1, 1 };
 		double eye2[3] = { 1, 1, 1 };
 		double at1[3] = { 1, 1, 1 };
 		double at2[3] = { 1, 1, 1 };
 		double up[3] = { 1, 1, 1 };
 
+		double pin[3] = {  0.0, 0., 0 }; //Left eye
 		double pineye1[3] = {  0.030, 0., 0 }; //Left eye
 		double pineye2[3] = { -0.030, 0., 0 };
 		double pinat1[3] = {  0.030, 0., 1 }; //Left eye
@@ -232,6 +230,7 @@ int main( int argc, char ** argv )
 
 		double pinup[3] = { 0, 1., 0 };
 
+		ApplyPoseToPoint(p, &phmd, pin);
 		ApplyPoseToPoint(eye1, &phmd, pineye1);
 		ApplyPoseToPoint(eye2, &phmd, pineye2);
 
@@ -239,8 +238,11 @@ int main( int argc, char ** argv )
 		ApplyPoseToPoint(at2, &phmd, pinat1);
 
 		ApplyPoseToPoint(up, &phmd, pinup);
+		up[0] -= p[0];
+		up[1] -= p[1];
+		up[2] -= p[2];
 
-		printf( "Eye: %f %f %f At: %f %f %f Up: %f %f %f\n", eye1[0], eye1[1], eye1[2], at1[0], at1[1], at1[2], up[0], up[1], up[2] );
+		//printf( "Eye: %f %f %f At: %f %f %f Up: %f %f %f\n", eye1[0], eye1[1], eye1[2], at1[0], at1[1], at1[2], up[0], up[1], up[2] );
 
 		DrawFrame(0+diopter,1080,eye1, at1, up);
 		DrawFrame(1080-diopter,1080,eye2,at2, up);
