@@ -7,7 +7,8 @@ void survive_imu_tracker_set_pose(SurviveIMUTracker *tracker, uint32_t timecode,
 	tracker->pose = *pose;
 
 	for (int i = 0; i < 3; i++)
-		tracker->current_velocity[i] = pose->Pos[i] - tracker->lastGT.Pos[i];
+		tracker->current_velocity[i] =
+			(pose->Pos[i] - tracker->lastGT.Pos[i]) / (timecode - tracker->lastGTTime) * 48000000.;
 
 	tracker->lastGTTime = timecode;
 	tracker->lastGT = *pose;

@@ -7,6 +7,7 @@
 
 #include "poser.h"
 #include <survive.h>
+#include <survive_imu.h>
 
 #include "assert.h"
 #include "linmath.h"
@@ -445,6 +446,7 @@ static double run_sba(survive_calibration_config options, PoserDataFullScene *pd
 typedef struct SBAData {
 	int last_acode;
 	int last_lh;
+	SurviveIMUTracker tracker;
 } SBAData;
 
 int PoserSBA(SurviveObject *so, PoserData *pd) {
@@ -470,6 +472,12 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 			d->last_acode = lightData->acode;
 		}
 
+		if (error < 0) {
+			PoserData_poser_raw_pose_func(pd, so, 1, &d->tracker.pose);
+			// SV_INFO("using imu");
+		} else {
+			survive_imu_tracker_set_pose(&d->tracker, lightData->timecode, &so->OutPose);
+		}
 		return 0;
 	}
 	case POSERDATA_FULL_SCENE: {
@@ -481,6 +489,9 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		// std::cerr << "Average reproj error: " << error << std::endl;
 		return 0;
 	}
+	case POSERDATA_IMU: {
+		survive_imu_tracker_integrate(so, &d->tracker, (PoserDataIMU *)pd);
+	} // INTENTIONAL FALLTHROUGH
 	default: {
 		const char *subposer = config_read_str(so->ctx->global_config_values, "SBASeedPoser", "PoserEPNP");
 		PoserCB driver = (PoserCB)GetDriver(subposer);
