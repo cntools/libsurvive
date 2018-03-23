@@ -30,8 +30,8 @@ static SurvivePose iterate_position(const SurvivePose *pose, const LinmathVec3d 
 	LinmathVec3d rAcc = {0};
 	RotateAccel(rAcc, pose, pIMU->accel);
 
-	fprintf(stderr, "r %f %f %f %f\n", pIMU->accel[0], pIMU->accel[1], pIMU->accel[2], quatmagnitude(pIMU->accel));
-	fprintf(stderr, "i %f %f %f %f\n", rAcc[0], rAcc[1], rAcc[2], quatmagnitude(rAcc));
+	//fprintf(stderr, "r %f %f %f %f\n", pIMU->accel[0], pIMU->accel[1], pIMU->accel[2], quatmagnitude(pIMU->accel));
+	//fprintf(stderr, "i %f %f %f %f\n", rAcc[0], rAcc[1], rAcc[2], quatmagnitude(rAcc));
 
 	scale3d(rAcc, rAcc, acc_mul);
 
@@ -103,8 +103,8 @@ void survive_imu_tracker_integrate(SurviveObject *so, SurviveIMUTracker *tracker
 
 	tracker->pose = t_next;
 
-	fprintf(stderr, "%f %f %f\n", tracker->current_velocity[0], tracker->current_velocity[1],
-			tracker->current_velocity[2]);
+	//fprintf(stderr, "%f %f %f\n", tracker->current_velocity[0], tracker->current_velocity[1],
+	//tracker->current_velocity[2]);
 
 	scale3d(tracker->current_velocity, v_next, 1);
 
