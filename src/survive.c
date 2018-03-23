@@ -199,7 +199,8 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 	return ctx;
 }
 
-static void *setup_func_by_name(SurviveContext *ctx, const char *name, const char *configname, const char *configdef) {
+void *GetDriverByConfig(SurviveContext *ctx, const char *name, const char *configname, const char *configdef,
+						int verbose) {
 	const char *Preferred = survive_configs(ctx, configname, SC_SETCONFIG, configdef);
 	const char *DriverName = 0;
 	const char *picked = 0;
@@ -207,12 +208,14 @@ static void *setup_func_by_name(SurviveContext *ctx, const char *name, const cha
 	void *func = 0;
 	int prefixLen = strlen(name);
 
-	SV_INFO("Available %s:", name);
+	if (verbose > 1)
+		SV_INFO("Available %s:", name);
 	while ((DriverName = GetDriverNameMatching(name, i++))) {
 		void *p = GetDriver(DriverName);
 
 		bool match = strcmp(DriverName, Preferred) == 0 || strcmp(DriverName + prefixLen, Preferred) == 0;
-		SV_INFO("\t%c%s", match ? '*' : ' ', DriverName + prefixLen);
+		if (verbose > 1)
+			SV_INFO("\t%c%s", match ? '*' : ' ', DriverName + prefixLen);
 		if (!func || match) {
 			func = p;
 			picked = (DriverName + prefixLen);
@@ -221,7 +224,10 @@ static void *setup_func_by_name(SurviveContext *ctx, const char *name, const cha
 	if (!func) {
 		SV_ERROR("Error.  Cannot find any valid %s.", name);
 	}
-	SV_INFO("Totals %d %ss.  Using %s.", i - 1, name, picked);
+	if (verbose > 1)
+		SV_INFO("Totals %d %ss.", i - 1, name);
+	if (verbose > 0)
+		SV_INFO("Using %s for %s", name, configname);
 
 	return func;
 }
@@ -230,6 +236,8 @@ int survive_startup(SurviveContext *ctx) {
 	int r = 0;
 	int i = 0;
 
+	survive_install_recording(ctx);
+
 	// initialize the button queue
 	memset(&(ctx->buttonQueue), 0, sizeof(ctx->buttonQueue));
 	ctx->buttonQueue.buttonservicesem = OGCreateSema();
@@ -237,14 +245,12 @@ int survive_startup(SurviveContext *ctx) {
 	// start the thread to process button data
 	ctx->buttonservicethread = OGCreateThread(button_servicer, ctx);
 
-	PoserCB PreferredPoserCB = setup_func_by_name(ctx, "Poser", "defaultposer", "PoserTurveyTori");
-	ctx->lightcapfunction = setup_func_by_name(ctx, "Disambiguator", "disambiguator", "Turvey");
+	PoserCB PreferredPoserCB = GetDriverByConfig(ctx, "Poser", "defaultposer", "TurveyTori", 2);
+	ctx->lightcapfunction = GetDriverByConfig(ctx, "Disambiguator", "disambiguator", "Turvey", 2);
 
 	const char *DriverName;
 
 	i = 0;
-
-	survive_install_recording(ctx);
 
 	while ((DriverName = GetDriverNameMatching("DriverReg", i++))) {
 		DeviceDriver dd = GetDriver(DriverName);

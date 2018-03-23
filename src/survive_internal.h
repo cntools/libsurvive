@@ -16,7 +16,8 @@
 void * GetDriver( const char * name );
 const char * GetDriverNameMatching( const char * prefix, int place );
 void   ListDrivers();
-
+void *GetDriverByConfig(SurviveContext *ctx, const char *name, const char *configname, const char *configdef,
+						int verbose);
 
 #endif
 

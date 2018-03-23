@@ -184,30 +184,8 @@ void survive_cal_install( struct SurviveContext * ctx )
 	}
 
 	const char * DriverName;
-//	const char * PreferredPoser = survive_configs(ctx, "configposer", "PoserCharlesSlow");
-	const char * PreferredPoser = survive_configs(ctx, "configposer", SC_SETCONFIG, "PoserTurveyTori");
+	cd->ConfigPoserFn = GetDriverByConfig(ctx, "Poser", "configposer", "TurveyTori", 0);
 
-	SV_INFO( "Trying to load poser %s for cal.", PreferredPoser );
-	PoserCB SelectedPoserCB = 0;
-	const char * SelectedPoserName = 0;
-	i = 0;	
-	while( ( DriverName = GetDriverNameMatching( "Poser", i++ ) ) )
-	{
-		PoserCB p = GetDriver( DriverName );
-		if( !SelectedPoserCB )
-		{
-			SelectedPoserCB = p;
-			SelectedPoserName = DriverName;
-		}
-		int ThisPoser = strcmp( DriverName, PreferredPoser ) == 0;
-		if( ThisPoser )
-		{
-			SelectedPoserCB = p;
-			SelectedPoserName = DriverName;
-		}
-	}
-	cd->ConfigPoserFn = SelectedPoserCB;
-	SV_INFO( "Got config poser: %s (%p)", SelectedPoserName, cd->ConfigPoserFn );
 	ootx_packet_clbk = ootx_packet_clbk_d;
 
 	ctx->calptr = cd;
