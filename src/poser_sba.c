@@ -32,11 +32,12 @@ typedef struct {
 } sba_context_single_sweep;
 
 typedef struct SBAData {
-	int last_acode;
-	int last_lh;
+  int last_acode;
+  int last_lh;
   int failures_to_reset;
-    int failures_to_reset_cntr;
-	SurviveIMUTracker tracker;
+  int failures_to_reset_cntr;
+  SurviveIMUTracker tracker;
+  bool useIMU;
 } SBAData;
 
 void metric_function(int j, int i, double *aj, double *xij, void *adata) {
@@ -297,7 +298,7 @@ static double run_sba_find_3d_structure(SBAData *d, survive_calibration_config o
 	if(d->failures_to_reset_cntr == 0 || currentPositionValid == 0)
 	{
 		SurviveContext *ctx = so->ctx;	  
-	  SV_INFO("Must rerun seed poser");
+	  SV_INFO("Running seed poser");
 		const char *subposer = config_read_str(so->ctx->global_config_values, "SBASeedPoser", "PoserEPNP");
 		PoserCB driver = (PoserCB)GetDriver(subposer);
 
@@ -484,7 +485,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		if (error < 0) {
 			if(d->failures_to_reset_cntr > 0)
 			  d->failures_to_reset_cntr--;			
-		} else {
+		} else if(d->useIMU) {
 		  survive_imu_tracker_set_pose(&d->tracker, lightData->timecode, &so->OutPose);
 		}
 
@@ -502,10 +503,9 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 	case POSERDATA_IMU: {
 
 	  PoserDataIMU * imu = (PoserDataIMU*)pd;
-	  survive_imu_tracker_integrate(so, &d->tracker, imu);
-
 	  if (ctx->calptr && ctx->calptr->stage < 5) {
-	  } else {	 
+	  } else if(d->useIMU){
+	    survive_imu_tracker_integrate(so, &d->tracker, imu);	    
 	    PoserData_poser_raw_pose_func(pd, so, 1, &d->tracker.pose);			
 	  }
 	} // INTENTIONAL FALLTHROUGH
