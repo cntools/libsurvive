@@ -17,10 +17,6 @@ int main(int argc, char **argv) {
 	}
 
 	survive_startup(ctx);
-	if (survive_configi(ctx, "calibrate", SC_GET, 1)) {
-		SV_INFO("Installing calibration");
-		survive_cal_install(ctx);
-	}
 
 	while (survive_poll(ctx) == 0) {
 	}

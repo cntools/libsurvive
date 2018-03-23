@@ -116,6 +116,9 @@ int survive_cal_get_status( struct SurviveContext * ctx, char * description, int
 
 void survive_cal_install( struct SurviveContext * ctx )
 {
+	if (ctx->calptr)
+		return;
+
 	int i;
 	struct SurviveCalData * cd = ctx->calptr = calloc( 1, sizeof( struct SurviveCalData ) );
 

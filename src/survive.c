@@ -269,6 +269,31 @@ int survive_startup(SurviveContext *ctx) {
 
 	ctx->state = SURVIVE_RUNNING;
 
+	int calibrateMandatory = survive_configi(ctx, "calibrate", SC_GET, 0);
+	int calibrateForbidden = survive_configi(ctx, "no-calibrate", SC_GET, 0);
+	if (calibrateMandatory && calibrateForbidden) {
+		SV_INFO("Contradictory settings --calibrate and --no-calibrate specified. Switching to normal behavior.");
+		calibrateMandatory = calibrateForbidden = 0;
+	}
+
+	if (!calibrateForbidden) {
+		bool isCalibrated = true;
+		for (int i = 0; i < ctx->activeLighthouses; i++) {
+			isCalibrated &= ctx->bsd[i].PositionSet;
+		}
+
+		if (!isCalibrated) {
+			SV_INFO("Uncalibrated configuration detected. Attaching calibration. Please don't move tracked objects for "
+					"the duration of calibration. Pass '--no-calibrate' to skip calibration");
+		}
+
+		bool doCalibrate = isCalibrated == false || calibrateMandatory;
+
+		if (doCalibrate) {
+			survive_cal_install(ctx);
+		}
+	}
+
 	return 0;
 }
 
