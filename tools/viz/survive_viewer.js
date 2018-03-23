@@ -5,6 +5,9 @@ var angles = {};
 var ctx;
 var canvas;
 var oldDrawTime = 0;
+var timecode = {};
+var oldPoseTime = 0, poseCnt = 0;
+var scene, camera, renderer, floor;
 
 $(function() { $("#toggleBtn").click(function() { $("#cam").toggle(); }); });
 
@@ -16,16 +19,16 @@ function add_lighthouse(idx, p, q) {
 	group.position.fromArray(p);
 	group.quaternion.fromArray([ q[1], q[2], q[3], q[0] ]);
 
-	var height = 3;
-	var geometry = new THREE.ConeGeometry(Math.sin(1.0472) * height, height, 4, 1, true);
+	var height = 10;
+
+	var geometry = new THREE.ConeGeometry(height / Math.cos(60 / 180 * Math.PI), height, 4, 1, true);
 	var material = new THREE.MeshBasicMaterial({
-		wireframe : true,
-		vertexColor : true,
-		color : 0x111111,
-		opacity : 0.09,
+		color : 0x1F1FFF,
+		opacity : 0.02,
 		transparent : true,
 		blending : THREE.AdditiveBlending,
-		side : THREE.BothSides
+		side : THREE.DoubleSide,
+		depthTest : false
 	});
 	var cone = new THREE.Mesh(geometry, material);
 
@@ -34,16 +37,14 @@ function add_lighthouse(idx, p, q) {
 	var lhBox = new THREE.Mesh(lhBoxGeom, lhBoxMaterial);
 	group.add(lhBox);
 
-	cone.translateZ(-height / 2)
-	cone.rotateZ(Math.PI / 4)
-	cone.rotateX(Math.PI / 2)
-	// cone.position.z
+	cone.translateZ(-height / 2);
+	cone.rotateZ(Math.PI / 4);
+	cone.rotateX(Math.PI / 2);
 
 	group.add(cone);
 
 	group.add(lh);
 	scene.add(group);
-	// DrawCoordinateSystem(p[0], p[1], p[2], q[0], q[1], q[2], q[3]);
 	}
 
 function recolorTrackers(when) {
@@ -157,7 +158,7 @@ function redrawCanvas(when) {
 	}
 	}
 
-function create_object(info) {
+function create_tracked_object(info) {
 	var sensorGeometry = new THREE.SphereGeometry(.01, 32, 16);
 	var group = new THREE.Group();
 	group.sensors = [];
@@ -184,149 +185,141 @@ function create_object(info) {
 	scene.add(group);
 	}
 
-var timecode = {};
+var survive_log_handlers = {
+	"LH_POSE" : function(v) {
+		var obj = {
+			lighthouse : parseInt(v[1]),
+			position : [ parseFloat(v[3]), parseFloat(v[4]), parseFloat(v[5]) ],
+			quat : [ parseFloat(v[6]), parseFloat(v[7]), parseFloat(v[8]), parseFloat(v[9]) ]
+		};
 
-function parseLine(msg) {
+		add_lighthouse(obj.lighthouse, obj.position, obj.quat);
+	},
+	"POSE" : function(v, tracker) {
+		var obj = {
+			tracker : v[1],
+			position : [ parseFloat(v[3]), parseFloat(v[4]), parseFloat(v[5]) ],
+			quat : [ parseFloat(v[6]), parseFloat(v[7]), parseFloat(v[8]), parseFloat(v[9]) ]
+		};
+
+		if (objs[obj.tracker]) {
+			var now = new Date().getTime();
+			if (oldPoseTime + 5000 < now) {
+				oldPoseTime = now;
+				console.log((poseCnt / 5) + "hz");
+				poseCnt = 0;
+			}
+			poseCnt++;
+			objs[obj.tracker].position.set(obj.position[0], obj.position[1], obj.position[2]);
+			objs[obj.tracker].quaternion.set(obj.quat[1], obj.quat[2], obj.quat[3], obj.quat[0]);
+			objs[obj.tracker].verticesNeedUpdate = true;
+			timecode[obj.tracker] = obj.timecode;
+		}
+	},
+	"CONFIG" : function(v, tracker) {
+		var configStr = v.slice(3).join(' ');
+		var config = JSON.parse(configStr);
+		var obj = {config : config, tracker : v[1]};
+
+		create_tracked_object(obj);
+	},
+	'A' : function(v, tracker) {
+		var obj = {
+			tracker : v[1],
+			sensor_id : parseInt(v[3]),
+			acode : parseInt(v[4]),
+			timecode : parseInt(v[5]),
+			length : parseFloat(v[6]),
+			angle : parseFloat(v[7]),
+			lighthouse : parseInt(v[8])
+		};
+
+		angles[obj.tracker] = angles[obj.tracker] || {};
+		angles[obj.tracker][obj.lighthouse] = angles[obj.tracker][obj.lighthouse] || {};
+		angles[obj.tracker][obj.lighthouse][obj.sensor_id] = angles[obj.tracker][obj.lighthouse][obj.sensor_id] || {};
+
+		angles[obj.tracker][obj.lighthouse][obj.sensor_id][obj.acode & 1] = [ obj.angle, obj.timecode ];
+		timecode[obj.tracker] = obj.timecode;
+	},
+	'LOG' : function(v) {
+		var msg = v.slice(3).join(' ');
+
+		var consoleDiv = $("#console");
+		consoleDiv.append(msg + "</br>");
+		consoleDiv[0].scrollTop = consoleDiv[0].scrollHeight;
+
+	},
+	"I" : function(v, tracker) {
+		var obj = {
+			mask : parseInt(v[3]),
+			timecode : parseInt(v[4]),
+			accelgyro : [
+				parseFloat(v[5]), parseFloat(v[6]), parseFloat(v[7]), parseFloat(v[8]), parseFloat(v[9]),
+				parseFloat(v[10])
+			],
+			tracker : v[1]
+		};
+
+		if (objs[obj.tracker]) {
+			if (!downAxes[obj.tracker] && objs[obj.tracker]) {
+				downAxes[obj.tracker] = new THREE.Geometry();
+				downAxes[obj.tracker].vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0));
+
+				var line = new THREE.Line(downAxes[obj.tracker], new THREE.LineBasicMaterial({color : 0xffffff}));
+				scene.add(line);
+				}
+
+			if (objs[obj.tracker].position) {
+				var q = obj.accelgyro;
+
+				downAxes[obj.tracker].vertices[0] = objs[obj.tracker].position;
+				downAxes[obj.tracker].vertices[1].fromArray(q);
+				downAxes[obj.tracker].vertices[1].add(objs[obj.tracker].position);
+				downAxes[obj.tracker].verticesNeedUpdate = true;
+			}
+		}
+
+	}
+};
+
+function add_survive_log_handler(name, entry) { survive_log_handlers[name] = entry; }
+function process_survive_handlers(msg) {
 	var s = msg.split(' ');
 
-	var command_mappings = {
-		"LH_POSE" : function(v) {
-			return {
-				type : "lighthouse_pose",
-				lighthouse : parseInt(v[1]),
-				position : [ parseFloat(v[3]), parseFloat(v[4]), parseFloat(v[5]) ],
-				quat : [ parseFloat(v[6]), parseFloat(v[7]), parseFloat(v[8]), parseFloat(v[9]) ]
-			};
-		},
-		"POSE" : function(v) {
-			return {
-				type: "pose", position: [ parseFloat(v[3]), parseFloat(v[4]), parseFloat(v[5]) ],
-					quat: [ parseFloat(v[6]), parseFloat(v[7]), parseFloat(v[8]), parseFloat(v[9]) ]
-			}
-		},
-		"CONFIG" : function(v) {
-			var configStr = s.slice(3).join(' ');
-			var config = JSON.parse(configStr);
-
-			return { type: "htc_config", config: config }
-
-		},
-		'A' : function(v) {
-			return {
-				type: 'angle', sensor_id: parseInt(v[3]), acode: parseInt(v[4]), timecode: parseInt(v[5]),
-					length: parseFloat(v[6]), angle: parseFloat(v[7]), lighthouse: parseInt(v[8])
-			}
-		},
-		'LOG' : function(v) {
-			return { type: "info", msg: s.slice(3).join(' ') }
-		},
-		"I" : function(v) {
-			return {
-				type : "imu",
-				mask : parseInt(v[3]),
-				timecode : parseInt(v[4]),
-				accelgyro : [
-					parseFloat(v[5]), parseFloat(v[6]), parseFloat(v[7]), parseFloat(v[8]), parseFloat(v[9]),
-					parseFloat(v[10])
-				]
-
-			};
+	if (survive_log_handlers[s[2]]) {
+		survive_log_handlers[s[2]](s);
 		}
-	};
-	if (command_mappings[s[2]]) {
-		var rtn = command_mappings[s[2]](s);
-		rtn.time = parseFloat(s[0]);
-		rtn.tracker = s[1];
-		return rtn;
-		}
+
 	return {};
 }
-var oldPoseTime = 0, poseCnt = 0;
+
+var survive_ws;
+
+// Dial up the websocket
 $(function() {
 	setTimeout(function() {
-		var ws;
 
-		if (window.location.protocol === "file:") {
-			ws = new WebSocket("ws://localhost:8080/ws");
+		var url = new URL(window.location.href);
+		var remote = url.searchParams.get("remote");
+
+		if (remote.length) {
+			survive_ws = new WebSocket("ws://" + remote + "/ws");
+		} else if (window.location.protocol === "file:") {
+			survive_ws = new WebSocket("ws://localhost:8080/ws");
 		} else {
-			ws = new WebSocket(((window.location.protocol === "https:") ? "wss://" : "ws://") + window.location.host +
-							   "/ws");
+			survive_ws = new WebSocket(((window.location.protocol === "https:") ? "wss://" : "ws://") +
+									   window.location.host + "/ws");
 		}
 
-		ws.onopen = function(evt) {
-			// ws.send("!");
-		};
-		ws.onmessage = function(evt) {
+		survive_ws.onmessage = function(evt) {
 			var msg = evt.data;
-			var obj;
-			if (msg[0] == "{")
-				obj = JSON.parse(msg);
-			else
-				obj = parseLine(msg);
-
-			// console.log(obj);
-			if (obj.type === "pose") {
-				if (objs[obj.tracker]) {
-					var now = new Date().getTime();
-					if(oldPoseTime + 5000 < now) {
-						oldPoseTime = now;
-                        console.log( (poseCnt / 5) + "hz");
-                        poseCnt = 0;
-					}
-                    poseCnt++;
-                    objs[obj.tracker].position.set(obj.position[0], obj.position[1], obj.position[2]);
-					objs[obj.tracker].quaternion.set(obj.quat[1], obj.quat[2], obj.quat[3], obj.quat[0]);
-                    objs[obj.tracker].verticesNeedUpdate = true;
-                    timecode[obj.tracker] = obj.timecode;
-				}
-			} else if (obj.type === "info") {
-				var consoleDiv = $("#console");
-				consoleDiv.append(obj.msg + "</br>");
-				consoleDiv[0].scrollTop = consoleDiv[0].scrollHeight;
-			} else if (obj.type === "lighthouse_pose") {
-				add_lighthouse(obj.lighthouse, obj.position, obj.quat);
-			} else if (obj.type === "htc_config") {
-				create_object(obj);
-			} else if (obj.type === "imu") {
-				if (objs[obj.tracker]) {
-					if (!downAxes[obj.tracker] && objs[obj.tracker]) {
-						downAxes[obj.tracker] = new THREE.Geometry();
-						downAxes[obj.tracker].vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0));
-
-						var line =
-							new THREE.Line(downAxes[obj.tracker], new THREE.LineBasicMaterial({color : 0xffffff}));
-						scene.add(line);
-						}
-
-					if (objs[obj.tracker].position) {
-						var q = obj.accelgyro;
-
-						downAxes[obj.tracker].vertices[0] = objs[obj.tracker].position;
-						downAxes[obj.tracker].vertices[1].fromArray(q);
-						downAxes[obj.tracker].vertices[1].add(objs[obj.tracker].position);
-                        downAxes[obj.tracker].verticesNeedUpdate = true;
-					}
-				}
-
-			} else if (obj.type === "angle") {
-				angles[obj.tracker] = angles[obj.tracker] || {};
-				angles[obj.tracker][obj.lighthouse] = angles[obj.tracker][obj.lighthouse] || {};
-				angles[obj.tracker][obj.lighthouse][obj.sensor_id] =
-					angles[obj.tracker][obj.lighthouse][obj.sensor_id] || {};
-
-				angles[obj.tracker][obj.lighthouse][obj.sensor_id][obj.acode & 1] = [ obj.angle, obj.timecode ];
-                timecode[obj.tracker] = obj.timecode;
-			}
-
-			// ws.send("!");
+			process_survive_handlers(msg);
 		};
+
 	}, 60); // Hacky, but this gives the server time to restart on CTRL+R
 });
 
-// standard global variables
-var container, scene, camera, renderer, controls;
-
-// custom global variables
+// Init and start the render loop
 $(function() {
 	// initialization
 	init();
@@ -367,7 +360,7 @@ init() {
 	renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
 
 	// attach div element to variable to contain the renderer
-	container = document.getElementById('ThreeJS');
+	var container = document.getElementById('ThreeJS');
 
 	// attach renderer to the container div
 	container.appendChild(renderer.domElement);
@@ -375,17 +368,17 @@ init() {
 	// move mouse and: left   click to rotate,
 	//                 middle click to zoom,
 	//                 right  click to pan
-	controls = new THREE.OrbitControls(camera, renderer.domElement);
+	var controls = new THREE.OrbitControls(camera, renderer.domElement);
 
 	// create a light
 	var light = new THREE.PointLight(0xffffff);
-	light.position.set(0, 5, 0);
+	light.position.set(0, 0, 5);
 	scene.add(light);
 
 	var floorMaterial =
 		new THREE.MeshBasicMaterial({color : 0x000000, opacity : 0.15, transparent : true, side : THREE.FrontSide});
 	var floorGeometry = new THREE.PlaneGeometry(10, 10);
-	var floor = new THREE.Mesh(floorGeometry, floorMaterial);
+	floor = new THREE.Mesh(floorGeometry, floorMaterial);
 	floor.position.z = -1;
 
 	scene.add(floor);
