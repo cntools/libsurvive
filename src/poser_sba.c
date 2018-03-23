@@ -30,6 +30,13 @@ typedef struct {
 	int lh;
 } sba_context_single_sweep;
 
+typedef struct SBAData {
+	int last_acode;
+	int last_lh;
+	int failures_to_reset;
+	int failures_to_reset_cntr;
+} SBAData;
+
 void metric_function(int j, int i, double *aj, double *xij, void *adata) {
 	sba_context *ctx = (sba_context *)(adata);
 	SurviveObject *so = ctx->so;
@@ -181,7 +188,7 @@ static double run_sba_find_3d_structure_single_sweep(survive_calibration_config 
 	if (so->ctx->bsd[0].PositionSet == 0 || so->ctx->bsd[1].PositionSet == 0 || meas_size < 8) {
 		if (so->ctx->bsd[0].PositionSet && so->ctx->bsd[1].PositionSet && failure_count++ == 500) {
 			SurviveContext *ctx = so->ctx;
-			SV_INFO("Can't solve for position with just %lu measurements", meas_size);
+			SV_INFO("Can't solve for position with just %u measurements", (unsigned int)meas_size);
 			failure_count = 0;
 		}
 		return -1;
@@ -253,7 +260,7 @@ static double run_sba_find_3d_structure_single_sweep(survive_calibration_config 
 		// Docs say info[0] should be divided by meas; I don't buy it really...
 		static int cnt = 0;
 		if (cnt++ > 1000 || meas_size < 8) {
-			SV_INFO("%f original reproj error for %lu meas", (info[0] / meas_size * 2), meas_size);
+			SV_INFO("%f original reproj error for %u meas", (info[0] / meas_size * 2), (unsigned int)meas_size);
 			SV_INFO("%f cur reproj error", (info[1] / meas_size * 2));
 			cnt = 0;
 		}
@@ -262,9 +269,9 @@ static double run_sba_find_3d_structure_single_sweep(survive_calibration_config 
 	return info[1] / meas_size * 2;
 }
 
-static double run_sba_find_3d_structure(survive_calibration_config options, PoserDataLight *pdl, SurviveObject *so,
-										SurviveSensorActivations *scene, int max_iterations /* = 50*/,
-										double max_reproj_error /* = 0.005*/) {
+static double run_sba_find_3d_structure(SBAData *d, survive_calibration_config options, PoserDataLight *pdl,
+										SurviveObject *so, SurviveSensorActivations *scene,
+										int max_iterations /* = 50*/, double max_reproj_error /* = 0.005*/) {
 	double *covx = 0;
 
 	char *vmask = alloca(sizeof(char) * so->sensor_ct * NUM_LIGHTHOUSES);
@@ -275,7 +282,7 @@ static double run_sba_find_3d_structure(survive_calibration_config options, Pose
 	if (so->ctx->bsd[0].PositionSet == 0 || so->ctx->bsd[1].PositionSet == 0 || meas_size < 7) {
 		if (so->ctx->bsd[0].PositionSet && so->ctx->bsd[1].PositionSet && failure_count++ == 500) {
 			SurviveContext *ctx = so->ctx;
-			SV_INFO("Can't solve for position with just %lu measurements", meas_size);
+			SV_INFO("Can't solve for position with just %u measurements", (unsigned int)meas_size);
 			failure_count = 0;
 		}
 		return -1;
@@ -285,10 +292,12 @@ static double run_sba_find_3d_structure(survive_calibration_config options, Pose
 	SurvivePose soLocation = so->OutPose;
 	bool currentPositionValid = quatmagnitude(&soLocation.Rot[0]) != 0;
 
-	{
+	if (d->failures_to_reset_cntr == 0 || currentPositionValid == 0) {
+		SurviveContext *ctx = so->ctx;
+		SV_INFO("Must rerun seed poser");
 		const char *subposer = config_read_str(so->ctx->global_config_values, "SBASeedPoser", "PoserEPNP");
 		PoserCB driver = (PoserCB)GetDriver(subposer);
-		SurviveContext *ctx = so->ctx;
+
 		if (driver) {
 			PoserData hdr = pdl->hdr;
 			memset(&pdl->hdr, 0, sizeof(pdl->hdr)); // Clear callback functions
@@ -340,6 +349,7 @@ static double run_sba_find_3d_structure(survive_calibration_config options, Pose
 								info);			// info
 
 	if (status > 0) {
+		d->failures_to_reset_cntr = d->failures_to_reset;
 		quatnormalize(soLocation.Rot, soLocation.Rot);
 		PoserData_poser_raw_pose_func(&pdl->hdr, so, 1, &soLocation);
 	}
@@ -349,7 +359,7 @@ static double run_sba_find_3d_structure(survive_calibration_config options, Pose
 		// Docs say info[0] should be divided by meas; I don't buy it really...
 		static int cnt = 0;
 		if (cnt++ > 1000 || meas_size < 8) {
-			SV_INFO("%f original reproj error for %lu meas", (info[0] / meas_size * 2), meas_size);
+			SV_INFO("%f original reproj error for %u meas", (info[0] / meas_size * 2), (int)meas_size);
 			SV_INFO("%f cur reproj error", (info[1] / meas_size * 2));
 			cnt = 0;
 		}
@@ -435,21 +445,19 @@ static double run_sba(survive_calibration_config options, PoserDataFullScene *pd
 	{
 		SurviveContext *ctx = so->ctx;
 		// Docs say info[0] should be divided by meas; I don't buy it really...
-		SV_INFO("%f original reproj error for %lu meas", (info[0] / meas_size * 2), meas_size);
+		SV_INFO("%f original reproj error for %u meas", (info[0] / meas_size * 2), (int)meas_size);
 		SV_INFO("%f cur reproj error", (info[1] / meas_size * 2));
 	}
 
 	return info[1] / meas_size * 2;
 }
 
-typedef struct SBAData {
-	int last_acode;
-	int last_lh;
-} SBAData;
-
 int PoserSBA(SurviveObject *so, PoserData *pd) {
 	if (so->PoserData == 0) {
 		so->PoserData = calloc(1, sizeof(SBAData));
+		SBAData *d = so->PoserData;
+		d->failures_to_reset_cntr = 0;
+		d->failures_to_reset = 30;
 	}
 	SBAData *d = so->PoserData;
 	SurviveContext *ctx = so->ctx;
@@ -465,9 +473,14 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		FLT error = -1;
 		if (d->last_lh != lightData->lh || d->last_acode != lightData->acode) {
 			survive_calibration_config config = *survive_calibration_default_config();
-			error = run_sba_find_3d_structure(config, lightData, so, scene, 50, .5);
+			error = run_sba_find_3d_structure(d, config, lightData, so, scene, 50, .5);
 			d->last_lh = lightData->lh;
 			d->last_acode = lightData->acode;
+		}
+
+		if (error < 0) {
+			if (d->failures_to_reset_cntr > 0)
+				d->failures_to_reset_cntr--;
 		}
 
 		return 0;
@@ -476,7 +489,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		SurviveContext *ctx = so->ctx;
 		PoserDataFullScene *pdfs = (PoserDataFullScene *)(pd);
 		survive_calibration_config config = *survive_calibration_default_config();
-		SV_INFO("Running sba with %lu", survive_calibration_config_index(&config));
+		SV_INFO("Running sba with %u", (int)survive_calibration_config_index(&config));
 		double error = run_sba(config, pdfs, so, 50, .005);
 		// std::cerr << "Average reproj error: " << error << std::endl;
 		return 0;
