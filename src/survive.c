@@ -294,6 +294,13 @@ int survive_startup(SurviveContext *ctx) {
 		}
 	}
 
+	// If lighthouse positions are known, broadcast them
+	for (int i = 0; i < ctx->activeLighthouses; i++) {
+	  if(ctx->bsd[i].PositionSet) {
+	    ctx->lighthouseposeproc(ctx, i, &ctx->bsd[i].Pose, 0);
+	  }
+	}
+
 	return 0;
 }
 
