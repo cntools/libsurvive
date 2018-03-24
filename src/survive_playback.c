@@ -342,8 +342,8 @@ static int playback_close(struct SurviveContext *ctx, void *_driver) {
 }
 
 void survive_install_recording(SurviveContext *ctx) {
-	const char *dataout_file = survive_configs(ctx, "record", SC_SETCONFIG, "");
-	int record_to_stdout = survive_configi(ctx, "record-stdout", SC_SETCONFIG, 0);
+	const char *dataout_file = survive_configs(ctx, "record", SC_GET, "");
+	int record_to_stdout = survive_configi(ctx, "record-stdout", SC_GET, 0);
 
 	if (strlen(dataout_file) > 0 || record_to_stdout) {
 		ctx->recptr = calloc(1, sizeof(struct SurviveRecordingData));
@@ -366,7 +366,7 @@ void survive_install_recording(SurviveContext *ctx) {
 }
 
 int DriverRegPlayback(SurviveContext *ctx) {
-	const char *playback_file = survive_configs(ctx, "playback", SC_SETCONFIG, "");
+	const char *playback_file = survive_configs(ctx, "playback", SC_GET, "");
 
 	if (strlen(playback_file) == 0) {
 		return 0;
@@ -375,7 +375,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	SurvivePlaybackData *sp = calloc(1, sizeof(SurvivePlaybackData));
 	sp->ctx = ctx;
 	sp->playback_dir = playback_file;
-	sp->time_factor = survive_configf(ctx, "playback-factor", SC_SETCONFIG, 1.f);
+	sp->time_factor = survive_configf(ctx, "playback-factor", SC_GET, 1.f);
 
 	printf("%s\n", playback_file);
 

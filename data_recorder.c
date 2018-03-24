@@ -11,7 +11,7 @@ int main(int argc, char **argv) {
 	if (ctx == 0) // implies -help or similiar
 		return 0;
 
-	const char *dataout_file = survive_configs(ctx, "record", SC_SETCONFIG, "");
+	const char *dataout_file = survive_configs(ctx, "record", SC_GET, "");
 	if (strlen(dataout_file) == 0) {
 		survive_configi(ctx, "record-stdout", SC_SET | SC_OVERRIDE, 1);
 	}
