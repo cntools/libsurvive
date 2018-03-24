@@ -159,11 +159,18 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 			}
 
 			if (vartoupdate) {
-				if (av + 1 == argvend) {
-					fprintf(stderr, "Error: expected parameter after %s\n", *av);
-					showhelp = 1;
+				const char *name = *av + 2; // Skip the '--';
+				bool flagArgument = (av + 1 == argvend) || av[1][0] == '-';
+
+				if (flagArgument) {
+					bool value = strncmp("no-", name, 3) != 0;
+					if (value == 0) {
+						name += 3; // Skip "no-"
+					}
+					survive_configi(ctx, name, SC_OVERRIDE | SC_SET, value);
 				} else {
-					survive_configs(ctx, *av + 2, SC_OVERRIDE | SC_SET, *(av + 1));
+					const char *value = *(av + 1);
+					survive_configs(ctx, name, SC_OVERRIDE | SC_SET, value);
 					av++;
 				}
 			}
@@ -273,7 +280,7 @@ int survive_startup(SurviveContext *ctx) {
 	ctx->state = SURVIVE_RUNNING;
 
 	int calibrateMandatory = survive_configi(ctx, "calibrate", SC_GET, 0);
-	int calibrateForbidden = survive_configi(ctx, "no-calibrate", SC_GET, 0);
+	int calibrateForbidden = survive_configi(ctx, "calibrate", SC_GET, 1) == 0;
 	if (calibrateMandatory && calibrateForbidden) {
 		SV_INFO("Contradictory settings --calibrate and --no-calibrate specified. Switching to normal behavior.");
 		calibrateMandatory = calibrateForbidden = 0;
@@ -288,6 +295,8 @@ int survive_startup(SurviveContext *ctx) {
 		if (!isCalibrated) {
 			SV_INFO("Uncalibrated configuration detected. Attaching calibration. Please don't move tracked objects for "
 					"the duration of calibration. Pass '--no-calibrate' to skip calibration");
+		} else {
+			SV_INFO("Calibration requested. Previous calibration will be overwritten.");
 		}
 
 		bool doCalibrate = isCalibrated == false || calibrateMandatory;

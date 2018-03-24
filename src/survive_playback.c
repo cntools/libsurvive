@@ -350,7 +350,7 @@ void survive_install_recording(SurviveContext *ctx) {
 
 		ctx->recptr->output_file = fopen(dataout_file, "w");
 		if (ctx->recptr->output_file == 0 && !record_to_stdout) {
-			SV_INFO("Could not open %s for writing\n", dataout_file);
+			SV_INFO("Could not open %s for writing", dataout_file);
 			free(ctx->recptr);
 			ctx->recptr = 0;
 			return;
@@ -376,8 +376,6 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	sp->ctx = ctx;
 	sp->playback_dir = playback_file;
 	sp->time_factor = survive_configf(ctx, "playback-factor", SC_GET, 1.f);
-
-	printf("%s\n", playback_file);
 
 	sp->playback_file = fopen(playback_file, "r");
 	if (sp->playback_file == 0) {
