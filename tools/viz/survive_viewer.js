@@ -185,6 +185,29 @@ function create_tracked_object(info) {
 	scene.add(group);
 	}
 
+var trails;
+var MAX_LINE_POINTS = 1000;
+$(function() {
+	$("#trails").change(function() {
+		if (this.checked) {
+			var geometry = new THREE.Geometry();
+			var material = new THREE.LineBasicMaterial({color : 0x305ea8});
+
+			for (i = 0; i < MAX_LINE_POINTS; i++) {
+				geometry.vertices.push(new THREE.Vector3(0, 0, 0));
+			}
+			geometry.dynamic = true;
+
+			trails = new THREE.Line(geometry, material);
+
+			scene.add(trails);
+		} else {
+			if (trails)
+				scene.remove(trails);
+		}
+	});
+});
+
 var survive_log_handlers = {
 	"LH_POSE" : function(v) {
 		var obj = {
@@ -214,6 +237,14 @@ var survive_log_handlers = {
 			objs[obj.tracker].quaternion.set(obj.quat[1], obj.quat[2], obj.quat[3], obj.quat[0]);
 			objs[obj.tracker].verticesNeedUpdate = true;
 			timecode[obj.tracker] = obj.timecode;
+
+			if (trails) {
+
+				trails.geometry.vertices.push(trails.geometry.vertices.shift()); // shift the array
+				trails.geometry.vertices[MAX_LINE_POINTS - 1] =
+					new THREE.Vector3(obj.position[0], obj.position[1], obj.position[2]);
+				trails.geometry.verticesNeedUpdate = true;
+			}
 		}
 	},
 	"CONFIG" : function(v, tracker) {
