@@ -5,7 +5,7 @@ void survive_recording_config_process(SurviveObject *so, char *ct0conf, int len)
 
 void survive_recording_lighthouse_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lh_pose,
 										  SurvivePose *obj);
-
+void survive_recording_lightcap(SurviveObject *so, LightcapElement *le);
 void survive_recording_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose);
 void survive_recording_info_process(SurviveContext *ctx, const char *fault);
 void survive_recording_angle_process(struct SurviveObject *so, int sensor_id, int acode, uint32_t timecode, FLT length,

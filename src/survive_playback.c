@@ -16,6 +16,7 @@
 
 typedef struct SurviveRecordingData {
 	bool alwaysWriteStdOut;
+	bool writeRawLight;
 	FILE *output_file;
 } SurviveRecordingData;
 
@@ -96,6 +97,16 @@ void survive_recording_angle_process(struct SurviveObject *so, int sensor_id, in
 					angle, lh);
 }
 
+void survive_recording_lightcap(SurviveObject *so, LightcapElement *le) {
+	SurviveRecordingData *recordingData = so->ctx->recptr;
+	if (recordingData == 0)
+		return;
+
+	if (recordingData->writeRawLight) {
+		write_to_output(recordingData, "%s C %d %u %u\n", so->codename, le->sensor_id, le->timestamp, le->length);
+	}
+}
+
 void survive_recording_light_process(struct SurviveObject *so, int sensor_id, int acode, int timeinsweep,
 									 uint32_t timecode, uint32_t length, uint32_t lh) {
 	SurviveRecordingData *recordingData = so->ctx->recptr;
@@ -133,6 +144,7 @@ void survive_recording_light_process(struct SurviveObject *so, int sensor_id, in
 		LH_Axis = "Y";
 		break;
 	}
+
 	write_to_output(recordingData, "%s %s %s %d %d %d %u %u %u\n", so->codename, LH_ID, LH_Axis, sensor_id, acode,
 					timeinsweep, timecode, length, lh);
 }
@@ -154,6 +166,7 @@ struct SurvivePlaybackData {
 
 	FLT time_factor;
 	double next_time_us;
+	bool hasRawLight;
 };
 typedef struct SurvivePlaybackData SurvivePlaybackData;
 
@@ -190,8 +203,31 @@ static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver) {
 	return 0;
 }
 
-static int parse_and_run_lightcode(const char *line,
-								   SurvivePlaybackData *driver) {
+static int parse_and_run_rawlight(const char *line, SurvivePlaybackData *driver) {
+	driver->hasRawLight = 1;
+
+	char dev[10];
+	char op[10];
+	LightcapElement le;
+	int rr = sscanf(line, "%s %s %hhu %u %hu\n", dev, op, &le.sensor_id, &le.timestamp, &le.length);
+
+	SurviveObject *so = survive_get_so_by_name(driver->ctx, dev);
+	if (!so) {
+		static bool display_once = false;
+		SurviveContext *ctx = driver->ctx;
+		if (display_once == false) {
+			SV_ERROR("Could not find device named %s from lineno %d\n", dev, driver->lineno);
+		}
+		display_once = true;
+
+		return -1;
+	}
+
+	handle_lightcap(so, &le);
+	return 0;
+}
+
+static int parse_and_run_lightcode(const char *line, SurvivePlaybackData *driver) {
 	char lhn[10];
 	char axn[10];
 	char dev[10];
@@ -206,8 +242,7 @@ static int parse_and_run_lightcode(const char *line,
 					&length, &lh);
 
 	if (rr != 9) {
-		fprintf(stderr, "Warning:  On line %d, only %d values read: '%s'\n",
-				driver->lineno, rr, line);
+		fprintf(stderr, "Warning:  On line %d, only %d values read: '%s'\n", driver->lineno, rr, line);
 		return -1;
 	}
 
@@ -263,13 +298,19 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 
 		char dev[10];
 		char op[10];
-		if (sscanf(line, "%8s %8s", dev, op) < 2)
+		if (sscanf(line, "%8s %8s", dev, op) < 2) {
+			free(line);
 			return 0;
+		}
 
-		if ((op[0] != 'R' && op[0] != 'L' && op[0] != 'I') || op[1] != 0)
+		if (op[1] != 0) {
 			return 0;
+		}
 
 		switch (op[0]) {
+		case 'C':
+			parse_and_run_rawlight(line, driver);
+			break;
 		case 'L':
 		case 'R':
 			parse_and_run_lightcode(line, driver);
@@ -319,6 +360,8 @@ void survive_install_recording(SurviveContext *ctx) {
 		if (record_to_stdout) {
 			SV_INFO("Recording to stdout");
 		}
+
+		ctx->recptr->writeRawLight = survive_configi(ctx, "record-rawlight", SC_GET, 1);
 	}
 }
 

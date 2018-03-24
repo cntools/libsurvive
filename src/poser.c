@@ -45,7 +45,11 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 
 		// Now find the space with the same origin, but rotated so that gravity is up
 		SurvivePose lighthouse2objUp = {}, object2objUp = {};
-		quatfrom2vectors(object2objUp.Rot, so->activations.accel, up);
+		if (quatmagnitude(so->activations.accel)) {
+			quatfrom2vectors(object2objUp.Rot, so->activations.accel, up);
+		} else {
+			object2objUp.Rot[0] = 1.0;
+		}
 
 		// Calculate the pose of the lighthouse in this space
 		ApplyPoseToPose(&lighthouse2objUp, &object2objUp, &lighthouse2obj);

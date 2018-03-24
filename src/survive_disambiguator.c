@@ -1,11 +1,14 @@
 #include "survive.h"
+
 #include <os_generic.h>
 #include <stdio.h>
+#include "survive_playback.h"
 
 //#define LOG_LIGHTDATA
 
 void handle_lightcap(SurviveObject *so, LightcapElement *le)
 {
+  survive_recording_lightcap(so, le);
 #ifdef LOG_LIGHTDATA
 	static FILE * flog;
 	static double start = 0;
