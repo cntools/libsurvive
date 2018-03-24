@@ -177,7 +177,10 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 		fprintf(stderr, " -p [poser]              - use a specific defaultposer.\n");
 		fprintf(stderr, " -l [lighthouse count]   - use a specific number of lighthoses.\n");
 		fprintf(stderr, " -c [config file]        - set config file\n");
-		fprintf(stderr, " -p [lighthouse count]   - use a specific number of lighthoses.\n");
+		fprintf(stderr, " --record [log file]     - Write all events to the given record file.\n");
+		fprintf(stderr, " --playback [log file]   - Read events from the given file instead of USB devices.\n");
+		fprintf(stderr, " --playback-factor [f]   - Time factor of playback -- 1 is run at the same timing as "
+						"original, 0 is run as fast as possible.\n");
 		return 0;
 	}
 

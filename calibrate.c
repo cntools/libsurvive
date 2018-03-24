@@ -393,9 +393,6 @@ char * const * gargv;
 
 void * SurviveThread(void *jnk)
 {
-	ctx = survive_init( gargc, gargv );
-
-
 	uint8_t i =0;
 	for (i=0;i<32;++i) {
 		sensor_name[i] = malloc(3);
@@ -433,8 +430,14 @@ int main( int argc, char ** argv )
 {
 	gargc = argc;
 	gargv = argv;
+
+	ctx = survive_init(gargc, gargv);
+	if (ctx == 0) { // Implies --help or similiar
+		return -1;
+	}
+
 	// Create the survive thread
-    OGCreateThread( SurviveThread, 0 );
+	OGCreateThread(SurviveThread, 0);
 
 	// Wait for the survive thread to load
 	while(!SurviveThreadLoaded){ OGUSleep(100); }

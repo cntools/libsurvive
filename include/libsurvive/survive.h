@@ -202,11 +202,18 @@ struct SurviveContext
 
 void survive_verify_FLT_size(uint32_t user_size); // Baked in size of FLT to verify users of the library have the correct setting. 
 
-
-
-
-
 SurviveContext * survive_init_internal( int argc, char * const * argv );
+
+/**
+ * Call survive_init to get a populated SurviveContext pointer.
+ *
+ * This also sets up a number of configuration values based on command line
+ * arguments. Pass 0, 0 to this function if you specifically do not want
+ * command line processing.
+ *
+ * Note that this function _can_ return null based on command line arguments,
+ * notably if -h was passed in.
+ */
 static inline SurviveContext * survive_init( int argc, char * const * argv )
 {
 	survive_verify_FLT_size(sizeof(FLT));

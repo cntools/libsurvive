@@ -162,6 +162,9 @@ int main( int argc, char ** argv )
 */
 
 	ctx = survive_init( argc, argv );
+	if (ctx == 0) { // Implies --help or similiar
+		return -1;
+	}
 
 	survive_install_light_fn( ctx,  my_light_process );
 	survive_install_imu_fn( ctx,  my_imu_process );
