@@ -35,6 +35,8 @@ typedef struct SBAData {
 	int last_lh;
 	int failures_to_reset;
 	int failures_to_reset_cntr;
+	int successes_to_reset;
+	int successes_to_reset_cntr;
 } SBAData;
 
 void metric_function(int j, int i, double *aj, double *xij, void *adata) {
@@ -292,9 +294,9 @@ static double run_sba_find_3d_structure(SBAData *d, survive_calibration_config o
 	SurvivePose soLocation = so->OutPose;
 	bool currentPositionValid = quatmagnitude(&soLocation.Rot[0]) != 0;
 
-	if (d->failures_to_reset_cntr == 0 || currentPositionValid == 0) {
+	if (d->successes_to_reset_cntr == 0 || d->failures_to_reset_cntr == 0 || currentPositionValid == 0) {
 		SurviveContext *ctx = so->ctx;
-		SV_INFO("Must rerun seed poser");
+		// SV_INFO("Must rerun seed poser");
 		const char *subposer = config_read_str(so->ctx->global_config_values, "SBASeedPoser", "PoserEPNP");
 		PoserCB driver = (PoserCB)GetDriver(subposer);
 
@@ -310,11 +312,12 @@ static double run_sba_find_3d_structure(SBAData *d, survive_calibration_config o
 			pdl->hdr = hdr;
 
 			if (locations.hasInfo == false) {
-
 				return -1;
 			} else if (locations.hasInfo) {
 				soLocation = locations.poses;
 			}
+
+			d->successes_to_reset_cntr = d->successes_to_reset;
 		} else {
 			SV_INFO("Not using a seed poser for SBA; results will likely be way off");
 		}
@@ -457,7 +460,9 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		so->PoserData = calloc(1, sizeof(SBAData));
 		SBAData *d = so->PoserData;
 		d->failures_to_reset_cntr = 0;
-		d->failures_to_reset = 30;
+		d->failures_to_reset = 5;
+		d->successes_to_reset_cntr = 0;
+		d->successes_to_reset = 20;
 	}
 	SBAData *d = so->PoserData;
 	SurviveContext *ctx = so->ctx;
@@ -481,6 +486,9 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		if (error < 0) {
 			if (d->failures_to_reset_cntr > 0)
 				d->failures_to_reset_cntr--;
+		} else {
+			if (d->successes_to_reset_cntr > 0)
+				d->successes_to_reset_cntr--;
 		}
 
 		return 0;
