@@ -53,7 +53,7 @@ int PoserCharlesSlow( SurviveObject * so, PoserData * pd )
 			printf( "%f %f %f\n", hmd_points[p*3+0], hmd_points[p*3+1], hmd_points[p*3+2] );
 		}
 
-		SurvivePose additionalTx = {};
+		SurvivePose additionalTx = {0};
 
 		int lh, cycle;
 		FLT dz, dy, dx;

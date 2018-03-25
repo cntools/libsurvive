@@ -3,6 +3,9 @@
 #include <stdint.h>
 #include <survive.h>
 
+#define _USE_MATH_DEFINES // for C
+#include <math.h>
+
 void PoserData_poser_raw_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse, SurvivePose *pose) {
 	if (poser_data->rawposeproc) {
 		poser_data->rawposeproc(so, lighthouse, pose, poser_data->userdata);
@@ -44,7 +47,7 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 		ApplyPoseToPose(&lighthouse2obj, &arb2object, &lighthouse2arb);
 
 		// Now find the space with the same origin, but rotated so that gravity is up
-		SurvivePose lighthouse2objUp = {}, object2objUp = {};
+		SurvivePose lighthouse2objUp = {0}, object2objUp = {0};
 		if (quatmagnitude(so->activations.accel)) {
 			quatfrom2vectors(object2objUp.Rot, so->activations.accel, up);
 		} else {

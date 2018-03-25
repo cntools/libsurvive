@@ -127,7 +127,7 @@ int PoserDaveOrtho( SurviveObject * so, PoserData * pd )
 		PoserDataFullScene * fs = (PoserDataFullScene*)pd;
 		int LH_ID;
 
-		SurvivePose alignLh0ToXAxis = {};
+		SurvivePose alignLh0ToXAxis = {0};
 		for( LH_ID = 0; LH_ID < 2; LH_ID++ )
 		{
 			int i;

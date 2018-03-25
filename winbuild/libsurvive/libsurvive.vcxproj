@@ -150,6 +150,7 @@
     <ClCompile Include="..\..\redist\puff.c" />
     <ClCompile Include="..\..\redist\symbol_enumerator.c" />
     <ClCompile Include="..\..\src\ootx_decoder.c" />
+    <ClCompile Include="..\..\src\poser.c" />
     <ClCompile Include="..\..\src\poser_charlesslow.c" />
     <ClCompile Include="..\..\src\poser_daveortho.c" />
     <ClCompile Include="..\..\src\poser_dummy.c" />
@@ -157,11 +158,15 @@
     <ClCompile Include="..\..\src\poser_turveytori.c" />
     <ClCompile Include="..\..\src\survive.c" />
     <ClCompile Include="..\..\src\survive_cal.c" />
+    <ClCompile Include="..\..\src\survive_charlesbiguator.c" />
     <ClCompile Include="..\..\src\survive_config.c" />
-    <ClCompile Include="..\..\src\survive_data.c" />
     <ClCompile Include="..\..\src\survive_default_devices.c" />
+    <ClCompile Include="..\..\src\survive_disambiguator.c" />
     <ClCompile Include="..\..\src\survive_driverman.c" />
     <ClCompile Include="..\..\src\survive_process.c" />
+    <ClCompile Include="..\..\src\survive_reproject.c" />
+    <ClCompile Include="..\..\src\survive_sensor_activations.c" />
+    <ClCompile Include="..\..\src\survive_turveybiguator.c" />
     <ClCompile Include="..\..\src\survive_usb.c" />
     <ClCompile Include="..\..\src\survive_vive.c" />
   </ItemGroup>

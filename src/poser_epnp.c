@@ -13,7 +13,7 @@
 #include "stdio.h"
 
 static SurvivePose solve_correspondence(SurviveObject *so, epnp *pnp, bool cameraToWorld) {
-	SurvivePose rtn = {};
+	SurvivePose rtn = {0};
 	// std::cerr << "Solving for " << cal_imagePoints.size() << " correspondents" << std::endl;
 	if (pnp->number_of_correspondences <= 3) {
 		SurviveContext *ctx = so->ctx;
@@ -128,7 +128,7 @@ int PoserEPNP(SurviveObject *so, PoserData *pd) {
 
 					SurvivePose pose = solve_correspondence(so, &pnp, false);
 
-					SurvivePose txPose = {};
+					SurvivePose txPose = {0};
 					quatrotatevector(txPose.Pos, so->ctx->bsd[lh].Pose.Rot, pose.Pos);
 					for (int i = 0; i < 3; i++) {
 						txPose.Pos[i] += so->ctx->bsd[lh].Pose.Pos[i];

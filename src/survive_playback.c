@@ -6,7 +6,7 @@
 #include <survive.h>
 
 #include <string.h>
-#include <sys/time.h>
+//#include <sys/time.h>
 
 #include "survive_config.h"
 #include "survive_default_devices.h"
@@ -274,7 +274,7 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 		if (driver->next_time_us == 0) {
 			char *buffer;
 			size_t n = 0;
-			ssize_t r = getdelim(&line, &n, ' ', f);
+			int r = getdelim(&line, &n, ' ', f);
 			if (r <= 0)
 				return 0;
 
@@ -292,7 +292,7 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 
 		char *buffer;
 		size_t n = 0;
-		ssize_t r = getline(&line, &n, f);
+		int r = getline(&line, &n, f);
 		if (r <= 0)
 			return 0;
 
@@ -397,7 +397,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	while (!feof(sp->playback_file) && !ferror(sp->playback_file)) {
 		char *line = 0;
 		size_t n;
-		ssize_t r = getline(&line, &n, sp->playback_file);
+		int r = getline(&line, &n, sp->playback_file);
 
 		if (r <= 0)
 			continue;

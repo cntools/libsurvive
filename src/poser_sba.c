@@ -44,7 +44,7 @@ void metric_function(int j, int i, double *aj, double *xij, void *adata) {
 	SurviveObject *so = ctx->so;
 
 	SurvivePose obj2world = ctx->obj_pose;
-	FLT sensorInWorld[3] = {};
+	FLT sensorInWorld[3] = {0};
 	ApplyPoseToPoint(sensorInWorld, &obj2world, &so->sensor_locations[i * 3]);
 	survive_reproject_from_pose_with_config(so->ctx, &ctx->calibration_config, j, (SurvivePose *)aj, sensorInWorld,
 											xij);
@@ -210,7 +210,7 @@ static double run_sba_find_3d_structure_single_sweep(survive_calibration_config 
 			pdl->hdr.pt = hdr.pt;
 			pdl->hdr.rawposeproc = sba_set_position;
 
-			sba_set_position_t locations = {};
+			sba_set_position_t locations = {0};
 			pdl->hdr.userdata = &locations;
 			driver(so, &pdl->hdr);
 			pdl->hdr = hdr;
@@ -226,8 +226,8 @@ static double run_sba_find_3d_structure_single_sweep(survive_calibration_config 
 		}
 	}
 
-	double opts[SBA_OPTSSZ] = {};
-	double info[SBA_INFOSZ] = {};
+	double opts[SBA_OPTSSZ] = {0};
+	double info[SBA_INFOSZ] = {0};
 
 	sba_context_single_sweep ctx = {.hdr = {options, &pdl->hdr, so}, .acode = acode, .lh = lh};
 
@@ -306,7 +306,7 @@ static double run_sba_find_3d_structure(SBAData *d, survive_calibration_config o
 			pdl->hdr.pt = hdr.pt;
 			pdl->hdr.rawposeproc = sba_set_position;
 
-			sba_set_position_t locations = {};
+			sba_set_position_t locations = {0};
 			pdl->hdr.userdata = &locations;
 			driver(so, &pdl->hdr);
 			pdl->hdr = hdr;
@@ -323,8 +323,8 @@ static double run_sba_find_3d_structure(SBAData *d, survive_calibration_config o
 		}
 	}
 
-	double opts[SBA_OPTSSZ] = {};
-	double info[SBA_INFOSZ] = {};
+	double opts[SBA_OPTSSZ] = {0};
+	double info[SBA_INFOSZ] = {0};
 
 	sba_context ctx = {options, &pdl->hdr, so};
 
@@ -399,7 +399,7 @@ static double run_sba(survive_calibration_config options, PoserDataFullScene *pd
 		} else {
 			SV_INFO("Not using a seed poser for SBA; results will likely be way off");
 			for (int i = 0; i < 2; i++) {
-				so->ctx->bsd[i].Pose = (SurvivePose){};
+				so->ctx->bsd[i].Pose = (SurvivePose){0};
 				so->ctx->bsd[i].Pose.Rot[0] = 1.;
 			}
 		}
@@ -407,8 +407,8 @@ static double run_sba(survive_calibration_config options, PoserDataFullScene *pd
 		// PoserCharlesSlow(so, (PoserData *)pdfs);
 	}
 
-	double opts[SBA_OPTSSZ] = {};
-	double info[SBA_INFOSZ] = {};
+	double opts[SBA_OPTSSZ] = {0};
+	double info[SBA_INFOSZ] = {0};
 
 	opts[0] = SBA_INIT_MU;
 	opts[1] = SBA_STOP_THRESH;
@@ -435,7 +435,7 @@ static double run_sba(survive_calibration_config options, PoserDataFullScene *pd
 								info);			// info
 
 	if (status >= 0) {
-		SurvivePose additionalTx = {};
+		SurvivePose additionalTx = {0};
 		PoserData_lighthouse_pose_func(&pdfs->hdr, so, 0, &additionalTx, &sbactx.camera_params[0], &sbactx.obj_pose);
 		PoserData_lighthouse_pose_func(&pdfs->hdr, so, 1, &additionalTx, &sbactx.camera_params[1], &sbactx.obj_pose);
 	} else {
