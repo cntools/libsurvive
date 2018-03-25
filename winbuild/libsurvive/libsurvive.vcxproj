@@ -163,12 +163,14 @@
     <ClCompile Include="..\..\src\survive_default_devices.c" />
     <ClCompile Include="..\..\src\survive_disambiguator.c" />
     <ClCompile Include="..\..\src\survive_driverman.c" />
+    <ClCompile Include="..\..\src\survive_playback.c" />
     <ClCompile Include="..\..\src\survive_process.c" />
     <ClCompile Include="..\..\src\survive_reproject.c" />
     <ClCompile Include="..\..\src\survive_sensor_activations.c" />
     <ClCompile Include="..\..\src\survive_turveybiguator.c" />
     <ClCompile Include="..\..\src\survive_usb.c" />
     <ClCompile Include="..\..\src\survive_vive.c" />
+    <ClCompile Include="..\getdelim.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\libsurvive\poser.h" />
