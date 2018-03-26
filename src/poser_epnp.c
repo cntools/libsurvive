@@ -98,11 +98,10 @@ static int opencv_solver_fullscene(SurviveObject *so, PoserDataFullScene *pdfs) 
 	return 0;
 }
 
-static void add_correspondences(SurviveObject *so, epnp *pnp, SurviveSensorActivations *scene,
-								const PoserDataLight *lightData) {
-	int lh = lightData->lh;
+static void add_correspondences(SurviveObject *so, epnp *pnp, SurviveSensorActivations *scene, uint32_t timecode,
+								int lh) {
 	for (size_t sensor_idx = 0; sensor_idx < so->sensor_ct; sensor_idx++) {
-		if (SurviveSensorActivations_isPairValid(scene, SurviveSensorActivations_default_tolerance, lightData->timecode,
+		if (SurviveSensorActivations_isPairValid(scene, SurviveSensorActivations_default_tolerance, timecode,
 												 sensor_idx, lh)) {
 			double *angles = scene->angles[sensor_idx][lh];
 			epnp_add_correspondence(pnp, so->sensor_locations[sensor_idx * 3 + 0],
@@ -125,46 +124,55 @@ int PoserEPNP(SurviveObject *so, PoserData *pd) {
 		PoserDataLight *lightData = (PoserDataLight *)pd;
 
 		SurvivePose posers[2];
-		bool hasData[2] = {0, 0};
-		for (int lh = 0; lh < 1; lh++) {
+		int meas[2] = {0, 0};
+		for (int lh = 0; lh < 2; lh++) {
 			if (so->ctx->bsd[lh].PositionSet) {
 				epnp pnp = {.fu = 1, .fv = 1};
 				epnp_set_maximum_number_of_correspondences(&pnp, so->sensor_ct);
 
-				add_correspondences(so, &pnp, scene, lightData);
+				add_correspondences(so, &pnp, scene, lightData->timecode, lh);
 				static int required_meas = -1;
 				if (required_meas == -1)
 					required_meas = survive_configi(so->ctx, "epnp-required-meas", SC_GET, 4);
 
 				if (pnp.number_of_correspondences > required_meas) {
 
-					SurvivePose pose = solve_correspondence(so, &pnp, false);
+					SurvivePose objInLh = solve_correspondence(so, &pnp, false);
+					if (quatmagnitude(objInLh.Rot) != 0) {
+						SurvivePose *lh2world = &so->ctx->bsd[lh].Pose;
 
-					SurvivePose txPose = {0};
-					quatrotatevector(txPose.Pos, so->ctx->bsd[lh].Pose.Rot, pose.Pos);
-					for (int i = 0; i < 3; i++) {
-						txPose.Pos[i] += so->ctx->bsd[lh].Pose.Pos[i];
+						SurvivePose txPose = {.Rot = {1}};
+						ApplyPoseToPose(&txPose, lh2world, &objInLh);
+						posers[lh] = txPose;
+						meas[lh] = pnp.number_of_correspondences;
 					}
-
-					quatrotateabout(txPose.Rot, so->ctx->bsd[lh].Pose.Rot, pose.Rot);
-
-					posers[lh] = txPose;
-					hasData[lh] = 1;
 				}
 
 				epnp_dtor(&pnp);
 			}
 		}
 
-		if (hasData[0] && hasData[1]) {
+		if (meas[0] > 0 && meas[1] > 0) {
 			SurvivePose interpolate = {0};
-			for (size_t i = 0; i < 3; i++) {
-				interpolate.Pos[i] = (posers[0].Pos[i] + posers[1].Pos[i]) / 2.;
+			bool winnerTakesAll = true; // Not convinced slerp does the right thing, will change this when i am
+
+			if (winnerTakesAll) {
+				int winner = meas[0] > meas[1] ? 0 : 1;
+				PoserData_poser_raw_pose_func(pd, so, winner, &posers[winner]);
+			} else {
+				double a, b;
+				a = meas[0] * meas[0];
+				b = meas[1] * meas[1];
+
+				double t = a + b;
+				for (size_t i = 0; i < 3; i++) {
+					interpolate.Pos[i] = (posers[0].Pos[i] * a + posers[1].Pos[i] * b) / (t);
+				}
+				quatslerp(interpolate.Rot, posers[0].Rot, posers[1].Rot, b / (t));
+				PoserData_poser_raw_pose_func(pd, so, lightData->lh, &interpolate);
 			}
-			quatslerp(interpolate.Rot, posers[0].Rot, posers[1].Rot, .5);
-			PoserData_poser_raw_pose_func(pd, so, lightData->lh, &interpolate);
 		} else {
-			if (hasData[lightData->lh])
+			if (meas[lightData->lh])
 				PoserData_poser_raw_pose_func(pd, so, lightData->lh, &posers[lightData->lh]);
 		}
 		return 0;
