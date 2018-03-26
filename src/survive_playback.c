@@ -6,13 +6,20 @@
 #include <survive.h>
 
 #include <string.h>
-//#include <sys/time.h>
 
 #include "survive_config.h"
 #include "survive_default_devices.h"
 
 #include "os_generic.h"
 #include "stdarg.h"
+
+#ifdef _WIN32
+typedef long ssize_t;
+#define SSIZE_MAX LONG_MAX
+
+ssize_t getdelim(char ** lineptr, size_t * n, int delimiter, FILE *stream);
+ssize_t getline(char **lineptr, size_t * n, FILE *stream);
+#endif
 
 typedef struct SurviveRecordingData {
 	bool alwaysWriteStdOut;
@@ -267,14 +274,12 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 	FILE *f = driver->playback_file;
 
 	if (f && !feof(f) && !ferror(f)) {
-		int i;
 		driver->lineno++;
 		char *line;
 
 		if (driver->next_time_us == 0) {
-			char *buffer;
 			size_t n = 0;
-			int r = getdelim(&line, &n, ' ', f);
+			ssize_t r = getdelim(&line, &n, ' ', f);
 			if (r <= 0)
 				return 0;
 
@@ -290,9 +295,8 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 			return 0;
 		driver->next_time_us = 0;
 
-		char *buffer;
 		size_t n = 0;
-		int r = getline(&line, &n, f);
+		ssize_t r = getline(&line, &n, f);
 		if (r <= 0)
 			return 0;
 
