@@ -40,7 +40,7 @@
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
@@ -83,6 +83,10 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <AdditionalDependencies>DbgHelp.lib;SetupAPI.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapFileName>$(IntDir)Test.txt</MapFileName>
+      <MapExports>true</MapExports>
+      <ModuleDefinitionFile>$(MSBuildProjectDirectory)\libsurvive.def</ModuleDefinitionFile>
     </Link>
     <ProjectReference />
   </ItemDefinitionGroup>
@@ -186,6 +190,9 @@
     <ClInclude Include="..\..\src\survive_config.h" />
     <ClInclude Include="..\..\src\survive_default_devices.h" />
     <ClInclude Include="..\..\src\survive_internal.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="libsurvive.def" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
