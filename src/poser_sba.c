@@ -37,6 +37,9 @@ typedef struct SBAData {
 	int failures_to_reset_cntr;
 	int successes_to_reset;
 	int successes_to_reset_cntr;
+
+	int required_meas;
+
 } SBAData;
 
 void metric_function(int j, int i, double *aj, double *xij, void *adata) {
@@ -175,7 +178,7 @@ void str_metric_function(int j, int i, double *bi, double *xij, void *adata) {
 	SurvivePose *camera = &so->ctx->bsd[lh].Pose;
 	survive_reproject_from_pose_with_config(so->ctx, &ctx->calibration_config, lh, camera, xyz, xij);
 }
-
+#if 0
 static double run_sba_find_3d_structure_single_sweep(survive_calibration_config options, PoserDataLight *pdl,
 													 SurviveObject *so, SurviveSensorActivations *scene, int acode,
 													 int lh, int max_iterations /* = 50*/,
@@ -187,7 +190,7 @@ static double run_sba_find_3d_structure_single_sweep(survive_calibration_config 
 	size_t meas_size = construct_input_from_scene_single_sweep(so, pdl, scene, vmask, meas, acode, lh);
 
 	static int failure_count = 500;
-	if (so->ctx->bsd[0].PositionSet == 0 || so->ctx->bsd[1].PositionSet == 0 || meas_size < 8) {
+	if (so->ctx->bsd[0].PositionSet == 0 || so->ctx->bsd[1].PositionSet == 0 || meas_size < d->required_meas) {
 		if (so->ctx->bsd[0].PositionSet && so->ctx->bsd[1].PositionSet && failure_count++ == 500) {
 			SurviveContext *ctx = so->ctx;
 			SV_INFO("Can't solve for position with just %u measurements", (unsigned int)meas_size);
@@ -261,7 +264,7 @@ static double run_sba_find_3d_structure_single_sweep(survive_calibration_config 
 		SurviveContext *ctx = so->ctx;
 		// Docs say info[0] should be divided by meas; I don't buy it really...
 		static int cnt = 0;
-		if (cnt++ > 1000 || meas_size < 8) {
+		if (cnt++ > 1000 || meas_size < d->required_meas) {
 			SV_INFO("%f original reproj error for %u meas", (info[0] / meas_size * 2), (unsigned int)meas_size);
 			SV_INFO("%f cur reproj error", (info[1] / meas_size * 2));
 			cnt = 0;
@@ -270,7 +273,7 @@ static double run_sba_find_3d_structure_single_sweep(survive_calibration_config 
 
 	return info[1] / meas_size * 2;
 }
-
+#endif
 static double run_sba_find_3d_structure(SBAData *d, survive_calibration_config options, PoserDataLight *pdl,
 										SurviveObject *so, SurviveSensorActivations *scene,
 										int max_iterations /* = 50*/, double max_reproj_error /* = 0.005*/) {
@@ -281,7 +284,7 @@ static double run_sba_find_3d_structure(SBAData *d, survive_calibration_config o
 	size_t meas_size = construct_input_from_scene(so, pdl, scene, vmask, meas);
 
 	static int failure_count = 500;
-	if (so->ctx->bsd[0].PositionSet == 0 || so->ctx->bsd[1].PositionSet == 0 || meas_size < 7) {
+	if (so->ctx->bsd[0].PositionSet == 0 || so->ctx->bsd[1].PositionSet == 0 || meas_size < d->required_meas) {
 		if (so->ctx->bsd[0].PositionSet && so->ctx->bsd[1].PositionSet && failure_count++ == 500) {
 			SurviveContext *ctx = so->ctx;
 			SV_INFO("Can't solve for position with just %u measurements", (unsigned int)meas_size);
@@ -361,7 +364,7 @@ static double run_sba_find_3d_structure(SBAData *d, survive_calibration_config o
 		SurviveContext *ctx = so->ctx;
 		// Docs say info[0] should be divided by meas; I don't buy it really...
 		static int cnt = 0;
-		if (cnt++ > 1000 || meas_size < 8) {
+		if (cnt++ > 1000 || meas_size < d->required_meas) {
 			SV_INFO("%f original reproj error for %u meas", (info[0] / meas_size * 2), (int)meas_size);
 			SV_INFO("%f cur reproj error", (info[1] / meas_size * 2));
 			cnt = 0;
@@ -436,8 +439,12 @@ static double run_sba(survive_calibration_config options, PoserDataFullScene *pd
 
 	if (status >= 0) {
 		SurvivePose additionalTx = {0};
-		PoserData_lighthouse_pose_func(&pdfs->hdr, so, 0, &additionalTx, &sbactx.camera_params[0], &sbactx.obj_pose);
-		PoserData_lighthouse_pose_func(&pdfs->hdr, so, 1, &additionalTx, &sbactx.camera_params[1], &sbactx.obj_pose);
+		for (int i = 0; i < NUM_LIGHTHOUSES; i++) {
+			if (quatmagnitude(sbactx.camera_params[i].Rot) != 0) {
+				PoserData_lighthouse_pose_func(&pdfs->hdr, so, i, &additionalTx, &sbactx.camera_params[i],
+											   &sbactx.obj_pose);
+			}
+		}
 	} else {
 		SurviveContext *ctx = so->ctx;
 		SV_INFO("SBA was unable to run %d", status);
@@ -456,16 +463,20 @@ static double run_sba(survive_calibration_config options, PoserDataFullScene *pd
 }
 
 int PoserSBA(SurviveObject *so, PoserData *pd) {
+	SurviveContext *ctx = so->ctx;
 	if (so->PoserData == 0) {
 		so->PoserData = calloc(1, sizeof(SBAData));
 		SBAData *d = so->PoserData;
 		d->failures_to_reset_cntr = 0;
-		d->failures_to_reset = 5;
+		d->failures_to_reset = survive_configi(ctx, "sba-failures-to-reset", SC_GET, 1);
 		d->successes_to_reset_cntr = 0;
-		d->successes_to_reset = 20;
+		d->successes_to_reset = survive_configi(ctx, "sba-successes-to-reset", SC_GET, 1);
+
+		d->required_meas = survive_configi(ctx, "sba-required-meas", SC_GET, 8);
+
+		SV_INFO("Initializing SBA with %d required measurements", d->required_meas);
 	}
 	SBAData *d = so->PoserData;
-	SurviveContext *ctx = so->ctx;
 	switch (pd->pt) {
 	case POSERDATA_LIGHT: {
 		// No poses if calibration is ongoing

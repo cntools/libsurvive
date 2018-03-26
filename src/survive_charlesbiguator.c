@@ -1,6 +1,7 @@
 //<>< (C) 2016 C. N. Lohr, MOSTLY Under MIT/x11 License.
 //
 #include "survive_internal.h"
+#include <assert.h>
 #include <math.h> /* for sqrt */
 #include <stdint.h>
 #include <string.h>
@@ -15,12 +16,16 @@ static int32_t decode_acode(uint32_t length, int32_t main_divisor) {
 	if (acode & 1)
 		return -1;
 
-	return (acode >> 1) - 6;
+	int32_t rtn = (acode >> 1) - 6;
+	if (rtn > 7 || rtn < 0) {
+		return -1;
+	}
+	return rtn;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////The charles disambiguator.  Don't use this, mostly here for
-///debugging.///////////////////////////////////////////////////////
+/// debugging.///////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static void HandleOOTX(SurviveContext *ctx, SurviveObject *so) {
@@ -169,21 +174,23 @@ void DisambiguatorCharles(SurviveObject *so, LightcapElement *le) {
 
 		int32_t main_divisor = so->timebase_hz / 384000; // 125 @ 48 MHz.
 		int acode = decode_acode(so->last_sync_length[0], main_divisor);
-		int whichlh;
-		if (acode < 0)
-			whichlh = 1;
-		else
-			whichlh = (acode >> 2);
-		int32_t dl = so->last_sync_time[whichlh];
 
-		if (!so->did_handle_ootx)
-			HandleOOTX(ctx, so);
+		// If acode isn't right; don't even think of emitting an event
+		if (acode >= 0) {
+			int whichlh = (acode >> 2);
+			assert(whichlh <= 1);
+			int32_t dl = so->last_sync_time[whichlh];
 
-		int32_t offset_from = le->timestamp - dl + le->length / 2;
+			if (!so->did_handle_ootx)
+				HandleOOTX(ctx, so);
 
-		// Make sure pulse is in valid window
-		if (offset_from < so->timecenter_ticks * 2 - so->pulse_in_clear_time && offset_from > so->pulse_in_clear_time) {
-			ctx->lightproc(so, le->sensor_id, acode, offset_from, le->timestamp, le->length, whichlh);
+			int32_t offset_from = le->timestamp - dl + le->length / 2;
+
+			// Make sure pulse is in valid window
+			if (offset_from < so->timecenter_ticks * 2 - so->pulse_in_clear_time &&
+				offset_from > so->pulse_in_clear_time) {
+				ctx->lightproc(so, le->sensor_id, acode, offset_from, le->timestamp, le->length, whichlh);
+			}
 		}
 	} else {
 		// printf( "FAIL %d   %d - %d = %d\n", le->length, so->last_photo_time, le->timestamp, so->last_photo_time -

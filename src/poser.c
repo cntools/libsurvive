@@ -1,6 +1,7 @@
 #include "math.h"
 #include <linmath.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <survive.h>
 
 #define _USE_MATH_DEFINES // for C
@@ -20,6 +21,12 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 		poser_data->lighthouseposeproc(so, lighthouse, lighthouse_pose, object_pose, poser_data->userdata);
 	} else {
 		const FLT up[3] = {0, 0, 1};
+
+		if (quatmagnitude(lighthouse_pose->Rot) == 0) {
+			SurviveContext *ctx = so->ctx;
+			SV_INFO("Pose func called with invalid pose.");
+			return;
+		}
 
 		// Assume that the space solved for is valid but completely arbitrary. We are going to do a few things:
 		// a) Using the gyro data, normalize it so that gravity is pushing straight down along Z
