@@ -18,9 +18,21 @@
     <ClCompile Include="..\..\calibrate.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\redist\CNFG3D.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\redist\CNFGFunctions.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\redist\CNFGWinDriver.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\windows\hidapi.h">
+    <ClInclude Include="..\..\redist\CNFG3D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\redist\CNFGFunctions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

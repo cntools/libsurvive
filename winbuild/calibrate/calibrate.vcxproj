@@ -111,6 +111,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>USE_DOUBLE;RUNTIME_SYMNUMX;HIDAPI;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\windows;..\..\include\libsurvive;..\..\redist;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ShowIncludes>true</ShowIncludes>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -176,9 +177,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\calibrate.c" />
+    <ClCompile Include="..\..\redist\CNFG3D.c" />
+    <ClCompile Include="..\..\redist\CNFGFunctions.c" />
+    <ClCompile Include="..\..\redist\CNFGWinDriver.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\windows\hidapi.h" />
+    <ClInclude Include="..\..\redist\CNFG3D.h" />
+    <ClInclude Include="..\..\redist\CNFGFunctions.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\libsurvive\libsurvive.vcxproj">

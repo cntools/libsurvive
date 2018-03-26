@@ -1443,7 +1443,7 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 		lighthousePose.Pos[1] = refinedEstimateGd.y;
 		lighthousePose.Pos[2] = refinedEstimateGd.z;
 
-		SurvivePose assumedObj = {};
+		SurvivePose assumedObj = {0};
 		FLT negZ[3] = {0, 0, 1};
 		quatfrom2vectors(assumedObj.Rot, toriData->down, negZ);
 

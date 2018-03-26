@@ -40,7 +40,7 @@
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
@@ -82,6 +82,11 @@
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
+      <AdditionalDependencies>DbgHelp.lib;SetupAPI.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapFileName>$(IntDir)Test.txt</MapFileName>
+      <MapExports>true</MapExports>
+      <ModuleDefinitionFile>$(MSBuildProjectDirectory)\libsurvive.def</ModuleDefinitionFile>
     </Link>
     <ProjectReference />
   </ItemDefinitionGroup>
@@ -139,8 +144,6 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\redist\CNFGFunctions.c" />
-    <ClCompile Include="..\..\redist\CNFGWinDriver.c" />
     <ClCompile Include="..\..\redist\crc32.c" />
     <ClCompile Include="..\..\redist\hid-windows.c" />
     <ClCompile Include="..\..\redist\jsmn.c" />
@@ -150,6 +153,7 @@
     <ClCompile Include="..\..\redist\puff.c" />
     <ClCompile Include="..\..\redist\symbol_enumerator.c" />
     <ClCompile Include="..\..\src\ootx_decoder.c" />
+    <ClCompile Include="..\..\src\poser.c" />
     <ClCompile Include="..\..\src\poser_charlesslow.c" />
     <ClCompile Include="..\..\src\poser_daveortho.c" />
     <ClCompile Include="..\..\src\poser_dummy.c" />
@@ -157,19 +161,24 @@
     <ClCompile Include="..\..\src\poser_turveytori.c" />
     <ClCompile Include="..\..\src\survive.c" />
     <ClCompile Include="..\..\src\survive_cal.c" />
+    <ClCompile Include="..\..\src\survive_charlesbiguator.c" />
     <ClCompile Include="..\..\src\survive_config.c" />
-    <ClCompile Include="..\..\src\survive_data.c" />
     <ClCompile Include="..\..\src\survive_default_devices.c" />
+    <ClCompile Include="..\..\src\survive_disambiguator.c" />
     <ClCompile Include="..\..\src\survive_driverman.c" />
+    <ClCompile Include="..\..\src\survive_playback.c" />
     <ClCompile Include="..\..\src\survive_process.c" />
+    <ClCompile Include="..\..\src\survive_reproject.c" />
+    <ClCompile Include="..\..\src\survive_sensor_activations.c" />
+    <ClCompile Include="..\..\src\survive_turveybiguator.c" />
     <ClCompile Include="..\..\src\survive_usb.c" />
     <ClCompile Include="..\..\src\survive_vive.c" />
+    <ClCompile Include="..\getdelim.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\libsurvive\poser.h" />
     <ClInclude Include="..\..\include\libsurvive\survive.h" />
     <ClInclude Include="..\..\include\libsurvive\survive_types.h" />
-    <ClInclude Include="..\..\redist\CNFGFunctions.h" />
     <ClInclude Include="..\..\redist\crc32.h" />
     <ClInclude Include="..\..\redist\jsmn.h" />
     <ClInclude Include="..\..\redist\json_helpers.h" />
@@ -181,7 +190,9 @@
     <ClInclude Include="..\..\src\survive_config.h" />
     <ClInclude Include="..\..\src\survive_default_devices.h" />
     <ClInclude Include="..\..\src\survive_internal.h" />
-    <ClInclude Include="..\hidapi.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="libsurvive.def" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -11,6 +11,7 @@ winbuild/calibrate/calinfo/*
 winbuild/calibrate/config.json
 winbuild/calibrate/x64/*
 winbuild/libsurvive/x64/*
+winbuild/data_recorder/x64/*
 winbuild/.vs/*
 *.user
 *.ipch
