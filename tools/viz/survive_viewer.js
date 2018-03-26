@@ -167,7 +167,7 @@ function create_tracked_object(info) {
             var p = info.config.lighthouse_config.modelPoints[idx];
             var pn = info.config.lighthouse_config.modelNormals[idx];
 			var color = idx / info.config.lighthouse_config.modelPoints * 0xFFFFFF;
-			if (idx === 6)
+			if (idx === 0)
 				color = 0x00ff00;
 			var sensorMaterial = new THREE.MeshBasicMaterial({color : color});
 			var newSensor = new THREE.Mesh(sensorGeometry, sensorMaterial);
@@ -176,7 +176,7 @@ function create_tracked_object(info) {
             var normalGeom = new THREE.Geometry();
             normalGeom.vertices.push(newSensor.position,
 				new THREE.Vector3(p[0] + pn[0] * .02, p[1] + pn[1] * .02, p[2] + pn[2] * .02));
-            var normal= new THREE.Line(normalGeom, new THREE.LineBasicMaterial({color : idx == 6 ? 0xFF0000 : 0x00FF00}));
+            var normal= new THREE.Line(normalGeom, new THREE.LineBasicMaterial({color : idx == 4 ? 0xFF0000 : 0x00FF00}));
 			group.add(normal);
 			group.sensors[idx] = sensorMaterial;
 			group.add(newSensor);
@@ -240,7 +240,6 @@ var survive_log_handlers = {
 			objs[obj.tracker].position.set(obj.position[0], obj.position[1], obj.position[2]);
 			objs[obj.tracker].quaternion.set(obj.quat[1], obj.quat[2], obj.quat[3], obj.quat[0]);
 			objs[obj.tracker].verticesNeedUpdate = true;
-			timecode[obj.tracker] = obj.timecode;
 
 			if (trails) {
 
@@ -337,7 +336,7 @@ $(function() {
 		var url = new URL(window.location.href);
 		var remote = url.searchParams.get("remote");
 
-		if (remote.length) {
+		if (remote && remote.length) {
 			survive_ws = new WebSocket("ws://" + remote + "/ws");
 		} else if (window.location.protocol === "file:") {
 			survive_ws = new WebSocket("ws://localhost:8080/ws");
