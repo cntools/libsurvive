@@ -439,8 +439,13 @@ static double run_sba(survive_calibration_config options, PoserDataFullScene *pd
 
 	if (status >= 0) {
 		SurvivePose additionalTx = {};
-		PoserData_lighthouse_pose_func(&pdfs->hdr, so, 0, &additionalTx, &sbactx.camera_params[0], &sbactx.obj_pose);
-		PoserData_lighthouse_pose_func(&pdfs->hdr, so, 1, &additionalTx, &sbactx.camera_params[1], &sbactx.obj_pose);
+		for (int i = 0; i < NUM_LIGHTHOUSES; i++) {
+			if (quatmagnitude(sbactx.camera_params[i].Rot) != 0) {
+				PoserData_lighthouse_pose_func(&pdfs->hdr, so, i, &additionalTx, &sbactx.camera_params[i],
+											   &sbactx.obj_pose);
+			}
+		}
+
 	} else {
 		SurviveContext *ctx = so->ctx;
 		SV_INFO("SBA was unable to run %d", status);

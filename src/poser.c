@@ -21,7 +21,8 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 
 		if (quatmagnitude(lighthouse_pose->Rot) == 0) {
 			SurviveContext *ctx = so->ctx;
-			SV_ERROR("Pose func called with invalid pose.");
+			SV_INFO("Pose func called with invalid pose.");
+			return;
 		}
 
 		// Assume that the space solved for is valid but completely arbitrary. We are going to do a few things:
