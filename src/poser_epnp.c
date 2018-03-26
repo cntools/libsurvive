@@ -125,7 +125,7 @@ int PoserEPNP(SurviveObject *so, PoserData *pd) {
 
 		SurvivePose posers[2];
 		int meas[2] = {0, 0};
-		for (int lh = 0; lh < 2; lh++) {
+		for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
 			if (so->ctx->bsd[lh].PositionSet) {
 				epnp pnp = {.fu = 1, .fv = 1};
 				epnp_set_maximum_number_of_correspondences(&pnp, so->sensor_ct);

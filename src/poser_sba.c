@@ -190,6 +190,7 @@ static double run_sba_find_3d_structure_single_sweep(survive_calibration_config 
 	size_t meas_size = construct_input_from_scene_single_sweep(so, pdl, scene, vmask, meas, acode, lh);
 
 	static int failure_count = 500;
+	
 	if (so->ctx->bsd[0].PositionSet == 0 || so->ctx->bsd[1].PositionSet == 0 || meas_size < d->required_meas) {
 		if (so->ctx->bsd[0].PositionSet && so->ctx->bsd[1].PositionSet && failure_count++ == 500) {
 			SurviveContext *ctx = so->ctx;
@@ -284,8 +285,12 @@ static double run_sba_find_3d_structure(SBAData *d, survive_calibration_config o
 	size_t meas_size = construct_input_from_scene(so, pdl, scene, vmask, meas);
 
 	static int failure_count = 500;
-	if (so->ctx->bsd[0].PositionSet == 0 || so->ctx->bsd[1].PositionSet == 0 || meas_size < d->required_meas) {
-		if (so->ctx->bsd[0].PositionSet && so->ctx->bsd[1].PositionSet && failure_count++ == 500) {
+	bool hasAllBSDs = true;
+	for (int lh = 0; lh < so->ctx->activeLighthouses; lh++)
+		hasAllBSDs &= so->ctx->bsd[lh].PositionSet;
+
+	if (!hasAllBSDs || meas_size < d->required_meas) {
+		if (hasAllBSDs && failure_count++ == 500) {
 			SurviveContext *ctx = so->ctx;
 			SV_INFO("Can't solve for position with just %u measurements", (unsigned int)meas_size);
 			failure_count = 0;
@@ -421,7 +426,7 @@ static double run_sba(survive_calibration_config options, PoserDataFullScene *pd
 	opts[4] = 0.0;
 
 	int status = sba_mot_levmar(so->sensor_ct,						  // number of 3d points
-								NUM_LIGHTHOUSES,					  // Number of cameras -- 2 lighthouses
+								so->ctx->activeLighthouses,			  // Number of cameras -- 2 lighthouses
 								0,									  // Number of cameras to not modify
 								vmask,								  // boolean vis mask
 								(double *)&sbactx.camera_params[0],   // camera parameters
@@ -439,7 +444,7 @@ static double run_sba(survive_calibration_config options, PoserDataFullScene *pd
 
 	if (status >= 0) {
 		SurvivePose additionalTx = {0};
-		for (int i = 0; i < NUM_LIGHTHOUSES; i++) {
+		for (int i = 0; i < so->ctx->activeLighthouses; i++) {
 			if (quatmagnitude(sbactx.camera_params[i].Rot) != 0) {
 				PoserData_lighthouse_pose_func(&pdfs->hdr, so, i, &additionalTx, &sbactx.camera_params[i],
 											   &sbactx.obj_pose);
