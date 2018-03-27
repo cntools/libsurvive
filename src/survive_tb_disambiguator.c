@@ -30,7 +30,7 @@
  */
 
 enum LighthouseState {
-	LS_UNKNOWN = 0
+	LS_UNKNOWN = 0,
 
 	LS_WaitLHA_ACode4 = 1,
 	LS_WaitLHA_ACode0,
@@ -48,6 +48,40 @@ enum LighthouseState {
 	LS_END
 };
 
+int LighthouseState_offset(enum LighthouseState s) {
+	int mini_jump = 20000;
+	int big_jump = 360000;
+	switch (s) {
+	case LS_WaitLHA_ACode4:
+		return 0;
+	case LS_WaitLHA_ACode0:
+		return mini_jump;
+	case LS_SweepAX:
+		return 2 * mini_jump;
+	case LS_WaitLHA_ACode5:
+		return 2 * mini_jump + big_jump;
+	case LS_WaitLHA_ACode1:
+		return 3 * mini_jump + big_jump;
+	case LS_SweepAY:
+		return 4 * mini_jump + big_jump;
+	case LS_WaitLHB_ACode0:
+		return 4 * mini_jump + 2 * big_jump;
+	case LS_WaitLHB_ACode4:
+		return 5 * mini_jump + 2 * big_jump;
+	case LS_SweepBX:
+		return 6 * mini_jump + 2 * big_jump;
+	case LS_WaitLHB_ACode1:
+		return 6 * mini_jump + 3 * big_jump;
+	case LS_WaitLHB_ACode5:
+		return 7 * mini_jump + 3 * big_jump;
+	case LS_SweepBY:
+		return 8 * mini_jump + 3 * big_jump;
+	case LS_END:
+		return 8 * mini_jump + 4 * big_jump;
+	}
+	return -1;
+}
+
 enum LightcapClassification { LCC_UNKNOWN = 0, LCC_SYNC = 1, LCC_SWEEP = 2 };
 
 typedef struct {
@@ -57,19 +91,30 @@ typedef struct {
 } SensorHistory_t;
 
 typedef struct {
+	SurviveObject *so;
+	/**  This part of the structure is general use when we know our state */
+	uint32_t mod_offset;
+	enum LighthouseState state;
+	int confidence;
+
+	/** This rest of the structure is dedicated to finding a state when we are unknown */
+
+	int encoded_acodes;
+	/* Keep running average of sync signals as they come in */
 	uint64_t last_sync_timestamp;
 	uint64_t last_sync_length;
 	int last_sync_count;
+
 	bool lastWasSync;
-
-	uint32_t mod_offset;
-	LighthouseState state;
-
 	SensorHistory_t histories[];
+
 } Disambiguator_data_t;
 
 Disambiguator_data_t *Disambiguator_data_t_ctor(SurviveObject *so) {
-	return calloc(1, sizeof(Disambiguator_data_t) + sizeof(SensorHistory_t) * so->sensor_ct);
+	Disambiguator_data_t *rtn = calloc(1, sizeof(Disambiguator_data_t) + sizeof(SensorHistory_t) * so->sensor_ct);
+	rtn->so = so;
+
+	return rtn;
 }
 
 static uint32_t timestamp_diff(uint32_t recent, uint32_t prior) {
@@ -195,6 +240,67 @@ static enum LightcapClassification update_histories(Disambiguator_data_t *d, con
 	return classification;
 }
 
+static enum LighthouseState EndSync(Disambiguator_data_t *d, const LightcapElement *le) {
+	SurviveContext *ctx = d->so->ctx;
+	LightcapElement lastSync = get_last_sync(d);
+	int acode = find_acode(lastSync.length);
+	SV_INFO("!!%.03f(%d)\tacode: %d 0x%x a:%d d:%d s:%d (%d)",
+			timestamp_diff(le->timestamp, lastSync.timestamp) / 48000.,
+			timestamp_diff(le->timestamp, lastSync.timestamp), lastSync.length, acode, acode & 1, (bool)(acode & 2),
+			(bool)(acode & 4), acode & (SKIP_BIT | AXIS_BIT));
+
+	if (acode > 0) {
+		d->encoded_acodes &= 0xFFFF;
+		d->encoded_acodes = (d->encoded_acodes << 8) | (acode & (SKIP_BIT | AXIS_BIT));
+		SV_INFO("%x", d->encoded_acodes);
+		switch (d->encoded_acodes) {
+		case (5 << 16) | (4 << 8) | 0:
+			return d->state = LS_SweepAX - 1;
+		case (0 << 16) | (5 << 8) | 1:
+			return d->state = LS_SweepAY - 1;
+		case (1 << 16) | (0 << 8) | 4:
+			return d->state = LS_SweepBX - 1;
+		case (4 << 16) | (1 << 8) | 5:
+			return d->state = LS_SweepBY - 1;
+		}
+
+	} else {
+		d->encoded_acodes = 0;
+	}
+
+	return LS_UNKNOWN;
+}
+
+static enum LighthouseState AttemptFindState(Disambiguator_data_t *d, const LightcapElement *le) {
+	enum LightcapClassification classification = update_histories(d, le);
+
+	if (classification == LCC_SYNC) {
+		LightcapElement lastSync = get_last_sync(d);
+
+		if (d->lastWasSync == false || overlaps(&lastSync, le) == false) {
+			enum LighthouseState new_state = EndSync(d, le);
+			if (new_state != LS_UNKNOWN)
+				return new_state;
+
+			d->last_sync_timestamp = le->timestamp;
+			d->last_sync_length = le->length;
+			d->last_sync_count = 1;
+		} else {
+			d->last_sync_timestamp += le->timestamp;
+			d->last_sync_length += le->length;
+			d->last_sync_count++;
+		}
+
+		d->lastWasSync = true;
+	} else {
+		d->lastWasSync = false;
+	}
+
+	return LS_UNKNOWN;
+}
+
+void PropagateState(Disambiguator_data_t *d, const LightcapElement *le) { d->state = LS_UNKNOWN; }
+
 void DisambiguatorTimeBased(SurviveObject *so, const LightcapElement *le) {
 	SurviveContext *ctx = so->ctx;
 
@@ -210,61 +316,17 @@ void DisambiguatorTimeBased(SurviveObject *so, const LightcapElement *le) {
 
 	Disambiguator_data_t *d = so->disambiguator_data;
 
-	SensorHistory_t *history = &d->histories[le->sensor_id];
-	int prevIdx = circle_buffer_get(history->idx, -1);
-	uint32_t time_diff = timestamp_diff(le->timestamp, history->history[prevIdx].timestamp);
-	enum LightcapClassification classification = update_histories(d, le);
-
-	uint32_t time_diff_last_sync = timestamp_diff(le->timestamp, get_last_sync(d).timestamp);
-	if (time_diff_last_sync > (0xFFFFFFFF / 2))
-		time_diff_last_sync = 0xFFFFFFFFF - time_diff_last_sync;
-
-	LightcapElement lastSync = get_last_sync(d);
-	int acode = find_acode(lastSync.length);
-
-	if (classification == LCC_SYNC) {
-		LightcapElement lastSync = get_last_sync(d);
-		if (d->lastWasSync == false || overlaps(&lastSync, le) == false) {
-
-			if (lastSync.length) {
-				int acode = find_acode(lastSync.length);
-				SV_INFO("%.03f(%d)\tacode: %d 0x%x a:%d d:%d s:%d (%d)",
-						timestamp_diff(le->timestamp, lastSync.timestamp) / 48000.,
-						timestamp_diff(le->timestamp, lastSync.timestamp), lastSync.length, acode, acode & 1,
-						(bool)(acode & 2), (bool)(acode & 4), ((acode >> 1) & 0x2) | (acode & 1));
-				assert(acode != -1);
-			}
-			d->last_sync_timestamp = le->timestamp;
-			d->last_sync_length = le->length;
-			d->last_sync_count = 1;
-		} else {
-			d->last_sync_timestamp += le->timestamp;
-			d->last_sync_length += le->length;
-			d->last_sync_count++;
+	if (d->state == LS_UNKNOWN) {
+		enum LighthouseState new_state = AttemptFindState(d, le);
+		if (new_state != LS_UNKNOWN) {
+			d->confidence = 0;
+			d->mod_offset = (le->timestamp % LighthouseState_offset(LS_END)) - LighthouseState_offset(new_state);
+			d->state = new_state;
+			SV_INFO("Locked onto state %d at %d", new_state, d->mod_offset);
 		}
-
-		d->lastWasSync = true;
-
-		lastSync = get_last_sync(d);
-		// SV_INFO("acode building: %u %u %u", lastSync.length, lastSync.timestamp, lastSync.length +
-		// lastSync.timestamp);
 	} else {
-		if (d->lastWasSync) {
-			if (lastSync.length) {
-				int acode = find_acode(lastSync.length);
-				SV_INFO("start acode: %d 0x%x a:%d d:%d s:%d (%d)", lastSync.length, acode, acode & 1,
-						(bool)(acode & 2), (bool)(acode & 4), ((acode >> 1) & 0x2) | (acode & 1));
-				assert(acode != -1);
-			}
-		}
-		d->lastWasSync = false;
+		PropagateState(d, le);
 	}
-
-	if (classification == LCC_SWEEP)
-		SV_INFO("%.02fms Classification %d\t%d\t%d\t%u\t%u\t(%.02fms)\ttime since last sync: %.02fms a:%d d:%d s:%d",
-				(double)le->timestamp / 48000, classification, le->sensor_id, le->length, le->timestamp, time_diff,
-				(double)time_diff / 48000.0, (double)time_diff_last_sync / 48000., acode & 1, (bool)(acode & 2),
-				(bool)(acode & 4));
 }
 
 REGISTER_LINKTIME(DisambiguatorTimeBased);
