@@ -54,53 +54,34 @@ enum LighthouseState {
 	LS_END
 };
 
-typedef struct { int acode, lh, axis, window, offset; } LighthouseStateParameters;
+typedef struct {
+	int acode, lh, axis, window, offset;
+	bool is_sweep;
+} LighthouseStateParameters;
 
+// clang-format off
 const LighthouseStateParameters LS_Params[LS_END + 1] = {
 	{.acode = -1, .lh = -1, .axis = -1, .window = -1},
 
-	{.acode = 4, .lh = 1, .axis = 0, .window = PULSE_WINDOW, .offset = 0 * PULSE_WINDOW + 0 * CAPTURE_WINDOW}, // 0
-	{.acode = 0, .lh = 0, .axis = 0, .window = PULSE_WINDOW, .offset = 1 * PULSE_WINDOW + 0 * CAPTURE_WINDOW}, // 20000
-	{.acode = -1,
-	 .lh = 0,
-	 .axis = 0,
-	 .window = CAPTURE_WINDOW,
-	 .offset = 2 * PULSE_WINDOW + 0 * CAPTURE_WINDOW}, // 40000
+	{.acode = 4, .lh = 0, .axis = 0, .window = PULSE_WINDOW, .offset = 0 * PULSE_WINDOW + 0 * CAPTURE_WINDOW}, // 0
+	{.acode = 0, .lh = 1, .axis = 0, .window = PULSE_WINDOW, .offset = 1 * PULSE_WINDOW + 0 * CAPTURE_WINDOW}, // 20000
+	{.acode = 0, .lh = 1, .axis = 0, .window = CAPTURE_WINDOW, .offset = 2 * PULSE_WINDOW + 0 * CAPTURE_WINDOW,.is_sweep = 1}, // 40000
 
-	{.acode = 5, .lh = 1, .axis = 1, .window = PULSE_WINDOW, .offset = 2 * PULSE_WINDOW + 1 * CAPTURE_WINDOW}, // 400000
-	{.acode = 1, .lh = 0, .axis = 1, .window = PULSE_WINDOW, .offset = 3 * PULSE_WINDOW + 1 * CAPTURE_WINDOW}, // 420000
-	{.acode = -1,
-	 .lh = 0,
-	 .axis = 1,
-	 .window = CAPTURE_WINDOW,
-	 .offset = 4 * PULSE_WINDOW + 1 * CAPTURE_WINDOW}, // 440000
+	{.acode = 5, .lh = 0, .axis = 1, .window = PULSE_WINDOW, .offset = 2 * PULSE_WINDOW + 1 * CAPTURE_WINDOW}, // 400000
+	{.acode = 1, .lh = 1, .axis = 1, .window = PULSE_WINDOW, .offset = 3 * PULSE_WINDOW + 1 * CAPTURE_WINDOW}, // 420000
+	{.acode = 1, .lh = 1, .axis = 1, .window = CAPTURE_WINDOW, .offset = 4 * PULSE_WINDOW + 1 * CAPTURE_WINDOW,.is_sweep = 1}, // 440000
 
-	{.acode = 0, .lh = 1, .axis = 0, .window = PULSE_WINDOW, .offset = 4 * PULSE_WINDOW + 2 * CAPTURE_WINDOW}, // 800000
-	{.acode = 4, .lh = 0, .axis = 0, .window = PULSE_WINDOW, .offset = 5 * PULSE_WINDOW + 2 * CAPTURE_WINDOW}, // 820000
-	{.acode = -1,
-	 .lh = 1,
-	 .axis = 0,
-	 .window = CAPTURE_WINDOW,
-	 .offset = 6 * PULSE_WINDOW + 2 * CAPTURE_WINDOW}, // 840000
+	{.acode = 0, .lh = 0, .axis = 0, .window = PULSE_WINDOW, .offset = 4 * PULSE_WINDOW + 2 * CAPTURE_WINDOW}, // 800000
+	{.acode = 4, .lh = 1, .axis = 0, .window = PULSE_WINDOW, .offset = 5 * PULSE_WINDOW + 2 * CAPTURE_WINDOW}, // 820000
+	{.acode = 0, .lh = 0, .axis = 0, .window = CAPTURE_WINDOW, .offset = 6 * PULSE_WINDOW + 2 * CAPTURE_WINDOW,.is_sweep = 1}, // 840000
 
-	{.acode = 1,
-	 .lh = 1,
-	 .axis = 1,
-	 .window = PULSE_WINDOW,
-	 .offset = 6 * PULSE_WINDOW + 3 * CAPTURE_WINDOW}, // 1200000
-	{.acode = 5,
-	 .lh = 0,
-	 .axis = 1,
-	 .window = PULSE_WINDOW,
-	 .offset = 7 * PULSE_WINDOW + 3 * CAPTURE_WINDOW}, // 1220000
-	{.acode = -1,
-	 .lh = 1,
-	 .axis = 1,
-	 .window = CAPTURE_WINDOW,
-	 .offset = 8 * PULSE_WINDOW + 3 * CAPTURE_WINDOW}, // 1240000
+	{.acode = 1, .lh = 0, .axis = 1, .window = PULSE_WINDOW, .offset = 6 * PULSE_WINDOW + 3 * CAPTURE_WINDOW}, // 1200000
+	{.acode = 5, .lh = 1, .axis = 1, .window = PULSE_WINDOW, .offset = 7 * PULSE_WINDOW + 3 * CAPTURE_WINDOW}, // 1220000
+	{.acode = 1, .lh = 0, .axis = 1, .window = CAPTURE_WINDOW, .offset = 8 * PULSE_WINDOW + 3 * CAPTURE_WINDOW,.is_sweep = 1}, // 1240000
 
 	{.acode = -1, .lh = -1, .axis = -1, .window = -1, .offset = 8 * PULSE_WINDOW + 4 * CAPTURE_WINDOW} // 1600000
 };
+// clang-format on
 
 enum LighthouseState LighthouseState_findByOffset(int offset) {
 	for (int i = 2; i < LS_END + 1; i++) {
@@ -121,14 +102,16 @@ typedef struct {
 
 typedef struct {
 	SurviveObject *so;
+
 	/**  This part of the structure is general use when we know our state */
 	uint32_t mod_offset;
 	enum LighthouseState state;
 	uint32_t last_state_transition_time;
 	int confidence;
 	uint32_t last_seen_time;
-	/** This rest of the structure is dedicated to finding a state when we are unknown */
+	LightcapElement sweep_data[SENSORS_PER_OBJECT];
 
+	/** This rest of the structure is dedicated to finding a state when we are unknown */
 	int encoded_acodes;
 	/* Keep running average of sync signals as they come in */
 	uint64_t last_sync_timestamp;
@@ -276,7 +259,7 @@ static enum LightcapClassification update_histories(Disambiguator_data_t *d, con
 #define SWEEP 0xFF
 
 static uint32_t SolveForMod_Offset(Disambiguator_data_t *d, enum LighthouseState state, const LightcapElement *le) {
-	assert(LS_Params[state].acode >= 0); // Doesn't work for sweep data
+	assert(LS_Params[state].is_sweep == 0); // Doesn't work for sweep data
 	SurviveContext *ctx = d->so->ctx;
 	DEBUG_TB("Solve for mod %d (%u - %u) = %u", state, le->timestamp, LS_Params[state].offset,
 			 (le->timestamp - LS_Params[state].offset));
@@ -398,8 +381,14 @@ static enum LighthouseState SetState(Disambiguator_data_t *d, const LightcapElem
 	d->last_state_transition_time = le->timestamp;
 
 	d->last_sync_timestamp = d->last_sync_length = d->last_sync_count = 0;
+	memset(d->sweep_data, 0, sizeof(LightcapElement) * SENSORS_PER_OBJECT);
 
 	return new_state;
+}
+
+static void RunLightDataCapture(Disambiguator_data_t *d, const LightcapElement *le) {
+	if (le->length > d->sweep_data[le->sensor_id].length)
+		d->sweep_data[le->sensor_id] = *le;
 }
 
 static void PropagateState(Disambiguator_data_t *d, const LightcapElement *le);
@@ -416,10 +405,11 @@ static void RunACodeCapture(int target_acode, Disambiguator_data_t *d, const Lig
 
 	DEBUG_TB("acode %d %d 0x%x (%d)", target_acode, le->length, acode, error);
 	if (error > 1250) {
-		if (d->confidence-- == 0) {
+		if (d->confidence < 3) {
 			SetState(d, le, LS_UNKNOWN);
 			assert(false);
 		}
+		d->confidence -= 3;
 		return;
 	}
 
@@ -441,26 +431,41 @@ static void PropagateState(Disambiguator_data_t *d, const LightcapElement *le) {
 			 LS_Params[new_state].offset);
 
 	if (d->state != new_state) {
-		if (d->last_sync_count > 0 && LS_Params[d->state].acode >= 0) {
-			LightcapElement lastSync = get_last_sync(d);
-			uint32_t mo = SolveForMod_Offset(d, d->state, &lastSync);
-			DEBUG_TB("New mod offset diff %d", (int)d->mod_offset - (int)mo);
-			d->mod_offset = mo;
+		if (LS_Params[d->state].is_sweep == 0) {
+			if (d->last_sync_count > 0) {
+				LightcapElement lastSync = get_last_sync(d);
+				uint32_t mo = SolveForMod_Offset(d, d->state, &lastSync);
+				DEBUG_TB("New mod offset diff %d", (int)d->mod_offset - (int)mo);
+				d->mod_offset = mo;
+				int acode = find_acode(lastSync.length);
+				assert((acode | DATA_BIT) == (LS_Params[d->state].acode | DATA_BIT));
+				ctx->lightproc(d->so, -LS_Params[d->state].lh - 1, acode, 0, lastSync.timestamp, lastSync.length,
+							   LS_Params[d->state].lh);
+			}
+		} else {
+			for (int i = 0; i < SENSORS_PER_OBJECT; i++) {
+				if (d->sweep_data[i].length > 0) {
+					d->so->ctx->lightproc(
+						d->so, i, LS_Params[d->state].acode,
+						timestamp_diff(d->sweep_data[i].timestamp, d->mod_offset + LS_Params[d->state].offset),
+						d->sweep_data[i].timestamp, d->sweep_data[i].length, LS_Params[d->state].lh);
+				}
+			}
 		}
 
 		SetState(d, le, new_state);
 	}
-	const LighthouseStateParameters *param = &LS_Params[d->state];
 
+	const LighthouseStateParameters *param = &LS_Params[d->state];
 	DEBUG_TB("param %u %d %d %d %d %d", le->timestamp, param->acode, le->length, le_offset, new_state,
 			 LS_Params[d->state].offset);
 
-	if (param->acode != -1) {
+	if (param->is_sweep == 0) {
 		RunACodeCapture(param->acode, d, le);
 	} else {
 		DEBUG_TB("Logic for sweep %d", le->length);
 		// assert( le->length < 2200);
-		// RunLightDataCapture(lh, axis, d, le);
+		RunLightDataCapture(d, le);
 	}
 }
 
@@ -478,14 +483,11 @@ void DisambiguatorTimeBased(SurviveObject *so, const LightcapElement *le) {
 	}
 
 	Disambiguator_data_t *d = so->disambiguator_data;
-	// assert(d->last_seen_time < le->timestamp || d->last_seen_time - le->timestamp > 0x8FFFFFFF);
-
 	if (d->stabalize < 500) {
 		d->stabalize++;
 		return;
 	}
 
-	d->last_seen_time = le->timestamp;
 	if (d->state == LS_UNKNOWN) {
 		enum LighthouseState new_state = AttemptFindState(d, le);
 		if (new_state != LS_UNKNOWN) {
