@@ -12,17 +12,17 @@
  * The lighthouses go in the following order:
  *
  *     Ticks  State
- *         0  ACode 0b1x0 (4)
- *    20 000  ACode 0b0x0 (0)
+ *         0  ACode 0b1x0 (4) <--- B
+ *    20 000  ACode 0b0x0 (0) <--- A/c
  *            LH A X Sweep
- *   400 000  ACode 0b1x1 (5)
- *   420 000  ACode 0b0x1 (1)
+ *   400 000  ACode 0b1x1 (5) <--- B
+ *   420 000  ACode 0b0x1 (1) <--- A/c
  *            LH A Y SWEEP
- *   800 000  ACode 0b0x0 (0)
- *   820 000  ACode 0b1x0 (4)
+ *   800 000  ACode 0b0x0 (0) <--- B
+ *   820 000  ACode 0b1x0 (4) <--- A/c
  *            LH B X Sweep
- * 1 200 000  ACode 0b0x1 (1)
- * 1 220 000  ACode 0b1x1 (5)
+ * 1 200 000  ACode 0b0x1 (1) <--- B
+ * 1 220 000  ACode 0b1x1 (5) <--- A/c
  *            LH B Y SWEEP
  * 1 600 000  < REPEAT >
  *
@@ -302,6 +302,31 @@ static enum LightcapClassification update_histories(Disambiguator_data_t *d, con
 	return classification;
 }
 
+#define ACODE(s, d, a) ((s << 2) | (d << 1) | a)
+#define SWEEP 0xFF
+
+static enum LighthouseState CheckEncodedAcode(Disambiguator_data_t *d, uint8_t newByte) {
+	SurviveContext *ctx = d->so->ctx;
+	d->encoded_acodes &= 0xFF;
+	d->encoded_acodes = (d->encoded_acodes << 8) | newByte; //(acode & (SKIP_BIT | AXIS_BIT));
+	SV_INFO("0x%x", d->encoded_acodes);
+
+	switch (d->encoded_acodes) {
+	case (ACODE(0, 1, 0) << 8) | SWEEP:
+		return LS_SweepAX + 1;
+	case (ACODE(0, 1, 1) << 8) | SWEEP:
+		return LS_SweepAY + 1;
+	case (SWEEP << 8) | (ACODE(0, 1, 1)):
+		return LS_SweepBX + 1;
+	case (SWEEP << 8) | (ACODE(1, 1, 0)):
+		return LS_SweepBY + 1;
+	}
+
+	return LS_UNKNOWN;
+}
+static enum LighthouseState EndSweep(Disambiguator_data_t *d, const LightcapElement *le) {
+	return CheckEncodedAcode(d, SWEEP);
+}
 static enum LighthouseState EndSync(Disambiguator_data_t *d, const LightcapElement *le) {
 	SurviveContext *ctx = d->so->ctx;
 	LightcapElement lastSync = get_last_sync(d);
@@ -312,24 +337,10 @@ static enum LighthouseState EndSync(Disambiguator_data_t *d, const LightcapEleme
 			(bool)(acode & 4), acode & (SKIP_BIT | AXIS_BIT));
 
 	if (acode > 0) {
-		d->encoded_acodes &= 0xFFFF;
-		d->encoded_acodes = (d->encoded_acodes << 8) | (acode & (SKIP_BIT | AXIS_BIT));
-		SV_INFO("%x", d->encoded_acodes);
-		switch (d->encoded_acodes) {
-		case (5 << 16) | (4 << 8) | 0:
-			return d->state = LS_SweepAX - 1;
-		case (0 << 16) | (5 << 8) | 1:
-			return d->state = LS_SweepAY - 1;
-		case (1 << 16) | (0 << 8) | 4:
-			return d->state = LS_SweepBX - 1;
-		case (4 << 16) | (1 << 8) | 5:
-			return d->state = LS_SweepBY - 1;
-		}
-
+		return CheckEncodedAcode(d, (acode | DATA_BIT));
 	} else {
 		d->encoded_acodes = 0;
 	}
-
 	return LS_UNKNOWN;
 }
 
@@ -340,9 +351,17 @@ static enum LighthouseState AttemptFindState(Disambiguator_data_t *d, const Ligh
 		LightcapElement lastSync = get_last_sync(d);
 
 		if (d->lastWasSync == false || overlaps(&lastSync, le) == false) {
-			enum LighthouseState new_state = EndSync(d, le);
-			if (new_state != LS_UNKNOWN)
-				return new_state;
+			if (d->lastWasSync && timestamp_diff(lastSync.timestamp, le->timestamp) > 30000) {
+				// Missed a sweep window; clear encoded values.
+				d->encoded_acodes = 0;
+			}
+
+			enum LighthouseState new_state = d->lastWasSync ? EndSync(d, le) : EndSweep(d, le);
+
+			if (new_state != LS_UNKNOWN) {
+				fprintf(stderr, "new state: %d\n", new_state);
+			}
+			// return new_state;
 
 			d->last_sync_timestamp = le->timestamp;
 			d->last_sync_length = le->length;
@@ -355,6 +374,10 @@ static enum LighthouseState AttemptFindState(Disambiguator_data_t *d, const Ligh
 
 		d->lastWasSync = true;
 	} else {
+		if (d->lastWasSync) {
+			enum LighthouseState new_state = EndSync(d, le);
+			fprintf(stderr, "Sweep start\n\n");
+		}
 		d->lastWasSync = false;
 	}
 
@@ -417,7 +440,7 @@ void DisambiguatorTimeBased(SurviveObject *so, const LightcapElement *le) {
 	}
 
 	Disambiguator_data_t *d = so->disambiguator_data;
-	assert(d->last_seen_time < le->timestamp || d->last_seen_time - le->timestamp > 0x8FFFFFFF);
+	// assert(d->last_seen_time < le->timestamp || d->last_seen_time - le->timestamp > 0x8FFFFFFF);
 
 	d->last_seen_time = le->timestamp;
 	if (d->state == LS_UNKNOWN) {
@@ -425,7 +448,7 @@ void DisambiguatorTimeBased(SurviveObject *so, const LightcapElement *le) {
 		if (new_state != LS_UNKNOWN) {
 			d->confidence = 0;
 			d->mod_offset = (le->timestamp % LighthouseState_offset(LS_END)) - LighthouseState_offset(new_state);
-			SetState(d, le, new_state);
+			// SetState(d, le, new_state);
 			SV_INFO("Locked onto state %d at %u", new_state, d->mod_offset);
 		}
 	} else {
