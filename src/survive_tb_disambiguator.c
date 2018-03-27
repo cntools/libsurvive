@@ -29,6 +29,10 @@
  * NOTE: Obviously you cut the data bit out for this
  */
 
+// Every pulse_window seems roughly 20k ticks long. That leaves ~360 to the capture window
+#define PULSE_WINDOW 20000
+#define CAPTURE_WINDOW 360000
+
 enum LighthouseState {
 	LS_UNKNOWN = 0,
 
@@ -47,6 +51,63 @@ enum LighthouseState {
 
 	LS_END
 };
+
+void LighthouseState_Parameterize(enum LighthouseState s, int *acode, int *lh, int *axis, int *window) {
+	*lh = *axis = *acode = -1;
+	switch (s) {
+	case LS_WaitLHB_ACode4:
+	case LS_WaitLHA_ACode4:
+	case LS_WaitLHB_ACode0:
+	case LS_WaitLHA_ACode0:
+	case LS_WaitLHB_ACode5:
+	case LS_WaitLHA_ACode5:
+	case LS_WaitLHB_ACode1:
+	case LS_WaitLHA_ACode1:
+		*window = PULSE_WINDOW;
+		break;
+	case LS_SweepAX:
+	case LS_SweepAY:
+	case LS_SweepBX:
+	case LS_SweepBY:
+		*window = CAPTURE_WINDOW;
+		break;
+	}
+
+	switch (s) {
+	case LS_WaitLHB_ACode4:
+	case LS_WaitLHA_ACode4:
+		*acode = 4;
+		break;
+	case LS_WaitLHB_ACode0:
+	case LS_WaitLHA_ACode0:
+		*acode = 0;
+		break;
+	case LS_WaitLHB_ACode5:
+	case LS_WaitLHA_ACode5:
+		*acode = 5;
+		break;
+	case LS_WaitLHB_ACode1:
+	case LS_WaitLHA_ACode1:
+		*acode = 1;
+		break;
+	case LS_SweepAX:
+		*axis = 0;
+		*lh = 0;
+		break;
+	case LS_SweepAY:
+		*axis = 1;
+		*lh = 0;
+		break;
+	case LS_SweepBX:
+		*axis = 0;
+		*lh = 1;
+		break;
+	case LS_SweepBY:
+		*axis = 1;
+		*lh = 1;
+		break;
+	}
+}
 
 int LighthouseState_offset(enum LighthouseState s) {
 	int mini_jump = 20000;
@@ -95,8 +156,9 @@ typedef struct {
 	/**  This part of the structure is general use when we know our state */
 	uint32_t mod_offset;
 	enum LighthouseState state;
+	uint32_t last_state_transition_time;
 	int confidence;
-
+	uint32_t last_seen_time;
 	/** This rest of the structure is dedicated to finding a state when we are unknown */
 
 	int encoded_acodes;
@@ -299,7 +361,47 @@ static enum LighthouseState AttemptFindState(Disambiguator_data_t *d, const Ligh
 	return LS_UNKNOWN;
 }
 
-void PropagateState(Disambiguator_data_t *d, const LightcapElement *le) { d->state = LS_UNKNOWN; }
+static void SetState(Disambiguator_data_t *d, const LightcapElement *le, enum LighthouseState new_state) {
+
+	SurviveContext *ctx = d->so->ctx;
+	SV_INFO("State transition %d -> %d at %u(%.03f)", d->state, new_state, le->timestamp,
+			timestamp_diff(d->last_state_transition_time, le->timestamp) / 480000.);
+
+	d->state = new_state;
+	if (d->state >= LS_END)
+		d->state = 1;
+	d->last_state_transition_time = le->timestamp;
+}
+
+static void PropagateState(Disambiguator_data_t *d, const LightcapElement *le);
+static void RunACodeCapture(int target_acode, Disambiguator_data_t *d, const LightcapElement *le) {
+	int acode = find_acode(le->length);
+	SurviveContext *ctx = d->so->ctx;
+
+	SV_INFO("acode %d %d 0x%x", target_acode, le->length, acode);
+
+	if (target_acode != (acode & (SKIP_BIT | AXIS_BIT)))
+		SetState(d, le, LS_UNKNOWN);
+}
+
+static void PropagateState(Disambiguator_data_t *d, const LightcapElement *le) {
+	int acode, lh, axis, window;
+	LighthouseState_Parameterize(d->state, &acode, &lh, &axis, &window);
+
+	SurviveContext *ctx = d->so->ctx;
+	SV_INFO("param %u %d %d %d", le->timestamp, acode, le->length, window + d->last_state_transition_time);
+
+	if (le->timestamp < d->last_state_transition_time + window) {
+		if (acode != -1) {
+			RunACodeCapture(acode, d, le);
+		} else {
+			// RunLightDataCapture(lh, axis, d, le);
+		}
+	} else {
+		SetState(d, le, d->state + 1);
+		PropagateState(d, le);
+	}
+}
 
 void DisambiguatorTimeBased(SurviveObject *so, const LightcapElement *le) {
 	SurviveContext *ctx = so->ctx;
@@ -315,14 +417,16 @@ void DisambiguatorTimeBased(SurviveObject *so, const LightcapElement *le) {
 	}
 
 	Disambiguator_data_t *d = so->disambiguator_data;
+	assert(d->last_seen_time < le->timestamp || d->last_seen_time - le->timestamp > 0x8FFFFFFF);
 
+	d->last_seen_time = le->timestamp;
 	if (d->state == LS_UNKNOWN) {
 		enum LighthouseState new_state = AttemptFindState(d, le);
 		if (new_state != LS_UNKNOWN) {
 			d->confidence = 0;
 			d->mod_offset = (le->timestamp % LighthouseState_offset(LS_END)) - LighthouseState_offset(new_state);
-			d->state = new_state;
-			SV_INFO("Locked onto state %d at %d", new_state, d->mod_offset);
+			SetState(d, le, new_state);
+			SV_INFO("Locked onto state %d at %u", new_state, d->mod_offset);
 		}
 	} else {
 		PropagateState(d, le);
