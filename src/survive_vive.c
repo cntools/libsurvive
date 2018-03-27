@@ -1708,16 +1708,6 @@ int survive_vive_close( SurviveContext * ctx, void * driver )
 	return 0;
 }
 
-void init_SurviveObject(SurviveObject* so) {
-	so->acc_scale = NULL;
-	so->acc_bias = NULL;
-	so->gyro_scale = NULL;
-	so->gyro_bias = NULL;
-	so->haptic = NULL;
-	so->PoserData = NULL;
-	so->disambiguator_data = NULL;
-}
-
 int DriverRegHTCVive( SurviveContext * ctx )
 {
 	const char *playback_dir = survive_configs(ctx, "playback", SC_GET, "");
