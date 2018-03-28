@@ -1,0 +1,12 @@
+P:\csharp\LibSurviveBinding\bin\Debug\netcoreapp2.0\LibSurviveBinding.deps.json
+P:\csharp\LibSurviveBinding\bin\Debug\netcoreapp2.0\LibSurviveBinding.runtimeconfig.json
+P:\csharp\LibSurviveBinding\bin\Debug\netcoreapp2.0\LibSurviveBinding.runtimeconfig.dev.json
+P:\csharp\LibSurviveBinding\bin\Debug\netcoreapp2.0\LibSurviveBinding.dll
+P:\csharp\LibSurviveBinding\bin\Debug\netcoreapp2.0\LibSurviveBinding.pdb
+P:\csharp\LibSurviveBinding\obj\Debug\netcoreapp2.0\LibSurviveBinding.csprojResolveAssemblyReference.cache
+P:\csharp\LibSurviveBinding\obj\Debug\netcoreapp2.0\LibSurviveBinding.csproj.CoreCompileInputs.cache
+P:\csharp\LibSurviveBinding\obj\Debug\netcoreapp2.0\LibSurviveBinding.AssemblyInfoInputs.cache
+P:\csharp\LibSurviveBinding\obj\Debug\netcoreapp2.0\LibSurviveBinding.AssemblyInfo.cs
+P:\csharp\LibSurviveBinding\obj\Debug\netcoreapp2.0\LibSurviveBinding.dll
+P:\csharp\LibSurviveBinding\obj\Debug\netcoreapp2.0\LibSurviveBinding.pdb
+P:\csharp\LibSurviveBinding\bin\Debug\netcoreapp2.0\libsurvive.dll
