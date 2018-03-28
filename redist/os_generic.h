@@ -214,7 +214,7 @@ OSG_INLINE og_thread_t OGCreateThread(void *(routine)(void *), void *parameter) 
 	return (og_thread_t)ret;
 }
 
-static void *OGJoinThread(og_thread_t ot) {
+OSG_INLINE void *OGJoinThread(og_thread_t ot) {
 	void *retval;
 	if (!ot) {
 		return 0;

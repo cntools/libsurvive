@@ -219,7 +219,7 @@ void *GetDriverByConfig(SurviveContext *ctx, const char *name, const char *confi
 	int prefixLen = strlen(name);
 
 	if (verbose > 1)
-		SV_INFO("Available %s:", name);
+		SV_INFO("Available %ss:", name);
 	while ((DriverName = GetDriverNameMatching(name, i++))) {
 		void *p = GetDriver(DriverName);
 
@@ -237,7 +237,7 @@ void *GetDriverByConfig(SurviveContext *ctx, const char *name, const char *confi
 	if (verbose > 1)
 		SV_INFO("Totals %d %ss.", i - 1, name);
 	if (verbose > 0)
-		SV_INFO("Using %s for %s", name, configname);
+		SV_INFO("Using '%s' for %s", picked, configname);
 
 	return func;
 }
