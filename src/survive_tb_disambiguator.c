@@ -65,11 +65,11 @@ const LighthouseStateParameters LS_Params[LS_END + 1] = {
 
 	{.acode = 4, .lh = 0, .axis = 0, .window = PULSE_WINDOW, .offset = 0 * PULSE_WINDOW + 0 * CAPTURE_WINDOW}, // 0
 	{.acode = 0, .lh = 1, .axis = 0, .window = PULSE_WINDOW, .offset = 1 * PULSE_WINDOW + 0 * CAPTURE_WINDOW}, // 20000
-	{.acode = 0, .lh = 1, .axis = 0, .window = CAPTURE_WINDOW, .offset = 2 * PULSE_WINDOW + 0 * CAPTURE_WINDOW,.is_sweep = 1}, // 40000
+	{.acode = 4, .lh = 1, .axis = 0, .window = CAPTURE_WINDOW, .offset = 2 * PULSE_WINDOW + 0 * CAPTURE_WINDOW,.is_sweep = 1}, // 40000
 
 	{.acode = 5, .lh = 0, .axis = 1, .window = PULSE_WINDOW, .offset = 2 * PULSE_WINDOW + 1 * CAPTURE_WINDOW}, // 400000
 	{.acode = 1, .lh = 1, .axis = 1, .window = PULSE_WINDOW, .offset = 3 * PULSE_WINDOW + 1 * CAPTURE_WINDOW}, // 420000
-	{.acode = 1, .lh = 1, .axis = 1, .window = CAPTURE_WINDOW, .offset = 4 * PULSE_WINDOW + 1 * CAPTURE_WINDOW,.is_sweep = 1}, // 440000
+	{.acode = 5, .lh = 1, .axis = 1, .window = CAPTURE_WINDOW, .offset = 4 * PULSE_WINDOW + 1 * CAPTURE_WINDOW,.is_sweep = 1}, // 440000
 
 	{.acode = 0, .lh = 0, .axis = 0, .window = PULSE_WINDOW, .offset = 4 * PULSE_WINDOW + 2 * CAPTURE_WINDOW}, // 800000
 	{.acode = 4, .lh = 1, .axis = 0, .window = PULSE_WINDOW, .offset = 5 * PULSE_WINDOW + 2 * CAPTURE_WINDOW}, // 820000
@@ -102,6 +102,7 @@ typedef struct {
 
 typedef struct {
 	SurviveObject *so;
+	uint32_t time_of_last_sync[NUM_LIGHTHOUSES];
 
 	/**  This part of the structure is general use when we know our state */
 	uint32_t mod_offset;
@@ -113,6 +114,7 @@ typedef struct {
 
 	/** This rest of the structure is dedicated to finding a state when we are unknown */
 	int encoded_acodes;
+
 	/* Keep running average of sync signals as they come in */
 	uint64_t last_sync_timestamp;
 	uint64_t last_sync_length;
@@ -122,13 +124,6 @@ typedef struct {
 	SensorHistory_t histories[];
 
 } Disambiguator_data_t;
-
-Disambiguator_data_t *Disambiguator_data_t_ctor(SurviveObject *so) {
-	Disambiguator_data_t *rtn = calloc(1, sizeof(Disambiguator_data_t) + sizeof(SensorHistory_t) * so->sensor_ct);
-	rtn->so = so;
-
-	return rtn;
-}
 
 static uint32_t timestamp_diff(uint32_t recent, uint32_t prior) {
 	if (recent > prior)
@@ -161,9 +156,6 @@ static int find_acode(uint32_t pulseLen) {
 	return -1;
 }
 
-#define LOWER_SYNC_TIME 2250
-#define UPPER_SYNC_TIME 6750
-
 static int circle_buffer_get(int idx, int offset) { return ((idx + offset) + NUM_HISTORY) % NUM_HISTORY; }
 
 static bool overlaps(const LightcapElement *a, const LightcapElement *b) {
@@ -179,6 +171,9 @@ static bool overlaps(const LightcapElement *a, const LightcapElement *b) {
 const int SKIP_BIT = 4;
 const int DATA_BIT = 2;
 const int AXIS_BIT = 1;
+
+#define LOWER_SYNC_TIME 2250
+#define UPPER_SYNC_TIME 6750
 
 LightcapElement get_last_sync(Disambiguator_data_t *d) {
 	if (d->last_sync_count == 0) {
@@ -386,11 +381,6 @@ static enum LighthouseState SetState(Disambiguator_data_t *d, const LightcapElem
 	return new_state;
 }
 
-static void RunLightDataCapture(Disambiguator_data_t *d, const LightcapElement *le) {
-	if (le->length > d->sweep_data[le->sensor_id].length)
-		d->sweep_data[le->sensor_id] = *le;
-}
-
 static void PropagateState(Disambiguator_data_t *d, const LightcapElement *le);
 static void RunACodeCapture(int target_acode, Disambiguator_data_t *d, const LightcapElement *le) {
 	if (le->length < 100)
@@ -407,7 +397,8 @@ static void RunACodeCapture(int target_acode, Disambiguator_data_t *d, const Lig
 	if (error > 1250) {
 		if (d->confidence < 3) {
 			SetState(d, le, LS_UNKNOWN);
-			assert(false);
+			// assert(false);
+			SV_INFO("WARNING: Disambiguator got lost; refinding state.");
 		}
 		d->confidence -= 3;
 		return;
@@ -431,24 +422,37 @@ static void PropagateState(Disambiguator_data_t *d, const LightcapElement *le) {
 			 LS_Params[new_state].offset);
 
 	if (d->state != new_state) {
+		static uint64_t sync2syncs[LS_END] = {0};
+		static uint64_t sync2syncsCnt[LS_END] = {0};
+
 		if (LS_Params[d->state].is_sweep == 0) {
 			if (d->last_sync_count > 0) {
 				LightcapElement lastSync = get_last_sync(d);
 				uint32_t mo = SolveForMod_Offset(d, d->state, &lastSync);
-				DEBUG_TB("New mod offset diff %d", (int)d->mod_offset - (int)mo);
+				DEBUG_TB("New mod offset diff %d %u", (int)d->mod_offset - (int)mo, mo);
 				d->mod_offset = mo;
-				int acode = find_acode(lastSync.length);
-				assert((acode | DATA_BIT) == (LS_Params[d->state].acode | DATA_BIT));
+
+				int lengthData = ACODE_TIMING(LS_Params[d->state].acode | DATA_BIT);
+				int lengthNoData = ACODE_TIMING(LS_Params[d->state].acode);
+
+				bool hasData = abs(lengthData - lastSync.length) < abs(lengthNoData - lastSync.length);
+				int acode = LS_Params[d->state].acode;
+				if (hasData)
+					acode |= DATA_BIT;
+
 				ctx->lightproc(d->so, -LS_Params[d->state].lh - 1, acode, 0, lastSync.timestamp, lastSync.length,
 							   LS_Params[d->state].lh);
+				d->time_of_last_sync[LS_Params[d->state].lh] = lastSync.timestamp;
 			}
 		} else {
 			for (int i = 0; i < SENSORS_PER_OBJECT; i++) {
-				if (d->sweep_data[i].length > 0) {
-					d->so->ctx->lightproc(
-						d->so, i, LS_Params[d->state].acode,
-						timestamp_diff(d->sweep_data[i].timestamp, d->mod_offset + LS_Params[d->state].offset),
-						d->sweep_data[i].timestamp, d->sweep_data[i].length, LS_Params[d->state].lh);
+				LightcapElement le = d->sweep_data[i];
+				if (le.length > 0 && d->time_of_last_sync[LS_Params[d->state].lh] > 0) {
+					int32_t offset_from =
+						timestamp_diff(le.timestamp + le.length / 2, d->time_of_last_sync[LS_Params[d->state].lh]);
+					assert(offset_from > 0);
+					d->so->ctx->lightproc(d->so, i, LS_Params[d->state].acode, offset_from, le.timestamp, le.length,
+										  LS_Params[d->state].lh);
 				}
 			}
 		}
@@ -457,15 +461,12 @@ static void PropagateState(Disambiguator_data_t *d, const LightcapElement *le) {
 	}
 
 	const LighthouseStateParameters *param = &LS_Params[d->state];
-	DEBUG_TB("param %u %d %d %d %d %d", le->timestamp, param->acode, le->length, le_offset, new_state,
-			 LS_Params[d->state].offset);
-
 	if (param->is_sweep == 0) {
 		RunACodeCapture(param->acode, d, le);
 	} else {
-		DEBUG_TB("Logic for sweep %d", le->length);
-		// assert( le->length < 2200);
-		RunLightDataCapture(d, le);
+		if (le->length > d->sweep_data[le->sensor_id].length) {
+			d->sweep_data[le->sensor_id] = *le;
+		}
 	}
 }
 
@@ -479,11 +480,14 @@ void DisambiguatorTimeBased(SurviveObject *so, const LightcapElement *le) {
 
 	if (so->disambiguator_data == NULL) {
 		DEBUG_TB("Initializing Disambiguator Data for TB %d", so->sensor_ct);
-		so->disambiguator_data = Disambiguator_data_t_ctor(so);
+		Disambiguator_data_t *d = calloc(1, sizeof(Disambiguator_data_t) + sizeof(SensorHistory_t) * so->sensor_ct);
+		d->so = so;
+		so->disambiguator_data = d;
 	}
 
 	Disambiguator_data_t *d = so->disambiguator_data;
-	if (d->stabalize < 500) {
+	// It seems like the first few hundred lightcapelements are missing a ton of data; let it stabilize.
+	if (d->stabalize < 200) {
 		d->stabalize++;
 		return;
 	}
