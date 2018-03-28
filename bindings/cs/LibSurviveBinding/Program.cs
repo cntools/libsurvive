@@ -6,61 +6,52 @@ namespace LibSurVive
     class Program
     {
         [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall)]
-        static extern IntPtr survive_init_internal(int argc, char[] args);
+        static extern IntPtr survive_init_internal(int argc, string[] args);
 
         public delegate void raw_pose_func(IntPtr so, byte lighthouse, IntPtr pose);
         public delegate void lighthouse_pose_func(IntPtr ctx, byte lighthouse, IntPtr lighthouse_pose, IntPtr object_pose);
+        public delegate void light_process_func( IntPtr so, int sensor_id, int acode, int timeinsweep, 
+        UInt32 timecode, UInt32 length, UInt32 lighthouse);                                                
 
         [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall)]
         static extern void survive_install_raw_pose_fn(IntPtr ctx, raw_pose_func fbp);
         [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall)]
         static extern void survive_install_lighthouse_pose_fn(IntPtr ctx, lighthouse_pose_func fbp);
 
+        [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall)]
+        static extern void survive_install_light_fn(IntPtr ctx, light_process_func fbp);
 
         [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall)]
         static extern int survive_startup(IntPtr ctx);
         [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall)]
         static extern void survive_cal_install(IntPtr ctx);
 
-        public static lighthouse_pose_func lighthouse_Pose_Func { get; private set; }
-        public static raw_pose_func raw_Pose_Func { get; private set; }
+        [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall)]
+        static extern int survive_poll(IntPtr ctx);
 
         static void Main(string[] args)
         {
-            IntPtr context = survive_init_internal(0, null);
+            IntPtr context = survive_init_internal(args.Length, args);
 
-            lighthouse_Pose_Func = LighthousPos;
-            survive_install_lighthouse_pose_fn(context, lighthouse_Pose_Func);
-            raw_Pose_Func = PositionUpdate;
-            survive_install_raw_pose_fn(context, raw_Pose_Func);
+            survive_install_lighthouse_pose_fn(context, LighthousPos);
+            survive_install_raw_pose_fn(context, PositionUpdate);
+            survive_install_light_fn(context, LightUpdate); 
 
-            try
-            {
-                int a = survive_startup(context);
-                //survive_cal_install(context);
-            }
-            catch (Exception)
-            {
+            survive_startup(context);
+            survive_cal_install(context);
 
-                throw;
-            }
-
-            bool running = true;
-
-
-
-            Console.WriteLine("Hello World!");
-
-            while (running)
-            {
-                Console.ReadLine();
-            }
+            while(survive_poll(context) == 0) {}
 
         }
+        
+        public static void LightUpdate( IntPtr so, int sensor_id, int acode, int timeinsweep, 
+        UInt32 timecode, UInt32 length, UInt32 lighthouse) {
+            Console.WriteLine(timeinsweep);
+        }                                                
 
         public static void PositionUpdate(IntPtr so, byte lighthouse, IntPtr pose)
         {
-            //Console.WriteLine(pose);
+            Console.WriteLine(pose);
         }
 
         public static void LighthousPos(IntPtr ctx, byte lighthouse, IntPtr lighthouse_pose, IntPtr object_pose)
