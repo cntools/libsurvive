@@ -27,6 +27,12 @@ static SurvivePose solve_correspondence(SurviveObject *so, epnp *pnp, bool camer
 
 	CvMat R = cvMat(3, 3, CV_64F, r);
 	CvMat T = cvMat(3, 1, CV_64F, rtn.Pos);
+
+	// Super degenerate inputs will project us basically right in the camera. Detect and reject
+	if (magnitude3d(rtn.Pos) < 0.25) {
+		return rtn;
+	}
+
 	// Requested output is camera -> world, so invert
 	if (cameraToWorld) {
 		FLT tmp[3];
@@ -81,7 +87,10 @@ static int opencv_solver_fullscene(SurviveObject *so, PoserDataFullScene *pdfs) 
 		}
 
 		SurvivePose lighthouse2object = solve_correspondence(so, &pnp, true);
-		PoserData_lighthouse_pose_func(&pdfs->hdr, so, lh, &additionalTx, &lighthouse2object, 0);
+
+		if (quatmagnitude(lighthouse2object.Rot) != 0.0) {
+			PoserData_lighthouse_pose_func(&pdfs->hdr, so, lh, &additionalTx, &lighthouse2object, 0);
+		}
 
 		epnp_dtor(&pnp);
 	}
@@ -123,8 +132,11 @@ int PoserEPNP(SurviveObject *so, PoserData *pd) {
 				epnp_set_maximum_number_of_correspondences(&pnp, so->sensor_ct);
 
 				add_correspondences(so, &pnp, scene, lightData);
+				static int required_meas = -1;
+				if (required_meas == -1)
+					required_meas = survive_configi(so->ctx, "epnp-required-meas", SC_GET, 4);
 
-				if (pnp.number_of_correspondences > 4) {
+				if (pnp.number_of_correspondences > required_meas) {
 
 					SurvivePose pose = solve_correspondence(so, &pnp, false);
 
