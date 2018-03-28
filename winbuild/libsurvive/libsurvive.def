@@ -26,7 +26,3 @@ EXPORTS
    survive_default_lighthouse_pose_process
    quatnormalize
    quatrotatevector
-
-   OGUSleep
-   OGGetAbsoluteTime
-   OGCreateThread

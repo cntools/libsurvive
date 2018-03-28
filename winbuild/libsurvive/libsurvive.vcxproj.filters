@@ -51,9 +51,6 @@
     <ClCompile Include="..\..\src\survive_vive.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\redist\os_generic.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\redist\puff.c">
       <Filter>Source Files</Filter>
     </ClCompile>

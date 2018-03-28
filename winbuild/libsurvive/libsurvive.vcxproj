@@ -77,7 +77,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>USE_DOUBLE;RUNTIME_SYMNUM;RUNTIME_SYMNUMX;NOZLIB;_CRT_SECURE_NO_WARNINGS;HIDAPI;WINDOWS;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FLT=double;USE_DOUBLE;RUNTIME_SYMNUM;RUNTIME_SYMNUMX;NOZLIB;_CRT_SECURE_NO_WARNINGS;HIDAPI;WINDOWS;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\winbuild;..\..\include\libsurvive;..\..\redist;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -149,7 +149,6 @@
     <ClCompile Include="..\..\redist\jsmn.c" />
     <ClCompile Include="..\..\redist\json_helpers.c" />
     <ClCompile Include="..\..\redist\linmath.c" />
-    <ClCompile Include="..\..\redist\os_generic.c" />
     <ClCompile Include="..\..\redist\puff.c" />
     <ClCompile Include="..\..\redist\symbol_enumerator.c" />
     <ClCompile Include="..\..\src\ootx_decoder.c" />
