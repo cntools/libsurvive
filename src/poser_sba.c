@@ -33,16 +33,22 @@ typedef struct {
 typedef struct SBAData {
 	int last_acode;
 	int last_lh;
+
 	int failures_to_reset;
 	int failures_to_reset_cntr;
 	int successes_to_reset;
 	int successes_to_reset_cntr;
 
+	FLT sensor_variance;
+	FLT sensor_variance_per_second;
+	int sensor_time_window;
+
 	int required_meas;
 
+	SurviveObject *so;
 } SBAData;
 
-void metric_function(int j, int i, double *aj, double *xij, void *adata) {
+static void metric_function(int j, int i, double *aj, double *xij, void *adata) {
 	sba_context *ctx = (sba_context *)(adata);
 	SurviveObject *so = ctx->so;
 
@@ -53,7 +59,7 @@ void metric_function(int j, int i, double *aj, double *xij, void *adata) {
 											xij);
 }
 
-size_t construct_input(const SurviveObject *so, PoserDataFullScene *pdfs, char *vmask, double *meas) {
+static size_t construct_input(const SurviveObject *so, PoserDataFullScene *pdfs, char *vmask, double *meas) {
 	size_t measCount = 0;
 	size_t size = so->sensor_ct * NUM_LIGHTHOUSES; // One set per lighthouse
 	for (size_t sensor = 0; sensor < so->sensor_ct; sensor++) {
@@ -74,35 +80,27 @@ size_t construct_input(const SurviveObject *so, PoserDataFullScene *pdfs, char *
 	return measCount;
 }
 
-size_t construct_input_from_scene_single_sweep(const SurviveObject *so, PoserDataLight *pdl,
-											   SurviveSensorActivations *scene, char *vmask, double *meas, int acode,
-											   int lh) {
+static size_t construct_input_from_scene(SBAData *d, PoserDataLight *pdl, SurviveSensorActivations *scene, char *vmask,
+										 double *meas, double *cov) {
 	size_t rtn = 0;
-
-	for (size_t sensor = 0; sensor < so->sensor_ct; sensor++) {
-		const uint32_t *data_timecode = scene->timecode[sensor][lh];
-		if (pdl->timecode - data_timecode[acode & 1] <= SurviveSensorActivations_default_tolerance) {
-			double *a = scene->angles[sensor][lh];
-			vmask[sensor * NUM_LIGHTHOUSES + lh] = 1;
-			meas[rtn++] = a[acode & 0x1];
-		} else {
-			vmask[sensor * NUM_LIGHTHOUSES + lh] = 0;
-		}
-	}
-
-	return rtn;
-}
-
-size_t construct_input_from_scene(const SurviveObject *so, PoserDataLight *pdl, SurviveSensorActivations *scene,
-								  char *vmask, double *meas) {
-	size_t rtn = 0;
+	SurviveObject *so = d->so;
 
 	for (size_t sensor = 0; sensor < so->sensor_ct; sensor++) {
 		for (size_t lh = 0; lh < 2; lh++) {
-			if (SurviveSensorActivations_isPairValid(scene, SurviveSensorActivations_default_tolerance, pdl->timecode,
-													 sensor, lh)) {
+			if (SurviveSensorActivations_isPairValid(scene, d->sensor_time_window, pdl->timecode, sensor, lh)) {
 				double *a = scene->angles[sensor][lh];
 				vmask[sensor * NUM_LIGHTHOUSES + lh] = 1;
+
+				if (cov) {
+					*(cov++) = d->sensor_variance +
+							   abs(pdl->timecode - scene->timecode[sensor][lh][0]) * d->sensor_variance_per_second /
+								   (double)so->timebase_hz;
+					*(cov++) = 0;
+					*(cov++) = 0;
+					*(cov++) = d->sensor_variance +
+							   abs(pdl->timecode - scene->timecode[sensor][lh][1]) * d->sensor_variance_per_second /
+								   (double)so->timebase_hz;
+				}
 				meas[rtn++] = a[0];
 				meas[rtn++] = a[1];
 			} else {
@@ -127,7 +125,7 @@ typedef struct {
 	SurvivePose poses;
 } sba_set_position_t;
 
-void sba_set_position(SurviveObject *so, uint8_t lighthouse, SurvivePose *new_pose, void *_user) {
+static void sba_set_position(SurviveObject *so, uint8_t lighthouse, SurvivePose *new_pose, void *_user) {
 	sba_set_position_t *user = _user;
 	assert(user->hasInfo == false);
 	user->hasInfo = 1;
@@ -135,7 +133,7 @@ void sba_set_position(SurviveObject *so, uint8_t lighthouse, SurvivePose *new_po
 }
 void *GetDriver(const char *name);
 
-void str_metric_function_single_sweep(int j, int i, double *bi, double *xij, void *adata) {
+static void str_metric_function_single_sweep(int j, int i, double *bi, double *xij, void *adata) {
 	SurvivePose obj = *(SurvivePose *)bi;
 	int sensor_idx = j >> 1;
 
@@ -159,7 +157,7 @@ void str_metric_function_single_sweep(int j, int i, double *bi, double *xij, voi
 	*xij = out[acode];
 }
 
-void str_metric_function(int j, int i, double *bi, double *xij, void *adata) {
+static void str_metric_function(int j, int i, double *bi, double *xij, void *adata) {
 	SurvivePose obj = *(SurvivePose *)bi;
 	int sensor_idx = j >> 1;
 	int lh = j & 1;
@@ -178,111 +176,18 @@ void str_metric_function(int j, int i, double *bi, double *xij, void *adata) {
 	SurvivePose *camera = &so->ctx->bsd[lh].Pose;
 	survive_reproject_from_pose_with_config(so->ctx, &ctx->calibration_config, lh, camera, xyz, xij);
 }
-#if 0
-static double run_sba_find_3d_structure_single_sweep(survive_calibration_config options, PoserDataLight *pdl,
-													 SurviveObject *so, SurviveSensorActivations *scene, int acode,
-													 int lh, int max_iterations /* = 50*/,
-													 double max_reproj_error /* = 0.005*/) {
-	double *covx = 0;
 
-	char *vmask = alloca(sizeof(char) * so->sensor_ct);
-	double *meas = alloca(sizeof(double) * so->sensor_ct);
-	size_t meas_size = construct_input_from_scene_single_sweep(so, pdl, scene, vmask, meas, acode, lh);
-
-	static int failure_count = 500;
-	
-	if (so->ctx->bsd[0].PositionSet == 0 || so->ctx->bsd[1].PositionSet == 0 || meas_size < d->required_meas) {
-		if (so->ctx->bsd[0].PositionSet && so->ctx->bsd[1].PositionSet && failure_count++ == 500) {
-			SurviveContext *ctx = so->ctx;
-			SV_INFO("Can't solve for position with just %u measurements", (unsigned int)meas_size);
-			failure_count = 0;
-		}
-		return -1;
-	}
-	failure_count = 0;
-
-	SurvivePose soLocation = so->OutPose;
-	bool currentPositionValid = quatmagnitude(&soLocation.Rot[0]);
-
-	{
-		const char *subposer = config_read_str(so->ctx->global_config_values, "SBASeedPoser", "PoserEPNP");
-		PoserCB driver = (PoserCB)GetDriver(subposer);
-		SurviveContext *ctx = so->ctx;
-		if (driver) {
-			PoserData hdr = pdl->hdr;
-			memset(&pdl->hdr, 0, sizeof(pdl->hdr)); // Clear callback functions
-			pdl->hdr.pt = hdr.pt;
-			pdl->hdr.rawposeproc = sba_set_position;
-
-			sba_set_position_t locations = {0};
-			pdl->hdr.userdata = &locations;
-			driver(so, &pdl->hdr);
-			pdl->hdr = hdr;
-
-			if (locations.hasInfo == false) {
-
-				return -1;
-			} else if (locations.hasInfo) {
-				soLocation = locations.poses;
-			}
-		} else {
-			SV_INFO("Not using a seed poser for SBA; results will likely be way off");
-		}
-	}
-
-	double opts[SBA_OPTSSZ] = {0};
-	double info[SBA_INFOSZ] = {0};
-
-	sba_context_single_sweep ctx = {.hdr = {options, &pdl->hdr, so}, .acode = acode, .lh = lh};
-
-	opts[0] = SBA_INIT_MU;
-	opts[1] = SBA_STOP_THRESH;
-	opts[2] = SBA_STOP_THRESH;
-	opts[3] = SBA_STOP_THRESH;
-	opts[3] = SBA_STOP_THRESH; // max_reproj_error * meas.size();
-	opts[4] = 0.0;
-
-	int status = sba_str_levmar(1, // Number of 3d points
-								0, // Number of 3d points to fix in spot
-								so->sensor_ct, vmask,
-								soLocation.Pos, // Reads as the full pose though
-								7,				// pnp -- SurvivePose
-								meas,			// x* -- measurement data
-								0,				// cov data
-								1,				// mnp -- 2 points per image
-								str_metric_function_single_sweep,
-								0,				// jacobia of metric_func
-								&ctx,			// user data
-								max_iterations, // Max iterations
-								0,				// verbosity
-								opts,			// options
-								info);			// info
-
-	if (status > 0) {
-		quatnormalize(soLocation.Rot, soLocation.Rot);
-		PoserData_poser_raw_pose_func(&pdl->hdr, so, 1, &soLocation);
-
-		SurviveContext *ctx = so->ctx;
-		// Docs say info[0] should be divided by meas; I don't buy it really...
-		static int cnt = 0;
-		if (cnt++ > 1000 || meas_size < d->required_meas) {
-			SV_INFO("%f original reproj error for %u meas", (info[0] / meas_size * 2), (unsigned int)meas_size);
-			SV_INFO("%f cur reproj error", (info[1] / meas_size * 2));
-			cnt = 0;
-		}
-	}
-
-	return info[1] / meas_size * 2;
-}
-#endif
 static double run_sba_find_3d_structure(SBAData *d, survive_calibration_config options, PoserDataLight *pdl,
-										SurviveObject *so, SurviveSensorActivations *scene,
-										int max_iterations /* = 50*/, double max_reproj_error /* = 0.005*/) {
+										SurviveSensorActivations *scene, int max_iterations /* = 50*/,
+										double max_reproj_error /* = 0.005*/) {
 	double *covx = 0;
+	SurviveObject *so = d->so;
 
 	char *vmask = alloca(sizeof(char) * so->sensor_ct * NUM_LIGHTHOUSES);
 	double *meas = alloca(sizeof(double) * 2 * so->sensor_ct * NUM_LIGHTHOUSES);
-	size_t meas_size = construct_input_from_scene(so, pdl, scene, vmask, meas);
+	double *cov =
+		d->sensor_variance_per_second > 0. ? alloca(sizeof(double) * 2 * 2 * so->sensor_ct * NUM_LIGHTHOUSES) : 0;
+	size_t meas_size = construct_input_from_scene(d, pdl, scene, vmask, meas, cov);
 
 	static int failure_count = 500;
 	bool hasAllBSDs = true;
@@ -349,7 +254,7 @@ static double run_sba_find_3d_structure(SBAData *d, survive_calibration_config o
 								soLocation.Pos, // Reads as the full pose though
 								7,				// pnp -- SurvivePose
 								meas,			// x* -- measurement data
-								0,				// cov data
+								cov,			// cov data
 								2,				// mnp -- 2 points per image
 								str_metric_function,
 								0,				// jacobia of metric_func
@@ -359,6 +264,14 @@ static double run_sba_find_3d_structure(SBAData *d, survive_calibration_config o
 								opts,			// options
 								info);			// info
 
+	if (currentPositionValid) {
+		FLT distp[3];
+		sub3d(distp, so->OutPose.Pos, soLocation.Pos);
+		FLT distance = magnitude3d(distp);
+		;
+		if (distance > 1.)
+			status = -1;
+	}
 	if (status > 0) {
 		d->failures_to_reset_cntr = d->failures_to_reset;
 		quatnormalize(soLocation.Rot, soLocation.Rot);
@@ -479,7 +392,16 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 
 		d->required_meas = survive_configi(ctx, "sba-required-meas", SC_GET, 8);
 
-		SV_INFO("Initializing SBA with %d required measurements", d->required_meas);
+		d->sensor_time_window = survive_configi(ctx, "sba-time-window", SC_GET, 1600000 * 4);
+		d->sensor_variance_per_second = survive_configf(ctx, "sba-sensor-variance-per-sec", SC_GET, 0.001);
+		d->sensor_variance = survive_configf(ctx, "sba-sensor-variance", SC_GET, 1.0);
+		d->so = so;
+
+		SV_INFO("Initializing SBA:");
+		SV_INFO("\tsba-required-meas: %d", d->required_meas);
+		SV_INFO("\tsba-sensor-variance: %f", d->sensor_variance);
+		SV_INFO("\tsba-sensor-variance-per-sec: %f", d->sensor_variance_per_second);
+		SV_INFO("\tsba-time-window: %d", d->sensor_time_window);
 	}
 	SBAData *d = so->PoserData;
 	switch (pd->pt) {
@@ -494,7 +416,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		FLT error = -1;
 		if (d->last_lh != lightData->lh || d->last_acode != lightData->acode) {
 			survive_calibration_config config = *survive_calibration_default_config();
-			error = run_sba_find_3d_structure(d, config, lightData, so, scene, 50, .5);
+			error = run_sba_find_3d_structure(d, config, lightData, scene, 50, .5);
 			d->last_lh = lightData->lh;
 			d->last_acode = lightData->acode;
 		}
