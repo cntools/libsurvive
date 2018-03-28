@@ -30,3 +30,5 @@ test
 .idea
 *.json
 *.csv
+data_recorder
+simple_pose_test
