@@ -3,6 +3,10 @@
 #ifndef _LINMATH_H
 #define _LINMATH_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+  
 // Yes, I know it's kind of arbitrary.
 #define DEFAULT_EPSILON 0.001
 
@@ -139,5 +143,9 @@ Matrix3x3 inverseM33(const Matrix3x3 mat);
 
 void matrix44copy(FLT *mout, const FLT *minm);
 void matrix44transpose(FLT *mout, const FLT *minm);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
