@@ -50,8 +50,7 @@ typedef void (*imu_process_func)( SurviveObject * so, int mask, FLT * accelgyro,
 typedef void (*angle_process_func)( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh);
 typedef void(*button_process_func)(SurviveObject * so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val);
 typedef void (*raw_pose_func)(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose);
-typedef void (*lighthouse_pose_func)(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose,
-									 SurvivePose *object_pose);
+typedef void (*lighthouse_pose_func)(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose, SurvivePose *object_pose);
 
 // For lightcap, etc.  Don't change this structure at all.  Regular vive is dependent on it being exactly as-is.
 // When you write drivers, you can use this to send survive lightcap data.

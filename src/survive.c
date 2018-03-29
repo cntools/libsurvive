@@ -110,7 +110,15 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 	MANUAL_DRIVER_REGISTRATION(PoserCharlesSlow)
 	MANUAL_DRIVER_REGISTRATION(PoserDaveOrtho)
 	MANUAL_DRIVER_REGISTRATION(PoserDummy)
+	MANUAL_DRIVER_REGISTRATION(PoserEPNP)
+	MANUAL_DRIVER_REGISTRATION(PoserSBA)
+
 	MANUAL_DRIVER_REGISTRATION(DriverRegHTCVive)
+	MANUAL_DRIVER_REGISTRATION(DriverRegPlayback)
+
+	MANUAL_DRIVER_REGISTRATION(DisambiguatorCharles)
+	MANUAL_DRIVER_REGISTRATION(DisambiguatorStateBased)
+	MANUAL_DRIVER_REGISTRATION(DisambiguatorTurvey)	
 #endif
 
 	SurviveContext *ctx = calloc(1, sizeof(SurviveContext));
@@ -219,7 +227,7 @@ void *GetDriverByConfig(SurviveContext *ctx, const char *name, const char *confi
 	int prefixLen = strlen(name);
 
 	if (verbose > 1)
-		SV_INFO("Available %s:", name);
+		SV_INFO("Available %ss:", name);
 	while ((DriverName = GetDriverNameMatching(name, i++))) {
 		void *p = GetDriver(DriverName);
 
@@ -237,7 +245,7 @@ void *GetDriverByConfig(SurviveContext *ctx, const char *name, const char *confi
 	if (verbose > 1)
 		SV_INFO("Totals %d %ss.", i - 1, name);
 	if (verbose > 0)
-		SV_INFO("Using %s for %s", name, configname);
+		SV_INFO("Using '%s' for %s", picked, configname);
 
 	return func;
 }
@@ -255,7 +263,7 @@ int survive_startup(SurviveContext *ctx) {
 	// start the thread to process button data
 	ctx->buttonservicethread = OGCreateThread(button_servicer, ctx);
 
-	PoserCB PreferredPoserCB = GetDriverByConfig(ctx, "Poser", "defaultposer", "TurveyTori", 2);
+	PoserCB PreferredPoserCB = GetDriverByConfig(ctx, "Poser", "defaultposer", "SBA", 2);
 	ctx->lightcapfunction = GetDriverByConfig(ctx, "Disambiguator", "disambiguator", "Turvey", 2);
 
 	const char *DriverName;

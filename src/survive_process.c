@@ -80,7 +80,9 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 		.lh = lh,
 	};
 
-	SurviveSensorActivations_add(&so->activations, &l);
+	// Simulate the use of only one lighthouse in playback mode.
+	if (lh < ctx->activeLighthouses)
+		SurviveSensorActivations_add(&so->activations, &l);
 
 	survive_recording_angle_process(so, sensor_id, acode, timecode, length, angle, lh);
 

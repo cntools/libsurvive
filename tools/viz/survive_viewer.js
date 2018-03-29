@@ -130,7 +130,7 @@ function redrawCanvas(when) {
 
 	for (var key in angles) {
 		for (var lh = 0; lh < 2; lh++) {
-			var bvalue = {"WW0" : "FF", "TR0" : "00"};
+			var bvalue = {"WW0" : "FF", "TR0" : "00", "HMD" : "88"};
 			ctx.strokeStyle = (lh === 0 ? "#FF00" : "#00FF") + bvalue[key];
 
 			if (angles[key][lh])
@@ -190,7 +190,7 @@ function create_tracked_object(info) {
 	}
 
 var trails;
-var MAX_LINE_POINTS = 1000;
+var MAX_LINE_POINTS = 100000;
 $(function() {
 	$("#trails").change(function() {
 		if (this.checked) {

@@ -134,7 +134,7 @@ void epnp_choose_control_points(epnp *self) {
 	// Take C1, C2, and C3 from PCA on the reference points:
 	CvMat *PW0 = cvCreateMat(self->number_of_correspondences, 3, CV_64F);
 
-	double pw0tpw0[3 * 3] = {}, dc[3], uct[3 * 3];
+	double pw0tpw0[3 * 3] = {0}, dc[3], uct[3 * 3];
 	CvMat PW0tPW0 = cvMat(3, 3, CV_64F, pw0tpw0);
 	CvMat DC = cvMat(3, 1, CV_64F, dc);
 	CvMat UCt = cvMat(3, 3, CV_64F, uct);

@@ -10,6 +10,7 @@ EXPORTS
    survive_install_light_fn
    survive_install_imu_fn
    survive_install_angle_fn
+   survive_install_htc_config_fn
    survive_send_magic
    survive_cal_install
    survive_cal_get_status
@@ -26,7 +27,4 @@ EXPORTS
    survive_default_lighthouse_pose_process
    quatnormalize
    quatrotatevector
-
-   OGUSleep
-   OGGetAbsoluteTime
-   OGCreateThread
+   
