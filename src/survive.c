@@ -110,6 +110,9 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 	MANUAL_DRIVER_REGISTRATION(PoserCharlesSlow)
 	MANUAL_DRIVER_REGISTRATION(PoserDaveOrtho)
 	MANUAL_DRIVER_REGISTRATION(PoserDummy)
+	MANUAL_DRIVER_REGISTRATION(PoserEPNP)
+	MANUAL_DRIVER_REGISTRATION(PoserSBA)
+
 	MANUAL_DRIVER_REGISTRATION(DriverRegHTCVive)
 	MANUAL_DRIVER_REGISTRATION(DriverRegPlayback)
 
@@ -260,7 +263,7 @@ int survive_startup(SurviveContext *ctx) {
 	// start the thread to process button data
 	ctx->buttonservicethread = OGCreateThread(button_servicer, ctx);
 
-	PoserCB PreferredPoserCB = GetDriverByConfig(ctx, "Poser", "defaultposer", "TurveyTori", 2);
+	PoserCB PreferredPoserCB = GetDriverByConfig(ctx, "Poser", "defaultposer", "SBA", 2);
 	ctx->lightcapfunction = GetDriverByConfig(ctx, "Disambiguator", "disambiguator", "Turvey", 2);
 
 	const char *DriverName;

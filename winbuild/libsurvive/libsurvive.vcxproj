@@ -56,6 +56,7 @@
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
   <ImportGroup Label="Shared">
+    <Import Project="$(SolutionDir)\packages\OpenBLAS.0.2.14.1\build\native\openblas.targets" Condition="Exists('$(SolutionDir)\packages\OpenBLAS.0.2.14.1\build\native\openblas.targets')" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -70,14 +71,17 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>$(IncludePath)</IncludePath>
+    <LibraryPath>$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>FLT=double;USE_DOUBLE;MANUAL_REGISTRATION;NOZLIB;_CRT_SECURE_NO_WARNINGS;HIDAPI;WINDOWS;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FLT=double;USE_DOUBLE;MANUAL_REGISTRATION;NOZLIB;_CRT_SECURE_NO_WARNINGS;HIDAPI;WINDOWS;_DEBUG;_LIB;HAVE_LAPACK_CONFIG_H;LAPACK_COMPLEX_STRUCTURE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\winbuild;..\..\include\libsurvive;..\..\redist;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -89,6 +93,10 @@
       <ModuleDefinitionFile>$(MSBuildProjectDirectory)\libsurvive.def</ModuleDefinitionFile>
     </Link>
     <ProjectReference />
+    <Lib>
+      <AdditionalDependencies>libblas.lib;liblapacke.lib;liblapack.lib%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -149,14 +157,23 @@
     <ClCompile Include="..\..\redist\jsmn.c" />
     <ClCompile Include="..\..\redist\json_helpers.c" />
     <ClCompile Include="..\..\redist\linmath.c" />
+    <ClCompile Include="..\..\redist\minimal_opencv.c" />
     <ClCompile Include="..\..\redist\puff.c" />
+    <ClCompile Include="..\..\redist\sba\sba_chkjac.c" />
+    <ClCompile Include="..\..\redist\sba\sba_crsm.c" />
+    <ClCompile Include="..\..\redist\sba\sba_lapack.c" />
+    <ClCompile Include="..\..\redist\sba\sba_levmar.c" />
+    <ClCompile Include="..\..\redist\sba\sba_levmar_wrap.c" />
     <ClCompile Include="..\..\redist\symbol_enumerator.c" />
+    <ClCompile Include="..\..\src\epnp\epnp.c" />
     <ClCompile Include="..\..\src\ootx_decoder.c" />
     <ClCompile Include="..\..\src\poser.c" />
     <ClCompile Include="..\..\src\poser_charlesslow.c" />
     <ClCompile Include="..\..\src\poser_daveortho.c" />
     <ClCompile Include="..\..\src\poser_dummy.c" />
+    <ClCompile Include="..\..\src\poser_epnp.c" />
     <ClCompile Include="..\..\src\poser_octavioradii.c" />
+    <ClCompile Include="..\..\src\poser_sba.c" />
     <ClCompile Include="..\..\src\poser_turveytori.c" />
     <ClCompile Include="..\..\src\survive.c" />
     <ClCompile Include="..\..\src\survive_cal.c" />
@@ -183,8 +200,11 @@
     <ClInclude Include="..\..\redist\jsmn.h" />
     <ClInclude Include="..\..\redist\json_helpers.h" />
     <ClInclude Include="..\..\redist\linmath.h" />
+    <ClInclude Include="..\..\redist\minimal_opencv.h" />
     <ClInclude Include="..\..\redist\os_generic.h" />
+    <ClInclude Include="..\..\redist\sba\sba.h" />
     <ClInclude Include="..\..\redist\symbol_enumerator.h" />
+    <ClInclude Include="..\..\src\epnp\epnp.h" />
     <ClInclude Include="..\..\src\ootx_decoder.h" />
     <ClInclude Include="..\..\src\survive_cal.h" />
     <ClInclude Include="..\..\src\survive_config.h" />
@@ -193,8 +213,13 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="libsurvive.def" />
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-  </ImportGroup>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(SolutionDir)\packages\OpenBLAS.0.2.14.1\build\native\openblas.targets')" Text="$([System.String]::Format('$(ErrorText)', '$(SolutionDir)\packages\OpenBLAS.0.2.14.1\build\native\openblas.targets'))" />
+  </Target>
 </Project>

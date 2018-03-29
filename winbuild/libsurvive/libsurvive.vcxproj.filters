@@ -108,6 +108,33 @@
     <ClCompile Include="..\..\src\survive_statebased_disambiguator.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\redist\minimal_opencv.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\epnp\epnp.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\poser_epnp.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\poser_sba.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\redist\sba\sba_crsm.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\redist\sba\sba_lapack.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\redist\sba\sba_levmar.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\redist\sba\sba_levmar_wrap.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\redist\sba\sba_chkjac.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\ootx_decoder.h">
@@ -152,8 +179,18 @@
     <ClInclude Include="..\..\src\survive_default_devices.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\redist\minimal_opencv.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\epnp\epnp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\redist\sba\sba.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="libsurvive.def" />
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>

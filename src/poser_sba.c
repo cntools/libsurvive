@@ -4,6 +4,7 @@
 #endif
 
 #include <sba/sba.h>
+#include <malloc.h>
 
 #include "poser.h"
 #include <survive.h>
