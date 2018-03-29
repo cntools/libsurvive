@@ -111,6 +111,11 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 	MANUAL_DRIVER_REGISTRATION(PoserDaveOrtho)
 	MANUAL_DRIVER_REGISTRATION(PoserDummy)
 	MANUAL_DRIVER_REGISTRATION(DriverRegHTCVive)
+	MANUAL_DRIVER_REGISTRATION(DriverRegPlayback)
+
+	MANUAL_DRIVER_REGISTRATION(DisambiguatorCharles)
+	MANUAL_DRIVER_REGISTRATION(DisambiguatorStateBased)
+	MANUAL_DRIVER_REGISTRATION(DisambiguatorTurvey)	
 #endif
 
 	SurviveContext *ctx = calloc(1, sizeof(SurviveContext));

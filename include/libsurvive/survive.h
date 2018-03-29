@@ -10,6 +10,13 @@
 extern "C" {
 #endif
 
+
+#ifdef _WIN32
+#define SURVIVE_EXPORT __declspec(dllexport)
+#else
+#define SURVIVE_EXPORT
+#endif
+
 /**
  * This struct encodes what the last effective angles seen on a sensor were, and when they occured.
  */
@@ -203,7 +210,7 @@ struct SurviveContext
 
 void survive_verify_FLT_size(uint32_t user_size); // Baked in size of FLT to verify users of the library have the correct setting. 
 
-SurviveContext * survive_init_internal( int argc, char * const * argv );
+SURVIVE_EXPORT SurviveContext * survive_init_internal( int argc, char * const * argv );
 
 /**
  * Call survive_init to get a populated SurviveContext pointer.
@@ -224,20 +231,20 @@ static inline SurviveContext * survive_init( int argc, char * const * argv )
 
 //For any of these, you may pass in 0 for the function pointer to use default behavior.
 //In general unless you are doing wacky things like recording or playing back data, you won't need to use this.
-void survive_install_htc_config_fn( SurviveContext *ctx, htc_config_func fbp );
-void survive_install_info_fn( SurviveContext * ctx,  text_feedback_func fbp );
-void survive_install_error_fn( SurviveContext * ctx,  text_feedback_func fbp );
-void survive_install_light_fn( SurviveContext * ctx,  light_process_func fbp );
-void survive_install_imu_fn( SurviveContext * ctx,  imu_process_func fbp );
-void survive_install_angle_fn( SurviveContext * ctx,  angle_process_func fbp );
-void survive_install_button_fn(SurviveContext * ctx, button_process_func fbp);
-void survive_install_raw_pose_fn(SurviveContext * ctx, raw_pose_func fbp);
-void survive_install_lighthouse_pose_fn(SurviveContext *ctx, lighthouse_pose_func fbp);
-int survive_startup( SurviveContext * ctx );
-int survive_poll( SurviveContext * ctx );
-void survive_close( SurviveContext * ctx );
+SURVIVE_EXPORT void survive_install_htc_config_fn( SurviveContext *ctx, htc_config_func fbp );
+SURVIVE_EXPORT void survive_install_info_fn( SurviveContext * ctx,  text_feedback_func fbp );
+SURVIVE_EXPORT void survive_install_error_fn( SurviveContext * ctx,  text_feedback_func fbp );
+SURVIVE_EXPORT void survive_install_light_fn( SurviveContext * ctx,  light_process_func fbp );
+SURVIVE_EXPORT void survive_install_imu_fn( SurviveContext * ctx,  imu_process_func fbp );
+SURVIVE_EXPORT void survive_install_angle_fn( SurviveContext * ctx,  angle_process_func fbp );
+SURVIVE_EXPORT void survive_install_button_fn(SurviveContext * ctx, button_process_func fbp);
+SURVIVE_EXPORT void survive_install_raw_pose_fn(SurviveContext * ctx, raw_pose_func fbp);
+SURVIVE_EXPORT void survive_install_lighthouse_pose_fn(SurviveContext *ctx, lighthouse_pose_func fbp);
+SURVIVE_EXPORT int survive_startup( SurviveContext * ctx );
+SURVIVE_EXPORT int survive_poll( SurviveContext * ctx );
+SURVIVE_EXPORT void survive_close( SurviveContext * ctx );
 
-SurviveObject * survive_get_so_by_name( SurviveContext * ctx, const char * name );
+SURVIVE_EXPORT SurviveObject * survive_get_so_by_name( SurviveContext * ctx, const char * name );
 
 //Utilitiy functions.
 int survive_simple_inflate( SurviveContext * ctx, const char * input, int inlen, char * output, int outlen );
@@ -249,30 +256,30 @@ int survive_send_magic( SurviveContext * ctx, int magic_code, void * data, int d
 #define SC_OVERRIDE 2	//Set, to new default value.
 #define SC_SETCONFIG 4	//Set, both in-memory and config file.  Use in conjunction with SC_OVERRIDE.
 
-FLT survive_configf( SurviveContext * ctx, const char *tag, char flags, FLT def );
-uint32_t survive_configi( SurviveContext * ctx, const char *tag, char flags, uint32_t def );
-const char * survive_configs( SurviveContext * ctx, const char *tag, char flags, const char *def );
+SURVIVE_EXPORT FLT survive_configf( SurviveContext * ctx, const char *tag, char flags, FLT def );
+SURVIVE_EXPORT uint32_t survive_configi( SurviveContext * ctx, const char *tag, char flags, uint32_t def );
+SURVIVE_EXPORT const char * survive_configs( SurviveContext * ctx, const char *tag, char flags, const char *def );
 
 
 //Install the calibrator.
-void survive_cal_install( SurviveContext * ctx );  //XXX This will be removed if not already done so.
+SURVIVE_EXPORT void survive_cal_install( SurviveContext * ctx );  //XXX This will be removed if not already done so.
 
 // Read back a human-readable string description of the calibration status
-int survive_cal_get_status( SurviveContext * ctx, char * description, int description_length );
+SURVIVE_EXPORT int survive_cal_get_status( SurviveContext * ctx, char * description, int description_length );
 
 // Induce haptic feedback
-int survive_haptic(SurviveObject * so, uint8_t reserved, uint16_t pulseHigh, uint16_t pulseLow, uint16_t repeatCount);
+SURVIVE_EXPORT int survive_haptic(SurviveObject * so, uint8_t reserved, uint16_t pulseHigh, uint16_t pulseLow, uint16_t repeatCount);
 
 //Call these from your callback if overridden.  
 //Accept higher-level data.
-void survive_default_light_process( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length , uint32_t lh);
-void survive_default_imu_process( SurviveObject * so, int mode, FLT * accelgyro, uint32_t timecode, int id );
-void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh );
-void survive_default_button_process(SurviveObject * so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val);
-void survive_default_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose);
-void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lh_pose,
+SURVIVE_EXPORT void survive_default_light_process( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length , uint32_t lh);
+SURVIVE_EXPORT void survive_default_imu_process( SurviveObject * so, int mode, FLT * accelgyro, uint32_t timecode, int id );
+SURVIVE_EXPORT void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh );
+SURVIVE_EXPORT void survive_default_button_process(SurviveObject * so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val);
+SURVIVE_EXPORT void survive_default_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose);
+SURVIVE_EXPORT void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lh_pose,
 											 SurvivePose *obj_pose);
-int  survive_default_htc_config_process(SurviveObject *so, char *ct0conf, int len);
+SURVIVE_EXPORT int  survive_default_htc_config_process(SurviveObject *so, char *ct0conf, int len);
 
 
 

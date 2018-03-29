@@ -275,7 +275,7 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 
 	if (f && !feof(f) && !ferror(f)) {
 		driver->lineno++;
-		char *line;
+		char *line = 0;
 
 		if (driver->next_time_us == 0) {
 			size_t n = 0;
