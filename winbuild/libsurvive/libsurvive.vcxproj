@@ -83,6 +83,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>FLT=double;USE_DOUBLE;MANUAL_REGISTRATION;NOZLIB;_CRT_SECURE_NO_WARNINGS;HIDAPI;WINDOWS;_DEBUG;_LIB;HAVE_LAPACK_CONFIG_H;LAPACK_COMPLEX_STRUCTURE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\winbuild;..\..\include\libsurvive;..\..\redist;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DiagnosticsFormat>Caret</DiagnosticsFormat>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -213,7 +214,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="libsurvive.def" />
-    <None Include="packages.config" />
+    <None Include="packages.config">
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
