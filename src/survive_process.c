@@ -48,15 +48,19 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 	FLT angle = (timeinsweep - so->timecenter_ticks) * (1./so->timecenter_ticks * 3.14159265359/2.0);
 
 	//Need to now do angle correction.
-#if 1
-	BaseStationData * bsd = &ctx->bsd[base_station];
+	static int use_bsd_cal = -1;
+	if(use_bsd_cal == -1) {
+	  use_bsd_cal = survive_configi(ctx, "use-bsd-cal", SC_GET, 1);
+	}
+	if(use_bsd_cal) {
+	  BaseStationData * bsd = &ctx->bsd[base_station];
 
-	//XXX TODO: This seriously needs to be worked on.  See: https://github.com/cnlohr/libsurvive/issues/18
-	angle += bsd->fcalphase[axis];
-//	angle += bsd->fcaltilt[axis] * predicted_angle(axis1);
+	  //XXX TODO: This seriously needs to be worked on.  See: https://github.com/cnlohr/libsurvive/issues/18
+	  angle += bsd->fcalphase[axis];
+	  //	angle += bsd->fcaltilt[axis] * predicted_angle(axis1);
 	
-	//TODO!!!
-#endif
+	  //TODO!!!
+	}
 
 	FLT length_sec = length / (FLT)so->timebase_hz;
 	ctx->angleproc( so, sensor_id, acode, timecode, length_sec, angle, lh);
