@@ -8,177 +8,16 @@
 #include "string.h"
 
 #include <limits.h>
-#include <varargs.h>
+#include <stdarg.h>
 
-//#define DEBUG_PRINT
 
-#ifdef _WIN3211
-#include "cblas.h"
-
-int CBLAS_CallFromC;
-int RowMajorStrg;
-void cblas_xerbla(int info, const char *rout, const char *form, ...)
-{
-	extern int RowMajorStrg;
-	char empty[1] = "";
-	va_list argptr;
-
-	va_start(argptr, form);
-
-	if (RowMajorStrg)
-	{
-		if (strstr(rout, "gemm") != 0)
-		{
-			if (info == 5) info = 4;
-			else if (info == 4) info = 5;
-			else if (info == 11) info = 9;
-			else if (info == 9) info = 11;
-		}
-		else if (strstr(rout, "symm") != 0 || strstr(rout, "hemm") != 0)
-		{
-			if (info == 5) info = 4;
-			else if (info == 4) info = 5;
-		}
-		else if (strstr(rout, "trmm") != 0 || strstr(rout, "trsm") != 0)
-		{
-			if (info == 7) info = 6;
-			else if (info == 6) info = 7;
-		}
-		else if (strstr(rout, "gemv") != 0)
-		{
-			if (info == 4)  info = 3;
-			else if (info == 3)  info = 4;
-		}
-		else if (strstr(rout, "gbmv") != 0)
-		{
-			if (info == 4)  info = 3;
-			else if (info == 3)  info = 4;
-			else if (info == 6)  info = 5;
-			else if (info == 5)  info = 6;
-		}
-		else if (strstr(rout, "ger") != 0)
-		{
-			if (info == 3) info = 2;
-			else if (info == 2) info = 3;
-			else if (info == 8) info = 6;
-			else if (info == 6) info = 8;
-		}
-		else if ((strstr(rout, "her2") != 0 || strstr(rout, "hpr2") != 0)
-			&& strstr(rout, "her2k") == 0)
-		{
-			if (info == 8) info = 6;
-			else if (info == 6) info = 8;
-		}
-	}
-	if (info)
-		fprintf(stderr, "Parameter %d to routine %s was incorrect\n", info, rout);
-	vfprintf(stderr, form, argptr);
-	va_end(argptr);
-	if (info && !info)
-		F77_xerbla(empty, &info); /* Force link of our F77 error handler */
-	exit(-1);
-}
-void cblas_dgemm(const CBLAS_LAYOUT layout, const CBLAS_TRANSPOSE TransA,
-	const CBLAS_TRANSPOSE TransB, const int M, const int N,
-	const int K, const double alpha, const double  *A,
-	const int lda, const double  *B, const int ldb,
-	const double beta, double  *C, const int ldc)
-{
-	char TA, TB;
-#ifdef F77_CHAR
-	F77_CHAR F77_TA, F77_TB;
+#ifdef _WIN32
+#define SURVIVE_LOCAL_ONLY
 #else
-#define F77_TA &TA
-#define F77_TB &TB
+#define SURVIVE_LOCAL_ONLY  __attribute__ ((visibility ("hidden")))
 #endif
 
-#ifdef F77_INT
-	F77_INT F77_M = M, F77_N = N, F77_K = K, F77_lda = lda, F77_ldb = ldb;
-	F77_INT F77_ldc = ldc;
-#else
-#define F77_M M
-#define F77_N N
-#define F77_K K
-#define F77_lda lda
-#define F77_ldb ldb
-#define F77_ldc ldc
-#endif
-
-	RowMajorStrg = 0;
-	CBLAS_CallFromC = 1;
-
-	if (layout == CblasColMajor)
-	{
-		if (TransA == CblasTrans) TA = 'T';
-		else if (TransA == CblasConjTrans) TA = 'C';
-		else if (TransA == CblasNoTrans)   TA = 'N';
-		else
-		{
-			cblas_xerbla(2, "cblas_dgemm", "Illegal TransA setting, %d\n", TransA);
-			CBLAS_CallFromC = 0;
-			RowMajorStrg = 0;
-			return;
-		}
-
-		if (TransB == CblasTrans) TB = 'T';
-		else if (TransB == CblasConjTrans) TB = 'C';
-		else if (TransB == CblasNoTrans)   TB = 'N';
-		else
-		{
-			cblas_xerbla(3, "cblas_dgemm", "Illegal TransB setting, %d\n", TransB);
-			CBLAS_CallFromC = 0;
-			RowMajorStrg = 0;
-			return;
-		}
-
-#ifdef F77_CHAR
-		F77_TA = C2F_CHAR(&TA);
-		F77_TB = C2F_CHAR(&TB);
-#endif
-
-		F77_dgemm(F77_TA, F77_TB, &F77_M, &F77_N, &F77_K, &alpha, A,
-			&F77_lda, B, &F77_ldb, &beta, C, &F77_ldc);
-	}
-	else if (layout == CblasRowMajor)
-	{
-		RowMajorStrg = 1;
-		if (TransA == CblasTrans) TB = 'T';
-		else if (TransA == CblasConjTrans) TB = 'C';
-		else if (TransA == CblasNoTrans)   TB = 'N';
-		else
-		{
-			cblas_xerbla(2, "cblas_dgemm", "Illegal TransA setting, %d\n", TransA);
-			CBLAS_CallFromC = 0;
-			RowMajorStrg = 0;
-			return;
-		}
-		if (TransB == CblasTrans) TA = 'T';
-		else if (TransB == CblasConjTrans) TA = 'C';
-		else if (TransB == CblasNoTrans)   TA = 'N';
-		else
-		{
-			cblas_xerbla(2, "cblas_dgemm", "Illegal TransB setting, %d\n", TransB);
-			CBLAS_CallFromC = 0;
-			RowMajorStrg = 0;
-			return;
-		}
-#ifdef F77_CHAR
-		F77_TA = C2F_CHAR(&TA);
-		F77_TB = C2F_CHAR(&TB);
-#endif
-
-		F77_dgemm(F77_TA, F77_TB, &F77_N, &F77_M, &F77_K, &alpha, B,
-			&F77_ldb, A, &F77_lda, &beta, C, &F77_ldc);
-	}
-	else  cblas_xerbla(1, "cblas_dgemm", "Illegal layout setting, %d\n", layout);
-	CBLAS_CallFromC = 0;
-	RowMajorStrg = 0;
-	return;
-}
-#endif
-
-
-int cvRound(float f) { return roundf(f); }
+SURVIVE_LOCAL_ONLY int cvRound(float f) { return roundf(f); }
 #define CV_Error(code, msg) assert(0 && msg); // cv::error( code, msg, CV_Func, __FILE__, __LINE__ )
 
 const int DECOMP_SVD = 1;
@@ -186,11 +25,11 @@ const int DECOMP_LU = 2;
 
 void print_mat(const CvMat *M);
 
-void cvCopyTo(const CvMat *srcarr, CvMat *dstarr) {
+SURVIVE_LOCAL_ONLY void cvCopyTo(const CvMat *srcarr, CvMat *dstarr) {
 	memcpy(dstarr->data.db, srcarr->data.db, sizeof(double) * dstarr->rows * dstarr->cols);
 }
 
-void cvGEMM(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src3, double beta, CvMat *dst, int tABC) {
+SURVIVE_LOCAL_ONLY void cvGEMM(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src3, double beta, CvMat *dst, int tABC) {
 	lapack_int rows1 = src1->rows;
 	lapack_int cols1 = src1->cols;
 		
@@ -214,7 +53,7 @@ void cvGEMM(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src
 				lda, src2->data.db, ldb, beta, dst->data.db, dst->cols);
 }
 
-void cvMulTransposed(const CvMat *src, CvMat *dst, int order, const CvMat *delta, double scale) {
+SURVIVE_LOCAL_ONLY void cvMulTransposed(const CvMat *src, CvMat *dst, int order, const CvMat *delta, double scale) {
 	lapack_int rows = src->rows;
 	lapack_int cols = src->cols;
 
@@ -233,14 +72,14 @@ void cvMulTransposed(const CvMat *src, CvMat *dst, int order, const CvMat *delta
 				scale, src->data.db, cols, src->data.db, cols, beta, dst->data.db, dstCols);
 }
 
-void *cvAlloc(size_t size) { return malloc(size); }
+SURVIVE_LOCAL_ONLY void *cvAlloc(size_t size) { return malloc(size); }
 
-static void icvCheckHuge(CvMat *arr) {
+SURVIVE_LOCAL_ONLY static void icvCheckHuge(CvMat *arr) {
 	if ((int64_t)arr->step * arr->rows > INT_MAX)
 		arr->type &= ~CV_MAT_CONT_FLAG;
 }
 
-CvMat *cvCreateMatHeader(int rows, int cols, int type) {
+SURVIVE_LOCAL_ONLY CvMat *cvCreateMatHeader(int rows, int cols, int type) {
 	type = CV_MAT_TYPE(type);
 
 	assert(!(rows < 0 || cols < 0));
@@ -272,17 +111,17 @@ CvMat *cvCreateMatHeader(int rows, int cols, int type) {
 
 #define CV_DbgAssert assert
 
-static inline void *cvAlignPtr(const void *ptr, int align) {
+SURVIVE_LOCAL_ONLY static inline void *cvAlignPtr(const void *ptr, int align) {
 	CV_DbgAssert((align & (align - 1)) == 0);
 	return (void *)(((size_t)ptr + align - 1) & ~(size_t)(align - 1));
 }
 
-static inline int cvAlign(int size, int align) {
+SURVIVE_LOCAL_ONLY static inline int cvAlign(int size, int align) {
 	CV_DbgAssert((align & (align - 1)) == 0 && size < INT_MAX);
 	return (size + align - 1) & -align;
 }
 
-void cvCreateData(CvMat *arr) {
+SURVIVE_LOCAL_ONLY void cvCreateData(CvMat *arr) {
 	if (CV_IS_MAT_HDR_Z(arr)) {
 		size_t step, total_size;
 		CvMat *mat = (CvMat *)arr;
@@ -310,14 +149,14 @@ void cvCreateData(CvMat *arr) {
 		CV_Error(CV_StsBadArg, "unrecognized or unsupported array type");
 }
 
-CvMat *cvCreateMat(int height, int width, int type) {
+SURVIVE_LOCAL_ONLY CvMat *cvCreateMat(int height, int width, int type) {
 	CvMat *arr = cvCreateMatHeader(height, width, type);
 	cvCreateData(arr);
 
 	return arr;
 }
 
-double cvInvert(const CvMat *srcarr, CvMat *dstarr, int method) {
+SURVIVE_LOCAL_ONLY double cvInvert(const CvMat *srcarr, CvMat *dstarr, int method) {
 	lapack_int inf;
 	lapack_int rows = srcarr->rows;
 	lapack_int cols = srcarr->cols;
@@ -372,13 +211,13 @@ double cvInvert(const CvMat *srcarr, CvMat *dstarr, int method) {
 	return 0;
 }
 
-CvMat *cvCloneMat(const CvMat *mat) {
+SURVIVE_LOCAL_ONLY CvMat *cvCloneMat(const CvMat *mat) {
 	CvMat *rtn = cvCreateMat(mat->rows, mat->cols, mat->type);
 	cvCopyTo(mat, rtn);
 	return rtn;
 }
 
-int cvSolve(const CvMat *Aarr, const CvMat *xarr, CvMat *Barr, int method) {
+SURVIVE_LOCAL_ONLY int cvSolve(const CvMat *Aarr, const CvMat *xarr, CvMat *Barr, int method) {
 	lapack_int inf;
 	lapack_int arows = Aarr->rows;
 	lapack_int acols = Aarr->cols;
@@ -454,7 +293,7 @@ int cvSolve(const CvMat *Aarr, const CvMat *xarr, CvMat *Barr, int method) {
 	return 0;
 }
 
-void cvTranspose(const CvMat *M, CvMat *dst) {
+SURVIVE_LOCAL_ONLY void cvTranspose(const CvMat *M, CvMat *dst) {
 	bool inPlace = M == dst || M->data.db == dst->data.db;
 	double *src = M->data.db;
 
@@ -477,7 +316,7 @@ void cvTranspose(const CvMat *M, CvMat *dst) {
 	}
 }
 
-void cvSVD(CvMat *aarr, CvMat *warr, CvMat *uarr, CvMat *varr, int flags) {
+SURVIVE_LOCAL_ONLY void cvSVD(CvMat *aarr, CvMat *warr, CvMat *uarr, CvMat *varr, int flags) {
 	char jobu = 'A';
 	char jobvt = 'A';
 
@@ -515,13 +354,13 @@ void cvSVD(CvMat *aarr, CvMat *warr, CvMat *uarr, CvMat *varr, int flags) {
 	}
 }
 
-void cvSetZero(CvMat *arr) {
+SURVIVE_LOCAL_ONLY void cvSetZero(CvMat *arr) {
 	for (int i = 0; i < arr->rows; i++)
 		for (int j = 0; j < arr->cols; j++)
 			arr->data.db[i * arr->cols + j] = 0;
 }
 
-void cvReleaseMat(CvMat **mat) {
+SURVIVE_LOCAL_ONLY void cvReleaseMat(CvMat **mat) {
 	assert(*(*mat)->refcount == 1);
 	free((*mat)->refcount);
 	free(*mat);
