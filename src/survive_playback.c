@@ -317,7 +317,8 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 			break;
 		case 'L':
 		case 'R':
-			parse_and_run_lightcode(line, driver);
+			if (driver->hasRawLight == false)
+				parse_and_run_lightcode(line, driver);
 			break;
 		case 'I':
 			parse_and_run_imu(line, driver);
