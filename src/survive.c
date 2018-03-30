@@ -551,4 +551,9 @@ int survive_simple_inflate(struct SurviveContext *ctx, const char *input, int in
 	return len;
 }
 
+const char *survive_object_codename(SurviveObject *so) { return so->codename; }
+int8_t survive_object_sensor_ct(SurviveObject *so) { return so->sensor_ct; }
+const FLT *survive_object_sensor_locations(SurviveObject *so) { return so->sensor_locations; }
+const FLT *survive_object_sensor_normals(SurviveObject *so) { return so->sensor_normals; }
+
 #endif
