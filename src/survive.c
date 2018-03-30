@@ -36,8 +36,8 @@ static void survivefault(struct SurviveContext *ctx, const char *fault) {
 }
 
 static void survivenote(struct SurviveContext *ctx, const char *fault) {
-  survive_recording_info_process(ctx, fault);
-  fprintf(stderr, "Info: %s\n", fault);
+	survive_recording_info_process(ctx, fault);
+	fprintf(stderr, "Info: %s\n", fault);
 }
 
 static void *button_servicer(void *context) {
@@ -86,8 +86,9 @@ void survive_verify_FLT_size(uint32_t user_size) {
 	if (sizeof(FLT) != user_size) {
 		fprintf(stderr, "FLT type incompatible; the shared library libsurvive has FLT size %lu vs user program %u\n",
 				(unsigned long)sizeof(FLT), user_size);
-		fprintf(stderr, "Add '#define FLT %s' before including survive.h or recompile the shared library with the "
-						"appropriate flag. \n",
+		fprintf(stderr,
+				"Add '#define FLT %s' before including survive.h or recompile the shared library with the "
+				"appropriate flag. \n",
 				sizeof(FLT) == sizeof(double) ? "double" : "float");
 		exit(-1);
 	}
@@ -101,24 +102,28 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 	}
 #endif
 #ifdef MANUAL_REGISTRATION
-// note: this manual registration is currently only in use on builds using Visual Studio.
+	// note: this manual registration is currently only in use on builds using Visual Studio.
 
+	static int did_manual_driver_registration = 0;
+	if (did_manual_driver_registration == 0) {
 #define MANUAL_DRIVER_REGISTRATION(func)                                                                               \
 	int func(SurviveObject *so, PoserData *pd);                                                                        \
 	RegisterDriver(#func, &func);
 
-	MANUAL_DRIVER_REGISTRATION(PoserCharlesSlow)
-	MANUAL_DRIVER_REGISTRATION(PoserDaveOrtho)
-	MANUAL_DRIVER_REGISTRATION(PoserDummy)
-	MANUAL_DRIVER_REGISTRATION(PoserEPNP)
-	MANUAL_DRIVER_REGISTRATION(PoserSBA)
+		MANUAL_DRIVER_REGISTRATION(PoserCharlesSlow)
+		MANUAL_DRIVER_REGISTRATION(PoserDaveOrtho)
+		MANUAL_DRIVER_REGISTRATION(PoserDummy)
+		MANUAL_DRIVER_REGISTRATION(PoserEPNP)
+		MANUAL_DRIVER_REGISTRATION(PoserSBA)
 
-	MANUAL_DRIVER_REGISTRATION(DriverRegHTCVive)
-	MANUAL_DRIVER_REGISTRATION(DriverRegPlayback)
+		MANUAL_DRIVER_REGISTRATION(DriverRegHTCVive)
+		MANUAL_DRIVER_REGISTRATION(DriverRegPlayback)
 
-	MANUAL_DRIVER_REGISTRATION(DisambiguatorCharles)
-	MANUAL_DRIVER_REGISTRATION(DisambiguatorStateBased)
-	MANUAL_DRIVER_REGISTRATION(DisambiguatorTurvey)	
+		MANUAL_DRIVER_REGISTRATION(DisambiguatorCharles)
+		MANUAL_DRIVER_REGISTRATION(DisambiguatorStateBased)
+		MANUAL_DRIVER_REGISTRATION(DisambiguatorTurvey)
+		did_manual_driver_registration = 1;
+	}
 #endif
 
 	SurviveContext *ctx = calloc(1, sizeof(SurviveContext));
@@ -316,9 +321,9 @@ int survive_startup(SurviveContext *ctx) {
 
 	// If lighthouse positions are known, broadcast them
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
-	  if(ctx->bsd[i].PositionSet) {
-	    ctx->lighthouseposeproc(ctx, i, &ctx->bsd[i].Pose, 0);
-	  }
+		if (ctx->bsd[i].PositionSet) {
+			ctx->lighthouseposeproc(ctx, i, &ctx->bsd[i].Pose, 0);
+		}
 	}
 
 	return 0;
