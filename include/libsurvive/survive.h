@@ -185,6 +185,13 @@ enum SurviveCalFlag {
 	SVCal_All = SVCal_Gib | SVCal_Curve | SVCal_Tilt | SVCal_Phase
 };
 
+typedef struct survive_calibration_config {
+	enum SurviveCalFlag use_flag;
+	FLT phase_scale, tilt_scale, curve_scale, gib_scale;
+} survive_calibration_config;
+
+survive_calibration_config survive_calibration_config_ctor();
+
 struct SurviveContext {
 	text_feedback_func faultfunction;
 	text_feedback_func notefunction;
@@ -222,8 +229,7 @@ struct SurviveContext {
 	ButtonQueue buttonQueue;
 
 	void *user_ptr;
-	enum SurviveCalFlag calibration_flag;
-	struct survive_calibration_config *calibration_config;
+	struct survive_calibration_config calibration_config;
 };
 
 void survive_verify_FLT_size(

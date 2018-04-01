@@ -219,7 +219,8 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 	ctx->configfunction = survive_default_htc_config_process;
 	ctx->rawposeproc = survive_default_raw_pose_process;
 
-	ctx->calibration_flag = (enum SurviveCalFlag)survive_configi(ctx, "bsd-cal", SC_GET, SVCal_All);
+	ctx->calibration_config = survive_calibration_config_ctor();
+	ctx->calibration_config.use_flag = (enum SurviveCalFlag)survive_configi(ctx, "bsd-cal", SC_GET, SVCal_All);
 
 	return ctx;
 }

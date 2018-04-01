@@ -18,7 +18,6 @@
 #include "survive_reproject.h"
 
 typedef struct {
-	survive_calibration_config calibration_config;
 	PoserData *pdfs;
 	SurviveObject *so;
 	SurvivePose obj_pose;
@@ -58,8 +57,8 @@ static void metric_function(int j, int i, double *aj, double *xij, void *adata) 
 	SurvivePose obj2world = ctx->obj_pose;
 	FLT sensorInWorld[3] = {0};
 	ApplyPoseToPoint(sensorInWorld, &obj2world, &so->sensor_locations[i * 3]);
-	survive_reproject_from_pose_with_config(so->ctx, &ctx->calibration_config, j, (SurvivePose *)aj, sensorInWorld,
-											xij);
+	survive_calibration_config cfg = so->ctx->calibration_config;
+	survive_reproject_from_pose_with_config(so->ctx, &cfg, j, (SurvivePose *)aj, sensorInWorld, xij);
 }
 
 static size_t construct_input(const SurviveObject *so, PoserDataFullScene *pdfs, char *vmask, double *meas) {
@@ -73,9 +72,9 @@ static size_t construct_input(const SurviveObject *so, PoserDataFullScene *pdfs,
 				continue;
 			}
 
-			double *_angles = pdfs->angles[sensor][lh];
-			double angles[2];
-			survive_apply_bsd_calibration(so->ctx, lh, _angles, angles);
+			double *angles = pdfs->angles[sensor][lh];
+			// double angles[2];
+			// survive_apply_bsd_calibration(so->ctx, lh, _angles, angles);
 			vmask[sensor * NUM_LIGHTHOUSES + lh] = 1;
 
 			meas[measCount++] = angles[0];
@@ -93,9 +92,9 @@ static size_t construct_input_from_scene(SBAData *d, PoserDataLight *pdl, Surviv
 	for (size_t sensor = 0; sensor < so->sensor_ct; sensor++) {
 		for (size_t lh = 0; lh < 2; lh++) {
 			if (SurviveSensorActivations_isPairValid(scene, d->sensor_time_window, pdl->timecode, sensor, lh)) {
-				double *_a = scene->angles[sensor][lh];
-				FLT a[2];
-				survive_apply_bsd_calibration(so->ctx, lh, _a, a);
+				const double *a = scene->angles[sensor][lh];
+				// FLT a[2];
+				// survive_apply_bsd_calibration(so->ctx, lh, _a, a);
 				vmask[sensor * NUM_LIGHTHOUSES + lh] = 1;
 
 				if (cov) {
@@ -160,7 +159,7 @@ static void str_metric_function_single_sweep(int j, int i, double *bi, double *x
 	SurvivePose *camera = &so->ctx->bsd[lh].Pose;
 
 	FLT out[2];
-	survive_reproject_from_pose_with_config(so->ctx, &ctx->hdr.calibration_config, lh, camera, xyz, out);
+	survive_reproject_from_pose(so->ctx, lh, camera, xyz, out);
 	*xij = out[acode];
 }
 
@@ -181,12 +180,11 @@ static void str_metric_function(int j, int i, double *bi, double *xij, void *ada
 
 	// std::cerr << "Processing " << sensor_idx << ", " << lh << std::endl;
 	SurvivePose *camera = &so->ctx->bsd[lh].Pose;
-	survive_reproject_from_pose_with_config(so->ctx, &ctx->calibration_config, lh, camera, xyz, xij);
+	survive_reproject_from_pose(so->ctx, lh, camera, xyz, xij);
 }
 
-static double run_sba_find_3d_structure(SBAData *d, survive_calibration_config options, PoserDataLight *pdl,
-										SurviveSensorActivations *scene, int max_iterations /* = 50*/,
-										double max_reproj_error /* = 0.005*/) {
+static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, SurviveSensorActivations *scene,
+										int max_iterations /* = 50*/, double max_reproj_error /* = 0.005*/) {
 	double *covx = 0;
 	SurviveObject *so = d->so;
 
@@ -246,7 +244,7 @@ static double run_sba_find_3d_structure(SBAData *d, survive_calibration_config o
 	double opts[SBA_OPTSSZ] = {0};
 	double info[SBA_INFOSZ] = {0};
 
-	sba_context ctx = {options, &pdl->hdr, so};
+	sba_context ctx = {&pdl->hdr, so};
 
 	opts[0] = SBA_INIT_MU;
 	opts[1] = SBA_STOP_THRESH;
@@ -300,15 +298,15 @@ static double run_sba_find_3d_structure(SBAData *d, survive_calibration_config o
 }
 
 // Optimizes for LH position assuming object is posed at 0
-static double run_sba(survive_calibration_config options, PoserDataFullScene *pdfs, SurviveObject *so,
-					  int max_iterations /* = 50*/, double max_reproj_error /* = 0.005*/) {
+static double run_sba(PoserDataFullScene *pdfs, SurviveObject *so, int max_iterations /* = 50*/,
+					  double max_reproj_error /* = 0.005*/) {
 	double *covx = 0;
 
 	char *vmask = alloca(sizeof(char) * so->sensor_ct * NUM_LIGHTHOUSES);
 	double *meas = alloca(sizeof(double) * 2 * so->sensor_ct * NUM_LIGHTHOUSES);
 	size_t meas_size = construct_input(so, pdfs, vmask, meas);
 
-	sba_context sbactx = {options, &pdfs->hdr, so, .camera_params = {so->ctx->bsd[0].Pose, so->ctx->bsd[1].Pose},
+	sba_context sbactx = {&pdfs->hdr, so, .camera_params = {so->ctx->bsd[0].Pose, so->ctx->bsd[1].Pose},
 						  .obj_pose = so->OutPose};
 
 	{
@@ -424,8 +422,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		// only process sweeps
 		FLT error = -1;
 		if (d->last_lh != lightData->lh || d->last_acode != lightData->acode) {
-			survive_calibration_config config = *survive_calibration_default_config(ctx);
-			error = run_sba_find_3d_structure(d, config, lightData, scene, 100, .5);
+			error = run_sba_find_3d_structure(d, lightData, scene, 100, .5);
 			d->last_lh = lightData->lh;
 			d->last_acode = lightData->acode;
 		}
@@ -443,9 +440,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 	case POSERDATA_FULL_SCENE: {
 		SurviveContext *ctx = so->ctx;
 		PoserDataFullScene *pdfs = (PoserDataFullScene *)(pd);
-		survive_calibration_config config = *survive_calibration_default_config(ctx);
-		SV_INFO("Running sba with %u", (int)survive_calibration_config_index(&config));
-		double error = run_sba(config, pdfs, so, 100, .005);
+		double error = run_sba(pdfs, so, 100, .005);
 		// std::cerr << "Average reproj error: " << error << std::endl;
 		return 0;
 	}

@@ -11,35 +11,6 @@
 #include <sba/sba.h>
 #include <survive_reproject.h>
 
-std::ostream &operator<<(std::ostream &o, const survive_calibration_options_config &self) {
-	o << "\t";
-	if (!self.enable[0] && !self.enable[1]) {
-		o << "disabled";
-		return o;
-	}
-
-	o << "swap: " << self.swap << std::endl;
-	for (int i = 0; i < 2; i++) {
-		if (self.enable[i]) {
-			o << "\tinvert[" << i << "]: " << self.invert[i];
-		} else {
-			o << "\t" << i << ": disabled";
-		}
-	}
-	return o;
-}
-
-std::ostream &operator<<(std::ostream &o, const survive_calibration_config &self) {
-	o << "Index: " << survive_calibration_config_index(&self) << std::endl;
-	o << "Phase: " << std::endl << self.phase << std::endl;
-	o << "Tilt: " << std::endl << self.tilt << std::endl;
-	o << "Curve: " << std::endl << self.curve << std::endl;
-	o << "gibPhase: " << std::endl << self.gibPhase << std::endl;
-	o << "gibMag: " << std::endl << self.gibMag << std::endl;
-	o << "gibUseSin: " << self.gibUseSin << std::endl;
-	return o;
-}
-
 struct SBAData {
 	int last_acode = -1;
 	int last_lh = -1;
@@ -279,9 +250,7 @@ double find_optimal_cal(SurviveContext *ctx, const survive_calibration_config &c
 	double opts[SBA_OPTSSZ] = {0};
 	double info[SBA_INFOSZ] = {0};
 
-	BaseStationCal cal[2] = {};
-
-	opts[0] = SBA_INIT_MU;
+	survive_calibration_config opts[0] = SBA_INIT_MU;
 	opts[1] = SBA_STOP_THRESH;
 	opts[2] = SBA_STOP_THRESH;
 	opts[3] = SBA_STOP_THRESH;
@@ -402,49 +371,12 @@ int main(int argc, char **argv) {
 		while (survive_poll(ctx) == 0) {
 		}
 
-		survive_calibration_config config = {};
-		// config.tilt.enable[0] = config.tilt.enable[1] = 1;
-		// config.curve.enable[0] = config.curve.enable[1] = 1;
-		config.phase.enable[0] = config.phase.enable[1] = 1;
-		// config.gibPhase.enable[0] = config.gibPhase.enable[1] = 1;
-		// config.gibMag.enable[0] = config.gibMag.enable[1] = 1;
+		survive_calibration_config config = survive_calibration_config_ctor();
 
 		find_optimal_cal(ctx, config, data);
-
-		for (int j = 0; j < sections.size(); j++) {
-			auto &range = sections[j];
-			for (size_t _i = 0; _i < (1 << range.first); _i++) {
-				int i = (_i << range.second);
-				survive_calibration_config config = survive_calibration_config_create_from_idx(i);
-				if (i == survive_calibration_config_index(&config)) {
-					double error = find_avg_reproj_error(ctx, config, data);
-					errors[j][i] += error;
-				}
-			}
-			std::cerr << "Finished grouping " << j << std::endl;
-		}
 
 		survive_close(ctx);
 	}
 
-	for (int i = 0; i < errors.size(); i++) {
-		std::cout << "Grouping " << i << std::endl;
-		auto compFunctor = [](std::pair<size_t, double> elem1, std::pair<size_t, double> elem2) {
-			if (elem1.second == elem2.second)
-				return elem1.first < elem2.first;
-			return elem1.second < elem2.second;
-		};
-
-		std::set<std::pair<size_t, double>, typeof(compFunctor)> set(errors[i].begin(), errors[i].end(), compFunctor);
-
-		for (auto err : set) {
-			survive_calibration_config config = survive_calibration_config_create_from_idx(err.first);
-			if (err.first == survive_calibration_config_index(&config)) {
-				double error = err.second;
-				std::cout << "Config " << err.first << " " << error << std::endl;
-				std::cout << config << std::endl;
-			}
-		}
-	}
 	return 0;
 }

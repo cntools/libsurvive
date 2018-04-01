@@ -13,12 +13,13 @@
 #include "survive_internal.h"
 #include "survive_reproject.h"
 
+#include <assert.h>
+#include <linmath.h>
 #include <math.h>
+#include <poser.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <linmath.h>
-#include <assert.h>
 
 #include "survive_config.h"
 
@@ -618,9 +619,8 @@ static void handle_calibration( struct SurviveCalData *cd )
 			}
 			fsd.lengths[i][j][0] = cd->avglens[dataindex+0];
 			fsd.lengths[i][j][1] = cd->avglens[dataindex+1];
-			// fsd.angles[i][j][0] = cd->avgsweeps[dataindex+0];
-			// fsd.angles[i][j][1] = cd->avgsweeps[dataindex+1];
-			survive_apply_bsd_calibration(ctx, lh, &cd->avgsweeps[dataindex], fsd.angles[i][j]);
+			fsd.angles[i][j][0] = cd->avgsweeps[dataindex + 0];
+			fsd.angles[i][j][1] = cd->avgsweeps[dataindex + 1];
 			fsd.synctimes[i][j] = temp_syncs[i][j];
 		}
 
