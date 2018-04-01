@@ -91,7 +91,8 @@
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(IntDir)Test.txt</MapFileName>
       <MapExports>true</MapExports>
-      <ModuleDefinitionFile>$(MSBuildProjectDirectory)\libsurvive.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>
+      </ModuleDefinitionFile>
     </Link>
     <ProjectReference />
     <Lib>
