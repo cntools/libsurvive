@@ -10,11 +10,10 @@
 #include <limits.h>
 #include <stdarg.h>
 
-
 #ifdef _WIN32
 #define SURVIVE_LOCAL_ONLY
 #else
-#define SURVIVE_LOCAL_ONLY  __attribute__ ((visibility ("hidden")))
+#define SURVIVE_LOCAL_ONLY __attribute__((visibility("hidden")))
 #endif
 
 SURVIVE_LOCAL_ONLY int cvRound(float f) { return roundf(f); }
@@ -29,10 +28,11 @@ SURVIVE_LOCAL_ONLY void cvCopyTo(const CvMat *srcarr, CvMat *dstarr) {
 	memcpy(dstarr->data.db, srcarr->data.db, sizeof(double) * dstarr->rows * dstarr->cols);
 }
 
-SURVIVE_LOCAL_ONLY void cvGEMM(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src3, double beta, CvMat *dst, int tABC) {
+SURVIVE_LOCAL_ONLY void cvGEMM(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src3, double beta,
+							   CvMat *dst, int tABC) {
 	lapack_int rows1 = src1->rows;
 	lapack_int cols1 = src1->cols;
-		
+
 	lapack_int rows2 = src2->rows;
 	lapack_int cols2 = src2->cols;
 
@@ -74,7 +74,7 @@ SURVIVE_LOCAL_ONLY void cvMulTransposed(const CvMat *src, CvMat *dst, int order,
 
 SURVIVE_LOCAL_ONLY void *cvAlloc(size_t size) { return malloc(size); }
 
-SURVIVE_LOCAL_ONLY static void icvCheckHuge(CvMat *arr) {
+static void icvCheckHuge(CvMat *arr) {
 	if ((int64_t)arr->step * arr->rows > INT_MAX)
 		arr->type &= ~CV_MAT_CONT_FLAG;
 }
@@ -111,12 +111,12 @@ SURVIVE_LOCAL_ONLY CvMat *cvCreateMatHeader(int rows, int cols, int type) {
 
 #define CV_DbgAssert assert
 
-SURVIVE_LOCAL_ONLY static inline void *cvAlignPtr(const void *ptr, int align) {
+static inline void *cvAlignPtr(const void *ptr, int align) {
 	CV_DbgAssert((align & (align - 1)) == 0);
 	return (void *)(((size_t)ptr + align - 1) & ~(size_t)(align - 1));
 }
 
-SURVIVE_LOCAL_ONLY static inline int cvAlign(int size, int align) {
+static inline int cvAlign(int size, int align) {
 	CV_DbgAssert((align & (align - 1)) == 0 && size < INT_MAX);
 	return (size + align - 1) & -align;
 }
