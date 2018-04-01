@@ -1,5 +1,4 @@
-﻿//using UnityEngine;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 
 using libsurvive;
@@ -9,44 +8,8 @@ using System.Runtime.InteropServices;
 
 public class LibSurViveAPI
 {
-
-    public struct SetupConfigs
-    {
-        public string playbaskFile;
-        public int playbackFactor;
-        public Disambiguator disambiguator;
-        public Poser poser;
-        public BoolConfig calibrate;
-        public string configFile;
-    }
-
-    public enum Disambiguator
-    {
-        StateBased,
-        Charles,
-        Turvey,
-        Default
-    }
-
-    public enum Poser
-    {
-        CharlesSlow,
-        DaveOrtho,
-        Dummy,
-        EPNP,
-        SBA
-    }
-
-    public enum BoolConfig
-    {
-        Yes,
-        No,
-        Default
-    }
-
-
     private static LibSurViveAPI _instance;
-    public static LibSurViveAPI instance
+    public static LibSurViveAPI Instance
     {
         get
         {
@@ -59,38 +22,9 @@ public class LibSurViveAPI
         }
     }
 
-    LibSurViveAPI()
-    {
-        CreateContext();
-
-        CreateTread();
-
-    }
-
-    ~LibSurViveAPI()
-    {
-        running = false;
-    }
-
+    bool running = true;
     Thread internalPollTread;
 
-    private void CreateTread()
-    {
-        internalPollTread = new Thread(InternalPoll);
-        internalPollTread.Start();
-    }
-
-    bool running = true;
-
-    void InternalPoll()
-    {
-        while (running)
-        {
-            cfunctions.Survive_poll(context);
-        }
-    }
-
-    //private SurviveContext _context;
     public IntPtr context;
 
     light_process_func light_Process_Func;
@@ -103,9 +37,46 @@ public class LibSurViveAPI
     text_feedback_func error_func;
     text_feedback_func info_func;
 
+    public delegate void Log(string message);
+    Log LogInfo;
+
+    public delegate void ErrorLog(string message);
+    ErrorLog LogError;
+
+    LibSurViveAPI()
+    {
+        CreateContext();
+
+        CreateTread();
+    }
+
+    ~LibSurViveAPI()
+    {
+        running = false;
+    }
+
+    private void CreateTread()
+    {
+        internalPollTread = new Thread(InternalPoll);
+        internalPollTread.Start();
+    }
+
+    void InternalPoll()
+    {
+        while (running)
+        {
+            int code = Cfunctions.Survive_poll(context);
+
+            if (code != 0)
+            {
+                running = false;
+            }
+        }
+    }
+
     internal void CreateContext()
     {
-        //Debug.Log("Start Init");
+        LogInfo("Start Init");
 
         SetupConfigs configs = new SetupConfigs
         {
@@ -118,7 +89,7 @@ public class LibSurViveAPI
 
         //string[] vs = new[] { "--playback", "P:/c/libsurvive-data/lightcap-reformat/lightcap-reformat.log", "--disambiguator", "StateBased", "--calibrate" };
 
-        context = cfunctions.Survive_init_internal(args.Length, args);
+        context = Cfunctions.Survive_init_internal(args.Length, args);
 
         if (context == IntPtr.Zero)
         {
@@ -135,26 +106,24 @@ public class LibSurViveAPI
         error_func = ErrorEvent;
         info_func = InfoEvent;
 
-        cfunctions.Survive_install_raw_pose_fn(context, raw_Pose_Func);
-        cfunctions.Survive_install_light_fn(context, light_Process_Func);
-        cfunctions.Survive_install_lighthouse_pose_fn(context, lighthouse_Pose_Func);
-        cfunctions.Survive_install_angle_fn(context, angle_Process_Func);
-        cfunctions.Survive_install_button_fn(context, button_Process_Func);
-        cfunctions.Survive_install_htc_config_fn(context, htc_Config_Func);
-        cfunctions.Survive_install_imu_fn(context, imu_Process_Func);
-        cfunctions.Survive_install_error_fn(context, error_func);
-        cfunctions.Survive_install_info_fn(context, info_func);
+        Cfunctions.Survive_install_raw_pose_fn(context, raw_Pose_Func);
+        Cfunctions.Survive_install_light_fn(context, light_Process_Func);
+        Cfunctions.Survive_install_lighthouse_pose_fn(context, lighthouse_Pose_Func);
+        Cfunctions.Survive_install_angle_fn(context, angle_Process_Func);
+        Cfunctions.Survive_install_button_fn(context, button_Process_Func);
+        Cfunctions.Survive_install_htc_config_fn(context, htc_Config_Func);
+        Cfunctions.Survive_install_imu_fn(context, imu_Process_Func);
+        Cfunctions.Survive_install_error_fn(context, error_func);
+        Cfunctions.Survive_install_info_fn(context, info_func);
 
-        //Debug.Log("Finished Init");
+        LogInfo("Finished Init");
 
-        //Debug.Log("Start Startup");
-
-        //Debug.LogError("ASD");
+        LogInfo("Start Startup");
 
         int a = 0;
         try
         {
-            a = cfunctions.Survive_startup(context);
+            a = Cfunctions.Survive_startup(context);
         }
         catch (Exception)
         {
@@ -166,16 +135,17 @@ public class LibSurViveAPI
             throw new Exception("Error in startup");
         }
 
-        //Debug.Log("Finished Startup");
+        LogInfo("Finished Startup");
 
     }
 
 
     static public string[] CreateStartParameters(SetupConfigs configs)
     {
-        List<string> args = new List<string>();
-
-        args.Add("unity");
+        List<string> args = new List<string>
+        {
+            "unity"
+        };
 
         if (configs.playbaskFile != "")
         {
@@ -201,50 +171,48 @@ public class LibSurViveAPI
 
 
 
-
-
     virtual protected void InfoEvent(IntPtr ctx, string fault)
     {
-        //Debug.Log(fault);
+        LogInfo(fault);
     }
 
     virtual protected void ErrorEvent(IntPtr ctx, string fault)
     {
-        //Debug.LogError(fault);
+        LogError(fault);
     }
 
     virtual protected void IMUEvent(IntPtr so, int mask, double[] accelgyro, uint timecode, int id)
     {
-        cfunctions.Survive_default_imu_process(so, mask, accelgyro, timecode, id);
+        Cfunctions.Survive_default_imu_process(so, mask, accelgyro, timecode, id);
     }
 
     virtual protected int HTCConfigEvent(IntPtr so, string ct0conf, int len)
     {
-        return cfunctions.Survive_default_htc_config_process(so, ct0conf, len);
+        return Cfunctions.Survive_default_htc_config_process(so, ct0conf, len);
     }
 
     virtual protected void ButtonEvent(IntPtr so, byte eventType, byte buttonId, byte axis1Id, ushort axis1Val, byte axis2Id, ushort axis2Val)
     {
-        cfunctions.Survive_default_button_process(so, eventType, buttonId, axis1Id, axis1Val, axis2Id, axis2Val);
+        Cfunctions.Survive_default_button_process(so, eventType, buttonId, axis1Id, axis1Val, axis2Id, axis2Val);
     }
 
     virtual protected void AngleEvent(IntPtr so, int sensor_id, int acode, uint timecode, double length, double angle, uint lh)
     {
-        cfunctions.Survive_default_angle_process(so, sensor_id, acode, timecode, length, angle, lh);
+        Cfunctions.Survive_default_angle_process(so, sensor_id, acode, timecode, length, angle, lh);
 
         //Debug.Log("AngleEvent");
     }
 
     protected void LightHouseEvent(IntPtr ctx, byte lighthouse, SurvivePose lighthouse_pose, SurvivePose object_pose)
     {
-        cfunctions.Survive_default_lighthouse_pose_process(ctx, lighthouse, lighthouse_pose, object_pose);
+        Cfunctions.Survive_default_lighthouse_pose_process(ctx, lighthouse, lighthouse_pose, object_pose);
 
         //Debug.Log("LightHouseEvent");
     }
 
     virtual protected void LightEvent(IntPtr so, int sensor_id, int acode, int timeinsweep, UInt32 timecode, UInt32 length, UInt32 lighthouse)
     {
-        cfunctions.Survive_default_light_process(so, sensor_id, acode, timeinsweep, timecode, length, lighthouse);
+        Cfunctions.Survive_default_light_process(so, sensor_id, acode, timeinsweep, timecode, length, lighthouse);
 
         //Console.WriteLine("LightEvent");
         //Debug.Log("LightEvent");
@@ -252,24 +220,12 @@ public class LibSurViveAPI
 
     virtual protected void PoseEvent(IntPtr so, byte lighthouse, SurvivePose pose)
     {
-        cfunctions.Survive_default_raw_pose_process(so, lighthouse, pose);
+        Cfunctions.Survive_default_raw_pose_process(so, lighthouse, pose);
 
-        //vaDebug.Log("PoseEvent");
-
-        //poseUpdate(-1, new Vector3((float)pose.Pos[0], (float)pose.Pos[1], (float)pose.Pos[2]), new Quaternion((float)pose.Rot[0], (float)pose.Rot[1], (float)pose.Rot[2], (float)pose.Rot[3]));
-
-        /*
-        string a = cfunctions.Survive_object_codename(so);
-        if (updates.ContainsKey(a))
-        {
-            Vector3 pos = new Vector3((float)pose.Pos[0], (float)pose.Pos[1], (float)pose.Pos[2]);
-            Quaternion rot = new Quaternion((float)pose.Rot[0], (float)pose.Rot[1], (float)pose.Rot[2], (float)pose.Rot[3]);
-            updates[a](pos, rot); 
-        }
-        */
+        //Debug.Log("PoseEvent");
     }
 
-
+    /*
     public delegate void PoseUpdate(SurviveVector3 pos, SurviveQuaternion quat);
 
     public Dictionary<string, PoseUpdate> updates = new Dictionary<string, PoseUpdate>();
@@ -285,13 +241,8 @@ public class LibSurViveAPI
             updates[ID] += update;
         }
     }
-
-    /*
-    public void Poll()
-    {
-        cfunctions.Survive_poll(context);
-    }
     */
+
 
     public SurviveObject GetSurviveObjectByName(string name)
     {
@@ -303,9 +254,45 @@ public class LibSurViveAPI
         if (context == IntPtr.Zero)
             throw new Exception("The context hasn't been initialsied yet");
 
-        return new SurviveObject( cfunctions.Survive_get_so_by_name(context, name));
+        return new SurviveObject( Cfunctions.Survive_get_so_by_name(context, name));
     }
 }
+
+
+public struct SetupConfigs
+{
+    public string playbaskFile;
+    public int playbackFactor;
+    public Disambiguator disambiguator;
+    public Poser poser;
+    public BoolConfig calibrate;
+    public string configFile;
+}
+
+public enum Disambiguator
+{
+    StateBased,
+    Charles,
+    Turvey,
+    Default
+}
+
+public enum Poser
+{
+    CharlesSlow,
+    DaveOrtho,
+    Dummy,
+    EPNP,
+    SBA
+}
+
+public enum BoolConfig
+{
+    Yes,
+    No,
+    Default
+}
+
 
 public class SurviveObject
 {
@@ -314,7 +301,7 @@ public class SurviveObject
     {
         get
         {
-            var ptr1 = cfunctions.Survive_object_pose(ptr);
+            var ptr1 = Cfunctions.Survive_object_pose(ptr);
             return (SurvivePose)Marshal.PtrToStructure(ptr1, typeof(SurvivePose));
         }
     }
@@ -324,14 +311,14 @@ public class SurviveObject
     {
         get
         {
-            return cfunctions.Survive_object_charge(ptr);
+            return Cfunctions.Survive_object_charge(ptr);
         }
     }
     public bool Charging
     {
         get
         {
-            return cfunctions.Survive_object_charging(ptr);
+            return Cfunctions.Survive_object_charging(ptr);
         }
     }
 
@@ -350,14 +337,15 @@ public class SurviveObject
 
 public class SurviveVector3
 {
-    float x;
-    float y;
-    float z;
+    double x;
+    double y;
+    double z;
 }
 
 public class SurviveQuaternion
 {
-    float x;
-    float y;
-    float z;
+    double x;
+    double y;
+    double z;
+    double w;
 }

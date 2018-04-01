@@ -18,7 +18,7 @@ namespace libsurvive
         public double[] Rot; // Quaternion in the form wxyz        
     }
 
-    class cfunctions
+    class Cfunctions
     {
         //#pragma warning disable IDE1006 // Naming Styles
         [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_init_internal")]
