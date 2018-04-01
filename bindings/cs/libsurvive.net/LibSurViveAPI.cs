@@ -309,24 +309,42 @@ public class LibSurViveAPI
 
 public class SurviveObject
 {
-    public SurvivePose pose { get; private set; }
-
-    public int charge { get; private set; }
-    public bool charging { get; private set; }
-
-
-    public SurviveObject(IntPtr ptr)
+    private SurvivePose _pose;
+    public SurvivePose Pose
     {
-        if (ptr == IntPtr.Zero)
+        get
+        {
+            var ptr1 = cfunctions.Survive_object_pose(ptr);
+            return (SurvivePose)Marshal.PtrToStructure(ptr1, typeof(SurvivePose));
+        }
+    }
+
+    private int _charge;
+    public int Charge
+    {
+        get
+        {
+            return cfunctions.Survive_object_charge(ptr);
+        }
+    }
+    public bool Charging
+    {
+        get
+        {
+            return cfunctions.Survive_object_charging(ptr);
+        }
+    }
+
+    IntPtr ptr;
+    private bool _charging;
+
+    public SurviveObject(IntPtr obj_ptr)
+    {
+        if (obj_ptr == IntPtr.Zero)
         {
             throw new Exception("Can't create SurviveObject with 0 pointer");
         }
-        var ptr1 = cfunctions.Survive_object_pose(ptr);
-        pose = (SurvivePose)Marshal.PtrToStructure(ptr1, typeof(SurvivePose));
-
-        //pose = 
-        charge = cfunctions.Survive_object_charge(ptr);
-        charging = cfunctions.Survive_object_charging(ptr);
+        ptr = obj_ptr;
     }
 }
 
