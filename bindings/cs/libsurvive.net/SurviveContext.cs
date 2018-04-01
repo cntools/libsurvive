@@ -42,7 +42,7 @@ namespace libsurvive
 
         public SurviveContext(string replaydata)
         {
-            string[] vs = new[] { "--playback", "lightcap-reformat.log"};
+            string[] vs = new[] { "--playback", "P:/c/libsurvive-data/lightcap-reformat/lightcap-reformat.log", "--disambiguator", "StateBased", "--calibrate" };
             Init(vs);
         }
 
