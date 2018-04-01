@@ -72,9 +72,9 @@ static int opencv_solver_fullscene(SurviveObject *so, PoserDataFullScene *pdfs) 
 
 		for (size_t i = 0; i < so->sensor_ct; i++) {
 			FLT *lengths = pdfs->lengths[i][lh];
-			FLT *ang = pdfs->angles[i][lh];
-			// FLT ang[2];
-			// survive_apply_bsd_calibration(so->ctx, lh, _ang, ang);
+			FLT *_ang = pdfs->angles[i][lh];
+			FLT ang[2];
+			survive_apply_bsd_calibration(so->ctx, lh, _ang, ang);
 			if (lengths[0] < 0 || lengths[1] < 0)
 				continue;
 

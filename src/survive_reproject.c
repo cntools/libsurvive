@@ -46,8 +46,8 @@ void survive_reproject_from_pose_with_bsd(const BaseStationData *bsd, const surv
 
 }
 
-void survive_apply_bsd_calibration_by_flag(SurviveContext *ctx, int lh, struct survive_calibration_config *config,
-										   const FLT *in, FLT *out) {
+void survive_apply_bsd_calibration_by_config(SurviveContext *ctx, int lh, struct survive_calibration_config *config,
+											 const FLT *in, FLT *out) {
 	const BaseStationCal *cal = &ctx->bsd[lh].fcal;
 	out[0] = in[0] + config->phase_scale * cal->phase[0];
 	out[1] = in[1] + config->phase_scale * cal->phase[1];
@@ -95,7 +95,7 @@ survive_calibration_config survive_calibration_config_ctor() {
 }
 
 void survive_apply_bsd_calibration(SurviveContext *ctx, int lh, const FLT *in, FLT *out) {
-	survive_apply_bsd_calibration_by_flag(ctx, lh, &ctx->calibration_config, in, out);
+	survive_apply_bsd_calibration_by_config(ctx, lh, &ctx->calibration_config, in, out);
 }
 
 void survive_reproject_from_pose_with_config(const SurviveContext *ctx, struct survive_calibration_config *config,

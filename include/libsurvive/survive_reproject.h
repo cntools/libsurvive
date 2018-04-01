@@ -17,8 +17,9 @@ void survive_reproject_from_pose_with_config(const SurviveContext *ctx, struct s
 											 int lighthouse, const SurvivePose *pose, FLT *point3d, FLT *out);
 
 // This is given a lighthouse -- in the same system as stored in BaseStationData, and
-// a 3d point and finds what the effective 'angle' value for a given lighthouse syste
+// a 3d point and finds what the effective 'angle' value for a given lighthouse system
 // would be.
+//
 // While this is typically opposite of what we want to do -- we want to find the 3d
 // position from a 2D coordinate, this is helpful since the minimization of reprojection
 // error is a core mechanism to many types of solvers.
@@ -26,9 +27,16 @@ void survive_reproject_from_pose_with_config(const SurviveContext *ctx, struct s
 void survive_reproject_from_pose_with_bsd(const BaseStationData *bsd, const survive_calibration_config *config,
 										  const SurvivePose *pose, const FLT *point3d, FLT *out);
 
-void survive_apply_bsd_calibration_by_flag(SurviveContext *ctx, int lh, struct survive_calibration_config *config,
-										   const FLT *in, FLT *out);
+// This is given input from the light sensors and approximates the idealized version of them
+// by incorporating the calibration data from the lighthouse. In theory, it's an approximation
+// but in practice in converges pretty quickly and to a good degree of accuracy.
+// That said, all things being equal, it is better to compare reprojection to raw incoming
+// data if you are looking to minimize that error.
 void survive_apply_bsd_calibration(SurviveContext *ctx, int lh, const FLT *in, FLT *out);
+
+// Same as above, but lets you specify the configuration. Used internally and also in some tools
+void survive_apply_bsd_calibration_by_config(SurviveContext *ctx, int lh, struct survive_calibration_config *config,
+											 const FLT *in, FLT *out);
 
 #ifdef __cplusplus
 }

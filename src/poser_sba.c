@@ -73,8 +73,6 @@ static size_t construct_input(const SurviveObject *so, PoserDataFullScene *pdfs,
 			}
 
 			double *angles = pdfs->angles[sensor][lh];
-			// double angles[2];
-			// survive_apply_bsd_calibration(so->ctx, lh, _angles, angles);
 			vmask[sensor * NUM_LIGHTHOUSES + lh] = 1;
 
 			meas[measCount++] = angles[0];

@@ -1,12 +1,13 @@
-#include "survive_cal.h"
-#include <math.h>
-#include <string.h>
 #include "linmath.h"
-#include <survive.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include "survive_cal.h"
 #include <dclapack.h>
 #include <linmath.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <survive.h>
+#include <survive_reproject.h>
 
 typedef struct
 {
@@ -255,9 +256,13 @@ static FLT RunOpti( SurviveObject * hmd, PoserDataFullScene * fs, int lh, int pr
 			int dataindex = p*(2*NUM_LIGHTHOUSES)+lh*2;
 			if( fs->lengths[p][lh][0] < 0 || fs->lengths[p][lh][1] < 0 ) continue;
 
+			FLT out[2] = {};
+			survive_apply_bsd_calibration(hmd->ctx, lh, fs->angles[p][lh], out);
+
 			//Find out where our ray shoots forth from.
-			FLT ax = fs->angles[p][lh][0];
-			FLT ay = fs->angles[p][lh][1];
+			FLT ax = out[0];
+			FLT ay = out[1];
+
 			//NOTE: Inputs may never be output with cross product.
 			//Create a fictitious normalized ray.  Imagine the lighthouse is pointed
 			//straight in the +z direction, this is the lighthouse ray to the point.
@@ -338,8 +343,13 @@ static FLT RunOpti( SurviveObject * hmd, PoserDataFullScene * fs, int lh, int pr
 		if( fs->lengths[p][lh][0] < 0 || fs->lengths[p][lh][1] < 0 ) continue;
 
 		//Find out where our ray shoots forth from.
-		FLT ax = fs->angles[p][lh][0];
-		FLT ay = fs->angles[p][lh][1];
+		FLT out[2] = {};
+		survive_apply_bsd_calibration(hmd->ctx, lh, fs->angles[p][lh], out);
+
+		// Find out where our ray shoots forth from.
+		FLT ax = out[0];
+		FLT ay = out[1];
+
 		FLT RayShootOut[3] = { sin(ax), sin(ay), 0 };
 		RayShootOut[2] = sqrt( 1 - (RayShootOut[0]*RayShootOut[0] + RayShootOut[1]*RayShootOut[1]) );
 

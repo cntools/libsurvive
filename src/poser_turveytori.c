@@ -13,6 +13,8 @@
 #include <stdlib.h>
 #else
 #include <malloc.h> //for alloca
+#include <survive_reproject.h>
+
 #endif
 
 
@@ -1786,8 +1788,12 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 					to->sensor[sensorCount].point.x = point[0];
 					to->sensor[sensorCount].point.y = point[1];
 					to->sensor[sensorCount].point.z = point[2];
-					to->sensor[sensorCount].theta = fs->angles[i][0][0] + LINMATHPI / 2; // lighthouse 0, angle 0 (horizontal)
-					to->sensor[sensorCount].phi = fs->angles[i][0][1] + LINMATHPI / 2; // lighthouse 0, angle 1 (vertical)
+
+					FLT out[2];
+					survive_apply_bsd_calibration(ctx, 0, fs->angles[i][0], out);
+
+					to->sensor[sensorCount].theta = out[0] + LINMATHPI / 2; // lighthouse 0, angle 0 (horizontal)
+					to->sensor[sensorCount].phi = out[1] + LINMATHPI / 2;   // lighthouse 0, angle 1 (vertical)
 
 					sensorCount++;
 				}
@@ -1822,8 +1828,12 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 					to->sensor[sensorCount].point.x = point[0];
 					to->sensor[sensorCount].point.y = point[1];
 					to->sensor[sensorCount].point.z = point[2];
-					to->sensor[sensorCount].theta = fs->angles[i][lh][0] + LINMATHPI / 2; // lighthouse 0, angle 0 (horizontal)
-					to->sensor[sensorCount].phi = fs->angles[i][lh][1] + LINMATHPI / 2; // lighthosue 0, angle 1 (vertical)
+
+					FLT out[2];
+					survive_apply_bsd_calibration(ctx, lh, fs->angles[i][lh], out);
+
+					to->sensor[sensorCount].theta = out[0] + LINMATHPI / 2; // lighthouse 0, angle 0 (horizontal)
+					to->sensor[sensorCount].phi = out[1] + LINMATHPI / 2;   // lighthosue 0, angle 1 (vertical)
 					sensorCount++;
 				}
 			}

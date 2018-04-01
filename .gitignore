@@ -19,6 +19,7 @@ simple_pose_test
 *.csv
 calinfo/
 *.log
+*.png
 
 # Windows specific
 *.dll

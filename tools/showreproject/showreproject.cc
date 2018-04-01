@@ -176,7 +176,7 @@ void drawbsds(SurviveContext *ctx) {
 					FLT out[2];
 					auto config = survive_calibration_config_ctor();
 					config.use_flag = f;
-					survive_apply_bsd_calibration_by_flag(ctx, lh, &config, in, out);
+					survive_apply_bsd_calibration_by_config(ctx, lh, &config, in, out);
 					double ex = out[0] - in[0];
 					double ey = out[1] - in[1];
 					if (f == SVCal_All) {
