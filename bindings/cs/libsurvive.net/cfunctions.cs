@@ -101,7 +101,7 @@ namespace libsurvive
         public static extern bool Survive_object_charging(SurviveObjectPtr so);
 
         [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_object_pose")]
-        public static extern SurvivePose Survive_object_pose(SurviveObjectPtr so);
+        public static extern IntPtr Survive_object_pose(SurviveObjectPtr so);
 
 
         [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_object_sensor_locations")]
