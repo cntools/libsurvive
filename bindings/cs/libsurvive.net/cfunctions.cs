@@ -94,7 +94,29 @@ namespace libsurvive
         public static extern int Survive_default_htc_config_process(SurviveObjectPtr so, string ct0conf, int len);
 
 
-//#pragma warning restore IDE1006 // Naming Styles
+        [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_object_codename")]
+        public static extern char Survive_object_codename(SurviveObjectPtr so);
+
+
+        [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_object_drivername")]
+        public static extern char Survive_object_drivername(SurviveObject so);
+
+        [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_object_charge")]
+        public static extern byte Survive_object_charge(SurviveObject so);
+
+        [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_object_charging")]
+        public static extern bool Survive_object_charging(SurviveObject so);
+
+        [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_object_pose")]
+        public static extern SurvivePose Survive_object_pose(SurviveObject so);
+
+        [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_object_sensor_locations")]
+        public static extern int Survive_object_sensor_locations(SurviveObjectPtr so);
+
+        [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_object_sensor_normals")]
+        public static extern int Survive_object_sensor_normals(SurviveObjectPtr so);
+
+        //#pragma warning restore IDE1006 // Naming Styles
     }
 
 

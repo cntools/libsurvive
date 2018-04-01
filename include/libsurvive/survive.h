@@ -121,6 +121,13 @@ struct SurviveObject
 
 // These exports are mostly for language binding against
 SURVIVE_EXPORT const char *survive_object_codename(SurviveObject *so);
+
+SURVIVE_EXPORT const char *survive_object_drivername(SurviveObject *so);
+SURVIVE_EXPORT const int8_t *survive_object_charge(SurviveObject *so);
+SURVIVE_EXPORT const bool *survive_object_charging(SurviveObject *so);
+
+SURVIVE_EXPORT const SurvivePose *survive_object_pose(SurviveObject *so);
+
 SURVIVE_EXPORT int8_t survive_object_sensor_ct(SurviveObject *so);
 SURVIVE_EXPORT const FLT *survive_object_sensor_locations(SurviveObject *so);
 SURVIVE_EXPORT const FLT *survive_object_sensor_normals(SurviveObject *so);
