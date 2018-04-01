@@ -567,8 +567,8 @@ int survive_simple_inflate(struct SurviveContext *ctx, const char *input, int in
 const char *survive_object_codename(SurviveObject *so) { return so->codename; }
 
 const char *survive_object_drivername(SurviveObject *so) { return so->drivername; }
-const int8_t *survive_object_charge(SurviveObject *so) { return so->charge; }
-const bool *survive_object_charging(SurviveObject *so) { return so->charging; }
+const int8_t survive_object_charge(SurviveObject *so) { return so->charge; }
+const bool survive_object_charging(SurviveObject *so) { return so->charging; }
 
 const SurvivePose *survive_object_pose(SurviveObject *so) { return &so->OutPose; }
 

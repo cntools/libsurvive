@@ -12,13 +12,10 @@ namespace Demo
     {
         static void Main(string[] args)
         {
-            SurviveContext context = new SurviveContext(args);
-            context.AddPoseUpdateCallback(HMDUpdate, -1);
-
-
-            while (context.Poll() == 0) {
-            }
-
+            LibSurViveAPI api = LibSurViveAPI.instance;
+            
+            var so = api.GetSurviveObjectByName("HMD");
+            
         }
 
         public static void HMDUpdate(int ObjectID, Vector3 pos)

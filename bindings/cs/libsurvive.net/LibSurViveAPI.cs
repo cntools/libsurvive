@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using libsurvive;
 using System;
 using System.Threading;
+using System.Runtime.InteropServices;
 
 public class LibSurViveAPI
 {
@@ -108,7 +109,7 @@ public class LibSurViveAPI
 
         SetupConfigs configs = new SetupConfigs
         {
-            playbaskFile = "P:/c/libsurvive-data/lightcap-reformat/lightcap-reformat.log",
+            playbaskFile = @"C:\Users\justin\source\libsurvive-win-update\bindings\cs\Demo\lightcap-reformat.log",
             configFile = "survive_conf.json",
             playbackFactor = 1
         };
@@ -320,8 +321,10 @@ public class SurviveObject
         {
             throw new Exception("Can't create SurviveObject with 0 pointer");
         }
+        var ptr1 = cfunctions.Survive_object_pose(ptr);
+        pose = (SurvivePose)Marshal.PtrToStructure(ptr1, typeof(SurvivePose));
 
-        //pose = cfunctions.Survive_object_pose(ptr);
+        //pose = 
         charge = cfunctions.Survive_object_charge(ptr);
         charging = cfunctions.Survive_object_charging(ptr);
     }
