@@ -6,7 +6,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-  
+
 // Yes, I know it's kind of arbitrary.
 #define DEFAULT_EPSILON 0.001
 
@@ -82,7 +82,7 @@ int compare3d(const FLT *a, const FLT *b, FLT epsilon);
 void copy3d(FLT *out, const FLT *in);
 
 FLT magnitude3d(const FLT *a);
-
+FLT dist3d(const FLT *a, const FLT *b);
 FLT anglebetween3d(FLT *a, FLT *b);
 
 void rotatearoundaxis(FLT *outvec3, FLT *invec3, FLT *axis, FLT angle);

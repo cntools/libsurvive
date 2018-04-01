@@ -63,6 +63,11 @@ void copy3d(FLT *out, const FLT *in) {
 }
 
 FLT magnitude3d(const FLT *a) { return FLT_SQRT(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]); }
+FLT dist3d(const FLT *a, const FLT *b) {
+	LinmathPoint3d tmp;
+	sub3d(tmp, a, b);
+	return magnitude3d(tmp);
+}
 
 FLT anglebetween3d(FLT *a, FLT *b) {
 	FLT an[3];
