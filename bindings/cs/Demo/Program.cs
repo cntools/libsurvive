@@ -58,7 +58,7 @@ namespace Demo
                 var so = libsurvive.cfunctions
             }
             */
-            LibSurViveAPI api = LibSurViveAPI.instance;
+            LibSurViveAPI api = LibSurViveAPI.Instance;
             
             var so = api.GetSurviveObjectByName("HMD");
             

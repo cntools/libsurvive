@@ -16,7 +16,7 @@ namespace libsurvive
                 
         public void Dispose()
         {
-            cfunctions.Survive_close(ctx);
+            Cfunctions.Survive_close(ctx);
             ctx = IntPtr.Zero;
         }
 
@@ -52,7 +52,7 @@ namespace libsurvive
             newArgs[0] = System.Reflection.Assembly.GetEntryAssembly().FullName;
             Array.Copy(args, 0, newArgs, 1, args.Length);
 
-            ctx = cfunctions.Survive_init_internal(newArgs.Length, newArgs);
+            ctx = Cfunctions.Survive_init_internal(newArgs.Length, newArgs);
 
             if (ctx == IntPtr.Zero)
             {
@@ -69,15 +69,15 @@ namespace libsurvive
             error_func = ErrorEvent;
             info_func = InfoEvent;
 
-            cfunctions.Survive_install_raw_pose_fn(ctx, raw_Pose_Func);
-            cfunctions.Survive_install_light_fn(ctx, light_Process_Func);
-            cfunctions.Survive_install_lighthouse_pose_fn(ctx, lighthouse_Pose_Func);
-            cfunctions.Survive_install_angle_fn(ctx, angle_Process_Func);
-            cfunctions.Survive_install_button_fn(ctx, button_Process_Func);
-            cfunctions.Survive_install_htc_config_fn(ctx, htc_Config_Func);
-            cfunctions.Survive_install_imu_fn(ctx, imu_Process_Func);
-            cfunctions.Survive_install_error_fn(ctx, error_func);
-            cfunctions.Survive_install_info_fn(ctx, info_func);
+            Cfunctions.Survive_install_raw_pose_fn(ctx, raw_Pose_Func);
+            Cfunctions.Survive_install_light_fn(ctx, light_Process_Func);
+            Cfunctions.Survive_install_lighthouse_pose_fn(ctx, lighthouse_Pose_Func);
+            Cfunctions.Survive_install_angle_fn(ctx, angle_Process_Func);
+            Cfunctions.Survive_install_button_fn(ctx, button_Process_Func);
+            Cfunctions.Survive_install_htc_config_fn(ctx, htc_Config_Func);
+            Cfunctions.Survive_install_imu_fn(ctx, imu_Process_Func);
+            Cfunctions.Survive_install_error_fn(ctx, error_func);
+            Cfunctions.Survive_install_info_fn(ctx, info_func);
         }
 
 
@@ -104,46 +104,46 @@ namespace libsurvive
 
         virtual protected void IMUEvent(SurviveObjectPtr so, int mask, double[] accelgyro, uint timecode, int id)
         {
-            cfunctions.Survive_default_imu_process(so, mask, accelgyro, timecode, id);
+            Cfunctions.Survive_default_imu_process(so, mask, accelgyro, timecode, id);
         }
 
         virtual protected int HTCConfigEvent(SurviveObjectPtr so, string ct0conf, int len)
         {
-            return cfunctions.Survive_default_htc_config_process(so, ct0conf, len);
+            return Cfunctions.Survive_default_htc_config_process(so, ct0conf, len);
         }
 
         virtual protected void ButtonEvent(SurviveObjectPtr so, byte eventType, byte buttonId, byte axis1Id, ushort axis1Val, byte axis2Id, ushort axis2Val)
         {
-            cfunctions.Survive_default_button_process(so, eventType, buttonId, axis1Id, axis1Val, axis2Id, axis2Val);
+            Cfunctions.Survive_default_button_process(so, eventType, buttonId, axis1Id, axis1Val, axis2Id, axis2Val);
         }
 
         virtual protected void AngleEvent(SurviveObjectPtr so, int sensor_id, int acode, uint timecode, double length, double angle, uint lh)
         {
-            cfunctions.Survive_default_angle_process(so, sensor_id, acode, timecode, length, angle, lh);
+            Cfunctions.Survive_default_angle_process(so, sensor_id, acode, timecode, length, angle, lh);
         }
 
         protected void LightHouseEvent(SurviveObjectPtr ctx, byte lighthouse, SurvivePose lighthouse_pose, SurvivePose object_pose)
         {
-            cfunctions.Survive_default_lighthouse_pose_process(ctx, lighthouse, lighthouse_pose, object_pose);
+            Cfunctions.Survive_default_lighthouse_pose_process(ctx, lighthouse, lighthouse_pose, object_pose);
         }
 
         virtual protected void LightEvent(SurviveObjectPtr so, int sensor_id, int acode, int timeinsweep, UInt32 timecode, UInt32 length, UInt32 lighthouse)
         {
-            cfunctions.Survive_default_light_process(so, sensor_id, acode, timeinsweep, timecode, length, lighthouse);
+            Cfunctions.Survive_default_light_process(so, sensor_id, acode, timeinsweep, timecode, length, lighthouse);
 
             //Console.WriteLine("LightEvent");
         }
 
         virtual protected void PoseEvent(SurviveObjectPtr so, byte lighthouse, SurvivePose pose)
         {
-            cfunctions.Survive_default_raw_pose_process(so, lighthouse, pose);
+            Cfunctions.Survive_default_raw_pose_process(so, lighthouse, pose);
 
             Console.WriteLine("PoseEvent");
         }
         
         public int Poll()
         {
-            return cfunctions.Survive_poll(ctx);
+            return Cfunctions.Survive_poll(ctx);
         }
     }
 
