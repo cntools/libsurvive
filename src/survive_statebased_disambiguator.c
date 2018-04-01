@@ -343,7 +343,7 @@ static void RunACodeCapture(int target_acode, Disambiguator_data_t *d, const Lig
 		if (d->confidence < penalty) {
 			SurviveContext *ctx = d->so->ctx;
 			SetState(d, le, LS_UNKNOWN);
-			SV_INFO("WARNING: Disambiguator got lost; refinding state.");
+			SV_INFO("WARNING: Disambiguator got lost; refinding state for %s", d->so->codename);
 		}
 		d->confidence -= penalty;
 		return;
@@ -385,22 +385,40 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 		}
 	} else {
 		// Leaving a sweep ...
+		size_t avg_length = 0;
+		size_t cnt = 0;
+
 		for (int i = 0; i < d->so->sensor_ct; i++) {
 			LightcapElement le = d->sweep_data[i];
 			// Only care if we actually have data AND we have a time of last sync. We won't have the latter
 			// if we synced with the LH at cetain times.
 			if (le.length > 0 && d->time_of_last_sync[LS_Params[d->state].lh] > 0) {
-				int32_t offset_from =
-					timestamp_diff(le.timestamp + le.length / 2, d->time_of_last_sync[LS_Params[d->state].lh]);
+				avg_length += le.length;
+				cnt++;
+			}
+		}
+		if (cnt > 0) {
+			double var = 1.5;
+			size_t minl = (1 / var) * (avg_length + cnt / 2) / cnt;
+			size_t maxl = var * (avg_length + cnt / 2) / cnt;
 
-				// Send the lightburst out.
-				assert(offset_from > 0);
-				d->so->ctx->lightproc(d->so, i, LS_Params[d->state].acode, offset_from, le.timestamp, le.length,
-									  LS_Params[d->state].lh);
+			for (int i = 0; i < d->so->sensor_ct; i++) {
+				LightcapElement le = d->sweep_data[i];
+				// Only care if we actually have data AND we have a time of last sync. We won't have the latter
+				// if we synced with the LH at certain times.
+				if (le.length > 0 && d->time_of_last_sync[LS_Params[d->state].lh] > 0 && le.length >= minl &&
+					le.length <= maxl) {
+					int32_t offset_from =
+						timestamp_diff(le.timestamp + le.length / 2, d->time_of_last_sync[LS_Params[d->state].lh]);
+
+					// Send the lightburst out.
+					if (offset_from > 0)
+						d->so->ctx->lightproc(d->so, i, LS_Params[d->state].acode, offset_from, le.timestamp, le.length,
+											  LS_Params[d->state].lh);
+				}
 			}
 		}
 	}
-
 	SetState(d, le, new_state);
 }
 
@@ -421,7 +439,8 @@ static void PropagateState(Disambiguator_data_t *d, const LightcapElement *le) {
 	const LighthouseStateParameters *param = &LS_Params[d->state];
 	if (param->is_sweep == 0) {
 		RunACodeCapture(param->acode, d, le);
-	} else if (le->length > d->sweep_data[le->sensor_id].length) {
+	} else if (le->length > d->sweep_data[le->sensor_id].length &&
+			   le->length < 7000 /*anything above 10k seems to be bullshit?*/) {
 		// Note we only select the highest length one per sweep. Also, we bundle everything up and send it later all at
 		// once.
 		// so that we can do this filtering. Might not be necessary?
