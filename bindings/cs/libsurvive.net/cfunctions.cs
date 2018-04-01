@@ -12,23 +12,16 @@ namespace libsurvive
     [StructLayout(LayoutKind.Sequential)]
     public class SurvivePose
     {
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]        
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
         public double[] Pos; // Position in the form xyz
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
-        public double[] Rot; // Quaternion in the form wxyz
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public class SurviveObject
-    {
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
-        public char[] codename;    //3 letters, null-terminated.  Currently HMD, WM0, WM1.
+        public double[] Rot; // Quaternion in the form wxyz        
     }
 
     class cfunctions
     {
-//#pragma warning disable IDE1006 // Naming Styles
-        [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_init_internal") ]
+        //#pragma warning disable IDE1006 // Naming Styles
+        [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_init_internal")]
         public static extern SurviveContextPtr Survive_init_internal(int argc, string[] args);
 
         [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_close")]
@@ -95,26 +88,32 @@ namespace libsurvive
 
 
         [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_object_codename")]
-        public static extern char Survive_object_codename(SurviveObjectPtr so);
+        public static extern string Survive_object_codename(SurviveObjectPtr so);
 
 
         [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_object_drivername")]
-        public static extern char Survive_object_drivername(SurviveObject so);
+        public static extern char Survive_object_drivername(SurviveObjectPtr so);
 
         [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_object_charge")]
-        public static extern byte Survive_object_charge(SurviveObject so);
+        public static extern byte Survive_object_charge(SurviveObjectPtr so);
 
         [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_object_charging")]
-        public static extern bool Survive_object_charging(SurviveObject so);
+        public static extern bool Survive_object_charging(SurviveObjectPtr so);
 
         [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_object_pose")]
-        public static extern SurvivePose Survive_object_pose(SurviveObject so);
+        public static extern SurvivePose Survive_object_pose(SurviveObjectPtr so);
+
 
         [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_object_sensor_locations")]
-        public static extern int Survive_object_sensor_locations(SurviveObjectPtr so);
+        public static extern double[] Survive_object_sensor_locations(SurviveObjectPtr so);
 
         [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_object_sensor_normals")]
-        public static extern int Survive_object_sensor_normals(SurviveObjectPtr so);
+        public static extern double[] Survive_object_sensor_normals(SurviveObjectPtr so);
+
+
+
+        [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_get_so_by_name")]
+        public static extern IntPtr Survive_get_so_by_name(IntPtr ctx, string name);
 
         //#pragma warning restore IDE1006 // Naming Styles
     }
