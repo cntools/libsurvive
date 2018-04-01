@@ -186,8 +186,8 @@ enum SurviveCalFlag {
 };
 
 typedef struct survive_calibration_config {
-	enum SurviveCalFlag use_flag;
 	FLT phase_scale, tilt_scale, curve_scale, gib_scale;
+	enum SurviveCalFlag use_flag;
 } survive_calibration_config;
 
 survive_calibration_config survive_calibration_config_ctor();

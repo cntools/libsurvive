@@ -19,7 +19,7 @@ void survive_reproject_from_pose_with_bsd(const BaseStationData *bsd, const surv
 
 	FLT x = -t_pt[0] / -t_pt[2];
 	FLT y = t_pt[1] / -t_pt[2];
-
+	double xy[] = {x, y};
 	double ang[] = {atan(x), atan(y)};
 
 	const FLT *phase = bsd->fcal.phase;
@@ -37,9 +37,9 @@ void survive_reproject_from_pose_with_bsd(const BaseStationData *bsd, const surv
 		if (f & SVCal_Phase)
 			out[axis] -= config->phase_scale * phase[axis];
 		if (f & SVCal_Tilt)
-			out[axis] -= (config->tilt_scale * tilt[axis]) * ang[opp_axis];
+			out[axis] -= tan(config->tilt_scale * tilt[axis]) * xy[opp_axis];
 		if (f & SVCal_Curve)
-			out[axis] -= config->curve_scale * curve[axis] * ang[opp_axis] * ang[opp_axis];
+			out[axis] -= config->curve_scale * curve[axis] * xy[opp_axis] * xy[opp_axis];
 		if (f & SVCal_Gib)
 			out[axis] -= config->gib_scale * sin(gibPhase[axis] + ang[axis]) * gibMag[axis];
 	}
@@ -60,6 +60,7 @@ void survive_apply_bsd_calibration_by_flag(SurviveContext *ctx, int lh, struct s
 	const int iterations = 4;
 	for (int i = 0; i < iterations; i++) {
 		FLT last_out[2] = {out[0], out[1]};
+		FLT tlast_out[2] = {tan(out[0]), tan(out[1])};
 		bool last_iteration = i == iterations - 1;
 		for (int j = 0; j < 2; j++) {
 			int oj = j == 0 ? 1 : 0;
@@ -67,9 +68,9 @@ void survive_apply_bsd_calibration_by_flag(SurviveContext *ctx, int lh, struct s
 			if (!last_iteration || (f & SVCal_Phase))
 				out[j] += phase_scale * cal->phase[j];
 			if (!last_iteration || (f & SVCal_Tilt))
-				out[j] += (tilt_scale * cal->tilt[j]) * last_out[oj];
+				out[j] += tan(tilt_scale * cal->tilt[j]) * tlast_out[oj];
 			if (!last_iteration || (f & SVCal_Curve))
-				out[j] += (cal->curve[j] * curve_scale) * last_out[oj] * last_out[oj];
+				out[j] += (cal->curve[j] * curve_scale) * tlast_out[oj] * tlast_out[oj];
 			if (!last_iteration || (f & SVCal_Gib))
 				out[j] += sin(cal->gibpha[j] + last_out[j]) * cal->gibmag[j] * gib_scale;
 		}
@@ -88,8 +89,8 @@ void survive_reproject(const SurviveContext *ctx, int lighthouse, FLT *point3d, 
 survive_calibration_config survive_calibration_config_ctor() {
 	return (survive_calibration_config){.use_flag = SVCal_All,
 										.phase_scale = 1.,
-										.tilt_scale = 1. / 10000.,
-										.curve_scale = 1. / 1000.,
+										.tilt_scale = 1. / 10.,
+										.curve_scale = 1. / 10.,
 										.gib_scale = -1. / 10.};
 }
 

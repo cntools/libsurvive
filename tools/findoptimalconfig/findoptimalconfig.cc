@@ -200,35 +200,36 @@ double sba_opt(SurviveContext *ctx, const survive_calibration_config &config, Pl
 
 struct optimal_cal_ctx {
 	std::vector<double> sensors;
+	std::vector<int> lighthouses;
 	SurviveContext *ctx;
-	survive_calibration_config config;
 };
 
 static void metric_function(int j, int i, double *aj, double *xij, void *adata) {
 	optimal_cal_ctx *ctx = (optimal_cal_ctx *)(adata);
 
 	FLT sensorInWorld[3] = {ctx->sensors[i * 3 + 0], ctx->sensors[i * 3 + 1], ctx->sensors[i * 3 + 2]};
+	int lh = ctx->lighthouses[i];
+	BaseStationData bsd = ctx->ctx->bsd[lh];
+	survive_calibration_config cfg = *(survive_calibration_config *)aj;
 
-	BaseStationData bsd = ctx->ctx->bsd[j];
-	bsd.fcal = *(BaseStationCal *)aj;
-
-	survive_reproject_from_pose_with_bsd(&bsd, &ctx->config, &ctx->ctx->bsd[j].Pose, sensorInWorld, xij);
+	survive_reproject_from_pose_with_bsd(&bsd, &cfg, &ctx->ctx->bsd[lh].Pose, sensorInWorld, xij);
 }
 
-double find_optimal_cal(SurviveContext *ctx, const survive_calibration_config &config, PlaybackData &data) {
+double find_optimal_cal(SurviveContext *ctx, PlaybackData &data) {
 	optimal_cal_ctx _ctx;
 	std::vector<char> vmask;
 	std::vector<double> cov, meas;
 	_ctx.ctx = ctx;
-	_ctx.config = config;
 	for (auto &in : data.inputs) {
 		for (size_t sensor = 0; sensor < in.so->sensor_ct; sensor++) {
 			FLT p[3];
 			ApplyPoseToPoint(p, &in.position, &data.so->sensor_locations[sensor * 3]);
-			_ctx.sensors.emplace_back(p[0]);
-			_ctx.sensors.emplace_back(p[1]);
-			_ctx.sensors.emplace_back(p[2]);
-			for (size_t lh = 0; lh < 1; lh++) {
+			for (size_t lh = 0; lh < 2; lh++) {
+				_ctx.sensors.emplace_back(p[0]);
+				_ctx.sensors.emplace_back(p[1]);
+				_ctx.sensors.emplace_back(p[2]);
+				_ctx.lighthouses.emplace_back(lh);
+
 				auto scene = &in.activations;
 				if (SurviveSensorActivations_isPairValid(scene, settings.sensor_time_window, in.timestamp, sensor,
 														 lh)) {
@@ -250,22 +251,25 @@ double find_optimal_cal(SurviveContext *ctx, const survive_calibration_config &c
 	double opts[SBA_OPTSSZ] = {0};
 	double info[SBA_INFOSZ] = {0};
 
-	survive_calibration_config opts[0] = SBA_INIT_MU;
+	survive_calibration_config config = {0};
+	config.use_flag = SVCal_All;
+
+	opts[0] = SBA_INIT_MU;
 	opts[1] = SBA_STOP_THRESH;
 	opts[2] = SBA_STOP_THRESH;
 	opts[3] = SBA_STOP_THRESH;
 	opts[3] = SBA_STOP_THRESH; // max_reproj_error * meas.size();
 	opts[4] = 0.0;
 
-	int status = sba_mot_levmar(data.inputs.size() * so->sensor_ct, // number of 3d points
-								1,									// Number of cameras -- 2 lighthouses
-								0,									// Number of cameras to not modify
-								&vmask[0],							// boolean vis mask
-								(double *)cal,						// camera parameters
-								2,									// sizeof(BaseStationCal) / sizeof(FLT),
-								&meas[0],							// 2d points for 3d objs
-								covx,								// covariance of measurement. Null sets to identity
-								2,									// 2 points per image
+	int status = sba_mot_levmar(data.inputs.size() * so->sensor_ct * NUM_LIGHTHOUSES, // number of 3d points
+								1,				   // Number of cameras -- 2 lighthouses
+								0,				   // Number of cameras to not modify
+								&vmask[0],		   // boolean vis mask
+								(double *)&config, // camera parameters
+								4,				   // sizeof(BaseStationCal) / sizeof(FLT),
+								&meas[0],		   // 2d points for 3d objs
+								covx,			   // covariance of measurement. Null sets to identity
+								2,				   // 2 points per image
 								metric_function,
 								0,	 // jacobia of metric_func
 								&_ctx, // user data
@@ -294,10 +298,6 @@ double find_optimal_cal(SurviveContext *ctx, const survive_calibration_config &c
 	}
 	assert(!isinf(info[1]));
 	std::cerr << "Used " << meas_size << " measurements" << std::endl;
-
-	double *_cal = (double *)cal;
-	for (int i = 0; i < sizeof(BaseStationCal) / sizeof(FLT); i++)
-		std::cerr << _cal[2 * i] << ", " << _cal[2 * i + 1] << " = " << (info[1] / meas_size * 2) << std::endl;
 
 	return info[1] / meas_size * 2;
 }
@@ -371,9 +371,7 @@ int main(int argc, char **argv) {
 		while (survive_poll(ctx) == 0) {
 		}
 
-		survive_calibration_config config = survive_calibration_config_ctor();
-
-		find_optimal_cal(ctx, config, data);
+		find_optimal_cal(ctx, data);
 
 		survive_close(ctx);
 	}
