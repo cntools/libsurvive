@@ -6,6 +6,7 @@
 
 #include <poser.h>
 #include <survive.h>
+#include <survive_reproject.h>
 
 #include "epnp/epnp.h"
 #include "linmath.h"
@@ -71,7 +72,9 @@ static int opencv_solver_fullscene(SurviveObject *so, PoserDataFullScene *pdfs) 
 
 		for (size_t i = 0; i < so->sensor_ct; i++) {
 			FLT *lengths = pdfs->lengths[i][lh];
-			FLT *ang = pdfs->angles[i][lh];
+			FLT *_ang = pdfs->angles[i][lh];
+			FLT ang[2];
+			survive_apply_bsd_calibration(so->ctx, lh, _ang, ang);
 			if (lengths[0] < 0 || lengths[1] < 0)
 				continue;
 
@@ -103,7 +106,10 @@ static void add_correspondences(SurviveObject *so, epnp *pnp, SurviveSensorActiv
 	for (size_t sensor_idx = 0; sensor_idx < so->sensor_ct; sensor_idx++) {
 		if (SurviveSensorActivations_isPairValid(scene, SurviveSensorActivations_default_tolerance, timecode,
 												 sensor_idx, lh)) {
-			double *angles = scene->angles[sensor_idx][lh];
+			FLT *_angles = scene->angles[sensor_idx][lh];
+			FLT angles[2];
+			survive_apply_bsd_calibration(so->ctx, lh, _angles, angles);
+
 			epnp_add_correspondence(pnp, so->sensor_locations[sensor_idx * 3 + 0],
 									so->sensor_locations[sensor_idx * 3 + 1], so->sensor_locations[sensor_idx * 3 + 2],
 									tan(angles[0]), tan(angles[1]));

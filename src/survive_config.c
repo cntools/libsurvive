@@ -119,12 +119,13 @@ void config_read_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8
 	FLT defaults[7] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
 	bsd->BaseStationID = config_read_uint32(cg, "id", 0);
+	bsd->mode = config_read_uint32(cg, "mode", 0);
 	config_read_float_array(cg, "pose", &bsd->Pose.Pos[0], defaults, 7);
-	config_read_float_array(cg, "fcalphase", bsd->fcalphase, defaults, 2);
-	config_read_float_array(cg, "fcaltilt", bsd->fcaltilt, defaults, 2);
-	config_read_float_array(cg, "fcalcurve", bsd->fcalcurve, defaults, 2);
-	config_read_float_array(cg, "fcalgibpha", bsd->fcalgibpha, defaults, 2);
-	config_read_float_array(cg, "fcalgibmag", bsd->fcalgibmag, defaults, 2);
+	config_read_float_array(cg, "fcalphase", bsd->fcal.phase, defaults, 2);
+	config_read_float_array(cg, "fcaltilt", bsd->fcal.tilt, defaults, 2);
+	config_read_float_array(cg, "fcalcurve", bsd->fcal.curve, defaults, 2);
+	config_read_float_array(cg, "fcalgibpha", bsd->fcal.gibpha, defaults, 2);
+	config_read_float_array(cg, "fcalgibmag", bsd->fcal.gibmag, defaults, 2);
 	bsd->PositionSet = config_read_uint32(cg, "PositionSet", 0);
 }
 
@@ -132,12 +133,13 @@ void config_set_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8_
 	config_group *cg = lh_config + idx;
 	config_set_uint32(cg, "index", idx);
 	config_set_uint32(cg, "id", bsd->BaseStationID);
+	config_set_uint32(cg, "mode", bsd->mode);
 	config_set_float_a(cg, "pose", &bsd->Pose.Pos[0], 7);
-	config_set_float_a(cg, "fcalphase", bsd->fcalphase, 2);
-	config_set_float_a(cg, "fcaltilt", bsd->fcaltilt, 2);
-	config_set_float_a(cg, "fcalcurve", bsd->fcalcurve, 2);
-	config_set_float_a(cg, "fcalgibpha", bsd->fcalgibpha, 2);
-	config_set_float_a(cg, "fcalgibmag", bsd->fcalgibmag, 2);
+	config_set_float_a(cg, "fcalphase", bsd->fcal.phase, 2);
+	config_set_float_a(cg, "fcaltilt", bsd->fcal.tilt, 2);
+	config_set_float_a(cg, "fcalcurve", bsd->fcal.curve, 2);
+	config_set_float_a(cg, "fcalgibpha", bsd->fcal.gibpha, 2);
+	config_set_float_a(cg, "fcalgibmag", bsd->fcal.gibmag, 2);
 	config_set_uint32(cg, "PositionSet", bsd->PositionSet);
 }
 

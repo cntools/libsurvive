@@ -9,6 +9,8 @@
 #include <vector>
 
 #include <sba/sba.h>
+#include <survive_reproject.h>
+
 std::ostream &operator<<(std::ostream &o, const survive_calibration_options_config &self) {
 	o << "\t";
 	if (!self.enable[0] && !self.enable[1]) {
@@ -49,7 +51,7 @@ struct SBAData {
 
 	FLT sensor_variance = 1.;
 	FLT sensor_variance_per_second = 0;
-	int sensor_time_window = 1600000;
+	int sensor_time_window = SurviveSensorActivations_default_tolerance;
 
 	int required_meas = 8;
 };
@@ -57,10 +59,12 @@ struct SBAData {
 struct PlaybackDataInput {
 	SurviveObject *so = nullptr;
 	SurvivePose position;
-
+	uint32_t timestamp;
 	std::vector<char> vmask;
 	std::vector<double> meas, cov;
-	PlaybackDataInput(SurviveObject *so, const SurvivePose &position) : so(so), position(position) {
+	SurviveSensorActivations activations;
+	PlaybackDataInput(SurviveObject *so, const SurvivePose &position)
+		: so(so), position(position), activations(so->activations) {
 		int32_t sensor_count = so->sensor_ct;
 		vmask.resize(sensor_count * NUM_LIGHTHOUSES);
 		cov.resize(4 * sensor_count * NUM_LIGHTHOUSES);
@@ -74,6 +78,7 @@ struct PlaybackDataInput {
 };
 
 struct PlaybackData {
+	SurviveObject *so = nullptr;
 	BaseStationData bsd[2];
 	std::vector<PlaybackDataInput> inputs;
 };
@@ -116,15 +121,24 @@ void light_process(SurviveObject *so, int sensor_id, int acode, int timeinsweep,
 	survive_default_light_process(so, sensor_id, acode, timeinsweep, timecode, length, lighthouse);
 }
 
+SurvivePose lastPose = {};
 void raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose) {
 	survive_default_raw_pose_process(so, lighthouse, pose);
 	PlaybackData *d = (PlaybackData *)so->ctx->user_ptr;
+	d->so = so;
 	d->inputs.emplace_back(so, *pose);
 	auto &input = d->inputs.back();
+	input.timestamp = timestamp;
 	int meas = construct_input_from_scene(so, timestamp, &input.vmask.front(), &input.meas.front(), &input.cov.front());
 	input.shrink(meas / 2);
-	if (meas / 2 < 12)
+
+	double dist = 0;
+	if (d->inputs.empty() == false) {
+		dist = dist3d(pose->Pos, lastPose.Pos);
+	}
+	if (meas / 2 < 8 || dist > .00009)
 		d->inputs.pop_back();
+	lastPose = *pose;
 }
 
 void lighthouse_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *pose, SurvivePose *obj_pose) {
@@ -166,7 +180,6 @@ double sba_opt(SurviveContext *ctx, const survive_calibration_config &config, Pl
 	SurviveObject *so = data.so;
 
 	SurvivePose soLocation = data.position;
-	bool currentPositionValid = quatmagnitude(&soLocation.Rot[0]) != 0;
 
 	double opts[SBA_OPTSSZ] = {0};
 	double info[SBA_INFOSZ] = {0};
@@ -191,15 +204,11 @@ double sba_opt(SurviveContext *ctx, const survive_calibration_config &config, Pl
 								str_metric_function,
 								0,	 // jacobia of metric_func
 								&_ctx, // user data
-								50,	// Max iterations
+								100,   // Max iterations
 								0,	 // verbosity
 								opts,  // options
 								info); // info
 
-	if (status > 0) {
-	} else {
-		assert(false);
-	}
 	int meas_size = data.meas.size() / 2;
 	if (meas_size == 0)
 		return 0;
@@ -218,14 +227,113 @@ double sba_opt(SurviveContext *ctx, const survive_calibration_config &config, Pl
 	return info[1] / meas_size * 2;
 }
 
-double find_avg_reproj_error(SurviveContext *ctx, const survive_calibration_config &config, PlaybackDataInput &data) {
-	auto vmask = &data.vmask.front();
-	auto cov = &data.cov.front();
-	auto meas = &data.meas.front();
-	double err = 0;
-	size_t cnt = 0;
+struct optimal_cal_ctx {
+	std::vector<double> sensors;
+	SurviveContext *ctx;
+	survive_calibration_config config;
+};
 
-	err += sba_opt(ctx, config, data);
+static void metric_function(int j, int i, double *aj, double *xij, void *adata) {
+	optimal_cal_ctx *ctx = (optimal_cal_ctx *)(adata);
+
+	FLT sensorInWorld[3] = {ctx->sensors[i * 3 + 0], ctx->sensors[i * 3 + 1], ctx->sensors[i * 3 + 2]};
+
+	BaseStationData bsd = ctx->ctx->bsd[j];
+	bsd.fcal = *(BaseStationCal *)aj;
+
+	survive_reproject_from_pose_with_bsd(&bsd, &ctx->config, &ctx->ctx->bsd[j].Pose, sensorInWorld, xij);
+}
+
+double find_optimal_cal(SurviveContext *ctx, const survive_calibration_config &config, PlaybackData &data) {
+	optimal_cal_ctx _ctx;
+	std::vector<char> vmask;
+	std::vector<double> cov, meas;
+	_ctx.ctx = ctx;
+	_ctx.config = config;
+	for (auto &in : data.inputs) {
+		for (size_t sensor = 0; sensor < in.so->sensor_ct; sensor++) {
+			FLT p[3];
+			ApplyPoseToPoint(p, &in.position, &data.so->sensor_locations[sensor * 3]);
+			_ctx.sensors.emplace_back(p[0]);
+			_ctx.sensors.emplace_back(p[1]);
+			_ctx.sensors.emplace_back(p[2]);
+			for (size_t lh = 0; lh < 1; lh++) {
+				auto scene = &in.activations;
+				if (SurviveSensorActivations_isPairValid(scene, settings.sensor_time_window, in.timestamp, sensor,
+														 lh)) {
+					double *a = scene->angles[sensor][lh];
+					vmask.emplace_back(1); //[sensor * NUM_LIGHTHOUSES + lh] = 1;
+
+					meas.emplace_back(a[0]);
+					meas.emplace_back(a[1]);
+				} else {
+					vmask.emplace_back(0);
+				}
+			}
+		}
+	}
+
+	double *covx = 0;
+	SurviveObject *so = data.so;
+
+	double opts[SBA_OPTSSZ] = {0};
+	double info[SBA_INFOSZ] = {0};
+
+	BaseStationCal cal[2] = {};
+
+	opts[0] = SBA_INIT_MU;
+	opts[1] = SBA_STOP_THRESH;
+	opts[2] = SBA_STOP_THRESH;
+	opts[3] = SBA_STOP_THRESH;
+	opts[3] = SBA_STOP_THRESH; // max_reproj_error * meas.size();
+	opts[4] = 0.0;
+
+	int status = sba_mot_levmar(data.inputs.size() * so->sensor_ct, // number of 3d points
+								1,									// Number of cameras -- 2 lighthouses
+								0,									// Number of cameras to not modify
+								&vmask[0],							// boolean vis mask
+								(double *)cal,						// camera parameters
+								2,									// sizeof(BaseStationCal) / sizeof(FLT),
+								&meas[0],							// 2d points for 3d objs
+								covx,								// covariance of measurement. Null sets to identity
+								2,									// 2 points per image
+								metric_function,
+								0,	 // jacobia of metric_func
+								&_ctx, // user data
+								50,	// Max iterations
+								0,	 // verbosity
+								opts,  // options
+								info); // info
+
+	if (status > 0) {
+	} else {
+		assert(false);
+	}
+	int meas_size = _ctx.sensors.size() / 2;
+	if (meas_size == 0)
+		return 0;
+
+	{
+		SurviveContext *ctx = so->ctx;
+		// Docs say info[0] should be divided by meas; I don't buy it really...
+		static int cnt = 0;
+		if (cnt++ > 1000) {
+			SV_INFO("%f original reproj error for %u meas", (info[0] / meas_size * 2), (int)meas_size);
+			SV_INFO("%f cur reproj error", (info[1] / meas_size * 2));
+			cnt = 0;
+		}
+	}
+	assert(!isinf(info[1]));
+	std::cerr << "Used " << meas_size << " measurements" << std::endl;
+
+	double *_cal = (double *)cal;
+	for (int i = 0; i < sizeof(BaseStationCal) / sizeof(FLT); i++)
+		std::cerr << _cal[2 * i] << ", " << _cal[2 * i + 1] << " = " << (info[1] / meas_size * 2) << std::endl;
+
+	return info[1] / meas_size * 2;
+}
+double find_avg_reproj_error(SurviveContext *ctx, const survive_calibration_config &config, PlaybackDataInput &data) {
+	return sba_opt(ctx, config, data);
 	/*
 	for (size_t sensor = 0; sensor < data.so->sensor_ct; sensor++) {
 	  for (size_t lh = 0; lh < 2; lh++) {
@@ -246,7 +354,6 @@ double find_avg_reproj_error(SurviveContext *ctx, const survive_calibration_conf
 		}
 	  }
 	  }*/
-	return err;
 }
 
 double find_avg_reproj_error(SurviveContext *ctx, const survive_calibration_config &config, PlaybackData &data) {
@@ -259,10 +366,10 @@ double find_avg_reproj_error(SurviveContext *ctx, const survive_calibration_conf
 
 int main(int argc, char **argv) {
 	std::vector<std::pair<size_t, size_t>> sections = {
-		{28, 0}, // phase
-				 //    { 5, 5 },  // tilt
-				 //    { 5, 10 }, // curve
-				 //    { 11, 15 } // gibs + useSin
+		{5, 0}, // phase
+				//{ 5, 5 },  // tilt
+				//{ 5, 10 }, // curve
+				//{ 11, 15 } // gibs + useSin
 	};
 
 	for (int i = 1; i < argc; i++) {
@@ -279,7 +386,9 @@ int main(int argc, char **argv) {
 							  "--defaultposer",
 							  "SBA",
 							  "--sba-required-meas",
-							  "12",
+							  "8",
+							  "--sba-max-error",
+							  ".1",
 							  "--playback",
 							  argv[i]};
 
@@ -293,10 +402,19 @@ int main(int argc, char **argv) {
 		while (survive_poll(ctx) == 0) {
 		}
 
+		survive_calibration_config config = {};
+		// config.tilt.enable[0] = config.tilt.enable[1] = 1;
+		// config.curve.enable[0] = config.curve.enable[1] = 1;
+		config.phase.enable[0] = config.phase.enable[1] = 1;
+		// config.gibPhase.enable[0] = config.gibPhase.enable[1] = 1;
+		// config.gibMag.enable[0] = config.gibMag.enable[1] = 1;
+
+		find_optimal_cal(ctx, config, data);
+
 		for (int j = 0; j < sections.size(); j++) {
 			auto &range = sections[j];
 			for (size_t _i = 0; _i < (1 << range.first); _i++) {
-				int i = _i << range.second;
+				int i = (_i << range.second);
 				survive_calibration_config config = survive_calibration_config_create_from_idx(i);
 				if (i == survive_calibration_config_index(&config)) {
 					double error = find_avg_reproj_error(ctx, config, data);

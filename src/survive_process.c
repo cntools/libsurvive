@@ -51,14 +51,17 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 	static int use_bsd_cal = -1;
 	if(use_bsd_cal == -1) {
 	  use_bsd_cal = survive_configi(ctx, "use-bsd-cal", SC_GET, 1);
+	  if (use_bsd_cal == 0) {
+		  SV_INFO("Not using BSD calibration values");
+	  }
 	}
 	if(use_bsd_cal) {
 	  BaseStationData * bsd = &ctx->bsd[base_station];
 
-	  //XXX TODO: This seriously needs to be worked on.  See: https://github.com/cnlohr/libsurvive/issues/18
-	  angle += bsd->fcalphase[axis];
+	  // XXX TODO: This seriously needs to be worked on.  See: https://github.com/cnlohr/libsurvive/issues/18
+	  // angle += (use_bsd_cal == 2 ? -1 : 1) * bsd->fcal.phase[axis];
 	  //	angle += bsd->fcaltilt[axis] * predicted_angle(axis1);
-	
+
 	  //TODO!!!
 	}
 

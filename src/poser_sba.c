@@ -40,6 +40,8 @@ typedef struct SBAData {
 	int successes_to_reset;
 	int successes_to_reset_cntr;
 
+	FLT max_error;
+
 	FLT sensor_variance;
 	FLT sensor_variance_per_second;
 	int sensor_time_window;
@@ -71,7 +73,9 @@ static size_t construct_input(const SurviveObject *so, PoserDataFullScene *pdfs,
 				continue;
 			}
 
-			double *angles = pdfs->angles[sensor][lh];
+			double *_angles = pdfs->angles[sensor][lh];
+			double angles[2];
+			survive_apply_bsd_calibration(so->ctx, lh, _angles, angles);
 			vmask[sensor * NUM_LIGHTHOUSES + lh] = 1;
 
 			meas[measCount++] = angles[0];
@@ -89,7 +93,9 @@ static size_t construct_input_from_scene(SBAData *d, PoserDataLight *pdl, Surviv
 	for (size_t sensor = 0; sensor < so->sensor_ct; sensor++) {
 		for (size_t lh = 0; lh < 2; lh++) {
 			if (SurviveSensorActivations_isPairValid(scene, d->sensor_time_window, pdl->timecode, sensor, lh)) {
-				double *a = scene->angles[sensor][lh];
+				double *_a = scene->angles[sensor][lh];
+				FLT a[2];
+				survive_apply_bsd_calibration(so->ctx, lh, _a, a);
 				vmask[sensor * NUM_LIGHTHOUSES + lh] = 1;
 
 				if (cov) {
@@ -273,7 +279,7 @@ static double run_sba_find_3d_structure(SBAData *d, survive_calibration_config o
 		if (distance > 1.)
 			status = -1;
 	}
-	if (status > 0) {
+	if (status > 0 && (info[1] / meas_size * 2) < d->max_error) {
 		d->failures_to_reset_cntr = d->failures_to_reset;
 		quatnormalize(soLocation.Rot, soLocation.Rot);
 		PoserData_poser_raw_pose_func(&pdl->hdr, so, 1, &soLocation);
@@ -283,7 +289,7 @@ static double run_sba_find_3d_structure(SBAData *d, survive_calibration_config o
 		SurviveContext *ctx = so->ctx;
 		// Docs say info[0] should be divided by meas; I don't buy it really...
 		static int cnt = 0;
-		if (cnt++ > 1000 || meas_size < d->required_meas) {
+		if (cnt++ > 1000 || meas_size < d->required_meas || (info[1] / meas_size * 2) > d->max_error) {
 			SV_INFO("%f original reproj error for %u meas", (info[0] / meas_size * 2), (int)meas_size);
 			SV_INFO("%f cur reproj error", (info[1] / meas_size * 2));
 			cnt = 0;
@@ -389,11 +395,12 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		d->failures_to_reset_cntr = 0;
 		d->failures_to_reset = survive_configi(ctx, "sba-failures-to-reset", SC_GET, 1);
 		d->successes_to_reset_cntr = 0;
-		d->successes_to_reset = survive_configi(ctx, "sba-successes-to-reset", SC_GET, 1);
+		d->successes_to_reset = survive_configi(ctx, "sba-successes-to-reset", SC_GET, 100);
 
 		d->required_meas = survive_configi(ctx, "sba-required-meas", SC_GET, 8);
-
-		d->sensor_time_window = survive_configi(ctx, "sba-time-window", SC_GET, 1600000 * 4);
+		d->max_error = survive_configf(ctx, "sba-max-error", SC_GET, .0001);
+		d->sensor_time_window =
+			survive_configi(ctx, "sba-time-window", SC_GET, SurviveSensorActivations_default_tolerance * 2);
 		d->sensor_variance_per_second = survive_configf(ctx, "sba-sensor-variance-per-sec", SC_GET, 0.001);
 		d->sensor_variance = survive_configf(ctx, "sba-sensor-variance", SC_GET, 1.0);
 		d->so = so;
@@ -403,6 +410,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		SV_INFO("\tsba-sensor-variance: %f", d->sensor_variance);
 		SV_INFO("\tsba-sensor-variance-per-sec: %f", d->sensor_variance_per_second);
 		SV_INFO("\tsba-time-window: %d", d->sensor_time_window);
+		SV_INFO("\tsba-max-error: %f", d->max_error);
 	}
 	SBAData *d = so->PoserData;
 	switch (pd->pt) {
@@ -416,8 +424,8 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		// only process sweeps
 		FLT error = -1;
 		if (d->last_lh != lightData->lh || d->last_acode != lightData->acode) {
-			survive_calibration_config config = *survive_calibration_default_config();
-			error = run_sba_find_3d_structure(d, config, lightData, scene, 50, .5);
+			survive_calibration_config config = *survive_calibration_default_config(ctx);
+			error = run_sba_find_3d_structure(d, config, lightData, scene, 100, .5);
 			d->last_lh = lightData->lh;
 			d->last_acode = lightData->acode;
 		}
@@ -435,9 +443,9 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 	case POSERDATA_FULL_SCENE: {
 		SurviveContext *ctx = so->ctx;
 		PoserDataFullScene *pdfs = (PoserDataFullScene *)(pd);
-		survive_calibration_config config = *survive_calibration_default_config();
+		survive_calibration_config config = *survive_calibration_default_config(ctx);
 		SV_INFO("Running sba with %u", (int)survive_calibration_config_index(&config));
-		double error = run_sba(config, pdfs, so, 50, .005);
+		double error = run_sba(config, pdfs, so, 100, .005);
 		// std::cerr << "Average reproj error: " << error << std::endl;
 		return 0;
 	}
