@@ -80,9 +80,7 @@ public class LibSurViveAPI
 
         SetupConfigs configs = new SetupConfigs
         {
-            playbaskFile = @"C:\Users\justin\source\libsurvive-win-update\bindings\cs\Demo\lightcap-reformat.log",
-            configFile = "survive_conf.json",
-            playbackFactor = 1
+            configFile = "survive_conf.json"
         };
 
         string[] args = CreateStartParameters(configs);
