@@ -214,7 +214,6 @@
     <ClInclude Include="..\..\src\survive_internal.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="libsurvive.def" />
     <None Include="packages.config">
       <SubType>Designer</SubType>
     </None>
