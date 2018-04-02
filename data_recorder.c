@@ -11,16 +11,12 @@ int main(int argc, char **argv) {
 	if (ctx == 0) // implies -help or similiar
 		return 0;
 
-	const char *dataout_file = survive_configs(ctx, "record", SC_SETCONFIG, "");
+	const char *dataout_file = survive_configs(ctx, "record", SC_GET, "");
 	if (strlen(dataout_file) == 0) {
 		survive_configi(ctx, "record-stdout", SC_SET | SC_OVERRIDE, 1);
 	}
 
 	survive_startup(ctx);
-	if (survive_configi(ctx, "calibrate", SC_GET, 1)) {
-		SV_INFO("Installing calibration");
-		survive_cal_install(ctx);
-	}
 
 	while (survive_poll(ctx) == 0) {
 	}

@@ -158,6 +158,9 @@ int main( int argc, char ** argv )
 	double Start = OGGetAbsoluteTime();
 
 	ctx = survive_init( argc, argv );
+	if (ctx == 0) { // Implies --help or similiar
+		return -1;
+	}
 
 	//survive_install_button_fn(ctx, testprog_button_process);
 	survive_install_raw_pose_fn(ctx, testprog_raw_pose_process);

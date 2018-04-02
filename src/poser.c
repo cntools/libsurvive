@@ -1,7 +1,11 @@
 #include "math.h"
 #include <linmath.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <survive.h>
+
+#define _USE_MATH_DEFINES // for C
+#include <math.h>
 
 void PoserData_poser_raw_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse, SurvivePose *pose) {
 	if (poser_data->rawposeproc) {
@@ -17,6 +21,12 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 		poser_data->lighthouseposeproc(so, lighthouse, lighthouse_pose, object_pose, poser_data->userdata);
 	} else {
 		const FLT up[3] = {0, 0, 1};
+
+		if (quatmagnitude(lighthouse_pose->Rot) == 0) {
+			SurviveContext *ctx = so->ctx;
+			SV_INFO("Pose func called with invalid pose.");
+			return;
+		}
 
 		// Assume that the space solved for is valid but completely arbitrary. We are going to do a few things:
 		// a) Using the gyro data, normalize it so that gravity is pushing straight down along Z
@@ -44,8 +54,12 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 		ApplyPoseToPose(&lighthouse2obj, &arb2object, &lighthouse2arb);
 
 		// Now find the space with the same origin, but rotated so that gravity is up
-		SurvivePose lighthouse2objUp = {}, object2objUp = {};
-		quatfrom2vectors(object2objUp.Rot, so->activations.accel, up);
+		SurvivePose lighthouse2objUp = {0}, object2objUp = {0};
+		if (quatmagnitude(so->activations.accel)) {
+			quatfrom2vectors(object2objUp.Rot, so->activations.accel, up);
+		} else {
+			object2objUp.Rot[0] = 1.0;
+		}
 
 		// Calculate the pose of the lighthouse in this space
 		ApplyPoseToPose(&lighthouse2objUp, &object2objUp, &lighthouse2obj);

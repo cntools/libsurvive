@@ -1,0 +1,4 @@
+#!/bin/sh
+
+DIRNAME=`dirname "$0"`
+python2.7 $DIRNAME/pre-commit.py $@

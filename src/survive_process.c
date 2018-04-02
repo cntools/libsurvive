@@ -48,15 +48,22 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 	FLT angle = (timeinsweep - so->timecenter_ticks) * (1./so->timecenter_ticks * 3.14159265359/2.0);
 
 	//Need to now do angle correction.
-#if 1
-	BaseStationData * bsd = &ctx->bsd[base_station];
+	static int use_bsd_cal = -1;
+	if (use_bsd_cal == -1) {
+		use_bsd_cal = survive_configi(ctx, "use-bsd-cal", SC_GET, 1);
+		if (use_bsd_cal == 0) {
+			SV_INFO("Not using BSD calibration values");
+		}
+	}
+	if (use_bsd_cal) {
+		BaseStationData *bsd = &ctx->bsd[base_station];
 
-	//XXX TODO: This seriously needs to be worked on.  See: https://github.com/cnlohr/libsurvive/issues/18
-	angle += bsd->fcalphase[axis];
-//	angle += bsd->fcaltilt[axis] * predicted_angle(axis1);
-	
-	//TODO!!!
-#endif
+		// XXX TODO: This seriously needs to be worked on.  See: https://github.com/cnlohr/libsurvive/issues/18
+		// angle += (use_bsd_cal == 2 ? -1 : 1) * bsd->fcal.phase[axis];
+		//	angle += bsd->fcaltilt[axis] * predicted_angle(axis1);
+
+		// TODO!!!
+	}
 
 	FLT length_sec = length / (FLT)so->timebase_hz;
 	ctx->angleproc( so, sensor_id, acode, timecode, length_sec, angle, lh);
@@ -80,7 +87,9 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 		.lh = lh,
 	};
 
-	SurviveSensorActivations_add(&so->activations, &l);
+	// Simulate the use of only one lighthouse in playback mode.
+	if (lh < ctx->activeLighthouses)
+		SurviveSensorActivations_add(&so->activations, &l);
 
 	survive_recording_angle_process(so, sensor_id, acode, timecode, length, angle, lh);
 

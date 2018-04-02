@@ -1,12 +1,13 @@
-#include "survive_cal.h"
-#include <math.h>
-#include <string.h>
 #include "linmath.h"
-#include <survive.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include "survive_cal.h"
 #include <dclapack.h>
 #include <linmath.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <survive.h>
+#include <survive_reproject.h>
 
 // Dave talks about this poser here: https://www.youtube.com/watch?v=nSbEltdH9vM&feature=youtu.be&t=2h29m47s
 
@@ -127,7 +128,7 @@ int PoserDaveOrtho( SurviveObject * so, PoserData * pd )
 		PoserDataFullScene * fs = (PoserDataFullScene*)pd;
 		int LH_ID;
 
-		SurvivePose alignLh0ToXAxis = {};
+		SurvivePose alignLh0ToXAxis = {0};
 		for( LH_ID = 0; LH_ID < 2; LH_ID++ )
 		{
 			int i;
@@ -139,8 +140,10 @@ int PoserDaveOrtho( SurviveObject * so, PoserData * pd )
 				//Load all our valid points into something the LHFinder can use.
 				if( fs->lengths[i][LH_ID][0] > 0 )
 				{
-					S_in[0][max_hits] = fs->angles[i][LH_ID][0];
-					S_in[1][max_hits] = fs->angles[i][LH_ID][1];
+					FLT out[2];
+					survive_apply_bsd_calibration(ctx, LH_ID, fs->angles[i][LH_ID], out);
+					S_in[0][max_hits] = out[0];
+					S_in[1][max_hits] = out[1];
 					X_in[0][max_hits] = so->sensor_locations[i*3+0];
 					X_in[1][max_hits] = so->sensor_locations[i*3+1];
 					X_in[2][max_hits] = so->sensor_locations[i*3+2];

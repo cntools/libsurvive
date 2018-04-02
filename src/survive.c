@@ -36,8 +36,8 @@ static void survivefault(struct SurviveContext *ctx, const char *fault) {
 }
 
 static void survivenote(struct SurviveContext *ctx, const char *fault) {
-  survive_recording_info_process(ctx, fault);
-  fprintf(stderr, "Info: %s\n", fault);
+	survive_recording_info_process(ctx, fault);
+	fprintf(stderr, "Info: %s\n", fault);
 }
 
 static void *button_servicer(void *context) {
@@ -101,16 +101,28 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 	}
 #endif
 #ifdef MANUAL_REGISTRATION
-// note: this manual registration is currently only in use on builds using Visual Studio.
+	// note: this manual registration is currently only in use on builds using Visual Studio.
 
+	static int did_manual_driver_registration = 0;
+	if (did_manual_driver_registration == 0) {
 #define MANUAL_DRIVER_REGISTRATION(func)                                                                               \
 	int func(SurviveObject *so, PoserData *pd);                                                                        \
 	RegisterDriver(#func, &func);
 
-	MANUAL_DRIVER_REGISTRATION(PoserCharlesSlow)
-	MANUAL_DRIVER_REGISTRATION(PoserDaveOrtho)
-	MANUAL_DRIVER_REGISTRATION(PoserDummy)
-	MANUAL_DRIVER_REGISTRATION(DriverRegHTCVive)
+		MANUAL_DRIVER_REGISTRATION(PoserCharlesSlow)
+		MANUAL_DRIVER_REGISTRATION(PoserDaveOrtho)
+		MANUAL_DRIVER_REGISTRATION(PoserDummy)
+		MANUAL_DRIVER_REGISTRATION(PoserEPNP)
+		MANUAL_DRIVER_REGISTRATION(PoserSBA)
+
+		MANUAL_DRIVER_REGISTRATION(DriverRegHTCVive)
+		MANUAL_DRIVER_REGISTRATION(DriverRegPlayback)
+
+		MANUAL_DRIVER_REGISTRATION(DisambiguatorCharles)
+		MANUAL_DRIVER_REGISTRATION(DisambiguatorStateBased)
+		MANUAL_DRIVER_REGISTRATION(DisambiguatorTurvey)
+		did_manual_driver_registration = 1;
+	}
 #endif
 
 	SurviveContext *ctx = calloc(1, sizeof(SurviveContext));
@@ -159,11 +171,18 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 			}
 
 			if (vartoupdate) {
-				if (av + 1 == argvend) {
-					fprintf(stderr, "Error: expected parameter after %s\n", *av);
-					showhelp = 1;
+				const char *name = *av + 2; // Skip the '--';
+				bool flagArgument = (av + 1 == argvend) || av[1][0] == '-';
+
+				if (flagArgument) {
+					bool value = strncmp("no-", name, 3) != 0;
+					if (value == 0) {
+						name += 3; // Skip "no-"
+					}
+					survive_configi(ctx, name, SC_OVERRIDE | SC_SET, value);
 				} else {
-					survive_configs(ctx, *av + 2, SC_OVERRIDE | SC_SET, *(av + 1));
+					const char *value = *(av + 1);
+					survive_configs(ctx, name, SC_OVERRIDE | SC_SET, value);
 					av++;
 				}
 			}
@@ -177,7 +196,10 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 		fprintf(stderr, " -p [poser]              - use a specific defaultposer.\n");
 		fprintf(stderr, " -l [lighthouse count]   - use a specific number of lighthoses.\n");
 		fprintf(stderr, " -c [config file]        - set config file\n");
-		fprintf(stderr, " -p [lighthouse count]   - use a specific number of lighthoses.\n");
+		fprintf(stderr, " --record [log file]     - Write all events to the given record file.\n");
+		fprintf(stderr, " --playback [log file]   - Read events from the given file instead of USB devices.\n");
+		fprintf(stderr, " --playback-factor [f]   - Time factor of playback -- 1 is run at the same timing as "
+						"original, 0 is run as fast as possible.\n");
 		return 0;
 	}
 
@@ -196,10 +218,14 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 	ctx->configfunction = survive_default_htc_config_process;
 	ctx->rawposeproc = survive_default_raw_pose_process;
 
+	ctx->calibration_config = survive_calibration_config_ctor();
+	ctx->calibration_config.use_flag = (enum SurviveCalFlag)survive_configi(ctx, "bsd-cal", SC_GET, SVCal_All);
+
 	return ctx;
 }
 
-static void *setup_func_by_name(SurviveContext *ctx, const char *name, const char *configname, const char *configdef) {
+void *GetDriverByConfig(SurviveContext *ctx, const char *name, const char *configname, const char *configdef,
+						int verbose) {
 	const char *Preferred = survive_configs(ctx, configname, SC_SETCONFIG, configdef);
 	const char *DriverName = 0;
 	const char *picked = 0;
@@ -207,12 +233,14 @@ static void *setup_func_by_name(SurviveContext *ctx, const char *name, const cha
 	void *func = 0;
 	int prefixLen = strlen(name);
 
-	SV_INFO("Available %s:", name);
+	if (verbose > 1)
+		SV_INFO("Available %ss:", name);
 	while ((DriverName = GetDriverNameMatching(name, i++))) {
 		void *p = GetDriver(DriverName);
 
 		bool match = strcmp(DriverName, Preferred) == 0 || strcmp(DriverName + prefixLen, Preferred) == 0;
-		SV_INFO("\t%c%s", match ? '*' : ' ', DriverName + prefixLen);
+		if (verbose > 1)
+			SV_INFO("\t%c%s", match ? '*' : ' ', DriverName + prefixLen);
 		if (!func || match) {
 			func = p;
 			picked = (DriverName + prefixLen);
@@ -221,7 +249,10 @@ static void *setup_func_by_name(SurviveContext *ctx, const char *name, const cha
 	if (!func) {
 		SV_ERROR("Error.  Cannot find any valid %s.", name);
 	}
-	SV_INFO("Totals %d %ss.  Using %s.", i - 1, name, picked);
+	if (verbose > 1)
+		SV_INFO("Totals %d %ss.", i - 1, name);
+	if (verbose > 0)
+		SV_INFO("Using '%s' for %s", picked, configname);
 
 	return func;
 }
@@ -230,6 +261,8 @@ int survive_startup(SurviveContext *ctx) {
 	int r = 0;
 	int i = 0;
 
+	survive_install_recording(ctx);
+
 	// initialize the button queue
 	memset(&(ctx->buttonQueue), 0, sizeof(ctx->buttonQueue));
 	ctx->buttonQueue.buttonservicesem = OGCreateSema();
@@ -237,14 +270,12 @@ int survive_startup(SurviveContext *ctx) {
 	// start the thread to process button data
 	ctx->buttonservicethread = OGCreateThread(button_servicer, ctx);
 
-	PoserCB PreferredPoserCB = setup_func_by_name(ctx, "Poser", "defaultposer", "PoserTurveyTori");
-	ctx->lightcapfunction = setup_func_by_name(ctx, "Disambiguator", "disambiguator", "Turvey");
+	PoserCB PreferredPoserCB = GetDriverByConfig(ctx, "Poser", "defaultposer", "SBA", 2);
+	ctx->lightcapfunction = GetDriverByConfig(ctx, "Disambiguator", "disambiguator", "Turvey", 2);
 
 	const char *DriverName;
 
 	i = 0;
-
-	survive_install_recording(ctx);
 
 	while ((DriverName = GetDriverNameMatching("DriverReg", i++))) {
 		DeviceDriver dd = GetDriver(DriverName);
@@ -262,6 +293,40 @@ int survive_startup(SurviveContext *ctx) {
 	config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
 
 	ctx->state = SURVIVE_RUNNING;
+
+	int calibrateMandatory = survive_configi(ctx, "calibrate", SC_GET, 0);
+	int calibrateForbidden = survive_configi(ctx, "calibrate", SC_GET, 1) == 0;
+	if (calibrateMandatory && calibrateForbidden) {
+		SV_INFO("Contradictory settings --calibrate and --no-calibrate specified. Switching to normal behavior.");
+		calibrateMandatory = calibrateForbidden = 0;
+	}
+
+	if (!calibrateForbidden) {
+		bool isCalibrated = true;
+		for (int i = 0; i < ctx->activeLighthouses; i++) {
+			isCalibrated &= ctx->bsd[i].PositionSet;
+		}
+
+		if (!isCalibrated) {
+			SV_INFO("Uncalibrated configuration detected. Attaching calibration. Please don't move tracked objects for "
+					"the duration of calibration. Pass '--no-calibrate' to skip calibration");
+		} else {
+			SV_INFO("Calibration requested. Previous calibration will be overwritten.");
+		}
+
+		bool doCalibrate = isCalibrated == false || calibrateMandatory;
+
+		if (doCalibrate) {
+			survive_cal_install(ctx);
+		}
+	}
+
+	// If lighthouse positions are known, broadcast them
+	for (int i = 0; i < ctx->activeLighthouses; i++) {
+		if (ctx->bsd[i].PositionSet) {
+			ctx->lighthouseposeproc(ctx, i, &ctx->bsd[i].Pose, 0);
+		}
+	}
 
 	return 0;
 }
@@ -492,5 +557,10 @@ int survive_simple_inflate(struct SurviveContext *ctx, const char *input, int in
 	inflateEnd(&zs);
 	return len;
 }
+
+const char *survive_object_codename(SurviveObject *so) { return so->codename; }
+int8_t survive_object_sensor_ct(SurviveObject *so) { return so->sensor_ct; }
+const FLT *survive_object_sensor_locations(SurviveObject *so) { return so->sensor_locations; }
+const FLT *survive_object_sensor_normals(SurviveObject *so) { return so->sensor_normals; }
 
 #endif

@@ -13,12 +13,13 @@
 #include "survive_internal.h"
 #include "survive_reproject.h"
 
+#include <assert.h>
+#include <linmath.h>
 #include <math.h>
+#include <poser.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <linmath.h>
-#include <assert.h>
 
 #include "survive_config.h"
 
@@ -61,19 +62,20 @@ void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 	//print_lighthouse_info_v6(&v6);
 
 	b->BaseStationID = v6.id;
-	b->fcalphase[0] = v6.fcal_0_phase;
-	b->fcalphase[1] = v6.fcal_1_phase;
-	b->fcaltilt[0] = tan(v6.fcal_0_tilt);
-	b->fcaltilt[1] = tan(v6.fcal_1_tilt);  //XXX??? Is this right? See https://github.com/cnlohr/libsurvive/issues/18
-	b->fcalcurve[0] = v6.fcal_0_curve;
-	b->fcalcurve[1] = v6.fcal_1_curve;
-	b->fcalgibpha[0] = v6.fcal_0_gibphase;
-	b->fcalgibpha[1] = v6.fcal_1_gibphase;
-	b->fcalgibmag[0] = v6.fcal_0_gibmag;
-	b->fcalgibmag[1] = v6.fcal_1_gibmag;
+	b->fcal.phase[0] = v6.fcal_0_phase;
+	b->fcal.phase[1] = v6.fcal_1_phase;
+	b->fcal.tilt[0] = (v6.fcal_0_tilt);
+	b->fcal.tilt[1] = (v6.fcal_1_tilt); // XXX??? Is this right? See https://github.com/cnlohr/libsurvive/issues/18
+	b->fcal.curve[0] = v6.fcal_0_curve;
+	b->fcal.curve[1] = v6.fcal_1_curve;
+	b->fcal.gibpha[0] = v6.fcal_0_gibphase;
+	b->fcal.gibpha[1] = v6.fcal_1_gibphase;
+	b->fcal.gibmag[0] = v6.fcal_0_gibmag;
+	b->fcal.gibmag[1] = v6.fcal_1_gibmag;
 	b->accel[0] = v6.accel_dir_x;
 	b->accel[1] = v6.accel_dir_y;
 	b->accel[2] = v6.accel_dir_z;
+	b->mode = v6.mode_current;
 	b->OOTXSet = 1;
 
 	config_set_lighthouse(ctx->lh_config,b,id);
@@ -116,6 +118,9 @@ int survive_cal_get_status( struct SurviveContext * ctx, char * description, int
 
 void survive_cal_install( struct SurviveContext * ctx )
 {
+	if (ctx->calptr)
+		return;
+
 	int i;
 	struct SurviveCalData * cd = ctx->calptr = calloc( 1, sizeof( struct SurviveCalData ) );
 
@@ -184,30 +189,8 @@ void survive_cal_install( struct SurviveContext * ctx )
 	}
 
 	const char * DriverName;
-//	const char * PreferredPoser = survive_configs(ctx, "configposer", "PoserCharlesSlow");
-	const char * PreferredPoser = survive_configs(ctx, "configposer", SC_SETCONFIG, "PoserTurveyTori");
+	cd->ConfigPoserFn = GetDriverByConfig(ctx, "Poser", "configposer", "SBA", 0);
 
-	SV_INFO( "Trying to load poser %s for cal.", PreferredPoser );
-	PoserCB SelectedPoserCB = 0;
-	const char * SelectedPoserName = 0;
-	i = 0;	
-	while( ( DriverName = GetDriverNameMatching( "Poser", i++ ) ) )
-	{
-		PoserCB p = GetDriver( DriverName );
-		if( !SelectedPoserCB )
-		{
-			SelectedPoserCB = p;
-			SelectedPoserName = DriverName;
-		}
-		int ThisPoser = strcmp( DriverName, PreferredPoser ) == 0;
-		if( ThisPoser )
-		{
-			SelectedPoserCB = p;
-			SelectedPoserName = DriverName;
-		}
-	}
-	cd->ConfigPoserFn = SelectedPoserCB;
-	SV_INFO( "Got config poser: %s (%p)", SelectedPoserName, cd->ConfigPoserFn );
 	ootx_packet_clbk = ootx_packet_clbk_d;
 
 	ctx->calptr = cd;
@@ -618,7 +601,7 @@ static void handle_calibration( struct SurviveCalData *cd )
 	for( obj = 0; obj < cd->numPoseObjects; obj++ )
 	{
 		int i, j;
-		PoserDataFullScene fsd = {};
+		PoserDataFullScene fsd = {0};
 		fsd.hdr.pt = POSERDATA_FULL_SCENE;
 		for( j = 0; j < NUM_LIGHTHOUSES; j++ )
 		for( i = 0; i < SENSORS_PER_OBJECT; i++ )
@@ -636,8 +619,8 @@ static void handle_calibration( struct SurviveCalData *cd )
 			}
 			fsd.lengths[i][j][0] = cd->avglens[dataindex+0];
 			fsd.lengths[i][j][1] = cd->avglens[dataindex+1];
-			fsd.angles[i][j][0] = cd->avgsweeps[dataindex+0];
-			fsd.angles[i][j][1] = cd->avgsweeps[dataindex+1];
+			fsd.angles[i][j][0] = cd->avgsweeps[dataindex + 0];
+			fsd.angles[i][j][1] = cd->avgsweeps[dataindex + 1];
 			fsd.synctimes[i][j] = temp_syncs[i][j];
 		}
 

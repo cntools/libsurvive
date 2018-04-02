@@ -1,5 +1,3 @@
-//#include "/home/justin/source/CLAPACK/INCLUDE/f2c.h"
-//#include "/home/justin/source/CLAPACK/INCLUDE/clapack.h"
 #include <cblas.h>
 #include <lapacke.h>
 
@@ -10,9 +8,15 @@
 #include "string.h"
 
 #include <limits.h>
-//#define DEBUG_PRINT
+#include <stdarg.h>
 
-int cvRound(float f) { return roundf(f); }
+#ifdef _WIN32
+#define SURVIVE_LOCAL_ONLY
+#else
+#define SURVIVE_LOCAL_ONLY __attribute__((visibility("hidden")))
+#endif
+
+SURVIVE_LOCAL_ONLY int cvRound(float f) { return roundf(f); }
 #define CV_Error(code, msg) assert(0 && msg); // cv::error( code, msg, CV_Func, __FILE__, __LINE__ )
 
 const int DECOMP_SVD = 1;
@@ -20,11 +24,12 @@ const int DECOMP_LU = 2;
 
 void print_mat(const CvMat *M);
 
-void cvCopyTo(const CvMat *srcarr, CvMat *dstarr) {
+SURVIVE_LOCAL_ONLY void cvCopyTo(const CvMat *srcarr, CvMat *dstarr) {
 	memcpy(dstarr->data.db, srcarr->data.db, sizeof(double) * dstarr->rows * dstarr->cols);
 }
 
-void cvGEMM(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src3, double beta, CvMat *dst, int tABC) {
+SURVIVE_LOCAL_ONLY void cvGEMM(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src3, double beta,
+							   CvMat *dst, int tABC) {
 	lapack_int rows1 = src1->rows;
 	lapack_int cols1 = src1->cols;
 
@@ -48,7 +53,7 @@ void cvGEMM(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src
 				lda, src2->data.db, ldb, beta, dst->data.db, dst->cols);
 }
 
-void cvMulTransposed(const CvMat *src, CvMat *dst, int order, const CvMat *delta, double scale) {
+SURVIVE_LOCAL_ONLY void cvMulTransposed(const CvMat *src, CvMat *dst, int order, const CvMat *delta, double scale) {
 	lapack_int rows = src->rows;
 	lapack_int cols = src->cols;
 
@@ -67,14 +72,14 @@ void cvMulTransposed(const CvMat *src, CvMat *dst, int order, const CvMat *delta
 				scale, src->data.db, cols, src->data.db, cols, beta, dst->data.db, dstCols);
 }
 
-void *cvAlloc(size_t size) { return malloc(size); }
+SURVIVE_LOCAL_ONLY void *cvAlloc(size_t size) { return malloc(size); }
 
 static void icvCheckHuge(CvMat *arr) {
 	if ((int64_t)arr->step * arr->rows > INT_MAX)
 		arr->type &= ~CV_MAT_CONT_FLAG;
 }
 
-CvMat *cvCreateMatHeader(int rows, int cols, int type) {
+SURVIVE_LOCAL_ONLY CvMat *cvCreateMatHeader(int rows, int cols, int type) {
 	type = CV_MAT_TYPE(type);
 
 	assert(!(rows < 0 || cols < 0));
@@ -116,7 +121,7 @@ static inline int cvAlign(int size, int align) {
 	return (size + align - 1) & -align;
 }
 
-void cvCreateData(CvMat *arr) {
+SURVIVE_LOCAL_ONLY void cvCreateData(CvMat *arr) {
 	if (CV_IS_MAT_HDR_Z(arr)) {
 		size_t step, total_size;
 		CvMat *mat = (CvMat *)arr;
@@ -144,14 +149,14 @@ void cvCreateData(CvMat *arr) {
 		CV_Error(CV_StsBadArg, "unrecognized or unsupported array type");
 }
 
-CvMat *cvCreateMat(int height, int width, int type) {
+SURVIVE_LOCAL_ONLY CvMat *cvCreateMat(int height, int width, int type) {
 	CvMat *arr = cvCreateMatHeader(height, width, type);
 	cvCreateData(arr);
 
 	return arr;
 }
 
-double cvInvert(const CvMat *srcarr, CvMat *dstarr, int method) {
+SURVIVE_LOCAL_ONLY double cvInvert(const CvMat *srcarr, CvMat *dstarr, int method) {
 	lapack_int inf;
 	lapack_int rows = srcarr->rows;
 	lapack_int cols = srcarr->cols;
@@ -206,13 +211,13 @@ double cvInvert(const CvMat *srcarr, CvMat *dstarr, int method) {
 	return 0;
 }
 
-CvMat *cvCloneMat(const CvMat *mat) {
+SURVIVE_LOCAL_ONLY CvMat *cvCloneMat(const CvMat *mat) {
 	CvMat *rtn = cvCreateMat(mat->rows, mat->cols, mat->type);
 	cvCopyTo(mat, rtn);
 	return rtn;
 }
 
-int cvSolve(const CvMat *Aarr, const CvMat *xarr, CvMat *Barr, int method) {
+SURVIVE_LOCAL_ONLY int cvSolve(const CvMat *Aarr, const CvMat *xarr, CvMat *Barr, int method) {
 	lapack_int inf;
 	lapack_int arows = Aarr->rows;
 	lapack_int acols = Aarr->cols;
@@ -288,7 +293,7 @@ int cvSolve(const CvMat *Aarr, const CvMat *xarr, CvMat *Barr, int method) {
 	return 0;
 }
 
-void cvTranspose(const CvMat *M, CvMat *dst) {
+SURVIVE_LOCAL_ONLY void cvTranspose(const CvMat *M, CvMat *dst) {
 	bool inPlace = M == dst || M->data.db == dst->data.db;
 	double *src = M->data.db;
 
@@ -311,7 +316,7 @@ void cvTranspose(const CvMat *M, CvMat *dst) {
 	}
 }
 
-void cvSVD(CvMat *aarr, CvMat *warr, CvMat *uarr, CvMat *varr, int flags) {
+SURVIVE_LOCAL_ONLY void cvSVD(CvMat *aarr, CvMat *warr, CvMat *uarr, CvMat *varr, int flags) {
 	char jobu = 'A';
 	char jobvt = 'A';
 
@@ -349,13 +354,13 @@ void cvSVD(CvMat *aarr, CvMat *warr, CvMat *uarr, CvMat *varr, int flags) {
 	}
 }
 
-void cvSetZero(CvMat *arr) {
+SURVIVE_LOCAL_ONLY void cvSetZero(CvMat *arr) {
 	for (int i = 0; i < arr->rows; i++)
 		for (int j = 0; j < arr->cols; j++)
 			arr->data.db[i * arr->cols + j] = 0;
 }
 
-void cvReleaseMat(CvMat **mat) {
+SURVIVE_LOCAL_ONLY void cvReleaseMat(CvMat **mat) {
 	assert(*(*mat)->refcount == 1);
 	free((*mat)->refcount);
 	free(*mat);

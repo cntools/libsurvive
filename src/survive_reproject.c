@@ -1,80 +1,11 @@
 #include "survive_reproject.h"
 #include <../redist/linmath.h>
 #include <math.h>
+#include <stdio.h>
 #include <string.h>
 
-static void survive_calibration_options_config_normalize(
-	survive_calibration_options_config *option) {
-	if (!option->enable[0])
-		option->invert[0] = false;
-	if (!option->enable[1])
-		option->invert[1] = false;
-	if (!option->enable[0] && !option->enable[1])
-		option->swap = false;
-}
-
-void survive_calibration_options_config_apply(
-	const survive_calibration_options_config *option, const FLT *input,
-	FLT *output) {
-	FLT tmp[2]; // In case they try to do in place
-	for (int i = 0; i < 2; i++) {
-		tmp[i] = option->enable[i] * (option->invert[i] ? -1 : 1) *
-				 input[i ^ option->swap];
-	}
-	for (int i = 0; i < 2; i++) {
-		output[i] = tmp[i];
-	}
-}
-
-survive_calibration_config
-survive_calibration_config_create_from_idx(size_t v) {
-	survive_calibration_config config;
-	memset(&config, 0, sizeof(config));
-
-	bool *_this = (bool *)&config;
-
-	for (size_t i = 0; i < sizeof(config); i++) {
-		_this[i] = (bool)(v & 1);
-		v = v >> 1;
-	}
-
-	survive_calibration_options_config_normalize(&config.phase);
-	survive_calibration_options_config_normalize(&config.tilt);
-	survive_calibration_options_config_normalize(&config.curve);
-	survive_calibration_options_config_normalize(&config.gibMag);
-
-	config.gibPhase.enable[0] = config.gibMag.enable[0];
-	config.gibPhase.enable[1] = config.gibMag.enable[1];
-
-	survive_calibration_options_config_normalize(&config.gibPhase);
-
-	if (!config.gibPhase.enable[0] && !config.gibPhase.enable[1])
-		config.gibUseSin = false;
-
-	return config;
-}
-
-size_t
-survive_calibration_config_index(const survive_calibration_config *config) {
-	bool *_this = (bool *)config;
-	size_t v = 0;
-	for (size_t i = 0; i < sizeof(*config); i++) {
-		v = (v | _this[sizeof(*config) - i - 1]);
-		v = v << 1;
-	}
-	v = v >> 1;
-	return v;
-}
-
-static FLT gibf(bool useSin, FLT v) {
-	if (useSin)
-		return sin(v);
-	return cos(v);
-}
-
-void survive_reproject_from_pose_with_config(
-	const SurviveContext *ctx, const survive_calibration_config *config,
-	int lighthouse, const SurvivePose *pose, const FLT *pt, FLT *out) {
+void survive_reproject_from_pose_with_bsd(const BaseStationData *bsd, const survive_calibration_config *config,
+										  const SurvivePose *pose, const FLT *pt, FLT *out) {
 	LinmathQuat invq;
 	quatgetreciprocal(invq, pose->Rot);
 
@@ -88,57 +19,85 @@ void survive_reproject_from_pose_with_config(
 
 	FLT x = -t_pt[0] / -t_pt[2];
 	FLT y = t_pt[1] / -t_pt[2];
+	double xy[] = {x, y};
+	double ang[] = {atan(x), atan(y)};
 
-	double ang_x = atan(x);
-	double ang_y = atan(y);
+	const FLT *phase = bsd->fcal.phase;
+	const FLT *curve = bsd->fcal.curve;
+	const FLT *tilt = bsd->fcal.tilt;
+	const FLT *gibPhase = bsd->fcal.gibpha;
+	const FLT *gibMag = bsd->fcal.gibmag;
+	enum SurviveCalFlag f = config->use_flag;
 
-	const BaseStationData *bsd = &ctx->bsd[lighthouse];
-	double phase[2];
-	survive_calibration_options_config_apply(&config->phase, bsd->fcalphase,
-											 phase);
-	double tilt[2];
-	survive_calibration_options_config_apply(&config->tilt, bsd->fcaltilt,
-											 tilt);
-	double curve[2];
-	survive_calibration_options_config_apply(&config->curve, bsd->fcalcurve,
-											 curve);
-	double gibPhase[2];
-	survive_calibration_options_config_apply(&config->gibPhase, bsd->fcalgibpha,
-											 gibPhase);
-	double gibMag[2];
-	survive_calibration_options_config_apply(&config->gibMag, bsd->fcalgibmag,
-											 gibMag);
+	for (int axis = 0; axis < 2; axis++) {
+		int opp_axis = axis == 0 ? 1 : 0;
 
-	out[0] = ang_x + phase[0] + tan(tilt[0]) * y + curve[0] * y * y +
-			 gibf(config->gibUseSin, gibPhase[0] + ang_x) * gibMag[0];
-	out[1] = ang_y + phase[1] + tan(tilt[1]) * x + curve[1] * x * x +
-			 gibf(config->gibUseSin, gibPhase[1] + ang_y) * gibMag[1];
-}
+		out[axis] = ang[axis];
 
-void survive_reproject_from_pose(const SurviveContext *ctx, int lighthouse,
-								 const SurvivePose *pose, FLT *pt, FLT *out) {
-	survive_reproject_from_pose_with_config(
-		ctx, survive_calibration_default_config(), lighthouse, pose, pt, out);
-}
-
-void survive_reproject(const SurviveContext *ctx, int lighthouse, FLT *point3d,
-					   FLT *out) {
-	survive_reproject_from_pose(ctx, lighthouse, &ctx->bsd[lighthouse].Pose,
-								point3d, out);
-}
-
-const survive_calibration_config *survive_calibration_default_config() {
-	static survive_calibration_config *def = 0;
-	if (def == 0) {
-		def = malloc(sizeof(survive_calibration_config));
-		memset(def, 0, sizeof(survive_calibration_config));
-		*def = survive_calibration_config_create_from_idx(0);
+		if (f & SVCal_Phase)
+			out[axis] -= config->phase_scale * phase[axis];
+		if (f & SVCal_Tilt)
+			out[axis] -= tan(config->tilt_scale * tilt[axis]) * xy[opp_axis];
+		if (f & SVCal_Curve)
+			out[axis] -= config->curve_scale * curve[axis] * xy[opp_axis] * xy[opp_axis];
+		if (f & SVCal_Gib)
+			out[axis] -= config->gib_scale * sin(gibPhase[axis] + ang[axis]) * gibMag[axis];
 	}
-	return def;
 }
 
-size_t survive_calibration_config_max_idx() {
-	survive_calibration_config cfg;
-	memset(&cfg, 0x1, sizeof(survive_calibration_config));
-	return survive_calibration_config_index(&cfg);
+void survive_apply_bsd_calibration_by_config(SurviveContext *ctx, int lh, struct survive_calibration_config *config,
+											 const FLT *in, FLT *out) {
+	const BaseStationCal *cal = &ctx->bsd[lh].fcal;
+	out[0] = in[0] + config->phase_scale * cal->phase[0];
+	out[1] = in[1] + config->phase_scale * cal->phase[1];
+
+	enum SurviveCalFlag f = config->use_flag;
+	FLT phase_scale = config->phase_scale;
+	FLT tilt_scale = config->tilt_scale;
+	FLT curve_scale = config->curve_scale;
+	FLT gib_scale = config->gib_scale;
+	const int iterations = 4;
+	for (int i = 0; i < iterations; i++) {
+		FLT last_out[2] = {out[0], out[1]};
+		FLT tlast_out[2] = {tan(out[0]), tan(out[1])};
+		bool last_iteration = i == iterations - 1;
+		for (int j = 0; j < 2; j++) {
+			int oj = j == 0 ? 1 : 0;
+			out[j] = in[j];
+			if (!last_iteration || (f & SVCal_Phase))
+				out[j] += phase_scale * cal->phase[j];
+			if (!last_iteration || (f & SVCal_Tilt))
+				out[j] += tan(tilt_scale * cal->tilt[j]) * tlast_out[oj];
+			if (!last_iteration || (f & SVCal_Curve))
+				out[j] += (cal->curve[j] * curve_scale) * tlast_out[oj] * tlast_out[oj];
+			if (!last_iteration || (f & SVCal_Gib))
+				out[j] += sin(cal->gibpha[j] + last_out[j]) * cal->gibmag[j] * gib_scale;
+		}
+	}
+}
+
+void survive_reproject_from_pose(const SurviveContext *ctx, int lighthouse, const SurvivePose *pose, FLT *pt,
+								 FLT *out) {
+	survive_reproject_from_pose_with_bsd(&ctx->bsd[lighthouse], &ctx->calibration_config, pose, pt, out);
+}
+
+void survive_reproject(const SurviveContext *ctx, int lighthouse, FLT *point3d, FLT *out) {
+	survive_reproject_from_pose(ctx, lighthouse, &ctx->bsd[lighthouse].Pose, point3d, out);
+}
+
+survive_calibration_config survive_calibration_config_ctor() {
+	return (survive_calibration_config){.use_flag = SVCal_All,
+										.phase_scale = 1.,
+										.tilt_scale = 1. / 10.,
+										.curve_scale = 1. / 10.,
+										.gib_scale = -1. / 10.};
+}
+
+void survive_apply_bsd_calibration(SurviveContext *ctx, int lh, const FLT *in, FLT *out) {
+	survive_apply_bsd_calibration_by_config(ctx, lh, &ctx->calibration_config, in, out);
+}
+
+void survive_reproject_from_pose_with_config(const SurviveContext *ctx, struct survive_calibration_config *config,
+											 int lighthouse, const SurvivePose *pose, FLT *point3d, FLT *out) {
+	return survive_reproject_from_pose_with_bsd(&ctx->bsd[lighthouse], config, pose, point3d, out);
 }

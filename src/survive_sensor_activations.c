@@ -1,3 +1,4 @@
+#include <math.h>
 #include <survive.h>
 
 bool SurviveSensorActivations_isPairValid(const SurviveSensorActivations *self, uint32_t tolerance,
@@ -21,9 +22,11 @@ void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 	int axis = (lightData->acode & 1);
 	uint32_t *data_timecode = &self->timecode[lightData->sensor_id][lightData->lh][axis];
 	FLT *angle = &self->angles[lightData->sensor_id][lightData->lh][axis];
+	uint32_t *length = &self->lengths[lightData->sensor_id][lightData->lh][axis];
 
 	*angle = lightData->angle;
 	*data_timecode = lightData->timecode;
+	*length = lightData->length * 48000000;
 }
 
-uint32_t SurviveSensorActivations_default_tolerance = (uint32_t)(48000000 /*mhz*/ * (16.7 * 2 /*ms*/) / 1000);
+uint32_t SurviveSensorActivations_default_tolerance = (uint32_t)(48000000 /*mhz*/ * (16.7 * 2 /*ms*/) / 1000) + 5000;

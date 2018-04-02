@@ -6,7 +6,6 @@
 #include <survive.h>
 
 #include <string.h>
-#include <sys/time.h>
 
 #include "survive_config.h"
 #include "survive_default_devices.h"
@@ -14,8 +13,17 @@
 #include "os_generic.h"
 #include "stdarg.h"
 
+#ifdef _WIN32
+typedef long ssize_t;
+#define SSIZE_MAX LONG_MAX
+
+ssize_t getdelim(char **lineptr, size_t *n, int delimiter, FILE *stream);
+ssize_t getline(char **lineptr, size_t *n, FILE *stream);
+#endif
+
 typedef struct SurviveRecordingData {
 	bool alwaysWriteStdOut;
+	bool writeRawLight;
 	FILE *output_file;
 } SurviveRecordingData;
 
@@ -96,6 +104,16 @@ void survive_recording_angle_process(struct SurviveObject *so, int sensor_id, in
 					angle, lh);
 }
 
+void survive_recording_lightcap(SurviveObject *so, LightcapElement *le) {
+	SurviveRecordingData *recordingData = so->ctx->recptr;
+	if (recordingData == 0)
+		return;
+
+	if (recordingData->writeRawLight) {
+		write_to_output(recordingData, "%s C %d %u %u\n", so->codename, le->sensor_id, le->timestamp, le->length);
+	}
+}
+
 void survive_recording_light_process(struct SurviveObject *so, int sensor_id, int acode, int timeinsweep,
 									 uint32_t timecode, uint32_t length, uint32_t lh) {
 	SurviveRecordingData *recordingData = so->ctx->recptr;
@@ -133,6 +151,7 @@ void survive_recording_light_process(struct SurviveObject *so, int sensor_id, in
 		LH_Axis = "Y";
 		break;
 	}
+
 	write_to_output(recordingData, "%s %s %s %d %d %d %u %u %u\n", so->codename, LH_ID, LH_Axis, sensor_id, acode,
 					timeinsweep, timecode, length, lh);
 }
@@ -154,6 +173,7 @@ struct SurvivePlaybackData {
 
 	FLT time_factor;
 	double next_time_us;
+	bool hasRawLight;
 };
 typedef struct SurvivePlaybackData SurvivePlaybackData;
 
@@ -190,8 +210,31 @@ static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver) {
 	return 0;
 }
 
-static int parse_and_run_lightcode(const char *line,
-								   SurvivePlaybackData *driver) {
+static int parse_and_run_rawlight(const char *line, SurvivePlaybackData *driver) {
+	driver->hasRawLight = 1;
+
+	char dev[10];
+	char op[10];
+	LightcapElement le;
+	int rr = sscanf(line, "%s %s %hhu %u %hu\n", dev, op, &le.sensor_id, &le.timestamp, &le.length);
+
+	SurviveObject *so = survive_get_so_by_name(driver->ctx, dev);
+	if (!so) {
+		static bool display_once = false;
+		SurviveContext *ctx = driver->ctx;
+		if (display_once == false) {
+			SV_ERROR("Could not find device named %s from lineno %d\n", dev, driver->lineno);
+		}
+		display_once = true;
+
+		return -1;
+	}
+
+	handle_lightcap(so, &le);
+	return 0;
+}
+
+static int parse_and_run_lightcode(const char *line, SurvivePlaybackData *driver) {
 	char lhn[10];
 	char axn[10];
 	char dev[10];
@@ -206,8 +249,7 @@ static int parse_and_run_lightcode(const char *line,
 					&length, &lh);
 
 	if (rr != 9) {
-		fprintf(stderr, "Warning:  On line %d, only %d values read: '%s'\n",
-				driver->lineno, rr, line);
+		fprintf(stderr, "Warning:  On line %d, only %d values read: '%s'\n", driver->lineno, rr, line);
 		return -1;
 	}
 
@@ -232,12 +274,10 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 	FILE *f = driver->playback_file;
 
 	if (f && !feof(f) && !ferror(f)) {
-		int i;
 		driver->lineno++;
-		char *line;
+		char *line = 0;
 
 		if (driver->next_time_us == 0) {
-			char *buffer;
 			size_t n = 0;
 			ssize_t r = getdelim(&line, &n, ' ', f);
 			if (r <= 0)
@@ -255,7 +295,6 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 			return 0;
 		driver->next_time_us = 0;
 
-		char *buffer;
 		size_t n = 0;
 		ssize_t r = getline(&line, &n, f);
 		if (r <= 0)
@@ -263,16 +302,23 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 
 		char dev[10];
 		char op[10];
-		if (sscanf(line, "%8s %8s", dev, op) < 2)
+		if (sscanf(line, "%8s %8s", dev, op) < 2) {
+			free(line);
 			return 0;
+		}
 
-		if ((op[0] != 'R' && op[0] != 'L' && op[0] != 'I') || op[1] != 0)
+		if (op[1] != 0) {
 			return 0;
+		}
 
 		switch (op[0]) {
+		case 'C':
+			parse_and_run_rawlight(line, driver);
+			break;
 		case 'L':
 		case 'R':
-			parse_and_run_lightcode(line, driver);
+			if (driver->hasRawLight == false)
+				parse_and_run_lightcode(line, driver);
 			break;
 		case 'I':
 			parse_and_run_imu(line, driver);
@@ -301,15 +347,15 @@ static int playback_close(struct SurviveContext *ctx, void *_driver) {
 }
 
 void survive_install_recording(SurviveContext *ctx) {
-	const char *dataout_file = survive_configs(ctx, "record", SC_SETCONFIG, "");
-	int record_to_stdout = survive_configi(ctx, "record-stdout", SC_SETCONFIG, 0);
+	const char *dataout_file = survive_configs(ctx, "record", SC_GET, "");
+	int record_to_stdout = survive_configi(ctx, "record-stdout", SC_GET, 0);
 
 	if (strlen(dataout_file) > 0 || record_to_stdout) {
 		ctx->recptr = calloc(1, sizeof(struct SurviveRecordingData));
 
 		ctx->recptr->output_file = fopen(dataout_file, "w");
 		if (ctx->recptr->output_file == 0 && !record_to_stdout) {
-			SV_INFO("Could not open %s for writing\n", dataout_file);
+			SV_INFO("Could not open %s for writing", dataout_file);
 			free(ctx->recptr);
 			ctx->recptr = 0;
 			return;
@@ -319,11 +365,13 @@ void survive_install_recording(SurviveContext *ctx) {
 		if (record_to_stdout) {
 			SV_INFO("Recording to stdout");
 		}
+
+		ctx->recptr->writeRawLight = survive_configi(ctx, "record-rawlight", SC_GET, 1);
 	}
 }
 
 int DriverRegPlayback(SurviveContext *ctx) {
-	const char *playback_file = survive_configs(ctx, "playback", SC_SETCONFIG, "");
+	const char *playback_file = survive_configs(ctx, "playback", SC_GET, "");
 
 	if (strlen(playback_file) == 0) {
 		return 0;
@@ -332,9 +380,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	SurvivePlaybackData *sp = calloc(1, sizeof(SurvivePlaybackData));
 	sp->ctx = ctx;
 	sp->playback_dir = playback_file;
-	sp->time_factor = survive_configf(ctx, "playback-factor", SC_SETCONFIG, 1.f);
-
-	printf("%s\n", playback_file);
+	sp->time_factor = survive_configf(ctx, "playback-factor", SC_GET, 1.f);
 
 	sp->playback_file = fopen(playback_file, "r");
 	if (sp->playback_file == 0) {
@@ -356,7 +402,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	while (!feof(sp->playback_file) && !ferror(sp->playback_file)) {
 		char *line = 0;
 		size_t n;
-		ssize_t r = getline(&line, &n, sp->playback_file);
+		int r = getline(&line, &n, sp->playback_file);
 
 		if (r <= 0)
 			continue;
