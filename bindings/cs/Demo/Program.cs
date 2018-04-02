@@ -12,8 +12,8 @@ namespace Demo
     {
         static void Main(string[] args)
         {
-            LibSurViveAPI api = LibSurViveAPI.instance;
-            
+            LibSurViveAPI api = LibSurViveAPI.Instance;
+
             var so = api.GetSurviveObjectByName("HMD");
             
         }
