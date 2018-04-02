@@ -38,10 +38,10 @@ public class LibSurViveAPI
     text_feedback_func info_func;
 
     public delegate void Log(string message);
-    Log LogInfo;
+    Log LogInfo = delegate { };
 
     public delegate void ErrorLog(string message);
-    ErrorLog LogError;
+    ErrorLog LogError = delegate { };
 
     LibSurViveAPI()
     {
@@ -145,9 +145,9 @@ public class LibSurViveAPI
             "unity"
         };
 
-        if (configs.playbaskFile != "")
+        if (configs.playbackFile != "" && configs.playbackFile != null)
         {
-            args.AddRange(new[] { "--playback", configs.playbaskFile });
+            args.AddRange(new[] { "--playback", configs.playbackFile });
             args.AddRange(new[] { "--playback-factor", configs.playbackFactor.ToString() });
         }
 
@@ -259,7 +259,7 @@ public class LibSurViveAPI
 
 public struct SetupConfigs
 {
-    public string playbaskFile;
+    public string playbackFile;
     public int playbackFactor;
     public Disambiguator disambiguator;
     public Poser poser;
