@@ -75,6 +75,7 @@ struct SurviveObject {
 	// Pose Information, also "poser" field.
 	FLT PoseConfidence;						 // 0..1
 	SurvivePose OutPose;					 // Final pose? (some day, one can dream!)
+	uint32_t OutPose_timecode;
 	SurvivePose FromLHPose[NUM_LIGHTHOUSES]; // Filled out by poser, contains computed position from each lighthouse.
 	void *PoserData; // Initialized to zero, configured by poser, can be anything the poser wants.
 	PoserCB PoserFn;
@@ -114,6 +115,7 @@ struct SurviveObject {
 	haptic_func haptic;
 
 	SurviveSensorActivations activations;
+	void* user_ptr;
 	// Debug
 	int tsl;
 };
@@ -206,7 +208,7 @@ struct SurviveContext {
 	imu_process_func imuproc;
 	angle_process_func angleproc;
 	button_process_func buttonproc;
-	raw_pose_func rawposeproc;
+	pose_func poseproc;
 	lighthouse_pose_func lighthouseposeproc;
 	htc_config_func configfunction;
 	handle_lightcap_func lightcapfunction;
@@ -268,7 +270,7 @@ SURVIVE_EXPORT void survive_install_light_fn(SurviveContext *ctx, light_process_
 SURVIVE_EXPORT void survive_install_imu_fn(SurviveContext *ctx, imu_process_func fbp);
 SURVIVE_EXPORT void survive_install_angle_fn(SurviveContext *ctx, angle_process_func fbp);
 SURVIVE_EXPORT void survive_install_button_fn(SurviveContext *ctx, button_process_func fbp);
-SURVIVE_EXPORT void survive_install_raw_pose_fn(SurviveContext *ctx, raw_pose_func fbp);
+SURVIVE_EXPORT void survive_install_pose_fn(SurviveContext *ctx, pose_func fbp);
 SURVIVE_EXPORT void survive_install_lighthouse_pose_fn(SurviveContext *ctx, lighthouse_pose_func fbp);
 SURVIVE_EXPORT int survive_startup(SurviveContext *ctx);
 SURVIVE_EXPORT int survive_poll(SurviveContext *ctx);
@@ -310,7 +312,7 @@ SURVIVE_EXPORT void survive_default_angle_process(SurviveObject *so, int sensor_
 SURVIVE_EXPORT void survive_default_button_process(SurviveObject *so, uint8_t eventType, uint8_t buttonId,
 												   uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id,
 												   uint16_t axis2Val);
-SURVIVE_EXPORT void survive_default_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose);
+SURVIVE_EXPORT void survive_default_raw_pose_process(SurviveObject *so, uint32_t timecode, SurvivePose *pose);
 SURVIVE_EXPORT void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse,
 															SurvivePose *lh_pose, SurvivePose *obj_pose);
 SURVIVE_EXPORT int survive_default_htc_config_process(SurviveObject *so, char *ct0conf, int len);

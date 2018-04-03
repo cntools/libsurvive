@@ -129,7 +129,7 @@ typedef struct {
 	SurvivePose poses;
 } sba_set_position_t;
 
-static void sba_set_position(SurviveObject *so, uint8_t lighthouse, SurvivePose *new_pose, void *_user) {
+static void sba_set_position(SurviveObject *so, uint32_t timecode, SurvivePose *new_pose, void *_user) {
 	sba_set_position_t *user = _user;
 	assert(user->hasInfo == false);
 	user->hasInfo = 1;
@@ -220,7 +220,7 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 			PoserData hdr = pdl->hdr;
 			memset(&pdl->hdr, 0, sizeof(pdl->hdr)); // Clear callback functions
 			pdl->hdr.pt = hdr.pt;
-			pdl->hdr.rawposeproc = sba_set_position;
+			pdl->hdr.poseproc = sba_set_position;
 
 			sba_set_position_t locations = {0};
 			pdl->hdr.userdata = &locations;
@@ -278,7 +278,7 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 	if (status > 0 && (info[1] / meas_size * 2) < d->max_error) {
 		d->failures_to_reset_cntr = d->failures_to_reset;
 		quatnormalize(soLocation.Rot, soLocation.Rot);
-		PoserData_poser_raw_pose_func(&pdl->hdr, so, 1, &soLocation);
+		PoserData_poser_pose_func(&pdl->hdr, so, &soLocation);
 	}
 
 	{

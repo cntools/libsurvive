@@ -18,14 +18,14 @@ typedef enum PoserType_t {
 	POSERDATA_SYNC, // Sync pulse.
 } PoserType;
 
-typedef void (*poser_raw_pose_func)(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose, void *user);
+typedef void (*poser_pose_func)(SurviveObject *so, uint32_t lighthouse, SurvivePose *pose, void *user);
 typedef void (*poser_lighthouse_pose_func)(SurviveObject *so, uint8_t lighthouse, SurvivePose *lighthouse_pose,
 										   SurvivePose *object_pose, void *user);
 
 typedef struct
 {
 	PoserType pt;
-	poser_raw_pose_func rawposeproc;
+	poser_pose_func poseproc;
 	poser_lighthouse_pose_func lighthouseposeproc;
 	void *userdata;
 } PoserData;
@@ -41,7 +41,7 @@ typedef struct
  * @param pose The actual object pose. This is in world space, not in LH space. It must represent a transformation from
  * object space of the SO to global space.
  */
-void PoserData_poser_raw_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse, SurvivePose *pose);
+void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, SurvivePose *pose);
 
 /**
  * Meant to be used by individual posers to report back their findings on the pose of a lighthouse.
