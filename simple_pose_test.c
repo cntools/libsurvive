@@ -168,6 +168,7 @@ int main( int argc, char ** argv )
 	survive_install_pose_fn(ctx, testprog_raw_pose_process);
 	//survive_install_angle_fn(ctx, testprog_angle_process );
 
+#if 0 //Don't reset poses
 	ctx->bsd[0].PositionSet = ctx->bsd[1].PositionSet = 1;
 	int i;
 	for( i = 0; i < 2; i++ )
@@ -181,7 +182,7 @@ int main( int argc, char ** argv )
 		p->Rot[2] = 0;
 		p->Rot[3] = 0;
 	}
-
+#endif
 	OGCreateThread( GUIThread, 0 );
 
 	if( !ctx )
