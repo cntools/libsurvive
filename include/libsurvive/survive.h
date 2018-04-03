@@ -239,7 +239,7 @@ struct SurviveContext {
 	struct survive_calibration_config calibration_config;
 };
 
-void survive_verify_FLT_size(
+SURVIVE_EXPORT void survive_verify_FLT_size(
 	uint32_t user_size); // Baked in size of FLT to verify users of the library have the correct setting.
 
 SURVIVE_EXPORT SurviveContext *survive_init_internal(int argc, char *const *argv);
@@ -278,7 +278,7 @@ SURVIVE_EXPORT SurviveObject *survive_get_so_by_name(SurviveContext *ctx, const 
 
 // Utilitiy functions.
 int survive_simple_inflate(SurviveContext *ctx, const char *input, int inlen, char *output, int outlen);
-int survive_send_magic(SurviveContext *ctx, int magic_code, void *data, int datalen);
+SURVIVE_EXPORT int survive_send_magic(SurviveContext *ctx, int magic_code, void *data, int datalen);
 
 // These functions search both the stored-general and temporary sections for a parameter and return it.
 #define SC_GET 0	   // Get, only.
