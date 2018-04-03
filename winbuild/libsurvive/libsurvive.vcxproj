@@ -178,6 +178,7 @@
     <ClCompile Include="..\..\src\poser_sba.c" />
     <ClCompile Include="..\..\src\poser_turveytori.c" />
     <ClCompile Include="..\..\src\survive.c" />
+    <ClCompile Include="..\..\src\survive_api.c" />
     <ClCompile Include="..\..\src\survive_cal.c" />
     <ClCompile Include="..\..\src\survive_charlesbiguator.c" />
     <ClCompile Include="..\..\src\survive_config.c" />
@@ -197,6 +198,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\include\libsurvive\poser.h" />
     <ClInclude Include="..\..\include\libsurvive\survive.h" />
+    <ClInclude Include="..\..\include\libsurvive\survive_api.h" />
     <ClInclude Include="..\..\include\libsurvive\survive_types.h" />
     <ClInclude Include="..\..\redist\crc32.h" />
     <ClInclude Include="..\..\redist\jsmn.h" />

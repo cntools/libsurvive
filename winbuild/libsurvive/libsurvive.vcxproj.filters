@@ -135,6 +135,9 @@
     <ClCompile Include="..\..\redist\sba\sba_chkjac.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\survive_api.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\ootx_decoder.h">
@@ -187,6 +190,9 @@
     </ClInclude>
     <ClInclude Include="..\..\redist\sba\sba.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\libsurvive\survive_api.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
