@@ -50,7 +50,11 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		SurvivePose object_pose_out;
 		quatrotateabout(object_pose_out.Rot, object_pose->Rot, applymotion );
 		copy3d( object_pose_out.Pos, object_pose->Pos );
+<<<<<<< HEAD
 		PoserData_poser_pose_func(pd, so, &object_pose_out);
+=======
+		PoserData_poser_raw_pose_func(pd, so, 0, &object_pose_out);
+>>>>>>> 22301a092b4009c4f2ca2bc8be4511d75e3082b6
 
 		return 0;
 	}
@@ -324,10 +328,24 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 			if( so->PoseConfidence < .01 )
 			{
 				memcpy( &object_pose_out, &LinmathPose_Identity, sizeof( LinmathPose_Identity ) );
+<<<<<<< HEAD
 				so->PoseConfidence = 1.0;
 			}
 
 			PoserData_poser_pose_func(pd, so, &object_pose_out);
+=======
+				object_pose_out.Pos[0] = -0.14372776;
+				object_pose_out.Pos[1] = 0.06856518;
+				object_pose_out.Pos[2] = 0.01960009;
+				object_pose_out.Rot[0] = 1.0;
+				object_pose_out.Rot[1] = -0.0;
+				object_pose_out.Rot[2] = 0.0;
+				object_pose_out.Rot[3] = 0.0;
+				so->PoseConfidence = 1.0;
+			}
+
+			PoserData_poser_raw_pose_func(pd, so, lhid, &object_pose_out);
+>>>>>>> 22301a092b4009c4f2ca2bc8be4511d75e3082b6
 
 			dd->ptsweep = 0;
 		}
