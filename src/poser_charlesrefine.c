@@ -42,9 +42,9 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		//TODO: Actually do Madgwick's algorithm
 		LinmathQuat	applymotion;
 		const SurvivePose * object_pose = &so->OutPose;
-		imuData->gyro[0] *= -0.001;
-		imuData->gyro[1] *= -0.001;
-		imuData->gyro[2] *= 0.001;
+		imuData->gyro[0] *= -0.0005;
+		imuData->gyro[1] *= -0.0005;
+		imuData->gyro[2] *= 0.0005;
 		quatfromeuler( applymotion, imuData->gyro );
 		//printf( "%f %f %f\n", imuData->gyro [0], imuData->gyro [1], imuData->gyro [2] );
 		SurvivePose object_pose_out;
@@ -156,8 +156,8 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 #define MIN_HIT_QUALITY 0.5			//Determines which hits to cull.
 #define HIT_QUALITY_BASELINE 0.0001	//Determines which hits to cull.  Actually SQRT(baseline) if 0.0001, it is really 1cm
 
-#define CORRECT_LATERAL_POSITION_COEFFICIENT 0.1		//Explodes if you exceed 1.0
-#define CORRECT_TELESCOPTION_COEFFICIENT 0.5			//Converges even as high as 10.0 and doesn't explode.
+#define CORRECT_LATERAL_POSITION_COEFFICIENT 0.8		//Explodes if you exceed 1.0
+#define CORRECT_TELESCOPTION_COEFFICIENT 8.0			//Converges even as high as 10.0 and doesn't explode.
 #define CORRECT_ROTATION_COEFFICIENT 1.0 //This starts to fall apart above 5.0, but for good reason.  It is amplified by the number of points seen.
 #define ROTATIONAL_CORRECTION_MAXFORCE 0.10
 
