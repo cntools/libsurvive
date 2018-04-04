@@ -4,7 +4,7 @@
 #include <os_generic.h>
 
 int main(int argc, char **argv) {
-	SurviveAsyncContext *actx = survive_asyc_init(argc, argv);
+	SurviveAsyncContext *actx = survive_async_init(argc, argv);
 	if (actx == 0) // implies -help or similiar
 		return 0;
 
