@@ -9,6 +9,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 
 #define MAX_PT_PER_SWEEP 32
 
@@ -17,8 +18,10 @@ typedef struct
 {
 	int sweepaxis;
 	int sweeplh;
-	FLT normal_at_errors[MAX_PT_PER_SWEEP][3];
-	FLT quantity_errors[MAX_PT_PER_SWEEP]
+	FLT normal_at_errors[MAX_PT_PER_SWEEP][3]; //Value is actually normalized, not just normal to sweep plane.
+	FLT quantity_errors[MAX_PT_PER_SWEEP];
+	FLT angles_at_pts[MAX_PT_PER_SWEEP];
+	SurvivePose object_pose_at_hit[MAX_PT_PER_SWEEP];
 	uint8_t sensor_ids[MAX_PT_PER_SWEEP];
 	int ptsweep;
 } CharlesPoserData;
@@ -51,7 +54,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		dd->sweeplh = lhid;
 
 		//FOR NOW, drop LH1.
-		if( lhid == 1 ) break;
+		//if( lhid == 1 ) break;
 
 
 //		const FLT * sensor_normal = &so->sensor_normals[senid*3];
@@ -60,7 +63,11 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 
 		const FLT * sensor_inpos = &so->sensor_locations[senid*3];
 		FLT sensor_position_worldspace[3];
+		//XXX Once I saw this get pretty wild (When in playback)
+		//I had to invert the values of sensor_inpos.  Not sure why.
 		ApplyPoseToPoint(sensor_position_worldspace, object_pose, sensor_inpos);
+
+
 		//printf( "%f %f %f  == > %f %f %f\n", sensor_inpos[0], sensor_inpos[1], sensor_inpos[2], sensor_position_worldspace[0], sensor_position_worldspace[1], sensor_position_worldspace[2] );
 		// = sensor position, relative to lighthouse center.
 		FLT sensorpos_rel_lh[3];	
@@ -96,154 +103,14 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 
 		if( (i = dd->ptsweep) < MAX_PT_PER_SWEEP )
 		{
-			dd->normal_at_errors[i] = sweep_normal;
+			memcpy( dd->normal_at_errors[i], sweep_normal, sizeof(FLT)*3 );
 			dd->quantity_errors[i] = dist;
+			dd->angles_at_pts[i] = angle;
 			dd->sensor_ids[i] = sensor_id;
-			dd->ptsweep++:
+			memcpy( &dd->object_pose_at_hit[i], object_pose, sizeof(SurvivePose) );
+			dd->ptsweep++;
 		}
 
-#if 0
-		printf( "D %d %d: %f   [%f %f %f]\n", lhid, axis, dist, sweep_normal[0], sweep_normal[1], sweep_normal[2] );
-
-
-		//Naieve approach...  Push it in the right direction
-		SurvivePose object_pose_out;
-		quatcopy( object_pose_out.Rot, object_pose->Rot );
-		scale3d(sweep_normal, sweep_normal, -0.1*dist);
-		add3d(object_pose_out.Pos, sweep_normal, object_pose->Pos);
-
-		if( so->PoseConfidence < .01 )
-		{
-			dd->average_nudge[0] = 0;
-			dd->average_nudge[1] = 0;
-			dd->average_nudge[2] = 0;
-
-			memcpy( &object_pose_out, &LinmathPose_Identity, sizeof( LinmathPose_Identity ) );
-			object_pose_out.Pos[1] = 2.5;
-			object_pose_out.Pos[2] = 1.8;
-			so->PoseConfidence = 1.0;
-		}
-//		printf( "%f %f %f %f\n", object_pose->Rot[0], object_pose->Rot[1], object_pose->Rot[2], object_pose->Rot[3] );
-
-		PoserData_poser_raw_pose_func(pd, so, lhid, &object_pose_out);
-#endif
-
-#if 0
-// = { 
-			axis?0.0:sin(angle),
-			axis?sin(angle):0.0,
-			cos(angle) };
-
-		 = sensor_locations;
-		LinmathPoint3d 
-	int8_t sensor_ct;	  // sensor count
-	FLT *sensor_locations; // size is sensor_ct*3.  Contains x,y,z values for each sensor
-	FLT *sensor_normals;   // size is nrlocations*3.  cointains normal vector for each sensor
-
-
-		// This is the quat equivalent of 'pout = pose * pin' if pose were a 4x4 matrix in homogenous space
-void ApplyPoseToPoint(LinmathPoint3d pout, const LinmathPose *pose, const LinmathPoint3d pin);
-
-
-
-		SurvivePose obj2world;
-//		ApplyPoseToPose(&obj2world, &lh2world, &objpose);
-		memcpy( &obj2world, &LinmathPose_Identity, sizeof( obj2world ) );
-		obj2world.Pos[1] = 1;
-		PoserData_poser_raw_pose_func(pd, so, lhid, &obj2world);
-//		PoserData_poser_raw_pose_func(pd, so, ld->lh, &posers[lightData->lh]);
-
-
-	// Pose Information, also "poser" field.
-	///from SurviveObject
-	//		FLT PoseConfidence;						 // 0..1
-	//		SurvivePose OutPose;					 // Final pose? (some day, one can dream!)
-	//		SurvivePose FromLHPose[NUM_LIGHTHOUSES]; // Filled out by poser, contains computed position from each lighthouse.
-	//		void *PoserData; // Initialized to zero, configured by poser, can be anything the poser wants.
-	//		PoserCB PoserFn;
-
-
-       // printf( "%d %d %f\n", ld->sensor_id, ld->lh, ld->angle );
-
-/*
-						   SurvivePose *object_pose, void *user);
-
-typedef struct
-{
-	PoserType pt;
-	poser_raw_pose_func rawposeproc;
-	poser_lighthouse_pose_func lighthouseposeproc;
-	void *userdata;
-} PoserData;
-
-	PoserData hdr;
-	int sensor_id;
-	int acode;			//OOTX Code associated with this sweep. bit 1 indicates vertical(1) or horizontal(0) sweep
-	int lh;             //Lighthouse making this sweep
-	uint32_t timecode;  //In object-local ticks.
-	FLT length;			//In seconds
-	FLT angle;			//In radians from center of lighthouse.
-} PoserDataLight;
-
-
-
-*/
-#if 0
-		SurvivePose posers[2];
-		int meas[2] = {0, 0};
-		for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
-			if (so->ctx->bsd[lh].PositionSet) {
-				epnp pnp = {.fu = 1, .fv = 1};
-				epnp_set_maximum_number_of_correspondences(&pnp, so->sensor_ct);
-
-				add_correspondences(so, &pnp, scene, lightData->timecode, lh);
-				static int required_meas = -1;
-				if (required_meas == -1)
-					required_meas = survive_configi(so->ctx, "epnp-required-meas", SC_GET, 4);
-
-				if (pnp.number_of_correspondences > required_meas) {
-
-					SurvivePose objInLh = solve_correspondence(so, &pnp, false);
-					if (quatmagnitude(objInLh.Rot) != 0) {
-						SurvivePose *lh2world = &so->ctx->bsd[lh].Pose;
-
-						SurvivePose txPose = {.Rot = {1}};
-						ApplyPoseToPose(&txPose, lh2world, &objInLh);
-						posers[lh] = txPose;
-						meas[lh] = pnp.number_of_correspondences;
-					}
-				}
-
-				epnp_dtor(&pnp);
-			}
-		}
-
-		if (meas[0] > 0 && meas[1] > 0) {
-			SurvivePose interpolate = {0};
-			bool winnerTakesAll = true; // Not convinced slerp does the right thing, will change this when i am
-
-			if (winnerTakesAll) {
-				int winner = meas[0] > meas[1] ? 0 : 1;
-				PoserData_poser_raw_pose_func(pd, so, winner, &posers[winner]);
-			} else {
-				double a, b;
-				a = meas[0] * meas[0];
-				b = meas[1] * meas[1];
-
-				double t = a + b;
-				for (size_t i = 0; i < 3; i++) {
-					interpolate.Pos[i] = (posers[0].Pos[i] * a + posers[1].Pos[i] * b) / (t);
-				}
-				quatslerp(interpolate.Rot, posers[0].Rot, posers[1].Rot, b / (t));
-				PoserData_poser_raw_pose_func(pd, so, lightData->lh, &interpolate);
-			}
-		} else {
-			if (meas[lightData->lh])
-				PoserData_poser_raw_pose_func(pd, so, lightData->lh, &posers[lightData->lh]);
-		}
-#endif
-
-#endif
 		return 0;
 	}
 
@@ -251,45 +118,214 @@ typedef struct
 		PoserDataLight *l = (PoserDataLight *)pd;
 		int lhid = l->lh;
 
-		//you can get sweepaxis and sweeplh.
 
+		//you can get sweepaxis and sweeplh.
 		if( dd->ptsweep )
 		{
 			int i;
-			int lhid = dd->lhid;
+			int lhid = dd->sweeplh;
+			int axis = dd->sweepaxis;
 			int pts = dd->ptsweep;
-			const SurvivePose * object_pose = &so->OutPose;
+			const SurvivePose * object_pose = &so->OutPose; //XXX TODO Should pull pose from approximate time when LHs were scanning it.
 
-			FLT avg_err[3] = { 0, 0, 0 };
-			FLT avgtot = 0.0;
-			for( i = 0; i < pts; i++ )
-			{
-				FLT * nrm = dd->normal_at_errors[pts];
-				FLT qty = quantity_errors[pts];
-				avgtot += qty;
-				avg_err[0] = avg_err[0] + nrm[0] * qty;
-				avg_err[1] = avg_err[1] + nrm[1] * qty;
-				avg_err[2] = avg_err[2] + nrm[2] * qty;
-			}
-			scale3d(avg_err, avg_err, 1./pts);
-			//We have "Average error" now.  This is a world space value.
-			//This can correct for lateral error, but not distance from camera.
+			BaseStationData * bsd = &so->ctx->bsd[lhid];
+			SurvivePose * lh_pose = &bsd->Pose;
 
-			//Next we need to find out what the weighting is to determine "zoom"
-			//How do we do this?  ??? Too tired to math.
-			FLT weight = 0.0;
-			for( i = 0; i < pts; i++ )
+			int validpoints = 0;
+			int ptvalid[MAX_PT_PER_SWEEP];
+			FLT avgerr = 0.0;
+			FLT vec_correct[3] = { 0., 0. , 0. };
+			FLT avgang = 0.0;
+
+//Tunable parameters:
+#define MIN_HIT_QUALITY 0.5			//Determines which hits to cull.
+#define HIT_QUALITY_BASELINE 0.0001	//Determines which hits to cull.  Actually SQRT(baseline) if 0.0001, it is really 1cm
+
+#define CORRECT_LATERAL_POSITION_COEFFICIENT 0.2		//Explodes if you exceed 1.0
+#define CORRECT_TELESCOPTION_COEFFICIENT 1.0			//Converges even as high as 10.0 and doesn't explode.
+#define CORRECT_ROTATION_COEFFICIENT 5.0 //This starts to fall apart above 5.0, but for good reason.  It is amplified by the number of points seen.
+#define ROTATIONAL_CORRECTION_MAXFORCE 0.10
+
+			//Step 1: Determine standard of deviation, and average in order to
+			// drop points that are likely in error.
 			{
-				//??!?!?  Sturfff
+				//Calculate average
+				FLT avgerr_orig = 0.0;
+				FLT stddevsq = 0.0;
+				for( i = 0; i < pts; i++ )
+					avgerr_orig += dd->quantity_errors[i];
+				avgerr_orig/=pts;
+
+				//Calculate standard of deviation.
+				for( i = 0; i < pts; i++ )
+				{
+					FLT diff = dd->quantity_errors[i]-avgerr_orig;
+					stddevsq += diff*diff;
+				}
+				stddevsq/=pts;
+
+				for( i = 0; i < pts; i++ )
+				{
+					FLT err = dd->quantity_errors[i];
+					FLT diff = err-avgerr_orig;
+					diff *= diff;
+					int isptvalid = (diff * MIN_HIT_QUALITY <= stddevsq + HIT_QUALITY_BASELINE)?1:0;
+					ptvalid[i] = isptvalid;
+					if( isptvalid )
+					{
+						avgang += dd->angles_at_pts[i];
+						avgerr += err;
+						validpoints ++;
+					}
+				}
+				avgang /= validpoints;
+				avgerr /= validpoints;
 			}
+
+			//Step 2: Determine average lateral error.
+			//We can actually always perform this operation.  Even with only one point.
+			{
+				FLT avg_err[3] = { 0, 0, 0 }; //Positional error.
+				for( i = 0; i < pts; i++ )
+				{
+					if( !ptvalid[i] ) continue;
+					FLT * nrm = dd->normal_at_errors[i];
+					FLT err = dd->quantity_errors[i];
+					avg_err[0] = avg_err[0] + nrm[0] * err;
+					avg_err[1] = avg_err[1] + nrm[1] * err;
+					avg_err[2] = avg_err[2] + nrm[2] * err;
+				}
+
+				//NOTE: The "avg_err" is not geometrically centered.  This is actually
+				//probably okay, since if you have sevearl data points to one side, you
+				//can probably trust that more.
+				scale3d(avg_err, avg_err, 1./validpoints);
+
+				//We have "Average error" now.  A vector in worldspace.
+				//This can correct for lateral error, but not distance from camera.
+
+				//XXX TODO: Should we check to see if we only have one or
+				//two points to make sure the error on this isn't unusually high?
+				//If calculated error is unexpectedly high, then we should probably
+				//Not apply the transform.
+				scale3d( avg_err, avg_err, -CORRECT_LATERAL_POSITION_COEFFICIENT );
+				add3d( vec_correct, vec_correct, avg_err );
+			}
+
+			//Step 3: Control telecoption from lighthouse.
+			// we need to find out what the weighting is to determine "zoom"
+			if( validpoints > 1 )	//Can't correct "zoom" with only one point.
+			{
+				FLT zoom = 0.0;
+				FLT rmsang = 0.0;
+				for( i = 0; i < pts; i++ )
+				{
+					if( !ptvalid[i] ) continue;
+					FLT delang = dd->angles_at_pts[i] - avgang;
+					FLT delerr = dd->quantity_errors[i] - avgerr;
+					if( axis ) delang *= -1;	//Flip sign on alternate axis because it's measured backwards.
+					zoom += delerr * delang;
+					rmsang += delang * delang;
+				}
+
+				//Control into or outof lighthouse.
+				//XXX Check to see if we need to sqrt( the rmsang), need to check convergance behavior close to lighthouse.
+				//This is a questionable step.
+ 				zoom /= sqrt(rmsang);
+
+				zoom *= CORRECT_TELESCOPTION_COEFFICIENT;
+
+				FLT veccamalong[3];
+				sub3d( veccamalong, lh_pose->Pos, object_pose->Pos );
+				normalize3d( veccamalong, veccamalong );
+				scale3d( veccamalong, veccamalong, zoom );
+				add3d( vec_correct, veccamalong, vec_correct );
+			}
+
+
+			SurvivePose object_pose_out;
+			add3d(object_pose_out.Pos, vec_correct, object_pose->Pos);
+
+			quatcopy( object_pose_out.Rot, object_pose->Rot );
+
+			//Stage 4: "Tug" on the rotation of the object, from all of the sensor's pov.
+			//If we were able to determine likliehood of a hit in the sweep instead of afterward
+			//we would actually be able to perform this on a per-hit basis.
+			if( 1 ) {
+				LinmathQuat correction;
+				quatcopy( correction, LinmathQuat_Identity );
+				for( i = 0; i < pts; i++ )
+				{
+					if( !ptvalid[i] ) continue;
+					FLT dist = dd->quantity_errors[i]-avgerr;
+					FLT angle = dd->angles_at_pts[i];
+					int sensor_id = dd->sensor_ids[i];
+					FLT * normal =  dd->normal_at_errors[i];
+					const SurvivePose * object_pose_at_hit = &dd->object_pose_at_hit[i];
+					const FLT * sensor_inpos = &so->sensor_locations[sensor_id*3];
+
+					LinmathQuat world_to_object_space;
+					quatgetreciprocal(world_to_object_space, object_pose_at_hit->Rot);
+					FLT correction_in_object_space[3];  //The amount across the surface of the object the rotation should happen.
+
+					quatrotatevector(correction_in_object_space, world_to_object_space, normal );
+					dist *= CORRECT_ROTATION_COEFFICIENT;
+					if( dist > ROTATIONAL_CORRECTION_MAXFORCE ) dist = ROTATIONAL_CORRECTION_MAXFORCE;
+					if( dist <-ROTATIONAL_CORRECTION_MAXFORCE ) dist =-ROTATIONAL_CORRECTION_MAXFORCE;
+
+					//Now, we have a "tug" vector in object-local space.  Need to apply the torque.
+					FLT vector_from_center_of_object[3];
+					normalize3d( vector_from_center_of_object, sensor_inpos );
+					//scale3d(vector_from_center_of_object, sensor_inpos, 10.0 );
+		//			vector_from_center_of_object[2]*=-1;
+	//				vector_from_center_of_object[1]*=-1;
+//					vector_from_center_of_object[0]*=-1;
+					//vector_from_center_of_object
+					scale3d(vector_from_center_of_object,vector_from_center_of_object, 1);
+
+
+					FLT new_vector_in_object_space[3];
+					//printf( "%f %f %f %f\n", object_pose_at_hit->Rot[0], object_pose_at_hit->Rot[1], object_pose_at_hit->Rot[2], object_pose_at_hit->Rot[3] );
+					//printf( "%f %f %f  // %f %f %f // %f\n", vector_from_center_of_object[0], vector_from_center_of_object[1], vector_from_center_of_object[2], correction_in_object_space[0], correction_in_object_space[1], correction_in_object_space[2], dist );
+					scale3d( correction_in_object_space, correction_in_object_space, -dist );
+					add3d( new_vector_in_object_space, vector_from_center_of_object, correction_in_object_space );
+
+					normalize3d( new_vector_in_object_space, new_vector_in_object_space );
+
+					LinmathQuat corrective_quaternion;
+					quatfrom2vectors(corrective_quaternion, vector_from_center_of_object, new_vector_in_object_space );
+					quatrotateabout( correction, correction, corrective_quaternion );
+					//printf( "%f -> %f %f %f => %f %f %f [%f %f %f %f]\n", dist, vector_from_center_of_object[0], vector_from_center_of_object[1], vector_from_center_of_object[2],
+						//correction_in_object_space[0], correction_in_object_space[1], correction_in_object_space[2],
+						//corrective_quaternion[0],corrective_quaternion[1],corrective_quaternion[1],corrective_quaternion[3]);
+				}
+				printf( "Applying: %f %f %f %f\n", correction[0], correction[1], correction[2], correction[3] );
+				//Apply our corrective quaternion to the output.
+				quatrotateabout( object_pose_out.Rot, object_pose_out.Rot, correction );
+				quatnormalize( object_pose_out.Rot, object_pose_out.Rot );
+			}
+
+			//Janky need to do this somewhere else...  This initializes the pose estimator.
+			if( so->PoseConfidence < .01 )
+			{
+				memcpy( &object_pose_out, &LinmathPose_Identity, sizeof( LinmathPose_Identity ) );
+				object_pose_out.Pos[0] = -0.14372776;
+				object_pose_out.Pos[1] = 0.06856518;
+				object_pose_out.Pos[2] = 0.01960009;
+				object_pose_out.Rot[0] = 1.0;
+				object_pose_out.Rot[1] = -0.0;
+				object_pose_out.Rot[2] = 0.0;
+				object_pose_out.Rot[3] = 0.0;
+				so->PoseConfidence = 1.0;
+			}
+
+			PoserData_poser_raw_pose_func(pd, so, lhid, &object_pose_out);
 
 			dd->ptsweep = 0;
-
-			//Update		PoserData_poser_raw_pose_func(pd, so, lhid, &object_pose_out);
 		}
 
-		dd->nextaxis = l->acode & 1;
-		printf( "SYNC %d %p\n", l->acode, dd );
+		dd->sweepaxis = l->acode & 1;
+		//printf( "SYNC %d %p\n", l->acode, dd );
 		break;
 	}
 	case POSERDATA_FULL_SCENE: {
