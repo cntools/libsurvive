@@ -396,7 +396,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		d->failures_to_reset = survive_configi(ctx, "sba-failures-to-reset", SC_GET, 1);
 		d->successes_to_reset_cntr = 0;
 		d->successes_to_reset = survive_configi(ctx, "sba-successes-to-reset", SC_GET, 100);
-		d->useIMU = true;
+		d->useIMU = survive_configi(ctx, "sba-use-imu", SC_GET, 1);
 		d->required_meas = survive_configi(ctx, "sba-required-meas", SC_GET, 8);
 		d->max_error = survive_configf(ctx, "sba-max-error", SC_GET, .0001);
 		d->sensor_time_window =
@@ -411,6 +411,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		SV_INFO("\tsba-sensor-variance-per-sec: %f", d->sensor_variance_per_second);
 		SV_INFO("\tsba-time-window: %d", d->sensor_time_window);
 		SV_INFO("\tsba-max-error: %f", d->max_error);
+		SV_INFO("\tsba-use-imu: %d", d->useIMU);
 	}
 	SBAData *d = so->PoserData;
 	switch (pd->pt) {

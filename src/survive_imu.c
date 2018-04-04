@@ -121,8 +121,7 @@ void survive_imu_tracker_set_pose(SurviveIMUTracker *tracker, uint32_t timecode,
 	tracker->pose = *pose;
 
 	for (int i = 0; i < 3; i++) {
-		tracker->current_velocity_lp[i] = tracker->current_velocity[i] = 0;
-		tracker->pos_lp[i] = 0;
+		tracker->current_velocity[i] = 0;
 	}
 	//(pose->Pos[i] - tracker->lastGT.Pos[i]) / tick_difference(timecode, tracker->lastGTTime) * 48000000.;
 
@@ -156,7 +155,7 @@ static void iterate_position(SurviveIMUTracker *tracker, double time_diff, const
 	scale3d(rAcc, rAcc, acc_mul);
 
 	for (int i = 0; i < 3; i++) {
-		out[i] += time_diff * (vel[i] - tracker->current_velocity_lp[i]); // + rAcc[i];
+		out[i] += time_diff * vel[i] + rAcc[i];
 	}
 }
 
@@ -170,7 +169,6 @@ static void iterate_velocity(LinmathVec3d result, SurviveIMUTracker *tracker, do
 
 	LinmathVec3d rAcc = {0};
 	RotateAccel(rAcc, pose, acc);
-	// fprintf(stderr, "%f\n", time_diff);
 	scale3d(rAcc, rAcc, time_diff);
 	add3d(result, result, rAcc);
 }
@@ -211,26 +209,11 @@ void survive_imu_tracker_integrate(SurviveObject *so, SurviveIMUTracker *tracker
 		FLT next[3];
 		iterate_position(tracker, time_diff, data, next);
 
-		LinmathVec3d v_next, lp_add;
+		LinmathVec3d v_next;
 		iterate_velocity(v_next, tracker, time_diff, data);
 
 		scale3d(tracker->current_velocity, v_next, 1);
-
-		FLT v_alpha = 1;
-		FLT p_alpha = 1;
-		scale3d(tracker->current_velocity_lp, tracker->current_velocity_lp, v_alpha);
-
-		scale3d(lp_add, v_next, 1 - v_alpha);
-		add3d(tracker->current_velocity_lp, tracker->current_velocity_lp, lp_add);
-
-		LinmathPoint3d p_add;
-		scale3d(p_add, next, 1 - p_alpha);
-		scale3d(tracker->pos_lp, tracker->pos_lp, p_alpha);
-		add3d(tracker->pos_lp, tracker->pos_lp, p_add);
-
-		for (int i = 0; i < 3; i++)
-			tracker->pose.Pos[i] = next[i] - tracker->pos_lp[i];
-		// scale3d(tracker->pose.Pos, next, 1);
+		scale3d(tracker->pose.Pos, next, 1);
 	}
 
 	tracker->last_data = *data;

@@ -16,10 +16,8 @@ typedef struct {
 	FLT accel_scale_bias;
 
 	LinmathVec3d current_velocity;	// Velocity in world frame
-	LinmathVec3d current_velocity_lp; // Velocity in world frame
 	PoserDataIMU last_data;
 	SurvivePose pose;
-	LinmathPoint3d pos_lp;
 
 	SurvivePose lastGT;
 	uint32_t lastGTTime;
