@@ -32,18 +32,23 @@ struct SurviveAsyncContext {
 };
 
 static void pose_fn(SurviveObject *so, uint32_t timecode, SurvivePose *pose) {
+	struct SurviveAsyncContext *actx = so->ctx->user_ptr;
+	OGLockMutex(actx->poll_mutex);
 	survive_default_raw_pose_process(so, timecode, pose);	
 
-	struct SurviveAsyncContext* actx = so->ctx->user_ptr;
 	int idx = (int)so->user_ptr;
 	actx->objects[idx].has_update = true;
+	OGUnlockMutex(actx->poll_mutex);
 }
 static void lh_fn(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose,
 	SurvivePose *object_pose) {
+	struct SurviveAsyncContext *actx = ctx->user_ptr;
+	OGLockMutex(actx->poll_mutex);
 	survive_default_lighthouse_pose_process(ctx, lighthouse, lighthouse_pose, object_pose);
 
-	struct SurviveAsyncContext* actx = ctx->user_ptr;
 	actx->objects[lighthouse].has_update = true;
+
+	OGUnlockMutex(actx->poll_mutex);
 }
 
 struct SurviveAsyncContext *survive_async_init(int argc, char *const *argv) {
@@ -95,9 +100,7 @@ static inline void* __async_thread(void* _actx) {
 	struct SurviveAsyncContext* actx = _actx; 
 	int error = 0;
 	while (actx->running && error == 0) {
-		OGLockMutex(actx->poll_mutex);
 		error = survive_poll(actx->ctx);
-		OGUnlockMutex(actx->poll_mutex); 
 	}
 	actx->running = false;
 	return (void*)error; 
