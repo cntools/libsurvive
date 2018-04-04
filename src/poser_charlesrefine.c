@@ -37,6 +37,21 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 	case POSERDATA_IMU: {
 		// Really should use this...
 		PoserDataIMU *imuData = (PoserDataIMU *)pd;
+
+
+		//TODO: Actually do Madgwick's algorithm
+		LinmathQuat	applymotion;
+		const SurvivePose * object_pose = &so->OutPose;
+		imuData->gyro[0] *= -0.001;
+		imuData->gyro[1] *= -0.001;
+		imuData->gyro[2] *= 0.001;
+		quatfromeuler( applymotion, imuData->gyro );
+		//printf( "%f %f %f\n", imuData->gyro [0], imuData->gyro [1], imuData->gyro [2] );
+		SurvivePose object_pose_out;
+		quatrotateabout(object_pose_out.Rot, object_pose->Rot, applymotion );
+		copy3d( object_pose_out.Pos, object_pose->Pos );
+		PoserData_poser_raw_pose_func(pd, so, 0, &object_pose_out);
+
 		return 0;
 	}
 	case POSERDATA_LIGHT: {
