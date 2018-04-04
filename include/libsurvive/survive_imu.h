@@ -9,14 +9,23 @@
 extern "C" {
 #endif
 
+struct SurviveIMUTracker_p;
+
 typedef struct {
 	FLT updir[3];
-	LinmathVec3d current_velocity; // Velocity in world frame
+	FLT accel_scale_bias;
+
+	LinmathVec3d current_velocity;	// Velocity in world frame
+	LinmathVec3d current_velocity_lp; // Velocity in world frame
 	PoserDataIMU last_data;
 	SurvivePose pose;
+	LinmathPoint3d pos_lp;
 
 	SurvivePose lastGT;
 	uint32_t lastGTTime;
+
+	float integralFBx, integralFBy, integralFBz; // integral error terms scaled by Ki
+
 } SurviveIMUTracker;
 
 void survive_imu_tracker_set_pose(SurviveIMUTracker *tracker, uint32_t timecode, SurvivePose *pose);

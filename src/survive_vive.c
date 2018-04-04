@@ -1508,7 +1508,7 @@ void survive_data_cb( SurviveUSBInterface * si )
 				// FLT conv = (float)((1./deg_per_sec)*(3.14159/180.)) / 8192.;
 				FLT DEGREES_TO_RADS = 3.14159 / 180.;
 				FLT conv = 1. / 10. * DEGREES_TO_RADS;
-				// calibrate_gyro(obj, agm+3);
+				calibrate_gyro(obj, agm + 3);
 				agm[3] *= conv;
 				agm[4] *= conv;
 				agm[5] *= conv;

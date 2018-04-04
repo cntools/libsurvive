@@ -272,12 +272,12 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 								info);			// info
 
 	if (currentPositionValid) {
-		FLT distp[3];
-		sub3d(distp, so->OutPose.Pos, soLocation.Pos);
-		FLT distance = magnitude3d(distp);
-		;
-		if (distance > 1.)
-			status = -1;
+		// FLT distp[3];
+		// sub3d(distp, so->OutPose.Pos, soLocation.Pos);
+		// FLT distance = magnitude3d(distp);
+
+		// if (distance > 1.)
+		//	status = -1;
 	}
 	if (status > 0 && (info[1] / meas_size * 2) < d->max_error) {
 		d->failures_to_reset_cntr = d->failures_to_reset;
@@ -296,7 +296,7 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 		}
 	}
 
-	return info[1] / meas_size * 2;
+	return status; // info[1] / meas_size * 2;
 }
 
 // Optimizes for LH position assuming object is posed at 0
@@ -396,12 +396,12 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		d->failures_to_reset = survive_configi(ctx, "sba-failures-to-reset", SC_GET, 1);
 		d->successes_to_reset_cntr = 0;
 		d->successes_to_reset = survive_configi(ctx, "sba-successes-to-reset", SC_GET, 100);
-
+		d->useIMU = true;
 		d->required_meas = survive_configi(ctx, "sba-required-meas", SC_GET, 8);
 		d->max_error = survive_configf(ctx, "sba-max-error", SC_GET, .0001);
 		d->sensor_time_window =
 			survive_configi(ctx, "sba-time-window", SC_GET, SurviveSensorActivations_default_tolerance * 2);
-		d->sensor_variance_per_second = survive_configf(ctx, "sba-sensor-variance-per-sec", SC_GET, 0.001);
+		d->sensor_variance_per_second = survive_configf(ctx, "sba-sensor-variance-per-sec", SC_GET, 10.0);
 		d->sensor_variance = survive_configf(ctx, "sba-sensor-variance", SC_GET, 1.0);
 		d->so = so;
 
