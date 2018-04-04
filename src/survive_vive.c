@@ -1485,26 +1485,33 @@ void survive_data_cb( SurviveUSBInterface * si )
 				obj->oldcode = code;
 
 				//XXX XXX BIG TODO!!! Actually recal gyro data.
-				FLT agm[9] = { acceldata[0].v, acceldata[1].v, acceldata[2].v,
-								acceldata[3].v, acceldata[4].v, acceldata[5].v,
-								0,0,0 };
-
-				agm[0]*=(float)(1./8192.0);
-				agm[1]*=(float)(1./8192.0);
-				agm[2]*=(float)(1./8192.0);
-				calibrate_acc(obj, agm);
+				FLT agm[9] = {acceldata[0].v,
+							  acceldata[1].v,
+							  acceldata[2].v,
+							  acceldata[3].v,
+							  acceldata[4].v,
+							  acceldata[5].v,
+							  0,
+							  0,
+							  0};
 
 				//1G for accelerometer, from MPU6500 datasheet
 				//this can change if the firmware changes the sensitivity.
+				// When coming off of USB, these values are in units of .5g -JB
+				agm[0] *= (float)(2. / 8192.0);
+				agm[1] *= (float)(2. / 8192.0);
+				agm[2] *= (float)(2. / 8192.0);
+				calibrate_acc(obj, agm);
 
-
-				agm[3]*=(float)((1./32.768)*(3.14159/180.));
-				agm[4]*=(float)((1./32.768)*(3.14159/180.));
-				agm[5]*=(float)((1./32.768)*(3.14159/180.));
-				calibrate_gyro(obj, agm+3);
-
-				//65.5 deg/s for gyroscope, from MPU6500 datasheet
-				//1000 deg/s for gyroscope, from MPU6500 datasheet
+				// From datasheet, can be 250, 500, 1000, 2000 deg/s range over 16 bits
+				// FLT deg_per_sec = 250;
+				// FLT conv = (float)((1./deg_per_sec)*(3.14159/180.)) / 8192.;
+				FLT DEGREES_TO_RADS = 3.14159 / 180.;
+				FLT conv = 1. / 10. * DEGREES_TO_RADS;
+				calibrate_gyro(obj, agm + 3);
+				agm[3] *= conv;
+				agm[4] *= conv;
+				agm[5] *= conv;
 
 				ctx->imuproc( obj, 3, agm, timecode, code );
 			}

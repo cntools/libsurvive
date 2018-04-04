@@ -256,7 +256,7 @@ static FLT RunOpti( SurviveObject * hmd, PoserDataFullScene * fs, int lh, int pr
 			int dataindex = p*(2*NUM_LIGHTHOUSES)+lh*2;
 			if( fs->lengths[p][lh][0] < 0 || fs->lengths[p][lh][1] < 0 ) continue;
 
-			FLT out[2] = { 0 };
+			FLT out[2] = {0};
 			survive_apply_bsd_calibration(hmd->ctx, lh, fs->angles[p][lh], out);
 
 			//Find out where our ray shoots forth from.
@@ -343,7 +343,7 @@ static FLT RunOpti( SurviveObject * hmd, PoserDataFullScene * fs, int lh, int pr
 		if( fs->lengths[p][lh][0] < 0 || fs->lengths[p][lh][1] < 0 ) continue;
 
 		//Find out where our ray shoots forth from.
-		FLT out[2] = { 0 };
+		FLT out[2] = {0};
 		survive_apply_bsd_calibration(hmd->ctx, lh, fs->angles[p][lh], out);
 
 		// Find out where our ray shoots forth from.

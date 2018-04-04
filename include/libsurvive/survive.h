@@ -115,7 +115,7 @@ struct SurviveObject {
 	haptic_func haptic;
 
 	SurviveSensorActivations activations;
-	void* user_ptr;
+	void *user_ptr;
 	// Debug
 	int tsl;
 };

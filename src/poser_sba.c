@@ -3,11 +3,12 @@
 #define USE_DOUBLE
 #endif
 
-#include <sba/sba.h>
 #include <malloc.h>
+#include <sba/sba.h>
 
 #include "poser.h"
 #include <survive.h>
+#include <survive_imu.h>
 
 #include "assert.h"
 #include "linmath.h"
@@ -46,6 +47,9 @@ typedef struct SBAData {
 	int sensor_time_window;
 
 	int required_meas;
+
+	SurviveIMUTracker tracker;
+	bool useIMU;
 
 	SurviveObject *so;
 } SBAData;
@@ -268,12 +272,12 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 								info);			// info
 
 	if (currentPositionValid) {
-		FLT distp[3];
-		sub3d(distp, so->OutPose.Pos, soLocation.Pos);
-		FLT distance = magnitude3d(distp);
-		;
-		if (distance > 1.)
-			status = -1;
+		// FLT distp[3];
+		// sub3d(distp, so->OutPose.Pos, soLocation.Pos);
+		// FLT distance = magnitude3d(distp);
+
+		// if (distance > 1.)
+		//	status = -1;
 	}
 	if (status > 0 && (info[1] / meas_size * 2) < d->max_error) {
 		d->failures_to_reset_cntr = d->failures_to_reset;
@@ -292,7 +296,7 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 		}
 	}
 
-	return info[1] / meas_size * 2;
+	return status; // info[1] / meas_size * 2;
 }
 
 // Optimizes for LH position assuming object is posed at 0
@@ -392,12 +396,12 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		d->failures_to_reset = survive_configi(ctx, "sba-failures-to-reset", SC_GET, 1);
 		d->successes_to_reset_cntr = 0;
 		d->successes_to_reset = survive_configi(ctx, "sba-successes-to-reset", SC_GET, 100);
-
+		d->useIMU = survive_configi(ctx, "sba-use-imu", SC_GET, 1);
 		d->required_meas = survive_configi(ctx, "sba-required-meas", SC_GET, 8);
 		d->max_error = survive_configf(ctx, "sba-max-error", SC_GET, .0001);
 		d->sensor_time_window =
 			survive_configi(ctx, "sba-time-window", SC_GET, SurviveSensorActivations_default_tolerance * 2);
-		d->sensor_variance_per_second = survive_configf(ctx, "sba-sensor-variance-per-sec", SC_GET, 0.001);
+		d->sensor_variance_per_second = survive_configf(ctx, "sba-sensor-variance-per-sec", SC_GET, 10.0);
 		d->sensor_variance = survive_configf(ctx, "sba-sensor-variance", SC_GET, 1.0);
 		d->so = so;
 
@@ -407,6 +411,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		SV_INFO("\tsba-sensor-variance-per-sec: %f", d->sensor_variance_per_second);
 		SV_INFO("\tsba-time-window: %d", d->sensor_time_window);
 		SV_INFO("\tsba-max-error: %f", d->max_error);
+		SV_INFO("\tsba-use-imu: %d", d->useIMU);
 	}
 	SBAData *d = so->PoserData;
 	switch (pd->pt) {
@@ -421,6 +426,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		FLT error = -1;
 		if (d->last_lh != lightData->lh || d->last_acode != lightData->acode) {
 			error = run_sba_find_3d_structure(d, lightData, scene, 100, .5);
+
 			d->last_lh = lightData->lh;
 			d->last_acode = lightData->acode;
 		}
@@ -429,6 +435,9 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 			if (d->failures_to_reset_cntr > 0)
 				d->failures_to_reset_cntr--;
 		} else {
+			if (d->useIMU) {
+				survive_imu_tracker_set_pose(&d->tracker, lightData->timecode, &so->OutPose);
+			}
 			if (d->successes_to_reset_cntr > 0)
 				d->successes_to_reset_cntr--;
 		}
@@ -442,6 +451,15 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		// std::cerr << "Average reproj error: " << error << std::endl;
 		return 0;
 	}
+	case POSERDATA_IMU: {
+
+	  PoserDataIMU * imu = (PoserDataIMU*)pd;
+	  if (ctx->calptr && ctx->calptr->stage < 5) {
+	  } else if(d->useIMU){
+	    survive_imu_tracker_integrate(so, &d->tracker, imu);
+		PoserData_poser_pose_func(pd, so, &d->tracker.pose);
+	  }
+	} // INTENTIONAL FALLTHROUGH
 	default: {
 		const char *subposer = config_read_str(so->ctx->global_config_values, "SBASeedPoser", "PoserEPNP");
 		PoserCB driver = (PoserCB)GetDriver(subposer);

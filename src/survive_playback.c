@@ -17,8 +17,8 @@
 typedef long ssize_t;
 #define SSIZE_MAX LONG_MAX
 
-ssize_t getdelim(char ** lineptr, size_t * n, int delimiter, FILE *stream);
-ssize_t getline(char **lineptr, size_t * n, FILE *stream);
+ssize_t getdelim(char **lineptr, size_t *n, int delimiter, FILE *stream);
+ssize_t getline(char **lineptr, size_t *n, FILE *stream);
 #endif
 
 typedef struct SurviveRecordingData {

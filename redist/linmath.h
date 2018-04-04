@@ -7,7 +7,6 @@
 extern "C" {
 #endif
 
-
 #ifdef _WIN32
 #define LINMATH_EXPORT __declspec(dllexport)
 #else
@@ -116,7 +115,7 @@ LINMATH_EXPORT void quatgetreciprocal(LinmathQuat qout, const LinmathQuat qin);
 LINMATH_EXPORT void quatsub(LinmathQuat qout, const LinmathQuat a, const LinmathQuat b);
 LINMATH_EXPORT void quatadd(LinmathQuat qout, const LinmathQuat a, const LinmathQuat b);
 LINMATH_EXPORT void quatrotateabout(LinmathQuat qout, const LinmathQuat a,
-					 const LinmathQuat b); // same as quat multiply, not piecewise multiply.
+									const LinmathQuat b); // same as quat multiply, not piecewise multiply.
 LINMATH_EXPORT void quatscale(LinmathQuat qout, const LinmathQuat qin, FLT s);
 FLT quatinnerproduct(const LinmathQuat qa, const LinmathQuat qb);
 LINMATH_EXPORT void quatouterproduct(FLT *outvec3, LinmathQuat qa, LinmathQuat qb);

@@ -30,40 +30,29 @@
    THE SOFTWARE.
 */
 
-
 #include <errno.h>
 #include <limits.h>
-#include <stdlib.h>
 #include <stdio.h>
-
+#include <stdlib.h>
 
 #if __STDC_VERSION__ >= 199901L
 /* restrict is a keyword */
 #else
-# define restrict
+#define restrict
 #endif
-
 
 #ifndef _POSIX_SOURCE
 typedef long ssize_t;
 #define SSIZE_MAX LONG_MAX
 #endif
 
+ssize_t getdelim(char **restrict lineptr, size_t *restrict n, int delimiter, FILE *restrict stream);
+ssize_t getline(char **restrict lineptr, size_t *restrict n, FILE *restrict stream);
 
-ssize_t getdelim(char **restrict lineptr, size_t *restrict n, int delimiter,
-                 FILE *restrict stream);
-ssize_t getline(char **restrict lineptr, size_t *restrict n,
-                FILE *restrict stream);
+#define _GETDELIM_GROWBY 128 /* amount to grow line buffer by */
+#define _GETDELIM_MINLEN 4   /* minimum line buffer size */
 
-
-
-#define _GETDELIM_GROWBY 128    /* amount to grow line buffer by */
-#define _GETDELIM_MINLEN 4      /* minimum line buffer size */
-
-
-ssize_t getdelim(char **restrict lineptr, size_t *restrict n, int delimiter,
-                 FILE *restrict stream)
-{
+ssize_t getdelim(char **restrict lineptr, size_t *restrict n, int delimiter, FILE *restrict stream) {
 	char *buf, *pos;
 	int c;
 	ssize_t bytes;
@@ -110,7 +99,7 @@ ssize_t getdelim(char **restrict lineptr, size_t *restrict n, int delimiter,
 			*lineptr = buf;
 		}
 
-		*pos++ = (char) c;
+		*pos++ = (char)c;
 		if (c == delimiter) {
 			break;
 		}
@@ -125,19 +114,14 @@ ssize_t getdelim(char **restrict lineptr, size_t *restrict n, int delimiter,
 	return bytes;
 }
 
-
-ssize_t getline(char **restrict lineptr, size_t *restrict n,
-                FILE *restrict stream)
-{
+ssize_t getline(char **restrict lineptr, size_t *restrict n, FILE *restrict stream) {
 	return getdelim(lineptr, n, '\n', stream);
 }
-
 
 #ifdef _TEST_GETDELIM
 
 /* TODO: this isn't a very extensive test. */
-int main(void)
-{
+int main(void) {
 	char *line = NULL;
 	size_t n = 0;
 	while (getline(&line, &n, stdin) > 0) {

@@ -14,7 +14,7 @@ static uint32_t PoserData_timecode(PoserData *poser_data) {
 		return lightData->timecode;
 	}
 	case POSERDATA_FULL_SCENE: {
-		PoserDataFullScene* pdfs = (PoserDataFullScene *)(poser_data);
+		PoserDataFullScene *pdfs = (PoserDataFullScene *)(poser_data);
 		return -1;
 	}
 	case POSERDATA_IMU: {

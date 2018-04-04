@@ -60,18 +60,14 @@ BOOL WINAPI SymCleanup(
 	HANDLE hProcess
 );
 
-BOOL mycb(
-  PSYMBOL_INFO pSymInfo,
-  ULONG        SymbolSize,
-  PVOID        UserContext
-  ){
-	  SymEnumeratorCallback cb = (SymEnumeratorCallback)UserContext;
-	  return !cb( "", &pSymInfo->Name[0], (void*)pSymInfo->Address, (long) pSymInfo->Size );
+BOOL mycb(PSYMBOL_INFO pSymInfo, ULONG SymbolSize, PVOID UserContext) {
+	SymEnumeratorCallback cb = (SymEnumeratorCallback)UserContext;
+	return !cb("", &pSymInfo->Name[0], (void *)pSymInfo->Address, (long)pSymInfo->Size);
   }
   
 int EnumerateSymbols( SymEnumeratorCallback cb )
 {
-	HANDLE proc =  GetCurrentProcess();
+	HANDLE proc = GetCurrentProcess();
 	if( !SymInitialize( proc, 0, 1 ) ) return -1;
 	if( !SymEnumSymbols( proc, 0, "*!*", &mycb, (void*)cb ) )
 	{

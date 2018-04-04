@@ -43,7 +43,6 @@ void survive_reproject_from_pose_with_bsd(const BaseStationData *bsd, const surv
 		if (f & SVCal_Gib)
 			out[axis] -= config->gib_scale * sin(gibPhase[axis] + ang[axis]) * gibMag[axis];
 	}
-
 }
 
 void survive_apply_bsd_calibration_by_config(SurviveContext *ctx, int lh, struct survive_calibration_config *config,

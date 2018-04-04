@@ -164,8 +164,8 @@ function create_tracked_object(info) {
 	group.sensors = [];
 	if (info.config && info.config.lighthouse_config) {
 		for (var idx in info.config.lighthouse_config.modelPoints) {
-            var p = info.config.lighthouse_config.modelPoints[idx];
-            var pn = info.config.lighthouse_config.modelNormals[idx];
+			var p = info.config.lighthouse_config.modelPoints[idx];
+			var pn = info.config.lighthouse_config.modelNormals[idx];
 			var color = idx / info.config.lighthouse_config.modelPoints * 0xFFFFFF;
 			if (idx === 0)
 				color = 0x00ff00;
@@ -173,10 +173,11 @@ function create_tracked_object(info) {
 			var newSensor = new THREE.Mesh(sensorGeometry, sensorMaterial);
 			newSensor.position.set(p[0], p[1], p[2]);
 
-            var normalGeom = new THREE.Geometry();
-            normalGeom.vertices.push(newSensor.position,
-				new THREE.Vector3(p[0] + pn[0] * .02, p[1] + pn[1] * .02, p[2] + pn[2] * .02));
-            var normal= new THREE.Line(normalGeom, new THREE.LineBasicMaterial({color : idx == 4 ? 0xFF0000 : 0x00FF00}));
+			var normalGeom = new THREE.Geometry();
+			normalGeom.vertices.push(newSensor.position,
+									 new THREE.Vector3(p[0] + pn[0] * .02, p[1] + pn[1] * .02, p[2] + pn[2] * .02));
+			var normal =
+				new THREE.Line(normalGeom, new THREE.LineBasicMaterial({color : idx == 4 ? 0xFF0000 : 0x00FF00}));
 			group.add(normal);
 			group.sensors[idx] = sensorMaterial;
 			group.add(newSensor);
@@ -299,7 +300,7 @@ var survive_log_handlers = {
 				downAxes[obj.tracker] = new THREE.Geometry();
 				downAxes[obj.tracker].vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0));
 
-                var line = new THREE.Line(downAxes[obj.tracker], new THREE.LineBasicMaterial({color : 0xffffff}));
+				var line = new THREE.Line(downAxes[obj.tracker], new THREE.LineBasicMaterial({color : 0xffffff}));
 				scene.add(line);
 				}
 

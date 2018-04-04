@@ -1631,8 +1631,7 @@ static void QuickPose(SurviveObject *so, PoserData *pd, SurvivePose *additionalT
 			SolveForLighthouse(&pose.Pos[0], &pose.Rot[0], to, so, pd, 0, additionalTx, lh, 0);
 
 			//printf("P&O: [% 08.8f,% 08.8f,% 08.8f] [% 08.8f,% 08.8f,% 08.8f,% 08.8f]\n", pos[0], pos[1], pos[2], quat[0], quat[1], quat[2], quat[3]);
-			if (so->ctx->poseproc)
-			{
+			if (so->ctx->poseproc) {
 				so->ctx->poseproc(so, lh, &pose);
 			}
 

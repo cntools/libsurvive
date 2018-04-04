@@ -86,9 +86,8 @@ void survive_verify_FLT_size(uint32_t user_size) {
 	if (sizeof(FLT) != user_size) {
 		fprintf(stderr, "FLT type incompatible; the shared library libsurvive has FLT size %lu vs user program %u\n",
 				(unsigned long)sizeof(FLT), user_size);
-		fprintf(stderr,
-				"Add '#define FLT %s' before including survive.h or recompile the shared library with the "
-				"appropriate flag. \n",
+		fprintf(stderr, "Add '#define FLT %s' before including survive.h or recompile the shared library with the "
+						"appropriate flag. \n",
 				sizeof(FLT) == sizeof(double) ? "double" : "float");
 		exit(-1);
 	}
@@ -559,10 +558,7 @@ int survive_simple_inflate(struct SurviveContext *ctx, const char *input, int in
 	return len;
 }
 
-
-
 #endif
-
 
 const char *survive_object_codename(SurviveObject *so) { return so->codename; }
 
