@@ -7,11 +7,29 @@
 #define _USE_MATH_DEFINES // for C
 #include <math.h>
 
-void PoserData_poser_raw_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse, SurvivePose *pose) {
-	if (poser_data->rawposeproc) {
-		poser_data->rawposeproc(so, lighthouse, pose, poser_data->userdata);
+static uint32_t PoserData_timecode(PoserData *poser_data) {
+	switch (poser_data->pt) {
+	case POSERDATA_LIGHT: {
+		PoserDataLight *lightData = (PoserDataLight *)poser_data;
+		return lightData->timecode;
+	}
+	case POSERDATA_FULL_SCENE: {
+		PoserDataFullScene *pdfs = (PoserDataFullScene *)(poser_data);
+		return -1;
+	}
+	case POSERDATA_IMU: {
+		PoserDataIMU *imuData = (PoserDataIMU *)poser_data;
+		return imuData->timecode;
+	}
+	}
+	return -1;
+}
+
+void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, SurvivePose *pose) {
+	if (poser_data->poseproc) {
+		poser_data->poseproc(so, PoserData_timecode(poser_data), pose, poser_data->userdata);
 	} else {
-		so->ctx->rawposeproc(so, lighthouse, pose);
+		so->ctx->poseproc(so, PoserData_timecode(poser_data), pose);
 	}
 }
 

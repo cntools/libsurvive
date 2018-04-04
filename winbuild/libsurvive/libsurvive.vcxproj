@@ -91,7 +91,8 @@
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(IntDir)Test.txt</MapFileName>
       <MapExports>true</MapExports>
-      <ModuleDefinitionFile>$(MSBuildProjectDirectory)\libsurvive.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>
+      </ModuleDefinitionFile>
     </Link>
     <ProjectReference />
     <Lib>
@@ -213,7 +214,6 @@
     <ClInclude Include="..\..\src\survive_internal.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="libsurvive.def" />
     <None Include="packages.config">
       <SubType>Designer</SubType>
     </None>

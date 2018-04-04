@@ -7,6 +7,12 @@
 extern "C" {
 #endif
 
+#ifdef _WIN32
+#define LINMATH_EXPORT __declspec(dllexport)
+#else
+#define LINMATH_EXPORT __attribute__((visibility("default")))
+#endif
+
 // Yes, I know it's kind of arbitrary.
 #define DEFAULT_EPSILON 0.001
 
@@ -64,85 +70,85 @@ extern LinmathQuat LinmathQuat_Identity;
 extern LinmathPose LinmathPose_Identity;
 
 // NOTE: Inputs may never be output with cross product.
-void cross3d(FLT *out, const FLT *a, const FLT *b);
+LINMATH_EXPORT void cross3d(FLT *out, const FLT *a, const FLT *b);
 
-void sub3d(FLT *out, const FLT *a, const FLT *b);
+LINMATH_EXPORT void sub3d(FLT *out, const FLT *a, const FLT *b);
 
-void add3d(FLT *out, const FLT *a, const FLT *b);
+LINMATH_EXPORT void add3d(FLT *out, const FLT *a, const FLT *b);
 
-void scale3d(FLT *out, const FLT *a, FLT scalar);
+LINMATH_EXPORT void scale3d(FLT *out, const FLT *a, FLT scalar);
 
-void normalize3d(FLT *out, const FLT *in);
+LINMATH_EXPORT void normalize3d(FLT *out, const FLT *in);
 
 FLT dot3d(const FLT *a, const FLT *b);
 
 // Returns 0 if equal.  If either argument is null, 0 will ALWAYS be returned.
 int compare3d(const FLT *a, const FLT *b, FLT epsilon);
 
-void copy3d(FLT *out, const FLT *in);
+LINMATH_EXPORT void copy3d(FLT *out, const FLT *in);
 
 FLT magnitude3d(const FLT *a);
 FLT dist3d(const FLT *a, const FLT *b);
 FLT anglebetween3d(FLT *a, FLT *b);
 
-void rotatearoundaxis(FLT *outvec3, FLT *invec3, FLT *axis, FLT angle);
-void angleaxisfrom2vect(FLT *angle, FLT *axis, FLT *src, FLT *dest);
-void axisanglefromquat(FLT *angle, FLT *axis, LinmathQuat quat);
+LINMATH_EXPORT void rotatearoundaxis(FLT *outvec3, FLT *invec3, FLT *axis, FLT angle);
+LINMATH_EXPORT void angleaxisfrom2vect(FLT *angle, FLT *axis, FLT *src, FLT *dest);
+LINMATH_EXPORT void axisanglefromquat(FLT *angle, FLT *axis, LinmathQuat quat);
 
 // Quaternion things...
 
 typedef FLT LinmathEulerAngle[3];
 
-void quatsetnone(LinmathQuat q);
-void quatcopy(LinmathQuat q, const LinmathQuat qin);
-void quatfromeuler(LinmathQuat q, const LinmathEulerAngle euler);
-void quattoeuler(LinmathEulerAngle euler, const LinmathQuat q);
-void quatfromaxisangle(LinmathQuat q, const FLT *axis, FLT radians);
+LINMATH_EXPORT void quatsetnone(LinmathQuat q);
+LINMATH_EXPORT void quatcopy(LinmathQuat q, const LinmathQuat qin);
+LINMATH_EXPORT void quatfromeuler(LinmathQuat q, const LinmathEulerAngle euler);
+LINMATH_EXPORT void quattoeuler(LinmathEulerAngle euler, const LinmathQuat q);
+LINMATH_EXPORT void quatfromaxisangle(LinmathQuat q, const FLT *axis, FLT radians);
 FLT quatmagnitude(const LinmathQuat q);
 FLT quatinvsqmagnitude(const LinmathQuat q);
-void quatnormalize(LinmathQuat qout, const LinmathQuat qin); // Safe for in to be same as out.
-void quattomatrix(FLT *matrix44, const LinmathQuat q);
-void quatfrommatrix(LinmathQuat q, const FLT *matrix44);
-void quatfrommatrix33(LinmathQuat q, const FLT *matrix33);
-void quatgetconjugate(LinmathQuat qout, const LinmathQuat qin);
-void quatgetreciprocal(LinmathQuat qout, const LinmathQuat qin);
-void quatsub(LinmathQuat qout, const LinmathQuat a, const LinmathQuat b);
-void quatadd(LinmathQuat qout, const LinmathQuat a, const LinmathQuat b);
-void quatrotateabout(LinmathQuat qout, const LinmathQuat a,
-					 const LinmathQuat b); // same as quat multiply, not piecewise multiply.
-void quatscale(LinmathQuat qout, const LinmathQuat qin, FLT s);
+LINMATH_EXPORT void quatnormalize(LinmathQuat qout, const LinmathQuat qin); // Safe for in to be same as out.
+LINMATH_EXPORT void quattomatrix(FLT *matrix44, const LinmathQuat q);
+LINMATH_EXPORT void quatfrommatrix(LinmathQuat q, const FLT *matrix44);
+LINMATH_EXPORT void quatfrommatrix33(LinmathQuat q, const FLT *matrix33);
+LINMATH_EXPORT void quatgetconjugate(LinmathQuat qout, const LinmathQuat qin);
+LINMATH_EXPORT void quatgetreciprocal(LinmathQuat qout, const LinmathQuat qin);
+LINMATH_EXPORT void quatsub(LinmathQuat qout, const LinmathQuat a, const LinmathQuat b);
+LINMATH_EXPORT void quatadd(LinmathQuat qout, const LinmathQuat a, const LinmathQuat b);
+LINMATH_EXPORT void quatrotateabout(LinmathQuat qout, const LinmathQuat a,
+									const LinmathQuat b); // same as quat multiply, not piecewise multiply.
+LINMATH_EXPORT void quatscale(LinmathQuat qout, const LinmathQuat qin, FLT s);
 FLT quatinnerproduct(const LinmathQuat qa, const LinmathQuat qb);
-void quatouterproduct(FLT *outvec3, LinmathQuat qa, LinmathQuat qb);
-void quatevenproduct(LinmathQuat q, LinmathQuat qa, LinmathQuat qb);
-void quatoddproduct(FLT *outvec3, LinmathQuat qa, LinmathQuat qb);
-void quatslerp(LinmathQuat q, const LinmathQuat qa, const LinmathQuat qb, FLT t);
-void quatrotatevector(FLT *vec3out, const LinmathQuat quat, const FLT *vec3in);
-void quatfrom2vectors(LinmathQuat q, const FLT *src, const FLT *dest);
+LINMATH_EXPORT void quatouterproduct(FLT *outvec3, LinmathQuat qa, LinmathQuat qb);
+LINMATH_EXPORT void quatevenproduct(LinmathQuat q, LinmathQuat qa, LinmathQuat qb);
+LINMATH_EXPORT void quatoddproduct(FLT *outvec3, LinmathQuat qa, LinmathQuat qb);
+LINMATH_EXPORT void quatslerp(LinmathQuat q, const LinmathQuat qa, const LinmathQuat qb, FLT t);
+LINMATH_EXPORT void quatrotatevector(FLT *vec3out, const LinmathQuat quat, const FLT *vec3in);
+LINMATH_EXPORT void quatfrom2vectors(LinmathQuat q, const FLT *src, const FLT *dest);
 
 // This is the quat equivalent of 'pout = pose * pin' if pose were a 4x4 matrix in homogenous space
-void ApplyPoseToPoint(LinmathPoint3d pout, const LinmathPose *pose, const LinmathPoint3d pin);
+LINMATH_EXPORT void ApplyPoseToPoint(LinmathPoint3d pout, const LinmathPose *pose, const LinmathPoint3d pin);
 
 // This is the quat equivalent of 'pout = lhs_pose * rhs_pose' if poses were a 4x4 matrix in homogenous space
-void ApplyPoseToPose(LinmathPose *pout, const LinmathPose *lhs_pose, const LinmathPose *rhs_pose);
+LINMATH_EXPORT void ApplyPoseToPose(LinmathPose *pout, const LinmathPose *lhs_pose, const LinmathPose *rhs_pose);
 
 // This is the quat equivlant of 'pose_in^-1'; so that ApplyPoseToPose(..., InvertPose(..., pose_in), pose_in) ==
 // Identity ( [0, 0, 0], [1, 0, 0, 0] )
 // by definition.
-void InvertPose(LinmathPose *poseout, const LinmathPose *pose_in);
+LINMATH_EXPORT void InvertPose(LinmathPose *poseout, const LinmathPose *pose_in);
 
-void PoseToMatrix(FLT *mat44, const LinmathPose *pose_in);
+LINMATH_EXPORT void PoseToMatrix(FLT *mat44, const LinmathPose *pose_in);
 // Matrix Stuff
 
 typedef struct {
 	FLT val[3][3]; // row, column
 } Matrix3x3;
 
-void rotate_vec(FLT *out, const FLT *in, Matrix3x3 rot);
-void rotation_between_vecs_to_m3(Matrix3x3 *m, const FLT v1[3], const FLT v2[3]);
+LINMATH_EXPORT void rotate_vec(FLT *out, const FLT *in, Matrix3x3 rot);
+LINMATH_EXPORT void rotation_between_vecs_to_m3(Matrix3x3 *m, const FLT v1[3], const FLT v2[3]);
 Matrix3x3 inverseM33(const Matrix3x3 mat);
 
-void matrix44copy(FLT *mout, const FLT *minm);
-void matrix44transpose(FLT *mout, const FLT *minm);
+LINMATH_EXPORT void matrix44copy(FLT *mout, const FLT *minm);
+LINMATH_EXPORT void matrix44transpose(FLT *mout, const FLT *minm);
 
 #ifdef __cplusplus
 }

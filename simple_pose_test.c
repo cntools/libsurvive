@@ -42,10 +42,10 @@ void HandleDestroy()
 FLT hpos[3];
 FLT hpos2[3];
 
-void testprog_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose) {
-	survive_default_raw_pose_process(so, lighthouse, pose );
+void testprog_raw_pose_process(SurviveObject *so, uint32_t timecode, SurvivePose *pose) {
+	survive_default_raw_pose_process(so, timecode, pose);
 
-	if( lighthouse != 0 || strcmp( so->codename, "HMD" ) != 0 )
+	if (strcmp(so->codename, "HMD") != 0)
 		return;
 
 	// print the pose;
@@ -64,7 +64,7 @@ void testprog_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePos
 	hy = pos[1];
 	hz = pos[2];*/
 
-	printf("Pose: [%1.1x][%s][% 08.8f,% 08.8f,% 08.8f] [ang:%08.2f %08.2f %08.2f %08.2f]\n", lighthouse, so->codename,
+	printf("Pose: [%u][%s][% 08.8f,% 08.8f,% 08.8f] [ang:%08.2f %08.2f %08.2f %08.2f]\n", timecode, so->codename,
 		   pose->Pos[0], pose->Pos[1], pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
 
 	hpos[0] = pose->Pos[0];
@@ -163,11 +163,12 @@ int main( int argc, char ** argv )
 	}
 
 	//survive_install_button_fn(ctx, testprog_button_process);
-	survive_install_raw_pose_fn(ctx, testprog_raw_pose_process);
+	survive_install_pose_fn(ctx, testprog_raw_pose_process);
 	//survive_install_imu_fn(ctx, testprog_imu_process);
-	survive_install_raw_pose_fn(ctx, testprog_raw_pose_process);
+	survive_install_pose_fn(ctx, testprog_raw_pose_process);
 	//survive_install_angle_fn(ctx, testprog_angle_process );
 
+#if 0 // Don't reset poses
 	ctx->bsd[0].PositionSet = ctx->bsd[1].PositionSet = 1;
 	int i;
 	for( i = 0; i < 2; i++ )
@@ -181,7 +182,7 @@ int main( int argc, char ** argv )
 		p->Rot[2] = 0;
 		p->Rot[3] = 0;
 	}
-
+#endif
 	OGCreateThread( GUIThread, 0 );
 
 	if( !ctx )

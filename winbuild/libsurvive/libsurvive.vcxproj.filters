@@ -190,7 +190,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="libsurvive.def" />
     <None Include="packages.config" />
   </ItemGroup>
 </Project>

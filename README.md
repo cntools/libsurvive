@@ -118,9 +118,10 @@ Poser | [poser_dummy.c](src/poser_dummy.c) | Template for posers | [@cnlohr](htt
 Poser | [poser_octavioradii.c](src/poser_octavioradii.c) | A potentially very fast poser that works by finding the best fit of the distances from the lighthouse to each sensor that matches the known distances between sensors, given the known angles of a lighthouse sweep.  Incomplete- distances appear to be found correctly, but more work needed to turn this into a pose. | [@mwturvey](https://github.com/mwturvey) and [@octavio2895](https://github.com/octavio2895)
 Poser | [poser_turveytori.c](src/poser_turveytori.c) | A moderately fast, fairly high precision poser that works by determine the angle at the lighthouse between many sets of two sensors.  Using the inscirbed angle theorom, each set defines a torus of possible locations of the lighthouse.  Multiple sets define multiple tori, and this poser finds most likely location of the lighthouse using least-squares distance.   Best suited for calibration, but is can be used for real-time tracking on a powerful system.  | [@mwturvey](https://github.com/mwturvey)
 Poser | [poser_epnp.c](src/poser_epnp.c) | Reasonably fast and accurate calibration and tracker that uses the [EPNP algorithm](https://en.wikipedia.org/wiki/Perspective-n-Point#EPnP) to solve the perspective and points problem. Suitable for fast tracking, but does best with >5-6 sensor readings. | [@jdavidberger](https://github.com/jdavidberger)
-Poser | [poser_sba.c](src/poser_sba.c) | Reasonably fast and accurate calibration and tracker but is dependent on a 'seed' poser to give it an initial estimate. This then performs [bundle adjustment](https://en.wikipedia.org/wiki/Bundle_adjustment) to minimize reprojection error given both ligthhouse readings. This has the benefit of greatly increasing accuracy by incorporating all the light data that is available. Set 'SBASeedPoser' config option to specify the seed poser; default is EPNP. | [@jdavidberger](https://github.com/jdavidberger)
-Disambiguator | [survive_data.c](src/survive_data.c) (currently #ifdefed out) | The old disambiguator - very fast, but slightly buggy. | [@cnlohr](https://github.com/cnlohr)
-Disambiguator | [survive_data.c](src/survive_data.c) (current disambiguator) | More complicated but much more robust disambiguator | [@mwturvey](https://github.com/mwturvey)
+Poser | [poser_sba.c](src/poser_sba.c) (default) | Reasonably fast and accurate calibration and tracker but is dependent on a 'seed' poser to give it an initial estimate. This then performs [bundle adjustment](https://en.wikipedia.org/wiki/Bundle_adjustment) to minimize reprojection error given both ligthhouse readings. This has the benefit of greatly increasing accuracy by incorporating all the light data that is available. Set 'SBASeedPoser' config option to specify the seed poser; default is EPNP. | [@jdavidberger](https://github.com/jdavidberger)
+Disambiguator | [survive_data.c](src/survive_charlesbiguator.c) | The old disambiguator - very fast, but slightly buggy. | [@cnlohr](https://github.com/cnlohr)
+Disambiguator | [survive_data.c](src/survive_turveybiguator.c) (default) | More complicated but much more robust disambiguator | [@mwturvey](https://github.com/mwturvey)
+Disambiguator | [survive_data.c](src/survive_statebased_disambiguator.c) | A fast disambiguator that was times the state shifts between pulses. Experimental. Made to allow tracking very close to the lighthouse | [@jdavidberger](https://github.com/jdavidberger)
 Dismabiguator | superceded disambiguator | A more sophisticated disambiguator, development abandoned.  Removed from tree. |  [@jpicht](https://github.com/jpicht)
 Driver | [survive_vive.c](src/survive_vive.c) | Driver for HTC Vive HMD, Watchmen (wired+wireless) and Tracker | [@cnlohr](https://github.com/cnlohr) and [@mwturvey](https://github.com/mwturvey)
 OOTX Decoder | [ootx_decoder.c](src/ootx_decoder.c) | The system that takes the pulse-codes from the sync pulses from the lighthouses and get [OOTX Data](https://github.com/nairol/LighthouseRedox/blob/master/docs/Light%20Emissions.md) | [@axlecrusher](https://github.com/axlecrusher)
@@ -131,7 +132,7 @@ Component Type | Pluggability method
 --- | ---
 Driver | Dynamically loadable runtime, can co-exist with other drivers.
 Poser | Selectable by configuration at runtime
-Disambiguator | Selectable by #define
+Disambiguator | Selectable by configuration at runtime
 OOTX Decoder | Not Pluggable
 
 
@@ -146,7 +147,7 @@ To support the Vive on HDMI, you either need a newer version of HDMI, or you nee
 
 ## General Information
 
-The default configuration of libsurvive requires both basestations and both controllers to be active, but currently libsurvive can not make proper use of both basestations at the same time - it outputs a different pose for each basestation and does not fuse the data for one more accurate pose. This will hopefully be implemented soon. For now it's a good idea to change the configuration to only require one basestation.
+The default configuration of libsurvive requires both basestations and both controllers to be active. 
 
 Here is an example of a default configuration file that libsurvive will create as `config.json` in the current working directory when any libsurvive client is executed:
 
@@ -172,7 +173,7 @@ Here is an example of a default configuration file that libsurvive will create a
 }
 ```
 
-To make libsurvive calibrate and run with one basestation, `lighthousecount` needs to be changed to `1`.
+To make libsurvive calibrate and run with one basestation, `lighthousecount` needs to be changed to `1`. You can also pass in `-l 1` as command line arguments.
 
 It may be annoying to always require the controllers for calibration. To make libsurvive calibrate by using the HMD, `RequiredTrackersForCal` needs to be changed to the magic string `HMD`. The strings for the controllers are `WM0` and `WM1`, short for  "Watchman". Other possible values are `WW0` (Wired Watchman) for a controller directly connected with USB or `TR0` for a Vive tracker directly connected with USB (When connected wirelessly, the tracker uses the dongles, so uses `WM0` or `WM1`).
 
@@ -224,6 +225,9 @@ If libsurvive does not print these steps, make sure that the lighthouse basestat
 Sometimes libsurvive goes very quickly through these steps and fills in all pose values as `NaN` or `-NaN`. This appears to be a bug in libsurvive that has not be found yet. Reflective surfaces nearby may trigger this problem more often.
 
 [Here is a short demo video how successfuly running ./test should look like](https://haagch.frickel.club/Peek%202018-02-21%2023-23.webm).
+
+If there is already calibration data present, the library will use it. Pass `--calibrate` to force a new calibration pass.
+Conversely, if there isn't calibration data the library will auto-calibrate. Pass `--no-calibrate` to disable this calibration.
 
 ## Using libsurvive in your own application
 

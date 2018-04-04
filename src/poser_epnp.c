@@ -164,7 +164,7 @@ int PoserEPNP(SurviveObject *so, PoserData *pd) {
 
 			if (winnerTakesAll) {
 				int winner = meas[0] > meas[1] ? 0 : 1;
-				PoserData_poser_raw_pose_func(pd, so, winner, &posers[winner]);
+				PoserData_poser_pose_func(pd, so, &posers[winner]);
 			} else {
 				double a, b;
 				a = meas[0] * meas[0];
@@ -175,11 +175,11 @@ int PoserEPNP(SurviveObject *so, PoserData *pd) {
 					interpolate.Pos[i] = (posers[0].Pos[i] * a + posers[1].Pos[i] * b) / (t);
 				}
 				quatslerp(interpolate.Rot, posers[0].Rot, posers[1].Rot, b / (t));
-				PoserData_poser_raw_pose_func(pd, so, lightData->lh, &interpolate);
+				PoserData_poser_pose_func(pd, so, &interpolate);
 			}
 		} else {
 			if (meas[lightData->lh])
-				PoserData_poser_raw_pose_func(pd, so, lightData->lh, &posers[lightData->lh]);
+				PoserData_poser_pose_func(pd, so, &posers[lightData->lh]);
 		}
 		return 0;
 	}

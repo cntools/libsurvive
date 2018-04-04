@@ -216,7 +216,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 	ctx->angleproc = survive_default_angle_process;
 	ctx->lighthouseposeproc = survive_default_lighthouse_pose_process;
 	ctx->configfunction = survive_default_htc_config_process;
-	ctx->rawposeproc = survive_default_raw_pose_process;
+	ctx->poseproc = survive_default_raw_pose_process;
 
 	ctx->calibration_config = survive_calibration_config_ctor();
 	ctx->calibration_config.use_flag = (enum SurviveCalFlag)survive_configi(ctx, "bsd-cal", SC_GET, SVCal_All);
@@ -380,11 +380,11 @@ void survive_install_button_fn(SurviveContext *ctx, button_process_func fbp) {
 		ctx->buttonproc = survive_default_button_process;
 }
 
-void survive_install_raw_pose_fn(SurviveContext *ctx, raw_pose_func fbp) {
+void survive_install_pose_fn(SurviveContext *ctx, pose_func fbp) {
 	if (fbp)
-		ctx->rawposeproc = fbp;
+		ctx->poseproc = fbp;
 	else
-		ctx->rawposeproc = survive_default_raw_pose_process;
+		ctx->poseproc = survive_default_raw_pose_process;
 }
 
 void survive_install_lighthouse_pose_fn(SurviveContext *ctx, lighthouse_pose_func fbp) {
@@ -558,9 +558,16 @@ int survive_simple_inflate(struct SurviveContext *ctx, const char *input, int in
 	return len;
 }
 
+#endif
+
 const char *survive_object_codename(SurviveObject *so) { return so->codename; }
+
+const char *survive_object_drivername(SurviveObject *so) { return so->drivername; }
+const int8_t survive_object_charge(SurviveObject *so) { return so->charge; }
+const bool survive_object_charging(SurviveObject *so) { return so->charging; }
+
+const SurvivePose *survive_object_pose(SurviveObject *so) { return &so->OutPose; }
+
 int8_t survive_object_sensor_ct(SurviveObject *so) { return so->sensor_ct; }
 const FLT *survive_object_sensor_locations(SurviveObject *so) { return so->sensor_locations; }
 const FLT *survive_object_sensor_normals(SurviveObject *so) { return so->sensor_normals; }
-
-#endif

@@ -87,7 +87,7 @@ static void redraw(SurviveContext *ctx) {
 					// survive_apply_bsd_calibration(so->ctx, lh, _a, a);
 
 					auto l = scene->lengths[sensor][lh];
-					double r = std::max(1., (l[0] + l[1]) / 1000.);
+					double r = std::max(3., (l[0] + l[1]) / 1000.);
 					// std::cerr << lh << "\t" << sensor << "\t" << ((l[0] + l[1]) / 2000.) << "\t" << l[0] << "\t" <<
 					// l[1] << std::endl;
 					if (region.data)
@@ -111,8 +111,10 @@ static void redraw(SurviveContext *ctx) {
 								cv::Scalar(255, 255, 255));
 
 					if (region.data) {
-						cv::line(region, map(a) + cv::Point(ex * 10000, -ey * 10000), map(a),
-								 cv::Scalar(255, 255, 255));
+						if (err_add < .01) {
+							cv::line(region, map(a) + cv::Point(ex * 10000, -ey * 10000), map(a),
+									 cv::Scalar(255, 255, 255));
+						}
 						cv::rectangle(region, map(out) - cv::Point(r, r), map(out) + cv::Point(r, r), rcolor);
 					}
 				}
@@ -235,7 +237,7 @@ int main(int argc, char **argv) {
 		err[lh].setTo(cv::Vec3b(0, 0, 0));
 	}
 
-	if (img.data && false) {
+	if (img.data) {
 		cv::imshow("Reprojection", img);
 		cv::waitKey(0);
 	}

@@ -20,7 +20,7 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 
 		survive_imu_tracker_integrate(so, dd, imu);
 
-		PoserData_poser_raw_pose_func(pd, so, -1, &dd->pose);
+		PoserData_poser_pose_func(pd, so, &dd->pose);
 
 		// if(magnitude3d(dd->pose.Pos) > 1)
 		// SV_ERROR("IMU drift");

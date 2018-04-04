@@ -107,7 +107,7 @@ int PoserDaveOrtho( SurviveObject * so, PoserData * pd )
 
 				SurvivePose obj2world;
 				ApplyPoseToPose(&obj2world, &lh2world, &objpose);
-				PoserData_poser_raw_pose_func(pd, so, lhid, &obj2world);
+				PoserData_poser_pose_func(pd, so, &obj2world);
 
 				if (0) {
 					fprintf(stderr,"INQUAT: %f %f %f %f = %f [%f %f %f]\n", objpose.Rot[0], objpose.Rot[1], objpose.Rot[2],
