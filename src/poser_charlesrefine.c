@@ -141,9 +141,9 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 #define MIN_HIT_QUALITY 0.5			//Determines which hits to cull.
 #define HIT_QUALITY_BASELINE 0.0001	//Determines which hits to cull.  Actually SQRT(baseline) if 0.0001, it is really 1cm
 
-#define CORRECT_LATERAL_POSITION_COEFFICIENT 0.2		//Explodes if you exceed 1.0
-#define CORRECT_TELESCOPTION_COEFFICIENT 1.0			//Converges even as high as 10.0 and doesn't explode.
-#define CORRECT_ROTATION_COEFFICIENT 5.0 //This starts to fall apart above 5.0, but for good reason.  It is amplified by the number of points seen.
+#define CORRECT_LATERAL_POSITION_COEFFICIENT 0.1		//Explodes if you exceed 1.0
+#define CORRECT_TELESCOPTION_COEFFICIENT 0.5			//Converges even as high as 10.0 and doesn't explode.
+#define CORRECT_ROTATION_COEFFICIENT 1.0 //This starts to fall apart above 5.0, but for good reason.  It is amplified by the number of points seen.
 #define ROTATIONAL_CORRECTION_MAXFORCE 0.10
 
 			//Step 1: Determine standard of deviation, and average in order to
@@ -299,7 +299,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 						//correction_in_object_space[0], correction_in_object_space[1], correction_in_object_space[2],
 						//corrective_quaternion[0],corrective_quaternion[1],corrective_quaternion[1],corrective_quaternion[3]);
 				}
-				printf( "Applying: %f %f %f %f\n", correction[0], correction[1], correction[2], correction[3] );
+				//printf( "Applying: %f %f %f %f\n", correction[0], correction[1], correction[2], correction[3] );
 				//Apply our corrective quaternion to the output.
 				quatrotateabout( object_pose_out.Rot, object_pose_out.Rot, correction );
 				quatnormalize( object_pose_out.Rot, object_pose_out.Rot );
