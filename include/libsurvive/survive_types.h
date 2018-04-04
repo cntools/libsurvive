@@ -4,10 +4,12 @@
 #include "linmath.h"
 #include "stdint.h"
 
+#ifndef SURVIVE_EXPORT
 #ifdef _WIN32
 #define SURVIVE_EXPORT __declspec(dllexport)
 #else
 #define SURVIVE_EXPORT __attribute__((visibility("default")))
+#endif
 #endif
 
 #ifdef __cplusplus

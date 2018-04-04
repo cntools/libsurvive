@@ -35,7 +35,7 @@ static void pose_fn(SurviveObject *so, uint32_t timecode, SurvivePose *pose) {
 	survive_default_raw_pose_process(so, timecode, pose);	
 
 	struct SurviveAsyncContext* actx = so->ctx->user_ptr;
-	int idx = so->user_ptr;
+	int idx = (int)so->user_ptr;
 	actx->objects[idx].has_update = true;
 }
 static void lh_fn(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose,
@@ -46,7 +46,7 @@ static void lh_fn(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthou
 	actx->objects[lighthouse].has_update = true;
 }
 
-struct SurviveAsyncContext *survive_asyc_init(int argc, char *const *argv) {
+struct SurviveAsyncContext *survive_async_init(int argc, char *const *argv) {
 	SurviveContext* ctx = survive_init(argc, argv);
 	if (ctx == 0)
 		return 0;

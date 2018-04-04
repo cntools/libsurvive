@@ -7,10 +7,12 @@
 extern "C" {
 #endif
 
+#ifndef LINMATH_EXPORT
 #ifdef _WIN32
 #define LINMATH_EXPORT __declspec(dllexport)
 #else
 #define LINMATH_EXPORT __attribute__((visibility("default")))
+#endif
 #endif
 
 // Yes, I know it's kind of arbitrary.
