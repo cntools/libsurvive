@@ -175,10 +175,9 @@ static void iterate_velocity(LinmathVec3d result, SurviveIMUTracker *tracker, do
 
 void survive_imu_tracker_integrate(SurviveObject *so, SurviveIMUTracker *tracker, PoserDataIMU *data) {
 	if (tracker->last_data.timecode == 0) {
-
+		tracker->pose.Rot[0] = 1.;
 		if (tracker->last_data.datamask == imu_calibration_iterations) {
 			tracker->last_data = *data;
-			tracker->pose.Rot[0] = 1.;
 
 			const FLT up[3] = {0, 0, 1};
 			quatfrom2vectors(tracker->pose.Rot, tracker->updir, up);
