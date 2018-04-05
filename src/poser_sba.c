@@ -415,6 +415,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		SV_INFO("\tsba-sensor-variance-per-sec: %f", d->sensor_variance_per_second);
 		SV_INFO("\tsba-time-window: %d", d->sensor_time_window);
 		SV_INFO("\tsba-max-error: %f", d->max_error);
+		SV_INFO("\tsba-successes-to-reset: %d", d->successes_to_reset);
 		SV_INFO("\tsba-use-imu: %d", d->useIMU);
 	}
 	SBAData *d = so->PoserData;
