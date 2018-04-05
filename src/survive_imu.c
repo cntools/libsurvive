@@ -175,14 +175,14 @@ static void iterate_velocity(LinmathVec3d result, SurviveIMUTracker *tracker, do
 
 void survive_imu_tracker_integrate(SurviveObject *so, SurviveIMUTracker *tracker, PoserDataIMU *data) {
 	if (tracker->last_data.timecode == 0) {
-
+		tracker->pose.Rot[0] = 1.;
 		if (tracker->last_data.datamask == imu_calibration_iterations) {
 			tracker->last_data = *data;
-			tracker->pose.Rot[0] = 1.;
 
 			const FLT up[3] = {0, 0, 1};
 			quatfrom2vectors(tracker->pose.Rot, tracker->updir, up);
 			tracker->accel_scale_bias = 1. / magnitude3d(tracker->updir);
+
 			return;
 		}
 
@@ -216,5 +216,53 @@ void survive_imu_tracker_integrate(SurviveObject *so, SurviveIMUTracker *tracker
 		scale3d(tracker->pose.Pos, next, 1);
 	}
 
+	FLT var_meters = .000001;
+	FLT var_quat = .05;
+	const FLT Q[7] = {var_meters, var_meters, var_meters, var_quat, var_quat, var_quat, var_quat};
+
+	// Note that this implementation is somewhat truncated. Instead of modeling velocity and velocities
+	// covariance with position explicitly, we just square the variance for the position indexes. This
+	// gives more or less the same calculation without having to do matrix multiplication.
+	for (int i = 0; i < 3; i++)
+		tracker->P[i] = tracker->P[i] * tracker->P[i] + Q[i];
+	for (int i = 3; i < 7; i++)
+		tracker->P[i] += Q[i];
+
 	tracker->last_data = *data;
+}
+
+void survive_imu_tracker_integrate_observation(SurviveObject *so, uint32_t timecode, SurviveIMUTracker *tracker,
+											   SurvivePose *pose, const FLT *R) {
+	// Kalman filter assuming:
+	// F -> Identity
+	// H -> Identity
+	// Q / R / P -> Diagonal matrices; just treat them as such. This assumption might need some checking but it
+	// makes the # of calculations needed much smaller so we may be willing to tolerate some approximation here
+
+	FLT *xhat = &tracker->pose.Pos[0];
+	FLT *zk = &pose->Pos[0];
+
+	FLT yk[7];
+	for (int i = 0; i < 7; i++)
+		yk[i] = zk[i] - xhat[i];
+
+	FLT sk[7];
+	for (int i = 0; i < 7; i++)
+		sk[i] = R[i] + tracker->P[i];
+
+	FLT K[7];
+	for (int i = 0; i < 7; i++)
+		K[i] = tracker->P[i] / sk[i];
+
+	for (int i = 0; i < 7; i++)
+		xhat[i] += K[i] * yk[i];
+	for (int i = 0; i < 7; i++)
+		tracker->P[i] *= (1. - K[i]);
+
+	FLT time_diff = tick_difference(timecode, tracker->lastGTTime) / (FLT)so->timebase_hz;
+	for (int i = 0; i < 3; i++)
+		tracker->current_velocity[i] = 0.5 * (tracker->pose.Pos[i] - tracker->lastGT.Pos[i]) / time_diff;
+
+	tracker->lastGTTime = timecode;
+	tracker->lastGT = tracker->pose;
 }

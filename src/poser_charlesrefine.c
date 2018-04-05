@@ -6,10 +6,12 @@
 
 #include "epnp/epnp.h"
 #include "linmath.h"
+#include "survive_cal.h"
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <survive_imu.h>
 
 #define MAX_PT_PER_SWEEP 32
 
@@ -22,6 +24,8 @@ typedef struct {
 	SurvivePose object_pose_at_hit[MAX_PT_PER_SWEEP];
 	uint8_t sensor_ids[MAX_PT_PER_SWEEP];
 	int ptsweep;
+
+	SurviveIMUTracker tracker;
 } CharlesPoserData;
 
 int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
@@ -33,20 +37,10 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 	switch (pd->pt) {
 	case POSERDATA_IMU: {
 		// Really should use this...
-		PoserDataIMU *imuData = (PoserDataIMU *)pd;
+		PoserDataIMU *imu = (PoserDataIMU *)pd;
 
-		// TODO: Actually do Madgwick's algorithm
-		LinmathQuat applymotion;
-		const SurvivePose *object_pose = &so->OutPose;
-		imuData->gyro[0] *= -0.0005;
-		imuData->gyro[1] *= -0.0005;
-		imuData->gyro[2] *= 0.0005;
-		quatfromeuler(applymotion, imuData->gyro);
-		// printf( "%f %f %f\n", imuData->gyro [0], imuData->gyro [1], imuData->gyro [2] );
-		SurvivePose object_pose_out;
-		quatrotateabout(object_pose_out.Rot, object_pose->Rot, applymotion);
-		copy3d(object_pose_out.Pos, object_pose->Pos);
-		PoserData_poser_pose_func(pd, so, &object_pose_out);
+		survive_imu_tracker_integrate(so, &dd->tracker, imu);
+		PoserData_poser_pose_func(pd, so, &dd->tracker.pose);
 
 		return 0;
 	}
@@ -324,7 +318,16 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 				so->PoseConfidence = 1.0;
 			}
 
-			PoserData_poser_pose_func(pd, so, &object_pose_out);
+			// PoserData_poser_pose_func(pd, so, &object_pose_out);
+			FLT var_meters = 0.5;
+			FLT error = 0.0001;
+			FLT var_quat = error + .05;
+			FLT var[7] = {error * var_meters, error * var_meters, error * var_meters, error * var_quat,
+						  error * var_quat,   error * var_quat,   error * var_quat};
+
+			survive_imu_tracker_integrate_observation(so, l->timecode, &dd->tracker, &object_pose_out, var);
+			PoserData_poser_pose_func(pd, so, &dd->tracker.pose);
+
 			dd->ptsweep = 0;
 		}
 

@@ -134,7 +134,7 @@ void light_process(SurviveObject *so, int sensor_id, int acode, int timeinsweep,
 
 SurvivePose lastPose = {};
 
-void raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose) {
+void raw_pose_process(SurviveObject *so, uint32_t lighthouse, SurvivePose *pose) {
 	survive_default_raw_pose_process(so, lighthouse, pose);
 	auto d = dist3d(lastPose.Pos, pose->Pos);
 	// std::cerr << d << std::endl;
@@ -151,7 +151,7 @@ void lighthouse_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *po
 SurviveContext *create(int argc, char **argv) {
 	auto ctx = survive_init(argc, argv);
 
-	survive_install_raw_pose_fn(ctx, raw_pose_process);
+	survive_install_pose_fn(ctx, raw_pose_process);
 	survive_install_lighthouse_pose_fn(ctx, lighthouse_process);
 	survive_install_light_fn(ctx, light_process);
 

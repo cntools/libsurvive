@@ -22,12 +22,17 @@ typedef struct {
 	SurvivePose lastGT;
 	uint32_t lastGTTime;
 
+	FLT P[7]; // estimate variance
+
 	float integralFBx, integralFBy, integralFBz; // integral error terms scaled by Ki
 
 } SurviveIMUTracker;
 
 void survive_imu_tracker_set_pose(SurviveIMUTracker *tracker, uint32_t timecode, SurvivePose *pose);
+
 void survive_imu_tracker_integrate(SurviveObject *so, SurviveIMUTracker *tracker, PoserDataIMU *data);
+void survive_imu_tracker_integrate_observation(SurviveObject *so, uint32_t timecode, SurviveIMUTracker *tracker,
+											   SurvivePose *pose, const FLT *variance);
 
 #ifdef __cplusplus
 };
