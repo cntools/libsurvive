@@ -7,6 +7,7 @@ var canvas;
 var oldDrawTime = 0;
 var timecode = {};
 var oldPoseTime = 0, poseCnt = 0;
+var oldPose = [0, 0, 0];
 var scene, camera, renderer, floor;
 
 $(function() { $("#toggleBtn").click(function() { $("#cam").toggle(); }); });
@@ -242,14 +243,20 @@ var survive_log_handlers = {
 			objs[obj.tracker].quaternion.set(obj.quat[1], obj.quat[2], obj.quat[3], obj.quat[0]);
 			objs[obj.tracker].verticesNeedUpdate = true;
 
-			if (trails) {
+			var d = 0;
+			for(var i = 0; i < 3;i++) {
+				d += Math.pow(obj.position[i] - oldPose[i], 2.);
+            }
+			if (trails && Math.sqrt( d ) > .01) {
 
 				trails.geometry.vertices.push(trails.geometry.vertices.shift()); // shift the array
 				trails.geometry.vertices[MAX_LINE_POINTS - 1] =
 					new THREE.Vector3(obj.position[0], obj.position[1], obj.position[2]);
 				trails.geometry.verticesNeedUpdate = true;
+                oldPose = obj.position;
 			}
-		}
+
+        }
 	},
 	"CONFIG" : function(v, tracker) {
 		var configStr = v.slice(3).join(' ');
