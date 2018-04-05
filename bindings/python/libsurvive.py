@@ -7,11 +7,11 @@ LP_LP_c_char = ctypes.POINTER(LP_c_char)
 _libsurvive.survive_async_init.argtypes = (ctypes.c_int, LP_LP_c_char) # argc, argv
 _libsurvive.survive_async_init.restype = ctypes.c_void_p
 
-_libsurvive.survive_async_get_next_tracked.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-_libsurvive.survive_async_get_next_tracked.restype = ctypes.c_void_p
+_libsurvive.survive_async_get_next_object.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+_libsurvive.survive_async_get_next_object.restype = ctypes.c_void_p
 
-_libsurvive.survive_async_get_first_tracked.argtypes = [ctypes.c_void_p]
-_libsurvive.survive_async_get_first_tracked.restype = ctypes.c_void_p
+_libsurvive.survive_async_get_first_object.argtypes = [ctypes.c_void_p]
+_libsurvive.survive_async_get_first_object.restype = ctypes.c_void_p
 
 _libsurvive.survive_async_get_next_updated.argtypes = [ctypes.c_void_p]
 _libsurvive.survive_async_get_next_updated.restype = ctypes.c_void_p
@@ -63,10 +63,10 @@ class AsyncContext:
         self.ptr = _libsurvive.survive_async_init(argc, argv)
         
         self.objects = []
-        curr = _libsurvive.survive_async_get_first_tracked(self.ptr);
+        curr = _libsurvive.survive_async_get_first_object(self.ptr);
         while curr:
             self.objects.append(AsyncObject(curr))
-            curr = _libsurvive.survive_async_get_next_tracked(self.ptr, curr);
+            curr = _libsurvive.survive_async_get_next_object(self.ptr, curr);
         _libsurvive.survive_async_start_thread(self.ptr)
             
     def Objects(self):
