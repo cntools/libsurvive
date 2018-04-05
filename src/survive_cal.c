@@ -81,7 +81,7 @@ void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 	config_set_lighthouse(ctx->lh_config,b,id);
 	lighthouses_completed++;
 
-	if (lighthouses_completed >= NUM_LIGHTHOUSES) {
+	if (lighthouses_completed >= ctx->activeLighthouses) {
 		config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
 	}
 }
@@ -225,7 +225,7 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 				ootx_pump_bit( &cd->ootx_decoders[lhid], dbit );
 			}
 			int i;
-			for( i = 0; i < NUM_LIGHTHOUSES; i++ )
+			for( i = 0; i < ctx->activeLighthouses; i++ )
 				if( ctx->bsd[i].OOTXSet == 0 ) break;
 			if( i == ctx->activeLighthouses ) cd->stage = 2;  //TODO: Make this configuratble to allow single lighthouse.
 		}

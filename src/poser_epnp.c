@@ -66,7 +66,7 @@ static SurvivePose solve_correspondence(SurviveObject *so, epnp *pnp, bool camer
 
 static int opencv_solver_fullscene(SurviveObject *so, PoserDataFullScene *pdfs) {
 	SurvivePose additionalTx = {0};
-	for (int lh = 0; lh < 2; lh++) {
+	for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
 		epnp pnp = {.fu = 1, .fv = 1};
 		epnp_set_maximum_number_of_correspondences(&pnp, so->sensor_ct);
 
