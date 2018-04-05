@@ -186,7 +186,8 @@ static void str_metric_function(int j, int i, double *bi, double *xij, void *ada
 }
 
 static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, SurviveSensorActivations *scene,
-										int max_iterations /* = 50*/, double max_reproj_error /* = 0.005*/) {
+										int max_iterations /* = 50*/, double max_reproj_error /* = 0.005*/,
+										SurvivePose *out) {
 	double *covx = 0;
 	SurviveObject *so = d->so;
 
@@ -279,10 +280,13 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 		// if (distance > 1.)
 		//	status = -1;
 	}
+
+	double rtn = -1;
 	if (status > 0 && (info[1] / meas_size * 2) < d->max_error) {
 		d->failures_to_reset_cntr = d->failures_to_reset;
 		quatnormalize(soLocation.Rot, soLocation.Rot);
-		PoserData_poser_pose_func(&pdl->hdr, so, &soLocation);
+		*out = soLocation;
+		rtn = info[1] / meas_size * 2;
 	}
 
 	{
@@ -290,13 +294,13 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 		// Docs say info[0] should be divided by meas; I don't buy it really...
 		static int cnt = 0;
 		if (cnt++ > 1000 || meas_size < d->required_meas || (info[1] / meas_size * 2) > d->max_error) {
-			SV_INFO("%f original reproj error for %u meas", (info[0] / meas_size * 2), (int)meas_size);
-			SV_INFO("%f cur reproj error", (info[1] / meas_size * 2));
+			// SV_INFO("%f original reproj error for %u meas", (info[0] / meas_size * 2), (int)meas_size);
+			// SV_INFO("%f cur reproj error", (info[1] / meas_size * 2));
 			cnt = 0;
 		}
 	}
 
-	return status; // info[1] / meas_size * 2;
+	return rtn;
 }
 
 // Optimizes for LH position assuming object is posed at 0
@@ -421,11 +425,12 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 			return 0;
 		SurviveSensorActivations *scene = &so->activations;
 		PoserDataLight *lightData = (PoserDataLight *)pd;
+		SurvivePose estimate;
 
 		// only process sweeps
 		FLT error = -1;
 		if (d->last_lh != lightData->lh || d->last_acode != lightData->acode) {
-			error = run_sba_find_3d_structure(d, lightData, scene, 100, .5);
+			error = run_sba_find_3d_structure(d, lightData, scene, 100, .5, &estimate);
 
 			d->last_lh = lightData->lh;
 			d->last_acode = lightData->acode;
@@ -436,8 +441,16 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 				d->failures_to_reset_cntr--;
 		} else {
 			if (d->useIMU) {
-				survive_imu_tracker_set_pose(&d->tracker, lightData->timecode, &so->OutPose);
+				FLT var_meters = 0.5;
+				FLT var_quat = error + .05;
+				FLT var[7] = {error * var_meters, error * var_meters, error * var_meters, error * var_quat,
+							  error * var_quat,   error * var_quat,   error * var_quat};
+
+				survive_imu_tracker_integrate_observation(so, lightData->timecode, &d->tracker, &estimate, var);
+				estimate = d->tracker.pose;
 			}
+
+			PoserData_poser_pose_func(&lightData->hdr, so, &estimate);
 			if (d->successes_to_reset_cntr > 0)
 				d->successes_to_reset_cntr--;
 		}
