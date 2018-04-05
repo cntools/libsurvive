@@ -15,7 +15,8 @@ int main(int argc, char **argv) {
 
 		SurvivePose pose;
 
-		for (const SurviveAsyncObject* it = survive_async_get_first_tracked(actx); it != 0; it = survive_async_get_next_tracked(actx, it)) {
+		for (const SurviveAsyncObject *it = survive_async_get_first_object(actx); it != 0;
+			 it = survive_async_get_next_object(actx, it)) {
 			uint32_t timecode = survive_async_object_get_latest_pose(it, &pose);
 			printf("%s (%u): %f %f %f %f %f %f %f\n", survive_async_object_name(it), timecode,
 				pose.Pos[0], pose.Pos[1], pose.Pos[2], pose.Rot[0], pose.Rot[1], pose.Rot[2], pose.Rot[3]);

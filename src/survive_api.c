@@ -12,7 +12,7 @@ struct SurviveAsyncObject {
 	} type;
 
 	union {
-		int lighthosue;
+		int lighthouse;
 		struct SurviveObject* so;
 	} data;
 
@@ -67,7 +67,7 @@ struct SurviveAsyncContext *survive_async_init(int argc, char *const *argv) {
 	int i = 0;
 	for (i = 0; i < ctx->activeLighthouses; i++) {
 		struct SurviveAsyncObject* obj = &actx->objects[i];
-		obj->data.lighthosue = i;
+		obj->data.lighthouse = i;
 		obj->type = SurviveAsyncObject_LIGHTHOUSE;
 		obj->actx = actx;
 		obj->has_update = ctx->bsd[i].PositionSet;
@@ -122,14 +122,15 @@ int survive_async_stop_thread(struct SurviveAsyncContext* actx) {
 	return error;
 }
 
-const struct SurviveAsyncObject* survive_async_get_next_tracked(struct SurviveAsyncContext* actx, const struct SurviveAsyncObject* curr) {
+const struct SurviveAsyncObject *survive_async_get_next_object(struct SurviveAsyncContext *actx,
+															   const struct SurviveAsyncObject *curr) {
 	const struct SurviveAsyncObject* next = curr + 1; 
 	if (next >= actx->objects + actx->object_ct)
 		return 0;
 	return next;
 }
 
-const struct SurviveAsyncObject* survive_async_get_first_tracked(struct SurviveAsyncContext* actx) {
+const struct SurviveAsyncObject *survive_async_get_first_object(struct SurviveAsyncContext *actx) {
 	return actx->objects;
 }
 
@@ -150,7 +151,7 @@ uint32_t survive_async_object_get_latest_pose(const struct SurviveAsyncObject* s
 	switch (sao->type) {
 	case SurviveAsyncObject_LIGHTHOUSE: {
 		if(pose)
-			*pose = sao->actx->ctx->bsd[sao->data.lighthosue].Pose;
+			*pose = sao->actx->ctx->bsd[sao->data.lighthouse].Pose;
 		break;
 	}
 	case SurviveAsyncObject_OBJECT:

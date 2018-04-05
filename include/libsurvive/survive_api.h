@@ -20,7 +20,7 @@ extern "C" {
 	SURVIVE_EXPORT void survive_async_close(SurviveAsyncContext* actx);
 
 	/**
-	 * Start the background thread which processes images.
+	 * Start the background thread which processes various inputs and produces deliverable data like position.
 	 */
 	SURVIVE_EXPORT void survive_async_start_thread(SurviveAsyncContext* actx);
 
@@ -33,14 +33,14 @@ extern "C" {
 	typedef struct SurviveAsyncObject SurviveAsyncObject;
 
 	/**
-	 * Get the first known object. Note that the first n objects are the lighthouses; for however many you are
-	 * configured for.
+	 * Get the first known object. Note that this also includes lighthouses
 	 */
-	SURVIVE_EXPORT const SurviveAsyncObject* survive_async_get_first_tracked(SurviveAsyncContext* actx);
+	SURVIVE_EXPORT const SurviveAsyncObject *survive_async_get_first_object(SurviveAsyncContext *actx);
 	/**
 	 * Get the next known object from a current one.
 	 */
-	SURVIVE_EXPORT const SurviveAsyncObject* survive_async_get_next_tracked(SurviveAsyncContext* actx, const SurviveAsyncObject* curr);
+	SURVIVE_EXPORT const SurviveAsyncObject *survive_async_get_next_object(SurviveAsyncContext *actx,
+																		   const SurviveAsyncObject *curr);
 
 	/**
 	 * Gets the next object which has been updated since we last looked at it with this function
