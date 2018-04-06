@@ -27,12 +27,37 @@ void HandleKey( int keycode, int bDown )
 	}
 }
 
+float viewX = 0.7853975;
+float viewY = 0.7853975;
+int down, downx, downy;
 void HandleButton( int x, int y, int button, int bDown )
 {
+	if( button ==  1 )
+	{
+		if( bDown )
+		{
+			down = 1;
+			downx = x;
+			downy = y;
+		}
+		else
+		{
+			down = 0;
+		}
+	}
 }
 
 void HandleMotion( int x, int y, int mask )
 {
+	if( down )
+	{
+		viewX += (x-downx)/100.0;
+		viewY -= (y-downy)/100.0;
+		if( viewY < 0.01 ) viewY = 0.01;
+		if( viewY > 3.14 ) viewY = 3.14;
+		downx = x;
+		downy = y;
+	}
 }
 
 void HandleDestroy()
@@ -41,12 +66,13 @@ void HandleDestroy()
 
 FLT hpos[3];
 FLT hpos2[3];
+FLT hposx[3];
 
 void testprog_raw_pose_process(SurviveObject *so, uint32_t timecode, SurvivePose *pose) {
 	survive_default_raw_pose_process(so, timecode, pose);
 
-	if (strcmp(so->codename, "HMD") != 0)
-		return;
+//	if (strcmp(so->codename, "WW0") != 0)
+//		return;
 
 	// print the pose;
 /*	double qw = quat[0];
@@ -72,6 +98,8 @@ void testprog_raw_pose_process(SurviveObject *so, uint32_t timecode, SurvivePose
 	hpos[2] = pose->Pos[2];
 	FLT hposin[3] = { 0, 0, 1 };
 	ApplyPoseToPoint(hpos2, pose, hposin);
+	FLT hposinx[3] = { .1, 0, 0 };
+	ApplyPoseToPoint(hposx, pose, hposinx);
 
 	fflush(stdout);
 }
@@ -126,10 +154,14 @@ void *GUIThread(void*v)
 		CNFGGetDimensions( &screenx, &screeny );
 
 		int x, y;
-		float eye[3] = { sin(TimeSinceStart)*4, cos(TimeSinceStart)*4, 4};
+		float eye[3] = { 3*sin(viewX)*sin(viewY), 3*cos(viewX)*sin(viewY), 3*cos(viewY)}; //Create a 2-rotation with Z primarily up.
+		//float up[3] = { 0, cos(viewY), sin(viewY)}; //Create a 2-rotation with Z primarily up.
 		float at[3] = { 0,0, 0 };
-		float up[3] = { 0,0, 1 };
-
+		float up[3] = { 0,0, 1.0 };
+		float right[3];
+		tdCross( up, eye, right );
+		tdCross( eye, right, up ); //Have to make sure we're making a coordinate frame for lookat.
+		tdNormalizeSelf( right );
 		tdSetViewport( -1, -1, 1, 1, screenx, screeny );
 
 		tdMode( tdPROJECTION );
@@ -142,6 +174,7 @@ void *GUIThread(void*v)
 
 		CNFGColor( 0x00ffff ); DrawLineSegment( hpos[0], hpos[1], hpos[2], hpos2[0], hpos2[1], hpos2[2] );
 		CNFGColor( 0xff00ff ); DrawLineSegment( hpos[0], hpos[1], hpos[2], hpos[0], hpos[1], hpos[2] );
+		CNFGColor( 0xffff00 ); DrawLineSegment( hpos[0], hpos[1], hpos[2], hposx[0], hposx[1], hposx[2] );
 		CNFGColor( 0x0000ff ); DrawLineSegment( 0, 0, 0, 1, 0, 0  );
 		CNFGColor( 0xff0000 ); DrawLineSegment( 0, 0, 0, 0, 1, 0  );
 		CNFGColor( 0x00ff00 ); DrawLineSegment( 0, 0, 0, 0, 0, 1  );
