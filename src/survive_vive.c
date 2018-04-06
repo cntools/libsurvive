@@ -1239,20 +1239,9 @@ static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 						0,0,0 };
 
 //		if (w->acc_scale) printf("%f %f %f\n",w->acc_scale[0],w->acc_scale[1],w->acc_scale[2]);
+		//I don't understand where these numbers come from but the data from the WMD seems to max out at 255...
 		calibrate_acc(w, agm);
-
-		//I don't understand where these numbers come from but the data from the WMD seems to max out at 255...
-		agm[0]*=(1.0f/255.0f);
-		agm[1]*=(1.0f/255.0f);
-		agm[2]*=(1.0f/255.0f);
-
 		calibrate_gyro(w, agm+3);
-
-		//I don't understand where these numbers come from but the data from the WMD seems to max out at 255...
-		agm[3]*=(1.0f/255.0f);
-		agm[4]*=(1.0f/255.0f);
-		agm[5]*=(1.0f/255.0f);
-
 		w->ctx->imuproc( w, 3, agm, (time1<<24)|(time2<<16)|readdata[0], 0 );
 
 		int16_t * k = (int16_t *)readdata+1;
@@ -1495,24 +1484,8 @@ void survive_data_cb( SurviveUSBInterface * si )
 							  0,
 							  0};
 
-				//1G for accelerometer, from MPU6500 datasheet
-				//this can change if the firmware changes the sensitivity.
-				// When coming off of USB, these values are in units of .5g -JB
-				agm[0] *= (float)(2. / 8192.0);
-				agm[1] *= (float)(2. / 8192.0);
-				agm[2] *= (float)(2. / 8192.0);
 				calibrate_acc(obj, agm);
-
-				// From datasheet, can be 250, 500, 1000, 2000 deg/s range over 16 bits
-				// FLT deg_per_sec = 250;
-				// FLT conv = (float)((1./deg_per_sec)*(3.14159/180.)) / 8192.;
-				FLT DEGREES_TO_RADS = 3.14159 / 180.;
-				FLT conv = 1. / 10. * DEGREES_TO_RADS;
 				calibrate_gyro(obj, agm + 3);
-				agm[3] *= conv;
-				agm[4] *= conv;
-				agm[5] *= conv;
-
 				ctx->imuproc( obj, 3, agm, timecode, code );
 			}
 		}
