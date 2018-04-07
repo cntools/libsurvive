@@ -174,7 +174,7 @@ static void iterate_velocity(LinmathVec3d result, SurviveIMUTracker *tracker, do
 }
 
 void survive_imu_tracker_integrate(SurviveObject *so, SurviveIMUTracker *tracker, PoserDataIMU *data) {
-	if (tracker->last_data.timecode == 0) {
+	if (!tracker->is_initialized) {
 		tracker->pose.Rot[0] = 1.;
 		if (tracker->last_data.datamask == imu_calibration_iterations) {
 			tracker->last_data = *data;
@@ -182,7 +182,7 @@ void survive_imu_tracker_integrate(SurviveObject *so, SurviveIMUTracker *tracker
 			const FLT up[3] = {0, 0, 1};
 			quatfrom2vectors(tracker->pose.Rot, tracker->updir, up);
 			tracker->accel_scale_bias = 1. / magnitude3d(tracker->updir);
-
+			tracker->is_initialized = true;
 			return;
 		}
 
@@ -233,6 +233,11 @@ void survive_imu_tracker_integrate(SurviveObject *so, SurviveIMUTracker *tracker
 
 void survive_imu_tracker_integrate_observation(SurviveObject *so, uint32_t timecode, SurviveIMUTracker *tracker,
 											   SurvivePose *pose, const FLT *R) {
+	if (!tracker->is_initialized) {
+		tracker->pose = *pose;
+		return;
+	}
+		
 	// Kalman filter assuming:
 	// F -> Identity
 	// H -> Identity
