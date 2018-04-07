@@ -51,6 +51,13 @@ typedef struct SBAData {
 	SurviveIMUTracker tracker;
 	bool useIMU;
 
+	struct {
+		int runs;
+		int poser_seed_runs;
+		int meas_failures;
+		int error_failures;
+	} stats;
+
 	SurviveObject *so;
 } SBAData;
 
@@ -208,6 +215,9 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 			SV_INFO("Can't solve for position with just %u measurements", (unsigned int)meas_size);
 			failure_count = 0;
 		}
+		if (meas_size < d->required_meas) {
+			d->stats.meas_failures++;
+		}
 		return -1;
 	}
 	failure_count = 0;
@@ -231,6 +241,7 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 			pdl->hdr.userdata = &locations;
 			driver(so, &pdl->hdr);
 			pdl->hdr = hdr;
+			d->stats.poser_seed_runs++;
 
 			if (locations.hasInfo == false) {
 				return -1;
@@ -256,6 +267,7 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 	opts[3] = SBA_STOP_THRESH; // max_reproj_error * meas.size();
 	opts[4] = 0.0;
 
+	d->stats.runs++;
 	int status = sba_str_levmar(1, // Number of 3d points
 								0, // Number of 3d points to fix in spot
 								NUM_LIGHTHOUSES * so->sensor_ct, vmask,
@@ -287,6 +299,8 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 		quatnormalize(soLocation.Rot, soLocation.Rot);
 		*out = soLocation;
 		rtn = info[1] / meas_size * 2;
+	} else if ((info[1] / meas_size * 2) >= d->max_error) {
+		d->stats.error_failures++;
 	}
 
 	{
@@ -466,13 +480,22 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		// std::cerr << "Average reproj error: " << error << std::endl;
 		return 0;
 	}
+	case POSERDATA_DISASSOCIATE: {
+		SV_INFO("SBA stats:");
+		SV_INFO("\tseed runs %d / %d", d->stats.poser_seed_runs, d->stats.runs);
+		SV_INFO("\tmeas failures %d", d->stats.meas_failures);
+		SV_INFO("\terror failures %d", d->stats.error_failures);
+		free(d);
+		so->PoserData = 0;
+		return 0;
+	}
 	case POSERDATA_IMU: {
 
 	  PoserDataIMU * imu = (PoserDataIMU*)pd;
 	  if (ctx->calptr && ctx->calptr->stage < 5) {
-	  } else if(d->useIMU){
-	    survive_imu_tracker_integrate(so, &d->tracker, imu);
-		PoserData_poser_pose_func(pd, so, &d->tracker.pose);
+	  } else if (d->useIMU) {
+		  survive_imu_tracker_integrate(so, &d->tracker, imu);
+		  PoserData_poser_pose_func(pd, so, &d->tracker.pose);
 	  }
 	} // INTENTIONAL FALLTHROUGH
 	default: {

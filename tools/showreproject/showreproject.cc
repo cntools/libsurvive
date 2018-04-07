@@ -263,6 +263,8 @@ int main(int argc, char **argv) {
 		cv::imshow(name, err[i]);
 	}
 
+	survive_close(ctx1);
+
 	std::cerr << "Error: " << error / error_count << std::endl;
 
 	int c = '\0';
