@@ -135,6 +135,9 @@
     <ClCompile Include="..\..\redist\sba\sba_chkjac.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\survive_imu.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\ootx_decoder.h">
