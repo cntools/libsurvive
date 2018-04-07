@@ -1233,20 +1233,15 @@ static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 	if( ( ( type & 0xe8 ) == 0xe8 ) || doimu ) //Hmm, this looks kind of yucky... we can get e8's that are accelgyro's but, cleared by first propset.
 	{
 		propset |= 2;
-		//XXX XXX BIG TODO!!! Actually recal gyro data.
-		FLT agm[9] = { readdata[1], readdata[2], readdata[3],
-						readdata[4], readdata[5], readdata[6],
-						0,0,0 };
-
-//		if (w->acc_scale) printf("%f %f %f\n",w->acc_scale[0],w->acc_scale[1],w->acc_scale[2]);
-		//I don't understand where these numbers come from but the data from the WMD seems to max out at 255...
+		FLT agm[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+		int j;
+		for( j = 0; j < 6; j++ )
+			agm[j] = (int16_t)(readdata[j*2+1] | (readdata[j*2+2]<<8));
 		calibrate_acc(w, agm);
 		calibrate_gyro(w, agm+3);
 		w->ctx->imuproc( w, 3, agm, (time1<<24)|(time2<<16)|readdata[0], 0 );
-
-		int16_t * k = (int16_t *)readdata+1;
-		//printf( "Match8 %d %d %d %d %d %3d %3d\n", qty, k[0], k[1], k[2], k[3], k[4], k[5] );
 		readdata += 13; qty -= 13;
+
 		type &= ~0xe8;
 		if( qty )
 		{

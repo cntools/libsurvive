@@ -197,7 +197,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 #define CORRECT_LATERAL_POSITION_COEFFICIENT 0.7 // Explodes if you exceed 1.0
 #define CORRECT_TELESCOPTION_COEFFICIENT 7.00	 // Converges even as high as 10.0 and doesn't explode.
 #define CORRECT_ROTATION_COEFFICIENT                                                                                   \
-	1.0 // This starts to fall apart above 5.0, but for good reason.  It is amplified by the number of points seen.
+	0.2 // This starts to fall apart above 5.0, but for good reason.  It is amplified by the number of points seen.
 #define ROTATIONAL_CORRECTION_MAXFORCE 0.01
 
 			// Step 1: Determine standard of deviation, and average in order to

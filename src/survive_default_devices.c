@@ -190,7 +190,14 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	}
 	else if( memcmp( so->codename, "WM", 2 ) == 0 )
 	{
-		//??!!?? No one has yet decoded the watchman accelerometer data.
+		if( so->acc_scale ) scale3d( so->acc_scale, so->acc_scale, 2./8192.0 );
+		if( so->acc_bias )	scale3d( so->acc_bias, so->acc_bias, 2./1000. );	//Need to verify.
+		if( so->gyro_scale ) scale3d( so->gyro_scale, so->gyro_scale, 3.14159 / 1800. / 1.8 ); //??! 1.8 feels right but why?!
+		int j;
+		for (j = 0; j < so->sensor_ct; j++) {
+			so->sensor_locations[j * 3 + 0] *= 1.0;
+		}
+
 	}
 	else //Verified on WW, Need to verify on Tracker.
 	{
