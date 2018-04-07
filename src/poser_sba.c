@@ -294,23 +294,23 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 	}
 
 	double rtn = -1;
-	if (status > 0 && (info[1] / meas_size * 2) < d->max_error) {
+	bool status_failure = status <= 0;
+	bool error_failure = (info[1] / meas_size * 2) >= d->max_error;
+	if (!status_failure && !error_failure) {
 		d->failures_to_reset_cntr = d->failures_to_reset;
 		quatnormalize(soLocation.Rot, soLocation.Rot);
 		*out = soLocation;
 		rtn = info[1] / meas_size * 2;
-	} else if ((info[1] / meas_size * 2) >= d->max_error) {
+	} else if (error_failure) {
 		d->stats.error_failures++;
 	}
 
 	{
 		SurviveContext *ctx = so->ctx;
 		// Docs say info[0] should be divided by meas; I don't buy it really...
-		static int cnt = 0;
-		if (cnt++ > 1000 || meas_size < d->required_meas || (info[1] / meas_size * 2) > d->max_error) {
-			// SV_INFO("%f original reproj error for %u meas", (info[0] / meas_size * 2), (int)meas_size);
-			// SV_INFO("%f cur reproj error", (info[1] / meas_size * 2));
-			cnt = 0;
+		if (error_failure) {
+			SV_INFO("%f original reproj error for %u meas", (info[0] / meas_size * 2), (int)meas_size);
+			SV_INFO("%f cur reproj error", (info[1] / meas_size * 2));
 		}
 	}
 
