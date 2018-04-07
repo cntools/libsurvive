@@ -40,6 +40,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		so->PoserData = dd = calloc(sizeof(CharlesPoserData), 1);
 		SurvivePose object_pose_out;
 		memcpy(&object_pose_out, &LinmathPose_Identity, sizeof(LinmathPose_Identity));
+		memcpy(&dd->InteralPoseUsedForCalc, &LinmathPose_Identity, sizeof(LinmathPose_Identity));
 		so->PoseConfidence = 1.0;
 		PoserData_poser_pose_func(pd, so, &object_pose_out);
 	}
@@ -58,8 +59,31 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		imuData->gyro[2] *= 1./240.;
 		quatfromeuler( applymotion, imuData->gyro );
 		//printf( "%f %f %f\n", imuData->gyro [0], imuData->gyro [1], imuData->gyro [2] );
+
+		LinmathQuat InvertQuat;
+		quatgetreciprocal(InvertQuat, object_pose->Rot);
+
+		//Apply a tiny tug to re-right headset based on the gravity vector.
+		LinmathVec3d reright = { 0, 0, 1 };
+		LinmathVec3d normup;
+		normalize3d( normup, imuData->accel );
+		LinmathVec3d correct_diff;
+		quatrotatevector(reright, InvertQuat, reright);
+		sub3d( correct_diff, normup, reright  );
+		scale3d( correct_diff, correct_diff, -0.001 );	//This is the coefficient applying the drag.
+		add3d( correct_diff, correct_diff, reright );
+		LinmathQuat  reright_quat;
+		normalize3d( correct_diff, correct_diff );
+		quatfrom2vectors( reright_quat, reright, correct_diff );
+
+
+
 		SurvivePose object_pose_out;
-		quatrotateabout(object_pose_out.Rot, object_pose->Rot, applymotion );
+		quatrotateabout(object_pose_out.Rot, object_pose->Rot, applymotion );		//Contribution from Gyro
+		quatrotateabout(object_pose_out.Rot, object_pose_out.Rot, reright_quat);	//Contribution from Accelerometer
+		quatnormalize(object_pose_out.Rot, object_pose_out.Rot);
+
+
 		copy3d( object_pose_out.Pos, object_pose->Pos );
 		PoserData_poser_pose_func(pd, so, &object_pose_out);
 		quatcopy( dd->InteralPoseUsedForCalc.Rot, object_pose_out.Rot);
