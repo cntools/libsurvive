@@ -399,7 +399,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		d->failures_to_reset_cntr = 0;
 		d->failures_to_reset = survive_configi(ctx, "sba-failures-to-reset", SC_GET, 1);
 		d->successes_to_reset_cntr = 0;
-		d->successes_to_reset = survive_configi(ctx, "sba-successes-to-reset", SC_GET, 100);
+		d->successes_to_reset = survive_configi(ctx, "sba-successes-to-reset", SC_GET, -1);
 		d->useIMU = survive_configi(ctx, "sba-use-imu", SC_GET, 1);
 		d->required_meas = survive_configi(ctx, "sba-required-meas", SC_GET, 8);
 		d->max_error = survive_configf(ctx, "sba-max-error", SC_GET, .0001);
@@ -435,27 +435,28 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 
 			d->last_lh = lightData->lh;
 			d->last_acode = lightData->acode;
-		}
 
-		if (error < 0) {
-			if (d->failures_to_reset_cntr > 0)
-				d->failures_to_reset_cntr--;
-		} else {
-			if (d->useIMU) {
-				FLT var_meters = 0.5;
-				FLT var_quat = error + .05;
-				FLT var[7] = {error * var_meters, error * var_meters, error * var_meters, error * var_quat,
-							  error * var_quat,   error * var_quat,   error * var_quat};
 
-				survive_imu_tracker_integrate_observation(so, lightData->timecode, &d->tracker, &estimate, var);
-				estimate = d->tracker.pose;
+			if (error < 0) {
+				if (d->failures_to_reset_cntr > 0)
+					d->failures_to_reset_cntr--;
 			}
+			else {
+				if (d->useIMU) {
+					FLT var_meters = 0.5;
+					FLT var_quat = error + .05;
+					FLT var[7] = { error * var_meters, error * var_meters, error * var_meters, error * var_quat,
+								  error * var_quat,   error * var_quat,   error * var_quat };
 
-			PoserData_poser_pose_func(&lightData->hdr, so, &estimate);
-			if (d->successes_to_reset_cntr > 0)
-				d->successes_to_reset_cntr--;
+					survive_imu_tracker_integrate_observation(so, lightData->timecode, &d->tracker, &estimate, var);
+					estimate = d->tracker.pose;
+				}
+
+				PoserData_poser_pose_func(&lightData->hdr, so, &estimate);
+				if (d->successes_to_reset_cntr > 0)
+					d->successes_to_reset_cntr--;
+			}
 		}
-
 		return 0;
 	}
 	case POSERDATA_FULL_SCENE: {

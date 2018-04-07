@@ -4,6 +4,7 @@
 #include "poser.h"
 #include "survive_types.h"
 #include <stdint.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -12,6 +13,8 @@ extern "C" {
 struct SurviveIMUTracker_p;
 
 typedef struct {
+	bool is_initialized;
+
 	FLT updir[3];
 	FLT accel_scale_bias;
 
