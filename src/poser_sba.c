@@ -45,7 +45,7 @@ typedef struct SBAData {
 	FLT sensor_variance;
 	FLT sensor_variance_per_second;
 	int sensor_time_window;
-
+	int use_jacobian_function;
 	int required_meas;
 
 	SurviveIMUTracker tracker;
@@ -183,13 +183,30 @@ static void str_metric_function(int j, int i, double *bi, double *xij, void *ada
 	assert(lh < 2);
 	assert(sensor_idx < so->sensor_ct);
 
-	quatnormalize(obj.Rot, obj.Rot);
-	FLT xyz[3];
-	ApplyPoseToPoint(xyz, &obj, &so->sensor_locations[sensor_idx * 3]);
+	// quatnormalize(obj.Rot, obj.Rot);
 
 	// std::cerr << "Processing " << sensor_idx << ", " << lh << std::endl;
 	SurvivePose *camera = &so->ctx->bsd[lh].Pose;
-	survive_reproject_from_pose(so->ctx, lh, camera, xyz, xij);
+	survive_reproject_full(xij, &obj, &so->sensor_locations[sensor_idx * 3], camera, &so->ctx->bsd[lh],
+						   &so->ctx->calibration_config);
+}
+
+static void str_metric_function_jac(int j, int i, double *bi, double *xij, void *adata) {
+	SurvivePose obj = *(SurvivePose *)bi;
+	int sensor_idx = j >> 1;
+	int lh = j & 1;
+
+	sba_context *ctx = (sba_context *)(adata);
+	SurviveObject *so = ctx->so;
+
+	assert(lh < 2);
+	assert(sensor_idx < so->sensor_ct);
+
+	// quatnormalize(obj.Rot, obj.Rot);
+
+	SurvivePose *camera = &so->ctx->bsd[lh].Pose;
+	survive_reproject_full_jac_obj_pose(xij, &obj, &so->sensor_locations[sensor_idx * 3], camera, &so->ctx->bsd[lh],
+										&so->ctx->calibration_config);
 }
 
 static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, SurviveSensorActivations *scene,
@@ -277,12 +294,12 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 								cov,			// cov data
 								2,				// mnp -- 2 points per image
 								str_metric_function,
-								0,				// jacobia of metric_func
-								&ctx,			// user data
-								max_iterations, // Max iterations
-								0,				// verbosity
-								opts,			// options
-								info);			// info
+								d->use_jacobian_function ? str_metric_function_jac : 0, // jacobia of metric_func
+								&ctx,													// user data
+								max_iterations,											// Max iterations
+								0,														// verbosity
+								opts,													// options
+								info);													// info
 
 	if (currentPositionValid) {
 		// FLT distp[3];
@@ -421,6 +438,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 			survive_configi(ctx, "sba-time-window", SC_GET, SurviveSensorActivations_default_tolerance * 2);
 		d->sensor_variance_per_second = survive_configf(ctx, "sba-sensor-variance-per-sec", SC_GET, 10.0);
 		d->sensor_variance = survive_configf(ctx, "sba-sensor-variance", SC_GET, 1.0);
+		d->use_jacobian_function = survive_configi(ctx, "sba-use-jacobian-function", SC_GET, 1.0);
 		d->so = so;
 
 		SV_INFO("Initializing SBA:");
@@ -431,6 +449,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		SV_INFO("\tsba-max-error: %f", d->max_error);
 		SV_INFO("\tsba-successes-to-reset: %d", d->successes_to_reset);
 		SV_INFO("\tsba-use-imu: %d", d->useIMU);
+		SV_INFO("\tsba-use-jacobian-function: %d", d->use_jacobian_function);
 	}
 	SBAData *d = so->PoserData;
 	switch (pd->pt) {

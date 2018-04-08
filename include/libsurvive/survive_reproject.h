@@ -16,6 +16,15 @@ void survive_reproject_from_pose(const SurviveContext *ctx, int lighthouse, cons
 void survive_reproject_from_pose_with_config(const SurviveContext *ctx, struct survive_calibration_config *config,
 											 int lighthouse, const SurvivePose *pose, FLT *point3d, FLT *out);
 
+void survive_reproject_full_jac_obj_pose(FLT *out, const SurvivePose *obj_pose, const LinmathVec3d obj_pt,
+										 const SurvivePose *lh2world, const BaseStationData *bsd,
+										 const survive_calibration_config *config);
+
+void survive_reproject_full(FLT *out, const SurvivePose *obj_pose, const LinmathVec3d obj_pt,
+							const SurvivePose *lh2world, const BaseStationData *bsd,
+							const survive_calibration_config *config);
+
+
 // This is given a lighthouse -- in the same system as stored in BaseStationData, and
 // a 3d point and finds what the effective 'angle' value for a given lighthouse system
 // would be.
