@@ -2,12 +2,12 @@ all : lib data_recorder test calibrate calibrate_client simple_pose_test
 
 CC?=gcc
 
-CFLAGS:=-Iinclude/libsurvive -fPIC -g -O3 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic -llapacke  -lcblas -lm #-fsanitize=address -fsanitize=undefined -Wall -Wno-unused-variable -Wno-switch -Wno-unused-but-set-variable -Wno-pointer-sign -Wno-parentheses
+CFLAGS:=-Iinclude/libsurvive -fPIC -g -O3 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic #-fsanitize=address -fsanitize=undefined -Wall -Wno-unused-variable -Wno-switch -Wno-unused-but-set-variable -Wno-pointer-sign -Wno-parentheses
 CFLAGS_RELEASE:=-Iinclude/libsurvive -fPIC -msse2 -ftree-vectorize -O3 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic -llapacke  -lcblas -lm
 
 
 #LDFLAGS:=-L/usr/local/lib -lpthread -lusb-1.0 -lz -lm -flto -g
-LDFLAGS:=-L/usr/local/lib -lpthread -lz -lm -flto -g
+LDFLAGS:=-L/usr/local/lib -lpthread -lz -lm -flto -g -llapacke  -lcblas -lm
 
 #----------
 # Platform specific changes to CFLAGS/LDFLAGS
