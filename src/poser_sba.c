@@ -59,6 +59,8 @@ typedef struct SBAData {
 	} stats;
 
 	SurviveObject *so;
+
+	PoserCB seed_poser;
 } SBAData;
 
 static void metric_function(int j, int i, double *aj, double *xij, void *adata) {
@@ -241,12 +243,11 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 
 	SurvivePose soLocation = so->OutPose;
 	bool currentPositionValid = quatmagnitude(&soLocation.Rot[0]) != 0;
-
+	static bool seed_warning = false;
 	if (d->successes_to_reset_cntr == 0 || d->failures_to_reset_cntr == 0 || currentPositionValid == 0) {
 		SurviveContext *ctx = so->ctx;
 		// SV_INFO("Must rerun seed poser");
-		const char *subposer = config_read_str(so->ctx->global_config_values, "SBASeedPoser", "PoserEPNP");
-		PoserCB driver = (PoserCB)GetDriver(subposer);
+		PoserCB driver = d->seed_poser;
 
 		if (driver) {
 			PoserData hdr = pdl->hdr;
@@ -267,7 +268,8 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 			}
 
 			d->successes_to_reset_cntr = d->successes_to_reset;
-		} else {
+		} else if (seed_warning == false) {
+			seed_warning = true;
 			SV_INFO("Not using a seed poser for SBA; results will likely be way off");
 		}
 	}
@@ -335,7 +337,7 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 }
 
 // Optimizes for LH position assuming object is posed at 0
-static double run_sba(PoserDataFullScene *pdfs, SurviveObject *so, int max_iterations /* = 50*/,
+static double run_sba(SBAData *d, PoserDataFullScene *pdfs, SurviveObject *so, int max_iterations /* = 50*/,
 					  double max_reproj_error /* = 0.005*/) {
 	double *covx = 0;
 
@@ -347,11 +349,9 @@ static double run_sba(PoserDataFullScene *pdfs, SurviveObject *so, int max_itera
 						  .obj_pose = so->OutPose};
 
 	{
-		const char *subposer = config_read_str(so->ctx->global_config_values, "SBASeedPoser", "PoserEPNP");
-		PoserCB driver = (PoserCB)GetDriver(subposer);
+		PoserCB driver = d->seed_poser;
 		SurviveContext *ctx = so->ctx;
 		if (driver) {
-			SV_INFO("Using %s seed poser for SBA", subposer);
 			PoserData hdr = pdfs->hdr;
 			memset(&pdfs->hdr, 0, sizeof(pdfs->hdr)); // Clear callback functions
 			pdfs->hdr.pt = hdr.pt;
@@ -441,6 +441,9 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		d->use_jacobian_function = survive_configi(ctx, "sba-use-jacobian-function", SC_GET, 1.0);
 		d->so = so;
 
+		const char *subposer = survive_configs(ctx, "sba-seed-poser", SC_GET, "PoserEPNP");
+		d->seed_poser = (PoserCB)GetDriver(subposer);
+
 		SV_INFO("Initializing SBA:");
 		SV_INFO("\tsba-required-meas: %d", d->required_meas);
 		SV_INFO("\tsba-sensor-variance: %f", d->sensor_variance);
@@ -450,6 +453,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		SV_INFO("\tsba-successes-to-reset: %d", d->successes_to_reset);
 		SV_INFO("\tsba-use-imu: %d", d->useIMU);
 		SV_INFO("\tsba-use-jacobian-function: %d", d->use_jacobian_function);
+		SV_INFO("\tsba-seed-poser: %s(%p)", subposer, d->seed_poser);
 	}
 	SBAData *d = so->PoserData;
 	switch (pd->pt) {
@@ -495,7 +499,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 	case POSERDATA_FULL_SCENE: {
 		SurviveContext *ctx = so->ctx;
 		PoserDataFullScene *pdfs = (PoserDataFullScene *)(pd);
-		double error = run_sba(pdfs, so, 100, .005);
+		double error = run_sba(d, pdfs, so, 100, .005);
 		// std::cerr << "Average reproj error: " << error << std::endl;
 		return 0;
 	}
@@ -518,10 +522,8 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 	  }
 	} // INTENTIONAL FALLTHROUGH
 	default: {
-		const char *subposer = config_read_str(so->ctx->global_config_values, "SBASeedPoser", "PoserEPNP");
-		PoserCB driver = (PoserCB)GetDriver(subposer);
-		if (driver) {
-			return driver(so, pd);
+		if (d->seed_poser) {
+			return d->seed_poser(so, pd);
 		}
 		break;
 	}
