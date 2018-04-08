@@ -337,7 +337,7 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 }
 
 // Optimizes for LH position assuming object is posed at 0
-static double run_sba(SBAData *d, PoserDataFullScene *pdfs, SurviveObject *so, int max_iterations /* = 50*/,
+static double run_sba(PoserDataFullScene *pdfs, SurviveObject *so, int max_iterations /* = 50*/,
 					  double max_reproj_error /* = 0.005*/) {
 	double *covx = 0;
 
@@ -349,7 +349,9 @@ static double run_sba(SBAData *d, PoserDataFullScene *pdfs, SurviveObject *so, i
 						  .obj_pose = so->OutPose};
 
 	{
-		PoserCB driver = d->seed_poser;
+		const char *subposer = survive_configs(so->ctx, "sba-seed-poser", SC_GET, "PoserEPNP");
+
+		PoserCB driver = (PoserCB)GetDriver(subposer);
 		SurviveContext *ctx = so->ctx;
 		if (driver) {
 			PoserData hdr = pdfs->hdr;
@@ -499,7 +501,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 	case POSERDATA_FULL_SCENE: {
 		SurviveContext *ctx = so->ctx;
 		PoserDataFullScene *pdfs = (PoserDataFullScene *)(pd);
-		double error = run_sba(d, pdfs, so, 100, .005);
+		double error = run_sba(pdfs, so, 100, .005);
 		// std::cerr << "Average reproj error: " << error << std::endl;
 		return 0;
 	}
