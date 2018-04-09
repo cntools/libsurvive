@@ -230,7 +230,7 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 	}
 	failure_count = 0;
 
-	SurvivePose soLocation = {};
+	SurvivePose soLocation = { 0 };
 
 	if (!general_optimizer_data_record_current_pose(&d->opt, &pdl->hdr, sizeof(*pdl), &soLocation)) {
 		return -1;

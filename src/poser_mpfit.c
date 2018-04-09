@@ -167,22 +167,15 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 	}
 	failure_count = 0;
 
-	SurvivePose soLocation = {};
+	SurvivePose soLocation = { 0 };
 
 	if (!general_optimizer_data_record_current_pose(&d->opt, &pdl->hdr, sizeof(*pdl), &soLocation)) {
 		return -1;
 	}
 
-	mp_result result = {};
-	mp_par pars[7] = {};
-	pars[0].parname = "X";
-	pars[1].parname = "Y";
-	pars[2].parname = "Z";
-	pars[3].parname = "w";
-	pars[4].parname = "i";
-	pars[5].parname = "j";
-	pars[6].parname = "k";
-
+	mp_result result = { 0 };
+	mp_par pars[7] = { 0 };
+	
 	const bool debug_jacobian = false;
 	if (d->use_jacobian_function) {
 		for (int i = 0; i < 7; i++) {

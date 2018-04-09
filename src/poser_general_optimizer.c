@@ -1,6 +1,7 @@
 #include "poser_general_optimizer.h"
 #include "string.h"
-#include <alloca.h>
+
+#include <malloc.h>
 #include <assert.h>
 #include <stdio.h>
 
