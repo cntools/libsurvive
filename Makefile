@@ -2,7 +2,7 @@ all : lib data_recorder test calibrate calibrate_client simple_pose_test
 
 CC?=gcc
 
-CFLAGS:=-Iinclude/libsurvive -fPIC -g -O3 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic #-fsanitize=address -fsanitize=undefined -Wall -Wno-unused-variable -Wno-switch -Wno-unused-but-set-variable -Wno-pointer-sign -Wno-parentheses
+CFLAGS:=-Iinclude/libsurvive -fPIC -g -O0 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic #-fsanitize=address -fsanitize=undefined -Wall -Wno-unused-variable -Wno-switch -Wno-unused-but-set-variable -Wno-pointer-sign -Wno-parentheses
 CFLAGS_RELEASE:=-Iinclude/libsurvive -fPIC -msse2 -ftree-vectorize -O3 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic -llapacke  -lcblas -lm
 
 
@@ -40,7 +40,7 @@ ifeq ($(UNAME), Darwin)
 REDISTS:=$(REDISTS) redist/hid-osx.c
 endif
 
-LIBSURVIVE_CORE:=src/survive.o src/survive_usb.o src/survive_charlesbiguator.o src/survive_process.o src/ootx_decoder.o src/survive_driverman.o src/survive_default_devices.o src/survive_vive.o src/survive_playback.o src/survive_config.o src/survive_cal.o src/survive_reproject.o src/poser.o src/epnp/epnp.o src/survive_sensor_activations.o src/survive_turveybiguator.o src/survive_disambiguator.o src/survive_statebased_disambiguator.o src/poser_charlesrefine.o src/survive_imu.o src/poser_imu.o
+LIBSURVIVE_CORE:=src/survive.o src/survive_usb.o src/survive_charlesbiguator.o src/survive_process.o src/ootx_decoder.o src/survive_driverman.o src/survive_default_devices.o src/survive_vive.o src/survive_playback.o src/survive_config.o src/survive_cal.o src/survive_reproject.o src/poser.o src/epnp/epnp.o src/survive_sensor_activations.o src/survive_turveybiguator.o src/survive_disambiguator.o src/survive_statebased_disambiguator.o src/poser_charlesrefine.o src/survive_imu.o src/poser_imu.o src/poser_general_optimizer.o
 
 #If you want to use HIDAPI on Linux.
 #CFLAGS:=$(CFLAGS) -DHIDAPI

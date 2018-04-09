@@ -129,7 +129,7 @@ int PoserEPNP(SurviveObject *so, PoserData *pd) {
 	case POSERDATA_LIGHT: {
 		PoserDataLight *lightData = (PoserDataLight *)pd;
 
-		SurvivePose posers[2];
+		SurvivePose posers[2] = {};
 		int meas[2] = {0, 0};
 		for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
 			if (so->ctx->bsd[lh].PositionSet) {
