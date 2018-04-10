@@ -99,6 +99,7 @@ LINMATH_EXPORT void axisanglefromquat(FLT *angle, FLT *axis, LinmathQuat quat);
 
 typedef FLT LinmathEulerAngle[3];
 
+LINMATH_EXPORT void quatset(LinmathQuat q, FLT w, FLT x, FLT y, FLT z);
 LINMATH_EXPORT void quatsetnone(LinmathQuat q);
 LINMATH_EXPORT void quatcopy(LinmathQuat q, const LinmathQuat qin);
 LINMATH_EXPORT void quatfromeuler(LinmathQuat q, const LinmathEulerAngle euler);

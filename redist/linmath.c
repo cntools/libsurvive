@@ -173,6 +173,13 @@ inline void axisanglefromquat(FLT *angle, FLT *axis, FLT *q) {
 // Originally from Mercury (Copyright (C) 2009 by Joshua Allen, Charles Lohr, Adam Lowman)
 // Under the mit/X11 license.
 
+inline void quatset(LinmathQuat q, FLT w, FLT x, FLT y, FLT z) {
+	q[0] = w;
+	q[1] = x;
+	q[2] = y;
+	q[3] = z;
+}
+
 inline void quatsetnone(LinmathQuat q) {
 	q[0] = 1;
 	q[1] = 0;
