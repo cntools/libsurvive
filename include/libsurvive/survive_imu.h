@@ -27,7 +27,7 @@ typedef struct {
 
 	FLT P[7]; // estimate variance
 
-	float integralFBx, integralFBy, integralFBz; // integral error terms scaled by Ki
+	LinmathVec3d integralFB;
 
 } SurviveIMUTracker;
 
