@@ -1,7 +1,7 @@
 import libsurvive
 import sys
 
-actx = libsurvive.AsyncContext(sys.argv)
+actx = libsurvive.SimpleContext(sys.argv)
 
 for obj in actx.Objects():
     print(obj.Name())
