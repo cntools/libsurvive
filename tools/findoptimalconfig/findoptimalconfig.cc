@@ -9,7 +9,6 @@
 #include <vector>
 
 #include <sba/sba.h>
-#include <survive_reproject.h>
 
 struct SBAData {
 	int last_acode = -1;
@@ -93,8 +92,8 @@ void light_process(SurviveObject *so, int sensor_id, int acode, int timeinsweep,
 }
 
 SurvivePose lastPose = {};
-void raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose) {
-	survive_default_raw_pose_process(so, lighthouse, pose);
+void pose_process(SurviveObject *so, uint32_t timecode, SurvivePose *pose) {
+	survive_default_raw_pose_process(so, timecode, pose);
 	PlaybackData *d = (PlaybackData *)so->ctx->user_ptr;
 	d->so = so;
 	d->inputs.emplace_back(so, *pose);
@@ -364,7 +363,7 @@ int main(int argc, char **argv) {
 		auto ctx = survive_init(sizeof(args) / sizeof(args[0]), (char *const *)args);
 		ctx->user_ptr = &data;
 
-		survive_install_raw_pose_fn(ctx, raw_pose_process);
+		survive_install_pose_fn(ctx, pose_process);
 		survive_install_lighthouse_pose_fn(ctx, lighthouse_process);
 		survive_install_light_fn(ctx, light_process);
 

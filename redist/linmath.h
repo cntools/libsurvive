@@ -9,7 +9,7 @@ extern "C" {
 
 #ifndef LINMATH_EXPORT
 #ifdef _WIN32
-#define LINMATH_EXPORT __declspec(dllexport)
+#define LINMATH_EXPORT extern __declspec(dllexport)
 #else
 #define LINMATH_EXPORT __attribute__((visibility("default")))
 #endif
@@ -101,6 +101,7 @@ LINMATH_EXPORT void axisanglefromquat(FLT *angle, FLT *axis, LinmathQuat quat);
 
 typedef FLT LinmathEulerAngle[3];
 
+LINMATH_EXPORT void quatset(LinmathQuat q, FLT w, FLT x, FLT y, FLT z);
 LINMATH_EXPORT void quatsetnone(LinmathQuat q);
 LINMATH_EXPORT void quatcopy(LinmathQuat q, const LinmathQuat qin);
 LINMATH_EXPORT void quatfromeuler(LinmathQuat q, const LinmathEulerAngle euler);
@@ -110,6 +111,7 @@ FLT quatmagnitude(const LinmathQuat q);
 FLT quatinvsqmagnitude(const LinmathQuat q);
 LINMATH_EXPORT void quatnormalize(LinmathQuat qout, const LinmathQuat qin); // Safe for in to be same as out.
 LINMATH_EXPORT void quattomatrix(FLT *matrix44, const LinmathQuat q);
+LINMATH_EXPORT void quattomatrix33(FLT *matrix33, const LinmathQuat qin);
 LINMATH_EXPORT void quatfrommatrix(LinmathQuat q, const FLT *matrix44);
 LINMATH_EXPORT void quatfrommatrix33(LinmathQuat q, const FLT *matrix33);
 LINMATH_EXPORT void quatgetconjugate(LinmathQuat qout, const LinmathQuat qin);

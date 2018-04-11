@@ -3,6 +3,7 @@
 
 #include "poser.h"
 #include "survive_types.h"
+#include <stdbool.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -12,6 +13,8 @@ extern "C" {
 struct SurviveIMUTracker_p;
 
 typedef struct {
+	bool is_initialized;
+
 	FLT updir[3];
 	FLT accel_scale_bias;
 
@@ -24,7 +27,7 @@ typedef struct {
 
 	FLT P[7]; // estimate variance
 
-	float integralFBx, integralFBy, integralFBz; // integral error terms scaled by Ki
+	LinmathVec3d integralFB;
 
 } SurviveIMUTracker;
 

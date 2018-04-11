@@ -13,6 +13,7 @@
 #include "assert.h"
 #include "linmath.h"
 #include "math.h"
+#include "poser_general_optimizer.h"
 #include "string.h"
 #include "survive_cal.h"
 #include "survive_config.h"
@@ -32,26 +33,23 @@ typedef struct {
 } sba_context_single_sweep;
 
 typedef struct SBAData {
+	GeneralOptimizerData opt;
+
 	int last_acode;
 	int last_lh;
-
-	int failures_to_reset;
-	int failures_to_reset_cntr;
-	int successes_to_reset;
-	int successes_to_reset_cntr;
-
-	FLT max_error;
 
 	FLT sensor_variance;
 	FLT sensor_variance_per_second;
 	int sensor_time_window;
-
+	int use_jacobian_function;
 	int required_meas;
 
 	SurviveIMUTracker tracker;
 	bool useIMU;
 
-	SurviveObject *so;
+	struct {
+		int meas_failures;
+	} stats;
 } SBAData;
 
 static void metric_function(int j, int i, double *aj, double *xij, void *adata) {
@@ -89,7 +87,7 @@ static size_t construct_input(const SurviveObject *so, PoserDataFullScene *pdfs,
 static size_t construct_input_from_scene(SBAData *d, PoserDataLight *pdl, SurviveSensorActivations *scene, char *vmask,
 										 double *meas, double *cov) {
 	size_t rtn = 0;
-	SurviveObject *so = d->so;
+	SurviveObject *so = d->opt.so;
 
 	for (size_t sensor = 0; sensor < so->sensor_ct; sensor++) {
 		for (size_t lh = 0; lh < 2; lh++) {
@@ -176,20 +174,37 @@ static void str_metric_function(int j, int i, double *bi, double *xij, void *ada
 	assert(lh < 2);
 	assert(sensor_idx < so->sensor_ct);
 
-	quatnormalize(obj.Rot, obj.Rot);
-	FLT xyz[3];
-	ApplyPoseToPoint(xyz, &obj, &so->sensor_locations[sensor_idx * 3]);
+	// quatnormalize(obj.Rot, obj.Rot);
 
 	// std::cerr << "Processing " << sensor_idx << ", " << lh << std::endl;
 	SurvivePose *camera = &so->ctx->bsd[lh].Pose;
-	survive_reproject_from_pose(so->ctx, lh, camera, xyz, xij);
+	survive_reproject_full(xij, &obj, &so->sensor_locations[sensor_idx * 3], camera, &so->ctx->bsd[lh],
+						   &so->ctx->calibration_config);
+}
+
+static void str_metric_function_jac(int j, int i, double *bi, double *xij, void *adata) {
+	SurvivePose obj = *(SurvivePose *)bi;
+	int sensor_idx = j >> 1;
+	int lh = j & 1;
+
+	sba_context *ctx = (sba_context *)(adata);
+	SurviveObject *so = ctx->so;
+
+	assert(lh < 2);
+	assert(sensor_idx < so->sensor_ct);
+
+	// quatnormalize(obj.Rot, obj.Rot);
+
+	SurvivePose *camera = &so->ctx->bsd[lh].Pose;
+	survive_reproject_full_jac_obj_pose(xij, &obj, &so->sensor_locations[sensor_idx * 3], camera, &so->ctx->bsd[lh],
+										&so->ctx->calibration_config);
 }
 
 static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, SurviveSensorActivations *scene,
 										int max_iterations /* = 50*/, double max_reproj_error /* = 0.005*/,
 										SurvivePose *out) {
 	double *covx = 0;
-	SurviveObject *so = d->so;
+	SurviveObject *so = d->opt.so;
 
 	char *vmask = alloca(sizeof(char) * so->sensor_ct * NUM_LIGHTHOUSES);
 	double *meas = alloca(sizeof(double) * 2 * so->sensor_ct * NUM_LIGHTHOUSES);
@@ -208,40 +223,17 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 			SV_INFO("Can't solve for position with just %u measurements", (unsigned int)meas_size);
 			failure_count = 0;
 		}
+		if (meas_size < d->required_meas) {
+			d->stats.meas_failures++;
+		}
 		return -1;
 	}
 	failure_count = 0;
 
-	SurvivePose soLocation = so->OutPose;
-	bool currentPositionValid = quatmagnitude(&soLocation.Rot[0]) != 0;
+	SurvivePose soLocation = {0};
 
-	if (d->successes_to_reset_cntr == 0 || d->failures_to_reset_cntr == 0 || currentPositionValid == 0) {
-		SurviveContext *ctx = so->ctx;
-		// SV_INFO("Must rerun seed poser");
-		const char *subposer = config_read_str(so->ctx->global_config_values, "SBASeedPoser", "PoserEPNP");
-		PoserCB driver = (PoserCB)GetDriver(subposer);
-
-		if (driver) {
-			PoserData hdr = pdl->hdr;
-			memset(&pdl->hdr, 0, sizeof(pdl->hdr)); // Clear callback functions
-			pdl->hdr.pt = hdr.pt;
-			pdl->hdr.poseproc = sba_set_position;
-
-			sba_set_position_t locations = {0};
-			pdl->hdr.userdata = &locations;
-			driver(so, &pdl->hdr);
-			pdl->hdr = hdr;
-
-			if (locations.hasInfo == false) {
-				return -1;
-			} else if (locations.hasInfo) {
-				soLocation = locations.poses;
-			}
-
-			d->successes_to_reset_cntr = d->successes_to_reset;
-		} else {
-			SV_INFO("Not using a seed poser for SBA; results will likely be way off");
-		}
+	if (!general_optimizer_data_record_current_pose(&d->opt, &pdl->hdr, sizeof(*pdl), &soLocation)) {
+		return -1;
 	}
 
 	double opts[SBA_OPTSSZ] = {0};
@@ -265,38 +257,28 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 								cov,			// cov data
 								2,				// mnp -- 2 points per image
 								str_metric_function,
-								0,				// jacobia of metric_func
-								&ctx,			// user data
-								max_iterations, // Max iterations
-								0,				// verbosity
-								opts,			// options
-								info);			// info
-
-	if (currentPositionValid) {
-		// FLT distp[3];
-		// sub3d(distp, so->OutPose.Pos, soLocation.Pos);
-		// FLT distance = magnitude3d(distp);
-
-		// if (distance > 1.)
-		//	status = -1;
-	}
+								d->use_jacobian_function ? str_metric_function_jac : 0, // jacobia of metric_func
+								&ctx,													// user data
+								max_iterations,											// Max iterations
+								0,														// verbosity
+								opts,													// options
+								info);													// info
 
 	double rtn = -1;
-	if (status > 0 && (info[1] / meas_size * 2) < d->max_error) {
-		d->failures_to_reset_cntr = d->failures_to_reset;
+	bool status_failure = status <= 0;
+	bool error_failure = !general_optimizer_data_record_success(&d->opt, (info[1] / meas_size * 2));
+	if (!status_failure && !error_failure) {
 		quatnormalize(soLocation.Rot, soLocation.Rot);
 		*out = soLocation;
 		rtn = info[1] / meas_size * 2;
-	}
+	} else
 
 	{
 		SurviveContext *ctx = so->ctx;
 		// Docs say info[0] should be divided by meas; I don't buy it really...
-		static int cnt = 0;
-		if (cnt++ > 1000 || meas_size < d->required_meas || (info[1] / meas_size * 2) > d->max_error) {
-			// SV_INFO("%f original reproj error for %u meas", (info[0] / meas_size * 2), (int)meas_size);
-			// SV_INFO("%f cur reproj error", (info[1] / meas_size * 2));
-			cnt = 0;
+		if (error_failure) {
+			SV_INFO("%f original reproj error for %u meas", (info[0] / meas_size * 2), (int)meas_size);
+			SV_INFO("%f cur reproj error", (info[1] / meas_size * 2));
 		}
 	}
 
@@ -316,11 +298,11 @@ static double run_sba(PoserDataFullScene *pdfs, SurviveObject *so, int max_itera
 						  .obj_pose = so->OutPose};
 
 	{
-		const char *subposer = config_read_str(so->ctx->global_config_values, "SBASeedPoser", "PoserEPNP");
+		const char *subposer = survive_configs(so->ctx, "seed-poser", SC_GET, "PoserEPNP");
+
 		PoserCB driver = (PoserCB)GetDriver(subposer);
 		SurviveContext *ctx = so->ctx;
 		if (driver) {
-			SV_INFO("Using %s seed poser for SBA", subposer);
 			PoserData hdr = pdfs->hdr;
 			memset(&pdfs->hdr, 0, sizeof(pdfs->hdr)); // Clear callback functions
 			pdfs->hdr.pt = hdr.pt;
@@ -396,27 +378,24 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 	if (so->PoserData == 0) {
 		so->PoserData = calloc(1, sizeof(SBAData));
 		SBAData *d = so->PoserData;
-		d->failures_to_reset_cntr = 0;
-		d->failures_to_reset = survive_configi(ctx, "sba-failures-to-reset", SC_GET, 1);
-		d->successes_to_reset_cntr = 0;
-		d->successes_to_reset = survive_configi(ctx, "sba-successes-to-reset", SC_GET, 100);
+
+		general_optimizer_data_init(&d->opt, so);
 		d->useIMU = survive_configi(ctx, "sba-use-imu", SC_GET, 1);
 		d->required_meas = survive_configi(ctx, "sba-required-meas", SC_GET, 8);
-		d->max_error = survive_configf(ctx, "sba-max-error", SC_GET, .0001);
+
 		d->sensor_time_window =
 			survive_configi(ctx, "sba-time-window", SC_GET, SurviveSensorActivations_default_tolerance * 2);
 		d->sensor_variance_per_second = survive_configf(ctx, "sba-sensor-variance-per-sec", SC_GET, 10.0);
 		d->sensor_variance = survive_configf(ctx, "sba-sensor-variance", SC_GET, 1.0);
-		d->so = so;
+		d->use_jacobian_function = survive_configi(ctx, "sba-use-jacobian-function", SC_GET, 1.0);
 
 		SV_INFO("Initializing SBA:");
 		SV_INFO("\tsba-required-meas: %d", d->required_meas);
 		SV_INFO("\tsba-sensor-variance: %f", d->sensor_variance);
 		SV_INFO("\tsba-sensor-variance-per-sec: %f", d->sensor_variance_per_second);
 		SV_INFO("\tsba-time-window: %d", d->sensor_time_window);
-		SV_INFO("\tsba-max-error: %f", d->max_error);
-		SV_INFO("\tsba-successes-to-reset: %d", d->successes_to_reset);
 		SV_INFO("\tsba-use-imu: %d", d->useIMU);
+		SV_INFO("\tsba-use-jacobian-function: %d", d->use_jacobian_function);
 	}
 	SBAData *d = so->PoserData;
 	switch (pd->pt) {
@@ -435,27 +414,23 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 
 			d->last_lh = lightData->lh;
 			d->last_acode = lightData->acode;
-		}
 
-		if (error < 0) {
-			if (d->failures_to_reset_cntr > 0)
-				d->failures_to_reset_cntr--;
-		} else {
-			if (d->useIMU) {
-				FLT var_meters = 0.5;
-				FLT var_quat = error + .05;
-				FLT var[7] = {error * var_meters, error * var_meters, error * var_meters, error * var_quat,
-							  error * var_quat,   error * var_quat,   error * var_quat};
+			if (error < 0) {
 
-				survive_imu_tracker_integrate_observation(so, lightData->timecode, &d->tracker, &estimate, var);
-				estimate = d->tracker.pose;
+			} else {
+				if (d->useIMU) {
+					FLT var_meters = 0.5;
+					FLT var_quat = error + .05;
+					FLT var[7] = {error * var_meters, error * var_meters, error * var_meters, error * var_quat,
+								  error * var_quat,   error * var_quat,   error * var_quat};
+
+					survive_imu_tracker_integrate_observation(so, lightData->timecode, &d->tracker, &estimate, var);
+					estimate = d->tracker.pose;
+				}
+
+				PoserData_poser_pose_func(&lightData->hdr, so, &estimate);
 			}
-
-			PoserData_poser_pose_func(&lightData->hdr, so, &estimate);
-			if (d->successes_to_reset_cntr > 0)
-				d->successes_to_reset_cntr--;
 		}
-
 		return 0;
 	}
 	case POSERDATA_FULL_SCENE: {
@@ -465,22 +440,24 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		// std::cerr << "Average reproj error: " << error << std::endl;
 		return 0;
 	}
+	case POSERDATA_DISASSOCIATE: {
+		SV_INFO("SBA stats:");
+		SV_INFO("\tmeas failures %d", d->stats.meas_failures);
+		general_optimizer_data_dtor(&d->opt);
+		free(d);
+		so->PoserData = 0;
+		return 0;
+	}
 	case POSERDATA_IMU: {
 
 	  PoserDataIMU * imu = (PoserDataIMU*)pd;
 	  if (ctx->calptr && ctx->calptr->stage < 5) {
-	  } else if(d->useIMU){
-	    survive_imu_tracker_integrate(so, &d->tracker, imu);
-		PoserData_poser_pose_func(pd, so, &d->tracker.pose);
+	  } else if (d->useIMU) {
+		  survive_imu_tracker_integrate(so, &d->tracker, imu);
+		  PoserData_poser_pose_func(pd, so, &d->tracker.pose);
 	  }
-	} // INTENTIONAL FALLTHROUGH
-	default: {
-		const char *subposer = config_read_str(so->ctx->global_config_values, "SBASeedPoser", "PoserEPNP");
-		PoserCB driver = (PoserCB)GetDriver(subposer);
-		if (driver) {
-			return driver(so, pd);
-		}
-		break;
+
+	  general_optimizer_data_record_imu(&d->opt, imu);
 	}
 	}
 	return -1;

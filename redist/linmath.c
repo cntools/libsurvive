@@ -5,31 +5,31 @@
 #include <math.h>
 #include <string.h>
 
-void cross3d(FLT *out, const FLT *a, const FLT *b) {
+inline void cross3d(FLT *out, const FLT *a, const FLT *b) {
 	out[0] = a[1] * b[2] - a[2] * b[1];
 	out[1] = a[2] * b[0] - a[0] * b[2];
 	out[2] = a[0] * b[1] - a[1] * b[0];
 }
 
-void sub3d(FLT *out, const FLT *a, const FLT *b) {
+inline void sub3d(FLT *out, const FLT *a, const FLT *b) {
 	out[0] = a[0] - b[0];
 	out[1] = a[1] - b[1];
 	out[2] = a[2] - b[2];
 }
 
-void add3d(FLT *out, const FLT *a, const FLT *b) {
+inline void add3d(FLT *out, const FLT *a, const FLT *b) {
 	out[0] = a[0] + b[0];
 	out[1] = a[1] + b[1];
 	out[2] = a[2] + b[2];
 }
 
-void scale3d(FLT *out, const FLT *a, FLT scalar) {
+inline void scale3d(FLT *out, const FLT *a, FLT scalar) {
 	out[0] = a[0] * scalar;
 	out[1] = a[1] * scalar;
 	out[2] = a[2] * scalar;
 }
 
-void normalize3d(FLT *out, const FLT *in) {
+inline void normalize3d(FLT *out, const FLT *in) {
 	FLT r = ((FLT)1.) / FLT_SQRT(in[0] * in[0] + in[1] * in[1] + in[2] * in[2]);
 	out[0] = in[0] * r;
 	out[1] = in[1] * r;
@@ -56,7 +56,7 @@ int compare3d(const FLT *a, const FLT *b, FLT epsilon) {
 	return 0;
 }
 
-void copy3d(FLT *out, const FLT *in) {
+inline void copy3d(FLT *out, const FLT *in) {
 	out[0] = in[0];
 	out[1] = in[1];
 	out[2] = in[2];
@@ -83,7 +83,7 @@ FLT anglebetween3d(FLT *a, FLT *b) {
 }
 
 // algorithm found here: http://inside.mines.edu/fs_home/gmurray/ArbitraryAxisRotation/
-void rotatearoundaxis(FLT *outvec3, FLT *invec3, FLT *axis, FLT angle) {
+inline void rotatearoundaxis(FLT *outvec3, FLT *invec3, FLT *axis, FLT angle) {
 	// TODO: this really should be external.
 	normalize3d(axis, axis);
 
@@ -103,7 +103,7 @@ void rotatearoundaxis(FLT *outvec3, FLT *invec3, FLT *axis, FLT angle) {
 	outvec3[2] = w * (u * x + v * y + w * z) * (1 - c) + z * c + (-v * x + u * y) * s;
 }
 
-void angleaxisfrom2vect(FLT *angle, FLT *axis, FLT *src, FLT *dest) {
+inline void angleaxisfrom2vect(FLT *angle, FLT *axis, FLT *src, FLT *dest) {
 	FLT v0[3];
 	FLT v1[3];
 	normalize3d(v0, src);
@@ -136,7 +136,7 @@ void angleaxisfrom2vect(FLT *angle, FLT *axis, FLT *src, FLT *dest) {
 	cross3d(axis, v1, v0);
 }
 
-void axisanglefromquat(FLT *angle, FLT *axis, FLT *q) {
+inline void axisanglefromquat(FLT *angle, FLT *axis, FLT *q) {
 	// this way might be fine, too.
 	// FLT dist = FLT_SQRT((q[1] * q[1]) + (q[2] * q[2]) + (q[3] * q[3]));
 	//
@@ -173,21 +173,28 @@ void axisanglefromquat(FLT *angle, FLT *axis, FLT *q) {
 // Originally from Mercury (Copyright (C) 2009 by Joshua Allen, Charles Lohr, Adam Lowman)
 // Under the mit/X11 license.
 
-void quatsetnone(LinmathQuat q) {
+inline void quatset(LinmathQuat q, FLT w, FLT x, FLT y, FLT z) {
+	q[0] = w;
+	q[1] = x;
+	q[2] = y;
+	q[3] = z;
+}
+
+inline void quatsetnone(LinmathQuat q) {
 	q[0] = 1;
 	q[1] = 0;
 	q[2] = 0;
 	q[3] = 0;
 }
 
-void quatcopy(LinmathQuat qout, const LinmathQuat qin) {
+inline void quatcopy(LinmathQuat qout, const LinmathQuat qin) {
 	qout[0] = qin[0];
 	qout[1] = qin[1];
 	qout[2] = qin[2];
 	qout[3] = qin[3];
 }
 
-void quatfromeuler(LinmathQuat q, const LinmathEulerAngle euler) {
+inline void quatfromeuler(LinmathQuat q, const LinmathEulerAngle euler) {
 	FLT X = euler[0] / 2.0f; // roll
 	FLT Y = euler[1] / 2.0f; // pitch
 	FLT Z = euler[2] / 2.0f; // yaw
@@ -208,14 +215,14 @@ void quatfromeuler(LinmathQuat q, const LinmathEulerAngle euler) {
 	quatnormalize(q, q);
 }
 
-void quattoeuler(LinmathEulerAngle euler, const LinmathQuat q) {
+inline void quattoeuler(LinmathEulerAngle euler, const LinmathQuat q) {
 	// According to http://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles (Oct 26, 2009)
 	euler[0] = FLT_ATAN2(2 * (q[0] * q[1] + q[2] * q[3]), 1 - 2 * (q[1] * q[1] + q[2] * q[2]));
 	euler[1] = FLT_ASIN(2 * (q[0] * q[2] - q[3] * q[1]));
 	euler[2] = FLT_ATAN2(2 * (q[0] * q[3] + q[1] * q[2]), 1 - 2 * (q[2] * q[2] + q[3] * q[3]));
 }
 
-void quatfromaxisangle(LinmathQuat q, const FLT *axis, FLT radians) {
+inline void quatfromaxisangle(LinmathQuat q, const FLT *axis, FLT radians) {
 	FLT v[3];
 	normalize3d(v, axis);
 
@@ -236,12 +243,12 @@ FLT quatinvsqmagnitude(const LinmathQuat q) {
 	return ((FLT)1.) / FLT_SQRT((q[0] * q[0]) + (q[1] * q[1]) + (q[2] * q[2]) + (q[3] * q[3]));
 }
 
-void quatnormalize(LinmathQuat qout, const LinmathQuat qin) {
+inline void quatnormalize(LinmathQuat qout, const LinmathQuat qin) {
 	FLT imag = quatinvsqmagnitude(qin);
 	quatscale(qout, qin, imag);
 }
 
-void quattomatrix(FLT *matrix44, const LinmathQuat qin) {
+inline void quattomatrix(FLT *matrix44, const LinmathQuat qin) {
 	FLT q[4];
 	quatnormalize(q, qin);
 
@@ -280,7 +287,7 @@ void quattomatrix(FLT *matrix44, const LinmathQuat qin) {
 	matrix44[15] = 1;
 }
 
-void quatfrommatrix33(FLT *q, const FLT *m) {
+inline void quatfrommatrix33(FLT *q, const FLT *m) {
 	FLT m00 = m[0], m01 = m[1], m02 = m[2], m10 = m[3], m11 = m[4], m12 = m[5], m20 = m[6], m21 = m[7], m22 = m[8];
 
 	FLT tr = m00 + m11 + m22;
@@ -312,7 +319,7 @@ void quatfrommatrix33(FLT *q, const FLT *m) {
 	}
 }
 
-void quatfrommatrix(LinmathQuat q, const FLT *matrix44) {
+inline void quatfrommatrix(LinmathQuat q, const FLT *matrix44) {
 	// Algorithm from http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
 	FLT tr = matrix44[0] + matrix44[5] + matrix44[10];
 
@@ -344,7 +351,7 @@ void quatfrommatrix(LinmathQuat q, const FLT *matrix44) {
 }
 
 // Algorithm from http://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToMatrix/
-void quattomatrix33(FLT *matrix33, const LinmathQuat qin) {
+inline void quattomatrix33(FLT *matrix33, const LinmathQuat qin) {
 	FLT q[4];
 	quatnormalize(q, qin);
 
@@ -375,34 +382,34 @@ void quattomatrix33(FLT *matrix33, const LinmathQuat qin) {
 	matrix33[8] = 1 - xx - yy;
 }
 
-void quatgetconjugate(LinmathQuat qout, const LinmathQuat qin) {
+inline void quatgetconjugate(LinmathQuat qout, const LinmathQuat qin) {
 	qout[0] = qin[0];
 	qout[1] = -qin[1];
 	qout[2] = -qin[2];
 	qout[3] = -qin[3];
 }
 
-void quatgetreciprocal(LinmathQuat qout, const LinmathQuat qin) {
+inline void quatgetreciprocal(LinmathQuat qout, const LinmathQuat qin) {
 	FLT m = quatinvsqmagnitude(qin);
 	quatgetconjugate(qout, qin);
 	quatscale(qout, qout, m);
 }
 
-void quatsub(LinmathQuat qout, const FLT *a, const FLT *b) {
+inline void quatsub(LinmathQuat qout, const FLT *a, const FLT *b) {
 	qout[0] = a[0] - b[0];
 	qout[1] = a[1] - b[1];
 	qout[2] = a[2] - b[2];
 	qout[3] = a[3] - b[3];
 }
 
-void quatadd(LinmathQuat qout, const FLT *a, const FLT *b) {
+inline void quatadd(LinmathQuat qout, const FLT *a, const FLT *b) {
 	qout[0] = a[0] + b[0];
 	qout[1] = a[1] + b[1];
 	qout[2] = a[2] + b[2];
 	qout[3] = a[3] + b[3];
 }
 
-void quatrotateabout(LinmathQuat qout, const LinmathQuat q1, const LinmathQuat q2) {
+inline void quatrotateabout(LinmathQuat qout, const LinmathQuat q1, const LinmathQuat q2) {
 	// NOTE: Does not normalize
 	qout[0] = (q1[0] * q2[0]) - (q1[1] * q2[1]) - (q1[2] * q2[2]) - (q1[3] * q2[3]);
 	qout[1] = (q1[0] * q2[1]) + (q1[1] * q2[0]) + (q1[2] * q2[3]) - (q1[3] * q2[2]);
@@ -410,7 +417,7 @@ void quatrotateabout(LinmathQuat qout, const LinmathQuat q1, const LinmathQuat q
 	qout[3] = (q1[0] * q2[3]) + (q1[1] * q2[2]) - (q1[2] * q2[1]) + (q1[3] * q2[0]);
 }
 
-void quatscale(LinmathQuat qout, const LinmathQuat qin, FLT s) {
+inline void quatscale(LinmathQuat qout, const LinmathQuat qin, FLT s) {
 	qout[0] = qin[0] * s;
 	qout[1] = qin[1] * s;
 	qout[2] = qin[2] * s;
@@ -421,26 +428,26 @@ FLT quatinnerproduct(const LinmathQuat qa, const LinmathQuat qb) {
 	return (qa[0] * qb[0]) + (qa[1] * qb[1]) + (qa[2] * qb[2]) + (qa[3] * qb[3]);
 }
 
-void quatouterproduct(FLT *outvec3, LinmathQuat qa, LinmathQuat qb) {
+inline void quatouterproduct(FLT *outvec3, LinmathQuat qa, LinmathQuat qb) {
 	outvec3[0] = (qa[0] * qb[1]) - (qa[1] * qb[0]) - (qa[2] * qb[3]) + (qa[3] * qb[2]);
 	outvec3[1] = (qa[0] * qb[2]) + (qa[1] * qb[3]) - (qa[2] * qb[0]) - (qa[3] * qb[1]);
 	outvec3[2] = (qa[0] * qb[3]) - (qa[1] * qb[2]) + (qa[2] * qb[1]) - (qa[3] * qb[0]);
 }
 
-void quatevenproduct(LinmathQuat q, LinmathQuat qa, LinmathQuat qb) {
+inline void quatevenproduct(LinmathQuat q, LinmathQuat qa, LinmathQuat qb) {
 	q[0] = (qa[0] * qb[0]) - (qa[1] * qb[1]) - (qa[2] * qb[2]) - (qa[3] * qb[3]);
 	q[1] = (qa[0] * qb[1]) + (qa[1] * qb[0]);
 	q[2] = (qa[0] * qb[2]) + (qa[2] * qb[0]);
 	q[3] = (qa[0] * qb[3]) + (qa[3] * qb[0]);
 }
 
-void quatoddproduct(FLT *outvec3, LinmathQuat qa, LinmathQuat qb) {
+inline void quatoddproduct(FLT *outvec3, LinmathQuat qa, LinmathQuat qb) {
 	outvec3[0] = (qa[2] * qb[3]) - (qa[3] * qb[2]);
 	outvec3[1] = (qa[3] * qb[1]) - (qa[1] * qb[3]);
 	outvec3[2] = (qa[1] * qb[2]) - (qa[2] * qb[1]);
 }
 
-void quatslerp(LinmathQuat q, const LinmathQuat qa, const LinmathQuat qb, FLT t) {
+inline void quatslerp(LinmathQuat q, const LinmathQuat qa, const LinmathQuat qb, FLT t) {
 	FLT an[4];
 	FLT bn[4];
 	quatnormalize(an, qa);
@@ -472,7 +479,7 @@ void quatslerp(LinmathQuat q, const LinmathQuat qa, const LinmathQuat qb, FLT t)
 	}
 }
 
-void quatrotatevector(FLT *vec3out, const LinmathQuat quat, const FLT *vec3in) {
+inline void quatrotatevector(FLT *vec3out, const LinmathQuat quat, const FLT *vec3in) {
 	// See: http://www.geeks3d.com/20141201/how-to-rotate-a-vertex-by-a-quaternion-in-glsl/
 
 	FLT tmp[3];
@@ -508,7 +515,7 @@ Matrix3x3 inverseM33(const Matrix3x3 mat) {
 	return newMat;
 }
 
-void rotation_between_vecs_to_m3(Matrix3x3 *m, const FLT v1[3], const FLT v2[3]) {
+inline void rotation_between_vecs_to_m3(Matrix3x3 *m, const FLT v1[3], const FLT v2[3]) {
 	FLT q[4];
 
 	quatfrom2vectors(q, v1, v2);
@@ -516,7 +523,7 @@ void rotation_between_vecs_to_m3(Matrix3x3 *m, const FLT v1[3], const FLT v2[3])
 	quattomatrix33(&(m->val[0][0]), q);
 }
 
-void rotate_vec(FLT *out, const FLT *in, Matrix3x3 rot) {
+inline void rotate_vec(FLT *out, const FLT *in, Matrix3x3 rot) {
 	out[0] = rot.val[0][0] * in[0] + rot.val[1][0] * in[1] + rot.val[2][0] * in[2];
 	out[1] = rot.val[0][1] * in[0] + rot.val[1][1] * in[1] + rot.val[2][1] * in[2];
 	out[2] = rot.val[0][2] * in[0] + rot.val[1][2] * in[1] + rot.val[2][2] * in[2];
@@ -536,7 +543,7 @@ If you call this with a dest vector that is close to the inverse
 of this vector, we will rotate 180 degrees around a generated axis if
 since in this case ANY axis of rotation is valid.
 */
-void quatfrom2vectors(FLT *q, const FLT *src, const FLT *dest) {
+inline void quatfrom2vectors(FLT *q, const FLT *src, const FLT *dest) {
 	// Based on Stan Melax's article in Game Programming Gems
 
 	// Copy, since cannot modify local
@@ -580,9 +587,9 @@ void quatfrom2vectors(FLT *q, const FLT *src, const FLT *dest) {
 	}
 }
 
-void matrix44copy(FLT *mout, const FLT *minm) { memcpy(mout, minm, sizeof(FLT) * 16); }
+inline void matrix44copy(FLT *mout, const FLT *minm) { memcpy(mout, minm, sizeof(FLT) * 16); }
 
-void matrix44transpose(FLT *mout, const FLT *minm) {
+inline void matrix44transpose(FLT *mout, const FLT *minm) {
 	mout[0] = minm[0];
 	mout[1] = minm[4];
 	mout[2] = minm[8];
@@ -604,24 +611,24 @@ void matrix44transpose(FLT *mout, const FLT *minm) {
 	mout[15] = minm[15];
 }
 
-void ApplyPoseToPoint(LinmathPoint3d pout, const LinmathPose *pose, const LinmathPoint3d pin) {
+inline void ApplyPoseToPoint(LinmathPoint3d pout, const LinmathPose *pose, const LinmathPoint3d pin) {
 	quatrotatevector(pout, pose->Rot, pin);
 	add3d(pout, pout, pose->Pos);
 }
 
-void ApplyPoseToPose(LinmathPose *pout, const LinmathPose *lhs_pose, const LinmathPose *rhs_pose) {
+inline void ApplyPoseToPose(LinmathPose *pout, const LinmathPose *lhs_pose, const LinmathPose *rhs_pose) {
 	ApplyPoseToPoint(pout->Pos, lhs_pose, rhs_pose->Pos);
 	quatrotateabout(pout->Rot, lhs_pose->Rot, rhs_pose->Rot);
 }
 
-void InvertPose(LinmathPose *poseout, const LinmathPose *pose) {
+inline void InvertPose(LinmathPose *poseout, const LinmathPose *pose) {
 	quatgetreciprocal(poseout->Rot, pose->Rot);
 
 	quatrotatevector(poseout->Pos, poseout->Rot, pose->Pos);
 	scale3d(poseout->Pos, poseout->Pos, -1);
 }
 
-void PoseToMatrix(FLT *matrix44, const LinmathPose *pose_in) {
+inline void PoseToMatrix(FLT *matrix44, const LinmathPose *pose_in) {
 	quattomatrix(matrix44, pose_in->Rot);
 
 	/*

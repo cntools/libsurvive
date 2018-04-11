@@ -317,8 +317,7 @@ void RegisterDriver(const char *name, void *data);
 
 #ifdef _MSC_VER
 #define REGISTER_LINKTIME(func)                                                                                        \
-	__pragma(comment(linker, "/export:REGISTER" #func));                                                               \
-	void REGISTER##func() { RegisterDriver(#func, &func); }
+	SURVIVE_EXPORT void REGISTER##func() { RegisterDriver(#func, &func); }
 #else
 #define REGISTER_LINKTIME(func)                                                                                        \
 	void __attribute__((constructor)) REGISTER##func() { RegisterDriver(#func, &func); }
