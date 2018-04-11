@@ -18,6 +18,7 @@
 typedef struct {
 	int sweepaxis;
 	int sweeplh;
+
 	FLT normal_at_errors[MAX_PT_PER_SWEEP][3]; // Value is actually normalized, not just normal to sweep plane.
 	FLT quantity_errors[MAX_PT_PER_SWEEP];
 	FLT angles_at_pts[MAX_PT_PER_SWEEP];
@@ -25,9 +26,9 @@ typedef struct {
 	uint8_t sensor_ids[MAX_PT_PER_SWEEP];
 
 	LinmathPoint3d MixingPositions[NUM_LIGHTHOUSES][2];
-	SurvivePose InteralPoseUsedForCalc; // Super high speed vibratey and terrible.
-	float MixingConfidence[NUM_LIGHTHOUSES][2];
-
+	SurvivePose InteralPoseUsedForCalc;	//Super high speed vibratey and terrible.
+	FLT MixingConfidence[NUM_LIGHTHOUSES][2];
+	FLT last_angle_lh_axis[NUM_LIGHTHOUSES][2];
 	int ptsweep;
 
 	SurviveIMUTracker tracker;
@@ -35,7 +36,8 @@ typedef struct {
 
 int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 	CharlesPoserData *dd = so->PoserData;
-	if (!dd) {
+	if (!dd)
+	{
 		so->PoserData = dd = calloc(sizeof(CharlesPoserData), 1);
 		SurvivePose object_pose_out;
 		memcpy(&object_pose_out, &LinmathPose_Identity, sizeof(LinmathPose_Identity));
@@ -50,43 +52,46 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		// Really should use this...
 		PoserDataIMU *imuData = (PoserDataIMU *)pd;
 
-		// TODO: Actually do Madgwick's algorithm
-		LinmathQuat applymotion;
-		const SurvivePose *object_pose = &so->OutPose;
-		imuData->gyro[0] *= 1. / 240.;
-		imuData->gyro[1] *= 1. / 240.;
-		imuData->gyro[2] *= 1. / 240.;
-		quatfromeuler(applymotion, imuData->gyro);
-		// printf( "%f %f %f\n", imuData->gyro [0], imuData->gyro [1], imuData->gyro [2] );
+		//TODO: Actually do Madgwick's algorithm
+		LinmathQuat	applymotion;
+		const SurvivePose * object_pose = &so->OutPose;
+		imuData->gyro[0] *= 1./240.;
+		imuData->gyro[1] *= 1./240.;
+		imuData->gyro[2] *= 1./240.;
+		quatfromeuler( applymotion, imuData->gyro );
+		//printf( "%f %f %f\n", imuData->gyro [0], imuData->gyro [1], imuData->gyro [2] );
 
 		LinmathQuat InvertQuat;
 		quatgetreciprocal(InvertQuat, object_pose->Rot);
 
-		// Apply a tiny tug to re-right headset based on the gravity vector.
-		LinmathVec3d reright = {0, 0, 1};
+		//Apply a tiny tug to re-right headset based on the gravity vector.
+		LinmathVec3d reright = { 0, 0, 1 };
 		LinmathVec3d normup;
-		normalize3d(normup, imuData->accel);
+		normalize3d( normup, imuData->accel );
 		LinmathVec3d correct_diff;
 		quatrotatevector(reright, InvertQuat, reright);
-		sub3d(correct_diff, normup, reright);
-		scale3d(correct_diff, correct_diff, -0.001); // This is the coefficient applying the drag.
-		add3d(correct_diff, correct_diff, reright);
-		LinmathQuat reright_quat;
-		normalize3d(correct_diff, correct_diff);
-		quatfrom2vectors(reright_quat, reright, correct_diff);
+		sub3d( correct_diff, normup, reright  );
+		scale3d( correct_diff, correct_diff, -0.001 );	//This is the coefficient applying the drag.
+		add3d( correct_diff, correct_diff, reright );
+		LinmathQuat  reright_quat;
+		normalize3d( correct_diff, correct_diff );
+		quatfrom2vectors( reright_quat, reright, correct_diff );
+
+
 
 		SurvivePose object_pose_out;
-		quatrotateabout(object_pose_out.Rot, object_pose->Rot, applymotion);	 // Contribution from Gyro
-		quatrotateabout(object_pose_out.Rot, object_pose_out.Rot, reright_quat); // Contribution from Accelerometer
+		quatrotateabout(object_pose_out.Rot, object_pose->Rot, applymotion );		//Contribution from Gyro
+		quatrotateabout(object_pose_out.Rot, object_pose_out.Rot, reright_quat);	//Contribution from Accelerometer
 		quatnormalize(object_pose_out.Rot, object_pose_out.Rot);
 
-		copy3d(object_pose_out.Pos, object_pose->Pos);
-		PoserData_poser_pose_func(pd, so, &object_pose_out);
-		quatcopy(dd->InteralPoseUsedForCalc.Rot, object_pose_out.Rot);
 
-		// PoserDataIMU *imu = (PoserDataIMU *)pd;
-		// survive_imu_tracker_integrate(so, &dd->tracker, imu);
-		// PoserData_poser_pose_func(pd, so, &dd->tracker.pose);
+		copy3d( object_pose_out.Pos, object_pose->Pos );
+		PoserData_poser_pose_func(pd, so, &object_pose_out);
+		quatcopy( dd->InteralPoseUsedForCalc.Rot, object_pose_out.Rot);
+
+		//PoserDataIMU *imu = (PoserDataIMU *)pd;
+		//survive_imu_tracker_integrate(so, &dd->tracker, imu);
+		//PoserData_poser_pose_func(pd, so, &dd->tracker.pose);
 
 		return 0;
 	}
@@ -99,10 +104,10 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		if (!bsd->PositionSet)
 			break;
 		SurvivePose *lhp = &bsd->Pose;
-		FLT angle = ld->angle;
+		FLT inangle = ld->angle;
 		int sensor_id = ld->sensor_id;
 		int axis = dd->sweepaxis;
-		// const SurvivePose *object_pose = &so->OutPose;
+		//const SurvivePose *object_pose = &so->OutPose;
 
 		dd->sweeplh = lhid;
 
@@ -128,6 +133,15 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		// Next, define a normal in global space of the plane created by the sweep hit.
 		// Careful that this must be normalized.
 		FLT sweep_normal[3];
+
+
+		FLT inangles[2];
+		FLT outangles[2];
+		inangles[axis] = inangle;
+		inangles[!axis] = dd->last_angle_lh_axis[lhid][!axis];
+		survive_apply_bsd_calibration(so->ctx, lhid, inangles, outangles );
+		FLT angle = outangles[axis];
+		
 
 		// If 1, the "y" axis. //XXX Check me.
 		if (axis) // XXX Just FYI this should include account for skew
@@ -160,6 +174,8 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 			dd->ptsweep++;
 		}
 
+		dd->last_angle_lh_axis[lhid][axis] = inangle;
+
 		return 0;
 	}
 
@@ -173,7 +189,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 			int lhid = dd->sweeplh;
 			int axis = dd->sweepaxis;
 			int pts = dd->ptsweep;
-			// const SurvivePose *object_pose =
+			//const SurvivePose *object_pose =
 			//	&so->OutPose; // XXX TODO Should pull pose from approximate time when LHs were scanning it.
 
 			BaseStationData *bsd = &so->ctx->bsd[lhid];
@@ -191,7 +207,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 	0.0001 // Determines which hits to cull.  Actually SQRT(baseline) if 0.0001, it is really 1cm
 
 #define CORRECT_LATERAL_POSITION_COEFFICIENT 0.7 // Explodes if you exceed 1.0
-#define CORRECT_TELESCOPTION_COEFFICIENT 7.00	// Converges even as high as 10.0 and doesn't explode.
+#define CORRECT_TELESCOPTION_COEFFICIENT 7.00	 // Converges even as high as 10.0 and doesn't explode.
 #define CORRECT_ROTATION_COEFFICIENT                                                                                   \
 	0.2 // This starts to fall apart above 5.0, but for good reason.  It is amplified by the number of points seen.
 #define ROTATIONAL_CORRECTION_MAXFORCE 0.01
@@ -259,6 +275,8 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 				add3d(vec_correct, vec_correct, avg_err);
 			}
 
+
+
 			// Step 3: Control telecoption from lighthouse.
 			// we need to find out what the weighting is to determine "zoom"
 			if (validpoints > 1) // Can't correct "zoom" with only one point.
@@ -291,6 +309,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 				add3d(vec_correct, veccamalong, vec_correct);
 			}
 
+
 #if 0
 			LinmathPoint3d LastDelta;
 			sub3d( LastDelta, dd->MixingPositions[lhid][axis], dd->InteralPoseUsedForCalc.Pos );
@@ -311,7 +330,9 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 #endif
 			add3d(dd->InteralPoseUsedForCalc.Pos, vec_correct, dd->InteralPoseUsedForCalc.Pos);
 
-			// quatcopy(object_pose_out.Rot, dd->InteralPoseUsedForCalc.Rot);
+
+
+			//quatcopy(object_pose_out.Rot, dd->InteralPoseUsedForCalc.Rot);
 
 			// Stage 4: "Tug" on the rotation of the object, from all of the sensor's pov.
 			// If we were able to determine likliehood of a hit in the sweep instead of afterward
@@ -376,46 +397,50 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 				quatnormalize(dd->InteralPoseUsedForCalc.Rot, dd->InteralPoseUsedForCalc.Rot);
 			}
 
-			memcpy(dd->MixingPositions[lhid][axis], dd->InteralPoseUsedForCalc.Pos,
-				   sizeof(dd->InteralPoseUsedForCalc.Pos));
-			dd->MixingConfidence[lhid][axis] = (validpoints) ? ((validpoints > 1) ? 1.0 : 0.5) : 0;
+			memcpy( dd->MixingPositions[lhid][axis], dd->InteralPoseUsedForCalc.Pos, sizeof( dd->InteralPoseUsedForCalc.Pos ) );
+			dd->MixingConfidence[lhid][axis] = (validpoints)?((validpoints>1)?1.0:0.5):0;
 
-			// Box filter all of the guesstimations, and emit the new guess.
+
+			//Box filter all of the guesstimations, and emit the new guess.
 			{
 				FLT MixedAmount = 0;
-				LinmathPoint3d MixedPosition = {0, 0, 0};
+				LinmathPoint3d MixedPosition = { 0, 0, 0 };
 				int l = 0, a = 0;
-				if (lhid == 0 && axis == 0)
-					for (l = 0; l < NUM_LIGHTHOUSES; l++)
-						for (a = 0; a < 2; a++)
-							dd->MixingConfidence[l][a] -= 0.1;
+				if( lhid == 0 && axis == 0 ) for( l = 0; l < NUM_LIGHTHOUSES; l++ ) for( a = 0; a < 2; a++ ) dd->MixingConfidence[l][a] -= 0.1;
 
-				for (l = 0; l < NUM_LIGHTHOUSES; l++)
-					for (a = 0; a < 2; a++) {
-						LinmathPoint3d MixThis = {0, 0, 0};
-						FLT Confidence = dd->MixingConfidence[l][a];
-						if (Confidence < 0)
-							Confidence = 0;
-						scale3d(MixThis, dd->MixingPositions[l][a], Confidence);
-						add3d(MixedPosition, MixedPosition, MixThis);
-						MixedAmount += Confidence;
-						// printf( "%f ", Confidence );
-					}
-				scale3d(MixedPosition, MixedPosition, 1. / MixedAmount);
-				// printf( "%f\n", MixedAmount );
+				for( l = 0; l < NUM_LIGHTHOUSES; l++ ) for( a = 0; a < 2; a++ )
+				{
+					LinmathPoint3d MixThis = { 0, 0, 0 };
+					FLT Confidence = dd->MixingConfidence[l][a];
+					if(Confidence < 0 ) Confidence = 0;
+					scale3d( MixThis, dd->MixingPositions[l][a], Confidence );
+					add3d( MixedPosition, MixedPosition, MixThis );
+					MixedAmount += Confidence;
+					//printf( "%f ", Confidence );
+				}
+				scale3d( MixedPosition, MixedPosition, 1./MixedAmount );
+
+				printf( "Reprojection disagreements:" );
+				for( l = 0; l < NUM_LIGHTHOUSES; l++ ) for( a = 0; a < 2; a++ )
+				{
+					printf( "%f ", dist3d( dd->MixingPositions[l][a], MixedPosition ) );
+				}
+				printf( "\n" );
+
+				//printf( "%f\n", MixedAmount );
 				SurvivePose object_pose_out;
-				quatcopy(object_pose_out.Rot, dd->InteralPoseUsedForCalc.Rot);
-				copy3d(object_pose_out.Pos, MixedPosition);
+				quatcopy(object_pose_out.Rot, dd->InteralPoseUsedForCalc.Rot );
+				copy3d( object_pose_out.Pos, MixedPosition );
 				PoserData_poser_pose_func(pd, so, &object_pose_out);
 			}
-			//	FLT var_meters = 0.5;
-			//	FLT error = 0.00001;
-			//	FLT var_quat = error + .05;
-			//	FLT var[7] = {error * var_meters, error * var_meters, error * var_meters, error * var_quat,
-			//				  error * var_quat,   error * var_quat,   error * var_quat};
-			//
-			//	survive_imu_tracker_integrate_observation(so, l->timecode, &dd->tracker, &object_pose_out, var);
-			//	PoserData_poser_pose_func(pd, so, &dd->tracker.pose);
+		//	FLT var_meters = 0.5;
+		//	FLT error = 0.00001;
+		//	FLT var_quat = error + .05;
+		//	FLT var[7] = {error * var_meters, error * var_meters, error * var_meters, error * var_quat,
+		//				  error * var_quat,   error * var_quat,   error * var_quat};
+		//
+		//	survive_imu_tracker_integrate_observation(so, l->timecode, &dd->tracker, &object_pose_out, var);
+		//	PoserData_poser_pose_func(pd, so, &dd->tracker.pose);
 
 			dd->ptsweep = 0;
 		}
