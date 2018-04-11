@@ -18,6 +18,7 @@
 typedef struct {
 	int sweepaxis;
 	int sweeplh;
+
 	FLT normal_at_errors[MAX_PT_PER_SWEEP][3]; // Value is actually normalized, not just normal to sweep plane.
 	FLT quantity_errors[MAX_PT_PER_SWEEP];
 	FLT angles_at_pts[MAX_PT_PER_SWEEP];
@@ -26,8 +27,8 @@ typedef struct {
 
 	LinmathPoint3d MixingPositions[NUM_LIGHTHOUSES][2];
 	SurvivePose InteralPoseUsedForCalc;	//Super high speed vibratey and terrible.
-	float MixingConfidence[NUM_LIGHTHOUSES][2];
-
+	FLT MixingConfidence[NUM_LIGHTHOUSES][2];
+	FLT last_angle_lh_axis[NUM_LIGHTHOUSES][2];
 	int ptsweep;
 
 	SurviveIMUTracker tracker;
@@ -103,11 +104,11 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		if (!bsd->PositionSet)
 			break;
 		SurvivePose *lhp = &bsd->Pose;
-		FLT angle = ld->angle;
+		FLT inangle = ld->angle;
 		int sensor_id = ld->sensor_id;
 		int axis = dd->sweepaxis;
 		//const SurvivePose *object_pose = &so->OutPose;
-		
+
 		dd->sweeplh = lhid;
 
 		// FOR NOW, drop LH1.
@@ -132,6 +133,15 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		// Next, define a normal in global space of the plane created by the sweep hit.
 		// Careful that this must be normalized.
 		FLT sweep_normal[3];
+
+
+		FLT inangles[2];
+		FLT outangles[2];
+		inangles[axis] = inangle;
+		inangles[!axis] = dd->last_angle_lh_axis[lhid][!axis];
+		survive_apply_bsd_calibration(so->ctx, lhid, inangles, outangles );
+		FLT angle = outangles[axis];
+		
 
 		// If 1, the "y" axis. //XXX Check me.
 		if (axis) // XXX Just FYI this should include account for skew
@@ -163,6 +173,8 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 			memcpy(&dd->object_pose_at_hit[i], &dd->InteralPoseUsedForCalc, sizeof(SurvivePose));
 			dd->ptsweep++;
 		}
+
+		dd->last_angle_lh_axis[lhid][axis] = inangle;
 
 		return 0;
 	}
@@ -407,6 +419,14 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 					//printf( "%f ", Confidence );
 				}
 				scale3d( MixedPosition, MixedPosition, 1./MixedAmount );
+
+				printf( "Reprojection disagreements:" );
+				for( l = 0; l < NUM_LIGHTHOUSES; l++ ) for( a = 0; a < 2; a++ )
+				{
+					printf( "%f ", dist3d( dd->MixingPositions[l][a], MixedPosition ) );
+				}
+				printf( "\n" );
+
 				//printf( "%f\n", MixedAmount );
 				SurvivePose object_pose_out;
 				quatcopy(object_pose_out.Rot, dd->InteralPoseUsedForCalc.Rot );
