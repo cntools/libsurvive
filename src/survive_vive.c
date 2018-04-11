@@ -1233,10 +1233,10 @@ static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 	if( ( ( type & 0xe8 ) == 0xe8 ) || doimu ) //Hmm, this looks kind of yucky... we can get e8's that are accelgyro's but, cleared by first propset.
 	{
 		propset |= 2;
-		FLT agm[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+		FLT agm[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 		int j;
-		for( j = 0; j < 6; j++ )
-			agm[j] = (int16_t)(readdata[j*2+1] | (readdata[j*2+2]<<8));
+		for (j = 0; j < 6; j++)
+			agm[j] = (int16_t)(readdata[j * 2 + 1] | (readdata[j * 2 + 2] << 8));
 		calibrate_acc(w, agm);
 		calibrate_gyro(w, agm+3);
 		w->ctx->imuproc( w, 3, agm, (time1<<24)|(time2<<16)|readdata[0], 0 );

@@ -230,7 +230,7 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 	}
 	failure_count = 0;
 
-	SurvivePose soLocation = { 0 };
+	SurvivePose soLocation = {0};
 
 	if (!general_optimizer_data_record_current_pose(&d->opt, &pdl->hdr, sizeof(*pdl), &soLocation)) {
 		return -1;
@@ -389,7 +389,6 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		d->sensor_variance = survive_configf(ctx, "sba-sensor-variance", SC_GET, 1.0);
 		d->use_jacobian_function = survive_configi(ctx, "sba-use-jacobian-function", SC_GET, 1.0);
 
-
 		SV_INFO("Initializing SBA:");
 		SV_INFO("\tsba-required-meas: %d", d->required_meas);
 		SV_INFO("\tsba-sensor-variance: %f", d->sensor_variance);
@@ -416,16 +415,14 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 			d->last_lh = lightData->lh;
 			d->last_acode = lightData->acode;
 
-
 			if (error < 0) {
 
-			}
-			else {
+			} else {
 				if (d->useIMU) {
 					FLT var_meters = 0.5;
 					FLT var_quat = error + .05;
-					FLT var[7] = { error * var_meters, error * var_meters, error * var_meters, error * var_quat,
-								  error * var_quat,   error * var_quat,   error * var_quat };
+					FLT var[7] = {error * var_meters, error * var_meters, error * var_meters, error * var_quat,
+								  error * var_quat,   error * var_quat,   error * var_quat};
 
 					survive_imu_tracker_integrate_observation(so, lightData->timecode, &d->tracker, &estimate, var);
 					estimate = d->tracker.pose;

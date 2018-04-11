@@ -163,5 +163,5 @@ void survive_apply_bsd_calibration(SurviveContext *ctx, int lh, const FLT *in, F
 
 void survive_reproject_from_pose_with_config(const SurviveContext *ctx, struct survive_calibration_config *config,
 											 int lighthouse, const SurvivePose *pose, FLT *point3d, FLT *out) {
-	return survive_reproject_from_pose_with_bsd(&ctx->bsd[lighthouse], config, pose, point3d, out);
+	survive_reproject_from_pose_with_bsd(&ctx->bsd[lighthouse], config, pose, point3d, out);
 }

@@ -3,8 +3,8 @@
 
 #include "poser.h"
 #include "survive_types.h"
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -10,19 +10,13 @@
 extern "C" {
 #endif
 
-#ifdef _WIN32
-#define SURVIVE_EXPORT __declspec(dllexport)
-#else
-#define SURVIVE_EXPORT __attribute__((visibility("default")))
-#endif
-
 /**
  * This struct encodes what the last effective angles seen on a sensor were, and when they occured.
  */
 typedef struct {
 	FLT angles[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];		   // 2 Axes (Angles in LH space)
-	uint32_t timecode[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2]; // Timecode per axis in ticks
-	uint32_t lengths[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];  // Timecode per axis in ticks
+	survive_timecode timecode[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2]; // Timecode per axis in ticks
+	survive_timecode lengths[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];  // Timecode per axis in ticks
 
 	FLT accel[3];
 	FLT gyro[3];
@@ -43,15 +37,15 @@ void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct Pos
  * Returns true iff both angles for the given sensor and lighthouse were seen at most `tolerance` ticks before the given
  * `timecode_now`.
  */
-bool SurviveSensorActivations_isPairValid(const SurviveSensorActivations *self, uint32_t tolerance,
-										  uint32_t timecode_now, uint32_t sensor_idx, int lh);
+bool SurviveSensorActivations_isPairValid(const SurviveSensorActivations *self, survive_timecode tolerance,
+										  survive_timecode timecode_now, uint32_t sensor_idx, int lh);
 
 /**
  * Default tolerance that gives a somewhat accuate representation of current state.
  *
  * Don't rely on this to be a given value.
  */
-extern uint32_t SurviveSensorActivations_default_tolerance;
+extern survive_timecode SurviveSensorActivations_default_tolerance;
 
 // DANGER: This structure may be redefined.  Note that it is logically split into 64-bit chunks
 // for optimization on 32- and 64-bit systems.
@@ -75,7 +69,7 @@ struct SurviveObject {
 	// Pose Information, also "poser" field.
 	FLT PoseConfidence;						 // 0..1
 	SurvivePose OutPose;					 // Final pose? (some day, one can dream!)
-	uint32_t OutPose_timecode;
+	survive_timecode OutPose_timecode;
 	SurvivePose FromLHPose[NUM_LIGHTHOUSES]; // Filled out by poser, contains computed position from each lighthouse.
 	void *PoserData; // Initialized to zero, configured by poser, can be anything the poser wants.
 	PoserCB PoserFn;
@@ -101,11 +95,11 @@ struct SurviveObject {
 	int8_t oldcode;
 	int8_t sync_set_number; // 0 = master, 1 = slave, -1 = fault.
 	int8_t did_handle_ootx; // If unset, will send lightcap data for sync pulses next time a sensor is hit.
-	uint32_t last_sync_time[NUM_LIGHTHOUSES];
-	uint32_t last_sync_length[NUM_LIGHTHOUSES];
-	uint32_t recent_sync_time;
+	survive_timecode last_sync_time[NUM_LIGHTHOUSES];
+	survive_timecode last_sync_length[NUM_LIGHTHOUSES];
+	survive_timecode recent_sync_time;
 
-	uint32_t last_lighttime; // May be a 24- or 32- bit number depending on what device.
+	survive_timecode last_lighttime; // May be a 24- or 32- bit number depending on what device.
 
 	FLT *acc_bias;   // size is FLT*3. contains x,y,z
 	FLT *acc_scale;  // size is FLT*3. contains x,y,z
@@ -305,14 +299,14 @@ SURVIVE_EXPORT int survive_haptic(SurviveObject *so, uint8_t reserved, uint16_t 
 // Call these from your callback if overridden.
 // Accept higher-level data.
 SURVIVE_EXPORT void survive_default_light_process(SurviveObject *so, int sensor_id, int acode, int timeinsweep,
-												  uint32_t timecode, uint32_t length, uint32_t lh);
-SURVIVE_EXPORT void survive_default_imu_process(SurviveObject *so, int mode, FLT *accelgyro, uint32_t timecode, int id);
-SURVIVE_EXPORT void survive_default_angle_process(SurviveObject *so, int sensor_id, int acode, uint32_t timecode,
+												  survive_timecode timecode, survive_timecode length, uint32_t lh);
+SURVIVE_EXPORT void survive_default_imu_process(SurviveObject *so, int mode, FLT *accelgyro, survive_timecode timecode, int id);
+SURVIVE_EXPORT void survive_default_angle_process(SurviveObject *so, int sensor_id, int acode, survive_timecode timecode,
 												  FLT length, FLT angle, uint32_t lh);
 SURVIVE_EXPORT void survive_default_button_process(SurviveObject *so, uint8_t eventType, uint8_t buttonId,
 												   uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id,
 												   uint16_t axis2Val);
-SURVIVE_EXPORT void survive_default_raw_pose_process(SurviveObject *so, uint32_t timecode, SurvivePose *pose);
+SURVIVE_EXPORT void survive_default_raw_pose_process(SurviveObject *so, survive_timecode timecode, SurvivePose *pose);
 SURVIVE_EXPORT void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse,
 															SurvivePose *lh_pose, SurvivePose *obj_pose);
 SURVIVE_EXPORT int survive_default_htc_config_process(SurviveObject *so, char *ct0conf, int len);

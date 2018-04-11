@@ -223,7 +223,7 @@ int main(int argc, char **argv) {
 	}
 
 	size_t showui = survive_configi(ctx1, "show-ui", SC_GET, 0);
-	if(showui)
+	if (showui)
 		drawbsds(ctx1);
 
 	int waitUpdate = 100;

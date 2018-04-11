@@ -88,9 +88,9 @@ struct mp_config_struct {
 					 1 = yes, user scale values in diag;
 					 0 = no, variables scaled internally (Default) */
 	int nofinitecheck;	/* Disable check for infinite quantities from user?
-				 0 = do not perform check (Default)
-				 1 = perform check
-				  */
+				   0 = do not perform check (Default)
+				   1 = perform check
+					*/
 	mp_iterproc iterproc; /* Placeholder pointer - must set to 0 */
 };
 
@@ -108,11 +108,11 @@ struct mp_result_struct {
 	int nfunc;   /* Number of residuals (= num. of data points) */
 
 	double *resid;	/* Final residuals
-			 nfunc-vector, or 0 if not desired */
+			   nfunc-vector, or 0 if not desired */
 	double *xerror;   /* Final parameter uncertainties (1-sigma)
 			 npar-vector, or 0 if not desired */
 	double *covar;	/* Final parameter covariance matrix
-			 npar x npar array, or 0 if not desired */
+			   npar x npar array, or 0 if not desired */
 	char version[20]; /* MPFIT version string */
 };
 

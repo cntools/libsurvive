@@ -1,5 +1,5 @@
-#include <survive.h>
 #include <stdlib.h>
+#include <survive.h>
 
 typedef struct GeneralOptimizerData {
 	int failures_to_reset;

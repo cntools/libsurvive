@@ -182,7 +182,7 @@ void survive_imu_tracker_integrate_observation(SurviveObject *so, uint32_t timec
 		tracker->pose = *pose;
 		return;
 	}
-		
+
 	// Kalman filter assuming:
 	// F -> Identity
 	// H -> Identity

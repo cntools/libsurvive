@@ -4,7 +4,6 @@
 #include <math.h>
 #include <os_generic.h>
 
-
 void gen_survive_reproject_full(FLT *out, const SurvivePose *obj_pose, const LinmathVec3d obj_pt,
 								const SurvivePose *lh2world, const BaseStationData *bsd,
 								const survive_calibration_config *config) {

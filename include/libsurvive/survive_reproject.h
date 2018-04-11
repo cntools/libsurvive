@@ -24,7 +24,6 @@ void survive_reproject_full(FLT *out, const SurvivePose *obj_pose, const Linmath
 							const SurvivePose *lh2world, const BaseStationData *bsd,
 							const survive_calibration_config *config);
 
-
 // This is given a lighthouse -- in the same system as stored in BaseStationData, and
 // a 3d point and finds what the effective 'angle' value for a given lighthouse system
 // would be.

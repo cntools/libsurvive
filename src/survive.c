@@ -106,7 +106,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 	static int did_manual_driver_registration = 0;
 	if (did_manual_driver_registration == 0) {
 #define MANUAL_DRIVER_REGISTRATION(func)                                                                               \
- 	int func(SurviveObject *so, PoserData *pd);                                                                        \
+	int func(SurviveObject *so, PoserData *pd);                                                                        \
 	RegisterDriver(#func, &func);
 
 		MANUAL_DRIVER_REGISTRATION(PoserCharlesSlow)

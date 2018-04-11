@@ -1,8 +1,8 @@
 #include "poser_general_optimizer.h"
 #include "string.h"
 
-#include <malloc.h>
 #include <assert.h>
+#include <malloc.h>
 #include <stdio.h>
 
 void *GetDriver(const char *name);
