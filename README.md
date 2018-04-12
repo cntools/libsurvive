@@ -144,6 +144,17 @@ The limiting factor for Vive viability on a given computer is the maximum availa
 To support the Vive on HDMI, you either need a newer version of HDMI, or you need to define a custom resolution that respects pixel clock and video port limits, and is also accepted and displayed by the Vive. So far, we have not had success using custom resolutions on linux or on Windows. Windows imposes additional limitations in the form of restriction of WHQL certified drivers forbidden from using custom display resolutions (only allowing those defined by EDID in the monitor). Intel has released uncertified beta drivers for Haswell and newer processors, which should be able to support custom resolutions for the Vive (untested at this time).
 
 # Getting Started
+```
+git clone https://github.com/cnlohr/libsurvive.git && cd libsurvive
+make
+
+# If you get and error complaining about lapacke.h, you may need to install the following dependencies
+sudo apt-get install liblapacke-dev libopenblas-dev libatlas-base-dev
+
+# Create calibration files for connected HMDs, Trackers.  
+# See below for more detailed information about the configuration files that the calibration process.
+./calibrate
+```
 
 ## General Information
 
