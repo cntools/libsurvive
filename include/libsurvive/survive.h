@@ -327,6 +327,7 @@ void RegisterDriver(const char *name, void *data);
 
 // For device drivers to call.  This actually attaches them.
 int survive_add_object(SurviveContext *ctx, SurviveObject *obj);
+void survive_remove_object(SurviveContext *ctx, SurviveObject *obj);
 void survive_add_driver(SurviveContext *ctx, void *payload, DeviceDriverCb poll, DeviceDriverCb close,
 						DeviceDriverMagicCb magic);
 

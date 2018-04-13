@@ -1660,6 +1660,7 @@ static int LoadConfig( SurviveViveData * sv, SurviveObject * so, int devno, int 
 
 	if( len < 0 )
 	{
+		survive_remove_object(ctx, so);
 		return len;
 	}
 

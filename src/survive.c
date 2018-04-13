@@ -404,6 +404,31 @@ int survive_add_object(SurviveContext *ctx, SurviveObject *obj) {
 	return 0;
 }
 
+void survive_remove_object(SurviveContext *ctx, SurviveObject *obj) {
+	int obj_idx = 0;
+	for (obj_idx = 0; obj_idx < ctx->objs_ct; obj_idx++) {
+		if (ctx->objs[obj_idx] == obj)
+			break;
+	}
+
+	if (obj_idx == ctx->objs_ct) {
+		SV_INFO("Warning: Tried to remove un-added object %p(%s)", obj, obj->codename);
+		return;
+	}
+
+	// Swap the last item into this items slot; this assumes order doesn't matter in this list
+	if (obj_idx != ctx->objs_ct - 1) {
+		ctx->objs[obj_idx] = ctx->objs[ctx->objs_ct - 1];
+	}
+
+	ctx->objs_ct--;
+
+	// Blank out the spot; but this is only really necessary for diagnostic reasons -- presumably no one will ever read
+	// past the end of the list
+	ctx->objs[ctx->objs_ct] = 0;
+
+	free(obj);
+}
 void survive_add_driver(SurviveContext *ctx, void *payload, DeviceDriverCb poll, DeviceDriverCb close,
 						DeviceDriverMagicCb magic) {
 	int oldct = ctx->driver_ct;
