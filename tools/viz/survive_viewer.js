@@ -8,7 +8,7 @@ var oldDrawTime = 0;
 var timecode = {};
 var oldPoseTime = 0, poseCnt = 0;
 var oldPose = [0, 0, 0];
-var scene, camera, renderer, floor;
+var scene, camera, renderer, floor, fpv_camera;
 
 $(function() { $("#toggleBtn").click(function() { $("#cam").toggle(); }); });
 
@@ -193,26 +193,26 @@ function create_tracked_object(info) {
 
 var trails;
 var MAX_LINE_POINTS = 100000;
-$(function() {
-	$("#trails").change(function() {
-		if (this.checked) {
-			var geometry = new THREE.Geometry();
-			var material = new THREE.LineBasicMaterial({color : 0x305ea8});
+function update_trails() {
+	if (this.checked) {
+		var geometry = new THREE.Geometry();
+		var material = new THREE.LineBasicMaterial({color : 0x305ea8});
 
-			for (i = 0; i < MAX_LINE_POINTS; i++) {
-				geometry.vertices.push(new THREE.Vector3(0, 0, 0));
-			}
-			geometry.dynamic = true;
-
-			trails = new THREE.Line(geometry, material);
-
-			scene.add(trails);
-		} else {
-			if (trails)
-				scene.remove(trails);
+		for (i = 0; i < MAX_LINE_POINTS; i++) {
+			geometry.vertices.push(new THREE.Vector3(0, 0, 0));
 		}
-	});
-});
+		geometry.dynamic = true;
+
+		trails = new THREE.Line(geometry, material);
+
+		scene.add(trails);
+	} else {
+		if (trails)
+			scene.remove(trails);
+	}
+}
+
+$(function() { $("#trails").change(update_trails); });
 
 var survive_log_handlers = {
 	"LH_POSE" : function(v) {
@@ -256,7 +256,18 @@ var survive_log_handlers = {
                 oldPose = obj.position;
 			}
 
-        }
+			if ("HMD" === obj.tracker) {
+				var up = new THREE.Vector3(0, 1, 0);
+				var out = new THREE.Vector3(0, 0, 1);
+
+				fpv_camera.up = up.applyQuaternion(objs[obj.tracker].quaternion);
+				var lookAt = out.applyQuaternion(objs[obj.tracker].quaternion);
+				lookAt.add(objs[obj.tracker].position);
+
+				fpv_camera.position.set(obj.position[0], obj.position[1], obj.position[2]);
+				fpv_camera.lookAt(lookAt);
+			}
+		}
 	},
 	"CONFIG" : function(v, tracker) {
 		var configStr = v.slice(3).join(' ');
@@ -389,10 +400,56 @@ init() {
 	camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
 	camera.up = new THREE.Vector3(0, 0, 1);
 
+	fpv_camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, .1, FAR);
+	scene.add(fpv_camera);
+
 	// add the camera to the scene
 	scene.add(camera);
 	camera.position.set(5, 2, 5.00);
 	camera.lookAt(scene.position);
+
+	for (var z = 0; z < 5; z++) {
+		for (var i = -4; i < 5; i++) {
+			for (var j = 0; j < 5; j++) {
+				var size = .1;
+				var geometry = new THREE.BoxGeometry(size, size, size);
+
+				var cube = new THREE.Mesh(geometry, material);
+				var x, y, zz = z, color;
+				switch (j) {
+				case 0:
+					x = i;
+					y = 5;
+					color = 0xff;
+					break;
+				case 1:
+					x = i;
+					y = -5;
+					color = 0xff00;
+					break;
+				case 2:
+					x = 5;
+					y = i;
+					color = 0xff0000;
+					break;
+				case 3:
+					x = -5;
+					y = i;
+					color = 0xffffff;
+					break;
+				case 4:
+					x = 2 * z - 5;
+					y = i;
+					zz = 5;
+					color = 0xffff00;
+					break;
+					}
+				var material = new THREE.MeshStandardMaterial({color : color});
+				cube.position.set(x, y, zz);
+				scene.add(cube);
+			}
+		}
+	}
 
 	//////////////
 	// RENDERER //
@@ -432,6 +489,8 @@ init() {
 
 	var axes = new THREE.AxesHelper(5);
 	scene.add(axes);
+
+	update_trails.call($("#trails")[0]);
 }
 
 function animate() {
@@ -441,4 +500,7 @@ function animate() {
 	redrawCanvas(timecode);
 	}
 
-function render() { renderer.render(scene, camera); }
+function render() {
+	var use_fpv = $("#fpv")[0].checked;
+	renderer.render(scene, use_fpv ? fpv_camera : camera);
+}
