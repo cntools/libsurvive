@@ -226,6 +226,19 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 	return ctx;
 }
 
+survive_timecode survive_timecode_difference(survive_timecode most_recent, survive_timecode least_recent) {
+	uint32_t diff = 0;
+	if (most_recent > least_recent) {
+		diff = most_recent - least_recent;
+	} else {
+		diff = least_recent - most_recent;
+	}
+
+	if (diff > 0xFFFFFFFF / 2)
+		return 0x7FFFFFFF / 2 - diff;
+	return diff;
+}
+
 void *GetDriverByConfig(SurviveContext *ctx, const char *name, const char *configname, const char *configdef,
 						int verbose) {
 	const char *Preferred = survive_configs(ctx, configname, SC_SETCONFIG, configdef);
@@ -499,6 +512,8 @@ void survive_close(SurviveContext *ctx) {
 	destroy_config_group(ctx->lh_config);
 
 	for (i = 0; i < ctx->objs_ct; i++) {
+		free(ctx->objs[i]->sensor_locations);
+		free(ctx->objs[i]->sensor_normals);
 		free(ctx->objs[i]);
 	}
 
@@ -510,6 +525,8 @@ void survive_close(SurviveContext *ctx) {
 	free(ctx->global_config_values);
 	free(ctx->temporary_config_values);
 	free(ctx->lh_config);
+	free(ctx->calptr);
+	free(ctx->recptr);
 
 	free(ctx);
 }

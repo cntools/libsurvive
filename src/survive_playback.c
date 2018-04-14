@@ -65,6 +65,7 @@ void survive_recording_config_process(SurviveObject *so, char *ct0conf, int len)
 			buffer[i] = ' ';
 
 	write_to_output(recordingData, "%s CONFIG %.*s\n", so->codename, len, buffer);
+	free(buffer);
 }
 
 void survive_recording_lighthouse_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lh_pose,
@@ -190,8 +191,7 @@ static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver) {
 					&accelgyro[5], &id);
 
 	if (rr != 10) {
-		fprintf(stderr, "Warning:  On line %d, only %d values read: '%s'\n",
-				driver->lineno, rr, line);
+		fprintf(stderr, "Warning:  On line %d, only %d values read: '%s'\n", driver->lineno, rr, line);
 		return -1;
 	}
 
@@ -280,8 +280,9 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 		if (driver->next_time_us == 0) {
 			size_t n = 0;
 			ssize_t r = getdelim(&line, &n, ' ', f);
-			if (r <= 0)
+			if (r <= 0) {
 				return 0;
+			}
 
 			if (sscanf(line, "%lf", &driver->next_time_us) != 1) {
 				free(line);
@@ -297,8 +298,10 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 
 		size_t n = 0;
 		ssize_t r = getline(&line, &n, f);
-		if (r <= 0)
+		if (r <= 0) {
+			free(line);
 			return 0;
+		}
 
 		char dev[10];
 		char op[10];
@@ -308,6 +311,7 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 		}
 
 		if (op[1] != 0) {
+			free(line);
 			return 0;
 		}
 
@@ -384,8 +388,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 
 	sp->playback_file = fopen(playback_file, "r");
 	if (sp->playback_file == 0) {
-		fprintf(stderr, "Could not open playback events file %s",
-				playback_file);
+		fprintf(stderr, "Could not open playback events file %s", playback_file);
 		return -1;
 	}
 
@@ -396,7 +399,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	SurviveObject *tr0 = survive_create_tr0(ctx, "Playback", sp);
 	SurviveObject *ww0 = survive_create_ww0(ctx, "Playback", sp);
 
-	SurviveObject *objs[] = {hmd, wm0, wm1, tr0, ww0, 0};
+	SurviveObject *objs[] = {hmd, wm0, wm1, tr0, ww0};
 
 	FLT time;
 	while (!feof(sp->playback_file) && !ferror(sp->playback_file)) {
@@ -404,13 +407,16 @@ int DriverRegPlayback(SurviveContext *ctx) {
 		size_t n;
 		int r = getline(&line, &n, sp->playback_file);
 
-		if (r <= 0)
+		if (r <= 0) {
+			free(line);
 			continue;
+		}
 
 		char dev[10];
 		char command[10];
 
 		if (sscanf(line, "%lf %s %s", &time, dev, command) != 3) {
+			free(line);
 			break;
 		}
 
@@ -424,7 +430,8 @@ int DriverRegPlayback(SurviveContext *ctx) {
 			}
 			size_t len = strlen(configStart);
 
-			for (SurviveObject **obj = objs; *obj; obj++) {
+			for (int i = 0; i < sizeof(objs) / sizeof(objs[0]); i++) {
+				SurviveObject **obj = &objs[i];
 				if (*obj && strcmp(dev, (*obj)->codename) == 0 && ctx->configfunction(*obj, configStart, len) == 0) {
 					SV_INFO("Found %s in playback file...", dev);
 					survive_add_object(ctx, *obj);
@@ -432,11 +439,14 @@ int DriverRegPlayback(SurviveContext *ctx) {
 				}
 			}
 		}
+
+		free(line);
 	}
 
-	for (SurviveObject **obj = objs; *obj; obj++) {
-		if (*obj) {
-			free(*obj);
+	for (int i = 0; i < sizeof(objs) / sizeof(objs[0]); i++) {
+		SurviveObject *obj = objs[i];
+		if (obj) {
+			free(obj);
 		}
 	}
 	fseek(sp->playback_file, 0, SEEK_SET); // same as rewind(f);
