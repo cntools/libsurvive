@@ -8,9 +8,10 @@ OBJDIR:=build
 
 
 ifdef WINDOWS
-	CFLAGS+=-Iinclude/libsurvive -g -O3 -Iredist -DUSE_DOUBLE -std=gnu99 -MD -DNOZLIB
-	LDFLAGS+=-L/usr/local/lib -lpthread -lz -lm -g -llapacke  -lcblas -lm 
+	CFLAGS+=-Iinclude/libsurvive -g -O3 -Iredist -DUSE_DOUBLE -std=gnu99 -MD -DNOZLIB -DWINDOWS -DWIN32 -DHIDAPI
+	LDFLAGS+=-L/usr/local/lib -lpthread -g -lm -lsetupapi -lkernel32
 	LDFLAGS_TOOLS+=-Llib -lsurvive -Wl,-rpath,lib -lX11 $(LDFLAGS)
+	LIBSURVIVE_CORE:=redist/puff.c redist/crc32.c redist/hid-windows.c winbuild/getdelim.c
 	CC:=i686-w64-mingw32-gcc
 else
 	CFLAGS+=-Iinclude/libsurvive -fPIC -g -O3 -Iredist -DUSE_DOUBLE -std=gnu99 -rdynamic -MD
@@ -28,9 +29,9 @@ endif
 
 
 SBA:=redist/sba/sba_chkjac.c  redist/sba/sba_crsm.c  redist/sba/sba_lapack.c  redist/sba/sba_levmar.c  redist/sba/sba_levmar_wrap.c redist/minimal_opencv.c src/poser_epnp.c src/poser_sba.c src/epnp/epnp.c 
-LIBSURVIVE_CORE:=src/survive.c src/survive_process.c src/ootx_decoder.c src/survive_driverman.c src/survive_default_devices.c src/survive_playback.c src/survive_config.c src/survive_cal.c  src/poser.c src/survive_sensor_activations.c src/survive_disambiguator.c src/survive_imu.c
-MINIMAL_NEEDED:=src/survive_usb.c src/survive_charlesbiguator.c  src/survive_vive.c src/survive_reproject.c 
-AUX_NEEDED:=src/survive_turveybiguator.c  src/survive_statebased_disambiguator.c
+LIBSURVIVE_CORE+=src/survive.c src/survive_process.c src/ootx_decoder.c src/survive_driverman.c src/survive_default_devices.c src/survive_playback.c src/survive_config.c src/survive_cal.c  src/poser.c src/survive_sensor_activations.c src/survive_disambiguator.c src/survive_imu.c
+MINIMAL_NEEDED+=src/survive_usb.c src/survive_charlesbiguator.c  src/survive_vive.c src/survive_reproject.c 
+AUX_NEEDED+=src/survive_turveybiguator.c  src/survive_statebased_disambiguator.c
 POSERS:=src/poser_dummy.c src/poser_imu.c src/poser_charlesrefine.c
 EXTRA_POSERS:=src/poser_daveortho.c src/poser_charlesslow.c src/poser_octavioradii.c src/poser_turveytori.c  
 REDISTS:=redist/json_helpers.c redist/linmath.c redist/jsmn.c
@@ -62,7 +63,7 @@ GRAPHICS_LOFI:=redist/CNFGFunctions.o redist/CNFGCocoaNSImageDriver.o
 # Linux / FreeBSD
 else
 
-LDFLAGS:=$(LDFLAGS) -lX11 -lusb-1.0
+LDFLAGS:=$(LDFLAGS)
 DRAWFUNCTIONS=redist/CNFGFunctions.c redist/CNFGXDriver.c redist/CNFG3D.c
 GRAPHICS_LOFI:=redist/CNFGFunctions.o redist/CNFGXDriver.o
 
@@ -131,6 +132,7 @@ test_epnp_ocv: ./src/epnp/test_epnp.c ./src/epnp/epnp.c
 $(OBJDIR):
 	mkdir -p lib
 	mkdir -p $(OBJDIR)
+	mkdir -p $(OBJDIR)/winbuild
 	mkdir -p $(OBJDIR)/src
 	mkdir -p $(OBJDIR)/redist
 	mkdir -p $(OBJDIR)/redist/sba

@@ -41,7 +41,7 @@
 #define restrict
 #endif
 
-#ifndef _POSIX_SOURCE
+#ifdef _MSC_VER
 typedef long ssize_t;
 #define SSIZE_MAX LONG_MAX
 #endif
