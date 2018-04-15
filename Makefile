@@ -5,16 +5,26 @@ all : data_recorder test calibrate calibrate_client simple_pose_test
 
 LIBRARY:=./lib/libsurvive.so
 OBJDIR:=build
+
+
+ifdef WINDOWS
+	CFLAGS+=-Iinclude/libsurvive -g -O3 -Iredist -DUSE_DOUBLE -std=gnu99 -MD -DNOZLIB
+	LDFLAGS+=-L/usr/local/lib -lpthread -lz -lm -g -llapacke  -lcblas -lm 
+	LDFLAGS_TOOLS+=-Llib -lsurvive -Wl,-rpath,lib -lX11 $(LDFLAGS)
+	CC:=i686-w64-mingw32-gcc
+else
+	CFLAGS+=-Iinclude/libsurvive -fPIC -g -O3 -Iredist -DUSE_DOUBLE -std=gnu99 -rdynamic -MD
+	LDFLAGS+=-L/usr/local/lib -lpthread -lz -lm -g -llapacke  -lcblas -lm 
+	LDFLAGS_TOOLS+=-Llib -lsurvive -Wl,-rpath,lib -lX11 $(LDFLAGS)
+endif
+
 CC?=gcc
 
-CFLAGS+=-Iinclude/libsurvive -fPIC -g -O3 -Iredist -DUSE_DOUBLE -std=gnu99 -rdynamic -MD
 
 ifdef EXTRA_WARNINGS
 	CFLAGS+=-fsanitize=address -fsanitize=undefined -Wall -Wno-unused-variable -Wno-switch -Wno-unused-but-set-variable -Wno-pointer-sign -Wno-parentheses
 endif
 
-LDFLAGS+=-L/usr/local/lib -lpthread -lz -lm -g -llapacke  -lcblas -lm 
-LDFLAGS_TOOLS+=-Llib -lsurvive -Wl,-rpath,lib -lX11 $(LDFLAGS)
 
 
 SBA:=redist/sba/sba_chkjac.c  redist/sba/sba_crsm.c  redist/sba/sba_lapack.c  redist/sba/sba_levmar.c  redist/sba/sba_levmar_wrap.c redist/minimal_opencv.c src/poser_epnp.c src/poser_sba.c src/epnp/epnp.c 
@@ -71,30 +81,8 @@ ifdef LINUX_USE_HIDAPI
 endif
 
 
-help :
-	@echo "Usage: make [flags]"
-	@echo "  Build-system flags:"
-	@echo "    MINIMAL=1          Buld a minimal build, geared for embedded systems."
-	@echo "    LINUX_USE_HIDAPI=1 Build with HIDAPI in Linux instead of just libusb."
-	@echo "    EXTRA_WARNINGS=1   Provide many mor warnings for build system."
-	@echo "    CFLAGS=            Specify additional CFLAGS."
-	@echo "    LDFLAGS=           Specify additional LDFLAGS."
-	@echo "    CC=                Specify a different C compiler."
-	@echo "  Useful Preprocessor Directives (For CFLAGS):"
-	@echo "    -DUSE_DOUBLE       Use double instead of float for most operations."
-	@echo "    -DNOZLIB           Use puff.c"
-	@echo "    -DTCC              Various things needed for TCC."
-	@echo "    -DWINDOWS -DWIN32  Building for Windows."
-	@echo "    -DRUNTIME_SYMNUM   Don't assume __attribute__((constructor)) works.  Instead comb for anything starting with REGISTER."
-	@echo "    -flto              Do link-time optimizations.  This significantly increases period of time to link but improves performance.."
-	@echo "  Useful build targets:"
-	@echo "    all                Build libsurvive.so and tools."
-	@echo "    clean              Erase build and incremental files."
-	@echo "    buildfolders       Produce build file structure."
-	@echo "    $(LIBRARY)  Produce libsurvive.so"
+#### Tools
 
-
-	
 testCocoa : testCocoa.c $(LIBRARY)
 	$(CC) -o $@ $^ $(LDFLAGS_TOOLS) $(CFLAGS)
 
@@ -114,16 +102,12 @@ calibrate_client :  calibrate_client.c $(GRAPHICS_LOFI) $(LIBRARY)
 	$(CC) -o $@ $^ $(LDFLAGS_TOOLS) $(CFLAGS)
 
 
-
-## Still not working!!! Don't use.
-static_calibrate : calibrate.c $(DRAWFUNCTIONS) $(LIBSURVIVE_C) $(LIBRARY)
-	tcc -o $@ $^ $(LDFLAGS_TOOLS) $(LDFLAGS) -DTCC
+#### Testers.
 
 ./redist/dclhelpers_debuggable.c : ./redist/dclhelpers.c ./redist/dclhelpers.h ./redist/dclapack.h
 	gcc -E ./redist/dclhelpers.c  > ./redist/dclhelpers_debuggable.c
 	clang-format -i ./redist/dclhelpers_debuggable.c
 	sed -i 's/#/\/\/#/g' ./redist/dclhelpers_debuggable.c
-
 
 test_dcl: ./redist/test_dcl.c ./redist/dclhelpers.c ./redist/dclhelpers.h ./redist/dclapack.h ./redist/minimal_opencv.c ./src/epnp/epnp.c
 	$(CC) -o $@ $^ $(LDFLAGS_TOOLS) $(CFLAGS) -DFLT=double
@@ -139,6 +123,10 @@ test_epnp: ./src/epnp/test_epnp.c $(LIBRARY)
 
 test_epnp_ocv: ./src/epnp/test_epnp.c ./src/epnp/epnp.c
 	$(CC) -o $@ $^ -DWITH_OPENCV -lpthread -lz -lm -flto -g -lX11 -lusb-1.0 -Iinclude/libsurvive -fPIC -g -O4 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic -fsanitize=address -fsanitize=undefined   -llapack -lm -lopencv_core $(LDFLAGS_TOOLS)
+
+
+
+#### Actual build system.
 
 $(OBJDIR):
 	mkdir -p lib
@@ -164,4 +152,29 @@ clean :
 	cd redist && make .run_tests;
 
 .run_tests: .test_redist
+
+
+help :
+	@echo "Usage: make [flags]"
+	@echo "  Build-system flags:"
+	@echo "    MINIMAL=1          Buld a minimal build, geared for embedded systems."
+	@echo "    LINUX_USE_HIDAPI=1 Build with HIDAPI in Linux instead of just libusb."
+	@echo "    EXTRA_WARNINGS=1   Provide many mor warnings for build system."
+	@echo "    WINDOWS=1          Cross-target Windows (EXPERIMENTAL)"
+	@echo "    CFLAGS=            Specify additional CFLAGS."
+	@echo "    LDFLAGS=           Specify additional LDFLAGS."
+	@echo "    CC=                Specify a different C compiler."
+	@echo "  Useful Preprocessor Directives (For CFLAGS):"
+	@echo "    -DUSE_DOUBLE       Use double instead of float for most operations."
+	@echo "    -DNOZLIB           Use puff.c"
+	@echo "    -DTCC              Various things needed for TCC."
+	@echo "    -DWINDOWS -DWIN32  Building for Windows."
+	@echo "    -DRUNTIME_SYMNUM   Don't assume __attribute__((constructor)) works.  Instead comb for anything starting with REGISTER."
+	@echo "    -flto              Do link-time optimizations.  This significantly increases period of time to link but improves performance.."
+	@echo "  Useful build targets:"
+	@echo "    all                Build libsurvive.so and tools."
+	@echo "    clean              Erase build and incremental files."
+	@echo "    buildfolders       Produce build file structure."
+	@echo "    $(LIBRARY)  Produce libsurvive.so"
+
 
