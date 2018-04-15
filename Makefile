@@ -9,7 +9,7 @@ OBJDIR:=build
 
 ifdef WINDOWS
 	CFLAGS+=-Iinclude/libsurvive -g -O3 -Iredist -DUSE_DOUBLE -std=gnu99 -MD -DNOZLIB -DWINDOWS -DWIN32 -DHIDAPI
-	LDFLAGS+=-L/usr/local/lib -lpthread -g -lm -lsetupapi -lkernel32
+	LDFLAGS+=-L/usr/local/lib -lpthread -g -lm -lsetupapi -lkernel32 -ldbghelp -lgdi32
 	LDFLAGS_TOOLS+=-Llib -lsurvive -Wl,-rpath,lib -lX11 $(LDFLAGS)
 	LIBSURVIVE_CORE:=redist/puff.c redist/crc32.c redist/hid-windows.c winbuild/getdelim.c
 	CC:=i686-w64-mingw32-gcc
@@ -155,6 +155,15 @@ clean :
 
 .run_tests: .test_redist
 
+tccbatch :
+	echo "@echo off" >  winbuild/build_tcc.bat
+	echo "set TCC=C:\\\\tcc\\\\tcc.exe" >> winbuild/build_tcc.bat
+	echo "echo USing %TCC%" >> winbuild/build_tcc.bat
+	echo "set SOURCES=$(LIBSURVIVE_C)" >> winbuild/build_tcc.bat
+	echo "set EXEC=..\\\\calibrate.c redist\\\\CNFGWinDriver.c redist\\\\os_generic.c redist\\\\CNFGFunctions.c" >> winbuild/build_tcc.bat
+	echo "set CFLAGS=$(CFLAGS)" >> winbuild/build_tcc.bat
+	echo "@echo on" >> winbuild/build_tcc.bat
+	echo "%TCC% -v %CFLAGS% %SOURCES% %REDIST% %EXEC% %LDFLAGS% tcc_stubs.c %RD%hid-windows.c -o calibrate.exe" >> winbuild/build_tcc.bat
 
 help :
 	@echo "Usage: make [flags]"
