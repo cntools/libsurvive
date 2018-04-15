@@ -1,4 +1,6 @@
-all : buildfolders data_recorder test calibrate calibrate_client simple_pose_test
+all : data_recorder test calibrate calibrate_client simple_pose_test
+	@echo "Built with defaults.  Type 'make help' for more info."
+
 .PHONY : help clean buildfolders
 
 LIBRARY:=./lib/libsurvive.so
@@ -77,17 +79,22 @@ help :
 	@echo "    EXTRA_WARNINGS=1   Provide many mor warnings for build system."
 	@echo "    CFLAGS=            Specify additional CFLAGS."
 	@echo "    LDFLAGS=           Specify additional LDFLAGS."
-	@echo "    CC=                Specify 
-	@echo "  Useful Preprocessor Directives:"
+	@echo "    CC=                Specify a different C compiler."
+	@echo "  Useful Preprocessor Directives (For CFLAGS):"
 	@echo "    -DUSE_DOUBLE       Use double instead of float for most operations."
 	@echo "    -DNOZLIB           Use puff.c"
 	@echo "    -DTCC              Various things needed for TCC."
 	@echo "    -DWINDOWS -DWIN32  Building for Windows."
 	@echo "    -DRUNTIME_SYMNUM   Don't assume __attribute__((constructor)) works.  Instead comb for anything starting with REGISTER."
 	@echo "    -flto              Do link-time optimizations.  This significantly increases period of time to link but improves performance.."
+	@echo "  Useful build targets:"
+	@echo "    all                Build libsurvive.so and tools."
+	@echo "    clean              Erase build and incremental files."
+	@echo "    buildfolders       Produce build file structure."
+	@echo "    $(LIBRARY)  Produce libsurvive.so"
 
 
-
+	
 testCocoa : testCocoa.c $(LIBRARY)
 	$(CC) -o $@ $^ $(LDFLAGS_TOOLS) $(CFLAGS)
 
