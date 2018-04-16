@@ -38,50 +38,43 @@ POSERS:=src/poser_dummy.c src/poser_imu.c src/poser_charlesrefine.c
 EXTRA_POSERS:=src/poser_daveortho.c src/poser_charlesslow.c src/poser_octavioradii.c src/poser_turveytori.c  
 REDISTS:=redist/json_helpers.c redist/linmath.c redist/jsmn.c
 
-ifdef MINIMAL
-	LIBSURVIVE_C:=$(REDISTS) $(LIBSURVIVE_CORE) $(MINIMAL_NEEDED)
-else
-	LIBSURVIVE_C:=$(POSERS) $(REDISTS) $(LIBSURVIVE_CORE) $(SBA) $(MINIMAL_NEEDED) $(AUX_NEEDED)
-endif
-
-
-LIBSURVIVE_O:=$(LIBSURVIVE_C:%.c=$(OBJDIR)/%.o)
-LIBSURVIVE_D:=$(LIBSURVIVE_C:%.c=$(OBJDIR)/%.d)
--include $(LIBSURVIVE_D)
 
 #----------
 # Platform specific changes to CFLAGS/LDFLAGS
 #----------
 UNAME=$(shell uname)
 
-# Mac OSX
-ifeq ($(UNAME), Darwin)
+ifeq ($(UNAME), Darwin) # Mac OSX
+	CFLAGS:=$(CFLAGS) -DRASTERIZER -DHIDAPI -I/usr/local/include -x objective-c
+	LDFLAGS:=$(LDFLAGS) -framework OpenGL -framework Cocoa -framework IOKit
+	DRAWFUNCTIONS=redist/CNFGFunctions.c redist/CNFGCocoaNSImageDriver.m
+	GRAPHICS_LOFI:=redist/CNFGFunctions.o redist/CNFGCocoaNSImageDriver.o
+	REDISTS:=$(REDISTS) redist/hid-osx.c
+else                    # Linux / FreeBSD
+	LDFLAGS:=$(LDFLAGS)
+	DRAWFUNCTIONS=redist/CNFGFunctions.c redist/CNFGXDriver.c redist/CNFG3D.c
+	GRAPHICS_LOFI:=redist/CNFGFunctions.o redist/CNFGXDriver.o
+endif
 
-CFLAGS:=$(CFLAGS) -DRASTERIZER -DHIDAPI -I/usr/local/include -x objective-c
-LDFLAGS:=$(LDFLAGS) -framework OpenGL -framework Cocoa -framework IOKit
-DRAWFUNCTIONS=redist/CNFGFunctions.c redist/CNFGCocoaNSImageDriver.m
-GRAPHICS_LOFI:=redist/CNFGFunctions.o redist/CNFGCocoaNSImageDriver.o
-
-# Linux / FreeBSD
+ifdef MINIMAL
+	LIBSURVIVE_C:=$(REDISTS) $(LIBSURVIVE_CORE) $(MINIMAL_NEEDED)
 else
-
-LDFLAGS:=$(LDFLAGS)
-DRAWFUNCTIONS=redist/CNFGFunctions.c redist/CNFGXDriver.c redist/CNFG3D.c
-GRAPHICS_LOFI:=redist/CNFGFunctions.o redist/CNFGXDriver.o
-
+	LIBSURVIVE_C:=$(POSERS) $(REDISTS) $(LIBSURVIVE_CORE) $(SBA) $(MINIMAL_NEEDED) $(AUX_NEEDED)
 endif
-
-
-ifeq ($(UNAME), Darwin)
-REDISTS:=$(REDISTS) redist/hid-osx.c
-endif
-
 
 ifdef LINUX_USE_HIDAPI
 	CFLAGS:=$(CFLAGS) -DHIDAPI
 	REDISTS:=$(REDISTS) redist/hid-linux.o
 	LDFLAGS:=$(LDFLAGS) -ludev
 endif
+
+
+#Actually make object and dependency lists.
+LIBSURVIVE_O:=$(LIBSURVIVE_C:%.c=$(OBJDIR)/%.o)
+LIBSURVIVE_D:=$(LIBSURVIVE_C:%.c=$(OBJDIR)/%.d)
+
+#Include all dependencies so if header files change, it updates.
+-include $(LIBSURVIVE_D)
 
 
 #### Tools
