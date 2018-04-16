@@ -1,9 +1,11 @@
-all : data_recorder test calibrate calibrate_client simple_pose_test
+LIBRARY:=./lib/libsurvive.so
+STATIC_LIBRARY:=./lib/libsurvive.a
+
+all : $(STATIC_LIBRARY) $(LIBRARY) data_recorder test calibrate calibrate_client simple_pose_test
 	@echo "Built with defaults.  Type 'make help' for more info."
 
 .PHONY : help clean buildfolders
 
-LIBRARY:=./lib/libsurvive.so
 OBJDIR:=build
 
 
@@ -14,7 +16,7 @@ ifdef WINDOWS
 	LIBSURVIVE_CORE:=redist/puff.c redist/crc32.c redist/hid-windows.c winbuild/getdelim.c
 	CC:=i686-w64-mingw32-gcc
 else
-	CFLAGS+=-Iinclude/libsurvive -fPIC -g -O3 -Iredist -DUSE_DOUBLE -std=gnu99 -rdynamic -MD
+	CFLAGS+=-Iinclude/libsurvive -fPIC -g -O3 -Iredist -DUSE_DOUBLE -std=gnu99 -rdynamic -MD -flto
 	LDFLAGS+=-L/usr/local/lib -lpthread -lz -lm -g -llapacke  -lcblas -lm  -lusb-1.0
 	LDFLAGS_TOOLS+=-Llib -lsurvive -Wl,-rpath,lib -lX11 $(LDFLAGS)
 endif
@@ -141,6 +143,9 @@ $(OBJDIR):
 $(LIBRARY): $(LIBSURVIVE_O) $(OBJDIR)
 	$(CC) -o $@ $(LIBSURVIVE_O) $(CFLAGS) $(LDFLAGS) -shared
 
+$(STATIC_LIBRARY) : $(LIBSURVIVE_O) $(OBJDIR)
+	ar rcs --plugin=$$(gcc --print-file-name=liblto_plugin.so) lib/libsurvive.a $(LIBSURVIVE_O)
+
 $(OBJDIR)/%.o : %.c $(OBJDIR)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
@@ -148,7 +153,7 @@ calibrate_tcc : $(LIBSURVIVE_C)
 	tcc -DRUNTIME_SYMNUM $(CFLAGS) -o $@ $^ $(LDFLAGS) calibrate.c $(DRAWFUNCTIONS) redist/symbol_enumerator.c
 
 clean :
-	rm -rf */*/*.o *.o src/*.o $(OBJDIR) *~ src/*~ test simple_pose_test data_recorder calibrate testCocoa lib/libsurvive.so test_minimal_cv test_epnp test_epnp_ocv calibrate_client redist/*.o redist/*~ tools/data_server/data_server tools/lighthousefind/lighthousefind tools/lighthousefind_tori/lighthousefind-tori tools/plot_lighthouse/plot_lighthouse tools/process_rawcap/process_to_points redist/jsmntest redist/lintest
+	rm -rf $(OBJDIR) lib/libsurvive.a *~ src/*~ test simple_pose_test data_recorder calibrate testCocoa lib/libsurvive.so test_minimal_cv test_epnp test_epnp_ocv calibrate_client redist/*.o redist/*~ tools/data_server/data_server tools/lighthousefind/lighthousefind tools/lighthousefind_tori/lighthousefind-tori tools/plot_lighthouse/plot_lighthouse tools/process_rawcap/process_to_points redist/jsmntest redist/lintest
 
 .test_redist:
 	cd redist && make .run_tests;
