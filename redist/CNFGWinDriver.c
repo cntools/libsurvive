@@ -240,7 +240,6 @@ void CNFGHandleInput()
 			break;
 		}
 	}
-	return 0;
 }
 
 #ifndef CNFGOGL

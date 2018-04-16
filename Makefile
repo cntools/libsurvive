@@ -42,6 +42,7 @@ else
 	LIBSURVIVE_C:=$(POSERS) $(REDISTS) $(LIBSURVIVE_CORE) $(SBA) $(MINIMAL_NEEDED) $(AUX_NEEDED)
 endif
 
+
 LIBSURVIVE_O:=$(LIBSURVIVE_C:%.c=$(OBJDIR)/%.o)
 LIBSURVIVE_D:=$(LIBSURVIVE_C:%.c=$(OBJDIR)/%.d)
 -include $(LIBSURVIVE_D)
@@ -72,6 +73,7 @@ endif
 ifeq ($(UNAME), Darwin)
 REDISTS:=$(REDISTS) redist/hid-osx.c
 endif
+
 
 ifdef LINUX_USE_HIDAPI
 	CFLAGS:=$(CFLAGS) -DHIDAPI
@@ -153,15 +155,19 @@ clean :
 
 .run_tests: .test_redist
 
+
+#To do this, you probably want to  `make tccbatch MINIMAL=1 WINDOWS=1`
+
 tccbatch :
 	echo "@echo off" >  winbuild/build_tcc.bat
 	echo "set TCC=C:\\\\tcc\\\\tcc.exe" >> winbuild/build_tcc.bat
 	echo "echo USing %TCC%" >> winbuild/build_tcc.bat
-	echo "set SOURCES=$(LIBSURVIVE_C)" >> winbuild/build_tcc.bat
-	echo "set EXEC=..\\\\calibrate.c redist\\\\CNFGWinDriver.c redist\\\\os_generic.c redist\\\\CNFGFunctions.c" >> winbuild/build_tcc.bat
-	echo "set CFLAGS=$(CFLAGS)" >> winbuild/build_tcc.bat
+	echo "set EXEC=calibrate.c redist\\\\CNFGWinDriver.c redist\\\\CNFGFunctions.c" >> winbuild/build_tcc.bat
+	echo "set SOURCES=$(subst "/","\\",$(LIBSURVIVE_C))" >> winbuild/build_tcc.bat
+	echo "set CFLAGS=-DTCC $(CFLAGS)" >> winbuild/build_tcc.bat
+	echo "set LDFLAGS=-lkernel32 -lgdi32 -luser32" >> winbuild/build_tcc.bat
 	echo "@echo on" >> winbuild/build_tcc.bat
-	echo "%TCC% -v %CFLAGS% %SOURCES% %REDIST% %EXEC% %LDFLAGS% tcc_stubs.c %RD%hid-windows.c -o calibrate.exe" >> winbuild/build_tcc.bat
+	echo "%TCC% -v %CFLAGS% %SOURCES% %REDIST% %EXEC% %LDFLAGS% winbuild/tcc_stubs.c -o calibrate.exe" >> winbuild/build_tcc.bat
 
 help :
 	@echo "Usage: make [flags]"

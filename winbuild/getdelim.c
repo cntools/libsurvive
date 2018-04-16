@@ -41,6 +41,11 @@
 #define restrict
 #endif
 
+#ifdef TCC
+#define EOVERFLOW 75
+#define SSIZE_MAX (1<<31)
+#endif
+
 #ifdef _MSC_VER
 typedef long ssize_t;
 #define SSIZE_MAX LONG_MAX
