@@ -1,8 +1,72 @@
 #include "survive_reproject.h"
-#include <../redist/linmath.h>
+#include "survive_reproject.generated.h"
 #include <math.h>
-#include <stdio.h>
-#include <string.h>
+
+void survive_reproject_full_jac_obj_pose(FLT *out, const SurvivePose *obj_pose, const LinmathVec3d obj_pt,
+										 const SurvivePose *lh2world, const BaseStationData *bsd,
+										 const survive_calibration_config *config) {
+	FLT phase_scale = config->use_flag & SVCal_Phase ? config->phase_scale : 0.;
+	FLT phase_0 = bsd->fcal.phase[0];
+	FLT phase_1 = bsd->fcal.phase[1];
+
+	FLT tilt_scale = config->use_flag & SVCal_Tilt ? config->tilt_scale : 0.;
+	FLT tilt_0 = bsd->fcal.tilt[0];
+	FLT tilt_1 = bsd->fcal.tilt[1];
+
+	FLT curve_scale = config->use_flag & SVCal_Curve ? config->curve_scale : 0.;
+	FLT curve_0 = bsd->fcal.curve[0];
+	FLT curve_1 = bsd->fcal.curve[1];
+
+	FLT gib_scale = config->use_flag & SVCal_Gib ? config->gib_scale : 0;
+	FLT gibPhase_0 = bsd->fcal.gibpha[0];
+	FLT gibPhase_1 = bsd->fcal.gibpha[1];
+	FLT gibMag_0 = bsd->fcal.gibmag[0];
+	FLT gibMag_1 = bsd->fcal.gibmag[1];
+
+	gen_reproject_jac_obj_p(out, obj_pose->Pos, obj_pt, lh2world->Pos, phase_scale, phase_0, phase_1, tilt_scale,
+							tilt_0, tilt_1, curve_scale, curve_0, curve_1, gib_scale, gibPhase_0, gibPhase_1, gibMag_0,
+							gibMag_1);
+}
+
+void survive_reproject_full(FLT *out, const SurvivePose *obj_pose, const LinmathVec3d obj_pt,
+							const SurvivePose *lh2world, const BaseStationData *bsd,
+							const survive_calibration_config *config) {
+	LinmathVec3d world_pt;
+	ApplyPoseToPoint(world_pt, obj_pose, obj_pt);
+
+	SurvivePose world2lh;
+	InvertPose(&world2lh, lh2world);
+
+	LinmathPoint3d t_pt;
+	ApplyPoseToPoint(t_pt, &world2lh, world_pt);
+
+	FLT x = -t_pt[0] / -t_pt[2];
+	FLT y = t_pt[1] / -t_pt[2];
+	double xy[] = {x, y};
+	double ang[] = {atan(x), atan(y)};
+
+	const FLT *phase = bsd->fcal.phase;
+	const FLT *curve = bsd->fcal.curve;
+	const FLT *tilt = bsd->fcal.tilt;
+	const FLT *gibPhase = bsd->fcal.gibpha;
+	const FLT *gibMag = bsd->fcal.gibmag;
+	enum SurviveCalFlag f = config->use_flag;
+
+	for (int axis = 0; axis < 2; axis++) {
+		int opp_axis = axis == 0 ? 1 : 0;
+
+		out[axis] = ang[axis];
+
+		if (f & SVCal_Phase)
+			out[axis] -= config->phase_scale * phase[axis];
+		if (f & SVCal_Tilt)
+			out[axis] -= tan(config->tilt_scale * tilt[axis]) * xy[opp_axis];
+		if (f & SVCal_Curve)
+			out[axis] -= config->curve_scale * curve[axis] * xy[opp_axis] * xy[opp_axis];
+		if (f & SVCal_Gib)
+			out[axis] -= config->gib_scale * sin(gibPhase[axis] + ang[axis]) * gibMag[axis];
+	}
+}
 
 void survive_reproject_from_pose_with_bsd(const BaseStationData *bsd, const survive_calibration_config *config,
 										  const SurvivePose *pose, const FLT *pt, FLT *out) {
@@ -99,5 +163,5 @@ void survive_apply_bsd_calibration(SurviveContext *ctx, int lh, const FLT *in, F
 
 void survive_reproject_from_pose_with_config(const SurviveContext *ctx, struct survive_calibration_config *config,
 											 int lighthouse, const SurvivePose *pose, FLT *point3d, FLT *out) {
-	return survive_reproject_from_pose_with_bsd(&ctx->bsd[lighthouse], config, pose, point3d, out);
+	survive_reproject_from_pose_with_bsd(&ctx->bsd[lighthouse], config, pose, point3d, out);
 }

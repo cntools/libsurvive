@@ -4,6 +4,14 @@
 #include "linmath.h"
 #include "stdint.h"
 
+#ifndef SURVIVE_EXPORT
+#ifdef _WIN32
+#define SURVIVE_EXPORT __declspec(dllexport)
+#else
+#define SURVIVE_EXPORT __attribute__((visibility("default")))
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -38,6 +46,8 @@ typedef LinmathPose SurvivePose;
 #define BUTTON_EVENT_BUTTON_UP     2
 #define BUTTON_EVENT_AXIS_CHANGED  3
 
+typedef uint32_t survive_timecode;
+
 typedef struct SurviveObject SurviveObject;
 typedef struct SurviveContext SurviveContext;
 typedef struct BaseStationData BaseStationData;
@@ -45,13 +55,12 @@ typedef struct SurviveCalData SurviveCalData;   //XXX Warning: This may be remov
 
 typedef int (*htc_config_func)(SurviveObject *so, char *ct0conf, int len);
 typedef void (*text_feedback_func)( SurviveContext * ctx, const char * fault );
-typedef void (*light_process_func)( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length, uint32_t lighthouse);
-typedef void (*imu_process_func)( SurviveObject * so, int mask, FLT * accelgyro, uint32_t timecode, int id );
-typedef void (*angle_process_func)( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh);
+typedef void (*light_process_func)( SurviveObject * so, int sensor_id, int acode, int timeinsweep, survive_timecode timecode, survive_timecode length, uint32_t lighthouse);
+typedef void (*imu_process_func)( SurviveObject * so, int mask, FLT * accelgyro, survive_timecode timecode, int id );
+typedef void (*angle_process_func)( SurviveObject * so, int sensor_id, int acode, survive_timecode timecode, FLT length, FLT angle, uint32_t lh);
 typedef void(*button_process_func)(SurviveObject * so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val);
-typedef void (*pose_func)(SurviveObject *so, uint32_t timecode, SurvivePose *pose);
-typedef void (*lighthouse_pose_func)(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose,
-									 SurvivePose *object_pose);
+typedef void (*pose_func)(SurviveObject *so, survive_timecode timecode, SurvivePose *pose);
+typedef void (*lighthouse_pose_func)(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose, SurvivePose *object_pose);
 
 // For lightcap, etc.  Don't change this structure at all.  Regular vive is dependent on it being exactly as-is.
 // When you write drivers, you can use this to send survive lightcap data.

@@ -1,107 +1,56 @@
 #include "survive_imu.h"
 #include "linmath.h"
+#include "math.h"
 #include "survive_internal.h"
+#include <memory.h>
 #include <survive_imu.h>
 
-//---------------------------------------------------------------------------------------------------
-// Definitions
+// Mahoney is due to https://hal.archives-ouvertes.fr/hal-00488376/document
+// See also http://www.olliw.eu/2013/imu-data-fusing/#chapter41 and
+// http://x-io.co.uk/open-source-imu-and-ahrs-algorithms/
+static void mahony_ahrs(SurviveIMUTracker *tracker, LinmathVec3d _gyro, LinmathVec3d _accel) {
+	LinmathVec3d gyro;
+	memcpy(gyro, _gyro, 3 * sizeof(FLT));
 
-#define sampleFreq 240.0f	  // sample frequency in Hz
-#define twoKpDef (2.0f * 0.5f) // 2 * proportional gain
-#define twoKiDef (2.0f * 0.0f) // 2 * integral gain
+	LinmathVec3d accel;
+	memcpy(accel, _accel, 3 * sizeof(FLT));
 
-//---------------------------------------------------------------------------------------------------
-// Function declarations
+	const FLT sample_f = 240;
+	const FLT prop_gain = .5;
+	const FLT int_gain = 0;
 
-float invSqrt(float x) {
-	float halfx = 0.5f * x;
-	float y = x;
-	long i = *(long *)&y;
-	i = 0x5f3759df - (i >> 1);
-	y = *(float *)&i;
-	y = y * (1.5f - (halfx * y * y));
-	return y;
-}
-//---------------------------------------------------------------------------------------------------
-// IMU algorithm update
-// From http://x-io.co.uk/open-source-imu-and-ahrs-algorithms/
-static void MahonyAHRSupdateIMU(SurviveIMUTracker *tracker, float gx, float gy, float gz, float ax, float ay,
-								float az) {
-	float recipNorm;
-	float halfvx, halfvy, halfvz;
-	float halfex, halfey, halfez;
-	float qa, qb, qc;
+	FLT *q = tracker->pose.Rot;
 
-	const float twoKp = twoKpDef; // 2 * proportional gain (Kp)
-	const float twoKi = twoKiDef; // 2 * integral gain (Ki)
+	FLT mag_accel = magnitude3d(accel);
 
-	float q0 = tracker->pose.Rot[0];
-	float q1 = tracker->pose.Rot[1];
-	float q2 = tracker->pose.Rot[2];
-	float q3 = tracker->pose.Rot[3];
+	if (mag_accel != 0.0) {
+		scale3d(accel, accel, 1. / mag_accel);
 
-	// Compute feedback only if accelerometer measurement valid (avoids NaN in accelerometer normalisation)
-	if (!((ax == 0.0f) && (ay == 0.0f) && (az == 0.0f))) {
+		// Equiv of q^-1 * G
+		LinmathVec3d v = {q[1] * q[3] - q[0] * q[2], q[0] * q[1] + q[2] * q[3], q[0] * q[0] - 0.5 + q[3] * q[3]};
 
-		// Normalise accelerometer measurement
-		recipNorm = invSqrt(ax * ax + ay * ay + az * az);
-		ax *= recipNorm;
-		ay *= recipNorm;
-		az *= recipNorm;
+		LinmathVec3d error;
+		cross3d(error, accel, v);
 
-		// Estimated direction of gravity and vector perpendicular to magnetic flux
-		halfvx = q1 * q3 - q0 * q2;
-		halfvy = q0 * q1 + q2 * q3;
-		halfvz = q0 * q0 - 0.5f + q3 * q3;
-
-		// Error is sum of cross product between estimated and measured direction of gravity
-		halfex = (ay * halfvz - az * halfvy);
-		halfey = (az * halfvx - ax * halfvz);
-		halfez = (ax * halfvy - ay * halfvx);
-
-		// Compute and apply integral feedback if enabled
-		if (twoKi > 0.0f) {
-			tracker->integralFBx += twoKi * halfex * (1.0f / sampleFreq); // tracker->integral error scaled by Ki
-			tracker->integralFBy += twoKi * halfey * (1.0f / sampleFreq);
-			tracker->integralFBz += twoKi * halfez * (1.0f / sampleFreq);
-			gx += tracker->integralFBx; // apply tracker->integral feedback
-			gy += tracker->integralFBy;
-			gz += tracker->integralFBz;
-		} else {
-			tracker->integralFBx = 0.0f; // prevent tracker->integral windup
-			tracker->integralFBy = 0.0f;
-			tracker->integralFBz = 0.0f;
+		if (int_gain > 0.0f) {
+			LinmathVec3d fb_correction;
+			scale3d(fb_correction, error, int_gain * 2. / sample_f);
+			add3d(tracker->integralFB, tracker->integralFB, fb_correction);
+			add3d(gyro, gyro, tracker->integralFB);
 		}
 
-		// Apply proportional feedback
-		gx += twoKp * halfex;
-		gy += twoKp * halfey;
-		gz += twoKp * halfez;
+		scale3d(error, error, prop_gain * 2.);
+		add3d(gyro, gyro, error);
 	}
 
-	// Integrate rate of change of quaternion
-	gx *= (0.5f * (1.0f / sampleFreq)); // pre-multiply common factors
-	gy *= (0.5f * (1.0f / sampleFreq));
-	gz *= (0.5f * (1.0f / sampleFreq));
-	qa = q0;
-	qb = q1;
-	qc = q2;
-	q0 += (-qb * gx - qc * gy - q3 * gz);
-	q1 += (qa * gx + qc * gz - q3 * gy);
-	q2 += (qa * gy - qb * gz + q3 * gx);
-	q3 += (qa * gz + qb * gy - qc * gx);
+	scale3d(gyro, gyro, 0.5 / sample_f);
 
-	// Normalise quaternion
-	recipNorm = invSqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);
-	q0 *= recipNorm;
-	q1 *= recipNorm;
-	q2 *= recipNorm;
-	q3 *= recipNorm;
+	LinmathQuat correction = {
+		(-q[1] * gyro[0] - q[2] * gyro[1] - q[3] * gyro[2]), (q[0] * gyro[0] + q[2] * gyro[2] - q[3] * gyro[1]),
+		(q[0] * gyro[1] - q[1] * gyro[2] + q[3] * gyro[0]), (q[0] * gyro[2] + q[1] * gyro[1] - q[2] * gyro[0])};
 
-	tracker->pose.Rot[0] = q0;
-	tracker->pose.Rot[1] = q1;
-	tracker->pose.Rot[2] = q2;
-	tracker->pose.Rot[3] = q3;
+	quatadd(q, q, correction);
+	quatnormalize(q, q);
 }
 
 static inline uint32_t tick_difference(uint32_t most_recent, uint32_t least_recent) {
@@ -125,7 +74,6 @@ void survive_imu_tracker_set_pose(SurviveIMUTracker *tracker, uint32_t timecode,
 	}
 	//(pose->Pos[i] - tracker->lastGT.Pos[i]) / tick_difference(timecode, tracker->lastGTTime) * 48000000.;
 
-	tracker->integralFBx = tracker->integralFBy = tracker->integralFBz = 0.0;
 	tracker->lastGTTime = timecode;
 	tracker->lastGT = *pose;
 }
@@ -198,10 +146,7 @@ void survive_imu_tracker_integrate(SurviveObject *so, SurviveIMUTracker *tracker
 		tracker->updir[i] = data->accel[i] * .10 + tracker->updir[i] * .90;
 	}
 
-	float gx = data->gyro[0], gy = data->gyro[1], gz = data->gyro[2];
-	float ax = data->accel[0], ay = data->accel[1], az = data->accel[2];
-
-	MahonyAHRSupdateIMU(tracker, gx, gy, gz, ax, ay, az);
+	mahony_ahrs(tracker, data->gyro, data->accel);
 
 	FLT time_diff = tick_difference(data->timecode, tracker->last_data.timecode) / (FLT)so->timebase_hz;
 
@@ -237,7 +182,7 @@ void survive_imu_tracker_integrate_observation(SurviveObject *so, uint32_t timec
 		tracker->pose = *pose;
 		return;
 	}
-		
+
 	// Kalman filter assuming:
 	// F -> Identity
 	// H -> Identity

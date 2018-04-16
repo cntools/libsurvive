@@ -244,6 +244,7 @@
     <ClCompile Include="..\..\redist\json_helpers.c" />
     <ClCompile Include="..\..\redist\linmath.c" />
     <ClCompile Include="..\..\redist\minimal_opencv.c" />
+    <ClCompile Include="..\..\redist\mpfit\mpfit.c" />
     <ClCompile Include="..\..\redist\puff.c" />
     <ClCompile Include="..\..\redist\sba\sba_chkjac.c" />
     <ClCompile Include="..\..\redist\sba\sba_crsm.c" />
@@ -254,14 +255,18 @@
     <ClCompile Include="..\..\src\epnp\epnp.c" />
     <ClCompile Include="..\..\src\ootx_decoder.c" />
     <ClCompile Include="..\..\src\poser.c" />
+    <ClCompile Include="..\..\src\poser_charlesrefine.c" />
     <ClCompile Include="..\..\src\poser_charlesslow.c" />
     <ClCompile Include="..\..\src\poser_daveortho.c" />
     <ClCompile Include="..\..\src\poser_dummy.c" />
     <ClCompile Include="..\..\src\poser_epnp.c" />
+    <ClCompile Include="..\..\src\poser_general_optimizer.c" />
+    <ClCompile Include="..\..\src\poser_mpfit.c" />
     <ClCompile Include="..\..\src\poser_octavioradii.c" />
     <ClCompile Include="..\..\src\poser_sba.c" />
     <ClCompile Include="..\..\src\poser_turveytori.c" />
     <ClCompile Include="..\..\src\survive.c" />
+    <ClCompile Include="..\..\src\survive_api.c" />
     <ClCompile Include="..\..\src\survive_cal.c" />
     <ClCompile Include="..\..\src\survive_charlesbiguator.c" />
     <ClCompile Include="..\..\src\survive_config.c" />
@@ -282,17 +287,20 @@
   <ItemGroup>
     <ClInclude Include="..\..\include\libsurvive\poser.h" />
     <ClInclude Include="..\..\include\libsurvive\survive.h" />
+    <ClInclude Include="..\..\include\libsurvive\survive_api.h" />
     <ClInclude Include="..\..\include\libsurvive\survive_types.h" />
     <ClInclude Include="..\..\redist\crc32.h" />
     <ClInclude Include="..\..\redist\jsmn.h" />
     <ClInclude Include="..\..\redist\json_helpers.h" />
     <ClInclude Include="..\..\redist\linmath.h" />
     <ClInclude Include="..\..\redist\minimal_opencv.h" />
+    <ClInclude Include="..\..\redist\mpfit\mpfit.h" />
     <ClInclude Include="..\..\redist\os_generic.h" />
     <ClInclude Include="..\..\redist\sba\sba.h" />
     <ClInclude Include="..\..\redist\symbol_enumerator.h" />
     <ClInclude Include="..\..\src\epnp\epnp.h" />
     <ClInclude Include="..\..\src\ootx_decoder.h" />
+    <ClInclude Include="..\..\src\poser_general_optimizer.h" />
     <ClInclude Include="..\..\src\survive_cal.h" />
     <ClInclude Include="..\..\src\survive_config.h" />
     <ClInclude Include="..\..\src\survive_default_devices.h" />

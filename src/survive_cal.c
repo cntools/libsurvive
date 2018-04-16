@@ -188,7 +188,6 @@ void survive_cal_install( struct SurviveContext * ctx )
 		}
 	}
 
-	const char * DriverName;
 	cd->ConfigPoserFn = GetDriverByConfig(ctx, "Poser", "configposer", "SBA", 0);
 
 	ootx_packet_clbk = ootx_packet_clbk_d;

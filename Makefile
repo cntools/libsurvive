@@ -42,7 +42,6 @@ else
 	LIBSURVIVE_C:=$(POSERS) $(REDISTS) $(LIBSURVIVE_CORE) $(SBA) $(MINIMAL_NEEDED) $(AUX_NEEDED)
 endif
 
-
 LIBSURVIVE_O:=$(LIBSURVIVE_C:%.c=$(OBJDIR)/%.o)
 LIBSURVIVE_D:=$(LIBSURVIVE_C:%.c=$(OBJDIR)/%.d)
 -include $(LIBSURVIVE_D)
@@ -73,7 +72,6 @@ endif
 ifeq ($(UNAME), Darwin)
 REDISTS:=$(REDISTS) redist/hid-osx.c
 endif
-
 
 ifdef LINUX_USE_HIDAPI
 	CFLAGS:=$(CFLAGS) -DHIDAPI

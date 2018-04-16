@@ -223,8 +223,8 @@ int main(int argc, char **argv) {
 	}
 
 	size_t showui = survive_configi(ctx1, "show-ui", SC_GET, 0);
-
-	drawbsds(ctx1);
+	if (showui)
+		drawbsds(ctx1);
 
 	int waitUpdate = 100;
 	int SIZE = 1000;
@@ -262,6 +262,8 @@ int main(int argc, char **argv) {
 		cv::imwrite(name + "_" + std::to_string(cidx) + ".png", err[i]);
 		cv::imshow(name, err[i]);
 	}
+
+	survive_close(ctx1);
 
 	std::cerr << "Error: " << error / error_count << std::endl;
 
