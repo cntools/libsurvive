@@ -13,7 +13,7 @@
 #include "os_generic.h"
 #include "stdarg.h"
 
-#ifdef _WIN32
+#ifdef _MSC_VER
 typedef long ssize_t;
 #define SSIZE_MAX LONG_MAX
 
