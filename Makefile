@@ -15,7 +15,7 @@ ifdef WINDOWS
 	CC:=i686-w64-mingw32-gcc
 else
 	CFLAGS+=-Iinclude/libsurvive -fPIC -g -O3 -Iredist -DUSE_DOUBLE -std=gnu99 -rdynamic -MD
-	LDFLAGS+=-L/usr/local/lib -lpthread -lz -lm -g -llapacke  -lcblas -lm 
+	LDFLAGS+=-L/usr/local/lib -lpthread -lz -lm -g -llapacke  -lcblas -lm  -lusb-1.0
 	LDFLAGS_TOOLS+=-Llib -lsurvive -Wl,-rpath,lib -lX11 $(LDFLAGS)
 endif
 
@@ -28,7 +28,7 @@ endif
 
 
 
-SBA:=redist/sba/sba_chkjac.c  redist/sba/sba_crsm.c  redist/sba/sba_lapack.c  redist/sba/sba_levmar.c  redist/sba/sba_levmar_wrap.c redist/minimal_opencv.c src/poser_epnp.c src/poser_sba.c src/epnp/epnp.c 
+SBA:=redist/sba/sba_chkjac.c  redist/sba/sba_crsm.c  redist/sba/sba_lapack.c  redist/sba/sba_levmar.c  redist/sba/sba_levmar_wrap.c redist/minimal_opencv.c src/poser_epnp.c src/poser_sba.c src/epnp/epnp.c src/poser_general_optimizer.c
 LIBSURVIVE_CORE+=src/survive.c src/survive_process.c src/ootx_decoder.c src/survive_driverman.c src/survive_default_devices.c src/survive_playback.c src/survive_config.c src/survive_cal.c  src/poser.c src/survive_sensor_activations.c src/survive_disambiguator.c src/survive_imu.c
 MINIMAL_NEEDED+=src/survive_usb.c src/survive_charlesbiguator.c  src/survive_vive.c src/survive_reproject.c 
 AUX_NEEDED+=src/survive_turveybiguator.c  src/survive_statebased_disambiguator.c
