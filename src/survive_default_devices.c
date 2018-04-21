@@ -173,16 +173,12 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	// Handle device-specific sacling.
 	if (strcmp(so->codename, "HMD") == 0) {
 		if (so->acc_scale) {
-			so->acc_scale[0] *= -1. / 8192.0;
-			so->acc_scale[1] *= -1. / 8192.0;
-			so->acc_scale[2] *= 1. / 8192.0;
+			scale3d(so->acc_scale, so->acc_scale, 1. / 8192.0);
 		}
 		if (so->acc_bias)
 			scale3d(so->acc_bias, so->acc_bias, 2. / 1000.); // Odd but seems right.
 		if (so->gyro_scale) {
-			so->gyro_scale[0] *= -0.000065665;
-			so->gyro_scale[1] *= -0.000065665;
-			so->gyro_scale[2] *= 0.000065665;
+			scale3d(so->gyro_scale, so->gyro_scale, 0.000065665);
 		}
 	} else if (memcmp(so->codename, "WM", 2) == 0) {
 		if (so->acc_scale)
