@@ -273,7 +273,7 @@ SURVIVE_EXPORT void survive_close(SurviveContext *ctx);
 SURVIVE_EXPORT SurviveObject *survive_get_so_by_name(SurviveContext *ctx, const char *name);
 
 // Utilitiy functions.
-int survive_simple_inflate(SurviveContext *ctx, const char *input, int inlen, char *output, int outlen);
+int survive_simple_inflate(SurviveContext *ctx, const uint8_t *input, int inlen, uint8_t *output, int outlen);
 SURVIVE_EXPORT int survive_send_magic(SurviveContext *ctx, int magic_code, void *data, int datalen);
 
 // These functions search both the stored-general and temporary sections for a parameter and return it.

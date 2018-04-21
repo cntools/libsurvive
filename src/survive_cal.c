@@ -417,7 +417,6 @@ static void handle_calibration( struct SurviveCalData *cd )
 	mkdir( "calinfo", 0755 );
 #endif
 	int sen, axis, lh;
-	FLT temp_syncs[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES];
 
 	//Just to get it out of the way early, we'll calculate the sync-pulse-lengths here.
 	FILE * sync_time_info = fopen( "calinfo/synctime.csv", "w" );
@@ -620,7 +619,6 @@ static void handle_calibration( struct SurviveCalData *cd )
 			fsd.lengths[i][j][1] = cd->avglens[dataindex+1];
 			fsd.angles[i][j][0] = cd->avgsweeps[dataindex + 0];
 			fsd.angles[i][j][1] = cd->avgsweeps[dataindex + 1];
-			fsd.synctimes[i][j] = temp_syncs[i][j];
 		}
 
 		int r = cd->ConfigPoserFn( cd->poseobjects[obj], (PoserData*)&fsd );

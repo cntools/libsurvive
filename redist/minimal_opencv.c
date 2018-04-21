@@ -116,11 +116,6 @@ static inline void *cvAlignPtr(const void *ptr, int align) {
 	return (void *)(((size_t)ptr + align - 1) & ~(size_t)(align - 1));
 }
 
-static inline int cvAlign(int size, int align) {
-	CV_DbgAssert((align & (align - 1)) == 0 && size < INT_MAX);
-	return (size + align - 1) & -align;
-}
-
 SURVIVE_LOCAL_ONLY void cvCreateData(CvMat *arr) {
 	if (CV_IS_MAT_HDR_Z(arr)) {
 		size_t step, total_size;

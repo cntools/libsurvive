@@ -120,8 +120,9 @@ char* load_file_to_mem(const char* path) {
 	int len = ftell( f );
 	fseek( f, 0, SEEK_SET );
 	char * JSON_STRING = malloc( len + 1);
-	memset(JSON_STRING,0,len+1); 
-	size_t i = fread( JSON_STRING, len, 1, f ); i = i; //Ignore return value.
+	memset(JSON_STRING,0,len+1);
+	size_t i = fread(JSON_STRING, len, 1, f);
+	(void)i; // Ignore return value.
 	fclose( f );
 	return JSON_STRING;
 }

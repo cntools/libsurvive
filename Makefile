@@ -8,6 +8,7 @@ all : $(STATIC_LIBRARY) $(LIBRARY) data_recorder test calibrate calibrate_client
 
 OBJDIR:=build
 
+CFLAGS += -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces
 
 ifdef WINDOWS
 	CFLAGS+=-Iinclude/libsurvive -g -O3 -Iredist -DUSE_DOUBLE -std=gnu99 -MD -DNOZLIB -DWINDOWS -DWIN32 -DHIDAPI
@@ -16,7 +17,7 @@ ifdef WINDOWS
 	LIBSURVIVE_CORE:=redist/puff.c redist/crc32.c redist/hid-windows.c winbuild/getdelim.c
 	CC:=i686-w64-mingw32-gcc
 else
-	CFLAGS+=-Iinclude/libsurvive -fPIC -g -O3 -Iredist -DUSE_DOUBLE -std=gnu99 -rdynamic -MD
+	CFLAGS+=-Iinclude/libsurvive -fPIC -g -O3 -Iredist -DUSE_DOUBLE -std=gnu99 -MD
 	LDFLAGS+=-L/usr/local/lib -lpthread -lz -lm -g -llapacke  -lcblas -lm  -lusb-1.0
 	LDFLAGS_TOOLS+=-Llib -lsurvive -Wl,-rpath,lib -lX11 $(LDFLAGS)
 endif
@@ -25,13 +26,13 @@ CC?=gcc
 
 
 ifdef EXTRA_WARNINGS
-	CFLAGS+=-fsanitize=address -fsanitize=undefined -Wall -Wno-unused-variable -Wno-switch -Wno-unused-but-set-variable -Wno-pointer-sign -Wno-parentheses
+	CFLAGS+=-fsanitize=address -fsanitize=undefined
 endif
 
 
 
 SBA:=redist/sba/sba_chkjac.c  redist/sba/sba_crsm.c  redist/sba/sba_lapack.c  redist/sba/sba_levmar.c  redist/sba/sba_levmar_wrap.c redist/minimal_opencv.c src/poser_epnp.c src/poser_sba.c src/epnp/epnp.c src/poser_general_optimizer.c
-LIBSURVIVE_CORE+=src/survive.c src/survive_process.c src/ootx_decoder.c src/survive_driverman.c src/survive_default_devices.c src/survive_playback.c src/survive_config.c src/survive_cal.c  src/poser.c src/survive_sensor_activations.c src/survive_disambiguator.c src/survive_imu.c
+LIBSURVIVE_CORE+=src/survive.c src/survive_process.c src/ootx_decoder.c src/survive_driverman.c src/survive_default_devices.c src/survive_playback.c src/survive_config.c src/survive_cal.c  src/poser.c src/survive_sensor_activations.c src/survive_disambiguator.c src/survive_imu.c src/survive_kalman.c
 MINIMAL_NEEDED+=src/survive_usb.c src/survive_charlesbiguator.c  src/survive_vive.c src/survive_reproject.c 
 AUX_NEEDED+=src/survive_turveybiguator.c  src/survive_statebased_disambiguator.c
 POSERS:=src/poser_dummy.c src/poser_imu.c src/poser_charlesrefine.c
@@ -48,12 +49,12 @@ ifeq ($(UNAME), Darwin) # Mac OSX
 	CFLAGS:=$(CFLAGS) -DRASTERIZER -DHIDAPI -I/usr/local/include -x objective-c
 	LDFLAGS:=$(LDFLAGS) -framework OpenGL -framework Cocoa -framework IOKit
 	DRAWFUNCTIONS=redist/CNFGFunctions.c redist/CNFGCocoaNSImageDriver.m
-	GRAPHICS_LOFI:=redist/CNFGFunctions.o redist/CNFGCocoaNSImageDriver.o
+	GRAPHICS_LOFI:=redist/CNFGFunctions.c redist/CNFGCocoaNSImageDriver.c
 	REDISTS:=$(REDISTS) redist/hid-osx.c
 else                    # Linux / FreeBSD
 	LDFLAGS:=$(LDFLAGS)
 	DRAWFUNCTIONS=redist/CNFGFunctions.c redist/CNFGXDriver.c redist/CNFG3D.c
-	GRAPHICS_LOFI:=redist/CNFGFunctions.o redist/CNFGXDriver.o
+	GRAPHICS_LOFI:=redist/CNFGFunctions.c redist/CNFGXDriver.c
 endif
 
 ifdef MINIMAL
@@ -75,7 +76,6 @@ LIBSURVIVE_D:=$(LIBSURVIVE_C:%.c=$(OBJDIR)/%.d)
 
 #Include all dependencies so if header files change, it updates.
 -include $(LIBSURVIVE_D)
-
 
 #### Tools
 
@@ -134,7 +134,7 @@ $(OBJDIR):
 	mkdir -p $(OBJDIR)/src/epnp
 
 $(LIBRARY): $(LIBSURVIVE_O) $(OBJDIR)
-	$(CC) -o $@ $(LIBSURVIVE_O) $(CFLAGS) $(LDFLAGS) -shared
+	$(CC) $(CFLAGS) -shared -o $@ $(LIBSURVIVE_O) $(LDFLAGS)
 
 $(STATIC_LIBRARY) : $(LIBSURVIVE_O) $(OBJDIR)
 	ar rcs --plugin=$$(gcc --print-file-name=liblto_plugin.so) lib/libsurvive.a $(LIBSURVIVE_O)

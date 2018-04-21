@@ -17,6 +17,7 @@
 #include "string.h"
 #include "survive_cal.h"
 #include "survive_config.h"
+#include "survive_kalman.h"
 #include "survive_reproject.h"
 
 typedef struct {
@@ -25,12 +26,6 @@ typedef struct {
 	SurvivePose obj_pose;
 	SurvivePose camera_params[2];
 } sba_context;
-
-typedef struct {
-	sba_context hdr;
-	int acode;
-	int lh;
-} sba_context_single_sweep;
 
 typedef struct SBAData {
 	GeneralOptimizerData opt;
@@ -44,7 +39,9 @@ typedef struct SBAData {
 	int use_jacobian_function;
 	int required_meas;
 
+	survive_kpose_t kpose;
 	SurviveIMUTracker tracker;
+
 	bool useIMU;
 
 	struct {
@@ -89,6 +86,8 @@ static size_t construct_input_from_scene(SBAData *d, PoserDataLight *pdl, Surviv
 	size_t rtn = 0;
 	SurviveObject *so = d->opt.so;
 
+	// fprintf(stderr, "#");
+
 	for (size_t sensor = 0; sensor < so->sensor_ct; sensor++) {
 		for (size_t lh = 0; lh < 2; lh++) {
 			if (SurviveSensorActivations_isPairValid(scene, d->sensor_time_window, pdl->timecode, sensor, lh)) {
@@ -96,24 +95,26 @@ static size_t construct_input_from_scene(SBAData *d, PoserDataLight *pdl, Surviv
 				// FLT a[2];
 				// survive_apply_bsd_calibration(so->ctx, lh, _a, a);
 				vmask[sensor * NUM_LIGHTHOUSES + lh] = 1;
-
 				if (cov) {
 					*(cov++) = d->sensor_variance +
-							   abs(pdl->timecode - scene->timecode[sensor][lh][0]) * d->sensor_variance_per_second /
-								   (double)so->timebase_hz;
+							   abs((int32_t)pdl->timecode - (int32_t)scene->timecode[sensor][lh][0]) *
+								   d->sensor_variance_per_second / (double)so->timebase_hz;
 					*(cov++) = 0;
 					*(cov++) = 0;
 					*(cov++) = d->sensor_variance +
-							   abs(pdl->timecode - scene->timecode[sensor][lh][1]) * d->sensor_variance_per_second /
-								   (double)so->timebase_hz;
+							   abs((int32_t)pdl->timecode - (int32_t)scene->timecode[sensor][lh][1]) *
+								   d->sensor_variance_per_second / (double)so->timebase_hz;
 				}
 				meas[rtn++] = a[0];
 				meas[rtn++] = a[1];
+				// fprintf(stderr, "%.04f %.04f ", a[0], a[1]);
 			} else {
 				vmask[sensor * NUM_LIGHTHOUSES + lh] = 0;
+				// fprintf(stderr, "%.06f %.06f ", sensor, lh, -2,-2);
 			}
 		}
 	}
+	// fprintf(stderr, "\n");
 	return rtn;
 }
 
@@ -124,43 +125,6 @@ void sba_set_cameras(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose, S
 		ctx->obj_pose = *obj_pose;
 	else
 		ctx->obj_pose = LinmathPose_Identity;
-}
-
-typedef struct {
-	bool hasInfo;
-	SurvivePose poses;
-} sba_set_position_t;
-
-static void sba_set_position(SurviveObject *so, uint32_t timecode, SurvivePose *new_pose, void *_user) {
-	sba_set_position_t *user = _user;
-	assert(user->hasInfo == false);
-	user->hasInfo = 1;
-	user->poses = *new_pose;
-}
-void *GetDriver(const char *name);
-
-static void str_metric_function_single_sweep(int j, int i, double *bi, double *xij, void *adata) {
-	SurvivePose obj = *(SurvivePose *)bi;
-	int sensor_idx = j >> 1;
-
-	sba_context_single_sweep *ctx = (sba_context_single_sweep *)(adata);
-	SurviveObject *so = ctx->hdr.so;
-	int lh = ctx->lh;
-	int acode = ctx->acode;
-
-	assert(lh < 2);
-	assert(sensor_idx < so->sensor_ct);
-
-	quatnormalize(obj.Rot, obj.Rot);
-	FLT xyz[3];
-	ApplyPoseToPoint(xyz, &obj, &so->sensor_locations[sensor_idx * 3]);
-
-	// std::cerr << "Processing " << sensor_idx << ", " << lh << std::endl;
-	SurvivePose *camera = &so->ctx->bsd[lh].Pose;
-
-	FLT out[2];
-	survive_reproject_from_pose(so->ctx, lh, camera, xyz, out);
-	*xij = out[acode];
 }
 
 static void str_metric_function(int j, int i, double *bi, double *xij, void *adata) {
@@ -174,7 +138,7 @@ static void str_metric_function(int j, int i, double *bi, double *xij, void *ada
 	assert(lh < 2);
 	assert(sensor_idx < so->sensor_ct);
 
-	// quatnormalize(obj.Rot, obj.Rot);
+	quatnormalize(obj.Rot, obj.Rot);
 
 	// std::cerr << "Processing " << sensor_idx << ", " << lh << std::endl;
 	SurvivePose *camera = &so->ctx->bsd[lh].Pose;
@@ -193,7 +157,7 @@ static void str_metric_function_jac(int j, int i, double *bi, double *xij, void 
 	assert(lh < 2);
 	assert(sensor_idx < so->sensor_ct);
 
-	// quatnormalize(obj.Rot, obj.Rot);
+	quatnormalize(obj.Rot, obj.Rot);
 
 	SurvivePose *camera = &so->ctx->bsd[lh].Pose;
 	survive_reproject_full_jac_obj_pose(xij, &obj, &so->sensor_locations[sensor_idx * 3], camera, &so->ctx->bsd[lh],
@@ -208,8 +172,9 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 
 	char *vmask = alloca(sizeof(char) * so->sensor_ct * NUM_LIGHTHOUSES);
 	double *meas = alloca(sizeof(double) * 2 * so->sensor_ct * NUM_LIGHTHOUSES);
-	double *cov =
-		d->sensor_variance_per_second > 0. ? alloca(sizeof(double) * 2 * 2 * so->sensor_ct * NUM_LIGHTHOUSES) : 0;
+	double *cov = (d->sensor_variance_per_second > 0. && d->sensor_variance)
+					  ? alloca(sizeof(double) * 2 * 2 * so->sensor_ct * NUM_LIGHTHOUSES)
+					  : 0;
 	size_t meas_size = construct_input_from_scene(d, pdl, scene, vmask, meas, cov);
 
 	static int failure_count = 500;
@@ -271,9 +236,7 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 		quatnormalize(soLocation.Rot, soLocation.Rot);
 		*out = soLocation;
 		rtn = info[1] / meas_size * 2;
-	} else
-
-	{
+	} else {
 		SurviveContext *ctx = so->ctx;
 		// Docs say info[0] should be divided by meas; I don't buy it really...
 		if (error_failure) {
@@ -418,6 +381,8 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 			if (error < 0) {
 
 			} else {
+				quatnormalize(estimate.Rot, estimate.Rot);
+
 				if (d->useIMU) {
 					FLT var_meters = 0.5;
 					FLT var_quat = error + .05;
@@ -427,6 +392,11 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 					survive_imu_tracker_integrate_observation(so, lightData->timecode, &d->tracker, &estimate, var);
 					estimate = d->tracker.pose;
 				}
+
+				LinmathVec3d pvar = {.1, .1, .1};
+				FLT rvar = .01;
+				survive_kpose_integrate_pose(&d->kpose, lightData->timecode, &estimate, pvar, rvar);
+				estimate = d->kpose.state.pose;
 
 				PoserData_poser_pose_func(&lightData->hdr, so, &estimate);
 			}

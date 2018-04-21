@@ -37,6 +37,10 @@ bool general_optimizer_data_record_success(GeneralOptimizerData *d, FLT error) {
 		d->failures_to_reset_cntr = d->failures_to_reset;
 		return true;
 	}
+
+	if (d->failures_to_reset_cntr > 0)
+		d->failures_to_reset_cntr--;
+
 	return false;
 }
 

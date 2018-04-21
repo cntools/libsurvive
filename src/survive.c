@@ -581,7 +581,7 @@ int survive_simple_inflate(struct SurviveContext *ctx, const char *input, int in
 
 #include <zlib.h>
 
-int survive_simple_inflate(struct SurviveContext *ctx, const char *input, int inlen, char *output, int outlen) {
+int survive_simple_inflate(struct SurviveContext *ctx, const uint8_t *input, int inlen, uint8_t *output, int outlen) {
 	z_stream zs; // Zlib stream.  May only be used by configuration at beginning and by USB thread periodically.
 	memset(&zs, 0, sizeof(zs));
 	inflateInit(&zs); /// Consider checking error

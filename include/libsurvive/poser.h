@@ -88,7 +88,6 @@ typedef struct
 	//If "lengths[...]" < 0, means not a valid piece of sweep information.
 	FLT  lengths[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];
 	FLT  angles [SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];  //2 Axes  (Angles in LH space)
-	FLT  synctimes[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES];
 
 	PoserDataIMU lastimu;
 } PoserDataFullScene;

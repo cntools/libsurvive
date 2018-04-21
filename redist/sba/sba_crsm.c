@@ -22,9 +22,6 @@
 
 #include "sba.h"
 
-static void sba_crsm_print(struct sba_crsm *sm, FILE *fp);
-static void sba_crsm_build(struct sba_crsm *sm, int *m, int nr, int nc);
-
 /* allocate a sparse CRS matrix */
 void sba_crsm_alloc(struct sba_crsm *sm, int nr, int nc, int nnz) {
 	int msz;
@@ -48,46 +45,6 @@ void sba_crsm_free(struct sba_crsm *sm) {
 	sm->nr = sm->nc = sm->nnz = -1;
 	free(sm->val);
 	sm->val = sm->colidx = sm->rowptr = NULL;
-}
-
-static void sba_crsm_print(struct sba_crsm *sm, FILE *fp) {
-	register int i;
-
-	fprintf(fp, "matrix is %dx%d, %d non-zeros\nval: ", sm->nr, sm->nc, sm->nnz);
-	for (i = 0; i < sm->nnz; ++i)
-		fprintf(fp, "%d ", sm->val[i]);
-	fprintf(fp, "\ncolidx: ");
-	for (i = 0; i < sm->nnz; ++i)
-		fprintf(fp, "%d ", sm->colidx[i]);
-	fprintf(fp, "\nrowptr: ");
-	for (i = 0; i <= sm->nr; ++i)
-		fprintf(fp, "%d ", sm->rowptr[i]);
-	fprintf(fp, "\n");
-}
-
-/* build a sparse CRS matrix from a dense one. intended to serve as an example for sm creation */
-static void sba_crsm_build(struct sba_crsm *sm, int *m, int nr, int nc) {
-	int nnz;
-	register int i, j, k;
-
-	/* count nonzeros */
-	for (i = nnz = 0; i < nr; ++i)
-		for (j = 0; j < nc; ++j)
-			if (m[i * nc + j] != 0)
-				++nnz;
-
-	sba_crsm_alloc(sm, nr, nc, nnz);
-
-	/* fill up the sm structure */
-	for (i = k = 0; i < nr; ++i) {
-		sm->rowptr[i] = k;
-		for (j = 0; j < nc; ++j)
-			if (m[i * nc + j] != 0) {
-				sm->val[k] = m[i * nc + j];
-				sm->colidx[k++] = j;
-			}
-	}
-	sm->rowptr[nr] = nnz;
 }
 
 /* returns the index of the (i, j) element. No bounds checking! */

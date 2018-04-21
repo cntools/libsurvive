@@ -66,18 +66,6 @@ static inline uint32_t tick_difference(uint32_t most_recent, uint32_t least_rece
 	return diff;
 }
 
-void survive_imu_tracker_set_pose(SurviveIMUTracker *tracker, uint32_t timecode, SurvivePose *pose) {
-	tracker->pose = *pose;
-
-	for (int i = 0; i < 3; i++) {
-		tracker->current_velocity[i] = 0;
-	}
-	//(pose->Pos[i] - tracker->lastGT.Pos[i]) / tick_difference(timecode, tracker->lastGTTime) * 48000000.;
-
-	tracker->lastGTTime = timecode;
-	tracker->lastGT = *pose;
-}
-
 static const int imu_calibration_iterations = 100;
 
 static void RotateAccel(LinmathVec3d rAcc, const SurvivePose *pose, const LinmathVec3d accel) {

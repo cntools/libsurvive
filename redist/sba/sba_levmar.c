@@ -99,46 +99,6 @@ static double sba_mean_repr_error(int n, int mnp, double *x, double *hx, struct 
 	return err / ((double)(nprojs));
 }
 
-/* print the solution in p using sba's text format. If cnp/pnp==0 only points/cameras are printed */
-static void sba_print_sol(int n, int m, double *p, int cnp, int pnp, double *x, int mnp, struct sba_crsm *idxij,
-						  int *rcidxs, int *rcsubs) {
-	register int i, j, ii;
-	int nnz;
-	double *ptr;
-
-	if (cnp) {
-		/* print camera parameters */
-		for (j = 0; j < m; ++j) {
-			ptr = p + cnp * j;
-			for (ii = 0; ii < cnp; ++ii)
-				printf("%g ", ptr[ii]);
-			printf("\n");
-		}
-	}
-
-	if (pnp) {
-		/* 3D & 2D point parameters */
-		printf("\n\n\n# X Y Z  nframes  frame0 x0 y0  frame1 x1 y1 ...\n");
-		for (i = 0; i < n; ++i) {
-			ptr = p + cnp * m + i * pnp;
-			for (ii = 0; ii < pnp; ++ii) // print 3D coordinates
-				printf("%g ", ptr[ii]);
-
-			nnz = sba_crsm_row_elmidxs(idxij, i, rcidxs, rcsubs); /* find nonzero x_ij, j=0...m-1 */
-			printf("%d ", nnz);
-
-			for (j = 0; j < nnz; ++j) { /* point i projecting on camera rcsubs[j] */
-				ptr = x + idxij->val[rcidxs[j]] * mnp;
-
-				printf("%d ", rcsubs[j]);
-				for (ii = 0; ii < mnp; ++ii) // print 2D coordinates
-					printf("%g ", ptr[ii]);
-			}
-			printf("\n");
-		}
-	}
-}
-
 /* Compute e=x-y for two n-vectors x and y and return the squared L2 norm of e.
  * e can coincide with either x or y.
  * Uses loop unrolling and blocking to reduce bookkeeping overhead & pipeline
@@ -623,7 +583,7 @@ int sba_motstr_levmar_x(
 	 * measurements vector x
 	 */
 
-	double *pa, *pb, *ea, *eb, *dpa, *dpb; /* pointers into p, jac, eab and dp respectively */
+	double *ea, *eb, *dpa, *dpb; /* pointers into p, jac, eab and dp respectively */
 
 	/* submatrices sizes */
 	int Asz, Bsz, ABsz, Usz, Vsz, Wsz, Ysz, esz, easz, ebsz, YWtsz, Wtdasz, Sblsz, covsz;
@@ -793,8 +753,8 @@ int sba_motstr_levmar_x(
 	jac = W + Wsz + ((Wsz > ABsz) ? nvis * (Wsz - ABsz) : 0);
 
 	/* set up auxiliary pointers */
-	pa = p;
-	pb = p + m * cnp;
+	// pa = p;
+	// pb = p + m * cnp;
 	ea = eab;
 	eb = eab + m * cnp;
 	dpa = dp;

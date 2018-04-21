@@ -170,12 +170,6 @@ void DisplayPose(SurvivePose pose, size_t xResolution, size_t yResolution)
 
 	CNFGColor((b << 16) | (g << 8) | r);
 
-	int x1, x2, y1, y2;
-
-	x1 = (int)(windowCenterX - minRectSize - ((pose.Pos[2] * 40.0)) + (pose.Pos[0] * sizeScale));
-	y1 = (int)(windowCenterY - minRectSize - ((pose.Pos[2] * 40.0)) + (pose.Pos[1] * sizeScale));
-	x2 = (int)(windowCenterX + minRectSize + ((pose.Pos[2] * 40.0)) + (pose.Pos[0] * sizeScale));
-	y2 = (int)(windowCenterY + minRectSize + ((pose.Pos[2] * 40.0)) + (pose.Pos[1] * sizeScale));
 	FLT xCenter = windowCenterX + (pose.Pos[0] * sizeScale);
 	FLT yCenter = windowCenterY + (pose.Pos[1] * sizeScale);
 

@@ -47,6 +47,7 @@ typedef LinmathPose SurvivePose;
 #define BUTTON_EVENT_AXIS_CHANGED  3
 
 typedef uint32_t survive_timecode;
+survive_timecode survive_timecode_difference(survive_timecode most_recent, survive_timecode least_recent);
 
 typedef struct SurviveObject SurviveObject;
 typedef struct SurviveContext SurviveContext;

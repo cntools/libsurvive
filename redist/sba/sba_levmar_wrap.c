@@ -73,7 +73,7 @@ static void sba_motstr_Qs(double *p, struct sba_crsm *idxij, int *rcidxs, int *r
 	register int i, j;
 	int cnp, pnp, mnp;
 	double *pa, *pb, *paj, *pbi, *pxij;
-	int n, m, nnz;
+	int m, nnz;
 	struct wrap_motstr_data_ *wdata;
 	void (*proj)(int j, int i, double *aj, double *bi, double *xij, void *proj_adata);
 	void *proj_adata;
@@ -85,7 +85,7 @@ static void sba_motstr_Qs(double *p, struct sba_crsm *idxij, int *rcidxs, int *r
 	proj = wdata->proj;
 	proj_adata = wdata->adata;
 
-	n = idxij->nr;
+	// n = idxij->nr;
 	m = idxij->nc;
 	pa = p;
 	pb = p + m * cnp;
@@ -117,7 +117,7 @@ static void sba_motstr_Qs_jac(double *p, struct sba_crsm *idxij, int *rcidxs, in
 	register int i, j;
 	int cnp, pnp, mnp;
 	double *pa, *pb, *paj, *pbi, *pAij, *pBij;
-	int n, m, nnz, Asz, Bsz, ABsz, idx;
+	int m, nnz, Asz, Bsz, ABsz, idx;
 	struct wrap_motstr_data_ *wdata;
 	void (*projac)(int j, int i, double *aj, double *bi, double *Aij, double *Bij, void *projac_adata);
 	void *projac_adata;
@@ -129,7 +129,7 @@ static void sba_motstr_Qs_jac(double *p, struct sba_crsm *idxij, int *rcidxs, in
 	projac = wdata->projac;
 	projac_adata = wdata->adata;
 
-	n = idxij->nr;
+	// n = idxij->nr;
 	m = idxij->nc;
 	pa = p;
 	pb = p + m * cnp;

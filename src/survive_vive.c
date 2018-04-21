@@ -961,6 +961,8 @@ void calibrate_acc(SurviveObject* so, FLT* agm) {
 		agm[1] *= so->acc_scale[1];
 		agm[2] *= so->acc_scale[2];
 	}
+
+	fprintf(stderr, "%f\t%f\t%f\n", agm[0], agm[1], agm[2]);
 }
 
 void calibrate_gyro(SurviveObject* so, FLT* agm) {

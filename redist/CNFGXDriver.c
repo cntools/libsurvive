@@ -215,10 +215,10 @@ void CNFGHandleInput()
 	XEvent report;
 
 	int bKeyDirection = 1;
-	int r;
+
 	while( XPending( CNFGDisplay ) )
 	{
-		r=XNextEvent( CNFGDisplay, &report );
+		XNextEvent(CNFGDisplay, &report);
 
 		bKeyDirection = 1;
 		switch  (report.type)
@@ -264,7 +264,7 @@ void CNFGUpdateScreenWithBitmap( unsigned long * data, int w, int h )
 	static int depth;
 	static int lw, lh;
 	static unsigned char * lbuffer;
-	int r, ls;
+	int r;
 
 	if( !xi )
 	{
@@ -282,8 +282,6 @@ void CNFGUpdateScreenWithBitmap( unsigned long * data, int w, int h )
 		lw = w;
 		lh = h;
 	}
-
-	ls = lw * lh;
 
 	XPutImage(CNFGDisplay, CNFGWindow, CNFGWindowGC, xi, 0, 0, 0, 0, w, h );
 }

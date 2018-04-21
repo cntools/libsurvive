@@ -155,8 +155,8 @@ static uint8_t remove_outliers(SurviveObject *so) {
 
 	//	uint8_t removed_outliers = 0;
 
-	uint32_t d1 = abs(*min - mean);
-	uint32_t d2 = abs(*max - mean);
+	uint32_t d1 = mean - *min;
+	uint32_t d2 = *max - mean;
 
 	if (d1 > d2) {
 		if (d1 > tau_test) {
@@ -199,6 +199,7 @@ static void handle_lightcap2_process_sweep_data(SurviveObject *so) {
 	{
 		unsigned int longest_pulse = 0;
 		unsigned int timestamp_of_longest_pulse = 0;
+		(void)timestamp_of_longest_pulse;
 		for (int i = 0; i < SENSORS_PER_OBJECT; i++) {
 			if (lcd->sweep.sweep_len[i] > longest_pulse) {
 				longest_pulse = lcd->sweep.sweep_len[i];
@@ -216,6 +217,7 @@ static void handle_lightcap2_process_sweep_data(SurviveObject *so) {
 
 			{
 				static int counts[SENSORS_PER_OBJECT][2] = {0};
+				(void)counts;
 
 				//				if (lcd->per_sweep.activeLighthouse == 0 && !allZero)
 				if (lcd->per_sweep.activeLighthouse > -1 && !allZero) {

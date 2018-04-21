@@ -14,7 +14,7 @@ extern "C" {
 #endif
 
 // Yes, I know it's kind of arbitrary.
-#define DEFAULT_EPSILON 0.001
+#define DEFAULT_EPSILON 0.0000000001
 
 // For printf
 #define PFTHREE(x) (x)[0], (x)[1], (x)[2]
