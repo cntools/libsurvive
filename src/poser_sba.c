@@ -395,8 +395,8 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 
 				LinmathVec3d pvar = {.1, .1, .1};
 				FLT rvar = .01;
-				survive_kpose_integrate_pose(&d->kpose, lightData->timecode, &estimate, pvar, rvar);
-				estimate = d->kpose.state.pose;
+				//survive_kpose_integrate_pose(&d->kpose, lightData->timecode, &estimate, pvar, rvar);
+				//estimate = d->kpose.state.pose;
 
 				PoserData_poser_pose_func(&lightData->hdr, so, &estimate);
 			}

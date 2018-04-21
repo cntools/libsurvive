@@ -20,7 +20,7 @@ cv::Mat_<cv::Vec3b> err[2];
 
 cv::Vec3f flow2rgb(float x, float y, float scale = 1) {
 	cv::Mat_<cv::Vec3f> hsv(1, 1);
-	hsv(0, 0) = {atan2(y, x) * 180. / M_PI, 1.0, std::min(1.0f, sqrt(x * x + y * y) * scale)};
+	hsv(0, 0) = {(float)(atan2(y, x) * 180. / M_PI), 1.0, std::min(1.0f, sqrt(x * x + y * y) * scale)};
 	cv::Mat_<cv::Vec3f> bgr(1, 1);
 	cv::cvtColor(hsv, bgr, CV_HSV2RGB_FULL);
 	return bgr(0, 0) * 255;
