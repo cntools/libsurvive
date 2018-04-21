@@ -208,7 +208,8 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 		// From datasheet, can be 250, 500, 1000, 2000 deg/s range over 16 bits
 		// FLT deg_per_sec = 250;
 		if (so->gyro_scale)
-			scale3d(so->gyro_scale, so->gyro_scale, 3.14159 / 1800.);
+			scale3d(so->gyro_scale, so->gyro_scale, 3.14159 / 3600.);
+        
 	}
 
 	char fname[64];
