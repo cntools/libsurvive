@@ -16,7 +16,7 @@ ifdef WINDOWS
 	LIBSURVIVE_CORE:=redist/puff.c redist/crc32.c redist/hid-windows.c winbuild/getdelim.c
 	CC:=i686-w64-mingw32-gcc
 else
-	CFLAGS+=-Iinclude/libsurvive -fPIC -g -O3 -Iredist -DUSE_DOUBLE -std=gnu99 -rdynamic -MD #-flto
+	CFLAGS+=-Iinclude/libsurvive -fPIC -g -O3 -Iredist -DUSE_DOUBLE -std=gnu99 -rdynamic -MD
 	LDFLAGS+=-L/usr/local/lib -lpthread -lz -lm -g -llapacke  -lcblas -lm  -lusb-1.0
 	LDFLAGS_TOOLS+=-Llib -lsurvive -Wl,-rpath,lib -lX11 $(LDFLAGS)
 endif
@@ -80,22 +80,22 @@ LIBSURVIVE_D:=$(LIBSURVIVE_C:%.c=$(OBJDIR)/%.d)
 #### Tools
 
 testCocoa : testCocoa.c $(LIBRARY)
-	$(CC) -o $@ $^ $(LDFLAGS_TOOLS) $(CFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
 
 test : test.c $(LIBRARY)
-	$(CC) -o $@ $^ $(LDFLAGS_TOOLS) $(CFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
 
 simple_pose_test : simple_pose_test.c $(DRAWFUNCTIONS) $(LIBRARY)
-	$(CC) -o $@ $^ $(LDFLAGS_TOOLS) $(CFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS) 
 
 data_recorder : data_recorder.c $(LIBRARY)
-	$(CC) -o $@ $^ $(LDFLAGS_TOOLS) $(CFLAGS) 
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS) 
 
 calibrate :  calibrate.c $(DRAWFUNCTIONS) $(LIBRARY)
-	$(CC) -o $@ $^ $(LDFLAGS_TOOLS) $(CFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
 
 calibrate_client :  calibrate_client.c $(GRAPHICS_LOFI) $(LIBRARY)
-	$(CC) -o $@ $^ $(LDFLAGS_TOOLS) $(CFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS) 
 
 
 #### Testers.
@@ -140,7 +140,7 @@ $(STATIC_LIBRARY) : $(LIBSURVIVE_O) $(OBJDIR)
 	ar rcs --plugin=$$(gcc --print-file-name=liblto_plugin.so) lib/libsurvive.a $(LIBSURVIVE_O)
 
 $(OBJDIR)/%.o : %.c $(OBJDIR)
-	$(CC) -c -o $@ $< $(CFLAGS)
+	$(CC) $(CFLAGS) -c $< -o $@
 
 calibrate_tcc : $(LIBSURVIVE_C)
 	tcc -DRUNTIME_SYMNUM $(CFLAGS) -o $@ $^ $(LDFLAGS) calibrate.c $(DRAWFUNCTIONS) redist/symbol_enumerator.c
