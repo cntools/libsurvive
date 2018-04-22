@@ -25,7 +25,7 @@ endif
 CC?=gcc
 
 
-ifdef EXTRA_WARNINGS
+ifdef USE_ASAN
 	CFLAGS+=-fsanitize=address -fsanitize=undefined
 endif
 
