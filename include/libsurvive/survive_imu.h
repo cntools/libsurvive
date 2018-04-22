@@ -2,6 +2,7 @@
 #define _SURVIVE_IMU_H
 
 #include "poser.h"
+#include "survive.h"
 #include "survive_types.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -13,6 +14,7 @@ extern "C" {
 struct SurviveIMUTracker_p;
 
 typedef struct {
+	SurviveObject *so;
 	bool is_initialized;
 
 	FLT updir[3];

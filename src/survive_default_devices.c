@@ -24,7 +24,7 @@ survive_create_device(SurviveContext *ctx, const char *driver_name,
 	device->pulse_synctime_offset = 20000;
 	device->pulse_synctime_slack = 5000;
 	device->timecenter_ticks = device->timebase_hz / 240;
-
+	device->imu_freq = 250.f;
 	device->haptic = fn;
 
 	return device;
@@ -178,15 +178,21 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 		if (so->acc_bias)
 			scale3d(so->acc_bias, so->acc_bias, 2. / 1000.); // Odd but seems right.
 		if (so->gyro_scale) {
-			scale3d(so->gyro_scale, so->gyro_scale, 0.000065665);
+			FLT deg_per_sec = 500;
+			scale3d(so->gyro_scale, so->gyro_scale, deg_per_sec / (1 << 15) * LINMATHPI / 180.);
+			// scale3d(so->gyro_scale, so->gyro_scale, 0.000065665);
 		}
+
+		so->imu_freq = 1000.f;
 	} else if (memcmp(so->codename, "WM", 2) == 0) {
 		if (so->acc_scale)
 			scale3d(so->acc_scale, so->acc_scale, 2. / 8192.0);
 		if (so->acc_bias)
 			scale3d(so->acc_bias, so->acc_bias, 2. / 1000.); // Need to verify.
+
+		FLT deg_per_sec = 2000;
 		if (so->gyro_scale)
-			scale3d(so->gyro_scale, so->gyro_scale, 3.14159 / 1800. / 1.8); //??! 1.8 feels right but why?!
+			scale3d(so->gyro_scale, so->gyro_scale, deg_per_sec / (1 << 15) * LINMATHPI / 180.);
 		int j;
 		for (j = 0; j < so->sensor_ct; j++) {
 			so->sensor_locations[j * 3 + 0] *= 1.0;
@@ -206,10 +212,10 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 			scale3d(so->acc_bias, so->acc_bias, 1. / 1000.);
 
 		// From datasheet, can be 250, 500, 1000, 2000 deg/s range over 16 bits
-		// FLT deg_per_sec = 250;
+		FLT deg_per_sec = 2000;
 		if (so->gyro_scale)
-			scale3d(so->gyro_scale, so->gyro_scale, 3.14159 / 3600.);
-        
+			scale3d(so->gyro_scale, so->gyro_scale, deg_per_sec / (1 << 15) * LINMATHPI / 180.);
+		// scale3d(so->gyro_scale, so->gyro_scale, 3.14159 / 1800. / 1.8);
 	}
 
 	char fname[64];

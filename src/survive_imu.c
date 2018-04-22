@@ -15,7 +15,7 @@ static void mahony_ahrs(SurviveIMUTracker *tracker, LinmathVec3d _gyro, LinmathV
 	LinmathVec3d accel;
 	memcpy(accel, _accel, 3 * sizeof(FLT));
 
-	const FLT sample_f = 240;
+	const FLT sample_f = tracker->so->imu_freq;
 	const FLT prop_gain = .5;
 	const FLT int_gain = 0;
 
@@ -119,6 +119,7 @@ void survive_imu_tracker_integrate(SurviveObject *so, SurviveIMUTracker *tracker
 			quatfrom2vectors(tracker->pose.Rot, tracker->updir, up);
 			tracker->accel_scale_bias = 1. / magnitude3d(tracker->updir);
 			tracker->is_initialized = true;
+			tracker->so = so;
 			return;
 		}
 
