@@ -15,3 +15,11 @@ Here's what I see
  * I never see E-only
  * on a related note, I need to find a better way to power-cycle the TS4231 from a Teensy
  * right now I power-cycle both.
+
+Later on...
+
+ * well, I can get the thing to work - pulses on E and D - in a number of ways, but now that I tried your "do nothing, just read", the question becomes what of all that machinery exists really for the non-default modes
+ * goToWatch? nah, not needed, but JSeibel (the Triad guy who wrote this) does it all the time
+ * write_config? not needed, but the Triad code does it anyway
+ * the bus setup? only needed if you want to read back the config word, apparently
+ 
