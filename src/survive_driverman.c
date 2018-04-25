@@ -31,7 +31,6 @@ const char *GetDriverNameMatching(const char *prefix, int place) {
 	int prefixlen = (int)strlen(prefix);
 
 	for (i = 0; i < NrDrivers; i++) {
-		fprintf(stderr, "%s %s\n", prefix, DriverNames[i]);
 		if (strncmp(prefix, DriverNames[i], prefixlen) == 0)
 			if (0 == (place--))
 				return DriverNames[i];

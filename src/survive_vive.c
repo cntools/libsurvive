@@ -1722,7 +1722,7 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	    sv->udev[USB_DEV_W_WATCHMAN1] ) {
 	  survive_add_driver( ctx, sv, survive_vive_usb_poll, survive_vive_close, survive_vive_send_magic );
 	} else {
-	  SV_ERROR("No USB devices detected");
+	  SV_INFO("No USB devices detected");
 	}
 
 	//Next, pull out the config stuff.

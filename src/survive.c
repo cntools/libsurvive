@@ -343,6 +343,11 @@ int survive_startup(SurviveContext *ctx) {
 		}
 	}
 
+	if( ctx->objs_ct == 0 )
+	{
+		SV_ERROR( "Fatal error: No trackable objects found in any calibrators." );
+	}
+
 	return 0;
 }
 
