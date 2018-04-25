@@ -17,13 +17,6 @@ survive_create_device(SurviveContext *ctx, const char *driver_name,
 	memcpy(device->drivername, driver_name, strlen(driver_name));
 
 	device->timebase_hz = 48000000;
-	device->pulsedist_max_ticks = 500000;
-	device->pulselength_min_sync = 2200;
-	device->pulse_in_clear_time = 35000;
-	device->pulse_max_for_sweep = 1800;
-	device->pulse_synctime_offset = 20000;
-	device->pulse_synctime_slack = 5000;
-	device->timecenter_ticks = device->timebase_hz / 240;
 	device->imu_freq = 250.f;
 	device->haptic = fn;
 

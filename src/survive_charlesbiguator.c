@@ -6,6 +6,14 @@
 #include <stdint.h>
 #include <string.h>
 
+#define PULSELENGTH_MIN_SYNC 2200
+#define TIMECENTER_TICKS     (48000000/240)
+#define PULSEDIST_MAX_TICKS  500000
+#define PULSE_IN_CLEAR_TIME  35000
+#define PULSE_MAX_FOR_SWEEP   1800
+#define PULSE_SYNCTIME_OFFSET 20000 //unused?
+#define PULSE_SYNCTIME_SLACK  5000
+
 static int32_t decode_acode(uint32_t length, int32_t main_divisor) {
 	//+50 adds a small offset and seems to help always get it right.
 	// Check the +50 in the future to see how well this works on a variety of hardware.
@@ -82,22 +90,22 @@ void DisambiguatorCharles(SurviveObject *so, LightcapElement *le) {
 	int last_sync_length = so->last_sync_length[ssn];
 	int32_t delta = le->timestamp - last_sync_time; // Handle time wrapping (be sure to be int32)
 
-	if (delta < -so->pulsedist_max_ticks || delta > so->pulsedist_max_ticks) {
+	if (delta < -PULSEDIST_MAX_TICKS || delta > PULSEDIST_MAX_TICKS) {
 		// Reset pulse, etc.
 		so->sync_set_number = -1;
-		delta = so->pulsedist_max_ticks;
+		delta = PULSEDIST_MAX_TICKS;
 		//		return; //if we don't know what lighthouse this is we don't care to do much else
 	}
 
-	if (le->length > so->pulselength_min_sync) // Pulse longer indicates a sync pulse.
+	if (le->length > PULSELENGTH_MIN_SYNC) // Pulse longer indicates a sync pulse.
 	{
-		int is_new_pulse = delta > so->pulselength_min_sync /*1500*/ + last_sync_length;
+		int is_new_pulse = delta > PULSELENGTH_MIN_SYNC /*1500*/ + last_sync_length;
 
 		if (is_new_pulse) {
-			int is_master_sync_pulse = delta > so->pulse_in_clear_time /*40000*/;
+			int is_master_sync_pulse = delta > PULSE_IN_CLEAR_TIME /*40000*/;
 			int is_pulse_from_same_lh_as_last_sweep;
-			int tp = delta % (so->timecenter_ticks * 2);
-			is_pulse_from_same_lh_as_last_sweep = tp < so->pulse_synctime_slack && tp > -so->pulse_synctime_slack;
+			int tp = delta % (TIMECENTER_TICKS * 2);
+			is_pulse_from_same_lh_as_last_sweep = tp < PULSE_SYNCTIME_SLACK && tp > -PULSE_SYNCTIME_SLACK;
 
 			if (!so->did_handle_ootx) {
 				HandleOOTX(ctx, so);
@@ -161,7 +169,7 @@ void DisambiguatorCharles(SurviveObject *so, LightcapElement *le) {
 	// Any else- statements below here are
 
 	// See if this is a valid actual pulse.
-	else if (le->length < so->pulse_max_for_sweep && delta > so->pulse_in_clear_time && ssn >= 0) {
+	else if (le->length < PULSE_MAX_FOR_SWEEP && delta > PULSE_IN_CLEAR_TIME && ssn >= 0) {
 		int32_t tpco = so->last_sync_length[0];
 
 #if NUM_LIGHTHOUSES != 2
@@ -187,8 +195,8 @@ void DisambiguatorCharles(SurviveObject *so, LightcapElement *le) {
 			int32_t offset_from = le->timestamp - dl + le->length / 2;
 
 			// Make sure pulse is in valid window
-			if (offset_from < so->timecenter_ticks * 2 - so->pulse_in_clear_time &&
-				offset_from > so->pulse_in_clear_time) {
+			if (offset_from < TIMECENTER_TICKS * 2 - PULSE_IN_CLEAR_TIME &&
+				offset_from > PULSE_IN_CLEAR_TIME) {
 				ctx->lightproc(so, le->sensor_id, acode, offset_from, le->timestamp, le->length, whichlh);
 			}
 		}

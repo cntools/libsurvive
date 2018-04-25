@@ -81,14 +81,6 @@ struct SurviveObject {
 
 	// Timing sensitive data (mostly for disambiguation)
 	int32_t timebase_hz;		  // 48,000,000 for normal vive hardware.  (checked)
-	int32_t timecenter_ticks;	 // 200,000 for normal vive hardware.     (checked)  (This doubles-up as 2x this = full
-								  // sweep length)
-	int32_t pulsedist_max_ticks;  // 500,000 for normal vive hardware.   (guessed)
-	int32_t pulselength_min_sync; // 2,200 for normal vive hardware.    (guessed)
-	int32_t pulse_in_clear_time;  // 35,000 for normal vive hardware.    (guessed)
-	int32_t pulse_max_for_sweep;  // 1,800 for normal vive hardware.     (guessed)
-	int32_t pulse_synctime_offset; // 20,000 for normal vive hardware.  (guessed)
-	int32_t pulse_synctime_slack;  // 5,000 for normal vive hardware.    (guessed)
 
 	// Flood info, for calculating which laser is currently sweeping.
 	void *disambiguator_data;

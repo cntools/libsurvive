@@ -9,6 +9,8 @@
 //XXX TODO: Once data is avialble in the context, use the stuff here to handle converting from time codes to
 //proper angles, then from there perform the rest of the solution. 
 
+#define TIMECENTER_TICKS (48000000/240) //for now.
+
 void survive_default_light_process( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length, uint32_t lh)
 {
 	SurviveContext * ctx = so->ctx;
@@ -45,7 +47,7 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 
 	//No loner need sync information past this point.
 	if( sensor_id < 0 ) return;
-	FLT angle = (timeinsweep - so->timecenter_ticks) * (1./so->timecenter_ticks * 3.14159265359/2.0);
+	FLT angle = (timeinsweep - TIMECENTER_TICKS) * (1./TIMECENTER_TICKS * 3.14159265359/2.0);
 
 	//Need to now do angle correction.
 	static int use_bsd_cal = -1;
