@@ -1,14 +1,6 @@
-NOTICE: Based off of https://github.com/collabora/OSVR-Vive-Libre
- Originally Copyright 2016 Philipp Zabel
- Originally Copyright 2016 Lubosz Sarnecki <lubosz.sarnecki@collabora.co.uk>
- Originally Copyright (C) 2013 Fredrik Hultin
- Originally Copyright (C) 2013 Jakob Bornecrantz
-
-All code is licensed under the MIT/x11 License.  You may re-license the code under the GPL or LGPL licenses.
-
 MIT License
 
-Copyright (c) <>< 2016 C. N. Lohr
+Copyright (c) 2016-2018 <>< Charles Lohr, J. David Berger, Michael W. Turvey
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
