@@ -68,6 +68,15 @@ int DriverRegDummy(SurviveContext *ctx)
 	device->driver = sp;
 	memcpy(device->codename, "DM0", 4);
 	memcpy(device->drivername, "DUM", 4);
+	device->sensor_ct = 1;
+	device->sensor_locations = malloc( sizeof(FLT)*3 );
+	device->sensor_normals = malloc( sizeof(FLT)*3 );
+	device->sensor_locations[0] = 0;
+	device->sensor_locations[1] = 0;
+	device->sensor_locations[2] = 0;
+	device->sensor_normals[0] = 0;
+	device->sensor_normals[1] = 0;
+	device->sensor_normals[2] = 1;
 
 	device->timebase_hz = 48000000;
 	device->imu_freq = 1000.0f;
