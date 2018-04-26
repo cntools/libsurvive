@@ -166,12 +166,25 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		FLT dist = dot3d(sensorpos_rel_lh, sweep_normal);
 
 		if ((i = dd->ptsweep) < MAX_PT_PER_SWEEP) {
+			int repeat = 0;
+			int k;
+
+			//Detect repeated hits.  a rare problem but can happen with lossy sources of pose.
+			for( k = 0; k < dd->ptsweep; k++ )
+			{
+				if( dd->sensor_ids[k] == sensor_id )
+				{
+					repeat = 1;
+					i = k;
+				}
+			}
 			memcpy(dd->normal_at_errors[i], sweep_normal, sizeof(FLT) * 3);
 			dd->quantity_errors[i] = dist;
 			dd->angles_at_pts[i] = angle;
 			dd->sensor_ids[i] = sensor_id;
 			memcpy(&dd->object_pose_at_hit[i], &dd->InteralPoseUsedForCalc, sizeof(SurvivePose));
-			dd->ptsweep++;
+			if( !repeat )
+				dd->ptsweep++;
 		}
 
 		dd->last_angle_lh_axis[lhid][axis] = inangle;
@@ -337,7 +350,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 			// Stage 4: "Tug" on the rotation of the object, from all of the sensor's pov.
 			// If we were able to determine likliehood of a hit in the sweep instead of afterward
 			// we would actually be able to perform this on a per-hit basis.
-			if (1) {
+			if (validpoints > 1) {
 				LinmathQuat correction;
 				quatcopy(correction, LinmathQuat_Identity);
 				for (i = 0; i < pts; i++) {
