@@ -33,10 +33,10 @@ endif
 
 SBA:=redist/sba/sba_chkjac.c  redist/sba/sba_crsm.c  redist/sba/sba_lapack.c  redist/sba/sba_levmar.c  redist/sba/sba_levmar_wrap.c redist/minimal_opencv.c src/poser_epnp.c src/poser_sba.c src/epnp/epnp.c src/poser_general_optimizer.c
 LIBSURVIVE_CORE+=src/survive.c src/survive_process.c src/ootx_decoder.c src/survive_driverman.c src/survive_default_devices.c src/survive_playback.c src/survive_config.c src/survive_cal.c  src/poser.c src/survive_sensor_activations.c src/survive_disambiguator.c src/survive_imu.c src/survive_kalman.c
-MINIMAL_NEEDED+=src/survive_usb.c src/survive_charlesbiguator.c  src/survive_vive.c src/survive_reproject.c 
-AUX_NEEDED+=src/survive_turveybiguator.c  src/survive_statebased_disambiguator.c src/survive_driver_dummy.c
+MINIMAL_NEEDED+=src/survive_usb.c src/survive_charlesbiguator.c  src/survive_vive.c src/survive_reproject.c
+AUX_NEEDED+=src/survive_turveybiguator.c  src/survive_statebased_disambiguator.c src/survive_driver_dummy.c src/survive_driver_udp.c
 POSERS:=src/poser_dummy.c src/poser_imu.c src/poser_charlesrefine.c
-EXTRA_POSERS:=src/poser_daveortho.c src/poser_charlesslow.c src/poser_octavioradii.c src/poser_turveytori.c  
+EXTRA_POSERS:=src/poser_daveortho.c src/poser_charlesslow.c src/poser_octavioradii.c src/poser_turveytori.c
 REDISTS:=redist/json_helpers.c redist/linmath.c redist/jsmn.c
 
 
@@ -86,16 +86,16 @@ test : test.c $(LIBRARY)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
 
 simple_pose_test : simple_pose_test.c $(DRAWFUNCTIONS) $(LIBRARY)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS) 
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
 
 data_recorder : data_recorder.c $(LIBRARY)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS) 
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
 
 calibrate :  calibrate.c $(DRAWFUNCTIONS) $(LIBRARY)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
 
 calibrate_client :  calibrate_client.c $(GRAPHICS_LOFI) $(LIBRARY)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS) 
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
 
 
 #### Testers.
@@ -189,5 +189,3 @@ help :
 	@echo "    clean              Erase build and incremental files."
 	@echo "    buildfolders       Produce build file structure."
 	@echo "    $(LIBRARY)  Produce libsurvive.so"
-
-
