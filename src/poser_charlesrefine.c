@@ -350,7 +350,6 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 			// Stage 4: "Tug" on the rotation of the object, from all of the sensor's pov.
 			// If we were able to determine likliehood of a hit in the sweep instead of afterward
 			// we would actually be able to perform this on a per-hit basis.
-			printf( ":::%d\n", validpoints );
 			if (validpoints > 1) {
 				LinmathQuat correction;
 				quatcopy(correction, LinmathQuat_Identity);

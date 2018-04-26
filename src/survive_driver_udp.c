@@ -37,6 +37,8 @@ typedef struct SurviveDriverUDP SurviveDriverUDP;
 static int UDP_poll(struct SurviveContext *ctx, void *_driver) {
 	SurviveDriverUDP *driver = _driver;
 	int cnt;
+	for( ;; )
+	{
 		cnt = recvfrom(driver->sock, (char *) &sendbuf, sizeof(sendbuf), MSG_DONTWAIT | MSG_NOSIGNAL , (struct sockaddr *) &driver->addr, &driver->addrlen);
 		 if (cnt < 0) {
 				// perror("recvfrom");
@@ -53,8 +55,7 @@ static int UDP_poll(struct SurviveContext *ctx, void *_driver) {
 	 		le.length = sendbuf.length_event * 48 / 160;		//16 bits
 	 		le.timestamp = sendbuf.ccount_struc * 48 / 160; 		//32 bits
 	 		handle_lightcap(driver->so, &le);
-
-
+	}
 
 /*
 	To emit an IMU event, send this:
