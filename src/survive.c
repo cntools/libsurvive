@@ -94,6 +94,8 @@ void survive_verify_FLT_size(uint32_t user_size) {
 }
 
 SurviveContext *survive_init_internal(int argc, char *const *argv) {
+	int i;
+
 #ifdef RUNTIME_SYMNUM
 	if (!did_runtime_symnum) {
 		EnumerateSymbols(SymnumCheck);
@@ -131,15 +133,17 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 
 	ctx->state = SURVIVE_STOPPED;
 
+	survive_config_populate_ctx( ctx );
+
 	ctx->global_config_values = malloc(sizeof(config_group));
 	ctx->temporary_config_values = malloc(sizeof(config_group));
 	ctx->lh_config = malloc(sizeof(config_group) * NUM_LIGHTHOUSES);
 
 	// initdata
-	init_config_group(ctx->global_config_values, 10);
-	init_config_group(ctx->temporary_config_values, 20);
-	init_config_group(&ctx->lh_config[0], 10);
-	init_config_group(&ctx->lh_config[1], 10);
+	init_config_group(ctx->global_config_values, 10, ctx);
+	init_config_group(ctx->temporary_config_values, 20, ctx);
+	for( i = 0; i < NUM_LIGHTHOUSES; i++ )
+			init_config_group(&ctx->lh_config[i], 10, ctx);
 
 	// Process command-line parameters.
 	char *const *av = argv + 1;
@@ -176,7 +180,9 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 				const char *name = *av + 2; // Skip the '--';
 				bool flagArgument = (av + 1 == argvend) || av[1][0] == '-';
 
-				if (flagArgument) {
+				if ( strcmp( name, "help" ) == 0 )
+					showhelp = 1;
+				else if (flagArgument) {
 					bool value = strncmp("no-", name, 3) != 0;
 					if (value == 0) {
 						name += 3; // Skip "no-"
@@ -202,14 +208,18 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 		fprintf(stderr, " --playback [log file]   - Read events from the given file instead of USB devices.\n");
 		fprintf(stderr, " --playback-factor [f]   - Time factor of playback -- 1 is run at the same timing as "
 						"original, 0 is run as fast as possible.\n");
-		return 0;
 	}
 
 	config_read(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
 	ctx->activeLighthouses = survive_configi(ctx, "lighthousecount", SC_SETCONFIG, 2);
-
 	config_read_lighthouse(ctx->lh_config, &(ctx->bsd[0]), 0);
 	config_read_lighthouse(ctx->lh_config, &(ctx->bsd[1]), 1);
+
+	if( showhelp )
+	{
+		survive_print_known_configs( ctx );
+		return 0;
+	}
 
 	ctx->faultfunction = survivefault;
 	ctx->notefunction = survivenote;

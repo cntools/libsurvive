@@ -10,16 +10,102 @@
 #endif
 #include "math.h"
 #include <errno.h>
+#include <stdarg.h>
 
-//#define MAX_CONFIG_ENTRIES 100
-//#define MAX_LIGHTHOUSES 2
+//Static-time registration system.
 
-// config_group global_config_values;
-// config_group lh_config[MAX_LIGHTHOUSES]; //lighthouse configs
+struct static_conf_t
+{
+	union
+	{
+		FLT f;
+		int i;
+		char * s;
+	} data_default;
+	const char * name;
+	const char * description;
+	char type;
+};
 
-// static uint16_t used_entries = 0;
+static struct static_conf_t static_configs[MAX_SHORTHAND_CONFIGS];
 
-// static FILE *config_file = NULL;
+void survive_config_bind_variable( char vt, int * variable, const char * name, const char * description, ... )
+{
+	va_list ap;
+	va_start(ap, description); 
+	int i;
+	struct static_conf_t * config;
+	for( i = 0; i < MAX_SHORTHAND_CONFIGS; i++ )
+	{
+		config = &static_configs[i];
+		if( !config->name || strcmp( config->name, name ) == 0 ) break;
+	}
+	if( i == MAX_SHORTHAND_CONFIGS )
+	{
+		fprintf( stderr, "Fatal: Too many static configuration items. Please recompile with a higher MAX_STATIC_CONFIGS\n" );
+		exit( -1 );
+	}
+	if( !config->description ) config->description = description;
+	if( !config->name ) config->name = name;
+	if( config->type && config->type != vt )
+	{
+		fprintf( stderr, "Fatal: Internal error on variable %s.  Types disagree.\n", name ); 
+		exit( -2 );
+	}
+	config->type = vt;
+	switch( vt )
+	{
+	case 'i': config->data_default.i = va_arg(ap, int); break;
+	case 'f': config->data_default.f = va_arg(ap, FLT); break;
+	case 's': config->data_default.s = va_arg(ap, char *); break;
+	default:
+		fprintf( stderr, "Fatal: Internal error on variable %s.  Unknown type %c\n", name, vt );
+	}
+	*variable = i;
+}
+
+void survive_config_populate_ctx( SurviveContext * ctx )
+{
+	int i;
+	struct static_conf_t * config;
+	for( i = 0; i < MAX_SHORTHAND_CONFIGS; i++ )
+	{
+		config = &static_configs[i];
+		switch( config->type )
+		{
+		case 'i': ctx->shorthand_configs[i].i = config->data_default.i;
+		case 'f': ctx->shorthand_configs[i].f = config->data_default.f;
+		case 's': ctx->shorthand_configs[i].s = config->data_default.s;
+		}
+	}
+}
+
+void survive_print_known_configs( SurviveContext * ctx )
+{
+	int i;
+	struct static_conf_t * config;
+	for( i = 0; i < MAX_SHORTHAND_CONFIGS; i++ )
+	{
+		config = &static_configs[i];
+		if( !config->name ) break;
+		switch( config->type )
+		{
+		case 'i':	printf( "%10d %20s  %s\n", config->data_default.i, config->name, config->description ); break;
+		case 'f':	printf( "%10f %20s  %s\n", config->data_default.f, config->name, config->description ); break;
+		case 's':	printf( "%10s %20s  %s\n", config->data_default.s, config->name, config->description ); break;
+		}
+	}
+
+	//XXX TODO: Maybe this should print out the actual config values after being updated from the rest of the config system?
+	//struct config_group *global_config_values;
+	//struct config_group	*temporary_config_values; // Set per-session, from command-line. Not saved but override global_config_values
+}
+
+
+
+
+
+
 const FLT *config_set_float_a(config_group *cg, const char *tag, const FLT *values, uint8_t count);
 
 void init_config_entry(config_entry *ce) {
@@ -27,6 +113,7 @@ void init_config_entry(config_entry *ce) {
 	ce->tag = NULL;
 	ce->type = CONFIG_UNKNOWN;
 	ce->elements = 0;
+	ce->shorthand_place = -1;
 }
 
 void destroy_config_entry(config_entry *ce) {
@@ -40,11 +127,12 @@ void destroy_config_entry(config_entry *ce) {
 	}
 }
 
-void init_config_group(config_group *cg, uint8_t count) {
+void init_config_group(config_group *cg, uint8_t count, SurviveContext * ctx) {
 	uint16_t i = 0;
 	cg->used_entries = 0;
 	cg->max_entries = count;
 	cg->config_entries = NULL;
+	cg->ctx = ctx;
 
 	if (count == 0)
 		return;
@@ -214,7 +302,7 @@ uint16_t config_read_float_array(config_group *cg, const char *tag, FLT *values,
 	return count;
 }
 
-config_entry *next_unused_entry(config_group *cg) {
+config_entry *next_unused_entry(config_group *cg, const char * tag) {
 	config_entry *cv = NULL;
 	//	assert(cg->used_entries < cg->max_entries);
 
@@ -224,13 +312,28 @@ config_entry *next_unused_entry(config_group *cg) {
 	cv = cg->config_entries + cg->used_entries;
 
 	cg->used_entries++;
+
+
+	int i;
+	struct static_conf_t * config;
+	for( i = 0; i < MAX_SHORTHAND_CONFIGS; i++ )
+	{
+		config = &static_configs[i];
+		if( !config->name ) break;
+		if( strcmp( config->name, tag ) == 0 )
+		{
+			cv->shorthand_place = i;
+			break;
+		}
+	}
+
 	return cv;
 }
 
 const char *config_set_str(config_group *cg, const char *tag, const char *value) {
 	config_entry *cv = find_config_entry(cg, tag);
 	if (cv == NULL)
-		cv = next_unused_entry(cg);
+		cv = next_unused_entry(cg,tag);
 
 	sstrcpy(&(cv->tag), tag);
 
@@ -241,17 +344,21 @@ const char *config_set_str(config_group *cg, const char *tag, const char *value)
 	}
 	cv->type = CONFIG_STRING;
 
+	if( cv->shorthand_place >= 0 )	cg->ctx->shorthand_configs[cv->shorthand_place].s = value;
+
 	return value;
 }
 
 const uint32_t config_set_uint32(config_group *cg, const char *tag, const uint32_t value) {
 	config_entry *cv = find_config_entry(cg, tag);
 	if (cv == NULL)
-		cv = next_unused_entry(cg);
+		cv = next_unused_entry(cg,tag);
 
 	sstrcpy(&(cv->tag), tag);
 	cv->numeric.i = value;
 	cv->type = CONFIG_UINT32;
+
+	if( cv->shorthand_place >= 0 )	cg->ctx->shorthand_configs[cv->shorthand_place].i = value;
 
 	return value;
 }
@@ -259,11 +366,13 @@ const uint32_t config_set_uint32(config_group *cg, const char *tag, const uint32
 const FLT config_set_float(config_group *cg, const char *tag, const FLT value) {
 	config_entry *cv = find_config_entry(cg, tag);
 	if (cv == NULL)
-		cv = next_unused_entry(cg);
+		cv = next_unused_entry(cg,tag);
 
 	sstrcpy(&(cv->tag), tag);
 	cv->numeric.f = value;
 	cv->type = CONFIG_FLOAT;
+
+	if( cv->shorthand_place >= 0 )	cg->ctx->shorthand_configs[cv->shorthand_place].f = value;
 
 	return value;
 }
@@ -271,7 +380,7 @@ const FLT config_set_float(config_group *cg, const char *tag, const FLT value) {
 const FLT *config_set_float_a(config_group *cg, const char *tag, const FLT *values, uint8_t count) {
 	config_entry *cv = find_config_entry(cg, tag);
 	if (cv == NULL)
-		cv = next_unused_entry(cg);
+		cv = next_unused_entry(cg,tag);
 
 	sstrcpy(&(cv->tag), tag);
 
@@ -548,3 +657,5 @@ const char *survive_configs(SurviveContext *ctx, const char *tag, char flags, co
 
 	return def;
 }
+
+

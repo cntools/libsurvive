@@ -55,9 +55,9 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		//TODO: Actually do Madgwick's algorithm
 		LinmathQuat	applymotion;
 		const SurvivePose * object_pose = &so->OutPose;
-		imuData->gyro[0] *= 1./240.;
-		imuData->gyro[1] *= 1./240.;
-		imuData->gyro[2] *= 1./240.;
+		imuData->gyro[0] *= 1./1000.;
+		imuData->gyro[1] *= 1./1000.;
+		imuData->gyro[2] *= 1./1000.;
 		quatfromeuler( applymotion, imuData->gyro );
 		//printf( "%f %f %f\n", imuData->gyro [0], imuData->gyro [1], imuData->gyro [2] );
 

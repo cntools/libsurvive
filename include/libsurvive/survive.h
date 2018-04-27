@@ -10,6 +10,14 @@
 extern "C" {
 #endif
 
+
+#ifdef _MSC_VER
+	#define SURVIVE_EXPORT_CONSTRUCTOR SURVIVE_EXPORT
+#else
+	#define SURVIVE_EXPORT_CONSTRUCTOR __attribute__((constructor))
+#endif
+
+
 /**
  * This struct encodes what the last effective angles seen on a sensor were, and when they occured.
  */
@@ -144,6 +152,7 @@ struct BaseStationData {
 struct config_group;
 
 #define BUTTON_QUEUE_MAX_LEN 32
+#define MAX_SHORTHAND_CONFIGS 32
 
 // note: buttonId and axisId are 1-indexed values.
 // a value of 0 for an id means that no data is present in that value
@@ -199,12 +208,6 @@ struct SurviveContext {
 	lighthouse_pose_func lighthouseposeproc;
 	htc_config_func configfunction;
 	handle_lightcap_func lightcapfunction;
-
-	struct config_group *global_config_values;
-	struct config_group *lh_config; // lighthouse configs
-	struct config_group
-		*temporary_config_values; // Set per-session, from command-line. Not saved but override global_config_values
-
 	// Calibration data:
 	int activeLighthouses;
 	BaseStationData bsd[NUM_LIGHTHOUSES];
@@ -226,6 +229,15 @@ struct SurviveContext {
 
 	void *user_ptr;
 	struct survive_calibration_config calibration_config;
+
+
+	struct config_group *global_config_values;
+	struct config_group *lh_config; // lighthouse configs
+	struct config_group	*temporary_config_values; // Set per-session, from command-line. Not saved but override global_config_values
+
+	//shorthand configs for the non-function-call syntax config variables.
+	//It helps with self-documentation, too.  Indexes into this are determined by `static_configs`
+	union {	int i; FLT f; const char * s; } shorthand_configs[MAX_SHORTHAND_CONFIGS];
 };
 
 SURVIVE_EXPORT void survive_verify_FLT_size(
@@ -279,6 +291,19 @@ SURVIVE_EXPORT FLT survive_configf(SurviveContext *ctx, const char *tag, char fl
 SURVIVE_EXPORT uint32_t survive_configi(SurviveContext *ctx, const char *tag, char flags, uint32_t def);
 SURVIVE_EXPORT const char *survive_configs(SurviveContext *ctx, const char *tag, char flags, const char *def);
 
+#define STATIC_CONFIG_ITEM_I( variable, name, description, default_value ) static int variable; \
+	SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##variable() { survive_config_bind_variable( 'i', &variable, name, description, default_value ); }
+#define GCONFIGI( variable ) (ctx->shorthand_configs[variable].i)
+
+#define STATIC_CONFIG_ITEM_F( variable, name, description, default_value ) static int variable; \
+	SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##variable() { survive_config_bind_variable( 'f', &variable, name, description, default_value ); }
+#define GCONFIGF( variable ) (ctx->shorthand_configs[variable].f)
+
+#define STATIC_CONFIG_ITEM_S( variable, name, description, default_value ) static int variable; \
+	SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##variable() { survive_config_bind_variable( 's', &variable, name, description, default_value ); }
+#define GCONFIGS( variable ) (ctx->shorthand_configs[variable].s)
+
+
 // Install the calibrator.
 SURVIVE_EXPORT void survive_cal_install(SurviveContext *ctx); // XXX This will be removed if not already done so.
 
@@ -308,13 +333,8 @@ SURVIVE_EXPORT int survive_default_htc_config_process(SurviveObject *so, char *c
 
 void RegisterDriver(const char *name, void *data);
 
-#ifdef _MSC_VER
 #define REGISTER_LINKTIME(func)                                                                                        \
-	SURVIVE_EXPORT void REGISTER##func() { RegisterDriver(#func, &func); }
-#else
-#define REGISTER_LINKTIME(func)                                                                                        \
-	void __attribute__((constructor)) REGISTER##func() { RegisterDriver(#func, &func); }
-#endif
+	SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##func() { RegisterDriver(#func, &func); }
 
 ///////////////////////// General stuff for writing drivers ///////
 

@@ -21,6 +21,10 @@ ssize_t getdelim(char **lineptr, size_t *n, int delimiter, FILE *stream);
 ssize_t getline(char **lineptr, size_t *n, FILE *stream);
 #endif
 
+
+STATIC_CONFIG_ITEM_F( PLAYBACK_FACTOR, "playback-factor", "Time factor of playback -- 1 is run at the same timing as original, 0 is run as fast as possible.", 1.0f );
+
+
 typedef struct SurviveRecordingData {
 	bool alwaysWriteStdOut;
 	bool writeRawLight;
@@ -172,7 +176,6 @@ struct SurvivePlaybackData {
 	FILE *playback_file;
 	int lineno;
 
-	FLT time_factor;
 	double next_time_us;
 	bool hasRawLight;
 };
@@ -292,7 +295,7 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 			line = 0;
 		}
 
-		if (driver->next_time_us * driver->time_factor > timestamp_in_us())
+		if (driver->next_time_us * GCONFIGF( PLAYBACK_FACTOR ) > timestamp_in_us())
 			return 0;
 		driver->next_time_us = 0;
 
@@ -384,7 +387,6 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	SurvivePlaybackData *sp = calloc(1, sizeof(SurvivePlaybackData));
 	sp->ctx = ctx;
 	sp->playback_dir = playback_file;
-	sp->time_factor = survive_configf(ctx, "playback-factor", SC_GET, 1.f);
 
 	sp->playback_file = fopen(playback_file, "r");
 	if (sp->playback_file == 0) {
@@ -392,7 +394,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 		return -1;
 	}
 
-	SV_INFO("Using playback file '%s' with timefactor of %f", playback_file, sp->time_factor);
+	SV_INFO("Using playback file '%s' with timefactor of %f", playback_file, GCONFIGF( PLAYBACK_FACTOR ) );
 	SurviveObject *hmd = survive_create_hmd(ctx, "Playback", sp);
 	SurviveObject *wm0 = survive_create_wm0(ctx, "Playback", sp, 0);
 	SurviveObject *wm1 = survive_create_wm1(ctx, "Playback", sp, 0);
