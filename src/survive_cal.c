@@ -27,6 +27,11 @@
 int mkdir(const char *);
 #endif
 
+
+STATIC_CONFIG_ITEM( REQ_TRACK_FOR_CAL, "requiredtrackersforcal", 's', "Which devices will be used, i.e. HMD,WM0,WM1", "" );
+STATIC_CONFIG_ITEM( ALLOW_TRACK_FOR_CAL, "allowalltrackersforcal", 'i', "Allow use of additional connected devices for calibration", 0 );
+STATIC_CONFIG_ITEM( CONFIG_POSER, "configposer", 's', "Poser used for calibration step", "SBA" );
+
 #define PTS_BEFORE_COMMON 32
 #define NEEDED_COMMON_POINTS 10
 #define MIN_SENSORS_VISIBLE_PER_LH_FOR_CAL 4
@@ -145,7 +150,7 @@ void survive_cal_install( struct SurviveContext * ctx )
 	// basically, libsurvive will detect whatever they have plugged in and start using that.  
 //	const char * RequiredTrackersForCal = config_read_str(ctx->global_config_values, "RequiredTrackersForCal", "HMD,WM0,WM1");
 	const char *RequiredTrackersForCal = survive_configs(ctx, "requiredtrackersforcal", SC_SETCONFIG, "");
-	const uint32_t AllowAllTrackersForCal = survive_configi(ctx, "allowalltrackersforcal", SC_SETCONFIG, 1);
+	const uint32_t AllowAllTrackersForCal = survive_configi(ctx, "allowalltrackersforcal", SC_SETCONFIG, 0);
 	size_t requiredTrackersFound = 0;
 
 	for (int j=0; j < ctx->objs_ct; j++)

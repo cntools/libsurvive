@@ -234,10 +234,6 @@ struct SurviveContext {
 	struct config_group *global_config_values;
 	struct config_group *lh_config; // lighthouse configs
 	struct config_group	*temporary_config_values; // Set per-session, from command-line. Not saved but override global_config_values
-
-	//shorthand configs for the non-function-call syntax config variables.
-	//It helps with self-documentation, too.  Indexes into this are determined by `static_configs`
-	union {	int i; FLT f; const char * s; } shorthand_configs[MAX_SHORTHAND_CONFIGS];
 };
 
 SURVIVE_EXPORT void survive_verify_FLT_size(
@@ -290,19 +286,12 @@ SURVIVE_EXPORT int survive_send_magic(SurviveContext *ctx, int magic_code, void 
 SURVIVE_EXPORT FLT survive_configf(SurviveContext *ctx, const char *tag, char flags, FLT def);
 SURVIVE_EXPORT uint32_t survive_configi(SurviveContext *ctx, const char *tag, char flags, uint32_t def);
 SURVIVE_EXPORT const char *survive_configs(SurviveContext *ctx, const char *tag, char flags, const char *def);
+SURVIVE_EXPORT void survive_attach_config(SurviveContext *ctx, const char *tag, void * var, char type );
+SURVIVE_EXPORT void survive_detach_config(SurviveContext *ctx, const char *tag, void * var );
 
-#define STATIC_CONFIG_ITEM_I( variable, name, description, default_value ) static int variable; \
-	SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##variable() { survive_config_bind_variable( 'i', &variable, name, description, default_value ); }
-#define GCONFIGI( variable ) (ctx->shorthand_configs[variable].i)
-
-#define STATIC_CONFIG_ITEM_F( variable, name, description, default_value ) static int variable; \
-	SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##variable() { survive_config_bind_variable( 'f', &variable, name, description, default_value ); }
-#define GCONFIGF( variable ) (ctx->shorthand_configs[variable].f)
-
-#define STATIC_CONFIG_ITEM_S( variable, name, description, default_value ) static int variable; \
-	SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##variable() { survive_config_bind_variable( 's', &variable, name, description, default_value ); }
-#define GCONFIGS( variable ) (ctx->shorthand_configs[variable].s)
-
+#define STATIC_CONFIG_ITEM( variable, name, type, description, default_value ) \
+	SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##variable() { survive_config_bind_variable( type, name, description, default_value ); }
+	void survive_config_bind_variable( char vt, const char * name, const char * description, ... ); //Only used at boot.
 
 // Install the calibrator.
 SURVIVE_EXPORT void survive_cal_install(SurviveContext *ctx); // XXX This will be removed if not already done so.

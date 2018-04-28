@@ -40,6 +40,7 @@
 #endif
 #endif
 
+
 struct SurviveViveData;
 
 const short vidpids[] = {

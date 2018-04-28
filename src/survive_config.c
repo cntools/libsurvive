@@ -28,28 +28,32 @@ struct static_conf_t
 };
 
 static struct static_conf_t static_configs[MAX_SHORTHAND_CONFIGS];
+int nr_static_configs;
 
-void survive_config_bind_variable( char vt, int * variable, const char * name, const char * description, ... )
+void survive_config_bind_variable( char vt, const char * name, const char * description, ... )
 {
 	va_list ap;
 	va_start(ap, description); 
 	int i;
 	struct static_conf_t * config;
-	for( i = 0; i < MAX_SHORTHAND_CONFIGS; i++ )
+	for( i = 0; i < nr_static_configs; i++ )
 	{
 		config = &static_configs[i];
-		if( !config->name || strcmp( config->name, name ) == 0 ) break;
+		if( strcmp( config->name, name ) == 0 ) break;
 	}
+	config = &static_configs[i];
 	if( i == MAX_SHORTHAND_CONFIGS )
 	{
 		fprintf( stderr, "Fatal: Too many static configuration items. Please recompile with a higher MAX_STATIC_CONFIGS\n" );
 		exit( -1 );
 	}
+	if( i == nr_static_configs ) nr_static_configs++;
+
 	if( !config->description ) config->description = description;
 	if( !config->name ) config->name = name;
 	if( config->type && config->type != vt )
 	{
-		fprintf( stderr, "Fatal: Internal error on variable %s.  Types disagree.\n", name ); 
+		fprintf( stderr, "Fatal: Internal error on variable %s.  Types disagree [%c/%c].\n", name, config->type, vt ); 
 		exit( -2 );
 	}
 	config->type = vt;
@@ -61,50 +65,113 @@ void survive_config_bind_variable( char vt, int * variable, const char * name, c
 	default:
 		fprintf( stderr, "Fatal: Internal error on variable %s.  Unknown type %c\n", name, vt );
 	}
-	*variable = i;
 }
 
-void survive_config_populate_ctx( SurviveContext * ctx )
+int survive_print_help_for_parameter( const char * tomap )
 {
 	int i;
-	struct static_conf_t * config;
-	for( i = 0; i < MAX_SHORTHAND_CONFIGS; i++ )
+	for( i = 0; i < nr_static_configs; i++ )
 	{
-		config = &static_configs[i];
-		switch( config->type )
+		struct static_conf_t * sc = &static_configs[i];
+		if( strcmp( sc->name, tomap ) == 0 )
 		{
-		case 'i': ctx->shorthand_configs[i].i = config->data_default.i;
-		case 'f': ctx->shorthand_configs[i].f = config->data_default.f;
-		case 's': ctx->shorthand_configs[i].s = config->data_default.s;
+			char sthelp[160];
+			snprintf( sthelp, 159, "    %s: %s [%c]", sc->name, sc->description, sc->type );
+			fprintf( stderr, "\0337\033[1A\033[1000D%s\0338", sthelp, strlen( sthelp ));
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static void PrintConfigGroup(config_group * grp, const char ** chkval, int * cvs, int verbose )
+{
+	int i, j;
+	for( i = 0; i < grp->used_entries; i++ )
+	{
+		config_entry * ce = &grp->config_entries[i];
+		for( j = 0; j < *cvs; j++ )
+		{
+			if( strcmp( chkval[j], ce->tag ) == 0 ) break;
+		}
+		if( j == *cvs )
+		{
+			if( verbose )
+			{
+				char stobuf[128];
+				switch( ce->type )
+				{
+				case CONFIG_UINT32:	snprintf( stobuf, 127, " --%s %d", ce->tag, ce->numeric.i ); break;
+				case CONFIG_FLOAT:	snprintf( stobuf, 127, " --%s %f", ce->tag, ce->numeric.f ); break;
+				case CONFIG_STRING:	snprintf( stobuf, 127, " --%s %s", ce->tag, ce->data ); break;
+				case CONFIG_FLOAT_ARRAY: printf( "[FA] %20s", ce->tag ); break;
+				}
+
+				int namepad = 40 - strlen( stobuf );
+				printf( "%s%*c", stobuf, namepad, (ce->type==CONFIG_FLOAT)?'f':(ce->type==CONFIG_UINT32)?'i':(ce->type==CONFIG_STRING)?'s':'.' );
+
+				//Try to get description from the static tags.
+				for( j = 0; j < nr_static_configs; j++ )
+				{
+					if( strcmp( static_configs[j].name, ce->tag ) == 0 )
+					{
+						printf( " %s", static_configs[j].description );
+					}
+				}
+				printf( "\n" );
+			}
+			else
+			{
+				printf( "--%s ", ce->tag );
+			}
+			chkval[*cvs] = ce->tag;
+			(*cvs)++;
 		}
 	}
 }
 
-void survive_print_known_configs( SurviveContext * ctx )
+void survive_print_known_configs( SurviveContext * ctx, int verbose )
 {
 	int i;
-	struct static_conf_t * config;
-	for( i = 0; i < MAX_SHORTHAND_CONFIGS; i++ )
+
+	const char * checked_values[256];
+	int cvs = 0;
+	memset( checked_values, 0, sizeof( checked_values ) );
+	PrintConfigGroup( ctx->temporary_config_values, checked_values, &cvs, verbose );
+	PrintConfigGroup( ctx->global_config_values, checked_values, &cvs, verbose );
+	int j;
+	for( j = 0; j < nr_static_configs; j++ )
 	{
-		config = &static_configs[i];
-		if( !config->name ) break;
-		switch( config->type )
+		for( i = 0; i < cvs; i++ )
 		{
-		case 'i':	printf( "%10d %20s  %s\n", config->data_default.i, config->name, config->description ); break;
-		case 'f':	printf( "%10f %20s  %s\n", config->data_default.f, config->name, config->description ); break;
-		case 's':	printf( "%10s %20s  %s\n", config->data_default.s, config->name, config->description ); break;
+			if( strcmp( static_configs[j].name, checked_values[i] ) == 0 )
+			break;
+		}
+		if( i == cvs )
+		{
+			struct static_conf_t * config = &static_configs[j];
+			const char * name = config->name;
+
+			if( verbose )
+			{
+				char stobuf[128];
+				switch( config->type )
+				{
+				case 'i':	snprintf( stobuf, 127, " --%s %d", name, config->data_default.i ); break;
+				case 'f':	snprintf( stobuf, 127, " --%s %f", name, config->data_default.f ); break;
+				case 's':	snprintf( stobuf, 127, " --%s %s", name, config->data_default.s ); break;
+				case 'a':	snprintf( stobuf, 127, "[FA] %25s  %s\n", config->name, config->description ); break;
+				}
+				int namepad = 40 - strlen( stobuf );
+				printf( "%s%*c %s\n", stobuf, namepad, config->type, config->description );
+			}
+			else
+			{
+				printf( "--%s ", name );
+			}
 		}
 	}
-
-	//XXX TODO: Maybe this should print out the actual config values after being updated from the rest of the config system?
-	//struct config_group *global_config_values;
-	//struct config_group	*temporary_config_values; // Set per-session, from command-line. Not saved but override global_config_values
 }
-
-
-
-
-
 
 const FLT *config_set_float_a(config_group *cg, const char *tag, const FLT *values, uint8_t count);
 
@@ -113,7 +180,7 @@ void init_config_entry(config_entry *ce) {
 	ce->tag = NULL;
 	ce->type = CONFIG_UNKNOWN;
 	ce->elements = 0;
-	ce->shorthand_place = -1;
+	ce->update_list = 0;
 }
 
 void destroy_config_entry(config_entry *ce) {
@@ -313,20 +380,6 @@ config_entry *next_unused_entry(config_group *cg, const char * tag) {
 
 	cg->used_entries++;
 
-
-	int i;
-	struct static_conf_t * config;
-	for( i = 0; i < MAX_SHORTHAND_CONFIGS; i++ )
-	{
-		config = &static_configs[i];
-		if( !config->name ) break;
-		if( strcmp( config->name, tag ) == 0 )
-		{
-			cv->shorthand_place = i;
-			break;
-		}
-	}
-
 	return cv;
 }
 
@@ -344,7 +397,8 @@ const char *config_set_str(config_group *cg, const char *tag, const char *value)
 	}
 	cv->type = CONFIG_STRING;
 
-	if( cv->shorthand_place >= 0 )	cg->ctx->shorthand_configs[cv->shorthand_place].s = value;
+	update_list_t * t = cv->update_list;
+	while( t ) { *((const char **)t->value) = value; t = t->next; }
 
 	return value;
 }
@@ -358,7 +412,8 @@ const uint32_t config_set_uint32(config_group *cg, const char *tag, const uint32
 	cv->numeric.i = value;
 	cv->type = CONFIG_UINT32;
 
-	if( cv->shorthand_place >= 0 )	cg->ctx->shorthand_configs[cv->shorthand_place].i = value;
+	update_list_t * t = cv->update_list;
+	while( t ) { *((uint32_t*)t->value) = value; t = t->next; }
 
 	return value;
 }
@@ -372,7 +427,9 @@ const FLT config_set_float(config_group *cg, const char *tag, const FLT value) {
 	cv->numeric.f = value;
 	cv->type = CONFIG_FLOAT;
 
-	if( cv->shorthand_place >= 0 )	cg->ctx->shorthand_configs[cv->shorthand_place].f = value;
+	
+	update_list_t * t = cv->update_list;
+	while( t ) { *((FLT*)t->value) = value; t = t->next; }
 
 	return value;
 }
@@ -610,6 +667,21 @@ FLT survive_configf(SurviveContext *ctx, const char *tag, char flags, FLT def) {
 		}
 	}
 
+
+	int i;
+	if( !(flags & SC_OVERRIDE) )
+	{
+		for( i = 0; i < nr_static_configs; i++ )
+		{
+			struct static_conf_t * sc = &static_configs[i];
+			if( strcmp( tag, sc->name ) == 0 )
+			{
+				def = sc->data_default.f;
+			}
+		}
+	}
+
+
 	// If override is flagged, or, we can't find the variable, ,continue on.
 	if (flags & SC_SETCONFIG) {
 		config_set_float(ctx->temporary_config_values, tag, def);
@@ -629,6 +701,21 @@ uint32_t survive_configi(SurviveContext *ctx, const char *tag, char flags, uint3
 		}
 	}
 
+	uint32_t statictimedef = def;
+	int i;
+	if( !(flags & SC_OVERRIDE) )
+	{
+		for( i = 0; i < nr_static_configs; i++ )
+		{
+			struct static_conf_t * sc = &static_configs[i];
+			if( strcmp( tag, sc->name ) == 0 )
+			{
+				def = sc->data_default.i;
+			}
+		}
+	}
+
+
 	// If override is flagged, or, we can't find the variable, ,continue on.
 	if (flags & SC_SETCONFIG) {
 		config_set_uint32(ctx->temporary_config_values, tag, def);
@@ -647,15 +734,87 @@ const char *survive_configs(SurviveContext *ctx, const char *tag, char flags, co
 			return cv->data;
 	}
 
-	// If override is flagged, or, we can't find the variable, ,continue on.
-	if (flags & SC_SETCONFIG) {
-		config_set_str(ctx->temporary_config_values, tag, def);
-		config_set_str(ctx->global_config_values, tag, def);
-	} else if (flags & SC_SET) {
-		config_set_str(ctx->temporary_config_values, tag, def);
+	int i;
+	char foundtype = 0;
+	const char * founddata = def;
+	for( i = 0; i < nr_static_configs; i++ )
+	{
+		struct static_conf_t * sc = &static_configs[i];
+		if( !sc ) break;
+		if( strcmp( tag, sc->name ) == 0 )
+		{
+			founddata = sc->data_default.s;
+			foundtype = sc->type;
+			if( !(flags & SC_OVERRIDE) )
+			{
+				def = founddata;
+			}
+		}
+	}
+
+	if( !foundtype || foundtype == 's' )
+	{
+		// If override is flagged, or, we can't find the variable, ,continue on.
+		if (flags & SC_SETCONFIG) {
+			config_set_str(ctx->temporary_config_values, tag, def);
+			config_set_str(ctx->global_config_values, tag, def);
+		} else if (flags & SC_SET) {
+			config_set_str(ctx->temporary_config_values, tag, def);
+		} else {
+			return founddata;
+		}
+	}
+	else if( foundtype == 'i' )
+	{
+		survive_configi( ctx, tag, flags, atoi( def ) );
+	}
+	else if( foundtype == 'f' )
+	{
+		survive_configf( ctx, tag, flags, atof( def ) );
 	}
 
 	return def;
+}
+
+SURVIVE_EXPORT void survive_attach_config(SurviveContext *ctx, const char *tag, void * var, char type )
+{
+	config_entry *cv = sc_search(ctx, tag);
+	if( !cv )
+	{
+		SV_ERROR( "Configuration item %s not initialized.\n", tag );
+		return;
+	}
+	update_list_t ** ul = &cv->update_list;
+	while( *ul )
+	{
+		if( (*ul)->value == var ) return;
+		ul = &((*ul)->next);
+	}
+	update_list_t * t = *ul = malloc( sizeof( update_list_t ) );
+	t->next = 0;
+	t->value = var;
+}
+
+SURVIVE_EXPORT void survive_detach_config(SurviveContext *ctx, const char *tag, void * var )
+{
+	config_entry *cv = sc_search(ctx, tag);
+	if( !cv )
+	{
+		SV_ERROR( "Configuration item %s not initialized.\n", tag );
+		return;
+	}
+
+	update_list_t ** ul = &cv->update_list;
+	while( *ul )
+	{
+		if( (*ul)->value == var )
+		{
+			update_list_t * v = *ul;
+			*ul = (*ul)->next;
+			free( v );
+		}
+		ul = &((*ul)->next);
+	}
 }
 
 
