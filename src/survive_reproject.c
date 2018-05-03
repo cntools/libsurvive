@@ -43,7 +43,6 @@ void survive_reproject_full(FLT *out, const SurvivePose *obj_pose, const Linmath
 	FLT x = -t_pt[0] / -t_pt[2];
 	FLT y = t_pt[1] / -t_pt[2];
 	double xy[] = {x, y};
-	double ang[] = {atan(x), atan(y)};
 
 	const FLT *phase = bsd->fcal.phase;
 	const FLT *curve = bsd->fcal.curve;
@@ -52,6 +51,9 @@ void survive_reproject_full(FLT *out, const SurvivePose *obj_pose, const Linmath
 	const FLT *gibMag = bsd->fcal.gibmag;
 	enum SurviveCalFlag f = config->use_flag;
 
+	double ang[] = {atan2(-t_pt[0] - (tilt[0] + curve[0] * t_pt[1]) * t_pt[1], -t_pt[2]),
+			atan2(t_pt[1]  - (tilt[1] + curve[1] * t_pt[0]) * t_pt[0], -t_pt[2])};
+
 	for (int axis = 0; axis < 2; axis++) {
 		int opp_axis = axis == 0 ? 1 : 0;
 
@@ -59,10 +61,6 @@ void survive_reproject_full(FLT *out, const SurvivePose *obj_pose, const Linmath
 
 		if (f & SVCal_Phase)
 			out[axis] -= config->phase_scale * phase[axis];
-		if (f & SVCal_Tilt)
-			out[axis] -= tan(config->tilt_scale * tilt[axis]) * xy[opp_axis];
-		if (f & SVCal_Curve)
-			out[axis] -= config->curve_scale * curve[axis] * xy[opp_axis] * xy[opp_axis];
 		if (f & SVCal_Gib)
 			out[axis] -= config->gib_scale * sin(gibPhase[axis] + ang[axis]) * gibMag[axis];
 	}
@@ -84,7 +82,6 @@ void survive_reproject_from_pose_with_bsd(const BaseStationData *bsd, const surv
 	FLT x = -t_pt[0] / -t_pt[2];
 	FLT y = t_pt[1] / -t_pt[2];
 	double xy[] = {x, y};
-	double ang[] = {atan(x), atan(y)};
 
 	const FLT *phase = bsd->fcal.phase;
 	const FLT *curve = bsd->fcal.curve;
@@ -92,6 +89,9 @@ void survive_reproject_from_pose_with_bsd(const BaseStationData *bsd, const surv
 	const FLT *gibPhase = bsd->fcal.gibpha;
 	const FLT *gibMag = bsd->fcal.gibmag;
 	enum SurviveCalFlag f = config->use_flag;
+	
+	double ang[] = {atan2(-t_pt[0] - (tilt[0] + curve[0] * t_pt[1]) * t_pt[1], -t_pt[2]),
+			atan2(t_pt[1]  - (tilt[1] + curve[1] * t_pt[0]) * t_pt[0], -t_pt[2])};
 
 	for (int axis = 0; axis < 2; axis++) {
 		int opp_axis = axis == 0 ? 1 : 0;
@@ -100,10 +100,6 @@ void survive_reproject_from_pose_with_bsd(const BaseStationData *bsd, const surv
 
 		if (f & SVCal_Phase)
 			out[axis] -= config->phase_scale * phase[axis];
-		if (f & SVCal_Tilt)
-			out[axis] -= tan(config->tilt_scale * tilt[axis]) * xy[opp_axis];
-		if (f & SVCal_Curve)
-			out[axis] -= config->curve_scale * curve[axis] * xy[opp_axis] * xy[opp_axis];
 		if (f & SVCal_Gib)
 			out[axis] -= config->gib_scale * sin(gibPhase[axis] + ang[axis]) * gibMag[axis];
 	}
@@ -152,9 +148,9 @@ void survive_reproject(const SurviveContext *ctx, int lighthouse, FLT *point3d, 
 survive_calibration_config survive_calibration_config_ctor() {
 	return (survive_calibration_config){.use_flag = SVCal_All,
 										.phase_scale = 1.,
-										.tilt_scale = 1. / 10.,
-										.curve_scale = 1. / 10.,
-										.gib_scale = -1. / 10.};
+										.tilt_scale = 1. / 1.,
+										.curve_scale = 1. / 1.,
+										.gib_scale = -1. / 1.};
 }
 
 void survive_apply_bsd_calibration(SurviveContext *ctx, int lh, const FLT *in, FLT *out) {
