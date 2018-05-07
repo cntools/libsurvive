@@ -49,6 +49,9 @@ function add_lighthouse(idx, p, q) {
 	}
 
 function recolorTrackers(when) {
+    if(ctx == undefined)
+	return;
+    
 	for (var key in angles) {
 		var colors = [];
 
@@ -501,6 +504,6 @@ function animate() {
 	}
 
 function render() {
-	var use_fpv = $("#fpv")[0].checked;
+	var use_fpv = $("#fpv").length > 0 && $("#fpv")[0].checked;
 	renderer.render(scene, use_fpv ? fpv_camera : camera);
 }
