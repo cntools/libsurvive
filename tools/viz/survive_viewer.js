@@ -146,7 +146,7 @@ function redrawCanvas(when) {
 						ang[0][1] < when[key] - visible_tolerance)
 						continue;
 
-					var half_fov = 1.0472 * 2 / 5.;
+					var half_fov = 1.0472 * 2.;
 					var x = ang[0][0] / half_fov * canvas.width / 2 + canvas.width / 2;
 					var y = -ang[1][0] / half_fov * canvas.height / 2 + canvas.height / 2;
 

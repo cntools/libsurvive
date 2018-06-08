@@ -45,6 +45,11 @@ int mkdir(const char *);
 static void handle_calibration( struct SurviveCalData *cd );
 static void reset_calibration( struct SurviveCalData * cd );
 
+void ootx_error_clbk_d(ootx_decoder_context *ct, const char *msg) {
+	SurviveContext *ctx = (SurviveContext *)(ct->user);
+	SV_INFO("%s", msg);
+}
+
 void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 {
 	static uint8_t lighthouses_completed = 0;
@@ -191,7 +196,7 @@ void survive_cal_install( struct SurviveContext * ctx )
 	cd->ConfigPoserFn = GetDriverByConfig(ctx, "Poser", "configposer", "SBA", 0);
 
 	ootx_packet_clbk = ootx_packet_clbk_d;
-
+	ootx_error_clbk = ootx_error_clbk_d;
 	ctx->calptr = cd;
 }
 

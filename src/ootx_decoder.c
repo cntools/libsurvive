@@ -19,10 +19,16 @@
 
 #define MAX_BUFF_SIZE 64
 
+void (*ootx_error_clbk)(ootx_decoder_context *ctx, const char *msg) = NULL;
 void (*ootx_packet_clbk)(ootx_decoder_context * ctx, ootx_packet* packet) = NULL;
 void (*ootx_bad_crc_clbk)(ootx_decoder_context * ctx, ootx_packet* packet, uint32_t crc) = NULL;
 
 void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit);
+
+void ootx_error(ootx_decoder_context *ctx, const char *msg) {
+	if (ootx_error_clbk)
+		ootx_error_clbk(ctx, msg);
+}
 
 void ootx_init_decoder_context(ootx_decoder_context *ctx) {
 	ctx->buf_offset = 0;
@@ -106,7 +112,7 @@ void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
 	if ( ootx_detect_preamble(ctx, dbit) ) {
 		/*	data stream can start over at any time so we must
 			always look for preamble bits */
-		//printf("Preamble found\n");
+		ootx_error(ctx, "Preamble found");
 		ootx_reset_buffer(ctx);
 		ctx->bits_processed = 0;
 		ctx->found_preamble = 1;
@@ -117,6 +123,7 @@ void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
 		if( !dbit )
 		{
 			//printf("Bad sync bit\n");
+			ootx_error(ctx, "OOTX Decoder: Bad sync bit");
 			ootx_reset_buffer(ctx);
 		}
 		ctx->bits_processed = 0;
