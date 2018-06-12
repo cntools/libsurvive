@@ -57,16 +57,16 @@ else                    # Linux / FreeBSD
 	GRAPHICS_LOFI:=redist/CNFGFunctions.c redist/CNFGXDriver.c
 endif
 
+ifdef LINUX_USE_HIDAPI
+	CFLAGS:=$(CFLAGS) -DHIDAPI
+	REDISTS:=$(REDISTS) redist/hid-linux.c
+	LDFLAGS:=$(LDFLAGS) -ludev
+endif
+
 ifdef MINIMAL
 	LIBSURVIVE_C:=$(REDISTS) $(LIBSURVIVE_CORE) $(MINIMAL_NEEDED)
 else
 	LIBSURVIVE_C:=$(POSERS) $(REDISTS) $(LIBSURVIVE_CORE) $(SBA) $(MINIMAL_NEEDED) $(AUX_NEEDED)
-endif
-
-ifdef LINUX_USE_HIDAPI
-	CFLAGS:=$(CFLAGS) -DHIDAPI
-	REDISTS:=$(REDISTS) redist/hid-linux.o
-	LDFLAGS:=$(LDFLAGS) -ludev
 endif
 
 

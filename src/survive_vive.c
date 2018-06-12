@@ -47,15 +47,15 @@ const short vidpids[] = {
 	0x28de, 0x2000, 0, //Valve HMD IMU & Lighthouse Sensors
 	0x28de, 0x2101, 0, //Valve Watchman
 	0x28de, 0x2101, 1, //Valve Watchman
-	0x28de, 0x2022, 0, //HTC Tracker
+	0x28de, 0x2300, 0, //HTC Tracker
 	0x28de, 0x2012, 0, //Valve Watchman, USB connected
 #ifdef HIDAPI
 	0x28de, 0x2000, 1, //Valve HMD lighthouse(B) (only used on HIDAPI, for lightcap)
-	0x28de, 0x2022, 1, //HTC Tracker (only used on HIDAPI, for lightcap)
+	0x28de, 0x2300, 1, //HTC Tracker (only used on HIDAPI, for lightcap)
 	0x28de, 0x2012, 1, //Valve Watchman, USB connected (only used on HIDAPI, for lightcap)
 
 	0x28de, 0x2000, 2, //Valve HMD lighthouse(B) (only used on HIDAPI, for lightcap)
-	0x28de, 0x2022, 2, //HTC Tracker (only used on HIDAPI, for lightcap)
+	0x28de, 0x2300, 2, //HTC Tracker (only used on HIDAPI, for lightcap)
 	0x28de, 0x2012, 2, //Valve Watchman, USB connected (only used on HIDAPI, for lightcap)
 
 #endif
@@ -1515,6 +1515,8 @@ void survive_data_cb( SurviveUSBInterface * si )
 		break;
 	}
 	case USB_IF_LIGHTCAP:
+	case USB_IF_TRACKER0_LIGHTCAP:
+	case USB_IF_W_WATCHMAN1_LIGHTCAP:
 	{
 		int i;
 		for( i = 0; i < 9; i++ )
@@ -1527,29 +1529,6 @@ void survive_data_cb( SurviveUSBInterface * si )
 			handle_lightcap( obj, &le );
 		}		
 		break;
-	}
-	case USB_IF_W_WATCHMAN1_LIGHTCAP:
-	case USB_IF_TRACKER0_LIGHTCAP:
-	{
-		int i=0;
-		for( i = 0; i < 7; i++ )
-		{
-			unsigned short *sensorId = (unsigned short *)readdata;
-			unsigned short *length = (unsigned short *)(&(readdata[2]));
-			unsigned long *time = (unsigned long *)(&(readdata[4]));
-			LightcapElement le;
-			le.sensor_id = (uint8_t)POP2;
-			le.length = POP2;
-			le.timestamp = POP4;
-			if( le.sensor_id > 0xfd ) continue;  //
-			handle_lightcap( obj, &le );
-		}		
-		break;
-
-		if (id != 33)
-		{
-			int a = 0; // breakpoint here
-		}
 	}
 	case USB_IF_TRACKER0_BUTTONS:
 	case USB_IF_W_WATCHMAN1_BUTTONS:
