@@ -59,8 +59,9 @@ endif
 
 ifdef LINUX_USE_HIDAPI
 	CFLAGS:=$(CFLAGS) -DHIDAPI
-	REDISTS:=$(REDISTS) redist/hid-linux.c
-	LDFLAGS:=$(LDFLAGS) -ludev
+    #TODO why doesn't the redist version work
+	#REDISTS:=$(REDISTS) redist/hid-linux.c
+	LDFLAGS:=$(LDFLAGS) -ludev -lhidapi-libusb
 endif
 
 ifdef MINIMAL
