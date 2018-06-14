@@ -47,14 +47,17 @@ const short vidpids[] = {
 	0x28de, 0x2000, 0, //Valve HMD IMU & Lighthouse Sensors
 	0x28de, 0x2101, 0, //Valve Watchman
 	0x28de, 0x2101, 1, //Valve Watchman
-	0x28de, 0x2300, 0, //HTC Tracker
+	0x28de, 0x2022, 0, //HTC Tracker
+	0x28de, 0x2300, 0, //HTC Tracker 2018
 	0x28de, 0x2012, 0, //Valve Watchman, USB connected
 #ifdef HIDAPI
 	0x28de, 0x2000, 1, //Valve HMD lighthouse(B) (only used on HIDAPI, for lightcap)
-	0x28de, 0x2300, 1, //HTC Tracker (only used on HIDAPI, for lightcap)
+	0x28de, 0x2022, 1, //HTC Tracker (only used on HIDAPI, for lightcap)
+	0x28de, 0x2300, 1, //HTC Tracker 2018 (only used on HIDAPI, for lightcap)
 	0x28de, 0x2012, 1, //Valve Watchman, USB connected (only used on HIDAPI, for lightcap)
 
 	0x28de, 0x2000, 2, //Valve HMD lighthouse(B) (only used on HIDAPI, for lightcap)
+	0x28de, 0x2022, 2, //HTC Tracker (only used on HIDAPI, for lightcap)
 	0x28de, 0x2300, 2, //HTC Tracker (only used on HIDAPI, for lightcap)
 	0x28de, 0x2012, 2, //Valve Watchman, USB connected (only used on HIDAPI, for lightcap)
 
@@ -67,53 +70,64 @@ const char * devnames[] = {
 	"Watchman 1",
 	"Watchman 2",
 	"Tracker 0",
+	"Tracker(2018) 0",
 	"Wired Watchman 1",
 #ifdef HIDAPI
 	"HMD Lightcap",
 	"Tracker 0 Lightcap",
+	"Tracker(2018) 0 Lightcap",
 	"Wired Watchman 1 Lightcap",
 
 	"HMD Buttons",
 	"Tracker 0 Buttons",
+	"Tracker(2018) Buttons",
 	"Wired Watchman 1 Buttons",
 #endif
 }; //length MAX_USB_INTERFACES
 
 
-#define USB_DEV_HMD			0
-#define USB_DEV_HMD_IMU_LH	1
-#define USB_DEV_WATCHMAN1	2
-#define USB_DEV_WATCHMAN2	3
-#define USB_DEV_TRACKER0	4
-#define USB_DEV_W_WATCHMAN1	5 // Wired Watchman attached via USB
-
+enum {
+    USB_DEV_HMD	= 0,
+    USB_DEV_HMD_IMU_LH,
+    USB_DEV_WATCHMAN1,
+    USB_DEV_WATCHMAN2,
+    USB_DEV_TRACKER0,
+    USB_DEV_TRACKER0_2018,
+    USB_DEV_W_WATCHMAN1,    // Wired Watchman attached via USB
 #ifdef HIDAPI
-#define USB_DEV_HMD_IMU_LHB 6
-#define USB_DEV_TRACKER0_LIGHTCAP 7
-#define USB_DEV_W_WATCHMAN1_LIGHTCAP 8
+    USB_DEV_HMD_IMU_LHB,
+    USB_DEV_TRACKER0_LIGHTCAP,
+    USB_DEV_TRACKER0_2018_LIGHTCAP,
+    USB_DEV_W_WATCHMAN1_LIGHTCAP,
 
-#define USB_DEV_HMD_BUTTONS 9
-#define USB_DEV_TRACKER0_BUTTONS 10
-#define USB_DEV_W_WATCHMAN1_BUTTONS 11
-
-#define MAX_USB_DEVS		12
-#else
-#define MAX_USB_DEVS		6
+    USB_DEV_HMD_BUTTONS,
+    USB_DEV_TRACKER0_BUTTONS,
+    USB_DEV_TRACKER0_2018_BUTTONS,
+    USB_DEV_W_WATCHMAN1_BUTTONS,
 #endif
+    MAX_USB_DEVS
+}
 
-#define USB_IF_HMD			0
-#define USB_IF_HMD_IMU_LH 	1
-#define USB_IF_WATCHMAN1	2
-#define USB_IF_WATCHMAN2	3
-#define USB_IF_TRACKER0		4
-#define USB_IF_W_WATCHMAN1	5
-#define USB_IF_LIGHTCAP		6
-#define USB_IF_TRACKER0_LIGHTCAP		7
-#define USB_IF_W_WATCHMAN1_LIGHTCAP		8
-#define USB_IF_HMD_BUTTONS		9
-#define USB_IF_TRACKER0_BUTTONS		10
-#define USB_IF_W_WATCHMAN1_BUTTONS		11
-#define MAX_INTERFACES		12
+enum {
+    USB_IF_HMD = 0
+    USB_IF_HMD_IMU_LH,
+    USB_IF_WATCHMAN1,
+    USB_IF_WATCHMAN2,
+    USB_IF_TRACKER0,
+    USB_IF_TRACKER0_2018,
+    USB_IF_W_WATCHMAN1,
+
+    USB_IF_LIGHTCAP,
+    USB_IF_TRACKER0_LIGHTCAP,
+    USB_IF_TRACKER0_2018_LIGHTCAP,
+    USB_IF_W_WATCHMAN1_LIGHTCAP,
+
+    USB_IF_HMD_BUTTONS,
+    USB_IF_TRACKER0_BUTTON,
+    USB_IF_TRACKER0_2018_BUTTON,
+    USB_IF_W_WATCHMAN1_BUTTONS,
+    MAX_INTERFACES
+}
 
 typedef struct SurviveUSBInterface SurviveUSBInterface;
 typedef struct SurviveViveData SurviveViveData;
