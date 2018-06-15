@@ -11,6 +11,8 @@ SurviveObject *survive_create_wm1(SurviveContext *ctx, const char *driver_name,
 								  void *driver, haptic_func cb);
 SurviveObject *survive_create_tr0(SurviveContext *ctx, const char *driver_name,
 								  void *driver);
+SurviveObject *survive_create_tr1(SurviveContext *ctx, const char *driver_name,
+								  void *driver);
 SurviveObject *survive_create_ww0(SurviveContext *ctx, const char *driver_name,
 								  void *driver);
 

@@ -58,7 +58,7 @@ const short vidpids[] = {
 
 	0x28de, 0x2000, 2, //Valve HMD lighthouse(B) (only used on HIDAPI, for lightcap)
 	0x28de, 0x2022, 2, //HTC Tracker (only used on HIDAPI, for lightcap)
-	0x28de, 0x2300, 2, //HTC Tracker (only used on HIDAPI, for lightcap)
+	0x28de, 0x2300, 2, //HTC Tracker 2018 (only used on HIDAPI, for lightcap)
 	0x28de, 0x2012, 2, //Valve Watchman, USB connected (only used on HIDAPI, for lightcap)
 
 #endif
@@ -70,64 +70,64 @@ const char * devnames[] = {
 	"Watchman 1",
 	"Watchman 2",
 	"Tracker 0",
-	"Tracker(2018) 0",
+	"Tracker 1",
 	"Wired Watchman 1",
 #ifdef HIDAPI
 	"HMD Lightcap",
 	"Tracker 0 Lightcap",
-	"Tracker(2018) 0 Lightcap",
+	"Tracker 1 Lightcap",
 	"Wired Watchman 1 Lightcap",
 
 	"HMD Buttons",
 	"Tracker 0 Buttons",
-	"Tracker(2018) Buttons",
+	"Tracker 1 Buttons",
 	"Wired Watchman 1 Buttons",
 #endif
 }; //length MAX_USB_INTERFACES
 
 
 enum {
-    USB_DEV_HMD	= 0,
+    USB_DEV_HMD = 0,
     USB_DEV_HMD_IMU_LH,
     USB_DEV_WATCHMAN1,
     USB_DEV_WATCHMAN2,
     USB_DEV_TRACKER0,
-    USB_DEV_TRACKER0_2018,
+    USB_DEV_TRACKER1,
     USB_DEV_W_WATCHMAN1,    // Wired Watchman attached via USB
 #ifdef HIDAPI
     USB_DEV_HMD_IMU_LHB,
     USB_DEV_TRACKER0_LIGHTCAP,
-    USB_DEV_TRACKER0_2018_LIGHTCAP,
+    USB_DEV_TRACKER1_LIGHTCAP,
     USB_DEV_W_WATCHMAN1_LIGHTCAP,
 
     USB_DEV_HMD_BUTTONS,
     USB_DEV_TRACKER0_BUTTONS,
-    USB_DEV_TRACKER0_2018_BUTTONS,
+    USB_DEV_TRACKER1_BUTTONS,
     USB_DEV_W_WATCHMAN1_BUTTONS,
 #endif
     MAX_USB_DEVS
-}
+};
 
 enum {
-    USB_IF_HMD = 0
+    USB_IF_HMD = 0,
     USB_IF_HMD_IMU_LH,
     USB_IF_WATCHMAN1,
     USB_IF_WATCHMAN2,
     USB_IF_TRACKER0,
-    USB_IF_TRACKER0_2018,
+    USB_IF_TRACKER1,
     USB_IF_W_WATCHMAN1,
 
     USB_IF_LIGHTCAP,
     USB_IF_TRACKER0_LIGHTCAP,
-    USB_IF_TRACKER0_2018_LIGHTCAP,
+    USB_IF_TRACKER1_LIGHTCAP,
     USB_IF_W_WATCHMAN1_LIGHTCAP,
 
     USB_IF_HMD_BUTTONS,
-    USB_IF_TRACKER0_BUTTON,
-    USB_IF_TRACKER0_2018_BUTTON,
+    USB_IF_TRACKER0_BUTTONS,
+    USB_IF_TRACKER1_BUTTONS,
     USB_IF_W_WATCHMAN1_BUTTONS,
     MAX_INTERFACES
-}
+};
 
 typedef struct SurviveUSBInterface SurviveUSBInterface;
 typedef struct SurviveViveData SurviveViveData;
@@ -182,7 +182,7 @@ void survive_data_cb( SurviveUSBInterface * si );
 
 //USB Subsystem 
 void survive_usb_close( SurviveContext * t );
-int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *wm0, SurviveObject * wm1, SurviveObject * tr0 , SurviveObject * ww0 );
+int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *wm0, SurviveObject * wm1, SurviveObject * tr0 , SurviveObject * tr1, SurviveObject * ww0 );
 int survive_usb_poll( SurviveContext * ctx );
 int survive_get_config( char ** config, SurviveViveData * ctx, int devno, int iface, int send_extra_magic );
 int survive_vive_send_magic(SurviveContext * ctx, void * drv, int magic_code, void * data, int datalen );
@@ -349,7 +349,7 @@ static inline int hid_get_feature_report_timeout(USBHANDLE device, uint16_t ifac
 	return -1;
 }
 
-int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *wm0, SurviveObject * wm1, SurviveObject * tr0 , SurviveObject * ww0 )
+int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *wm0, SurviveObject * wm1, SurviveObject * tr0, SurviveObject * tr1, SurviveObject * ww0 )
 {
 	SurviveContext * ctx = sv->ctx;
 #ifdef HIDAPI
@@ -517,6 +517,7 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 	if( sv->udev[USB_DEV_WATCHMAN1]   ) { survive_add_object( ctx, wm0 ); }
 	if( sv->udev[USB_DEV_WATCHMAN2]   ) { survive_add_object( ctx, wm1 ); }
 	if( sv->udev[USB_DEV_TRACKER0]    ) { survive_add_object( ctx, tr0 ); }
+	if( sv->udev[USB_DEV_TRACKER1]    ) { survive_add_object( ctx, tr1 ); }
 	if( sv->udev[USB_DEV_W_WATCHMAN1] ) { survive_add_object( ctx, ww0 ); }
 
 	if( sv->udev[USB_DEV_HMD] && AttachInterface( sv, hmd, USB_IF_HMD,        sv->udev[USB_DEV_HMD],        0x81, survive_data_cb, "Mainboard" ) ) { return -6; }
@@ -524,6 +525,7 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 	if( sv->udev[USB_DEV_WATCHMAN1] && AttachInterface( sv, wm0, USB_IF_WATCHMAN1,  sv->udev[USB_DEV_WATCHMAN1],  0x81, survive_data_cb, "Watchman 1" ) ) { return -8; }
 	if( sv->udev[USB_DEV_WATCHMAN2] && AttachInterface( sv, wm1, USB_IF_WATCHMAN2, sv->udev[USB_DEV_WATCHMAN2], 0x81, survive_data_cb, "Watchman 2")) { return -9; }
 	if( sv->udev[USB_DEV_TRACKER0] && AttachInterface( sv, tr0, USB_IF_TRACKER0, sv->udev[USB_DEV_TRACKER0], 0x81, survive_data_cb, "Tracker 1")) { return -10; }
+	if( sv->udev[USB_DEV_TRACKER1] && AttachInterface( sv, tr0, USB_IF_TRACKER1, sv->udev[USB_DEV_TRACKER1], 0x81, survive_data_cb, "Tracker 2")) { return -10; }
 	if( sv->udev[USB_DEV_W_WATCHMAN1] && AttachInterface( sv, ww0, USB_IF_W_WATCHMAN1, sv->udev[USB_DEV_W_WATCHMAN1], 0x81, survive_data_cb, "Wired Watchman 1")) { return -11; }
 #ifdef HIDAPI
 	//Tricky: use other interface for actual lightcap.  XXX THIS IS NOT YET RIGHT!!!
@@ -531,7 +533,9 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 
 	// This is a HACK!  But it works.  Need to investigate further
 	sv->uiface[USB_DEV_TRACKER0_LIGHTCAP].actual_len = 64;
+	sv->uiface[USB_DEV_TRACKER1_LIGHTCAP].actual_len = 64;
 	if( sv->udev[USB_DEV_TRACKER0_LIGHTCAP] && AttachInterface( sv, tr0, USB_IF_TRACKER0_LIGHTCAP, sv->udev[USB_DEV_TRACKER0_LIGHTCAP], 0x82, survive_data_cb, "Tracker 1 Lightcap")) { return -13; }
+	if( sv->udev[USB_DEV_TRACKER1_LIGHTCAP] && AttachInterface( sv, tr0, USB_IF_TRACKER1_LIGHTCAP, sv->udev[USB_DEV_TRACKER1_LIGHTCAP], 0x82, survive_data_cb, "Tracker 2 Lightcap")) { return -13; }
 
 	if( sv->udev[USB_DEV_W_WATCHMAN1_LIGHTCAP] && AttachInterface( sv, ww0, USB_IF_W_WATCHMAN1_LIGHTCAP, sv->udev[USB_DEV_W_WATCHMAN1_LIGHTCAP], 0x82, survive_data_cb, "Wired Watchman 1 Lightcap")) { return -13; }
 
@@ -542,6 +546,7 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 #else
 	if( sv->udev[USB_DEV_HMD_IMU_LH] && AttachInterface( sv, hmd, USB_IF_LIGHTCAP, sv->udev[USB_DEV_HMD_IMU_LH], 0x82, survive_data_cb, "Lightcap")) { return -12; }
 	if( sv->udev[USB_DEV_TRACKER0] && AttachInterface( sv, tr0, USB_IF_TRACKER0_LIGHTCAP, sv->udev[USB_DEV_TRACKER0], 0x82, survive_data_cb, "Tracker 0 Lightcap")) { return -13; }
+	if( sv->udev[USB_DEV_TRACKER1] && AttachInterface( sv, tr0, USB_IF_TRACKER1_LIGHTCAP, sv->udev[USB_DEV_TRACKER1], 0x82, survive_data_cb, "Tracker 1 Lightcap")) { return -13; }
 	if( sv->udev[USB_DEV_W_WATCHMAN1] && AttachInterface( sv, ww0, USB_IF_W_WATCHMAN1_LIGHTCAP, sv->udev[USB_DEV_W_WATCHMAN1], 0x82, survive_data_cb, "Wired Watchman 1 Lightcap")) { return -13; }
 #endif
 	SV_INFO( "All enumerated devices attached." );
@@ -1529,8 +1534,7 @@ void survive_data_cb( SurviveUSBInterface * si )
 		break;
 	}
 	case USB_IF_LIGHTCAP:
-	case USB_IF_TRACKER0_LIGHTCAP:
-	case USB_IF_W_WATCHMAN1_LIGHTCAP:
+	case USB_IF_TRACKER1_LIGHTCAP:
 	{
 		int i;
 		for( i = 0; i < 9; i++ )
@@ -1544,6 +1548,29 @@ void survive_data_cb( SurviveUSBInterface * si )
 		}		
 		break;
 	}
+    case USB_IF_W_WATCHMAN1_LIGHTCAP:
+    case USB_IF_TRACKER0_LIGHTCAP:
+    {
+        int i=0;
+            for( i = 0; i < 7; i++ )
+            {
+                    unsigned short *sensorId = (unsigned short *)readdata;
+                    unsigned short *length = (unsigned short *)(&(readdata[2]));
+                    unsigned long *time = (unsigned long *)(&(readdata[4]));
+                    LightcapElement le;
+                    le.sensor_id = (uint8_t)POP2;
+                    le.length = POP2;
+                    le.timestamp = POP4;
+                    if( le.sensor_id > 0xfd ) continue;  //
+                    handle_lightcap( obj, &le );
+            }
+            break;
+    
+            if (id != 33)
+            {
+                    int a = 0; // breakpoint here
+            }
+    }
 	case USB_IF_TRACKER0_BUTTONS:
 	case USB_IF_W_WATCHMAN1_BUTTONS:
 	{
@@ -1690,6 +1717,7 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	SurviveObject * wm0 = survive_create_wm0(ctx, "HTC", sv, 0);
 	SurviveObject * wm1 = survive_create_wm1(ctx, "HTC", sv, 0);
 	SurviveObject * tr0 = survive_create_tr0(ctx, "HTC", sv);
+	SurviveObject * tr1 = survive_create_tr1(ctx, "HTC", sv);
 	SurviveObject * ww0 = survive_create_ww0(ctx, "HTC", sv);
 
 	sv->ctx = ctx;
@@ -1703,7 +1731,7 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	#endif
 
 	//USB must happen last.
-	if (survive_usb_init(sv, hmd, wm0, wm1, tr0, ww0)) {
+	if (survive_usb_init(sv, hmd, wm0, wm1, tr0, tr1, ww0)) {
 			// TODO: Cleanup any libUSB stuff sitting around.
 			goto fail_gracefully;
 	}

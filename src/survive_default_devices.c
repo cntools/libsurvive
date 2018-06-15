@@ -40,6 +40,10 @@ SurviveObject *survive_create_tr0(SurviveContext *ctx, const char *driver_name,
 								  void *driver) {
 	return survive_create_device(ctx, driver_name, driver, "TR0", 0);
 }
+SurviveObject *survive_create_tr1(SurviveContext *ctx, const char *driver_name,
+								  void *driver) {
+	return survive_create_device(ctx, driver_name, driver, "TR1", 0);
+}
 SurviveObject *survive_create_ww0(SurviveContext *ctx, const char *driver_name,
 								  void *driver) {
 	return survive_create_device(ctx, driver_name, driver, "WW0", 0);
