@@ -77,7 +77,7 @@ int survive_print_help_for_parameter( const char * tomap )
 		{
 			char sthelp[160];
 			snprintf( sthelp, 159, "    %s: %s [%c]", sc->name, sc->description, sc->type );
-			fprintf( stderr, "\0337\033[1A\033[1000D%s\0338", sthelp, strlen( sthelp ));
+			fprintf( stderr, "\0337\033[1A\033[1000D%s\0338", sthelp );
 			return 1;
 		}
 	}
@@ -776,13 +776,31 @@ const char *survive_configs(SurviveContext *ctx, const char *tag, char flags, co
 	return def;
 }
 
-SURVIVE_EXPORT void survive_attach_config(SurviveContext *ctx, const char *tag, void * var, char type )
+static void survive_attach_config(SurviveContext *ctx, const char *tag, void * var, char type )
 {
 	config_entry *cv = sc_search(ctx, tag);
 	if( !cv )
 	{
-		SV_ERROR( "Configuration item %s not initialized.\n", tag );
-		return;
+		//Check to see if there is a static config with this value.
+		if( type == 'i' )
+		{
+			*((int*)var) = survive_configi( ctx, tag, SC_SET, 0);
+		}
+		if( type == 'f' )
+		{
+			*((FLT*)var) = survive_configf( ctx, tag, SC_SET, 0);
+		}
+		if( type == 's' )
+		{
+			const char * cv = survive_configs( ctx, tag, SC_SET, 0);
+			memcpy( var, cv, strlen(cv) );
+		}
+		cv = sc_search(ctx, tag);
+		if( !cv )
+		{
+			SV_ERROR( "Configuration item %s not initialized.\n", tag );
+			return;
+		}
 	}
 	update_list_t ** ul = &cv->update_list;
 	while( *ul )
@@ -793,6 +811,21 @@ SURVIVE_EXPORT void survive_attach_config(SurviveContext *ctx, const char *tag, 
 	update_list_t * t = *ul = malloc( sizeof( update_list_t ) );
 	t->next = 0;
 	t->value = var;
+}
+
+SURVIVE_EXPORT void survive_attach_configi(SurviveContext *ctx, const char *tag, int * var )
+{
+	survive_attach_config( ctx, tag, var, 'i' );
+}
+
+SURVIVE_EXPORT void survive_attach_configf(SurviveContext *ctx, const char *tag, FLT * var )
+{
+	survive_attach_config( ctx, tag, var, 'f' );
+}
+
+SURVIVE_EXPORT void survive_attach_configs(SurviveContext *ctx, const char *tag, char * var )
+{
+	survive_attach_config( ctx, tag, var, 's' );
 }
 
 SURVIVE_EXPORT void survive_detach_config(SurviveContext *ctx, const char *tag, void * var )

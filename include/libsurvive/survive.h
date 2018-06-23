@@ -286,7 +286,10 @@ SURVIVE_EXPORT int survive_send_magic(SurviveContext *ctx, int magic_code, void 
 SURVIVE_EXPORT FLT survive_configf(SurviveContext *ctx, const char *tag, char flags, FLT def);
 SURVIVE_EXPORT uint32_t survive_configi(SurviveContext *ctx, const char *tag, char flags, uint32_t def);
 SURVIVE_EXPORT const char *survive_configs(SurviveContext *ctx, const char *tag, char flags, const char *def);
-SURVIVE_EXPORT void survive_attach_config(SurviveContext *ctx, const char *tag, void * var, char type );
+
+SURVIVE_EXPORT void survive_attach_configi(SurviveContext *ctx, const char *tag, int * var );
+SURVIVE_EXPORT void survive_attach_configf(SurviveContext *ctx, const char *tag, FLT * var );
+SURVIVE_EXPORT void survive_attach_configs(SurviveContext *ctx, const char *tag, char * var );
 SURVIVE_EXPORT void survive_detach_config(SurviveContext *ctx, const char *tag, void * var );
 
 #define STATIC_CONFIG_ITEM( variable, name, type, description, default_value ) \

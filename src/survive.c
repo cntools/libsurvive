@@ -156,8 +156,8 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 	ctx->lh_config = malloc(sizeof(config_group) * NUM_LIGHTHOUSES);
 
 	// initdata
-	init_config_group(ctx->global_config_values, 10, ctx);
-	init_config_group(ctx->temporary_config_values, 20, ctx);
+	init_config_group(ctx->global_config_values, 30, ctx);
+	init_config_group(ctx->temporary_config_values, 30, ctx);
 	for( i = 0; i < NUM_LIGHTHOUSES; i++ )
 			init_config_group(&ctx->lh_config[i], 10, ctx);
 

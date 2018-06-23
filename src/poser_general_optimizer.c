@@ -17,9 +17,9 @@ void general_optimizer_data_init(GeneralOptimizerData *d, SurviveObject *so) {
 
 	SurviveContext *ctx = so->ctx;
 
-	survive_attach_config( ctx, "failures-to-reset", &d->failures_to_reset, 'i' );
-	survive_attach_config( ctx, "successes-to-reset", &d->successes_to_reset, 'i' );
-	survive_attach_config( ctx, "max-error", &d->max_error, 'f' );
+	survive_attach_configf( ctx, "max-error", &d->max_error );
+	survive_attach_configi( ctx, "failures-to-reset", &d->failures_to_reset );
+	survive_attach_configi( ctx, "successes-to-reset", &d->successes_to_reset );
 
 	const char *subposer = survive_configs(ctx, "seed-poser", SC_GET, 0 );
 	d->seed_poser = (PoserCB)GetDriver(subposer);

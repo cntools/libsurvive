@@ -50,7 +50,7 @@ typedef struct SBAData {
 	survive_kpose_t kpose;
 	SurviveIMUTracker tracker;
 
-	bool useIMU;
+	int useIMU;
 
 	struct {
 		int meas_failures;
@@ -352,12 +352,12 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 
 		general_optimizer_data_init(&d->opt, so);
 
-		survive_attach_config( ctx, "sba-use-imu", &d->useIMU, 'i' );
-		survive_attach_config( ctx, "sba-required-meas", &d->required_meas, 'i' );
-		survive_attach_config( ctx, "sba-time-window", &d->sensor_time_window, 'i' );
-		survive_attach_config( ctx, "sba-sensor-variance-per-sec", &d->sensor_variance_per_second, 'f' );
-		survive_attach_config( ctx, "sba-sensor-variance", &d->sensor_variance, 'f' );
-		survive_attach_config( ctx, "sba-use-jacobian-function", &d->use_jacobian_function, 'i' );
+		survive_attach_configi( ctx, "sba-use-imu", &d->useIMU );
+		survive_attach_configi( ctx, "sba-required-meas", &d->required_meas );
+		survive_attach_configi( ctx, "sba-time-window", &d->sensor_time_window );
+		survive_attach_configf( ctx, "sba-sensor-variance-per-sec", &d->sensor_variance_per_second );
+		survive_attach_configf( ctx, "sba-sensor-variance", &d->sensor_variance );
+		survive_attach_configi( ctx, "sba-use-jacobian-function", &d->use_jacobian_function );
 
 		SV_INFO("Initializing SBA:");
 		SV_INFO("\tsba-required-meas: %d", d->required_meas);

@@ -401,7 +401,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 		return -1;
 	}
 
-	survive_attach_config( ctx, "playback-factor", &sp->playback_factor, 'f' );
+	survive_attach_configf( ctx, "playback-factor", &sp->playback_factor );
 
 	SV_INFO("Using playback file '%s' with timefactor of %f", playback_file, sp->playback_factor );
 	SurviveObject *hmd = survive_create_hmd(ctx, "Playback", sp);
