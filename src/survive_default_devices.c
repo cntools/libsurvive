@@ -6,6 +6,9 @@
 
 #include "json_helpers.h"
 
+#define HMD_IMU_HZ 1000.0f
+#define VIVE_DEFAULT_IMU_HZ 250.0f 
+
 static SurviveObject *
 survive_create_device(SurviveContext *ctx, const char *driver_name,
 					  void *driver, const char *device_name, haptic_func fn) {
@@ -17,7 +20,7 @@ survive_create_device(SurviveContext *ctx, const char *driver_name,
 	memcpy(device->drivername, driver_name, strlen(driver_name));
 
 	device->timebase_hz = 48000000;
-	device->imu_freq = 250.f;
+	device->imu_freq = VIVE_DEFAULT_IMU_HZ;
 	device->haptic = fn;
 
 	return device;
@@ -167,16 +170,20 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	if (strcmp(so->codename, "HMD") == 0) {
 		if (so->acc_scale) {
 			scale3d(so->acc_scale, so->acc_scale, 1. / 8192.0);
+			//Invert X and Y at least on my vive.
+			so->acc_scale[1] *= -1;
+			so->acc_scale[0] *= -1;
 		}
+		so->imu_freq = HMD_IMU_HZ;
 		if (so->acc_bias)
 			scale3d(so->acc_bias, so->acc_bias, 2. / 1000.); // Odd but seems right.
 		if (so->gyro_scale) {
 			FLT deg_per_sec = 500;
 			scale3d(so->gyro_scale, so->gyro_scale, deg_per_sec / (1 << 15) * LINMATHPI / 180.);
-			// scale3d(so->gyro_scale, so->gyro_scale, 0.000065665);
+			//Invert X and Y at least on my vive.
+			so->gyro_scale[0] *= -1;
+			so->gyro_scale[1] *= -1;
 		}
-
-		so->imu_freq = 1000.f;
 	} else if (memcmp(so->codename, "WM", 2) == 0) {
 		if (so->acc_scale)
 			scale3d(so->acc_scale, so->acc_scale, 2. / 8192.0);

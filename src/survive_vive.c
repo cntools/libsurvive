@@ -553,7 +553,7 @@ int survive_vive_send_magic(SurviveContext * ctx, void * drv, int magic_code, vo
 		//From actual steam.
 		if (sv->udev[USB_DEV_HMD])
 		{
-			static uint8_t vive_magic_power_on[64] = {  0x04, 0x78, 0x29, 0x38 };
+			static uint8_t vive_magic_power_on[64] = {  0x04, 0x78, 0x29, 0x38,  0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01 };
 			r = update_feature_report( sv->udev[USB_DEV_HMD], 0, vive_magic_power_on, sizeof( vive_magic_power_on ) );
 			if( r != sizeof( vive_magic_power_on ) ) return 5;
 		}
