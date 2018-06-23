@@ -421,6 +421,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 				int l = 0, a = 0;
 				if( lhid == 0 && axis == 0 ) for( l = 0; l < NUM_LIGHTHOUSES; l++ ) for( a = 0; a < 2; a++ ) dd->MixingConfidence[l][a] -= 0.1;
 
+#if 0
 				for( l = 0; l < NUM_LIGHTHOUSES; l++ ) for( a = 0; a < 2; a++ )
 				{
 					LinmathPoint3d MixThis = { 0, 0, 0 };
@@ -432,8 +433,8 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 					//printf( "%f ", Confidence );
 				}
 				scale3d( MixedPosition, MixedPosition, 1./MixedAmount );
-
 				printf( "Reprojection disagreements:" );
+#endif
 				for( l = 0; l < NUM_LIGHTHOUSES; l++ ) for( a = 0; a < 2; a++ )
 				{
 					printf( "%f ", dist3d( dd->MixingPositions[l][a], MixedPosition ) );
