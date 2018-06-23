@@ -167,8 +167,9 @@ void survive_recording_imu_process(struct SurviveObject *so, int mask, FLT *acce
 	if (recordingData == 0)
 		return;
 
-	write_to_output(recordingData, "%s I %d %u %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %d\n", so->codename, mask, timecode,
-					accelgyro[0], accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4], accelgyro[5], id);
+	write_to_output(recordingData, "%s I %d %u %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f  %0.6f %0.6f %0.6f %d\n",
+					so->codename, mask, timecode, accelgyro[0], accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4],
+					accelgyro[5], accelgyro[6], accelgyro[7], accelgyro[8], id);
 }
 
 struct SurvivePlaybackData {
@@ -186,16 +187,20 @@ typedef struct SurvivePlaybackData SurvivePlaybackData;
 static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver) {
 	char dev[10];
 	int timecode = 0;
-	FLT accelgyro[6];
+	FLT accelgyro[9] = {};
 	int mask;
 	int id;
 
 	int rr = sscanf(line, "%s I %d %d " FLT_format " " FLT_format " " FLT_format " " FLT_format " " FLT_format
-						  " " FLT_format "%d",
+						  " " FLT_format " " FLT_format " " FLT_format " " FLT_format "%d",
 					dev, &mask, &timecode, &accelgyro[0], &accelgyro[1], &accelgyro[2], &accelgyro[3], &accelgyro[4],
-					&accelgyro[5], &id);
+					&accelgyro[5], &accelgyro[6], &accelgyro[7], &accelgyro[8], &id);
 
-	if (rr != 10) {
+	if (rr == 10) {
+		// Older formats might not have mag data
+		id = accelgyro[6];
+		accelgyro[6] = 0;
+	} else if (rr != 13) {
 		fprintf(stderr, "Warning:  On line %d, only %d values read: '%s'\n", driver->lineno, rr, line);
 		return -1;
 	}

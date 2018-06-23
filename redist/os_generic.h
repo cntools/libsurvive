@@ -205,7 +205,7 @@ OSG_INLINE double OGGetFileTime(const char *file) {
 }
 
 OSG_INLINE og_thread_t OGCreateThread(void *(routine)(void *), void *parameter) {
-	pthread_t *ret = malloc(sizeof(pthread_t));
+	pthread_t *ret = (pthread_t *)malloc(sizeof(pthread_t));
 	int r = pthread_create(ret, 0, routine, parameter);
 	if (r) {
 		free(ret);
@@ -268,26 +268,30 @@ OSG_INLINE void OGDeleteMutex(og_mutex_t om) {
 }
 
 OSG_INLINE og_sema_t OGCreateSema() {
-	sem_t *sem = malloc(sizeof(sem_t));
+	sem_t *sem = (sem_t *)malloc(sizeof(sem_t));
 	sem_init(sem, 0, 0);
 	return (og_sema_t)sem;
 }
 
 OSG_INLINE int OGGetSema(og_sema_t os) {
 	int valp;
-	sem_getvalue(os, &valp);
+	sem_getvalue((sem_t *)os, &valp);
 	return valp;
 }
 
-OSG_INLINE void OGLockSema(og_sema_t os) { sem_wait(os); }
+OSG_INLINE void OGLockSema(og_sema_t os) { sem_wait((sem_t *)os); }
 
-OSG_INLINE void OGUnlockSema(og_sema_t os) { sem_post(os); }
+OSG_INLINE void OGUnlockSema(og_sema_t os) { sem_post((sem_t *)os); }
 
 OSG_INLINE void OGDeleteSema(og_sema_t os) {
-	sem_destroy(os);
+	sem_destroy((sem_t *)os);
 	free(os);
 }
 
 #endif
 
+#endif
+
+#ifdef __cplusplus
+}
 #endif
