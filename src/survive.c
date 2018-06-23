@@ -16,6 +16,10 @@
 #define z_const const
 #endif
 
+STATIC_CONFIG_ITEM( CONFIG_FILE, "configfile", 's', "Default configuration file", "config.json" );
+STATIC_CONFIG_ITEM( CONFIG_D_CALI, "disable-calibrate", 'i', "Enables or disables calibration", 0 );
+STATIC_CONFIG_ITEM( CONFIG_F_CALI, "force-calibrate", 'i', "Forces calibration even if one exists.", 0 );
+
 #ifdef RUNTIME_SYMNUM
 #include <symbol_enumerator.h>
 static int did_runtime_symnum;
@@ -93,6 +97,20 @@ void survive_verify_FLT_size(uint32_t user_size) {
 	}
 }
 
+static void PrintMatchingDrivers( const char * prefix, const char * matchingparam )
+{
+	int i = 0;
+	char stringmatch[128];
+	snprintf( stringmatch, 127, "%s%s", prefix, matchingparam?matchingparam:"" );
+	const char * DriverName;
+	while ((DriverName = GetDriverNameMatching(stringmatch, i++))) 
+	{
+		printf( "%s ", DriverName+strlen(prefix) );
+	}
+}
+
+
+
 SurviveContext *survive_init_internal(int argc, char *const *argv) {
 	int i;
 
@@ -133,21 +151,21 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 
 	ctx->state = SURVIVE_STOPPED;
 
-	survive_config_populate_ctx( ctx );
-
 	ctx->global_config_values = malloc(sizeof(config_group));
 	ctx->temporary_config_values = malloc(sizeof(config_group));
 	ctx->lh_config = malloc(sizeof(config_group) * NUM_LIGHTHOUSES);
 
 	// initdata
-	init_config_group(ctx->global_config_values, 10, ctx);
-	init_config_group(ctx->temporary_config_values, 20, ctx);
+	init_config_group(ctx->global_config_values, 30, ctx);
+	init_config_group(ctx->temporary_config_values, 30, ctx);
 	for( i = 0; i < NUM_LIGHTHOUSES; i++ )
 			init_config_group(&ctx->lh_config[i], 10, ctx);
 
 	// Process command-line parameters.
 	char *const *av = argv + 1;
 	char *const *argvend = argv + argc;
+	int list_for_autocomplete = 0;
+	const char * autocomplete_match[3] = { 0, 0, 0};
 	int showhelp = 0;
 	for (; av < argvend; av++) {
 		if ((*av)[0] != '-')
@@ -167,6 +185,13 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 				break;
 			case 'l':
 				vartoupdate = "lighthousecount";
+				break;
+			case 'm':
+				if( av + 1 < argvend ) autocomplete_match[0] = *(av+1);
+				if( av + 2 < argvend ) autocomplete_match[1] = *(av+2);
+				if( av + 3 < argvend ) autocomplete_match[2] = *(av+3);
+				list_for_autocomplete = 1;
+				av = argvend; //Eject immediately after processing -m
 				break;
 			case 'c':
 				vartoupdate = "configfile";
@@ -196,33 +221,54 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 			}
 		}
 	}
-	if (showhelp) {
-		// Can't use SV_ERROR here since we don't have a context to send to yet.
-		fprintf(stderr, "libsurvive - usage:\n");
-		fprintf(stderr, " --[parameter] [value]   - sets parameter\n");
-		fprintf(stderr, " -h                      - shows help.\n");
-		fprintf(stderr, " -p [poser]              - use a specific defaultposer.\n");
-		fprintf(stderr, " -l [lighthouse count]   - use a specific number of lighthoses.\n");
-		fprintf(stderr, " -c [config file]        - set config file\n");
-		fprintf(stderr, " --record [log file]     - Write all events to the given record file.\n");
-		fprintf(stderr, " --playback [log file]   - Read events from the given file instead of USB devices.\n");
-		fprintf(stderr, " --playback-factor [f]   - Time factor of playback -- 1 is run at the same timing as "
-						"original, 0 is run as fast as possible.\n");
-	}
-
 	config_read(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
 	ctx->activeLighthouses = survive_configi(ctx, "lighthousecount", SC_SETCONFIG, 2);
 	config_read_lighthouse(ctx->lh_config, &(ctx->bsd[0]), 0);
 	config_read_lighthouse(ctx->lh_config, &(ctx->bsd[1]), 1);
 
+	ctx->faultfunction = survivefault;
+	ctx->notefunction = survivenote;
+
+	if( list_for_autocomplete )
+	{
+		const char * lastparam = (autocomplete_match[2]==0)?autocomplete_match[1]:autocomplete_match[2];
+		const char * matchingparam = (autocomplete_match[2]==0)?0:autocomplete_match[1];
+		//First see if any of the parameters perfectly match a config item, if so print some help.
+		//fprintf( stderr, "!!! %s !!! %s !!!\n", lastparam, matchingparam );
+
+		const char * checkconfig = matchingparam;
+		if( matchingparam == 0 ) checkconfig = lastparam;
+
+		if( checkconfig && strlen( checkconfig ) > 2 && survive_print_help_for_parameter( checkconfig+2 ) )
+		{
+			exit(0);
+		}
+
+		if( strstr( lastparam, "poser" ) )  PrintMatchingDrivers( "Poser", matchingparam );
+		else if( strstr( lastparam, "disambiguator" ) ) PrintMatchingDrivers( "Disambiguator", matchingparam );
+		else
+		{
+			printf( "-h -m -p -l -c " );
+			survive_print_known_configs( ctx, 0 );
+		}
+		printf( "\n" );
+		exit( 0 );
+	}
+
 	if( showhelp )
 	{
-		survive_print_known_configs( ctx );
+		// Can't use SV_ERROR here since we don't have a context to send to yet.
+		fprintf(stderr, "libsurvive - usage:\n");
+		fprintf(stderr, " -h                      - shows help.\n");
+		fprintf(stderr, " -m                      - list parameters, for autocomplete." );
+		fprintf(stderr, " -p [poser]              - use a specific defaultposer.\n");
+		fprintf(stderr, " -l [lighthouse count]   - use a specific number of lighthoses.\n");
+		fprintf(stderr, " -c [config file]        - set config file\n");
+		fprintf(stderr, "Additional  --[parameter] [value]   - sets generic parameters...\n");
+		survive_print_known_configs( ctx, 1 );
 		return 0;
 	}
 
-	ctx->faultfunction = survivefault;
-	ctx->notefunction = survivenote;
 	ctx->lightproc = survive_default_light_process;
 	ctx->imuproc = survive_default_imu_process;
 	ctx->angleproc = survive_default_angle_process;
@@ -319,10 +365,10 @@ int survive_startup(SurviveContext *ctx) {
 
 	ctx->state = SURVIVE_RUNNING;
 
-	int calibrateMandatory = survive_configi(ctx, "calibrate", SC_GET, 0);
-	int calibrateForbidden = survive_configi(ctx, "calibrate", SC_GET, 1) == 0;
+	int calibrateMandatory = survive_configi(ctx, "force-calibrate", SC_GET, 0);
+	int calibrateForbidden = survive_configi(ctx, "disable-calibrate", SC_GET, 1) == 0;
 	if (calibrateMandatory && calibrateForbidden) {
-		SV_INFO("Contradictory settings --calibrate and --no-calibrate specified. Switching to normal behavior.");
+		SV_INFO("Contradictory settings --force-calibrate and --disable-calibrate specified. Switching to normal behavior.");
 		calibrateMandatory = calibrateForbidden = 0;
 	}
 
@@ -334,7 +380,7 @@ int survive_startup(SurviveContext *ctx) {
 
 		if (!isCalibrated) {
 			SV_INFO("Uncalibrated configuration detected. Attaching calibration. Please don't move tracked objects for "
-					"the duration of calibration. Pass '--no-calibrate' to skip calibration");
+					"the duration of calibration. Pass '--disable-calibrate' to skip calibration");
 		} else {
 			SV_INFO("Calibration requested. Previous calibration will be overwritten.");
 		}

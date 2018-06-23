@@ -16,6 +16,14 @@ typedef enum {
 	CONFIG_FLOAT_ARRAY = 4,
 } cval_type;
 
+struct update_list_t_s
+{
+	void * value;
+	struct update_list_t_s * next;
+}; 
+
+typedef struct update_list_t_s update_list_t;
+
 
 typedef struct {
 	char *tag;
@@ -26,7 +34,8 @@ typedef struct {
 	} numeric;
 	char *data;
 	uint32_t elements;
-	int shorthand_place;
+
+	update_list_t * update_list;
 } config_entry;
 
 typedef struct config_group {
@@ -63,8 +72,10 @@ uint32_t config_read_uint32(config_group *cg, const char *tag, const uint32_t de
 const char* config_read_str(config_group *cg, const char *tag, const char *def);
 
 //These are for the internal non-function configuration system.
-void survive_config_bind_variable( char vt, int * variable, const char * name, const char * description, ... );
-void survive_print_known_configs();
+void survive_config_bind_variable( char vt, const char * name, const char * description, ... );
+void survive_print_known_configs( SurviveContext * ctx, int verbose );
 void survive_config_populate_ctx( SurviveContext * ctx );
+int survive_print_help_for_parameter( const char * tomap );
+
 
 #endif

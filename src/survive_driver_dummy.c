@@ -8,7 +8,7 @@
 #include "survive_config.h"
 #include "os_generic.h"
 
-STATIC_CONFIG_ITEM_I( DUMMY_DRIVER_ENABLE, "dummy-driver-enable", "Load a dummy driver for testing.", 0 );
+STATIC_CONFIG_ITEM( DUMMY_DRIVER_ENABLE, "dummy-driver-enable", 'i', "Load a dummy driver for testing.", 0 );
 
 struct SurviveDriverDummy {
 	SurviveContext * ctx;
@@ -55,7 +55,8 @@ int dummy_haptic( SurviveObject * so, uint8_t reserved, uint16_t pulseHigh, uint
 
 int DriverRegDummy(SurviveContext *ctx)
 {
-	if( !GCONFIGI(DUMMY_DRIVER_ENABLE) ) return 0;
+	int enable = survive_configi( ctx, "dummy-driver-enable", SC_GET, 9 );
+	if( !enable ) return 0;
 
 	SurviveDriverDummy *sp = calloc(1, sizeof(SurviveDriverDummy));
 	sp->ctx = ctx;

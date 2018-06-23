@@ -5,6 +5,11 @@
 #include <malloc.h>
 #include <stdio.h>
 
+STATIC_CONFIG_ITEM( CONFIG_MAX_ERROR, "max-error", 'f', "Maximum error permitted by poser_general_optimizer", .0001 );
+STATIC_CONFIG_ITEM( CONFIG_FAIL_TO_RESET, "failures-to-reset", 'i', "Failures needed before seed poser is re-run", 1 );
+STATIC_CONFIG_ITEM( CONFIG_SUC_TO_RESET, "successes-to-reset", 'i', "[TODO: I don't know what this does]", -1 );
+STATIC_CONFIG_ITEM( CONFIG_SEED_POSER, "seed-poser", 's', "Poser to be used to seed optimizer", "PoserEPNP" );
+
 void *GetDriver(const char *name);
 void general_optimizer_data_init(GeneralOptimizerData *d, SurviveObject *so) {
 	memset(d, 0, sizeof(*d));
@@ -12,11 +17,11 @@ void general_optimizer_data_init(GeneralOptimizerData *d, SurviveObject *so) {
 
 	SurviveContext *ctx = so->ctx;
 
-	d->failures_to_reset = survive_configi(ctx, "failures-to-reset", SC_GET, 1);
-	d->successes_to_reset = survive_configi(ctx, "successes-to-reset", SC_GET, -1);
-	d->max_error = survive_configf(ctx, "max-error", SC_GET, .0001);
+	survive_attach_configf( ctx, "max-error", &d->max_error );
+	survive_attach_configi( ctx, "failures-to-reset", &d->failures_to_reset );
+	survive_attach_configi( ctx, "successes-to-reset", &d->successes_to_reset );
 
-	const char *subposer = survive_configs(ctx, "seed-poser", SC_GET, "PoserEPNP");
+	const char *subposer = survive_configs(ctx, "seed-poser", SC_GET, 0 );
 	d->seed_poser = (PoserCB)GetDriver(subposer);
 
 	SV_INFO("Initializing general optimizer:");
