@@ -20,7 +20,7 @@ typedef struct {
 	int sweeplh;
 
 	FLT normal_at_errors[MAX_PT_PER_SWEEP][3]; // Value is actually normalized, not just normal to sweep plane.
-	FLT quantity_errors[MAX_PT_PER_SWEEP];
+	FLT quantity_errors[MAX_PT_PER_SWEEP];		//Dot product of error offset.
 	FLT angles_at_pts[MAX_PT_PER_SWEEP];
 	SurvivePose object_pose_at_hit[MAX_PT_PER_SWEEP];
 	uint8_t sensor_ids[MAX_PT_PER_SWEEP];
@@ -32,6 +32,8 @@ typedef struct {
 	int ptsweep;
 
 	SurviveIMUTracker tracker;
+
+	SurvivePose * lastlhp;
 } CharlesPoserData;
 
 int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
@@ -42,7 +44,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		SurvivePose object_pose_out;
 		memcpy(&object_pose_out, &LinmathPose_Identity, sizeof(LinmathPose_Identity));
 		memcpy(&dd->InteralPoseUsedForCalc, &LinmathPose_Identity, sizeof(LinmathPose_Identity));
-		so->PoseConfidence = 1.0;
+		so->PoseConfidence = 0.0;
 		PoserData_poser_pose_func(pd, so, &object_pose_out);
 	}
 
@@ -103,7 +105,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		BaseStationData *bsd = &so->ctx->bsd[ld->lh];
 		if (!bsd->PositionSet)
 			break;
-		SurvivePose *lhp = &bsd->Pose;
+		SurvivePose *lhp = dd->lastlhp = &bsd->Pose;
 		FLT inangle = ld->angle;
 		int sensor_id = ld->sensor_id;
 		int axis = dd->sweepaxis;
@@ -195,10 +197,11 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 	case POSERDATA_SYNC: {
 		PoserDataLight *l = (PoserDataLight *)pd;
 		int lhid = l->lh;
-
 		// you can get sweepaxis and sweeplh.
 		if (dd->ptsweep) {
 			int i;
+			int applied_corrections = 0;
+			int normal_faults = 0; 
 			int lhid = dd->sweeplh;
 			int axis = dd->sweepaxis;
 			int pts = dd->ptsweep;
@@ -224,6 +227,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 #define CORRECT_ROTATION_COEFFICIENT                                                                                   \
 	0.2 // This starts to fall apart above 5.0, but for good reason.  It is amplified by the number of points seen.
 #define ROTATIONAL_CORRECTION_MAXFORCE 0.01
+#define MINIMUM_CONFIDENCE_TO_CORRECT_POSITION 0.3
 
 			// Step 1: Determine standard of deviation, and average in order to
 			// drop points that are likely in error.
@@ -260,6 +264,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 
 			// Step 2: Determine average lateral error.
 			// We can actually always perform this operation.  Even with only one point.
+			if ( so->PoseConfidence > MINIMUM_CONFIDENCE_TO_CORRECT_POSITION )
 			{
 				FLT avg_err[3] = {0, 0, 0}; // Positional error.
 				for (i = 0; i < pts; i++) {
@@ -284,15 +289,24 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 				// two points to make sure the error on this isn't unusually high?
 				// If calculated error is unexpectedly high, then we should probably
 				// Not apply the transform.
-				scale3d(avg_err, avg_err, -CORRECT_LATERAL_POSITION_COEFFICIENT);
-				add3d(vec_correct, vec_correct, avg_err);
+
+				if( ( magnitude3d( avg_err ) < 0.4  || so->PoseConfidence < 0.6 ) ) 
+				{
+					scale3d(avg_err, avg_err, -CORRECT_LATERAL_POSITION_COEFFICIENT);
+					add3d(vec_correct, vec_correct, avg_err);
+					applied_corrections++;
+				}
+				else
+				{
+					so->PoseConfidence *= 0.9;
+				}
 			}
 
 
 
 			// Step 3: Control telecoption from lighthouse.
 			// we need to find out what the weighting is to determine "zoom"
-			if (validpoints > 1) // Can't correct "zoom" with only one point.
+			if (validpoints > 1 && so->PoseConfidence > MINIMUM_CONFIDENCE_TO_CORRECT_POSITION ) // Can't correct "zoom" with only one point.
 			{
 				FLT zoom = 0.0;
 				FLT rmsang = 0.0;
@@ -315,11 +329,20 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 
 				zoom *= CORRECT_TELESCOPTION_COEFFICIENT;
 
-				FLT veccamalong[3];
-				sub3d(veccamalong, lh_pose->Pos, dd->InteralPoseUsedForCalc.Pos);
-				normalize3d(veccamalong, veccamalong);
-				scale3d(veccamalong, veccamalong, zoom);
-				add3d(vec_correct, veccamalong, vec_correct);
+				//Don't apply completely wild zoom's unless our confidence is awful.
+				if( ( zoom < 0.4 || so->PoseConfidence < 0.6 ) && ( so->PoseConfidence > 0.3 ) ) 
+				{
+					FLT veccamalong[3];
+					sub3d(veccamalong, lh_pose->Pos, dd->InteralPoseUsedForCalc.Pos);
+					normalize3d(veccamalong, veccamalong);
+					scale3d(veccamalong, veccamalong, zoom);
+					add3d(vec_correct, veccamalong, vec_correct);
+					applied_corrections++;
+				}
+				else
+				{
+					so->PoseConfidence *= 0.9;
+				}
 			}
 
 
@@ -343,9 +366,8 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 #endif
 			add3d(dd->InteralPoseUsedForCalc.Pos, vec_correct, dd->InteralPoseUsedForCalc.Pos);
 
-
-
-			//quatcopy(object_pose_out.Rot, dd->InteralPoseUsedForCalc.Rot);
+			//XXX TODO
+			//		?: Fuse accelerometer.
 
 			// Stage 4: "Tug" on the rotation of the object, from all of the sensor's pov.
 			// If we were able to determine likliehood of a hit in the sweep instead of afterward
@@ -356,53 +378,84 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 				for (i = 0; i < pts; i++) {
 					if (!ptvalid[i])
 						continue;
-					FLT dist = dd->quantity_errors[i] - avgerr;
+
+					FLT dist = dd->quantity_errors[i] - avgerr; //Relative dot-product error.
 					FLT angle = dd->angles_at_pts[i];
 					int sensor_id = dd->sensor_ids[i];
-					FLT *normal = dd->normal_at_errors[i];
-					const SurvivePose *object_pose_at_hit = &dd->object_pose_at_hit[i];
-					const FLT *sensor_inpos = &so->sensor_locations[sensor_id * 3];
+					FLT * normal = dd->normal_at_errors[i];
+					FLT * sensornormal = &so->sensor_normals[sensor_id*3];
+					SurvivePose * lhp = dd->lastlhp;
 
+					const SurvivePose * object_pose_at_hit = &dd->object_pose_at_hit[i];
+					const FLT * sensor_inpos = &so->sensor_locations[sensor_id * 3];
 					LinmathQuat world_to_object_space;
 					quatgetreciprocal(world_to_object_space, object_pose_at_hit->Rot);
-					FLT correction_in_object_space[3]; // The amount across the surface of the object the rotation
-													   // should happen.
 
-					quatrotatevector(correction_in_object_space, world_to_object_space, normal);
-					dist *= CORRECT_ROTATION_COEFFICIENT;
-					if (dist > ROTATIONAL_CORRECTION_MAXFORCE)
-						dist = ROTATIONAL_CORRECTION_MAXFORCE;
-					if (dist < -ROTATIONAL_CORRECTION_MAXFORCE)
-						dist = -ROTATIONAL_CORRECTION_MAXFORCE;
+					//First, check to see if this hit is a sensor that is facing the lighthouse.
+					{
+						LinmathPoint3d vector_to_lighthouse;
+						sub3d( vector_to_lighthouse, lhp->Pos, object_pose_at_hit->Pos ); //Get vector in world space.
+						normalize3d( vector_to_lighthouse, vector_to_lighthouse );
+						quatrotatevector( vector_to_lighthouse, world_to_object_space, vector_to_lighthouse );
+						float facingness = dot3d( sensornormal, vector_to_lighthouse );
+						if( facingness < 0 )
+						{
+							//This is an impossible sensor hit. 
+							so->PoseConfidence *= 0.8;
 
-					// Now, we have a "tug" vector in object-local space.  Need to apply the torque.
-					FLT vector_from_center_of_object[3];
-					normalize3d(vector_from_center_of_object, sensor_inpos);
-					// scale3d(vector_from_center_of_object, sensor_inpos, 10.0 );
-					//			vector_from_center_of_object[2]*=-1;
-					//				vector_from_center_of_object[1]*=-1;
-					//					vector_from_center_of_object[0]*=-1;
-					// vector_from_center_of_object
-					scale3d(vector_from_center_of_object, vector_from_center_of_object, 1);
+							//If our pose confidence is low, apply a torque.
+							if( so->PoseConfidence < 0.6 )
+							{
+								LinmathPoint3d rotateaxis;
+								cross3d( rotateaxis, vector_to_lighthouse, sensornormal );
+								LinmathQuat correction;
+								quatfromaxisangle(correction, rotateaxis, facingness*.2 );
+								quatrotateabout(dd->InteralPoseUsedForCalc.Rot, dd->InteralPoseUsedForCalc.Rot, correction);
+								quatnormalize(dd->InteralPoseUsedForCalc.Rot, dd->InteralPoseUsedForCalc.Rot);
+								normal_faults ++;
+							}
+						}
+					}
 
-					FLT new_vector_in_object_space[3];
-					// printf( "%f %f %f %f\n", object_pose_at_hit->Rot[0], object_pose_at_hit->Rot[1],
-					// object_pose_at_hit->Rot[2], object_pose_at_hit->Rot[3] );
-					// printf( "%f %f %f  // %f %f %f // %f\n", vector_from_center_of_object[0],
-					// vector_from_center_of_object[1], vector_from_center_of_object[2], correction_in_object_space[0],
-					// correction_in_object_space[1], correction_in_object_space[2], dist );
-					scale3d(correction_in_object_space, correction_in_object_space, -dist);
-					add3d(new_vector_in_object_space, vector_from_center_of_object, correction_in_object_space);
+					//Apply the normal tug.
+					{
 
-					normalize3d(new_vector_in_object_space, new_vector_in_object_space);
+						FLT correction_in_object_space[3]; // The amount across the surface of the object the rotation
+														   // should happen.
 
-					LinmathQuat corrective_quaternion;
-					quatfrom2vectors(corrective_quaternion, vector_from_center_of_object, new_vector_in_object_space);
-					quatrotateabout(correction, correction, corrective_quaternion);
-					// printf( "%f -> %f %f %f => %f %f %f [%f %f %f %f]\n", dist, vector_from_center_of_object[0],
-					// vector_from_center_of_object[1], vector_from_center_of_object[2],
-					// correction_in_object_space[0], correction_in_object_space[1], correction_in_object_space[2],
-					// corrective_quaternion[0],corrective_quaternion[1],corrective_quaternion[1],corrective_quaternion[3]);
+						quatrotatevector(correction_in_object_space, world_to_object_space, normal);
+						dist *= CORRECT_ROTATION_COEFFICIENT;
+						if (dist > ROTATIONAL_CORRECTION_MAXFORCE)
+							dist = ROTATIONAL_CORRECTION_MAXFORCE;
+						if (dist < -ROTATIONAL_CORRECTION_MAXFORCE)
+							dist = -ROTATIONAL_CORRECTION_MAXFORCE;
+
+						// Now, we have a "tug" vector in object-local space.  Need to apply the torque.
+						FLT vector_from_center_of_object[3];
+						normalize3d(vector_from_center_of_object, sensor_inpos);
+						// scale3d(vector_from_center_of_object, sensor_inpos, 10.0 );
+						//			vector_from_center_of_object[2]*=-1;
+						//				vector_from_center_of_object[1]*=-1;
+						//					vector_from_center_of_object[0]*=-1;
+						// vector_from_center_of_object
+						scale3d(vector_from_center_of_object, vector_from_center_of_object, 1);
+
+						FLT new_vector_in_object_space[3];
+						// printf( "%f %f %f %f\n", object_pose_at_hit->Rot[0], object_pose_at_hit->Rot[1],
+						// object_pose_at_hit->Rot[2], object_pose_at_hit->Rot[3] );
+						// printf( "%f %f %f  // %f %f %f // %f\n", vector_from_center_of_object[0],
+						// vector_from_center_of_object[1], vector_from_center_of_object[2], correction_in_object_space[0],
+						// correction_in_object_space[1], correction_in_object_space[2], dist );
+						scale3d(correction_in_object_space, correction_in_object_space, -dist);
+						add3d(new_vector_in_object_space, vector_from_center_of_object, correction_in_object_space);
+
+						normalize3d(new_vector_in_object_space, new_vector_in_object_space);
+
+						LinmathQuat corrective_quaternion;
+						quatfrom2vectors(corrective_quaternion, vector_from_center_of_object, new_vector_in_object_space);
+						quatrotateabout(correction, correction, corrective_quaternion);
+					}
+
 				}
 				// printf( "Applying: %f %f %f %f\n", correction[0], correction[1], correction[2], correction[3] );
 				// Apply our corrective quaternion to the output.
@@ -420,8 +473,6 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 				LinmathPoint3d MixedPosition = { 0, 0, 0 };
 				int l = 0, a = 0;
 				if( lhid == 0 && axis == 0 ) for( l = 0; l < NUM_LIGHTHOUSES; l++ ) for( a = 0; a < 2; a++ ) dd->MixingConfidence[l][a] -= 0.1;
-
-#if 0
 				for( l = 0; l < NUM_LIGHTHOUSES; l++ ) for( a = 0; a < 2; a++ )
 				{
 					LinmathPoint3d MixThis = { 0, 0, 0 };
@@ -433,13 +484,14 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 					//printf( "%f ", Confidence );
 				}
 				scale3d( MixedPosition, MixedPosition, 1./MixedAmount );
+#if 0
 				printf( "Reprojection disagreements:" );
-#endif
 				for( l = 0; l < NUM_LIGHTHOUSES; l++ ) for( a = 0; a < 2; a++ )
 				{
 					printf( "%f ", dist3d( dd->MixingPositions[l][a], MixedPosition ) );
 				}
 				printf( "\n" );
+#endif
 
 				//printf( "%f\n", MixedAmount );
 				SurvivePose object_pose_out;
@@ -457,6 +509,15 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		//	PoserData_poser_pose_func(pd, so, &dd->tracker.pose);
 
 			dd->ptsweep = 0;
+
+			if( validpoints > 1 && applied_corrections > 1 && !normal_faults)
+			{
+				so->PoseConfidence += (1-so->PoseConfidence)*.05;
+			}
+			else if( validpoints > 1 && so->PoseConfidence < 0.5 && !normal_faults )
+			{
+				so->PoseConfidence += (1-so->PoseConfidence)*.05;
+			}
 		}
 
 		dd->sweepaxis = l->acode & 1;
