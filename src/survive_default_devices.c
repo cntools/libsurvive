@@ -174,9 +174,11 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 			so->acc_scale[1] *= -1;
 			so->acc_scale[0] *= -1;
 		}
-		so->imu_freq = HMD_IMU_HZ;
 		if (so->acc_bias)
-			scale3d(so->acc_bias, so->acc_bias, 2. / 1000.); // Odd but seems right.
+			scale3d(so->acc_bias, so->acc_bias, 1000.0 ); // Odd but seems right.
+
+		so->imu_freq = HMD_IMU_HZ;
+
 		if (so->gyro_scale) {
 			FLT deg_per_sec = 500;
 			scale3d(so->gyro_scale, so->gyro_scale, deg_per_sec / (1 << 15) * LINMATHPI / 180.);
@@ -188,7 +190,7 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 		if (so->acc_scale)
 			scale3d(so->acc_scale, so->acc_scale, 2. / 8192.0);
 		if (so->acc_bias)
-			scale3d(so->acc_bias, so->acc_bias, 2. / 1000.); // Need to verify.
+			scale3d(so->acc_bias, so->acc_bias, 1000.); // Need to verify.
 
 		FLT deg_per_sec = 2000;
 		if (so->gyro_scale)
@@ -209,7 +211,7 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 		// If any other device, we know we at least need this.
 		// I deeply suspect bias is in milligravities -JB
 		if (so->acc_bias)
-			scale3d(so->acc_bias, so->acc_bias, 1. / 1000.);
+			scale3d(so->acc_bias, so->acc_bias, 1000.);
 
 		// From datasheet, can be 250, 500, 1000, 2000 deg/s range over 16 bits
 		FLT deg_per_sec = 2000;

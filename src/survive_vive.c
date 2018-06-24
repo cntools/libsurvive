@@ -491,6 +491,7 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 				SV_ERROR( "Could not claim interface %d of %s", j, devnames[i] );
 				return -9;
 			}
+			usleep(20000);
 		}
 
 		SV_INFO( "Successfully enumerated %s (%d, %d)", devnames[i], did, conf->bNumInterfaces );
@@ -894,12 +895,6 @@ int survive_get_config( char ** config, SurviveViveData * sv, int devno, int ifa
 	}
 
 	SV_INFO( "Got config data length %d", count );
-
-	char fstname[128];
-	sprintf( fstname, "calinfo/%d.json.gz", devno );
-	FILE * f = fopen( fstname, "wb" );
-	fwrite( compressed_data, count, 1, f );
-	fclose( f );
 	
 	int len = survive_simple_inflate( ctx, compressed_data, count, uncompressed_data, sizeof(uncompressed_data)-1 );
 	if( len <= 0 )
@@ -910,6 +905,13 @@ int survive_get_config( char ** config, SurviveViveData * sv, int devno, int ifa
 
 	*config = malloc( len + 1 );
 	memcpy( *config, uncompressed_data, len );
+
+	char fstname[128];
+	sprintf( fstname, "calinfo/%d.json", devno );
+	FILE * f = fopen( fstname, "wb" );
+	fwrite( uncompressed_data, len, 1, f );
+	fclose( f );
+
 	return len;
 }
 
