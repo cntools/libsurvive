@@ -21,18 +21,14 @@
 	0.0001 // Determines which hits to cull.  Actually SQRT(baseline) if 0.0001, it is really 1cm
 
 #define CORRECT_LATERAL_POSITION_COEFFICIENT 0.7 // Explodes if you exceed 1.0  (Normally 0.7 for snappy non-IMU response)
-#define CORRECT_TELESCOPTION_COEFFICIENT 7.00	 // Converges even as high as 10.0 and doesn't explode. (Normally 7.0 for non-IMU respone)
+#define CORRECT_TELESCOPTION_COEFFICIENT 7.0	 // Converges even as high as 10.0 and doesn't explode. (Normally 7.0 for non-IMU respone)
 #define CORRECT_ROTATION_COEFFICIENT                                                                                   \
 	0.2 // This starts to fall apart above 5.0, but for good reason.  It is amplified by the number of points seen.
 #define ROTATIONAL_CORRECTION_MAXFORCE 0.01
-#define MINIMUM_CONFIDENCE_TO_CORRECT_POSITION 0.2
+#define MINIMUM_CONFIDENCE_TO_CORRECT_POSITION 0.02 // 0.2
+#define POSE_CONFIDENCE_FOR_HANDLING_LINEAR_IMU .9 //0.9
+#define MAX_JUMP_DISTANCE 0.5   //0.4
 
-
-#define POSE_CONFIDENCE_FOR_HANDLING_LINEAR_IMU 0.4 //0.9
-
-
-#define MAX_JUMP_DISTANCE 1000   //0.4
- 
 
 //Grand todo:
 //  Update global "Up" vector from LH's PoV based on "Up" from the HMD.
@@ -123,51 +119,49 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 				LinmathVec3d correct_diff;
 				quatrotatevector(reright, world_space_to_object_space_quat, reright);
 				sub3d( correct_diff, normup, reright  );
-				scale3d( correct_diff, correct_diff, -0.001 );	//This is the coefficient applying the drag. XXX THIS MUST CHANGE.
+				scale3d( correct_diff, correct_diff, -0.01 );	//This is the coefficient applying the drag. XXX THIS MUST CHANGE.
 				add3d( correct_diff, correct_diff, reright );
 				normalize3d( correct_diff, correct_diff );
 				LinmathQuat  reright_quat;
 				quatfrom2vectors( reright_quat, reright, correct_diff );
 				//Push to correct "Up" a little bit.
-				quatrotateabout(dd->imu_up_correct, dd->imu_up_correct, reright_quat);
-				quatnormalize(dd->imu_up_correct, dd->imu_up_correct);
+
+
+				quatrotateabout(dd->InteralPoseUsedForCalc.Rot, dd->InteralPoseUsedForCalc.Rot, reright_quat);
+				
+				//quatrotateabout(dd->imu_up_correct, dd->imu_up_correct, reright_quat);
+				//quatnormalize(dd->imu_up_correct, dd->imu_up_correct);
 			}
 
 			//Update position as a function from the IMU...
-			if( 0 ) {
+			if(0 ) {
 				LinmathVec3d expected_up = { 0, 0, 1 };
 				LinmathVec3d acceleration;
 				scale3d( acceleration, imuData->accel, 1.0 );
-				quatrotatevector( acceleration, dd->imu_up_correct, acceleration );
-
-				printf( "ACCEL %f %f %f\n", acceleration[0], acceleration[1], acceleration[2] );
+				//quatrotatevector( acceleration, dd->imu_up_correct, acceleration );
 				sub3d( acceleration, acceleration, dd->imu_accel_zero ); 						//IMU Accel Zero is in object-local space.
-
 				quatrotatevector( acceleration,  dd->InteralPoseUsedForCalc.Rot, acceleration );
-
-				printf( "ACCEL %f %f %f   %f %f %f   %f %f %f\n", acceleration[0],acceleration[1],acceleration[2], expected_up[0], expected_up[1], expected_up[2],
-					dd->imu_accel_zero[0], dd->imu_accel_zero[1], dd->imu_accel_zero[2]);
-
 				sub3d( acceleration, acceleration, expected_up );
 
+				LinmathVec3d recalv;
+				scale3d( recalv, acceleration, 0.01 );
+				LinmathQuat invrr;
+				quatgetreciprocal( invrr, dd->InteralPoseUsedForCalc.Rot );
+				quatrotatevector( recalv, invrr, recalv );
+				add3d( dd->imu_accel_zero, dd->imu_accel_zero, recalv );
+
+				printf( "%s %f %f %f  %f %f %f\n", so->codename, dd->imu_accel_zero[0], dd->imu_accel_zero[1], dd->imu_accel_zero[2], acceleration[0], acceleration[1], acceleration[2] );
+
 				scale3d( acceleration, acceleration, 9.8 * imu_time );
-
-				//Acceleration is now in global space.
-
 				add3d( dd->imuvel, dd->imuvel, acceleration );
 
 				//IMUVel is the estimated object motion, in world space, but it will be pulled in the direction of the 
 				//Faulty IMU bias.
 
 				LinmathVec3d updatepos;
+
 				scale3d( updatepos, dd->imuvel, 1.0 );
 				scale3d( updatepos, updatepos, imu_time );
-
-
-				//printf( "ACCEL: %10f %10f %10f  %10f %10f %10f  %10f %10f %10f\n",
-				//	acceleration[0], acceleration[1], acceleration[2], 
-				//	dd->imuvel[0],dd->imuvel[1],dd->imuvel[2],
-				//	dd->imu_accel_zero[0], dd->imu_accel_zero[1], dd->imu_accel_zero[2] );
 
 				//Tricky, tug the imuvel toward zero otherwise it will contine to drift.
 				scale3d( dd->imuvel, dd->imuvel, 0.9999 );
@@ -175,12 +169,14 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 				//Update actual location.
 				add3d( dd->InteralPoseUsedForCalc.Pos, dd->InteralPoseUsedForCalc.Pos, updatepos );
 				add3d( dd->mixed_output, dd->mixed_output, updatepos );
-			
 			}
 		}
 
+		quatnormalize(dd->InteralPoseUsedForCalc.Rot, dd->InteralPoseUsedForCalc.Rot);
+		quatnormalize(dd->imu_up_correct, dd->imu_up_correct);
 		copy3d( object_pose_out.Pos, dd->mixed_output );
 		quatrotateabout( object_pose_out.Rot, object_pose_out.Rot, dd->imu_up_correct );
+		quatnormalize( object_pose_out.Rot, object_pose_out.Rot );
 		PoserData_poser_pose_func(pd, so, &object_pose_out);
 
 		return 0;
@@ -465,7 +461,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 					quatgetreciprocal(world_to_object_space, object_pose_at_hit->Rot);
 
 					//First, check to see if this hit is a sensor that is facing the lighthouse.
-					{
+					if( so->PoseConfidence < 0.9 ) {
 						LinmathPoint3d vector_to_lighthouse;
 						sub3d( vector_to_lighthouse, lhp->Pos, object_pose_at_hit->Pos ); //Get vector in world space.
 						normalize3d( vector_to_lighthouse, vector_to_lighthouse );
@@ -573,6 +569,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 
 				copy3d( dd->mixed_output, object_pose_out.Pos );
 				quatrotateabout( object_pose_out.Rot, object_pose_out.Rot, dd->imu_up_correct );
+				quatnormalize( object_pose_out.Rot, object_pose_out.Rot );
 				PoserData_poser_pose_func(pd, so, &object_pose_out);
 			}
 		//	FLT var_meters = 0.5;
@@ -592,7 +589,6 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 			}
 			else if( validpoints > 1 && so->PoseConfidence < 0.5 && !normal_faults )
 			{
-				printf( "Push\n" );
 				so->PoseConfidence += (1-so->PoseConfidence)*.01;
 			}
 		}
