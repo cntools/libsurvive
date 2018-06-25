@@ -104,7 +104,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		SurvivePose object_pose_out;
 		memcpy(&object_pose_out, &LinmathPose_Identity, sizeof(LinmathPose_Identity));
 		memcpy(&dd->InteralPoseUsedForCalc, &LinmathPose_Identity, sizeof(LinmathPose_Identity));
-		memcpy(&dd->imu_up_correct, &LinmathPoint3d_Identity, sizeof(LinmathPoint3d_Identity) );
+		//memcpy(&dd->imu_up_correct, &LinmathQuat_Identity, sizeof(LinmathQuat_Identity) );
 		so->PoseConfidence = 0.0;
 		PoserData_poser_pose_func(pd, so, &object_pose_out);
 	}
@@ -143,7 +143,6 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		FLT inangle = ld->angle;
 		int sensor_id = ld->sensor_id;
 		int axis = dd->sweepaxis;
-		//const SurvivePose *object_pose = &so->OutPose;
 
 		dd->sweeplh = lhid;
 
@@ -227,8 +226,6 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 			int lhid = dd->sweeplh;
 			int axis = dd->sweepaxis;
 			int pts = dd->ptsweep;
-			//const SurvivePose *object_pose =
-			//	&so->OutPose; // XXX TODO Should pull pose from approximate time when LHs were scanning it.
 
 			BaseStationData *bsd = &so->ctx->bsd[lhid];
 			SurvivePose *lh_pose = &bsd->Pose;
@@ -359,8 +356,6 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 				AdjustPosition( so, vec_correct, 0 );
 			}
 
-
-
 			// Stage 4: "Tug" on the rotation of the object, from all of the sensor's pov.
 			// If we were able to determine likliehood of a hit in the sweep instead of afterward
 			// we would actually be able to perform this on a per-hit basis.
@@ -425,6 +420,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 
 						// Now, we have a "tug" vector in object-local space.  Need to apply the torque.
 						FLT vector_from_center_of_object[3];
+						normalize3d(vector_from_center_of_object, sensor_inpos);
 						scale3d(vector_from_center_of_object, vector_from_center_of_object, 1);
 
 						FLT new_vector_in_object_space[3];
@@ -439,7 +435,6 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 					}
 
 				}
-				// Apply our corrective quaternion to the output.
 				AdjustRotation( so, correction, 0, 0 );
 			}
 
@@ -464,7 +459,9 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 				}
 				scale3d( dd->mixed_output, MixedPosition, 1./MixedAmount );
 				EmitPose( so, pd );
+
 			}
+
 			dd->ptsweep = 0;
 
 			if( validpoints > 1 && applied_corrections > 1 && !normal_faults)
@@ -478,6 +475,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		}
 
 		dd->sweepaxis = l->acode & 1;
+		// printf( "SYNC %d %p\n", l->acode, dd );
 		break;
 	}
 	case POSERDATA_FULL_SCENE: {
