@@ -159,8 +159,8 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 
 				//XXX Danger, will robinson.
 				//We are doing an IIR on the acceleration.  Tests have shown THIS IS BAD.  We should try to correct based on the lightcap data.
-				scale3d( dd->average_accelerometer_up_vector_in_world_space, dd->average_accelerometer_up_vector_in_world_space, .9999  );
-				scale3d( correction, rotated_out, .0001  );
+				scale3d( dd->average_accelerometer_up_vector_in_world_space, dd->average_accelerometer_up_vector_in_world_space, .999  );
+				scale3d( correction, rotated_out, .001  );
 				add3d( dd->average_accelerometer_up_vector_in_world_space, dd->average_accelerometer_up_vector_in_world_space, correction );
 
 				LinmathPoint3d deviation;
