@@ -149,7 +149,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		}
 
 
-		printf( "ACCEL %f %f %f\n", PFTHREE( imuData->accel ) );
+		//printf( "ACCEL %f %f %f\n", PFTHREE( imuData->accel ) );
 
 		{
 			LinmathPoint3d rotated_out;
