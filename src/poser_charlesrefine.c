@@ -20,7 +20,7 @@
 #define HIT_QUALITY_BASELINE                                                                                           \
 	0.0001 // Determines which hits to cull.  Actually SQRT(baseline) if 0.0001, it is really 1cm
 
-#define LIGHTCAP_DESCALE 0.5		//DO NOT EXCEED 0.7
+#define LIGHTCAP_DESCALE 0.2		//DO NOT EXCEED 0.7
 
 #define CORRECT_LATERAL_POSITION_COEFFICIENT LIGHTCAP_DESCALE // Explodes if you exceed 1.0  (Normally 0.7 for snappy non-IMU response)
 #define CORRECT_TELESCOPTION_COEFFICIENT (10.f*LIGHTCAP_DESCALE)	 // Converges even as high as 10.0 and doesn't explode. (Normally 7.0 for non-IMU respone)
@@ -85,16 +85,15 @@ void AdjustPosition( SurviveObject * so, LinmathPoint3d adjustment, int is_imu, 
 	add3d( dd->InteralPoseUsedForCalc.Pos, adjustment, dd->InteralPoseUsedForCalc.Pos);
 	add3d( dd->mixed_output, adjustment, dd->mixed_output);
 
-	if( descale > 0.0001 )
+	if( descale > 0.0001 )	//Coming from lightcap.
 	{
 		LinmathPoint3d backflow;
-		scale3d( backflow, adjustment, 1./descale );
+		scale3d( backflow, adjustment, 1.0/descale );
 		CharlesPoserData *dd = so->PoserData;
-		//scale3d( dd->velocity_according_to_accelerometer, dd->velocity_according_to_accelerometer, 0.9 );
-
-		//XXX XXX XXX BIG TODO!!! If we are updating based on lightcap, we should back-adjust the acceleration.	
-		//Also, figure out how to dampen velocity.
+		//XXX TODO figure out how to dampen velocity.
 		add3d( dd->velocity_according_to_accelerometer, dd->velocity_according_to_accelerometer, backflow );
+		scale3d( backflow, backflow, .001 );
+		add3d( dd->average_accelerometer_up_vector_in_world_space, dd->average_accelerometer_up_vector_in_world_space, backflow );
 	}
 
 }
@@ -148,6 +147,9 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 			quatfromeuler( applygyro, imuData->gyro );
 			AdjustRotation( so, applygyro, 1, 0 );
 		}
+
+
+		printf( "ACCEL %f %f %f\n", PFTHREE( imuData->accel ) );
 
 		{
 			LinmathPoint3d rotated_out;

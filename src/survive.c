@@ -16,6 +16,7 @@
 #define z_const const
 #endif
 
+STATIC_CONFIG_ITEM( BLACKLIST_DEVS, "blacklist-devs", 's', "List any devs (or substrings of devs) to blacklist.", "-" );
 STATIC_CONFIG_ITEM( CONFIG_FILE, "configfile", 's', "Default configuration file", "config.json" );
 STATIC_CONFIG_ITEM( CONFIG_D_CALI, "disable-calibrate", 'i', "Enables or disables calibration", 0 );
 STATIC_CONFIG_ITEM( CONFIG_F_CALI, "force-calibrate", 'i', "Forces calibration even if one exists.", 0 );
