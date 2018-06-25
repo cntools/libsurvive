@@ -13,6 +13,11 @@
 
 #define MAX_PT_PER_SWEEP SENSORS_PER_OBJECT
 
+/*
+	More notes to self:
+		 try updating expected lighthouse position against each lighthouse with imu data and don't tie them to each other.
+
+*/
 
 
 // Tunable parameters:
@@ -155,7 +160,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 			LinmathPoint3d rotated_out;
 			quatrotatevector( rotated_out, dd->InteralPoseUsedForCalc.Rot, imuData->accel );
 
-			if( so->PoseConfidence > 0.9999 )
+			if( so->PoseConfidence > 0.6 )
 			{
 				LinmathPoint3d correction;
 
