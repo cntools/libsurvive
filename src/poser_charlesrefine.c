@@ -20,8 +20,11 @@
 #define HIT_QUALITY_BASELINE                                                                                           \
 	0.0001 // Determines which hits to cull.  Actually SQRT(baseline) if 0.0001, it is really 1cm
 
-#define CORRECT_LATERAL_POSITION_COEFFICIENT 0.7 // Explodes if you exceed 1.0  (Normally 0.7 for snappy non-IMU response)
-#define CORRECT_TELESCOPTION_COEFFICIENT 7.0f	 // Converges even as high as 10.0 and doesn't explode. (Normally 7.0 for non-IMU respone)
+#define LIGHTCAP_DESCALE 0.5		//DO NOT EXCEED 0.7
+
+#define CORRECT_LATERAL_POSITION_COEFFICIENT LIGHTCAP_DESCALE // Explodes if you exceed 1.0  (Normally 0.7 for snappy non-IMU response)
+#define CORRECT_TELESCOPTION_COEFFICIENT (10.f*LIGHTCAP_DESCALE)	 // Converges even as high as 10.0 and doesn't explode. (Normally 7.0 for non-IMU respone)
+
 #define CORRECT_ROTATION_COEFFICIENT                                                                                   \
 	0.2 // This starts to fall apart above 5.0, but for good reason.  It is amplified by the number of points seen.
 #define ROTATIONAL_CORRECTION_MAXFORCE 0.01
@@ -57,30 +60,43 @@ typedef struct {
 
 	SurviveIMUTracker tracker;
 	SurvivePose * lastlhp;
+
+
+	//Additional flags, used when we start to try to use the accelerometer
+	LinmathPoint3d average_accelerometer_up_vector_in_world_space;
+	LinmathPoint3d velocity_according_to_accelerometer;
 } CharlesPoserData;
 
 
 void AdjustRotation( SurviveObject *so, LinmathQuat adjustment, int is_imu, int is_coarse )
 {
 	CharlesPoserData *dd = so->PoserData;
-
+	//LinmathQuat invert_adjust;
+	//quatgetreciprocal( invert_adjust, adjustment );
 	quatrotateabout(dd->InteralPoseUsedForCalc.Rot, dd->InteralPoseUsedForCalc.Rot, adjustment );
 	quatnormalize(dd->InteralPoseUsedForCalc.Rot, dd->InteralPoseUsedForCalc.Rot);
 
-	//XXX TODO: Calibrate the gyroscope using the lightcap.
-
-	//Always update the accelerometer zero based on the gyro.
-	//quatrotatevector( dd->imu_accel_zero, applygyro, dd->imu_accel_zero );
-	//Always update the system-corrective quat based on the gyro.
-	//quatrotateabout( dd->imu_up_correct, dd->imu_up_correct, applygyro );
 }
 
-void AdjustPosition( SurviveObject * so, LinmathPoint3d adjustment, int is_imu )
+void AdjustPosition( SurviveObject * so, LinmathPoint3d adjustment, int is_imu, float descale )
 {
 	CharlesPoserData *dd = so->PoserData;
 
 	add3d( dd->InteralPoseUsedForCalc.Pos, adjustment, dd->InteralPoseUsedForCalc.Pos);
 	add3d( dd->mixed_output, adjustment, dd->mixed_output);
+
+	if( descale > 0.0001 )
+	{
+		LinmathPoint3d backflow;
+		scale3d( backflow, adjustment, 1./descale );
+		CharlesPoserData *dd = so->PoserData;
+		//scale3d( dd->velocity_according_to_accelerometer, dd->velocity_according_to_accelerometer, 0.9 );
+
+		//XXX XXX XXX BIG TODO!!! If we are updating based on lightcap, we should back-adjust the acceleration.	
+		//Also, figure out how to dampen velocity.
+		add3d( dd->velocity_according_to_accelerometer, dd->velocity_according_to_accelerometer, backflow );
+	}
+
 }
 
 //Emits "dd->mixed_output" for position and dd->InteralPoseUsedForCalc.Rot for rotation.
@@ -90,7 +106,16 @@ void EmitPose( SurviveObject *so, PoserData *pd )
 
 	SurvivePose object_pose_out;
 	copy3d(   object_pose_out.Pos, dd->mixed_output );
+
+	//average_accelerometer_up_vector_in_world_space  should be "up"
+	LinmathVec3d true_up = { 0, 0, 1 };
+	LinmathVec3d dist_up;
+	normalize3d( dist_up, dd->average_accelerometer_up_vector_in_world_space );  //NOTE: Average vector probably won't be normalized.
+	LinmathQuat adjustment_from_rerighting_up;
+	quatfrom2vectors( adjustment_from_rerighting_up, dist_up, true_up );
+
 	quatcopy( object_pose_out.Rot, dd->InteralPoseUsedForCalc.Rot );
+	quatrotateabout( object_pose_out.Rot, adjustment_from_rerighting_up, dd->InteralPoseUsedForCalc.Rot );
 	PoserData_poser_pose_func(pd, so, &object_pose_out);
 }
 
@@ -104,7 +129,6 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		SurvivePose object_pose_out;
 		memcpy(&object_pose_out, &LinmathPose_Identity, sizeof(LinmathPose_Identity));
 		memcpy(&dd->InteralPoseUsedForCalc, &LinmathPose_Identity, sizeof(LinmathPose_Identity));
-		//memcpy(&dd->imu_up_correct, &LinmathQuat_Identity, sizeof(LinmathQuat_Identity) );
 		so->PoseConfidence = 0.0;
 		PoserData_poser_pose_func(pd, so, &object_pose_out);
 	}
@@ -115,9 +139,6 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		float imu_time = 1./ so->imu_freq;
 		// Really should use this...
 		PoserDataIMU *imuData = (PoserDataIMU *)pd;
-		SurvivePose object_pose_out;
-		LinmathQuat object_to_world_with_imu_up_correct;
-		LinmathQuat world_space_to_object_space_quat;
 
 		{
 			LinmathQuat	applygyro;
@@ -126,6 +147,39 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 			imuData->gyro[2] *= imu_time;
 			quatfromeuler( applygyro, imuData->gyro );
 			AdjustRotation( so, applygyro, 1, 0 );
+		}
+
+		{
+			LinmathPoint3d rotated_out;
+			quatrotatevector( rotated_out, dd->InteralPoseUsedForCalc.Rot, imuData->accel );
+
+			if( so->PoseConfidence > 0.9999 )
+			{
+				LinmathPoint3d correction;
+
+				//XXX Danger, will robinson.
+				//We are doing an IIR on the acceleration.  Tests have shown THIS IS BAD.  We should try to correct based on the lightcap data.
+				scale3d( dd->average_accelerometer_up_vector_in_world_space, dd->average_accelerometer_up_vector_in_world_space, .9999  );
+				scale3d( correction, rotated_out, .0001  );
+				add3d( dd->average_accelerometer_up_vector_in_world_space, dd->average_accelerometer_up_vector_in_world_space, correction );
+
+				LinmathPoint3d deviation;
+				sub3d( deviation, rotated_out, dd->average_accelerometer_up_vector_in_world_space );
+
+				LinmathPoint3d acc;
+				scale3d( acc, deviation, 9.8*imu_time );
+				add3d( dd->velocity_according_to_accelerometer, acc, dd->velocity_according_to_accelerometer );
+				scale3d( dd->velocity_according_to_accelerometer, dd->velocity_according_to_accelerometer, .999 ); //XXX Danger! We are doing an IIR on velocity.  This is dangerous.
+
+				LinmathPoint3d posdiff;
+				scale3d( posdiff, dd->velocity_according_to_accelerometer, imu_time );
+				AdjustPosition( so, posdiff, 1, 0 );
+			}
+			else
+			{
+				copy3d( dd->average_accelerometer_up_vector_in_world_space, rotated_out );
+				scale3d( dd->velocity_according_to_accelerometer, dd->velocity_according_to_accelerometer, 0 );
+			}
 		}
 
 		EmitPose( so, pd );
@@ -353,7 +407,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 						so->PoseConfidence *= 0.9;
 					}
 				}
-				AdjustPosition( so, vec_correct, 0 );
+				AdjustPosition( so, vec_correct, 0, (applied_corrections==2)?LIGHTCAP_DESCALE:0 );
 			}
 
 			// Stage 4: "Tug" on the rotation of the object, from all of the sensor's pov.
