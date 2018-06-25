@@ -21,7 +21,7 @@
 	0.0001 // Determines which hits to cull.  Actually SQRT(baseline) if 0.0001, it is really 1cm
 
 #define CORRECT_LATERAL_POSITION_COEFFICIENT 0.7 // Explodes if you exceed 1.0  (Normally 0.7 for snappy non-IMU response)
-#define CORRECT_TELESCOPTION_COEFFICIENT 7.0	 // Converges even as high as 10.0 and doesn't explode. (Normally 7.0 for non-IMU respone)
+#define CORRECT_TELESCOPTION_COEFFICIENT 7.0f	 // Converges even as high as 10.0 and doesn't explode. (Normally 7.0 for non-IMU respone)
 #define CORRECT_ROTATION_COEFFICIENT                                                                                   \
 	0.2 // This starts to fall apart above 5.0, but for good reason.  It is amplified by the number of points seen.
 #define ROTATIONAL_CORRECTION_MAXFORCE 0.01
@@ -43,9 +43,10 @@ typedef struct {
 	SurvivePose object_pose_at_hit[MAX_PT_PER_SWEEP];
 	uint8_t sensor_ids[MAX_PT_PER_SWEEP];
 
-	LinmathPoint3d imuvel;
-	LinmathPoint3d imu_accel_zero;
-	LinmathQuat    imu_up_correct;
+//	LinmathPoint3d imuvel;
+//	LinmathPoint3d imu_accel_zero;
+//	int did_zero_imu;
+//	LinmathPoint3d imu_up_correct;
 
 	LinmathPoint3d MixingPositions[NUM_LIGHTHOUSES][2];
 	LinmathPoint3d mixed_output;
@@ -64,6 +65,43 @@ typedef struct {
 	SurvivePose * lastlhp;
 } CharlesPoserData;
 
+
+void AdjustRotation( SurviveObject *so, LinmathQuat adjustment, int is_imu, int is_coarse )
+{
+	CharlesPoserData *dd = so->PoserData;
+
+	quatrotateabout(dd->InteralPoseUsedForCalc.Rot, dd->InteralPoseUsedForCalc.Rot, adjustment );
+	quatnormalize(dd->InteralPoseUsedForCalc.Rot, dd->InteralPoseUsedForCalc.Rot);
+
+	//XXX TODO: Calibrate the gyroscope using the lightcap.
+
+	//Always update the accelerometer zero based on the gyro.
+	//quatrotatevector( dd->imu_accel_zero, applygyro, dd->imu_accel_zero );
+	//Always update the system-corrective quat based on the gyro.
+	//quatrotateabout( dd->imu_up_correct, dd->imu_up_correct, applygyro );
+}
+
+void AdjustPosition( SurviveObject * so, LinmathPoint3d adjustment, int is_imu )
+{
+	CharlesPoserData *dd = so->PoserData;
+
+	add3d( dd->InteralPoseUsedForCalc.Pos, adjustment, dd->InteralPoseUsedForCalc.Pos);
+	add3d( dd->mixed_output, adjustment, dd->mixed_output);
+}
+
+//Emits "dd->mixed_output" for position and dd->InteralPoseUsedForCalc.Rot for rotation.
+void EmitPose( SurviveObject *so, PoserData *pd )
+{
+	CharlesPoserData *dd = so->PoserData;
+
+	SurvivePose object_pose_out;
+	copy3d(   object_pose_out.Pos, dd->mixed_output );
+	quatcopy( object_pose_out.Rot, dd->InteralPoseUsedForCalc.Rot );
+	PoserData_poser_pose_func(pd, so, &object_pose_out);
+}
+
+
+
 int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 	CharlesPoserData *dd = so->PoserData;
 	if (!dd)
@@ -72,7 +110,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		SurvivePose object_pose_out;
 		memcpy(&object_pose_out, &LinmathPose_Identity, sizeof(LinmathPose_Identity));
 		memcpy(&dd->InteralPoseUsedForCalc, &LinmathPose_Identity, sizeof(LinmathPose_Identity));
-		memcpy(&dd->imu_up_correct, &LinmathQuat_Identity, sizeof(LinmathQuat_Identity) );
+		//memcpy(&dd->imu_up_correct, &LinmathQuat_Identity, sizeof(LinmathQuat_Identity) );
 		so->PoseConfidence = 0.0;
 		PoserData_poser_pose_func(pd, so, &object_pose_out);
 	}
@@ -87,25 +125,25 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		LinmathQuat object_to_world_with_imu_up_correct;
 		LinmathQuat world_space_to_object_space_quat;
 
-		quatrotateabout( object_to_world_with_imu_up_correct, dd->InteralPoseUsedForCalc.Rot, dd->imu_up_correct );
-		quatgetreciprocal(world_space_to_object_space_quat, object_to_world_with_imu_up_correct );
-
+		//quatrotateabout( object_to_world_with_imu_up_correct, dd->InteralPoseUsedForCalc.Rot, dd->imu_up_correct );
+		//quatgetreciprocal(world_space_to_object_space_quat, object_to_world_with_imu_up_correct );
 
 		{
-			LinmathQuat	applymotion;
+			LinmathQuat	applygyro;
 			imuData->gyro[0] *= imu_time;
 			imuData->gyro[1] *= imu_time;
 			imuData->gyro[2] *= imu_time;
-			quatfromeuler( applymotion, imuData->gyro );
-
-			quatrotateabout(object_pose_out.Rot, dd->InteralPoseUsedForCalc.Rot, applymotion );		//Contribution from Gyro
-			quatnormalize(object_pose_out.Rot, object_pose_out.Rot);
-			quatcopy( dd->InteralPoseUsedForCalc.Rot, object_pose_out.Rot); 
+			quatfromeuler( applygyro, imuData->gyro );
+			AdjustRotation( so, applygyro, 1, 0 );
 		}
 
+		EmitPose( so, pd );
+
+#if 0
 		//This will be overwritten by the accelerometer updates.
 		//We do this here in case we want to use it later.
 		copy3d( object_pose_out.Pos, dd->InteralPoseUsedForCalc.Pos );
+
 
 		// Do accelerometer based stuff.
 		if( so->PoseConfidence > POSE_CONFIDENCE_FOR_HANDLING_LINEAR_IMU ) {
@@ -119,22 +157,43 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 				LinmathVec3d correct_diff;
 				quatrotatevector(reright, world_space_to_object_space_quat, reright);
 				sub3d( correct_diff, normup, reright  );
-				scale3d( correct_diff, correct_diff, -0.01 );	//This is the coefficient applying the drag. XXX THIS MUST CHANGE.
+				scale3d( correct_diff, correct_diff, -0.001 );	//This is the coefficient applying the drag. XXX THIS MUST CHANGE.
 				add3d( correct_diff, correct_diff, reright );
 				normalize3d( correct_diff, correct_diff );
 				LinmathQuat  reright_quat;
 				quatfrom2vectors( reright_quat, reright, correct_diff );
 				//Push to correct "Up" a little bit.
 
-
-				quatrotateabout(dd->InteralPoseUsedForCalc.Rot, dd->InteralPoseUsedForCalc.Rot, reright_quat);
+			//Do this if we want to use the IMU's up to help out the libsurvive estimate of "up"
+			//	quatrotateabout(dd->InteralPoseUsedForCalc.Rot, dd->InteralPoseUsedForCalc.Rot, reright_quat);
 				
-				//quatrotateabout(dd->imu_up_correct, dd->imu_up_correct, reright_quat);
-				//quatnormalize(dd->imu_up_correct, dd->imu_up_correct);
+			//	quatrotateabout(dd->imu_up_correct, dd->imu_up_correct, reright_quat);
+			//	quatnormalize(dd->imu_up_correct, dd->imu_up_correct);
 			}
 
+
 			//Update position as a function from the IMU...
-			if(0 ) {
+			if( 1 ) {
+				LinmathVec3d acceleration;
+				scale3d( acceleration, imuData->accel, 1.0 );
+
+				if( !dd->did_zero_imu )
+				{
+					copy3d( dd->imu_accel_zero, acceleration );
+					dd->did_zero_imu = 1;					
+				}
+				else
+				{
+					LinmathVec3d recalingval;
+					scale3d( recalingval, acceleration, 0.0001 );
+					scale3d( dd->imu_accel_zero, dd->imu_accel_zero, 0.9999 );
+					add3d( dd->imu_accel_zero, dd->imu_accel_zero, recalingval );
+				}
+
+				sub3d( acceleration, acceleration, dd->imu_accel_zero );
+				scale3d( acceleration, acceleration, 9.8 * imu_time );
+				printf( "ACCEL %f %f %f\n", PFTHREE( acceleration ) );
+#if 0
 				LinmathVec3d expected_up = { 0, 0, 1 };
 				LinmathVec3d acceleration;
 				scale3d( acceleration, imuData->accel, 1.0 );
@@ -169,6 +228,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 				//Update actual location.
 				add3d( dd->InteralPoseUsedForCalc.Pos, dd->InteralPoseUsedForCalc.Pos, updatepos );
 				add3d( dd->mixed_output, dd->mixed_output, updatepos );
+#endif
 			}
 		}
 
@@ -178,7 +238,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 		quatrotateabout( object_pose_out.Rot, object_pose_out.Rot, dd->imu_up_correct );
 		quatnormalize( object_pose_out.Rot, object_pose_out.Rot );
 		PoserData_poser_pose_func(pd, so, &object_pose_out);
-
+#endif
 		return 0;
 	}
 	case POSERDATA_LIGHT: {
@@ -298,127 +358,131 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 			int validpoints = 0;
 			int ptvalid[MAX_PT_PER_SWEEP];
 			FLT avgerr = 0.0;
-			FLT vec_correct[3] = {0., 0., 0.};
 			FLT avgang = 0.0;
 
-			// Step 1: Determine standard of deviation, and average in order to
-			// drop points that are likely in error.
 			{
-				// Calculate average
-				FLT avgerr_orig = 0.0;
-				FLT stddevsq = 0.0;
-				for (i = 0; i < pts; i++)
-					avgerr_orig += dd->quantity_errors[i];
-				avgerr_orig /= pts;
+				FLT vec_correct[3] = {0., 0., 0.};
+				// Step 1: Determine standard of deviation, and average in order to
+				// drop points that are likely in error.
+				{
+					// Calculate average
+					FLT avgerr_orig = 0.0;
+					FLT stddevsq = 0.0;
+					for (i = 0; i < pts; i++)
+						avgerr_orig += dd->quantity_errors[i];
+					avgerr_orig /= pts;
 
-				// Calculate standard of deviation.
-				for (i = 0; i < pts; i++) {
-					FLT diff = dd->quantity_errors[i] - avgerr_orig;
-					stddevsq += diff * diff;
+					// Calculate standard of deviation.
+					for (i = 0; i < pts; i++) {
+						FLT diff = dd->quantity_errors[i] - avgerr_orig;
+						stddevsq += diff * diff;
+					}
+					stddevsq /= pts;
+
+					for (i = 0; i < pts; i++) {
+						FLT err = dd->quantity_errors[i];
+						FLT diff = err - avgerr_orig;
+						diff *= diff;
+						int isptvalid = (diff * MIN_HIT_QUALITY <= stddevsq + HIT_QUALITY_BASELINE) ? 1 : 0;
+						ptvalid[i] = isptvalid;
+						if (isptvalid) {
+							avgang += dd->angles_at_pts[i];
+							avgerr += err;
+							validpoints++;
+						}
+					}
+					avgang /= validpoints;
+					avgerr /= validpoints;
 				}
-				stddevsq /= pts;
 
-				for (i = 0; i < pts; i++) {
-					FLT err = dd->quantity_errors[i];
-					FLT diff = err - avgerr_orig;
-					diff *= diff;
-					int isptvalid = (diff * MIN_HIT_QUALITY <= stddevsq + HIT_QUALITY_BASELINE) ? 1 : 0;
-					ptvalid[i] = isptvalid;
-					if (isptvalid) {
-						avgang += dd->angles_at_pts[i];
-						avgerr += err;
-						validpoints++;
+
+				// Step 2: Determine average lateral error.
+				// We can actually always perform this operation.  Even with only one point.
+				if ( so->PoseConfidence > MINIMUM_CONFIDENCE_TO_CORRECT_POSITION )
+				{
+					FLT avg_err[3] = {0, 0, 0}; // Positional error.
+					for (i = 0; i < pts; i++) {
+						if (!ptvalid[i])
+							continue;
+						FLT *nrm = dd->normal_at_errors[i];
+						FLT err = dd->quantity_errors[i];
+						avg_err[0] = avg_err[0] + nrm[0] * err;
+						avg_err[1] = avg_err[1] + nrm[1] * err;
+						avg_err[2] = avg_err[2] + nrm[2] * err;
+					}
+
+					// NOTE: The "avg_err" is not geometrically centered.  This is actually
+					// probably okay, since if you have sevearl data points to one side, you
+					// can probably trust that more.
+					scale3d(avg_err, avg_err, 1. / validpoints);
+
+					// We have "Average error" now.  A vector in worldspace.
+					// This can correct for lateral error, but not distance from camera.
+
+					// XXX TODO: Should we check to see if we only have one or
+					// two points to make sure the error on this isn't unusually high?
+					// If calculated error is unexpectedly high, then we should probably
+					// Not apply the transform.
+
+					if( ( magnitude3d( avg_err ) < MAX_JUMP_DISTANCE  || so->PoseConfidence < 0.8 ) ) 
+					{
+						scale3d(avg_err, avg_err, -CORRECT_LATERAL_POSITION_COEFFICIENT);
+						add3d(vec_correct, vec_correct, avg_err);
+						applied_corrections++;
+					}
+					else
+					{
+						so->PoseConfidence *= 0.9;
 					}
 				}
-				avgang /= validpoints;
-				avgerr /= validpoints;
+
+
+
+				// Step 3: Control telecoption from lighthouse.
+				// we need to find out what the weighting is to determine "zoom"
+				if (validpoints > 1 && so->PoseConfidence > MINIMUM_CONFIDENCE_TO_CORRECT_POSITION ) // Can't correct "zoom" with only one point.
+				{
+					FLT zoom = 0.0;
+					FLT rmsang = 0.0;
+					for (i = 0; i < pts; i++) {
+						if (!ptvalid[i])
+							continue;
+						FLT delang = dd->angles_at_pts[i] - avgang;
+						FLT delerr = dd->quantity_errors[i] - avgerr;
+						if (axis)
+							delang *= -1; // Flip sign on alternate axis because it's measured backwards.
+						zoom += delerr * delang;
+						rmsang += delang * delang;
+					}
+
+					// Control into or outof lighthouse.
+					// XXX Check to see if we need to sqrt( the rmsang), need to check convergance behavior close to
+					// lighthouse.
+					// This is a questionable step.
+					zoom /= sqrt(rmsang);
+
+					zoom *= CORRECT_TELESCOPTION_COEFFICIENT;
+
+					//Don't apply completely wild zoom's unless our confidence is awful.
+					if( ( zoom < MAX_JUMP_DISTANCE || so->PoseConfidence < 0.8 ) ) 
+					{
+						FLT veccamalong[3];
+						sub3d(veccamalong, lh_pose->Pos, dd->InteralPoseUsedForCalc.Pos);
+						normalize3d(veccamalong, veccamalong);
+						scale3d(veccamalong, veccamalong, zoom);
+						add3d(vec_correct, veccamalong, vec_correct);
+						applied_corrections++;
+					}
+					else
+					{
+						so->PoseConfidence *= 0.9;
+					}
+				}
+				AdjustPosition( so, vec_correct, 0 );
 			}
 
 
-			// Step 2: Determine average lateral error.
-			// We can actually always perform this operation.  Even with only one point.
-			if ( so->PoseConfidence > MINIMUM_CONFIDENCE_TO_CORRECT_POSITION )
-			{
-				FLT avg_err[3] = {0, 0, 0}; // Positional error.
-				for (i = 0; i < pts; i++) {
-					if (!ptvalid[i])
-						continue;
-					FLT *nrm = dd->normal_at_errors[i];
-					FLT err = dd->quantity_errors[i];
-					avg_err[0] = avg_err[0] + nrm[0] * err;
-					avg_err[1] = avg_err[1] + nrm[1] * err;
-					avg_err[2] = avg_err[2] + nrm[2] * err;
-				}
-
-				// NOTE: The "avg_err" is not geometrically centered.  This is actually
-				// probably okay, since if you have sevearl data points to one side, you
-				// can probably trust that more.
-				scale3d(avg_err, avg_err, 1. / validpoints);
-
-				// We have "Average error" now.  A vector in worldspace.
-				// This can correct for lateral error, but not distance from camera.
-
-				// XXX TODO: Should we check to see if we only have one or
-				// two points to make sure the error on this isn't unusually high?
-				// If calculated error is unexpectedly high, then we should probably
-				// Not apply the transform.
-
-				if( ( magnitude3d( avg_err ) < MAX_JUMP_DISTANCE  || so->PoseConfidence < 0.8 ) ) 
-				{
-					scale3d(avg_err, avg_err, -CORRECT_LATERAL_POSITION_COEFFICIENT);
-					add3d(vec_correct, vec_correct, avg_err);
-					applied_corrections++;
-				}
-				else
-				{
-					so->PoseConfidence *= 0.9;
-				}
-			}
-
-
-
-			// Step 3: Control telecoption from lighthouse.
-			// we need to find out what the weighting is to determine "zoom"
-			if (validpoints > 1 && so->PoseConfidence > MINIMUM_CONFIDENCE_TO_CORRECT_POSITION ) // Can't correct "zoom" with only one point.
-			{
-				FLT zoom = 0.0;
-				FLT rmsang = 0.0;
-				for (i = 0; i < pts; i++) {
-					if (!ptvalid[i])
-						continue;
-					FLT delang = dd->angles_at_pts[i] - avgang;
-					FLT delerr = dd->quantity_errors[i] - avgerr;
-					if (axis)
-						delang *= -1; // Flip sign on alternate axis because it's measured backwards.
-					zoom += delerr * delang;
-					rmsang += delang * delang;
-				}
-
-				// Control into or outof lighthouse.
-				// XXX Check to see if we need to sqrt( the rmsang), need to check convergance behavior close to
-				// lighthouse.
-				// This is a questionable step.
-				zoom /= sqrt(rmsang);
-
-				zoom *= CORRECT_TELESCOPTION_COEFFICIENT;
-
-				//Don't apply completely wild zoom's unless our confidence is awful.
-				if( ( zoom < MAX_JUMP_DISTANCE || so->PoseConfidence < 0.8 ) ) 
-				{
-					FLT veccamalong[3];
-					sub3d(veccamalong, lh_pose->Pos, dd->InteralPoseUsedForCalc.Pos);
-					normalize3d(veccamalong, veccamalong);
-					scale3d(veccamalong, veccamalong, zoom);
-					add3d(vec_correct, veccamalong, vec_correct);
-					applied_corrections++;
-				}
-				else
-				{
-					so->PoseConfidence *= 0.9;
-				}
-			}
-
-
+#if 0
 			//Tricky:  Update position here, and back-correct imuvel based on correction.
 			if( 0 ) { //XXX XXX TODO Position update
 				LinmathPoint3d vecc;
@@ -431,12 +495,12 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 					LinmathQuat world_to_object_space;
 					quatgetreciprocal(world_to_object_space, dd->InteralPoseUsedForCalc.Rot);
 					quatrotatevector( vecc, world_to_object_space, vecc );
-					add3d( dd->imu_accel_zero, dd->imu_accel_zero, vecc );
-					printf( "ACCELV: %f %f %f  %f %f %f\n", vecc[0], vecc[1], vecc[2], dd->imu_accel_zero[0], dd->imu_accel_zero[1], dd->imu_accel_zero[2] );
+					//add3d( dd->imu_accel_zero, dd->imu_accel_zero, vecc );
+					//printf( "ACCELV: %f %f %f  %f %f %f\n", vecc[0], vecc[1], vecc[2], dd->imu_accel_zero[0], dd->imu_accel_zero[1], dd->imu_accel_zero[2] );
 				}
 			}
+#endif
 
-			add3d( dd->InteralPoseUsedForCalc.Pos, vec_correct, dd->InteralPoseUsedForCalc.Pos);
 
 			// Stage 4: "Tug" on the rotation of the object, from all of the sensor's pov.
 			// If we were able to determine likliehood of a hit in the sweep instead of afterward
@@ -460,7 +524,9 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 					LinmathQuat world_to_object_space;
 					quatgetreciprocal(world_to_object_space, object_pose_at_hit->Rot);
 
-					//First, check to see if this hit is a sensor that is facing the lighthouse.
+					//4A: First, check to see if this hit is a sensor that is facing the lighthouse.
+					//This is for coarse corrections early on in the calibration.
+					//If one of these happens it means the orientation/pose is totally impossible.
 					if( so->PoseConfidence < 0.9 ) {
 						LinmathPoint3d vector_to_lighthouse;
 						sub3d( vector_to_lighthouse, lhp->Pos, object_pose_at_hit->Pos ); //Get vector in world space.
@@ -479,9 +545,8 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 								cross3d( rotateaxis, vector_to_lighthouse, sensornormal );
 								LinmathQuat correction;
 								quatfromaxisangle(correction, rotateaxis, facingness*.2 );
-								quatrotateabout(dd->InteralPoseUsedForCalc.Rot, dd->InteralPoseUsedForCalc.Rot, correction);
-								quatnormalize(dd->InteralPoseUsedForCalc.Rot, dd->InteralPoseUsedForCalc.Rot);
 								normal_faults ++;
+								AdjustRotation( so, correction, 0, 1 );
 							}
 						}
 					}
@@ -528,13 +593,11 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 				}
 				// printf( "Applying: %f %f %f %f\n", correction[0], correction[1], correction[2], correction[3] );
 				// Apply our corrective quaternion to the output.
-				quatrotateabout(dd->InteralPoseUsedForCalc.Rot, dd->InteralPoseUsedForCalc.Rot, correction);
-				quatnormalize(dd->InteralPoseUsedForCalc.Rot, dd->InteralPoseUsedForCalc.Rot);
+				AdjustRotation( so, correction, 0, 0 );
 			}
 
 			memcpy( dd->MixingPositions[lhid][axis], dd->InteralPoseUsedForCalc.Pos, sizeof( dd->InteralPoseUsedForCalc.Pos ) );
 			dd->MixingConfidence[lhid][axis] = (validpoints)?((validpoints>1)?1.0:0.5):0;
-
 
 			//Box filter all of the guesstimations, and emit the new guess.
 			{
@@ -552,7 +615,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 					MixedAmount += Confidence;
 					//printf( "%f ", Confidence );
 				}
-				scale3d( MixedPosition, MixedPosition, 1./MixedAmount );
+				scale3d( dd->mixed_output, MixedPosition, 1./MixedAmount );
 #if 0
 				printf( "Reprojection disagreements:" );
 				for( l = 0; l < NUM_LIGHTHOUSES; l++ ) for( a = 0; a < 2; a++ )
@@ -561,16 +624,19 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 				}
 				printf( "\n" );
 #endif
+				EmitPose( so, pd );
 
 				//printf( "%f\n", MixedAmount );
-				SurvivePose object_pose_out;
-				quatcopy(object_pose_out.Rot, dd->InteralPoseUsedForCalc.Rot );
-				copy3d( object_pose_out.Pos, MixedPosition );
 
-				copy3d( dd->mixed_output, object_pose_out.Pos );
-				quatrotateabout( object_pose_out.Rot, object_pose_out.Rot, dd->imu_up_correct );
-				quatnormalize( object_pose_out.Rot, object_pose_out.Rot );
-				PoserData_poser_pose_func(pd, so, &object_pose_out);
+		//		SurvivePose object_pose_out;
+		//		quatcopy(object_pose_out.Rot, dd->InteralPoseUsedForCalc.Rot );
+		//		copy3d( object_pose_out.Pos, MixedPosition );
+
+		//		copy3d( dd->mixed_output, object_pose_out.Pos );
+		//		quatrotateabout( object_pose_out.Rot, object_pose_out.Rot, dd->imu_up_correct );
+		//		quatnormalize( object_pose_out.Rot, object_pose_out.Rot );
+		//		PoserData_poser_pose_func(pd, so, &object_pose_out);
+
 			}
 		//	FLT var_meters = 0.5;
 		//	FLT error = 0.00001;

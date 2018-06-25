@@ -491,10 +491,11 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 				SV_ERROR( "Could not claim interface %d of %s", j, devnames[i] );
 				return -9;
 			}
-			usleep(20000);
 		}
 
 		SV_INFO( "Successfully enumerated %s (%d, %d)", devnames[i], did, conf->bNumInterfaces );
+
+		usleep(100000);
 	}
 	
 	libusb_free_device_list( devs, 1 );
