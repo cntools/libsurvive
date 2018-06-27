@@ -13,3 +13,5 @@ _script()
 
 complete -o nospace -F _script ./calibrate
 complete -o nospace -F _script ./simple_pose_test
+complete -o nospace -F _script ./data_recorder
+
