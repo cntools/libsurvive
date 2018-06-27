@@ -20,6 +20,14 @@
 #include "survive_kalman.h"
 #include "survive_reproject.h"
 
+
+STATIC_CONFIG_ITEM( SBA_USE_IMU, "sba-use-imu", 'i', "[TODO: I don't know what this does]", 1 );
+STATIC_CONFIG_ITEM( SBA_REQUIRED_MEAS, "sba-required-meas", 'i', "[TODO: I don't know what this does]", 8 );
+STATIC_CONFIG_ITEM( SBA_TIME_WINDOW, "sba-time-window", 'i', "[TODO: I don't know what this does]", (int)SurviveSensorActivations_default_tolerance );
+STATIC_CONFIG_ITEM( SBA_SENSOR_VARIANCE_PER_SEC, "sba-sensor-variance-per-sec", 'f', "[TODO: I don't know what this does]", 10.0 );
+STATIC_CONFIG_ITEM( SBA_SENSOR_VARIANCE, "sba-sensor-variance", 'f', "[TODO: I don't know what this does]", 1.0 );
+STATIC_CONFIG_ITEM( SBA_USE_JACOBIAN_FUNCTION, "sba-use-jacobian-function", 'i', "Poser to be used to seed optimizer", 1);
+
 typedef struct {
 	PoserData *pdfs;
 	SurviveObject *so;
@@ -42,7 +50,7 @@ typedef struct SBAData {
 	survive_kpose_t kpose;
 	SurviveIMUTracker tracker;
 
-	bool useIMU;
+	int useIMU;
 
 	struct {
 		int meas_failures;
@@ -343,14 +351,13 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		SBAData *d = so->PoserData;
 
 		general_optimizer_data_init(&d->opt, so);
-		d->useIMU = survive_configi(ctx, "sba-use-imu", SC_GET, 1);
-		d->required_meas = survive_configi(ctx, "sba-required-meas", SC_GET, 8);
 
-		d->sensor_time_window =
-			survive_configi(ctx, "sba-time-window", SC_GET, SurviveSensorActivations_default_tolerance * 2);
-		d->sensor_variance_per_second = survive_configf(ctx, "sba-sensor-variance-per-sec", SC_GET, 10.0);
-		d->sensor_variance = survive_configf(ctx, "sba-sensor-variance", SC_GET, 1.0);
-		d->use_jacobian_function = survive_configi(ctx, "sba-use-jacobian-function", SC_GET, 1.0);
+		survive_attach_configi( ctx, "sba-use-imu", &d->useIMU );
+		survive_attach_configi( ctx, "sba-required-meas", &d->required_meas );
+		survive_attach_configi( ctx, "sba-time-window", &d->sensor_time_window );
+		survive_attach_configf( ctx, "sba-sensor-variance-per-sec", &d->sensor_variance_per_second );
+		survive_attach_configf( ctx, "sba-sensor-variance", &d->sensor_variance );
+		survive_attach_configi( ctx, "sba-use-jacobian-function", &d->use_jacobian_function );
 
 		SV_INFO("Initializing SBA:");
 		SV_INFO("\tsba-required-meas: %d", d->required_meas);

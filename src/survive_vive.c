@@ -40,6 +40,7 @@
 #endif
 #endif
 
+
 struct SurviveViveData;
 
 const short vidpids[] = {
@@ -507,18 +508,22 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 		}
 
 		SV_INFO( "Successfully enumerated %s (%d, %d)", devnames[i], did, conf->bNumInterfaces );
+
+		usleep(100000);
 	}
 	
 	libusb_free_device_list( devs, 1 );
 #endif
 
+	const char * blacklist = survive_configs(ctx, "blacklist-devs", SC_GET, "-");
+
 	//Add the drivers - this must happen BEFORE we actually attach interfaces.
-	if( sv->udev[USB_DEV_HMD_IMU_LH]  ) { survive_add_object( ctx, hmd ); }
-	if( sv->udev[USB_DEV_WATCHMAN1]   ) { survive_add_object( ctx, wm0 ); }
-	if( sv->udev[USB_DEV_WATCHMAN2]   ) { survive_add_object( ctx, wm1 ); }
-	if( sv->udev[USB_DEV_TRACKER0]    ) { survive_add_object( ctx, tr0 ); }
-	if( sv->udev[USB_DEV_TRACKER1]    ) { survive_add_object( ctx, tr1 ); }
-	if( sv->udev[USB_DEV_W_WATCHMAN1] ) { survive_add_object( ctx, ww0 ); }
+	if( !strstr( blacklist, "HMD" ) && sv->udev[USB_DEV_HMD_IMU_LH]  ) { survive_add_object( ctx, hmd ); }
+	if( !strstr( blacklist, "WM0" ) && sv->udev[USB_DEV_WATCHMAN1]   ) { survive_add_object( ctx, wm0 ); }
+	if( !strstr( blacklist, "WM1" ) && sv->udev[USB_DEV_WATCHMAN2]   ) { survive_add_object( ctx, wm1 ); }
+	if( !strstr( blacklist, "TR0" ) && sv->udev[USB_DEV_TRACKER0]    ) { survive_add_object( ctx, tr0 ); }
+	if( !strstr( blacklist, "TR1" ) && sv->udev[USB_DEV_TRACKER1]    ) { survive_add_object( ctx, tr1 ); }	
+	if( !strstr( blacklist, "WW0" ) && sv->udev[USB_DEV_W_WATCHMAN1] ) { survive_add_object( ctx, ww0 ); }
 
 	if( sv->udev[USB_DEV_HMD] && AttachInterface( sv, hmd, USB_IF_HMD,        sv->udev[USB_DEV_HMD],        0x81, survive_data_cb, "Mainboard" ) ) { return -6; }
 	if( sv->udev[USB_DEV_HMD_IMU_LH] && AttachInterface( sv, hmd, USB_IF_HMD_IMU_LH, sv->udev[USB_DEV_HMD_IMU_LH], 0x81, survive_data_cb, "Lighthouse" ) ) { return -7; }
@@ -572,7 +577,7 @@ int survive_vive_send_magic(SurviveContext * ctx, void * drv, int magic_code, vo
 		//From actual steam.
 		if (sv->udev[USB_DEV_HMD])
 		{
-			static uint8_t vive_magic_power_on[64] = {  0x04, 0x78, 0x29, 0x38 };
+			static uint8_t vive_magic_power_on[64] = {  0x04, 0x78, 0x29, 0x38,  0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01 };
 			r = update_feature_report( sv->udev[USB_DEV_HMD], 0, vive_magic_power_on, sizeof( vive_magic_power_on ) );
 			if( r != sizeof( vive_magic_power_on ) ) return 5;
 		}
@@ -930,12 +935,6 @@ int survive_get_config( char ** config, SurviveViveData * sv, int devno, int ifa
 	}
 
 	SV_INFO( "Got config data length %d", count );
-
-	char fstname[128];
-	sprintf( fstname, "calinfo/%d.json.gz", devno );
-	FILE * f = fopen( fstname, "wb" );
-	fwrite( compressed_data, count, 1, f );
-	fclose( f );
 	
 	int len = survive_simple_inflate( ctx, compressed_data, count, uncompressed_data, sizeof(uncompressed_data)-1 );
 	if( len <= 0 )
@@ -946,6 +945,13 @@ int survive_get_config( char ** config, SurviveViveData * sv, int devno, int ifa
 
 	*config = malloc( len + 1 );
 	memcpy( *config, uncompressed_data, len );
+
+	char fstname[128];
+	sprintf( fstname, "calinfo/%d.json", devno );
+	FILE * f = fopen( fstname, "wb" );
+	fwrite( uncompressed_data, len, 1, f );
+	fclose( f );
+
 	return len;
 }
 
