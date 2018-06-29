@@ -1,10 +1,10 @@
 #include "survive_default_devices.h"
+#include "assert.h"
+#include "json_helpers.h"
 #include <jsmn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "json_helpers.h"
 
 #define HMD_IMU_HZ 1000.0f
 #define VIVE_DEFAULT_IMU_HZ 250.0f 
@@ -61,17 +61,17 @@ static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
 	}
 	return -1;
 }
-static int ParsePoints(SurviveContext *ctx, SurviveObject *so, char *ct0conf,
-					   FLT **floats_out, jsmntok_t *t, int i) {
+
+static int ParsePoints(SurviveContext *ctx, SurviveObject *so, char *ct0conf, FLT **floats_out, jsmntok_t *t) {
 	int k;
-	int pts = t[i + 1].size;
+	int pts = t[1].size;
 	jsmntok_t *tk;
 
 	so->sensor_ct = 0;
 	*floats_out = malloc(sizeof(**floats_out) * 32 * 3);
 
 	for (k = 0; k < pts; k++) {
-		tk = &t[i + 2 + k * 4];
+		tk = &t[2 + k * 4];
 
 		int m;
 		for (m = 0; m < 3; m++) {
@@ -104,6 +104,110 @@ static void vive_json_pose_to_survive_pose(const FLT *values, SurvivePose *pose)
 	pose->Rot[0] = values[3];
 }
 
+typedef struct stack_entry_s {
+	struct stack_entry_s *previous;
+	jsmntok_t *key;
+} stack_entry_t;
+
+static int stack_count(stack_entry_t *stack) {
+	int i = 0;
+	while (stack->previous) {
+		i++;
+		stack = stack->previous;
+	}
+	return i;
+}
+static void print_stack_spot(char *d, stack_entry_t *entry) {
+	for (int i = 0; i < stack_count(entry); i++) {
+		printf("\t");
+	}
+	printf("-> %.*s\n", entry->key->end - entry->key->start, d + entry->key->start);
+}
+
+static int process_jsonarray(SurviveObject *so, char *ct0conf, stack_entry_t *stack) {
+	jsmntok_t *tk = stack->key;
+	SurviveContext *ctx = so->ctx;
+	if (jsoneq(ct0conf, tk, "modelPoints") == 0) {
+		if (ParsePoints(ctx, so, ct0conf, &so->sensor_locations, tk)) {
+			return -1;
+		}
+	} else if (jsoneq(ct0conf, tk, "modelNormals") == 0) {
+		if (ParsePoints(ctx, so, ct0conf, &so->sensor_normals, tk)) {
+			return -1;
+		}
+	}
+
+	else if (jsoneq(ct0conf, tk, "acc_bias") == 0) {
+		int32_t count = (tk + 1)->size;
+		FLT *values = NULL;
+		if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {
+			so->acc_bias = values;
+		}
+	} else if (jsoneq(ct0conf, tk, "acc_scale") == 0) {
+		int32_t count = (tk + 1)->size;
+		FLT *values = NULL;
+		if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {
+			so->acc_scale = values;
+		}
+	} else if (jsoneq(ct0conf, tk, "gyro_bias") == 0) {
+		int32_t count = (tk + 1)->size;
+		FLT *values = NULL;
+		if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {
+			so->gyro_bias = values;
+		}
+	} else if (jsoneq(ct0conf, tk, "gyro_scale") == 0) {
+		int32_t count = (tk + 1)->size;
+		FLT *values = NULL;
+		if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {
+			so->gyro_scale = values;
+		}
+	} else if (jsoneq(ct0conf, tk, "trackref_from_imu") == 0) {
+		int32_t count = (tk + 1)->size;
+		if (count == 7) {
+			FLT *values = NULL;
+			if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {
+				vive_json_pose_to_survive_pose(values, &so->relative_imu_pose);
+				free(values);
+			}
+		}
+	}
+
+	return 0;
+}
+
+static int process_jsontok(SurviveObject *so, char *d, stack_entry_t *stack, jsmntok_t *t, int count) {
+	int i, j, k;
+	assert(count >= 0);
+	if (count == 0) {
+		return 0;
+	}
+	if (t->type == JSMN_PRIMITIVE) {
+		return 1;
+	} else if (t->type == JSMN_STRING) {
+		return 1;
+	} else if (t->type == JSMN_OBJECT) {
+		stack_entry_t entry;
+		entry.previous = stack;
+		j = 0;
+		for (i = 0; i < t->size; i++) {
+			entry.key = t + 1 + j;
+			print_stack_spot(d, &entry);
+			j += process_jsontok(so, d, &entry, entry.key, count - j);
+
+			j += process_jsontok(so, d, &entry, t + 1 + j, count - j);
+		}
+		return j + 1;
+	} else if (t->type == JSMN_ARRAY) {
+		process_jsonarray(so, d, stack);
+		j = 0;
+		for (i = 0; i < t->size; i++) {
+			j += process_jsontok(so, d, stack, t + 1 + j, count - j);
+		}
+		return j + 1;
+	}
+	return 0;
+}
+
 int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	if (len == 0)
 		return -1;
@@ -124,66 +228,7 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 		return -2;
 	}
 
-	for (i = 1; i < r; i++) {
-		jsmntok_t *tk = &t[i];
-
-		/*
-		char ctxo[100];
-		int ilen = tk->end - tk->start;
-		if (ilen > 99)
-			ilen = 99;
-		memcpy(ctxo, ct0conf + tk->start, ilen);
-		ctxo[ilen] = 0;
-
-		//printf( "%d / %d / %d / %d %s %d\n", tk->type, tk->start,
-		//tk->end, tk->size, ctxo, jsoneq(ct0conf, &t[i], "modelPoints") );
-		//				printf( "%.*s\n", ilen, ct0conf + tk->start );
-		*/
-		if (jsoneq(ct0conf, tk, "modelPoints") == 0) {
-			if (ParsePoints(ctx, so, ct0conf, &so->sensor_locations, t, i)) {
-				break;
-			}
-		} else if (jsoneq(ct0conf, tk, "modelNormals") == 0) {
-			if (ParsePoints(ctx, so, ct0conf, &so->sensor_normals, t, i)) {
-				break;
-			}
-		}
-
-		else if (jsoneq(ct0conf, tk, "acc_bias") == 0) {
-			int32_t count = (tk + 1)->size;
-			FLT *values = NULL;
-			if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {
-				so->acc_bias = values;
-			}
-		} else if (jsoneq(ct0conf, tk, "acc_scale") == 0) {
-			int32_t count = (tk + 1)->size;
-			FLT *values = NULL;
-			if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {
-				so->acc_scale = values;
-			}
-		} else if (jsoneq(ct0conf, tk, "gyro_bias") == 0) {
-			int32_t count = (tk + 1)->size;
-			FLT *values = NULL;
-			if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {
-				so->gyro_bias = values;
-			}
-		} else if (jsoneq(ct0conf, tk, "gyro_scale") == 0) {
-			int32_t count = (tk + 1)->size;
-			FLT *values = NULL;
-			if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {
-				so->gyro_scale = values;
-			}
-		} else if (jsoneq(ct0conf, tk, "trackref_from_imu") == 0) {
-			int32_t count = (tk + 1)->size;
-			if (count == 7) {
-				FLT *values = NULL;
-				if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {
-					vive_json_pose_to_survive_pose(values, &so->relative_imu_pose);
-					free(values);
-				}
-			}
-		}
-	}
+	process_jsontok(so, ct0conf, 0, t, r);
 
 	// Handle device-specific sacling.
 	if (strcmp(so->codename, "HMD") == 0) {
