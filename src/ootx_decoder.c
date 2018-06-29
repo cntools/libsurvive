@@ -4,10 +4,11 @@
 
 /* ootx data decoder */
 
+#include "ootx_decoder.h"
+#include "string.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <assert.h>
-#include "ootx_decoder.h"
 
 #ifdef NOZLIB
 #include "crc32.h"
@@ -124,10 +125,12 @@ void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
 		if( !dbit )
 		{
 			// printf("Bad sync bit\n");
-			ootx_error(ctx, "OOTX Decoder: Bad sync bit");
-
-			if (ctx->ignore_sync_bit_error == 0)
+			if (ctx->ignore_sync_bit_error == 0) {
+				ootx_error(ctx, "OOTX Decoder: Bad sync bit");
 				ootx_reset_buffer(ctx);
+			} else {
+				ootx_error(ctx, "OOTX Decoder: Ignoring bad sync bit");
+			}
 		}
 		ctx->bits_processed = 0;
 	}
@@ -157,7 +160,7 @@ void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
 
 			op.length = *(ctx->payload_size);
 			op.data = ctx->buffer+2;
-			op.crc32 = *(uint32_t*)(op.data+padded_length);
+			memcpy(&op.crc32, op.data + padded_length, sizeof(uint32_t));
 
 			uint32_t crc = crc32( 0L, 0 /*Z_NULL*/, 0 );
 			crc = crc32( crc, op.data,op.length);

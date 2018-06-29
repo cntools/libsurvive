@@ -353,6 +353,9 @@ static inline int hid_get_feature_report_timeout(USBHANDLE device, uint16_t ifac
 int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *wm0, SurviveObject * wm1, SurviveObject * tr0, SurviveObject * tr1, SurviveObject * ww0 )
 {
 	SurviveContext * ctx = sv->ctx;
+	const char *blacklist = survive_configs(ctx, "blacklist-devs", SC_GET, "-");
+	SV_INFO("Blacklisting %s", blacklist);
+
 #ifdef HIDAPI
 	SV_INFO( "Vive starting in HIDAPI mode." );
 	if( !GlobalRXUSBMutx )
@@ -370,6 +373,8 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 	
 	for( i = 0; i < MAX_USB_DEVS; i++ )
 	{
+		if (strstr(blacklist, devnames[i]))
+			continue;
 		int enumid = vidpids[i*3+2];
 		int vendor_id = vidpids[i*3+0];
 		int product_id = vidpids[i*3+1];
@@ -443,6 +448,8 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 	//Open all interfaces.
 	for( i = 0; i < MAX_USB_DEVS; i++ )
 	{
+		if (strstr(blacklist, devnames[i]))
+			continue;
 		libusb_device * d;
 		int vid = vidpids[i*3+0];
 		int pid = vidpids[i*3+1];
@@ -515,16 +522,25 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 	
 	libusb_free_device_list( devs, 1 );
 #endif
-
-	const char * blacklist = survive_configs(ctx, "blacklist-devs", SC_GET, "-");
-
 	//Add the drivers - this must happen BEFORE we actually attach interfaces.
-	if( !strstr( blacklist, "HMD" ) && sv->udev[USB_DEV_HMD_IMU_LH]  ) { survive_add_object( ctx, hmd ); }
-	if( !strstr( blacklist, "WM0" ) && sv->udev[USB_DEV_WATCHMAN1]   ) { survive_add_object( ctx, wm0 ); }
-	if( !strstr( blacklist, "WM1" ) && sv->udev[USB_DEV_WATCHMAN2]   ) { survive_add_object( ctx, wm1 ); }
-	if( !strstr( blacklist, "TR0" ) && sv->udev[USB_DEV_TRACKER0]    ) { survive_add_object( ctx, tr0 ); }
-	if( !strstr( blacklist, "TR1" ) && sv->udev[USB_DEV_TRACKER1]    ) { survive_add_object( ctx, tr1 ); }	
-	if( !strstr( blacklist, "WW0" ) && sv->udev[USB_DEV_W_WATCHMAN1] ) { survive_add_object( ctx, ww0 ); }
+	if (sv->udev[USB_DEV_HMD_IMU_LH]) {
+		survive_add_object(ctx, hmd);
+	}
+	if (sv->udev[USB_DEV_WATCHMAN1]) {
+		survive_add_object(ctx, wm0);
+	}
+	if (sv->udev[USB_DEV_WATCHMAN2]) {
+		survive_add_object(ctx, wm1);
+	}
+	if (sv->udev[USB_DEV_TRACKER0]) {
+		survive_add_object(ctx, tr0);
+	}
+	if (sv->udev[USB_DEV_TRACKER1]) {
+		survive_add_object(ctx, tr1);
+	}
+	if (sv->udev[USB_DEV_W_WATCHMAN1]) {
+		survive_add_object(ctx, ww0);
+	}
 
 	if( sv->udev[USB_DEV_HMD] && AttachInterface( sv, hmd, USB_IF_HMD,        sv->udev[USB_DEV_HMD],        0x81, survive_data_cb, "Mainboard" ) ) { return -6; }
 	if( sv->udev[USB_DEV_HMD_IMU_LH] && AttachInterface( sv, hmd, USB_IF_HMD_IMU_LH, sv->udev[USB_DEV_HMD_IMU_LH], 0x81, survive_data_cb, "Lighthouse" ) ) { return -7; }

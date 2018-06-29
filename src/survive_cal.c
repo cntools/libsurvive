@@ -53,8 +53,9 @@ static void reset_calibration( struct SurviveCalData * cd );
 
 void ootx_error_clbk_d(ootx_decoder_context *ct, const char *msg) {
 	SurviveContext *ctx = (SurviveContext *)(ct->user);
+	SurviveCalData *cd = ctx->calptr;
 	int id = ct->user1;
-	SV_INFO("(%d) %s", id, msg);
+	SV_INFO("(%s %d) %s", cd->poseobjects[0]->codename, id, msg);
 }
 
 void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
@@ -144,7 +145,7 @@ void survive_cal_install( struct SurviveContext * ctx )
 	for( i = 0; i < NUM_LIGHTHOUSES; i++ )
 	{
 		ootx_init_decoder_context(&cd->ootx_decoders[i]);
-		survive_attach_configi(ctx, "ootx-ignore-sync-error", &cd->ootx_decoders[i].ignore_sync_bit_error);
+		cd->ootx_decoders[i].ignore_sync_bit_error = survive_configi(ctx, "ootx-ignore-sync-error", SC_SETCONFIG, 0);
 		cd->ootx_decoders[i].user = ctx;
 		cd->ootx_decoders[i].user1 = i;
 	}
@@ -176,10 +177,9 @@ void survive_cal_install( struct SurviveContext * ctx )
 		{
 			if (MAX_DEVICES_TO_CAL > cd->numPoseObjects)
 			{
-				cd->poseobjects[j] = ctx->objs[j];
+				cd->poseobjects[cd->numPoseObjects] = ctx->objs[j];
+				SV_INFO("Calibration is using %s", cd->poseobjects[cd->numPoseObjects]->codename);
 				cd->numPoseObjects++;
-
-				SV_INFO("Calibration is using %s", cd->poseobjects[j]->codename);
 			}
 			else
 			{
@@ -489,7 +489,7 @@ static void handle_calibration( struct SurviveCalData *cd )
 
 		#define OUTLIER_ANGLE   0.001	//TODO: Tune
 		#define OUTLIER_LENGTH	0.001	//TODO: Tune
-		#define ANGLE_STDEV_TOO_HIGH 0.000001 //TODO: Tune
+#define ANGLE_STDEV_TOO_HIGH 0.001		// TODO: Tune
 
 		FLT avgsweep = sumsweepangle / dpmax;
 		FLT avglen = sumlentime / dpmax;
