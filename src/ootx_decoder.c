@@ -37,6 +37,7 @@ void ootx_init_decoder_context(ootx_decoder_context *ctx) {
 	ctx->preamble = 0XFFFFFFFF;
 	ctx->bits_processed = 0;
 	ctx->found_preamble = 0;
+	ctx->ignore_sync_bit_error = 0;
 
 	ctx->buffer = (uint8_t*)malloc(MAX_BUFF_SIZE);
 	ctx->payload_size = (uint16_t*)ctx->buffer;
@@ -122,9 +123,11 @@ void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
 //		printf("drop %d\n", dbit);
 		if( !dbit )
 		{
-			//printf("Bad sync bit\n");
+			// printf("Bad sync bit\n");
 			ootx_error(ctx, "OOTX Decoder: Bad sync bit");
-			ootx_reset_buffer(ctx);
+
+			if (ctx->ignore_sync_bit_error == 0)
+				ootx_reset_buffer(ctx);
 		}
 		ctx->bits_processed = 0;
 	}

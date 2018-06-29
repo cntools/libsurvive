@@ -31,6 +31,7 @@ int mkdir(const char *);
 STATIC_CONFIG_ITEM( REQ_TRACK_FOR_CAL, "requiredtrackersforcal", 's', "Which devices will be used, i.e. HMD,WM0,WM1", "" );
 STATIC_CONFIG_ITEM( ALLOW_TRACK_FOR_CAL, "allowalltrackersforcal", 'i', "Allow use of additional connected devices for calibration", 0 );
 STATIC_CONFIG_ITEM( CONFIG_POSER, "configposer", 's', "Poser used for calibration step", "SBA" );
+STATIC_CONFIG_ITEM(OOTX_IGNORE_SYNC_ERROR, "ootx-ignore-sync-error", 'i', "Ignore sync errors on ootx packets", 0);
 
 #define PTS_BEFORE_COMMON 32
 #define NEEDED_COMMON_POINTS 10
@@ -52,7 +53,8 @@ static void reset_calibration( struct SurviveCalData * cd );
 
 void ootx_error_clbk_d(ootx_decoder_context *ct, const char *msg) {
 	SurviveContext *ctx = (SurviveContext *)(ct->user);
-	SV_INFO("%s", msg);
+	int id = ct->user1;
+	SV_INFO("(%d) %s", id, msg);
 }
 
 void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
@@ -142,6 +144,7 @@ void survive_cal_install( struct SurviveContext * ctx )
 	for( i = 0; i < NUM_LIGHTHOUSES; i++ )
 	{
 		ootx_init_decoder_context(&cd->ootx_decoders[i]);
+		survive_attach_configi(ctx, "ootx-ignore-sync-error", &cd->ootx_decoders[i].ignore_sync_bit_error);
 		cd->ootx_decoders[i].user = ctx;
 		cd->ootx_decoders[i].user1 = i;
 	}

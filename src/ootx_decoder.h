@@ -25,7 +25,7 @@ typedef struct {
 	uint8_t found_preamble;
 
 	uint8_t bit_count[2];
-
+	int ignore_sync_bit_error;
 	void * user;
 	int user1;
 } ootx_decoder_context;
