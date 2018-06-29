@@ -1,7 +1,8 @@
 #include "survive_api.h"
+#include "inttypes.h"
 #include "os_generic.h"
-#include "survive.h"
 #include "stdio.h"
+#include "survive.h"
 
 struct SurviveSimpleObject {
 	struct SurviveSimpleContext *actx;
@@ -69,7 +70,7 @@ struct SurviveSimpleContext *survive_simple_init(int argc, char *const *argv) {
 		obj->type = SurviveSimpleObject_LIGHTHOUSE;
 		obj->actx = actx;
 		obj->has_update = ctx->bsd[i].PositionSet;
-		snprintf(obj->name, 32, "LH%ld", i);
+		snprintf(obj->name, 32, "LH%" PRIdPTR, i);
 	}
 	for (; i < object_ct; i++) {
 		struct SurviveSimpleObject *obj = &actx->objects[i];
@@ -91,7 +92,7 @@ int survive_simple_stop_thread(struct SurviveSimpleContext *actx) {
 	intptr_t error = (intptr_t)OGJoinThread(actx->thread);
 	if (error != 0) {
 		SurviveContext *ctx = actx->ctx;
-		SV_INFO("Warning: Loope exited with error %ld", error);
+		SV_INFO("Warning: Loop exited with error %" PRIdPTR, error);
 	}
 	return error;
 }
