@@ -1449,6 +1449,17 @@ static void handle_watchman( SurviveObject * w, uint8_t * readdata )
 	}
 }
 
+static inline uint16_t read_buffer16(uint8_t *readdata, int idx) {
+	uint16_t rtn;
+	memcpy(&rtn, readdata + idx, sizeof(uint16_t));
+	return rtn;
+}
+static inline uint32_t read_buffer32(uint8_t *readdata, int idx) {
+	uint32_t rtn;
+	memcpy(&rtn, readdata + idx, sizeof(uint32_t));
+	return rtn;
+}
+
 void survive_data_cb( SurviveUSBInterface * si )
 {
 	int size = si->actual_len;
@@ -1643,25 +1654,24 @@ void survive_data_cb( SurviveUSBInterface * si )
 			//} usb_buttons_raw;
 
 			//usb_buttons_raw *raw = (usb_buttons_raw*) readdata;
-			if (*((uint16_t*)(&(readdata[0x0]))) == 0x100)
-			{
+			if (read_buffer16(readdata, 0) == 0x100) {
 				buttonEvent bEvent;
 				memset(&bEvent, 0, sizeof(bEvent));
 
 				bEvent.pressedButtonsValid = 1;
-				bEvent.pressedButtons = *((uint32_t*)(&(readdata[0x07])));
+				bEvent.pressedButtons = read_buffer32(readdata, 0x7);
 				bEvent.triggerHighResValid = 1;
 				//bEvent.triggerHighRes = raw->triggerHighRes; 
 				//bEvent.triggerHighRes = (raw->pressedButtons & 0xff000000) >> 24; // this seems to provide the same data at 2x the resolution as above
 				//bEvent.triggerHighRes = raw->triggerRaw;
-				
-				bEvent.triggerHighRes = *((uint16_t*)(&(readdata[0x19])));
+
+				bEvent.triggerHighRes = read_buffer16(readdata, 0x19);
 				bEvent.touchpadHorizontalValid = 1;
 				//bEvent.touchpadHorizontal = raw->touchpadHorizontal;
-				bEvent.touchpadHorizontal = *((int16_t*)(&(readdata[0x13])));
+				bEvent.touchpadHorizontal = read_buffer16(readdata, 0x13);
 				bEvent.touchpadVerticalValid = 1;
 				//bEvent.touchpadVertical = raw->touchpadVertical;
-				bEvent.touchpadVertical = *((int16_t*)(&(readdata[0x15])));
+				bEvent.touchpadVertical = read_buffer16(readdata, 0x15);
 
 				//printf("%4.4x\n", bEvent.triggerHighRes);
 				registerButtonEvent(obj, &bEvent);

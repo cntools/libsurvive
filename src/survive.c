@@ -367,7 +367,7 @@ int survive_startup(SurviveContext *ctx) {
 	ctx->state = SURVIVE_RUNNING;
 
 	int calibrateMandatory = survive_configi(ctx, "force-calibrate", SC_GET, 0);
-	int calibrateForbidden = survive_configi(ctx, "disable-calibrate", SC_GET, 1) == 0;
+	int calibrateForbidden = survive_configi(ctx, "disable-calibrate", SC_GET, 1) == 1;
 	if (calibrateMandatory && calibrateForbidden) {
 		SV_INFO("Contradictory settings --force-calibrate and --disable-calibrate specified. Switching to normal behavior.");
 		calibrateMandatory = calibrateForbidden = 0;
