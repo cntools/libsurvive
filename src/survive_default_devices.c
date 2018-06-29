@@ -96,6 +96,14 @@ static int ParsePoints(SurviveContext *ctx, SurviveObject *so, char *ct0conf,
 	return 0;
 }
 
+static void vive_json_pose_to_survive_pose(const FLT *values, SurvivePose *pose) {
+	for (int i = 0; i < 3; i++) {
+		pose->Pos[i] = values[4 + i];
+		pose->Rot[1 + i] = values[i];
+	}
+	pose->Rot[0] = values[3];
+}
+
 int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	if (len == 0)
 		return -1;
@@ -119,6 +127,7 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	for (i = 1; i < r; i++) {
 		jsmntok_t *tk = &t[i];
 
+		/*
 		char ctxo[100];
 		int ilen = tk->end - tk->start;
 		if (ilen > 99)
@@ -126,48 +135,52 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 		memcpy(ctxo, ct0conf + tk->start, ilen);
 		ctxo[ilen] = 0;
 
-		//				printf( "%d / %d / %d / %d %s %d\n", tk->type, tk->start,
+		//printf( "%d / %d / %d / %d %s %d\n", tk->type, tk->start,
 		//tk->end, tk->size, ctxo, jsoneq(ct0conf, &t[i], "modelPoints") );
 		//				printf( "%.*s\n", ilen, ct0conf + tk->start );
-
+		*/
 		if (jsoneq(ct0conf, tk, "modelPoints") == 0) {
 			if (ParsePoints(ctx, so, ct0conf, &so->sensor_locations, t, i)) {
 				break;
 			}
-		}
-		if (jsoneq(ct0conf, tk, "modelNormals") == 0) {
+		} else if (jsoneq(ct0conf, tk, "modelNormals") == 0) {
 			if (ParsePoints(ctx, so, ct0conf, &so->sensor_normals, t, i)) {
 				break;
 			}
 		}
 
-		if (jsoneq(ct0conf, tk, "acc_bias") == 0) {
+		else if (jsoneq(ct0conf, tk, "acc_bias") == 0) {
 			int32_t count = (tk + 1)->size;
 			FLT *values = NULL;
 			if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {
 				so->acc_bias = values;
 			}
-		}
-		if (jsoneq(ct0conf, tk, "acc_scale") == 0) {
+		} else if (jsoneq(ct0conf, tk, "acc_scale") == 0) {
 			int32_t count = (tk + 1)->size;
 			FLT *values = NULL;
 			if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {
 				so->acc_scale = values;
 			}
-		}
-
-		if (jsoneq(ct0conf, tk, "gyro_bias") == 0) {
+		} else if (jsoneq(ct0conf, tk, "gyro_bias") == 0) {
 			int32_t count = (tk + 1)->size;
 			FLT *values = NULL;
 			if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {
 				so->gyro_bias = values;
 			}
-		}
-		if (jsoneq(ct0conf, tk, "gyro_scale") == 0) {
+		} else if (jsoneq(ct0conf, tk, "gyro_scale") == 0) {
 			int32_t count = (tk + 1)->size;
 			FLT *values = NULL;
 			if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {
 				so->gyro_scale = values;
+			}
+		} else if (jsoneq(ct0conf, tk, "trackref_from_imu") == 0) {
+			int32_t count = (tk + 1)->size;
+			if (count == 7) {
+				FLT *values = NULL;
+				if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {
+					vive_json_pose_to_survive_pose(values, &so->relative_imu_pose);
+					free(values);
+				}
 			}
 		}
 	}
