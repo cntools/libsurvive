@@ -245,8 +245,10 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 			exit(0);
 		}
 
-		if( strstr( lastparam, "poser" ) )  PrintMatchingDrivers( "Poser", matchingparam );
-		else if( strstr( lastparam, "disambiguator" ) ) PrintMatchingDrivers( "Disambiguator", matchingparam );
+		if (lastparam && strstr(lastparam, "poser"))
+			PrintMatchingDrivers("Poser", matchingparam);
+		else if (lastparam && strstr(lastparam, "disambiguator"))
+			PrintMatchingDrivers("Disambiguator", matchingparam);
 		else
 		{
 			printf( "-h -m -p -l -c " );
