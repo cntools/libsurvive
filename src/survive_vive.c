@@ -273,7 +273,7 @@ static int AttachInterface( SurviveViveData * sv, SurviveObject * assocobj, int 
 	int rc = libusb_submit_transfer( tx );
 	if( rc )
 	{
-		SV_ERROR( "Error: Could not submit transfer for %s (Code %d)", hname, rc );
+		SV_ERROR("Error: Could not submit transfer for %s (Code %d, %s)", hname, rc, libusb_error_name(rc));
 		return 6;
 	}
 #endif
@@ -424,7 +424,7 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 	int r = libusb_init( &sv->usbctx );
 	if( r )
 	{
-		SV_ERROR( "libusb fault %d\n", r );
+		SV_ERROR("libusb fault %d (%s)\n", r, libusb_error_name(r));
 		return r;
 	}
 
@@ -435,7 +435,7 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 
 	if( ret < 0 )
 	{
-		SV_ERROR( "Couldn't get list of USB devices %d", ret );
+		SV_ERROR("Couldn't get list of USB devices %d (%s)", ret, libusb_error_name(ret));
 		return ret;
 	}
 
@@ -480,7 +480,8 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 
 		if( !sv->udev[i] || ret )
 		{
-			SV_ERROR( "Error: cannot open device \"%s\" with vid/pid %04x:%04x", devnames[i], vid, pid );
+			SV_ERROR("Error: cannot open device \"%s\" with vid/pid %04x:%04x error %d (%s)", devnames[i], vid, pid,
+					 ret, libusb_error_name(ret));
 			return -5;
 		}
 
@@ -492,7 +493,7 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 		        ret = libusb_detach_kernel_driver(sv->udev[i], j);
 		        if (ret != LIBUSB_SUCCESS) {
 		            SV_ERROR("Failed to unclaim interface %d for device %s "
-		                    "from the kernel.", j, devnames[i] );
+				     "from the kernel. %d (%s)", j, devnames[i], ret, libusb_error_name(ret) );
 		            libusb_free_config_descriptor(conf);
 		            libusb_close(sv->udev[i]);
 		            continue;
@@ -836,7 +837,7 @@ int survive_vive_usb_poll( SurviveContext * ctx, void * v )
 	if( r )
 	{
 		SurviveContext * ctx = sv->ctx;
-		SV_ERROR( "Libusb poll failed." );
+		SV_ERROR("Libusb poll failed. %d (%s)", r, libusb_error_name(r));
 	}
 	return r;
 #endif
