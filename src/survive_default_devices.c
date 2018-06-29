@@ -23,6 +23,8 @@ survive_create_device(SurviveContext *ctx, const char *driver_name,
 	device->imu_freq = VIVE_DEFAULT_IMU_HZ;
 	device->haptic = fn;
 
+	device->relative_imu_pose.Rot[0] = 1.;
+
 	return device;
 }
 
