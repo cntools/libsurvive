@@ -185,7 +185,7 @@ SURVIVE_LOCAL_ONLY double cvInvert(const CvMat *srcarr, CvMat *dstarr, int metho
 		assert(inf >= 0);
 		if (inf > 0) {
 			printf("Warning: Singular matrix: \n");
-			print_mat(srcarr);
+			// print_mat(srcarr);
 		}
 
 		free(ipiv);
@@ -252,7 +252,7 @@ SURVIVE_LOCAL_ONLY int cvSolve(const CvMat *Aarr, const CvMat *xarr, CvMat *Barr
 		assert(inf >= 0);
 		if (inf > 0) {
 			printf("Warning: Singular matrix: \n");
-			print_mat(a_ws);
+			// print_mat(a_ws);
 		}
 
 #ifdef DEBUG_PRINT

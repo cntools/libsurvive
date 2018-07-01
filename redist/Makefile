@@ -3,8 +3,8 @@ all : jsmntest lintest test_dcl
 jsmntest : jsmntest.c jsmn.c
 	gcc -g -O0 -o $@ $^
 
-lintest : lintest.c linmath.c linmath.h
-	gcc -g -O0 -o $@ $^ -lm
+lintest : lintest.c linmath.c linmath.h minimal_opencv.c
+	gcc -DUSE_DOUBLE -DFLT=double -g -O0 -o $@ $^ -lcblas -lm -llapacke
 
 minimal_opencvtest : minimal_opencvtest.c minimal_opencv.c minimal_opencv.h
 	gcc -g -O0 -o $@ $^  -lcblas -lm -llapacke

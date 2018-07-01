@@ -1,5 +1,4 @@
 // Copyright 2013,2016 <>< C. N. Lohr.  This file licensed under the terms of the MIT license.
-
 #include "linmath.h"
 #include <float.h>
 #include <math.h>
@@ -676,6 +675,37 @@ void KabschCentered(LinmathQuat qout, const FLT *ptsA, const FLT *ptsB, int num_
 	}
 
 	quatfrommatrix33(qout, _R);
+}
+
+LINMATH_EXPORT void Kabsch(LinmathPose *B2Atx, const FLT *_ptsA, const FLT *_ptsB, int num_pts) {
+	FLT centerA[3] = {};
+	FLT centerB[3] = {};
+
+	for (int i = 0; i < num_pts; i++) {
+		for (int j = 0; j < 3; j++) {
+			centerA[j] += _ptsA[i * 3 + j];
+			centerB[j] += _ptsB[i * 3 + j];
+		}
+	}
+
+	for (int j = 0; j < 3; j++) {
+		centerA[j] = centerA[j] / (FLT)num_pts;
+		centerB[j] = centerB[j] / (FLT)num_pts;
+	}
+
+	FLT ptsA[num_pts * 3];
+	FLT ptsB[num_pts * 3];
+
+	for (int i = 0; i < num_pts; i++) {
+		for (int j = 0; j < 3; j++) {
+			ptsA[i * 3 + j] = _ptsA[i * 3 + j] - centerA[j];
+			ptsB[i * 3 + j] = _ptsB[i * 3 + j] - centerB[j];
+		}
+	}
+
+	KabschCentered(B2Atx->Rot, ptsA, ptsB, num_pts);
+	quatrotatevector(centerA, B2Atx->Rot, centerA);
+	sub3d(B2Atx->Pos, centerB, centerA);
 }
 
 LinmathQuat LinmathQuat_Identity = {1.0};

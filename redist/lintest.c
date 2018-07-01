@@ -102,11 +102,39 @@ void testApplyPoseToPoint() {
 	}
 }
 
+void testKabsch() {
+	FLT pts[] = {0, 0, 0, 100, 100, 100, 10, 0, 10, 50, 50, 0, 0, 0, 1000, -100, 0, 100};
+
+	LinmathPose tx = {.Pos = {}, .Rot = {4, 3, 2, 1}};
+
+	LinmathPose tx2 = {.Pos = {1, 2, 3}, .Rot = {1, 2, 3, 4}};
+
+	quatnormalize(tx.Rot, tx.Rot);
+	quatnormalize(tx2.Rot, tx2.Rot);
+
+	int N = sizeof(pts) / sizeof(FLT) / 3;
+	FLT txPts[N * 3];
+	FLT txPts2[N * 3];
+	for (int i = 0; i < N; i++) {
+		ApplyPoseToPoint(txPts + i * 3, &tx, pts + i * 3);
+		ApplyPoseToPoint(txPts2 + i * 3, &tx2, pts + i * 3);
+	}
+
+	LinmathQuat should_be_tx = {};
+	KabschCentered(should_be_tx, pts, txPts, N);
+	ASSERT_FLTA_EQUALS(should_be_tx, tx.Rot, 4);
+
+	LinmathPose should_be_tx2 = {};
+	Kabsch(&should_be_tx2, pts, txPts2, N);
+	ASSERT_FLTA_EQUALS(should_be_tx2.Pos, tx2.Pos, 7);
+}
+
 int main()
 {
 	testInvertPose();
 	testApplyPoseToPoint();
 	testApplyPoseToPose();
+	testKabsch();
 #if 1
 
 #define NONTRANSPOSED_DAVE
