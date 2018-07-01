@@ -213,32 +213,41 @@ void json_load_file(const char* path) {
 	free(JSON_STRING);
 }
 
-int parse_float_array(char* str, jsmntok_t* token, FLT** f, uint8_t count) {
-	uint16_t i = 0;
-
-	if (count==0) return 0;
-
-	if (*f!=NULL) free(*f);
-	*f = malloc(sizeof(FLT) * count);
-
-	for(i=0;i<count;++i) {
+int parse_float_array_in_place(char *str, jsmntok_t *token, FLT *f, uint8_t count) {
+	for (int i = 0; i < count; ++i) {
 		char* end = str + token->end;
 		char* s = str+token->start;
 
 		#ifdef USE_DOUBLE
-		(*f)[i] = strtod(s, &end);
+		f[i] = strtod(s, &end);
 		#else
-		(*f)[i] = strtof(s, &end);
+		f[i] = strtof(s, &end);
 		#endif
 
 		if (s == end) {
-			free(*f);
-			*f=NULL;
 			return 0; //not a float
 		}
 		token++;
 	}
 
+
+	return count;
+}
+int parse_float_array(char *str, jsmntok_t *token, FLT **f, uint8_t count) {
+	uint16_t i = 0;
+
+	if (count == 0)
+		return 0;
+
+	if (*f != NULL)
+		free(*f);
+	*f = malloc(sizeof(FLT) * count);
+
+	int rtn = parse_float_array_in_place(str, token, *f, count);
+	if (rtn == 0) {
+		free(*f);
+		*f = 0;
+	}
 
 	return count;
 }

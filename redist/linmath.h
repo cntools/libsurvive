@@ -139,6 +139,12 @@ LINMATH_EXPORT void ApplyPoseToPose(LinmathPose *pout, const LinmathPose *lhs_po
 LINMATH_EXPORT void InvertPose(LinmathPose *poseout, const LinmathPose *pose_in);
 
 LINMATH_EXPORT void PoseToMatrix(FLT *mat44, const LinmathPose *pose_in);
+
+// Given num_pts in coordinate system B, and in coordinate system A, find the optimal RHS rotation
+// which transforms from B to A.
+//
+// This assumes that the space A and B share an origin.
+LINMATH_EXPORT void KabschCentered(LinmathQuat B2Atx, const FLT *ptsA, const FLT *ptsB, int num_pts);
 // Matrix Stuff
 
 typedef struct {

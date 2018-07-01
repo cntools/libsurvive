@@ -374,3 +374,26 @@ SURVIVE_LOCAL_ONLY void cvReleaseMat(CvMat **mat) {
 	free(*mat);
 	*mat = 0;
 }
+
+SURVIVE_LOCAL_ONLY double cvDet(const CvMat *M) {
+	assert(M->rows == M->cols);
+	assert(M->rows <= 3 && "cvDet unimplemented for matrices >3");
+	assert(CV_64F == CV_MAT_TYPE(M->type) && "cvDet unimplemented for float");
+	double *m = M->data.db;
+
+	switch (M->rows) {
+	case 1:
+		return m[0];
+	case 2: {
+		return m[0] * m[3] - m[1] * m[2];
+	}
+	case 3: {
+		double m00 = m[0], m01 = m[1], m02 = m[2], m10 = m[3], m11 = m[4], m12 = m[5], m20 = m[6], m21 = m[7],
+			   m22 = m[8];
+
+		return m00 * (m11 * m22 - m12 * m21) - m01 * (m10 * m22 - m12 * m20) + m02 * (m10 * m21 - m11 * m20);
+	}
+	default:
+		abort();
+	}
+}

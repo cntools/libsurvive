@@ -5,6 +5,8 @@
 #include <math.h>
 #include <string.h>
 
+#include "minimal_opencv.h"
+
 inline void cross3d(FLT *out, const FLT *a, const FLT *b) {
 	out[0] = a[1] * b[2] - a[2] * b[1];
 	out[1] = a[2] * b[0] - a[0] * b[2];
@@ -286,7 +288,6 @@ inline void quattomatrix(FLT *matrix44, const LinmathQuat qin) {
 	matrix44[14] = 0;
 	matrix44[15] = 1;
 }
-
 inline void quatfrommatrix33(FLT *q, const FLT *m) {
 	FLT m00 = m[0], m01 = m[1], m02 = m[2], m10 = m[3], m11 = m[4], m12 = m[5], m20 = m[6], m21 = m[7], m22 = m[8];
 
@@ -639,6 +640,42 @@ inline void PoseToMatrix(FLT *matrix44, const LinmathPose *pose_in) {
 	matrix44[3] = pose_in->Pos[0];
 	matrix44[7] = pose_in->Pos[1];
 	matrix44[11] = pose_in->Pos[2];
+}
+
+#include "stdio.h"
+
+void KabschCentered(LinmathQuat qout, const FLT *ptsA, const FLT *ptsB, int num_pts) {
+	// Note: The following follows along with https://en.wikipedia.org/wiki/Kabsch_algorithm
+	// for the most part but we use some transpose identities to let avoid unneeded transposes
+	CvMat A = cvMat(num_pts, 3, CV_64F, (FLT *)ptsA);
+	CvMat B = cvMat(num_pts, 3, CV_64F, (FLT *)ptsB);
+
+	double _C[9] = {};
+	CvMat C = cvMat(3, 3, CV_64F, _C);
+	cvGEMM(&B, &A, 1, 0, 0, &C, GEMM_1_T);
+
+	double _U[9] = {};
+	double _W[9] = {};
+	double _VT[9] = {};
+	CvMat U = cvMat(3, 3, CV_64F, _U);
+	CvMat W = cvMat(3, 3, CV_64F, _W);
+	CvMat VT = cvMat(3, 3, CV_64F, _VT);
+
+	cvSVD(&C, &W, &U, &VT, CV_SVD_V_T | CV_SVD_MODIFY_A);
+
+	double _R[9] = {};
+	CvMat R = cvMat(3, 3, CV_64F, _R);
+	cvGEMM(&U, &VT, 1, 0, 0, &R, 0);
+
+	// Enforce RH rule
+	if (cvDet(&R) < 0.) {
+		_U[2] *= -1;
+		_U[5] *= -1;
+		_U[8] *= -1;
+		cvGEMM(&U, &VT, 1, 0, 0, &R, 0);
+	}
+
+	quatfrommatrix33(qout, _R);
 }
 
 LinmathQuat LinmathQuat_Identity = {1.0};

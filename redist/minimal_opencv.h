@@ -198,6 +198,7 @@ void cvSVD(CvMat *aarr, CvMat *warr, CvMat *uarr, CvMat *varr, int flags);
 void cvMulTransposed(const CvMat *src, CvMat *dst, int order, const CvMat *delta, double scale);
 void cvTranspose(const CvMat *M, CvMat *dst);
 void print_mat(const CvMat *M);
+double cvDet(const CvMat *M);
 
 #define CV_SVD 1
 #define CV_SVD_MODIFY_A 1

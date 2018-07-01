@@ -55,7 +55,7 @@ SurviveObject *survive_create_ww0(SurviveContext *ctx, const char *driver_name,
 }
 
 static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
-	if (tok->type == JSMN_STRING && (int)strlen(s) == tok->end - tok->start &&
+	if (tok && tok->type == JSMN_STRING && (int)strlen(s) == tok->end - tok->start &&
 		strncmp(json + tok->start, s, tok->end - tok->start) == 0) {
 		return 0;
 	}
@@ -124,9 +124,42 @@ static void print_stack_spot(char *d, stack_entry_t *entry) {
 	printf("-> %.*s\n", entry->key->end - entry->key->start, d + entry->key->start);
 }
 
-static int process_jsonarray(SurviveObject *so, char *ct0conf, stack_entry_t *stack) {
+typedef struct {
+	FLT position[3];
+	FLT plus_x[3];
+	FLT plus_z[3];
+} vive_pose_t;
+
+int solve_vive_pose(SurvivePose *pose, const vive_pose_t *vpose) {
+	if (vpose->plus_x[0] == 0.0 && vpose->plus_x[1] == 0.0 && vpose->plus_x[2] == 0.0)
+		return 0;
+
+	if (vpose->plus_z[0] == 0.0 && vpose->plus_z[1] == 0.0 && vpose->plus_z[2] == 0.0)
+		return 0;
+
+	FLT axis[] = {1, 0, 0, 0, 0, 1};
+
+	KabschCentered(pose->Rot, axis, vpose->plus_x, 2);
+
+	// Not really sure about this; but seems right? Could also be pose->Rot * vpose->position
+	copy3d(pose->Pos, vpose->position);
+
+	return 1;
+}
+
+typedef struct {
+	SurviveObject *so;
+	vive_pose_t imu_pose;
+} scratch_space_t;
+
+static scratch_space_t scratch_space_init(SurviveObject *so) { return (scratch_space_t){.so = so}; }
+
+static int process_jsonarray(scratch_space_t *scratch, char *ct0conf, stack_entry_t *stack) {
+	SurviveObject *so = scratch->so;
 	jsmntok_t *tk = stack->key;
 	SurviveContext *ctx = so->ctx;
+
+	/// CONTEXT FREE FIELDS
 	if (jsoneq(ct0conf, tk, "modelPoints") == 0) {
 		if (ParsePoints(ctx, so, ct0conf, &so->sensor_locations, tk)) {
 			return -1;
@@ -136,7 +169,6 @@ static int process_jsonarray(SurviveObject *so, char *ct0conf, stack_entry_t *st
 			return -1;
 		}
 	}
-
 	else if (jsoneq(ct0conf, tk, "acc_bias") == 0) {
 		int32_t count = (tk + 1)->size;
 		FLT *values = NULL;
@@ -172,10 +204,34 @@ static int process_jsonarray(SurviveObject *so, char *ct0conf, stack_entry_t *st
 		}
 	}
 
+	/// Context sensitive fields
+	else if (stack->previous && jsoneq(ct0conf, stack->previous->key, "imu") == 0) {
+
+		struct field {
+			const char *name;
+			FLT *vals;
+		};
+
+		struct field imufields[] = {{"plus_x", scratch->imu_pose.plus_x},
+									{"plus_z", scratch->imu_pose.plus_z},
+									{"position", scratch->imu_pose.position}};
+
+		for (int i = 0; i < sizeof(imufields) / sizeof(struct field); i++) {
+			if (jsoneq(ct0conf, tk, imufields[i].name) == 0) {
+				int32_t count = (tk + 1)->size;
+				assert(count == 3);
+				if (count == 3) {
+					parse_float_array_in_place(ct0conf, tk + 2, imufields[i].vals, count);
+				}
+				break;
+			}
+		}
+	}
+
 	return 0;
 }
 
-static int process_jsontok(SurviveObject *so, char *d, stack_entry_t *stack, jsmntok_t *t, int count) {
+static int process_jsontok(scratch_space_t *scratch, char *d, stack_entry_t *stack, jsmntok_t *t, int count) {
 	int i, j, k;
 	assert(count >= 0);
 	if (count == 0) {
@@ -192,16 +248,16 @@ static int process_jsontok(SurviveObject *so, char *d, stack_entry_t *stack, jsm
 		for (i = 0; i < t->size; i++) {
 			entry.key = t + 1 + j;
 			print_stack_spot(d, &entry);
-			j += process_jsontok(so, d, &entry, entry.key, count - j);
+			j += process_jsontok(scratch, d, &entry, entry.key, count - j);
 
-			j += process_jsontok(so, d, &entry, t + 1 + j, count - j);
+			j += process_jsontok(scratch, d, &entry, t + 1 + j, count - j);
 		}
 		return j + 1;
 	} else if (t->type == JSMN_ARRAY) {
-		process_jsonarray(so, d, stack);
+		process_jsonarray(scratch, d, stack);
 		j = 0;
 		for (i = 0; i < t->size; i++) {
-			j += process_jsontok(so, d, stack, t + 1 + j, count - j);
+			j += process_jsontok(scratch, d, stack, t + 1 + j, count - j);
 		}
 		return j + 1;
 	}
@@ -228,7 +284,10 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 		return -2;
 	}
 
-	process_jsontok(so, ct0conf, 0, t, r);
+	scratch_space_t scratch = scratch_space_init(so);
+	process_jsontok(&scratch, ct0conf, 0, t, r);
+
+	solve_vive_pose(&so->relative_imu_pose, &scratch.imu_pose);
 
 	// Handle device-specific sacling.
 	if (strcmp(so->codename, "HMD") == 0) {

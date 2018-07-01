@@ -109,12 +109,12 @@ static size_t construct_input_from_scene(SBAData *d, PoserDataLight *pdl, Surviv
 				vmask[sensor * NUM_LIGHTHOUSES + lh] = 1;
 				if (cov) {
 					*(cov++) = d->sensor_variance +
-							   abs((int32_t)pdl->timecode - (int32_t)scene->timecode[sensor][lh][0]) *
+							   fabs((float)pdl->timecode - (float)scene->timecode[sensor][lh][0]) *
 								   d->sensor_variance_per_second / (double)so->timebase_hz;
 					*(cov++) = 0;
 					*(cov++) = 0;
 					*(cov++) = d->sensor_variance +
-							   abs((int32_t)pdl->timecode - (int32_t)scene->timecode[sensor][lh][1]) *
+							   fabs((float)pdl->timecode - (float)scene->timecode[sensor][lh][1]) *
 								   d->sensor_variance_per_second / (double)so->timebase_hz;
 				}
 				meas[rtn++] = a[0];
