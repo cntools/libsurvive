@@ -187,7 +187,7 @@ typedef struct SurvivePlaybackData SurvivePlaybackData;
 static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver) {
 	char dev[10];
 	int timecode = 0;
-	FLT accelgyro[9] = {};
+	FLT accelgyro[9] = { 0 };
 	int mask;
 	int id;
 

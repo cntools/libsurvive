@@ -19,6 +19,10 @@ void RegisterDriver(const char *element, void *data) {
 
 void *GetDriver(const char *element) {
 	int i;
+
+	if (element == 0)
+		return 0;
+
 	for (i = 0; i < NrDrivers; i++) {
 		if (strcmp(element, DriverNames[i]) == 0)
 			return Drivers[i];

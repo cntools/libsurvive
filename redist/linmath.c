@@ -649,20 +649,20 @@ void KabschCentered(LinmathQuat qout, const FLT *ptsA, const FLT *ptsB, int num_
 	CvMat A = cvMat(num_pts, 3, CV_64F, (FLT *)ptsA);
 	CvMat B = cvMat(num_pts, 3, CV_64F, (FLT *)ptsB);
 
-	double _C[9] = {};
+	double _C[9] = { 0 };
 	CvMat C = cvMat(3, 3, CV_64F, _C);
 	cvGEMM(&B, &A, 1, 0, 0, &C, GEMM_1_T);
 
-	double _U[9] = {};
-	double _W[9] = {};
-	double _VT[9] = {};
+	double _U[9] = { 0 };
+	double _W[9] = { 0 };
+	double _VT[9] = { 0 };
 	CvMat U = cvMat(3, 3, CV_64F, _U);
 	CvMat W = cvMat(3, 3, CV_64F, _W);
 	CvMat VT = cvMat(3, 3, CV_64F, _VT);
 
 	cvSVD(&C, &W, &U, &VT, CV_SVD_V_T | CV_SVD_MODIFY_A);
 
-	double _R[9] = {};
+	double _R[9] = { 0 };
 	CvMat R = cvMat(3, 3, CV_64F, _R);
 	cvGEMM(&U, &VT, 1, 0, 0, &R, 0);
 
@@ -678,8 +678,8 @@ void KabschCentered(LinmathQuat qout, const FLT *ptsA, const FLT *ptsB, int num_
 }
 
 LINMATH_EXPORT void Kabsch(LinmathPose *B2Atx, const FLT *_ptsA, const FLT *_ptsB, int num_pts) {
-	FLT centerA[3] = {};
-	FLT centerB[3] = {};
+	FLT centerA[3] = { 0 };
+	FLT centerB[3] = { 0 };
 
 	for (int i = 0; i < num_pts; i++) {
 		for (int j = 0; j < 3; j++) {
@@ -693,9 +693,13 @@ LINMATH_EXPORT void Kabsch(LinmathPose *B2Atx, const FLT *_ptsA, const FLT *_pts
 		centerB[j] = centerB[j] / (FLT)num_pts;
 	}
 
+#ifndef _WIN32
 	FLT ptsA[num_pts * 3];
 	FLT ptsB[num_pts * 3];
-
+#else
+	FLT* ptsA = malloc(num_pts * 3 * sizeof(FLT));
+	FLT* ptsB = malloc(num_pts * 3 * sizeof(FLT));
+#endif
 	for (int i = 0; i < num_pts; i++) {
 		for (int j = 0; j < 3; j++) {
 			ptsA[i * 3 + j] = _ptsA[i * 3 + j] - centerA[j];
@@ -706,6 +710,12 @@ LINMATH_EXPORT void Kabsch(LinmathPose *B2Atx, const FLT *_ptsA, const FLT *_pts
 	KabschCentered(B2Atx->Rot, ptsA, ptsB, num_pts);
 	quatrotatevector(centerA, B2Atx->Rot, centerA);
 	sub3d(B2Atx->Pos, centerB, centerA);
+
+
+#ifdef _WIN32
+	free(ptsA);
+	free(ptsB);
+#endif
 }
 
 LinmathQuat LinmathQuat_Identity = {1.0};
