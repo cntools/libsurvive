@@ -247,7 +247,7 @@ static int process_jsontok(scratch_space_t *scratch, char *d, stack_entry_t *sta
 		j = 0;
 		for (i = 0; i < t->size; i++) {
 			entry.key = t + 1 + j;
-			print_stack_spot(d, &entry);
+			//print_stack_spot(d, &entry);
 			j += process_jsontok(scratch, d, &entry, entry.key, count - j);
 
 			j += process_jsontok(scratch, d, &entry, t + 1 + j, count - j);
