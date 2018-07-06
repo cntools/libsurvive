@@ -4,63 +4,9 @@
 #if defined( WIN32 ) || defined( WINDOWS ) || defined( USE_WINDOWS ) || defined( _WIN32 )
 
 #include <windows.h>
+#include <dbghelp.h>
 
-typedef struct _SYMBOL_INFO {
-  ULONG   SizeOfStruct;
-  ULONG   TypeIndex;
-  ULONG64 Reserved[2];
-  ULONG   Index;
-  ULONG   Size;
-  ULONG64 ModBase;
-  ULONG   Flags;
-  ULONG64 Value;
-  ULONG64 Address;
-  ULONG   Register;
-  ULONG   Scope;
-  ULONG   Tag;
-  ULONG   NameLen;
-  ULONG   MaxNameLen;
-  TCHAR   Name[1];
-} SYMBOL_INFO, *PSYMBOL_INFO;
-typedef struct _IMAGEHLP_STACK_FRAME {
-  ULONG64 InstructionOffset;
-  ULONG64 ReturnOffset;
-  ULONG64 FrameOffset;
-  ULONG64 StackOffset;
-  ULONG64 BackingStoreOffset;
-  ULONG64 FuncTableEntry;
-  ULONG64 Params[4];
-  ULONG64 Reserved[5];
-  BOOL    Virtual;
-  ULONG   Reserved2;
-} IMAGEHLP_STACK_FRAME, *PIMAGEHLP_STACK_FRAME;
-
-
-typedef BOOL (*PSYM_ENUMERATESYMBOLS_CALLBACK)(
-  PSYMBOL_INFO pSymInfo,
-  ULONG        SymbolSize,
-  PVOID        UserContext
-  );
-  
-BOOL WINAPI SymEnumSymbols(
-  HANDLE                         hProcess,
-  ULONG64                        BaseOfDll,
-  PCTSTR                         Mask,
-  PSYM_ENUMERATESYMBOLS_CALLBACK EnumSymbolsCallback,
-  const PVOID                          UserContext
-);
-
-BOOL WINAPI SymInitialize(
-	HANDLE hProcess,
-	PCTSTR UserSearchPath,
-	BOOL   fInvadeProcess
-);
-
-BOOL WINAPI SymCleanup(
-	HANDLE hProcess
-);
-
-BOOL mycb(PSYMBOL_INFO pSymInfo, ULONG SymbolSize, PVOID UserContext) {
+BOOL CALLBACK mycb(PSYMBOL_INFO pSymInfo, ULONG SymbolSize, PVOID UserContext) {
 	SymEnumeratorCallback cb = (SymEnumeratorCallback)UserContext;
 	return !cb("", &pSymInfo->Name[0], (void *)pSymInfo->Address, (long)pSymInfo->Size);
   }

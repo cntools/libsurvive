@@ -157,9 +157,11 @@ void survive_cal_install( struct SurviveContext * ctx )
 
 	// setting the required trackers for calibration to be permissive to make it easier for a newbie to start-- 
 	// basically, libsurvive will detect whatever they have plugged in and start using that.  
-//	const char * RequiredTrackersForCal = config_read_str(ctx->global_config_values, "RequiredTrackersForCal", "HMD,WM0,WM1");
 	const char *RequiredTrackersForCal = survive_configs(ctx, "requiredtrackersforcal", SC_SETCONFIG, "");
-	const uint32_t AllowAllTrackersForCal = survive_configi(ctx, "allowalltrackersforcal", SC_SETCONFIG, 0);
+
+	// If there are no mandatory trackers for calibration; by default just accept whatever it is that the person has.
+	const uint32_t AllowAllTrackersForCal = survive_configi(ctx, "allowalltrackersforcal", SC_SETCONFIG, strlen(RequiredTrackersForCal) == 0);
+
 	size_t requiredTrackersFound = 0;
 
 	for (int j=0; j < ctx->objs_ct; j++)
@@ -185,7 +187,7 @@ void survive_cal_install( struct SurviveContext * ctx )
 			{
 				SV_INFO("Calibration is NOT using %s; device count exceeds MAX_DEVICES_TO_CAL", ctx->objs[j]->codename);
 			}
-		}
+		}	
 
 	}
 

@@ -21,6 +21,8 @@ STATIC_CONFIG_ITEM( CONFIG_FILE, "configfile", 's', "Default configuration file"
 STATIC_CONFIG_ITEM( CONFIG_D_CALI, "disable-calibrate", 'i', "Enables or disables calibration", 0 );
 STATIC_CONFIG_ITEM( CONFIG_F_CALI, "force-calibrate", 'i', "Forces calibration even if one exists.", 0 );
 
+#define RUNTIME_SYMNUM 1
+
 #ifdef RUNTIME_SYMNUM
 #include <symbol_enumerator.h>
 static int did_runtime_symnum;
@@ -109,8 +111,6 @@ static void PrintMatchingDrivers( const char * prefix, const char * matchingpara
 		printf( "%s ", DriverName+strlen(prefix) );
 	}
 }
-
-
 
 SurviveContext *survive_init_internal(int argc, char *const *argv) {
 	int i;
