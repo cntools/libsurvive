@@ -160,7 +160,8 @@ void survive_cal_install( struct SurviveContext * ctx )
 	const char *RequiredTrackersForCal = survive_configs(ctx, "requiredtrackersforcal", SC_SETCONFIG, "");
 
 	// If there are no mandatory trackers for calibration; by default just accept whatever it is that the person has.
-	const uint32_t AllowAllTrackersForCal = survive_configi(ctx, "allowalltrackersforcal", SC_SETCONFIG, strlen(RequiredTrackersForCal) == 0);
+	const uint32_t AllowAllTrackersForCal =
+		survive_configi(ctx, "allowalltrackersforcal", SC_SETCONFIG, 0) || (strlen(RequiredTrackersForCal) == 0);
 
 	size_t requiredTrackersFound = 0;
 
