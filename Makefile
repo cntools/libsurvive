@@ -92,6 +92,9 @@ simple_pose_test : simple_pose_test.c $(DRAWFUNCTIONS) $(LIBRARY)
 data_recorder : data_recorder.c $(LIBRARY)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
 
+api_example : api_example.c $(LIBRARY)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
+
 calibrate :  calibrate.c $(DRAWFUNCTIONS) $(LIBRARY)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
 

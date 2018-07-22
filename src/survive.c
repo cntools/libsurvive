@@ -379,14 +379,14 @@ int survive_startup(SurviveContext *ctx) {
 			isCalibrated &= ctx->bsd[i].PositionSet;
 		}
 
+		bool doCalibrate = isCalibrated == false || calibrateMandatory;
+				
 		if (!isCalibrated) {
 			SV_INFO("Uncalibrated configuration detected. Attaching calibration. Please don't move tracked objects for "
 					"the duration of calibration. Pass '--disable-calibrate' to skip calibration");
-		} else {
+		} else if(doCalibrate) {
 			SV_INFO("Calibration requested. Previous calibration will be overwritten.");
 		}
-
-		bool doCalibrate = isCalibrated == false || calibrateMandatory;
 
 		if (doCalibrate) {
 			survive_cal_install(ctx);

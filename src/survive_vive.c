@@ -176,7 +176,7 @@ struct SurviveViveData
 };
 
 #ifdef HIDAPI
-og_mutex_t      GlobalRXUSBMutx;
+og_sema_t      GlobalRXUSBSem;
 #endif
 
 void survive_data_cb( SurviveUSBInterface * si );
@@ -198,7 +198,7 @@ void * HAPIReceiver( void * v )
 	while( (iface->actual_len = hid_read( *hp, iface->buffer, sizeof( iface->buffer ) )) > 0 )
 	{
 		//if( iface->actual_len  == 52 ) continue;
-		OGLockMutex( GlobalRXUSBMutx );
+		OGLockSema( GlobalRXUSBSem );
 #if 0
 		printf( "%d %d: ", iface->which_interface_am_i, iface->actual_len );
 		int i;
@@ -209,7 +209,7 @@ void * HAPIReceiver( void * v )
 		printf("\n" );
 #endif
 		survive_data_cb( iface );
-		OGUnlockMutex( GlobalRXUSBMutx );
+		OGUnlockSema( GlobalRXUSBSem );
 	}
 	//XXX TODO: Mark device as failed.
 	*hp = 0;
@@ -358,10 +358,10 @@ int survive_usb_init( SurviveViveData * sv, SurviveObject * hmd, SurviveObject *
 
 #ifdef HIDAPI
 	SV_INFO( "Vive starting in HIDAPI mode." );
-	if( !GlobalRXUSBMutx )
+	if( !GlobalRXUSBSem )
 	{
-		GlobalRXUSBMutx = OGCreateMutex();
-		OGLockMutex( GlobalRXUSBMutx );
+		GlobalRXUSBSem = OGCreateSema();
+		//OGLockSema( GlobalRXUSBSem );
 	}
 	int res, i;
 	res = hid_init();
@@ -842,9 +842,9 @@ void survive_vive_usb_close( SurviveViveData * sv )
 int survive_vive_usb_poll( SurviveContext * ctx, void * v )
 {
 #ifdef HIDAPI
-	OGUnlockMutex( GlobalRXUSBMutx );
+	OGUnlockSema( GlobalRXUSBSem );
 	OGUSleep( 100 );
-	OGUnlockMutex( GlobalRXUSBMutx );
+	OGLockSema( GlobalRXUSBSem );
 	return 0;
 #else
 	SurviveViveData * sv = v;

@@ -173,8 +173,10 @@ OSG_INLINE void OGDeleteSema(og_sema_t os) { CloseHandle(os); }
 
 #else
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
-
+#endif
+  
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdlib.h>
@@ -182,6 +184,8 @@ OSG_INLINE void OGDeleteSema(og_sema_t os) { CloseHandle(os); }
 #include <sys/time.h>
 #include <unistd.h>
 
+#include <stdio.h>
+  
 OSG_INLINE void OGSleep(int is) { sleep(is); }
 
 OSG_INLINE void OGUSleep(int ius) { usleep(ius); }
@@ -239,8 +243,12 @@ OSG_INLINE og_mutex_t OGCreateMutex() {
 	pthread_mutexattr_init(&mta);
 	pthread_mutexattr_settype(&mta, PTHREAD_MUTEX_RECURSIVE);
 
-	pthread_mutex_init((pthread_mutex_t *)r, &mta);
-
+	int error = pthread_mutex_init((pthread_mutex_t *)r, &mta);
+	if(error != 0) {
+	  printf( "Create mutex error %d", error);
+	  abort();
+	}
+	
 	return r;
 }
 
@@ -248,14 +256,22 @@ OSG_INLINE void OGLockMutex(og_mutex_t om) {
 	if (!om) {
 		return;
 	}
-	pthread_mutex_lock((pthread_mutex_t *)om);
+	int error = pthread_mutex_lock((pthread_mutex_t *)om);
+	if(error != 0) {
+	  printf( "Lock mutex error %d", error);
+	  abort();
+	}
 }
 
 OSG_INLINE void OGUnlockMutex(og_mutex_t om) {
 	if (!om) {
 		return;
 	}
-	pthread_mutex_unlock((pthread_mutex_t *)om);
+	int error = pthread_mutex_unlock((pthread_mutex_t *)om);
+	if(error != 0) {
+	  printf( "Unlock mutex error %d", error);
+	  abort();
+	}
 }
 
 OSG_INLINE void OGDeleteMutex(og_mutex_t om) {
