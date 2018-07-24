@@ -65,6 +65,14 @@ void testApplyPoseToPose() {
 		ApplyPoseToPose(&pose_out, &rotAroundYOffset, &pt);
 		ASSERT_FLTA_EQUALS(pose_out.Pos, expected.Pos, 7);
 	}
+
+	{
+	  pose_out = rotAroundYOffset;
+	  LinmathPose expected = {-2, 2, -2, -1, 0, 0, 0 };
+	  ApplyPoseToPose(&pose_out, &pose_out, &pose_out);
+	  ASSERT_FLTA_EQUALS(pose_out.Pos, expected.Pos, 7);
+	}
+
 }
 
 void testApplyPoseToPoint() {

@@ -3,6 +3,7 @@
 #include <float.h>
 #include <math.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "minimal_opencv.h"
 
@@ -411,10 +412,21 @@ inline void quatadd(LinmathQuat qout, const FLT *a, const FLT *b) {
 
 inline void quatrotateabout(LinmathQuat qout, const LinmathQuat q1, const LinmathQuat q2) {
 	// NOTE: Does not normalize
-	qout[0] = (q1[0] * q2[0]) - (q1[1] * q2[1]) - (q1[2] * q2[2]) - (q1[3] * q2[3]);
-	qout[1] = (q1[0] * q2[1]) + (q1[1] * q2[0]) + (q1[2] * q2[3]) - (q1[3] * q2[2]);
-	qout[2] = (q1[0] * q2[2]) - (q1[1] * q2[3]) + (q1[2] * q2[0]) + (q1[3] * q2[1]);
-	qout[3] = (q1[0] * q2[3]) + (q1[1] * q2[2]) - (q1[2] * q2[1]) + (q1[3] * q2[0]);
+	LinmathQuat rtn;
+    FLT* p = qout;
+    bool aliased = q1 == qout || q2 == qout;
+    if(aliased) {
+        p = rtn;
+    }
+
+	p[0] = (q1[0] * q2[0]) - (q1[1] * q2[1]) - (q1[2] * q2[2]) - (q1[3] * q2[3]);
+	p[1] = (q1[0] * q2[1]) + (q1[1] * q2[0]) + (q1[2] * q2[3]) - (q1[3] * q2[2]);
+	p[2] = (q1[0] * q2[2]) - (q1[1] * q2[3]) + (q1[2] * q2[0]) + (q1[3] * q2[1]);
+	p[3] = (q1[0] * q2[3]) + (q1[1] * q2[2]) - (q1[2] * q2[1]) + (q1[3] * q2[0]);
+
+	if(aliased) {
+        quatcopy(qout, rtn);
+    }
 }
 
 inline void quatscale(LinmathQuat qout, const LinmathQuat qin, FLT s) {
