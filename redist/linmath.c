@@ -2,8 +2,8 @@
 #include "linmath.h"
 #include <float.h>
 #include <math.h>
-#include <string.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include "minimal_opencv.h"
 
@@ -82,6 +82,35 @@ FLT anglebetween3d(FLT *a, FLT *b) {
 	if (dot > 0.9999999)
 		return 0;
 	return FLT_ACOS(dot);
+}
+
+LINMATH_EXPORT void center3d(FLT *out_pts, FLT *out_mean, const FLT *pts, int num_pts) {
+	FLT center[3];
+	if (out_mean == 0)
+		out_mean = center;
+	mean3d(out_mean, pts, num_pts);
+
+	for (int i = 0; i < num_pts; i++) {
+		for (int j = 0; j < 3; j++) {
+			out_pts[i * 3 + j] = pts[i * 3 + j] - out_mean[j];
+		}
+	}
+}
+
+LINMATH_EXPORT void mean3d(LinmathVec3d out, const FLT *pts, int num_pts) {
+	for (int i = 0; i < 3; i++) {
+		out[i] = 0;
+	}
+
+	for (int i = 0; i < num_pts; i++) {
+		for (int j = 0; j < 3; j++) {
+			out[j] += pts[i * 3 + j];
+		}
+	}
+
+	for (int j = 0; j < 3; j++) {
+		out[j] = out[j] / (FLT)num_pts;
+	}
 }
 
 // algorithm found here: http://inside.mines.edu/fs_home/gmurray/ArbitraryAxisRotation/
@@ -413,20 +442,20 @@ inline void quatadd(LinmathQuat qout, const FLT *a, const FLT *b) {
 inline void quatrotateabout(LinmathQuat qout, const LinmathQuat q1, const LinmathQuat q2) {
 	// NOTE: Does not normalize
 	LinmathQuat rtn;
-    FLT* p = qout;
-    bool aliased = q1 == qout || q2 == qout;
-    if(aliased) {
-        p = rtn;
-    }
+	FLT *p = qout;
+	bool aliased = q1 == qout || q2 == qout;
+	if (aliased) {
+		p = rtn;
+	}
 
 	p[0] = (q1[0] * q2[0]) - (q1[1] * q2[1]) - (q1[2] * q2[2]) - (q1[3] * q2[3]);
 	p[1] = (q1[0] * q2[1]) + (q1[1] * q2[0]) + (q1[2] * q2[3]) - (q1[3] * q2[2]);
 	p[2] = (q1[0] * q2[2]) - (q1[1] * q2[3]) + (q1[2] * q2[0]) + (q1[3] * q2[1]);
 	p[3] = (q1[0] * q2[3]) + (q1[1] * q2[2]) - (q1[2] * q2[1]) + (q1[3] * q2[0]);
 
-	if(aliased) {
-        quatcopy(qout, rtn);
-    }
+	if (aliased) {
+		quatcopy(qout, rtn);
+	}
 }
 
 inline void quatscale(LinmathQuat qout, const LinmathQuat qin, FLT s) {
@@ -661,20 +690,20 @@ void KabschCentered(LinmathQuat qout, const FLT *ptsA, const FLT *ptsB, int num_
 	CvMat A = cvMat(num_pts, 3, CV_64F, (FLT *)ptsA);
 	CvMat B = cvMat(num_pts, 3, CV_64F, (FLT *)ptsB);
 
-	double _C[9] = { 0 };
+	double _C[9] = {0};
 	CvMat C = cvMat(3, 3, CV_64F, _C);
 	cvGEMM(&B, &A, 1, 0, 0, &C, GEMM_1_T);
 
-	double _U[9] = { 0 };
-	double _W[9] = { 0 };
-	double _VT[9] = { 0 };
+	double _U[9] = {0};
+	double _W[9] = {0};
+	double _VT[9] = {0};
 	CvMat U = cvMat(3, 3, CV_64F, _U);
 	CvMat W = cvMat(3, 3, CV_64F, _W);
 	CvMat VT = cvMat(3, 3, CV_64F, _VT);
 
 	cvSVD(&C, &W, &U, &VT, CV_SVD_V_T | CV_SVD_MODIFY_A);
 
-	double _R[9] = { 0 };
+	double _R[9] = {0};
 	CvMat R = cvMat(3, 3, CV_64F, _R);
 	cvGEMM(&U, &VT, 1, 0, 0, &R, 0);
 
@@ -690,39 +719,22 @@ void KabschCentered(LinmathQuat qout, const FLT *ptsA, const FLT *ptsB, int num_
 }
 
 LINMATH_EXPORT void Kabsch(LinmathPose *B2Atx, const FLT *_ptsA, const FLT *_ptsB, int num_pts) {
-	FLT centerA[3] = { 0 };
-	FLT centerB[3] = { 0 };
-
-	for (int i = 0; i < num_pts; i++) {
-		for (int j = 0; j < 3; j++) {
-			centerA[j] += _ptsA[i * 3 + j];
-			centerB[j] += _ptsB[i * 3 + j];
-		}
-	}
-
-	for (int j = 0; j < 3; j++) {
-		centerA[j] = centerA[j] / (FLT)num_pts;
-		centerB[j] = centerB[j] / (FLT)num_pts;
-	}
+	FLT centerA[3];
+	FLT centerB[3];
 
 #ifndef _WIN32
 	FLT ptsA[num_pts * 3];
 	FLT ptsB[num_pts * 3];
 #else
-	FLT* ptsA = malloc(num_pts * 3 * sizeof(FLT));
-	FLT* ptsB = malloc(num_pts * 3 * sizeof(FLT));
+	FLT *ptsA = malloc(num_pts * 3 * sizeof(FLT));
+	FLT *ptsB = malloc(num_pts * 3 * sizeof(FLT));
 #endif
-	for (int i = 0; i < num_pts; i++) {
-		for (int j = 0; j < 3; j++) {
-			ptsA[i * 3 + j] = _ptsA[i * 3 + j] - centerA[j];
-			ptsB[i * 3 + j] = _ptsB[i * 3 + j] - centerB[j];
-		}
-	}
+	center3d(ptsA, centerA, _ptsA, num_pts);
+	center3d(ptsB, centerB, _ptsB, num_pts);
 
 	KabschCentered(B2Atx->Rot, ptsA, ptsB, num_pts);
 	quatrotatevector(centerA, B2Atx->Rot, centerA);
 	sub3d(B2Atx->Pos, centerB, centerA);
-
 
 #ifdef _WIN32
 	free(ptsA);
