@@ -1,3 +1,7 @@
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "assert.h"
 #include "stdint.h"
 #include "stdlib.h"
@@ -187,17 +191,29 @@ static inline void cvmSet(CvMat *mat, int row, int col, double value) {
 void print_mat(const CvMat *M);
 
 CvMat *cvCreateMat(int height, int width, int type);
+
 double cvInvert(const CvMat *srcarr, CvMat *dstarr, int method);
+
 void cvGEMM(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src3, double beta, CvMat *dst, int tABC);
+
 int cvSolve(const CvMat *Aarr, const CvMat *Barr, CvMat *xarr, int method);
+
 void cvSetZero(CvMat *arr);
+
 void cvCopyTo(const CvMat *src, CvMat *dest);
+
 CvMat *cvCloneMat(const CvMat *mat);
+
 void cvReleaseMat(CvMat **mat);
+
 void cvSVD(CvMat *aarr, CvMat *warr, CvMat *uarr, CvMat *varr, int flags);
+
 void cvMulTransposed(const CvMat *src, CvMat *dst, int order, const CvMat *delta, double scale);
+
 void cvTranspose(const CvMat *M, CvMat *dst);
+
 void print_mat(const CvMat *M);
+
 double cvDet(const CvMat *M);
 
 #define CV_SVD 1
@@ -211,3 +227,7 @@ extern const int DECOMP_LU;
 #define GEMM_1_T 1
 #define GEMM_2_T 2
 #define GEMM_3_T 4
+
+#ifdef __cplusplus
+}
+#endif

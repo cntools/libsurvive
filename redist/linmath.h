@@ -78,6 +78,7 @@ LINMATH_EXPORT void add3d(FLT *out, const FLT *a, const FLT *b);
 
 LINMATH_EXPORT void scale3d(FLT *out, const FLT *a, FLT scalar);
 
+LINMATH_EXPORT FLT norm3d(const FLT *in);
 LINMATH_EXPORT void normalize3d(FLT *out, const FLT *in);
 
 // out_pts needs to be preallocated with 3 * num_pts FLT's; it doesn't need to be zeroed.

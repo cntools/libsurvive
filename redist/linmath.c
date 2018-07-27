@@ -31,8 +31,9 @@ inline void scale3d(FLT *out, const FLT *a, FLT scalar) {
 	out[2] = a[2] * scalar;
 }
 
+LINMATH_EXPORT FLT norm3d(const FLT *in) { return FLT_SQRT(in[0] * in[0] + in[1] * in[1] + in[2] * in[2]); }
 inline void normalize3d(FLT *out, const FLT *in) {
-	FLT r = ((FLT)1.) / FLT_SQRT(in[0] * in[0] + in[1] * in[1] + in[2] * in[2]);
+	FLT r = ((FLT)1.) / norm3d(in);
 	out[0] = in[0] * r;
 	out[1] = in[1] * r;
 	out[2] = in[2] * r;

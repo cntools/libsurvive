@@ -10,6 +10,8 @@
 #include <limits.h>
 #include <stdarg.h>
 
+#include "linmath.h"
+
 #ifdef _WIN32
 #define SURVIVE_LOCAL_ONLY
 #else
@@ -339,13 +341,19 @@ SURVIVE_LOCAL_ONLY void cvSVD(CvMat *aarr, CvMat *warr, CvMat *uarr, CvMat *varr
 	if (varr == 0)
 		jobvt = 'N';
 
+	double *pw, *pu, *pv;
 	lapack_int arows = aarr->rows, acols = aarr->cols;
-	lapack_int ulda = uarr ? uarr->cols : 1;
+
+	pw = warr ? warr->data.db : (double *)alloca(sizeof(double) * arows * acols);
+	pu = uarr ? uarr->data.db : (double *)alloca(sizeof(double) * arows * arows);
+	pv = varr ? varr->data.db : (double *)alloca(sizeof(double) * acols * acols);
+
+	lapack_int ulda = uarr ? uarr->cols : acols;
 	lapack_int plda = varr ? varr->cols : acols;
-	
+
 	double *superb = malloc(sizeof(double) * MIN(arows, acols));
-	inf = LAPACKE_dgesvd(LAPACK_ROW_MAJOR, jobu, jobvt, arows, acols, aarr->data.db, acols, warr ? warr->data.db : 0,
-						 uarr ? uarr->data.db : 0, ulda, varr ? varr->data.db : 0, plda, superb);
+	inf = LAPACKE_dgesvd(LAPACK_ROW_MAJOR, jobu, jobvt, arows, acols, aarr->data.db, acols, pw, pu, ulda, pv, plda,
+						 superb);
 
 	free(superb);
 	assert(inf == 0);
@@ -366,6 +374,11 @@ SURVIVE_LOCAL_ONLY void cvSetZero(CvMat *arr) {
 	for (int i = 0; i < arr->rows; i++)
 		for (int j = 0; j < arr->cols; j++)
 			arr->data.db[i * arr->cols + j] = 0;
+}
+SURVIVE_LOCAL_ONLY void cvSetIdentity(CvMat *arr) {
+	for (int i = 0; i < arr->rows; i++)
+		for (int j = 0; j < arr->cols; j++)
+			arr->data.db[i * arr->cols + j] = i == j;
 }
 
 SURVIVE_LOCAL_ONLY void cvReleaseMat(CvMat **mat) {
