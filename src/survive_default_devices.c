@@ -293,9 +293,6 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	if (strcmp(so->codename, "HMD") == 0) {
 		if (so->acc_scale) {
 			scale3d(so->acc_scale, so->acc_scale, 1. / 8192.0);
-			//Invert X and Y at least on my vive.
-			so->acc_scale[1] *= -1;
-			so->acc_scale[0] *= -1;
 		}
 		if (so->acc_bias)
 			scale3d(so->acc_bias, so->acc_bias, 1000.0 ); // Odd but seems right.
@@ -305,9 +302,6 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 		if (so->gyro_scale) {
 			FLT deg_per_sec = 500;
 			scale3d(so->gyro_scale, so->gyro_scale, deg_per_sec / (1 << 15) * LINMATHPI / 180.);
-			//Invert X and Y at least on my vive.
-			so->gyro_scale[0] *= -1;
-			so->gyro_scale[1] *= -1;
 		}
 	} else if (memcmp(so->codename, "WM", 2) == 0) {
 		if (so->acc_scale)
