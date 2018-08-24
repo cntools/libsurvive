@@ -29,13 +29,12 @@ ifdef USE_ASAN
 	CFLAGS+=-fsanitize=address -fsanitize=undefined
 endif
 
-
-
-SBA:=redist/sba/sba_chkjac.c  redist/sba/sba_crsm.c  redist/sba/sba_lapack.c  redist/sba/sba_levmar.c  redist/sba/sba_levmar_wrap.c redist/minimal_opencv.c src/poser_epnp.c src/poser_sba.c src/epnp/epnp.c src/poser_general_optimizer.c
+SBA:=redist/sba/sba_chkjac.c  redist/sba/sba_crsm.c  redist/sba/sba_lapack.c  redist/sba/sba_levmar.c  redist/sba/sba_levmar_wrap.c redist/minimal_opencv.c src/poser_epnp.c src/poser_sba.c src/epnp/epnp.c
+MPFIT:=redist/mpfit/mpfit.c src/poser_mpfit.c
 LIBSURVIVE_CORE+=src/survive.c src/survive_process.c src/ootx_decoder.c src/survive_driverman.c src/survive_default_devices.c src/survive_playback.c src/survive_config.c src/survive_cal.c  src/poser.c src/survive_sensor_activations.c src/survive_disambiguator.c src/survive_imu.c src/survive_kalman.c src/survive_api.c
 MINIMAL_NEEDED+=src/survive_usb.c src/survive_charlesbiguator.c  src/survive_vive.c src/survive_reproject.c
 AUX_NEEDED+=src/survive_turveybiguator.c  src/survive_statebased_disambiguator.c src/survive_driver_dummy.c src/survive_driver_udp.c
-POSERS:=src/poser_dummy.c src/poser_imu.c src/poser_charlesrefine.c
+POSERS:=src/poser_dummy.c src/poser_imu.c src/poser_charlesrefine.c src/poser_general_optimizer.c
 EXTRA_POSERS:=src/poser_daveortho.c src/poser_charlesslow.c src/poser_octavioradii.c src/poser_turveytori.c
 REDISTS:=redist/json_helpers.c redist/linmath.c redist/jsmn.c
 
@@ -67,7 +66,7 @@ endif
 ifdef MINIMAL
 	LIBSURVIVE_C:=$(REDISTS) $(LIBSURVIVE_CORE) $(MINIMAL_NEEDED)
 else
-	LIBSURVIVE_C:=$(POSERS) $(REDISTS) $(LIBSURVIVE_CORE) $(SBA) $(MINIMAL_NEEDED) $(AUX_NEEDED)
+	LIBSURVIVE_C:=$(POSERS) $(REDISTS) $(LIBSURVIVE_CORE) $(SBA) $(MPFIT) $(MINIMAL_NEEDED) $(AUX_NEEDED)
 endif
 
 
@@ -135,6 +134,7 @@ $(OBJDIR):
 	mkdir -p $(OBJDIR)/src
 	mkdir -p $(OBJDIR)/redist
 	mkdir -p $(OBJDIR)/redist/sba
+	mkdir -p $(OBJDIR)/redist/mpfit
 	mkdir -p $(OBJDIR)/src/epnp
 
 $(LIBRARY): $(LIBSURVIVE_O) $(OBJDIR)
