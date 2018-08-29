@@ -165,7 +165,6 @@ void drawbsds(SurviveContext *ctx) {
 		SVCal_All, SVCal_Phase, SVCal_Gib, SVCal_Curve, SVCal_Tilt,
 	};
 
-	for (auto f : show_flags) {
 		for (int lh = 0; lh < 2; lh++) {
 			cv::Mat_<cv::Vec3b> img = cv::Mat_<cv::Vec3b>(SIZE, SIZE);
 			img.setTo(cv::Vec3b(0, 0, 0));
@@ -176,15 +175,11 @@ void drawbsds(SurviveContext *ctx) {
 						continue;
 
 					FLT out[2];
-					auto config = survive_calibration_config_ctor();
-					config.use_flag = f;
-					survive_apply_bsd_calibration_by_config(ctx, lh, &config, in, out);
+					survive_apply_bsd_calibration(ctx, lh, in, out);
 					double ex = out[0] - in[0];
 					double ey = out[1] - in[1];
-					if (f == SVCal_All) {
-						ex -= ctx->bsd[lh].fcal.phase[0];
-						ey -= ctx->bsd[lh].fcal.phase[1];
-					}
+					ex -= ctx->bsd[lh].fcal.phase[0];
+					ey -= ctx->bsd[lh].fcal.phase[1];
 
 					// Make it opposite of angles
 					ex *= -1;
@@ -194,11 +189,9 @@ void drawbsds(SurviveContext *ctx) {
 				}
 			}
 			draw_viz(img);
-			cv::imwrite("BSD" + std::to_string(lh) + "_" + std::to_string(f) + ".png", img);
-			if (f == SVCal_All)
-				cv::imshow("BSD" + std::to_string(lh), img);
+			cv::imwrite("BSD" + std::to_string(lh) + ".png", img);
+			cv::imshow("BSD" + std::to_string(lh), img);
 		}
-	}
 }
 
 int main(int argc, char **argv) {

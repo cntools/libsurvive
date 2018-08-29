@@ -211,7 +211,7 @@ static void metric_function(int j, int i, double *aj, double *xij, void *adata) 
 	BaseStationData bsd = ctx->ctx->bsd[lh];
 	survive_calibration_config cfg = *(survive_calibration_config *)aj;
 
-	survive_reproject_from_pose_with_bsd(&bsd, &cfg, &ctx->ctx->bsd[lh].Pose, sensorInWorld, xij);
+	survive_reproject_from_pose_with_bcal(&bsd, &cfg, &ctx->ctx->bsd[lh].Pose, sensorInWorld, xij);
 }
 
 double find_optimal_cal(SurviveContext *ctx, PlaybackData &data) {

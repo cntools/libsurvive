@@ -111,7 +111,7 @@ void check_reproject() {
 
 	double start_reproject = OGGetAbsoluteTime();
 	for (int i = 0; i < cycles; i++)
-		survive_reproject_full(out_pt, &obj, pt, &lh, &bsd, &config);
+		survive_reproject_full(&bsd, &config, &lh, &obj, pt, out_pt);
 	double stop_reproject = OGGetAbsoluteTime();
 
 	printf("%f %f (%f)\n", out_pt[0], out_pt[1], stop_reproject - start_reproject);

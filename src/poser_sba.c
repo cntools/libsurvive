@@ -68,8 +68,7 @@ static void metric_function(int j, int i, double *aj, double *xij, void *adata) 
 	SurvivePose obj2world = ctx->obj_pose;
 	FLT sensorInWorld[3] = {0};
 	ApplyPoseToPoint(sensorInWorld, &obj2world, &so->sensor_locations[i * 3]);
-	survive_calibration_config cfg = so->ctx->calibration_config;
-	survive_reproject_from_pose_with_config(so->ctx, &cfg, j, (SurvivePose *)aj, sensorInWorld, xij);
+	survive_reproject_from_pose(so->ctx, j, (SurvivePose *)aj, sensorInWorld, xij);
 }
 
 static size_t construct_input(const SurviveObject *so, PoserDataFullScene *pdfs, char *vmask, double *meas) {
@@ -154,8 +153,7 @@ static void str_metric_function(int j, int i, double *bi, double *xij, void *ada
 
 	// std::cerr << "Processing " << sensor_idx << ", " << lh << std::endl;
 	SurvivePose *camera = &so->ctx->bsd[lh].Pose;
-	survive_reproject_full(xij, &obj, &so->sensor_locations[sensor_idx * 3], camera, &so->ctx->bsd[lh],
-						   &so->ctx->calibration_config);
+	survive_reproject_full(&so->ctx->bsd[lh].fcal, camera, &obj, &so->sensor_locations[sensor_idx * 3], xij);
 }
 
 static void str_metric_function_jac(int j, int i, double *bi, double *xij, void *adata) {
@@ -172,8 +170,8 @@ static void str_metric_function_jac(int j, int i, double *bi, double *xij, void 
 	quatnormalize(obj.Rot, obj.Rot);
 
 	SurvivePose *camera = &so->ctx->bsd[lh].Pose;
-	survive_reproject_full_jac_obj_pose(xij, &obj, &so->sensor_locations[sensor_idx * 3], camera, &so->ctx->bsd[lh],
-										&so->ctx->calibration_config);
+	survive_reproject_full_jac_obj_pose(xij, &obj, &so->sensor_locations[sensor_idx * 3], camera,
+										&so->ctx->bsd[lh].fcal);
 }
 
 static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, SurviveSensorActivations *scene,
