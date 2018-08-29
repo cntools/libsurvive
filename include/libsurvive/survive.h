@@ -191,7 +191,6 @@ typedef struct {
 typedef enum { SURVIVE_STOPPED = 0, SURVIVE_RUNNING, SURVIVE_CLOSING, SURVIVE_STATE_MAX } SurviveState;
 
 struct SurviveRecordingData;
-struct survive_calibration_config;
 
 enum SurviveCalFlag {
 	SVCal_None = 0,

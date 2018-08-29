@@ -1,8 +1,9 @@
-#include "survive_reproject.full.generated.h"
 #include <libsurvive/survive.h>
 #include <libsurvive/survive_reproject.h>
 #include <math.h>
 #include <os_generic.h>
+
+#include "survive_reproject.full.generated.h"
 
 typedef struct survive_calibration_config {
 	FLT phase_scale, tilt_scale, curve_scale, gib_scale;
@@ -13,26 +14,22 @@ static const survive_calibration_config default_config = {
 
 void gen_survive_reproject_full(FLT *out, const SurvivePose *obj_pose, const LinmathVec3d obj_pt,
 								const SurvivePose *lh2world, const BaseStationCal *bcal) {
-	FLT phase_scale = default_config.phase_scale;
 	FLT phase_0 = bcal[0].phase;
 	FLT phase_1 = bcal[1].phase;
 
-	FLT tilt_scale = default_config.tilt_scale;
 	FLT tilt_0 = bcal[0].tilt;
 	FLT tilt_1 = bcal[1].tilt;
 
-	FLT curve_scale = default_config.curve_scale;
 	FLT curve_0 = bcal[0].curve;
 	FLT curve_1 = bcal[1].curve;
 
-	FLT gib_scale = default_config.gib_scale;
 	FLT gibPhase_0 = bcal[0].gibpha;
 	FLT gibPhase_1 = bcal[1].gibpha;
 	FLT gibMag_0 = bcal[0].gibmag;
 	FLT gibMag_1 = bcal[1].gibmag;
 
-	gen_reproject(out, obj_pose->Pos, obj_pt, lh2world->Pos, phase_scale, phase_0, phase_1, tilt_scale, tilt_0, tilt_1,
-				  curve_scale, curve_0, curve_1, gib_scale, gibPhase_0, gibPhase_1, gibMag_0, gibMag_1);
+	gen_reproject(out, obj_pose->Pos, obj_pt, lh2world->Pos, phase_0, phase_1, tilt_0, tilt_1, curve_0, curve_1,
+				  gibPhase_0, gibPhase_1, gibMag_0, gibMag_1);
 }
 
 double next_rand(double mx) { return (float)rand() / (float)(RAND_MAX / mx) - mx / 2.; }
@@ -64,7 +61,7 @@ void check_rotate_vector() {
 	FLT pt[3];
 	random_point(pt);
 
-	int cycles = 1000000000;
+	int cycles = 1000;
 	FLT gen_out[3], out[3];
 	double start, stop;
 	start = OGGetAbsoluteTime();
@@ -100,12 +97,12 @@ void check_reproject() {
 	random_point(pt);
 	SurvivePose world2lh = random_pose();
 
-	BaseStationData bsd;
-	for (int i = 0; i < 10; i++)
-		*((FLT *)&bsd.fcal[0].phase + i) = next_rand(1);
+	BaseStationData bsd = {};
+	// for (int i = 0; i < 10; i++)
+	//*((FLT *)&bsd.fcal[0].phase + i) = next_rand(1);
 
 	FLT out_pt[2] = {0};
-	int cycles = 1000000;
+	int cycles = 100000;
 
 	double start_gen = OGGetAbsoluteTime();
 	for (int i = 0; i < cycles; i++) {
@@ -136,9 +133,9 @@ void check_jacobian() {
 	//SurvivePose lh = {}; lh.Rot[0] = 1.;
 
 	survive_calibration_config config;
-	BaseStationData bsd = {};
-	//for (int i = 0; i < 10; i++)
-	//*((FLT *)&bsd.fcal[0].phase + i) = next_rand(0.5);
+	BaseStationData bsd;
+	for (int i = 0; i < 10; i++)
+		*((FLT *)&bsd.fcal[0].phase + i) = next_rand(0.5);
 
 	FLT out_jac[14] = {0};
 	survive_reproject_full_jac_obj_pose(out_jac, &obj, pt, &world2lh, bsd.fcal);
