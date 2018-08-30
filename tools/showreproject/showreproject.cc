@@ -88,8 +88,7 @@ static void redraw(SurviveContext *ctx) {
 
 					auto l = scene->lengths[sensor][lh];
 					double r = std::max(3., (l[0] + l[1]) / 1000.);
-					// std::cerr << lh << "\t" << sensor << "\t" << ((l[0] + l[1]) / 2000.) << "\t" << l[0] << "\t" <<
-					// l[1] << std::endl;
+
 					if (region.data)
 						cv::circle(region, map(a), r, ncolor);
 

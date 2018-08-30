@@ -36,7 +36,7 @@ void general_optimizer_data_record_failure(GeneralOptimizerData *d) {
 }
 bool general_optimizer_data_record_success(GeneralOptimizerData *d, FLT error) {
 	d->stats.runs++;
-	if (d->max_error > error) {
+	if (d->max_error <= 0 || d->max_error > error) {
 		if (d->successes_to_reset_cntr > 0)
 			d->successes_to_reset_cntr--;
 		d->failures_to_reset_cntr = d->failures_to_reset;
