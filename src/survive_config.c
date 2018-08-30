@@ -655,7 +655,7 @@ static config_entry *sc_search(SurviveContext *ctx, const char *tag) {
 static FLT config_entry_as_FLT(config_entry *entry) {
 	switch (entry->type) {
 	case CONFIG_FLOAT:
-		return (uint32_t)roundf((float)entry->numeric.f);
+		return entry->numeric.f;
 	case CONFIG_UINT32:
 		return (FLT)entry->numeric.i;
 	case CONFIG_STRING:
@@ -834,6 +834,22 @@ static void survive_attach_config(SurviveContext *ctx, const char *tag, void * v
 	update_list_t * t = *ul = malloc( sizeof( update_list_t ) );
 	t->next = 0;
 	t->value = var;
+
+	switch (type) {
+	case 'i':
+		*((int *)var) = survive_configi(ctx, tag, SC_GET, 0);
+		break;
+	case 'f':
+		*((FLT *)var) = survive_configf(ctx, tag, SC_GET, 0);
+		break;
+	case 's': {
+		const char *cv = survive_configs(ctx, tag, SC_SET, 0);
+		strcpy(var, cv);
+		break;
+	}
+	default:
+		SV_ERROR("Unhandled config type '%c'.\n", type);
+	}
 }
 
 SURVIVE_EXPORT void survive_attach_configi(SurviveContext *ctx, const char *tag, int * var )
