@@ -75,16 +75,16 @@ void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 	//print_lighthouse_info_v6(&v6);
 
 	b->BaseStationID = v6.id;
-	b->fcal.phase[0] = v6.fcal_0_phase;
-	b->fcal.phase[1] = v6.fcal_1_phase;
-	b->fcal.tilt[0] = (v6.fcal_0_tilt);
-	b->fcal.tilt[1] = (v6.fcal_1_tilt); // XXX??? Is this right? See https://github.com/cnlohr/libsurvive/issues/18
-	b->fcal.curve[0] = v6.fcal_0_curve;
-	b->fcal.curve[1] = v6.fcal_1_curve;
-	b->fcal.gibpha[0] = v6.fcal_0_gibphase;
-	b->fcal.gibpha[1] = v6.fcal_1_gibphase;
-	b->fcal.gibmag[0] = v6.fcal_0_gibmag;
-	b->fcal.gibmag[1] = v6.fcal_1_gibmag;
+	b->fcal[0].phase = v6.fcal_0_phase;
+	b->fcal[1].phase = v6.fcal_1_phase;
+	b->fcal[0].tilt = (v6.fcal_0_tilt);
+	b->fcal[1].tilt = (v6.fcal_1_tilt); // XXX??? Is this right? See https://github.com/cnlohr/libsurvive/issues/18
+	b->fcal[0].curve = v6.fcal_0_curve;
+	b->fcal[1].curve = v6.fcal_1_curve;
+	b->fcal[0].gibpha = v6.fcal_0_gibphase;
+	b->fcal[1].gibpha = v6.fcal_1_gibphase;
+	b->fcal[0].gibmag = v6.fcal_0_gibmag;
+	b->fcal[1].gibmag = v6.fcal_1_gibmag;
 	b->accel[0] = v6.accel_dir_x;
 	b->accel[1] = v6.accel_dir_y;
 	b->accel[2] = v6.accel_dir_z;

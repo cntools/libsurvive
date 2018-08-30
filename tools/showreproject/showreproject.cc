@@ -178,8 +178,8 @@ void drawbsds(SurviveContext *ctx) {
 					survive_apply_bsd_calibration(ctx, lh, in, out);
 					double ex = out[0] - in[0];
 					double ey = out[1] - in[1];
-					ex -= ctx->bsd[lh].fcal.phase[0];
-					ey -= ctx->bsd[lh].fcal.phase[1];
+					ex -= ctx->bsd[lh].fcal[0].phase;
+					ey -= ctx->bsd[lh].fcal[1].phase;
 
 					// Make it opposite of angles
 					ex *= -1;

@@ -276,11 +276,22 @@ void config_read_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8
 	bsd->BaseStationID = config_read_uint32(cg, "id", 0);
 	bsd->mode = config_read_uint32(cg, "mode", 0);
 	config_read_float_array(cg, "pose", &bsd->Pose.Pos[0], defaults, 7);
-	config_read_float_array(cg, "fcalphase", bsd->fcal.phase, defaults, 2);
-	config_read_float_array(cg, "fcaltilt", bsd->fcal.tilt, defaults, 2);
-	config_read_float_array(cg, "fcalcurve", bsd->fcal.curve, defaults, 2);
-	config_read_float_array(cg, "fcalgibpha", bsd->fcal.gibpha, defaults, 2);
-	config_read_float_array(cg, "fcalgibmag", bsd->fcal.gibmag, defaults, 2);
+
+	FLT cal[sizeof(bsd->fcal)] = {};
+	config_read_float_array(cg, "fcalphase", cal, defaults, 2);
+	config_read_float_array(cg, "fcaltilt", cal + 2, defaults, 2);
+	config_read_float_array(cg, "fcalcurve", cal + 4, defaults, 2);
+	config_read_float_array(cg, "fcalgibpha", cal + 6, defaults, 2);
+	config_read_float_array(cg, "fcalgibmag", cal + 8, defaults, 2);
+
+	for (size_t i = 0; i < 2; i++) {
+		bsd->fcal[i].phase = cal[0 + i];
+		bsd->fcal[i].tilt = cal[2 + i];
+		bsd->fcal[i].curve = cal[4 + i];
+		bsd->fcal[i].gibpha = cal[6 + i];
+		bsd->fcal[i].gibmag = cal[8 + i];
+	}
+
 	bsd->PositionSet = config_read_uint32(cg, "PositionSet", 0);
 }
 
@@ -290,11 +301,23 @@ void config_set_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8_
 	config_set_uint32(cg, "id", bsd->BaseStationID);
 	config_set_uint32(cg, "mode", bsd->mode);
 	config_set_float_a(cg, "pose", &bsd->Pose.Pos[0], 7);
-	config_set_float_a(cg, "fcalphase", bsd->fcal.phase, 2);
-	config_set_float_a(cg, "fcaltilt", bsd->fcal.tilt, 2);
-	config_set_float_a(cg, "fcalcurve", bsd->fcal.curve, 2);
-	config_set_float_a(cg, "fcalgibpha", bsd->fcal.gibpha, 2);
-	config_set_float_a(cg, "fcalgibmag", bsd->fcal.gibmag, 2);
+
+	FLT cal[sizeof(bsd->fcal)] = {};
+
+	for (size_t i = 0; i < 2; i++) {
+		cal[0 + i] = bsd->fcal[i].phase;
+		cal[2 + i] = bsd->fcal[i].tilt;
+		cal[4 + i] = bsd->fcal[i].curve;
+		cal[6 + i] = bsd->fcal[i].gibpha;
+		cal[8 + i] = bsd->fcal[i].gibmag;
+	}
+
+	config_set_float_a(cg, "fcalphase", cal, 2);
+	config_set_float_a(cg, "fcaltilt", cal + 2, 2);
+	config_set_float_a(cg, "fcalcurve", cal + 4, 2);
+	config_set_float_a(cg, "fcalgibpha", cal + 6, 2);
+	config_set_float_a(cg, "fcalgibmag", cal + 8, 2);
+
 	config_set_uint32(cg, "PositionSet", bsd->PositionSet);
 }
 

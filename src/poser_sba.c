@@ -153,7 +153,7 @@ static void str_metric_function(int j, int i, double *bi, double *xij, void *ada
 
 	// std::cerr << "Processing " << sensor_idx << ", " << lh << std::endl;
 	SurvivePose *camera = &so->ctx->bsd[lh].Pose;
-	survive_reproject_full(&so->ctx->bsd[lh].fcal, camera, &obj, &so->sensor_locations[sensor_idx * 3], xij);
+	survive_reproject_full(so->ctx->bsd[lh].fcal, camera, &obj, &so->sensor_locations[sensor_idx * 3], xij);
 }
 
 static void str_metric_function_jac(int j, int i, double *bi, double *xij, void *adata) {
@@ -171,7 +171,7 @@ static void str_metric_function_jac(int j, int i, double *bi, double *xij, void 
 
 	SurvivePose *camera = &so->ctx->bsd[lh].Pose;
 	survive_reproject_full_jac_obj_pose(xij, &obj, &so->sensor_locations[sensor_idx * 3], camera,
-										&so->ctx->bsd[lh].fcal);
+										so->ctx->bsd[lh].fcal);
 }
 
 static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, SurviveSensorActivations *scene,

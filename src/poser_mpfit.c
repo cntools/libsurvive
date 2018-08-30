@@ -83,7 +83,7 @@ static void str_metric_function(int j, int i, double *bi, double *xij, void *ada
 
 	// std::cerr << "Processing " << sensor_idx << ", " << lh << std::endl;
 	SurvivePose *camera = &so->ctx->bsd[lh].Pose;
-	survive_reproject_full(&so->ctx->bsd[lh].fcal, camera, &obj, &so->sensor_locations[sensor_idx * 3], xij);
+	survive_reproject_full(so->ctx->bsd[lh].fcal, camera, &obj, &so->sensor_locations[sensor_idx * 3], xij);
 }
 
 static void str_metric_function_jac(int j, int i, double *bi, double *xij, void *adata) {
@@ -101,7 +101,7 @@ static void str_metric_function_jac(int j, int i, double *bi, double *xij, void 
 
 	SurvivePose *camera = &so->ctx->bsd[lh].Pose;
 	survive_reproject_full_jac_obj_pose(xij, &obj, &so->sensor_locations[sensor_idx * 3], camera,
-										&so->ctx->bsd[lh].fcal);
+										so->ctx->bsd[lh].fcal);
 }
 
 int mpfunc(int m, int n, double *p, double *deviates, double **derivs, void *private) {
@@ -111,7 +111,7 @@ int mpfunc(int m, int n, double *p, double *deviates, double **derivs, void *pri
 
 	for (int i = 0; i < m / 2; i++) {
 		FLT out[2];
-		survive_reproject_full(&mpfunc_ctx->so->ctx->bsd[mpfunc_ctx->lh[i]].fcal,
+		survive_reproject_full(mpfunc_ctx->so->ctx->bsd[mpfunc_ctx->lh[i]].fcal,
 							   &mpfunc_ctx->camera_params[mpfunc_ctx->lh[i]], pose, mpfunc_ctx->pts3d + i * 3, out);
 		assert(!isnan(out[0]));
 		assert(!isnan(out[1]));
@@ -122,7 +122,7 @@ int mpfunc(int m, int n, double *p, double *deviates, double **derivs, void *pri
 			FLT out[7 * 2];
 			survive_reproject_full_jac_obj_pose(out, pose, mpfunc_ctx->pts3d + i * 3,
 												&mpfunc_ctx->camera_params[mpfunc_ctx->lh[i]],
-												&mpfunc_ctx->so->ctx->bsd[mpfunc_ctx->lh[i]].fcal);
+												mpfunc_ctx->so->ctx->bsd[mpfunc_ctx->lh[i]].fcal);
 
 			for (int j = 0; j < n; j++) {
 				derivs[j][i * 2 + 0] = out[j];

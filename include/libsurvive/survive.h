@@ -131,11 +131,11 @@ SURVIVE_EXPORT const FLT *survive_object_sensor_locations(SurviveObject *so);
 SURVIVE_EXPORT const FLT *survive_object_sensor_normals(SurviveObject *so);
 
 typedef struct BaseStationCal {
-	FLT phase[2];
-	FLT tilt[2];
-	FLT curve[2];
-	FLT gibpha[2];
-	FLT gibmag[2];
+	FLT phase;
+	FLT tilt;
+	FLT curve;
+	FLT gibpha;
+	FLT gibmag;
 } BaseStationCal;
 
 struct BaseStationData {
@@ -145,7 +145,7 @@ struct BaseStationData {
 	uint8_t OOTXSet : 1;
 	uint32_t BaseStationID;
 
-	BaseStationCal fcal;
+	BaseStationCal fcal[2];
 
 	int8_t accel[3]; //"Up" vector
 	uint8_t mode;
