@@ -53,6 +53,7 @@ static SurvivePose solve_correspondence(SurviveObject *so, epnp *pnp, bool camer
 	// back of the lighthouse. Think of this as a rotation on the Y axis a full 180 degrees -- the quat for that is
 	// [0 0x 1y 0z]
 	const LinmathQuat rt = {0, 0, 1, 0};
+
 	quatrotateabout(rtn.Rot, tmp, rt);
 	if (!cameraToWorld) {
 		// We have to pre-multiply the rt transform here, which means we have to also offset our position by
@@ -64,8 +65,11 @@ static SurvivePose solve_correspondence(SurviveObject *so, epnp *pnp, bool camer
 	return rtn;
 }
 
+static FLT get_u(const FLT *ang) { return tan(ang[0]); }
+static FLT get_v(const FLT *ang) { return tan(ang[1]); }
+
 static int opencv_solver_fullscene(SurviveObject *so, PoserDataFullScene *pdfs) {
-	SurvivePose additionalTx = {0};
+	SurvivePose arb2world = {0};
 	for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
 		epnp pnp = {.fu = 1, .fv = 1};
 		epnp_set_maximum_number_of_correspondences(&pnp, so->sensor_ct);
@@ -79,7 +83,7 @@ static int opencv_solver_fullscene(SurviveObject *so, PoserDataFullScene *pdfs) 
 				continue;
 
 			epnp_add_correspondence(&pnp, so->sensor_locations[i * 3 + 0], so->sensor_locations[i * 3 + 1],
-									so->sensor_locations[i * 3 + 2], tan(ang[0]), tan(ang[1]));
+									so->sensor_locations[i * 3 + 2], get_u(ang), get_v(ang));
 		}
 
 		SurviveContext *ctx = so->ctx;
@@ -90,9 +94,8 @@ static int opencv_solver_fullscene(SurviveObject *so, PoserDataFullScene *pdfs) 
 		}
 
 		SurvivePose lighthouse2object = solve_correspondence(so, &pnp, true);
-
 		if (quatmagnitude(lighthouse2object.Rot) != 0.0) {
-			PoserData_lighthouse_pose_func(&pdfs->hdr, so, lh, &additionalTx, &lighthouse2object, 0);
+			PoserData_lighthouse_pose_func(&pdfs->hdr, so, lh, &arb2world, &lighthouse2object, 0);
 		}
 
 		epnp_dtor(&pnp);
@@ -112,7 +115,7 @@ static void add_correspondences(SurviveObject *so, epnp *pnp, SurviveSensorActiv
 
 			epnp_add_correspondence(pnp, so->sensor_locations[sensor_idx * 3 + 0],
 									so->sensor_locations[sensor_idx * 3 + 1], so->sensor_locations[sensor_idx * 3 + 2],
-									tan(angles[0]), tan(angles[1]));
+									get_u(angles), get_v(angles));
 		}
 	}
 }

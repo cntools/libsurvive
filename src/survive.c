@@ -386,6 +386,7 @@ int survive_startup(SurviveContext *ctx) {
 		}
 
 		if (doCalibrate) {
+			ctx->bsd[0].PositionSet = ctx->bsd[1].PositionSet = false;
 			survive_cal_install(ctx);
 		}
 	}

@@ -9,9 +9,10 @@ typedef struct survive_calibration_config {
 static const survive_calibration_config default_config = {
 	.phase_scale = 1., .tilt_scale = 1. / 10., .curve_scale = 1. / 10., .gib_scale = -1. / 10.};
 
-static inline void survive_reproject_axis(const BaseStationCal *bcal, FLT C, FLT oC, FLT Z, FLT *out) {
-	FLT x = -C / -Z;
-	FLT y = oC / -Z;
+static inline void survive_reproject_axis(const BaseStationCal *bcal, FLT axis_value, FLT other_axis_value, FLT Z,
+										  FLT *out) {
+	FLT x = axis_value / Z;
+	FLT y = other_axis_value / Z;
 	FLT ang = atan(x);
 
 	const FLT phase = bcal->phase;
@@ -28,8 +29,8 @@ static inline void survive_reproject_axis(const BaseStationCal *bcal, FLT C, FLT
 	*out -= default_config.gib_scale * sin(gibPhase + ang) * gibMag;
 }
 static void survive_reproject_raw(const BaseStationCal *bcal, const FLT *t_pt, FLT *out) {
-	survive_reproject_axis(&bcal[0], t_pt[0], t_pt[1], t_pt[2], out);
-	survive_reproject_axis(&bcal[1], t_pt[1], t_pt[0], t_pt[2], out + 1);
+	survive_reproject_axis(&bcal[0], t_pt[0], -t_pt[1], t_pt[2], out);
+	survive_reproject_axis(&bcal[1], -t_pt[1], t_pt[0], t_pt[2], out + 1);
 }
 
 void survive_reproject_full_jac_obj_pose(FLT *out, const SurvivePose *obj_pose, const LinmathVec3d obj_pt,

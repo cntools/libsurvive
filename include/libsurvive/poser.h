@@ -52,14 +52,14 @@ void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, Survive
  * @param poser_data the data pointer passed into the poser function invocation
  * @param so The survive object which gave us the info for the solution
  * @param lighthouse The lighthouse which to solve for
- * @param objUp2world For use when solving for both ligthhouse positions. For the first invocation of this function,
+ * @param arb2world For use when solving for both ligthhouse positions. For the first invocation of this function,
  * pass in a zero-inited SurvivePose. This function will set that to a relative transform to normalize the space.
  * pass the same pose in again for the second lighthouse to get accurate results.
  * @param lighthouse_pose This is the assumed or derived position of the given lighthouse.
  * @param object_pose This is the assumed or derived position of the tracked object.
  */
 void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse,
-									/* OUTPARAM */ SurvivePose *objUp2world, SurvivePose *lighthouse_pose,
+									/* OUTPARAM */ SurvivePose *arb2world, SurvivePose *lighthouse_pose,
 									SurvivePose *object_pose);
 
 typedef struct PoserDataIMU {
