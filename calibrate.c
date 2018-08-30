@@ -413,7 +413,6 @@ void * SurviveThread(void *jnk)
 		//Do stuff.
 	}
 
-	survive_close( ctx );
 	return 0;
 }
 
@@ -435,7 +434,10 @@ int main( int argc, char ** argv )
 	while(!SurviveThreadLoaded){ OGUSleep(100); }
 
 	// Run the GUI in the main thread
-	GuiThread(0);	
+	GuiThread(0);
+
+	survive_close(ctx);
+
 	printf( "Returned\n" );
 	return 0;
 }
