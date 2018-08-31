@@ -11,9 +11,8 @@ static const survive_calibration_config default_config = {
 
 static inline void survive_reproject_axis(const BaseStationCal *bcal, FLT axis_value, FLT other_axis_value, FLT Z,
 										  FLT *out) {
-	FLT x = axis_value / Z;
 	FLT y = other_axis_value / Z;
-	FLT ang = atan(x);
+	FLT ang = atan2(axis_value, Z);
 
 	const FLT phase = bcal->phase;
 	const FLT curve = bcal->curve;
@@ -29,8 +28,8 @@ static inline void survive_reproject_axis(const BaseStationCal *bcal, FLT axis_v
 	*out -= default_config.gib_scale * sin(gibPhase + ang) * gibMag;
 }
 static void survive_reproject_raw(const BaseStationCal *bcal, const FLT *t_pt, FLT *out) {
-	survive_reproject_axis(&bcal[0], t_pt[0], -t_pt[1], t_pt[2], out);
-	survive_reproject_axis(&bcal[1], -t_pt[1], t_pt[0], t_pt[2], out + 1);
+	survive_reproject_axis(&bcal[0], -t_pt[0], t_pt[1], -t_pt[2], out);
+	survive_reproject_axis(&bcal[1], t_pt[1], -t_pt[0], -t_pt[2], out + 1);
 }
 
 void survive_reproject_full_jac_obj_pose(FLT *out, const SurvivePose *obj_pose, const LinmathVec3d obj_pt,
