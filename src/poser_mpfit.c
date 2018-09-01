@@ -34,6 +34,7 @@ typedef struct MPFITData {
 	int last_lh;
 
 	int sensor_time_window;
+	// > 0; use jacobian, 0 don't use, < 0 debug
 	int use_jacobian_function;
 	int required_meas;
 
@@ -179,11 +180,10 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 	mp_result result = {0};
 	mp_par pars[7] = {0};
 
-	const bool debug_jacobian = true;
-	if (d->use_jacobian_function) {
+	if (d->use_jacobian_function != 0) {
 		for (int i = 0; i < 7; i++) {
-			if (debug_jacobian) {
-				pars[i].side = 0;
+			if (d->use_jacobian_function < 0) {
+				pars[i].side = 1;
 				pars[i].deriv_debug = 1;
 			} else {
 				pars[i].side = 3;
@@ -217,7 +217,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 
 		d->sensor_time_window =
 			survive_configi(ctx, "mpfit-time-window", SC_GET, SurviveSensorActivations_default_tolerance * 2);
-		d->use_jacobian_function = survive_configi(ctx, "mpfit-use-jacobian-function", SC_GET, 1.0);
+		d->use_jacobian_function = survive_configi(ctx, "mpfit-use-jacobian-function", SC_GET, 1);
 
 		SV_INFO("Initializing MPFIT:");
 		SV_INFO("\tmpfit-required-meas: %d", d->required_meas);

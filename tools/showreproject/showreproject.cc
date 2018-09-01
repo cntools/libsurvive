@@ -149,6 +149,8 @@ void lighthouse_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *po
 
 SurviveContext *create(int argc, char **argv) {
 	auto ctx = survive_init(argc, argv);
+	if (ctx == nullptr)
+		return nullptr;
 
 	survive_install_pose_fn(ctx, raw_pose_process);
 	survive_install_lighthouse_pose_fn(ctx, lighthouse_process);
@@ -202,6 +204,8 @@ int main(int argc, char **argv) {
 	//        continue;
 
 	auto ctx1 = create(argc, argv);
+	if (ctx1 == nullptr)
+		return -1;
 	size_t cidx = survive_configi(ctx1, "default-cal-conf", SC_GET, 0);
 	size_t idx = survive_configi(ctx1, "default-cal-conf2", SC_GET, 0);
 

@@ -202,7 +202,13 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 
 			if (vartoupdate) {
 				const char *name = *av + 2; // Skip the '--';
-				bool flagArgument = (av + 1 == argvend) || av[1][0] == '-';
+				bool isLast = av + 1 == argvend;
+				bool nextIsOption = !isLast && av[1][0] == '-';
+				if (nextIsOption) {
+					int n = atoi(*(av + 1));
+					nextIsOption = n == 0;
+				}
+				bool flagArgument = isLast || nextIsOption;
 
 				if ( strcmp( name, "help" ) == 0 )
 					showhelp = 1;

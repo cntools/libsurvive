@@ -4,7 +4,6 @@
 #include <math.h>
 #include <os_generic.h>
 
-
 typedef struct survive_calibration_config {
 	FLT phase_scale, tilt_scale, curve_scale, gib_scale;
 } survive_calibration_config;
@@ -101,7 +100,6 @@ void check_reproject() {
 	random_point(pt);
 	SurvivePose lh = random_pose();
 
-	survive_calibration_config config;
 	BaseStationData bsd;
 	for (int i = 0; i < 10; i++)
 		*((FLT *)&bsd.fcal[0].phase + i) = next_rand(1);
