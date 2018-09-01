@@ -325,6 +325,7 @@ static double run_sba(PoserDataFullScene *pdfs, SurviveObject *so, int max_itera
 		SurvivePose additionalTx = {0};
 		for (int i = 0; i < so->ctx->activeLighthouses; i++) {
 			if (quatmagnitude(sbactx.camera_params[i].Rot) != 0) {
+				quatnormalize(sbactx.camera_params[i].Rot, sbactx.camera_params[i].Rot);
 				PoserData_lighthouse_pose_func(&pdfs->hdr, so, i, &additionalTx, &sbactx.camera_params[i],
 											   &sbactx.obj_pose);
 			}

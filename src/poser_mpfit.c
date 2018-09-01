@@ -109,20 +109,24 @@ int mpfunc(int m, int n, double *p, double *deviates, double **derivs, void *pri
 
 	SurvivePose *pose = (SurvivePose *)p;
 
+	assert(n == 7);
+
 	for (int i = 0; i < m / 2; i++) {
 		FLT out[2];
-		survive_reproject_full(mpfunc_ctx->so->ctx->bsd[mpfunc_ctx->lh[i]].fcal,
-							   &mpfunc_ctx->camera_params[mpfunc_ctx->lh[i]], pose, mpfunc_ctx->pts3d + i * 3, out);
+		const int lh = mpfunc_ctx->lh[i];
+		const struct BaseStationCal *cal = mpfunc_ctx->so->ctx->bsd[lh].fcal;
+		const SurvivePose *camera = &mpfunc_ctx->camera_params[lh];
+		const FLT *pt = mpfunc_ctx->pts3d + i * 3;
+
+		survive_reproject_full(cal, camera, pose, pt, out);
 		assert(!isnan(out[0]));
 		assert(!isnan(out[1]));
 		deviates[i * 2 + 0] = out[0] - mpfunc_ctx->meas[i * 2 + 0];
 		deviates[i * 2 + 1] = out[1] - mpfunc_ctx->meas[i * 2 + 1];
 
 		if (derivs) {
-			FLT out[7 * 2];
-			survive_reproject_full_jac_obj_pose(out, pose, mpfunc_ctx->pts3d + i * 3,
-												&mpfunc_ctx->camera_params[mpfunc_ctx->lh[i]],
-												mpfunc_ctx->so->ctx->bsd[mpfunc_ctx->lh[i]].fcal);
+			FLT out[7 * 2] = {};
+			survive_reproject_full_jac_obj_pose(out, pose, pt, camera, cal);
 
 			for (int j = 0; j < n; j++) {
 				derivs[j][i * 2 + 0] = out[j];
@@ -175,11 +179,11 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 	mp_result result = {0};
 	mp_par pars[7] = {0};
 
-	const bool debug_jacobian = false;
+	const bool debug_jacobian = true;
 	if (d->use_jacobian_function) {
 		for (int i = 0; i < 7; i++) {
 			if (debug_jacobian) {
-				pars[i].side = 1;
+				pars[i].side = 0;
 				pars[i].deriv_debug = 1;
 			} else {
 				pars[i].side = 3;
