@@ -1,4 +1,5 @@
 # -*- python -*-
+
 from sympy.utilities.codegen import codegen
 from sympy.printing import print_ccode
 from sympy import cse, sqrt, sin, pprint, ccode
@@ -13,6 +14,7 @@ lh_px,lh_py,lh_pz=var('lh_px,lh_py,lh_pz')
 
 sensor_x,sensor_y,sensor_z=var('sensor_x,sensor_y,sensor_z')
 
+axis=var('axis')
 phase_scale=var('phase_scale')
 tilt_scale=var('tilt_scale')
 curve_scale=var('curve_scale')
@@ -53,22 +55,60 @@ def invert_pose(p):
     r = quatgetreciprocal(p[1])
     return ( -1 * quatrotatevector(r, p[0]), r)
 
-def reproject(p, pt,
-              lh_p,
+def reproject_axis(X, Y, Z,
+                   phase_scale, phase_cal,
+                   tilt_scale, tilt_cal,
+                   curve_scale, curve_cal,
+                   gib_scale, gibPhase_cal, gibMag_cal):
+    y = Y / Z
+    ang = atan2(X, Z)
+
+    return ang - phase_scale * phase_cal \
+           - tan(tilt_scale * tilt_cal) * y \
+           - curve_scale * curve_cal * y * y \
+           - gib_scale * sin(gibPhase_cal + ang) * gibMag_cal
+
+
+def reproject_axis_x(p, pt, lh_p,
+                     phase_scale, phase_cal,
+                     tilt_scale, tilt_cal,
+                     curve_scale, curve_cal,
+                     gib_scale, gibPhase_cal, gibMag_cal):
+
+    pt_in_world = apply_pose_to_pt(p, pt)
+    XYZ = apply_pose_to_pt( invert_pose(lh_p), pt_in_world)
+
+    return reproject_axis(XYZ[0], XYZ[1], XYZ[2],
+                          phase_scale, phase_cal,
+                          tilt_scale, tilt_cal,
+                          curve_scale, curve_cal,
+                          gib_scale, gibPhase_cal, gibMag_cal)
+
+def reproject_axis_y(p, pt, lh_p,
+                     phase_scale, phase_cal,
+                     tilt_scale, tilt_cal,
+                     curve_scale, curve_cal,
+                     gib_scale, gibPhase_cal, gibMag_cal):
+    pt_in_world = apply_pose_to_pt(p, pt)
+    XYZ = apply_pose_to_pt( invert_pose(lh_p), pt_in_world)
+
+    return reproject_axis(XYZ[1], XYZ[0], XYZ[2],
+                          phase_scale, phase_cal,
+                          tilt_scale, tilt_cal,
+                          curve_scale, curve_cal,
+                          gib_scale, gibPhase_cal, gibMag_cal)
+
+def reproject(p, pt, lh_p,
               phase_scale, phase_0, phase_1,
               tilt_scale, tilt_0, tilt_1,
               curve_scale, curve_0, curve_1,
               gib_scale, gibPhase_0, gibPhase_1, gibMag_0, gibMag_1):
-    pt_in_world = apply_pose_to_pt( p, pt )
-    pt_in_lh = apply_pose_to_pt( invert_pose(lh_p), pt_in_world)
-    xy = vector((pt_in_lh[0] / pt_in_lh[2],
-                 pt_in_lh[1] / pt_in_lh[2]))
-    ang = vector((atan2(pt_in_lh[0], pt_in_lh[2]),
-                  atan2(pt_in_lh[1], pt_in_lh[2])))
+    pt_in_world = apply_pose_to_pt(p, pt)
+    XYZ = apply_pose_to_pt( invert_pose(lh_p), pt_in_world)
 
     return vector((
-        ang[0] - phase_scale * phase_0 - tan(tilt_scale * tilt_0) * xy[1] - curve_scale * curve_0 * xy[1] * xy[1] - gib_scale * sin(gibPhase_0 + ang[0]) * gibMag_0,
-        ang[1] - phase_scale * phase_1 - tan(tilt_scale * tilt_1) * xy[0] - curve_scale * curve_1 * xy[0] * xy[0] - gib_scale * sin(gibPhase_1 + ang[1]) * gibMag_1
+            reproject_axis(XYZ[0], XYZ[1], XYZ[2], phase_scale, phase_0, tilt_scale, tilt_0, curve_scale, curve_0, gib_scale, gibPhase_0, gibMag_0),
+            reproject_axis(XYZ[1], XYZ[0], XYZ[2], phase_scale, phase_1, tilt_scale, tilt_1, curve_scale, curve_1, gib_scale, gibPhase_1, gibMag_1)
         ))
 
 obj_rot = (obj_qw,obj_qi,obj_qj,obj_qk)
@@ -76,12 +116,6 @@ obj_p = ((obj_px, obj_py, obj_pz), (obj_qw,obj_qi,obj_qj,obj_qk))
 
 lh_p = ((lh_px, lh_py, lh_pz), (lh_qw,lh_qi,lh_qj,lh_qk))
 sensor_pt = (sensor_x,sensor_y,sensor_z)
-#print( quatrotationmatrix(obj_rot) )
-
-reproject_params = (obj_p, sensor_pt, lh_p, phase_scale, phase_0, phase_1,
-              tilt_scale, tilt_0, tilt_1,
-              curve_scale, curve_0, curve_1,
-              gib_scale, gibPhase_0, gibPhase_1, gibMag_0, gibMag_1)
 
 def flatten_args(bla):
     output = []
@@ -95,16 +129,16 @@ def generate_ccode(name, args, expressions):
         print("/** Applying function %s */" % str(expressions))
         expressions = expressions(*args)
 
-    try:
+    if not hasattr(expressions, "_sympy_"):
         for col in expressions:
             if hasattr(col, '_sympy_'):
                 flatten.append(col._sympy_())
             else:
                 for cell in col:
                     flatten.append(cell._sympy_())
-    except TypeError as e:
-        print("/** No form for %s */ " % str(expressions))
-        
+    else:
+        flatten.append(expressions._sympy_())
+
     cse_output = cse( flatten )
     cnt = 0
     arg_str = lambda (idx, a): ("const FLT *%s" % str(flatten_args(a)[0]).split('_', 1)[0] ) if isinstance(a, tuple) else ("FLT " + str(a))
@@ -130,11 +164,18 @@ def generate_ccode(name, args, expressions):
     
 #print(min_form)
 
-vary=var('y')
-varx=var('x')
-
 print(" // NOTE: Auto-generated code; see tools/generate_reprojection_functions ")
 print("#include <math.h>")
+
+reproject_params = (obj_p, sensor_pt, lh_p, phase_scale, phase_0, phase_1,
+                    tilt_scale, tilt_0, tilt_1,
+                    curve_scale, curve_0, curve_1,
+                    gib_scale, gibPhase_0, gibPhase_1, gibMag_0, gibMag_1)
+
+reproject_axis_params = (obj_p, sensor_pt, lh_p, phase_scale, phase_0,
+                    tilt_scale, tilt_0,
+                    curve_scale, curve_0,
+                    gib_scale, gibPhase_0, gibMag_0)
 
 if len(sys.argv) > 1 and sys.argv[1] == "--full":
     generate_ccode("quat_rotate_vector", [obj_rot, sensor_pt], quatrotatevector)
@@ -143,3 +184,5 @@ if len(sys.argv) > 1 and sys.argv[1] == "--full":
     generate_ccode("apply_pose", [obj_p, sensor_pt], apply_pose_to_pt)
 
 generate_ccode("reproject_jac_obj_p", reproject_params, jacobian(reproject(*reproject_params), (obj_px, obj_py, obj_pz, obj_qw,obj_qi,obj_qj,obj_qk)))
+generate_ccode("reproject_axis_x_jac_obj_p", reproject_axis_params , jacobian(reproject_axis_x(*reproject_axis_params ), (obj_px, obj_py, obj_pz, obj_qw,obj_qi,obj_qj,obj_qk) ))
+generate_ccode("reproject_axis_y_jac_obj_p", reproject_axis_params , jacobian(reproject_axis_y(*reproject_axis_params ), (obj_px, obj_py, obj_pz, obj_qw,obj_qi,obj_qj,obj_qk) ))
