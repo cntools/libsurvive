@@ -379,7 +379,10 @@ int survive_startup(SurviveContext *ctx) {
 	if (!calibrateForbidden) {
 		bool isCalibrated = true;
 		for (int i = 0; i < ctx->activeLighthouses; i++) {
-			isCalibrated &= ctx->bsd[i].PositionSet;
+			if (!ctx->bsd[i].PositionSet) {
+				SV_INFO("Lighthouse %d position is unset", i);
+				isCalibrated = false;
+			}
 		}
 
 		bool doCalibrate = isCalibrated == false || calibrateMandatory;

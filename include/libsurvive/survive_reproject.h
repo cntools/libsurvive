@@ -9,11 +9,21 @@
 extern "C" {
 #endif
 
+FLT survive_reproject_axis_x(const BaseStationCal *bcal, const FLT *t_pt);
+FLT survive_reproject_axis_y(const BaseStationCal *bcal, const FLT *t_pt);
+
+void survive_reproject_xy(const BaseStationCal *bcal, const FLT *t_pt, FLT *out);
 void survive_reproject_from_pose(const SurviveContext *ctx, int lighthouse, const SurvivePose *lh_pose,
 								 const FLT *point3d, FLT *out);
 
 void survive_reproject_full_jac_obj_pose(FLT *out, const SurvivePose *obj_pose, const LinmathVec3d obj_pt,
 										 const SurvivePose *lh2world, const BaseStationCal *bcal);
+
+void survive_reproject_full_x_jac_obj_pose(FLT *out, const SurvivePose *obj_pose, const LinmathVec3d obj_pt,
+										   const SurvivePose *lh2world, const BaseStationCal *bcal);
+
+void survive_reproject_full_y_jac_obj_pose(FLT *out, const SurvivePose *obj_pose, const LinmathVec3d obj_pt,
+										   const SurvivePose *lh2world, const BaseStationCal *bcal);
 
 void survive_reproject_full(const BaseStationCal *bcal, const SurvivePose *lh2world, const SurvivePose *obj_pose,
 							const LinmathVec3d obj_pt, FLT *out);

@@ -43,6 +43,13 @@ void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct PoserDataIMU *imuData);
 
 /**
+ * Returns true iff the given sensor and lighthouse at given axis were seen at most `tolerance` ticks before the given
+ * `timecode_now`.
+ */
+bool SurviveSensorActivations_isReadingValid(const SurviveSensorActivations *self, survive_timecode tolerance,
+											 survive_timecode timecode_now, uint32_t sensor_idx, int lh, int axis);
+
+/**
  * Returns true iff both angles for the given sensor and lighthouse were seen at most `tolerance` ticks before the given
  * `timecode_now`.
  */
