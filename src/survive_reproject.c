@@ -37,8 +37,8 @@ FLT survive_reproject_axis_y(const BaseStationCal *bcal, const FLT *t_pt) {
 }
 
 void survive_reproject_xy(const BaseStationCal *bcal, const FLT *t_pt, FLT *out) {
-	out[0] = survive_reproject_axis_x(&bcal[0], t_pt);
-	out[1] = survive_reproject_axis_y(&bcal[1], t_pt);
+	out[0] = survive_reproject_axis_x(bcal, t_pt);
+	out[1] = survive_reproject_axis_y(bcal, t_pt);
 }
 
 void survive_reproject_full(const BaseStationCal *bcal, const SurvivePose *lh2world, const SurvivePose *obj_pose,
