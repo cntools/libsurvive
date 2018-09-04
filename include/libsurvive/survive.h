@@ -148,6 +148,9 @@ typedef struct BaseStationCal {
 struct BaseStationData {
 	uint8_t PositionSet : 1;
 
+	/**
+	 * This is a transformation from lh space to world space
+	 */
 	SurvivePose Pose;
 	uint8_t OOTXSet : 1;
 	uint32_t BaseStationID;

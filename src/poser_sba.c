@@ -68,6 +68,10 @@ static void metric_function(int j, int i, double *aj, double *xij, void *adata) 
 	SurvivePose obj2world = ctx->obj_pose;
 	FLT sensorInWorld[3] = {0};
 	ApplyPoseToPoint(sensorInWorld, &obj2world, &so->sensor_locations[i * 3]);
+
+	SurvivePose *lh2world = aj;
+	SurvivePose world2lh;
+
 	survive_reproject_from_pose(so->ctx, j, (SurvivePose *)aj, sensorInWorld, xij);
 }
 
@@ -152,8 +156,8 @@ static void str_metric_function(int j, int i, double *bi, double *xij, void *ada
 	quatnormalize(obj.Rot, obj.Rot);
 
 	// std::cerr << "Processing " << sensor_idx << ", " << lh << std::endl;
-	SurvivePose *camera = &so->ctx->bsd[lh].Pose;
-	survive_reproject_full(so->ctx->bsd[lh].fcal, camera, &obj, &so->sensor_locations[sensor_idx * 3], xij);
+	SurvivePose *lh2world = &so->ctx->bsd[lh].Pose;
+	survive_reproject_full(so->ctx->bsd[lh].fcal, lh2world, &obj, &so->sensor_locations[sensor_idx * 3], xij);
 }
 
 static void str_metric_function_jac(int j, int i, double *bi, double *xij, void *adata) {

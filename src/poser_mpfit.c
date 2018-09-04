@@ -96,8 +96,8 @@ static void str_metric_function(int j, int i, double *bi, double *xij, void *ada
 	// quatnormalize(obj.Rot, obj.Rot);
 
 	// std::cerr << "Processing " << sensor_idx << ", " << lh << std::endl;
-	SurvivePose *camera = &so->ctx->bsd[lh].Pose;
-	survive_reproject_full(so->ctx->bsd[lh].fcal, camera, &obj, &so->sensor_locations[sensor_idx * 3], xij);
+	SurvivePose *lh2world = &so->ctx->bsd[lh].Pose;
+	survive_reproject_full(so->ctx->bsd[lh].fcal, lh2world, &obj, &so->sensor_locations[sensor_idx * 3], xij);
 }
 
 typedef FLT (*reproject_axis_fn_t)(const BaseStationCal *, const FLT *);
