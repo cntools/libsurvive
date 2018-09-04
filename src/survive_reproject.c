@@ -28,23 +28,23 @@ static inline FLT survive_reproject_axis(const BaseStationCal *bcal, FLT axis_va
 	return ang;
 }
 
-FLT survive_reproject_axis_x(const BaseStationCal *bcal, const FLT *t_pt) {
-	return survive_reproject_axis(&bcal[0], -t_pt[0], t_pt[1], -t_pt[2]);
+FLT survive_reproject_axis_x(const BaseStationCal *bcal, LinmathVec3d const ptInLh) {
+	return survive_reproject_axis(&bcal[0], -ptInLh[0], ptInLh[1], -ptInLh[2]);
 }
 
-FLT survive_reproject_axis_y(const BaseStationCal *bcal, const FLT *t_pt) {
-	return survive_reproject_axis(&bcal[1], t_pt[1], -t_pt[0], -t_pt[2]);
+FLT survive_reproject_axis_y(const BaseStationCal *bcal, LinmathVec3d const ptInLh) {
+	return survive_reproject_axis(&bcal[1], ptInLh[1], -ptInLh[0], -ptInLh[2]);
 }
 
-void survive_reproject_xy(const BaseStationCal *bcal, const FLT *t_pt, FLT *out) {
-	out[0] = survive_reproject_axis_x(bcal, t_pt);
-	out[1] = survive_reproject_axis_y(bcal, t_pt);
+void survive_reproject_xy(const BaseStationCal *bcal, LinmathVec3d const ptInLh, SurviveAngleReading out) {
+	out[0] = survive_reproject_axis_x(bcal, ptInLh);
+	out[1] = survive_reproject_axis_y(bcal, ptInLh);
 }
 
-void survive_reproject_full(const BaseStationCal *bcal, const SurvivePose *lh2world, const SurvivePose *obj_pose,
+void survive_reproject_full(const BaseStationCal *bcal, const SurvivePose *lh2world, const SurvivePose *obj2world,
 							const LinmathVec3d obj_pt, FLT *out) {
 	LinmathVec3d world_pt;
-	ApplyPoseToPoint(world_pt, obj_pose, obj_pt);
+	ApplyPoseToPoint(world_pt, obj2world, obj_pt);
 
 	SurvivePose world2lh;
 	InvertPose(&world2lh, lh2world);
@@ -118,7 +118,7 @@ void survive_reproject_full_jac_obj_pose(FLT *out, const SurvivePose *obj_pose, 
 							gibMag_1);
 }
 
-void survive_reproject_from_pose_with_bcal(const BaseStationCal *bcal, const SurvivePose *pose, const FLT *pt,
+void survive_reproject_from_pose_with_bcal(const BaseStationCal *bcal, const SurvivePose *pose, LinmathVec3d const pt,
 										   FLT *out) {
 	LinmathQuat invq;
 	quatgetreciprocal(invq, pose->Rot);
@@ -134,13 +134,13 @@ void survive_reproject_from_pose_with_bcal(const BaseStationCal *bcal, const Sur
 	survive_reproject_xy(bcal, t_pt, out);
 }
 
-void survive_reproject_from_pose(const SurviveContext *ctx, int lighthouse, const SurvivePose *pose, const FLT *pt,
-								 FLT *out) {
-	survive_reproject_from_pose_with_bcal(ctx->bsd[lighthouse].fcal, pose, pt, out);
+void survive_reproject_from_pose(const SurviveContext *ctx, int lighthouse, const SurvivePose *lh2world,
+								 LinmathVec3d const pt, FLT *out) {
+	survive_reproject_from_pose_with_bcal(ctx->bsd[lighthouse].fcal, lh2world, pt, out);
 }
 
-void survive_reproject(const SurviveContext *ctx, int lighthouse, const FLT *point3d, FLT *out) {
-	survive_reproject_from_pose(ctx, lighthouse, &ctx->bsd[lighthouse].Pose, point3d, out);
+void survive_reproject(const SurviveContext *ctx, int lighthouse, LinmathVec3d const ptInWorld, FLT *out) {
+	survive_reproject_from_pose(ctx, lighthouse, &ctx->bsd[lighthouse].Pose, ptInWorld, out);
 }
 
 void survive_apply_bsd_calibration(const SurviveContext *ctx, int lh, const FLT *in, FLT *out) {
