@@ -42,7 +42,7 @@ void survive_reproject_xy(const BaseStationCal *bcal, LinmathVec3d const ptInLh,
 }
 
 void survive_reproject_full(const BaseStationCal *bcal, const SurvivePose *lh2world, const SurvivePose *obj2world,
-							const LinmathVec3d obj_pt, FLT *out) {
+							const LinmathVec3d obj_pt, SurviveAngleReading out) {
 	LinmathVec3d world_pt;
 	ApplyPoseToPoint(world_pt, obj2world, obj_pt);
 
@@ -55,7 +55,7 @@ void survive_reproject_full(const BaseStationCal *bcal, const SurvivePose *lh2wo
 	survive_reproject_xy(bcal, t_pt, out);
 }
 
-void survive_reproject_full_x_jac_obj_pose(FLT *out, const SurvivePose *obj_pose, const double *obj_pt,
+void survive_reproject_full_x_jac_obj_pose(SurviveAngleReading out, const SurvivePose *obj_pose, const double *obj_pt,
 										   const SurvivePose *lh2world, const BaseStationCal *bcal) {
 	FLT phase_scale = default_config.phase_scale;
 	FLT phase_0 = bcal[0].phase;
@@ -74,7 +74,7 @@ void survive_reproject_full_x_jac_obj_pose(FLT *out, const SurvivePose *obj_pose
 								   curve_scale, curve_0, gib_scale, gibPhase_0, gibMag_0);
 }
 
-void survive_reproject_full_y_jac_obj_pose(FLT *out, const SurvivePose *obj_pose, const double *obj_pt,
+void survive_reproject_full_y_jac_obj_pose(SurviveAngleReading out, const SurvivePose *obj_pose, const double *obj_pt,
 										   const SurvivePose *lh2world, const BaseStationCal *bcal) {
 	FLT phase_scale = default_config.phase_scale;
 	FLT phase_1 = bcal[1].phase;
@@ -93,8 +93,9 @@ void survive_reproject_full_y_jac_obj_pose(FLT *out, const SurvivePose *obj_pose
 								   curve_scale, curve_1, gib_scale, gibPhase_1, gibMag_1);
 }
 
-void survive_reproject_full_jac_obj_pose(FLT *out, const SurvivePose *obj_pose, const LinmathVec3d obj_pt,
-										 const SurvivePose *lh2world, const BaseStationCal *bcal) {
+void survive_reproject_full_jac_obj_pose(SurviveAngleReading out, const SurvivePose *obj_pose,
+										 const LinmathVec3d obj_pt, const SurvivePose *lh2world,
+										 const BaseStationCal *bcal) {
 	FLT phase_scale = default_config.phase_scale;
 	FLT phase_0 = bcal[0].phase;
 	FLT phase_1 = bcal[1].phase;
@@ -118,32 +119,28 @@ void survive_reproject_full_jac_obj_pose(FLT *out, const SurvivePose *obj_pose, 
 							gibMag_1);
 }
 
-void survive_reproject_from_pose_with_bcal(const BaseStationCal *bcal, const SurvivePose *pose, LinmathVec3d const pt,
-										   FLT *out) {
-	LinmathQuat invq;
-	quatgetreciprocal(invq, pose->Rot);
+void survive_reproject_from_pose_with_bcal(const BaseStationCal *bcal, const SurvivePose *lh2world,
+										   LinmathVec3d const ptInWorld, SurviveAngleReading out) {
+	SurvivePose world2lh;
+	LinmathPoint3d ptInLh;
 
-	LinmathPoint3d tvec;
-	quatrotatevector(tvec, invq, pose->Pos);
+	InvertPose(&world2lh, lh2world);
+	ApplyPoseToPoint(ptInLh, &world2lh, ptInWorld);
 
-	LinmathPoint3d t_pt;
-	quatrotatevector(t_pt, invq, pt);
-	for (int i = 0; i < 3; i++)
-		t_pt[i] = t_pt[i] - tvec[i];
-
-	survive_reproject_xy(bcal, t_pt, out);
+	survive_reproject_xy(bcal, ptInLh, out);
 }
 
 void survive_reproject_from_pose(const SurviveContext *ctx, int lighthouse, const SurvivePose *lh2world,
-								 LinmathVec3d const pt, FLT *out) {
+								 LinmathVec3d const pt, SurviveAngleReading out) {
 	survive_reproject_from_pose_with_bcal(ctx->bsd[lighthouse].fcal, lh2world, pt, out);
 }
 
-void survive_reproject(const SurviveContext *ctx, int lighthouse, LinmathVec3d const ptInWorld, FLT *out) {
+void survive_reproject(const SurviveContext *ctx, int lighthouse, LinmathVec3d const ptInWorld,
+					   SurviveAngleReading out) {
 	survive_reproject_from_pose(ctx, lighthouse, &ctx->bsd[lighthouse].Pose, ptInWorld, out);
 }
 
-void survive_apply_bsd_calibration(const SurviveContext *ctx, int lh, const FLT *in, FLT *out) {
+void survive_apply_bsd_calibration(const SurviveContext *ctx, int lh, const FLT *in, SurviveAngleReading out) {
 	const BaseStationCal *cal = ctx->bsd[lh].fcal;
 	out[0] = in[0] + default_config.phase_scale * cal[0].phase;
 	out[1] = in[1] + default_config.phase_scale * cal[1].phase;

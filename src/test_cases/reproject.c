@@ -9,6 +9,28 @@ typedef struct {
 	FLT expected[2];
 } ExampleAndValue;
 
+TEST(Reproject, ReprojectFull) {
+	//	void survive_reproject_full(const BaseStationCal *bcal, const SurvivePose *lh2world, const SurvivePose
+	//*obj2world, 	                            const LinmathVec3d obj_pt, FLT *out) {
+	BaseStationCal cal[2] = {};
+	SurvivePose lh2world = {.Pos = {1, 1, 1}, .Rot = {0, 0, 1, 0}};
+	SurvivePose obj2world = {.Pos = {5, 5, 5}, .Rot = {0, 1, 0, 0}};
+	const LinmathPoint3d objInPt = {1, 1, 1};
+
+	SurviveAngleReading ang;
+	survive_reproject_full(cal, &lh2world, &obj2world, objInPt, ang);
+
+	ASSERT_DOUBLE_EQ(ang[0], 1.0303768265243125);
+	ASSERT_DOUBLE_EQ(ang[1], 0.78539816339744828);
+
+	const LinmathPoint3d objInWorld = {6, 4, 4};
+	survive_reproject_from_pose_with_bcal(cal, &lh2world, objInWorld, ang);
+	ASSERT_DOUBLE_EQ(ang[0], 1.0303768265243125);
+	ASSERT_DOUBLE_EQ(ang[1], 0.78539816339744828);
+
+	return 0;
+}
+
 TEST(Reproject, Extents) {
 	FLT out[2];
 	BaseStationCal cal[2] = {};
