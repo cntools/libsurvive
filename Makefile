@@ -37,7 +37,7 @@ AUX_NEEDED+=src/survive_turveybiguator.c  src/survive_statebased_disambiguator.c
 POSERS:=src/poser_dummy.c src/poser_imu.c src/poser_charlesrefine.c src/poser_general_optimizer.c
 EXTRA_POSERS:=src/poser_daveortho.c src/poser_charlesslow.c src/poser_octavioradii.c src/poser_turveytori.c
 REDISTS:=redist/json_helpers.c redist/linmath.c redist/jsmn.c
-
+TEST_CASES:=src/test_cases/main.c src/test_cases/kalman.c src/test_cases/reproject.c
 
 #----------
 # Platform specific changes to CFLAGS/LDFLAGS
@@ -123,7 +123,8 @@ test_epnp: ./src/epnp/test_epnp.c $(LIBRARY)
 test_epnp_ocv: ./src/epnp/test_epnp.c ./src/epnp/epnp.c
 	$(CC) -o $@ $^ -DWITH_OPENCV -lpthread -lz -lm -flto -g -lX11 -lusb-1.0 -Iinclude/libsurvive -fPIC -g -O4 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic -fsanitize=address -fsanitize=undefined   -llapack -lm -lopencv_core $(LDFLAGS_TOOLS)
 
-
+test_cases: $(TEST_CASES) $(LIBRARY)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
 
 #### Actual build system.
 
