@@ -137,8 +137,8 @@ void check_jacobian() {
 
 	survive_calibration_config config;
 	BaseStationData bsd = {};
-	for (int i = 0; i < 10; i++)
-	  *((FLT *)&bsd.fcal[0].phase + i) = next_rand(0.5);
+	//for (int i = 0; i < 10; i++)
+	//*((FLT *)&bsd.fcal[0].phase + i) = next_rand(0.5);
 
 	FLT out_jac[14] = {0};
 	survive_reproject_full_jac_obj_pose(out_jac, &obj, pt, &lh, bsd.fcal);
