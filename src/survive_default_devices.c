@@ -109,21 +109,6 @@ typedef struct stack_entry_s {
 	jsmntok_t *key;
 } stack_entry_t;
 
-static int stack_count(stack_entry_t *stack) {
-	int i = 0;
-	while (stack->previous) {
-		i++;
-		stack = stack->previous;
-	}
-	return i;
-}
-static void print_stack_spot(char *d, stack_entry_t *entry) {
-	for (int i = 0; i < stack_count(entry); i++) {
-		printf("\t");
-	}
-	printf("-> %.*s\n", entry->key->end - entry->key->start, d + entry->key->start);
-}
-
 typedef struct {
 	FLT position[3];
 	FLT plus_x[3];

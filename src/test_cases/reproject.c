@@ -14,17 +14,18 @@ TEST(Reproject, ReprojectFull) {
 	//*obj2world, 	                            const LinmathVec3d obj_pt, FLT *out) {
 	BaseStationCal cal[2] = {};
 	SurvivePose lh2world = {.Pos = {1, 1, 1}, .Rot = {0, 0, 1, 0}};
+	SurvivePose world2lh = InvertPoseRtn(&lh2world);
 	SurvivePose obj2world = {.Pos = {5, 5, 5}, .Rot = {0, 1, 0, 0}};
 	const LinmathPoint3d objInPt = {1, 1, 1};
 
 	SurviveAngleReading ang;
-	survive_reproject_full(cal, &lh2world, &obj2world, objInPt, ang);
+	survive_reproject_full(cal, &world2lh, &obj2world, objInPt, ang);
 
 	ASSERT_DOUBLE_EQ(ang[0], 1.0303768265243125);
 	ASSERT_DOUBLE_EQ(ang[1], 0.78539816339744828);
 
 	const LinmathPoint3d objInWorld = {6, 4, 4};
-	survive_reproject_from_pose_with_bcal(cal, &lh2world, objInWorld, ang);
+	survive_reproject_from_pose_with_bcal(cal, &world2lh, objInWorld, ang);
 	ASSERT_DOUBLE_EQ(ang[0], 1.0303768265243125);
 	ASSERT_DOUBLE_EQ(ang[1], 0.78539816339744828);
 

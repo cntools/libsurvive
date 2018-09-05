@@ -98,7 +98,7 @@ void check_reproject() {
 	SurvivePose obj = random_pose();
 	LinmathVec3d pt;
 	random_point(pt);
-	SurvivePose lh2world = random_pose();
+	SurvivePose world2lh = random_pose();
 
 	BaseStationData bsd;
 	for (int i = 0; i < 10; i++)
@@ -109,14 +109,14 @@ void check_reproject() {
 
 	double start_gen = OGGetAbsoluteTime();
 	for (int i = 0; i < cycles; i++) {
-		gen_survive_reproject_full(out_pt, &obj, pt, &lh2world, bsd.fcal);
+		gen_survive_reproject_full(out_pt, &obj, pt, &world2lh, bsd.fcal);
 	}
 	double stop_gen = OGGetAbsoluteTime();
 	printf("gen: %f %f (%f)\n", out_pt[0], out_pt[1], stop_gen - start_gen);
 
 	double start_reproject = OGGetAbsoluteTime();
 	for (int i = 0; i < cycles; i++)
-		survive_reproject_full(bsd.fcal, &lh2world, &obj, pt, out_pt);
+		survive_reproject_full(bsd.fcal, &world2lh, &obj, pt, out_pt);
 	double stop_reproject = OGGetAbsoluteTime();
 
 	printf("%f %f (%f)\n", out_pt[0], out_pt[1], stop_reproject - start_reproject);
@@ -132,7 +132,7 @@ void check_jacobian() {
 	LinmathVec3d pt;
 	random_point(pt);
 
-	SurvivePose lh2world = random_pose();
+	SurvivePose world2lh = random_pose();
 	//SurvivePose lh = {}; lh.Rot[0] = 1.;
 
 	survive_calibration_config config;
@@ -141,12 +141,12 @@ void check_jacobian() {
 	//*((FLT *)&bsd.fcal[0].phase + i) = next_rand(0.5);
 
 	FLT out_jac[14] = {0};
-	survive_reproject_full_jac_obj_pose(out_jac, &obj, pt, &lh2world, bsd.fcal);
+	survive_reproject_full_jac_obj_pose(out_jac, &obj, pt, &world2lh, bsd.fcal);
 
 	FLT comp_jac[14] = {0};
 	FLT out_pt[2] = {0};
 
-	survive_reproject_full(bsd.fcal, &lh2world, &obj, pt, out_pt);
+	survive_reproject_full(bsd.fcal, &world2lh, &obj, pt, out_pt);
 	for(int i = 0;i < 7;i++) {
 	  FLT out[2] = {};
 	  SurvivePose p = obj;
@@ -161,7 +161,7 @@ void check_jacobian() {
 
 	  //quatnormalize(p.Rot, p.Rot);
 
-	  survive_reproject_full(bsd.fcal, &lh2world, &p, pt, out);
+	  survive_reproject_full(bsd.fcal, &world2lh, &p, pt, out);
 	  comp_jac[i] = (out[0] - out_pt[0]) / H;
 	  comp_jac[i + 7] = (out[1] - out_pt[1]) / H;
 	}

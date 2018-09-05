@@ -76,7 +76,7 @@ def reproject_axis_x(p, pt, lh_p,
                      gib_scale, gibPhase_cal, gibMag_cal):
 
     pt_in_world = apply_pose_to_pt(p, pt)
-    XYZ = apply_pose_to_pt( invert_pose(lh_p), pt_in_world)
+    XYZ = apply_pose_to_pt( lh_p, pt_in_world)
 
     return reproject_axis(-XYZ[0], XYZ[1], -XYZ[2],
                           phase_scale, phase_cal,
@@ -90,7 +90,7 @@ def reproject_axis_y(p, pt, lh_p,
                      curve_scale, curve_cal,
                      gib_scale, gibPhase_cal, gibMag_cal):
     pt_in_world = apply_pose_to_pt(p, pt)
-    XYZ = apply_pose_to_pt( invert_pose(lh_p), pt_in_world)
+    XYZ = apply_pose_to_pt( lh_p, pt_in_world)
 
     return reproject_axis(XYZ[1], -XYZ[0], -XYZ[2],
                           phase_scale, phase_cal,
@@ -104,7 +104,7 @@ def reproject(p, pt, lh_p,
               curve_scale, curve_0, curve_1,
               gib_scale, gibPhase_0, gibPhase_1, gibMag_0, gibMag_1):
     pt_in_world = apply_pose_to_pt(p, pt)
-    XYZ = apply_pose_to_pt( invert_pose(lh_p), pt_in_world)
+    XYZ = apply_pose_to_pt( lh_p, pt_in_world)
 
     return vector((
             reproject_axis(-XYZ[0], XYZ[1], -XYZ[2], phase_scale, phase_0, tilt_scale, tilt_0, curve_scale, curve_0, gib_scale, gibPhase_0, gibMag_0),

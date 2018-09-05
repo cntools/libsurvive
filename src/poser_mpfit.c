@@ -82,28 +82,15 @@ static size_t construct_input_from_scene(const MPFITData *d, const PoserDataLigh
 	return rtn;
 }
 
-static void str_metric_function(int j, int i, double *bi, double *xij, void *adata) {
-	SurvivePose obj = *(SurvivePose *)bi;
-	int sensor_idx = j >> 1;
-	int lh = j & 1;
-
-	mpfit_context *ctx = (mpfit_context *)(adata);
-	SurviveObject *so = ctx->so;
-
-	assert(lh < 2);
-	assert(sensor_idx < so->sensor_ct);
-
-	// quatnormalize(obj.Rot, obj.Rot);
-
-	// std::cerr << "Processing " << sensor_idx << ", " << lh << std::endl;
-	SurvivePose *lh2world = &so->ctx->bsd[lh].Pose;
-	survive_reproject_full(so->ctx->bsd[lh].fcal, lh2world, &obj, &so->sensor_locations[sensor_idx * 3], xij);
-}
-
-typedef FLT (*reproject_axis_fn_t)(const BaseStationCal *, const FLT *);
+typedef FLT (*reproject_axis_fn_t)(const BaseStationCal *, const SurviveAngleReading);
 static const reproject_axis_fn_t reproject_axis_fns[] = {survive_reproject_axis_x, survive_reproject_axis_y};
 
-int mpfunc(int m, int n, double *p, double *deviates, double **derivs, void *private) {
+typedef void (*reproject_axis_jacob_fn_t)(SurviveAngleReading, const SurvivePose *, const LinmathPoint3d,
+										  const SurvivePose *, const BaseStationCal *);
+static const reproject_axis_jacob_fn_t reproject_axis_jacob_fns[] = {survive_reproject_full_x_jac_obj_pose,
+																	 survive_reproject_full_y_jac_obj_pose};
+
+static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, void *private) {
 	mpfit_context *mpfunc_ctx = private;
 
 	const SurvivePose *pose = (SurvivePose *)p;
@@ -115,7 +102,7 @@ int mpfunc(int m, int n, double *p, double *deviates, double **derivs, void *pri
 		ApplyPoseToPose(&obj2lh[lh], &mpfunc_ctx->world2camera[lh], pose);
 	}
 
-	size_t meas_count = m;
+	int meas_count = m;
 	if (mpfunc_ctx->current_bias > 0) {
 		meas_count -= 7;
 		FLT *pp = (FLT *)mpfunc_ctx->currentPose.Pos;
@@ -165,16 +152,7 @@ int mpfunc(int m, int n, double *p, double *deviates, double **derivs, void *pri
 				}
 			} else {
 				FLT out[7] = {};
-				switch (meas->axis) {
-				case 0:
-					survive_reproject_full_x_jac_obj_pose(out, pose, pt, world2lh, cal);
-					break;
-				case 1:
-					survive_reproject_full_y_jac_obj_pose(out, pose, pt, world2lh, cal);
-					break;
-				default:
-					assert(false);
-				}
+				reproject_axis_jacob_fns[meas->axis](out, pose, pt, world2lh, cal);
 				for (int j = 0; j < n; j++) {
 					derivs[j][i] = out[j];
 				}
@@ -239,6 +217,8 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 			if (d->use_jacobian_function < 0) {
 				pars[i].side = 1;
 				pars[i].deriv_debug = 1;
+				pars[i].deriv_abstol = .0001;
+				pars[i].deriv_reltol = .0001;
 			} else {
 				pars[i].side = 3;
 			}

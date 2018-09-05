@@ -143,6 +143,11 @@ LINMATH_EXPORT void ApplyPoseToPose(LinmathPose *pout, const LinmathPose *lhs_po
 // Identity ( [0, 0, 0], [1, 0, 0, 0] )
 // by definition.
 LINMATH_EXPORT void InvertPose(LinmathPose *poseout, const LinmathPose *pose_in);
+static inline LinmathPose InvertPoseRtn(const LinmathPose *pose_in) {
+	LinmathPose rtn;
+	InvertPose(&rtn, pose_in);
+	return rtn;
+}
 
 LINMATH_EXPORT void PoseToMatrix(FLT *mat44, const LinmathPose *pose_in);
 

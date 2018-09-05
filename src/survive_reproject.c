@@ -41,22 +41,19 @@ void survive_reproject_xy(const BaseStationCal *bcal, LinmathVec3d const ptInLh,
 	out[1] = survive_reproject_axis_y(bcal, ptInLh);
 }
 
-void survive_reproject_full(const BaseStationCal *bcal, const SurvivePose *lh2world, const SurvivePose *obj2world,
+void survive_reproject_full(const BaseStationCal *bcal, const SurvivePose *world2lh, const SurvivePose *obj2world,
 							const LinmathVec3d obj_pt, SurviveAngleReading out) {
 	LinmathVec3d world_pt;
 	ApplyPoseToPoint(world_pt, obj2world, obj_pt);
 
-	SurvivePose world2lh;
-	InvertPose(&world2lh, lh2world);
-
 	LinmathPoint3d t_pt;
-	ApplyPoseToPoint(t_pt, &world2lh, world_pt);
+	ApplyPoseToPoint(t_pt, world2lh, world_pt);
 
 	survive_reproject_xy(bcal, t_pt, out);
 }
 
 void survive_reproject_full_x_jac_obj_pose(SurviveAngleReading out, const SurvivePose *obj_pose, const double *obj_pt,
-										   const SurvivePose *lh2world, const BaseStationCal *bcal) {
+										   const SurvivePose *world2lh, const BaseStationCal *bcal) {
 	FLT phase_scale = default_config.phase_scale;
 	FLT phase_0 = bcal[0].phase;
 
@@ -70,12 +67,12 @@ void survive_reproject_full_x_jac_obj_pose(SurviveAngleReading out, const Surviv
 	FLT gibPhase_0 = bcal[0].gibpha;
 	FLT gibMag_0 = bcal[0].gibmag;
 
-	gen_reproject_axis_x_jac_obj_p(out, obj_pose->Pos, obj_pt, lh2world->Pos, phase_scale, phase_0, tilt_scale, tilt_0,
+	gen_reproject_axis_x_jac_obj_p(out, obj_pose->Pos, obj_pt, world2lh->Pos, phase_scale, phase_0, tilt_scale, tilt_0,
 								   curve_scale, curve_0, gib_scale, gibPhase_0, gibMag_0);
 }
 
 void survive_reproject_full_y_jac_obj_pose(SurviveAngleReading out, const SurvivePose *obj_pose, const double *obj_pt,
-										   const SurvivePose *lh2world, const BaseStationCal *bcal) {
+										   const SurvivePose *world2lh, const BaseStationCal *bcal) {
 	FLT phase_scale = default_config.phase_scale;
 	FLT phase_1 = bcal[1].phase;
 
@@ -89,12 +86,12 @@ void survive_reproject_full_y_jac_obj_pose(SurviveAngleReading out, const Surviv
 	FLT gibPhase_1 = bcal[1].gibpha;
 	FLT gibMag_1 = bcal[1].gibmag;
 
-	gen_reproject_axis_x_jac_obj_p(out, obj_pose->Pos, obj_pt, lh2world->Pos, phase_scale, phase_1, tilt_scale, tilt_1,
+	gen_reproject_axis_x_jac_obj_p(out, obj_pose->Pos, obj_pt, world2lh->Pos, phase_scale, phase_1, tilt_scale, tilt_1,
 								   curve_scale, curve_1, gib_scale, gibPhase_1, gibMag_1);
 }
 
 void survive_reproject_full_jac_obj_pose(SurviveAngleReading out, const SurvivePose *obj_pose,
-										 const LinmathVec3d obj_pt, const SurvivePose *lh2world,
+										 const LinmathVec3d obj_pt, const SurvivePose *world2lh,
 										 const BaseStationCal *bcal) {
 	FLT phase_scale = default_config.phase_scale;
 	FLT phase_0 = bcal[0].phase;
@@ -114,30 +111,27 @@ void survive_reproject_full_jac_obj_pose(SurviveAngleReading out, const SurviveP
 	FLT gibMag_0 = bcal[0].gibmag;
 	FLT gibMag_1 = bcal[1].gibmag;
 
-	gen_reproject_jac_obj_p(out, obj_pose->Pos, obj_pt, lh2world->Pos, phase_scale, phase_0, phase_1, tilt_scale,
+	gen_reproject_jac_obj_p(out, obj_pose->Pos, obj_pt, world2lh->Pos, phase_scale, phase_0, phase_1, tilt_scale,
 							tilt_0, tilt_1, curve_scale, curve_0, curve_1, gib_scale, gibPhase_0, gibPhase_1, gibMag_0,
 							gibMag_1);
 }
 
-void survive_reproject_from_pose_with_bcal(const BaseStationCal *bcal, const SurvivePose *lh2world,
+void survive_reproject_from_pose_with_bcal(const BaseStationCal *bcal, const SurvivePose *world2lh,
 										   LinmathVec3d const ptInWorld, SurviveAngleReading out) {
-	SurvivePose world2lh;
 	LinmathPoint3d ptInLh;
-
-	InvertPose(&world2lh, lh2world);
-	ApplyPoseToPoint(ptInLh, &world2lh, ptInWorld);
-
+	ApplyPoseToPoint(ptInLh, world2lh, ptInWorld);
 	survive_reproject_xy(bcal, ptInLh, out);
 }
 
-void survive_reproject_from_pose(const SurviveContext *ctx, int lighthouse, const SurvivePose *lh2world,
+void survive_reproject_from_pose(const SurviveContext *ctx, int lighthouse, const SurvivePose *world2lh,
 								 LinmathVec3d const pt, SurviveAngleReading out) {
-	survive_reproject_from_pose_with_bcal(ctx->bsd[lighthouse].fcal, lh2world, pt, out);
+	survive_reproject_from_pose_with_bcal(ctx->bsd[lighthouse].fcal, world2lh, pt, out);
 }
 
 void survive_reproject(const SurviveContext *ctx, int lighthouse, LinmathVec3d const ptInWorld,
 					   SurviveAngleReading out) {
-	survive_reproject_from_pose(ctx, lighthouse, &ctx->bsd[lighthouse].Pose, ptInWorld, out);
+	SurvivePose world2lh = InvertPoseRtn(&ctx->bsd[lighthouse].Pose);
+	survive_reproject_from_pose(ctx, lighthouse, &world2lh, ptInWorld, out);
 }
 
 void survive_apply_bsd_calibration(const SurviveContext *ctx, int lh, const FLT *in, SurviveAngleReading out) {

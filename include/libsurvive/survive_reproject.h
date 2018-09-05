@@ -25,22 +25,22 @@ FLT survive_reproject_axis_x(const BaseStationCal *bcal, LinmathVec3d const ptIn
 FLT survive_reproject_axis_y(const BaseStationCal *bcal, LinmathVec3d const ptInLh);
 
 void survive_reproject_xy(const BaseStationCal *bcal, LinmathVec3d const ptInLh, SurviveAngleReading out);
-void survive_reproject_from_pose(const SurviveContext *ctx, int lighthouse, const SurvivePose *lh2world,
+void survive_reproject_from_pose(const SurviveContext *ctx, int lighthouse, const SurvivePose *world2lh,
 								 LinmathVec3d const ptInWorld, SurviveAngleReading out);
 
 void survive_reproject_full_jac_obj_pose(SurviveAngleReading out, const SurvivePose *obj2world,
-										 const LinmathVec3d ptInObj, const SurvivePose *lh2world,
+										 const LinmathVec3d ptInObj, const SurvivePose *world2lh,
 										 const BaseStationCal *bcal);
 
 void survive_reproject_full_x_jac_obj_pose(SurviveAngleReading out, const SurvivePose *obj2world,
-										   const LinmathVec3d ptInObj, const SurvivePose *lh2world,
+										   const LinmathVec3d ptInObj, const SurvivePose *world2lh,
 										   const BaseStationCal *bcal);
 
 void survive_reproject_full_y_jac_obj_pose(SurviveAngleReading out, const SurvivePose *obj2world,
-										   const LinmathVec3d ptInObj, const SurvivePose *lh2world,
+										   const LinmathVec3d ptInObj, const SurvivePose *world2lh,
 										   const BaseStationCal *bcal);
 
-void survive_reproject_full(const BaseStationCal *bcal, const SurvivePose *lh2world, const SurvivePose *obj2world,
+void survive_reproject_full(const BaseStationCal *bcal, const SurvivePose *world2lh, const SurvivePose *obj2world,
 							const LinmathVec3d ptInObj, SurviveAngleReading out);
 
 // This is given a lighthouse -- in the same system as stored in BaseStationData, and
@@ -51,7 +51,7 @@ void survive_reproject_full(const BaseStationCal *bcal, const SurvivePose *lh2wo
 // position from a 2D coordinate, this is helpful since the minimization of reprojection
 // error is a core mechanism to many types of solvers.
 
-void survive_reproject_from_pose_with_bcal(const BaseStationCal *bcal, const SurvivePose *lh2world,
+void survive_reproject_from_pose_with_bcal(const BaseStationCal *bcal, const SurvivePose *world2lh,
 										   LinmathVec3d const ptInLh, SurviveAngleReading out);
 
 void survive_reproject(const SurviveContext *ctx, int lighthouse, LinmathVec3d const ptInWorld,

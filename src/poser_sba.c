@@ -69,10 +69,11 @@ static void metric_function(int j, int i, double *aj, double *xij, void *adata) 
 	FLT sensorInWorld[3] = {0};
 	ApplyPoseToPoint(sensorInWorld, &obj2world, &so->sensor_locations[i * 3]);
 
-	SurvivePose *lh2world = aj;
+	SurvivePose *lh2world = (SurvivePose *)aj;
 	SurvivePose world2lh;
+	InvertPose(&world2lh, lh2world);
 
-	survive_reproject_from_pose(so->ctx, j, (SurvivePose *)aj, sensorInWorld, xij);
+	survive_reproject_from_pose(so->ctx, j, &world2lh, sensorInWorld, xij);
 }
 
 static size_t construct_input(const SurviveObject *so, PoserDataFullScene *pdfs, char *vmask, double *meas) {
@@ -156,8 +157,8 @@ static void str_metric_function(int j, int i, double *bi, double *xij, void *ada
 	quatnormalize(obj.Rot, obj.Rot);
 
 	// std::cerr << "Processing " << sensor_idx << ", " << lh << std::endl;
-	SurvivePose *lh2world = &so->ctx->bsd[lh].Pose;
-	survive_reproject_full(so->ctx->bsd[lh].fcal, lh2world, &obj, &so->sensor_locations[sensor_idx * 3], xij);
+	SurvivePose world2lh = InvertPoseRtn(&so->ctx->bsd[lh].Pose);
+	survive_reproject_full(so->ctx->bsd[lh].fcal, &world2lh, &obj, &so->sensor_locations[sensor_idx * 3], xij);
 }
 
 static void str_metric_function_jac(int j, int i, double *bi, double *xij, void *adata) {
@@ -174,7 +175,9 @@ static void str_metric_function_jac(int j, int i, double *bi, double *xij, void 
 	quatnormalize(obj.Rot, obj.Rot);
 
 	SurvivePose *camera = &so->ctx->bsd[lh].Pose;
-	survive_reproject_full_jac_obj_pose(xij, &obj, &so->sensor_locations[sensor_idx * 3], camera,
+	SurvivePose world2lh;
+	InvertPose(&world2lh, camera);
+	survive_reproject_full_jac_obj_pose(xij, &obj, &so->sensor_locations[sensor_idx * 3], &world2lh,
 										so->ctx->bsd[lh].fcal);
 }
 
