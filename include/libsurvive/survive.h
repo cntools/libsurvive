@@ -22,7 +22,7 @@ extern "C" {
 /**
  * This struct encodes what the last effective angles seen on a sensor were, and when they occured.
  */
-typedef struct {
+typedef struct SurviveSensorActivations_s {
 	FLT angles[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];		   // 2 Axes (Angles in LH space)
 	survive_timecode timecode[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2]; // Timecode per axis in ticks
 	survive_timecode lengths[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];  // Timecode per axis in ticks

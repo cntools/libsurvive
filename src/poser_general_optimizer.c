@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 STATIC_CONFIG_ITEM(CONFIG_MAX_ERROR, "max-error", 'f', "Maximum error permitted by poser_general_optimizer", .001);
-STATIC_CONFIG_ITEM(CONFIG_FAIL_TO_RESET, "failures-to-reset", 'i', "Failures needed before seed poser is re-run", 10);
+STATIC_CONFIG_ITEM(CONFIG_FAIL_TO_RESET, "failures-to-reset", 'i', "Failures needed before seed poser is re-run", 2);
 STATIC_CONFIG_ITEM( CONFIG_SUC_TO_RESET, "successes-to-reset", 'i', "Reset periodically even if there were no failures", -1 );
 STATIC_CONFIG_ITEM( CONFIG_SEED_POSER, "seed-poser", 's', "Poser to be used to seed optimizer", "PoserEPNP" );
 

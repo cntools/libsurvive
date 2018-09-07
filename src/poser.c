@@ -6,6 +6,8 @@
 
 #define _USE_MATH_DEFINES // for C
 #include <math.h>
+#include <poser.h>
+#include <string.h>
 
 static uint32_t PoserData_timecode(PoserData *poser_data) {
 	switch (poser_data->pt) {
@@ -104,4 +106,18 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 
 		so->ctx->lighthouseposeproc(so->ctx, lighthouse, &lighthouse2world, &obj2world);
 	}
+}
+
+void PoserDataFullScene2Activations(const PoserDataFullScene *pdfs, SurviveSensorActivations *activations) {
+	memset(activations, 0, sizeof(SurviveSensorActivations));
+
+	for (int i = 0; i < SENSORS_PER_OBJECT * NUM_LIGHTHOUSES * 2; i++) {
+		double length = ((double *)pdfs->lengths)[i] * 48000000;
+		if (length > 0)
+			((survive_timecode *)activations->lengths)[i] = (survive_timecode)length;
+		((double *)activations->angles)[i] = ((double *)pdfs->angles)[i];
+	}
+	memcpy(activations->accel, pdfs->lastimu.accel, sizeof(activations->accel));
+	memcpy(activations->gyro, pdfs->lastimu.gyro, sizeof(activations->gyro));
+	memcpy(activations->mag, pdfs->lastimu.mag, sizeof(activations->mag));
 }

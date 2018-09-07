@@ -3,7 +3,6 @@
 
 #include "survive_types.h"
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -91,6 +90,9 @@ typedef struct
 
 	PoserDataIMU lastimu;
 } PoserDataFullScene;
+
+struct SurviveSensorActivations_s;
+void PoserDataFullScene2Activations(const PoserDataFullScene *pdfs, struct SurviveSensorActivations_s *activations);
 
 //When you write your posers, use the following definition, and register with REGISTER_LINKTIME.
 typedef int (*PoserCB)( SurviveObject * so, PoserData * pd );
