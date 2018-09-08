@@ -22,6 +22,7 @@ STATIC_CONFIG_ITEM(USE_IMU, "use-imu", 'i', "Use the IMU as part of the pose sol
 STATIC_CONFIG_ITEM(SENSOR_VARIANCE_PER_SEC, "sensor-variance-per-sec", 'f',
 				   "Variance per second to add to the sensor input -- discounts older data", 0.0);
 STATIC_CONFIG_ITEM(SENSOR_VARIANCE, "sensor-variance", 'f', "Base variance for each sensor input", 1.0);
+STATIC_CONFIG_ITEM(DISABLE_LIGHTHOUSE, "disable-lighthouse", 'i', "Disable given lighthouse from tracking", -1);
 
 typedef struct MPFITData {
 	GeneralOptimizerData opt;
@@ -29,6 +30,7 @@ typedef struct MPFITData {
 	int last_acode;
 	int last_lh;
 
+	int disable_lighthouse;
 	int sensor_time_window;
 	// > 0; use jacobian, 0 don't use, < 0 debug
 	int use_jacobian_function;
@@ -52,6 +54,9 @@ static size_t construct_input_from_scene(const MPFITData *d, size_t timecode, co
 	const bool force_pair = false;
 	for (uint8_t sensor = 0; sensor < so->sensor_ct; sensor++) {
 		for (uint8_t lh = 0; lh < 2; lh++) {
+			if (d->disable_lighthouse == lh)
+				continue;
+
 			for (uint8_t axis = 0; axis < 2; axis++) {
 				bool isReadingValue =
 					SurviveSensorActivations_isReadingValid(scene, d->sensor_time_window, timecode, sensor, lh, axis);
@@ -283,7 +288,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		d->sensor_time_window =
 			survive_configi(ctx, "time-window", SC_GET, SurviveSensorActivations_default_tolerance / 4.);
 		d->use_jacobian_function = survive_configi(ctx, "use-jacobian-function", SC_GET, 1);
-
+		survive_attach_configi(ctx, "disable-lighthouse", &d->disable_lighthouse);
 		survive_attach_configf(ctx, "sensor-variance-per-sec", &d->sensor_variance_per_second);
 		survive_attach_configf(ctx, "sensor-variance", &d->sensor_variance);
 

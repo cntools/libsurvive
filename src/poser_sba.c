@@ -267,9 +267,9 @@ static double run_sba(PoserDataFullScene *pdfs, SurviveObject *so, int max_itera
 						  .obj_pose = so->OutPose};
 
 	{
-		const char *subposer = survive_configs(so->ctx, "seed-poser", SC_GET, "PoserEPNP");
+		const char *subposer = survive_configs(so->ctx, "seed-poser", SC_GET, "EPNP");
 
-		PoserCB driver = (PoserCB)GetDriver(subposer);
+		PoserCB driver = (PoserCB)GetDriverWithPrefix("Poser", subposer);
 		SurviveContext *ctx = so->ctx;
 		if (driver) {
 			PoserData hdr = pdfs->hdr;

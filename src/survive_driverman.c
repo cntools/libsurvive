@@ -30,6 +30,25 @@ void *GetDriver(const char *element) {
 	return 0;
 }
 
+void *GetDriverWithPrefix(const char *prefix, const char *name) {
+	const char *DriverName = 0;
+	const char *picked = 0;
+	int i = 0;
+	void *func = 0;
+	int prefixLen = strlen(prefix);
+
+	while ((DriverName = GetDriverNameMatching(prefix, i++))) {
+		void *p = GetDriver(DriverName);
+
+		bool match = strcmp(DriverName, name) == 0 || (strcmp(DriverName + prefixLen, name) == 0);
+		if (match) {
+			return p;
+		}
+	}
+
+	return 0;
+}
+
 const char *GetDriverNameMatching(const char *prefix, int place) {
 	int i;
 	int prefixlen = (int)strlen(prefix);

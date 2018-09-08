@@ -20,6 +20,7 @@ STATIC_CONFIG_ITEM( BLACKLIST_DEVS, "blacklist-devs", 's', "List any devs (or su
 STATIC_CONFIG_ITEM( CONFIG_FILE, "configfile", 's', "Default configuration file", "config.json" );
 STATIC_CONFIG_ITEM( CONFIG_D_CALI, "disable-calibrate", 'i', "Enables or disables calibration", 0 );
 STATIC_CONFIG_ITEM( CONFIG_F_CALI, "force-calibrate", 'i', "Forces calibration even if one exists.", 0 );
+STATIC_CONFIG_ITEM(CONFIG_LIGHTHOUSE_COUNT, "lighthousecount", 'i', "How many lighthouses to look for.", 2);
 
 #ifdef RUNTIME_SYMNUM
 #include <symbol_enumerator.h>
@@ -226,6 +227,25 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 			}
 		}
 	}
+
+	const char *config_prefix_fields[] = {"record", "playback", 0};
+	for (const char **name = config_prefix_fields; *name; name++) {
+		if (!survive_config_is_set(ctx, "configfile") && survive_config_is_set(ctx, *name)) {
+			char configfile[256] = {};
+			const char *recordname = survive_configs(ctx, *name, SC_GET, "");
+
+			const char *end = recordname + strlen(recordname);
+			while (end != recordname && !(*end == '/' || *end == '\\'))
+				end--;
+			end++;
+			if (end[0] != 0) {
+				recordname = end;
+				snprintf(configfile, 256, "%s.json", recordname);
+				survive_configs(ctx, "configfile", SC_SET | SC_OVERRIDE, configfile);
+			}
+		}
+	}
+
 	config_read(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
 	ctx->activeLighthouses = survive_configi(ctx, "lighthousecount", SC_SETCONFIG, 2);
 	config_read_lighthouse(ctx->lh_config, &(ctx->bsd[0]), 0);
@@ -265,13 +285,13 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 	if( showhelp )
 	{
 		// Can't use SV_ERROR here since we don't have a context to send to yet.
-		fprintf(stderr, "libsurvive - usage:\n");
+		fprintf(stderr, "Available flags:\n");
 		fprintf(stderr, " -h                      - shows help.\n");
-		fprintf(stderr, " -m                      - list parameters, for autocomplete." );
+		fprintf(stderr, " -m                      - list parameters, for autocomplete.\n");
 		fprintf(stderr, " -p [poser]              - use a specific defaultposer.\n");
 		fprintf(stderr, " -l [lighthouse count]   - use a specific number of lighthoses.\n");
-		fprintf(stderr, " -c [config file]        - set config file\n");
-		fprintf(stderr, "Additional  --[parameter] [value]   - sets generic parameters...\n");
+		fprintf(stderr, " -c [config file]        - set config file\n\n");
+
 		survive_print_known_configs( ctx, 1 );
 		return 0;
 	}
