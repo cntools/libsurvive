@@ -1,8 +1,3 @@
-#ifndef USE_DOUBLE
-#define FLT double
-#define USE_DOUBLE
-#endif
-
 #include <malloc.h>
 #include <sba/sba.h>
 
@@ -20,17 +15,11 @@
 #include "survive_kalman.h"
 #include "survive_reproject.h"
 
-STATIC_CONFIG_ITEM(SBA_USE_IMU, "sba-use-imu", 'i', "Use the IMU as part of SBA", 1);
-STATIC_CONFIG_ITEM(SBA_REQUIRED_MEAS, "sba-required-meas", 'i',
+STATIC_CONFIG_ITEM(SBA_REQUIRED_MEAS, "required-meas", 'i',
 				   "Minimum number of measurements needed to try and solve for position", 8);
-STATIC_CONFIG_ITEM(SBA_TIME_WINDOW, "sba-time-window", 'i',
+STATIC_CONFIG_ITEM(SBA_TIME_WINDOW, "time-window", 'i',
 				   "The length, in ticks, between sensor inputs to treat them as one snapshot",
 				   (int)SurviveSensorActivations_default_tolerance);
-STATIC_CONFIG_ITEM(SBA_SENSOR_VARIANCE_PER_SEC, "sba-sensor-variance-per-sec", 'f',
-				   "Variance per second to add to the sensor input -- discounts older data", 10.0);
-STATIC_CONFIG_ITEM(SBA_SENSOR_VARIANCE, "sba-sensor-variance", 'f', "Base variance for each sensor input", 1.0);
-STATIC_CONFIG_ITEM(SBA_USE_JACOBIAN_FUNCTION, "sba-use-jacobian-function", 'i',
-				   "If set to false, a slower numerical approximation of the jacobian is used", 1);
 
 typedef struct {
 	PoserData *pdfs;
@@ -278,9 +267,9 @@ static double run_sba(PoserDataFullScene *pdfs, SurviveObject *so, int max_itera
 						  .obj_pose = so->OutPose};
 
 	{
-		const char *subposer = survive_configs(so->ctx, "seed-poser", SC_GET, "PoserEPNP");
+		const char *subposer = survive_configs(so->ctx, "seed-poser", SC_GET, "EPNP");
 
-		PoserCB driver = (PoserCB)GetDriver(subposer);
+		PoserCB driver = (PoserCB)GetDriverWithPrefix("Poser", subposer);
 		SurviveContext *ctx = so->ctx;
 		if (driver) {
 			PoserData hdr = pdfs->hdr;
@@ -362,20 +351,20 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 
 		general_optimizer_data_init(&d->opt, so);
 
-		survive_attach_configi( ctx, "sba-use-imu", &d->useIMU );
-		survive_attach_configi( ctx, "sba-required-meas", &d->required_meas );
-		survive_attach_configi( ctx, "sba-time-window", &d->sensor_time_window );
-		survive_attach_configf( ctx, "sba-sensor-variance-per-sec", &d->sensor_variance_per_second );
-		survive_attach_configf( ctx, "sba-sensor-variance", &d->sensor_variance );
-		survive_attach_configi( ctx, "sba-use-jacobian-function", &d->use_jacobian_function );
+		survive_attach_configi(ctx, "use-imu", &d->useIMU);
+		survive_attach_configi(ctx, "required-meas", &d->required_meas);
+		survive_attach_configi(ctx, "time-window", &d->sensor_time_window);
+		survive_attach_configf(ctx, "sensor-variance-per-sec", &d->sensor_variance_per_second);
+		survive_attach_configf(ctx, "sensor-variance", &d->sensor_variance);
+		survive_attach_configi(ctx, "use-jacobian-function", &d->use_jacobian_function);
 
 		SV_INFO("Initializing SBA:");
-		SV_INFO("\tsba-required-meas: %d", d->required_meas);
+		SV_INFO("\trequired-meas: %d", d->required_meas);
 		SV_INFO("\tsba-sensor-variance: %f", d->sensor_variance);
 		SV_INFO("\tsba-sensor-variance-per-sec: %f", d->sensor_variance_per_second);
-		SV_INFO("\tsba-time-window: %d", d->sensor_time_window);
-		SV_INFO("\tsba-use-imu: %d", d->useIMU);
-		SV_INFO("\tsba-use-jacobian-function: %d", d->use_jacobian_function);
+		SV_INFO("\ttime-window: %d", d->sensor_time_window);
+		SV_INFO("\tuse-imu: %d", d->useIMU);
+		SV_INFO("\tuse-jacobian-function: %d", d->use_jacobian_function);
 	}
 	SBAData *d = so->PoserData;
 	switch (pd->pt) {

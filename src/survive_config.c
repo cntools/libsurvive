@@ -84,6 +84,11 @@ int survive_print_help_for_parameter( const char * tomap )
 	return 0;
 }
 
+#define USAGE_FORMAT " --%-25s"
+static const char *USAGE_FORMAT_INT = USAGE_FORMAT "%13d    ";
+static const char *USAGE_FORMAT_FLOAT = USAGE_FORMAT "%13f    ";
+static const char *USAGE_FORMAT_STRING = USAGE_FORMAT "%13s    ";
+
 static void PrintConfigGroup(config_group * grp, const char ** chkval, int * cvs, int verbose )
 {
 	int i, j;
@@ -101,14 +106,22 @@ static void PrintConfigGroup(config_group * grp, const char ** chkval, int * cvs
 				char stobuf[128];
 				switch( ce->type )
 				{
-				case CONFIG_UINT32:	snprintf( stobuf, 127, " --%s %d", ce->tag, ce->numeric.i ); break;
-				case CONFIG_FLOAT:	snprintf( stobuf, 127, " --%s %f", ce->tag, ce->numeric.f ); break;
-				case CONFIG_STRING:	snprintf( stobuf, 127, " --%s %s", ce->tag, ce->data ); break;
+				case CONFIG_UINT32:
+					snprintf(stobuf, 127, USAGE_FORMAT_INT, ce->tag, ce->numeric.i);
+					break;
+				case CONFIG_FLOAT:
+					snprintf(stobuf, 127, USAGE_FORMAT_FLOAT, ce->tag, ce->numeric.f);
+					break;
+				case CONFIG_STRING:
+					snprintf(stobuf, 127, USAGE_FORMAT_STRING, ce->tag, ce->data);
+					break;
 				case CONFIG_FLOAT_ARRAY: printf( "[FA] %20s", ce->tag ); break;
 				}
 
-				int namepad = 40 - strlen( stobuf );
-				printf( "%s%*c", stobuf, namepad, (ce->type==CONFIG_FLOAT)?'f':(ce->type==CONFIG_UINT32)?'i':(ce->type==CONFIG_STRING)?'s':'.' );
+				printf("%s%-12s", stobuf,
+					   (ce->type == CONFIG_FLOAT)
+						   ? ":float"
+						   : (ce->type == CONFIG_UINT32) ? ":int" : (ce->type == CONFIG_STRING) ? ":string" : ".");
 
 				//Try to get description from the static tags.
 				for( j = 0; j < nr_static_configs; j++ )
@@ -157,13 +170,22 @@ void survive_print_known_configs( SurviveContext * ctx, int verbose )
 				char stobuf[128];
 				switch( config->type )
 				{
-				case 'i':	snprintf( stobuf, 127, " --%s %d", name, config->data_default.i ); break;
-				case 'f':	snprintf( stobuf, 127, " --%s %f", name, config->data_default.f ); break;
-				case 's':	snprintf( stobuf, 127, " --%s %s", name, config->data_default.s ); break;
+				case 'i':
+					snprintf(stobuf, 127, USAGE_FORMAT_INT, name, config->data_default.i);
+					break;
+				case 'f':
+					snprintf(stobuf, 127, USAGE_FORMAT_FLOAT, name, config->data_default.f);
+					break;
+				case 's':
+					snprintf(stobuf, 127, USAGE_FORMAT_STRING, name, config->data_default.s);
+					break;
 				case 'a':	snprintf( stobuf, 127, "[FA] %25s  %s\n", config->name, config->description ); break;
 				}
-				int namepad = 40 - strlen( stobuf );
-				printf( "%s%*c %s\n", stobuf, namepad, config->type, config->description );
+
+				const char *type_desc = (config->type == 'f')
+											? ":float"
+											: (config->type == 'i') ? ":int" : (config->type == 's') ? ":string" : ".";
+				printf("%s%-12s %s\n", stobuf, type_desc, config->description);
 			}
 			else
 			{
@@ -680,6 +702,11 @@ static uint32_t config_entry_as_uint32_t(config_entry *entry) {
 		break;
 	}
 	return 0;
+}
+
+bool survive_config_is_set(SurviveContext *ctx, const char *tag) {
+	config_entry *cv = sc_search(ctx, tag);
+	return cv != 0;
 }
 
 FLT survive_configf(SurviveContext *ctx, const char *tag, char flags, FLT def) {

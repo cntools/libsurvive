@@ -25,19 +25,7 @@ extern "C" {
 // uncomment the following line to use double precision instead of single precision.
 //#define USE_DOUBLE
 
-#ifdef USE_DOUBLE
-
-#define FLT double
-#define FLT_SQRT sqrt
-#define FLT_TAN tan
-#define FLT_SIN sin
-#define FLT_COS cos
-#define FLT_ACOS acos
-#define FLT_ASIN asin
-#define FLT_ATAN2 atan2
-#define FLT_FABS__ fabs
-
-#else
+#ifdef USE_FLOAT
 
 #define FLT float
 #define FLT_SQRT sqrtf
@@ -48,6 +36,21 @@ extern "C" {
 #define FLT_ASIN asinf
 #define FLT_ATAN2 atan2f
 #define FLT_FABS__ fabsf
+#define FLT_STRTO strtof
+
+#else
+
+#define USE_DOUBLE 1
+#define FLT double
+#define FLT_SQRT sqrt
+#define FLT_TAN tan
+#define FLT_SIN sin
+#define FLT_COS cos
+#define FLT_ACOS acos
+#define FLT_ASIN asin
+#define FLT_ATAN2 atan2
+#define FLT_FABS__ fabs
+#define FLT_STRTO strtod
 
 #endif
 

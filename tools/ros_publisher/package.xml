@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<package format="2">
+  <maintainer email="jdavidberger@gmail.com">justin</maintainer>
+  <name>survive_publisher</name>
+  <version>0.0.1</version>
+  <description>Publish poses from libsurvive capture</description>
+  <license>MIT</license>
+  <depend>roscpp</depend>
+  <buildtool_depend>catkin</buildtool_depend>
+</package>

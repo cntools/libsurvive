@@ -1,16 +1,17 @@
 #include "poser_general_optimizer.h"
 #include "string.h"
+#include "survive_internal.h"
 
 #include <assert.h>
 #include <malloc.h>
 #include <stdio.h>
 
-STATIC_CONFIG_ITEM(CONFIG_MAX_ERROR, "max-error", 'f', "Maximum error permitted by poser_general_optimizer", .001);
-STATIC_CONFIG_ITEM(CONFIG_FAIL_TO_RESET, "failures-to-reset", 'i', "Failures needed before seed poser is re-run", 10);
-STATIC_CONFIG_ITEM( CONFIG_SUC_TO_RESET, "successes-to-reset", 'i', "Reset periodically even if there were no failures", -1 );
-STATIC_CONFIG_ITEM( CONFIG_SEED_POSER, "seed-poser", 's', "Poser to be used to seed optimizer", "PoserEPNP" );
+STATIC_CONFIG_ITEM(CONFIG_MAX_ERROR, "max-error", 'f', "Maximum error permitted by poser_general_optimizer.", .001);
+STATIC_CONFIG_ITEM(CONFIG_FAIL_TO_RESET, "failures-to-reset", 'i', "Failures needed before seed poser is re-run.", 1);
+STATIC_CONFIG_ITEM(CONFIG_SUC_TO_RESET, "successes-to-reset", 'i',
+				   "Reset periodically even if there were no failures. Set to -1 to disable.", -1);
+STATIC_CONFIG_ITEM(CONFIG_SEED_POSER, "seed-poser", 's', "Poser to be used to seed optimizer.", "EPNP");
 
-void *GetDriver(const char *name);
 void general_optimizer_data_init(GeneralOptimizerData *d, SurviveObject *so) {
 	memset(d, 0, sizeof(*d));
 	d->so = so;
@@ -21,8 +22,8 @@ void general_optimizer_data_init(GeneralOptimizerData *d, SurviveObject *so) {
 	survive_attach_configi( ctx, "failures-to-reset", &d->failures_to_reset );
 	survive_attach_configi( ctx, "successes-to-reset", &d->successes_to_reset );
 
-	const char *subposer = survive_configs(ctx, "seed-poser", SC_GET, "PoserEPNP");
-	d->seed_poser = (PoserCB)GetDriver(subposer);
+	const char *subposer = survive_configs(ctx, "seed-poser", SC_GET, "EPNP");
+	d->seed_poser = (PoserCB)GetDriverWithPrefix("Poser", subposer);
 
 	SV_INFO("Initializing general optimizer:");
 	SV_INFO("\tmax-error: %f", d->max_error);
@@ -31,6 +32,7 @@ void general_optimizer_data_init(GeneralOptimizerData *d, SurviveObject *so) {
 	SV_INFO("\tseed-poser: %s(%p)", subposer, d->seed_poser);
 }
 void general_optimizer_data_record_failure(GeneralOptimizerData *d) {
+	d->stats.error_failures++;
 	if (d->failures_to_reset_cntr > 0)
 		d->failures_to_reset_cntr--;
 }
@@ -43,9 +45,7 @@ bool general_optimizer_data_record_success(GeneralOptimizerData *d, FLT error) {
 		return true;
 	}
 
-	d->stats.error_failures++;
-	if (d->failures_to_reset_cntr > 0)
-		d->failures_to_reset_cntr--;
+	general_optimizer_data_record_failure(d);
 
 	return false;
 }

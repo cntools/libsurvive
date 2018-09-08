@@ -22,7 +22,7 @@ extern "C" {
 /**
  * This struct encodes what the last effective angles seen on a sensor were, and when they occured.
  */
-typedef struct {
+typedef struct SurviveSensorActivations_s {
 	FLT angles[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];		   // 2 Axes (Angles in LH space)
 	survive_timecode timecode[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2]; // Timecode per axis in ticks
 	survive_timecode lengths[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];  // Timecode per axis in ticks
@@ -285,6 +285,7 @@ SURVIVE_EXPORT int survive_send_magic(SurviveContext *ctx, int magic_code, void 
 #define SC_OVERRIDE 2  // Set, to new default value.
 #define SC_SETCONFIG 4 // Set, both in-memory and config file.  Use in conjunction with SC_OVERRIDE.
 
+SURVIVE_EXPORT bool survive_config_is_set(SurviveContext *ctx, const char *tag);
 SURVIVE_EXPORT FLT survive_configf(SurviveContext *ctx, const char *tag, char flags, FLT def);
 SURVIVE_EXPORT uint32_t survive_configi(SurviveContext *ctx, const char *tag, char flags, uint32_t def);
 SURVIVE_EXPORT const char *survive_configs(SurviveContext *ctx, const char *tag, char flags, const char *def);

@@ -22,6 +22,7 @@ ssize_t getline(char **lineptr, size_t *n, FILE *stream);
 #endif
 
 STATIC_CONFIG_ITEM( RECORD, "record", 's', "File to record to if you wish to make a recording.", "" );
+STATIC_CONFIG_ITEM(RECORD_STDOUT, "record-stdout", 'i', "Whether or not to dump recording data to stdout", 0);
 STATIC_CONFIG_ITEM( PLAYBACK, "playback", 's', "File to be used for playback if playing a recording.", "" );
 STATIC_CONFIG_ITEM( PLAYBACK_FACTOR, "playback-factor", 'f', "Time factor of playback -- 1 is run at the same timing as original, 0 is run as fast as possible.", 1.0f );
 

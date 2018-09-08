@@ -1,4 +1,4 @@
-CFLAGS:=-g -O4 -DUSE_DOUBLE -I../../redist -flto
+CFLAGS:=-g -O4 -I../../redist -flto
 LDFLAGS:=$(CFLAGS) -lm
 
 all:

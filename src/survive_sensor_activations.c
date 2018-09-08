@@ -7,7 +7,7 @@ bool SurviveSensorActivations_isReadingValid(const SurviveSensorActivations *sel
 	if (self->lengths[idx][lh][axis] == 0)
 		return false;
 
-	return timecode_now - data_timecode[axis] <= tolerance;
+	return survive_timecode_difference(timecode_now, data_timecode[axis]) <= tolerance;
 }
 bool SurviveSensorActivations_isPairValid(const SurviveSensorActivations *self, uint32_t tolerance,
 										  uint32_t timecode_now, uint32_t idx, int lh) {
