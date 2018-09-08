@@ -92,9 +92,11 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 	survive_optimizer *mpfunc_ctx = private;
 
 	mpfunc_ctx->parameters = p;
-	const SurvivePose *pose = survive_optimizer_get_pose(mpfunc_ctx);
+	SurvivePose *pose = survive_optimizer_get_pose(mpfunc_ctx);
 	const SurvivePose *cameras = survive_optimizer_get_camera(mpfunc_ctx);
 	const double *sensor_points = survive_optimizer_get_sensors(mpfunc_ctx);
+
+	quatnormalize(pose->Rot, pose->Rot);
 
 	SurvivePose obj2lh[NUM_LIGHTHOUSES] = {};
 	for (int lh = 0; lh < NUM_LIGHTHOUSES; lh++) {

@@ -20,7 +20,7 @@ STATIC_CONFIG_ITEM(USE_JACOBIAN_FUNCTION, "use-jacobian-function", 'i',
 				   "If set to false, a slower numerical approximation of the jacobian is used", 1);
 STATIC_CONFIG_ITEM(USE_IMU, "use-imu", 'i', "Use the IMU as part of the pose solver", 1);
 STATIC_CONFIG_ITEM(SENSOR_VARIANCE_PER_SEC, "sensor-variance-per-sec", 'f',
-				   "Variance per second to add to the sensor input -- discounts older data", 10.0);
+				   "Variance per second to add to the sensor input -- discounts older data", 0.0);
 STATIC_CONFIG_ITEM(SENSOR_VARIANCE, "sensor-variance", 'f', "Base variance for each sensor input", 1.0);
 
 typedef struct MPFITData {
@@ -127,7 +127,7 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 	survive_optimizer_setup_cameras(&mpfitctx, so->ctx, true);
 	int start = survive_optimizer_get_camera_index(&mpfitctx);
 
-	survive_optimizer_setup_pose(&mpfitctx, 0, false, true);
+	survive_optimizer_setup_pose(&mpfitctx, 0, false, d->use_jacobian_function);
 
 	size_t meas_size = construct_input_from_scene(d, pdl->timecode, scene, mpfitctx.measurements);
 
@@ -266,7 +266,8 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		d->useIMU = (bool)survive_configi(ctx, "use-imu", SC_GET, 1);
 		d->required_meas = survive_configi(ctx, "required-meas", SC_GET, 8);
 
-		d->sensor_time_window = survive_configi(ctx, "time-window", SC_GET, SurviveSensorActivations_default_tolerance);
+		d->sensor_time_window =
+			survive_configi(ctx, "time-window", SC_GET, SurviveSensorActivations_default_tolerance / 4.);
 		d->use_jacobian_function = survive_configi(ctx, "use-jacobian-function", SC_GET, 1);
 
 		survive_attach_configf(ctx, "sensor-variance-per-sec", &d->sensor_variance_per_second);
