@@ -12,8 +12,18 @@ var scene, camera, renderer, floor, fpv_camera;
 
 $(function() { $("#toggleBtn").click(function() { $("#cam").toggle(); }); });
 
+var lighthouses = {};
 function add_lighthouse(idx, p, q) {
+	if (lighthouses[idx]) {
+		var group = lighthouses[idx];
+		group.position.fromArray(p);
+		group.quaternion.fromArray([ q[1], q[2], q[3], q[0] ]);
+		group.verticesNeedUpdate = true;
+		return;
+	}
+
 	var group = new THREE.Group();
+	lighthouses[idx] = group;
 
 	var lh = new THREE.AxesHelper(1);
 
@@ -45,10 +55,9 @@ function add_lighthouse(idx, p, q) {
 	cone.rotateX(Math.PI / 2);
 
 	group.add(cone);
-
 	group.add(lh);
 	scene.add(group);
-	}
+}
 
 function recolorTrackers(when) {
     if(ctx == undefined)

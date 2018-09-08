@@ -682,6 +682,11 @@ static uint32_t config_entry_as_uint32_t(config_entry *entry) {
 	return 0;
 }
 
+bool survive_config_is_set(SurviveContext *ctx, const char *tag) {
+	config_entry *cv = sc_search(ctx, tag);
+	return cv != 0;
+}
+
 FLT survive_configf(SurviveContext *ctx, const char *tag, char flags, FLT def) {
 	if (!(flags & SC_OVERRIDE)) {
 		config_entry *cv = sc_search(ctx, tag);

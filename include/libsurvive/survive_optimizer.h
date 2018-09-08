@@ -1,12 +1,17 @@
 #pragma once
 #include "survive.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct {
 	FLT value;
 	FLT variance;
 	uint8_t lh;
 	uint8_t sensor_idx;
 	uint8_t axis;
+	int object;
 } survive_optimizer_measurement;
 
 struct mp_par_struct;
@@ -56,3 +61,7 @@ void survive_optimizer_setup_pose(survive_optimizer *mpfit_ctx, const SurvivePos
 void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx, SurviveContext *ctx, bool isFixed);
 
 int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result);
+
+#ifdef __cplusplus
+}
+#endif

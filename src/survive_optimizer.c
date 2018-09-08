@@ -6,16 +6,21 @@
 
 #include "mpfit/mpfit.h"
 
-void survive_optimizer_setup_pose(survive_optimizer *mpfit_ctx, const SurvivePose *pose, bool isFixed,
+static char *object_parameter_names[] = {"Pose x",	 "Pose y",	 "Pose z",	"Pose Rot w",
+										 "Pose Rot x", "Pose Rot y", "Pose Rot z"};
+
+void survive_optimizer_setup_pose(survive_optimizer *mpfit_ctx, const SurvivePose *poses, bool isFixed,
 								  int use_jacobian_function) {
-	if (pose)
-		*survive_optimizer_get_pose(mpfit_ctx) = *pose;
-	else
-		*survive_optimizer_get_pose(mpfit_ctx) = (SurvivePose){.Rot = {1.}};
+	for (int i = 0; i < mpfit_ctx->poseLength; i++) {
+		if (poses)
+			survive_optimizer_get_pose(mpfit_ctx)[i] = poses[i];
+		else
+			survive_optimizer_get_pose(mpfit_ctx)[i] = (SurvivePose){.Rot = {1.}};
+	}
 
 	for (int i = 0; i < 7 * mpfit_ctx->poseLength; i++) {
 		mpfit_ctx->parameters_info[i].fixed = isFixed;
-
+		mpfit_ctx->parameters_info[i].parname = object_parameter_names[i % 7];
 		if (use_jacobian_function != 0) {
 			if (use_jacobian_function < 0) {
 				mpfit_ctx->parameters_info[i].side = 1;
@@ -29,6 +34,12 @@ void survive_optimizer_setup_pose(survive_optimizer *mpfit_ctx, const SurvivePos
 	}
 }
 
+static char *lh_parameter_names[] = {"LH0 x",	 "LH0 y",	 "LH0 z",		"LH0 Rot w", "LH0 Rot x",
+									 "LH0 Rot y", "LH0 Rot z", "LH1 x",		"LH1 y",	 "LH1 z",
+									 "LH1 Rot w", "LH1 Rot x", "LH1 Rot y", "LH1 Rot z"
+
+};
+
 void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx, SurviveContext *ctx, bool isFixed) {
 	SurvivePose *cameras = survive_optimizer_get_camera(mpfit_ctx);
 	for (int lh = 0; lh < mpfit_ctx->cameraLength; lh++) {
@@ -37,6 +48,7 @@ void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx, SurviveContex
 	int start = survive_optimizer_get_camera_index(mpfit_ctx);
 	for (int i = start; i < start + 7 * mpfit_ctx->cameraLength; i++) {
 		mpfit_ctx->parameters_info[i].fixed = isFixed;
+		mpfit_ctx->parameters_info[i].parname = lh_parameter_names[i - start];
 	}
 }
 
@@ -92,16 +104,20 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 	survive_optimizer *mpfunc_ctx = private;
 
 	mpfunc_ctx->parameters = p;
-	SurvivePose *pose = survive_optimizer_get_pose(mpfunc_ctx);
-	const SurvivePose *cameras = survive_optimizer_get_camera(mpfunc_ctx);
+
+	SurvivePose *cameras = survive_optimizer_get_camera(mpfunc_ctx);
+
+	int start = survive_optimizer_get_camera_index(mpfunc_ctx);
+	for (int i = 0; i < mpfunc_ctx->cameraLength; i++) {
+		if (!mpfunc_ctx->parameters_info[start + 7 * i].fixed) {
+			quatnormalize(cameras[i].Rot, cameras[i].Rot);
+		}
+	}
 	const double *sensor_points = survive_optimizer_get_sensors(mpfunc_ctx);
 
-	quatnormalize(pose->Rot, pose->Rot);
-
+	int pose_idx = -1;
+	SurvivePose *pose = 0;
 	SurvivePose obj2lh[NUM_LIGHTHOUSES] = {};
-	for (int lh = 0; lh < NUM_LIGHTHOUSES; lh++) {
-		ApplyPoseToPose(&obj2lh[lh], &cameras[lh], pose);
-	}
 
 	int meas_count = m;
 	if (mpfunc_ctx->current_bias > 0) {
@@ -121,6 +137,16 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 		const struct BaseStationCal *cal = survive_optimizer_get_calibration(mpfunc_ctx, lh);
 		const SurvivePose *world2lh = &cameras[lh];
 		const FLT *pt = &sensor_points[meas->sensor_idx * 3];
+
+		if (pose_idx != meas->object) {
+			pose_idx = meas->object;
+			pose = &survive_optimizer_get_pose(mpfunc_ctx)[meas->object];
+			quatnormalize(pose->Rot, pose->Rot);
+
+			for (int lh = 0; lh < NUM_LIGHTHOUSES; lh++) {
+				ApplyPoseToPose(&obj2lh[lh], &cameras[lh], pose);
+			}
+		}
 
 		// If the next two measurements are joined; handle the full pair. This lets us just calculate
 		// sensorPtInLH once

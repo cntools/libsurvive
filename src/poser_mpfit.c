@@ -61,6 +61,7 @@ static size_t construct_input_from_scene(const MPFITData *d, size_t timecode, co
 				}
 				if (isReadingValue) {
 					const double *a = scene->angles[sensor][lh];
+					meas->object = 0;
 					meas->axis = axis;
 					meas->value = a[axis];
 					meas->sensor_idx = sensor;
@@ -111,22 +112,28 @@ static bool invalid_starting_condition(MPFITData *d, size_t meas_size) {
 static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, SurviveSensorActivations *scene,
 										  SurvivePose *out) {
 	SurviveObject *so = d->opt.so;
+	struct SurviveContext *ctx = so->ctx;
 
 	survive_optimizer mpfitctx = {
 		.so = so,
 		//.current_bias = .1,
 		.poseLength = 1,
-		.cameraLength = NUM_LIGHTHOUSES,
+		.cameraLength = so->ctx->activeLighthouses,
 	};
 
 	SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(mpfitctx);
 
 	SurvivePose *soLocation = survive_optimizer_get_pose(&mpfitctx);
-
-	SurvivePose *cameras = survive_optimizer_get_camera(&mpfitctx);
 	survive_optimizer_setup_cameras(&mpfitctx, so->ctx, true);
-	int start = survive_optimizer_get_camera_index(&mpfitctx);
 
+	bool updateCameras = false;
+
+	if (updateCameras) {
+		int start = survive_optimizer_get_camera_index(&mpfitctx);
+		for (int i = start + 7; i < start + 7 * mpfitctx.cameraLength; i++) {
+			mpfitctx.parameters_info[i].fixed = false;
+		}
+	}
 	survive_optimizer_setup_pose(&mpfitctx, 0, false, d->use_jacobian_function);
 
 	size_t meas_size = construct_input_from_scene(d, pdl->timecode, scene, mpfitctx.measurements);
@@ -157,8 +164,15 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 		quatnormalize(soLocation->Rot, soLocation->Rot);
 		*out = *soLocation;
 		rtn = result.bestnorm;
+
+		if (updateCameras) {
+			SurvivePose *cameras = survive_optimizer_get_camera(&mpfitctx);
+			for (int i = 0; i < mpfitctx.cameraLength; i++) {
+				SurvivePose p = InvertPoseRtn(cameras + i);
+				so->ctx->lighthouseposeproc(so->ctx, i, &p, soLocation);
+			}
+		}
 	} else {
-		SurviveContext *ctx = so->ctx;
 		SV_INFO("MPFIT failure %f (%d measurements)", result.bestnorm, (int)meas_size);
 	}
 
