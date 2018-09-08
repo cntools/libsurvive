@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <math.h>
 #include <survive_optimizer.h>
 #include <survive_reproject.h>
 
@@ -21,6 +22,12 @@ void survive_optimizer_setup_pose(survive_optimizer *mpfit_ctx, const SurvivePos
 	for (int i = 0; i < 7 * mpfit_ctx->poseLength; i++) {
 		mpfit_ctx->parameters_info[i].fixed = isFixed;
 		mpfit_ctx->parameters_info[i].parname = object_parameter_names[i % 7];
+
+		mpfit_ctx->parameters_info[i].limited[0] = mpfit_ctx->parameters_info[i].limited[1] = 1;
+
+		mpfit_ctx->parameters_info[i].limits[0] = -(i >= 3 ? 1. : 20.);
+		mpfit_ctx->parameters_info[i].limits[1] = -mpfit_ctx->parameters_info[i].limits[0];
+
 		if (use_jacobian_function != 0) {
 			if (use_jacobian_function < 0) {
 				mpfit_ctx->parameters_info[i].side = 1;
@@ -176,12 +183,15 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 				for (int j = 0; j < 7; j++) {
 					derivs[j][i] = out[j];
 					derivs[j][i + 1] = out[j + 7];
+					assert(!isnan(out[j]));
+					assert(!isnan(out[j + 7]));
 				}
 			} else {
 				FLT out[7] = {};
 				reproject_axis_jacob_fns[meas->axis](out, pose, pt, world2lh, cal);
 				for (int j = 0; j < 7; j++) {
 					derivs[j][i] = out[j];
+					assert(!isnan(out[j]));
 				}
 			}
 		}

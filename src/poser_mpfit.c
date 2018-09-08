@@ -16,6 +16,10 @@
 #include "survive_config.h"
 #include "survive_reproject.h"
 
+#ifdef DEBUG_NAN
+#include <fenv.h>
+#endif
+
 STATIC_CONFIG_ITEM(USE_JACOBIAN_FUNCTION, "use-jacobian-function", 'i',
 				   "If set to false, a slower numerical approximation of the jacobian is used", 1);
 STATIC_CONFIG_ITEM(USE_IMU, "use-imu", 'i', "Use the IMU as part of the pose solver", 1);
@@ -291,6 +295,10 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		survive_attach_configi(ctx, "disable-lighthouse", &d->disable_lighthouse);
 		survive_attach_configf(ctx, "sensor-variance-per-sec", &d->sensor_variance_per_second);
 		survive_attach_configf(ctx, "sensor-variance", &d->sensor_variance);
+
+#ifdef DEBUG_NAN
+		feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
 
 		SV_INFO("Initializing MPFIT:");
 		SV_INFO("\trequired-meas: %d", d->required_meas);

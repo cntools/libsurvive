@@ -164,7 +164,9 @@ def generate_ccode(name, args, expressions):
 
 print(" // NOTE: Auto-generated code; see tools/generate_reprojection_functions ")
 print("#include <math.h>")
-
+print("#include <linmath.h>")
+print("double __safe_asin(double x) { return asin( linmath_max(-1., linmath_min(1., x)) ); }")
+print("#define asin __safe_asin")
 reproject_params = (obj_p, sensor_pt, lh_p, phase_0, phase_1,
                     tilt_0, tilt_1,
                     curve_0, curve_1,

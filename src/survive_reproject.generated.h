@@ -1,5 +1,8 @@
- // NOTE: Auto-generated code; see tools/generate_reprojection_functions 
+ // NOTE: Auto-generated code; see tools/generate_reprojection_functions
+#include <linmath.h>
 #include <math.h>
+ double __safe_asin(double x) { return asin(linmath_max(-1., linmath_min(1., x))); }
+#define asin __safe_asin
  static inline void gen_reproject_jac_obj_p(FLT *out, const FLT *obj, const FLT *sensor, const FLT *lh, FLT phase_0,
 											FLT phase_1, FLT tilt_0, FLT tilt_1, FLT curve_0, FLT curve_1,
 											FLT gibPhase_0, FLT gibPhase_1, FLT gibMag_0, FLT gibMag_1) {

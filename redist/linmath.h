@@ -175,6 +175,10 @@ Matrix3x3 inverseM33(const Matrix3x3 mat);
 LINMATH_EXPORT void matrix44copy(FLT *mout, const FLT *minm);
 LINMATH_EXPORT void matrix44transpose(FLT *mout, const FLT *minm);
 
+static inline FLT linmath_max(FLT x, FLT y) { return x > y ? x : y; }
+
+static inline FLT linmath_min(FLT x, FLT y) { return x < y ? x : y; }
+
 #ifdef __cplusplus
 }
 #endif
