@@ -4,7 +4,7 @@ SRT:=../..
 
 LIBSURVIVE:=$(SRT)/lib/libsurvive.so
 
-CFLAGS:=-I$(SRT)/redist -I$(SRT)/include -O0 -g -DFLT=double -DUSE_DOUBLE #-fsanitize=address -fsanitize=undefined
+CFLAGS:=-I$(SRT)/redist -I$(SRT)/include -O0 -g #-fsanitize=address -fsanitize=undefined
 LDFLAGS:=-lm -lpthread -llapacke  -lcblas 
 
 findoptimalconfig : findoptimalconfig.cc $(LIBSURVIVE)

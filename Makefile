@@ -11,13 +11,13 @@ OBJDIR:=build
 CFLAGS += -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces
 
 ifdef WINDOWS
-	CFLAGS+=-Iinclude/libsurvive -g -O3 -Iredist -DUSE_DOUBLE -std=gnu99 -MD -DNOZLIB -DWINDOWS -DWIN32 -DHIDAPI
+	CFLAGS+=-Iinclude/libsurvive -g -O3 -Iredist -std=gnu99 -MD -DNOZLIB -DWINDOWS -DWIN32 -DHIDAPI
 	LDFLAGS+=-L/usr/local/lib -lpthread -g -lm -lsetupapi -lkernel32 -ldbghelp -lgdi32
 	LDFLAGS_TOOLS+=-Llib -lsurvive -Wl,-rpath,lib -lX11 $(LDFLAGS)
 	LIBSURVIVE_CORE:=redist/puff.c redist/crc32.c redist/hid-windows.c winbuild/getdelim.c
 	CC:=i686-w64-mingw32-gcc
 else
-	CFLAGS+=-Iinclude/libsurvive -fPIC -g -O3 -Iredist -DUSE_DOUBLE -std=gnu99 -MD
+	CFLAGS+=-Iinclude/libsurvive -fPIC -g -O3 -Iredist -std=gnu99 -MD
 	LDFLAGS+=-L/usr/local/lib -lpthread -lz -lm -g -llapacke  -lcblas -lm  -lusb-1.0
 	LDFLAGS_TOOLS+=-Llib -lsurvive -Wl,-rpath,lib -lX11 $(LDFLAGS)
 endif
@@ -121,7 +121,7 @@ test_epnp: ./src/epnp/test_epnp.c $(LIBRARY)
 	$(CC) -o $@ $^ $(LDFLAGS_TOOLS) $(CFLAGS)
 
 test_epnp_ocv: ./src/epnp/test_epnp.c ./src/epnp/epnp.c
-	$(CC) -o $@ $^ -DWITH_OPENCV -lpthread -lz -lm -flto -g -lX11 -lusb-1.0 -Iinclude/libsurvive -fPIC -g -O4 -Iredist -flto -DUSE_DOUBLE -std=gnu99 -rdynamic -fsanitize=address -fsanitize=undefined   -llapack -lm -lopencv_core $(LDFLAGS_TOOLS)
+	$(CC) -o $@ $^ -DWITH_OPENCV -lpthread -lz -lm -flto -g -lX11 -lusb-1.0 -Iinclude/libsurvive -fPIC -g -O4 -Iredist -flto -std=gnu99 -rdynamic -fsanitize=address -fsanitize=undefined   -llapack -lm -lopencv_core $(LDFLAGS_TOOLS)
 
 test_cases: $(TEST_CASES) $(LIBRARY)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
@@ -183,7 +183,7 @@ help :
 	@echo "    LDFLAGS=           Specify additional LDFLAGS."
 	@echo "    CC=                Specify a different C compiler."
 	@echo "  Useful Preprocessor Directives (For CFLAGS):"
-	@echo "    -DUSE_DOUBLE       Use double instead of float for most operations."
+	@echo "    -DUSE_FLOAT        Use float instead of double for most operations."
 	@echo "    -DNOZLIB           Use puff.c"
 	@echo "    -DTCC              Various things needed for TCC."
 	@echo "    -DWINDOWS -DWIN32  Building for Windows."

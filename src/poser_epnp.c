@@ -1,9 +1,3 @@
-
-#ifndef USE_DOUBLE
-#define FLT double
-#define USE_DOUBLE
-#endif
-
 #include <poser.h>
 #include <survive.h>
 #include <survive_reproject.h>

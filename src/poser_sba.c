@@ -1,8 +1,3 @@
-#ifndef USE_DOUBLE
-#define FLT double
-#define USE_DOUBLE
-#endif
-
 #include <malloc.h>
 #include <sba/sba.h>
 

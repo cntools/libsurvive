@@ -1,8 +1,3 @@
-#ifndef USE_DOUBLE
-#define FLT double
-#define USE_DOUBLE
-#endif
-
 #include "survive_optimizer.h"
 
 #include <malloc.h>
