@@ -3,6 +3,7 @@
 
 typedef struct {
 	FLT value;
+	FLT variance;
 	uint8_t lh;
 	uint8_t sensor_idx;
 	uint8_t axis;

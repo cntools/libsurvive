@@ -16,6 +16,12 @@
 #include "survive_config.h"
 #include "survive_reproject.h"
 
+STATIC_CONFIG_ITEM(USE_JACOBIAN_FUNCTION, "use-jacobian-function", 'i',
+				   "If set to false, a slower numerical approximation of the jacobian is used", 1);
+STATIC_CONFIG_ITEM(USE_IMU, "use-imu", 'i', "Use the IMU as part of the pose solver", 1);
+STATIC_CONFIG_ITEM(SENSOR_VARIANCE_PER_SEC, "sensor-variance-per-sec", 'f',
+				   "Variance per second to add to the sensor input -- discounts older data", 10.0);
+STATIC_CONFIG_ITEM(SENSOR_VARIANCE, "sensor-variance", 'f', "Base variance for each sensor input", 1.0);
 
 typedef struct MPFITData {
 	GeneralOptimizerData opt;
@@ -27,6 +33,9 @@ typedef struct MPFITData {
 	// > 0; use jacobian, 0 don't use, < 0 debug
 	int use_jacobian_function;
 	int required_meas;
+
+	FLT sensor_variance;
+	FLT sensor_variance_per_second;
 
 	SurviveIMUTracker tracker;
 	bool useIMU;
@@ -40,7 +49,7 @@ static size_t construct_input_from_scene(const MPFITData *d, size_t timecode, co
 										 survive_optimizer_measurement *meas) {
 	size_t rtn = 0;
 	SurviveObject *so = d->opt.so;
-	const bool force_pair = true;
+	const bool force_pair = false;
 	for (uint8_t sensor = 0; sensor < so->sensor_ct; sensor++) {
 		for (uint8_t lh = 0; lh < 2; lh++) {
 			for (uint8_t axis = 0; axis < 2; axis++) {
@@ -56,6 +65,9 @@ static size_t construct_input_from_scene(const MPFITData *d, size_t timecode, co
 					meas->value = a[axis];
 					meas->sensor_idx = sensor;
 					meas->lh = lh;
+					survive_timecode diff = survive_timecode_difference(timecode, scene->timecode[sensor][lh][axis]);
+					meas->variance =
+						d->sensor_variance + diff * d->sensor_variance_per_second / (double)so->timebase_hz;
 					meas++;
 					rtn++;
 				}
@@ -102,7 +114,7 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 
 	survive_optimizer mpfitctx = {
 		.so = so,
-		//.current_bias = .0001,
+		//.current_bias = .1,
 		.poseLength = 1,
 		.cameraLength = NUM_LIGHTHOUSES,
 	};
@@ -147,7 +159,7 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 		rtn = result.bestnorm;
 	} else {
 		SurviveContext *ctx = so->ctx;
-		SV_INFO("MPFIT failure %f (%d measurements)", result.bestnorm, meas_size);
+		SV_INFO("MPFIT failure %f (%d measurements)", result.bestnorm, (int)meas_size);
 	}
 
 	return rtn;
@@ -257,9 +269,14 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		d->sensor_time_window = survive_configi(ctx, "time-window", SC_GET, SurviveSensorActivations_default_tolerance);
 		d->use_jacobian_function = survive_configi(ctx, "use-jacobian-function", SC_GET, 1);
 
+		survive_attach_configf(ctx, "sensor-variance-per-sec", &d->sensor_variance_per_second);
+		survive_attach_configf(ctx, "sensor-variance", &d->sensor_variance);
+
 		SV_INFO("Initializing MPFIT:");
 		SV_INFO("\trequired-meas: %d", d->required_meas);
 		SV_INFO("\ttime-window: %d", d->sensor_time_window);
+		SV_INFO("\tsensor-variance: %f", d->sensor_variance);
+		SV_INFO("\tsensor-variance-per-sec: %f", d->sensor_variance_per_second);
 		SV_INFO("\tuse-imu: %d", d->useIMU);
 		SV_INFO("\tuse-jacobian-function: %d", d->use_jacobian_function);
 	}

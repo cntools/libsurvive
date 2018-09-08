@@ -15,17 +15,11 @@
 #include "survive_kalman.h"
 #include "survive_reproject.h"
 
-STATIC_CONFIG_ITEM(SBA_USE_IMU, "use-imu", 'i', "Use the IMU as part of SBA", 1);
 STATIC_CONFIG_ITEM(SBA_REQUIRED_MEAS, "required-meas", 'i',
 				   "Minimum number of measurements needed to try and solve for position", 8);
 STATIC_CONFIG_ITEM(SBA_TIME_WINDOW, "time-window", 'i',
 				   "The length, in ticks, between sensor inputs to treat them as one snapshot",
 				   (int)SurviveSensorActivations_default_tolerance);
-STATIC_CONFIG_ITEM(SBA_SENSOR_VARIANCE_PER_SEC, "sba-sensor-variance-per-sec", 'f',
-				   "Variance per second to add to the sensor input -- discounts older data", 10.0);
-STATIC_CONFIG_ITEM(SBA_SENSOR_VARIANCE, "sba-sensor-variance", 'f', "Base variance for each sensor input", 1.0);
-STATIC_CONFIG_ITEM(SBA_USE_JACOBIAN_FUNCTION, "use-jacobian-function", 'i',
-				   "If set to false, a slower numerical approximation of the jacobian is used", 1);
 
 typedef struct {
 	PoserData *pdfs;
@@ -360,8 +354,8 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		survive_attach_configi(ctx, "use-imu", &d->useIMU);
 		survive_attach_configi(ctx, "required-meas", &d->required_meas);
 		survive_attach_configi(ctx, "time-window", &d->sensor_time_window);
-		survive_attach_configf( ctx, "sba-sensor-variance-per-sec", &d->sensor_variance_per_second );
-		survive_attach_configf( ctx, "sba-sensor-variance", &d->sensor_variance );
+		survive_attach_configf(ctx, "sensor-variance-per-sec", &d->sensor_variance_per_second);
+		survive_attach_configf(ctx, "sensor-variance", &d->sensor_variance);
 		survive_attach_configi(ctx, "use-jacobian-function", &d->use_jacobian_function);
 
 		SV_INFO("Initializing SBA:");

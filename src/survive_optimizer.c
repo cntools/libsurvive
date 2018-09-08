@@ -133,11 +133,11 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 
 			survive_reproject_xy(cal, sensorPtInLH, out);
 
-			deviates[i] = out[meas[0].axis] - meas[0].value;
-			deviates[i + 1] = out[meas[1].axis] - meas[1].value;
+			deviates[i] = (out[meas[0].axis] - meas[0].value) / meas[0].variance;
+			deviates[i + 1] = (out[meas[1].axis] - meas[1].value) / meas[1].variance;
 		} else {
 			FLT out = reproject_axis_fns[meas->axis](cal, sensorPtInLH);
-			deviates[i] = out - meas->value;
+			deviates[i] = (out - meas->value) / meas->variance;
 		}
 
 		if (derivs) {
