@@ -74,7 +74,7 @@ void survive_reproject_full_y_jac_obj_pose(SurviveAngleReading out, const Surviv
 	FLT gibPhase_1 = bcal[1].gibpha;
 	FLT gibMag_1 = bcal[1].gibmag;
 
-	gen_reproject_axis_x_jac_obj_p(out, obj_pose->Pos, obj_pt, world2lh->Pos, phase_1, tilt_1, curve_1, gibPhase_1,
+	gen_reproject_axis_y_jac_obj_p(out, obj_pose->Pos, obj_pt, world2lh->Pos, phase_1, tilt_1, curve_1, gibPhase_1,
 								   gibMag_1);
 }
 
