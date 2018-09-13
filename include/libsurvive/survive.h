@@ -70,7 +70,7 @@ struct SurviveObject {
 	SurviveContext *ctx;
 
 	char codename[4];   // 3 letters, null-terminated.  Currently HMD, WM0, WM1.
-	char drivername[4]; // 3 letters for driver.  Currently "HTC"
+	char drivername[8]; // 8 letters for driver.  Currently "HTC"
 	void *driver;
 	int32_t buttonmask;
 	int16_t axis1;
@@ -210,6 +210,7 @@ struct SurviveContext {
 	angle_process_func angleproc;
 	button_process_func buttonproc;
 	pose_func poseproc;
+	external_pose_func externalposeproc;
 	lighthouse_pose_func lighthouseposeproc;
 	htc_config_func configfunction;
 	handle_lightcap_func lightcapfunction;
@@ -269,6 +270,7 @@ SURVIVE_EXPORT void survive_install_imu_fn(SurviveContext *ctx, imu_process_func
 SURVIVE_EXPORT void survive_install_angle_fn(SurviveContext *ctx, angle_process_func fbp);
 SURVIVE_EXPORT void survive_install_button_fn(SurviveContext *ctx, button_process_func fbp);
 SURVIVE_EXPORT void survive_install_pose_fn(SurviveContext *ctx, pose_func fbp);
+SURVIVE_EXPORT void survive_install_external_pose_fn(SurviveContext *ctx, external_pose_func fbp);
 SURVIVE_EXPORT void survive_install_lighthouse_pose_fn(SurviveContext *ctx, lighthouse_pose_func fbp);
 SURVIVE_EXPORT int survive_startup(SurviveContext *ctx);
 SURVIVE_EXPORT int survive_poll(SurviveContext *ctx);
@@ -321,6 +323,7 @@ SURVIVE_EXPORT void survive_default_button_process(SurviveObject *so, uint8_t ev
 												   uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id,
 												   uint16_t axis2Val);
 SURVIVE_EXPORT void survive_default_raw_pose_process(SurviveObject *so, survive_timecode timecode, SurvivePose *pose);
+SURVIVE_EXPORT void survive_default_external_pose_process(SurviveContext *so, const char *name, SurvivePose *pose);
 SURVIVE_EXPORT void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse,
 															SurvivePose *lh_pose, SurvivePose *obj_pose);
 SURVIVE_EXPORT int survive_default_htc_config_process(SurviveObject *so, char *ct0conf, int len);

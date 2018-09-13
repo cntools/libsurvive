@@ -200,6 +200,7 @@ static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver) {
 	FLT accelgyro[9] = { 0 };
 	int mask;
 	int id;
+	SurviveContext *ctx = driver->ctx;
 
 	int rr = sscanf(line, "%s I %d %d " FLT_format " " FLT_format " " FLT_format " " FLT_format " " FLT_format
 						  " " FLT_format " " FLT_format " " FLT_format " " FLT_format "%d",
@@ -211,14 +212,13 @@ static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver) {
 		id = accelgyro[6];
 		accelgyro[6] = 0;
 	} else if (rr != 13) {
-		fprintf(stderr, "Warning:  On line %d, only %d values read: '%s'\n", driver->lineno, rr, line);
+		SV_WARN("On line %d, only %d values read: '%s'", driver->lineno, rr, line);
 		return -1;
 	}
 
 	SurviveObject *so = survive_get_so_by_name(driver->ctx, dev);
 	if (!so) {
 		static bool display_once = false;
-		SurviveContext *ctx = driver->ctx;
 		if (display_once == false) {
 			SV_ERROR("Could not find device named %s from lineno %d\n", dev, driver->lineno);
 		}
@@ -227,6 +227,18 @@ static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver) {
 	}
 
 	driver->ctx->imuproc(so, mask, accelgyro, timecode, id);
+	return 0;
+}
+
+static int parse_and_run_externalpose(const char *line, SurvivePlaybackData *driver) {
+	char name[128] = {};
+	SurvivePose pose;
+
+	int rr = sscanf(line, "%s EXTERNAL_POSE " SurvivePose_format "\n", name, &pose.Pos[0], &pose.Pos[1], &pose.Pos[2],
+					&pose.Rot[0], &pose.Rot[1], &pose.Rot[2], &pose.Rot[3]);
+
+	SurviveContext *ctx = driver->ctx;
+	ctx->externalposeproc(ctx, name, &pose);
 	return 0;
 }
 
@@ -264,19 +276,19 @@ static int parse_and_run_lightcode(const char *line, SurvivePlaybackData *driver
 	int timeinsweep = 0;
 	uint32_t length = 0;
 	uint32_t lh = 0;
+	SurviveContext *ctx = driver->ctx;
 
 	int rr = sscanf(line, "%8s %8s %8s %u %d %d %d %u %u\n", dev, lhn, axn, &sensor_id, &acode, &timeinsweep, &timecode,
 					&length, &lh);
 
 	if (rr != 9) {
-		fprintf(stderr, "Warning:  On line %d, only %d values read: '%s'\n", driver->lineno, rr, line);
+		SV_WARN("Warning:  On line %d, only %d values read: '%s'\n", driver->lineno, rr, line);
 		return -1;
 	}
 
 	SurviveObject *so = survive_get_so_by_name(driver->ctx, dev);
 	if (!so) {
 		static bool display_once = false;
-		SurviveContext *ctx = driver->ctx;
 		if (display_once == false) {
 			SV_ERROR("Could not find device named %s from lineno %d\n", dev, driver->lineno);
 		}
@@ -323,30 +335,36 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 			return 0;
 		}
 
-		char dev[10];
-		char op[10];
-		if (sscanf(line, "%8s %8s", dev, op) < 2) {
-			free(line);
-			return 0;
-		}
-
-		if (op[1] != 0) {
+		char dev[32];
+		char op[32];
+		if (sscanf(line, "%31s %31s", dev, op) < 2) {
 			free(line);
 			return 0;
 		}
 
 		switch (op[0]) {
+		case 'E':
+			if (strcmp(op, "EXTERNAL_POSE") == 0) {
+				parse_and_run_externalpose(line, driver);
+				break;
+			}
 		case 'C':
 			parse_and_run_rawlight(line, driver);
 			break;
 		case 'L':
 		case 'R':
-			if (driver->hasRawLight == false)
+			if (op[1] == 0 && driver->hasRawLight == false)
 				parse_and_run_lightcode(line, driver);
 			break;
 		case 'I':
-			parse_and_run_imu(line, driver);
+			if (op[1] == 0)
+				parse_and_run_imu(line, driver);
 			break;
+		case 'A':
+		case 'P':
+			break;
+		default:
+			SV_WARN("Playback doesn't understand '%s' op in '%s'", op, line);
 		}
 
 		free(line);
@@ -407,7 +425,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 
 	sp->playback_file = fopen(playback_file, "r");
 	if (sp->playback_file == 0) {
-		fprintf(stderr, "Could not open playback events file %s", playback_file);
+		SV_WARN("Could not open playback events file %s", playback_file);
 		return -1;
 	}
 

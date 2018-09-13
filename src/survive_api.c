@@ -2,16 +2,26 @@
 #include "inttypes.h"
 #include "os_generic.h"
 #include "stdio.h"
+#include "string.h"
 #include "survive.h"
+
+struct SurviveExternalObject {
+	SurvivePose pose;
+};
 
 struct SurviveSimpleObject {
 	struct SurviveSimpleContext *actx;
 
-	enum SurviveSimpleObject_type { SurviveSimpleObject_LIGHTHOUSE, SurviveSimpleObject_OBJECT } type;
+	enum SurviveSimpleObject_type {
+		SurviveSimpleObject_LIGHTHOUSE,
+		SurviveSimpleObject_OBJECT,
+		SurviveSimpleObject_EXTERNAL
+	} type;
 
 	union {
 		int lighthouse;
-		struct SurviveObject* so;
+		struct SurviveObject *so;
+		struct SurviveExternalObject seo;
 	} data;
 
 	char name[32];
@@ -25,10 +35,40 @@ struct SurviveSimpleContext {
 	og_thread_t thread;
 	og_mutex_t poll_mutex;
 
+	size_t external_object_ct;
+	struct SurviveSimpleObject *external_objects;
+
 	size_t object_ct;
 	struct SurviveSimpleObject objects[];
 };
 
+SurviveSimpleObject *find_or_create_external(struct SurviveSimpleContext *actx, const char *name) {
+	for (int i = 0; i < actx->external_object_ct; i++) {
+		struct SurviveSimpleObject *so = &actx->external_objects[i];
+		if (strncmp(name, so->name, 32) == 0) {
+			return so;
+		}
+	}
+
+	actx->external_objects =
+		realloc(actx->external_objects, sizeof(struct SurviveSimpleObject) * (actx->external_object_ct + 1));
+	struct SurviveSimpleObject *so = &actx->external_objects[actx->external_object_ct++];
+	memset(so, 0, sizeof(struct SurviveSimpleObject));
+	so->type = SurviveSimpleObject_EXTERNAL;
+	strncpy(so->name, name, 32);
+	return so;
+}
+
+static void external_pose_fn(SurviveContext *ctx, const char *name, SurvivePose *pose) {
+	struct SurviveSimpleContext *actx = ctx->user_ptr;
+	OGLockMutex(actx->poll_mutex);
+	survive_default_external_pose_process(ctx, name, pose);
+
+	struct SurviveSimpleObject *so = find_or_create_external(actx, name);
+	so->has_update = true;
+	so->data.seo.pose = *pose;
+	OGUnlockMutex(actx->poll_mutex);
+}
 static void pose_fn(SurviveObject *so, uint32_t timecode, SurvivePose *pose) {
 	struct SurviveSimpleContext *actx = so->ctx->user_ptr;
 	OGLockMutex(actx->poll_mutex);
@@ -83,6 +123,7 @@ struct SurviveSimpleContext *survive_simple_init(int argc, char *const *argv) {
 	}
 
 	survive_install_pose_fn(ctx, pose_fn);
+	survive_install_external_pose_fn(ctx, external_pose_fn);
 	survive_install_lighthouse_pose_fn(ctx, lh_fn);
 	return actx;
 }
@@ -148,15 +189,24 @@ uint32_t survive_simple_object_get_latest_pose(const struct SurviveSimpleObject 
 
 	switch (sao->type) {
 	case SurviveSimpleObject_LIGHTHOUSE: {
-		if(pose)
+		if (pose)
 			*pose = sao->actx->ctx->bsd[sao->data.lighthouse].Pose;
 		break;
 	}
 	case SurviveSimpleObject_OBJECT:
-		if(pose) 
+		if (pose)
 			*pose = sao->data.so->OutPose;
 		timecode = sao->data.so->OutPose_timecode;
 		break;
+	case SurviveSimpleObject_EXTERNAL:
+		if (pose)
+			*pose = sao->data.seo.pose;
+		break;
+
+	default: {
+		SurviveContext *ctx = sao->actx->ctx;
+		SV_ERROR("Invalid object type %d", sao->type);
+	}
 	}
 
 	OGUnlockMutex(sao->actx->poll_mutex);

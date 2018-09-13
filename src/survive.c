@@ -234,7 +234,11 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 		}
 	}
 
-	const char *config_prefix_fields[] = {"record", "playback", 0};
+	ctx->faultfunction = survivefault;
+	ctx->notefunction = survivenote;
+	ctx->warnfunction = survivewarn;
+
+	const char *config_prefix_fields[] = {"playback", 0};
 	for (const char **name = config_prefix_fields; *name; name++) {
 		if (!survive_config_is_set(ctx, "configfile") && survive_config_is_set(ctx, *name)) {
 			char configfile[256] = {};
@@ -243,11 +247,14 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 			const char *end = recordname + strlen(recordname);
 			while (end != recordname && !(*end == '/' || *end == '\\'))
 				end--;
-			end++;
+			if (*end == '/' || *end == '\\')
+				end++;
+
 			if (end[0] != 0) {
 				recordname = end;
 				snprintf(configfile, 256, "%s.json", recordname);
 				survive_configs(ctx, "configfile", SC_SET | SC_OVERRIDE, configfile);
+				SV_INFO("Config file is %s", configfile);
 			}
 		}
 	}
@@ -256,10 +263,6 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 	ctx->activeLighthouses = survive_configi(ctx, "lighthousecount", SC_SETCONFIG, 2);
 	config_read_lighthouse(ctx->lh_config, &(ctx->bsd[0]), 0);
 	config_read_lighthouse(ctx->lh_config, &(ctx->bsd[1]), 1);
-
-	ctx->faultfunction = survivefault;
-	ctx->notefunction = survivenote;
-	ctx->warnfunction = survivewarn;
 
 	if( list_for_autocomplete )
 	{
@@ -309,6 +312,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 	ctx->lighthouseposeproc = survive_default_lighthouse_pose_process;
 	ctx->configfunction = survive_default_htc_config_process;
 	ctx->poseproc = survive_default_raw_pose_process;
+	ctx->externalposeproc = survive_default_external_pose_process;
 
 	return ctx;
 }
@@ -503,6 +507,13 @@ void survive_install_pose_fn(SurviveContext *ctx, pose_func fbp) {
 		ctx->poseproc = fbp;
 	else
 		ctx->poseproc = survive_default_raw_pose_process;
+}
+
+void survive_install_external_pose_fn(SurviveContext *ctx, external_pose_func fbp) {
+	if (fbp)
+		ctx->externalposeproc = fbp;
+	else
+		ctx->externalposeproc = survive_default_external_pose_process;
 }
 
 void survive_install_lighthouse_pose_fn(SurviveContext *ctx, lighthouse_pose_func fbp) {

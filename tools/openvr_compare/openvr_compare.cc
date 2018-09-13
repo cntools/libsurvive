@@ -61,8 +61,6 @@ bool operator!=(const LinmathPose &a, const LinmathPose &b) {
 	return false;
 }
 
-extern "C" void survive_recording_external_pose_process(SurviveContext *ctx, const char *name, SurvivePose *pose);
-
 bool openvr_poll(vr::IVRSystem &vr_system) {
 	vr::VREvent_t event;
 	while (vr_system.PollNextEvent(&event, sizeof(event))) {
@@ -98,7 +96,7 @@ bool openvr_poll(vr::IVRSystem &vr_system) {
 		if (quatmagnitude(poseInSurvive.Rot) > 0.0001) {
 			if (poseInSurvive != vr_poses_sent[name]) {
 				vr_poses_sent[name] = poseInSurvive;
-				survive_recording_external_pose_process(ctx, name, &poseInSurvive);
+				ctx->externalposeproc(ctx, name, &poseInSurvive);
 			}
 		}
 	}

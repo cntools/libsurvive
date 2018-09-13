@@ -133,6 +133,10 @@ void survive_default_raw_pose_process(SurviveObject *so, uint32_t timecode, Surv
 	survive_recording_raw_pose_process(so, timecode, pose);
 }
 
+void survive_default_external_pose_process(SurviveContext *ctx, const char *name, SurvivePose *pose) {
+	survive_recording_external_pose_process(ctx, name, pose);
+}
+
 void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose,
 											 SurvivePose *object_pose) {
 	if (lighthouse_pose) {

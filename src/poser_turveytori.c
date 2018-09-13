@@ -1872,7 +1872,7 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 		config_set_lighthouse(ctx->lh_config, &ctx->bsd[0], 0);
 		config_set_lighthouse(ctx->lh_config, &ctx->bsd[1], 1);
 
-		config_save(ctx, "config.json");
+		config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
 
 		free(to);
 		//printf( "Full scene data.\n" );
