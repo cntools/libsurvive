@@ -19,12 +19,15 @@ int main(int argc, char **argv) {
 
 	survive_simple_start_thread(actx);
 
-	for (const SurviveSimpleObject *it = survive_simple_get_first_object(actx); it != 0;
-		 it = survive_simple_get_next_object(actx, it)) {
-		const char *name = survive_simple_object_name(it);
-		publishers[name] =
-			n.advertise<geometry_msgs::PoseStamped>(std::string(name) + "_pose", 1000, strpbrk(name, "LH") != 0);
-	}
+	auto get_publisher = [&](const char *name) {
+		auto it = publishers.find(name);
+		if (it != publishers.end())
+			return it->second;
+
+		std::cerr << "adding " << name << std::endl;
+		return publishers[name] =
+				   n.advertise<geometry_msgs::PoseStamped>(std::string(name) + "_pose", 1000, strpbrk(name, "LH") != 0);
+	};
 
 	uint32_t seq = 1;
 	while (survive_simple_is_running(actx) && ros::ok()) {
@@ -47,7 +50,7 @@ int main(int argc, char **argv) {
 			pose_msg.pose.orientation.y = pose.Rot[2];
 			pose_msg.pose.orientation.z = pose.Rot[3];
 
-			publishers[name].publish(pose_msg);
+			get_publisher(name).publish(pose_msg);
 		}
 	}
 

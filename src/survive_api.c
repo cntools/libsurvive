@@ -55,6 +55,7 @@ SurviveSimpleObject *find_or_create_external(struct SurviveSimpleContext *actx, 
 	struct SurviveSimpleObject *so = &actx->external_objects[actx->external_object_ct++];
 	memset(so, 0, sizeof(struct SurviveSimpleObject));
 	so->type = SurviveSimpleObject_EXTERNAL;
+	so->actx = actx;
 	strncpy(so->name, name, 32);
 	return so;
 }
@@ -178,6 +179,12 @@ const struct SurviveSimpleObject *survive_simple_get_next_updated(struct Survive
 		if (actx->objects[i].has_update) {
 			actx->objects[i].has_update = false;
 			return &actx->objects[i];
+		}
+	}
+	for (int i = 0; i < actx->external_object_ct; i++) {
+		if (actx->external_objects[i].has_update) {
+			actx->external_objects[i].has_update = false;
+			return &actx->external_objects[i];
 		}
 	}
 	return 0;

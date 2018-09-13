@@ -111,6 +111,7 @@ struct SurviveObject {
 
 	FLT imu_freq;
 	SurvivePose relative_imu_pose;
+	SurvivePose relative_sensor_pose;
 	FLT *acc_bias;   // size is FLT*3. contains x,y,z
 	FLT *acc_scale;  // size is FLT*3. contains x,y,z
 	FLT *gyro_bias;  // size is FLT*3. contains x,y,z

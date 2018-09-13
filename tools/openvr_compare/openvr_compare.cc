@@ -31,14 +31,14 @@ SurvivePose txToLibsurviveWorld(const SurvivePose &poseInOpenVR) {
 		std::cerr << "ctx null" << std::endl;
 		return {};
 	}
-	if (vr_poses.find("openvr_LH1") == vr_poses.end()) {
+	if (vr_poses.find("openvr_LH0") == vr_poses.end()) {
 		return {};
 	}
 	if (ctx->bsd[0].PositionSet == false) {
 		return {};
 	}
 
-	auto lh02OpenVr = vr_poses["openvr_LH1"];
+	auto lh02OpenVr = vr_poses["openvr_LH0"];
 	auto lh02Survive = ctx->bsd[0].Pose;
 
 	auto OpenVr2lh0 = InvertPoseRtn(&lh02OpenVr);
@@ -47,6 +47,7 @@ SurvivePose txToLibsurviveWorld(const SurvivePose &poseInOpenVR) {
 
 	SurvivePose rtn;
 	ApplyPoseToPose(&rtn, &OpenVr2Survive, &poseInOpenVR);
+
 	return rtn;
 }
 
@@ -86,9 +87,16 @@ bool openvr_poll(vr::IVRSystem &vr_system) {
 			continue;
 
 		int num = device_cnt[trackedDeviceClass]++;
+		auto pose = survivePoseFromDevicePose(trackedDevicePose);
+
+		// LH can come in any order, we order them based on which one is used as origin
+		if (trackedDeviceClass == vr::TrackedDeviceClass_TrackingReference) {
+			num = norm3d(pose.Pos) < .5;
+		}
+
 		char name[32] = {};
 		sprintf(name, "openvr_%s%d", device_names[trackedDeviceClass], num);
-		auto pose = survivePoseFromDevicePose(trackedDevicePose);
+
 		auto poseInSurvive = txToLibsurviveWorld(pose);
 
 		vr_poses[name] = pose;
@@ -131,18 +139,17 @@ static void install_sig_handler() {
 
 int main(int argc, char **argv) {
 	install_sig_handler();
+	ctx = survive_init(argc, argv);
 
+	if (ctx == 0) { // Implies --help or similiar
+		return -1;
+	}
+
+	survive_configi(ctx, "usbmon", SC_SET | SC_OVERRIDE, 1);
 	vr::EVRInitError eError = vr::VRInitError_None;
 	auto vr_system = vr::VR_Init(&eError, vr::VRApplication_Utility);
 	if (eError != vr::VRInitError_None) {
 		std::cerr << "Unable to init VR runtime: " << vr::VR_GetVRInitErrorAsEnglishDescription(eError) << std::endl;
-		return -1;
-	}
-
-	ctx = survive_init(argc, argv);
-	survive_configi(ctx, "usbmon", SC_SET | SC_OVERRIDE, 1);
-
-	if (ctx == 0) { // Implies --help or similiar
 		return -1;
 	}
 
