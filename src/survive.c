@@ -16,6 +16,7 @@
 #define z_const const
 #endif
 
+STATIC_CONFIG_ITEM(SURVIVE_VERBOSE, "v", 'i', "Verbosity level", 0);
 STATIC_CONFIG_ITEM( BLACKLIST_DEVS, "blacklist-devs", 's', "List any devs (or substrings of devs) to blacklist.", "-" );
 STATIC_CONFIG_ITEM( CONFIG_FILE, "configfile", 's', "Default configuration file", "config.json" );
 STATIC_CONFIG_ITEM( CONFIG_D_CALI, "disable-calibrate", 'i', "Enables or disables calibration", 0 );
@@ -44,6 +45,11 @@ static void survivefault(struct SurviveContext *ctx, const char *fault) {
 static void survivenote(struct SurviveContext *ctx, const char *fault) {
 	survive_recording_info_process(ctx, fault);
 	fprintf(stderr, "Info: %s\n", fault);
+}
+
+static void survivewarn(struct SurviveContext *ctx, const char *fault) {
+	survive_recording_info_process(ctx, fault);
+	fprintf(stderr, "\033[0;31mWarn: %s\033[0m\n", fault);
 }
 
 static void *button_servicer(void *context) {
@@ -253,6 +259,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 
 	ctx->faultfunction = survivefault;
 	ctx->notefunction = survivenote;
+	ctx->warnfunction = survivewarn;
 
 	if( list_for_autocomplete )
 	{
@@ -319,14 +326,15 @@ survive_timecode survive_timecode_difference(survive_timecode most_recent, survi
 	return diff;
 }
 
-void *GetDriverByConfig(SurviveContext *ctx, const char *name, const char *configname, const char *configdef,
-						int verbose) {
+void *GetDriverByConfig(SurviveContext *ctx, const char *name, const char *configname, const char *configdef) {
 	const char *Preferred = survive_configs(ctx, configname, SC_SETCONFIG, configdef);
 	const char *DriverName = 0;
 	const char *picked = 0;
 	int i = 0;
 	void *func = 0;
 	int prefixLen = strlen(name);
+
+	int verbose = survive_configi(ctx, "v", SC_SETCONFIG, 0);
 
 	if (verbose > 1)
 		SV_INFO("Available %ss:", name);
@@ -365,19 +373,26 @@ int survive_startup(SurviveContext *ctx) {
 	// start the thread to process button data
 	ctx->buttonservicethread = OGCreateThread(button_servicer, ctx);
 
-	PoserCB PreferredPoserCB = GetDriverByConfig(ctx, "Poser", "defaultposer", "SBA", 2);
-	ctx->lightcapfunction = GetDriverByConfig(ctx, "Disambiguator", "disambiguator", "Turvey", 2);
+	PoserCB PreferredPoserCB = GetDriverByConfig(ctx, "Poser", "defaultposer", "SBA");
+	ctx->lightcapfunction = GetDriverByConfig(ctx, "Disambiguator", "disambiguator", "Turvey");
 
 	const char *DriverName;
 
 	i = 0;
 
+	char buffer[1024] = "Loaded drivers: ";
 	while ((DriverName = GetDriverNameMatching("DriverReg", i++))) {
 		DeviceDriver dd = GetDriver(DriverName);
-		SV_INFO("Loading driver %s (%p) (%d)", DriverName, dd, i);
 		r = dd(ctx);
-		SV_INFO("Driver %s reports status %d", DriverName, r);
+		if (r < 0) {
+			SV_WARN("Driver %s reports status %d", DriverName + strlen("DriverReg"), r);
+		} else {
+			strcat(buffer, DriverName + strlen("DriverReg"));
+			strcat(buffer, ", ");
+		}
 	}
+	buffer[strlen(buffer) - 2] = 0;
+	SV_INFO("%s", buffer);
 
 	// Apply poser to objects.
 	for (i = 0; i < ctx->objs_ct; i++) {
@@ -427,9 +442,8 @@ int survive_startup(SurviveContext *ctx) {
 		}
 	}
 
-	if( ctx->objs_ct == 0 )
-	{
-		SV_ERROR( "Fatal error: No trackable objects found in any calibrators." );
+	if (ctx->objs_ct == 0 && ctx->driver_ct == 0) {
+		SV_ERROR("Fatal error: No trackable objects provided and no drivers are registered.");
 	}
 
 	return 0;
@@ -499,6 +513,7 @@ void survive_install_lighthouse_pose_fn(SurviveContext *ctx, lighthouse_pose_fun
 }
 
 int survive_add_object(SurviveContext *ctx, SurviveObject *obj) {
+	SV_INFO("Adding tracked object %s from %s", obj->codename, obj->drivername);
 	int oldct = ctx->objs_ct;
 	ctx->objs = realloc(ctx->objs, sizeof(SurviveObject *) * (oldct + 1));
 	ctx->objs[oldct] = obj;

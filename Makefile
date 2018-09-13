@@ -24,7 +24,6 @@ endif
 
 CC?=gcc
 
-
 ifdef USE_ASAN
 	CFLAGS+=-fsanitize=address -fsanitize=undefined
 endif
@@ -38,6 +37,12 @@ POSERS:=src/poser_dummy.c src/poser_imu.c src/poser_charlesrefine.c src/poser_ge
 EXTRA_POSERS:=src/poser_daveortho.c src/poser_charlesslow.c src/poser_octavioradii.c src/poser_turveytori.c
 REDISTS:=redist/json_helpers.c redist/linmath.c redist/jsmn.c
 TEST_CASES:=src/test_cases/main.c src/test_cases/kalman.c src/test_cases/reproject.c
+
+
+ifdef USE_USBMON
+	LDFLAGS+=-lpcap
+	AUX_NEEDED+=src/usbmon_driver.c
+endif
 
 #----------
 # Platform specific changes to CFLAGS/LDFLAGS

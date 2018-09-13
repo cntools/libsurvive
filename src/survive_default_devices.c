@@ -7,11 +7,10 @@
 #include <string.h>
 
 #define HMD_IMU_HZ 1000.0f
-#define VIVE_DEFAULT_IMU_HZ 250.0f 
+#define VIVE_DEFAULT_IMU_HZ 250.0f
 
-static SurviveObject *
-survive_create_device(SurviveContext *ctx, const char *driver_name,
-					  void *driver, const char *device_name, haptic_func fn) {
+SurviveObject *survive_create_device(SurviveContext *ctx, const char *driver_name, void *driver,
+									 const char *device_name, haptic_func fn) {
 	SurviveObject *device = calloc(1, sizeof(SurviveObject));
 
 	device->ctx = ctx;

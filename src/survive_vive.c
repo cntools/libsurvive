@@ -26,20 +26,7 @@
 #include "survive_default_devices.h"
 #include "survive_config.h"
 
-#ifdef HIDAPI
-#if defined(WINDOWS) || defined(WIN32) || defined (_WIN32)
-#include <windows.h>
-#undef WCHAR_MAX
-#endif
-#include <hidapi.h>
-#else
-#ifdef __FreeBSD__
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
-#endif
-
+#include "survive_vive.h"
 
 struct SurviveViveData;
 
@@ -87,78 +74,14 @@ const char * devnames[] = {
 }; //length MAX_USB_INTERFACES
 
 
-enum {
-    USB_DEV_HMD = 0,
-    USB_DEV_HMD_IMU_LH,
-    USB_DEV_WATCHMAN1,
-    USB_DEV_WATCHMAN2,
-    USB_DEV_TRACKER0,
-    USB_DEV_TRACKER1,
-    USB_DEV_W_WATCHMAN1,    // Wired Watchman attached via USB
-#ifdef HIDAPI
-    USB_DEV_HMD_IMU_LHB,
-    USB_DEV_TRACKER0_LIGHTCAP,
-    USB_DEV_TRACKER1_LIGHTCAP,
-    USB_DEV_W_WATCHMAN1_LIGHTCAP,
-
-    USB_DEV_HMD_BUTTONS,
-    USB_DEV_TRACKER0_BUTTONS,
-    USB_DEV_TRACKER1_BUTTONS,
-    USB_DEV_W_WATCHMAN1_BUTTONS,
-#endif
-    MAX_USB_DEVS
-};
-
-enum {
-    USB_IF_HMD = 0,
-    USB_IF_HMD_IMU_LH,
-    USB_IF_WATCHMAN1,
-    USB_IF_WATCHMAN2,
-    USB_IF_TRACKER0,
-    USB_IF_TRACKER1,
-    USB_IF_W_WATCHMAN1,
-
-    USB_IF_LIGHTCAP,
-    USB_IF_TRACKER0_LIGHTCAP,
-    USB_IF_TRACKER1_LIGHTCAP,
-    USB_IF_W_WATCHMAN1_LIGHTCAP,
-
-    USB_IF_HMD_BUTTONS,
-    USB_IF_TRACKER0_BUTTONS,
-    USB_IF_TRACKER1_BUTTONS,
-    USB_IF_W_WATCHMAN1_BUTTONS,
-    MAX_INTERFACES
-};
-
 typedef struct SurviveUSBInterface SurviveUSBInterface;
 typedef struct SurviveViveData SurviveViveData;
-
-typedef void (*usb_callback)( SurviveUSBInterface * ti );
 
 #ifdef HIDAPI
 #define USBHANDLE hid_device *
 #else
 #define USBHANDLE libusb_device_handle *
 #endif
-
-struct SurviveUSBInterface
-{
-	SurviveViveData * sv;
-	SurviveContext * ctx;
-
-#ifdef HIDAPI
-	USBHANDLE uh;
-#else
-	struct libusb_transfer * transfer;
-#endif
-	SurviveObject * assoc_obj;
-	int actual_len;
-	uint8_t buffer[INTBUFFSIZE];
-	usb_callback cb;
-	int which_interface_am_i;	//for indexing into uiface
-	const char * hname;			//human-readable names
-	size_t packet_count;
-};
 
 struct SurviveViveData
 {
@@ -1769,6 +1692,12 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	  return 0;
 	}
 
+	int usbmon_enable = survive_configi(ctx, "usbmon", SC_GET, 0);
+	if (usbmon_enable) {
+		SV_INFO("usbmon is active; disabling USB driver");
+		return 0;
+	}
+
 	SurviveViveData * sv = calloc(1, sizeof(SurviveViveData) );
 	SurviveObject * hmd = survive_create_hmd(ctx, "HTC", sv);
 	SurviveObject * wm0 = survive_create_wm0(ctx, "HTC", sv, 0);
@@ -1802,6 +1731,7 @@ int DriverRegHTCVive( SurviveContext * ctx )
 	  survive_add_driver( ctx, sv, survive_vive_usb_poll, survive_vive_close, survive_vive_send_magic );
 	} else {
 	  SV_INFO("No USB devices detected");
+	  goto fail_gracefully;
 	}
 
 	//Next, pull out the config stuff.

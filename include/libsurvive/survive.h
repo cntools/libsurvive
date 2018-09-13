@@ -204,6 +204,7 @@ enum SurviveCalFlag {
 struct SurviveContext {
 	text_feedback_func faultfunction;
 	text_feedback_func notefunction;
+	text_feedback_func warnfunction;
 	light_process_func lightproc;
 	imu_process_func imuproc;
 	angle_process_func angleproc;
@@ -341,6 +342,13 @@ void survive_add_driver(SurviveContext *ctx, void *payload, DeviceDriverCb poll,
 
 // This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
 void handle_lightcap(SurviveObject *so, LightcapElement *le);
+
+#define SV_WARN(...)                                                                                                   \
+	{                                                                                                                  \
+		char stbuff[1024];                                                                                             \
+		sprintf(stbuff, __VA_ARGS__);                                                                                  \
+		ctx->warnfunction(ctx, stbuff);                                                                                \
+	}
 
 #define SV_INFO(...)                                                                                                   \
 	{                                                                                                                  \

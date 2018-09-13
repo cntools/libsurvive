@@ -229,9 +229,9 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 	}
 
 	{
-		const char *subposer = survive_configs(so->ctx, "seed-poser", SC_GET, "PoserEPNP");
+		const char *subposer = survive_configs(so->ctx, "seed-poser", SC_GET, "EPNP");
 
-		PoserCB driver = (PoserCB)GetDriver(subposer);
+		PoserCB driver = (PoserCB)GetDriverWithPrefix("Poser", subposer);
 		SurviveContext *ctx = so->ctx;
 		if (driver) {
 			PoserData hdr = pdfs->hdr;
@@ -242,7 +242,7 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 			driver(so, &pdfs->hdr);
 			pdfs->hdr = hdr;
 		} else {
-			SV_INFO("Not using a seed poser for SBA; results will likely be way off");
+			SV_INFO("Not using a seed poser for MPFIT; results will likely be way off");
 			for (int i = 0; i < 2; i++) {
 				so->ctx->bsd[i].Pose = (SurvivePose){0};
 				so->ctx->bsd[i].Pose.Rot[0] = 1.;

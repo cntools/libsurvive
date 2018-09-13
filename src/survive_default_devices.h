@@ -3,6 +3,9 @@
 
 #include <survive.h>
 
+SurviveObject *survive_create_device(SurviveContext *ctx, const char *driver_name, void *driver,
+									 const char *device_name, haptic_func fn);
+
 SurviveObject *survive_create_hmd(SurviveContext *ctx, const char *driver_name,
 								  void *driver);
 SurviveObject *survive_create_wm0(SurviveContext *ctx, const char *driver_name,

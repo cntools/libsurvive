@@ -93,6 +93,15 @@ void survive_recording_raw_pose_process(SurviveObject *so, uint8_t lighthouse, S
 					pose->Pos[1], pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
 }
 
+void survive_recording_external_pose_process(SurviveContext *ctx, const char *name, SurvivePose *pose) {
+	SurviveRecordingData *recordingData = ctx->recptr;
+	if (recordingData == 0)
+		return;
+
+	write_to_output(recordingData, "%s EXTERNAL_POSE %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\n", name, pose->Pos[0],
+					pose->Pos[1], pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
+}
+
 void survive_recording_info_process(SurviveContext *ctx, const char *fault) {
 	SurviveRecordingData *recordingData = ctx->recptr;
 	if (recordingData == 0)

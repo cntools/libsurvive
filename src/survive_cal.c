@@ -204,7 +204,7 @@ void survive_cal_install( struct SurviveContext * ctx )
 		}
 	}
 
-	cd->ConfigPoserFn = GetDriverByConfig(ctx, "Poser", "configposer", "SBA", 0);
+	cd->ConfigPoserFn = GetDriverByConfig(ctx, "Poser", "configposer", "SBA");
 
 	ootx_packet_clbk = ootx_packet_clbk_d;
 	ootx_error_clbk = ootx_error_clbk_d;
