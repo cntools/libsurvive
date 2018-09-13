@@ -7,7 +7,7 @@ var canvas;
 var oldDrawTime = 0;
 var timecode = {};
 var oldPoseTime = 0, poseCnt = 0;
-var oldPose = [0, 0, 0];
+var oldPose = [ 0, 0, 0 ];
 var scene, camera, renderer, floor, fpv_camera;
 
 $(function() { $("#toggleBtn").click(function() { $("#cam").toggle(); }); });
@@ -60,9 +60,9 @@ function add_lighthouse(idx, p, q) {
 }
 
 function recolorTrackers(when) {
-    if(ctx == undefined)
-	return;
-    
+	if (ctx == undefined)
+		return;
+
 	for (var key in angles) {
 		var colors = [];
 
@@ -93,7 +93,7 @@ function recolorTrackers(when) {
 						colors[id] = colors[id] | augment;
 					}
 				}
-			}
+		}
 
 		for (var id in colors) {
 			if (objs[key]) {
@@ -102,14 +102,14 @@ function recolorTrackers(when) {
 			}
 		}
 	}
-	}
+}
 
 function redrawCanvas(when) {
 	oldDrawTime = new Date().getTime();
 	if (!ctx) {
 		canvas = document.getElementById("camcanvas");
 		ctx = canvas.getContext("2d");
-		}
+	}
 	if (!$(canvas).is(":visible")) {
 		return true;
 	}
@@ -121,7 +121,7 @@ function redrawCanvas(when) {
 	function rad_to_x(ang) {
 		var half_fov = fov_radians / 2;
 		return ang / half_fov * canvas.width / 2 + canvas.width / 2;
-		}
+	}
 	var rad_to_y = rad_to_x;
 
 	ctx.strokeStyle = "#ffffff";
@@ -171,12 +171,14 @@ function redrawCanvas(when) {
 				}
 		}
 	}
-	}
+}
 
 function create_tracked_object(info) {
 	var sensorGeometry = new THREE.SphereGeometry(.01, 32, 16);
 	var group = new THREE.Group();
 	group.sensors = [];
+	var axesLength = 1.;
+
 	if (info.config && info.config.lighthouse_config) {
 		for (var idx in info.config.lighthouse_config.modelPoints) {
 			var p = info.config.lighthouse_config.modelPoints[idx];
@@ -197,36 +199,108 @@ function create_tracked_object(info) {
 			group.sensors[idx] = sensorMaterial;
 			group.add(newSensor);
 		}
-		}
-	var axes = new THREE.AxesHelper(1);
+	} else {
+		axesLength = 2.;
+	}
+
+	var axes = new THREE.AxesHelper(axesLength);
 	group.add(axes);
 
 	objs[info.tracker] = group;
 	scene.add(group);
-	}
+}
 
-var trails;
+var displayTrails = false;
+var trails = {};
 var MAX_LINE_POINTS = 100000;
-function update_trails() {
-	if (this.checked) {
+
+function get_trails(obj) {
+	if (displayTrails === false)
+		return null;
+
+	if (trails[obj.tracker] == null) {
 		var geometry = new THREE.Geometry();
 		var material = new THREE.LineBasicMaterial({color : 0x305ea8});
 
 		for (i = 0; i < MAX_LINE_POINTS; i++) {
-			geometry.vertices.push(new THREE.Vector3(0, 0, 0));
+			geometry.vertices.push(new THREE.Vector3(obj.position[0], obj.position[1], obj.position[2]));
 		}
 		geometry.dynamic = true;
 
-		trails = new THREE.Line(geometry, material);
+		trails[obj.tracker] = new THREE.Line(geometry, material);
 
-		scene.add(trails);
+		scene.add(trails[obj.tracker]);
+	}
+
+	return trails[obj.tracker]
+}
+
+function update_trails() {
+	if (this.checked) {
+		displayTrails = true;
 	} else {
-		if (trails)
-			scene.remove(trails);
+		displayTrails = false;
+		var names = Object.keys(trails);
+		for (var i = 0; i < names.length; i++) {
+			var name = names[i];
+			scene.remove(trails[name]);
+		}
+		trails = {};
 	}
 }
 
 $(function() { $("#trails").change(update_trails); });
+
+function update_object(v, allow_unsetup) {
+	var obj = {
+		tracker : v[1],
+		position : [ parseFloat(v[3]), parseFloat(v[4]), parseFloat(v[5]) ],
+		quat : [ parseFloat(v[6]), parseFloat(v[7]), parseFloat(v[8]), parseFloat(v[9]) ]
+	};
+	if (allow_unsetup && objs[obj.tracker] == null) {
+		create_tracked_object({tracker : obj.tracker});
+	}
+
+	if (objs[obj.tracker]) {
+		var now = new Date().getTime();
+		if (oldPoseTime + 5000 < now) {
+			oldPoseTime = now;
+			console.log((poseCnt / 5) + "hz");
+			poseCnt = 0;
+		}
+		poseCnt++;
+		objs[obj.tracker].position.set(obj.position[0], obj.position[1], obj.position[2]);
+		objs[obj.tracker].quaternion.set(obj.quat[1], obj.quat[2], obj.quat[3], obj.quat[0]);
+		objs[obj.tracker].verticesNeedUpdate = true;
+
+		var d = 0;
+		for (var i = 0; i < 3; i++) {
+			d += Math.pow(obj.position[i] - oldPose[i], 2.);
+		}
+
+		var trails = get_trails(obj);
+		if (trails && Math.sqrt(d) > .01) {
+
+			trails.geometry.vertices.push(trails.geometry.vertices.shift()); // shift the array
+			trails.geometry.vertices[MAX_LINE_POINTS - 1] =
+				new THREE.Vector3(obj.position[0], obj.position[1], obj.position[2]);
+			trails.geometry.verticesNeedUpdate = true;
+			oldPose = obj.position;
+		}
+
+		if ("HMD" === obj.tracker) {
+			var up = new THREE.Vector3(0, 1, 0);
+			var out = new THREE.Vector3(0, 0, 1);
+
+			fpv_camera.up = up.applyQuaternion(objs[obj.tracker].quaternion);
+			var lookAt = out.applyQuaternion(objs[obj.tracker].quaternion);
+			lookAt.add(objs[obj.tracker].position);
+
+			fpv_camera.position.set(obj.position[0], obj.position[1], obj.position[2]);
+			fpv_camera.lookAt(lookAt);
+		}
+	}
+}
 
 var survive_log_handlers = {
 	"LH_POSE" : function(v) {
@@ -238,51 +312,8 @@ var survive_log_handlers = {
 
 		add_lighthouse(obj.lighthouse, obj.position, obj.quat);
 	},
-	"POSE" : function(v, tracker) {
-		var obj = {
-			tracker : v[1],
-			position : [ parseFloat(v[3]), parseFloat(v[4]), parseFloat(v[5]) ],
-			quat : [ parseFloat(v[6]), parseFloat(v[7]), parseFloat(v[8]), parseFloat(v[9]) ]
-		};
-
-		if (objs[obj.tracker]) {
-			var now = new Date().getTime();
-			if (oldPoseTime + 5000 < now) {
-				oldPoseTime = now;
-				console.log((poseCnt / 5) + "hz");
-				poseCnt = 0;
-			}
-			poseCnt++;
-			objs[obj.tracker].position.set(obj.position[0], obj.position[1], obj.position[2]);
-			objs[obj.tracker].quaternion.set(obj.quat[1], obj.quat[2], obj.quat[3], obj.quat[0]);
-			objs[obj.tracker].verticesNeedUpdate = true;
-
-			var d = 0;
-			for(var i = 0; i < 3;i++) {
-				d += Math.pow(obj.position[i] - oldPose[i], 2.);
-            }
-			if (trails && Math.sqrt( d ) > .01) {
-
-				trails.geometry.vertices.push(trails.geometry.vertices.shift()); // shift the array
-				trails.geometry.vertices[MAX_LINE_POINTS - 1] =
-					new THREE.Vector3(obj.position[0], obj.position[1], obj.position[2]);
-				trails.geometry.verticesNeedUpdate = true;
-                oldPose = obj.position;
-			}
-
-			if ("HMD" === obj.tracker) {
-				var up = new THREE.Vector3(0, 1, 0);
-				var out = new THREE.Vector3(0, 0, 1);
-
-				fpv_camera.up = up.applyQuaternion(objs[obj.tracker].quaternion);
-				var lookAt = out.applyQuaternion(objs[obj.tracker].quaternion);
-				lookAt.add(objs[obj.tracker].position);
-
-				fpv_camera.position.set(obj.position[0], obj.position[1], obj.position[2]);
-				fpv_camera.lookAt(lookAt);
-			}
-		}
-	},
+	"POSE" : update_object,
+	"EXTERNAL_POSE" : function(v) { update_object(v, true); },
 	"CONFIG" : function(v, tracker) {
 		var configStr = v.slice(3).join(' ');
 		var config = JSON.parse(configStr);
@@ -314,7 +345,6 @@ var survive_log_handlers = {
 		var consoleDiv = $("#console");
 		consoleDiv.append(msg + "</br>");
 		consoleDiv[0].scrollTop = consoleDiv[0].scrollHeight;
-
 	},
 	"I" : function(v, tracker) {
 		var obj = {
@@ -334,7 +364,7 @@ var survive_log_handlers = {
 
 				var line = new THREE.Line(downAxes[obj.tracker], new THREE.LineBasicMaterial({color : 0xffffff}));
 				scene.add(line);
-				}
+			}
 
 			if (objs[obj.tracker].position) {
 				var q = obj.accelgyro;
@@ -345,7 +375,6 @@ var survive_log_handlers = {
 				downAxes[obj.tracker].verticesNeedUpdate = true;
 			}
 		}
-
 	}
 };
 
@@ -355,7 +384,7 @@ function process_survive_handlers(msg) {
 
 	if (survive_log_handlers[s[2]]) {
 		survive_log_handlers[s[2]](s);
-		}
+	}
 
 	return {};
 }
@@ -365,7 +394,6 @@ var survive_ws;
 // Dial up the websocket
 $(function() {
 	setTimeout(function() {
-
 		var url = new URL(window.location.href);
 		var remote = url.searchParams.get("remote");
 
@@ -382,7 +410,6 @@ $(function() {
 			var msg = evt.data;
 			process_survive_handlers(msg);
 		};
-
 	}, 60); // Hacky, but this gives the server time to restart on CTRL+R
 });
 
@@ -399,8 +426,7 @@ $(function() {
 // FUNCTIONS //
 ///////////////
 
-function
-init() {
+function init() {
 	///////////
 	// SCENE //
 	///////////
@@ -457,7 +483,7 @@ init() {
 					zz = 5;
 					color = 0xffff00;
 					break;
-					}
+				}
 				var material = new THREE.MeshStandardMaterial({color : color});
 				cube.position.set(x, y, zz);
 				scene.add(cube);
@@ -512,7 +538,7 @@ function animate() {
 	recolorTrackers(timecode);
 	render();
 	redrawCanvas(timecode);
-	}
+}
 
 function render() {
 	var use_fpv = $("#fpv").length > 0 && $("#fpv")[0].checked;
