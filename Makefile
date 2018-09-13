@@ -1,10 +1,18 @@
+-include .options
+
 LIBRARY:=./lib/libsurvive.so
 STATIC_LIBRARY:=./lib/libsurvive.a
 
-all : $(STATIC_LIBRARY) $(LIBRARY) data_recorder test calibrate calibrate_client simple_pose_test
+all : $(STATIC_LIBRARY) $(LIBRARY) data_recorder test calibrate calibrate_client simple_pose_test .options
 	@echo "Built with defaults.  Type 'make help' for more info."
 
-.PHONY : help clean buildfolders
+.options:
+	@echo "USE_ASAN?=$(USE_ASAN)" > .options
+	@echo "USE_USBMON?=$(USE_USBMON)" >> .options
+	@echo "LINUX_USE_HIDAPI?=$(LINUX_USE_HIDAPI)" >> .options
+	@echo "MINIMAL?=$(MINIMAL)" >> .options
+
+.PHONY : help clean buildfolders .options
 
 OBJDIR:=build
 
@@ -133,15 +141,15 @@ test_cases: $(TEST_CASES) $(LIBRARY)
 
 #### Actual build system.
 
-$(OBJDIR):
-	mkdir -p lib
-	mkdir -p $(OBJDIR)
-	mkdir -p $(OBJDIR)/winbuild
-	mkdir -p $(OBJDIR)/src
-	mkdir -p $(OBJDIR)/redist
-	mkdir -p $(OBJDIR)/redist/sba
-	mkdir -p $(OBJDIR)/redist/mpfit
-	mkdir -p $(OBJDIR)/src/epnp
+$(OBJDIR): 
+	@mkdir -p lib
+	@mkdir -p $(OBJDIR)
+	@mkdir -p $(OBJDIR)/winbuild
+	@mkdir -p $(OBJDIR)/src
+	@mkdir -p $(OBJDIR)/redist
+	@mkdir -p $(OBJDIR)/redist/sba
+	@mkdir -p $(OBJDIR)/redist/mpfit
+	@mkdir -p $(OBJDIR)/src/epnp
 
 $(LIBRARY): $(LIBSURVIVE_O) $(OBJDIR)
 	$(CC) $(CFLAGS) -shared -o $@ $(LIBSURVIVE_O) $(LDFLAGS)
