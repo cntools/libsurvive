@@ -125,6 +125,7 @@ Disambiguator | [survive_data.c](src/survive_turveybiguator.c) (default) | More 
 Disambiguator | [survive_data.c](src/survive_statebased_disambiguator.c) | A fast disambiguator that was times the state shifts between pulses. Experimental. Made to allow tracking very close to the lighthouse | [@jdavidberger](https://github.com/jdavidberger)
 Dismabiguator | superceded disambiguator | A more sophisticated disambiguator, development abandoned.  Removed from tree. |  [@jpicht](https://github.com/jpicht)
 Driver | [survive_vive.c](src/survive_vive.c) | Driver for HTC Vive HMD, Watchmen (wired+wireless) and Tracker | [@cnlohr](https://github.com/cnlohr) and [@mwturvey](https://github.com/mwturvey)
+Driver | [usbmon_driver.c](src/usbmon_driver.c) | Driver for running alongside openvr. Requires usbmon | [@jdavidberger](https://github.com/jdavidberger)
 OOTX Decoder | [ootx_decoder.c](src/ootx_decoder.c) | The system that takes the pulse-codes from the sync pulses from the lighthouses and get [OOTX Data](https://github.com/nairol/LighthouseRedox/blob/master/docs/Light%20Emissions.md) | [@axlecrusher](https://github.com/axlecrusher)
 
 ## Component Pluggability Matrix
@@ -324,6 +325,20 @@ Nothing will happen until you connect to that page. When you do, the app lifetim
 The arrow keys will move you to the left / right / up / down and the UI response to orbital mouse controls. 
 
 ![Visuzliation Screenshot](https://raw.githubusercontent.com/cnlohr/libsurvive/master/useful_files/viz_screenshot.jpg)
+
+# Running with USBMON
+
+If you compile the library with 'USE_USBMON=1', it will build a passive usb monitor driver into the library you can enable by passing '--usbmon'. This disables the default driver much like the playback driver does, and then uses libpcap to grab data from active USB devices. This lets other programs have an exclusive read on the various USB devices while letting libsurvive track objects.
+
+For this mode to successfully passively track a device, you must have its device specific configuration file local to the working directory already since it can not query for the config file nor is it gaurunteed to see it on the wire. 
+
+## Comparing to openvr output
+
+There is also a test program in `tools/openvr_compare` which uses openvr directly and exposes openvr poses as an external data source into libsurvive. This allows you to compare the two outputs side by side in either the visualizer or whichever tool is preferred. 
+
+Be warned when you try to make this project, it must retrieve openvr which is a large repository. 
+
+Recording and playback with externally available pose data is also supported with the normal recording flags. 
 
 ## Notes about coordinate frames.
 
