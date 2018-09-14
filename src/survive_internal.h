@@ -20,6 +20,8 @@ void   ListDrivers();
 void *GetDriverByConfig(SurviveContext *ctx, const char *name, const char *configname, const char *configdef,
 						int verbose);
 
+void survive_load_plugins();
+
 #endif
 
 

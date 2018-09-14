@@ -114,6 +114,8 @@ static void PrintMatchingDrivers( const char * prefix, const char * matchingpara
 SurviveContext *survive_init_internal(int argc, char *const *argv) {
 	int i;
 
+	survive_load_plugins();
+
 #ifdef RUNTIME_SYMNUM
 	if (!did_runtime_symnum) {
 		EnumerateSymbols(SymnumCheck);

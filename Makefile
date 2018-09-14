@@ -1,7 +1,7 @@
 LIBRARY:=./lib/libsurvive.so
 STATIC_LIBRARY:=./lib/libsurvive.a
 
-all : $(STATIC_LIBRARY) $(LIBRARY) data_recorder test calibrate calibrate_client simple_pose_test
+all : $(STATIC_LIBRARY) $(LIBRARY) data_recorder test calibrate calibrate_client simple_pose_test .plugins
 	@echo "Built with defaults.  Type 'make help' for more info."
 
 .PHONY : help clean buildfolders
@@ -18,7 +18,7 @@ ifdef WINDOWS
 	CC:=i686-w64-mingw32-gcc
 else
 	CFLAGS+=-Iinclude/libsurvive -fPIC -g -O3 -Iredist -std=gnu99 -MD
-	LDFLAGS+=-L/usr/local/lib -lpthread -lz -lm -g -llapacke  -lcblas -lm  -lusb-1.0
+	LDFLAGS+=-L/usr/local/lib -lpthread -lz -lm -g -llapacke  -lcblas -lm  -lusb-1.0 -ldl
 	LDFLAGS_TOOLS+=-Llib -lsurvive -Wl,-rpath,lib -lX11 $(LDFLAGS)
 endif
 
@@ -29,12 +29,13 @@ ifdef USE_ASAN
 	CFLAGS+=-fsanitize=address -fsanitize=undefined
 endif
 
-SBA:=redist/sba/sba_chkjac.c  redist/sba/sba_crsm.c  redist/sba/sba_lapack.c  redist/sba/sba_levmar.c  redist/sba/sba_levmar_wrap.c redist/minimal_opencv.c src/poser_epnp.c src/poser_sba.c src/epnp/epnp.c
-MPFIT:=redist/mpfit/mpfit.c src/poser_mpfit.c
-LIBSURVIVE_CORE+=src/survive.c src/survive_process.c src/ootx_decoder.c src/survive_driverman.c src/survive_default_devices.c src/survive_playback.c src/survive_config.c src/survive_cal.c  src/poser.c src/survive_sensor_activations.c src/survive_disambiguator.c src/survive_imu.c src/survive_kalman.c src/survive_api.c src/survive_optimizer.c
-MINIMAL_NEEDED+=src/survive_usb.c src/survive_charlesbiguator.c  src/survive_vive.c src/survive_reproject.c
-AUX_NEEDED+=src/survive_turveybiguator.c  src/survive_statebased_disambiguator.c src/survive_driver_dummy.c src/survive_driver_udp.c
-POSERS:=src/poser_dummy.c src/poser_imu.c src/poser_charlesrefine.c src/poser_general_optimizer.c
+SBA:=redist/sba/sba_chkjac.c  redist/sba/sba_crsm.c  redist/sba/sba_lapack.c  redist/sba/sba_levmar.c  redist/sba/sba_levmar_wrap.c 
+MPFIT:=redist/mpfit/mpfit.c
+LIBSURVIVE_CORE+=src/survive.c src/survive_process.c src/ootx_decoder.c src/survive_driverman.c src/survive_default_devices.c src/survive_playback.c src/survive_config.c src/survive_cal.c src/poser.c src/survive_sensor_activations.c src/survive_disambiguator.c src/survive_imu.c src/survive_kalman.c src/survive_api.c src/survive_plugins.c src/poser_general_optimizer.c
+MINIMAL_NEEDED+=src/survive_reproject.c redist/minimal_opencv.c 
+AUX_NEEDED+=
+PLUGINS+=survive_driver_dummy poser_dummy poser_mpfit poser_epnp poser_sba survive_optimizer survive_turveybiguator survive_statebased_disambiguator survive_driver_udp poser_imu poser_charlesrefine survive_charlesbiguator survive_vive
+POSERS:=
 EXTRA_POSERS:=src/poser_daveortho.c src/poser_charlesslow.c src/poser_octavioradii.c src/poser_turveytori.c
 REDISTS:=redist/json_helpers.c redist/linmath.c redist/jsmn.c
 TEST_CASES:=src/test_cases/main.c src/test_cases/kalman.c src/test_cases/reproject.c
@@ -66,13 +67,14 @@ endif
 ifdef MINIMAL
 	LIBSURVIVE_C:=$(REDISTS) $(LIBSURVIVE_CORE) $(MINIMAL_NEEDED)
 else
-	LIBSURVIVE_C:=$(POSERS) $(REDISTS) $(LIBSURVIVE_CORE) $(SBA) $(MPFIT) $(MINIMAL_NEEDED) $(AUX_NEEDED)
+	LIBSURVIVE_C:=$(POSERS) $(REDISTS) $(LIBSURVIVE_CORE) $(MINIMAL_NEEDED) $(AUX_NEEDED)
 endif
 
 
 #Actually make object and dependency lists.
 LIBSURVIVE_O:=$(LIBSURVIVE_C:%.c=$(OBJDIR)/%.o)
 LIBSURVIVE_D:=$(LIBSURVIVE_C:%.c=$(OBJDIR)/%.d)
+LIBSURVIVE_PLUGINS:=$(PLUGINS:%=./lib/%.so)
 
 #Include all dependencies so if header files change, it updates.
 -include $(LIBSURVIVE_D)
@@ -140,6 +142,27 @@ $(OBJDIR):
 
 $(LIBRARY): $(LIBSURVIVE_O) $(OBJDIR)
 	$(CC) $(CFLAGS) -shared -o $@ $(LIBSURVIVE_O) $(LDFLAGS)
+
+./lib/poser_sba.so: ./src/poser_sba.c $(SBA)
+	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
+
+./lib/survive_vive.so: ./src/survive_vive.c ./src/survive_usb.c
+	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
+
+./lib/poser_epnp.so: ./src/poser_epnp.c ./src/epnp/epnp.c ./redist/minimal_opencv.c 
+	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
+
+./lib/survive_optimizer.so: ./src/survive_optimizer.c $(MPFIT)
+	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
+
+./lib/poser_mpfit.so: src/poser_mpfit.c ./lib/survive_optimizer.so
+	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
+
+# $(SBA) 
+./lib/%.so: ./src/%.c $($%_C) 
+	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
+
+.plugins: $(LIBSURVIVE_PLUGINS)
 
 $(STATIC_LIBRARY) : $(LIBSURVIVE_O) $(OBJDIR)
 	ar rcs --plugin=$$(gcc --print-file-name=liblto_plugin.so) lib/libsurvive.a $(LIBSURVIVE_O)
