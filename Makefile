@@ -1,10 +1,10 @@
 LIBRARY:=./lib/libsurvive.so
 STATIC_LIBRARY:=./lib/libsurvive.a
 
-all : $(STATIC_LIBRARY) $(LIBRARY) data_recorder test calibrate calibrate_client simple_pose_test .plugins
+all : $(STATIC_LIBRARY) $(LIBRARY) data_recorder test calibrate calibrate_client simple_pose_test plugins
 	@echo "Built with defaults.  Type 'make help' for more info."
 
-.PHONY : help clean buildfolders
+.PHONY : help clean buildfolders plugins
 
 OBJDIR:=build
 
@@ -34,7 +34,7 @@ MPFIT:=redist/mpfit/mpfit.c
 LIBSURVIVE_CORE+=src/survive.c src/survive_process.c src/ootx_decoder.c src/survive_driverman.c src/survive_default_devices.c src/survive_playback.c src/survive_config.c src/survive_cal.c src/poser.c src/survive_sensor_activations.c src/survive_disambiguator.c src/survive_imu.c src/survive_kalman.c src/survive_api.c src/survive_plugins.c src/poser_general_optimizer.c
 MINIMAL_NEEDED+=src/survive_reproject.c redist/minimal_opencv.c 
 AUX_NEEDED+=
-PLUGINS+=survive_driver_dummy poser_dummy poser_mpfit poser_epnp poser_sba survive_optimizer survive_turveybiguator survive_statebased_disambiguator survive_driver_udp poser_imu poser_charlesrefine survive_charlesbiguator survive_vive
+PLUGINS+=driver_dummy driver_udp driver_vive disambiguator_turvey disambiguator_statebased disambiguator_charles poser_dummy poser_mpfit poser_epnp poser_sba survive_optimizer poser_imu poser_charlesrefine
 POSERS:=
 EXTRA_POSERS:=src/poser_daveortho.c src/poser_charlesslow.c src/poser_octavioradii.c src/poser_turveytori.c
 REDISTS:=redist/json_helpers.c redist/linmath.c redist/jsmn.c
@@ -74,7 +74,9 @@ endif
 #Actually make object and dependency lists.
 LIBSURVIVE_O:=$(LIBSURVIVE_C:%.c=$(OBJDIR)/%.o)
 LIBSURVIVE_D:=$(LIBSURVIVE_C:%.c=$(OBJDIR)/%.d)
-LIBSURVIVE_PLUGINS:=$(PLUGINS:%=./lib/%.so)
+LIBSURVIVE_PLUGINS:=$(PLUGINS:%=./lib/plugins/%.so)
+
+plugins: $(LIBSURVIVE_PLUGINS)
 
 #Include all dependencies so if header files change, it updates.
 -include $(LIBSURVIVE_D)
@@ -132,6 +134,7 @@ test_cases: $(TEST_CASES) $(LIBRARY)
 
 $(OBJDIR):
 	mkdir -p lib
+	mkdir -p lib/plugins
 	mkdir -p $(OBJDIR)
 	mkdir -p $(OBJDIR)/winbuild
 	mkdir -p $(OBJDIR)/src
@@ -140,29 +143,27 @@ $(OBJDIR):
 	mkdir -p $(OBJDIR)/redist/mpfit
 	mkdir -p $(OBJDIR)/src/epnp
 
+
 $(LIBRARY): $(LIBSURVIVE_O) $(OBJDIR)
 	$(CC) $(CFLAGS) -shared -o $@ $(LIBSURVIVE_O) $(LDFLAGS)
 
-./lib/poser_sba.so: ./src/poser_sba.c $(SBA)
+./lib/plugins/poser_sba.so: ./src/poser_sba.c $(SBA)
 	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
 
-./lib/survive_vive.so: ./src/survive_vive.c ./src/survive_usb.c
+./lib/plugins/survive_vive.so: ./src/survive_vive.c ./src/survive_usb.c
 	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
 
-./lib/poser_epnp.so: ./src/poser_epnp.c ./src/epnp/epnp.c ./redist/minimal_opencv.c 
+./lib/plugins/poser_epnp.so: ./src/poser_epnp.c ./src/epnp/epnp.c ./redist/minimal_opencv.c 
 	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
 
-./lib/survive_optimizer.so: ./src/survive_optimizer.c $(MPFIT)
+./lib/plugins/survive_optimizer.so: ./src/survive_optimizer.c $(MPFIT)
 	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
 
-./lib/poser_mpfit.so: src/poser_mpfit.c ./lib/survive_optimizer.so
+./lib/plugins/poser_mpfit.so: src/poser_mpfit.c ./lib/plugins/survive_optimizer.so
 	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
 
-# $(SBA) 
-./lib/%.so: ./src/%.c $($%_C) 
+./lib/plugins/%.so: ./src/%.c $($%_C) 
 	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
-
-.plugins: $(LIBSURVIVE_PLUGINS)
 
 $(STATIC_LIBRARY) : $(LIBSURVIVE_O) $(OBJDIR)
 	ar rcs --plugin=$$(gcc --print-file-name=liblto_plugin.so) lib/libsurvive.a $(LIBSURVIVE_O)
@@ -174,7 +175,7 @@ calibrate_tcc : $(LIBSURVIVE_C)
 	tcc -DRUNTIME_SYMNUM $(CFLAGS) -o $@ $^ $(LDFLAGS) calibrate.c $(DRAWFUNCTIONS) redist/symbol_enumerator.c
 
 clean :
-	rm -rf $(OBJDIR) *.d lib/libsurvive.a *~ src/*~ test simple_pose_test data_recorder calibrate testCocoa lib/libsurvive.so test_minimal_cv test_epnp test_epnp_ocv calibrate_client redist/*.o redist/*~ tools/data_server/data_server tools/lighthousefind/lighthousefind tools/lighthousefind_tori/lighthousefind-tori tools/plot_lighthouse/plot_lighthouse tools/process_rawcap/process_to_points redist/jsmntest redist/lintest
+	rm -rf $(OBJDIR) *.d lib/libsurvive.a *~ src/*~ test simple_pose_test data_recorder calibrate testCocoa lib/libsurvive.so test_minimal_cv test_epnp test_epnp_ocv calibrate_client redist/*.o redist/*~ tools/data_server/data_server tools/lighthousefind/lighthousefind tools/lighthousefind_tori/lighthousefind-tori tools/plot_lighthouse/plot_lighthouse tools/process_rawcap/process_to_points redist/jsmntest redist/lintest ./lib
 
 .test_redist:
 	cd redist && make .run_tests;

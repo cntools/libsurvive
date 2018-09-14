@@ -1,35 +1,35 @@
 // All MIT/x11 Licensed Code in this file may be relicensed freely under the GPL
 // or LGPL licenses.
 
+#include "os_generic.h"
+#include "survive_config.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <survive.h>
 #include <string.h>
-#include "survive_config.h"
-#include "os_generic.h"
+#include <survive.h>
 
-STATIC_CONFIG_ITEM( DUMMY_DRIVER_ENABLE, "dummy-driver-enable", 'i', "Load a dummy driver for testing.", 0 );
+STATIC_CONFIG_ITEM(DUMMY_DRIVER_ENABLE, "dummy-driver-enable", 'i', "Load a dummy driver for testing.", 0);
 
 struct SurviveDriverDummy {
-	SurviveContext * ctx;
-	SurviveObject * so;
+	SurviveContext *ctx;
+	SurviveObject *so;
 };
 typedef struct SurviveDriverDummy SurviveDriverDummy;
 
 static int dummy_poll(struct SurviveContext *ctx, void *_driver) {
 	SurviveDriverDummy *driver = _driver;
 
-/* 
-	To emit an IMU event, send this:
-		driver->ctx->imuproc(so, mask, accelgyro, timecode, id);
+	/*
+		To emit an IMU event, send this:
+			driver->ctx->imuproc(so, mask, accelgyro, timecode, id);
 
-	To emit light data, send this:
-		LightcapElement le;
-		le.sensor_id = X		//8 bits
-		le.length = Z			//16 bits
-		le.timestamp = Y		//32 bits
-		handle_lightcap(so, &le);
-*/
+		To emit light data, send this:
+			LightcapElement le;
+			le.sensor_id = X		//8 bits
+			le.length = Z			//16 bits
+			le.timestamp = Y		//32 bits
+			handle_lightcap(so, &le);
+	*/
 
 	return 0;
 }
@@ -37,41 +37,40 @@ static int dummy_poll(struct SurviveContext *ctx, void *_driver) {
 static int dummy_close(struct SurviveContext *ctx, void *_driver) {
 	SurviveDriverDummy *driver = _driver;
 
-/*
-	If you need to handle any cleanup here, like closing handles, etc.
-	you can perform it here.
-*/
+	/*
+		If you need to handle any cleanup here, like closing handles, etc.
+		you can perform it here.
+	*/
 
 	return 0;
 }
 
-int dummy_haptic( SurviveObject * so, uint8_t reserved, uint16_t pulseHigh, uint16_t pulseLow, uint16_t repeatCount )
-{
-/*
-	If your device has haptics, you can add the control for them here.
-*/
+int dummy_haptic(SurviveObject *so, uint8_t reserved, uint16_t pulseHigh, uint16_t pulseLow, uint16_t repeatCount) {
+	/*
+		If your device has haptics, you can add the control for them here.
+	*/
 	return 0;
 }
 
-int DriverRegDummy(SurviveContext *ctx)
-{
-	int enable = survive_configi( ctx, "dummy-driver-enable", SC_GET, 9 );
-	if( !enable ) return 0;
+int DriverRegDummy(SurviveContext *ctx) {
+	int enable = survive_configi(ctx, "dummy-driver-enable", SC_GET, 9);
+	if (!enable)
+		return 0;
 
 	SurviveDriverDummy *sp = calloc(1, sizeof(SurviveDriverDummy));
 	sp->ctx = ctx;
 
 	SV_INFO("Setting up dummy driver.");
 
-	//Create a new SurviveObject...
+	// Create a new SurviveObject...
 	SurviveObject *device = calloc(1, sizeof(SurviveObject));
 	device->ctx = ctx;
 	device->driver = sp;
 	memcpy(device->codename, "DM0", 4);
 	memcpy(device->drivername, "DUM", 4);
 	device->sensor_ct = 1;
-	device->sensor_locations = malloc( sizeof(FLT)*3 );
-	device->sensor_normals = malloc( sizeof(FLT)*3 );
+	device->sensor_locations = malloc(sizeof(FLT) * 3);
+	device->sensor_normals = malloc(sizeof(FLT) * 3);
 	device->sensor_locations[0] = 0;
 	device->sensor_locations[1] = 0;
 	device->sensor_locations[2] = 0;
@@ -84,10 +83,9 @@ int DriverRegDummy(SurviveContext *ctx)
 	device->haptic = dummy_haptic;
 
 	sp->so = device;
-	survive_add_object( ctx, device );
-	survive_add_driver( ctx, sp, dummy_poll, dummy_close, 0 );
+	survive_add_object(ctx, device);
+	survive_add_driver(ctx, sp, dummy_poll, dummy_close, 0);
 	return 0;
 }
 
 REGISTER_LINKTIME(DriverRegDummy);
-
