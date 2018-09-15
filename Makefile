@@ -3,18 +3,20 @@
 LIBRARY:=./lib/libsurvive.so
 STATIC_LIBRARY:=./lib/libsurvive.a
 
-all : $(STATIC_LIBRARY) $(LIBRARY) data_recorder test calibrate calibrate_client simple_pose_test .options
+all : $(STATIC_LIBRARY) $(LIBRARY) data_recorder test calibrate calibrate_client simple_pose_test plugins .options
 	@echo "Built with defaults.  Type 'make help' for more info."
+
+PREFIX?=/usr/local
 
 .options:
 	@echo "USE_ASAN?=$(USE_ASAN)" > .options
-	@echo "USE_USBMON?=$(USE_USBMON)" >> .options
 	@echo "LINUX_USE_HIDAPI?=$(LINUX_USE_HIDAPI)" >> .options
 	@echo "MINIMAL?=$(MINIMAL)" >> .options
 
-.PHONY : help clean buildfolders .options
+.PHONY : help clean buildfolders plugins all install uninstall .options
 
 OBJDIR:=build
+LIBDIR:=lib
 
 CFLAGS += -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces
 
@@ -26,7 +28,7 @@ ifdef WINDOWS
 	CC:=i686-w64-mingw32-gcc
 else
 	CFLAGS+=-Iinclude/libsurvive -fPIC -g -O3 -Iredist -std=gnu99 -MD
-	LDFLAGS+=-L/usr/local/lib -lpthread -lz -lm -g -llapacke  -lcblas -lm  -lusb-1.0
+	LDFLAGS+=-L/usr/local/lib -lpthread -lz -lm -g -llapacke  -lcblas -lm  -lusb-1.0 -ldl
 	LDFLAGS_TOOLS+=-Llib -lsurvive -Wl,-rpath,lib -lX11 $(LDFLAGS)
 endif
 
@@ -36,21 +38,16 @@ ifdef USE_ASAN
 	CFLAGS+=-fsanitize=address -fsanitize=undefined
 endif
 
-SBA:=redist/sba/sba_chkjac.c  redist/sba/sba_crsm.c  redist/sba/sba_lapack.c  redist/sba/sba_levmar.c  redist/sba/sba_levmar_wrap.c redist/minimal_opencv.c src/poser_epnp.c src/poser_sba.c src/epnp/epnp.c
-MPFIT:=redist/mpfit/mpfit.c src/poser_mpfit.c
-LIBSURVIVE_CORE+=src/survive.c src/survive_process.c src/ootx_decoder.c src/survive_driverman.c src/survive_default_devices.c src/survive_playback.c src/survive_config.c src/survive_cal.c  src/poser.c src/survive_sensor_activations.c src/survive_disambiguator.c src/survive_imu.c src/survive_kalman.c src/survive_api.c src/survive_optimizer.c
-MINIMAL_NEEDED+=src/survive_usb.c src/survive_charlesbiguator.c  src/survive_vive.c src/survive_reproject.c
-AUX_NEEDED+=src/survive_turveybiguator.c  src/survive_statebased_disambiguator.c src/survive_driver_dummy.c src/survive_driver_udp.c
-POSERS:=src/poser_dummy.c src/poser_imu.c src/poser_charlesrefine.c src/poser_general_optimizer.c
+SBA:=redist/sba/sba_chkjac.c  redist/sba/sba_crsm.c  redist/sba/sba_lapack.c  redist/sba/sba_levmar.c  redist/sba/sba_levmar_wrap.c 
+MPFIT:=redist/mpfit/mpfit.c
+LIBSURVIVE_CORE+=src/survive.c src/survive_process.c src/ootx_decoder.c src/survive_driverman.c src/survive_default_devices.c src/survive_playback.c src/survive_config.c src/survive_cal.c src/poser.c src/survive_sensor_activations.c src/survive_disambiguator.c src/survive_imu.c src/survive_kalman.c src/survive_api.c src/survive_plugins.c src/poser_general_optimizer.c
+MINIMAL_NEEDED+=src/survive_reproject.c redist/minimal_opencv.c 
+AUX_NEEDED+=
+PLUGINS+=driver_dummy driver_udp driver_vive disambiguator_turvey disambiguator_statebased disambiguator_charles poser_dummy poser_mpfit poser_epnp poser_sba poser_imu poser_charlesrefine driver_usbmon
+POSERS:=
 EXTRA_POSERS:=src/poser_daveortho.c src/poser_charlesslow.c src/poser_octavioradii.c src/poser_turveytori.c
 REDISTS:=redist/json_helpers.c redist/linmath.c redist/jsmn.c
 TEST_CASES:=src/test_cases/main.c src/test_cases/kalman.c src/test_cases/reproject.c
-
-
-ifdef USE_USBMON
-	LDFLAGS+=-lpcap
-	AUX_NEEDED+=src/usbmon_driver.c
-endif
 
 #----------
 # Platform specific changes to CFLAGS/LDFLAGS
@@ -79,13 +76,31 @@ endif
 ifdef MINIMAL
 	LIBSURVIVE_C:=$(REDISTS) $(LIBSURVIVE_CORE) $(MINIMAL_NEEDED)
 else
-	LIBSURVIVE_C:=$(POSERS) $(REDISTS) $(LIBSURVIVE_CORE) $(SBA) $(MPFIT) $(MINIMAL_NEEDED) $(AUX_NEEDED)
+	LIBSURVIVE_C:=$(POSERS) $(REDISTS) $(LIBSURVIVE_CORE) $(MINIMAL_NEEDED) $(AUX_NEEDED)
 endif
 
 
 #Actually make object and dependency lists.
 LIBSURVIVE_O:=$(LIBSURVIVE_C:%.c=$(OBJDIR)/%.o)
 LIBSURVIVE_D:=$(LIBSURVIVE_C:%.c=$(OBJDIR)/%.d)
+LIBSURVIVE_PLUGINS:=$(PLUGINS:%=./lib/plugins/%.so)
+
+plugins: $(LIBSURVIVE_PLUGINS)
+
+install: all $(PREFIX)
+	mkdir -p $(PREFIX)/lib/libsurvive/plugins
+	mkdir -p $(PREFIX)/include/libsurvive/redist
+	cp -R ./include/libsurvive $(PREFIX)/include/libsurvive
+	cp ./redist/*.h $(PREFIX)/include/libsurvive/redist
+	cp $(LIBRARY) $(PREFIX)/lib/libsurvive
+	rm -f $(PREFIX)/lib/libsurvive.so
+	ln -s $(PREFIX)/lib/libsurvive/libsurvive.so $(PREFIX)/lib/libsurvive.so
+	cp $(LIBSURVIVE_PLUGINS) $(PREFIX)/lib/libsurvive/plugins
+
+uninstall:
+	rm -rf $(PREFIX)/include/libsurvive
+	rm -rf $(PREFIX)/lib/libsurvive
+	rm -f $(PREFIX)/lib/libsurvive.so
 
 #Include all dependencies so if header files change, it updates.
 -include $(LIBSURVIVE_D)
@@ -96,7 +111,7 @@ testCocoa : testCocoa.c $(LIBRARY)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
 
 test : test.c $(LIBRARY)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
+	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS_TOOLS)
 
 simple_pose_test : simple_pose_test.c $(DRAWFUNCTIONS) $(LIBRARY)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
@@ -141,21 +156,42 @@ test_cases: $(TEST_CASES) $(LIBRARY)
 
 #### Actual build system.
 
-$(OBJDIR): 
-	@mkdir -p lib
-	@mkdir -p $(OBJDIR)
-	@mkdir -p $(OBJDIR)/winbuild
-	@mkdir -p $(OBJDIR)/src
-	@mkdir -p $(OBJDIR)/redist
-	@mkdir -p $(OBJDIR)/redist/sba
-	@mkdir -p $(OBJDIR)/redist/mpfit
-	@mkdir -p $(OBJDIR)/src/epnp
+$(OBJDIR) $(LIBDIR):
+	mkdir -p lib
+	mkdir -p lib/plugins
+	mkdir -p $(OBJDIR)
+	mkdir -p $(OBJDIR)/winbuild
+	mkdir -p $(OBJDIR)/src
+	mkdir -p $(OBJDIR)/redist
+	mkdir -p $(OBJDIR)/redist/sba
+	mkdir -p $(OBJDIR)/redist/mpfit
+	mkdir -p $(OBJDIR)/src/epnp
 
 $(LIBRARY): $(LIBSURVIVE_O) $(OBJDIR)
 	$(CC) $(CFLAGS) -shared -o $@ $(LIBSURVIVE_O) $(LDFLAGS)
 
-$(STATIC_LIBRARY) : $(LIBSURVIVE_O) $(OBJDIR)
-	ar rcs --plugin=$$(gcc --print-file-name=liblto_plugin.so) lib/libsurvive.a $(LIBSURVIVE_O)
+LDFLAGS_PLUGINS=$(LDFLAGS) -L./lib/plugins
+
+./lib/plugins/poser_sba.so: ./src/poser_sba.c $(SBA)
+	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS_PLUGINS)
+
+./lib/plugins/driver_vive.so: ./src/driver_vive.c ./src/survive_usb.c
+	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS_PLUGINS)
+
+./lib/plugins/poser_epnp.so: ./src/poser_epnp.c ./src/epnp/epnp.c ./redist/minimal_opencv.c 
+	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS_PLUGINS)
+
+./lib/plugins/poser_mpfit.so: src/poser_mpfit.c ./src/survive_optimizer.c $(MPFIT)
+	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS_PLUGINS)
+
+./lib/plugins/driver_usbmon.so: src/driver_usbmon.c ./lib/plugins/driver_vive.so
+	@$(CC) $(CFLAGS) -shared -o $@ $< $(LDFLAGS_PLUGINS) -lpcap 2> /dev/null || (echo "Could not build plug-in for usbmon -- likely you don't have lpcap installed.")
+
+./lib/plugins/%.so: ./src/%.c $($%_C) 
+	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS_PLUGINS)
+
+$(STATIC_LIBRARY) : $(LIBSURVIVE_O) $(LIBDIR) 
+	ar rcs --plugin=$$(gcc --print-file-name=liblto_plugin.so) ./lib/libsurvive.a $(LIBSURVIVE_O)
 
 $(OBJDIR)/%.o : %.c $(OBJDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -164,7 +200,7 @@ calibrate_tcc : $(LIBSURVIVE_C)
 	tcc -DRUNTIME_SYMNUM $(CFLAGS) -o $@ $^ $(LDFLAGS) calibrate.c $(DRAWFUNCTIONS) redist/symbol_enumerator.c
 
 clean :
-	rm -rf $(OBJDIR) *.d lib/libsurvive.a *~ src/*~ test simple_pose_test data_recorder calibrate testCocoa lib/libsurvive.so test_minimal_cv test_epnp test_epnp_ocv calibrate_client redist/*.o redist/*~ tools/data_server/data_server tools/lighthousefind/lighthousefind tools/lighthousefind_tori/lighthousefind-tori tools/plot_lighthouse/plot_lighthouse tools/process_rawcap/process_to_points redist/jsmntest redist/lintest
+	rm -rf $(OBJDIR) *.d lib/libsurvive.a *~ src/*~ test simple_pose_test data_recorder calibrate testCocoa lib/libsurvive.so test_minimal_cv test_epnp test_epnp_ocv calibrate_client redist/*.o redist/*~ tools/data_server/data_server tools/lighthousefind/lighthousefind tools/lighthousefind_tori/lighthousefind-tori tools/plot_lighthouse/plot_lighthouse tools/process_rawcap/process_to_points redist/jsmntest redist/lintest ./lib
 
 .test_redist:
 	cd redist && make .run_tests;

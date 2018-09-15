@@ -10,7 +10,7 @@
 #include "pcap/usb.h"
 #include <pcap.h>
 
-#include "survive_vive.h"
+#include "driver_vive.h"
 
 #include <libusb-1.0/libusb.h>
 typedef struct vive_device_t {

@@ -26,7 +26,7 @@
 #include "survive_config.h"
 #include "survive_default_devices.h"
 
-#include "survive_vive.h"
+#include "driver_vive.h"
 
 struct SurviveViveData;
 
@@ -64,7 +64,6 @@ const char *devnames[] = {
 
 typedef struct SurviveUSBInterface SurviveUSBInterface;
 typedef struct SurviveViveData SurviveViveData;
-
 #ifdef HIDAPI
 #define USBHANDLE hid_device *
 #else

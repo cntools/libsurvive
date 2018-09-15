@@ -7,12 +7,12 @@
 #include <string.h>
 
 #define PULSELENGTH_MIN_SYNC 2200
-#define TIMECENTER_TICKS     (48000000/240)
-#define PULSEDIST_MAX_TICKS  500000
-#define PULSE_IN_CLEAR_TIME  35000
-#define PULSE_MAX_FOR_SWEEP   1800
-#define PULSE_SYNCTIME_OFFSET 20000 //unused?
-#define PULSE_SYNCTIME_SLACK  5000
+#define TIMECENTER_TICKS (48000000 / 240)
+#define PULSEDIST_MAX_TICKS 500000
+#define PULSE_IN_CLEAR_TIME 35000
+#define PULSE_MAX_FOR_SWEEP 1800
+#define PULSE_SYNCTIME_OFFSET 20000 // unused?
+#define PULSE_SYNCTIME_SLACK 5000
 
 static int32_t decode_acode(uint32_t length, int32_t main_divisor) {
 	//+50 adds a small offset and seems to help always get it right.
@@ -195,8 +195,7 @@ void DisambiguatorCharles(SurviveObject *so, LightcapElement *le) {
 			int32_t offset_from = le->timestamp - dl + le->length / 2;
 
 			// Make sure pulse is in valid window
-			if (offset_from < TIMECENTER_TICKS * 2 - PULSE_IN_CLEAR_TIME &&
-				offset_from > PULSE_IN_CLEAR_TIME) {
+			if (offset_from < TIMECENTER_TICKS * 2 - PULSE_IN_CLEAR_TIME && offset_from > PULSE_IN_CLEAR_TIME) {
 				ctx->lightproc(so, le->sensor_id, acode, offset_from, le->timestamp, le->length, whichlh);
 			}
 		}
