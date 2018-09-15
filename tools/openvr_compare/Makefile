@@ -4,6 +4,12 @@ SRT:=../..
 
 LIBSURVIVE:=$(SRT)/lib/libsurvive.so
 
+-include $(SRT)/.options
+
+ifdef USE_ASAN
+	CFLAGS+=-fsanitize=address -fsanitize=undefined
+endif
+
 CFLAGS:=$(CFLAGS) -I$(SRT)/redist -I$(SRT)/include -O0 -g -I./openvr/headers
 LDFLAGS:=-lm -ldl -lopenvr_api -Wl,-rpath=./openvr/bin/linux64 -L./openvr/bin/linux64
 
@@ -14,8 +20,8 @@ openvr:
 	mkdir -p openvr/build
 	cd openvr/build && cmake .. && make
 
-openvr_compare : openvr openvr_compare.cc $(LIBSURVIVE) Makefile
-	cd ../..;USE_USBMON=1 make
+openvr_compare : openvr openvr_compare.cc Makefile
+	cd ../..; make
 	g++ $(CFLAGS) -o $@ openvr_compare.cc $(LIBSURVIVE) $(LDFLAGS)
 
 clean :

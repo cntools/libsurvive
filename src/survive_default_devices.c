@@ -22,8 +22,8 @@ SurviveObject *survive_create_device(SurviveContext *ctx, const char *driver_nam
 	device->imu_freq = VIVE_DEFAULT_IMU_HZ;
 	device->haptic = fn;
 
-	device->relative_imu_pose.Rot[0] = 1.;
-	device->relative_sensor_pose.Rot[0] = 1.;
+	device->imu2trackref.Rot[0] = 1.;
+	device->head2trackref.Rot[0] = 1.;
 
 	return device;
 }
@@ -183,7 +183,7 @@ static int process_jsonarray(scratch_space_t *scratch, char *ct0conf, stack_entr
 		if (count == 7) {
 			FLT *values = NULL;
 			if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {
-				vive_json_pose_to_survive_pose(values, &so->relative_imu_pose);
+				vive_json_pose_to_survive_pose(values, &so->imu2trackref);
 				free(values);
 			}
 		}
@@ -192,7 +192,7 @@ static int process_jsonarray(scratch_space_t *scratch, char *ct0conf, stack_entr
 		if (count == 7) {
 			FLT *values = NULL;
 			if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {
-				vive_json_pose_to_survive_pose(values, &so->relative_sensor_pose);
+				vive_json_pose_to_survive_pose(values, &so->head2trackref);
 				free(values);
 			}
 		}
@@ -281,13 +281,16 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	scratch_space_t scratch = scratch_space_init(so);
 	process_jsontok(&scratch, ct0conf, 0, t, r);
 
-	solve_vive_pose(&so->relative_imu_pose, &scratch.imu_pose);
+	solve_vive_pose(&so->imu2trackref, &scratch.imu_pose);
+
+	SurvivePose trackref2imu = InvertPoseRtn(&so->imu2trackref);
 
 	for (int i = 0; i < so->sensor_ct; i++) {
-		SurvivePose inv = InvertPoseRtn(&so->relative_sensor_pose);
-		ApplyPoseToPoint(&so->sensor_locations[i * 3], &inv, &so->sensor_locations[i * 3]);
-		quatrotatevector(&so->sensor_normals[i * 3], inv.Rot, &so->sensor_normals[i * 3]);
+		ApplyPoseToPoint(&so->sensor_locations[i * 3], &trackref2imu, &so->sensor_locations[i * 3]);
+		quatrotatevector(&so->sensor_normals[i * 3], trackref2imu.Rot, &so->sensor_normals[i * 3]);
 	}
+
+	ApplyPoseToPose(&so->head2imu, &trackref2imu, &so->head2trackref);
 
 	// Handle device-specific sacling.
 	if (strcmp(so->codename, "HMD") == 0) {

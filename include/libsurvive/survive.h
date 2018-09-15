@@ -91,6 +91,8 @@ struct SurviveObject {
 	PoserCB PoserFn;
 
 	// Device-specific information about the location of the sensors.  This data will be used by the poser.
+	// These are stored in the IMU's coordinate frame so that posers don't have to do a ton of manipulation
+	// to do sensor fusion.
 	int8_t sensor_ct;	  // sensor count
 	FLT *sensor_locations; // size is sensor_ct*3.  Contains x,y,z values for each sensor
 	FLT *sensor_normals;   // size is nrlocations*3.  cointains normal vector for each sensor
@@ -110,8 +112,16 @@ struct SurviveObject {
 	survive_timecode last_lighttime; // May be a 24- or 32- bit number depending on what device.
 
 	FLT imu_freq;
-	SurvivePose relative_imu_pose;
-	SurvivePose relative_sensor_pose;
+
+	// These are from the vive config files. They are named 'trackref_from_head' and 'trackref_from_imu'
+	// respectively. We name them x2trackref here to match the naming convention used elsewhere in this
+	// library.
+	// They are kept here for posterity more than anything -- nothing in libsurvive is ultimately represented
+	// in the 'trackref' coordinate space.
+	SurvivePose head2trackref;
+	SurvivePose imu2trackref;
+	SurvivePose head2imu;
+
 	FLT *acc_bias;   // size is FLT*3. contains x,y,z
 	FLT *acc_scale;  // size is FLT*3. contains x,y,z
 	FLT *gyro_bias;  // size is FLT*3. contains x,y,z

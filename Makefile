@@ -185,7 +185,7 @@ LDFLAGS_PLUGINS=$(LDFLAGS) -L./lib/plugins
 	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS_PLUGINS)
 
 ./lib/plugins/driver_usbmon.so: src/driver_usbmon.c ./lib/plugins/driver_vive.so
-	@$(CC) $(CFLAGS) -shared -o $@ $< $(LDFLAGS_PLUGINS) -lpcap 2> /dev/null || (echo "Could not build plug-in for usbmon -- likely you don't have lpcap installed.")
+	$(CC) $(CFLAGS) -shared -o $@ $< $(LDFLAGS_PLUGINS) -lpcap 2> /dev/null || (echo "Could not build plug-in for usbmon -- likely you don't have lpcap installed.")
 
 ./lib/plugins/%.so: ./src/%.c $($%_C) 
 	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS_PLUGINS)

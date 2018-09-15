@@ -54,39 +54,39 @@ vive_device_inst_t *find_device_inst(SurviveDriverUSBMon *d, int bus_id, int dev
 }
 
 static int interface_lookup(const vive_device_inst_t *dev, int endpoint) {
-	int32_t id = dev->device->pid + (endpoint << 24);
+	int32_t id = dev->device->pid + (endpoint << 16);
 	switch (id) {
-	case 0x81002000:
+	case 0x812000:
 		return USB_IF_HMD;
-	case 0x81002101:
+	case 0x812101:
 		return USB_IF_WATCHMAN1;
-	case 0x81002022:
+	case 0x812022:
 		return USB_IF_TRACKER0;
-	case 0x81002300:
+	case 0x812300:
 		return USB_IF_TRACKER1;
-	case 0x81002012:
+	case 0x812012:
 		return USB_IF_W_WATCHMAN1;
 
-	case 0x82002000:
+	case 0x822000:
 		return USB_IF_LIGHTCAP;
-	case 0x82002101:
+	case 0x822101:
 		return USB_IF_WATCHMAN1;
-	case 0x82002022:
+	case 0x822022:
 		return USB_IF_TRACKER0_LIGHTCAP;
-	case 0x82002300:
+	case 0x822300:
 		return USB_IF_TRACKER1_LIGHTCAP;
-	case 0x82002012:
+	case 0x822012:
 		return USB_IF_W_WATCHMAN1_LIGHTCAP;
 
-	case 0x83002000:
+	case 0x832000:
 		return USB_IF_HMD_BUTTONS;
-	case 0x83002101:
+	case 0x832101:
 		return USB_IF_W_WATCHMAN1_BUTTONS;
-	case 0x83002022:
+	case 0x832022:
 		return USB_IF_TRACKER0_BUTTONS;
-	case 0x83002300:
+	case 0x832300:
 		return USB_IF_TRACKER1_BUTTONS;
-	case 0x83002012:
+	case 0x832012:
 		return USB_IF_W_WATCHMAN1_BUTTONS;
 
 	default:

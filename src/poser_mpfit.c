@@ -289,8 +289,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		d->useIMU = (bool)survive_configi(ctx, "use-imu", SC_GET, 1);
 		d->required_meas = survive_configi(ctx, "required-meas", SC_GET, 8);
 
-		d->sensor_time_window =
-			survive_configi(ctx, "time-window", SC_GET, SurviveSensorActivations_default_tolerance / 4.);
+		d->sensor_time_window = survive_configi(ctx, "time-window", SC_GET, SurviveSensorActivations_default_tolerance);
 		d->use_jacobian_function = survive_configi(ctx, "use-jacobian-function", SC_GET, 1);
 		survive_attach_configi(ctx, "disable-lighthouse", &d->disable_lighthouse);
 		survive_attach_configf(ctx, "sensor-variance-per-sec", &d->sensor_variance_per_second);

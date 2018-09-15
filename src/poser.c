@@ -27,11 +27,13 @@ static uint32_t PoserData_timecode(PoserData *poser_data) {
 	return -1;
 }
 
-void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, SurvivePose *pose) {
+void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, SurvivePose *imu2world) {
 	if (poser_data->poseproc) {
-		poser_data->poseproc(so, PoserData_timecode(poser_data), pose, poser_data->userdata);
+		poser_data->poseproc(so, PoserData_timecode(poser_data), imu2world, poser_data->userdata);
 	} else {
-		so->ctx->poseproc(so, PoserData_timecode(poser_data), pose);
+		SurvivePose head2world = *imu2world;
+		ApplyPoseToPose(&head2world, imu2world, &so->head2imu);
+		so->ctx->poseproc(so, PoserData_timecode(poser_data), &head2world);
 	}
 }
 

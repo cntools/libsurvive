@@ -968,8 +968,6 @@ void calibrate_acc(SurviveObject *so, FLT *agm) {
 		agm[1] *= so->acc_scale[1];
 		agm[2] *= so->acc_scale[2];
 	}
-
-	quatrotatevector(agm, so->relative_imu_pose.Rot, agm);
 }
 
 void calibrate_gyro(SurviveObject *so, FLT *agm) {
@@ -984,8 +982,6 @@ void calibrate_gyro(SurviveObject *so, FLT *agm) {
 		agm[1] *= so->gyro_scale[1];
 		agm[2] *= so->gyro_scale[2];
 	}
-
-	quatrotatevector(agm, so->relative_imu_pose.Rot, agm);
 }
 
 typedef struct {
