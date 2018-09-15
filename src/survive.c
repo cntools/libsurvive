@@ -721,6 +721,7 @@ int survive_simple_inflate(struct SurviveContext *ctx, const uint8_t *input, int
 
 #endif
 
+const SurvivePose *survive_object_last_imu2world(const SurviveObject *so) { return &so->OutPoseIMU; }
 const char *survive_object_codename(SurviveObject *so) { return so->codename; }
 
 const char *survive_object_drivername(SurviveObject *so) { return so->drivername; }

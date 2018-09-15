@@ -31,9 +31,9 @@ extern "C" {
 #define _FLT_format(f) _FLT_format2(f)
 #define FLT_format _FLT_format(FLT)
 
-#define Point3_format FLT_format " " FLT_format " " FLT_format
-#define Quat_format FLT_format " " FLT_format " " FLT_format " " FLT_format
-#define SurvivePose_format Point3_format " " Quat_format
+#define Point3_format FLT_format "\t" FLT_format "\t" FLT_format
+#define Quat_format FLT_format "\t" FLT_format "\t" FLT_format "\t" FLT_format
+#define SurvivePose_format Point3_format "\t" Quat_format
 
 typedef LinmathPose SurvivePose;
 

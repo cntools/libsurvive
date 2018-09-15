@@ -32,6 +32,7 @@ void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct Pos
 void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLight *lightData) {
 	int axis = (lightData->acode & 1);
 	uint32_t *data_timecode = &self->timecode[lightData->sensor_id][lightData->lh][axis];
+
 	FLT *angle = &self->angles[lightData->sensor_id][lightData->lh][axis];
 	uint32_t *length = &self->lengths[lightData->sensor_id][lightData->lh][axis];
 

@@ -84,7 +84,9 @@ struct SurviveObject {
 
 	// Pose Information, also "poser" field.
 	FLT PoseConfidence;						 // 0..1
-	SurvivePose OutPose;					 // Final pose? (some day, one can dream!)
+	SurvivePose OutPose;
+	SurvivePose OutPoseIMU;
+
 	survive_timecode OutPose_timecode;
 	SurvivePose FromLHPose[NUM_LIGHTHOUSES]; // Filled out by poser, contains computed position from each lighthouse.
 	void *PoserData; // Initialized to zero, configured by poser, can be anything the poser wants.
@@ -137,7 +139,7 @@ struct SurviveObject {
 
 // These exports are mostly for language binding against
 SURVIVE_EXPORT const char *survive_object_codename(SurviveObject *so);
-
+SURVIVE_EXPORT const SurvivePose *survive_object_last_imu2world(const SurviveObject *so);
 SURVIVE_EXPORT const char *survive_object_drivername(SurviveObject *so);
 SURVIVE_EXPORT const int8_t survive_object_charge(SurviveObject *so);
 SURVIVE_EXPORT const bool survive_object_charging(SurviveObject *so);

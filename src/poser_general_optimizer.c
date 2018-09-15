@@ -64,7 +64,7 @@ static void set_position(SurviveObject *so, uint32_t timecode, SurvivePose *new_
 
 bool general_optimizer_data_record_current_pose(GeneralOptimizerData *d, PoserData *_hdr, size_t len_hdr,
 												SurvivePose *soLocation) {
-	*soLocation = d->so->OutPose;
+	*soLocation = *survive_object_last_imu2world(d->so);
 	bool currentPositionValid = quatmagnitude(soLocation->Rot) != 0;
 	static bool seed_warning = false;
 	if (d->successes_to_reset_cntr == 0 || d->failures_to_reset_cntr == 0 || currentPositionValid == 0) {

@@ -115,14 +115,17 @@ function redrawCanvas(when) {
 	}
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-	var fov_degrees = 150;
+	var fov_degrees = 50;
 	var fov_radians = fov_degrees / 180 * Math.PI;
 
 	function rad_to_x(ang) {
 		var half_fov = fov_radians / 2;
 		return ang / half_fov * canvas.width / 2 + canvas.width / 2;
 	}
-	var rad_to_y = rad_to_x;
+	function rad_to_y(ang) {
+		var half_fov = fov_radians / 2;
+		return -ang / half_fov * canvas.height / 2 + canvas.height / 2;
+	}
 
 	ctx.strokeStyle = "#ffffff";
 	ctx.beginPath();
@@ -158,8 +161,8 @@ function redrawCanvas(when) {
 						continue;
 
 					var half_fov = 1.0472 * 2.;
-					var x = ang[0][0] / half_fov * canvas.width / 2 + canvas.width / 2;
-					var y = -ang[1][0] / half_fov * canvas.height / 2 + canvas.height / 2;
+					var x = rad_to_x(ang[0][0]);
+					var y = rad_to_y(ang[1][0]);
 
 					ctx.fillStyle = "white";
 					ctx.font = "14px Arial";
@@ -173,6 +176,20 @@ function redrawCanvas(when) {
 	}
 }
 
+function invertPose(pa, quat) {
+	var q = new THREE.Quaternion();
+	q.fromArray(quat);
+
+	var p = new THREE.Vector3();
+	p.fromArray(pa);
+
+	var iq = q.inverse();
+	p.applyQuaternion(iq);
+	p.multiplyScalar(-1);
+
+	return [ p, iq ];
+}
+
 function create_tracked_object(info) {
 	var sensorGeometry = new THREE.SphereGeometry(.01, 32, 16);
 	var group = new THREE.Group();
@@ -180,6 +197,23 @@ function create_tracked_object(info) {
 	var axesLength = 1.;
 
 	if (info.config && info.config.lighthouse_config) {
+		var trackref = new THREE.Group();
+
+		var trackref_from_head = info.config.trackref_from_head;
+		var trackref_from_imu = info.config.trackref_from_imu;
+
+		if (trackref_from_head && trackref_from_imu) {
+			var pa = [ trackref_from_head[4], trackref_from_head[5], trackref_from_head[6] ];
+			var qa = [ trackref_from_head[0], trackref_from_head[1], trackref_from_head[2], trackref_from_head[3] ];
+			trackref.position.fromArray(pa);
+			trackref.quaternion.fromArray(qa);
+			var pose = invertPose(
+				[ trackref_from_head[4], trackref_from_head[5], trackref_from_head[6] ],
+				[ trackref_from_head[3], trackref_from_head[0], trackref_from_head[1], trackref_from_head[2] ]);
+			// trackref.position.copy(pose[0]);
+			// trackref.quaternion.copy(pose[1]);
+			trackref.verticesNeedUpdate = true;
+		}
 		for (var idx in info.config.lighthouse_config.modelPoints) {
 			var p = info.config.lighthouse_config.modelPoints[idx];
 			var pn = info.config.lighthouse_config.modelNormals[idx];
@@ -195,10 +229,13 @@ function create_tracked_object(info) {
 									 new THREE.Vector3(p[0] + pn[0] * .02, p[1] + pn[1] * .02, p[2] + pn[2] * .02));
 			var normal =
 				new THREE.Line(normalGeom, new THREE.LineBasicMaterial({color : idx == 4 ? 0xFF0000 : 0x00FF00}));
-			group.add(normal);
 			group.sensors[idx] = sensorMaterial;
-			group.add(newSensor);
+			trackref.add(normal);
+			trackref.add(newSensor);
 		}
+
+		group.add(trackref);
+
 	} else {
 		axesLength = 2.;
 	}
@@ -290,7 +327,7 @@ function update_object(v, allow_unsetup) {
 
 		if ("HMD" === obj.tracker) {
 			var up = new THREE.Vector3(0, 1, 0);
-			var out = new THREE.Vector3(0, 0, 1);
+			var out = new THREE.Vector3(0, 0, -1);
 
 			fpv_camera.up = up.applyQuaternion(objs[obj.tracker].quaternion);
 			var lookAt = out.applyQuaternion(objs[obj.tracker].quaternion);

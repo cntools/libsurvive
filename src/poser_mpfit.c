@@ -125,7 +125,7 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 
 	survive_optimizer mpfitctx = {
 		.so = so,
-		//.current_bias = .1,
+		//.current_bias = 0.001,
 		.poseLength = 1,
 		.cameraLength = so->ctx->activeLighthouses,
 	};

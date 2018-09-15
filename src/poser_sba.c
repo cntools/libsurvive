@@ -264,7 +264,7 @@ static double run_sba(PoserDataFullScene *pdfs, SurviveObject *so, int max_itera
 	size_t meas_size = construct_input(so, pdfs, vmask, meas);
 
 	sba_context sbactx = {&pdfs->hdr, so, .camera_params = {so->ctx->bsd[0].Pose, so->ctx->bsd[1].Pose},
-						  .obj_pose = so->OutPose};
+						  .obj_pose = so->OutPoseIMU};
 
 	{
 		const char *subposer = survive_configs(so->ctx, "seed-poser", SC_GET, "EPNP");

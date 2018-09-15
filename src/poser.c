@@ -31,7 +31,9 @@ void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, Survive
 	if (poser_data->poseproc) {
 		poser_data->poseproc(so, PoserData_timecode(poser_data), imu2world, poser_data->userdata);
 	} else {
-		SurvivePose head2world = *imu2world;
+		SurviveContext *ctx = so->ctx;
+		SurvivePose head2world;
+		so->OutPoseIMU = *imu2world;
 		ApplyPoseToPose(&head2world, imu2world, &so->head2imu);
 		so->ctx->poseproc(so, PoserData_timecode(poser_data), &head2world);
 	}

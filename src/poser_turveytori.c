@@ -1490,23 +1490,23 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 
 	quatnormalize(newOrientation, newOrientation);
 
-	so->OutPose.Pos[0] = wcPos[0];
-	so->OutPose.Pos[1] = wcPos[1];
-	so->OutPose.Pos[2] = wcPos[2];
+	so->OutPoseIMU.Pos[0] = wcPos[0];
+	so->OutPoseIMU.Pos[1] = wcPos[1];
+	so->OutPoseIMU.Pos[2] = wcPos[2];
 
-	so->OutPose.Rot[0] = newOrientation[0];
-	so->OutPose.Rot[1] = newOrientation[1];
-	so->OutPose.Rot[2] = newOrientation[2];
-	so->OutPose.Rot[3] = newOrientation[3];
+	so->OutPoseIMU.Rot[0] = newOrientation[0];
+	so->OutPoseIMU.Rot[1] = newOrientation[1];
+	so->OutPoseIMU.Rot[2] = newOrientation[2];
+	so->OutPoseIMU.Rot[3] = newOrientation[3];
 
-	so->FromLHPose[lh].Pos[0] = so->OutPose.Pos[0];
-	so->FromLHPose[lh].Pos[1] = so->OutPose.Pos[1];
-	so->FromLHPose[lh].Pos[2] = so->OutPose.Pos[2];
+	so->FromLHPose[lh].Pos[0] = so->OutPoseIMU.Pos[0];
+	so->FromLHPose[lh].Pos[1] = so->OutPoseIMU.Pos[1];
+	so->FromLHPose[lh].Pos[2] = so->OutPoseIMU.Pos[2];
 
-	so->FromLHPose[lh].Rot[0] = so->OutPose.Rot[0];
-	so->FromLHPose[lh].Rot[1] = so->OutPose.Rot[1];
-	so->FromLHPose[lh].Rot[2] = so->OutPose.Rot[2];
-	so->FromLHPose[lh].Rot[3] = so->OutPose.Rot[3];
+	so->FromLHPose[lh].Rot[0] = so->OutPoseIMU.Rot[0];
+	so->FromLHPose[lh].Rot[1] = so->OutPoseIMU.Rot[1];
+	so->FromLHPose[lh].Rot[2] = so->OutPoseIMU.Rot[2];
+	so->FromLHPose[lh].Rot[3] = so->OutPoseIMU.Rot[3];
 
 	if (ttDebug) printf(" <% 04.4f, % 04.4f, % 04.4f >  ", wcPos[0], wcPos[1], wcPos[2]);
 
@@ -1514,10 +1514,10 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 	posOut[1] = wcPos[1];
 	posOut[2] = wcPos[2];
 
-	quatOut[0] = so->OutPose.Rot[0];
-	quatOut[1] = so->OutPose.Rot[1];
-	quatOut[2] = so->OutPose.Rot[2];
-	quatOut[3] = so->OutPose.Rot[3];
+	quatOut[0] = so->OutPoseIMU.Rot[0];
+	quatOut[1] = so->OutPoseIMU.Rot[1];
+	quatOut[2] = so->OutPoseIMU.Rot[2];
+	quatOut[3] = so->OutPoseIMU.Rot[3];
 
 	if (logFile)
 	{
