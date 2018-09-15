@@ -111,6 +111,9 @@ typedef struct {
 	uint64_t last_sync_length;
 	int last_sync_count;
 
+	uint32_t first_sync_timestamp;
+	uint32_t longest_sync_length;
+
 	/**  This part of the structure is general use when we know our state */
 	enum LighthouseState state;
 	uint32_t mod_offset;
@@ -173,14 +176,15 @@ const int AXIS_BIT = 1;
 #define LOWER_SYNC_TIME 2250
 #define UPPER_SYNC_TIME 6750
 
+#define DIV_ROUND_CLOSEST(n, d) ((((n) < 0) ^ ((d) < 0)) ? (((n) - (d) / 2) / (d)) : (((n) + (d) / 2) / (d)))
+
 LightcapElement get_last_sync(Disambiguator_data_t *d) {
 	if (d->last_sync_count == 0) {
 		return (LightcapElement){0};
 	}
-
-	return (LightcapElement){.timestamp = (d->last_sync_timestamp + d->last_sync_count / 2) / d->last_sync_count,
-							 .length = (d->last_sync_length + d->last_sync_count / 2) / d->last_sync_count,
-							 .sensor_id = -d->last_sync_count};
+	LightcapElement lastSync = {
+		.timestamp = d->first_sync_timestamp, .length = d->longest_sync_length, .sensor_id = -d->last_sync_count};
+	return lastSync;
 }
 
 enum LightcapClassification { LCC_SWEEP, LCC_SYNC };
@@ -205,7 +209,7 @@ static uint32_t SolveForMod_Offset(Disambiguator_data_t *d, enum LighthouseState
 	DEBUG_TB("Solve for mod %d (%u - %u) = %u", state, le->timestamp, LS_Params[state].offset,
 			 (le->timestamp - LS_Params[state].offset));
 
-	return (le->timestamp - LS_Params[state].offset);
+	return (le->timestamp - (le->length / 2) - LS_Params[state].offset);
 }
 
 static enum LighthouseState SetState(Disambiguator_data_t *d, const LightcapElement *le,
@@ -257,6 +261,24 @@ static enum LighthouseState EndSync(Disambiguator_data_t *d, const LightcapEleme
 	return LS_UNKNOWN;
 }
 
+static void RegisterSync(Disambiguator_data_t *d, const LightcapElement *le) {
+	if (le->timestamp < d->first_sync_timestamp || d->longest_sync_length == 0)
+		d->first_sync_timestamp = le->timestamp;
+
+	if (le->length > d->longest_sync_length) {
+		d->longest_sync_length = le->length;
+	}
+
+	d->last_sync_timestamp += le->timestamp;
+	d->last_sync_length += le->length;
+	d->last_sync_count++;
+}
+
+static void ResetSync(Disambiguator_data_t *d) {
+	d->first_sync_timestamp = d->longest_sync_length = 0;
+	d->last_sync_timestamp = d->last_sync_length = d->last_sync_count = 0;
+}
+
 static enum LighthouseState AttemptFindState(Disambiguator_data_t *d, const LightcapElement *le) {
 	enum LightcapClassification classification = naive_classify(d, le);
 
@@ -277,15 +299,11 @@ static enum LighthouseState AttemptFindState(Disambiguator_data_t *d, const Ligh
 				return new_state;
 
 			// Otherwise, just reset the sync registers and do another
-			d->last_sync_timestamp = le->timestamp;
-			d->last_sync_length = le->length;
-			d->last_sync_count = 1;
-		} else {
-			d->last_sync_timestamp += le->timestamp;
-			d->last_sync_length += le->length;
-			d->last_sync_count++;
+
+			ResetSync(d);
 		}
 
+		RegisterSync(d, le);
 		d->lastWasSync = true;
 	} else {
 		// If this is the start of a new sweep, check to see if the end of the sync solves
@@ -311,7 +329,8 @@ static enum LighthouseState SetState(Disambiguator_data_t *d, const LightcapElem
 	d->encoded_acodes = 0;
 	d->state = new_state;
 
-	d->last_sync_timestamp = d->last_sync_length = d->last_sync_count = 0;
+	ResetSync(d);
+
 	memset(d->sweep_data, 0, sizeof(LightcapElement) * d->so->sensor_ct);
 
 	return new_state;
@@ -353,9 +372,8 @@ static void RunACodeCapture(int target_acode, Disambiguator_data_t *d, const Lig
 		d->confidence++;
 
 	// If its a real timestep, integrate it here and we can take the average later
-	d->last_sync_timestamp += le->timestamp;
-	d->last_sync_length += le->length;
-	d->last_sync_count++;
+
+	RegisterSync(d, le);
 }
 
 static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *le, enum LighthouseState new_state) {
@@ -364,9 +382,11 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 	// Leaving a sync ...
 	if (LS_Params[d->state].is_sweep == 0) {
 		if (d->last_sync_count > 0) {
+			LightcapElement lastSync = {.timestamp = d->first_sync_timestamp,
+										.length = d->longest_sync_length,
+										.sensor_id = -d->last_sync_count};
 			// Use the average of the captured pulse to adjust where we are modulo against.
 			// This lets us handle drift in any of the timing chararacteristics
-			LightcapElement lastSync = get_last_sync(d);
 			d->mod_offset = SolveForMod_Offset(d, d->state, &lastSync);
 
 			// Figure out if it looks more like it has data or doesn't. We need this for OOX
@@ -399,8 +419,8 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 		}
 		if (cnt > 0) {
 			double var = 1.5;
-			size_t minl = (1 / var) * (avg_length + cnt / 2) / cnt;
-			size_t maxl = var * (avg_length + cnt / 2) / cnt;
+			size_t minl = (1 / var) * DIV_ROUND_CLOSEST(avg_length, cnt);
+			size_t maxl = var * DIV_ROUND_CLOSEST(avg_length, cnt);
 
 			for (int i = 0; i < d->so->sensor_ct; i++) {
 				LightcapElement le = d->sweep_data[i];
