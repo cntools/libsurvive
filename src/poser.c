@@ -1,4 +1,5 @@
 #include "math.h"
+#include <assert.h>
 #include <linmath.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -27,14 +28,28 @@ static uint32_t PoserData_timecode(PoserData *poser_data) {
 	return -1;
 }
 
+STATIC_CONFIG_ITEM(REPORT_IN_IMU, "report-in-imu", 'i', "Debug option to output poses in IMU space.", 0);
 void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, SurvivePose *imu2world) {
 	if (poser_data->poseproc) {
 		poser_data->poseproc(so, PoserData_timecode(poser_data), imu2world, poser_data->userdata);
 	} else {
+		static int report_in_imu = -1;
+		if (report_in_imu == -1) {
+			survive_attach_configi(so->ctx, "report-in-imu", &report_in_imu);
+		}
+
 		SurviveContext *ctx = so->ctx;
 		SurvivePose head2world;
 		so->OutPoseIMU = *imu2world;
-		ApplyPoseToPose(&head2world, imu2world, &so->head2imu);
+		if (!report_in_imu) {
+			ApplyPoseToPose(&head2world, imu2world, &so->head2imu);
+		} else {
+			head2world = *imu2world;
+		}
+
+		for (int i = 0; i < 7; i++)
+			assert(!isnan(((double *)imu2world)[i]));
+
 		so->ctx->poseproc(so, PoserData_timecode(poser_data), &head2world);
 	}
 }
