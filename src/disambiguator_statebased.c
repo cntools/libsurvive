@@ -397,8 +397,13 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 			if (hasData) {
 				acode |= DATA_BIT;
 			}
-			ctx->lightproc(d->so, -LS_Params[d->state].lh - 1, acode, 0, lastSync.timestamp, lastSync.length,
-						   LS_Params[d->state].lh);
+
+			int next_state = d->state + 1;
+			if (next_state == LS_END)
+				next_state = 0;
+
+			int index_code = LS_Params[next_state].is_sweep ? -1 : -2;
+			ctx->lightproc(d->so, index_code, acode, 0, lastSync.timestamp, lastSync.length, LS_Params[d->state].lh);
 
 			// Store last sync time for sweep calculations
 			d->time_of_last_sync[LS_Params[d->state].lh] = lastSync.timestamp;
