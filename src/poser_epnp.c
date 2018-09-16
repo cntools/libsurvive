@@ -123,6 +123,7 @@ int PoserEPNP(SurviveObject *so, PoserData *pd) {
 		PoserDataIMU *imuData = (PoserDataIMU *)pd;
 		return 0;
 	}
+	case POSERDATA_SYNC:
 	case POSERDATA_LIGHT: {
 		PoserDataLight *lightData = (PoserDataLight *)pd;
 
