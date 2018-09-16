@@ -94,7 +94,7 @@ static void redraw(SurviveContext *ctx) {
 
 					FLT point3d[3];
 					FLT out[2];
-					ApplyPoseToPoint(point3d, &so->OutPose, so->sensor_locations + 3 * sensor);
+					ApplyPoseToPoint(point3d, &so->OutPoseIMU, so->sensor_locations + 3 * sensor);
 					survive_reproject(ctx, lh, point3d, out);
 
 					double ex = out[0] - a[0];

@@ -101,14 +101,12 @@ static size_t construct_input_from_scene(SBAData *d, PoserDataLight *pdl, Surviv
 				// survive_apply_bsd_calibration(so->ctx, lh, _a, a);
 				vmask[sensor * NUM_LIGHTHOUSES + lh] = 1;
 				if (cov) {
-					*(cov++) = d->sensor_variance +
-							   fabs((float)pdl->timecode - (float)scene->timecode[sensor][lh][0]) *
-								   d->sensor_variance_per_second / (double)so->timebase_hz;
+					*(cov++) = d->sensor_variance + fabs((float)pdl->timecode - (float)scene->timecode[sensor][lh][0]) *
+														d->sensor_variance_per_second / (double)so->timebase_hz;
 					*(cov++) = 0;
 					*(cov++) = 0;
-					*(cov++) = d->sensor_variance +
-							   fabs((float)pdl->timecode - (float)scene->timecode[sensor][lh][1]) *
-								   d->sensor_variance_per_second / (double)so->timebase_hz;
+					*(cov++) = d->sensor_variance + fabs((float)pdl->timecode - (float)scene->timecode[sensor][lh][1]) *
+														d->sensor_variance_per_second / (double)so->timebase_hz;
 				}
 				meas[rtn++] = a[0];
 				meas[rtn++] = a[1];
@@ -263,8 +261,7 @@ static double run_sba(PoserDataFullScene *pdfs, SurviveObject *so, int max_itera
 	double *meas = alloca(sizeof(double) * 2 * so->sensor_ct * NUM_LIGHTHOUSES);
 	size_t meas_size = construct_input(so, pdfs, vmask, meas);
 
-	sba_context sbactx = {&pdfs->hdr, so, .camera_params = {so->ctx->bsd[0].Pose, so->ctx->bsd[1].Pose},
-						  .obj_pose = so->OutPoseIMU};
+	sba_context sbactx = {&pdfs->hdr, so, .camera_params = {{.Rot = {1.}}, {.Rot = {1.}}}, .obj_pose = so->OutPoseIMU};
 
 	{
 		const char *subposer = survive_configs(so->ctx, "seed-poser", SC_GET, "EPNP");
@@ -401,8 +398,8 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 
 				LinmathVec3d pvar = {.1, .1, .1};
 				FLT rvar = .01;
-				//survive_kpose_integrate_pose(&d->kpose, lightData->timecode, &estimate, pvar, rvar);
-				//estimate = d->kpose.state.pose;
+				// survive_kpose_integrate_pose(&d->kpose, lightData->timecode, &estimate, pvar, rvar);
+				// estimate = d->kpose.state.pose;
 
 				PoserData_poser_pose_func(&lightData->hdr, so, &estimate);
 			}
@@ -426,14 +423,14 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 	}
 	case POSERDATA_IMU: {
 
-	  PoserDataIMU * imu = (PoserDataIMU*)pd;
-	  if (ctx->calptr && ctx->calptr->stage < 5) {
-	  } else if (d->useIMU) {
-		  survive_imu_tracker_integrate(so, &d->tracker, imu);
-		  PoserData_poser_pose_func(pd, so, &d->tracker.pose);
-	  }
+		PoserDataIMU *imu = (PoserDataIMU *)pd;
+		if (ctx->calptr && ctx->calptr->stage < 5) {
+		} else if (d->useIMU) {
+			survive_imu_tracker_integrate(so, &d->tracker, imu);
+			PoserData_poser_pose_func(pd, so, &d->tracker.pose);
+		}
 
-	  general_optimizer_data_record_imu(&d->opt, imu);
+		general_optimizer_data_record_imu(&d->opt, imu);
 	}
 	}
 	return -1;
