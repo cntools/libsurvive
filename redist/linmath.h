@@ -103,7 +103,6 @@ FLT anglebetween3d(FLT *a, FLT *b);
 LINMATH_EXPORT void rotatearoundaxis(FLT *outvec3, FLT *invec3, FLT *axis, FLT angle);
 LINMATH_EXPORT void angleaxisfrom2vect(FLT *angle, FLT *axis, FLT *src, FLT *dest);
 LINMATH_EXPORT void axisanglefromquat(FLT *angle, FLT *axis, LinmathQuat quat);
-
 // Quaternion things...
 
 typedef FLT LinmathEulerAngle[3];

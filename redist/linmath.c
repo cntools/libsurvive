@@ -654,8 +654,9 @@ inline void matrix44transpose(FLT *mout, const FLT *minm) {
 }
 
 inline void ApplyPoseToPoint(LinmathPoint3d pout, const LinmathPose *pose, const LinmathPoint3d pin) {
-	quatrotatevector(pout, pose->Rot, pin);
-	add3d(pout, pout, pose->Pos);
+	LinmathPoint3d tmp;
+	quatrotatevector(tmp, pose->Rot, pin);
+	add3d(pout, tmp, pose->Pos);
 }
 
 inline void ApplyPoseToPose(LinmathPose *pout, const LinmathPose *lhs_pose, const LinmathPose *rhs_pose) {
