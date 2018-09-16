@@ -12,6 +12,7 @@ PREFIX?=/usr/local
 	@echo "USE_ASAN?=$(USE_ASAN)" > .options
 	@echo "LINUX_USE_HIDAPI?=$(LINUX_USE_HIDAPI)" >> .options
 	@echo "MINIMAL?=$(MINIMAL)" >> .options
+	@echo "OPT?=$(OPT)" >> .options
 
 .PHONY : help clean buildfolders plugins all install uninstall .options
 
@@ -19,15 +20,17 @@ OBJDIR:=build
 LIBDIR:=lib
 
 CFLAGS += -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces
+OPT?=3
+
 
 ifdef WINDOWS
-	CFLAGS+=-Iinclude/libsurvive -g -O3 -Iredist -std=gnu99 -MD -DNOZLIB -DWINDOWS -DWIN32 -DHIDAPI
+	CFLAGS+=-Iinclude/libsurvive -g -O$(OPT) -Iredist -std=gnu99 -MD -DNOZLIB -DWINDOWS -DWIN32 -DHIDAPI
 	LDFLAGS+=-L/usr/local/lib -lpthread -g -lm -lsetupapi -lkernel32 -ldbghelp -lgdi32
 	LDFLAGS_TOOLS+=-Llib -lsurvive -Wl,-rpath,lib -lX11 $(LDFLAGS)
 	LIBSURVIVE_CORE:=redist/puff.c redist/crc32.c redist/hid-windows.c winbuild/getdelim.c
 	CC:=i686-w64-mingw32-gcc
 else
-	CFLAGS+=-Iinclude/libsurvive -fPIC -g -O3 -Iredist -std=gnu99 -MD
+	CFLAGS+=-Iinclude/libsurvive -fPIC -g -O$(OPT) -Iredist -std=gnu99 -MD
 	LDFLAGS+=-L/usr/local/lib -lpthread -lz -lm -g -llapacke  -lcblas -lm  -lusb-1.0 -ldl
 	LDFLAGS_TOOLS+=-Llib -lsurvive -Wl,-rpath,lib -lX11 $(LDFLAGS)
 endif
