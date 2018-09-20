@@ -336,8 +336,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 				if (d->useIMU) {
 					FLT var_meters = 0.5;
 					FLT var_quat = error + .05;
-					FLT var[7] = {error * var_meters, error * var_meters, error * var_meters, error * var_quat,
-								  error * var_quat,   error * var_quat,   error * var_quat};
+					FLT var[2] = {error * var_meters, error * var_quat};
 
 					survive_imu_tracker_integrate_observation(so, lightData->timecode, &d->tracker, &estimate, var);
 					estimate = d->tracker.pose;

@@ -27,7 +27,10 @@ typedef struct {
 	SurvivePose lastGT;
 	uint32_t lastGTTime;
 
-	FLT P[7]; // estimate variance
+	struct {
+		FLT Pose;
+		FLT Rot;
+	} P;
 
 	LinmathVec3d integralFB;
 
