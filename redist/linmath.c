@@ -521,6 +521,11 @@ inline void quatslerp(LinmathQuat q, const LinmathQuat qa, const LinmathQuat qb,
 	}
 }
 
+inline void eulerrotatevector(FLT *vec3out, const LinmathEulerAngle eulerAngle, const FLT *vec3in) {
+	LinmathQuat q;
+	quatfromeuler(q, eulerAngle);
+	quatrotatevector(vec3out, q, vec3in);
+}
 inline void quatrotatevector(FLT *vec3out, const LinmathQuat quat, const FLT *vec3in) {
 	// See: http://www.geeks3d.com/20141201/how-to-rotate-a-vertex-by-a-quaternion-in-glsl/
 
@@ -578,6 +583,11 @@ inline void rotate_vec(FLT *out, const FLT *in, Matrix3x3 rot) {
 // under MIT license
 // http://www.ogre3d.org/docs/api/1.9/_ogre_vector3_8h_source.html
 
+inline void eulerfrom2vectors(LinmathEulerAngle euler, const FLT *src, const FLT *dest) {
+	LinmathQuat q;
+	quatfrom2vectors(q, src, dest);
+	quattoeuler(euler, q);
+}
 /** Gets the shortest arc quaternion to rotate this vector to the destination
 vector.
 @remarks

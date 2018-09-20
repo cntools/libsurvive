@@ -63,6 +63,12 @@ extern "C" {
 typedef FLT LinmathQuat[4]; // This is the [wxyz] quaternion, in wxyz format.
 typedef FLT LinmathPoint3d[3];
 typedef FLT LinmathVec3d[3];
+typedef FLT LinmathEulerAngle[3];
+
+typedef struct LinmathEulerPose {
+	LinmathPoint3d Pos;
+	LinmathEulerAngle EulerRot;
+} LinmathEulerPose;
 
 typedef struct LinmathPose {
 	LinmathPoint3d Pos;
@@ -133,7 +139,9 @@ LINMATH_EXPORT void quatevenproduct(LinmathQuat q, LinmathQuat qa, LinmathQuat q
 LINMATH_EXPORT void quatoddproduct(FLT *outvec3, LinmathQuat qa, LinmathQuat qb);
 LINMATH_EXPORT void quatslerp(LinmathQuat q, const LinmathQuat qa, const LinmathQuat qb, FLT t);
 LINMATH_EXPORT void quatrotatevector(FLT *vec3out, const LinmathQuat quat, const FLT *vec3in);
+LINMATH_EXPORT void eulerrotatevector(FLT *vec3out, const LinmathEulerAngle quat, const FLT *vec3in);
 LINMATH_EXPORT void quatfrom2vectors(LinmathQuat q, const FLT *src, const FLT *dest);
+LINMATH_EXPORT void eulerfrom2vectors(LinmathEulerAngle q, const FLT *src, const FLT *dest);
 
 // This is the quat equivalent of 'pout = pose * pin' if pose were a 4x4 matrix in homogenous space
 LINMATH_EXPORT void ApplyPoseToPoint(LinmathPoint3d pout, const LinmathPose *pose, const LinmathPoint3d pin);
@@ -177,6 +185,20 @@ LINMATH_EXPORT void matrix44transpose(FLT *mout, const FLT *minm);
 static inline FLT linmath_max(FLT x, FLT y) { return x > y ? x : y; }
 
 static inline FLT linmath_min(FLT x, FLT y) { return x < y ? x : y; }
+
+static inline LinmathEulerPose Pose2EulerPose(const LinmathPose *pose) {
+	LinmathEulerPose p;
+	copy3d(p.Pos, pose->Pos);
+	quattoeuler(p.EulerRot, pose->Rot);
+	return p;
+}
+
+static inline LinmathPose EulerPose2Pose(const LinmathEulerPose *pose) {
+	LinmathPose p;
+	copy3d(p.Pos, pose->Pos);
+	quatfromeuler(p.Rot, pose->EulerRot);
+	return p;
+}
 
 #ifdef __cplusplus
 }
