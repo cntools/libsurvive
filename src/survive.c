@@ -320,7 +320,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 }
 
 survive_timecode survive_timecode_difference(survive_timecode most_recent, survive_timecode least_recent) {
-	uint32_t diff = 0;
+	survive_timecode diff = 0;
 	if (most_recent > least_recent) {
 		diff = most_recent - least_recent;
 	} else {
@@ -328,7 +328,7 @@ survive_timecode survive_timecode_difference(survive_timecode most_recent, survi
 	}
 
 	if (diff > 0xFFFFFFFF / 2)
-		return 0x7FFFFFFF / 2 - diff;
+		return 0xFFFFFFFF - diff;
 	return diff;
 }
 
