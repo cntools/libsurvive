@@ -1,4 +1,4 @@
-#include "../survive_kalman.h"
+#include "../survive_imu.h"
 #include "test_case.h"
 #include <math.h>
 #include <stdio.h>
@@ -46,8 +46,9 @@ static SurvivePose randomMovement(const SurvivePose *start, FLT pvariance, FLT r
 };
 
 static int TestKalmanIntegratePose(FLT pvariance, FLT rot_variance) {
-	survive_kpose_t kpose = {};
-
+	SurviveIMUTracker kpose = {};
+	SurviveObject so = {.timebase_hz = 48000000};
+	survive_imu_tracker_init(&kpose, &so);
 	SurvivePose pose = {};
 	srand(42);
 
@@ -64,10 +65,10 @@ static int TestKalmanIntegratePose(FLT pvariance, FLT rot_variance) {
 		pose = randomMovement(&pose, mvariance, rot_movement);
 		SurvivePose obs = randomMovement(&pose, pvariance, rot_variance);
 
-		survive_kpose_integrate_pose(&kpose, time, &obs, pos_variance, rot_variance);
+		FLT variance[2] = {pvariance, rot_variance};
+		survive_imu_tracker_integrate_observation(time, &kpose, &obs, variance);
 
-		SurvivePose estimate = {};
-		survive_kpose_predict(&kpose, time, &estimate);
+		SurvivePose estimate = kpose.pose;
 		// printf("Observation %f %f %f\n", obs.Pos[0], obs.Pos[1], obs.Pos[2]);
 		// printf("Actual      %f %f %f\n", pose.Pos[0], pose.Pos[1], pose.Pos[2]);
 		// printf("Estimate    %f %f %f\n\n", estimate.Pos[0], estimate.Pos[1], estimate.Pos[2]);

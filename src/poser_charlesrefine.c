@@ -5,11 +5,11 @@
 #include "epnp/epnp.h"
 #include "linmath.h"
 #include "survive_cal.h"
+#include "survive_imu.h"
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <survive_imu.h>
 
 #define MAX_PT_PER_SWEEP SENSORS_PER_OBJECT
 

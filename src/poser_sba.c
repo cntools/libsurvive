@@ -2,8 +2,8 @@
 #include <sba/sba.h>
 
 #include "poser.h"
+#include "survive_imu.h"
 #include <survive.h>
-#include <survive_imu.h>
 
 #include "assert.h"
 #include "linmath.h"
@@ -12,7 +12,6 @@
 #include "string.h"
 #include "survive_cal.h"
 #include "survive_config.h"
-#include "survive_kalman.h"
 #include "survive_reproject.h"
 
 STATIC_CONFIG_ITEM(SBA_REQUIRED_MEAS, "required-meas", 'i',
@@ -40,7 +39,6 @@ typedef struct SBAData {
 	int use_jacobian_function;
 	int required_meas;
 
-	survive_kpose_t kpose;
 	SurviveIMUTracker tracker;
 
 	int useIMU;

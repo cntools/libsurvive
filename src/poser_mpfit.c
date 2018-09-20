@@ -4,8 +4,8 @@
 
 #include "mpfit/mpfit.h"
 #include "poser.h"
+#include "survive_imu.h"
 #include <survive.h>
-#include <survive_imu.h>
 
 #include "assert.h"
 #include "linmath.h"

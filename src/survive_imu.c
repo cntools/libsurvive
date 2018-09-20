@@ -1,9 +1,9 @@
 #include "survive_imu.h"
 #include "linmath.h"
 #include "math.h"
+#include "survive_imu.h"
 #include "survive_internal.h"
 #include <memory.h>
-#include <survive_imu.h>
 
 // Mahoney is due to https://hal.archives-ouvertes.fr/hal-00488376/document
 // See also http://www.olliw.eu/2013/imu-data-fusing/#chapter41 and

@@ -1,5 +1,5 @@
+#include "survive_imu.h"
 #include <survive.h>
-#include <survive_imu.h>
 
 #include <stdio.h>
 #include <stdlib.h>

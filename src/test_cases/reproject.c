@@ -54,5 +54,5 @@ TEST(Reproject, Extents) {
 		ASSERT_DOUBLE_EQ(out[1], examples[i].expected[1]);
 	}
 
-	return true;
+	return 0;
 }
