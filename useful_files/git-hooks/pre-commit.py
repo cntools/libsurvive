@@ -1,9 +1,13 @@
 import subprocess
 
 try:
-    run_args = ["git", "clang-format"]
+    run_args = ["git", "clang-format", "--"]
 
+    new_files = subprocess.check_output(["git", "diff", "--cached", "--name-only", "--diff-filter=ACM"]).strip().split("\n")
+
+    run_args = run_args + new_files
     print("Running clang-format...")
+
     output = subprocess.check_output(run_args)
     print output
     changed_list = output.split('\n')
