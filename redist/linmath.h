@@ -133,6 +133,7 @@ LINMATH_EXPORT void quatadd(LinmathQuat qout, const LinmathQuat a, const Linmath
 LINMATH_EXPORT void quatrotateabout(LinmathQuat qout, const LinmathQuat a,
 									const LinmathQuat b); // same as quat multiply, not piecewise multiply.
 LINMATH_EXPORT void quatscale(LinmathQuat qout, const LinmathQuat qin, FLT s);
+LINMATH_EXPORT void quatdivs(LinmathQuat qout, const LinmathQuat qin, FLT s);
 FLT quatinnerproduct(const LinmathQuat qa, const LinmathQuat qb);
 LINMATH_EXPORT void quatouterproduct(FLT *outvec3, LinmathQuat qa, LinmathQuat qb);
 LINMATH_EXPORT void quatevenproduct(LinmathQuat q, LinmathQuat qa, LinmathQuat qb);

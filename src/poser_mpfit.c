@@ -23,6 +23,7 @@
 STATIC_CONFIG_ITEM(USE_JACOBIAN_FUNCTION, "use-jacobian-function", 'i',
 				   "If set to false, a slower numerical approximation of the jacobian is used", 1);
 STATIC_CONFIG_ITEM(USE_IMU, "use-imu", 'i', "Use the IMU as part of the pose solver", 1);
+STATIC_CONFIG_ITEM(USE_KALMAN, "use-kalman", 'i', "Apply kalman filter as part of the pose solver", 1);
 STATIC_CONFIG_ITEM(SENSOR_VARIANCE_PER_SEC, "sensor-variance-per-sec", 'f',
 				   "Variance per second to add to the sensor input -- discounts older data", 0.0);
 STATIC_CONFIG_ITEM(SENSOR_VARIANCE, "sensor-variance", 'f', "Base variance for each sensor input", 1.0);
@@ -45,6 +46,7 @@ typedef struct MPFITData {
 
 	SurviveIMUTracker tracker;
 	bool useIMU;
+	bool useKalman;
 
 	struct {
 		int meas_failures;
@@ -182,7 +184,7 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 			}
 		}
 	} else {
-		SV_INFO("MPFIT failure %f (%d measurements)", result.bestnorm, (int)meas_size);
+		SV_INFO("MPFIT failure %f (%d measurements, %d)", result.bestnorm, (int)meas_size, res);
 	}
 
 	return rtn;
@@ -274,7 +276,7 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 
 	} else {
 		SurviveContext *ctx = so->ctx;
-		SV_INFO("MPFIT failure %f", result.bestnorm);
+		SV_INFO("MPFIT failure %f %d", result.bestnorm, res);
 	}
 
 	return rtn;
@@ -286,7 +288,10 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		MPFITData *d = so->PoserData;
 
 		general_optimizer_data_init(&d->opt, so);
+		survive_imu_tracker_init(&d->tracker, so);
+
 		d->useIMU = (bool)survive_configi(ctx, "use-imu", SC_GET, 1);
+		d->useKalman = (bool)survive_configi(ctx, "use-kalman", SC_GET, 1);
 		d->required_meas = survive_configi(ctx, "required-meas", SC_GET, 8);
 
 		d->sensor_time_window = survive_configi(ctx, "time-window", SC_GET, SurviveSensorActivations_default_tolerance);
@@ -305,6 +310,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		SV_INFO("\tsensor-variance: %f", d->sensor_variance);
 		SV_INFO("\tsensor-variance-per-sec: %f", d->sensor_variance_per_second);
 		SV_INFO("\tuse-imu: %d", d->useIMU);
+		SV_INFO("\tuse-kalman: %d", d->useKalman);
 		SV_INFO("\tuse-jacobian-function: %d", d->use_jacobian_function);
 	}
 	MPFITData *d = so->PoserData;
@@ -333,12 +339,12 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 			d->last_acode = lightData->acode;
 
 			if (error > 0) {
-				if (d->useIMU) {
-					FLT var_meters = 0.5;
-					FLT var_quat = error + .05;
-					FLT var[2] = {error * var_meters, error * var_quat};
+				if (d->useKalman) {
+					FLT var_meters = .001 + error;
+					FLT var_quat = .001 + error;
+					FLT var[2] = {var_meters, var_quat};
 
-					survive_imu_tracker_integrate_observation(so, lightData->timecode, &d->tracker, &estimate, var);
+					survive_imu_tracker_integrate_observation(lightData->timecode, &d->tracker, &estimate, var);
 					estimate = d->tracker.pose;
 				}
 
@@ -357,12 +363,11 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		return 0;
 	}
 	case POSERDATA_IMU: {
-
 		PoserDataIMU *imu = (PoserDataIMU *)pd;
 		if (ctx->calptr && ctx->calptr->stage < 5) {
 		} else if (d->useIMU) {
-			survive_imu_tracker_integrate(so, &d->tracker, imu);
-			PoserData_poser_pose_func(pd, so, &d->tracker.pose);
+			// survive_imu_tracker_integrate(so, &d->tracker, imu);
+			// PoserData_poser_pose_func(pd, so, &d->tracker.pose);
 		}
 
 		general_optimizer_data_record_imu(&d->opt, imu);

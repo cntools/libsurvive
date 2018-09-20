@@ -339,6 +339,18 @@ function update_object(v, allow_unsetup) {
 	}
 }
 
+var scrollPending = false;
+function scrollConsoleToTop() {
+	if (scrollPending === false) {
+		setTimeout(function() {
+			var consoleDiv = $("#console");
+			consoleDiv[0].scrollTop = consoleDiv[0].scrollHeight;
+			scrollPending = false;
+		}, 1);
+		scrollPending = true;
+	}
+}
+
 var survive_log_handlers = {
 	"LH_POSE" : function(v) {
 		var obj = {
@@ -381,7 +393,8 @@ var survive_log_handlers = {
 
 		var consoleDiv = $("#console");
 		consoleDiv.append(msg + "</br>");
-		consoleDiv[0].scrollTop = consoleDiv[0].scrollHeight;
+
+		scrollConsoleToTop();
 	},
 	"I" : function(v, tracker) {
 		var obj = {

@@ -276,8 +276,8 @@ FLT quatinvsqmagnitude(const LinmathQuat q) {
 }
 
 inline void quatnormalize(LinmathQuat qout, const LinmathQuat qin) {
-	FLT imag = quatinvsqmagnitude(qin);
-	quatscale(qout, qin, imag);
+	FLT norm = quatmagnitude(qin);
+	quatdivs(qout, qin, norm);
 }
 
 inline void quattomatrix(FLT *matrix44, const LinmathQuat qin) {
@@ -464,6 +464,13 @@ inline void quatscale(LinmathQuat qout, const LinmathQuat qin, FLT s) {
 	qout[1] = qin[1] * s;
 	qout[2] = qin[2] * s;
 	qout[3] = qin[3] * s;
+}
+
+inline void quatdivs(LinmathQuat qout, const LinmathQuat qin, FLT s) {
+	qout[0] = qin[0] / s;
+	qout[1] = qin[1] / s;
+	qout[2] = qin[2] / s;
+	qout[3] = qin[3] / s;
 }
 
 FLT quatinnerproduct(const LinmathQuat qa, const LinmathQuat qb) {

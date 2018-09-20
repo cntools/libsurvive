@@ -347,6 +347,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		SBAData *d = so->PoserData;
 
 		general_optimizer_data_init(&d->opt, so);
+		survive_imu_tracker_init(&d->tracker, so);
 
 		survive_attach_configi(ctx, "use-imu", &d->useIMU);
 		survive_attach_configi(ctx, "required-meas", &d->required_meas);
@@ -391,7 +392,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 					FLT var_quat = error + .05;
 					FLT var[2] = {error * var_meters, error * var_quat};
 
-					survive_imu_tracker_integrate_observation(so, lightData->timecode, &d->tracker, &estimate, var);
+					survive_imu_tracker_integrate_observation(lightData->timecode, &d->tracker, &estimate, var);
 					estimate = d->tracker.pose;
 				}
 
@@ -425,7 +426,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		PoserDataIMU *imu = (PoserDataIMU *)pd;
 		if (ctx->calptr && ctx->calptr->stage < 5) {
 		} else if (d->useIMU) {
-			survive_imu_tracker_integrate(so, &d->tracker, imu);
+			survive_imu_tracker_integrate(&d->tracker, imu);
 			PoserData_poser_pose_func(pd, so, &d->tracker.pose);
 		}
 
