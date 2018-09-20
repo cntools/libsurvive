@@ -265,7 +265,7 @@ int DriverRegUSBMon(SurviveContext *ctx) {
 	sp->pcap = pcap_open_live("usbmon0", BUFSIZ, 0, -1, sp->errbuf);
 	if (sp->pcap == NULL) {
 		SV_WARN("pcap_open_live() failed due to [%s]", sp->errbuf);
-		SV_INFO("You probably need to call 'sudo modprobe usbmob'");
+		SV_WARN("You probably need to call 'sudo modprobe usbmon'");
 		return -1;
 	}
 

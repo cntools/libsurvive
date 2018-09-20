@@ -46,8 +46,8 @@ static void mahony_ahrs(SurviveIMUTracker *tracker, LinmathVec3d _gyro, LinmathV
 	scale3d(gyro, gyro, 0.5 / sample_f);
 
 	LinmathQuat correction = {
-		(-q[1] * gyro[0] - q[2] * gyro[1] - q[3] * gyro[2]), (q[0] * gyro[0] + q[2] * gyro[2] - q[3] * gyro[1]),
-		(q[0] * gyro[1] - q[1] * gyro[2] + q[3] * gyro[0]), (q[0] * gyro[2] + q[1] * gyro[1] - q[2] * gyro[0])};
+		(-q[1] * gyro[0] - q[2] * gyro[1] - q[3] * gyro[2]), (+q[0] * gyro[0] + q[2] * gyro[2] - q[3] * gyro[1]),
+		(+q[0] * gyro[1] - q[1] * gyro[2] + q[3] * gyro[0]), (+q[0] * gyro[2] + q[1] * gyro[1] - q[2] * gyro[0])};
 
 	quatadd(q, q, correction);
 	quatnormalize(q, q);
@@ -109,7 +109,7 @@ static void iterate_velocity(LinmathVec3d result, SurviveIMUTracker *tracker, do
 	add3d(result, result, rAcc);
 }
 
-void survive_imu_tracker_integrate(SurviveIMUTracker *tracker, PoserDataIMU *data) {
+void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU *data) {
 	if (!tracker->is_initialized) {
 		if (tracker->last_data.datamask == imu_calibration_iterations) {
 			tracker->last_data = *data;
@@ -164,11 +164,14 @@ void survive_imu_tracker_integrate(SurviveIMUTracker *tracker, PoserDataIMU *dat
 void survive_update_variances(SurviveIMUTracker *tracker, uint32_t timecode) {
 	FLT time_diff = tick_difference(timecode, tracker->lastGTTime) / (FLT)tracker->so->timebase_hz;
 
-	FLT var_meters = .01;
-	FLT var_quat = .005;
+	FLT var_meters = .0001;
+	FLT var_quat = .0005;
 
 	tracker->P.Pose += var_meters * time_diff;
 	tracker->P.Rot += var_quat * time_diff;
+
+	for (int i = 0; i < 3; i++)
+		tracker->pose.Pos[i] += tracker->current_velocity[i] * time_diff;
 }
 
 void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTracker *tracker, SurvivePose *pose,
@@ -203,8 +206,11 @@ void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTrac
 
 	FLT time_diff = tick_difference(timecode, tracker->lastGTTime) / (FLT)tracker->so->timebase_hz;
 	for (int i = 0; i < 3; i++)
-		tracker->current_velocity[i] = 0.5 * (tracker->pose.Pos[i] - tracker->lastGT.Pos[i]) / time_diff;
+		tracker->current_velocity[i] = (tracker->pose.Pos[i] - tracker->lastGT.Pos[i]) / time_diff;
 
+	// SurviveContext* ctx = tracker->so->ctx;
+	// SV_INFO("%+.07f %+.07f %+.07f", tracker->current_velocity[0],tracker->current_velocity[1],
+	// tracker->current_velocity[2]);
 	tracker->lastGTTime = timecode;
 	tracker->lastGT = tracker->pose;
 }

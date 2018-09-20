@@ -424,7 +424,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		PoserDataIMU *imu = (PoserDataIMU *)pd;
 		if (ctx->calptr && ctx->calptr->stage < 5) {
 		} else if (d->useIMU) {
-			survive_imu_tracker_integrate(&d->tracker, imu);
+			survive_imu_tracker_integrate_imu(&d->tracker, imu);
 			PoserData_poser_pose_func(pd, so, &d->tracker.pose);
 		}
 

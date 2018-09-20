@@ -37,7 +37,7 @@ typedef struct {
 } SurviveIMUTracker;
 
 void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so);
-void survive_imu_tracker_integrate(SurviveIMUTracker *tracker, PoserDataIMU *data);
+void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU *data);
 void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTracker *tracker, SurvivePose *pose,
 											   const FLT *variance);
 

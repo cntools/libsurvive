@@ -235,9 +235,9 @@ function create_tracked_object(info) {
 		}
 
 		group.add(trackref);
-
+		group.trackref = trackref;
 	} else {
-		axesLength = 2.;
+		axesLength = 1.5;
 	}
 
 	var axes = new THREE.AxesHelper(axesLength);
@@ -250,14 +250,15 @@ function create_tracked_object(info) {
 var displayTrails = false;
 var trails = {};
 var MAX_LINE_POINTS = 100000;
-
+var trail_colors = [ 0x0, 0xffffff, 0x305ea8, 0x5e30a8 ];
+var trail_idx = 0;
 function get_trails(obj) {
 	if (displayTrails === false)
 		return null;
 
 	if (trails[obj.tracker] == null) {
 		var geometry = new THREE.Geometry();
-		var material = new THREE.LineBasicMaterial({color : 0x305ea8});
+		var material = new THREE.LineBasicMaterial({color : trail_colors[trail_idx++ % trail_colors.length]});
 
 		for (i = 0; i < MAX_LINE_POINTS; i++) {
 			geometry.vertices.push(new THREE.Vector3(obj.position[0], obj.position[1], obj.position[2]));
@@ -309,6 +310,9 @@ function update_object(v, allow_unsetup) {
 		objs[obj.tracker].position.set(obj.position[0], obj.position[1], obj.position[2]);
 		objs[obj.tracker].quaternion.set(obj.quat[1], obj.quat[2], obj.quat[3], obj.quat[0]);
 		objs[obj.tracker].verticesNeedUpdate = true;
+
+		if (objs[obj.tracker].trackref)
+			objs[obj.tracker].trackref.visible = $("#model")[0].checked;
 
 		var d = 0;
 		for (var i = 0; i < 3; i++) {
@@ -413,9 +417,12 @@ var survive_log_handlers = {
 				downAxes[obj.tracker].vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0));
 
 				var line = new THREE.Line(downAxes[obj.tracker], new THREE.LineBasicMaterial({color : 0xffffff}));
+				downAxes[obj.tracker].line = line;
 				scene.add(line);
 			}
 
+			if (downAxes[obj.tracker].line)
+				downAxes[obj.tracker].line.visible = $("#imu")[0].checked;
 			if (objs[obj.tracker].position) {
 				var q = obj.accelgyro;
 

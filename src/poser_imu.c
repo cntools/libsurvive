@@ -18,7 +18,7 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 	case POSERDATA_IMU: {
 		PoserDataIMU *imu = (PoserDataIMU *)pd;
 
-		survive_imu_tracker_integrate(dd, imu);
+		survive_imu_tracker_integrate_imu(dd, imu);
 
 		PoserData_poser_pose_func(pd, so, &dd->pose);
 
