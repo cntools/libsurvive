@@ -205,6 +205,15 @@ inline void axisanglefromquat(FLT *angle, FLT *axis, FLT *q) {
 // Originally from Mercury (Copyright (C) 2009 by Joshua Allen, Charles Lohr, Adam Lowman)
 // Under the mit/X11 license.
 
+FLT quatdist(const double *q1, const double *q2) {
+	FLT rtn = 0;
+	for (int i = 0; i < 4; i++) {
+		rtn += q1[i] * q2[i];
+	}
+
+	return 2 * acos(FLT_FABS(rtn));
+}
+
 inline void quatset(LinmathQuat q, FLT w, FLT x, FLT y, FLT z) {
 	q[0] = w;
 	q[1] = x;
@@ -254,6 +263,20 @@ inline void quattoeuler(LinmathEulerAngle euler, const LinmathQuat q) {
 	euler[2] = FLT_ATAN2(2 * (q[0] * q[3] + q[1] * q[2]), 1 - 2 * (q[2] * q[2] + q[3] * q[3]));
 }
 
+inline void quatfromaxisanglemag(LinmathQuat q, const LinmathAxisAngleMag axisangle) {
+	FLT radians = norm3d(axisangle);
+
+	if (radians == 0.0) {
+		quatcopy(q, LinmathQuat_Identity);
+	} else {
+		FLT sn = FLT_SIN(radians / 2.0f);
+		q[0] = FLT_COS(radians / 2.0f);
+		q[1] = sn * axisangle[0] / radians;
+		q[2] = sn * axisangle[1] / radians;
+		q[3] = sn * axisangle[2] / radians;
+		quatnormalize(q, q);
+	}
+}
 inline void quatfromaxisangle(LinmathQuat q, const FLT *axis, FLT radians) {
 	FLT v[3];
 	normalize3d(v, axis);
@@ -267,11 +290,11 @@ inline void quatfromaxisangle(LinmathQuat q, const FLT *axis, FLT radians) {
 	quatnormalize(q, q);
 }
 
-FLT quatmagnitude(const LinmathQuat q) {
+inline FLT quatmagnitude(const LinmathQuat q) {
 	return FLT_SQRT((q[0] * q[0]) + (q[1] * q[1]) + (q[2] * q[2]) + (q[3] * q[3]));
 }
 
-FLT quatinvsqmagnitude(const LinmathQuat q) {
+inline FLT quatinvsqmagnitude(const LinmathQuat q) {
 	return ((FLT)1.) / FLT_SQRT((q[0] * q[0]) + (q[1] * q[1]) + (q[2] * q[2]) + (q[3] * q[3]));
 }
 
@@ -284,7 +307,7 @@ inline void quattomatrix(FLT *matrix44, const LinmathQuat qin) {
 	FLT q[4];
 	quatnormalize(q, qin);
 
-	// Reduced calulation for speed
+	// Reduced calculation for speed
 	FLT xx = 2 * q[1] * q[1];
 	FLT xy = 2 * q[1] * q[2];
 	FLT xz = 2 * q[1] * q[3];
@@ -440,6 +463,12 @@ inline void quatadd(LinmathQuat qout, const FLT *a, const FLT *b) {
 	qout[3] = a[3] + b[3];
 }
 
+inline void quatfind(LinmathQuat q, const LinmathQuat q0, const LinmathQuat q1) {
+	LinmathQuat iq0;
+	quatgetconjugate(iq0, q0);
+	quatrotateabout(q, q1, iq0);
+}
+
 inline void quatrotateabout(LinmathQuat qout, const LinmathQuat q1, const LinmathQuat q2) {
 	// NOTE: Does not normalize
 	LinmathQuat rtn;
@@ -457,6 +486,19 @@ inline void quatrotateabout(LinmathQuat qout, const LinmathQuat q1, const Linmat
 	if (aliased) {
 		quatcopy(qout, rtn);
 	}
+}
+
+inline void quattoaxisanglemag(LinmathAxisAngleMag ang, const LinmathQuat q) {
+	FLT axis_len = sqrt(q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
+	FLT angle = 2. * atan2(axis_len, q[0]);
+	scale3d(ang, q + 1, axis_len == 0 ? 0 : angle / axis_len);
+}
+
+inline void quatmultiplyrotation(LinmathQuat q, const LinmathQuat qv, FLT t) {
+	LinmathAxisAngleMag aa;
+	quattoaxisanglemag(aa, qv);
+	scale3d(aa, aa, t);
+	quatfromaxisanglemag(q, aa);
 }
 
 inline void quatscale(LinmathQuat qout, const LinmathQuat qin, FLT s) {
@@ -700,8 +742,6 @@ inline void PoseToMatrix(FLT *matrix44, const LinmathPose *pose_in) {
 	matrix44[7] = pose_in->Pos[1];
 	matrix44[11] = pose_in->Pos[2];
 }
-
-#include "stdio.h"
 
 void KabschCentered(LinmathQuat qout, const FLT *ptsA, const FLT *ptsB, int num_pts) {
 	// Note: The following follows along with https://en.wikipedia.org/wiki/Kabsch_algorithm

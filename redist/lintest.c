@@ -68,7 +68,7 @@ void testApplyPoseToPose() {
 
 	{
 	  pose_out = rotAroundYOffset;
-	  LinmathPose expected = {-2, 2, -2, -1, 0, 0, 0 };
+	  LinmathPose expected = {0, 2, 0, -1, 0, 0, 0};
 	  ApplyPoseToPose(&pose_out, &pose_out, &pose_out);
 	  ASSERT_FLTA_EQUALS(pose_out.Pos, expected.Pos, 7);
 	}
@@ -137,12 +137,57 @@ void testKabsch() {
 	ASSERT_FLTA_EQUALS(should_be_tx2.Pos, tx2.Pos, 7);
 }
 
+static void testQuatFind(const LinmathQuat _q1, const LinmathQuat _q2) {
+	LinmathQuat q1;
+	quatnormalize(q1, _q1);
+	LinmathQuat q2;
+	quatnormalize(q2, _q2);
+
+	LinmathQuat q;
+	quatfind(q, q1, q2);
+	LinmathQuat tx_q2;
+	quatrotateabout(tx_q2, q, q1);
+
+	ASSERT_FLTA_EQUALS(tx_q2, q2, 4);
+}
+
+static void testQuatFinding() {
+	{ testQuatFind(LinmathQuat_Identity, LinmathQuat_Identity); }
+	{
+		LinmathQuat q2 = {0.7071068, 0, 0, 0.7071068};
+		testQuatFind(LinmathQuat_Identity, q2);
+	}
+	{
+		LinmathQuat q1 = {1., .3, .1, -.4};
+		LinmathQuat q2 = {.2, -.13, .1, -.4};
+		testQuatFind(q1, q2);
+	}
+}
+
+static void testQuatAsAngularVelocity() {
+	{
+		LinmathQuat q;
+		quatmultiplyrotation(q, LinmathQuat_Identity, 1);
+		ASSERT_FLTA_EQUALS(q, LinmathQuat_Identity, 4);
+	}
+
+	{
+		LinmathQuat q = {0.9998766, 0, 0, 0.0157073};
+		quatmultiplyrotation(q, q, 100);
+		LinmathQuat qz = {0, 0, 0, 1};
+		ASSERT_FLTA_EQUALS(q, qz, 4);
+	}
+}
+
 int main()
 {
 	testInvertPose();
 	testApplyPoseToPoint();
 	testApplyPoseToPose();
 	testKabsch();
+
+	testQuatFinding();
+	testQuatAsAngularVelocity();
 #if 1
 
 #define NONTRANSPOSED_DAVE

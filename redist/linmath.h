@@ -64,6 +64,7 @@ typedef FLT LinmathQuat[4]; // This is the [wxyz] quaternion, in wxyz format.
 typedef FLT LinmathPoint3d[3];
 typedef FLT LinmathVec3d[3];
 typedef FLT LinmathEulerAngle[3];
+typedef FLT LinmathAxisAngleMag[3];
 
 typedef struct LinmathEulerPose {
 	LinmathPoint3d Pos;
@@ -113,14 +114,17 @@ LINMATH_EXPORT void axisanglefromquat(FLT *angle, FLT *axis, LinmathQuat quat);
 
 typedef FLT LinmathEulerAngle[3];
 
+LINMATH_EXPORT FLT quatdist(const LinmathQuat q1, const LinmathQuat q2);
 LINMATH_EXPORT void quatset(LinmathQuat q, FLT w, FLT x, FLT y, FLT z);
 LINMATH_EXPORT void quatsetnone(LinmathQuat q);
 LINMATH_EXPORT void quatcopy(LinmathQuat q, const LinmathQuat qin);
 LINMATH_EXPORT void quatfromeuler(LinmathQuat q, const LinmathEulerAngle euler);
 LINMATH_EXPORT void quattoeuler(LinmathEulerAngle euler, const LinmathQuat q);
 LINMATH_EXPORT void quatfromaxisangle(LinmathQuat q, const FLT *axis, FLT radians);
-FLT quatmagnitude(const LinmathQuat q);
-FLT quatinvsqmagnitude(const LinmathQuat q);
+LINMATH_EXPORT void quatfromaxisanglemag(LinmathQuat q, const LinmathAxisAngleMag axisangle);
+LINMATH_EXPORT void quattoaxisanglemag(LinmathAxisAngleMag ang, const LinmathQuat q);
+LINMATH_EXPORT FLT quatmagnitude(const LinmathQuat q);
+LINMATH_EXPORT FLT quatinvsqmagnitude(const LinmathQuat q);
 LINMATH_EXPORT void quatnormalize(LinmathQuat qout, const LinmathQuat qin); // Safe for in to be same as out.
 LINMATH_EXPORT void quattomatrix(FLT *matrix44, const LinmathQuat q);
 LINMATH_EXPORT void quattomatrix33(FLT *matrix33, const LinmathQuat qin);
@@ -128,13 +132,40 @@ LINMATH_EXPORT void quatfrommatrix(LinmathQuat q, const FLT *matrix44);
 LINMATH_EXPORT void quatfrommatrix33(LinmathQuat q, const FLT *matrix33);
 LINMATH_EXPORT void quatgetconjugate(LinmathQuat qout, const LinmathQuat qin);
 LINMATH_EXPORT void quatgetreciprocal(LinmathQuat qout, const LinmathQuat qin);
-LINMATH_EXPORT void quatsub(LinmathQuat qout, const LinmathQuat a, const LinmathQuat b);
-LINMATH_EXPORT void quatadd(LinmathQuat qout, const LinmathQuat a, const LinmathQuat b);
-LINMATH_EXPORT void quatrotateabout(LinmathQuat qout, const LinmathQuat a,
-									const LinmathQuat b); // same as quat multiply, not piecewise multiply.
+/***
+ * Find q such that q * q0 = q1; where q0, q1, q are unit quaternions
+ */
+LINMATH_EXPORT void quatfind(LinmathQuat q, const LinmathQuat q0, const LinmathQuat q1);
+/***
+ * Find q such that q0 * q1 = q; where q0, q1, q are unit quaternions
+ *
+ * same as quat multiply, not piecewise multiply.
+ */
+LINMATH_EXPORT void quatrotateabout(LinmathQuat q, const LinmathQuat q0, const LinmathQuat q1);
+
+/***
+ * Finds q = qv*t. If 'qv' is thought of an angular velocity, and t is the scalar time span of rotation, q is the
+ * arrived at rotation.
+ */
+LINMATH_EXPORT void quatmultiplyrotation(LinmathQuat q, const LinmathQuat qv, FLT t);
+
+/***
+ * Peicewise scaling
+ */
 LINMATH_EXPORT void quatscale(LinmathQuat qout, const LinmathQuat qin, FLT s);
+/***
+ * Peicewise division by scalar
+ */
 LINMATH_EXPORT void quatdivs(LinmathQuat qout, const LinmathQuat qin, FLT s);
-FLT quatinnerproduct(const LinmathQuat qa, const LinmathQuat qb);
+/***
+ * Peicewise subtraction
+ */
+LINMATH_EXPORT void quatsub(LinmathQuat qout, const LinmathQuat a, const LinmathQuat b);
+/***
+ * Peicewise addition
+ */
+LINMATH_EXPORT void quatadd(LinmathQuat qout, const LinmathQuat a, const LinmathQuat b);
+LINMATH_EXPORT FLT quatinnerproduct(const LinmathQuat qa, const LinmathQuat qb);
 LINMATH_EXPORT void quatouterproduct(FLT *outvec3, LinmathQuat qa, LinmathQuat qb);
 LINMATH_EXPORT void quatevenproduct(LinmathQuat q, LinmathQuat qa, LinmathQuat qb);
 LINMATH_EXPORT void quatoddproduct(FLT *outvec3, LinmathQuat qa, LinmathQuat qb);
