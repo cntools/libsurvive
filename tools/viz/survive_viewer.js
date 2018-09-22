@@ -253,9 +253,6 @@ var MAX_LINE_POINTS = 100000;
 var trail_colors = [ 0x0, 0xffffff, 0x305ea8, 0x5e30a8 ];
 var trail_idx = 0;
 function get_trails(obj) {
-	if (displayTrails === false)
-		return null;
-
 	if (trails[obj.tracker] == null) {
 		var geometry = new THREE.Geometry();
 		var material = new THREE.LineBasicMaterial({color : trail_colors[trail_idx++ % trail_colors.length]});
@@ -274,16 +271,10 @@ function get_trails(obj) {
 }
 
 function update_trails() {
-	if (this.checked) {
-		displayTrails = true;
-	} else {
-		displayTrails = false;
-		var names = Object.keys(trails);
-		for (var i = 0; i < names.length; i++) {
-			var name = names[i];
-			scene.remove(trails[name]);
-		}
-		trails = {};
+	var names = Object.keys(trails);
+	for (var i = 0; i < names.length; i++) {
+		var name = names[i];
+		trails[name].visible = this.checked;
 	}
 }
 
@@ -295,6 +286,8 @@ function update_object(v, allow_unsetup) {
 		position : [ parseFloat(v[3]), parseFloat(v[4]), parseFloat(v[5]) ],
 		quat : [ parseFloat(v[6]), parseFloat(v[7]), parseFloat(v[8]), parseFloat(v[9]) ]
 	};
+	var time = parseFloat(v[0]);
+
 	if (allow_unsetup && objs[obj.tracker] == null) {
 		create_tracked_object({tracker : obj.tracker});
 	}
@@ -327,6 +320,7 @@ function update_object(v, allow_unsetup) {
 				new THREE.Vector3(obj.position[0], obj.position[1], obj.position[2]);
 			trails.geometry.verticesNeedUpdate = true;
 			oldPose = obj.position;
+			record_position(obj.tracker, time, obj);
 		}
 
 		if ("HMD" === obj.tracker) {
@@ -342,6 +336,35 @@ function update_object(v, allow_unsetup) {
 		}
 	}
 }
+
+var position_history = {};
+var max_time = 0;
+function record_position(name, time, position) {
+	max_time = Math.max(max_time, time);
+	if (position_history[name] == undefined)
+		position_history[name] = [];
+	position_history[name].push({time : time, position : position});
+}
+
+$(function() {
+	$("#time").on('change mousemove', function(event, ui) {
+		var time = $("#time").val() * max_time / 100.;
+
+		var names = Object.keys(position_history);
+		for (var i = 0; i < names.length; i++) {
+			var name = names[i];
+
+			var j = 0;
+			for (j = 0; j < position_history[name].length - 1 && position_history[name][j].time < time; j++)
+				;
+
+			var obj = position_history[name][j].position;
+			objs[name].position.set(obj.position[0], obj.position[1], obj.position[2]);
+			objs[name].quaternion.set(obj.quat[1], obj.quat[2], obj.quat[3], obj.quat[0]);
+			objs[name].verticesNeedUpdate = true;
+		}
+	});
+});
 
 var scrollPending = false;
 function scrollConsoleToTop() {
