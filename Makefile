@@ -3,7 +3,7 @@
 LIBRARY:=./lib/libsurvive.so
 STATIC_LIBRARY:=./lib/libsurvive.a
 
-all : $(STATIC_LIBRARY) $(LIBRARY) data_recorder test calibrate calibrate_client simple_pose_test plugins .options
+all : $(STATIC_LIBRARY) $(LIBRARY) data_recorder test calibrate calibrate_client simple_pose_test plugins .options survive-cli
 	@echo "Built with defaults.  Type 'make help' for more info."
 
 PREFIX?=/usr/local
@@ -122,6 +122,9 @@ simple_pose_test : simple_pose_test.c $(DRAWFUNCTIONS) $(LIBRARY)
 data_recorder : data_recorder.c $(LIBRARY)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
 
+survive-cli : survive-cli.c $(LIBRARY)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
+
 api_example : api_example.c $(LIBRARY)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
 
@@ -203,7 +206,7 @@ calibrate_tcc : $(LIBSURVIVE_C)
 	tcc -DRUNTIME_SYMNUM $(CFLAGS) -o $@ $^ $(LDFLAGS) calibrate.c $(DRAWFUNCTIONS) redist/symbol_enumerator.c
 
 clean :
-	rm -rf $(OBJDIR) *.d lib/libsurvive.a *~ src/*~ test simple_pose_test data_recorder calibrate testCocoa lib/libsurvive.so test_minimal_cv test_epnp test_epnp_ocv calibrate_client redist/*.o redist/*~ tools/data_server/data_server tools/lighthousefind/lighthousefind tools/lighthousefind_tori/lighthousefind-tori tools/plot_lighthouse/plot_lighthouse tools/process_rawcap/process_to_points redist/jsmntest redist/lintest ./lib
+	rm -rf $(OBJDIR) *.d lib/libsurvive.a *~ src/*~ test simple_pose_test data_recorder calibrate testCocoa lib/libsurvive.so test_minimal_cv test_epnp test_epnp_ocv calibrate_client redist/*.o redist/*~ tools/data_server/data_server tools/lighthousefind/lighthousefind tools/lighthousefind_tori/lighthousefind-tori tools/plot_lighthouse/plot_lighthouse tools/process_rawcap/process_to_points redist/jsmntest redist/lintest ./lib survive-cli
 
 .test_redist:
 	cd redist && make .run_tests;
