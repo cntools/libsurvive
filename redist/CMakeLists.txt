@@ -29,7 +29,7 @@ endif()
 
 add_library(minimal_opencv ${MINIMAL_OPENCV_SRCS})
 IF(UNIX)
-	target_link_libraries(minimal_opencv cblas lapacke)
+	target_link_libraries(minimal_opencv cblas lapacke m)
 else()
 	target_link_libraries(minimal_opencv ${CMAKE_BINARY_DIR}/packages/OpenBLAS.0.2.14.1/lib/native/lib/x64/libopenblas.dll.a)
 ENDIF()

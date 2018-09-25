@@ -72,10 +72,9 @@ static ElfW(Word) gnu_hashtab_symbol_count(const unsigned int *const table)
     return (ElfW(Word))max;
 }
 
-static static void *dynamic_pointer(const ElfW(Addr) addr,
-                             const ElfW(Addr) base, const ElfW(Phdr) *const header, const ElfW(Half) headers)
-{
-    if (addr) {
+static void *dynamic_pointer(const ElfW(Addr) addr, const ElfW(Addr) base, const ElfW(Phdr) *const header,
+							 const ElfW(Half) headers) {
+	if (addr) {
         ElfW(Half) h;
 
         for (h = 0; h < headers; h++)
@@ -180,6 +179,7 @@ static int callback(struct dl_phdr_info *info,
 int EnumerateSymbols( SymEnumeratorCallback cb )
 {
 	dl_iterate_phdr( callback, cb );
+	return 0;
 }
 
 

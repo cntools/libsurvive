@@ -120,7 +120,7 @@ void survive_load_plugins(const char *plugin_dir) {
 				// Global is important to share symbols
 				void *handle = survive_load_plugin(plugin_path);
 				if (handle) {
-					fprintf(stderr, "Loaded %s\n", plugin_path);
+					// fprintf(stderr, "Loaded %s\n", plugin_path);
 					change = true;
 					free(plugin_path);
 					plugin_list.data[i] = 0;
