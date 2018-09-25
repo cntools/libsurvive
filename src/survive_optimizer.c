@@ -124,7 +124,7 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 
 	int pose_idx = -1;
 	SurvivePose *pose = 0;
-	SurvivePose obj2lh[NUM_LIGHTHOUSES] = {};
+	SurvivePose obj2lh[NUM_LIGHTHOUSES] = { 0 };
 
 	int meas_count = m;
 	if (mpfunc_ctx->current_bias > 0) {
@@ -177,7 +177,7 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 
 		if (derivs) {
 			if (nextIsPair) {
-				FLT out[7 * 2] = {};
+				FLT out[7 * 2] = { 0 };
 				survive_reproject_full_jac_obj_pose(out, pose, pt, world2lh, cal);
 
 				for (int j = 0; j < 7; j++) {
@@ -187,7 +187,7 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 					assert(!isnan(out[j + 7]));
 				}
 			} else {
-				FLT out[7] = {};
+				FLT out[7] = { 0 };
 				reproject_axis_jacob_fns[meas->axis](out, pose, pt, world2lh, cal);
 				for (int j = 0; j < 7; j++) {
 					derivs[j][i] = out[j];

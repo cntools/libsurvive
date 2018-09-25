@@ -1,15 +1,20 @@
 // All MIT/x11 Licensed Code in this file may be relicensed freely under the GPL
 // or LGPL licenses.
 
-#include "os_generic.h"
-#include "survive_config.h"
+#ifdef _WIN32
+#include "winsock2.h"
+#else
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
+#endif
+
+#include "os_generic.h"
+#include "survive_config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <survive.h>
-#include <sys/socket.h>
 #include <sys/types.h>
 #include <time.h>
 

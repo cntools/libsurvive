@@ -61,6 +61,11 @@ struct SurviveViveData;
 struct SurviveUSBInterface;
 
 typedef void (*usb_callback)(struct SurviveUSBInterface *ti);
+#ifdef HIDAPI
+#define USBHANDLE hid_device *
+#else
+#define USBHANDLE libusb_device_handle *
+#endif
 
 typedef struct SurviveUSBInterface {
 	struct SurviveViveData *sv;

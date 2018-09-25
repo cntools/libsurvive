@@ -7,10 +7,12 @@
 extern "C" {
 #endif
 
+#ifndef LINMATH_EXPORT
 #if defined(_WIN32) && !defined(TCC)
-#define LINMATH_EXPORT __declspec(dllexport)
+#define LINMATH_EXPORT __declspec(dllimport)
 #else
 #define LINMATH_EXPORT __attribute__((visibility("default")))
+#endif
 #endif
 
 // Yes, I know it's kind of arbitrary.
@@ -76,8 +78,8 @@ typedef struct LinmathPose {
 	LinmathQuat Rot;
 } LinmathPose;
 
-extern LinmathQuat LinmathQuat_Identity;
-extern LinmathPose LinmathPose_Identity;
+LINMATH_EXPORT extern LinmathQuat LinmathQuat_Identity;
+LINMATH_EXPORT extern LinmathPose LinmathPose_Identity;
 
 // NOTE: Inputs may never be output with cross product.
 LINMATH_EXPORT void cross3d(FLT *out, const FLT *a, const FLT *b);
@@ -96,16 +98,16 @@ LINMATH_EXPORT void normalize3d(FLT *out, const FLT *in);
 LINMATH_EXPORT void center3d(FLT *out_pts, FLT *out_mean, const FLT *pts, int num_pts);
 LINMATH_EXPORT void mean3d(LinmathVec3d out, const FLT *pts, int num_pts);
 
-FLT dot3d(const FLT *a, const FLT *b);
+LINMATH_EXPORT FLT dot3d(const FLT *a, const FLT *b);
 
 // Returns 0 if equal.  If either argument is null, 0 will ALWAYS be returned.
-int compare3d(const FLT *a, const FLT *b, FLT epsilon);
+LINMATH_EXPORT int compare3d(const FLT *a, const FLT *b, FLT epsilon);
 
 LINMATH_EXPORT void copy3d(FLT *out, const FLT *in);
 
-FLT magnitude3d(const FLT *a);
-FLT dist3d(const FLT *a, const FLT *b);
-FLT anglebetween3d(FLT *a, FLT *b);
+LINMATH_EXPORT FLT magnitude3d(const FLT *a);
+LINMATH_EXPORT FLT dist3d(const FLT *a, const FLT *b);
+LINMATH_EXPORT FLT anglebetween3d(FLT *a, FLT *b);
 
 LINMATH_EXPORT void rotatearoundaxis(FLT *outvec3, FLT *invec3, FLT *axis, FLT angle);
 LINMATH_EXPORT void angleaxisfrom2vect(FLT *angle, FLT *axis, FLT *src, FLT *dest);

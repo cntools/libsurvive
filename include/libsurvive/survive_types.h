@@ -7,8 +7,10 @@
 #ifndef SURVIVE_EXPORT
 #ifdef _WIN32
 #define SURVIVE_EXPORT __declspec(dllexport)
+#define SURVIVE_IMPORT __declspec(dllimport)
 #else
 #define SURVIVE_EXPORT __attribute__((visibility("default")))
+#define SURVIVE_IMPORT SURVIVE_EXPORT
 #endif
 #endif
 
@@ -51,7 +53,7 @@ typedef LinmathPose SurvivePose;
 #define BUTTON_EVENT_AXIS_CHANGED  3
 
 typedef uint32_t survive_timecode;
-survive_timecode survive_timecode_difference(survive_timecode most_recent, survive_timecode least_recent);
+SURVIVE_EXPORT survive_timecode survive_timecode_difference(survive_timecode most_recent, survive_timecode least_recent);
 
 typedef struct SurviveObject SurviveObject;
 typedef struct SurviveContext SurviveContext;

@@ -1,6 +1,8 @@
 #include "survive_reproject.h"
 #include "survive_reproject.generated.h"
 #include <assert.h>
+
+#define _USE_MATH_DEFINES
 #include <math.h>
 #include <survive_reproject.h>
 

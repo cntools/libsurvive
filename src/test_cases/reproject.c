@@ -1,5 +1,7 @@
 #include "survive_reproject.h"
 #include "test_case.h"
+
+#define _USE_MATH_DEFINES
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,7 +14,7 @@ typedef struct {
 TEST(Reproject, ReprojectFull) {
 	//	void survive_reproject_full(const BaseStationCal *bcal, const SurvivePose *lh2world, const SurvivePose
 	//*obj2world, 	                            const LinmathVec3d obj_pt, FLT *out) {
-	BaseStationCal cal[2] = {};
+	BaseStationCal cal[2] = { 0 };
 	SurvivePose lh2world = {.Pos = {1, 1, 1}, .Rot = {0, 0, 1, 0}};
 	SurvivePose world2lh = InvertPoseRtn(&lh2world);
 	SurvivePose obj2world = {.Pos = {5, 5, 5}, .Rot = {0, 1, 0, 0}};
@@ -34,7 +36,7 @@ TEST(Reproject, ReprojectFull) {
 
 TEST(Reproject, Extents) {
 	FLT out[2];
-	BaseStationCal cal[2] = {};
+	BaseStationCal cal[2] = { 0 };
 
 	ExampleAndValue examples[] = {
 		{.pt = {0, 1, -1}, .expected = {0, M_PI / 4.}},

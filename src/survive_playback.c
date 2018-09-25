@@ -231,7 +231,7 @@ static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver) {
 }
 
 static int parse_and_run_externalpose(const char *line, SurvivePlaybackData *driver) {
-	char name[128] = {};
+	char name[128] = { 0 };
 	SurvivePose pose;
 
 	int rr = sscanf(line, "%s EXTERNAL_POSE " SurvivePose_format "\n", name, &pose.Pos[0], &pose.Pos[1], &pose.Pos[2],

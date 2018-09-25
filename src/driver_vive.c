@@ -64,11 +64,6 @@ const char *devnames[] = {
 
 typedef struct SurviveUSBInterface SurviveUSBInterface;
 typedef struct SurviveViveData SurviveViveData;
-#ifdef HIDAPI
-#define USBHANDLE hid_device *
-#else
-#define USBHANDLE libusb_device_handle *
-#endif
 
 struct SurviveViveData {
 	SurviveContext *ctx;

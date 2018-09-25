@@ -42,25 +42,25 @@ typedef struct {
 		ctx.parameters_info[i].fixed = 1;                                                                              \
 	}
 
-SurvivePose *survive_optimizer_get_pose(survive_optimizer *ctx);
-int survive_optimizer_get_camera_index(const survive_optimizer *ctx);
-SurvivePose *survive_optimizer_get_camera(survive_optimizer *ctx);
+SURVIVE_EXPORT SurvivePose *survive_optimizer_get_pose(survive_optimizer *ctx);
+SURVIVE_EXPORT int survive_optimizer_get_camera_index(const survive_optimizer *ctx);
+SURVIVE_EXPORT SurvivePose *survive_optimizer_get_camera(survive_optimizer *ctx);
 
-int survive_optimizer_get_calibration_index(const survive_optimizer *ctx);
+SURVIVE_EXPORT int survive_optimizer_get_calibration_index(const survive_optimizer *ctx);
 
-BaseStationCal *survive_optimizer_get_calibration(survive_optimizer *ctx, int lh);
+SURVIVE_EXPORT BaseStationCal *survive_optimizer_get_calibration(survive_optimizer *ctx, int lh);
 
-int survive_optimizer_get_sensors_index(const survive_optimizer *ctx);
+SURVIVE_EXPORT int survive_optimizer_get_sensors_index(const survive_optimizer *ctx);
 
-double *survive_optimizer_get_sensors(survive_optimizer *ctx);
+SURVIVE_EXPORT double *survive_optimizer_get_sensors(survive_optimizer *ctx);
 
-int survive_optimizer_get_parameters_count(const survive_optimizer *ctx);
+SURVIVE_EXPORT int survive_optimizer_get_parameters_count(const survive_optimizer *ctx);
 
-void survive_optimizer_setup_pose(survive_optimizer *mpfit_ctx, const SurvivePose *pose, bool isFixed,
+SURVIVE_EXPORT void survive_optimizer_setup_pose(survive_optimizer *mpfit_ctx, const SurvivePose *pose, bool isFixed,
 								  int use_jacobian_function);
-void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx, SurviveContext *ctx, bool isFixed);
+SURVIVE_EXPORT void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx, SurviveContext *ctx, bool isFixed);
 
-int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result);
+SURVIVE_EXPORT int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result);
 
 #ifdef __cplusplus
 }

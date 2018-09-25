@@ -7,6 +7,7 @@
 #include "stdio.h"
 #include "string.h"
 
+
 #include <limits.h>
 #include <stdarg.h>
 
@@ -14,6 +15,8 @@
 
 #ifdef _WIN32
 #define SURVIVE_LOCAL_ONLY
+#include <malloc.h>
+#define alloca _alloca
 #else
 #define SURVIVE_LOCAL_ONLY __attribute__((visibility("hidden")))
 #endif

@@ -299,7 +299,7 @@ void config_read_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8
 	bsd->mode = config_read_uint32(cg, "mode", 0);
 	config_read_float_array(cg, "pose", &bsd->Pose.Pos[0], defaults, 7);
 
-	FLT cal[sizeof(bsd->fcal)] = {};
+	FLT cal[sizeof(bsd->fcal)] = { 0 };
 	config_read_float_array(cg, "fcalphase", cal, defaults, 2);
 	config_read_float_array(cg, "fcaltilt", cal + 2, defaults, 2);
 	config_read_float_array(cg, "fcalcurve", cal + 4, defaults, 2);
@@ -324,7 +324,7 @@ void config_set_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8_
 	config_set_uint32(cg, "mode", bsd->mode);
 	config_set_float_a(cg, "pose", &bsd->Pose.Pos[0], 7);
 
-	FLT cal[sizeof(bsd->fcal)] = {};
+	FLT cal[sizeof(bsd->fcal)] = { 0 };
 
 	for (size_t i = 0; i < 2; i++) {
 		cal[0 + i] = bsd->fcal[i].phase;

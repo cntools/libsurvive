@@ -41,4 +41,4 @@ void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 	*length = (uint32_t)(lightData->length * 48000000);
 }
 
-uint32_t SurviveSensorActivations_default_tolerance = (uint32_t)(48000000 /*mhz*/ * (16.7 * 2 /*ms*/) / 1000) + 5000;
+SURVIVE_EXPORT uint32_t SurviveSensorActivations_default_tolerance = (uint32_t)(48000000 /*mhz*/ * (16.7 * 2 /*ms*/) / 1000) + 5000;

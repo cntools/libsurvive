@@ -114,7 +114,7 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 			// Find what angle we need to rotate about Z by to get to 90 degrees.
 			FLT ang = atan2(lighthouse2objUp.Pos[1], lighthouse2objUp.Pos[0]);
 			FLT euler[3] = {0, 0, M_PI / 2. - ang};
-			SurvivePose objUp2World = {};
+			SurvivePose objUp2World = { 0 };
 			quatfromeuler(objUp2World.Rot, euler);
 
 			ApplyPoseToPose(arb2world, &objUp2World, arb2world);

@@ -40,7 +40,7 @@ typedef struct
  * @param pose The actual object pose. This is in world space, not in LH space. It must represent a transformation from
  * object space of the SO to global space.
  */
-void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, SurvivePose *pose);
+SURVIVE_EXPORT void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, SurvivePose *pose);
 
 /**
  * Meant to be used by individual posers to report back their findings on the pose of a lighthouse.
@@ -57,7 +57,7 @@ void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, Survive
  * @param lighthouse_pose This is the assumed or derived position of the given lighthouse.
  * @param object_pose This is the assumed or derived position of the tracked object.
  */
-void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse,
+SURVIVE_EXPORT void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse,
 									/* OUTPARAM */ SurvivePose *arb2world, SurvivePose *lighthouse_pose,
 									SurvivePose *object_pose);
 
@@ -92,7 +92,7 @@ typedef struct
 } PoserDataFullScene;
 
 struct SurviveSensorActivations_s;
-void PoserDataFullScene2Activations(const PoserDataFullScene *pdfs, struct SurviveSensorActivations_s *activations);
+SURVIVE_EXPORT void PoserDataFullScene2Activations(const PoserDataFullScene *pdfs, struct SurviveSensorActivations_s *activations);
 
 //When you write your posers, use the following definition, and register with REGISTER_LINKTIME.
 typedef int (*PoserCB)( SurviveObject * so, PoserData * pd );

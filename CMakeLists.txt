@@ -1,25 +1,36 @@
 project(libsurvive)
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.8.2)
 
 enable_testing()
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -flto -std=gnu99 -rdynamic -Werror=incompatible-pointer-types -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces")
+IF(UNIX)
+	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -flto -std=gnu99 -rdynamic -Werror=incompatible-pointer-types -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces")
+ENDIF()
 
 include_directories(redist include/libsurvive include)
 
-option(LINUX_USE_HIDAPI "Use HIDAPI instead of libusb" OFF)
+option(USE_HIDAPI "Use HIDAPI instead of libusb" OFF)
 option(USE_ASAN "Use address sanitizer" OFF)
 
 if(USE_ASAN)
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fsanitize=undefined")
 endif()
 
-if(LINUX_USE_HIDAPI)
-    ADD_COMPILE_DEFINITIONS(HIDAPI)
-    list(APPEND ADDITIONAL_LIBRARIES udev hidapi-libusb)
+if(USE_HIDAPI OR WIN32)
+    add_definitions (-DHIDAPI)
+	IF(WIN32)
+		SET(SURVIVE_SRCS ${SURVIVE_SRCS} ./redist/hid-windows.c ./winbuild/getdelim.c)
+	else()
+		list(APPEND ADDITIONAL_LIBRARIES udev hidapi-libusb)
+	endif()
 endif()
 
-add_library(survive SHARED
+IF(WIN32)
+	add_definitions(-DNOZLIB)
+ENDIF()
+
+SET(SURVIVE_SRCS ${SURVIVE_SRCS}
         ./include/libsurvive/poser.h
+		./include/libsurvive/survive.h
         ./include/libsurvive/survive_api.h
         ./include/libsurvive/survive_optimizer.h
         ./include/libsurvive/survive_reproject.h
@@ -30,9 +41,9 @@ add_library(survive SHARED
         ./redist/jsmntest.c
         ./redist/json_helpers.c
         ./redist/linmath.c
-        ./redist/minimal_opencv.c
         ./redist/mpfit/mpfit.c
         ./redist/puff.c
+		./redist/symbol_enumerator.c
         ./src/ootx_decoder.c
         ./src/poser.c
         ./src/poser_general_optimizer.c
@@ -45,38 +56,29 @@ add_library(survive SHARED
         ./src/survive_driverman.c
         ./src/survive_imu.c
         ./src/survive_optimizer.c
-        ./src/survive_playback.c
-        ./src/survive_plugins.c
+        ./src/survive_playback.c        
+		./src/survive_plugins.c
         ./src/survive_process.c
         ./src/survive_reproject.c
         ./src/survive_reproject.generated.h
         ./src/survive_sensor_activations.c
-        ./src/survive_usb.c
-        )
+        ./src/survive_usb.c)
 
-add_library(minimal_opencv ./redist/minimal_opencv.c ./redist/minimal_opencv.h)
-target_link_libraries(minimal_opencv lapacke cblas)
+add_library(survive SHARED ${SURVIVE_SRCS})
 
-add_library(sba ./redist/sba/sba_levmar_wrap.c
-        ./redist/sba/sba_chkjac.c
-        ./redist/sba/sba_lapack.c
-        ./redist/sba/sba_levmar.c
-        ./redist/sba/sba_crsm.c
-        )
-
-add_library(CNGFX
-        ./redist/CNFG3D.c
-        ./redist/CNFGXDriver.c
-        ./redist/CNFGFunctions.c
-        )
-
-target_link_libraries(CNGFX X11)
+add_subdirectory(redist)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-target_link_libraries(survive minimal_opencv Threads::Threads z m usb-1.0 ${CMAKE_DL_LIBS} ${ADDITIONAL_LIBRARIES})
-set_target_properties(survive PROPERTIES LIBRARY_OUTPUT_DIRECTORY "lib")
+target_link_libraries(survive minimal_opencv Threads::Threads ${CMAKE_DL_LIBS} ${ADDITIONAL_LIBRARIES})
+IF(NOT WIN32)
+	target_link_libraries(survive z m usb-1.0 )
+else()
+	target_link_libraries(survive DbgHelp SetupAPI)
+endif()
+#set_target_properties(survive PROPERTIES LIBRARY_OUTPUT_DIRECTORY "lib")
+#set_target_properties(survive PROPERTIES RUNTIME_OUTPUT_DIRECTORY "lib")
 
 
 foreach(executable calibrate data_recorder simple_pose_test survive-cli)
@@ -87,7 +89,7 @@ target_link_libraries(calibrate CNGFX)
 target_link_libraries(simple_pose_test CNGFX)
 
 SET(PLUGINS
-        driver_dummy driver_udp driver_vive
+        driver_dummy driver_vive
         disambiguator_turvey disambiguator_statebased disambiguator_charles
         poser_dummy poser_mpfit poser_epnp poser_sba poser_imu poser_charlesrefine
 )
@@ -100,13 +102,19 @@ else()
     message("Can't build usbmon plugin -- pcap library was not found")
 endif()
 
+if(UNIX)
+	list(APPEND PLUGINS driver_udp)
+endif()
+
 set(poser_sba_ADDITIONAL_LIBS sba)
 set(poser_epnp_ADDITIONAL_SRCS src/epnp/epnp.c)
 foreach(PLUGIN ${PLUGINS})
     add_library(${PLUGIN} SHARED src/${PLUGIN}.c ${${PLUGIN}_ADDITIONAL_SRCS})
     target_link_libraries(${PLUGIN} survive ${${PLUGIN}_ADDITIONAL_LIBS})
     set_target_properties(${PLUGIN} PROPERTIES PREFIX "")
-    set_target_properties(${PLUGIN} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "lib/plugins")
+    set_target_properties(${PLUGIN} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "plugins")
+	set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG "Debug/plugins")
+	set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE "Release/plugins")
 endforeach()
 
 add_subdirectory(src/test_cases)

@@ -1,4 +1,7 @@
 // Copyright 2013,2016 <>< C. N. Lohr.  This file licensed under the terms of the MIT license.
+#if defined(_WIN32) && !defined(TCC)
+#define LINMATH_EXPORT __declspec(dllexport)
+#endif
 #include "linmath.h"
 #include <float.h>
 #include <math.h>
@@ -39,7 +42,7 @@ inline void normalize3d(FLT *out, const FLT *in) {
 	out[2] = in[2] * r;
 }
 
-FLT dot3d(const FLT *a, const FLT *b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+LINMATH_EXPORT FLT dot3d(const FLT *a, const FLT *b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
 
 int compare3d(const FLT *a, const FLT *b, FLT epsilon) {
 	if (!a || !b)
@@ -65,7 +68,7 @@ inline void copy3d(FLT *out, const FLT *in) {
 	out[2] = in[2];
 }
 
-FLT magnitude3d(const FLT *a) { return FLT_SQRT(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]); }
+LINMATH_EXPORT FLT magnitude3d(const FLT *a) { return FLT_SQRT(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]); }
 FLT dist3d(const FLT *a, const FLT *b) {
 	LinmathPoint3d tmp;
 	sub3d(tmp, a, b);
@@ -801,5 +804,5 @@ LINMATH_EXPORT void Kabsch(LinmathPose *B2Atx, const FLT *_ptsA, const FLT *_pts
 #endif
 }
 
-LinmathQuat LinmathQuat_Identity = {1.0};
-LinmathPose LinmathPose_Identity = {.Rot = {1.0}};
+LINMATH_EXPORT LinmathQuat LinmathQuat_Identity = {1.0};
+LINMATH_EXPORT LinmathPose LinmathPose_Identity = {.Rot = {1.0}};

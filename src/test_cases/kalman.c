@@ -46,10 +46,10 @@ static SurvivePose randomMovement(const SurvivePose *start, FLT pvariance, FLT r
 };
 
 static int TestKalmanIntegratePose(FLT pvariance, FLT rot_variance) {
-	SurviveIMUTracker kpose = {};
+	SurviveIMUTracker kpose = { 0 };
 	SurviveObject so = {.timebase_hz = 48000000};
 	survive_imu_tracker_init(&kpose, &so);
-	SurvivePose pose = {};
+	SurvivePose pose = { 0 };
 	srand(42);
 
 	const FLT mvariance = 0.5;

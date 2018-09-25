@@ -12,6 +12,10 @@
 #include "survive_default_devices.h"
 #include "survive_playback.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #ifdef __APPLE__
 #define z_const const
 #endif
@@ -22,6 +26,10 @@ STATIC_CONFIG_ITEM( CONFIG_FILE, "configfile", 's', "Default configuration file"
 STATIC_CONFIG_ITEM( CONFIG_D_CALI, "disable-calibrate", 'i', "Enables or disables calibration", 0 );
 STATIC_CONFIG_ITEM( CONFIG_F_CALI, "force-calibrate", 'i', "Forces calibration even if one exists.", 0 );
 STATIC_CONFIG_ITEM(CONFIG_LIGHTHOUSE_COUNT, "lighthousecount", 'i', "How many lighthouses to look for.", 2);
+
+#ifdef WIN32
+#define RUNTIME_SYMNUM
+#endif
 
 #ifdef RUNTIME_SYMNUM
 #include <symbol_enumerator.h>
@@ -37,8 +45,28 @@ int SymnumCheck(const char *path, const char *name, void *location, long size) {
 
 #endif
 
+static void reset_stderr() {
+#ifndef _WIN32
+	fprintf(stderr, "\033[0m");
+#else
+	HANDLE   hConsole = GetStdHandle(STD_ERROR_HANDLE);
+	SetConsoleTextAttribute(hConsole, 7);
+#endif
+}
+
+static void set_stderr_color(int c) {
+#ifndef _WIN32
+	fprintf(stderr, "\033[0;31m");
+#else
+	HANDLE   hConsole = GetStdHandle(STD_ERROR_HANDLE);
+	SetConsoleTextAttribute(hConsole, c == 1 ? FOREGROUND_RED : (FOREGROUND_INTENSITY | FOREGROUND_RED));
+#endif
+}
+
 static void survivefault(struct SurviveContext *ctx, const char *fault) {
+	set_stderr_color(2);
 	fprintf(stderr, "Error: %s\n", fault);
+	reset_stderr();
 	exit(-1);
 }
 
@@ -49,7 +77,9 @@ static void survivenote(struct SurviveContext *ctx, const char *fault) {
 
 static void survivewarn(struct SurviveContext *ctx, const char *fault) {
 	survive_recording_info_process(ctx, fault);
-	fprintf(stderr, "\033[0;31mWarn: %s\033[0m\n", fault);
+	set_stderr_color(1);
+	fprintf(stderr, "Warning: %s\n", fault);
+	reset_stderr();
 }
 
 static void *button_servicer(void *context) {
@@ -128,36 +158,14 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 		did_runtime_symnum = 1;
 	}
 #endif
-#ifdef MANUAL_REGISTRATION
-	// note: this manual registration is currently only in use on builds using Visual Studio.
-
-	static int did_manual_driver_registration = 0;
-	if (did_manual_driver_registration == 0) {
-#define MANUAL_DRIVER_REGISTRATION(func)                                                                               \
-	int func(SurviveObject *so, PoserData *pd);                                                                        \
-	RegisterDriver(#func, &func);
-
-		MANUAL_DRIVER_REGISTRATION(PoserCharlesSlow)
-		MANUAL_DRIVER_REGISTRATION(PoserDaveOrtho)
-		MANUAL_DRIVER_REGISTRATION(PoserDummy)
-		MANUAL_DRIVER_REGISTRATION(PoserEPNP)
-		MANUAL_DRIVER_REGISTRATION(PoserSBA)
-		MANUAL_DRIVER_REGISTRATION(PoserCharlesRefine)
-		MANUAL_DRIVER_REGISTRATION(PoserMPFIT)
-
-		MANUAL_DRIVER_REGISTRATION(DriverRegHTCVive)
-		MANUAL_DRIVER_REGISTRATION(DriverRegPlayback)
-
-		MANUAL_DRIVER_REGISTRATION(DisambiguatorCharles)
-		MANUAL_DRIVER_REGISTRATION(DisambiguatorStateBased)
-		MANUAL_DRIVER_REGISTRATION(DisambiguatorTurvey)
-		did_manual_driver_registration = 1;
-	}
-#endif
 
 	SurviveContext *ctx = calloc(1, sizeof(SurviveContext));
 
 	ctx->state = SURVIVE_STOPPED;
+
+	ctx->faultfunction = survivefault;
+	ctx->notefunction = survivenote;
+	ctx->warnfunction = survivewarn;
 
 	ctx->global_config_values = malloc(sizeof(config_group));
 	ctx->temporary_config_values = malloc(sizeof(config_group));
@@ -236,14 +244,10 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 		}
 	}
 
-	ctx->faultfunction = survivefault;
-	ctx->notefunction = survivenote;
-	ctx->warnfunction = survivewarn;
-
 	const char *config_prefix_fields[] = {"playback", 0};
 	for (const char **name = config_prefix_fields; *name; name++) {
 		if (!survive_config_is_set(ctx, "configfile") && survive_config_is_set(ctx, *name)) {
-			char configfile[256] = {};
+			char configfile[256] = { 0 };
 			const char *recordname = survive_configs(ctx, *name, SC_GET, "");
 
 			const char *end = recordname + strlen(recordname);

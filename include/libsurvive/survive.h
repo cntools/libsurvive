@@ -38,22 +38,22 @@ struct PoserDataIMU;
 /**
  * Adds a lightData packet to the table.
  */
-void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLight *lightData);
+SURVIVE_EXPORT void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLight *lightData);
 
-void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct PoserDataIMU *imuData);
+SURVIVE_EXPORT void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct PoserDataIMU *imuData);
 
 /**
  * Returns true iff the given sensor and lighthouse at given axis were seen at most `tolerance` ticks before the given
  * `timecode_now`.
  */
-bool SurviveSensorActivations_isReadingValid(const SurviveSensorActivations *self, survive_timecode tolerance,
+SURVIVE_EXPORT bool SurviveSensorActivations_isReadingValid(const SurviveSensorActivations *self, survive_timecode tolerance,
 											 survive_timecode timecode_now, uint32_t sensor_idx, int lh, int axis);
 
 /**
  * Returns true iff both angles for the given sensor and lighthouse were seen at most `tolerance` ticks before the given
  * `timecode_now`.
  */
-bool SurviveSensorActivations_isPairValid(const SurviveSensorActivations *self, survive_timecode tolerance,
+SURVIVE_EXPORT bool SurviveSensorActivations_isPairValid(const SurviveSensorActivations *self, survive_timecode tolerance,
 										  survive_timecode timecode_now, uint32_t sensor_idx, int lh);
 
 /**
@@ -61,7 +61,7 @@ bool SurviveSensorActivations_isPairValid(const SurviveSensorActivations *self, 
  *
  * Don't rely on this to be a given value.
  */
-extern survive_timecode SurviveSensorActivations_default_tolerance;
+SURVIVE_IMPORT extern survive_timecode SurviveSensorActivations_default_tolerance;
 
 // DANGER: This structure may be redefined.  Note that it is logically split into 64-bit chunks
 // for optimization on 32- and 64-bit systems.
@@ -292,7 +292,7 @@ SURVIVE_EXPORT void survive_close(SurviveContext *ctx);
 SURVIVE_EXPORT SurviveObject *survive_get_so_by_name(SurviveContext *ctx, const char *name);
 
 // Utilitiy functions.
-int survive_simple_inflate(SurviveContext *ctx, const uint8_t *input, int inlen, uint8_t *output, int outlen);
+SURVIVE_EXPORT int survive_simple_inflate(SurviveContext *ctx, const uint8_t *input, int inlen, uint8_t *output, int outlen);
 SURVIVE_EXPORT int survive_send_magic(SurviveContext *ctx, int magic_code, void *data, int datalen);
 
 // These functions search both the stored-general and temporary sections for a parameter and return it.
@@ -313,7 +313,7 @@ SURVIVE_EXPORT void survive_detach_config(SurviveContext *ctx, const char *tag, 
 
 #define STATIC_CONFIG_ITEM( variable, name, type, description, default_value ) \
 	SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##variable() { survive_config_bind_variable( type, name, description, default_value ); }
-	void survive_config_bind_variable( char vt, const char * name, const char * description, ... ); //Only used at boot.
+	SURVIVE_EXPORT void survive_config_bind_variable( char vt, const char * name, const char * description, ... ); //Only used at boot.
 
 // Install the calibrator.
 SURVIVE_EXPORT void survive_cal_install(SurviveContext *ctx); // XXX This will be removed if not already done so.
@@ -343,7 +343,7 @@ SURVIVE_EXPORT int survive_default_htc_config_process(SurviveObject *so, char *c
 
 ////////////////////// Survive Drivers ////////////////////////////
 
-void RegisterDriver(const char *name, void *data);
+SURVIVE_EXPORT void RegisterDriver(const char *name, void *data);
 
 #define REGISTER_LINKTIME(func)                                                                                        \
 	SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##func() { RegisterDriver(#func, &func); }
@@ -351,13 +351,13 @@ void RegisterDriver(const char *name, void *data);
 ///////////////////////// General stuff for writing drivers ///////
 
 // For device drivers to call.  This actually attaches them.
-int survive_add_object(SurviveContext *ctx, SurviveObject *obj);
-void survive_remove_object(SurviveContext *ctx, SurviveObject *obj);
-void survive_add_driver(SurviveContext *ctx, void *payload, DeviceDriverCb poll, DeviceDriverCb close,
+SURVIVE_EXPORT int survive_add_object(SurviveContext *ctx, SurviveObject *obj);
+SURVIVE_EXPORT void survive_remove_object(SurviveContext *ctx, SurviveObject *obj);
+SURVIVE_EXPORT void survive_add_driver(SurviveContext *ctx, void *payload, DeviceDriverCb poll, DeviceDriverCb close,
 						DeviceDriverMagicCb magic);
 
 // This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
-void handle_lightcap(SurviveObject *so, LightcapElement *le);
+SURVIVE_EXPORT void handle_lightcap(SurviveObject *so, LightcapElement *le);
 
 #define SV_WARN(...)                                                                                                   \
 	{                                                                                                                  \

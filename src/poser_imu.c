@@ -11,7 +11,7 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 
 	if (!dd) {
 		so->PoserData = dd = malloc(sizeof(SurviveIMUTracker));
-		*dd = (SurviveIMUTracker){};
+		*dd = (SurviveIMUTracker){ 0 };
 	}
 
 	switch (pt) {

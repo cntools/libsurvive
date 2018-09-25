@@ -15,7 +15,7 @@ struct SurviveContext * ctx;
 
 void HandleKey( int keycode, int bDown )
 {
-	if( !bDown ) return;
+	if( !bDown ) return;	
 
 	if( keycode == 'O' || keycode == 'o' )
 	{
