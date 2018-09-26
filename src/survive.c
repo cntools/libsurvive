@@ -623,7 +623,11 @@ void survive_close(SurviveContext *ctx) {
 	}
 
 	for (i = 0; i < oldct; i++) {
-		ctx->drivercloses[i](ctx, ctx->drivers[i]);
+		if (ctx->drivercloses[i]) {
+			ctx->drivercloses[i](ctx, ctx->drivers[i]);
+		} else {
+			free(ctx->drivers[i]);
+		}
 	}
 
 	config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));

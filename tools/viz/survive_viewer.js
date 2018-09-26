@@ -59,6 +59,20 @@ function add_lighthouse(idx, p, q) {
 	scene.add(group);
 }
 
+function get_bvalue(key) {
+	var bvalue_array = {"WW0" : "FF", "TR0" : "00"};
+	var bvalue = bvalue_array[key];
+
+	if (bvalue === undefined) {
+		bvalue = 0;
+		for (var i = 0; i < key.length; i++) {
+			bvalue = bvalue * 2 + key.codePointAt(i);
+		}
+		bvalue = bvalue % 0xff;
+		bvalue = bvalue.toString(16);
+	}
+	return bvalue;
+}
 function recolorTrackers(when) {
 	if (ctx == undefined)
 		return;
@@ -67,8 +81,8 @@ function recolorTrackers(when) {
 		var colors = [];
 
 		for (var lh = 0; lh < 2; lh++) {
-			var bvalue = {"WW0" : "FF", "TR0" : "00"};
-			ctx.strokeStyle = (lh === 0 ? "#FF00" : "#00FF") + bvalue[key];
+			var bvalue = get_bvalue(key);
+			ctx.strokeStyle = (lh === 0 ? "#FF00" : "#00FF") + bvalue;
 
 			if (angles[key][lh])
 
@@ -98,7 +112,8 @@ function recolorTrackers(when) {
 		for (var id in colors) {
 			if (objs[key]) {
 				var material = objs[key].sensors[id];
-				material.color.setHex(colors[id]);
+				if (material)
+					material.color.setHex(colors[id]);
 			}
 		}
 	}
@@ -115,7 +130,7 @@ function redrawCanvas(when) {
 	}
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-	var fov_degrees = 50;
+	var fov_degrees = 120;
 	var fov_radians = fov_degrees / 180 * Math.PI;
 
 	function rad_to_x(ang) {
@@ -148,8 +163,9 @@ function redrawCanvas(when) {
 
 	for (var key in angles) {
 		for (var lh = 0; lh < 2; lh++) {
-			var bvalue = {"WW0" : "FF", "TR0" : "00", "HMD" : "88"};
-			ctx.strokeStyle = (lh === 0 ? "#FF00" : "#00FF") + bvalue[key];
+			var bvalue = get_bvalue(key);
+
+			ctx.strokeStyle = (lh === 0 ? "#FF00" : "#00FF") + bvalue;
 
 			if (angles[key][lh])
 
@@ -281,6 +297,7 @@ function update_trails() {
 $(function() { $("#trails").change(update_trails); });
 
 function update_object(v, allow_unsetup) {
+	allow_unsetup = true;
 	var obj = {
 		tracker : v[1],
 		position : [ parseFloat(v[3]), parseFloat(v[4]), parseFloat(v[5]) ],
@@ -441,7 +458,7 @@ var survive_log_handlers = {
 
 				var line = new THREE.Line(downAxes[obj.tracker], new THREE.LineBasicMaterial({color : 0xffffff}));
 				downAxes[obj.tracker].line = line;
-				scene.add(line);
+				objs[obj.tracker].add(line); // scene.add(line);
 			}
 
 			if (downAxes[obj.tracker].line)
@@ -449,9 +466,9 @@ var survive_log_handlers = {
 			if (objs[obj.tracker].position) {
 				var q = obj.accelgyro;
 
-				downAxes[obj.tracker].vertices[0] = objs[obj.tracker].position;
+				// downAxes[obj.tracker].vertices[0] = objs[obj.tracker].position;
 				downAxes[obj.tracker].vertices[1].fromArray(q);
-				downAxes[obj.tracker].vertices[1].add(objs[obj.tracker].position);
+				// downAxes[obj.tracker].vertices[1].add(objs[obj.tracker].position);
 				downAxes[obj.tracker].verticesNeedUpdate = true;
 			}
 		}

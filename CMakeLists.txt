@@ -80,16 +80,8 @@ endif()
 #set_target_properties(survive PROPERTIES LIBRARY_OUTPUT_DIRECTORY "lib")
 #set_target_properties(survive PROPERTIES RUNTIME_OUTPUT_DIRECTORY "lib")
 
-
-foreach(executable calibrate data_recorder simple_pose_test survive-cli)
-    add_executable(${executable} ${executable}.c )
-    target_link_libraries(${executable} survive)
-endforeach()
-target_link_libraries(calibrate CNGFX)
-target_link_libraries(simple_pose_test CNGFX)
-
 SET(PLUGINS
-        driver_dummy driver_vive
+        driver_dummy driver_vive driver_simulator
         disambiguator_turvey disambiguator_statebased disambiguator_charles
         poser_dummy poser_mpfit poser_epnp poser_sba poser_imu poser_charlesrefine
 )
@@ -116,5 +108,16 @@ foreach(PLUGIN ${PLUGINS})
 	set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG "Debug/plugins")
 	set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE "Release/plugins")
 endforeach()
+
+foreach(executable calibrate data_recorder simple_pose_test survive-cli)
+	add_executable(${executable} ${executable}.c )
+	target_link_libraries(${executable} survive)
+
+	foreach(PLUGIN ${PLUGINS})
+		add_dependencies(${executable} ${PLUGIN})
+	endforeach()
+endforeach()
+target_link_libraries(calibrate CNGFX)
+target_link_libraries(simple_pose_test CNGFX)
 
 add_subdirectory(src/test_cases)
