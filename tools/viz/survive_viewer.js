@@ -458,7 +458,7 @@ var survive_log_handlers = {
 
 				var line = new THREE.Line(downAxes[obj.tracker], new THREE.LineBasicMaterial({color : 0xffffff}));
 				downAxes[obj.tracker].line = line;
-				objs[obj.tracker].add(line); // scene.add(line);
+				scene.add(line);
 			}
 
 			if (downAxes[obj.tracker].line)
@@ -466,9 +466,13 @@ var survive_log_handlers = {
 			if (objs[obj.tracker].position) {
 				var q = obj.accelgyro;
 
-				// downAxes[obj.tracker].vertices[0] = objs[obj.tracker].position;
-				downAxes[obj.tracker].vertices[1].fromArray(q);
-				// downAxes[obj.tracker].vertices[1].add(objs[obj.tracker].position);
+				var inWorld = new THREE.Vector3(0, 0, 0);
+				inWorld.fromArray(q);
+				inWorld.applyQuaternion(objs[obj.tracker].quaternion.clone().inverse());
+				inWorld.add(objs[obj.tracker].position);
+
+				downAxes[obj.tracker].vertices[0] = objs[obj.tracker].position;
+				downAxes[obj.tracker].vertices[1] = inWorld;
 				downAxes[obj.tracker].verticesNeedUpdate = true;
 			}
 		}

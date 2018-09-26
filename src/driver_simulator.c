@@ -69,7 +69,7 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 
 		add3d(accelgyro, accelgyro, accel.Pos);
 		scale3d(accelgyro, accelgyro, 1 / 9.8066);
-		ApplyPoseToPoint(accelgyro, &driver->position, accelgyro);
+		quatrotatevector(accelgyro, driver->position.Rot, accelgyro);
 
 		LinmathQuat rotVel;
 		quatrotateabout(rotVel, driver->position.Rot, driver->velocity.Rot);
