@@ -144,11 +144,15 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 		const struct BaseStationCal *cal = survive_optimizer_get_calibration(mpfunc_ctx, lh);
 		const SurvivePose *world2lh = &cameras[lh];
 		const FLT *pt = &sensor_points[meas->sensor_idx * 3];
+		SurviveContext *ctx = mpfunc_ctx->so->ctx;
 
 		if (pose_idx != meas->object) {
 			pose_idx = meas->object;
 			pose = &survive_optimizer_get_pose(mpfunc_ctx)[meas->object];
+
+			// SV_INFO("Before\t" SurvivePose_format, SURVIVE_POSE_EXPAND(*pose));
 			quatnormalize(pose->Rot, pose->Rot);
+			// SV_INFO("After\t" SurvivePose_format, SURVIVE_POSE_EXPAND(*pose));
 
 			for (int lh = 0; lh < NUM_LIGHTHOUSES; lh++) {
 				ApplyPoseToPose(&obj2lh[lh], &cameras[lh], pose);
@@ -181,8 +185,10 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 				survive_reproject_full_jac_obj_pose(out, pose, pt, world2lh, cal);
 
 				for (int j = 0; j < 7; j++) {
-					derivs[j][i] = out[j];
-					derivs[j][i + 1] = out[j + 7];
+					if (derivs[j]) {
+						derivs[j][i] = out[j];
+						derivs[j][i + 1] = out[j + 7];
+					}
 					assert(!isnan(out[j]));
 					assert(!isnan(out[j + 7]));
 				}
@@ -190,7 +196,9 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 				FLT out[7] = { 0 };
 				reproject_axis_jacob_fns[meas->axis](out, pose, pt, world2lh, cal);
 				for (int j = 0; j < 7; j++) {
-					derivs[j][i] = out[j];
+					if (derivs[j]) {
+						derivs[j][i] = out[j];
+					}
 					assert(!isnan(out[j]));
 				}
 			}
@@ -205,6 +213,8 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 }
 
 int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result) {
+	SurviveContext *ctx = optimizer->so->ctx;
+	// SV_INFO("Run start");
 	return mpfit(mpfunc, optimizer->measurementsCnt, survive_optimizer_get_parameters_count(optimizer),
 				 optimizer->parameters, optimizer->parameters_info, 0, optimizer, result);
 }

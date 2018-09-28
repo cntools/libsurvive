@@ -155,8 +155,11 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 	// Note that this implementation is somewhat truncated. Instead of modeling velocity and velocities
 	// covariance with position explicitly, we just square the variance for the position indexes. This
 	// gives more or less the same calculation without having to do matrix multiplication.
-	tracker->P.Pose = tracker->P.Pose * tracker->P.Pose + var_meters;
-	tracker->P.Rot = tracker->P.Rot + var_quat;
+	if (tracker->P.Pose < 1e100)
+		tracker->P.Pose = tracker->P.Pose * tracker->P.Pose + var_meters;
+
+	if (tracker->P.Rot < 1e100)
+		tracker->P.Rot = tracker->P.Rot + var_quat;
 
 	tracker->last_data = *data;
 }

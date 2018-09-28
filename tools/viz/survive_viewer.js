@@ -468,7 +468,7 @@ var survive_log_handlers = {
 
 				var inWorld = new THREE.Vector3(0, 0, 0);
 				inWorld.fromArray(q);
-				inWorld.applyQuaternion(objs[obj.tracker].quaternion.clone().inverse());
+				inWorld.applyQuaternion(objs[obj.tracker].quaternion);
 				inWorld.add(objs[obj.tracker].position);
 
 				downAxes[obj.tracker].vertices[0] = objs[obj.tracker].position;

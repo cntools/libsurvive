@@ -27,8 +27,8 @@ extern "C" {
 #endif
 #endif
 
-#define float_format "%f"
-#define double_format "%lf"
+#define float_format "%+g"
+#define double_format "%+.013lf"
 #define _FLT_format2(f) f##_format
 #define _FLT_format(f) _FLT_format2(f)
 #define FLT_format _FLT_format(FLT)
@@ -36,7 +36,7 @@ extern "C" {
 #define Point3_format FLT_format "\t" FLT_format "\t" FLT_format
 #define Quat_format FLT_format "\t" FLT_format "\t" FLT_format "\t" FLT_format
 #define SurvivePose_format Point3_format "\t" Quat_format
-
+#define SURVIVE_POSE_EXPAND(p) (p).Pos[0], (p).Pos[1], (p).Pos[2], (p).Rot[0], (p).Rot[1], (p).Rot[2], (p).Rot[3]
 typedef LinmathPose SurvivePose;
 
 //Careful with this, you can't just add another one right now, would take minor changes in survive_data.c and the cal tools.

@@ -30,9 +30,18 @@ struct SurviveDriverSimulator {
 };
 typedef struct SurviveDriverSimulator SurviveDriverSimulator;
 
+static double timestamp_in_s() {
+	static double start_time_s = 0;
+	if (start_time_s == 0.)
+		start_time_s = OGGetAbsoluteTime();
+	return OGGetAbsoluteTime() - start_time_s;
+}
+
 static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 	SurviveDriverSimulator *driver = _driver;
-	FLT timestamp = OGGetAbsoluteTime();
+
+	FLT timefactor = linmath_max(survive_configf(ctx, "time-factor", SC_GET, 1.), .001);
+	FLT timestamp = timestamp_in_s() / timefactor;
 
 	FLT time_between_imu = 1. / driver->so->imu_freq;
 	FLT time_between_pulses = 0.00833333333;
@@ -43,7 +52,7 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 	// SurvivePose accel = {.Pos = {cos(t * 3) * 4, cos(t * 2) * 3, cos(t * 4) * 2},
 	//					 .Rot = {10 + cos(t) * 2, cos(t), sin(t), (cos(t) + sin(t))}};
 
-	SurvivePose accel = {.Rot = {10 + cos(t) * 2, cos(t), sin(t), (cos(t) + sin(t))}};
+	SurvivePose accel = {.Rot = {5 + cos(t) * 2, cos(t), sin(t), (cos(t) + sin(t))}};
 
 	LinmathVec3d attractors[] = {{1, 1, 1}, {-1, 0, 1}, {0, -1, .5}};
 
@@ -69,10 +78,13 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 
 		add3d(accelgyro, accelgyro, accel.Pos);
 		scale3d(accelgyro, accelgyro, 1 / 9.8066);
-		quatrotatevector(accelgyro, driver->position.Rot, accelgyro);
+
+		LinmathQuat q;
+		quatgetconjugate(q, driver->position.Rot);
+		quatrotatevector(accelgyro, q, accelgyro);
 
 		LinmathQuat rotVel;
-		quatrotateabout(rotVel, driver->position.Rot, driver->velocity.Rot);
+		quatrotateabout(rotVel, q, driver->velocity.Rot);
 		quattoeuler(accelgyro + 3, rotVel);
 
 		ctx->imuproc(driver->so, 3, accelgyro, timecode, 0);

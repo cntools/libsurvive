@@ -16,6 +16,7 @@
 #include "survive_config.h"
 #include "survive_reproject.h"
 
+#define DEBUG_NAN
 #ifdef DEBUG_NAN
 #include <fenv.h>
 #endif
@@ -163,7 +164,14 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 	}
 
 	mp_result result = {0};
-
+	/*
+	double resid[mpfitctx.measurementsCnt];
+	double xerror[survive_optimizer_get_parameters_count(&mpfitctx)];
+	double covar[survive_optimizer_get_parameters_count(&mpfitctx) * survive_optimizer_get_parameters_count(&mpfitctx)];
+	result.resid = resid;
+	result.xerror = xerror;
+	result.covar = covar;
+*/
 	mpfitctx.initialPose = *soLocation;
 
 	int res = survive_optimizer_run(&mpfitctx, &result);
@@ -184,7 +192,7 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 			}
 		}
 	} else {
-		SV_INFO("MPFIT failure %f (%d measurements, %d)", result.bestnorm, (int)meas_size, res);
+		SV_WARN("MPFIT failure %f/%f (%d measurements, %d)", result.orignorm, result.bestnorm, (int)meas_size, res);
 	}
 
 	return rtn;
@@ -340,8 +348,8 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 
 			if (error > 0) {
 				if (d->useKalman) {
-					FLT var_meters = .001 + error;
-					FLT var_quat = .001 + error;
+					FLT var_meters = 0.001 + error;
+					FLT var_quat = 0.001 + error;
 					FLT var[2] = {var_meters, var_quat};
 
 					survive_imu_tracker_integrate_observation(lightData->timecode, &d->tracker, &estimate, var);
@@ -366,7 +374,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		PoserDataIMU *imu = (PoserDataIMU *)pd;
 		if (ctx->calptr && ctx->calptr->stage < 5) {
 		} else if (d->useIMU) {
-			// survive_imu_tracker_integrate_imu(so, &d->tracker, imu);
+			survive_imu_tracker_integrate_imu(&d->tracker, imu);
 			// PoserData_poser_pose_func(pd, so, &d->tracker.pose);
 		}
 
