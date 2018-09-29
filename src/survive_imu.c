@@ -3,6 +3,7 @@
 #include "math.h"
 #include "survive_imu.h"
 #include "survive_internal.h"
+#include <assert.h>
 #include <memory.h>
 
 // Mahoney is due to https://hal.archives-ouvertes.fr/hal-00488376/document
@@ -77,7 +78,7 @@ static void RotateAccel(LinmathVec3d rAcc, const SurvivePose *pose, const Linmat
 }
 static void iterate_position(SurviveIMUTracker *tracker, double time_diff, const PoserDataIMU *pIMU, FLT *out) {
 	const SurvivePose *pose = &tracker->pose;
-	const FLT *vel = tracker->current_velocity;
+	const FLT *vel = tracker->current_velocity.Pos;
 
 	for (int i = 0; i < 3; i++)
 		out[i] = pose->Pos[i];
@@ -97,7 +98,7 @@ static void iterate_position(SurviveIMUTracker *tracker, double time_diff, const
 
 static void iterate_velocity(LinmathVec3d result, SurviveIMUTracker *tracker, double time_diff, PoserDataIMU *pIMU) {
 	const SurvivePose *pose = &tracker->pose;
-	const FLT *vel = tracker->current_velocity;
+	const FLT *vel = tracker->current_velocity.Pos;
 	scale3d(result, vel, 1.);
 
 	LinmathVec3d acc;
@@ -145,7 +146,7 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 		LinmathVec3d v_next;
 		iterate_velocity(v_next, tracker, time_diff, data);
 
-		scale3d(tracker->current_velocity, v_next, 1);
+		scale3d(tracker->current_velocity.Pos, v_next, 1);
 		scale3d(tracker->pose.Pos, next, 1);
 	}
 
@@ -155,29 +156,61 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 	// Note that this implementation is somewhat truncated. Instead of modeling velocity and velocities
 	// covariance with position explicitly, we just square the variance for the position indexes. This
 	// gives more or less the same calculation without having to do matrix multiplication.
+
+	/*
 	if (tracker->P.Pose < 1e100)
 		tracker->P.Pose = tracker->P.Pose * tracker->P.Pose + var_meters;
 
 	if (tracker->P.Rot < 1e100)
 		tracker->P.Rot = tracker->P.Rot + var_quat;
-
+*/
 	tracker->last_data = *data;
 }
 
 void survive_update_variances(SurviveIMUTracker *tracker, uint32_t timecode) {
+	if (quatiszero(tracker->lastGT.Rot))
+		return;
+
 	FLT time_diff = tick_difference(timecode, tracker->lastGTTime) / (FLT)tracker->so->timebase_hz;
+	assert(time_diff < 1.0);
+	FLT var_meters = .1;
+	FLT var_quat = .5;
 
-	FLT var_meters = .0001;
-	FLT var_quat = .0005;
+	tracker->Pv.Pose += var_meters * time_diff;
+	tracker->Pv.Rot += var_quat * time_diff;
 
-	tracker->P.Pose += var_meters * time_diff;
-	tracker->P.Rot += var_quat * time_diff;
+	tracker->P.Pose += tracker->Pv.Pose * time_diff;
+	tracker->P.Rot += tracker->Pv.Rot * time_diff;
 
 	for (int i = 0; i < 3; i++)
-		tracker->pose.Pos[i] += tracker->current_velocity[i] * time_diff;
+		tracker->pose.Pos[i] += tracker->current_velocity.Pos[i] * time_diff;
+
+	LinmathQuat rot_change;
+	quatmultiplyrotation(rot_change, tracker->current_velocity.Rot, time_diff);
+	quatrotateabout(tracker->current_velocity.Rot, tracker->current_velocity.Rot, rot_change);
 }
 
-void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTracker *tracker, SurvivePose *pose,
+void survive_imu_tracker_integrate_velocity(SurviveIMUTracker *tracker, const SurvivePose *pose, const FLT *Rv) {
+	FLT combined_variance[2] = {
+		Rv[0] + tracker->Pv.Pose,
+		Rv[1] + tracker->Pv.Rot,
+	};
+
+	FLT incoming_pose_weight[2] = {
+		combined_variance[0] == 0 ? 1. : tracker->Pv.Pose / combined_variance[0],
+		combined_variance[1] == 0 ? 1. : tracker->Pv.Rot / combined_variance[1],
+	};
+
+	for (int i = 0; i < 3; i++)
+		tracker->current_velocity.Pos[i] += incoming_pose_weight[0] * (pose->Pos[i] - tracker->current_velocity.Pos[i]);
+
+	quatslerp(tracker->current_velocity.Rot, tracker->current_velocity.Rot, pose->Rot, incoming_pose_weight[1]);
+
+	tracker->Pv.Pose *= (1. - incoming_pose_weight[0]);
+	tracker->Pv.Rot *= (1. - incoming_pose_weight[1]);
+}
+
+void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTracker *tracker, const SurvivePose *pose,
 											   const FLT *R) {
 	survive_update_variances(tracker, timecode);
 
@@ -208,24 +241,33 @@ void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTrac
 	tracker->P.Rot *= (1. - incoming_pose_weight[1]);
 
 	FLT time_diff = tick_difference(timecode, tracker->lastGTTime) / (FLT)tracker->so->timebase_hz;
-	for (int i = 0; i < 3; i++)
-		tracker->current_velocity[i] = (tracker->pose.Pos[i] - tracker->lastGT.Pos[i]) / time_diff;
 
-	// SurviveContext* ctx = tracker->so->ctx;
-	// SV_INFO("%+.07f %+.07f %+.07f", tracker->current_velocity[0],tracker->current_velocity[1],
-	// tracker->current_velocity[2]);
+	SurvivePose velocity;
+	quatfind(velocity.Rot, tracker->pose.Rot, tracker->lastGT.Rot);
+	quatmultiplyrotation(velocity.Rot, velocity.Rot, 1. / time_diff);
+
+	sub3d(velocity.Pos, tracker->pose.Pos, tracker->lastGT.Pos);
+	scale3d(velocity.Pos, velocity.Pos, 1. / time_diff);
+
+	SurvivePoseVariance vp = {.Pose = tracker->P.Pose + tracker->lastP.Pose,
+							  .Rot = tracker->P.Rot + tracker->lastP.Rot};
+	survive_imu_tracker_integrate_velocity(tracker, &velocity, &vp.Pose);
+
+	tracker->lastP = tracker->P;
 	tracker->lastGTTime = timecode;
 	tracker->lastGT = tracker->pose;
 }
 
 void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so) {
 	memset(tracker, 0, sizeof(*tracker));
-	tracker->pose.Rot[0] = 1.;
+	tracker->current_velocity.Rot[0] = tracker->pose.Rot[0] = 1.;
 	tracker->so = so;
 
 	// These are relatively high numbers to seed with; we are essentially saying
 	// origin has a variance of 10m; and the quat can be varied by 4 -- which is
 	// more than any actual normalized quat could be off by.
-	tracker->P.Pose = 10;
-	tracker->P.Rot = 4;
+	tracker->P.Pose = 1000;
+	tracker->P.Rot = 1000;
+
+	tracker->Pv = tracker->P;
 }

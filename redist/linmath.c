@@ -217,6 +217,7 @@ FLT quatdist(const double *q1, const double *q2) {
 	return 2 * acos(FLT_FABS(rtn));
 }
 
+inline bool quatiszero(const LinmathQuat q) { return q[0] == 0 && q[1] == 0 && q[2] == 0 && q[3] == 0; }
 inline void quatset(LinmathQuat q, FLT w, FLT x, FLT y, FLT z) {
 	q[0] = w;
 	q[1] = x;
@@ -546,7 +547,7 @@ inline void quatslerp(LinmathQuat q, const LinmathQuat qa, const LinmathQuat qb,
 	FLT bn[4];
 	quatnormalize(an, qa);
 	quatnormalize(bn, qb);
-	FLT cosTheta = quatinnerproduct(an, bn);
+	FLT cosTheta = linmath_max(-1., linmath_min(1., quatinnerproduct(an, bn)));
 	FLT sinTheta;
 
 	// Careful: If cosTheta is exactly one, or even if it's infinitesimally over, it'll

@@ -349,7 +349,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 			if (error > 0) {
 				if (d->useKalman) {
 					FLT var_meters = 0.001 + error;
-					FLT var_quat = 0.001 + error;
+					FLT var_quat = 0.0001 + error;
 					FLT var[2] = {var_meters, var_quat};
 
 					survive_imu_tracker_integrate_observation(lightData->timecode, &d->tracker, &estimate, var);
@@ -375,7 +375,8 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		if (ctx->calptr && ctx->calptr->stage < 5) {
 		} else if (d->useIMU) {
 			survive_imu_tracker_integrate_imu(&d->tracker, imu);
-			// PoserData_poser_pose_func(pd, so, &d->tracker.pose);
+			PoserData_poser_pose_func(pd, so, &d->tracker.pose);
+			// SV_INFO("%+.07f %+.07f %+.07f", imu->gyro[0], imu->gyro[1], imu->gyro[2]);
 		}
 
 		general_optimizer_data_record_imu(&d->opt, imu);

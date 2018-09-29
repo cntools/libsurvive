@@ -13,8 +13,8 @@ check_generated: check_generated.c ../../src/survive_reproject.generated.h survi
 clean :
 	rm -rf check_generated
 
-../../src/survive_reproject.generated.h: reprojection_functions.sage
-	sage reprojection_functions.sage > ../../src/survive_reproject.generated.h
+../../src/survive_reproject.generated.h: reprojection_functions.py
+	python reprojection_functions.py > ../../src/survive_reproject.generated.h
 
-survive_reproject.full.generated.h: reprojection_functions.sage
-	sage reprojection_functions.sage --full > survive_reproject.full.generated.h
+survive_reproject.full.generated.h: reprojection_functions.py
+	python reprojection_functions.py --full > survive_reproject.full.generated.h

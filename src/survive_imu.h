@@ -13,6 +13,11 @@ extern "C" {
 
 struct SurviveIMUTracker_p;
 
+typedef struct SurvivePoseVariance {
+	FLT Pose;
+	FLT Rot;
+} SurvivePoseVariance;
+
 typedef struct {
 	SurviveObject *so;
 	bool is_initialized;
@@ -20,26 +25,25 @@ typedef struct {
 	FLT updir[3];
 	FLT accel_scale_bias;
 
-	LinmathVec3d current_velocity;	// Velocity in world frame
-	PoserDataIMU last_data;
-	SurvivePose pose;
+	SurvivePose current_velocity; // Velocity in world frame
+	SurvivePoseVariance Pv;
 
+	PoserDataIMU last_data;
+
+	SurvivePose pose;
+	SurvivePoseVariance P;
+
+	SurvivePoseVariance lastP;
 	SurvivePose lastGT;
 	uint32_t lastGTTime;
-
-	struct {
-		FLT Pose;
-		FLT Rot;
-	} P;
-
 	LinmathVec3d integralFB;
 
 } SurviveIMUTracker;
 
 SURVIVE_EXPORT void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so);
 SURVIVE_EXPORT void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU *data);
-SURVIVE_EXPORT void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTracker *tracker, SurvivePose *pose,
-											   const FLT *variance);
+SURVIVE_EXPORT void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTracker *tracker,
+															  const SurvivePose *pose, const FLT *variance);
 
 #ifdef __cplusplus
 };

@@ -4,6 +4,7 @@
 #include "math.h"
 #include "os_generic.h"
 #include "survive_config.h"
+#include <json_helpers.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,6 +27,7 @@ struct SurviveDriverSimulator {
 	FLT time_last_iterate;
 
 	FLT timestart;
+	FLT current_timestamp;
 	int acode;
 };
 typedef struct SurviveDriverSimulator SurviveDriverSimulator;
@@ -39,10 +41,19 @@ static double timestamp_in_s() {
 
 static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 	SurviveDriverSimulator *driver = _driver;
+	static FLT last_time = 0;
+	FLT realtime = timestamp_in_s();
 
-	FLT timefactor = linmath_max(survive_configf(ctx, "time-factor", SC_GET, 1.), .001);
-	FLT timestamp = timestamp_in_s() / timefactor;
+	FLT timefactor = linmath_max(survive_configf(ctx, "time-factor", SC_GET, 1.), .00001);
+	// FLT timestamp = timestamp_in_s() / timefactor;
+	FLT timestep = 0.00001;
 
+	if (last_time != 0 && last_time + timefactor * timestep > realtime) {
+		usleep((timefactor * timestep + realtime - last_time) * 1e6);
+	}
+	last_time = realtime;
+
+	FLT timestamp = (driver->current_timestamp += timestep);
 	FLT time_between_imu = 1. / driver->so->imu_freq;
 	FLT time_between_pulses = 0.00833333333;
 	FLT time_between_gt = time_between_pulses / 5.;
@@ -60,7 +71,7 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 		LinmathVec3d acc;
 		sub3d(acc, attractors[i], driver->position.Pos);
 		FLT r = norm3d(acc);
-		scale3d(acc, acc, 1. / r / r);
+		scale3d(acc, acc, 10. / r / r);
 		add3d(accel.Pos, accel.Pos, acc);
 	}
 
@@ -98,20 +109,30 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 			FLT *pt = driver->so->sensor_locations + idx * 3;
 
 			LinmathVec3d ptInWorld;
+			LinmathVec3d normalInWorld;
 			ApplyPoseToPoint(ptInWorld, &driver->position, pt);
+			quatrotatevector(normalInWorld, driver->position.Rot, driver->so->sensor_normals + idx * 3);
 
 			SurvivePose world2lh = InvertPoseRtn(&ctx->bsd[lh].Pose);
 			LinmathPoint3d ptInLh;
+			LinmathVec3d normalInLh;
 			ApplyPoseToPoint(ptInLh, &world2lh, ptInWorld);
+			quatrotatevector(normalInLh, world2lh.Rot, normalInWorld);
 
 			SurviveAngleReading ang;
 			if (ptInLh[2] < 0) {
-				survive_reproject_xy(ctx->bsd[lh].fcal, ptInLh, ang);
+				LinmathVec3d dirLh;
+				normalize3d(dirLh, ptInLh);
+				scale3d(dirLh, dirLh, -1);
+				FLT facingness = dot3d(normalInLh, dirLh);
+				if (facingness > 0) {
+					survive_reproject_xy(ctx->bsd[lh].fcal, ptInLh, ang);
 
-				// SurviveObject * so, int sensor_id, int acode, survive_timecode timecode, FLT length, FLT angle,
-				// uint32_t lh);
-				int acode = (lh << 2) + (driver->acode & 1);
-				ctx->angleproc(driver->so, idx, acode, timecode, .006, ang[driver->acode & 1], lh);
+					// SurviveObject * so, int sensor_id, int acode, survive_timecode timecode, FLT length, FLT angle,
+					// uint32_t lh);
+					int acode = (lh << 2) + (driver->acode & 1);
+					ctx->angleproc(driver->so, idx, acode, timecode, .006, ang[driver->acode & 1], lh);
+				}
 			}
 		}
 		// SurviveObject * so, int sensor_id, int acode, int timeinsweep, survive_timecode timecode, survive_timecode
@@ -133,6 +154,7 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 		return 0;
 	}
 	FLT time_diff = timestamp - driver->time_last_iterate;
+	// SV_INFO("%.013f", time_diff);
 	driver->time_last_iterate = timestamp;
 
 	SurvivePose velGain;
@@ -154,6 +176,16 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 		return 1;
 
 	return 0;
+}
+
+void str_append(char **pString, const char *str) {
+	size_t l1 = *pString ? strlen(*pString) : 0;
+	size_t l2 = strlen(str);
+
+	*pString = realloc(*pString, l1 + l2 + 1);
+	(*pString)[l1] = 0;
+
+	strcat(*pString, str);
 }
 
 int DriverRegSimulator(SurviveContext *ctx) {
@@ -182,7 +214,9 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	device->head2trackref.Rot[0] = 1;
 	device->imu2trackref.Rot[0] = 1;
 
-	FLT r = .25;
+	char *cfg = 0, *loc_buf = 0, *nor_buf = 0;
+
+	FLT r = .1;
 	srand(42);
 	for (int i = 0; i < device->sensor_ct; i++) {
 		FLT azi = rand();
@@ -192,11 +226,36 @@ int DriverRegSimulator(SurviveContext *ctx) {
 		normals[0] = locations[0] = r * cos(azi) * sin(pol);
 		normals[1] = locations[1] = r * sin(azi) * sin(pol);
 		normals[2] = locations[2] = r * cos(pol);
-	}
+		normalize3d(normals, normals);
 
+		char buffer[1024] = {};
+		sprintf(buffer, "[%f, %f, %f],\n", locations[0], locations[1], locations[2]);
+		str_append(&loc_buf, buffer);
+
+		sprintf(buffer, "[%f, %f, %f],\n", normals[0], normals[1], normals[2]);
+		str_append(&nor_buf, buffer);
+	}
+	nor_buf[strlen(nor_buf) - 2] = 0;
+	loc_buf[strlen(loc_buf) - 2] = 0;
+
+	str_append(&cfg, "{\n");
+	str_append(&cfg, "     \"lighthouse_config\": {\n");
+	str_append(&cfg, "          \"modelNormals\": [\n");
+	str_append(&cfg, nor_buf);
+	str_append(&cfg, "          ],\n");
+	str_append(&cfg, "          \"modelPoints\": [\n");
+	str_append(&cfg, loc_buf);
+	str_append(&cfg, "          ]\n");
+	str_append(&cfg, "     }\n");
+	str_append(&cfg, "}\n");
 	device->timebase_hz = 48000000;
 	device->imu_freq = 1000.0f;
 
+	ctx->configfunction(device, cfg, strlen(cfg));
+
+	free(loc_buf);
+	free(nor_buf);
+	free(cfg);
 	sp->so = device;
 	survive_add_object(ctx, device);
 	survive_add_driver(ctx, sp, Simulator_poll, 0, 0);

@@ -1,3 +1,4 @@
+#include "string.h"
 #include <libsurvive/survive.h>
 #include <libsurvive/survive_reproject.h>
 #include <math.h>
@@ -39,6 +40,12 @@ SurvivePose random_pose() {
   SurvivePose rtn = {.Pos = {next_rand(10), next_rand(10), next_rand(10)} };
   quatfromeuler(rtn.Rot, euler);
   return rtn;
+}
+
+LinmathAxisAnglePose random_pose_axisangle() {
+	LinmathAxisAnglePose rtn = {.Pos = {next_rand(10), next_rand(10), next_rand(10)},
+								.Rot = {next_rand(2 * M_PI), next_rand(2 * M_PI), next_rand(2 * M_PI)}};
+	return rtn;
 }
 
 void random_point(FLT *out) {
@@ -91,7 +98,6 @@ void check_invert() {
 }
 
 void check_reproject() {
-	printf("Checking reprojection...\n");
 	SurvivePose obj = random_pose();
 	LinmathVec3d pt;
 	random_point(pt);
@@ -120,47 +126,125 @@ void check_reproject() {
 	out_pt[0] = out_pt[1] = 0;
 }
 
-void check_jacobian() {
-  SurvivePose obj = random_pose();
-  //SurvivePose obj = {};
-  //obj.Rot[0] = 1.;
-  //obj.Rot[1] = obj.Rot[2] = obj.Rot[3] = 0.0;
-  
+void check_jacobian_axisangle() {
+	LinmathAxisAnglePose obj2world = random_pose_axisangle();
+	// SurvivePose obj2world = {};
+	// memset(obj2world.Rot, 0, sizeof(FLT) * 3);
+
 	LinmathVec3d pt;
 	random_point(pt);
 
-	SurvivePose world2lh = random_pose();
-	//SurvivePose lh = {}; lh.Rot[0] = 1.;
+	LinmathAxisAnglePose world2lh = random_pose_axisangle();
+	// memset(world2lh.Rot, 0, sizeof(FLT) * 4);
+	// world2lh.Rot[1] = 1.;
+	// SurvivePose lh = {}; lh.Rot[0] = 1.;
 
 	survive_calibration_config config;
-	BaseStationData bsd;
+	BaseStationData bsd = {};
 	for (int i = 0; i < 10; i++)
 		*((FLT *)&bsd.fcal[0].phase + i) = next_rand(0.5);
 
 	FLT out_jac[14] = {0};
-	survive_reproject_full_jac_obj_pose(out_jac, &obj, pt, &world2lh, bsd.fcal);
+	survive_reproject_full_jac_obj_pose_axisangle(out_jac, &obj2world, pt, &world2lh, bsd.fcal);
 
 	FLT comp_jac[14] = {0};
 	FLT out_pt[2] = {0};
 
-	survive_reproject_full(bsd.fcal, &world2lh, &obj, pt, out_pt);
+	for (int i = 0; i < 6; i++) {
+		FLT out[2] = {};
+
+		double H = 1e-10;
+		for (int n = 0; n < 2; n++) {
+			LinmathAxisAnglePose p = obj2world;
+			int s = n == 0 ? 1 : -1;
+			if (i < 3)
+				p.Pos[i] += s * H;
+			else {
+				H = 2.5e-10;
+				p.Rot[i - 3] += s * H;
+			}
+
+			// quatnormalize(p.Rot, p.Rot);
+
+			SurvivePose world2lhq = AxisAnglePose2Pose(&world2lh);
+			SurvivePose pq = AxisAnglePose2Pose(&p);
+			survive_reproject_full(bsd.fcal, &world2lhq, &pq, pt, n == 0 ? out : out_pt);
+		}
+
+		comp_jac[i] = (out[0] - out_pt[0]) / (2. * H);
+		comp_jac[i + 6] = (out[1] - out_pt[1]) / (2. * H);
+	}
+
+	for (int j = 0; j < 2; j++) {
+		for (int i = 0; i < 6; i++) {
+			printf("%+.08f ", out_jac[i + j * 6]);
+		}
+		printf("\n");
+	}
+	printf("\n");
+	for (int j = 0; j < 2; j++) {
+		for (int i = 0; i < 6; i++) {
+			printf("%+.08f ", comp_jac[i + j * 6]);
+		}
+		printf("\n");
+	}
+	printf("\n");
+	for (int j = 0; j < 2; j++) {
+		for (int i = 0; i < 6; i++) {
+			printf("%+.08f ", comp_jac[i + j * 6] - out_jac[i + j * 6]);
+		}
+		printf("\n");
+	}
+
+	out_pt[0] = out_pt[1] = 0;
+}
+
+void check_jacobian() {
+	SurvivePose obj2world = random_pose();
+	// SurvivePose obj2world = {};
+	memset(obj2world.Rot, 0, sizeof(FLT) * 4);
+	obj2world.Rot[1] = 1.;
+
+	LinmathVec3d pt;
+	random_point(pt);
+
+	SurvivePose world2lh = random_pose();
+	// memset(world2lh.Rot, 0, sizeof(FLT) * 4);
+	// world2lh.Rot[1] = 1.;
+	// SurvivePose lh = {}; lh.Rot[0] = 1.;
+
+	survive_calibration_config config;
+	BaseStationData bsd = {};
+	for (int i = 0; i < 10; i++)
+		*((FLT *)&bsd.fcal[0].phase + i) = next_rand(0.5);
+
+	FLT out_jac[14] = {0};
+	survive_reproject_full_jac_obj_pose(out_jac, &obj2world, pt, &world2lh, bsd.fcal);
+
+	FLT comp_jac[14] = {0};
+	FLT out_pt[2] = {0};
+
 	for(int i = 0;i < 7;i++) {
 	  FLT out[2] = {};
-	  SurvivePose p = obj;
 
-	  double H = 9e-9;
-	  if(i < 3)
-	    p.Pos[i] += H;
-	  else {
-	    H = 2.5e-10;
-	    p.Rot[i - 3] += H;
+	  double H = 1e-10;
+	  for (int n = 0; n < 2; n++) {
+		  SurvivePose p = obj2world;
+		  int s = n == 0 ? 1 : -1;
+		  if (i < 3)
+			  p.Pos[i] += s * H;
+		  else {
+			  H = 2.5e-10;
+			  p.Rot[i - 3] += s * H;
+		  }
+
+		  // quatnormalize(p.Rot, p.Rot);
+
+		  survive_reproject_full(bsd.fcal, &world2lh, &p, pt, n == 0 ? out : out_pt);
 	  }
 
-	  //quatnormalize(p.Rot, p.Rot);
-
-	  survive_reproject_full(bsd.fcal, &world2lh, &p, pt, out);
-	  comp_jac[i] = (out[0] - out_pt[0]) / H;
-	  comp_jac[i + 7] = (out[1] - out_pt[1]) / H;
+	  comp_jac[i] = (out[0] - out_pt[0]) / (2. * H);
+	  comp_jac[i + 7] = (out[1] - out_pt[1]) / (2. * H);
 	}
 
 
@@ -201,11 +285,19 @@ void check_apply_pose() {
 }
 
 int main() {
-  check_apply_pose();
+	printf("Check apply pose...\n");
+	check_apply_pose();
+	printf("Check jacobian...\n");
 	check_jacobian();
+	printf("Check jacobian axis angle...\n");
+	check_jacobian_axisangle();
+
+	printf("Check rotate_vector...\n");
 	check_rotate_vector();
+	printf("Check invert...\n");
 	check_invert();
+	printf("Check reproject...\n");
 	check_reproject();
-	
+
 	return 0;
 }

@@ -3,6 +3,8 @@
 #ifndef _LINMATH_H
 #define _LINMATH_H
 
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -118,6 +120,7 @@ typedef FLT LinmathEulerAngle[3];
 
 LINMATH_EXPORT FLT quatdist(const LinmathQuat q1, const LinmathQuat q2);
 LINMATH_EXPORT void quatset(LinmathQuat q, FLT w, FLT x, FLT y, FLT z);
+LINMATH_EXPORT bool quatiszero(const LinmathQuat q);
 LINMATH_EXPORT void quatsetnone(LinmathQuat q);
 LINMATH_EXPORT void quatcopy(LinmathQuat q, const LinmathQuat qin);
 LINMATH_EXPORT void quatfromeuler(LinmathQuat q, const LinmathEulerAngle euler);
