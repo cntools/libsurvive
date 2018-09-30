@@ -5,6 +5,7 @@
 #include "os_generic.h"
 #include "survive_config.h"
 #include <json_helpers.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -56,22 +57,27 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 	FLT timestamp = (driver->current_timestamp += timestep);
 	FLT time_between_imu = 1. / driver->so->imu_freq;
 	FLT time_between_pulses = 0.00833333333;
-	FLT time_between_gt = time_between_pulses / 5.;
+	FLT time_between_gt = time_between_imu;
 
 	FLT t = (timestamp - driver->timestart);
 
 	// SurvivePose accel = {.Pos = {cos(t * 3) * 4, cos(t * 2) * 3, cos(t * 4) * 2},
 	//					 .Rot = {10 + cos(t) * 2, cos(t), sin(t), (cos(t) + sin(t))}};
 
-	SurvivePose accel = {.Rot = {5 + cos(t) * 2, cos(t), sin(t), (cos(t) + sin(t))}};
+	// SurvivePose accel = {.Rot = {5 + cos(t) * 2, cos(t), sin(t), (cos(t) + sin(t))}};
+	SurvivePose accel = {.Rot = 1};
 
 	LinmathVec3d attractors[] = {{1, 1, 1}, {-1, 0, 1}, {0, -1, .5}};
+	size_t attractor_cnt = survive_configi(ctx, "attractors", SC_GET, sizeof(attractors) / sizeof(LinmathVec3d));
+	if (attractor_cnt > sizeof(attractors) / sizeof(LinmathVec3d)) {
+		attractor_cnt = sizeof(attractors) / sizeof(LinmathVec3d);
+	}
 
-	for (int i = 0; i < sizeof(attractors) / sizeof(LinmathVec3d); i++) {
+	for (int i = 0; i < attractor_cnt; i++) {
 		LinmathVec3d acc;
 		sub3d(acc, attractors[i], driver->position.Pos);
 		FLT r = norm3d(acc);
-		scale3d(acc, acc, 10. / r / r);
+		scale3d(acc, acc, 5. / r / r);
 		add3d(accel.Pos, accel.Pos, acc);
 	}
 
@@ -169,7 +175,7 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 	quatmultiplyrotation(posGain.Rot, driver->velocity.Rot, time_diff);
 
 	add3d(driver->position.Pos, driver->position.Pos, posGain.Pos);
-	quatrotateabout(driver->position.Rot, driver->position.Rot, posGain.Rot);
+	quatrotateabout(driver->position.Rot, posGain.Rot, driver->position.Rot);
 
 	FLT time = survive_configf(ctx, "simulator-time", SC_GET, 0);
 	if (timestamp - driver->timestart > time && time > 0)
@@ -213,6 +219,22 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	device->head2imu.Rot[0] = 1;
 	device->head2trackref.Rot[0] = 1;
 	device->imu2trackref.Rot[0] = 1;
+
+	for (int i = 0; i < 4; i++)
+		sp->position.Rot[i] = 1;
+	sp->position.Rot[0] = 2;
+
+	quatnormalize(sp->position.Rot, sp->position.Rot);
+
+	size_t attractor_cnt = survive_configi(ctx, "attractors", SC_GET, 1);
+	if (attractor_cnt) {
+		for (int i = 0; i < 3; i++)
+			sp->velocity.Pos[i] = 2. * rand() / RAND_MAX - 1.;
+	}
+
+	sp->velocity.Rot[0] = 1;
+	sp->velocity.Rot[3] = 1;
+	quatnormalize(sp->velocity.Rot, sp->velocity.Rot);
 
 	char *cfg = 0, *loc_buf = 0, *nor_buf = 0;
 

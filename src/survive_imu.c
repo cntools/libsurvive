@@ -54,19 +54,6 @@ static void mahony_ahrs(SurviveIMUTracker *tracker, LinmathVec3d _gyro, LinmathV
 	quatnormalize(q, q);
 }
 
-static inline uint32_t tick_difference(uint32_t most_recent, uint32_t least_recent) {
-	uint32_t diff = 0;
-	if (most_recent > least_recent) {
-		diff = most_recent - least_recent;
-	} else {
-		diff = least_recent - most_recent;
-	}
-
-	if (diff > 0xFFFFFFFF / 2)
-		return 0x7FFFFFFF / 2 - diff;
-	return diff;
-}
-
 static const int imu_calibration_iterations = 100;
 
 static void RotateAccel(LinmathVec3d rAcc, const SurvivePose *pose, const LinmathVec3d accel) {
@@ -137,9 +124,10 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 
 	mahony_ahrs(tracker, data->gyro, data->accel);
 
-	FLT time_diff = tick_difference(data->timecode, tracker->last_data.timecode) / (FLT)tracker->so->timebase_hz;
+	FLT time_diff =
+		survive_timecode_difference(data->timecode, tracker->last_data.timecode) / (FLT)tracker->so->timebase_hz;
 
-	if (tick_difference(data->timecode, tracker->lastGTTime) < 3200000 * 3 && false) {
+	if (survive_timecode_difference(data->timecode, tracker->lastGTTime) < 3200000 * 3 && false) {
 		FLT next[3];
 		iterate_position(tracker, time_diff, data, next);
 
@@ -171,7 +159,7 @@ void survive_update_variances(SurviveIMUTracker *tracker, uint32_t timecode) {
 	if (quatiszero(tracker->lastGT.Rot))
 		return;
 
-	FLT time_diff = tick_difference(timecode, tracker->lastGTTime) / (FLT)tracker->so->timebase_hz;
+	FLT time_diff = survive_timecode_difference(timecode, tracker->lastGTTime) / (FLT)tracker->so->timebase_hz;
 	assert(time_diff < 1.0);
 	FLT var_meters = .1;
 	FLT var_quat = .5;
@@ -182,12 +170,24 @@ void survive_update_variances(SurviveIMUTracker *tracker, uint32_t timecode) {
 	tracker->P.Pose += tracker->Pv.Pose * time_diff;
 	tracker->P.Rot += tracker->Pv.Rot * time_diff;
 
+	survive_imu_tracker_predict(tracker, timecode, &tracker->pose);
+}
+
+void survive_imu_tracker_predict(const SurviveIMUTracker *tracker, survive_timecode timecode, SurvivePose *out) {
+	if (quatiszero(tracker->lastGT.Rot))
+		return;
+
+	*out = tracker->lastGT;
+
+	FLT time_diff = survive_timecode_difference(timecode, tracker->lastGTTime) / (FLT)tracker->so->timebase_hz;
+	// assert(time_diff < 1.0);
+
 	for (int i = 0; i < 3; i++)
-		tracker->pose.Pos[i] += tracker->current_velocity.Pos[i] * time_diff;
+		out->Pos[i] += tracker->current_velocity.Pos[i] * time_diff;
 
 	LinmathQuat rot_change;
 	quatmultiplyrotation(rot_change, tracker->current_velocity.Rot, time_diff);
-	quatrotateabout(tracker->current_velocity.Rot, tracker->current_velocity.Rot, rot_change);
+	quatrotateabout(out->Rot, rot_change, out->Rot);
 }
 
 void survive_imu_tracker_integrate_velocity(SurviveIMUTracker *tracker, const SurvivePose *pose, const FLT *Rv) {
@@ -240,18 +240,20 @@ void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTrac
 	tracker->P.Pose *= (1. - incoming_pose_weight[0]);
 	tracker->P.Rot *= (1. - incoming_pose_weight[1]);
 
-	FLT time_diff = tick_difference(timecode, tracker->lastGTTime) / (FLT)tracker->so->timebase_hz;
+	FLT time_diff = survive_timecode_difference(timecode, tracker->lastGTTime) / (FLT)tracker->so->timebase_hz;
 
-	SurvivePose velocity;
-	quatfind(velocity.Rot, tracker->pose.Rot, tracker->lastGT.Rot);
-	quatmultiplyrotation(velocity.Rot, velocity.Rot, 1. / time_diff);
+	if (!quatiszero(tracker->lastGT.Rot)) {
+		SurvivePose velocity;
+		quatfind(velocity.Rot, tracker->lastGT.Rot, tracker->pose.Rot);
+		quatmultiplyrotation(velocity.Rot, velocity.Rot, 1. / time_diff);
 
-	sub3d(velocity.Pos, tracker->pose.Pos, tracker->lastGT.Pos);
-	scale3d(velocity.Pos, velocity.Pos, 1. / time_diff);
+		sub3d(velocity.Pos, tracker->pose.Pos, tracker->lastGT.Pos);
+		scale3d(velocity.Pos, velocity.Pos, 1. / time_diff);
 
-	SurvivePoseVariance vp = {.Pose = tracker->P.Pose + tracker->lastP.Pose,
-							  .Rot = tracker->P.Rot + tracker->lastP.Rot};
-	survive_imu_tracker_integrate_velocity(tracker, &velocity, &vp.Pose);
+		SurvivePoseVariance vp = {.Pose = tracker->P.Pose + tracker->lastP.Pose,
+								  .Rot = tracker->P.Rot + tracker->lastP.Rot};
+		survive_imu_tracker_integrate_velocity(tracker, &velocity, &vp.Pose);
+	}
 
 	tracker->lastP = tracker->P;
 	tracker->lastGTTime = timecode;

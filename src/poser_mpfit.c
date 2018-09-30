@@ -138,14 +138,6 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 	SurvivePose *soLocation = survive_optimizer_get_pose(&mpfitctx);
 	survive_optimizer_setup_cameras(&mpfitctx, so->ctx, true);
 
-	bool updateCameras = false;
-
-	if (updateCameras) {
-		int start = survive_optimizer_get_camera_index(&mpfitctx);
-		for (int i = start + 7; i < start + 7 * mpfitctx.cameraLength; i++) {
-			mpfitctx.parameters_info[i].fixed = false;
-		}
-	}
 	survive_optimizer_setup_pose(&mpfitctx, 0, false, d->use_jacobian_function);
 
 	size_t meas_size = construct_input_from_scene(d, pdl->timecode, scene, mpfitctx.measurements);
@@ -163,15 +155,10 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 		return -1;
 	}
 
+	if (d->useKalman || d->useIMU) {
+		// survive_imu_tracker_predict(&d->tracker, pdl->timecode, soLocation);
+	}
 	mp_result result = {0};
-	/*
-	double resid[mpfitctx.measurementsCnt];
-	double xerror[survive_optimizer_get_parameters_count(&mpfitctx)];
-	double covar[survive_optimizer_get_parameters_count(&mpfitctx) * survive_optimizer_get_parameters_count(&mpfitctx)];
-	result.resid = resid;
-	result.xerror = xerror;
-	result.covar = covar;
-*/
 	mpfitctx.initialPose = *soLocation;
 
 	int res = survive_optimizer_run(&mpfitctx, &result);
@@ -183,14 +170,6 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 		quatnormalize(soLocation->Rot, soLocation->Rot);
 		*out = *soLocation;
 		rtn = result.bestnorm;
-
-		if (updateCameras) {
-			SurvivePose *cameras = survive_optimizer_get_camera(&mpfitctx);
-			for (int i = 0; i < mpfitctx.cameraLength; i++) {
-				SurvivePose p = InvertPoseRtn(cameras + i);
-				so->ctx->lighthouseposeproc(so->ctx, i, &p, soLocation);
-			}
-		}
 	} else {
 		SV_WARN("MPFIT failure %f/%f (%d measurements, %d)", result.orignorm, result.bestnorm, (int)meas_size, res);
 	}
@@ -377,6 +356,12 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 			survive_imu_tracker_integrate_imu(&d->tracker, imu);
 			PoserData_poser_pose_func(pd, so, &d->tracker.pose);
 			// SV_INFO("%+.07f %+.07f %+.07f", imu->gyro[0], imu->gyro[1], imu->gyro[2]);
+		} else if (d->useKalman) {
+			SurvivePose out = {};
+			survive_imu_tracker_predict(&d->tracker, imu->timecode, &out);
+			if (!quatiszero(out.Rot)) {
+				PoserData_poser_pose_func(pd, so, &out);
+			}
 		}
 
 		general_optimizer_data_record_imu(&d->opt, imu);
