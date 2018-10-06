@@ -31,7 +31,7 @@
     <ProjectGuid>{435CFD2C-8724-42EE-8FDE-71EF7D2C6B2F}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>libsurvive</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -112,6 +112,7 @@
       <PreprocessorDefinitions>FLT=double;USE_DOUBLE;RUNTIME_SYMNUM;NOZLIB;_CRT_SECURE_NO_WARNINGS;HIDAPI;WINDOWS;_DEBUG;_LIB;HAVE_LAPACK_CONFIG_H;LAPACK_COMPLEX_STRUCTURE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\winbuild;..\..\include\libsurvive;..\..\redist;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalOptions>/Y- %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -262,15 +263,17 @@
     <ClCompile Include="..\..\src\poser_daveortho.c" />
     <ClCompile Include="..\..\src\poser_dummy.c" />
     <ClCompile Include="..\..\src\poser_epnp.c" />
+    <ClCompile Include="..\..\src\survive_optimizer.c" />
     <ClCompile Include="..\..\src\poser_general_optimizer.c" />
     <ClCompile Include="..\..\src\poser_mpfit.c" />
     <ClCompile Include="..\..\src\poser_octavioradii.c" />
     <ClCompile Include="..\..\src\poser_sba.c" />
     <ClCompile Include="..\..\src\poser_turveytori.c" />
     <ClCompile Include="..\..\src\survive.c" />
+    <ClCompile Include="..\..\src\survive_plugins.c" />
     <ClCompile Include="..\..\src\survive_api.c" />
     <ClCompile Include="..\..\src\survive_cal.c" />
-    <ClCompile Include="..\..\src\survive_charlesbiguator.c" />
+    <ClCompile Include="..\..\src\disambiguator_charles.c" />
     <ClCompile Include="..\..\src\survive_config.c" />
     <ClCompile Include="..\..\src\survive_default_devices.c" />
     <ClCompile Include="..\..\src\survive_disambiguator.c" />
@@ -280,10 +283,10 @@
     <ClCompile Include="..\..\src\survive_process.c" />
     <ClCompile Include="..\..\src\survive_reproject.c" />
     <ClCompile Include="..\..\src\survive_sensor_activations.c" />
-    <ClCompile Include="..\..\src\survive_statebased_disambiguator.c" />
-    <ClCompile Include="..\..\src\survive_turveybiguator.c" />
+    <ClCompile Include="..\..\src\disambiguator_statebased.c" />
+    <ClCompile Include="..\..\src\disambiguator_turvey.c" />
     <ClCompile Include="..\..\src\survive_usb.c" />
-    <ClCompile Include="..\..\src\survive_vive.c" />
+    <ClCompile Include="..\..\src\driver_vive.c" />
     <ClCompile Include="..\getdelim.c" />
   </ItemGroup>
   <ItemGroup>
@@ -303,6 +306,7 @@
     <ClInclude Include="..\..\src\epnp\epnp.h" />
     <ClInclude Include="..\..\src\ootx_decoder.h" />
     <ClInclude Include="..\..\src\poser_general_optimizer.h" />
+    <ClInclude Include="..\..\src\survive_optimizer.h" />
     <ClInclude Include="..\..\src\survive_cal.h" />
     <ClInclude Include="..\..\src\survive_config.h" />
     <ClInclude Include="..\..\src\survive_default_devices.h" />
