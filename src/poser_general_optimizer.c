@@ -55,7 +55,7 @@ typedef struct {
 	SurvivePose pose;
 } set_position_t;
 
-static void set_position(SurviveObject *so, uint32_t timecode, SurvivePose *new_pose, void *_user) {
+static void set_position(SurviveObject *so, uint32_t timecode, const SurvivePose *new_pose, void *_user) {
 	set_position_t *user = _user;
 	assert(user->hasInfo == false);
 	user->hasInfo = true;

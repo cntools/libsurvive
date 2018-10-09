@@ -84,6 +84,14 @@ void survive_recording_lighthouse_process(SurviveContext *ctx, uint8_t lighthous
 					lh_pose->Pos[0], lh_pose->Pos[1], lh_pose->Pos[2], lh_pose->Rot[0], lh_pose->Rot[1],
 					lh_pose->Rot[2], lh_pose->Rot[3]);
 }
+void survive_recording_velocity_process(SurviveObject *so, uint8_t lighthouse, const SurvivePose *pose) {
+	SurviveRecordingData *recordingData = so->ctx->recptr;
+	if (recordingData == 0)
+		return;
+
+	write_to_output(recordingData, "%s VELOCITY %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\n", so->codename,
+					pose->Pos[0], pose->Pos[1], pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
+}
 void survive_recording_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose) {
 	SurviveRecordingData *recordingData = so->ctx->recptr;
 	if (recordingData == 0)
@@ -93,7 +101,16 @@ void survive_recording_raw_pose_process(SurviveObject *so, uint8_t lighthouse, S
 					pose->Pos[1], pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
 }
 
-void survive_recording_external_pose_process(SurviveContext *ctx, const char *name, SurvivePose *pose) {
+void survive_recording_external_velocity_process(SurviveContext *ctx, const char *name, const SurvivePose *pose) {
+	SurviveRecordingData *recordingData = ctx->recptr;
+	if (recordingData == 0)
+		return;
+
+	write_to_output(recordingData, "%s EXTERNAL_VELOCITY %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\n", name,
+					pose->Pos[0], pose->Pos[1], pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
+}
+
+void survive_recording_external_pose_process(SurviveContext *ctx, const char *name, const SurvivePose *pose) {
 	SurviveRecordingData *recordingData = ctx->recptr;
 	if (recordingData == 0)
 		return;

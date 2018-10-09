@@ -318,6 +318,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 	ctx->lighthouseposeproc = survive_default_lighthouse_pose_process;
 	ctx->configfunction = survive_default_htc_config_process;
 	ctx->poseproc = survive_default_raw_pose_process;
+	ctx->velocityproc = survive_default_velocity_process;
 	ctx->externalposeproc = survive_default_external_pose_process;
 
 	return ctx;
@@ -515,11 +516,24 @@ void survive_install_pose_fn(SurviveContext *ctx, pose_func fbp) {
 		ctx->poseproc = survive_default_raw_pose_process;
 }
 
+void survive_install_velocity_fn(SurviveContext *ctx, velocity_func fbp) {
+	if (fbp)
+		ctx->velocityproc = fbp;
+	else
+		ctx->velocityproc = survive_default_velocity_process;
+}
+
 void survive_install_external_pose_fn(SurviveContext *ctx, external_pose_func fbp) {
 	if (fbp)
 		ctx->externalposeproc = fbp;
 	else
 		ctx->externalposeproc = survive_default_external_pose_process;
+}
+void survive_install_external_velocity_fn(SurviveContext *ctx, external_velocity_func fbp) {
+	if (fbp)
+		ctx->externalvelocityproc = fbp;
+	else
+		ctx->externalvelocityproc = survive_default_external_velocity_process;
 }
 
 void survive_install_lighthouse_pose_fn(SurviveContext *ctx, lighthouse_pose_func fbp) {

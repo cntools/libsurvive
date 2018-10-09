@@ -60,7 +60,7 @@ SurviveSimpleObject *find_or_create_external(struct SurviveSimpleContext *actx, 
 	return so;
 }
 
-static void external_pose_fn(SurviveContext *ctx, const char *name, SurvivePose *pose) {
+static void external_pose_fn(SurviveContext *ctx, const char *name, const SurvivePose *pose) {
 	struct SurviveSimpleContext *actx = ctx->user_ptr;
 	OGLockMutex(actx->poll_mutex);
 	survive_default_external_pose_process(ctx, name, pose);
@@ -124,6 +124,7 @@ struct SurviveSimpleContext *survive_simple_init(int argc, char *const *argv) {
 	}
 
 	survive_install_pose_fn(ctx, pose_fn);
+	survive_install_external_pose_fn(ctx, external_pose_fn);
 	survive_install_external_pose_fn(ctx, external_pose_fn);
 	survive_install_lighthouse_pose_fn(ctx, lh_fn);
 	return actx;

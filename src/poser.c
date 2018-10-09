@@ -29,7 +29,7 @@ static uint32_t PoserData_timecode(PoserData *poser_data) {
 }
 
 STATIC_CONFIG_ITEM(REPORT_IN_IMU, "report-in-imu", 'i', "Debug option to output poses in IMU space.", 0);
-void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, SurvivePose *imu2world) {
+void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world) {
 	if (poser_data->poseproc) {
 		poser_data->poseproc(so, PoserData_timecode(poser_data), imu2world, poser_data->userdata);
 	} else {
@@ -52,6 +52,11 @@ void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, Survive
 
 		so->ctx->poseproc(so, PoserData_timecode(poser_data), &head2world);
 	}
+}
+void PoserData_poser_pose_func_with_velocity(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world,
+											 const SurvivePose *velocity) {
+	PoserData_poser_pose_func(poser_data, so, imu2world);
+	so->ctx->velocityproc(so, PoserData_timecode(poser_data), velocity);
 }
 
 void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse,

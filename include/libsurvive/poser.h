@@ -17,7 +17,7 @@ typedef enum PoserType_t {
 	POSERDATA_SYNC, // Sync pulse.
 } PoserType;
 
-typedef void (*poser_pose_func)(SurviveObject *so, uint32_t lighthouse, SurvivePose *pose, void *user);
+typedef void (*poser_pose_func)(SurviveObject *so, uint32_t lighthouse, const SurvivePose *pose, void *user);
 typedef void (*poser_lighthouse_pose_func)(SurviveObject *so, uint8_t lighthouse, SurvivePose *lighthouse_pose,
 										   SurvivePose *object_pose, void *user);
 
@@ -40,7 +40,21 @@ typedef struct
  * @param pose The actual object pose. This is in world space, not in LH space. It must represent a transformation from
  * object space of the SO to global space.
  */
-SURVIVE_EXPORT void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, SurvivePose *pose);
+SURVIVE_EXPORT void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const SurvivePose *pose);
+
+/**
+ * Meant to be used by individual posers to report back their findings on the pose of an object back to the invoker of
+ * the call.
+ *
+ * @param poser_data the data pointer passed into the poser function invocation
+ * @param so The survive object which we are giving a solution for.
+ * @param lighthouse @deprecated The lighthouse which observed that position. Make it -1 if it was a combination of
+ * lighthouses. Will be removed in the future.
+ * @param pose The actual object pose. This is in world space, not in LH space. It must represent a transformation from
+ * object space of the SO to global space.
+ */
+SURVIVE_EXPORT void PoserData_poser_pose_func_with_velocity(PoserData *poser_data, SurviveObject *so,
+															const SurvivePose *pose, const SurvivePose *velocity);
 
 /**
  * Meant to be used by individual posers to report back their findings on the pose of a lighthouse.
@@ -58,8 +72,8 @@ SURVIVE_EXPORT void PoserData_poser_pose_func(PoserData *poser_data, SurviveObje
  * @param object_pose This is the assumed or derived position of the tracked object.
  */
 SURVIVE_EXPORT void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse,
-									/* OUTPARAM */ SurvivePose *arb2world, SurvivePose *lighthouse_pose,
-									SurvivePose *object_pose);
+												   /* OUTPARAM */ SurvivePose *arb2world, SurvivePose *lighthouse_pose,
+												   SurvivePose *object_pose);
 
 typedef struct PoserDataIMU {
 	PoserData hdr;

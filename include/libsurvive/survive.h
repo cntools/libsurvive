@@ -223,7 +223,9 @@ struct SurviveContext {
 	angle_process_func angleproc;
 	button_process_func buttonproc;
 	pose_func poseproc;
+	velocity_func velocityproc;
 	external_pose_func externalposeproc;
+	external_velocity_func externalvelocityproc;
 	lighthouse_pose_func lighthouseposeproc;
 	htc_config_func configfunction;
 	handle_lightcap_func lightcapfunction;
@@ -283,7 +285,9 @@ SURVIVE_EXPORT void survive_install_imu_fn(SurviveContext *ctx, imu_process_func
 SURVIVE_EXPORT void survive_install_angle_fn(SurviveContext *ctx, angle_process_func fbp);
 SURVIVE_EXPORT void survive_install_button_fn(SurviveContext *ctx, button_process_func fbp);
 SURVIVE_EXPORT void survive_install_pose_fn(SurviveContext *ctx, pose_func fbp);
+SURVIVE_EXPORT void survive_install_velocity_fn(SurviveContext *ctx, velocity_func fbp);
 SURVIVE_EXPORT void survive_install_external_pose_fn(SurviveContext *ctx, external_pose_func fbp);
+SURVIVE_EXPORT void survive_install_external_velocity_fn(SurviveContext *ctx, external_velocity_func fbp);
 SURVIVE_EXPORT void survive_install_lighthouse_pose_fn(SurviveContext *ctx, lighthouse_pose_func fbp);
 SURVIVE_EXPORT int survive_startup(SurviveContext *ctx);
 SURVIVE_EXPORT int survive_poll(SurviveContext *ctx);
@@ -311,9 +315,13 @@ SURVIVE_EXPORT void survive_attach_configf(SurviveContext *ctx, const char *tag,
 SURVIVE_EXPORT void survive_attach_configs(SurviveContext *ctx, const char *tag, char * var );
 SURVIVE_EXPORT void survive_detach_config(SurviveContext *ctx, const char *tag, void * var );
 
-#define STATIC_CONFIG_ITEM( variable, name, type, description, default_value ) \
-	SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##variable() { survive_config_bind_variable( type, name, description, default_value ); }
-	SURVIVE_EXPORT void survive_config_bind_variable( char vt, const char * name, const char * description, ... ); //Only used at boot.
+#define STATIC_CONFIG_ITEM(variable, name, type, description, default_value)                                           \
+	const char *variable##_TAG = name;                                                                                 \
+	SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##variable() {                                                             \
+		survive_config_bind_variable(type, name, description, default_value);                                          \
+	}
+SURVIVE_EXPORT void survive_config_bind_variable(char vt, const char *name, const char *description,
+												 ...); // Only used at boot.
 
 // Install the calibrator.
 SURVIVE_EXPORT void survive_cal_install(SurviveContext *ctx); // XXX This will be removed if not already done so.
@@ -336,7 +344,12 @@ SURVIVE_EXPORT void survive_default_button_process(SurviveObject *so, uint8_t ev
 												   uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id,
 												   uint16_t axis2Val);
 SURVIVE_EXPORT void survive_default_raw_pose_process(SurviveObject *so, survive_timecode timecode, SurvivePose *pose);
-SURVIVE_EXPORT void survive_default_external_pose_process(SurviveContext *so, const char *name, SurvivePose *pose);
+SURVIVE_EXPORT void survive_default_velocity_process(SurviveObject *so, survive_timecode timecode,
+													 const SurvivePose *pose);
+SURVIVE_EXPORT void survive_default_external_pose_process(SurviveContext *so, const char *name,
+														  const SurvivePose *pose);
+SURVIVE_EXPORT void survive_default_external_velocity_process(SurviveContext *so, const char *name,
+															  const SurvivePose *velocity);
 SURVIVE_EXPORT void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse,
 															SurvivePose *lh_pose, SurvivePose *obj_pose);
 SURVIVE_EXPORT int survive_default_htc_config_process(SurviveObject *so, char *ct0conf, int len);

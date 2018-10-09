@@ -209,9 +209,11 @@ function invertPose(pa, quat) {
 function create_tracked_object(info) {
 	var sensorGeometry = new THREE.SphereGeometry(.01, 32, 16);
 	var group = new THREE.Group();
+	var group_rot = new THREE.Group();
 	group.sensors = [];
 	var axesLength = 1.;
 
+	group.add(group_rot);
 	if (info.config && info.config.lighthouse_config) {
 		var trackref = new THREE.Group();
 
@@ -250,16 +252,34 @@ function create_tracked_object(info) {
 			trackref.add(newSensor);
 		}
 
-		group.add(trackref);
+		group_rot.add(trackref);
 		group.trackref = trackref;
 	} else {
 		axesLength = 1.5;
 	}
 
 	var axes = new THREE.AxesHelper(axesLength);
-	group.add(axes);
+	group_rot.add(axes);
 
 	objs[info.tracker] = group;
+	objs[info.tracker].group = group;
+	objs[info.tracker].group_rot = group_rot;
+
+	var velocityGeom = new THREE.Geometry();
+	velocityGeom.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0));
+	objs[info.tracker].velocity = new THREE.Line(
+		velocityGeom, new THREE.LineBasicMaterial(
+						  {color : trail_colors[scene.children.length % trail_colors.length], linewidth : 2}));
+
+	var angVelocityGeom = new THREE.Geometry();
+	angVelocityGeom.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0));
+	objs[info.tracker].angVelocity = new THREE.Line(
+		angVelocityGeom,
+		new THREE.LineDashedMaterial({color : trail_colors[-scene.children.length % trail_colors.length], scale : .1}));
+
+	group.add(objs[info.tracker].velocity);
+	group.add(objs[info.tracker].angVelocity);
+
 	scene.add(group);
 }
 
@@ -296,6 +316,23 @@ function update_trails() {
 
 $(function() { $("#trails").change(update_trails); });
 
+function update_velocity(v) {
+	var obj = {
+		tracker : v[1],
+		position : [ parseFloat(v[3]), parseFloat(v[4]), parseFloat(v[5]) ],
+		quat : [ parseFloat(v[6]), parseFloat(v[7]), parseFloat(v[8]), parseFloat(v[9]) ]
+	};
+
+	if (objs[obj.tracker] == null || objs[obj.tracker].velocity == null) {
+		return;
+	}
+
+	objs[obj.tracker].velocity.geometry.vertices[1].set(obj.position[0], obj.position[1], obj.position[2]);
+	objs[obj.tracker].velocity.geometry.verticesNeedUpdate = true;
+
+	objs[obj.tracker].angVelocity.geometry.vertices[1].set(obj.quat[1], obj.quat[2], obj.quat[3]);
+	objs[obj.tracker].angVelocity.geometry.verticesNeedUpdate = true;
+}
 function update_object(v, allow_unsetup) {
 	allow_unsetup = true;
 	var obj = {
@@ -317,9 +354,10 @@ function update_object(v, allow_unsetup) {
 			poseCnt = 0;
 		}
 		poseCnt++;
-		objs[obj.tracker].position.set(obj.position[0], obj.position[1], obj.position[2]);
-		objs[obj.tracker].quaternion.set(obj.quat[1], obj.quat[2], obj.quat[3], obj.quat[0]);
-		objs[obj.tracker].verticesNeedUpdate = true;
+		objs[obj.tracker].group.position.set(obj.position[0], obj.position[1], obj.position[2]);
+		objs[obj.tracker].group_rot.quaternion.set(obj.quat[1], obj.quat[2], obj.quat[3], obj.quat[0]);
+		objs[obj.tracker].group.verticesNeedUpdate = true;
+		objs[obj.tracker].group_rot.verticesNeedUpdate = true;
 
 		if (objs[obj.tracker].trackref)
 			objs[obj.tracker].trackref.visible = $("#model")[0].checked;
@@ -406,6 +444,8 @@ var survive_log_handlers = {
 		add_lighthouse(obj.lighthouse, obj.position, obj.quat);
 	},
 	"POSE" : update_object,
+	"VELOCITY" : update_velocity,
+	"EXTERNAL_VELOCITY" : function(v) { update_velocity(v, true); },
 	"EXTERNAL_POSE" : function(v) { update_object(v, true); },
 	"CONFIG" : function(v, tracker) {
 		var configStr = v.slice(3).join(' ');
