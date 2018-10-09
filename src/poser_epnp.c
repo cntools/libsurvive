@@ -178,6 +178,9 @@ int PoserEPNP(SurviveObject *so, PoserData *pd) {
 		} else {
 			if (meas[lightData->lh])
 				PoserData_poser_pose_func(pd, so, &posers[lightData->lh]);
+			else if (meas[!lightData->lh]) {
+				PoserData_poser_pose_func(pd, so, &posers[!lightData->lh]);
+			}
 		}
 		return 0;
 	}
