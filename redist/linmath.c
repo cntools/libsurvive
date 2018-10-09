@@ -213,7 +213,7 @@ FLT quatdist(const double *q1, const double *q2) {
 	for (int i = 0; i < 4; i++) {
 		rtn += q1[i] * q2[i];
 	}
-
+	rtn = linmath_max(1., linmath_min(-1, rtn));
 	return 2 * acos(FLT_FABS(rtn));
 }
 
@@ -453,6 +453,13 @@ inline void quatgetreciprocal(LinmathQuat qout, const LinmathQuat qin) {
 	quatscale(qout, qout, m);
 }
 
+inline void quatconjugateby(LinmathQuat q, const LinmathQuat r, const LinmathQuat v) {
+	LinmathQuat ir;
+	quatgetconjugate(ir, r);
+	quatrotateabout(q, ir, v);
+	quatrotateabout(q, q, r);
+	quatnormalize(q, q);
+}
 inline void quatsub(LinmathQuat qout, const FLT *a, const FLT *b) {
 	qout[0] = a[0] - b[0];
 	qout[1] = a[1] - b[1];
@@ -549,6 +556,12 @@ inline void quatslerp(LinmathQuat q, const LinmathQuat qa, const LinmathQuat qb,
 	quatnormalize(bn, qb);
 	FLT cosTheta = linmath_max(-1., linmath_min(1., quatinnerproduct(an, bn)));
 	FLT sinTheta;
+
+	if (cosTheta < 0) {
+		cosTheta = -cosTheta;
+		for (int i = 0; i < 4; i++)
+			bn[i] = -bn[i];
+	}
 
 	// Careful: If cosTheta is exactly one, or even if it's infinitesimally over, it'll
 	// cause SQRT to produce not a number, and screw everything up.

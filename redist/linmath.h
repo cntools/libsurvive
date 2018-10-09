@@ -136,6 +136,16 @@ LINMATH_EXPORT void quattomatrix33(FLT *matrix33, const LinmathQuat qin);
 LINMATH_EXPORT void quatfrommatrix(LinmathQuat q, const FLT *matrix44);
 LINMATH_EXPORT void quatfrommatrix33(LinmathQuat q, const FLT *matrix33);
 LINMATH_EXPORT void quatgetconjugate(LinmathQuat qout, const LinmathQuat qin);
+/***
+ * Performs conjugation operation wherein we find
+ *
+ * q = r * v * r^-1
+ *
+ * This operation is useful to find equivalent rotations between different reference frames.
+ * For instance, if 'v' is a particular rotation in frame A, and 'r' represents the translation
+ * from frame 'A' to 'B', q represents that same rotation in frame B
+ */
+LINMATH_EXPORT void quatconjugateby(LinmathQuat q, const LinmathQuat r, const LinmathQuat v);
 LINMATH_EXPORT void quatgetreciprocal(LinmathQuat qout, const LinmathQuat qin);
 /***
  * Find q such that q * q0 = q1; where q0, q1, q are unit quaternions
