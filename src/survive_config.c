@@ -25,29 +25,37 @@ struct static_conf_t
 	const char * name;
 	const char * description;
 	char type;
+
+	struct static_conf_t *next;
 };
 
-static struct static_conf_t static_configs[MAX_SHORTHAND_CONFIGS];
-int nr_static_configs;
+static struct static_conf_t *head = 0;
+static struct static_conf_t *tail = 0;
+
+static struct static_conf_t *find_or_create_conf_t(const char *name) {
+	struct static_conf_t *curr = head;
+	while (curr) {
+		if (strcmp(curr->name, name) == 0)
+			return curr;
+		curr = curr->next;
+	}
+
+	curr = calloc(1, sizeof(struct static_conf_t));
+	if (tail)
+		tail->next = curr;
+	if (head == 0)
+		head = curr;
+
+	tail = curr;
+	return curr;
+}
 
 void survive_config_bind_variable( char vt, const char * name, const char * description, ... )
 {
 	va_list ap;
-	va_start(ap, description); 
-	int i;
-	struct static_conf_t * config;
-	for( i = 0; i < nr_static_configs; i++ )
-	{
-		config = &static_configs[i];
-		if( strcmp( config->name, name ) == 0 ) break;
-	}
-	config = &static_configs[i];
-	if( i == MAX_SHORTHAND_CONFIGS )
-	{
-		fprintf( stderr, "Fatal: Too many static configuration items. Please recompile with a higher MAX_STATIC_CONFIGS\n" );
-		exit( -1 );
-	}
-	if( i == nr_static_configs ) nr_static_configs++;
+	va_start(ap, description);
+
+	struct static_conf_t *config = find_or_create_conf_t(name);
 
 	if( !config->description ) config->description = description;
 	if( !config->name ) config->name = name;
@@ -69,14 +77,10 @@ void survive_config_bind_variable( char vt, const char * name, const char * desc
 
 int survive_print_help_for_parameter( const char * tomap )
 {
-	int i;
-	for( i = 0; i < nr_static_configs; i++ )
-	{
-		struct static_conf_t * sc = &static_configs[i];
-		if( strcmp( sc->name, tomap ) == 0 )
-		{
+	for (struct static_conf_t *config = head; config; config = config->next) {
+		if (strcmp(config->name, tomap) == 0) {
 			char sthelp[160];
-			snprintf( sthelp, 159, "    %s: %s [%c]", sc->name, sc->description, sc->type );
+			snprintf(sthelp, 159, "    %s: %s [%c]", config->name, config->description, config->type);
 			fprintf( stderr, "\0337\033[1A\033[1000D%s\0338", sthelp );
 			return 1;
 		}
@@ -124,11 +128,10 @@ static void PrintConfigGroup(config_group * grp, const char ** chkval, int * cvs
 						   : (ce->type == CONFIG_UINT32) ? ":int" : (ce->type == CONFIG_STRING) ? ":string" : ".");
 
 				//Try to get description from the static tags.
-				for( j = 0; j < nr_static_configs; j++ )
-				{
-					if( strcmp( static_configs[j].name, ce->tag ) == 0 )
-					{
-						printf( " %s", static_configs[j].description );
+
+				for (struct static_conf_t *config = head; config; config = config->next) {
+					if (strcmp(config->name, ce->tag) == 0) {
+						printf(" %s", config->description);
 					}
 				}
 				printf( "\n" );
@@ -153,16 +156,14 @@ void survive_print_known_configs( SurviveContext * ctx, int verbose )
 	PrintConfigGroup( ctx->temporary_config_values, checked_values, &cvs, verbose );
 	PrintConfigGroup( ctx->global_config_values, checked_values, &cvs, verbose );
 	int j;
-	for( j = 0; j < nr_static_configs; j++ )
-	{
+	for (struct static_conf_t *config = head; config; config = config->next) {
 		for( i = 0; i < cvs; i++ )
 		{
-			if( strcmp( static_configs[j].name, checked_values[i] ) == 0 )
-			break;
+			if (strcmp(config->name, checked_values[i]) == 0)
+				break;
 		}
 		if( i == cvs )
 		{
-			struct static_conf_t * config = &static_configs[j];
 			const char * name = config->name;
 
 			if( verbose )
@@ -180,6 +181,8 @@ void survive_print_known_configs( SurviveContext * ctx, int verbose )
 					snprintf(stobuf, 127, USAGE_FORMAT_STRING, name, config->data_default.s);
 					break;
 				case 'a':	snprintf( stobuf, 127, "[FA] %25s  %s\n", config->name, config->description ); break;
+				default:
+					assert("Invalid config item" && false);
 				}
 
 				const char *type_desc = (config->type == 'f')
@@ -721,12 +724,9 @@ FLT survive_configf(SurviveContext *ctx, const char *tag, char flags, FLT def) {
 	int i;
 	if( !(flags & SC_OVERRIDE) )
 	{
-		for( i = 0; i < nr_static_configs; i++ )
-		{
-			struct static_conf_t * sc = &static_configs[i];
-			if( strcmp( tag, sc->name ) == 0 )
-			{
-				def = sc->data_default.f;
+		for (struct static_conf_t *config = head; config; config = config->next) {
+			if (strcmp(tag, config->name) == 0) {
+				def = config->data_default.f;
 			}
 		}
 	}
@@ -755,12 +755,9 @@ uint32_t survive_configi(SurviveContext *ctx, const char *tag, char flags, uint3
 	int i;
 	if( !(flags & SC_OVERRIDE) )
 	{
-		for( i = 0; i < nr_static_configs; i++ )
-		{
-			struct static_conf_t * sc = &static_configs[i];
-			if( strcmp( tag, sc->name ) == 0 )
-			{
-				def = sc->data_default.i;
+		for (struct static_conf_t *config = head; config; config = config->next) {
+			if (strcmp(tag, config->name) == 0) {
+				def = config->data_default.i;
 			}
 		}
 	}
@@ -787,14 +784,12 @@ const char *survive_configs(SurviveContext *ctx, const char *tag, char flags, co
 	int i;
 	char foundtype = 0;
 	const char * founddata = def;
-	for( i = 0; i < nr_static_configs; i++ )
-	{
-		struct static_conf_t * sc = &static_configs[i];
-		if( !sc ) break;
-		if( strcmp( tag, sc->name ) == 0 )
-		{
-			founddata = sc->data_default.s;
-			foundtype = sc->type;
+	for (struct static_conf_t *config = head; config; config = config->next) {
+		if (!config)
+			break;
+		if (strcmp(tag, config->name) == 0) {
+			founddata = config->data_default.s;
+			foundtype = config->type;
 			if( !(flags & SC_OVERRIDE) )
 			{
 				def = founddata;

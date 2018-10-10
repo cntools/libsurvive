@@ -311,6 +311,9 @@ void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTrac
 STATIC_CONFIG_ITEM(POSE_POSITION_VARIANCE_SEC, "filter-pose-var-per-sec", 'f', "Position variance per second", 0.0001);
 STATIC_CONFIG_ITEM(VELOCITY_POSITION_VARIANCE_SEC, "filter-vel-var-per-sec", 'f', "Velocity variance per second", 1.);
 
+STATIC_CONFIG_ITEM(IMU_ACC_VARIANCE, "imu-acc-variance", 'f', "Variance of accelerometer", 0.1);
+STATIC_CONFIG_ITEM(IMU_GYRO_VARIANCE, "imu-gyro-variance", 'f', "Variance of gyroscope", 0.1);
+
 void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so) {
 	memset(tracker, 0, sizeof(*tracker));
 	tracker->velocity.Rot.v[0] = tracker->pose.Rot.v[0] = 1.;
@@ -339,13 +342,15 @@ void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so) {
 	tracker->velocity.Pos.info.update_fn = update_vel_pos;
 	tracker->velocity.Rot.info.update_fn = update_vel_rot;
 
-	tracker->acc_var = 0;
-	tracker->gyro_var = 1e-1;
+	survive_attach_configf(tracker->so->ctx, IMU_ACC_VARIANCE_TAG, &tracker->acc_var);
+	survive_attach_configf(tracker->so->ctx, IMU_GYRO_VARIANCE_TAG, &tracker->gyro_var);
 
 	struct SurviveContext *ctx = tracker->so->ctx;
 	SV_INFO("Initializing Filter:");
 	SV_INFO("\t%s: %f", POSE_POSITION_VARIANCE_SEC_TAG, tracker->pose.Pos.info.variance_per_second);
 	SV_INFO("\t%s: %f", VELOCITY_POSITION_VARIANCE_SEC_TAG, tracker->velocity.Pos.info.variance_per_second);
+	SV_INFO("\t%s: %f", IMU_ACC_VARIANCE_TAG, tracker->acc_var);
+	SV_INFO("\t%s: %f", IMU_GYRO_VARIANCE_TAG, tracker->gyro_var);
 }
 
 SurvivePose survive_imu_velocity(const SurviveIMUTracker *tracker) {

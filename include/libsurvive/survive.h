@@ -177,7 +177,6 @@ struct BaseStationData {
 struct config_group;
 
 #define BUTTON_QUEUE_MAX_LEN 32
-#define MAX_SHORTHAND_CONFIGS 32
 
 // note: buttonId and axisId are 1-indexed values.
 // a value of 0 for an id means that no data is present in that value
