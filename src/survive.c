@@ -320,6 +320,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 	ctx->poseproc = survive_default_raw_pose_process;
 	ctx->velocityproc = survive_default_velocity_process;
 	ctx->externalposeproc = survive_default_external_pose_process;
+	ctx->externalvelocityproc = survive_default_external_velocity_process;
 
 	return ctx;
 }
