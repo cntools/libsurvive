@@ -584,6 +584,7 @@ inline void quatslerp(LinmathQuat q, const LinmathQuat qa, const LinmathQuat qb,
 		quatscale(aside, qa, FLT_SIN((1 - t) * Theta));
 		quatadd(q, aside, bside);
 		quatscale(q, q, ((FLT)1.) / sinTheta);
+		quatnormalize(q, q);
 	}
 }
 

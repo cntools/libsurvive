@@ -320,7 +320,7 @@ function update_velocity(v) {
 	var obj = {
 		tracker : v[1],
 		position : [ parseFloat(v[3]), parseFloat(v[4]), parseFloat(v[5]) ],
-		quat : [ parseFloat(v[6]), parseFloat(v[7]), parseFloat(v[8]), parseFloat(v[9]) ]
+		euler : [ parseFloat(v[6]), parseFloat(v[7]), parseFloat(v[8]) ]
 	};
 
 	if (objs[obj.tracker] == null || objs[obj.tracker].velocity == null) {
@@ -330,7 +330,7 @@ function update_velocity(v) {
 	objs[obj.tracker].velocity.geometry.vertices[1].set(obj.position[0], obj.position[1], obj.position[2]);
 	objs[obj.tracker].velocity.geometry.verticesNeedUpdate = true;
 
-	objs[obj.tracker].angVelocity.geometry.vertices[1].set(obj.quat[1], obj.quat[2], obj.quat[3]);
+	objs[obj.tracker].angVelocity.geometry.vertices[1].set(obj.euler[0], obj.euler[1], obj.euler[2]);
 	objs[obj.tracker].angVelocity.geometry.verticesNeedUpdate = true;
 }
 function update_object(v, allow_unsetup) {

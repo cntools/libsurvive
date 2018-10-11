@@ -22,11 +22,26 @@ static SurvivePose survivePoseFromDevicePose(const vr::TrackedDevicePose_t &dpos
 	return p;
 }
 
+static SurvivePose surviveVelocityFromDevicePose(const vr::TrackedDevicePose_t &dpose) {
+	SurvivePose p = {};
+	FLT euler[3];
+
+	SurvivePose pose = survivePoseFromDevicePose(dpose);
+
+	for (int i = 0; i < 3; i++) {
+		p.Pos[i] = dpose.vVelocity.v[i];
+		euler[i] = dpose.vAngularVelocity.v[i];
+	}
+	quatfromeuler(p.Rot, euler);
+	return p;
+}
+
 std::map<std::string, SurvivePose> vr_poses;
 std::map<std::string, SurvivePose> vr_poses_sent;
 
 SurviveContext *ctx = 0;
-SurvivePose txToLibsurviveWorld(const SurvivePose &poseInOpenVR) {
+
+const SurvivePose *getlh02OpenVr() {
 	if (ctx == 0) {
 		std::cerr << "ctx null" << std::endl;
 		return {};
@@ -38,12 +53,44 @@ SurvivePose txToLibsurviveWorld(const SurvivePose &poseInOpenVR) {
 		return {};
 	}
 
-	auto lh02OpenVr = vr_poses["openvr_LH0"];
+	return &vr_poses["openvr_LH0"];
+}
+
+SurvivePose getOpenVr2Survive() {
+	// return LinmathPose_Identity;
+
+	auto lh02OpenVr = getlh02OpenVr();
+	if (!lh02OpenVr) {
+		return {};
+	}
+
 	auto lh02Survive = ctx->bsd[0].Pose;
 
-	auto OpenVr2lh0 = InvertPoseRtn(&lh02OpenVr);
+	auto OpenVr2lh0 = InvertPoseRtn(lh02OpenVr);
 	SurvivePose OpenVr2Survive;
 	ApplyPoseToPose(&OpenVr2Survive, &lh02Survive, &OpenVr2lh0);
+
+	return OpenVr2Survive;
+}
+
+SurvivePose velToLibsurviveWorld(const SurvivePose &poseInOpenVR) {
+	SurvivePose OpenVr2Survive = getOpenVr2Survive();
+	if (quatiszero(OpenVr2Survive.Rot))
+		return {};
+
+	SurvivePose rtn;
+	quatrotatevector(rtn.Pos, OpenVr2Survive.Rot, poseInOpenVR.Pos);
+
+	LinmathQuat iRot;
+	quatgetconjugate(iRot, OpenVr2Survive.Rot);
+	quatconjugateby(rtn.Rot, iRot, poseInOpenVR.Rot);
+
+	return rtn;
+}
+SurvivePose txToLibsurviveWorld(const SurvivePose &poseInOpenVR) {
+	SurvivePose OpenVr2Survive = getOpenVr2Survive();
+	if (quatiszero(OpenVr2Survive.Rot))
+		return {};
 
 	SurvivePose rtn;
 	ApplyPoseToPose(&rtn, &OpenVr2Survive, &poseInOpenVR);
@@ -88,6 +135,7 @@ bool openvr_poll(vr::IVRSystem &vr_system) {
 
 		int num = device_cnt[trackedDeviceClass]++;
 		auto pose = survivePoseFromDevicePose(trackedDevicePose);
+		auto velocity = surviveVelocityFromDevicePose(trackedDevicePose);
 
 		// LH can come in any order, we order them based on which one is used as origin
 		if (trackedDeviceClass == vr::TrackedDeviceClass_TrackingReference) {
@@ -98,6 +146,7 @@ bool openvr_poll(vr::IVRSystem &vr_system) {
 		sprintf(name, "openvr_%s%d", device_names[trackedDeviceClass], num);
 
 		auto poseInSurvive = txToLibsurviveWorld(pose);
+		auto velInSurvive = velToLibsurviveWorld(velocity);
 
 		vr_poses[name] = pose;
 
@@ -105,6 +154,7 @@ bool openvr_poll(vr::IVRSystem &vr_system) {
 			if (poseInSurvive != vr_poses_sent[name]) {
 				vr_poses_sent[name] = poseInSurvive;
 				ctx->externalposeproc(ctx, name, &poseInSurvive);
+				ctx->externalvelocityproc(ctx, name, &velInSurvive);
 			}
 		}
 	}

@@ -54,7 +54,7 @@ SURVIVE_EXPORT void PoserData_poser_pose_func(PoserData *poser_data, SurviveObje
  * object space of the SO to global space.
  */
 SURVIVE_EXPORT void PoserData_poser_pose_func_with_velocity(PoserData *poser_data, SurviveObject *so,
-															const SurvivePose *pose, const SurvivePose *velocity);
+															const SurvivePose *pose, const SurviveVelocity *velocity);
 
 /**
  * Meant to be used by individual posers to report back their findings on the pose of a lighthouse.

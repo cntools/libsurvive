@@ -100,11 +100,24 @@ static inline void survive_update_rotation(SurviveIMUTracker *tracker, struct ka
 	quatslerp(rot->v, rot->v, new_rot, incoming_pose_weight);
 }
 
+static inline void survive_update_euler_rotation(SurviveIMUTracker *tracker, struct kalman_info_euler_t *rot,
+												 survive_timecode timecode, FLT new_variance,
+												 const LinmathEulerAngle new_rot) {
+	rot->info.update_fn(tracker, timecode, &rot->info);
+	survive_update_position(tracker, (struct kalman_info_position_t *)rot, timecode, new_variance, new_rot);
+}
+
 static inline void survive_update_pose(SurviveIMUTracker *tracker, struct kalman_info_pose_t *pose,
 									   survive_timecode timecode, const FLT *new_variance,
 									   const LinmathPose *new_pose) {
 	survive_update_position(tracker, &pose->Pos, timecode, new_variance[0], new_pose->Pos);
 	survive_update_rotation(tracker, &pose->Rot, timecode, new_variance[1], new_pose->Rot);
+}
+static inline void survive_update_pose_euler(SurviveIMUTracker *tracker, struct kalman_info_pose_euler_t *pose,
+											 survive_timecode timecode, const FLT *new_variance,
+											 const struct LinmathEulerPose *new_pose) {
+	survive_update_position(tracker, &pose->Pos, timecode, new_variance[0], new_pose->Pos);
+	survive_update_euler_rotation(tracker, &pose->EulerRot, timecode, new_variance[1], new_pose->EulerRot);
 }
 
 void survive_imu_tracker_integrate_rotation(SurviveIMUTracker *tracker, survive_timecode timecode,
@@ -112,31 +125,14 @@ void survive_imu_tracker_integrate_rotation(SurviveIMUTracker *tracker, survive_
 	survive_update_rotation(tracker, &tracker->pose.Rot, timecode, R, Rot);
 }
 
-void survive_update_variances(SurviveIMUTracker *tracker, uint32_t timecode) {
-	if (quatiszero(tracker->last_pose.Rot.v))
-		return;
-
-	FLT time_diff =
-		survive_timecode_difference(timecode, tracker->last_pose.Pos.info.last_update) / (FLT)tracker->so->timebase_hz;
-	assert(time_diff < 1.0);
-	FLT var_meters = 1;
-	FLT var_quat = 11111;
-
-	tracker->velocity.Pos.info.variance += var_meters * time_diff;
-	tracker->velocity.Rot.info.variance += var_quat * time_diff;
-
-	tracker->pose.Pos.info.variance += tracker->velocity.Pos.info.variance * time_diff;
-	tracker->pose.Rot.info.variance += tracker->velocity.Rot.info.variance * time_diff;
-}
-
 void survive_imu_tracker_integrate_angular_velocity(SurviveIMUTracker *tracker, survive_timecode timecode,
 													const LinmathQuat Rot, FLT R) {
-	survive_update_rotation(tracker, &tracker->velocity.Rot, timecode, R, Rot);
+	survive_update_euler_rotation(tracker, &tracker->velocity.EulerRot, timecode, R, Rot);
 }
 
 void survive_imu_tracker_integrate_velocity(SurviveIMUTracker *tracker, survive_timecode timecode, const FLT *Rv,
-											const SurvivePose *pose) {
-	survive_update_pose(tracker, &tracker->velocity, timecode, Rv, pose);
+											const SurviveVelocity *vel) {
+	survive_update_pose_euler(tracker, &tracker->velocity, timecode, Rv, vel);
 }
 
 static inline void update_pose_pos(SurviveIMUTracker *tracker, survive_timecode timecode, struct kalman_info_t *_info) {
@@ -153,10 +149,12 @@ static inline void update_pose_rot(SurviveIMUTracker *tracker, survive_timecode 
 static inline void update_vel_pos(SurviveIMUTracker *tracker, survive_timecode timecode, struct kalman_info_t *_info) {
 	struct kalman_info_position_t *info = (struct kalman_info_position_t *)_info;
 	_info->variance = survive_imu_tracker_predict_velocity_pos(tracker, timecode, info->v);
+	_info->last_update = timecode;
 }
 static inline void update_vel_rot(SurviveIMUTracker *tracker, survive_timecode timecode, struct kalman_info_t *_info) {
 	struct kalman_info_rotation_t *info = (struct kalman_info_rotation_t *)_info;
 	_info->variance = survive_imu_tracker_predict_velocity_rot(tracker, timecode, info->v);
+	_info->last_update = timecode;
 }
 
 void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU *data) {
@@ -191,10 +189,8 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 	mahony_ahrs(tracker, pose_rot, data->gyro, data->accel);
 	survive_imu_tracker_integrate_rotation(tracker, data->timecode, pose_rot, 1e-1);
 
-	LinmathQuat rotVelInIMU;
-	quatfromeuler(rotVelInIMU, data->gyro);
-	LinmathPose new_velocity;
-	quatconjugateby(new_velocity.Rot, tracker->pose.Rot.v, rotVelInIMU);
+	LinmathEulerPose new_velocity;
+	quatrotatevector(new_velocity.EulerRot, tracker->pose.Rot.v, data->gyro);
 
 	FLT Rv[2] = {tracker->pose.Rot.info.variance + tracker->velocity.Pos.info.variance + tracker->acc_var,
 				 tracker->pose.Rot.info.variance + tracker->gyro_var};
@@ -217,7 +213,7 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 
 		survive_imu_tracker_integrate_velocity(tracker, data->timecode, Rv, &new_velocity);
 	} else {
-		survive_imu_tracker_integrate_angular_velocity(tracker, data->timecode, new_velocity.Rot, Rv[1]);
+		survive_imu_tracker_integrate_angular_velocity(tracker, data->timecode, new_velocity.EulerRot, Rv[1]);
 	}
 
 	SurviveContext *ctx = tracker->so->ctx;
@@ -229,17 +225,16 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 FLT survive_imu_tracker_predict_velocity_pos(const SurviveIMUTracker *tracker, survive_timecode timecode, double *out) {
 	FLT time_diff =
 		survive_timecode_difference(timecode, tracker->velocity.Pos.info.last_update) / (FLT)tracker->so->timebase_hz;
-	// scale3d(out, tracker->last_acc, time_diff);
-	// add3d(out, out, tracker->velocity.Pos.v);
 	copy3d(out, tracker->velocity.Pos.v);
 	return tracker->velocity.Pos.info.variance + time_diff * tracker->velocity.Pos.info.variance_per_second;
 }
 
-FLT survive_imu_tracker_predict_velocity_rot(const SurviveIMUTracker *tracker, survive_timecode timecode, double *out) {
-	FLT time_diff =
-		survive_timecode_difference(timecode, tracker->velocity.Rot.info.last_update) / (FLT)tracker->so->timebase_hz;
-	quatcopy(out, tracker->velocity.Rot.v);
-	return tracker->velocity.Rot.info.variance + time_diff * tracker->velocity.Rot.info.variance_per_second;
+FLT survive_imu_tracker_predict_velocity_rot(const SurviveIMUTracker *tracker, survive_timecode timecode,
+											 LinmathEulerAngle out) {
+	FLT time_diff = survive_timecode_difference(timecode, tracker->velocity.EulerRot.info.last_update) /
+					(FLT)tracker->so->timebase_hz;
+	copy3d(out, tracker->velocity.EulerRot.v);
+	return tracker->velocity.EulerRot.info.variance + time_diff * tracker->velocity.EulerRot.info.variance_per_second;
 }
 
 FLT survive_imu_tracker_predict_pos(const SurviveIMUTracker *tracker, survive_timecode timecode, LinmathVec3d out) {
@@ -253,7 +248,7 @@ FLT survive_imu_tracker_predict_pos(const SurviveIMUTracker *tracker, survive_ti
 	add3d(out, displacement, tracker->pose.Pos.v);
 	assert(norm3d(out) < 1000);
 	return tracker->pose.Pos.info.variance +
-		   pose_time_diff * (velocity_variance + tracker->pose.Pos.info.variance_per_second);
+		   pose_time_diff * (velocity_variance * velocity_variance + tracker->pose.Pos.info.variance_per_second);
 }
 
 FLT survive_imu_tracker_predict_rot(const SurviveIMUTracker *tracker, survive_timecode timecode, LinmathQuat out) {
@@ -264,11 +259,12 @@ FLT survive_imu_tracker_predict_rot(const SurviveIMUTracker *tracker, survive_ti
 		survive_timecode_difference(timecode, tracker->pose.Rot.info.last_update) / (FLT)tracker->so->timebase_hz;
 	// assert(rot_time_diff < 1.0);
 
-	LinmathQuat vel;
+	LinmathEulerAngle vel;
 	FLT velocity_variance = survive_imu_tracker_predict_velocity_rot(tracker, timecode, vel);
 
+	scale3d(vel, vel, rot_time_diff);
 	LinmathQuat rot_change;
-	quatmultiplyrotation(rot_change, vel, rot_time_diff);
+	quatfromeuler(rot_change, vel);
 	quatrotateabout(out, rot_change, tracker->pose.Rot.v);
 
 	return tracker->pose.Rot.info.variance +
@@ -292,11 +288,16 @@ void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTrac
 	FLT time_diff =
 		survive_timecode_difference(timecode, tracker->last_pose.Pos.info.last_update) / (FLT)tracker->so->timebase_hz;
 
-	if (!quatiszero(tracker->last_pose.Rot.v) && time_diff != 0.) {
-		SurvivePose velocity;
-		quatfind(velocity.Rot, tracker->last_pose.Rot.v, tracker->pose.Rot.v);
-		quatmultiplyrotation(velocity.Rot, velocity.Rot, 1. / time_diff);
-
+	if (!quatiszero(tracker->last_pose.Rot.v) && time_diff != 0. && tracker->use_obs_velocity) {
+		SurviveVelocity velocity;
+		LinmathQuat vDiff;
+		quatfind(vDiff, tracker->last_pose.Rot.v, tracker->pose.Rot.v);
+		// quatfind(vDiff, tracker->pose.Rot.v, tracker->last_pose.Rot.v);
+		// quatmultiplyrotation(vDiff, vDiff, 1. / time_diff);
+		quattoeuler(velocity.EulerRot, vDiff);
+		scale3d(velocity.EulerRot, velocity.EulerRot, 1. / time_diff);
+		// struct SurviveContext* ctx = tracker->so->ctx;
+		// SV_INFO("E: %f %f %f", velocity.EulerRot[0],velocity.EulerRot[1],velocity.EulerRot[2]);
 		sub3d(velocity.Pos, tracker->pose.Pos.v, tracker->last_pose.Pos.v);
 		scale3d(velocity.Pos, velocity.Pos, 1. / time_diff);
 
@@ -308,39 +309,45 @@ void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTrac
 	tracker->last_pose = tracker->pose;
 }
 
-STATIC_CONFIG_ITEM(POSE_POSITION_VARIANCE_SEC, "filter-pose-var-per-sec", 'f', "Position variance per second", 0.0001);
-STATIC_CONFIG_ITEM(VELOCITY_POSITION_VARIANCE_SEC, "filter-vel-var-per-sec", 'f', "Velocity variance per second", 1.);
+STATIC_CONFIG_ITEM(POSE_POSITION_VARIANCE_SEC, "filter-pose-var-per-sec", 'f', "Position variance per second", 0.001);
+STATIC_CONFIG_ITEM(POSE_ROT_VARIANCE_SEC, "filter-pose-rot-var-per-sec", 'f', "Position rotational variance per second",
+				   0.001);
 
-STATIC_CONFIG_ITEM(IMU_ACC_VARIANCE, "imu-acc-variance", 'f', "Variance of accelerometer", 0.1);
-STATIC_CONFIG_ITEM(IMU_GYRO_VARIANCE, "imu-gyro-variance", 'f', "Variance of gyroscope", 0.1);
+STATIC_CONFIG_ITEM(VELOCITY_POSITION_VARIANCE_SEC, "filter-vel-var-per-sec", 'f', "Velocity variance per second", 1.);
+STATIC_CONFIG_ITEM(VELOCITY_ROT_VARIANCE_SEC, "filter-vel-rot-var-per-sec", 'f',
+				   "Velocity rotational variance per second", 0.5);
+
+STATIC_CONFIG_ITEM(IMU_ACC_VARIANCE, "imu-acc-variance", 'f', "Variance of accelerometer", 0.1000);
+STATIC_CONFIG_ITEM(IMU_GYRO_VARIANCE, "imu-gyro-variance", 'f', "Variance of gyroscope", 0.001);
 
 void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so) {
 	memset(tracker, 0, sizeof(*tracker));
-	tracker->velocity.Rot.v[0] = tracker->pose.Rot.v[0] = 1.;
+	tracker->velocity.EulerRot.v[0] = tracker->pose.Rot.v[0] = 1.;
 	tracker->so = so;
 
 	// These are relatively high numbers to seed with; we are essentially saying
 	// origin has a variance of 10m; and the quat can be varied by 4 -- which is
 	// more than any actual normalized quat could be off by.
 	tracker->velocity.Pos.info.variance = 10000;
-	tracker->velocity.Rot.info.variance = 10000;
+	tracker->velocity.EulerRot.info.variance = 10000;
 	survive_attach_configf(tracker->so->ctx, VELOCITY_POSITION_VARIANCE_SEC_TAG,
 						   &tracker->velocity.Pos.info.variance_per_second);
-	survive_attach_configf(tracker->so->ctx, VELOCITY_POSITION_VARIANCE_SEC_TAG,
-						   &tracker->velocity.Rot.info.variance_per_second);
+	survive_attach_configf(tracker->so->ctx, VELOCITY_ROT_VARIANCE_SEC_TAG,
+						   &tracker->velocity.EulerRot.info.variance_per_second);
 
 	tracker->pose.Pos.info.variance = 10000;
 	tracker->pose.Rot.info.variance = 10000;
 	survive_attach_configf(tracker->so->ctx, POSE_POSITION_VARIANCE_SEC_TAG,
 						   &tracker->pose.Pos.info.variance_per_second);
-	survive_attach_configf(tracker->so->ctx, POSE_POSITION_VARIANCE_SEC_TAG,
-						   &tracker->pose.Rot.info.variance_per_second);
+	survive_attach_configf(tracker->so->ctx, POSE_ROT_VARIANCE_SEC_TAG, &tracker->pose.Rot.info.variance_per_second);
 
 	tracker->pose.Pos.info.update_fn = update_pose_pos;
 	tracker->pose.Rot.info.update_fn = update_pose_rot;
 
 	tracker->velocity.Pos.info.update_fn = update_vel_pos;
-	tracker->velocity.Rot.info.update_fn = update_vel_rot;
+	tracker->velocity.EulerRot.info.update_fn = update_vel_rot;
+
+	tracker->use_obs_velocity = true;
 
 	survive_attach_configf(tracker->so->ctx, IMU_ACC_VARIANCE_TAG, &tracker->acc_var);
 	survive_attach_configf(tracker->so->ctx, IMU_GYRO_VARIANCE_TAG, &tracker->gyro_var);
@@ -353,9 +360,9 @@ void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so) {
 	SV_INFO("\t%s: %f", IMU_GYRO_VARIANCE_TAG, tracker->gyro_var);
 }
 
-SurvivePose survive_imu_velocity(const SurviveIMUTracker *tracker) {
-	SurvivePose rtn;
+SurviveVelocity survive_imu_velocity(const SurviveIMUTracker *tracker) {
+	SurviveVelocity rtn;
 	copy3d(rtn.Pos, tracker->velocity.Pos.v);
-	quatcopy(rtn.Rot, tracker->velocity.Rot.v);
+	copy3d(rtn.EulerRot, tracker->velocity.EulerRot.v);
 	return rtn;
 }

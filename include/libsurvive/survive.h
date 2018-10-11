@@ -344,11 +344,11 @@ SURVIVE_EXPORT void survive_default_button_process(SurviveObject *so, uint8_t ev
 												   uint16_t axis2Val);
 SURVIVE_EXPORT void survive_default_raw_pose_process(SurviveObject *so, survive_timecode timecode, SurvivePose *pose);
 SURVIVE_EXPORT void survive_default_velocity_process(SurviveObject *so, survive_timecode timecode,
-													 const SurvivePose *pose);
+													 const SurviveVelocity *pose);
 SURVIVE_EXPORT void survive_default_external_pose_process(SurviveContext *so, const char *name,
 														  const SurvivePose *pose);
 SURVIVE_EXPORT void survive_default_external_velocity_process(SurviveContext *so, const char *name,
-															  const SurvivePose *velocity);
+															  const SurviveVelocity *velocity);
 SURVIVE_EXPORT void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse,
 															SurvivePose *lh_pose, SurvivePose *obj_pose);
 SURVIVE_EXPORT int survive_default_htc_config_process(SurviveObject *so, char *ct0conf, int len);
