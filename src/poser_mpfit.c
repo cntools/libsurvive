@@ -16,7 +16,9 @@
 #include "survive_config.h"
 #include "survive_reproject.h"
 
+#ifndef _WIN32
 #define DEBUG_NAN
+#endif
 #ifdef DEBUG_NAN
 #include <fenv.h>
 #endif
@@ -356,7 +358,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		} else if (d->useIMU) {
 			survive_imu_tracker_integrate_imu(&d->tracker, imu);
 
-			SurvivePose out = {};
+			SurvivePose out = { 0 };
 			survive_imu_tracker_predict(&d->tracker, imu->timecode, &out);
 			if (!quatiszero(out.Rot)) {
 				SurviveVelocity vel = survive_imu_velocity(&d->tracker);
@@ -364,7 +366,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 			}
 			// SV_INFO("%+.07f %+.07f %+.07f", imu->gyro[0], imu->gyro[1], imu->gyro[2]);
 		} else if (d->useKalman) {
-			SurvivePose out = {};
+			SurvivePose out = { 0 };
 			survive_imu_tracker_predict(&d->tracker, imu->timecode, &out);
 			if (!quatiszero(out.Rot)) {
 				SurviveVelocity vel = survive_imu_velocity(&d->tracker);

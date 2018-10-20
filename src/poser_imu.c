@@ -21,7 +21,7 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 
 		survive_imu_tracker_integrate_imu(dd, imu);
 
-		SurvivePose pose = {};
+		SurvivePose pose = { 0 };
 		survive_imu_tracker_predict(dd, imu->timecode, &pose);
 		if (!quatiszero(pose.Rot)) {
 			PoserData_poser_pose_func(pd, so, &pose);

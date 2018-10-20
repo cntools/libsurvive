@@ -65,6 +65,7 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
         ./src/survive_usb.c)
 
 add_library(survive SHARED ${SURVIVE_SRCS})
+set_target_properties(survive PROPERTIES FOLDER "libraries")
 
 add_subdirectory(redist)
 
@@ -77,8 +78,6 @@ IF(NOT WIN32)
 else()
 	target_link_libraries(survive DbgHelp SetupAPI)
 endif()
-#set_target_properties(survive PROPERTIES LIBRARY_OUTPUT_DIRECTORY "lib")
-#set_target_properties(survive PROPERTIES RUNTIME_OUTPUT_DIRECTORY "lib")
 
 SET(PLUGINS
         driver_dummy driver_vive driver_simulator
@@ -100,9 +99,16 @@ endif()
 
 set(poser_sba_ADDITIONAL_LIBS sba)
 set(poser_epnp_ADDITIONAL_SRCS src/epnp/epnp.c)
+
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 foreach(PLUGIN ${PLUGINS})
     add_library(${PLUGIN} SHARED src/${PLUGIN}.c ${${PLUGIN}_ADDITIONAL_SRCS})
     target_link_libraries(${PLUGIN} survive ${${PLUGIN}_ADDITIONAL_LIBS})
+	 
+	STRING(REGEX REPLACE "(.*)\_.*" "\\1" plugin_type "${PLUGIN}")
+	if(plugin_type)
+		set_target_properties(${PLUGIN} PROPERTIES FOLDER "${plugin_type}")
+	endif()
     set_target_properties(${PLUGIN} PROPERTIES PREFIX "")
     set_target_properties(${PLUGIN} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "plugins")
 	set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG "Debug/plugins")
@@ -112,7 +118,7 @@ endforeach()
 foreach(executable calibrate data_recorder simple_pose_test survive-cli)
 	add_executable(${executable} ${executable}.c )
 	target_link_libraries(${executable} survive)
-
+	set_target_properties(${executable} PROPERTIES FOLDER "apps")
 	foreach(PLUGIN ${PLUGINS})
 		add_dependencies(${executable} ${PLUGIN})
 	endforeach()

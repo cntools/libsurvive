@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Source Files">
@@ -48,9 +48,6 @@
     <ClCompile Include="..\..\src\survive_usb.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\survive_vive.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\redist\puff.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -84,12 +81,6 @@
     <ClCompile Include="..\..\src\survive_disambiguator.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\survive_charlesbiguator.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\survive_turveybiguator.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\poser.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -103,9 +94,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\getdelim.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\survive_statebased_disambiguator.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\redist\minimal_opencv.c">
@@ -137,7 +125,7 @@
     </ClCompile>
     <ClCompile Include="..\..\src\survive_api.c">
       <Filter>Source Files</Filter>
-    </ClCompile>      
+    </ClCompile>
     <ClCompile Include="..\..\src\survive_imu.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -151,6 +139,24 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\poser_charlesrefine.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\survive_optimizer.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\survive_plugins.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\disambiguator_charles.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\disambiguator_statebased.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\disambiguator_turvey.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\driver_vive.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -214,6 +220,9 @@
     </ClInclude>
     <ClInclude Include="..\..\src\poser_general_optimizer.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\survive_optimizer.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

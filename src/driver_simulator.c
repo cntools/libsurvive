@@ -49,7 +49,7 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 	FLT timestep = 0.001;
 
 	if (last_time != 0 && last_time + timefactor * timestep > realtime) {
-		usleep((timefactor * timestep + realtime - last_time) * 1e6);
+		OGUSleep((timefactor * timestep + realtime - last_time) * 1e6);
 	}
 	last_time = realtime;
 
@@ -257,7 +257,7 @@ int DriverRegSimulator(SurviveContext *ctx) {
 		normals[2] = locations[2] = r * cos(pol);
 		normalize3d(normals, normals);
 
-		char buffer[1024] = {};
+		char buffer[1024] = { 0 };
 		sprintf(buffer, "[%f, %f, %f],\n", locations[0], locations[1], locations[2]);
 		str_append(&loc_buf, buffer);
 

@@ -4,8 +4,8 @@ add_library(sba ./sba/sba_levmar_wrap.c
         ./sba/sba_levmar.c
         ./sba/sba_crsm.c
         )
+set_target_properties(sba PROPERTIES FOLDER "libraries")
 
-		
 set(CNGFX_SRCS ./CNFG3D.c ./CNFGFunctions.c)
 IF(UNIX)		
 	list(APPEND CNGFX_SRCS ./CNFGXDriver.c)
@@ -15,6 +15,7 @@ else()
 endif()
 
 add_library(CNGFX ${CNGFX_SRCS})
+set_target_properties(CNGFX PROPERTIES FOLDER "libraries")
 
 target_link_libraries(CNGFX ${CNGFX_LIBS})
 
@@ -28,10 +29,19 @@ IF(WIN32)
 endif()
 
 add_library(minimal_opencv ${MINIMAL_OPENCV_SRCS})
+set_target_properties(minimal_opencv PROPERTIES FOLDER "libraries")
 IF(UNIX)
 	target_link_libraries(minimal_opencv cblas lapacke m)
 else()
-	target_link_libraries(minimal_opencv ${CMAKE_BINARY_DIR}/packages/OpenBLAS.0.2.14.1/lib/native/lib/x64/libopenblas.dll.a)
+	if (CMAKE_SIZEOF_VOID_P MATCHES 8)
+		set(WIN_PLATFORM "x64")
+	else(CMAKE_SIZEOF_VOID_P MATCHES 8)
+		set(WIN_PLATFORM "win32")
+	endif(CMAKE_SIZEOF_VOID_P MATCHES 8)
+
+	target_link_libraries(minimal_opencv 
+		${CMAKE_BINARY_DIR}/packages/OpenBLAS.0.2.14.1/lib/native/lib/${WIN_PLATFORM}/libopenblas.dll.a
+		)
 ENDIF()
 
 IF(WIN32)
@@ -47,9 +57,12 @@ IF(WIN32)
 	)
 	set_target_properties( minimal_opencv PROPERTIES VS_USER_PROPS "$(SolutionDir)\\packages\\OpenBLAS.0.2.14.1\\build\\native\\openblas.targets" )
 	set_target_properties( survive PROPERTIES VS_USER_PROPS "$(SolutionDir)\\packages\\OpenBLAS.0.2.14.1\\build\\native\\openblas.targets" )
+	
 	add_dependencies(minimal_opencv nuget-restore)
 endif()
 
 add_executable(lintest linmath.c linmath.h lintest.c)
 target_link_libraries(lintest minimal_opencv)
+set_target_properties(lintest PROPERTIES FOLDER "tests")
+
 add_test(NAME lintest COMMAND lintest)
