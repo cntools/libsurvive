@@ -53,10 +53,6 @@ int dummy_haptic(SurviveObject *so, uint8_t reserved, uint16_t pulseHigh, uint16
 }
 
 int DriverRegDummy(SurviveContext *ctx) {
-	int enable = survive_configi(ctx, "dummy-driver-enable", SC_GET, 9);
-	if (!enable)
-		return 0;
-
 	SurviveDriverDummy *sp = calloc(1, sizeof(SurviveDriverDummy));
 	sp->ctx = ctx;
 

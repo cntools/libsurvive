@@ -371,7 +371,19 @@ void *GetDriverByConfig(SurviveContext *ctx, const char *name, const char *confi
 
 	return func;
 }
-
+static inline bool callDriver(SurviveContext* ctx, const char* DriverName, char* buffer) {
+	DeviceDriver dd = GetDriver(DriverName);
+	int r = dd(ctx);
+	if (r < 0) {
+		SV_WARN("Driver %s reports status %d", DriverName + strlen("DriverReg"), r);
+		return false;
+	}
+	else {
+		strcat(buffer, DriverName + strlen("DriverReg"));
+		strcat(buffer, ", ");
+	}
+	return true; 
+}
 int survive_startup(SurviveContext *ctx) {
 	int r = 0;
 	int i = 0;
@@ -392,17 +404,27 @@ int survive_startup(SurviveContext *ctx) {
 
 	i = 0;
 
+	int loadedDrivers = 0;
+
 	char buffer[1024] = "Loaded drivers: ";
 	while ((DriverName = GetDriverNameMatching("DriverReg", i++))) {
-		DeviceDriver dd = GetDriver(DriverName);
-		r = dd(ctx);
-		if (r < 0) {
-			SV_WARN("Driver %s reports status %d", DriverName + strlen("DriverReg"), r);
-		} else {
-			strcat(buffer, DriverName + strlen("DriverReg"));
-			strcat(buffer, ", ");
+		char driverNameSuffix[256] = { 0 };
+		char* driverNameSuffix_p = driverNameSuffix;
+		for (const char* c = DriverName + strlen("DriverReg");*c;c++) {
+			*driverNameSuffix_p++ = tolower(*c);
+		}
+		
+		int enabled = survive_config_is_set(ctx, driverNameSuffix);
+		if (enabled && callDriver(ctx, DriverName, buffer)) {
+			loadedDrivers++;
 		}
 	}
+
+	// Load the vive driver by default, even if not enabled as a flag
+	if (loadedDrivers == 0 && callDriver(ctx, "DriverRegHTCVive", buffer)) {
+		loadedDrivers++;
+	}
+
 	buffer[strlen(buffer) - 2] = 0;
 	SV_INFO("%s", buffer);
 

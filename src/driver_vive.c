@@ -1636,18 +1636,6 @@ int survive_vive_close(SurviveContext *ctx, void *driver) {
 }
 
 int DriverRegHTCVive(SurviveContext *ctx) {
-	const char *playback_dir = survive_configs(ctx, "playback", SC_GET, "");
-	if (strlen(playback_dir) != 0) {
-		SV_INFO("Playback is active; disabling USB driver");
-		return 0;
-	}
-
-	int usbmon_enable = survive_configi(ctx, "usbmon", SC_GET, 0);
-	if (usbmon_enable) {
-		SV_INFO("usbmon is active; disabling USB driver");
-		return 0;
-	}
-
 	SurviveViveData *sv = calloc(1, sizeof(SurviveViveData));
 	SurviveObject *hmd = survive_create_hmd(ctx, "HTC", sv);
 	SurviveObject *wm0 = survive_create_wm0(ctx, "HTC", sv, 0);

@@ -433,7 +433,8 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	const char *playback_file = survive_configs(ctx, "playback", SC_GET, "");
 
 	if (strlen(playback_file) == 0) {
-		return 0;
+		SV_WARN("The playback argument requires a filename");
+		return -1;
 	}
 
 	SurvivePlaybackData *sp = calloc(1, sizeof(SurvivePlaybackData));

@@ -202,10 +202,6 @@ void str_append(char **pString, const char *str) {
 }
 
 int DriverRegSimulator(SurviveContext *ctx) {
-	int enable = survive_configi(ctx, "use-simulator", SC_GET, 1);
-	if (!enable)
-		return 0;
-
 	SurviveDriverSimulator *sp = calloc(1, sizeof(SurviveDriverSimulator));
 	sp->ctx = ctx;
 
