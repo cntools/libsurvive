@@ -12,7 +12,7 @@
 #include <survive.h>
 #include <survive_reproject.h>
 
-STATIC_CONFIG_ITEM(Simulator_DRIVER_ENABLE, "use-simulator", 'i', "Load a Simulator driver for testing.", 0);
+STATIC_CONFIG_ITEM(Simulator_DRIVER_ENABLE, "simulator", 'i', "Load a Simulator driver for testing.", 0);
 STATIC_CONFIG_ITEM(Simulator_TIME, "simulator-time", 'f', "Seconds to run simulator for.", 0.0);
 
 struct SurviveDriverSimulator {
@@ -201,6 +201,19 @@ void str_append(char **pString, const char *str) {
 	strcat(*pString, str);
 }
 
+const BaseStationData simulated_bsd[2] = {
+	{
+		.PositionSet = 1,
+		.BaseStationID = 0,
+		.Pose = {.Pos = {-3, 0, 1},.Rot = { -0.70710678118, 0, 0.70710678118, 0 } }
+	},
+	{
+		.PositionSet = 1,
+		.BaseStationID = 1,
+		.Pose = { .Pos = { 3, 0, 1 }, .Rot = { 0.70710678118, 0, 0.70710678118, 0 } }
+	},
+};
+
 int DriverRegSimulator(SurviveContext *ctx) {
 	SurviveDriverSimulator *sp = calloc(1, sizeof(SurviveDriverSimulator));
 	sp->ctx = ctx;
@@ -243,6 +256,13 @@ int DriverRegSimulator(SurviveContext *ctx) {
 
 	FLT r = .1;
 	srand(42);
+	
+	for (int i = 0; i < ctx->activeLighthouses; i++) {
+		if (!ctx->bsd[i].PositionSet) {
+			memcpy(ctx->bsd + i, simulated_bsd + i, sizeof(simulated_bsd[i]));
+		}
+	}
+
 	for (int i = 0; i < device->sensor_ct; i++) {
 		FLT azi = rand();
 		FLT pol = rand();
