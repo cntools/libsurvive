@@ -30,7 +30,7 @@ int mkdir(const char *);
 
 STATIC_CONFIG_ITEM( REQ_TRACK_FOR_CAL, "requiredtrackersforcal", 's', "Which devices will be used, i.e. HMD,WM0,WM1", "" );
 STATIC_CONFIG_ITEM( ALLOW_TRACK_FOR_CAL, "allowalltrackersforcal", 'i', "Allow use of additional connected devices for calibration", 0 );
-STATIC_CONFIG_ITEM( CONFIG_POSER, "configposer", 's', "Poser used for calibration step", "SBA" );
+STATIC_CONFIG_ITEM( CONFIG_POSER, "configposer", 's', "Poser used for calibration step", "MPFIT" );
 STATIC_CONFIG_ITEM(OOTX_IGNORE_SYNC_ERROR, "ootx-ignore-sync-error", 'i', "Ignore sync errors on ootx packets", 0);
 
 #define PTS_BEFORE_COMMON 32
@@ -204,7 +204,7 @@ void survive_cal_install( struct SurviveContext * ctx )
 		}
 	}
 
-	cd->ConfigPoserFn = GetDriverByConfig(ctx, "Poser", "configposer", "SBA");
+	cd->ConfigPoserFn = GetDriverByConfig(ctx, "Poser", "configposer", "MPFIT");
 
 	ootx_packet_clbk = ootx_packet_clbk_d;
 	ootx_error_clbk = ootx_error_clbk_d;
