@@ -66,8 +66,8 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 	// SurvivePose accel = {.Pos = {cos(t * 3) * 4, cos(t * 2) * 3, cos(t * 4) * 2},
 	//					 .Rot = {10 + cos(t) * 2, cos(t), sin(t), (cos(t) + sin(t))}};
 
-	SurviveVelocity accel = {.EulerRot = {cos(t), sin(t), (cos(t) + sin(t))}};
-	// SurviveVelocity accel = {};
+	// SurviveVelocity accel = {.EulerRot = {cos(t), sin(t), (cos(t) + sin(t))}};
+	SurviveVelocity accel = {};
 
 	LinmathVec3d attractors[] = {{1, 1, 1}, {-1, 0, 1}, {0, -1, .5}};
 	size_t attractor_cnt = survive_configi(ctx, "attractors", SC_GET, sizeof(attractors) / sizeof(LinmathVec3d));
@@ -136,7 +136,8 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 				FLT facingness = dot3d(normalInLh, dirLh);
 				if (facingness > 0) {
 					survive_reproject_xy(ctx->bsd[lh].fcal, ptInLh, ang);
-
+					ang[0] += .001 * rand() / RAND_MAX;
+					ang[1] += .001 * rand() / RAND_MAX;
 					// SurviveObject * so, int sensor_id, int acode, survive_timecode timecode, FLT length, FLT angle,
 					// uint32_t lh);
 					int acode = (lh << 2) + (driver->acode & 1);
@@ -246,11 +247,11 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	if (attractor_cnt) {
 		for (int i = 0; i < 3; i++)
 			sp->velocity.Pos[i] = 2. * rand() / RAND_MAX - 1.;
-	}
 
-	sp->velocity.EulerRot[0] = .5;
-	sp->velocity.EulerRot[1] = .5;
-	sp->velocity.EulerRot[2] = .5;
+		sp->velocity.EulerRot[0] = .5;
+		sp->velocity.EulerRot[1] = .5;
+		sp->velocity.EulerRot[2] = .5;
+	}
 
 	char *cfg = 0, *loc_buf = 0, *nor_buf = 0;
 

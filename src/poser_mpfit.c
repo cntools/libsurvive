@@ -330,7 +330,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 			if (error > 0) {
 
 				FLT var_meters = d->useKalman ? .01 + error : 0;
-				FLT var_quat = d->useKalman ? .001 + error : 0;
+				FLT var_quat = d->useKalman ? .01 + error : 0;
 				FLT var[2] = {var_meters, var_quat};
 
 				survive_imu_tracker_integrate_observation(lightData->timecode, &d->tracker, &estimate, var);

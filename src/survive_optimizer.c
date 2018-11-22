@@ -50,7 +50,11 @@ static char *lh_parameter_names[] = {"LH0 x",	 "LH0 y",	 "LH0 z",		"LH0 Rot w", 
 void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx, SurviveContext *ctx, bool isFixed) {
 	SurvivePose *cameras = survive_optimizer_get_camera(mpfit_ctx);
 	for (int lh = 0; lh < mpfit_ctx->cameraLength; lh++) {
-		InvertPose(&cameras[lh], &ctx->bsd[lh].Pose);
+		if (!quatiszero(ctx->bsd[lh].Pose.Rot)) {
+			InvertPose(&cameras[lh], &ctx->bsd[lh].Pose);
+		} else {
+			cameras[lh] = LinmathPose_Identity;
+		}
 	}
 	int start = survive_optimizer_get_camera_index(mpfit_ctx);
 	for (int i = start; i < start + 7 * mpfit_ctx->cameraLength; i++) {

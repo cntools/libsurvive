@@ -36,6 +36,10 @@ extern "C" {
 #define Point3_format FLT_format "\t" FLT_format "\t" FLT_format
 #define Quat_format FLT_format "\t" FLT_format "\t" FLT_format "\t" FLT_format
 #define SurvivePose_format Point3_format "\t" Quat_format
+#define SurviveVel_format Point3_format "\t" Point3_format
+#define LINMATH_QUAT_EXPAND(q) (q)[0], (q)[1], (q)[2], (q)[3]
+#define LINMATH_VEC3_EXPAND(p) (p)[0], (p)[1], (p)[2]
+#define SURVIVE_VELOCITY_EXPAND(v) LINMATH_VEC3_EXPAND((v).Pos), LINMATH_VEC3_EXPAND((v).EulerRot)
 #define SURVIVE_POSE_EXPAND(p) (p).Pos[0], (p).Pos[1], (p).Pos[2], (p).Rot[0], (p).Rot[1], (p).Rot[2], (p).Rot[3]
 typedef LinmathPose SurvivePose;
 typedef LinmathEulerPose SurviveVelocity;

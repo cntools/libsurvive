@@ -204,7 +204,7 @@ void survive_cal_install( struct SurviveContext * ctx )
 		}
 	}
 
-	cd->ConfigPoserFn = GetDriverByConfig(ctx, "Poser", "configposer", "MPFIT");
+	cd->ConfigPoserFn = GetDriverByConfig(ctx, "Poser", "configposer", "SBA");
 
 	ootx_packet_clbk = ootx_packet_clbk_d;
 	ootx_error_clbk = ootx_error_clbk_d;
@@ -526,7 +526,7 @@ static void handle_calibration( struct SurviveCalData *cd )
 
 		if( count < DRPTS_NEEDED_FOR_AVG )
 		{
-			printf( "DPAVG %d\n", count );
+			SV_INFO("DPAVG %d", count);
 			//Not enough for this point to be considered.
 			continue;
 		}

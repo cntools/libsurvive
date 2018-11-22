@@ -2,6 +2,7 @@
 // All MIT/x11 Licensed Code in this file may be relicensed freely under the GPL or LGPL licenses.
 
 #include "survive_internal.h"
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

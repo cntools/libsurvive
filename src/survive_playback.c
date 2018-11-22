@@ -351,7 +351,9 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 			free(line);
 			return 0;
 		}
-
+		while (r && (line[r - 1] == '\n' || line[r - 1] == '\r')) {
+			line[--r] = 0;
+		}
 		char dev[32];
 		char op[32];
 		if (sscanf(line, "%31s %31s", dev, op) < 2) {
@@ -379,6 +381,7 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 			break;
 		case 'A':
 		case 'P':
+		case 'V':
 			break;
 		default:
 			SV_WARN("Playback doesn't understand '%s' op in '%s'", op, line);

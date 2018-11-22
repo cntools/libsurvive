@@ -211,7 +211,7 @@ float _half_to_float(uint8_t* data) {
 	fnum.f = 0;
 
 	//sign
-	fnum.i = (x & 0x8000)<<16;
+	fnum.i = (((uint32_t)x & 0x8000) << 16);
 
 	if ((x & 0x7FFF) == 0) return fnum.f; //signed zero
 
