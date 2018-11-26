@@ -81,6 +81,8 @@ struct SurviveCalData
 	// 0: Idle
 	// 1: Collecting OOTX data.
 	int8_t stage;
+	int16_t stage_cnt;
+	bool seen_lh[NUM_LIGHTHOUSES];
 };
 
 

@@ -158,7 +158,7 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 			quatnormalize(pose->Rot, pose->Rot);
 			// SV_INFO("After\t" SurvivePose_format, SURVIVE_POSE_EXPAND(*pose));
 
-			for (int lh = 0; lh < NUM_LIGHTHOUSES; lh++) {
+			for (int lh = 0; lh < mpfunc_ctx->so->ctx->activeLighthouses; lh++) {
 				ApplyPoseToPose(&obj2lh[lh], &cameras[lh], pose);
 			}
 		}

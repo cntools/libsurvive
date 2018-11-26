@@ -30,7 +30,7 @@ int mkdir(const char *);
 
 STATIC_CONFIG_ITEM( REQ_TRACK_FOR_CAL, "requiredtrackersforcal", 's', "Which devices will be used, i.e. HMD,WM0,WM1", "" );
 STATIC_CONFIG_ITEM( ALLOW_TRACK_FOR_CAL, "allowalltrackersforcal", 'i', "Allow use of additional connected devices for calibration", 0 );
-STATIC_CONFIG_ITEM( CONFIG_POSER, "configposer", 's', "Poser used for calibration step", "MPFIT" );
+STATIC_CONFIG_ITEM(CONFIG_POSER, "configposer", 's', "Poser used for calibration step", "SBA");
 STATIC_CONFIG_ITEM(OOTX_IGNORE_SYNC_ERROR, "ootx-ignore-sync-error", 'i', "Ignore sync errors on ootx packets", 0);
 
 #define PTS_BEFORE_COMMON 32
@@ -231,18 +231,28 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 		if( sensor_id < 0 )
 		{
 				//fprintf(stderr, "%s\n", so->codename);
-			int lhid = -sensor_id-1;
-			// Take the OOTX data from the first device.  (if using HMD, WM0, WM1 only, this will be HMD)
+				int lhid = lh;
+				// Take the OOTX data from the first device.  (if using HMD, WM0, WM1 only, this will be HMD)
 
-			if( lhid < NUM_LIGHTHOUSES && so == cd->poseobjects[0]  ) 
-			{
-				uint8_t dbit = (acode & 2)>>1;
-				ootx_pump_bit( &cd->ootx_decoders[lhid], dbit );
+				if (lhid < NUM_LIGHTHOUSES && so == cd->poseobjects[0]) {
+					uint8_t dbit = (acode & 2) >> 1;
+					ootx_pump_bit(&cd->ootx_decoders[lhid], dbit);
+					cd->seen_lh[lhid] = true;
 			}
 			int i;
-			for( i = 0; i < ctx->activeLighthouses; i++ )
-				if( ctx->bsd[i].OOTXSet == 0 ) break;
+			for (i = 0; i < ctx->activeLighthouses; i++) {
+				if (ctx->bsd[i].OOTXSet == 0)
+					break;
+			}
+
+			if (cd->stage_cnt > 500 && cd->seen_lh[1] == false && ctx->activeLighthouses > 1) {
+				ctx->activeLighthouses = 1;
+				SV_WARN("Only one lighthouse detected");
+			}
+
 			if( i == ctx->activeLighthouses ) cd->stage = 2;  //TODO: Make this configuratble to allow single lighthouse.
+
+			cd->stage_cnt++;
 		}
 		break;
 	case 3: //Look for light sync lengths.

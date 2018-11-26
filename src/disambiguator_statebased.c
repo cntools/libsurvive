@@ -72,21 +72,21 @@ typedef struct {
 const LighthouseStateParameters LS_Params[LS_END + 1] = {
 	{.acode = -1, .lh = -1, .axis = -1, .window = -1},
 
-	{.acode = 4, .lh = 0, .axis = 0, .window = PULSE_WINDOW,   .offset = 0 * PULSE_WINDOW + 0 * CAPTURE_WINDOW},                // 0
-	{.acode = 0, .lh = 1, .axis = 0, .window = PULSE_WINDOW,   .offset = 1 * PULSE_WINDOW + 0 * CAPTURE_WINDOW},                // 20000
-	{.acode = 4, .lh = 1, .axis = 0, .window = CAPTURE_WINDOW, .offset = 2 * PULSE_WINDOW + 0 * CAPTURE_WINDOW, .is_sweep = 1}, // 40000
+    {.acode = 0, .lh = 0, .axis = 0, .window = PULSE_WINDOW,   .offset = 0 * PULSE_WINDOW + 0 * CAPTURE_WINDOW},                // 0
+    {.acode = 4, .lh = 1, .axis = 0, .window = PULSE_WINDOW,   .offset = 1 * PULSE_WINDOW + 0 * CAPTURE_WINDOW},                // 20000
+    {.acode = 0, .lh = 0, .axis = 0, .window = CAPTURE_WINDOW, .offset = 2 * PULSE_WINDOW + 0 * CAPTURE_WINDOW, .is_sweep = 1}, // 40000
 
-	{.acode = 5, .lh = 0, .axis = 1, .window = PULSE_WINDOW,   .offset = 2 * PULSE_WINDOW + 1 * CAPTURE_WINDOW},                // 400000
-	{.acode = 1, .lh = 1, .axis = 1, .window = PULSE_WINDOW,   .offset = 3 * PULSE_WINDOW + 1 * CAPTURE_WINDOW},                // 420000
-	{.acode = 5, .lh = 1, .axis = 1, .window = CAPTURE_WINDOW, .offset = 4 * PULSE_WINDOW + 1 * CAPTURE_WINDOW, .is_sweep = 1}, // 440000
+    {.acode = 1, .lh = 0, .axis = 1, .window = PULSE_WINDOW,   .offset = 2 * PULSE_WINDOW + 1 * CAPTURE_WINDOW},                // 400000
+    {.acode = 5, .lh = 1, .axis = 1, .window = PULSE_WINDOW,   .offset = 3 * PULSE_WINDOW + 1 * CAPTURE_WINDOW},                // 420000
+    {.acode = 1, .lh = 0, .axis = 1, .window = CAPTURE_WINDOW, .offset = 4 * PULSE_WINDOW + 1 * CAPTURE_WINDOW, .is_sweep = 1}, // 440000
 
-	{.acode = 0, .lh = 0, .axis = 0, .window = PULSE_WINDOW,   .offset = 4 * PULSE_WINDOW + 2 * CAPTURE_WINDOW},                // 800000
-	{.acode = 4, .lh = 1, .axis = 0, .window = PULSE_WINDOW,   .offset = 5 * PULSE_WINDOW + 2 * CAPTURE_WINDOW},                // 820000
-	{.acode = 0, .lh = 0, .axis = 0, .window = CAPTURE_WINDOW, .offset = 6 * PULSE_WINDOW + 2 * CAPTURE_WINDOW, .is_sweep = 1}, // 840000
+    {.acode = 4, .lh = 0, .axis = 0, .window = PULSE_WINDOW,   .offset = 4 * PULSE_WINDOW + 2 * CAPTURE_WINDOW},                // 800000
+	{.acode = 0, .lh = 1, .axis = 0, .window = PULSE_WINDOW,   .offset = 5 * PULSE_WINDOW + 2 * CAPTURE_WINDOW},                // 820000
+	{.acode = 4, .lh = 1, .axis = 0, .window = CAPTURE_WINDOW, .offset = 6 * PULSE_WINDOW + 2 * CAPTURE_WINDOW, .is_sweep = 1}, // 840000
 
-	{.acode = 1, .lh = 0, .axis = 1, .window = PULSE_WINDOW,   .offset = 6 * PULSE_WINDOW + 3 * CAPTURE_WINDOW},                // 1200000
-	{.acode = 5, .lh = 1, .axis = 1, .window = PULSE_WINDOW,   .offset = 7 * PULSE_WINDOW + 3 * CAPTURE_WINDOW},                // 1220000
-	{.acode = 1, .lh = 0, .axis = 1, .window = CAPTURE_WINDOW, .offset = 8 * PULSE_WINDOW + 3 * CAPTURE_WINDOW, .is_sweep = 1}, // 1240000
+	{.acode = 5, .lh = 0, .axis = 1, .window = PULSE_WINDOW,   .offset = 6 * PULSE_WINDOW + 3 * CAPTURE_WINDOW},                // 1200000
+	{.acode = 1, .lh = 1, .axis = 1, .window = PULSE_WINDOW,   .offset = 7 * PULSE_WINDOW + 3 * CAPTURE_WINDOW},                // 1220000
+	{.acode = 5, .lh = 1, .axis = 1, .window = CAPTURE_WINDOW, .offset = 8 * PULSE_WINDOW + 3 * CAPTURE_WINDOW, .is_sweep = 1}, // 1240000
 
 	{.acode = -1, .lh = -1, .axis = -1, .window = -1, .offset = 8 * PULSE_WINDOW + 4 * CAPTURE_WINDOW}                          // 1600000
 };
@@ -124,6 +124,8 @@ typedef struct {
 
 	int stabalize;
 	bool lastWasSync;
+	int single_60hz_confidence;
+	bool single_60hz_mode;
 
 	LightcapElement sweep_data[];
 } Disambiguator_data_t;
@@ -329,6 +331,11 @@ static enum LighthouseState SetState(Disambiguator_data_t *d, const LightcapElem
 	d->encoded_acodes = 0;
 	d->state = new_state;
 
+	if (new_state == LS_UNKNOWN) {
+		d->single_60hz_mode = false;
+		d->single_60hz_confidence = 0;
+	}
+
 	ResetSync(d);
 
 	memset(d->sweep_data, 0, sizeof(LightcapElement) * d->so->sensor_ct);
@@ -356,15 +363,28 @@ static void RunACodeCapture(int target_acode, Disambiguator_data_t *d, const Lig
 	// keep a tally of hits and misses, and if we ever go into the negatives reset
 	// the state machine to find the state again.
 	if (error > 1250) {
-		// Penalize semi-harshly -- if it's ever off track it will take this many syncs
-		// to reset
-		const int penalty = 3;
-		if (d->confidence < penalty) {
-			SurviveContext *ctx = d->so->ctx;
-			SetState(d, le, LS_UNKNOWN);
-			SV_INFO("WARNING: Disambiguator got lost; refinding state for %s", d->so->codename);
+		uint32_t time_error_ad0 = abs(ACODE_TIMING(0) - le->length);
+		uint32_t time_error_ad1 = abs(ACODE_TIMING(0 | DATA_BIT) - le->length);
+
+		uint32_t a_error = time_error_ad0 > time_error_ad1 ? time_error_ad1 : time_error_ad0;
+		if (target_acode == 4 && a_error < 1250) {
+			if (d->single_60hz_confidence++ > 3 && d->single_60hz_mode == false && d->confidence < 50) {
+				d->single_60hz_mode = true;
+				SurviveContext *ctx = d->so->ctx;
+				SV_WARN("Disambiguator detected single mode A LH (60hz mode)");
+			}
+		} else {
+			// Penalize semi-harshly -- if it's ever off track it will take this many syncs
+			// to reset
+			const int penalty = 3;
+			if (d->confidence < penalty) {
+				SurviveContext *ctx = d->so->ctx;
+				SetState(d, le, LS_UNKNOWN);
+				SV_INFO("WARNING: Disambiguator got lost; refinding state for %s", d->so->codename);
+			}
+			d->confidence -= penalty;
 		}
-		d->confidence -= penalty;
+
 		return;
 	}
 
@@ -399,7 +419,8 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 			}
 
 			int next_state = d->state + 1;
-			if (next_state == LS_END)
+
+			if (next_state == LS_END || (d->single_60hz_mode && next_state == LS_WaitLHB_ACode0))
 				next_state = 0;
 
 			int index_code = LS_Params[next_state].is_sweep ? -1 : -2;
@@ -448,9 +469,11 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 }
 
 static void PropagateState(Disambiguator_data_t *d, const LightcapElement *le) {
+	int end_of_mod = d->single_60hz_mode ? LS_WaitLHB_ACode0 : LS_END;
+
 	int le_offset = le->timestamp > d->mod_offset
-						? (le->timestamp - d->mod_offset + 10000) % LS_Params[LS_END].offset
-						: (0xFFFFFFFF - d->mod_offset + le->timestamp + 10000) % LS_Params[LS_END].offset;
+						? (le->timestamp - d->mod_offset + 10000) % LS_Params[end_of_mod].offset
+						: (0xFFFFFFFF - d->mod_offset + le->timestamp + 10000) % LS_Params[end_of_mod].offset;
 
 	/** Find where this new element fits into our state machine. This can skip states if its been a while since
 	 * its been able to process, or if a LH is missing. */
