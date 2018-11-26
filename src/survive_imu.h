@@ -59,6 +59,8 @@ typedef struct kalman_info_pose_t {
 typedef struct SurviveIMUTracker {
 	SurviveObject *so;
 	int use_obs_velocity;
+	FLT obs_variance;
+	FLT obs_rot_variance;
 
 	FLT acc_var;
 	FLT gyro_var;

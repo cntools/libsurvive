@@ -382,8 +382,8 @@ function update_object(v, allow_unsetup) {
 			var up = new THREE.Vector3(0, 1, 0);
 			var out = new THREE.Vector3(0, 0, -1);
 
-			fpv_camera.up = up.applyQuaternion(objs[obj.tracker].quaternion);
-			var lookAt = out.applyQuaternion(objs[obj.tracker].quaternion);
+			fpv_camera.up = up.applyQuaternion(objs[obj.tracker].group_rot.quaternion);
+			var lookAt = out.applyQuaternion(objs[obj.tracker].group_rot.quaternion);
 			lookAt.add(objs[obj.tracker].position);
 
 			fpv_camera.position.set(obj.position[0], obj.position[1], obj.position[2]);
