@@ -80,6 +80,7 @@ const LighthouseStateParameters LS_Params[LS_END + 1] = {
     {.acode = 5, .lh = 1, .axis = 1, .window = PULSE_WINDOW,   .offset = 3 * PULSE_WINDOW + 1 * CAPTURE_WINDOW},                // 420000
     {.acode = 1, .lh = 0, .axis = 1, .window = CAPTURE_WINDOW, .offset = 4 * PULSE_WINDOW + 1 * CAPTURE_WINDOW, .is_sweep = 1}, // 440000
 
+    // In 60hz single LH mode, it just repeats the above. With any other configuration, the second half of the table is used.
     {.acode = 4, .lh = 0, .axis = 0, .window = PULSE_WINDOW,   .offset = 4 * PULSE_WINDOW + 2 * CAPTURE_WINDOW},                // 800000
 	{.acode = 0, .lh = 1, .axis = 0, .window = PULSE_WINDOW,   .offset = 5 * PULSE_WINDOW + 2 * CAPTURE_WINDOW},                // 820000
 	{.acode = 4, .lh = 1, .axis = 0, .window = CAPTURE_WINDOW, .offset = 6 * PULSE_WINDOW + 2 * CAPTURE_WINDOW, .is_sweep = 1}, // 840000
@@ -363,6 +364,11 @@ static void RunACodeCapture(int target_acode, Disambiguator_data_t *d, const Lig
 	// keep a tally of hits and misses, and if we ever go into the negatives reset
 	// the state machine to find the state again.
 	if (error > 1250) {
+
+		// In 60hz mode, one lighthouse will just cycle through half the first half of states. What we will end up
+		// seeing, is a lot of errors where we expect an acode of 4 and instead we see an acode of 0. So instead of
+		// marking such a transition as an error, increase the confidence counter for 60hz mode, and eventually swap
+		// into it.
 		uint32_t time_error_ad0 = abs(ACODE_TIMING(0) - le->length);
 		uint32_t time_error_ad1 = abs(ACODE_TIMING(0 | DATA_BIT) - le->length);
 
