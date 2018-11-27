@@ -247,6 +247,8 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 
 			if (cd->stage_cnt > 500 && cd->seen_lh[1] == false && ctx->activeLighthouses > 1) {
 				ctx->activeLighthouses = 1;
+				survive_configi(ctx, "lighthousecount", SC_SETCONFIG | SC_OVERRIDE, 1);
+
 				SV_WARN("Only one lighthouse detected");
 			}
 
