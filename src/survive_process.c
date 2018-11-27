@@ -153,7 +153,7 @@ void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighth
 	}
 
 	config_set_lighthouse(ctx->lh_config, &ctx->bsd[lighthouse], lighthouse);
-	config_save(ctx, "config.json");
+	config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
 
 	survive_recording_lighthouse_process(ctx, lighthouse, lighthouse_pose, object_pose);
 }
