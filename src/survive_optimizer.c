@@ -28,6 +28,14 @@ void survive_optimizer_setup_pose(survive_optimizer *mpfit_ctx, const SurvivePos
 		mpfit_ctx->parameters_info[i].limits[0] = -(i >= 3 ? 1. : 20.);
 		mpfit_ctx->parameters_info[i].limits[1] = -mpfit_ctx->parameters_info[i].limits[0];
 
+		if (mpfit_ctx->parameters[i] < mpfit_ctx->parameters_info[i].limits[0] ||
+			mpfit_ctx->parameters[i] > mpfit_ctx->parameters_info[i].limits[1]) {
+			SurviveContext *ctx = mpfit_ctx->so->ctx;
+			SV_ERROR("Parameter %s is invalid. %f <= %f <= %f should be true", mpfit_ctx->parameters_info[i].parname,
+					 mpfit_ctx->parameters_info[i].limits[0], mpfit_ctx->parameters[i],
+					 mpfit_ctx->parameters_info[i].limits[1])
+		}
+
 		if (use_jacobian_function != 0) {
 			if (use_jacobian_function < 0) {
 				mpfit_ctx->parameters_info[i].side = 1;

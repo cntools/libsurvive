@@ -48,7 +48,7 @@ typedef LinmathEulerPose SurviveVelocity;
 //It will also require a recompile.  TODO: revisit this and correct the comment once fixed.
 #define NUM_LIGHTHOUSES 2  
 
-#define INTBUFFSIZE			64
+#define INTBUFFSIZE 64
 #define SENSORS_PER_OBJECT	32
 
 // These are used for the eventType of button_process_func

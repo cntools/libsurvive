@@ -3,8 +3,8 @@
 #include <linmath.h>
 #include <math.h>
 double __safe_asin(double x) { return asin(linmath_max(-1., linmath_min(1., x))); }
-//double __safe_pow(double x, double y) { return x == 0 ? 0 : creal(cpow(x, y)); }
-//#define pow __safe_pow
+double __safe_pow(double x, double y) { return x == 0 ? 0 : creal(cpow(x, y)); }
+#define pow __safe_pow
 #define asin __safe_asin
 static inline void gen_reproject_axis_x_jac_obj_p_axisangle(FLT *out, const FLT *obj, const FLT *sensor, const FLT *lh,
 															FLT phase_0, FLT tilt_0, FLT curve_0, FLT gibPhase_0,

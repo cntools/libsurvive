@@ -173,7 +173,8 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 		*out = *soLocation;
 		rtn = result.bestnorm;
 	} else {
-		SV_WARN("MPFIT failure %f/%f (%d measurements, %d)", result.orignorm, result.bestnorm, (int)meas_size, res);
+		SV_WARN("MPFIT failure %s %f/%f (%d measurements, %d)", so->codename, result.orignorm, result.bestnorm,
+				(int)meas_size, res);
 	}
 
 	return rtn;
@@ -249,8 +250,8 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 
 	double rtn = -1;
 	bool status_failure = res <= 0;
-	// bool error_failure = !general_optimizer_data_record_success(&d->opt, result.bestnorm);
 	if (!status_failure) {
+		general_optimizer_data_record_success(&d->opt, result.bestnorm);
 		rtn = result.bestnorm;
 
 		SurvivePose additionalTx = {0};
@@ -266,6 +267,7 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 	} else {
 		SurviveContext *ctx = so->ctx;
 		SV_INFO("MPFIT failure %f %d", result.bestnorm, res);
+		// general_optimizer_data_record_failure(&d->opt);
 	}
 
 	return rtn;

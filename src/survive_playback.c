@@ -458,8 +458,9 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	SurviveObject *wm1 = survive_create_wm1(ctx, "Playback", sp, 0);
 	SurviveObject *tr0 = survive_create_tr0(ctx, "Playback", sp);
 	SurviveObject *ww0 = survive_create_ww0(ctx, "Playback", sp);
+	SurviveObject *ww1 = survive_create_device(ctx, "Playback", sp, "WW1", 0);
 
-	SurviveObject *objs[] = {hmd, wm0, wm1, tr0, ww0};
+	SurviveObject *objs[] = {hmd, wm0, wm1, tr0, ww0, ww1};
 
 	FLT time;
 	while (!feof(sp->playback_file) && !ferror(sp->playback_file)) {

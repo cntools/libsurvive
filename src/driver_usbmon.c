@@ -28,10 +28,10 @@ typedef struct vive_device_inst_t {
 #define VIVE_DEVICE_INST_MAX 32
 
 struct vive_device_t devices[] = {{.vid = 0x28de, .pid = 0x2000, .codename = "HMD", .def_config = "HMD_config.json"},
-								  {.vid = 0x28de, .pid = 0x2101, .codename = "WM", .def_config = "WM0_config.json"},
-								  {.vid = 0x28de, .pid = 0x2022, .codename = "TR", .def_config = "TR0_config.json"},
-								  {.vid = 0x28de, .pid = 0x2300, .codename = "T2", .def_config = "TR1_config.json"},
-								  {.vid = 0x28de, .pid = 0x2012, .codename = "WW", .def_config = "WW0_config.json"},
+								  {.vid = 0x28de, .pid = 0x2101, .codename = "WM", .def_config = "WM%d_config.json"},
+								  {.vid = 0x28de, .pid = 0x2022, .codename = "TR", .def_config = "TR%d_config.json"},
+								  {.vid = 0x28de, .pid = 0x2300, .codename = "T2", .def_config = "TR%d_config.json"},
+								  {.vid = 0x28de, .pid = 0x2012, .codename = "WW", .def_config = "WW%d_config.json"},
 								  {}};
 
 static const int DEVICES_CNT = sizeof(devices) / sizeof(vive_device_t);
@@ -57,18 +57,18 @@ static int interface_lookup(const vive_device_inst_t *dev, int endpoint) {
 	int32_t id = dev->device->pid + (endpoint << 16);
 	switch (id) {
 	case 0x812000:
-		return USB_IF_HMD;
+		return USB_IF_HMD_HEADSET_INFO;
 	case 0x812101:
 		return USB_IF_WATCHMAN1;
 	case 0x812022:
-		return USB_IF_TRACKER0;
+		return USB_IF_TRACKER0_IMU;
 	case 0x812300:
-		return USB_IF_TRACKER1;
+		return USB_IF_TRACKER1_IMU;
 	case 0x812012:
-		return USB_IF_W_WATCHMAN1;
+		return USB_IF_W_WATCHMAN1_IMU;
 
 	case 0x822000:
-		return USB_IF_LIGHTCAP;
+		return USB_IF_HMD_LIGHTCAP;
 	case 0x822101:
 		return USB_IF_WATCHMAN1;
 	case 0x822022:
@@ -237,7 +237,10 @@ static int setup_usb_devices(SurviveDriverUSBMon *sp) {
 		SurviveObject *so = survive_create_device(ctx, "UMN", sp, buff, 0);
 
 		size_t len = 0;
-		const char *config_fn = sp->usb_devices[i].device->def_config;
+		const char *config_fn_template = sp->usb_devices[i].device->def_config;
+		char config_fn[1024] = {};
+		sprintf(config_fn, config_fn_template, device_cnts[dev_idx] - 1);
+
 		char *config_file = read_file(config_fn, &len);
 
 		if (config_file && ctx->configfunction(so, config_file, len) == 0) {

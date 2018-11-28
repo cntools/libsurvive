@@ -359,6 +359,7 @@ static void RunACodeCapture(int target_acode, Disambiguator_data_t *d, const Lig
 
 	// Take the least of the two erors
 	uint32_t error = time_error_d0 > time_error_d1 ? time_error_d1 : time_error_d0;
+	SurviveContext *ctx = d->so->ctx;
 
 	// Errors do happen; either reflections or some other noise. Our scheme here is to
 	// keep a tally of hits and misses, and if we ever go into the negatives reset
@@ -376,7 +377,6 @@ static void RunACodeCapture(int target_acode, Disambiguator_data_t *d, const Lig
 		if (target_acode == 4 && a_error < 1250) {
 			if (d->single_60hz_confidence++ > 3 && d->single_60hz_mode == false && d->confidence < 50) {
 				d->single_60hz_mode = true;
-				SurviveContext *ctx = d->so->ctx;
 				SV_WARN("Disambiguator detected single mode A LH (60hz mode)");
 			}
 		} else {
@@ -384,15 +384,20 @@ static void RunACodeCapture(int target_acode, Disambiguator_data_t *d, const Lig
 			// to reset
 			const int penalty = 3;
 			if (d->confidence < penalty) {
-				SurviveContext *ctx = d->so->ctx;
 				SetState(d, le, LS_UNKNOWN);
-				SV_INFO("WARNING: Disambiguator got lost; refinding state for %s", d->so->codename);
+				SV_WARN("Disambiguator got lost; refinding state for %s", d->so->codename);
 			}
 			d->confidence -= penalty;
 		}
 
+		DEBUG_TB("Disambiguator missed %s; %d expected %d but got %d(%d) - %u %d", d->so->codename, error, target_acode,
+				 le->length, d->confidence, d->mod_offset, le->timestamp);
 		return;
 	}
+
+	if (d->confidence < 50)
+		DEBUG_TB("Disambiguator hit %s; %d expected %d but got %d(%d) - %u %u", d->so->codename, error, target_acode,
+				 le->length, d->confidence, d->mod_offset, le->timestamp);
 
 	if (d->confidence < 100)
 		d->confidence++;
@@ -430,7 +435,9 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 				next_state = 0;
 
 			int index_code = LS_Params[next_state].is_sweep ? -1 : -2;
-			ctx->lightproc(d->so, index_code, acode, 0, lastSync.timestamp, lastSync.length, LS_Params[d->state].lh);
+			if (d->confidence > 50)
+				ctx->lightproc(d->so, index_code, acode, 0, lastSync.timestamp, lastSync.length,
+							   LS_Params[d->state].lh);
 
 			// Store last sync time for sweep calculations
 			d->time_of_last_sync[LS_Params[d->state].lh] = lastSync.timestamp;
@@ -464,7 +471,7 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 						timestamp_diff(le.timestamp + le.length / 2, d->time_of_last_sync[LS_Params[d->state].lh]);
 
 					// Send the lightburst out.
-					if (offset_from > 0)
+					if (offset_from > 0 && d->confidence > 50)
 						d->so->ctx->lightproc(d->so, i, LS_Params[d->state].acode, offset_from, le.timestamp, le.length,
 											  LS_Params[d->state].lh);
 				}
@@ -523,6 +530,9 @@ void DisambiguatorStateBased(SurviveObject *so, const LightcapElement *le) {
 		d->stabalize++;
 		return;
 	}
+
+	// if(so->codename[0] == 'W')
+	DEBUG_TB("%s LE: %2u\t%4u\t%u", so->codename, le->sensor_id, le->length, le->timestamp);
 
 	if (d->state == LS_UNKNOWN) {
 		enum LighthouseState new_state = AttemptFindState(d, le);

@@ -33,7 +33,7 @@ void survive_cal_light( SurviveObject * so, int sensor_id, int acode, int timein
 void survive_cal_angle( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh );
 
 #define MAX_SENSORS_PER_DEVICE 32
-#define MAX_DEVICES_TO_CAL 3
+#define MAX_DEVICES_TO_CAL 1
 #define MAX_SENSORS_TO_CAL (MAX_SENSORS_PER_DEVICE * MAX_DEVICES_TO_CAL)
 
 #define MIN_PTS_BEFORE_CAL 24
