@@ -1360,7 +1360,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 	//	printf( "%16s Size: %2d ID: %d / %d\n", si->hname, size, id, iface );
 
 #if 0
-	if(  si->which_interface_am_i == 5 )
+	if(  si->which_interface_am_i == 9 )
 	{
 		int i;
 		printf( "%16s: %d: %d: %d: ", si->hname, id, size, sizeof(LightcapElement) );
@@ -1452,6 +1452,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 			le.timestamp = POP4;
 			if (le.sensor_id > 0xfd)
 				continue;
+			// SV_INFO("%d %d %d %d %d", id, le.sensor_id, le.length, le.timestamp, si->buffer + size - readdata);
 			handle_lightcap(obj, &le);
 		}
 		break;

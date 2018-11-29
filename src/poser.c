@@ -8,6 +8,7 @@
 #define _USE_MATH_DEFINES // for C
 #include <math.h>
 #include <poser.h>
+#include <stdlib.h>
 #include <string.h>
 
 static uint32_t PoserData_timecode(PoserData *poser_data) {
@@ -30,6 +31,10 @@ static uint32_t PoserData_timecode(PoserData *poser_data) {
 
 STATIC_CONFIG_ITEM(REPORT_IN_IMU, "report-in-imu", 'i', "Debug option to output poses in IMU space.", 0);
 void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world) {
+	for (int i = 0; i < 3; i++)
+		if (abs(imu2world->Pos[i]) > 20)
+			return;
+
 	if (poser_data->poseproc) {
 		poser_data->poseproc(so, PoserData_timecode(poser_data), imu2world, poser_data->userdata);
 	} else {

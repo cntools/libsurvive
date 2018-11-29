@@ -153,8 +153,26 @@ static int process_jsonarray(scratch_space_t *scratch, char *ct0conf, stack_entr
 		if (ParsePoints(ctx, so, ct0conf, &so->sensor_normals, tk)) {
 			return -1;
 		}
-	}
-	else if (jsoneq(ct0conf, tk, "acc_bias") == 0) {
+	} else if (jsoneq(ct0conf, tk, "channelMap") == 0) {
+		int32_t count = (tk + 1)->size;
+		int *values = NULL;
+		if (parse_int_array(ct0conf, tk + 2, &values, count)) {
+			int max_port = 0;
+			for (int i = 0; i < count; i++) {
+				max_port = max_port > values[i] ? max_port : values[i];
+			}
+
+			max_port++;
+			so->channel_map = malloc(sizeof(int) * max_port);
+			for (int i = 0; i < max_port; i++)
+				so->channel_map[i] = -1;
+
+			for (int i = 0; i < count; i++) {
+				so->channel_map[values[i]] = i;
+			}
+		}
+		free(values);
+	} else if (jsoneq(ct0conf, tk, "acc_bias") == 0) {
 		int32_t count = (tk + 1)->size;
 		FLT *values = NULL;
 		if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {

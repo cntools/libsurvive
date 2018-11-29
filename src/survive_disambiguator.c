@@ -1,6 +1,7 @@
 #include "survive.h"
 
 #include "survive_playback.h"
+#include <assert.h>
 #include <os_generic.h>
 #include <stdio.h>
 
@@ -17,5 +18,10 @@ void handle_lightcap(SurviveObject *so, LightcapElement *le) {
 	}
 	fprintf(flog, "%.6f %2d %4d %9d\n", OGGetAbsoluteTime() - start, le->sensor_id, le->length, le->timestamp);
 #endif
+
+	if (so->channel_map) {
+		le->sensor_id = so->channel_map[le->sensor_id];
+		assert(le->sensor_id != -1);
+	}
 	so->ctx->lightcapfunction(so, le);
 }

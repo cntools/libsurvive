@@ -505,6 +505,8 @@ static void PropagateState(Disambiguator_data_t *d, const LightcapElement *le) {
 		// Note we only select the highest length one per sweep. Also, we bundle everything up and send it later all at
 		// once.
 		// so that we can do this filtering. Might not be necessary?
+
+		assert(le->sensor_id < d->so->sensor_ct);
 		d->sweep_data[le->sensor_id] = *le;
 	}
 }
