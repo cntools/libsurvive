@@ -25,6 +25,10 @@ SurviveObject *survive_create_device(SurviveContext *ctx, const char *driver_nam
 	device->imu2trackref.Rot[0] = 1.;
 	device->head2trackref.Rot[0] = 1.;
 
+	for (int i = 0; i < 3; i++) {
+		device->gyro_scale[i] = device->acc_scale[i] = 1.0;
+	}
+
 	return device;
 }
 
@@ -174,27 +178,23 @@ static int process_jsonarray(scratch_space_t *scratch, char *ct0conf, stack_entr
 		free(values);
 	} else if (jsoneq(ct0conf, tk, "acc_bias") == 0) {
 		int32_t count = (tk + 1)->size;
-		FLT *values = NULL;
-		if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {
-			so->acc_bias = values;
+		if (parse_float_array_in_place(ct0conf, tk + 2, so->acc_bias, count) <= 0) {
+			SV_WARN("Could not parse acc_bias");
 		}
 	} else if (jsoneq(ct0conf, tk, "acc_scale") == 0) {
 		int32_t count = (tk + 1)->size;
-		FLT *values = NULL;
-		if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {
-			so->acc_scale = values;
+		if (parse_float_array_in_place(ct0conf, tk + 2, so->acc_scale, count) <= 0) {
+			SV_WARN("Could not parse acc_scale");
 		}
 	} else if (jsoneq(ct0conf, tk, "gyro_bias") == 0) {
 		int32_t count = (tk + 1)->size;
-		FLT *values = NULL;
-		if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {
-			so->gyro_bias = values;
+		if (parse_float_array_in_place(ct0conf, tk + 2, so->gyro_bias, count) <= 0) {
+			SV_WARN("Could not parse gyro_bias");
 		}
 	} else if (jsoneq(ct0conf, tk, "gyro_scale") == 0) {
 		int32_t count = (tk + 1)->size;
-		FLT *values = NULL;
-		if (parse_float_array(ct0conf, tk + 2, &values, count) > 0) {
-			so->gyro_scale = values;
+		if (parse_float_array_in_place(ct0conf, tk + 2, so->gyro_scale, count) <= 0) {
+			SV_WARN("Could not parse gyro_scale");
 		}
 	} else if (jsoneq(ct0conf, tk, "trackref_from_imu") == 0) {
 		int32_t count = (tk + 1)->size;
@@ -312,27 +312,20 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 
 	// Handle device-specific sacling.
 	if (strcmp(so->codename, "HMD") == 0) {
-		if (so->acc_scale) {
-			scale3d(so->acc_scale, so->acc_scale, 1. / 8192.0);
-		}
-		if (so->acc_bias)
-			scale3d(so->acc_bias, so->acc_bias, 1000.0 ); // Odd but seems right.
+		scale3d(so->acc_scale, so->acc_scale, 1. / 8192.0);
+		scale3d(so->acc_bias, so->acc_bias, 1000.0); // Odd but seems right.
 
 		so->imu_freq = HMD_IMU_HZ;
 
-		if (so->gyro_scale) {
-			FLT deg_per_sec = 500;
-			scale3d(so->gyro_scale, so->gyro_scale, deg_per_sec / (1 << 15) * LINMATHPI / 180.);
-		}
+		FLT deg_per_sec = 500;
+		scale3d(so->gyro_scale, so->gyro_scale, deg_per_sec / (1 << 15) * LINMATHPI / 180.);
 	} else if (memcmp(so->codename, "WM", 2) == 0) {
-		if (so->acc_scale)
-			scale3d(so->acc_scale, so->acc_scale, 2. / 8192.0);
-		if (so->acc_bias)
-			scale3d(so->acc_bias, so->acc_bias, 1000.); // Need to verify.
+		scale3d(so->acc_scale, so->acc_scale, 2. / 8192.0);
+		scale3d(so->acc_bias, so->acc_bias, 1000.); // Need to verify.
 
 		FLT deg_per_sec = 2000;
-		if (so->gyro_scale)
-			scale3d(so->gyro_scale, so->gyro_scale, deg_per_sec / (1 << 15) * LINMATHPI / 180.);
+		scale3d(so->gyro_scale, so->gyro_scale, deg_per_sec / (1 << 15) * LINMATHPI / 180.);
+
 		int j;
 		for (j = 0; j < so->sensor_ct; j++) {
 			so->sensor_locations[j * 3 + 0] *= 1.0;
@@ -343,18 +336,15 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 		// 1G for accelerometer, from MPU6500 datasheet
 		// this can change if the firmware changes the sensitivity.
 		// When coming off of USB, these values are in units of .5g -JB
-		if (so->acc_scale)
-			scale3d(so->acc_scale, so->acc_scale, 2. / 8192.0);
+		scale3d(so->acc_scale, so->acc_scale, 2. / 8192.0);
 
 		// If any other device, we know we at least need this.
 		// I deeply suspect bias is in milligravities -JB
-		if (so->acc_bias)
-			scale3d(so->acc_bias, so->acc_bias, 1000.);
+		scale3d(so->acc_bias, so->acc_bias, 1. / 1000.);
 
 		// From datasheet, can be 250, 500, 1000, 2000 deg/s range over 16 bits
 		FLT deg_per_sec = 2000;
-		if (so->gyro_scale)
-			scale3d(so->gyro_scale, so->gyro_scale, deg_per_sec / (1 << 15) * LINMATHPI / 180.);
+		scale3d(so->gyro_scale, so->gyro_scale, deg_per_sec / (1 << 15) * LINMATHPI / 180.);
 		// scale3d(so->gyro_scale, so->gyro_scale, 3.14159 / 1800. / 1.8);
 	}
 

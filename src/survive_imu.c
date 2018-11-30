@@ -207,7 +207,7 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 
 	if (!isinf(Rv[0])) {
 		LinmathVec3d acc;
-		scale3d(acc, data->accel, tracker->accel_scale_bias);
+		copy3d(acc, data->accel);
 
 		LinmathVec3d rAcc = {0}, avgAcc;
 		RotateAccel(rAcc, tracker->pose.Rot.v, acc);

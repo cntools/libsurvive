@@ -66,7 +66,6 @@ typedef struct SurviveIMUTracker {
 	FLT gyro_var;
 
 	LinmathVec3d last_acc;
-	FLT accel_scale_bias;
 	FLT mahony_variance;
 
 	kalman_info_pose_t pose;

@@ -914,31 +914,23 @@ struct unaligned_u32_t {
 #define POP4 (((((struct unaligned_u32_t *)((readdata += 4) - 4))))->v)
 
 void calibrate_acc(SurviveObject *so, FLT *agm) {
-	if (so->acc_bias != NULL) {
-		agm[0] -= so->acc_bias[0];
-		agm[1] -= so->acc_bias[1];
-		agm[2] -= so->acc_bias[2];
-	}
+	agm[0] *= so->acc_scale[0];
+	agm[1] *= so->acc_scale[1];
+	agm[2] *= so->acc_scale[2];
 
-	if (so->acc_scale != NULL) {
-		agm[0] *= so->acc_scale[0];
-		agm[1] *= so->acc_scale[1];
-		agm[2] *= so->acc_scale[2];
-	}
+	agm[0] -= so->acc_bias[0];
+	agm[1] -= so->acc_bias[1];
+	agm[2] -= so->acc_bias[2];
 }
 
 void calibrate_gyro(SurviveObject *so, FLT *agm) {
-	if (so->gyro_bias != NULL) {
-		agm[0] -= so->gyro_bias[0];
-		agm[1] -= so->gyro_bias[1];
-		agm[2] -= so->gyro_bias[2];
-	}
+	agm[0] *= so->gyro_scale[0];
+	agm[1] *= so->gyro_scale[1];
+	agm[2] *= so->gyro_scale[2];
 
-	if (so->gyro_scale != NULL) {
-		agm[0] *= so->gyro_scale[0];
-		agm[1] *= so->gyro_scale[1];
-		agm[2] *= so->gyro_scale[2];
-	}
+	agm[0] -= so->gyro_bias[0];
+	agm[1] -= so->gyro_bias[1];
+	agm[2] -= so->gyro_bias[2];
 }
 
 typedef struct {

@@ -125,10 +125,10 @@ struct SurviveObject {
 	SurvivePose imu2trackref;
 	SurvivePose head2imu;
 
-	FLT *acc_bias;   // size is FLT*3. contains x,y,z
-	FLT *acc_scale;  // size is FLT*3. contains x,y,z
-	FLT *gyro_bias;  // size is FLT*3. contains x,y,z
-	FLT *gyro_scale; // size is FLT*3. contains x,y,z
+	FLT acc_bias[3];   // size is FLT*3. contains x,y,z
+	FLT acc_scale[3];  // size is FLT*3. contains x,y,z
+	FLT gyro_bias[3];  // size is FLT*3. contains x,y,z
+	FLT gyro_scale[3]; // size is FLT*3. contains x,y,z
 
 	haptic_func haptic;
 

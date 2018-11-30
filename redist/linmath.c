@@ -28,6 +28,11 @@ inline void add3d(FLT *out, const FLT *a, const FLT *b) {
 	out[2] = a[2] + b[2];
 }
 
+inline void invert3d(FLT *out, const FLT *a) {
+	out[0] = 1. / a[0];
+	out[1] = 1. / a[1];
+	out[2] = 1. / a[2];
+}
 inline void scale3d(FLT *out, const FLT *a, FLT scalar) {
 	out[0] = a[0] * scalar;
 	out[1] = a[1] * scalar;

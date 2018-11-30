@@ -91,6 +91,7 @@ LINMATH_EXPORT void sub3d(FLT *out, const FLT *a, const FLT *b);
 LINMATH_EXPORT void add3d(FLT *out, const FLT *a, const FLT *b);
 
 LINMATH_EXPORT void scale3d(FLT *out, const FLT *a, FLT scalar);
+LINMATH_EXPORT void invert3d(FLT *out, const FLT *a);
 
 LINMATH_EXPORT FLT norm3d(const FLT *in);
 LINMATH_EXPORT void normalize3d(FLT *out, const FLT *in);

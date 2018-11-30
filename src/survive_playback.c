@@ -453,14 +453,6 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	survive_attach_configf( ctx, "playback-factor", &sp->playback_factor );
 
 	SV_INFO("Using playback file '%s' with timefactor of %f", playback_file, sp->playback_factor );
-	SurviveObject *hmd = survive_create_hmd(ctx, "Playback", sp);
-	SurviveObject *wm0 = survive_create_wm0(ctx, "Playback", sp, 0);
-	SurviveObject *wm1 = survive_create_wm1(ctx, "Playback", sp, 0);
-	SurviveObject *tr0 = survive_create_tr0(ctx, "Playback", sp);
-	SurviveObject *ww0 = survive_create_ww0(ctx, "Playback", sp);
-	SurviveObject *ww1 = survive_create_device(ctx, "Playback", sp, "WW1", 0);
-
-	SurviveObject *objs[] = {hmd, wm0, wm1, tr0, ww0, ww1};
 
 	FLT time;
 	while (!feof(sp->playback_file) && !ferror(sp->playback_file)) {
@@ -481,6 +473,12 @@ int DriverRegPlayback(SurviveContext *ctx) {
 			break;
 		}
 
+		// 10 seconds is enough time for all configurations; don't read the whole file -- could be huge
+		if (time > 10) {
+			free(line);
+			break;
+		}
+
 		if (strcmp(command, "CONFIG") == 0) {
 			char *configStart = line;
 
@@ -491,25 +489,20 @@ int DriverRegPlayback(SurviveContext *ctx) {
 			}
 			size_t len = strlen(configStart);
 
-			for (int i = 0; i < sizeof(objs) / sizeof(objs[0]); i++) {
-				SurviveObject **obj = &objs[i];
-				if (*obj && strcmp(dev, (*obj)->codename) == 0 && ctx->configfunction(*obj, configStart, len) == 0) {
-					SV_INFO("Found %s in playback file...", dev);
-					survive_add_object(ctx, *obj);
-					*obj = 0;
-				}
+			SurviveObject *so = survive_create_device(ctx, "Playback", sp, dev, 0);
+
+			if (ctx->configfunction(so, configStart, len) == 0) {
+				SV_INFO("Found %s in playback file...", dev);
+				survive_add_object(ctx, so);
+			} else {
+				SV_WARN("Found %s in playback file, but could not read config description", dev);
+				free(so);
 			}
 		}
 
 		free(line);
 	}
 
-	for (int i = 0; i < sizeof(objs) / sizeof(objs[0]); i++) {
-		SurviveObject *obj = objs[i];
-		if (obj) {
-			free(obj);
-		}
-	}
 	fseek(sp->playback_file, 0, SEEK_SET); // same as rewind(f);
 
 	survive_add_driver(ctx, sp, playback_poll, playback_close, 0);
