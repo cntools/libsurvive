@@ -313,7 +313,7 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	// Handle device-specific sacling.
 	if (strcmp(so->codename, "HMD") == 0) {
 		scale3d(so->acc_scale, so->acc_scale, 1. / 8192.0);
-		scale3d(so->acc_bias, so->acc_bias, 1000.0); // Odd but seems right.
+		scale3d(so->acc_bias, so->acc_bias, 1. / 1000.0); // Odd but seems right.
 
 		so->imu_freq = HMD_IMU_HZ;
 
@@ -321,7 +321,7 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 		scale3d(so->gyro_scale, so->gyro_scale, deg_per_sec / (1 << 15) * LINMATHPI / 180.);
 	} else if (memcmp(so->codename, "WM", 2) == 0) {
 		scale3d(so->acc_scale, so->acc_scale, 2. / 8192.0);
-		scale3d(so->acc_bias, so->acc_bias, 1000.); // Need to verify.
+		scale3d(so->acc_bias, so->acc_bias, 1. / 1000.); // Need to verify.
 
 		FLT deg_per_sec = 2000;
 		scale3d(so->gyro_scale, so->gyro_scale, deg_per_sec / (1 << 15) * LINMATHPI / 180.);

@@ -5,6 +5,7 @@
 #include "survive_config.h"
 #include "survive_default_devices.h"
 #include "survive_playback.h"
+#include <assert.h>
 
 //XXX TODO: Once data is avialble in the context, use the stuff here to handle converting from time codes to
 //proper angles, then from there perform the rest of the solution. 
@@ -48,8 +49,14 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 	//No loner need sync information past this point.
 	if( sensor_id < 0 ) return;
 
+	if (timeinsweep > 2 * TIMECENTER_TICKS) {
+		SV_WARN("Disambiguator gave invalid timeinsweep %s %u", so->codename, timeinsweep);
+		return;
+	}
+
 	int centered_timeinsweep = (timeinsweep - TIMECENTER_TICKS);
 	FLT angle = centered_timeinsweep * (1. / TIMECENTER_TICKS * 3.14159265359 / 2.0);
+	assert(angle >= -LINMATHPI && angle <= LINMATHPI);
 
 	FLT length_sec = length / (FLT)so->timebase_hz;
 	ctx->angleproc( so, sensor_id, acode, timecode, length_sec, angle, lh);

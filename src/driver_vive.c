@@ -576,14 +576,14 @@ int survive_usb_init(SurviveViveData *sv) {
 	survive_free_usb_devices(devs);
 
 	SurviveObject *hmd = 0;
-	int cnt_per_device_type[sizeof(KnownDeviceTypes) / sizeof(KnownDeviceTypes[0])] = {};
+	int cnt_per_device_type[sizeof(KnownDeviceTypes) / sizeof(KnownDeviceTypes[0])] = {0};
 	for (int i = 0; i < sv->udev_cnt; i++) {
 		struct SurviveUSBInfo *usbInfo = &sv->udev[i];
 
 		int *cnt = (cnt_per_device_type + (usbInfo->device_info - KnownDeviceTypes));
 
 		if (usbInfo->device_info->codename[0] != 0) {
-			char codename[4] = {};
+			char codename[4] = {0};
 			strcpy(codename, usbInfo->device_info->codename);
 			codename[2] += (*cnt);
 			*cnt = *cnt + 1;
@@ -979,6 +979,7 @@ void incrementAndPostButtonQueue(SurviveContext *ctx) {
 // if that ever needs to be changed, you will have to add locking so that only one
 // thread is posting at a time.
 void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
+
 	ButtonQueueEntry *entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
 
 	memset(entry, 0, sizeof(ButtonQueueEntry));
@@ -1065,6 +1066,7 @@ void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
 
 static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 	uint8_t startread[29];
+	uint8_t *readdata_end = readdata + 29;
 	memcpy(startread, readdata, 29);
 
 #if 0
@@ -1243,9 +1245,9 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 
 		// Second, go through all LEDs and extract the lightevent from them.
 		{
-			uint8_t *marked;
-			marked = alloca(nrtime);
+			uint8_t marked[nrtime];
 			memset(marked, 0, nrtime);
+
 			int i, parpl = 0;
 			timecount--;
 			int timepl = 0;
@@ -1276,6 +1278,8 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 
 				int end = timepl + adv;
 				if (end > timecount) {
+					SurviveContext *ctx = w->ctx;
+					SV_WARN("Lightfault 4: %d > %d", end, timecount);
 					fault = 4;
 					goto end;
 				} // end referencing off list
@@ -1315,9 +1319,11 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 			}
 		}
 
-		int i;
-		for (i = lese - 1; i >= 0; i--) {
-			// printf( "%d: %d [%d]\n", les[i].sensor_id, les[i].length, les[i].timestamp );
+		for (int i = lese - 1; i >= 0; i--) {
+#ifdef DEBUG_WATCHMAN
+			printf("%d: %u [%u]\n", les[i].sensor_id, les[i].length, les[i].timestamp);
+#endif
+
 			handle_lightcap(w, &les[i]);
 		}
 
@@ -1350,7 +1356,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 
 	int id = POP1;
 	//	printf( "%16s Size: %2d ID: %d / %d\n", si->hname, size, id, iface );
-
+//	SV_INFO("%s interface %d", obj->codename, iface);
 #if 0
 	if(  si->which_interface_am_i == 9 )
 	{
@@ -1423,8 +1429,10 @@ void survive_data_cb(SurviveUSBInterface *si) {
 	case USB_IF_WATCHMAN2: {
 		SurviveObject *w = obj;
 		if (id == 35) {
+			assert(size == 30);
 			handle_watchman(w, readdata);
 		} else if (id == 36) {
+			assert(size == 29 * 2 + 1);
 			handle_watchman(w, readdata);
 			handle_watchman(w, readdata + 29);
 		} else if (id == 38) {

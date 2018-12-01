@@ -203,7 +203,9 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 
 	FLT time_diff =
 		survive_timecode_difference(data->timecode, tracker->last_data.timecode) / (FLT)tracker->so->timebase_hz;
-	assert(time_diff < 1.0);
+	if (time_diff > 1.0) {
+		SV_WARN("%s is probably dropping IMU packets; %f time reported between", tracker->so->codename, time_diff);
+	}
 
 	if (!isinf(Rv[0])) {
 		LinmathVec3d acc;

@@ -64,50 +64,87 @@ enum LighthouseState {
 };
 
 typedef struct {
-	int acode, lh, axis, window, offset;
+	int acode, lh, axis, window;
 	bool is_sweep;
 } LighthouseStateParameters;
 
 // clang-format off
 const LighthouseStateParameters LS_Params[LS_END + 1] = {
-	{.acode = -1, .lh = -1, .axis = -1, .window = -1},
+	{.lh = -1, .axis = -1, .window = 0},
 
-    {.acode = 0, .lh = 0, .axis = 0, .window = PULSE_WINDOW,   .offset = 0 * PULSE_WINDOW + 0 * CAPTURE_WINDOW},                // 0
-    {.acode = 4, .lh = 1, .axis = 0, .window = PULSE_WINDOW,   .offset = 1 * PULSE_WINDOW + 0 * CAPTURE_WINDOW},                // 20000
-    {.acode = 0, .lh = 0, .axis = 0, .window = CAPTURE_WINDOW, .offset = 2 * PULSE_WINDOW + 0 * CAPTURE_WINDOW, .is_sweep = 1}, // 40000
+    {.acode = 4, .lh = 1, .axis = 0, .window = PULSE_WINDOW},                // 0
+    {.acode = 0, .lh = 0, .axis = 0, .window = PULSE_WINDOW},                // 20000
+    {.acode = 4, .lh = 0, .axis = 0, .window = CAPTURE_WINDOW, .is_sweep = 1}, // 40000
 
-    {.acode = 1, .lh = 0, .axis = 1, .window = PULSE_WINDOW,   .offset = 2 * PULSE_WINDOW + 1 * CAPTURE_WINDOW},                // 400000
-    {.acode = 5, .lh = 1, .axis = 1, .window = PULSE_WINDOW,   .offset = 3 * PULSE_WINDOW + 1 * CAPTURE_WINDOW},                // 420000
-    {.acode = 1, .lh = 0, .axis = 1, .window = CAPTURE_WINDOW, .offset = 4 * PULSE_WINDOW + 1 * CAPTURE_WINDOW, .is_sweep = 1}, // 440000
+    {.acode = 5, .lh = 1, .axis = 1, .window = PULSE_WINDOW},                // 400000
+    {.acode = 1, .lh = 0, .axis = 1, .window = PULSE_WINDOW},                // 420000
+    {.acode = 1, .lh = 0, .axis = 1, .window = CAPTURE_WINDOW, .is_sweep = 1}, // 440000
 
     // In 60hz single LH mode, it just repeats the above. With any other configuration, the second half of the table is used.
-    {.acode = 4, .lh = 0, .axis = 0, .window = PULSE_WINDOW,   .offset = 4 * PULSE_WINDOW + 2 * CAPTURE_WINDOW},                // 800000
-	{.acode = 0, .lh = 1, .axis = 0, .window = PULSE_WINDOW,   .offset = 5 * PULSE_WINDOW + 2 * CAPTURE_WINDOW},                // 820000
-	{.acode = 4, .lh = 1, .axis = 0, .window = CAPTURE_WINDOW, .offset = 6 * PULSE_WINDOW + 2 * CAPTURE_WINDOW, .is_sweep = 1}, // 840000
+    {.acode = 0, .lh = 1, .axis = 0, .window = PULSE_WINDOW},                // 800000
+	{.acode = 4, .lh = 0, .axis = 0, .window = PULSE_WINDOW},                // 820000
+	{.acode = 4, .lh = 1, .axis = 0, .window = CAPTURE_WINDOW, .is_sweep = 1}, // 840000
 
-	{.acode = 5, .lh = 0, .axis = 1, .window = PULSE_WINDOW,   .offset = 6 * PULSE_WINDOW + 3 * CAPTURE_WINDOW},                // 1200000
-	{.acode = 1, .lh = 1, .axis = 1, .window = PULSE_WINDOW,   .offset = 7 * PULSE_WINDOW + 3 * CAPTURE_WINDOW},                // 1220000
-	{.acode = 5, .lh = 1, .axis = 1, .window = CAPTURE_WINDOW, .offset = 8 * PULSE_WINDOW + 3 * CAPTURE_WINDOW, .is_sweep = 1}, // 1240000
+	{.acode = 1, .lh = 1, .axis = 1, .window = PULSE_WINDOW},                // 1200000
+	{.acode = 5, .lh = 0, .axis = 1, .window = PULSE_WINDOW},                // 1220000
+	{.acode = 5, .lh = 1, .axis = 1, .window = CAPTURE_WINDOW, .is_sweep = 1}, // 1240000
 
-	{.acode = -1, .lh = -1, .axis = -1, .window = -1, .offset = 8 * PULSE_WINDOW + 4 * CAPTURE_WINDOW}                          // 1600000
+	{.lh = -1, .axis = -1, .window = 0}                          // 1600000
 };
 // clang-format on
 
-enum LighthouseState LighthouseState_findByOffset(int offset) {
+#define ACODE_TIMING(acode)                                                                                            \
+	((3000 + ((acode)&1) * 500 + (((acode) >> 1) & 1) * 1000 + (((acode) >> 2) & 1) * 2000) - 250)
+#define ACODE(s, d, a) ((s << 2) | (d << 1) | a)
+
+static inline int LSParam_acode(enum LighthouseState s) { return LS_Params[s].acode; }
+
+static int LSParam_offset_for_state(enum LighthouseState s) {
+	static int offsets[LS_END + 1] = {-1};
+	if (offsets[0] == -1) {
+		int offset = 0;
+		for (int i = 0; i < LS_END + 1; i++) {
+			offsets[i] = offset;
+			offset += LS_Params[i].window;
+		}
+	}
+	return offsets[s];
+}
+
+static enum LighthouseState LighthouseState_findByOffset(int offset, int *error) {
 	for (int i = 2; i < LS_END + 1; i++) {
-		if (LS_Params[i].offset > offset)
-			return i - 1;
+		if (LSParam_offset_for_state(i) > offset) {
+			int offset_from_last = LSParam_offset_for_state(i - 1);
+			int offset_from_this = LSParam_offset_for_state(i);
+
+			int dist_from_last = offset - offset_from_last;
+			int dist_from_this = offset_from_this - offset;
+
+			bool this_is_closest = dist_from_last > dist_from_this;
+			if (LS_Params[i - 1].is_sweep && dist_from_this > 1000) {
+				this_is_closest = false;
+			}
+
+			if (error) {
+				*error = this_is_closest ? dist_from_this : dist_from_last;
+			}
+			return this_is_closest ? i : i - 1;
+		}
 	}
 	assert(false);
 	return -1;
 }
 
 typedef struct {
-	SurviveObject *so;
-	/* We keep the last sync time per LH because lightproc expects numbers relative to it */
-	uint32_t time_of_last_sync[NUM_LIGHTHOUSES];
+	SurviveContext *ctx;
 
+	bool single_60hz_mode;
+} Global_Disambiguator_data_t;
+
+typedef struct {
+	SurviveObject *so;
 	/* Keep running average of sync signals as they come in */
+	uint32_t last_timestamp;
 	uint64_t last_sync_timestamp;
 	uint64_t last_sync_length;
 	int last_sync_count;
@@ -117,25 +154,22 @@ typedef struct {
 
 	/**  This part of the structure is general use when we know our state */
 	enum LighthouseState state;
-	uint32_t mod_offset;
+
+	// We track offset for both lighthouses seperately
+	uint32_t mod_offset[NUM_LIGHTHOUSES];
 	int confidence;
 
 	/** This rest of the structure is dedicated to finding a state when we are unknown */
-	int encoded_acodes;
-
 	int stabalize;
+	int failures;
 	bool lastWasSync;
-	int single_60hz_confidence;
-	bool single_60hz_mode;
+
+#define SYNC_HISTORY_LEN 12
+	LightcapElement sync_history[SYNC_HISTORY_LEN];
+	int sync_offset;
 
 	LightcapElement sweep_data[];
 } Disambiguator_data_t;
-
-static uint32_t timestamp_diff(uint32_t recent, uint32_t prior) {
-	if (recent > prior)
-		return recent - prior;
-	return (0xFFFFFFFF - prior) + recent;
-}
 
 static int find_acode(uint32_t pulseLen) {
 	const static int offset = 50;
@@ -201,67 +235,159 @@ static enum LightcapClassification naive_classify(Disambiguator_data_t *d, const
 	}
 }
 
-#define ACODE_TIMING(acode)                                                                                            \
-	((3000 + ((acode)&1) * 500 + (((acode) >> 1) & 1) * 1000 + (((acode) >> 2) & 1) * 2000) - 250)
-#define ACODE(s, d, a) ((s << 2) | (d << 1) | a)
-#define SWEEP 0xFF
-
 static uint32_t SolveForMod_Offset(Disambiguator_data_t *d, enum LighthouseState state, const LightcapElement *le) {
 	assert(LS_Params[state].is_sweep == 0); // Doesn't work for sweep data
 	SurviveContext *ctx = d->so->ctx;
-	DEBUG_TB("Solve for mod %d (%u - %u) = %u", state, le->timestamp, LS_Params[state].offset,
-			 (le->timestamp - LS_Params[state].offset));
+	DEBUG_TB("Solve for mod %d (%u - %u) = %u", state, le->timestamp, LSParam_offset_for_state(state),
+			 (le->timestamp - LSParam_offset_for_state(state)));
 
-	return (le->timestamp - (le->length / 2) - LS_Params[state].offset);
+	return (le->timestamp - LSParam_offset_for_state(state));
 }
 
 static enum LighthouseState SetState(Disambiguator_data_t *d, const LightcapElement *le,
 									 enum LighthouseState new_state);
-static enum LighthouseState CheckEncodedAcode(Disambiguator_data_t *d, uint8_t newByte) {
 
-	// We chain together acodes / sweep indicators to form an int we can just switch on.
+static enum LighthouseState EndSweep(Disambiguator_data_t *d, const LightcapElement *le) { return LS_UNKNOWN; }
+
+static void AddSyncHistory(Disambiguator_data_t *d, LightcapElement sync) {
+	if (sync.length) {
+		d->sync_history[d->sync_offset++] = sync;
+		if (d->sync_offset >= SYNC_HISTORY_LEN)
+			d->sync_offset = 0;
+	}
+}
+
+static Disambiguator_data_t *get_best_latest_state(Global_Disambiguator_data_t *g) {
+	int max_confidence = 0;
+	Disambiguator_data_t *best_d = 0;
+	for (int i = 0; i < g->ctx->objs_ct; i++) {
+		Disambiguator_data_t *d = g->ctx->objs[i]->disambiguator_data;
+		if (d && d->state != LS_UNKNOWN && max_confidence < d->confidence) {
+			best_d = d;
+			max_confidence = d->confidence;
+		}
+	}
+
+	return best_d;
+}
+
+static uint32_t calculate_error(int target_acode, const LightcapElement *le) {
+	// Calculate what it would be with and without data
+	uint32_t time_error_d0 = abs(ACODE_TIMING(target_acode) - le->length);
+	uint32_t time_error_d1 = abs(ACODE_TIMING(target_acode | DATA_BIT) - le->length);
+
+	// Take the least of the two erors
+	return (time_error_d0) > (time_error_d1) ? time_error_d1 : time_error_d0;
+}
+
+#define DEBUG_LOCK DEBUG_TB
+static uint32_t apply_mod_offset(uint32_t timestamp, uint32_t mod_offset, enum LighthouseState end_state) {
+	int mod_group = LSParam_offset_for_state(end_state);
+	if (timestamp > mod_offset)
+		return (timestamp - mod_offset) % mod_group;
+
+	// Indicates mod_offset was from _before_ a 32bit rollover
+	if (mod_offset - timestamp > 0xFFFFFFFF / 2) {
+		return (0xFFFFFFFF - mod_offset + timestamp) % mod_group;
+	}
+
+	timestamp = timestamp % mod_group;
+	mod_offset = mod_offset % mod_group;
+
+	int rtn = ((int32_t)timestamp - (int32_t)mod_offset) % mod_group;
+	if (rtn < 0)
+		rtn += mod_group;
+	return rtn;
+}
+
+static int find_inliers(Disambiguator_data_t *d, uint32_t guess_mod, bool test60hz) {
+	int inliers = 0;
 	SurviveContext *ctx = d->so->ctx;
-	d->encoded_acodes &= 0xFF;
-	d->encoded_acodes = (d->encoded_acodes << 8) | newByte;
+	for (int i = 0; i < SYNC_HISTORY_LEN && d->sync_history[i].length > 0; i++) {
+		const LightcapElement *le = &d->sync_history[i];
 
-	LightcapElement lastSync = get_last_sync(d);
+		int end_of_mod = test60hz ? LS_WaitLHB_ACode0 : LS_END;
+		int le_offset = apply_mod_offset(le->timestamp, guess_mod, end_of_mod);
 
-	// These combinations are checked for specificaly to allow for the case one lighthouse is either
-	//  missing or completely occluded.
-	switch (d->encoded_acodes) {
-	case (ACODE(0, 1, 0) << 8) | SWEEP:
-		d->mod_offset = SolveForMod_Offset(d, LS_SweepAX - 1, &lastSync);
+		int offset_error;
+		enum LighthouseState this_state = LighthouseState_findByOffset(le_offset, &offset_error);
 
-		return (LS_SweepAX + 1);
-	case (ACODE(0, 1, 1) << 8) | SWEEP:
-		d->mod_offset = SolveForMod_Offset(d, LS_SweepAY - 1, &lastSync);
+		int acode = LSParam_acode(this_state);
+		uint32_t error = calculate_error(acode, le);
 
-		return (LS_SweepAY + 1);
-	case (SWEEP << 8) | (ACODE(0, 1, 1)):
-		d->mod_offset = SolveForMod_Offset(d, LS_WaitLHB_ACode1, &lastSync);
+		DEBUG_LOCK("--%d %10u %10u %4u %d(%d) \t %2d %u %u %u %d", i, le_offset, le->timestamp, le->length, acode,
+				   LS_Params[this_state].lh, this_state, ACODE_TIMING(acode), ACODE_TIMING(acode | DATA_BIT), error,
+				   offset_error);
 
-		return (LS_WaitLHB_ACode1 + 1);
-	case (SWEEP << 8) | (ACODE(1, 1, 0)):
-		d->mod_offset = SolveForMod_Offset(d, LS_WaitLHA_ACode4, &lastSync);
+		if (LS_Params[this_state].is_sweep)
+			continue;
 
-		return (LS_WaitLHA_ACode4 + 1);
+		if (LS_Params[this_state].lh && test60hz)
+			continue;
+
+		if (error < 500 && offset_error < 500) {
+			inliers++;
+		}
+	}
+	return inliers;
+}
+
+static enum LighthouseState find_relative_offset(Disambiguator_data_t *d, uint32_t *mod, bool *single_60hz) {
+	SurviveContext *ctx = d->so->ctx;
+	Global_Disambiguator_data_t *g = d->so->ctx->disambiguator_data;
+	Disambiguator_data_t *best_d = get_best_latest_state(g);
+
+	int ri = (d->sync_offset + (SYNC_HISTORY_LEN - 1)) % SYNC_HISTORY_LEN;
+	LightcapElement *re = d->sync_history + ri;
+	int acode = find_acode(re->length) & 0x5;
+
+	DEBUG_LOCK("Starting search... %s %d %d", d->so->codename, ri, acode);
+	for (enum LighthouseState guess = LS_UNKNOWN + 1; guess != LS_END; guess++) {
+		const LighthouseStateParameters *params = &LS_Params[guess];
+		if (LSParam_acode(guess) == acode && !params->is_sweep) {
+			uint32_t guess_mod = SolveForMod_Offset(d, guess, re);
+			DEBUG_LOCK("%10u %4u %d %u %u %d", re->timestamp, re->length, acode & 0x5, guess_mod,
+					   re->timestamp - guess_mod, guess);
+
+			for (int test60hz = 0; test60hz < ((guess >= LS_WaitLHB_ACode0) ? 1 : 2); test60hz++) {
+				// We are already locked on one device; so we know if its 60hz mode or not
+				if (best_d && test60hz != g->single_60hz_mode)
+					continue;
+
+				int inliers = find_inliers(d, guess_mod, test60hz);
+				DEBUG_LOCK("With 60hz -- %d %d", test60hz, inliers);
+				if (inliers > SYNC_HISTORY_LEN - 1) {
+					*mod = guess_mod;
+					*single_60hz = test60hz == 1;
+					return guess;
+				}
+			}
+		}
 	}
 
 	return LS_UNKNOWN;
 }
-static enum LighthouseState EndSweep(Disambiguator_data_t *d, const LightcapElement *le) {
-	return CheckEncodedAcode(d, SWEEP);
-}
+
 static enum LighthouseState EndSync(Disambiguator_data_t *d, const LightcapElement *le) {
 	LightcapElement lastSync = get_last_sync(d);
-	int acode = find_acode(lastSync.length) > 0;
-	if (acode > 0) {
-		return CheckEncodedAcode(d, (acode | DATA_BIT));
+	Global_Disambiguator_data_t *g = d->so->ctx->disambiguator_data;
+
+	AddSyncHistory(d, lastSync);
+
+	uint32_t mod = 0;
+	bool is60hz;
+	enum LighthouseState new_state = find_relative_offset(d, &mod, &is60hz);
+	if (new_state != LS_UNKNOWN) {
+		d->mod_offset[0] = d->mod_offset[1] = mod;
+		g->single_60hz_mode = is60hz;
+		if (g->single_60hz_mode) {
+			SurviveContext *ctx = d->so->ctx;
+			SV_INFO("Disambiguator is in 60hz mode (mode A)");
+		}
+		return new_state;
 	} else {
-		// If we can't resolve an acode, just reset
-		d->encoded_acodes = 0;
+		return LS_UNKNOWN;
 	}
-	return LS_UNKNOWN;
 }
 
 static void RegisterSync(Disambiguator_data_t *d, const LightcapElement *le) {
@@ -283,6 +409,16 @@ static void ResetSync(Disambiguator_data_t *d) {
 }
 
 static enum LighthouseState AttemptFindState(Disambiguator_data_t *d, const LightcapElement *le) {
+	/*
+	enum LighthouseState best_guess = get_best_latest_state(d->so->ctx->disambiguator_data);
+	if(best_guess != LS_UNKNOWN) {
+		SurviveContext* ctx = d->so->ctx;
+		SV_INFO("Disambiguator solving state by stealing other trackers state");
+		d->mod_offset = SolveForMod_Offset(d, best_guess, le);
+		return best_guess;
+	}
+*/
+
 	enum LightcapClassification classification = naive_classify(d, le);
 
 	if (classification == LCC_SYNC) {
@@ -290,12 +426,6 @@ static enum LighthouseState AttemptFindState(Disambiguator_data_t *d, const Ligh
 
 		// Handle the case that this is a new SYNC coming in
 		if (d->lastWasSync == false || overlaps(&lastSync, le) == false) {
-
-			if (d->lastWasSync && timestamp_diff(lastSync.timestamp, le->timestamp) > 30000) {
-				// Missed a sweep window; clear encoded values.
-				d->encoded_acodes = 0;
-			}
-
 			// Now that the previous two states are in, check to see if they tell us where we are
 			enum LighthouseState new_state = d->lastWasSync ? EndSync(d, le) : EndSweep(d, le);
 			if (new_state != LS_UNKNOWN)
@@ -326,15 +456,27 @@ static enum LighthouseState SetState(Disambiguator_data_t *d, const LightcapElem
 									 enum LighthouseState new_state) {
 
 	SurviveContext *ctx = d->so->ctx;
+	Global_Disambiguator_data_t *g = ctx->disambiguator_data;
+
 	if (new_state >= LS_END)
 		new_state = 1;
 
-	d->encoded_acodes = 0;
-	d->state = new_state;
+	if (d->state == LS_UNKNOWN && new_state != LS_UNKNOWN) {
+		Disambiguator_data_t *best_d = get_best_latest_state(g);
+		DEBUG_TB("Setting state to %d for %s, best state is %d", new_state, d->so->codename,
+				 best_d ? best_d->state : LS_UNKNOWN);
+	}
 
+	d->state = new_state;
 	if (new_state == LS_UNKNOWN) {
-		d->single_60hz_mode = false;
-		d->single_60hz_confidence = 0;
+		memset(d->sync_history, 0, sizeof(LightcapElement) * SYNC_HISTORY_LEN);
+		d->sync_offset = 0;
+	}
+	if (new_state == LS_UNKNOWN && get_best_latest_state(g) == 0) {
+		if (g->single_60hz_mode) {
+			SV_INFO("Disambiguator Reseting 60hz mode flag");
+		}
+		g->single_60hz_mode = false;
 	}
 
 	ResetSync(d);
@@ -347,61 +489,43 @@ static enum LighthouseState SetState(Disambiguator_data_t *d, const LightcapElem
 static void PropagateState(Disambiguator_data_t *d, const LightcapElement *le);
 static void RunACodeCapture(int target_acode, Disambiguator_data_t *d, const LightcapElement *le) {
 	// Just ignore small signals; this has a measurable impact on signal quality
-	if (le->length < 100)
+	if (le->length < 400)
 		return;
 
 	// We know what state we are in, so we verify that state as opposed to
 	// trying to suss out the acode.
 
-	// Calculate what it would be with and without data
-	uint32_t time_error_d0 = abs(ACODE_TIMING(target_acode) - le->length);
-	uint32_t time_error_d1 = abs(ACODE_TIMING(target_acode | DATA_BIT) - le->length);
-
-	// Take the least of the two erors
-	uint32_t error = time_error_d0 > time_error_d1 ? time_error_d1 : time_error_d0;
+	uint32_t error = calculate_error(target_acode, le);
 	SurviveContext *ctx = d->so->ctx;
+	Global_Disambiguator_data_t *g = ctx->disambiguator_data;
 
 	// Errors do happen; either reflections or some other noise. Our scheme here is to
 	// keep a tally of hits and misses, and if we ever go into the negatives reset
 	// the state machine to find the state again.
 	if (error > 1250) {
 
-		// In 60hz mode, one lighthouse will just cycle through half the first half of states. What we will end up
-		// seeing, is a lot of errors where we expect an acode of 4 and instead we see an acode of 0. So instead of
-		// marking such a transition as an error, increase the confidence counter for 60hz mode, and eventually swap
-		// into it.
-		uint32_t time_error_ad0 = abs(ACODE_TIMING(0) - le->length);
-		uint32_t time_error_ad1 = abs(ACODE_TIMING(0 | DATA_BIT) - le->length);
-
-		uint32_t a_error = time_error_ad0 > time_error_ad1 ? time_error_ad1 : time_error_ad0;
-		if (target_acode == 4 && a_error < 1250) {
-			if (d->single_60hz_confidence++ > 3 && d->single_60hz_mode == false && d->confidence < 50) {
-				d->single_60hz_mode = true;
-				SV_WARN("Disambiguator detected single mode A LH (60hz mode)");
-			}
-		} else {
-			// Penalize semi-harshly -- if it's ever off track it will take this many syncs
-			// to reset
-			const int penalty = 3;
-			if (d->confidence < penalty) {
-				SetState(d, le, LS_UNKNOWN);
-				SV_WARN("Disambiguator got lost; refinding state for %s", d->so->codename);
-			}
-			d->confidence -= penalty;
+		// Penalize semi-harshly -- if it's ever off track it will take this many syncs
+		// to reset
+		const int penalty = 3;
+		if (d->confidence < penalty) {
+			SetState(d, le, LS_UNKNOWN);
+			SV_WARN("Disambiguator got lost at %u; refinding state for %s", le->timestamp, d->so->codename);
 		}
+		d->confidence -= penalty;
 
 		DEBUG_TB("Disambiguator missed %s; %d expected %d but got %d(%d) - %u %d", d->so->codename, error, target_acode,
 				 le->length, d->confidence, d->mod_offset, le->timestamp);
 		return;
 	}
 
-	if (d->confidence < 50)
+	if (d->confidence < 50) {
 		DEBUG_TB("Disambiguator hit %s; %d expected %d but got %d(%d) - %u %u", d->so->codename, error, target_acode,
 				 le->length, d->confidence, d->mod_offset, le->timestamp);
+	}
 
-	if (d->confidence < 100)
+	if (d->confidence < 100) {
 		d->confidence++;
-
+	}
 	// If its a real timestep, integrate it here and we can take the average later
 
 	RegisterSync(d, le);
@@ -409,6 +533,8 @@ static void RunACodeCapture(int target_acode, Disambiguator_data_t *d, const Lig
 
 static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *le, enum LighthouseState new_state) {
 	SurviveContext *ctx = d->so->ctx;
+	Global_Disambiguator_data_t *g = d->so->ctx->disambiguator_data;
+	int end_of_mod = g->single_60hz_mode ? LS_WaitLHB_ACode0 : LS_END;
 
 	// Leaving a sync ...
 	if (LS_Params[d->state].is_sweep == 0) {
@@ -416,31 +542,36 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 			LightcapElement lastSync = {.timestamp = d->first_sync_timestamp,
 										.length = d->longest_sync_length,
 										.sensor_id = -d->last_sync_count};
+
+			AddSyncHistory(d, lastSync);
 			// Use the average of the captured pulse to adjust where we are modulo against.
 			// This lets us handle drift in any of the timing chararacteristics
-			d->mod_offset = SolveForMod_Offset(d, d->state, &lastSync);
+			uint32_t new_offset = SolveForMod_Offset(d, d->state, &lastSync);
+			int32_t delta = (new_offset - d->mod_offset[LS_Params[d->state].lh]) % end_of_mod;
+			if (abs(delta) > 100) {
+				SV_WARN("Drift in timecodes %s %u", d->so->codename, delta);
+			}
+			d->mod_offset[LS_Params[d->state].lh] = new_offset;
 
 			// Figure out if it looks more like it has data or doesn't. We need this for OOX
-			int lengthData = ACODE_TIMING(LS_Params[d->state].acode | DATA_BIT);
-			int lengthNoData = ACODE_TIMING(LS_Params[d->state].acode);
+			int lengthData = ACODE_TIMING(LSParam_acode(d->state) | DATA_BIT);
+			int lengthNoData = ACODE_TIMING(LSParam_acode(d->state));
 			bool hasData = abs(lengthData - lastSync.length) < abs(lengthNoData - lastSync.length);
-			int acode = LS_Params[d->state].acode;
+			int acode = LSParam_acode(d->state);
 			if (hasData) {
 				acode |= DATA_BIT;
 			}
 
 			int next_state = d->state + 1;
 
-			if (next_state == LS_END || (d->single_60hz_mode && next_state == LS_WaitLHB_ACode0))
+			Global_Disambiguator_data_t *g = ctx->disambiguator_data;
+			if (next_state == LS_END || (g->single_60hz_mode && next_state == LS_WaitLHB_ACode0))
 				next_state = 0;
 
 			int index_code = LS_Params[next_state].is_sweep ? -1 : -2;
-			if (d->confidence > 50)
+			if (d->confidence > 80)
 				ctx->lightproc(d->so, index_code, acode, 0, lastSync.timestamp, lastSync.length,
 							   LS_Params[d->state].lh);
-
-			// Store last sync time for sweep calculations
-			d->time_of_last_sync[LS_Params[d->state].lh] = lastSync.timestamp;
 		}
 	} else {
 		// Leaving a sweep ...
@@ -449,31 +580,32 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 
 		for (int i = 0; i < d->so->sensor_ct; i++) {
 			LightcapElement le = d->sweep_data[i];
-			// Only care if we actually have data AND we have a time of last sync. We won't have the latter
-			// if we synced with the LH at cetain times.
-			if (le.length > 0 && d->time_of_last_sync[LS_Params[d->state].lh] > 0) {
+			if (le.length > 0) {
 				avg_length += le.length;
 				cnt++;
 			}
 		}
 		if (cnt > 0) {
-			double var = 1.5;
-			size_t minl = (1 / var) * DIV_ROUND_CLOSEST(avg_length, cnt);
+			double var = 3;
+			size_t minl = 10;
 			size_t maxl = var * DIV_ROUND_CLOSEST(avg_length, cnt);
 
+			int lh = LS_Params[d->state].lh;
+
 			for (int i = 0; i < d->so->sensor_ct; i++) {
-				LightcapElement le = d->sweep_data[i];
+				const LightcapElement *le = &d->sweep_data[i];
 				// Only care if we actually have data AND we have a time of last sync. We won't have the latter
 				// if we synced with the LH at certain times.
-				if (le.length > 0 && d->time_of_last_sync[LS_Params[d->state].lh] > 0 && le.length >= minl &&
-					le.length <= maxl) {
-					int32_t offset_from =
-						timestamp_diff(le.timestamp + le.length / 2, d->time_of_last_sync[LS_Params[d->state].lh]);
+				if (le->length > 0 && le->length >= minl && le->length <= maxl) {
+					int le_offset = apply_mod_offset(le->timestamp + le->length / 2, d->mod_offset[lh], end_of_mod);
+					int32_t offset_from = le_offset - LSParam_offset_for_state(d->state) + 20000;
 
+					assert(offset_from > 0);
 					// Send the lightburst out.
-					if (offset_from > 0 && d->confidence > 50)
-						d->so->ctx->lightproc(d->so, i, LS_Params[d->state].acode, offset_from, le.timestamp, le.length,
-											  LS_Params[d->state].lh);
+					if (d->confidence > 80) {
+						d->so->ctx->lightproc(d->so, i, LSParam_acode(d->state), offset_from, le->timestamp, le->length,
+											  lh);
+					}
 				}
 			}
 		}
@@ -482,30 +614,37 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 }
 
 static void PropagateState(Disambiguator_data_t *d, const LightcapElement *le) {
-	int end_of_mod = d->single_60hz_mode ? LS_WaitLHB_ACode0 : LS_END;
+	struct SurviveContext *ctx = d->so->ctx;
+	Global_Disambiguator_data_t *g = ctx->disambiguator_data;
+	int end_of_mod = g->single_60hz_mode ? LS_WaitLHB_ACode0 : LS_END;
 
-	int le_offset = le->timestamp > d->mod_offset
-						? (le->timestamp - d->mod_offset + 10000) % LS_Params[end_of_mod].offset
-						: (0xFFFFFFFF - d->mod_offset + le->timestamp + 10000) % LS_Params[end_of_mod].offset;
+	int lh = LS_Params[d->state].lh;
+	int le_offset = apply_mod_offset(le->timestamp + le->length / 2, d->mod_offset[lh], end_of_mod);
 
 	/** Find where this new element fits into our state machine. This can skip states if its been a while since
 	 * its been able to process, or if a LH is missing. */
-	enum LighthouseState new_state = LighthouseState_findByOffset(le_offset);
+	int offset_error;
+	enum LighthouseState new_state = LighthouseState_findByOffset(le_offset, &offset_error);
 
 	if (d->state != new_state) {
+		if (d->state + 1 != new_state && (d->state != (LS_END - 1) && new_state == 1)) {
+			DEBUG_TB("Missed some states... %d to %d", d->state, new_state);
+		}
 		// This processes the change -- think setting buffers, and sending OOTX / lightproc calls
 		ProcessStateChange(d, le, new_state);
 	}
 
 	const LighthouseStateParameters *param = &LS_Params[d->state];
 	if (param->is_sweep == 0) {
-		RunACodeCapture(param->acode, d, le);
+		RunACodeCapture(LSParam_acode(d->state), d, le);
 	} else if (le->length > d->sweep_data[le->sensor_id].length &&
 			   le->length < 7000 /*anything above 10k seems to be bullshit?*/) {
 		// Note we only select the highest length one per sweep. Also, we bundle everything up and send it later all at
 		// once.
 		// so that we can do this filtering. Might not be necessary?
-
+		if (le->length > 3000) {
+			d->confidence--;
+		}
 		assert(le->sensor_id < d->so->sensor_ct);
 		d->sweep_data[le->sensor_id] = *le;
 	}
@@ -517,6 +656,13 @@ void DisambiguatorStateBased(SurviveObject *so, const LightcapElement *le) {
 	// Note, this happens if we don't have config yet -- just bail
 	if (so->sensor_ct == 0) {
 		return;
+	}
+
+	if (so->ctx->disambiguator_data == NULL) {
+		DEBUG_TB("Initializing Global Disambiguator Data");
+		Global_Disambiguator_data_t *d = calloc(1, sizeof(Global_Disambiguator_data_t));
+		d->ctx = ctx;
+		ctx->disambiguator_data = d;
 	}
 
 	if (so->disambiguator_data == NULL) {
@@ -534,21 +680,43 @@ void DisambiguatorStateBased(SurviveObject *so, const LightcapElement *le) {
 	}
 
 	// if(so->codename[0] == 'W')
-	DEBUG_TB("%s LE: %2u\t%4u\t%u", so->codename, le->sensor_id, le->length, le->timestamp);
+	DEBUG_TB("%s LE: %2u\t%4u\t%8x\t%2u", so->codename, le->sensor_id, le->length, le->timestamp, d->state);
 
 	if (d->state == LS_UNKNOWN) {
 		enum LighthouseState new_state = AttemptFindState(d, le);
 		if (new_state != LS_UNKNOWN) {
 			d->confidence = 0;
+			d->failures = 0;
 
-			int le_offset = (le->timestamp - d->mod_offset) % LS_Params[LS_END].offset;
-			enum LighthouseState new_state1 = LighthouseState_findByOffset(le_offset);
-			SetState(d, le, new_state1);
-			DEBUG_TB("Locked onto state %d(%d, %d) at %u", new_state, new_state1, le_offset, d->mod_offset);
+			int le_offset = (le->timestamp - d->mod_offset[0]) % LSParam_offset_for_state(LS_END);
+			enum LighthouseState new_state1 = LighthouseState_findByOffset(le_offset, 0);
+			SetState(d, le, new_state);
+			SV_INFO("Locked onto state %d(%d, %d) at %u for %s", new_state, new_state1, le_offset, d->mod_offset[0],
+					d->so->codename);
+		} else {
+			d->failures++;
+			if (d->failures > 1000) {
+				d->failures = 0;
+				SV_WARN("Could not find disambiguator state for %s", d->so->codename);
+			}
 		}
 	} else {
+		uint32_t timediff = survive_timecode_difference(le->timestamp, d->last_timestamp);
+		if (timediff > d->so->timebase_hz) {
+			int penalty = timediff / d->so->timebase_hz * 10;
+			if (d->confidence < penalty) {
+				SetState(d, le, LS_UNKNOWN);
+				SV_WARN("Disambiguator got lost at %u (sync timeout); refinding state for %s", le->timestamp,
+						d->so->codename);
+				return;
+			}
+
+			d->confidence = d->confidence - penalty;
+		}
 		PropagateState(d, le);
 	}
+
+	d->last_timestamp = le->timestamp;
 }
 
 REGISTER_LINKTIME(DisambiguatorStateBased);

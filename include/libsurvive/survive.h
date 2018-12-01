@@ -233,6 +233,7 @@ struct SurviveContext {
 	int activeLighthouses;
 	BaseStationData bsd[NUM_LIGHTHOUSES];
 	SurviveCalData *calptr;				 // If and only if the calibration subsystem is attached.
+	void *disambiguator_data;			 // global disambiguator data
 	struct SurviveRecordingData *recptr; // Iff recording is attached
 	SurviveObject **objs;
 	int objs_ct;

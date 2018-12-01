@@ -1,5 +1,5 @@
 var objs = {};
-var visible_tolerance = 48000000 / 15;
+var visible_tolerance = 1608200;
 var downAxes = {};
 var angles = {};
 var ctx;
