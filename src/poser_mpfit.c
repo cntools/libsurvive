@@ -158,7 +158,7 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 	}
 
 	if (d->useKalman || d->useIMU) {
-		// survive_imu_tracker_predict(&d->tracker, pdl->timecode, soLocation);
+		survive_imu_tracker_predict(&d->tracker, pdl->timecode, soLocation);
 	}
 	mp_result result = {0};
 	mpfitctx.initialPose = *soLocation;

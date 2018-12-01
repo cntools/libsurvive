@@ -267,15 +267,13 @@ function create_tracked_object(info) {
 
 	var velocityGeom = new THREE.Geometry();
 	velocityGeom.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0));
-	objs[info.tracker].velocity = new THREE.Line(
-		velocityGeom, new THREE.LineBasicMaterial(
-						  {color : trail_colors[scene.children.length % trail_colors.length], linewidth : 2}));
+	objs[info.tracker].velocity =
+		new THREE.Line(velocityGeom, new THREE.LineBasicMaterial({color : 0xFFFFFF, linewidth : 2}));
 
 	var angVelocityGeom = new THREE.Geometry();
 	angVelocityGeom.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0));
-	objs[info.tracker].angVelocity = new THREE.Line(
-		angVelocityGeom,
-		new THREE.LineDashedMaterial({color : trail_colors[-scene.children.length % trail_colors.length], scale : .1}));
+	objs[info.tracker].angVelocity =
+		new THREE.Line(angVelocityGeom, new THREE.LineDashedMaterial({color : 0x00FFFF, scale : .1}));
 
 	group.add(objs[info.tracker].velocity);
 	group.add(objs[info.tracker].angVelocity);

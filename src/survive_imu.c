@@ -326,6 +326,7 @@ void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTrac
 
 	bool use_obv_only = true;
 	if (use_obv_only) {
+		vel_pose.Pos.info.last_update = timecode;
 		vel_pose.Pos.info.variance = R[0];
 		copy3d(vel_pose.Pos.v, pose->Pos);
 
@@ -337,6 +338,10 @@ void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTrac
 
 	if (!quatiszero(tracker->last_pose.Rot.v) && time_diff != 0. && tracker->use_obs_velocity) {
 		// assert(time_diff < 1.0);
+		if (time_diff > 1.0) {
+			SurviveContext *ctx = tracker->so->ctx;
+			SV_WARN("Detected %f gap between observations for %s", time_diff, tracker->so->codename);
+		}
 
 		SurviveVelocity velocity = {};
 		LinmathQuat vDiff;
@@ -348,12 +353,14 @@ void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTrac
 				   LINMATH_QUAT_EXPAND(vDiff));
 
 		// quatfind(vDiff, vel_pose.Rot.v, tracker->last_pose.Rot.v);
-		// quatmultiplyrotation(vDiff, vDiff, 1. / time_diff);
+		// quatmultiplyrotation(t, vDiff, 1. / time_diff);
+
 		quattoeuler(velocity.EulerRot, vDiff);
-		scale3d(velocity.EulerRot, velocity.EulerRot, 1. / time_diff);
+		double damp_factor = 1. / 10.;
+		scale3d(velocity.EulerRot, velocity.EulerRot, damp_factor / time_diff);
 
 		sub3d(velocity.Pos, vel_pose.Pos.v, tracker->last_pose.Pos.v);
-		scale3d(velocity.Pos, velocity.Pos, 1. / time_diff);
+		scale3d(velocity.Pos, velocity.Pos, damp_factor / time_diff);
 		SV_VERBOSE("EV: " SurviveVel_format, SURVIVE_VELOCITY_EXPAND(velocity));
 
 		SurvivePoseVariance vp = {
@@ -367,24 +374,24 @@ void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTrac
 	tracker->last_pose = vel_pose;
 }
 
-STATIC_CONFIG_ITEM(POSE_POSITION_VARIANCE_SEC, "filter-pose-var-per-sec", 'f', "Position variance per second", 0.005);
+STATIC_CONFIG_ITEM(POSE_POSITION_VARIANCE_SEC, "filter-pose-var-per-sec", 'f', "Position variance per second", 0.05);
 STATIC_CONFIG_ITEM(POSE_ROT_VARIANCE_SEC, "filter-pose-rot-var-per-sec", 'f', "Position rotational variance per second",
-				   0.005);
+				   0.05);
 
 STATIC_CONFIG_ITEM(VELOCITY_POSITION_VARIANCE_SEC, "filter-vel-var-per-sec", 'f', "Velocity variance per second", 0.3);
 STATIC_CONFIG_ITEM(VELOCITY_ROT_VARIANCE_SEC, "filter-vel-rot-var-per-sec", 'f',
 				   "Velocity rotational variance per second", 0.3);
 
-STATIC_CONFIG_ITEM(IMU_ACC_VARIANCE, "imu-acc-variance", 'f', "Variance of accelerometer", 0.1);
-STATIC_CONFIG_ITEM(IMU_GYRO_VARIANCE, "imu-gyro-variance", 'f', "Variance of gyroscope", 0.01);
+STATIC_CONFIG_ITEM(IMU_ACC_VARIANCE, "imu-acc-variance", 'f', "Variance of accelerometer", 10000.);
+STATIC_CONFIG_ITEM(IMU_GYRO_VARIANCE, "imu-gyro-variance", 'f', "Variance of gyroscope", 10000.);
 STATIC_CONFIG_ITEM(IMU_MAHONY_VARIANCE, "imu-mahony-variance", 'f', "Variance of mahony filter (negative to disable)",
 				   -1.0);
 
 STATIC_CONFIG_ITEM(USE_OBS_VELOCITY, "use-obs-velocity", 'i', "Incorporate observed velocity into filter", 1);
 STATIC_CONFIG_ITEM(OBS_VELOCITY_POSITION_VAR, "obs-velocity-var", 'f', "Incorporate observed velocity into filter",
-				   0.01);
+				   .01);
 STATIC_CONFIG_ITEM(OBS_VELOCITY_ROTATION_VAR, "obs-velocity-rot-var", 'f', "Incorporate observed velocity into filter",
-				   0.01);
+				   .01);
 
 void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so) {
 	memset(tracker, 0, sizeof(*tracker));
