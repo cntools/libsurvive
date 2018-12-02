@@ -21,6 +21,8 @@ int PoserDummy( SurviveObject * so, PoserData * pd )
 	case POSERDATA_IMU:
 	{
 		PoserDataIMU * imu = (PoserDataIMU*)pd;
+		SurvivePose pose = LinmathPose_Identity;
+		PoserData_poser_pose_func(pd, so, &pose);
 		//printf( "IMU:%s (%f %f %f) (%f %f %f)\n", so->codename, imu->accel[0], imu->accel[1], imu->accel[2], imu->gyro[0], imu->gyro[1], imu->gyro[2] );
 		break;
 	}
