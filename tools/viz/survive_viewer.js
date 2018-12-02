@@ -1,5 +1,5 @@
 var objs = {};
-var visible_tolerance = 1608200;
+var visible_tolerance = 1608200 * 2;
 var downAxes = {};
 var angles = {};
 var ctx;
@@ -66,13 +66,27 @@ function get_bvalue(key) {
 	if (bvalue === undefined) {
 		bvalue = 0;
 		for (var i = 0; i < key.length; i++) {
-			bvalue = bvalue * 2 + key.codePointAt(i);
+			bvalue = Math.sin(bvalue + key.codePointAt(i)) * 10000;
 		}
-		bvalue = bvalue % 0xff;
+		bvalue = Math.round((bvalue - Math.floor(bvalue)) * 1000) % 0xff;
 		bvalue = bvalue.toString(16);
 	}
 	return bvalue;
 }
+
+function survive_timecode_difference(most_recent, least_recent) {
+	var diff = 0;
+	if (most_recent > least_recent) {
+		diff = most_recent - least_recent;
+	} else {
+		diff = least_recent - most_recent;
+	}
+
+	if (diff > 0xFFFFFFFF / 2)
+		return 0xFFFFFFFF - diff;
+	return diff;
+}
+
 function recolorTrackers(when) {
 	if (ctx == undefined)
 		return;
@@ -95,7 +109,7 @@ function recolorTrackers(when) {
 						continue;
 
 					for (var acode = 0; acode < 2; acode++) {
-						if (ang[acode][1] < when[key] - visible_tolerance)
+						if (survive_timecode_difference(when[key], ang[acode][1]) > visible_tolerance)
 							continue;
 
 						var augment = 0xf;
@@ -130,7 +144,7 @@ function redrawCanvas(when) {
 	}
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-	var fov_degrees = 120;
+	var fov_degrees = 160;
 	var fov_radians = fov_degrees / 180 * Math.PI;
 
 	function rad_to_x(ang) {
@@ -165,15 +179,16 @@ function redrawCanvas(when) {
 		for (var lh = 0; lh < 2; lh++) {
 			var bvalue = get_bvalue(key);
 
-			ctx.strokeStyle = (lh === 0 ? "#FF00" : "#00FF") + bvalue;
+			ctx.strokeStyle = (lh === 0 ? "#5500" : "#0055") + bvalue;
 
 			if (angles[key][lh])
 
 				for (var id in angles[key][lh]) {
 					var ang = angles[key][lh][id];
 
-					if (ang[0] === undefined || ang[1] === undefined || ang[1][1] < when[key] - visible_tolerance ||
-						ang[0][1] < when[key] - visible_tolerance)
+					if (ang[0] === undefined || ang[1] === undefined ||
+						survive_timecode_difference(when[key], ang[1][1]) > visible_tolerance ||
+						survive_timecode_difference(when[key], ang[0][1]) > visible_tolerance)
 						continue;
 
 					var half_fov = 1.0472 * 2.;
@@ -264,7 +279,8 @@ function create_tracked_object(info) {
 	objs[info.tracker] = group;
 	objs[info.tracker].group = group;
 	objs[info.tracker].group_rot = group_rot;
-
+	objs[info.tracker].trackref.visible = false;
+	objs[info.tracker].group.position.set(NaN);
 	var velocityGeom = new THREE.Geometry();
 	velocityGeom.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0));
 	objs[info.tracker].velocity =
@@ -488,6 +504,7 @@ var survive_log_handlers = {
 			],
 			tracker : v[1]
 		};
+		timecode[obj.tracker] = obj.timecode;
 
 		if (objs[obj.tracker]) {
 			if (!downAxes[obj.tracker] && objs[obj.tracker]) {
@@ -496,6 +513,7 @@ var survive_log_handlers = {
 
 				var line = new THREE.Line(downAxes[obj.tracker], new THREE.LineBasicMaterial({color : 0xffffff}));
 				downAxes[obj.tracker].line = line;
+				downAxes[obj.tracker].line.visible = false;
 				scene.add(line);
 			}
 
