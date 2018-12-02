@@ -9,10 +9,11 @@
 
 static SurvivePose solve_correspondence(SurviveObject *so, epnp *pnp, bool cameraToWorld) {
 	SurvivePose rtn = {0};
+	SurviveContext *ctx = so->ctx;
 	// std::cerr << "Solving for " << cal_imagePoints.size() << " correspondents" << std::endl;
 	if (pnp->number_of_correspondences <= 3) {
-		SurviveContext *ctx = so->ctx;
-		SV_INFO("Can't solve for only %u points\n", pnp->number_of_correspondences);
+
+		SV_WARN("Can't solve for only %u points\n", pnp->number_of_correspondences);
 		return rtn;
 	}
 
@@ -24,9 +25,14 @@ static SurvivePose solve_correspondence(SurviveObject *so, epnp *pnp, bool camer
 	CvMat T = cvMat(3, 1, CV_64F, rtn.Pos);
 
 	// Super degenerate inputs will project us basically right in the camera. Detect and reject
-	if (magnitude3d(rtn.Pos) < 0.25) {
+	if (magnitude3d(rtn.Pos) < 0.25 || magnitude3d(rtn.Pos) > 25) {
+		double err = epnp_compute_pose(pnp, r, rtn.Pos);
+
+		SV_WARN("EPNP pose is degenerate %d", pnp->number_of_correspondences);
 		return rtn;
 	}
+
+	// SV_INFO("EPNP for %s has err %f " SurvivePose_format, so->codename, err, SURVIVE_POSE_EXPAND(rtn));
 
 	// Requested output is camera -> world, so invert
 	if (cameraToWorld) {
@@ -101,7 +107,7 @@ static int opencv_solver_fullscene(SurviveObject *so, PoserDataFullScene *pdfs) 
 static void add_correspondences(SurviveObject *so, epnp *pnp, SurviveSensorActivations *scene, uint32_t timecode,
 								int lh) {
 	for (size_t sensor_idx = 0; sensor_idx < so->sensor_ct; sensor_idx++) {
-		if (SurviveSensorActivations_isPairValid(scene, SurviveSensorActivations_default_tolerance, timecode,
+		if (SurviveSensorActivations_isPairValid(scene, SurviveSensorActivations_default_tolerance * 4, timecode,
 												 sensor_idx, lh)) {
 			FLT *_angles = scene->angles[sensor_idx][lh];
 			FLT angles[2];
@@ -126,6 +132,7 @@ int PoserEPNP(SurviveObject *so, PoserData *pd) {
 	case POSERDATA_SYNC:
 	case POSERDATA_LIGHT: {
 		PoserDataLight *lightData = (PoserDataLight *)pd;
+		SurviveContext *ctx = so->ctx;
 
 		SurvivePose posers[2] = {0};
 		int meas[2] = {0, 0};
@@ -137,9 +144,9 @@ int PoserEPNP(SurviveObject *so, PoserData *pd) {
 				add_correspondences(so, &pnp, scene, lightData->timecode, lh);
 				static int required_meas = -1;
 				if (required_meas == -1)
-					required_meas = survive_configi(so->ctx, "epnp-required-meas", SC_GET, 4);
+					required_meas = survive_configi(so->ctx, "epnp-required-meas", SC_GET, 5);
 
-				if (pnp.number_of_correspondences > required_meas) {
+				if (pnp.number_of_correspondences >= required_meas) {
 
 					SurvivePose objInLh = solve_correspondence(so, &pnp, false);
 					if (quatmagnitude(objInLh.Rot) != 0) {

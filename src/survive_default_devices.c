@@ -167,6 +167,8 @@ static int process_jsonarray(scratch_space_t *scratch, char *ct0conf, stack_entr
 			}
 
 			max_port++;
+			assert(max_port <= 32);
+			max_port = 32;
 			so->channel_map = malloc(sizeof(int) * max_port);
 			for (int i = 0; i < max_port; i++)
 				so->channel_map[i] = -1;

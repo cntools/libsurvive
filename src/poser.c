@@ -31,9 +31,13 @@ static uint32_t PoserData_timecode(PoserData *poser_data) {
 
 STATIC_CONFIG_ITEM(REPORT_IN_IMU, "report-in-imu", 'i', "Debug option to output poses in IMU space.", 0);
 void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world) {
+	SurviveContext *ctx = so->ctx;
 	for (int i = 0; i < 3; i++)
-		if (abs(imu2world->Pos[i]) > 20)
+		if (abs(imu2world->Pos[i]) > 20) {
+			SV_WARN("Squelching reported pose of " SurvivePose_format " for %s; values are invalid",
+					SURVIVE_POSE_EXPAND(*imu2world), so->codename);
 			return;
+		}
 
 	if (poser_data->poseproc) {
 		poser_data->poseproc(so, PoserData_timecode(poser_data), imu2world, poser_data->userdata);
@@ -43,7 +47,6 @@ void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const S
 			survive_attach_configi(so->ctx, "report-in-imu", &report_in_imu);
 		}
 
-		SurviveContext *ctx = so->ctx;
 		SurvivePose head2world;
 		so->OutPoseIMU = *imu2world;
 		if (!report_in_imu) {
