@@ -356,7 +356,7 @@ static survive_usb_device_t get_next_device(survive_usb_device_enumerator *itera
 
 	do {
 		*iterator = ((*iterator)->next);
-	} while (*iterator && (*iterator)->interface_number != 0);
+	} while (*iterator && (*iterator)->interface_number != 0 && (*iterator)->interface_number != -1);
 
 	return *iterator;
 }
@@ -477,69 +477,6 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 int survive_usb_init(SurviveViveData *sv) {
 	SurviveContext *ctx = sv->ctx;
 	const char *blacklist = survive_configs(ctx, "blacklist-devs", SC_GET, "-");
-	SV_INFO("Blacklisting %s", blacklist);
-
-#ifdef HIDAPI11
-	SV_INFO("Vive starting in HIDAPI mode.");
-	if (!GlobalRXUSBSem) {
-		GlobalRXUSBSem = OGCreateSema();
-		// OGLockSema( GlobalRXUSBSem );
-	}
-	int res, i;
-	res = hid_init();
-	if (res) {
-		SV_ERROR("Could not setup hidapi.");
-		return res;
-	}
-
-	for (i = 0; i < MAX_USB_DEVS; i++) {
-		if (strstr(blacklist, devnames[i]))
-			continue;
-		int enumid = vidpids[i * 3 + 2];
-		int vendor_id = vidpids[i * 3 + 0];
-		int product_id = vidpids[i * 3 + 1];
-		struct hid_device_info *devs = hid_enumerate(vendor_id, product_id);
-		struct hid_device_info *cur_dev = devs;
-		const char *path_to_open = NULL;
-		hid_device *handle = NULL;
-		int menum = 0;
-
-		cur_dev = devs;
-		while (cur_dev) {
-			if (cur_dev->vendor_id == vendor_id && cur_dev->product_id == product_id) {
-				if (cur_dev->interface_number == enumid || cur_dev->interface_number == -1 && menum == enumid) {
-					path_to_open = cur_dev->path;
-					break;
-				}
-				menum++;
-			}
-			cur_dev = cur_dev->next;
-		}
-
-		if (path_to_open) {
-			handle = hid_open_path(path_to_open);
-		}
-
-		hid_free_enumeration(devs);
-
-		if (!handle) {
-			SV_INFO("Warning: Could not find vive device %04x:%04x", vendor_id, product_id);
-			continue;
-		}
-
-		// Read the Serial Number String
-		wchar_t wstr[255];
-
-		res = hid_get_serial_number_string(handle, wstr, 255);
-		printf("Found %s. ", devnames[i]);
-		wprintf(L"Serial Number String: (%d) %s for %04x:%04x@%d  (Dev: %p)\n", wstr[0], wstr, vendor_id, product_id,
-				menum, handle);
-
-		sv->udev[i] = handle;
-	}
-
-#else
-#endif
 
 	int r = survive_usb_subsystem_init(sv);
 	if (r) {
