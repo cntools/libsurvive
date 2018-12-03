@@ -113,6 +113,7 @@ foreach(PLUGIN ${PLUGINS})
     set_target_properties(${PLUGIN} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "plugins")
 	set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG "Debug/plugins")
 	set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE "Release/plugins")
+	set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "RelWithDebInfo/plugins")
 endforeach()
 
 foreach(executable calibrate data_recorder simple_pose_test survive-cli)

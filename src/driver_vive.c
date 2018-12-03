@@ -142,7 +142,9 @@ struct SurviveViveData {
 };
 
 #ifdef HIDAPI
+#ifndef HID_NONBLOCKING
 og_sema_t GlobalRXUSBSem;
+#endif
 #endif
 
 void survive_data_cb(SurviveUSBInterface *si);
@@ -156,14 +158,17 @@ static int survive_get_config(char **config, SurviveViveData *ctx, struct Surviv
 static int survive_vive_send_magic(SurviveContext *ctx, void *drv, int magic_code, void *data, int datalen);
 
 #ifdef HIDAPI
-void *HAPIReceiver(void *v) {
+static void *HAPIReceiver(void *v) {
 
 	SurviveUSBInterface *iface = v;
 	USB_INTERFACE_HANDLE *hp = &iface->uh;
 
 	while ((iface->actual_len = hid_read(*hp, iface->buffer, sizeof(iface->buffer))) > 0) {
 		// if( iface->actual_len  == 52 ) continue;
+		iface->packet_count++;
+#ifndef HID_NONBLOCKING
 		OGLockSema(GlobalRXUSBSem);
+#endif
 #if 0
 		printf( "%d %d: ", iface->which_interface_am_i, iface->actual_len );
 		int i;
@@ -174,13 +179,17 @@ void *HAPIReceiver(void *v) {
 		printf("\n" );
 #endif
 		survive_data_cb(iface);
+#ifndef HID_NONBLOCKING
 		OGUnlockSema(GlobalRXUSBSem);
+#endif
+	}
+	if (iface->actual_len < 0) {
+		SurviveContext* ctx = iface->sv->ctx;
+		SV_WARN("Error in hid read: %d", iface->actual_len);
 	}
 	// XXX TODO: Mark device as failed.
-	*hp = 0;
 	return 0;
 }
-
 #else
 static void handle_transfer(struct libusb_transfer *transfer) {
 	SurviveUSBInterface *iface = transfer->user_data;
@@ -224,8 +233,12 @@ static int AttachInterface(SurviveViveData *sv, struct SurviveUSBInfo *usbObject
 	// What do here?
 	iface->uh = usbObject->handle->interfaces[endpoint - usbObject->device_info->endpoints];
 	assert(iface->uh);
+#ifndef HID_NONBLOCKING
 	iface->servicethread = OGCreateThread(HAPIReceiver, iface);
 	OGUSleep(100000);
+#else
+	hid_set_nonblocking(iface->uh, 1);
+#endif
 #else
 	struct libusb_transfer *tx = iface->transfer = libusb_alloc_transfer(0);
 	// printf( "%p %d %p %p\n", iface, which_interface_am_i, tx, devh );
@@ -320,11 +333,12 @@ typedef struct hid_device_info *survive_usb_device_t;
 typedef struct hid_device_info *survive_usb_devices_t;
 
 static int survive_usb_subsystem_init(SurviveViveData *sv) {
+#ifndef HID_NONBLOCKING
 	if (!GlobalRXUSBSem) {
 		GlobalRXUSBSem = OGCreateSema();
 		// OGLockSema( GlobalRXUSBSem );
 	}
-
+#endif
 	return hid_init();
 }
 static int survive_get_usb_devices(SurviveViveData *sv, survive_usb_devices_t *devs) {
@@ -749,10 +763,11 @@ void survive_vive_usb_close(SurviveViveData *sv) {
 		}
 
 		free(sv->udev[i].handle);
-
+#ifndef HID_NONBLOCKING
 		for (int j = 0; j < MAX_INTERFACES_PER_DEVICE; j++) {
 			OGJoinThread(sv->udev[i].interfaces->servicethread);
 		}
+#endif
 	}
 	// This is global, don't do it on account of other tasks.
 	// hid_exit();
@@ -766,14 +781,37 @@ void survive_vive_usb_close(SurviveViveData *sv) {
 }
 
 int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
-#ifdef HIDAPI
-	OGUnlockSema(GlobalRXUSBSem);
-	OGUSleep(100);
-	OGLockSema(GlobalRXUSBSem);
-	return 0;
-#else
 	SurviveViveData *sv = v;
 	sv->read_count++;
+#ifdef HIDAPI
+#ifdef HID_NONBLOCKING
+	static float start = 0;
+	static int seconds = 0;
+
+	if(start == 0)
+		start = OGGetAbsoluteTime();
+
+	float now = OGGetAbsoluteTime();
+	int now_seconds = (int)(now - start);
+	bool print = now_seconds != seconds;
+	seconds = now_seconds;
+
+	for (int i = 0; i < sv->udev_cnt; i++) {
+		for (int j = 0; j < sv->udev[i].interface_cnt; j++) {
+			SurviveUSBInterface* iface = &sv->udev[i].interfaces[j];
+			HAPIReceiver(iface);
+
+			if(print)
+			SV_INFO("Iface %s has %d packets (%f hz)", iface->hname, iface->packet_count, iface->packet_count / (now - start));
+		}
+	}
+#else
+	OGUnlockSema(GlobalRXUSBSem);
+	OGUSleep(1);
+	OGLockSema(GlobalRXUSBSem);
+	return 0;
+#endif
+#else
 	int r = libusb_handle_events(sv->usbctx);
 	if (r) {
 		SurviveContext *ctx = sv->ctx;

@@ -5,6 +5,7 @@
 #undef WCHAR_MAX
 #endif
 #include <hidapi.h>
+#define HID_NONBLOCKING
 #else
 #ifdef __FreeBSD__
 #include <libusb.h>
@@ -69,7 +70,9 @@ typedef struct SurviveUSBInterface {
 
 #ifdef HIDAPI
 	USB_INTERFACE_HANDLE uh;
+#ifndef HID_NONBLOCKING
 	og_thread_t servicethread;
+#endif
 #else
 	struct libusb_transfer *transfer;
 #endif
