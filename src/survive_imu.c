@@ -324,7 +324,7 @@ void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTrac
 	FLT time_diff =
 		survive_timecode_difference(timecode, tracker->last_pose.Pos.info.last_update) / (FLT)tracker->so->timebase_hz;
 
-	kalman_info_pose_t vel_pose = {};
+	kalman_info_pose_t vel_pose = {0};
 
 	bool use_obv_only = true;
 	if (use_obv_only) {
@@ -345,7 +345,7 @@ void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTrac
 			SV_WARN("Detected %f gap between observations for %s", time_diff, tracker->so->codename);
 		}
 
-		SurviveVelocity velocity = {};
+		SurviveVelocity velocity = {0};
 		LinmathQuat vDiff;
 		quatfind(vDiff, tracker->last_pose.Rot.v, vel_pose.Rot.v);
 		struct SurviveContext *ctx = tracker->so->ctx;

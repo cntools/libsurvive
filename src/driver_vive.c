@@ -119,7 +119,7 @@ const struct DeviceInfo KnownDeviceTypes[] = {
 				   {.num = 0x82, .name = "Lightcap", .type = USB_IF_W_WATCHMAN1_LIGHTCAP},
 				   {.num = 0x83, .name = "Buttons", .type = USB_IF_W_WATCHMAN1_BUTTONS}},
 	 .magics = {MAGIC_CTOR(true, vive_magic_enable_lighthouse), MAGIC_CTOR(true, vive_magic_enable_lighthouse_more)}},
-	{}};
+	{0}};
 
 typedef struct SurviveUSBInterface SurviveUSBInterface;
 typedef struct SurviveViveData SurviveViveData;
@@ -223,6 +223,7 @@ static int AttachInterface(SurviveViveData *sv, struct SurviveUSBInfo *usbObject
 #ifdef HIDAPI
 	// What do here?
 	iface->uh = usbObject->handle->interfaces[endpoint - usbObject->device_info->endpoints];
+	assert(iface->uh);
 	iface->servicethread = OGCreateThread(HAPIReceiver, iface);
 	OGUSleep(100000);
 #else
@@ -318,7 +319,7 @@ static inline int hid_get_feature_report_timeout(USBHANDLE device, uint16_t ifac
 typedef struct hid_device_info *survive_usb_device_t;
 typedef struct hid_device_info *survive_usb_devices_t;
 
-static ssize_t survive_usb_subsystem_init(SurviveViveData *sv) {
+static int survive_usb_subsystem_init(SurviveViveData *sv) {
 	if (!GlobalRXUSBSem) {
 		GlobalRXUSBSem = OGCreateSema();
 		// OGLockSema( GlobalRXUSBSem );
@@ -326,7 +327,7 @@ static ssize_t survive_usb_subsystem_init(SurviveViveData *sv) {
 
 	return hid_init();
 }
-static ssize_t survive_get_usb_devices(SurviveViveData *sv, survive_usb_devices_t *devs) {
+static int survive_get_usb_devices(SurviveViveData *sv, survive_usb_devices_t *devs) {
 	*devs = hid_enumerate(0, 0);
 	return 0;
 }
@@ -345,33 +346,47 @@ static survive_usb_device_t get_next_device(survive_usb_device_enumerator *itera
 	return *iterator;
 }
 
-static ssize_t survive_get_ids(survive_usb_device_t d, uint16_t *idVendor, uint16_t *idProduct) {
+static int survive_get_ids(survive_usb_device_t d, uint16_t *idVendor, uint16_t *idProduct) {
 	*idVendor = d->vendor_id;
 	*idProduct = d->product_id;
 
 	return 0;
 }
 
-static const char *survive_usb_error_name(ssize_t ret) { return ""; }
+static const char *survive_usb_error_name(int ret) { return ""; }
 
-static ssize_t survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, struct SurviveUSBInfo *usbInfo) {
+static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, struct SurviveUSBInfo *usbInfo) {
 	usbInfo->handle = calloc(1, sizeof(struct HIDAPI_USB_Handle_t));
 	survive_usb_device_t c = d;
+
 	struct SurviveContext *ctx = sv->ctx;
+	
 
-	for (int i = 0; i < 8; i++) {
-		int interface_num = c->interface_number;
-		usbInfo->handle->interfaces[interface_num] = hid_open_path(c->path);
+	survive_usb_devices_t devs;
+	int ret = survive_get_usb_devices(sv, &devs);
 
-		if (!usbInfo->handle->interfaces[interface_num]) {
-			SV_INFO("Warning: Could not find vive device %04x:%04x", d->vendor_id, d->product_id);
-			return -1;
-		}
-
-		c = c->next;
-		if (!c || c->serial_number == 0 || wcscmp(d->serial_number, c->serial_number) != 0)
-			break;
+	if (ret < 0) {
+		SV_ERROR("Couldn't get list of USB devices %ld (%s)", ret, survive_usb_error_name(ret));
+		return ret;
 	}
+
+	survive_usb_device_enumerator e = 0;
+	
+	for (survive_usb_device_t c = devs; c; c = c->next) {
+		int interface_num = c->interface_number;
+		interface_num = interface_num < 0 ? 0 : interface_num;
+		if (c && c->serial_number && wcscmp(c->serial_number, d->serial_number)==0) {
+			
+			usbInfo->handle->interfaces[interface_num] = hid_open_path(c->path);
+
+			if (!usbInfo->handle->interfaces[interface_num]) {
+				SV_INFO("Warning: Could not find vive device %04x:%04x", d->vendor_id, d->product_id);
+				return -1;
+			}
+		}
+	}
+
+	survive_free_usb_devices(devs);
 
 	return 0;
 }
@@ -379,8 +394,8 @@ static ssize_t survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t
 typedef libusb_device *survive_usb_device_t;
 typedef libusb_device **survive_usb_devices_t;
 
-static ssize_t survive_usb_subsystem_init(SurviveViveData *sv) { return libusb_init(&sv->usbctx); }
-static ssize_t survive_get_usb_devices(SurviveViveData *sv, survive_usb_devices_t *devs) {
+static int survive_usb_subsystem_init(SurviveViveData *sv) { return libusb_init(&sv->usbctx); }
+static int survive_get_usb_devices(SurviveViveData *sv, survive_usb_devices_t *devs) {
 	return libusb_get_device_list(sv->usbctx, devs);
 }
 static void survive_free_usb_devices(survive_usb_devices_t devs) { libusb_free_device_list(devs, 1); }
@@ -391,10 +406,10 @@ static survive_usb_device_t get_next_device(survive_usb_device_enumerator *itera
 	return list[(*iterator)++];
 }
 
-static ssize_t survive_get_ids(survive_usb_device_t d, uint16_t *idVendor, uint16_t *idProduct) {
+static int survive_get_ids(survive_usb_device_t d, uint16_t *idVendor, uint16_t *idProduct) {
 	struct libusb_device_descriptor desc;
 
-	ssize_t ret = libusb_get_device_descriptor(d, &desc);
+	int ret = libusb_get_device_descriptor(d, &desc);
 	*idVendor = 0;
 	*idProduct = 0;
 	if (ret)
@@ -408,9 +423,9 @@ static ssize_t survive_get_ids(survive_usb_device_t d, uint16_t *idVendor, uint1
 
 static const char *survive_usb_error_name(ssize_t ret) { return libusb_error_name(ret); }
 
-static ssize_t survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, struct SurviveUSBInfo *usbInfo) {
+static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, struct SurviveUSBInfo *usbInfo) {
 	struct libusb_config_descriptor *conf;
-	ssize_t ret = libusb_get_config_descriptor(d, 0, &conf);
+	int ret = libusb_get_config_descriptor(d, 0, &conf);
 	if (ret)
 		return ret;
 
@@ -512,14 +527,14 @@ int survive_usb_init(SurviveViveData *sv) {
 #endif
 	SV_INFO("Vive starting in libusb mode.");
 
-	ssize_t r = survive_usb_subsystem_init(sv);
+	int r = survive_usb_subsystem_init(sv);
 	if (r) {
 		SV_ERROR("usb fault %ld (%s)\n", r, survive_usb_error_name(r));
 		return r;
 	}
 
 	survive_usb_devices_t devs;
-	ssize_t ret = survive_get_usb_devices(sv, &devs);
+	int ret = survive_get_usb_devices(sv, &devs);
 
 	if (ret < 0) {
 		SV_ERROR("Couldn't get list of USB devices %ld (%s)", ret, survive_usb_error_name(ret));
@@ -539,7 +554,7 @@ int survive_usb_init(SurviveViveData *sv) {
 		for (survive_usb_device_t d = 0; (d = get_next_device(&e, devs)) && sv->udev_cnt < MAX_USB_DEVS;) {
 			uint16_t idVendor;
 			uint16_t idProduct;
-			ssize_t ret = survive_get_ids(d, &idVendor, &idProduct);
+			int ret = survive_get_ids(d, &idVendor, &idProduct);
 
 			if (ret < 0) {
 				continue;
@@ -647,7 +662,7 @@ int survive_vive_send_magic(SurviveContext *ctx, void *drv, int magic_code, void
 
 		for (const struct Magic_t *magic = usbInfo->device_info->magics; magic->magic; magic++) {
 			if (magic->code == magic_code) {
-				uint8_t data[magic->length];
+				uint8_t *data = alloca(sizeof(uint8_t) * magic->length);
 				memcpy(data, magic->magic, magic->length);
 
 				r = update_feature_report(usbInfo->handle, 0, data, magic->length);
@@ -1240,12 +1255,12 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 			} // LED Count does not line up with parameters
 		}
 
-		LightcapElement les[10] = {};
+		LightcapElement les[10] = {0};
 		int lese = 0; // les's end
 
 		// Second, go through all LEDs and extract the lightevent from them.
 		{
-			uint8_t marked[nrtime];
+			uint8_t *marked = alloca(nrtime);
 			memset(marked, 0, nrtime);
 
 			int i, parpl = 0;

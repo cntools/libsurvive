@@ -67,7 +67,7 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 	//					 .Rot = {10 + cos(t) * 2, cos(t), sin(t), (cos(t) + sin(t))}};
 
 	// SurviveVelocity accel = {.EulerRot = {cos(t), sin(t), (cos(t) + sin(t))}};
-	SurviveVelocity accel = {};
+	SurviveVelocity accel = {0};
 
 	LinmathVec3d attractors[] = {{1, 1, 1}, {-1, 0, 1}, {0, -1, .5}};
 	size_t attractor_cnt = survive_configi(ctx, "attractors", SC_GET, sizeof(attractors) / sizeof(LinmathVec3d));
