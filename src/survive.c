@@ -399,7 +399,7 @@ int survive_startup(SurviveContext *ctx) {
 	ctx->buttonservicethread = OGCreateThread(button_servicer, ctx);
 
 	PoserCB PreferredPoserCB = GetDriverByConfig(ctx, "Poser", "defaultposer", "MPFIT");
-	ctx->lightcapfunction = GetDriverByConfig(ctx, "Disambiguator", "disambiguator", "Turvey");
+	ctx->lightcapfunction = GetDriverByConfig(ctx, "Disambiguator", "disambiguator", "StateBased");
 
 	const char *DriverName;
 
