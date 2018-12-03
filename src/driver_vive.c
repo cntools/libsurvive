@@ -139,6 +139,7 @@ struct SurviveViveData {
 	struct SurviveUSBInfo udev[MAX_USB_DEVS];
 	struct libusb_context *usbctx;
 	size_t read_count;
+	int seconds_per_hz_output;
 };
 
 #ifdef HIDAPI
@@ -380,7 +381,7 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 	int ret = survive_get_usb_devices(sv, &devs);
 
 	if (ret < 0) {
-		SV_ERROR("Couldn't get list of USB devices %ld (%s)", ret, survive_usb_error_name(ret));
+		SV_ERROR("Couldn't get list of USB devices %d (%s)", ret, survive_usb_error_name(ret));
 		return ret;
 	}
 
@@ -435,7 +436,7 @@ static int survive_get_ids(survive_usb_device_t d, uint16_t *idVendor, uint16_t 
 	return ret;
 }
 
-static const char *survive_usb_error_name(ssize_t ret) { return libusb_error_name(ret); }
+static const char *survive_usb_error_name(int ret) { return libusb_error_name(ret); }
 
 static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, struct SurviveUSBInfo *usbInfo) {
 	struct libusb_config_descriptor *conf;
@@ -452,7 +453,7 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 
 	SurviveContext *ctx = sv->ctx;
 	if (!usbInfo->handle || ret) {
-		SV_ERROR("Error: cannot open device \"%s\" with vid/pid %04x:%04x error %ld (%s)", info->name, idVendor,
+		SV_ERROR("Error: cannot open device \"%s\" with vid/pid %04x:%04x error %d (%s)", info->name, idVendor,
 				 idProduct, ret, libusb_error_name(ret));
 		return ret;
 	}
@@ -539,11 +540,10 @@ int survive_usb_init(SurviveViveData *sv) {
 
 #else
 #endif
-	SV_INFO("Vive starting in libusb mode.");
 
 	int r = survive_usb_subsystem_init(sv);
 	if (r) {
-		SV_ERROR("usb fault %ld (%s)\n", r, survive_usb_error_name(r));
+		SV_ERROR("usb fault %d (%s)\n", r, survive_usb_error_name(r));
 		return r;
 	}
 
@@ -551,7 +551,7 @@ int survive_usb_init(SurviveViveData *sv) {
 	int ret = survive_get_usb_devices(sv, &devs);
 
 	if (ret < 0) {
-		SV_ERROR("Couldn't get list of USB devices %ld (%s)", ret, survive_usb_error_name(ret));
+		SV_ERROR("Couldn't get list of USB devices %d (%s)", ret, survive_usb_error_name(ret));
 		return ret;
 	}
 
@@ -593,7 +593,7 @@ int survive_usb_init(SurviveViveData *sv) {
 			ret = survive_open_usb_device(sv, d, usbInfo);
 
 			if (ret) {
-				SV_ERROR("Error: cannot open device \"%s\" with vid/pid %04x:%04x error %ld (%s)", info->name, idVendor,
+				SV_ERROR("Error: cannot open device \"%s\" with vid/pid %04x:%04x error %d (%s)", info->name, idVendor,
 						 idProduct, ret, survive_usb_error_name(ret));
 				sv->udev_cnt--;
 				continue;
@@ -780,29 +780,39 @@ void survive_vive_usb_close(SurviveViveData *sv) {
 #endif
 }
 
+STATIC_CONFIG_ITEM(SECONDS_PER_HZ_OUTPUT, "usb-hz-output", 'i', "Seconds between outputing usb stats", -1);
 int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 	SurviveViveData *sv = v;
 	sv->read_count++;
-#ifdef HIDAPI
-#ifdef HID_NONBLOCKING
-	static float start = 0;
-	static int seconds = 0;
 
+	static double start = 0;
+	static int seconds = 0;
 	if(start == 0)
 		start = OGGetAbsoluteTime();
 
-	float now = OGGetAbsoluteTime();
+	double now = OGGetAbsoluteTime();
 	int now_seconds = (int)(now - start);
-	bool print = now_seconds != seconds;
-	seconds = now_seconds;
+	bool print = sv->seconds_per_hz_output > 0 && now_seconds > seconds + sv->seconds_per_hz_output;
+	if (print) {
+		seconds = now_seconds;
+		for (int i = 0; i < sv->udev_cnt; i++) {
+			if (sv->udev[i].so == 0)
+				continue;
 
+			for (int j = 0; j < sv->udev[i].interface_cnt; j++) {
+				SurviveUSBInterface *iface = &sv->udev[i].interfaces[j];
+				SV_INFO("Iface %s %s has %lu packets (%f hz)", iface->assoc_obj->codename, iface->hname,
+						iface->packet_count, iface->packet_count / (now - start));
+			}
+		}
+	}
+
+#ifdef HIDAPI
+#ifdef HID_NONBLOCKING
 	for (int i = 0; i < sv->udev_cnt; i++) {
 		for (int j = 0; j < sv->udev[i].interface_cnt; j++) {
 			SurviveUSBInterface* iface = &sv->udev[i].interfaces[j];
 			HAPIReceiver(iface);
-
-			if(print)
-			SV_INFO("Iface %s has %d packets (%f hz)", iface->hname, iface->packet_count, iface->packet_count / (now - start));
 		}
 	}
 #else
@@ -817,7 +827,6 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 		SurviveContext *ctx = sv->ctx;
 		SV_ERROR("Libusb poll failed. %d (%s)", r, libusb_error_name(r));
 	}
-	return r;
 #endif
 	return 0;
 }
@@ -1648,6 +1657,8 @@ int survive_vive_close(SurviveContext *ctx, void *driver) {
 
 int DriverRegHTCVive(SurviveContext *ctx) {
 	SurviveViveData *sv = calloc(1, sizeof(SurviveViveData));
+
+	survive_attach_configi(ctx, SECONDS_PER_HZ_OUTPUT_TAG, &sv->seconds_per_hz_output);
 
 	sv->ctx = ctx;
 
