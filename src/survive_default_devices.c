@@ -58,7 +58,7 @@ SurviveObject *survive_create_ww0(SurviveContext *ctx, const char *driver_name,
 	return survive_create_device(ctx, driver_name, driver, "WW0", 0);
 }
 
-static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
+static int jsoneq(const char *json, const jsmntok_t *tok, const char *s) {
 	if (tok && tok->type == JSMN_STRING && (int)strlen(s) == tok->end - tok->start &&
 		strncmp(json + tok->start, s, tok->end - tok->start) == 0) {
 		return 0;
@@ -66,10 +66,10 @@ static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
 	return -1;
 }
 
-static int ParsePoints(SurviveContext *ctx, SurviveObject *so, char *ct0conf, FLT **floats_out, jsmntok_t *t) {
+static int ParsePoints(SurviveContext *ctx, SurviveObject *so, char *ct0conf, FLT **floats_out, const jsmntok_t *t) {
 	int k;
 	int pts = t[1].size;
-	jsmntok_t *tk;
+	const jsmntok_t *tk;
 
 	so->sensor_ct = 0;
 	*floats_out = malloc(sizeof(**floats_out) * 32 * 3);
@@ -139,13 +139,43 @@ int solve_vive_pose(SurvivePose *pose, const vive_pose_t *vpose) {
 typedef struct {
 	SurviveObject *so;
 	vive_pose_t imu_pose;
+	vive_pose_t head;
 } scratch_space_t;
 
 static scratch_space_t scratch_space_init(SurviveObject *so) { return (scratch_space_t){.so = so}; }
 
+static bool parse_ctx_sensitive_vive_pose_t(char *ct0conf, stack_entry_t *stack, const char *field_name,
+											vive_pose_t *output) {
+	if (stack->previous && jsoneq(ct0conf, stack->previous->key, field_name) == 0) {
+		struct field {
+			const char *name;
+			FLT *vals;
+		};
+
+		struct field imufields[] = {
+			{"plus_x", output->plus_x}, {"plus_z", output->plus_z}, {"position", output->position}};
+
+		const jsmntok_t *tk = stack->key;
+		for (int i = 0; i < sizeof(imufields) / sizeof(struct field); i++) {
+			if (jsoneq(ct0conf, tk, imufields[i].name) == 0) {
+				int32_t count = (tk + 1)->size;
+				assert(count == 3);
+				if (count == 3) {
+					parse_float_array_in_place(ct0conf, tk + 2, imufields[i].vals, count);
+				}
+				break;
+			}
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
 static int process_jsonarray(scratch_space_t *scratch, char *ct0conf, stack_entry_t *stack) {
 	SurviveObject *so = scratch->so;
-	jsmntok_t *tk = stack->key;
+	jsmntok_t const *const tk = stack->key;
 	SurviveContext *ctx = so->ctx;
 
 	/// CONTEXT FREE FIELDS
@@ -219,27 +249,9 @@ static int process_jsonarray(scratch_space_t *scratch, char *ct0conf, stack_entr
 	}
 
 	/// Context sensitive fields
-	else if (stack->previous && jsoneq(ct0conf, stack->previous->key, "imu") == 0) {
-
-		struct field {
-			const char *name;
-			FLT *vals;
-		};
-
-		struct field imufields[] = {{"plus_x", scratch->imu_pose.plus_x},
-									{"plus_z", scratch->imu_pose.plus_z},
-									{"position", scratch->imu_pose.position}};
-
-		for (int i = 0; i < sizeof(imufields) / sizeof(struct field); i++) {
-			if (jsoneq(ct0conf, tk, imufields[i].name) == 0) {
-				int32_t count = (tk + 1)->size;
-				assert(count == 3);
-				if (count == 3) {
-					parse_float_array_in_place(ct0conf, tk + 2, imufields[i].vals, count);
-				}
-				break;
-			}
-		}
+	else {
+		parse_ctx_sensitive_vive_pose_t(ct0conf, stack, "imu", &scratch->imu_pose);
+		parse_ctx_sensitive_vive_pose_t(ct0conf, stack, "head", &scratch->head);
 	}
 
 	return 0;
@@ -302,6 +314,7 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	process_jsontok(&scratch, ct0conf, 0, t, r);
 
 	solve_vive_pose(&so->imu2trackref, &scratch.imu_pose);
+	solve_vive_pose(&so->head2trackref, &scratch.head);
 
 	SurvivePose trackref2imu = InvertPoseRtn(&so->imu2trackref);
 
