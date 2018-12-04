@@ -27,6 +27,7 @@ typedef struct SurviveSensorActivations_s {
 	survive_timecode timecode[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2]; // Timecode per axis in ticks
 	survive_timecode lengths[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];  // Timecode per axis in ticks
 
+	survive_timecode last_imu;
 	FLT accel[3];
 	FLT gyro[3];
 	FLT mag[3];
@@ -373,24 +374,29 @@ SURVIVE_EXPORT void survive_add_driver(SurviveContext *ctx, void *payload, Devic
 // This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
 SURVIVE_EXPORT void handle_lightcap(SurviveObject *so, LightcapElement *le);
 
+#define SV_LOG_NULL_GUARD                                                                                              \
+	if (ctx == 0) {                                                                                                    \
+		fprintf(stderr, "Logging: %s\n", stbuff);                                                                      \
+	} else
+
 #define SV_WARN(...)                                                                                                   \
 	{                                                                                                                  \
 		char stbuff[1024];                                                                                             \
 		sprintf(stbuff, __VA_ARGS__);                                                                                  \
-		ctx->warnfunction(ctx, stbuff);                                                                                \
+		SV_LOG_NULL_GUARD ctx->warnfunction(ctx, stbuff);                                                              \
 	}
 
 #define SV_INFO(...)                                                                                                   \
 	{                                                                                                                  \
 		char stbuff[1024];                                                                                             \
 		sprintf(stbuff, __VA_ARGS__);                                                                                  \
-		ctx->notefunction(ctx, stbuff);                                                                                \
+		SV_LOG_NULL_GUARD ctx->notefunction(ctx, stbuff);                                                              \
 	}
 #define SV_ERROR(...)                                                                                                  \
 	{                                                                                                                  \
 		char stbuff[1024];                                                                                             \
 		sprintf(stbuff, __VA_ARGS__);                                                                                  \
-		ctx->faultfunction(ctx, stbuff);                                                                               \
+		SV_LOG_NULL_GUARD ctx->faultfunction(ctx, stbuff);                                                             \
 	}
 #define SV_KILL() exit(0) // XXX This should likely be re-defined.
 

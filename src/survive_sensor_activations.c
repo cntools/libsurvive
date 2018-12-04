@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <math.h>
 #include <survive.h>
 
@@ -19,6 +20,7 @@ bool SurviveSensorActivations_isPairValid(const SurviveSensorActivations *self, 
 }
 
 void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct PoserDataIMU *imuData) {
+	self->last_imu = imuData->timecode;
 	for (int i = 0; i < 3; i++) {
 		self->accel[i] = .98 * self->accel[i] + .02 * imuData->accel[i];
 	}
@@ -35,6 +37,7 @@ void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 
 	FLT *angle = &self->angles[lightData->sensor_id][lightData->lh][axis];
 	uint32_t *length = &self->lengths[lightData->sensor_id][lightData->lh][axis];
+	// assert(*length == 0 || fabs(*angle - lightData->angle) < 0.05);
 
 	*angle = lightData->angle;
 	*data_timecode = lightData->timecode;
