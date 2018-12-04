@@ -823,6 +823,9 @@ const char *survive_configs(SurviveContext *ctx, const char *tag, char flags, co
 
 static void survive_attach_config(SurviveContext *ctx, const char *tag, void * var, char type )
 {
+	if (ctx == 0)
+		return;
+
 	config_entry *cv = sc_search(ctx, tag);
 	if( !cv )
 	{

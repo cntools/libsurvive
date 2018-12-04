@@ -2,7 +2,9 @@
 add_executable(survive_tests
         main.c
         reproject.c
-        kalman.c rotate_angvel.c)
+        kalman.c rotate_angvel.c watchman.c ../driver_vive.c)
+
+add_definitions(-DDEBUG_WATCHMAN)
 
 target_link_libraries(survive_tests survive)
 
