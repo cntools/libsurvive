@@ -18,7 +18,7 @@ TEST(ViveDriver, TestWatchmanParsing) {
 	}
 
 	{
-		uint8_t readdata[] = {, 0x6f, 0xfd, 0x83, 0xff};
+		uint8_t readdata[] = {0x00, 0x6f, 0xfd, 0x83, 0xff};
 
 		LightcapElement les[10];
 		int cnt = parse_watchman_lightcap(0, "WW0", 224, 3761897504, readdata, sizeof(readdata), les, 10);
