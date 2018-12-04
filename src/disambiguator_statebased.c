@@ -615,6 +615,11 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 
 static void PropagateState(Disambiguator_data_t *d, const LightcapElement *le) {
 	struct SurviveContext *ctx = d->so->ctx;
+	if (le->sensor_id >= d->so->sensor_ct) {
+		SV_WARN("Invalid sensor %d detected hit", le->sensor_id);
+		return;
+	}
+
 	Global_Disambiguator_data_t *g = ctx->disambiguator_data;
 	int end_of_mod = g->single_60hz_mode ? LS_WaitLHB_ACode0 : LS_END;
 
@@ -679,7 +684,6 @@ void DisambiguatorStateBased(SurviveObject *so, const LightcapElement *le) {
 		return;
 	}
 
-	// if(so->codename[0] == 'W')
 	DEBUG_TB("%s LE: %2u\t%4u\t%8x\t%2u", so->codename, le->sensor_id, le->length, le->timestamp, d->state);
 
 	if (d->state == LS_UNKNOWN) {
@@ -706,8 +710,8 @@ void DisambiguatorStateBased(SurviveObject *so, const LightcapElement *le) {
 			int penalty = timediff / d->so->timebase_hz * 10;
 			if (d->confidence < penalty) {
 				SetState(d, le, LS_UNKNOWN);
-				SV_WARN("Disambiguator got lost at %u (sync timeout); refinding state for %s", le->timestamp,
-						d->so->codename);
+				SV_WARN("Disambiguator got lost at %u (sync timeout %u); refinding state for %s", le->timestamp,
+						timediff, d->so->codename);
 				return;
 			}
 
