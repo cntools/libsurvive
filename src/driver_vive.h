@@ -86,3 +86,6 @@ typedef struct SurviveUSBInterface {
 } SurviveUSBInterface;
 
 void survive_data_cb(SurviveUSBInterface *si);
+int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, uint8_t time1,
+							survive_timecode reference_time, uint8_t *readdata, size_t qty, LightcapElement *les,
+							size_t output_cnt);

@@ -1063,28 +1063,39 @@ void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
 	}
 }
 
-static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
+#define FAILURE_ON_FALSE(x)                                                                                            \
+	if (!(x)) {                                                                                                        \
+		SV_WARN("Assert failure for parsing watchman: " #x);                                                           \
+		goto failure;                                                                                                  \
+	};
+
+//#define DEBUG_WATCHMAN
+#define DEBUG_WATCHMAN_ERRORS
+#ifdef DEBUG_WATCHMAN
+#define DEBUG_WATCHMAN_ERRORS
+#endif
+static void handle_watchman(SurviveObject *so, uint8_t *readdata) {
 	uint8_t startread[29];
 	uint8_t *readdata_end = readdata + 29;
 	memcpy(startread, readdata, 29);
-
-#if 0
-	printf( "DAT:     " );
-		for(int i = 0; i < 29; i++ )
-		{
-			printf( "%02x ", readdata[i] );
-		}
-		printf("\n");
-#endif
+	struct SurviveContext *ctx = so->ctx;
 
 	uint32_t time1 = POP1;
-	uint8_t qty = POP1;
+	int qty = POP1;
 	uint8_t time2 = POP1;
 	uint8_t type = POP1;
 
 	qty -= 2;
+
 	int propset = 0;
 	int doimu = 0;
+
+	if (type == 0xf0) {
+		// Some kind of turn on / wake up event?
+		readdata += qty;
+		qty = 0;
+		type = 0;
+	}
 
 	if ((type & 0xf0) == 0xf0) {
 		buttonEvent bEvent;
@@ -1100,16 +1111,19 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 			bEvent.pressedButtonsValid = 1;
 			bEvent.pressedButtons = POP1;
 
-			// printf("buttonmask is %d\n", w->buttonmask);
+			// printf("buttonmask is %d\n", so->buttonmask);
 			type &= ~0x01;
 		}
+
 		if (type & 0x04) {
 			qty -= 1;
 			bEvent.triggerHighResValid = 1;
 			bEvent.triggerHighRes = (POP1)*128;
 			type &= ~0x04;
 		}
+
 		if (type & 0x02) {
+			FAILURE_ON_FALSE(qty >= 4);
 			qty -= 4;
 			bEvent.touchpadHorizontalValid = 1;
 			bEvent.touchpadVerticalValid = 1;
@@ -1119,8 +1133,20 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 			type &= ~0x02;
 		}
 
+		// I've seen fa, fb, fc, etc. fa and fb seemed to be mostly when i was using the joystick; f8/f0 a1 seems
+		// some kind of cap touch nonsense. Couldn't really pin down the structure; but always seemed long enough
+		// that we aren't dropping (any? a ton?) of light data --JB
+		if (type & 0x08) {
+			// qty -= 2;
+			type &= ~0x08;
+
+			readdata += qty;
+			qty = 0;
+			// POP2; // ?? Some kind of cap touch event?
+		}
+
 		if (bEvent.pressedButtonsValid || bEvent.triggerHighResValid || bEvent.touchpadHorizontalValid) {
-			registerButtonEvent(w, &bEvent);
+			registerButtonEvent(so, &bEvent);
 		}
 
 		// XXX TODO: Is this correct?  It looks SO WACKY
@@ -1128,18 +1154,25 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 		if (type == 0x68)
 			doimu = 1;
 		type &= 0x0f;
+
 		if (type == 0x00 && qty) {
 			type = POP1;
 			qty--;
 		}
 	}
 
+	if (type == 0xa1) {
+		// Some type of heartbeat?
+		readdata += qty;
+		qty = 0;
+	}
+
 	if (type == 0xe1) {
 		propset |= 1;
-		w->charging = readdata[0] >> 7;
-		w->charge = POP1 & 0x7f;
+		so->charging = readdata[0] >> 7;
+		so->charge = POP1 & 0x7f;
 		qty--;
-		w->ison = 1;
+		so->ison = 1;
 		if (qty) {
 			qty--;
 			type = POP1; // IMU usually follows.
@@ -1154,10 +1187,14 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 		int j;
 		for (j = 0; j < 6; j++)
 			agm[j] = (int16_t)(readdata[j * 2 + 1] | (readdata[j * 2 + 2] << 8));
-		calibrate_acc(w, agm);
-		calibrate_gyro(w, agm + 3);
-		w->ctx->imuproc(w, 3, agm, (time1 << 24) | (time2 << 16) | readdata[0], 0);
+		calibrate_acc(so, agm);
+		calibrate_gyro(so, agm + 3);
+
+		struct SurviveContext *ctx = so->ctx;
+		// SV_INFO("IMU Time 0x%08x", (time1 << 24) | (time2 << 16) | readdata[0]);
+		so->ctx->imuproc(so, 3, agm, (time1 << 24) | (time2 << 16) | readdata[0], 0);
 		readdata += 13;
+		FAILURE_ON_FALSE(qty >= 13);
 		qty -= 13;
 
 		type &= ~0xe8;
@@ -1167,170 +1204,222 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 		}
 	}
 
+	FAILURE_ON_FALSE(qty >= 0);
 	if (qty) {
 		qty++;
 		readdata--;
 		*readdata = type;						// Put 'type' back on stack.
-		uint8_t *mptr = readdata + qty - 3 - 1; //-3 for timecode, -1 to
-
-#ifdef DEBUG_WATCHMAN
-		printf("_%s ", w->codename);
-		for (int i = 0; i < qty; i++) {
-			printf("%02x ", readdata[i]);
-		}
-		printf("\n");
-#endif
-
-		uint32_t mytime = (mptr[3] << 16) | (mptr[2] << 8) | (mptr[1] << 0);
-
-		uint32_t times[20];
-		const int nrtime = sizeof(times) / sizeof(uint32_t);
-		int timecount = 0;
-		int leds;
-		int fault = 0;
-
-		/// Handle uint32_tifying (making sure we keep it incrementing)
-		uint32_t llt = w->last_lighttime;
-		uint32_t imumsb = time1 << 24;
-		mytime |= imumsb;
-
-		// Compare mytime to llt
-
-		int diff = mytime - llt;
-		if (diff < -0x1000000)
-			mytime += 0x1000000;
-		else if (diff > 0x100000)
-			mytime -= 0x1000000;
-
-		w->last_lighttime = mytime;
-
-		times[timecount++] = mytime;
-#ifdef DEBUG_WATCHMAN
-		printf("_%s Packet Start Time: %d\n", w->codename, mytime);
-#endif
-
-		// First, pull off the times, starting with the current time, then all the delta times going backwards.
-		{
-			while (mptr - readdata > (timecount >> 1)) {
-				uint32_t arcane_value = 0;
-				// ArcanePop (Pop off values from the back, forward, checking if the MSB is set)
-				do {
-					uint8_t ap = *(mptr--);
-					arcane_value |= (ap & 0x7f);
-					if (ap & 0x80)
-						break;
-					arcane_value <<= 7;
-				} while (1);
-				times[timecount++] = (mytime -= arcane_value);
-#ifdef DEBUG_WATCHMAN
-				printf("_%s Time: %d  newtime: %d\n", w->codename, arcane_value, mytime);
-#endif
-			}
-
-			leds = timecount >> 1;
-			// Check that the # of sensors at the beginning match the # of parameters we would expect.
-			if (timecount & 1) {
-				fault = 1;
-				goto end;
-			} // Inordinal LED count
-			if (leds != mptr - readdata + 1) {
-				fault = 2;
-				goto end;
-			} // LED Count does not line up with parameters
-		}
 
 		LightcapElement les[10] = {0};
-		int lese = 0; // les's end
+		int lese =
+			parse_watchman_lightcap(so->ctx, so->codename, time1, so->activations.last_imu, readdata, qty, les, 10);
 
-		// Second, go through all LEDs and extract the lightevent from them.
-		{
-			uint8_t *marked = alloca(nrtime);
-			memset(marked, 0, nrtime);
-
-			int i, parpl = 0;
-			timecount--;
-			int timepl = 0;
-
-			// This works, but usually returns the values in reverse end-time order.
-			for (i = 0; i < leds; i++) {
-				int led = readdata[i];
-				int adv = led & 0x07;
-				led >>= 3;
-
-				while (marked[timepl])
-					timepl++;
-
-#ifdef DEBUG_WATCHMAN
-				int i;
-				printf("TP %d   TC: %d : ", timepl, timecount);
-				for (i = 0; i < nrtime; i++) {
-					printf("%d", marked[i]);
-				}
-				printf("\n");
-#endif
-
-				if (timepl > timecount) {
-					fault = 3;
-					goto end;
-				} // Ran off max of list.
-				uint32_t endtime = times[timepl++];
-
-				int end = timepl + adv;
-				if (end > timecount) {
-					SurviveContext *ctx = w->ctx;
-					SV_WARN("Lightfault 4: %d > %d", end, timecount);
-					fault = 4;
-					goto end;
-				} // end referencing off list
-				if (marked[end] > 0) {
-					fault = 5;
-					goto end;
-				} // Already marked trying to be used.
-				uint32_t starttime = times[end];
-				marked[end] = 1;
-
-				// Insert all lighting things into a sorted list.  This list will be
-				// reverse sorted, but that is to minimize operations.  To read it
-				// in sorted order simply read it back backwards.
-				// Use insertion sort, since we should most of the time, be in order.
-				assert(lese < 10);
-				LightcapElement *le = &les[lese++];
-				le->sensor_id = led;
-
-				if ((uint32_t)(endtime - starttime) > 65535) {
-					fault = 6;
-					goto end;
-				} // Length of pulse dumb.
-				le->length = endtime - starttime;
-				le->timestamp = starttime;
-
-#ifdef DEBUG_WATCHMAN
-				printf("_%s Event: %d %d %d-%d\n", w->codename, led, le->length, endtime, starttime);
-#endif
-				int swap = lese - 2;
-				while (swap >= 0 && les[swap].timestamp < les[swap + 1].timestamp) {
-					LightcapElement l;
-					memcpy(&l, &les[swap], sizeof(l));
-					memcpy(&les[swap], &les[swap + 1], sizeof(l));
-					memcpy(&les[swap + 1], &l, sizeof(l));
-					swap--;
-				}
-			}
+		if (lese < 0) {
+			SV_WARN("Parse error code %d", lese);
+			goto failure;
 		}
-
 		for (int i = lese - 1; i >= 0; i--) {
 #ifdef DEBUG_WATCHMAN
 			printf("%d: %u [%u]\n", les[i].sensor_id, les[i].length, les[i].timestamp);
 #endif
+			handle_lightcap(so, &les[i]);
+		}
+	}
+	return;
 
-			handle_lightcap(w, &les[i]);
+failure:
+#ifdef DEBUG_WATCHMAN_ERRORS
+	fprintf(stderr, "_%s Data: (type 0x%02x qty %d)", so->codename, type, qty);
+	for (int i = 0; i < 29; i++) {
+		fprintf(stderr, " %02x ", startread[i]);
+	}
+	fprintf(stderr, "\n");
+#endif
+	return;
+}
+
+int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, uint8_t time1,
+							survive_timecode reference_time, uint8_t *readdata, size_t qty, LightcapElement *les,
+							size_t output_cnt) {
+
+	assert(qty > 0);
+	uint8_t *mptr = readdata + qty - 3 - 1; //-3 for timecode, -1 to
+
+#ifdef DEBUG_WATCHMAN
+	fprintf(stderr, "_%s lc Data: ", codename);
+	for (int i = 0; i < qty; i++) {
+		fprintf(stderr, "%02x ", readdata[i]);
+	}
+	fprintf(stderr, "\n");
+#endif
+
+	uint32_t mytime = (mptr[3] << 16) | (mptr[2] << 8) | (mptr[1] << 0);
+
+	uint32_t times[20] = {0};
+	int timecount = 0;
+	int leds;
+	int fault = 0;
+
+	/// Handle uint32_tifying (making sure we keep it incrementing)
+	mytime |= ((uint32_t)time1 << 24);
+
+	times[timecount++] = mytime; //
+#ifdef DEBUG_WATCHMAN
+	fprintf(stderr, "_%s Packet Start Time: %d\n", codename, mytime);
+#endif
+
+	// First, pull off the times, starting with the current time, then all the delta times going backwards.
+	{
+		while (mptr - readdata > (timecount >> 1)) {
+			uint32_t time_delta = 0;
+#ifdef DEBUG_WATCHMAN
+			fprintf(stderr, "%s\t", codename);
+#endif
+
+			// https://en.wikipedia.org/wiki/Variable-length_quantity
+			uint8_t codebyte = 0;
+			int codelength = 0;
+			while ((codebyte & 0x80) == 0) {
+				codebyte = *(mptr--);
+				time_delta = (time_delta << 7) | (codebyte & 0x7f);
+				codelength++;
+
+				if (codelength > 5) {
+					SV_WARN("Code word too long");
+					fault = 7;
+					goto end;
+				}
+#ifdef DEBUG_WATCHMAN
+				fprintf(stderr, "%02x ", codebyte);
+#endif
+			}
+			times[timecount++] = (mytime -= time_delta);
+#ifdef DEBUG_WATCHMAN
+			fprintf(stderr, " Time: %d  newtime: %u\n", time_delta, mytime);
+#endif
 		}
 
-		return;
-	end : {
-		SurviveContext *ctx = w->ctx;
-		SV_INFO("Light decoding fault: %d", fault);
+		leds = timecount >> 1;
+		// Check that the # of sensors at the beginning match the # of parameters we would expect.
+		if (timecount & 1) {
+			SV_WARN("Uneven time count -- %d %d", leds, timecount);
+			fault = 1;
+			goto end;
+		} // Inordinal LED count
+		if (leds != mptr - readdata + 1) {
+			fault = 2;
+			SV_WARN("Bad LED count in packet %d; should be %ld", leds, mptr - readdata + 1);
+			goto end;
+		} // LED Count does not line up with parameters
 	}
+
+	size_t times_size = timecount;
+
+	int lese = 0; // les's end
+
+	// Second, go through all LEDs and extract the lightevent from them.
+	{
+		uint8_t *marked = alloca(timecount);
+		memset(marked, 0, timecount);
+
+		int i, parpl = 0;
+		timecount--;
+		int timepl = 0;
+
+		// This works, but usually returns the values in reverse end-time order.
+		for (i = 0; i < leds; i++) {
+			uint8_t led = readdata[i] >> 3;
+			int adv = readdata[i] & 0x07;
+
+			while (marked[timepl])
+				timepl++;
+
+#ifdef DEBUG_WATCHMAN
+			fprintf(stderr, "TP %d   TC: %d : ", timepl, timecount);
+			for (int i = 0; i < timecount; i++) {
+				fprintf(stderr, "%d", marked[i]);
+			}
+			fprintf(stderr, "\n");
+#endif
+
+			if (timepl > timecount) {
+				fault = 3;
+				goto end;
+			} // Ran off max of list.
+			uint32_t endtime = times[timepl++];
+
+			int end = timepl + adv;
+			if (end > timecount) {
+				SV_WARN("Lightfault 4: %d > %d", end, timecount);
+				fault = 4;
+				goto end;
+			} // end referencing off list
+			if (marked[end] > 0) {
+				fault = 5;
+				goto end;
+			} // Already marked trying to be used.
+			uint32_t starttime = times[end];
+			marked[end] = 1;
+
+			// Insert all lighting things into a sorted list.  This list will be
+			// reverse sorted, but that is to minimize operations.  To read it
+			// in sorted order simply read it back backwards.
+			// Use insertion sort, since we should most of the time, be in order.
+			assert(lese < output_cnt);
+			LightcapElement *le = &les[lese++];
+			le->sensor_id = led;
+
+			if ((uint32_t)(endtime - starttime) > 65535) {
+				fault = 6;
+				goto end;
+			} // Length of pulse dumb.
+			le->length = endtime - starttime;
+			le->timestamp = starttime;
+
+			// Note that this check was moved here from above.
+			// The general issue is that the 'time1' field isn't super in sync with the last 3 bytes we use for timing
+			// light events -- it can tip a smidge before those bytes see it or sometimes after. This can cause
+			// wild 1<<24 tick differences which break everything.
+			//
+			// The reason the check was moved down here was if you fix it before now, when you start subtracting off
+			// the endtime, you can roll it _back_ over; which causes the same behavior. Since this is the last thing
+			// we do with the timestamp, this is likely the best place for it.
+			//
+			// We base it off IMU as a reference because light events can get blocked and it's not out of the ordinary
+			// to not see them for a second or two. (1 << 23) on a 48mhz clock is ~150ms; and the IMU is consistently
+			// much faster than that.
+			if (le->timestamp > reference_time && le->timestamp - reference_time > (1 << 23)) {
+				le->timestamp -= (1 << 24);
+			} else if (reference_time > le->timestamp && reference_time - le->timestamp > (1 << 23)) {
+				le->timestamp += (1 << 24);
+			}
+
+#ifdef DEBUG_WATCHMAN
+			fprintf(stderr, "_%s Event: %d %u %u-%u\n", codename, led, le->length, endtime, starttime);
+#endif
+			int swap = lese - 2;
+			while (swap >= 0 && les[swap].timestamp < les[swap + 1].timestamp) {
+				LightcapElement l;
+				memcpy(&l, &les[swap], sizeof(l));
+				memcpy(&les[swap], &les[swap + 1], sizeof(l));
+				memcpy(&les[swap + 1], &l, sizeof(l));
+				swap--;
+			}
+		}
+	}
+
+	return lese;
+
+end : {
+#ifdef DEBUG_WATCHMAN_ERRORS
+	SV_INFO("Light decoding fault: %d", fault);
+	fprintf(stderr, "Info: _%s %u %u ", codename, time1, reference_time);
+	for (int i = 0; i < qty; i++) {
+		fprintf(stderr, "%02x ", readdata[i]);
+	}
+	fprintf(stderr, "\n");
+#endif
+	return -fault;
 	}
 }
 
