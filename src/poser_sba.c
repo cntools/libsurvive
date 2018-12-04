@@ -18,7 +18,7 @@ STATIC_CONFIG_ITEM(SBA_REQUIRED_MEAS, "required-meas", 'i',
 				   "Minimum number of measurements needed to try and solve for position", 8);
 STATIC_CONFIG_ITEM(SBA_TIME_WINDOW, "time-window", 'i',
 				   "The length, in ticks, between sensor inputs to treat them as one snapshot",
-				   (int)SurviveSensorActivations_default_tolerance);
+				   (int)SurviveSensorActivations_default_tolerance * 2);
 
 typedef struct {
 	PoserData *pdfs;
@@ -331,11 +331,13 @@ static double run_sba(PoserDataFullScene *pdfs, SurviveObject *so, int max_itera
 	{
 		SurviveContext *ctx = so->ctx;
 		// Docs say info[0] should be divided by meas; I don't buy it really...
-		SV_INFO("%f original reproj error for %u meas", (info[0] / meas_size * 2), (int)meas_size);
-		SV_INFO("%f cur reproj error", (info[1] / meas_size * 2));
+		if (meas_size > 0) {
+			SV_INFO("%f original reproj error for %u meas", (info[0] / meas_size * 2), (int)meas_size);
+			SV_INFO("%f cur reproj error", (info[1] / meas_size * 2));
+		}
 	}
 
-	return info[1] / meas_size * 2;
+	return meas_size == 0 ? 100 : info[1] / meas_size * 2;
 }
 
 int PoserSBA(SurviveObject *so, PoserData *pd) {
