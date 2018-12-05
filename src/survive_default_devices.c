@@ -126,12 +126,24 @@ int solve_vive_pose(SurvivePose *pose, const vive_pose_t *vpose) {
 	if (vpose->plus_z[0] == 0.0 && vpose->plus_z[1] == 0.0 && vpose->plus_z[2] == 0.0)
 		return 0;
 
-	FLT axis[] = {1, 0, 0, 0, 0, 1};
-
-	KabschCentered(pose->Rot, axis, vpose->plus_x, 2);
-
-	// Not really sure about this; but seems right? Could also be pose->Rot * vpose->position
 	copy3d(pose->Pos, vpose->position);
+
+	LinmathVec3d plus_y;
+	cross3d(plus_y, vpose->plus_z, vpose->plus_x);
+	FLT m[] = {vpose->plus_x[0], plus_y[0],		   vpose->plus_z[0], vpose->plus_x[1], plus_y[1],
+			   vpose->plus_z[1], vpose->plus_x[2], plus_y[2],		 vpose->plus_z[2]};
+
+	quatfrommatrix33(pose->Rot, m);
+
+	// Double check the math above; I'm 95% sure its right but kabsch tells us for sure; but is expensive. Remove this
+	// when it's 100% clear its correct
+	FLT axis[] = {1, 0, 0, 0, 0, 1};
+	LinmathQuat rAssert;
+	KabschCentered(rAssert, axis, vpose->plus_x, 2);
+
+	LinmathQuat diff;
+	quatfind(diff, rAssert, pose->Rot);
+	assert(norm3d(diff + 1) < .001);
 
 	return 1;
 }
@@ -317,6 +329,7 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	solve_vive_pose(&so->head2trackref, &scratch.head);
 
 	SurvivePose trackref2imu = InvertPoseRtn(&so->imu2trackref);
+	// InvertPose(&so->head2trackref, &so->head2trackref);
 
 	for (int i = 0; i < so->sensor_ct; i++) {
 		ApplyPoseToPoint(&so->sensor_locations[i * 3], &trackref2imu, &so->sensor_locations[i * 3]);
