@@ -187,6 +187,7 @@ static void *HAPIReceiver(void *v) {
 	if (iface->actual_len < 0) {
 		SurviveContext* ctx = iface->sv->ctx;
 		SV_WARN("Error in hid read: %d", iface->actual_len);
+		iface->assoc_obj = 0;
 	}
 	// XXX TODO: Mark device as failed.
 	return 0;
@@ -749,7 +750,8 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 	for (int i = 0; i < sv->udev_cnt; i++) {
 		for (int j = 0; j < sv->udev[i].interface_cnt; j++) {
 			SurviveUSBInterface* iface = &sv->udev[i].interfaces[j];
-			HAPIReceiver(iface);
+			if (iface->assoc_obj)
+				HAPIReceiver(iface);
 		}
 	}
 #else
