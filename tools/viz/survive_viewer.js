@@ -206,7 +206,18 @@ function redrawCanvas(when) {
 		}
 	}
 }
+function solve_vive_pose(vpose) {
+	var plus_x = new THREE.Vector3().fromArray(vpose.plus_x);
+	var plus_z = new THREE.Vector3().fromArray(vpose.plus_z);
+	var plus_y = new THREE.Vector3().crossVectors(plus_z, plus_x);
 
+	var m = new THREE.Matrix4().makeBasis(plus_x, plus_y, plus_z);
+
+	var Rot = new THREE.Quaternion().setFromRotationMatrix(m);
+
+	var rtn = [ 0, 0, 0, 0, vpose.position[0], vpose.position[1], vpose.position[2] ];
+	return Rot.toArray(rtn);
+}
 function invertPose(pa, quat) {
 	var q = new THREE.Quaternion();
 	q.fromArray(quat);
@@ -231,21 +242,33 @@ function create_tracked_object(info) {
 	group.add(group_rot);
 	if (info.config && info.config.lighthouse_config) {
 		var trackref = new THREE.Group();
+		var imuref = new THREE.Group();
 
 		var trackref_from_head = info.config.trackref_from_head;
 		var trackref_from_imu = info.config.trackref_from_imu;
 
+		if (!trackref_from_head && info.config.head)
+			trackref_from_head = solve_vive_pose(info.config.head);
+
+		if (!trackref_from_imu && info.config.imu)
+			trackref_from_imu = solve_vive_pose(info.config.imu);
+
 		if (trackref_from_head && trackref_from_imu) {
 			var pa = [ trackref_from_head[4], trackref_from_head[5], trackref_from_head[6] ];
 			var qa = [ trackref_from_head[0], trackref_from_head[1], trackref_from_head[2], trackref_from_head[3] ];
-			trackref.position.fromArray(pa);
-			trackref.quaternion.fromArray(qa);
-			var pose = invertPose(
-				[ trackref_from_head[4], trackref_from_head[5], trackref_from_head[6] ],
-				[ trackref_from_head[3], trackref_from_head[0], trackref_from_head[1], trackref_from_head[2] ]);
-			// trackref.position.copy(pose[0]);
-			// trackref.quaternion.copy(pose[1]);
+			var ipose = invertPose(pa, qa);
+			trackref.position.copy(ipose[0]);
+			trackref.quaternion.copy(ipose[1]);
 			trackref.verticesNeedUpdate = true;
+
+			var pa = [ trackref_from_imu[4], trackref_from_imu[5], trackref_from_imu[6] ];
+			var qa = [ trackref_from_imu[0], trackref_from_imu[1], trackref_from_imu[2], trackref_from_imu[3] ];
+			var ipose = invertPose(pa, qa);
+			imuref.position.copy(ipose[0]);
+			imuref.quaternion.copy(ipose[1]);
+			imuref.position.fromArray(pa);
+			imuref.quaternion.fromArray(qa);
+			imuref.verticesNeedUpdate = true;
 		}
 		for (var idx in info.config.lighthouse_config.modelPoints) {
 			var p = info.config.lighthouse_config.modelPoints[idx];
@@ -268,7 +291,9 @@ function create_tracked_object(info) {
 		}
 
 		group_rot.add(trackref);
+		trackref.add(imuref);
 		group.trackref = trackref;
+		group.imuref = imuref;
 	} else {
 		axesLength = 1.5;
 	}
@@ -514,7 +539,7 @@ var survive_log_handlers = {
 				var line = new THREE.Line(downAxes[obj.tracker], new THREE.LineBasicMaterial({color : 0xffffff}));
 				downAxes[obj.tracker].line = line;
 				downAxes[obj.tracker].line.visible = false;
-				scene.add(line);
+				objs[obj.tracker].imuref.add(line);
 			}
 
 			if (downAxes[obj.tracker].line)
@@ -524,10 +549,10 @@ var survive_log_handlers = {
 
 				var inWorld = new THREE.Vector3(0, 0, 0);
 				inWorld.fromArray(q);
-				inWorld.applyQuaternion(objs[obj.tracker].quaternion);
-				inWorld.add(objs[obj.tracker].position);
+				// inWorld.applyQuaternion(objs[obj.tracker].group_rot.quaternion.clone());
+				// inWorld.add(objs[obj.tracker].position);
 
-				downAxes[obj.tracker].vertices[0] = objs[obj.tracker].position;
+				// downAxes[obj.tracker].vertices[0] = objs[obj.tracker].position;
 				downAxes[obj.tracker].vertices[1] = inWorld;
 				downAxes[obj.tracker].verticesNeedUpdate = true;
 			}
