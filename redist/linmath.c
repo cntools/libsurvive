@@ -213,6 +213,11 @@ inline void axisanglefromquat(FLT *angle, FLT *axis, FLT *q) {
 // Originally from Mercury (Copyright (C) 2009 by Joshua Allen, Charles Lohr, Adam Lowman)
 // Under the mit/X11 license.
 
+inline FLT quatdifference(const LinmathQuat q1, const LinmathQuat q2) {
+	LinmathQuat diff;
+	quatfind(diff, q1, q2);
+	return 1. - diff[0];
+}
 FLT quatdist(const double *q1, const double *q2) {
 	FLT rtn = 0;
 	for (int i = 0; i < 4; i++) {
