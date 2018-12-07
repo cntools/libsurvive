@@ -598,7 +598,7 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 				// if we synced with the LH at certain times.
 				if (le->length > 0 && le->length >= minl && le->length <= maxl) {
 					int le_offset = apply_mod_offset(le->timestamp + le->length / 2, d->mod_offset[lh], end_of_mod);
-					int32_t offset_from = le_offset - LSParam_offset_for_state(d->state) + 20000;
+					int32_t offset_from = le_offset - LSParam_offset_for_state(d->state) + (lh == 0 ? 20000 : 40000);
 
 					assert(offset_from > 0);
 					// Send the lightburst out.
