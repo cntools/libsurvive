@@ -304,12 +304,14 @@ function create_tracked_object(info) {
 	objs[info.tracker] = group;
 	objs[info.tracker].group = group;
 	objs[info.tracker].group_rot = group_rot;
-	objs[info.tracker].trackref.visible = false;
+	if (objs[info.tracker].trackref)
+		objs[info.tracker].trackref.visible = false;
+
 	objs[info.tracker].group.position.set(NaN);
 	var velocityGeom = new THREE.Geometry();
 	velocityGeom.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0));
 	objs[info.tracker].velocity =
-		new THREE.Line(velocityGeom, new THREE.LineBasicMaterial({color : 0xFFFFFF, linewidth : 2}));
+		new THREE.Line(velocityGeom, new THREE.LineBasicMaterial({color : 0xFFFF00, linewidth : 2}));
 
 	var angVelocityGeom = new THREE.Geometry();
 	angVelocityGeom.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0));
@@ -540,19 +542,31 @@ var survive_log_handlers = {
 				downAxes[obj.tracker].line = line;
 				downAxes[obj.tracker].line.visible = false;
 				objs[obj.tracker].imuref.add(line);
+
+				downAxes[obj.tracker].gyro_geom = new THREE.Geometry();
+				downAxes[obj.tracker].gyro_geom.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0));
+
+				var line =
+					new THREE.Line(downAxes[obj.tracker].gyro_geom, new THREE.LineBasicMaterial({color : 0xff00ff}));
+				downAxes[obj.tracker].gyro_geom.line = line;
+				downAxes[obj.tracker].gyro_geom.line.visible = false;
+				objs[obj.tracker].imuref.add(line);
 			}
 
-			if (downAxes[obj.tracker].line)
-				downAxes[obj.tracker].line.visible = $("#imu")[0].checked;
+			if (downAxes[obj.tracker].line) {
+				downAxes[obj.tracker].gyro_geom.line.visible = downAxes[obj.tracker].line.visible =
+					$("#imu")[0].checked;
+			}
 			if (objs[obj.tracker].position) {
 				var q = obj.accelgyro;
 
+				var gyroInWorld = new THREE.Vector3(0, 0, 0);
+				gyroInWorld.fromArray(q, 3);
+				downAxes[obj.tracker].gyro_geom.vertices[1] = gyroInWorld;
+				downAxes[obj.tracker].gyro_geom.verticesNeedUpdate = true;
+
 				var inWorld = new THREE.Vector3(0, 0, 0);
 				inWorld.fromArray(q);
-				// inWorld.applyQuaternion(objs[obj.tracker].group_rot.quaternion.clone());
-				// inWorld.add(objs[obj.tracker].position);
-
-				// downAxes[obj.tracker].vertices[0] = objs[obj.tracker].position;
 				downAxes[obj.tracker].vertices[1] = inWorld;
 				downAxes[obj.tracker].verticesNeedUpdate = true;
 			}
