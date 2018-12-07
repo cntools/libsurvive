@@ -576,6 +576,9 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 	} else {
 		// Leaving a sweep ...
 		size_t avg_length = 0;
+
+		int lh = LS_Params[d->state].lh;
+		survive_timecode best_timecode = LSParam_offset_for_state(d->state) + CAPTURE_WINDOW + d->mod_offset[lh];
 		size_t cnt = 0;
 
 		for (int i = 0; i < d->so->sensor_ct; i++) {
@@ -583,14 +586,13 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 			if (le.length > 0) {
 				avg_length += le.length;
 				cnt++;
+				// best_timecode = le.timestamp;
 			}
 		}
 		if (cnt > 0) {
 			double var = 3;
 			size_t minl = 10;
 			size_t maxl = var * DIV_ROUND_CLOSEST(avg_length, cnt);
-
-			int lh = LS_Params[d->state].lh;
 
 			for (int i = 0; i < d->so->sensor_ct; i++) {
 				const LightcapElement *le = &d->sweep_data[i];
@@ -609,6 +611,10 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 				}
 			}
 		}
+
+		if (d->confidence > 80)
+			ctx->lightproc(d->so, -3, LS_Params[d->state].acode, 0, best_timecode, DIV_ROUND_CLOSEST(avg_length, cnt),
+						   LS_Params[d->state].lh);
 	}
 	SetState(d, le, new_state);
 }

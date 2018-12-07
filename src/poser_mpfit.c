@@ -130,7 +130,7 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 
 	survive_optimizer mpfitctx = {
 		.so = so,
-		//.current_bias = 0.001,
+		//.current_bias = 0.01,
 		.poseLength = 1,
 		.cameraLength = so->ctx->activeLighthouses,
 	};
@@ -313,7 +313,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		// std::cerr << "Average reproj error: " << error << std::endl;
 		return 0;
 	}
-	case POSERDATA_LIGHT: {
+	case POSERDATA_SYNC: {
 		// No poses if calibration is ongoing
 		if (ctx->calptr && ctx->calptr->stage < 5)
 			return 0;
@@ -323,7 +323,8 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 
 		// only process sweeps
 		FLT error = -1;
-		if (d->last_lh != lightData->lh || d->last_acode != lightData->acode) {
+		// if (d->last_lh != lightData->lh || d->last_acode != lightData->acode) {
+		if (lightData->sensor_id == -3) {
 			error = run_mpfit_find_3d_structure(d, lightData, scene, &estimate);
 
 			d->last_lh = lightData->lh;
@@ -359,9 +360,9 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		if (ctx->calptr && ctx->calptr->stage < 5) {
 		} else if (d->useIMU) {
 			survive_imu_tracker_integrate_imu(&d->tracker, imu);
-
+			// SV_INFO("diff?%8u", imu->timecode);
 			SurvivePose out = { 0 };
-			survive_imu_tracker_predict(&d->tracker, imu->timecode, &out);
+			// survive_imu_tracker_predict(&d->tracker, imu->timecode, &out);
 			if (!quatiszero(out.Rot)) {
 				SurviveVelocity vel = survive_imu_velocity(&d->tracker);
 				PoserData_poser_pose_func_with_velocity(pd, so, &out, &vel);
@@ -369,7 +370,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 			// SV_INFO("%+.07f %+.07f %+.07f", imu->gyro[0], imu->gyro[1], imu->gyro[2]);
 		} else if (d->useKalman) {
 			SurvivePose out = { 0 };
-			survive_imu_tracker_predict(&d->tracker, imu->timecode, &out);
+			// survive_imu_tracker_predict(&d->tracker, imu->timecode, &out);
 			if (!quatiszero(out.Rot)) {
 				SurviveVelocity vel = survive_imu_velocity(&d->tracker);
 				PoserData_poser_pose_func_with_velocity(pd, so, &out, &vel);

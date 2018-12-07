@@ -228,16 +228,15 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 
 	case 1:
 		//Collecting OOTX data.
-		if( sensor_id < 0 )
-		{
-				//fprintf(stderr, "%s\n", so->codename);
-				int lhid = lh;
-				// Take the OOTX data from the first device.  (if using HMD, WM0, WM1 only, this will be HMD)
+		if (sensor_id < 0 && sensor_id != -3) {
+			// fprintf(stderr, "%s\n", so->codename);
+			int lhid = lh;
+			// Take the OOTX data from the first device.  (if using HMD, WM0, WM1 only, this will be HMD)
 
-				if (lhid < NUM_LIGHTHOUSES && so == cd->poseobjects[0]) {
-					uint8_t dbit = (acode & 2) >> 1;
-					ootx_pump_bit(&cd->ootx_decoders[lhid], dbit);
-					cd->seen_lh[lhid] = true;
+			if (lhid < NUM_LIGHTHOUSES && so == cd->poseobjects[0]) {
+				uint8_t dbit = (acode & 2) >> 1;
+				ootx_pump_bit(&cd->ootx_decoders[lhid], dbit);
+				cd->seen_lh[lhid] = true;
 			}
 			int i;
 			for (i = 0; i < ctx->activeLighthouses; i++) {
@@ -320,23 +319,6 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 		{
 			cd->peak_counts = ct;
 		}
-
-
-		//Determine if there is a sensor on a watchman visible from both lighthouses.
-/*		if( sensid >= 32 )
-		{
-			int k;
-			int ok = 1;
-			for( k = 0; k < NUM_LIGHTHOUSES; k++ )
-			{
-				if( cd->all_counts[sensid][k][0] < NEEDED_COMMON_POINTS || cd->all_counts[sensid][k][1] < NEEDED_COMMON_POINTS )
-				{
-					ok = 0;
-					break;
-				}
-			}
-			if( ok ) cd->found_common = 1;
-		}*/
 
 		if( cd->peak_counts >= PTS_BEFORE_COMMON )
 		{
