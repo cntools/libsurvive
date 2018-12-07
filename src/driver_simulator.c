@@ -66,7 +66,7 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 	// SurvivePose accel = {.Pos = {cos(t * 3) * 4, cos(t * 2) * 3, cos(t * 4) * 2},
 	//					 .Rot = {10 + cos(t) * 2, cos(t), sin(t), (cos(t) + sin(t))}};
 
-	// SurviveVelocity accel = {.EulerRot = {cos(t), sin(t), (cos(t) + sin(t))}};
+	// SurviveVelocity accel = {.AxisAngleRot = {cos(t), sin(t), (cos(t) + sin(t))}};
 	SurviveVelocity accel = {0};
 
 	LinmathVec3d attractors[] = {{1, 1, 1}, {-1, 0, 1}, {0, -1, .5}};
@@ -79,7 +79,7 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 		LinmathVec3d acc;
 		sub3d(acc, attractors[i], driver->position.Pos);
 		FLT r = norm3d(acc);
-		scale3d(acc, acc, 5. / r / r);
+		scale3d(acc, acc, 1. / r / r);
 		add3d(accel.Pos, accel.Pos, acc);
 	}
 
@@ -103,7 +103,7 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 			quatgetconjugate(q, driver->position.Rot);
 			quatrotatevector(accelgyro, q, accelgyro);
 
-			quatrotatevector(accelgyro + 3, q, driver->velocity.EulerRot);
+			quatrotatevector(accelgyro + 3, q, driver->velocity.AxisAngleRot);
 		}
 
 		ctx->imuproc(driver->so, 3, accelgyro, timecode, 0);
@@ -136,8 +136,8 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 				FLT facingness = dot3d(normalInLh, dirLh);
 				if (facingness > 0) {
 					survive_reproject_xy(ctx->bsd[lh].fcal, ptInLh, ang);
-					ang[0] += .001 * rand() / RAND_MAX;
-					ang[1] += .001 * rand() / RAND_MAX;
+					// ang[0] += .001 * rand() / RAND_MAX;
+					// ang[1] += .001 * rand() / RAND_MAX;
 					// SurviveObject * so, int sensor_id, int acode, survive_timecode timecode, FLT length, FLT angle,
 					// uint32_t lh);
 					int acode = (lh << 2) + (driver->acode & 1);
@@ -148,7 +148,7 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 		// SurviveObject * so, int sensor_id, int acode, int timeinsweep, survive_timecode timecode, survive_timecode
 		// length, uint32_t lighthouse);
 		int acode = (lh << 2) + (driver->acode & 1);
-		ctx->lightproc(driver->so, -1, acode, 0, timecode, 100, lh);
+		ctx->lightproc(driver->so, -3, acode, 0, timecode, 100, lh);
 		driver->acode = (driver->acode + 1) % 4;
 		driver->time_last_light = timestamp;
 	}
@@ -170,18 +170,18 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 	if (!isIniting) {
 		SurviveVelocity velGain;
 		scale3d(velGain.Pos, accel.Pos, time_diff);
-		scale3d(velGain.EulerRot, accel.EulerRot, time_diff);
+		scale3d(velGain.AxisAngleRot, accel.AxisAngleRot, time_diff);
 
 		add3d(driver->velocity.Pos, driver->velocity.Pos, velGain.Pos);
-		add3d(driver->velocity.EulerRot, velGain.EulerRot, driver->velocity.EulerRot);
+		add3d(driver->velocity.AxisAngleRot, velGain.AxisAngleRot, driver->velocity.AxisAngleRot);
 
 		SurviveVelocity posGain;
 		scale3d(posGain.Pos, driver->velocity.Pos, time_diff);
-		scale3d(posGain.EulerRot, driver->velocity.EulerRot, time_diff);
+		scale3d(posGain.AxisAngleRot, driver->velocity.AxisAngleRot, time_diff);
 
 		add3d(driver->position.Pos, driver->position.Pos, posGain.Pos);
 		LinmathQuat r;
-		quatfromeuler(r, posGain.EulerRot);
+		quatfromaxisanglemag(r, posGain.AxisAngleRot);
 		quatrotateabout(driver->position.Rot, r, driver->position.Rot);
 	}
 
@@ -248,9 +248,9 @@ int DriverRegSimulator(SurviveContext *ctx) {
 		for (int i = 0; i < 3; i++)
 			sp->velocity.Pos[i] = 2. * rand() / RAND_MAX - 1.;
 
-		sp->velocity.EulerRot[0] = .5;
-		sp->velocity.EulerRot[1] = .5;
-		sp->velocity.EulerRot[2] = .5;
+		sp->velocity.AxisAngleRot[0] = .5;
+		sp->velocity.AxisAngleRot[1] = .5;
+		sp->velocity.AxisAngleRot[2] = .5;
 	}
 
 	char *cfg = 0, *loc_buf = 0, *nor_buf = 0;

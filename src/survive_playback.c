@@ -90,7 +90,7 @@ void survive_recording_velocity_process(SurviveObject *so, uint8_t lighthouse, c
 		return;
 
 	write_to_output(recordingData, "%s VELOCITY %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\n", so->codename, pose->Pos[0],
-					pose->Pos[1], pose->Pos[2], pose->EulerRot[0], pose->EulerRot[1], pose->EulerRot[2]);
+					pose->Pos[1], pose->Pos[2], pose->AxisAngleRot[0], pose->AxisAngleRot[1], pose->AxisAngleRot[2]);
 }
 void survive_recording_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose) {
 	SurviveRecordingData *recordingData = so->ctx->recptr;
@@ -107,7 +107,7 @@ void survive_recording_external_velocity_process(SurviveContext *ctx, const char
 		return;
 
 	write_to_output(recordingData, "%s EXTERNAL_VELOCITY %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\n", name, pose->Pos[0],
-					pose->Pos[1], pose->Pos[2], pose->EulerRot[0], pose->EulerRot[1], pose->EulerRot[2]);
+					pose->Pos[1], pose->Pos[2], pose->AxisAngleRot[0], pose->AxisAngleRot[1], pose->AxisAngleRot[2]);
 }
 
 void survive_recording_external_pose_process(SurviveContext *ctx, const char *name, const SurvivePose *pose) {

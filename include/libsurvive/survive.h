@@ -337,6 +337,10 @@ SURVIVE_EXPORT int survive_cal_get_status(SurviveContext *ctx, char *description
 SURVIVE_EXPORT int survive_haptic(SurviveObject *so, uint8_t reserved, uint16_t pulseHigh, uint16_t pulseLow,
 								  uint16_t repeatCount);
 
+SURVIVE_EXPORT void survive_find_ang_velocity(SurviveAngularVelocity out, FLT tdiff, const LinmathQuat from,
+											  const LinmathQuat to);
+SURVIVE_EXPORT void survive_apply_ang_velocity(LinmathQuat out, const SurviveAngularVelocity v, FLT t,
+											   const LinmathQuat t0);
 // Call these from your callback if overridden.
 // Accept higher-level data.
 SURVIVE_EXPORT void survive_default_light_process(SurviveObject *so, int sensor_id, int acode, int timeinsweep,

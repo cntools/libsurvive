@@ -780,3 +780,21 @@ const SurvivePose *survive_object_pose(SurviveObject *so) { return &so->OutPose;
 int8_t survive_object_sensor_ct(SurviveObject *so) { return so->sensor_ct; }
 const FLT *survive_object_sensor_locations(SurviveObject *so) { return so->sensor_locations; }
 const FLT *survive_object_sensor_normals(SurviveObject *so) { return so->sensor_normals; }
+
+inline void survive_find_ang_velocity(SurviveAngularVelocity out, FLT tdiff, const LinmathQuat from,
+									  const LinmathQuat to) {
+	LinmathQuat vDiff = {1.};
+	// quatfind(vDiff, comparison_pose.Rot.v, tracker->last_pose.Rot.v);
+	quatfind(vDiff, from, to);
+
+	quattoaxisanglemag(out, vDiff);
+	scale3d(out, out, 1. / tdiff);
+}
+inline void survive_apply_ang_velocity(LinmathQuat out, const SurviveAngularVelocity v, FLT t, const LinmathQuat t0) {
+	SurviveAngularVelocity vel;
+	scale3d(vel, v, t);
+
+	LinmathQuat rot_change;
+	quatfromaxisanglemag(rot_change, vel);
+	quatrotateabout(out, rot_change, t0);
+}
