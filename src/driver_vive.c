@@ -235,11 +235,16 @@ static int AttachInterface(SurviveViveData *sv, struct SurviveUSBInfo *usbObject
 	// What do here?
 	iface->uh = usbObject->handle->interfaces[endpoint - usbObject->device_info->endpoints];
 	assert(iface->uh);
+
 #ifndef HID_NONBLOCKING
 	iface->servicethread = OGCreateThread(HAPIReceiver, iface);
 	OGUSleep(100000);
 #else
 	hid_set_nonblocking(iface->uh, 1);
+
+	// Empty the queue out. If you don't, you might get stale data
+	while (hid_read(iface->uh, iface->buffer, sizeof(iface->buffer)) > 0) {
+	}
 #endif
 #else
 	struct libusb_transfer *tx = iface->transfer = libusb_alloc_transfer(0);
@@ -386,8 +391,11 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 		return ret;
 	}
 
-	survive_usb_device_enumerator e = 0;
-	
+	if (d->serial_number == 0) {
+		SV_ERROR("Couldn't get serial number for device %s", usbInfo->device_info->name);
+		return -1;
+	}
+
 	for (survive_usb_device_t c = devs; c; c = c->next) {
 		int interface_num = c->interface_number;
 		interface_num = interface_num < 0 ? 0 : interface_num;
