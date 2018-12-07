@@ -39,6 +39,8 @@ struct PoserDataIMU;
 /**
  * Adds a lightData packet to the table.
  */
+SURVIVE_EXPORT FLT SurviveSensorActivations_difference(const SurviveSensorActivations *rhs,
+        const SurviveSensorActivations *lhs);
 SURVIVE_EXPORT void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLight *lightData);
 
 SURVIVE_EXPORT void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct PoserDataIMU *imuData);

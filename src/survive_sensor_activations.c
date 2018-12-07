@@ -44,4 +44,21 @@ void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 	*length = (uint32_t)(lightData->length * 48000000);
 }
 
+FLT SurviveSensorActivations_difference(const SurviveSensorActivations *rhs, const SurviveSensorActivations *lhs) {
+	FLT rtn = 0;
+	int cnt = 0;
+	for(size_t i = 0;i < SENSORS_PER_OBJECT;i++) {
+		for(size_t lh = 0;lh < NUM_LIGHTHOUSES;lh++) {
+			for(size_t axis = 0;axis < 2;axis++) {
+				if(rhs->lengths[i][lh][axis] > 0 && lhs->lengths[i][lh][axis] > 0) {
+					FLT diff = rhs->angles[i][lh][axis] - lhs->angles[i][lh][axis];
+					rtn += diff * diff;
+					cnt++;
+				}
+			}
+		}
+	}
+	return rtn / (double)cnt;
+}
+
 SURVIVE_EXPORT uint32_t SurviveSensorActivations_default_tolerance = (uint32_t)(48000000 /*mhz*/ * (16.7 * 2 /*ms*/) / 1000) + 5000;
