@@ -27,8 +27,8 @@ extern "C" {
 #endif
 #endif
 
-#define float_format "%f"
-#define double_format "%lf"
+#define float_format "%+f"
+#define double_format "%+lf"
 #define _FLT_format2(f) f##_format
 #define _FLT_format(f) _FLT_format2(f)
 #define FLT_format _FLT_format(FLT)
@@ -37,6 +37,18 @@ extern "C" {
 #define Quat_format FLT_format "\t" FLT_format "\t" FLT_format "\t" FLT_format
 #define SurvivePose_format Point3_format "\t" Quat_format
 #define SurviveVel_format Point3_format "\t" Point3_format
+
+#define float_sformat "%f"
+#define double_sformat "%lf"
+#define _FLT_sformat2(f) f##_sformat
+#define _FLT_sformat(f) _FLT_sformat2(f)
+#define FLT_sformat _FLT_sformat(FLT)
+
+#define Point3_sformat FLT_sformat "\t" FLT_sformat "\t" FLT_sformat
+#define Quat_sformat FLT_sformat "\t" FLT_sformat "\t" FLT_sformat "\t" FLT_sformat
+#define SurvivePose_sformat Point3_sformat "\t" Quat_sformat
+#define SurviveVel_sformat Point3_sformat "\t" Point3_sformat
+
 #define LINMATH_QUAT_EXPAND(q) (q)[0], (q)[1], (q)[2], (q)[3]
 #define LINMATH_VEC3_EXPAND(p) (p)[0], (p)[1], (p)[2]
 #define SURVIVE_VELOCITY_EXPAND(v) LINMATH_VEC3_EXPAND((v).Pos), LINMATH_VEC3_EXPAND((v).AxisAngleRot)

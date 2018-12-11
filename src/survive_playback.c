@@ -219,8 +219,9 @@ static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver) {
 	int id;
 	SurviveContext *ctx = driver->ctx;
 
-	int rr = sscanf(line, "%s I %d %d " FLT_format " " FLT_format " " FLT_format " " FLT_format " " FLT_format
-						  " " FLT_format " " FLT_format " " FLT_format " " FLT_format "%d",
+	int rr = sscanf(line,
+					"%s I %d %d " FLT_sformat " " FLT_sformat " " FLT_sformat " " FLT_sformat " " FLT_sformat
+					" " FLT_sformat " " FLT_sformat " " FLT_sformat " " FLT_sformat "%d",
 					dev, &mask, &timecode, &accelgyro[0], &accelgyro[1], &accelgyro[2], &accelgyro[3], &accelgyro[4],
 					&accelgyro[5], &accelgyro[6], &accelgyro[7], &accelgyro[8], &id);
 
@@ -251,7 +252,7 @@ static int parse_and_run_externalpose(const char *line, SurvivePlaybackData *dri
 	char name[128] = { 0 };
 	SurvivePose pose;
 
-	int rr = sscanf(line, "%s EXTERNAL_POSE " SurvivePose_format "\n", name, &pose.Pos[0], &pose.Pos[1], &pose.Pos[2],
+	int rr = sscanf(line, "%s EXTERNAL_POSE " SurvivePose_sformat "\n", name, &pose.Pos[0], &pose.Pos[1], &pose.Pos[2],
 					&pose.Rot[0], &pose.Rot[1], &pose.Rot[2], &pose.Rot[3]);
 
 	SurviveContext *ctx = driver->ctx;
@@ -368,7 +369,8 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 				break;
 			}
 		case 'C':
-			parse_and_run_rawlight(line, driver);
+			if (op[1] == 0)
+				parse_and_run_rawlight(line, driver);
 			break;
 		case 'L':
 		case 'R':
