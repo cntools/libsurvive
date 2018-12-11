@@ -62,7 +62,8 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
         ./src/survive_reproject.c
         ./src/survive_reproject.generated.h
         ./src/survive_sensor_activations.c
-        ./src/survive_usb.c)
+        ./src/survive_usb.c
+		./src/survive_kalman.c)
 
 add_library(survive SHARED ${SURVIVE_SRCS})
 set_target_properties(survive PROPERTIES FOLDER "libraries")
