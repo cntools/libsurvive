@@ -69,11 +69,11 @@ static int TestKalmanIntegratePose(FLT pvariance, FLT rot_variance) {
 		survive_imu_tracker_integrate_observation(time, &kpose, &obs, variance);
 
 		SurvivePose estimate;
-		copy3d(estimate.Pos, kpose.pose.Pos.v);
-		quatcopy(estimate.Rot, kpose.pose.Rot.v);
-		// printf("Observation %f %f %f\n", obs.Pos[0], obs.Pos[1], obs.Pos[2]);
-		// printf("Actual      %f %f %f\n", pose.Pos[0], pose.Pos[1], pose.Pos[2]);
-		// printf("Estimate    %f %f %f\n\n", estimate.Pos[0], estimate.Pos[1], estimate.Pos[2]);
+		survive_imu_tracker_predict(&kpose, time, &estimate);
+
+		printf("Observation %f %f %f\n", obs.Pos[0], obs.Pos[1], obs.Pos[2]);
+		printf("Actual      %f %f %f\n", pose.Pos[0], pose.Pos[1], pose.Pos[2]);
+		printf("Estimate    %f %f %f\n\n", estimate.Pos[0], estimate.Pos[1], estimate.Pos[2]);
 
 		double acceptable_cdf = CDF(-3, pvariance);
 		for (int i = 0; i < 3; i++) {

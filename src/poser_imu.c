@@ -9,6 +9,7 @@
 struct PoserIMUData_t {
 	SurviveIMUTracker tracker;
 	SurviveSensorActivations previous_sweep;
+	bool inited;
 };
 
 int PoserIMU(SurviveObject *so, PoserData *pd) {
@@ -23,9 +24,6 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 
 	switch (pt) {
 		case POSERDATA_SYNC: {
-            if(dd->tracker.pose.Pos.info.variance <= 0) {
-                break;
-            }
 			const PoserDataLight* pdl = (const struct PoserDataLight*)pd;
 			FLT difference = (SurviveSensorActivations_difference(&so->activations, &dd->previous_sweep));
 			if(pdl->lh == 0 && (pdl->acode & 1) == 0) {
@@ -45,8 +43,9 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 	case POSERDATA_IMU: {
 		PoserDataIMU *imu = (PoserDataIMU *)pd;
 
-        if(dd->tracker.pose.Pos.info.variance <= 0) {
-            const FLT R[] = { 1. , 1.};
+		if (!dd->inited) {
+			dd->inited = true;
+			const FLT R[] = { 1. , 1.};
             SurvivePose pose = LinmathPose_Identity;
             const LinmathVec3d up = {0, 0, 1.};
             quatfrom2vectors(pose.Rot, imu->accel, up);
