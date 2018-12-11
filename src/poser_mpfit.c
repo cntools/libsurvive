@@ -332,8 +332,8 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 
 			if (error > 0) {
 
-				FLT var_meters = d->useKalman ? .01 + error : 0;
-				FLT var_quat = d->useKalman ? .01 + error : 0;
+				FLT var_meters = d->useKalman ? 0.01 + error : 0;
+				FLT var_quat = d->useKalman ? 0.01 + error : 0;
 				FLT var[2] = {var_meters, var_quat};
 
 				survive_imu_tracker_integrate_observation(lightData->timecode, &d->tracker, &estimate, var);
@@ -362,7 +362,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 			survive_imu_tracker_integrate_imu(&d->tracker, imu);
 			// SV_INFO("diff?%8u", imu->timecode);
 			SurvivePose out = { 0 };
-			// survive_imu_tracker_predict(&d->tracker, imu->timecode, &out);
+			survive_imu_tracker_predict(&d->tracker, imu->timecode, &out);
 			if (!quatiszero(out.Rot)) {
 				SurviveVelocity vel = survive_imu_velocity(&d->tracker);
 				PoserData_poser_pose_func_with_velocity(pd, so, &out, &vel);
@@ -370,7 +370,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 			// SV_INFO("%+.07f %+.07f %+.07f", imu->gyro[0], imu->gyro[1], imu->gyro[2]);
 		} else if (d->useKalman) {
 			SurvivePose out = { 0 };
-			// survive_imu_tracker_predict(&d->tracker, imu->timecode, &out);
+			survive_imu_tracker_predict(&d->tracker, imu->timecode, &out);
 			if (!quatiszero(out.Rot)) {
 				SurviveVelocity vel = survive_imu_velocity(&d->tracker);
 				PoserData_poser_pose_func_with_velocity(pd, so, &out, &vel);
