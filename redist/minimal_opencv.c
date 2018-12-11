@@ -40,9 +40,17 @@ SURVIVE_LOCAL_ONLY void cvGEMM(const CvMat *src1, const CvMat *src2, double alph
     int cols1 = (tABC & GEMM_1_T) ? src1->rows : src1->cols;	
 
     int rows2 = (tABC & GEMM_2_T) ? src2->cols : src2->rows;
-    int cols2 = (tABC & GEMM_2_T) ? src2->rows : src2->cols;	
+	int cols2 = (tABC & GEMM_2_T) ? src2->rows : src2->cols;
 
-    assert(cols1 == rows2);
+	if (src3) {
+		int rows3 = (tABC & GEMM_3_T) ? src3->cols : src3->rows;
+		int cols3 = (tABC & GEMM_3_T) ? src3->rows : src3->cols;
+		assert(rows3 == dst->rows);
+		assert(cols3 == dst->cols);
+	}
+
+	// assert(src3 == 0 || beta != 0);
+	assert(cols1 == rows2);
     assert(rows1 == dst->rows);
     assert(cols2 == dst->cols);
 
@@ -53,6 +61,9 @@ SURVIVE_LOCAL_ONLY void cvGEMM(const CvMat *src1, const CvMat *src2, double alph
 		cvCopyTo(src3, dst);
 	else
 		beta = 0;
+
+	assert(dst->data.db != src1->data.db);
+	assert(dst->data.db != src2->data.db);
 
 	cblas_dgemm(CblasRowMajor,
 		    (tABC & GEMM_1_T) ? CblasTrans : CblasNoTrans,

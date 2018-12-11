@@ -20,6 +20,7 @@ void handle_lightcap(SurviveObject *so, LightcapElement *le) {
 #endif
 
 	if (so->channel_map) {
+		assert(le->sensor_id < 32);
 		le->sensor_id = so->channel_map[le->sensor_id];
 		assert(le->sensor_id != -1);
 	}
