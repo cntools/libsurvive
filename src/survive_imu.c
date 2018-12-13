@@ -88,10 +88,10 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 		survive_timecode_difference(data->timecode, tracker->imu_kalman_update) / (FLT)tracker->so->timebase_hz;
 	// printf("i%u %f\n", data->timecode, time_diff);
 	LinmathAxisAngleMag aa_rot;
-	survive_kalman_get_state(0, &tracker->rot, 0, aa_rot);
+	survive_kalman_predict_state(0, &tracker->rot, 0, aa_rot);
 	LinmathQuat rot;
 	quatfromaxisanglemag(rot, aa_rot);
-	assert(time_diff > 0);
+	assert(time_diff >= 0);
 	if (time_diff > 1.0) {
 		SV_WARN("%s is probably dropping IMU packets; %f time reported between", tracker->so->codename, time_diff);
 		assert(time_diff < 10);
@@ -133,10 +133,10 @@ void survive_imu_tracker_predict(const SurviveIMUTracker *tracker, survive_timec
 
 	FLT t = survive_timecode_difference(timecode, tracker->obs_kalman_update) / (FLT)tracker->so->timebase_hz;
 
-	survive_kalman_get_state(t, &tracker->position, 0, out->Pos);
+	survive_kalman_predict_state(t, &tracker->position, 0, out->Pos);
 
 	LinmathAxisAngleMag r;
-	survive_kalman_get_state(t, &tracker->rot, 0, r);
+	survive_kalman_predict_state(t, &tracker->rot, 0, r);
 	quatfromaxisanglemag(out->Rot, r);
 }
 
@@ -180,11 +180,6 @@ STATIC_CONFIG_ITEM(IMU_GYRO_VARIANCE, "imu-gyro-variance", 'f', "Variance of gyr
 STATIC_CONFIG_ITEM(IMU_MAHONY_VARIANCE, "imu-mahony-variance", 'f', "Variance of mahony filter (negative to disable)",
 				   -1.);
 
-STATIC_CONFIG_ITEM(USE_OBS_VELOCITY, "use-obs-velocity", 'i', "Incorporate observed velocity into filter", 1);
-STATIC_CONFIG_ITEM(OBS_VELOCITY_POSITION_VAR, "obs-velocity-var", 'f', "Incorporate observed velocity into filter", 1.);
-STATIC_CONFIG_ITEM(OBS_VELOCITY_ROTATION_VAR, "obs-velocity-rot-var", 'f', "Incorporate observed velocity into filter",
-				   0.001);
-
 void rot_f(FLT t, FLT *F) {
 	FLT f[] = {1, t, 0, 1};
 
@@ -213,21 +208,13 @@ void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so) {
 	survive_attach_configf(tracker->so->ctx, VELOCITY_POSITION_VARIANCE_SEC_TAG, &tracker->pos_Q_per_sec[4]);
 	survive_attach_configf(tracker->so->ctx, VELOCITY_ROT_VARIANCE_SEC_TAG, &tracker->rot_Q_per_sec[3]);
 
-	survive_attach_configf(tracker->so->ctx, OBS_VELOCITY_POSITION_VAR_TAG, &tracker->obs_variance);
-	survive_attach_configf(tracker->so->ctx, OBS_VELOCITY_ROTATION_VAR_TAG, &tracker->obs_rot_variance);
-
-	tracker->acc_bias = 1;
 	survive_attach_configf(tracker->so->ctx, POSE_POSITION_VARIANCE_SEC_TAG, &tracker->pos_Q_per_sec[0]);
 	survive_attach_configf(tracker->so->ctx, POSE_ROT_VARIANCE_SEC_TAG, &tracker->rot_Q_per_sec[0]);
 
 	survive_attach_configf(tracker->so->ctx, IMU_MAHONY_VARIANCE_TAG, &tracker->mahony_variance);
-	survive_attach_configi(tracker->so->ctx, USE_OBS_VELOCITY_TAG, &tracker->use_obs_velocity);
 
 	survive_attach_configf(tracker->so->ctx, IMU_ACC_VARIANCE_TAG, &tracker->acc_var);
 	survive_attach_configf(tracker->so->ctx, IMU_GYRO_VARIANCE_TAG, &tracker->gyro_var);
-
-	// size_t dims, const FLT *F, const FLT *Q_per_sec, FLT *P,
-	//                               size_t state_size, FLT *state
 
 	survive_kalman_state_init(&tracker->rot, 2, rot_f, tracker->rot_Q_per_sec, 0, 3, 0);
 	survive_kalman_state_init(&tracker->position, 3, pos_f, tracker->pos_Q_per_sec, 0, 3, 0);
@@ -243,8 +230,8 @@ void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so) {
 
 SurviveVelocity survive_imu_velocity(const SurviveIMUTracker *tracker) {
 	SurviveVelocity rtn = {0};
-	survive_kalman_get_state(0, &tracker->position, 1, rtn.Pos);
-	survive_kalman_get_state(0, &tracker->rot, 1, rtn.AxisAngleRot);
+	survive_kalman_predict_state(0, &tracker->position, 1, rtn.Pos);
+	survive_kalman_predict_state(0, &tracker->rot, 1, rtn.AxisAngleRot);
 	return rtn;
 }
 
@@ -257,4 +244,9 @@ void survive_imu_tracker_integrate_velocity(SurviveIMUTracker *tracker, survive_
 	survive_kalman_predict_update_state(time_diff, &tracker->rot, vel->AxisAngleRot, H, Rv[1]);
 
 	tracker->imu_kalman_update = tracker->obs_kalman_update = timecode;
+}
+
+void survive_imu_tracker_free(SurviveIMUTracker *tracker) {
+	survive_kalman_state_free(&tracker->position);
+	survive_kalman_state_free(&tracker->rot);
 }

@@ -59,10 +59,6 @@ typedef struct kalman_info_pose_t {
 
 typedef struct SurviveIMUTracker {
 	SurviveObject *so;
-	int use_obs_velocity;
-	FLT acc_bias;
-	FLT obs_variance;
-	FLT obs_rot_variance;
 
 	FLT acc_var;
 	FLT gyro_var;
@@ -88,6 +84,7 @@ SURVIVE_EXPORT void survive_imu_tracker_predict(const SurviveIMUTracker *tracker
 												SurvivePose *out);
 SURVIVE_EXPORT void survive_imu_tracker_update(SurviveIMUTracker *tracker, survive_timecode timecode, SurvivePose *out);
 SURVIVE_EXPORT void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so);
+SURVIVE_EXPORT void survive_imu_tracker_free(SurviveIMUTracker *tracker);
 SURVIVE_EXPORT void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU *data);
 SURVIVE_EXPORT void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTracker *tracker,
 															  const SurvivePose *pose, const FLT *variance);
