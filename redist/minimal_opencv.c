@@ -30,6 +30,9 @@ const int DECOMP_LU = 2;
 void print_mat(const CvMat *M);
 
 SURVIVE_LOCAL_ONLY void cvCopyTo(const CvMat *srcarr, CvMat *dstarr) {
+	assert(srcarr->rows == dstarr->rows);
+	assert(srcarr->cols == dstarr->cols);
+	assert(dstarr->type == srcarr->type);
 	memcpy(dstarr->data.db, srcarr->data.db, sizeof(double) * dstarr->rows * dstarr->cols);
 }
 
