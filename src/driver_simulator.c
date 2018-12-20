@@ -4,6 +4,7 @@
 #include "math.h"
 #include "os_generic.h"
 #include "survive_config.h"
+#include "survive_default_devices.h"
 #include <json_helpers.h>
 #include <math.h>
 #include <stdio.h>
@@ -154,7 +155,19 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 	}
 
 	if (update_gt) {
-		survive_default_external_pose_process(ctx, "Sim_GT", &driver->position);
+		static int report_in_imu = -1;
+		if (report_in_imu == -1) {
+			survive_attach_configi(driver->so->ctx, "report-in-imu", &report_in_imu);
+		}
+
+		SurvivePose head2world;
+		if (!report_in_imu) {
+			ApplyPoseToPose(&head2world, &driver->position, &driver->so->head2imu);
+		} else {
+			head2world = driver->position;
+		}
+
+		survive_default_external_pose_process(ctx, "Sim_GT", &head2world);
 		survive_default_external_velocity_process(ctx, "Sim_GT", &driver->velocity);
 	}
 
@@ -230,8 +243,6 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	memcpy(device->codename, "SM0", 4);
 	memcpy(device->drivername, "SIM", 4);
 	device->sensor_ct = 20;
-	device->sensor_locations = malloc(device->sensor_ct * sizeof(FLT) * 3);
-	device->sensor_normals = malloc(device->sensor_ct * sizeof(FLT) * 3);
 
 	device->head2imu.Rot[0] = 1;
 	device->head2trackref.Rot[0] = 1;
@@ -267,8 +278,7 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	for (int i = 0; i < device->sensor_ct; i++) {
 		FLT azi = rand();
 		FLT pol = rand();
-		FLT *normals = device->sensor_normals + i * 3;
-		FLT *locations = device->sensor_locations + i * 3;
+		LinmathVec3d normals, locations;
 		normals[0] = locations[0] = r * cos(azi) * sin(pol);
 		normals[1] = locations[1] = r * sin(azi) * sin(pol);
 		normals[2] = locations[2] = r * cos(pol);
@@ -284,7 +294,27 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	nor_buf[strlen(nor_buf) - 2] = 0;
 	loc_buf[strlen(loc_buf) - 2] = 0;
 
+	double trackref_from_head[] = {rand(), rand(), rand(), rand(), rand(), rand(), rand()};
+	double trackref_from_imu[] = {rand(), rand(), rand(), rand(), rand(), rand(), rand()};
+	for (int i = 0; i < 7; i++) {
+		trackref_from_head[i] = .1 * (trackref_from_head[i] / RAND_MAX - .5);
+		trackref_from_imu[i] = .1 * (trackref_from_imu[i] / RAND_MAX - .5);
+	}
+
+	quatnormalize(trackref_from_head, trackref_from_head);
+	quatnormalize(trackref_from_imu, trackref_from_imu);
+
+	char buffer[1024] = {0};
+	sprintf(buffer,
+			"\"trackref_from_head\": [%f, %f, %f, %f, %f, %f, %f], \n"
+			"\"trackref_from_imu\": [%f, %f, %f, %f, %f, %f, %f], \n",
+			trackref_from_head[0], trackref_from_head[1], trackref_from_head[2], trackref_from_head[3],
+			trackref_from_head[4], trackref_from_head[5], trackref_from_head[6], trackref_from_imu[0],
+			trackref_from_imu[1], trackref_from_imu[2], trackref_from_imu[3], trackref_from_imu[4],
+			trackref_from_imu[5], trackref_from_imu[6]);
+
 	str_append(&cfg, "{\n");
+	str_append(&cfg, buffer);
 	str_append(&cfg, "     \"lighthouse_config\": {\n");
 	str_append(&cfg, "          \"modelNormals\": [\n");
 	str_append(&cfg, nor_buf);
