@@ -403,19 +403,22 @@ function update_object(v, allow_unsetup) {
 		if (objs[obj.tracker].trackref)
 			objs[obj.tracker].trackref.visible = $("#model")[0].checked;
 
+		if (objs[obj.tracker].oldPose == null) {
+			objs[obj.tracker].oldPose = [ 0, 0, 0 ];
+		}
+
 		var d = 0;
 		for (var i = 0; i < 3; i++) {
-			d += Math.pow(obj.position[i] - oldPose[i], 2.);
+			d += Math.pow(obj.position[i] - objs[obj.tracker].oldPose[i], 2.);
 		}
 
 		var trails = get_trails(obj);
 		if (trails && Math.sqrt(d) > .01) {
-
 			trails.geometry.vertices.push(trails.geometry.vertices.shift()); // shift the array
 			trails.geometry.vertices[MAX_LINE_POINTS - 1] =
 				new THREE.Vector3(obj.position[0], obj.position[1], obj.position[2]);
 			trails.geometry.verticesNeedUpdate = true;
-			oldPose = obj.position;
+			objs[obj.tracker].oldPose = obj.position;
 			record_position(obj.tracker, time, obj);
 		}
 
