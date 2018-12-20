@@ -13,6 +13,7 @@
 
 static uint32_t PoserData_timecode(PoserData *poser_data) {
 	switch (poser_data->pt) {
+	case POSERDATA_SYNC:
 	case POSERDATA_LIGHT: {
 		PoserDataLight *lightData = (PoserDataLight *)poser_data;
 		return lightData->timecode;
@@ -26,6 +27,7 @@ static uint32_t PoserData_timecode(PoserData *poser_data) {
 		return imuData->timecode;
 	}
 	}
+	assert(false);
 	return -1;
 }
 
