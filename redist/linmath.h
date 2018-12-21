@@ -138,6 +138,17 @@ LINMATH_EXPORT void quattomatrix33(FLT *matrix33, const LinmathQuat qin);
 LINMATH_EXPORT void quatfrommatrix(LinmathQuat q, const FLT *matrix44);
 LINMATH_EXPORT void quatfrommatrix33(LinmathQuat q, const FLT *matrix33);
 LINMATH_EXPORT void quatgetconjugate(LinmathQuat qout, const LinmathQuat qin);
+
+/***
+ * Finds the nearest modulo 2*pi of a given axis angle representation that most neatly matches
+ * another axis angle vector.
+ *
+ * @param out Output vector
+ * @param inc Axis angle to find modulo answer for
+ * @param match Comparison axis angle meant to match up to. Pass in null to match [0, 0, 0].
+ */
+LINMATH_EXPORT void findnearestaxisanglemag(LinmathAxisAngleMag out, const LinmathAxisAngleMag inc,
+											const LinmathAxisAngleMag match);
 /***
  * Performs conjugation operation wherein we find
  *

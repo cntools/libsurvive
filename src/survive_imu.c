@@ -155,14 +155,20 @@ void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTrac
 
 	FLT time_diff = survive_timecode_difference(timecode, tracker->obs_kalman_update) / (FLT)tracker->so->timebase_hz;
 	assert(time_diff >= 0 && time_diff < 10);
-	// printf("o%u %f\n", timecode, time_diff);
+
 	FLT H[] = {1., time_diff, time_diff * time_diff / 2.};
 
 	survive_kalman_predict_update_state(time_diff, &tracker->position, pose->Pos, H, R[0]);
 
-	LinmathAxisAngleMag aa_rot;
+	LinmathAxisAngleMag aa_rot, cur_rot;
 	quattoaxisanglemag(aa_rot, pose->Rot);
+
+	survive_kalman_predict_state(time_diff, &tracker->rot, 0, cur_rot);
+	findnearestaxisanglemag(aa_rot, aa_rot, cur_rot);
+
 	survive_kalman_predict_update_state(time_diff, &tracker->rot, aa_rot, H, R[1]);
+
+	findnearestaxisanglemag(tracker->rot.state, tracker->rot.state, 0);
 
 	tracker->imu_kalman_update = tracker->obs_kalman_update = timecode;
 }

@@ -509,6 +509,21 @@ inline void quatrotateabout(LinmathQuat qout, const LinmathQuat q1, const Linmat
 	}
 }
 
+inline void findnearestaxisanglemag(LinmathAxisAngleMag out, const LinmathAxisAngleMag inc,
+									const LinmathAxisAngleMag match) {
+	FLT norm_match = match ? norm3d(match) : 0;
+	FLT norm_inc = norm3d(inc);
+	FLT new_norm_inc = norm_inc;
+
+	while (new_norm_inc > norm_match + M_PI) {
+		new_norm_inc -= 2 * M_PI;
+	}
+	while (new_norm_inc + M_PI < norm_match) {
+		new_norm_inc += 2 * M_PI;
+	}
+	scale3d(out, inc, new_norm_inc / norm_inc);
+}
+
 inline void quattoaxisanglemag(LinmathAxisAngleMag ang, const LinmathQuat q) {
 	FLT axis_len = sqrt(q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
 	FLT angle = 2. * atan2(axis_len, q[0]);
