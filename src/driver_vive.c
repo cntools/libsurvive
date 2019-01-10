@@ -202,6 +202,10 @@ static void *HAPIReceiver(void *v) {
 #else
 static void handle_transfer(struct libusb_transfer *transfer) {
 	SurviveUSBInterface *iface = transfer->user_data;
+	if (iface->assoc_obj == 0) {
+		return;
+	}
+
 	SurviveContext *ctx = iface->ctx;
 
 	if (transfer->status != LIBUSB_TRANSFER_COMPLETED) {
@@ -489,6 +493,12 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 	return ret;
 }
 #endif
+
+static void survive_close_usb_device(struct SurviveUSBInfo *usbInfo) {
+	for (size_t j = 0; j < usbInfo->interface_cnt; j++) {
+		usbInfo->interfaces[j].assoc_obj = 0;
+	}
+}
 
 int survive_usb_init(SurviveViveData *sv) {
 	SurviveContext *ctx = sv->ctx;
@@ -2126,6 +2136,10 @@ int DriverRegHTCVive(SurviveContext *ctx) {
 			// Powered off devices are stripped of their SurviveObject
 			if (hasError != 0 && usbInfo->so) {
 				SV_INFO("%s config issue.", usbInfo->so->codename);
+			}
+
+			if (hasError != 0) {
+				survive_close_usb_device(usbInfo);
 			}
 		}
 	}

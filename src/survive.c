@@ -757,8 +757,15 @@ int survive_simple_inflate(struct SurviveContext *ctx, const uint8_t *input, int
 	zs.avail_out = outlen;
 	zs.next_out = output;
 
-	if (inflate(&zs, Z_FINISH) != Z_STREAM_END) {
-		SV_INFO("survive_simple_inflate could not inflate.");
+	int errorCode = inflate(&zs, Z_FINISH);
+	if (errorCode != Z_STREAM_END) {
+		SV_WARN("survive_simple_inflate could not inflate: %d (stream written to 'libz_error.stream')", errorCode);
+
+		char fstname[128] = "libz_error.stream";
+		FILE *f = fopen(fstname, "wb");
+		fwrite(input, inlen, 1, f);
+		fclose(f);
+
 		return -1;
 	}
 	int len = zs.total_out;
