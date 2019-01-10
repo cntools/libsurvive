@@ -29,6 +29,13 @@
 
 #include "driver_vive.h"
 //#define DEBUG_WATCHMAN 1
+
+#ifdef DEBUG_WATCHMAN
+#define SV_VERBOSE SV_INFO
+#else
+#define SV_VERBOSE(...)
+#endif
+
 struct SurviveViveData;
 
 struct DeviceInfo {
@@ -1084,168 +1091,564 @@ void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
 #ifdef DEBUG_WATCHMAN
 #define DEBUG_WATCHMAN_ERRORS
 #endif
-static void handle_watchman(SurviveObject *so, uint8_t *readdata) {
-	uint8_t startread[29];
-	uint8_t *readdata_end = readdata + 29;
-	memcpy(startread, readdata, 29);
-	struct SurviveContext *ctx = so->ctx;
 
-	uint32_t time1 = POP1;
-	int qty = POP1;
-	uint8_t time2 = POP1;
-	uint8_t type = POP1;
+#define AS_SHORT(a, b) ((uint16_t)(((uint16_t)a) << 8) | (0x00ff & b))
+#define POP_BYTE(ptr) ((uint8_t) * (ptr++))
+#define POP_SHORT(ptr) (((((struct unaligned_u16_t *)((ptr += 2) - 2))))->v)
 
-	qty -= 2;
+#define HAS_FLAG(flags, flag) ((flags & flag) == flag)
 
-	int propset = 0;
-	int doimu = 0;
+char hexstr[512];
+static char *packetToHex(uint8_t *packet, uint8_t *packetEnd) {
+	int count = packetEnd - packet;
+	int i;
+	for (i = 0; i < count; i++)
+		sprintf(&hexstr[i * 3], "%02x ", packet[i]);
+	hexstr[i * 3] = 0;
 
-	if (type == 0xf0) {
-		// Some kind of turn on / wake up event?
-		readdata += qty;
-		qty = 0;
-		type = 0;
+	return hexstr;
+}
+
+struct sensorData {
+	uint8_t sensorId;
+	uint8_t edgeCount;
+};
+
+static size_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8_t *payloadEndPtr,
+							  LightcapElement *output, int output_cnt) {
+	uint8_t *payloadPtr = *readPtr;
+	SurviveContext *ctx = w->ctx;
+	uint32_t reference_time = w->activations.last_imu;
+
+	// DEBUG
+	if ((*payloadPtr & 0xE0) == 0xE0) {
+		SV_INFO("Warn : Light contains probable non-light data : 0x%02hX [Time:%04hX] [Payload: %s]", *payloadPtr, time,
+				packetToHex(payloadPtr, payloadEndPtr));
 	}
 
-	if ((type & 0xf0) == 0xf0) {
-		buttonEvent bEvent;
-		memset(&bEvent, 0, sizeof(bEvent));
+	/*
+	 * ---=== LIGHT DATA STRUCTURE ===---
+	 *
+	 * | SensorData  | Time Deltas          | End Timestamp |
+	 * ╔═════════════╦══════════════════════╦═══════════════╗
+	 * ║ SS SS .. SS ║ DD DD DD DD DD .. DD ║ TT TT TT      ║
+	 * ╚═════════════╩══════════════════════╩═══════════════╝
+	 *
+	 * Three parts to the packet, the sensor data which contains which sensors were triggered, and the times
+	 * deltas between rising and falling of the sensor event. There are always two rising/falling events per
+	 * sensor though the ordering is not simple as new sensor events may start before others are finished.
+	 *
+	 * The meaning and associated led with each 'event' is dermined by the edge count as encoded within the
+	 * sensor data (see below)
+	 *
+	 * The time deltas use variable length encoding, so we can't determine how many sensors are in the packet
+	 * just from the packet length. However, we do know that there are always two times per sensor (rise and
+	 * fall), so there are (2*Sensor)-1 deltas in the packet (-1 because the end time is 'known' yielding two
+	 * times). Therefore, the general read process is thus:
+	 *
+	 *  1) Read off timestamp
+	 *  2) Read the first byte from the start of the packet
+	 *  3) Read one time delta from the end of the packet (We get two times from this since we know the 'end' time)
+	 *  4) Repeatedly:
+	 *     a) Read one byte from the start of the packet (Led/Flag)
+	 *     b) Read two time deltas from the end of the packet (not including timestamp) [See encoding below]
+	 *     c) Stop once we've read all data in the packet
+	 *
+	 *
+	 * TT TT TT
+	 * ~~~~~~~~
+	 *  Timestamp of the last event [Little Endian]
+	 *
+	 * eg:
+	 *  f6 b4 5b = 6010102
+	 *
+	 * DD
+	 * ~~
+	 *  Time deltas between events stored as variable length sequences. The lower 7 bits of each byte are
+	 *  summed until a byte with the 8th bit set is encountered. [Little endian]
+	 *
+	 *   8 76543210
+	 *  ╔═╦════════╗
+	 *  ║S│Value   ║
+	 *  ╚═╩════════╝
+	 *    ╲  ╲_________ 7 Bits of time delta
+	 *     ╲___________ Stop bit (1 = Value complete, 0 = Continue reading)
+	 *
+	 *  eg:
+	 *      0 = 80       [(80 & 7F)                  = 0]
+	 *    127 = FF       [(FF & 7F)                  = 127]
+	 *    128 = 80 01    [(80 & 7F) + ((01 & 7F)<<7) = 128]
+	 *    255 = FF 01    [(FF & 7F) + ((01 & 7F)<<7) = 255]
+	 *    256 = 80 02    [(80 & 7F) + ((02 & 7F)<<7) = 256]
+	 *  16383 = FF 7F    [(FF & 7F) + ((7F & 7F)<<7) = 16383]
+	 *  16384 = 80 80 01 [(80 & 7F) + ((80 & 7F)<<7) + ((01 & 7F)<<14) = 16384]
+	 *
+	 *
+	 *
+	 * SS
+	 * ~~
+	 *  Packed data about which sensor was detected and how many time deltas it's associated event straddles.
+	 *  1 Byte per sensor
+	 *
+	 *   876543 210
+	 *  ╔══════╦═══╗
+	 *  ║Sensor│EC ║
+	 *  ╚══════╩═══╝
+	 *    ╲      ╲____ Edge count
+	 *     ╲__________ Sensor ID of the event
+	 *
+	 *  eg:
+	 *    2B = Sensor 5, 3 edges [2B>>3 = 5, 2B & 03 = 3]
+	 *
+	 *
+	 * Example full packet
+	 * ===================
+	 *
+	 *   ┌──────┬───────┐
+	 *   │Sensor│ Edges │
+	 *   ├──────┼───────┤
+	 *   │   5  │   3   │
+	 *   │  10  │   1   │
+	 *   │   9  │   2   │
+	 *   │   5  │   0   │
+	 *   │  12  │   0   │
+	 *   └──────┴───────┘                           End Time : 6010102
+	 *              ╲                               ╱
+	 *               ╲                             ╱
+	 *            ╔════════════════╦═┄┄┄┄┄┄┄┄┄┄┄═╦══════════╗
+	 *            ║ 2b 51 4a 28 60 ║ Time Deltas ║ f6 b4 5b ║
+	 *            ╚════════════════╩═┄┄┄┄┄┄┄┄┄┄┄═╩══════════╝
+	 *                             ╱              ╲
+	 *     _______________________╱                ╲_______________________
+	 *    ╱                                                                ╲
+	 *   ╱                                                                  ╲
+	 *  ╔═══════╤═══════╤═══════╤══════════╤═══════╤════╤════╤═══════╤═══════╗
+	 *  ║ c7 2e │ e6 66 │ 84 1f │ fb 31 0b │ d9 01 │ da │ ca │ db 02 │ e4 02 ║
+	 *  ╠═══════╪═══════╪═══════╪══════════╪═══════╪════╪════╪═══════╪═══════╣
+	 *  ║ 5959  | 13158 | 3972  | 186619   | 217   | 90 | 74 | 347   |356    ║
+	 *  ╚═══════╧═══════╧═══════╧══════════╧═══════╧════╧════╧═══════╧═══════╝
+	 *  │       │       │       │          │       │    │    │       │       │
+	 *  ┕━━━━━━«E       │       │          │       │    │    │       │       │ -> Led 12 : 5799310 -> 5805269
+	 *                  ┕━━━━━━«D          │       │    │    │       │       │ -> Led 5  : 5818427 -> 5822399
+	 *                                     ┕━━━━━━━2━━━━2━━━«C       │       │ -> Led 9  : 6009018 -> 6009399
+	 *                                             │    │    ┊       │       │
+	 *                                             ┕━━━━3━━━━3━━━━━━━3━━━━━━«A -> Led 5  : 6009235 -> 6010102
+	 *                                                  |    ┊       |
+	 *                                                  ┕━━━━1━━━━━━«B         -> Led 10 : 6009325 -> 6009746
+	 * Read order :
+	 *  A : Ends at 'A' - Skip 3 edges to find start
+	 *  B : Ends at 'B' - Skip 1 edge to find start
+	 *  C : Ends at 'C' - Skip 2 edges to find start
+	 *  D : Ends at 'D' (Since the 'end' edges from ABC have already been 'used'), ends at next edge
+	 *  E : Ends at 'E' - Ends at next edge
+	 */
 
-		propset |= 4;
-		// printf( "%02x %02x %02x %02x\n", qty, type, time1, time2 );
-		type &= ~0x10;
+	// Step 1 - Extract deltas between events the corresponding sensors
+	size_t timeIndex = 0;
+	uint32_t times[16] = {0};
+	size_t maxTimeIndex = sizeof(times) / sizeof(times[0]);
+	size_t maxEvents = maxTimeIndex >> 1;
+	uint8_t reportOrder[maxTimeIndex];
 
-		if (type & 0x01) {
+	struct sensorData sensors[maxEvents];
 
-			qty -= 1;
-			bEvent.pressedButtonsValid = 1;
-			bEvent.pressedButtons = POP1;
+	uint8_t *idsPtr = payloadPtr;
+	uint8_t *eventPtr = payloadEndPtr;
 
-			// printf("buttonmask is %d\n", so->buttonmask);
-			type &= ~0x01;
+	// Last three bytes of light data are the LSB of the time of the last event
+	eventPtr -= 4;
+	uint32_t lastEventTime =
+		((uint32_t)(time >> 8) << 24) | (eventPtr[3] << 16) | (eventPtr[2] << 8) | (eventPtr[1] << 0);
+
+	// The general issue is that the 'time1' field isn't super in sync with the last 3 bytes we use for timing
+	// light events -- it can tip a smidge before those bytes see it or sometimes after. This can cause
+	// wild 1<<24 tick differences which break everything.
+	//
+	// We base it off IMU as a reference because light events can get blocked and it's not out of the ordinary
+	// to not see them for a second or two. (1 << 23) on a 48mhz clock is ~150ms; and the IMU is consistently
+	// much faster than that.
+	if (lastEventTime > reference_time && lastEventTime - reference_time > (1 << 23)) {
+		lastEventTime -= (1 << 24);
+	} else if (reference_time > lastEventTime && reference_time - lastEventTime > (1 << 23)) {
+		lastEventTime += (1 << 24);
+	}
+
+	times[0] = lastEventTime;
+	SV_VERBOSE("Packet Start Time: %u", lastEventTime);
+
+	while (idsPtr < eventPtr) {
+		// There are two time deltas per 'event'
+		if (timeIndex % 2 == 0) {
+			sensors[timeIndex >> 1].sensorId = ((*idsPtr) >> 3) & 0x1F;
+			sensors[timeIndex >> 1].edgeCount = (*idsPtr) & 0x7;
+			idsPtr++;
 		}
 
-		if (type & 0x04) {
-			qty -= 1;
-			bEvent.triggerHighResValid = 1;
-			bEvent.triggerHighRes = (POP1)*128;
-			type &= ~0x04;
+		// Obtain the timing to the previous event
+		// Variable length encoding [if bit 8 is 0, continue into next byte]
+		uint32_t timeDelta = 0;
+		while (true) {
+			timeDelta <<= 7;
+			timeDelta |= (*eventPtr & 0x7F);
+			if (((*(eventPtr--)) & 0x80) == 0x80)
+				break;
+			if (idsPtr > eventPtr) {
+				SV_WARN("Light data parse error 1");
+				return -1;
+			}
+		}
+		lastEventTime -= timeDelta;
+
+		// Store the event time
+		times[++timeIndex] = lastEventTime;
+		SV_VERBOSE("Time: [%i] %u (%u)", timeIndex, lastEventTime, timeDelta);
+	}
+
+	// Step 2 - Convert events to pulses
+	LightcapElement les[maxEvents];
+	size_t eventCount = (timeIndex + 1) >> 1; // timeIndex>>1 = There are always twice as many time events as sensors
+
+	memset(les, 0, maxEvents * sizeof(LightcapElement));
+	memset(reportOrder, 0, maxTimeIndex * sizeof(uint8_t));
+	timeIndex = -1;
+
+	for (int i = 0; i < eventCount; i++) {
+		// Get the end time (Increment and find the next 'unused' time)
+		while (times[++timeIndex] == 0)
+			if (timeIndex >= maxTimeIndex) {
+				SV_WARN("Light data parse error 2");
+				return -2;
+			}
+		if (timeIndex >= maxTimeIndex) {
+			SV_WARN("Light data parse error 3");
+			return -3;
 		}
 
-		if (type & 0x02) {
-			FAILURE_ON_FALSE(qty >= 4);
-			qty -= 4;
-			bEvent.touchpadHorizontalValid = 1;
-			bEvent.touchpadVerticalValid = 1;
-
-			bEvent.touchpadHorizontal = POP2;
-			bEvent.touchpadVertical = POP2;
-			type &= ~0x02;
+		// Get the start time
+		size_t startTimeIndex = timeIndex + (sensors[i].edgeCount + 1);
+		if (startTimeIndex >= maxTimeIndex) {
+			SV_WARN("Light data parse error 4");
+			return -4;
 		}
 
-		// I've seen fa, fb, fc, etc. fa and fb seemed to be mostly when i was using the joystick; f8/f0 a1 seems
-		// some kind of cap touch nonsense. Couldn't really pin down the structure; but always seemed long enough
-		// that we aren't dropping (any? a ton?) of light data --JB
-		if (type & 0x08) {
-			// qty -= 2;
-			type &= ~0x08;
+		// Store the start index so we can return in ascending time order
+		assert(reportOrder[startTimeIndex] == 0);
+		reportOrder[startTimeIndex] = i + 1;
+		LightcapElement *le = &les[i];
 
-			readdata += qty;
-			qty = 0;
-			// POP2; // ?? Some kind of cap touch event?
+		// Fill in the LightcapElement data
+		assert(le->sensor_id == 0);
+
+		le->sensor_id = sensors[i].sensorId;
+		le->timestamp = times[startTimeIndex];
+		le->length = times[timeIndex] - times[startTimeIndex];
+
+		// Flag the start time as 'used'
+		times[startTimeIndex] = 0;
+
+		// SV_INFO("Light Event : [%i|%i] %li -> %li (%li) [%i-%i]", les[i].sensor_id, sensors[i].edgeCount,
+		// les[i].timestamp, les[i].timestamp + les[i].length, les[i].length, startTimeIndex, timeIndex);
+	}
+
+	// Output the events in ascending time order
+	uint8_t orderedIndex;
+	for (int i = 0; (i < maxTimeIndex) && output_cnt > 0; i++) {
+		if ((orderedIndex = reportOrder[i]) != 0) {
+			LightcapElement *ol = &les[orderedIndex - 1];
+			assert(ol->length != 0 || ol->timestamp != 0);
+
+			*(output++) = *ol;
+			output_cnt--;
+			// SV_INFO("Light Event [Ordered]: %i [%i] %li -> %li (%li)", i, ol->sensor_id, ol->timestamp, ol->timestamp
+			// + ol->length, ol->length);
+		}
+	}
+	return eventCount;
+}
+
+static void read_imu_data(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8_t *payloadEndPtr) {
+	uint8_t *payloadPtr = *readPtr;
+
+	SurviveContext *ctx = w->ctx;
+
+	// First byte is higher res time, followed by 6 shorts
+	uint8_t timeLSB = POP_BYTE(payloadPtr);
+	int16_t aX = POP_SHORT(payloadPtr);
+	int16_t aY = POP_SHORT(payloadPtr);
+	int16_t aZ = POP_SHORT(payloadPtr);
+	int16_t rX = POP_SHORT(payloadPtr);
+	int16_t rY = POP_SHORT(payloadPtr);
+	int16_t rZ = POP_SHORT(payloadPtr);
+
+	FLT agm[9] = {aX, aY, aZ, rX, rY, rZ};
+
+	calibrate_acc(w, agm);
+	calibrate_gyro(w, agm + 3);
+
+	w->ctx->imuproc(w, 3, agm, ((uint32_t)time << 16) | (timeLSB << 8), 0);
+
+	*readPtr = payloadPtr;
+}
+#define UPDATE_PTR_AND_RETURN                                                                                          \
+	*readPtr = payloadPtr;                                                                                             \
+	return true;
+
+static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8_t *payloadEndPtr) {
+	uint8_t *payloadPtr = *readPtr;
+	SurviveContext *ctx = w->ctx;
+
+	// If we're looking at light data, return
+	if (!HAS_FLAG(*payloadPtr, 0xE0))
+		return true;
+
+	/*
+	 * Event Flags
+	 * ===========
+	 *
+	 * If input (button, touch, motion) data is present in packet:
+	 *   ┄╦═╤═╤═╦═╤═╤═╤═╤═╦┄
+	 *    ║1│1│1│1│I│-│-│-║
+	 *   ┄╩═╧═╧═╩═╧═╧═╧═╧═╩┄
+	 *
+	 * If battery data is present in a packet:
+	 *   ┄╦═╤═╤═╦═╤═╤═╤═╤═╦═══════════════╦┄
+	 *    ║1│1│1│0│?│?│?│1║ Battery       ║
+	 *   ┄╩═╧═╧═╩═╧═╧═╧═╧═╩═══════════════╩┄
+	 *    ▲                               │
+	 *    ╰───────────────────────────────╯
+	 *
+	 * If battery data is not present in packet (EG IMU only packets):
+	 *   ┄╦═╤═╤═╦═╤═╤═╤═╤═╦┄
+	 *    ║1│1│1│0│I│?│?│0║
+	 *   ┄╩═╧═╧═╩═╧═╧═╧═╧═╩┄
+	 *
+	 * I: IMU Data      1 = IMU Data present after event (13 Bytes)
+	 *                  0 = No IMU Data present after event
+	 */
+
+	uint8_t flags = POP_BYTE(payloadPtr);
+
+	bool flagInput = HAS_FLAG(flags, 0x10);
+	bool flagIMU = HAS_FLAG(flags, 0x08);
+
+	if (flagInput) {
+		/*
+		 * Flags for input events are as follows:
+		 *
+		 * ┄╦═╤═╤═╦═╤═╤═╤═╤═╦┄
+		 *  │1│1│1│1│-│t│m│b│
+		 * ┄╩═╧═╧═╩═╧═╧═╧═╧═╩┄
+		 *
+		 * t: Trigger    1 = Trigger data present in event [1 Byte]  ╮
+		 * m: Motion     1 = Motion data present in event [4 Byte]   ├ If all 0, this is a gen 2 event [See below]
+		 * b: Button     1 = Button data present in event [1 Byte]   ╯
+		 *
+		 * Order of data in payload is as follows:
+		 * ┄╦═══════════════╦═══════════════╦═══════════════╦═══════════════╦
+		 *  ║ [Button/b]    ║ [Trigger/t]   ║ [Motion/t]    ║ [IMU Data/I]  ║
+		 * ┄╩═══════════════╩═══════════════╩═══════════════╩═══════════════╩
+		 */
+
+		bool firstGen = ((flags & 0x7) != 0);
+
+		if (firstGen) {
+			bool flagTrigger = HAS_FLAG(flags, 0x4);
+			bool flagMotion = HAS_FLAG(flags, 0x2);
+			bool flagButton = HAS_FLAG(flags, 0x1);
+
+			static buttonEvent bEvent;
+			memset(&bEvent, 0, sizeof(bEvent));
+			if (flagButton) {
+				bEvent.pressedButtonsValid = 1;
+				bEvent.pressedButtons = POP_BYTE(payloadPtr);
+			}
+
+			if (flagTrigger) {
+				bEvent.triggerHighResValid = 1;
+				bEvent.triggerHighRes = POP_BYTE(payloadPtr) * 128;
+			}
+
+			if (flagMotion) {
+				bEvent.touchpadHorizontalValid = 1;
+				bEvent.touchpadVerticalValid = 1;
+
+				bEvent.touchpadHorizontal = POP_SHORT(payloadPtr);
+				bEvent.touchpadVertical = POP_SHORT(payloadPtr);
+			}
+
+			registerButtonEvent(w, &bEvent);
+		} else {
+			// Second gen event (Eg Knuckles proximity)
+			uint8_t genTwoType =
+				POP_BYTE(payloadPtr); // May be flags, but currently only observed to be 'a1' when knuckles
+
+			if (genTwoType == 0xA1) {
+				// Knucles
+				/*SV_INFO("GRIP 0x%02hX [Time:%04hX] [Payload: %s] <<ABORT FURTHER READ>>",
+				 *(payloadPtr-1), time, packetToHex(payloadPtr, payloadEndPtr));*/
+
+				// Resistive contact sensors in buttons?
+				uint8_t touchFlags = POP_BYTE(payloadPtr);
+				// 0x01 = Trigger
+				// 0x08 = Menu
+				// 0x10 = Button A
+				// 0x20 = Button B
+				// 0x40 = Thumbstick
+
+				// Non-touching proximity to fingers
+				uint8_t fingerProximity[4];
+				fingerProximity[0] = POP_BYTE(payloadPtr); // Middle finger
+				fingerProximity[1] = POP_BYTE(payloadPtr); // Ring finger
+				fingerProximity[2] = POP_BYTE(payloadPtr); // Pinky finger
+				fingerProximity[3] = POP_BYTE(payloadPtr); // Index finger (trigger)
+				(void)fingerProximity;
+
+				// Contact force (Squeeze strength)
+				uint8_t gripForce = POP_BYTE(payloadPtr);
+				uint8_t trackpadForce = POP_BYTE(payloadPtr);
+				(void)gripForce;
+				(void)trackpadForce;
+
+#ifdef KNUCKLES_INFO
+				SV_INFO("KAS: @%04hX | Grip    [Proximity: %02X %02X %02X %02X] [Touch: %s%s%s%s%s (%02X)] [Grip: %02X "
+						"%02X]",
+						time, fingerProximity[3], fingerProximity[0], fingerProximity[1], fingerProximity[2],
+						HAS_FLAG(touchFlags, 0x01) ? "#" : "_", HAS_FLAG(touchFlags, 0x08) ? "#" : "_",
+						HAS_FLAG(touchFlags, 0x10) ? "#" : "_", HAS_FLAG(touchFlags, 0x20) ? "#" : "_",
+						HAS_FLAG(touchFlags, 0x40) ? "#" : "_", touchFlags, gripForce, trackpadForce);
+#endif
+			} else {
+				SV_WARN("Unknown gen two event 0x%02hX [Time:%04hX] [Payload: %s] <<ABORT FURTHER READ>>",
+						*(payloadPtr - 1), time, packetToHex(payloadPtr, payloadEndPtr));
+				// Since we don't know how much data this should consume, proceeding to IMU/Light decode is likely
+				// to choke.
+				return false;
+			}
+		}
+	} else {
+		/*
+		 * Flags for non-input (status) events are as follows:
+		 *
+		 * ┄╦═╤═╤═╦═╤═╤═╤═╤═╦┄
+		 *  │1│1│1│0│-│?│?│b│
+		 * ┄╩═╧═╧═╩═╧═╧═╧═╧═╩┄
+		 *
+		 * b: Battery     1 = Battery data present in event [1 Byte] possibly followed by an another event or light data
+		 */
+
+		bool flagBatteryStatus = HAS_FLAG(flags, 0x1);
+		bool flagUnknown = ((flags & 0x6) != 0);
+
+		// flagUnknown = true;
+
+		if (flagUnknown) {
+			SV_WARN("Unknown status event 0x%02hX [Time:%04hX] [Payload: %s] <<ABORT FURTHER READ>>", *(payloadPtr - 1),
+					time, packetToHex(payloadPtr, payloadEndPtr));
+			// Since we don't know how much data this should consume, proceeding to IMU/Light decode is likely
+			// to choke.
+			return false;
 		}
 
-		if (bEvent.pressedButtonsValid || bEvent.triggerHighResValid || bEvent.touchpadHorizontalValid) {
-			registerButtonEvent(so, &bEvent);
-		}
+		if (flagBatteryStatus) {
+			// Battery Status
+			// Happens On USB plugged in. Switch to wired mode?
+			uint8_t batStatus = POP_BYTE(payloadPtr);
+			int percent = (int)((((float)(batStatus & 0x7f)) / 0x7f) * 100);
+			bool charging = (batStatus & 0x80) == 0x80;
+#ifdef KNUCKLES_INFO
+			SV_INFO("KAS: @%04hX | Status  [Battery: % 3i%%] [%s]", time, percent,
+					(charging ? "CHARGING" : "ON BATTERY"));
+#endif
+			// Maybe read another event, IMU data or Light Data
+			read_event(w, time, &payloadPtr, payloadEndPtr);
 
-		// XXX TODO: Is this correct?  It looks SO WACKY
-		type &= 0x7f;
-		if (type == 0x68)
-			doimu = 1;
-		type &= 0x0f;
-
-		if (type == 0x00 && qty) {
-			type = POP1;
-			qty--;
+			UPDATE_PTR_AND_RETURN
 		}
 	}
 
-	if (type == 0xa1) {
-		// Some type of heartbeat?
-		readdata += qty;
-		qty = 0;
-	}
+	// Read off any IMU data present
+	if (flagIMU)
+		read_imu_data(w, time, &payloadPtr, payloadEndPtr);
 
-	if (type == 0xe1) {
-		propset |= 1;
-		so->charging = readdata[0] >> 7;
-		so->charge = POP1 & 0x7f;
-		qty--;
-		so->ison = 1;
-		if (qty) {
-			qty--;
-			type = POP1; // IMU usually follows.
-		}
-	}
+	UPDATE_PTR_AND_RETURN
+}
 
-	if (((type & 0xe8) == 0xe8) ||
-		doimu) // Hmm, this looks kind of yucky... we can get e8's that are accelgyro's but, cleared by first propset.
-	{
-		propset |= 2;
-		FLT agm[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
-		int j;
-		for (j = 0; j < 6; j++)
-			agm[j] = (int16_t)(readdata[j * 2 + 1] | (readdata[j * 2 + 2] << 8));
-		calibrate_acc(so, agm);
-		calibrate_gyro(so, agm + 3);
+static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
+	// KASPER'S DECODE
+	SurviveContext *ctx = w->ctx;
 
-		struct SurviveContext *ctx = so->ctx;
-		// SV_INFO("IMU Time 0x%08x", (time1 << 24) | (time2 << 16) | readdata[0]);
-		so->ctx->imuproc(so, 3, agm, (time1 << 24) | (time2 << 16) | readdata[0], 0);
-		readdata += 13;
-		FAILURE_ON_FALSE(qty >= 13);
-		qty -= 13;
+	/*
+	 * ---=== PACKET STRUCTURE ===---
+	 * Key:
+	 *  [Optional] - Element may or may not be present depending on flags
+	 *  1 = Bit is set
+	 *  0 = Bit is not set
+	 *  - = Bit is "don't care"
+	 *  ? = Bit meaning is unknown
+	 *  ║ = Byte boundary
+	 *  │ = Bit boundary
+	 *
+	 *
+	 *                                 ┊<------- Size is the length of this section in bytes ------->┊
+	 *                                 ┊                                                             ┊
+	 * ╔═══════════════╦═══════════════╬═══════════════╦┄┄┄                                          ┊
+	 * ║Time MSB       ║Size           ║Time LSB       ║                                             ┊
+	 * ╚═══════════════╩═══════════════╩═══════════════╩┄┄┄                                          ┊
+	 *                                                 ┊                                             ┊
+	 *                                              ┄┄┄╬═╤═╤═╦═╤═╤═╤═╤═╦═┄┄┄┄┄┄┄┄┄┄┄═╦═┄┄┄┄┄┄┄┄┄┄┄┄══╣
+	 *  For Non-Light events (First three bits = 111)  ║1│1│1│  FLAGS  ║ [Payload]   ║ [Light Data]  ║
+	 *                                              ┄┄┄╬═╧═╧═╩═╧═╧═╧═╧═╩═┄┄┄┄┄┄┄┄┄┄┄═╩═┄┄┄┄┄┄┄┄┄┄┄┄══╣
+	 *                                                 ┊                                             ┊
+	 *                                              ┄┄┄╬═══════════════════┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄══╣
+	 *  For light-only events (First three bits != 111)║ Light Data                                  ║
+	 *                                              ┄┄┄╩═══════════════════┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄══╝
+	 *
+	 * Since bits 7&8 are part of the input event or the sensor id, this places limits on the available id space thus :
+	 *   The first byte of the light data is sensor data, of which the upper 5 bits are the sensor id, and given
+	 *   bits 7&8 cannot both be 1, results in the range 00000XXX to 10111XXX yielding a maximum of 24 light
+	 *   elements per device (In the current format).
+	 *
+	 * Packet Decode Process:
+	 *   1) Read off Time (MSB and LSB) and Payload Size
+	 *   2) If bits 6-8 of the byte 4 are set:
+	 *       a) Read the input/status event
+	 *       b) Compute the remaining bytes after the input/status event has been read (The size of the input/status
+	 *          event is not explicitly provided, so must be implied by the event type.
+	 *   3) Read an interpret any remaining bytes as light data
+	 */
 
-		type &= ~0xe8;
-		if (qty) {
-			qty--;
-			type = POP1;
-		}
-	}
+	uint16_t time = AS_SHORT(readdata[0], readdata[2]);
+	uint8_t payloadSize = readdata[1] - 1;
+	uint8_t *payloadPtr = &readdata[3];
+	uint8_t *payloadEndPtr = payloadPtr + payloadSize;
 
-	FAILURE_ON_FALSE(qty >= 0);
-	if (qty) {
-		qty++;
-		readdata--;
-		*readdata = type;						// Put 'type' back on stack.
+	// Read any non-light events that may be in the packet
+	if (!read_event(w, time, &payloadPtr, payloadEndPtr))
+		return;
 
+	// Any remaining data after events (if any) have been read off is light data
+	if (payloadPtr < payloadEndPtr) {
 		LightcapElement les[10] = {0};
-		int lese =
-			parse_watchman_lightcap(so->ctx, so->codename, time1, so->activations.last_imu, readdata, qty, les, 10);
+		size_t cnt = read_light_data(w, time, &payloadPtr, payloadEndPtr, les, 10);
 
-		if (lese < 0) {
-			SV_WARN("Parse error code %d", lese);
-			goto failure;
-		}
-		for (int i = lese - 1; i >= 0; i--) {
+#ifdef VERIFY_LIGHTCAP
+		LightcapElement les_old[10] = {0};
+		int les_old_cnt = parse_watchman_lightcap(w->ctx, w->codename, time >> 8, w->activations.last_imu, payloadPtr,
+												  payloadEndPtr - payloadPtr, les, 10);
+
+		assert(cnt == les_old_cnt);
+#endif
+		for (int i = (int)cnt - 1; i >= 0; i--) {
 #ifdef DEBUG_WATCHMAN
 			printf("%d: %u [%u]\n", les[i].sensor_id, les[i].length, les[i].timestamp);
 #endif
-			handle_lightcap(so, &les[i]);
-		}
-	}
-	return;
-
-failure:
-#ifdef DEBUG_WATCHMAN_ERRORS
-	fprintf(stderr, "_%s Data: (type 0x%02x qty %d)", so->codename, type, qty);
-	for (int i = 0; i < 29; i++) {
-		fprintf(stderr, " %02x ", startread[i]);
-	}
-	fprintf(stderr, "\n");
+#ifdef VERIFY_LIGHTCAP
+			assert(memcmp(&les[i], &les_old[i], sizeof(LightcapElement)) == 0);
 #endif
-	return;
+			handle_lightcap(w, &les[i]);
+		}
+
+	}
 }
 
 int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, uint8_t time1,
@@ -1273,9 +1676,22 @@ int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, ui
 	/// Handle uint32_tifying (making sure we keep it incrementing)
 	mytime |= ((uint32_t)time1 << 24);
 
+	// The general issue is that the 'time1' field isn't super in sync with the last 3 bytes we use for timing
+	// light events -- it can tip a smidge before those bytes see it or sometimes after. This can cause
+	// wild 1<<24 tick differences which break everything.
+	//
+	// We base it off IMU as a reference because light events can get blocked and it's not out of the ordinary
+	// to not see them for a second or two. (1 << 23) on a 48mhz clock is ~150ms; and the IMU is consistently
+	// much faster than that.
+	if (mytime > reference_time && mytime - reference_time > (1 << 23)) {
+		mytime -= (1 << 24);
+	} else if (reference_time > mytime && reference_time - mytime > (1 << 23)) {
+		mytime += (1 << 24);
+	}
+
 	times[timecount++] = mytime; //
 #ifdef DEBUG_WATCHMAN
-	fprintf(stderr, "_%s Packet Start Time: %d\n", codename, mytime);
+	fprintf(stderr, "_%s Packet Start Time: %u\n", codename, mytime);
 #endif
 
 	// First, pull off the times, starting with the current time, then all the delta times going backwards.
@@ -1305,7 +1721,7 @@ int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, ui
 			}
 			times[timecount++] = (mytime -= time_delta);
 #ifdef DEBUG_WATCHMAN
-			fprintf(stderr, " Time: %d  newtime: %u\n", time_delta, mytime);
+			fprintf(stderr, " newtime: %u (%u)\n", mytime, time_delta);
 #endif
 		}
 
@@ -1385,24 +1801,6 @@ int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, ui
 			} // Length of pulse dumb.
 			le->length = endtime - starttime;
 			le->timestamp = starttime;
-
-			// Note that this check was moved here from above.
-			// The general issue is that the 'time1' field isn't super in sync with the last 3 bytes we use for timing
-			// light events -- it can tip a smidge before those bytes see it or sometimes after. This can cause
-			// wild 1<<24 tick differences which break everything.
-			//
-			// The reason the check was moved down here was if you fix it before now, when you start subtracting off
-			// the endtime, you can roll it _back_ over; which causes the same behavior. Since this is the last thing
-			// we do with the timestamp, this is likely the best place for it.
-			//
-			// We base it off IMU as a reference because light events can get blocked and it's not out of the ordinary
-			// to not see them for a second or two. (1 << 23) on a 48mhz clock is ~150ms; and the IMU is consistently
-			// much faster than that.
-			if (le->timestamp > reference_time && le->timestamp - reference_time > (1 << 23)) {
-				le->timestamp -= (1 << 24);
-			} else if (reference_time > le->timestamp && reference_time - le->timestamp > (1 << 23)) {
-				le->timestamp += (1 << 24);
-			}
 
 #ifdef DEBUG_WATCHMAN
 			fprintf(stderr, "_%s Event: %d %u %u-%u\n", codename, led, le->length, endtime, starttime);
@@ -1559,8 +1957,8 @@ void survive_data_cb(SurviveUSBInterface *si) {
 	case USB_IF_TRACKER0_LIGHTCAP: {
 		int i = 0;
 		for (i = 0; i < 7; i++) {
-			unsigned short *sensorId = (unsigned short *)readdata;
-			unsigned short *length = (unsigned short *)(&(readdata[2]));
+			uint16_t *sensorId = (uint16_t *)readdata;
+			uint16_t *length = (uint16_t *)(&(readdata[2]));
 			unsigned long *time = (unsigned long *)(&(readdata[4]));
 			LightcapElement le;
 			le.sensor_id = (uint8_t)POP2;
