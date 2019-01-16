@@ -44,7 +44,7 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 	SurviveDriverSimulator *driver = _driver;
 	static FLT last_time = 0;
 	FLT realtime = timestamp_in_s();
-
+	
 	FLT timefactor = linmath_max(survive_configf(ctx, "time-factor", SC_GET, 1.), .00001);
 	// FLT timestamp = timestamp_in_s() / timefactor;
 	FLT timestep = 0.001;

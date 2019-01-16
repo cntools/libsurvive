@@ -17,7 +17,7 @@
 #include "survive_reproject.h"
 
 #ifndef _WIN32
-#define DEBUG_NAN
+//#define DEBUG_NAN
 #endif
 #ifdef DEBUG_NAN
 #include <fenv.h>

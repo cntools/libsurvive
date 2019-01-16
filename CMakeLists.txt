@@ -1,15 +1,23 @@
 project(libsurvive)
-cmake_minimum_required(VERSION 3.8.2)
+cmake_minimum_required(VERSION 3.5.1)
 
 enable_testing()
 IF(UNIX)
-	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -flto -std=gnu99 -rdynamic -Werror=incompatible-pointer-types -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces")
+	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=gnu99 -rdynamic -Werror=incompatible-pointer-types -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces")
 ENDIF()
 
 include_directories(redist include/libsurvive include)
 
+
 option(USE_HIDAPI "Use HIDAPI instead of libusb" OFF)
 option(USE_ASAN "Use address sanitizer" OFF)
+option(BUILD_ALL_STATIC "Build everything statically" OFF)
+
+if(BUILD_ALL_STATIC)
+  SET(LIBSURVIVE_LIBRARY_TYPE STATIC)
+else()
+  SET(LIBSURVIVE_LIBRARY_TYPE SHARED)
+endif()
 
 if(USE_ASAN)
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fsanitize=undefined")
@@ -65,7 +73,7 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
         ./src/survive_usb.c
 		./src/survive_kalman.c)
 
-add_library(survive SHARED ${SURVIVE_SRCS})
+add_library(survive ${LIBSURVIVE_LIBRARY_TYPE} ${SURVIVE_SRCS})
 set_target_properties(survive PROPERTIES FOLDER "libraries")
 
 add_subdirectory(redist)
@@ -103,7 +111,7 @@ set(poser_epnp_ADDITIONAL_SRCS src/epnp/epnp.c)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 foreach(PLUGIN ${PLUGINS})
-    add_library(${PLUGIN} SHARED src/${PLUGIN}.c ${${PLUGIN}_ADDITIONAL_SRCS})
+    add_library(${PLUGIN} ${LIBSURVIVE_LIBRARY_TYPE} src/${PLUGIN}.c ${${PLUGIN}_ADDITIONAL_SRCS})
     target_link_libraries(${PLUGIN} survive ${${PLUGIN}_ADDITIONAL_LIBS})
 	 
 	STRING(REGEX REPLACE "(.*)\_.*" "\\1" plugin_type "${PLUGIN}")
@@ -115,8 +123,9 @@ foreach(PLUGIN ${PLUGINS})
 	set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG "Debug/plugins")
 	set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE "Release/plugins")
 	set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "RelWithDebInfo/plugins")
-endforeach()
 
+endforeach()
+  
 foreach(executable calibrate data_recorder simple_pose_test survive-cli)
 	add_executable(${executable} ${executable}.c )
 	target_link_libraries(${executable} survive)
@@ -129,3 +138,10 @@ target_link_libraries(calibrate CNGFX)
 target_link_libraries(simple_pose_test CNGFX)
 
 add_subdirectory(src/test_cases)
+
+install(TARGETS ${PLUGINS} DESTINATION lib/libsurvive/plugins)
+
+install(TARGETS survive DESTINATION lib/libsurvive)
+install(TARGETS survive DESTINATION lib)
+
+install(DIRECTORY include/libsurvive DESTINATION include)

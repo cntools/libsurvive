@@ -644,7 +644,7 @@ int survive_vive_send_magic(SurviveContext *ctx, void *drv, int magic_code, void
 
 				r = update_feature_report(usbInfo->handle, 0, data, magic->length);
 				if (r != magic->length && usbInfo->so)
-					SV_WARN("Could not turn on %s(%d) (%d/%lu - %s)", usbInfo->so->codename, usbInfo->device_info->type,
+					SV_WARN("Could not turn on %s(%d) (%d/%zu - %s)", usbInfo->so->codename, usbInfo->device_info->type,
 							r, magic->length, survive_usb_error_name(r));
 			}
 		}
@@ -764,7 +764,7 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 
 			for (int j = 0; j < sv->udev[i].interface_cnt; j++) {
 				SurviveUSBInterface *iface = &sv->udev[i].interfaces[j];
-				SV_INFO("Iface %s %s has %lu packets (%f hz)", iface->assoc_obj->codename, iface->hname,
+				SV_INFO("Iface %s %s has %zu packets (%f hz)", iface->assoc_obj->codename, iface->hname,
 						iface->packet_count, iface->packet_count / (now - start));
 			}
 		}
@@ -1744,7 +1744,7 @@ int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, ui
 		} // Inordinal LED count
 		if (leds != mptr - readdata + 1) {
 			fault = 2;
-			SV_WARN("Bad LED count in packet %d; should be %ld", leds, mptr - readdata + 1);
+			SV_WARN("Bad LED count in packet %d; should be %d", leds, mptr - readdata + 1);
 			goto end;
 		} // LED Count does not line up with parameters
 	}
