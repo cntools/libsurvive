@@ -242,6 +242,14 @@ Matrix3x3 inverseM33(const Matrix3x3 mat);
 LINMATH_EXPORT void matrix44copy(FLT *mout, const FLT *minm);
 LINMATH_EXPORT void matrix44transpose(FLT *mout, const FLT *minm);
 
+static inline FLT linmath_enforce_range(FLT v, FLT mn, FLT mx) {
+	if (v < mn)
+		return mn;
+	if (v > mx)
+		return mx;
+	return v;
+}
+
 static inline FLT linmath_max(FLT x, FLT y) { return x > y ? x : y; }
 
 static inline FLT linmath_min(FLT x, FLT y) { return x < y ? x : y; }

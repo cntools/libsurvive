@@ -1,13 +1,18 @@
 #include "survive_reproject.h"
-#include "survive_reproject.generated.h"
 #include <assert.h>
 
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <survive_reproject.h>
 
-static inline FLT survive_reproject_axis(const BaseStationCal *bcal, FLT axis_value, FLT other_axis_value, FLT Z) {
-	FLT ang = atan2(Z, axis_value);
+#pragma GCC push_options
+#pragma GCC optimize("Ofast")
+
+#include "survive_reproject.generated.h"
+
+static inline FLT survive_reproject_axis(const BaseStationCal *bcal, FLT axis_value, FLT other_axis_value, FLT Z,
+										 bool invert_axis_value) {
+	FLT ang = M_PI_2 - (invert_axis_value ? -1 : 1) * (atan2(axis_value, Z));
 
 	const FLT phase = bcal->phase;
 	const FLT curve = bcal->curve;
@@ -18,11 +23,7 @@ static inline FLT survive_reproject_axis(const BaseStationCal *bcal, FLT axis_va
     const FLT mag = sqrt(axis_value * axis_value  + Z * Z);
 
 	ang -= phase;
-	double asin_arg = tan(tilt) * other_axis_value / mag;
-	if (asin_arg > 1.)
-		asin_arg = 1;
-	if (asin_arg < -1.)
-		asin_arg = -1;
+	double asin_arg = linmath_enforce_range((tilt)*other_axis_value / mag, -1, 1);
 	ang -= asin(asin_arg);
 	ang -= cos(gibPhase + ang) * gibMag;
 	ang += curve * atan2(other_axis_value, Z) * atan2(other_axis_value, Z);
@@ -31,18 +32,25 @@ static inline FLT survive_reproject_axis(const BaseStationCal *bcal, FLT axis_va
 	return ang;
 }
 
+static inline FLT survive_reproject_axis_x_inline(const BaseStationCal *bcal, LinmathVec3d const ptInLh) {
+	return survive_reproject_axis(&bcal[0], ptInLh[0], ptInLh[1], -ptInLh[2], false) - M_PI / 2.;
+}
+
+static inline FLT survive_reproject_axis_y_inline(const BaseStationCal *bcal, LinmathVec3d const ptInLh) {
+	return survive_reproject_axis(&bcal[1], ptInLh[1], ptInLh[0], -ptInLh[2], true) - M_PI / 2.;
+}
 
 FLT survive_reproject_axis_x(const BaseStationCal *bcal, LinmathVec3d const ptInLh) {
-	return survive_reproject_axis(&bcal[0], ptInLh[0], ptInLh[1], -ptInLh[2]) - M_PI / 2.;
+	return survive_reproject_axis_x_inline(bcal, ptInLh);
 }
 
 FLT survive_reproject_axis_y(const BaseStationCal *bcal, LinmathVec3d const ptInLh) {
-	return survive_reproject_axis(&bcal[1], -ptInLh[1], ptInLh[0], -ptInLh[2]) - M_PI / 2.;
+	return survive_reproject_axis_y_inline(bcal, ptInLh);
 }
 
 void survive_reproject_xy(const BaseStationCal *bcal, LinmathVec3d const ptInLh, SurviveAngleReading out) {
-	out[0] = survive_reproject_axis_x(bcal, ptInLh);
-	out[1] = survive_reproject_axis_y(bcal, ptInLh);
+	out[0] = survive_reproject_axis_x_inline(bcal, ptInLh);
+	out[1] = survive_reproject_axis_y_inline(bcal, ptInLh);
 }
 
 void survive_reproject_full(const BaseStationCal *bcal, const SurvivePose *world2lh, const SurvivePose *obj2world,
@@ -124,3 +132,5 @@ void survive_apply_bsd_calibration(const SurviveContext *ctx, int lh, const FLT 
 	out[0] = in[0] + cal[0].phase;
 	out[1] = in[1] + cal[1].phase;
 }
+
+#pragma GCC pop_options

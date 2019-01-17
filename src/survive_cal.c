@@ -77,8 +77,8 @@ void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 	b->BaseStationID = v6.id;
 	b->fcal[0].phase = v6.fcal_0_phase;
 	b->fcal[1].phase = v6.fcal_1_phase;
-	b->fcal[0].tilt = (v6.fcal_0_tilt);
-	b->fcal[1].tilt = (v6.fcal_1_tilt); // XXX??? Is this right? See https://github.com/cnlohr/libsurvive/issues/18
+	b->fcal[0].tilt = tan(v6.fcal_0_tilt);
+	b->fcal[1].tilt = tan(v6.fcal_1_tilt); // XXX??? Is this right? See https://github.com/cnlohr/libsurvive/issues/18
 	b->fcal[0].curve = v6.fcal_0_curve;
 	b->fcal[1].curve = v6.fcal_1_curve;
 	b->fcal[0].gibpha = v6.fcal_0_gibphase;

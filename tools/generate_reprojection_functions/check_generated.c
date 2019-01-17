@@ -4,7 +4,18 @@
 #include <math.h>
 #include <os_generic.h>
 
-#include "survive_reproject.full.generated.h"
+#include "survive_reproject.aux.generated.h"
+
+typedef struct LinmathAxisAnglePose {
+	LinmathPoint3d Pos;
+	LinmathAxisAngleMag Rot;
+} LinmathAxisAnglePose;
+
+SurvivePose AxisAnglePose2Pose(LinmathAxisAnglePose *p) {
+	SurvivePose rtn;
+
+	return rtn;
+}
 
 typedef struct survive_calibration_config {
 	FLT phase_scale, tilt_scale, curve_scale, gib_scale;
@@ -108,24 +119,27 @@ void check_reproject() {
 	//*((FLT *)&bsd.fcal[0].phase + i) = next_rand(1);
 
 	FLT out_pt[2] = {0};
-	int cycles = 100000;
+	int cycles = 50000000;
 
 	double start_gen = OGGetAbsoluteTime();
 	for (int i = 0; i < cycles; i++) {
+		obj.Pos[0] += .001;
 		gen_survive_reproject_full(out_pt, &obj, pt, &world2lh, bsd.fcal);
 	}
 	double stop_gen = OGGetAbsoluteTime();
 	printf("gen: %f %f (%f)\n", out_pt[0], out_pt[1], stop_gen - start_gen);
 
 	double start_reproject = OGGetAbsoluteTime();
-	for (int i = 0; i < cycles; i++)
+	for (int i = 0; i < cycles; i++) {
 		survive_reproject_full(bsd.fcal, &world2lh, &obj, pt, out_pt);
+	}
 	double stop_reproject = OGGetAbsoluteTime();
 
 	printf("%f %f (%f)\n", out_pt[0], out_pt[1], stop_reproject - start_reproject);
 	out_pt[0] = out_pt[1] = 0;
 }
 
+/*
 void check_jacobian_axisangle() {
 	LinmathAxisAnglePose obj2world = random_pose_axisangle();
 	// SurvivePose obj2world = {};
@@ -197,6 +211,33 @@ void check_jacobian_axisangle() {
 	}
 
 	out_pt[0] = out_pt[1] = 0;
+}
+*/
+
+void check_speed() {
+	SurvivePose obj2world = random_pose();
+
+	memset(obj2world.Rot, 0, sizeof(FLT) * 4);
+	obj2world.Rot[1] = 1.;
+
+	LinmathVec3d pt;
+	random_point(pt);
+
+	SurvivePose world2lh = random_pose();
+	// memset(world2lh.Rot, 0, sizeof(FLT) * 4);
+	// world2lh.Rot[1] = 1.;
+	// SurvivePose lh = {}; lh.Rot[0] = 1.;
+
+	survive_calibration_config config;
+	BaseStationData bsd = {};
+	for (int i = 0; i < 10; i++)
+		*((FLT *)&bsd.fcal[0].phase + i) = next_rand(0.5);
+
+	FLT out_jac[14] = {0};
+
+	for (int i = 0; i < 20000000; i++) {
+		survive_reproject_full_jac_obj_pose(out_jac, &obj2world, pt, &world2lh, bsd.fcal);
+	}
 }
 
 void check_jacobian() {
@@ -284,20 +325,23 @@ void check_apply_pose() {
 	print_point(gen_out);	
 }
 
-int main() {
-	printf("Check apply pose...\n");
-	check_apply_pose();
-	printf("Check jacobian...\n");
-	check_jacobian();
-	printf("Check jacobian axis angle...\n");
-	check_jacobian_axisangle();
+int main(int argc) {
+	if (argc == 1) {
+		printf("Check apply pose...\n");
+		check_apply_pose();
+		printf("Check jacobian...\n");
+		check_jacobian();
+		// printf("Check jacobian axis angle...\n");
+		// check_jacobian_axisangle();
 
-	printf("Check rotate_vector...\n");
-	check_rotate_vector();
-	printf("Check invert...\n");
-	check_invert();
-	printf("Check reproject...\n");
-	check_reproject();
-
+		printf("Check rotate_vector...\n");
+		check_rotate_vector();
+		printf("Check invert...\n");
+		check_invert();
+		printf("Check reproject...\n");
+		check_reproject();
+	}
+	printf("Check speed...\n");
+	check_speed();
 	return 0;
 }
