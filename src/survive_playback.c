@@ -491,7 +491,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 			}
 			size_t len = strlen(configStart);
 
-			SurviveObject *so = survive_create_device(ctx, "Playback", sp, dev, 0);
+			SurviveObject *so = survive_create_device(ctx, "replay", sp, dev, 0);
 
 			if (ctx->configfunction(so, configStart, len) == 0) {
 				SV_INFO("Found %s in playback file...", dev);
