@@ -25,11 +25,16 @@ STATIC_CONFIG_ITEM( RECORD, "record", 's', "File to record to if you wish to mak
 STATIC_CONFIG_ITEM(RECORD_STDOUT, "record-stdout", 'i', "Whether or not to dump recording data to stdout", 0);
 STATIC_CONFIG_ITEM( PLAYBACK, "playback", 's', "File to be used for playback if playing a recording.", "" );
 STATIC_CONFIG_ITEM( PLAYBACK_FACTOR, "playback-factor", 'f', "Time factor of playback -- 1 is run at the same timing as original, 0 is run as fast as possible.", 1.0f );
+STATIC_CONFIG_ITEM( PLAYBACK_RECORD_RAWLIGHT, "record-rawlight", 'i', "Whether or not to output raw light data", 1 );
+STATIC_CONFIG_ITEM( PLAYBACK_RECORD_IMU, "record-imu", 'i', "Whether or not to output imu data", 1 );
+STATIC_CONFIG_ITEM( PLAYBACK_RECORD_ANGLE, "record-angle", 'i', "Whether or not to output angle data", 1 );
 
 
 typedef struct SurviveRecordingData {
 	bool alwaysWriteStdOut;
 	bool writeRawLight;
+        bool writeIMU;
+  bool writeAngle;
 	FILE *output_file;
 } SurviveRecordingData;
 
@@ -133,6 +138,10 @@ void survive_recording_angle_process(struct SurviveObject *so, int sensor_id, in
 	if (recordingData == 0)
 		return;
 
+	if (!recordingData->writeAngle) {
+	  return;
+	}
+
 	write_to_output(recordingData, "%s A %d %d %u %0.6f %0.6f %u\n", so->codename, sensor_id, acode, timecode, length,
 					angle, lh);
 }
@@ -153,6 +162,10 @@ void survive_recording_light_process(struct SurviveObject *so, int sensor_id, in
 	if (recordingData == 0)
 		return;
 
+	if (!recordingData->writeAngle) {
+	  return;
+	}
+	
 	if (acode == -1) {
 		write_to_output(recordingData, "%s S %d %d %d %u %u %u\n", so->codename, sensor_id, acode, timeinsweep,
 						timecode, length, lh);
@@ -194,6 +207,10 @@ void survive_recording_imu_process(struct SurviveObject *so, int mask, FLT *acce
 	if (recordingData == 0)
 		return;
 
+	if (!recordingData->writeIMU) {
+	  return;
+	}
+	
 	write_to_output(recordingData, "%s I %d %u %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f  %0.6f %0.6f %0.6f %d\n",
 					so->codename, mask, timecode, accelgyro[0], accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4],
 					accelgyro[5], accelgyro[6], accelgyro[7], accelgyro[8], id);
@@ -431,6 +448,8 @@ void survive_install_recording(SurviveContext *ctx) {
 		}
 
 		ctx->recptr->writeRawLight = survive_configi(ctx, "record-rawlight", SC_GET, 1);
+		ctx->recptr->writeIMU = survive_configi(ctx, "record-imu", SC_GET, 1);
+		ctx->recptr->writeAngle = survive_configi(ctx, "record-angle", SC_GET, 1);				
 	}
 }
 

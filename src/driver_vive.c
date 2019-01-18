@@ -171,7 +171,7 @@ static void *HAPIReceiver(void *v) {
 	SurviveUSBInterface *iface = v;
 	USB_INTERFACE_HANDLE *hp = &iface->uh;
 
-	while ((iface->actual_len = hid_read(*hp, iface->buffer, sizeof(iface->buffer))) > 0) {
+	if ((iface->actual_len = hid_read(*hp, iface->buffer, sizeof(iface->buffer))) > 0) {
 		// if( iface->actual_len  == 52 ) continue;
 		iface->packet_count++;
 #ifndef HID_NONBLOCKING
@@ -755,7 +755,8 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 
 	double now = OGGetAbsoluteTime();
 	int now_seconds = (int)(now - start);
-	bool print = sv->seconds_per_hz_output > 0 && now_seconds > seconds + sv->seconds_per_hz_output;
+	bool print = sv->seconds_per_hz_output > 0 && now_seconds > (seconds + sv->seconds_per_hz_output);
+	
 	if (print) {
 		seconds = now_seconds;
 		for (int i = 0; i < sv->udev_cnt; i++) {
@@ -2103,7 +2104,9 @@ int DriverRegHTCVive(SurviveContext *ctx) {
 	SurviveViveData *sv = calloc(1, sizeof(SurviveViveData));
 
 	survive_attach_configi(ctx, SECONDS_PER_HZ_OUTPUT_TAG, &sv->seconds_per_hz_output);
-
+	if(sv->seconds_per_hz_output > 0) {
+	  SV_INFO("Reporting usb hz in %d second intervals", sv->seconds_per_hz_output);
+	}
 	sv->ctx = ctx;
 
 #ifdef _WIN32

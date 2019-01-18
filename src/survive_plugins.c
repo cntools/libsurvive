@@ -71,9 +71,8 @@ void survive_load_plugins(const char *plugin_dir) {
 	// just keep loading the list until no new libraries are accepted.
 	//
 	// If there are still unresolved symbols, errors are reported.
-
-	const char *check_from_files[] = {get_so_filename(), get_exe_filename(), getenv("SURVIVE_PLUGINS"), 0};
-	const char *plugin_dirs[] = {"plugins", plugin_dir, 0};
+  const char *check_from_files[] = {get_so_filename(), get_exe_filename(), getenv("SURVIVE_PLUGINS"), 0};
+  const char *plugin_dirs[] = {"plugins", "libsurvive/plugins", plugin_dir, 0};
 
 	list_t plugin_list = { 0 };
 
