@@ -30,10 +30,39 @@ void test_gemm() {
   
 }
 
+static void test_solve() {
+	{
+		double _A[3] = {1, 2, 3};
+		double _B[1] = {4};
+		double _x[3] = {};
+
+		CvMat A = cvMat(1, 3, CV_64F, _A);
+		CvMat B = cvMat(1, 1, CV_64F, _B);
+		CvMat x = cvMat(3, 1, CV_64F, _x);
+
+		cvSolve(&A, &B, &x, CV_SVD);
+
+		double Ax = _A[0] * _x[0] + _A[1] * _x[1] + _A[2] * _x[2];
+		assert(fabs(_B[0] - Ax) < .001);
+	}
+
+	{
+		double _A[3] = {1, 2, 3};
+		double _B[9] = {4, 5, 6, 7, 8, 9, 10, 11, 12};
+		double _x[3] = {};
+
+		CvMat A = cvMat(3, 1, CV_64F, _A);
+		CvMat B = cvMat(3, 3, CV_64F, _B);
+		CvMat x = cvMat(1, 3, CV_64F, _x);
+
+		cvSolve(&A, &B, &x, CV_SVD);
+	}
+}
+
 int main()
 {
   test_gemm();
-  
+  test_solve();
   return 0;
 }
 

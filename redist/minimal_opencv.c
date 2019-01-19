@@ -29,11 +29,13 @@ const int DECOMP_LU = 2;
 
 void print_mat(const CvMat *M);
 
+static size_t mat_size_bytes(const CvMat *mat) { return (size_t)CV_ELEM_SIZE(mat->type) * mat->cols * mat->rows; }
+
 SURVIVE_LOCAL_ONLY void cvCopyTo(const CvMat *srcarr, CvMat *dstarr) {
 	assert(srcarr->rows == dstarr->rows);
 	assert(srcarr->cols == dstarr->cols);
 	assert(dstarr->type == srcarr->type);
-	memcpy(dstarr->data.db, srcarr->data.db, sizeof(double) * dstarr->rows * dstarr->cols);
+	memcpy(dstarr->data.db, srcarr->data.db, mat_size_bytes(srcarr));
 }
 
 SURVIVE_LOCAL_ONLY void cvGEMM(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src3, double beta,
@@ -293,9 +295,17 @@ SURVIVE_LOCAL_ONLY int cvSolve(const CvMat *Aarr, const CvMat *xarr, CvMat *Barr
 		print_mat(Aarr);
 		print_mat(xarr);
 #endif
+		bool xLargerThanB = xarr->rows > acols;
+		CvMat *xCpy = 0;
+		if (xLargerThanB) {
+			xCpy = cvCloneMat(xarr);
+		} else {
+			xCpy = Barr;
+			memcpy(Barr->data.db, xarr->data.db, mat_size_bytes(xarr));
+		}
 
 		CvMat *aCpy = cvCloneMat(Aarr);
-		CvMat *xCpy = cvCloneMat(xarr);
+
 		double *S = malloc(sizeof(double) * MIN(arows, acols));
 		double rcond = -1;
 		lapack_int *rank = malloc(sizeof(lapack_int) * MIN(arows, acols));
@@ -306,11 +316,14 @@ SURVIVE_LOCAL_ONLY int cvSolve(const CvMat *Aarr, const CvMat *xarr, CvMat *Barr
 
 		assert(Barr->rows == acols);
 		assert(Barr->cols == xCpy->cols);
-		xCpy->rows = acols;
-		cvCopyTo(xCpy, Barr);
+
+		if (xLargerThanB) {
+			xCpy->rows = acols;
+			cvCopyTo(xCpy, Barr);
+			cvReleaseMat(&xCpy);
+		}
 
 		cvReleaseMat(&aCpy);
-		cvReleaseMat(&xCpy);
 #ifdef DEBUG_PRINT
 		print_mat(Barr);
 #endif
