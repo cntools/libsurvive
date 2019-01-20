@@ -11,13 +11,6 @@ include_directories(redist include/libsurvive include)
 
 option(USE_HIDAPI "Use HIDAPI instead of libusb" OFF)
 option(USE_ASAN "Use address sanitizer" OFF)
-option(BUILD_ALL_STATIC "Build everything statically" OFF)
-
-if(BUILD_ALL_STATIC)
-  SET(LIBSURVIVE_LIBRARY_TYPE STATIC)
-else()
-  SET(LIBSURVIVE_LIBRARY_TYPE SHARED)
-endif()
 
 if(USE_ASAN)
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fsanitize=undefined")
@@ -46,12 +39,11 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
         ./redist/crc32.c
         ./redist/glutil.c
         ./redist/jsmn.c
-        ./redist/jsmntest.c
         ./redist/json_helpers.c
         ./redist/linmath.c
         ./redist/mpfit/mpfit.c
         ./redist/puff.c
-		./redist/symbol_enumerator.c
+	./redist/symbol_enumerator.c
         ./src/ootx_decoder.c
         ./src/poser.c
         ./src/poser_general_optimizer.c
@@ -73,7 +65,7 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
         ./src/survive_usb.c
 		./src/survive_kalman.c)
 
-add_library(survive ${LIBSURVIVE_LIBRARY_TYPE} ${SURVIVE_SRCS})
+add_library(survive SHARED ${SURVIVE_SRCS})
 set_target_properties(survive PROPERTIES FOLDER "libraries")
 
 add_subdirectory(redist)
@@ -111,18 +103,18 @@ set(poser_epnp_ADDITIONAL_SRCS src/epnp/epnp.c)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 foreach(PLUGIN ${PLUGINS})
-    add_library(${PLUGIN} ${LIBSURVIVE_LIBRARY_TYPE} src/${PLUGIN}.c ${${PLUGIN}_ADDITIONAL_SRCS})
+    add_library(${PLUGIN} SHARED src/${PLUGIN}.c ${${PLUGIN}_ADDITIONAL_SRCS})
     target_link_libraries(${PLUGIN} survive ${${PLUGIN}_ADDITIONAL_LIBS})
 	 
-	STRING(REGEX REPLACE "(.*)\_.*" "\\1" plugin_type "${PLUGIN}")
-	if(plugin_type)
-		set_target_properties(${PLUGIN} PROPERTIES FOLDER "${plugin_type}")
-	endif()
+    STRING(REGEX REPLACE "(.*)\_.*" "\\1" plugin_type "${PLUGIN}")
+    if(plugin_type)
+      set_target_properties(${PLUGIN} PROPERTIES FOLDER "${plugin_type}")
+    endif()
     set_target_properties(${PLUGIN} PROPERTIES PREFIX "")
     set_target_properties(${PLUGIN} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "plugins")
-	set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG "Debug/plugins")
-	set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE "Release/plugins")
-	set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "RelWithDebInfo/plugins")
+    set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG "Debug/plugins")
+    set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE "Release/plugins")
+    set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "RelWithDebInfo/plugins")
 
 endforeach()
   
@@ -143,5 +135,7 @@ install(TARGETS ${PLUGINS} DESTINATION lib/libsurvive/plugins)
 
 install(TARGETS survive DESTINATION lib/libsurvive)
 install(TARGETS survive DESTINATION lib)
+
+INSTALL(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink survive ${CMAKE_INSTALL_PREFIX}/lib)")
 
 install(DIRECTORY include/libsurvive DESTINATION include)
