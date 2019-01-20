@@ -612,7 +612,7 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 			}
 		}
 
-		if (d->confidence > 80)
+		if (d->confidence > 80 && cnt > 0)
 			ctx->lightproc(d->so, -3, LS_Params[d->state].acode, 0, best_timecode, DIV_ROUND_CLOSEST(avg_length, cnt),
 						   LS_Params[d->state].lh);
 	}

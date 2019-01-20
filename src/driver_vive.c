@@ -800,13 +800,13 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 							  int send_extra_magic) {
 	SurviveContext *ctx = sv->ctx;
 	int ret, count = 0, size = 0;
-	uint8_t cfgbuff[64];
+	uint8_t cfgbuff[256];
 	uint8_t compressed_data[8192];
 	uint8_t uncompressed_data[65536];
 	USBHANDLE dev = usbInfo->handle;
 
 	if (send_extra_magic) {
-		uint8_t cfgbuffwide[65];
+		uint8_t cfgbuffwide[257];
 
 		memset(cfgbuffwide, 0, sizeof(cfgbuff));
 		cfgbuffwide[0] = 0x01;
@@ -863,7 +863,7 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 		if (!size)
 			break;
 
-		if (size > 62) {
+		if (size > (sizeof(cfgbuff) - 2)) {
 			SV_INFO("Too much data (%d) on packet from config for device %s:%d (count: %d)", size,
 					usbInfo->so->codename, iface, count);
 			return -3;
@@ -1312,7 +1312,7 @@ static size_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPtr
 
 		// Store the event time
 		times[++timeIndex] = lastEventTime;
-		SV_VERBOSE("Time: [%i] %u (%u)", timeIndex, lastEventTime, timeDelta);
+		SV_VERBOSE("Time: [%zd] %u (%u)", timeIndex, lastEventTime, timeDelta);
 	}
 
 	// Step 2 - Convert events to pulses
@@ -1745,7 +1745,7 @@ int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, ui
 		} // Inordinal LED count
 		if (leds != mptr - readdata + 1) {
 			fault = 2;
-			SV_WARN("Bad LED count in packet %d; should be %d", leds, mptr - readdata + 1);
+			SV_WARN("Bad LED count in packet %d; should be %d", leds, (int)(mptr - readdata + 1));
 			goto end;
 		} // LED Count does not line up with parameters
 	}
