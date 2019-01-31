@@ -78,6 +78,13 @@ const struct DeviceInfo KnownDeviceTypes[] = {
 	 .codename = "",
 	 .endpoints = {{.num = 0x81, .name = "Mainboard", .type = USB_IF_HMD_HEADSET_INFO}},
 	 .magics = {MAGIC_CTOR(true, vive_magic_power_on), MAGIC_CTOR(false, vive_magic_power_off)}},
+	{.vid = 0x0bb4,
+	 .pid = 0x030e,
+	 .type = USB_DEV_HMD,
+	 .name = "HMD",
+	 .codename = "",
+	 .endpoints = {{.num = 0x81, .name = "Mainboard", .type = USB_IF_HMD_HEADSET_INFO}},
+	 .magics = {MAGIC_CTOR(true, vive_magic_power_on), MAGIC_CTOR(false, vive_magic_power_off)}},
 	{.vid = 0x28de,
 	 .pid = 0x2000,
 	 .type = USB_DEV_HMD_IMU_LH,
@@ -1326,7 +1333,7 @@ static size_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPtr
 	for (int i = 0; i < eventCount; i++) {
 		// Get the end time (Increment and find the next 'unused' time)
 		while (times[++timeIndex] == 0)
-			if (timeIndex >= maxTimeIndex) {
+			if (timeIndex + 1 >= maxTimeIndex) {
 				SV_WARN("Light data parse error 2");
 				return -2;
 			}
