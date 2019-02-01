@@ -79,7 +79,7 @@ const struct DeviceInfo KnownDeviceTypes[] = {
 	 .endpoints = {{.num = 0x81, .name = "Mainboard", .type = USB_IF_HMD_HEADSET_INFO}},
 	 .magics = {MAGIC_CTOR(true, vive_magic_power_on), MAGIC_CTOR(false, vive_magic_power_off)}},
 	{.vid = 0x0bb4,
-	 .pid = 0x030e,
+	 .pid = 0x2300,
 	 .type = USB_DEV_HMD,
 	 .name = "HMD",
 	 .codename = "",
