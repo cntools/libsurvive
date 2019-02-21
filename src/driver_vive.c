@@ -78,6 +78,13 @@ const struct DeviceInfo KnownDeviceTypes[] = {
 	 .codename = "",
 	 .endpoints = {{.num = 0x81, .name = "Mainboard", .type = USB_IF_HMD_HEADSET_INFO}},
 	 .magics = {MAGIC_CTOR(true, vive_magic_power_on), MAGIC_CTOR(false, vive_magic_power_off)}},
+	{.vid = 0x0bb4,
+	 .pid = 0x030e,
+	 .type = USB_DEV_HMD,
+	 .name = "HMD",
+	 .codename = "",
+	 .endpoints = {{.num = 0x81, .name = "Mainboard", .type = USB_IF_HMD_HEADSET_INFO}},
+	 .magics = {MAGIC_CTOR(true, vive_magic_power_on), MAGIC_CTOR(false, vive_magic_power_off)}},
 	{.vid = 0x28de,
 	 .pid = 0x2000,
 	 .type = USB_DEV_HMD_IMU_LH,
@@ -260,7 +267,7 @@ static int AttachInterface(SurviveViveData *sv, struct SurviveUSBInfo *usbObject
 #else
 	struct libusb_transfer *tx = iface->transfer = libusb_alloc_transfer(0);
 	// printf( "%p %d %p %p\n", iface, which_interface_am_i, tx, devh );
-	SV_INFO("Attaching %s(0x%x) for %s", hname, endpoint_num, assocobj->codename);
+	SV_INFO("Attaching %s(0x%x) for %s", hname, endpoint_num, assocobj ? assocobj->codename : "(unknown)");
 
 	if (!iface->transfer) {
 		SV_ERROR("Error: failed on libusb_alloc_transfer for %s", hname);
@@ -591,11 +598,12 @@ int survive_usb_init(SurviveViveData *sv) {
 	}
 
 	// There should only be one HMD, tie the mainboard interface to the surviveobject
-	for (int i = 0; i < sv->udev_cnt; i++) {
-		struct SurviveUSBInfo *usbInfo = &sv->udev[i];
-		if (USB_DEV_HMD == usbInfo->device_info->type) {
-			assert(hmd);
-			usbInfo->so = hmd;
+	if (hmd) {
+		for (int i = 0; i < sv->udev_cnt; i++) {
+			struct SurviveUSBInfo *usbInfo = &sv->udev[i];
+			if (USB_DEV_HMD == usbInfo->device_info->type) {
+				usbInfo->so = hmd;
+			}
 		}
 	}
 
@@ -1326,7 +1334,7 @@ static size_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPtr
 	for (int i = 0; i < eventCount; i++) {
 		// Get the end time (Increment and find the next 'unused' time)
 		while (times[++timeIndex] == 0)
-			if (timeIndex >= maxTimeIndex) {
+			if (timeIndex + 1 >= maxTimeIndex) {
 				SV_WARN("Light data parse error 2");
 				return -2;
 			}
@@ -1860,6 +1868,9 @@ void survive_data_cb(SurviveUSBInterface *si) {
 	int iface = si->which_interface_am_i;
 	SurviveObject *obj = si->assoc_obj;
 	uint8_t *readdata = si->buffer;
+
+	if (iface == USB_IF_HMD_HEADSET_INFO && obj == 0)
+		return;
 
 	int id = POP1;
 	//	printf( "%16s Size: %2d ID: %d / %d\n", si->hname, size, id, iface );
