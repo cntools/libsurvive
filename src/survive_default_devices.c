@@ -152,6 +152,7 @@ typedef struct {
 	SurviveObject *so;
 	vive_pose_t imu_pose;
 	vive_pose_t head;
+	int device_class;
 } scratch_space_t;
 
 static scratch_space_t scratch_space_init(SurviveObject *so) { return (scratch_space_t){.so = so}; }
@@ -278,6 +279,14 @@ static int process_jsontok(scratch_space_t *scratch, char *d, stack_entry_t *sta
 	if (t->type == JSMN_PRIMITIVE) {
 		return 1;
 	} else if (t->type == JSMN_STRING) {
+		if (stack && stack->key && jsoneq(d, stack->key, "device_class") == 0) {
+			if (strncmp("controller", d + t->start, t->end - t->start) == 0) {
+				scratch->device_class = 1;
+			} else if (strncmp("hmd", d + t->start, t->end - t->start) == 0) {
+				scratch->device_class = 2;
+			}
+		}
+
 		return 1;
 	} else if (t->type == JSMN_OBJECT) {
 		stack_entry_t entry;
@@ -285,9 +294,10 @@ static int process_jsontok(scratch_space_t *scratch, char *d, stack_entry_t *sta
 		j = 0;
 		for (i = 0; i < t->size; i++) {
 			entry.key = t + 1 + j;
-			//print_stack_spot(d, &entry);
-			j += process_jsontok(scratch, d, &entry, entry.key, count - j);
-
+			// print_stack_spot(d, &entry);
+			// Skip the key
+			j++;
+			// Read value
 			j += process_jsontok(scratch, d, &entry, t + 1 + j, count - j);
 		}
 		return j + 1;
@@ -339,7 +349,8 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	ApplyPoseToPose(&so->head2imu, &trackref2imu, &so->head2trackref);
 
 	// Handle device-specific sacling.
-	if (strcmp(so->codename, "HMD") == 0) {
+	if (strcmp(so->codename, "HMD") == 0 || scratch.device_class == 2) {
+		SV_INFO("%s is treated as HMD device", so->codename);
 		scale3d(so->acc_scale, so->acc_scale, 1. / 8192.0);
 		scale3d(so->acc_bias, so->acc_bias, 1. / 1000.0); // Odd but seems right.
 
