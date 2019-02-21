@@ -1010,16 +1010,20 @@ void incrementAndPostButtonQueue(SurviveContext *ctx) {
 	memset(entry, 0, sizeof(ButtonQueueEntry));
 }
 
+static ButtonQueueEntry *prepareNextButtonEvent(SurviveObject *so) {
+	ButtonQueueEntry *entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+	memset(entry, 0, sizeof(ButtonQueueEntry));
+	assert(so);
+	entry->so = so;
+	return entry;
+}
+
 // important!  This must be the only place that we're posting to the buttonEntryQueue
 // if that ever needs to be changed, you will have to add locking so that only one
 // thread is posting at a time.
-void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
+static void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
+	ButtonQueueEntry *entry = prepareNextButtonEvent(so);
 
-	ButtonQueueEntry *entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
-
-	memset(entry, 0, sizeof(ButtonQueueEntry));
-
-	entry->so = so;
 	if (event->pressedButtonsValid) {
 		// printf("trigger %8.8x\n", event->triggerHighRes);
 		for (int a = 0; a < 16; a++) {
@@ -1041,7 +1045,7 @@ void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
 					entry->buttonId = 24;
 				}
 				incrementAndPostButtonQueue(so->ctx);
-				entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+				entry = prepareNextButtonEvent(so);
 			}
 		}
 		// if the trigger button is depressed & it wasn't before
@@ -1050,7 +1054,7 @@ void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
 			entry->eventType = BUTTON_EVENT_BUTTON_DOWN;
 			entry->buttonId = 24;
 			incrementAndPostButtonQueue(so->ctx);
-			entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+			entry = prepareNextButtonEvent(so);
 		}
 		// if the trigger button isn't depressed but it was before
 		else if ((((event->pressedButtons) & (0xff000000)) != 0xff000000) &&
@@ -1058,7 +1062,7 @@ void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
 			entry->eventType = BUTTON_EVENT_BUTTON_UP;
 			entry->buttonId = 24;
 			incrementAndPostButtonQueue(so->ctx);
-			entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+			entry = prepareNextButtonEvent(so);
 		}
 	}
 	if (event->triggerHighResValid) {
@@ -1067,7 +1071,7 @@ void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
 			entry->axis1Id = 1;
 			entry->axis1Val = event->triggerHighRes;
 			incrementAndPostButtonQueue(so->ctx);
-			entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+			entry = prepareNextButtonEvent(so);
 		}
 	}
 	if ((event->touchpadHorizontalValid) && (event->touchpadVerticalValid)) {
@@ -1078,7 +1082,7 @@ void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
 			entry->axis2Id = 3;
 			entry->axis2Val = event->touchpadVertical;
 			incrementAndPostButtonQueue(so->ctx);
-			entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+			entry = prepareNextButtonEvent(so);
 		}
 	}
 
