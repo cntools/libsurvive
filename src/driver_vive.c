@@ -529,6 +529,8 @@ int survive_usb_init(SurviveViveData *sv) {
 
 	bool has_hmd_mainboard = false;
 
+	char* serial_numbers[MAX_USB_DEVS];
+
 	for (const struct DeviceInfo *info = KnownDeviceTypes; info->name; info++) {
 		if (info == 0 || strstr(blacklist, info->name)) {
 			continue;
@@ -569,6 +571,9 @@ int survive_usb_init(SurviveViveData *sv) {
 				continue;
 			}
 
+			serial_numbers[sv->udev_cnt - 1] = malloc(16*sizeof(char) );
+			wcstombs(serial_numbers[sv->udev_cnt - 1], d->serial_number, 16*sizeof(char) );
+
 			SV_INFO("Successfully enumerated %s %04x:%04x", info->name, idVendor, idProduct);
 		}
 	}
@@ -588,6 +593,7 @@ int survive_usb_init(SurviveViveData *sv) {
 			*cnt = *cnt + 1;
 
 			SurviveObject *so = survive_create_device(ctx, "HTC", sv, codename, 0);
+			strcpy(so->serial_number, serial_numbers[ctx->objs_ct]);
 			survive_add_object(ctx, so);
 			usbInfo->so = so;
 

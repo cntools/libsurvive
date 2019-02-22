@@ -58,6 +58,11 @@ SURVIVE_EXPORT survive_timecode survive_simple_object_get_latest_pose(const Surv
  */
 SURVIVE_EXPORT const char *survive_simple_object_name(const SurviveSimpleObject *sao);
 
+/**
+ * Gets the null terminated serial number of the object.
+ */
+SURVIVE_EXPORT const char *survive_simple_serial_number(const SurviveSimpleObject *sao);
+
 #ifdef __cplusplus
 }
 #endif
