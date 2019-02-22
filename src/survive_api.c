@@ -25,6 +25,7 @@ struct SurviveSimpleObject {
 	} data;
 
 	char name[32];
+	char serial_number[16];
 	bool has_update;
 };
 
@@ -121,6 +122,7 @@ struct SurviveSimpleContext *survive_simple_init(int argc, char *const *argv) {
 		obj->actx = actx;
 		obj->data.so->user_ptr = (void*)i;
 		snprintf(obj->name, 32, "%s", obj->data.so->codename);
+		snprintf(obj->serial_number, 16, "%s", obj->data.so->serial_number);
 	}
 
 	survive_install_pose_fn(ctx, pose_fn);
@@ -222,3 +224,4 @@ uint32_t survive_simple_object_get_latest_pose(const struct SurviveSimpleObject 
 }
 
 const char *survive_simple_object_name(const SurviveSimpleObject *sao) { return sao->name; }
+const char *survive_simple_serial_number(const SurviveSimpleObject *sao) { return sao->serial_number; }
