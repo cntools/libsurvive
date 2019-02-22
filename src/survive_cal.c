@@ -155,9 +155,24 @@ void survive_cal_install( struct SurviveContext * ctx )
 
 	cd->numPoseObjects = 0;
 
+	char RequiredTrackersForCal[128] = {};
 	// setting the required trackers for calibration to be permissive to make it easier for a newbie to start-- 
-	// basically, libsurvive will detect whatever they have plugged in and start using that.  
-	const char *RequiredTrackersForCal = survive_configs(ctx, "requiredtrackersforcal", SC_SETCONFIG, "");
+	// basically, libsurvive will detect whatever they have plugged in and start using that.
+	const char *_RequiredTrackersForCal = survive_configs(ctx, "requiredtrackersforcal", SC_SETCONFIG, "");
+	strncpy(RequiredTrackersForCal, _RequiredTrackersForCal, 128);
+
+	if (strlen(RequiredTrackersForCal) == 0) {
+		int8_t highest_sensor_ct = 0;
+		int best_obj = -1;
+		for (int j = 0; j < ctx->objs_ct; j++) {
+			if (highest_sensor_ct < ctx->objs[j]->sensor_ct) {
+				highest_sensor_ct = ctx->objs[j]->sensor_ct;
+				best_obj = j;
+			}
+		}
+
+		strncpy(RequiredTrackersForCal, ctx->objs[best_obj]->codename, 128);
+	}
 
 	// If there are no mandatory trackers for calibration; by default just accept whatever it is that the person has.
 	const uint32_t AllowAllTrackersForCal =
@@ -286,13 +301,13 @@ void survive_cal_angle( struct SurviveObject * so, int sensor_id, int acode, uin
 
 	if( !cd ) return;
 
-	int sensid = sensor_id;
+	int sensid = -1;
 
 	for (int i=0; i < cd->numPoseObjects; i++)
 	{
 		if( strcmp( so->codename, cd->poseobjects[i]->codename ) == 0 )
 		{
-			sensid += i*32;
+			sensid = sensor_id + i * 32;
 		}
 	}
 
