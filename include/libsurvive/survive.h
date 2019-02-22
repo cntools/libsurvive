@@ -74,6 +74,7 @@ struct SurviveObject {
 
 	char codename[4];   // 3 letters, null-terminated.  Currently HMD, WM0, WM1.
 	char drivername[8]; // 8 letters for driver.  Currently "HTC"
+	char serial_number[16]; // 13 letters device serial number
 	void *driver;
 	int32_t buttonmask;
 	int16_t axis1;
