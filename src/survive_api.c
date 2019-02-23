@@ -9,6 +9,11 @@ struct SurviveExternalObject {
 	SurvivePose pose;
 };
 
+struct SurviveLighthouseData {
+	int lighthouse;
+	char serial_number[16];
+};
+
 struct SurviveSimpleObject {
 	struct SurviveSimpleContext *actx;
 
@@ -19,13 +24,12 @@ struct SurviveSimpleObject {
 	} type;
 
 	union {
-		int lighthouse;
+		struct SurviveLighthouseData lh;
 		struct SurviveObject *so;
 		struct SurviveExternalObject seo;
 	} data;
 
 	char name[32];
-	char serial_number[16];
 	bool has_update;
 };
 
@@ -108,11 +112,12 @@ struct SurviveSimpleContext *survive_simple_init(int argc, char *const *argv) {
 	intptr_t i = 0;
 	for (i = 0; i < ctx->activeLighthouses; i++) {
 		struct SurviveSimpleObject *obj = &actx->objects[i];
-		obj->data.lighthouse = i;
+		obj->data.lh.lighthouse = i;
 		obj->type = SurviveSimpleObject_LIGHTHOUSE;
 		obj->actx = actx;
 		obj->has_update = ctx->bsd[i].PositionSet;
 		snprintf(obj->name, 32, "LH%" PRIdPTR, i);
+		snprintf(obj->data.lh.serial_number, 16, "%X", ctx->bsd[i].BaseStationID);
 	}
 	for (; i < object_ct; i++) {
 		struct SurviveSimpleObject *obj = &actx->objects[i];
@@ -121,8 +126,7 @@ struct SurviveSimpleContext *survive_simple_init(int argc, char *const *argv) {
 		obj->type = SurviveSimpleObject_OBJECT;
 		obj->actx = actx;
 		obj->data.so->user_ptr = (void*)i;
-		snprintf(obj->name, 32, "%s", obj->data.so->codename);
-		snprintf(obj->serial_number, 16, "%s", obj->data.so->serial_number);
+		strncpy(obj->name, obj->data.so->codename, sizeof(obj->name));
 	}
 
 	survive_install_pose_fn(ctx, pose_fn);
@@ -200,7 +204,7 @@ uint32_t survive_simple_object_get_latest_pose(const struct SurviveSimpleObject 
 	switch (sao->type) {
 	case SurviveSimpleObject_LIGHTHOUSE: {
 		if (pose)
-			*pose = sao->actx->ctx->bsd[sao->data.lighthouse].Pose;
+			*pose = sao->actx->ctx->bsd[sao->data.lh.lighthouse].Pose;
 		break;
 	}
 	case SurviveSimpleObject_OBJECT:
@@ -224,4 +228,15 @@ uint32_t survive_simple_object_get_latest_pose(const struct SurviveSimpleObject 
 }
 
 const char *survive_simple_object_name(const SurviveSimpleObject *sao) { return sao->name; }
-const char *survive_simple_serial_number(const SurviveSimpleObject *sao) { return sao->serial_number; }
+const char *survive_simple_serial_number(const SurviveSimpleObject *sao) {
+	switch (sao->type) {
+	case SurviveSimpleObject_LIGHTHOUSE: {
+		return sao->data.lh.serial_number;
+	}
+	case SurviveSimpleObject_OBJECT:
+		return sao->data.so->serial_number;
+	case SurviveSimpleObject_EXTERNAL:
+	default:
+		return "";
+	}
+}

@@ -18,8 +18,9 @@ int main(int argc, char **argv) {
 		for (const SurviveSimpleObject *it = survive_simple_get_first_object(actx); it != 0;
 			 it = survive_simple_get_next_object(actx, it)) {
 			uint32_t timecode = survive_simple_object_get_latest_pose(it, &pose);
-			printf("%s (%u): %f %f %f %f %f %f %f\n", survive_simple_object_name(it), timecode, pose.Pos[0],
-				   pose.Pos[1], pose.Pos[2], pose.Rot[0], pose.Rot[1], pose.Rot[2], pose.Rot[3]);
+			printf("%s %s (%u): %f %f %f %f %f %f %f\n", survive_simple_object_name(it),
+				   survive_simple_serial_number(it), timecode, pose.Pos[0], pose.Pos[1], pose.Pos[2], pose.Rot[0],
+				   pose.Rot[1], pose.Rot[2], pose.Rot[3]);
 		}
 
 		OGUSleep(30000);

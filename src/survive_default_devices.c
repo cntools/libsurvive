@@ -279,11 +279,19 @@ static int process_jsontok(scratch_space_t *scratch, char *d, stack_entry_t *sta
 	if (t->type == JSMN_PRIMITIVE) {
 		return 1;
 	} else if (t->type == JSMN_STRING) {
-		if (stack && stack->key && jsoneq(d, stack->key, "device_class") == 0) {
-			if (strncmp("controller", d + t->start, t->end - t->start) == 0) {
-				scratch->device_class = 1;
-			} else if (strncmp("hmd", d + t->start, t->end - t->start) == 0) {
-				scratch->device_class = 2;
+		if (stack && stack->key) {
+			if (jsoneq(d, stack->key, "device_class") == 0) {
+				if (strncmp("controller", d + t->start, t->end - t->start) == 0) {
+					scratch->device_class = 1;
+				} else if (strncmp("hmd", d + t->start, t->end - t->start) == 0) {
+					scratch->device_class = 2;
+				}
+			} else if (jsoneq(d, stack->key, "device_serial_number") == 0) {
+				int size = sizeof(scratch->so->serial_number);
+				if (size > t->end - t->start)
+					size = t->end - t->start;
+
+				memcpy(scratch->so->serial_number, d + t->start, size);
 			}
 		}
 
