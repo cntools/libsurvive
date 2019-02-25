@@ -117,7 +117,7 @@ struct SurviveSimpleContext *survive_simple_init(int argc, char *const *argv) {
 		obj->actx = actx;
 		obj->has_update = ctx->bsd[i].PositionSet;
 		snprintf(obj->name, 32, "LH%" PRIdPTR, i);
-		snprintf(obj->data.lh.serial_number, 16, "%X", ctx->bsd[i].BaseStationID);
+		snprintf(obj->data.lh.serial_number, 16, "LHB-%X", ctx->bsd[i].BaseStationID);
 	}
 	for (; i < object_ct; i++) {
 		struct SurviveSimpleObject *obj = &actx->objects[i];
