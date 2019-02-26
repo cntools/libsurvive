@@ -5,8 +5,47 @@
 extern "C" {
 #endif
 
-struct SurviveSimpleContext;
-typedef struct SurviveSimpleContext SurviveSimpleContext;
+struct SurviveExternalObject {
+	SurvivePose pose;
+};
+
+struct SurviveLighthouseData {
+	int lighthouse;
+	char serial_number[16];
+};
+
+struct SurviveSimpleObject {
+	struct SurviveSimpleContext *actx;
+
+	enum SurviveSimpleObject_type {
+		SurviveSimpleObject_LIGHTHOUSE,
+		SurviveSimpleObject_OBJECT,
+		SurviveSimpleObject_EXTERNAL
+	} type;
+
+	union {
+		struct SurviveLighthouseData lh;
+		struct SurviveObject *so;
+		struct SurviveExternalObject seo;
+	} data;
+
+	char name[32];
+	bool has_update;
+};
+
+struct SurviveSimpleContext {
+	SurviveContext* ctx; 
+	
+	bool running;
+	og_thread_t thread;
+	og_mutex_t poll_mutex;
+
+	size_t external_object_ct;
+	struct SurviveSimpleObject *external_objects;
+
+	size_t object_ct;
+	struct SurviveSimpleObject objects[];
+};
 
 /***
  * Initialize a new instance of an simple context -- mirrors survive_init
@@ -28,9 +67,6 @@ SURVIVE_EXPORT void survive_simple_start_thread(SurviveSimpleContext *actx);
  * @return true iff the background thread is still running
  */
 SURVIVE_EXPORT bool survive_simple_is_running(SurviveSimpleContext *actx);
-
-struct SurviveSimpleObject;
-typedef struct SurviveSimpleObject SurviveSimpleObject;
 
 /**
  * Get the first known object. Note that this also includes lighthouses

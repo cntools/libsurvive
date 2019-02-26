@@ -5,48 +5,6 @@
 #include "string.h"
 #include "survive.h"
 
-struct SurviveExternalObject {
-	SurvivePose pose;
-};
-
-struct SurviveLighthouseData {
-	int lighthouse;
-	char serial_number[16];
-};
-
-struct SurviveSimpleObject {
-	struct SurviveSimpleContext *actx;
-
-	enum SurviveSimpleObject_type {
-		SurviveSimpleObject_LIGHTHOUSE,
-		SurviveSimpleObject_OBJECT,
-		SurviveSimpleObject_EXTERNAL
-	} type;
-
-	union {
-		struct SurviveLighthouseData lh;
-		struct SurviveObject *so;
-		struct SurviveExternalObject seo;
-	} data;
-
-	char name[32];
-	bool has_update;
-};
-
-struct SurviveSimpleContext {
-	SurviveContext* ctx; 
-	
-	bool running;
-	og_thread_t thread;
-	og_mutex_t poll_mutex;
-
-	size_t external_object_ct;
-	struct SurviveSimpleObject *external_objects;
-
-	size_t object_ct;
-	struct SurviveSimpleObject objects[];
-};
-
 SurviveSimpleObject *find_or_create_external(struct SurviveSimpleContext *actx, const char *name) {
 	for (int i = 0; i < actx->external_object_ct; i++) {
 		struct SurviveSimpleObject *so = &actx->external_objects[i];
