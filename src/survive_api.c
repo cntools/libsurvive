@@ -1,3 +1,6 @@
+
+#include <survive_api.h>
+
 #include "survive_api.h"
 #include "inttypes.h"
 #include "os_generic.h"
@@ -131,7 +134,6 @@ struct SurviveSimpleContext *survive_simple_init(int argc, char *const *argv) {
 
 	survive_install_pose_fn(ctx, pose_fn);
 	survive_install_external_pose_fn(ctx, external_pose_fn);
-	survive_install_external_pose_fn(ctx, external_pose_fn);
 	survive_install_lighthouse_pose_fn(ctx, lh_fn);
 	return actx;
 }
@@ -240,3 +242,29 @@ const char *survive_simple_serial_number(const SurviveSimpleObject *sao) {
 		return "";
 	}
 }
+
+void survive_simple_lock(struct SurviveSimpleContext *actx) { OGLockMutex(actx->poll_mutex); }
+
+void survive_simple_unlock(struct SurviveSimpleContext *actx) { OGUnlockMutex(actx->poll_mutex); }
+
+SurviveContext *survive_simple_get_ctx(SurviveSimpleContext *actx) { return actx->ctx; }
+
+SurviveObject *survive_simple_get_survive_object(const SurviveSimpleObject *sao) {
+	switch (sao->type) {
+	case SurviveSimpleObject_OBJECT:
+		return sao->data.so;
+	default:
+		return NULL;
+	}
+}
+
+BaseStationData *survive_simple_get_bsd(const SurviveSimpleObject *sao) {
+	switch (sao->type) {
+	case SurviveSimpleObject_LIGHTHOUSE:
+		return &sao->actx->ctx->bsd[sao->data.lh.lighthouse];
+	default:
+		return NULL;
+	}
+}
+
+int survive_simple_get_object_count(SurviveSimpleContext *actx) { return actx->object_ct; }
