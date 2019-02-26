@@ -1,4 +1,5 @@
 #include "survive_types.h"
+#include "os_generic.h"
 #include <stdbool.h>
 
 #ifdef __cplusplus
@@ -46,6 +47,9 @@ struct SurviveSimpleContext {
 	size_t object_ct;
 	struct SurviveSimpleObject objects[];
 };
+
+typedef struct SurviveSimpleContext SurviveSimpleContext;
+typedef struct SurviveSimpleObject SurviveSimpleObject;
 
 /***
  * Initialize a new instance of an simple context -- mirrors survive_init
