@@ -10,25 +10,35 @@ int main(int argc, char **argv) {
 
 	survive_simple_start_thread(actx);
 
+	for (const SurviveSimpleObject *it = survive_simple_get_first_object(actx); it != 0;
+		 it = survive_simple_get_next_object(actx, it)) {
+		printf("Found '%s'\n", survive_simple_object_name(it));
+	}
+
 	while (survive_simple_is_running(actx)) {
-		OGUSleep(30000);
-
-		SurvivePose pose;
-
-		for (const SurviveSimpleObject *it = survive_simple_get_first_object(actx); it != 0;
-			 it = survive_simple_get_next_object(actx, it)) {
+		OGUSleep(10000);
+		for (const SurviveSimpleObject *it = survive_simple_get_next_updated(actx); it != 0;
+			 it = survive_simple_get_next_updated(actx)) {
+			SurvivePose pose;
 			uint32_t timecode = survive_simple_object_get_latest_pose(it, &pose);
 			printf("%s %s (%u): %f %f %f %f %f %f %f\n", survive_simple_object_name(it),
 				   survive_simple_serial_number(it), timecode, pose.Pos[0], pose.Pos[1], pose.Pos[2], pose.Rot[0],
 				   pose.Rot[1], pose.Rot[2], pose.Rot[3]);
 		}
 
-		OGUSleep(30000);
-		for (const SurviveSimpleObject *it = survive_simple_get_next_updated(actx); it != 0;
-			 it = survive_simple_get_next_updated(actx)) {
-			printf("%s changed since last checked\n", survive_simple_object_name(it));
-		}
+		struct SurviveSimpleEvent event = {};
 
+		while (survive_simple_next_event(actx, &event) != SurviveSimpleEventType_None) {
+			switch (event.event_type) {
+			case SurviveSimpleEventType_ButtonEvent: {
+				const struct SurviveSimpleButtonEvent *button_event = survive_simple_get_button_event(&event);
+				printf("%s button event %d %d\n", survive_simple_object_name(button_event->object),
+					   (int)button_event->event_type, button_event->button_id);
+			}
+			case SurviveSimpleEventType_None:
+				break;
+			}
+		}
 	}
 
 	survive_simple_close(actx);

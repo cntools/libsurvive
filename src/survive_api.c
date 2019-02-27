@@ -1,4 +1,5 @@
-
+#define SURVIVE_ENABLE_FULL_API
+#include <assert.h>
 #include <survive_api.h>
 
 #include "survive_api.h"
@@ -37,12 +38,17 @@ struct SurviveSimpleObject {
 	bool has_update;
 };
 
+#define MAX_EVENT_SIZE 64
 struct SurviveSimpleContext {
 	SurviveContext* ctx; 
 	
 	bool running;
 	og_thread_t thread;
 	og_mutex_t poll_mutex;
+
+	size_t events_cnt;
+	size_t event_next_write;
+	struct SurviveSimpleEvent events[MAX_EVENT_SIZE];
 
 	size_t external_object_ct;
 	struct SurviveSimpleObject *external_objects;
@@ -51,47 +57,72 @@ struct SurviveSimpleContext {
 	struct SurviveSimpleObject objects[];
 };
 
-SurviveSimpleObject *find_or_create_external(struct SurviveSimpleContext *actx, const char *name) {
+static void insert_into_event_buffer(SurviveSimpleContext *actx, const SurviveSimpleEvent *event) {
+	bool buffer_full = actx->events_cnt == MAX_EVENT_SIZE;
+
+	actx->events[actx->event_next_write] = *event;
+	actx->event_next_write = (actx->event_next_write + 1) % MAX_EVENT_SIZE;
+	if (!buffer_full)
+		actx->events_cnt++;
+}
+
+static bool pop_from_event_buffer(SurviveSimpleContext *actx, SurviveSimpleEvent *event) {
+	if (actx->events_cnt == 0)
+		return false;
+
+	size_t read_idx = (MAX_EVENT_SIZE + actx->event_next_write - actx->events_cnt) % MAX_EVENT_SIZE;
+	*event = actx->events[read_idx];
+
+	// Mark read events as invalid and assert if they are about to be passed on. This means there is a logic bug in the
+	// circular buffer
+	assert(event->event_type != -1);
+	actx->events[read_idx].event_type = -1;
+
+	actx->events_cnt--;
+	return true;
+}
+
+static SurviveSimpleObject *find_or_create_external(SurviveSimpleContext *actx, const char *name) {
 	for (int i = 0; i < actx->external_object_ct; i++) {
-		struct SurviveSimpleObject *so = &actx->external_objects[i];
+		SurviveSimpleObject *so = &actx->external_objects[i];
 		if (strncmp(name, so->name, 32) == 0) {
 			return so;
 		}
 	}
 
 	actx->external_objects =
-		realloc(actx->external_objects, sizeof(struct SurviveSimpleObject) * (actx->external_object_ct + 1));
-	struct SurviveSimpleObject *so = &actx->external_objects[actx->external_object_ct++];
-	memset(so, 0, sizeof(struct SurviveSimpleObject));
+		realloc(actx->external_objects, sizeof(SurviveSimpleObject) * (actx->external_object_ct + 1));
+	SurviveSimpleObject *so = &actx->external_objects[actx->external_object_ct++];
+	memset(so, 0, sizeof(SurviveSimpleObject));
 	so->type = SurviveSimpleObject_EXTERNAL;
 	so->actx = actx;
 	strncpy(so->name, name, 32);
 	return so;
 }
 
-void external_velocity_fn(SurviveContext *ctx, const char *name, const SurviveVelocity *velocity) {
-	struct SurviveSimpleContext *actx = ctx->user_ptr;
+static void external_velocity_fn(SurviveContext *ctx, const char *name, const SurviveVelocity *velocity) {
+	SurviveSimpleContext *actx = ctx->user_ptr;
 	OGLockMutex(actx->poll_mutex);
 	survive_default_external_velocity_process(ctx, name, velocity);
 
-	struct SurviveSimpleObject *so = find_or_create_external(actx, name);
+	SurviveSimpleObject *so = find_or_create_external(actx, name);
 	so->has_update = true;
 	so->data.seo.velocity = *velocity;
 	OGUnlockMutex(actx->poll_mutex);
 }
 
 static void external_pose_fn(SurviveContext *ctx, const char *name, const SurvivePose *pose) {
-	struct SurviveSimpleContext *actx = ctx->user_ptr;
+	SurviveSimpleContext *actx = ctx->user_ptr;
 	OGLockMutex(actx->poll_mutex);
 	survive_default_external_pose_process(ctx, name, pose);
 
-	struct SurviveSimpleObject *so = find_or_create_external(actx, name);
+	SurviveSimpleObject *so = find_or_create_external(actx, name);
 	so->has_update = true;
 	so->data.seo.pose = *pose;
 	OGUnlockMutex(actx->poll_mutex);
 }
 static void pose_fn(SurviveObject *so, uint32_t timecode, SurvivePose *pose) {
-	struct SurviveSimpleContext *actx = so->ctx->user_ptr;
+	SurviveSimpleContext *actx = so->ctx->user_ptr;
 	OGLockMutex(actx->poll_mutex);
 	survive_default_raw_pose_process(so, timecode, pose);
 
@@ -101,7 +132,7 @@ static void pose_fn(SurviveObject *so, uint32_t timecode, SurvivePose *pose) {
 }
 static void lh_fn(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose,
 	SurvivePose *object_pose) {
-	struct SurviveSimpleContext *actx = ctx->user_ptr;
+	SurviveSimpleContext *actx = ctx->user_ptr;
 	OGLockMutex(actx->poll_mutex);
 	survive_default_lighthouse_pose_process(ctx, lighthouse, lighthouse_pose, object_pose);
 
@@ -110,7 +141,27 @@ static void lh_fn(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthou
 	OGUnlockMutex(actx->poll_mutex);
 }
 
-struct SurviveSimpleContext *survive_simple_init(int argc, char *const *argv) {
+static void button_fn(SurviveObject *so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val,
+					  uint8_t axis2Id, uint16_t axis2Val) {
+	SurviveSimpleContext *actx = so->ctx->user_ptr;
+	OGLockMutex(actx->poll_mutex);
+	survive_default_button_process(so, eventType, buttonId, axis1Id, axis1Val, axis2Id, axis2Val);
+	intptr_t idx = (intptr_t)so->user_ptr;
+
+	SurviveSimpleEvent event = {.event_type = SurviveSimpleEventType_ButtonEvent,
+								.button_event = {.object = &actx->objects[idx],
+												 .event_type = eventType,
+												 .button_id = buttonId,
+												 .axis_count = 2,
+												 .axis_ids = {axis1Id, axis2Id},
+												 .axis_val = {axis1Val, axis2Val}}};
+
+	insert_into_event_buffer(actx, &event);
+
+	OGUnlockMutex(actx->poll_mutex);
+}
+
+SurviveSimpleContext *survive_simple_init(int argc, char *const *argv) {
 	SurviveContext* ctx = survive_init(argc, argv);
 	if (ctx == 0)
 		return 0;
@@ -118,15 +169,14 @@ struct SurviveSimpleContext *survive_simple_init(int argc, char *const *argv) {
 	survive_startup(ctx);
 
 	int object_ct = ctx->activeLighthouses + ctx->objs_ct;
-	struct SurviveSimpleContext *actx =
-		calloc(1, sizeof(struct SurviveSimpleContext) + sizeof(struct SurviveSimpleObject) * object_ct);
+	SurviveSimpleContext *actx = calloc(1, sizeof(SurviveSimpleContext) + sizeof(SurviveSimpleObject) * object_ct);
 	actx->object_ct = object_ct;
 	actx->ctx = ctx;
 	actx->poll_mutex = OGCreateMutex();
 	ctx->user_ptr = actx;
 	intptr_t i = 0;
 	for (i = 0; i < ctx->activeLighthouses; i++) {
-		struct SurviveSimpleObject *obj = &actx->objects[i];
+		SurviveSimpleObject *obj = &actx->objects[i];
 		obj->data.lh.lighthouse = i;
 		obj->type = SurviveSimpleObject_LIGHTHOUSE;
 		obj->actx = actx;
@@ -135,7 +185,7 @@ struct SurviveSimpleContext *survive_simple_init(int argc, char *const *argv) {
 		snprintf(obj->data.lh.serial_number, 16, "LHB-%X", ctx->bsd[i].BaseStationID);
 	}
 	for (; i < object_ct; i++) {
-		struct SurviveSimpleObject *obj = &actx->objects[i];
+		SurviveSimpleObject *obj = &actx->objects[i];
 		int so_idx = i - ctx->activeLighthouses;
 		obj->data.so = ctx->objs[so_idx];
 		obj->type = SurviveSimpleObject_OBJECT;
@@ -147,11 +197,12 @@ struct SurviveSimpleContext *survive_simple_init(int argc, char *const *argv) {
 	survive_install_pose_fn(ctx, pose_fn);
 	survive_install_external_pose_fn(ctx, external_pose_fn);
 	survive_install_external_velocity_fn(ctx, external_velocity_fn);
+	survive_install_button_fn(ctx, button_fn);
 	survive_install_lighthouse_pose_fn(ctx, lh_fn);
 	return actx;
 }
 
-int survive_simple_stop_thread(struct SurviveSimpleContext *actx) {
+int survive_simple_stop_thread(SurviveSimpleContext *actx) {
 	actx->running = false;
 	intptr_t error = (intptr_t)OGJoinThread(actx->thread);
 	if (error != 0) {
@@ -161,7 +212,7 @@ int survive_simple_stop_thread(struct SurviveSimpleContext *actx) {
 	return error;
 }
 
-void survive_simple_close(struct SurviveSimpleContext *actx) {
+void survive_simple_close(SurviveSimpleContext *actx) {
 	if (actx->running) {
 		survive_simple_stop_thread(actx);
 	}
@@ -170,7 +221,7 @@ void survive_simple_close(struct SurviveSimpleContext *actx) {
 }
 
 static inline void *__simple_thread(void *_actx) {
-	struct SurviveSimpleContext *actx = _actx;
+	SurviveSimpleContext *actx = _actx;
 	intptr_t error = 0;
 	while (actx->running && error == 0) {
 		error = survive_poll(actx->ctx);
@@ -178,25 +229,24 @@ static inline void *__simple_thread(void *_actx) {
 	actx->running = false;
 	return (void*)error; 
 }
-bool survive_simple_is_running(struct SurviveSimpleContext *actx) { return actx->running; }
-void survive_simple_start_thread(struct SurviveSimpleContext *actx) {
+bool survive_simple_is_running(SurviveSimpleContext *actx) { return actx->running; }
+void survive_simple_start_thread(SurviveSimpleContext *actx) {
 	actx->running = true;
 	actx->thread = OGCreateThread(__simple_thread, actx);
 }
 
-const struct SurviveSimpleObject *survive_simple_get_next_object(struct SurviveSimpleContext *actx,
-																 const struct SurviveSimpleObject *curr) {
-	const struct SurviveSimpleObject *next = curr + 1;
+const SurviveSimpleObject *survive_simple_get_next_object(SurviveSimpleContext *actx, const SurviveSimpleObject *curr) {
+	const SurviveSimpleObject *next = curr + 1;
 	if (next >= actx->objects + actx->object_ct)
 		return 0;
 	return next;
 }
 
-const struct SurviveSimpleObject *survive_simple_get_first_object(struct SurviveSimpleContext *actx) {
-	return actx->objects;
-}
+const SurviveSimpleObject *survive_simple_get_first_object(SurviveSimpleContext *actx) { return actx->objects; }
 
-const struct SurviveSimpleObject *survive_simple_get_next_updated(struct SurviveSimpleContext *actx) {
+size_t survive_simple_get_object_count(SurviveSimpleContext *actx) { return actx->object_ct; }
+
+const SurviveSimpleObject *survive_simple_get_next_updated(SurviveSimpleContext *actx) {
 	for (int i = 0; i < actx->object_ct; i++) {
 		if (actx->objects[i].has_update) {
 			actx->objects[i].has_update = false;
@@ -217,11 +267,10 @@ survive_timecode survive_simple_object_get_latest_velocity(const SurviveSimpleOb
 	OGLockMutex(sao->actx->poll_mutex);
 
 	switch (sao->type) {
-	case SurviveSimpleObject_LIGHTHOUSE: {
-		if (velocity) {
+	case SurviveSimpleObject_LIGHTHOUSE:
+		if (velocity)
 			*velocity = (SurviveVelocity){};
-			break;
-		}
+		break;
 	case SurviveSimpleObject_OBJECT:
 		if (velocity)
 			*velocity = sao->data.so->velocity;
@@ -237,13 +286,12 @@ survive_timecode survive_simple_object_get_latest_velocity(const SurviveSimpleOb
 		SV_ERROR("Invalid object type %d", sao->type);
 	}
 	}
-	}
 
 	OGUnlockMutex(sao->actx->poll_mutex);
 	return timecode;
 }
 
-uint32_t survive_simple_object_get_latest_pose(const struct SurviveSimpleObject *sao, SurvivePose *pose) {
+uint32_t survive_simple_object_get_latest_pose(const SurviveSimpleObject *sao, SurvivePose *pose) {
 	uint32_t timecode = 0;
 	OGLockMutex(sao->actx->poll_mutex);
 
@@ -287,9 +335,9 @@ const char *survive_simple_serial_number(const SurviveSimpleObject *sao) {
 	}
 }
 
-void survive_simple_lock(struct SurviveSimpleContext *actx) { OGLockMutex(actx->poll_mutex); }
+void survive_simple_lock(SurviveSimpleContext *actx) { OGLockMutex(actx->poll_mutex); }
 
-void survive_simple_unlock(struct SurviveSimpleContext *actx) { OGUnlockMutex(actx->poll_mutex); }
+void survive_simple_unlock(SurviveSimpleContext *actx) { OGUnlockMutex(actx->poll_mutex); }
 
 SurviveContext *survive_simple_get_ctx(SurviveSimpleContext *actx) { return actx->ctx; }
 
@@ -311,4 +359,16 @@ BaseStationData *survive_simple_get_bsd(const SurviveSimpleObject *sao) {
 	}
 }
 
-int survive_simple_get_object_count(SurviveSimpleContext *actx) { return actx->object_ct; }
+const SurviveSimpleButtonEvent *survive_simple_get_button_event(const SurviveSimpleEvent *event) {
+	if (event->event_type == SurviveSimpleEventType_ButtonEvent)
+		return &event->button_event;
+	return 0;
+}
+
+enum SurviveSimpleEventType survive_simple_next_event(SurviveSimpleContext *actx, SurviveSimpleEvent *event) {
+	event->event_type = SurviveSimpleEventType_None;
+	OGLockMutex(actx->poll_mutex);
+	pop_from_event_buffer(actx, event);
+	OGUnlockMutex(actx->poll_mutex);
+	return event->event_type;
+}
