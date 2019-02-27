@@ -56,6 +56,12 @@ SURVIVE_EXPORT survive_timecode survive_simple_object_get_latest_pose(const Surv
 																	  SurvivePose *pose);
 
 /**
+ * Gets the velocity of a given object
+ */
+SURVIVE_EXPORT survive_timecode survive_simple_object_get_latest_velocity(const SurviveSimpleObject *sao,
+																		  SurviveVelocity *pose);
+
+/**
  * Gets the null terminated name of the object.
  */
 SURVIVE_EXPORT const char *survive_simple_object_name(const SurviveSimpleObject *sao);

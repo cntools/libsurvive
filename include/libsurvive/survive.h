@@ -92,6 +92,10 @@ struct SurviveObject {
 	SurvivePose OutPoseIMU;
 
 	survive_timecode OutPose_timecode;
+
+	SurviveVelocity velocity;
+	survive_timecode velocity_timecode;
+
 	SurvivePose FromLHPose[NUM_LIGHTHOUSES]; // Filled out by poser, contains computed position from each lighthouse.
 	void *PoserData; // Initialized to zero, configured by poser, can be anything the poser wants.
 	PoserCB PoserFn;

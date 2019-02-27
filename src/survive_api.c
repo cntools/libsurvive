@@ -10,6 +10,7 @@
 
 struct SurviveExternalObject {
 	SurvivePose pose;
+	SurviveVelocity velocity;
 };
 
 struct SurviveLighthouseData {
@@ -66,6 +67,17 @@ SurviveSimpleObject *find_or_create_external(struct SurviveSimpleContext *actx, 
 	so->actx = actx;
 	strncpy(so->name, name, 32);
 	return so;
+}
+
+void external_velocity_fn(SurviveContext *ctx, const char *name, const SurviveVelocity *velocity) {
+	struct SurviveSimpleContext *actx = ctx->user_ptr;
+	OGLockMutex(actx->poll_mutex);
+	survive_default_external_velocity_process(ctx, name, velocity);
+
+	struct SurviveSimpleObject *so = find_or_create_external(actx, name);
+	so->has_update = true;
+	so->data.seo.velocity = *velocity;
+	OGUnlockMutex(actx->poll_mutex);
 }
 
 static void external_pose_fn(SurviveContext *ctx, const char *name, const SurvivePose *pose) {
@@ -134,6 +146,7 @@ struct SurviveSimpleContext *survive_simple_init(int argc, char *const *argv) {
 
 	survive_install_pose_fn(ctx, pose_fn);
 	survive_install_external_pose_fn(ctx, external_pose_fn);
+	survive_install_external_velocity_fn(ctx, external_velocity_fn);
 	survive_install_lighthouse_pose_fn(ctx, lh_fn);
 	return actx;
 }
@@ -197,6 +210,37 @@ const struct SurviveSimpleObject *survive_simple_get_next_updated(struct Survive
 		}
 	}
 	return 0;
+}
+
+survive_timecode survive_simple_object_get_latest_velocity(const SurviveSimpleObject *sao, SurviveVelocity *velocity) {
+	uint32_t timecode = 0;
+	OGLockMutex(sao->actx->poll_mutex);
+
+	switch (sao->type) {
+	case SurviveSimpleObject_LIGHTHOUSE: {
+		if (velocity) {
+			*velocity = (SurviveVelocity){};
+			break;
+		}
+	case SurviveSimpleObject_OBJECT:
+		if (velocity)
+			*velocity = sao->data.so->velocity;
+		timecode = sao->data.so->velocity_timecode;
+		break;
+	case SurviveSimpleObject_EXTERNAL:
+		if (velocity)
+			*velocity = sao->data.seo.velocity;
+		break;
+
+	default: {
+		SurviveContext *ctx = sao->actx->ctx;
+		SV_ERROR("Invalid object type %d", sao->type);
+	}
+	}
+	}
+
+	OGUnlockMutex(sao->actx->poll_mutex);
+	return timecode;
 }
 
 uint32_t survive_simple_object_get_latest_pose(const struct SurviveSimpleObject *sao, SurvivePose *pose) {

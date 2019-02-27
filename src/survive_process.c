@@ -139,8 +139,10 @@ void survive_default_raw_pose_process(SurviveObject *so, uint32_t timecode, Surv
 	so->OutPose_timecode = timecode;
 	survive_recording_raw_pose_process(so, timecode, pose);
 }
-void survive_default_velocity_process(SurviveObject *so, uint32_t timecode, const SurviveVelocity *pose) {
-	survive_recording_velocity_process(so, timecode, pose);
+void survive_default_velocity_process(SurviveObject *so, uint32_t timecode, const SurviveVelocity *velocity) {
+	survive_recording_velocity_process(so, timecode, velocity);
+	so->velocity = *velocity;
+	so->velocity_timecode = timecode;
 }
 
 void survive_default_external_velocity_process(SurviveContext *ctx, const char *name, const SurviveVelocity *vel) {
