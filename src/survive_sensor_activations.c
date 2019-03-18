@@ -61,4 +61,5 @@ FLT SurviveSensorActivations_difference(const SurviveSensorActivations *rhs, con
 	return rtn / (double)cnt;
 }
 
-SURVIVE_EXPORT uint32_t SurviveSensorActivations_default_tolerance = (uint32_t)(48000000 /*mhz*/ * (16.7 * 2 /*ms*/) / 1000) + 5000;
+SURVIVE_EXPORT uint32_t SurviveSensorActivations_default_tolerance =
+	(uint32_t)(48000000 /*mhz*/ * (16.7 /*ms*/) / 1000) + 5000;
