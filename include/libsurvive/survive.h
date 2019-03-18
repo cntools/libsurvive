@@ -223,7 +223,7 @@ enum SurviveCalFlag {
 };
 
 struct SurviveContext {
-	text_feedback_func faultfunction;
+	error_feedback_func faultfunction;
 	text_feedback_func notefunction;
 	text_feedback_func warnfunction;
 	light_process_func lightproc;
@@ -253,6 +253,7 @@ struct SurviveContext {
 	int driver_ct;
 
 	SurviveState state;
+	SurviveError currentError;
 
 	void *buttonservicethread;
 	ButtonQueue buttonQueue;
@@ -288,7 +289,7 @@ static inline SurviveContext *survive_init(int argc, char *const *argv) {
 // In general unless you are doing wacky things like recording or playing back data, you won't need to use this.
 SURVIVE_EXPORT void survive_install_htc_config_fn(SurviveContext *ctx, htc_config_func fbp);
 SURVIVE_EXPORT void survive_install_info_fn(SurviveContext *ctx, text_feedback_func fbp);
-SURVIVE_EXPORT void survive_install_error_fn(SurviveContext *ctx, text_feedback_func fbp);
+SURVIVE_EXPORT void survive_install_error_fn(SurviveContext *ctx, error_feedback_func fbp);
 SURVIVE_EXPORT void survive_install_light_fn(SurviveContext *ctx, light_process_func fbp);
 SURVIVE_EXPORT void survive_install_imu_fn(SurviveContext *ctx, imu_process_func fbp);
 SURVIVE_EXPORT void survive_install_angle_fn(SurviveContext *ctx, angle_process_func fbp);
@@ -403,12 +404,16 @@ SURVIVE_EXPORT void handle_lightcap(SurviveObject *so, LightcapElement *le);
 		sprintf(stbuff, __VA_ARGS__);                                                                                  \
 		SV_LOG_NULL_GUARD ctx->notefunction(ctx, stbuff);                                                              \
 	}
-#define SV_ERROR(...)                                                                                                  \
+
+#define SV_ERROR(errorCode, ...)                                                                                       \
 	{                                                                                                                  \
 		char stbuff[1024];                                                                                             \
 		sprintf(stbuff, __VA_ARGS__);                                                                                  \
-		SV_LOG_NULL_GUARD ctx->faultfunction(ctx, stbuff);                                                             \
+		SV_LOG_NULL_GUARD ctx->faultfunction(ctx, errorCode, stbuff);                                                  \
 	}
+
+#define SV_GENERAL_ERROR(...) SV_ERROR(SURVIVE_ERROR_GENERAL, __VA_ARGS__)
+
 #define SV_KILL() exit(0) // XXX This should likely be re-defined.
 
 #ifdef __cplusplus

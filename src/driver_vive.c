@@ -216,8 +216,8 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 	SurviveContext *ctx = iface->ctx;
 
 	if (transfer->status != LIBUSB_TRANSFER_COMPLETED) {
-		SV_ERROR("Transfer problem %s %d with %s", libusb_error_name(transfer->status), transfer->status, iface->hname);
-		SV_KILL();
+		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Transfer problem %s %d with %s", libusb_error_name(transfer->status),
+				 transfer->status, iface->hname);
 		return;
 	}
 
@@ -226,8 +226,7 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 	iface->packet_count++;
 
 	if (libusb_submit_transfer(transfer)) {
-		SV_ERROR("Error resubmitting transfer for %s", iface->hname);
-		SV_KILL();
+		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Error resubmitting transfer for %s", iface->hname);
 	}
 }
 #endif
@@ -270,7 +269,7 @@ static int AttachInterface(SurviveViveData *sv, struct SurviveUSBInfo *usbObject
 	SV_INFO("Attaching %s(0x%x) for %s", hname, endpoint_num, assocobj ? assocobj->codename : "(unknown)");
 
 	if (!iface->transfer) {
-		SV_ERROR("Error: failed on libusb_alloc_transfer for %s", hname);
+		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Error: failed on libusb_alloc_transfer for %s", hname);
 		return 4;
 	}
 
@@ -278,7 +277,8 @@ static int AttachInterface(SurviveViveData *sv, struct SurviveUSBInfo *usbObject
 
 	int rc = libusb_submit_transfer(tx);
 	if (rc) {
-		SV_ERROR("Error: Could not submit transfer for %s 0x%02x (Code %d, %s)", hname, endpoint_num, rc, libusb_error_name(rc));
+		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Error: Could not submit transfer for %s 0x%02x (Code %d, %s)", hname,
+				 endpoint_num, rc, libusb_error_name(rc));
 		return 6;
 	}
 #endif
@@ -405,12 +405,13 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 	int ret = survive_get_usb_devices(sv, &devs);
 
 	if (ret < 0) {
-		SV_ERROR("Couldn't get list of USB devices %d (%s)", ret, survive_usb_error_name(ret));
+		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Couldn't get list of USB devices %d (%s)", ret,
+				 survive_usb_error_name(ret));
 		return ret;
 	}
 
 	if (d->serial_number == 0) {
-		SV_ERROR("Couldn't get serial number for device %s", usbInfo->device_info->name);
+		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Couldn't get serial number for device %s", usbInfo->device_info->name);
 		return -1;
 	}
 
@@ -480,15 +481,15 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 
 	SurviveContext *ctx = sv->ctx;
 	if (!usbInfo->handle || ret) {
-		SV_ERROR("Error: cannot open device \"%s\" with vid/pid %04x:%04x error %d (%s)", info->name, idVendor,
-				 idProduct, ret, libusb_error_name(ret));
+		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Error: cannot open device \"%s\" with vid/pid %04x:%04x error %d (%s)",
+				 info->name, idVendor, idProduct, ret, libusb_error_name(ret));
 		return ret;
 	}
 
 	libusb_set_auto_detach_kernel_driver(usbInfo->handle, 1);
 	for (int j = 0; j < conf->bNumInterfaces; j++) {
 		if (libusb_claim_interface(usbInfo->handle, j)) {
-			SV_ERROR("Could not claim interface %d of %s", j, info->name);
+			SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Could not claim interface %d of %s", j, info->name);
 			return ret;
 		}
 	}
@@ -513,7 +514,7 @@ int survive_usb_init(SurviveViveData *sv) {
 
 	int r = survive_usb_subsystem_init(sv);
 	if (r) {
-		SV_ERROR("usb fault %d (%s)\n", r, survive_usb_error_name(r));
+		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "usb fault %d (%s)\n", r, survive_usb_error_name(r));
 		return r;
 	}
 
@@ -521,7 +522,8 @@ int survive_usb_init(SurviveViveData *sv) {
 	int ret = survive_get_usb_devices(sv, &devs);
 
 	if (ret < 0) {
-		SV_ERROR("Couldn't get list of USB devices %d (%s)", ret, survive_usb_error_name(ret));
+		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Couldn't get list of USB devices %d (%s)", ret,
+				 survive_usb_error_name(ret));
 		return ret;
 	}
 
@@ -563,7 +565,8 @@ int survive_usb_init(SurviveViveData *sv) {
 			ret = survive_open_usb_device(sv, d, usbInfo);
 
 			if (ret) {
-				SV_ERROR("Error: cannot open device \"%s\" with vid/pid %04x:%04x error %d (%s)", info->name, idVendor,
+				SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT,
+						 "Error: cannot open device \"%s\" with vid/pid %04x:%04x error %d (%s)", info->name, idVendor,
 						 idProduct, ret, survive_usb_error_name(ret));
 				sv->udev_cnt--;
 				continue;
@@ -714,7 +717,7 @@ int survive_vive_send_haptic(SurviveObject *so, uint8_t reserved, uint16_t pulse
 										 sizeof(vive_controller_haptic_pulse));
 
 			if (r != sizeof(vive_controller_haptic_pulse)) {
-				SV_ERROR("HAPTIC FAILED **************************\n");
+				SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "HAPTIC FAILED **************************\n");
 				return -1;
 			}
 
@@ -798,7 +801,7 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 	int r = libusb_handle_events(sv->usbctx);
 	if (r) {
 		SurviveContext *ctx = sv->ctx;
-		SV_ERROR("Libusb poll failed. %d (%s)", r, libusb_error_name(r));
+		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Libusb poll failed. %d (%s)", r, libusb_error_name(r));
 	}
 #endif
 	return 0;

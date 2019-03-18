@@ -139,7 +139,7 @@ void survive_cal_install( struct SurviveContext * ctx )
 
 	if( ctx->state != SURVIVE_RUNNING )
 	{
-		SV_ERROR( "Error: You cannot install a calibrator until the system is running." );
+		SV_GENERAL_ERROR("Error: You cannot install a calibrator until the system is running.");
 	}
 
 	for( i = 0; i < NUM_LIGHTHOUSES; i++ )
@@ -213,7 +213,7 @@ void survive_cal_install( struct SurviveContext * ctx )
 	{
 		if (requiredTrackersFound != ((strlen(RequiredTrackersForCal) + 1) / 4))
 		{
-			SV_ERROR( "Error: Did not find all devices required for calibration." );
+			SV_GENERAL_ERROR("Error: Did not find all devices required for calibration.");
 			free( cd );
 			return;
 		}

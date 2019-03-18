@@ -64,11 +64,11 @@ static void set_stderr_color(int c) {
 #endif
 }
 
-static void survivefault(struct SurviveContext *ctx, const char *fault) {
+static void survivefault(struct SurviveContext *ctx, SurviveError errorCode, const char *fault) {
 	set_stderr_color(2);
-	fprintf(stderr, "Error: %s\n", fault);
+	fprintf(stderr, "Error %d: %s\n", errorCode, fault);
 	reset_stderr();
-	exit(-1);
+	ctx->currentError = errorCode;
 }
 
 static void survivenote(struct SurviveContext *ctx, const char *fault) {
@@ -301,7 +301,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 
 	if( showhelp )
 	{
-		// Can't use SV_ERROR here since we don't have a context to send to yet.
+		// Can't use SV_GENERAL_ERROR here since we don't have a context to send to yet.
 		fprintf(stderr, "Available flags:\n");
 		fprintf(stderr, " -h                      - shows help.\n");
 		fprintf(stderr, " -m                      - list parameters, for autocomplete.\n");
@@ -363,7 +363,8 @@ void *GetDriverByConfig(SurviveContext *ctx, const char *name, const char *confi
 		}
 	}
 	if (!func) {
-		SV_ERROR("Error.  Cannot find any valid %s.", name);
+		SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Error.  Cannot find any valid %s.", name);
+		return 0;
 	}
 	if (verbose > 1)
 		SV_INFO("Totals %d %ss.", i - 1, name);
@@ -464,7 +465,7 @@ int survive_startup(SurviveContext *ctx) {
 			SV_INFO("Calibration requested. Previous calibration will be overwritten.");
 		}
 
-		if (doCalibrate) {
+		if (doCalibrate && ctx->objs_ct > 0) {
 			ctx->bsd[0].PositionSet = ctx->bsd[1].PositionSet = false;
 			survive_cal_install(ctx);
 		}
@@ -478,7 +479,7 @@ int survive_startup(SurviveContext *ctx) {
 	}
 
 	if (ctx->objs_ct == 0 && ctx->driver_ct == 0) {
-		SV_ERROR("Fatal error: No trackable objects provided and no drivers are registered.");
+		SV_ERROR(SURVIVE_ERROR_NO_TRACKABLE_OBJECTS, "No trackable objects provided and no drivers are registered.");
 	}
 
 	return 0;
@@ -498,7 +499,7 @@ void survive_install_htc_config_fn(SurviveContext *ctx, htc_config_func fbp) {
 		ctx->configfunction = survive_default_htc_config_process;
 }
 
-void survive_install_error_fn(SurviveContext *ctx, text_feedback_func fbp) {
+void survive_install_error_fn(SurviveContext *ctx, error_feedback_func fbp) {
 	if (fbp)
 		ctx->faultfunction = fbp;
 	else
@@ -701,6 +702,10 @@ int survive_poll(struct SurviveContext *ctx) {
 		r = survive_startup(ctx);
 		if (r)
 			return r;
+	}
+
+	if (ctx->currentError != SURVIVE_OK) {
+		return ctx->currentError;
 	}
 
 	int oldct = ctx->driver_ct;

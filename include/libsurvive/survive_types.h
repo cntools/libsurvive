@@ -81,7 +81,16 @@ typedef struct SurviveContext SurviveContext;
 typedef struct BaseStationData BaseStationData;
 typedef struct SurviveCalData SurviveCalData;   //XXX Warning: This may be removed.  Check at a later time for its defunctness.
 
+typedef enum {
+	SURVIVE_OK = 0,
+	SURVIVE_ERROR_GENERAL = -1,
+	SURVIVE_ERROR_NO_TRACKABLE_OBJECTS = -2,
+	SURVIVE_ERROR_HARWARE_FAULT = -3,
+	SURVIVE_ERROR_INVALID_CONFIG = -4
+} SurviveError;
+
 typedef int (*htc_config_func)(SurviveObject *so, char *ct0conf, int len);
+typedef void (*error_feedback_func)(SurviveContext *ctx, SurviveError errorCode, const char *fault);
 typedef void (*text_feedback_func)( SurviveContext * ctx, const char * fault );
 typedef void (*light_process_func)( SurviveObject * so, int sensor_id, int acode, int timeinsweep, survive_timecode timecode, survive_timecode length, uint32_t lighthouse);
 typedef void (*imu_process_func)( SurviveObject * so, int mask, FLT * accelgyro, survive_timecode timecode, int id );

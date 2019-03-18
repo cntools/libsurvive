@@ -255,7 +255,8 @@ static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver) {
 	if (!so) {
 		static bool display_once = false;
 		if (display_once == false) {
-			SV_ERROR("Could not find device named %s from lineno %d\n", dev, driver->lineno);
+			SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Could not find device named %s from lineno %d\n", dev,
+					 driver->lineno);
 		}
 		display_once = true;
 		return -1;
@@ -290,7 +291,8 @@ static int parse_and_run_rawlight(const char *line, SurvivePlaybackData *driver)
 		static bool display_once = false;
 		SurviveContext *ctx = driver->ctx;
 		if (display_once == false) {
-			SV_ERROR("Could not find device named %s from lineno %d\n", dev, driver->lineno);
+			SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Could not find device named %s from lineno %d\n", dev,
+					 driver->lineno);
 		}
 		display_once = true;
 
@@ -325,7 +327,8 @@ static int parse_and_run_lightcode(const char *line, SurvivePlaybackData *driver
 	if (!so) {
 		static bool display_once = false;
 		if (display_once == false) {
-			SV_ERROR("Could not find device named %s from lineno %d\n", dev, driver->lineno);
+			SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Could not find device named %s from lineno %d\n", dev,
+					 driver->lineno);
 		}
 		display_once = true;
 

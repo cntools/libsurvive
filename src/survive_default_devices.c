@@ -85,7 +85,7 @@ static int ParsePoints(SurviveContext *ctx, SurviveObject *so, char *ct0conf, FL
 			int elemlen = tk->end - tk->start;
 
 			if (tk->type != 4 || elemlen > sizeof(ctt) - 1) {
-				SV_ERROR("Parse error in JSON\n");
+				SV_GENERAL_ERROR("Parse error in JSON\n");
 				return 1;
 			}
 

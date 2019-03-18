@@ -283,7 +283,7 @@ survive_timecode survive_simple_object_get_latest_velocity(const SurviveSimpleOb
 
 	default: {
 		SurviveContext *ctx = sao->actx->ctx;
-		SV_ERROR("Invalid object type %d", sao->type);
+		SV_GENERAL_ERROR("Invalid object type %d", sao->type);
 	}
 	}
 
@@ -313,7 +313,7 @@ uint32_t survive_simple_object_get_latest_pose(const SurviveSimpleObject *sao, S
 
 	default: {
 		SurviveContext *ctx = sao->actx->ctx;
-		SV_ERROR("Invalid object type %d", sao->type);
+		SV_GENERAL_ERROR("Invalid object type %d", sao->type);
 	}
 	}
 

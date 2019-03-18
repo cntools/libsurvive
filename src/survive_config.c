@@ -846,7 +846,7 @@ static void survive_attach_config(SurviveContext *ctx, const char *tag, void * v
 		cv = sc_search(ctx, tag);
 		if( !cv )
 		{
-			SV_ERROR( "Configuration item %s not initialized.\n", tag );
+			SV_GENERAL_ERROR("Configuration item %s not initialized.\n", tag);
 			return;
 		}
 	}
@@ -873,7 +873,7 @@ static void survive_attach_config(SurviveContext *ctx, const char *tag, void * v
 		break;
 	}
 	default:
-		SV_ERROR("Unhandled config type '%c'.\n", type);
+		SV_GENERAL_ERROR("Unhandled config type '%c'.\n", type);
 	}
 }
 
@@ -897,7 +897,7 @@ SURVIVE_EXPORT void survive_detach_config(SurviveContext *ctx, const char *tag, 
 	config_entry *cv = sc_search(ctx, tag);
 	if( !cv )
 	{
-		SV_ERROR( "Configuration item %s not initialized.\n", tag );
+		SV_GENERAL_ERROR("Configuration item %s not initialized.\n", tag);
 		return;
 	}
 

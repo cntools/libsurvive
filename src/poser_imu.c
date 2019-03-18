@@ -73,7 +73,7 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 			PoserData_poser_pose_func_with_velocity(pd, so, &pose, &velocity);
 		}
 		// if(magnitude3d(&dd->tracker->pose.Pos) > 1)
-		// SV_ERROR("IMU drift");
+		// SV_GENERAL_ERROR("IMU drift");
 		return 0;
 	}
 	}
