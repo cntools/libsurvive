@@ -670,6 +670,10 @@ void config_read(SurviveContext *sctx, const char *path) {
 }
 
 static config_entry *sc_search(SurviveContext *ctx, const char *tag) {
+	if (ctx == 0) {
+		return 0;
+	}
+
 	config_entry *cv = find_config_entry(ctx->temporary_config_values, tag);
 	if (!cv) {
 		cv = find_config_entry(ctx->global_config_values, tag);
@@ -731,13 +735,14 @@ FLT survive_configf(SurviveContext *ctx, const char *tag, char flags, FLT def) {
 		}
 	}
 
-
-	// If override is flagged, or, we can't find the variable, ,continue on.
-	if (flags & SC_SETCONFIG) {
-		config_set_float(ctx->temporary_config_values, tag, def);
-		config_set_float(ctx->global_config_values, tag, def);
-	} else if (flags & SC_SET) {
-		config_set_float(ctx->temporary_config_values, tag, def);
+	if (ctx) {
+		// If override is flagged, or, we can't find the variable, ,continue on.
+		if (flags & SC_SETCONFIG) {
+			config_set_float(ctx->temporary_config_values, tag, def);
+			config_set_float(ctx->global_config_values, tag, def);
+		} else if (flags & SC_SET) {
+			config_set_float(ctx->temporary_config_values, tag, def);
+		}
 	}
 
 	return def;
@@ -762,13 +767,14 @@ uint32_t survive_configi(SurviveContext *ctx, const char *tag, char flags, uint3
 		}
 	}
 
-
-	// If override is flagged, or, we can't find the variable, ,continue on.
-	if (flags & SC_SETCONFIG) {
-		config_set_uint32(ctx->temporary_config_values, tag, def);
-		config_set_uint32(ctx->global_config_values, tag, def);
-	} else if (flags & SC_SET) {
-		config_set_uint32(ctx->temporary_config_values, tag, def);
+	if (ctx) {
+		// If override is flagged, or, we can't find the variable, ,continue on.
+		if (flags & SC_SETCONFIG) {
+			config_set_uint32(ctx->temporary_config_values, tag, def);
+			config_set_uint32(ctx->global_config_values, tag, def);
+		} else if (flags & SC_SET) {
+			config_set_uint32(ctx->temporary_config_values, tag, def);
+		}
 	}
 
 	return def;
@@ -823,9 +829,6 @@ const char *survive_configs(SurviveContext *ctx, const char *tag, char flags, co
 
 static void survive_attach_config(SurviveContext *ctx, const char *tag, void * var, char type )
 {
-	if (ctx == 0)
-		return;
-
 	config_entry *cv = sc_search(ctx, tag);
 	if( !cv )
 	{
@@ -844,21 +847,22 @@ static void survive_attach_config(SurviveContext *ctx, const char *tag, void * v
 			memcpy( var, cv, strlen(cv) );
 		}
 		cv = sc_search(ctx, tag);
-		if( !cv )
-		{
+		if (!cv && ctx) {
 			SV_GENERAL_ERROR("Configuration item %s not initialized.\n", tag);
 			return;
 		}
+	} else {
+		update_list_t **ul = &cv->update_list;
+		while (*ul) {
+			if ((*ul)->value == var)
+				return;
+			ul = &((*ul)->next);
+		}
+
+		update_list_t *t = *ul = malloc(sizeof(update_list_t));
+		t->next = 0;
+		t->value = var;
 	}
-	update_list_t ** ul = &cv->update_list;
-	while( *ul )
-	{
-		if( (*ul)->value == var ) return;
-		ul = &((*ul)->next);
-	}
-	update_list_t * t = *ul = malloc( sizeof( update_list_t ) );
-	t->next = 0;
-	t->value = var;
 
 	switch (type) {
 	case 'i':
