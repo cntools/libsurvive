@@ -38,7 +38,7 @@ endif
 CC?=gcc
 
 ifdef USE_ASAN
-	CFLAGS+=-fsanitize=address -fsanitize=undefined
+	CFLAGS+=-fsanitize=address -fsanitize=undefined -DSURVIVE_ASAN_CHECKS=1
 endif
 
 SBA:=redist/sba/sba_chkjac.c  redist/sba/sba_crsm.c  redist/sba/sba_lapack.c  redist/sba/sba_levmar.c  redist/sba/sba_levmar_wrap.c 
@@ -50,7 +50,7 @@ PLUGINS+=driver_dummy driver_udp driver_vive disambiguator_turvey disambiguator_
 POSERS:=
 EXTRA_POSERS:=src/poser_daveortho.c src/poser_charlesslow.c src/poser_octavioradii.c src/poser_turveytori.c
 REDISTS:=redist/json_helpers.c redist/linmath.c redist/jsmn.c
-TEST_CASES:=src/test_cases/main.c src/test_cases/kalman.c src/test_cases/reproject.c
+TEST_CASES:=src/test_cases/main.c src/test_cases/kalman.c src/test_cases/reproject.c src/test_cases/watchman.c
 
 #----------
 # Platform specific changes to CFLAGS/LDFLAGS
@@ -157,8 +157,8 @@ test_epnp: ./src/epnp/test_epnp.c $(LIBRARY)
 test_epnp_ocv: ./src/epnp/test_epnp.c ./src/epnp/epnp.c
 	$(CC) -o $@ $^ -DWITH_OPENCV -lpthread -lz -lm -flto -g -lX11 -lusb-1.0 -Iinclude/libsurvive -fPIC -g -O4 -Iredist -flto -std=gnu99 -rdynamic -fsanitize=address -fsanitize=undefined   -llapack -lm -lopencv_core $(LDFLAGS_TOOLS)
 
-test_cases: $(TEST_CASES) $(LIBRARY)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
+test_cases: $(TEST_CASES) $(LIBRARY) ./src/driver_vive.c
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS) 
 
 #### Actual build system.
 

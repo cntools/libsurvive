@@ -96,6 +96,8 @@ LINMATH_EXPORT void invert3d(FLT *out, const FLT *a);
 LINMATH_EXPORT FLT norm3d(const FLT *in);
 LINMATH_EXPORT void normalize3d(FLT *out, const FLT *in);
 
+LINMATH_EXPORT void linmath_interpolate(FLT *out, int n, const FLT *A, const FLT *B, FLT t);
+
 // out_pts needs to be preallocated with 3 * num_pts FLT's; it doesn't need to be zeroed.
 // out_mean can be null if you don't need the mean
 LINMATH_EXPORT void center3d(FLT *out_pts, FLT *out_mean, const FLT *pts, int num_pts);

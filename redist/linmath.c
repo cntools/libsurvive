@@ -47,6 +47,12 @@ inline void normalize3d(FLT *out, const FLT *in) {
 	out[2] = in[2] * r;
 }
 
+void linmath_interpolate(FLT *out, int n, const FLT *A, const FLT *B, FLT t) {
+	for (int i = 0; i < n; i++) {
+		out[i] = A[i] + (B[i] - A[i]) * t;
+	}
+}
+
 LINMATH_EXPORT FLT dot3d(const FLT *a, const FLT *b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
 
 int compare3d(const FLT *a, const FLT *b, FLT epsilon) {

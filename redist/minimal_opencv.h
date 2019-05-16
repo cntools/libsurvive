@@ -117,26 +117,6 @@ typedef struct CvMat {
 
 } CvMat;
 
-/** Inline constructor. No data is allocated internally!!!
- * (Use together with cvCreateData, or use cvCreateMat instead to
- * get a matrix with allocated data):
- */
-static inline CvMat cvMat(int rows, int cols, int type, void *data) {
-	CvMat m;
-
-	assert((unsigned)CV_MAT_DEPTH(type) <= CV_64F);
-	type = CV_MAT_TYPE(type);
-	m.type = CV_MAT_MAGIC_VAL | CV_MAT_CONT_FLAG | type;
-	m.cols = cols;
-	m.rows = rows;
-	m.step = m.cols * CV_ELEM_SIZE(type);
-	m.data.ptr = (uchar *)data;
-	m.refcount = 0;
-	m.hdr_refcount = 0;
-
-	return m;
-}
-
 /*
 The function is a fast replacement for cvGetReal2D in the case of single-channel floating-point
 matrices. It is faster because it is inline, it does fewer checks for array type and array element
@@ -157,6 +137,31 @@ static inline double cvmGet(const CvMat *mat, int row, int col) {
 		assert(type == CV_64FC1);
 		return ((double *)(void *)(mat->data.ptr + (size_t)mat->step * row))[col];
 	}
+}
+
+/** Inline constructor. No data is allocated internally!!!
+ * (Use together with cvCreateData, or use cvCreateMat instead to
+ * get a matrix with allocated data):
+ */
+static inline CvMat cvMat(int rows, int cols, int type, void *data) {
+	CvMat m;
+
+	assert((unsigned)CV_MAT_DEPTH(type) <= CV_64F);
+	type = CV_MAT_TYPE(type);
+	m.type = CV_MAT_MAGIC_VAL | CV_MAT_CONT_FLAG | type;
+	m.cols = cols;
+	m.rows = rows;
+	m.step = m.cols * CV_ELEM_SIZE(type);
+	m.data.ptr = (uchar *)data;
+	m.refcount = 0;
+	m.hdr_refcount = 0;
+
+#if SURVIVE_ASAN_CHECKS
+	volatile double v = cvmGet(&m, rows - 1, cols - 1);
+	(void)v;
+#endif
+
+	return m;
 }
 
 /** @brief Sets a specific element of a single-channel floating-point matrix.
