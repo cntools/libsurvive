@@ -1731,7 +1731,7 @@ int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, ui
 			// https://en.wikipedia.org/wiki/Variable-length_quantity
 			uint8_t codebyte = 0;
 			int codelength = 0;
-			while ((codebyte & 0x80) == 0) {
+			while ((codebyte & 0x80) == 0 && mptr >= readdata) {
 				codebyte = *(mptr--);
 				time_delta = (time_delta << 7) | (codebyte & 0x7f);
 				codelength++;
