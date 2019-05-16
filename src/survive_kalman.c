@@ -3,20 +3,40 @@
 #include <memory.h>
 #include <minimal_opencv.h>
 
-void survive_kalman_init(survive_kalman_t *k, size_t dims, F_fn_t F, const FLT *Q_per_sec, FLT *P) {
+#ifdef USE_DOUBLE
+#define SURVIVE_CV_F CV_64F
+#else
+#define SURVIVE_CV_F CV_32F
+#endif
+
+#define CREATE_STACK_MAT(name, rows, cols)                                                                             \
+	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
+	CvMat name = cvMat(rows, cols, SURVIVE_CV_F, _##name);
+
+static void kalman_linear_predict(FLT t, const survive_kalman_state_t *k, const CvMat *x_t0_t0, CvMat *x_t0_t1) {
+	int state_cnt = k->info.state_cnt;
+	CREATE_STACK_MAT(F, state_cnt, state_cnt);
+	k->info.F_fn(t, _F);
+
+	// X_k|k-1 = F * X_k-1|k-1
+	cvGEMM(&F, x_t0_t0, 1, 0, 0, x_t0_t1, 0);
+}
+
+void survive_kalman_init(survive_kalman_t *k, size_t state_cnt, F_fn_t F, const FLT *Q_per_sec, FLT *P) {
 	memset(k, 0, sizeof(*k));
 
-	k->state_cnt = (int)dims;
+	k->state_cnt = (int)state_cnt;
 	k->F_fn = F;
 	k->Q_per_sec = Q_per_sec;
 	k->P = P;
 
 	if (!k->P) {
 		k->P_is_heap = true;
-		k->P = calloc(1, sizeof(FLT) * dims * dims);
+		k->P = calloc(1, sizeof(FLT) * state_cnt * state_cnt);
 	}
 
 	k->P[0] = 1e10;
+	k->Predict_fn = kalman_linear_predict;
 }
 
 void survive_kalman_free(survive_kalman_t *k) {
@@ -25,17 +45,22 @@ void survive_kalman_free(survive_kalman_t *k) {
 	k->P = 0;
 }
 
-void survive_kalman_state_init(survive_kalman_state_t *k, size_t dims, F_fn_t F, const FLT *Q_per_sec, FLT *P,
-							   size_t state_size, FLT *state) {
+void survive_kalman_state_init(survive_kalman_state_t *k, size_t state_cnt, F_fn_t F, const FLT *Q_per_sec, FLT *P,
+							   size_t *dims, FLT *state) {
 	memset(k, 0, sizeof(*k));
-	survive_kalman_init(&k->info, dims, F, Q_per_sec, P);
+	survive_kalman_init(&k->info, state_cnt, F, Q_per_sec, P);
 
-	k->dimension_cnt = (int)state_size;
+	for (int i = 0; i < state_cnt; i++) {
+		k->dimension_cnt[i] = dims[i];
+		if (dims[i] > k->max_dim_cnt)
+			k->max_dim_cnt = dims[i];
+	}
+
 	k->state = state;
 
 	if (!k->state) {
 		k->State_is_heap = true;
-		k->state = calloc(1, sizeof(FLT) * state_size * k->info.state_cnt);
+		k->state = calloc(1, sizeof(FLT) * k->max_dim_cnt * k->info.state_cnt);
 	}
 }
 
@@ -60,17 +85,7 @@ void print_mat(const CvMat *M) {
 	printf("\n");
 }
 
-#ifdef USE_DOUBLE
-#define SURVIVE_CV_F CV_64F
-#else
-#define SURVIVE_CV_F CV_32F
-#endif
-
-#define CREATE_STACK_MAT(name, rows, cols)                                                                             \
-	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
-	CvMat name = cvMat(rows, cols, SURVIVE_CV_F, _##name);
-
-void survive_kalman_predict(FLT t, survive_kalman_t *k) {
+void survive_kalman_predict_covariance(FLT t, survive_kalman_t *k) {
 	int dims = k->state_cnt;
 
 	CREATE_STACK_MAT(F, dims, dims);
@@ -86,7 +101,7 @@ void survive_kalman_predict(FLT t, survive_kalman_t *k) {
 	cvGEMM(&F, &tmp, 1, &Q_per_sec, t, &Pk1_k1, 0);
 }
 
-void survive_kalman_update(FLT t, survive_kalman_t *k, FLT *_K, const FLT *_H, FLT _R) {
+void survive_kalman_update_covariance(FLT t, survive_kalman_t *k, FLT *_K, const FLT *_H, FLT _R) {
 	int dims = k->state_cnt;
 
 	CvMat Pk_k = cvMat(dims, dims, SURVIVE_CV_F, k->P);
@@ -129,37 +144,50 @@ void survive_kalman_update(FLT t, survive_kalman_t *k, FLT *_K, const FLT *_H, F
 	cvGEMM(&ikh, &tmp, 1, 0, 0, &Pk_k, 0);
 }
 
-void survive_kalman_predict_update(FLT t, survive_kalman_t *k, FLT *K, const FLT *H, FLT R) {
-	survive_kalman_predict(t, k);
-	survive_kalman_update(t, k, K, H, R);
+void survive_kalman_predict_update_covariance(FLT t, survive_kalman_t *k, FLT *K, const FLT *H, FLT R) {
+	survive_kalman_predict_covariance(t, k);
+	survive_kalman_update_covariance(t, k, K, H, R);
 }
 
-void survive_kalman_predict_update_state(FLT t, survive_kalman_state_t *k, const FLT *z, const FLT *_H, FLT R) {
+static inline void survive_kalman_predict(FLT t, survive_kalman_state_t *k, const CvMat *x_t0_t0, CvMat *x_t0_t1) {
+	// X_k|k-1 = Predict(X_K-1|k-1)
+	k->info.Predict_fn(t, k, x_t0_t0, x_t0_t1);
+}
+
+void survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k, const FLT *z, const FLT *_H,
+												  Update_fn_t updateFn, FLT R) {
 	int state_cnt = k->info.state_cnt;
 	CREATE_STACK_MAT(K, state_cnt, 1);
-	CREATE_STACK_MAT(F, state_cnt, state_cnt);
-	k->info.F_fn(t, _F);
 
-	CREATE_STACK_MAT(x, state_cnt, k->dimension_cnt);
-	CREATE_STACK_MAT(y, 1, k->dimension_cnt);
 	const CvMat H = cvMat(1, state_cnt, SURVIVE_CV_F, (void *)_H);
 
 	// Run predict / update; filling in K
-	survive_kalman_predict_update(t, &k->info, _K, _H, R);
+	survive_kalman_predict_update_covariance(t, &k->info, _K, _H, R);
 
 	// To avoid an unneeded copy, x1 here is both X_k-1|k-1 and X_k|k.
 	// x is X_k|k-1
-	CvMat x1 = cvMat(state_cnt, k->dimension_cnt, SURVIVE_CV_F, k->state);
+	CvMat x1 = cvMat(state_cnt, k->max_dim_cnt, SURVIVE_CV_F, k->state);
 
-	// X_k|k-1 = X_k-1|k-1
-	cvGEMM(&F, &x1, 1, 0, 0, &x, 0);
+	CREATE_STACK_MAT(x2, state_cnt, k->max_dim_cnt);
+	survive_kalman_predict(t, k, &x1, &x2);
 
-	CvMat Z = cvMat(1, k->dimension_cnt, SURVIVE_CV_F, (void *)(z));
+	updateFn(t, k, &H, &K, &x2, &x1, z);
+}
+
+static void linear_update(FLT t, survive_kalman_state_t *k, const CvMat *H, const CvMat *K, const CvMat *x_t0,
+						  CvMat *x_t1, const FLT *z) {
+	CvMat Z = cvMat(1, k->max_dim_cnt, SURVIVE_CV_F, (void *)(z));
+
+	CREATE_STACK_MAT(y, 1, k->max_dim_cnt);
 	// y = Z - H * X_K|k-1
-	cvGEMM(&H, &x, -1, &Z, 1, &y, 0);
+	cvGEMM(H, x_t0, -1, &Z, 1, &y, 0);
 
 	// X_k|k = X_k|k-1 + K * y
-	cvGEMM(&K, &y, 1, &x, 1, &x1, 0);
+	cvGEMM(K, &y, 1, x_t0, 1, x_t1, 0);
+}
+
+void survive_kalman_predict_update_state(FLT t, survive_kalman_state_t *k, const FLT *z, const FLT *_H, FLT R) {
+	survive_kalman_predict_update_state_extended(t, k, z, _H, linear_update, R);
 }
 
 void survive_kalman_predict_state(FLT t, const survive_kalman_state_t *k, size_t index, FLT *_out) {
@@ -169,10 +197,12 @@ void survive_kalman_predict_state(FLT t, const survive_kalman_state_t *k, size_t
 
 	k->info.F_fn(t, _F);
 
-	CvMat out = cvMat(1, k->dimension_cnt, SURVIVE_CV_F, _out);
-	CvMat x = cvMat(state_cnt, k->dimension_cnt, SURVIVE_CV_F, k->state);
+	CREATE_STACK_MAT(tmpOut, 1, k->max_dim_cnt);
+	CvMat x = cvMat(state_cnt, k->max_dim_cnt, SURVIVE_CV_F, k->state);
 
 	// Truncate F so that is only the 'index'nth row. This avoids unneeded multiplications / copies.
 	CvMat FTrunc = cvMat(1, state_cnt, SURVIVE_CV_F, _F + state_cnt * index);
-	cvGEMM(&FTrunc, &x, 1, 0, 0, &out, 0);
+	cvGEMM(&FTrunc, &x, 1, 0, 0, &tmpOut, 0);
+
+	memcpy(_out, _tmpOut, sizeof(FLT) * k->dimension_cnt[index]);
 }

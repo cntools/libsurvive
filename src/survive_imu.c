@@ -69,6 +69,58 @@ static void RotateAccel(LinmathVec3d rAcc, const LinmathQuat rot, const LinmathV
 	scale3d(rAcc, rAcc, 9.8066);
 }
 
+#ifdef USE_DOUBLE
+#define SURVIVE_CV_F CV_64F
+#else
+#define SURVIVE_CV_F CV_32F
+#endif
+
+#define CREATE_STACK_MAT(name, rows, cols)                                                                             \
+	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
+	CvMat name = cvMat(rows, cols, SURVIVE_CV_F, _##name);
+
+void update_rotation_from_rotvel(FLT t, survive_kalman_state_t *k, const CvMat *H, const CvMat *K, const CvMat *x_t0,
+								 CvMat *x_t1, const FLT *z) {
+	CvMat Z = cvMat(1, k->max_dim_cnt, SURVIVE_CV_F, (void *)(z));
+
+	CREATE_STACK_MAT(y, 1, k->max_dim_cnt);
+	// y = Z - H * X_K|k-1
+	cvGEMM(H, x_t0, -1, &Z, 1, &y, 0);
+
+	// X_k|k = X_k|k-1 + K * y
+	cvGEMM(K, &y, 1, x_t0, 1, x_t1, 0);
+}
+
+static void update_rotation_from_rotation(FLT t, survive_kalman_state_t *k, const CvMat *H, const CvMat *K,
+										  const CvMat *x_t0, CvMat *x_t1, const FLT *z) {
+	FLT k_rot = K->data.db[0];
+	FLT k_rot_vel = K->data.db[1];
+
+	FLT p_rot = k->info.P[0];
+	FLT p_rot_vel = k->info.P[1];
+
+	FLT f_rot = p_rot / (k_rot + p_rot);
+	FLT f_rot_vel = p_rot_vel / (k_rot_vel + p_rot_vel);
+
+	if (quatiszero(x_t0->data.db)) {
+		quatcopy(x_t1->data.db, z);
+		return;
+	}
+
+	LinmathQuat original;
+	survive_apply_ang_velocity(original, x_t0->data.db + 4, -t, x_t0->data.db);
+
+	quatslerp(x_t1->data.db, x_t0->data.db, z, K->data.db[0]);
+
+	SurviveAngularVelocity ang_vel;
+	survive_find_ang_velocity(ang_vel, t, original, x_t1->data.db);
+	linmath_interpolate(x_t1->data.db + 4, 3, x_t0->data.db + 4, ang_vel, K->data.db[1]);
+
+	printf("x0      " Point3_format "\n", LINMATH_VEC3_EXPAND(x_t0->data.db + 4));
+	printf("ang_vel " Point3_format "\n", LINMATH_VEC3_EXPAND(ang_vel));
+	printf("x1      " Point3_format "\n", LINMATH_VEC3_EXPAND(x_t1->data.db + 4));
+}
+
 void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU *data) {
 	SurviveContext *ctx = tracker->so->ctx;
 	if (tracker->last_data.datamask == 0) {
@@ -87,10 +139,9 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 	FLT time_diff =
 		survive_timecode_difference(data->timecode, tracker->imu_kalman_update) / (FLT)tracker->so->timebase_hz;
 	// printf("i%u %f\n", data->timecode, time_diff);
-	LinmathAxisAngleMag aa_rot;
-	survive_kalman_predict_state(0, &tracker->rot, 0, aa_rot);
 	LinmathQuat rot;
-	quatfromaxisanglemag(rot, aa_rot);
+	survive_kalman_predict_state(0, &tracker->rot, 0, rot);
+
 	assert(time_diff >= 0);
 	if (time_diff > 1.0) {
 		SV_WARN("%s is probably dropping IMU packets; %f time reported between", tracker->so->codename, time_diff);
@@ -120,9 +171,11 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 	survive_kalman_predict_update_state(time_diff, &tracker->position, rAcc, Hp, Rv[0]);
 
 	const FLT Hr[] = {0, 1};
-	LinmathAxisAngleMag rot_vel;
+	FLT rot_vel[4] = {};
 	quatrotatevector(rot_vel, rot, data->gyro);
-	survive_kalman_predict_update_state(time_diff, &tracker->rot, rot_vel, Hr, Rv[1]);
+	// survive_kalman_predict_update_state(time_diff, &tracker->rot, rot_vel, Hr, Rv[1]);
+	survive_kalman_predict_update_state_extended(time_diff, &tracker->rot, rot_vel, Hr, update_rotation_from_rotvel,
+												 Rv[1]);
 
 	tracker->imu_kalman_update = tracker->obs_kalman_update = data->timecode;
 }
@@ -135,14 +188,45 @@ void survive_imu_tracker_predict(const SurviveIMUTracker *tracker, survive_timec
 
 	survive_kalman_predict_state(t, &tracker->position, 0, out->Pos);
 
-	LinmathAxisAngleMag r;
-	survive_kalman_predict_state(t, &tracker->rot, 0, r);
-	quatfromaxisanglemag(out->Rot, r);
+	// LinmathAxisAngleMag r;
+	survive_kalman_predict_state(t, &tracker->rot, 0, out->Rot);
+	// quatfromaxisanglemag(out->Rot, r);
 }
 
 SURVIVE_EXPORT void survive_imu_tracker_update(SurviveIMUTracker *tracker, survive_timecode timecode,
 											   SurvivePose *out) {
 	survive_imu_tracker_predict(tracker, timecode, out);
+}
+
+/*
+static void linear_update(FLT t, survive_kalman_state_t *k, const CvMat* H, const CvMat* K, const CvMat* x_t0, CvMat*
+x_t1, const FLT* z) { int state_cnt = k->info.state_cnt; CREATE_STACK_MAT(x, state_cnt, k->dimension_cnt);
+
+	CREATE_STACK_MAT(F, state_cnt, state_cnt);
+	k->info.F_fn(t, _F);
+
+	survive_kalman_predict(t, k, x_t0, &x);
+
+	CvMat Z = cvMat(1, k->dimension_cnt, SURVIVE_CV_F, (void *) (z));
+
+	CREATE_STACK_MAT(y, 1, k->dimension_cnt);
+	// y = Z - H * X_K|k-1
+	cvGEMM(H, &x, -1, &Z, 1, &y, 0);
+
+	// X_k|k = X_k|k-1 + K * y
+	cvGEMM(K, &y, 1, &x, 1, x_t1, 0);
+}
+*/
+
+static void rot_predict(FLT t, const survive_kalman_state_t *k, const CvMat *f_in, CvMat *f_out) {
+	(void)k;
+
+	const FLT *rot = f_in->data.db;
+	const FLT *vel = f_in->data.db + 4;
+	copy3d(f_out->data.db + 4, vel);
+	f_out->data.db[7] = 0;
+
+	survive_apply_ang_velocity(f_out->data.db, vel, t, rot);
 }
 
 void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTracker *tracker, const SurvivePose *pose,
@@ -156,19 +240,21 @@ void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTrac
 	FLT time_diff = survive_timecode_difference(timecode, tracker->obs_kalman_update) / (FLT)tracker->so->timebase_hz;
 	assert(time_diff >= 0 && time_diff < 10);
 
-	FLT H[] = {1., time_diff, time_diff * time_diff / 2.};
-
+	// FLT H[] = {1., time_diff, time_diff * time_diff / 2.};
+	FLT H[] = {1., 0, 0};
 	survive_kalman_predict_update_state(time_diff, &tracker->position, pose->Pos, H, R[0]);
 
-	LinmathAxisAngleMag aa_rot, cur_rot;
-	quattoaxisanglemag(aa_rot, pose->Rot);
+	LinmathQuat cur_rot;
+	// LinmathAxisAngleMag aa_rot, cur_rot;
+	// quattoaxisanglemag(aa_rot, pose->Rot);
 
 	survive_kalman_predict_state(time_diff, &tracker->rot, 0, cur_rot);
-	findnearestaxisanglemag(aa_rot, aa_rot, cur_rot);
+	// findnearestaxisanglemag(aa_rot, aa_rot, cur_rot);
 
-	survive_kalman_predict_update_state(time_diff, &tracker->rot, aa_rot, H, R[1]);
+	survive_kalman_predict_update_state_extended(time_diff, &tracker->rot, pose->Rot, H, update_rotation_from_rotation,
+												 R[1]);
 
-	findnearestaxisanglemag(tracker->rot.state, tracker->rot.state, 0);
+	// findnearestaxisanglemag(tracker->rot.state, tracker->rot.state, 0);
 
 	tracker->imu_kalman_update = tracker->obs_kalman_update = timecode;
 }
@@ -222,8 +308,13 @@ void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so) {
 	survive_attach_configf(tracker->so->ctx, IMU_ACC_VARIANCE_TAG, &tracker->acc_var);
 	survive_attach_configf(tracker->so->ctx, IMU_GYRO_VARIANCE_TAG, &tracker->gyro_var);
 
-	survive_kalman_state_init(&tracker->rot, 2, rot_f, tracker->rot_Q_per_sec, 0, 3, 0);
-	survive_kalman_state_init(&tracker->position, 3, pos_f, tracker->pos_Q_per_sec, 0, 3, 0);
+	size_t rotational_dims[] = {4, 3};
+	size_t position_dims[] = {3, 3, 3};
+	survive_kalman_state_init(&tracker->rot, 2, rot_f, tracker->rot_Q_per_sec, 0, rotational_dims, 0);
+	tracker->rot.info.Predict_fn = rot_predict;
+	// tracker->rot.info.Map_fn = rot_map;
+
+	survive_kalman_state_init(&tracker->position, 3, pos_f, tracker->pos_Q_per_sec, 0, position_dims, 0);
 
 	SV_INFO("\t%s: %f", POSE_POSITION_VARIANCE_SEC_TAG, tracker->pos_Q_per_sec[0]);
 	SV_INFO("\t%s: %f", POSE_ROT_VARIANCE_SEC_TAG, tracker->rot_Q_per_sec[0]);

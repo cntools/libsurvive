@@ -43,13 +43,33 @@ static SurvivePose randomMovement(const SurvivePose *start, FLT pvariance, FLT r
 		rtn.Rot[i] += generateGaussianNoise(0, rvariance);
 
 	return rtn;
-};
+}
+
+static SurviveVelocity randomVelocity(FLT pvariance, FLT rvariance) {
+	SurviveVelocity rtn = {0};
+	for (int i = 0; i < 3; i++)
+		rtn.Pos[i] += generateGaussianNoise(0, pvariance);
+	for (int i = 0; i < 3; i++)
+		rtn.AxisAngleRot[i] += generateGaussianNoise(0, rvariance);
+
+	return rtn;
+}
+
+static void survive_apply_velocity(SurvivePose *p_1, FLT t, const SurvivePose *p_0, const SurviveVelocity *vel) {
+	LinmathVec3d posDisplacement;
+	scale3d(posDisplacement, vel->Pos, t);
+
+	add3d(p_1->Pos, p_0->Pos, posDisplacement);
+
+	survive_apply_ang_velocity(p_1->Rot, vel->AxisAngleRot, t, p_0->Rot);
+}
 
 static int TestKalmanIntegratePose(FLT pvariance, FLT rot_variance) {
 	SurviveIMUTracker kpose = { 0 };
 	SurviveObject so = {.timebase_hz = 48000000};
 	survive_imu_tracker_init(&kpose, &so);
-	SurvivePose pose = { 0 };
+	SurvivePose pose = LinmathPose_Identity;
+
 	srand(42);
 
 	const FLT mvariance = 0.5;
@@ -57,23 +77,31 @@ static int TestKalmanIntegratePose(FLT pvariance, FLT rot_variance) {
 
 	LinmathVec3d pos_variance = {pvariance, pvariance, pvariance};
 
+	SurviveVelocity vel = randomVelocity(mvariance, rot_movement);
+	LinmathQuat qq;
+	quatfromaxisanglemag(qq, vel.AxisAngleRot);
+
 	survive_timecode time = 0;
 	survive_timecode ticks_per_second = 4800000;
-	for (int i = 0; i < 10000; i++) {
+	for (int i = 0; i < 100; i++) {
 		time += ticks_per_second;
 
-		pose = randomMovement(&pose, mvariance, rot_movement);
-		SurvivePose obs = randomMovement(&pose, pvariance, rot_variance);
+		survive_apply_velocity(&pose, ticks_per_second / (FLT)so.timebase_hz, &pose, &vel);
+
+		SurvivePose obs = randomMovement(&pose, 0 * pvariance, 0 * rot_variance);
 
 		FLT variance[2] = {pvariance, rot_variance};
 		survive_imu_tracker_integrate_observation(time, &kpose, &obs, variance);
 
 		SurvivePose estimate;
+		SurviveVelocity estimate_v = survive_imu_velocity(&kpose);
 		survive_imu_tracker_predict(&kpose, time, &estimate);
 
-		printf("Observation %f %f %f\n", obs.Pos[0], obs.Pos[1], obs.Pos[2]);
-		printf("Actual      %f %f %f\n", pose.Pos[0], pose.Pos[1], pose.Pos[2]);
-		printf("Estimate    %f %f %f\n\n", estimate.Pos[0], estimate.Pos[1], estimate.Pos[2]);
+		printf("Observation " SurvivePose_format "\n", SURVIVE_POSE_EXPAND(obs));
+		printf("Actual      " SurvivePose_format " " SurviveVel_format "\n", SURVIVE_POSE_EXPAND(pose),
+			   SURVIVE_VELOCITY_EXPAND(vel));
+		printf("Estimate    " SurvivePose_format " " SurviveVel_format "\n\n", SURVIVE_POSE_EXPAND(estimate),
+			   SURVIVE_VELOCITY_EXPAND(estimate_v));
 
 		double acceptable_cdf = CDF(-3, pvariance);
 		for (int i = 0; i < 3; i++) {
@@ -87,13 +115,13 @@ static int TestKalmanIntegratePose(FLT pvariance, FLT rot_variance) {
 }
 
 TEST(Kalman, Exact) {
-	const FLT pvariance = 0.;
-	const FLT rot_variance = 0.1;
+	const FLT pvariance = 0.0000000001;
+	const FLT rot_variance = 0.01;
 	return TestKalmanIntegratePose(pvariance, rot_variance);
 }
 
 TEST(Kalman, Inexact) {
 	const FLT pvariance = 1.;
-	const FLT rot_variance = 0.1;
+	const FLT rot_variance = 0.01;
 	return TestKalmanIntegratePose(pvariance, rot_variance);
 }

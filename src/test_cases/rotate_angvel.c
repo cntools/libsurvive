@@ -47,3 +47,28 @@ TEST(RotateAngVel, Basic) {
 
 	return 0;
 }
+
+TEST(AngularVelocity, find) {
+	LinmathQuat a = {1, 0, 0, 0};
+	LinmathQuat b = {0, 1, 0, 0};
+
+	SurviveAngularVelocity c;
+	survive_find_ang_velocity(c, 1, a, b);
+
+	LinmathQuat c_quat;
+	quatfromaxisanglemag(c_quat, c);
+
+	ASSERT_QUAT_EQ(c_quat, b);
+
+	return 0;
+}
+
+TEST(AngularVelocity, apply) {
+	LinmathQuat a = {1, 0, 0, 0};
+	SurviveAngularVelocity b = {M_PI, 0, 0};
+
+	LinmathQuat c;
+	survive_apply_ang_velocity(c, b, 1, a);
+
+	return 0;
+}
