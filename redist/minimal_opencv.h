@@ -1,12 +1,6 @@
 #ifdef USE_OPENCV
-
-static inline int
-cvRound(double value) { /* it's ok if round does not comply with IEEE754 standard;
-							  the tests should allow +/-1 difference when the tested functions use round */
-	return (int)(value + (value >= 0 ? 0.5 : -0.5));
-}
-
 #include "opencv2/core/core_c.h"
+#include "opencv2/core/fast_math.hpp"
 #else // NOT USE_OPENCV
 #ifdef __cplusplus
 extern "C" {
