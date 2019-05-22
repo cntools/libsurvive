@@ -1,4 +1,4 @@
-project(libsurvive)
+project(libsurvive C)
 cmake_minimum_required(VERSION 3.5.1)
 
 enable_testing()
@@ -11,6 +11,22 @@ include_directories(redist include/libsurvive include)
 
 option(USE_HIDAPI "Use HIDAPI instead of libusb" OFF)
 option(USE_ASAN "Use address sanitizer" OFF)
+
+include(CheckIncludeFile)
+check_include_file("lapacke.h" HAVE_LAPACKE_H)
+
+find_package( OpenCV )
+
+option(USE_OPENCV "Use OpenCV" ${OpenCV_FOUND})
+option(USE_LAPACKE "Use LAPACKE" ${HAVE_LAPACKE_H})
+
+IF(NOT USE_OPENCV AND NOT USE_LAPACKE)
+	message(FATAL_ERROR "Libsurvive requires either opencv or lapacke backend")
+ENDIF()
+
+IF(USE_OPENCV)
+	add_definitions(-DUSE_OPENCV)
+ENDIF()
 
 if(USE_ASAN)
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fsanitize=undefined")
@@ -83,13 +99,17 @@ endif()
 SET(PLUGINS
         driver_dummy driver_vive driver_simulator
         disambiguator_turvey disambiguator_statebased disambiguator_charles
-        poser_dummy poser_mpfit poser_epnp poser_sba poser_imu poser_charlesrefine
+        poser_dummy poser_mpfit poser_epnp poser_imu poser_charlesrefine
 )
+
+IF(USE_LAPACKE)
+	LIST(APPEND PLUGINS poser_sba)
+ENDIF()
 
 find_library(PCAP_LIBRARY pcap)
 if(PCAP_LIBRARY)
     list(APPEND PLUGINS driver_usbmon)
-    set(driver_usbmon_ADDITIONAL_LIBS "${PCAP_LIBRARY}")
+	set(driver_usbmon_ADDITIONAL_LIBS "${PCAP_LIBRARY}")
 else()
     message("Can't build usbmon plugin -- pcap library was not found")
 endif()

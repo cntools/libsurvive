@@ -7,7 +7,6 @@
 #include "stdio.h"
 #include "string.h"
 
-
 #include <limits.h>
 #include <stdarg.h>
 
@@ -31,7 +30,8 @@ void print_mat(const CvMat *M);
 
 static size_t mat_size_bytes(const CvMat *mat) { return (size_t)CV_ELEM_SIZE(mat->type) * mat->cols * mat->rows; }
 
-SURVIVE_LOCAL_ONLY void cvCopyTo(const CvMat *srcarr, CvMat *dstarr) {
+SURVIVE_LOCAL_ONLY void cvCopy(const CvMat *srcarr, CvMat *dstarr, const CvMat *mask) {
+	assert(mask == 0 && "This isn't implemented yet");
 	assert(srcarr->rows == dstarr->rows);
 	assert(srcarr->cols == dstarr->cols);
 	assert(dstarr->type == srcarr->type);
@@ -41,15 +41,15 @@ SURVIVE_LOCAL_ONLY void cvCopyTo(const CvMat *srcarr, CvMat *dstarr) {
 SURVIVE_LOCAL_ONLY void cvGEMM(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src3, double beta,
 							   CvMat *dst, int tABC) {
 
-    int rows1 = (tABC & GEMM_1_T) ? src1->cols : src1->rows;
-    int cols1 = (tABC & GEMM_1_T) ? src1->rows : src1->cols;	
+	int rows1 = (tABC & CV_GEMM_A_T) ? src1->cols : src1->rows;
+	int cols1 = (tABC & CV_GEMM_A_T) ? src1->rows : src1->cols;
 
-    int rows2 = (tABC & GEMM_2_T) ? src2->cols : src2->rows;
-	int cols2 = (tABC & GEMM_2_T) ? src2->rows : src2->cols;
+	int rows2 = (tABC & CV_GEMM_B_T) ? src2->cols : src2->rows;
+	int cols2 = (tABC & CV_GEMM_B_T) ? src2->rows : src2->cols;
 
 	if (src3) {
-		int rows3 = (tABC & GEMM_3_T) ? src3->cols : src3->rows;
-		int cols3 = (tABC & GEMM_3_T) ? src3->rows : src3->cols;
+		int rows3 = (tABC & CV_GEMM_C_T) ? src3->cols : src3->rows;
+		int cols3 = (tABC & CV_GEMM_C_T) ? src3->rows : src3->cols;
 		assert(rows3 == dst->rows);
 		assert(cols3 == dst->cols);
 	}
@@ -63,27 +63,16 @@ SURVIVE_LOCAL_ONLY void cvGEMM(const CvMat *src1, const CvMat *src2, double alph
 	lapack_int ldb = src2->cols;
 	
 	if (src3)
-		cvCopyTo(src3, dst);
+		cvCopy(src3, dst, 0);
 	else
 		beta = 0;
 
 	assert(dst->data.db != src1->data.db);
 	assert(dst->data.db != src2->data.db);
 
-	cblas_dgemm(CblasRowMajor,
-		    (tABC & GEMM_1_T) ? CblasTrans : CblasNoTrans,
-		    (tABC & GEMM_2_T) ? CblasTrans : CblasNoTrans,
-		    dst->rows,
-		    dst->cols,
-		    cols1,
-		    alpha,
-		    src1->data.db,
-		    lda,
-		    src2->data.db,
-		    ldb,
-		    beta,
-		    dst->data.db,
-		    dst->cols);
+	cblas_dgemm(CblasRowMajor, (tABC & CV_GEMM_A_T) ? CblasTrans : CblasNoTrans,
+				(tABC & CV_GEMM_B_T) ? CblasTrans : CblasNoTrans, dst->rows, dst->cols, cols1, alpha, src1->data.db,
+				lda, src2->data.db, ldb, beta, dst->data.db, dst->cols);
 }
 
 SURVIVE_LOCAL_ONLY void cvMulTransposed(const CvMat *src, CvMat *dst, int order, const CvMat *delta, double scale) {
@@ -190,7 +179,7 @@ SURVIVE_LOCAL_ONLY double cvInvert(const CvMat *srcarr, CvMat *dstarr, int metho
 	lapack_int cols = srcarr->cols;
 	lapack_int lda = srcarr->cols;
 
-	cvCopyTo(srcarr, dstarr);
+	cvCopy(srcarr, dstarr, 0);
 	double *a = dstarr->data.db;
 
 #ifdef DEBUG_PRINT
@@ -227,8 +216,8 @@ SURVIVE_LOCAL_ONLY double cvInvert(const CvMat *srcarr, CvMat *dstarr, int metho
 		}
 
 		CvMat *tmp = cvCreateMat(dstarr->cols, dstarr->rows, dstarr->type);
-		cvGEMM(v, um, 1, 0, 0, tmp, GEMM_1_T);
-		cvGEMM(tmp, u, 1, 0, 0, dstarr, GEMM_2_T);
+		cvGEMM(v, um, 1, 0, 0, tmp, CV_GEMM_A_T);
+		cvGEMM(tmp, u, 1, 0, 0, dstarr, CV_GEMM_B_T);
 
 		cvReleaseMat(&tmp);
 		cvReleaseMat(&w);
@@ -241,7 +230,7 @@ SURVIVE_LOCAL_ONLY double cvInvert(const CvMat *srcarr, CvMat *dstarr, int metho
 
 SURVIVE_LOCAL_ONLY CvMat *cvCloneMat(const CvMat *mat) {
 	CvMat *rtn = cvCreateMat(mat->rows, mat->cols, mat->type);
-	cvCopyTo(mat, rtn);
+	cvCopy(mat, rtn, 0);
 	return rtn;
 }
 
@@ -260,7 +249,7 @@ SURVIVE_LOCAL_ONLY int cvSolve(const CvMat *Aarr, const CvMat *xarr, CvMat *Barr
 		assert(Barr->cols == xarr->cols);
 		assert(type == CV_MAT_TYPE(Barr->type) && (type == CV_32F || type == CV_64F));
 
-		cvCopyTo(xarr, Barr);
+		cvCopy(xarr, Barr, 0);
 		CvMat *a_ws = cvCloneMat(Aarr);
 
 		lapack_int brows = Barr->rows;
@@ -319,7 +308,7 @@ SURVIVE_LOCAL_ONLY int cvSolve(const CvMat *Aarr, const CvMat *xarr, CvMat *Barr
 
 		if (xLargerThanB) {
 			xCpy->rows = acols;
-			cvCopyTo(xCpy, Barr);
+			cvCopy(xCpy, Barr, 0);
 			cvReleaseMat(&xCpy);
 		}
 

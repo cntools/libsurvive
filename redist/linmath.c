@@ -794,7 +794,7 @@ void KabschCentered(LinmathQuat qout, const FLT *ptsA, const FLT *ptsB, int num_
 
 	double _C[9] = {0};
 	CvMat C = cvMat(3, 3, CV_64F, _C);
-	cvGEMM(&B, &A, 1, 0, 0, &C, GEMM_1_T);
+	cvGEMM(&B, &A, 1, 0, 0, &C, CV_GEMM_A_T);
 
 	double _U[9] = {0};
 	double _W[9] = {0};

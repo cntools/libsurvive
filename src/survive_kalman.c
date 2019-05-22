@@ -82,7 +82,7 @@ void survive_kalman_predict(FLT t, survive_kalman_t *k) {
 	const CvMat Q_per_sec = cvMat(dims, dims, SURVIVE_CV_F, (void *)k->Q_per_sec);
 
 	// k->P = F_K * k->P * F_K^T + Q*t
-	cvGEMM(&Pk1_k1, &F, 1, 0, 0, &tmp, GEMM_2_T);
+	cvGEMM(&Pk1_k1, &F, 1, 0, 0, &tmp, CV_GEMM_B_T);
 	cvGEMM(&F, &tmp, 1, &Q_per_sec, t, &Pk1_k1, 0);
 }
 
@@ -96,7 +96,7 @@ void survive_kalman_update(FLT t, survive_kalman_t *k, FLT *_K, const FLT *_H, F
 	CREATE_STACK_MAT(Pk_k1Ht, dims, 1);
 
 	// Pk_k1Ht = P_k|k-1 * H^T
-	cvGEMM(&Pk_k, &H, 1, 0, 0, &Pk_k1Ht, GEMM_2_T);
+	cvGEMM(&Pk_k, &H, 1, 0, 0, &Pk_k1Ht, CV_GEMM_B_T);
 	FLT _S;
 	CvMat S = cvMat(1, 1, SURVIVE_CV_F, &_S);
 	CvMat R = cvMat(1, 1, SURVIVE_CV_F, &_R);
@@ -123,7 +123,7 @@ void survive_kalman_update(FLT t, survive_kalman_t *k, FLT *_K, const FLT *_H, F
 
 	// cvGEMM does not like the same addresses for src and destination...
 	CREATE_STACK_MAT(tmp, dims, dims);
-	cvCopyTo(&Pk_k, &tmp);
+	cvCopy(&Pk_k, &tmp, 0);
 
 	// P_k|k = (I - K * H) * P_k|k-1
 	cvGEMM(&ikh, &tmp, 1, 0, 0, &Pk_k, 0);

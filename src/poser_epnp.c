@@ -38,7 +38,7 @@ static SurvivePose solve_correspondence(SurviveObject *so, epnp *pnp, bool camer
 	if (cameraToWorld) {
 		FLT tmp[3];
 		CvMat Tmp = cvMat(3, 1, CV_64F, tmp);
-		cvCopyTo(&T, &Tmp);
+		cvCopy(&T, &Tmp, 0);
 
 		// Flip the Rotation matrix
 		cvTranspose(&R, &R);

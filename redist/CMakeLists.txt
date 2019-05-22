@@ -1,10 +1,14 @@
-add_library(sba ./sba/sba_levmar_wrap.c
-        ./sba/sba_chkjac.c
-        ./sba/sba_lapack.c
-        ./sba/sba_levmar.c
-        ./sba/sba_crsm.c
-        )
-set_target_properties(sba PROPERTIES FOLDER "libraries")
+
+if(USE_LAPACKE)
+	add_library(sba ./sba/sba_levmar_wrap.c
+			./sba/sba_chkjac.c
+			./sba/sba_lapack.c
+			./sba/sba_levmar.c
+			./sba/sba_crsm.c
+			)
+	set_target_properties(sba PROPERTIES FOLDER "libraries")
+	target_link_libraries(sba lapacke lapack cblas )
+ENDIF()
 
 set(CNGFX_SRCS ./CNFG3D.c ./CNFGFunctions.c)
 IF(UNIX)		
@@ -19,7 +23,11 @@ set_target_properties(CNGFX PROPERTIES FOLDER "libraries")
 
 target_link_libraries(CNGFX ${CNGFX_LIBS})
 
-SET(MINIMAL_OPENCV_SRCS ./minimal_opencv.c ./minimal_opencv.h)
+IF(USE_OPENCV)
+	SET(MINIMAL_OPENCV_SRCS ./minimal_opencv.h)
+ELSE()
+	SET(MINIMAL_OPENCV_SRCS ./minimal_opencv.c ./minimal_opencv.h)
+ENDIF()
 
 IF(WIN32)
 	set(packages_config "<packages><package id=\"lapacke\" version=\"0.1.0\" targetFramework=\"native\" /><package id=\"OpenBLAS\" version=\"0.2.14.1\" targetFramework=\"native\" /></packages>")
@@ -29,36 +37,48 @@ IF(WIN32)
 endif()
 
 add_library(minimal_opencv ${MINIMAL_OPENCV_SRCS})
+set_target_properties(minimal_opencv PROPERTIES LINKER_LANGUAGE C)
 set_target_properties(minimal_opencv PROPERTIES FOLDER "libraries")
 IF(UNIX)
-  target_link_libraries(minimal_opencv cblas lapacke m)
-else()
-	if (CMAKE_SIZEOF_VOID_P MATCHES 8)
-		set(WIN_PLATFORM "x64")
-	else(CMAKE_SIZEOF_VOID_P MATCHES 8)
-		set(WIN_PLATFORM "win32")
-	endif(CMAKE_SIZEOF_VOID_P MATCHES 8)
-
-	target_link_libraries(minimal_opencv 
-		${CMAKE_BINARY_DIR}/packages/OpenBLAS.0.2.14.1/lib/native/lib/${WIN_PLATFORM}/libopenblas.dll.a
-		)
+	target_link_libraries(minimal_opencv m)
 ENDIF()
 
-IF(WIN32)
-	find_program(NUGET nuget)
-	if(NOT NUGET)
-		file(DOWNLOAD https://dist.nuget.org/win-x86-commandline/v3.5.0/nuget.exe "${CMAKE_CURRENT_BINARY_DIR}/nuget.exe" 
-			EXPECTED_MD5 406324e1744923a530a3f45b8e4fe1eb  STATUS status LOG log)
-		find_program(NUGET nuget HINTS "${CMAKE_CURRENT_BINARY_DIR}" )
+IF(USE_OPENCV)
+	include_directories( ${OpenCV_INCLUDE_DIRS} )
+	target_link_libraries(minimal_opencv ${OpenCV_LIBS})
+ENDIF()
+
+IF(USE_LAPACKE) # NOT USE_OPENCV -- lapack / blas
+	IF(UNIX)
+	  target_link_libraries(minimal_opencv cblas lapacke)
+	else()
+		if (CMAKE_SIZEOF_VOID_P MATCHES 8)
+			set(WIN_PLATFORM "x64")
+		else(CMAKE_SIZEOF_VOID_P MATCHES 8)
+			set(WIN_PLATFORM "win32")
+		endif(CMAKE_SIZEOF_VOID_P MATCHES 8)
+
+		target_link_libraries(minimal_opencv
+			${CMAKE_BINARY_DIR}/packages/OpenBLAS.0.2.14.1/lib/native/lib/${WIN_PLATFORM}/libopenblas.dll.a
+			)
+	ENDIF()
+
+	IF(WIN32)
+		find_program(NUGET nuget)
+		if(NOT NUGET)
+			file(DOWNLOAD https://dist.nuget.org/win-x86-commandline/v3.5.0/nuget.exe "${CMAKE_CURRENT_BINARY_DIR}/nuget.exe"
+				EXPECTED_MD5 406324e1744923a530a3f45b8e4fe1eb  STATUS status LOG log)
+			find_program(NUGET nuget HINTS "${CMAKE_CURRENT_BINARY_DIR}" )
+		endif()
+
+		add_custom_target(nuget-restore
+		  COMMAND ${NUGET} restore ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.sln
+		)
+		set_target_properties( minimal_opencv PROPERTIES VS_USER_PROPS "$(SolutionDir)\\packages\\OpenBLAS.0.2.14.1\\build\\native\\openblas.targets" )
+		set_target_properties( survive PROPERTIES VS_USER_PROPS "$(SolutionDir)\\packages\\OpenBLAS.0.2.14.1\\build\\native\\openblas.targets" )
+
+		add_dependencies(minimal_opencv nuget-restore)
 	endif()
-	
-	add_custom_target(nuget-restore
-	  COMMAND ${NUGET} restore ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.sln
-	)
-	set_target_properties( minimal_opencv PROPERTIES VS_USER_PROPS "$(SolutionDir)\\packages\\OpenBLAS.0.2.14.1\\build\\native\\openblas.targets" )
-	set_target_properties( survive PROPERTIES VS_USER_PROPS "$(SolutionDir)\\packages\\OpenBLAS.0.2.14.1\\build\\native\\openblas.targets" )
-	
-	add_dependencies(minimal_opencv nuget-restore)
 endif()
 
 add_executable(lintest linmath.c linmath.h lintest.c)

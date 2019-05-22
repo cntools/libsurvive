@@ -14,12 +14,6 @@
 #include "survive_config.h"
 #include "survive_reproject.h"
 
-STATIC_CONFIG_ITEM(SBA_REQUIRED_MEAS, "required-meas", 'i',
-				   "Minimum number of measurements needed to try and solve for position", 8);
-STATIC_CONFIG_ITEM(SBA_TIME_WINDOW, "time-window", 'i',
-				   "The length, in ticks, between sensor inputs to treat them as one snapshot",
-				   (int)SurviveSensorActivations_default_tolerance * 2);
-
 typedef struct {
 	PoserData *pdfs;
 	SurviveObject *so;
