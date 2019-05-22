@@ -155,6 +155,7 @@ install(TARGETS ${PLUGINS} DESTINATION lib/libsurvive/plugins)
 
 install(TARGETS survive DESTINATION lib/libsurvive)
 install(TARGETS survive DESTINATION lib)
+install(TARGETS survive-cli DESTINATION bin)
 
 INSTALL(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink survive ${CMAKE_INSTALL_PREFIX}/lib)")
 
