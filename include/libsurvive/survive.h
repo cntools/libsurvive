@@ -373,7 +373,7 @@ SURVIVE_EXPORT int survive_default_htc_config_process(SurviveObject *so, char *c
 SURVIVE_EXPORT void RegisterDriver(const char *name, void *data);
 
 #define REGISTER_LINKTIME(func)                                                                                        \
-	SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##func() { RegisterDriver(#func, &func); }
+	SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##func() { RegisterDriver(#func, (void *)&func); }
 
 ///////////////////////// General stuff for writing drivers ///////
 
