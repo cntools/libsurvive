@@ -196,13 +196,29 @@ static int find_acode(uint32_t pulseLen) {
 	return -1;
 }
 
-static bool overlaps(const LightcapElement *a, const LightcapElement *b) {
-	int overlap = 0;
-	if (a->timestamp < b->timestamp && a->length + a->timestamp > b->timestamp)
-		overlap = a->length + a->timestamp - b->timestamp;
-	else if (b->timestamp < a->timestamp && b->length + b->timestamp > a->timestamp)
-		overlap = b->length + b->timestamp - a->timestamp;
+static int32_t overlap_area(const LightcapElement *a, const LightcapElement *b) {
+	LightcapElement ole = {0};
 
+	if (a->timestamp > b->timestamp)
+		return overlap_area(b, a);
+
+	// a_start must be <= than b_start here
+	uint32_t a_end = a->timestamp + a->length;
+
+	uint32_t b_start = b->timestamp;
+	uint32_t b_end = b->timestamp + b->length;
+
+	uint32_t c_start = 0, c_end = 0;
+
+	if (a_end >= b_start) {
+		c_start = b->timestamp;
+		c_end = b_end > a_end ? a_end : b_end;
+	}
+
+	return c_end - c_start;
+}
+static bool overlaps(const LightcapElement *a, const LightcapElement *b) {
+	int overlap = overlap_area(a, b);
 	return overlap > a->length / 2;
 }
 
