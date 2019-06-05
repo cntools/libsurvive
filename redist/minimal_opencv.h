@@ -1,3 +1,7 @@
+#ifdef USE_OPENCV
+#include "opencv2/core/core_c.h"
+#include "opencv2/core/fast_math.hpp"
+#else // NOT USE_OPENCV
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -205,7 +209,7 @@ int cvSolve(const CvMat *Aarr, const CvMat *Barr, CvMat *xarr, int method);
 
 void cvSetZero(CvMat *arr);
 
-void cvCopyTo(const CvMat *src, CvMat *dest);
+void cvCopy(const CvMat *src, CvMat *dest, const CvMat *mask);
 
 CvMat *cvCloneMat(const CvMat *mat);
 
@@ -229,10 +233,11 @@ double cvDet(const CvMat *M);
 extern const int DECOMP_SVD;
 extern const int DECOMP_LU;
 
-#define GEMM_1_T 1
-#define GEMM_2_T 2
-#define GEMM_3_T 4
+#define CV_GEMM_A_T 1
+#define CV_GEMM_B_T 2
+#define CV_GEMM_C_T 4
 
 #ifdef __cplusplus
 }
 #endif
+#endif // NOT USE_OPENCV

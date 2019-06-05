@@ -4,7 +4,15 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-void print_mat(const CvMat *M) {}
+void print_mat(const CvMat *M) {
+	for (int i = 0; i < M->rows; i++) {
+		for (int j = 0; j < M->cols; j++) {
+			printf("%f\t", cvmGet(M, i, j));
+		}
+		printf("\n");
+	}
+	printf("\n");
+}
 
 void test_gemm() {
   double _2x3[2*3] = {1, 2, 3, 4, 5, 6};
@@ -21,29 +29,33 @@ void test_gemm() {
 
   cvGEMM(&m2x3, &m3x2, 1, 0, 0, &m2x2, 0);
   cvGEMM(&m3x2, &m2x3, 1, 0, 0, &m3x3, 0);
+  print_mat(&m3x3);
+  print_mat(&m2x2);
 
-  cvGEMM(&m2x3, &m2x3, 1, 0, 0, &m3x3, GEMM_1_T);
-  cvGEMM(&m2x3, &m2x3, 1, 0, 0, &m2x2, GEMM_2_T);
+  cvGEMM(&m2x3, &m2x3, 1, 0, 0, &m3x3, CV_GEMM_A_T);
+  cvGEMM(&m2x3, &m2x3, 1, 0, 0, &m2x2, CV_GEMM_B_T);
+  print_mat(&m3x3);
+  print_mat(&m2x2);
 
-  cvGEMM(&m2x3, &m3x2, 1, 0, 0, &m3x3, GEMM_1_T | GEMM_2_T);
-  //  cvGEMM(&m3x2, &m2x3, 1, 0, 0, &m2x2, GEMM_1_T | GEMM_2_T);
-  
+  cvGEMM(&m2x3, &m3x2, 1, 0, 0, &m3x3, CV_GEMM_A_T | CV_GEMM_B_T);
+  //  cvGEMM(&m3x2, &m2x3, 1, 0, 0, &m2x2, CV_GEMM_A_T | CV_GEMM_B_T);
+
+  print_mat(&m3x3);
 }
 
 static void test_solve() {
 	{
 		double _A[3] = {1, 2, 3};
-		double _B[1] = {4};
-		double _x[3] = {};
+		double _B[3] = {4, 8, 12};
+		double _x[1] = {};
 
-		CvMat A = cvMat(1, 3, CV_64F, _A);
-		CvMat B = cvMat(1, 1, CV_64F, _B);
-		CvMat x = cvMat(3, 1, CV_64F, _x);
+		CvMat A = cvMat(3, 1, CV_64F, _A);
+		CvMat B = cvMat(3, 1, CV_64F, _B);
+		CvMat x = cvMat(1, 1, CV_64F, _x);
 
 		cvSolve(&A, &B, &x, CV_SVD);
 
-		double Ax = _A[0] * _x[0] + _A[1] * _x[1] + _A[2] * _x[2];
-		assert(fabs(_B[0] - Ax) < .001);
+		assert(fabs(_x[0] - 4) < .001);
 	}
 
 	{
@@ -59,10 +71,33 @@ static void test_solve() {
 	}
 }
 
+static void test_svd() {
+	printf("SVD:\n");
+
+	double _3x3[3 * 3] = {1, 2, 3, 4, 5, 6, 7, 8, 12};
+	CvMat m3x3 = cvMat(3, 3, CV_64F, _3x3);
+
+	double _w[3] = {};
+	CvMat w = cvMat(1, 3, CV_64F, _w);
+
+	double _u[9] = {};
+	CvMat u = cvMat(3, 3, CV_64F, _u);
+
+	double _v[9] = {};
+	CvMat v = cvMat(3, 3, CV_64F, _v);
+
+	cvSVD(&m3x3, &w, &u, &v, 0);
+
+	print_mat(&w);
+	print_mat(&u);
+	print_mat(&v);
+}
+
 int main()
 {
   test_gemm();
   test_solve();
+  test_svd();
   return 0;
 }
 

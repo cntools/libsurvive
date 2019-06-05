@@ -12,6 +12,12 @@ STATIC_CONFIG_ITEM(CONFIG_SUC_TO_RESET, "successes-to-reset", 'i',
 				   "Reset periodically even if there were no failures. Set to -1 to disable.", -1);
 STATIC_CONFIG_ITEM(CONFIG_SEED_POSER, "seed-poser", 's', "Poser to be used to seed optimizer.", "EPNP");
 
+STATIC_CONFIG_ITEM(CONFIG_REQUIRED_MEAS, "required-meas", 'i',
+				   "Minimum number of measurements needed to try and solve for position", 8);
+STATIC_CONFIG_ITEM(CONFIG_TIME_WINDOW, "time-window", 'i',
+				   "The length, in ticks, between sensor inputs to treat them as one snapshot",
+				   (int)SurviveSensorActivations_default_tolerance * 2);
+
 void general_optimizer_data_init(GeneralOptimizerData *d, SurviveObject *so) {
 	memset(d, 0, sizeof(*d));
 	d->so = so;
@@ -94,6 +100,7 @@ bool general_optimizer_data_record_current_pose(GeneralOptimizerData *d, PoserDa
 				return false;
 			} else if (locations.hasInfo) {
 				*soLocation = locations.pose;
+				quatnormalize(soLocation->Rot, soLocation->Rot);
 			}
 
 			d->successes_to_reset_cntr = d->successes_to_reset;
