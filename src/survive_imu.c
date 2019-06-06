@@ -116,9 +116,9 @@ static void update_rotation_from_rotation(FLT t, survive_kalman_state_t *k, cons
 	survive_find_ang_velocity(ang_vel, t, original, x_t1->data.db);
 	linmath_interpolate(x_t1->data.db + 4, 3, x_t0->data.db + 4, ang_vel, K->data.db[1]);
 
-	printf("x0      " Point3_format "\n", LINMATH_VEC3_EXPAND(x_t0->data.db + 4));
-	printf("ang_vel " Point3_format "\n", LINMATH_VEC3_EXPAND(ang_vel));
-	printf("x1      " Point3_format "\n", LINMATH_VEC3_EXPAND(x_t1->data.db + 4));
+	// printf("x0      " Point3_format "\n", LINMATH_VEC3_EXPAND(x_t0->data.db + 4));
+	// printf("ang_vel " Point3_format "\n", LINMATH_VEC3_EXPAND(ang_vel));
+	// printf("x1      " Point3_format "\n", LINMATH_VEC3_EXPAND(x_t1->data.db + 4));
 }
 
 void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU *data) {
