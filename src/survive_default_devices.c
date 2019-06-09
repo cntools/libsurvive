@@ -217,8 +217,10 @@ static int process_jsonarray(scratch_space_t *scratch, char *ct0conf, stack_entr
 				so->channel_map[i] = -1;
 
 			for (int i = 0; i < count; i++) {
+			  if(values[i] >= 0) {
 				so->channel_map[values[i]] = i;
-			}
+			  }
+			} 
 		}
 		free(values);
 	} else if (jsoneq(ct0conf, tk, "acc_bias") == 0) {
