@@ -104,6 +104,8 @@ struct SurviveObject {
 	// These are stored in the IMU's coordinate frame so that posers don't have to do a ton of manipulation
 	// to do sensor fusion.
 	int8_t sensor_ct;	  // sensor count
+
+	// Remaps pins as reported from device into indices in 'modelPoints'
 	int *channel_map;
 	FLT *sensor_locations; // size is sensor_ct*3.  Contains x,y,z values for each sensor
 	FLT *sensor_normals;   // size is nrlocations*3.  cointains normal vector for each sensor

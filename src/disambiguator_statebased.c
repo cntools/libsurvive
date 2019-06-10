@@ -328,12 +328,16 @@ static int find_inliers(Disambiguator_data_t *d, uint32_t guess_mod, bool test60
 		int offset_error;
 		enum LighthouseState this_state = LighthouseState_findByOffset(le_offset, &offset_error);
 
+		int best_acode = find_acode(le->length) & ~2;
 		int acode = LSParam_acode(this_state);
 		uint32_t error = calculate_error(acode, le);
 
-		DEBUG_LOCK("--%d %10u %10u %4u %d(%d) \t %2d %u %u %u %d", i, le_offset, le->timestamp, le->length, acode,
-				   LS_Params[this_state].lh, this_state, ACODE_TIMING(acode), ACODE_TIMING(acode | DATA_BIT), error,
-				   offset_error);
+		int last_idx = i == 0 ? (SYNC_HISTORY_LEN - 1) : i - 1;
+		int32_t time_diff = (le->timestamp - d->sync_history[last_idx].timestamp);
+
+		DEBUG_LOCK("--%2d %10u %10u(%10d) %4u (%2d) %d(%d)(%d) \t %2d %6u %6u %6u %6d", i, le_offset, le->timestamp,
+				   time_diff, le->length, le->sensor_id, acode, best_acode, LS_Params[this_state].lh, this_state,
+				   ACODE_TIMING(acode), ACODE_TIMING(acode | DATA_BIT), error, offset_error);
 
 		if (LS_Params[this_state].is_sweep)
 			continue;
@@ -706,7 +710,7 @@ void DisambiguatorStateBased(SurviveObject *so, const LightcapElement *le) {
 		return;
 	}
 
-	DEBUG_TB("%s LE: %2u\t%4u\t%8x\t%2u", so->codename, le->sensor_id, le->length, le->timestamp, d->state);
+	DEBUG_TB("%s LE: %2u\t%4u\t%10u\t%2u", so->codename, le->sensor_id, le->length, le->timestamp, d->state);
 
 	if (d->state == LS_UNKNOWN) {
 		enum LighthouseState new_state = AttemptFindState(d, le);

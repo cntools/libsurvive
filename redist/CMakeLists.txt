@@ -36,7 +36,7 @@ IF(WIN32)
 	set(MINIMAL_OPENCV_SRCS ${MINIMAL_OPENCV_SRCS} ${CMAKE_CURRENT_BINARY_DIR}/packages.config)
 endif()
 
-add_library(minimal_opencv ${MINIMAL_OPENCV_SRCS})
+add_library(minimal_opencv STATIC ${MINIMAL_OPENCV_SRCS})
 set_target_properties(minimal_opencv PROPERTIES LINKER_LANGUAGE C)
 set_target_properties(minimal_opencv PROPERTIES FOLDER "libraries")
 IF(UNIX)

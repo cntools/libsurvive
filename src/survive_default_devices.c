@@ -204,7 +204,7 @@ static int process_jsonarray(scratch_space_t *scratch, char *ct0conf, stack_entr
 		int32_t count = (tk + 1)->size;
 		int *values = NULL;
 		if (parse_int_array(ct0conf, tk + 2, &values, count)) {
-			int max_port = 0;
+			int max_port = count;
 			for (int i = 0; i < count; i++) {
 				max_port = max_port > values[i] ? max_port : values[i];
 			}

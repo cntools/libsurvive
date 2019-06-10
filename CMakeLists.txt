@@ -15,10 +15,11 @@ option(USE_ASAN "Use address sanitizer" OFF)
 include(CheckIncludeFile)
 check_include_file("lapacke.h" HAVE_LAPACKE_H)
 
-find_package( OpenCV )
-
-option(USE_OPENCV "Use OpenCV" ${OpenCV_FOUND})
 option(USE_LAPACKE "Use LAPACKE" ${HAVE_LAPACKE_H})
+if(NOT USE_LAPACKE)
+	find_package( OpenCV )
+	option(USE_OPENCV "Use OpenCV" ${OpenCV_FOUND})
+endif()
 
 IF(NOT USE_OPENCV AND NOT USE_LAPACKE)
 	message(FATAL_ERROR "Libsurvive requires either opencv or lapacke backend")
@@ -150,6 +151,15 @@ target_link_libraries(calibrate CNGFX)
 target_link_libraries(simple_pose_test CNGFX)
 
 add_subdirectory(src/test_cases)
+
+
+find_package(catkin QUIET COMPONENTS
+	roscpp
+	geometry_msgs)
+IF(catkin_DIR)
+	add_subdirectory(tools/ros_publisher)
+ENDIF()
+
 
 install(TARGETS ${PLUGINS} DESTINATION lib/libsurvive/plugins)
 
