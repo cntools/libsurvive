@@ -19,17 +19,18 @@ int main(int argc, char **argv) {
 
 	survive_simple_start_thread(actx);
 
-	auto get_publisher = [&](const char *name) {
+	auto get_publisher = [&](const char *name) -> ros::Publisher& {
 		auto it = publishers.find(name);
 		if (it != publishers.end())
 			return it->second;
 
-		std::cerr << "adding " << name << std::endl;
-		return publishers[name] =
-				   n.advertise<geometry_msgs::PoseStamped>(std::string(name) + "_pose", 1000, strpbrk(name, "LH") != 0);
+		std::cerr << "Adding " << name << std::endl;
+		publishers[name] = n.advertise<geometry_msgs::PoseStamped>(std::string(name) + "_pose", 1, strpbrk(name, "LH") != 0);
+		return publishers[name];
 	};
-
+	
 	uint32_t seq = 1;
+	geometry_msgs::PoseStamped pose_msg = {};	
 	while (survive_simple_is_running(actx) && ros::ok()) {
 		SurvivePose pose;
 
@@ -37,8 +38,7 @@ int main(int argc, char **argv) {
 			 it = survive_simple_get_next_updated(actx)) {
 			uint32_t timecode = survive_simple_object_get_latest_pose(it, &pose);
 			const char *name = survive_simple_object_name(it);
-
-			geometry_msgs::PoseStamped pose_msg = {};
+		       
 			pose_msg.header.seq = seq++;
 			pose_msg.header.stamp = ros::Time::now();
 			pose_msg.header.frame_id = "libsurvive_world";

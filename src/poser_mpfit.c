@@ -31,6 +31,7 @@ STATIC_CONFIG_ITEM(SENSOR_VARIANCE_PER_SEC, "sensor-variance-per-sec", 'f',
 				   "Variance per second to add to the sensor input -- discounts older data", 0.0);
 STATIC_CONFIG_ITEM(SENSOR_VARIANCE, "sensor-variance", 'f', "Base variance for each sensor input", 1.0);
 STATIC_CONFIG_ITEM(DISABLE_LIGHTHOUSE, "disable-lighthouse", 'i', "Disable given lighthouse from tracking", -1);
+STATIC_CONFIG_ITEM(RUN_EVERY_N_SYNCS, "syncs-per-run", 'i', "Number of sync pulses before running optimizer", 1);
 
 typedef struct MPFITData {
 	GeneralOptimizerData opt;
@@ -43,6 +44,8 @@ typedef struct MPFITData {
 	// > 0; use jacobian, 0 don't use, < 0 debug
 	int use_jacobian_function;
 	int required_meas;
+  int syncs_per_run;
+    int syncs_per_run_cnt;
 
 	FLT sensor_variance;
 	FLT sensor_variance_per_second;
@@ -284,7 +287,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		d->useIMU = (bool)survive_configi(ctx, "use-imu", SC_GET, 1);
 		d->useKalman = (bool)survive_configi(ctx, "use-kalman", SC_GET, 1);
 		d->required_meas = survive_configi(ctx, "required-meas", SC_GET, 8);
-
+		d->syncs_per_run = survive_configi(ctx, "syncs-per-run", SC_GET, 1);
 		d->sensor_time_window = survive_configi(ctx, "time-window", SC_GET, SurviveSensorActivations_default_tolerance);
 		d->use_jacobian_function = survive_configi(ctx, "use-jacobian-function", SC_GET, 1);
 		survive_attach_configi(ctx, "disable-lighthouse", &d->disable_lighthouse);
@@ -324,7 +327,8 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		// only process sweeps
 		FLT error = -1;
 		// if (d->last_lh != lightData->lh || d->last_acode != lightData->acode) {
-		if (lightData->sensor_id == -3) {
+		if (lightData->sensor_id == -3 && ++d->syncs_per_run_cnt >= d->syncs_per_run ) {
+		  d->syncs_per_run_cnt = 0;
 			error = run_mpfit_find_3d_structure(d, lightData, scene, &estimate);
 
 			d->last_lh = lightData->lh;
