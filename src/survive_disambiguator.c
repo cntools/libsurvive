@@ -21,8 +21,13 @@ void handle_lightcap(SurviveObject *so, LightcapElement *le) {
 
 	if (so->channel_map) {
 		assert(le->sensor_id < 32);
-		le->sensor_id = so->channel_map[le->sensor_id];
-		assert(le->sensor_id != -1);
+		int ole = le->sensor_id;
+		le->sensor_id = so->channel_map[ole];
+		if (le->sensor_id >= so->sensor_ct) {
+		  SurviveContext* ctx = so->ctx;
+		  SV_WARN("Invalid sensor %d detected hit (%d)", le->sensor_id, ole);
+		  return;
+		}
 	}
 	so->ctx->lightcapfunction(so, le);
 }
