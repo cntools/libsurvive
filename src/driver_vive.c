@@ -36,6 +36,8 @@
 #define SV_VERBOSE(...)
 #endif
 
+STATIC_CONFIG_ITEM(LHV2_ENABLE, "lhv2-experimental", 'i', "Allow system to work with lighthouse v2.", 0);
+
 struct SurviveViveData;
 
 struct DeviceInfo {
@@ -1969,17 +1971,73 @@ void survive_data_cb(SurviveUSBInterface *si) {
 	}
 	case USB_IF_HMD_LIGHTCAP:
 	case USB_IF_TRACKER1_LIGHTCAP: {
-		int i;
-		for (i = 0; i < 9; i++) {
-			LightcapElement le;
-			le.sensor_id = POP1;
-			le.length = POP2;
-			le.timestamp = POP4;
-			if (le.sensor_id > 0xfd)
-				continue;
-			// SV_INFO("%d %d %d %d %d", id, le.sensor_id, le.length, le.timestamp, si->buffer + size - readdata);
-			handle_lightcap(obj, &le);
+		if (size == 64) { // LHv1
+			int i;
+			for (i = 0; i < 9; i++) {
+				LightcapElement le;
+				le.sensor_id = POP1;
+				le.length = POP2;
+				le.timestamp = POP4;
+				if (le.sensor_id > 0xfd)
+					continue;
+				// SV_INFO("%d %d %d %d %d", id, le.sensor_id, le.length, le.timestamp, si->buffer + size - readdata);
+
+				if (obj->ctx->lh_version == 0) {
+					handle_lightcap(obj, &le);
+				} else {
+					fprintf(stderr, "sensor: %2d         time: %8x length: %4d end_time: %8x\n", le.sensor_id,
+							le.timestamp, le.length, le.length + le.timestamp);
+				}
+			}
+		} else if (size == 59) { // LHv2
+			if (obj->ctx->lh_version == 0) {
+				bool allowExperimental = (bool)survive_configi(ctx, "lhv2-experimental", SC_GET, 0);
+				if (!allowExperimental) {
+					if (obj->ctx->currentError == SURVIVE_OK) {
+						SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG,
+								 "System detected lighthouse v2 system. Currently, libsurvive does not work with this "
+								 "setup. If you want to see debug information for this system, pass in "
+								 "'--lhv2-experimental'");
+					}
+					return;
+				}
+
+				obj->ctx->lh_version = 1;
+			}
+
+			struct __attribute__((__packed__)) lh2_entry {
+				uint8_t code; // sensor with some bit flag. Continuation flag?
+				uint32_t time;
+				uint8_t data[8];
+			};
+
+			struct lh2_entry *entries = (struct lh2_entry *)readdata;
+			static uint32_t last_time = 0;
+			for (int i = 0; i < 3; i++) {
+				struct lh2_entry *entry = &entries[i];
+				if (entry->code == 0xff)
+					break;
+				fprintf(stderr, "sensor: %2u flag: %u time: %8x (%7u) ", entry->code & 0x7f, (entry->code & 0x80) > 0,
+						entry->time, entry->time - last_time);
+
+				for (int j = 0; j < 8; j++) {
+					for (int k = 0; k < 8; k++)
+						fprintf(stderr, "%d", ((entry->data[j] >> (8 - k - 1)) & 1));
+				}
+
+				last_time = entry->time;
+				fprintf(stderr, "\n");
+			}
+
+			for (int i = 59 - 7; i < 59; i++) {
+				fprintf(stderr, "%02x ", readdata[i]);
+			}
+			fprintf(stderr, "\n");
+		} else {
+			SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "USB lightcap data length is of an unknown size for %s: %d",
+					 obj->codename, size)
 		}
+
 		break;
 	}
 	case USB_IF_W_WATCHMAN1_LIGHTCAP:

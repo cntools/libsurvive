@@ -427,6 +427,10 @@ int survive_startup(SurviveContext *ctx) {
 		loadedDrivers++;
 	}
 
+	if (ctx->currentError != SURVIVE_OK) {
+		return ctx->currentError;
+	}
+
 	buffer[strlen(buffer) - 2] = 0;
 	SV_INFO("%s", buffer);
 

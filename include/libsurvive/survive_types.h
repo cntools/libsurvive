@@ -106,7 +106,9 @@ typedef void (*lighthouse_pose_func)(SurviveContext *ctx, uint8_t lighthouse, Su
 // When you write drivers, you can use this to send survive lightcap data.
 typedef struct {
 	uint8_t sensor_id;
+	// Length of pulse
 	uint16_t length;
+	// Start of pulse
 	uint32_t timestamp;
 } LightcapElement;
 

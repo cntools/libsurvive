@@ -261,6 +261,7 @@ struct SurviveContext {
 	ButtonQueue buttonQueue;
 
 	void *user_ptr;
+	int lh_version; // 0 is LHv1 -- pulse, ootx, etc. 1 is LHv2 -- single motor rotated beams
 
 	struct config_group *global_config_values;
 	struct config_group *lh_config; // lighthouse configs
