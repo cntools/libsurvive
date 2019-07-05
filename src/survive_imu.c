@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <memory.h>
 #include <minimal_opencv.h>
+#include <malloc.h>
 
 //#define SV_VERBOSE(...) SV_INFO(__VA_ARGS__)
 #define SV_VERBOSE(...)
@@ -171,7 +172,7 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 	survive_kalman_predict_update_state(time_diff, &tracker->position, rAcc, Hp, Rv[0]);
 
 	const FLT Hr[] = {0, 1};
-	FLT rot_vel[4] = {};
+	FLT rot_vel[4] = { 0 };
 	quatrotatevector(rot_vel, rot, data->gyro);
 	// survive_kalman_predict_update_state(time_diff, &tracker->rot, rot_vel, Hr, Rv[1]);
 	survive_kalman_predict_update_state_extended(time_diff, &tracker->rot, rot_vel, Hr, update_rotation_from_rotvel,

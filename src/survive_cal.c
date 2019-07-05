@@ -155,7 +155,7 @@ void survive_cal_install( struct SurviveContext * ctx )
 
 	cd->numPoseObjects = 0;
 
-	char RequiredTrackersForCal[128] = {};
+	char RequiredTrackersForCal[128] = { 0 };
 	// setting the required trackers for calibration to be permissive to make it easier for a newbie to start-- 
 	// basically, libsurvive will detect whatever they have plugged in and start using that.
 	const char *_RequiredTrackersForCal = survive_configs(ctx, "requiredtrackersforcal", SC_SETCONFIG, "");

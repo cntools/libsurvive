@@ -10,6 +10,10 @@
 
 #include "minimal_opencv.h"
 
+#ifndef M_PI
+# define M_PI           3.14159265358979323846  /* pi */
+#endif
+
 inline void cross3d(FLT *out, const FLT *a, const FLT *b) {
 	out[0] = a[1] * b[2] - a[2] * b[1];
 	out[1] = a[2] * b[0] - a[0] * b[2];

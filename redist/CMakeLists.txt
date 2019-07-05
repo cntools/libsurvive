@@ -7,7 +7,11 @@ if(USE_LAPACKE)
 			./sba/sba_crsm.c
 			)
 	set_target_properties(sba PROPERTIES FOLDER "libraries")
-	target_link_libraries(sba lapacke lapack cblas )
+	
+	IF(NOT WIN32)
+		target_link_libraries(sba lapacke lapack cblas )
+	ENDIF()
+
 ENDIF()
 
 set(CNGFX_SRCS ./CNFG3D.c ./CNFGFunctions.c)

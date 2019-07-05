@@ -269,7 +269,7 @@ survive_timecode survive_simple_object_get_latest_velocity(const SurviveSimpleOb
 	switch (sao->type) {
 	case SurviveSimpleObject_LIGHTHOUSE:
 		if (velocity)
-			*velocity = (SurviveVelocity){};
+			*velocity = (SurviveVelocity){ 0 };
 		break;
 	case SurviveSimpleObject_OBJECT:
 		if (velocity)
