@@ -2015,7 +2015,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 
 			struct lh2_entry *entries = (struct lh2_entry *)readdata;
 			static uint32_t last_time = 0;
-			for (int i = 0; i < 3; i++) {
+			for (int i = 0; i < 4; i++) {
 				struct lh2_entry *entry = &entries[i];
 				if (entry->code == 0xff)
 					break;
