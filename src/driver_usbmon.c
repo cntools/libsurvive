@@ -30,7 +30,7 @@ typedef struct vive_device_inst_t {
 struct vive_device_t devices[] = {{.vid = 0x28de, .pid = 0x2000, .codename = "HMD", .def_config = "HMD_config.json"},
 								  {.vid = 0x28de, .pid = 0x2101, .codename = "WM", .def_config = "WM%d_config.json"},
 								  {.vid = 0x28de, .pid = 0x2022, .codename = "TR", .def_config = "TR%d_config.json"},
-								  {.vid = 0x28de, .pid = 0x2300, .codename = "T2", .def_config = "TR%d_config.json"},
+								  {.vid = 0x28de, .pid = 0x2300, .codename = "T2", .def_config = "T2%d_config.json"},
 								  {.vid = 0x28de, .pid = 0x2012, .codename = "WW", .def_config = "WW%d_config.json"},
 								  {}};
 
@@ -85,10 +85,11 @@ static int interface_lookup(const vive_device_inst_t *dev, int endpoint) {
 	case 0x832022:
 		return USB_IF_TRACKER0_BUTTONS;
 	case 0x832300:
-		return USB_IF_TRACKER1_BUTTONS;
+		return USB_IF_TRACKER1_LIGHTCAP;
 	case 0x832012:
 		return USB_IF_W_WATCHMAN1_BUTTONS;
-
+	case 0x842300:
+		return USB_IF_TRACKER1_BUTTONS;
 	default:
 		return 0;
 	}
@@ -117,7 +118,8 @@ static int usbmon_poll(struct SurviveContext *ctx, void *_driver) {
 				usbp->endpoint_number, usbp->event_type, usbp->status, dev->so->codename);*/
 			int interface = interface_lookup(dev, usbp->endpoint_number);
 			if (interface == 0) {
-				SV_WARN("Don't understand %s endpoint 0x%x", dev->so->codename, usbp->endpoint_number);
+				SV_WARN("Don't understand %s(%04x) endpoint 0x%x", dev->so->codename, dev->device->pid,
+						usbp->endpoint_number);
 			} else {
 				SurviveUSBInterface si = {.ctx = ctx,
 										  .actual_len = pkthdr.len,
@@ -126,6 +128,8 @@ static int usbmon_poll(struct SurviveContext *ctx, void *_driver) {
 										  .hname = dev->so->codename};
 
 				// memcpy(si.buffer, (u_char*)&usbp[1], usbp->data);
+				si.actual_len = usbp->data_len;
+				memset(si.buffer, 0xCA, sizeof(si.buffer));
 				memcpy(si.buffer, (u_char *)&usbp[1], usbp->data_len);
 				survive_data_cb(&si);
 			}
@@ -280,6 +284,7 @@ int DriverRegUSBMon(SurviveContext *ctx) {
 		survive_add_driver(ctx, sp, usbmon_poll, usbmon_close, 0);
 	} else {
 		usbmon_close(ctx, sp);
+		SV_ERROR(SURVIVE_ERROR_NO_TRACKABLE_OBJECTS, "USBMon found no devices");
 		return -1;
 	}
 	return 0;

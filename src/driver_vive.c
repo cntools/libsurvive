@@ -2035,6 +2035,66 @@ void survive_data_cb(SurviveUSBInterface *si) {
 				fprintf(stderr, "%02x ", readdata[i]);
 			}
 			fprintf(stderr, "\n");
+		} else if (id == 40) {
+			uint8_t *packet = readdata + 1;
+			uint8_t length = readdata[0];
+			uint8_t idx = 0;
+			bool dump_binary = false;
+			uint8_t channel = -1;
+			while (idx < length) {
+				uint8_t data = packet[idx];
+
+				if (data & 0x1u) {
+					// Since they flag for this; I assume multiples can appear in a single packet. Need to plug in
+					// second LH to find out...
+
+					if ((data & 0x0Fu) != 1) {
+						// Currently I've only ever seen 0x1 if the 1 bit is set; I doubt they left 3 bits on the table
+						// though....
+						fprintf(stderr, "Not entirely sure what this data is; errors may occur\n");
+						dump_binary = true;
+					}
+
+					// encodes like so: 0bcccc ???C
+					channel = data >> 4u;
+					idx++;
+				} else {
+					uint32_t timecode = 0;
+					memcpy(&timecode, packet + idx, sizeof(uint32_t));
+
+					uint32_t reference_time = (obj->activations.last_imu) & 0xFF000000;
+
+					bool sync = timecode & 0x2u;
+					if (!sync) {
+						// encodes like so: 0bXXXX ABTTT TTTT TTTT TTTT TTTT TTTT TTSC
+						bool ootx = (timecode >> 26u) & 1u;
+						bool g = (timecode >> 27u) & 1u;
+						timecode = reference_time | (timecode >> 2u) & 0xFFFFFF;
+						fprintf(stderr, "Sync   ch%2d  %d %d %12d\n", channel, ootx, g, timecode);
+
+						obj->last_sync_time[0] = timecode;
+					} else {
+						// encodes like so: 0bSSSS STTT TTTT TTTT TTTT TTTT TTTT TFSC
+						bool flag = timecode & 0x4u; // ?? Seems to slightly change time? Is clock now 96mhz?
+						uint8_t sensor = (timecode >> 27u);
+						timecode = reference_time | (timecode >> 3u) & 0xFFFFFF;
+						fprintf(stderr, "Sensor ch%2d %2d %d %12d %6d\n", channel, sensor, flag, timecode,
+								timecode - obj->last_sync_time[0]);
+					}
+
+					idx += 4;
+				}
+			}
+
+			if (dump_binary) {
+				for (int i = 0; i < size - 1; i++) {
+					if ((i + 2) % 4 == 0)
+						fprintf(stderr, "  ");
+					fprintf(stderr, "%02x ", readdata[i]);
+				}
+
+				fprintf(stderr, "\n");
+			}
 		} else {
 			SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "USB lightcap report is of an unknown type for %s: %d",
 					 obj->codename, id)

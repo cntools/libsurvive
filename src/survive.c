@@ -389,6 +389,7 @@ static inline bool callDriver(SurviveContext* ctx, const char* DriverName, char*
 int survive_startup(SurviveContext *ctx) {
 	int r = 0;
 	int i = 0;
+	ctx->state = SURVIVE_RUNNING;
 
 	survive_install_recording(ctx);
 
@@ -422,6 +423,10 @@ int survive_startup(SurviveContext *ctx) {
 		}
 	}
 
+	if (ctx->currentError != SURVIVE_OK) {
+		return ctx->currentError;
+	}
+
 	// Load the vive driver by default, even if not enabled as a flag
 	if (loadedDrivers == 0 && callDriver(ctx, "DriverRegHTCVive", buffer)) {
 		loadedDrivers++;
@@ -441,8 +446,6 @@ int survive_startup(SurviveContext *ctx) {
 
 	// saving the config extra to make sure that the user has a config file they can change.
 	config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
-
-	ctx->state = SURVIVE_RUNNING;
 
 	int calibrateMandatory = survive_configi(ctx, "force-calibrate", SC_GET, 0);
 	int calibrateForbidden = survive_configi(ctx, "disable-calibrate", SC_GET, 1) == 1;
@@ -704,8 +707,9 @@ int survive_poll(struct SurviveContext *ctx) {
 	int i, r;
 	if (ctx->state == SURVIVE_STOPPED) {
 		r = survive_startup(ctx);
-		if (r)
+		if (r) {
 			return r;
+		}
 	}
 
 	if (ctx->currentError != SURVIVE_OK) {
