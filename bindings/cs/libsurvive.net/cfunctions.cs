@@ -77,7 +77,7 @@ namespace libsurvive
         [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_default_button_process")]
         public static extern void Survive_default_button_process(SurviveObjectPtr so, byte eventType, byte buttonId, byte axis1Id, UInt16 axis1Val, byte axis2Id, UInt16 axis2Val);
 
-        [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_default_raw_pose_process")]
+        [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_default_pose_process")]
         public static extern void Survive_default_raw_pose_process(SurviveObjectPtr so, byte lighthouse, SurvivePose pose);
 
         [DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_default_lighthouse_pose_process")]

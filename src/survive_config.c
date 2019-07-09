@@ -278,7 +278,7 @@ void config_init() {
 void config_read_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8_t idx) {
 	config_group *cg = lh_config + idx;
 	uint8_t found = 0;
-	for (int i = 0; i < NUM_LIGHTHOUSES; i++) {
+	for (int i = 0; i < NUM_GEN1_LIGHTHOUSES; i++) {
 		uint32_t tmpIdx = 0xffffffff;
 		cg = lh_config + idx;
 

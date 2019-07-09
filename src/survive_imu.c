@@ -146,7 +146,7 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 	assert(time_diff >= 0);
 	if (time_diff > 1.0) {
 		SV_WARN("%s is probably dropping IMU packets; %f time reported between", tracker->so->codename, time_diff);
-		assert(time_diff < 10);
+		// assert(time_diff < 10);
 	}
 
 	if (tracker->mahony_variance >= 0) {

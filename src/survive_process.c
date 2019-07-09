@@ -6,6 +6,7 @@
 #include "survive_default_devices.h"
 #include "survive_playback.h"
 #include <assert.h>
+#include <survive.h>
 
 //XXX TODO: Once data is avialble in the context, use the stuff here to handle converting from time codes to
 //proper angles, then from there perform the rest of the solution. 
@@ -44,7 +45,8 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 		return;
 	}
 
-	if( base_station > NUM_LIGHTHOUSES ) return;
+	if (base_station > NUM_GEN1_LIGHTHOUSES)
+		return;
 
 	//No loner need sync information past this point.
 	if( sensor_id < 0 ) return;
@@ -92,7 +94,9 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 	if (so->PoserFn) {
 		so->PoserFn( so, (PoserData *)&l );
 	}
-}	
+}
+
+void survive_default_lightcap_process(SurviveObject *so, const LightcapElement *le) {}
 
 void survive_default_button_process(SurviveObject * so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val)
 {
@@ -132,7 +136,7 @@ void survive_default_button_process(SurviveObject * so, uint8_t eventType, uint8
 	//}
 }
 
-void survive_default_raw_pose_process(SurviveObject *so, uint32_t timecode, SurvivePose *pose) {
+void survive_default_pose_process(SurviveObject *so, uint32_t timecode, SurvivePose *pose) {
 	// print the pose;
 	//printf("Pose: [%1.1x][%s][% 08.8f,% 08.8f,% 08.8f] [% 08.8f,% 08.8f,% 08.8f,% 08.8f]\n", lighthouse, so->codename, pos[0], pos[1], pos[2], quat[0], quat[1], quat[2], quat[3]);
 	so->OutPose = *pose;
@@ -167,7 +171,7 @@ void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighth
 	survive_recording_lighthouse_process(ctx, lighthouse, lighthouse_pose, object_pose);
 }
 
-int survive_default_htc_config_process(SurviveObject *so, char *ct0conf, int len) {
+int survive_default_config_process(SurviveObject *so, char *ct0conf, int len) {
 	survive_recording_config_process(so, ct0conf, len);
 	return survive_load_htc_config_format(so, ct0conf, len);
 }

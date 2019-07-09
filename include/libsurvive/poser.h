@@ -14,7 +14,10 @@ typedef enum PoserType_t {
 	POSERDATA_FULL_SCENE,   // Full, statified X, Y sweep data for both lighthouses.
 	POSERDATA_DISASSOCIATE, // If you get this, it doesn't contain data.  It just tells you to please disassociate from
 							// the current SurviveObject and delete your poserdata.
-	POSERDATA_SYNC, // Sync pulse.
+	POSERDATA_SYNC,			// Sync pulse.
+	POSERDATA_LIGHT_GEN2,   // Gen2 lighting event.
+	POSERDATA_SYNC_GEN2,	// Gen2 sync pulse
+
 } PoserType;
 
 typedef void (*poser_pose_func)(SurviveObject *so, uint32_t lighthouse, const SurvivePose *pose, void *user);
@@ -94,13 +97,21 @@ typedef struct PoserDataLight {
 	FLT angle;			//In radians from center of lighthouse.
 } PoserDataLight;
 
+typedef struct PoserDataLightGen2 {
+	PoserData hdr;
+	int sensor_id;
+	uint8_t lh;				   // Lighthouse making this sweep
+	survive_timecode timecode; // In object-local ticks.
+	FLT angle;				   // In radians from center of lighthouse.
+} PoserDataLightGen2;
+
 typedef struct
 {
 	PoserData hdr;
 
 	//If "lengths[...]" < 0, means not a valid piece of sweep information.
-	FLT  lengths[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];
-	FLT  angles [SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];  //2 Axes  (Angles in LH space)
+	FLT lengths[SENSORS_PER_OBJECT][NUM_GEN1_LIGHTHOUSES][2];
+	FLT angles[SENSORS_PER_OBJECT][NUM_GEN1_LIGHTHOUSES][2]; // 2 Axes  (Angles in LH space)
 
 	PoserDataIMU lastimu;
 } PoserDataFullScene;

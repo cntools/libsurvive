@@ -82,8 +82,8 @@ void DisambiguatorCharles(SurviveObject *so, LightcapElement *le) {
 	if (ssn < 0)
 		ssn = 0;
 #ifdef DEBUG
-	if (ssn >= NUM_LIGHTHOUSES) {
-		SV_INFO("ALGORITHMIC WARNING: ssn exceeds NUM_LIGHTHOUSES");
+	if (ssn >= NUM_GEN1_LIGHTHOUSES) {
+		SV_INFO("ALGORITHMIC WARNING: ssn exceeds NUM_GEN1_LIGHTHOUSES");
 	}
 #endif
 	int last_sync_time = so->last_sync_time[ssn];
@@ -136,7 +136,7 @@ void DisambiguatorCharles(SurviveObject *so, LightcapElement *le) {
 			} else {
 				ssn = ++so->sync_set_number;
 
-				if (so->sync_set_number >= NUM_LIGHTHOUSES) {
+				if (so->sync_set_number >= NUM_GEN1_LIGHTHOUSES) {
 					SV_INFO("Warning.  Received an extra, unassociated sync pulse.");
 					ssn = so->sync_set_number = -1;
 				} else {
@@ -172,7 +172,7 @@ void DisambiguatorCharles(SurviveObject *so, LightcapElement *le) {
 	else if (le->length < PULSE_MAX_FOR_SWEEP && delta > PULSE_IN_CLEAR_TIME && ssn >= 0) {
 		int32_t tpco = so->last_sync_length[0];
 
-#if NUM_LIGHTHOUSES != 2
+#if NUM_GEN1_LIGHTHOUSES != 2
 #error You are going to have to fix the code around here to allow for something other than two base stations.
 #endif
 

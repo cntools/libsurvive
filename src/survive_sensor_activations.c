@@ -31,6 +31,16 @@ void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct Pos
 		self->mag[i] = .98 * self->mag[i] + .02 * imuData->mag[i];
 	}
 }
+void SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct PoserDataLightGen2 *lightData) {
+	int axis = lightData->angle > M_PI;
+	uint32_t *data_timecode = &self->timecode[lightData->sensor_id][lightData->lh][axis];
+
+	FLT *angle = &self->angles[lightData->sensor_id][lightData->lh][axis];
+
+	*angle = lightData->angle;
+	*data_timecode = lightData->timecode;
+}
+
 void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLight *lightData) {
 	int axis = (lightData->acode & 1);
 	uint32_t *data_timecode = &self->timecode[lightData->sensor_id][lightData->lh][axis];
@@ -48,7 +58,7 @@ FLT SurviveSensorActivations_difference(const SurviveSensorActivations *rhs, con
 	FLT rtn = 0;
 	int cnt = 0;
 	for(size_t i = 0;i < SENSORS_PER_OBJECT;i++) {
-		for(size_t lh = 0;lh < NUM_LIGHTHOUSES;lh++) {
+		for (size_t lh = 0; lh < NUM_GEN1_LIGHTHOUSES; lh++) {
 			for(size_t axis = 0;axis < 2;axis++) {
 				if(rhs->lengths[i][lh][axis] > 0 && lhs->lengths[i][lh][axis] > 0) {
 					FLT diff = rhs->angles[i][lh][axis] - lhs->angles[i][lh][axis];

@@ -23,9 +23,12 @@ extern "C" {
  * This struct encodes what the last effective angles seen on a sensor were, and when they occured.
  */
 typedef struct SurviveSensorActivations_s {
-	FLT angles[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];		   // 2 Axes (Angles in LH space)
-	survive_timecode timecode[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2]; // Timecode per axis in ticks
-	survive_timecode lengths[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];  // Timecode per axis in ticks
+	// Valid for gen2; somewhat different meaning though -- refers to angle of the rotor when the sweep happened.
+	FLT angles[SENSORS_PER_OBJECT][NUM_GEN2_LIGHTHOUSES][2];				// 2 Axes (Angles in LH space)
+	survive_timecode timecode[SENSORS_PER_OBJECT][NUM_GEN2_LIGHTHOUSES][2]; // Timecode per axis in ticks
+
+	// Valid only for Gen1
+	survive_timecode lengths[SENSORS_PER_OBJECT][NUM_GEN1_LIGHTHOUSES][2]; // Timecode per axis in ticks
 
 	survive_timecode last_imu;
 	FLT accel[3];
@@ -42,6 +45,8 @@ struct PoserDataIMU;
 SURVIVE_EXPORT FLT SurviveSensorActivations_difference(const SurviveSensorActivations *rhs,
         const SurviveSensorActivations *lhs);
 SURVIVE_EXPORT void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLight *lightData);
+SURVIVE_EXPORT void SurviveSensorActivations_add_gen2(SurviveSensorActivations *self,
+													  struct PoserDataLightGen2 *lightData);
 
 SURVIVE_EXPORT void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct PoserDataIMU *imuData);
 
@@ -96,7 +101,8 @@ struct SurviveObject {
 	SurviveVelocity velocity;
 	survive_timecode velocity_timecode;
 
-	SurvivePose FromLHPose[NUM_LIGHTHOUSES]; // Filled out by poser, contains computed position from each lighthouse.
+	SurvivePose
+		FromLHPose[NUM_GEN1_LIGHTHOUSES]; // Filled out by poser, contains computed position from each lighthouse.
 	void *PoserData; // Initialized to zero, configured by poser, can be anything the poser wants.
 	PoserCB PoserFn;
 
@@ -118,8 +124,8 @@ struct SurviveObject {
 	int8_t oldcode;
 	int8_t sync_set_number; // 0 = master, 1 = slave, -1 = fault.
 	int8_t did_handle_ootx; // If unset, will send lightcap data for sync pulses next time a sensor is hit.
-	survive_timecode last_sync_time[NUM_LIGHTHOUSES];
-	survive_timecode last_sync_length[NUM_LIGHTHOUSES];
+	survive_timecode last_sync_time[NUM_GEN2_LIGHTHOUSES];
+	survive_timecode last_sync_length[NUM_GEN1_LIGHTHOUSES];
 	survive_timecode recent_sync_time;
 
 	survive_timecode last_lighttime; // May be a 24- or 32- bit number depending on what device.
@@ -225,23 +231,15 @@ enum SurviveCalFlag {
 };
 
 struct SurviveContext {
-	error_feedback_func faultfunction;
-	text_feedback_func notefunction;
-	text_feedback_func warnfunction;
-	light_process_func lightproc;
-	imu_process_func imuproc;
-	angle_process_func angleproc;
-	button_process_func buttonproc;
-	pose_func poseproc;
-	velocity_func velocityproc;
-	external_pose_func externalposeproc;
-	external_velocity_func externalvelocityproc;
-	lighthouse_pose_func lighthouseposeproc;
-	htc_config_func configfunction;
-	handle_lightcap_func lightcapfunction;
+	int lh_version; // 0 is LHv1 -- pulse, ootx, etc. 1 is LHv2 -- single motor rotated beams
+
+#define SURVIVE_HOOK_PROCESS_DEF(hook) hook##_process_func hook##proc;
+#define SURVIVE_HOOK_FEEDBACK_DEF(hook) hook##_feedback_func hook##function;
+#include "survive_hooks.h"
+
 	// Calibration data:
 	int activeLighthouses;
-	BaseStationData bsd[NUM_LIGHTHOUSES];
+	BaseStationData bsd[NUM_GEN2_LIGHTHOUSES];
 	SurviveCalData *calptr;				 // If and only if the calibration subsystem is attached.
 	void *disambiguator_data;			 // global disambiguator data
 	struct SurviveRecordingData *recptr; // Iff recording is attached
@@ -261,7 +259,6 @@ struct SurviveContext {
 	ButtonQueue buttonQueue;
 
 	void *user_ptr;
-	int lh_version; // 0 is LHv1 -- pulse, ootx, etc. 1 is LHv2 -- single motor rotated beams
 
 	struct config_group *global_config_values;
 	struct config_group *lh_config; // lighthouse configs
@@ -290,18 +287,12 @@ static inline SurviveContext *survive_init(int argc, char *const *argv) {
 
 // For any of these, you may pass in 0 for the function pointer to use default behavior.
 // In general unless you are doing wacky things like recording or playing back data, you won't need to use this.
-SURVIVE_EXPORT void survive_install_htc_config_fn(SurviveContext *ctx, htc_config_func fbp);
-SURVIVE_EXPORT void survive_install_info_fn(SurviveContext *ctx, text_feedback_func fbp);
-SURVIVE_EXPORT void survive_install_error_fn(SurviveContext *ctx, error_feedback_func fbp);
-SURVIVE_EXPORT void survive_install_light_fn(SurviveContext *ctx, light_process_func fbp);
-SURVIVE_EXPORT void survive_install_imu_fn(SurviveContext *ctx, imu_process_func fbp);
-SURVIVE_EXPORT void survive_install_angle_fn(SurviveContext *ctx, angle_process_func fbp);
-SURVIVE_EXPORT void survive_install_button_fn(SurviveContext *ctx, button_process_func fbp);
-SURVIVE_EXPORT void survive_install_pose_fn(SurviveContext *ctx, pose_func fbp);
-SURVIVE_EXPORT void survive_install_velocity_fn(SurviveContext *ctx, velocity_func fbp);
-SURVIVE_EXPORT void survive_install_external_pose_fn(SurviveContext *ctx, external_pose_func fbp);
-SURVIVE_EXPORT void survive_install_external_velocity_fn(SurviveContext *ctx, external_velocity_func fbp);
-SURVIVE_EXPORT void survive_install_lighthouse_pose_fn(SurviveContext *ctx, lighthouse_pose_func fbp);
+#define SURVIVE_HOOK_PROCESS_DEF(hook)                                                                                 \
+	SURVIVE_EXPORT void survive_install_##hook##_fn(SurviveContext *ctx, hook##_process_func fbp);
+#define SURVIVE_HOOK_FEEDBACK_DEF(hook)                                                                                \
+	SURVIVE_EXPORT void survive_install_##hook##_fn(SurviveContext *ctx, hook##_feedback_func fbp);
+#include "survive_hooks.h"
+
 SURVIVE_EXPORT int survive_startup(SurviveContext *ctx);
 SURVIVE_EXPORT int survive_poll(SurviveContext *ctx);
 SURVIVE_EXPORT void survive_close(SurviveContext *ctx);
@@ -352,15 +343,24 @@ SURVIVE_EXPORT void survive_apply_ang_velocity(LinmathQuat out, const SurviveAng
 											   const LinmathQuat t0);
 // Call these from your callback if overridden.
 // Accept higher-level data.
+SURVIVE_EXPORT void survive_default_lightcap_process(SurviveObject *so, const LightcapElement *element);
 SURVIVE_EXPORT void survive_default_light_process(SurviveObject *so, int sensor_id, int acode, int timeinsweep,
 												  survive_timecode timecode, survive_timecode length, uint32_t lh);
 SURVIVE_EXPORT void survive_default_imu_process(SurviveObject *so, int mode, FLT *accelgyro, survive_timecode timecode, int id);
 SURVIVE_EXPORT void survive_default_angle_process(SurviveObject *so, int sensor_id, int acode, survive_timecode timecode,
 												  FLT length, FLT angle, uint32_t lh);
+
+SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_channel channel,
+												 survive_timecode timeinsweep, bool ootx, bool gen);
+SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_channel channel, int sensor_id,
+												  survive_timecode timecode, bool flag);
+SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survive_channel channel, int sensor_id,
+														survive_timecode timecode, FLT angle);
+
 SURVIVE_EXPORT void survive_default_button_process(SurviveObject *so, uint8_t eventType, uint8_t buttonId,
 												   uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id,
 												   uint16_t axis2Val);
-SURVIVE_EXPORT void survive_default_raw_pose_process(SurviveObject *so, survive_timecode timecode, SurvivePose *pose);
+SURVIVE_EXPORT void survive_default_pose_process(SurviveObject *so, survive_timecode timecode, SurvivePose *pose);
 SURVIVE_EXPORT void survive_default_velocity_process(SurviveObject *so, survive_timecode timecode,
 													 const SurviveVelocity *pose);
 SURVIVE_EXPORT void survive_default_external_pose_process(SurviveContext *so, const char *name,
@@ -369,7 +369,8 @@ SURVIVE_EXPORT void survive_default_external_velocity_process(SurviveContext *so
 															  const SurviveVelocity *velocity);
 SURVIVE_EXPORT void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse,
 															SurvivePose *lh_pose, SurvivePose *obj_pose);
-SURVIVE_EXPORT int survive_default_htc_config_process(SurviveObject *so, char *ct0conf, int len);
+SURVIVE_EXPORT int survive_default_config_process(SurviveObject *so, char *ct0conf, int len);
+SURVIVE_EXPORT void survive_default_gen2_detected_process(SurviveObject *so);
 
 ////////////////////// Survive Drivers ////////////////////////////
 
@@ -387,7 +388,7 @@ SURVIVE_EXPORT void survive_add_driver(SurviveContext *ctx, void *payload, Devic
 						DeviceDriverMagicCb magic);
 
 // This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
-SURVIVE_EXPORT void handle_lightcap(SurviveObject *so, LightcapElement *le);
+SURVIVE_EXPORT void handle_lightcap(SurviveObject *so, const LightcapElement *le);
 
 #define SV_LOG_NULL_GUARD                                                                                              \
 	if (ctx == 0) {                                                                                                    \
@@ -405,15 +406,21 @@ SURVIVE_EXPORT void handle_lightcap(SurviveObject *so, LightcapElement *le);
 	{                                                                                                                  \
 		char stbuff[1024];                                                                                             \
 		sprintf(stbuff, __VA_ARGS__);                                                                                  \
-		SV_LOG_NULL_GUARD ctx->notefunction(ctx, stbuff);                                                              \
+		SV_LOG_NULL_GUARD ctx->infofunction(ctx, stbuff);                                                              \
 	}
 
 #define SV_ERROR(errorCode, ...)                                                                                       \
 	{                                                                                                                  \
 		char stbuff[1024];                                                                                             \
 		sprintf(stbuff, __VA_ARGS__);                                                                                  \
-		SV_LOG_NULL_GUARD ctx->faultfunction(ctx, errorCode, stbuff);                                                  \
+		SV_LOG_NULL_GUARD ctx->errorfunction(ctx, errorCode, stbuff);                                                  \
 	}
+
+static inline void survive_notify_gen2(struct SurviveObject *so) {
+	if (so->ctx->lh_version == 0) {
+		so->ctx->gen2_detectedproc(so);
+	}
+}
 
 #define SV_GENERAL_ERROR(...) SV_ERROR(SURVIVE_ERROR_GENERAL, __VA_ARGS__)
 

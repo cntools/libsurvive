@@ -142,8 +142,7 @@ void survive_cal_install( struct SurviveContext * ctx )
 		SV_GENERAL_ERROR("Error: You cannot install a calibrator until the system is running.");
 	}
 
-	for( i = 0; i < NUM_LIGHTHOUSES; i++ )
-	{
+	for (i = 0; i < NUM_GEN1_LIGHTHOUSES; i++) {
 		ootx_init_decoder_context(&cd->ootx_decoders[i]);
 		cd->ootx_decoders[i].ignore_sync_bit_error = survive_configi(ctx, "ootx-ignore-sync-error", SC_SETCONFIG, 0);
 		cd->ootx_decoders[i].user = ctx;
@@ -248,7 +247,7 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 			int lhid = lh;
 			// Take the OOTX data from the first device.  (if using HMD, WM0, WM1 only, this will be HMD)
 
-			if (lhid < NUM_LIGHTHOUSES && so == cd->poseobjects[0]) {
+			if (lhid < NUM_GEN1_LIGHTHOUSES && so == cd->poseobjects[0]) {
 				uint8_t dbit = (acode & 2) >> 1;
 				ootx_pump_bit(&cd->ootx_decoders[lhid], dbit);
 				cd->seen_lh[lhid] = true;
@@ -422,15 +421,15 @@ static void handle_calibration( struct SurviveCalData *cd )
 {
 	struct SurviveContext * ctx = cd->ctx;
 
-	#define MAX_CAL_PT_DAT (MAX_SENSORS_TO_CAL*NUM_LIGHTHOUSES*2)
+#define MAX_CAL_PT_DAT (MAX_SENSORS_TO_CAL * NUM_GEN1_LIGHTHOUSES * 2)
 
-/*
-	FLT avgsweeps[MAX_CAL_PT_DAT];
-	FLT avglens[MAX_CAL_PT_DAT];
-	FLT stdsweeps[MAX_CAL_PT_DAT];
-	FLT stdlens[MAX_CAL_PT_DAT];
-	int ctsweeps[MAX_CAL_PT_DAT];
-*/
+	/*
+		FLT avgsweeps[MAX_CAL_PT_DAT];
+		FLT avglens[MAX_CAL_PT_DAT];
+		FLT stdsweeps[MAX_CAL_PT_DAT];
+		FLT stdlens[MAX_CAL_PT_DAT];
+		int ctsweeps[MAX_CAL_PT_DAT];
+	*/
 
 	memset( cd->ctsweeps, 0, sizeof( cd->ctsweeps ) );
 
@@ -447,29 +446,27 @@ static void handle_calibration( struct SurviveCalData *cd )
 	FILE * sync_time_info = fopen( "calinfo/synctime.csv", "w" );
 
 	for( sen = 0; sen < MAX_SENSORS_TO_CAL; sen++ )
-	for( lh = 0; lh < NUM_LIGHTHOUSES; lh++ )
-	{
-		int count = cd->all_sync_counts[sen][lh];
-		int i;
-		double totaltime;
+		for (lh = 0; lh < NUM_GEN1_LIGHTHOUSES; lh++) {
+			int count = cd->all_sync_counts[sen][lh];
+			int i;
+			double totaltime;
 
-		totaltime = 0;
+			totaltime = 0;
 
-		if( count < 20 ) continue;
-		for( i = 0; i < count; i++ )
-		{
-			totaltime += cd->all_sync_times[sen][lh][i];
-		}
-		FLT avg = totaltime/count;
+			if (count < 20)
+				continue;
+			for (i = 0; i < count; i++) {
+				totaltime += cd->all_sync_times[sen][lh][i];
+			}
+			FLT avg = totaltime / count;
 
-		double stddev = 0.0;
-		for( i = 0; i < count; i++ )
-		{
-			stddev += (cd->all_sync_times[sen][lh][i] - avg)*(cd->all_sync_times[sen][lh][i] - avg);
-		}
-		stddev /= count;
+			double stddev = 0.0;
+			for (i = 0; i < count; i++) {
+				stddev += (cd->all_sync_times[sen][lh][i] - avg) * (cd->all_sync_times[sen][lh][i] - avg);
+			}
+			stddev /= count;
 
-		fprintf( sync_time_info, "%d %d %f %d %f\n", sen, lh, totaltime/count, count, stddev );
+			fprintf(sync_time_info, "%d %d %f %d %f\n", sen, lh, totaltime / count, count, stddev);
 	}
 
 	fclose( sync_time_info );
@@ -480,24 +477,23 @@ static void handle_calibration( struct SurviveCalData *cd )
 	FILE * hists = fopen( "calinfo/histograms.csv", "w" );
 	FILE * ptinfo = fopen( "calinfo/ptinfo.csv", "w" );
 	for( sen = 0; sen < MAX_SENSORS_TO_CAL; sen++ )
-	for( lh = 0; lh < NUM_LIGHTHOUSES; lh++ )
-	for( axis = 0; axis < 2; axis++ )
-	{
-		int dpmax = cd->all_counts[sen][lh][axis];
-		if( dpmax < MIN_PTS_BEFORE_CAL ) continue;
-		int i;
+		for (lh = 0; lh < NUM_GEN1_LIGHTHOUSES; lh++)
+			for (axis = 0; axis < 2; axis++) {
+				int dpmax = cd->all_counts[sen][lh][axis];
+				if (dpmax < MIN_PTS_BEFORE_CAL)
+					continue;
+				int i;
 
-		FLT sumsweepangle = 0;
-		FLT sumlentime = 0;
+				FLT sumsweepangle = 0;
+				FLT sumlentime = 0;
 
-		//Find initial guess at average
-		for( i = 0; i < dpmax; i++ )
-		{
-			FLT sweepangle = cd->all_angles[sen][lh][axis][i];
-			FLT datalen = cd->all_lengths[sen][lh][axis][i];
-			sumsweepangle += sweepangle;
-			sumlentime += datalen;
-		}
+				// Find initial guess at average
+				for (i = 0; i < dpmax; i++) {
+					FLT sweepangle = cd->all_angles[sen][lh][axis][i];
+					FLT datalen = cd->all_lengths[sen][lh][axis][i];
+					sumsweepangle += sweepangle;
+					sumlentime += datalen;
+				}
 
 		#define OUTLIER_ANGLE   0.001	//TODO: Tune
 		#define OUTLIER_LENGTH	0.001	//TODO: Tune
@@ -604,7 +600,7 @@ static void handle_calibration( struct SurviveCalData *cd )
 
 		fprintf( ptinfo, "%d %d %d %d %f %f %f %f %f %f\n", sen, lh, axis, count, avgsweep, avglen*1000000, stddevang*1000000000, stddevlen*1000000000, max_outlier_length*1000000000, max_outlier_angle*1000000000 );
 
-		int dataindex = sen*(2*NUM_LIGHTHOUSES)+lh*2+axis;
+		int dataindex = sen * (2 * NUM_GEN1_LIGHTHOUSES) + lh * 2 + axis;
 		cd->avgsweeps[dataindex] = avgsweep;
 		cd->avglens[dataindex] = avglen;
 		cd->stdsweeps[dataindex] = stddevang;
@@ -617,7 +613,7 @@ static void handle_calibration( struct SurviveCalData *cd )
 	int obj;
 
 	//Poses of lighthouses relative to objects.
-	SurvivePose  objphl[MAX_POSE_OBJECTS][NUM_LIGHTHOUSES];
+	SurvivePose objphl[MAX_POSE_OBJECTS][NUM_GEN1_LIGHTHOUSES];
 
 	FILE * fobjp = fopen( "calinfo/objposes.csv", "w" );
 
@@ -626,25 +622,23 @@ static void handle_calibration( struct SurviveCalData *cd )
 		int i, j;
 		PoserDataFullScene fsd = {0};
 		fsd.hdr.pt = POSERDATA_FULL_SCENE;
-		for( j = 0; j < NUM_LIGHTHOUSES; j++ )
-		for( i = 0; i < SENSORS_PER_OBJECT; i++ )
-		{
-			int gotdata = 0;
+		for (j = 0; j < NUM_GEN1_LIGHTHOUSES; j++)
+			for (i = 0; i < SENSORS_PER_OBJECT; i++) {
+				int gotdata = 0;
 
-			int dataindex = (i+obj*32)*(2*NUM_LIGHTHOUSES)+j*2+0;
+				int dataindex = (i + obj * 32) * (2 * NUM_GEN1_LIGHTHOUSES) + j * 2 + 0;
 
-			if( cd->ctsweeps[dataindex+0] < DRPTS_NEEDED_FOR_AVG ||
-				cd->ctsweeps[dataindex+1] < DRPTS_NEEDED_FOR_AVG )
-			{
-				fsd.lengths[i][j][0] = -1;
-				fsd.lengths[i][j][1] = -1;
-				continue;
+				if (cd->ctsweeps[dataindex + 0] < DRPTS_NEEDED_FOR_AVG ||
+					cd->ctsweeps[dataindex + 1] < DRPTS_NEEDED_FOR_AVG) {
+					fsd.lengths[i][j][0] = -1;
+					fsd.lengths[i][j][1] = -1;
+					continue;
+				}
+				fsd.lengths[i][j][0] = cd->avglens[dataindex + 0];
+				fsd.lengths[i][j][1] = cd->avglens[dataindex + 1];
+				fsd.angles[i][j][0] = cd->avgsweeps[dataindex + 0];
+				fsd.angles[i][j][1] = cd->avgsweeps[dataindex + 1];
 			}
-			fsd.lengths[i][j][0] = cd->avglens[dataindex+0];
-			fsd.lengths[i][j][1] = cd->avglens[dataindex+1];
-			fsd.angles[i][j][0] = cd->avgsweeps[dataindex + 0];
-			fsd.angles[i][j][1] = cd->avgsweeps[dataindex + 1];
-		}
 
 		int r = cd->ConfigPoserFn( cd->poseobjects[obj], (PoserData*)&fsd );
 		if( r )
@@ -660,8 +654,7 @@ static void handle_calibration( struct SurviveCalData *cd )
 			ctx->global_config_values, "ComputeReprojectError", 0);
 
 		int lh;
-		for( lh = 0; lh < NUM_LIGHTHOUSES; lh++ )
-		{
+		for (lh = 0; lh < NUM_GEN1_LIGHTHOUSES; lh++) {
 			SurvivePose * objfromlh = &cd->poseobjects[obj]->FromLHPose[lh];  //The pose is here
 			SurvivePose * lhp = &ctx->bsd[lh].Pose; //Need to somehow put pose here.
 

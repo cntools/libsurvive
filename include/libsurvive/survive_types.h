@@ -62,7 +62,8 @@ typedef struct {
 
 //Careful with this, you can't just add another one right now, would take minor changes in survive_data.c and the cal tools.
 //It will also require a recompile.  TODO: revisit this and correct the comment once fixed.
-#define NUM_LIGHTHOUSES 2
+#define NUM_GEN1_LIGHTHOUSES 2
+#define NUM_GEN2_LIGHTHOUSES 16
 
 #define INTBUFFSIZE 64
 #define SENSORS_PER_OBJECT	32
@@ -74,6 +75,10 @@ typedef struct {
 #define BUTTON_EVENT_AXIS_CHANGED  3
 
 typedef uint32_t survive_timecode;
+
+// Lighthouse gen 2 channel/mode
+typedef uint8_t survive_channel;
+
 SURVIVE_EXPORT survive_timecode survive_timecode_difference(survive_timecode most_recent, survive_timecode least_recent);
 
 typedef struct SurviveObject SurviveObject;
@@ -89,18 +94,12 @@ typedef enum {
 	SURVIVE_ERROR_INVALID_CONFIG = -4
 } SurviveError;
 
-typedef int (*htc_config_func)(SurviveObject *so, char *ct0conf, int len);
 typedef void (*error_feedback_func)(SurviveContext *ctx, SurviveError errorCode, const char *fault);
 typedef void (*text_feedback_func)( SurviveContext * ctx, const char * fault );
-typedef void (*light_process_func)( SurviveObject * so, int sensor_id, int acode, int timeinsweep, survive_timecode timecode, survive_timecode length, uint32_t lighthouse);
-typedef void (*imu_process_func)( SurviveObject * so, int mask, FLT * accelgyro, survive_timecode timecode, int id );
-typedef void (*angle_process_func)( SurviveObject * so, int sensor_id, int acode, survive_timecode timecode, FLT length, FLT angle, uint32_t lh);
-typedef void(*button_process_func)(SurviveObject * so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val);
-typedef void (*pose_func)(SurviveObject *so, survive_timecode timecode, SurvivePose *pose);
-typedef void (*velocity_func)(SurviveObject *so, survive_timecode timecode, const SurviveVelocity *pose);
-typedef void (*external_pose_func)(SurviveContext *so, const char *name, const SurvivePose *pose);
-typedef void (*external_velocity_func)(SurviveContext *so, const char *name, const SurviveVelocity *velocity);
-typedef void (*lighthouse_pose_func)(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose, SurvivePose *object_pose);
+typedef text_feedback_func warn_feedback_func;
+typedef text_feedback_func info_feedback_func;
+
+typedef int (*config_process_func)(SurviveObject *so, char *ct0conf, int len);
 
 // For lightcap, etc.  Don't change this structure at all.  Regular vive is dependent on it being exactly as-is.
 // When you write drivers, you can use this to send survive lightcap data.
@@ -112,7 +111,33 @@ typedef struct {
 	uint32_t timestamp;
 } LightcapElement;
 
-typedef void (*handle_lightcap_func)(SurviveObject *so, LightcapElement *le);
+// LH1 specific callbacks
+typedef void (*lightcap_process_func)(SurviveObject *so, const LightcapElement *le);
+typedef void (*light_process_func)(SurviveObject *so, int sensor_id, int acode, int timeinsweep,
+								   survive_timecode timecode, survive_timecode length, uint32_t lighthouse);
+typedef void (*angle_process_func)(SurviveObject *so, int sensor_id, int acode, survive_timecode timecode, FLT length,
+								   FLT angle, uint32_t lh);
+
+// LH2 specific callbacks
+typedef void (*gen2_detected_process_func)(SurviveObject *so);
+typedef void (*sync_process_func)(SurviveObject *so, survive_channel channel, survive_timecode timeinsweep, bool ootx,
+								  bool gen);
+typedef void (*sweep_process_func)(SurviveObject *so, survive_channel channel, int sensor_id, survive_timecode timecode,
+								   bool flag);
+
+// Angle is defined as the rotor angle at time of sweep
+typedef void (*sweep_angle_process_func)(SurviveObject *so, survive_channel channel, int sensor_id,
+										 survive_timecode timecode, FLT angle);
+
+typedef void (*imu_process_func)(SurviveObject *so, int mask, FLT *accelgyro, survive_timecode timecode, int id);
+typedef void (*button_process_func)(SurviveObject *so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id,
+									uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val);
+typedef void (*pose_process_func)(SurviveObject *so, survive_timecode timecode, SurvivePose *pose);
+typedef void (*velocity_process_func)(SurviveObject *so, survive_timecode timecode, const SurviveVelocity *pose);
+typedef void (*external_pose_process_func)(SurviveContext *so, const char *name, const SurvivePose *pose);
+typedef void (*external_velocity_process_func)(SurviveContext *so, const char *name, const SurviveVelocity *velocity);
+typedef void (*lighthouse_pose_process_func)(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose,
+											 SurvivePose *object_pose);
 
 typedef int(*haptic_func)(SurviveObject * so, uint8_t reserved, uint16_t pulseHigh , uint16_t pulseLow, uint16_t repeatCount);
 

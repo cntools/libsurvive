@@ -70,6 +70,8 @@ static uint8_t vive_magic_power_off[] = {
 	0x00, 0x04, 0x00, 0x00, 0x00, 0x70, 0xb0, 0x72, 0x00, 0x90, 0xf7, 0x33, 0x00, 0x7c, 0xf8, 0x33,
 	0x00, 0xd0, 0xf7, 0x33, 0x00, 0x3c, 0x68, 0x29, 0x65, 0x24, 0xf9, 0x33, 0x00, 0x00, 0x00, 0x00,
 };
+static uint8_t vive_magic_raw_mode_1[] = {0x04, 0x01, 0x00, 0x00, 0x00};
+
 #define MAGIC_CTOR(ison, buffer)                                                                                       \
 	{ .code = ison, .magic = buffer, .length = sizeof(buffer) }
 const struct DeviceInfo KnownDeviceTypes[] = {
@@ -125,7 +127,8 @@ const struct DeviceInfo KnownDeviceTypes[] = {
 			 {.num = 0x83, .name = "Lightcap", .type = USB_IF_TRACKER1_LIGHTCAP},
 			 {.num = 0x84, .name = "Buttons", .type = USB_IF_TRACKER1_BUTTONS},
 		 },
-	 .magics = {MAGIC_CTOR(true, vive_magic_enable_lighthouse), MAGIC_CTOR(true, vive_magic_enable_lighthouse_more)}},
+	 .magics = {MAGIC_CTOR(true, vive_magic_enable_lighthouse), MAGIC_CTOR(true, vive_magic_enable_lighthouse_more),
+				MAGIC_CTOR(true, vive_magic_raw_mode_1)}},
 	{.vid = 0x28de,
 	 .pid = 0x2012,
 	 .type = USB_DEV_W_WATCHMAN1,
@@ -809,6 +812,19 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 	return 0;
 }
 
+static inline survive_timecode fix_time24(survive_timecode time24, survive_timecode refTime) {
+	survive_timecode upper_ref = refTime & 0xFF000000u;
+	survive_timecode lower_ref = refTime & 0x00FFFFFFu;
+
+	if (lower_ref > time24 && lower_ref - time24 > (1 << 23u)) {
+		upper_ref += 0x01000000;
+	} else if (lower_ref < time24 && time24 - lower_ref > (1 << 23u) && upper_ref > 0) {
+		upper_ref -= 0x01000000;
+	}
+
+	return upper_ref | time24;
+}
+
 static int survive_get_config(char **config, SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int iface,
 							  int send_extra_magic) {
 	SurviveContext *ctx = sv->ctx;
@@ -1426,7 +1442,7 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 	SurviveContext *ctx = w->ctx;
 
 	// If we're looking at light data, return
-	if (!HAS_FLAG(*payloadPtr, 0xE0))
+	if ((*payloadPtr & 0xE0) == 0)
 		return true;
 
 	/*
@@ -1990,20 +2006,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 				}
 			}
 		} else if (id == 39) { // LHv2
-			if (obj->ctx->lh_version == 0) {
-				bool allowExperimental = (bool)survive_configi(ctx, "lhv2-experimental", SC_GET, 0);
-				if (!allowExperimental) {
-					if (obj->ctx->currentError == SURVIVE_OK) {
-						SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG,
-								 "System detected lighthouse v2 system. Currently, libsurvive does not work with this "
-								 "setup. If you want to see debug information for this system, pass in "
-								 "'--lhv2-experimental'");
-					}
-					return;
-				}
-
-				obj->ctx->lh_version = 1;
-			}
+			survive_notify_gen2(obj);
 
 #pragma pack(push, 1)
 			struct lh2_entry {
@@ -2036,6 +2039,8 @@ void survive_data_cb(SurviveUSBInterface *si) {
 			}
 			fprintf(stderr, "\n");
 		} else if (id == 40) {
+			survive_notify_gen2(obj);
+
 			uint8_t *packet = readdata + 1;
 			uint8_t length = readdata[0];
 			uint8_t idx = 0;
@@ -2062,24 +2067,21 @@ void survive_data_cb(SurviveUSBInterface *si) {
 					uint32_t timecode = 0;
 					memcpy(&timecode, packet + idx, sizeof(uint32_t));
 
-					uint32_t reference_time = (obj->activations.last_imu) & 0xFF000000;
+					uint32_t reference_time = (obj->activations.last_imu);
 
 					bool sync = timecode & 0x2u;
 					if (!sync) {
 						// encodes like so: 0bXXXX ABTTT TTTT TTTT TTTT TTTT TTTT TTSC
 						bool ootx = (timecode >> 26u) & 1u;
 						bool g = (timecode >> 27u) & 1u;
-						timecode = reference_time | (timecode >> 2u) & 0xFFFFFF;
-						fprintf(stderr, "Sync   ch%2d  %d %d %12d\n", channel, ootx, g, timecode);
-
-						obj->last_sync_time[0] = timecode;
+						timecode = fix_time24((timecode >> 2u) & 0xFFFFFFu, reference_time);
+						obj->ctx->syncproc(obj, channel, timecode, ootx, g);
 					} else {
 						// encodes like so: 0bSSSS STTT TTTT TTTT TTTT TTTT TTTT TFSC
 						bool flag = timecode & 0x4u; // ?? Seems to slightly change time? Is clock now 96mhz?
 						uint8_t sensor = (timecode >> 27u);
-						timecode = reference_time | (timecode >> 3u) & 0xFFFFFF;
-						fprintf(stderr, "Sensor ch%2d %2d %d %12d %6d\n", channel, sensor, flag, timecode,
-								timecode - obj->last_sync_time[0]);
+						timecode = fix_time24((timecode >> 3u) & 0xFFFFFFu, reference_time);
+						obj->ctx->sweepproc(obj, channel, sensor, timecode, flag);
 					}
 
 					idx += 4;
@@ -2096,8 +2098,8 @@ void survive_data_cb(SurviveUSBInterface *si) {
 				fprintf(stderr, "\n");
 			}
 		} else {
-			SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "USB lightcap report is of an unknown type for %s: %d",
-					 obj->codename, id)
+			SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "USB lightcap report is of an unknown type for %s: %d (0x%02x)",
+					 obj->codename, id, id);
 		}
 
 		break;
@@ -2228,7 +2230,7 @@ static int LoadConfig(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int i
 		fclose(f);
 	}
 
-	return so->ctx->configfunction(so, ct0conf, len);
+	return so->ctx->configproc(so, ct0conf, len);
 }
 
 int survive_vive_close(SurviveContext *ctx, void *driver) {

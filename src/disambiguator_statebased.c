@@ -156,7 +156,7 @@ typedef struct {
 	enum LighthouseState state;
 
 	// We track offset for both lighthouses seperately
-	uint32_t mod_offset[NUM_LIGHTHOUSES];
+	uint32_t mod_offset[NUM_GEN1_LIGHTHOUSES];
 	int confidence;
 
 	/** This rest of the structure is dedicated to finding a state when we are unknown */

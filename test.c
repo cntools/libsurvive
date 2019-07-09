@@ -92,7 +92,7 @@ void testprog_lighthouse_process(SurviveContext *ctx, uint8_t lighthouse, Surviv
 }
 
 void testprog_raw_pose_process(SurviveObject *so, uint32_t timecode, SurvivePose *pose) {
-	survive_default_raw_pose_process(so, timecode, pose);
+	survive_default_pose_process(so, timecode, pose);
 
 	// print the pose;
 	printf("Pose: [%u][%s][% 08.8f,% 08.8f,% 08.8f] [% 08.8f,% 08.8f,% 08.8f,% 08.8f]\n", timecode, so->codename,

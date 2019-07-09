@@ -327,7 +327,7 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	device->timebase_hz = 48000000;
 	device->imu_freq = 1000.0f;
 
-	ctx->configfunction(device, cfg, strlen(cfg));
+	ctx->configproc(device, cfg, strlen(cfg));
 
 	free(loc_buf);
 	free(nor_buf);

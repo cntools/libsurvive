@@ -66,7 +66,7 @@ FLT hpos2[3];
 FLT hposx[3];
 
 void testprog_raw_pose_process(SurviveObject *so, uint32_t timecode, SurvivePose *pose) {
-	survive_default_raw_pose_process(so, timecode, pose);
+	survive_default_pose_process(so, timecode, pose);
 
 	//	if (strcmp(so->codename, "WW0") != 0)
 	//		return;

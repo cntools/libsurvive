@@ -124,7 +124,7 @@ static void external_pose_fn(SurviveContext *ctx, const char *name, const Surviv
 static void pose_fn(SurviveObject *so, uint32_t timecode, SurvivePose *pose) {
 	SurviveSimpleContext *actx = so->ctx->user_ptr;
 	OGLockMutex(actx->poll_mutex);
-	survive_default_raw_pose_process(so, timecode, pose);
+	survive_default_pose_process(so, timecode, pose);
 
 	intptr_t idx = (intptr_t)so->user_ptr;
 	actx->objects[idx].has_update = true;

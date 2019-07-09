@@ -51,10 +51,10 @@ typedef struct {
 	int activeSweepStartTime;
 	int activeAcode;
 
-	//	int lh_pulse_len[NUM_LIGHTHOUSES];
-	int lh_start_time[NUM_LIGHTHOUSES];
-	int lh_max_pulse_length[NUM_LIGHTHOUSES];
-	int8_t lh_acode[NUM_LIGHTHOUSES];
+	//	int lh_pulse_len[NUM_GEN1_LIGHTHOUSES];
+	int lh_start_time[NUM_GEN1_LIGHTHOUSES];
+	int lh_max_pulse_length[NUM_GEN1_LIGHTHOUSES];
+	int8_t lh_acode[NUM_GEN1_LIGHTHOUSES];
 	int current_lh; // used knowing which sync pulse we're looking at.
 
 } lightcap2_per_sweep_data;
@@ -368,7 +368,7 @@ static void handle_lightcap2_sync(SurviveObject *so, LightcapElement *le) {
 		memset(&lcd->per_sweep, 0, sizeof(lcd->per_sweep));
 		lcd->per_sweep.activeLighthouse = -1;
 
-		for (uint8_t i = 0; i < NUM_LIGHTHOUSES; ++i) {
+		for (uint8_t i = 0; i < NUM_GEN1_LIGHTHOUSES; ++i) {
 			lcd->per_sweep.lh_acode[i] = -1;
 		}
 
@@ -414,7 +414,7 @@ static void handle_lightcap2_sweep(SurviveObject *so, LightcapElement *le) {
 	lcd->per_sweep.activeSweepStartTime = 0;
 	lcd->per_sweep.activeAcode = 0;
 
-	for (uint8_t i = 0; i < NUM_LIGHTHOUSES; ++i) {
+	for (uint8_t i = 0; i < NUM_GEN1_LIGHTHOUSES; ++i) {
 		int acode = lcd->per_sweep.lh_acode[i];
 		if ((acode >= 0) && !(acode >> 2 & 1)) {
 			lcd->per_sweep.activeLighthouse = i;

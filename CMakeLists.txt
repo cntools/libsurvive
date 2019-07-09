@@ -80,7 +80,8 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
         ./src/survive_playback.c        
 		./src/survive_plugins.c
         ./src/survive_process.c
-        ./src/survive_reproject.c
+		./src/survive_process_gen2.c
+		./src/survive_reproject.c
         ./src/survive_reproject.generated.h
         ./src/survive_sensor_activations.c
         ./src/survive_usb.c

@@ -59,7 +59,6 @@ void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const S
 
 		for (int i = 0; i < 7; i++)
 			assert(!isnan(((double *)imu2world)[i]));
-
 		so->ctx->poseproc(so, PoserData_timecode(poser_data), &head2world);
 	}
 }
@@ -138,14 +137,14 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 		ApplyPoseToPose(&obj2world, arb2world, &object2arb);
 		ApplyPoseToPose(&lighthouse2world, arb2world, &lighthouse2arb);
 
-		so->ctx->lighthouseposeproc(so->ctx, lighthouse, &lighthouse2world, &obj2world);
+		so->ctx->lighthouse_poseproc(so->ctx, lighthouse, &lighthouse2world, &obj2world);
 	}
 }
 
 void PoserDataFullScene2Activations(const PoserDataFullScene *pdfs, SurviveSensorActivations *activations) {
 	memset(activations, 0, sizeof(SurviveSensorActivations));
 
-	for (int i = 0; i < SENSORS_PER_OBJECT * NUM_LIGHTHOUSES * 2; i++) {
+	for (int i = 0; i < SENSORS_PER_OBJECT * NUM_GEN1_LIGHTHOUSES * 2; i++) {
 		double length = ((double *)pdfs->lengths)[i] * 48000000;
 		if (length > 0)
 			((survive_timecode *)activations->lengths)[i] = (survive_timecode)length;

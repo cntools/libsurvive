@@ -64,19 +64,19 @@ static void set_stderr_color(int c) {
 #endif
 }
 
-static void survivefault(struct SurviveContext *ctx, SurviveError errorCode, const char *fault) {
+static void survive_default_error(struct SurviveContext *ctx, SurviveError errorCode, const char *fault) {
 	set_stderr_color(2);
 	fprintf(stderr, "Error %d: %s\n", errorCode, fault);
 	reset_stderr();
 	ctx->currentError = errorCode;
 }
 
-static void survivenote(struct SurviveContext *ctx, const char *fault) {
+static void survive_default_info(struct SurviveContext *ctx, const char *fault) {
 	survive_recording_info_process(ctx, fault);
 	fprintf(stderr, "Info: %s\n", fault);
 }
 
-static void survivewarn(struct SurviveContext *ctx, const char *fault) {
+static void survive_default_warn(struct SurviveContext *ctx, const char *fault) {
 	survive_recording_info_process(ctx, fault);
 	set_stderr_color(1);
 	fprintf(stderr, "Warning: %s\n", fault);
@@ -164,19 +164,19 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 
 	ctx->state = SURVIVE_STOPPED;
 
-	ctx->faultfunction = survivefault;
-	ctx->notefunction = survivenote;
-	ctx->warnfunction = survivewarn;
+#define SURVIVE_HOOK_PROCESS_DEF(hook) survive_install_##hook##_fn(ctx, 0);
+#define SURVIVE_HOOK_FEEDBACK_DEF(hook) survive_install_##hook##_fn(ctx, 0);
+#include "survive_hooks.h"
 
 	ctx->global_config_values = malloc(sizeof(config_group));
 	ctx->temporary_config_values = malloc(sizeof(config_group));
-	ctx->lh_config = malloc(sizeof(config_group) * NUM_LIGHTHOUSES);
+	ctx->lh_config = malloc(sizeof(config_group) * NUM_GEN1_LIGHTHOUSES);
 
 	// initdata
 	init_config_group(ctx->global_config_values, 30, ctx);
 	init_config_group(ctx->temporary_config_values, 30, ctx);
-	for( i = 0; i < NUM_LIGHTHOUSES; i++ )
-			init_config_group(&ctx->lh_config[i], 10, ctx);
+	for (i = 0; i < NUM_GEN1_LIGHTHOUSES; i++)
+		init_config_group(&ctx->lh_config[i], 10, ctx);
 
 	// Process command-line parameters.
 	char *const *av = argv + 1;
@@ -313,16 +313,6 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 		return 0;
 	}
 
-	ctx->lightproc = survive_default_light_process;
-	ctx->imuproc = survive_default_imu_process;
-	ctx->angleproc = survive_default_angle_process;
-	ctx->lighthouseposeproc = survive_default_lighthouse_pose_process;
-	ctx->configfunction = survive_default_htc_config_process;
-	ctx->poseproc = survive_default_raw_pose_process;
-	ctx->velocityproc = survive_default_velocity_process;
-	ctx->externalposeproc = survive_default_external_pose_process;
-	ctx->externalvelocityproc = survive_default_external_velocity_process;
-
 	return ctx;
 }
 
@@ -401,7 +391,7 @@ int survive_startup(SurviveContext *ctx) {
 	ctx->buttonservicethread = OGCreateThread(button_servicer, ctx);
 
 	PoserCB PreferredPoserCB = GetDriverByConfig(ctx, "Poser", "defaultposer", "MPFIT");
-	ctx->lightcapfunction = GetDriverByConfig(ctx, "Disambiguator", "disambiguator", "StateBased");
+	ctx->lightcapproc = GetDriverByConfig(ctx, "Disambiguator", "disambiguator", "StateBased");
 
 	const char *DriverName;
 
@@ -481,7 +471,7 @@ int survive_startup(SurviveContext *ctx) {
 	// If lighthouse positions are known, broadcast them
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
 		if (ctx->bsd[i].PositionSet) {
-			ctx->lighthouseposeproc(ctx, i, &ctx->bsd[i].Pose, 0);
+			ctx->lighthouse_poseproc(ctx, i, &ctx->bsd[i].Pose, 0);
 		}
 	}
 
@@ -492,88 +482,20 @@ int survive_startup(SurviveContext *ctx) {
 	return 0;
 }
 
-void survive_install_info_fn(SurviveContext *ctx, text_feedback_func fbp) {
-	if (fbp)
-		ctx->notefunction = fbp;
-	else
-		ctx->notefunction = survivenote;
-}
+#define SURVIVE_HOOK_FN_DEF(hook)                                                                                      \
+	SURVIVE_EXPORT void survive_install_##hook##_fn(SurviveContext *ctx, hook##_func fbp) {                            \
+		ctx->hook##function = fbp ? fbp : survive_default_##hook;                                                      \
+	}
+#define SURVIVE_HOOK_PROCESS_DEF(hook)                                                                                 \
+	SURVIVE_EXPORT void survive_install_##hook##_fn(SurviveContext *ctx, hook##_process_func fbp) {                    \
+		ctx->hook##proc = fbp ? fbp : survive_default_##hook##_process;                                                \
+	}
+#define SURVIVE_HOOK_FEEDBACK_DEF(hook)                                                                                \
+	SURVIVE_EXPORT void survive_install_##hook##_fn(SurviveContext *ctx, hook##_feedback_func fbp) {                   \
+		ctx->hook##function = fbp ? fbp : survive_default_##hook;                                                      \
+	}
 
-void survive_install_htc_config_fn(SurviveContext *ctx, htc_config_func fbp) {
-	if (fbp)
-		ctx->configfunction = fbp;
-	else
-		ctx->configfunction = survive_default_htc_config_process;
-}
-
-void survive_install_error_fn(SurviveContext *ctx, error_feedback_func fbp) {
-	if (fbp)
-		ctx->faultfunction = fbp;
-	else
-		ctx->faultfunction = survivefault;
-}
-
-void survive_install_light_fn(SurviveContext *ctx, light_process_func fbp) {
-	if (fbp)
-		ctx->lightproc = fbp;
-	else
-		ctx->lightproc = survive_default_light_process;
-}
-
-void survive_install_imu_fn(SurviveContext *ctx, imu_process_func fbp) {
-	if (fbp)
-		ctx->imuproc = fbp;
-	else
-		ctx->imuproc = survive_default_imu_process;
-}
-
-void survive_install_angle_fn(SurviveContext *ctx, angle_process_func fbp) {
-	if (fbp)
-		ctx->angleproc = fbp;
-	else
-		ctx->angleproc = survive_default_angle_process;
-}
-
-void survive_install_button_fn(SurviveContext *ctx, button_process_func fbp) {
-	if (fbp)
-		ctx->buttonproc = fbp;
-	else
-		ctx->buttonproc = survive_default_button_process;
-}
-
-void survive_install_pose_fn(SurviveContext *ctx, pose_func fbp) {
-	if (fbp)
-		ctx->poseproc = fbp;
-	else
-		ctx->poseproc = survive_default_raw_pose_process;
-}
-
-void survive_install_velocity_fn(SurviveContext *ctx, velocity_func fbp) {
-	if (fbp)
-		ctx->velocityproc = fbp;
-	else
-		ctx->velocityproc = survive_default_velocity_process;
-}
-
-void survive_install_external_pose_fn(SurviveContext *ctx, external_pose_func fbp) {
-	if (fbp)
-		ctx->externalposeproc = fbp;
-	else
-		ctx->externalposeproc = survive_default_external_pose_process;
-}
-void survive_install_external_velocity_fn(SurviveContext *ctx, external_velocity_func fbp) {
-	if (fbp)
-		ctx->externalvelocityproc = fbp;
-	else
-		ctx->externalvelocityproc = survive_default_external_velocity_process;
-}
-
-void survive_install_lighthouse_pose_fn(SurviveContext *ctx, lighthouse_pose_func fbp) {
-	if (fbp)
-		ctx->lighthouseposeproc = fbp;
-	else
-		ctx->lighthouseposeproc = survive_default_lighthouse_pose_process;
-}
+#include "survive_hooks.h"
 
 int survive_add_object(SurviveContext *ctx, SurviveObject *obj) {
 	SV_INFO("Adding tracked object %s from %s", obj->codename, obj->drivername);

@@ -51,7 +51,7 @@ typedef struct {
 	SurvivePose object_pose_at_hit[MAX_PT_PER_SWEEP];
 	uint8_t sensor_ids[MAX_PT_PER_SWEEP];
 
-	LinmathPoint3d MixingPositions[NUM_LIGHTHOUSES][2];
+	LinmathPoint3d MixingPositions[NUM_GEN1_LIGHTHOUSES][2];
 	LinmathPoint3d mixed_output;
 
 	//Super high speed vibratey and terrible.
@@ -59,8 +59,8 @@ typedef struct {
 	//from the accelerometer applied to it.
 	SurvivePose InteralPoseUsedForCalc;
 
-	FLT MixingConfidence[NUM_LIGHTHOUSES][2];
-	FLT last_angle_lh_axis[NUM_LIGHTHOUSES][2];
+	FLT MixingConfidence[NUM_GEN1_LIGHTHOUSES][2];
+	FLT last_angle_lh_axis[NUM_GEN1_LIGHTHOUSES][2];
 	int ptsweep;
 
 	SurviveIMUTracker tracker;
@@ -507,17 +507,21 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 				FLT MixedAmount = 0;
 				LinmathPoint3d MixedPosition = { 0, 0, 0 };
 				int l = 0, a = 0;
-				if( lhid == 0 && axis == 0 ) for( l = 0; l < NUM_LIGHTHOUSES; l++ ) for( a = 0; a < 2; a++ ) dd->MixingConfidence[l][a] -= 0.1;
-				for( l = 0; l < NUM_LIGHTHOUSES; l++ ) for( a = 0; a < 2; a++ )
-				{
-					LinmathPoint3d MixThis = { 0, 0, 0 };
-					FLT Confidence = dd->MixingConfidence[l][a];
-					if(Confidence < 0 ) Confidence = 0;
-					scale3d( MixThis, dd->MixingPositions[l][a], Confidence );
-					add3d( MixedPosition, MixedPosition, MixThis );
-					MixedAmount += Confidence;
-					//printf( "%f ", Confidence );
-				}
+				if (lhid == 0 && axis == 0)
+					for (l = 0; l < NUM_GEN1_LIGHTHOUSES; l++)
+						for (a = 0; a < 2; a++)
+							dd->MixingConfidence[l][a] -= 0.1;
+				for (l = 0; l < NUM_GEN1_LIGHTHOUSES; l++)
+					for (a = 0; a < 2; a++) {
+						LinmathPoint3d MixThis = {0, 0, 0};
+						FLT Confidence = dd->MixingConfidence[l][a];
+						if (Confidence < 0)
+							Confidence = 0;
+						scale3d(MixThis, dd->MixingPositions[l][a], Confidence);
+						add3d(MixedPosition, MixedPosition, MixThis);
+						MixedAmount += Confidence;
+						// printf( "%f ", Confidence );
+					}
 				scale3d( dd->mixed_output, MixedPosition, 1./MixedAmount );
 				EmitPose( so, pd );
 

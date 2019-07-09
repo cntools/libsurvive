@@ -59,17 +59,17 @@ static void metric_function(int j, int i, double *aj, double *xij, void *adata) 
 
 static size_t construct_input(const SurviveObject *so, PoserDataFullScene *pdfs, char *vmask, double *meas) {
 	size_t measCount = 0;
-	size_t size = so->sensor_ct * NUM_LIGHTHOUSES; // One set per lighthouse
+	size_t size = so->sensor_ct * NUM_GEN1_LIGHTHOUSES; // One set per lighthouse
 	for (size_t sensor = 0; sensor < so->sensor_ct; sensor++) {
 		for (size_t lh = 0; lh < 2; lh++) {
 			FLT *l = pdfs->lengths[sensor][lh];
 			if (l[0] < 0 || l[1] < 0) {
-				vmask[sensor * NUM_LIGHTHOUSES + lh] = 0;
+				vmask[sensor * NUM_GEN1_LIGHTHOUSES + lh] = 0;
 				continue;
 			}
 
 			double *angles = pdfs->angles[sensor][lh];
-			vmask[sensor * NUM_LIGHTHOUSES + lh] = 1;
+			vmask[sensor * NUM_GEN1_LIGHTHOUSES + lh] = 1;
 
 			meas[measCount++] = angles[0];
 			meas[measCount++] = angles[1];
@@ -91,7 +91,7 @@ static size_t construct_input_from_scene(SBAData *d, PoserDataLight *pdl, Surviv
 				const double *a = scene->angles[sensor][lh];
 				// FLT a[2];
 				// survive_apply_bsd_calibration(so->ctx, lh, _a, a);
-				vmask[sensor * NUM_LIGHTHOUSES + lh] = 1;
+				vmask[sensor * NUM_GEN1_LIGHTHOUSES + lh] = 1;
 				if (cov) {
 					*(cov++) = d->sensor_variance + fabs((float)pdl->timecode - (float)scene->timecode[sensor][lh][0]) *
 														d->sensor_variance_per_second / (double)so->timebase_hz;
@@ -104,7 +104,7 @@ static size_t construct_input_from_scene(SBAData *d, PoserDataLight *pdl, Surviv
 				meas[rtn++] = a[1];
 				// fprintf(stderr, "%.04f %.04f ", a[0], a[1]);
 			} else {
-				vmask[sensor * NUM_LIGHTHOUSES + lh] = 0;
+				vmask[sensor * NUM_GEN1_LIGHTHOUSES + lh] = 0;
 				// fprintf(stderr, "%.06f %.06f ", sensor, lh, -2,-2);
 			}
 		}
@@ -166,10 +166,10 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 	double *covx = 0;
 	SurviveObject *so = d->opt.so;
 
-	char *vmask = alloca(sizeof(char) * so->sensor_ct * NUM_LIGHTHOUSES);
-	double *meas = alloca(sizeof(double) * 2 * so->sensor_ct * NUM_LIGHTHOUSES);
+	char *vmask = alloca(sizeof(char) * so->sensor_ct * NUM_GEN1_LIGHTHOUSES);
+	double *meas = alloca(sizeof(double) * 2 * so->sensor_ct * NUM_GEN1_LIGHTHOUSES);
 	double *cov = (d->sensor_variance_per_second > 0. && d->sensor_variance)
-					  ? alloca(sizeof(double) * 2 * 2 * so->sensor_ct * NUM_LIGHTHOUSES)
+					  ? alloca(sizeof(double) * 2 * 2 * so->sensor_ct * NUM_GEN1_LIGHTHOUSES)
 					  : 0;
 	size_t meas_size = construct_input_from_scene(d, pdl, scene, vmask, meas, cov);
 
@@ -211,7 +211,7 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 
 	int status = sba_str_levmar(1, // Number of 3d points
 								0, // Number of 3d points to fix in spot
-								NUM_LIGHTHOUSES * so->sensor_ct, vmask,
+								NUM_GEN1_LIGHTHOUSES * so->sensor_ct, vmask,
 								soLocation.Pos, // Reads as the full pose though
 								7,				// pnp -- SurvivePose
 								meas,			// x* -- measurement data
@@ -249,8 +249,8 @@ static double run_sba(PoserDataFullScene *pdfs, SurviveObject *so, int max_itera
 					  double max_reproj_error /* = 0.005*/) {
 	double *covx = 0;
 
-	char *vmask = alloca(sizeof(char) * so->sensor_ct * NUM_LIGHTHOUSES);
-	double *meas = alloca(sizeof(double) * 2 * so->sensor_ct * NUM_LIGHTHOUSES);
+	char *vmask = alloca(sizeof(char) * so->sensor_ct * NUM_GEN1_LIGHTHOUSES);
+	double *meas = alloca(sizeof(double) * 2 * so->sensor_ct * NUM_GEN1_LIGHTHOUSES);
 	size_t meas_size = construct_input(so, pdfs, vmask, meas);
 
 	sba_context sbactx = {&pdfs->hdr, so, .camera_params = {{.Rot = {1.}}, {.Rot = {1.}}}, .obj_pose = so->OutPoseIMU};

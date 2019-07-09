@@ -132,6 +132,30 @@ void survive_recording_info_process(SurviveContext *ctx, const char *fault) {
 	write_to_output(recordingData, "INFO LOG %s\n", fault);
 }
 
+void survive_recording_sweep_angle_process(SurviveObject *so, survive_channel channel, int sensor_id,
+										   survive_timecode timecode, FLT angle) {
+	SurviveRecordingData *recordingData = so->ctx->recptr;
+	if (recordingData == 0)
+		return;
+
+	if (!recordingData->writeAngle) {
+		return;
+	}
+
+	write_to_output(recordingData, "%s B %d %d %0.6f %u\n", so->codename, sensor_id, timecode, angle, channel);
+}
+void survive_recording_sweep_process(SurviveObject *so, survive_channel channel, int sensor_id,
+									 survive_timecode timecode, bool flag) {
+	SurviveRecordingData *recordingData = so->ctx->recptr;
+	if (recordingData == 0)
+		return;
+
+	if (!recordingData->writeAngle) {
+		return;
+	}
+
+	write_to_output(recordingData, "%s W %d %d %d %u %u\n", so->codename, sensor_id, flag, timecode, timecode, channel);
+}
 void survive_recording_angle_process(struct SurviveObject *so, int sensor_id, int acode, uint32_t timecode, FLT length,
 									 FLT angle, uint32_t lh) {
 	SurviveRecordingData *recordingData = so->ctx->recptr;
@@ -274,7 +298,7 @@ static int parse_and_run_externalpose(const char *line, SurvivePlaybackData *dri
 					&pose.Rot[0], &pose.Rot[1], &pose.Rot[2], &pose.Rot[3]);
 
 	SurviveContext *ctx = driver->ctx;
-	ctx->externalposeproc(ctx, name, &pose);
+	ctx->external_poseproc(ctx, name, &pose);
 	return 0;
 }
 
@@ -515,7 +539,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 
 			SurviveObject *so = survive_create_device(ctx, "replay", sp, dev, 0);
 
-			if (ctx->configfunction(so, configStart, len) == 0) {
+			if (ctx->configproc(so, configStart, len) == 0) {
 				SV_INFO("Found %s in playback file...", dev);
 				survive_add_object(ctx, so);
 			} else {

@@ -43,26 +43,26 @@ void survive_cal_angle( SurviveObject * so, int sensor_id, int acode, uint32_t t
 
 #define MAX_POSE_OBJECTS 10
 
-#define MAX_CAL_PT_DAT (MAX_SENSORS_TO_CAL*NUM_LIGHTHOUSES*2)
+#define MAX_CAL_PT_DAT (MAX_SENSORS_TO_CAL * NUM_GEN1_LIGHTHOUSES * 2)
 struct SurviveCalData
 {
 	SurviveContext * ctx;
 	//OOTX Data is sync'd off of the sync pulses coming from the lighthouses.
-	ootx_decoder_context ootx_decoders[NUM_LIGHTHOUSES];
+	ootx_decoder_context ootx_decoders[NUM_GEN1_LIGHTHOUSES];
 
 	//For statistics-gathering phase. (Stage 2/3)
-	FLT all_lengths[MAX_SENSORS_TO_CAL][NUM_LIGHTHOUSES][2][DRPTS + 1];
-	FLT all_angles[MAX_SENSORS_TO_CAL][NUM_LIGHTHOUSES][2][DRPTS + 1];
-	int16_t all_counts[MAX_SENSORS_TO_CAL][NUM_LIGHTHOUSES][2];
+	FLT all_lengths[MAX_SENSORS_TO_CAL][NUM_GEN1_LIGHTHOUSES][2][DRPTS + 1];
+	FLT all_angles[MAX_SENSORS_TO_CAL][NUM_GEN1_LIGHTHOUSES][2][DRPTS + 1];
+	int16_t all_counts[MAX_SENSORS_TO_CAL][NUM_GEN1_LIGHTHOUSES][2];
 	int16_t peak_counts;
 	int8_t found_common;
 	int8_t times_found_common;
 
-	FLT all_sync_times[MAX_SENSORS_TO_CAL][NUM_LIGHTHOUSES][DRPTS + 1];
-	int16_t all_sync_counts[MAX_SENSORS_TO_CAL][NUM_LIGHTHOUSES];
+	FLT all_sync_times[MAX_SENSORS_TO_CAL][NUM_GEN1_LIGHTHOUSES][DRPTS + 1];
+	int16_t all_sync_counts[MAX_SENSORS_TO_CAL][NUM_GEN1_LIGHTHOUSES];
 
-	//For camfind (4+)
-	//Index is calculated with:      int dataindex = sen*(2*NUM_LIGHTHOUSES)+lh*2+axis;
+	// For camfind (4+)
+	// Index is calculated with:      int dataindex = sen*(2*NUM_GEN1_LIGHTHOUSES)+lh*2+axis;
 	FLT avgsweeps[MAX_CAL_PT_DAT];
 	FLT avglens[MAX_CAL_PT_DAT];
 	FLT stdsweeps[MAX_CAL_PT_DAT];
@@ -82,7 +82,7 @@ struct SurviveCalData
 	// 1: Collecting OOTX data.
 	int8_t stage;
 	int16_t stage_cnt;
-	bool seen_lh[NUM_LIGHTHOUSES];
+	bool seen_lh[NUM_GEN1_LIGHTHOUSES];
 };
 
 

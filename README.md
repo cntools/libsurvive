@@ -258,7 +258,7 @@ typedef struct {
 } libsurvive_hmd;
 
 void testprog_raw_pose_process(SurviveObject *so, uint8_t lighthouse, FLT *pos, FLT *quat) {
-	survive_default_raw_pose_process(so, lighthouse, pos, quat);
+	survive_default_pose_process(so, lighthouse, pos, quat);
 	printf("(Callback) Pose: [%1.1x][%s][% 08.8f,% 08.8f,% 08.8f] [% 08.8f,% 08.8f,% 08.8f,% 08.8f]\n", lighthouse, so->codename, pos[0], pos[1], pos[2], quat[0], quat[1], quat[2], quat[3]);
 	if (strcmp(so->codename, "HMD") == 0 && lighthouse == 0) {
 		libsurvive_hmd *hmd = so->ctx->user_ptr;
