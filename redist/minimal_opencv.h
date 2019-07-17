@@ -1,3 +1,5 @@
+#pragma once
+
 #ifdef USE_OPENCV
 #include "opencv2/core/core_c.h"
 #include "opencv2/core/fast_math.hpp"

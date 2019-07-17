@@ -1,147 +1,30 @@
-// Copyright (c) 2009, V. Lepetit, EPFL
-// All rights reserved.
-
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-
-// 1. Redistributions of source code must retain the above copyright notice, this
-//    list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-// The views and conclusions contained in the software and documentation are those
-// of the authors and should not be interpreted as representing official policies,
-//   either expressed or implied, of the FreeBSD Project.
-#include "epnp.h"
+#include "barycentric_svd.h"
 #include "math.h"
 #include "stdbool.h"
 #include "stdio.h"
 #include "stdlib.h"
 
-void print_mat(const CvMat *M) {
-	if (!M) {
-		printf("null\n");
-		return;
-	}
-	printf("%d x %d:\n", M->rows, M->cols);
-	for (unsigned i = 0; i < M->rows; i++) {
-		for (unsigned j = 0; j < M->cols; j++) {
-			printf("%.17g, ", cvmGet(M, i, j));
-		}
-		printf("\n");
-	}
-	printf("\n");
-}
-
-void epnp_epnp(epnp *self) {
-	self->maximum_number_of_correspondences = 0;
-	self->number_of_correspondences = 0;
-
-	self->obj_pts = 0;
-	self->meas = 0;
-	self->alphas = 0;
-	self->object_pts_in_camera = 0;
-}
-
-void epnp_dtor(epnp *self) {
-	free(self->obj_pts);
-	free(self->meas);
-	free(self->alphas);
-	free(self->object_pts_in_camera);
-}
-double epnp_compute_R_and_t(epnp *self, const double *ut, const double *betas, double R[3][3], double t[3]);
-
-double dot(const double *v1, const double *v2) { return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2]; }
-
-double dist2(const double *p1, const double *p2) {
-	return (p1[0] - p2[0]) * (p1[0] - p2[0]) + (p1[1] - p2[1]) * (p1[1] - p2[1]) + (p1[2] - p2[2]) * (p1[2] - p2[2]);
-}
-
-void epnp_compute_rho(epnp *self, double *rho) {
-	rho[0] = dist2(self->control_points[0], self->control_points[1]);
-	rho[1] = dist2(self->control_points[0], self->control_points[2]);
-	rho[2] = dist2(self->control_points[0], self->control_points[3]);
-	rho[3] = dist2(self->control_points[1], self->control_points[2]);
-	rho[4] = dist2(self->control_points[1], self->control_points[3]);
-	rho[5] = dist2(self->control_points[2], self->control_points[3]);
-
-	CvMat cws = cvMat(4, 3, CV_64F, self->control_points);
-	CvMat ccs = cvMat(4, 3, CV_64F, self->control_points_in_camera);
-	CvMat pws = cvMat(self->maximum_number_of_correspondences, 3, CV_64F, self->obj_pts);
-}
-
-void epnp_set_internal_parameters(epnp *self, double uc, double vc, double fu, double fv) {
-	self->uc = uc;
-	self->vc = vc;
-	self->fu = fu;
-	self->fv = fv;
-}
-
-void epnp_set_maximum_number_of_correspondences(epnp *self, int n) {
-	if (self->maximum_number_of_correspondences < n) {
-		if (self->obj_pts != 0)
-			free(self->obj_pts);
-		if (self->meas != 0)
-			free(self->meas);
-		if (self->alphas != 0)
-			free(self->alphas);
-		if (self->object_pts_in_camera != 0)
-			free(self->object_pts_in_camera);
-
-		self->maximum_number_of_correspondences = n;
-		self->obj_pts = calloc(sizeof(double), 3 * self->maximum_number_of_correspondences);
-		self->meas = calloc(sizeof(double), 2 * self->maximum_number_of_correspondences);
-		self->alphas = calloc(sizeof(double), 4 * self->maximum_number_of_correspondences);
-		self->object_pts_in_camera = calloc(sizeof(double), 3 * self->maximum_number_of_correspondences);
-	}
-}
-
-void epnp_reset_correspondences(epnp *self) { self->number_of_correspondences = 0; }
-
-void epnp_add_correspondence(epnp *self, double X, double Y, double Z, double u, double v) {
-	self->obj_pts[3 * self->number_of_correspondences] = X;
-	self->obj_pts[3 * self->number_of_correspondences + 1] = Y;
-	self->obj_pts[3 * self->number_of_correspondences + 2] = Z;
-
-	self->meas[2 * self->number_of_correspondences] = u;
-	self->meas[2 * self->number_of_correspondences + 1] = v;
-
-	self->number_of_correspondences++;
-}
-
-void epnp_choose_control_points(epnp *self) {
+static void bc_svd_choose_control_points(bc_svd *self) {
 	// Take C0 as the reference points centroid:
-	self->control_points[0][0] = self->control_points[0][1] = self->control_points[0][2] = 0;
-	for (int i = 0; i < self->number_of_correspondences; i++)
+	self->setup.control_points[0][0] = self->setup.control_points[0][1] = self->setup.control_points[0][2] = 0;
+	for (int i = 0; i < self->setup.obj_cnt; i++)
 		for (int j = 0; j < 3; j++)
-			self->control_points[0][j] += self->obj_pts[3 * i + j];
+			self->setup.control_points[0][j] += self->setup.obj_pts[i][j];
 
 	for (int j = 0; j < 3; j++)
-		self->control_points[0][j] /= self->number_of_correspondences;
+		self->setup.control_points[0][j] /= self->setup.obj_cnt;
 
 	// Take C1, C2, and C3 from PCA on the reference points:
-	CvMat *PW0 = cvCreateMat(self->number_of_correspondences, 3, CV_64F);
+	CvMat *PW0 = cvCreateMat(self->setup.obj_cnt, 3, CV_64F);
 
 	double pw0tpw0[3 * 3] = {0}, dc[3], uct[3 * 3];
 	CvMat PW0tPW0 = cvMat(3, 3, CV_64F, pw0tpw0);
 	CvMat DC = cvMat(3, 1, CV_64F, dc);
 	CvMat UCt = cvMat(3, 3, CV_64F, uct);
 
-	for (int i = 0; i < self->number_of_correspondences; i++)
+	for (int i = 0; i < self->setup.obj_cnt; i++)
 		for (int j = 0; j < 3; j++)
-			PW0->data.db[3 * i + j] = self->obj_pts[3 * i + j] - self->control_points[0][j];
+			PW0->data.db[3 * i + j] = self->setup.obj_pts[i][j] - self->setup.control_points[0][j];
 
 	cvMulTransposed(PW0, &PW0tPW0, 1, 0, 1);
 
@@ -151,52 +34,98 @@ void epnp_choose_control_points(epnp *self) {
 	cvReleaseMat(&PW0);
 
 	for (int i = 1; i < 4; i++) {
-		double k = sqrt(dc[i - 1] / self->number_of_correspondences);
+		double k = sqrt(dc[i - 1] / self->setup.obj_cnt);
 		for (int j = 0; j < 3; j++)
-			self->control_points[i][j] = self->control_points[0][j] + k * uct[3 * (i - 1) + j];
+			self->setup.control_points[i][j] = self->setup.control_points[0][j] + k * uct[3 * (i - 1) + j];
 	}
 }
 
-void epnp_compute_barycentric_coordinates(epnp *self) {
+static void bc_svd_compute_barycentric_coordinates(bc_svd *self) {
 	double cc[3 * 3], cc_inv[3 * 3];
 	CvMat CC = cvMat(3, 3, CV_64F, cc);
 	CvMat CC_inv = cvMat(3, 3, CV_64F, cc_inv);
 
 	for (int i = 0; i < 3; i++)
 		for (int j = 1; j < 4; j++)
-			cc[3 * i + j - 1] = self->control_points[j][i] - self->control_points[0][i];
+			cc[3 * i + j - 1] = self->setup.control_points[j][i] - self->setup.control_points[0][i];
 
 	cvInvert(&CC, &CC_inv, 1);
 
 	double *ci = cc_inv;
-	for (int i = 0; i < self->number_of_correspondences; i++) {
-		double *pi = self->obj_pts + 3 * i;
-		double *a = self->alphas + 4 * i;
+	for (int i = 0; i < self->setup.obj_cnt; i++) {
+		const double *pi = self->setup.obj_pts[i];
+		double *a = self->setup.alphas[i];
 
 		for (int j = 0; j < 3; j++)
-			a[1 + j] = ci[3 * j] * (pi[0] - self->control_points[0][0]) +
-					   ci[3 * j + 1] * (pi[1] - self->control_points[0][1]) +
-					   ci[3 * j + 2] * (pi[2] - self->control_points[0][2]);
+			a[1 + j] = ci[3 * j] * (pi[0] - self->setup.control_points[0][0]) +
+					   ci[3 * j + 1] * (pi[1] - self->setup.control_points[0][1]) +
+					   ci[3 * j + 2] * (pi[2] - self->setup.control_points[0][2]);
 		a[0] = 1.0f - a[1] - a[2] - a[3];
 	}
 }
 
-void epnp_fill_M(epnp *self, CvMat *M, const int row, const double *as, const double u, const double v) {
+void bc_svd_bc_svd(bc_svd *self, void *user, bc_svd_fill_M_fn fillFn, const LinmathPoint3d *obj_pts, size_t obj_cnt) {
+	*self = (bc_svd){0};
+
+	self->setup.user = user;
+	self->setup.fillFn = fillFn;
+
+	self->setup.obj_cnt = obj_cnt;
+	self->setup.obj_pts = obj_pts;
+	self->setup.alphas = calloc(obj_cnt, sizeof(self->setup.alphas[0]));
+	self->object_pts_in_camera = calloc(obj_cnt, sizeof(self->setup.alphas[0]));
+
+	bc_svd_choose_control_points(self);
+	bc_svd_compute_barycentric_coordinates(self);
+}
+
+void bc_svd_dtor(bc_svd *self) {}
+
+double bc_svd_compute_R_and_t(bc_svd *self, const double *ut, const double *betas, double R[3][3], double t[3]);
+
+double dot(const double *v1, const double *v2) { return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2]; }
+
+double dist2(const double *p1, const double *p2) {
+	return (p1[0] - p2[0]) * (p1[0] - p2[0]) + (p1[1] - p2[1]) * (p1[1] - p2[1]) + (p1[2] - p2[2]) * (p1[2] - p2[2]);
+}
+
+void bc_svd_compute_rho(bc_svd *self, double *rho) {
+	rho[0] = dist2(self->setup.control_points[0], self->setup.control_points[1]);
+	rho[1] = dist2(self->setup.control_points[0], self->setup.control_points[2]);
+	rho[2] = dist2(self->setup.control_points[0], self->setup.control_points[3]);
+	rho[3] = dist2(self->setup.control_points[1], self->setup.control_points[2]);
+	rho[4] = dist2(self->setup.control_points[1], self->setup.control_points[3]);
+	rho[5] = dist2(self->setup.control_points[2], self->setup.control_points[3]);
+}
+
+void bc_svd_reset_correspondences(bc_svd *self) { self->meas_cnt = 0; }
+
+void bc_svd_add_correspondence(bc_svd *self, size_t idx, double u, double v) {
+	if (self->meas_space <= self->meas_cnt) {
+		self->meas_space = self->meas_space * 2 + 1;
+
+		self->obj_map = realloc(self->obj_map, sizeof(self->obj_map[0]) * self->meas_space);
+		self->meas = realloc(self->meas, sizeof(self->meas[0]) * self->meas_space);
+	}
+
+	self->obj_map[self->meas_cnt] = idx;
+
+	self->meas[self->meas_cnt][0] = u;
+	self->meas[self->meas_cnt][1] = v;
+
+	self->meas_cnt++;
+}
+
+void bc_svd_fill_M(bc_svd *self, CvMat *M, const int row, const double *as, const double u, const double v) {
 	double *M1 = M->data.db + row * 12;
 	double *M2 = M1 + 12;
 
 	for (int i = 0; i < 4; i++) {
-		M1[3 * i] = as[i] * self->fu;
-		M1[3 * i + 1] = 0.0;
-		M1[3 * i + 2] = as[i] * (self->uc - u);
-
-		M2[3 * i] = 0.0;
-		M2[3 * i + 1] = as[i] * self->fv;
-		M2[3 * i + 2] = as[i] * (self->vc - v);
+		self->setup.fillFn(self->setup.user, M1 + i * 3, M2 + i * 3, as[i], u, v);
 	}
 }
 
-void epnp_compute_ccs(epnp *self, const double *betas, const double *ut) {
+void bc_svd_compute_ccs(bc_svd *self, const double *betas, const double *ut) {
 	for (int i = 0; i < 4; i++)
 		self->control_points_in_camera[i][0] = self->control_points_in_camera[i][1] =
 			self->control_points_in_camera[i][2] = 0.0f;
@@ -209,10 +138,10 @@ void epnp_compute_ccs(epnp *self, const double *betas, const double *ut) {
 	}
 }
 
-void epnp_compute_pcs(epnp *self) {
-	for (int i = 0; i < self->number_of_correspondences; i++) {
-		double *a = self->alphas + 4 * i;
-		double *pc = self->object_pts_in_camera + 3 * i;
+void bc_svd_compute_pcs(bc_svd *self) {
+	for (int i = 0; i < self->setup.obj_cnt; i++) {
+		double *a = self->setup.alphas[i];
+		double *pc = self->object_pts_in_camera[i];
 
 		for (int j = 0; j < 3; j++)
 			pc[j] = a[0] * self->control_points_in_camera[0][j] + a[1] * self->control_points_in_camera[1][j] +
@@ -220,7 +149,7 @@ void epnp_compute_pcs(epnp *self) {
 	}
 }
 
-void epnp_compute_L_6x10(epnp *self, const double *ut, double *l_6x10) {
+void bc_svd_compute_L_6x10(bc_svd *self, const double *ut, double *l_6x10) {
 	const double *v[4];
 
 	v[0] = ut + 12 * 11;
@@ -448,7 +377,7 @@ void find_betas_approx_2(const CvMat *L_6x10, const CvMat *Rho, double *betas) {
 // betas10        = [B11 B12 B22 B13 B23 B33 B14 B24 B34 B44]
 // betas_approx_3 = [B11 B12 B22 B13 B23                    ]
 
-void epnp_find_betas_approx_3(epnp *self, const CvMat *L_6x10, const CvMat *Rho, double *betas) {
+void bc_svd_find_betas_approx_3(bc_svd *self, const CvMat *L_6x10, const CvMat *Rho, double *betas) {
 	double l_6x5[6 * 5], b5[5];
 	CvMat L_6x5 = cvMat(6, 5, CV_64F, l_6x5);
 	CvMat B5 = cvMat(5, 1, CV_64F, b5);
@@ -484,14 +413,13 @@ void copy_R_and_t(const double R_src[3][3], const double t_src[3], double R_dst[
 	}
 }
 
-double epnp_compute_pose(epnp *self, double R[3][3], double t[3]) {
-	epnp_choose_control_points(self);
-	epnp_compute_barycentric_coordinates(self);
+double bc_svd_compute_pose(bc_svd *self, double R[3][3], double t[3]) {
+	CvMat *M = cvCreateMat(2 * self->meas_cnt, 12, CV_64F);
 
-	CvMat *M = cvCreateMat(2 * self->number_of_correspondences, 12, CV_64F);
-
-	for (int i = 0; i < self->number_of_correspondences; i++)
-		epnp_fill_M(self, M, 2 * i, self->alphas + 4 * i, self->meas[2 * i], self->meas[2 * i + 1]);
+	for (int i = 0; i < self->meas_cnt; i++) {
+		size_t obj_pt_idx = self->obj_map[i];
+		bc_svd_fill_M(self, M, 2 * i, self->setup.alphas[obj_pt_idx], self->meas[i][0], self->meas[i][1]);
+	}
 
 	double mtm[12 * 12], d[12], ut[12 * 12];
 	CvMat MtM = cvMat(12, 12, CV_64F, mtm);
@@ -503,40 +431,15 @@ double epnp_compute_pose(epnp *self, double R[3][3], double t[3]) {
 	cvSVD(&MtM, &D, &Ut, 0, CV_SVD_MODIFY_A | CV_SVD_U_T);
 	cvReleaseMat(&M);
 
-	/*  double gt[] = {0.907567, -0.00916941, -0.0637565, -0.239863, 0.00224965, 0.0225974, -0.239574, 0.00209046,
-	   0.0176213, -0.237255, 0.00251711, -0.0108157,
-		   0.00910763, 0.909518, 0.0026331, -0.00232957, -0.239824, 0.00409253, -0.00243169, -0.239934, 0.00316978,
-	   -0.0024403, -0.239909, -0.0016784,
-		   -0.00657473, -0.00182409, -0.118455, -0.418384, -0.0208829, -0.00537926, -0.341435, -0.198683, 0.0639791,
-	   0.777439, 0.211238, 0.0351144,
-		   -0.000558729, -0.00120335, 0.0410987, 0.435735, 0.470224, -0.0117729, -0.330236, -0.651751, 0.0877612,
-	   -0.112846, 0.179057, -0.0293607,
-		   0.000207011, -0.000114796, 1.30348e-05, -0.150349, -0.396757, -0.0336814, 0.362168, -0.332794, -0.0038853,
-	   -0.215378, 0.728371, 3.59307e-05,
-		   -0.000236456, 3.59257e-05, -0.00240085, -0.516359, 0.533741, 8.75851e-05, 0.550447, -0.29792, -0.00101687,
-	   -0.0338867, -0.235687, -0.00652534,
-		   0.367037, -0.0382166, -0.268689, 0.518886, -0.0415839, 0.198992, 0.504361, -0.0564282, 0.00252704, 0.456381,
-	   -0.0480543, 0.11356,
-		   -0.0477438, -0.404345, -0.0789953, -0.0475805, -0.514161, -0.108317, -0.0431554, -0.498573, 0.134824,
-	   -0.0719115, -0.52184, 0.0593704,
-		   0.172473, -0.0624523, 0.798148, 0.0821341, -0.0877883, -0.120482, 0.105865, -0.083816, -0.254253, 0.24317,
-	   -0.056877, -0.393827,
-		   -0.0555454, -0.0526344, 0.0122309, -0.0649974, -0.0336308, 0.479865, -0.117645, -0.135477, -0.783616,
-	   -0.0585432, -0.034449, 0.327881,
-		   0.0797424, 0.032575, 0.168567, 0.0597489, 0.0568341, -0.66392, 0.0387932, 0.0297936, -0.142108, 0.0542191,
-	   0.0221337, 0.700399,
-		   -0.00310509, 0.000734298, -0.485965, 0.0476647, 0.0218702, -0.51114, -0.00347318, -0.0252922, -0.520376,
-	   0.00830308, -0.0120006, -0.477658 };
-		   for(int i = 0;i < 144;i++) ut[i] = gt[i];*/
 	assert(Ut.data.db == ut);
 
 	double l_6x10[6 * 10], rho[6];
 	CvMat L_6x10 = cvMat(6, 10, CV_64F, l_6x10);
 	CvMat Rho = cvMat(6, 1, CV_64F, rho);
 
-	epnp_compute_L_6x10(self, ut, l_6x10);
+	bc_svd_compute_L_6x10(self, ut, l_6x10);
 
-	epnp_compute_rho(self, rho);
+	bc_svd_compute_rho(self, rho);
 
 	double Betas[4][4] = {}, rep_errors[4] = {};
 	double Rs[4][3][3] = {}, ts[4][3] = {};
@@ -544,15 +447,15 @@ double epnp_compute_pose(epnp *self, double R[3][3], double t[3]) {
 	find_betas_approx_1(&L_6x10, &Rho, Betas[1]);
 	gauss_newton(&L_6x10, &Rho, Betas[1]);
 
-	rep_errors[1] = epnp_compute_R_and_t(self, ut, Betas[1], Rs[1], ts[1]);
+	rep_errors[1] = bc_svd_compute_R_and_t(self, ut, Betas[1], Rs[1], ts[1]);
 
 	find_betas_approx_2(&L_6x10, &Rho, Betas[2]);
 	gauss_newton(&L_6x10, &Rho, Betas[2]);
-	rep_errors[2] = epnp_compute_R_and_t(self, ut, Betas[2], Rs[2], ts[2]);
+	rep_errors[2] = bc_svd_compute_R_and_t(self, ut, Betas[2], Rs[2], ts[2]);
 
-	epnp_find_betas_approx_3(self, &L_6x10, &Rho, Betas[3]);
+	bc_svd_find_betas_approx_3(self, &L_6x10, &Rho, Betas[3]);
 	gauss_newton(&L_6x10, &Rho, Betas[3]);
-	rep_errors[3] = epnp_compute_R_and_t(self, ut, Betas[3], Rs[3], ts[3]);
+	rep_errors[3] = bc_svd_compute_R_and_t(self, ut, Betas[3], Rs[3], ts[3]);
 
 	int N = 1;
 	if (rep_errors[2] < rep_errors[1])
@@ -565,33 +468,35 @@ double epnp_compute_pose(epnp *self, double R[3][3], double t[3]) {
 	return rep_errors[N];
 }
 
-double epnp_reprojection_error(epnp *self, const double R[3][3], const double t[3]) {
+double bc_svd_reprojection_error(bc_svd *self, const double R[3][3], const double t[3]) {
 	double sum2 = 0.0;
 
-	for (int i = 0; i < self->number_of_correspondences; i++) {
-		double *pw = self->obj_pts + 3 * i;
+	for (int i = 0; i < self->meas_cnt; i++) {
+		size_t obj_idx = self->obj_map[i];
+		const double *pw = self->setup.obj_pts[obj_idx];
 		double Xc = dot(R[0], pw) + t[0];
 		double Yc = dot(R[1], pw) + t[1];
 		double inv_Zc = 1.0 / (dot(R[2], pw) + t[2]);
-		double ue = self->uc + self->fu * Xc * inv_Zc;
-		double ve = self->vc + self->fv * Yc * inv_Zc;
-		double u = self->meas[2 * i], v = self->meas[2 * i + 1];
+
+		double ue = Xc * inv_Zc;
+		double ve = Yc * inv_Zc;
+		double u = self->meas[i][0], v = self->meas[i][1];
 
 		sum2 += sqrt((u - ue) * (u - ue) + (v - ve) * (v - ve));
 	}
 
-	return sum2 / self->number_of_correspondences;
+	return sum2 / self->meas_cnt;
 }
 
-void epnp_estimate_R_and_t(epnp *self, double R[3][3], double t[3]) {
+void bc_svd_estimate_R_and_t(bc_svd *self, double R[3][3], double t[3]) {
 	double pc0[3], pw0[3];
 
 	pc0[0] = pc0[1] = pc0[2] = 0.0;
 	pw0[0] = pw0[1] = pw0[2] = 0.0;
 
-	for (int i = 0; i < self->number_of_correspondences; i++) {
-		const double *pc = self->object_pts_in_camera + 3 * i;
-		const double *pw = self->obj_pts + 3 * i;
+	for (int i = 0; i < self->setup.obj_cnt; i++) {
+		const double *pc = self->object_pts_in_camera[i];
+		const double *pw = self->setup.obj_pts[i];
 
 		for (int j = 0; j < 3; j++) {
 			pc0[j] += pc[j];
@@ -599,8 +504,8 @@ void epnp_estimate_R_and_t(epnp *self, double R[3][3], double t[3]) {
 		}
 	}
 	for (int j = 0; j < 3; j++) {
-		pc0[j] /= self->number_of_correspondences;
-		pw0[j] /= self->number_of_correspondences;
+		pc0[j] /= self->setup.obj_cnt;
+		pw0[j] /= self->setup.obj_cnt;
 	}
 
 	double abt[3 * 3], abt_d[3], abt_u[3 * 3], abt_v[3 * 3];
@@ -611,9 +516,9 @@ void epnp_estimate_R_and_t(epnp *self, double R[3][3], double t[3]) {
 
 	cvSetZero(&ABt);
 
-	for (int i = 0; i < self->number_of_correspondences; i++) {
-		double *pc = self->object_pts_in_camera + 3 * i;
-		double *pw = self->obj_pts + 3 * i;
+	for (int i = 0; i < self->setup.obj_cnt; i++) {
+		double *pc = self->object_pts_in_camera[i];
+		const double *pw = self->setup.obj_pts[i];
 
 		for (int j = 0; j < 3; j++) {
 			abt[3 * j] += (pc[j] - pc0[j]) * (pw[0] - pw0[0]);
@@ -653,29 +558,29 @@ void print_pose(const double R[3][3], const double t[3]) {
 	printf("\n");
 }
 
-void epnp_solve_for_sign(epnp *self) {
-	if (self->object_pts_in_camera[2] < 0.0) {
+void bc_svd_solve_for_sign(bc_svd *self) {
+	if (self->object_pts_in_camera[0][2] < 0.0) {
 		for (int i = 0; i < 4; i++)
 			for (int j = 0; j < 3; j++)
 				self->control_points_in_camera[i][j] = -self->control_points_in_camera[i][j];
 
-		for (int i = 0; i < self->number_of_correspondences; i++) {
-			self->object_pts_in_camera[3 * i] = -self->object_pts_in_camera[3 * i];
-			self->object_pts_in_camera[3 * i + 1] = -self->object_pts_in_camera[3 * i + 1];
-			self->object_pts_in_camera[3 * i + 2] = -self->object_pts_in_camera[3 * i + 2];
+		for (int i = 0; i < self->setup.obj_cnt; i++) {
+			self->object_pts_in_camera[i][0] = -self->object_pts_in_camera[i][0];
+			self->object_pts_in_camera[i][1] = -self->object_pts_in_camera[i][1];
+			self->object_pts_in_camera[i][2] = -self->object_pts_in_camera[i][2];
 		}
 	}
 }
 
-double epnp_compute_R_and_t(epnp *self, const double *ut, const double *betas, double R[3][3], double t[3]) {
-	epnp_compute_ccs(self, betas, ut);
-	epnp_compute_pcs(self);
+double bc_svd_compute_R_and_t(bc_svd *self, const double *ut, const double *betas, double R[3][3], double t[3]) {
+	bc_svd_compute_ccs(self, betas, ut);
+	bc_svd_compute_pcs(self);
 
-	epnp_solve_for_sign(self);
+	bc_svd_solve_for_sign(self);
 
-	epnp_estimate_R_and_t(self, R, t);
+	bc_svd_estimate_R_and_t(self, R, t);
 
-	return epnp_reprojection_error(self, R, t);
+	return bc_svd_reprojection_error(self, R, t);
 }
 
 // betas10        = [B11 B12 B22 B13 B23 B33 B14 B24 B34 B44]

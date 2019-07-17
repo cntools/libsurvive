@@ -30,15 +30,15 @@
 #include "stdio.h"
 #include "time.h"
 
-const double uc = 320;
-const double vc = 240;
-const double fu = 800;
-const double fv = 800;
+const double uc = 0; // 320;
+const double vc = 0; // 240;
+const double fu = 1; // 800;
+const double fv = 1; // 800;
 
 // MtM takes more time than 12x12 opencv SVD with about 180 points and more:
 
 const int n = 10;
-const double noise = 10;
+const double noise = 10. / 800.;
 
 double epnp_rand(double min, double max) { return min + (max - min) * (double)(rand()) / RAND_MAX; }
 

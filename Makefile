@@ -46,7 +46,7 @@ MPFIT:=redist/mpfit/mpfit.c
 LIBSURVIVE_CORE+=src/survive.c src/survive_process.c src/survive_process_gen2.c src/ootx_decoder.c src/survive_driverman.c src/survive_default_devices.c src/survive_playback.c src/survive_config.c src/survive_cal.c src/poser.c src/survive_sensor_activations.c src/survive_disambiguator.c src/survive_imu.c src/survive_kalman.c src/survive_api.c src/survive_plugins.c src/poser_general_optimizer.c
 MINIMAL_NEEDED+=src/survive_reproject.c redist/minimal_opencv.c 
 AUX_NEEDED+=
-PLUGINS+=driver_dummy driver_udp driver_vive disambiguator_turvey disambiguator_statebased disambiguator_charles poser_dummy poser_mpfit poser_epnp poser_sba poser_imu poser_charlesrefine driver_usbmon driver_simulator
+PLUGINS+=driver_dummy driver_udp driver_vive disambiguator_turvey disambiguator_statebased disambiguator_charles poser_dummy poser_mpfit poser_epnp poser_sba poser_imu poser_charlesrefine driver_usbmon driver_simulator poser_barycentric_svd
 POSERS:=
 EXTRA_POSERS:=src/poser_daveortho.c src/poser_charlesslow.c src/poser_octavioradii.c src/poser_turveytori.c
 REDISTS:=redist/json_helpers.c redist/linmath.c redist/jsmn.c
@@ -184,7 +184,10 @@ LDFLAGS_PLUGINS=$(LDFLAGS) -L./lib/plugins
 ./lib/plugins/driver_vive.so: ./src/driver_vive.c ./src/survive_usb.c
 	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS_PLUGINS)
 
-./lib/plugins/poser_epnp.so: ./src/poser_epnp.c ./src/epnp/epnp.c ./redist/minimal_opencv.c 
+./lib/plugins/poser_epnp.so: ./src/poser_epnp.c src/epnp/epnp.c ./redist/minimal_opencv.c
+	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS_PLUGINS)
+
+./lib/plugins/poser_barycentric_svd.so: ./src/poser_barycentric_svd.c src/barycentric_svd/barycentric_svd.c ./redist/minimal_opencv.c
 	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS_PLUGINS)
 
 ./lib/plugins/poser_mpfit.so: src/poser_mpfit.c ./src/survive_optimizer.c $(MPFIT)

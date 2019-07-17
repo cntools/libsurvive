@@ -38,7 +38,7 @@ typedef struct {
 
 	double uc, vc, fu, fv;
 
-	double *obj_pts, *meas, *alphas, *pcs;
+	double *obj_pts, *meas, *alphas, *object_pts_in_camera;
 	int maximum_number_of_correspondences;
 	int number_of_correspondences;
 

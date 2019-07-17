@@ -85,7 +85,10 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
         ./src/survive_reproject.generated.h
         ./src/survive_sensor_activations.c
         ./src/survive_usb.c
-		./src/survive_kalman.c)
+		./src/survive_kalman.c
+		./src/barycentric_svd/barycentric_svd.c
+		./src/barycentric_svd/barycentric_svd.h
+		)
 
 add_library(survive SHARED ${SURVIVE_SRCS})
 set_target_properties(survive PROPERTIES FOLDER "libraries")
@@ -106,6 +109,7 @@ SET(PLUGINS
         driver_dummy driver_vive driver_simulator
         disambiguator_turvey disambiguator_statebased disambiguator_charles
         poser_dummy poser_mpfit poser_epnp poser_imu poser_charlesrefine
+		poser_barycentric_svd
 )
 
 IF(USE_LAPACKE)

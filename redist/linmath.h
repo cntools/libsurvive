@@ -65,6 +65,7 @@ extern "C" {
 #endif
 
 typedef FLT LinmathQuat[4]; // This is the [wxyz] quaternion, in wxyz format.
+typedef FLT LinmathPoint2d[2];
 typedef FLT LinmathPoint3d[3];
 typedef FLT LinmathVec3d[3];
 typedef FLT LinmathEulerAngle[3];
