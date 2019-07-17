@@ -342,12 +342,13 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 
 				if (d->useKalman) {
 					survive_imu_tracker_integrate_observation(lightData->timecode, &d->tracker, &estimate, var);
-					survive_imu_tracker_predict(&d->tracker, lightData->timecode, &estimate);
+					SurvivePose predicted = {0};
+					survive_imu_tracker_predict(&d->tracker, lightData->timecode, &predicted);
 
 					// SV_INFO("MPFIT VAR %f", var[0]);
 
 					SurviveVelocity vel = survive_imu_velocity(&d->tracker);
-					PoserData_poser_pose_func_with_velocity(&lightData->hdr, so, &estimate, &vel);
+					PoserData_poser_pose_func_with_velocity(&lightData->hdr, so, &predicted, &vel);
 				} else {
 					PoserData_poser_pose_func(&lightData->hdr, so, &estimate);
 				}
