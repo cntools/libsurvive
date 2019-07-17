@@ -5,6 +5,7 @@
 #include "os_generic.h"
 #include "survive_config.h"
 #include "survive_default_devices.h"
+#include "survive_reproject_gen2.h"
 #include <json_helpers.h>
 #include <math.h>
 #include <stdio.h>
@@ -136,21 +137,33 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 				scale3d(dirLh, dirLh, -1);
 				FLT facingness = dot3d(normalInLh, dirLh);
 				if (facingness > 0) {
-					survive_reproject_xy(ctx->bsd[lh].fcal, ptInLh, ang);
-					// ang[0] += .001 * rand() / RAND_MAX;
-					// ang[1] += .001 * rand() / RAND_MAX;
-					// SurviveObject * so, int sensor_id, int acode, survive_timecode timecode, FLT length, FLT angle,
-					// uint32_t lh);
-					int acode = (lh << 2) + (driver->acode & 1);
-					ctx->angleproc(driver->so, idx, acode, timecode, .006, ang[driver->acode & 1], lh);
+
+					if (ctx->lh_version == 0) {
+						survive_reproject_xy(ctx->bsd[lh].fcal, ptInLh, ang);
+						// ang[0] += .001 * rand() / RAND_MAX;
+						// ang[1] += .001 * rand() / RAND_MAX;
+						// SurviveObject * so, int sensor_id, int acode, survive_timecode timecode, FLT length, FLT
+						// angle, uint32_t lh);
+						int acode = (lh << 2) + (driver->acode & 1);
+						ctx->angleproc(driver->so, idx, acode, timecode, .006, ang[driver->acode & 1], lh);
+					} else {
+						survive_reproject_xy_gen2(ctx->bsd[lh].fcal, ptInLh, ang);
+
+						ctx->sweep_angleproc(driver->so, lh, idx, timecode, ang[0]);
+						ctx->sweep_angleproc(driver->so, lh, idx, timecode, ang[1] + M_PI);
+					}
 				}
 			}
 		}
-		// SurviveObject * so, int sensor_id, int acode, int timeinsweep, survive_timecode timecode, survive_timecode
-		// length, uint32_t lighthouse);
-		int acode = (lh << 2) + (driver->acode & 1);
-		ctx->lightproc(driver->so, -3, acode, 0, timecode, 100, lh);
-		driver->acode = (driver->acode + 1) % 4;
+
+		if (ctx->lh_version == 0) {
+			int acode = (lh << 2) + (driver->acode & 1);
+			ctx->lightproc(driver->so, -3, acode, 0, timecode, 100, lh);
+			driver->acode = (driver->acode + 1) % 4;
+		} else {
+			ctx->syncproc(driver->so, lh, timecode, false, false);
+		}
+
 		driver->time_last_light = timestamp;
 	}
 
@@ -231,10 +244,11 @@ const BaseStationData simulated_bsd[2] = {
 int DriverRegSimulator(SurviveContext *ctx) {
 	SurviveDriverSimulator *sp = calloc(1, sizeof(SurviveDriverSimulator));
 	sp->ctx = ctx;
-
 	sp->position.Rot[0] = 1;
 
 	SV_INFO("Setting up Simulator driver.");
+
+	int use_lh2 = survive_configi(ctx, "lhv2-experimental", SC_GET, 0);
 
 	// Create a new SurviveObject...
 	SurviveObject *device = calloc(1, sizeof(SurviveObject));
@@ -334,6 +348,10 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	free(cfg);
 	sp->so = device;
 	survive_add_object(ctx, device);
+	if (use_lh2) {
+		survive_default_gen2_detected_process(device);
+	}
+
 	survive_add_driver(ctx, sp, Simulator_poll, 0, 0);
 	return 0;
 }
