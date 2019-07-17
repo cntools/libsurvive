@@ -132,6 +132,7 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 	struct SurviveContext *ctx = so->ctx;
 
 	survive_optimizer mpfitctx = {
+		.reprojectModel = &survive_reproject_model,
 		.so = so,
 		//.current_bias = 0.01,
 		.poseLength = 1,

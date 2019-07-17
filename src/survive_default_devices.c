@@ -2,6 +2,7 @@
 #include "assert.h"
 #include "json_helpers.h"
 #include <jsmn.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,6 +29,8 @@ SurviveObject *survive_create_device(SurviveContext *ctx, const char *driver_nam
 	for (int i = 0; i < 3; i++) {
 		device->gyro_scale[i] = device->acc_scale[i] = 1.0;
 	}
+
+	SurviveSensorActivations_ctor(&device->activations);
 
 	return device;
 }

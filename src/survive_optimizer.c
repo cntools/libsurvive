@@ -36,7 +36,7 @@ void survive_optimizer_setup_pose(survive_optimizer *mpfit_ctx, const SurvivePos
 							 mpfit_ctx->parameters[i], mpfit_ctx->parameters_info[i].limits[1])
 		}
 
-		if (use_jacobian_function != 0) {
+		if (use_jacobian_function != 0 && mpfit_ctx->reprojectModel->reprojectFullJacObjPose) {
 			if (use_jacobian_function < 0) {
 				mpfit_ctx->parameters_info[i].side = 1;
 				mpfit_ctx->parameters_info[i].deriv_debug = 1;
@@ -111,17 +111,10 @@ SurvivePose *survive_optimizer_get_pose(survive_optimizer *ctx) {
 	return &ctx->initialPose;
 }
 
-typedef FLT (*reproject_axis_fn_t)(const BaseStationCal *, const SurviveAngleReading);
-static const reproject_axis_fn_t reproject_axis_fns[] = {survive_reproject_axis_x, survive_reproject_axis_y};
-
-typedef void (*reproject_axis_jacob_fn_t)(SurviveAngleReading, const SurvivePose *, const LinmathPoint3d,
-										  const SurvivePose *, const BaseStationCal *);
-static const reproject_axis_jacob_fn_t reproject_axis_jacob_fns[] = {survive_reproject_full_x_jac_obj_pose,
-																	 survive_reproject_full_y_jac_obj_pose};
-
 static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, void *private) {
 	survive_optimizer *mpfunc_ctx = private;
 
+	const survive_reproject_model_t *reprojectModel = mpfunc_ctx->reprojectModel;
 	mpfunc_ctx->parameters = p;
 
 	SurvivePose *cameras = survive_optimizer_get_camera(mpfunc_ctx);
@@ -182,19 +175,19 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 		if (nextIsPair) {
 			FLT out[2];
 
-			survive_reproject_xy(cal, sensorPtInLH, out);
+			reprojectModel->reprojectXY(cal, sensorPtInLH, out);
 
 			deviates[i] = (out[meas[0].axis] - meas[0].value) / meas[0].variance;
 			deviates[i + 1] = (out[meas[1].axis] - meas[1].value) / meas[1].variance;
 		} else {
-			FLT out = reproject_axis_fns[meas->axis](cal, sensorPtInLH);
+			FLT out = reprojectModel->reprojectAxisFn[meas->axis](cal, sensorPtInLH);
 			deviates[i] = (out - meas->value) / meas->variance;
 		}
 
 		if (derivs) {
 			if (nextIsPair) {
 				FLT out[7 * 2] = { 0 };
-				survive_reproject_full_jac_obj_pose(out, pose, pt, world2lh, cal);
+				reprojectModel->reprojectFullJacObjPose(out, pose, pt, world2lh, cal);
 
 				for (int j = 0; j < 7; j++) {
 					if (derivs[j]) {
@@ -206,7 +199,7 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 				}
 			} else {
 				FLT out[7] = { 0 };
-				reproject_axis_jacob_fns[meas->axis](out, pose, pt, world2lh, cal);
+				reprojectModel->reprojectAxisJacobFn[meas->axis](out, pose, pt, world2lh, cal);
 				for (int j = 0; j < 7; j++) {
 					if (derivs[j]) {
 						derivs[j][i] = out[j];
@@ -229,4 +222,9 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 	// SV_INFO("Run start");
 	return mpfit(mpfunc, optimizer->measurementsCnt, survive_optimizer_get_parameters_count(optimizer),
 				 optimizer->parameters, optimizer->parameters_info, 0, optimizer, result);
+}
+
+void survive_optimizer_set_reproject_model(survive_optimizer *optimizer,
+										   const survive_reproject_model_t *reprojectModel) {
+	optimizer->reprojectModel = reprojectModel;
 }

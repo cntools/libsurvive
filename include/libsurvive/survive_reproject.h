@@ -21,6 +21,24 @@ extern "C" {
 
 typedef FLT SurviveAngleReading[2];
 
+typedef FLT (*survive_reproject_axis_fn_t)(const BaseStationCal *, const SurviveAngleReading);
+typedef void (*survive_reproject_axis_jacob_fn_t)(SurviveAngleReading, const SurvivePose *, const LinmathPoint3d,
+												  const SurvivePose *, const BaseStationCal *);
+typedef void (*survive_reproject_xy_fn_t)(const BaseStationCal *bcal, LinmathVec3d const ptInLh,
+										  SurviveAngleReading out);
+typedef void (*survive_reproject_full_jac_obj_pose_fn_t)(SurviveAngleReading out, const SurvivePose *obj2world,
+														 const LinmathVec3d ptInObj, const SurvivePose *world2lh,
+														 const BaseStationCal *bcal);
+
+typedef struct survive_reproject_model_t {
+	survive_reproject_axis_fn_t reprojectAxisFn[2];
+	survive_reproject_axis_jacob_fn_t reprojectAxisJacobFn[2];
+	survive_reproject_xy_fn_t reprojectXY;
+	survive_reproject_full_jac_obj_pose_fn_t reprojectFullJacObjPose;
+} survive_reproject_model_t;
+
+extern const survive_reproject_model_t survive_reproject_model;
+
 SURVIVE_EXPORT FLT survive_reproject_axis_x(const BaseStationCal *bcal, LinmathVec3d const ptInLh);
 SURVIVE_EXPORT FLT survive_reproject_axis_y(const BaseStationCal *bcal, LinmathVec3d const ptInLh);
 

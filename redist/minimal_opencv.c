@@ -375,7 +375,17 @@ SURVIVE_LOCAL_ONLY void cvSVD(CvMat *aarr, CvMat *warr, CvMat *uarr, CvMat *varr
 						 superb);
 
 	free(superb);
-	assert(inf == 0);
+
+	switch (inf) {
+	case -6:
+		assert(false && "matrix has NaNs");
+		break;
+	case 0:
+		break;
+	default:
+		assert(inf == 0);
+	}
+
 	if (uarr && (flags & CV_SVD_U_T)) {
 		cvTranspose(uarr, uarr);
 	}

@@ -20,15 +20,11 @@
 
 #define MAX_BUFF_SIZE 64
 
-void (*ootx_error_clbk)(ootx_decoder_context *ctx, const char *msg) = NULL;
-void (*ootx_packet_clbk)(ootx_decoder_context * ctx, ootx_packet* packet) = NULL;
-void (*ootx_bad_crc_clbk)(ootx_decoder_context * ctx, ootx_packet* packet, uint32_t crc) = NULL;
-
 void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit);
 
 void ootx_error(ootx_decoder_context *ctx, const char *msg) {
-	if (ootx_error_clbk)
-		ootx_error_clbk(ctx, msg);
+	if (ctx->ootx_error_clbk)
+		ctx->ootx_error_clbk(ctx, msg);
 }
 
 void ootx_init_decoder_context(ootx_decoder_context *ctx) {
@@ -50,7 +46,6 @@ void ootx_free_decoder_context(ootx_decoder_context *ctx) {
 	ctx->buffer = NULL;
 	ctx->payload_size = NULL;
 }
-
 uint8_t ootx_decode_bit(uint32_t length) {
 	uint8_t t = (uint8_t)((length - 2750) / 500); //why 2750?
 //	return ((t & 0x02)>0)?0xFF:0x00; //easier if we need to bitshift right
@@ -166,10 +161,10 @@ void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
 			crc = crc32( crc, op.data,op.length);
 
 			if (crc != op.crc32) {
-				if (ootx_bad_crc_clbk != NULL) ootx_bad_crc_clbk(ctx, &op,crc);
-			}
-			else if (ootx_packet_clbk != NULL) {
-				ootx_packet_clbk(ctx,&op);
+				if (ctx->ootx_bad_crc_clbk != NULL)
+					ctx->ootx_bad_crc_clbk(ctx, &op, crc);
+			} else if (ctx->ootx_packet_clbk != NULL) {
+				ctx->ootx_packet_clbk(ctx, &op);
 			}
 
 			ootx_reset_buffer(ctx);

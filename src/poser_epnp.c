@@ -29,7 +29,7 @@ static SurvivePose solve_correspondence(SurviveObject *so, epnp *pnp, bool camer
 		// err = epnp_compute_pose(pnp, r, rtn.Pos);
 
 		SV_WARN("EPNP pose is degenerate %d, err %f", pnp->number_of_correspondences, err);
-		return rtn;
+		return (SurvivePose){0};
 	}
 
 	// SV_INFO("EPNP for %s has err %f " SurvivePose_format, so->codename, err, SURVIVE_POSE_EXPAND(rtn));
@@ -75,12 +75,12 @@ static int opencv_solver_fullscene(SurviveObject *so, PoserDataFullScene *pdfs) 
 		epnp_set_maximum_number_of_correspondences(&pnp, so->sensor_ct);
 
 		for (size_t i = 0; i < so->sensor_ct; i++) {
-			FLT *lengths = pdfs->lengths[i][lh];
 			FLT *_ang = pdfs->angles[i][lh];
+			if (isnan(_ang[0]) || isnan(_ang[1]))
+				continue;
+
 			FLT ang[2];
 			survive_apply_bsd_calibration(so->ctx, lh, _ang, ang);
-			if (lengths[0] < 0 || lengths[1] < 0)
-				continue;
 
 			epnp_add_correspondence(&pnp, so->sensor_locations[i * 3 + 0], so->sensor_locations[i * 3 + 1],
 									so->sensor_locations[i * 3 + 2], get_u(ang), get_v(ang));
@@ -133,7 +133,7 @@ int PoserEPNP(SurviveObject *so, PoserData *pd) {
 		PoserDataLight *lightData = (PoserDataLight *)pd;
 		SurviveContext *ctx = so->ctx;
 
-		SurvivePose posers[2] = {0};
+		SurvivePose posers[NUM_GEN2_LIGHTHOUSES] = {0};
 		int meas[2] = {0, 0};
 		for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
 			if (so->ctx->bsd[lh].PositionSet) {

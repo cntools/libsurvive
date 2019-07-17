@@ -142,7 +142,7 @@ void survive_recording_sweep_angle_process(SurviveObject *so, survive_channel ch
 		return;
 	}
 
-	write_to_output(recordingData, "%s B %d %d %0.6f %u\n", so->codename, sensor_id, timecode, angle, channel);
+	write_to_output(recordingData, "%s B %u %u %0.6f %u\n", so->codename, sensor_id, timecode, angle, channel);
 }
 void survive_recording_sweep_process(SurviveObject *so, survive_channel channel, int sensor_id,
 									 survive_timecode timecode, bool flag) {

@@ -23,6 +23,8 @@ extern "C" {
  * This struct encodes what the last effective angles seen on a sensor were, and when they occured.
  */
 typedef struct SurviveSensorActivations_s {
+	int lh_gen;
+
 	// Valid for gen2; somewhat different meaning though -- refers to angle of the rotor when the sweep happened.
 	FLT angles[SENSORS_PER_OBJECT][NUM_GEN2_LIGHTHOUSES][2];				// 2 Axes (Angles in LH space)
 	survive_timecode timecode[SENSORS_PER_OBJECT][NUM_GEN2_LIGHTHOUSES][2]; // Timecode per axis in ticks
@@ -38,6 +40,8 @@ typedef struct SurviveSensorActivations_s {
 
 struct PoserDataLight;
 struct PoserDataIMU;
+
+SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveSensorActivations *self);
 
 /**
  * Adds a lightData packet to the table.
@@ -173,6 +177,10 @@ typedef struct BaseStationCal {
 	FLT curve;
 	FLT gibpha;
 	FLT gibmag;
+
+	// Gen 2 specific cal params
+	FLT ogeephase;
+	FLT ogeemag;
 } BaseStationCal;
 
 struct BaseStationData {
@@ -189,6 +197,8 @@ struct BaseStationData {
 
 	int8_t accel[3]; //"Up" vector
 	uint8_t mode;
+
+	void *ootx_data;
 };
 
 struct config_group;
@@ -240,6 +250,8 @@ struct SurviveContext {
 	// Calibration data:
 	int activeLighthouses;
 	BaseStationData bsd[NUM_GEN2_LIGHTHOUSES];
+	int8_t bsd_map[NUM_GEN2_LIGHTHOUSES]; // maps channels to idxs
+
 	SurviveCalData *calptr;				 // If and only if the calibration subsystem is attached.
 	void *disambiguator_data;			 // global disambiguator data
 	struct SurviveRecordingData *recptr; // Iff recording is attached
@@ -318,6 +330,8 @@ SURVIVE_EXPORT void survive_attach_configi(SurviveContext *ctx, const char *tag,
 SURVIVE_EXPORT void survive_attach_configf(SurviveContext *ctx, const char *tag, FLT * var );
 SURVIVE_EXPORT void survive_attach_configs(SurviveContext *ctx, const char *tag, char * var );
 SURVIVE_EXPORT void survive_detach_config(SurviveContext *ctx, const char *tag, void * var );
+
+SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel channel);
 
 #define STATIC_CONFIG_ITEM(variable, name, type, description, default_value)                                           \
 	const char *variable##_TAG = name;                                                                                 \

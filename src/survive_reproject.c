@@ -134,3 +134,9 @@ void survive_apply_bsd_calibration(const SurviveContext *ctx, int lh, const FLT 
 }
 
 #pragma GCC pop_options
+
+const survive_reproject_model_t survive_reproject_model = {
+	.reprojectAxisFn = {survive_reproject_axis_x, survive_reproject_axis_y},
+	.reprojectAxisJacobFn = {survive_reproject_full_x_jac_obj_pose, survive_reproject_full_y_jac_obj_pose},
+	.reprojectXY = survive_reproject_xy,
+	.reprojectFullJacObjPose = survive_reproject_full_jac_obj_pose};

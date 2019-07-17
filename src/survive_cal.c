@@ -147,6 +147,8 @@ void survive_cal_install( struct SurviveContext * ctx )
 		cd->ootx_decoders[i].ignore_sync_bit_error = survive_configi(ctx, "ootx-ignore-sync-error", SC_SETCONFIG, 0);
 		cd->ootx_decoders[i].user = ctx;
 		cd->ootx_decoders[i].user1 = i;
+		cd->ootx_decoders[i].ootx_packet_clbk = ootx_packet_clbk_d;
+		cd->ootx_decoders[i].ootx_error_clbk = ootx_error_clbk_d;
 	}
 
 	cd->stage = 1;
@@ -219,9 +221,6 @@ void survive_cal_install( struct SurviveContext * ctx )
 	}
 
 	cd->ConfigPoserFn = GetDriverByConfig(ctx, "Poser", "configposer", "SBA");
-
-	ootx_packet_clbk = ootx_packet_clbk_d;
-	ootx_error_clbk = ootx_error_clbk_d;
 	ctx->calptr = cd;
 }
 

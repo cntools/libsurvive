@@ -178,8 +178,8 @@ static usb_info_t *get_usb_info_from_file(const char *fname) {
 	size_t count = 0;
 	FILE *f = fopen(fname, "r");
 	while (!feof(f)) {
-		const char name[128];
-		if (fscanf(f, "%d %d %d %d %s ", &rtn[count].vid, &rtn[count].pid, &rtn[count].bus_id, &rtn[count].dev_id,
+		char name[128];
+		if (fscanf(f, "%hd %hd %d %d %s ", &rtn[count].vid, &rtn[count].pid, &rtn[count].bus_id, &rtn[count].dev_id,
 				   name) == 5) {
 			count++;
 		}

@@ -5,6 +5,7 @@
 #ifndef OOTX_DECODER_H
 #define OOTX_DECODER_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -14,7 +15,7 @@ typedef struct {
 	uint32_t crc32;
 } ootx_packet;
 
-typedef struct {
+typedef struct ootx_decoder_context {
 	uint8_t* buffer;
 	uint16_t buf_offset;
 	uint8_t bits_written;
@@ -28,8 +29,11 @@ typedef struct {
 	int ignore_sync_bit_error;
 	void * user;
 	int user1;
-} ootx_decoder_context;
 
+	void (*ootx_error_clbk)(struct ootx_decoder_context *ctx, const char *msg);
+	void (*ootx_packet_clbk)(struct ootx_decoder_context *ctx, ootx_packet *packet);
+	void (*ootx_bad_crc_clbk)(struct ootx_decoder_context *ctx, ootx_packet *packet, uint32_t crc);
+} ootx_decoder_context;
 
 typedef float float16;
 
@@ -65,9 +69,5 @@ uint8_t ootx_process_bit(ootx_decoder_context *ctx, uint32_t length);
 void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit);
 
 uint8_t ootx_decode_bit(uint32_t length);
-
-extern void (*ootx_error_clbk)(ootx_decoder_context *ctx, const char *msg);
-extern void (*ootx_packet_clbk)(ootx_decoder_context *ctx, ootx_packet* packet);
-extern void (*ootx_bad_crc_clbk)(ootx_decoder_context *ctx, ootx_packet* packet, uint32_t crc);
 
 #endif

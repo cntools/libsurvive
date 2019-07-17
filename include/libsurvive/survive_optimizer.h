@@ -1,5 +1,6 @@
 #pragma once
 #include "survive.h"
+#include "survive_reproject.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,6 +19,8 @@ struct mp_par_struct;
 struct mp_result_struct;
 
 typedef struct {
+	const survive_reproject_model_t *reprojectModel;
+
 	SurviveObject *so;
 	survive_optimizer_measurement *measurements;
 	size_t measurementsCnt;
@@ -61,6 +64,9 @@ SURVIVE_EXPORT void survive_optimizer_setup_pose(survive_optimizer *mpfit_ctx, c
 SURVIVE_EXPORT void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx, SurviveContext *ctx, bool isFixed);
 
 SURVIVE_EXPORT int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result);
+
+SURVIVE_EXPORT void survive_optimizer_set_reproject_model(survive_optimizer *optimizer,
+														  const survive_reproject_model_t *reprojectModel);
 
 #ifdef __cplusplus
 }

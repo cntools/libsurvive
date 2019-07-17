@@ -90,11 +90,13 @@ typedef struct PoserDataIMU {
 typedef struct PoserDataLight {
 	PoserData hdr;
 	int sensor_id;
-	int acode;			//OOTX Code associated with this sweep. bit 1 indicates vertical(1) or horizontal(0) sweep
 	int lh;             //Lighthouse making this sweep
-	uint32_t timecode;  //In object-local ticks.
-	FLT length;			//In seconds
+	survive_timecode timecode; // In object-local ticks.
 	FLT angle;			//In radians from center of lighthouse.
+
+	int acode;  // OOTX Code associated with this sweep. bit 1 indicates vertical(1) or horizontal(0) sweep
+	FLT length; // In seconds
+
 } PoserDataLight;
 
 typedef struct PoserDataLightGen2 {
@@ -109,15 +111,17 @@ typedef struct
 {
 	PoserData hdr;
 
-	//If "lengths[...]" < 0, means not a valid piece of sweep information.
+	// If "lengths[...]" < 0, means not a valid piece of sweep information.
 	FLT lengths[SENSORS_PER_OBJECT][NUM_GEN1_LIGHTHOUSES][2];
-	FLT angles[SENSORS_PER_OBJECT][NUM_GEN1_LIGHTHOUSES][2]; // 2 Axes  (Angles in LH space)
+	FLT angles[SENSORS_PER_OBJECT][NUM_GEN2_LIGHTHOUSES][2]; // 2 Axes  (Angles in LH space)
 
 	PoserDataIMU lastimu;
 } PoserDataFullScene;
 
 struct SurviveSensorActivations_s;
 SURVIVE_EXPORT void PoserDataFullScene2Activations(const PoserDataFullScene *pdfs, struct SurviveSensorActivations_s *activations);
+SURVIVE_EXPORT void Activations2PoserDataFullScene(const struct SurviveSensorActivations_s *activations,
+												   PoserDataFullScene *pdfs);
 
 //When you write your posers, use the following definition, and register with REGISTER_LINKTIME.
 typedef int (*PoserCB)( SurviveObject * so, PoserData * pd );

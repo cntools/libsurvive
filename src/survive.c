@@ -2,6 +2,7 @@
 // All MIT/x11 Licensed Code in this file may be relicensed freely under the GPL or LGPL licenses.
 
 #include "survive_internal.h"
+#include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -148,6 +149,26 @@ static void PrintMatchingDrivers( const char * prefix, const char * matchingpara
 	}
 }
 
+SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel channel) {
+	int8_t i = ctx->bsd_map[channel];
+	if (i != -1)
+		return i;
+
+	for (i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
+		if (ctx->bsd[i].mode == 0xFF) {
+			ctx->bsd[i] = (BaseStationData){0};
+			ctx->bsd[i].mode = channel;
+			SV_INFO("Adding lighthouse ch %d", channel);
+			if (ctx->activeLighthouses < i + 1)
+				ctx->activeLighthouses = i + 1;
+			return ctx->bsd_map[channel] = i;
+		}
+	}
+
+	assert(false);
+	return -1;
+}
+
 SurviveContext *survive_init_internal(int argc, char *const *argv) {
 	int i;
 
@@ -161,7 +182,10 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 #endif
 
 	SurviveContext *ctx = calloc(1, sizeof(SurviveContext));
-
+	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
+		ctx->bsd[i].mode = -1;
+		ctx->bsd_map[i] = -1;
+	}
 	ctx->state = SURVIVE_STOPPED;
 
 #define SURVIVE_HOOK_PROCESS_DEF(hook) survive_install_##hook##_fn(ctx, 0);
@@ -268,8 +292,11 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 
 	config_read(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
 	ctx->activeLighthouses = survive_configi(ctx, "lighthousecount", SC_SETCONFIG, 2);
-	config_read_lighthouse(ctx->lh_config, &(ctx->bsd[0]), 0);
-	config_read_lighthouse(ctx->lh_config, &(ctx->bsd[1]), 1);
+
+	for (int i = 0; i < ctx->activeLighthouses; i++) {
+		config_read_lighthouse(ctx->lh_config, &(ctx->bsd[i]), i);
+		ctx->bsd_map[ctx->bsd[i].mode] = i;
+	}
 
 	if( list_for_autocomplete )
 	{

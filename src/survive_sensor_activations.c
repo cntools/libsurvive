@@ -1,3 +1,4 @@
+#include "string.h"
 #include <assert.h>
 #include <math.h>
 #include <survive.h>
@@ -5,7 +6,10 @@
 bool SurviveSensorActivations_isReadingValid(const SurviveSensorActivations *self, survive_timecode tolerance,
 											 survive_timecode timecode_now, uint32_t idx, int lh, int axis) {
 	const uint32_t *data_timecode = self->timecode[idx][lh];
-	if (self->lengths[idx][lh][axis] == 0)
+	if (self->lh_gen != 1 && self->lengths[idx][lh][axis] == 0)
+		return false;
+
+	if (isnan(self->angles[idx][lh][axis]))
 		return false;
 
 	return survive_timecode_difference(timecode_now, data_timecode[axis]) <= tolerance;
@@ -13,7 +17,10 @@ bool SurviveSensorActivations_isReadingValid(const SurviveSensorActivations *sel
 bool SurviveSensorActivations_isPairValid(const SurviveSensorActivations *self, uint32_t tolerance,
 										  uint32_t timecode_now, uint32_t idx, int lh) {
 	const uint32_t *data_timecode = self->timecode[idx][lh];
-	if (self->lengths[idx][lh][0] == 0 || self->lengths[idx][lh][1] == 0)
+	if (self->lh_gen != 1 && (self->lengths[idx][lh][0] == 0 || self->lengths[idx][lh][1] == 0))
+		return false;
+
+	if (isnan(self->angles[idx][lh][0]) || isnan(self->angles[idx][lh][1]))
 		return false;
 
 	return !(timecode_now - data_timecode[0] > tolerance || timecode_now - data_timecode[1] > tolerance);
@@ -32,13 +39,28 @@ void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct Pos
 	}
 }
 void SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct PoserDataLightGen2 *lightData) {
+	self->lh_gen = 1;
 	int axis = lightData->angle > M_PI;
 	uint32_t *data_timecode = &self->timecode[lightData->sensor_id][lightData->lh][axis];
 
 	FLT *angle = &self->angles[lightData->sensor_id][lightData->lh][axis];
 
-	*angle = lightData->angle;
+	*angle = lightData->angle - M_PI / 2.;
+	if (axis)
+		*angle -= M_PI;
 	*data_timecode = lightData->timecode;
+}
+
+SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveSensorActivations *self) {
+	memset(self, 0, sizeof(SurviveSensorActivations));
+
+	for (int i = 0; i < SENSORS_PER_OBJECT; i++) {
+		for (int j = 0; j < NUM_GEN2_LIGHTHOUSES; j++) {
+			for (int h = 0; h < 2; h++) {
+				self->angles[i][j][h] = NAN;
+			}
+		}
+	}
 }
 
 void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLight *lightData) {

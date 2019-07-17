@@ -300,6 +300,7 @@ void config_read_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8
 
 	bsd->BaseStationID = config_read_uint32(cg, "id", 0);
 	bsd->mode = config_read_uint32(cg, "mode", 0);
+
 	config_read_float_array(cg, "pose", &bsd->Pose.Pos[0], defaults, 7);
 
 	FLT cal[sizeof(bsd->fcal)] = { 0 };
@@ -308,6 +309,8 @@ void config_read_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8
 	config_read_float_array(cg, "fcalcurve", cal + 4, defaults, 2);
 	config_read_float_array(cg, "fcalgibpha", cal + 6, defaults, 2);
 	config_read_float_array(cg, "fcalgibmag", cal + 8, defaults, 2);
+	config_read_float_array(cg, "fcalogeephase", cal + 10, defaults, 2);
+	config_read_float_array(cg, "fcalogeemag", cal + 12, defaults, 2);
 
 	for (size_t i = 0; i < 2; i++) {
 		bsd->fcal[i].phase = cal[0 + i];
@@ -315,6 +318,8 @@ void config_read_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8
 		bsd->fcal[i].curve = cal[4 + i];
 		bsd->fcal[i].gibpha = cal[6 + i];
 		bsd->fcal[i].gibmag = cal[8 + i];
+		bsd->fcal[i].ogeephase = cal[10 + i];
+		bsd->fcal[i].ogeemag = cal[12 + i];
 	}
 
 	bsd->PositionSet = config_read_uint32(cg, "PositionSet", 0);
@@ -335,6 +340,8 @@ void config_set_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8_
 		cal[4 + i] = bsd->fcal[i].curve;
 		cal[6 + i] = bsd->fcal[i].gibpha;
 		cal[8 + i] = bsd->fcal[i].gibmag;
+		cal[10 + i] = bsd->fcal[i].ogeephase;
+		cal[12 + i] = bsd->fcal[i].ogeemag;
 	}
 
 	config_set_float_a(cg, "fcalphase", cal, 2);
@@ -342,6 +349,8 @@ void config_set_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8_
 	config_set_float_a(cg, "fcalcurve", cal + 4, 2);
 	config_set_float_a(cg, "fcalgibpha", cal + 6, 2);
 	config_set_float_a(cg, "fcalgibmag", cal + 8, 2);
+	config_set_float_a(cg, "fcalogeephase", cal + 10, 2);
+	config_set_float_a(cg, "fcalogeemag", cal + 12, 2);
 
 	config_set_uint32(cg, "PositionSet", bsd->PositionSet);
 }

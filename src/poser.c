@@ -13,7 +13,9 @@
 
 static uint32_t PoserData_timecode(PoserData *poser_data) {
 	switch (poser_data->pt) {
+	case POSERDATA_SYNC_GEN2:
 	case POSERDATA_SYNC:
+	case POSERDATA_LIGHT_GEN2:
 	case POSERDATA_LIGHT: {
 		PoserDataLight *lightData = (PoserDataLight *)poser_data;
 		return lightData->timecode;
@@ -142,15 +144,36 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 }
 
 void PoserDataFullScene2Activations(const PoserDataFullScene *pdfs, SurviveSensorActivations *activations) {
-	memset(activations, 0, sizeof(SurviveSensorActivations));
+	SurviveSensorActivations_ctor(activations);
 
 	for (int i = 0; i < SENSORS_PER_OBJECT * NUM_GEN1_LIGHTHOUSES * 2; i++) {
 		double length = ((double *)pdfs->lengths)[i] * 48000000;
 		if (length > 0)
 			((survive_timecode *)activations->lengths)[i] = (survive_timecode)length;
+	}
+
+	for (int i = 0; i < SENSORS_PER_OBJECT * NUM_GEN2_LIGHTHOUSES * 2; i++) {
 		((double *)activations->angles)[i] = ((double *)pdfs->angles)[i];
 	}
+
 	memcpy(activations->accel, pdfs->lastimu.accel, sizeof(activations->accel));
 	memcpy(activations->gyro, pdfs->lastimu.gyro, sizeof(activations->gyro));
 	memcpy(activations->mag, pdfs->lastimu.mag, sizeof(activations->mag));
+}
+
+SURVIVE_EXPORT void Activations2PoserDataFullScene(const struct SurviveSensorActivations_s *activations,
+												   PoserDataFullScene *pdfs) {
+	for (int i = 0; i < SENSORS_PER_OBJECT * NUM_GEN1_LIGHTHOUSES * 2; i++) {
+		survive_timecode length = ((survive_timecode *)activations->lengths)[i];
+		if (length > 0)
+			((double *)pdfs->lengths)[i] = length / 48000000.;
+	}
+
+	for (int i = 0; i < SENSORS_PER_OBJECT * NUM_GEN2_LIGHTHOUSES * 2; i++) {
+		((double *)pdfs->angles)[i] = ((double *)activations->angles)[i];
+	}
+
+	memcpy(pdfs->lastimu.accel, activations->accel, sizeof(activations->accel));
+	memcpy(pdfs->lastimu.gyro, activations->gyro, sizeof(activations->gyro));
+	memcpy(pdfs->lastimu.mag, activations->mag, sizeof(activations->mag));
 }

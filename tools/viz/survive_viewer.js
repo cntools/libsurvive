@@ -498,6 +498,28 @@ var survive_log_handlers = {
 
 		create_tracked_object(obj);
 	},
+	'B' : function(v, tracker) {
+		// write_to_output(recordingData, "%s B %d %d %0.6f %u\n", so->codename, sensor_id, timecode, angle, channel);
+		var obj = {
+			tracker : v[1],
+			sensor_id : parseInt(v[3]),
+			timecode : parseInt(v[4]),
+			angle : parseFloat(v[5]),
+			lighthouse : parseInt(v[6])
+		};
+
+		angles[obj.tracker] = angles[obj.tracker] || {};
+		angles[obj.tracker][obj.lighthouse] = angles[obj.tracker][obj.lighthouse] || {};
+		angles[obj.tracker][obj.lighthouse][obj.sensor_id] = angles[obj.tracker][obj.lighthouse][obj.sensor_id] || {};
+
+		var axis = obj.angle > Math.PI ? 1 : 0;
+		obj.angle -= Math.PI / 2.;
+		if (axis)
+			obj.angle -= Math.PI;
+
+		angles[obj.tracker][obj.lighthouse][obj.sensor_id][axis] = [ obj.angle, obj.timecode ];
+		timecode[obj.tracker] = obj.timecode;
+	},
 	'A' : function(v, tracker) {
 		var obj = {
 			tracker : v[1],
