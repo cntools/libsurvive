@@ -8,6 +8,10 @@ calibrate
 test
 data_recorder
 simple_pose_test
+cmake-build-*
+survive
+survive-cli
+build*
 
 # Temp files
 *~
@@ -16,11 +20,16 @@ simple_pose_test
 
 # Tool output
 *.json
+*.config
 *.csv
 calinfo/
 *.log
 *.png
 *.sage.py
+*.rec
+*.zip
+*.avi
+do_calib/*
 
 # Windows specific
 *.dll
