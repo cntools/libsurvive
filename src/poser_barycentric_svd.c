@@ -14,27 +14,27 @@ typedef struct {
 
 typedef FLT LinmathPoint2d[2];
 
-static void survive_fill_m(void *user, double *M1, double *M2, double a, const double u, const double v) {
+static void survive_fill_m(void *user, double *eq1, double *eq2, const double u, const double v) {
 	SurviveObject *so = user;
 	double sinu = sin(u), cosu = cos(u);
 	double sinv = sin(v), cosv = cos(v);
 
 	if (so->ctx->lh_version == 0) {
-		M1[0] = a * cosu;
-		M1[1] = 0.0;
-		M1[2] = a * -sinu;
+		eq1[0] = cosu;
+		eq1[1] = 0.0;
+		eq1[2] = -sinu;
 
-		M2[0] = 0.0;
-		M2[1] = a * cosv;
-		M2[2] = a * -sinv;
+		eq2[0] = 0.0;
+		eq2[1] = cosv;
+		eq2[2] = -sinv;
 	} else {
-		M1[0] = a * cosu;
-		M1[1] = 1.0;
-		M1[2] = a * -sinu;
+		eq1[0] = cosu;
+		eq1[1] = 1.0;
+		eq1[2] = -sinu;
 
-		M2[0] = 1.0;
-		M2[1] = a * cosv;
-		M2[2] = a * -sinv;
+		eq2[0] = 1.0;
+		eq2[1] = cosv;
+		eq2[2] = -sinv;
 	}
 }
 

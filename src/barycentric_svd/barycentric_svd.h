@@ -11,7 +11,7 @@
 
 typedef double LinmathPoint4d[4];
 
-typedef void (*bc_svd_fill_M_fn)(void *user, double *M1, double *M2, double a, const double u, const double v);
+typedef void (*bc_svd_fill_M_fn)(void *user, double *eq1, double *eq2, const double u, const double v);
 
 typedef struct {
 	size_t obj_cnt;
@@ -46,5 +46,4 @@ double bc_svd_compute_pose(bc_svd *self, double R[3][3], double t[3]);
 void relative_error(double *rot_err, double *transl_err, const double Rtrue[3][3], const double ttrue[3],
 					const double Rest[3][3], const double test[3]);
 void bc_svd_print_pose(bc_svd *self, const double R[3][3], const double t[3]);
-double bc_svd_reprojection_error(bc_svd *self, const double R[3][3], const double t[3]);
 void print_pose(const double R[3][3], const double t[3]);

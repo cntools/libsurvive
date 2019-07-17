@@ -120,8 +120,14 @@ void bc_svd_fill_M(bc_svd *self, CvMat *M, const int row, const double *as, cons
 	double *M1 = M->data.db + row * 12;
 	double *M2 = M1 + 12;
 
+	double eq1[3], eq2[3];
+	self->setup.fillFn(self->setup.user, eq1, eq2, u, v);
+
 	for (int i = 0; i < 4; i++) {
-		self->setup.fillFn(self->setup.user, M1 + i * 3, M2 + i * 3, as[i], u, v);
+		for (int j = 0; j < 3; j++) {
+			M1[i * 3 + j] = eq1[j] * as[i];
+			M2[i * 3 + j] = eq2[j] * as[i];
+		}
 	}
 }
 
@@ -468,7 +474,7 @@ double bc_svd_compute_pose(bc_svd *self, double R[3][3], double t[3]) {
 	return rep_errors[N];
 }
 
-double bc_svd_reprojection_error(bc_svd *self, const double R[3][3], const double t[3]) {
+static double bc_svd_reprojection_error(bc_svd *self, const double R[3][3], const double t[3]) {
 	double sum2 = 0.0;
 
 	for (int i = 0; i < self->meas_cnt; i++) {
@@ -476,13 +482,16 @@ double bc_svd_reprojection_error(bc_svd *self, const double R[3][3], const doubl
 		const double *pw = self->setup.obj_pts[obj_idx];
 		double Xc = dot(R[0], pw) + t[0];
 		double Yc = dot(R[1], pw) + t[1];
-		double inv_Zc = 1.0 / (dot(R[2], pw) + t[2]);
+		double Zc = dot(R[2], pw) + t[2];
 
-		double ue = Xc * inv_Zc;
-		double ve = Yc * inv_Zc;
 		double u = self->meas[i][0], v = self->meas[i][1];
+		double eq1[3], eq2[3];
+		self->setup.fillFn(self->setup.user, eq1, eq2, u, v);
 
-		sum2 += sqrt((u - ue) * (u - ue) + (v - ve) * (v - ve));
+		double err_eq1 = eq1[0] * Xc + eq1[1] * Yc + eq1[2] * Zc;
+		double err_eq2 = eq2[0] * Xc + eq2[1] * Yc + eq2[2] * Zc;
+
+		sum2 += sqrt(err_eq1 * err_eq1 + err_eq2 * err_eq2);
 	}
 
 	return sum2 / self->meas_cnt;
