@@ -38,12 +38,11 @@ typedef struct {
 
 	double uc, vc, fu, fv;
 
-	double *pws, *us, *alphas, *pcs;
+	double *obj_pts, *meas, *alphas, *pcs;
 	int maximum_number_of_correspondences;
 	int number_of_correspondences;
 
-	double cws[4][3], ccs[4][3];
-	double cws_determinant;
+	double control_points[4][3], control_points_in_camera[4][3];
 } epnp;
 
 void epnp_dtor(epnp *self);

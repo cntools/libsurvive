@@ -49,15 +49,15 @@ void epnp_epnp(epnp *self) {
 	self->maximum_number_of_correspondences = 0;
 	self->number_of_correspondences = 0;
 
-	self->pws = 0;
-	self->us = 0;
+	self->obj_pts = 0;
+	self->meas = 0;
 	self->alphas = 0;
 	self->pcs = 0;
 }
 
 void epnp_dtor(epnp *self) {
-	free(self->pws);
-	free(self->us);
+	free(self->obj_pts);
+	free(self->meas);
 	free(self->alphas);
 	free(self->pcs);
 }
@@ -70,16 +70,16 @@ double dist2(const double *p1, const double *p2) {
 }
 
 void epnp_compute_rho(epnp *self, double *rho) {
-	rho[0] = dist2(self->cws[0], self->cws[1]);
-	rho[1] = dist2(self->cws[0], self->cws[2]);
-	rho[2] = dist2(self->cws[0], self->cws[3]);
-	rho[3] = dist2(self->cws[1], self->cws[2]);
-	rho[4] = dist2(self->cws[1], self->cws[3]);
-	rho[5] = dist2(self->cws[2], self->cws[3]);
+	rho[0] = dist2(self->control_points[0], self->control_points[1]);
+	rho[1] = dist2(self->control_points[0], self->control_points[2]);
+	rho[2] = dist2(self->control_points[0], self->control_points[3]);
+	rho[3] = dist2(self->control_points[1], self->control_points[2]);
+	rho[4] = dist2(self->control_points[1], self->control_points[3]);
+	rho[5] = dist2(self->control_points[2], self->control_points[3]);
 
-	CvMat cws = cvMat(4, 3, CV_64F, self->cws);
-	CvMat ccs = cvMat(4, 3, CV_64F, self->ccs);
-	CvMat pws = cvMat(self->maximum_number_of_correspondences, 3, CV_64F, self->pws);
+	CvMat cws = cvMat(4, 3, CV_64F, self->control_points);
+	CvMat ccs = cvMat(4, 3, CV_64F, self->control_points_in_camera);
+	CvMat pws = cvMat(self->maximum_number_of_correspondences, 3, CV_64F, self->obj_pts);
 }
 
 void epnp_set_internal_parameters(epnp *self, double uc, double vc, double fu, double fv) {
@@ -91,18 +91,18 @@ void epnp_set_internal_parameters(epnp *self, double uc, double vc, double fu, d
 
 void epnp_set_maximum_number_of_correspondences(epnp *self, int n) {
 	if (self->maximum_number_of_correspondences < n) {
-		if (self->pws != 0)
-			free(self->pws);
-		if (self->us != 0)
-			free(self->us);
+		if (self->obj_pts != 0)
+			free(self->obj_pts);
+		if (self->meas != 0)
+			free(self->meas);
 		if (self->alphas != 0)
 			free(self->alphas);
 		if (self->pcs != 0)
 			free(self->pcs);
 
 		self->maximum_number_of_correspondences = n;
-		self->pws = calloc(sizeof(double), 3 * self->maximum_number_of_correspondences);
-		self->us = calloc(sizeof(double), 2 * self->maximum_number_of_correspondences);
+		self->obj_pts = calloc(sizeof(double), 3 * self->maximum_number_of_correspondences);
+		self->meas = calloc(sizeof(double), 2 * self->maximum_number_of_correspondences);
 		self->alphas = calloc(sizeof(double), 4 * self->maximum_number_of_correspondences);
 		self->pcs = calloc(sizeof(double), 3 * self->maximum_number_of_correspondences);
 	}
@@ -111,25 +111,25 @@ void epnp_set_maximum_number_of_correspondences(epnp *self, int n) {
 void epnp_reset_correspondences(epnp *self) { self->number_of_correspondences = 0; }
 
 void epnp_add_correspondence(epnp *self, double X, double Y, double Z, double u, double v) {
-	self->pws[3 * self->number_of_correspondences] = X;
-	self->pws[3 * self->number_of_correspondences + 1] = Y;
-	self->pws[3 * self->number_of_correspondences + 2] = Z;
+	self->obj_pts[3 * self->number_of_correspondences] = X;
+	self->obj_pts[3 * self->number_of_correspondences + 1] = Y;
+	self->obj_pts[3 * self->number_of_correspondences + 2] = Z;
 
-	self->us[2 * self->number_of_correspondences] = u;
-	self->us[2 * self->number_of_correspondences + 1] = v;
+	self->meas[2 * self->number_of_correspondences] = u;
+	self->meas[2 * self->number_of_correspondences + 1] = v;
 
 	self->number_of_correspondences++;
 }
 
 void epnp_choose_control_points(epnp *self) {
 	// Take C0 as the reference points centroid:
-	self->cws[0][0] = self->cws[0][1] = self->cws[0][2] = 0;
+	self->control_points[0][0] = self->control_points[0][1] = self->control_points[0][2] = 0;
 	for (int i = 0; i < self->number_of_correspondences; i++)
 		for (int j = 0; j < 3; j++)
-			self->cws[0][j] += self->pws[3 * i + j];
+			self->control_points[0][j] += self->obj_pts[3 * i + j];
 
 	for (int j = 0; j < 3; j++)
-		self->cws[0][j] /= self->number_of_correspondences;
+		self->control_points[0][j] /= self->number_of_correspondences;
 
 	// Take C1, C2, and C3 from PCA on the reference points:
 	CvMat *PW0 = cvCreateMat(self->number_of_correspondences, 3, CV_64F);
@@ -141,7 +141,7 @@ void epnp_choose_control_points(epnp *self) {
 
 	for (int i = 0; i < self->number_of_correspondences; i++)
 		for (int j = 0; j < 3; j++)
-			PW0->data.db[3 * i + j] = self->pws[3 * i + j] - self->cws[0][j];
+			PW0->data.db[3 * i + j] = self->obj_pts[3 * i + j] - self->control_points[0][j];
 
 	cvMulTransposed(PW0, &PW0tPW0, 1, 0, 1);
 
@@ -153,7 +153,7 @@ void epnp_choose_control_points(epnp *self) {
 	for (int i = 1; i < 4; i++) {
 		double k = sqrt(dc[i - 1] / self->number_of_correspondences);
 		for (int j = 0; j < 3; j++)
-			self->cws[i][j] = self->cws[0][j] + k * uct[3 * (i - 1) + j];
+			self->control_points[i][j] = self->control_points[0][j] + k * uct[3 * (i - 1) + j];
 	}
 }
 
@@ -164,18 +164,19 @@ void epnp_compute_barycentric_coordinates(epnp *self) {
 
 	for (int i = 0; i < 3; i++)
 		for (int j = 1; j < 4; j++)
-			cc[3 * i + j - 1] = self->cws[j][i] - self->cws[0][i];
+			cc[3 * i + j - 1] = self->control_points[j][i] - self->control_points[0][i];
 
 	cvInvert(&CC, &CC_inv, 1);
 
 	double *ci = cc_inv;
 	for (int i = 0; i < self->number_of_correspondences; i++) {
-		double *pi = self->pws + 3 * i;
+		double *pi = self->obj_pts + 3 * i;
 		double *a = self->alphas + 4 * i;
 
 		for (int j = 0; j < 3; j++)
-			a[1 + j] = ci[3 * j] * (pi[0] - self->cws[0][0]) + ci[3 * j + 1] * (pi[1] - self->cws[0][1]) +
-					   ci[3 * j + 2] * (pi[2] - self->cws[0][2]);
+			a[1 + j] = ci[3 * j] * (pi[0] - self->control_points[0][0]) +
+					   ci[3 * j + 1] * (pi[1] - self->control_points[0][1]) +
+					   ci[3 * j + 2] * (pi[2] - self->control_points[0][2]);
 		a[0] = 1.0f - a[1] - a[2] - a[3];
 	}
 }
@@ -197,13 +198,14 @@ void epnp_fill_M(epnp *self, CvMat *M, const int row, const double *as, const do
 
 void epnp_compute_ccs(epnp *self, const double *betas, const double *ut) {
 	for (int i = 0; i < 4; i++)
-		self->ccs[i][0] = self->ccs[i][1] = self->ccs[i][2] = 0.0f;
+		self->control_points_in_camera[i][0] = self->control_points_in_camera[i][1] =
+			self->control_points_in_camera[i][2] = 0.0f;
 
 	for (int i = 0; i < 4; i++) {
 		const double *v = ut + 12 * (11 - i);
 		for (int j = 0; j < 4; j++)
 			for (int k = 0; k < 3; k++)
-				self->ccs[j][k] += betas[i] * v[3 * j + k];
+				self->control_points_in_camera[j][k] += betas[i] * v[3 * j + k];
 	}
 }
 
@@ -213,7 +215,8 @@ void epnp_compute_pcs(epnp *self) {
 		double *pc = self->pcs + 3 * i;
 
 		for (int j = 0; j < 3; j++)
-			pc[j] = a[0] * self->ccs[0][j] + a[1] * self->ccs[1][j] + a[2] * self->ccs[2][j] + a[3] * self->ccs[3][j];
+			pc[j] = a[0] * self->control_points_in_camera[0][j] + a[1] * self->control_points_in_camera[1][j] +
+					a[2] * self->control_points_in_camera[2][j] + a[3] * self->control_points_in_camera[3][j];
 	}
 }
 
@@ -488,8 +491,7 @@ double epnp_compute_pose(epnp *self, double R[3][3], double t[3]) {
 	CvMat *M = cvCreateMat(2 * self->number_of_correspondences, 12, CV_64F);
 
 	for (int i = 0; i < self->number_of_correspondences; i++)
-		epnp_fill_M(self, M, 2 * i, self->alphas + 4 * i, self->us[2 * i], self->us[2 * i + 1]);
-
+		epnp_fill_M(self, M, 2 * i, self->alphas + 4 * i, self->meas[2 * i], self->meas[2 * i + 1]);
 
 	double mtm[12 * 12], d[12], ut[12 * 12];
 	CvMat MtM = cvMat(12, 12, CV_64F, mtm);
@@ -536,8 +538,8 @@ double epnp_compute_pose(epnp *self, double R[3][3], double t[3]) {
 
 	epnp_compute_rho(self, rho);
 
-	double Betas[4][4], rep_errors[4];
-	double Rs[4][3][3], ts[4][3];
+	double Betas[4][4] = {}, rep_errors[4] = {};
+	double Rs[4][3][3] = {}, ts[4][3] = {};
 
 	find_betas_approx_1(&L_6x10, &Rho, Betas[1]);
 	gauss_newton(&L_6x10, &Rho, Betas[1]);
@@ -567,13 +569,13 @@ double epnp_reprojection_error(epnp *self, const double R[3][3], const double t[
 	double sum2 = 0.0;
 
 	for (int i = 0; i < self->number_of_correspondences; i++) {
-		double *pw = self->pws + 3 * i;
+		double *pw = self->obj_pts + 3 * i;
 		double Xc = dot(R[0], pw) + t[0];
 		double Yc = dot(R[1], pw) + t[1];
 		double inv_Zc = 1.0 / (dot(R[2], pw) + t[2]);
 		double ue = self->uc + self->fu * Xc * inv_Zc;
 		double ve = self->vc + self->fv * Yc * inv_Zc;
-		double u = self->us[2 * i], v = self->us[2 * i + 1];
+		double u = self->meas[2 * i], v = self->meas[2 * i + 1];
 
 		sum2 += sqrt((u - ue) * (u - ue) + (v - ve) * (v - ve));
 	}
@@ -589,7 +591,7 @@ void epnp_estimate_R_and_t(epnp *self, double R[3][3], double t[3]) {
 
 	for (int i = 0; i < self->number_of_correspondences; i++) {
 		const double *pc = self->pcs + 3 * i;
-		const double *pw = self->pws + 3 * i;
+		const double *pw = self->obj_pts + 3 * i;
 
 		for (int j = 0; j < 3; j++) {
 			pc0[j] += pc[j];
@@ -611,7 +613,7 @@ void epnp_estimate_R_and_t(epnp *self, double R[3][3], double t[3]) {
 
 	for (int i = 0; i < self->number_of_correspondences; i++) {
 		double *pc = self->pcs + 3 * i;
-		double *pw = self->pws + 3 * i;
+		double *pw = self->obj_pts + 3 * i;
 
 		for (int j = 0; j < 3; j++) {
 			abt[3 * j] += (pc[j] - pc0[j]) * (pw[0] - pw0[0]);
@@ -655,7 +657,7 @@ void epnp_solve_for_sign(epnp *self) {
 	if (self->pcs[2] < 0.0) {
 		for (int i = 0; i < 4; i++)
 			for (int j = 0; j < 3; j++)
-				self->ccs[i][j] = -self->ccs[i][j];
+				self->control_points_in_camera[i][j] = -self->control_points_in_camera[i][j];
 
 		for (int i = 0; i < self->number_of_correspondences; i++) {
 			self->pcs[3 * i] = -self->pcs[3 * i];

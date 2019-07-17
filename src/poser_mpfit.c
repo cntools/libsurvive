@@ -322,7 +322,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 			return 0;
 		SurviveSensorActivations *scene = &so->activations;
 		PoserDataLight *lightData = (PoserDataLight *)pd;
-		SurvivePose estimate;
+		SurvivePose estimate = {0};
 
 		// only process sweeps
 		FLT error = -1;

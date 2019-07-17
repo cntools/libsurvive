@@ -25,10 +25,10 @@ static SurvivePose solve_correspondence(SurviveObject *so, epnp *pnp, bool camer
 	CvMat T = cvMat(3, 1, CV_64F, rtn.Pos);
 
 	// Super degenerate inputs will project us basically right in the camera. Detect and reject
-	if (magnitude3d(rtn.Pos) < 0.25 || magnitude3d(rtn.Pos) > 25) {
-		double err = epnp_compute_pose(pnp, r, rtn.Pos);
+	if (err > 2 || magnitude3d(rtn.Pos) < 0.25 || magnitude3d(rtn.Pos) > 25) {
+		// err = epnp_compute_pose(pnp, r, rtn.Pos);
 
-		SV_WARN("EPNP pose is degenerate %d", pnp->number_of_correspondences);
+		SV_WARN("EPNP pose is degenerate %d, err %f", pnp->number_of_correspondences, err);
 		return rtn;
 	}
 
@@ -129,8 +129,7 @@ int PoserEPNP(SurviveObject *so, PoserData *pd) {
 		PoserDataIMU *imuData = (PoserDataIMU *)pd;
 		return 0;
 	}
-	case POSERDATA_SYNC:
-	case POSERDATA_LIGHT: {
+	case POSERDATA_SYNC: {
 		PoserDataLight *lightData = (PoserDataLight *)pd;
 		SurviveContext *ctx = so->ctx;
 
