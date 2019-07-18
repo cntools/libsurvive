@@ -322,6 +322,7 @@ void config_read_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8
 		bsd->fcal[i].ogeemag = cal[12 + i];
 	}
 
+	bsd->OOTXSet = config_read_uint32(cg, "OOTXSet", 0);
 	bsd->PositionSet = config_read_uint32(cg, "PositionSet", 0);
 }
 
@@ -352,6 +353,7 @@ void config_set_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8_
 	config_set_float_a(cg, "fcalogeephase", cal + 10, 2);
 	config_set_float_a(cg, "fcalogeemag", cal + 12, 2);
 
+	config_set_uint32(cg, "OOTXSet", bsd->OOTXSet);
 	config_set_uint32(cg, "PositionSet", bsd->PositionSet);
 }
 

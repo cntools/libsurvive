@@ -369,7 +369,7 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_channel channel, int sensor_id,
 												  survive_timecode timecode, bool flag);
 SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survive_channel channel, int sensor_id,
-														survive_timecode timecode, FLT angle);
+														survive_timecode timecode, int8_t plane, FLT angle);
 
 SURVIVE_EXPORT void survive_default_button_process(SurviveObject *so, uint8_t eventType, uint8_t buttonId,
 												   uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id,

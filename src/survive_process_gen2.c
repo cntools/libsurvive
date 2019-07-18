@@ -14,45 +14,46 @@ static FLT freq_per_channel[NUM_GEN2_LIGHTHOUSES] = {
 static void ootx_error_clbk_d(ootx_decoder_context *ct, const char *msg) {
 	SurviveContext *ctx = (SurviveContext *)(ct->user);
 	int id = ct->user1;
-	SV_INFO("(%d) %s", id, msg);
+
+	if (!ctx->bsd[id].OOTXSet)
+		SV_INFO("(%d) %s", ctx->bsd[id].mode, msg);
 }
 
 static void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet *packet) {
-	static uint8_t lighthouses_completed = 0;
-
 	SurviveContext *ctx = (SurviveContext *)(ct->user);
 	SurviveCalData *cd = ctx->calptr;
 	int id = ct->user1;
 
-	SV_INFO("Got OOTX packet %d %p", id, cd);
-
-	lighthouse_info_v6 v6;
-	init_lighthouse_info_v6(&v6, packet->data);
+	lighthouse_info_v15 v15;
+	init_lighthouse_info_v15(&v15, packet->data);
 
 	BaseStationData *b = &ctx->bsd[id];
-	// print_lighthouse_info_v6(&v6);
 
-	b->BaseStationID = v6.id;
-	b->fcal[0].phase = v6.fcal_0_phase;
-	b->fcal[1].phase = v6.fcal_1_phase;
-	b->fcal[0].tilt = tan(v6.fcal_0_tilt);
-	b->fcal[1].tilt = tan(v6.fcal_1_tilt); // XXX??? Is this right? See https://github.com/cnlohr/libsurvive/issues/18
-	b->fcal[0].curve = v6.fcal_0_curve;
-	b->fcal[1].curve = v6.fcal_1_curve;
-	b->fcal[0].gibpha = v6.fcal_0_gibphase;
-	b->fcal[1].gibpha = v6.fcal_1_gibphase;
-	b->fcal[0].gibmag = v6.fcal_0_gibmag;
-	b->fcal[1].gibmag = v6.fcal_1_gibmag;
-	b->accel[0] = v6.accel_dir_x;
-	b->accel[1] = v6.accel_dir_y;
-	b->accel[2] = v6.accel_dir_z;
-	b->mode = v6.mode_current;
-	b->OOTXSet = 1;
+	bool doSave = b->BaseStationID != v15.id || b->OOTXSet == false;
 
-	config_set_lighthouse(ctx->lh_config, b, id);
-	lighthouses_completed++;
+	if (doSave) {
+		SV_INFO("Got OOTX packet %d %p", ctx->bsd[id].mode, cd);
 
-	if (lighthouses_completed >= ctx->activeLighthouses) {
+		b->BaseStationID = v15.id;
+		for (int i = 0; i < 2; i++) {
+			b->fcal[i].phase = v15.fcal_phase[i];
+			b->fcal[i].tilt = tan(v15.fcal_tilt[i]);
+			b->fcal[i].curve = v15.fcal_curve[i];
+			b->fcal[i].gibpha = v15.fcal_gibphase[i];
+			b->fcal[i].gibmag = v15.fcal_gibmag[i];
+			b->fcal[i].ogeephase = v15.fcal_ogeephase[i];
+			b->fcal[i].ogeemag = v15.fcal_ogeemag[i];
+		}
+
+		for (int i = 0; i < 3; i++) {
+			b->accel[i] = v15.accel_dir[i];
+		}
+
+		// Although we know this already....
+		b->mode = v15.mode_current & 0x7F;
+		b->OOTXSet = 1;
+
+		config_set_lighthouse(ctx->lh_config, b, id);
 		config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
 	}
 }
@@ -65,15 +66,25 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 	assert(channel <= NUM_GEN2_LIGHTHOUSES);
 	so->last_sync_time[bsd_idx] = timecode;
 
-	ootx_decoder_context *decoderContext = ctx->bsd[bsd_idx].ootx_data;
-	if (decoderContext == 0) {
-		decoderContext = ctx->bsd[bsd_idx].ootx_data = calloc(1, sizeof(ootx_decoder_context));
-		ootx_init_decoder_context(decoderContext);
-		decoderContext->user = ctx;
-		decoderContext->ootx_packet_clbk = ootx_packet_clbk_d;
-		decoderContext->ootx_error_clbk = ootx_error_clbk_d;
+	if (ctx->bsd[bsd_idx].OOTXSet == false) {
+		ootx_decoder_context *decoderContext = ctx->bsd[bsd_idx].ootx_data;
+		if (decoderContext == 0) {
+			SV_INFO("OOTX not set for LH in channel %d; attaching ootx decoder", channel);
+
+			decoderContext = ctx->bsd[bsd_idx].ootx_data = calloc(1, sizeof(ootx_decoder_context));
+			ootx_init_decoder_context(decoderContext);
+			decoderContext->user1 = bsd_idx;
+			decoderContext->user = ctx;
+			decoderContext->ootx_packet_clbk = ootx_packet_clbk_d;
+			decoderContext->ootx_error_clbk = ootx_error_clbk_d;
+		}
+		ootx_pump_bit(decoderContext, ootx);
+
+		if (ctx->bsd[bsd_idx].OOTXSet) {
+			ctx->bsd[bsd_idx].ootx_data = 0;
+			ootx_free_decoder_context(decoderContext);
+		}
 	}
-	ootx_pump_bit(decoderContext, ootx);
 	// SV_INFO("Sync   ch%2d  %d %d %12x", channel, ootx, gen, timecode);
 }
 SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_channel channel, int sensor_id,
@@ -96,13 +107,17 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 	FLT time_since_sync = (survive_timecode_difference(timecode, last_sweep) / 48000000.);
 	FLT time_per_rot = 1. / freq_per_channel[channel];
 
+	if (time_since_sync > time_per_rot)
+		return;
+
 	FLT angle = time_since_sync / time_per_rot * 2. * LINMATHPI;
 
-	so->ctx->sweep_angleproc(so, channel, sensor_id, timecode, angle);
+	int8_t plane = angle > LINMATHPI;
+	so->ctx->sweep_angleproc(so, channel, sensor_id, timecode, plane, angle - (plane ? LINMATHPI : 0));
 }
 
 SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survive_channel channel, int sensor_id,
-														survive_timecode timecode, FLT angle) {
+														survive_timecode timecode, int8_t plane, FLT angle) {
 	struct SurviveContext *ctx = so->ctx;
 	// SV_INFO("Sensor ch%2d %2d %12f", channel, sensor_id, angle);
 	int8_t bsd_idx = survive_get_bsd_idx(ctx, channel);
@@ -122,7 +137,7 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 	if (bsd_idx < ctx->activeLighthouses)
 		SurviveSensorActivations_add_gen2(&so->activations, &l);
 
-	survive_recording_sweep_angle_process(so, channel, sensor_id, timecode, angle);
+	survive_recording_sweep_angle_process(so, channel, sensor_id, timecode, plane, angle);
 
 	if (ctx->calptr) {
 		// survive_cal_angle(so, sensor_id, acode, timecode, length, angle, lh);
@@ -132,7 +147,7 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 	}
 
 	static int timer = 0;
-	if (timer < 100) {
+	if (timer < 100 && false) {
 		timer++;
 		if (timer == 100) {
 

@@ -14,7 +14,7 @@ void survive_recording_sweep_process(SurviveObject *so, survive_channel channel,
 void survive_recording_angle_process(struct SurviveObject *so, int sensor_id, int acode, uint32_t timecode, FLT length,
 									 FLT angle, uint32_t lh);
 void survive_recording_sweep_angle_process(SurviveObject *so, survive_channel channel, int sensor_id,
-										   survive_timecode timecode, FLT angle);
+										   survive_timecode timecode, int8_t plane, FLT angle);
 
 void survive_recording_external_pose_process(SurviveContext *ctx, const char *name, const SurvivePose *pose);
 void survive_recording_external_velocity_process(SurviveContext *ctx, const char *name,

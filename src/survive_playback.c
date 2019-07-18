@@ -133,7 +133,7 @@ void survive_recording_info_process(SurviveContext *ctx, const char *fault) {
 }
 
 void survive_recording_sweep_angle_process(SurviveObject *so, survive_channel channel, int sensor_id,
-										   survive_timecode timecode, FLT angle) {
+										   survive_timecode timecode, int8_t plane, FLT angle) {
 	SurviveRecordingData *recordingData = so->ctx->recptr;
 	if (recordingData == 0)
 		return;
@@ -142,7 +142,8 @@ void survive_recording_sweep_angle_process(SurviveObject *so, survive_channel ch
 		return;
 	}
 
-	write_to_output(recordingData, "%s B %u %u %0.6f %u\n", so->codename, sensor_id, timecode, angle, channel);
+	write_to_output(recordingData, "%s B %2u %u %8u %0.6f %u\n", so->codename, sensor_id, plane, timecode, angle,
+					channel);
 }
 void survive_recording_sweep_process(SurviveObject *so, survive_channel channel, int sensor_id,
 									 survive_timecode timecode, bool flag) {

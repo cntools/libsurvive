@@ -59,6 +59,26 @@ typedef struct {
 	uint8_t sys_faults; //"fault detect flags" (should be 0)
 } lighthouse_info_v6;
 
+typedef struct {
+	uint16_t fw_version;	   // Firmware version (bit 15..6), protocol version (bit 5..0)
+	uint32_t id;			   // Unique identifier of the base station
+	float16 fcal_phase[2];	 //"phase" for rotor 0
+	float16 fcal_tilt[2];	  //"tilt" for rotor 0
+	uint8_t unknown1;		   // Think this might be FPGA code version?
+	uint8_t ootx_model;		   // 'OOTX model'?
+	float16 fcal_curve[2];	 //"curve" for rotor 0
+	int8_t accel_dir[3];	   //"orientation vector"
+	float16 fcal_gibphase[2];  //"gibbous phase" for rotor 0 (normalized angle)
+	float16 fcal_gibmag[2];	//"gibbous magnitude" for rotor 0
+	uint8_t mode_current;	  // Some bit flag with the mode attached?
+	uint8_t sys_faults;		   //
+	float16 fcal_ogeephase[2]; //"gibbous phase" for rotor 0 (normalized angle)
+	float16 fcal_ogeemag[2];   //"gibbous magnitude" for rotor 0
+	uint16_t nonce;			   //"fault detect flags" (should be 0)
+} lighthouse_info_v15;
+
+void init_lighthouse_info_v15(lighthouse_info_v15 *lhi, uint8_t *data);
+
 void init_lighthouse_info_v6(lighthouse_info_v6* lhi, uint8_t* data);
 void print_lighthouse_info_v6(lighthouse_info_v6* lhi);
 

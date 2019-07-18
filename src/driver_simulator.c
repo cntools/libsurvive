@@ -149,8 +149,8 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 					} else {
 						survive_reproject_xy_gen2(ctx->bsd[lh].fcal, ptInLh, ang);
 
-						ctx->sweep_angleproc(driver->so, lh, idx, timecode, ang[0]);
-						ctx->sweep_angleproc(driver->so, lh, idx, timecode, ang[1] + M_PI);
+						ctx->sweep_angleproc(driver->so, lh, idx, timecode, 0, ang[0]);
+						ctx->sweep_angleproc(driver->so, lh, idx, timecode, 1, ang[1]);
 					}
 				}
 			}

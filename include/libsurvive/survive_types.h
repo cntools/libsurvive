@@ -127,7 +127,7 @@ typedef void (*sweep_process_func)(SurviveObject *so, survive_channel channel, i
 
 // Angle is defined as the rotor angle at time of sweep
 typedef void (*sweep_angle_process_func)(SurviveObject *so, survive_channel channel, int sensor_id,
-										 survive_timecode timecode, FLT angle);
+										 survive_timecode timecode, int8_t plane, FLT angle);
 
 typedef void (*imu_process_func)(SurviveObject *so, int mask, FLT *accelgyro, survive_timecode timecode, int id);
 typedef void (*button_process_func)(SurviveObject *so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id,
