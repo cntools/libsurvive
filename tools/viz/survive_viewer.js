@@ -503,19 +503,17 @@ var survive_log_handlers = {
 		var obj = {
 			tracker : v[1],
 			sensor_id : parseInt(v[3]),
-			timecode : parseInt(v[4]),
-			angle : parseFloat(v[5]),
-			lighthouse : parseInt(v[6])
+			plane : parseInt(v[4]),
+			timecode : parseInt(v[5]),
+			angle : parseFloat(v[6]),
+			lighthouse : parseInt(v[7])
 		};
 
 		angles[obj.tracker] = angles[obj.tracker] || {};
 		angles[obj.tracker][obj.lighthouse] = angles[obj.tracker][obj.lighthouse] || {};
 		angles[obj.tracker][obj.lighthouse][obj.sensor_id] = angles[obj.tracker][obj.lighthouse][obj.sensor_id] || {};
 
-		var axis = obj.angle > Math.PI ? 1 : 0;
-		obj.angle -= Math.PI / 2.;
-		if (axis)
-			obj.angle -= Math.PI;
+		var axis = obj.plane;
 
 		angles[obj.tracker][obj.lighthouse][obj.sensor_id][axis] = [ obj.angle, obj.timecode ];
 		timecode[obj.tracker] = obj.timecode;
@@ -601,7 +599,7 @@ var survive_log_handlers = {
 
 function add_survive_log_handler(name, entry) { survive_log_handlers[name] = entry; }
 function process_survive_handlers(msg) {
-	var s = msg.split(' ');
+	var s = msg.split(' ').filter(function(x) { return x; });
 
 	if (survive_log_handlers[s[2]]) {
 		survive_log_handlers[s[2]](s);

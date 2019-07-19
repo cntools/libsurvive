@@ -149,8 +149,8 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 					} else {
 						survive_reproject_xy_gen2(ctx->bsd[lh].fcal, ptInLh, ang);
 
-						ctx->sweep_angleproc(driver->so, lh, idx, timecode, 0, ang[0]);
-						ctx->sweep_angleproc(driver->so, lh, idx, timecode, 1, ang[1]);
+						ctx->sweep_angleproc(driver->so, ctx->bsd[lh].mode, idx, timecode, 0, ang[0]);
+						ctx->sweep_angleproc(driver->so, ctx->bsd[lh].mode, idx, timecode, 1, ang[1]);
 					}
 				}
 			}
@@ -161,7 +161,7 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 			ctx->lightproc(driver->so, -3, acode, 0, timecode, 100, lh);
 			driver->acode = (driver->acode + 1) % 4;
 		} else {
-			ctx->syncproc(driver->so, lh, timecode, false, false);
+			ctx->syncproc(driver->so, ctx->bsd[lh].mode, timecode, false, false);
 		}
 
 		driver->time_last_light = timestamp;
@@ -229,16 +229,14 @@ void str_append(char **pString, const char *str) {
 }
 
 const BaseStationData simulated_bsd[2] = {
-	{
-		.PositionSet = 1,
-		.BaseStationID = 0,
-		.Pose = {.Pos = {-3, 0, 1},.Rot = { -0.70710678118, 0, 0.70710678118, 0 } }
-	},
-	{
-		.PositionSet = 1,
-		.BaseStationID = 1,
-		.Pose = { .Pos = { 3, 0, 1 }, .Rot = { 0.70710678118, 0, 0.70710678118, 0 } }
-	},
+	{.PositionSet = 1,
+	 .BaseStationID = 0,
+	 .Pose = {.Pos = {-3, 0, 1}, .Rot = {-0.70710678118, 0, 0.70710678118, 0}},
+	 .mode = 0},
+	{.PositionSet = 1,
+	 .BaseStationID = 1,
+	 .Pose = {.Pos = {3, 0, 1}, .Rot = {0.70710678118, 0, 0.70710678118, 0}},
+	 .mode = 1},
 };
 
 int DriverRegSimulator(SurviveContext *ctx) {
@@ -273,10 +271,11 @@ int DriverRegSimulator(SurviveContext *ctx) {
 		for (int i = 0; i < 3; i++)
 			sp->velocity.Pos[i] = 2. * rand() / RAND_MAX - 1.;
 
-		sp->velocity.AxisAngleRot[0] = .5;
-		sp->velocity.AxisAngleRot[1] = .5;
-		sp->velocity.AxisAngleRot[2] = .5;
 	}
+
+	sp->velocity.AxisAngleRot[0] = .5;
+	sp->velocity.AxisAngleRot[1] = .5;
+	sp->velocity.AxisAngleRot[2] = .5;
 
 	char *cfg = 0, *loc_buf = 0, *nor_buf = 0;
 
@@ -287,6 +286,8 @@ int DriverRegSimulator(SurviveContext *ctx) {
 		if (!ctx->bsd[i].PositionSet) {
 			memcpy(ctx->bsd + i, simulated_bsd + i, sizeof(simulated_bsd[i]));
 		}
+		if (ctx->bsd_map[ctx->bsd[i].mode] == -1)
+			ctx->bsd_map[ctx->bsd[i].mode] = i;
 	}
 
 	for (int i = 0; i < device->sensor_ct; i++) {

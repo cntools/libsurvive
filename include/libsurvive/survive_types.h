@@ -123,7 +123,7 @@ typedef void (*gen2_detected_process_func)(SurviveObject *so);
 typedef void (*sync_process_func)(SurviveObject *so, survive_channel channel, survive_timecode timeinsweep, bool ootx,
 								  bool gen);
 typedef void (*sweep_process_func)(SurviveObject *so, survive_channel channel, int sensor_id, survive_timecode timecode,
-								   bool flag);
+								   bool half_clock_flag);
 
 // Angle is defined as the rotor angle at time of sweep
 typedef void (*sweep_angle_process_func)(SurviveObject *so, survive_channel channel, int sensor_id,

@@ -3,24 +3,46 @@
 #include <survive_reproject.h>
 
 void survive_reproject_xy_gen2(const BaseStationCal *bcal, LinmathVec3d const ptInLh, SurviveAngleReading out) {
-	// Using plane equation:
-	// A*x + B*y + C*z + D = 0;
-	// We model it as a rotating plane at 45 degrees so the plane normals are:
-	// [sin(t), +/-1, cos(t)]
-	// For a given X, Y, Z solve for t:
-	// X * sin(t) + Z * cos(t) = +/-Y
-	// Simplifies to this; given harmonic addition rules of sin/cos:
-	// sqrt(X^2 + Z^2) * sin(t + atan2(Z, X)) = +/-Y
-	// sin(t + atan2(Z, X)) = +/-Y / sqrt(X^2 + Z^2)
-	// t = +/-asin(Y / sqrt(X^2 + Z^2)) - atan2(Z, X)
+	/***
+	 Using plane equation:
+	 A*x + B*y + C*z + D = 0;
 
+	 If you are looking at the lighthouse, you have this:
+			 ^
+			 |
+			 Y
+			 |
+	 <---X---o (objects in front of LH are -Z).
+	 ---- Rotor Direction --->
+
+
+	 The first plane is oriented like / and the second is \. When the sensor is on X=0 and Y=0, the colliding planes
+	 then are X=-Y, X=Y. The normals are then [1, 1, 0] and [1, -1, 0]. We define the point at which the sensor plane
+	 sweeps X=Y=0 in both planes as t=0.
+
+	 If the object is at X=epsilon, Y=0, Z=1, The rotation hits it slightly sooner; t is slightly negative. The normal
+	is then something like [~1-epsilon, 1, ~+epsilon], [~1-epsilon, -1, ~+epsilon]
+
+	 We know the planes are mostly centered in the lighthouse, and so we get:
+	 [cos(t), 1, -sin(t)], [cos(t), -1, -sin(t)]
+
+	 For a given X, Y, Z solve for t:
+	 X * cos(t) - Z * sin(t)                = +/-Y
+
+	 Simplifies to this; given harmonic addition rules of sin/cos:
+	 sqrt(X^2 + Z^2) * sin(t + atan2(X, -Z)) = +/-Y
+	 sin(t + atan2(X, -Z))                   = +/-Y / sqrt(X^2 + Z^2)
+	 t + atan2(X, -Z)                        = asin(+/-Y / sqrt(X^2 + Z^2))
+	 t + atan2(X, -Z)                        = +/-asin(Y / sqrt(X^2 + Z^2))
+	 t                                       = +/-asin(Y / sqrt(X^2 + Z^2)) - atan2(X, -Z)
+	***/
 	FLT X = ptInLh[0], Y = ptInLh[1], Z = ptInLh[2];
 
-	FLT B = -atan2(Z, X);
+	FLT B = atan2(X, -Z);
 	FLT A = asin(Y / sqrt(X * X + Z * Z));
 
-	out[0] = A + B;
-	out[1] = -A + B;
+	out[0] = A - B - bcal[0].phase;
+	out[1] = -A - B - bcal[1].phase;
 }
 
 FLT survive_reproject_axis_x_gen2(const BaseStationCal *bcal, LinmathVec3d const ptInLh) {

@@ -105,6 +105,7 @@ typedef struct PoserDataLightGen2 {
 	uint8_t lh;				   // Lighthouse making this sweep
 	survive_timecode timecode; // In object-local ticks.
 	FLT angle;				   // In radians from center of lighthouse.
+	int8_t plane;
 } PoserDataLightGen2;
 
 typedef struct

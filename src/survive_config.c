@@ -333,6 +333,8 @@ void config_set_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8_
 	config_set_uint32(cg, "mode", bsd->mode);
 	config_set_float_a(cg, "pose", &bsd->Pose.Pos[0], 7);
 
+	quatnormalize(bsd->Pose.Rot, bsd->Pose.Rot);
+
 	FLT cal[sizeof(bsd->fcal)] = { 0 };
 
 	for (size_t i = 0; i < 2; i++) {
@@ -556,8 +558,12 @@ void config_save(SurviveContext *sctx, const char *path) {
 	FILE *f = fopen(path, "w");
 
 	write_config_group(f, sctx->global_config_values, NULL);
-	write_config_group(f, sctx->lh_config, "lighthouse0");
-	write_config_group(f, sctx->lh_config + 1, "lighthouse1");
+
+	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
+		char name[128] = {};
+		snprintf(name, 128, "lighthouse%d", i);
+		write_config_group(f, sctx->lh_config + i, name);
+	}
 
 	fclose(f);
 }

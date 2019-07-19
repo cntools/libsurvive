@@ -14,11 +14,11 @@ typedef struct {
 
 typedef FLT LinmathPoint2d[2];
 
-static void survive_fill_m(void *user, double *eq1, double *eq2, const double u, const double v) {
-	SurviveObject *so = user;
+static void survive_fill_m(void *user, double *eq1, double *eq2, double u, double v) {
 	double sinu = sin(u), cosu = cos(u);
 	double sinv = sin(v), cosv = cos(v);
 
+	SurviveObject *so = user;
 	if (so->ctx->lh_version == 0) {
 		eq1[0] = cosu;
 		eq1[1] = 0.0;
@@ -28,13 +28,13 @@ static void survive_fill_m(void *user, double *eq1, double *eq2, const double u,
 		eq2[1] = cosv;
 		eq2[2] = -sinv;
 	} else {
-		eq1[0] = cosu;
-		eq1[1] = 1.0;
-		eq1[2] = -sinu;
+		eq1[0] = -cosu;
+		eq1[1] = -1.0;
+		eq1[2] = sinu;
 
-		eq2[0] = 1.0;
-		eq2[1] = cosv;
-		eq2[2] = -sinv;
+		eq2[0] = -cosv;
+		eq2[1] = 1.0;
+		eq2[2] = sinv;
 	}
 }
 
@@ -67,7 +67,7 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 
 	// Super degenerate inputs will project us basically right in the camera. Detect and reject
 	if (err > 1 || magnitude3d(rtn.Pos) < 0.25 || magnitude3d(rtn.Pos) > 25) {
-		SV_WARN("pose is degenerate %d", (int)dd->bc.meas_cnt);
+		SV_WARN("pose is degenerate %d %f", (int)dd->bc.meas_cnt, err);
 		return rtn;
 	}
 
@@ -115,9 +115,9 @@ static int solve_fullscene(PoserDataSVD *dd, PoserDataFullScene *pdfs) {
 			if (isnan(_ang[0]) || isnan(_ang[1]))
 				continue;
 
-			FLT ang[2];
-			survive_apply_bsd_calibration(so->ctx, lh, _ang, ang);
-			bc_svd_add_correspondence(&dd->bc, i, (ang[0]), (ang[1]));
+			// FLT ang[2];
+			// survive_apply_bsd_calibration(so->ctx, lh, _ang, ang);
+			bc_svd_add_correspondence(&dd->bc, i, (_ang[0]), (_ang[1]));
 		}
 
 		SurviveContext *ctx = so->ctx;
@@ -166,8 +166,8 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 		SurviveContext *ctx = so->ctx;
 
 		SurvivePose posers[2] = {0};
-		int meas[2] = {0, 0};
-		for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
+		int meas[NUM_GEN2_LIGHTHOUSES] = {0};
+		for (int lh = 0; lh < 1 /*lh < so->ctx->activeLighthouses*/; lh++) {
 			if (so->ctx->bsd[lh].PositionSet) {
 				add_correspondences(so, &dd->bc, lightData->timecode, lh);
 				static int required_meas = -1;
@@ -194,7 +194,7 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 			bool winnerTakesAll = true; // Not convinced slerp does the right thing, will change this when i am
 
 			if (winnerTakesAll) {
-				int winner = meas[0] > meas[1] ? 0 : 1;
+				int winner = 0; // meas[0] > meas[1] ? 0 : 1;
 				PoserData_poser_pose_func(pd, so, &posers[winner]);
 			} else {
 				double a, b;

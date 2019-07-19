@@ -40,15 +40,13 @@ void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct Pos
 }
 void SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct PoserDataLightGen2 *lightData) {
 	self->lh_gen = 1;
-	int axis = lightData->angle > M_PI;
+	int axis = lightData->plane;
 	uint32_t *data_timecode = &self->timecode[lightData->sensor_id][lightData->lh][axis];
 
 	FLT *angle = &self->angles[lightData->sensor_id][lightData->lh][axis];
 
-	*angle = lightData->angle - M_PI / 2.;
-	if (axis)
-		*angle -= M_PI;
 	*data_timecode = lightData->timecode;
+	*angle = lightData->angle;
 }
 
 SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveSensorActivations *self) {

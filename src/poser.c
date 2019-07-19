@@ -37,7 +37,7 @@ STATIC_CONFIG_ITEM(REPORT_IN_IMU, "report-in-imu", 'i', "Debug option to output 
 void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world) {
 	SurviveContext *ctx = so->ctx;
 	for (int i = 0; i < 3; i++)
-		if (abs(imu2world->Pos[i]) > 20) {
+		if (fabs(imu2world->Pos[i]) > 20) {
 			SV_WARN("Squelching reported pose of " SurvivePose_format " for %s; values are invalid",
 					SURVIVE_POSE_EXPAND(*imu2world), so->codename);
 			return;
