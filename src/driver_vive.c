@@ -2098,8 +2098,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 				fprintf(stderr, "\n");
 			}
 		} else if (id == 33) {
-			SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "USB lightcap report is of an unexpected type for %s: %d (0x%02x)",
-					 obj->codename, id, id);
+			SV_INFO("USB lightcap report is of an unexpected type for %s: %d (0x%02x)", obj->codename, id, id);
 		} else {
 			SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "USB lightcap report is of an unknown type for %s: %d (0x%02x)",
 					 obj->codename, id, id);
