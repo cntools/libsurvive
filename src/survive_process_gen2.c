@@ -12,7 +12,7 @@ static FLT freq_per_channel[NUM_GEN2_LIGHTHOUSES] = {
 };
 
 static void ootx_error_clbk_d(ootx_decoder_context *ct, const char *msg) {
-	SurviveContext *ctx = (SurviveContext *)(ct->user);
+	SurviveContext *ctx = ((SurviveObject *)(ct->user))->ctx;
 	int id = ct->user1;
 
 	if (!ctx->bsd[id].OOTXSet)
@@ -20,7 +20,7 @@ static void ootx_error_clbk_d(ootx_decoder_context *ct, const char *msg) {
 }
 
 static void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet *packet) {
-	SurviveContext *ctx = (SurviveContext *)(ct->user);
+	SurviveContext *ctx = ((SurviveObject *)(ct->user))->ctx;
 	SurviveCalData *cd = ctx->calptr;
 	int id = ct->user1;
 
@@ -71,21 +71,24 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 
 	if (ctx->bsd[bsd_idx].OOTXSet == false) {
 		ootx_decoder_context *decoderContext = ctx->bsd[bsd_idx].ootx_data;
+
 		if (decoderContext == 0) {
-			SV_INFO("OOTX not set for LH in channel %d; attaching ootx decoder", channel);
+			SV_INFO("OOTX not set for LH in channel %d; attaching ootx decoder using device %s", channel, so->codename);
 
 			decoderContext = ctx->bsd[bsd_idx].ootx_data = calloc(1, sizeof(ootx_decoder_context));
 			ootx_init_decoder_context(decoderContext);
 			decoderContext->user1 = bsd_idx;
-			decoderContext->user = ctx;
+			decoderContext->user = so;
 			decoderContext->ootx_packet_clbk = ootx_packet_clbk_d;
 			decoderContext->ootx_error_clbk = ootx_error_clbk_d;
 		}
-		ootx_pump_bit(decoderContext, ootx);
+		if (decoderContext->user == so) {
+			ootx_pump_bit(decoderContext, ootx);
 
-		if (ctx->bsd[bsd_idx].OOTXSet) {
-			ctx->bsd[bsd_idx].ootx_data = 0;
-			ootx_free_decoder_context(decoderContext);
+			if (ctx->bsd[bsd_idx].OOTXSet) {
+				ctx->bsd[bsd_idx].ootx_data = 0;
+				ootx_free_decoder_context(decoderContext);
+			}
 		}
 	}
 
