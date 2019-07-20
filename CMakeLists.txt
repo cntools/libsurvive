@@ -148,7 +148,7 @@ foreach(PLUGIN ${PLUGINS})
 
 endforeach()
   
-foreach(executable calibrate data_recorder simple_pose_test survive-cli api_example)
+foreach(executable calibrate data_recorder simple_pose_test survive-cli api_example sensors-readout)
 	add_executable(${executable} ${executable}.c )
 	target_link_libraries(${executable} survive)
 	set_target_properties(${executable} PROPERTIES FOLDER "apps")

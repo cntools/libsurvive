@@ -31,34 +31,78 @@ void process_reading(int i, int lh, int sensor, int axis, FLT angle) {
 	s->MN = fmin(angle, s->MN);
 	s->MX = fmax(angle, s->MX);
 }
+const char *column_width = "          ";
+static void print(float f) {
+	if (isnan(f)) {
+		printf("%s|", column_width);
+	} else {
+		printf("%+1.6f |", f);
+	}
+}
+
+static void print_label(const char *l) { printf("%*s|", 10, l); }
+
+void info_fn(SurviveContext *ctx, const char *fault) {}
+
+int lh = 0;
 
 static void redraw(SurviveContext *ctx) {
-	system("clear");
-
+	printf("\033[;H");
 	for (int i = 0; i < ctx->objs_ct; i++) {
 		SurviveObject *so = ctx->objs[i];
 
-		printf("Object: %s:\n", so->codename);
-		for (int lh = 0; lh < ctx->activeLighthouses; lh++) {
-			if (ctx->bsd[lh].OOTXSet == false)
-				continue;
+		printf("Object: %s: ", so->codename);
 
-			printf("\tLH: %d (%d)\n", lh, ctx->bsd[lh].mode);
+		{
+			double v[2] = {0, 0};
+			int v_cnt[2] = {0};
+			for (int sensor = 0; sensor < so->sensor_ct; sensor++) {
+				for (int axis = 0; axis < 2; axis++) {
+					FLT f = so->activations.angles[sensor][lh][axis];
+					if (!isnan(f)) {
+						v_cnt[axis]++;
+						v[axis] += f;
+					}
+				}
+			}
+
+			for (int axis = 0; axis < 2; axis++) {
+				printf("%1.6f ", v[axis] / (double)v_cnt[axis]);
+			}
+		}
+
+		printf("\n");
+
+		printf("|\e[4m");
+		const char *labels[] = {"ch.sensor", "X", "Y", "min X", "max X", "width X", "min Y", "max Y", "width Y", 0};
+		for (const char **l = labels; *l; l++) {
+			print_label(*l);
+		}
+		printf("\e[0m\n");
+
+		{
 			for (int sensor = 0; sensor < so->sensor_ct; sensor++) {
 				struct sensor_stats *s = &stats[i][lh][sensor][0];
-				printf("\t\t%2d: ", sensor);
+				if (sensor % 2 == 0)
+					printf("\e[2m");
+				if (sensor == so->sensor_ct - 1)
+					printf("\e[4m");
+				printf("| %2d.%02d    |", ctx->bsd[lh].mode, sensor);
 				for (int axis = 0; axis < 2; axis++) {
 					FLT f = so->activations.angles[sensor][lh][axis];
 					process_reading(i, lh, sensor, axis, f);
-					if (isnan(f)) {
-						printf("          ");
-					} else {
-						printf("%+1.6f ", f);
-					}
+					print(f);
 				}
 
-				printf("%+1.6f %+1.6f %+1.6f %+1.6f \n", s[0].MN, s[0].MX, s[1].MN, s[1].MX);
+				for (int axis = 0; axis < 2; axis++) {
+					print(s[axis].MN);
+					print(s[axis].MX);
+					print(s[axis].MX - s[axis].MN);
+				}
+				printf("\e[0m");
+				printf("\n");
 			}
+			printf("\n");
 		}
 	}
 
@@ -71,6 +115,20 @@ void sync_fn(SurviveObject *so, survive_channel channel, survive_timecode timein
 	survive_default_sync_process(so, channel, timeinsweep, ootx, gen);
 }
 
+void *KBThread(void *user) {
+	SurviveContext *ctx = user;
+
+	while (keepRunning) {
+		int c = getchar();
+		system("clear");
+		if (c == 10) {
+			lh++;
+			if (!ctx->bsd[lh].OOTXSet)
+				lh = 0;
+		}
+	}
+	return 0;
+}
 int main(int argc, char **argv) {
 #ifdef __linux__
 	signal(SIGINT, intHandler);
@@ -88,8 +146,14 @@ int main(int argc, char **argv) {
 		return 0;
 
 	FLT last_redraw = OGGetAbsoluteTime();
+	survive_install_info_fn(ctx, info_fn);
 	survive_install_sync_fn(ctx, sync_fn);
 	survive_startup(ctx);
+
+	system("clear");
+
+	OGCreateThread(KBThread, ctx);
+
 	while (keepRunning && survive_poll(ctx) == 0) {
 		FLT this_time = OGGetAbsoluteTime();
 		if (this_time > last_redraw + .03) {
