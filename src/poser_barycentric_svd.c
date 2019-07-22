@@ -83,7 +83,7 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 		p.Rot[0] = 1;
 	}
 
-	// SV_INFO("EPNP for %s has err %f " SurvivePose_format, so->codename, err, SURVIVE_POSE_EXPAND(rtn));
+	// SV_INFO("BaryCentricSVD for %s has err %f " SurvivePose_format, so->codename, err, SURVIVE_POSE_EXPAND(rtn));
 
 	// Requested output is camera -> world, so invert
 	if (cameraToWorld) {

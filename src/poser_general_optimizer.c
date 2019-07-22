@@ -10,7 +10,7 @@ STATIC_CONFIG_ITEM(CONFIG_MAX_ERROR, "max-error", 'f', "Maximum error permitted 
 STATIC_CONFIG_ITEM(CONFIG_FAIL_TO_RESET, "failures-to-reset", 'i', "Failures needed before seed poser is re-run.", 1);
 STATIC_CONFIG_ITEM(CONFIG_SUC_TO_RESET, "successes-to-reset", 'i',
 				   "Reset periodically even if there were no failures. Set to -1 to disable.", -1);
-STATIC_CONFIG_ITEM(CONFIG_SEED_POSER, "seed-poser", 's', "Poser to be used to seed optimizer.", "EPNP");
+STATIC_CONFIG_ITEM(CONFIG_SEED_POSER, "seed-poser", 's', "Poser to be used to seed optimizer.", "BaryCentricSVD");
 
 STATIC_CONFIG_ITEM(CONFIG_REQUIRED_MEAS, "required-meas", 'i',
 				   "Minimum number of measurements needed to try and solve for position", 8);
@@ -28,7 +28,7 @@ void general_optimizer_data_init(GeneralOptimizerData *d, SurviveObject *so) {
 	survive_attach_configi( ctx, "failures-to-reset", &d->failures_to_reset );
 	survive_attach_configi( ctx, "successes-to-reset", &d->successes_to_reset );
 
-	const char *subposer = survive_configs(ctx, "seed-poser", SC_GET, "EPNP");
+	const char *subposer = survive_configs(ctx, "seed-poser", SC_GET, "BaryCentricSVD");
 	d->seed_poser = (PoserCB)GetDriverWithPrefix("Poser", subposer);
 
 	SV_INFO("Initializing general optimizer:");
@@ -75,7 +75,7 @@ static void set_position(SurviveObject *so, uint32_t timecode, const SurvivePose
 	user->pose = *new_pose;
 }
 
-bool general_optimizer_data_record_current_pose(GeneralOptimizerData *d, PoserData *_hdr, size_t len_hdr,
+bool general_optimizer_data_record_current_pose(GeneralOptimizerData *d, PoserData *hdr, size_t len_hdr,
 												SurvivePose *soLocation) {
 	*soLocation = *survive_object_last_imu2world(d->so);
 	bool currentPositionValid = quatmagnitude(soLocation->Rot) != 0;
@@ -84,16 +84,19 @@ bool general_optimizer_data_record_current_pose(GeneralOptimizerData *d, PoserDa
 		PoserCB driver = d->seed_poser;
 		SurviveContext *ctx = d->so->ctx;
 		if (driver) {
-
-			PoserData *hdr = alloca(len_hdr);
-			memcpy(hdr, _hdr, len_hdr);
-			memset(hdr, 0, sizeof(PoserData)); // Clear callback functions
-			hdr->pt = _hdr->pt;
-			hdr->poseproc = set_position;
-
+			PoserData old_hdr = *hdr;
 			set_position_t locations = {0};
+
+			hdr->poseproc = set_position;
 			hdr->userdata = &locations;
+
+			d->so->PoserData = d->seed_poser_data;
 			driver(d->so, hdr);
+
+			*hdr = old_hdr;
+
+			d->seed_poser_data = d->so->PoserData;
+			d->so->PoserData = d;
 			d->stats.poser_seed_runs++;
 
 			if (locations.hasInfo == false) {

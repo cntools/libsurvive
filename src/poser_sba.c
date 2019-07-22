@@ -256,7 +256,7 @@ static double run_sba(PoserDataFullScene *pdfs, SurviveObject *so, int max_itera
 	sba_context sbactx = {&pdfs->hdr, so, .camera_params = {{.Rot = {1.}}, {.Rot = {1.}}}, .obj_pose = so->OutPoseIMU};
 
 	{
-		const char *subposer = survive_configs(so->ctx, "seed-poser", SC_GET, "EPNP");
+		const char *subposer = survive_configs(so->ctx, "seed-poser", SC_GET, "BaryCentricSVD");
 
 		PoserCB driver = (PoserCB)GetDriverWithPrefix("Poser", subposer);
 		SurviveContext *ctx = so->ctx;

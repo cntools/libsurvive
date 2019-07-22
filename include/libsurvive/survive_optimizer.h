@@ -39,7 +39,7 @@ typedef struct {
 #define SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(ctx)                                                                     \
 	ctx.parameters = alloca(sizeof(double) * survive_optimizer_get_parameters_count(&ctx));                            \
 	ctx.parameters_info = alloca(sizeof(mp_par) * survive_optimizer_get_parameters_count(&ctx));                       \
-	ctx.measurements = alloca(sizeof(survive_optimizer_measurement) * 2 * ctx.so->sensor_ct * NUM_GEN1_LIGHTHOUSES);   \
+	ctx.measurements = alloca(sizeof(survive_optimizer_measurement) * 2 * ctx.so->sensor_ct * NUM_GEN2_LIGHTHOUSES);   \
 	memset(ctx.parameters_info, 0, sizeof(mp_par) * survive_optimizer_get_parameters_count(&ctx));                     \
 	for (int i = 0; i < survive_optimizer_get_parameters_count(&ctx); i++) {                                           \
 		ctx.parameters_info[i].fixed = 1;                                                                              \

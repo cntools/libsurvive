@@ -15,6 +15,7 @@
 #include "survive_cal.h"
 #include "survive_config.h"
 #include "survive_reproject.h"
+#include "survive_reproject_gen2.h"
 
 #ifndef _WIN32
 //#define DEBUG_NAN
@@ -63,9 +64,11 @@ static size_t construct_input_from_scene(const MPFITData *d, size_t timecode, co
 										 survive_optimizer_measurement *meas) {
 	size_t rtn = 0;
 	SurviveObject *so = d->opt.so;
+	SurviveContext *ctx = so->ctx;
+
 	const bool force_pair = false;
 	for (uint8_t sensor = 0; sensor < so->sensor_ct; sensor++) {
-		for (uint8_t lh = 0; lh < 2; lh++) {
+		for (uint8_t lh = 0; lh < ctx->activeLighthouses; lh++) {
 			if (d->disable_lighthouse == lh)
 				continue;
 
@@ -88,6 +91,7 @@ static size_t construct_input_from_scene(const MPFITData *d, size_t timecode, co
 						d->sensor_variance + diff * d->sensor_variance_per_second / (double)so->timebase_hz;
 					meas++;
 					rtn++;
+					// SV_INFO("Adding meas %d %d %d", lh, sensor, axis);
 				}
 			}
 		}
@@ -132,7 +136,7 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 	struct SurviveContext *ctx = so->ctx;
 
 	survive_optimizer mpfitctx = {
-		.reprojectModel = &survive_reproject_model,
+		.reprojectModel = ctx->lh_version == 0 ? &survive_reproject_model : &survive_reproject_gen2_model,
 		.so = so,
 		//.current_bias = 0.01,
 		.poseLength = 1,
@@ -171,6 +175,14 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 
 	double rtn = -1;
 	bool status_failure = res <= 0;
+	if (status_failure) {
+		SV_WARN("MPFIT status failure %s %f/%f (%d measurements, %d)", so->codename, result.orignorm, result.bestnorm,
+				(int)meas_size, res);
+
+		general_optimizer_data_record_failure(&d->opt);
+		return -1;
+	}
+
 	bool error_failure = !general_optimizer_data_record_success(&d->opt, result.bestnorm);
 	if (!status_failure && !error_failure) {
 		quatnormalize(soLocation->Rot, soLocation->Rot);
@@ -225,7 +237,7 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 	}
 
 	{
-		const char *subposer = survive_configs(so->ctx, "seed-poser", SC_GET, "EPNP");
+		const char *subposer = survive_configs(so->ctx, "seed-poser", SC_GET, "BaryCentricSVD");
 
 		PoserCB driver = (PoserCB)GetDriverWithPrefix("Poser", subposer);
 		SurviveContext *ctx = so->ctx;
@@ -317,6 +329,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		// std::cerr << "Average reproj error: " << error << std::endl;
 		return 0;
 	}
+	case POSERDATA_SYNC_GEN2:
 	case POSERDATA_SYNC: {
 		// No poses if calibration is ongoing
 		if (ctx->calptr && ctx->calptr->stage < 5)
@@ -325,11 +338,9 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		PoserDataLight *lightData = (PoserDataLight *)pd;
 		SurvivePose estimate = {0};
 
-		// only process sweeps
 		FLT error = -1;
-		// if (d->last_lh != lightData->lh || d->last_acode != lightData->acode) {
-		if (lightData->sensor_id == -3 && ++d->syncs_per_run_cnt >= d->syncs_per_run ) {
-		  d->syncs_per_run_cnt = 0;
+		if (++d->syncs_per_run_cnt >= d->syncs_per_run) {
+			d->syncs_per_run_cnt = 0;
 			error = run_mpfit_find_3d_structure(d, lightData, scene, &estimate);
 
 			d->last_lh = lightData->lh;

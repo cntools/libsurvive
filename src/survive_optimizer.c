@@ -129,7 +129,7 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 
 	int pose_idx = -1;
 	SurvivePose *pose = 0;
-	SurvivePose obj2lh[NUM_GEN1_LIGHTHOUSES] = {0};
+	SurvivePose obj2lh[NUM_GEN2_LIGHTHOUSES] = {0};
 
 	int meas_count = m;
 	if (mpfunc_ctx->current_bias > 0) {

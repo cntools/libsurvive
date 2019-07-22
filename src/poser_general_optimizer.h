@@ -16,6 +16,7 @@ typedef struct GeneralOptimizerData {
 	} stats;
 
 	PoserCB seed_poser;
+	void *seed_poser_data;
 	SurviveObject *so;
 } GeneralOptimizerData;
 
