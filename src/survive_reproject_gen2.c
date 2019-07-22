@@ -1,4 +1,5 @@
 #include "survive_reproject_gen2.h"
+#include <assert.h>
 #include <math.h>
 #include <survive_reproject.h>
 
@@ -40,10 +41,13 @@ void survive_reproject_xy_gen2(const BaseStationCal *bcal, LinmathVec3d const pt
 	FLT X = ptInLh[0], Y = ptInLh[1], Z = ptInLh[2];
 	FLT tan30 = 0.57735026919;
 	FLT B = atan2(X, -Z);
-	FLT A = asin(tan30 * Y / sqrt(X * X + Z * Z));
+	FLT A = asin(linmath_enforce_range(tan30 * Y / sqrt(X * X + Z * Z), -1, 1));
 
 	out[0] = -A - B - bcal[0].phase;
 	out[1] = A - B - bcal[1].phase;
+
+	assert(!isnan(out[0]));
+	assert(!isnan(out[1]));
 }
 
 FLT survive_reproject_axis_x_gen2(const BaseStationCal *bcal, LinmathVec3d const ptInLh) {

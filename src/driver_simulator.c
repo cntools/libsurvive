@@ -6,6 +6,7 @@
 #include "survive_config.h"
 #include "survive_default_devices.h"
 #include "survive_reproject_gen2.h"
+#include <assert.h>
 #include <json_helpers.h>
 #include <math.h>
 #include <stdio.h>
@@ -148,9 +149,10 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 						ctx->angleproc(driver->so, idx, acode, timecode, .006, ang[driver->acode & 1], lh);
 					} else {
 						survive_reproject_xy_gen2(ctx->bsd[lh].fcal, ptInLh, ang);
-
-						ctx->sweep_angleproc(driver->so, ctx->bsd[lh].mode, idx, timecode, 0, ang[0]);
-						ctx->sweep_angleproc(driver->so, ctx->bsd[lh].mode, idx, timecode, 1, ang[1]);
+						double r1 = (rand() / (double)RAND_MAX);
+						if (r1 < .95)
+							ctx->sweep_angleproc(driver->so, ctx->bsd[lh].mode, idx, timecode, driver->acode & 1,
+												 ang[driver->acode & 1]);
 					}
 				}
 			}
@@ -162,6 +164,7 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 			driver->acode = (driver->acode + 1) % 4;
 		} else {
 			ctx->syncproc(driver->so, ctx->bsd[lh].mode, timecode, false, false);
+			driver->acode = (driver->acode + 1) % 4;
 		}
 
 		driver->time_last_light = timestamp;
@@ -249,11 +252,7 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	int use_lh2 = survive_configi(ctx, "lhv2-experimental", SC_GET, 0);
 
 	// Create a new SurviveObject...
-	SurviveObject *device = calloc(1, sizeof(SurviveObject));
-	device->ctx = ctx;
-	device->driver = sp;
-	memcpy(device->codename, "SM0", 4);
-	memcpy(device->drivername, "SIM", 4);
+	SurviveObject *device = survive_create_device(ctx, "SIM", sp, "SM0", 0);
 	device->sensor_ct = 20;
 
 	device->head2imu.Rot[0] = 1;
@@ -286,6 +285,7 @@ int DriverRegSimulator(SurviveContext *ctx) {
 		if (!ctx->bsd[i].PositionSet) {
 			memcpy(ctx->bsd + i, simulated_bsd + i, sizeof(simulated_bsd[i]));
 		}
+		assert(ctx->bsd_map[ctx->bsd[i].mode] == -1 || ctx->bsd_map[ctx->bsd[i].mode] == i);
 		if (ctx->bsd_map[ctx->bsd[i].mode] == -1)
 			ctx->bsd_map[ctx->bsd[i].mode] = i;
 	}

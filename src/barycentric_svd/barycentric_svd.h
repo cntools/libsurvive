@@ -11,7 +11,7 @@
 
 typedef double LinmathPoint4d[4];
 
-typedef void (*bc_svd_fill_M_fn)(void *user, double *eq1, double *eq2, const double u, const double v);
+typedef void (*bc_svd_fill_M_fn)(void *user, double *eq, int axis, double angle);
 
 typedef struct {
 	size_t obj_cnt;
@@ -25,12 +25,16 @@ typedef struct {
 } bc_svd_setup;
 
 typedef struct {
+	int obj_idx;
+	int axis;
+	FLT angle;
+} bc_svd_meas_t;
+
+typedef struct {
 	bc_svd_setup setup;
 
 	size_t meas_space, meas_cnt;
-
-	int *obj_map;		  // [meas_cnt]
-	LinmathPoint2d *meas; // [meas_cnt]
+	bc_svd_meas_t *meas; // [meas_cnt]
 
 	LinmathPoint3d *object_pts_in_camera; // [obj_cnt]
 	LinmathPoint3d control_points_in_camera[4];

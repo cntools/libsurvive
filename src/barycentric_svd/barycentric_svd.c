@@ -101,32 +101,40 @@ void bc_svd_compute_rho(bc_svd *self, double *rho) {
 void bc_svd_reset_correspondences(bc_svd *self) { self->meas_cnt = 0; }
 
 void bc_svd_add_correspondence(bc_svd *self, size_t idx, double u, double v) {
-	if (self->meas_space <= self->meas_cnt) {
-		self->meas_space = self->meas_space * 2 + 1;
-
-		self->obj_map = realloc(self->obj_map, sizeof(self->obj_map[0]) * self->meas_space);
-		self->meas = realloc(self->meas, sizeof(self->meas[0]) * self->meas_space);
+	if (isnan(u) && isnan(v)) {
+		return;
 	}
 
-	self->obj_map[self->meas_cnt] = idx;
+	bool only_pairs = false;
+	if (only_pairs && (isnan(u) || isnan(v))) {
+		return;
+	}
 
-	self->meas[self->meas_cnt][0] = u;
-	self->meas[self->meas_cnt][1] = v;
+	for (int i = 0; i < 2; i++) {
+		FLT angle = i == 0 ? u : v;
+		if (isnan(angle))
+			continue;
 
-	self->meas_cnt++;
+		if (self->meas_space <= self->meas_cnt) {
+			self->meas_space = self->meas_space * 2 + 1;
+			self->meas = realloc(self->meas, sizeof(self->meas[0]) * self->meas_space);
+		}
+
+		self->meas[self->meas_cnt] = (bc_svd_meas_t){.angle = angle, .axis = i, .obj_idx = idx};
+
+		self->meas_cnt++;
+	}
 }
 
-void bc_svd_fill_M(bc_svd *self, CvMat *M, const int row, const double *as, const double u, const double v) {
-	double *M1 = M->data.db + row * 12;
-	double *M2 = M1 + 12;
+void bc_svd_fill_M(bc_svd *self, CvMat *_M, const int row, const double *as, int axis, double angle) {
+	double *M = _M->data.db + row * 12;
 
-	double eq1[3], eq2[3];
-	self->setup.fillFn(self->setup.user, eq1, eq2, u, v);
+	double eq[3] = {NAN, NAN, NAN};
+	self->setup.fillFn(self->setup.user, eq, axis, angle);
 
 	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 3; j++) {
-			M1[i * 3 + j] = eq1[j] * as[i];
-			M2[i * 3 + j] = eq2[j] * as[i];
+			M[i * 3 + j] = eq[j] * as[i];
 		}
 	}
 }
@@ -420,11 +428,22 @@ void copy_R_and_t(const double R_src[3][3], const double t_src[3], double R_dst[
 }
 
 double bc_svd_compute_pose(bc_svd *self, double R[3][3], double t[3]) {
-	CvMat *M = cvCreateMat(2 * self->meas_cnt, 12, CV_64F);
-
+	CvMat *M = cvCreateMat(self->meas_cnt, 12, CV_64F);
+	bool colCovered[12] = {};
 	for (int i = 0; i < self->meas_cnt; i++) {
-		size_t obj_pt_idx = self->obj_map[i];
-		bc_svd_fill_M(self, M, 2 * i, self->setup.alphas[obj_pt_idx], self->meas[i][0], self->meas[i][1]);
+		size_t obj_pt_idx = self->meas[i].obj_idx;
+		bc_svd_fill_M(self, M, i, self->setup.alphas[obj_pt_idx], self->meas[i].axis, self->meas[i].angle);
+
+		double *_M = M->data.db + i * 12;
+		for (int j = 0; j < 12; j++) {
+			if (_M[j] != 0.0)
+				colCovered[j] = true;
+		}
+	}
+
+	for (int j = 0; j < 12; j++) {
+		if (colCovered[j] == false)
+			return -1;
 	}
 
 	double mtm[12 * 12], d[12], ut[12 * 12];
@@ -478,23 +497,20 @@ static double bc_svd_reprojection_error(bc_svd *self, const double R[3][3], cons
 	double sum2 = 0.0;
 
 	for (int i = 0; i < self->meas_cnt; i++) {
-		size_t obj_idx = self->obj_map[i];
+		size_t obj_idx = self->meas[i].obj_idx;
 		const double *pw = self->setup.obj_pts[obj_idx];
 		double Xc = dot(R[0], pw) + t[0];
 		double Yc = dot(R[1], pw) + t[1];
 		double Zc = dot(R[2], pw) + t[2];
 
-		double u = self->meas[i][0], v = self->meas[i][1];
-		double eq1[3], eq2[3];
-		self->setup.fillFn(self->setup.user, eq1, eq2, u, v);
+		double eq[3];
 
-		double err_eq1 = eq1[0] * Xc + eq1[1] * Yc + eq1[2] * Zc;
-		double err_eq2 = eq2[0] * Xc + eq2[1] * Yc + eq2[2] * Zc;
-
-		sum2 += sqrt(err_eq1 * err_eq1 + err_eq2 * err_eq2);
+		self->setup.fillFn(self->setup.user, eq, self->meas[i].axis, self->meas[i].angle);
+		double rerr = eq[0] * Xc + eq[1] * Yc + eq[2] * Zc;
+		sum2 += rerr * rerr;
 	}
 
-	return sum2 / self->meas_cnt;
+	return sqrt(sum2) / self->meas_cnt;
 }
 
 void bc_svd_estimate_R_and_t(bc_svd *self, double R[3][3], double t[3]) {

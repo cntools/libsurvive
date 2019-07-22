@@ -170,20 +170,11 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 		so->PoserFn(so, (PoserData *)&l);
 	}
 
-	static int timer = 0;
-	if (timer < 100 && false) {
-		timer++;
-		if (timer == 100) {
-
-			PoserCB configPoser = GetDriver("PoserEPNP");
-
-			PoserDataFullScene pdfs = {.hdr = {.pt = POSERDATA_FULL_SCENE}};
-			Activations2PoserDataFullScene(&so->activations, &pdfs);
-			so->PoserData = 0;
-			ctx->activeLighthouses = 1;
-			configPoser(so, &pdfs.hdr);
+	if (!so->ctx->bsd[bsd_idx].PositionSet && so->ctx->bsd[bsd_idx].OOTXSet && so->PoserFn) {
+		PoserDataFullScene pdfs = {.hdr = {.pt = POSERDATA_FULL_SCENE}};
+		Activations2PoserDataFullScene(&so->activations, &pdfs);
+		so->PoserFn(so, &pdfs.hdr);
 		}
-	}
 }
 
 SURVIVE_EXPORT void survive_default_gen2_detected_process(SurviveObject *so) {

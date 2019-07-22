@@ -14,29 +14,43 @@ typedef struct {
 
 typedef FLT LinmathPoint2d[2];
 
-static void survive_fill_m(void *user, double *eq1, double *eq2, double u, double v) {
-	double sinu = sin(u), cosu = cos(u);
-	double sinv = sin(v), cosv = cos(v);
-
+static void survive_fill_m(void *user, double *eq, int axis, FLT angle) {
 	SurviveObject *so = user;
-	if (so->ctx->lh_version == 0) {
-		eq1[0] = cosu;
-		eq1[1] = 0.0;
-		eq1[2] = -sinu;
 
-		eq2[0] = 0.0;
-		eq2[1] = cosv;
-		eq2[2] = -sinv;
-	} else {
+	double sv = sin(angle), cv = cos(angle);
+	switch (so->ctx->lh_version) {
+	case 0: {
+		switch (axis) {
+		case 0:
+			eq[0] = cv;
+			eq[1] = 0;
+			eq[2] = -sv;
+			break;
+		case 1:
+			eq[0] = 0;
+			eq[1] = cv;
+			eq[2] = -sv;
+			break;
+		}
+
+	} break;
+	case 1: {
 		FLT tan30 = 0.57735026919;
-
-		eq1[0] = cosu;
-		eq1[1] = -tan30;
-		eq1[2] = -sinu;
-
-		eq2[0] = cosv;
-		eq2[1] = tan30;
-		eq2[2] = -sinv;
+		switch (axis) {
+		case 0:
+			eq[0] = cv;
+			eq[1] = -tan30;
+			eq[2] = -sv;
+			break;
+		case 1:
+			eq[0] = cv;
+			eq[1] = tan30;
+			eq[2] = -sv;
+			break;
+		}
+	} break;
+	default:
+		assert(false);
 	}
 }
 
@@ -54,7 +68,7 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 	SurvivePose rtn = {0};
 	SurviveContext *ctx = so->ctx;
 	// std::cerr << "Solving for " << cal_imagePoints.size() << " correspondents" << std::endl;
-	if (dd->bc.meas_cnt <= 3) {
+	if (dd->bc.meas_cnt <= 6) {
 
 		SV_WARN("Can't solve for only %u points\n", (int)dd->bc.meas_cnt);
 		return rtn;
@@ -63,6 +77,9 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 	double r[3][3];
 
 	double err = bc_svd_compute_pose(&dd->bc, r, rtn.Pos);
+	if (err < 0) {
+		return rtn;
+	}
 
 	CvMat R = cvMat(3, 3, CV_64F, r);
 	CvMat T = cvMat(3, 1, CV_64F, rtn.Pos);
@@ -70,6 +87,7 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 	// Super degenerate inputs will project us basically right in the camera. Detect and reject
 	if (err > 1 || magnitude3d(rtn.Pos) < 0.25 || magnitude3d(rtn.Pos) > 25) {
 		SV_WARN("pose is degenerate %d %f", (int)dd->bc.meas_cnt, err);
+		double err = bc_svd_compute_pose(&dd->bc, r, rtn.Pos);
 		return rtn;
 	}
 
@@ -120,22 +138,16 @@ static int solve_fullscene(PoserDataSVD *dd, PoserDataFullScene *pdfs) {
 	SurviveObject *so = dd->so;
 	SurvivePose arb2world = {0};
 	for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
-
 		bc_svd_reset_correspondences(&dd->bc);
 		for (size_t i = 0; i < so->sensor_ct; i++) {
 			FLT *_ang = pdfs->angles[i][lh];
-			if (isnan(_ang[0]) || isnan(_ang[1]))
-				continue;
-
-			// FLT ang[2];
-			// survive_apply_bsd_calibration(so->ctx, lh, _ang, ang);
 			bc_svd_add_correspondence(&dd->bc, i, (_ang[0]), (_ang[1]));
 		}
 
 		SurviveContext *ctx = so->ctx;
-		SV_INFO("Solving for %d correspondents", (int)dd->bc.meas_cnt);
+		SV_INFO("Solving for %d correspondents on lh %d", (int)dd->bc.meas_cnt, lh);
 		if (dd->bc.meas_cnt <= 4) {
-			SV_INFO("Can't solve for only %d points on lh %d\n", (int)dd->bc.meas_cnt, lh);
+			SV_INFO("Can't solve for only %d points on lh %d", (int)dd->bc.meas_cnt, lh);
 			continue;
 		}
 
@@ -152,14 +164,18 @@ static void add_correspondences(SurviveObject *so, bc_svd *bc, uint32_t timecode
 	SurviveSensorActivations *scene = &so->activations;
 	bc_svd_reset_correspondences(bc);
 	for (size_t sensor_idx = 0; sensor_idx < so->sensor_ct; sensor_idx++) {
-		if (SurviveSensorActivations_isPairValid(scene, SurviveSensorActivations_default_tolerance * 4, timecode,
-												 sensor_idx, lh)) {
-			FLT *_angles = scene->angles[sensor_idx][lh];
-			FLT angles[2];
-			survive_apply_bsd_calibration(so->ctx, lh, _angles, angles);
+		FLT angles[2] = {NAN, NAN};
+		for (uint8_t axis = 0; axis < 2; axis++) {
+			bool isReadingValue = SurviveSensorActivations_isReadingValid(
+				scene, SurviveSensorActivations_default_tolerance * 2, timecode, sensor_idx, lh, axis);
 
-			bc_svd_add_correspondence(bc, sensor_idx, (angles[0]), (angles[1]));
+			if (isReadingValue) {
+				angles[axis] = scene->angles[sensor_idx][lh][axis];
+			}
 		}
+
+		survive_apply_bsd_calibration(so->ctx, lh, angles, angles);
+		bc_svd_add_correspondence(bc, sensor_idx, (angles[0]), (angles[1]));
 	}
 }
 
@@ -177,14 +193,15 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 		PoserDataLight *lightData = (PoserDataLight *)pd;
 		SurviveContext *ctx = so->ctx;
 
-		SurvivePose posers[2] = {0};
+		SurvivePose posers[NUM_GEN2_LIGHTHOUSES] = {0};
 		int meas[NUM_GEN2_LIGHTHOUSES] = {0};
-		for (int lh = 0; lh < 1 /*lh < so->ctx->activeLighthouses*/; lh++) {
+
+		for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
 			if (so->ctx->bsd[lh].PositionSet) {
 				add_correspondences(so, &dd->bc, lightData->timecode, lh);
 				static int required_meas = -1;
 				if (required_meas == -1)
-					required_meas = survive_configi(so->ctx, "epnp-required-meas", SC_GET, 5);
+					required_meas = survive_configi(so->ctx, "epnp-required-meas", SC_GET, 10);
 
 				if (dd->bc.meas_cnt >= required_meas) {
 
@@ -196,37 +213,29 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 						ApplyPoseToPose(&txPose, lh2world, &objInLh);
 						posers[lh] = txPose;
 						meas[lh] = dd->bc.meas_cnt;
+					} else {
+						SV_INFO("Localization failed for lh %d", lh);
 					}
 				}
 			}
 		}
 
-		if (meas[0] > 0 && meas[1] > 0) {
-			SurvivePose interpolate = {0};
-			bool winnerTakesAll = true; // Not convinced slerp does the right thing, will change this when i am
+		int maxMeas = 0;
+		int maxMeasIdx = 0;
+		for (int lh = 0; lh < NUM_GEN2_LIGHTHOUSES; lh++) {
+			if (quatiszero(posers[lh].Rot))
+				continue;
 
-			if (winnerTakesAll) {
-				int winner = 0; // meas[0] > meas[1] ? 0 : 1;
-				PoserData_poser_pose_func(pd, so, &posers[winner]);
-			} else {
-				double a, b;
-				a = meas[0] * meas[0];
-				b = meas[1] * meas[1];
-
-				double t = a + b;
-				for (size_t i = 0; i < 3; i++) {
-					interpolate.Pos[i] = (posers[0].Pos[i] * a + posers[1].Pos[i] * b) / (t);
-				}
-				quatslerp(interpolate.Rot, posers[0].Rot, posers[1].Rot, b / (t));
-				PoserData_poser_pose_func(pd, so, &interpolate);
-			}
-		} else {
-			if (meas[lightData->lh])
-				PoserData_poser_pose_func(pd, so, &posers[lightData->lh]);
-			else if (meas[!lightData->lh]) {
-				PoserData_poser_pose_func(pd, so, &posers[!lightData->lh]);
+			if (maxMeas < meas[lh]) {
+				maxMeas = meas[lh];
+				maxMeasIdx = lh;
 			}
 		}
+
+		if (maxMeas > 0 && !quatiszero(posers[maxMeasIdx].Rot)) {
+			PoserData_poser_pose_func(pd, so, &posers[maxMeasIdx]);
+		}
+
 		return 0;
 	}
 

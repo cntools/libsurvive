@@ -210,11 +210,11 @@ static void mpfit_set_cameras(SurviveObject *so, uint8_t lighthouse, SurvivePose
 static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 	SurviveObject *so = d->opt.so;
 
-	survive_optimizer mpfitctx = {
-		.so = so,
-		.poseLength = 1,
-		.cameraLength = so->ctx->activeLighthouses,
-	};
+	survive_optimizer mpfitctx = {.so = so,
+								  .poseLength = 1,
+								  .cameraLength = so->ctx->activeLighthouses,
+								  .reprojectModel =
+									  so->ctx->lh_version ? &survive_reproject_gen2_model : &survive_reproject_model};
 
 	SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(mpfitctx);
 
@@ -223,6 +223,7 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 
 	SurviveSensorActivations activations;
 	PoserDataFullScene2Activations(pdfs, &activations);
+	activations.lh_gen = so->ctx->lh_version;
 	size_t meas_size = construct_input_from_scene(d, 0, &activations, mpfitctx.measurements);
 
 	if (mpfitctx.current_bias > 0) {
@@ -247,7 +248,9 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 			pdfs->hdr.pt = hdr.pt;
 			pdfs->hdr.lighthouseposeproc = mpfit_set_cameras;
 			pdfs->hdr.userdata = &mpfitctx;
+			so->PoserData = d->opt.seed_poser_data;
 			driver(so, &pdfs->hdr);
+			so->PoserData = d;
 			pdfs->hdr = hdr;
 		} else {
 			SV_INFO("Not using a seed poser for MPFIT; results will likely be way off");
