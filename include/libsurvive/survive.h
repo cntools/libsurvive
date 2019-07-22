@@ -402,6 +402,7 @@ SURVIVE_EXPORT void survive_add_driver(SurviveContext *ctx, void *payload, Devic
 						DeviceDriverMagicCb magic);
 
 // This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
+SURVIVE_EXPORT uint8_t survive_map_sensor_id(SurviveObject *so, uint8_t reported_id);
 SURVIVE_EXPORT void handle_lightcap(SurviveObject *so, const LightcapElement *le);
 
 #define SV_LOG_NULL_GUARD                                                                                              \

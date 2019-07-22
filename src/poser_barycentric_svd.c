@@ -28,13 +28,15 @@ static void survive_fill_m(void *user, double *eq1, double *eq2, double u, doubl
 		eq2[1] = cosv;
 		eq2[2] = -sinv;
 	} else {
-		eq1[0] = -cosu;
-		eq1[1] = -1.0;
-		eq1[2] = sinu;
+		FLT tan30 = 0.57735026919;
 
-		eq2[0] = -cosv;
-		eq2[1] = 1.0;
-		eq2[2] = sinv;
+		eq1[0] = cosu;
+		eq1[1] = -tan30;
+		eq1[2] = -sinu;
+
+		eq2[0] = cosv;
+		eq2[1] = tan30;
+		eq2[2] = -sinv;
 	}
 }
 
@@ -69,6 +71,16 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 	if (err > 1 || magnitude3d(rtn.Pos) < 0.25 || magnitude3d(rtn.Pos) > 25) {
 		SV_WARN("pose is degenerate %d %f", (int)dd->bc.meas_cnt, err);
 		return rtn;
+	}
+
+	static SurvivePose p = {0};
+	if (!quatiszero(p.Rot)) {
+		if (dist3d(rtn.Pos, p.Pos) > 1) {
+			p = (SurvivePose){0};
+		}
+	} else {
+		p = rtn;
+		p.Rot[0] = 1;
 	}
 
 	// SV_INFO("EPNP for %s has err %f " SurvivePose_format, so->codename, err, SURVIVE_POSE_EXPAND(rtn));

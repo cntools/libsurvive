@@ -2081,7 +2081,8 @@ void survive_data_cb(SurviveUSBInterface *si) {
 						bool half_clock_flag = timecode & 0x4u; // ?? Seems to slightly change time? Is clock now 96mhz?
 						uint8_t sensor = (timecode >> 27u);
 						timecode = fix_time24((timecode >> 3u) & 0xFFFFFFu, reference_time);
-						obj->ctx->sweepproc(obj, channel, sensor, timecode, half_clock_flag);
+						obj->ctx->sweepproc(obj, channel, survive_map_sensor_id(obj, sensor), timecode,
+											half_clock_flag);
 					}
 
 					idx += 4;

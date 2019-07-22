@@ -17,29 +17,30 @@ void survive_reproject_xy_gen2(const BaseStationCal *bcal, LinmathVec3d const pt
 
 
 	 The first plane is oriented like / and the second is \. When the sensor is on X=0 and Y=0, the colliding planes
-	 then are X=-Y, X=Y. The normals are then [1, 1, 0] and [1, -1, 0]. We define the point at which the sensor plane
-	 sweeps X=Y=0 in both planes as t=0.
+	 then are X=-Y, X=Y. The normals are then [1, a, 0] and [1, -a, 0]. We define the point at which the sensor plane
+	 sweeps X=Y=0 in both planes as t=0. The projected plane is roughly ~60 degrees off of horizontal. a should be
+	 tan(90 - <plane angle>).
 
 	 If the object is at X=epsilon, Y=0, Z=1, The rotation hits it slightly sooner; t is slightly negative. The normal
-	is then something like [~1-epsilon, 1, ~+epsilon], [~1-epsilon, -1, ~+epsilon]
+	 is then something like [~1-epsilon, a, ~+epsilon], [~1-epsilon, -a, ~+epsilon]
 
 	 We know the planes are mostly centered in the lighthouse, and so we get:
-	 [cos(t), 1, -sin(t)], [cos(t), -1, -sin(t)]
+	 [cos(t), a, -sin(t)], [cos(t), -a, -sin(t)]
 
 	 For a given X, Y, Z solve for t:
-	 X * cos(t) - Z * sin(t)                = +/-Y
+	 X * cos(t) - Z * sin(t)                = +/-Y*a
 
 	 Simplifies to this; given harmonic addition rules of sin/cos:
-	 sqrt(X^2 + Z^2) * sin(t + atan2(X, -Z)) = +/-Y
-	 sin(t + atan2(X, -Z))                   = +/-Y / sqrt(X^2 + Z^2)
-	 t + atan2(X, -Z)                        = asin(+/-Y / sqrt(X^2 + Z^2))
-	 t + atan2(X, -Z)                        = +/-asin(Y / sqrt(X^2 + Z^2))
-	 t                                       = +/-asin(Y / sqrt(X^2 + Z^2)) - atan2(X, -Z)
+	 sqrt(X^2 + Z^2) * sin(t + atan2(X, -Z)) = +/-Y*a
+	 sin(t + atan2(X, -Z))                   = +/-Y*a / sqrt(X^2 + Z^2)
+	 t + atan2(X, -Z)                        = asin(+/-Y*a / sqrt(X^2 + Z^2))
+	 t + atan2(X, -Z)                        = +/-asin(Y*a / sqrt(X^2 + Z^2))
+	 t                                       = +/-asin(Y*a / sqrt(X^2 + Z^2)) - atan2(X, -Z)
 	***/
 	FLT X = ptInLh[0], Y = ptInLh[1], Z = ptInLh[2];
-
+	FLT tan30 = 0.57735026919;
 	FLT B = atan2(X, -Z);
-	FLT A = asin(Y / sqrt(X * X + Z * Z));
+	FLT A = asin(-tan30 * Y / sqrt(X * X + Z * Z));
 
 	out[0] = A - B - bcal[0].phase;
 	out[1] = -A - B - bcal[1].phase;

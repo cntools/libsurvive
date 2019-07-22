@@ -56,8 +56,30 @@ function add_lighthouse(idx, p, q) {
 
 	group.add(cone);
 	group.add(lh);
+
+	var material1 =
+		new THREE.MeshBasicMaterial({color : 0x00FF00, opacity : .2, transparent : true, side : THREE.DoubleSide});
+
+	var material2 =
+		new THREE.MeshBasicMaterial({color : 0xFF0000, opacity : .2, transparent : true, side : THREE.DoubleSide});
+
+	var geometry = new THREE.PlaneGeometry(3, 3);
+
+	var mesh = new THREE.PlaneHelper(null, 1, 0x00FF00);
+	group.plane1 = mesh;
+	var mesh2 = new THREE.PlaneHelper(null, 1, 0xFF0000);
+	group.plane2 = mesh2;
+
+	mesh.visible = false;
+	mesh2.visible = false;
+
+	group.add(mesh);
+	group.add(mesh2);
+
 	scene.add(group);
 }
+
+function run_planes() {}
 
 function get_bvalue(key) {
 	var bvalue_array = {"WW0" : "FF", "TR0" : "00"};
@@ -197,7 +219,7 @@ function redrawCanvas(when) {
 
 					ctx.fillStyle = "white";
 					ctx.font = "14px Arial";
-					// ctx.fillText(id, x, y);
+					ctx.fillText(id, x, y);
 
 					ctx.beginPath();
 					ctx.arc(x, y, 1, 0, 2 * Math.PI);
@@ -758,8 +780,35 @@ function animate() {
 	render();
 	redrawCanvas(timecode);
 }
-
+var showPlanes = false;
+var ang = 0;
 function render() {
+	Object.keys(lighthouses).forEach(function(idx) {
+		var lh = lighthouses[idx];
+
+		{
+			var a = ang - Math.PI * 2 / 3;
+			var plane = new THREE.Plane(new THREE.Vector3(Math.cos(a), 0.57735026919, -Math.sin(a)));
+			// lh.plane.translate(plane.coplanarPoint());
+			// lh.plane1.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), plane.normal);
+			lh.plane1.plane = plane;
+
+			lh.plane1.visible = showPlanes && (ang > Math.PI * 2 / 3 - 1.5 && ang < Math.PI * 2 / 3 + 1.5);
+		}
+
+		{
+			var a = ang - Math.PI * 4 / 3;
+			var plane = new THREE.Plane(new THREE.Vector3(Math.cos(a), -0.57735026919, -Math.sin(a)));
+			// lh.plane.translate(plane.coplanarPoint());
+			// lh.plane2.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), plane.normal);
+			lh.plane2.plane = plane;
+
+			lh.plane2.visible = showPlanes && (ang > Math.PI * 4 / 3 - 1.5 && ang < Math.PI * 4 / 3 + 1.5);
+		}
+	});
+	ang += 0.01;
+	ang = ang % (2 * Math.PI);
+
 	var use_fpv = $("#fpv").length > 0 && $("#fpv")[0].checked;
 	renderer.render(scene, use_fpv ? fpv_camera : camera);
 }
