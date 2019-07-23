@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <survive_reproject.h>
+#include "survive_reproject.h"
 
 /**
  * The conventions for reprojection in libsurvive:
@@ -28,6 +28,21 @@ SURVIVE_EXPORT void survive_reproject_from_pose_gen2(const SurviveContext *ctx, 
 
 SURVIVE_EXPORT void survive_reproject_gen2(const SurviveContext *ctx, int lighthouse, LinmathVec3d const ptInWorld,
 										   SurviveAngleReading out);
+
+  SURVIVE_EXPORT void survive_reproject_full_jac_obj_pose_gen2(SurviveAngleReading out, const SurvivePose *obj2world,
+										 const LinmathVec3d ptInObj, const SurvivePose *world2lh,
+										 const BaseStationCal *bcal);
+
+SURVIVE_EXPORT void survive_reproject_full_x_jac_obj_pose_gen2(SurviveAngleReading out, const SurvivePose *obj2world,
+										   const LinmathVec3d ptInObj, const SurvivePose *world2lh,
+										   const BaseStationCal *bcal);
+
+SURVIVE_EXPORT void survive_reproject_full_y_jac_obj_pose_gen2(SurviveAngleReading out, const SurvivePose *obj2world,
+										   const LinmathVec3d ptInObj, const SurvivePose *world2lh,
+										   const BaseStationCal *bcal);
+
+  SURVIVE_EXPORT void survive_reproject_full_gen2(const BaseStationCal *bcal, const SurvivePose *world2lh, const SurvivePose *obj2world,
+					     const LinmathVec3d ptInObj, SurviveAngleReading out);
 
 const survive_reproject_model_t survive_reproject_gen2_model;
 

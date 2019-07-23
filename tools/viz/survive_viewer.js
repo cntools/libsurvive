@@ -43,7 +43,7 @@ function add_lighthouse(idx, p, q) {
 	});
 	var cone = new THREE.Mesh(geometry, material);
 
-	var lhBoxGeom = new THREE.CubeGeometry(.1, .1, .1);
+	var lhBoxGeom = new THREE.CubeGeometry(.075, .075, .075);
 
 	var lhColors = {0 : 0x11111111, 1 : 0xFFFFFFFF};
 	var lhBoxMaterial = new THREE.MeshBasicMaterial({color : lhColors[idx]});

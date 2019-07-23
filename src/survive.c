@@ -150,6 +150,8 @@ static void PrintMatchingDrivers( const char * prefix, const char * matchingpara
 }
 
 SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel channel) {
+	assert(channel >= 0 && channel < 16);
+
 	int8_t i = ctx->bsd_map[channel];
 	if (i != -1)
 		return i;
@@ -188,6 +190,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 		ctx->bsd_map[i] = -1;
 	}
 	ctx->state = SURVIVE_STOPPED;
+	ctx->lh_version = -1;
 
 #define SURVIVE_HOOK_PROCESS_DEF(hook) survive_install_##hook##_fn(ctx, 0);
 #define SURVIVE_HOOK_FEEDBACK_DEF(hook) survive_install_##hook##_fn(ctx, 0);
@@ -464,37 +467,6 @@ int survive_startup(SurviveContext *ctx) {
 
 	// saving the config extra to make sure that the user has a config file they can change.
 	config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
-
-	int calibrateMandatory = survive_configi(ctx, "force-calibrate", SC_GET, 0);
-	int calibrateForbidden = survive_configi(ctx, "disable-calibrate", SC_GET, 1) == 1;
-	if (calibrateMandatory && calibrateForbidden) {
-		SV_INFO("Contradictory settings --force-calibrate and --disable-calibrate specified. Switching to normal behavior.");
-		calibrateMandatory = calibrateForbidden = 0;
-	}
-
-	if (!calibrateForbidden) {
-		bool isCalibrated = true;
-		for (int i = 0; i < ctx->activeLighthouses; i++) {
-			if (!ctx->bsd[i].PositionSet) {
-				SV_INFO("Lighthouse %d position is unset", i);
-				isCalibrated = false;
-			}
-		}
-
-		bool doCalibrate = isCalibrated == false || calibrateMandatory;
-				
-		if (!isCalibrated) {
-			SV_INFO("Uncalibrated configuration detected. Attaching calibration. Please don't move tracked objects for "
-					"the duration of calibration. Pass '--disable-calibrate' to skip calibration");
-		} else if(doCalibrate) {
-			SV_INFO("Calibration requested. Previous calibration will be overwritten.");
-		}
-
-		if (doCalibrate && ctx->objs_ct > 0) {
-			ctx->bsd[0].PositionSet = ctx->bsd[1].PositionSet = false;
-			survive_cal_install(ctx);
-		}
-	}
 
 	// If lighthouse positions are known, broadcast them
 	for (int i = 0; i < ctx->activeLighthouses; i++) {

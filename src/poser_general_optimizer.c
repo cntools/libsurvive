@@ -109,7 +109,7 @@ bool general_optimizer_data_record_current_pose(GeneralOptimizerData *d, PoserDa
 			d->successes_to_reset_cntr = d->successes_to_reset;
 		} else if (seed_warning == false) {
 			seed_warning = true;
-			SV_INFO("Not using a seed poser for SBA; results will likely be way off");
+			SV_INFO("Not using a seed poser; results will likely be way off");
 		}
 	}
 	return true;

@@ -19,8 +19,11 @@ STATIC_CONFIG_ITEM(Simulator_DRIVER_ENABLE, "simulator", 'i', "Load a Simulator 
 STATIC_CONFIG_ITEM(Simulator_TIME, "simulator-time", 'f', "Seconds to run simulator for.", 0.0);
 
 struct SurviveDriverSimulator {
+	int lh_version;
 	SurviveContext *ctx;
 	SurviveObject *so;
+
+	BaseStationData bsd[NUM_GEN2_LIGHTHOUSES];
 
 	SurvivePose position;
 	SurviveVelocity velocity;
@@ -125,7 +128,7 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 			ApplyPoseToPoint(ptInWorld, &driver->position, pt);
 			quatrotatevector(normalInWorld, driver->position.Rot, driver->so->sensor_normals + idx * 3);
 
-			SurvivePose world2lh = InvertPoseRtn(&ctx->bsd[lh].Pose);
+			SurvivePose world2lh = InvertPoseRtn(&driver->bsd[lh].Pose);
 			LinmathPoint3d ptInLh;
 			LinmathVec3d normalInLh;
 			ApplyPoseToPoint(ptInLh, &world2lh, ptInWorld);
@@ -139,8 +142,8 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 				FLT facingness = dot3d(normalInLh, dirLh);
 				if (facingness > 0) {
 
-					if (ctx->lh_version == 0) {
-						survive_reproject_xy(ctx->bsd[lh].fcal, ptInLh, ang);
+					if (driver->lh_version == 0) {
+						survive_reproject_xy(driver->bsd[lh].fcal, ptInLh, ang);
 						// ang[0] += .001 * rand() / RAND_MAX;
 						// ang[1] += .001 * rand() / RAND_MAX;
 						// SurviveObject * so, int sensor_id, int acode, survive_timecode timecode, FLT length, FLT
@@ -148,22 +151,22 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 						int acode = (lh << 2) + (driver->acode & 1);
 						ctx->angleproc(driver->so, idx, acode, timecode, .006, ang[driver->acode & 1], lh);
 					} else {
-						survive_reproject_xy_gen2(ctx->bsd[lh].fcal, ptInLh, ang);
+						survive_reproject_xy_gen2(driver->bsd[lh].fcal, ptInLh, ang);
 						double r1 = (rand() / (double)RAND_MAX);
-						if (r1 < .95)
-							ctx->sweep_angleproc(driver->so, ctx->bsd[lh].mode, idx, timecode, driver->acode & 1,
+						if (r1 < .50)
+							ctx->sweep_angleproc(driver->so, driver->bsd[lh].mode, idx, timecode, driver->acode & 1,
 												 ang[driver->acode & 1]);
 					}
 				}
 			}
 		}
 
-		if (ctx->lh_version == 0) {
+		if (driver->lh_version == 0) {
 			int acode = (lh << 2) + (driver->acode & 1);
 			ctx->lightproc(driver->so, -3, acode, 0, timecode, 100, lh);
 			driver->acode = (driver->acode + 1) % 4;
 		} else {
-			ctx->syncproc(driver->so, ctx->bsd[lh].mode, timecode, false, false);
+			ctx->syncproc(driver->so, driver->bsd[lh].mode, timecode, false, false);
 			driver->acode = (driver->acode + 1) % 4;
 		}
 
@@ -235,11 +238,13 @@ const BaseStationData simulated_bsd[2] = {
 	{.PositionSet = 1,
 	 .BaseStationID = 0,
 	 .Pose = {.Pos = {-3, 0, 1}, .Rot = {-0.70710678118, 0, 0.70710678118, 0}},
-	 .mode = 0},
+	 .mode = 0,
+	 .OOTXSet = 1},
 	{.PositionSet = 1,
 	 .BaseStationID = 1,
 	 .Pose = {.Pos = {3, 0, 1}, .Rot = {0.70710678118, 0, 0.70710678118, 0}},
-	 .mode = 1},
+	 .mode = 1,
+	 .OOTXSet = 1},
 };
 
 int DriverRegSimulator(SurviveContext *ctx) {
@@ -282,13 +287,18 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	srand(42);
 	
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
+		sp->bsd[i] = ctx->bsd[i];
 		if (!ctx->bsd[i].PositionSet) {
-			memcpy(ctx->bsd + i, simulated_bsd + i, sizeof(simulated_bsd[i]));
+			sp->bsd[i].Pose = simulated_bsd[i].Pose;
 		}
-		assert(ctx->bsd_map[ctx->bsd[i].mode] == -1 || ctx->bsd_map[ctx->bsd[i].mode] == i);
-		if (ctx->bsd_map[ctx->bsd[i].mode] == -1)
-			ctx->bsd_map[ctx->bsd[i].mode] = i;
+
+		// if(use_lh2 && i > 0)
+		// ctx->bsd[i].PositionSet = false;
+
+		ctx->bsd_map[ctx->bsd[i].mode] = i;
 	}
+	// ctx->bsd[0].Pose = sp->bsd[0].Pose;
+	// ctx->bsd[0].PositionSet = 1;
 
 	for (int i = 0; i < device->sensor_ct; i++) {
 		FLT azi = rand();
@@ -349,9 +359,7 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	free(cfg);
 	sp->so = device;
 	survive_add_object(ctx, device);
-	if (use_lh2) {
-		survive_default_gen2_detected_process(device);
-	}
+	sp->lh_version = use_lh2 ? 1 : 0;
 
 	survive_add_driver(ctx, sp, Simulator_poll, 0, 0);
 	return 0;

@@ -97,7 +97,11 @@ struct SurviveObject {
 
 	// Pose Information, also "poser" field.
 	FLT PoseConfidence;						 // 0..1
+
+	// obj2world
 	SurvivePose OutPose;
+
+	// objImu2world
 	SurvivePose OutPoseIMU;
 
 	survive_timecode OutPose_timecode;
@@ -241,7 +245,7 @@ enum SurviveCalFlag {
 };
 
 struct SurviveContext {
-	int lh_version; // 0 is LHv1 -- pulse, ootx, etc. 1 is LHv2 -- single motor rotated beams
+	int lh_version; // -1 is unknown, 0 is LHv1 -- pulse, ootx, etc. 1 is LHv2 -- single motor rotated beams
 
 #define SURVIVE_HOOK_PROCESS_DEF(hook) hook##_process_func hook##proc;
 #define SURVIVE_HOOK_FEEDBACK_DEF(hook) hook##_feedback_func hook##function;
@@ -384,7 +388,7 @@ SURVIVE_EXPORT void survive_default_external_velocity_process(SurviveContext *so
 SURVIVE_EXPORT void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse,
 															SurvivePose *lh_pose, SurvivePose *obj_pose);
 SURVIVE_EXPORT int survive_default_config_process(SurviveObject *so, char *ct0conf, int len);
-SURVIVE_EXPORT void survive_default_gen2_detected_process(SurviveObject *so);
+SURVIVE_EXPORT void survive_default_gen_detected_process(SurviveObject *so, int lh_version);
 
 ////////////////////// Survive Drivers ////////////////////////////
 
@@ -432,8 +436,14 @@ SURVIVE_EXPORT void handle_lightcap(SurviveObject *so, const LightcapElement *le
 	}
 
 static inline void survive_notify_gen2(struct SurviveObject *so) {
-	if (so->ctx->lh_version == 0) {
-		so->ctx->gen2_detectedproc(so);
+	if (so->ctx->lh_version != 1) {
+		so->ctx->gen_detectedproc(so, 1);
+	}
+}
+
+static inline void survive_notify_gen1(struct SurviveObject *so) {
+	if (so->ctx->lh_version != 0) {
+		so->ctx->gen_detectedproc(so, 0);
 	}
 }
 

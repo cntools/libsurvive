@@ -1,3 +1,4 @@
+-include ../../.options
 all : check_generated
 
 SRT:=../..
@@ -5,6 +6,10 @@ SRT:=../..
 LIBSURVIVE:=$(SRT)/lib/libsurvive.a
 
 CFLAGS:=-I$(SRT)/redist -I$(SRT)/include -O3 -fwhole-program -g -ffast-math #  -fsanitize=address -fsanitize=undefined
+
+ifdef USE_ASAN
+	CFLAGS+=-fsanitize=address -fsanitize=undefined -DSURVIVE_ASAN_CHECKS=1
+endif
 
 check_generated: check_generated.c survive_reproject.generated.h survive_reproject.aux.generated.h $(LIBSURVIVE)
 	cd ../..;make

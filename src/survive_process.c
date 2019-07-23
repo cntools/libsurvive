@@ -15,6 +15,8 @@
 
 void survive_default_light_process( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length, uint32_t lh)
 {
+	survive_notify_gen1(so);
+
 	SurviveContext * ctx = so->ctx;
 	int base_station = lh;
 	int axis = acode & 1;
@@ -67,7 +69,8 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 
 void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh)
 {
-	SurviveContext * ctx = so->ctx;
+	survive_notify_gen1(so);
+	SurviveContext *ctx = so->ctx;
 
 	PoserDataLight l = {
 		.hdr =
@@ -96,7 +99,7 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 	}
 }
 
-void survive_default_lightcap_process(SurviveObject *so, const LightcapElement *le) {}
+void survive_default_lightcap_process(SurviveObject *so, const LightcapElement *le) { survive_notify_gen1(so); }
 
 void survive_default_button_process(SurviveObject * so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val)
 {
@@ -169,6 +172,7 @@ void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighth
 	config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
 
 	survive_recording_lighthouse_process(ctx, lighthouse, lighthouse_pose, object_pose);
+	SV_INFO("Position found for LH %d", lighthouse);
 }
 
 int survive_default_config_process(SurviveObject *so, char *ct0conf, int len) {

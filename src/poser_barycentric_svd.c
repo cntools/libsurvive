@@ -136,8 +136,23 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 
 static int solve_fullscene(PoserDataSVD *dd, PoserDataFullScene *pdfs) {
 	SurviveObject *so = dd->so;
-	SurvivePose arb2world = {0};
+
+	SurvivePose object2World = so->OutPoseIMU;
+
+	// If a LH has its position; wait until we have a position on the object we can use.
+	if (quatiszero(object2World.Rot)) {
+		for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
+			if (so->ctx->bsd[lh].PositionSet) {
+				return 0;
+			}
+		}
+	}
+
 	for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
+		if (so->ctx->bsd[lh].PositionSet) {
+			continue;
+		}
+
 		bc_svd_reset_correspondences(&dd->bc);
 		for (size_t i = 0; i < so->sensor_ct; i++) {
 			FLT *_ang = pdfs->angles[i][lh];
@@ -145,15 +160,21 @@ static int solve_fullscene(PoserDataSVD *dd, PoserDataFullScene *pdfs) {
 		}
 
 		SurviveContext *ctx = so->ctx;
-		SV_INFO("Solving for %d correspondents on lh %d", (int)dd->bc.meas_cnt, lh);
-		if (dd->bc.meas_cnt <= 4) {
-			SV_INFO("Can't solve for only %d points on lh %d", (int)dd->bc.meas_cnt, lh);
+		if (dd->bc.meas_cnt <= 8) {
 			continue;
 		}
 
-		SurvivePose lighthouse2object = solve_correspondence(dd, true);
-		if (quatmagnitude(lighthouse2object.Rot) != 0.0) {
-			PoserData_lighthouse_pose_func(&pdfs->hdr, so, lh, &arb2world, &lighthouse2object, 0);
+		SV_INFO("Solving for %d correspondents on lh %d", (int)dd->bc.meas_cnt, lh);
+
+		SurvivePose lh2object = solve_correspondence(dd, true);
+
+		if (quatmagnitude(lh2object.Rot) != 0.0) {
+			SurvivePose lh2world = lh2object;
+			if (!quatiszero(object2World.Rot)) {
+				ApplyPoseToPose(&lh2world, &object2World, &lh2object);
+			}
+
+			PoserData_lighthouse_pose_func(&pdfs->hdr, so, lh, &lh2world, &object2World);
 		}
 	}
 
@@ -213,8 +234,6 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 						ApplyPoseToPose(&txPose, lh2world, &objInLh);
 						posers[lh] = txPose;
 						meas[lh] = dd->bc.meas_cnt;
-					} else {
-						SV_INFO("Localization failed for lh %d", lh);
 					}
 				}
 			}

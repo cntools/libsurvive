@@ -69,7 +69,6 @@ static FLT get_u(const FLT *ang) { return tan(ang[0]); }
 static FLT get_v(const FLT *ang) { return tan(ang[1]); }
 
 static int opencv_solver_fullscene(SurviveObject *so, PoserDataFullScene *pdfs) {
-	SurvivePose arb2world = {0};
 	for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
 		epnp pnp = {.fu = 1, .fv = 1};
 		epnp_set_maximum_number_of_correspondences(&pnp, so->sensor_ct);
@@ -95,7 +94,7 @@ static int opencv_solver_fullscene(SurviveObject *so, PoserDataFullScene *pdfs) 
 
 		SurvivePose lighthouse2object = solve_correspondence(so, &pnp, true);
 		if (quatmagnitude(lighthouse2object.Rot) != 0.0) {
-			PoserData_lighthouse_pose_func(&pdfs->hdr, so, lh, &arb2world, &lighthouse2object, 0);
+			PoserData_lighthouse_pose_func(&pdfs->hdr, so, lh, &lighthouse2object, &so->OutPose);
 		}
 
 		epnp_dtor(&pnp);

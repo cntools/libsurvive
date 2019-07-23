@@ -71,8 +71,14 @@ void PoserData_poser_pose_func_with_velocity(PoserData *poser_data, SurviveObjec
 }
 
 void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse,
-									SurvivePose *arb2world, SurvivePose *lighthouse_pose, SurvivePose *object_pose) {
+									SurvivePose *lighthouse_pose, SurvivePose *object_pose) {
 	if (poser_data->lighthouseposeproc) {
+		for (int i = 0; i < 7; i++)
+			assert(!isnan(((double *)lighthouse_pose)[i]));
+
+		if (quatiszero(object_pose->Rot)) {
+			*object_pose = (SurvivePose){.Rot = {1.}};
+		}
 		poser_data->lighthouseposeproc(so, lighthouse, lighthouse_pose, object_pose, poser_data->userdata);
 	} else {
 		const FLT up[3] = {0, 0, 1};
@@ -95,9 +101,9 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 		//
 		// We might want to go a step further and affix the first lighthouse in a given pose that preserves up so that
 		// it doesn't matter where on that surface the object is.
-		bool worldEstablished = quatmagnitude(arb2world->Rot) != 0;
+		bool worldEstablished = quatmagnitude(object_pose->Rot) != 0;
 		SurvivePose object2arb = {.Rot = {1.}};
-		if (object_pose)
+		if (object_pose && !quatiszero(object_pose->Rot))
 			object2arb = *object_pose;
 		SurvivePose lighthouse2arb = *lighthouse_pose;
 
@@ -111,7 +117,7 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 
 			SurvivePose lighthouse2obj;
 			ApplyPoseToPose(&lighthouse2obj, &arb2object, &lighthouse2arb);
-			*arb2world = arb2object;
+			SurvivePose arb2world = arb2object;
 
 			// Find the poses that map to the above
 
@@ -125,7 +131,7 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 
 			// Calculate the pose of the lighthouse in this space
 			ApplyPoseToPose(&lighthouse2objUp, &object2objUp, &lighthouse2obj);
-			ApplyPoseToPose(arb2world, &object2objUp, arb2world);
+			ApplyPoseToPose(&arb2world, &object2objUp, &arb2world);
 
 			// Find what angle we need to rotate about Z by to get to 90 degrees.
 			FLT ang = atan2(lighthouse2objUp.Pos[1], lighthouse2objUp.Pos[0]);
@@ -133,11 +139,18 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 			SurvivePose objUp2World = { 0 };
 			quatfromeuler(objUp2World.Rot, euler);
 
-			ApplyPoseToPose(arb2world, &objUp2World, arb2world);
+			ApplyPoseToPose(&arb2world, &objUp2World, &arb2world);
+			ApplyPoseToPose(&obj2world, &arb2world, &object2arb);
+			ApplyPoseToPose(&lighthouse2world, &arb2world, &lighthouse2arb);
+
+			*object_pose = obj2world;
+		} else {
+			lighthouse2world = *lighthouse_pose;
+			obj2world = *object_pose;
 		}
 
-		ApplyPoseToPose(&obj2world, arb2world, &object2arb);
-		ApplyPoseToPose(&lighthouse2world, arb2world, &lighthouse2arb);
+		for (int i = 0; i < 7; i++)
+			assert(!isnan(((double *)&lighthouse2world)[i]));
 
 		so->ctx->lighthouse_poseproc(so->ctx, lighthouse, &lighthouse2world, &obj2world);
 	}

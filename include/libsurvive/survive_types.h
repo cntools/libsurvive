@@ -119,7 +119,7 @@ typedef void (*angle_process_func)(SurviveObject *so, int sensor_id, int acode, 
 								   FLT angle, uint32_t lh);
 
 // LH2 specific callbacks
-typedef void (*gen2_detected_process_func)(SurviveObject *so);
+typedef void (*gen_detected_process_func)(SurviveObject *so, int gen);
 typedef void (*sync_process_func)(SurviveObject *so, survive_channel channel, survive_timecode timeinsweep, bool ootx,
 								  bool gen);
 typedef void (*sweep_process_func)(SurviveObject *so, survive_channel channel, int sensor_id, survive_timecode timecode,

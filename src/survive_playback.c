@@ -462,14 +462,17 @@ void survive_install_recording(SurviveContext *ctx) {
 	if (strlen(dataout_file) > 0 || record_to_stdout) {
 		ctx->recptr = calloc(1, sizeof(struct SurviveRecordingData));
 
-		ctx->recptr->output_file = fopen(dataout_file, "w");
-		if (ctx->recptr->output_file == 0 && !record_to_stdout) {
-			SV_INFO("Could not open %s for writing", dataout_file);
-			free(ctx->recptr);
-			ctx->recptr = 0;
-			return;
+		if (strlen(dataout_file) > 0) {
+			ctx->recptr->output_file = fopen(dataout_file, "w");
+			if (ctx->recptr->output_file == 0) {
+				SV_INFO("Could not open %s for writing", dataout_file);
+				free(ctx->recptr);
+				ctx->recptr = 0;
+				return;
+			}
+			SV_INFO("Recording to '%s'", dataout_file);
 		}
-		SV_INFO("Recording to '%s'", dataout_file);
+
 		ctx->recptr->alwaysWriteStdOut = record_to_stdout;
 		if (record_to_stdout) {
 			SV_INFO("Recording to stdout");

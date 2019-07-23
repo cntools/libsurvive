@@ -201,7 +201,7 @@ static void mpfit_set_cameras(SurviveObject *so, uint8_t lighthouse, SurvivePose
 	survive_optimizer *ctx = (survive_optimizer *)user;
 	SurvivePose *cameras = survive_optimizer_get_camera(ctx);
 	cameras[lighthouse] = InvertPoseRtn(pose);
-	if (obj_pose)
+	if (obj_pose && !quatiszero(obj_pose->Rot))
 		*survive_optimizer_get_pose(ctx) = *obj_pose;
 	else
 		*survive_optimizer_get_pose(ctx) = LinmathPose_Identity;
@@ -273,13 +273,18 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 		general_optimizer_data_record_success(&d->opt, result.bestnorm);
 		rtn = result.bestnorm;
 
-		SurvivePose additionalTx = {0};
+		SurvivePose obj2world = so->OutPoseIMU;
 		for (int i = 0; i < so->ctx->activeLighthouses; i++) {
 			if (quatmagnitude(cameras[i].Rot) != 0) {
 				quatnormalize(cameras[i].Rot, cameras[i].Rot);
-				SurvivePose lh2world = InvertPoseRtn(&cameras[i]);
-				PoserData_lighthouse_pose_func(&pdfs->hdr, so, i, &additionalTx, &lh2world,
-											   survive_optimizer_get_pose(&mpfitctx));
+				SurvivePose lh2object = InvertPoseRtn(&cameras[i]);
+
+				SurvivePose lh2world = lh2object;
+				if (!quatiszero(obj2world.Rot)) {
+					ApplyPoseToPose(&lh2world, &obj2world, &lh2object);
+				}
+
+				PoserData_lighthouse_pose_func(&pdfs->hdr, so, i, &lh2world, &obj2world);
 			}
 		}
 

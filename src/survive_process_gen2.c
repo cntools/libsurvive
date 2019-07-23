@@ -143,6 +143,8 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 
 SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survive_channel channel, int sensor_id,
 														survive_timecode timecode, int8_t plane, FLT angle) {
+	survive_notify_gen2(so);
+
 	struct SurviveContext *ctx = so->ctx;
 	// SV_INFO("Sensor ch%2d %2d %12f", channel, sensor_id, angle);
 	int8_t bsd_idx = survive_get_bsd_idx(ctx, channel);
@@ -177,17 +179,46 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 		}
 }
 
-SURVIVE_EXPORT void survive_default_gen2_detected_process(SurviveObject *so) {
+SURVIVE_EXPORT void survive_default_gen_detected_process(SurviveObject *so, int lh_version) {
 	SurviveContext *ctx = so->ctx;
-	bool allowExperimental = (bool)survive_configi(ctx, "lhv2-experimental", SC_GET, 0);
-	if (!allowExperimental) {
-		if (so->ctx->currentError == SURVIVE_OK) {
-			SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG,
-					 "System detected lighthouse v2 system. Currently, libsurvive does not work with this "
-					 "setup. If you want to see debug information for this system, pass in "
-					 "'--lhv2-experimental'");
+
+	assert(ctx->lh_version == -1);
+
+	SV_INFO("Detected LH gen %d system.", lh_version + 1);
+	ctx->lh_version = lh_version;
+
+	if (ctx->lh_version == 0) {
+		int calibrateMandatory = survive_configi(ctx, "force-calibrate", SC_GET, 0);
+		int calibrateForbidden = survive_configi(ctx, "disable-calibrate", SC_GET, 1) == 1;
+		if (calibrateMandatory && calibrateForbidden) {
+			SV_INFO("Contradictory settings --force-calibrate and --disable-calibrate specified. Switching to normal "
+					"behavior.");
+			calibrateMandatory = calibrateForbidden = 0;
+		}
+
+		if (!calibrateForbidden) {
+			bool isCalibrated = true;
+			for (int i = 0; i < ctx->activeLighthouses; i++) {
+				if (!ctx->bsd[i].PositionSet) {
+					SV_INFO("Lighthouse %d position is unset", i);
+					isCalibrated = false;
+				}
+			}
+
+			bool doCalibrate = isCalibrated == false || calibrateMandatory;
+
+			if (!isCalibrated) {
+				SV_INFO(
+					"Uncalibrated configuration detected. Attaching calibration. Please don't move tracked objects for "
+					"the duration of calibration. Pass '--disable-calibrate' to skip calibration");
+			} else if (doCalibrate) {
+				SV_INFO("Calibration requested. Previous calibration will be overwritten.");
+			}
+
+			if (doCalibrate && ctx->objs_ct > 0) {
+				ctx->bsd[0].PositionSet = ctx->bsd[1].PositionSet = false;
+				survive_cal_install(ctx);
+			}
 		}
 	}
-
-	so->ctx->lh_version = 1;
 }
