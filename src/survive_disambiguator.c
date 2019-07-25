@@ -23,6 +23,18 @@ uint8_t survive_map_sensor_id(SurviveObject *so, uint8_t reported_id) {
 }
 
 void handle_lightcap(SurviveObject *so, const LightcapElement *_le) {
+	// Gen2 devices can trigger this on startup; but later packets should
+	// reliably change to lh_version == 1. If we see 50+ lightcap packets
+	// without these gen2 packets we can just call it for gen1.
+	if (so->ctx->lh_version == -1) {
+		static int lightcap_rcv_cnt = 0;
+		if (lightcap_rcv_cnt++ > 50) {
+			survive_notify_gen1(so);
+		} else {
+			return;
+		}
+	}
+
 	LightcapElement le = *_le;
 	survive_recording_lightcap(so, &le);
 #ifdef LOG_LIGHTDATA

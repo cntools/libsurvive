@@ -1998,7 +1998,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 					continue;
 				//SV_INFO("%d %d %d %d %d", id, le.sensor_id, le.length, le.timestamp, si->buffer + size - readdata);
 
-				if (obj->ctx->lh_version == 0) {
+				if (obj->ctx->lh_version != 1) {
 					handle_lightcap(obj, &le);
 				} else {
 					fprintf(stderr, "sensor: %2d         time: %8u length: %4d end_time: %8u\n", le.sensor_id,
