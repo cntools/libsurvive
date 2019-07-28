@@ -65,9 +65,9 @@ function add_lighthouse(idx, p, q) {
 
 	var geometry = new THREE.PlaneGeometry(3, 3);
 
-	var mesh = new THREE.PlaneHelper(null, 1, 0x00FF00);
+	var mesh = new THREE.PlaneHelper(null, 3, 0x00FF00);
 	group.plane1 = mesh;
-	var mesh2 = new THREE.PlaneHelper(null, 1, 0xFF0000);
+	var mesh2 = new THREE.PlaneHelper(null, 3, 0xFF0000);
 	group.plane2 = mesh2;
 
 	mesh.visible = false;
@@ -116,7 +116,7 @@ function recolorTrackers(when) {
 	for (var key in angles) {
 		var colors = [];
 
-		for (var lh = 0; lh < 2; lh++) {
+		for (var lh = 0; lh < 16; lh++) {
 			var bvalue = get_bvalue(key);
 			ctx.strokeStyle = (lh === 0 ? "#FF00" : "#00FF") + bvalue;
 
@@ -198,7 +198,7 @@ function redrawCanvas(when) {
 	ctx.stroke();
 
 	for (var key in angles) {
-		for (var lh = 0; lh < 2; lh++) {
+		for (var lh = 0; lh < 16; lh++) {
 			var bvalue = get_bvalue(key);
 
 			ctx.strokeStyle = (lh === 0 ? "#5500" : "#0055") + bvalue;
@@ -219,7 +219,7 @@ function redrawCanvas(when) {
 
 					ctx.fillStyle = "white";
 					ctx.font = "14px Arial";
-					ctx.fillText(id, x, y);
+					// ctx.fillText(id, x, y);
 
 					ctx.beginPath();
 					ctx.arc(x, y, 1, 0, 2 * Math.PI);
@@ -780,7 +780,7 @@ function animate() {
 	render();
 	redrawCanvas(timecode);
 }
-var showPlanes = false;
+var showPlanes = true;
 var ang = 0;
 function render() {
 	Object.keys(lighthouses).forEach(function(idx) {

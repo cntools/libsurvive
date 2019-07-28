@@ -61,8 +61,13 @@ void gen_survive_reproject_full_gen2(FLT *out, const SurvivePose *obj_pose, cons
 	FLT gibMag_0 = bcal[0].gibmag;
 	FLT gibMag_1 = bcal[1].gibmag;
 
+	FLT ogeePhase_0 = bcal[0].ogeephase;
+	FLT ogeePhase_1 = bcal[1].ogeephase;
+	FLT ogeeMag_0 = bcal[0].ogeemag;
+	FLT ogeeMag_1 = bcal[1].ogeemag;
+
 	gen_reproject_gen2(out, obj_pose->Pos, obj_pt, lh2world->Pos, phase_0, phase_1, tilt_0, tilt_1, curve_0, curve_1,
-					   gibPhase_0, gibPhase_1, gibMag_0, gibMag_1);
+					   gibPhase_0, gibPhase_1, gibMag_0, gibMag_1, ogeePhase_0, ogeePhase_0, ogeeMag_0, ogeeMag_1);
 }
 
 double next_rand(double mx) { return (float)rand() / (float)(RAND_MAX / mx) - mx / 2.; }

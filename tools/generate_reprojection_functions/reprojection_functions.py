@@ -5,7 +5,7 @@ import sys
 import types
 
 import sympy as sp
-from sympy import sqrt, atan2, tan, asin, cos, evaluate, Pow
+from sympy import sqrt, atan2, tan, asin, cos, evaluate, Pow, sin
 
 obj_qw, obj_qi, obj_qj, obj_qk = sp.symbols('obj_qw,obj_qi,obj_qj,obj_qk')
 obj_px, obj_py, obj_pz = sp.symbols('obj_px,obj_py,obj_pz')
@@ -22,6 +22,8 @@ tilt_0, tilt_1 = sp.symbols('tilt_0, tilt_1')
 curve_0, curve_1 = sp.symbols('curve_0, curve_1')
 gibPhase_0, gibPhase_1 = sp.symbols('gibPhase_0, gibPhase_1')
 gibMag_0, gibMag_1 = sp.symbols('gibMag_0, gibMag_1')
+ogeePhase_0, ogeePhase_1 = sp.symbols('ogeePhase_0, ogeePhase_1')
+ogeeMag_0, ogeeMag_1 = sp.symbols('ogeeMag_0, ogeeMag_1')
 
 
 def quatnormalize(q):
@@ -132,47 +134,83 @@ def reproject_axis(axis_value, other_axis_value, Z,
 
     return ang - math.pi / 2.
 
+def calc_cal_series(s):
+    f = [ -8.0108022e-06, 0.0028679863, 5.3685255000000001e-06, 0.0076069798000000001, 0, 0 ]
+
+    m = f[0]
+    a = 0
+    for i in range(0, 6):
+        a = a * s + m
+        m = m * s + f[i]
+    return m, a
+
+def reproject_axis_gen2(X, Y, Z, axis,
+                        phase_cal,
+                        tilt_cal,
+                        curve_cal,
+                        gibPhase_cal, gibMag_cal,
+                        ogeePhase_cal, ogeeMag_cal):
+    B = atan2(Z, X);
+
+    Ydeg = tilt_cal + (1 if axis else -1) * math.pi / 6.;
+    tanA = tan(Ydeg)
+    normXZ = sqrt(X * X + Z * Z)
+
+    asinArg = tanA * Y / normXZ
+
+    sinYdeg = sin(Ydeg)
+    cosYdeg = cos(Ydeg)
+
+    sinPart = sin(B - asin(asinArg) + ogeePhase_cal) * ogeeMag_cal
+
+    normXYZ = sqrt(X * X + Y * Y + Z * Z)
+
+    modAsinArg = Y / normXYZ / cosYdeg
+
+    asinOut = asin(modAsinArg)
+
+    mod, acc = calc_cal_series(asinOut)
+
+    BcalCurved = sinPart + curve_cal
+    asinArg2 = asinArg + mod * BcalCurved / (cosYdeg - acc * BcalCurved * sinYdeg)
+
+    asinOut2 = asin(asinArg2)
+    sinOut2 = sin(B - asinOut2 + gibPhase_cal)
+
+    return B - asinOut2 + sinOut2 * gibMag_cal - phase_cal - math.pi / 2.
+
+
 def reproject_axis_x_gen2(p, pt, lh_p,
                      phase_cal,
                      tilt_cal,
                      curve_cal,
-                     gibPhase_cal, gibMag_cal):
+                     gibPhase_cal, gibMag_cal,
+                     ogeePhase_cal, ogeeMag_cal):
     XYZ = apply_pose_to_pt(lh_p, apply_pose_to_pt(p, pt))
 
-    X = XYZ[0]
-    Y = XYZ[1]
-    Z = XYZ[2]
-    tan30 = 0.57735026919
-    B = atan2(X, -Z)
-    A = asin(tan30 * Y / sqrt(X * X + Z * Z))
+    return reproject_axis_gen2(XYZ[0], -XYZ[1], -XYZ[2], 0, phase_cal, tilt_cal, curve_cal, gibPhase_cal, gibMag_cal, ogeePhase_cal, ogeeMag_cal)
 
-    return (-A) - B - phase_cal
-             
 def reproject_axis_y_gen2(p, pt, lh_p,
                      phase_cal,
                      tilt_cal,
                      curve_cal,
-                     gibPhase_cal, gibMag_cal):
+                     gibPhase_cal, gibMag_cal,
+                     ogeePhase_cal, ogeeMag_cal):
     XYZ = apply_pose_to_pt(lh_p, apply_pose_to_pt(p, pt))
 
-    X = XYZ[0]
-    Y = XYZ[1]
-    Z = XYZ[2]
-    tan30 = 0.57735026919
-    B = atan2(X, -Z)
-    A = asin(tan30 * Y / sqrt(X * X + Z * Z))
+    return reproject_axis_gen2(XYZ[0], -XYZ[1], -XYZ[2], 1, phase_cal, tilt_cal, curve_cal, gibPhase_cal, gibMag_cal, ogeePhase_cal, ogeeMag_cal)
 
-    return A - B - phase_cal
 
 def reproject_gen2(p, pt, lh_p,
               phase_0, phase_1,
               tilt_0, tilt_1,
               curve_0, curve_1,
-              gibPhase_0, gibPhase_1, gibMag_0, gibMag_1):
+              gibPhase_0, gibPhase_1, gibMag_0, gibMag_1,
+              ogeePhase_0, ogeePhase_1, ogeeMag_0, ogeeMag_1):
 
     return sp.Matrix((
-        reproject_axis_x_gen2(p, pt, lh_p, phase_0, tilt_0, curve_0, gibPhase_0, gibMag_0),
-        reproject_axis_y_gen2(p, pt, lh_p, phase_1, tilt_1, curve_1, gibPhase_1, gibMag_1)
+        reproject_axis_x_gen2(p, pt, lh_p, phase_0, tilt_0, curve_0, gibPhase_0, gibMag_0, ogeePhase_0, ogeeMag_0),
+        reproject_axis_y_gen2(p, pt, lh_p, phase_1, tilt_1, curve_1, gibPhase_1, gibMag_1, ogeePhase_1, ogeeMag_1)
     ))
 
 def reproject_axis_x(p, pt, lh_p,
@@ -362,6 +400,12 @@ reproject_params = (obj_p, sensor_pt, lh_p, phase_0, phase_1,
                     curve_0, curve_1,
                     gibPhase_0, gibPhase_1, gibMag_0, gibMag_1)
 
+reproject_gen2_params = (obj_p, sensor_pt, lh_p, phase_0, phase_1,
+                    tilt_0, tilt_1,
+                    curve_0, curve_1,
+                    gibPhase_0, gibPhase_1, gibMag_0, gibMag_1,
+                    ogeePhase_0, ogeePhase_1, ogeeMag_0, ogeeMag_1)
+
 reproject_axisangle_params = (obj_p_axisangle, sensor_pt, lh_p_axisangle, phase_0, phase_1,
                               tilt_0, tilt_1,
                               curve_0, curve_1,
@@ -371,6 +415,12 @@ reproject_axis_params = (obj_p, sensor_pt, lh_p, phase_0,
                          tilt_0,
                          curve_0,
                          gibPhase_0, gibMag_0)
+
+reproject_axis_gen2_params = (obj_p, sensor_pt, lh_p, phase_0,
+                         tilt_0,
+                         curve_0,
+                         gibPhase_0, gibMag_0,
+                         ogeePhase_0, ogeeMag_0)
 
 reproject_axisangle_axis_params = (obj_p_axisangle, sensor_pt, lh_p_axisangle, phase_0,
                                    tilt_0,
@@ -392,7 +442,7 @@ if __name__ == "__main__":
         generate_ccode("quat_rotate_vector", [obj_rot, sensor_pt], quatrotatevector)
         generate_ccode("invert_pose", [obj_p], invert_pose)
         generate_ccode("reproject", reproject_params, reproject)
-        generate_ccode("reproject_gen2", reproject_params, reproject_gen2)        
+        generate_ccode("reproject_gen2", reproject_gen2_params, reproject_gen2)
         generate_ccode("apply_pose", [obj_p, sensor_pt], apply_pose_to_pt)
     else:
         print("// NOTE: Auto-generated code; see tools/generate_reprojection_functions")
@@ -410,6 +460,15 @@ if __name__ == "__main__":
         # generate_ccode("reproject_axis_y_jac_obj_p_axisangle", reproject_axisangle_axis_params , jacobian(reproject_axis_y_axisangle(*reproject_axisangle_axis_params ), (obj_px, obj_py, obj_pz, obj_qi,obj_qj,obj_qk) ))
         # generate_ccode("reproject_jac_obj_p_axisangle", reproject_axisangle_params, jacobian(reproject_axisangle(*reproject_axisangle_params), (obj_px, obj_py, obj_pz, obj_qi,obj_qj,obj_qk)))
 
+        generate_ccode("reproject_jac_obj_p_gen2", reproject_gen2_params,
+                       jacobian(reproject_gen2(*reproject_gen2_params), (obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk)))
+        generate_ccode("reproject_axis_x_jac_obj_p_gen2", reproject_axis_gen2_params,
+                       jacobian(reproject_axis_x_gen2(*reproject_axis_gen2_params),
+                                (obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk)))
+        generate_ccode("reproject_axis_y_jac_obj_p_gen2", reproject_axis_gen2_params,
+                       jacobian(reproject_axis_y_gen2(*reproject_axis_gen2_params),
+                                (obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk)))
+
         generate_ccode("reproject_jac_obj_p", reproject_params,
                        jacobian(reproject(*reproject_params), (obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk)))
         generate_ccode("reproject_axis_x_jac_obj_p", reproject_axis_params,
@@ -417,13 +476,4 @@ if __name__ == "__main__":
                                 (obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk)))
         generate_ccode("reproject_axis_y_jac_obj_p", reproject_axis_params,
                        jacobian(reproject_axis_y(*reproject_axis_params),
-                                (obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk)))
-
-        generate_ccode("reproject_jac_obj_p_gen2", reproject_params,
-                       jacobian(reproject_gen2(*reproject_params), (obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk)))
-        generate_ccode("reproject_axis_x_jac_obj_p_gen2", reproject_axis_params,
-                       jacobian(reproject_axis_x_gen2(*reproject_axis_params),
-                                (obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk)))
-        generate_ccode("reproject_axis_y_jac_obj_p_gen2", reproject_axis_params,
-                       jacobian(reproject_axis_y_gen2(*reproject_axis_params),
                                 (obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk)))

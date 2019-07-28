@@ -37,7 +37,7 @@ static void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet *packet) {
 		b->BaseStationID = v15.id;
 		for (int i = 0; i < 2; i++) {
 			b->fcal[i].phase = v15.fcal_phase[i];
-			b->fcal[i].tilt = tan(v15.fcal_tilt[i]);
+			b->fcal[i].tilt = v15.fcal_tilt[i];
 			b->fcal[i].curve = v15.fcal_curve[i];
 			b->fcal[i].gibpha = v15.fcal_gibphase[i];
 			b->fcal[i].gibmag = v15.fcal_gibmag[i];
