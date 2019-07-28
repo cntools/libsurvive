@@ -228,7 +228,7 @@ inline FLT quatdifference(const LinmathQuat q1, const LinmathQuat q2) {
 	quatfind(diff, q1, q2);
 	return 1. - diff[0];
 }
-FLT quatdist(const double *q1, const double *q2) {
+FLT quatdist(const FLT *q1, const FLT *q2) {
 	FLT rtn = 0;
 	for (int i = 0; i < 4; i++) {
 		rtn += q1[i] * q2[i];
@@ -589,38 +589,56 @@ inline void quatslerp(LinmathQuat q, const LinmathQuat qa, const LinmathQuat qb,
 	FLT bn[4];
 	quatnormalize(an, qa);
 	quatnormalize(bn, qb);
-	FLT cosTheta = linmath_max(-1., linmath_min(1., quatinnerproduct(an, bn)));
-	FLT sinTheta;
 
-	if (cosTheta < 0) {
-		cosTheta = -cosTheta;
-		for (int i = 0; i < 4; i++)
-			bn[i] = -bn[i];
+	// Switched implementation to match https://en.wikipedia.org/wiki/Slerp
+
+	// Compute the cosine of the angle between the two vectors.
+	double dot = dot3d(qa, qb);
+
+	LinmathQuat nqb;
+
+	// If the dot product is negative, slerp won't take
+	// the shorter path. Note that v1 and -v1 are equivalent when
+	// the negation is applied to all four components. Fix by 
+	// reversing one quaternion.
+	if (dot < 0.0f) {
+		quatscale( nqb, qb, -1 );
+		dot = -dot;
 	}
-
-	// Careful: If cosTheta is exactly one, or even if it's infinitesimally over, it'll
-	// cause SQRT to produce not a number, and screw everything up.
-	if (1 - (cosTheta * cosTheta) <= 0)
-		sinTheta = 0;
 	else
-		sinTheta = FLT_SQRT(1 - (cosTheta * cosTheta));
-
-	FLT Theta = FLT_ACOS(cosTheta); // Theta is half the angle between the 2 MQuaternions
-
-	if (FLT_FABS(Theta) < DEFAULT_EPSILON)
-		quatcopy(q, qa);
-	else if (FLT_FABS(sinTheta) < DEFAULT_EPSILON) {
-		quatadd(q, qa, qb);
-		quatscale(q, q, 0.5);
-	} else {
-		FLT aside[4];
-		FLT bside[4];
-		quatscale(bside, qb, FLT_SIN(t * Theta));
-		quatscale(aside, qa, FLT_SIN((1 - t) * Theta));
-		quatadd(q, aside, bside);
-		quatscale(q, q, ((FLT)1.) / sinTheta);
-		quatnormalize(q, q);
+	{
+		quatscale( nqb, qb, 1 );
 	}
+
+	const double DOT_THRESHOLD = 0.9995;
+	if (dot > DOT_THRESHOLD) {
+		// If the inputs are too close for comfort, linearly interpolate
+		// and normalize the result.
+
+		//Quaternion result = v0 + t*(v1 - v0);
+		LinmathQuat tmp;
+		quatsub( tmp, nqb, qa );
+		quatscale( tmp, tmp, t );
+		quatadd( q, qa, tmp );
+		quatnormalize( q, q );
+		return;
+	}
+
+	// Since dot is in range [0, DOT_THRESHOLD], acos is safe
+	double theta_0 = FLT_ACOS(dot);        // theta_0 = angle between input vectors
+	double theta = theta_0*t;              // theta = angle between v0 and result
+	double sin_theta = FLT_SIN(theta);     // compute this value only once
+	double sin_theta_0 = FLT_SIN(theta_0); // compute this value only once
+
+	double s0 = cos( theta ) - dot * sin_theta / sin_theta_0;  // == sin(theta_0 - theta) / sin(theta_0)
+	double s1 = sin_theta / sin_theta_0;
+
+	LinmathQuat aside;
+	LinmathQuat bside;
+	quatscale(bside, nqb, s1 );
+	quatscale(aside, qa, s0 );
+	quatadd(q, aside, bside);
+	quatnormalize(q, q);
 }
 
 inline void eulerrotatevector(FLT *vec3out, const LinmathEulerAngle eulerAngle, const FLT *vec3in) {

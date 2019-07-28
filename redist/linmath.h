@@ -69,7 +69,7 @@ typedef FLT LinmathPoint2d[2];
 typedef FLT LinmathPoint3d[3];
 typedef FLT LinmathVec3d[3];
 typedef FLT LinmathEulerAngle[3];
-typedef FLT LinmathAxisAngleMag[3];
+typedef FLT LinmathAxisAngleMag[4];
 
 typedef struct LinmathEulerPose {
 	LinmathPoint3d Pos;
