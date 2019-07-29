@@ -631,6 +631,8 @@ static void handle_calibration( struct SurviveCalData *cd )
 					cd->ctsweeps[dataindex + 1] < DRPTS_NEEDED_FOR_AVG) {
 					fsd.lengths[i][j][0] = -1;
 					fsd.lengths[i][j][1] = -1;
+					fsd.angles[i][j][0] = NAN;
+					fsd.angles[i][j][1] = NAN;
 					continue;
 				}
 				fsd.lengths[i][j][0] = cd->avglens[dataindex + 0];
