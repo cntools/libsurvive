@@ -354,7 +354,7 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 
 	ApplyPoseToPose(&so->head2imu, &trackref2imu, &so->head2trackref);
 
-	// Handle device-specific sacling.
+	// Handle device-specific scaling.
 	if (strcmp(so->codename, "HMD") == 0 || scratch.device_class == 2) {
 		SV_INFO("%s is treated as HMD device", so->codename);
 		scale3d(so->acc_scale, so->acc_scale, 1. / 8192.0);

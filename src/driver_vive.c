@@ -127,8 +127,7 @@ const struct DeviceInfo KnownDeviceTypes[] = {
 			 {.num = 0x83, .name = "Lightcap", .type = USB_IF_TRACKER1_LIGHTCAP},
 			 {.num = 0x84, .name = "Buttons", .type = USB_IF_TRACKER1_BUTTONS},
 		 },
-	 .magics = {MAGIC_CTOR(true, vive_magic_enable_lighthouse), MAGIC_CTOR(true, vive_magic_enable_lighthouse_more),
-				MAGIC_CTOR(true, vive_magic_raw_mode_1)}},
+	 .magics = {MAGIC_CTOR(true, vive_magic_enable_lighthouse), MAGIC_CTOR(true, vive_magic_enable_lighthouse_more)}},
 	{.vid = 0x28de,
 	 .pid = 0x2012,
 	 .type = USB_DEV_W_WATCHMAN1,
@@ -614,30 +613,6 @@ int survive_usb_init(SurviveViveData *sv) {
 			}
 		}
 	}
-
-	for (int i = 0; i < sv->udev_cnt; i++) {
-		struct SurviveUSBInfo *usbInfo = &sv->udev[i];
-
-		for (const struct Endpoint_t *endpoint = usbInfo->device_info->endpoints; endpoint->name; endpoint++) {
-			int errorCode = AttachInterface(sv, usbInfo, endpoint, usbInfo->handle, survive_data_cb);
-
-			if (errorCode != 0)
-				return -errorCode;
-		}
-	}
-#ifdef HIDAPI
-/*
-	// Tricky: use other interface for actual lightcap.  XXX THIS IS NOT YET RIGHT!!!
-	if (sv->udev[USB_DEV_HMD_IMU_LHB] && AttachInterface(sv, hmd, USB_IF_HMD_LIGHTCAP, sv->udev[USB_DEV_HMD_IMU_LHB],
-														 0x82, survive_data_cb, "Lightcap")) {
-		return -12;
-	}
-
-	// This is a HACK!  But it works.  Need to investigate further
-	sv->uiface[USB_DEV_TRACKER0_LIGHTCAP].actual_len = 64;
-	sv->uiface[USB_DEV_TRACKER1_LIGHTCAP].actual_len = 64;
-*/
-#endif
 	SV_INFO("All enumerated devices attached.");
 
 	survive_vive_send_magic(ctx, sv, 1, 0, 0);
@@ -2289,6 +2264,31 @@ int DriverRegHTCVive(SurviveContext *ctx) {
 			}
 		}
 	}
+
+	for (int i = 0; i < sv->udev_cnt; i++) {
+		struct SurviveUSBInfo *usbInfo = &sv->udev[i];
+
+		for (const struct Endpoint_t *endpoint = usbInfo->device_info->endpoints; endpoint->name; endpoint++) {
+			int errorCode = AttachInterface(sv, usbInfo, endpoint, usbInfo->handle, survive_data_cb);
+
+			if (errorCode != 0)
+				return -errorCode;
+		}
+	}
+#ifdef HIDAPI
+	/*
+	// Tricky: use other interface for actual lightcap.  XXX THIS IS NOT YET RIGHT!!!
+	if (sv->udev[USB_DEV_HMD_IMU_LHB] && AttachInterface(sv, hmd, USB_IF_HMD_LIGHTCAP, sv->udev[USB_DEV_HMD_IMU_LHB],
+														 0x82, survive_data_cb, "Lightcap")) {
+		return -12;
+	}
+
+	// This is a HACK!  But it works.  Need to investigate further
+	sv->uiface[USB_DEV_TRACKER0_LIGHTCAP].actual_len = 64;
+	sv->uiface[USB_DEV_TRACKER1_LIGHTCAP].actual_len = 64;
+*/
+#endif
+
 	return 0;
 fail_gracefully:
 	survive_vive_usb_close(sv);

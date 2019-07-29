@@ -164,7 +164,7 @@ void survive_cal_install( struct SurviveContext * ctx )
 
 	if (strlen(RequiredTrackersForCal) == 0) {
 		int8_t highest_sensor_ct = 0;
-		int best_obj = -1;
+		int best_obj = 0;
 		for (int j = 0; j < ctx->objs_ct; j++) {
 			if (highest_sensor_ct < ctx->objs[j]->sensor_ct) {
 				highest_sensor_ct = ctx->objs[j]->sensor_ct;
