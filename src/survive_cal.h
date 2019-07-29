@@ -75,6 +75,7 @@ struct SurviveCalData
 
 	size_t numPoseObjects;
 
+	void *ConfigPoserData[MAX_POSE_OBJECTS];
 	PoserCB ConfigPoserFn;
 
 	//Stage:

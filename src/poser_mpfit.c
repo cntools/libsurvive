@@ -89,9 +89,9 @@ static size_t construct_input_from_scene(const MPFITData *d, size_t timecode, co
 					survive_timecode diff = survive_timecode_difference(timecode, scene->timecode[sensor][lh][axis]);
 					meas->variance =
 						d->sensor_variance + diff * d->sensor_variance_per_second / (double)so->timebase_hz;
+					// SV_INFO("Adding meas %d %d %d %f", lh, sensor, axis, meas->value);
 					meas++;
 					rtn++;
-					// SV_INFO("Adding meas %d %d %d", lh, sensor, axis);
 				}
 			}
 		}
@@ -250,6 +250,7 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 			pdfs->hdr.userdata = &mpfitctx;
 			so->PoserData = d->opt.seed_poser_data;
 			driver(so, &pdfs->hdr);
+			d->opt.seed_poser_data = so->PoserData;
 			so->PoserData = d;
 			pdfs->hdr = hdr;
 		} else {

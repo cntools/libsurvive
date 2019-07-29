@@ -641,7 +641,12 @@ static void handle_calibration( struct SurviveCalData *cd )
 				fsd.angles[i][j][1] = cd->avgsweeps[dataindex + 1];
 			}
 
+		void *old_pd = cd->poseobjects[obj]->PoserData;
+		cd->poseobjects[obj]->PoserData = cd->ConfigPoserData[obj];
 		int r = cd->ConfigPoserFn( cd->poseobjects[obj], (PoserData*)&fsd );
+		cd->ConfigPoserData[obj] = cd->poseobjects[obj]->PoserData;
+		cd->poseobjects[obj]->PoserData = old_pd;
+
 		if( r )
 		{
 			SV_INFO( "Failed calibration on dev %d\n", obj );
