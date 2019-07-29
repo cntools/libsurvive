@@ -245,7 +245,7 @@ static double run_sba_find_3d_structure(SBAData *d, PoserDataLight *pdl, Survive
 }
 
 // Optimizes for LH position assuming object is posed at 0
-static double run_sba(PoserDataFullScene *pdfs, SurviveObject *so, int max_iterations /* = 50*/,
+static double run_sba(SBAData *d, PoserDataFullScene *pdfs, SurviveObject *so, int max_iterations /* = 50*/,
 					  double max_reproj_error /* = 0.005*/) {
 	double *covx = 0;
 
@@ -266,7 +266,10 @@ static double run_sba(PoserDataFullScene *pdfs, SurviveObject *so, int max_itera
 			pdfs->hdr.pt = hdr.pt;
 			pdfs->hdr.lighthouseposeproc = sba_set_cameras;
 			pdfs->hdr.userdata = &sbactx;
+			so->PoserData = d->opt.seed_poser_data;
 			driver(so, &pdfs->hdr);
+			d->opt.seed_poser_data = so->PoserData;
+			so->PoserData = d;
 			pdfs->hdr = hdr;
 		} else {
 			SV_INFO("Not using a seed poser for SBA; results will likely be way off");
@@ -401,7 +404,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 	case POSERDATA_FULL_SCENE: {
 		SurviveContext *ctx = so->ctx;
 		PoserDataFullScene *pdfs = (PoserDataFullScene *)(pd);
-		double error = run_sba(pdfs, so, 100, .005);
+		double error = run_sba(d, pdfs, so, 100, .005);
 		// std::cerr << "Average reproj error: " << error << std::endl;
 		return 0;
 	}

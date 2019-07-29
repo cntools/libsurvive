@@ -299,7 +299,8 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
 		config_read_lighthouse(ctx->lh_config, &(ctx->bsd[i]), i);
-		ctx->bsd_map[ctx->bsd[i].mode] = i;
+		if (ctx->bsd[i].mode >= 0 && ctx->bsd[i].mode < 16)
+			ctx->bsd_map[ctx->bsd[i].mode] = i;
 	}
 
 	if( list_for_autocomplete )

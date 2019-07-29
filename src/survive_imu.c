@@ -240,7 +240,7 @@ void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTrac
 	}
 
 	FLT time_diff = survive_timecode_difference(timecode, tracker->obs_kalman_update) / (FLT)tracker->so->timebase_hz;
-	assert(time_diff >= 0 && time_diff < 10);
+	// assert(time_diff >= 0 && time_diff < 10);
 
 	// FLT H[] = {1., time_diff, time_diff * time_diff / 2.};
 	FLT H[] = {1., 0, 0};
