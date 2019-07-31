@@ -560,9 +560,11 @@ void config_save(SurviveContext *sctx, const char *path) {
 	write_config_group(f, sctx->global_config_values, NULL);
 
 	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
-		char name[128] = {};
-		snprintf(name, 128, "lighthouse%d", i);
-		write_config_group(f, sctx->lh_config + i, name);
+		if (sctx->bsd[i].OOTXSet) {
+			char name[128] = {};
+			snprintf(name, 128, "lighthouse%d", i);
+			write_config_group(f, sctx->lh_config + i, name);
+		}
 	}
 
 	fclose(f);
