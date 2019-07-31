@@ -254,6 +254,7 @@ static double run_sba(SBAData *d, PoserDataFullScene *pdfs, SurviveObject *so, i
 	size_t meas_size = construct_input(so, pdfs, vmask, meas);
 
 	sba_context sbactx = {&pdfs->hdr, so, .camera_params = {{.Rot = {1.}}, {.Rot = {1.}}}, .obj_pose = so->OutPoseIMU};
+	SurvivePose object2World = so->OutPoseIMU;
 
 	{
 		const char *subposer = survive_configs(so->ctx, "seed-poser", SC_GET, "BaryCentricSVD");
@@ -313,7 +314,13 @@ static double run_sba(SBAData *d, PoserDataFullScene *pdfs, SurviveObject *so, i
 		for (int i = 0; i < so->ctx->activeLighthouses; i++) {
 			if (quatmagnitude(sbactx.camera_params[i].Rot) != 0) {
 				quatnormalize(sbactx.camera_params[i].Rot, sbactx.camera_params[i].Rot);
-				PoserData_lighthouse_pose_func(&pdfs->hdr, so, i, &sbactx.camera_params[i], &sbactx.obj_pose);
+
+				SurvivePose lh2world = sbactx.camera_params[i];
+				if (!quatiszero(object2World.Rot)) {
+					ApplyPoseToPose(&lh2world, &object2World, &sbactx.camera_params[i]);
+				}
+
+				PoserData_lighthouse_pose_func(&pdfs->hdr, so, i, &lh2world, &object2World);
 			}
 		}
 	} else {
