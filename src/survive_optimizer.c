@@ -10,6 +10,22 @@
 static char *object_parameter_names[] = {"Pose x",	 "Pose y",	 "Pose z",	"Pose Rot w",
 										 "Pose Rot x", "Pose Rot y", "Pose Rot z"};
 
+static void setup_pose_param_limits(survive_optimizer *mpfit_ctx, double *parameter,
+									struct mp_par_struct *pose_param_info) {
+	for (int i = 0; i < 7; i++) {
+		pose_param_info[i].limited[0] = pose_param_info[i].limited[1] = 1;
+
+		pose_param_info[i].limits[0] = -(i >= 3 ? 1.0001 : 20.);
+		pose_param_info[i].limits[1] = -pose_param_info[i].limits[0];
+
+		if (parameter[i] < pose_param_info[i].limits[0] || parameter[i] > pose_param_info[i].limits[1]) {
+			SurviveContext *ctx = mpfit_ctx->so->ctx;
+			SV_GENERAL_ERROR("Parameter %s is invalid. %f <= %f <= %f should be true", pose_param_info[i].parname,
+							 pose_param_info[i].limits[0], parameter[i], pose_param_info[i].limits[1])
+		}
+	}
+}
+
 void survive_optimizer_setup_pose(survive_optimizer *mpfit_ctx, const SurvivePose *poses, bool isFixed,
 								  int use_jacobian_function) {
 	for (int i = 0; i < mpfit_ctx->poseLength; i++) {
@@ -17,24 +33,13 @@ void survive_optimizer_setup_pose(survive_optimizer *mpfit_ctx, const SurvivePos
 			survive_optimizer_get_pose(mpfit_ctx)[i] = poses[i];
 		else
 			survive_optimizer_get_pose(mpfit_ctx)[i] = (SurvivePose){.Rot = {1.}};
+
+		setup_pose_param_limits(mpfit_ctx, mpfit_ctx->parameters + i * 7, mpfit_ctx->parameters_info + i * 7);
 	}
 
 	for (int i = 0; i < 7 * mpfit_ctx->poseLength; i++) {
 		mpfit_ctx->parameters_info[i].fixed = isFixed;
 		mpfit_ctx->parameters_info[i].parname = object_parameter_names[i % 7];
-
-		mpfit_ctx->parameters_info[i].limited[0] = mpfit_ctx->parameters_info[i].limited[1] = 1;
-
-		mpfit_ctx->parameters_info[i].limits[0] = -(i >= 3 ? 1.0001 : 20.);
-		mpfit_ctx->parameters_info[i].limits[1] = -mpfit_ctx->parameters_info[i].limits[0];
-
-		if (mpfit_ctx->parameters[i] < mpfit_ctx->parameters_info[i].limits[0] ||
-			mpfit_ctx->parameters[i] > mpfit_ctx->parameters_info[i].limits[1]) {
-			SurviveContext *ctx = mpfit_ctx->so->ctx;
-			SV_GENERAL_ERROR("Parameter %s is invalid. %f <= %f <= %f should be true",
-							 mpfit_ctx->parameters_info[i].parname, mpfit_ctx->parameters_info[i].limits[0],
-							 mpfit_ctx->parameters[i], mpfit_ctx->parameters_info[i].limits[1])
-		}
 
 		if (use_jacobian_function != 0 && mpfit_ctx->reprojectModel->reprojectFullJacObjPose) {
 			if (use_jacobian_function < 0) {
@@ -57,14 +62,18 @@ static char *lh_parameter_names[] = {"LH0 x",	 "LH0 y",	 "LH0 z",		"LH0 Rot w", 
 
 void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx, SurviveContext *ctx, bool isFixed) {
 	SurvivePose *cameras = survive_optimizer_get_camera(mpfit_ctx);
+	int start = survive_optimizer_get_camera_index(mpfit_ctx);
 	for (int lh = 0; lh < mpfit_ctx->cameraLength; lh++) {
 		if (!quatiszero(ctx->bsd[lh].Pose.Rot)) {
 			InvertPose(&cameras[lh], &ctx->bsd[lh].Pose);
 		} else {
 			cameras[lh] = LinmathPose_Identity;
 		}
+
+		setup_pose_param_limits(mpfit_ctx, mpfit_ctx->parameters + start + lh * 7,
+								mpfit_ctx->parameters_info + start + lh * 7);
 	}
-	int start = survive_optimizer_get_camera_index(mpfit_ctx);
+
 	for (int i = start; i < start + 7 * mpfit_ctx->cameraLength; i++) {
 		mpfit_ctx->parameters_info[i].fixed = isFixed;
 		mpfit_ctx->parameters_info[i].parname = lh_parameter_names[i - start];
@@ -113,6 +122,7 @@ SurvivePose *survive_optimizer_get_pose(survive_optimizer *ctx) {
 
 static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, void *private) {
 	survive_optimizer *mpfunc_ctx = private;
+	SurviveContext *ctx = mpfunc_ctx->so->ctx;
 
 	const survive_reproject_model_t *reprojectModel = mpfunc_ctx->reprojectModel;
 	mpfunc_ctx->parameters = p;
@@ -149,7 +159,6 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 		const struct BaseStationCal *cal = survive_optimizer_get_calibration(mpfunc_ctx, lh);
 		const SurvivePose *world2lh = &cameras[lh];
 		const FLT *pt = &sensor_points[meas->sensor_idx * 3];
-		SurviveContext *ctx = mpfunc_ctx->so->ctx;
 
 		if (pose_idx != meas->object) {
 			pose_idx = meas->object;

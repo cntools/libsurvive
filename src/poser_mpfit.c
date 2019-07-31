@@ -274,21 +274,15 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 		general_optimizer_data_record_success(&d->opt, result.bestnorm);
 		rtn = result.bestnorm;
 
-		SurvivePose obj2world = so->OutPoseIMU;
+		SurvivePose lh2worlds[NUM_GEN2_LIGHTHOUSES] = {};
 		for (int i = 0; i < so->ctx->activeLighthouses; i++) {
 			if (quatmagnitude(cameras[i].Rot) != 0) {
 				quatnormalize(cameras[i].Rot, cameras[i].Rot);
-				SurvivePose lh2object = InvertPoseRtn(&cameras[i]);
-
-				SurvivePose lh2world = lh2object;
-				if (!quatiszero(obj2world.Rot)) {
-					ApplyPoseToPose(&lh2world, &obj2world, &lh2object);
-				}
-
-				PoserData_lighthouse_pose_func(&pdfs->hdr, so, i, &lh2world, &obj2world);
+				lh2worlds[i] = InvertPoseRtn(&cameras[i]);
 			}
 		}
 
+		PoserData_lighthouse_poses_func(&pdfs->hdr, so, lh2worlds, so->ctx->activeLighthouses, 0);
 	} else {
 		SurviveContext *ctx = so->ctx;
 		SV_INFO("MPFIT failure %f %d", result.bestnorm, res);

@@ -311,18 +311,17 @@ static double run_sba(SBAData *d, PoserDataFullScene *pdfs, SurviveObject *so, i
 								info);			// info
 
 	if (status >= 0) {
+		SurvivePose lh2objects[NUM_GEN2_LIGHTHOUSES] = {};
+
 		for (int i = 0; i < so->ctx->activeLighthouses; i++) {
-			if (quatmagnitude(sbactx.camera_params[i].Rot) != 0) {
-				quatnormalize(sbactx.camera_params[i].Rot, sbactx.camera_params[i].Rot);
-
-				SurvivePose lh2world = sbactx.camera_params[i];
-				if (!quatiszero(object2World.Rot)) {
-					ApplyPoseToPose(&lh2world, &object2World, &sbactx.camera_params[i]);
-				}
-
-				PoserData_lighthouse_pose_func(&pdfs->hdr, so, i, &lh2world, &object2World);
+			lh2objects[i] = sbactx.camera_params[i];
+			if (!quatiszero(lh2objects[i].Rot)) {
+				quatnormalize(lh2objects[i].Rot, lh2objects[i].Rot);
 			}
 		}
+
+		PoserData_lighthouse_poses_func(&pdfs->hdr, so, lh2objects, so->ctx->activeLighthouses, 0);
+
 	} else {
 		SurviveContext *ctx = so->ctx;
 		SV_INFO("SBA was unable to run %d", status);

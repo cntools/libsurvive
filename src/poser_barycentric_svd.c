@@ -148,6 +148,8 @@ static int solve_fullscene(PoserDataSVD *dd, PoserDataFullScene *pdfs) {
 		}
 	}
 
+	SurvivePose lh2objects[NUM_GEN2_LIGHTHOUSES] = {};
+
 	for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
 		if (so->ctx->bsd[lh].PositionSet) {
 			continue;
@@ -165,18 +167,10 @@ static int solve_fullscene(PoserDataSVD *dd, PoserDataFullScene *pdfs) {
 		}
 
 		SV_INFO("Solving for %d correspondents on lh %d", (int)dd->bc.meas_cnt, lh);
-
-		SurvivePose lh2object = solve_correspondence(dd, true);
-
-		if (quatmagnitude(lh2object.Rot) != 0.0) {
-			SurvivePose lh2world = lh2object;
-			if (!quatiszero(object2World.Rot)) {
-				ApplyPoseToPose(&lh2world, &object2World, &lh2object);
-			}
-
-			PoserData_lighthouse_pose_func(&pdfs->hdr, so, lh, &lh2world, &object2World);
-		}
+		lh2objects[lh] = solve_correspondence(dd, true);
 	}
+
+	PoserData_lighthouse_poses_func(&pdfs->hdr, so, lh2objects, so->ctx->activeLighthouses, 0);
 
 	return 0;
 }

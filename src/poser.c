@@ -156,6 +156,44 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 	}
 }
 
+void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so, SurvivePose *lighthouse_pose,
+									 uint32_t lighthouse_count, SurvivePose *object_pose) {
+
+	if (poser_data->lighthouseposeproc) {
+		for (int lighthouse = 0; lighthouse < lighthouse_count; lighthouse++) {
+
+			if (object_pose && quatiszero(object_pose->Rot)) {
+				*object_pose = (SurvivePose){.Rot = {1.}};
+			}
+			poser_data->lighthouseposeproc(so, lighthouse, &lighthouse_pose[lighthouse], object_pose,
+										   poser_data->userdata);
+		}
+	} else {
+
+		SurvivePose object2World;
+		if (object_pose == 0 || quatiszero(object_pose->Rot))
+			object2World = so->OutPoseIMU;
+		else
+			object2World = *object_pose;
+
+		for (int lh = 0; lh < lighthouse_count; lh++) {
+			SurvivePose lh2object = lighthouse_pose[lh];
+			if (quatmagnitude(lh2object.Rot) != 0.0) {
+				quatnormalize(lh2object.Rot, lh2object.Rot);
+
+				SurvivePose lh2world = lh2object;
+				if (!quatiszero(object2World.Rot)) {
+					ApplyPoseToPose(&lh2world, &object2World, &lh2object);
+				}
+
+				PoserData_lighthouse_pose_func(poser_data, so, lh, &lh2world, &object2World);
+			}
+		}
+
+		if (object_pose)
+			*object_pose = object2World;
+	}
+}
 void PoserDataFullScene2Activations(const PoserDataFullScene *pdfs, SurviveSensorActivations *activations) {
 	SurviveSensorActivations_ctor(activations);
 	for (int i = 0; i < SENSORS_PER_OBJECT * NUM_GEN1_LIGHTHOUSES * 2; i++) {

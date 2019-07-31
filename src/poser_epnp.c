@@ -69,8 +69,7 @@ static FLT get_u(const FLT *ang) { return tan(ang[0]); }
 static FLT get_v(const FLT *ang) { return tan(ang[1]); }
 
 static int opencv_solver_fullscene(SurviveObject *so, PoserDataFullScene *pdfs) {
-	SurvivePose object2World = so->OutPoseIMU;
-
+	SurvivePose lh2object[NUM_GEN2_LIGHTHOUSES] = {};
 	for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
 		epnp pnp = {.fu = 1, .fv = 1};
 		epnp_set_maximum_number_of_correspondences(&pnp, so->sensor_ct);
@@ -94,19 +93,12 @@ static int opencv_solver_fullscene(SurviveObject *so, PoserDataFullScene *pdfs) 
 			continue;
 		}
 
-		SurvivePose lh2object = solve_correspondence(so, &pnp, true);
-
-		if (quatmagnitude(lh2object.Rot) != 0.0) {
-			SurvivePose lh2world = lh2object;
-			if (!quatiszero(object2World.Rot)) {
-				ApplyPoseToPose(&lh2world, &object2World, &lh2object);
-			}
-
-			PoserData_lighthouse_pose_func(&pdfs->hdr, so, lh, &lh2world, &object2World);
-		}
+		lh2object[lh] = solve_correspondence(so, &pnp, true);
 
 		epnp_dtor(&pnp);
 	}
+
+	PoserData_lighthouse_poses_func(&pdfs->hdr, so, lh2object, so->ctx->activeLighthouses, 0);
 
 	return 0;
 }
