@@ -192,6 +192,7 @@ void survive_imu_tracker_predict(const SurviveIMUTracker *tracker, survive_timec
 
 	// LinmathAxisAngleMag r;
 	survive_kalman_predict_state(t, &tracker->rot, 0, out->Rot);
+	quatnormalize(out->Rot, out->Rot);
 	// quatfromaxisanglemag(out->Rot, r);
 }
 

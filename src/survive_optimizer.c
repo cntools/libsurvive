@@ -17,12 +17,6 @@ static void setup_pose_param_limits(survive_optimizer *mpfit_ctx, double *parame
 
 		pose_param_info[i].limits[0] = -(i >= 3 ? 1.0001 : 20.);
 		pose_param_info[i].limits[1] = -pose_param_info[i].limits[0];
-
-		if (parameter[i] < pose_param_info[i].limits[0] || parameter[i] > pose_param_info[i].limits[1]) {
-			SurviveContext *ctx = mpfit_ctx->so->ctx;
-			SV_GENERAL_ERROR("Parameter %s is invalid. %f <= %f <= %f should be true", pose_param_info[i].parname,
-							 pose_param_info[i].limits[0], parameter[i], pose_param_info[i].limits[1])
-		}
 	}
 }
 
@@ -234,6 +228,21 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result) {
 	SurviveContext *ctx = optimizer->so->ctx;
 	// SV_INFO("Run start");
+
+#ifndef NDEBUG
+	for (int i = 0; i < survive_optimizer_get_parameters_count(optimizer); i++) {
+		if ((optimizer->parameters_info[i].limited[0] &&
+			 optimizer->parameters[i] < optimizer->parameters_info[i].limits[0]) ||
+			(optimizer->parameters_info[i].limited[1] &&
+			 optimizer->parameters[i] > optimizer->parameters_info[i].limits[1])) {
+			SurviveContext *ctx = optimizer->so->ctx;
+			SV_GENERAL_ERROR("Parameter %s is invalid. %f <= %f <= %f should be true",
+							 optimizer->parameters_info[i].parname, optimizer->parameters_info[i].limits[0],
+							 optimizer->parameters[i], optimizer->parameters_info[i].limits[1])
+		}
+	}
+#endif
+
 	return mpfit(mpfunc, optimizer->measurementsCnt, survive_optimizer_get_parameters_count(optimizer),
 				 optimizer->parameters, optimizer->parameters_info, 0, optimizer, result);
 }
