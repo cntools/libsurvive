@@ -36,9 +36,9 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 						.hdr =
 							{
 								.pt = POSERDATA_SYNC,
+								.timecode = timecode,
 							},
 						.sensor_id = sensor_id,
-						.timecode = timecode,
 						.angle = 0,
 						.lh = lh,
 					},
@@ -81,9 +81,9 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 				.hdr =
 					{
 						.pt = POSERDATA_LIGHT,
+						.timecode = timecode,
 					},
 				.sensor_id = sensor_id,
-				.timecode = timecode,
 				.angle = angle,
 				.lh = lh,
 			},
@@ -191,12 +191,12 @@ void survive_default_imu_process( SurviveObject * so, int mask, FLT * accelgyrom
 		.hdr =
 			{
 				.pt = POSERDATA_IMU,
+				.timecode = timecode,
 			},
 		.datamask = mask,
 		.accel = {accelgyromag[0], accelgyromag[1], accelgyromag[2]},
 		.gyro = {accelgyromag[3], accelgyromag[4], accelgyromag[5]},
 		.mag = {accelgyromag[6], accelgyromag[7], accelgyromag[8]},
-		.timecode = timecode,
 	};
 
 	SurviveSensorActivations_add_imu(&so->activations, &imu);

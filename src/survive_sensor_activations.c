@@ -37,13 +37,14 @@ survive_timecode SurviveSensorActivations_stationary_time(const SurviveSensorAct
 }
 
 void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct PoserDataIMU *imuData) {
-	if (self->last_imu > imuData->timecode) {
+	if (self->last_imu > imuData->hdr.timecode) {
 		self->rollover_count++;
 	}
-	self->last_imu = imuData->timecode;
+	self->last_imu = imuData->hdr.timecode;
 
 	if (norm3d(imuData->gyro) > .05) {
-		survive_long_timecode long_timecode = ((survive_long_timecode)self->rollover_count << 32u) | imuData->timecode;
+		survive_long_timecode long_timecode =
+			((survive_long_timecode)self->rollover_count << 32u) | imuData->hdr.timecode;
 		self->last_movement = long_timecode;
 	}
 
@@ -65,7 +66,7 @@ void SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct Po
 
 	FLT *angle = &self->angles[l->sensor_id][l->lh][axis];
 
-	*data_timecode = l->timecode;
+	*data_timecode = l->hdr.timecode;
 	*angle = l->angle;
 }
 
@@ -91,7 +92,7 @@ void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 	// assert(*length == 0 || fabs(*angle - lightData->angle) < 0.05);
 
 	*angle = lightData->angle;
-	*data_timecode = lightData->timecode;
+	*data_timecode = lightData->hdr.timecode;
 	*length = (uint32_t)(_lightData->length * 48000000);
 }
 

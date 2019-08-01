@@ -11,27 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static uint32_t PoserData_timecode(PoserData *poser_data) {
-	switch (poser_data->pt) {
-	case POSERDATA_SYNC_GEN2:
-	case POSERDATA_SYNC:
-	case POSERDATA_LIGHT_GEN2:
-	case POSERDATA_LIGHT: {
-		PoserDataLight *lightData = (PoserDataLight *)poser_data;
-		return lightData->timecode;
-	}
-	case POSERDATA_FULL_SCENE: {
-		PoserDataFullScene *pdfs = (PoserDataFullScene *)(poser_data);
-		return -1;
-	}
-	case POSERDATA_IMU: {
-		PoserDataIMU *imuData = (PoserDataIMU *)poser_data;
-		return imuData->timecode;
-	}
-	}
-	assert(false);
-	return -1;
-}
+static survive_timecode PoserData_timecode(const PoserData *poser_data) { return poser_data->timecode; }
 
 STATIC_CONFIG_ITEM(REPORT_IN_IMU, "report-in-imu", 'i', "Debug option to output poses in IMU space.", 0);
 void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world) {

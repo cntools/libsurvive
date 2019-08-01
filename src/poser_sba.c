@@ -86,18 +86,20 @@ static size_t construct_input_from_scene(SBAData *d, PoserDataLight *pdl, Surviv
 
 	for (size_t sensor = 0; sensor < so->sensor_ct; sensor++) {
 		for (size_t lh = 0; lh < 2; lh++) {
-			if (SurviveSensorActivations_isPairValid(scene, d->sensor_time_window, pdl->timecode, sensor, lh)) {
+			if (SurviveSensorActivations_isPairValid(scene, d->sensor_time_window, pdl->hdr.timecode, sensor, lh)) {
 				const double *a = scene->angles[sensor][lh];
 				// FLT a[2];
 				// survive_apply_bsd_calibration(so->ctx, lh, _a, a);
 				vmask[sensor * NUM_GEN1_LIGHTHOUSES + lh] = 1;
 				if (cov) {
-					*(cov++) = d->sensor_variance + fabs((float)pdl->timecode - (float)scene->timecode[sensor][lh][0]) *
-														d->sensor_variance_per_second / (double)so->timebase_hz;
+					*(cov++) =
+						d->sensor_variance + fabs((float)pdl->hdr.timecode - (float)scene->timecode[sensor][lh][0]) *
+												 d->sensor_variance_per_second / (double)so->timebase_hz;
 					*(cov++) = 0;
 					*(cov++) = 0;
-					*(cov++) = d->sensor_variance + fabs((float)pdl->timecode - (float)scene->timecode[sensor][lh][1]) *
-														d->sensor_variance_per_second / (double)so->timebase_hz;
+					*(cov++) =
+						d->sensor_variance + fabs((float)pdl->hdr.timecode - (float)scene->timecode[sensor][lh][1]) *
+												 d->sensor_variance_per_second / (double)so->timebase_hz;
 				}
 				meas[rtn++] = a[0];
 				meas[rtn++] = a[1];
@@ -391,8 +393,8 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 					FLT var_quat = error + .05;
 					FLT var[2] = {error * var_meters, error * var_quat};
 
-					survive_imu_tracker_integrate_observation(lightData->timecode, &d->tracker, &estimate, var);
-					survive_imu_tracker_predict(&d->tracker, lightData->timecode, &estimate);
+					survive_imu_tracker_integrate_observation(lightData->hdr.timecode, &d->tracker, &estimate, var);
+					survive_imu_tracker_predict(&d->tracker, lightData->hdr.timecode, &estimate);
 				}
 
 				LinmathVec3d pvar = {.1, .1, .1};
@@ -427,7 +429,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		} else if (d->useIMU) {
 			survive_imu_tracker_integrate_imu(&d->tracker, imu);
 			SurvivePose pose;
-			survive_imu_tracker_predict(&d->tracker, imu->timecode, &pose);
+			survive_imu_tracker_predict(&d->tracker, imu->hdr.timecode, &pose);
 			PoserData_poser_pose_func(pd, so, &pose);
 		}
 

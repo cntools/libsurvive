@@ -33,8 +33,8 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
                     if(difference * 10e5 < .01) {
                         const FLT R[] = {difference * 10e6, 1000000000000.};
                         SurviveVelocity v = {0};
-                        survive_imu_tracker_integrate_velocity(&dd->tracker, pdl->timecode, R, &v);
-                    }
+						survive_imu_tracker_integrate_velocity(&dd->tracker, pdl->hdr.timecode, R, &v);
+					}
                 }
                 dd->previous_sweep = so->activations;
             }
@@ -53,8 +53,8 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
             LinmathVec3d rAcc;
             quatrotatevector(rAcc, pose.Rot, imu->accel);
 
-            survive_imu_tracker_integrate_observation(imu->timecode, &dd->tracker, &pose, R);
-            return 0;
+			survive_imu_tracker_integrate_observation(imu->hdr.timecode, &dd->tracker, &pose, R);
+			return 0;
 		}
 
 		//SV_INFO("%f", fabs(norm3d(imu->accel) - 1.));
@@ -67,7 +67,7 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 
 		SurvivePose pose = { 0 };
 		SurviveVelocity velocity = survive_imu_velocity(&dd->tracker);
-		survive_imu_tracker_update(&dd->tracker, imu->timecode, &pose);
+		survive_imu_tracker_update(&dd->tracker, imu->hdr.timecode, &pose);
 
 		if (!quatiszero(pose.Rot)) {
 			PoserData_poser_pose_func_with_velocity(pd, so, &pose, &velocity);

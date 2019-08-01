@@ -220,7 +220,7 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 		for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
 			if (so->ctx->bsd[lh].PositionSet) {
 				hasLighthousePoses = true;
-				add_correspondences(so, &dd->bc, lightData->timecode, lh);
+				add_correspondences(so, &dd->bc, lightData->hdr.timecode, lh);
 
 				if (dd->bc.meas_cnt >= dd->required_meas) {
 
@@ -263,7 +263,7 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 			int solved = 0;
 			for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
 				if (!so->ctx->bsd[lh].PositionSet && so->ctx->bsd[lh].OOTXSet) {
-					add_correspondences(so, &dd->bc, lightData->timecode, lh);
+					add_correspondences(so, &dd->bc, lightData->hdr.timecode, lh);
 
 					if (dd->bc.meas_cnt >= dd->required_meas) {
 						SurvivePose lh2obj = solve_correspondence(dd, true);

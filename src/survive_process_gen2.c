@@ -96,8 +96,8 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 								.hdr =
 									{
 										.pt = POSERDATA_SYNC_GEN2,
+										.timecode = timecode,
 									},
-								.timecode = timecode,
 								.lh = bsd_idx,
 							}};
 
@@ -154,9 +154,9 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 									.hdr =
 										{
 											.pt = POSERDATA_LIGHT_GEN2,
+											.timecode = timecode,
 										},
 									.sensor_id = sensor_id,
-									.timecode = timecode,
 									.angle = angle,
 									.lh = bsd_idx,
 								},

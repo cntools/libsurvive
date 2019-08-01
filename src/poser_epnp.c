@@ -139,7 +139,7 @@ int PoserEPNP(SurviveObject *so, PoserData *pd) {
 				epnp pnp = {.fu = 1, .fv = 1};
 				epnp_set_maximum_number_of_correspondences(&pnp, so->sensor_ct);
 
-				add_correspondences(so, &pnp, scene, lightData->timecode, lh);
+				add_correspondences(so, &pnp, scene, pd->timecode, lh);
 				static int required_meas = -1;
 				if (required_meas == -1)
 					required_meas = survive_configi(so->ctx, "epnp-required-meas", SC_GET, 5);

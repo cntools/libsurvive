@@ -27,6 +27,7 @@ typedef void (*poser_lighthouse_pose_func)(SurviveObject *so, uint8_t lighthouse
 typedef struct
 {
 	PoserType pt;
+	uint32_t timecode; // In object-local ticks.
 	poser_pose_func poseproc;
 	poser_lighthouse_pose_func lighthouseposeproc;
 	void *userdata;
@@ -83,14 +84,12 @@ typedef struct PoserDataIMU {
 	FLT accel[3];
 	FLT gyro[3];
 	FLT mag[3];
-	uint32_t timecode; //In object-local ticks.
 } PoserDataIMU;
 
 typedef struct PoserDataLight {
 	PoserData hdr;
 	int sensor_id;
 	int lh;             //Lighthouse making this sweep
-	survive_timecode timecode; // In object-local ticks.
 	FLT angle;			//In radians from center of lighthouse.
 } PoserDataLight;
 
