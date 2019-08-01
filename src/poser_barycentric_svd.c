@@ -93,8 +93,7 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 
 	// Super degenerate inputs will project us basically right in the camera. Detect and reject
 	if (err > 1 || magnitude3d(rtn.Pos) < 0.25 || magnitude3d(rtn.Pos) > 25) {
-		SV_WARN("pose is degenerate %d %f", (int)dd->bc.meas_cnt, err);
-		double err = bc_svd_compute_pose(&dd->bc, r, rtn.Pos);
+		SV_WARN("pose is degenerate %d %f %f", (int)dd->bc.meas_cnt, err, magnitude3d(rtn.Pos));
 		return rtn;
 	}
 
@@ -213,55 +212,63 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 		PoserDataLight *lightData = (PoserDataLight *)pd;
 		SurviveContext *ctx = so->ctx;
 
-		SurvivePose objs2world[NUM_GEN2_LIGHTHOUSES] = {0};
-		int meas[NUM_GEN2_LIGHTHOUSES] = {0};
-		bool hasLighthousePoses = false;
-		bool hasUnsolvedLighthousePoses = false;
-		for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
-			if (so->ctx->bsd[lh].PositionSet) {
-				hasLighthousePoses = true;
-				add_correspondences(so, &dd->bc, lightData->hdr.timecode, lh);
-
-				if (dd->bc.meas_cnt >= dd->required_meas) {
-
-					SurvivePose obj2Lh = solve_correspondence(dd, false);
-					if (quatmagnitude(obj2Lh.Rot) != 0) {
-						SurvivePose *lh2world = &so->ctx->bsd[lh].Pose;
-
-						ApplyPoseToPose(&objs2world[lh], lh2world, &obj2Lh);
-						meas[lh] = dd->bc.meas_cnt;
-					}
-				}
-			} else {
-				hasUnsolvedLighthousePoses = true;
-			}
-		}
-
-		int maxMeas = 0;
-		int maxMeasIdx = 0;
-		for (int lh = 0; lh < NUM_GEN2_LIGHTHOUSES; lh++) {
-			if (quatiszero(objs2world[lh].Rot))
-				continue;
-
-			if (maxMeas < meas[lh]) {
-				maxMeas = meas[lh];
-				maxMeasIdx = lh;
-			}
-		}
-
 		SurvivePose obj2world = {};
-		bool allowLHSolve = !hasLighthousePoses;
-		if (maxMeas > 0 && !quatiszero(objs2world[maxMeasIdx].Rot)) {
-			obj2world = objs2world[maxMeasIdx];
-			PoserData_poser_pose_func(pd, so, &obj2world);
-			allowLHSolve = hasUnsolvedLighthousePoses;
+		bool allowSolveLH = !lightData->no_lighthouse_solve;
+		if (lightData->assume_current_pose == false) {
+			bool canSolveLH = lightData->assume_current_pose;
+			SurvivePose objs2world[NUM_GEN2_LIGHTHOUSES] = {0};
+			int meas[NUM_GEN2_LIGHTHOUSES] = {0};
+			bool hasLighthousePoses = false;
+			bool hasUnsolvedLighthousePoses = false;
+			for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
+				if (so->ctx->bsd[lh].PositionSet) {
+					hasLighthousePoses = true;
+					add_correspondences(so, &dd->bc, lightData->hdr.timecode, lh);
+
+					if (dd->bc.meas_cnt >= dd->required_meas) {
+
+						SurvivePose obj2Lh = solve_correspondence(dd, false);
+						if (quatmagnitude(obj2Lh.Rot) != 0) {
+							SurvivePose *lh2world = &so->ctx->bsd[lh].Pose;
+
+							ApplyPoseToPose(&objs2world[lh], lh2world, &obj2Lh);
+							meas[lh] = dd->bc.meas_cnt;
+						}
+					}
+				} else {
+					hasUnsolvedLighthousePoses = true;
+				}
+			}
+
+			int maxMeas = 0;
+			int maxMeasIdx = 0;
+			for (int lh = 0; lh < NUM_GEN2_LIGHTHOUSES; lh++) {
+				if (quatiszero(objs2world[lh].Rot))
+					continue;
+
+				if (maxMeas < meas[lh]) {
+					maxMeas = meas[lh];
+					maxMeasIdx = lh;
+				}
+			}
+
+			canSolveLH = !hasLighthousePoses;
+			if (maxMeas > 0 && !quatiszero(objs2world[maxMeasIdx].Rot)) {
+				obj2world = objs2world[maxMeasIdx];
+				PoserData_poser_pose_func(pd, so, &obj2world);
+				canSolveLH = hasUnsolvedLighthousePoses;
+			}
+
+			allowSolveLH &= canSolveLH;
+		} else {
+			obj2world = so->OutPoseIMU;
 		}
 
 		// If we haven't moved for a second; try to solve for unsolved lighthouses
-		if (allowLHSolve && SurviveSensorActivations_stationary_time(&so->activations) > so->timebase_hz) {
+		if (allowSolveLH && SurviveSensorActivations_stationary_time(&so->activations) > so->timebase_hz) {
 			SurvivePose lh2world[NUM_GEN2_LIGHTHOUSES] = {};
 			int solved = 0;
-			for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
+			for (int lh = 0; lh < ctx->activeLighthouses; lh++) {
 				if (!so->ctx->bsd[lh].PositionSet && so->ctx->bsd[lh].OOTXSet) {
 					add_correspondences(so, &dd->bc, lightData->hdr.timecode, lh);
 
@@ -269,6 +276,7 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 						SurvivePose lh2obj = solve_correspondence(dd, true);
 						if (quatmagnitude(lh2obj.Rot) != 0) {
 							solved++;
+							SV_INFO("Possible SVD solution for %d", lh);
 							if (quatiszero(obj2world.Rot))
 								lh2world[lh] = lh2obj;
 							else
@@ -279,7 +287,6 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 			}
 
 			if (solved) {
-				SV_INFO("Found solution to %d lighthouses", solved);
 				PoserData_lighthouse_poses_func(pd, so, lh2world, so->ctx->activeLighthouses, &obj2world);
 			}
 		}

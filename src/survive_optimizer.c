@@ -54,23 +54,31 @@ static char *lh_parameter_names[] = {"LH0 x",	 "LH0 y",	 "LH0 z",		"LH0 Rot w", 
 
 };
 
-void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx, SurviveContext *ctx, bool isFixed) {
+void survive_optimizer_setup_camera(survive_optimizer *mpfit_ctx, int8_t lh, const SurvivePose *pose, bool isFixed) {
 	SurvivePose *cameras = survive_optimizer_get_camera(mpfit_ctx);
-	int start = survive_optimizer_get_camera_index(mpfit_ctx);
-	for (int lh = 0; lh < mpfit_ctx->cameraLength; lh++) {
-		if (!quatiszero(ctx->bsd[lh].Pose.Rot)) {
-			InvertPose(&cameras[lh], &ctx->bsd[lh].Pose);
-		} else {
-			cameras[lh] = LinmathPose_Identity;
-		}
+	int start = survive_optimizer_get_camera_index(mpfit_ctx) + lh * 7;
 
-		setup_pose_param_limits(mpfit_ctx, mpfit_ctx->parameters + start + lh * 7,
-								mpfit_ctx->parameters_info + start + lh * 7);
+	if (pose && !quatiszero(pose->Rot)) {
+		InvertPose(&cameras[lh], pose);
+	} else {
+		cameras[lh] = (SurvivePose){};
 	}
 
-	for (int i = start; i < start + 7 * mpfit_ctx->cameraLength; i++) {
-		mpfit_ctx->parameters_info[i].fixed = isFixed;
+	setup_pose_param_limits(mpfit_ctx, mpfit_ctx->parameters + start, mpfit_ctx->parameters_info + start);
+
+	for (int i = start; i < start + 7; i++) {
+		mpfit_ctx->parameters_info[i].fixed = isFixed || pose == 0;
 		mpfit_ctx->parameters_info[i].parname = lh_parameter_names[i - start];
+	}
+}
+
+void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx, SurviveContext *ctx, bool isFixed) {
+	for (int lh = 0; lh < mpfit_ctx->cameraLength; lh++) {
+		if (ctx->bsd[lh].PositionSet)
+			survive_optimizer_setup_camera(mpfit_ctx, lh, &ctx->bsd[lh].Pose, isFixed);
+		else {
+			survive_optimizer_setup_camera(mpfit_ctx, lh, 0, isFixed);
+		}
 	}
 }
 

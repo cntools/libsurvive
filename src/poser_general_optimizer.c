@@ -61,6 +61,7 @@ bool general_optimizer_data_record_success(GeneralOptimizerData *d, FLT error) {
 typedef struct {
 	bool hasInfo;
 	SurvivePose pose;
+	SurvivePose *new_lh2world;
 } set_position_t;
 
 static void set_position(SurviveObject *so, uint32_t timecode, const SurvivePose *new_pose, void *_user) {
@@ -75,27 +76,68 @@ static void set_position(SurviveObject *so, uint32_t timecode, const SurvivePose
 	}
 	user->hasInfo = true;
 	user->pose = *new_pose;
+	quatnormalize(user->pose.Rot, user->pose.Rot);
 }
 
-bool general_optimizer_data_record_current_pose(GeneralOptimizerData *d, PoserData *hdr, size_t len_hdr,
-												SurvivePose *soLocation) {
+void set_cameras(SurviveObject *so, uint8_t lighthouse, SurvivePose *lighthouse_pose, SurvivePose *object_pose,
+				 void *_user) {
+	set_position_t *user = _user;
+	if (user->new_lh2world) {
+		user->new_lh2world[lighthouse] = *lighthouse_pose;
+		user->hasInfo = true;
+	}
+}
+bool general_optimizer_data_record_current_lhs(GeneralOptimizerData *d, PoserDataLight *l, SurvivePose *lhs) {
+	PoserCB driver = d->seed_poser;
+	if (driver) {
+		size_t len_hdr = PoserData_size(&l->hdr);
+		uint8_t *event = alloca(len_hdr);
+		memcpy(event, l, len_hdr);
+		assert(len_hdr >= sizeof(PoserDataLight));
+
+		PoserDataLight *pl = (PoserDataLight *)event;
+		set_position_t locations = {.new_lh2world = lhs};
+
+		pl->hdr.lighthouseposeproc = set_cameras;
+		pl->hdr.poseproc = set_position;
+		pl->hdr.userdata = &locations;
+		pl->assume_current_pose = true;
+
+		d->so->PoserData = d->seed_poser_data;
+		driver(d->so, &pl->hdr);
+
+		d->seed_poser_data = d->so->PoserData;
+		d->so->PoserData = d;
+		d->stats.poser_seed_runs++;
+
+		return locations.hasInfo;
+	}
+	return false;
+}
+bool general_optimizer_data_record_current_pose(GeneralOptimizerData *d, PoserDataLight *l, SurvivePose *soLocation) {
 	*soLocation = *survive_object_last_imu2world(d->so);
 	bool currentPositionValid = quatmagnitude(soLocation->Rot) != 0;
+	SurviveContext *ctx = d->so->ctx;
+
 	static bool seed_warning = false;
 	if (d->successes_to_reset_cntr == 0 || d->failures_to_reset_cntr == 0 || currentPositionValid == 0) {
 		PoserCB driver = d->seed_poser;
-		SurviveContext *ctx = d->so->ctx;
 		if (driver) {
-			PoserData old_hdr = *hdr;
-			set_position_t locations = {0};
+			size_t len_hdr = PoserData_size(&l->hdr);
+			uint8_t *event = alloca(len_hdr);
+			memcpy(event, l, len_hdr);
+			assert(len_hdr >= sizeof(PoserDataLight));
 
-			hdr->poseproc = set_position;
-			hdr->userdata = &locations;
+			PoserDataLight *pl = (PoserDataLight *)event;
+			set_position_t locations = {};
+
+			pl->hdr.lighthouseposeproc = set_cameras;
+			pl->hdr.poseproc = set_position;
+			pl->hdr.userdata = &locations;
+			pl->no_lighthouse_solve = true;
 
 			d->so->PoserData = d->seed_poser_data;
-			driver(d->so, hdr);
-
-			*hdr = old_hdr;
+			driver(d->so, &pl->hdr);
 
 			d->seed_poser_data = d->so->PoserData;
 			d->so->PoserData = d;
@@ -105,7 +147,6 @@ bool general_optimizer_data_record_current_pose(GeneralOptimizerData *d, PoserDa
 				return false;
 			} else if (locations.hasInfo) {
 				*soLocation = locations.pose;
-				quatnormalize(soLocation->Rot, soLocation->Rot);
 			}
 
 			d->successes_to_reset_cntr = d->successes_to_reset;

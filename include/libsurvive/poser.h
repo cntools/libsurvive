@@ -33,6 +33,8 @@ typedef struct
 	void *userdata;
 } PoserData;
 
+SURVIVE_EXPORT int32_t PoserData_size(const PoserData *poser_data);
+
 /**
  * Meant to be used by individual posers to report back their findings on the pose of an object back to the invoker of
  * the call.
@@ -91,6 +93,9 @@ typedef struct PoserDataLight {
 	int sensor_id;
 	int lh;             //Lighthouse making this sweep
 	FLT angle;			//In radians from center of lighthouse.
+
+	bool assume_current_pose; // Don't solve for object pose; use OutPoseIMU for LH solving
+	bool no_lighthouse_solve; // Don't solve for LH positions
 } PoserDataLight;
 
 typedef struct PoserDataLightGen1 {

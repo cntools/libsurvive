@@ -13,6 +13,25 @@
 
 static survive_timecode PoserData_timecode(const PoserData *poser_data) { return poser_data->timecode; }
 
+SURVIVE_EXPORT int32_t PoserData_size(const PoserData *poser_data) {
+	switch (poser_data->pt) {
+	case POSERDATA_FULL_SCENE:
+		return sizeof(PoserDataFullScene);
+	case POSERDATA_DISASSOCIATE:
+		return sizeof(PoserData);
+	case POSERDATA_IMU:
+		return sizeof(PoserDataIMU);
+	case POSERDATA_LIGHT:
+	case POSERDATA_SYNC:
+		return sizeof(PoserDataLightGen1);
+	case POSERDATA_LIGHT_GEN2:
+	case POSERDATA_SYNC_GEN2:
+		return sizeof(PoserDataLightGen2);
+	}
+	assert(false);
+	return 0;
+}
+
 STATIC_CONFIG_ITEM(REPORT_IN_IMU, "report-in-imu", 'i', "Debug option to output poses in IMU space.", 0);
 void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world) {
 	SurviveContext *ctx = so->ctx;

@@ -26,5 +26,7 @@ SURVIVE_EXPORT void general_optimizer_data_dtor(GeneralOptimizerData *d);
 SURVIVE_EXPORT void general_optimizer_data_record_failure(GeneralOptimizerData *d);
 SURVIVE_EXPORT bool general_optimizer_data_record_success(GeneralOptimizerData *d, FLT error);
 SURVIVE_EXPORT void general_optimizer_data_record_imu(GeneralOptimizerData *d, PoserDataIMU *imu);
-SURVIVE_EXPORT bool general_optimizer_data_record_current_pose(GeneralOptimizerData *d, PoserData *hdr, size_t len_hdr,
-												SurvivePose *p);
+SURVIVE_EXPORT bool general_optimizer_data_record_current_pose(GeneralOptimizerData *d, PoserDataLight *l,
+															   SurvivePose *p);
+SURVIVE_EXPORT bool general_optimizer_data_record_current_lhs(GeneralOptimizerData *d, PoserDataLight *l,
+															  SurvivePose *lhs);
