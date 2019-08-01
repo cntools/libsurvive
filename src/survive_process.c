@@ -30,17 +30,20 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 	//We don't use sync times, yet.
 	if (sensor_id <= -1) {
 		if (so->PoserFn) {
-			PoserDataLight l = {
-				.hdr =
+			PoserDataLightGen1 l = {
+				.common =
 					{
-						.pt = POSERDATA_SYNC,
+						.hdr =
+							{
+								.pt = POSERDATA_SYNC,
+							},
+						.sensor_id = sensor_id,
+						.timecode = timecode,
+						.angle = 0,
+						.lh = lh,
 					},
-				.sensor_id = sensor_id,
 				.acode = acode,
-				.timecode = timecode,
 				.length = length,
-				.angle = 0,
-				.lh = lh,
 			};
 			so->PoserFn(so, (PoserData *)&l);
 		}
@@ -72,17 +75,20 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 	survive_notify_gen1(so);
 	SurviveContext *ctx = so->ctx;
 
-	PoserDataLight l = {
-		.hdr =
+	PoserDataLightGen1 l = {
+		.common =
 			{
-				.pt = POSERDATA_LIGHT,
+				.hdr =
+					{
+						.pt = POSERDATA_LIGHT,
+					},
+				.sensor_id = sensor_id,
+				.timecode = timecode,
+				.angle = angle,
+				.lh = lh,
 			},
-		.sensor_id = sensor_id,
 		.acode = acode,
-		.timecode = timecode,
 		.length = length,
-		.angle = angle,
-		.lh = lh,
 	};
 
 	// Simulate the use of only one lighthouse in playback mode.

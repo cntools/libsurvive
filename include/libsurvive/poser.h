@@ -92,18 +92,18 @@ typedef struct PoserDataLight {
 	int lh;             //Lighthouse making this sweep
 	survive_timecode timecode; // In object-local ticks.
 	FLT angle;			//In radians from center of lighthouse.
+} PoserDataLight;
+
+typedef struct PoserDataLightGen1 {
+	PoserDataLight common;
 
 	int acode;  // OOTX Code associated with this sweep. bit 1 indicates vertical(1) or horizontal(0) sweep
 	FLT length; // In seconds
-
-} PoserDataLight;
+} PoserDataLightGen1;
 
 typedef struct PoserDataLightGen2 {
-	PoserData hdr;
-	int sensor_id;
-	uint8_t lh;				   // Lighthouse making this sweep
-	survive_timecode timecode; // In object-local ticks.
-	FLT angle;				   // In radians from center of lighthouse.
+	PoserDataLight common;
+
 	int8_t plane;
 } PoserDataLightGen2;
 

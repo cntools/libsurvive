@@ -24,7 +24,6 @@ typedef struct {
 typedef struct SBAData {
 	GeneralOptimizerData opt;
 
-	int last_acode;
 	int last_lh;
 
 	FLT sensor_variance;
@@ -367,7 +366,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 	}
 	SBAData *d = so->PoserData;
 	switch (pd->pt) {
-	case POSERDATA_LIGHT: {
+	case POSERDATA_SYNC: {
 		// No poses if calibration is ongoing
 		if (ctx->calptr && ctx->calptr->stage < 5)
 			return 0;
@@ -377,11 +376,10 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 
 		// only process sweeps
 		FLT error = -1;
-		if (d->last_lh != lightData->lh || d->last_acode != lightData->acode) {
+		if (d->last_lh != lightData->lh) {
 			error = run_sba_find_3d_structure(d, lightData, scene, 100, .5, &estimate);
 
 			d->last_lh = lightData->lh;
-			d->last_acode = lightData->acode;
 
 			if (error < 0) {
 

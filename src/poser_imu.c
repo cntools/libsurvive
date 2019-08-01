@@ -26,8 +26,8 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 		case POSERDATA_SYNC: {
 			const PoserDataLight* pdl = (const struct PoserDataLight*)pd;
 			FLT difference = (SurviveSensorActivations_difference(&so->activations, &dd->previous_sweep));
-			if(pdl->lh == 0 && (pdl->acode & 1) == 0) {
-                if (pdl->sensor_id == -3 &&
+			if (pdl->lh == 0) {
+				if (pdl->sensor_id == -3 &&
                     memcmp(&so->activations, &dd->previous_sweep, sizeof(so->activations)) != 0 && !isnan(difference)) {
                     //SV_INFO("Light diff %.8f %u", difference * 10e5, pdl->timecode % 1600000);
                     if(difference * 10e5 < .01) {

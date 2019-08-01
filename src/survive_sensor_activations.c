@@ -60,12 +60,13 @@ void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct Pos
 void SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct PoserDataLightGen2 *lightData) {
 	self->lh_gen = 1;
 	int axis = lightData->plane;
-	uint32_t *data_timecode = &self->timecode[lightData->sensor_id][lightData->lh][axis];
+	PoserDataLight *l = &lightData->common;
+	uint32_t *data_timecode = &self->timecode[l->sensor_id][l->lh][axis];
 
-	FLT *angle = &self->angles[lightData->sensor_id][lightData->lh][axis];
+	FLT *angle = &self->angles[l->sensor_id][l->lh][axis];
 
-	*data_timecode = lightData->timecode;
-	*angle = lightData->angle;
+	*data_timecode = l->timecode;
+	*angle = l->angle;
 }
 
 SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveSensorActivations *self) {
@@ -80,8 +81,9 @@ SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveSensorActivations *self
 	}
 }
 
-void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLight *lightData) {
-	int axis = (lightData->acode & 1);
+void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLightGen1 *_lightData) {
+	int axis = (_lightData->acode & 1);
+	PoserDataLight *lightData = &_lightData->common;
 	uint32_t *data_timecode = &self->timecode[lightData->sensor_id][lightData->lh][axis];
 
 	FLT *angle = &self->angles[lightData->sensor_id][lightData->lh][axis];
@@ -90,7 +92,7 @@ void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 
 	*angle = lightData->angle;
 	*data_timecode = lightData->timecode;
-	*length = (uint32_t)(lightData->length * 48000000);
+	*length = (uint32_t)(_lightData->length * 48000000);
 }
 
 FLT SurviveSensorActivations_difference(const SurviveSensorActivations *rhs, const SurviveSensorActivations *lhs) {

@@ -92,14 +92,14 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 		}
 	}
 
-	PoserDataLightGen2 l = {
-		.hdr =
-			{
-				.pt = POSERDATA_SYNC_GEN2,
-			},
-		.timecode = timecode,
-		.lh = bsd_idx,
-	};
+	PoserDataLightGen2 l = {.common = {
+								.hdr =
+									{
+										.pt = POSERDATA_SYNC_GEN2,
+									},
+								.timecode = timecode,
+								.lh = bsd_idx,
+							}};
 
 	if (so->PoserFn) {
 		so->PoserFn(so, (PoserData *)&l);
@@ -149,14 +149,17 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 	// SV_INFO("Sensor ch%2d %2d %12f", channel, sensor_id, angle);
 	int8_t bsd_idx = survive_get_bsd_idx(ctx, channel);
 
-	PoserDataLightGen2 l = {.hdr =
+	PoserDataLightGen2 l = {.common =
 								{
-									.pt = POSERDATA_LIGHT_GEN2,
+									.hdr =
+										{
+											.pt = POSERDATA_LIGHT_GEN2,
+										},
+									.sensor_id = sensor_id,
+									.timecode = timecode,
+									.angle = angle,
+									.lh = bsd_idx,
 								},
-							.sensor_id = sensor_id,
-							.timecode = timecode,
-							.angle = angle,
-							.lh = bsd_idx,
 							.plane = plane};
 
 	// Simulate the use of only one lighthouse in playback mode.

@@ -277,7 +277,8 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 	}
 
 	case POSERDATA_SYNC: {
-		PoserDataLight *l = (PoserDataLight *)pd;
+		PoserDataLightGen1 *lg1 = (PoserDataLightGen1 *)pd;
+		PoserDataLight *l = &lg1->common;
 		int lhid = l->lh;
 		// you can get sweepaxis and sweeplh.
 		if (dd->ptsweep) {
@@ -539,7 +540,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 			}
 		}
 
-		dd->sweepaxis = l->acode & 1;
+		dd->sweepaxis = lg1->acode & 1;
 		// printf( "SYNC %d %p\n", l->acode, dd );
 		break;
 	}

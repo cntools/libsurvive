@@ -37,9 +37,6 @@ STATIC_CONFIG_ITEM(RUN_EVERY_N_SYNCS, "syncs-per-run", 'i', "Number of sync puls
 typedef struct MPFITData {
 	GeneralOptimizerData opt;
 
-	int last_acode;
-	int last_lh;
-
 	int disable_lighthouse;
 	int sensor_time_window;
 	// > 0; use jacobian, 0 don't use, < 0 debug
@@ -345,9 +342,6 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		if (++d->syncs_per_run_cnt >= d->syncs_per_run) {
 			d->syncs_per_run_cnt = 0;
 			error = run_mpfit_find_3d_structure(d, lightData, scene, &estimate);
-
-			d->last_lh = lightData->lh;
-			d->last_acode = lightData->acode;
 
 			if (error > 0) {
 
