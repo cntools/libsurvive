@@ -30,12 +30,6 @@
 #include "driver_vive.h"
 //#define DEBUG_WATCHMAN 1
 
-#ifdef DEBUG_WATCHMAN
-#define SV_VERBOSE SV_INFO
-#else
-#define SV_VERBOSE(...)
-#endif
-
 STATIC_CONFIG_ITEM(LHV2_ENABLE, "lhv2-experimental", 'i', "Allow system to work with lighthouse v2.", 0);
 
 struct SurviveViveData;
@@ -1328,7 +1322,7 @@ static size_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPtr
 	}
 
 	times[0] = lastEventTime;
-	SV_VERBOSE("Packet Start Time: %u", lastEventTime);
+	SV_VERBOSE(100, "Packet Start Time: %u", lastEventTime);
 
 	while (idsPtr < eventPtr) {
 		// There are two time deltas per 'event'
@@ -1355,7 +1349,7 @@ static size_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPtr
 
 		// Store the event time
 		times[++timeIndex] = lastEventTime;
-		SV_VERBOSE("Time: [%zd] %u (%u)", timeIndex, lastEventTime, timeDelta);
+		SV_VERBOSE(100, "Time: [%zd] %u (%u)", timeIndex, lastEventTime, timeDelta);
 	}
 
 	// Step 2 - Convert events to pulses

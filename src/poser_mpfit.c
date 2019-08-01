@@ -75,13 +75,16 @@ static size_t construct_input_from_scene(const MPFITData *d, size_t timecode, co
 	SurviveContext *ctx = so->ctx;
 
 	bool isStationary = SurviveSensorActivations_stationary_time(&so->activations) > so->timebase_hz;
+	survive_timecode sensor_time_window = isStationary ? (so->timebase_hz / 2) : d->sensor_time_window;
 	const bool force_pair = false;
 	for (uint8_t lh = 0; lh < ctx->activeLighthouses; lh++) {
-		if (d->disable_lighthouse == lh)
+		if (d->disable_lighthouse == lh) {
 			continue;
+		}
 
-		if (!ctx->bsd[lh].PositionSet && (!isStationary || !ctx->bsd[lh].OOTXSet))
+		if (!ctx->bsd[lh].PositionSet && (!isStationary || !ctx->bsd[lh].OOTXSet)) {
 			continue;
+		}
 
 		bool isCandidate = !ctx->bsd[lh].PositionSet;
 		size_t candidate_meas = 10;
@@ -90,10 +93,10 @@ static size_t construct_input_from_scene(const MPFITData *d, size_t timecode, co
 		for (uint8_t sensor = 0; sensor < so->sensor_ct; sensor++) {
 			for (uint8_t axis = 0; axis < 2; axis++) {
 				bool isReadingValue =
-					SurviveSensorActivations_isReadingValid(scene, d->sensor_time_window, timecode, sensor, lh, axis);
+					SurviveSensorActivations_isReadingValid(scene, sensor_time_window, timecode, sensor, lh, axis);
 				if (force_pair) {
 					isReadingValue =
-						SurviveSensorActivations_isPairValid(scene, d->sensor_time_window, timecode, sensor, lh);
+						SurviveSensorActivations_isPairValid(scene, sensor_time_window, timecode, sensor, lh);
 				}
 				if (isReadingValue) {
 					const double *a = scene->angles[sensor][lh];
@@ -272,8 +275,10 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 
 			SurvivePose *cameras = survive_optimizer_get_camera(&mpfitctx);
 			for (int i = 0; i < mpfitctx.cameraLength; i++) {
-				if (!quatiszero(cameras[i].Rot))
+				if (!quatiszero(cameras[i].Rot)) {
 					cameras[i] = InvertPoseRtn(&cameras[i]);
+					SV_INFO("Solved for %d with error of %f/%f", i, result.orignorm, result.bestnorm);
+				}
 			}
 			PoserData_lighthouse_poses_func(&pdl->hdr, so, cameras, ctx->activeLighthouses, soLocation);
 		}

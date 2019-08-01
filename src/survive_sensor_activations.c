@@ -44,11 +44,7 @@ void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct Pos
 
 	for (int i = 0; i < 3; i++) {
 		self->accel[i] = .98 * self->accel[i] + .02 * imuData->accel[i];
-	}
-	for (int i = 0; i < 3; i++) {
 		self->gyro[i] = .98 * self->gyro[i] + .02 * imuData->gyro[i];
-	}
-	for (int i = 0; i < 3; i++) {
 		self->mag[i] = .98 * self->mag[i] + .02 * imuData->mag[i];
 	}
 
@@ -56,7 +52,6 @@ void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct Pos
 		survive_long_timecode long_timecode =
 			((survive_long_timecode)self->rollover_count << 32u) | imuData->hdr.timecode;
 		self->last_movement = long_timecode;
-		// printf("%f\n", dist3d(self->accel, imuData->accel));
 	}
 }
 void SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct PoserDataLightGen2 *lightData) {

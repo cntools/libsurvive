@@ -276,7 +276,7 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 						SurvivePose lh2obj = solve_correspondence(dd, true);
 						if (quatmagnitude(lh2obj.Rot) != 0) {
 							solved++;
-							SV_INFO("Possible SVD solution for %d", lh);
+							SV_VERBOSE(5, "Possible SVD solution for %d", lh);
 							if (quatiszero(obj2world.Rot))
 								lh2world[lh] = lh2obj;
 							else

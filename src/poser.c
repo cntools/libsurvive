@@ -81,9 +81,9 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 		poser_data->lighthouseposeproc(so, lighthouse, lighthouse_pose, object_pose, poser_data->userdata);
 	} else {
 		const FLT up[3] = {0, 0, 1};
+		SurviveContext *ctx = so->ctx;
 
 		if (quatmagnitude(lighthouse_pose->Rot) == 0) {
-			SurviveContext *ctx = so->ctx;
 			SV_INFO("Pose func called with invalid pose.");
 			return;
 		}

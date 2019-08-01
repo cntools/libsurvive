@@ -27,7 +27,7 @@ void handle_lightcap(SurviveObject *so, const LightcapElement *_le) {
 	// reliably change to lh_version == 1. If we see 50+ lightcap packets
 	// without these gen2 packets we can just call it for gen1.
 	if (so->ctx->lh_version == -1) {
-		if (_le->length == 0x8000) {
+		if (_le->length >= 0x8000) {
 			survive_notify_gen2(so);
 			return;
 		} else {

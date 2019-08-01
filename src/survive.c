@@ -294,6 +294,8 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 		}
 	}
 
+	ctx->log_level = survive_configi(ctx, "v", SC_SETCONFIG, 0);
+
 	config_read(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
 	ctx->activeLighthouses = survive_configi(ctx, "lighthousecount", SC_SETCONFIG, 2);
 
@@ -369,16 +371,12 @@ void *GetDriverByConfig(SurviveContext *ctx, const char *name, const char *confi
 	void *func = 0;
 	int prefixLen = strlen(name);
 
-	int verbose = survive_configi(ctx, "v", SC_SETCONFIG, 0);
-
-	if (verbose > 1)
-		SV_INFO("Available %ss:", name);
+	SV_VERBOSE(1, "Available %ss:", name);
 	while ((DriverName = GetDriverNameMatching(name, i++))) {
 		void *p = GetDriver(DriverName);
 
 		bool match = strcmp(DriverName, Preferred) == 0 || strcmp(DriverName + prefixLen, Preferred) == 0;
-		if (verbose > 1)
-			SV_INFO("\t%c%s", match ? '*' : ' ', DriverName + prefixLen);
+		SV_VERBOSE(1, "\t%c%s", match ? '*' : ' ', DriverName + prefixLen);
 		if (!func || match) {
 			func = p;
 			picked = (DriverName + prefixLen);
@@ -388,10 +386,9 @@ void *GetDriverByConfig(SurviveContext *ctx, const char *name, const char *confi
 		SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Error.  Cannot find any valid %s.", name);
 		return 0;
 	}
-	if (verbose > 1)
-		SV_INFO("Totals %d %ss.", i - 1, name);
-	if (verbose > 0)
-		SV_INFO("Using '%s' for %s", picked, configname);
+
+	SV_VERBOSE(1, "Totals %d %ss.", i - 1, name);
+	SV_VERBOSE(1, "Using '%s' for %s", picked, configname);
 
 	return func;
 }
@@ -468,6 +465,14 @@ int survive_startup(SurviveContext *ctx) {
 
 	// saving the config extra to make sure that the user has a config file they can change.
 	config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
+
+	int calibrateMandatory = survive_configi(ctx, "force-calibrate", SC_GET, 0);
+	if (calibrateMandatory) {
+		SV_INFO("Force calibrate flag set -- clearing position on all lighthouses");
+		for (int i = 0; i < ctx->activeLighthouses; i++) {
+			ctx->bsd[i].PositionSet = 0;
+		}
+	}
 
 	// If lighthouse positions are known, broadcast them
 	for (int i = 0; i < ctx->activeLighthouses; i++) {

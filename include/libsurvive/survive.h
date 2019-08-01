@@ -282,6 +282,8 @@ struct SurviveContext {
 
 	void *user_ptr;
 
+	int log_level;
+
 	struct config_group *global_config_values;
 	struct config_group *lh_config; // lighthouse configs
 	struct config_group	*temporary_config_values; // Set per-session, from command-line. Not saved but override global_config_values
@@ -432,6 +434,13 @@ SURVIVE_EXPORT void handle_lightcap(SurviveObject *so, const LightcapElement *le
 		char stbuff[1024];                                                                                             \
 		sprintf(stbuff, __VA_ARGS__);                                                                                  \
 		SV_LOG_NULL_GUARD ctx->infofunction(ctx, stbuff);                                                              \
+	}
+
+#define SV_VERBOSE(lvl, ...)                                                                                           \
+	{                                                                                                                  \
+		if (ctx == 0 || ctx->log_level >= lvl) {                                                                       \
+			SV_INFO(__VA_ARGS__);                                                                                      \
+		}                                                                                                              \
 	}
 
 #define SV_ERROR(errorCode, ...)                                                                                       \

@@ -227,13 +227,5 @@ SURVIVE_EXPORT void survive_default_gen_detected_process(SurviveObject *so, int 
 				survive_cal_install(ctx);
 			}
 		}
-	} else {
-		int calibrateMandatory = survive_configi(ctx, "force-calibrate", SC_GET, 0);
-		if (calibrateMandatory) {
-			SV_INFO("Force calibrate flag set -- clearing position on all lighthouses");
-			for (int i = 0; i < ctx->activeLighthouses; i++) {
-				ctx->bsd[i].PositionSet = 0;
-			}
-		}
 	}
 }
