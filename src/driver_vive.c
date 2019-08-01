@@ -331,6 +331,41 @@ static inline int update_feature_report(libusb_device_handle *dev, uint16_t inte
 								   0x09, 0x300 | data[0], interface, data, datalen, 1000);
 }
 
+int libusb_control_transfer_async(libusb_device_handle *dev_handle, uint8_t bmRequestType, uint8_t bRequest,
+								  uint16_t wValue, uint16_t wIndex, unsigned char *data, uint16_t wLength,
+								  unsigned int timeout) {
+	struct libusb_transfer *transfer = libusb_alloc_transfer(0);
+	unsigned char *buffer;
+	int completed = 0;
+	int r;
+	if (!transfer)
+		return LIBUSB_ERROR_NO_MEM;
+
+	buffer = malloc(LIBUSB_CONTROL_SETUP_SIZE + wLength);
+	if (!buffer) {
+		libusb_free_transfer(transfer);
+		return LIBUSB_ERROR_NO_MEM;
+	}
+	libusb_fill_control_setup(buffer, bmRequestType, bRequest, wValue, wIndex, wLength);
+	if ((bmRequestType & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_OUT)
+		memcpy(buffer + LIBUSB_CONTROL_SETUP_SIZE, data, wLength);
+	libusb_fill_control_transfer(transfer, dev_handle, buffer, libusb_free_transfer, &completed, timeout);
+	transfer->flags = LIBUSB_TRANSFER_FREE_BUFFER;
+	r = libusb_submit_transfer(transfer);
+	if (r < 0) {
+		libusb_free_transfer(transfer);
+		return r;
+	}
+	return wLength;
+}
+
+static inline int update_feature_report_async(libusb_device_handle *dev, uint16_t interface, uint8_t *data,
+											  int datalen) {
+	return libusb_control_transfer_async(dev,
+										 LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_OUT,
+										 0x09, 0x300 | data[0], interface, data, datalen, 1000);
+}
+
 static inline int getupdate_feature_report(libusb_device_handle *dev, uint16_t interface, uint8_t *data, int datalen) {
 
 	int ret = libusb_control_transfer(dev, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_IN,
@@ -1976,12 +2011,18 @@ void survive_data_cb(SurviveUSBInterface *si) {
 				if (obj->ctx->lh_version != 1) {
 					handle_lightcap(obj, &le);
 				} else {
-					fprintf(stderr, "sensor: %2d         time: %8u length: %4d end_time: %8u\n", le.sensor_id,
-							le.timestamp, le.length, le.length + le.timestamp);
+					fprintf(stderr, "sensor: %2d         time: %3.5f length: %4d end_time: %8u\n", le.sensor_id,
+							le.timestamp / 48000000., le.length, le.length + le.timestamp);
 				}
 			}
 		} else if (id == 39) { // LHv2
 			survive_notify_gen2(obj);
+
+			int r = update_feature_report_async(si->transfer->dev_handle, 0, vive_magic_raw_mode_1,
+												sizeof(vive_magic_raw_mode_1));
+			if (r != sizeof(vive_magic_raw_mode_1)) {
+				SV_WARN("Could not send raw mode to %s (%d)", obj->codename, r);
+			}
 
 #pragma pack(push, 1)
 			struct lh2_entry {
@@ -1997,8 +2038,8 @@ void survive_data_cb(SurviveUSBInterface *si) {
 				struct lh2_entry *entry = &entries[i];
 				if (entry->code == 0xff)
 					break;
-				fprintf(stderr, "sensor: %2u flag: %u time: %8u (%7u) %f ", entry->code & 0x7f, (entry->code & 0x80) > 0,
-						entry->time, entry->time - last_time, entry->time / (48000000.));
+				fprintf(stderr, "sensor: %2u flag: %u time: %3.5f (%7u)", entry->code & 0x7f, (entry->code & 0x80) > 0,
+						entry->time / 48000000., entry->time - last_time);
 
 				for (int j = 0; j < 8; j++) {
 					for (int k = 0; k < 8; k++)

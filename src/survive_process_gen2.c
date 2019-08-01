@@ -182,6 +182,16 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 SURVIVE_EXPORT void survive_default_gen_detected_process(SurviveObject *so, int lh_version) {
 	SurviveContext *ctx = so->ctx;
 
+	if (ctx->lh_version != -1) {
+		static bool seenWarning = false;
+		if (seenWarning == false) {
+			SV_WARN("Detected both LH gen1 and LH gen2 systems. Mixed mode is only supported for experimentation.");
+			seenWarning = true;
+		}
+
+		ctx->lh_version = 3;
+		return;
+	}
 	assert(ctx->lh_version == -1);
 
 	SV_INFO("Detected LH gen %d system.", lh_version + 1);
