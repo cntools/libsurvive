@@ -1997,6 +1997,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 	}
 	case USB_IF_HMD_LIGHTCAP:
 	case USB_IF_TRACKER1_LIGHTCAP: {
+		bool dump_binary = false;
 		if (id == 37) { // LHv1
 			int i;
 			for (i = 0; i < 9; i++) {
@@ -2010,7 +2011,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 
 				if (obj->ctx->lh_version != 1) {
 					handle_lightcap(obj, &le);
-				} else {
+				} else if (dump_binary) {
 					fprintf(stderr, "sensor: %2d         time: %3.5f length: %4d end_time: %8u\n", le.sensor_id,
 							le.timestamp / 48000000., le.length, le.length + le.timestamp);
 				}
@@ -2024,43 +2025,44 @@ void survive_data_cb(SurviveUSBInterface *si) {
 				SV_WARN("Could not send raw mode to %s (%d)", obj->codename, r);
 			}
 
+			if (dump_binary) {
 #pragma pack(push, 1)
-			struct lh2_entry {
-				uint8_t code; // sensor with some bit flag. Continuation flag?
-				uint32_t time;
-				uint8_t data[8];
-			};
+				struct lh2_entry {
+					uint8_t code; // sensor with some bit flag. Continuation flag?
+					uint32_t time;
+					uint8_t data[8];
+				};
 #pragma pack(pop)
 
-			struct lh2_entry *entries = (struct lh2_entry *)readdata;
-			static uint32_t last_time = 0;
-			for (int i = 0; i < 4; i++) {
-				struct lh2_entry *entry = &entries[i];
-				if (entry->code == 0xff)
-					break;
-				fprintf(stderr, "sensor: %2u flag: %u time: %3.5f (%7u)", entry->code & 0x7f, (entry->code & 0x80) > 0,
-						entry->time / 48000000., entry->time - last_time);
+				struct lh2_entry *entries = (struct lh2_entry *)readdata;
+				static uint32_t last_time = 0;
+				for (int i = 0; i < 4; i++) {
+					struct lh2_entry *entry = &entries[i];
+					if (entry->code == 0xff)
+						break;
+					fprintf(stderr, "sensor: %2u flag: %u time: %3.5f (%7u)", entry->code & 0x7f,
+							(entry->code & 0x80) > 0, entry->time / 48000000., entry->time - last_time);
 
-				for (int j = 0; j < 8; j++) {
-					for (int k = 0; k < 8; k++)
-						fprintf(stderr, "%d", ((entry->data[j] >> (8 - k - 1)) & 1));
+					for (int j = 0; j < 8; j++) {
+						for (int k = 0; k < 8; k++)
+							fprintf(stderr, "%d", ((entry->data[j] >> (8 - k - 1)) & 1));
+					}
+
+					last_time = entry->time;
+					fprintf(stderr, "\n");
 				}
 
-				last_time = entry->time;
+				for (int i = 59 - 7; i < 59; i++) {
+					fprintf(stderr, "%02x ", readdata[i]);
+				}
 				fprintf(stderr, "\n");
 			}
-
-			for (int i = 59 - 7; i < 59; i++) {
-				fprintf(stderr, "%02x ", readdata[i]);
-			}
-			fprintf(stderr, "\n");
 		} else if (id == 40) {
 			survive_notify_gen2(obj);
 
 			uint8_t *packet = readdata + 1;
 			uint8_t length = readdata[0];
 			uint8_t idx = 0;
-			bool dump_binary = false;
 			uint8_t channel = -1;
 			while (idx < length) {
 				uint8_t data = packet[idx];
