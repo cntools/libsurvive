@@ -169,12 +169,13 @@ void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so, S
 										   poser_data->userdata);
 		}
 	} else {
-
 		SurvivePose object2World;
 		if (object_pose == 0 || quatiszero(object_pose->Rot))
 			object2World = so->OutPoseIMU;
 		else
 			object2World = *object_pose;
+
+		bool worldEstablished = !quatiszero(object2World.Rot);
 
 		for (int lh = 0; lh < lighthouse_count; lh++) {
 			SurvivePose lh2object = lighthouse_pose[lh];
@@ -182,7 +183,7 @@ void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so, S
 				quatnormalize(lh2object.Rot, lh2object.Rot);
 
 				SurvivePose lh2world = lh2object;
-				if (!quatiszero(object2World.Rot)) {
+				if (!quatiszero(object2World.Rot) && worldEstablished == false) {
 					ApplyPoseToPose(&lh2world, &object2World, &lh2object);
 				}
 

@@ -75,6 +75,7 @@ typedef struct {
 #define BUTTON_EVENT_AXIS_CHANGED  3
 
 typedef uint32_t survive_timecode;
+typedef uint64_t survive_long_timecode;
 
 // Lighthouse gen 2 channel/mode
 typedef uint8_t survive_channel;

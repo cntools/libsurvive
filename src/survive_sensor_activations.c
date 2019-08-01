@@ -26,8 +26,27 @@ bool SurviveSensorActivations_isPairValid(const SurviveSensorActivations *self, 
 	return !(timecode_now - data_timecode[0] > tolerance || timecode_now - data_timecode[1] > tolerance);
 }
 
+survive_timecode SurviveSensorActivations_stationary_time(const SurviveSensorActivations *self) {
+	survive_long_timecode last_imu = ((survive_long_timecode)self->rollover_count << 32u) | self->last_imu;
+	survive_long_timecode last_move = self->last_movement;
+	survive_long_timecode time_elapsed = last_imu - last_move;
+	if (time_elapsed > 0xFFFFFFFF)
+		return 0xFFFFFFFF;
+
+	return time_elapsed;
+}
+
 void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct PoserDataIMU *imuData) {
+	if (self->last_imu > imuData->timecode) {
+		self->rollover_count++;
+	}
 	self->last_imu = imuData->timecode;
+
+	if (norm3d(imuData->gyro) > .05) {
+		survive_long_timecode long_timecode = ((survive_long_timecode)self->rollover_count << 32u) | imuData->timecode;
+		self->last_movement = long_timecode;
+	}
+
 	for (int i = 0; i < 3; i++) {
 		self->accel[i] = .98 * self->accel[i] + .02 * imuData->accel[i];
 	}

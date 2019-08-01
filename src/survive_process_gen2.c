@@ -171,12 +171,6 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 	if (so->PoserFn) {
 		so->PoserFn(so, (PoserData *)&l);
 	}
-
-	if (!so->ctx->bsd[bsd_idx].PositionSet && so->ctx->bsd[bsd_idx].OOTXSet && so->PoserFn) {
-		PoserDataFullScene pdfs = {.hdr = {.pt = POSERDATA_FULL_SCENE}};
-		Activations2PoserDataFullScene(&so->activations, &pdfs);
-		so->PoserFn(so, &pdfs.hdr);
-		}
 }
 
 SURVIVE_EXPORT void survive_default_gen_detected_process(SurviveObject *so, int lh_version) {
@@ -228,6 +222,14 @@ SURVIVE_EXPORT void survive_default_gen_detected_process(SurviveObject *so, int 
 			if (doCalibrate && ctx->objs_ct > 0) {
 				ctx->bsd[0].PositionSet = ctx->bsd[1].PositionSet = false;
 				survive_cal_install(ctx);
+			}
+		}
+	} else {
+		int calibrateMandatory = survive_configi(ctx, "force-calibrate", SC_GET, 0);
+		if (calibrateMandatory) {
+			SV_INFO("Force calibrate flag set -- clearing position on all lighthouses");
+			for (int i = 0; i < ctx->activeLighthouses; i++) {
+				ctx->bsd[i].PositionSet = 0;
 			}
 		}
 	}

@@ -32,7 +32,9 @@ typedef struct SurviveSensorActivations_s {
 	// Valid only for Gen1
 	survive_timecode lengths[SENSORS_PER_OBJECT][NUM_GEN1_LIGHTHOUSES][2]; // Timecode per axis in ticks
 
+	uint32_t rollover_count;
 	survive_timecode last_imu;
+	survive_long_timecode last_movement; // Tracks the timecode of the last IMU packet which saw movement.
 	FLT accel[3];
 	FLT gyro[3];
 	FLT mag[3];
@@ -67,6 +69,11 @@ SURVIVE_EXPORT bool SurviveSensorActivations_isReadingValid(const SurviveSensorA
  */
 SURVIVE_EXPORT bool SurviveSensorActivations_isPairValid(const SurviveSensorActivations *self, survive_timecode tolerance,
 										  survive_timecode timecode_now, uint32_t sensor_idx, int lh);
+
+/**
+ * Returns the amount of time stationary
+ */
+SURVIVE_EXPORT survive_timecode SurviveSensorActivations_stationary_time(const SurviveSensorActivations *self);
 
 /**
  * Default tolerance that gives a somewhat accuate representation of current state.
@@ -135,7 +142,6 @@ struct SurviveObject {
 	survive_timecode last_sync_time[NUM_GEN2_LIGHTHOUSES];
 	survive_timecode last_sync_length[NUM_GEN1_LIGHTHOUSES];
 	survive_timecode recent_sync_time;
-
 	survive_timecode last_lighttime; // May be a 24- or 32- bit number depending on what device.
 
 	FLT imu_freq;

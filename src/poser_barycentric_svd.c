@@ -8,6 +8,10 @@
 
 typedef struct {
 	SurviveObject *so;
+	uint32_t required_meas;
+
+	FLT max_error_obj;
+	FLT max_error_cal;
 
 	bc_svd bc;
 } PoserDataSVD;
@@ -57,6 +61,10 @@ static void survive_fill_m(void *user, double *eq, int axis, FLT angle) {
 static PoserDataSVD *PoserDataSVD_new(SurviveObject *so) {
 	PoserDataSVD *rtn = calloc(sizeof(PoserDataSVD), 1);
 	rtn->so = so;
+	rtn->required_meas = survive_configi(so->ctx, "epnp-required-meas", SC_GET, 10);
+
+	survive_attach_configf(so->ctx, "max-error", &rtn->max_error_obj);
+	survive_attach_configf(so->ctx, "max-cal-error", &rtn->max_error_cal);
 
 	bc_svd_bc_svd(&rtn->bc, so, survive_fill_m, (LinmathPoint3d *)so->sensor_locations, so->sensor_ct);
 
@@ -69,7 +77,6 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 	SurviveContext *ctx = so->ctx;
 	// std::cerr << "Solving for " << cal_imagePoints.size() << " correspondents" << std::endl;
 	if (dd->bc.meas_cnt <= 6) {
-
 		SV_WARN("Can't solve for only %u points\n", (int)dd->bc.meas_cnt);
 		return rtn;
 	}
@@ -91,17 +98,15 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 		return rtn;
 	}
 
-	static SurvivePose p = {0};
-	if (!quatiszero(p.Rot)) {
-		if (dist3d(rtn.Pos, p.Pos) > 1) {
-			p = (SurvivePose){0};
-		}
-	} else {
-		p = rtn;
-		p.Rot[0] = 1;
-	}
-
 	// SV_INFO("BaryCentricSVD for %s has err %f " SurvivePose_format, so->codename, err, SURVIVE_POSE_EXPAND(rtn));
+
+	FLT allowable_error = cameraToWorld ? dd->max_error_cal : dd->max_error_obj;
+	if (allowable_error < err) {
+		if (cameraToWorld) {
+			SV_WARN("Camera reprojection error was too high: %f for %d meas", err, dd->bc.meas_cnt);
+		}
+		return rtn;
+	}
 
 	// Requested output is camera -> world, so invert
 	if (cameraToWorld) {
@@ -208,35 +213,34 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 		PoserDataLight *lightData = (PoserDataLight *)pd;
 		SurviveContext *ctx = so->ctx;
 
-		SurvivePose posers[NUM_GEN2_LIGHTHOUSES] = {0};
+		SurvivePose objs2world[NUM_GEN2_LIGHTHOUSES] = {0};
 		int meas[NUM_GEN2_LIGHTHOUSES] = {0};
-
+		bool hasLighthousePoses = false;
+		bool hasUnsolvedLighthousePoses = false;
 		for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
 			if (so->ctx->bsd[lh].PositionSet) {
+				hasLighthousePoses = true;
 				add_correspondences(so, &dd->bc, lightData->timecode, lh);
-				static int required_meas = -1;
-				if (required_meas == -1)
-					required_meas = survive_configi(so->ctx, "epnp-required-meas", SC_GET, 10);
 
-				if (dd->bc.meas_cnt >= required_meas) {
+				if (dd->bc.meas_cnt >= dd->required_meas) {
 
-					SurvivePose objInLh = solve_correspondence(dd, false);
-					if (quatmagnitude(objInLh.Rot) != 0) {
+					SurvivePose obj2Lh = solve_correspondence(dd, false);
+					if (quatmagnitude(obj2Lh.Rot) != 0) {
 						SurvivePose *lh2world = &so->ctx->bsd[lh].Pose;
 
-						SurvivePose txPose = {.Rot = {1}};
-						ApplyPoseToPose(&txPose, lh2world, &objInLh);
-						posers[lh] = txPose;
+						ApplyPoseToPose(&objs2world[lh], lh2world, &obj2Lh);
 						meas[lh] = dd->bc.meas_cnt;
 					}
 				}
+			} else {
+				hasUnsolvedLighthousePoses = true;
 			}
 		}
 
 		int maxMeas = 0;
 		int maxMeasIdx = 0;
 		for (int lh = 0; lh < NUM_GEN2_LIGHTHOUSES; lh++) {
-			if (quatiszero(posers[lh].Rot))
+			if (quatiszero(objs2world[lh].Rot))
 				continue;
 
 			if (maxMeas < meas[lh]) {
@@ -245,8 +249,39 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 			}
 		}
 
-		if (maxMeas > 0 && !quatiszero(posers[maxMeasIdx].Rot)) {
-			PoserData_poser_pose_func(pd, so, &posers[maxMeasIdx]);
+		SurvivePose obj2world = {};
+		bool allowLHSolve = !hasLighthousePoses;
+		if (maxMeas > 0 && !quatiszero(objs2world[maxMeasIdx].Rot)) {
+			obj2world = objs2world[maxMeasIdx];
+			PoserData_poser_pose_func(pd, so, &obj2world);
+			allowLHSolve = hasUnsolvedLighthousePoses;
+		}
+
+		// If we haven't moved for a second; try to solve for unsolved lighthouses
+		if (allowLHSolve && SurviveSensorActivations_stationary_time(&so->activations) > so->timebase_hz) {
+			SurvivePose lh2world[NUM_GEN2_LIGHTHOUSES] = {};
+			int solved = 0;
+			for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
+				if (!so->ctx->bsd[lh].PositionSet && so->ctx->bsd[lh].OOTXSet) {
+					add_correspondences(so, &dd->bc, lightData->timecode, lh);
+
+					if (dd->bc.meas_cnt >= dd->required_meas) {
+						SurvivePose lh2obj = solve_correspondence(dd, true);
+						if (quatmagnitude(lh2obj.Rot) != 0) {
+							solved++;
+							if (quatiszero(obj2world.Rot))
+								lh2world[lh] = lh2obj;
+							else
+								ApplyPoseToPose(&lh2world[lh], &obj2world, &lh2obj);
+						}
+					}
+				}
+			}
+
+			if (solved) {
+				SV_INFO("Found solution to %d lighthouses", solved);
+				PoserData_lighthouse_poses_func(pd, so, lh2world, so->ctx->activeLighthouses, &obj2world);
+			}
 		}
 
 		return 0;
