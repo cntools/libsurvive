@@ -780,7 +780,7 @@ function animate() {
 	render();
 	redrawCanvas(timecode);
 }
-var showPlanes = true;
+var showPlanes = false;
 var ang = 0;
 function render() {
 	Object.keys(lighthouses).forEach(function(idx) {
