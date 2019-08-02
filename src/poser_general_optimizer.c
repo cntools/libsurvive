@@ -129,7 +129,7 @@ bool general_optimizer_data_record_current_pose(GeneralOptimizerData *d, PoserDa
 			assert(len_hdr >= sizeof(PoserDataLight));
 
 			PoserDataLight *pl = (PoserDataLight *)event;
-			set_position_t locations = {};
+			set_position_t locations = { 0 };
 
 			pl->hdr.lighthouseposeproc = set_cameras;
 			pl->hdr.poseproc = set_position;

@@ -429,7 +429,7 @@ void copy_R_and_t(const double R_src[3][3], const double t_src[3], double R_dst[
 
 double bc_svd_compute_pose(bc_svd *self, double R[3][3], double t[3]) {
 	CvMat *M = cvCreateMat(self->meas_cnt, 12, CV_64F);
-	bool colCovered[12] = {};
+	bool colCovered[12] = { 0 };
 	for (int i = 0; i < self->meas_cnt; i++) {
 		size_t obj_pt_idx = self->meas[i].obj_idx;
 		bc_svd_fill_M(self, M, i, self->setup.alphas[obj_pt_idx], self->meas[i].axis, self->meas[i].angle);
@@ -466,8 +466,8 @@ double bc_svd_compute_pose(bc_svd *self, double R[3][3], double t[3]) {
 
 	bc_svd_compute_rho(self, rho);
 
-	double Betas[4][4] = {}, rep_errors[4] = {};
-	double Rs[4][3][3] = {}, ts[4][3] = {};
+	double Betas[4][4] = { 0 }, rep_errors[4] = { 0 };
+	double Rs[4][3][3] = { 0 }, ts[4][3] = { 0 };
 
 	find_betas_approx_1(&L_6x10, &Rho, Betas[1]);
 	gauss_newton(&L_6x10, &Rho, Betas[1]);

@@ -312,7 +312,7 @@ static double run_sba(SBAData *d, PoserDataFullScene *pdfs, SurviveObject *so, i
 								info);			// info
 
 	if (status >= 0) {
-		SurvivePose lh2objects[NUM_GEN2_LIGHTHOUSES] = {};
+		SurvivePose lh2objects[NUM_GEN2_LIGHTHOUSES] = { 0 };
 
 		for (int i = 0; i < so->ctx->activeLighthouses; i++) {
 			lh2objects[i] = sbactx.camera_params[i];

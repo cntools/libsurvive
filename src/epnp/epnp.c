@@ -538,8 +538,8 @@ double epnp_compute_pose(epnp *self, double R[3][3], double t[3]) {
 
 	epnp_compute_rho(self, rho);
 
-	double Betas[4][4] = {}, rep_errors[4] = {};
-	double Rs[4][3][3] = {}, ts[4][3] = {};
+	double Betas[4][4] = {0}, rep_errors[4] = {0};
+	double Rs[4][3][3] = {0}, ts[4][3] = {0};
 
 	find_betas_approx_1(&L_6x10, &Rho, Betas[1]);
 	gauss_newton(&L_6x10, &Rho, Betas[1]);

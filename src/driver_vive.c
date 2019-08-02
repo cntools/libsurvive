@@ -30,8 +30,6 @@
 #include "driver_vive.h"
 //#define DEBUG_WATCHMAN 1
 
-STATIC_CONFIG_ITEM(LHV2_ENABLE, "lhv2-experimental", 'i', "Allow system to work with lighthouse v2.", 0);
-
 struct SurviveViveData;
 
 struct DeviceInfo {
@@ -2012,12 +2010,23 @@ void survive_data_cb(SurviveUSBInterface *si) {
 			}
 		} else if (id == 39) { // LHv2
 			survive_notify_gen2(obj);
+#ifdef HIDAPI
+			// TODO: This seems hacky....
+			for (int i = 0; i < si->sv->udev_cnt; i++) {
+				struct SurviveUSBInfo *usbInfo = &si->sv->udev[i];
+				int r = update_feature_report(usbInfo->handle, 0, vive_magic_raw_mode_1, sizeof(vive_magic_raw_mode_1));
+				if (r != sizeof(vive_magic_raw_mode_1)) {
+					SV_WARN("Could not send raw mode to %s (%d): %S", obj->codename, r, hid_error(si->uh));
+				}
 
+			}
+	#else
 			int r = update_feature_report_async(si->transfer->dev_handle, 0, vive_magic_raw_mode_1,
 												sizeof(vive_magic_raw_mode_1));
 			if (r != sizeof(vive_magic_raw_mode_1)) {
 				SV_WARN("Could not send raw mode to %s (%d)", obj->codename, r);
 			}
+#endif
 
 			if (dump_binary) {
 #pragma pack(push, 1)

@@ -152,7 +152,7 @@ static int solve_fullscene(PoserDataSVD *dd, PoserDataFullScene *pdfs) {
 		}
 	}
 
-	SurvivePose lh2objects[NUM_GEN2_LIGHTHOUSES] = {};
+	SurvivePose lh2objects[NUM_GEN2_LIGHTHOUSES] = { 0 };
 
 	for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
 		if (so->ctx->bsd[lh].PositionSet) {
@@ -212,7 +212,7 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 		PoserDataLight *lightData = (PoserDataLight *)pd;
 		SurviveContext *ctx = so->ctx;
 
-		SurvivePose obj2world = {};
+		SurvivePose obj2world = { 0 };
 		bool allowSolveLH = !lightData->no_lighthouse_solve;
 		if (lightData->assume_current_pose == false) {
 			bool canSolveLH = lightData->assume_current_pose;
@@ -266,7 +266,7 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 
 		// If we haven't moved for a second; try to solve for unsolved lighthouses
 		if (allowSolveLH && SurviveSensorActivations_stationary_time(&so->activations) > so->timebase_hz) {
-			SurvivePose lh2world[NUM_GEN2_LIGHTHOUSES] = {};
+			SurvivePose lh2world[NUM_GEN2_LIGHTHOUSES] = { 0 };
 			int solved = 0;
 			for (int lh = 0; lh < ctx->activeLighthouses; lh++) {
 				if (!so->ctx->bsd[lh].PositionSet && so->ctx->bsd[lh].OOTXSet) {

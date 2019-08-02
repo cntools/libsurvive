@@ -206,7 +206,7 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 	if (quatiszero(soLocation->Rot))
 		soLocation->Rot[0] = 1;
 
-	size_t meas_for_lhs[NUM_GEN2_LIGHTHOUSES] = {};
+	size_t meas_for_lhs[NUM_GEN2_LIGHTHOUSES] = { 0 };
 	size_t meas_size = construct_input_from_scene(d, pdl->hdr.timecode, scene, meas_for_lhs, mpfitctx.measurements);
 
 	if (mpfitctx.current_bias > 0) {
@@ -224,7 +224,7 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 		}
 	}
 
-	SurvivePose lhs[NUM_GEN2_LIGHTHOUSES] = {};
+	SurvivePose lhs[NUM_GEN2_LIGHTHOUSES] = { 0 };
 	if (canPossiblySolveLHS) {
 		if (general_optimizer_data_record_current_lhs(&d->opt, pdl, lhs)) {
 			for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
@@ -271,7 +271,7 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 
 		if (canPossiblySolveLHS) {
 			if (!worldEstablished)
-				*soLocation = (SurvivePose){};
+				*soLocation = (SurvivePose){ 0 };
 
 			SurvivePose *cameras = survive_optimizer_get_camera(&mpfitctx);
 			for (int i = 0; i < mpfitctx.cameraLength; i++) {
@@ -360,7 +360,7 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 		general_optimizer_data_record_success(&d->opt, result.bestnorm);
 		rtn = result.bestnorm;
 
-		SurvivePose lh2worlds[NUM_GEN2_LIGHTHOUSES] = {};
+		SurvivePose lh2worlds[NUM_GEN2_LIGHTHOUSES] = { 0 };
 		for (int i = 0; i < so->ctx->activeLighthouses; i++) {
 			if (quatmagnitude(cameras[i].Rot) != 0) {
 				quatnormalize(cameras[i].Rot, cameras[i].Rot);

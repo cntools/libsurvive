@@ -69,7 +69,7 @@ static FLT get_u(const FLT *ang) { return tan(ang[0]); }
 static FLT get_v(const FLT *ang) { return tan(ang[1]); }
 
 static int opencv_solver_fullscene(SurviveObject *so, PoserDataFullScene *pdfs) {
-	SurvivePose lh2object[NUM_GEN2_LIGHTHOUSES] = {};
+	SurvivePose lh2object[NUM_GEN2_LIGHTHOUSES] = { 0 };
 	for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
 		epnp pnp = {.fu = 1, .fv = 1};
 		epnp_set_maximum_number_of_correspondences(&pnp, so->sensor_ct);

@@ -130,6 +130,7 @@ endif()
 
 set(poser_sba_ADDITIONAL_LIBS sba)
 set(poser_epnp_ADDITIONAL_SRCS src/epnp/epnp.c)
+set(poser_barycentric_svd_ADDITIONAL_SRCS src/barycentric_svd/barycentric_svd.c )
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 foreach(PLUGIN ${PLUGINS})

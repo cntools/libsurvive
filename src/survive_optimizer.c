@@ -61,7 +61,7 @@ void survive_optimizer_setup_camera(survive_optimizer *mpfit_ctx, int8_t lh, con
 	if (pose && !quatiszero(pose->Rot)) {
 		InvertPose(&cameras[lh], pose);
 	} else {
-		cameras[lh] = (SurvivePose){};
+		cameras[lh] = (SurvivePose){ 0 };
 	}
 
 	setup_pose_param_limits(mpfit_ctx, mpfit_ctx->parameters + start, mpfit_ctx->parameters_info + start);

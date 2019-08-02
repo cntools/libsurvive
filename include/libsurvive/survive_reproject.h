@@ -37,7 +37,7 @@ typedef struct survive_reproject_model_t {
 	survive_reproject_full_jac_obj_pose_fn_t reprojectFullJacObjPose;
 } survive_reproject_model_t;
 
-extern const survive_reproject_model_t survive_reproject_model;
+SURVIVE_IMPORT extern const survive_reproject_model_t survive_reproject_model;
 
 SURVIVE_EXPORT FLT survive_reproject_axis_x(const BaseStationCal *bcal, LinmathVec3d const ptInLh);
 SURVIVE_EXPORT FLT survive_reproject_axis_y(const BaseStationCal *bcal, LinmathVec3d const ptInLh);
