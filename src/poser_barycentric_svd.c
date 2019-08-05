@@ -102,7 +102,7 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 	FLT allowable_error = cameraToWorld ? dd->max_error_cal : dd->max_error_obj;
 	if (allowable_error < err) {
 		if (cameraToWorld) {
-			SV_WARN("Camera reprojection error was too high: %f for %d meas", err, dd->bc.meas_cnt);
+			SV_WARN("Camera reprojection error was too high: %f for %d meas", err, (int)dd->bc.meas_cnt);
 		}
 		return rtn;
 	}
