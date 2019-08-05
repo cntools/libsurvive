@@ -2020,11 +2020,13 @@ void survive_data_cb(SurviveUSBInterface *si) {
 				}
 
 			}
-	#else
-			int r = update_feature_report_async(si->transfer->dev_handle, 0, vive_magic_raw_mode_1,
-												sizeof(vive_magic_raw_mode_1));
-			if (r != sizeof(vive_magic_raw_mode_1)) {
-				SV_WARN("Could not send raw mode to %s (%d)", obj->codename, r);
+#else
+			if (si->transfer) {
+				int r = update_feature_report_async(si->transfer->dev_handle, 0, vive_magic_raw_mode_1,
+													sizeof(vive_magic_raw_mode_1));
+				if (r != sizeof(vive_magic_raw_mode_1)) {
+					SV_WARN("Could not send raw mode to %s (%d)", obj->codename, r);
+				}
 			}
 #endif
 
@@ -2074,15 +2076,24 @@ void survive_data_cb(SurviveUSBInterface *si) {
 					// Since they flag for this; I assume multiples can appear in a single packet. Need to plug in
 					// second LH to find out...
 
-					if ((data & 0x0Fu) != 1) {
+					if ((data & 0x0Au) != 0) {
 						// Currently I've only ever seen 0x1 if the 1 bit is set; I doubt they left 3 bits on the table
 						// though....
-						fprintf(stderr, "Not entirely sure what this data is; errors may occur\n");
+						fprintf(stderr, "Not entirely sure what this data is; errors may occur (%d, 0x%02x)\n", idx,
+								data);
 						dump_binary = true;
 					}
 
-					// encodes like so: 0bcccc ???C
-					channel = data >> 4u;
+					// encodes like so: 0bcccc ?F?C
+					bool hasConflict = data & 0x04u;
+					if (hasConflict) {
+						uint8_t conflicted_channel = data >> 4u;
+						SV_WARN("Two or more lighthouses are on channel %d; tracking is most likely going to fail.",
+								conflicted_channel);
+					} else {
+						channel = data >> 4u;
+					}
+
 					idx++;
 				} else {
 					uint32_t timecode = 0;
@@ -2111,10 +2122,10 @@ void survive_data_cb(SurviveUSBInterface *si) {
 			}
 
 			if (dump_binary) {
-				for (int i = 0; i < size - 1; i++) {
+				for (int i = 0; i < length; i++) {
 					if ((i + 2) % 4 == 0)
 						fprintf(stderr, "  ");
-					fprintf(stderr, "%02x ", readdata[i]);
+					fprintf(stderr, "%02x ", packet[i]);
 				}
 
 				fprintf(stderr, "\n");
