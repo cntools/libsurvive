@@ -2027,6 +2027,8 @@ void survive_data_cb(SurviveUSBInterface *si) {
 				if (r != sizeof(vive_magic_raw_mode_1)) {
 					SV_WARN("Could not send raw mode to %s (%d)", obj->codename, r);
 				}
+			} else {
+				dump_binary = true;
 			}
 #endif
 
@@ -2035,7 +2037,8 @@ void survive_data_cb(SurviveUSBInterface *si) {
 				struct lh2_entry {
 					uint8_t code; // sensor with some bit flag. Continuation flag?
 					uint32_t time;
-					uint8_t data[8];
+					uint32_t data;
+					uint32_t mask;
 				};
 #pragma pack(pop)
 
@@ -2045,14 +2048,18 @@ void survive_data_cb(SurviveUSBInterface *si) {
 					struct lh2_entry *entry = &entries[i];
 					if (entry->code == 0xff)
 						break;
-					fprintf(stderr, "sensor: %2u flag: %u time: %3.5f (%7u)", entry->code & 0x7f,
+					fprintf(stderr, "sensor: %2u flag: %u time: %3.5f (%7u) ", entry->code & 0x7f,
 							(entry->code & 0x80) > 0, entry->time / 48000000., entry->time - last_time);
 
-					for (int j = 0; j < 8; j++) {
-						for (int k = 0; k < 8; k++)
-							fprintf(stderr, "%d", ((entry->data[j] >> (8 - k - 1)) & 1));
+					for (int k = 0; k < 32; k++) {
+						int idx = 32 - k - 1;
+						bool d = ((entry->data >> (idx)) & 1u);
+						bool m = ((entry->mask >> (idx)) & 1u);
+						if (m)
+							fprintf(stderr, "%d", d);
+						else
+							fprintf(stderr, "_");
 					}
-
 					last_time = entry->time;
 					fprintf(stderr, "\n");
 				}
@@ -2103,14 +2110,28 @@ void survive_data_cb(SurviveUSBInterface *si) {
 
 					bool sync = timecode & 0x2u;
 					if (!sync) {
+						//                          O                               SC
+						//                         GO                               YH
+						//                         ET                               NA
+						//                    [??] NX[    24 bit time @ 48mhz      ]CN
 						// encodes like so: 0bXXXX ABTTT TTTT TTTT TTTT TTTT TTTT TTSC
 						bool ootx = (timecode >> 26u) & 1u;
 						bool g = (timecode >> 27u) & 1u;
 						timecode = fix_time24((timecode >> 2u) & 0xFFFFFFu, reference_time);
+						uint8_t unused = timecode >> 28;
+						if (unused) {
+							SV_WARN("Not sure what this is: %x", unused);
+						}
 						obj->ctx->syncproc(obj, channel, timecode, ootx, g);
 					} else {
+						//                                                         SC
+						//                                                         YH
+						//                                                         NA
+						//                    [SNSR][    25 bit time @ 96mhz      ]CN
 						// encodes like so: 0bSSSS STTT TTTT TTTT TTTT TTTT TTTT TFSC
-						bool half_clock_flag = timecode & 0x4u; // ?? Seems to slightly change time? Is clock now 96mhz?
+
+						// Since nothing in libsurvive thinks anything is 96mhz; pass in a flag
+						bool half_clock_flag = timecode & 0x4u;
 						uint8_t sensor = (timecode >> 27u);
 						timecode = fix_time24((timecode >> 3u) & 0xFFFFFFu, reference_time);
 						obj->ctx->sweepproc(obj, channel, survive_map_sensor_id(obj, sensor), timecode,
