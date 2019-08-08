@@ -2010,27 +2010,35 @@ void survive_data_cb(SurviveUSBInterface *si) {
 			}
 		} else if (id == 39) { // LHv2
 			survive_notify_gen2(obj);
-#ifdef HIDAPI
-			// TODO: This seems hacky....
-			for (int i = 0; i < si->sv->udev_cnt; i++) {
-				struct SurviveUSBInfo *usbInfo = &si->sv->udev[i];
-				int r = update_feature_report(usbInfo->handle, 0, vive_magic_raw_mode_1, sizeof(vive_magic_raw_mode_1));
-				if (r != sizeof(vive_magic_raw_mode_1)) {
-					SV_WARN("Could not send raw mode to %s (%d): %S", obj->codename, r, hid_error(si->uh));
-				}
 
-			}
-#else
-			if (si->transfer) {
-				int r = update_feature_report_async(si->transfer->dev_handle, 0, vive_magic_raw_mode_1,
-													sizeof(vive_magic_raw_mode_1));
-				if (r != sizeof(vive_magic_raw_mode_1)) {
-					SV_WARN("Could not send raw mode to %s (%d)", obj->codename, r);
-				}
-			} else {
+			// Implies that the user forced gen1
+			if (obj->ctx->lh_version != 1) {
+				// Shouldn't see this if the user said to use gen1 -- dump the output.
 				dump_binary = true;
-			}
+			} else {
+#ifdef HIDAPI
+				// TODO: This seems hacky....
+				for (int i = 0; i < si->sv->udev_cnt; i++) {
+					struct SurviveUSBInfo *usbInfo = &si->sv->udev[i];
+					int r =
+						update_feature_report(usbInfo->handle, 0, vive_magic_raw_mode_1, sizeof(vive_magic_raw_mode_1));
+					if (r != sizeof(vive_magic_raw_mode_1)) {
+						SV_WARN("Could not send raw mode to %s (%d): %S", obj->codename, r, hid_error(si->uh));
+					}
+				}
+#else
+				if (si->transfer) {
+					int r = update_feature_report_async(si->transfer->dev_handle, 0, vive_magic_raw_mode_1,
+														sizeof(vive_magic_raw_mode_1));
+					if (r != sizeof(vive_magic_raw_mode_1)) {
+						SV_WARN("Could not send raw mode to %s (%d)", obj->codename, r);
+					}
+				} else {
+					// USBMON -- grab the output
+					dump_binary = true;
+				}
 #endif
+			}
 
 			if (dump_binary) {
 #pragma pack(push, 1)
@@ -2048,11 +2056,11 @@ void survive_data_cb(SurviveUSBInterface *si) {
 					struct lh2_entry *entry = &entries[i];
 					if (entry->code == 0xff)
 						break;
-					fprintf(stderr, "sensor: %2u flag: %u time: %3.5f (%7u) ", entry->code & 0x7f,
-							(entry->code & 0x80) > 0, entry->time / 48000000., entry->time - last_time);
+					fprintf(stderr, "sensor: %2u flag: %u time: %3.5f (%7u) ", entry->code & 0x7fu,
+							(entry->code & 0x80u) > 0, entry->time / 48000000., entry->time - last_time);
 
 					for (int k = 0; k < 32; k++) {
-						int idx = 32 - k - 1;
+						uint8_t idx = 32 - k - 1;
 						bool d = ((entry->data >> (idx)) & 1u);
 						bool m = ((entry->mask >> (idx)) & 1u);
 						if (m)
@@ -2119,7 +2127,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 						bool g = (timecode >> 27u) & 1u;
 						timecode = fix_time24((timecode >> 2u) & 0xFFFFFFu, reference_time);
 						uint8_t unused = timecode >> 28;
-						if (unused) {
+						if (unused && dump_binary) {
 							SV_WARN("Not sure what this is: %x", unused);
 						}
 						obj->ctx->syncproc(obj, channel, timecode, ootx, g);
