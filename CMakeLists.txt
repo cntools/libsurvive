@@ -88,7 +88,12 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
 		./src/survive_kalman.c
 		./src/barycentric_svd/barycentric_svd.c
 		./src/barycentric_svd/barycentric_svd.h
-        ./src/survive_reproject_gen2.c)
+        ./src/survive_reproject_gen2.c
+		src/lfsr.c
+		src/lfsr.h
+		src/lfsr_lh2.h
+		src/lfsr_lh2.c
+		)
 
 add_library(survive SHARED ${SURVIVE_SRCS})
 set_target_properties(survive PROPERTIES FOLDER "libraries")

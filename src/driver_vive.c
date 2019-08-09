@@ -28,6 +28,7 @@
 #include "survive_default_devices.h"
 
 #include "driver_vive.h"
+#include "lfsr_lh2.h"
 //#define DEBUG_WATCHMAN 1
 
 struct SurviveViveData;
@@ -2049,9 +2050,11 @@ void survive_data_cb(SurviveUSBInterface *si) {
 					uint32_t mask;
 				};
 #pragma pack(pop)
+				uint32_t samples[4] = {}, masks[4] = {}, times[4] = {};
 
 				struct lh2_entry *entries = (struct lh2_entry *)readdata;
 				static uint32_t last_time = 0;
+
 				for (int i = 0; i < 4; i++) {
 					struct lh2_entry *entry = &entries[i];
 					if (entry->code == 0xff)
@@ -2068,8 +2071,18 @@ void survive_data_cb(SurviveUSBInterface *si) {
 						else
 							fprintf(stderr, "_");
 					}
+					samples[i] = entry->data;
+					masks[i] = entry->mask;
+
 					last_time = entry->time;
 					fprintf(stderr, "\n");
+				}
+
+				uint32_t time_since_sync[4] = {};
+				survive_channel chan = survive_decipher_channel(samples, masks, times, time_since_sync, 4);
+				fprintf(stderr, "Chan ootx: %d %d\n", chan / 2, chan & 1);
+				for (int i = 0; i < 4; i++) {
+					fprintf(stderr, "time since sync: %u\n", time_since_sync[i]);
 				}
 
 				for (int i = 59 - 7; i < 59; i++) {
