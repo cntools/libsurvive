@@ -139,6 +139,7 @@ struct SurviveObject {
 	int8_t oldcode;
 	int8_t sync_set_number; // 0 = master, 1 = slave, -1 = fault.
 	int8_t did_handle_ootx; // If unset, will send lightcap data for sync pulses next time a sensor is hit.
+	survive_timecode last_time_between_sync[NUM_GEN2_LIGHTHOUSES];
 	survive_timecode last_sync_time[NUM_GEN2_LIGHTHOUSES];
 	survive_timecode last_sync_length[NUM_GEN1_LIGHTHOUSES];
 	survive_timecode recent_sync_time;

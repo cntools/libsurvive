@@ -20,6 +20,9 @@
 extern "C" {
 #endif
 
+SURVIVE_EXPORT FLT survive_reproject_axis_x_gen2(const BaseStationCal *bcal, LinmathVec3d const ptInLh);
+SURVIVE_EXPORT FLT survive_reproject_axis_y_gen2(const BaseStationCal *bcal, LinmathVec3d const ptInLh);
+
 SURVIVE_EXPORT void survive_reproject_xy_gen2(const BaseStationCal *bcal, LinmathVec3d const ptInLh,
 											  SurviveAngleReading out);
 SURVIVE_EXPORT void survive_reproject_from_pose_gen2(const SurviveContext *ctx, int lighthouse,

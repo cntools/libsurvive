@@ -24,7 +24,7 @@ extern "C" {
 #define PFTHREE(x) (x)[0], (x)[1], (x)[2]
 #define PFFOUR(x) (x)[0], (x)[1], (x)[2], (x)[3]
 
-#define LINMATHPI ((FLT)3.141592653589)
+#define LINMATHPI ((FLT)3.14159265358979323846)
 
 // uncomment the following line to use double precision instead of single precision.
 //#define USE_DOUBLE

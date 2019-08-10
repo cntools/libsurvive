@@ -61,8 +61,13 @@ void gen_survive_reproject_full_gen2(FLT *out, const SurvivePose *obj_pose, cons
 	FLT gibMag_0 = bcal[0].gibmag;
 	FLT gibMag_1 = bcal[1].gibmag;
 
+	FLT ogeePhase_0 = bcal[0].ogeephase;
+	FLT ogeePhase_1 = bcal[1].ogeephase;
+	FLT ogeeMag_0 = bcal[0].ogeemag;
+	FLT ogeeMag_1 = bcal[1].ogeemag;
+
 	gen_reproject_gen2(out, obj_pose->Pos, obj_pt, lh2world->Pos, phase_0, phase_1, tilt_0, tilt_1, curve_0, curve_1,
-					   gibPhase_0, gibPhase_1, gibMag_0, gibMag_1);
+					   gibPhase_0, gibPhase_1, gibMag_0, gibMag_1, ogeePhase_0, ogeePhase_0, ogeeMag_0, ogeeMag_1);
 }
 
 double next_rand(double mx) { return (float)rand() / (float)(RAND_MAX / mx) - mx / 2.; }
@@ -189,6 +194,24 @@ void check_reproject_gen2() {
 
 	printf("%f %f (%f)\n", out_pt[0], out_pt[1], stop_reproject - start_reproject);
 	out_pt[0] = out_pt[1] = 0;
+}
+
+void check_reproject_gen2_cal() {
+	BaseStationData bsd = {};
+	double cal[] = {-0.047119140625, 0, 0.15478515625, 2.369140625, -0.00440216064453125, 0.4765625, -0.1766357421875};
+
+	bsd.fcal[0].phase = 0;
+	bsd.fcal[0].tilt = -0.047119140625;
+	bsd.fcal[0].curve = 0.15478515625;
+	bsd.fcal[0].gibpha = 2.369140625;
+	bsd.fcal[0].gibmag = -0.00440216064453125;
+	bsd.fcal[0].ogeephase = 0.4765625;
+	bsd.fcal[0].ogeemag = -0.1766357421875;
+
+	LinmathPoint3d xyz = {0.37831748940152643, -0.29826620924843278, -3.0530035758130878};
+	double ang = survive_reproject_axis_x_gen2(&bsd.fcal[0], xyz);
+	ang += M_PI * 2. * (0 + 1.) / 3.;
+	printf("%.16f\n", ang);
 }
 
 /*
@@ -450,6 +473,8 @@ void check_apply_pose() {
 }
 
 int main(int argc) {
+	check_reproject_gen2_cal();
+
 	if (argc == 1) {
 		printf("Check apply pose...\n");
 		check_apply_pose();

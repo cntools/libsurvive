@@ -5,6 +5,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <survive_reproject_gen2.h>
 
 typedef struct {
 	LinmathPoint3d pt;
@@ -52,6 +53,24 @@ TEST(Reproject, Extents) {
 
 	for (int i = 0; i < sizeof(examples) / sizeof(ExampleAndValue); i++) {
 		survive_reproject_xy(cal, examples[i].pt, out);
+		ASSERT_DOUBLE_EQ(out[0], examples[i].expected[0]);
+		ASSERT_DOUBLE_EQ(out[1], examples[i].expected[1]);
+	}
+
+	return 0;
+}
+
+TEST(Reproject, Extents_gen2) {
+	FLT out[2];
+	BaseStationCal cal[2] = {0};
+
+	ExampleAndValue examples[] = {
+		{.pt = {0, 0, -1}, .expected = {0, 0}},
+		{.pt = {0, 1, -1}, .expected = {-0.615480, 0.615480}},
+	};
+
+	for (int i = 0; i < sizeof(examples) / sizeof(ExampleAndValue); i++) {
+		survive_reproject_xy_gen2(cal, examples[i].pt, out);
 		ASSERT_DOUBLE_EQ(out[0], examples[i].expected[0]);
 		ASSERT_DOUBLE_EQ(out[1], examples[i].expected[1]);
 	}

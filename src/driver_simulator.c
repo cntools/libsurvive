@@ -152,10 +152,10 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 						ctx->angleproc(driver->so, idx, acode, timecode, .006, ang[driver->acode & 1], lh);
 					} else {
 						survive_reproject_xy_gen2(driver->bsd[lh].fcal, ptInLh, ang);
-						double r1 = (rand() / (double)RAND_MAX);
-						if (r1 < .50)
-							ctx->sweep_angleproc(driver->so, driver->bsd[lh].mode, idx, timecode, driver->acode & 1,
-												 ang[driver->acode & 1]);
+						// double r1 = (rand() / (double)RAND_MAX);
+						// if (r1 < .50)
+						ctx->sweep_angleproc(driver->so, driver->bsd[lh].mode, idx, timecode, driver->acode & 1,
+											 ang[driver->acode & 1]);
 					}
 				}
 			}
