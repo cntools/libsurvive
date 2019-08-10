@@ -25,6 +25,10 @@ If you are an individual who bothers going back and watching some of these, PLEA
 | Ninth B livestream                     | https://www.youtube.com/watch?v=IIYj1Ig_gz8 | 2:25:33 |
 | May 2017 Summary                       | https://www.youtube.com/watch?v=dVXpHKktbzM | 5:58    |
 | Tenth livestream                       | https://www.youtube.com/watch?v=8hqviGMlU7I | 3:30:46 |
+| Vive 2.0 Lighthouse Reverse Engineering Pt 1. | https://www.youtube.com/watch?v=FtXkjPcmENA | 2:39:43 |
+| Vive 2.0 Lighthouse Reverse Engineering Pt 2. | https://www.youtube.com/watch?v=8YPdmgOXnPM | 1:54:23 |
+| Tearing down a Vive Lighthouse 2.0.    | https://www.youtube.com/watch?v=JP5maGaumYo | 2:35:49 |
+| First shot at trying to decode Lighthouse 2.0 Data |https://www.youtube.com/watch?v=Ij1oqvcllUs | 2:28:21 |
 
 Notes from second livestream trying to reverse engineer the watchman protocol: https://gist.github.com/cnlohr/581c433f36f4249f8bbc9c2b6450ef0e
 
@@ -118,11 +122,12 @@ Poser | [poser_dummy.c](src/poser_dummy.c) | Template for posers | [@cnlohr](htt
 Poser | [poser_octavioradii.c](src/poser_octavioradii.c) | A potentially very fast poser that works by finding the best fit of the distances from the lighthouse to each sensor that matches the known distances between sensors, given the known angles of a lighthouse sweep.  Incomplete- distances appear to be found correctly, but more work needed to turn this into a pose. Based on [this python code](https://github.com/octavio2895/lh_tools). | [@mwturvey](https://github.com/mwturvey) and [@octavio2895](https://github.com/octavio2895)
 Poser | [poser_turveytori.c](src/poser_turveytori.c) | A moderately fast, fairly high precision poser that works by determine the angle at the lighthouse between many sets of two sensors.  Using the inscirbed angle theorom, each set defines a torus of possible locations of the lighthouse.  Multiple sets define multiple tori, and this poser finds most likely location of the lighthouse using least-squares distance.   Best suited for calibration, but is can be used for real-time tracking on a powerful system.  | [@mwturvey](https://github.com/mwturvey)
 Poser | [poser_epnp.c](src/poser_epnp.c) | Reasonably fast and accurate calibration and tracker that uses the [EPNP algorithm](https://en.wikipedia.org/wiki/Perspective-n-Point#EPnP) to solve the perspective and points problem. Suitable for fast tracking, but does best with >5-6 sensor readings. | [@jdavidberger](https://github.com/jdavidberger)
-Poser | [poser_sba.c](src/poser_sba.c) (default) | Reasonably fast and accurate calibration and tracker but is dependent on a 'seed' poser to give it an initial estimate. This then performs [bundle adjustment](https://en.wikipedia.org/wiki/Bundle_adjustment) to minimize reprojection error given both ligthhouse readings. This has the benefit of greatly increasing accuracy by incorporating all the light data that is available. Set 'SBASeedPoser' config option to specify the seed poser; default is EPNP. | [@jdavidberger](https://github.com/jdavidberger)
-Poser | [poser_mpfit.c](src/poser_mpfit.c) | Performs Levenberg-Marquardt using [MPFIT](https://www.physics.wisc.edu/~craigm/idl/cmpfit.html). Since SBA does basically the same thing, this poser gets nearly identical results to SBA. Overall it is a tad slower than SBA since SBA uses optimized lapack functions to solve Ax=b, but MPFIT has the distinction of not needing lapack at all since it's Ax=b solver is a minimal internal version. It also requires a seed poser. | [@jdavidberger](https://github.com/jdavidberger)
-Disambiguator | [survive_data.c](src/survive_charlesbiguator.c) | The old disambiguator - very fast, but slightly buggy. | [@cnlohr](https://github.com/cnlohr)
-Disambiguator | [survive_data.c](src/survive_turveybiguator.c) (default) | More complicated but much more robust disambiguator | [@mwturvey](https://github.com/mwturvey)
-Disambiguator | [survive_data.c](src/survive_statebased_disambiguator.c) | A fast disambiguator that was times the state shifts between pulses. Experimental. Made to allow tracking very close to the lighthouse | [@jdavidberger](https://github.com/jdavidberger)
+Poser | [poser_barycentric_svd.c](src/poser_barycentric_svd.c) | Generalizes the barycentric / svd approach used with EPNP; but allows for different plane equations to support LH2 | [@jdavidberger](https://github.com/jdavidberger)
+Poser | [poser_sba.c](src/poser_sba.c) | Reasonably fast and accurate calibration and tracker but is dependent on a 'seed' poser to give it an initial estimate. This then performs [bundle adjustment](https://en.wikipedia.org/wiki/Bundle_adjustment) to minimize reprojection error given both ligthhouse readings. This has the benefit of greatly increasing accuracy by incorporating all the light data that is available. Set 'SBASeedPoser' config option to specify the seed poser; default is EPNP. | [@jdavidberger](https://github.com/jdavidberger)
+Poser | [poser_mpfit.c](src/poser_mpfit.c) (default) | Performs Levenberg-Marquardt using [MPFIT](https://www.physics.wisc.edu/~craigm/idl/cmpfit.html). Since SBA does basically the same thing, this poser gets nearly identical results to SBA. Overall it is a tad slower than SBA since SBA uses optimized lapack functions to solve Ax=b, but MPFIT has the distinction of not needing lapack at all since it's Ax=b solver is a minimal internal version. It also requires a seed poser. | [@jdavidberger](https://github.com/jdavidberger)
+Disambiguator | [survive_charlesbiguator.c](src/survive_charlesbiguator.c) | The old disambiguator - very fast, but slightly buggy. | [@cnlohr](https://github.com/cnlohr)
+Disambiguator | [survive_turveybiguator.c](src/survive_turveybiguator.c) | More complicated but much more robust disambiguator | [@mwturvey](https://github.com/mwturvey)
+Disambiguator | [survive_statebased_disambiguator.c](src/survive_statebased_disambiguator.c) (default)  | A fast disambiguator that was times the state shifts between pulses. Experimental. Made to allow tracking very close to the lighthouse | [@jdavidberger](https://github.com/jdavidberger)
 Dismabiguator | superceded disambiguator | A more sophisticated disambiguator, development abandoned.  Removed from tree. |  [@jpicht](https://github.com/jpicht)
 Driver | [survive_vive.c](src/survive_vive.c) | Driver for HTC Vive HMD, Watchmen (wired+wireless) and Tracker | [@cnlohr](https://github.com/cnlohr) and [@mwturvey](https://github.com/mwturvey)
 OOTX Decoder | [ootx_decoder.c](src/ootx_decoder.c) | The system that takes the pulse-codes from the sync pulses from the lighthouses and get [OOTX Data](https://github.com/nairol/LighthouseRedox/blob/master/docs/Light%20Emissions.md) | [@axlecrusher](https://github.com/axlecrusher)
@@ -185,6 +190,8 @@ Here is an example of a default configuration file that libsurvive will create a
 }
 ```
 
+### LH1 Calibration / Setup
+
 To make libsurvive calibrate and run with one basestation, `lighthousecount` needs to be changed to `1`. You can also pass in `-l 1` as command line arguments.
 
 It may be annoying to always require the controllers for calibration. To make libsurvive calibrate by using the HMD, `RequiredTrackersForCal` needs to be changed to the magic string `HMD`. The strings for the controllers are `WM0` and `WM1`, short for  "Watchman". Other possible values are `WW0` (Wired Watchman) for a controller directly connected with USB or `TR0` for a Vive tracker directly connected with USB (When connected wirelessly, the tracker uses the dongles, so uses `WM0` or `WM1`).
@@ -240,6 +247,15 @@ Sometimes libsurvive goes very quickly through these steps and fills in all pose
 
 If there is already calibration data present, the library will use it. Pass `--calibrate` to force a new calibration pass.
 Conversely, if there isn't calibration data the library will auto-calibrate. Pass `--no-calibrate` to disable this calibration.
+
+### LH2 Calibration / Setup
+
+Calibration and setup for lighthouse 2 setups has been streamlined somewhat. On initial startup, it will take ~10 seconds
+from seeing a lighthouse to reading its ID and calibration data. After that, it waits for the device to not move and then
+automatically solves for it's position. 
+
+When it sees new lighthouse devices; it will solve for their position in the global system whenever it sees no device
+movement based on the IMU. 
 
 ## Using libsurvive in your own application
 
@@ -327,11 +343,9 @@ The arrow keys will move you to the left / right / up / down and the UI response
 
 ## Notes about coordinate frames.
 
-BELOW IS NOT FINALIZED!!!!
-
 1) We are using the right-hand rule. 
 
-2) All "poses" should be handled as a SurvivePose, which is effectively a FLT[7], with xyz, wxyz.  The first is a positional offset, and the second is the rotation. 
+2) All "poses" should be handled as a SurvivePose, which is effectively a FLT[7], with xyz, wxyz.  The first is a positional offset, and the second is the rotation. These poses are effectively transforms from the object local space to the global coordinate space.
 
 3) Though this is not universal, consider using SurvivePose* for all situations where a true pose used instead of passing around a FLT* or FLT[7].
 
@@ -351,7 +365,9 @@ Given an HMD:
 
 5) Defining the value of ```pose``` in ```BaseStationData```: This pose will convert something in lighthouse-local space into a position in world space.  When calibrating, if you have an object you want to define as 0,0,0... You will need to take its pose and invert it.
 
-6) Posers will take into account the ```pose``` of various lighthouses, if NOT in calibration and return poses of objects in world space assuming the lighthoses are set up.
+6) Posers will take into account the ```pose``` of various lighthouses, if NOT in calibration and return poses of objects in world space assuming the lighthouses are set up.
+
+7) Objects internally are tracked in IMU space. They are then transformed into 'Head' space, as defined in their config.
 
 General information for LH pose:
 
@@ -362,13 +378,8 @@ General information for LH pose:
 ![HMDCF](https://raw.githubusercontent.com/cnlohr/libsurvive/master/useful_files/hmd_coordinate_frame.jpeg)
 
 
-NOTE: This is NOT currently correct.
-
 # FAQ
 
- * The tracking quality is bad/jitters/too slow!
- * libsurvive is still a work in progress. For example the Vive contains a calibration blob that still needs to be decoded. Hopefully it will enable better tracking.
- * What VR software can I use with libsurvive?
  * There is an unofficial [OpenHMD/libsurvive fork](https://github.com/ChristophHaag/OpenHMD/tree/libsurvive) that replaces OpenHMD's Vive driver with libsurvive. OpenHMD will not merge this branch as it depends on libsurvive as an external dependency, but it may pave the way for more code sharing.
    * This OpenHMD/libsurvive fork can be plugged into [SteamVR-OpenHMD](https://github.com/ChristophHaag/SteamVR-OpenHMD) which allows SteamVR to use OpenHMD drivers.
    * Godot 3.x has a [native OpenHMD plugin](https://github.com/BastiaanOlij/godot_openhmd) though it needs work for building and running properly and it is still missing motion controller support.
