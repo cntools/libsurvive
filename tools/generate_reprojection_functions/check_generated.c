@@ -196,6 +196,24 @@ void check_reproject_gen2() {
 	out_pt[0] = out_pt[1] = 0;
 }
 
+void check_reproject_gen2_cal() {
+	BaseStationData bsd = {};
+	double cal[] = {-0.047119140625, 0, 0.15478515625, 2.369140625, -0.00440216064453125, 0.4765625, -0.1766357421875};
+
+	bsd.fcal[0].phase = 0;
+	bsd.fcal[0].tilt = -0.047119140625;
+	bsd.fcal[0].curve = 0.15478515625;
+	bsd.fcal[0].gibpha = 2.369140625;
+	bsd.fcal[0].gibmag = -0.00440216064453125;
+	bsd.fcal[0].ogeephase = 0.4765625;
+	bsd.fcal[0].ogeemag = -0.1766357421875;
+
+	LinmathPoint3d xyz = {0.37831748940152643, -0.29826620924843278, -3.0530035758130878};
+	double ang = survive_reproject_axis_x_gen2(&bsd.fcal[0], xyz);
+	ang += M_PI * 2. * (0 + 1.) / 3.;
+	printf("%.16f\n", ang);
+}
+
 /*
 void check_jacobian_axisangle() {
 	LinmathAxisAnglePose obj2world = random_pose_axisangle();
@@ -455,6 +473,8 @@ void check_apply_pose() {
 }
 
 int main(int argc) {
+	check_reproject_gen2_cal();
+
 	if (argc == 1) {
 		printf("Check apply pose...\n");
 		check_apply_pose();

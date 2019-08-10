@@ -2120,7 +2120,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 						timecode = fix_time24((timecode >> 2u) & 0xFFFFFFu, reference_time);
 						uint8_t unused = timecode >> 28;
 						if (unused) {
-							SV_WARN("Not sure what this is: %x", unused);
+							// SV_WARN("Not sure what this is: %x", unused);
 						}
 						obj->ctx->syncproc(obj, channel, timecode, ootx, g);
 					} else {

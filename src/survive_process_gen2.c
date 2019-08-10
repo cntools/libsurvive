@@ -65,8 +65,10 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 
 	assert(channel <= NUM_GEN2_LIGHTHOUSES);
 
-	// FLT hz = 48000000. / survive_timecode_difference(timecode, so->last_sync_time[bsd_idx]);
-	// SV_INFO("Sync hz %2d: %2.6fhz (err: %0.6fhz)", channel, hz, hz - freq_per_channel[channel]);
+	so->last_time_between_sync[bsd_idx] = survive_timecode_difference(timecode, so->last_sync_time[bsd_idx]);
+	FLT hz = 48000000. / so->last_time_between_sync[bsd_idx];
+	// SV_INFO("Sync hz %2d: %2.6fhz (err: %0.6fhz) ootx: %d gen: %d", channel, hz, hz - freq_per_channel[channel],
+	// ootx, gen);
 	so->last_sync_time[bsd_idx] = timecode;
 
 	if (ctx->bsd[bsd_idx].OOTXSet == false) {
@@ -119,25 +121,31 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 	survive_timecode last_sweep = so->last_sync_time[bsd_idx];
 	assert(channel <= NUM_GEN2_LIGHTHOUSES);
 
-	// SV_INFO("Sensor ch%2d %2d %d %12x %6d", channel, sensor_id, flag, timecode, timecode -
+	// SV_INFO("Sensor ch%2d %2d %d %12x %6d", channel, sensor_id, flag, timecode, timecode
 	// so->last_sync_time[bsd_idx]);
 
 	FLT time_since_sync = (survive_timecode_difference(timecode, last_sweep) / 48000000.);
-	if (half_clock_flag)
-		time_since_sync += 0.5 / 48000000.;
+	// if (half_clock_flag)
+	//	time_since_sync += 0.5 / 48000000.;
 
-	FLT time_per_rot = 1. / freq_per_channel[channel];
+	FLT hz = 48000000. / so->last_time_between_sync[bsd_idx];
+	FLT time_per_rot = 1. / hz;
 
 	if (time_since_sync > time_per_rot)
 		return;
 
 	FLT angle = time_since_sync / time_per_rot * 2. * LINMATHPI;
+	FLT angle2 = (time_since_sync + .5 / 48000000.) / time_per_rot * 2. * LINMATHPI;
+
+	// SV_INFO("Sensor ch%2d %2d %12f %12f %d %.16f", channel, sensor_id, angle / M_PI * 180., angle2 / M_PI * 180.,
+	// half_clock_flag, time_since_sync);
 
 	int8_t plane = angle > LINMATHPI;
 	if (plane)
 		angle -= 4 * LINMATHPI / 3.;
 	else
 		angle -= 2 * LINMATHPI / 3.;
+
 	so->ctx->sweep_angleproc(so, channel, sensor_id, timecode, plane, angle);
 }
 
@@ -146,7 +154,7 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 	survive_notify_gen2(so);
 
 	struct SurviveContext *ctx = so->ctx;
-	// SV_INFO("Sensor ch%2d %2d %12f", channel, sensor_id, angle);
+	// SV_INFO("Sensor ch%2d %2d %12f", channel, sensor_id, angle / M_PI * 180.);
 	int8_t bsd_idx = survive_get_bsd_idx(ctx, channel);
 
 	PoserDataLightGen2 l = {.common =

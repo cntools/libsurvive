@@ -70,7 +70,7 @@ static inline FLT survive_reproject_axis_gen2(const BaseStationCal *bcal, FLT X,
 
 	double B = atan2(Z, X);
 
-	double Ydeg = tilt + (axis ? 1 : -1) * M_PI / 6.;
+	double Ydeg = tilt + (axis ? -1 : 1) * M_PI / 6.;
 	double tanA = tan(Ydeg);
 	double normXZ = sqrt(X * X + Z * Z);
 
@@ -102,11 +102,11 @@ static inline FLT survive_reproject_axis_gen2(const BaseStationCal *bcal, FLT X,
 }
 
 static inline FLT survive_reproject_axis_x_gen2_inline(const BaseStationCal *bcal, LinmathVec3d const ptInLh) {
-	return survive_reproject_axis_gen2(&bcal[0], ptInLh[0], -ptInLh[1], -ptInLh[2], 0);
+	return survive_reproject_axis_gen2(&bcal[0], ptInLh[0], ptInLh[1], -ptInLh[2], 0);
 }
 
 static inline FLT survive_reproject_axis_y_gen2_inline(const BaseStationCal *bcal, LinmathVec3d const ptInLh) {
-	return survive_reproject_axis_gen2(&bcal[1], ptInLh[0], -ptInLh[1], -ptInLh[2], 1);
+	return survive_reproject_axis_gen2(&bcal[1], ptInLh[0], ptInLh[1], -ptInLh[2], 1);
 }
 
 FLT survive_reproject_axis_x_gen2(const BaseStationCal *bcal, LinmathVec3d const ptInLh) {

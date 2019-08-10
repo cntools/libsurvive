@@ -152,7 +152,7 @@ def reproject_axis_gen2(X, Y, Z, axis,
                         ogeePhase_cal, ogeeMag_cal):
     B = atan2(Z, X);
 
-    Ydeg = tilt_cal + (1 if axis else -1) * math.pi / 6.;
+    Ydeg = tilt_cal + (-1 if axis else 1) * math.pi / 6.;
     tanA = tan(Ydeg)
     normXZ = sqrt(X * X + Z * Z)
 
@@ -188,7 +188,7 @@ def reproject_axis_x_gen2(p, pt, lh_p,
                      ogeePhase_cal, ogeeMag_cal):
     XYZ = apply_pose_to_pt(lh_p, apply_pose_to_pt(p, pt))
 
-    return reproject_axis_gen2(XYZ[0], -XYZ[1], -XYZ[2], 0, phase_cal, tilt_cal, curve_cal, gibPhase_cal, gibMag_cal, ogeePhase_cal, ogeeMag_cal)
+    return reproject_axis_gen2(XYZ[0], XYZ[1], -XYZ[2], 0, phase_cal, tilt_cal, curve_cal, gibPhase_cal, gibMag_cal, ogeePhase_cal, ogeeMag_cal)
 
 def reproject_axis_y_gen2(p, pt, lh_p,
                      phase_cal,
@@ -198,7 +198,7 @@ def reproject_axis_y_gen2(p, pt, lh_p,
                      ogeePhase_cal, ogeeMag_cal):
     XYZ = apply_pose_to_pt(lh_p, apply_pose_to_pt(p, pt))
 
-    return reproject_axis_gen2(XYZ[0], -XYZ[1], -XYZ[2], 1, phase_cal, tilt_cal, curve_cal, gibPhase_cal, gibMag_cal, ogeePhase_cal, ogeeMag_cal)
+    return reproject_axis_gen2(XYZ[0], XYZ[1], -XYZ[2], 1, phase_cal, tilt_cal, curve_cal, gibPhase_cal, gibMag_cal, ogeePhase_cal, ogeeMag_cal)
 
 
 def reproject_gen2(p, pt, lh_p,
