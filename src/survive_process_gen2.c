@@ -176,9 +176,6 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 
 	survive_recording_sweep_angle_process(so, channel, sensor_id, timecode, plane, angle);
 
-	if (ctx->calptr) {
-		// survive_cal_angle(so, sensor_id, acode, timecode, length, angle, lh);
-	}
 	if (so->PoserFn) {
 		so->PoserFn(so, (PoserData *)&l);
 	}

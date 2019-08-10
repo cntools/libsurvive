@@ -3,7 +3,7 @@
 LIBRARY:=./lib/libsurvive.so
 STATIC_LIBRARY:=./lib/libsurvive.a
 
-all : $(STATIC_LIBRARY) $(LIBRARY) data_recorder test calibrate calibrate_client simple_pose_test plugins .options survive-cli
+all : $(STATIC_LIBRARY) $(LIBRARY) data_recorder simple_pose_test plugins .options survive-cli api_example
 	@echo "Built with defaults.  Type 'make help' for more info."
 
 PREFIX?=/usr/local
