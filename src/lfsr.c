@@ -13,8 +13,10 @@ lfsr_state_t lsfr_iterate(lfsr_state_t state, lfsr_poly_t poly, uint32_t cnt) {
 
 lfsr_state_t lsfr_iterate_rev(lfsr_state_t state, lfsr_poly_t poly, uint32_t cnt) {
 	uint32_t orig_state = state;
+	state = state & 0x1ffff;
+
 	uint32_t order = lfsr_order(poly);
-	for (int i = 0; i < cnt; i++) {
+	for (int i = 0; i < cnt + (32 - order); i++) {
 		uint16_t b = state & 1u;
 		state = state >> 1u;
 		uint16_t bn = popcnt(state & poly) & 1u;
@@ -22,6 +24,8 @@ lfsr_state_t lsfr_iterate_rev(lfsr_state_t state, lfsr_poly_t poly, uint32_t cnt
 		if (b != bn)
 			state |= (1u << (order - 1));
 	}
+
+	state = lsfr_iterate(state, poly, (32 - order));
 
 	uint32_t dorig_state = lsfr_iterate(state, poly, cnt);
 	assert((dorig_state & 0x1ffff) == (orig_state & 0x1ffff));

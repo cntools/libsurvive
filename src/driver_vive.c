@@ -2059,8 +2059,8 @@ void survive_data_cb(SurviveUSBInterface *si) {
 					struct lh2_entry *entry = &entries[i];
 					if (entry->code == 0xff)
 						break;
-					fprintf(stderr, "sensor: %2u flag: %u time: %3.5f (%7u) ", entry->code & 0x7fu,
-							(entry->code & 0x80u) > 0, entry->time / 48000000., entry->time - last_time);
+					fprintf(stderr, "sensor: %2u flag: %u time: %8u %3.5f (%7u) ", entry->code & 0x7fu,
+							(entry->code & 0x80u) > 0, entry->time, entry->time / 48000000., entry->time - last_time);
 
 					for (int k = 0; k < 32; k++) {
 						uint8_t idx = 32 - k - 1;
@@ -2073,7 +2073,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 					}
 					samples[i] = entry->data;
 					masks[i] = entry->mask;
-
+					times[i] = entry->time;
 					last_time = entry->time;
 					fprintf(stderr, "\n");
 				}
@@ -2082,7 +2082,8 @@ void survive_data_cb(SurviveUSBInterface *si) {
 				survive_channel chan = survive_decipher_channel(samples, masks, times, time_since_sync, 4);
 				fprintf(stderr, "Chan ootx: %d %d\n", chan / 2, chan & 1);
 				for (int i = 0; i < 4; i++) {
-					fprintf(stderr, "time since sync: %u\n", time_since_sync[i]);
+					fprintf(stderr, "time since sync: %8u time of last sync: %8u\n", time_since_sync[i],
+							entries[i].time - time_since_sync[i] * 8);
 				}
 
 				for (int i = 59 - 7; i < 59; i++) {
