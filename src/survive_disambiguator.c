@@ -29,15 +29,16 @@ void handle_lightcap(SurviveObject *so, const LightcapElement *_le) {
 	if (so->ctx->lh_version == -1) {
 		if (_le->length >= 0x8000) {
 			survive_notify_gen2(so);
-			return;
-		} else {
+		} else if (_le->length >= 3000 && _le->length < 6500) {
+			// Only look for the OOTX pulses; otherwise we get false hits and can potentially choose gen1
+			// on a gen2 system
 			static int lightcap_rcv_cnt = 0;
-			if (lightcap_rcv_cnt++ > 50) {
+			if (lightcap_rcv_cnt++ > 30) {
 				survive_notify_gen1(so);
-			} else {
-				return;
 			}
 		}
+
+		return;
 	}
 
 	LightcapElement le = *_le;
