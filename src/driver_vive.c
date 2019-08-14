@@ -520,8 +520,9 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 
 	libusb_set_auto_detach_kernel_driver(usbInfo->handle, 1);
 	for (int j = 0; j < conf->bNumInterfaces; j++) {
-		if (libusb_claim_interface(usbInfo->handle, j)) {
-			SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Could not claim interface %d of %s", j, info->name);
+		int ret = libusb_claim_interface(usbInfo->handle, j);
+		if (ret != 0) {
+			SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Could not claim interface %d of %s: %d", j, info->name, ret);
 			return ret;
 		}
 	}
@@ -737,7 +738,7 @@ int survive_vive_send_haptic(SurviveObject *so, uint8_t reserved, uint16_t pulse
 }
 
 void survive_vive_usb_close(SurviveViveData *sv) {
-	int i;
+	int i, j;
 #ifdef HIDAPI
 	for (i = 0; i < sv->udev_cnt; i++) {
 		for (int j = 0; j < 8; j++) {
@@ -756,6 +757,9 @@ void survive_vive_usb_close(SurviveViveData *sv) {
 
 #else
 	for (i = 0; i < sv->udev_cnt; i++) {
+		for (j = 0; j < sv->udev[i].interface_cnt; j++) {
+			libusb_release_interface(sv->udev[i].handle, j);
+		}
 		libusb_close(sv->udev[i].handle);
 	}
 	libusb_exit(sv->usbctx);
@@ -2015,6 +2019,12 @@ void survive_data_cb(SurviveUSBInterface *si) {
 			// Implies that the user forced gen1
 			if (obj->ctx->lh_version != 1) {
 				// Shouldn't see this if the user said to use gen1 -- dump the output.
+				static bool force_gen_warning = false;
+				if (!force_gen_warning) {
+					SV_WARN("LH Gen is %d, dumping data", obj->ctx->lh_version);
+					force_gen_warning = true;
+				}
+
 				dump_binary = true;
 			} else {
 #ifdef HIDAPI
@@ -2035,6 +2045,11 @@ void survive_data_cb(SurviveUSBInterface *si) {
 						SV_WARN("Could not send raw mode to %s (%d)", obj->codename, r);
 					}
 				} else {
+					static bool transfer_null_warning = false;
+					if (!transfer_null_warning) {
+						SV_WARN("Can't update the usb device %s out of raw 0 mode; dumping data", obj->codename);
+						transfer_null_warning = true;
+					}
 					// USBMON -- grab the output
 					dump_binary = true;
 				}

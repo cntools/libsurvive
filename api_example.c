@@ -3,8 +3,12 @@
 #include <survive_api.h>
 #include <os_generic.h>
 
+static void log_fn(SurviveSimpleContext *actx, SurviveLogLevel logLevel, const char *msg) {
+	fprintf(stderr, "SimpleApi: %s\n", msg);
+}
+
 int main(int argc, char **argv) {
-	SurviveSimpleContext *actx = survive_simple_init(argc, argv);
+	SurviveSimpleContext *actx = survive_simple_init_with_logger(argc, argv, log_fn);
 	if (actx == 0) // implies -help or similiar
 		return 0;
 

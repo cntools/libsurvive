@@ -1,0 +1,9 @@
+{
+	"alwaysActivate": true,
+	"name" : "survive",
+	"resourceOnly" : false,
+	"hmd_presence" :
+	[
+		"*.*"
+	]
+}

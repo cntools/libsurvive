@@ -231,7 +231,7 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 				if (quatiszero(lhs[lh].Rot) && meas_for_lhs[lh] > 0) {
 					meas_size = remove_lh_from_meas(mpfitctx.measurements, meas_size, lh);
 				} else if (meas_for_lhs[lh] > 0) {
-					SV_INFO("Attempting to solve for %d with %d meas", lh, meas_for_lhs[lh]);
+					SV_INFO("Attempting to solve for %d with %d meas", lh, (int)meas_for_lhs[lh]);
 					survive_optimizer_setup_camera(&mpfitctx, lh, &lhs[lh], false);
 				}
 			}

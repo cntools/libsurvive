@@ -175,6 +175,7 @@ void simple_log_fn(SurviveContext *ctx, SurviveLogLevel logLevel, const char *ms
 SURVIVE_EXPORT SurviveSimpleContext *survive_simple_init_with_logger(int argc, char *const *argv,
 																	 SurviveSimpleLogFn fn) {
 	SurviveSimpleContext *actx = calloc(1, sizeof(SurviveSimpleContext));
+	actx->log_fn = fn;
 
 	SurviveContext *ctx = survive_init_with_logger(argc, argv, actx, simple_log_fn);
 	if (ctx == 0) {

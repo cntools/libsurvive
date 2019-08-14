@@ -174,6 +174,17 @@ IF(catkin_DIR)
 	add_subdirectory(tools/ros_publisher)
 ENDIF()
 
+find_library(OPENVR_LIBRARIES
+		NAMES
+		openvr_api
+		PATH_SUFFIXES
+		osx32
+		linux64
+		)
+if(OPENVR_LIBRARIES)
+	add_subdirectory(tools/openvr_driver)
+endif()
+
 
 install(TARGETS ${PLUGINS} DESTINATION lib/libsurvive/plugins)
 
