@@ -11,8 +11,15 @@ extern "C" {
 struct SurviveSimpleContext;
 typedef struct SurviveSimpleContext SurviveSimpleContext;
 
+enum SurviveSimpleObject_type {
+	SurviveSimpleObject_LIGHTHOUSE,
+	SurviveSimpleObject_OBJECT,
+	SurviveSimpleObject_EXTERNAL
+};
+
 struct SurviveSimpleObject;
 typedef struct SurviveSimpleObject SurviveSimpleObject;
+typedef void (*SurviveSimpleLogFn)(struct SurviveSimpleContext *ctx, SurviveLogLevel logLevel, const char *msg);
 
 enum SurviveSimpleEventType { SurviveSimpleEventType_None = 0, SurviveSimpleEventType_ButtonEvent };
 
@@ -35,6 +42,8 @@ typedef struct SurviveSimpleButtonEvent {
  * @return Pointer to the simple context
  */
 SURVIVE_EXPORT SurviveSimpleContext *survive_simple_init(int argc, char *const *argv);
+SURVIVE_EXPORT SurviveSimpleContext *survive_simple_init_with_logger(int argc, char *const *argv,
+																	 SurviveSimpleLogFn fn);
 
 /**
  * Close all devices and free all memory associated with the given context
@@ -96,6 +105,8 @@ SURVIVE_EXPORT const char *survive_simple_serial_number(const SurviveSimpleObjec
 SURVIVE_EXPORT enum SurviveSimpleEventType survive_simple_next_event(SurviveSimpleContext *actx,
 																	 SurviveSimpleEvent *event);
 
+SURVIVE_EXPORT enum SurviveSimpleObject_type survive_simple_object_get_type(const struct SurviveSimpleObject *sao);
+
 /**
  * Given an event with the type of 'button', it returns the internal ButtonEvent structure. If the type isn't a button,
  * it returns null.
@@ -142,4 +153,5 @@ struct SurviveSimpleEvent {
 
 #ifdef __cplusplus
 }
+
 #endif

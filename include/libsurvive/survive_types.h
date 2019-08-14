@@ -95,10 +95,14 @@ typedef enum {
 	SURVIVE_ERROR_INVALID_CONFIG = -4
 } SurviveError;
 
-typedef void (*error_feedback_func)(SurviveContext *ctx, SurviveError errorCode, const char *fault);
-typedef void (*text_feedback_func)( SurviveContext * ctx, const char * fault );
-typedef text_feedback_func warn_feedback_func;
-typedef text_feedback_func info_feedback_func;
+typedef enum {
+	SURVIVE_LOG_LEVEL_ERROR = 0,
+	SURVIVE_LOG_LEVEL_WARNING = 1,
+	SURVIVE_LOG_LEVEL_INFO = 2,
+} SurviveLogLevel;
+
+typedef void (*log_process_func)(SurviveContext *ctx, SurviveLogLevel logLevel, const char *fault);
+typedef void (*report_error_process_func)(SurviveContext *ctx, SurviveError error);
 
 typedef int (*config_process_func)(SurviveObject *so, char *ct0conf, int len);
 

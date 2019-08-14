@@ -49,41 +49,61 @@ int SymnumCheck(const char *path, const char *name, void *location, long size) {
 
 #endif
 
-static void reset_stderr() {
+static void reset_stderr(FILE *f) {
 #ifndef _WIN32
-	fprintf(stderr, "\033[0m");
+	fprintf(f, "\033[0m");
 #else
 	HANDLE   hConsole = GetStdHandle(STD_ERROR_HANDLE);
 	SetConsoleTextAttribute(hConsole, 7);
 #endif
 }
 
-static void set_stderr_color(int c) {
+static void set_stderr_color(FILE *f, int c) {
 #ifndef _WIN32
-	fprintf(stderr, "\033[0;31m");
+	fprintf(f, "\033[0;31m");
 #else
 	HANDLE   hConsole = GetStdHandle(STD_ERROR_HANDLE);
 	SetConsoleTextAttribute(hConsole, c == 1 ? FOREGROUND_RED : (FOREGROUND_INTENSITY | FOREGROUND_RED));
 #endif
 }
 
-static void survive_default_error(struct SurviveContext *ctx, SurviveError errorCode, const char *fault) {
-	set_stderr_color(2);
-	fprintf(stderr, "Error %d: %s\n", errorCode, fault);
-	reset_stderr();
+static void survive_default_report_error_process(struct SurviveContext *ctx, SurviveError errorCode) {
 	ctx->currentError = errorCode;
+}
+
+static void survive_default_error(struct SurviveContext *ctx, SurviveError errorCode, const char *fault) {
+	set_stderr_color(ctx->log_target, 2);
+	fprintf(ctx->log_target, "Error %d: %s\n", errorCode, fault);
+	reset_stderr(ctx->log_target);
+	fflush(ctx->log_target);
 }
 
 static void survive_default_info(struct SurviveContext *ctx, const char *fault) {
 	survive_recording_info_process(ctx, fault);
-	fprintf(stderr, "Info: %s\n", fault);
+	fprintf(ctx->log_target, "Info: %s\n", fault);
+	fflush(ctx->log_target);
 }
 
 static void survive_default_warn(struct SurviveContext *ctx, const char *fault) {
 	survive_recording_info_process(ctx, fault);
-	set_stderr_color(1);
-	fprintf(stderr, "Warning: %s\n", fault);
-	reset_stderr();
+	set_stderr_color(ctx->log_target, 1);
+	fprintf(ctx->log_target, "Warning: %s\n", fault);
+	reset_stderr(ctx->log_target);
+	fflush(ctx->log_target);
+}
+
+void survive_default_log_process(struct SurviveContext *ctx, SurviveLogLevel ll, const char *fault) {
+	switch (ll) {
+	case SURVIVE_LOG_LEVEL_ERROR:
+		survive_default_error(ctx, ctx->currentError, fault);
+		return;
+	case SURVIVE_LOG_LEVEL_WARNING:
+		survive_default_warn(ctx, fault);
+		return;
+	case SURVIVE_LOG_LEVEL_INFO:
+		survive_default_info(ctx, fault);
+		return;
+	}
 }
 
 static void *button_servicer(void *context) {
@@ -174,7 +194,7 @@ SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel c
 	return -1;
 }
 
-SurviveContext *survive_init_internal(int argc, char *const *argv) {
+SurviveContext *survive_init_internal(int argc, char *const *argv, void *userData, log_process_func log_func) {
 	int i;
 
 	survive_load_plugins(0);
@@ -187,6 +207,8 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 #endif
 
 	SurviveContext *ctx = calloc(1, sizeof(SurviveContext));
+	ctx->user_ptr = userData;
+
 	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
 		ctx->bsd[i].mode = -1;
 		ctx->bsd_map[i] = -1;
@@ -196,6 +218,8 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 #define SURVIVE_HOOK_PROCESS_DEF(hook) survive_install_##hook##_fn(ctx, 0);
 #define SURVIVE_HOOK_FEEDBACK_DEF(hook) survive_install_##hook##_fn(ctx, 0);
 #include "survive_hooks.h"
+
+	survive_install_log_fn(ctx, log_func);
 
 	ctx->global_config_values = malloc(sizeof(config_group));
 	ctx->temporary_config_values = malloc(sizeof(config_group));
@@ -243,7 +267,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 				vartoupdate = "configfile";
 				break;
 			default:
-				fprintf(stderr, "Error: unknown parameter %s\n", *av);
+				fprintf(ctx->log_target, "Error: unknown parameter %s\n", *av);
 				showhelp = 1;
 			}
 
@@ -273,6 +297,9 @@ SurviveContext *survive_init_internal(int argc, char *const *argv) {
 			}
 		}
 	}
+
+	const char *log_file = survive_configs(ctx, "log", SC_GET, 0);
+	ctx->log_target = log_file ? fopen(log_file, "w") : stderr;
 
 	const char *config_prefix_fields[] = {"playback", 0};
 	for (const char **name = config_prefix_fields; *name; name++) {

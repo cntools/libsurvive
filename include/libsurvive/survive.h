@@ -256,7 +256,6 @@ struct SurviveContext {
 	int lh_version; // -1 is unknown, 0 is LHv1 -- pulse, ootx, etc. 1 is LHv2 -- single motor rotated beams
 
 #define SURVIVE_HOOK_PROCESS_DEF(hook) hook##_process_func hook##proc;
-#define SURVIVE_HOOK_FEEDBACK_DEF(hook) hook##_feedback_func hook##function;
 #include "survive_hooks.h"
 
 	// Calibration data:
@@ -285,6 +284,7 @@ struct SurviveContext {
 	void *user_ptr;
 
 	int log_level;
+	FILE *log_target;
 
 	struct config_group *global_config_values;
 	struct config_group *lh_config; // lighthouse configs
@@ -294,7 +294,18 @@ struct SurviveContext {
 SURVIVE_EXPORT void survive_verify_FLT_size(
 	uint32_t user_size); // Baked in size of FLT to verify users of the library have the correct setting.
 
-SURVIVE_EXPORT SurviveContext *survive_init_internal(int argc, char *const *argv);
+SURVIVE_EXPORT SurviveContext *survive_init_internal(int argc, char *const *argv, void *user_ptr,
+													 log_process_func log_func);
+
+/**
+ * Same as survive_init, except it allows a log_func to be installed before most of system startup.
+ *
+ */
+static inline SurviveContext *survive_init_with_logger(int argc, char *const *argv, void *user_ptr,
+													   log_process_func log_func) {
+	survive_verify_FLT_size(sizeof(FLT));
+	return survive_init_internal(argc, argv, user_ptr, log_func);
+}
 
 /**
  * Call survive_init to get a populated SurviveContext pointer.
@@ -307,8 +318,7 @@ SURVIVE_EXPORT SurviveContext *survive_init_internal(int argc, char *const *argv
  * notably if -h was passed in.
  */
 static inline SurviveContext *survive_init(int argc, char *const *argv) {
-	survive_verify_FLT_size(sizeof(FLT));
-	return survive_init_internal(argc, argv);
+	return survive_init_with_logger(argc, argv, 0, 0);
 }
 
 // For any of these, you may pass in 0 for the function pointer to use default behavior.
@@ -371,6 +381,7 @@ SURVIVE_EXPORT void survive_apply_ang_velocity(LinmathQuat out, const SurviveAng
 											   const LinmathQuat t0);
 // Call these from your callback if overridden.
 // Accept higher-level data.
+SURVIVE_EXPORT void survive_default_log_process(struct SurviveContext *ctx, SurviveLogLevel ll, const char *fault);
 SURVIVE_EXPORT void survive_default_lightcap_process(SurviveObject *so, const LightcapElement *element);
 SURVIVE_EXPORT void survive_default_light_process(SurviveObject *so, int sensor_id, int acode, int timeinsweep,
 												  survive_timecode timecode, survive_timecode length, uint32_t lh);
@@ -428,14 +439,14 @@ SURVIVE_EXPORT void handle_lightcap(SurviveObject *so, const LightcapElement *le
 	{                                                                                                                  \
 		char stbuff[1024];                                                                                             \
 		sprintf(stbuff, __VA_ARGS__);                                                                                  \
-		SV_LOG_NULL_GUARD ctx->warnfunction(ctx, stbuff);                                                              \
+		SV_LOG_NULL_GUARD ctx->logproc(ctx, SURVIVE_LOG_LEVEL_WARNING, stbuff);                                        \
 	}
 
 #define SV_INFO(...)                                                                                                   \
 	{                                                                                                                  \
 		char stbuff[1024];                                                                                             \
 		sprintf(stbuff, __VA_ARGS__);                                                                                  \
-		SV_LOG_NULL_GUARD ctx->infofunction(ctx, stbuff);                                                              \
+		SV_LOG_NULL_GUARD ctx->logproc(ctx, SURVIVE_LOG_LEVEL_INFO, stbuff);                                           \
 	}
 
 #define SV_VERBOSE(lvl, ...)                                                                                           \
@@ -449,7 +460,9 @@ SURVIVE_EXPORT void handle_lightcap(SurviveObject *so, const LightcapElement *le
 	{                                                                                                                  \
 		char stbuff[1024];                                                                                             \
 		sprintf(stbuff, __VA_ARGS__);                                                                                  \
-		SV_LOG_NULL_GUARD ctx->errorfunction(ctx, errorCode, stbuff);                                                  \
+		if (ctx)                                                                                                       \
+			ctx->report_errorproc(ctx, errorCode);                                                                     \
+		SV_LOG_NULL_GUARD ctx->logproc(ctx, SURVIVE_LOG_LEVEL_INFO, stbuff);                                           \
 	}
 
 static inline void survive_notify_gen2(struct SurviveObject *so) {

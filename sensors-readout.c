@@ -42,7 +42,7 @@ static void print(float f) {
 
 static void print_label(const char *l) { printf("%*s|", 10, l); }
 
-void info_fn(SurviveContext *ctx, const char *fault) {}
+void info_fn(SurviveContext *ctx, SurviveLogLevel logLevel, const char *fault) {}
 
 int lh = 0;
 
@@ -146,7 +146,7 @@ int main(int argc, char **argv) {
 		return 0;
 
 	FLT last_redraw = OGGetAbsoluteTime();
-	survive_install_info_fn(ctx, info_fn);
+	survive_install_log_fn(ctx, info_fn);
 	survive_install_sync_fn(ctx, sync_fn);
 	survive_startup(ctx);
 

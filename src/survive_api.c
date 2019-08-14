@@ -22,11 +22,7 @@ struct SurviveLighthouseData {
 struct SurviveSimpleObject {
 	struct SurviveSimpleContext *actx;
 
-	enum SurviveSimpleObject_type {
-		SurviveSimpleObject_LIGHTHOUSE,
-		SurviveSimpleObject_OBJECT,
-		SurviveSimpleObject_EXTERNAL
-	} type;
+	enum SurviveSimpleObject_type type;
 
 	union {
 		struct SurviveLighthouseData lh;
@@ -40,8 +36,9 @@ struct SurviveSimpleObject {
 
 #define MAX_EVENT_SIZE 64
 struct SurviveSimpleContext {
-	SurviveContext* ctx; 
-	
+	SurviveContext *ctx;
+	SurviveSimpleLogFn log_fn;
+
 	bool running;
 	og_thread_t thread;
 	og_mutex_t poll_mutex;
@@ -161,19 +158,39 @@ static void button_fn(SurviveObject *so, uint8_t eventType, uint8_t buttonId, ui
 	OGUnlockMutex(actx->poll_mutex);
 }
 
-SurviveSimpleContext *survive_simple_init(int argc, char *const *argv) {
-	SurviveContext* ctx = survive_init(argc, argv);
-	if (ctx == 0)
-		return 0;
+SURVIVE_EXPORT SurviveSimpleContext *survive_simple_init(int argc, char *const *argv) {
+	return survive_simple_init_with_logger(argc, argv, 0);
+}
 
+void simple_log_fn(SurviveContext *ctx, SurviveLogLevel logLevel, const char *msg) {
+	SurviveSimpleContext *actx = ctx->user_ptr;
+	if (actx == 0 || actx->log_fn == 0) {
+		survive_default_log_process(ctx, logLevel, msg);
+		return;
+	}
+
+	actx->log_fn(actx, logLevel, msg);
+}
+
+SURVIVE_EXPORT SurviveSimpleContext *survive_simple_init_with_logger(int argc, char *const *argv,
+																	 SurviveSimpleLogFn fn) {
+	SurviveSimpleContext *actx = calloc(1, sizeof(SurviveSimpleContext));
+
+	SurviveContext *ctx = survive_init_with_logger(argc, argv, actx, simple_log_fn);
+	if (ctx == 0) {
+		free(actx);
+		return 0;
+	}
+	ctx->user_ptr = actx;
 	survive_startup(ctx);
 
 	int object_ct = ctx->activeLighthouses + ctx->objs_ct;
-	SurviveSimpleContext *actx = calloc(1, sizeof(SurviveSimpleContext) + sizeof(SurviveSimpleObject) * object_ct);
+	actx = realloc(actx, sizeof(SurviveSimpleContext) + sizeof(SurviveSimpleObject) * object_ct);
 	actx->object_ct = object_ct;
 	actx->ctx = ctx;
 	actx->poll_mutex = OGCreateMutex();
 	ctx->user_ptr = actx;
+
 	intptr_t i = 0;
 	for (i = 0; i < ctx->activeLighthouses; i++) {
 		SurviveSimpleObject *obj = &actx->objects[i];
@@ -371,4 +388,8 @@ enum SurviveSimpleEventType survive_simple_next_event(SurviveSimpleContext *actx
 	pop_from_event_buffer(actx, event);
 	OGUnlockMutex(actx->poll_mutex);
 	return event->event_type;
+}
+
+enum SurviveSimpleObject_type survive_simple_object_get_type(const struct SurviveSimpleObject *sao) {
+	return sao->type;
 }
