@@ -467,6 +467,11 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		SV_INFO("MPFIT stats:");
 		SV_INFO("\tmeas failures %d", d->stats.meas_failures);
 		general_optimizer_data_dtor(&d->opt);
+		survive_imu_tracker_free(&d->tracker);
+		survive_detach_config(ctx, "disable-lighthouse", &d->disable_lighthouse);
+		survive_detach_config(ctx, "sensor-variance-per-sec", &d->sensor_variance_per_second);
+		survive_detach_config(ctx, "sensor-variance", &d->sensor_variance);
+
 		free(d);
 		so->PoserData = 0;
 		return 0;

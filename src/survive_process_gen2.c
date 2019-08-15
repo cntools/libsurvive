@@ -90,6 +90,7 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 			if (ctx->bsd[bsd_idx].OOTXSet) {
 				ctx->bsd[bsd_idx].ootx_data = 0;
 				ootx_free_decoder_context(decoderContext);
+				free(decoderContext);
 			}
 		}
 	}

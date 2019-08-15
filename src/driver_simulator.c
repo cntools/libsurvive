@@ -356,7 +356,7 @@ int DriverRegSimulator(SurviveContext *ctx) {
 
 	free(loc_buf);
 	free(nor_buf);
-	free(cfg);
+
 	sp->so = device;
 	survive_add_object(ctx, device);
 	sp->lh_version = use_lh2 ? 1 : 0;

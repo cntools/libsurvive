@@ -170,11 +170,11 @@ static void ingest_config_request(vive_device_inst_t *dev, const struct _usb_hea
 		memcpy(&dev->compressed_data[dev->compressed_data_idx], pktData + 2, cnt);
 		dev->compressed_data_idx += cnt;
 	} else {
-		uint8_t uncompressed_data[65536] = {0};
+		char *uncompressed_data = malloc(65536);
 		SurviveContext *ctx = dev->so->ctx;
 
 		int len = survive_simple_inflate(dev->so->ctx, dev->compressed_data, dev->compressed_data_idx,
-										 uncompressed_data, sizeof(uncompressed_data) - 1);
+										 (uint8_t *)uncompressed_data, 65536 - 1);
 
 		if (len <= 0) {
 			SV_WARN("Error: data for config descriptor");
@@ -183,7 +183,7 @@ static void ingest_config_request(vive_device_inst_t *dev, const struct _usb_hea
 		}
 
 		if (!dev->hasConfiged) {
-			if (ctx->configproc(dev->so, (char *)uncompressed_data, len) == 0) {
+			if (ctx->configproc(dev->so, uncompressed_data, len) == 0) {
 				survive_add_object(ctx, dev->so);
 				dev->hasConfiged = true;
 			} else {

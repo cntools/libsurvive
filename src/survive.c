@@ -616,6 +616,8 @@ void survive_close(SurviveContext *ctx) {
 
 	// unlock/ post to button service semaphore so the thread can kill itself
 	OGUnlockSema(ctx->buttonQueue.buttonservicesem);
+	OGJoinThread(ctx->buttonservicethread);
+	OGDeleteSema(ctx->buttonQueue.buttonservicesem);
 
 	while ((DriverName = GetDriverNameMatching("DriverUnreg", r++))) {
 		DeviceDriver dd = GetDriver(DriverName);
@@ -646,12 +648,12 @@ void survive_close(SurviveContext *ctx) {
 
 	destroy_config_group(ctx->global_config_values);
 	destroy_config_group(ctx->temporary_config_values);
-	destroy_config_group(ctx->lh_config);
+
+	for (int lh = 0; lh < NUM_GEN2_LIGHTHOUSES; lh++)
+		destroy_config_group(ctx->lh_config + lh);
 
 	for (i = 0; i < ctx->objs_ct; i++) {
-		free(ctx->objs[i]->sensor_locations);
-		free(ctx->objs[i]->sensor_normals);
-		free(ctx->objs[i]);
+		survive_destroy_device(ctx->objs[i]);
 	}
 
 	free(ctx->objs);
@@ -685,8 +687,10 @@ int survive_poll(struct SurviveContext *ctx) {
 
 	for (i = 0; i < oldct; i++) {
 		r = ctx->driverpolls[i](ctx, ctx->drivers[i]);
-		if (r)
+		if (r) {
+			SV_WARN("Driver reported %d", r);
 			return r;
+		}
 	}
 
 	return 0;

@@ -183,6 +183,8 @@ void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighth
 
 int survive_default_config_process(SurviveObject *so, char *ct0conf, int len) {
 	survive_recording_config_process(so, ct0conf, len);
+	so->conf = ct0conf;
+	so->conf_cnt = len;
 	return survive_load_htc_config_format(so, ct0conf, len);
 }
 void survive_default_imu_process( SurviveObject * so, int mask, FLT * accelgyromag, uint32_t timecode, int id )

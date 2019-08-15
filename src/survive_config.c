@@ -932,8 +932,9 @@ SURVIVE_EXPORT void survive_detach_config(SurviveContext *ctx, const char *tag, 
 			update_list_t * v = *ul;
 			*ul = (*ul)->next;
 			free( v );
+		} else {
+			ul = &((*ul)->next);
 		}
-		ul = &((*ul)->next);
 	}
 }
 

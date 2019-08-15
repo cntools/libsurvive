@@ -166,6 +166,12 @@ void general_optimizer_data_record_imu(GeneralOptimizerData *d, PoserDataIMU *im
 
 void general_optimizer_data_dtor(GeneralOptimizerData *d) {
 	SurviveContext *ctx = d->so->ctx;
+	if (d->seed_poser) {
+		PoserData pd;
+		pd.pt = POSERDATA_DISASSOCIATE;
+		d->so->PoserData = d->seed_poser_data;
+		d->seed_poser(d->so, &pd);
+	}
 	SV_INFO("\tseed runs %d / %d", d->stats.poser_seed_runs, d->stats.runs);
 	SV_INFO("\terror failures %d", d->stats.error_failures);
 }

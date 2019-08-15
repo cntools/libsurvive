@@ -75,6 +75,7 @@ static int ParsePoints(SurviveContext *ctx, SurviveObject *so, char *ct0conf, FL
 	const jsmntok_t *tk;
 
 	so->sensor_ct = 0;
+	assert(*floats_out == 0);
 	*floats_out = malloc(sizeof(**floats_out) * 32 * 3);
 
 	for (k = 0; k < pts; k++) {
@@ -309,9 +310,13 @@ static int process_jsontok(scratch_space_t *scratch, char *d, stack_entry_t *sta
 		return j + 1;
 	} else if (t->type == JSMN_ARRAY) {
 		process_jsonarray(scratch, d, stack);
+
+		stack_entry_t entry;
+		entry.previous = stack;
 		j = 0;
 		for (i = 0; i < t->size; i++) {
-			j += process_jsontok(scratch, d, stack, t + 1 + j, count - j);
+			entry.key = t + 1 + j;
+			j += process_jsontok(scratch, d, &entry, t + 1 + j, count - j);
 		}
 		return j + 1;
 	}
@@ -416,5 +421,15 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	  fclose(f);
 	}
 
+	SV_INFO("Read config for %s", so->codename);
+
 	return 0;
+}
+
+void survive_destroy_device(SurviveObject *so) {
+	free(so->sensor_locations);
+	free(so->sensor_normals);
+	free(so->conf);
+	free(so->channel_map);
+	free(so);
 }

@@ -79,7 +79,11 @@ void bc_svd_bc_svd(bc_svd *self, void *user, bc_svd_fill_M_fn fillFn, const Linm
 	bc_svd_compute_barycentric_coordinates(self);
 }
 
-void bc_svd_dtor(bc_svd *self) {}
+void bc_svd_dtor(bc_svd *self) {
+	free(self->setup.alphas);
+	free(self->object_pts_in_camera);
+	free(self->meas);
+}
 
 double bc_svd_compute_R_and_t(bc_svd *self, const double *ut, const double *betas, double R[3][3], double t[3]);
 

@@ -151,6 +151,8 @@ struct SurviveViveData {
 	struct libusb_context *usbctx;
 	size_t read_count;
 	int seconds_per_hz_output;
+
+	bool closing;
 };
 
 #ifdef HIDAPI
@@ -207,6 +209,9 @@ static void *HAPIReceiver(void *v) {
 static void handle_transfer(struct libusb_transfer *transfer) {
 	SurviveUSBInterface *iface = transfer->user_data;
 	if (iface->assoc_obj == 0) {
+		SurviveContext *ctx = iface->ctx;
+		SV_INFO("Cleaning up transfer on %d %s", iface->which_interface_am_i, iface->hname);
+		iface->ctx = 0;
 		return;
 	}
 
@@ -469,7 +474,11 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 typedef libusb_device *survive_usb_device_t;
 typedef libusb_device **survive_usb_devices_t;
 
-static int survive_usb_subsystem_init(SurviveViveData *sv) { return libusb_init(&sv->usbctx); }
+static int survive_usb_subsystem_init(SurviveViveData *sv) {
+	int rtn = libusb_init(&sv->usbctx);
+	libusb_set_debug(sv->usbctx, LIBUSB_LOG_LEVEL_WARNING);
+	return rtn;
+}
 static int survive_get_usb_devices(SurviveViveData *sv, survive_usb_devices_t *devs) {
 	return libusb_get_device_list(sv->usbctx, devs);
 }
@@ -502,7 +511,7 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 	struct libusb_config_descriptor *conf;
 	int ret = libusb_get_config_descriptor(d, 0, &conf);
 	if (ret)
-		return ret;
+		goto cleanup_and_rtn;
 
 	const struct DeviceInfo *info = usbInfo->device_info;
 	ret = libusb_open(d, &usbInfo->handle);
@@ -515,7 +524,7 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 	if (!usbInfo->handle || ret) {
 		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Error: cannot open device \"%s\" with vid/pid %04x:%04x error %d (%s)",
 				 info->name, idVendor, idProduct, ret, libusb_error_name(ret));
-		return ret;
+		goto cleanup_and_rtn;
 	}
 
 	libusb_set_auto_detach_kernel_driver(usbInfo->handle, 1);
@@ -523,7 +532,7 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 		int ret = libusb_claim_interface(usbInfo->handle, j);
 		if (ret != 0) {
 			SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Could not claim interface %d of %s: %d", j, info->name, ret);
-			return ret;
+			goto cleanup_and_rtn;
 		}
 	}
 
@@ -531,6 +540,8 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 
 	usleep(100000);
 
+cleanup_and_rtn:
+	libusb_free_config_descriptor(conf);
 	return ret;
 }
 #endif
@@ -758,8 +769,21 @@ void survive_vive_usb_close(SurviveViveData *sv) {
 #else
 	for (i = 0; i < sv->udev_cnt; i++) {
 		for (j = 0; j < sv->udev[i].interface_cnt; j++) {
+			sv->udev[i].interfaces[j].assoc_obj = 0;
+		}
+		SurviveContext *ctx = sv->ctx;
+		for (j = 0; j < sv->udev[i].interface_cnt; j++) {
+			SurviveUSBInterface *iface = &sv->udev[i].interfaces[j];
+			SV_INFO("Cleaning up interface on %d %s", iface->which_interface_am_i, iface->hname);
+			libusb_cancel_transfer(sv->udev[i].interfaces[j].transfer);
+			while (sv->udev[i].interfaces[j].ctx) {
+				libusb_handle_events(sv->usbctx);
+			}
+			libusb_free_transfer(sv->udev[i].interfaces[j].transfer);
+
 			libusb_release_interface(sv->udev[i].handle, j);
 		}
+
 		libusb_close(sv->udev[i].handle);
 	}
 	libusb_exit(sv->usbctx);
@@ -2329,8 +2353,8 @@ static int LoadConfig(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int i
 
 int survive_vive_close(SurviveContext *ctx, void *driver) {
 	SurviveViveData *sv = driver;
-
 	survive_vive_usb_close(sv);
+	free(sv);
 	return 0;
 }
 

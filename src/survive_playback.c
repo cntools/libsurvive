@@ -543,7 +543,10 @@ int DriverRegPlayback(SurviveContext *ctx) {
 
 			SurviveObject *so = survive_create_device(ctx, "replay", sp, dev, 0);
 
-			if (ctx->configproc(so, configStart, len) == 0) {
+			char *config = calloc(1, len + 1);
+			memcpy(config, configStart, len);
+
+			if (ctx->configproc(so, config, len) == 0) {
 				SV_INFO("Found %s in playback file...", dev);
 				survive_add_object(ctx, so);
 			} else {

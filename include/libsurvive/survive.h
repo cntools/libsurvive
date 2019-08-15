@@ -165,6 +165,9 @@ struct SurviveObject {
 
 	SurviveSensorActivations activations;
 	void *user_ptr;
+
+	char *conf;
+	size_t conf_cnt;
 };
 
 // These exports are mostly for language binding against

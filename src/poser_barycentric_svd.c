@@ -58,6 +58,13 @@ static void survive_fill_m(void *user, double *eq, int axis, FLT angle) {
 	}
 }
 
+static void PoserDataSVD_destroy(PoserDataSVD *dd) {
+	bc_svd_dtor(&dd->bc);
+	survive_detach_config(dd->so->ctx, "max-error", &dd->max_error_obj);
+	survive_detach_config(dd->so->ctx, "max-cal-error", &dd->max_error_cal);
+	free(dd);
+}
+
 static PoserDataSVD *PoserDataSVD_new(SurviveObject *so) {
 	PoserDataSVD *rtn = calloc(sizeof(PoserDataSVD), 1);
 	rtn->so = so;
@@ -298,7 +305,7 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 		return solve_fullscene(dd, (PoserDataFullScene *)(pd));
 	}
 	case POSERDATA_DISASSOCIATE: {
-		free(dd);
+		PoserDataSVD_destroy(dd);
 		so->PoserData = 0;
 		// printf( "Need to disassociate.\n" );
 		break;
