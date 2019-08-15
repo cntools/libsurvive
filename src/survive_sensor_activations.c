@@ -42,17 +42,25 @@ void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct Pos
 	}
 	self->last_imu = imuData->hdr.timecode;
 
-	for (int i = 0; i < 3; i++) {
-		self->accel[i] = .98 * self->accel[i] + .02 * imuData->accel[i];
-		self->gyro[i] = .98 * self->gyro[i] + .02 * imuData->gyro[i];
-		self->mag[i] = .98 * self->mag[i] + .02 * imuData->mag[i];
+	if (isnan(self->accel[0])) {
+		for (int i = 0; i < 3; i++) {
+			self->accel[i] = imuData->accel[i];
+			self->gyro[i] = imuData->gyro[i];
+			self->mag[i] = imuData->mag[i];
+		}
+	} else {
+		for (int i = 0; i < 3; i++) {
+			self->accel[i] = .98 * self->accel[i] + .02 * imuData->accel[i];
+			self->gyro[i] = .98 * self->gyro[i] + .02 * imuData->gyro[i];
+			self->mag[i] = .98 * self->mag[i] + .02 * imuData->mag[i];
+		}
 	}
 
 	if (norm3d(imuData->gyro) > .05 || dist3d(self->accel, imuData->accel) > .01) {
 		survive_long_timecode long_timecode =
 			((survive_long_timecode)self->rollover_count << 32u) | imuData->hdr.timecode;
 		self->last_movement = long_timecode;
-		// printf("%f %f\n", norm3d(imuData->gyro), dist3d(self->accel, imuData->accel));
+		// fprintf(stderr, "%f %f\n", norm3d(imuData->gyro), dist3d(self->accel, imuData->accel));
 	}
 }
 void SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct PoserDataLightGen2 *lightData) {
@@ -76,6 +84,10 @@ SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveSensorActivations *self
 				self->angles[i][j][h] = NAN;
 			}
 		}
+	}
+
+	for (int i = 0; i < 3; i++) {
+		self->accel[i] = NAN;
 	}
 }
 

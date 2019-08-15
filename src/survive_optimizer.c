@@ -67,7 +67,7 @@ void survive_optimizer_setup_camera(survive_optimizer *mpfit_ctx, int8_t lh, con
 	setup_pose_param_limits(mpfit_ctx, mpfit_ctx->parameters + start, mpfit_ctx->parameters_info + start);
 
 	for (int i = start; i < start + 7; i++) {
-		mpfit_ctx->parameters_info[i].fixed = isFixed || pose == 0;
+		mpfit_ctx->parameters_info[i].fixed = isFixed && pose != 0;
 		mpfit_ctx->parameters_info[i].parname = lh_parameter_names[i - start];
 	}
 }

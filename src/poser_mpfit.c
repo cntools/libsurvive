@@ -74,7 +74,7 @@ static size_t construct_input_from_scene(const MPFITData *d, size_t timecode, co
 	SurviveObject *so = d->opt.so;
 	SurviveContext *ctx = so->ctx;
 
-	bool isStationary = SurviveSensorActivations_stationary_time(&so->activations) > so->timebase_hz;
+	bool isStationary = SurviveSensorActivations_stationary_time(scene) > so->timebase_hz;
 	survive_timecode sensor_time_window = isStationary ? (so->timebase_hz) : d->sensor_time_window;
 
 	const bool force_pair = false;
@@ -318,6 +318,7 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 	SurviveSensorActivations activations;
 	PoserDataFullScene2Activations(pdfs, &activations);
 	activations.lh_gen = so->ctx->lh_version;
+	activations.last_imu = so->timebase_hz * 2;
 	size_t meas_size = construct_input_from_scene(d, 0, &activations, 0, mpfitctx.measurements);
 
 	if (mpfitctx.current_bias > 0) {
@@ -364,6 +365,8 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 
 	double rtn = -1;
 	bool status_failure = res <= 0;
+	SurviveContext *ctx = so->ctx;
+
 	if (!status_failure) {
 		general_optimizer_data_record_success(&d->opt, result.bestnorm);
 		rtn = result.bestnorm;
@@ -373,12 +376,13 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 			if (quatmagnitude(cameras[i].Rot) != 0) {
 				quatnormalize(cameras[i].Rot, cameras[i].Rot);
 				lh2worlds[i] = InvertPoseRtn(&cameras[i]);
+				SV_INFO("Solved for %d with error of %f/%f", i, result.orignorm, result.bestnorm);
 			}
 		}
 
 		PoserData_lighthouse_poses_func(&pdfs->hdr, so, lh2worlds, so->ctx->activeLighthouses, 0);
+		SV_INFO("MPFIT success %f %d", result.bestnorm, res);
 	} else {
-		SurviveContext *ctx = so->ctx;
 		SV_INFO("MPFIT failure %f %d", result.bestnorm, res);
 		// general_optimizer_data_record_failure(&d->opt);
 	}
