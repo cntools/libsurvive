@@ -2051,7 +2051,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 						transfer_null_warning = true;
 					}
 					// USBMON -- grab the output
-					dump_binary = true;
+					// dump_binary = true;
 				}
 #endif
 			}

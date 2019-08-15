@@ -36,6 +36,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin/${ARCH_TARGET
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin/${ARCH_TARGET})
 
 FILE(COPY ${CMAKE_CURRENT_SOURCE_DIR}/driver.vrdrivermanifest DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+FILE(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources/settings/default.vrsettings DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/resources/settings)
 
 add_library(driver_survive SHARED openvr_driver.cc)
 set_target_properties(driver_survive PROPERTIES PREFIX "")

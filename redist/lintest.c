@@ -143,6 +143,16 @@ void testKabsch() {
 	ASSERT_FLTA_EQUALS(should_be_tx2.Pos, tx2.Pos, 7);
 }
 
+static void testKabsch2() {
+	LinmathQuat q = {};
+
+	LinmathPoint3d survivePts[] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+
+	LinmathPoint3d openvrPts[] = {{1, 0, 0}, {0, 0, 1}, {0, 1, 0}};
+
+	KabschCentered(q, (double *)survivePts, (double *)openvrPts, 3);
+}
+
 static void testQuatFind(const LinmathQuat _q1, const LinmathQuat _q2) {
 	LinmathQuat q1;
 	quatnormalize(q1, _q1);
@@ -191,6 +201,7 @@ int main()
 	testApplyPoseToPoint();
 	testApplyPoseToPose();
 	testKabsch();
+	testKabsch2();
 
 	testQuatFinding();
 	testQuatAsAngularVelocity();

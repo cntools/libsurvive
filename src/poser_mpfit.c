@@ -75,7 +75,8 @@ static size_t construct_input_from_scene(const MPFITData *d, size_t timecode, co
 	SurviveContext *ctx = so->ctx;
 
 	bool isStationary = SurviveSensorActivations_stationary_time(&so->activations) > so->timebase_hz;
-	survive_timecode sensor_time_window = isStationary ? (so->timebase_hz / 2) : d->sensor_time_window;
+	survive_timecode sensor_time_window = isStationary ? (so->timebase_hz) : d->sensor_time_window;
+
 	const bool force_pair = false;
 	for (uint8_t lh = 0; lh < ctx->activeLighthouses; lh++) {
 		if (d->disable_lighthouse == lh) {
@@ -219,7 +220,14 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 
 	bool canPossiblySolveLHS = false;
 	for (int lh = 0; lh < so->ctx->activeLighthouses && !canPossiblySolveLHS; lh++) {
-		if (!so->ctx->bsd[lh].PositionSet && so->ctx->bsd[lh].OOTXSet && meas_for_lhs[lh] > 0) {
+		if (!so->ctx->bsd[lh].PositionSet && meas_for_lhs[lh] > 0) {
+			if (!so->ctx->bsd[lh].OOTXSet) {
+				// Wait til this thing gets OOTX, and then solve for as much as we can. Avoids doing
+				// two solves in a row because of OOTX timing.
+				canPossiblySolveLHS = false;
+				break;
+			}
+
 			canPossiblySolveLHS = true;
 		}
 	}

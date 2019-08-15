@@ -4,6 +4,7 @@
 #include <memory>
 #include <survive_api.h>
 
+#include <cstdarg>
 #include <map>
 
 #if defined(_WIN32)
@@ -16,12 +17,72 @@
 #error "Unsupported Platform."
 #endif
 
+static void DriverLogVarArgs(const char *pMsgFormat, va_list args) {
+	char buf[1024];
+	vsnprintf(buf, sizeof(buf), pMsgFormat, args);
+	vr::VRDriverLog()->Log(buf);
+}
+
+void DriverLog(const char *pMsgFormat, ...) {
+	va_list args;
+	va_start(args, pMsgFormat);
+
+	DriverLogVarArgs(pMsgFormat, args);
+
+	va_end(args);
+}
+
+void DebugDriverLog(const char *pMsgFormat, ...) {
+	va_list args;
+	va_start(args, pMsgFormat);
+
+	DriverLogVarArgs(pMsgFormat, args);
+
+	va_end(args);
+}
+
+static vr::HmdQuaternion_t survive2openvr() {
+	LinmathQuat q = {};
+
+	LinmathPoint3d survivePts[] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+
+	LinmathPoint3d openvrPts[] = {{1, 0, 0}, {0, 0, -1}, {0, 1, 0}};
+
+	KabschCentered(q, (double *)survivePts, (double *)openvrPts, 3);
+
+	return vr::HmdQuaternion_t{q[0], q[1], q[2], q[3]};
+}
+LinmathPoint3d lh0position = {};
+
 struct SurviveObjectOpenVRDriver : public vr::ITrackedDeviceServerDriver {
 	explicit SurviveObjectOpenVRDriver(const SurviveSimpleObject *surviveSimpleObject)
 		: surviveSimpleObject(surviveSimpleObject) {}
 
 	vr::EVRInitError Activate(uint32_t unObjectId) override {
 		objectId = unObjectId;
+
+		// Prop_FieldOfViewLeftDegrees_Float
+		auto objType = survive_simple_object_get_type(surviveSimpleObject);
+		auto propContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(unObjectId);
+		switch (objType) {
+		case SurviveSimpleObject_LIGHTHOUSE:
+			vr::VRProperties()->SetFloatProperty(propContainer, vr::Prop_FieldOfViewLeftDegrees_Float, 60);
+			vr::VRProperties()->SetFloatProperty(propContainer, vr::Prop_FieldOfViewRightDegrees_Float, 60);
+			vr::VRProperties()->SetFloatProperty(propContainer, vr::Prop_FieldOfViewBottomDegrees_Float, 60);
+			vr::VRProperties()->SetFloatProperty(propContainer, vr::Prop_FieldOfViewTopDegrees_Float, 60);
+			vr::VRProperties()->SetFloatProperty(propContainer, vr::Prop_TrackingRangeMinimumMeters_Float, 0.1);
+			vr::VRProperties()->SetFloatProperty(propContainer, vr::Prop_TrackingRangeMaximumMeters_Float, 4);
+
+			vr::VRProperties()->SetStringProperty(propContainer, vr::Prop_RenderModelName_String,
+												  "lh_basestation_vive");
+			break;
+		case SurviveSimpleObject_OBJECT:
+			vr::VRProperties()->SetStringProperty(propContainer, vr::Prop_RenderModelName_String,
+												  "{htc}vr_tracker_vive_1_0");
+			break;
+		case SurviveSimpleObject_EXTERNAL:
+			break;
+		}
 
 		return vr::VRInitError_None;
 	}
@@ -38,17 +99,25 @@ struct SurviveObjectOpenVRDriver : public vr::ITrackedDeviceServerDriver {
 		SurvivePose sPose;
 		survive_simple_object_get_latest_pose(surviveSimpleObject, &sPose);
 
+		const char *name = survive_simple_object_name(surviveSimpleObject);
+		if (strcmp(name, "LH0") == 0) {
+			auto iSPose = InvertPoseRtn(&sPose);
+			// scale3d(lh0position, iSPose.Pos, 1.);
+			DebugDriverLog("lh0position %f %f %f", lh0position[0], lh0position[1], lh0position[2]);
+		}
+
 		vr::DriverPose_t pose = {0};
 		pose.poseIsValid = true;
 		pose.result = vr::TrackingResult_Running_OK;
 		pose.deviceIsConnected = true;
 
 		pose.vecPosition[0] = sPose.Pos[0];
-		pose.vecPosition[2] = sPose.Pos[1];
-		pose.vecPosition[1] = sPose.Pos[2];
+		pose.vecPosition[1] = sPose.Pos[1];
+		pose.vecPosition[2] = sPose.Pos[2];
 		quatcopy(&pose.qRotation.w, sPose.Rot);
 
-		pose.qWorldFromDriverRotation = vr::HmdQuaternion_t{1, 0, 0, 0};
+		pose.qWorldFromDriverRotation = survive2openvr();
+		copy3d(pose.vecWorldFromDriverTranslation, lh0position);
 		pose.qDriverFromHeadRotation = vr::HmdQuaternion_t{1, 0, 0, 0};
 
 		return pose;
@@ -75,7 +144,14 @@ class SurviveOpenVRDriver : public vr::IServerTrackedDeviceProvider {
 		VR_INIT_SERVER_DRIVER_CONTEXT(pDriverContext);
 
 		vr::VRDriverLog()->Log("Loading up\n");
-		const char *args[] = {"", "--v", "100", "--log", "/home/justin/.steam/logs/libsurvive.txt"};
+		const char *args[] = {"",
+							  "--v",
+							  "100",
+							  "--usbmon",
+							  "--log",
+							  "/home/justin/.steam/logs/libsurvive.txt",
+							  "--center-on-lh0",
+							  "--force-calibrate"};
 
 		actx = survive_simple_init_with_logger(sizeof(args) / sizeof(args[0]), (char *const *)args, log_fn);
 

@@ -201,7 +201,7 @@ static int usbmon_poll(struct SurviveContext *ctx, void *_driver) {
 	struct pcap_pkthdr pkthdr = {};
 	const usb_header_t *usbp = 0;
 
-	while (usbp = (usb_header_t *)pcap_next(driver->pcap, &pkthdr)) {
+	if (usbp = (usb_header_t *)pcap_next(driver->pcap, &pkthdr)) {
 		vive_device_inst_t *dev = find_device_inst(driver, usbp->bus_id, usbp->device_address);
 		if (dev && dev->so) {
 			// Packet data is directly after the packet header
@@ -225,7 +225,7 @@ static int usbmon_poll(struct SurviveContext *ctx, void *_driver) {
 							usbp->id, usbp->event_type, usbp->transfer_type, usbp->s.setup.bmRequestType,
 							usbp->s.setup.bRequest, usbp->s.setup.wValue, usbp->s.setup.wIndex, usbp->s.setup.wLength);
 				}
-				continue;
+				return 0;
 			}
 
 			if (!(usbp->endpoint_number & 0x80u)) {
@@ -239,7 +239,7 @@ static int usbmon_poll(struct SurviveContext *ctx, void *_driver) {
 
 				fprintf(stderr, "\n");
 
-				continue; // Only want incoming data
+				return 0; // Only want incoming data
 			}
 
 			if (usbp->status != 0) {
@@ -247,12 +247,12 @@ static int usbmon_poll(struct SurviveContext *ctx, void *_driver) {
 				if (usbp->status != -115)
 					fprintf(stderr, "E: 0x%016lx event_type: %c transfer_type: %d status: %d\n", usbp->id,
 							usbp->event_type, usbp->transfer_type, usbp->status);
-				continue; // Only want responses
+				return 0; // Only want responses
 			}
 
 			if (usbp->id == dev->last_config_id && usbp->event_type == 'C') {
 				ingest_config_request(dev, usbp, pktData);
-				continue;
+				return 0;
 			}
 
 			/*
