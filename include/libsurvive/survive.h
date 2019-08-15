@@ -165,8 +165,6 @@ struct SurviveObject {
 
 	SurviveSensorActivations activations;
 	void *user_ptr;
-	// Debug
-	int tsl;
 };
 
 // These exports are mostly for language binding against

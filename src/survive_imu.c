@@ -64,7 +64,7 @@ static void RotateAccel(LinmathVec3d rAcc, const LinmathQuat rot, const LinmathV
 	// SurviveContext *ctx = 0;
 	// SV_VERBOSE(100, "RotateAccel: %f\t" Point3_format, magnitude3d(rAcc), LINMATH_VEC3_EXPAND(rAcc));
 	add3d(rAcc, rAcc, G);
-	scale3d(rAcc, rAcc, 9.8066);
+	scale3d(rAcc, rAcc, 9.80665);
 }
 
 #ifdef USE_DOUBLE

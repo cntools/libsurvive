@@ -71,7 +71,6 @@ void DisambiguatorCharles(SurviveObject *so, LightcapElement *le) {
 		return;
 	}
 
-	so->tsl = le->timestamp;
 	if (le->length < 20)
 		return; /// Assuming 20 is an okay value for here.
 

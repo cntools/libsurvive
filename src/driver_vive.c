@@ -976,24 +976,25 @@ struct unaligned_u32_t {
 #define POP2 (((((struct unaligned_u16_t *)((readdata += 2) - 2))))->v)
 #define POP4 (((((struct unaligned_u32_t *)((readdata += 4) - 4))))->v)
 
+// https://github.com/ValveSoftware/openvr/wiki/ImuSample_t
 void calibrate_acc(SurviveObject *so, FLT *agm) {
-	agm[0] *= so->acc_scale[0];
-	agm[1] *= so->acc_scale[1];
-	agm[2] *= so->acc_scale[2];
-
 	agm[0] -= so->acc_bias[0];
 	agm[1] -= so->acc_bias[1];
 	agm[2] -= so->acc_bias[2];
+
+	agm[0] *= so->acc_scale[0];
+	agm[1] *= so->acc_scale[1];
+	agm[2] *= so->acc_scale[2];
 }
 
 void calibrate_gyro(SurviveObject *so, FLT *agm) {
-	agm[0] *= so->gyro_scale[0];
-	agm[1] *= so->gyro_scale[1];
-	agm[2] *= so->gyro_scale[2];
-
 	agm[0] -= so->gyro_bias[0];
 	agm[1] -= so->gyro_bias[1];
 	agm[2] -= so->gyro_bias[2];
+
+	agm[0] *= so->gyro_scale[0];
+	agm[1] *= so->gyro_scale[1];
+	agm[2] *= so->gyro_scale[2];
 }
 
 typedef struct {
