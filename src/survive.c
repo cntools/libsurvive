@@ -533,12 +533,18 @@ int survive_startup(SurviveContext *ctx) {
 
 #include "survive_hooks.h"
 
+void survive_default_new_object_process(SurviveObject *so) {}
 int survive_add_object(SurviveContext *ctx, SurviveObject *obj) {
 	SV_INFO("Adding tracked object %s from %s", obj->codename, obj->drivername);
 	int oldct = ctx->objs_ct;
 	ctx->objs = realloc(ctx->objs, sizeof(SurviveObject *) * (oldct + 1));
 	ctx->objs[oldct] = obj;
 	ctx->objs_ct = oldct + 1;
+
+	ctx->new_objectproc(obj);
+	PoserCB PreferredPoserCB = GetDriverByConfig(ctx, "Poser", "defaultposer", "MPFIT");
+	obj->PoserFn = PreferredPoserCB;
+
 	return 0;
 }
 

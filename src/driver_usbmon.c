@@ -13,6 +13,7 @@
 #include "driver_vive.h"
 
 #include <libusb-1.0/libusb.h>
+#include <pcap/usb.h>
 
 STATIC_CONFIG_ITEM(USBMON_RECORD, "usbmon-record", 's', "File to save .pcap to.", "");
 STATIC_CONFIG_ITEM(USBMON_PLAYBACK, "usbmon-playback", 's', "File to replay .pcap from.", "");
@@ -27,7 +28,13 @@ typedef struct vive_device_inst_t {
 	const struct vive_device_t *device;
 	int bus_id;
 	int dev_id;
+	int devIdxForType;
+	bool hasConfiged;
 	SurviveObject *so;
+
+	uint64_t last_config_id;
+	uint8_t compressed_data[8192];
+	uint16_t compressed_data_idx;
 } vive_device_inst_t;
 
 typedef struct usb_info_t {
@@ -62,6 +69,46 @@ vive_device_inst_t *find_device_inst(SurviveDriverUSBMon *d, int bus_id, int dev
 			return &d->usb_devices[i];
 	}
 	return 0;
+}
+
+static char *read_file(const char *fn, size_t *size) {
+	char *source = 0;
+	FILE *fp = fopen(fn, "r");
+	if (fp != NULL) {
+		if (fseek(fp, 0L, SEEK_END) == 0) {
+
+			long bufsize = ftell(fp);
+			if (bufsize == -1) {
+				fprintf(stderr, "ftell file '%s' failed with %d", fn, errno);
+				return 0;
+			}
+
+			source = malloc(sizeof(char) * (bufsize + 1));
+
+			if (fseek(fp, 0L, SEEK_SET) != 0) {
+				fprintf(stderr, "fseek file '%s' failed with %d", fn, errno);
+				free(source);
+				return 0;
+			}
+
+			/* Read the entire file into memory. */
+			size_t newLen = fread(source, sizeof(char), bufsize, fp);
+			if (ferror(fp) != 0) {
+				fputs("Error reading file", stderr);
+			} else {
+				source[newLen++] = '\0'; /* Just to be safe. */
+			}
+
+			if (size)
+				*size = bufsize;
+		} else {
+			fprintf(stderr, "Read file '%s' failed with %d", fn, errno);
+		}
+	}
+	if (fp)
+		fclose(fp);
+
+	return source;
 }
 
 static int interface_lookup(const vive_device_inst_t *dev, int endpoint) {
@@ -106,6 +153,46 @@ static int interface_lookup(const vive_device_inst_t *dev, int endpoint) {
 	}
 }
 
+static bool is_config_request(const struct _usb_header_mmapped *usbp) {
+	return usbp->event_type == 'S' && usbp->s.setup.bmRequestType == 0xa1 && usbp->s.setup.bRequest == 1 &&
+		   usbp->s.setup.wValue == 0x311;
+}
+
+static bool is_config_start(const struct _usb_header_mmapped *usbp) {
+	return usbp->event_type == 'S' && usbp->s.setup.bmRequestType == 0xa1 && usbp->s.setup.bRequest == 1 &&
+		   usbp->s.setup.wValue == 0x310;
+}
+
+static void ingest_config_request(vive_device_inst_t *dev, const struct _usb_header_mmapped *usbp, uint8_t *pktData) {
+	uint16_t cnt = pktData[1];
+
+	if (cnt) {
+		memcpy(&dev->compressed_data[dev->compressed_data_idx], pktData + 2, cnt);
+		dev->compressed_data_idx += cnt;
+	} else {
+		uint8_t uncompressed_data[65536] = {0};
+		SurviveContext *ctx = dev->so->ctx;
+
+		int len = survive_simple_inflate(dev->so->ctx, dev->compressed_data, dev->compressed_data_idx,
+										 uncompressed_data, sizeof(uncompressed_data) - 1);
+
+		if (len <= 0) {
+			SV_WARN("Error: data for config descriptor");
+		} else {
+			SV_INFO("Loaded %d bytes of config data", len);
+		}
+
+		if (!dev->hasConfiged) {
+			if (ctx->configproc(dev->so, (char *)uncompressed_data, len) == 0) {
+				survive_add_object(ctx, dev->so);
+				dev->hasConfiged = true;
+			} else {
+				SV_WARN("Could not load from config");
+			}
+		}
+	}
+}
+
 static int usbmon_poll(struct SurviveContext *ctx, void *_driver) {
 	SurviveDriverUSBMon *driver = _driver;
 
@@ -124,9 +211,26 @@ static int usbmon_poll(struct SurviveContext *ctx, void *_driver) {
 				pcap_dump((uint8_t *)driver->pcapDumper, &pkthdr, (uint8_t *)usbp);
 			}
 
-			if (!(usbp->endpoint_number & 0x80u)) {
+			// Print setup flags, then just bail
+			if (!usbp->setup_flag) {
+				if (is_config_start(usbp)) {
+					dev->last_config_id = 0;
+					dev->compressed_data_idx = 0;
+				} else if (is_config_request(usbp)) {
+					dev->last_config_id = usbp->id;
+				} else {
+					fprintf(stderr,
+							"S: 0x%016lx event_type: %c transfer_type: %d bmRequestType: 0x%02x bRequest: 0x%02x "
+							"wValue: 0x%04x wIndex: 0x%04x wLength: %4d\n",
+							usbp->id, usbp->event_type, usbp->transfer_type, usbp->s.setup.bmRequestType,
+							usbp->s.setup.bRequest, usbp->s.setup.wValue, usbp->s.setup.wIndex, usbp->s.setup.wLength);
+				}
+				continue;
+			}
 
-				fprintf(stderr, "W: %d (0x%02x): ", usbp->endpoint_number, usbp->data_len);
+			if (!(usbp->endpoint_number & 0x80u)) {
+				fprintf(stderr, "W: 0x%016lx event_type: %c transfer_type: %d 0x%02x (0x%02x): ", usbp->id,
+						usbp->event_type, usbp->transfer_type, usbp->endpoint_number, usbp->data_len);
 				for (int i = 0; i < usbp->data_len; i++) {
 					if ((i + 2) % 4 == 0)
 						fprintf(stderr, "  ");
@@ -137,19 +241,40 @@ static int usbmon_poll(struct SurviveContext *ctx, void *_driver) {
 
 				continue; // Only want incoming data
 			}
-			if (usbp->status != 0)
-				continue; // Only want responses
-			if (usbp->data_flag)
-				continue; // Only want data
 
+			if (usbp->status != 0) {
+				// EINPROGRESS is normal
+				if (usbp->status != -115)
+					fprintf(stderr, "E: 0x%016lx event_type: %c transfer_type: %d status: %d\n", usbp->id,
+							usbp->event_type, usbp->transfer_type, usbp->status);
+				continue; // Only want responses
+			}
+
+			if (usbp->id == dev->last_config_id && usbp->event_type == 'C') {
+				ingest_config_request(dev, usbp, pktData);
+				continue;
+			}
+
+			/*
+		if (usbp->data_flag)
+			continue; // Only want data
+			*/
 			/*SV_INFO("Packet number [%d], length of this packet is: %d %lx %x.%x %x %x %d %s", count++,
 				pkthdr.len, usbp->id, usbp->bus_id, usbp->device_address,
 				usbp->endpoint_number, usbp->event_type, usbp->status, dev->so->codename);*/
 			int interface = interface_lookup(dev, usbp->endpoint_number);
 			if (interface == 0) {
-				SV_WARN("Don't understand %s(%04x) endpoint 0x%x", dev->so->codename, dev->device->pid,
-						usbp->endpoint_number);
-			} else {
+				fprintf(stderr, "R: 0x%016lx event_type: %c transfer_type: %d 0x%02x (0x%02x): ", usbp->id,
+						usbp->event_type, usbp->transfer_type, usbp->endpoint_number, usbp->data_len);
+				for (int i = 0; i < usbp->data_len; i++) {
+					if ((i + 2) % 4 == 0)
+						fprintf(stderr, "  ");
+					fprintf(stderr, "%02x ", pktData[i]);
+				}
+
+				fprintf(stderr, "\n");
+
+			} else if (dev->hasConfiged) {
 				SurviveUSBInterface si = {.ctx = ctx,
 										  .actual_len = pkthdr.len,
 										  .assoc_obj = dev->so,
@@ -249,46 +374,6 @@ static size_t fill_device_inst(vive_device_inst_t *insts, const usb_info_t *usb_
 	return rtn;
 };
 
-static char *read_file(const char *fn, size_t *size) {
-	char *source = 0;
-	FILE *fp = fopen(fn, "r");
-	if (fp != NULL) {
-		if (fseek(fp, 0L, SEEK_END) == 0) {
-
-			long bufsize = ftell(fp);
-			if (bufsize == -1) {
-				fprintf(stderr, "ftell file '%s' failed with %d", fn, errno);
-				return 0;
-			}
-
-			source = malloc(sizeof(char) * (bufsize + 1));
-
-			if (fseek(fp, 0L, SEEK_SET) != 0) {
-				fprintf(stderr, "fseek file '%s' failed with %d", fn, errno);
-				free(source);
-				return 0;
-			}
-
-			/* Read the entire file into memory. */
-			size_t newLen = fread(source, sizeof(char), bufsize, fp);
-			if (ferror(fp) != 0) {
-				fputs("Error reading file", stderr);
-			} else {
-				source[newLen++] = '\0'; /* Just to be safe. */
-			}
-
-			if (size)
-				*size = bufsize;
-		} else {
-			fprintf(stderr, "Read file '%s' failed with %d", fn, errno);
-		}
-	}
-	if (fp)
-		fclose(fp);
-
-	return source;
-}
-
 static int setup_usb_devices(SurviveDriverUSBMon *sp) {
 	SurviveContext *ctx = sp->ctx;
 	int rtn = 0;
@@ -331,23 +416,9 @@ static int setup_usb_devices(SurviveDriverUSBMon *sp) {
 		}
 
 		SurviveObject *so = survive_create_device(ctx, "UMN", sp, buff, 0);
-
-		size_t len = 0;
-		const char *config_fn_template = sp->usb_devices[i].device->def_config;
-		char config_fn[1024] = {};
-		sprintf(config_fn, config_fn_template, device_cnts[dev_idx] - 1);
-
-		char *config_file = read_file(config_fn, &len);
-
-		if (config_file && ctx->configproc(so, config_file, len) == 0) {
-			survive_add_object(ctx, so);
-			sp->usb_devices[i].so = so;
-			rtn++;
-		} else {
-			SV_WARN("Could not read %s for %s", config_fn, buff);
-		}
-
-		free(config_file);
+		sp->usb_devices[i].so = so;
+		sp->usb_devices[i].devIdxForType = device_cnts[dev_idx];
+		rtn++;
 	}
 
 	return rtn;
@@ -367,7 +438,7 @@ int DriverRegUSBMon(SurviveContext *ctx) {
 	if (usbmon_playback && *usbmon_playback) {
 		sp->pcap = pcap_open_offline(usbmon_playback, sp->errbuf);
 	} else {
-		sp->pcap = pcap_open_live("usbmon0", PCAP_ERRBUF_SIZE, 0, -1, sp->errbuf);
+		sp->pcap = pcap_open_live("usbmon0", PCAP_ERRBUF_SIZE, 0, 30, sp->errbuf);
 	}
 	if (sp->pcap == NULL) {
 		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT,
@@ -378,8 +449,6 @@ int DriverRegUSBMon(SurviveContext *ctx) {
 	if (usbmon_record && *usbmon_record) {
 		sp->pcapDumper = pcap_dump_open(sp->pcap, usbmon_record);
 	}
-
-	pcap_setnonblock(sp->pcap, 1, sp->errbuf);
 
 	int device_count = setup_usb_devices(sp);
 

@@ -6,6 +6,7 @@
 #define SURVIVE_HOOK_FEEDBACK_DEF(name)
 #endif
 
+SURVIVE_HOOK_PROCESS_DEF(new_object)
 SURVIVE_HOOK_PROCESS_DEF(log)
 SURVIVE_HOOK_PROCESS_DEF(report_error)
 

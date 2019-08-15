@@ -210,6 +210,7 @@ struct BaseStationData {
 	uint8_t mode;
 
 	void *ootx_data;
+	void *user_ptr;
 };
 
 struct config_group;
@@ -410,6 +411,7 @@ SURVIVE_EXPORT void survive_default_lighthouse_pose_process(SurviveContext *ctx,
 															SurvivePose *lh_pose, SurvivePose *obj_pose);
 SURVIVE_EXPORT int survive_default_config_process(SurviveObject *so, char *ct0conf, int len);
 SURVIVE_EXPORT void survive_default_gen_detected_process(SurviveObject *so, int lh_version);
+SURVIVE_EXPORT void survive_default_new_object_process(SurviveObject *so);
 
 ////////////////////// Survive Drivers ////////////////////////////
 

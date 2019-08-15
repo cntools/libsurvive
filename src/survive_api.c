@@ -32,6 +32,13 @@ struct SurviveSimpleObject {
 
 	char name[32];
 	bool has_update;
+
+	SurviveSimpleObject *next;
+};
+
+struct SurviveSimpleObjectList {
+	size_t cnt;
+	SurviveSimpleObject *head, *tail;
 };
 
 #define MAX_EVENT_SIZE 64
@@ -47,11 +54,7 @@ struct SurviveSimpleContext {
 	size_t event_next_write;
 	struct SurviveSimpleEvent events[MAX_EVENT_SIZE];
 
-	size_t external_object_ct;
-	struct SurviveSimpleObject *external_objects;
-
-	size_t object_ct;
-	struct SurviveSimpleObject objects[];
+	struct SurviveSimpleObjectList objects;
 };
 
 static void insert_into_event_buffer(SurviveSimpleContext *actx, const SurviveSimpleEvent *event) {
@@ -79,21 +82,31 @@ static bool pop_from_event_buffer(SurviveSimpleContext *actx, SurviveSimpleEvent
 	return true;
 }
 
+static void SurviveSimpleObjectList_add(struct SurviveSimpleObjectList *list, SurviveSimpleObject *so) {
+	list->cnt++;
+	if (list->head == 0) {
+		list->head = so;
+	} else {
+		assert(list->tail);
+		list->tail->next = so;
+	}
+
+	list->tail = so;
+}
+
 static SurviveSimpleObject *find_or_create_external(SurviveSimpleContext *actx, const char *name) {
-	for (int i = 0; i < actx->external_object_ct; i++) {
-		SurviveSimpleObject *so = &actx->external_objects[i];
+	for (struct SurviveSimpleObject *so = actx->objects.head; so; so = so->next) {
 		if (strncmp(name, so->name, 32) == 0) {
 			return so;
 		}
 	}
 
-	actx->external_objects =
-		realloc(actx->external_objects, sizeof(SurviveSimpleObject) * (actx->external_object_ct + 1));
-	SurviveSimpleObject *so = &actx->external_objects[actx->external_object_ct++];
-	memset(so, 0, sizeof(SurviveSimpleObject));
+	SurviveSimpleObject *so = calloc(1, sizeof(struct SurviveSimpleObject));
 	so->type = SurviveSimpleObject_EXTERNAL;
 	so->actx = actx;
 	strncpy(so->name, name, 32);
+	SurviveSimpleObjectList_add(&actx->objects, so);
+
 	return so;
 }
 
@@ -123,8 +136,8 @@ static void pose_fn(SurviveObject *so, uint32_t timecode, SurvivePose *pose) {
 	OGLockMutex(actx->poll_mutex);
 	survive_default_pose_process(so, timecode, pose);
 
-	intptr_t idx = (intptr_t)so->user_ptr;
-	actx->objects[idx].has_update = true;
+	struct SurviveSimpleObject *sao = so->user_ptr;
+	sao->has_update = true;
 	OGUnlockMutex(actx->poll_mutex);
 }
 static void lh_fn(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose,
@@ -133,7 +146,8 @@ static void lh_fn(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthou
 	OGLockMutex(actx->poll_mutex);
 	survive_default_lighthouse_pose_process(ctx, lighthouse, lighthouse_pose, object_pose);
 
-	actx->objects[lighthouse].has_update = true;
+	struct SurviveSimpleObject *sao = ctx->bsd[lighthouse].user_ptr;
+	sao->has_update = true;
 
 	OGUnlockMutex(actx->poll_mutex);
 }
@@ -143,10 +157,10 @@ static void button_fn(SurviveObject *so, uint8_t eventType, uint8_t buttonId, ui
 	SurviveSimpleContext *actx = so->ctx->user_ptr;
 	OGLockMutex(actx->poll_mutex);
 	survive_default_button_process(so, eventType, buttonId, axis1Id, axis1Val, axis2Id, axis2Val);
-	intptr_t idx = (intptr_t)so->user_ptr;
+	struct SurviveSimpleObject *sao = so->user_ptr;
 
 	SurviveSimpleEvent event = {.event_type = SurviveSimpleEventType_ButtonEvent,
-								.button_event = {.object = &actx->objects[idx],
+								.button_event = {.object = sao,
 												 .event_type = eventType,
 												 .button_id = buttonId,
 												 .axis_count = 2,
@@ -162,7 +176,7 @@ SURVIVE_EXPORT SurviveSimpleContext *survive_simple_init(int argc, char *const *
 	return survive_simple_init_with_logger(argc, argv, 0);
 }
 
-void simple_log_fn(SurviveContext *ctx, SurviveLogLevel logLevel, const char *msg) {
+static void simple_log_fn(SurviveContext *ctx, SurviveLogLevel logLevel, const char *msg) {
 	SurviveSimpleContext *actx = ctx->user_ptr;
 	if (actx == 0 || actx->log_fn == 0) {
 		survive_default_log_process(ctx, logLevel, msg);
@@ -172,12 +186,27 @@ void simple_log_fn(SurviveContext *ctx, SurviveLogLevel logLevel, const char *ms
 	actx->log_fn(actx, logLevel, msg);
 }
 
+static void new_object_fn(SurviveObject *so) {
+	SurviveSimpleContext *actx = so->ctx->user_ptr;
+
+	SurviveSimpleObject *obj = calloc(1, sizeof(struct SurviveSimpleObject));
+	obj->data.so = so;
+	obj->type = SurviveSimpleObject_OBJECT;
+	obj->actx = actx;
+	obj->data.so->user_ptr = (void *)obj;
+	strncpy(obj->name, obj->data.so->codename, sizeof(obj->name));
+
+	SurviveSimpleObjectList_add(&actx->objects, obj);
+}
+
 SURVIVE_EXPORT SurviveSimpleContext *survive_simple_init_with_logger(int argc, char *const *argv,
 																	 SurviveSimpleLogFn fn) {
 	SurviveSimpleContext *actx = calloc(1, sizeof(SurviveSimpleContext));
 	actx->log_fn = fn;
 
 	SurviveContext *ctx = survive_init_with_logger(argc, argv, actx, simple_log_fn);
+	survive_install_new_object_fn(ctx, new_object_fn);
+
 	if (ctx == 0) {
 		free(actx);
 		return 0;
@@ -185,31 +214,20 @@ SURVIVE_EXPORT SurviveSimpleContext *survive_simple_init_with_logger(int argc, c
 	ctx->user_ptr = actx;
 	survive_startup(ctx);
 
-	int object_ct = ctx->activeLighthouses + ctx->objs_ct;
-	actx = realloc(actx, sizeof(SurviveSimpleContext) + sizeof(SurviveSimpleObject) * object_ct);
-	actx->object_ct = object_ct;
 	actx->ctx = ctx;
 	actx->poll_mutex = OGCreateMutex();
-	ctx->user_ptr = actx;
 
 	intptr_t i = 0;
 	for (i = 0; i < ctx->activeLighthouses; i++) {
-		SurviveSimpleObject *obj = &actx->objects[i];
+		SurviveSimpleObject *obj = calloc(1, sizeof(struct SurviveSimpleObject));
 		obj->data.lh.lighthouse = i;
 		obj->type = SurviveSimpleObject_LIGHTHOUSE;
 		obj->actx = actx;
 		obj->has_update = ctx->bsd[i].PositionSet;
+		ctx->bsd[i].user_ptr = obj;
 		snprintf(obj->name, 32, "LH%" PRIdPTR, i);
 		snprintf(obj->data.lh.serial_number, 16, "LHB-%X", ctx->bsd[i].BaseStationID);
-	}
-	for (; i < object_ct; i++) {
-		SurviveSimpleObject *obj = &actx->objects[i];
-		int so_idx = i - ctx->activeLighthouses;
-		obj->data.so = ctx->objs[so_idx];
-		obj->type = SurviveSimpleObject_OBJECT;
-		obj->actx = actx;
-		obj->data.so->user_ptr = (void*)i;
-		strncpy(obj->name, obj->data.so->codename, sizeof(obj->name));
+		SurviveSimpleObjectList_add(&actx->objects, obj);
 	}
 
 	survive_install_pose_fn(ctx, pose_fn);
@@ -254,27 +272,18 @@ void survive_simple_start_thread(SurviveSimpleContext *actx) {
 }
 
 const SurviveSimpleObject *survive_simple_get_next_object(SurviveSimpleContext *actx, const SurviveSimpleObject *curr) {
-	const SurviveSimpleObject *next = curr + 1;
-	if (next >= actx->objects + actx->object_ct)
-		return 0;
-	return next;
+	return curr->next;
 }
 
-const SurviveSimpleObject *survive_simple_get_first_object(SurviveSimpleContext *actx) { return actx->objects; }
+const SurviveSimpleObject *survive_simple_get_first_object(SurviveSimpleContext *actx) { return actx->objects.head; }
 
-size_t survive_simple_get_object_count(SurviveSimpleContext *actx) { return actx->object_ct; }
+size_t survive_simple_get_object_count(SurviveSimpleContext *actx) { return actx->objects.cnt; }
 
 const SurviveSimpleObject *survive_simple_get_next_updated(SurviveSimpleContext *actx) {
-	for (int i = 0; i < actx->object_ct; i++) {
-		if (actx->objects[i].has_update) {
-			actx->objects[i].has_update = false;
-			return &actx->objects[i];
-		}
-	}
-	for (int i = 0; i < actx->external_object_ct; i++) {
-		if (actx->external_objects[i].has_update) {
-			actx->external_objects[i].has_update = false;
-			return &actx->external_objects[i];
+	for (struct SurviveSimpleObject *n = actx->objects.head; n; n = n->next) {
+		if (n->has_update) {
+			n->has_update = false;
+			return n;
 		}
 	}
 	return 0;

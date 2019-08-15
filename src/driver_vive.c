@@ -836,13 +836,13 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 							  int send_extra_magic) {
 	SurviveContext *ctx = sv->ctx;
 	int ret, count = 0, size = 0;
-	uint8_t cfgbuff[256];
-	uint8_t compressed_data[8192];
-	uint8_t uncompressed_data[65536];
+	uint8_t cfgbuff[256] = {0};
+	uint8_t compressed_data[8192] = {0};
+	uint8_t uncompressed_data[65536] = {0};
 	USBHANDLE dev = usbInfo->handle;
 
 	if (send_extra_magic) {
-		uint8_t cfgbuffwide[257];
+		uint8_t cfgbuffwide[257] = {0};
 
 		memset(cfgbuffwide, 0, sizeof(cfgbuff));
 		cfgbuffwide[0] = 0x01;
@@ -885,8 +885,8 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 	}
 
 	// Now do a bunch of Report 17 until there are no bytes left
-	cfgbuff[1] = 0xaa;
 	cfgbuff[0] = 0x11;
+	cfgbuff[1] = 0xaa;
 	do {
 		if ((ret = hid_get_feature_report_timeout(dev, iface, cfgbuff, sizeof(cfgbuff))) < 0) {
 			SV_INFO("Could not read config data (after first packet) on device %s:%d (count: %d)",

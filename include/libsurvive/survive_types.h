@@ -146,6 +146,8 @@ typedef void (*lighthouse_pose_process_func)(SurviveContext *ctx, uint8_t lighth
 
 typedef int(*haptic_func)(SurviveObject * so, uint8_t reserved, uint16_t pulseHigh , uint16_t pulseLow, uint16_t repeatCount);
 
+typedef void (*new_object_process_func)(SurviveObject *so);
+
 //Device drivers (prefix your drivers with "DriverReg") i.e.
 //		REGISTER_LINKTIME( DriverRegHTCVive );
 typedef int (*DeviceDriver)( SurviveContext * ctx );
