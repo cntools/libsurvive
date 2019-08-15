@@ -32,6 +32,8 @@ SURVIVE_EXPORT int32_t PoserData_size(const PoserData *poser_data) {
 	return 0;
 }
 
+STATIC_CONFIG_ITEM(CENTER_ON_LH0, "center-on-lh0", 'i',
+				   "Alternative scheme for setting initial position; LH0 is 0, 0 looking in the +X direction", 0);
 STATIC_CONFIG_ITEM(REPORT_IN_IMU, "report-in-imu", 'i', "Debug option to output poses in IMU space.", 0);
 void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world) {
 	SurviveContext *ctx = so->ctx;
@@ -109,6 +111,7 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 		SurvivePose obj2world, lighthouse2world;
 		// Purposefully only set this once. It should only depend on the first (calculated) lighthouse
 		if (!worldEstablished) {
+			bool centerOnLh0 = survive_configi(so->ctx, "center-on-lh0", SC_GET, 0);
 
 			// Start by just moving from whatever arbitrary space into object space.
 			SurvivePose arb2object;
@@ -134,13 +137,30 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 
 			// Find what angle we need to rotate about Z by to get to 90 degrees.
 			FLT ang = atan2(lighthouse2objUp.Pos[1], lighthouse2objUp.Pos[0]);
-			FLT euler[3] = {0, 0, M_PI / 2. - ang};
-			SurvivePose objUp2World = { 0 };
+			FLT ang_target = M_PI / 2.;
+			FLT euler[3] = {0, 0, ang_target - ang};
+			SurvivePose objUp2World = {0};
 			quatfromeuler(objUp2World.Rot, euler);
 
 			ApplyPoseToPose(&arb2world, &objUp2World, &arb2world);
 			ApplyPoseToPose(&obj2world, &arb2world, &object2arb);
 			ApplyPoseToPose(&lighthouse2world, &arb2world, &lighthouse2arb);
+
+			if (centerOnLh0) {
+				sub3d(obj2world.Pos, obj2world.Pos, lighthouse2world.Pos);
+				lighthouse2world.Pos[0] = lighthouse2world.Pos[1] = lighthouse2world.Pos[2] = 0.0;
+
+				LinmathPoint3d camFwd = {0, 0, -1}, worldFwd = {};
+				ApplyPoseToPoint(worldFwd, &lighthouse2world, camFwd);
+				FLT ang = atan2(worldFwd[1], worldFwd[0]);
+				FLT euler[3] = {0, 0, M_PI / 2 - ang};
+
+				SurvivePose rotate2center = {0};
+				quatfromeuler(rotate2center.Rot, euler);
+
+				ApplyPoseToPose(&obj2world, &rotate2center, &obj2world);
+				ApplyPoseToPose(&lighthouse2world, &rotate2center, &lighthouse2world);
+			}
 
 			*object_pose = obj2world;
 		} else {
@@ -176,18 +196,35 @@ void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so, S
 
 		bool worldEstablished = !quatiszero(object2World.Rot);
 
+		uint32_t lh_indices[NUM_GEN2_LIGHTHOUSES] = {};
+		uint32_t cnt = 0;
 		for (int lh = 0; lh < lighthouse_count; lh++) {
 			SurvivePose lh2object = lighthouse_pose[lh];
 			if (quatmagnitude(lh2object.Rot) != 0.0) {
-				quatnormalize(lh2object.Rot, lh2object.Rot);
-
-				SurvivePose lh2world = lh2object;
-				if (!quatiszero(object2World.Rot) && worldEstablished == false) {
-					ApplyPoseToPose(&lh2world, &object2World, &lh2object);
+				lh_indices[cnt] = lh;
+				uint32_t lh0 = lh_indices[0];
+				if (so->ctx->bsd[lh].BaseStationID < so->ctx->bsd[lh0].BaseStationID) {
+					lh_indices[0] = lh;
+					lh_indices[cnt] = lh0;
 				}
-
-				PoserData_lighthouse_pose_func(poser_data, so, lh, &lh2world, &object2World);
+				cnt++;
 			}
+		}
+
+		struct SurviveContext *ctx = so->ctx;
+		SV_INFO("Using LH %d (%08x) as reference lighthouse", lh_indices[0], so->ctx->bsd[lh_indices[0]].BaseStationID);
+		for (int lh_idx = 0; lh_idx < cnt; lh_idx++) {
+			int lh = lh_indices[lh_idx];
+
+			SurvivePose lh2object = lighthouse_pose[lh];
+			quatnormalize(lh2object.Rot, lh2object.Rot);
+
+			SurvivePose lh2world = lh2object;
+			if (!quatiszero(object2World.Rot) && worldEstablished == false) {
+				ApplyPoseToPose(&lh2world, &object2World, &lh2object);
+			}
+
+			PoserData_lighthouse_pose_func(poser_data, so, lh, &lh2world, &object2World);
 		}
 
 		if (object_pose)

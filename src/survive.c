@@ -333,6 +333,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 		config_read_lighthouse(ctx->lh_config, &(ctx->bsd[i]), i);
 		if (ctx->bsd[i].mode >= 0 && ctx->bsd[i].mode < 16)
 			ctx->bsd_map[ctx->bsd[i].mode] = i;
+		SV_VERBOSE(50, "Adding LH %d mode: %d id: %08x", i, ctx->bsd[i].mode, ctx->bsd[i].BaseStationID);
 	}
 
 	if( list_for_autocomplete )
