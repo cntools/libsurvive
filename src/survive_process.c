@@ -8,6 +8,8 @@
 #include <assert.h>
 #include <survive.h>
 
+#include "string.h"
+
 //XXX TODO: Once data is avialble in the context, use the stuff here to handle converting from time codes to
 //proper angles, then from there perform the rest of the solution. 
 
@@ -186,6 +188,38 @@ int survive_default_config_process(SurviveObject *so, char *ct0conf, int len) {
 	so->conf = ct0conf;
 	so->conf_cnt = len;
 	return survive_load_htc_config_format(so, ct0conf, len);
+}
+
+// https://github.com/ValveSoftware/openvr/wiki/ImuSample_t
+static void calibrate_acc(SurviveObject *so, FLT *agm) {
+	agm[0] -= so->acc_bias[0];
+	agm[1] -= so->acc_bias[1];
+	agm[2] -= so->acc_bias[2];
+
+	agm[0] *= so->acc_scale[0];
+	agm[1] *= so->acc_scale[1];
+	agm[2] *= so->acc_scale[2];
+}
+
+static void calibrate_gyro(SurviveObject *so, FLT *agm) {
+	agm[0] -= so->gyro_bias[0];
+	agm[1] -= so->gyro_bias[1];
+	agm[2] -= so->gyro_bias[2];
+
+	agm[0] *= so->gyro_scale[0];
+	agm[1] *= so->gyro_scale[1];
+	agm[2] *= so->gyro_scale[2];
+}
+
+void survive_default_raw_imu_process(SurviveObject *so, int mask, FLT *accelgyromag, uint32_t timecode, int id) {
+	FLT agm[9] = {};
+	memcpy(agm, accelgyromag, sizeof(FLT) * 9);
+	calibrate_acc(so, agm);
+	calibrate_gyro(so, agm + 3);
+
+	survive_recording_raw_imu_process(so, mask, accelgyromag, timecode, id);
+
+	so->ctx->imuproc(so, 3, agm, timecode, id);
 }
 void survive_default_imu_process( SurviveObject * so, int mask, FLT * accelgyromag, uint32_t timecode, int id )
 {

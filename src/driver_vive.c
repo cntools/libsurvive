@@ -1000,27 +1000,6 @@ struct unaligned_u32_t {
 #define POP2 (((((struct unaligned_u16_t *)((readdata += 2) - 2))))->v)
 #define POP4 (((((struct unaligned_u32_t *)((readdata += 4) - 4))))->v)
 
-// https://github.com/ValveSoftware/openvr/wiki/ImuSample_t
-void calibrate_acc(SurviveObject *so, FLT *agm) {
-	agm[0] -= so->acc_bias[0];
-	agm[1] -= so->acc_bias[1];
-	agm[2] -= so->acc_bias[2];
-
-	agm[0] *= so->acc_scale[0];
-	agm[1] *= so->acc_scale[1];
-	agm[2] *= so->acc_scale[2];
-}
-
-void calibrate_gyro(SurviveObject *so, FLT *agm) {
-	agm[0] -= so->gyro_bias[0];
-	agm[1] -= so->gyro_bias[1];
-	agm[2] -= so->gyro_bias[2];
-
-	agm[0] *= so->gyro_scale[0];
-	agm[1] *= so->gyro_scale[1];
-	agm[2] *= so->gyro_scale[2];
-}
-
 typedef struct {
 	// could use a bitfield here, but since this data is short-lived,
 	// the space savings probably isn't worth the processing overhead.
@@ -1458,10 +1437,7 @@ static void read_imu_data(SurviveObject *w, uint16_t time, uint8_t **readPtr, ui
 
 	FLT agm[9] = {aX, aY, aZ, rX, rY, rZ};
 
-	calibrate_acc(w, agm);
-	calibrate_gyro(w, agm + 3);
-
-	w->ctx->imuproc(w, 3, agm, ((uint32_t)time << 16) | (timeLSB << 8), 0);
+	w->ctx->raw_imuproc(w, 3, agm, ((uint32_t)time << 16) | (timeLSB << 8), 0);
 
 	*readPtr = payloadPtr;
 }
@@ -1989,9 +1965,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 							  0,
 							  0};
 
-				calibrate_acc(obj, agm);
-				calibrate_gyro(obj, agm + 3);
-				ctx->imuproc(obj, 3, agm, timecode, code);
+				ctx->raw_imuproc(obj, 3, agm, timecode, code);
 			}
 		}
 		if (id != 32) {

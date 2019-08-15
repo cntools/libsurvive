@@ -387,6 +387,8 @@ SURVIVE_EXPORT void survive_default_log_process(struct SurviveContext *ctx, Surv
 SURVIVE_EXPORT void survive_default_lightcap_process(SurviveObject *so, const LightcapElement *element);
 SURVIVE_EXPORT void survive_default_light_process(SurviveObject *so, int sensor_id, int acode, int timeinsweep,
 												  survive_timecode timecode, survive_timecode length, uint32_t lh);
+SURVIVE_EXPORT void survive_default_raw_imu_process(SurviveObject *so, int mode, FLT *accelgyro,
+													survive_timecode timecode, int id);
 SURVIVE_EXPORT void survive_default_imu_process(SurviveObject *so, int mode, FLT *accelgyro, survive_timecode timecode, int id);
 SURVIVE_EXPORT void survive_default_angle_process(SurviveObject *so, int sensor_id, int acode, survive_timecode timecode,
 												  FLT length, FLT angle, uint32_t lh);

@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <survive.h>
 
+#include <assert.h>
 #include <string.h>
 
 #include "survive_config.h"
@@ -27,6 +28,7 @@ STATIC_CONFIG_ITEM( PLAYBACK, "playback", 's', "File to be used for playback if 
 STATIC_CONFIG_ITEM( PLAYBACK_FACTOR, "playback-factor", 'f', "Time factor of playback -- 1 is run at the same timing as original, 0 is run as fast as possible.", 1.0f );
 STATIC_CONFIG_ITEM( PLAYBACK_RECORD_RAWLIGHT, "record-rawlight", 'i', "Whether or not to output raw light data", 1 );
 STATIC_CONFIG_ITEM( PLAYBACK_RECORD_IMU, "record-imu", 'i', "Whether or not to output imu data", 1 );
+STATIC_CONFIG_ITEM(PLAYBACK_RECORD_CAL_IMU, "record-cal-imu", 'i', "Whether or not to output calibrated imu data", 0);
 STATIC_CONFIG_ITEM( PLAYBACK_RECORD_ANGLE, "record-angle", 'i', "Whether or not to output angle data", 1 );
 
 
@@ -34,8 +36,9 @@ typedef struct SurviveRecordingData {
 	bool alwaysWriteStdOut;
 	bool writeRawLight;
         bool writeIMU;
-  bool writeAngle;
-	FILE *output_file;
+		bool writeCalIMU;
+		bool writeAngle;
+		FILE *output_file;
 } SurviveRecordingData;
 
 static double timestamp_in_us() {
@@ -232,11 +235,25 @@ void survive_recording_imu_process(struct SurviveObject *so, int mask, FLT *acce
 	if (recordingData == 0)
 		return;
 
-	if (!recordingData->writeIMU) {
-	  return;
+	if (!recordingData->writeCalIMU) {
+		return;
 	}
 	
 	write_to_output(recordingData, "%s I %d %u %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f  %0.6f %0.6f %0.6f %d\n",
+					so->codename, mask, timecode, accelgyro[0], accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4],
+					accelgyro[5], accelgyro[6], accelgyro[7], accelgyro[8], id);
+}
+
+void survive_recording_raw_imu_process(struct SurviveObject *so, int mask, FLT *accelgyro, uint32_t timecode, int id) {
+	SurviveRecordingData *recordingData = so->ctx->recptr;
+	if (recordingData == 0)
+		return;
+
+	if (!recordingData->writeIMU) {
+		return;
+	}
+
+	write_to_output(recordingData, "%s i %d %u %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f  %0.6f %0.6f %0.6f %d\n",
 					so->codename, mask, timecode, accelgyro[0], accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4],
 					accelgyro[5], accelgyro[6], accelgyro[7], accelgyro[8], id);
 }
@@ -253,7 +270,7 @@ struct SurvivePlaybackData {
 };
 typedef struct SurvivePlaybackData SurvivePlaybackData;
 
-static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver) {
+static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver, bool raw) {
 	char dev[10];
 	int timecode = 0;
 	FLT accelgyro[9] = { 0 };
@@ -261,20 +278,24 @@ static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver) {
 	int id;
 	SurviveContext *ctx = driver->ctx;
 
+	char i_char = 0;
+
 	int rr = sscanf(line,
-					"%s I %d %d " FLT_sformat " " FLT_sformat " " FLT_sformat " " FLT_sformat " " FLT_sformat
+					"%s %c %d %d " FLT_sformat " " FLT_sformat " " FLT_sformat " " FLT_sformat " " FLT_sformat
 					" " FLT_sformat " " FLT_sformat " " FLT_sformat " " FLT_sformat "%d",
-					dev, &mask, &timecode, &accelgyro[0], &accelgyro[1], &accelgyro[2], &accelgyro[3], &accelgyro[4],
-					&accelgyro[5], &accelgyro[6], &accelgyro[7], &accelgyro[8], &id);
+					dev, &i_char, &mask, &timecode, &accelgyro[0], &accelgyro[1], &accelgyro[2], &accelgyro[3],
+					&accelgyro[4], &accelgyro[5], &accelgyro[6], &accelgyro[7], &accelgyro[8], &id);
 
 	if (rr == 10) {
 		// Older formats might not have mag data
 		id = accelgyro[6];
 		accelgyro[6] = 0;
-	} else if (rr != 13) {
+	} else if (rr != 14) {
 		SV_WARN("On line %d, only %d values read: '%s'", driver->lineno, rr, line);
 		return -1;
 	}
+
+	assert(raw ^ i_char == 'I');
 
 	SurviveObject *so = survive_get_so_by_name(driver->ctx, dev);
 	if (!so) {
@@ -287,7 +308,7 @@ static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver) {
 		return -1;
 	}
 
-	driver->ctx->imuproc(so, mask, accelgyro, timecode, id);
+	(raw ? driver->ctx->raw_imuproc : driver->ctx->imuproc)(so, mask, accelgyro, timecode, id);
 	return 0;
 }
 
@@ -422,9 +443,13 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 			if (op[1] == 0 && driver->hasRawLight == false)
 				parse_and_run_lightcode(line, driver);
 			break;
+		case 'i':
+			if (op[1] == 0)
+				parse_and_run_imu(line, driver, true);
+			break;
 		case 'I':
 			if (op[1] == 0)
-				parse_and_run_imu(line, driver);
+				parse_and_run_imu(line, driver, false);
 			break;
 		case 'A':
 		case 'P':
@@ -480,6 +505,7 @@ void survive_install_recording(SurviveContext *ctx) {
 
 		ctx->recptr->writeRawLight = survive_configi(ctx, "record-rawlight", SC_GET, 1);
 		ctx->recptr->writeIMU = survive_configi(ctx, "record-imu", SC_GET, 1);
+		ctx->recptr->writeCalIMU = survive_configi(ctx, "record-cal-imu", SC_GET, 0);
 		ctx->recptr->writeAngle = survive_configi(ctx, "record-angle", SC_GET, 1);				
 	}
 }

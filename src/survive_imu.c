@@ -61,7 +61,7 @@ static const int imu_calibration_iterations = 100;
 static void RotateAccel(LinmathVec3d rAcc, const LinmathQuat rot, const LinmathVec3d accel) {
 	quatrotatevector(rAcc, rot, accel);
 	LinmathVec3d G = {0, 0, -1};
-	// SurviveContext *ctx = 0;
+	SurviveContext *ctx = 0;
 	// SV_VERBOSE(100, "RotateAccel: %f\t" Point3_format, magnitude3d(rAcc), LINMATH_VEC3_EXPAND(rAcc));
 	add3d(rAcc, rAcc, G);
 	scale3d(rAcc, rAcc, 9.80665);

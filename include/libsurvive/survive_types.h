@@ -134,6 +134,7 @@ typedef void (*sweep_process_func)(SurviveObject *so, survive_channel channel, i
 typedef void (*sweep_angle_process_func)(SurviveObject *so, survive_channel channel, int sensor_id,
 										 survive_timecode timecode, int8_t plane, FLT angle);
 
+typedef void (*raw_imu_process_func)(SurviveObject *so, int mask, FLT *accelgyro, survive_timecode timecode, int id);
 typedef void (*imu_process_func)(SurviveObject *so, int mask, FLT *accelgyro, survive_timecode timecode, int id);
 typedef void (*button_process_func)(SurviveObject *so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id,
 									uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val);
