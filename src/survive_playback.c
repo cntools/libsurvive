@@ -7,6 +7,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <zlib.h>
 
 #include "survive_config.h"
 #include "survive_default_devices.h"
@@ -39,7 +40,7 @@ typedef struct SurviveRecordingData {
         bool writeIMU;
 		bool writeCalIMU;
 		bool writeAngle;
-		FILE *output_file;
+		gzFile output_file;
 } SurviveRecordingData;
 
 static double timestamp_in_us() {
@@ -49,14 +50,25 @@ static double timestamp_in_us() {
 	return OGGetAbsoluteTime() - start_time_us;
 }
 
+static void write_to_output_raw(SurviveRecordingData *recordingData, const char *string, int len) {
+	if (recordingData->output_file) {
+		gzwrite(recordingData->output_file, string, len);
+	}
+
+	if (recordingData->alwaysWriteStdOut) {
+		fwrite(string, 1, len, stdout);
+	}
+}
+
 static void write_to_output(SurviveRecordingData *recordingData, const char *format, ...) {
 	double ts = timestamp_in_us();
 
 	if (recordingData->output_file) {
 		va_list args;
 		va_start(args, format);
-		fprintf(recordingData->output_file, "%0.6f ", ts);
-		vfprintf(recordingData->output_file, format, args);
+		gzprintf(recordingData->output_file, "%0.6f ", ts);
+		gzvprintf(recordingData->output_file, format, args);
+
 		va_end(args);
 	}
 
@@ -73,13 +85,15 @@ void survive_recording_config_process(SurviveObject *so, char *ct0conf, int len)
 	if (recordingData == 0)
 		return;
 
-	char *buffer = malloc(len);
+	char *buffer = calloc(1, len + 1);
 	memcpy(buffer, ct0conf, len);
 	for (int i = 0; i < len; i++)
 		if (buffer[i] == '\n')
 			buffer[i] = ' ';
 
-	write_to_output(recordingData, "%s CONFIG %.*s\n", so->codename, len, buffer);
+	write_to_output(recordingData, "%s CONFIG ", so->codename);
+	write_to_output_raw(recordingData, buffer, len);
+	write_to_output_raw(recordingData, "\n", 1);
 	free(buffer);
 }
 
@@ -509,7 +523,9 @@ void survive_install_recording(SurviveContext *ctx) {
 		ctx->recptr = calloc(1, sizeof(struct SurviveRecordingData));
 
 		if (strlen(dataout_file) > 0) {
-			ctx->recptr->output_file = fopen(dataout_file, "w");
+			bool useCompression = strncmp(dataout_file + strlen(dataout_file) - 3, ".gz", 3) == 0;
+
+			ctx->recptr->output_file = gzopen(dataout_file, useCompression ? "w" : "wT");
 			if (ctx->recptr->output_file == 0) {
 				SV_INFO("Could not open %s for writing", dataout_file);
 				free(ctx->recptr);
