@@ -6,6 +6,7 @@
 #include <survive.h>
 
 #include <assert.h>
+#include <errno.h>
 #include <string.h>
 #include <zlib.h>
 
@@ -23,6 +24,15 @@ ssize_t getdelim(char **lineptr, size_t *n, int delimiter, FILE *stream);
 ssize_t getline(char **lineptr, size_t *n, FILE *stream);
 #endif
 
+ssize_t gzgetdelim(char **restrict lineptr, size_t *restrict n, int delimiter, gzFile restrict stream);
+ssize_t gzgetline(char **restrict lineptr, size_t *restrict n, gzFile restrict stream);
+
+int gzerror_dropin(gzFile f) {
+	int rtn;
+	gzerror(f, &rtn);
+	return rtn;
+}
+
 STATIC_CONFIG_ITEM(PLAYBACK_REPLAY_POSE, "playback-replay-pose", 'i', "Whether or not to output pose", 0);
 STATIC_CONFIG_ITEM( RECORD, "record", 's', "File to record to if you wish to make a recording.", "" );
 STATIC_CONFIG_ITEM(RECORD_STDOUT, "record-stdout", 'i', "Whether or not to dump recording data to stdout", 0);
@@ -32,7 +42,6 @@ STATIC_CONFIG_ITEM( PLAYBACK_RECORD_RAWLIGHT, "record-rawlight", 'i', "Whether o
 STATIC_CONFIG_ITEM( PLAYBACK_RECORD_IMU, "record-imu", 'i', "Whether or not to output imu data", 1 );
 STATIC_CONFIG_ITEM(PLAYBACK_RECORD_CAL_IMU, "record-cal-imu", 'i', "Whether or not to output calibrated imu data", 0);
 STATIC_CONFIG_ITEM( PLAYBACK_RECORD_ANGLE, "record-angle", 'i', "Whether or not to output angle data", 1 );
-
 
 typedef struct SurviveRecordingData {
 	bool alwaysWriteStdOut;
@@ -276,7 +285,7 @@ void survive_recording_raw_imu_process(struct SurviveObject *so, int mask, FLT *
 struct SurvivePlaybackData {
 	SurviveContext *ctx;
 	const char *playback_dir;
-	FILE *playback_file;
+	gzFile playback_file;
 	int lineno;
 
 	double next_time_us;
@@ -419,15 +428,15 @@ static int parse_and_run_lightcode(const char *line, SurvivePlaybackData *driver
 
 static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 	SurvivePlaybackData *driver = _driver;
-	FILE *f = driver->playback_file;
+	gzFile f = driver->playback_file;
 
-	if (f && !feof(f) && !ferror(f)) {
+	if (f && !gzeof(f) && !gzerror_dropin(f)) {
 		driver->lineno++;
 		char *line = 0;
 
 		if (driver->next_time_us == 0) {
 			size_t n = 0;
-			ssize_t r = getdelim(&line, &n, ' ', f);
+			ssize_t r = gzgetdelim(&line, &n, ' ', f);
 			if (r <= 0) {
 				return 0;
 			}
@@ -445,7 +454,7 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 		driver->next_time_us = 0;
 
 		size_t n = 0;
-		ssize_t r = getline(&line, &n, f);
+		ssize_t r = gzgetline(&line, &n, f);
 		if (r <= 0) {
 			free(line);
 			return 0;
@@ -497,7 +506,7 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 		free(line);
 	} else {
 		if (f) {
-			fclose(driver->playback_file);
+			gzclose(driver->playback_file);
 		}
 		driver->playback_file = 0;
 		return -1;
@@ -509,7 +518,7 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 static int playback_close(struct SurviveContext *ctx, void *_driver) {
 	SurvivePlaybackData *driver = _driver;
 	if (driver->playback_file)
-		fclose(driver->playback_file);
+		gzclose(driver->playback_file);
 	driver->playback_file = 0;
 
 	return 0;
@@ -532,7 +541,7 @@ void survive_install_recording(SurviveContext *ctx) {
 				ctx->recptr = 0;
 				return;
 			}
-			SV_INFO("Recording to '%s'", dataout_file);
+			SV_INFO("Recording to '%s' Compression: %d", dataout_file, useCompression);
 		}
 
 		ctx->recptr->alwaysWriteStdOut = record_to_stdout;
@@ -561,7 +570,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 
 	sp->outputExternalPose = survive_configi(ctx, "playback-replay-pose", SC_GET, 0);
 
-	sp->playback_file = fopen(playback_file, "r");
+	sp->playback_file = gzopen(playback_file, "r");
 	if (sp->playback_file == 0) {
 		SV_WARN("Could not open playback events file %s", playback_file);
 		return -1;
@@ -572,10 +581,10 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	SV_INFO("Using playback file '%s' with timefactor of %f", playback_file, sp->playback_factor );
 
 	FLT time;
-	while (!feof(sp->playback_file) && !ferror(sp->playback_file)) {
+	while (!gzeof(sp->playback_file) && !gzerror_dropin(sp->playback_file)) {
 		char *line = 0;
 		size_t n;
-		int r = getline(&line, &n, sp->playback_file);
+		int r = gzgetline(&line, &n, sp->playback_file);
 
 		if (r <= 0) {
 			free(line);
@@ -623,10 +632,79 @@ int DriverRegPlayback(SurviveContext *ctx) {
 		free(line);
 	}
 
-	fseek(sp->playback_file, 0, SEEK_SET); // same as rewind(f);
+	gzseek(sp->playback_file, 0, SEEK_SET); // same as rewind(f);
 
 	survive_add_driver(ctx, sp, playback_poll, playback_close, 0);
 	return 0;
 }
 
 REGISTER_LINKTIME(DriverRegPlayback);
+
+#define _GETDELIM_GROWBY 128 /* amount to grow line buffer by */
+#define _GETDELIM_MINLEN 4   /* minimum line buffer size */
+
+ssize_t gzgetdelim(char **restrict lineptr, size_t *restrict n, int delimiter, gzFile restrict stream) {
+	char *buf, *pos;
+	int c;
+	ssize_t bytes;
+
+	if (lineptr == NULL || n == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+	if (stream == NULL) {
+		errno = EBADF;
+		return -1;
+	}
+
+	/* resize (or allocate) the line buffer if necessary */
+	buf = *lineptr;
+	if (buf == NULL || *n < _GETDELIM_MINLEN) {
+		buf = realloc(*lineptr, _GETDELIM_GROWBY);
+		if (buf == NULL) {
+			/* ENOMEM */
+			return -1;
+		}
+		*n = _GETDELIM_GROWBY;
+		*lineptr = buf;
+	}
+
+	/* read characters until delimiter is found, end of file is reached, or an
+	   error occurs. */
+	bytes = 0;
+	pos = buf;
+	while ((c = gzgetc(stream)) != EOF) {
+		if (bytes + 1 >= SSIZE_MAX) {
+			errno = EOVERFLOW;
+			return -1;
+		}
+		bytes++;
+		if (bytes >= *n - 1) {
+			buf = realloc(*lineptr, *n + _GETDELIM_GROWBY);
+			if (buf == NULL) {
+				/* ENOMEM */
+				return -1;
+			}
+			*n += _GETDELIM_GROWBY;
+			pos = buf + bytes - 1;
+			*lineptr = buf;
+		}
+
+		*pos++ = (char)c;
+		if (c == delimiter) {
+			break;
+		}
+	}
+
+	if (gzerror_dropin(stream) || (gzeof(stream) && (bytes == 0))) {
+		/* EOF, or an error from getc(). */
+		return -1;
+	}
+
+	*pos = '\0';
+	return bytes;
+}
+
+ssize_t gzgetline(char **restrict lineptr, size_t *restrict n, gzFile restrict stream) {
+	return gzgetdelim(lineptr, n, '\n', stream);
+}
