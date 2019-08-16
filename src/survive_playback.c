@@ -22,6 +22,7 @@ ssize_t getdelim(char **lineptr, size_t *n, int delimiter, FILE *stream);
 ssize_t getline(char **lineptr, size_t *n, FILE *stream);
 #endif
 
+STATIC_CONFIG_ITEM(PLAYBACK_REPLAY_POSE, "playback-replay-pose", 'i', "Whether or not to output pose", 0);
 STATIC_CONFIG_ITEM( RECORD, "record", 's', "File to record to if you wish to make a recording.", "" );
 STATIC_CONFIG_ITEM(RECORD_STDOUT, "record-stdout", 'i', "Whether or not to dump recording data to stdout", 0);
 STATIC_CONFIG_ITEM( PLAYBACK, "playback", 's', "File to be used for playback if playing a recording.", "" );
@@ -267,9 +268,26 @@ struct SurvivePlaybackData {
 	double next_time_us;
 	FLT playback_factor;
 	bool hasRawLight;
+	bool outputExternalPose;
 };
 typedef struct SurvivePlaybackData SurvivePlaybackData;
 
+static int parse_and_run_pose(const char *line, SurvivePlaybackData *driver) {
+	char name[128] = "replay_";
+	SurvivePose pose;
+
+	int rr = sscanf(line, "%s POSE " SurvivePose_sformat "\n", name + strlen(name), &pose.Pos[0], &pose.Pos[1],
+					&pose.Pos[2], &pose.Rot[0], &pose.Rot[1], &pose.Rot[2], &pose.Rot[3]);
+
+	SurviveContext *ctx = driver->ctx;
+	if (rr != 8) {
+		SV_WARN("Only got %d values for a pose", rr);
+		return 0;
+	}
+
+	ctx->external_poseproc(ctx, name, &pose);
+	return 0;
+}
 static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver, bool raw) {
 	char dev[10];
 	int timecode = 0;
@@ -286,7 +304,7 @@ static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver, bool
 					dev, &i_char, &mask, &timecode, &accelgyro[0], &accelgyro[1], &accelgyro[2], &accelgyro[3],
 					&accelgyro[4], &accelgyro[5], &accelgyro[6], &accelgyro[7], &accelgyro[8], &id);
 
-	if (rr == 10) {
+	if (rr == 11) {
 		// Older formats might not have mag data
 		id = accelgyro[6];
 		accelgyro[6] = 0;
@@ -451,8 +469,11 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 			if (op[1] == 0)
 				parse_and_run_imu(line, driver, false);
 			break;
-		case 'A':
 		case 'P':
+			if (strcmp(op, "POSE") == 0 && driver->outputExternalPose)
+				parse_and_run_pose(line, driver);
+			break;
+		case 'A':
 		case 'V':
 			break;
 		default:
@@ -506,7 +527,7 @@ void survive_install_recording(SurviveContext *ctx) {
 		ctx->recptr->writeRawLight = survive_configi(ctx, "record-rawlight", SC_GET, 1);
 		ctx->recptr->writeIMU = survive_configi(ctx, "record-imu", SC_GET, 1);
 		ctx->recptr->writeCalIMU = survive_configi(ctx, "record-cal-imu", SC_GET, 0);
-		ctx->recptr->writeAngle = survive_configi(ctx, "record-angle", SC_GET, 1);				
+		ctx->recptr->writeAngle = survive_configi(ctx, "record-angle", SC_GET, 1);
 	}
 }
 
@@ -521,6 +542,8 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	SurvivePlaybackData *sp = calloc(1, sizeof(SurvivePlaybackData));
 	sp->ctx = ctx;
 	sp->playback_dir = playback_file;
+
+	sp->outputExternalPose = survive_configi(ctx, "playback-replay-pose", SC_GET, 0);
 
 	sp->playback_file = fopen(playback_file, "r");
 	if (sp->playback_file == 0) {

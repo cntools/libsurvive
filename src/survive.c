@@ -25,6 +25,7 @@
 STATIC_CONFIG_ITEM(SURVIVE_VERBOSE, "v", 'i', "Verbosity level", 0);
 STATIC_CONFIG_ITEM( BLACKLIST_DEVS, "blacklist-devs", 's', "List any devs (or substrings of devs) to blacklist.", "-" );
 STATIC_CONFIG_ITEM( CONFIG_FILE, "configfile", 's', "Default configuration file", "config.json" );
+STATIC_CONFIG_ITEM(INIT_CONFIG_FILE, "init-configfile", 's', "Initial configuration file", 0);
 STATIC_CONFIG_ITEM( CONFIG_D_CALI, "disable-calibrate", 'i', "Enables or disables calibration", 0 );
 STATIC_CONFIG_ITEM( CONFIG_F_CALI, "force-calibrate", 'i', "Forces calibration even if one exists.", 0 );
 STATIC_CONFIG_ITEM(CONFIG_LIGHTHOUSE_COUNT, "lighthousecount", 'i', "How many lighthouses to look for.", 2);
@@ -326,7 +327,14 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 	ctx->lh_version = -1;
 	ctx->lh_version_forced = survive_configi(ctx, "lighthouse-gen", SC_SETCONFIG, 0) - 1;
 
-	config_read(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
+	const char *init_config = survive_configs(ctx, "init-configfile", SC_GET, 0);
+	;
+	if (init_config == 0) {
+		init_config = survive_configs(ctx, "configfile", SC_GET, "config.json");
+	} else {
+		SV_INFO("Initial config file is %s", init_config);
+	}
+	config_read(ctx, init_config);
 	ctx->activeLighthouses = survive_configi(ctx, "lighthousecount", SC_SETCONFIG, 2);
 
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
