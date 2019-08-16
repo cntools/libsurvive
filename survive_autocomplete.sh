@@ -8,6 +8,7 @@ _script()
 	COMPREPLY=()
 	cur="${COMP_WORDS[COMP_CWORD]}"
 	COMPREPLY=( $(compgen -W "${_script_commands}" -- ${cur}) )
+	_filedir	
 	return 0
 }
 
