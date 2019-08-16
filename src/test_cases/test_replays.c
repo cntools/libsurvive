@@ -17,7 +17,8 @@ static float diff(const SurvivePose *a, const SurvivePose *b) {
 static int test_path(const char *name) {
 	char configPath[FILENAME_MAX] = {};
 	sprintf(configPath, "%s.json", name);
-	char *argv[] = {"", "--init-configfile", configPath, "--playback-replay-pose", "--playback", (char *)name};
+	char *argv[] = {"",			  "--init-configfile", configPath,			"--playback-replay-pose",
+					"--playback", (char *)name,		   "--playback-factor", "0"};
 
 	SurviveSimpleContext *actx = survive_simple_init(sizeof(argv) / sizeof(argv[0]), argv);
 	SurviveContext *ctx = survive_simple_get_ctx(actx);

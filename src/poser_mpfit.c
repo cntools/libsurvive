@@ -170,6 +170,11 @@ static void mpfit_set_cameras(SurviveObject *so, uint8_t lighthouse, SurvivePose
 	survive_optimizer *ctx = (survive_optimizer *)user;
 	SurvivePose *cameras = survive_optimizer_get_camera(ctx);
 	cameras[lighthouse] = InvertPoseRtn(pose);
+
+	assert(!quatiszero(pose->Rot));
+	for (int i = 0; i < 7; i++)
+		assert(!isnan(((double *)pose)[i]));
+
 	if (obj_pose && !quatiszero(obj_pose->Rot))
 		*survive_optimizer_get_pose(ctx) = *obj_pose;
 	else
@@ -236,7 +241,10 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 	if (canPossiblySolveLHS) {
 		if (general_optimizer_data_record_current_lhs(&d->opt, pdl, lhs)) {
 			for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
+				assert(!isnan(lhs[lh].Rot[0]));
 				if (quatiszero(lhs[lh].Rot) && meas_for_lhs[lh] > 0) {
+					SV_WARN("Seed poser failed for %d, removing %d measurements (now %d)", lh, (int)meas_for_lhs[lh],
+							meas_size - (int)meas_for_lhs[lh]);
 					meas_size = remove_lh_from_meas(mpfitctx.measurements, meas_size, lh);
 				} else if (meas_for_lhs[lh] > 0) {
 					SV_INFO("Attempting to solve for %d with %d meas", lh, (int)meas_for_lhs[lh]);
@@ -319,7 +327,9 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 	PoserDataFullScene2Activations(pdfs, &activations);
 	activations.lh_gen = so->ctx->lh_version;
 	activations.last_imu = so->timebase_hz * 2;
-	size_t meas_size = construct_input_from_scene(d, 0, &activations, 0, mpfitctx.measurements);
+
+	size_t meas_for_lhs[NUM_GEN2_LIGHTHOUSES] = {0};
+	size_t meas_size = construct_input_from_scene(d, 0, &activations, meas_for_lhs, mpfitctx.measurements);
 
 	if (mpfitctx.current_bias > 0) {
 		meas_size += 7;
@@ -354,6 +364,14 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 				so->ctx->bsd[i].Pose = (SurvivePose){0};
 				so->ctx->bsd[i].Pose.Rot[0] = 1.;
 			}
+		}
+	}
+
+	for (int i = 0; i < so->ctx->activeLighthouses; i++) {
+		if (meas_for_lhs[i] && quatiszero(cameras[i].Rot)) {
+			SurviveContext *ctx = so->ctx;
+			SV_WARN("Seed poser did not solve some lighthouses, bailing.");
+			return -1;
 		}
 	}
 

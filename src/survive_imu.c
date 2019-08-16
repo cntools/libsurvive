@@ -122,7 +122,15 @@ static void update_rotation_from_rotation(FLT t, survive_kalman_state_t *k, cons
 
 void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU *data) {
 	SurviveContext *ctx = tracker->so->ctx;
+
+	// Wait til observation is in before reading IMU; gets rid of bad IMU data at the start
 	if (tracker->last_data.datamask == 0) {
+		tracker->imu_kalman_update = data->hdr.timecode;
+		tracker->obs_kalman_update = data->hdr.timecode;
+		return;
+	}
+
+	if (tracker->last_data.datamask == 1) {
 		tracker->last_data = *data;
 		tracker->imu_kalman_update = data->hdr.timecode;
 		tracker->obs_kalman_update = data->hdr.timecode;
@@ -142,9 +150,9 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 	survive_kalman_predict_state(0, &tracker->rot, 0, rot);
 
 	assert(time_diff >= 0);
-	if (time_diff > 1.0) {
-		SV_WARN("%s is probably dropping IMU packets; %f time reported between", tracker->so->codename, time_diff);
-		// assert(time_diff < 10);
+	if (time_diff > 0.5) {
+		SV_WARN("%s is probably dropping IMU packets; %f time reported between %u %u", tracker->so->codename, time_diff,
+				data->hdr.timecode, tracker->imu_kalman_update);
 	}
 
 	if (tracker->mahony_variance >= 0) {

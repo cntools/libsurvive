@@ -37,13 +37,14 @@ STATIC_CONFIG_ITEM(CENTER_ON_LH0, "center-on-lh0", 'i',
 STATIC_CONFIG_ITEM(REPORT_IN_IMU, "report-in-imu", 'i', "Debug option to output poses in IMU space.", 0);
 void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world) {
 	SurviveContext *ctx = so->ctx;
-	for (int i = 0; i < 3; i++)
+	for (int i = 0; i < 3; i++) {
+		assert(!isnan(imu2world->Pos[i]));
 		if (fabs(imu2world->Pos[i]) > 20) {
 			SV_WARN("Squelching reported pose of " SurvivePose_format " for %s; values are invalid",
 					SURVIVE_POSE_EXPAND(*imu2world), so->codename);
 			return;
 		}
-
+	}
 	if (poser_data->poseproc) {
 		poser_data->poseproc(so, PoserData_timecode(poser_data), imu2world, poser_data->userdata);
 	} else {
@@ -76,6 +77,8 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 	if (poser_data->lighthouseposeproc) {
 		for (int i = 0; i < 7; i++)
 			assert(!isnan(((double *)lighthouse_pose)[i]));
+
+		assert(!quatiszero(lighthouse_pose->Rot));
 
 		if (quatiszero(object_pose->Rot)) {
 			*object_pose = (SurvivePose){.Rot = {1.}};
@@ -180,6 +183,8 @@ void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so, S
 
 	if (poser_data->lighthouseposeproc) {
 		for (int lighthouse = 0; lighthouse < lighthouse_count; lighthouse++) {
+			if (quatiszero(lighthouse_pose[lighthouse].Rot))
+				continue;
 
 			if (object_pose && quatiszero(object_pose->Rot)) {
 				*object_pose = (SurvivePose){.Rot = {1.}};

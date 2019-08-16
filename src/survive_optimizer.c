@@ -58,16 +58,18 @@ void survive_optimizer_setup_camera(survive_optimizer *mpfit_ctx, int8_t lh, con
 	SurvivePose *cameras = survive_optimizer_get_camera(mpfit_ctx);
 	int start = survive_optimizer_get_camera_index(mpfit_ctx) + lh * 7;
 
+	bool poseIsInvalid = pose == 0;
 	if (pose && !quatiszero(pose->Rot)) {
 		InvertPose(&cameras[lh], pose);
 	} else {
 		cameras[lh] = (SurvivePose){ 0 };
+		poseIsInvalid = true;
 	}
 
 	setup_pose_param_limits(mpfit_ctx, mpfit_ctx->parameters + start, mpfit_ctx->parameters_info + start);
 
 	for (int i = start; i < start + 7; i++) {
-		mpfit_ctx->parameters_info[i].fixed = isFixed && pose != 0;
+		mpfit_ctx->parameters_info[i].fixed = isFixed || poseIsInvalid;
 		mpfit_ctx->parameters_info[i].parname = lh_parameter_names[i - start];
 	}
 }
