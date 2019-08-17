@@ -15,6 +15,8 @@
 
 #define TIMECENTER_TICKS (48000000/240) //for now.
 
+void survive_ootx_behavior(SurviveObject *so, int8_t bsd_idx, int8_t lh_version, bool ootx);
+
 void survive_default_light_process( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length, uint32_t lh)
 {
 	survive_notify_gen1(so);
@@ -22,8 +24,13 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 	SurviveContext * ctx = so->ctx;
 	int base_station = lh;
 	int axis = acode & 1;
-	if( ctx->calptr )
-	{
+
+	if (sensor_id == -1 || sensor_id == -2) {
+		uint8_t dbit = (acode & 2) >> 1;
+		survive_ootx_behavior(so, lh, ctx->lh_version, dbit);
+	}
+
+	if (ctx->calptr && ctx->bsd[lh].OOTXSet) {
 		survive_cal_light( so, sensor_id, acode, timeinsweep, timecode, length, lh);
 	}
 
@@ -180,7 +187,7 @@ void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighth
 	config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
 
 	survive_recording_lighthouse_process(ctx, lighthouse, lighthouse_pose, object_pose);
-	SV_INFO("Position found for LH %d", lighthouse);
+	SV_INFO("Position found for LH %d(%08x)", lighthouse, ctx->bsd[lighthouse].BaseStationID);
 }
 
 int survive_default_config_process(SurviveObject *so, char *ct0conf, int len) {

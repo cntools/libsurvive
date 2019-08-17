@@ -33,6 +33,7 @@ typedef struct SurviveSensorActivations_s {
 	survive_timecode lengths[SENSORS_PER_OBJECT][NUM_GEN1_LIGHTHOUSES][2]; // Timecode per axis in ticks
 
 	uint32_t rollover_count;
+	size_t imu_init_cnt;
 	survive_timecode last_imu;
 	survive_long_timecode last_movement; // Tracks the timecode of the last IMU packet which saw movement.
 	FLT accel[3];

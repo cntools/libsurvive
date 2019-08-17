@@ -37,6 +37,11 @@ survive_timecode SurviveSensorActivations_stationary_time(const SurviveSensorAct
 }
 
 void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct PoserDataIMU *imuData) {
+	if (self->imu_init_cnt > 0) {
+		self->imu_init_cnt--;
+		return;
+	}
+
 	if (self->last_imu > imuData->hdr.timecode) {
 		self->rollover_count++;
 	}
@@ -48,6 +53,7 @@ void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct Pos
 			self->gyro[i] = imuData->gyro[i];
 			self->mag[i] = imuData->mag[i];
 		}
+		self->last_movement = imuData->hdr.timecode;
 	} else {
 		for (int i = 0; i < 3; i++) {
 			self->accel[i] = .98 * self->accel[i] + .02 * imuData->accel[i];
@@ -89,6 +95,8 @@ SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveSensorActivations *self
 	for (int i = 0; i < 3; i++) {
 		self->accel[i] = NAN;
 	}
+
+	self->imu_init_cnt = 30;
 }
 
 void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLightGen1 *_lightData) {

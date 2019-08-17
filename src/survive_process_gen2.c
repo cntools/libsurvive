@@ -16,12 +16,11 @@ static void ootx_error_clbk_d(ootx_decoder_context *ct, const char *msg) {
 	int id = ct->user1;
 
 	if (!ctx->bsd[id].OOTXSet)
-		SV_INFO("(%d) %s", ctx->bsd[id].mode, msg);
+		SV_INFO("(%d) %s", ctx->bsd[id].mode != 255 ? ctx->bsd[id].mode : id, msg);
 }
 
-static void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet *packet) {
+static void ootx_packet_clbk_d_gen2(ootx_decoder_context *ct, ootx_packet *packet) {
 	SurviveContext *ctx = ((SurviveObject *)(ct->user))->ctx;
-	SurviveCalData *cd = ctx->calptr;
 	int id = ct->user1;
 
 	lighthouse_info_v15 v15;
@@ -32,7 +31,7 @@ static void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet *packet) {
 	bool doSave = b->BaseStationID != v15.id || b->OOTXSet == false;
 
 	if (doSave) {
-		SV_INFO("Got OOTX packet %d %p", ctx->bsd[id].mode, cd);
+		SV_INFO("Got OOTX packet %d", ctx->bsd[id].mode);
 
 		b->BaseStationID = v15.id;
 		for (int i = 0; i < 2; i++) {
@@ -58,6 +57,70 @@ static void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet *packet) {
 	}
 }
 
+static void ootx_packet_cblk_d_gen1(ootx_decoder_context *ct, ootx_packet *packet) {
+
+	SurviveContext *ctx = ((SurviveObject *)(ct->user))->ctx;
+	int id = ct->user1;
+
+	SV_INFO("Got OOTX packet %d", id);
+
+	lighthouse_info_v6 v6;
+	init_lighthouse_info_v6(&v6, packet->data);
+
+	BaseStationData *b = &ctx->bsd[id];
+
+	b->BaseStationID = v6.id;
+	b->fcal[0].phase = v6.fcal_0_phase;
+	b->fcal[1].phase = v6.fcal_1_phase;
+	b->fcal[0].tilt = tan(v6.fcal_0_tilt);
+	b->fcal[1].tilt = tan(v6.fcal_1_tilt); // XXX??? Is this right? See https://github.com/cnlohr/libsurvive/issues/18
+	b->fcal[0].curve = v6.fcal_0_curve;
+	b->fcal[1].curve = v6.fcal_1_curve;
+	b->fcal[0].gibpha = v6.fcal_0_gibphase;
+	b->fcal[1].gibpha = v6.fcal_1_gibphase;
+	b->fcal[0].gibmag = v6.fcal_0_gibmag;
+	b->fcal[1].gibmag = v6.fcal_1_gibmag;
+	b->accel[0] = v6.accel_dir_x;
+	b->accel[1] = v6.accel_dir_y;
+	b->accel[2] = v6.accel_dir_z;
+	b->mode = v6.mode_current;
+	b->OOTXSet = 1;
+
+	config_set_lighthouse(ctx->lh_config, b, id);
+	config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
+}
+
+void survive_ootx_behavior(SurviveObject *so, int8_t bsd_idx, int8_t lh_version, bool ootx) {
+	struct SurviveContext *ctx = so->ctx;
+	if (ctx->bsd[bsd_idx].OOTXSet == false) {
+		ootx_decoder_context *decoderContext = ctx->bsd[bsd_idx].ootx_data;
+
+		if (decoderContext == 0) {
+			if (lh_version == 1) {
+				SV_INFO("OOTX not set for LH in channel %d; attaching ootx decoder using device %s",
+						ctx->bsd[bsd_idx].mode, so->codename);
+			} else {
+				SV_INFO("OOTX not set for LH %d; attaching ootx decoder using device %s", bsd_idx, so->codename);
+			}
+			decoderContext = ctx->bsd[bsd_idx].ootx_data = calloc(1, sizeof(ootx_decoder_context));
+			ootx_init_decoder_context(decoderContext);
+			decoderContext->user1 = bsd_idx;
+			decoderContext->user = so;
+			decoderContext->ootx_packet_clbk = lh_version ? ootx_packet_clbk_d_gen2 : ootx_packet_cblk_d_gen1;
+			decoderContext->ootx_error_clbk = ootx_error_clbk_d;
+		}
+		if (decoderContext->user == so) {
+			ootx_pump_bit(decoderContext, ootx);
+
+			if (ctx->bsd[bsd_idx].OOTXSet) {
+				ctx->bsd[bsd_idx].ootx_data = 0;
+				ootx_free_decoder_context(decoderContext);
+				free(decoderContext);
+			}
+		}
+	}
+}
+
 SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_channel channel, survive_timecode timecode,
 												 bool ootx, bool gen) {
 	struct SurviveContext *ctx = so->ctx;
@@ -71,29 +134,7 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 	// ootx, gen);
 	so->last_sync_time[bsd_idx] = timecode;
 
-	if (ctx->bsd[bsd_idx].OOTXSet == false) {
-		ootx_decoder_context *decoderContext = ctx->bsd[bsd_idx].ootx_data;
-
-		if (decoderContext == 0) {
-			SV_INFO("OOTX not set for LH in channel %d; attaching ootx decoder using device %s", channel, so->codename);
-
-			decoderContext = ctx->bsd[bsd_idx].ootx_data = calloc(1, sizeof(ootx_decoder_context));
-			ootx_init_decoder_context(decoderContext);
-			decoderContext->user1 = bsd_idx;
-			decoderContext->user = so;
-			decoderContext->ootx_packet_clbk = ootx_packet_clbk_d;
-			decoderContext->ootx_error_clbk = ootx_error_clbk_d;
-		}
-		if (decoderContext->user == so) {
-			ootx_pump_bit(decoderContext, ootx);
-
-			if (ctx->bsd[bsd_idx].OOTXSet) {
-				ctx->bsd[bsd_idx].ootx_data = 0;
-				ootx_free_decoder_context(decoderContext);
-				free(decoderContext);
-			}
-		}
-	}
+	survive_ootx_behavior(so, bsd_idx, ctx->lh_version, ootx);
 
 	PoserDataLightGen2 l = {.common = {
 								.hdr =
@@ -201,6 +242,12 @@ SURVIVE_EXPORT void survive_default_gen_detected_process(SurviveObject *so, int 
 	ctx->lh_version = lh_version;
 
 	if (ctx->lh_version == 0) {
+		int fastCalibrate = survive_configi(ctx, "fast-calibrate", SC_GET, 0);
+		if (fastCalibrate) {
+			SV_INFO("Using fast calibration");
+			return;
+		}
+
 		int calibrateMandatory = survive_configi(ctx, "force-calibrate", SC_GET, 0);
 		int calibrateForbidden = survive_configi(ctx, "disable-calibrate", SC_GET, 1) == 1;
 		if (calibrateMandatory && calibrateForbidden) {

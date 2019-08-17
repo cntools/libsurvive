@@ -247,8 +247,10 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 			// Take the OOTX data from the first device.  (if using HMD, WM0, WM1 only, this will be HMD)
 
 			if (lhid < NUM_GEN1_LIGHTHOUSES && so == cd->poseobjects[0]) {
-				uint8_t dbit = (acode & 2) >> 1;
-				ootx_pump_bit(&cd->ootx_decoders[lhid], dbit);
+				if (!ctx->bsd[lhid].OOTXSet) {
+					uint8_t dbit = (acode & 2) >> 1;
+					ootx_pump_bit(&cd->ootx_decoders[lhid], dbit);
+				}
 				cd->seen_lh[lhid] = true;
 			}
 			int i;
@@ -264,7 +266,8 @@ void survive_cal_light( struct SurviveObject * so, int sensor_id, int acode, int
 				SV_WARN("Only one lighthouse detected");
 			}
 
-			if( i == ctx->activeLighthouses ) cd->stage = 2;  //TODO: Make this configuratble to allow single lighthouse.
+			if (i == ctx->activeLighthouses)
+				cd->stage = 2;
 
 			cd->stage_cnt++;
 		}

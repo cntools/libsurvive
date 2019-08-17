@@ -298,7 +298,7 @@ void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so) {
 	tracker->so = so;
 
 	struct SurviveContext *ctx = tracker->so->ctx;
-	SV_INFO("Initializing Filter:");
+	SV_VERBOSE(110, "Initializing Filter:");
 	// These are relatively high numbers to seed with; we are essentially saying
 	// origin has a variance of 10m; and the quat can be varied by 4 -- which is
 	// more than any actual normalized quat could be off by.
@@ -324,13 +324,13 @@ void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so) {
 
 	survive_kalman_state_init(&tracker->position, 3, pos_f, tracker->pos_Q_per_sec, 0, position_dims, 0);
 
-	SV_INFO("\t%s: %f", POSE_POSITION_VARIANCE_SEC_TAG, tracker->pos_Q_per_sec[0]);
-	SV_INFO("\t%s: %f", POSE_ROT_VARIANCE_SEC_TAG, tracker->rot_Q_per_sec[0]);
-	SV_INFO("\t%s: %f", VELOCITY_POSITION_VARIANCE_SEC_TAG, tracker->pos_Q_per_sec[4]);
-	SV_INFO("\t%s: %f", VELOCITY_ROT_VARIANCE_SEC_TAG, tracker->rot_Q_per_sec[3]);
-	SV_INFO("\t%s: %f", IMU_ACC_VARIANCE_TAG, tracker->acc_var);
-	SV_INFO("\t%s: %f", IMU_GYRO_VARIANCE_TAG, tracker->gyro_var);
-	SV_INFO("\t%s: %f", IMU_MAHONY_VARIANCE_TAG, tracker->mahony_variance);
+	SV_VERBOSE(110, "\t%s: %f", POSE_POSITION_VARIANCE_SEC_TAG, tracker->pos_Q_per_sec[0]);
+	SV_VERBOSE(110, "\t%s: %f", POSE_ROT_VARIANCE_SEC_TAG, tracker->rot_Q_per_sec[0]);
+	SV_VERBOSE(110, "\t%s: %f", VELOCITY_POSITION_VARIANCE_SEC_TAG, tracker->pos_Q_per_sec[4]);
+	SV_VERBOSE(110, "\t%s: %f", VELOCITY_ROT_VARIANCE_SEC_TAG, tracker->rot_Q_per_sec[3]);
+	SV_VERBOSE(110, "\t%s: %f", IMU_ACC_VARIANCE_TAG, tracker->acc_var);
+	SV_VERBOSE(110, "\t%s: %f", IMU_GYRO_VARIANCE_TAG, tracker->gyro_var);
+	SV_VERBOSE(110, "\t%s: %f", IMU_MAHONY_VARIANCE_TAG, tracker->mahony_variance);
 }
 
 SurviveVelocity survive_imu_velocity(const SurviveIMUTracker *tracker) {

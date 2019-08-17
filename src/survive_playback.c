@@ -575,7 +575,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 
 	sp->playback_file = gzopen(playback_file, "r");
 	if (sp->playback_file == 0) {
-		SV_WARN("Could not open playback events file %s", playback_file);
+		SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Could not open playback events file %s", playback_file);
 		return -1;
 	}
 

@@ -224,15 +224,15 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 	}
 
 	bool canPossiblySolveLHS = false;
-	for (int lh = 0; lh < so->ctx->activeLighthouses && !canPossiblySolveLHS; lh++) {
-		if (!so->ctx->bsd[lh].PositionSet && meas_for_lhs[lh] > 0) {
-			if (!so->ctx->bsd[lh].OOTXSet) {
-				// Wait til this thing gets OOTX, and then solve for as much as we can. Avoids doing
-				// two solves in a row because of OOTX timing.
-				canPossiblySolveLHS = false;
-				break;
-			}
+	for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
+		if (!so->ctx->bsd[lh].OOTXSet) {
+			// Wait til this thing gets OOTX, and then solve for as much as we can. Avoids doing
+			// two solves in a row because of OOTX timing.
+			canPossiblySolveLHS = false;
+			break;
+		}
 
+		if (!so->ctx->bsd[lh].PositionSet && meas_for_lhs[lh] > 0) {
 			canPossiblySolveLHS = true;
 		}
 	}
@@ -243,9 +243,10 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 			for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
 				assert(!isnan(lhs[lh].Rot[0]));
 				if (quatiszero(lhs[lh].Rot) && meas_for_lhs[lh] > 0) {
-					SV_WARN("Seed poser failed for %d, removing %d measurements (now %d)", lh, (int)meas_for_lhs[lh],
-							(int)(meas_size - (int)meas_for_lhs[lh]));
+					SV_WARN("Seed poser failed for %d, not trying to solve LH system", lh);
 					meas_size = remove_lh_from_meas(mpfitctx.measurements, meas_size, lh);
+					meas_for_lhs[lh] = 0;
+					canPossiblySolveLHS = false;
 				} else if (meas_for_lhs[lh] > 0) {
 					SV_INFO("Attempting to solve for %d with %d meas", lh, (int)meas_for_lhs[lh]);
 					survive_optimizer_setup_camera(&mpfitctx, lh, &lhs[lh], false);
@@ -289,10 +290,11 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 			if (!worldEstablished)
 				*soLocation = (SurvivePose){ 0 };
 
-			SurvivePose *cameras = survive_optimizer_get_camera(&mpfitctx);
+			SurvivePose *opt_cameras = survive_optimizer_get_camera(&mpfitctx);
+			SurvivePose cameras[NUM_GEN2_LIGHTHOUSES] = {};
 			for (int i = 0; i < mpfitctx.cameraLength; i++) {
-				if (!quatiszero(cameras[i].Rot)) {
-					cameras[i] = InvertPoseRtn(&cameras[i]);
+				if (meas_for_lhs[i] > 0 && !quatiszero(opt_cameras[i].Rot)) {
+					cameras[i] = InvertPoseRtn(&opt_cameras[i]);
 					SV_INFO("Solved for %d with error of %f/%f", i, result.orignorm, result.bestnorm);
 				}
 			}
@@ -430,14 +432,14 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 #endif
 
-		SV_INFO("Initializing MPFIT:");
-		SV_INFO("\trequired-meas: %d", d->required_meas);
-		SV_INFO("\ttime-window: %d", d->sensor_time_window);
-		SV_INFO("\tsensor-variance: %f", d->sensor_variance);
-		SV_INFO("\tsensor-variance-per-sec: %f", d->sensor_variance_per_second);
-		SV_INFO("\tuse-imu: %d", d->useIMU);
-		SV_INFO("\tuse-kalman: %d", d->useKalman);
-		SV_INFO("\tuse-jacobian-function: %d", d->use_jacobian_function);
+		SV_VERBOSE(110, "Initializing MPFIT:");
+		SV_VERBOSE(110, "\trequired-meas: %d", d->required_meas);
+		SV_VERBOSE(110, "\ttime-window: %d", d->sensor_time_window);
+		SV_VERBOSE(110, "\tsensor-variance: %f", d->sensor_variance);
+		SV_VERBOSE(110, "\tsensor-variance-per-sec: %f", d->sensor_variance_per_second);
+		SV_VERBOSE(110, "\tuse-imu: %d", d->useIMU);
+		SV_VERBOSE(110, "\tuse-kalman: %d", d->useKalman);
+		SV_VERBOSE(110, "\tuse-jacobian-function: %d", d->use_jacobian_function);
 	}
 	MPFITData *d = so->PoserData;
 	switch (pd->pt) {

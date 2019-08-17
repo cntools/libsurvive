@@ -33,11 +33,11 @@ void general_optimizer_data_init(GeneralOptimizerData *d, SurviveObject *so) {
 	const char *subposer = survive_configs(ctx, "seed-poser", SC_GET, "BaryCentricSVD");
 	d->seed_poser = (PoserCB)GetDriverWithPrefix("Poser", subposer);
 
-	SV_INFO("Initializing general optimizer:");
-	SV_INFO("\tmax-error: %f", d->max_error);
-	SV_INFO("\tsuccesses-to-reset: %d", d->successes_to_reset);
-	SV_INFO("\tfailures-to-reset: %d", d->failures_to_reset);
-	SV_INFO("\tseed-poser: %s(%p)", subposer, d->seed_poser);
+	SV_VERBOSE(110, "Initializing general optimizer:");
+	SV_VERBOSE(110, "\tmax-error: %f", d->max_error);
+	SV_VERBOSE(110, "\tsuccesses-to-reset: %d", d->successes_to_reset);
+	SV_VERBOSE(110, "\tfailures-to-reset: %d", d->failures_to_reset);
+	SV_VERBOSE(110, "\tseed-poser: %s(%p)", subposer, d->seed_poser);
 }
 void general_optimizer_data_record_failure(GeneralOptimizerData *d) {
 	d->stats.error_failures++;

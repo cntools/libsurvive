@@ -27,7 +27,9 @@ STATIC_CONFIG_ITEM( BLACKLIST_DEVS, "blacklist-devs", 's', "List any devs (or su
 STATIC_CONFIG_ITEM( CONFIG_FILE, "configfile", 's', "Default configuration file", "config.json" );
 STATIC_CONFIG_ITEM(INIT_CONFIG_FILE, "init-configfile", 's', "Initial configuration file", 0);
 STATIC_CONFIG_ITEM( CONFIG_D_CALI, "disable-calibrate", 'i', "Enables or disables calibration", 0 );
+STATIC_CONFIG_ITEM(CONFIG_FAST_CALI, "fast-calibrate", 'i', "Use fast calibration", 0);
 STATIC_CONFIG_ITEM( CONFIG_F_CALI, "force-calibrate", 'i', "Forces calibration even if one exists.", 0 );
+STATIC_CONFIG_ITEM(CONFIG_F_OOTX, "force-ootx", 'i', "Forces ootx capture even if its in the config file.", 0);
 STATIC_CONFIG_ITEM(CONFIG_LIGHTHOUSE_COUNT, "lighthousecount", 'i', "How many lighthouses to look for.", 2);
 STATIC_CONFIG_ITEM(LIGHTHOUSE_GEN, "lighthouse-gen", 'i',
 				   "Which lighthouse gen to use -- 1 for LH1, 2 for LH2, 0 (default) for auto-detect", 0);
@@ -445,8 +447,6 @@ static inline bool callDriver(SurviveContext* ctx, const char* DriverName, char*
 	return true; 
 }
 int survive_startup(SurviveContext *ctx) {
-	int r = 0;
-	int i = 0;
 	ctx->state = SURVIVE_RUNNING;
 
 	survive_install_recording(ctx);
@@ -463,21 +463,22 @@ int survive_startup(SurviveContext *ctx) {
 
 	const char *DriverName;
 
-	i = 0;
-
 	int loadedDrivers = 0;
 
 	char buffer[1024] = "Loaded drivers: ";
-	while ((DriverName = GetDriverNameMatching("DriverReg", i++))) {
-		char driverNameSuffix[256] = { 0 };
-		char* driverNameSuffix_p = driverNameSuffix;
-		for (const char* c = DriverName + strlen("DriverReg");*c;c++) {
-			*driverNameSuffix_p++ = tolower(*c);
-		}
-		
-		int enabled = survive_config_is_set(ctx, driverNameSuffix);
-		if (enabled && callDriver(ctx, DriverName, buffer)) {
-			loadedDrivers++;
+	{
+		int i = 0;
+		while ((DriverName = GetDriverNameMatching("DriverReg", i++))) {
+			char driverNameSuffix[256] = {0};
+			char *driverNameSuffix_p = driverNameSuffix;
+			for (const char *c = DriverName + strlen("DriverReg"); *c; c++) {
+				*driverNameSuffix_p++ = tolower(*c);
+			}
+
+			int enabled = survive_config_is_set(ctx, driverNameSuffix);
+			if (enabled && callDriver(ctx, DriverName, buffer)) {
+				loadedDrivers++;
+			}
 		}
 	}
 
@@ -498,7 +499,7 @@ int survive_startup(SurviveContext *ctx) {
 	SV_INFO("%s", buffer);
 
 	// Apply poser to objects.
-	for (i = 0; i < ctx->objs_ct; i++) {
+	for (int i = 0; i < ctx->objs_ct; i++) {
 		ctx->objs[i]->PoserFn = PreferredPoserCB;
 	}
 
@@ -510,6 +511,14 @@ int survive_startup(SurviveContext *ctx) {
 		SV_INFO("Force calibrate flag set -- clearing position on all lighthouses");
 		for (int i = 0; i < ctx->activeLighthouses; i++) {
 			ctx->bsd[i].PositionSet = 0;
+		}
+	}
+
+	int ootxMandatory = survive_configi(ctx, "force-ootx", SC_GET, 0);
+	if (ootxMandatory) {
+		SV_INFO("Force ootx flag set -- clearing ootx on all lighthouses");
+		for (int i = 0; i < ctx->activeLighthouses; i++) {
+			ctx->bsd[i].OOTXSet = 0;
 		}
 	}
 
