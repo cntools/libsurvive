@@ -170,11 +170,9 @@ Here is an example of a default configuration file that libsurvive will create a
 
 ```
 "lighthousecount":"2",
-"defaultposer":"PoserTurveyTori",
+"poser":"PoserTurveyTori",
 "RequiredTrackersForCal":"",
 "AllowAllTrackersForCal":"1",
-"ConfigPoser":"PoserTurveyTori",
-"TurveyToriDebug":"0"
 "lighthouse0":{
 "index":"0",
 "id":"138441170",
@@ -202,11 +200,9 @@ Here is an example for such an altered `config.json` file
 
 ```
 "lighthousecount":"1",
-"defaultposer":"PoserTurveyTori",
+"poser":"PoserTurveyTori",
 "RequiredTrackersForCal":"HMD",
 "AllowAllTrackersForCal":"0",
-"ConfigPoser":"PoserTurveyTori",
-"TurveyToriDebug":"0"
 "lighthouse0":{
 "index":"0",
 "id":"138441170",

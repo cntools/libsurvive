@@ -295,7 +295,7 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 								ApplyPoseToPose(&lh2world[lh], &obj2world, &lh2obj);
 						}
 					} else {
-						SV_WARN("Couldn't solve for LH %d with %d measures", lh, dd->bc.meas_cnt);
+						SV_WARN("Couldn't solve for LH %d with %d measures", lh, (int)dd->bc.meas_cnt);
 					}
 				}
 			}

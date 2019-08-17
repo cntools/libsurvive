@@ -75,9 +75,6 @@ struct SurviveCalData
 
 	size_t numPoseObjects;
 
-	void *ConfigPoserData[MAX_POSE_OBJECTS];
-	PoserCB ConfigPoserFn;
-
 	//Stage:
 	// 0: Idle
 	// 1: Collecting OOTX data.

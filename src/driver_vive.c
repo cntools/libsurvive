@@ -2309,8 +2309,8 @@ static int LoadConfig(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int i
 	SurviveObject *so = usbInfo->so;
 	int len = survive_get_config(&ct0conf, sv, usbInfo, iface, extra_magic);
 	if (len < 0) {
-		survive_remove_object(ctx, so);
 		usbInfo->so = 0;
+		survive_remove_object(ctx, so);
 		return len;
 	}
 

@@ -254,7 +254,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 				showhelp = 1;
 				break;
 			case 'p':
-				vartoupdate = "defaultposer";
+				vartoupdate = "poser";
 				break;
 			case 'l':
 				vartoupdate = "lighthousecount";
@@ -380,7 +380,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 		fprintf(stderr, "Available flags:\n");
 		fprintf(stderr, " -h                      - shows help.\n");
 		fprintf(stderr, " -m                      - list parameters, for autocomplete.\n");
-		fprintf(stderr, " -p [poser]              - use a specific defaultposer.\n");
+		fprintf(stderr, " -p [poser]              - use a specific poser.\n");
 		fprintf(stderr, " -l [lighthouse count]   - use a specific number of lighthoses.\n");
 		fprintf(stderr, " -c [config file]        - set config file\n\n");
 
@@ -458,7 +458,7 @@ int survive_startup(SurviveContext *ctx) {
 	// start the thread to process button data
 	ctx->buttonservicethread = OGCreateThread(button_servicer, ctx);
 
-	PoserCB PreferredPoserCB = GetDriverByConfig(ctx, "Poser", "defaultposer", "MPFIT");
+	PoserCB PreferredPoserCB = GetDriverByConfig(ctx, "Poser", "poser", "MPFIT");
 	ctx->lightcapproc = GetDriverByConfig(ctx, "Disambiguator", "disambiguator", "StateBased");
 
 	const char *DriverName;
@@ -560,7 +560,7 @@ int survive_add_object(SurviveContext *ctx, SurviveObject *obj) {
 	ctx->objs_ct = oldct + 1;
 
 	ctx->new_objectproc(obj);
-	PoserCB PreferredPoserCB = GetDriverByConfig(ctx, "Poser", "defaultposer", "MPFIT");
+	PoserCB PreferredPoserCB = GetDriverByConfig(ctx, "Poser", "poser", "MPFIT");
 	obj->PoserFn = PreferredPoserCB;
 
 	return 0;
@@ -643,24 +643,20 @@ void survive_close(SurviveContext *ctx) {
 		SV_INFO("Driver %s reports status %d", DriverName, r);
 	}
 
-	int oldct = ctx->driver_ct;
-	int i;
-
-	for (i = 0; i < ctx->objs_ct; i++) {
-		PoserData pd;
-		pd.pt = POSERDATA_DISASSOCIATE;
-		if (ctx->objs[i]->PoserFn)
-			ctx->objs[i]->PoserFn(ctx->objs[i], &pd);
-
-		ctx->lightcapproc(ctx->objs[i], 0);
-	}
-
-	for (i = 0; i < oldct; i++) {
+	for (int i = 0; i < ctx->driver_ct; i++) {
 		if (ctx->drivercloses[i]) {
 			ctx->drivercloses[i](ctx, ctx->drivers[i]);
 		} else {
 			free(ctx->drivers[i]);
 		}
+	}
+
+	for (int i = 0; i < ctx->objs_ct; i++) {
+		PoserData pd;
+		pd.pt = POSERDATA_DISASSOCIATE;
+		if (ctx->objs[i]->PoserFn)
+			ctx->objs[i]->PoserFn(ctx->objs[i], &pd);
+		ctx->lightcapproc(ctx->objs[i], 0);
 	}
 
 	config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
@@ -671,7 +667,7 @@ void survive_close(SurviveContext *ctx) {
 	for (int lh = 0; lh < NUM_GEN2_LIGHTHOUSES; lh++)
 		destroy_config_group(ctx->lh_config + lh);
 
-	for (i = 0; i < ctx->objs_ct; i++) {
+	for (int i = 0; i < ctx->objs_ct; i++) {
 		survive_destroy_device(ctx->objs[i]);
 	}
 

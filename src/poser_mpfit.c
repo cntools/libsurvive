@@ -345,18 +345,15 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 	}
 
 	{
-		const char *subposer = survive_configs(so->ctx, "seed-poser", SC_GET, "BaryCentricSVD");
-
-		PoserCB driver = (PoserCB)GetDriverWithPrefix("Poser", subposer);
 		SurviveContext *ctx = so->ctx;
-		if (driver) {
+		if (d->opt.seed_poser) {
 			PoserData hdr = pdfs->hdr;
 			memset(&pdfs->hdr, 0, sizeof(pdfs->hdr)); // Clear callback functions
 			pdfs->hdr.pt = hdr.pt;
 			pdfs->hdr.lighthouseposeproc = mpfit_set_cameras;
 			pdfs->hdr.userdata = &mpfitctx;
 			so->PoserData = d->opt.seed_poser_data;
-			driver(so, &pdfs->hdr);
+			d->opt.seed_poser(so, &pdfs->hdr);
 			d->opt.seed_poser_data = so->PoserData;
 			so->PoserData = d;
 			pdfs->hdr = hdr;

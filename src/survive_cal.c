@@ -30,7 +30,6 @@ int mkdir(const char *);
 
 STATIC_CONFIG_ITEM( REQ_TRACK_FOR_CAL, "requiredtrackersforcal", 's', "Which devices will be used, i.e. HMD,WM0,WM1", "" );
 STATIC_CONFIG_ITEM( ALLOW_TRACK_FOR_CAL, "allowalltrackersforcal", 'i', "Allow use of additional connected devices for calibration", 0 );
-STATIC_CONFIG_ITEM(CONFIG_POSER, "configposer", 's', "Poser used for calibration step", "MPFIT");
 STATIC_CONFIG_ITEM(OOTX_IGNORE_SYNC_ERROR, "ootx-ignore-sync-error", 'i', "Ignore sync errors on ootx packets", 0);
 
 #define PTS_BEFORE_COMMON 32
@@ -220,7 +219,6 @@ void survive_cal_install( struct SurviveContext * ctx )
 		}
 	}
 
-	cd->ConfigPoserFn = GetDriverByConfig(ctx, "Poser", "configposer", "MPFIT");
 	ctx->calptr = cd;
 }
 
@@ -416,7 +414,11 @@ static void reset_calibration( struct SurviveCalData * cd )
 	cd->times_found_common = 0;
 	cd->stage = 2;
 
-	memset( cd->all_sync_counts, 0, sizeof( cd->all_sync_counts ) );
+	for (int i = 0; i < NUM_GEN1_LIGHTHOUSES; i++) {
+		ootx_free_decoder_context(&cd->ootx_decoders[i]);
+	}
+
+	memset(cd->all_sync_counts, 0, sizeof(cd->all_sync_counts));
 }
 
 static void handle_calibration( struct SurviveCalData *cd )
@@ -644,11 +646,10 @@ static void handle_calibration( struct SurviveCalData *cd )
 				fsd.angles[i][j][1] = cd->avgsweeps[dataindex + 1];
 			}
 
-		void *old_pd = cd->poseobjects[obj]->PoserData;
-		cd->poseobjects[obj]->PoserData = cd->ConfigPoserData[obj];
-		int r = cd->ConfigPoserFn( cd->poseobjects[obj], (PoserData*)&fsd );
-		cd->ConfigPoserData[obj] = cd->poseobjects[obj]->PoserData;
-		cd->poseobjects[obj]->PoserData = old_pd;
+		int r = -1;
+		if (cd->poseobjects[obj]->PoserFn) {
+			r = cd->poseobjects[obj]->PoserFn(cd->poseobjects[obj], (PoserData *)&fsd);
+		}
 
 		if( r )
 		{

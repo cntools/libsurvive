@@ -15,8 +15,10 @@ typedef struct {
 	uint32_t crc32;
 } ootx_packet;
 
+#define OOTX_MAX_BUFF_SIZE 64
+
 typedef struct ootx_decoder_context {
-	uint8_t* buffer;
+	uint8_t buffer[OOTX_MAX_BUFF_SIZE];
 	uint16_t buf_offset;
 	uint8_t bits_written;
 	uint16_t* payload_size;

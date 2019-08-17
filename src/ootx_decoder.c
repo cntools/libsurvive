@@ -18,8 +18,6 @@
 
 //char* fmt_str = "L Y HMD %d 5 1 206230 %d\n";
 
-#define MAX_BUFF_SIZE 64
-
 void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit);
 
 void ootx_error(ootx_decoder_context *ctx, const char *msg) {
@@ -36,14 +34,11 @@ void ootx_init_decoder_context(ootx_decoder_context *ctx) {
 	ctx->found_preamble = 0;
 	ctx->ignore_sync_bit_error = 0;
 
-	ctx->buffer = (uint8_t*)malloc(MAX_BUFF_SIZE);
 	ctx->payload_size = (uint16_t*)ctx->buffer;
 	*(ctx->payload_size) = 0;
 }
 
 void ootx_free_decoder_context(ootx_decoder_context *ctx) {
-	free(ctx->buffer);
-	ctx->buffer = NULL;
 	ctx->payload_size = NULL;
 }
 uint8_t ootx_decode_bit(uint32_t length) {
@@ -74,7 +69,7 @@ void ootx_inc_buffer_offset(ootx_decoder_context *ctx) {
 //	assert(ctx->buf_offset<MAX_BUFF_SIZE);
 
 	/* the buffer is going to overflow, wrap the buffer and don't write more data until the preamble is found again */
-	if(ctx->buf_offset>=MAX_BUFF_SIZE) {
+	if (ctx->buf_offset >= OOTX_MAX_BUFF_SIZE) {
 		ctx->buf_offset = 0;
 		ctx->found_preamble = 0;
 	}
