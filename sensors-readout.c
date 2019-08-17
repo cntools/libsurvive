@@ -83,10 +83,21 @@ static void redraw(SurviveContext *ctx) {
 		{
 			for (int sensor = 0; sensor < so->sensor_ct; sensor++) {
 				struct sensor_stats *s = &stats[i][lh][sensor][0];
+
+				bool allNans = true;
+				for (int axis = 0; axis < 2 && allNans; axis++) {
+					FLT f = so->activations.angles[sensor][lh][axis];
+					allNans &= isnan(f);
+				}
+
+				if (allNans)
+					continue;
+
 				if (sensor % 2 == 0)
 					printf("\e[2m");
 				if (sensor == so->sensor_ct - 1)
 					printf("\e[4m");
+
 				printf("| %2d.%02d    |", ctx->bsd[lh].mode, sensor);
 				for (int axis = 0; axis < 2; axis++) {
 					FLT f = so->activations.angles[sensor][lh][axis];
@@ -109,10 +120,9 @@ static void redraw(SurviveContext *ctx) {
 	needsRedraw = false;
 }
 
-void sync_fn(SurviveObject *so, survive_channel channel, survive_timecode timeinsweep, bool ootx, bool gen) {
+void imu_fn(SurviveObject *so, int mode, FLT *accelgyro, survive_timecode timecode, int id) {
 	if (needsRedraw)
 		redraw(so->ctx);
-	survive_default_sync_process(so, channel, timeinsweep, ootx, gen);
 }
 
 void *KBThread(void *user) {
@@ -147,7 +157,7 @@ int main(int argc, char **argv) {
 
 	FLT last_redraw = OGGetAbsoluteTime();
 	survive_install_log_fn(ctx, info_fn);
-	survive_install_sync_fn(ctx, sync_fn);
+	survive_install_imu_fn(ctx, imu_fn);
 	survive_startup(ctx);
 
 	system("clear");
