@@ -20,6 +20,8 @@
 #define MPFIT_H
 
 /* This is a C library.  Allow compilation with a C++ compiler */
+#include <survive_optimizer.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -70,7 +70,7 @@ SURVIVE_EXPORT int survive_optimizer_run(survive_optimizer *optimizer, struct mp
 
 SURVIVE_EXPORT void survive_optimizer_set_reproject_model(survive_optimizer *optimizer,
 														  const survive_reproject_model_t *reprojectModel);
-
+SURVIVE_EXPORT void survive_optimizer_serialize(survive_optimizer *optimizer, const char *fn);
 #ifdef __cplusplus
 }
 #endif

@@ -24,6 +24,7 @@
 #include <fenv.h>
 #endif
 
+STATIC_CONFIG_ITEM(SERIALIZE_SOLVE, "serialize-lh-mpfit", 's', "Serialize MPFIT formulization", 0);
 STATIC_CONFIG_ITEM(USE_JACOBIAN_FUNCTION, "use-jacobian-function", 'i',
 				   "If set to false, a slower numerical approximation of the jacobian is used", 1);
 STATIC_CONFIG_ITEM(USE_IMU, "use-imu", 'i', "Use the IMU as part of the pose solver", 1);
@@ -52,6 +53,7 @@ typedef struct MPFITData {
 	bool useIMU;
 	bool useKalman;
 
+	const char *serialize_prefix;
 	struct {
 		int meas_failures;
 	} stats;
@@ -181,6 +183,15 @@ static void mpfit_set_cameras(SurviveObject *so, uint8_t lighthouse, SurvivePose
 		*survive_optimizer_get_pose(ctx) = LinmathPose_Identity;
 }
 
+static inline void serialize_mpfit(MPFITData *d, survive_optimizer *mpfitctx) {
+	if (d->serialize_prefix) {
+		static int cnt = 0;
+		char path[1024] = {};
+		snprintf(path, 1023, "%s_%s_%d.opt", d->serialize_prefix, d->opt.so->codename, cnt++);
+		survive_optimizer_serialize(mpfitctx, path);
+	}
+}
+
 static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, SurviveSensorActivations *scene,
 										  SurvivePose *out) {
 	SurviveObject *so = d->opt.so;
@@ -224,16 +235,25 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 	}
 
 	bool canPossiblySolveLHS = false;
-	for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
-		if (!so->ctx->bsd[lh].OOTXSet) {
-			// Wait til this thing gets OOTX, and then solve for as much as we can. Avoids doing
-			// two solves in a row because of OOTX timing.
-			canPossiblySolveLHS = false;
-			break;
+	bool bestObjForCal = true;
+	for (int obj_id = 0; obj_id < so->ctx->objs_ct; obj_id++) {
+		if (so->ctx->objs[obj_id]->sensor_ct > so->sensor_ct) {
+			bestObjForCal = false;
 		}
+	}
 
-		if (!so->ctx->bsd[lh].PositionSet && meas_for_lhs[lh] > 0) {
-			canPossiblySolveLHS = true;
+	if (bestObjForCal) {
+		for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
+			if (!so->ctx->bsd[lh].OOTXSet) {
+				// Wait til this thing gets OOTX, and then solve for as much as we can. Avoids doing
+				// two solves in a row because of OOTX timing.
+				canPossiblySolveLHS = false;
+				break;
+			}
+
+			if (!so->ctx->bsd[lh].PositionSet && meas_for_lhs[lh] > 0) {
+				canPossiblySolveLHS = true;
+			}
 		}
 	}
 
@@ -248,7 +268,7 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 					meas_for_lhs[lh] = 0;
 					canPossiblySolveLHS = false;
 				} else if (meas_for_lhs[lh] > 0) {
-					SV_INFO("Attempting to solve for %d with %d meas", lh, (int)meas_for_lhs[lh]);
+					SV_INFO("Attempting to solve for %d with %d meas (%s)", lh, (int)meas_for_lhs[lh], so->codename);
 					survive_optimizer_setup_camera(&mpfitctx, lh, &lhs[lh], false);
 				}
 			}
@@ -270,6 +290,9 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 	mp_result result = {0};
 	mpfitctx.initialPose = *soLocation;
 
+	if (canPossiblySolveLHS) {
+		serialize_mpfit(d, &mpfitctx);
+	}
 	int res = survive_optimizer_run(&mpfitctx, &result);
 
 	double rtn = -1;
@@ -378,6 +401,7 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 
 	mpfitctx.initialPose.Rot[0] = 1;
 
+	serialize_mpfit(d, &mpfitctx);
 	int res = survive_optimizer_run(&mpfitctx, &result);
 
 	double rtn = -1;
@@ -421,6 +445,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		d->syncs_per_run = survive_configi(ctx, "syncs-per-run", SC_GET, 1);
 		d->sensor_time_window = survive_configi(ctx, "time-window", SC_GET, SurviveSensorActivations_default_tolerance);
 		d->use_jacobian_function = survive_configi(ctx, "use-jacobian-function", SC_GET, 1);
+		d->serialize_prefix = survive_configs(ctx, "serialize-lh-mpfit", SC_GET, 0);
 		survive_attach_configi(ctx, "disable-lighthouse", &d->disable_lighthouse);
 		survive_attach_configf(ctx, "sensor-variance-per-sec", &d->sensor_variance_per_second);
 		survive_attach_configf(ctx, "sensor-variance", &d->sensor_variance);

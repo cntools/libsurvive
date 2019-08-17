@@ -2,6 +2,7 @@
 #include <math.h>
 #include <survive_optimizer.h>
 #include <survive_reproject.h>
+#include <zlib.h>
 
 #include "survive_optimizer.h"
 
@@ -261,4 +262,44 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 void survive_optimizer_set_reproject_model(survive_optimizer *optimizer,
 										   const survive_reproject_model_t *reprojectModel) {
 	optimizer->reprojectModel = reprojectModel;
+}
+
+void survive_optimizer_serialize(survive_optimizer *opt, const char *fn) {
+	gzFile f = gzopen(fn, "wT");
+
+	gzprintf(f, "object       %s\n", opt->so->codename);
+	gzprintf(f, "currentBias  %+0.16f\n", opt->current_bias);
+	gzprintf(f, "initialPose " SurvivePose_format "\n", SURVIVE_POSE_EXPAND(opt->initialPose));
+	gzprintf(f, "model        %d\n", opt->reprojectModel != &survive_reproject_model);
+	gzprintf(f, "poseLength   %d\n", opt->poseLength);
+	gzprintf(f, "cameraLength %d\n", opt->cameraLength);
+	gzprintf(f, "fcalLength   %d\n", opt->fcalLength);
+	gzprintf(f, "ptsLength    %d\n", opt->ptsLength);
+
+	gzprintf(f, "\n");
+	gzprintf(f, "parameters   %d\n", survive_optimizer_get_parameters_count(opt));
+	gzprintf(f, "\t#<name>: <fixed> <value> <min> <max> <use_jacobian>\n");
+	for (int i = 0; i < survive_optimizer_get_parameters_count(opt); i++) {
+		struct mp_par_struct *info = &opt->parameters_info[i];
+		gzprintf(f, "\t%10s:", opt->parameters_info[i].parname);
+		gzprintf(f, " %d", info->fixed);
+		gzprintf(f, " %+0.16f", opt->parameters[i]);
+		gzprintf(f, " %+16.f %+16.f", info->limits[0], info->limits[1]);
+		gzprintf(f, " %d\n", info->side);
+	}
+
+	gzprintf(f, "\n");
+	gzprintf(f, "measurementsCnt %d\n", opt->measurementsCnt);
+	gzprintf(f, "\t#<lh> <axis> <sensor_idx> <object_idx> <value> <variance>\n");
+	for (int i = 0; i < opt->measurementsCnt; i++) {
+		survive_optimizer_measurement *meas = &opt->measurements[i];
+		gzprintf(f, "\t%d", meas->lh);
+		gzprintf(f, " %d", meas->axis);
+		gzprintf(f, " %2d", meas->sensor_idx);
+		gzprintf(f, " %d", meas->object);
+		gzprintf(f, " %+0.16f", meas->value);
+		gzprintf(f, " %+0.16f\n", meas->variance);
+	}
+
+	gzclose(f);
 }
