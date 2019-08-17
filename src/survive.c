@@ -642,6 +642,8 @@ void survive_close(SurviveContext *ctx) {
 		pd.pt = POSERDATA_DISASSOCIATE;
 		if (ctx->objs[i]->PoserFn)
 			ctx->objs[i]->PoserFn(ctx->objs[i], &pd);
+
+		ctx->lightcapproc(ctx->objs[i], 0);
 	}
 
 	for (i = 0; i < oldct; i++) {

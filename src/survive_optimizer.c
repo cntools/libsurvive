@@ -79,7 +79,8 @@ void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx, SurviveContex
 		if (ctx->bsd[lh].PositionSet)
 			survive_optimizer_setup_camera(mpfit_ctx, lh, &ctx->bsd[lh].Pose, isFixed);
 		else {
-			survive_optimizer_setup_camera(mpfit_ctx, lh, 0, isFixed);
+			SurvivePose id = {.Rot[0] = 1.};
+			survive_optimizer_setup_camera(mpfit_ctx, lh, &id, isFixed);
 		}
 	}
 }

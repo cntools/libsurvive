@@ -354,4 +354,15 @@ void survive_imu_tracker_integrate_velocity(SurviveIMUTracker *tracker, survive_
 void survive_imu_tracker_free(SurviveIMUTracker *tracker) {
 	survive_kalman_state_free(&tracker->position);
 	survive_kalman_state_free(&tracker->rot);
+
+	survive_detach_config(tracker->so->ctx, VELOCITY_POSITION_VARIANCE_SEC_TAG, &tracker->pos_Q_per_sec[4]);
+	survive_detach_config(tracker->so->ctx, VELOCITY_ROT_VARIANCE_SEC_TAG, &tracker->rot_Q_per_sec[3]);
+
+	survive_detach_config(tracker->so->ctx, POSE_POSITION_VARIANCE_SEC_TAG, &tracker->pos_Q_per_sec[0]);
+	survive_detach_config(tracker->so->ctx, POSE_ROT_VARIANCE_SEC_TAG, &tracker->rot_Q_per_sec[0]);
+
+	survive_detach_config(tracker->so->ctx, IMU_MAHONY_VARIANCE_TAG, &tracker->mahony_variance);
+
+	survive_detach_config(tracker->so->ctx, IMU_ACC_VARIANCE_TAG, &tracker->acc_var);
+	survive_detach_config(tracker->so->ctx, IMU_GYRO_VARIANCE_TAG, &tracker->gyro_var);
 }

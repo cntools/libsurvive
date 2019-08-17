@@ -244,7 +244,7 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 				assert(!isnan(lhs[lh].Rot[0]));
 				if (quatiszero(lhs[lh].Rot) && meas_for_lhs[lh] > 0) {
 					SV_WARN("Seed poser failed for %d, removing %d measurements (now %d)", lh, (int)meas_for_lhs[lh],
-							meas_size - (int)meas_for_lhs[lh]);
+							(int)(meas_size - (int)meas_for_lhs[lh]));
 					meas_size = remove_lh_from_meas(mpfitctx.measurements, meas_size, lh);
 				} else if (meas_for_lhs[lh] > 0) {
 					SV_INFO("Attempting to solve for %d with %d meas", lh, (int)meas_for_lhs[lh]);

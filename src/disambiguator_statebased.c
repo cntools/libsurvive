@@ -684,6 +684,16 @@ static void PropagateState(Disambiguator_data_t *d, const LightcapElement *le) {
 void DisambiguatorStateBased(SurviveObject *so, const LightcapElement *le) {
 	SurviveContext *ctx = so->ctx;
 
+	// Signal to destroy self
+	if (le == 0) {
+		free(ctx->disambiguator_data);
+		ctx->disambiguator_data = 0;
+
+		free(so->disambiguator_data);
+		so->disambiguator_data = 0;
+		return;
+	}
+
 	// Note, this happens if we don't have config yet -- just bail
 	if (so->sensor_ct == 0) {
 		return;

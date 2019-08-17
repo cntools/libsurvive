@@ -521,6 +521,9 @@ static int playback_close(struct SurviveContext *ctx, void *_driver) {
 		gzclose(driver->playback_file);
 	driver->playback_file = 0;
 
+	survive_detach_config(ctx, "playback-factor", &driver->playback_factor);
+
+	free(driver);
 	return 0;
 }
 
@@ -576,9 +579,9 @@ int DriverRegPlayback(SurviveContext *ctx) {
 		return -1;
 	}
 
-	survive_attach_configf( ctx, "playback-factor", &sp->playback_factor );
+	survive_attach_configf(ctx, "playback-factor", &sp->playback_factor);
 
-	SV_INFO("Using playback file '%s' with timefactor of %f", playback_file, sp->playback_factor );
+	SV_INFO("Using playback file '%s' with timefactor of %f", playback_file, sp->playback_factor);
 
 	FLT time;
 	while (!gzeof(sp->playback_file) && !gzerror_dropin(sp->playback_file)) {

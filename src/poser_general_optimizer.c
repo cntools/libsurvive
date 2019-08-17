@@ -166,6 +166,11 @@ void general_optimizer_data_record_imu(GeneralOptimizerData *d, PoserDataIMU *im
 
 void general_optimizer_data_dtor(GeneralOptimizerData *d) {
 	SurviveContext *ctx = d->so->ctx;
+
+	survive_detach_config(ctx, "max-error", &d->max_error);
+	survive_detach_config(ctx, "failures-to-reset", &d->failures_to_reset);
+	survive_detach_config(ctx, "successes-to-reset", &d->successes_to_reset);
+
 	if (d->seed_poser) {
 		PoserData pd;
 		pd.pt = POSERDATA_DISASSOCIATE;

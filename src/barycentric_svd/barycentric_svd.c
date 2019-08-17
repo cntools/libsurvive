@@ -431,14 +431,24 @@ void copy_R_and_t(const double R_src[3][3], const double t_src[3], double R_dst[
 	}
 }
 
+#ifdef USE_DOUBLE
+#define SURVIVE_CV_F CV_64F
+#else
+#define SURVIVE_CV_F CV_32F
+#endif
+
+#define CREATE_STACK_MAT(name, rows, cols)                                                                             \
+	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
+	CvMat name = cvMat(rows, cols, SURVIVE_CV_F, _##name);
+
 double bc_svd_compute_pose(bc_svd *self, double R[3][3], double t[3]) {
-	CvMat *M = cvCreateMat(self->meas_cnt, 12, CV_64F);
+	CREATE_STACK_MAT(M, self->meas_cnt, 12);
 	bool colCovered[12] = { 0 };
 	for (int i = 0; i < self->meas_cnt; i++) {
 		size_t obj_pt_idx = self->meas[i].obj_idx;
-		bc_svd_fill_M(self, M, i, self->setup.alphas[obj_pt_idx], self->meas[i].axis, self->meas[i].angle);
+		bc_svd_fill_M(self, &M, i, self->setup.alphas[obj_pt_idx], self->meas[i].axis, self->meas[i].angle);
 
-		double *_M = M->data.db + i * 12;
+		double *_M = M.data.db + i * 12;
 		for (int j = 0; j < 12; j++) {
 			if (_M[j] != 0.0)
 				colCovered[j] = true;
@@ -455,10 +465,9 @@ double bc_svd_compute_pose(bc_svd *self, double R[3][3], double t[3]) {
 	CvMat D = cvMat(12, 1, CV_64F, d);
 	CvMat Ut = cvMat(12, 12, CV_64F, ut);
 
-	cvMulTransposed(M, &MtM, 1, 0, 1);
+	cvMulTransposed(&M, &MtM, 1, 0, 1);
 
 	cvSVD(&MtM, &D, &Ut, 0, CV_SVD_MODIFY_A | CV_SVD_U_T);
-	cvReleaseMat(&M);
 
 	assert(Ut.data.db == ut);
 

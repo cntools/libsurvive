@@ -31,6 +31,9 @@ static int test_path(const char *name) {
 		SurvivePose pose = ctx->bsd[i].Pose;
 		originalLH[i] = pose;
 		ctx->bsd[i].PositionSet = 0;
+
+		printf("%f %f %f %f %f %f %f\n", pose.Pos[0], pose.Pos[1], pose.Pos[2], pose.Rot[0], pose.Rot[1], pose.Rot[2],
+			   pose.Rot[3]);
 	}
 
 	survive_simple_start_thread(actx);
@@ -67,9 +70,9 @@ static int test_path(const char *name) {
 
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
 		SurvivePose pose = originalLH[i];
-
-		printf("%f %f %f %f %f %f %f %f\n", pose.Pos[0], pose.Pos[1], pose.Pos[2], pose.Rot[0], pose.Rot[1],
-			   pose.Rot[2], pose.Rot[3], diff(&pose, &ctx->bsd[i].Pose));
+		printf(SurvivePose_format "\n", SURVIVE_POSE_EXPAND(ctx->bsd[i].Pose));
+		printf(SurvivePose_format " %f\n", pose.Pos[0], pose.Pos[1], pose.Pos[2], pose.Rot[0], pose.Rot[1], pose.Rot[2],
+			   pose.Rot[3], diff(&pose, &ctx->bsd[i].Pose));
 	}
 
 	survive_simple_close(actx);
