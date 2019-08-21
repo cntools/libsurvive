@@ -13,6 +13,7 @@
 #include "survive_config.h"
 #include "survive_default_devices.h"
 
+#include "ctype.h"
 #include "os_generic.h"
 #include "stdarg.h"
 
@@ -70,6 +71,10 @@ static void write_to_output_raw(SurviveRecordingData *recordingData, const char 
 }
 
 static void write_to_output(SurviveRecordingData *recordingData, const char *format, ...) {
+	if (!recordingData) {
+		return;
+	}
+
 	double ts = timestamp_in_us();
 
 	if (recordingData->output_file) {
@@ -159,30 +164,50 @@ void survive_recording_info_process(SurviveContext *ctx, const char *fault) {
 	write_to_output(recordingData, "INFO LOG %s\n", fault);
 }
 
+// survive_channel channel, int sensor_id, survive_timecode timecode, int8_t plane, FLT angle
+#define SWEEP_ANGLE_SCANF "%s B %hhu %u %u %hhu " FLT_sformat "\n"
+#define SWEEP_ANGLE_PRINTF "%s B %hhu %u %u %hhu " FLT_format "\n"
+#define SWEEP_ANGLE_SCANF_ARGS dev, &channel, &sensor_id, &timecode, &plane, &angle
+#define SWEEP_ANGLE_PRINTF_ARGS dev, channel, sensor_id, timecode, plane, angle
+
+#define SWEEP_SCANF "%s W %hhu %u %u %hhu\n"
+#define SWEEP_PRINTF SWEEP_SCANF
+#define SWEEP_SCANF_ARGS dev, &channel, &sensor_id, &timecode, &flag
+#define SWEEP_PRINTF_ARGS dev, channel, sensor_id, timecode, flag
+
+#define SYNC_SCANF "%s Y %hhu %u %hhu %hhu\n"
+#define SYNC_PRINTF SYNC_SCANF
+#define SYNC_SCANF_ARGS dev, &channel, &timecode, &ootx, &gen
+#define SYNC_PRINTF_ARGS dev, channel, timecode, ootx, gen
+
+void survive_recording_sync_process(SurviveObject *so, survive_channel channel, survive_timecode timecode, bool ootx,
+									bool gen) {
+	SurviveRecordingData *recordingData = so->ctx->recptr;
+	const char *dev = so->codename;
+	write_to_output(recordingData, SYNC_PRINTF, SYNC_PRINTF_ARGS);
+};
+
 void survive_recording_sweep_angle_process(SurviveObject *so, survive_channel channel, int sensor_id,
 										   survive_timecode timecode, int8_t plane, FLT angle) {
 	SurviveRecordingData *recordingData = so->ctx->recptr;
 	if (recordingData == 0)
 		return;
 
-	if (!recordingData->writeAngle) {
+	if (!recordingData->writeAngle)
 		return;
-	}
 
-	write_to_output(recordingData, "%s B %2u %u %8u %0.6f %u\n", so->codename, sensor_id, plane, timecode, angle,
-					channel);
+	const char *dev = so->codename;
+	write_to_output(recordingData, SWEEP_ANGLE_PRINTF, SWEEP_ANGLE_PRINTF_ARGS);
 }
+
 void survive_recording_sweep_process(SurviveObject *so, survive_channel channel, int sensor_id,
 									 survive_timecode timecode, bool flag) {
 	SurviveRecordingData *recordingData = so->ctx->recptr;
 	if (recordingData == 0)
 		return;
 
-	if (!recordingData->writeAngle) {
-		return;
-	}
-
-	write_to_output(recordingData, "%s W %d %d %d %u %u\n", so->codename, sensor_id, flag, timecode, timecode, channel);
+	const char *dev = so->codename;
+	write_to_output(recordingData, SWEEP_PRINTF, SWEEP_PRINTF_ARGS);
 }
 void survive_recording_angle_process(struct SurviveObject *so, int sensor_id, int acode, uint32_t timecode, FLT length,
 									 FLT angle, uint32_t lh) {
@@ -294,6 +319,96 @@ struct SurvivePlaybackData {
 	bool outputExternalPose;
 };
 typedef struct SurvivePlaybackData SurvivePlaybackData;
+
+static SurviveObject *find_or_warn(SurvivePlaybackData *driver, const char *dev) {
+	SurviveContext *ctx = driver->ctx;
+	SurviveObject *so = survive_get_so_by_name(driver->ctx, dev);
+	if (!so) {
+		static bool display_once = false;
+		SurviveContext *ctx = driver->ctx;
+		if (display_once == false) {
+			SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Could not find device named %s from lineno %d\n", dev,
+					 driver->lineno);
+		}
+		display_once = true;
+
+		return 0;
+	}
+	return so;
+}
+
+static int parse_and_run_sweep(char *line, SurvivePlaybackData *driver) {
+	char dev[10];
+
+	survive_channel channel;
+	int sensor_id;
+	survive_timecode timecode;
+	uint8_t flag;
+
+	int rr = sscanf(line, SWEEP_SCANF, SWEEP_SCANF_ARGS);
+	if (rr != 5) {
+		SurviveContext *ctx = driver->ctx;
+		SV_WARN("Only got %d values for a sweep", rr);
+		return -1;
+	}
+
+	SurviveObject *so = find_or_warn(driver, dev);
+	if (!so) {
+		return -1;
+	}
+
+	driver->ctx->sweepproc(so, channel, sensor_id, timecode, flag);
+	return 0;
+}
+
+static int parse_and_run_sync(char *line, SurvivePlaybackData *driver) {
+	char dev[10];
+
+	survive_channel channel;
+	survive_timecode timecode;
+	uint8_t ootx, gen;
+
+	int rr = sscanf(line, SYNC_SCANF, SYNC_SCANF_ARGS);
+	if (rr != 5) {
+		SurviveContext *ctx = driver->ctx;
+		SV_WARN("Only got %d values for a sync", rr);
+		return -1;
+	}
+
+	SurviveObject *so = find_or_warn(driver, dev);
+	if (!so) {
+		return -1;
+	}
+
+	driver->ctx->syncproc(so, channel, timecode, ootx, gen);
+	return 0;
+}
+
+static int parse_and_run_sweep_angle(char *line, SurvivePlaybackData *driver) {
+	char dev[10];
+
+	survive_channel channel;
+	int sensor_id;
+	survive_timecode timecode;
+	int8_t plane;
+	FLT angle;
+
+	int rr = sscanf(line, SWEEP_ANGLE_SCANF, SWEEP_ANGLE_SCANF_ARGS);
+
+	if (rr != 6) {
+		SurviveContext *ctx = driver->ctx;
+		SV_WARN("Only got %d values for sweep angle", rr);
+		return -1;
+	}
+
+	SurviveObject *so = find_or_warn(driver, dev);
+	if (!so) {
+		return -1;
+	}
+
+	driver->ctx->sweep_angleproc(so, channel, sensor_id, timecode, plane, angle);
+	return 0;
+}
 
 static int parse_and_run_pose(const char *line, SurvivePlaybackData *driver) {
 	char name[128] = "replay_";
@@ -470,6 +585,18 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 		}
 
 		switch (op[0]) {
+		case 'W':
+			if (op[1] == 0)
+				parse_and_run_sweep(line, driver);
+			break;
+		case 'B':
+			if (op[1] == 0)
+				parse_and_run_sweep_angle(line, driver);
+			break;
+		case 'Y':
+			if (op[1] == 0)
+				parse_and_run_sync(line, driver);
+			break;
 		case 'E':
 			if (strcmp(op, "EXTERNAL_POSE") == 0) {
 				parse_and_run_externalpose(line, driver);

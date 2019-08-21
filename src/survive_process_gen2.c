@@ -128,6 +128,8 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 
 	assert(channel <= NUM_GEN2_LIGHTHOUSES);
 
+	survive_recording_sync_process(so, channel, timecode, ootx, gen);
+
 	so->last_time_between_sync[bsd_idx] = survive_timecode_difference(timecode, so->last_sync_time[bsd_idx]);
 	FLT hz = 48000000. / so->last_time_between_sync[bsd_idx];
 	// SV_INFO("Sync hz %2d: %2.6fhz (err: %0.6fhz) ootx: %d gen: %d", channel, hz, hz - freq_per_channel[channel],
@@ -158,7 +160,7 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 		// survive_cal_light( so, sensor_id, acode, timeinsweep, timecode, length, lh);
 	}
 
-	survive_recording_sweep_process(so, sensor_id, timecode, timecode, channel);
+	survive_recording_sweep_process(so, channel, sensor_id, timecode, half_clock_flag);
 
 	survive_timecode last_sweep = so->last_sync_time[bsd_idx];
 	assert(channel <= NUM_GEN2_LIGHTHOUSES);
