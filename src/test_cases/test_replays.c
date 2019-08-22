@@ -17,6 +17,8 @@ static double complex diff(const SurvivePose *a, const SurvivePose *b) {
 }
 
 static int test_path(const char *name, int main_argc, char **main_argv) {
+	int rtn = 0;
+	double max_pos_error = .0005, max_rot_error = .001;
 	char configPath[FILENAME_MAX] = {};
 	sprintf(configPath, "%s.json", name);
 
@@ -77,6 +79,11 @@ static int test_path(const char *name, int main_argc, char **main_argv) {
 					printf("       %s: " SurvivePose_format " %f\t%f\n", survive_simple_object_name(it2), pose2.Pos[0],
 						   pose2.Pos[1], pose2.Pos[2], pose2.Rot[0], pose2.Rot[1], pose2.Rot[2], pose2.Rot[3],
 						   crealf(err), cimagf(err));
+					if (crealf(err) > max_pos_error || cimagf(err) > max_rot_error) {
+						fprintf(stderr, "TEST FAILED, %s deviates too much -- %f %f\n", survive_simple_object_name(it2),
+								crealf(err), cimagf(err));
+						rtn = -1;
+					}
 				}
 			}
 		}
@@ -88,10 +95,20 @@ static int test_path(const char *name, int main_argc, char **main_argv) {
 		double complex err = diff(&pose, &ctx->bsd[i].Pose);
 		printf(SurvivePose_format " %f %f\n", pose.Pos[0], pose.Pos[1], pose.Pos[2], pose.Rot[0], pose.Rot[1],
 			   pose.Rot[2], pose.Rot[3], crealf(err), cimagf(err));
+
+		if (crealf(err) > max_pos_error || cimagf(err) > max_rot_error) {
+			fprintf(stderr, "TEST FAILED, LH%d deviates too much -- %f %f\n", i, crealf(err), cimagf(err));
+			rtn = -1;
+		}
+	}
+
+	if (ctx->currentError != 0) {
+		fprintf(stderr, "TEST FAILED, survive ctx had error -- %d\n", ctx->currentError);
+		rtn = -1;
 	}
 
 	survive_simple_close(actx);
-	return 0;
+	return rtn;
 }
 
 int main(int argc, char **argv) { return test_path(argv[1], argc - 2, argv + 2); }
