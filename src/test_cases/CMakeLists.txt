@@ -18,10 +18,15 @@ target_link_libraries(test_replays survive)
 add_test(NAME lh1_test_cal COMMAND ./test_replays ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/lh1_test_cal.rec.gz)
 add_test(NAME lh2_test_cal COMMAND ./test_replays ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/lh2_test_cal.rec.gz)
 
-add_custom_command(OUTPUT libsurvive-extras-data/.git/config COMMAND git clone https://github.com/jdavidberger/libsurvive-extras-data.git)
-add_custom_target(get_test_data COMMAND git pull WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data DEPENDS libsurvive-extras-data/.git/config)
+include(ExternalProject)
 
-add_custom_target(run_all_tests COMMAND ${CMAKE_CTEST_COMMAND} DEPENDS test_replays get_test_data survive_tests)
+ExternalProject_Add(libsurvive-extras-data
+        GIT_REPOSITORY https://github.com/jdavidberger/libsurvive-extras-data.git
+        BUILD_COMMAND ""
+        INSTALL_COMMAND ""
+        CONFIGURE_COMMAND ""
+        SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data
+        EXCLUDE_FROM_ALL True
+        )
 
-#add_dependencies(lh1_test_cal get_test_data)
-#add_dependencies(lh2_test_cal get_test_data)
+add_custom_target(run_all_tests COMMAND ${CMAKE_CTEST_COMMAND} DEPENDS test_replays libsurvive-extras-data survive_tests survive_plugins)

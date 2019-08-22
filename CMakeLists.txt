@@ -137,11 +137,14 @@ set(poser_sba_ADDITIONAL_LIBS sba)
 set(poser_epnp_ADDITIONAL_SRCS src/epnp/epnp.c)
 set(poser_barycentric_svd_ADDITIONAL_SRCS src/barycentric_svd/barycentric_svd.c )
 
+add_custom_target(survive_plugins)
+
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 foreach(PLUGIN ${PLUGINS})
     add_library(${PLUGIN} SHARED src/${PLUGIN}.c ${${PLUGIN}_ADDITIONAL_SRCS})
     target_link_libraries(${PLUGIN} survive ${${PLUGIN}_ADDITIONAL_LIBS})
-	 
+
+	add_dependencies(survive_plugins ${PLUGIN})
     STRING(REGEX REPLACE "(.*)\_.*" "\\1" plugin_type "${PLUGIN}")
     if(plugin_type)
       set_target_properties(${PLUGIN} PROPERTIES FOLDER "${plugin_type}")
