@@ -289,9 +289,14 @@ struct SurviveContext {
 	int log_level;
 	FILE *log_target;
 
+	size_t poll_min_time_ms;
+
 	struct config_group *global_config_values;
 	struct config_group *lh_config; // lighthouse configs
 	struct config_group	*temporary_config_values; // Set per-session, from command-line. Not saved but override global_config_values
+
+	// Additional details that we don't want / need to expose to every single include
+	void *private_members;
 };
 
 SURVIVE_EXPORT void survive_verify_FLT_size(
@@ -335,6 +340,8 @@ static inline SurviveContext *survive_init(int argc, char *const *argv) {
 SURVIVE_EXPORT int survive_startup(SurviveContext *ctx);
 SURVIVE_EXPORT int survive_poll(SurviveContext *ctx);
 SURVIVE_EXPORT void survive_close(SurviveContext *ctx);
+SURVIVE_EXPORT void survive_get_ctx_lock(SurviveContext *ctx);
+SURVIVE_EXPORT void survive_release_ctx_lock(SurviveContext *ctx);
 
 SURVIVE_EXPORT SurviveObject *survive_get_so_by_name(SurviveContext *ctx, const char *name);
 

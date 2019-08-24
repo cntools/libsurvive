@@ -22,8 +22,10 @@ static int test_path(const char *name, int main_argc, char **main_argv) {
 	char configPath[FILENAME_MAX] = {};
 	sprintf(configPath, "%s.json", name);
 
+	char *playbackFlag = strstr(name, "pcap") ? "--usbmon-playback" : "--playback";
+
 	char *argv[] = {"",			  "--init-configfile", configPath,			"--playback-replay-pose",
-					"--playback", (char *)name,		   "--playback-factor", "0"};
+					playbackFlag, (char *)name,		   "--playback-factor", "0"};
 	int argc = sizeof(argv) / sizeof(argv[0]);
 
 	int total_argc = argc + main_argc;

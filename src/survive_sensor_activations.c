@@ -37,15 +37,15 @@ survive_timecode SurviveSensorActivations_stationary_time(const SurviveSensorAct
 }
 
 void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct PoserDataIMU *imuData) {
-	if (self->imu_init_cnt > 0) {
-		self->imu_init_cnt--;
-		return;
-	}
-
 	if (self->last_imu > imuData->hdr.timecode) {
 		self->rollover_count++;
 	}
 	self->last_imu = imuData->hdr.timecode;
+
+	if (self->imu_init_cnt > 0) {
+		self->imu_init_cnt--;
+		return;
+	}
 
 	if (isnan(self->accel[0])) {
 		for (int i = 0; i < 3; i++) {

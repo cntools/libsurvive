@@ -197,6 +197,23 @@ SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel c
 	return -1;
 }
 
+struct SurviveContext_private {
+	og_sema_t poll_sema;
+};
+
+void survive_get_ctx_lock(SurviveContext *ctx) {
+	struct SurviveContext_private *pctx = ctx->private_members;
+	// SV_VERBOSE(100, "Trying to get lock on %lx", pthread_self());
+	OGLockSema(pctx->poll_sema);
+	// SV_VERBOSE(100, "Got lock on %lx", pthread_self());
+}
+void survive_release_ctx_lock(SurviveContext *ctx) {
+	struct SurviveContext_private *pctx = ctx->private_members;
+	// SV_VERBOSE(100, "Releasing lock on %lx", pthread_self());
+	OGUnlockSema(pctx->poll_sema);
+	// SV_VERBOSE(100, "Signaled on %lx", pthread_self());
+}
+
 SurviveContext *survive_init_internal(int argc, char *const *argv, void *userData, log_process_func log_func) {
 	int i;
 
@@ -211,6 +228,11 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 
 	SurviveContext *ctx = calloc(1, sizeof(SurviveContext));
 	ctx->user_ptr = userData;
+	ctx->poll_min_time_ms = 10;
+
+	struct SurviveContext_private *pctx = ctx->private_members = calloc(1, sizeof(struct SurviveContext_private));
+
+	pctx->poll_sema = OGCreateSema();
 
 	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
 		ctx->bsd[i].mode = -1;
@@ -304,7 +326,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 	const char *log_file = survive_configs(ctx, "log", SC_GET, 0);
 	ctx->log_target = log_file ? fopen(log_file, "w") : stderr;
 
-	const char *config_prefix_fields[] = {"playback", 0};
+	const char *config_prefix_fields[] = {"playback", "usbmon-playback", 0};
 	for (const char **name = config_prefix_fields; *name; name++) {
 		if (!survive_config_is_set(ctx, "configfile") && survive_config_is_set(ctx, *name)) {
 			char configfile[256] = { 0 };
@@ -433,18 +455,18 @@ void *GetDriverByConfig(SurviveContext *ctx, const char *name, const char *confi
 
 	return func;
 }
-static inline bool callDriver(SurviveContext* ctx, const char* DriverName, char* buffer) {
+static inline SurviveDeviceDriverReturn callDriver(SurviveContext *ctx, const char *DriverName, char *buffer) {
 	DeviceDriver dd = GetDriver(DriverName);
-	int r = dd(ctx);
+	SurviveDeviceDriverReturn r = dd(ctx);
 	if (r < 0) {
 		SV_WARN("Driver %s reports status %d", DriverName + strlen("DriverReg"), r);
-		return false;
+		return r;
 	}
 	else {
 		strcat(buffer, DriverName + strlen("DriverReg"));
 		strcat(buffer, ", ");
 	}
-	return true; 
+	return r;
 }
 int survive_startup(SurviveContext *ctx) {
 	ctx->state = SURVIVE_RUNNING;
@@ -472,11 +494,14 @@ int survive_startup(SurviveContext *ctx) {
 			char driverNameSuffix[256] = {0};
 			char *driverNameSuffix_p = driverNameSuffix;
 			for (const char *c = DriverName + strlen("DriverReg"); *c; c++) {
-				*driverNameSuffix_p++ = tolower(*c);
+				*driverNameSuffix_p = tolower(*c);
+				if (*driverNameSuffix_p == '_')
+					*driverNameSuffix_p = '-';
+				driverNameSuffix_p++;
 			}
 
 			int enabled = survive_config_is_set(ctx, driverNameSuffix);
-			if (enabled && callDriver(ctx, DriverName, buffer)) {
+			if (enabled && callDriver(ctx, DriverName, buffer) == SURVIVE_DRIVER_NORMAL) {
 				loadedDrivers++;
 			}
 		}
@@ -636,6 +661,10 @@ void survive_close(SurviveContext *ctx) {
 	OGJoinThread(ctx->buttonservicethread);
 	OGDeleteSema(ctx->buttonQueue.buttonservicesem);
 
+	struct SurviveContext_private *pctx = ctx->private_members;
+	OGDeleteSema(pctx->poll_sema);
+	free(pctx);
+
 	while ((DriverName = GetDriverNameMatching("DriverUnreg", r++))) {
 		DeviceDriver dd = GetDriver(DriverName);
 		SV_INFO("De-registering driver %s (%p)", DriverName, dd);
@@ -687,6 +716,9 @@ void survive_close(SurviveContext *ctx) {
 
 int survive_poll(struct SurviveContext *ctx) {
 	int i, r;
+
+	uint64_t timeStart = OGGetAbsoluteTimeMS();
+
 	if (ctx->state == SURVIVE_STOPPED) {
 		r = survive_startup(ctx);
 		if (r) {
@@ -701,12 +733,22 @@ int survive_poll(struct SurviveContext *ctx) {
 	int oldct = ctx->driver_ct;
 
 	for (i = 0; i < oldct; i++) {
-		r = ctx->driverpolls[i](ctx, ctx->drivers[i]);
-		if (r) {
-			SV_WARN("Driver reported %d", r);
-			return r;
+		if (ctx->driverpolls[i]) {
+			r = ctx->driverpolls[i](ctx, ctx->drivers[i]);
+			if (r) {
+				SV_WARN("Driver reported %d", r);
+				return r;
+			}
 		}
 	}
+
+	survive_release_ctx_lock(ctx);
+	uint64_t timeNow = OGGetAbsoluteTimeMS();
+	if ((timeStart + ctx->poll_min_time_ms) > timeNow) {
+		uint64_t sleepTime = (timeStart + ctx->poll_min_time_ms) - timeNow;
+		OGUSleep(sleepTime * 1000);
+	}
+	survive_get_ctx_lock(ctx);
 
 	return 0;
 }

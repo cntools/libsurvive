@@ -1965,6 +1965,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 							  0,
 							  0};
 
+				// assert(timecode <= obj->timebase_hz);
 				ctx->raw_imuproc(obj, 3, agm, timecode, code);
 			}
 		}

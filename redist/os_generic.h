@@ -62,6 +62,7 @@
 typedef void *og_thread_t;
 typedef void *og_mutex_t;
 typedef void *og_sema_t;
+typedef void *og_cv_t;
 
 #if defined(WIN32) || defined(WINDOWS) || defined(_WIN32)
 #define USE_WINDOWS
@@ -91,6 +92,18 @@ OSG_INLINE double OGGetAbsoluteTime() {
 	return (double)li.QuadPart / (double)lpf.QuadPart;
 }
 
+OSG_INLINE uint64_t OGGetAbsoluteTimeMS() {
+	static LARGE_INTEGER lpf;
+	LARGE_INTEGER li;
+
+	if (!lpf.QuadPart) {
+		QueryPerformanceFrequency(&lpf);
+	}
+
+	QueryPerformanceCounter(&li);
+	return li.QuadPart * 1000 / lpf.QuadPart;
+}
+
 OSG_INLINE double OGGetFileTime(const char *file) {
 	FILETIME ft;
 
@@ -118,13 +131,17 @@ OSG_INLINE void *OGJoinThread(og_thread_t ot) {
 
 OSG_INLINE void OGCancelThread(og_thread_t ot) { CloseHandle(ot); }
 
-OSG_INLINE og_mutex_t OGCreateMutex() { return CreateMutex(0, 0, 0); }
+OSG_INLINE og_mutex_t OGCreateMutex() {
+	CRITICAL_SECTION *mutex = (CRITICAL_SECTION *)malloc(sizeof(CRITICAL_SECTION));
+	InitializeCriticalSection(mutex);
+	return mutex;
+}
 
-OSG_INLINE void OGLockMutex(og_mutex_t om) { WaitForSingleObject(om, INFINITE); }
+OSG_INLINE void OGLockMutex(og_mutex_t om) { EnterCriticalSection(om); }
 
-OSG_INLINE void OGUnlockMutex(og_mutex_t om) { ReleaseMutex(om); }
+OSG_INLINE void OGUnlockMutex(og_mutex_t om) { LeaveCriticalSection(om); }
 
-OSG_INLINE void OGDeleteMutex(og_mutex_t om) { CloseHandle(om); }
+OSG_INLINE void OGDeleteMutex(og_mutex_t om) { free(om); }
 
 OSG_INLINE og_sema_t OGCreateSema() {
 	HANDLE sem = CreateSemaphore(0, 0, 32767, 0);
@@ -171,24 +188,47 @@ OSG_INLINE void OGUnlockSema(og_sema_t os) { ReleaseSemaphore((HANDLE)os, 1, 0);
 
 OSG_INLINE void OGDeleteSema(og_sema_t os) { CloseHandle(os); }
 
+OSG_INLINE void OGSignalCond(og_cv_t cv) { WakeConditionVariable(cv); }
+OSG_INLINE void OGBroadcastCond(og_cv_t cv) { WakeAllConditionVariable(cv); }
+OSG_INLINE void OGWaitCond(og_cv_t cv, og_mutex_t m) { SleepConditionVariableCS(cv, m, INFINITE); }
+
+OSG_INLINE void OGDeleteConditionVariable(og_cv_t cv) { free(cv); }
+
+OSG_INLINE og_cv_t OGCreateConditionVariable() {
+	CONDITION_VARIABLE *cv = (CONDITION_VARIABLE *)malloc(sizeof(CONDITION_VARIABLE));
+	InitializeConditionVariable(cv);
+	return cv;
+}
+
 #else
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
-  
+
 #include <pthread.h>
 #include <semaphore.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <unistd.h>
 
-#include <stdio.h>
-  
 OSG_INLINE void OGSleep(int is) { sleep(is); }
 
-OSG_INLINE void OGUSleep(int ius) { usleep(ius); }
+OSG_INLINE int OGUSleep(int ius) {
+	struct timespec sleep = {.tv_nsec = ius * 1000};
+	return nanosleep(&sleep, 0);
+}
+
+OSG_INLINE uint64_t OGGetAbsoluteTimeMS() {
+	struct timeval tv;
+
+	gettimeofday(&tv, NULL);
+	return (((uint64_t)tv.tv_sec) * 1000) + (tv.tv_usec / 1000);
+}
 
 OSG_INLINE double OGGetAbsoluteTime() {
 	struct timeval tv;
@@ -236,6 +276,13 @@ OSG_INLINE void OGCancelThread(og_thread_t ot) {
 	free(ot);
 }
 
+static inline void _OGHandlePosixError(const char *msg, int err) {
+	if (err != 0) {
+		fprintf(stderr, "%s: %s (%d)\n", msg, strerror(err), err);
+		abort();
+	}
+}
+
 OSG_INLINE og_mutex_t OGCreateMutex() {
 	pthread_mutexattr_t mta;
 	og_mutex_t r = malloc(sizeof(pthread_mutex_t));
@@ -243,12 +290,7 @@ OSG_INLINE og_mutex_t OGCreateMutex() {
 	pthread_mutexattr_init(&mta);
 	pthread_mutexattr_settype(&mta, PTHREAD_MUTEX_RECURSIVE);
 
-	int error = pthread_mutex_init((pthread_mutex_t *)r, &mta);
-	if(error != 0) {
-	  printf( "Create mutex error %d", error);
-	  abort();
-	}
-	
+	_OGHandlePosixError("OGCreateMutex", pthread_mutex_init((pthread_mutex_t *)r, &mta));
 	return r;
 }
 
@@ -256,22 +298,14 @@ OSG_INLINE void OGLockMutex(og_mutex_t om) {
 	if (!om) {
 		return;
 	}
-	int error = pthread_mutex_lock((pthread_mutex_t *)om);
-	if(error != 0) {
-	  printf( "Lock mutex error %d", error);
-	  abort();
-	}
+	_OGHandlePosixError("OGLockMutex", pthread_mutex_lock((pthread_mutex_t *)om));
 }
 
 OSG_INLINE void OGUnlockMutex(og_mutex_t om) {
 	if (!om) {
 		return;
 	}
-	int error = pthread_mutex_unlock((pthread_mutex_t *)om);
-	if(error != 0) {
-	  printf( "Unlock mutex error %d", error);
-	  abort();
-	}
+	_OGHandlePosixError("OGUnlockMutex", pthread_mutex_unlock((pthread_mutex_t *)om));
 }
 
 OSG_INLINE void OGDeleteMutex(og_mutex_t om) {
@@ -302,6 +336,26 @@ OSG_INLINE void OGUnlockSema(og_sema_t os) { sem_post((sem_t *)os); }
 OSG_INLINE void OGDeleteSema(og_sema_t os) {
 	sem_destroy((sem_t *)os);
 	free(os);
+}
+
+OSG_INLINE void OGSignalCond(og_cv_t cv) { _OGHandlePosixError("OGSignalCond", pthread_cond_signal(cv)); }
+OSG_INLINE void OGBroadcastCond(og_cv_t cv) { _OGHandlePosixError("OGBroadcastCond", pthread_cond_broadcast(cv)); }
+OSG_INLINE void OGWaitCond(og_cv_t cv, og_mutex_t m) { _OGHandlePosixError("OGWaitCond", pthread_cond_wait(cv, m)); }
+
+OSG_INLINE void OGDeleteConditionVariable(og_cv_t cv) {
+	pthread_cond_destroy(cv);
+	free(cv);
+}
+
+OSG_INLINE og_cv_t OGCreateConditionVariable() {
+	pthread_cond_t *cv = (pthread_cond_t *)malloc(sizeof(pthread_cond_t));
+	int status = pthread_cond_init(cv, 0);
+	if (status != 0) {
+		free(cv);
+		return 0;
+	}
+
+	return cv;
 }
 
 #endif

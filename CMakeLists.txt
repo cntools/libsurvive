@@ -50,6 +50,16 @@ IF(WIN32)
 	add_definitions(-DNOZLIB)
 ENDIF()
 
+list (APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
+
+include (CheckSymbolExists)
+check_symbol_exists (fopencookie stdio.h HAVE_FOPENCOOKIE)
+check_symbol_exists (funopen stdio.h HAVE_FUNOPEN)
+
+if(HAVE_FOPENCOOKIE)
+	add_definitions(-DHAVE_FOPENCOOKIE)
+endif()
+
 SET(SURVIVE_SRCS ${SURVIVE_SRCS}
         ./include/libsurvive/poser.h
 		./include/libsurvive/survive.h

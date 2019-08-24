@@ -152,6 +152,12 @@ typedef void (*new_object_process_func)(SurviveObject *so);
 //Device drivers (prefix your drivers with "DriverReg") i.e.
 //		REGISTER_LINKTIME( DriverRegHTCVive );
 typedef int (*DeviceDriver)( SurviveContext * ctx );
+typedef enum SurviveDeviceDriverReturn {
+	SURVIVE_DRIVER_NORMAL = 0, // Driver OK
+	SURVIVE_DRIVER_ERROR = -1, // Indicates some form of error in loading the devices
+	SURVIVE_DRIVER_PASSIVE = 1 // No errors, but driver is a passive one; still allow loading default drivers.
+} SurviveDeviceDriverReturn;
+
 typedef int (*DeviceDriverCb)( struct SurviveContext * ctx, void * driver );
 typedef int (*DeviceDriverMagicCb)( struct SurviveContext * ctx, void * driver, int magic_code, void * data, int datalen );
 

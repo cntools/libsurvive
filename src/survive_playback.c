@@ -694,6 +694,8 @@ int DriverRegPlayback(SurviveContext *ctx) {
 		return -1;
 	}
 
+	ctx->poll_min_time_ms = 0;
+
 	SurvivePlaybackData *sp = calloc(1, sizeof(SurvivePlaybackData));
 	sp->ctx = ctx;
 	sp->playback_dir = playback_file;
