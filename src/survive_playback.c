@@ -694,8 +694,6 @@ int DriverRegPlayback(SurviveContext *ctx) {
 		return -1;
 	}
 
-	ctx->poll_min_time_ms = 0;
-
 	SurvivePlaybackData *sp = calloc(1, sizeof(SurvivePlaybackData));
 	sp->ctx = ctx;
 	sp->playback_dir = playback_file;
@@ -711,6 +709,9 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	survive_attach_configf(ctx, "playback-factor", &sp->playback_factor);
 
 	SV_INFO("Using playback file '%s' with timefactor of %f", playback_file, sp->playback_factor);
+
+	if (sp->playback_factor == 0.0)
+		ctx->poll_min_time_ms = 0;
 
 	FLT time;
 	while (!gzeof(sp->playback_file) && !gzerror_dropin(sp->playback_file)) {
