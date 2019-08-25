@@ -478,12 +478,14 @@ SURVIVE_EXPORT void handle_lightcap(SurviveObject *so, const LightcapElement *le
 		SV_LOG_NULL_GUARD ctx->logproc(ctx, SURVIVE_LOG_LEVEL_INFO, stbuff);                                           \
 	}
 
-static inline void survive_notify_gen2(struct SurviveObject *so) {
+static inline void survive_notify_gen2(struct SurviveObject *so, const char *msg) {
 	if (so->ctx->lh_version_forced != -1 && so->ctx->lh_version_forced != 1) {
 		return;
 	}
 
 	if (so->ctx->lh_version != 1) {
+		struct SurviveContext *ctx = so->ctx;
+		SV_VERBOSE(100, "Gen2 reason: %s %s", so->codename, msg);
 		so->ctx->gen_detectedproc(so, 1);
 	}
 }

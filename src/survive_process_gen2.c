@@ -154,6 +154,9 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_channel channel, int sensor_id,
 												  survive_timecode timecode, bool half_clock_flag) {
 	struct SurviveContext *ctx = so->ctx;
+
+	survive_notify_gen2(so, "sweep called");
+
 	int8_t bsd_idx = survive_get_bsd_idx(ctx, channel);
 
 	if (ctx->calptr) {
@@ -195,8 +198,6 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 
 SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survive_channel channel, int sensor_id,
 														survive_timecode timecode, int8_t plane, FLT angle) {
-	survive_notify_gen2(so);
-
 	struct SurviveContext *ctx = so->ctx;
 	// SV_INFO("Sensor ch%2d %2d %12f", channel, sensor_id, angle / M_PI * 180.);
 	int8_t bsd_idx = survive_get_bsd_idx(ctx, channel);
