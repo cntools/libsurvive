@@ -210,7 +210,7 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 	SurviveUSBInterface *iface = transfer->user_data;
 	if (iface->assoc_obj == 0) {
 		SurviveContext *ctx = iface->ctx;
-		SV_INFO("Cleaning up transfer on %d %s", iface->which_interface_am_i, iface->hname);
+		SV_VERBOSE(100, "Cleaning up transfer on %d %s", iface->which_interface_am_i, iface->hname);
 		iface->ctx = 0;
 		return;
 	}
@@ -1169,15 +1169,15 @@ struct sensorData {
 	uint8_t edgeCount;
 };
 
-static size_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8_t *payloadEndPtr,
-							  LightcapElement *output, int output_cnt) {
+static ssize_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8_t *payloadEndPtr,
+							   LightcapElement *output, int output_cnt) {
 	uint8_t *payloadPtr = *readPtr;
 	SurviveContext *ctx = w->ctx;
 	uint32_t reference_time = w->activations.last_imu;
 
 	// DEBUG
 	if ((*payloadPtr & 0xE0) == 0xE0) {
-		SV_INFO("Warn : Light contains probable non-light data : 0x%02hX [Time:%04hX] [Payload: %s]", *payloadPtr, time,
+		SV_WARN("Light contains probable non-light data : 0x%02hX [Time:%04hX] [Payload: %s]", *payloadPtr, time,
 				packetToHex(payloadPtr, payloadEndPtr));
 	}
 
@@ -1193,7 +1193,7 @@ static size_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPtr
 	 * deltas between rising and falling of the sensor event. There are always two rising/falling events per
 	 * sensor though the ordering is not simple as new sensor events may start before others are finished.
 	 *
-	 * The meaning and associated led with each 'event' is dermined by the edge count as encoded within the
+	 * The meaning and associated led with each 'event' is determined by the edge count as encoded within the
 	 * sensor data (see below)
 	 *
 	 * The time deltas use variable length encoding, so we can't determine how many sensors are in the packet
@@ -1329,7 +1329,7 @@ static size_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPtr
 	}
 
 	times[0] = lastEventTime;
-	SV_VERBOSE(100, "Packet Start Time: %u", lastEventTime);
+	SV_VERBOSE(200, "Packet Start Time: %u", lastEventTime);
 
 	while (idsPtr < eventPtr) {
 		// There are two time deltas per 'event'
@@ -1348,7 +1348,6 @@ static size_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPtr
 			if (((*(eventPtr--)) & 0x80) == 0x80)
 				break;
 			if (idsPtr > eventPtr) {
-				SV_WARN("Light data parse error 1");
 				return -1;
 			}
 		}
@@ -1356,7 +1355,7 @@ static size_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPtr
 
 		// Store the event time
 		times[++timeIndex] = lastEventTime;
-		SV_VERBOSE(100, "Time: [%zd] %u (%u)", timeIndex, lastEventTime, timeDelta);
+		SV_VERBOSE(200, "Time: [%zd] %u (%u)", timeIndex, lastEventTime, timeDelta);
 	}
 
 	// Step 2 - Convert events to pulses
@@ -1371,23 +1370,22 @@ static size_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPtr
 		// Get the end time (Increment and find the next 'unused' time)
 		while (times[++timeIndex] == 0)
 			if (timeIndex + 1 >= maxTimeIndex) {
-				SV_WARN("Light data parse error 2");
 				return -2;
 			}
 		if (timeIndex >= maxTimeIndex) {
-			SV_WARN("Light data parse error 3");
 			return -3;
 		}
 
 		// Get the start time
 		size_t startTimeIndex = timeIndex + (sensors[i].edgeCount + 1);
 		if (startTimeIndex >= maxTimeIndex) {
-			SV_WARN("Light data parse error 4");
 			return -4;
 		}
 
 		// Store the start index so we can return in ascending time order
-		assert(reportOrder[startTimeIndex] == 0);
+		if (reportOrder[startTimeIndex] != 0) {
+			return -5;
+		}
 		reportOrder[startTimeIndex] = i + 1;
 		LightcapElement *le = &les[i];
 
@@ -1414,8 +1412,8 @@ static size_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPtr
 
 			*(output++) = *ol;
 			output_cnt--;
-			// SV_INFO("Light Event [Ordered]: %i [%i] %li -> %li (%li)", i, ol->sensor_id, ol->timestamp, ol->timestamp
-			// + ol->length, ol->length);
+			SV_VERBOSE(500, "Light Event [Ordered]: %i [%2i] %u -> %u (%4hu)", i, ol->sensor_id, ol->timestamp,
+					   ol->timestamp + ol->length, ol->length);
 		}
 	}
 	return eventCount;
@@ -1681,25 +1679,31 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 	// Any remaining data after events (if any) have been read off is light data
 	if (payloadPtr < payloadEndPtr) {
 		LightcapElement les[10] = {0};
-		size_t cnt = read_light_data(w, time, &payloadPtr, payloadEndPtr, les, 10);
+		ssize_t cnt = read_light_data(w, time, &payloadPtr, payloadEndPtr, les, 10);
+
+		if (cnt < 0) {
+			SV_WARN("Read light data error %d   [Time:%04hX] [Payload: %s]", (int)cnt, time,
+					packetToHex(payloadPtr, payloadEndPtr));
+
+		} else {
 
 #ifdef VERIFY_LIGHTCAP
-		LightcapElement les_old[10] = {0};
-		int les_old_cnt = parse_watchman_lightcap(w->ctx, w->codename, time >> 8, w->activations.last_imu, payloadPtr,
-												  payloadEndPtr - payloadPtr, les, 10);
+			LightcapElement les_old[10] = {0};
+			int les_old_cnt = parse_watchman_lightcap(w->ctx, w->codename, time >> 8, w->activations.last_imu,
+													  payloadPtr, payloadEndPtr - payloadPtr, les, 10);
 
-		assert(cnt == les_old_cnt);
+			assert(cnt == les_old_cnt);
 #endif
-		for (int i = (int)cnt - 1; i >= 0; i--) {
+			for (int i = (int)cnt - 1; i >= 0; i--) {
 #ifdef DEBUG_WATCHMAN
-			printf("%d: %u [%u]\n", les[i].sensor_id, les[i].length, les[i].timestamp);
+				printf("%d: %u [%u]\n", les[i].sensor_id, les[i].length, les[i].timestamp);
 #endif
 #ifdef VERIFY_LIGHTCAP
-			assert(memcmp(&les[i], &les_old[i], sizeof(LightcapElement)) == 0);
+				assert(memcmp(&les[i], &les_old[i], sizeof(LightcapElement)) == 0);
 #endif
-			handle_lightcap(w, &les[i]);
+				handle_lightcap(w, &les[i]);
+			}
 		}
-
 	}
 }
 
@@ -2014,7 +2018,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 				}
 			}
 		} else if (id == 39) { // LHv2
-			survive_notify_gen2(obj);
+			survive_notify_gen2(obj, "Report id 39");
 
 			// Implies that the user forced gen1
 			if (obj->ctx->lh_version != 1) {
@@ -2107,7 +2111,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 				fprintf(stderr, "\n");
 			}
 		} else if (id == 40) {
-			survive_notify_gen2(obj);
+			survive_notify_gen2(obj, "Report ID 40");
 
 			uint8_t *packet = readdata + 1;
 			uint8_t length = readdata[0];

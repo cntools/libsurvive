@@ -28,7 +28,7 @@ void handle_lightcap(SurviveObject *so, const LightcapElement *_le) {
 	// without these gen2 packets we can just call it for gen1.
 	if (so->ctx->lh_version == -1) {
 		if (_le->length >= 0x8000) {
-			survive_notify_gen2(so);
+			survive_notify_gen2(so, "Lightcap length >= 0x8000");
 		} else if (_le->length >= 3000 && _le->length < 6500) {
 			// Only look for the OOTX pulses; otherwise we get false hits and can potentially choose gen1
 			// on a gen2 system
