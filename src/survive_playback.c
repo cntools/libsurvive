@@ -16,13 +16,18 @@
 #define gzprintf fprintf
 #define gzclose fclose
 #define gzvprintf vfprintf
-#define gzerror ferror
+#define gzerror_dropin ferror
 #define gzwrite write
 #define gzeof feof
 #define gzseek fseek
 #define gzgetc fgetc
 #else
 #include <zlib.h>
+int gzerror_dropin(gzFile f) {
+	int rtn;
+	gzerror(f, &rtn);
+	return rtn;
+}
 #endif
 
 #include "survive_config.h"
@@ -46,11 +51,6 @@ ssize_t getline(char **lineptr, size_t *n, FILE *stream);
 ssize_t gzgetdelim(char ** RESTRICT_KEYWORD lineptr, size_t *RESTRICT_KEYWORD n, int delimiter, gzFile RESTRICT_KEYWORD stream);
 ssize_t gzgetline(char ** RESTRICT_KEYWORD lineptr, size_t *RESTRICT_KEYWORD n, gzFile RESTRICT_KEYWORD stream);
 
-int gzerror_dropin(gzFile f) {
-	int rtn;
-	gzerror(f, &rtn);
-	return rtn;
-}
 
 STATIC_CONFIG_ITEM(PLAYBACK_REPLAY_POSE, "playback-replay-pose", 'i', "Whether or not to output pose", 0);
 STATIC_CONFIG_ITEM( RECORD, "record", 's', "File to record to if you wish to make a recording.", "" );
