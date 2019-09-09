@@ -75,6 +75,7 @@ extern "C" {
 #ifdef USE_WINDOWS
 
 #include <windows.h>
+#include <stdint.h>
 
 OSG_INLINE void OGSleep(int is) { Sleep(is * 1000); }
 

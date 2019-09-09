@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <survive.h>
 #include <survive_reproject.h>
+#include <malloc.h>
 
 typedef struct {
 	SurviveObject *so;

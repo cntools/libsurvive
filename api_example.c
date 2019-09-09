@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
 				   pose.Rot[1], pose.Rot[2], pose.Rot[3]);
 		}
 
-		struct SurviveSimpleEvent event = {};
+		struct SurviveSimpleEvent event = {0};
 
 		while (survive_simple_next_event(actx, &event) != SurviveSimpleEventType_None) {
 			switch (event.event_type) {

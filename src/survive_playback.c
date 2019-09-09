@@ -8,7 +8,22 @@
 #include <assert.h>
 #include <errno.h>
 #include <string.h>
+
+
+#ifdef NOZLIB
+#define gzFile FILE*
+#define gzopen fopen
+#define gzprintf fprintf
+#define gzclose fclose
+#define gzvprintf vfprintf
+#define gzerror ferror
+#define gzwrite write
+#define gzeof feof
+#define gzseek fseek
+#define gzgetc fgetc
+#else
 #include <zlib.h>
+#endif
 
 #include "survive_config.h"
 #include "survive_default_devices.h"
@@ -23,10 +38,13 @@ typedef long ssize_t;
 
 ssize_t getdelim(char **lineptr, size_t *n, int delimiter, FILE *stream);
 ssize_t getline(char **lineptr, size_t *n, FILE *stream);
+#define RESTRICT_KEYWORD 
+#else
+#define RESTRICT_KEYWORD restrict
 #endif
 
-ssize_t gzgetdelim(char **restrict lineptr, size_t *restrict n, int delimiter, gzFile restrict stream);
-ssize_t gzgetline(char **restrict lineptr, size_t *restrict n, gzFile restrict stream);
+ssize_t gzgetdelim(char ** RESTRICT_KEYWORD lineptr, size_t *RESTRICT_KEYWORD n, int delimiter, gzFile RESTRICT_KEYWORD stream);
+ssize_t gzgetline(char ** RESTRICT_KEYWORD lineptr, size_t *RESTRICT_KEYWORD n, gzFile RESTRICT_KEYWORD stream);
 
 int gzerror_dropin(gzFile f) {
 	int rtn;
@@ -776,7 +794,7 @@ REGISTER_LINKTIME(DriverRegPlayback);
 #define _GETDELIM_GROWBY 128 /* amount to grow line buffer by */
 #define _GETDELIM_MINLEN 4   /* minimum line buffer size */
 
-ssize_t gzgetdelim(char **restrict lineptr, size_t *restrict n, int delimiter, gzFile restrict stream) {
+ssize_t gzgetdelim(char **RESTRICT_KEYWORD lineptr, size_t *RESTRICT_KEYWORD n, int delimiter, gzFile RESTRICT_KEYWORD stream) {
 	char *buf, *pos;
 	int c;
 	ssize_t bytes;
@@ -838,6 +856,6 @@ ssize_t gzgetdelim(char **restrict lineptr, size_t *restrict n, int delimiter, g
 	return bytes;
 }
 
-ssize_t gzgetline(char **restrict lineptr, size_t *restrict n, gzFile restrict stream) {
+ssize_t gzgetline(char **RESTRICT_KEYWORD lineptr, size_t *RESTRICT_KEYWORD n, gzFile RESTRICT_KEYWORD stream) {
 	return gzgetdelim(lineptr, n, '\n', stream);
 }

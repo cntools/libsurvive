@@ -1,3 +1,4 @@
+#define _USE_MATH_DEFINES
 #include <assert.h>
 #include <math.h>
 #include <survive_reproject.h>

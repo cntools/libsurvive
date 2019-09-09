@@ -52,7 +52,7 @@ IF(USE_OPENCV)
 	target_link_libraries(minimal_opencv ${OpenCV_LIBS})
 ENDIF()
 
-IF(USE_LAPACKE) # NOT USE_OPENCV -- lapack / blas
+IF(USE_LAPACKE OR WIN32) # NOT USE_OPENCV -- lapack / blas
 	IF(UNIX)
 	  target_link_libraries(minimal_opencv cblas lapacke)
 	else()

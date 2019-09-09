@@ -3,6 +3,7 @@
 #include "stdbool.h"
 #include "stdio.h"
 #include "stdlib.h"
+#include <malloc.h>
 
 static void bc_svd_choose_control_points(bc_svd *self) {
 	// Take C0 as the reference points centroid:

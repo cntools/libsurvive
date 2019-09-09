@@ -2065,7 +2065,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 					uint32_t mask;
 				};
 #pragma pack(pop)
-				uint32_t samples[4] = {}, masks[4] = {}, times[4] = {};
+				uint32_t samples[4] = {0}, masks[4] = {0}, times[4] = {0};
 
 				struct lh2_entry *entries = (struct lh2_entry *)readdata;
 				static uint32_t last_time = 0;
@@ -2093,7 +2093,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 					fprintf(stderr, "\n");
 				}
 
-				uint32_t time_since_sync[4] = {};
+				uint32_t time_since_sync[4] = {0};
 				survive_channel chan = survive_decipher_channel(samples, masks, times, time_since_sync, 4);
 				fprintf(stderr, "Chan ootx: %d %d\n", chan / 2, chan & 1);
 				for (int i = 0; i < 4; i++) {

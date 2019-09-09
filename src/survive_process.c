@@ -219,7 +219,7 @@ static void calibrate_gyro(SurviveObject *so, FLT *agm) {
 }
 
 void survive_default_raw_imu_process(SurviveObject *so, int mask, FLT *accelgyromag, uint32_t timecode, int id) {
-	FLT agm[9] = {};
+	FLT agm[9] = { 0 };
 	memcpy(agm, accelgyromag, sizeof(FLT) * 9);
 	calibrate_acc(so, agm);
 	calibrate_gyro(so, agm + 3);

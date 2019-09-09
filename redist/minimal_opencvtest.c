@@ -47,7 +47,7 @@ static void test_solve() {
 	{
 		double _A[3] = {1, 2, 3};
 		double _B[3] = {4, 8, 12};
-		double _x[1] = {};
+		double _x[1] = {0};
 
 		CvMat A = cvMat(3, 1, CV_64F, _A);
 		CvMat B = cvMat(3, 1, CV_64F, _B);
@@ -61,7 +61,7 @@ static void test_solve() {
 	{
 		double _A[3] = {1, 2, 3};
 		double _B[9] = {4, 5, 6, 7, 8, 9, 10, 11, 12};
-		double _x[3] = {};
+		double _x[3] = {0};
 
 		CvMat A = cvMat(3, 1, CV_64F, _A);
 		CvMat B = cvMat(3, 3, CV_64F, _B);
@@ -77,13 +77,13 @@ static void test_svd() {
 	double _3x3[3 * 3] = {1, 2, 3, 4, 5, 6, 7, 8, 12};
 	CvMat m3x3 = cvMat(3, 3, CV_64F, _3x3);
 
-	double _w[3] = {};
+	double _w[3] = {0};
 	CvMat w = cvMat(1, 3, CV_64F, _w);
 
-	double _u[9] = {};
+	double _u[9] = {0};
 	CvMat u = cvMat(3, 3, CV_64F, _u);
 
-	double _v[9] = {};
+	double _v[9] = {0};
 	CvMat v = cvMat(3, 3, CV_64F, _v);
 
 	cvSVD(&m3x3, &w, &u, &v, 0);
