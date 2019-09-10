@@ -572,7 +572,7 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 				SV_WARN("Drift in timecodes %s %u", d->so->codename, delta);
 			}
 			d->mod_offset[LS_Params[d->state].lh] = new_offset;
-
+			DEBUG_TB("New offset %d (%d)", new_offset, delta);
 			// Figure out if it looks more like it has data or doesn't. We need this for OOX
 			int lengthData = ACODE_TIMING(LSParam_acode(d->state) | DATA_BIT);
 			int lengthNoData = ACODE_TIMING(LSParam_acode(d->state));
@@ -637,6 +637,18 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 						   LS_Params[d->state].lh);
 	}
 	SetState(d, le, new_state);
+}
+
+static uint32_t offset_from_state(Disambiguator_data_t *d, const LightcapElement *le) {
+	struct SurviveContext *ctx = d->so->ctx;
+	Global_Disambiguator_data_t *g = ctx->disambiguator_data;
+	int end_of_mod = g->single_60hz_mode ? LS_WaitLHB_ACode0 : LS_END;
+	int lh = LS_Params[d->state].lh;
+	int le_offset = apply_mod_offset(le->timestamp + le->length / 2, d->mod_offset[lh], end_of_mod);
+	int state_offset = le_offset - LSParam_offset_for_state(d->state);
+	if (state_offset > LS_Params[d->state].window)
+		state_offset = state_offset - LS_Params[d->state].window;
+	return state_offset;
 }
 
 static void PropagateState(Disambiguator_data_t *d, const LightcapElement *le) {
@@ -720,7 +732,8 @@ void DisambiguatorStateBased(SurviveObject *so, const LightcapElement *le) {
 		return;
 	}
 
-	DEBUG_TB("%s LE: %2u\t%4u\t%10u\t%2u", so->codename, le->sensor_id, le->length, le->timestamp, d->state);
+	DEBUG_TB("%s LE: %2u\t%4u\t%10u\t%2u\t%7u", so->codename, le->sensor_id, le->length, le->timestamp, d->state,
+			 offset_from_state(d, le));
 
 	if (d->state == LS_UNKNOWN) {
 		enum LighthouseState new_state = AttemptFindState(d, le);

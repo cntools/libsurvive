@@ -126,14 +126,14 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 	// Wait til observation is in before reading IMU; gets rid of bad IMU data at the start
 	if (tracker->last_data.datamask == 0) {
 		tracker->imu_kalman_update = data->hdr.timecode;
-		tracker->obs_kalman_update = data->hdr.timecode;
+		tracker->last_kalman_update = tracker->obs_kalman_update = data->hdr.timecode;
 		return;
 	}
 
 	if (tracker->last_data.datamask == 1) {
 		tracker->last_data = *data;
 		tracker->imu_kalman_update = data->hdr.timecode;
-		tracker->obs_kalman_update = data->hdr.timecode;
+		tracker->last_kalman_update = tracker->obs_kalman_update = data->hdr.timecode;
 		return;
 	}
 
@@ -144,7 +144,10 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 	// SV_INFO("%7f %7f", n, tracker->acc_bias);
 
 	FLT time_diff =
-		survive_timecode_difference(data->hdr.timecode, tracker->imu_kalman_update) / (FLT)tracker->so->timebase_hz;
+		survive_timecode_difference(data->hdr.timecode, tracker->last_kalman_update) / (FLT)tracker->so->timebase_hz;
+	FLT time_since_obs =
+		survive_timecode_difference(data->hdr.timecode, tracker->obs_kalman_update) / (FLT)tracker->so->timebase_hz;
+
 	// printf("i%u %f\n", data->timecode, time_diff);
 	LinmathQuat rot;
 	survive_kalman_predict_state(0, &tracker->rot, 0, rot);
@@ -153,6 +156,10 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 	if (time_diff > 0.5) {
 		SV_WARN("%s is probably dropping IMU packets; %f time reported between %u %u", tracker->so->codename, time_diff,
 				data->hdr.timecode, tracker->imu_kalman_update);
+	}
+
+	if (time_since_obs > .05) {
+		return;
 	}
 
 	if (tracker->mahony_variance >= 0) {
@@ -184,14 +191,14 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 	survive_kalman_predict_update_state_extended(time_diff, &tracker->rot, rot_vel, Hr, update_rotation_from_rotvel,
 												 Rv[1]);
 
-	tracker->imu_kalman_update = tracker->obs_kalman_update = data->hdr.timecode;
+	tracker->imu_kalman_update = tracker->last_kalman_update = data->hdr.timecode;
 }
 
 void survive_imu_tracker_predict(const SurviveIMUTracker *tracker, survive_timecode timecode, SurvivePose *out) {
 	if (tracker->position.info.P[0] > 100 || tracker->rot.info.P[0] > 100)
 		return;
 
-	FLT t = survive_timecode_difference(timecode, tracker->obs_kalman_update) / (FLT)tracker->so->timebase_hz;
+	FLT t = survive_timecode_difference(timecode, tracker->last_kalman_update) / (FLT)tracker->so->timebase_hz;
 
 	survive_kalman_predict_state(t, &tracker->position, 0, out->Pos);
 
@@ -242,10 +249,10 @@ void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTrac
 	if (tracker->last_data.datamask == 0) {
 		tracker->last_data.datamask = 1;
 		tracker->imu_kalman_update = timecode;
-		tracker->obs_kalman_update = timecode;
+		tracker->last_kalman_update = tracker->obs_kalman_update = timecode;
 	}
 
-	FLT time_diff = survive_timecode_difference(timecode, tracker->obs_kalman_update) / (FLT)tracker->so->timebase_hz;
+	FLT time_diff = survive_timecode_difference(timecode, tracker->last_kalman_update) / (FLT)tracker->so->timebase_hz;
 	// assert(time_diff >= 0 && time_diff < 10);
 
 	// FLT H[] = {1., time_diff, time_diff * time_diff / 2.};
@@ -264,7 +271,7 @@ void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTrac
 
 	// findnearestaxisanglemag(tracker->rot.state, tracker->rot.state, 0);
 
-	tracker->imu_kalman_update = tracker->obs_kalman_update = timecode;
+	tracker->last_kalman_update = tracker->obs_kalman_update = timecode;
 }
 
 STATIC_CONFIG_ITEM(POSE_POSITION_VARIANCE_SEC, "filter-pose-var-per-sec", 'f', "Position variance per second", 0.001);
@@ -343,12 +350,12 @@ SurviveVelocity survive_imu_velocity(const SurviveIMUTracker *tracker) {
 void survive_imu_tracker_integrate_velocity(SurviveIMUTracker *tracker, survive_timecode timecode, const FLT *Rv,
 											const SurviveVelocity *vel) {
 	const FLT H[] = {0, 1, 0};
-	FLT time_diff = survive_timecode_difference(timecode, tracker->obs_kalman_update) / (FLT)tracker->so->timebase_hz;
+	FLT time_diff = survive_timecode_difference(timecode, tracker->last_kalman_update) / (FLT)tracker->so->timebase_hz;
 
 	survive_kalman_predict_update_state(time_diff, &tracker->position, vel->Pos, H, Rv[0]);
 	survive_kalman_predict_update_state(time_diff, &tracker->rot, vel->AxisAngleRot, H, Rv[1]);
 
-	tracker->imu_kalman_update = tracker->obs_kalman_update = timecode;
+	tracker->last_kalman_update = tracker->obs_kalman_update = timecode;
 }
 
 void survive_imu_tracker_free(SurviveIMUTracker *tracker) {

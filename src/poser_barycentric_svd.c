@@ -101,7 +101,7 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 
 	// Super degenerate inputs will project us basically right in the camera. Detect and reject
 	if (err > 1 || magnitude3d(rtn.Pos) < 0.25 || magnitude3d(rtn.Pos) > 25) {
-		SV_WARN("pose is degenerate %d %f %f", (int)dd->bc.meas_cnt, err, magnitude3d(rtn.Pos));
+		// SV_WARN("pose is degenerate %d %f %f", (int)dd->bc.meas_cnt, err, magnitude3d(rtn.Pos));
 		return rtn;
 	}
 
