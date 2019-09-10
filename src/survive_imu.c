@@ -153,13 +153,12 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 	survive_kalman_predict_state(0, &tracker->rot, 0, rot);
 
 	assert(time_diff >= 0);
+	if (time_since_obs > .05) {
+		return;
+	}
 	if (time_diff > 0.5) {
 		SV_WARN("%s is probably dropping IMU packets; %f time reported between %u %u", tracker->so->codename, time_diff,
 				data->hdr.timecode, tracker->imu_kalman_update);
-	}
-
-	if (time_since_obs > .05) {
-		return;
 	}
 
 	if (tracker->mahony_variance >= 0) {

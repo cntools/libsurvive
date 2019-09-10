@@ -54,6 +54,10 @@ static void survive_fill_m(void *user, double *eq, int axis, FLT angle) {
 			break;
 		}
 	} break;
+	case 3: {
+		eq[0] = eq[1] = eq[2] = 0;
+		break;
+	}
 	default:
 		assert(false);
 	}

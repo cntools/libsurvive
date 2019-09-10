@@ -2018,6 +2018,9 @@ void survive_data_cb(SurviveUSBInterface *si) {
 				}
 			}
 		} else if (id == 39) { // LHv2
+			if (obj->ctx->lh_version == 0) {
+				return;
+			}
 			survive_notify_gen2(obj, "Report id 39");
 
 			// Implies that the user forced gen1
