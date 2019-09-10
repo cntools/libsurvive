@@ -611,7 +611,7 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 		}
 		if (cnt > 0) {
 			double var = 3;
-			size_t minl = 10;
+			size_t minl = DIV_ROUND_CLOSEST(avg_length, cnt * 4);
 			size_t maxl = var * DIV_ROUND_CLOSEST(avg_length, cnt);
 
 			for (int i = 0; i < d->so->sensor_ct; i++) {
