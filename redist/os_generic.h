@@ -120,6 +120,8 @@ OSG_INLINE double OGGetFileTime(const char *file) {
 	return ft.dwHighDateTime + ft.dwLowDateTime;
 }
 
+OSG_INLINE void OGNameThread(og_thread_t t, const char *name) {}
+
 OSG_INLINE og_thread_t OGCreateThread(void *(routine)(void *), void *parameter) {
 	return (og_thread_t)CreateThread(0, 0, (LPTHREAD_START_ROUTINE)routine, parameter, 0, 0);
 }
@@ -203,10 +205,6 @@ OSG_INLINE og_cv_t OGCreateConditionVariable() {
 
 #else
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdint.h>
@@ -220,7 +218,7 @@ OSG_INLINE og_cv_t OGCreateConditionVariable() {
 OSG_INLINE void OGSleep(int is) { sleep(is); }
 
 OSG_INLINE int OGUSleep(int ius) {
-	struct timespec sleep = {.tv_nsec = ius * 1000};
+	struct timespec sleep = {.tv_nsec = (ius % 1000000) * 1000, .tv_sec = ius / 1000000};
 	return nanosleep(&sleep, 0);
 }
 
@@ -249,6 +247,11 @@ OSG_INLINE double OGGetFileTime(const char *file) {
 	return buff.st_mtime;
 }
 
+OSG_INLINE void OGNameThread(og_thread_t t, const char *name) {
+#ifdef _GNU_SOURCE
+	pthread_setname_np(*(pthread_t *)t, name);
+#endif
+}
 OSG_INLINE og_thread_t OGCreateThread(void *(routine)(void *), void *parameter) {
 	pthread_t *ret = (pthread_t *)malloc(sizeof(pthread_t));
 	int r = pthread_create(ret, 0, routine, parameter);

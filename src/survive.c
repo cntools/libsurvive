@@ -661,10 +661,6 @@ void survive_close(SurviveContext *ctx) {
 	OGJoinThread(ctx->buttonservicethread);
 	OGDeleteSema(ctx->buttonQueue.buttonservicesem);
 
-	struct SurviveContext_private *pctx = ctx->private_members;
-	OGDeleteSema(pctx->poll_sema);
-	free(pctx);
-
 	while ((DriverName = GetDriverNameMatching("DriverUnreg", r++))) {
 		DeviceDriver dd = GetDriver(DriverName);
 		SV_INFO("De-registering driver %s (%p)", DriverName, dd);
@@ -699,6 +695,10 @@ void survive_close(SurviveContext *ctx) {
 	for (int i = 0; i < ctx->objs_ct; i++) {
 		survive_destroy_device(ctx->objs[i]);
 	}
+
+	struct SurviveContext_private *pctx = ctx->private_members;
+	OGDeleteSema(pctx->poll_sema);
+	free(pctx);
 
 	free(ctx->objs);
 	free(ctx->drivers);

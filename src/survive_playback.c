@@ -1,5 +1,8 @@
 // All MIT/x11 Licensed Code in this file may be relicensed freely under the GPL
 // or LGPL licenses.
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,7 +11,6 @@
 #include <assert.h>
 #include <errno.h>
 #include <string.h>
-
 
 #ifdef NOZLIB
 #define gzFile FILE*
@@ -71,11 +73,11 @@ typedef struct SurviveRecordingData {
 		gzFile output_file;
 } SurviveRecordingData;
 
-static double timestamp_in_us() {
-	static double start_time_us = 0;
-	if (start_time_us == 0.)
-		start_time_us = OGGetAbsoluteTime();
-	return OGGetAbsoluteTime() - start_time_us;
+static double timestamp_in_s() {
+	static double start_time_s = 0;
+	if (start_time_s == 0.)
+		start_time_s = OGGetAbsoluteTime();
+	return OGGetAbsoluteTime() - start_time_s;
 }
 
 static void write_to_output_raw(SurviveRecordingData *recordingData, const char *string, int len) {
@@ -93,7 +95,7 @@ static void write_to_output(SurviveRecordingData *recordingData, const char *for
 		return;
 	}
 
-	double ts = timestamp_in_us();
+	double ts = timestamp_in_s();
 
 	if (recordingData->output_file) {
 		va_list args;
@@ -331,10 +333,14 @@ struct SurvivePlaybackData {
 	gzFile playback_file;
 	int lineno;
 
-	double next_time_us;
+	double next_time_s;
 	FLT playback_factor;
 	bool hasRawLight;
 	bool outputExternalPose;
+
+	uint32_t total_sleep_time;
+	bool keepRunning;
+	og_thread_t playback_thread;
 };
 typedef struct SurvivePlaybackData SurvivePlaybackData;
 
@@ -559,7 +565,7 @@ static int parse_and_run_lightcode(const char *line, SurvivePlaybackData *driver
 	return 0;
 }
 
-static int playback_poll(struct SurviveContext *ctx, void *_driver) {
+static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 	SurvivePlaybackData *driver = _driver;
 	gzFile f = driver->playback_file;
 
@@ -567,14 +573,14 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 		driver->lineno++;
 		char *line = 0;
 
-		if (driver->next_time_us == 0) {
+		if (driver->next_time_s == 0) {
 			size_t n = 0;
 			ssize_t r = gzgetdelim(&line, &n, ' ', f);
 			if (r <= 0) {
 				return 0;
 			}
 
-			if (sscanf(line, "%lf", &driver->next_time_us) != 1) {
+			if (sscanf(line, "%lf", &driver->next_time_s) != 1) {
 				free(line);
 				return 0;
 			}
@@ -582,9 +588,9 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 			line = 0;
 		}
 
-		if (driver->next_time_us * driver->playback_factor > timestamp_in_us())
+		if (driver->next_time_s * driver->playback_factor > timestamp_in_s())
 			return 0;
-		driver->next_time_us = 0;
+		driver->next_time_s = 0;
 
 		size_t n = 0;
 		ssize_t r = gzgetline(&line, &n, f);
@@ -602,6 +608,7 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 			return 0;
 		}
 
+		survive_get_ctx_lock(ctx);
 		switch (op[0]) {
 		case 'W':
 			if (op[1] == 0)
@@ -647,6 +654,7 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 		default:
 			SV_WARN("Playback doesn't understand '%s' op in '%s'", op, line);
 		}
+		survive_release_ctx_lock(ctx);
 
 		free(line);
 	} else {
@@ -660,8 +668,41 @@ static int playback_poll(struct SurviveContext *ctx, void *_driver) {
 	return 0;
 }
 
+static void *playback_thread(void *_driver) {
+	SurvivePlaybackData *driver = _driver;
+	driver->keepRunning = true;
+	while (driver->keepRunning) {
+		double next_time_s_scaled = driver->next_time_s * driver->playback_factor;
+		double time_now = timestamp_in_s();
+		if (next_time_s_scaled == 0 || next_time_s_scaled < time_now) {
+			int rtnVal = playback_pump_msg(driver->ctx, driver);
+			if (rtnVal < 0)
+				driver->keepRunning = false;
+		} else {
+			int sleep_time_ms = 1 + (next_time_s_scaled - time_now) * 1000.;
+			int sr = OGUSleep(sleep_time_ms * 1000);
+			if (sr == 0)
+				driver->total_sleep_time += sleep_time_ms;
+		}
+	}
+	return 0;
+}
+
+static int playback_poll(struct SurviveContext *ctx, void *_driver) {
+	SurvivePlaybackData *driver = _driver;
+	if (driver->keepRunning == false)
+		return -1;
+	return 0;
+}
+
 static int playback_close(struct SurviveContext *ctx, void *_driver) {
 	SurvivePlaybackData *driver = _driver;
+	driver->keepRunning = false;
+	SV_VERBOSE(100, "Waiting on playback thread...");
+	survive_release_ctx_lock(ctx);
+	OGJoinThread(driver->playback_thread);
+	survive_get_ctx_lock(ctx);
+	SV_VERBOSE(100, "Playback thread slept for %ums", driver->total_sleep_time);
 	if (driver->playback_file)
 		gzclose(driver->playback_file);
 	driver->playback_file = 0;
@@ -728,9 +769,6 @@ int DriverRegPlayback(SurviveContext *ctx) {
 
 	SV_INFO("Using playback file '%s' with timefactor of %f", playback_file, sp->playback_factor);
 
-	if (sp->playback_factor == 0.0)
-		ctx->poll_min_time_ms = 0;
-
 	FLT time;
 	while (!gzeof(sp->playback_file) && !gzerror_dropin(sp->playback_file)) {
 		char *line = 0;
@@ -785,6 +823,8 @@ int DriverRegPlayback(SurviveContext *ctx) {
 
 	gzseek(sp->playback_file, 0, SEEK_SET); // same as rewind(f);
 
+	sp->playback_thread = OGCreateThread(playback_thread, sp);
+	OGNameThread(sp->playback_thread, "playback");
 	survive_add_driver(ctx, sp, playback_poll, playback_close, 0);
 	return 0;
 }
