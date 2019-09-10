@@ -218,7 +218,9 @@ OSG_INLINE og_cv_t OGCreateConditionVariable() {
 OSG_INLINE void OGSleep(int is) { sleep(is); }
 
 OSG_INLINE int OGUSleep(int ius) {
-	struct timespec sleep = {.tv_nsec = (ius % 1000000) * 1000, .tv_sec = ius / 1000000};
+	struct timespec sleep = {0};
+	sleep.tv_nsec = (ius % 1000000) * 1000;
+	sleep.tv_sec = ius / 1000000;
 	return nanosleep(&sleep, 0);
 }
 
@@ -342,12 +344,18 @@ OSG_INLINE void OGDeleteSema(og_sema_t os) {
 	free(os);
 }
 
-OSG_INLINE void OGSignalCond(og_cv_t cv) { _OGHandlePosixError("OGSignalCond", pthread_cond_signal(cv)); }
-OSG_INLINE void OGBroadcastCond(og_cv_t cv) { _OGHandlePosixError("OGBroadcastCond", pthread_cond_broadcast(cv)); }
-OSG_INLINE void OGWaitCond(og_cv_t cv, og_mutex_t m) { _OGHandlePosixError("OGWaitCond", pthread_cond_wait(cv, m)); }
+OSG_INLINE void OGSignalCond(og_cv_t cv) {
+	_OGHandlePosixError("OGSignalCond", pthread_cond_signal((pthread_cond_t *)cv));
+}
+OSG_INLINE void OGBroadcastCond(og_cv_t cv) {
+	_OGHandlePosixError("OGBroadcastCond", pthread_cond_broadcast((pthread_cond_t *)cv));
+}
+OSG_INLINE void OGWaitCond(og_cv_t cv, og_mutex_t m) {
+	_OGHandlePosixError("OGWaitCond", pthread_cond_wait((pthread_cond_t *)cv, (pthread_mutex_t *)m));
+}
 
 OSG_INLINE void OGDeleteConditionVariable(og_cv_t cv) {
-	pthread_cond_destroy(cv);
+	pthread_cond_destroy((pthread_cond_t *)cv);
 	free(cv);
 }
 
