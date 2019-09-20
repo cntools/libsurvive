@@ -1,4 +1,3 @@
-
 add_executable(survive_tests
         main.c
         reproject.c
@@ -15,9 +14,12 @@ add_executable(test_replays test_replays.c)
 set_target_properties(test_replays PROPERTIES FOLDER "tests")
 target_link_libraries(test_replays survive)
 
-add_test(NAME lh1_test_cal COMMAND ./test_replays     ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/lh1_test_cal.rec.gz)
-add_test(NAME lh2_test_cal COMMAND ./test_replays     ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/lh2_test_cal.rec.gz)
-add_test(NAME lh2_test_cal_usb COMMAND ./test_replays ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/lh2_test_cal.pcap.gz)
+add_test(NAME lh1_test_cal COMMAND $<TARGET_FILE:test_replays>     ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/lh1_test_cal.rec.gz)
+add_test(NAME lh2_test_cal COMMAND $<TARGET_FILE:test_replays>     ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/lh2_test_cal.rec.gz)
+
+if(PCAP_LIBRARY)
+	add_test(NAME lh2_test_cal_usb COMMAND $<TARGET_FILE:test_replays> ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/lh2_test_cal.pcap.gz)
+endif()
 
 include(ExternalProject)
 

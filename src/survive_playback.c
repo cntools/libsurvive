@@ -780,6 +780,12 @@ int DriverRegPlayback(SurviveContext *ctx) {
 			continue;
 		}
 
+		if (line[0] == 0x1f) {
+			SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Attempting to playback a gz compressed file without gz support.");
+			free(line);
+			return -1;
+		}
+
 		char dev[32];
 		char command[32];
 

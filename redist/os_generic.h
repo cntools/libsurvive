@@ -79,7 +79,7 @@ extern "C" {
 
 OSG_INLINE void OGSleep(int is) { Sleep(is * 1000); }
 
-OSG_INLINE void OGUSleep(int ius) { Sleep(ius / 1000); }
+OSG_INLINE int OGUSleep(int ius) { Sleep(ius / 1000); return 0; }
 
 OSG_INLINE double OGGetAbsoluteTime() {
 	static LARGE_INTEGER lpf;

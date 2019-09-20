@@ -1,7 +1,6 @@
 project(libsurvive C)
 cmake_minimum_required(VERSION 3.5.1)
 
-enable_testing()
 IF(UNIX)
 	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=gnu99 -rdynamic -Werror=incompatible-pointer-types -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces")
 ENDIF()
@@ -11,6 +10,11 @@ include_directories(redist include/libsurvive include)
 
 option(USE_HIDAPI "Use HIDAPI instead of libusb" OFF)
 option(USE_ASAN "Use address sanitizer" OFF)
+option(ENABLE_TESTS "Enable build / execution of tests" OFF)
+
+IF (ENABLE_TESTS)
+	enable_testing()
+ENDIF()
 
 IF(NOT WIN32)
 	include(CheckIncludeFile)
@@ -48,6 +52,8 @@ endif()
 
 IF(WIN32)
 	add_definitions(-DNOZLIB)
+
+	set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>)
 ENDIF()
 
 list (APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
@@ -177,8 +183,9 @@ foreach(executable data_recorder simple_pose_test survive-cli api_example sensor
 endforeach()
 target_link_libraries(simple_pose_test CNGFX)
 
-add_subdirectory(src/test_cases)
-
+IF (ENABLE_TESTS)
+	add_subdirectory(src/test_cases)
+ENDIF()
 
 find_package(catkin QUIET COMPONENTS
 	roscpp

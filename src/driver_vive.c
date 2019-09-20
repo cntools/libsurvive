@@ -14,6 +14,8 @@
 #include <os_generic.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <stddef.h>
 #include <string.h>
 #include <survive.h>
 #include <sys/stat.h>
@@ -1169,7 +1171,7 @@ struct sensorData {
 	uint8_t edgeCount;
 };
 
-static ssize_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8_t *payloadEndPtr,
+static int32_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8_t *payloadEndPtr,
 							   LightcapElement *output, int output_cnt) {
 	uint8_t *payloadPtr = *readPtr;
 	SurviveContext *ctx = w->ctx;
@@ -1679,7 +1681,7 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 	// Any remaining data after events (if any) have been read off is light data
 	if (payloadPtr < payloadEndPtr) {
 		LightcapElement les[10] = {0};
-		ssize_t cnt = read_light_data(w, time, &payloadPtr, payloadEndPtr, les, 10);
+		int32_t cnt = read_light_data(w, time, &payloadPtr, payloadEndPtr, les, 10);
 
 		if (cnt < 0) {
 			SV_WARN("Read light data error %d   [Time:%04hX] [Payload: %s]", (int)cnt, time,
