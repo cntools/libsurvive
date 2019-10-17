@@ -1567,7 +1567,7 @@ static void QuickPose(SurviveObject *so, PoserData *pd, SurvivePose *additionalT
 
 	TrackedObject *to;
 
-	to = malloc(sizeof(TrackedObject) + (SENSORS_PER_OBJECT * sizeof(TrackedSensor)));
+	to = SV_MALLOC(sizeof(TrackedObject) + (SENSORS_PER_OBJECT * sizeof(TrackedSensor)));
 
 	{
 		int sensorCount = 0;
@@ -1665,7 +1665,7 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 
 	if (!td)
 	{
-		so->PoserData = td = malloc(sizeof(ToriData));
+		so->PoserData = td = SV_MALLOC(sizeof(ToriData));
 		memset(td, 0, sizeof(ToriData));
 	}
 
@@ -1746,7 +1746,7 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 
 		PoserDataFullScene * fs = (PoserDataFullScene*)poserData;
 
-		to = malloc(sizeof(TrackedObject) + (SENSORS_PER_OBJECT * sizeof(TrackedSensor)));
+		to = SV_MALLOC(sizeof(TrackedObject) + (SENSORS_PER_OBJECT * sizeof(TrackedSensor)));
 
 		// if we rotate the internal reference frame of of the tracked object from having -z being arbitrary
 		// to being the down direction as defined by the accelerometer, then when we have come up

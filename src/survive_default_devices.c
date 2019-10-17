@@ -12,7 +12,7 @@
 
 SurviveObject *survive_create_device(SurviveContext *ctx, const char *driver_name, void *driver,
 									 const char *device_name, haptic_func fn) {
-	SurviveObject *device = calloc(1, sizeof(SurviveObject));
+	SurviveObject *device = SV_CALLOC(1, sizeof(SurviveObject));
 
 	device->ctx = ctx;
 	device->driver = driver;
@@ -76,7 +76,7 @@ static int ParsePoints(SurviveContext *ctx, SurviveObject *so, char *ct0conf, FL
 
 	so->sensor_ct = 0;
 	assert(*floats_out == 0);
-	*floats_out = malloc(sizeof(**floats_out) * 32 * 3);
+	*floats_out = SV_MALLOC(sizeof(**floats_out) * 32 * 3);
 
 	for (k = 0; k < pts; k++) {
 		tk = &t[2 + k * 4];
@@ -209,7 +209,7 @@ static int process_jsonarray(scratch_space_t *scratch, char *ct0conf, stack_entr
 		int *values = NULL;
 		if (parse_int_array(ct0conf, tk + 2, &values, count)) {
 			int max_port = 32;
-			so->channel_map = malloc(sizeof(int) * max_port);
+			so->channel_map = SV_MALLOC(sizeof(int) * max_port);
 			for (int i = 0; i < max_port; i++)
 				so->channel_map[i] = -1;
 

@@ -341,7 +341,7 @@ int libusb_control_transfer_async(libusb_device_handle *dev_handle, uint8_t bmRe
 	if (!transfer)
 		return LIBUSB_ERROR_NO_MEM;
 
-	buffer = malloc(LIBUSB_CONTROL_SETUP_SIZE + wLength);
+	buffer = SV_MALLOC(LIBUSB_CONTROL_SETUP_SIZE + wLength);
 	if (!buffer) {
 		libusb_free_transfer(transfer);
 		return LIBUSB_ERROR_NO_MEM;
@@ -434,7 +434,7 @@ static int survive_get_ids(survive_usb_device_t d, uint16_t *idVendor, uint16_t 
 static const char *survive_usb_error_name(int ret) { return ""; }
 
 static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, struct SurviveUSBInfo *usbInfo) {
-	usbInfo->handle = calloc(1, sizeof(struct HIDAPI_USB_Handle_t));
+	usbInfo->handle = SV_CALLOC(1, sizeof(struct HIDAPI_USB_Handle_t));
 	survive_usb_device_t c = d;
 
 	struct SurviveContext *ctx = sv->ctx;
@@ -953,7 +953,7 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 		return -5;
 	}
 
-	*config = malloc(len + 1);
+	*config = SV_MALLOC(len + 1);
 	memcpy(*config, uncompressed_data, len);
 
 	char fstname[128];
@@ -2343,7 +2343,7 @@ int survive_vive_close(SurviveContext *ctx, void *driver) {
 }
 
 int DriverRegHTCVive(SurviveContext *ctx) {
-	SurviveViveData *sv = calloc(1, sizeof(SurviveViveData));
+	SurviveViveData *sv = SV_CALLOC(1, sizeof(SurviveViveData));
 
 	survive_attach_configi(ctx, SECONDS_PER_HZ_OUTPUT_TAG, &sv->seconds_per_hz_output);
 	if(sv->seconds_per_hz_output > 0) {

@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -477,6 +478,18 @@ SURVIVE_EXPORT void handle_lightcap(SurviveObject *so, const LightcapElement *le
 			ctx->report_errorproc(ctx, errorCode);                                                                     \
 		SV_LOG_NULL_GUARD ctx->logproc(ctx, SURVIVE_LOG_LEVEL_INFO, stbuff);                                           \
 	}
+
+inline static void *sv_dynamic_ptr_check(char *file, int line, void *ptr) {
+	if (ptr == NULL) {
+		fprintf(stderr, "Survive: memory allocation request failed in file %s, line %d, exiting", file, line);
+		exit(EXIT_FAILURE);
+	}
+	return ptr;
+}
+
+#define SV_MALLOC(size) sv_dynamic_ptr_check(__FILE__, __LINE__, malloc(size))
+#define SV_CALLOC(num, size) sv_dynamic_ptr_check(__FILE__, __LINE__, calloc((num), (size)))
+#define SV_REALLOC(ptr, size) sv_dynamic_ptr_check(__FILE__, __LINE__, realloc(ptr, (size)))
 
 static inline void survive_notify_gen2(struct SurviveObject *so, const char *msg) {
 	if (so->ctx->lh_version_forced != -1 && so->ctx->lh_version_forced != 1) {

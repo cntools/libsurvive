@@ -134,7 +134,7 @@ void survive_cal_install( struct SurviveContext * ctx )
 		return;
 
 	int i;
-	struct SurviveCalData * cd = ctx->calptr = calloc( 1, sizeof( struct SurviveCalData ) );
+	struct SurviveCalData *cd = ctx->calptr = SV_CALLOC(1, sizeof(struct SurviveCalData));
 
 	if( ctx->state != SURVIVE_RUNNING )
 	{

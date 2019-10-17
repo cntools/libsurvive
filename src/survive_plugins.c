@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <survive.h>
 
 #include "assert.h"
 
@@ -50,8 +51,9 @@ typedef struct list_t {
 } list_t;
 
 static void list_add(list_t *list, const char *item) {
-	list->data = realloc(list->data, sizeof(item) * ++list->size);
-	list->data[list->size - 1] = malloc(strlen(item) + 1);
+	list->size++;
+	list->data = SV_REALLOC(list->data, sizeof(item) * list->size);
+	list->data[list->size - 1] = SV_MALLOC(strlen(item) + 1);
 	strcpy(list->data[list->size - 1], item);
 }
 

@@ -3,6 +3,7 @@
 #include "stdbool.h"
 #include "stdio.h"
 #include "stdlib.h"
+#include "survive.h"
 #include <malloc.h>
 
 static void bc_svd_choose_control_points(bc_svd *self) {
@@ -73,8 +74,8 @@ void bc_svd_bc_svd(bc_svd *self, void *user, bc_svd_fill_M_fn fillFn, const Linm
 
 	self->setup.obj_cnt = obj_cnt;
 	self->setup.obj_pts = obj_pts;
-	self->setup.alphas = calloc(obj_cnt, sizeof(self->setup.alphas[0]));
-	self->object_pts_in_camera = calloc(obj_cnt, sizeof(self->setup.alphas[0]));
+	self->setup.alphas = SV_CALLOC(obj_cnt, sizeof(self->setup.alphas[0]));
+	self->object_pts_in_camera = SV_CALLOC(obj_cnt, sizeof(self->setup.alphas[0]));
 
 	bc_svd_choose_control_points(self);
 	bc_svd_compute_barycentric_coordinates(self);
@@ -122,7 +123,7 @@ void bc_svd_add_correspondence(bc_svd *self, size_t idx, double u, double v) {
 
 		if (self->meas_space <= self->meas_cnt) {
 			self->meas_space = self->meas_space * 2 + 1;
-			self->meas = realloc(self->meas, sizeof(self->meas[0]) * self->meas_space);
+			self->meas = SV_REALLOC(self->meas, sizeof(self->meas[0]) * self->meas_space);
 		}
 
 		self->meas[self->meas_cnt] = (bc_svd_meas_t){.angle = angle, .axis = i, .obj_idx = idx};
@@ -269,8 +270,8 @@ void qr_solve(CvMat *A, CvMat *b, CvMat *X) {
 	}
 	if (max_nr < nr) {
 		max_nr = nr;
-		A1 = malloc(sizeof(double) * nr);
-		A2 = malloc(sizeof(double) * nr);
+		A1 = SV_MALLOC(sizeof(double) * nr);
+		A2 = SV_MALLOC(sizeof(double) * nr);
 	}
 
 	double *pA = A->data.db, *ppAkk = pA;

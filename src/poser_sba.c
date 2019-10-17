@@ -345,7 +345,7 @@ static double run_sba(SBAData *d, PoserDataFullScene *pdfs, SurviveObject *so, i
 int PoserSBA(SurviveObject *so, PoserData *pd) {
 	SurviveContext *ctx = so->ctx;
 	if (so->PoserData == 0) {
-		so->PoserData = calloc(1, sizeof(SBAData));
+		so->PoserData = SV_CALLOC(1, sizeof(SBAData));
 		SBAData *d = so->PoserData;
 
 		general_optimizer_data_init(&d->opt, so);

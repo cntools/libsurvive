@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <malloc.h>
 #include <stdbool.h>
+#include <survive.h>
 
 lfsr_state_t lsfr_iterate(lfsr_state_t state, lfsr_poly_t poly, uint32_t cnt) {
 	for (int i = 0; i < cnt; i++) {
@@ -75,8 +76,8 @@ struct lfsr_lookup_t {
 
 struct lfsr_lookup_t *lfsr_lookup_ctor(lfsr_poly_t p) {
 	uint32_t order = lfsr_order(p);
-	struct lfsr_lookup_t *lookup = malloc(sizeof(struct lfsr_lookup_t));
-	lookup->table = (uint32_t *)calloc(1 << order, sizeof(uint32_t));
+	struct lfsr_lookup_t *lookup = SV_MALLOC(sizeof(struct lfsr_lookup_t));
+	lookup->table = (uint32_t *)SV_CALLOC(1 << order, sizeof(uint32_t));
 	lookup->order = order;
 	uint32_t start = 1;
 	uint32_t state = start;

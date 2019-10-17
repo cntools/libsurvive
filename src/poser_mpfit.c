@@ -433,7 +433,7 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 	SurviveContext *ctx = so->ctx;
 	if (so->PoserData == 0) {
-		so->PoserData = calloc(1, sizeof(MPFITData));
+		so->PoserData = SV_CALLOC(1, sizeof(MPFITData));
 		MPFITData *d = so->PoserData;
 
 		general_optimizer_data_init(&d->opt, so);

@@ -32,7 +32,7 @@ void survive_kalman_init(survive_kalman_t *k, size_t state_cnt, F_fn_t F, const 
 
 	if (!k->P) {
 		k->P_is_heap = true;
-		k->P = calloc(1, sizeof(FLT) * state_cnt * state_cnt);
+		k->P = SV_CALLOC(1, sizeof(FLT) * state_cnt * state_cnt);
 	}
 
 	k->P[0] = 1e10;
@@ -60,7 +60,7 @@ void survive_kalman_state_init(survive_kalman_state_t *k, size_t state_cnt, F_fn
 
 	if (!k->state) {
 		k->State_is_heap = true;
-		k->state = calloc(1, sizeof(FLT) * k->max_dim_cnt * k->info.state_cnt);
+		k->state = SV_CALLOC(1, sizeof(FLT) * k->max_dim_cnt * k->info.state_cnt);
 	}
 }
 

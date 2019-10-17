@@ -53,20 +53,20 @@ int dummy_haptic(SurviveObject *so, uint8_t reserved, uint16_t pulseHigh, uint16
 }
 
 int DriverRegDummy(SurviveContext *ctx) {
-	SurviveDriverDummy *sp = calloc(1, sizeof(SurviveDriverDummy));
+	SurviveDriverDummy *sp = SV_CALLOC(1, sizeof(SurviveDriverDummy));
 	sp->ctx = ctx;
 
 	SV_INFO("Setting up dummy driver.");
 
 	// Create a new SurviveObject...
-	SurviveObject *device = calloc(1, sizeof(SurviveObject));
+	SurviveObject *device = SV_CALLOC(1, sizeof(SurviveObject));
 	device->ctx = ctx;
 	device->driver = sp;
 	memcpy(device->codename, "DM0", 4);
 	memcpy(device->drivername, "DUM", 4);
 	device->sensor_ct = 1;
-	device->sensor_locations = malloc(sizeof(FLT) * 3);
-	device->sensor_normals = malloc(sizeof(FLT) * 3);
+	device->sensor_locations = SV_MALLOC(sizeof(FLT) * 3);
+	device->sensor_normals = SV_MALLOC(sizeof(FLT) * 3);
 	device->sensor_locations[0] = 0;
 	device->sensor_locations[1] = 0;
 	device->sensor_locations[2] = 0;

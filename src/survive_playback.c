@@ -119,7 +119,7 @@ void survive_recording_config_process(SurviveObject *so, char *ct0conf, int len)
 	if (recordingData == 0)
 		return;
 
-	char *buffer = calloc(1, len + 1);
+	char *buffer = SV_CALLOC(1, len + 1);
 	memcpy(buffer, ct0conf, len);
 	for (int i = 0; i < len; i++)
 		if (buffer[i] == '\n')
@@ -718,7 +718,7 @@ void survive_install_recording(SurviveContext *ctx) {
 	int record_to_stdout = survive_configi(ctx, "record-stdout", SC_GET, 0);
 
 	if (strlen(dataout_file) > 0 || record_to_stdout) {
-		ctx->recptr = calloc(1, sizeof(struct SurviveRecordingData));
+		ctx->recptr = SV_CALLOC(1, sizeof(struct SurviveRecordingData));
 
 		if (strlen(dataout_file) > 0) {
 			bool useCompression = strncmp(dataout_file + strlen(dataout_file) - 3, ".gz", 3) == 0;
@@ -753,7 +753,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 		return -1;
 	}
 
-	SurvivePlaybackData *sp = calloc(1, sizeof(SurvivePlaybackData));
+	SurvivePlaybackData *sp = SV_CALLOC(1, sizeof(SurvivePlaybackData));
 	sp->ctx = ctx;
 	sp->playback_dir = playback_file;
 
@@ -812,7 +812,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 
 			SurviveObject *so = survive_create_device(ctx, "replay", sp, dev, 0);
 
-			char *config = calloc(1, len + 1);
+			char *config = SV_CALLOC(1, len + 1);
 			memcpy(config, configStart, len);
 
 			if (ctx->configproc(so, config, len) == 0) {
@@ -857,7 +857,7 @@ ssize_t gzgetdelim(char **RESTRICT_KEYWORD lineptr, size_t *RESTRICT_KEYWORD n, 
 	/* resize (or allocate) the line buffer if necessary */
 	buf = *lineptr;
 	if (buf == NULL || *n < _GETDELIM_MINLEN) {
-		buf = realloc(*lineptr, _GETDELIM_GROWBY);
+		buf = SV_REALLOC(*lineptr, _GETDELIM_GROWBY);
 		if (buf == NULL) {
 			/* ENOMEM */
 			return -1;
@@ -877,7 +877,7 @@ ssize_t gzgetdelim(char **RESTRICT_KEYWORD lineptr, size_t *RESTRICT_KEYWORD n, 
 		}
 		bytes++;
 		if (bytes >= *n - 1) {
-			buf = realloc(*lineptr, *n + _GETDELIM_GROWBY);
+			buf = SV_REALLOC(*lineptr, *n + _GETDELIM_GROWBY);
 			if (buf == NULL) {
 				/* ENOMEM */
 				return -1;

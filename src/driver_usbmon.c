@@ -94,7 +94,7 @@ static char *read_file(const char *fn, size_t *size) {
 				return 0;
 			}
 
-			source = malloc(sizeof(char) * (bufsize + 1));
+			source = SV_MALLOC(sizeof(char) * (bufsize + 1));
 
 			if (fseek(fp, 0L, SEEK_SET) != 0) {
 				fprintf(stderr, "fseek file '%s' failed with %d", fn, errno);
@@ -185,7 +185,7 @@ static void ingest_config_request(vive_device_inst_t *dev, const struct _usb_hea
 		memcpy(&dev->compressed_data[dev->compressed_data_idx], pktData + 2, cnt);
 		dev->compressed_data_idx += cnt;
 	} else {
-		char *uncompressed_data = malloc(65536);
+		char *uncompressed_data = SV_MALLOC(65536);
 		SurviveContext *ctx = dev->so->ctx;
 
 		int len = survive_simple_inflate(dev->so->ctx, dev->compressed_data, dev->compressed_data_idx,
@@ -236,7 +236,7 @@ static int usbmon_close(struct SurviveContext *ctx, void *_driver) {
 	return 0;
 }
 static usb_info_t *get_usb_info_from_file(const char *fname) {
-	usb_info_t *rtn = calloc(MAX_USB_DEVS, sizeof(usb_info_t));
+	usb_info_t *rtn = SV_CALLOC(MAX_USB_DEVS, sizeof(usb_info_t));
 	size_t count = 0;
 	FILE *f = fopen(fname, "r");
 	while (!feof(f)) {
@@ -262,7 +262,7 @@ static usb_info_t *get_usb_info_from_libusb() {
 		return 0;
 
 	count = libusb_get_device_list(context, &list);
-	rtn = (usb_info_t *)calloc(count + 1, sizeof(usb_info_t));
+	rtn = (usb_info_t *)SV_CALLOC(count + 1, sizeof(usb_info_t));
 	size_t fill_cnt = 0;
 	for (size_t idx = 0; idx < count; ++idx) {
 		libusb_device *device = list[idx];
@@ -527,7 +527,7 @@ int DriverRegUSBMon(SurviveContext *ctx) {
 	const char *usbmon_record = survive_configs(ctx, "usbmon-record", SC_GET, 0);
 	const char *usbmon_playback = survive_configs(ctx, "usbmon-playback", SC_GET, 0);
 
-	SurviveDriverUSBMon *sp = calloc(1, sizeof(SurviveDriverUSBMon));
+	SurviveDriverUSBMon *sp = SV_CALLOC(1, sizeof(SurviveDriverUSBMon));
 	sp->ctx = ctx;
 	sp->passiveMode = !enable && usbmon_record;
 	if (sp->passiveMode) {

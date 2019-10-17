@@ -71,7 +71,7 @@ static void PoserDataSVD_destroy(PoserDataSVD *dd) {
 }
 
 static PoserDataSVD *PoserDataSVD_new(SurviveObject *so) {
-	PoserDataSVD *rtn = calloc(sizeof(PoserDataSVD), 1);
+	PoserDataSVD *rtn = SV_CALLOC(sizeof(PoserDataSVD), 1);
 	rtn->so = so;
 	rtn->required_meas = survive_configi(so->ctx, "epnp-required-meas", SC_GET, 10);
 

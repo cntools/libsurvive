@@ -34,7 +34,7 @@ int PoserDaveOrtho( SurviveObject * so, PoserData * pd )
 	DummyData * dd = so->PoserData;
 
 	if (!dd)
-		so->PoserData = dd = calloc(sizeof(DummyData), 1);
+		so->PoserData = dd = SV_CALLOC(sizeof(DummyData), 1);
 
 	switch( pt )
 	{

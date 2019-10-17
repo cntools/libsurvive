@@ -24,7 +24,8 @@ int PoserCharlesSlow( SurviveObject * so, PoserData * pd )
 	SurviveContext * ctx = so->ctx;
 	DummyData * dd = so->PoserData;
 
-	if( !dd ) so->PoserData = dd = malloc( sizeof( DummyData ) );
+	if (!dd)
+		so->PoserData = dd = SV_MALLOC(sizeof(DummyData));
 
 	switch( pt )
 	{
