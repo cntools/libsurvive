@@ -1,6 +1,7 @@
 #pragma once
 #include "survive.h"
 #include "survive_reproject.h"
+#include "string.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,9 +38,9 @@ typedef struct {
 } survive_optimizer;
 
 #define SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(ctx)                                                                     \
-	ctx.parameters = alloca(sizeof(double) * survive_optimizer_get_parameters_count(&ctx));                            \
-	ctx.parameters_info = alloca(sizeof(mp_par) * survive_optimizer_get_parameters_count(&ctx));                       \
-	ctx.measurements = alloca(sizeof(survive_optimizer_measurement) * 2 * ctx.so->sensor_ct * NUM_GEN2_LIGHTHOUSES);   \
+	ctx.parameters = (double*)alloca(sizeof(double) * survive_optimizer_get_parameters_count(&ctx));                            \
+	ctx.parameters_info = (struct mp_par_struct*)alloca(sizeof(struct mp_par_struct) * survive_optimizer_get_parameters_count(&ctx));                       \
+	ctx.measurements = (survive_optimizer_measurement*)alloca(sizeof(survive_optimizer_measurement) * 2 * ctx.so->sensor_ct * NUM_GEN2_LIGHTHOUSES);   \
 	memset(ctx.parameters_info, 0, sizeof(mp_par) * survive_optimizer_get_parameters_count(&ctx));                     \
 	for (int i = 0; i < survive_optimizer_get_parameters_count(&ctx); i++) {                                           \
 		ctx.parameters_info[i].fixed = 1;                                                                              \
