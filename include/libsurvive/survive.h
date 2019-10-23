@@ -439,6 +439,7 @@ SURVIVE_EXPORT int survive_add_object(SurviveContext *ctx, SurviveObject *obj);
 SURVIVE_EXPORT void survive_remove_object(SurviveContext *ctx, SurviveObject *obj);
 SURVIVE_EXPORT void survive_add_driver(SurviveContext *ctx, void *payload, DeviceDriverCb poll, DeviceDriverCb close,
 						DeviceDriverMagicCb magic);
+SURVIVE_EXPORT char* survive_export_config(SurviveObject* so);
 
 // This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
 SURVIVE_EXPORT uint8_t survive_map_sensor_id(SurviveObject *so, uint8_t reported_id);

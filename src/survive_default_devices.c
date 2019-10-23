@@ -332,7 +332,7 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	jsmn_parser p;
 	jsmntok_t t[4096];
 	jsmn_init(&p);
-	int i;
+
 	int r = jsmn_parse(&p, ct0conf, len, t, sizeof(t) / sizeof(t[0]));
 	if (r < 0) {
 		SV_INFO("Failed to parse JSON in HMD configuration: %d\n", r);

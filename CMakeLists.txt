@@ -109,7 +109,7 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
 		src/lfsr.h
 		src/lfsr_lh2.h
 		src/lfsr_lh2.c
-		)
+        src/survive_str.h src/survive_str.c src/test_cases/str.c)
 
 add_library(survive SHARED ${SURVIVE_SRCS})
 set_target_properties(survive PROPERTIES FOLDER "libraries")

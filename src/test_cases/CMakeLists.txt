@@ -1,7 +1,7 @@
 add_executable(survive_tests
         main.c
         reproject.c
-        kalman.c rotate_angvel.c watchman.c ../driver_vive.c)
+        kalman.c rotate_angvel.c watchman.c ../driver_vive.c export_config.c)
 
 add_definitions(-DDEBUG_WATCHMAN)
 

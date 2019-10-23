@@ -9,6 +9,7 @@
 #include <survive.h>
 
 #include "string.h"
+#include "survive_str.h"
 
 //XXX TODO: Once data is avialble in the context, use the stuff here to handle converting from time codes to
 //proper angles, then from there perform the rest of the solution. 
@@ -195,6 +196,38 @@ int survive_default_config_process(SurviveObject *so, char *ct0conf, int len) {
 	so->conf = ct0conf;
 	so->conf_cnt = len;
 	return survive_load_htc_config_format(so, ct0conf, len);
+}
+
+SURVIVE_EXPORT char* survive_export_config(SurviveObject* so) {
+    cstring str = {};
+    str_append(&str, "{\n");
+    str_append(&str, "    \"device_class\": \"generic_tracker\",\n");
+    str_append(&str, "    \"lighthouse_config\": {\n");
+    str_append(&str, "        \"channelMap\": [\n");
+    if(so->channel_map) {
+        for(int i = 0;i < so->sensor_ct;i++) {
+            str_append_printf(&str, "            %d,\n", so->channel_map[i]);
+        }
+    } else {
+        for(int i = 0;i < so->sensor_ct;i++) {
+            str_append_printf(&str, "            %d,\n", i);
+        }
+    }
+    str_append(&str, "        ],\n");
+    str_append(&str, "        \"modelNormals\": [\n");
+    for(int i = 0;i < so->sensor_ct;i++) {
+        str_append_printf(&str, "            [  %f, %f, %f ], \n", LINMATH_VEC3_EXPAND(so->sensor_normals + i * 3));
+    }
+    str_append(&str, "        ],\n");
+    str_append(&str, "        \"modelPoints\": [\n");
+    for(int i = 0;i < so->sensor_ct;i++) {
+        str_append_printf(&str, "            [ %f, %f, %f ], \n", LINMATH_VEC3_EXPAND(so->sensor_locations + i * 3));
+    }
+    str_append(&str, "        ]\n");
+    str_append(&str, "    }\n");
+    str_append(&str, "}\n");
+
+    return str.d;
 }
 
 // https://github.com/ValveSoftware/openvr/wiki/ImuSample_t
