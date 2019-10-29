@@ -174,7 +174,7 @@ foreach(PLUGIN ${PLUGINS})
     set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "RelWithDebInfo/plugins")
 
 endforeach()
-  
+
 foreach(executable data_recorder simple_pose_test survive-cli api_example sensors-readout)
 	add_executable(${executable} ${executable}.c )
 	target_link_libraries(${executable} survive)
@@ -213,6 +213,7 @@ install(TARGETS ${PLUGINS} DESTINATION lib/libsurvive/plugins)
 install(TARGETS survive DESTINATION lib/libsurvive)
 install(TARGETS survive DESTINATION lib)
 install(TARGETS survive-cli DESTINATION bin)
+install(TARGETS sensors-readout DESTINATION bin)
 
 INSTALL(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink survive ${CMAKE_INSTALL_PREFIX}/lib)")
 

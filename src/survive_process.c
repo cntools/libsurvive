@@ -202,6 +202,13 @@ SURVIVE_EXPORT char* survive_export_config(SurviveObject* so) {
     cstring str = {};
     str_append(&str, "{\n");
     str_append(&str, "    \"device_class\": \"generic_tracker\",\n");
+    str_append(&str, "    \"imu\": {\n");
+    str_append_printf(&str,"        \"acc_bias\": [ %f, %f, %f], \n", LINMATH_VEC3_EXPAND(so->acc_bias));
+    str_append_printf(&str,"        \"acc_scale\": [ %f, %f, %f], \n", LINMATH_VEC3_EXPAND(so->acc_scale));
+    str_append_printf(&str,"        \"gyro_bias\": [ %f, %f, %f], \n", LINMATH_VEC3_EXPAND(so->gyro_bias));
+    str_append_printf(&str,"        \"gyro_scale\": [ %f, %f, %f], \n", LINMATH_VEC3_EXPAND(so->gyro_scale));
+    str_append_printf(&str,"        \"position\": [ %f, %f, %f], \n", LINMATH_VEC3_EXPAND(so->imu2trackref.Pos));
+    str_append(&str, "    }\n");
     str_append(&str, "    \"lighthouse_config\": {\n");
     str_append(&str, "        \"channelMap\": [\n");
     if(so->channel_map) {

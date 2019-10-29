@@ -34,7 +34,7 @@ void str_append(cstring* str, const char* add) {
 int str_append_printf(cstring* str, const char *format, ...) {
     va_list args;
     va_start(args, format);
-    size_t needed = snprintf(0, 0, format, args);
+    size_t needed = vsnprintf(0, 0, format, args);
     va_end(args);
     va_start(args, format);
     int rtn = vsnprintf(str_increase_by(str, needed + 1), needed + 1, format, args);

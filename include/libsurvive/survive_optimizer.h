@@ -2,6 +2,7 @@
 #include "survive.h"
 #include "survive_reproject.h"
 #include "string.h"
+#include "math.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,13 +38,16 @@ typedef struct {
 	int ptsLength;
 } survive_optimizer;
 
-#define SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(ctx)                                                                     \
-	ctx.parameters = (double*)alloca(sizeof(double) * survive_optimizer_get_parameters_count(&ctx));                            \
+#define SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(ctx) {                                                                     \
+    size_t par_count = survive_optimizer_get_parameters_count(&ctx);\
+	ctx.parameters = (double*)alloca(sizeof(double) * par_count);                            \
+	for(int i = 0;i < par_count;i++) ctx.parameters[i] = NAN; \
 	ctx.parameters_info = (struct mp_par_struct*)alloca(sizeof(struct mp_par_struct) * survive_optimizer_get_parameters_count(&ctx));                       \
 	ctx.measurements = (survive_optimizer_measurement*)alloca(sizeof(survive_optimizer_measurement) * 2 * ctx.so->sensor_ct * NUM_GEN2_LIGHTHOUSES);   \
 	memset(ctx.parameters_info, 0, sizeof(mp_par) * survive_optimizer_get_parameters_count(&ctx));                     \
 	for (int i = 0; i < survive_optimizer_get_parameters_count(&ctx); i++) {                                           \
 		ctx.parameters_info[i].fixed = 1;                                                                              \
+	}\
 	}
 
 SURVIVE_EXPORT SurvivePose *survive_optimizer_get_pose(survive_optimizer *ctx);
@@ -66,6 +70,8 @@ SURVIVE_EXPORT void survive_optimizer_setup_pose(survive_optimizer *mpfit_ctx, c
 SURVIVE_EXPORT void survive_optimizer_setup_camera(survive_optimizer *mpfit_ctx, int8_t lh, const SurvivePose *pose,
 												   bool isFixed);
 SURVIVE_EXPORT void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx, SurviveContext *ctx, bool isFixed);
+
+SURVIVE_EXPORT const char* survive_optimizer_error(int status);
 
 SURVIVE_EXPORT int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result);
 

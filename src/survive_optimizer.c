@@ -198,13 +198,13 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 			deviates[i] = (out[meas[0].axis] - meas[0].value) / meas[0].variance;
 			deviates[i + 1] = (out[meas[1].axis] - meas[1].value) / meas[1].variance;
 
-			assert(!isnan(deviates[i]));
-			assert(!isnan(deviates[i + 1]));
+			assert(isfinite(deviates[i]));
+			assert(isfinite(deviates[i + 1]));
 		} else {
 			FLT out = reprojectModel->reprojectAxisFn[meas->axis](cal, sensorPtInLH);
 			deviates[i] = (out - meas->value) / meas->variance;
 
-			assert(!isnan(deviates[i]));
+			assert(isfinite(deviates[i]));
 		}
 
 		if (derivs) {
@@ -240,6 +240,32 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 	return 0;
 }
 
+const char* survive_optimizer_error(int status) {
+#define CASE(x) case x: return #x
+
+    switch(status) {
+        CASE(MP_ERR_INPUT);
+        CASE(MP_ERR_NAN);
+        CASE(MP_ERR_FUNC);
+        CASE(MP_ERR_NPOINTS);
+        CASE(MP_ERR_NFREE);
+        CASE(MP_ERR_MEMORY);
+        CASE(MP_ERR_INITBOUNDS);
+        CASE(MP_ERR_BOUNDS);
+        CASE(MP_ERR_PARAM);
+        CASE(MP_ERR_DOF);
+
+        /* Potential success status codes */
+        CASE(MP_OK_CHI);
+        CASE(MP_OK_PAR);
+        CASE(MP_OK_BOTH);
+        CASE(MP_OK_DIR);
+
+        default:
+            return "Unknown error";
+    }
+}
+
 int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result) {
 	SurviveContext *ctx = optimizer->so->ctx;
 	// SV_INFO("Run start");
@@ -249,7 +275,8 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 		if ((optimizer->parameters_info[i].limited[0] &&
 			 optimizer->parameters[i] < optimizer->parameters_info[i].limits[0]) ||
 			(optimizer->parameters_info[i].limited[1] &&
-			 optimizer->parameters[i] > optimizer->parameters_info[i].limits[1])) {
+			 optimizer->parameters[i] > optimizer->parameters_info[i].limits[1]) ||
+			 isnan(optimizer->parameters[i])) {
 			SurviveContext *ctx = optimizer->so->ctx;
 			SV_GENERAL_ERROR("Parameter %s is invalid. %f <= %f <= %f should be true",
 							 optimizer->parameters_info[i].parname, optimizer->parameters_info[i].limits[0],
