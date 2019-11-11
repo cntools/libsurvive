@@ -1450,7 +1450,7 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 	SurviveContext *ctx = w->ctx;
 
 	// If we're looking at light data, return
-	if ((*payloadPtr & 0xE0) == 0)
+	if (!HAS_FLAG(*payloadPtr, 0xE0))
 		return true;
 
 	/*
