@@ -470,9 +470,7 @@ void *pcap_thread_fn(void *_driver) {
 						memset(si.buffer, 0xCA, sizeof(si.buffer));
 						memcpy(si.buffer, pktData, usbp->data_len);
 
-						survive_get_ctx_lock(ctx);
 						survive_data_cb(&si);
-						survive_release_ctx_lock(ctx);
 					}
 				}
 			}

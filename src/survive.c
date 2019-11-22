@@ -743,10 +743,12 @@ int survive_poll(struct SurviveContext *ctx) {
 	}
 
 	survive_release_ctx_lock(ctx);
-	uint64_t timeNow = OGGetAbsoluteTimeMS();
-	if ((timeStart + ctx->poll_min_time_ms) > timeNow) {
-		uint64_t sleepTime = (timeStart + ctx->poll_min_time_ms) - timeNow;
-		OGUSleep(sleepTime * 1000);
+	if (ctx->poll_min_time_ms > 0) {
+		uint64_t timeNow = OGGetAbsoluteTimeMS();
+		if ((timeStart + ctx->poll_min_time_ms) > timeNow) {
+			uint64_t sleepTime = (timeStart + ctx->poll_min_time_ms) - timeNow;
+			OGUSleep(sleepTime * 1000);
+		}
 	}
 	survive_get_ctx_lock(ctx);
 

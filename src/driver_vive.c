@@ -836,9 +836,12 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 	return 0;
 #endif
 #else
-	int r = libusb_handle_events(sv->usbctx);
+	// int r = libusb_handle_events(sv->usbctx);
+	struct timeval tv = {.tv_usec = 10 * 1000};
+	survive_release_ctx_lock(ctx);
+	int r = libusb_handle_events_timeout(sv->usbctx, &tv);
+	survive_get_ctx_lock(ctx);
 	if (r) {
-		SurviveContext *ctx = sv->ctx;
 		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Libusb poll failed. %d (%s)", r, libusb_error_name(r));
 	}
 #endif
@@ -1903,13 +1906,14 @@ static inline uint32_t read_buffer32(uint8_t *readdata, int idx) {
 void survive_data_cb(SurviveUSBInterface *si) {
 	int size = si->actual_len;
 	SurviveContext *ctx = si->ctx;
+	survive_get_ctx_lock(ctx);
 
 	int iface = si->which_interface_am_i;
 	SurviveObject *obj = si->assoc_obj;
 	uint8_t *readdata = si->buffer;
 
 	if (iface == USB_IF_HMD_HEADSET_INFO && obj == 0)
-		return;
+		goto exit_fn;
 
 	int id = POP1;
 	//	printf( "%16s Size: %2d ID: %d / %d\n", si->hname, size, id, iface );
@@ -2021,7 +2025,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 			}
 		} else if (id == 39) { // LHv2
 			if (obj->ctx->lh_version == 0) {
-				return;
+				goto exit_fn;
 			}
 			survive_notify_gen2(obj, "Report id 39");
 
@@ -2304,6 +2308,9 @@ void survive_data_cb(SurviveUSBInterface *si) {
 		int a = 0; // breakpoint here
 	}
 	}
+
+exit_fn:
+	survive_release_ctx_lock(ctx);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2345,6 +2352,8 @@ int survive_vive_close(SurviveContext *ctx, void *driver) {
 int DriverRegHTCVive(SurviveContext *ctx) {
 	SurviveViveData *sv = SV_CALLOC(1, sizeof(SurviveViveData));
 
+	// Note: don't sleep for HTCVive, the handle_events call can block
+	ctx->poll_min_time_ms = 0;
 	survive_attach_configi(ctx, SECONDS_PER_HZ_OUTPUT_TAG, &sv->seconds_per_hz_output);
 	if(sv->seconds_per_hz_output > 0) {
 	  SV_INFO("Reporting usb hz in %d second intervals", sv->seconds_per_hz_output);
