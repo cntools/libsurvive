@@ -9,6 +9,8 @@
 #include <string.h>
 #include <survive.h>
 
+#include "stdarg.h"
+
 #include "os_generic.h"
 #include "survive_config.h"
 #include "survive_default_devices.h"
@@ -149,8 +151,10 @@ static void *button_servicer(void *context) {
 
 		button_process_func butt_func = ctx->buttonproc;
 		if (butt_func) {
+			survive_get_ctx_lock(ctx);
 			butt_func(entry->so, entry->eventType, entry->buttonId, entry->axis1Id, entry->axis1Val, entry->axis2Id,
 					  entry->axis2Val);
+			survive_release_ctx_lock(ctx);
 		}
 
 		ctx->buttonQueue.nextReadIndex++;
@@ -710,6 +714,8 @@ void survive_close(SurviveContext *ctx) {
 		survive_destroy_device(ctx->objs[i]);
 	}
 
+	survive_destroy_recording(ctx);
+
 	free(ctx->objs);
 	free(ctx->drivers);
 	free(ctx->driverpolls);
@@ -808,7 +814,8 @@ int survive_simple_inflate(struct SurviveContext *ctx, const uint8_t *input, int
 
 	int errorCode = inflate(&zs, Z_FINISH);
 	if (errorCode != Z_STREAM_END) {
-		SV_WARN("survive_simple_inflate could not inflate: %d (stream written to 'libz_error.stream')", errorCode);
+		SV_WARN("survive_simple_inflate could not inflate: %s %d (stream written to 'libz_error.stream')", zs.msg,
+				errorCode);
 
 		char fstname[128] = "libz_error.stream";
 		FILE *f = fopen(fstname, "wb");

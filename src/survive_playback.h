@@ -1,5 +1,6 @@
 #include <survive.h>
 
+void survive_destroy_recording(SurviveContext *ctx);
 void survive_install_recording(SurviveContext *ctx);
 void survive_recording_config_process(SurviveObject *so, char *ct0conf, int len);
 

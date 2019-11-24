@@ -654,6 +654,14 @@ static int playback_close(struct SurviveContext *ctx, void *_driver) {
 	return 0;
 }
 
+void survive_destroy_recording(SurviveContext *ctx) {
+	if (ctx->recptr) {
+		gzclose(ctx->recptr->output_file);
+		free(ctx->recptr);
+		ctx->recptr = 0;
+	}
+}
+
 void survive_install_recording(SurviveContext *ctx) {
 	const char *dataout_file = survive_configs(ctx, "record", SC_GET, "");
 	int record_to_stdout = survive_configi(ctx, "record-stdout", SC_GET, 0);
@@ -710,6 +718,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 
 	SV_INFO("Using playback file '%s' with timefactor of %f", playback_file, sp->playback_factor);
 
+	ctx->poll_min_time_ms = 1;
 	if (sp->playback_factor == 0.0)
 		ctx->poll_min_time_ms = 0;
 
