@@ -64,6 +64,7 @@ static uint8_t vive_magic_power_off[] = {
 	0x00, 0xd0, 0xf7, 0x33, 0x00, 0x3c, 0x68, 0x29, 0x65, 0x24, 0xf9, 0x33, 0x00, 0x00, 0x00, 0x00,
 };
 static uint8_t vive_magic_raw_mode_1[] = {0x04, 0x01, 0x00, 0x00, 0x00};
+static uint8_t vive_magic_rf_raw_mode_1[] = {0xff};
 
 #define MAGIC_CTOR(ison, buffer)                                                                                       \
 	{ .code = ison, .magic = buffer, .length = sizeof(buffer) }
@@ -137,11 +138,16 @@ typedef struct SurviveViveData SurviveViveData;
 
 struct SurviveUSBInfo {
 	USBHANDLE handle;
+	SurviveViveData *viveData;
 	const struct DeviceInfo *device_info;
 	struct SurviveObject *so;
 
 	size_t interface_cnt;
 	SurviveUSBInterface interfaces[MAX_INTERFACES_PER_DEVICE];
+
+	enum LightcapMode { LightcapMode_raw0 = 0, LightcapMode_raw1 } lightcapMode;
+
+	size_t timeWithoutFlag;
 };
 
 struct SurviveViveData {
@@ -605,7 +611,7 @@ int survive_usb_init(SurviveViveData *sv) {
 			struct SurviveUSBInfo *usbInfo = &sv->udev[sv->udev_cnt++];
 			usbInfo->handle = 0;
 			usbInfo->device_info = info;
-
+			usbInfo->viveData = sv;
 			ret = survive_open_usb_device(sv, d, usbInfo);
 
 			if (ret) {
@@ -634,7 +640,7 @@ int survive_usb_init(SurviveViveData *sv) {
 			codename[2] += (*cnt);
 			*cnt = *cnt + 1;
 
-			SurviveObject *so = survive_create_device(ctx, "HTC", sv, codename, 0);
+			SurviveObject *so = survive_create_device(ctx, "HTC", usbInfo, codename, 0);
 			survive_add_object(ctx, so);
 			usbInfo->so = so;
 
@@ -706,7 +712,7 @@ int survive_vive_send_magic(SurviveContext *ctx, void *drv, int magic_code, void
 
 int survive_vive_send_haptic(SurviveObject *so, uint8_t reserved, uint16_t pulseHigh, uint16_t pulseLow,
 							 uint16_t repeatCount) {
-	SurviveViveData *sv = (SurviveViveData *)so->driver;
+	SurviveViveData *sv = ((struct SurviveUSBInfo *)so->driver)->viveData;
 	SurviveContext *ctx = so->ctx;
 
 	if (NULL == sv) {
@@ -908,6 +914,8 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 		return -1;
 	}
 
+	OGUSleep(100000);
+
 	// Now do a bunch of Report 17 until there are no bytes left
 	cfgbuff[0] = 0x11;
 	cfgbuff[1] = 0xaa;
@@ -933,7 +941,6 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 			SV_INFO("Configuration length too long %s:%d (count: %d)", usbInfo->so->codename, iface, count);
 			return -4;
 		}
-
 		memcpy(&compressed_data[count], cfgbuff + 2, size);
 		count += size;
 	} while (1);
@@ -1164,6 +1171,15 @@ static char *packetToHex(uint8_t *packet, uint8_t *packetEnd) {
 	return hexstr;
 }
 
+char bin[9] = {};
+static char *byteToBin(uint8_t b) {
+	for (int i = 0; i < 8; i++) {
+		bin[i] = ((b >> (7 - i)) & 1) ? '1' : '0';
+	}
+	bin[8] = 0;
+	return bin;
+}
+
 struct sensorData {
 	uint8_t sensorId;
 	uint8_t edgeCount;
@@ -1174,6 +1190,12 @@ static ssize_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPt
 	uint8_t *payloadPtr = *readPtr;
 	SurviveContext *ctx = w->ctx;
 	uint32_t reference_time = w->activations.last_imu;
+
+	bool isGen2 = 0; // w->ctx->lh_version == 1;
+
+	if (payloadEndPtr - payloadPtr <= 3) {
+		return 0;
+	}
 
 	// DEBUG
 	if ((*payloadPtr & 0xE0) == 0xE0) {
@@ -1329,33 +1351,57 @@ static ssize_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPt
 	}
 
 	times[0] = lastEventTime;
-	SV_VERBOSE(200, "Packet Start Time: %u", lastEventTime);
+	SV_VERBOSE(200, "Packet Start Time: %u (0x%x) Payload: %s", lastEventTime, lastEventTime,
+			   packetToHex(payloadPtr, payloadEndPtr));
 
-	while (idsPtr < eventPtr) {
-		// There are two time deltas per 'event'
-		if (timeIndex % 2 == 0) {
-			sensors[timeIndex >> 1].sensorId = ((*idsPtr) >> 3) & 0x1F;
-			sensors[timeIndex >> 1].edgeCount = (*idsPtr) & 0x7;
-			idsPtr++;
-		}
-
+	while (idsPtr + (timeIndex >> 1u) < eventPtr) {
 		// Obtain the timing to the previous event
 		// Variable length encoding [if bit 8 is 0, continue into next byte]
 		uint32_t timeDelta = 0;
+		uint8_t *eventPtrStart = eventPtr;
 		while (true) {
 			timeDelta <<= 7;
 			timeDelta |= (*eventPtr & 0x7F);
 			if (((*(eventPtr--)) & 0x80) == 0x80)
 				break;
-			if (idsPtr > eventPtr) {
-				return -1;
+			if (idsPtr + (timeIndex >> 1u) > eventPtr) {
+				eventPtr = eventPtrStart;
+				goto exit_while;
 			}
 		}
 		lastEventTime -= timeDelta;
-
+		if (timeIndex >= 16) {
+			return -8;
+		}
 		// Store the event time
 		times[++timeIndex] = lastEventTime;
-		SV_VERBOSE(200, "Time: [%zd] %u (%u)", timeIndex, lastEventTime, timeDelta);
+		SV_VERBOSE(200, "Time: [%zd] %u (%u) %s", timeIndex, lastEventTime, timeDelta,
+				   packetToHex(eventPtr + 1, eventPtrStart + 1));
+	}
+
+exit_while:
+	if (timeIndex % 2 == 0 && timeIndex > 0) {
+		timeIndex--;
+		do {
+			eventPtr++;
+		} while ((*eventPtr & 0x80) == 0);
+	}
+	assert(timeIndex % 2 == 1);
+
+	size_t sensor_byte_cnt = eventPtr - idsPtr + 1;
+	if (sensor_byte_cnt > ((timeIndex >> 1) + 1)) {
+		isGen2 = true;
+		//	    SV_VERBOSE(100, "Likely gen2 data; %x %d %d %d", *idsPtr, sensor_byte_cnt, (timeIndex >> 1), idsPtr -
+		//(eventPtr - (timeIndex >> 1)));
+		idsPtr = eventPtr - (timeIndex >> 1);
+	}
+
+	// There are two time deltas per 'event'
+	for (int i = 0; i < (timeIndex >> 1) + 1; i++) {
+		sensors[i].sensorId = ((*idsPtr) >> 3) & 0x1F;
+		sensors[i].edgeCount = (*idsPtr) & 0x7;
+		SV_VERBOSE(200, "Sensor: %2d Edge: %d (%02x)", sensors[i].sensorId, sensors[i].edgeCount, (*idsPtr));
+		idsPtr++;
 	}
 
 	// Step 2 - Convert events to pulses
@@ -1408,7 +1454,10 @@ static ssize_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPt
 	for (int i = 0; (i < maxTimeIndex) && output_cnt > 0; i++) {
 		if ((orderedIndex = reportOrder[i]) != 0) {
 			LightcapElement *ol = &les[orderedIndex - 1];
-			assert(ol->length != 0 || ol->timestamp != 0);
+
+			if (!(ol->length != 0 || ol->timestamp != 0)) {
+				return -6;
+			}
 
 			*(output++) = *ol;
 			output_cnt--;
@@ -1416,6 +1465,7 @@ static ssize_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPt
 					   ol->timestamp + ol->length, ol->length);
 		}
 	}
+
 	return eventCount;
 }
 
@@ -1435,6 +1485,8 @@ static void read_imu_data(SurviveObject *w, uint16_t time, uint8_t **readPtr, ui
 
 	FLT agm[9] = {aX, aY, aZ, rX, rY, rZ};
 
+	SV_VERBOSE(200, "IMU: %d " Point3_format " " Point3_format " From: %s", timeLSB, LINMATH_VEC3_EXPAND(agm),
+			   LINMATH_VEC3_EXPAND(agm + 3), packetToHex(*readPtr, payloadPtr));
 	w->ctx->raw_imuproc(w, 3, agm, ((uint32_t)time << 16) | (timeLSB << 8), 0);
 
 	*readPtr = payloadPtr;
@@ -1480,7 +1532,6 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 
 	bool flagInput = HAS_FLAG(flags, 0x10);
 	bool flagIMU = HAS_FLAG(flags, 0x08);
-
 	if (flagInput) {
 		/*
 		 * Flags for input events are as follows:
@@ -1537,6 +1588,9 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 				/*SV_INFO("GRIP 0x%02hX [Time:%04hX] [Payload: %s] <<ABORT FURTHER READ>>",
 				 *(payloadPtr-1), time, packetToHex(payloadPtr, payloadEndPtr));*/
 
+				SV_WARN("GenTwo knuckles? 0x%02hX 0b%s [Time:%04hX] [Payload: %s] <<ABORT FURTHER READ>>",
+						*(payloadPtr - 1), byteToBin(*(payloadPtr - 1)), time, packetToHex(payloadPtr, payloadEndPtr));
+
 				// Resistive contact sensors in buttons?
 				uint8_t touchFlags = POP_BYTE(payloadPtr);
 				// 0x01 = Trigger
@@ -1568,8 +1622,8 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 						HAS_FLAG(touchFlags, 0x40) ? "#" : "_", touchFlags, gripForce, trackpadForce);
 #endif
 			} else {
-				SV_WARN("Unknown gen two event 0x%02hX [Time:%04hX] [Payload: %s] <<ABORT FURTHER READ>>",
-						*(payloadPtr - 1), time, packetToHex(payloadPtr, payloadEndPtr));
+				SV_WARN("Unknown gen two event 0x%02hX 0b%s [Time:%04hX] [Payload: %s] <<ABORT FURTHER READ>>",
+						*(payloadPtr - 1), byteToBin(*(payloadPtr - 1)), time, packetToHex(payloadPtr, payloadEndPtr));
 				// Since we don't know how much data this should consume, proceeding to IMU/Light decode is likely
 				// to choke.
 				return false;
@@ -1596,6 +1650,7 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 					time, packetToHex(payloadPtr, payloadEndPtr));
 			// Since we don't know how much data this should consume, proceeding to IMU/Light decode is likely
 			// to choke.
+			*readPtr = payloadPtr;
 			return false;
 		}
 
@@ -1610,9 +1665,9 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 					(charging ? "CHARGING" : "ON BATTERY"));
 #endif
 			// Maybe read another event, IMU data or Light Data
-			read_event(w, time, &payloadPtr, payloadEndPtr);
-
-			UPDATE_PTR_AND_RETURN
+			bool rtn = read_event(w, time, &payloadPtr, payloadEndPtr);
+			*readPtr = payloadPtr;
+			return rtn;
 		}
 	}
 
@@ -1621,6 +1676,238 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 		read_imu_data(w, time, &payloadPtr, payloadEndPtr);
 
 	UPDATE_PTR_AND_RETURN
+}
+static void attempt_lh_detection(SurviveObject *w, uint8_t *payloadPtr, uint8_t *payloadEndPtr) {
+	// Could potentially be from gen1 or gen2 with additional events. We want to wait for a lightcap
+	// only packet.
+	if ((*payloadPtr & 0xE0) != 0) {
+		return;
+	}
+
+	SurviveContext *ctx = w->ctx;
+	uint8_t *idsPtr = payloadPtr;
+	uint8_t *eventPtr = payloadEndPtr;
+
+	// Last three bytes of light data are the LSB of the time of the last event
+	eventPtr -= 4;
+	size_t timeIndex = 0;
+
+	while (idsPtr + (timeIndex >> 1u) < eventPtr) {
+		// Obtain the timing to the previous event
+		// Variable length encoding [if bit 8 is 0, continue into next byte]
+		uint8_t *eventPtrStart = eventPtr;
+		while (true) {
+			if (((*(eventPtr--)) & 0x80u) == 0x80u)
+				break;
+			if (idsPtr + (timeIndex >> 1u) > eventPtr) {
+				eventPtr = eventPtrStart;
+				goto exit_while;
+			}
+		}
+		if (timeIndex >= 16) {
+			return;
+		}
+		timeIndex++;
+	}
+
+exit_while:
+	if (timeIndex % 2 == 0 && timeIndex > 0) {
+		timeIndex--;
+		do {
+			eventPtr++;
+		} while ((*eventPtr & 0x80u) == 0);
+	}
+	assert(timeIndex % 2 == 1);
+
+	size_t sensor_byte_cnt = eventPtr - idsPtr + 1;
+	if (sensor_byte_cnt > ((timeIndex >> 1) + 1)) {
+		survive_notify_gen2(w, "Header byte in lightcap packet");
+	} else {
+		survive_notify_gen1(w, "No extra byte in lightcap packet");
+	}
+}
+
+static void parse_and_process_lightcap(SurviveObject *w, uint16_t time, uint8_t *payloadPtr, uint8_t *payloadEndPtr) {
+	LightcapElement les[10] = {0};
+	uint8_t *payloadPtrStart = payloadPtr;
+	ssize_t cnt = read_light_data(w, time, &payloadPtr, payloadEndPtr, les, 10);
+	SurviveContext *ctx = w->ctx;
+#ifndef NDEBUG
+	for (int i = (int)cnt - 1; i >= 0; i--) {
+		uint8_t sensor = survive_map_sensor_id(w, les[i].sensor_id);
+		if (sensor == 255) {
+			cnt = -255;
+			break;
+		}
+	}
+#endif
+
+	if (cnt < 0) {
+		SV_WARN("Read light data error %d   [Time:%04hX] [Payload: %s]", (int)cnt, time,
+				packetToHex(payloadPtr, payloadEndPtr));
+		SV_WARN("Full payload: %s", packetToHex(payloadPtrStart, payloadEndPtr));
+	} else {
+
+#ifdef VERIFY_LIGHTCAP
+		LightcapElement les_old[10] = {0};
+		int les_old_cnt = parse_watchman_lightcap(w->ctx, w->codename, time >> 8, w->activations.last_imu, payloadPtr,
+												  payloadEndPtr - payloadPtr, les, 10);
+
+		assert(cnt == les_old_cnt);
+#endif
+		for (int i = (int)cnt - 1; i >= 0; i--) {
+#ifdef DEBUG_WATCHMAN
+			printf("%d: %u [%u]\n", les[i].sensor_id, les[i].length, les[i].timestamp);
+#endif
+#ifdef VERIFY_LIGHTCAP
+			assert(memcmp(&les[i], &les_old[i], sizeof(LightcapElement)) == 0);
+#endif
+			handle_lightcap(w, &les[i]);
+		}
+	}
+}
+
+static void parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, uint8_t *packet, uint8_t length) {
+	uint8_t idx = 0;
+	uint8_t channel = -1;
+	SurviveContext *ctx = obj->ctx;
+	bool dump_binary = false;
+	while (idx < length) {
+		uint8_t data = packet[idx];
+
+		if (data & 0x1u) {
+			// Since they flag for this; I assume multiples can appear in a single packet. Need to plug in
+			// second LH to find out...
+
+			if ((data & 0x0Au) != 0) {
+				// Currently I've only ever seen 0x1 if the 1 bit is set; I doubt they left 3 bits on the table
+				// though....
+				fprintf(stderr, "Not entirely sure what this data is; errors may occur (%d, 0x%02x)\n", idx, data);
+				dump_binary = true;
+			}
+
+			// encodes like so: 0bcccc ?F?C
+			bool hasConflict = data & 0x04u;
+			if (hasConflict) {
+				uint8_t conflicted_channel = data >> 4u;
+				SV_WARN("Two or more lighthouses are on channel %d; tracking is most likely going to fail.",
+						conflicted_channel);
+			} else {
+				channel = data >> 4u;
+			}
+
+			idx++;
+		} else {
+			uint32_t timecode = 0;
+			memcpy(&timecode, packet + idx, sizeof(uint32_t));
+
+			uint32_t reference_time = (obj->activations.last_imu);
+
+			bool sync = timecode & 0x2u;
+			if (!sync) {
+				//                          O                               SC
+				//                         GO                               YH
+				//                         ET                               NA
+				//                    [??] NX[    24 bit time @ 48mhz      ]CN
+				// encodes like so: 0bXXXX ABTTT TTTT TTTT TTTT TTTT TTTT TTSC
+				bool ootx = (timecode >> 26u) & 1u;
+				bool g = (timecode >> 27u) & 1u;
+				timecode = fix_time24((timecode >> 2u) & 0xFFFFFFu, reference_time);
+				uint8_t unused = timecode >> 28;
+				if (unused && dump_binary) {
+					SV_WARN("Not sure what this is: %x", unused);
+				}
+				SV_VERBOSE(100, "Sync %02d %d %8d", channel, ootx, timecode);
+				obj->ctx->syncproc(obj, channel, timecode, ootx, g);
+			} else {
+				//                                                         SC
+				//                                                         YH
+				//                                                         NA
+				//                    [SNSR][    25 bit time @ 96mhz      ]CN
+				// encodes like so: 0bSSSS STTT TTTT TTTT TTTT TTTT TTTT TFSC
+
+				// Since nothing in libsurvive thinks anything is 96mhz; pass in a flag
+				bool half_clock_flag = timecode & 0x4u;
+				uint8_t sensor = (timecode >> 27u);
+				timecode = fix_time24((timecode >> 3u) & 0xFFFFFFu, reference_time);
+				SV_VERBOSE(100, "Sweep %02d.%02d %8d", channel, sensor, timecode);
+				obj->ctx->sweepproc(obj, channel, survive_map_sensor_id(obj, sensor), timecode, half_clock_flag);
+			}
+
+			idx += 4;
+		}
+	}
+
+	if (dump_binary) {
+		for (int i = 0; i < length; i++) {
+			if ((i + 2) % 4 == 0)
+				ctx->printfproc(ctx, "  ");
+			ctx->printfproc(ctx, "%02x ", packet[i]);
+		}
+
+		ctx->printfproc(ctx, "\n");
+	}
+}
+
+static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payloadPtr, uint8_t *payloadEndPtr) {
+	struct SurviveContext *ctx = w->ctx;
+
+	uint8_t flags = POP_BYTE(payloadPtr);
+
+	bool flagIMU = HAS_FLAG(flags, 0x80);
+	bool flagLightcap = HAS_FLAG(flags, 0x10);
+	bool flagUnknown2 = HAS_FLAG(flags, 0x01);
+	bool flagUnknown = HAS_FLAG(flags, 0x40);
+
+	if (HAS_FLAG(flags, ~0xD1)) {
+		SV_VERBOSE(100, "Unknown flag %02x", flags);
+	}
+
+	if (flagIMU)
+		read_imu_data(w, time, &payloadPtr, payloadEndPtr);
+
+	if (flagUnknown) {
+		uint8_t unknownByte1 = POP_BYTE(payloadPtr);
+		uint8_t unknownByte2 = POP_BYTE(payloadPtr);
+		SV_VERBOSE(100, "Unknown byte %02x %02x", unknownByte1, unknownByte2);
+	}
+
+	struct SurviveUSBInfo *driverInfo = w->driver;
+
+	if (driverInfo->timeWithoutFlag == 0) {
+		driverInfo->timeWithoutFlag = 1;
+
+		if (driverInfo->handle) {
+			SV_INFO("Sending RF magic...");
+			int r = update_feature_report_async(driverInfo->handle, 0, vive_magic_rf_raw_mode_1,
+												sizeof(vive_magic_rf_raw_mode_1));
+			if (r != sizeof(vive_magic_rf_raw_mode_1)) {
+				SV_WARN("Could not send raw mode to %s (%d)", w->codename, r);
+			}
+		} else {
+			static bool transfer_null_warning = false;
+			if (!transfer_null_warning) {
+				SV_WARN("Can't update the usb device %s out of raw 0 mode; dumping data", w->codename);
+				transfer_null_warning = true;
+			}
+		}
+	}
+
+	if (flagUnknown2) {
+		SV_VERBOSE(100, "Unknown flag 0x1 set");
+		driverInfo->timeWithoutFlag = 1;
+	} else if (driverInfo->lightcapMode == LightcapMode_raw0) {
+		if (driverInfo->timeWithoutFlag++ > 20) {
+			driverInfo->lightcapMode = LightcapMode_raw1;
+		}
+	}
+
+	if (flagLightcap)
+		if (driverInfo->lightcapMode == LightcapMode_raw0) {
+			// parse_and_process_lightcap(w, time, payloadPtr, payloadEndPtr);
+		} else {
+			parse_and_process_raw1_lightcap(w, time, payloadPtr, payloadEndPtr - payloadPtr);
+		}
 }
 
 static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
@@ -1672,38 +1959,27 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 	uint8_t *payloadPtr = &readdata[3];
 	uint8_t *payloadEndPtr = payloadPtr + payloadSize;
 
-	// Read any non-light events that may be in the packet
-	if (!read_event(w, time, &payloadPtr, payloadEndPtr))
+	SV_VERBOSE(200, "Watchman: %s", packetToHex(payloadPtr, payloadEndPtr));
+
+	if (w->ctx->lh_version == 1) {
+		handle_watchman_v2(w, time, payloadPtr, payloadEndPtr);
 		return;
+	}
+
+	if (w->ctx->lh_version == -1) {
+		attempt_lh_detection(w, payloadPtr, payloadEndPtr);
+		return;
+	}
+
+	// Read any non-light events that may be in the packet
+	if (!read_event(w, time, &payloadPtr, payloadEndPtr)) {
+		SV_WARN("Read event failed; full payload: %s", packetToHex(&readdata[3], payloadEndPtr));
+		return;
+	}
 
 	// Any remaining data after events (if any) have been read off is light data
 	if (payloadPtr < payloadEndPtr) {
-		LightcapElement les[10] = {0};
-		ssize_t cnt = read_light_data(w, time, &payloadPtr, payloadEndPtr, les, 10);
-
-		if (cnt < 0) {
-			SV_WARN("Read light data error %d   [Time:%04hX] [Payload: %s]", (int)cnt, time,
-					packetToHex(payloadPtr, payloadEndPtr));
-
-		} else {
-
-#ifdef VERIFY_LIGHTCAP
-			LightcapElement les_old[10] = {0};
-			int les_old_cnt = parse_watchman_lightcap(w->ctx, w->codename, time >> 8, w->activations.last_imu,
-													  payloadPtr, payloadEndPtr - payloadPtr, les, 10);
-
-			assert(cnt == les_old_cnt);
-#endif
-			for (int i = (int)cnt - 1; i >= 0; i--) {
-#ifdef DEBUG_WATCHMAN
-				printf("%d: %u [%u]\n", les[i].sensor_id, les[i].length, les[i].timestamp);
-#endif
-#ifdef VERIFY_LIGHTCAP
-				assert(memcmp(&les[i], &les_old[i], sizeof(LightcapElement)) == 0);
-#endif
-				handle_lightcap(w, &les[i]);
-			}
-		}
+		parse_and_process_lightcap(w, time, payloadPtr, payloadEndPtr);
 	}
 }
 
@@ -1905,6 +2181,11 @@ void survive_data_cb(SurviveUSBInterface *si) {
 	int iface = si->which_interface_am_i;
 	SurviveObject *obj = si->assoc_obj;
 	uint8_t *readdata = si->buffer;
+
+	if (!obj->driver) {
+		struct SurviveUSBInfo *d = obj->driver = calloc(1, sizeof(struct SurviveUSBInfo));
+		d->so = obj;
+	}
 
 	if (iface == USB_IF_HMD_HEADSET_INFO && obj == 0)
 		return;
@@ -2115,6 +2396,8 @@ void survive_data_cb(SurviveUSBInterface *si) {
 
 			uint8_t *packet = readdata + 1;
 			uint8_t length = readdata[0];
+
+			parse_and_process_raw1_lightcap(obj, 0, packet, length);
 			uint8_t idx = 0;
 			uint8_t channel = -1;
 			while (idx < length) {
