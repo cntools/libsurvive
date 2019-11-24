@@ -20,6 +20,7 @@ add_test(NAME lh2_test_cal COMMAND $<TARGET_FILE:test_replays>     ${CMAKE_CURRE
 if(PCAP_LIBRARY)
 	add_test(NAME lh2_test_cal_usb COMMAND $<TARGET_FILE:test_replays> ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/lh2_test_cal.pcap.gz)
 	add_test(NAME wm1_wand_test_cal_usb COMMAND $<TARGET_FILE:test_replays> ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/WM1-wand.pcap.gz)
+	add_test(NAME wireless_tracker_test_cal_usb COMMAND $<TARGET_FILE:test_replays> ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/wireless-tracker.pcap.gz)
 endif()
 
 include(ExternalProject)

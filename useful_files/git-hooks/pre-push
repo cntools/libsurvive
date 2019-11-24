@@ -4,5 +4,5 @@ ROOT=`git rev-parse --show-toplevel`
 cd $ROOT
 mkdir -p bin
 cd bin
-cmake -DENABLE_TESTS ..
+cmake -DENABLE_TESTS=ON ..
 make run_all_tests

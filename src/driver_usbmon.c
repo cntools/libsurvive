@@ -184,8 +184,13 @@ static void ingest_config_request(vive_device_inst_t *dev, const struct _usb_hea
 	uint16_t cnt = pktData[1];
 
 	if (cnt) {
-		memcpy(&dev->compressed_data[dev->compressed_data_idx], pktData + 2, cnt);
-		dev->compressed_data_idx += cnt;
+		// Some (Tracker at least?) devices send a uint64_t before data; not sure what it means but skip it for now.
+		if (dev->compressed_data_idx == 0 && cnt >= 2 && pktData[2] != 0x78) {
+
+		} else {
+			memcpy(&dev->compressed_data[dev->compressed_data_idx], pktData + 2, cnt);
+			dev->compressed_data_idx += cnt;
+		}
 	} else {
 		char *uncompressed_data = SV_MALLOC(65536);
 		SurviveContext *ctx = dev->so->ctx;

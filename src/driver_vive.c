@@ -939,6 +939,11 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 			return -4;
 		}
 
+		// Some (Tracker at least?) devices send a uint64_t before data; not sure what it means but skip it for now.
+		if (count == 0 && size >= 2 && cfgbuff[2] != 0x78) {
+			continue;
+		}
+
 		memcpy(&compressed_data[count], cfgbuff + 2, size);
 		count += size;
 	} while (1);
