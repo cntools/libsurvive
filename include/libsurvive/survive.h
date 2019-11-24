@@ -491,12 +491,14 @@ static inline void survive_notify_gen2(struct SurviveObject *so, const char *msg
 	}
 }
 
-static inline void survive_notify_gen1(struct SurviveObject *so) {
+static inline void survive_notify_gen1(struct SurviveObject *so, const char *msg) {
 	if (so->ctx->lh_version_forced != -1 && so->ctx->lh_version_forced != 0) {
 		return;
 	}
 
 	if (so->ctx->lh_version != 0) {
+		struct SurviveContext *ctx = so->ctx;
+		SV_VERBOSE(100, "Gen1 reason: %s %s", so->codename, msg);
 		so->ctx->gen_detectedproc(so, 0);
 	}
 }

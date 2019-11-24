@@ -34,7 +34,7 @@ void handle_lightcap(SurviveObject *so, const LightcapElement *_le) {
 			// on a gen2 system
 			static int lightcap_rcv_cnt = 0;
 			if (lightcap_rcv_cnt++ > 30) {
-				survive_notify_gen1(so);
+				survive_notify_gen1(so, "OOTX pulses detected");
 			}
 		}
 

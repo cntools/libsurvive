@@ -19,7 +19,7 @@ void survive_ootx_behavior(SurviveObject *so, int8_t bsd_idx, int8_t lh_version,
 
 void survive_default_light_process( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length, uint32_t lh)
 {
-	survive_notify_gen1(so);
+	survive_notify_gen1(so, "Lightcap called");
 
 	SurviveContext * ctx = so->ctx;
 	int base_station = lh;
@@ -81,7 +81,7 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 
 void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh)
 {
-	survive_notify_gen1(so);
+	survive_notify_gen1(so, "Default angle called");
 	SurviveContext *ctx = so->ctx;
 
 	PoserDataLightGen1 l = {
@@ -114,7 +114,9 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 	}
 }
 
-void survive_default_lightcap_process(SurviveObject *so, const LightcapElement *le) { survive_notify_gen1(so); }
+void survive_default_lightcap_process(SurviveObject *so, const LightcapElement *le) {
+	survive_notify_gen1(so, "Lightcap called");
+}
 
 void survive_default_button_process(SurviveObject * so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val)
 {
