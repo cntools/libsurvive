@@ -85,13 +85,14 @@ typedef struct
 	//Stuff
 
 #define OLD_ANGLES_BUFF_LEN 3
-	FLT oldAngles[SENSORS_PER_OBJECT][2][NUM_LIGHTHOUSES][OLD_ANGLES_BUFF_LEN]; // sensor, sweep axis, lighthouse, instance
-	int angleIndex[NUM_LIGHTHOUSES][2]; // index into circular buffer ahead. separate index for each axis.
-	int lastAxis[NUM_LIGHTHOUSES];
+	FLT oldAngles[SENSORS_PER_OBJECT][2][NUM_GEN1_LIGHTHOUSES]
+				 [OLD_ANGLES_BUFF_LEN];		 // sensor, sweep axis, lighthouse, instance
+	int angleIndex[NUM_GEN1_LIGHTHOUSES][2]; // index into circular buffer ahead. separate index for each axis.
+	int lastAxis[NUM_GEN1_LIGHTHOUSES];
 
-	Point lastLhPos[NUM_LIGHTHOUSES];
-//	FLT lastLhRotAxisAngle[NUM_LIGHTHOUSES][4];
-	FLT lastLhRotQuat[NUM_LIGHTHOUSES][4];
+	Point lastLhPos[NUM_GEN1_LIGHTHOUSES];
+	//	FLT lastLhRotAxisAngle[NUM_GEN1_LIGHTHOUSES][4];
+	FLT lastLhRotQuat[NUM_GEN1_LIGHTHOUSES][4];
 } ToriData;
 
 
@@ -1449,7 +1450,7 @@ static Point SolveForLighthouse(FLT posOut[3], FLT quatOut[4], TrackedObject *ob
 		FLT negZ[3] = {0, 0, 1};
 		quatfrom2vectors(assumedObj.Rot, toriData->down, negZ);
 
-		PoserData_lighthouse_pose_func(pd, so, lh, additionalTx, &lighthousePose, &assumedObj);
+		PoserData_lighthouse_pose_func(pd, so, lh, &lighthousePose, &assumedObj);
 	}
 
 
@@ -1689,22 +1690,20 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 	}
 	case POSERDATA_LIGHT:
 	{
-		PoserDataLight * l = (PoserDataLight*)poserData;
+		PoserDataLightGen1 *l = (PoserDataLightGen1 *)poserData;
 
-		if (l->lh >= NUM_LIGHTHOUSES || l->lh < 0)
-		{
+		if (l->common.lh >= NUM_GEN1_LIGHTHOUSES || l->common.lh < 0) {
 			// should never happen.  Famous last words...
 			break;
 		}
 		int axis = l->acode & 0x1;
-		//printf( "LIG:%s %d @ %f rad, %f s (AC %d) (TC %d)\n", so->codename, l->sensor_id, l->angle, l->length, l->acode, l->timecode );
+		// printf( "LIG:%s %d @ %f rad, %f s (AC %d) (TC %d)\n", so->codename, l->sensor_id, l->angle, l->length,
+		// l->common.acode, l->timecode );
 
 		SurvivePose additionalTx;
-		if ((td->lastAxis[l->lh] != (l->acode & 0x1)) )
-		{
+		if ((td->lastAxis[l->common.lh] != (l->acode & 0x1))) {
 
-
-			if (0 == l->lh && axis) // only once per full cycle...
+			if (0 == l->common.lh && axis) // only once per full cycle...
 			{
 				static unsigned int counter = 1;
 
@@ -1714,7 +1713,7 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 				if (counter % 4 == 0)
 					QuickPose(so, poserData, &additionalTx, 0);
 			}
-			if (1 == l->lh && axis) // only once per full cycle...
+			if (1 == l->common.lh && axis) // only once per full cycle...
 			{
 				static unsigned int counter = 1;
 
@@ -1725,19 +1724,19 @@ int PoserTurveyTori( SurviveObject * so, PoserData * poserData )
 					QuickPose(so, poserData, &additionalTx, 1);
 			}
 			// axis changed, time to increment the circular buffer index.
-			td->angleIndex[l->lh][axis]++;
-			td->angleIndex[l->lh][axis] = td->angleIndex[l->lh][axis] % OLD_ANGLES_BUFF_LEN;
+			td->angleIndex[l->common.lh][axis]++;
+			td->angleIndex[l->common.lh][axis] = td->angleIndex[l->common.lh][axis] % OLD_ANGLES_BUFF_LEN;
 
 			// and clear out the data.
 			for (int i=0; i < SENSORS_PER_OBJECT; i++)
 			{
-				td->oldAngles[i][axis][l->lh][td->angleIndex[l->lh][axis]] = 0;
+				td->oldAngles[i][axis][l->common.lh][td->angleIndex[l->common.lh][axis]] = 0;
 			}
 
-			td->lastAxis[l->lh] = axis;
+			td->lastAxis[l->common.lh] = axis;
 		}
 
-		td->oldAngles[l->sensor_id][axis][l->lh][td->angleIndex[l->lh][axis]] = l->angle;
+		td->oldAngles[l->common.sensor_id][axis][l->common.lh][td->angleIndex[l->common.lh][axis]] = l->common.angle;
 		break;
 	}
 	case POSERDATA_FULL_SCENE:

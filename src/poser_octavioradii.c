@@ -5,11 +5,12 @@
 typedef struct
 {
 #define OLD_ANGLES_BUFF_LEN 3
-	FLT oldAngles[SENSORS_PER_OBJECT][2][NUM_LIGHTHOUSES][OLD_ANGLES_BUFF_LEN]; // sensor, sweep axis, lighthouse, instance
-	int angleIndex[NUM_LIGHTHOUSES][2]; // index into circular buffer ahead. separate index for each axis.
-	int lastAxis[NUM_LIGHTHOUSES];
+	FLT oldAngles[SENSORS_PER_OBJECT][2][NUM_GEN1_LIGHTHOUSES]
+				 [OLD_ANGLES_BUFF_LEN];		 // sensor, sweep axis, lighthouse, instance
+	int angleIndex[NUM_GEN1_LIGHTHOUSES][2]; // index into circular buffer ahead. separate index for each axis.
+	int lastAxis[NUM_GEN1_LIGHTHOUSES];
 
-	int hitCount[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];
+	int hitCount[SENSORS_PER_OBJECT][NUM_GEN1_LIGHTHOUSES][2];
 } OctavioRadiiData;
 
 #include <stdio.h>
@@ -558,10 +559,9 @@ int PoserOctavioRadii( SurviveObject * so, PoserData * pd )
 	}
 	case POSERDATA_LIGHT:
 	{
-		PoserDataLight * l = (PoserDataLight*)pd;
+		PoserDataLightGen1 *l = (PoserDataLightGen1 *)pd;
 
-		if (l->lh >= NUM_LIGHTHOUSES || l->lh < 0)
-		{
+		if (l->common.lh >= NUM_GEN1_LIGHTHOUSES || l->common.lh < 0) {
 			// should never happen.  Famous last words...
 			break;
 		}
@@ -571,38 +571,36 @@ int PoserOctavioRadii( SurviveObject * so, PoserData * pd )
 
 
 		//printf( "LIG:%s %d @ %f rad, %f s (AC %d) (TC %d)\n", so->codename, l->sensor_id, l->angle, l->length, l->acode, l->timecode );
-		if ((dd->lastAxis[l->lh] != (l->acode & 0x1)) )
-		{
-			int lastAxis = dd->lastAxis[l->lh];
-	//printf("\n");
-			//if (0 == l->lh)
-			//	printf("or[%d,%d] ", l->lh,lastAxis);
+		if ((dd->lastAxis[l->common.lh] != (l->acode & 0x1))) {
+			int lastAxis = dd->lastAxis[l->common.lh];
+			// printf("\n");
+			// if (0 == l->common.lh)
+			//	printf("or[%d,%d] ", l->common.lh,lastAxis);
 
 			for (int i=0; i < SENSORS_PER_OBJECT; i++)
 			{
-	//FLT oldAngles[SENSORS_PER_OBJECT][2][NUM_LIGHTHOUSES][OLD_ANGLES_BUFF_LEN]; // sensor, sweep axis, lighthouse, instance
-				int index = dd->angleIndex[l->lh][axis];
-				if (dd->oldAngles[i][axis][l->lh][dd->angleIndex[l->lh][axis]] != 0)
-				{
-					//if (0 == l->lh)
+				// FLT oldAngles[SENSORS_PER_OBJECT][2][NUM_GEN1_LIGHTHOUSES][OLD_ANGLES_BUFF_LEN]; // sensor, sweep
+				// axis, lighthouse, instance
+				int index = dd->angleIndex[l->common.lh][axis];
+				if (dd->oldAngles[i][axis][l->common.lh][dd->angleIndex[l->common.lh][axis]] != 0) {
+					// if (0 == l->common.lh)
 					//	printf("%d ", i);
 
-					dd->hitCount[i][l->lh][axis]++;
+					dd->hitCount[i][l->common.lh][axis]++;
 				}
 				else
 				{
-					dd->hitCount[i][l->lh][axis] = (int)((double)dd->hitCount[i][l->lh][axis] * 0.5);
+					dd->hitCount[i][l->common.lh][axis] = (int)((double)dd->hitCount[i][l->common.lh][axis] * 0.5);
 				}
 			}
-			//if (0 == l->lh)
+			// if (0 == l->common.lh)
 			//	printf("\n");
-			//int foo = l->acode & 0x1;
-			//printf("%d", foo);
-
+			// int foo = l->acode & 0x1;
+			// printf("%d", foo);
 
 			//if (axis)
 			{
-				if (0 == l->lh && axis) // only once per full cycle...
+				if (0 == l->common.lh && axis) // only once per full cycle...
 				{
 					static unsigned int counter = 1;
 
@@ -614,25 +612,25 @@ int PoserOctavioRadii( SurviveObject * so, PoserData * pd )
 				}
 				// axis changed, time to increment the circular buffer index.
 
-
-				dd->angleIndex[l->lh][axis]++;
-				dd->angleIndex[l->lh][axis] = dd->angleIndex[l->lh][axis] % OLD_ANGLES_BUFF_LEN;
+				dd->angleIndex[l->common.lh][axis]++;
+				dd->angleIndex[l->common.lh][axis] = dd->angleIndex[l->common.lh][axis] % OLD_ANGLES_BUFF_LEN;
 
 				// and clear out the data.
 				for (int i=0; i < SENSORS_PER_OBJECT; i++)
 				{
-					dd->oldAngles[i][axis][l->lh][dd->angleIndex[l->lh][axis]] = 0;
+					dd->oldAngles[i][axis][l->common.lh][dd->angleIndex[l->common.lh][axis]] = 0;
 				}
 
 			}
-			dd->lastAxis[l->lh] = axis;
+			dd->lastAxis[l->common.lh] = axis;
 		}
 
-		//if (0 == l->lh)
+		// if (0 == l->common.lh)
 		//	printf("(%d) ", l->sensor_id);
 
-	//FLT oldAngles[SENSORS_PER_OBJECT][2][NUM_LIGHTHOUSES][OLD_ANGLES_BUFF_LEN]; // sensor, sweep axis, lighthouse, instance
-		dd->oldAngles[l->sensor_id][axis][l->lh][dd->angleIndex[l->lh][axis]] = l->angle;
+		// FLT oldAngles[SENSORS_PER_OBJECT][2][NUM_GEN1_LIGHTHOUSES][OLD_ANGLES_BUFF_LEN]; // sensor, sweep axis,
+		// lighthouse, instance
+		dd->oldAngles[l->common.sensor_id][axis][l->common.lh][dd->angleIndex[l->common.lh][axis]] = l->common.angle;
 		break;	}
 	case POSERDATA_FULL_SCENE:
 	{
@@ -642,9 +640,9 @@ int PoserOctavioRadii( SurviveObject * so, PoserData * pd )
 
 		to = malloc(sizeof(TrackedObject) + (SENSORS_PER_OBJECT * sizeof(TrackedSensor)));
 
-		//FLT  lengths[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];
-		//FLT  angles[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES][2];  //2 Axes  (Angles in LH space)
-		//FLT  synctimes[SENSORS_PER_OBJECT][NUM_LIGHTHOUSES];
+		// FLT  lengths[SENSORS_PER_OBJECT][NUM_GEN1_LIGHTHOUSES][2];
+		// FLT  angles[SENSORS_PER_OBJECT][NUM_GEN1_LIGHTHOUSES][2];  //2 Axes  (Angles in LH space)
+		// FLT  synctimes[SENSORS_PER_OBJECT][NUM_GEN1_LIGHTHOUSES];
 
 		//to->numSensors = so->sensor_ct;
 		{
