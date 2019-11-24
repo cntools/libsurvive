@@ -65,6 +65,7 @@ typedef struct SurviveIMUTracker {
 
 	FLT mahony_variance;
 
+	survive_timecode last_kalman_update;
 	survive_timecode imu_kalman_update;
 	survive_timecode obs_kalman_update;
 	survive_kalman_state_t position;

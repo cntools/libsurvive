@@ -335,7 +335,7 @@ Nothing will happen until you connect to that page. When you do, the app lifetim
 
 The arrow keys will move you to the left / right / up / down and the UI response to orbital mouse controls. 
 
-![Visuzliation Screenshot](https://raw.githubusercontent.com/cnlohr/libsurvive/master/useful_files/viz_screenshot.jpg)
+![Visuzliation Screenshot](https://raw.githubusercontent.com/cnlohr/libsurvive/master/useful_files/viz_screenshot.png)
 
 ## Notes about coordinate frames.
 

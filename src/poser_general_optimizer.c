@@ -149,6 +149,7 @@ bool general_optimizer_data_record_current_pose(GeneralOptimizerData *d, PoserDa
 				*soLocation = locations.pose;
 			}
 
+			d->failures_to_reset_cntr = d->failures_to_reset;
 			d->successes_to_reset_cntr = d->successes_to_reset;
 		} else if (seed_warning == false) {
 			seed_warning = true;

@@ -1,5 +1,20 @@
 #include "lfsr_lh2.h"
+#ifndef _MSC_VER
 #include "alloca.h"
+#define clz(x) __builtin_clz(x)
+#else
+#include <intrin.h>
+uint32_t inline clz(uint32_t value) {
+	uint32_t leading_zero = 0;
+
+	if (_BitScanReverse(&leading_zero, value)) {
+		return 31 - leading_zero;
+	} else {
+		// This is undefined, I better choose 32 than 0
+		return 32;
+	}
+}
+#endif
 #include "stdio.h"
 #include "string.h"
 #include <malloc.h>
@@ -45,7 +60,7 @@ lfsr_poly_t poly_pairs[32] = {
 	0x0001CB8D,
 };
 
-struct lfsr_lookup_t *poly_pair_lookups[32] = {};
+struct lfsr_lookup_t *poly_pair_lookups[32] = {0};
 static void init_lookups() {
 	if (poly_pair_lookups[0] == 0) {
 		for (int i = 0; i < 32; i++)
@@ -96,7 +111,7 @@ survive_channel survive_decipher_channel(const uint32_t *sample, const uint32_t 
 	uint32_t possible_polys = 0xFFFFFFFF;
 	uint32_t *timings = alloca(32 * sizeof(uint32_t) * count);
 	uint32_t *recon_samples = alloca(32 * sizeof(uint32_t) * count);
-	size_t known_solves[32] = {};
+	size_t known_solves[32] = {0};
 
 	memset(timings, 0, 32 * sizeof(uint32_t) * count);
 	memset(recon_samples, 0, 32 * sizeof(uint32_t) * count);
@@ -163,7 +178,7 @@ survive_channel survive_decipher_channel(const uint32_t *sample, const uint32_t 
 	}
 
 	if (popcnt(possible_polys) == 1) {
-		channel = 31 - __builtin_clz(possible_polys);
+		channel = 31 - clz(possible_polys);
 	}
 
 	if (channel != 255) {

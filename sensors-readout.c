@@ -2,14 +2,17 @@
 
 static volatile int keepRunning = 1;
 
+#include "math.h"
+#include <os_generic.h>
+#include <stdlib.h>
 #ifdef __linux__
 
-#include "math.h"
 #include <assert.h>
+
 #include <ctype.h>
 #include <os_generic.h>
+
 #include <signal.h>
-#include <stdlib.h>
 
 void intHandler(int dummy) {
 	if (keepRunning == 0)

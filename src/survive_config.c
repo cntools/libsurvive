@@ -40,7 +40,7 @@ static struct static_conf_t *find_or_create_conf_t(const char *name) {
 		curr = curr->next;
 	}
 
-	curr = calloc(1, sizeof(struct static_conf_t));
+	curr = SV_CALLOC(1, sizeof(struct static_conf_t));
 	if (tail)
 		tail->next = curr;
 	if (head == 0)
@@ -229,7 +229,7 @@ void init_config_group(config_group *cg, uint8_t count, SurviveContext * ctx) {
 	if (count == 0)
 		return;
 
-	cg->config_entries = malloc(count * sizeof(config_entry));
+	cg->config_entries = SV_MALLOC(count * sizeof(config_entry));
 
 	for (i = 0; i < count; ++i) {
 		init_config_entry(cg->config_entries + i);
@@ -252,7 +252,7 @@ void resize_config_group(config_group *cg, uint16_t count) {
 	uint16_t i = 0;
 
 	if (count > cg->max_entries) {
-		config_entry *ptr = realloc(cg->config_entries, sizeof(config_entry) * count);
+		config_entry *ptr = SV_REALLOC(cg->config_entries, sizeof(config_entry) * count);
 		assert(ptr != NULL);
 
 		cg->config_entries = ptr;
@@ -363,7 +363,7 @@ void sstrcpy(char **dest, const char *src) {
 	uint32_t len = (uint32_t)strlen(src) + 1;
 	assert(dest != NULL);
 
-	char *ptr = (char *)realloc(*dest, len); // acts like malloc if dest==NULL
+	char *ptr = (char *)SV_REALLOC(*dest, len); // acts like SV_MALLOC if dest==NULL
 	assert(ptr != NULL);
 	*dest = ptr;
 
@@ -502,7 +502,7 @@ const FLT *config_set_float_a(config_group *cg, const char *tag, const FLT *valu
 
 	sstrcpy(&(cv->tag), tag);
 
-	char *ptr = (char *)realloc(cv->data, sizeof(FLT) * count);
+	char *ptr = (char *)SV_REALLOC(cv->data, sizeof(FLT) * count);
 	assert(ptr != NULL);
 	cv->data = ptr;
 
@@ -878,7 +878,7 @@ static void survive_attach_config(SurviveContext *ctx, const char *tag, void * v
 			ul = &((*ul)->next);
 		}
 
-		update_list_t *t = *ul = malloc(sizeof(update_list_t));
+		update_list_t *t = *ul = SV_MALLOC(sizeof(update_list_t));
 		t->next = 0;
 		t->value = var;
 	}

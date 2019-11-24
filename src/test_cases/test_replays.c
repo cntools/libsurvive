@@ -3,23 +3,24 @@
 #define SURVIVE_ENABLE_FULL_API
 
 #include <complex.h>
+#include <malloc.h>
 #include <math.h>
 #include <os_generic.h>
 #include <survive.h>
 #include <survive_api.h>
 
-static double complex diff(const SurvivePose *a, const SurvivePose *b) {
+static void diff(double *out, const SurvivePose *a, const SurvivePose *b) {
 	SurvivePose iB = InvertPoseRtn(b);
 	SurvivePose nearId;
 	ApplyPoseToPose(&nearId, a, &iB);
-
-	return (1 - fabs(nearId.Rot[0])) * I + norm3d(nearId.Pos);
+	out[0] = (1 - fabs(nearId.Rot[0]));
+	out[1] = norm3d(nearId.Pos);
 }
 
 static int test_path(const char *name, int main_argc, char **main_argv) {
 	int rtn = 0;
-	double max_pos_error = .005, max_rot_error = .001;
-	char configPath[FILENAME_MAX] = {};
+	double max_pos_error = .01, max_rot_error = .001;
+	char configPath[FILENAME_MAX] = {0};
 	sprintf(configPath, "%s.json", name);
 
 	char *playbackFlag = strstr(name, "pcap") ? "--usbmon-playback" : "--playback";
@@ -42,7 +43,7 @@ static int test_path(const char *name, int main_argc, char **main_argv) {
 	ctx->bsd[0].PositionSet = false;
 	ctx->bsd[1].PositionSet = false;
 
-	SurvivePose originalLH[NUM_GEN2_LIGHTHOUSES] = {};
+	SurvivePose originalLH[NUM_GEN2_LIGHTHOUSES] = {0};
 
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
 		SurvivePose pose = ctx->bsd[i].Pose;
@@ -76,14 +77,14 @@ static int test_path(const char *name, int main_argc, char **main_argv) {
 				if (strcmp(name2, name + strlen("replay_")) == 0) {
 					SurvivePose pose2;
 					survive_simple_object_get_latest_pose(it2, &pose2);
-
-					double complex err = diff(&pose, &pose2);
+					double err[2] = {0};
+					diff(err, &pose, &pose2);
 					printf("       %s: " SurvivePose_format " %f\t%f\n", survive_simple_object_name(it2), pose2.Pos[0],
-						   pose2.Pos[1], pose2.Pos[2], pose2.Rot[0], pose2.Rot[1], pose2.Rot[2], pose2.Rot[3],
-						   crealf(err), cimagf(err));
-					if (crealf(err) > max_pos_error || cimagf(err) > max_rot_error) {
+						   pose2.Pos[1], pose2.Pos[2], pose2.Rot[0], pose2.Rot[1], pose2.Rot[2], pose2.Rot[3], err[0],
+						   err[1]);
+					if (err[1] > max_pos_error || err[0] > max_rot_error) {
 						fprintf(stderr, "TEST FAILED, %s deviates too much -- %f %f\n", survive_simple_object_name(it2),
-								crealf(err), cimagf(err));
+								err[0], err[1]);
 						rtn = -1;
 					}
 				}
@@ -94,12 +95,13 @@ static int test_path(const char *name, int main_argc, char **main_argv) {
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
 		SurvivePose pose = originalLH[i];
 		printf(SurvivePose_format "\n", SURVIVE_POSE_EXPAND(ctx->bsd[i].Pose));
-		double complex err = diff(&pose, &ctx->bsd[i].Pose);
+		double err[2] = {0};
+		diff(err, &pose, &ctx->bsd[i].Pose);
 		printf(SurvivePose_format " %f %f\n", pose.Pos[0], pose.Pos[1], pose.Pos[2], pose.Rot[0], pose.Rot[1],
-			   pose.Rot[2], pose.Rot[3], crealf(err), cimagf(err));
+			   pose.Rot[2], pose.Rot[3], err[0], err[1]);
 
-		if (crealf(err) > max_pos_error || cimagf(err) > max_rot_error) {
-			fprintf(stderr, "TEST FAILED, LH%d deviates too much -- %f %f\n", i, crealf(err), cimagf(err));
+		if (err[1] > max_pos_error || err[0] > max_rot_error) {
+			fprintf(stderr, "TEST FAILED, LH%d deviates too much -- %f %f\n", i, err[0], err[1]);
 			rtn = -1;
 		}
 	}

@@ -18,7 +18,7 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 	struct PoserIMUData_t *dd = so->PoserData;
 
 	if (!dd) {
-		so->PoserData = dd = calloc(1, sizeof(struct PoserIMUData_t));
+		so->PoserData = dd = SV_CALLOC(1, sizeof(struct PoserIMUData_t));
 		survive_imu_tracker_init(&dd->tracker, so);
 	}
 

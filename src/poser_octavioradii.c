@@ -474,7 +474,7 @@ static void QuickPose(SurviveObject *so)
 
 	TrackedObject *to;
 
-	to = malloc(sizeof(TrackedObject) + (SENSORS_PER_OBJECT * sizeof(TrackedSensor)));
+	to = SV_MALLOC(sizeof(TrackedObject) + (SENSORS_PER_OBJECT * sizeof(TrackedSensor)));
 
 	{
 		int sensorCount = 0;
@@ -544,7 +544,7 @@ int PoserOctavioRadii( SurviveObject * so, PoserData * pd )
 
 	if( !dd )
 	{
-		so->PoserData = dd = malloc( sizeof(OctavioRadiiData) );
+		so->PoserData = dd = SV_MALLOC(sizeof(OctavioRadiiData));
 		memset(dd, 0, sizeof(OctavioRadiiData));
 	}
 
@@ -638,7 +638,7 @@ int PoserOctavioRadii( SurviveObject * so, PoserData * pd )
 
 		PoserDataFullScene * fs = (PoserDataFullScene*)pd;
 
-		to = malloc(sizeof(TrackedObject) + (SENSORS_PER_OBJECT * sizeof(TrackedSensor)));
+		to = SV_MALLOC(sizeof(TrackedObject) + (SENSORS_PER_OBJECT * sizeof(TrackedSensor)));
 
 		// FLT  lengths[SENSORS_PER_OBJECT][NUM_GEN1_LIGHTHOUSES][2];
 		// FLT  angles[SENSORS_PER_OBJECT][NUM_GEN1_LIGHTHOUSES][2];  //2 Axes  (Angles in LH space)

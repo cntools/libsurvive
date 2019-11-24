@@ -441,7 +441,7 @@ void DisambiguatorTurvey(SurviveObject *so, LightcapElement *le) {
 
 	if (so->disambiguator_data == NULL) {
 		fprintf(stderr, "Initializing Disambiguator Data\n");
-		so->disambiguator_data = malloc(sizeof(lightcap2_data));
+		so->disambiguator_data = SV_MALLOC(sizeof(lightcap2_data));
 		memset(so->disambiguator_data, 0, sizeof(lightcap2_data));
 	}
 

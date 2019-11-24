@@ -104,20 +104,20 @@ int DriverRegUDP(SurviveContext *ctx) {
 	if (!enable_UDP_driver)
 		return 0;
 
-	SurviveDriverUDP *sp = calloc(1, sizeof(SurviveDriverUDP));
+	SurviveDriverUDP *sp = SV_CALLOC(1, sizeof(SurviveDriverUDP));
 	sp->ctx = ctx;
 
 	SV_INFO("Setting up UDP driver.");
 
 	// Create a new SurviveObject...
-	SurviveObject *device = calloc(1, sizeof(SurviveObject));
+	SurviveObject *device = SV_CALLOC(1, sizeof(SurviveObject));
 	device->ctx = ctx;
 	device->driver = sp;
 	memcpy(device->codename, "UD0", 4);
 	memcpy(device->drivername, "UDP", 4);
 	device->sensor_ct = 1;
-	device->sensor_locations = malloc(sizeof(FLT) * 3);
-	device->sensor_normals = malloc(sizeof(FLT) * 3);
+	device->sensor_locations = SV_MALLOC(sizeof(FLT) * 3);
+	device->sensor_normals = SV_MALLOC(sizeof(FLT) * 3);
 	device->sensor_locations[0] = 0;
 	device->sensor_locations[1] = 0;
 	device->sensor_locations[2] = 0;

@@ -240,11 +240,11 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 	}
 #endif
 
-	SurviveContext *ctx = calloc(1, sizeof(SurviveContext));
+	SurviveContext *ctx = SV_CALLOC(1, sizeof(SurviveContext));
 	ctx->user_ptr = userData;
 	ctx->poll_min_time_ms = 10;
 
-	struct SurviveContext_private *pctx = ctx->private_members = calloc(1, sizeof(struct SurviveContext_private));
+	struct SurviveContext_private *pctx = ctx->private_members = SV_CALLOC(1, sizeof(struct SurviveContext_private));
 
 	pctx->poll_sema = OGCreateSema();
 
@@ -260,9 +260,9 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 
 	survive_install_log_fn(ctx, log_func);
 
-	ctx->global_config_values = malloc(sizeof(config_group));
-	ctx->temporary_config_values = malloc(sizeof(config_group));
-	ctx->lh_config = malloc(sizeof(config_group) * NUM_GEN2_LIGHTHOUSES);
+	ctx->global_config_values = SV_MALLOC(sizeof(config_group));
+	ctx->temporary_config_values = SV_MALLOC(sizeof(config_group));
+	ctx->lh_config = SV_MALLOC(sizeof(config_group) * NUM_GEN2_LIGHTHOUSES);
 
 	// initdata
 	init_config_group(ctx->global_config_values, 30, ctx);
@@ -594,7 +594,7 @@ void survive_default_new_object_process(SurviveObject *so) {}
 int survive_add_object(SurviveContext *ctx, SurviveObject *obj) {
 	SV_INFO("Adding tracked object %s from %s", obj->codename, obj->drivername);
 	int oldct = ctx->objs_ct;
-	ctx->objs = realloc(ctx->objs, sizeof(SurviveObject *) * (oldct + 1));
+	ctx->objs = SV_REALLOC(ctx->objs, sizeof(SurviveObject *) * (oldct + 1));
 	ctx->objs[oldct] = obj;
 	ctx->objs_ct = oldct + 1;
 
@@ -634,10 +634,10 @@ void survive_remove_object(SurviveContext *ctx, SurviveObject *obj) {
 void survive_add_driver(SurviveContext *ctx, void *payload, DeviceDriverCb poll, DeviceDriverCb close,
 						DeviceDriverMagicCb magic) {
 	int oldct = ctx->driver_ct;
-	ctx->drivers = realloc(ctx->drivers, sizeof(void *) * (oldct + 1));
-	ctx->driverpolls = realloc(ctx->driverpolls, sizeof(DeviceDriverCb *) * (oldct + 1));
-	ctx->drivercloses = realloc(ctx->drivercloses, sizeof(DeviceDriverCb *) * (oldct + 1));
-	ctx->drivermagics = realloc(ctx->drivermagics, sizeof(DeviceDriverMagicCb *) * (oldct + 1));
+	ctx->drivers = SV_REALLOC(ctx->drivers, sizeof(void *) * (oldct + 1));
+	ctx->driverpolls = SV_REALLOC(ctx->driverpolls, sizeof(DeviceDriverCb *) * (oldct + 1));
+	ctx->drivercloses = SV_REALLOC(ctx->drivercloses, sizeof(DeviceDriverCb *) * (oldct + 1));
+	ctx->drivermagics = SV_REALLOC(ctx->drivermagics, sizeof(DeviceDriverMagicCb *) * (oldct + 1));
 	ctx->drivers[oldct] = payload;
 	ctx->driverpolls[oldct] = poll;
 	ctx->drivercloses[oldct] = close;
@@ -675,10 +675,6 @@ void survive_close(SurviveContext *ctx) {
 	OGJoinThread(ctx->buttonservicethread);
 	OGDeleteSema(ctx->buttonQueue.buttonservicesem);
 
-	struct SurviveContext_private *pctx = ctx->private_members;
-	OGDeleteSema(pctx->poll_sema);
-	free(pctx);
-
 	while ((DriverName = GetDriverNameMatching("DriverUnreg", r++))) {
 		DeviceDriver dd = GetDriver(DriverName);
 		SV_INFO("De-registering driver %s (%p)", DriverName, dd);
@@ -715,6 +711,9 @@ void survive_close(SurviveContext *ctx) {
 	}
 
 	survive_destroy_recording(ctx);
+	struct SurviveContext_private *pctx = ctx->private_members;
+	OGDeleteSema(pctx->poll_sema);
+	free(pctx);
 
 	free(ctx->objs);
 	free(ctx->drivers);
@@ -759,10 +758,12 @@ int survive_poll(struct SurviveContext *ctx) {
 	}
 
 	survive_release_ctx_lock(ctx);
-	uint64_t timeNow = OGGetAbsoluteTimeMS();
-	if ((timeStart + ctx->poll_min_time_ms) > timeNow) {
-		uint64_t sleepTime = (timeStart + ctx->poll_min_time_ms) - timeNow;
-		OGUSleep(sleepTime * 1000);
+	if (ctx->poll_min_time_ms > 0) {
+		uint64_t timeNow = OGGetAbsoluteTimeMS();
+		if ((timeStart + ctx->poll_min_time_ms) > timeNow) {
+			uint64_t sleepTime = (timeStart + ctx->poll_min_time_ms) - timeNow;
+			OGUSleep(sleepTime * 1000);
+		}
 	}
 	survive_get_ctx_lock(ctx);
 

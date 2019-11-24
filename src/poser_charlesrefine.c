@@ -129,7 +129,7 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 	CharlesPoserData *dd = so->PoserData;
 	if (!dd)
 	{
-		so->PoserData = dd = calloc(sizeof(CharlesPoserData), 1);
+		so->PoserData = dd = SV_CALLOC(sizeof(CharlesPoserData), 1);
 		SurvivePose object_pose_out;
 		memcpy(&object_pose_out, &LinmathPose_Identity, sizeof(LinmathPose_Identity));
 		memcpy(&dd->InteralPoseUsedForCalc, &LinmathPose_Identity, sizeof(LinmathPose_Identity));

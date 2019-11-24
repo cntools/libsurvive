@@ -144,7 +144,7 @@ void testKabsch() {
 }
 
 static void testKabsch2() {
-	LinmathQuat q = {};
+	LinmathQuat q = {0};
 
 	LinmathPoint3d survivePts[] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 

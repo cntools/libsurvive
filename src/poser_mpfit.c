@@ -186,7 +186,7 @@ static void mpfit_set_cameras(SurviveObject *so, uint8_t lighthouse, SurvivePose
 static inline void serialize_mpfit(MPFITData *d, survive_optimizer *mpfitctx) {
 	if (d->serialize_prefix) {
 		static int cnt = 0;
-		char path[1024] = {};
+		char path[1024] = {0};
 		snprintf(path, 1023, "%s_%s_%d.opt", d->serialize_prefix, d->opt.so->codename, cnt++);
 		survive_optimizer_serialize(mpfitctx, path);
 	}
@@ -314,7 +314,7 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 				*soLocation = (SurvivePose){ 0 };
 
 			SurvivePose *opt_cameras = survive_optimizer_get_camera(&mpfitctx);
-			SurvivePose cameras[NUM_GEN2_LIGHTHOUSES] = {};
+			SurvivePose cameras[NUM_GEN2_LIGHTHOUSES] = {0};
 			for (int i = 0; i < mpfitctx.cameraLength; i++) {
 				if (meas_for_lhs[i] > 0 && !quatiszero(opt_cameras[i].Rot)) {
 					cameras[i] = InvertPoseRtn(&opt_cameras[i]);
@@ -433,7 +433,7 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 	SurviveContext *ctx = so->ctx;
 	if (so->PoserData == 0) {
-		so->PoserData = calloc(1, sizeof(MPFITData));
+		so->PoserData = SV_CALLOC(1, sizeof(MPFITData));
 		MPFITData *d = so->PoserData;
 
 		general_optimizer_data_init(&d->opt, so);

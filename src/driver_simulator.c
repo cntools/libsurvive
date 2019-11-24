@@ -228,7 +228,7 @@ void str_append(char **pString, const char *str) {
 	size_t l1 = *pString ? strlen(*pString) : 0;
 	size_t l2 = strlen(str);
 
-	*pString = realloc(*pString, l1 + l2 + 1);
+	*pString = SV_REALLOC(*pString, l1 + l2 + 1);
 	(*pString)[l1] = 0;
 
 	strcat(*pString, str);
@@ -248,7 +248,7 @@ const BaseStationData simulated_bsd[2] = {
 };
 
 int DriverRegSimulator(SurviveContext *ctx) {
-	SurviveDriverSimulator *sp = calloc(1, sizeof(SurviveDriverSimulator));
+	SurviveDriverSimulator *sp = SV_CALLOC(1, sizeof(SurviveDriverSimulator));
 	sp->ctx = ctx;
 	sp->position.Rot[0] = 1;
 

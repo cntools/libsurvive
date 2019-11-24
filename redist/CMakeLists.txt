@@ -52,7 +52,7 @@ IF(USE_OPENCV)
 	target_link_libraries(minimal_opencv ${OpenCV_LIBS})
 ENDIF()
 
-IF(USE_LAPACKE) # NOT USE_OPENCV -- lapack / blas
+IF(USE_LAPACKE OR WIN32) # NOT USE_OPENCV -- lapack / blas
 	IF(UNIX)
 	  target_link_libraries(minimal_opencv cblas lapacke)
 	else()
@@ -85,12 +85,15 @@ IF(USE_LAPACKE) # NOT USE_OPENCV -- lapack / blas
 	endif()
 endif()
 
-add_executable(lintest linmath.c linmath.h lintest.c)
-target_link_libraries(lintest minimal_opencv)
-set_target_properties(lintest PROPERTIES FOLDER "tests")
 
-add_executable(minimal_opencvtest minimal_opencvtest.c)
-target_link_libraries(minimal_opencvtest minimal_opencv)
-set_target_properties(minimal_opencvtest PROPERTIES FOLDER "tests")
+IF (ENABLE_TESTS)
+	add_executable(lintest linmath.c linmath.h lintest.c)
+	target_link_libraries(lintest minimal_opencv)
+	set_target_properties(lintest PROPERTIES FOLDER "tests")
 
-add_test(NAME lintest COMMAND lintest)
+	add_executable(minimal_opencvtest minimal_opencvtest.c)
+	target_link_libraries(minimal_opencvtest minimal_opencv)
+	set_target_properties(minimal_opencvtest PROPERTIES FOLDER "tests")
+
+	add_test(NAME lintest COMMAND lintest)
+ENDIF()

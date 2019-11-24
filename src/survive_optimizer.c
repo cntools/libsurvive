@@ -2,7 +2,10 @@
 #include <math.h>
 #include <survive_optimizer.h>
 #include <survive_reproject.h>
+
+#ifndef NOZLIB
 #include <zlib.h>
+#endif
 
 #include "survive_optimizer.h"
 
@@ -263,6 +266,13 @@ void survive_optimizer_set_reproject_model(survive_optimizer *optimizer,
 										   const survive_reproject_model_t *reprojectModel) {
 	optimizer->reprojectModel = reprojectModel;
 }
+
+#ifdef NOZLIB
+#define gzFile FILE *
+#define gzopen fopen
+#define gzprintf fprintf
+#define gzclose fclose
+#endif
 
 void survive_optimizer_serialize(survive_optimizer *opt, const char *fn) {
 	gzFile f = gzopen(fn, "wT");

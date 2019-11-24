@@ -12,6 +12,8 @@
 #include <errno.h>
 #include <jsmn.h>
 #include <os_generic.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -345,7 +347,7 @@ int libusb_control_transfer_async(libusb_device_handle *dev_handle, uint8_t bmRe
 	if (!transfer)
 		return LIBUSB_ERROR_NO_MEM;
 
-	buffer = malloc(LIBUSB_CONTROL_SETUP_SIZE + wLength);
+	buffer = SV_MALLOC(LIBUSB_CONTROL_SETUP_SIZE + wLength);
 	if (!buffer) {
 		libusb_free_transfer(transfer);
 		return LIBUSB_ERROR_NO_MEM;
@@ -438,7 +440,7 @@ static int survive_get_ids(survive_usb_device_t d, uint16_t *idVendor, uint16_t 
 static const char *survive_usb_error_name(int ret) { return ""; }
 
 static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, struct SurviveUSBInfo *usbInfo) {
-	usbInfo->handle = calloc(1, sizeof(struct HIDAPI_USB_Handle_t));
+	usbInfo->handle = SV_CALLOC(1, sizeof(struct HIDAPI_USB_Handle_t));
 	survive_usb_device_t c = d;
 
 	struct SurviveContext *ctx = sv->ctx;
@@ -840,9 +842,12 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 	return 0;
 #endif
 #else
-	int r = libusb_handle_events(sv->usbctx);
+	// int r = libusb_handle_events(sv->usbctx);
+	struct timeval tv = {.tv_usec = 10 * 1000};
+	survive_release_ctx_lock(ctx);
+	int r = libusb_handle_events_timeout(sv->usbctx, &tv);
+	survive_get_ctx_lock(ctx);
 	if (r) {
-		SurviveContext *ctx = sv->ctx;
 		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Libusb poll failed. %d (%s)", r, libusb_error_name(r));
 	}
 #endif
@@ -941,6 +946,12 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 			SV_INFO("Configuration length too long %s:%d (count: %d)", usbInfo->so->codename, iface, count);
 			return -4;
 		}
+
+		// Some (Tracker at least?) devices send a uint64_t before data; not sure what it means but skip it for now.
+		if (count == 0 && size >= 2 && cfgbuff[2] != 0x78) {
+			continue;
+		}
+
 		memcpy(&compressed_data[count], cfgbuff + 2, size);
 		count += size;
 	} while (1);
@@ -958,7 +969,7 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 		return -5;
 	}
 
-	*config = malloc(len + 1);
+	*config = SV_MALLOC(len + 1);
 	memcpy(*config, uncompressed_data, len);
 
 	char fstname[128];
@@ -1185,7 +1196,7 @@ struct sensorData {
 	uint8_t edgeCount;
 };
 
-static ssize_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8_t *payloadEndPtr,
+static int32_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8_t *payloadEndPtr,
 							   LightcapElement *output, int output_cnt) {
 	uint8_t *payloadPtr = *readPtr;
 	SurviveContext *ctx = w->ctx;
@@ -1364,6 +1375,7 @@ static ssize_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPt
 			timeDelta |= (*eventPtr & 0x7F);
 			if (((*(eventPtr--)) & 0x80) == 0x80)
 				break;
+
 			if (idsPtr + (timeIndex >> 1u) > eventPtr) {
 				eventPtr = eventPtrStart;
 				goto exit_while;
@@ -1500,7 +1512,7 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 	SurviveContext *ctx = w->ctx;
 
 	// If we're looking at light data, return
-	if ((*payloadPtr & 0xE0) == 0)
+	if (!HAS_FLAG(*payloadPtr, 0xE0))
 		return true;
 
 	/*
@@ -1979,7 +1991,32 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 
 	// Any remaining data after events (if any) have been read off is light data
 	if (payloadPtr < payloadEndPtr) {
-		parse_and_process_lightcap(w, time, payloadPtr, payloadEndPtr);
+		LightcapElement les[10] = {0};
+		int32_t cnt = read_light_data(w, time, &payloadPtr, payloadEndPtr, les, 10);
+
+		if (cnt < 0) {
+			SV_WARN("Read light data error %d   [Time:%04hX] [Payload: %s]", (int)cnt, time,
+					packetToHex(payloadPtr, payloadEndPtr));
+
+		} else {
+
+#ifdef VERIFY_LIGHTCAP
+			LightcapElement les_old[10] = {0};
+			int les_old_cnt = parse_watchman_lightcap(w->ctx, w->codename, time >> 8, w->activations.last_imu,
+													  payloadPtr, payloadEndPtr - payloadPtr, les, 10);
+
+			assert(cnt == les_old_cnt);
+#endif
+			for (int i = (int)cnt - 1; i >= 0; i--) {
+#ifdef DEBUG_WATCHMAN
+				printf("%d: %u [%u]\n", les[i].sensor_id, les[i].length, les[i].timestamp);
+#endif
+#ifdef VERIFY_LIGHTCAP
+				assert(memcmp(&les[i], &les_old[i], sizeof(LightcapElement)) == 0);
+#endif
+				handle_lightcap(w, &les[i]);
+			}
+		}
 	}
 }
 
@@ -2177,6 +2214,7 @@ static inline uint32_t read_buffer32(uint8_t *readdata, int idx) {
 void survive_data_cb(SurviveUSBInterface *si) {
 	int size = si->actual_len;
 	SurviveContext *ctx = si->ctx;
+	survive_get_ctx_lock(ctx);
 
 	int iface = si->which_interface_am_i;
 	SurviveObject *obj = si->assoc_obj;
@@ -2188,7 +2226,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 	}
 
 	if (iface == USB_IF_HMD_HEADSET_INFO && obj == 0)
-		return;
+		goto exit_fn;
 
 	int id = POP1;
 	//	printf( "%16s Size: %2d ID: %d / %d\n", si->hname, size, id, iface );
@@ -2299,6 +2337,9 @@ void survive_data_cb(SurviveUSBInterface *si) {
 				}
 			}
 		} else if (id == 39) { // LHv2
+			if (obj->ctx->lh_version == 0) {
+				goto exit_fn;
+			}
 			survive_notify_gen2(obj, "Report id 39");
 
 			// Implies that the user forced gen1
@@ -2350,7 +2391,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 					uint32_t mask;
 				};
 #pragma pack(pop)
-				uint32_t samples[4] = {}, masks[4] = {}, times[4] = {};
+				uint32_t samples[4] = {0}, masks[4] = {0}, times[4] = {0};
 
 				struct lh2_entry *entries = (struct lh2_entry *)readdata;
 				static uint32_t last_time = 0;
@@ -2378,7 +2419,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 					fprintf(stderr, "\n");
 				}
 
-				uint32_t time_since_sync[4] = {};
+				uint32_t time_since_sync[4] = {0};
 				survive_channel chan = survive_decipher_channel(samples, masks, times, time_since_sync, 4);
 				fprintf(stderr, "Chan ootx: %d %d\n", chan / 2, chan & 1);
 				for (int i = 0; i < 4; i++) {
@@ -2582,6 +2623,9 @@ void survive_data_cb(SurviveUSBInterface *si) {
 		int a = 0; // breakpoint here
 	}
 	}
+
+exit_fn:
+	survive_release_ctx_lock(ctx);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2621,8 +2665,10 @@ int survive_vive_close(SurviveContext *ctx, void *driver) {
 }
 
 int DriverRegHTCVive(SurviveContext *ctx) {
-	SurviveViveData *sv = calloc(1, sizeof(SurviveViveData));
+	SurviveViveData *sv = SV_CALLOC(1, sizeof(SurviveViveData));
 
+	// Note: don't sleep for HTCVive, the handle_events call can block
+	ctx->poll_min_time_ms = 0;
 	survive_attach_configi(ctx, SECONDS_PER_HZ_OUTPUT_TAG, &sv->seconds_per_hz_output);
 	if(sv->seconds_per_hz_output > 0) {
 	  SV_INFO("Reporting usb hz in %d second intervals", sv->seconds_per_hz_output);

@@ -65,7 +65,7 @@ TEST(AngularVelocity, find) {
 
 TEST(AngularVelocity, apply) {
 	LinmathQuat a = {1, 0, 0, 0};
-	SurviveAngularVelocity b = {M_PI, 0, 0};
+	SurviveAngularVelocity b = {LINMATHPI, 0, 0};
 
 	LinmathQuat c;
 	survive_apply_ang_velocity(c, b, 1, a);

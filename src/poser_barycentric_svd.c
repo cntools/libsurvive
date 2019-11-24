@@ -1,6 +1,7 @@
 #include "barycentric_svd/barycentric_svd.h"
 #include "math.h"
 #include "minimal_opencv.h"
+#include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <survive.h>
@@ -53,6 +54,10 @@ static void survive_fill_m(void *user, double *eq, int axis, FLT angle) {
 			break;
 		}
 	} break;
+	case 3: {
+		eq[0] = eq[1] = eq[2] = 0;
+		break;
+	}
 	default:
 		assert(false);
 	}
@@ -66,7 +71,7 @@ static void PoserDataSVD_destroy(PoserDataSVD *dd) {
 }
 
 static PoserDataSVD *PoserDataSVD_new(SurviveObject *so) {
-	PoserDataSVD *rtn = calloc(sizeof(PoserDataSVD), 1);
+	PoserDataSVD *rtn = SV_CALLOC(sizeof(PoserDataSVD), 1);
 	rtn->so = so;
 	rtn->required_meas = survive_configi(so->ctx, "epnp-required-meas", SC_GET, 10);
 
@@ -100,7 +105,7 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 
 	// Super degenerate inputs will project us basically right in the camera. Detect and reject
 	if (err > 1 || magnitude3d(rtn.Pos) < 0.25 || magnitude3d(rtn.Pos) > 25) {
-		SV_WARN("pose is degenerate %d %f %f", (int)dd->bc.meas_cnt, err, magnitude3d(rtn.Pos));
+		// SV_WARN("pose is degenerate %d %f %f", (int)dd->bc.meas_cnt, err, magnitude3d(rtn.Pos));
 		return rtn;
 	}
 

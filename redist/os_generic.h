@@ -74,11 +74,15 @@ extern "C" {
 
 #ifdef USE_WINDOWS
 
+#include <stdint.h>
 #include <windows.h>
 
 OSG_INLINE void OGSleep(int is) { Sleep(is * 1000); }
 
-OSG_INLINE void OGUSleep(int ius) { Sleep(ius / 1000); }
+OSG_INLINE int OGUSleep(int ius) {
+	Sleep(ius / 1000);
+	return 0;
+}
 
 OSG_INLINE double OGGetAbsoluteTime() {
 	static LARGE_INTEGER lpf;
@@ -118,6 +122,8 @@ OSG_INLINE double OGGetFileTime(const char *file) {
 
 	return ft.dwHighDateTime + ft.dwLowDateTime;
 }
+
+OSG_INLINE void OGNameThread(og_thread_t t, const char *name) {}
 
 OSG_INLINE og_thread_t OGCreateThread(void *(routine)(void *), void *parameter) {
 	return (og_thread_t)CreateThread(0, 0, (LPTHREAD_START_ROUTINE)routine, parameter, 0, 0);
@@ -202,10 +208,6 @@ OSG_INLINE og_cv_t OGCreateConditionVariable() {
 
 #else
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdint.h>
@@ -219,7 +221,9 @@ OSG_INLINE og_cv_t OGCreateConditionVariable() {
 OSG_INLINE void OGSleep(int is) { sleep(is); }
 
 OSG_INLINE int OGUSleep(int ius) {
-	struct timespec sleep = {.tv_nsec = ius * 1000};
+	struct timespec sleep = {0};
+	sleep.tv_nsec = (ius % 1000000) * 1000;
+	sleep.tv_sec = ius / 1000000;
 	return nanosleep(&sleep, 0);
 }
 
@@ -248,6 +252,11 @@ OSG_INLINE double OGGetFileTime(const char *file) {
 	return buff.st_mtime;
 }
 
+OSG_INLINE void OGNameThread(og_thread_t t, const char *name) {
+#ifdef _GNU_SOURCE
+	pthread_setname_np(*(pthread_t *)t, name);
+#endif
+}
 OSG_INLINE og_thread_t OGCreateThread(void *(routine)(void *), void *parameter) {
 	pthread_t *ret = (pthread_t *)malloc(sizeof(pthread_t));
 	int r = pthread_create(ret, 0, routine, parameter);
@@ -338,12 +347,18 @@ OSG_INLINE void OGDeleteSema(og_sema_t os) {
 	free(os);
 }
 
-OSG_INLINE void OGSignalCond(og_cv_t cv) { _OGHandlePosixError("OGSignalCond", pthread_cond_signal(cv)); }
-OSG_INLINE void OGBroadcastCond(og_cv_t cv) { _OGHandlePosixError("OGBroadcastCond", pthread_cond_broadcast(cv)); }
-OSG_INLINE void OGWaitCond(og_cv_t cv, og_mutex_t m) { _OGHandlePosixError("OGWaitCond", pthread_cond_wait(cv, m)); }
+OSG_INLINE void OGSignalCond(og_cv_t cv) {
+	_OGHandlePosixError("OGSignalCond", pthread_cond_signal((pthread_cond_t *)cv));
+}
+OSG_INLINE void OGBroadcastCond(og_cv_t cv) {
+	_OGHandlePosixError("OGBroadcastCond", pthread_cond_broadcast((pthread_cond_t *)cv));
+}
+OSG_INLINE void OGWaitCond(og_cv_t cv, og_mutex_t m) {
+	_OGHandlePosixError("OGWaitCond", pthread_cond_wait((pthread_cond_t *)cv, (pthread_mutex_t *)m));
+}
 
 OSG_INLINE void OGDeleteConditionVariable(og_cv_t cv) {
-	pthread_cond_destroy(cv);
+	pthread_cond_destroy((pthread_cond_t *)cv);
 	free(cv);
 }
 

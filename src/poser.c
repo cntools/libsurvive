@@ -128,9 +128,11 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 
 			// Find the space with the same origin, but rotated so that gravity is up
 			SurvivePose lighthouse2objUp = {0}, object2objUp = {0};
-			if (quatmagnitude(so->activations.accel)) {
+			float accel_mag = quatmagnitude(so->activations.accel);
+			if (accel_mag != 0.0 && !isnan(accel_mag)) {
 				quatfrom2vectors(object2objUp.Rot, so->activations.accel, up);
 			} else {
+				SV_WARN("Calibration didn't have valid IMU data for %s; couldn't establish 'up' vector.", so->codename);
 				object2objUp.Rot[0] = 1.0;
 			}
 
@@ -153,7 +155,7 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 				sub3d(obj2world.Pos, obj2world.Pos, lighthouse2world.Pos);
 				lighthouse2world.Pos[0] = lighthouse2world.Pos[1] = lighthouse2world.Pos[2] = 0.0;
 
-				LinmathPoint3d camFwd = {0, 0, -1}, worldFwd = {};
+				LinmathPoint3d camFwd = {0, 0, -1}, worldFwd = {0};
 				ApplyPoseToPoint(worldFwd, &lighthouse2world, camFwd);
 				FLT ang = atan2(worldFwd[1], worldFwd[0]);
 				FLT euler[3] = {0, 0, M_PI / 2 - ang};
@@ -201,7 +203,7 @@ void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so, S
 
 		bool worldEstablished = !quatiszero(object2World.Rot);
 
-		uint32_t lh_indices[NUM_GEN2_LIGHTHOUSES] = {};
+		uint32_t lh_indices[NUM_GEN2_LIGHTHOUSES] = {0};
 		uint32_t cnt = 0;
 		for (int lh = 0; lh < lighthouse_count; lh++) {
 			SurvivePose lh2object = lighthouse_pose[lh];

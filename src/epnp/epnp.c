@@ -29,6 +29,7 @@
 #include "stdbool.h"
 #include "stdio.h"
 #include "stdlib.h"
+#include <survive.h>
 
 void print_mat(const CvMat *M) {
 	if (!M) {
@@ -101,10 +102,10 @@ void epnp_set_maximum_number_of_correspondences(epnp *self, int n) {
 			free(self->object_pts_in_camera);
 
 		self->maximum_number_of_correspondences = n;
-		self->obj_pts = calloc(sizeof(double), 3 * self->maximum_number_of_correspondences);
-		self->meas = calloc(sizeof(double), 2 * self->maximum_number_of_correspondences);
-		self->alphas = calloc(sizeof(double), 4 * self->maximum_number_of_correspondences);
-		self->object_pts_in_camera = calloc(sizeof(double), 3 * self->maximum_number_of_correspondences);
+		self->obj_pts = SV_CALLOC(sizeof(double), 3 * self->maximum_number_of_correspondences);
+		self->meas = SV_CALLOC(sizeof(double), 2 * self->maximum_number_of_correspondences);
+		self->alphas = SV_CALLOC(sizeof(double), 4 * self->maximum_number_of_correspondences);
+		self->object_pts_in_camera = SV_CALLOC(sizeof(double), 3 * self->maximum_number_of_correspondences);
 	}
 }
 
@@ -321,8 +322,8 @@ void qr_solve(CvMat *A, CvMat *b, CvMat *X) {
 	}
 	if (max_nr < nr) {
 		max_nr = nr;
-		A1 = malloc(sizeof(double) * nr);
-		A2 = malloc(sizeof(double) * nr);
+		A1 = SV_MALLOC(sizeof(double) * nr);
+		A2 = SV_MALLOC(sizeof(double) * nr);
 	}
 
 	double *pA = A->data.db, *ppAkk = pA;
