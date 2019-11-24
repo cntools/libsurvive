@@ -180,13 +180,13 @@ static void ingest_config_request(vive_device_inst_t *dev, const struct _usb_hea
 	}
 
 	uint16_t cnt = pktData[1];
+	SurviveContext *ctx = dev->so->ctx;
 
 	if (cnt) {
 		memcpy(&dev->compressed_data[dev->compressed_data_idx], pktData + 2, cnt);
 		dev->compressed_data_idx += cnt;
 	} else {
 		char *uncompressed_data = malloc(65536);
-		SurviveContext *ctx = dev->so->ctx;
 
 		int len = survive_simple_inflate(dev->so->ctx, dev->compressed_data, dev->compressed_data_idx,
 										 (uint8_t *)uncompressed_data, 65536 - 1);
@@ -194,7 +194,7 @@ static void ingest_config_request(vive_device_inst_t *dev, const struct _usb_hea
 		if (len <= 0) {
 			SV_WARN("Error: data for config descriptor");
 		} else {
-			SV_INFO("usbmon loaded %d bytes of config data", len);
+			SV_INFO("usbmon loaded %d total bytes of config data", len);
 		}
 
 		if (!dev->hasConfiged) {
@@ -352,7 +352,7 @@ static int setup_usb_devices(SurviveDriverUSBMon *sp) {
 				sprintf(buff, "%s%d", sp->usb_devices[i].device->codename, device_cnts[dev_idx]++);
 			}
 
-			SurviveObject *so = survive_create_device(ctx, "UMN", sp, buff, 0);
+			SurviveObject *so = survive_create_device(ctx, "UMN", 0, buff, 0);
 			sp->usb_devices[i].so = so;
 		}
 		char filter[256] = {};
@@ -384,7 +384,7 @@ void *pcap_thread_fn(void *_driver) {
 			vive_device_inst_t *dev = find_device_inst(driver, usbp->bus_id, usbp->device_address);
 			if (dev) {
 				driver->packet_cnt++;
-
+				const char *dev_name = dev->so ? dev->so->codename : "(unknown)";
 				// Packet data is directly after the packet header
 				uint8_t *pktData = (uint8_t *)&usbp[1];
 
@@ -400,35 +400,37 @@ void *pcap_thread_fn(void *_driver) {
 					} else if (is_config_request(usbp)) {
 						dev->last_config_id = usbp->id;
 					} else {
-						fprintf(stderr,
-								"S: 0x%016lx event_type: %c transfer_type: %d bmRequestType: 0x%02x bRequest: 0x%02x "
-								"wValue: 0x%04x wIndex: 0x%04x wLength: %4d\n",
-								usbp->id, usbp->event_type, usbp->transfer_type, usbp->s.setup.bmRequestType,
-								usbp->s.setup.bRequest, usbp->s.setup.wValue, usbp->s.setup.wIndex,
-								usbp->s.setup.wLength);
+						ctx->printfproc(ctx,
+										"--> S: %s 0x%016lx event_type: %c transfer_type: %d bmRequestType: 0x%02x "
+										"bRequest: 0x%02x "
+										"wValue: 0x%04x wIndex: 0x%04x wLength: %4d\n",
+										dev_name, usbp->id, usbp->event_type, usbp->transfer_type,
+										usbp->s.setup.bmRequestType, usbp->s.setup.bRequest, usbp->s.setup.wValue,
+										usbp->s.setup.wIndex, usbp->s.setup.wLength);
 					}
 					goto continue_loop;
 				}
 
 				if (!(usbp->endpoint_number & 0x80u)) {
-					fprintf(stderr, "W: 0x%016lx event_type: %c transfer_type: %d 0x%02x (0x%02x): ", usbp->id,
-							usbp->event_type, usbp->transfer_type, usbp->endpoint_number, usbp->data_len);
+					ctx->printfproc(
+						ctx, "--> W: %s 0x%016lx event_type: %c transfer_type: %d 0x%02x (0x%02x): ", dev_name,
+						usbp->id, usbp->event_type, usbp->transfer_type, usbp->endpoint_number, usbp->data_len);
 					for (int i = 0; i < usbp->data_len; i++) {
 						if ((i + 2) % 4 == 0)
-							fprintf(stderr, "  ");
-						fprintf(stderr, "%02x ", pktData[i]);
+							ctx->printfproc(ctx, "  ");
+						ctx->printfproc(ctx, "%02x ", pktData[i]);
 					}
 
-					fprintf(stderr, "\n");
+					ctx->printfproc(ctx, "\n");
 
 					goto continue_loop; // Only want incoming data
 				}
 
 				if (usbp->status != 0) {
-					// EINPROGRESS is normal
-					if (usbp->status != -115)
-						fprintf(stderr, "E: 0x%016lx event_type: %c transfer_type: %d status: %d\n", usbp->id,
-								usbp->event_type, usbp->transfer_type, usbp->status);
+					// EINPROGRESS is normal, EPIPE means stalled
+					if (usbp->status != -115 && usbp->status != -32)
+						ctx->printfproc(ctx, "<-- E: %s 0x%016lx event_type: %c transfer_type: %d status: %d\n",
+										dev_name, usbp->id, usbp->event_type, usbp->transfer_type, usbp->status);
 					goto continue_loop; // Only want responses
 				}
 
@@ -446,16 +448,23 @@ void *pcap_thread_fn(void *_driver) {
 					usbp->endpoint_number, usbp->event_type, usbp->status, dev->so->codename);*/
 				int interface = interface_lookup(dev, usbp->endpoint_number);
 				if (interface == 0) {
-					fprintf(stderr, "R: 0x%016lx event_type: %c transfer_type: %d 0x%02x (0x%02x): ", usbp->id,
-							usbp->event_type, usbp->transfer_type, usbp->endpoint_number, usbp->data_len);
+					ctx->printfproc(
+						ctx,
+						"<-- R: %s 0x%016lx event_type: %c transfer_type: %d endpoint: 0x%02x (0x%02x): ", dev_name,
+						usbp->id, usbp->event_type, usbp->transfer_type, usbp->endpoint_number, usbp->data_len);
 					for (int i = 0; i < usbp->data_len; i++) {
 						if ((i + 2) % 4 == 0)
-							fprintf(stderr, "  ");
-						fprintf(stderr, "%02x ", pktData[i]);
+							ctx->printfproc(ctx, "  ");
+						ctx->printfproc(ctx, "%02x ", pktData[i]);
 					}
 
-					fprintf(stderr, "\n");
+					ctx->printfproc(ctx, "'");
+					for (int i = 0; i < usbp->data_len; i++) {
+						ctx->printfproc(ctx, "%c", (pktData[i] >= 32 && pktData[i] < 127) ? pktData[i] : ' ');
+					}
+					ctx->printfproc(ctx, "'");
 
+					ctx->printfproc(ctx, "\n");
 				} else if (dev->hasConfiged) {
 
 					if (dev->so) {
