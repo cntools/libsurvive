@@ -391,6 +391,7 @@ SURVIVE_EXPORT void survive_apply_ang_velocity(LinmathQuat out, const SurviveAng
 											   const LinmathQuat t0);
 // Call these from your callback if overridden.
 // Accept higher-level data.
+SURVIVE_EXPORT int survive_default_printf_process(struct SurviveContext *ctx, const char *format, ...);
 SURVIVE_EXPORT void survive_default_log_process(struct SurviveContext *ctx, SurviveLogLevel ll, const char *fault);
 SURVIVE_EXPORT void survive_default_lightcap_process(SurviveObject *so, const LightcapElement *element);
 SURVIVE_EXPORT void survive_default_light_process(SurviveObject *so, int sensor_id, int acode, int timeinsweep,

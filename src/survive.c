@@ -14,6 +14,8 @@
 #include "survive_default_devices.h"
 #include "survive_playback.h"
 
+#include <stdarg.h>
+
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -74,23 +76,31 @@ static void survive_default_report_error_process(struct SurviveContext *ctx, Sur
 	ctx->currentError = errorCode;
 }
 
+int survive_default_printf_process(struct SurviveContext *ctx, const char *format, ...) {
+	va_list args;
+	va_start(args, format);
+	int rtn = vfprintf(ctx->log_target, format, args);
+	va_end(args);
+	return rtn;
+}
+
 static void survive_default_error(struct SurviveContext *ctx, SurviveError errorCode, const char *fault) {
 	set_stderr_color(ctx->log_target, 2);
-	fprintf(ctx->log_target, "Error %d: %s\n", errorCode, fault);
+	ctx->printfproc(ctx, "Error %d: %s\n", errorCode, fault);
 	reset_stderr(ctx->log_target);
 	fflush(ctx->log_target);
 }
 
 static void survive_default_info(struct SurviveContext *ctx, const char *fault) {
 	survive_recording_info_process(ctx, fault);
-	fprintf(ctx->log_target, "Info: %s\n", fault);
+	ctx->printfproc(ctx, "Info: %s\n", fault);
 	fflush(ctx->log_target);
 }
 
 static void survive_default_warn(struct SurviveContext *ctx, const char *fault) {
 	survive_recording_info_process(ctx, fault);
 	set_stderr_color(ctx->log_target, 1);
-	fprintf(ctx->log_target, "Warning: %s\n", fault);
+	ctx->printfproc(ctx, "Warning: %s\n", fault);
 	reset_stderr(ctx->log_target);
 	fflush(ctx->log_target);
 }

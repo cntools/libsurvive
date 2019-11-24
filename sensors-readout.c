@@ -42,7 +42,7 @@ static void print(float f) {
 
 static void print_label(const char *l) { printf("%*s|", 10, l); }
 
-void info_fn(SurviveContext *ctx, SurviveLogLevel logLevel, const char *fault) {}
+int printf_fn(SurviveContext *ctx, const char *fault, ...) { return 0; }
 
 int lh = 0;
 
