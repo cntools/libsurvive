@@ -6,6 +6,7 @@ static volatile int keepRunning = 1;
 
 #include "math.h"
 #include <assert.h>
+#include <ctype.h>
 #include <os_generic.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -18,7 +19,7 @@ void intHandler(int dummy) {
 
 #endif
 bool needsRedraw = false;
-
+bool surviveIsDone = false;
 struct sensor_stats {
 	double MN, MX;
 };
@@ -45,6 +46,18 @@ static void print_label(const char *l) { printf("%*s|", 10, l); }
 int printf_fn(SurviveContext *ctx, const char *fault, ...) { return 0; }
 
 int lh = 0;
+bool useRawSensorId = false;
+static uint8_t get_raw_sensor_id(SurviveObject *so, uint8_t sensor_id) {
+	if (so->channel_map) {
+		for (int i = 0; i < 32; i++) {
+			if (so->channel_map[i] == sensor_id) {
+				return i;
+			}
+		}
+		return -1;
+	}
+	return sensor_id;
+}
 
 static void redraw(SurviveContext *ctx) {
 	printf("\033[;H");
@@ -98,7 +111,9 @@ static void redraw(SurviveContext *ctx) {
 				if (sensor == so->sensor_ct - 1)
 					printf("\e[4m");
 
-				printf("| %2d.%02d    |", ctx->bsd[lh].mode, sensor);
+				uint8_t displaySensor = useRawSensorId ? get_raw_sensor_id(so, sensor) : sensor;
+
+				printf("| %2d.%02d    |", ctx->bsd[lh].mode, displaySensor);
 				for (int axis = 0; axis < 2; axis++) {
 					FLT f = so->activations.angles[sensor][lh][axis];
 					process_reading(i, lh, sensor, axis, f);
@@ -129,12 +144,21 @@ void *KBThread(void *user) {
 	SurviveContext *ctx = user;
 
 	while (keepRunning) {
-		int c = getchar();
+		int c = tolower(getchar());
 		system("clear");
-		if (c == 10) {
+		if (c == 'l') {
 			lh++;
 			if (!ctx->bsd[lh].OOTXSet)
 				lh = 0;
+		} else if (c == 'q') {
+			keepRunning = false;
+		} else if (c == 'r') {
+			useRawSensorId = !useRawSensorId;
+		}
+		if (surviveIsDone) {
+			redraw(ctx);
+		} else {
+			needsRedraw = true;
 		}
 	}
 	return 0;
@@ -156,13 +180,13 @@ int main(int argc, char **argv) {
 		return 0;
 
 	FLT last_redraw = OGGetAbsoluteTime();
-	survive_install_log_fn(ctx, info_fn);
+	survive_install_printf_fn(ctx, printf_fn);
 	survive_install_imu_fn(ctx, imu_fn);
 	survive_startup(ctx);
 
 	system("clear");
 
-	OGCreateThread(KBThread, ctx);
+	og_thread_t kbThread = OGCreateThread(KBThread, ctx);
 
 	while (keepRunning && survive_poll(ctx) == 0) {
 		FLT this_time = OGGetAbsoluteTime();
@@ -171,6 +195,12 @@ int main(int argc, char **argv) {
 			last_redraw = this_time;
 		}
 	}
+	surviveIsDone = true;
+	if (keepRunning) {
+		printf("Survive done, type 'q <enter>' to exit...\n");
+	}
+
+	OGJoinThread(kbThread);
 
 	survive_close(ctx);
 	return 0;

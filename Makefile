@@ -3,7 +3,7 @@
 LIBRARY:=./lib/libsurvive.so
 STATIC_LIBRARY:=./lib/libsurvive.a
 
-all : $(STATIC_LIBRARY) $(LIBRARY) data_recorder simple_pose_test plugins .options survive-cli api_example
+all : $(STATIC_LIBRARY) $(LIBRARY) data_recorder simple_pose_test plugins .options survive-cli api_example sensors-readout
 	@echo "Built with defaults.  Type 'make help' for more info."
 
 PREFIX?=/usr/local
@@ -126,6 +126,9 @@ survive-cli : survive-cli.c $(LIBRARY)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
 
 api_example : api_example.c $(LIBRARY)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
+
+sensors-readout : sensors-readout.c $(LIBRARY)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_TOOLS)
 
 calibrate :  calibrate.c $(DRAWFUNCTIONS) $(LIBRARY)
