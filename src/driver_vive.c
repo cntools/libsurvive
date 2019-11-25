@@ -68,6 +68,14 @@ static uint8_t vive_magic_power_off[] = {
 static uint8_t vive_magic_raw_mode_1[] = {0x04, 0x01, 0x00, 0x00, 0x00};
 static uint8_t vive_magic_rf_raw_mode_1[] = {0xff};
 
+enum vive_commands {
+	// takes 3 bytes;
+	vive_command_change_protocol = 0x87,
+	vive_command_haptic_pulse = 0x8f,
+	vive_command_haptic_power_off = 0x9f,
+
+};
+
 #define MAGIC_CTOR(ison, buffer)                                                                                       \
 	{ .code = ison, .magic = buffer, .length = sizeof(buffer) }
 const struct DeviceInfo KnownDeviceTypes[] = {
@@ -137,6 +145,37 @@ const struct DeviceInfo KnownDeviceTypes[] = {
 
 typedef struct SurviveUSBInterface SurviveUSBInterface;
 typedef struct SurviveViveData SurviveViveData;
+
+void survive_dump_buffer(SurviveContext *ctx, uint8_t *data, size_t length) {
+	int bytes_per_row = 32;
+	for (size_t i = 0; i < length; i += bytes_per_row) {
+		for (int j = 0; j < bytes_per_row; j++) {
+			if (j > 0 && j % 4 == 0)
+				ctx->printfproc(ctx, "  ");
+
+			if (i + j < length) {
+				ctx->printfproc(ctx, "%02x ", data[i + j]);
+			} else {
+				ctx->printfproc(ctx, "   ");
+			}
+		}
+
+		ctx->printfproc(ctx, "    |    ");
+
+		for (int j = 0; j < bytes_per_row; j++) {
+			if (j > 0 && j % 4 == 0)
+				ctx->printfproc(ctx, "  ");
+			if (i + j < length) {
+				uint8_t d = data[i + j];
+				ctx->printfproc(ctx, "%c", d >= 32 && d < 127 ? d : '.');
+			} else {
+				ctx->printfproc(ctx, "   ");
+			}
+		}
+
+		ctx->printfproc(ctx, "\n");
+	}
+}
 
 struct SurviveUSBInfo {
 	USBHANDLE handle;
@@ -2211,6 +2250,63 @@ static inline uint32_t read_buffer32(uint8_t *readdata, int idx) {
 	return rtn;
 }
 
+static void parse_tracker_version_info(SurviveObject *so, uint8_t *data, size_t size) {
+	SurviveContext *ctx = so->ctx;
+
+#pragma pack(push, 1)
+	struct {
+		uint32_t revision;
+		uint32_t some_other_number;
+		char fw_name[31];
+		uint16_t a, b, c, d;
+		uint8_t e;
+		uint16_t fpga_major_version;
+		uint8_t fpga_minor_version;
+		uint8_t fpga_patch_version;
+		uint8_t h;
+		uint8_t flags1, flags2;
+		uint16_t i, j;
+		uint32_t k;
+	} version_info;
+#pragma pack(pop)
+	memcpy(&version_info, data, sizeof(version_info));
+	SV_INFO("Device %s has FW version %lu and FPGA version %u/%u/%u; named %31s", so->codename, version_info.revision,
+			version_info.fpga_major_version, version_info.fpga_minor_version, version_info.fpga_patch_version,
+			version_info.fw_name);
+}
+
+static void parse_tracker_info(SurviveObject *so, uint8_t id, uint8_t *readdata, size_t size) {
+	SurviveContext *ctx = so->ctx;
+	switch (id) {
+	case 1: {
+		SV_INFO("Info 1: 0x%x 0x%x", readdata[0], readdata[1]);
+		break;
+	}
+	case 5: {
+		parse_tracker_version_info(so, readdata, size);
+		break;
+	}
+	case 8: {
+		SV_INFO("Info 8: 0x%x", readdata[0]);
+		break;
+	}
+	// Start config stream
+	case 0x10: {
+		break;
+	}
+	// Request more config stream
+	case 0x11: {
+		break;
+	}
+	case 0xff: {
+		SV_INFO("Received cmd 0x%02x with %d bytes of data", readdata[0], readdata[1]);
+		survive_dump_buffer(ctx, readdata + 2, readdata[1]);
+		break;
+	}
+	default: { SV_INFO("Unknown field 0x%02x for %s", id, so->codename); }
+	}
+}
+
 void survive_data_cb(SurviveUSBInterface *si) {
 	int size = si->actual_len;
 	SurviveContext *ctx = si->ctx;
@@ -2229,6 +2325,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 		goto exit_fn;
 
 	int id = POP1;
+	size--;
 	//	printf( "%16s Size: %2d ID: %d / %d\n", si->hname, size, id, iface );
 //	SV_INFO("%s interface %d", obj->codename, iface);
 #if 0
@@ -2245,6 +2342,10 @@ void survive_data_cb(SurviveUSBInterface *si) {
 	}
 #endif
 	switch (si->which_interface_am_i) {
+	case USB_IF_TRACKER_INFO: {
+		parse_tracker_info(obj, id, readdata, size);
+		break;
+	}
 	case USB_IF_HMD_HEADSET_INFO: {
 		SurviveObject *headset = obj;
 		readdata += 2;
@@ -2292,9 +2393,6 @@ void survive_data_cb(SurviveUSBInterface *si) {
 				ctx->raw_imuproc(obj, 3, agm, timecode, code);
 			}
 		}
-		if (id != 32) {
-			int a = 0; // set breakpoint here
-		}
 		// DONE OK.
 		break;
 	}
@@ -2302,10 +2400,10 @@ void survive_data_cb(SurviveUSBInterface *si) {
 	case USB_IF_WATCHMAN2: {
 		SurviveObject *w = obj;
 		if (id == 35) {
-			assert(size == 30);
+			assert(size == 29);
 			handle_watchman(w, readdata);
 		} else if (id == 36) {
-			assert(size == 29 * 2 + 1);
+			assert(size == 29 * 2);
 			handle_watchman(w, readdata);
 			handle_watchman(w, readdata + 29);
 		} else if (id == 38) {

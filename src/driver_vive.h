@@ -33,6 +33,8 @@ enum USB_IF_t {
 	USB_IF_WATCHMAN1,
 	USB_IF_WATCHMAN2,
 	USB_IF_TRACKER0_IMU,
+
+	USB_IF_TRACKER_INFO,
 	USB_IF_TRACKER1_IMU,
 	USB_IF_W_WATCHMAN1_IMU,
 
@@ -85,6 +87,7 @@ typedef struct SurviveUSBInterface {
 	size_t packet_count;
 } SurviveUSBInterface;
 
+void survive_dump_buffer(SurviveContext *ctx, uint8_t *data, size_t length);
 void survive_data_cb(SurviveUSBInterface *si);
 int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, uint8_t time1,
 							survive_timecode reference_time, uint8_t *readdata, size_t qty, LightcapElement *les,

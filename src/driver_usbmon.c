@@ -22,6 +22,8 @@
 STATIC_CONFIG_ITEM(USBMON_RECORD, "usbmon-record", 's', "File to save .pcap to.", 0);
 STATIC_CONFIG_ITEM(USBMON_PLAYBACK, "usbmon-playback", 's', "File to replay .pcap from.", 0);
 STATIC_CONFIG_ITEM(USBMON_RECORD_ALL, "usbmon-record-all", 'i', "Whether or not to record all usb traffic", 0);
+STATIC_CONFIG_ITEM(USBMON_OUTPUT_EVERYTHING, "usbmon-output-all", 'i', "Whether or not to log all usb traffic", 0);
+STATIC_CONFIG_ITEM(USBMON_OUTPUT, "usbmon-output", 'i', "Whether or not to log any generic usb traffic", 0);
 
 typedef struct vive_device_t {
 	uint16_t vid, pid;
@@ -64,6 +66,9 @@ typedef struct SurviveDriverUSBMon {
 
 	pcap_dumper_t *pcapDumper;
 	bool record_all;
+
+	bool output_usb_stream;
+	bool output_everything;
 
 	char errbuf[PCAP_ERRBUF_SIZE];
 	vive_device_inst_t usb_devices[VIVE_DEVICE_INST_MAX];
@@ -137,7 +142,9 @@ static int interface_lookup(const vive_device_inst_t *dev, int endpoint) {
 		return USB_IF_TRACKER1_IMU;
 	case 0x812012:
 		return USB_IF_W_WATCHMAN1_IMU;
-
+	case 0x802300:
+	case 0x802101:
+		return USB_IF_TRACKER_INFO;
 	case 0x822000:
 		return USB_IF_HMD_LIGHTCAP;
 	case 0x822101:
@@ -174,6 +181,11 @@ static bool is_config_request(const struct _usb_header_mmapped *usbp) {
 static bool is_config_start(const struct _usb_header_mmapped *usbp) {
 	return usbp->event_type == 'S' && usbp->s.setup.bmRequestType == 0xa1 && usbp->s.setup.bRequest == 1 &&
 		   usbp->s.setup.wValue == 0x310;
+}
+
+static bool is_command_setup(const struct _usb_header_mmapped *usbp) {
+	return usbp->event_type == 'S' && usbp->s.setup.bmRequestType == 0x21 && usbp->s.setup.bRequest == 0x09 &&
+		   usbp->s.setup.wValue == 0x3ff;
 }
 
 static void ingest_config_request(vive_device_inst_t *dev, const struct _usb_header_mmapped *usbp, uint8_t *pktData) {
@@ -381,6 +393,10 @@ static int setup_usb_devices(SurviveDriverUSBMon *sp) {
 	return rtn;
 }
 
+double make_time(double start, const struct _usb_header_mmapped *pMmapped) {
+	return pMmapped->ts_sec + pMmapped->ts_usec * 1.e-6 - start;
+}
+
 void *pcap_thread_fn(void *_driver) {
 	SurviveDriverUSBMon *driver = _driver;
 	struct SurviveContext *ctx = driver->ctx;
@@ -389,6 +405,7 @@ void *pcap_thread_fn(void *_driver) {
 	struct pcap_pkthdr *pkthdr = 0;
 	const usb_header_t *usbp = 0;
 
+	double start_time = 0;
 	while (driver->keepRunning) {
 		int result = pcap_next_ex(driver->pcap, &pkthdr, (const uint8_t **)&usbp);
 		switch (result) {
@@ -408,45 +425,65 @@ void *pcap_thread_fn(void *_driver) {
 				driver->packet_cnt++;
 				const char *dev_name = dev->so ? dev->so->codename : "(unknown)";
 
+				if (start_time == 0) {
+					start_time = make_time(0, usbp);
+				}
+				double this_time = make_time(start_time, usbp);
 				// Print setup flags, then just bail
 				if (!usbp->setup_flag) {
 					if (is_config_start(usbp)) {
 						dev->last_config_id = 0;
 						dev->compressed_data_idx = 0;
+						SV_INFO("usbmon detected start of config");
 					} else if (is_config_request(usbp)) {
 						dev->last_config_id = usbp->id;
-					} else {
-						ctx->printfproc(ctx,
-										"--> S: %s 0x%016lx event_type: %c transfer_type: %d bmRequestType: 0x%02x "
-										"bRequest: 0x%02x "
-										"wValue: 0x%04x wIndex: 0x%04x wLength: %4d\n",
-										dev_name, usbp->id, usbp->event_type, usbp->transfer_type,
-										usbp->s.setup.bmRequestType, usbp->s.setup.bRequest, usbp->s.setup.wValue,
-										usbp->s.setup.wIndex, usbp->s.setup.wLength);
+					} else if (is_command_setup(usbp)) {
+						SV_INFO("usbmon detected sent command 0x%02x with %u bytes:", pktData[1], pktData[2]);
+						survive_dump_buffer(ctx, pktData + 3, pktData[2]);
+					}
+
+					if (driver->output_usb_stream) {
+						ctx->printfproc(
+							ctx,
+							"--> %10.6f S: %s 0x%016lx event_type: %c transfer_type: %d bmRequestType: 0x%02x "
+							"bRequest: 0x%02x "
+							"wValue: 0x%04x wIndex: 0x%04x wLength: %4d\n",
+							this_time, dev_name, usbp->id, usbp->event_type, usbp->transfer_type,
+							usbp->s.setup.bmRequestType, usbp->s.setup.bRequest, usbp->s.setup.wValue,
+							usbp->s.setup.wIndex, usbp->s.setup.wLength);
+
+						survive_dump_buffer(ctx, pktData, usbp->data_len);
 					}
 					goto continue_loop;
 				}
 
 				if (!(usbp->endpoint_number & 0x80u)) {
-					ctx->printfproc(
-						ctx, "--> W: %s 0x%016lx event_type: %c transfer_type: %d 0x%02x (0x%02x): ", dev_name,
-						usbp->id, usbp->event_type, usbp->transfer_type, usbp->endpoint_number, usbp->data_len);
-					for (int i = 0; i < usbp->data_len; i++) {
-						if ((i + 2) % 4 == 0)
-							ctx->printfproc(ctx, "  ");
-						ctx->printfproc(ctx, "%02x ", pktData[i]);
+
+					if (driver->output_usb_stream) {
+						if (usbp->event_type == 'C') {
+							ctx->printfproc(
+								ctx, "<-- %10.6f C: %s 0x%016lx event_type: %c transfer_type: %d 0x%02x (0x%02x):\n",
+								this_time, dev_name, usbp->id, usbp->event_type, usbp->transfer_type,
+								usbp->endpoint_number, usbp->data_len);
+						} else {
+							ctx->printfproc(
+								ctx, "--> %10.6f W: %s 0x%016lx event_type: %c transfer_type: %d 0x%02x (0x%02x):\n",
+								this_time, dev_name, usbp->id, usbp->event_type, usbp->transfer_type,
+								usbp->endpoint_number, usbp->data_len);
+						}
+						survive_dump_buffer(ctx, pktData, usbp->data_len);
 					}
-
-					ctx->printfproc(ctx, "\n");
-
 					goto continue_loop; // Only want incoming data
 				}
 
 				if (usbp->status != 0) {
 					// EINPROGRESS is normal, EPIPE means stalled
-					if (usbp->status != -115 && usbp->status != -32)
-						ctx->printfproc(ctx, "<-- E: %s 0x%016lx event_type: %c transfer_type: %d status: %d\n",
-										dev_name, usbp->id, usbp->event_type, usbp->transfer_type, usbp->status);
+					if (driver->output_usb_stream) {
+						if ((usbp->status != -115 && usbp->status != -32) || driver->output_everything)
+							ctx->printfproc(
+								ctx, "<-- %10.6f E: %s 0x%016lx event_type: %c transfer_type: %d status: %d\n",
+								this_time, dev_name, usbp->id, usbp->event_type, usbp->transfer_type, usbp->status);
+					}
 					goto continue_loop; // Only want responses
 				}
 
@@ -463,25 +500,18 @@ void *pcap_thread_fn(void *_driver) {
 					pkthdr.len, usbp->id, usbp->bus_id, usbp->device_address,
 					usbp->endpoint_number, usbp->event_type, usbp->status, dev->so->codename);*/
 				int interface = interface_lookup(dev, usbp->endpoint_number);
-				if (interface == 0) {
+
+				if (driver->output_usb_stream &&
+					(interface == 0 || driver->output_everything || interface == USB_IF_TRACKER_INFO)) {
 					ctx->printfproc(
-						ctx,
-						"<-- R: %s 0x%016lx event_type: %c transfer_type: %d endpoint: 0x%02x (0x%02x): ", dev_name,
-						usbp->id, usbp->event_type, usbp->transfer_type, usbp->endpoint_number, usbp->data_len);
-					for (int i = 0; i < usbp->data_len; i++) {
-						if ((i + 2) % 4 == 0)
-							ctx->printfproc(ctx, "  ");
-						ctx->printfproc(ctx, "%02x ", pktData[i]);
-					}
+						ctx, "<-- %10.6f R: %s 0x%016lx event_type: %c transfer_type: %d endpoint: 0x%02x (0x%02x): \n",
+						this_time, dev_name, usbp->id, usbp->event_type, usbp->transfer_type, usbp->endpoint_number,
+						usbp->data_len);
 
-					ctx->printfproc(ctx, "'");
-					for (int i = 0; i < usbp->data_len; i++) {
-						ctx->printfproc(ctx, "%c", (pktData[i] >= 32 && pktData[i] < 127) ? pktData[i] : ' ');
-					}
-					ctx->printfproc(ctx, "'");
+					survive_dump_buffer(ctx, pktData, usbp->data_len);
+				}
 
-					ctx->printfproc(ctx, "\n");
-				} else if (dev->hasConfiged) {
+				if (interface != 0 && (dev->hasConfiged || interface == USB_IF_TRACKER_INFO)) {
 
 					if (dev->so) {
 						SurviveUSBInterface si = {.ctx = ctx,
@@ -545,10 +575,13 @@ static FILE *open_playback(const char *fn, const char *mode) {
 #endif
 }
 
-int DriverRegUSBMon(SurviveContext *ctx) {
+static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
 	int enable = survive_configi(ctx, "usbmon", SC_GET, 0);
 	const char *usbmon_record = survive_configs(ctx, "usbmon-record", SC_GET, 0);
 	const char *usbmon_playback = survive_configs(ctx, "usbmon-playback", SC_GET, 0);
+
+	if (enable && driver_id != 0)
+		return -1;
 
 	SurviveDriverUSBMon *sp = SV_CALLOC(1, sizeof(SurviveDriverUSBMon));
 	sp->ctx = ctx;
@@ -569,6 +602,9 @@ int DriverRegUSBMon(SurviveContext *ctx) {
 				 "pcap_open_live() failed due to [%s] - You probably need to call 'sudo modprobe usbmon'", sp->errbuf);
 		return SURVIVE_DRIVER_ERROR;
 	}
+
+	sp->output_everything = survive_configi(ctx, "usbmon-output-all", SC_GET, 0);
+	sp->output_usb_stream = sp->output_everything || survive_configi(ctx, "usbmon-output", SC_GET, 0);
 
 	if (usbmon_record && *usbmon_record) {
 		FILE *fd = open_playback(usbmon_record, "w");
@@ -595,10 +631,11 @@ int DriverRegUSBMon(SurviveContext *ctx) {
 	return sp->passiveMode ? SURVIVE_DRIVER_PASSIVE : SURVIVE_DRIVER_NORMAL;
 }
 
+int DriverRegUSBMon(SurviveContext *ctx) { return DriverRegUSBMon_(ctx, 0); }
 REGISTER_LINKTIME(DriverRegUSBMon);
 
-int DriverRegUSBMon_Record(SurviveContext *ctx) { return DriverRegUSBMon(ctx); }
+int DriverRegUSBMon_Record(SurviveContext *ctx) { return DriverRegUSBMon_(ctx, 1); }
 REGISTER_LINKTIME(DriverRegUSBMon_Record);
 
-int DriverRegUSBMon_Playback(SurviveContext *ctx) { return DriverRegUSBMon(ctx); }
+int DriverRegUSBMon_Playback(SurviveContext *ctx) { return DriverRegUSBMon_(ctx, 2); }
 REGISTER_LINKTIME(DriverRegUSBMon_Playback);
