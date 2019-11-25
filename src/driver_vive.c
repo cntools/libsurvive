@@ -2024,7 +2024,7 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 			} else {
 #ifdef HIDAPI
 				// TODO: This seems hacky....
-				for (int i = 0; i < si->sv->udev_cnt; i++) {
+				for (int i = 0; si->sv && i < si->sv->udev_cnt; i++) {
 					struct SurviveUSBInfo *usbInfo = &si->sv->udev[i];
 					int r =
 						update_feature_report(usbInfo->handle, 0, vive_magic_raw_mode_1, sizeof(vive_magic_raw_mode_1));
