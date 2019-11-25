@@ -254,8 +254,10 @@ static inline FLT linmath_enforce_range(FLT v, FLT mn, FLT mx) {
 }
 
 static inline FLT linmath_max(FLT x, FLT y) { return x > y ? x : y; }
+static inline int linmath_imax(int x, int y) { return x > y ? x : y; }
 
 static inline FLT linmath_min(FLT x, FLT y) { return x < y ? x : y; }
+static inline int linmath_imin(int x, int y) { return x < y ? x : y; }
 
 static inline LinmathEulerPose Pose2EulerPose(const LinmathPose *pose) {
 	LinmathEulerPose p;
