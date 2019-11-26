@@ -93,6 +93,10 @@ typedef struct SurviveUSBInterface {
 
 void survive_dump_buffer(SurviveContext *ctx, uint8_t *data, size_t length);
 void survive_data_cb(SurviveUSBInterface *si);
+void survive_data_on_setup_write(SurviveObject *so, uint8_t bmRequestType, uint8_t bRequest, uint16_t wValue,
+								 uint16_t wIndex, const uint8_t *data, size_t length);
 int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, uint8_t time1,
 							survive_timecode reference_time, uint8_t *readdata, size_t qty, LightcapElement *les,
 							size_t output_cnt);
+
+void survive_vive_register_driver(SurviveObject *so, uint16_t vid, uint16_t pid);

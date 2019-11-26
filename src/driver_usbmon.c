@@ -382,6 +382,7 @@ static int setup_usb_devices(SurviveDriverUSBMon *sp) {
 
 			SurviveObject *so = survive_create_device(ctx, "UMN", 0, buff, 0);
 			sp->usb_devices[i].so = so;
+			survive_vive_register_driver(so, sp->usb_devices[i].device->vid, sp->usb_devices[i].device->pid);
 		}
 		char filter[256] = {};
 		sprintf(filter, "(usb.bus_id = %d and usb.device_address = %d)", sp->usb_devices[i].bus_id,
@@ -470,7 +471,6 @@ void *pcap_thread_fn(void *_driver) {
 						SV_INFO("usbmon detected sent command 0x%02x with %u bytes:", pktData[1], pktData[2]);
 						survive_dump_buffer(ctx, pktData + 3, pktData[2]);
 					}
-
 					if (driver->output_usb_stream) {
 						ctx->printfproc(
 							ctx,
@@ -484,6 +484,10 @@ void *pcap_thread_fn(void *_driver) {
 
 						survive_dump_buffer(ctx, pktData, usbp->data_len);
 					}
+
+					survive_data_on_setup_write(dev->so, usbp->s.setup.bmRequestType, usbp->s.setup.bRequest,
+												usbp->s.setup.wValue, usbp->s.setup.wIndex, pktData, usbp->data_len);
+
 					goto continue_loop;
 				}
 
@@ -524,8 +528,12 @@ void *pcap_thread_fn(void *_driver) {
 
 				int interface = interface_lookup(dev, usbp->endpoint_number);
 
-				if (driver->output_usb_stream &&
-					(interface == 0 || driver->output_everything || interface == USB_IF_TRACKER_INFO)) {
+				bool output_read = driver->output_usb_stream &&
+								   (interface == 0 || driver->output_everything || interface == USB_IF_TRACKER_INFO) &&
+								   interface != USB_IF_W_WATCHMAN1_IMU && interface != USB_IF_TRACKER1_IMU &&
+								   interface != USB_IF_TRACKER0_IMU;
+
+				if (output_read) {
 					ctx->printfproc(
 						ctx,
 						"<-- %10.6f R: %s 0x%016lx event_type: %c transfer_type: %d endpoint: 0x%02x (%s) (0x%02x): \n",

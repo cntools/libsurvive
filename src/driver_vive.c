@@ -77,9 +77,9 @@ enum vive_report_ids {
 	VIVE_REPORT_VERSION = 0x05,
 
 	// Tracker/lh1/[rf,usb]: (steamvr -> device): 04 00 00 00   00
-	VIVE_REPORT_CHANGE_MODE_USB = 0x04,
+	VIVE_REPORT_CHANGE_MODE = 0x04,
 	// Tracker/lh1/[rf,usb]: (steamvr -> device):  07 03 00 00   00
-	VIVE_REPORT_UNKNOWN1 = 0x07,
+	VIVE_REPORT_LIGHTCAP_VERBOSITY = 0x07,
 
 	// Seems like 0x4/0x7 are used in conjunction:
 	// Sync mode 0:
@@ -105,6 +105,12 @@ enum vive_report_ids {
 
 	// Sent and echoed by steamvr; no data
 	// Directly proceeds a 0x04...
+	// Possibly a different version packet. Sent when you do 'version' in lh_console.
+	// knuckles -> lighthouse_console:
+	// 13 b5 35 28   5d 03 00 00   00 77 61 74   63 68 6d 61   6e 00 00 00   00 00 00 00   00 56 61 6c   76 65 42 75 |
+	// ..5(  ]...  .wat  chma  n...  ....  .Val  veBu
+	// 69 6c 64 65   72 30 32 00   00 09 00 0e   11 00 00 bd   26 1a 02 0a   02 f1 52 2c   5c 00 00 00   00 00 00 00 |
+	// ilde  r02.  ....  ....  &...  ..R,  \...  ....
 	VIVE_REPORT_USB_TRACKER_UNKNOWN = 0x13,
 
 	// Tracker/lh1/usb: (steamvr -> device): 16 01 00 00   00
@@ -151,15 +157,15 @@ enum vive_commands {
 };
 
 static uint8_t vive_magic_power_on[64] = {0x04, 0x78, 0x29, 0x38, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01};
-static uint8_t vive_magic_enable_lighthouse[5] = {0x04};
-static uint8_t vive_magic_enable_lighthouse_more[5] = {0x07, 0x02};
+static uint8_t vive_magic_enable_lighthouse[5] = {VIVE_REPORT_CHANGE_MODE};
+static uint8_t vive_magic_enable_lighthouse_more[5] = {VIVE_REPORT_LIGHTCAP_VERBOSITY, 0x03};
 static uint8_t vive_magic_power_off[] = {
 	0x04, 0x78, 0x29, 0x38, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x30, 0x05, 0x77,
 	0x00, 0xe4, 0xf7, 0x33, 0x00, 0xe4, 0xf7, 0x33, 0x00, 0x60, 0x6e, 0x72, 0x00, 0xb4, 0xf7, 0x33,
 	0x00, 0x04, 0x00, 0x00, 0x00, 0x70, 0xb0, 0x72, 0x00, 0x90, 0xf7, 0x33, 0x00, 0x7c, 0xf8, 0x33,
 	0x00, 0xd0, 0xf7, 0x33, 0x00, 0x3c, 0x68, 0x29, 0x65, 0x24, 0xf9, 0x33, 0x00, 0x00, 0x00, 0x00,
 };
-static uint8_t vive_magic_raw_mode_1[] = {VIVE_REPORT_CHANGE_MODE_USB, 0x01, 0x00, 0x00, 0x00};
+static uint8_t vive_magic_raw_mode_1[] = {VIVE_REPORT_CHANGE_MODE, 0x01, 0x00, 0x00, 0x00};
 static uint8_t vive_magic_rf_raw_mode_1[] = {
 	VIVE_REPORT_COMMAND, VIVE_COMMAND_CHANGE_PROTOCOL, 0x01, 0x01, 0x00, 0x02, 0x00, 0x00};
 
@@ -313,13 +319,80 @@ struct SurviveUSBInfo {
 
 	enum LightcapMode {
 		LightcapMode_unknown = 0,
+
+		// This is the starting mode after an 0x40 0 0 0 0. Used for LH1
 		LightcapMode_raw0,
+
+		// This is the mode used for LH2
 		LightcapMode_raw1,
+
+		// Not sure what this is used for tbh
 		LightcapMode_raw2
 	} lightcapMode;
 
 	size_t timeWithoutFlag;
 };
+
+static inline int update_feature_report_async(USBHANDLE dev, uint16_t iface, uint8_t *data, int datalen);
+
+static bool survive_device_is_rf(const struct DeviceInfo *device_info) {
+	switch (device_info->type) {
+	case USB_DEV_HMD:
+	case USB_DEV_HMD_IMU_LH:
+	case USB_DEV_W_WATCHMAN1:
+	case USB_DEV_TRACKER0:
+	case USB_DEV_TRACKER1:
+		return false;
+	}
+	return true;
+}
+
+static void vive_switch_mode(struct SurviveUSBInfo *driverInfo, enum LightcapMode lightcapMode) {
+	SurviveContext *ctx = driverInfo->so->ctx;
+	SurviveObject *w = driverInfo->so;
+	if (driverInfo->timeWithoutFlag == 0) {
+		driverInfo->timeWithoutFlag = 1;
+		uint8_t buffer[8] = {};
+		size_t buffer_length = 0;
+		if (survive_device_is_rf(driverInfo->device_info)) {
+			buffer[0] = VIVE_REPORT_COMMAND;
+			buffer[1] = VIVE_COMMAND_CHANGE_PROTOCOL;
+			buffer[2] = 6;
+			buffer[3] = lightcapMode == LightcapMode_raw0 ? 0 : 1;
+			buffer[6] = lightcapMode == LightcapMode_raw2 ? 1 : 0;
+			buffer_length = 8;
+		} else {
+			buffer[0] = VIVE_REPORT_CHANGE_MODE;
+			buffer[1] = (lightcapMode == LightcapMode_raw1) ? 1 : (lightcapMode == LightcapMode_raw2) ? 3 : 0;
+			buffer_length = 5;
+		}
+
+		if (driverInfo->handle) {
+			SV_INFO("Sending RF magic...");
+			int r = update_feature_report_async(driverInfo->handle, 0, buffer, buffer_length);
+			if (r != buffer_length) {
+				SV_WARN("Could not send raw mode to %s (%d)", w->codename, r);
+			}
+
+			if (!survive_device_is_rf(driverInfo->device_info)) {
+				r = update_feature_report_async(driverInfo->handle, 0, vive_magic_enable_lighthouse_more,
+												sizeof(vive_magic_enable_lighthouse_more));
+				if (r != buffer_length) {
+					SV_WARN("Could not lighthouse more to %s (%d)", w->codename, r);
+				}
+			}
+
+			SV_INFO("LightcapMode %d -> %d", driverInfo->lightcapMode, lightcapMode);
+			driverInfo->lightcapMode = lightcapMode;
+		} else {
+			static bool transfer_null_warning = false;
+			if (!transfer_null_warning) {
+				SV_WARN("Can't update the usb device %s out of raw 0 mode; dumping data", w->codename);
+				transfer_null_warning = true;
+			}
+		}
+	}
+}
 
 struct SurviveViveData {
 	SurviveContext *ctx;
@@ -331,6 +404,22 @@ struct SurviveViveData {
 
 	bool closing;
 };
+
+static bool is_mode_switch_usb(uint8_t bmRequestType, uint8_t bRequest, uint16_t wValue, uint16_t wIndex,
+							   uint16_t length) {
+	return bmRequestType == 0x21 && bRequest == 0x09 && wValue == 0x304 && length >= 5;
+}
+
+void survive_data_on_setup_write(SurviveObject *so, uint8_t bmRequestType, uint8_t bRequest, uint16_t wValue,
+								 uint16_t wIndex, const uint8_t *data, size_t length) {
+	SurviveContext *ctx = so->ctx;
+	struct SurviveUSBInfo *driverInfo = so->driver;
+	if (is_mode_switch_usb(bmRequestType, bRequest, wValue, wIndex, length)) {
+		enum LightcapMode m = data[1] == 0 ? LightcapMode_raw0 : data[1] == 1 ? LightcapMode_raw1 : LightcapMode_raw2;
+		SV_INFO("LightcapMode %d -> %d", driverInfo->lightcapMode, m);
+		driverInfo->lightcapMode = m;
+	}
+}
 
 void survive_data_cb_locked(SurviveUSBInterface *si);
 void survive_data_cb(SurviveUSBInterface *si) {
@@ -350,7 +439,6 @@ static int survive_vive_send_magic(SurviveContext *ctx, void *drv, int magic_cod
 
 #ifdef HIDAPI
 static void *HAPIReceiver(void *v) {
-
 	SurviveUSBInterface *iface = v;
 	USB_INTERFACE_HANDLE *hp = &iface->uh;
 
@@ -475,7 +563,6 @@ static inline int update_feature_report_async(USBHANDLE dev, uint16_t iface, uin
 static inline int update_feature_report(USBHANDLE dev, uint16_t iface, uint8_t *data, int datalen) {
 	int r = hid_send_feature_report(dev->interfaces[iface], data, datalen);
 	// wprintf( L"HUR: (%p) %d (%d) [%d] %S\n", dev, r, datalen, data[0], hid_error(dev->interfaces[iface]) );
-
 	return r;
 }
 static inline int getupdate_feature_report(USBHANDLE dev, uint16_t iface, uint8_t *data, size_t datalen) {
@@ -842,24 +929,6 @@ int survive_vive_send_magic(SurviveContext *ctx, void *drv, int magic_code, void
 			}
 		}
 	}
-
-#if 0
-		//// working code to turn off a wireless controller:
-		//{
-		//	uint8_t vive_controller_off[64] = { VIVE_REPORT_COMMAND, 0x9f, 0x04, 'o', 'f', 'f', '!' };
-		//	//r = update_feature_report( sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof( vive_controller_haptic_pulse ) );
-		//	r = update_feature_report(sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_off, sizeof(vive_controller_off));
-		//	SV_INFO("UCR: %d", r);
-		//	if (r != sizeof(vive_controller_off)) printf("OFF FAILED **************************\n"); // return 5;
-		//	OGUSleep(1000);
-		//}
-#endif
-		// if (sv->udev[USB_DEV_TRACKER0])
-		//{
-		//	static uint8_t vive_magic_power_on[64] = {  0x04, 0x78, 0x29, 0x38 };
-		//	r = update_feature_report( sv->udev[USB_DEV_TRACKER0], 0, vive_magic_power_on, sizeof( vive_magic_power_on )
-		//); 	if( r != sizeof( vive_magic_power_on ) ) return 5;
-		//}
 
 	SV_INFO("Powered unit on.");
 
@@ -2018,6 +2087,12 @@ static void parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, u
 static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payloadPtr, uint8_t *payloadEndPtr) {
 	struct SurviveContext *ctx = w->ctx;
 
+	struct SurviveUSBInfo *driverInfo = w->driver;
+	if (driverInfo->lightcapMode != LightcapMode_raw1) {
+		vive_switch_mode(driverInfo, LightcapMode_raw1);
+		return;
+	}
+
 	uint8_t flags = POP_BYTE(payloadPtr);
 
 	bool flagIMU = HAS_FLAG(flags, 0x80);
@@ -2036,27 +2111,6 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 		uint8_t unknownByte1 = POP_BYTE(payloadPtr);
 		uint8_t unknownByte2 = POP_BYTE(payloadPtr);
 		SV_VERBOSE(100, "Unknown byte %02x %02x", unknownByte1, unknownByte2);
-	}
-
-	struct SurviveUSBInfo *driverInfo = w->driver;
-
-	if (driverInfo->timeWithoutFlag == 0) {
-		driverInfo->timeWithoutFlag = 1;
-
-		if (driverInfo->handle) {
-			SV_INFO("Sending RF magic...");
-			int r = update_feature_report_async(driverInfo->handle, 0, vive_magic_rf_raw_mode_1,
-												sizeof(vive_magic_rf_raw_mode_1));
-			if (r != sizeof(vive_magic_rf_raw_mode_1)) {
-				SV_WARN("Could not send raw mode to %s (%d)", w->codename, r);
-			}
-		} else {
-			static bool transfer_null_warning = false;
-			if (!transfer_null_warning) {
-				SV_WARN("Can't update the usb device %s out of raw 0 mode; dumping data", w->codename);
-				transfer_null_warning = true;
-			}
-		}
 	}
 
 	if (flagUnknown2) {
@@ -2354,6 +2408,24 @@ end : {
 	}
 }
 
+void survive_vive_register_driver(SurviveObject *so, uint16_t vid, uint16_t pid) {
+	struct SurviveUSBInfo *d = calloc(1, sizeof(struct SurviveUSBInfo));
+	so->driver = d;
+
+	for (const struct DeviceInfo *info = KnownDeviceTypes; info->name; info++) {
+		if (info == 0) {
+			continue;
+		}
+
+		if (info->vid != vid || info->pid != pid) {
+			continue;
+		}
+
+		d->device_info = info;
+		break;
+	}
+}
+
 static inline uint16_t read_buffer16(uint8_t *readdata, int idx) {
 	uint16_t rtn;
 	memcpy(&rtn, readdata + idx, sizeof(uint16_t));
@@ -2398,7 +2470,7 @@ static void parse_tracker_info(SurviveObject *so, uint8_t id, uint8_t *readdata,
 		goto dump_data;
 		break;
 	}
-	case VIVE_REPORT_CHANGE_MODE_USB: {
+	case VIVE_REPORT_CHANGE_MODE: {
 		SV_INFO("Info 4: ")
 		goto dump_data;
 	}
@@ -2577,33 +2649,35 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 
 				dump_binary = true;
 			} else {
-#ifdef HIDAPI
-				// TODO: This seems hacky....
-				for (int i = 0; si->sv && i < si->sv->udev_cnt; i++) {
-					struct SurviveUSBInfo *usbInfo = &si->sv->udev[i];
-					int r =
-						update_feature_report(usbInfo->handle, 0, vive_magic_raw_mode_1, sizeof(vive_magic_raw_mode_1));
-					if (r != sizeof(vive_magic_raw_mode_1)) {
-						SV_WARN("Could not send raw mode to %s (%d): %S", obj->codename, r, hid_error(si->uh));
-					}
-				}
-#else
-				if (si->transfer) {
-					int r = update_feature_report_async(si->transfer->dev_handle, 0, vive_magic_raw_mode_1,
-														sizeof(vive_magic_raw_mode_1));
-					if (r != sizeof(vive_magic_raw_mode_1)) {
-						SV_WARN("Could not send raw mode to %s (%d)", obj->codename, r);
-					}
-				} else {
-					static bool transfer_null_warning = false;
-					if (!transfer_null_warning) {
-						SV_WARN("Can't update the usb device %s out of raw 0 mode; dumping data", obj->codename);
-						transfer_null_warning = true;
-					}
-					// USBMON -- grab the output
-					// dump_binary = true;
-				}
-#endif
+				vive_switch_mode(obj->driver, LightcapMode_raw1);
+				/*
+								#ifdef HIDAPI
+								// TODO: This seems hacky....
+								for (int i = 0; si->sv && i < si->sv->udev_cnt; i++) {
+									struct SurviveUSBInfo *usbInfo = &si->sv->udev[i];
+									int r =
+										update_feature_report(usbInfo->handle, 0, vive_magic_raw_mode_1,
+				sizeof(vive_magic_raw_mode_1)); if (r != sizeof(vive_magic_raw_mode_1)) { SV_WARN("Could not send raw
+				mode to %s (%d): %S", obj->codename, r, hid_error(si->uh));
+									}
+								}
+				#else
+								if (si->transfer) {
+									int r = update_feature_report_async(si->transfer->dev_handle, 0,
+				vive_magic_raw_mode_1, sizeof(vive_magic_raw_mode_1)); if (r != sizeof(vive_magic_raw_mode_1)) {
+										SV_WARN("Could not send raw mode to %s (%d)", obj->codename, r);
+									}
+								} else {
+									static bool transfer_null_warning = false;
+									if (!transfer_null_warning) {
+										SV_WARN("Can't update the usb device %s out of raw 0 mode; dumping data",
+				obj->codename); transfer_null_warning = true;
+									}
+									// USBMON -- grab the output
+									// dump_binary = true;
+								}
+				#endif
+				 */
 			}
 
 			if (dump_binary) {
@@ -2724,8 +2798,8 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 						uint8_t sensor = (timecode >> 27u);
 						timecode = fix_time24((timecode >> 3u) & 0xFFFFFFu, reference_time);
 
-						if (sensor >= obj->sensor_ct) {
-							SV_WARN("%s got sensor idx %d; max of %d", obj->codename, sensor, obj->sensor_ct);
+						if (sensor >= SENSORS_PER_OBJECT) {
+							SV_WARN("%s got sensor idx %d; max of %d", obj->codename, sensor, SENSORS_PER_OBJECT);
 						} else {
 							obj->ctx->sweepproc(obj, channel, survive_map_sensor_id(obj, sensor), timecode,
 												half_clock_flag);
