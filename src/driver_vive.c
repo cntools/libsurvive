@@ -2052,7 +2052,7 @@ static void parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, u
 				if (unused && dump_binary) {
 					SV_WARN("Not sure what this is: %x", unused);
 				}
-				SV_VERBOSE(100, "Sync %02d %d %8d", channel, ootx, timecode);
+				SV_VERBOSE(100, "Sync %02d %d %8u", channel, ootx, timecode);
 				obj->ctx->syncproc(obj, channel, timecode, ootx, g);
 			} else {
 				//                                                         SC
