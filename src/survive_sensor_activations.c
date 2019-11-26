@@ -73,6 +73,9 @@ void SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct Po
 	self->lh_gen = 1;
 	int axis = lightData->plane;
 	PoserDataLight *l = &lightData->common;
+	if (l->sensor_id >= SENSORS_PER_OBJECT)
+		return;
+
 	uint32_t *data_timecode = &self->timecode[l->sensor_id][l->lh][axis];
 
 	FLT *angle = &self->angles[l->sensor_id][l->lh][axis];

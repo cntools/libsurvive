@@ -24,6 +24,7 @@ STATIC_CONFIG_ITEM(USBMON_PLAYBACK, "usbmon-playback", 's', "File to replay .pca
 STATIC_CONFIG_ITEM(USBMON_RECORD_ALL, "usbmon-record-all", 'i', "Whether or not to record all usb traffic", 0);
 STATIC_CONFIG_ITEM(USBMON_OUTPUT_EVERYTHING, "usbmon-output-all", 'i', "Whether or not to log all usb traffic", 0);
 STATIC_CONFIG_ITEM(USBMON_OUTPUT, "usbmon-output", 'i', "Whether or not to log any generic usb traffic", 0);
+STATIC_CONFIG_ITEM(USBMON_ONLY_RECORD, "usbmon-only-record", 'i', "Record only; don't forward to libsurvive", 0);
 
 typedef struct vive_device_t {
 	uint16_t vid, pid;
@@ -66,6 +67,7 @@ typedef struct SurviveDriverUSBMon {
 
 	pcap_dumper_t *pcapDumper;
 	bool record_all;
+	bool record_only;
 
 	bool output_usb_stream;
 	bool output_everything;
@@ -155,7 +157,6 @@ static int interface_lookup(const vive_device_inst_t *dev, int endpoint) {
 		return USB_IF_TRACKER1_LIGHTCAP;
 	case 0x822012:
 		return USB_IF_W_WATCHMAN1_LIGHTCAP;
-
 	case 0x832000:
 		return USB_IF_HMD_BUTTONS;
 	case 0x832101:
@@ -397,6 +398,34 @@ double make_time(double start, const struct _usb_header_mmapped *pMmapped) {
 	return pMmapped->ts_sec + pMmapped->ts_usec * 1.e-6 - start;
 }
 
+const char *requestTypeToStr(uint8_t requestType) {
+	switch (requestType) {
+	case 0:
+		return "GET_STATUS";
+	case 1:
+		return "CLEAR_FEATURE";
+	case 3:
+		return "SET_FEATURE";
+	case 5:
+		return "SET_ADDRESS";
+	case 6:
+		return "GET_DESCRIPTOR";
+	case 7:
+		return "SET_DESCRIPTOR";
+	case 8:
+		return "GET_CONFIGURATION";
+	case 9:
+		return "SET_CONFIGURATION";
+	case 10:
+		return "GET_INTERFACE";
+	case 11:
+		return "SET_INTERFACE";
+	case 12:
+		return "SYNC_FRAME";
+	}
+	return "<unknown>";
+}
+
 void *pcap_thread_fn(void *_driver) {
 	SurviveDriverUSBMon *driver = _driver;
 	struct SurviveContext *ctx = driver->ctx;
@@ -446,11 +475,12 @@ void *pcap_thread_fn(void *_driver) {
 						ctx->printfproc(
 							ctx,
 							"--> %10.6f S: %s 0x%016lx event_type: %c transfer_type: %d bmRequestType: 0x%02x "
-							"bRequest: 0x%02x "
+							"bRequest: 0x%02x (%s) "
 							"wValue: 0x%04x wIndex: 0x%04x wLength: %4d\n",
 							this_time, dev_name, usbp->id, usbp->event_type, usbp->transfer_type,
-							usbp->s.setup.bmRequestType, usbp->s.setup.bRequest, usbp->s.setup.wValue,
-							usbp->s.setup.wIndex, usbp->s.setup.wLength);
+							usbp->s.setup.bmRequestType, usbp->s.setup.bRequest,
+							requestTypeToStr(usbp->s.setup.bRequest), usbp->s.setup.wValue, usbp->s.setup.wIndex,
+							usbp->s.setup.wLength);
 
 						survive_dump_buffer(ctx, pktData, usbp->data_len);
 					}
@@ -492,41 +522,36 @@ void *pcap_thread_fn(void *_driver) {
 					goto continue_loop;
 				}
 
-				/*
-			if (usbp->data_flag)
-				continue; // Only want data
-				*/
-				/*SV_INFO("Packet number [%d], length of this packet is: %d %lx %x.%x %x %x %d %s", count++,
-					pkthdr.len, usbp->id, usbp->bus_id, usbp->device_address,
-					usbp->endpoint_number, usbp->event_type, usbp->status, dev->so->codename);*/
 				int interface = interface_lookup(dev, usbp->endpoint_number);
 
 				if (driver->output_usb_stream &&
 					(interface == 0 || driver->output_everything || interface == USB_IF_TRACKER_INFO)) {
 					ctx->printfproc(
-						ctx, "<-- %10.6f R: %s 0x%016lx event_type: %c transfer_type: %d endpoint: 0x%02x (0x%02x): \n",
+						ctx,
+						"<-- %10.6f R: %s 0x%016lx event_type: %c transfer_type: %d endpoint: 0x%02x (%s) (0x%02x): \n",
 						this_time, dev_name, usbp->id, usbp->event_type, usbp->transfer_type, usbp->endpoint_number,
-						usbp->data_len);
+						survive_usb_interface_str(interface), usbp->data_len);
 
 					survive_dump_buffer(ctx, pktData, usbp->data_len);
 				}
 
-				if (interface != 0 && (dev->hasConfiged || interface == USB_IF_TRACKER_INFO)) {
+				bool forward_to_data_cb = driver->record_only == false &&
+										  (interface != 0 && (dev->hasConfiged || interface == USB_IF_TRACKER_INFO)) &&
+										  dev->so != 0;
 
-					if (dev->so) {
-						SurviveUSBInterface si = {.ctx = ctx,
-												  .actual_len = pkthdr->len,
-												  .assoc_obj = dev->so,
-												  .which_interface_am_i = interface,
-												  .hname = dev->so->codename};
+				if (forward_to_data_cb) {
+					SurviveUSBInterface si = {.ctx = ctx,
+											  .actual_len = pkthdr->len,
+											  .assoc_obj = dev->so,
+											  .which_interface_am_i = interface,
+											  .hname = dev->so->codename};
 
-						// memcpy(si.buffer, (u_char*)&usbp[1], usbp->data);
-						si.actual_len = usbp->data_len;
-						memset(si.buffer, 0xCA, sizeof(si.buffer));
-						memcpy(si.buffer, pktData, usbp->data_len);
+					// memcpy(si.buffer, (u_char*)&usbp[1], usbp->data);
+					si.actual_len = usbp->data_len;
+					memset(si.buffer, 0xCA, sizeof(si.buffer));
+					memcpy(si.buffer, pktData, usbp->data_len);
 
-						survive_data_cb(&si);
-					}
+					survive_data_cb(&si);
 				}
 			}
 
@@ -605,6 +630,7 @@ static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
 
 	sp->output_everything = survive_configi(ctx, "usbmon-output-all", SC_GET, 0);
 	sp->output_usb_stream = sp->output_everything || survive_configi(ctx, "usbmon-output", SC_GET, 0);
+	sp->record_only = survive_configi(ctx, "usbmon-only-record", SC_GET, 0);
 
 	if (usbmon_record && *usbmon_record) {
 		FILE *fd = open_playback(usbmon_record, "w");

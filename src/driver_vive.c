@@ -56,6 +56,100 @@ struct DeviceInfo {
 	} magics[8];
 };
 
+enum vive_report_ids {
+	// Possibly 0x03 - Gyro range, 0x02 - Accel range
+	// Tracker/lh1/[rf,usb]: (device -> steamvr):  01 03 02
+	VIVE_REPORT_INFO = 1,
+	VIVE_REPORT_IMU = 0x20,
+	VIVE_REPORT_USB_TRACKER_LIGHTCAP_V1 = 0x21,
+	VIVE_REPORT_RF_WATCHMAN = 0x23,
+	VIVE_REPORT_RF_WATCHMANx2 = 0x24,
+	VIVE_REPORT_USB_LIGHTCAP_REPORT_V1 = 0x25,
+	VIVE_REPORT_RF_TURN_OFF = 0x26,
+	VIVE_REPORT_USB_LIGHTCAP_REPORT_V2 = 0x27,
+	VIVE_REPORT_USB_LIGHTCAP_REPORT_RAW_MODE_1 = 0x28,
+
+	VIVE_REPORT_COMMAND = 0xff,
+	// Below is from https://github.com/nairol/LighthouseRedox/blob/master/docs/USB%20Protocol.md and not necessarilly
+	// up to date / used
+	VIVE_REPORT_HMD_PROXIMITY = 0x3,
+
+	VIVE_REPORT_VERSION = 0x05,
+
+	// Tracker/lh1/[rf,usb]: (steamvr -> device): 04 00 00 00   00
+	VIVE_REPORT_CHANGE_MODE_USB = 0x04,
+	// Tracker/lh1/[rf,usb]: (steamvr -> device):  07 03 00 00   00
+	VIVE_REPORT_UNKNOWN1 = 0x07,
+
+	// Seems like 0x4/0x7 are used in conjunction:
+	// Sync mode 0:
+	// --> 04 00 00 00   00
+	// --> 07 03 00 00   00
+	// Sync mode 1:
+	// --> 04 01 00 00   00
+	// --> 07 03 00 00   00
+	// Sync mode 2:
+	// --> 04 03 00 00   00
+	// --> 07 03 00 00   00
+
+	// Tracker/lh1/rf: (steamvr -> device): (CLEAR_FEATURE)
+	//                 (device -> steamvr): 08 03 00 00
+	// If clear_feature is sent; seems to be asking how much data is in the user alloc area.
+	// Seems like its maybe current offset as uint32_t, total size as uint32_t.
+	// The tracker seems to not have a userdata section; and responds with 0x8 and then whatever was in the buffer.
+	VIVE_REPORT_HMD_SET_READOFFSET_USERDATA = 0x08,
+	VIVE_REPORT_HMD_READ_USERDATA = 0x09,
+
+	VIVE_REPORT_CONFIG_READMODE = 0x10,
+	VIVE_REPORT_CONFIG_READ = 0x11,
+
+	// Sent and echoed by steamvr; no data
+	// Directly proceeds a 0x04...
+	VIVE_REPORT_USB_TRACKER_UNKNOWN = 0x13,
+
+	// Tracker/lh1/usb: (steamvr -> device): 16 01 00 00   00
+	VIVE_REPORT_REBOOT = 0x16
+
+};
+
+enum vive_commands {
+	// This command seems to dictate protocol and sync model. I think the first byte is the 'protocol',
+	// the second second and fourth together dictate the sync mode.
+	// Tracker/lh1/rf: (steamvr -> device):  01 00 00 02   00 00 |    ....  ..
+	// Tracker/lh1/rf: (steamvr -> device):  01 00 00            |    ....  ..
+
+	// Tracker/lh1/rf: (lhconsole -> device):  sync mode 0: 01 00 00 02   00 00
+	// Tracker/lh1/rf: (lhconsole -> device):  sync mode 1: 01 01 00 02   00 00
+	// Tracker/lh1/rf: (lhconsole -> device):  sync mode 2: 01 01 00 02   01 00
+	VIVE_COMMAND_CHANGE_PROTOCOL = 0x87,
+
+	// Tracker/lh1/rf: (steamvr -> device)
+	//   - Sends 2x with no data as SET_CONFIGURATION
+	//   - Sends 1x as CLEAR_FEATURE
+	//   - Recv back:
+	//                ff 83 2d 00   b1 d7 b3 ba   01 00 23 00   00 02 0b 00   00 00 04 6a   19 e6 5b 09   06 00 02 84 0b
+	//                b1 d7 b3     |    ..-.  ....  ..#.  ....  ...j  ..[.  ....  ....
+	//                ba 05 09 3a   87 5a 0c 00   02 00 00 0a   cf 3b 3c 5a |    ...:  .Z..  ....  .;<Z  ....  .... ....
+	//                ....
+	VIVE_COMMAND_UNKNOWN3 = 0x83,
+	VIVE_COMMAND_HAPTIC_PULSE = 0x8F,
+
+	// Wants '6f 66 66 21 |    off!' as data
+	VIVE_COMMAND_HAPTIC_POWER_OFF = 0x9F,
+
+	// Tracker/lh1/rf: (steamvr -> device):  be 5b 32 54   11 cf 83 75   53 8a 08 6a   53 58 d0 b1 |    .[2T  ...u  S..j
+	// SX..
+	VIVE_COMMAND_UNKNOWN1 = 0x96,
+
+	// Keepalive?
+	// Tracker/lh1/rf: (steamvr -> device):
+	//                 (device -> steamvr): 57 16 a0 b9   32 33 46 45   41 33 44 44   44 41 00 00   00 00 00 00   00 00
+	//                 00 00   00 00 00 00   00 00 00 00     |    W...  23FE  A3DD  DA..  ....  ....  ....  ....
+	//                                      00 00 |    ..
+	VIVE_COMMAND_UNKNOWN2 = 0xa1,
+
+};
+
 static uint8_t vive_magic_power_on[64] = {0x04, 0x78, 0x29, 0x38, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01};
 static uint8_t vive_magic_enable_lighthouse[5] = {0x04};
 static uint8_t vive_magic_enable_lighthouse_more[5] = {0x07, 0x02};
@@ -65,16 +159,9 @@ static uint8_t vive_magic_power_off[] = {
 	0x00, 0x04, 0x00, 0x00, 0x00, 0x70, 0xb0, 0x72, 0x00, 0x90, 0xf7, 0x33, 0x00, 0x7c, 0xf8, 0x33,
 	0x00, 0xd0, 0xf7, 0x33, 0x00, 0x3c, 0x68, 0x29, 0x65, 0x24, 0xf9, 0x33, 0x00, 0x00, 0x00, 0x00,
 };
-static uint8_t vive_magic_raw_mode_1[] = {0x04, 0x01, 0x00, 0x00, 0x00};
-static uint8_t vive_magic_rf_raw_mode_1[] = {0xff};
-
-enum vive_commands {
-	// takes 3 bytes;
-	vive_command_change_protocol = 0x87,
-	vive_command_haptic_pulse = 0x8f,
-	vive_command_haptic_power_off = 0x9f,
-
-};
+static uint8_t vive_magic_raw_mode_1[] = {VIVE_REPORT_CHANGE_MODE_USB, 0x01, 0x00, 0x00, 0x00};
+static uint8_t vive_magic_rf_raw_mode_1[] = {
+	VIVE_REPORT_COMMAND, VIVE_COMMAND_CHANGE_PROTOCOL, 0x01, 0x01, 0x00, 0x02, 0x00, 0x00};
 
 #define MAGIC_CTOR(ison, buffer)                                                                                       \
 	{ .code = ison, .magic = buffer, .length = sizeof(buffer) }
@@ -146,6 +233,44 @@ const struct DeviceInfo KnownDeviceTypes[] = {
 typedef struct SurviveUSBInterface SurviveUSBInterface;
 typedef struct SurviveViveData SurviveViveData;
 
+const char *survive_usb_interface_str(enum USB_IF_t interface) {
+	switch (interface) {
+	case USB_IF_HMD_HEADSET_INFO:
+		return "USB_IF_HMD_HEADSET_INFO";
+	case USB_IF_HMD_IMU:
+		return "USB_IF_HMD_IMU";
+	case USB_IF_WATCHMAN1:
+		return "USB_IF_WATCHMAN1";
+	case USB_IF_WATCHMAN2:
+		return "USB_IF_WATCHMAN2";
+	case USB_IF_TRACKER0_IMU:
+		return "USB_IF_TRACKER0_IMU";
+	case USB_IF_TRACKER_INFO:
+		return "USB_IF_TRACKER_INFO";
+	case USB_IF_TRACKER1_IMU:
+		return "USB_IF_TRACKER1_IMU";
+	case USB_IF_W_WATCHMAN1_IMU:
+		return "USB_IF_W_WATCHMAN1_IMU";
+	case USB_IF_HMD_LIGHTCAP:
+		return "USB_IF_HMD_LIGHTCAP";
+	case USB_IF_TRACKER0_LIGHTCAP:
+		return "USB_IF_TRACKER0_LIGHTCAP";
+	case USB_IF_TRACKER1_LIGHTCAP:
+		return "USB_IF_TRACKER1_LIGHTCAP";
+	case USB_IF_W_WATCHMAN1_LIGHTCAP:
+		return "USB_IF_W_WATCHMAN1_LIGHTCAP";
+	case USB_IF_HMD_BUTTONS:
+		return "USB_IF_HMD_BUTTONS";
+	case USB_IF_TRACKER0_BUTTONS:
+		return "USB_IF_TRACKER0_BUTTONS";
+	case USB_IF_TRACKER1_BUTTONS:
+		return "USB_IF_TRACKER1_BUTTONS";
+	case USB_IF_W_WATCHMAN1_BUTTONS:
+		return "USB_IF_W_WATCHMAN1_BUTTONS";
+	}
+	return "UNKNOWN";
+}
+
 void survive_dump_buffer(SurviveContext *ctx, uint8_t *data, size_t length) {
 	int bytes_per_row = 32;
 	for (size_t i = 0; i < length; i += bytes_per_row) {
@@ -186,7 +311,12 @@ struct SurviveUSBInfo {
 	size_t interface_cnt;
 	SurviveUSBInterface interfaces[MAX_INTERFACES_PER_DEVICE];
 
-	enum LightcapMode { LightcapMode_raw0 = 0, LightcapMode_raw1 } lightcapMode;
+	enum LightcapMode {
+		LightcapMode_unknown = 0,
+		LightcapMode_raw0,
+		LightcapMode_raw1,
+		LightcapMode_raw2
+	} lightcapMode;
 
 	size_t timeWithoutFlag;
 };
@@ -335,6 +465,12 @@ static void debug_cb( struct SurviveUSBInterface * si )
 // XXX TODO: Redo this subsystem for setting/updating feature reports.
 
 #ifdef HIDAPI
+
+static inline int update_feature_report_async(USBHANDLE dev, uint16_t iface, uint8_t *data, int datalen) {
+	int r = hid_send_feature_report(dev->interfaces[iface], data, datalen);
+	// wprintf( L"HUR: (%p) %d (%d) [%d] %S\n", dev, r, datalen, data[0], hid_error(dev->interfaces[iface]) );
+	return r;
+}
 
 static inline int update_feature_report(USBHANDLE dev, uint16_t iface, uint8_t *data, int datalen) {
 	int r = hid_send_feature_report(dev->interfaces[iface], data, datalen);
@@ -710,7 +846,7 @@ int survive_vive_send_magic(SurviveContext *ctx, void *drv, int magic_code, void
 #if 0
 		//// working code to turn off a wireless controller:
 		//{
-		//	uint8_t vive_controller_off[64] = { 0xff, 0x9f, 0x04, 'o', 'f', 'f', '!' };
+		//	uint8_t vive_controller_off[64] = { VIVE_REPORT_COMMAND, 0x9f, 0x04, 'o', 'f', 'f', '!' };
 		//	//r = update_feature_report( sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_haptic_pulse, sizeof( vive_controller_haptic_pulse ) );
 		//	r = update_feature_report(sv->udev[USB_DEV_WATCHMAN1], 0, vive_controller_off, sizeof(vive_controller_off));
 		//	SV_INFO("UCR: %d", r);
@@ -741,8 +877,8 @@ int survive_vive_send_haptic(SurviveObject *so, uint8_t reserved, uint16_t pulse
 
 	int r;
 	uint8_t vive_controller_haptic_pulse[64] = {
-		0xff,
-		0x8f,
+		VIVE_REPORT_COMMAND,
+		VIVE_COMMAND_HAPTIC_PULSE,
 		0x07,
 		0x00,
 		pulseHigh & 0xff00 >> 8,
@@ -904,7 +1040,7 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 
 		int k;
 
-		uint8_t cfgbuff_send[64] = {0xff, 0x83};
+		uint8_t cfgbuff_send[64] = {VIVE_REPORT_COMMAND, 0x83};
 
 #ifdef HIDAPI
 		// XXX TODO WRITEME
@@ -920,14 +1056,14 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 		}
 #endif
 
-		cfgbuffwide[0] = 0xff;
+		cfgbuffwide[0] = VIVE_REPORT_COMMAND;
 		ret = hid_get_feature_report_timeout(dev, iface, cfgbuffwide, sizeof(cfgbuffwide));
 		OGUSleep(1000);
 	}
 
 	// Send Report 16 to prepare the device for reading config info
 	memset(cfgbuff, 0, sizeof(cfgbuff));
-	cfgbuff[0] = 0x10;
+	cfgbuff[0] = VIVE_REPORT_CONFIG_READMODE;
 	if ((ret = hid_get_feature_report_timeout(dev, iface, cfgbuff, sizeof(cfgbuff))) < 0) {
 		if (usbInfo->device_info->type == USB_DEV_WATCHMAN1) {
 			SV_INFO("%s couldn't configure; probably turned off", usbInfo->so->codename);
@@ -940,7 +1076,7 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 	OGUSleep(100000);
 
 	// Now do a bunch of Report 17 until there are no bytes left
-	cfgbuff[0] = 0x11;
+	cfgbuff[0] = VIVE_REPORT_CONFIG_READ;
 	cfgbuff[1] = 0xaa;
 	do {
 		if ((ret = hid_get_feature_report_timeout(dev, iface, cfgbuff, sizeof(cfgbuff))) < 0) {
@@ -1751,7 +1887,7 @@ exit_while:
 
 	size_t sensor_byte_cnt = eventPtr - idsPtr + 1;
 	if (sensor_byte_cnt > ((timeIndex >> 1) + 1)) {
-		survive_notify_gen2(w, "Header byte in lightcap packet");
+		// survive_notify_gen2(w, "Header byte in lightcap packet");
 	} else {
 		survive_notify_gen1(w, "No extra byte in lightcap packet");
 	}
@@ -2257,33 +2393,45 @@ static void parse_tracker_version_info(SurviveObject *so, uint8_t *data, size_t 
 static void parse_tracker_info(SurviveObject *so, uint8_t id, uint8_t *readdata, size_t size) {
 	SurviveContext *ctx = so->ctx;
 	switch (id) {
-	case 1: {
+	case VIVE_REPORT_INFO: {
 		SV_INFO("Info 1: 0x%x 0x%x", readdata[0], readdata[1]);
+		goto dump_data;
 		break;
 	}
-	case 5: {
+	case VIVE_REPORT_CHANGE_MODE_USB: {
+		SV_INFO("Info 4: ")
+		goto dump_data;
+	}
+	case VIVE_REPORT_VERSION: {
 		parse_tracker_version_info(so, readdata, size);
 		break;
 	}
-	case 8: {
+	case VIVE_REPORT_HMD_SET_READOFFSET_USERDATA: {
 		SV_INFO("Info 8: 0x%x", readdata[0]);
 		break;
 	}
 	// Start config stream
-	case 0x10: {
+	case VIVE_REPORT_CONFIG_READMODE: {
 		break;
 	}
 	// Request more config stream
-	case 0x11: {
+	case VIVE_REPORT_CONFIG_READ: {
 		break;
 	}
-	case 0xff: {
+	case VIVE_REPORT_COMMAND: {
 		SV_INFO("Received cmd 0x%02x with %d bytes of data", readdata[0], readdata[1]);
 		survive_dump_buffer(ctx, readdata + 2, readdata[1]);
 		break;
 	}
-	default: { SV_INFO("Unknown field 0x%02x for %s", id, so->codename); }
+	default: {
+		SV_INFO("Unknown field 0x%02x for %s", id, so->codename);
+		goto dump_data;
 	}
+	}
+
+	return;
+dump_data:
+	survive_dump_buffer(ctx, readdata, size);
 }
 
 void survive_data_cb_locked(SurviveUSBInterface *si) {
@@ -2376,14 +2524,14 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 	case USB_IF_WATCHMAN1:
 	case USB_IF_WATCHMAN2: {
 		SurviveObject *w = obj;
-		if (id == 35) {
+		if (id == VIVE_REPORT_RF_WATCHMAN) {
 			assert(size == 29);
 			handle_watchman(w, readdata);
-		} else if (id == 36) {
+		} else if (id == VIVE_REPORT_RF_WATCHMANx2) {
 			assert(size == 29 * 2);
 			handle_watchman(w, readdata);
 			handle_watchman(w, readdata + 29);
-		} else if (id == 38) {
+		} else if (id == VIVE_REPORT_RF_TURN_OFF) {
 			w->ison = 0; // turning off
 		} else {
 			SV_INFO("Unknown watchman code %d\n", id);
@@ -2392,8 +2540,9 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 	}
 	case USB_IF_HMD_LIGHTCAP:
 	case USB_IF_TRACKER1_LIGHTCAP: {
+
 		bool dump_binary = false;
-		if (id == 37) { // LHv1
+		if (id == VIVE_REPORT_USB_LIGHTCAP_REPORT_V1) { // LHv1
 			int i;
 			for (i = 0; i < 9; i++) {
 				LightcapElement le;
@@ -2411,7 +2560,7 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 							le.timestamp / 48000000., le.length, le.length + le.timestamp);
 				}
 			}
-		} else if (id == 39) { // LHv2
+		} else if (id == VIVE_REPORT_USB_LIGHTCAP_REPORT_V2) { // LHv2
 			if (obj->ctx->lh_version == 0) {
 				return;
 			}
@@ -2507,7 +2656,7 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 				}
 				fprintf(stderr, "\n");
 			}
-		} else if (id == 40) {
+		} else if (id == VIVE_REPORT_USB_LIGHTCAP_REPORT_RAW_MODE_1) {
 			survive_notify_gen2(obj, "Report ID 40");
 
 			uint8_t *packet = readdata + 1;
@@ -2574,8 +2723,13 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 						bool half_clock_flag = timecode & 0x4u;
 						uint8_t sensor = (timecode >> 27u);
 						timecode = fix_time24((timecode >> 3u) & 0xFFFFFFu, reference_time);
-						obj->ctx->sweepproc(obj, channel, survive_map_sensor_id(obj, sensor), timecode,
-											half_clock_flag);
+
+						if (sensor >= obj->sensor_ct) {
+							SV_WARN("%s got sensor idx %d; max of %d", obj->codename, sensor, obj->sensor_ct);
+						} else {
+							obj->ctx->sweepproc(obj, channel, survive_map_sensor_id(obj, sensor), timecode,
+												half_clock_flag);
+						}
 					}
 
 					idx += 4;
@@ -2591,7 +2745,7 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 
 				fprintf(stderr, "\n");
 			}
-		} else if (id == 33) {
+		} else if (id == VIVE_REPORT_USB_TRACKER_LIGHTCAP_V1) {
 			SV_INFO("USB lightcap report is of an unexpected type for %s: %d (0x%02x)", obj->codename, id, id);
 		} else {
 			SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "USB lightcap report is of an unknown type for %s: %d (0x%02x)",
@@ -2602,29 +2756,29 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 	}
 	case USB_IF_W_WATCHMAN1_LIGHTCAP:
 	case USB_IF_TRACKER0_LIGHTCAP: {
-		int i = 0;
-		for (i = 0; i < 7; i++) {
-			uint16_t *sensorId = (uint16_t *)readdata;
-			uint16_t *length = (uint16_t *)(&(readdata[2]));
-			unsigned long *time = (unsigned long *)(&(readdata[4]));
-			LightcapElement le;
-			le.sensor_id = (uint8_t)POP2;
-			le.length = POP2;
-			le.timestamp = POP4;
-			if (le.sensor_id > 0xfd)
-				continue; //
-			handle_lightcap(obj, &le);
+		if (id == VIVE_REPORT_USB_TRACKER_LIGHTCAP_V1) {
+			int i = 0;
+			for (i = 0; i < 7; i++) {
+				uint16_t *sensorId = (uint16_t *)readdata;
+				uint16_t *length = (uint16_t *)(&(readdata[2]));
+				unsigned long *time = (unsigned long *)(&(readdata[4]));
+				LightcapElement le;
+				le.sensor_id = (uint8_t)POP2;
+				le.length = POP2;
+				le.timestamp = POP4;
+				if (le.sensor_id > 0xfd)
+					continue; //
+				handle_lightcap(obj, &le);
+			}
+		} else {
+			SV_WARN("Unrecognized report id: 0x%02x for %s", id, obj->codename);
 		}
 		break;
-
-		if (id != 33) {
-			int a = 0; // breakpoint here
-		}
 	}
 	case USB_IF_TRACKER0_BUTTONS:
 	case USB_IF_TRACKER1_BUTTONS:
 	case USB_IF_W_WATCHMAN1_BUTTONS: {
-		if (1 == id) {
+		if (VIVE_REPORT_INFO == id) {
 			// 0x00	uint8	1	reportID	HID report identifier(= 1)
 			// 0x02	uint16	2	reportType(? )	0x0B04: Ping(every second) / 0x3C01 : User input
 			// 0x04	uint32	4	reportCount	Counter that increases with every report
@@ -2689,14 +2843,11 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 
 				// printf("Buttons: %8.8x\n", raw->pressedButtons);
 			}
-			int a = 0;
 		} else {
-			int a = 0; // breakpoint here
+			SV_WARN("Unknown report id 0x%02x for %s", id, obj->codename);
 		}
-	}
-	default: {
-		int a = 0; // breakpoint here
-	}
+	} break;
+	default: { SV_WARN("Unknown interface %d for %s", si->which_interface_am_i, obj->codename); }
 	}
 
 }
