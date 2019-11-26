@@ -14,6 +14,8 @@
 #endif
 #endif
 
+#include "os_generic.h"
+
 #define MAX_USB_DEVS 32
 
 enum USB_DEV_t {

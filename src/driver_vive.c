@@ -202,13 +202,13 @@ struct SurviveViveData {
 	bool closing;
 };
 
-#ifdef HIDAPI
-#ifndef HID_NONBLOCKING
-og_sema_t GlobalRXUSBSem;
-#endif
-#endif
-
-void survive_data_cb(SurviveUSBInterface *si);
+void survive_data_cb_locked(SurviveUSBInterface *si);
+void survive_data_cb(SurviveUSBInterface *si) {
+	SurviveContext *ctx = si->ctx;
+	survive_get_ctx_lock(ctx);
+	survive_data_cb_locked(si);
+	survive_release_ctx_lock(ctx);
+}
 
 // USB Subsystem
 void survive_usb_close(SurviveContext *t);
@@ -227,22 +227,7 @@ static void *HAPIReceiver(void *v) {
 	if ((iface->actual_len = hid_read(*hp, iface->buffer, sizeof(iface->buffer))) > 0) {
 		// if( iface->actual_len  == 52 ) continue;
 		iface->packet_count++;
-#ifndef HID_NONBLOCKING
-		OGLockSema(GlobalRXUSBSem);
-#endif
-#if 0
-		printf( "%d %d: ", iface->which_interface_am_i, iface->actual_len );
-		int i;
-		for( i = 0; i < iface->actual_len; i++ )
-		{
-			printf( "%02x ", iface->buffer[i] );
-		}
-		printf("\n" );
-#endif
 		survive_data_cb(iface);
-#ifndef HID_NONBLOCKING
-		OGUnlockSema(GlobalRXUSBSem);
-#endif
 	}
 	if (iface->actual_len < 0) {
 		SurviveContext* ctx = iface->sv->ctx;
@@ -442,12 +427,6 @@ typedef struct hid_device_info *survive_usb_device_t;
 typedef struct hid_device_info *survive_usb_devices_t;
 
 static int survive_usb_subsystem_init(SurviveViveData *sv) {
-#ifndef HID_NONBLOCKING
-	if (!GlobalRXUSBSem) {
-		GlobalRXUSBSem = OGCreateSema();
-		// OGLockSema( GlobalRXUSBSem );
-	}
-#endif
 	return hid_init();
 }
 static int survive_get_usb_devices(SurviveViveData *sv, survive_usb_devices_t *devs) {
@@ -867,6 +846,7 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 
 #ifdef HIDAPI
 #ifdef HID_NONBLOCKING
+	survive_release_ctx_lock(ctx);
 	for (int i = 0; i < sv->udev_cnt; i++) {
 		for (int j = 0; j < sv->udev[i].interface_cnt; j++) {
 			SurviveUSBInterface* iface = &sv->udev[i].interfaces[j];
@@ -874,10 +854,9 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 				HAPIReceiver(iface);
 		}
 	}
+	survive_get_ctx_lock(ctx);
 #else
-	OGUnlockSema(GlobalRXUSBSem);
 	OGUSleep(1);
-	OGLockSema(GlobalRXUSBSem);
 	return 0;
 #endif
 #else
@@ -2307,11 +2286,9 @@ static void parse_tracker_info(SurviveObject *so, uint8_t id, uint8_t *readdata,
 	}
 }
 
-void survive_data_cb(SurviveUSBInterface *si) {
+void survive_data_cb_locked(SurviveUSBInterface *si) {
 	int size = si->actual_len;
 	SurviveContext *ctx = si->ctx;
-	survive_get_ctx_lock(ctx);
-
 	int iface = si->which_interface_am_i;
 	SurviveObject *obj = si->assoc_obj;
 	uint8_t *readdata = si->buffer;
@@ -2322,7 +2299,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 	}
 
 	if (iface == USB_IF_HMD_HEADSET_INFO && obj == 0)
-		goto exit_fn;
+		return;
 
 	int id = POP1;
 	size--;
@@ -2436,7 +2413,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 			}
 		} else if (id == 39) { // LHv2
 			if (obj->ctx->lh_version == 0) {
-				goto exit_fn;
+				return;
 			}
 			survive_notify_gen2(obj, "Report id 39");
 
@@ -2453,7 +2430,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 			} else {
 #ifdef HIDAPI
 				// TODO: This seems hacky....
-				for (int i = 0; i < si->sv->udev_cnt; i++) {
+				for (int i = 0; si->sv && i < si->sv->udev_cnt; i++) {
 					struct SurviveUSBInfo *usbInfo = &si->sv->udev[i];
 					int r =
 						update_feature_report(usbInfo->handle, 0, vive_magic_raw_mode_1, sizeof(vive_magic_raw_mode_1));
@@ -2722,8 +2699,6 @@ void survive_data_cb(SurviveUSBInterface *si) {
 	}
 	}
 
-exit_fn:
-	survive_release_ctx_lock(ctx);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
