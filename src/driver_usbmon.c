@@ -485,9 +485,11 @@ void *pcap_thread_fn(void *_driver) {
 						survive_dump_buffer(ctx, pktData, usbp->data_len);
 					}
 
-					survive_data_on_setup_write(dev->so, usbp->s.setup.bmRequestType, usbp->s.setup.bRequest,
-												usbp->s.setup.wValue, usbp->s.setup.wIndex, pktData, usbp->data_len);
-
+					if (dev->so) {
+						survive_data_on_setup_write(dev->so, usbp->s.setup.bmRequestType, usbp->s.setup.bRequest,
+													usbp->s.setup.wValue, usbp->s.setup.wIndex, pktData,
+													usbp->data_len);
+					}
 					goto continue_loop;
 				}
 

@@ -2052,7 +2052,7 @@ static void parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, u
 				if (unused && dump_binary) {
 					SV_WARN("Not sure what this is: %x", unused);
 				}
-				SV_VERBOSE(100, "Sync %02d %d %8u", channel, ootx, timecode);
+				SV_VERBOSE(50, "Sync %02d %d %8u", channel, ootx, timecode);
 				obj->ctx->syncproc(obj, channel, timecode, ootx, g);
 			} else {
 				//                                                         SC
@@ -2065,7 +2065,7 @@ static void parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, u
 				bool half_clock_flag = timecode & 0x4u;
 				uint8_t sensor = (timecode >> 27u);
 				timecode = fix_time24((timecode >> 3u) & 0xFFFFFFu, reference_time);
-				SV_VERBOSE(100, "Sweep %02d.%02d %8d", channel, sensor, timecode);
+				SV_VERBOSE(100, "Sweep %02d.%02d %8u", channel, sensor, timecode);
 				obj->ctx->sweepproc(obj, channel, survive_map_sensor_id(obj, sensor), timecode, half_clock_flag);
 			}
 
@@ -2411,6 +2411,7 @@ end : {
 void survive_vive_register_driver(SurviveObject *so, uint16_t vid, uint16_t pid) {
 	struct SurviveUSBInfo *d = calloc(1, sizeof(struct SurviveUSBInfo));
 	so->driver = d;
+	d->so = so;
 
 	for (const struct DeviceInfo *info = KnownDeviceTypes; info->name; info++) {
 		if (info == 0) {
