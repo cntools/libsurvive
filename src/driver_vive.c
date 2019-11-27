@@ -2470,7 +2470,7 @@ void survive_vive_register_driver(SurviveObject *so, uint16_t vid, uint16_t pid)
 	struct SurviveUSBInfo *d = calloc(1, sizeof(struct SurviveUSBInfo));
 	so->driver = d;
 	d->so = so;
-
+	d->lightcapMode = LightcapMode_raw0;
 	for (const struct DeviceInfo *info = KnownDeviceTypes; info->name; info++) {
 		if (info == 0) {
 			continue;

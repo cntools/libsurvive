@@ -373,7 +373,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 		SV_INFO("Initial config file is %s", init_config);
 	}
 	config_read(ctx, init_config);
-	ctx->activeLighthouses = survive_configi(ctx, "lighthousecount", SC_SETCONFIG, 0);
+	ctx->activeLighthouses = 0;
 
 	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
 		if (config_read_lighthouse(ctx->lh_config, &(ctx->bsd[i]), i)) {

@@ -40,8 +40,9 @@ static int test_path(const char *name, int main_argc, char **main_argv) {
 
 	SurviveSimpleContext *actx = survive_simple_init(total_argc, total_argv);
 	SurviveContext *ctx = survive_simple_get_ctx(actx);
-	ctx->bsd[0].PositionSet = false;
-	ctx->bsd[1].PositionSet = false;
+	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
+		ctx->bsd[i].PositionSet = false;
+	}
 
 	SurvivePose originalLH[NUM_GEN2_LIGHTHOUSES] = {0};
 
@@ -49,9 +50,9 @@ static int test_path(const char *name, int main_argc, char **main_argv) {
 		SurvivePose pose = ctx->bsd[i].Pose;
 		originalLH[i] = pose;
 		ctx->bsd[i].PositionSet = 0;
-
-		printf(SurvivePose_format "\n", pose.Pos[0], pose.Pos[1], pose.Pos[2], pose.Rot[0], pose.Rot[1], pose.Rot[2],
-			   pose.Rot[3]);
+		ctx->bsd[i].Pose = LinmathPose_Identity;
+		printf(" LH%2d: " SurvivePose_format "\n", i, pose.Pos[0], pose.Pos[1], pose.Pos[2], pose.Rot[0], pose.Rot[1],
+			   pose.Rot[2], pose.Rot[3]);
 	}
 
 	survive_simple_start_thread(actx);
@@ -94,14 +95,20 @@ static int test_path(const char *name, int main_argc, char **main_argv) {
 
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
 		SurvivePose pose = originalLH[i];
-		printf(SurvivePose_format "\n", SURVIVE_POSE_EXPAND(ctx->bsd[i].Pose));
+		printf(" LH%2d: " SurvivePose_format "\n", i, SURVIVE_POSE_EXPAND(ctx->bsd[i].Pose));
 		double err[2] = {0};
 		diff(err, &pose, &ctx->bsd[i].Pose);
-		printf(SurvivePose_format " %f %f\n", pose.Pos[0], pose.Pos[1], pose.Pos[2], pose.Rot[0], pose.Rot[1],
-			   pose.Rot[2], pose.Rot[3], err[0], err[1]);
+		printf("       " SurvivePose_format "\terr: %f %f\n", pose.Pos[0], pose.Pos[1], pose.Pos[2], pose.Rot[0],
+			   pose.Rot[1], pose.Rot[2], pose.Rot[3], err[0], err[1]);
 
 		if (err[1] > max_pos_error || err[0] > max_rot_error) {
 			fprintf(stderr, "TEST FAILED, LH%d deviates too much -- %f %f\n", i, err[0], err[1]);
+			rtn = -1;
+		}
+
+		if (ctx->bsd[i].OOTXSet == false || ctx->bsd[i].PositionSet == false) {
+			fprintf(stderr, "TEST FAILED, LH%d was not solved for either ootx or position: %d %d\n", i,
+					ctx->bsd[i].OOTXSet, ctx->bsd[i].PositionSet);
 			rtn = -1;
 		}
 	}
