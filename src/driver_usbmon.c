@@ -435,6 +435,7 @@ void *pcap_thread_fn(void *_driver) {
 	struct pcap_pkthdr *pkthdr = 0;
 	const usb_header_t *usbp = 0;
 
+	SV_INFO("Pcap thread started");
 	double start_time = 0;
 	while (driver->keepRunning) {
 		int result = pcap_next_ex(driver->pcap, &pkthdr, (const uint8_t **)&usbp);
@@ -620,9 +621,11 @@ static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
 
 	SurviveDriverUSBMon *sp = SV_CALLOC(1, sizeof(SurviveDriverUSBMon));
 	sp->ctx = ctx;
-	sp->passiveMode = !enable && usbmon_record;
+	sp->passiveMode = !enable && driver_id == 1;
 	if (sp->passiveMode) {
 		SV_INFO("Starting usbmon in passive (record) mode.");
+	} else {
+		SV_INFO("Starting usbmon");
 	}
 	if (usbmon_playback && *usbmon_playback) {
 		SV_INFO("Opening '%s' for usb playback", usbmon_playback);
@@ -664,7 +667,7 @@ static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
 		SV_ERROR(SURVIVE_ERROR_NO_TRACKABLE_OBJECTS, "USBMon found no devices");
 		return SURVIVE_DRIVER_ERROR;
 	}
-	return sp->passiveMode ? SURVIVE_DRIVER_PASSIVE : SURVIVE_DRIVER_NORMAL;
+	return SURVIVE_DRIVER_NORMAL;
 }
 
 int DriverRegUSBMon(SurviveContext *ctx) { return DriverRegUSBMon_(ctx, 0); }

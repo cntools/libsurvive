@@ -27,17 +27,25 @@ void handle_lightcap(SurviveObject *so, const LightcapElement *_le) {
 	// reliably change to lh_version == 1. If we see 50+ lightcap packets
 	// without these gen2 packets we can just call it for gen1.
 	if (so->ctx->lh_version == -1) {
+		static size_t pulse_count = 0;
+		static size_t total_count = 0;
+
+		total_count++;
+
 		if (_le->length >= 0x8000) {
 			survive_notify_gen2(so, "Lightcap length >= 0x8000");
 		} else if (_le->length >= 3000 && _le->length < 6500) {
+			pulse_count++;
 			// Only look for the OOTX pulses; otherwise we get false hits and can potentially choose gen1
 			// on a gen2 system
-			static int lightcap_rcv_cnt = 0;
-			if (lightcap_rcv_cnt++ > 30) {
+			if (pulse_count++ > 30) {
 				survive_notify_gen1(so, "OOTX pulses detected");
 			}
 		}
 
+		if (total_count > 100) {
+			survive_notify_gen2(so, "no OOTX pulses detected");
+		}
 		return;
 	}
 

@@ -503,6 +503,7 @@ int survive_startup(SurviveContext *ctx) {
 
 	int loadedDrivers = 0;
 
+	bool defaultExplicitlyEnabled = false;
 	char buffer[1024] = "Loaded drivers: ";
 	{
 		int i = 0;
@@ -517,8 +518,12 @@ int survive_startup(SurviveContext *ctx) {
 			}
 
 			int enabled = survive_config_is_set(ctx, driverNameSuffix);
-			if (enabled && callDriver(ctx, DriverName, buffer) == SURVIVE_DRIVER_NORMAL) {
-				loadedDrivers++;
+			if (strcmp("htcvive", driverNameSuffix) == 0) {
+				defaultExplicitlyEnabled = enabled;
+			} else {
+				if (enabled && callDriver(ctx, DriverName, buffer) == SURVIVE_DRIVER_NORMAL) {
+					loadedDrivers++;
+				}
 			}
 		}
 	}
@@ -528,7 +533,7 @@ int survive_startup(SurviveContext *ctx) {
 	}
 
 	// Load the vive driver by default, even if not enabled as a flag
-	if (loadedDrivers == 0 && callDriver(ctx, "DriverRegHTCVive", buffer)) {
+	if ((loadedDrivers == 0 || defaultExplicitlyEnabled) && callDriver(ctx, "DriverRegHTCVive", buffer)) {
 		loadedDrivers++;
 	}
 
