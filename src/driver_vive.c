@@ -1473,6 +1473,7 @@ static int32_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPt
 	uint32_t reference_time = w->activations.last_imu;
 
 	bool isGen2 = 0; // w->ctx->lh_version == 1;
+	(void)isGen2;
 
 	if (payloadEndPtr - payloadPtr <= 3) {
 		return 0;
@@ -1959,6 +1960,7 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 
 	UPDATE_PTR_AND_RETURN
 }
+
 static void attempt_lh_detection(SurviveObject *w, uint8_t *payloadPtr, uint8_t *payloadEndPtr) {
 	// Could potentially be from gen1 or gen2 with additional events. We want to wait for a lightcap
 	// only packet.
@@ -2516,7 +2518,7 @@ static void parse_tracker_version_info(SurviveObject *so, uint8_t *data, size_t 
 	} version_info;
 #pragma pack(pop)
 	memcpy(&version_info, data, sizeof(version_info));
-	SV_INFO("Device %s has FW version %lu and FPGA version %u/%u/%u; named %31s", so->codename, version_info.revision,
+	SV_INFO("Device %s has FW version %u and FPGA version %u/%u/%u; named %31s", so->codename, version_info.revision,
 			version_info.fpga_major_version, version_info.fpga_minor_version, version_info.fpga_patch_version,
 			version_info.fw_name);
 }
