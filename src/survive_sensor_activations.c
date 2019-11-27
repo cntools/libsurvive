@@ -62,7 +62,7 @@ void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct Pos
 		}
 	}
 
-	if (norm3d(imuData->gyro) > .05 || dist3d(self->accel, imuData->accel) > .01) {
+	if (norm3d(imuData->gyro) > .05 || dist3d(self->accel, imuData->accel) > .03) {
 		survive_long_timecode long_timecode =
 			((survive_long_timecode)self->rollover_count << 32u) | imuData->hdr.timecode;
 		self->last_movement = long_timecode;

@@ -275,10 +275,10 @@ void config_init() {
 }
 */
 
-void config_read_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8_t idx) {
+bool config_read_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8_t idx) {
 	config_group *cg = lh_config + idx;
 	uint8_t found = 0;
-	for (int i = 0; i < NUM_GEN1_LIGHTHOUSES; i++) {
+	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
 		uint32_t tmpIdx = 0xffffffff;
 		cg = lh_config + idx;
 
@@ -293,7 +293,7 @@ void config_read_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8
 
 	//	assert(found); // throw an assertion if we didn't find it...  Is this good?  not necessarily?
 	if (!found) {
-		return;
+		return false;
 	}
 
 	FLT defaults[7] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
@@ -324,6 +324,7 @@ void config_read_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8
 
 	bsd->OOTXSet = config_read_uint32(cg, "OOTXSet", 0);
 	bsd->PositionSet = config_read_uint32(cg, "PositionSet", 0);
+	return true;
 }
 
 void config_set_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8_t idx) {

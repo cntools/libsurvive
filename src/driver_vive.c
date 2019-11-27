@@ -1037,16 +1037,22 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 	
 	if (print) {
 		seconds = now_seconds;
+		size_t total_packets = 0;
 		for (int i = 0; i < sv->udev_cnt; i++) {
 			if (sv->udev[i].so == 0)
 				continue;
 
 			for (int j = 0; j < sv->udev[i].interface_cnt; j++) {
 				SurviveUSBInterface *iface = &sv->udev[i].interfaces[j];
-				SV_INFO("Iface %s %s has %zu packets (%f hz)", iface->assoc_obj->codename, iface->hname,
+				total_packets += iface->packet_count;
+				SV_INFO("Iface %s %8s has %4zu packets (%6.2f hz)", iface->assoc_obj->codename, iface->hname,
 						iface->packet_count, iface->packet_count / (now - start));
+				iface->packet_count = 0;
 			}
 		}
+
+		SV_INFO("Total                  %4zu packets (%6.2f hz)", total_packets, total_packets / (now - start));
+		start = now;
 	}
 
 #ifdef HIDAPI
@@ -2052,7 +2058,7 @@ static void parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, u
 				if (unused && dump_binary) {
 					SV_WARN("Not sure what this is: %x", unused);
 				}
-				SV_VERBOSE(50, "Sync %02d %d %8u", channel, ootx, timecode);
+				// SV_VERBOSE(50, "Sync %02d %d %8u", channel, ootx, timecode);
 				obj->ctx->syncproc(obj, channel, timecode, ootx, g);
 			} else {
 				//                                                         SC
@@ -2065,7 +2071,7 @@ static void parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, u
 				bool half_clock_flag = timecode & 0x4u;
 				uint8_t sensor = (timecode >> 27u);
 				timecode = fix_time24((timecode >> 3u) & 0xFFFFFFu, reference_time);
-				SV_VERBOSE(100, "Sweep %02d.%02d %8u", channel, sensor, timecode);
+				// SV_VERBOSE(100, "Sweep %02d.%02d %8u", channel, sensor, timecode);
 				obj->ctx->sweepproc(obj, channel, survive_map_sensor_id(obj, sensor), timecode, half_clock_flag);
 			}
 

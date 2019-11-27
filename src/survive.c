@@ -34,7 +34,7 @@ STATIC_CONFIG_ITEM( CONFIG_D_CALI, "disable-calibrate", 'i', "Enables or disable
 STATIC_CONFIG_ITEM(CONFIG_FAST_CALI, "fast-calibrate", 'i', "Use fast calibration", 0);
 STATIC_CONFIG_ITEM( CONFIG_F_CALI, "force-calibrate", 'i', "Forces calibration even if one exists.", 0 );
 STATIC_CONFIG_ITEM(CONFIG_F_OOTX, "force-ootx", 'i', "Forces ootx capture even if its in the config file.", 0);
-STATIC_CONFIG_ITEM(CONFIG_LIGHTHOUSE_COUNT, "lighthousecount", 'i', "How many lighthouses to look for.", 2);
+STATIC_CONFIG_ITEM(CONFIG_LIGHTHOUSE_COUNT, "lighthousecount", 'i', "How many lighthouses to look for.", 0);
 STATIC_CONFIG_ITEM(LIGHTHOUSE_GEN, "lighthouse-gen", 'i',
 				   "Which lighthouse gen to use -- 1 for LH1, 2 for LH2, 0 (default) for auto-detect", 0);
 
@@ -373,13 +373,15 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 		SV_INFO("Initial config file is %s", init_config);
 	}
 	config_read(ctx, init_config);
-	ctx->activeLighthouses = survive_configi(ctx, "lighthousecount", SC_SETCONFIG, 2);
+	ctx->activeLighthouses = survive_configi(ctx, "lighthousecount", SC_SETCONFIG, 0);
 
-	for (int i = 0; i < ctx->activeLighthouses; i++) {
-		config_read_lighthouse(ctx->lh_config, &(ctx->bsd[i]), i);
-		if (ctx->bsd[i].mode >= 0 && ctx->bsd[i].mode < 16)
-			ctx->bsd_map[ctx->bsd[i].mode] = i;
-		SV_VERBOSE(50, "Adding LH %d mode: %d id: %08x", i, ctx->bsd[i].mode, ctx->bsd[i].BaseStationID);
+	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
+		if (config_read_lighthouse(ctx->lh_config, &(ctx->bsd[i]), i)) {
+			if (ctx->bsd[i].mode >= 0 && ctx->bsd[i].mode < 16)
+				ctx->bsd_map[ctx->bsd[i].mode] = i;
+			ctx->activeLighthouses++;
+			SV_VERBOSE(50, "Adding LH %d mode: %d id: %08x", i, ctx->bsd[i].mode, ctx->bsd[i].BaseStationID);
+		}
 	}
 
 	if( list_for_autocomplete )

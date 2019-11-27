@@ -56,7 +56,7 @@ void destroy_config_group(config_group* cg);
 
 //void config_write_lighthouse(struct BaseStationData* bsd, uint8_t length);
 void config_set_lighthouse(config_group* lh_config, BaseStationData* bsd, uint8_t idx);
-void config_read_lighthouse(config_group* lh_config, BaseStationData* bsd, uint8_t idx);
+bool config_read_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8_t idx);
 
 void config_read(SurviveContext* sctx, const char* path);
 void config_save(SurviveContext* sctx, const char* path);
