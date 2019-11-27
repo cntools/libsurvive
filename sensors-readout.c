@@ -26,8 +26,15 @@ bool surviveIsDone = false;
 struct sensor_stats {
 	double MN, MX;
 };
+struct sensor_time_stats {
+	size_t hit_count;
+	double hz;
 
-struct sensor_stats stats[32][NUM_GEN2_LIGHTHOUSES][SENSORS_PER_OBJECT][2];
+	size_t hz_count;
+	survive_timecode hz_start;
+};
+struct sensor_stats stats[32][NUM_GEN2_LIGHTHOUSES][SENSORS_PER_OBJECT][2] = {};
+struct sensor_time_stats time_stats[32][SENSORS_PER_OBJECT] = {};
 
 void process_reading(int i, int lh, int sensor, int axis, FLT angle) {
 	struct sensor_stats *s = &stats[i][lh][sensor][axis];
@@ -35,12 +42,39 @@ void process_reading(int i, int lh, int sensor, int axis, FLT angle) {
 	s->MN = fmin(angle, s->MN);
 	s->MX = fmax(angle, s->MX);
 }
+
+void sweep_fn(SurviveObject *so, survive_channel channel, int sensor_id, survive_timecode timecode, int8_t plane,
+			  FLT angle) {
+	size_t idx = 0;
+	for (idx = 0; idx < so->ctx->objs_ct && so->ctx->objs[idx] != so; idx++)
+		;
+
+	time_stats[idx][sensor_id].hit_count++;
+
+	double time_since_start =
+		survive_timecode_difference(timecode, time_stats[idx][sensor_id].hz_start) / (double)so->timebase_hz;
+	struct SurviveContext *ctx = so->ctx;
+
+	time_stats[idx][sensor_id].hz_count++;
+	if (time_since_start > 3. || time_stats[idx][sensor_id].hz_start == 0) {
+		if (time_stats[idx][sensor_id].hz_start != 0)
+			time_stats[idx][sensor_id].hz = time_stats[idx][sensor_id].hz_count / time_since_start;
+		time_stats[idx][sensor_id].hz_count = 0;
+		time_stats[idx][sensor_id].hz_start = timecode;
+	}
+
+	survive_default_sweep_angle_process(so, channel, sensor_id, timecode, plane, angle);
+}
+
 const char *column_width = "          ";
+static void print_int(int i) { printf("%9d |", i); }
 static void print(float f) {
 	if (isnan(f)) {
 		printf("%s|", column_width);
+	} else if (fabs(f) < 10.) {
+		printf("%+9.6f |", f);
 	} else {
-		printf("%+1.6f |", f);
+		printf("%+9.4f |", f);
 	}
 }
 
@@ -90,7 +124,8 @@ static void redraw(SurviveContext *ctx) {
 		printf("\n");
 
 		printf("|\e[4m");
-		const char *labels[] = {"ch.sensor", "X", "Y", "min X", "max X", "width X", "min Y", "max Y", "width Y", 0};
+		const char *labels[] = {"ch.sensor", "Hits",	"Hits/sec", "X",	 "Y",		"min X",
+								"max X",	 "width X", "min Y",	"max Y", "width Y", 0};
 		for (const char **l = labels; *l; l++) {
 			print_label(*l);
 		}
@@ -117,6 +152,9 @@ static void redraw(SurviveContext *ctx) {
 				uint8_t displaySensor = useRawSensorId ? get_raw_sensor_id(so, sensor) : sensor;
 
 				printf("| %2d.%02d    |", ctx->bsd[lh].mode, displaySensor);
+
+				print_int(time_stats[i][sensor].hit_count);
+				print(time_stats[i][sensor].hz);
 				for (int axis = 0; axis < 2; axis++) {
 					FLT f = so->activations.angles[sensor][lh][axis];
 					process_reading(i, lh, sensor, axis, f);
@@ -141,6 +179,7 @@ static void redraw(SurviveContext *ctx) {
 void imu_fn(SurviveObject *so, int mode, FLT *accelgyro, survive_timecode timecode, int id) {
 	if (needsRedraw)
 		redraw(so->ctx);
+	survive_default_imu_process(so, mode, accelgyro, timecode, id);
 }
 
 void *KBThread(void *user) {
@@ -166,6 +205,7 @@ void *KBThread(void *user) {
 	}
 	return 0;
 }
+
 int main(int argc, char **argv) {
 #ifdef __linux__
 	signal(SIGINT, intHandler);
@@ -183,6 +223,7 @@ int main(int argc, char **argv) {
 		return 0;
 
 	FLT last_redraw = OGGetAbsoluteTime();
+	survive_install_sweep_angle_fn(ctx, sweep_fn);
 	survive_install_printf_fn(ctx, printf_fn);
 	survive_install_imu_fn(ctx, imu_fn);
 	survive_startup(ctx);
