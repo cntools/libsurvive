@@ -14,6 +14,8 @@
 #endif
 #endif
 
+#include "os_generic.h"
+
 #define MAX_USB_DEVS 32
 
 enum USB_DEV_t {
@@ -28,7 +30,7 @@ enum USB_DEV_t {
 
 #define MAX_INTERFACES_PER_DEVICE 8
 enum USB_IF_t {
-	USB_IF_HMD_HEADSET_INFO = 0,
+	USB_IF_HMD_HEADSET_INFO = 1,
 	USB_IF_HMD_IMU,
 	USB_IF_WATCHMAN1,
 	USB_IF_WATCHMAN2,

@@ -157,13 +157,13 @@ struct SurviveViveData {
 	bool closing;
 };
 
-#ifdef HIDAPI
-#ifndef HID_NONBLOCKING
-og_sema_t GlobalRXUSBSem;
-#endif
-#endif
-
-void survive_data_cb(SurviveUSBInterface *si);
+void survive_data_cb_locked(SurviveUSBInterface *si);
+void survive_data_cb(SurviveUSBInterface *si) {
+	SurviveContext *ctx = si->ctx;
+	survive_get_ctx_lock(ctx);
+	survive_data_cb_locked(si);
+	survive_release_ctx_lock(ctx);
+}
 
 // USB Subsystem
 void survive_usb_close(SurviveContext *t);
@@ -182,22 +182,7 @@ static void *HAPIReceiver(void *v) {
 	if ((iface->actual_len = hid_read(*hp, iface->buffer, sizeof(iface->buffer))) > 0) {
 		// if( iface->actual_len  == 52 ) continue;
 		iface->packet_count++;
-#ifndef HID_NONBLOCKING
-		OGLockSema(GlobalRXUSBSem);
-#endif
-#if 0
-		printf( "%d %d: ", iface->which_interface_am_i, iface->actual_len );
-		int i;
-		for( i = 0; i < iface->actual_len; i++ )
-		{
-			printf( "%02x ", iface->buffer[i] );
-		}
-		printf("\n" );
-#endif
 		survive_data_cb(iface);
-#ifndef HID_NONBLOCKING
-		OGUnlockSema(GlobalRXUSBSem);
-#endif
 	}
 	if (iface->actual_len < 0) {
 		SurviveContext* ctx = iface->sv->ctx;
@@ -397,12 +382,6 @@ typedef struct hid_device_info *survive_usb_device_t;
 typedef struct hid_device_info *survive_usb_devices_t;
 
 static int survive_usb_subsystem_init(SurviveViveData *sv) {
-#ifndef HID_NONBLOCKING
-	if (!GlobalRXUSBSem) {
-		GlobalRXUSBSem = OGCreateSema();
-		// OGLockSema( GlobalRXUSBSem );
-	}
-#endif
 	return hid_init();
 }
 static int survive_get_usb_devices(SurviveViveData *sv, survive_usb_devices_t *devs) {
@@ -822,6 +801,7 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 
 #ifdef HIDAPI
 #ifdef HID_NONBLOCKING
+	survive_release_ctx_lock(ctx);
 	for (int i = 0; i < sv->udev_cnt; i++) {
 		for (int j = 0; j < sv->udev[i].interface_cnt; j++) {
 			SurviveUSBInterface* iface = &sv->udev[i].interfaces[j];
@@ -829,16 +809,18 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 				HAPIReceiver(iface);
 		}
 	}
+	survive_get_ctx_lock(ctx);
 #else
-	OGUnlockSema(GlobalRXUSBSem);
 	OGUSleep(1);
-	OGLockSema(GlobalRXUSBSem);
 	return 0;
 #endif
 #else
-	int r = libusb_handle_events(sv->usbctx);
+	// int r = libusb_handle_events(sv->usbctx);
+	struct timeval tv = {.tv_usec = 10 * 1000};
+	survive_release_ctx_lock(ctx);
+	int r = libusb_handle_events_timeout(sv->usbctx, &tv);
+	survive_get_ctx_lock(ctx);
 	if (r) {
-		SurviveContext *ctx = sv->ctx;
 		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Libusb poll failed. %d (%s)", r, libusb_error_name(r));
 	}
 #endif
@@ -934,6 +916,11 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 		if (count + size >= sizeof(compressed_data)) {
 			SV_INFO("Configuration length too long %s:%d (count: %d)", usbInfo->so->codename, iface, count);
 			return -4;
+		}
+
+		// Some (Tracker at least?) devices send a uint64_t before data; not sure what it means but skip it for now.
+		if (count == 0 && size >= 2 && cfgbuff[2] != 0x78) {
+			continue;
 		}
 
 		memcpy(&compressed_data[count], cfgbuff + 2, size);
@@ -1450,7 +1437,7 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 	SurviveContext *ctx = w->ctx;
 
 	// If we're looking at light data, return
-	if ((*payloadPtr & 0xE0) == 0)
+	if (!HAS_FLAG(*payloadPtr, 0xE0))
 		return true;
 
 	/*
@@ -1900,10 +1887,9 @@ static inline uint32_t read_buffer32(uint8_t *readdata, int idx) {
 	return rtn;
 }
 
-void survive_data_cb(SurviveUSBInterface *si) {
+void survive_data_cb_locked(SurviveUSBInterface *si) {
 	int size = si->actual_len;
 	SurviveContext *ctx = si->ctx;
-
 	int iface = si->which_interface_am_i;
 	SurviveObject *obj = si->assoc_obj;
 	uint8_t *readdata = si->buffer;
@@ -2038,7 +2024,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 			} else {
 #ifdef HIDAPI
 				// TODO: This seems hacky....
-				for (int i = 0; i < si->sv->udev_cnt; i++) {
+				for (int i = 0; si->sv && i < si->sv->udev_cnt; i++) {
 					struct SurviveUSBInfo *usbInfo = &si->sv->udev[i];
 					int r =
 						update_feature_report(usbInfo->handle, 0, vive_magic_raw_mode_1, sizeof(vive_magic_raw_mode_1));
@@ -2304,6 +2290,7 @@ void survive_data_cb(SurviveUSBInterface *si) {
 		int a = 0; // breakpoint here
 	}
 	}
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2345,6 +2332,8 @@ int survive_vive_close(SurviveContext *ctx, void *driver) {
 int DriverRegHTCVive(SurviveContext *ctx) {
 	SurviveViveData *sv = SV_CALLOC(1, sizeof(SurviveViveData));
 
+	// Note: don't sleep for HTCVive, the handle_events call can block
+	ctx->poll_min_time_ms = 0;
 	survive_attach_configi(ctx, SECONDS_PER_HZ_OUTPUT_TAG, &sv->seconds_per_hz_output);
 	if(sv->seconds_per_hz_output > 0) {
 	  SV_INFO("Reporting usb hz in %d second intervals", sv->seconds_per_hz_output);

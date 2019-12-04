@@ -21,6 +21,7 @@
 
 STATIC_CONFIG_ITEM(USBMON_RECORD, "usbmon-record", 's', "File to save .pcap to.", 0);
 STATIC_CONFIG_ITEM(USBMON_PLAYBACK, "usbmon-playback", 's', "File to replay .pcap from.", 0);
+STATIC_CONFIG_ITEM(USBMON_RECORD_ALL, "usbmon-record-all", 'i', "Whether or not to record all usb traffic", 0);
 
 typedef struct vive_device_t {
 	uint16_t vid, pid;
@@ -62,6 +63,7 @@ typedef struct SurviveDriverUSBMon {
 	pcap_t *pcap;
 
 	pcap_dumper_t *pcapDumper;
+	bool record_all;
 
 	char errbuf[PCAP_ERRBUF_SIZE];
 	vive_device_inst_t usb_devices[VIVE_DEVICE_INST_MAX];
@@ -126,7 +128,7 @@ static int interface_lookup(const vive_device_inst_t *dev, int endpoint) {
 	int32_t id = dev->device->pid + (endpoint << 16);
 	switch (id) {
 	case 0x812000:
-		return USB_IF_HMD_HEADSET_INFO;
+		return USB_IF_HMD_IMU;
 	case 0x812101:
 		return USB_IF_WATCHMAN1;
 	case 0x812022:
@@ -182,8 +184,13 @@ static void ingest_config_request(vive_device_inst_t *dev, const struct _usb_hea
 	uint16_t cnt = pktData[1];
 
 	if (cnt) {
-		memcpy(&dev->compressed_data[dev->compressed_data_idx], pktData + 2, cnt);
-		dev->compressed_data_idx += cnt;
+		// Some (Tracker at least?) devices send a uint64_t before data; not sure what it means but skip it for now.
+		if (dev->compressed_data_idx == 0 && cnt >= 2 && pktData[2] != 0x78) {
+
+		} else {
+			memcpy(&dev->compressed_data[dev->compressed_data_idx], pktData + 2, cnt);
+			dev->compressed_data_idx += cnt;
+		}
 	} else {
 		char *uncompressed_data = SV_MALLOC(65536);
 		SurviveContext *ctx = dev->so->ctx;
@@ -286,11 +293,14 @@ static usb_info_t *get_usb_info_from_libusb() {
 	return rtn;
 }
 
-static size_t fill_device_inst(vive_device_inst_t *insts, const usb_info_t *usb_dev, FILE *save_file) {
+static size_t fill_device_inst(SurviveContext *ctx, vive_device_inst_t *insts, const usb_info_t *usb_dev,
+							   FILE *save_file) {
 	size_t rtn = 0;
 	while (usb_dev->vid != 0 && usb_dev->pid != 0) {
+		bool foundDevice = false;
 		for (vive_device_t *dev = devices; dev->vid != 0; dev++) {
 			if (usb_dev->vid == dev->vid && usb_dev->pid == dev->pid) {
+				foundDevice = true;
 				insts->device = dev;
 				insts->bus_id = usb_dev->bus_id;
 				insts->dev_id = usb_dev->dev_id;
@@ -303,6 +313,10 @@ static size_t fill_device_inst(vive_device_inst_t *insts, const usb_info_t *usb_
 				insts++;
 				rtn++;
 			}
+		}
+
+		if (!foundDevice && usb_dev->vid == 0x28de) {
+			SV_WARN("Didn't find device instance for %04x:%04x", usb_dev->vid, usb_dev->pid);
 		}
 
 		usb_dev++;
@@ -338,7 +352,7 @@ static int setup_usb_devices(SurviveDriverUSBMon *sp) {
 		usbInfo = get_usb_info_from_libusb();
 	}
 
-	sp->usb_devices_cnt = fill_device_inst(sp->usb_devices, usbInfo, listing_file);
+	sp->usb_devices_cnt = fill_device_inst(ctx, sp->usb_devices, usbInfo, listing_file);
 	if (listing_file) {
 		fclose(listing_file);
 	}
@@ -382,15 +396,15 @@ void *pcap_thread_fn(void *_driver) {
 		case 1: {
 			// if (usbp = (usb_header_t *)pcap_next(driver->pcap, &pkthdr)) {
 			vive_device_inst_t *dev = find_device_inst(driver, usbp->bus_id, usbp->device_address);
+
+			// Packet data is directly after the packet header
+			uint8_t *pktData = (uint8_t *)&usbp[1];
+			if (driver->pcapDumper && (dev || driver->record_all)) {
+				pcap_dump((uint8_t *)driver->pcapDumper, pkthdr, (uint8_t *)usbp);
+			}
+
 			if (dev) {
 				driver->packet_cnt++;
-
-				// Packet data is directly after the packet header
-				uint8_t *pktData = (uint8_t *)&usbp[1];
-
-				if (driver->pcapDumper) {
-					pcap_dump((uint8_t *)driver->pcapDumper, pkthdr, (uint8_t *)usbp);
-				}
 
 				// Print setup flags, then just bail
 				if (!usbp->setup_flag) {
@@ -470,9 +484,7 @@ void *pcap_thread_fn(void *_driver) {
 						memset(si.buffer, 0xCA, sizeof(si.buffer));
 						memcpy(si.buffer, pktData, usbp->data_len);
 
-						survive_get_ctx_lock(ctx);
 						survive_data_cb(&si);
-						survive_release_ctx_lock(ctx);
 					}
 				}
 			}
@@ -507,7 +519,7 @@ static int gzip_cookie_close(void *cookie) { return gzclose((gzFile)cookie); }
 
 static ssize_t gzip_cookie_read(void *cookie, char *buf, size_t nbytes) { return gzread((gzFile)cookie, buf, nbytes); }
 
-int gzip_cookie_seek(void *cookie, _IO_off64_t *pos, int __w) { return gzseek((gzFile)cookie, *pos, __w); }
+int gzip_cookie_seek(void *cookie, off64_t *pos, int __w) { return gzseek((gzFile)cookie, *pos, __w); }
 
 cookie_io_functions_t gzip_cookie = {
 	.close = gzip_cookie_close, .write = gzip_cookie_write, .read = gzip_cookie_read, .seek = gzip_cookie_seek};
@@ -551,6 +563,11 @@ int DriverRegUSBMon(SurviveContext *ctx) {
 		FILE *fd = open_playback(usbmon_record, "w");
 		SV_INFO("Opening %s for usb recording (%p)", usbmon_record, fd);
 		sp->pcapDumper = pcap_dump_fopen(sp->pcap, fd);
+		sp->record_all = survive_configi(ctx, "usbmon-record-all", SC_GET, 0);
+		if (sp->record_all) {
+			SV_WARN("All USB traffic is being captured. Don't use 'usbmon-record-all' if you don't want to expose "
+					"things like input from keyboards.");
+		}
 	}
 
 	int device_count = setup_usb_devices(sp);
