@@ -43,8 +43,7 @@ void process_reading(int i, int lh, int sensor, int axis, FLT angle) {
 	s->MX = fmax(angle, s->MX);
 }
 
-void sweep_fn(SurviveObject *so, survive_channel channel, int sensor_id, survive_timecode timecode, int8_t plane,
-			  FLT angle) {
+static void record_data(SurviveObject *so, int sensor_id, survive_timecode timecode) {
 	size_t idx = 0;
 	for (idx = 0; idx < so->ctx->objs_ct && so->ctx->objs[idx] != so; idx++)
 		;
@@ -61,8 +60,19 @@ void sweep_fn(SurviveObject *so, survive_channel channel, int sensor_id, survive
 			time_stats[idx][sensor_id].hz = time_stats[idx][sensor_id].hz_count / time_since_start;
 		time_stats[idx][sensor_id].hz_count = 0;
 		time_stats[idx][sensor_id].hz_start = timecode;
-	}
+	}  
+}
 
+void angle_fn(SurviveObject *so, int sensor_id, int acode, survive_timecode timecode,
+	      FLT length, FLT angle, uint32_t lh) {
+  record_data(so, sensor_id, timecode);
+  
+  survive_default_angle_process(so, sensor_id, acode, timecode, length, angle, lh);
+}
+
+void sweep_fn(SurviveObject *so, survive_channel channel, int sensor_id, survive_timecode timecode, int8_t plane,
+			  FLT angle) {
+  record_data(so, sensor_id, timecode);
 	survive_default_sweep_angle_process(so, channel, sensor_id, timecode, plane, angle);
 }
 
@@ -177,8 +187,6 @@ static void redraw(SurviveContext *ctx) {
 }
 
 void imu_fn(SurviveObject *so, int mode, FLT *accelgyro, survive_timecode timecode, int id) {
-	if (needsRedraw)
-		redraw(so->ctx);
 	survive_default_imu_process(so, mode, accelgyro, timecode, id);
 }
 
@@ -224,6 +232,7 @@ int main(int argc, char **argv) {
 
 	FLT last_redraw = OGGetAbsoluteTime();
 	survive_install_sweep_angle_fn(ctx, sweep_fn);
+	survive_install_angle_fn(ctx, angle_fn);	
 	survive_install_printf_fn(ctx, printf_fn);
 	survive_install_imu_fn(ctx, imu_fn);
 	survive_startup(ctx);
@@ -237,6 +246,7 @@ int main(int argc, char **argv) {
 		if (this_time > last_redraw + .03) {
 			needsRedraw = true;
 			last_redraw = this_time;
+			redraw(ctx);		       
 		}
 	}
 	surviveIsDone = true;
