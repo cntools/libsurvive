@@ -217,3 +217,15 @@ install(TARGETS survive-cli DESTINATION bin)
 INSTALL(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink survive ${CMAKE_INSTALL_PREFIX}/lib)")
 
 install(DIRECTORY include/libsurvive DESTINATION include)
+
+find_program(CTYPESGEN ctypesgen PATHS $ENV{HOME}/anaconda3/bin)
+if(CTYPESGEN)
+	get_property(include_directories DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
+	set(INCLUDE_FLAGS "")
+	foreach(include_directory ${include_directories})
+		list(APPEND INCLUDE_FLAGS "-I${include_directory}")
+	endforeach()
+
+	add_custom_target(pysurvive COMMAND ${CTYPESGEN} ${CMAKE_SOURCE_DIR}/include/libsurvive/*.h ${INCLUDE_FLAGS} --no-macros -L$<TARGET_FILE_DIR:survive> -llibsurvive.so
+			--strip-prefix=survive_ -P Survive -o pysurvive_generated.py )
+endif()

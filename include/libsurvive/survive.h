@@ -515,8 +515,6 @@ static inline void survive_notify_gen1(struct SurviveObject *so) {
 
 #define SV_GENERAL_ERROR(...) SV_ERROR(SURVIVE_ERROR_GENERAL, __VA_ARGS__)
 
-#define SV_KILL() exit(0) // XXX This should likely be re-defined.
-
 #ifdef __cplusplus
 };
 #endif

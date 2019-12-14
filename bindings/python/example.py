@@ -1,7 +1,7 @@
-import libsurvive
+import pysurvive
 import sys
 
-actx = libsurvive.SimpleContext(sys.argv)
+actx = pysurvive.SimpleContext(sys.argv)
 
 for obj in actx.Objects():
     print(obj.Name())

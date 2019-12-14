@@ -51,3 +51,6 @@ build
 .options
 .zip
 .avi
+
+*/__pycache__
+*.pyc
