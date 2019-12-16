@@ -1,6 +1,7 @@
 #include "test_case.h"
 #include "../survive_str.h"
 #include "string.h"
+#include "../survive_default_devices.h"
 
 TEST(Survive, ExportConfig) {
     SurviveContext *ctx = SV_CALLOC(1, sizeof(SurviveContext));
@@ -10,8 +11,7 @@ TEST(Survive, ExportConfig) {
 
     ctx->log_target = stderr;
 
-    SurviveObject *device = (SurviveObject *)calloc(1, sizeof(SurviveObject));
-    device->ctx = ctx;
+    SurviveObject *device = survive_create_device(ctx, "TST", 0, "TS0", 0);
 
     device->drivername[0] = device->codename[0] = 'T';
 
