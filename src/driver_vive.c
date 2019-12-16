@@ -457,7 +457,11 @@ typedef libusb_device **survive_usb_devices_t;
 
 static int survive_usb_subsystem_init(SurviveViveData *sv) {
 	int rtn = libusb_init(&sv->usbctx);
-	libusb_set_debug(sv->usbctx, LIBUSB_LOG_LEVEL_WARNING);
+#if LIBUSB_API_VERSION < 0x01000106
+	libusb_set_debug(NULL, LIBUSB_LOG_LEVEL_WARNING);
+#else
+	libusb_set_option(NULL, LIBUSB_OPTION_LOG_LEVEL, LIBUSB_LOG_LEVEL_WARNING);
+#endif
 	return rtn;
 }
 static int survive_get_usb_devices(SurviveViveData *sv, survive_usb_devices_t *devs) {
