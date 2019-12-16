@@ -34,21 +34,31 @@ typedef struct {
 
 	int poseLength;
 	int cameraLength;
-	int fcalLength;
 	int ptsLength;
 } survive_optimizer;
 
-#define SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(ctx) {                                                                     \
-    size_t par_count = survive_optimizer_get_parameters_count(&ctx);\
-	ctx.parameters = (double*)alloca(sizeof(double) * par_count);                            \
-	for(int i = 0;i < par_count;i++) ctx.parameters[i] = NAN; \
-	ctx.parameters_info = (struct mp_par_struct*)alloca(sizeof(struct mp_par_struct) * survive_optimizer_get_parameters_count(&ctx));                       \
-	ctx.measurements = (survive_optimizer_measurement*)alloca(sizeof(survive_optimizer_measurement) * 2 * ctx.so->sensor_ct * NUM_GEN2_LIGHTHOUSES);   \
-	memset(ctx.parameters_info, 0, sizeof(mp_par) * survive_optimizer_get_parameters_count(&ctx));                     \
-	for (int i = 0; i < survive_optimizer_get_parameters_count(&ctx); i++) {                                           \
-		ctx.parameters_info[i].fixed = 1;                                                                              \
+
+#define SURVIVE_OPTIMIZER_SETUP_BUFFERS(ctx, alloc_fn) {                                                                     \
+    size_t par_count = survive_optimizer_get_parameters_count(&(ctx));\
+	(ctx).parameters = (double*)alloc_fn(sizeof(double) * par_count);                            \
+	for(int i = 0;i < par_count;i++) (ctx).parameters[i] = NAN; \
+	(ctx).parameters_info = (struct mp_par_struct*)alloc_fn(sizeof(struct mp_par_struct) * par_count);                       \
+	size_t sensor_cnt = (ctx).so ? (ctx).so->sensor_ct : 32;\
+	(ctx).measurements = (survive_optimizer_measurement*)alloc_fn((ctx).poseLength * sizeof(survive_optimizer_measurement) * 2 * sensor_cnt * NUM_GEN2_LIGHTHOUSES);   \
+	memset((ctx).parameters_info, 0, sizeof(mp_par) * par_count);                     \
+	for (int i = 0; i < survive_optimizer_get_parameters_count(&(ctx)); i++) {                                           \
+		(ctx).parameters_info[i].fixed = 1;                                                                              \
 	}\
 	}
+
+#define SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(ctx) SURVIVE_OPTIMIZER_SETUP_BUFFERS(ctx, alloca)
+#define SURVIVE_OPTIMIZER_SETUP_HEAP_BUFFERS(ctx) SURVIVE_OPTIMIZER_SETUP_BUFFERS(ctx, malloc)
+#define SURVIVE_OPTIMIZER_CLEANUP_STACK_BUFFERS(ctx)
+#define SURVIVE_OPTIMIZER_CLEANUP_HEAP_BUFFERS(ctx) { \
+free(ctx.parameters);\
+free(ctx.parameters_info);\
+free(ctx.measurements);\
+}
 
 SURVIVE_EXPORT SurvivePose *survive_optimizer_get_pose(survive_optimizer *ctx);
 SURVIVE_EXPORT int survive_optimizer_get_camera_index(const survive_optimizer *ctx);
@@ -77,7 +87,15 @@ SURVIVE_EXPORT int survive_optimizer_run(survive_optimizer *optimizer, struct mp
 
 SURVIVE_EXPORT void survive_optimizer_set_reproject_model(survive_optimizer *optimizer,
 														  const survive_reproject_model_t *reprojectModel);
-SURVIVE_EXPORT void survive_optimizer_serialize(survive_optimizer *optimizer, const char *fn);
+SURVIVE_EXPORT void survive_optimizer_serialize(const survive_optimizer *optimizer, const char *fn);
+
+SURVIVE_EXPORT survive_optimizer * survive_optimizer_load(const char *fn);
+
+SURVIVE_EXPORT FLT survive_optimizer_current_norm(const survive_optimizer *optimizer);
+
+SURVIVE_EXPORT int survive_optimizer_nonfixed_cnt(const survive_optimizer *optimizer);
+SURVIVE_EXPORT void survive_optimizer_get_nonfixed(const survive_optimizer *optimizer, double* params);
+SURVIVE_EXPORT void survive_optimizer_set_nonfixed(survive_optimizer *optimizer, double* params);
 #ifdef __cplusplus
 }
 #endif
