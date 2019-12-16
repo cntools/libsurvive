@@ -638,6 +638,15 @@ void survive_remove_object(SurviveContext *ctx, SurviveObject *obj) {
 	SV_INFO("Removing tracked object %s from %s", obj->codename, obj->drivername);
 	free(obj);
 }
+
+const void *survive_get_driver(const SurviveContext *ctx, DeviceDriverCb pollFn) {
+	for (int i = 0; i < ctx->driver_ct; i++) {
+		if (ctx->driverpolls[i] == pollFn)
+			return ctx->drivers[i];
+	}
+	return 0;
+}
+
 void survive_add_driver(SurviveContext *ctx, void *payload, DeviceDriverCb poll, DeviceDriverCb close,
 						DeviceDriverMagicCb magic) {
 	int oldct = ctx->driver_ct;

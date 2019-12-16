@@ -19,7 +19,7 @@ static void diff(double *out, const SurvivePose *a, const SurvivePose *b) {
 
 static int test_path(const char *name, int main_argc, char **main_argv) {
 	int rtn = 0;
-	double max_pos_error = .01, max_rot_error = .001;
+	double max_pos_error = .04, max_rot_error = .001;
 	char configPath[FILENAME_MAX] = {0};
 	sprintf(configPath, "%s.json", name);
 

@@ -268,10 +268,10 @@ static double run_sba(SBAData *d, PoserDataFullScene *pdfs, SurviveObject *so, i
 			pdfs->hdr.pt = hdr.pt;
 			pdfs->hdr.lighthouseposeproc = sba_set_cameras;
 			pdfs->hdr.userdata = &sbactx;
-			so->PoserData = d->opt.seed_poser_data;
+			so->PoserFnData = d->opt.seed_poser_data;
 			driver(so, &pdfs->hdr);
-			d->opt.seed_poser_data = so->PoserData;
-			so->PoserData = d;
+			d->opt.seed_poser_data = so->PoserFnData;
+			so->PoserFnData = d;
 			pdfs->hdr = hdr;
 		} else {
 			SV_INFO("Not using a seed poser for SBA; results will likely be way off");
@@ -280,8 +280,8 @@ static double run_sba(SBAData *d, PoserDataFullScene *pdfs, SurviveObject *so, i
 				so->ctx->bsd[i].Pose.Rot[0] = 1.;
 			}
 		}
-		// opencv_solver_poser_cb(so, (PoserData *)pdfs);
-		// PoserCharlesSlow(so, (PoserData *)pdfs);
+		// opencv_solver_poser_cb(so, (PoserFnData *)pdfs);
+		// PoserCharlesSlow(so, (PoserFnData *)pdfs);
 	}
 
 	double opts[SBA_OPTSSZ] = {0};
@@ -344,9 +344,9 @@ static double run_sba(SBAData *d, PoserDataFullScene *pdfs, SurviveObject *so, i
 
 int PoserSBA(SurviveObject *so, PoserData *pd) {
 	SurviveContext *ctx = so->ctx;
-	if (so->PoserData == 0) {
-		so->PoserData = SV_CALLOC(1, sizeof(SBAData));
-		SBAData *d = so->PoserData;
+	if (so->PoserFnData == 0) {
+		so->PoserFnData = SV_CALLOC(1, sizeof(SBAData));
+		SBAData *d = so->PoserFnData;
 
 		general_optimizer_data_init(&d->opt, so);
 		survive_imu_tracker_init(&d->tracker, so);
@@ -366,7 +366,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		SV_INFO("\tuse-imu: %d", d->useIMU);
 		SV_INFO("\tuse-jacobian-function: %d", d->use_jacobian_function);
 	}
-	SBAData *d = so->PoserData;
+	SBAData *d = so->PoserFnData;
 	switch (pd->pt) {
 	case POSERDATA_SYNC: {
 		// No poses if calibration is ongoing
@@ -419,7 +419,7 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 		SV_INFO("\tmeas failures %d", d->stats.meas_failures);
 		general_optimizer_data_dtor(&d->opt);
 		free(d);
-		so->PoserData = 0;
+		so->PoserFnData = 0;
 		return 0;
 	}
 	case POSERDATA_IMU: {

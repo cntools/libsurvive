@@ -11,6 +11,8 @@ simple_pose_test
 cmake-build-*
 survive
 survive-cli
+sensors-readout
+api_example
 build*
 
 # Temp files
@@ -51,3 +53,12 @@ build
 .options
 .zip
 .avi
+
+*/__pycache__
+*.pyc
+
+venv
+.eggs/
+bindings/python/pysurvive/pysurvive_generated.py
+dist/
+pysurvive.egg-info/

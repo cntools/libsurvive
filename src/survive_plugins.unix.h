@@ -21,7 +21,7 @@ static const char *get_so_filename() {
 		dladdr((void *)get_so_filename, &dl_info);
 		ssize_t len = readlink(dl_info.dli_fname, so_path, sizeof(so_path));
 		if (len == -1) {
-			strncpy(so_path, dl_info.dli_fname, sizeof(so_path));
+			strncpy(so_path, dl_info.dli_fname, sizeof(so_path) - 1);
 		} else {
 			so_path[len] = 0;
 		}

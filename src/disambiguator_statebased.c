@@ -639,7 +639,7 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 	SetState(d, le, new_state);
 }
 
-static uint32_t offset_from_state(Disambiguator_data_t *d, const LightcapElement *le) {
+static inline uint32_t offset_from_state(Disambiguator_data_t *d, const LightcapElement *le) {
 	struct SurviveContext *ctx = d->so->ctx;
 	Global_Disambiguator_data_t *g = ctx->disambiguator_data;
 	int end_of_mod = g->single_60hz_mode ? LS_WaitLHB_ACode0 : LS_END;

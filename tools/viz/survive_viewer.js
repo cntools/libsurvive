@@ -229,6 +229,10 @@ function redrawCanvas(when) {
 	}
 }
 function solve_vive_pose(vpose) {
+	if(vpose.plus_x === undefined) {
+		return [ 0, 0, 0, 1, 0, 0, 0 ];
+	}
+
 	var plus_x = new THREE.Vector3().fromArray(vpose.plus_x);
 	var plus_z = new THREE.Vector3().fromArray(vpose.plus_z);
 	var plus_y = new THREE.Vector3().crossVectors(plus_z, plus_x);

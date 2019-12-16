@@ -167,11 +167,16 @@ foreach(PLUGIN ${PLUGINS})
     if(plugin_type)
       set_target_properties(${PLUGIN} PROPERTIES FOLDER "${plugin_type}")
     endif()
+
+	set(OUTPUT_DIR "")
+	if(CMAKE_LIBRARY_OUTPUT_DIRECTORY)
+		set(OUTPUT_DIR "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/")
+	endif()
     set_target_properties(${PLUGIN} PROPERTIES PREFIX "")
-    set_target_properties(${PLUGIN} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "plugins")
-    set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG "Debug/plugins")
-    set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE "Release/plugins")
-    set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "RelWithDebInfo/plugins")
+    set_target_properties(${PLUGIN} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${OUTPUT_DIR}plugins")
+    set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG "${OUTPUT_DIR}Debug/plugins")
+    set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE "${OUTPUT_DIR}Release/plugins")
+    set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${OUTPUT_DIR}RelWithDebInfo/plugins")
 
 endforeach()
   
@@ -217,3 +222,15 @@ install(TARGETS survive-cli DESTINATION bin)
 INSTALL(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink survive ${CMAKE_INSTALL_PREFIX}/lib)")
 
 install(DIRECTORY include/libsurvive DESTINATION include)
+
+find_program(CTYPESGEN ctypesgen PATHS $ENV{HOME}/anaconda3/bin)
+if(CTYPESGEN)
+	get_property(include_directories DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
+	set(INCLUDE_FLAGS "")
+	foreach(include_directory ${include_directories})
+		list(APPEND INCLUDE_FLAGS "-I${include_directory}")
+	endforeach()
+
+	add_custom_target(pysurvive ALL COMMAND ${CTYPESGEN} ${CMAKE_SOURCE_DIR}/include/libsurvive/*.h ${INCLUDE_FLAGS} --no-macros -L$<TARGET_FILE_DIR:survive> -llibsurvive.so
+			--strip-prefix=survive_ -P Survive -o ${PYTHON_GENERATED_DIR}pysurvive_generated.py )
+endif()
