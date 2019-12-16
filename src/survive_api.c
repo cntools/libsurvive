@@ -104,7 +104,7 @@ static SurviveSimpleObject *find_or_create_external(SurviveSimpleContext *actx, 
 	SurviveSimpleObject *so = SV_CALLOC(1, sizeof(struct SurviveSimpleObject));
 	so->type = SurviveSimpleObject_EXTERNAL;
 	so->actx = actx;
-	strncpy(so->name, name, 32);
+	strncpy(so->name, name, sizeof(so->name) - 1);
 	SurviveSimpleObjectList_add(&actx->objects, so);
 
 	return so;

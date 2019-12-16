@@ -15,10 +15,10 @@ struct PoserIMUData_t {
 int PoserIMU(SurviveObject *so, PoserData *pd) {
 	PoserType pt = pd->pt;
 	SurviveContext *ctx = so->ctx;
-	struct PoserIMUData_t *dd = so->PoserData;
+	struct PoserIMUData_t *dd = so->PoserFnData;
 
 	if (!dd) {
-		so->PoserData = dd = SV_CALLOC(1, sizeof(struct PoserIMUData_t));
+		so->PoserFnData = dd = SV_CALLOC(1, sizeof(struct PoserIMUData_t));
 		survive_imu_tracker_init(&dd->tracker, so);
 	}
 

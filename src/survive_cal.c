@@ -159,7 +159,7 @@ void survive_cal_install( struct SurviveContext * ctx )
 	// setting the required trackers for calibration to be permissive to make it easier for a newbie to start-- 
 	// basically, libsurvive will detect whatever they have plugged in and start using that.
 	const char *_RequiredTrackersForCal = survive_configs(ctx, "requiredtrackersforcal", SC_SETCONFIG, "");
-	strncpy(RequiredTrackersForCal, _RequiredTrackersForCal, 128);
+	strncpy(RequiredTrackersForCal, _RequiredTrackersForCal, sizeof(RequiredTrackersForCal) - 1);
 
 	if (strlen(RequiredTrackersForCal) == 0) {
 		int8_t highest_sensor_ct = 0;
@@ -171,7 +171,7 @@ void survive_cal_install( struct SurviveContext * ctx )
 			}
 		}
 
-		strncpy(RequiredTrackersForCal, ctx->objs[best_obj]->codename, 128);
+		strncpy(RequiredTrackersForCal, ctx->objs[best_obj]->codename, sizeof(RequiredTrackersForCal) - 1);
 	}
 
 	// If there are no mandatory trackers for calibration; by default just accept whatever it is that the person has.

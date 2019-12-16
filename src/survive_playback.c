@@ -65,6 +65,7 @@ STATIC_CONFIG_ITEM(PLAYBACK_RECORD_CAL_IMU, "record-cal-imu", 'i', "Whether or n
 STATIC_CONFIG_ITEM( PLAYBACK_RECORD_ANGLE, "record-angle", 'i', "Whether or not to output angle data", 1 );
 
 typedef struct SurviveRecordingData {
+	SurviveContext *ctx;
 	bool alwaysWriteStdOut;
 	bool writeRawLight;
         bool writeIMU;
@@ -73,11 +74,38 @@ typedef struct SurviveRecordingData {
 		gzFile output_file;
 } SurviveRecordingData;
 
+struct SurvivePlaybackData {
+	SurviveContext *ctx;
+	const char *playback_dir;
+	gzFile playback_file;
+	int lineno;
+
+	double next_time_s;
+	double time_now;
+	FLT playback_factor;
+	bool hasRawLight;
+	bool outputExternalPose;
+
+	uint32_t total_sleep_time;
+	bool keepRunning;
+	og_thread_t playback_thread;
+};
+
 static double timestamp_in_s() {
 	static double start_time_s = 0;
 	if (start_time_s == 0.)
 		start_time_s = OGGetAbsoluteTime();
 	return OGGetAbsoluteTime() - start_time_s;
+}
+
+static int playback_poll(struct SurviveContext *ctx, void *_driver);
+double survive_run_time(const SurviveContext *ctx) {
+	const struct SurvivePlaybackData *sp = survive_get_driver(ctx, playback_poll);
+	if (sp) {
+		return sp->time_now;
+	}
+
+	return timestamp_in_s();
 }
 
 static void write_to_output_raw(SurviveRecordingData *recordingData, const char *string, int len) {
@@ -95,7 +123,7 @@ static void write_to_output(SurviveRecordingData *recordingData, const char *for
 		return;
 	}
 
-	double ts = timestamp_in_s();
+	double ts = survive_run_time(recordingData->ctx);
 
 	if (recordingData->output_file) {
 		va_list args;
@@ -327,21 +355,6 @@ void survive_recording_raw_imu_process(struct SurviveObject *so, int mask, FLT *
 					accelgyro[5], accelgyro[6], accelgyro[7], accelgyro[8], id);
 }
 
-struct SurvivePlaybackData {
-	SurviveContext *ctx;
-	const char *playback_dir;
-	gzFile playback_file;
-	int lineno;
-
-	double next_time_s;
-	FLT playback_factor;
-	bool hasRawLight;
-	bool outputExternalPose;
-
-	uint32_t total_sleep_time;
-	bool keepRunning;
-	og_thread_t playback_thread;
-};
 typedef struct SurvivePlaybackData SurvivePlaybackData;
 
 static SurviveObject *find_or_warn(SurvivePlaybackData *driver, const char *dev) {
@@ -590,6 +603,8 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 
 		if (driver->next_time_s * driver->playback_factor > timestamp_in_s())
 			return 0;
+
+		driver->time_now = driver->next_time_s;
 		driver->next_time_s = 0;
 
 		size_t n = 0;
@@ -719,7 +734,7 @@ void survive_install_recording(SurviveContext *ctx) {
 
 	if (strlen(dataout_file) > 0 || record_to_stdout) {
 		ctx->recptr = SV_CALLOC(1, sizeof(struct SurviveRecordingData));
-
+		ctx->recptr->ctx = ctx;
 		if (strlen(dataout_file) > 0) {
 			bool useCompression = strncmp(dataout_file + strlen(dataout_file) - 3, ".gz", 3) == 0;
 

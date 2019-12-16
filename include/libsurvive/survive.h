@@ -121,9 +121,9 @@ struct SurviveObject {
 
 	SurvivePose
 		FromLHPose[NUM_GEN1_LIGHTHOUSES]; // Filled out by poser, contains computed position from each lighthouse.
-	void *PoserData; // Initialized to zero, configured by poser, can be anything the poser wants.
-	PoserCB PoserFn;
 
+	void *PoserFnData; // Initialized to zero, configured by poser, can be anything the poser wants.
+	PoserCB PoserFn;
 	// Device-specific information about the location of the sensors.  This data will be used by the poser.
 	// These are stored in the IMU's coordinate frame so that posers don't have to do a ton of manipulation
 	// to do sensor fusion.
@@ -352,10 +352,12 @@ SURVIVE_EXPORT int survive_simple_inflate(SurviveContext *ctx, const uint8_t *in
 SURVIVE_EXPORT int survive_send_magic(SurviveContext *ctx, int magic_code, void *data, int datalen);
 
 // These functions search both the stored-general and temporary sections for a parameter and return it.
-#define SC_GET 0	   // Get, only.
-#define SC_SET 1	   // Set, if not present
-#define SC_OVERRIDE 2  // Set, to new default value.
-#define SC_SETCONFIG 4 // Set, both in-memory and config file.  Use in conjunction with SC_OVERRIDE.
+enum survive_config_flags {
+	SC_GET = 0,		 // Get, only.
+	SC_SET = 1,		 // Set, if not present
+	SC_OVERRIDE = 2, // Set, to new default value.
+	SC_SETCONFIG = 4 // Set, both in-memory and config file.  Use in conjunction with SC_OVERRIDE.
+};
 
 SURVIVE_EXPORT bool survive_config_is_set(SurviveContext *ctx, const char *tag);
 SURVIVE_EXPORT FLT survive_configf(SurviveContext *ctx, const char *tag, char flags, FLT def);
@@ -425,7 +427,7 @@ SURVIVE_EXPORT void survive_default_lighthouse_pose_process(SurviveContext *ctx,
 SURVIVE_EXPORT int survive_default_config_process(SurviveObject *so, char *ct0conf, int len);
 SURVIVE_EXPORT void survive_default_gen_detected_process(SurviveObject *so, int lh_version);
 SURVIVE_EXPORT void survive_default_new_object_process(SurviveObject *so);
-
+SURVIVE_EXPORT double survive_run_time(const SurviveContext *ctx);
 ////////////////////// Survive Drivers ////////////////////////////
 
 SURVIVE_EXPORT void RegisterDriver(const char *name, void *data);
@@ -438,6 +440,7 @@ SURVIVE_EXPORT void RegisterDriver(const char *name, void *data);
 // For device drivers to call.  This actually attaches them.
 SURVIVE_EXPORT int survive_add_object(SurviveContext *ctx, SurviveObject *obj);
 SURVIVE_EXPORT void survive_remove_object(SurviveContext *ctx, SurviveObject *obj);
+SURVIVE_EXPORT const void *survive_get_driver(const SurviveContext *ctx, DeviceDriverCb pollFn);
 SURVIVE_EXPORT void survive_add_driver(SurviveContext *ctx, void *payload, DeviceDriverCb poll, DeviceDriverCb close,
 						DeviceDriverMagicCb magic);
 SURVIVE_EXPORT char* survive_export_config(SurviveObject* so);
@@ -516,8 +519,6 @@ static inline void survive_notify_gen1(struct SurviveObject *so) {
 }
 
 #define SV_GENERAL_ERROR(...) SV_ERROR(SURVIVE_ERROR_GENERAL, __VA_ARGS__)
-
-#define SV_KILL() exit(0) // XXX This should likely be re-defined.
 
 #ifdef __cplusplus
 };

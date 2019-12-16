@@ -12,10 +12,10 @@ int PoserDummy( SurviveObject * so, PoserData * pd )
 {
 	PoserType pt = pd->pt;
 	SurviveContext * ctx = so->ctx;
-	DummyData * dd = so->PoserData;
+	DummyData *dd = so->PoserFnData;
 
 	if (!dd)
-		so->PoserData = dd = SV_MALLOC(sizeof(DummyData));
+		so->PoserFnData = dd = SV_MALLOC(sizeof(DummyData));
 
 	switch( pt )
 	{
@@ -42,7 +42,7 @@ int PoserDummy( SurviveObject * so, PoserData * pd )
 	case POSERDATA_DISASSOCIATE:
 	{
 		free( dd );
-		so->PoserData = 0;
+		so->PoserFnData = 0;
 		//printf( "Need to disassociate.\n" );
 		break;
 	}

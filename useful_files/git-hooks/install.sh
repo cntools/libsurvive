@@ -1,2 +1,2 @@
 ROOT=`git rev-parse --show-toplevel`
-cp * $ROOT/.git/hooks
+cp $ROOT/useful_files/git-hooks/* $ROOT/.git/hooks

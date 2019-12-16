@@ -75,7 +75,7 @@ typedef struct {
 
 void AdjustRotation( SurviveObject *so, LinmathQuat adjustment, int is_imu, int is_coarse )
 {
-	CharlesPoserData *dd = so->PoserData;
+	CharlesPoserData *dd = so->PoserFnData;
 	//LinmathQuat invert_adjust;
 	//quatgetreciprocal( invert_adjust, adjustment );
 	quatrotateabout(dd->InteralPoseUsedForCalc.Rot, dd->InteralPoseUsedForCalc.Rot, adjustment );
@@ -85,7 +85,7 @@ void AdjustRotation( SurviveObject *so, LinmathQuat adjustment, int is_imu, int 
 
 void AdjustPosition( SurviveObject * so, LinmathPoint3d adjustment, int is_imu, float descale )
 {
-	CharlesPoserData *dd = so->PoserData;
+	CharlesPoserData *dd = so->PoserFnData;
 
 	add3d( dd->InteralPoseUsedForCalc.Pos, adjustment, dd->InteralPoseUsedForCalc.Pos);
 	add3d( dd->mixed_output, adjustment, dd->mixed_output);
@@ -94,7 +94,7 @@ void AdjustPosition( SurviveObject * so, LinmathPoint3d adjustment, int is_imu, 
 	{
 		LinmathPoint3d backflow;
 		scale3d( backflow, adjustment, 1.0/descale );
-		CharlesPoserData *dd = so->PoserData;
+		CharlesPoserData *dd = so->PoserFnData;
 		//XXX TODO figure out how to dampen velocity.
 		add3d( dd->velocity_according_to_accelerometer, dd->velocity_according_to_accelerometer, backflow );
 		scale3d( backflow, backflow, .001 );
@@ -106,7 +106,7 @@ void AdjustPosition( SurviveObject * so, LinmathPoint3d adjustment, int is_imu, 
 //Emits "dd->mixed_output" for position and dd->InteralPoseUsedForCalc.Rot for rotation.
 void EmitPose( SurviveObject *so, PoserData *pd )
 {
-	CharlesPoserData *dd = so->PoserData;
+	CharlesPoserData *dd = so->PoserFnData;
 
 	SurvivePose object_pose_out;
 	copy3d(   object_pose_out.Pos, dd->mixed_output );
@@ -126,10 +126,10 @@ void EmitPose( SurviveObject *so, PoserData *pd )
 
 
 int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
-	CharlesPoserData *dd = so->PoserData;
+	CharlesPoserData *dd = so->PoserFnData;
 	if (!dd)
 	{
-		so->PoserData = dd = SV_CALLOC(sizeof(CharlesPoserData), 1);
+		so->PoserFnData = dd = SV_CALLOC(sizeof(CharlesPoserData), 1);
 		SurvivePose object_pose_out;
 		memcpy(&object_pose_out, &LinmathPose_Identity, sizeof(LinmathPose_Identity));
 		memcpy(&dd->InteralPoseUsedForCalc, &LinmathPose_Identity, sizeof(LinmathPose_Identity));

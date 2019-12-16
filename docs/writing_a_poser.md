@@ -15,7 +15,7 @@ constructor. Make a function in the following form:
 ```
 #include "survive.h"
 
-int PoserMyPoser(SurviveObject *so, PoserData *pd) {
+int PoserMyPoser(SurviveObject *so, PoserFnData *pd) {
 	switch (pd->pt) {
 	case POSERDATA_LIGHT: {
 		PoserDataLight *lightData = (PoserDataLight *)pd;
@@ -42,7 +42,7 @@ Now compile it into the shared object, and it will be one of the poser options a
 
 ## Input to a poser
 
-`PoserData` is a tagged union that contains the new input to the poser. See above for how to get the concrete
+`PoserFnData` is a tagged union that contains the new input to the poser. See above for how to get the concrete
 types for each type of event. 
 
 If you don't handle a given input, return -1. If you do, return a 0. If you have a more specific
