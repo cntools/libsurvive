@@ -6,8 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-//#define DEBUG_TB(...) SV_INFO(__VA_ARGS__)
-#define DEBUG_TB(...)
+#define DEBUG_TB(...) SV_VERBOSE(1000, __VA_ARGS__)
+//#define DEBUG_TB(...)
 /**
  * The lighthouses go in the following order:
  *
@@ -62,6 +62,27 @@ enum LighthouseState {
 
 	LS_END
 };
+
+static const char* LighthouseStateName(enum LighthouseState s) {
+#define CASE(x) case x: return #x;
+    switch(s) {
+        CASE(LS_UNKNOWN);
+        CASE(LS_WaitLHA_ACode4);
+        CASE(LS_WaitLHA_ACode0);
+        CASE(LS_SweepAX);
+        CASE(LS_WaitLHA_ACode5);
+        CASE(LS_WaitLHA_ACode1);
+        CASE(LS_SweepAY);
+        CASE(LS_WaitLHB_ACode0);
+        CASE(LS_WaitLHB_ACode4);
+        CASE(LS_SweepBX);
+        CASE(LS_WaitLHB_ACode1);
+        CASE(LS_WaitLHB_ACode5);
+        CASE(LS_SweepBY);
+        CASE(LS_END);
+    }
+    return "<UNKNOWN>";
+}
 
 typedef struct {
 	int acode, lh, axis, window;
@@ -364,7 +385,8 @@ static enum LighthouseState find_relative_offset(Disambiguator_data_t *d, uint32
 	DEBUG_LOCK("Starting search... %s %d %d", d->so->codename, ri, acode);
 	for (enum LighthouseState guess = LS_UNKNOWN + 1; guess != LS_END; guess++) {
 		const LighthouseStateParameters *params = &LS_Params[guess];
-		if (LSParam_acode(guess) == acode && !params->is_sweep) {
+		//if (LSParam_acode(guess) == acode && !params->is_sweep) {
+		if(!params->is_sweep) {
 			uint32_t guess_mod = SolveForMod_Offset(d, guess, re);
 			DEBUG_LOCK("%10u %4u %d %u %u %d", re->timestamp, re->length, acode & 0x5, guess_mod,
 					   re->timestamp - guess_mod, guess);
@@ -487,6 +509,10 @@ static enum LighthouseState SetState(Disambiguator_data_t *d, const LightcapElem
 				 best_d ? best_d->state : LS_UNKNOWN);
 	}
 
+	SV_VERBOSE(200, "%s Setting state %18s (%2d) -> %18s (%2d)", d->so->codename,
+	        LighthouseStateName(d->state), d->state,
+	        LighthouseStateName(new_state), new_state);
+
 	d->state = new_state;
 	if (new_state == LS_UNKNOWN) {
 		memset(d->sync_history, 0, sizeof(LightcapElement) * SYNC_HISTORY_LEN);
@@ -519,10 +545,13 @@ static void RunACodeCapture(int target_acode, Disambiguator_data_t *d, const Lig
 	SurviveContext *ctx = d->so->ctx;
 	Global_Disambiguator_data_t *g = ctx->disambiguator_data;
 
+
+
+	SV_VERBOSE(500, "Acode Capture %d (%4d) %4d -- %d or %d", target_acode, error, le->length, ACODE_TIMING(target_acode), ACODE_TIMING(target_acode | DATA_BIT));
 	// Errors do happen; either reflections or some other noise. Our scheme here is to
 	// keep a tally of hits and misses, and if we ever go into the negatives reset
 	// the state machine to find the state again.
-	if (error > 1250) {
+	if (error > 800) {
 
 		// Penalize semi-harshly -- if it's ever off track it will take this many syncs
 		// to reset
@@ -632,9 +661,11 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 			}
 		}
 
-		if (d->confidence > 80 && cnt > 0)
-			ctx->lightproc(d->so, -3, LS_Params[d->state].acode, 0, best_timecode, DIV_ROUND_CLOSEST(avg_length, cnt),
-						   LS_Params[d->state].lh);
+
+		if (d->confidence > 80 && cnt > 0) {
+            ctx->lightproc(d->so, -3, LS_Params[d->state].acode, 0, best_timecode, DIV_ROUND_CLOSEST(avg_length, cnt),
+                           LS_Params[d->state].lh);
+        }
 	}
 	SetState(d, le, new_state);
 }
@@ -732,7 +763,7 @@ void DisambiguatorStateBased(SurviveObject *so, const LightcapElement *le) {
 		return;
 	}
 
-	DEBUG_TB("%s LE: %2u\t%4u\t%10u\t%2u\t%7u", so->codename, le->sensor_id, le->length, le->timestamp, d->state,
+	SV_VERBOSE(3000, "%s LE: %2u\t%4u\t%10u\t%2u\t%7u", so->codename, le->sensor_id, le->length, le->timestamp, d->state,
 			 offset_from_state(d, le));
 
 	if (d->state == LS_UNKNOWN) {
