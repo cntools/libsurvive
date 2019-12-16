@@ -352,10 +352,16 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	SurvivePose trackref2imu = InvertPoseRtn(&so->imu2trackref);
 	// InvertPose(&so->head2trackref, &so->head2trackref);
 
+	bool sensorsAreZero = true;
 	for (int i = 0; i < so->sensor_ct; i++) {
+	    if(norm3d(&so->sensor_locations[i]) > .001) {
+	        sensorsAreZero = false;
+	    }
 		ApplyPoseToPoint(&so->sensor_locations[i * 3], &trackref2imu, &so->sensor_locations[i * 3]);
 		quatrotatevector(&so->sensor_normals[i * 3], trackref2imu.Rot, &so->sensor_normals[i * 3]);
 	}
+
+    so->has_sensor_locations = !sensorsAreZero;
 
 	ApplyPoseToPose(&so->head2imu, &trackref2imu, &so->head2trackref);
 

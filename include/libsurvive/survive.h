@@ -131,6 +131,7 @@ struct SurviveObject {
 
 	// Remaps pins as reported from device into indices in 'modelPoints'
 	int *channel_map;
+	bool has_sensor_locations;
 	FLT *sensor_locations; // size is sensor_ct*3.  Contains x,y,z values for each sensor
 	FLT *sensor_normals;   // size is nrlocations*3.  cointains normal vector for each sensor
 
