@@ -103,11 +103,11 @@ bool general_optimizer_data_record_current_lhs(GeneralOptimizerData *d, PoserDat
 		pl->hdr.userdata = &locations;
 		pl->assume_current_pose = true;
 
-		d->so->PoserData = d->seed_poser_data;
+		d->so->PoserFnData = d->seed_poser_data;
 		driver(d->so, &pl->hdr);
 
-		d->seed_poser_data = d->so->PoserData;
-		d->so->PoserData = d;
+		d->seed_poser_data = d->so->PoserFnData;
+		d->so->PoserFnData = d;
 		d->stats.poser_seed_runs++;
 
 		return locations.hasInfo;
@@ -136,11 +136,11 @@ bool general_optimizer_data_record_current_pose(GeneralOptimizerData *d, PoserDa
 			pl->hdr.userdata = &locations;
 			pl->no_lighthouse_solve = true;
 
-			d->so->PoserData = d->seed_poser_data;
+			d->so->PoserFnData = d->seed_poser_data;
 			driver(d->so, &pl->hdr);
 
-			d->seed_poser_data = d->so->PoserData;
-			d->so->PoserData = d;
+			d->seed_poser_data = d->so->PoserFnData;
+			d->so->PoserFnData = d;
 			d->stats.poser_seed_runs++;
 
 			if (locations.hasInfo == false) {
@@ -175,7 +175,7 @@ void general_optimizer_data_dtor(GeneralOptimizerData *d) {
 	if (d->seed_poser) {
 		PoserData pd;
 		pd.pt = POSERDATA_DISASSOCIATE;
-		d->so->PoserData = d->seed_poser_data;
+		d->so->PoserFnData = d->seed_poser_data;
 		d->seed_poser(d->so, &pd);
 	}
 	SV_INFO("\tseed runs %d / %d", d->stats.poser_seed_runs, d->stats.runs);

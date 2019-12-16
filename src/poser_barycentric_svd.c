@@ -218,10 +218,10 @@ static void add_correspondences(SurviveObject *so, bc_svd *bc, uint32_t timecode
 int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 	PoserType pt = pd->pt;
 	SurviveContext *ctx = so->ctx;
-	PoserDataSVD *dd = so->PoserData;
+	PoserDataSVD *dd = so->PoserFnData;
 
 	if (!dd)
-		so->PoserData = dd = PoserDataSVD_new(so);
+		so->PoserFnData = dd = PoserDataSVD_new(so);
 
 	switch (pt) {
 	case POSERDATA_SYNC:
@@ -318,7 +318,7 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 	}
 	case POSERDATA_DISASSOCIATE: {
 		PoserDataSVD_destroy(dd);
-		so->PoserData = 0;
+		so->PoserFnData = 0;
 		// printf( "Need to disassociate.\n" );
 		break;
 	}

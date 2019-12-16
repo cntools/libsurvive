@@ -1,7 +1,7 @@
 import sys
 import pysurvive
 
-ctx = pysurvive.survive_init(sys.argv)
+ctx = pysurvive.init(sys.argv)
 
 if ctx is None: # implies -help or similiar
     exit(-1)
