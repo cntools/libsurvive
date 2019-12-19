@@ -371,6 +371,10 @@ void sstrcpy(char **dest, const char *src) {
 }
 
 config_entry *find_config_entry(config_group *cg, const char *tag) {
+	if (cg == NULL) {
+		return NULL;
+	}
+
 	uint16_t i = 0;
 	for (i = 0; i < cg->used_entries; ++i) {
 		if (strcmp(cg->config_entries[i].tag, tag) == 0) {
