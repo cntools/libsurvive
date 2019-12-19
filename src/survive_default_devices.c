@@ -30,7 +30,7 @@ SurviveObject *survive_create_device(SurviveContext *ctx, const char *driver_nam
 		device->gyro_scale[i] = device->acc_scale[i] = 1.0;
 	}
 
-	SurviveSensorActivations_ctor(&device->activations);
+	SurviveSensorActivations_ctor(device, &device->activations);
 
 	return device;
 }

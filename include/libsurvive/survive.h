@@ -46,7 +46,7 @@ typedef struct SurviveSensorActivations_s {
 struct PoserDataLight;
 struct PoserDataIMU;
 
-SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveSensorActivations *self);
+SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveObject *so, SurviveSensorActivations *self);
 
 /**
  * Adds a lightData packet to the table.
@@ -77,7 +77,9 @@ SURVIVE_EXPORT bool SurviveSensorActivations_isPairValid(const SurviveSensorActi
  * Returns the amount of time stationary
  */
 SURVIVE_EXPORT survive_timecode SurviveSensorActivations_stationary_time(const SurviveSensorActivations *self);
-
+SURVIVE_EXPORT survive_long_timecode survive_extend_time(const SurviveObject *so, survive_timecode time);
+SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_extend_time(const SurviveSensorActivations *self,
+																		  survive_timecode time);
 /**
  * Default tolerance that gives a somewhat accuate representation of current state.
  *

@@ -9,9 +9,11 @@
 static void bc_svd_choose_control_points(bc_svd *self) {
 	// Take C0 as the reference points centroid:
 	self->setup.control_points[0][0] = self->setup.control_points[0][1] = self->setup.control_points[0][2] = 0;
+	size_t valid_points = 0;
 	for (int i = 0; i < self->setup.obj_cnt; i++)
-		for (int j = 0; j < 3; j++)
+		for (int j = 0; j < 3; j++) {
 			self->setup.control_points[0][j] += self->setup.obj_pts[i][j];
+		}
 
 	for (int j = 0; j < 3; j++)
 		self->setup.control_points[0][j] /= self->setup.obj_cnt;
@@ -452,6 +454,7 @@ double bc_svd_compute_pose(bc_svd *self, double R[3][3], double t[3]) {
 
 		double *_M = M.data.db + i * 12;
 		for (int j = 0; j < 12; j++) {
+			assert(!isnan(_M[j]));
 			if (_M[j] != 0.0)
 				colCovered[j] = true;
 		}
