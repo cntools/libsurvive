@@ -563,13 +563,13 @@ static void RunACodeCapture(int target_acode, Disambiguator_data_t *d, const Lig
 		d->confidence -= penalty;
 
 		DEBUG_TB("Disambiguator missed %s; %d expected %d but got %d(%d) - %u %d", d->so->codename, error, target_acode,
-				 le->length, d->confidence, d->mod_offset, le->timestamp);
+				 le->length, d->confidence, d->mod_offset[0], le->timestamp);
 		return;
 	}
 
 	if (d->confidence < 50) {
 		DEBUG_TB("Disambiguator hit %s; %d expected %d but got %d(%d) - %u %u", d->so->codename, error, target_acode,
-				 le->length, d->confidence, d->mod_offset, le->timestamp);
+				 le->length, d->confidence, d->mod_offset[0], le->timestamp);
 	}
 
 	if (d->confidence < 100) {

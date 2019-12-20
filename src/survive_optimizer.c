@@ -4,8 +4,8 @@
 #include <survive_reproject.h>
 
 #ifndef NOZLIB
+#include <survive_reproject_gen2.h>
 #include <zlib.h>
-#include <libsurvive/survive_reproject_gen2.h>
 
 #endif
 
@@ -383,9 +383,13 @@ survive_optimizer* survive_optimizer_load(const char *fn) {
 
     int param_count;
     read_count = fscanf(f, "parameters   %d\n", &param_count);
-    read_count = fgets(buffer, LINE_MAX, f); // fscanf(f, "\t#<name>: <fixed> <value> <min> <max> <use_jacobian>\n");
+	char *success = fgets(buffer, LINE_MAX, f); // fscanf(f, "\t#<name>: <fixed> <value> <min> <max> <use_jacobian>\n");
+	assert(success);
 
-    SURVIVE_OPTIMIZER_SETUP_HEAP_BUFFERS(*opt);
+	(void)read_count;
+	assert(read_count == survive_optimizer_get_parameters_count(opt));
+
+	SURVIVE_OPTIMIZER_SETUP_HEAP_BUFFERS(*opt);
 
     for (int i = 0; i < survive_optimizer_get_parameters_count(opt); i++) {
         struct mp_par_struct *info = &opt->parameters_info[i];

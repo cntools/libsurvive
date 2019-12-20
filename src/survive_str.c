@@ -1,8 +1,8 @@
-#include <libsurvive/survive.h>
 #include "survive_str.h"
 #include "string.h"
-#include <stdarg.h>
 #include <assert.h>
+#include <stdarg.h>
+#include <survive.h>
 
 void str_ensure_size(cstring* str, size_t s) {
     s++;
