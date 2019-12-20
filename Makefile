@@ -43,7 +43,7 @@ endif
 
 SBA:=redist/sba/sba_chkjac.c  redist/sba/sba_crsm.c  redist/sba/sba_lapack.c  redist/sba/sba_levmar.c  redist/sba/sba_levmar_wrap.c 
 MPFIT:=redist/mpfit/mpfit.c
-LIBSURVIVE_CORE+=src/survive.c src/survive_process.c src/survive_process_gen2.c src/ootx_decoder.c src/survive_driverman.c src/survive_default_devices.c src/survive_playback.c src/survive_config.c src/survive_cal.c src/poser.c src/survive_sensor_activations.c src/survive_disambiguator.c src/survive_imu.c src/survive_kalman.c src/survive_api.c src/survive_plugins.c src/poser_general_optimizer.c src/lfsr_lh2.c src/lfsr.c
+LIBSURVIVE_CORE+=src/survive.c src/survive_str.c src/survive_process.c src/survive_process_gen2.c src/ootx_decoder.c src/survive_driverman.c src/survive_default_devices.c src/survive_playback.c src/survive_config.c src/survive_cal.c src/poser.c src/survive_sensor_activations.c src/survive_disambiguator.c src/survive_imu.c src/survive_kalman.c src/survive_api.c src/survive_plugins.c src/poser_general_optimizer.c src/lfsr_lh2.c src/lfsr.c
 MINIMAL_NEEDED+=src/survive_reproject.c src/survive_reproject_gen2.c redist/minimal_opencv.c 
 AUX_NEEDED+=
 PLUGINS+=driver_dummy driver_udp driver_vive disambiguator_turvey disambiguator_statebased disambiguator_charles poser_dummy poser_mpfit poser_epnp poser_sba poser_imu poser_charlesrefine driver_usbmon driver_simulator poser_barycentric_svd

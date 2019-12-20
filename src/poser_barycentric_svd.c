@@ -226,8 +226,9 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 	switch (pt) {
 	case POSERDATA_SYNC:
 	case POSERDATA_SYNC_GEN2: {
-		if (so->has_sensor_locations == false)
+		if (so->has_sensor_locations == false) {
 			break;
+		}
 
 		PoserDataLight *lightData = (PoserDataLight *)pd;
 		SurviveContext *ctx = so->ctx;
