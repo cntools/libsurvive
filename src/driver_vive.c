@@ -1467,7 +1467,7 @@ static void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
 #define POP_BYTE(ptr) ((uint8_t) * (ptr++))
 #define POP_SHORT(ptr) (((((struct unaligned_u16_t *)((ptr += 2) - 2))))->v)
 
-#define HAS_FLAG(flags, flag) ((flags & flag) == flag)
+#define HAS_FLAG(flags, flag) ((flags & (flag)) == (flag))
 
 char hexstr[512];
 static char *packetToHex(uint8_t *packet, uint8_t *packetEnd) {
@@ -1839,7 +1839,7 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 	 *                  0 = No IMU Data present after event
 	 */
 
-	uint8_t flags = POP_BYTE(payloadPtr);
+	const uint8_t flags = POP_BYTE(payloadPtr);
 
 	bool flagInput = HAS_FLAG(flags, 0x10);
 	bool flagIMU = HAS_FLAG(flags, 0x08);
@@ -2087,6 +2087,7 @@ static bool parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, u
 	uint8_t channel = 255;
 	SurviveContext *ctx = obj->ctx;
 	bool dump_binary = false;
+
 	while (idx < length) {
 		uint8_t data = packet[idx];
 
@@ -2099,7 +2100,8 @@ static bool parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, u
 				// though....
 				SV_WARN("Not entirely sure what this data is; errors may occur (%d, 0x%02x)\n", idx, data);
 				dump_binary = true;
-				has_errors = true;
+				// has_errors = true;
+				goto exit_loop;
 			}
 
 			// encodes like so: 0bcccc ?F?C
@@ -2108,14 +2110,9 @@ static bool parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, u
 				uint8_t conflicted_channel = data >> 4u;
 				SV_WARN("Two or more lighthouses are on channel %d; tracking is most likely going to fail.",
 						conflicted_channel);
-			} else {
-				channel = data >> 4u;
-				if (channel > 15) {
-					SV_WARN("Channel is wrong somehow; %d", channel);
-					dump_binary = true;
-					has_errors = true;
-				}
 			}
+
+			channel = data >> 4u;
 
 			idx++;
 		} else {
@@ -2138,11 +2135,11 @@ static bool parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, u
 				if (unused && dump_binary) {
 					SV_WARN("Not sure what this is: %x", unused);
 				}
-				SV_VERBOSE(200, "Sync %02d %d %8u", channel, ootx, timecode);
+				SV_VERBOSE(200, "Sync %s %02d %d %8u", obj->codename, channel, ootx, timecode);
 				if (channel == 255) {
 					SV_WARN("No channel specified for sync");
 					dump_binary = true;
-					has_errors = true;
+					// has_errors = true;
 				} else {
 					obj->ctx->syncproc(obj, channel, timecode, ootx, g);
 				}
@@ -2157,19 +2154,26 @@ static bool parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, u
 				bool half_clock_flag = timecode & 0x4u;
 				uint8_t sensor = (timecode >> 27u);
 				timecode = fix_time24((timecode >> 3u) & 0xFFFFFFu, reference_time);
-				SV_VERBOSE(200, "Sweep %02d.%02d %8u", channel, sensor, timecode);
+				SV_VERBOSE(200, "Sweep %s %02d.%02d %8u", obj->codename, channel, sensor, timecode);
 				if (channel == 255) {
 					SV_WARN("No channel specified for sweep");
 					dump_binary = true;
-					has_errors = true;
+					// has_errors = true;
 				} else {
 					obj->ctx->sweepproc(obj, channel, survive_map_sensor_id(obj, sensor), timecode, half_clock_flag);
 				}
 			}
 
+			if (channel == 255) {
+				dump_binary = true;
+				has_errors = false;
+				goto exit_loop;
+			}
 			idx += 4;
 		}
 	}
+
+exit_loop:
 
 	if (dump_binary) {
 		for (int i = 0; i < length; i++) {
@@ -2194,9 +2198,10 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 	}
 
 	uint8_t flags = POP_BYTE(payloadPtr);
-
-	bool flagIMU = HAS_FLAG(flags, 0x80);
+	bool has_errors = false;
 	bool flagLightcap = HAS_FLAG(flags, 0x10);
+	// bool has_errors = !read_event(w, time, &payloadPtr, payloadEndPtr);
+	bool flagIMU = HAS_FLAG(flags, 0x80);
 	bool flagUnknown2 = HAS_FLAG(flags, 0x01);
 	bool flagUnknown3 = HAS_FLAG(flags, 0x08);
 	bool flagUnknown4 = HAS_FLAG(flags, 0x20);
@@ -2216,9 +2221,10 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 	}
 
 	if (flagUnknown2) {
-		uint8_t unknownByte1 = POP_BYTE(payloadPtr);
-		uint8_t unknownByte2 = POP_BYTE(payloadPtr);
-		SV_VERBOSE(100, "Unknown flag 0x1 %02x %02x", unknownByte1, unknownByte2);
+		// uint8_t unknownByte1 = POP_BYTE(payloadPtr);
+		// uint8_t unknownByte2 = POP_BYTE(payloadPtr);
+		// SV_VERBOSE(100, "Unknown flag 0x1 %02x %02x", unknownByte1, unknownByte2);
+		SV_VERBOSE(100, "Unknown flag 0x01");
 	}
 
 	if (flagUnknown3) {
@@ -2230,26 +2236,49 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 				   unknownBytes[2], unknownBytes[3], unknownBytes[4], unknownBytes[5]);
 	}
 
-	if (flagLightcap)
+	if (HAS_FLAG(flags, 0xD0)) {
+		flagLightcap = false;
+
+		// assert(payloadEndPtr - payloadPtr == 4);
+		uint32_t timecode = 0;
+		memcpy(&timecode, payloadPtr, sizeof(uint32_t));
+
+		uint32_t reference_time = (w->activations.last_imu);
+		bool ootx = (timecode >> 26u) & 1u;
+		bool g = (timecode >> 27u) & 1u;
+		timecode = fix_time24((timecode >> 2u) & 0xFFFFFFu, reference_time);
+		uint8_t unused = timecode >> 28;
+
+		SV_VERBOSE(200, "Mystery Sync %s %02d %d %8u", w->codename, 255, ootx, timecode);
+	}
+
+	if (driverInfo->timeWithoutFlag > 0 && driverInfo->timeWithoutFlag < 20) {
+		if (flagLightcap) {
+			driverInfo->timeWithoutFlag = 1;
+			flagLightcap = false;
+			SV_VERBOSE(200, "Discard %s %lu: '%s'", w->codename, driverInfo->timeWithoutFlag,
+					   packetToHex(payloadPtr, payloadEndPtr));
+		} else {
+			driverInfo->timeWithoutFlag++;
+		}
+	}
+
+	if (flagLightcap && !has_errors) {
 		if (driverInfo->lightcapMode == LightcapMode_raw0) {
 			// parse_and_process_lightcap(w, time, payloadPtr, payloadEndPtr);
 		} else {
-			bool has_errors = parse_and_process_raw1_lightcap(w, time, payloadPtr, payloadEndPtr - payloadPtr);
-			if (has_errors) {
-				survive_dump_buffer(ctx, originPayloadPtr, payloadEndPtr - originPayloadPtr);
-				assert(false);
-			}
+			has_errors = parse_and_process_raw1_lightcap(w, time, payloadPtr, payloadEndPtr - payloadPtr);
 		}
+	}
+
+	if (has_errors) {
+		survive_dump_buffer(ctx, originPayloadPtr, payloadEndPtr - originPayloadPtr);
+		assert(false);
+	}
 }
 
 static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 	struct SurviveUSBInfo *driverInfo = w->driver;
-
-	if (driverInfo->timeWithoutFlag > 0 && driverInfo->timeWithoutFlag < 200) {
-		driverInfo->timeWithoutFlag++;
-		SurviveContext *ctx = w->ctx;
-		return;
-	}
 
 	// KASPER'S DECODE
 	SurviveContext *ctx = w->ctx;
@@ -2300,12 +2329,12 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 	uint8_t *payloadEndPtr = payloadPtr + payloadSize;
 
 	if (w->ctx->lh_version == 1) {
-		SV_VERBOSE(200, "Watchman v2: '%s'", packetToHex(payloadPtr, payloadEndPtr));
+		SV_VERBOSE(200, "Watchman v2(%s): '%s'", w->codename, packetToHex(payloadPtr, payloadEndPtr));
 		handle_watchman_v2(w, time, payloadPtr, payloadEndPtr);
 		return;
 	}
 
-	SV_VERBOSE(200, "Watchman v1: %s", packetToHex(payloadPtr, payloadEndPtr));
+	SV_VERBOSE(200, "Watchman v1(%s): %s", w->codename, packetToHex(payloadPtr, payloadEndPtr));
 	/*
 	if (w->ctx->lh_version == -1) {
 		attempt_lh_detection(w, payloadPtr, payloadEndPtr);
