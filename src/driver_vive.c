@@ -1989,59 +1989,8 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 	UPDATE_PTR_AND_RETURN
 }
 
-static void attempt_lh_detection(SurviveObject *w, uint8_t *payloadPtr, uint8_t *payloadEndPtr) {
-	// Could potentially be from gen1 or gen2 with additional events. We want to wait for a lightcap
-	// only packet.
-	if ((*payloadPtr & 0xE0) != 0) {
-		return;
-	}
-
-	SurviveContext *ctx = w->ctx;
-	uint8_t *idsPtr = payloadPtr;
-	uint8_t *eventPtr = payloadEndPtr;
-
-	// Last three bytes of light data are the LSB of the time of the last event
-	eventPtr -= 4;
-	size_t timeIndex = 0;
-
-	while (idsPtr + (timeIndex >> 1u) < eventPtr) {
-		// Obtain the timing to the previous event
-		// Variable length encoding [if bit 8 is 0, continue into next byte]
-		uint8_t *eventPtrStart = eventPtr;
-		while (true) {
-			if (((*(eventPtr--)) & 0x80u) == 0x80u)
-				break;
-			if (idsPtr + (timeIndex >> 1u) > eventPtr) {
-				eventPtr = eventPtrStart;
-				goto exit_while;
-			}
-		}
-		if (timeIndex >= 16) {
-			return;
-		}
-		timeIndex++;
-	}
-
-exit_while:
-	if (timeIndex % 2 == 0 && timeIndex > 0) {
-		timeIndex--;
-		do {
-			eventPtr++;
-		} while ((*eventPtr & 0x80u) == 0);
-	}
-	assert(timeIndex % 2 == 1);
-
-	size_t sensor_byte_cnt = eventPtr - idsPtr + 1;
-	if (sensor_byte_cnt > ((timeIndex >> 1) + 1)) {
-		// survive_notify_gen2(w, "Header byte in lightcap packet");
-		SV_INFO("Header byte");
-	} else {
-		SV_INFO("No header byte");
-		// survive_notify_gen1(w, "No extra byte in lightcap packet");
-	}
-}
-
-static void parse_and_process_lightcap(SurviveObject *w, uint16_t time, uint8_t *payloadPtr, uint8_t *payloadEndPtr) {
+static inline void parse_and_process_lightcap(SurviveObject *w, uint16_t time, uint8_t *payloadPtr,
+											  uint8_t *payloadEndPtr) {
 	LightcapElement les[10] = {0};
 	uint8_t *payloadPtrStart = payloadPtr;
 	ssize_t cnt = read_light_data(w, time, &payloadPtr, payloadEndPtr, les, 10);

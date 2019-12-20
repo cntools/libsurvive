@@ -136,7 +136,7 @@ void survive_load_plugins(const char *plugin_dir) {
 					plugin_list.data[i] = 0;
 				} else {
 					if (verbose) {
-						printf("Initial error; will retry: %s\n", plugin_path, survive_load_plugin_error());
+						printf("Initial error for %s; will retry: %s\n", plugin_path, survive_load_plugin_error());
 					}
 				}
 			}

@@ -92,46 +92,6 @@ vive_device_inst_t *find_device_inst(SurviveDriverUSBMon *d, int bus_id, int dev
 	return 0;
 }
 
-static char *read_file(const char *fn, size_t *size) {
-	char *source = 0;
-	FILE *fp = fopen(fn, "r");
-	if (fp != NULL) {
-		if (fseek(fp, 0L, SEEK_END) == 0) {
-
-			long bufsize = ftell(fp);
-			if (bufsize == -1) {
-				fprintf(stderr, "ftell file '%s' failed with %d", fn, errno);
-				return 0;
-			}
-
-			source = SV_MALLOC(sizeof(char) * (bufsize + 1));
-
-			if (fseek(fp, 0L, SEEK_SET) != 0) {
-				fprintf(stderr, "fseek file '%s' failed with %d", fn, errno);
-				free(source);
-				return 0;
-			}
-
-			/* Read the entire file into memory. */
-			size_t newLen = fread(source, sizeof(char), bufsize, fp);
-			if (ferror(fp) != 0) {
-				fputs("Error reading file", stderr);
-			} else {
-				source[newLen++] = '\0'; /* Just to be safe. */
-			}
-
-			if (size)
-				*size = bufsize;
-		} else {
-			fprintf(stderr, "Read file '%s' failed with %d", fn, errno);
-		}
-	}
-	if (fp)
-		fclose(fp);
-
-	return source;
-}
-
 static int interface_lookup(const vive_device_inst_t *dev, int endpoint) {
 	int32_t id = dev->device->pid + (endpoint << 16);
 	switch (id) {
