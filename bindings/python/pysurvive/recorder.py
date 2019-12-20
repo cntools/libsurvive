@@ -28,6 +28,7 @@ class RecordedData:
         self.lengths = defaultdict(list)
         self.angle_per_sweep = defaultdict(list)
         self.time_since_move = []
+        self.poses = []
 
     def record_imu(self, time, mode, accelgyro, timecode, id):
         self.imu_times.append(time)
@@ -35,6 +36,9 @@ class RecordedData:
         self.accels.append(accelgyro[0:3])
         self.time_since_move.append(pysurvive.SurviveSensorActivations_stationary_time(self.so.contents.activations) /
                                     48000000.)
+
+    def record_pose(self, time, timecode, pose):
+        self.poses.append((time, pose))
 
     def record_light(self, time, sensor_id, acode, timeinsweep, timecode, length, lh):
         key = (lh, acode & 1)
@@ -73,7 +77,29 @@ class RecordedData:
 
         return 2
 
+    def plot_pose_diff(self, fig = None, plot_num = 1, plot_rows = 1, plot_cols = 1, figsize=None, **kwargs):
+        if fig is None:
+            fig = plt.figure()
+
+        ax = fig.add_subplot(plot_rows, plot_cols, plot_num, title=self.name + ' pose diff')
+
+        times = [x[0] for x in self.poses]
+        poses = [x[1][0:3] for x in self.poses]
+
+        data = np.stack([times[1:], np.linalg.norm(
+            np.diff(poses, axis=0) / np.diff(times), axis=1
+        )])
+
+        diff_data = insert_blanks(data)
+        times = diff_data[:, 0]
+        data = diff_data[:, 1]
+        ax.plot(times, data, linewidth=1)
+        return 1
+
     def plot_light_diff(self, fig = None, plot_num = 1, plot_rows = 1, plot_cols = 1, figsize=None, **kwargs):
+        if len(self.angles) == 0:
+            return 0
+
         if fig is None:
             fig = plt.figure()
 
@@ -82,6 +108,8 @@ class RecordedData:
         ax.plot([self.imu_times[0],self.imu_times[-1]], [moveThreshAng] * 2, linewidth=1)
 
         for k,v in self.angles.items():
+            if len(v) <= 1:
+                continue
             vv = np.array(v)
             data = np.stack([vv[1:, 0], np.array(np.diff(vv[:, 1]) / np.diff(vv[:, 0]))])
             diff_data = insert_blanks(data)
@@ -102,6 +130,9 @@ class RecordedData:
         return 1
 
     def plot_light(self, fig = None, plot_num = 1, plot_rows = 2, plot_cols = 2, figsize=None, **kwargs):
+        if len(self.angles) == 0:
+            return 0;
+
         if fig is None:
             fig = plt.figure()
 
@@ -129,11 +160,15 @@ class RecordedData:
         return 3
 
     def plot(self, fig = None, plot_num = 1, figsize = None, plot_rows = 3, plot_cols = 2, **kwargs):
+        if len(self.angles) == 0 or len(self.imu_times) == 0:
+            return 0
+
         if fig is None:
             fig = plt.figure(figsize=figsize)
         plot_num += self.plot_imu(fig = fig, plot_rows=plot_rows, plot_num=plot_num, plot_cols=plot_cols,**kwargs)
         plot_num += self.plot_moving(fig = fig, plot_rows=plot_rows, plot_num=plot_num, plot_cols=plot_cols,**kwargs)
         plot_num += self.plot_light(fig = fig, plot_rows=plot_rows, plot_num=plot_num, plot_cols=plot_cols,**kwargs)
+        plot_num += self.plot_pose_diff(fig = fig, plot_rows=plot_rows, plot_num=plot_num, plot_cols=plot_cols,**kwargs)
         fig.tight_layout()
         return plot_num - 1
 
@@ -162,9 +197,14 @@ class Recorder:
         time = pysurvive.survive_run_time(so.contents.ctx)
         return dat.record_angle(time, sensor_id, acode, timecode, length, angle, lh)
 
+    def record_pose(self, so, timecode, pose):
+        dat = self.get(so)
+        time = pysurvive.survive_run_time(so.contents.ctx)
+        return dat.record_pose(time, timecode, pose)
+
     def plot(self, fig=None, figsize=None, **kwargs):
         plot_num = 1
-        plot_rows = len(self.data.items()) * 6 // 2
+        plot_rows = len(self.data.items()) * 8 // 2
 
         if fig is None:
             fig = plt.figure(figsize=(14, plot_rows * 2))
@@ -186,9 +226,12 @@ def install(ctx):
         return recorder.record_light(*args)
     def angle(*args):
         return recorder.record_angle(*args)
+    def pose(*args):
+        return recorder.record_pose(*args)
 
     pysurvive.install_angle_fn(ctx, angle)
     pysurvive.install_light_fn(ctx, light)
     pysurvive.install_imu_fn(ctx, imu)
+    pysurvive.install_pose_fn(ctx, pose)
 
     return recorder
