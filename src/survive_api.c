@@ -269,6 +269,7 @@ bool survive_simple_is_running(SurviveSimpleContext *actx) { return actx->runnin
 void survive_simple_start_thread(SurviveSimpleContext *actx) {
 	actx->running = true;
 	actx->thread = OGCreateThread(__simple_thread, actx);
+	OGNameThread(actx->thread, "survive simple api");
 }
 
 const SurviveSimpleObject *survive_simple_get_next_object(SurviveSimpleContext *actx, const SurviveSimpleObject *curr) {

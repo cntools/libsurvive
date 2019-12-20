@@ -1,6 +1,7 @@
 // (C) 2017 <>< Joshua Allen, Under MIT/x11 License.
-
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -1058,6 +1058,7 @@ int survive_vive_send_haptic(SurviveObject *so, uint8_t reserved, uint16_t pulse
 
 void survive_vive_usb_close(SurviveViveData *sv) {
 	int i, j;
+	survive_release_ctx_lock(sv->ctx);
 #ifdef HIDAPI
 	for (i = 0; i < sv->udev_cnt; i++) {
 		for (int j = 0; j < 8; j++) {
@@ -1096,6 +1097,7 @@ void survive_vive_usb_close(SurviveViveData *sv) {
 	}
 	libusb_exit(sv->usbctx);
 #endif
+	survive_get_ctx_lock(sv->ctx);
 }
 
 STATIC_CONFIG_ITEM(SECONDS_PER_HZ_OUTPUT, "usb-hz-output", 'i', "Seconds between outputing usb stats", -1);

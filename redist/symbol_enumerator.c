@@ -43,22 +43,22 @@ int EnumerateSymbols( SymEnumeratorCallback cb )
 
 #define UINTS_PER_WORD (__WORDSIZE / (CHAR_BIT * sizeof (unsigned int)))
 
-
-    struct dl_phdr_info {
-        ElfW(Addr)        dlpi_addr;  /* Base address of object */
-        const char       *dlpi_name;  /* (Null-terminated) name of
-                                         object */
-        const ElfW(Phdr) *dlpi_phdr;  /* Pointer to array of
-                                         ELF program headers
-                                         for this object */
-        ElfW(Half)        dlpi_phnum; /* # of items in dlpi_phdr */
+#ifndef _GNU_SOURCE
+struct dl_phdr_info {
+	ElfW(Addr) dlpi_addr;		  /* Base address of object */
+	const char *dlpi_name;		  /* (Null-terminated) name of
+									 object */
+	const ElfW(Phdr) * dlpi_phdr; /* Pointer to array of
+									 ELF program headers
+									 for this object */
+	ElfW(Half) dlpi_phnum;		  /* # of items in dlpi_phdr */
     };
 
 
 
 void dl_iterate_phdr( void*, void*);
 
-
+#endif
 static ElfW(Word) gnu_hashtab_symbol_count(const unsigned int *const table)
 {
     const unsigned int *const bucket = table + 4 + table[2] * (unsigned int)(UINTS_PER_WORD);
@@ -181,8 +181,5 @@ int EnumerateSymbols( SymEnumeratorCallback cb )
 	dl_iterate_phdr( callback, cb );
 	return 0;
 }
-
-
-
 
 #endif

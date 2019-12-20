@@ -496,6 +496,7 @@ int survive_startup(SurviveContext *ctx) {
 
 	// start the thread to process button data
 	ctx->buttonservicethread = OGCreateThread(button_servicer, ctx);
+	OGNameThread(ctx->buttonservicethread, "Button Service");
 
 	PoserCB PreferredPoserCB = GetDriverByConfig(ctx, "Poser", "poser", "MPFIT");
 	ctx->lightcapproc = GetDriverByConfig(ctx, "Disambiguator", "disambiguator", "StateBased");
