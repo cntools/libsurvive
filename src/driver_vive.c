@@ -65,6 +65,8 @@ enum vive_report_ids {
 	VIVE_REPORT_RF_WATCHMAN = 0x23,
 	VIVE_REPORT_RF_WATCHMANx2 = 0x24,
 	VIVE_REPORT_USB_LIGHTCAP_REPORT_V1 = 0x25,
+
+	// I've seen this with a byte of data; 01. Maybe this turns on and off?
 	VIVE_REPORT_RF_TURN_OFF = 0x26,
 	VIVE_REPORT_USB_LIGHTCAP_REPORT_V2 = 0x27,
 	VIVE_REPORT_USB_LIGHTCAP_REPORT_RAW_MODE_1 = 0x28,
@@ -129,6 +131,7 @@ enum vive_commands {
 	// Tracker/lh1/rf: (lhconsole -> device):  sync mode 2: 01 01 00 02   01 00
 
 	// Knuckles/lh2/rf: (steamvr -> device): 01 00 00 02   00 00
+	//                                       00 01 00
 	//                                       01 01 00 02   00 00
 
 	VIVE_COMMAND_CHANGE_PROTOCOL = 0x87,
@@ -159,6 +162,11 @@ enum vive_commands {
 	//                                      00 00 |    ..
 	VIVE_COMMAND_UNKNOWN2 = 0xa1,
 
+	// Knuckles/lh2/rf: (steamvr->sevice): 00
+	VIVE_COMMAND_UNKNOWN4 = 0xb5,
+
+	// Knuckles/lh2/rf: (steamvr->sevice)
+	VIVE_COMMAND_UNKNOWN5 = 0x8c,
 };
 
 static uint8_t vive_magic_power_on[64] = {0x04, 0x78, 0x29, 0x38, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01};
@@ -318,7 +326,7 @@ const char *survive_usb_interface_str(enum USB_IF_t interface) {
 	return "UNKNOWN";
 }
 
-void survive_dump_buffer(SurviveContext *ctx, uint8_t *data, size_t length) {
+void survive_dump_buffer(SurviveContext *ctx, const uint8_t *data, size_t length) {
 	int bytes_per_row = 32;
 	for (size_t i = 0; i < length; i += bytes_per_row) {
 		for (int j = 0; j < bytes_per_row; j++) {
@@ -2073,9 +2081,10 @@ static void parse_and_process_lightcap(SurviveObject *w, uint16_t time, uint8_t 
 	}
 }
 
-static void parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, uint8_t *packet, uint8_t length) {
+static bool parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, uint8_t *packet, uint8_t length) {
+	bool has_errors = false;
 	uint8_t idx = 0;
-	uint8_t channel = -1;
+	uint8_t channel = 255;
 	SurviveContext *ctx = obj->ctx;
 	bool dump_binary = false;
 	while (idx < length) {
@@ -2088,8 +2097,9 @@ static void parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, u
 			if ((data & 0x0Au) != 0) {
 				// Currently I've only ever seen 0x1 if the 1 bit is set; I doubt they left 3 bits on the table
 				// though....
-				fprintf(stderr, "Not entirely sure what this data is; errors may occur (%d, 0x%02x)\n", idx, data);
+				SV_WARN("Not entirely sure what this data is; errors may occur (%d, 0x%02x)\n", idx, data);
 				dump_binary = true;
+				has_errors = true;
 			}
 
 			// encodes like so: 0bcccc ?F?C
@@ -2100,6 +2110,11 @@ static void parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, u
 						conflicted_channel);
 			} else {
 				channel = data >> 4u;
+				if (channel > 15) {
+					SV_WARN("Channel is wrong somehow; %d", channel);
+					dump_binary = true;
+					has_errors = true;
+				}
 			}
 
 			idx++;
@@ -2124,7 +2139,13 @@ static void parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, u
 					SV_WARN("Not sure what this is: %x", unused);
 				}
 				SV_VERBOSE(200, "Sync %02d %d %8u", channel, ootx, timecode);
-				obj->ctx->syncproc(obj, channel, timecode, ootx, g);
+				if (channel == 255) {
+					SV_WARN("No channel specified for sync");
+					dump_binary = true;
+					has_errors = true;
+				} else {
+					obj->ctx->syncproc(obj, channel, timecode, ootx, g);
+				}
 			} else {
 				//                                                         SC
 				//                                                         YH
@@ -2137,7 +2158,13 @@ static void parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, u
 				uint8_t sensor = (timecode >> 27u);
 				timecode = fix_time24((timecode >> 3u) & 0xFFFFFFu, reference_time);
 				SV_VERBOSE(200, "Sweep %02d.%02d %8u", channel, sensor, timecode);
-				obj->ctx->sweepproc(obj, channel, survive_map_sensor_id(obj, sensor), timecode, half_clock_flag);
+				if (channel == 255) {
+					SV_WARN("No channel specified for sweep");
+					dump_binary = true;
+					has_errors = true;
+				} else {
+					obj->ctx->sweepproc(obj, channel, survive_map_sensor_id(obj, sensor), timecode, half_clock_flag);
+				}
 			}
 
 			idx += 4;
@@ -2153,11 +2180,13 @@ static void parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, u
 
 		ctx->printfproc(ctx, "\n");
 	}
+
+	return has_errors;
 }
 
 static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payloadPtr, uint8_t *payloadEndPtr) {
 	struct SurviveContext *ctx = w->ctx;
-
+	const uint8_t *originPayloadPtr = payloadPtr;
 	struct SurviveUSBInfo *driverInfo = w->driver;
 	if (driverInfo->lightcapMode != LightcapMode_raw1) {
 		vive_switch_mode(driverInfo, LightcapMode_raw1);
@@ -2169,6 +2198,8 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 	bool flagIMU = HAS_FLAG(flags, 0x80);
 	bool flagLightcap = HAS_FLAG(flags, 0x10);
 	bool flagUnknown2 = HAS_FLAG(flags, 0x01);
+	bool flagUnknown3 = HAS_FLAG(flags, 0x08);
+	bool flagUnknown4 = HAS_FLAG(flags, 0x20);
 	bool flagUnknown = HAS_FLAG(flags, 0x40);
 
 	if (HAS_FLAG(flags, ~0xD1)) {
@@ -2181,18 +2212,33 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 	if (flagUnknown) {
 		uint8_t unknownByte1 = POP_BYTE(payloadPtr);
 		uint8_t unknownByte2 = POP_BYTE(payloadPtr);
-		SV_VERBOSE(100, "Unknown byte %02x %02x", unknownByte1, unknownByte2);
+		SV_VERBOSE(100, "Unknown flag 0x40 byte %02x %02x", unknownByte1, unknownByte2);
 	}
 
 	if (flagUnknown2) {
-		SV_VERBOSE(100, "Unknown flag 0x1 set");
+		uint8_t unknownByte1 = POP_BYTE(payloadPtr);
+		uint8_t unknownByte2 = POP_BYTE(payloadPtr);
+		SV_VERBOSE(100, "Unknown flag 0x1 %02x %02x", unknownByte1, unknownByte2);
+	}
+
+	if (flagUnknown3) {
+		uint8_t unknownBytes[] = {POP_BYTE(payloadPtr), POP_BYTE(payloadPtr), POP_BYTE(payloadPtr),
+								  POP_BYTE(payloadPtr), POP_BYTE(payloadPtr), POP_BYTE(payloadPtr),
+								  POP_BYTE(payloadPtr), POP_BYTE(payloadPtr), POP_BYTE(payloadPtr)};
+
+		SV_VERBOSE(100, "Unknown flag 0x8 %02x %02x %02x %02x %02x %02x ...", unknownBytes[0], unknownBytes[1],
+				   unknownBytes[2], unknownBytes[3], unknownBytes[4], unknownBytes[5]);
 	}
 
 	if (flagLightcap)
 		if (driverInfo->lightcapMode == LightcapMode_raw0) {
 			// parse_and_process_lightcap(w, time, payloadPtr, payloadEndPtr);
 		} else {
-			parse_and_process_raw1_lightcap(w, time, payloadPtr, payloadEndPtr - payloadPtr);
+			bool has_errors = parse_and_process_raw1_lightcap(w, time, payloadPtr, payloadEndPtr - payloadPtr);
+			if (has_errors) {
+				survive_dump_buffer(ctx, originPayloadPtr, payloadEndPtr - originPayloadPtr);
+				assert(false);
+			}
 		}
 }
 

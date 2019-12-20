@@ -125,6 +125,10 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 												 bool ootx, bool gen) {
 	struct SurviveContext *ctx = so->ctx;
 	int8_t bsd_idx = survive_get_bsd_idx(ctx, channel);
+	if (bsd_idx == -1) {
+		SV_WARN("Invalid channel requested(%d) for %s", channel, so->codename)
+		return;
+	}
 
 	assert(channel <= NUM_GEN2_LIGHTHOUSES);
 
@@ -155,9 +159,13 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 												  survive_timecode timecode, bool half_clock_flag) {
 	struct SurviveContext *ctx = so->ctx;
 
-	survive_notify_gen2(so, "sweep called");
-
 	int8_t bsd_idx = survive_get_bsd_idx(ctx, channel);
+	if (bsd_idx == -1) {
+		SV_WARN("Invalid channel requested(%d) for %s", channel, so->codename)
+		return;
+	}
+
+	survive_notify_gen2(so, "sweep called");
 
 	if (ctx->calptr) {
 		// survive_cal_light( so, sensor_id, acode, timeinsweep, timecode, length, lh);
@@ -201,6 +209,10 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 	struct SurviveContext *ctx = so->ctx;
 	// SV_INFO("Sensor ch%2d %2d %12f", channel, sensor_id, angle / M_PI * 180.);
 	int8_t bsd_idx = survive_get_bsd_idx(ctx, channel);
+	if (bsd_idx == -1) {
+		SV_WARN("Invalid channel requested(%d) for %s", channel, so->codename)
+		return;
+	}
 
 	PoserDataLightGen2 l = {.common =
 								{

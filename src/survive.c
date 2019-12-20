@@ -189,7 +189,9 @@ static void PrintMatchingDrivers( const char * prefix, const char * matchingpara
 }
 
 SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel channel) {
-	assert(channel >= 0 && channel < 16);
+	if (channel < 0 || channel >= 16) {
+		return -1;
+	}
 
 	int8_t i = ctx->bsd_map[channel];
 	if (i != -1)
@@ -207,7 +209,6 @@ SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel c
 		}
 	}
 
-	assert(false);
 	return -1;
 }
 

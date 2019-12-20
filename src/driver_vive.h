@@ -91,7 +91,7 @@ typedef struct SurviveUSBInterface {
 	size_t packet_count;
 } SurviveUSBInterface;
 
-void survive_dump_buffer(SurviveContext *ctx, uint8_t *data, size_t length);
+void survive_dump_buffer(SurviveContext *ctx, const uint8_t *data, size_t length);
 void survive_data_cb(SurviveUSBInterface *si);
 void survive_data_on_setup_write(SurviveObject *so, uint8_t bmRequestType, uint8_t bRequest, uint16_t wValue,
 								 uint16_t wIndex, const uint8_t *data, size_t length);
