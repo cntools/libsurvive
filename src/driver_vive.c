@@ -127,6 +127,10 @@ enum vive_commands {
 	// Tracker/lh1/rf: (lhconsole -> device):  sync mode 0: 01 00 00 02   00 00
 	// Tracker/lh1/rf: (lhconsole -> device):  sync mode 1: 01 01 00 02   00 00
 	// Tracker/lh1/rf: (lhconsole -> device):  sync mode 2: 01 01 00 02   01 00
+
+	// Knuckles/lh2/rf: (steamvr -> device): 01 00 00 02   00 00
+	//                                       01 01 00 02   00 00
+
 	VIVE_COMMAND_CHANGE_PROTOCOL = 0x87,
 
 	// Tracker/lh1/rf: (steamvr -> device)
@@ -143,7 +147,8 @@ enum vive_commands {
 	// Wants '6f 66 66 21 |    off!' as data
 	VIVE_COMMAND_HAPTIC_POWER_OFF = 0x9F,
 
-	// Tracker/lh1/rf: (steamvr -> device):  be 5b 32 54   11 cf 83 75   53 8a 08 6a   53 58 d0 b1 |    .[2T  ...u  S..j
+	// Knuckles/lh2/rf: (steamvr -> device):  be 5b 32 54   11 cf 83 75   53 8a 08 6a   53 58 d0 b1
+	// Tracker/lh1/rf:  (steamvr -> device):  be 5b 32 54   11 cf 83 75   53 8a 08 6a   53 58 d0 b1 |    .[2T  ...u S..j
 	// SX..
 	VIVE_COMMAND_UNKNOWN1 = 0x96,
 
@@ -262,6 +267,14 @@ const struct DeviceInfo KnownDeviceTypes[] = {
 				   {.num = 0x82, .name = "Lightcap", .type = USB_IF_W_WATCHMAN1_LIGHTCAP},
 				   {.num = 0x83, .name = "Buttons", .type = USB_IF_W_WATCHMAN1_BUTTONS}},
 	 .magics = {MAGIC_CTOR(true, vive_magic_enable_lighthouse), MAGIC_CTOR(true, vive_magic_enable_lighthouse_more)}},
+	{.vid = 0x28de,
+	 .pid = 0x2102,
+	 .type = USB_DEV_WATCHMAN1,
+	 .name = "Knuckles",
+	 .codename = "KN0",
+	 .endpoints = {{.num = 0x81, .name = "IMU/Lightcap/Buttons", .type = USB_IF_WATCHMAN1}},
+	 .magics = {MAGIC_CTOR(true, vive_magic_protocol_super_magic), MAGIC_CTOR(true, vive_magic_rf_raw_mode_0),
+				MAGIC_CTOR(true, vive_magic_protocol_switch)}},
 	{0}};
 
 typedef struct SurviveUSBInterface SurviveUSBInterface;
@@ -380,17 +393,20 @@ void vive_switch_mode(struct SurviveUSBInfo *driverInfo, enum LightcapMode light
 	SurviveObject *w = driverInfo->so;
 	if (driverInfo->timeWithoutFlag == 0) {
 		driverInfo->timeWithoutFlag = 1;
-		uint8_t buffer[8] = {};
+		uint8_t buffer[9] = {};
 		size_t buffer_length = 0;
 		if (survive_device_is_rf(driverInfo->device_info)) {
 			buffer[0] = VIVE_REPORT_COMMAND;
 			buffer[1] = VIVE_COMMAND_CHANGE_PROTOCOL;
 			buffer[2] = 6;
+
 			buffer[3] = 1;
 			buffer[4] = lightcapMode == LightcapMode_raw0 ? 0 : 1;
+			buffer[5] = 0;
 			buffer[6] = 2;
 			buffer[7] = lightcapMode == LightcapMode_raw2 ? 1 : 0;
-			buffer_length = 8;
+			buffer[8] = 0;
+			buffer_length = 9;
 		} else {
 			buffer[0] = VIVE_REPORT_CHANGE_MODE;
 			buffer[1] = (lightcapMode == LightcapMode_raw1) ? 1 : (lightcapMode == LightcapMode_raw2) ? 3 : 0;
@@ -411,7 +427,7 @@ void vive_switch_mode(struct SurviveUSBInfo *driverInfo, enum LightcapMode light
 				}
 			}
 
-			SV_INFO("LightcapMode %d -> %d", driverInfo->lightcapMode, lightcapMode);
+			SV_INFO("LightcapMode (%s) %d -> %d", w->codename, driverInfo->lightcapMode, lightcapMode);
 			driverInfo->lightcapMode = lightcapMode;
 
 		} else {
@@ -2183,7 +2199,7 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 	struct SurviveUSBInfo *driverInfo = w->driver;
 
-	if (driverInfo->timeWithoutFlag > 0 && driverInfo->timeWithoutFlag < 20) {
+	if (driverInfo->timeWithoutFlag > 0 && driverInfo->timeWithoutFlag < 200) {
 		driverInfo->timeWithoutFlag++;
 		SurviveContext *ctx = w->ctx;
 		return;

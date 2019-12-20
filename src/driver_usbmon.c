@@ -57,6 +57,7 @@ struct vive_device_t devices[] = {{.vid = 0x28de, .pid = 0x2000, .codename = "HM
 								  {.vid = 0x28de, .pid = 0x2022, .codename = "TR", .def_config = "TR%d_config.json"},
 								  {.vid = 0x28de, .pid = 0x2300, .codename = "T2", .def_config = "T2%d_config.json"},
 								  {.vid = 0x28de, .pid = 0x2012, .codename = "WW", .def_config = "WW%d_config.json"},
+								  {.vid = 0x28de, .pid = 0x2102, .codename = "KN", .def_config = "KN%d_config.json"},
 								  {}};
 
 static const int DEVICES_CNT = sizeof(devices) / sizeof(vive_device_t);
@@ -150,6 +151,7 @@ static int interface_lookup(const vive_device_inst_t *dev, int endpoint) {
 	case 0x822000:
 		return USB_IF_HMD_LIGHTCAP;
 	case 0x822101:
+	case 0x812102:
 		return USB_IF_WATCHMAN1;
 	case 0x822022:
 		return USB_IF_TRACKER0_LIGHTCAP;
@@ -465,11 +467,11 @@ void *pcap_thread_fn(void *_driver) {
 					if (is_config_start(usbp)) {
 						dev->last_config_id = 0;
 						dev->compressed_data_idx = 0;
-						SV_INFO("usbmon detected start of config");
+						SV_INFO("%s start of config", dev_name);
 					} else if (is_config_request(usbp)) {
 						dev->last_config_id = usbp->id;
 					} else if (is_command_setup(usbp)) {
-						SV_INFO("usbmon detected sent command 0x%02x with %u bytes:", pktData[1], pktData[2]);
+						SV_INFO("%s sent command 0x%02x with %u bytes:", dev_name, pktData[1], pktData[2]);
 						survive_dump_buffer(ctx, pktData + 3, pktData[2]);
 					}
 					if (driver->output_usb_stream) {
@@ -637,7 +639,9 @@ static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
 
 	if (sp->pcap == NULL) {
 		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT,
-				 "pcap_open_live() failed due to [%s] - You probably need to call 'sudo modprobe usbmon'", sp->errbuf);
+				 "pcap_open_live() failed due to [%s] - You probably need to call 'sudo modprobe usbmon'. If you want "
+				 "to capture as a normal user; try 'sudo setfacl -m u:$USER:r /dev/usbmon*'",
+				 sp->errbuf);
 		return SURVIVE_DRIVER_ERROR;
 	}
 
