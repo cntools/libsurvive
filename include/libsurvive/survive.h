@@ -36,6 +36,7 @@ typedef struct SurviveSensorActivations_s {
 	uint32_t rollover_count;
 	size_t imu_init_cnt;
 	survive_timecode last_imu;
+	survive_timecode last_light;
 	survive_long_timecode last_movement; // Tracks the timecode of the last IMU packet which saw movement.
 	FLT accel[3];
 	FLT gyro[3];
@@ -45,7 +46,7 @@ typedef struct SurviveSensorActivations_s {
 struct PoserDataLight;
 struct PoserDataIMU;
 
-SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveSensorActivations *self);
+SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveObject *so, SurviveSensorActivations *self);
 
 /**
  * Adds a lightData packet to the table.
@@ -76,7 +77,9 @@ SURVIVE_EXPORT bool SurviveSensorActivations_isPairValid(const SurviveSensorActi
  * Returns the amount of time stationary
  */
 SURVIVE_EXPORT survive_timecode SurviveSensorActivations_stationary_time(const SurviveSensorActivations *self);
-
+SURVIVE_EXPORT survive_long_timecode survive_extend_time(const SurviveObject *so, survive_timecode time);
+SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_extend_time(const SurviveSensorActivations *self,
+																		  survive_timecode time);
 /**
  * Default tolerance that gives a somewhat accuate representation of current state.
  *
@@ -130,6 +133,7 @@ struct SurviveObject {
 
 	// Remaps pins as reported from device into indices in 'modelPoints'
 	int *channel_map;
+	bool has_sensor_locations;
 	FLT *sensor_locations; // size is sensor_ct*3.  Contains x,y,z values for each sensor
 	FLT *sensor_normals;   // size is nrlocations*3.  cointains normal vector for each sensor
 
@@ -443,6 +447,7 @@ SURVIVE_EXPORT void survive_remove_object(SurviveContext *ctx, SurviveObject *ob
 SURVIVE_EXPORT const void *survive_get_driver(const SurviveContext *ctx, DeviceDriverCb pollFn);
 SURVIVE_EXPORT void survive_add_driver(SurviveContext *ctx, void *payload, DeviceDriverCb poll, DeviceDriverCb close,
 						DeviceDriverMagicCb magic);
+SURVIVE_EXPORT char *survive_export_config(SurviveObject *so);
 
 // This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
 SURVIVE_EXPORT uint8_t survive_map_sensor_id(SurviveObject *so, uint8_t reported_id);

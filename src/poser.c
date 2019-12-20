@@ -239,7 +239,7 @@ void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so, S
 	}
 }
 void PoserDataFullScene2Activations(const PoserDataFullScene *pdfs, SurviveSensorActivations *activations) {
-	SurviveSensorActivations_ctor(activations);
+	SurviveSensorActivations_ctor(0, activations);
 	for (int i = 0; i < SENSORS_PER_OBJECT * NUM_GEN1_LIGHTHOUSES * 2; i++) {
 		double length = ((double *)pdfs->lengths)[i] * 48000000;
 		if (length > 0)

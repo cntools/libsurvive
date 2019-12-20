@@ -73,8 +73,9 @@ void survive_load_plugins(const char *plugin_dir) {
 	// just keep loading the list until no new libraries are accepted.
 	//
 	// If there are still unresolved symbols, errors are reported.
-  const char *check_from_files[] = {get_so_filename(), get_exe_filename(), getenv("SURVIVE_PLUGINS"), 0};
-  const char *plugin_dirs[] = {"plugins", "libsurvive/plugins", plugin_dir, 0};
+	bool verbose = getenv("SURVIVE_PLUGIN_DEBUG") != 0;
+	const char *check_from_files[] = {get_so_filename(), get_exe_filename(), getenv("SURVIVE_PLUGINS"), 0};
+	const char *plugin_dirs[] = {"plugins", "libsurvive/plugins", plugin_dir, 0};
 
 	list_t plugin_list = { 0 };
 
@@ -92,6 +93,9 @@ void survive_load_plugins(const char *plugin_dir) {
 			strcat(plugindirname, "/");
 			strcat(plugindirname, *plugin_dir);
 
+			if (verbose)
+				printf("survive plugins: Looking in %s\n", plugindirname);
+
 			DIR *dir_handle = opendir(plugindirname);
 			if (dir_handle == 0)
 				continue;
@@ -103,6 +107,9 @@ void survive_load_plugins(const char *plugin_dir) {
 					snprintf(full_path, 1024, "%s/%s", plugindirname, dir_entry->d_name);
 
 					if (!list_find(&plugin_list, full_path)) {
+						if (verbose) {
+							printf("survive plugins: Adding %s to plugin check list\n", full_path);
+						}
 						list_add(&plugin_list, full_path);
 					}
 				}
@@ -121,7 +128,9 @@ void survive_load_plugins(const char *plugin_dir) {
 				// Global is important to share symbols
 				void *handle = survive_load_plugin(plugin_path);
 				if (handle) {
-					// fprintf(stderr, "Loaded %s\n", plugin_path);
+					if (verbose) {
+						printf("survive plugins: Loaded %s\n", plugin_path);
+					}
 					change = true;
 					free(plugin_path);
 					plugin_list.data[i] = 0;

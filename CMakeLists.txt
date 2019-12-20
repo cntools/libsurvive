@@ -109,7 +109,7 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
 		src/lfsr.h
 		src/lfsr_lh2.h
 		src/lfsr_lh2.c
-		)
+        src/survive_str.h src/survive_str.c src/test_cases/str.c)
 
 add_library(survive SHARED ${SURVIVE_SRCS})
 set_target_properties(survive PROPERTIES FOLDER "libraries")
@@ -179,7 +179,7 @@ foreach(PLUGIN ${PLUGINS})
     set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${OUTPUT_DIR}RelWithDebInfo/plugins")
 
 endforeach()
-  
+
 foreach(executable data_recorder simple_pose_test survive-cli api_example sensors-readout)
 	add_executable(${executable} ${executable}.c )
 	target_link_libraries(${executable} survive)
@@ -218,6 +218,7 @@ install(TARGETS ${PLUGINS} DESTINATION lib/libsurvive/plugins)
 install(TARGETS survive DESTINATION lib/libsurvive)
 install(TARGETS survive DESTINATION lib)
 install(TARGETS survive-cli DESTINATION bin)
+install(TARGETS sensors-readout DESTINATION bin)
 
 INSTALL(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink survive ${CMAKE_INSTALL_PREFIX}/lib)")
 

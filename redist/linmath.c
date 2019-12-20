@@ -787,11 +787,15 @@ inline void ApplyPoseToPoint(LinmathPoint3d pout, const LinmathPose *pose, const
 	LinmathPoint3d tmp;
 	quatrotatevector(tmp, pose->Rot, pin);
 	add3d(pout, tmp, pose->Pos);
+	for (int i = 0; i < 3; i++)
+		assert(!isnan(pout[i]));
 }
 
 inline void ApplyPoseToPose(LinmathPose *pout, const LinmathPose *lhs_pose, const LinmathPose *rhs_pose) {
 	ApplyPoseToPoint(pout->Pos, lhs_pose, rhs_pose->Pos);
 	quatrotateabout(pout->Rot, lhs_pose->Rot, rhs_pose->Rot);
+	for (int i = 0; i < 3; i++)
+		assert(!isnan(pout->Pos[i]));
 }
 
 inline void InvertPose(LinmathPose *poseout, const LinmathPose *pose) {

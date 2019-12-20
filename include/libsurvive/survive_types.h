@@ -53,6 +53,9 @@ extern "C" {
 #define LINMATH_VEC3_EXPAND(p) (p)[0], (p)[1], (p)[2]
 #define SURVIVE_VELOCITY_EXPAND(v) LINMATH_VEC3_EXPAND((v).Pos), LINMATH_VEC3_EXPAND((v).AxisAngleRot)
 #define SURVIVE_POSE_EXPAND(p) (p).Pos[0], (p).Pos[1], (p).Pos[2], (p).Rot[0], (p).Rot[1], (p).Rot[2], (p).Rot[3]
+#define SURVIVE_POSE_SCAN_EXPAND(p)                                                                                    \
+	&(p).Pos[0], &(p).Pos[1], &(p).Pos[2], &(p).Rot[0], &(p).Rot[1], &(p).Rot[2], &(p).Rot[3]
+
 typedef LinmathPose SurvivePose;
 typedef LinmathAxisAngleMag SurviveAngularVelocity;
 typedef struct {

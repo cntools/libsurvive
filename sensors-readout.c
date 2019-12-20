@@ -6,6 +6,8 @@ static volatile int keepRunning = 1;
 #include <os_generic.h>
 #include <stdlib.h>
 #ifdef __linux__
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 #include <assert.h>
 
@@ -106,6 +108,17 @@ static uint8_t get_raw_sensor_id(SurviveObject *so, uint8_t sensor_id) {
 	return sensor_id;
 }
 
+char *new_str(const char *s) {
+	char *rtn = calloc(strlen(s) + 1, sizeof(char));
+	strcpy(rtn, s);
+	return rtn;
+}
+
+char *lines[10] = {};
+size_t lines_idx = 0;
+
+int window_rows = -1, window_cols = -1;
+#define gotoxy(x, y) printf("\033[%d;%dH", (y), (x))
 static void redraw(SurviveContext *ctx) {
 	printf("\033[;H");
 	for (int i = 0; i < ctx->objs_ct; i++) {
@@ -141,7 +154,10 @@ static void redraw(SurviveContext *ctx) {
 		}
 		printf("\e[0m\n");
 
-		{
+		int lh_start = lh == -1 ? 0 : lh;
+		int lh_end = lh == -1 ? NUM_GEN2_LIGHTHOUSES : (lh + 1);
+
+		for (int lh = lh_start; lh < lh_end; lh++) {
 			for (int sensor = 0; sensor < so->sensor_ct; sensor++) {
 				struct sensor_stats *s = &stats[i][lh][sensor][0];
 
@@ -177,17 +193,41 @@ static void redraw(SurviveContext *ctx) {
 					print(s[axis].MX - s[axis].MN);
 				}
 				printf("\e[0m");
-				printf("\n");
+				printf("\33[2K\r\n");
 			}
-			printf("\n");
+			printf("\33[2K\r\n");
+		}
+	}
+
+	if (window_cols != -1) {
+		gotoxy(0, window_rows - 10 - 1);
+		printf("=== Log ===\n");
+		for (int i = 0; i < 10; i++) {
+			char *line = lines[(lines_idx + i) % 10];
+			if (line != 0)
+				printf("\33[2K\r %s\n", line);
 		}
 	}
 
 	needsRedraw = false;
 }
 
+void light_fn(SurviveObject *so, int sensor_id, int acode, int timeinsweep, survive_timecode timecode,
+			  survive_timecode length, uint32_t lh) {
+	survive_default_light_process(so, sensor_id, acode, timeinsweep, timecode, length, lh);
+	if (needsRedraw)
+		redraw(so->ctx);
+}
+
 void imu_fn(SurviveObject *so, int mode, FLT *accelgyro, survive_timecode timecode, int id) {
 	survive_default_imu_process(so, mode, accelgyro, timecode, id);
+}
+
+void info_fn(SurviveContext *ctx, SurviveLogLevel logLevel, const char *fault) {
+	free(lines[lines_idx % 10]);
+	lines[lines_idx % 10] = new_str(fault);
+	lines_idx++;
+	redraw(ctx);
 }
 
 void *KBThread(void *user) {
@@ -196,6 +236,7 @@ void *KBThread(void *user) {
 	while (keepRunning) {
 		int c = tolower(getchar());
 		system("clear");
+
 		if (c == 'l') {
 			lh++;
 			if (!ctx->bsd[lh].OOTXSet)
@@ -205,10 +246,16 @@ void *KBThread(void *user) {
 		} else if (c == 'r') {
 			useRawSensorId = !useRawSensorId;
 		}
+
 		if (surviveIsDone) {
 			redraw(ctx);
 		} else {
 			needsRedraw = true;
+			if (c == 10) {
+				lh++;
+				if (!ctx->bsd[lh].OOTXSet)
+					lh = -1;
+			}
 		}
 	}
 	return 0;
@@ -219,6 +266,11 @@ int main(int argc, char **argv) {
 	signal(SIGINT, intHandler);
 	signal(SIGTERM, intHandler);
 	signal(SIGKILL, intHandler);
+
+	struct winsize w;
+	ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+	window_cols = w.ws_col;
+	window_rows = w.ws_row;
 #endif
 
 	struct sensor_stats *s = &stats[0][0][0][0];
@@ -235,6 +287,7 @@ int main(int argc, char **argv) {
 	survive_install_angle_fn(ctx, angle_fn);	
 	survive_install_printf_fn(ctx, printf_fn);
 	survive_install_imu_fn(ctx, imu_fn);
+	survive_install_light_fn(ctx, light_fn);
 	survive_startup(ctx);
 
 	system("clear");

@@ -3,6 +3,16 @@
 #include <math.h>
 #include <survive.h>
 
+STATIC_CONFIG_ITEM(MOVMENT_THRESHOLD_GYRO, "move-threshold-gyro", 'f', "Threshold to count gyro norms as moving", .05);
+STATIC_CONFIG_ITEM(MOVMENT_THRESHOLD_ACC, "move-threshold-acc", 'f', "Threshold to count acc diff norms as moving",
+				   .03);
+STATIC_CONFIG_ITEM(MOVMENT_THRESHOLD_ANG, "move-threshold-ang", 'f', "Threshold to count light angle diffs as moving",
+				   .015);
+
+static FLT moveThresholdGyro = 0;
+static FLT moveThresholdAcc = 0;
+static FLT moveThresholdAng = 0;
+
 bool SurviveSensorActivations_isReadingValid(const SurviveSensorActivations *self, survive_timecode tolerance,
 											 survive_timecode timecode_now, uint32_t idx, int lh, int axis) {
 	const uint32_t *data_timecode = self->timecode[idx][lh];
@@ -26,10 +36,22 @@ bool SurviveSensorActivations_isPairValid(const SurviveSensorActivations *self, 
 	return !(timecode_now - data_timecode[0] > tolerance || timecode_now - data_timecode[1] > tolerance);
 }
 
+survive_long_timecode survive_extend_time(const SurviveObject *so, survive_timecode time) {
+	return SurviveSensorActivations_extend_time(&so->activations, time);
+}
+survive_long_timecode SurviveSensorActivations_extend_time(const SurviveSensorActivations *self,
+														   survive_timecode time) {
+	return ((survive_long_timecode)self->rollover_count << 32u) | time;
+}
 survive_timecode SurviveSensorActivations_stationary_time(const SurviveSensorActivations *self) {
-	survive_long_timecode last_imu = ((survive_long_timecode)self->rollover_count << 32u) | self->last_imu;
+	survive_long_timecode last_time = 0;
+	if (self->imu_init_cnt > 0) {
+		last_time = ((survive_long_timecode)self->rollover_count << 32u) | self->last_light;
+	} else {
+		last_time = ((survive_long_timecode)self->rollover_count << 32u) | self->last_imu;
+	}
 	survive_long_timecode last_move = self->last_movement;
-	survive_long_timecode time_elapsed = last_imu - last_move;
+	survive_long_timecode time_elapsed = last_time - last_move;
 	if (time_elapsed > 0xFFFFFFFF)
 		return 0xFFFFFFFF;
 
@@ -62,7 +84,7 @@ void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct Pos
 		}
 	}
 
-	if (norm3d(imuData->gyro) > .05 || dist3d(self->accel, imuData->accel) > .03) {
+	if (norm3d(imuData->gyro) > moveThresholdGyro || dist3d(self->accel, imuData->accel) > moveThresholdAcc) {
 		survive_long_timecode long_timecode =
 			((survive_long_timecode)self->rollover_count << 32u) | imuData->hdr.timecode;
 		self->last_movement = long_timecode;
@@ -71,6 +93,7 @@ void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct Pos
 }
 void SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct PoserDataLightGen2 *lightData) {
 	self->lh_gen = 1;
+
 	int axis = lightData->plane;
 	PoserDataLight *l = &lightData->common;
 	if (l->sensor_id >= SENSORS_PER_OBJECT)
@@ -82,9 +105,16 @@ void SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct Po
 
 	*data_timecode = l->hdr.timecode;
 	*angle = l->angle;
+	self->last_light = lightData->common.hdr.timecode;
 }
 
-SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveSensorActivations *self) {
+SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveObject *so, SurviveSensorActivations *self) {
+	if (so) {
+		moveThresholdAcc = survive_configf(so->ctx, MOVMENT_THRESHOLD_ACC_TAG, SC_GET, 0);
+		moveThresholdGyro = survive_configf(so->ctx, MOVMENT_THRESHOLD_GYRO_TAG, SC_GET, 0);
+		moveThresholdAng = survive_configf(so->ctx, MOVMENT_THRESHOLD_ANG_TAG, SC_GET, 0);
+	}
+
 	memset(self, 0, sizeof(SurviveSensorActivations));
 
 	for (int i = 0; i < SENSORS_PER_OBJECT; i++) {
@@ -100,20 +130,40 @@ SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveSensorActivations *self
 	}
 
 	self->imu_init_cnt = 30;
+	self->lh_gen = -1;
 }
 
 void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLightGen1 *_lightData) {
+	self->lh_gen = 0;
+	if (self->imu_init_cnt > 0 && self->last_light > _lightData->common.hdr.timecode) {
+		self->rollover_count++;
+	}
+
 	int axis = (_lightData->acode & 1);
 	PoserDataLight *lightData = &_lightData->common;
 	uint32_t *data_timecode = &self->timecode[lightData->sensor_id][lightData->lh][axis];
 
 	FLT *angle = &self->angles[lightData->sensor_id][lightData->lh][axis];
 	uint32_t *length = &self->lengths[lightData->sensor_id][lightData->lh][axis];
-	// assert(*length == 0 || fabs(*angle - lightData->angle) < 0.05);
+	// printf("error %10.7f\n", fabs(*angle - lightData->angle));
+	if (*length == 0 || fabs(*angle - lightData->angle) > 0.05) {
+		self->last_movement = 0;
+		survive_long_timecode long_timecode =
+			((survive_long_timecode)self->rollover_count << 32u) | lightData->hdr.timecode;
+		self->last_movement = long_timecode;
+	}
+
+	if (*length == 0 || fabs(*angle - lightData->angle) > moveThresholdAcc) {
+		survive_long_timecode long_timecode =
+			((survive_long_timecode)self->rollover_count << 32u) | lightData->hdr.timecode;
+		// assert(long_timecode > self->last_movement);
+		self->last_movement = long_timecode;
+	}
 
 	*angle = lightData->angle;
 	*data_timecode = lightData->hdr.timecode;
 	*length = (uint32_t)(_lightData->length * 48000000);
+	self->last_light = lightData->hdr.timecode;
 }
 
 FLT SurviveSensorActivations_difference(const SurviveSensorActivations *rhs, const SurviveSensorActivations *lhs) {

@@ -30,7 +30,7 @@ SurviveObject *survive_create_device(SurviveContext *ctx, const char *driver_nam
 		device->gyro_scale[i] = device->acc_scale[i] = 1.0;
 	}
 
-	SurviveSensorActivations_ctor(&device->activations);
+	SurviveSensorActivations_ctor(device, &device->activations);
 
 	return device;
 }
@@ -332,7 +332,7 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	jsmn_parser p;
 	jsmntok_t t[4096];
 	jsmn_init(&p);
-	int i;
+
 	int r = jsmn_parse(&p, ct0conf, len, t, sizeof(t) / sizeof(t[0]));
 	if (r < 0) {
 		SV_INFO("Failed to parse JSON in HMD configuration: %d\n", r);
@@ -352,10 +352,16 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	SurvivePose trackref2imu = InvertPoseRtn(&so->imu2trackref);
 	// InvertPose(&so->head2trackref, &so->head2trackref);
 
+	bool sensorsAreZero = true;
 	for (int i = 0; i < so->sensor_ct; i++) {
+		if (norm3d(&so->sensor_locations[i]) > .001) {
+			sensorsAreZero = false;
+		}
 		ApplyPoseToPoint(&so->sensor_locations[i * 3], &trackref2imu, &so->sensor_locations[i * 3]);
 		quatrotatevector(&so->sensor_normals[i * 3], trackref2imu.Rot, &so->sensor_normals[i * 3]);
 	}
+
+	so->has_sensor_locations = !sensorsAreZero;
 
 	ApplyPoseToPose(&so->head2imu, &trackref2imu, &so->head2trackref);
 

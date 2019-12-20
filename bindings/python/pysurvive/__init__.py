@@ -31,45 +31,38 @@ def init(sargv = None, log_fn = None):
 
     return ctx
 
-def install_imu_fn(ctx, fn):
-    def imu_func(ctx, mode, accelgyro, timecode, id):
-        call_def = fn(ctx, mode, list(map(lambda x: accelgyro[x], range(9))), timecode, id)
-        if call_def is None or call_def:
-            default_imu_process(ctx, mode, accelgyro, timecode, id)
-
-    imu_fn = imu_process_func(imu_func)
-
-    add_to_lifetime(ctx, imu_fn)
-    pysurvive_generated.install_imu_fn(ctx, imu_fn)
-
-
-def install_angle_fn(ctx, fn):
+def install_generic_process(ctx, fn, default_fn, install_fn, fn_type, map_args=None):
     def wrapper_fn(*args):
-        call_def = fn(*args)
-        if call_def is None or call_def:
-            default_angle_process(*args)
-
-    fn_inst = angle_process_func(wrapper_fn)
-
-    add_to_lifetime(ctx, fn_inst)
-    pysurvive_generated.install_angle_fn(ctx, fn_inst)
-
-def install_generic_process(ctx, fn, default_fn, install_fn, fn_type):
-    def wrapper_fn(*args):
-        call_def = fn(*args)
-        if call_def is None or call_def:
-            default_fn(*args)
+        try:
+            c_args = map_args(*args) if map_args is not None else args
+            call_def = fn(*c_args)
+            if call_def is None or call_def:
+                default_fn(*args)
+        except:
+            ctx.contents.report_errorproc(ctx, SURVIVE_ERROR_GENERAL)
 
     fn_inst = fn_type(wrapper_fn)
 
     add_to_lifetime(ctx, fn_inst)
     install_fn(ctx, fn_inst)
 
+def install_imu_fn(ctx, fn):
+    def map_args(ctx, mode, accelgyro, timecode, id):
+        return (ctx, mode, list(map(lambda x: accelgyro[x], range(9))), timecode, id)
+
+    install_generic_process(ctx, fn, default_imu_process, pysurvive_generated.install_imu_fn, imu_process_func, map_args)
+
 def install_light_fn(ctx, fn):
     install_generic_process(ctx, fn, default_light_process, pysurvive_generated.install_light_fn, light_process_func)
 
-#survive_default_light_process(SurviveObject *so, int sensor_id, int acode, int timeinsweep, survive_timecode timecode, survive_timecode length, uint32_t lh);
+def install_angle_fn(ctx, fn):
+    install_generic_process(ctx, fn, default_angle_process, pysurvive_generated.install_angle_fn, angle_process_func)
 
+def install_pose_fn(ctx, fn):
+    def map_args(so, timecode, pose):
+        return (so, timecode, list(pose.contents.Pos) + list(pose.contents.Rot))
+
+    install_generic_process(ctx, fn, default_pose_process, pysurvive_generated.install_pose_fn, pose_process_func, map_args)
 
 def configs(ctx, name, method=SC_GET, default=None):
     return pysurvive_generated.configs(ctx, name, method, default)
