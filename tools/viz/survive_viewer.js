@@ -525,14 +525,14 @@ var survive_log_handlers = {
 		create_tracked_object(obj);
 	},
 	'B' : function(v, tracker) {
-		// write_to_output(recordingData, "%s B %d %d %0.6f %u\n", so->codename, sensor_id, timecode, angle, channel);
+		// #define SWEEP_ANGLE_PRINTF_ARGS dev, channel, sensor_id, timecode, plane, angle
 		var obj = {
 			tracker : v[1],
-			sensor_id : parseInt(v[3]),
-			plane : parseInt(v[4]),
+			lighthouse : parseInt(v[3]),
+			sensor_id : parseInt(v[4]),
 			timecode : parseInt(v[5]),
-			angle : parseFloat(v[6]),
-			lighthouse : parseInt(v[7])
+			plane : parseInt(v[6]),
+			angle : parseFloat(v[7])
 		};
 
 		angles[obj.tracker] = angles[obj.tracker] || {};

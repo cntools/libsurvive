@@ -1466,8 +1466,8 @@ static void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
 #endif
 
 #define AS_SHORT(a, b) ((uint16_t)(((uint16_t)a) << 8) | (0x00ff & b))
-#define POP_BYTE(ptr) ((uint8_t) * (ptr++))
-#define POP_SHORT(ptr) (((((struct unaligned_u16_t *)((ptr += 2) - 2))))->v)
+#define POP_BYTE(ptr) ((uint8_t) * ((ptr)++))
+#define POP_SHORT(ptr) (((((struct unaligned_u16_t *)(((ptr) += 2) - 2))))->v)
 
 #define HAS_FLAG(flags, flag) ((flags & (flag)) == (flag))
 
@@ -1901,9 +1901,6 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 				/*SV_INFO("GRIP 0x%02hX [Time:%04hX] [Payload: %s] <<ABORT FURTHER READ>>",
 				 *(payloadPtr-1), time, packetToHex(payloadPtr, payloadEndPtr));*/
 
-				SV_WARN("GenTwo knuckles? 0x%02hX 0b%s [Time:%04hX] [Payload: %s] <<ABORT FURTHER READ>>",
-						*(payloadPtr - 1), byteToBin(*(payloadPtr - 1)), time, packetToHex(payloadPtr, payloadEndPtr));
-
 				// Resistive contact sensors in buttons?
 				uint8_t touchFlags = POP_BYTE(payloadPtr);
 				// 0x01 = Trigger
@@ -1926,14 +1923,15 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 				(void)gripForce;
 				(void)trackpadForce;
 
-#ifdef KNUCKLES_INFO
-				SV_INFO("KAS: @%04hX | Grip    [Proximity: %02X %02X %02X %02X] [Touch: %s%s%s%s%s (%02X)] [Grip: %02X "
-						"%02X]",
-						time, fingerProximity[3], fingerProximity[0], fingerProximity[1], fingerProximity[2],
-						HAS_FLAG(touchFlags, 0x01) ? "#" : "_", HAS_FLAG(touchFlags, 0x08) ? "#" : "_",
-						HAS_FLAG(touchFlags, 0x10) ? "#" : "_", HAS_FLAG(touchFlags, 0x20) ? "#" : "_",
-						HAS_FLAG(touchFlags, 0x40) ? "#" : "_", touchFlags, gripForce, trackpadForce);
-#endif
+				SV_VERBOSE(
+					150,
+					"KAS: @%04hX | Grip    [Proximity: %02X %02X %02X %02X] [Touch: %s%s%s%s%s (%02X)] [Grip: %02X "
+					"%02X]",
+					time, fingerProximity[3], fingerProximity[0], fingerProximity[1], fingerProximity[2],
+					HAS_FLAG(touchFlags, 0x01) ? "#" : "_", HAS_FLAG(touchFlags, 0x08) ? "#" : "_",
+					HAS_FLAG(touchFlags, 0x10) ? "#" : "_", HAS_FLAG(touchFlags, 0x20) ? "#" : "_",
+					HAS_FLAG(touchFlags, 0x40) ? "#" : "_", touchFlags, gripForce, trackpadForce);
+
 			} else {
 				SV_WARN("Unknown gen two event 0x%02hX 0b%s [Time:%04hX] [Payload: %s] <<ABORT FURTHER READ>>",
 						*(payloadPtr - 1), byteToBin(*(payloadPtr - 1)), time, packetToHex(payloadPtr, payloadEndPtr));
@@ -2032,7 +2030,7 @@ static inline void parse_and_process_lightcap(SurviveObject *w, uint16_t time, u
 	}
 }
 
-static bool parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, uint8_t *packet, uint8_t length) {
+static int parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, uint8_t *packet, uint8_t length) {
 	bool has_errors = false;
 	uint8_t idx = 0;
 	uint8_t channel = 255;
@@ -2117,7 +2115,7 @@ static bool parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, u
 
 			if (channel == 255) {
 				dump_binary = true;
-				has_errors = false;
+				has_errors = true;
 				goto exit_loop;
 			}
 			idx += 4;
@@ -2136,7 +2134,102 @@ exit_loop:
 		ctx->printfproc(ctx, "\n");
 	}
 
-	return has_errors;
+	return has_errors ? -1 : idx;
+}
+
+static bool handle_input(SurviveObject *w, uint8_t flags, uint8_t **payloadPtr, uint8_t *payloadEndPtr) {
+	/*
+	 * Flags for input events are as follows:
+	 *
+	 * ┄╦═╤═╤═╦═╤═╤═╤═╤═╦┄
+	 *  │1│1│1│1│-│t│m│b│
+	 * ┄╩═╧═╧═╩═╧═╧═╧═╧═╩┄
+	 *
+	 * t: Trigger    1 = Trigger data present in event [1 Byte]  ╮
+	 * m: Motion     1 = Motion data present in event [4 Byte]   ├ If all 0, this is a gen 2 event [See below]
+	 * b: Button     1 = Button data present in event [1 Byte]   ╯
+	 *
+	 * Order of data in payload is as follows:
+	 * ┄╦═══════════════╦═══════════════╦═══════════════╦═══════════════╦
+	 *  ║ [Button/b]    ║ [Trigger/t]   ║ [Motion/t]    ║ [IMU Data/I]  ║
+	 * ┄╩═══════════════╩═══════════════╩═══════════════╩═══════════════╩
+	 */
+	struct SurviveContext *ctx = w->ctx;
+	bool firstGen = ((flags & 0x7) != 0);
+
+	if (firstGen) {
+		bool flagTrigger = HAS_FLAG(flags, 0x4);
+		bool flagMotion = HAS_FLAG(flags, 0x2);
+		bool flagButton = HAS_FLAG(flags, 0x1);
+
+		static buttonEvent bEvent;
+		memset(&bEvent, 0, sizeof(bEvent));
+		if (flagButton) {
+			bEvent.pressedButtonsValid = 1;
+			bEvent.pressedButtons = POP_BYTE(*payloadPtr);
+		}
+
+		if (flagTrigger) {
+			bEvent.triggerHighResValid = 1;
+			bEvent.triggerHighRes = POP_BYTE(*payloadPtr) * 128;
+		}
+
+		if (flagMotion) {
+			bEvent.touchpadHorizontalValid = 1;
+			bEvent.touchpadVerticalValid = 1;
+
+			bEvent.touchpadHorizontal = POP_SHORT(*payloadPtr);
+			bEvent.touchpadVertical = POP_SHORT(*payloadPtr);
+		}
+		SV_VERBOSE(150, "handle_input flags %d %d %d", flagButton, flagTrigger, flagMotion);
+		registerButtonEvent(w, &bEvent);
+	} else {
+		// Second gen event (Eg Knuckles proximity)
+		uint8_t genTwoType =
+			POP_BYTE(*payloadPtr); // May be flags, but currently only observed to be 'a1' when knuckles
+
+		if (genTwoType == 0xA1) {
+			// Knucles
+
+			// Resistive contact sensors in buttons?
+			uint8_t touchFlags = POP_BYTE(*payloadPtr);
+			// 0x01 = Trigger
+			// 0x08 = Menu
+			// 0x10 = Button A
+			// 0x20 = Button B
+			// 0x40 = Thumbstick
+
+			// Non-touching proximity to fingers
+			uint8_t fingerProximity[4];
+			fingerProximity[0] = POP_BYTE(*payloadPtr); // Middle finger
+			fingerProximity[1] = POP_BYTE(*payloadPtr); // Ring finger
+			fingerProximity[2] = POP_BYTE(*payloadPtr); // Pinky finger
+			fingerProximity[3] = POP_BYTE(*payloadPtr); // Index finger (trigger)
+			(void)fingerProximity;
+
+			// Contact force (Squeeze strength)
+			uint8_t gripForce = POP_BYTE(*payloadPtr);
+			uint8_t trackpadForce = POP_BYTE(*payloadPtr);
+			(void)gripForce;
+			(void)trackpadForce;
+
+			SV_VERBOSE(
+				150,
+				"handle_input A1 : | Grip    [Proximity: %02X %02X %02X %02X] [Touch: %s%s%s%s%s (%02X)] [Grip: %02X "
+				"%02X]",
+				fingerProximity[3], fingerProximity[0], fingerProximity[1], fingerProximity[2],
+				HAS_FLAG(touchFlags, 0x01) ? "#" : "_", HAS_FLAG(touchFlags, 0x08) ? "#" : "_",
+				HAS_FLAG(touchFlags, 0x10) ? "#" : "_", HAS_FLAG(touchFlags, 0x20) ? "#" : "_",
+				HAS_FLAG(touchFlags, 0x40) ? "#" : "_", touchFlags, gripForce, trackpadForce);
+		} else {
+			SV_WARN("Unknown gen two event 0x%02hX 0b%s [Payload: %s] <<ABORT FURTHER READ>>", *(*payloadPtr - 1),
+					byteToBin(*(*payloadPtr - 1)), packetToHex(*payloadPtr, payloadEndPtr));
+			// Since we don't know how much data this should consume, proceeding to IMU/Light decode is likely
+			// to choke.
+			return false;
+		}
+	}
+	return true;
 }
 
 static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payloadPtr, uint8_t *payloadEndPtr) {
@@ -2151,12 +2244,49 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 	uint8_t flags = POP_BYTE(payloadPtr);
 	bool has_errors = false;
 	bool flagLightcap = HAS_FLAG(flags, 0x10);
+
+	// Info: Watchman v2(KN1): '34 f2 3f 9f a2 c9             | 61 06 8c 0a 44 '
+	// Info: Watchman v2(KN1): '34 f2 7a 9e fe c8             | 61 b4 6e 27 02 7e 95 7c 7c d6 b3 7c 5c a6 da 7c bc '
+	// Info: Watchman v2(KN1): '38 f0 a1 00 2a 00 00 1c 00 01 | 61 32 9d 62 15 2e d8 62 0d 62 26 63 45 '
+	// Info: Watchman v2(KN1): '31 f4 ff                      | 61 de 25 d1 62 '
+
+	// Touch (not press) A
+	// Info: Watchman v2(KN1): '20 f0 a1 20 00 01 00 00 00 00 '
+
+	// Pulling trigger:
+	// Info: Watchman v2(KN1): '20 f4 39 '
+	// Info: Watchman v2(KN1): '20 f0 a1 00 bb f5 ff e5 07 00 '
+	// Info: Watchman v2(KN1): '20 f0 a1 00 00 03 00 00 00 00 '
+
+	// Info: Watchman v2(KN1): '31 f1 00                      | 61 42 a4 ef 80 ee b4 ef c0 '
+	// Info: Watchman v2(KN1): '31 f4 0c 61 44 56 97 09 46 88 5b b3 8a a1 5b 1b 9a e4 5b 3b 76 f0 5b bb '
+
+	// Hitting A:
+	// Info: Watchman v2(KN1): '31 f4 f8                      | 61 ca 25 9f 7f 26 49 9f 5f 06 c5 9f bf f6 db 9f 17 8a e8
+	// 9f 0f '
+
+	// Hitting B
+	// Info: Watchman v2(KN1): '31 f4 12                      | 61 68 62 56 01 '
+
+	// Info: Watchman v2(KN1): '35 f6 5b ef e5 6d 3e          | 61 cc 3d de 00 c6 51 ea 59 72 7b ea b9 9a 81 ea 11 '
+	// Info: Watchman v2(KN1): '35 f6 2d 36 ec 07 1e          | 61 da 56 93 c0 02 aa 93 60 '
+	// Info: Watchman v2(KN1): '35 f6 15 b6 25 98 1b          | 61 20 c4 fa 03 fa 89 23 78 f6 c9 23 58 3a 2d 24 b8 '
+
+	// Possibly this means the protocol is done switching:
+	// Info: Watchman v2(KN1): '51 20 01                      | 61 50 d2 57 01 '
+	// Info: Watchman v2(KN1): '36 f7 02 18 12 e1 b8 06       | 61 74 7e bf 0b 26 b3 ac 7f 76 d2 ac 5f e2 00 ad 17 '
+
+	// Info: Watchman v2(KN1): '80 a5 4c fb 8f f1 f2 f9 d3 ff 2c 00 df ff '
+	// Info: Watchman v2(KN1): 'c0 92 52 fb 7d f1 ea f9 ce ff 2f 00 dc ff 20 01 '
+
 	// bool has_errors = !read_event(w, time, &payloadPtr, payloadEndPtr);
 	bool flagIMU = HAS_FLAG(flags, 0x80);
-	bool flagUnknown2 = HAS_FLAG(flags, 0x01);
-	bool flagUnknown3 = HAS_FLAG(flags, 0x08);
-	bool flagUnknown4 = HAS_FLAG(flags, 0x20);
-	bool flagUnknown = HAS_FLAG(flags, 0x40);
+	bool flagUnknown01 = HAS_FLAG(flags, 0x01);
+	// Haptic on the trackpad thing on the knuckles?
+	bool flagUnknown04 = HAS_FLAG(flags, 0x04);
+	bool flagUnknown08 = HAS_FLAG(flags, 0x08);
+	bool flagInput = HAS_FLAG(flags, 0x20);
+	bool flagUnknown40 = HAS_FLAG(flags, 0x40);
 
 	if (HAS_FLAG(flags, ~0xD1)) {
 		SV_VERBOSE(100, "Unknown flag %02x", flags);
@@ -2165,20 +2295,25 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 	if (flagIMU)
 		read_imu_data(w, time, &payloadPtr, payloadEndPtr);
 
-	if (flagUnknown) {
+	if (flagUnknown40) {
 		uint8_t unknownByte1 = POP_BYTE(payloadPtr);
 		uint8_t unknownByte2 = POP_BYTE(payloadPtr);
 		SV_VERBOSE(100, "Unknown flag 0x40 byte %02x %02x", unknownByte1, unknownByte2);
 	}
 
-	if (flagUnknown2) {
-		// uint8_t unknownByte1 = POP_BYTE(payloadPtr);
-		// uint8_t unknownByte2 = POP_BYTE(payloadPtr);
-		// SV_VERBOSE(100, "Unknown flag 0x1 %02x %02x", unknownByte1, unknownByte2);
+	if (flagInput) {
+		uint8_t input_flags = POP_BYTE(payloadPtr);
+		has_errors = !handle_input(w, input_flags, &payloadPtr, payloadEndPtr);
+	}
+	/*
+	if (flagUnknown01) {
+		//uint8_t unknownByte1 = POP_BYTE(payloadPtr);
+		//uint8_t unknownByte2 = POP_BYTE(payloadPtr);
+		//SV_VERBOSE(100, "Unknown flag 0x1 %02x", unknownByte1);
 		SV_VERBOSE(100, "Unknown flag 0x01");
 	}
 
-	if (flagUnknown3) {
+	if (flagUnknown08) {
 		uint8_t unknownBytes[] = {POP_BYTE(payloadPtr), POP_BYTE(payloadPtr), POP_BYTE(payloadPtr),
 								  POP_BYTE(payloadPtr), POP_BYTE(payloadPtr), POP_BYTE(payloadPtr),
 								  POP_BYTE(payloadPtr), POP_BYTE(payloadPtr), POP_BYTE(payloadPtr)};
@@ -2187,22 +2322,14 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 				   unknownBytes[2], unknownBytes[3], unknownBytes[4], unknownBytes[5]);
 	}
 
-	if (HAS_FLAG(flags, 0xD0)) {
-		flagLightcap = false;
+	if (flagUnknown04) {
+		uint8_t unknownBytes[] = {POP_BYTE(payloadPtr), POP_BYTE(payloadPtr), POP_BYTE(payloadPtr),
+								  POP_BYTE(payloadPtr), POP_BYTE(payloadPtr) };
 
-		// assert(payloadEndPtr - payloadPtr == 4);
-		uint32_t timecode = 0;
-		memcpy(&timecode, payloadPtr, sizeof(uint32_t));
-
-		uint32_t reference_time = (w->activations.last_imu);
-		bool ootx = (timecode >> 26u) & 1u;
-		bool g = (timecode >> 27u) & 1u;
-		timecode = fix_time24((timecode >> 2u) & 0xFFFFFFu, reference_time);
-		uint8_t unused = timecode >> 28;
-
-		SV_VERBOSE(200, "Mystery Sync %s %02d %d %8u", w->codename, 255, ootx, timecode);
+		SV_VERBOSE(100, "Unknown flag 0x20 %02x %02x %02x %02x %02x %02x", unknownBytes[0], unknownBytes[1],
+				   unknownBytes[2], unknownBytes[3], unknownBytes[4] );
 	}
-
+*/
 	if (driverInfo->timeWithoutFlag > 0 && driverInfo->timeWithoutFlag < 20) {
 		if (flagLightcap) {
 			driverInfo->timeWithoutFlag = 1;
@@ -2218,10 +2345,20 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 		if (driverInfo->lightcapMode == LightcapMode_raw0) {
 			// parse_and_process_lightcap(w, time, payloadPtr, payloadEndPtr);
 		} else {
-			has_errors = parse_and_process_raw1_lightcap(w, time, payloadPtr, payloadEndPtr - payloadPtr);
+			int read = parse_and_process_raw1_lightcap(w, time, payloadPtr, payloadEndPtr - payloadPtr);
+			if (read == -1)
+				has_errors = true;
+			else
+				payloadPtr += read;
 		}
 	}
 
+	if (driverInfo->timeWithoutFlag == 20) {
+		if (payloadPtr != payloadEndPtr) {
+			has_errors = true;
+			SV_WARN("Did not read full input packet; %d bytes remain", payloadEndPtr - payloadPtr);
+		}
+	}
 	if (has_errors) {
 		survive_dump_buffer(ctx, originPayloadPtr, payloadEndPtr - originPayloadPtr);
 		assert(false);
@@ -2280,12 +2417,12 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 	uint8_t *payloadEndPtr = payloadPtr + payloadSize;
 
 	if (w->ctx->lh_version == 1) {
-		SV_VERBOSE(200, "Watchman v2(%s): '%s'", w->codename, packetToHex(payloadPtr, payloadEndPtr));
+		SV_VERBOSE(150, "Watchman v2(%s): '%s'", w->codename, packetToHex(payloadPtr, payloadEndPtr));
 		handle_watchman_v2(w, time, payloadPtr, payloadEndPtr);
 		return;
 	}
 
-	SV_VERBOSE(200, "Watchman v1(%s): %s", w->codename, packetToHex(payloadPtr, payloadEndPtr));
+	SV_VERBOSE(150, "Watchman v1(%s): %s", w->codename, packetToHex(payloadPtr, payloadEndPtr));
 	/*
 	if (w->ctx->lh_version == -1) {
 		attempt_lh_detection(w, payloadPtr, payloadEndPtr);
