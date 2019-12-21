@@ -456,6 +456,9 @@ struct SurviveViveData {
 	size_t read_count;
 	int seconds_per_hz_output;
 
+	int hmd_mainboard_index;
+	int hmd_imu_index;
+
 	bool closing;
 };
 
@@ -899,8 +902,6 @@ int survive_usb_init(SurviveViveData *sv) {
 
 	// Open all interfaces.
 
-	bool has_hmd_mainboard = false;
-
 	for (const struct DeviceInfo *info = KnownDeviceTypes; info->name; info++) {
 		if (info == 0 || strstr(blacklist, info->name)) {
 			continue;
@@ -920,12 +921,16 @@ int survive_usb_init(SurviveViveData *sv) {
 				continue;
 			}
 
-			if (info->type == USB_DEV_HMD && has_hmd_mainboard) {
-				continue;
-			}
-
 			if (info->type == USB_DEV_HMD) {
-				has_hmd_mainboard = true;
+				if (sv->hmd_mainboard_index != -1) {
+					continue;
+				}
+				sv->hmd_mainboard_index = sv->udev_cnt;
+			} else if (info->type == USB_DEV_HMD_IMU_LH) {
+				if (sv->hmd_imu_index != -1) {
+					continue;
+				}
+				sv->hmd_imu_index = sv->udev_cnt;
 			}
 
 			struct SurviveUSBInfo *usbInfo = &sv->udev[sv->udev_cnt++];
@@ -947,7 +952,6 @@ int survive_usb_init(SurviveViveData *sv) {
 	}
 	survive_free_usb_devices(devs);
 
-	SurviveObject *hmd = 0;
 	int cnt_per_device_type[sizeof(KnownDeviceTypes) / sizeof(KnownDeviceTypes[0])] = {0};
 	for (int i = 0; i < sv->udev_cnt; i++) {
 		struct SurviveUSBInfo *usbInfo = &sv->udev[i];
@@ -963,22 +967,14 @@ int survive_usb_init(SurviveViveData *sv) {
 			SurviveObject *so = survive_create_device(ctx, "HTC", usbInfo, codename, 0);
 			survive_add_object(ctx, so);
 			usbInfo->so = so;
-
-			if (USB_DEV_HMD_IMU_LH == usbInfo->device_info->type) {
-				hmd = so;
-			}
 		}
 	}
 
 	// There should only be one HMD, tie the mainboard interface to the surviveobject
-	if (hmd) {
-		for (int i = 0; i < sv->udev_cnt; i++) {
-			struct SurviveUSBInfo *usbInfo = &sv->udev[i];
-			if (USB_DEV_HMD == usbInfo->device_info->type) {
-				usbInfo->so = hmd;
-			}
-		}
+	if (sv->hmd_imu_index != -1 && sv->hmd_mainboard_index != -1) {
+		sv->udev[sv->hmd_mainboard_index].so = sv->udev[sv->hmd_imu_index].so;
 	}
+
 	SV_INFO("All enumerated devices attached.");
 
 	survive_vive_send_magic(ctx, sv, 1, 0, 0);
@@ -2356,7 +2352,7 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 	if (driverInfo->timeWithoutFlag == 20) {
 		if (payloadPtr != payloadEndPtr) {
 			has_errors = true;
-			SV_WARN("Did not read full input packet; %d bytes remain", payloadEndPtr - payloadPtr);
+			SV_WARN("Did not read full input packet; %ld bytes remain", payloadEndPtr - payloadPtr);
 		}
 	}
 	if (has_errors) {
@@ -3126,6 +3122,7 @@ int survive_vive_close(SurviveContext *ctx, void *driver) {
 
 int DriverRegHTCVive(SurviveContext *ctx) {
 	SurviveViveData *sv = SV_CALLOC(1, sizeof(SurviveViveData));
+	sv->hmd_imu_index = sv->hmd_mainboard_index = -1;
 
 	// Note: don't sleep for HTCVive, the handle_events call can block
 	ctx->poll_min_time_ms = 0;
