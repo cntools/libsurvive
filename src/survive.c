@@ -214,6 +214,8 @@ SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel c
 
 struct SurviveContext_private {
 	og_sema_t poll_sema;
+	survive_run_time_fn runTimeFn;
+	void *runTimeFnUser;
 };
 
 void survive_get_ctx_lock(SurviveContext *ctx) {
@@ -879,4 +881,26 @@ inline void survive_apply_ang_velocity(LinmathQuat out, const SurviveAngularVelo
 	LinmathQuat rot_change;
 	quatfromaxisanglemag(rot_change, vel);
 	quatrotateabout(out, rot_change, t0);
+}
+
+static double timestamp_in_s() {
+	static double start_time_s = 0;
+	if (start_time_s == 0.)
+		start_time_s = OGGetAbsoluteTime();
+	return OGGetAbsoluteTime() - start_time_s;
+}
+
+double survive_run_time(const SurviveContext *ctx) {
+	struct SurviveContext_private *pctx = ctx->private_members;
+	if (pctx->runTimeFn) {
+		return pctx->runTimeFn(ctx, pctx->runTimeFnUser);
+	}
+
+	return timestamp_in_s();
+}
+
+void survive_install_run_time_fn(SurviveContext *ctx, survive_run_time_fn fn, void *user) {
+	struct SurviveContext_private *pctx = ctx->private_members;
+	pctx->runTimeFn = fn;
+	pctx->runTimeFnUser = user;
 }

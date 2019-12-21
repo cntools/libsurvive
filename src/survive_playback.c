@@ -99,13 +99,9 @@ static double timestamp_in_s() {
 }
 
 static int playback_poll(struct SurviveContext *ctx, void *_driver);
-double survive_run_time(const SurviveContext *ctx) {
-	const struct SurvivePlaybackData *sp = survive_get_driver(ctx, playback_poll);
-	if (sp) {
-		return sp->time_now;
-	}
-
-	return timestamp_in_s();
+static double survive_usbmon_playback_run_time(const SurviveContext *ctx, void *_sp) {
+	const struct SurvivePlaybackData *sp = _sp;
+	return sp->time_now;
 }
 
 static void write_to_output_raw(SurviveRecordingData *recordingData, const char *string, int len) {
@@ -787,7 +783,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 		SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Could not open playback events file %s", playback_file);
 		return -1;
 	}
-
+	survive_install_run_time_fn(ctx, survive_usbmon_playback_run_time, sp);
 	survive_attach_configf(ctx, "playback-factor", &sp->playback_factor);
 
 	SV_INFO("Using playback file '%s' with timefactor of %f", playback_file, sp->playback_factor);

@@ -1,4 +1,6 @@
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include "errno.h"
 #include "os_generic.h"
@@ -66,6 +68,7 @@ typedef struct SurviveDriverUSBMon {
 	SurviveContext *ctx;
 	pcap_t *pcap;
 	double playback_factor;
+	double time_now;
 
 	pcap_dumper_t *pcapDumper;
 	bool record_all;
@@ -397,6 +400,11 @@ static double timestamp_in_s() {
 	return OGGetAbsoluteTime() - start_time_s;
 }
 
+static double survive_usbmon_playback_run_time(const SurviveContext *ctx, void *_driver) {
+	SurviveDriverUSBMon *driver = _driver;
+	return driver->time_now;
+}
+
 void *pcap_thread_fn(void *_driver) {
 	SurviveDriverUSBMon *driver = _driver;
 	struct SurviveContext *ctx = driver->ctx;
@@ -408,7 +416,7 @@ void *pcap_thread_fn(void *_driver) {
 	SV_INFO("Pcap thread started");
 	double start_time = 0;
 	double real_time_start = timestamp_in_s();
-	while (driver->keepRunning) {
+	while (driver->keepRunning && ctx->currentError == SURVIVE_OK) {
 		int result = pcap_next_ex(driver->pcap, &pkthdr, (const uint8_t **)&usbp);
 		switch (result) {
 		case 0:
@@ -440,6 +448,7 @@ void *pcap_thread_fn(void *_driver) {
 						this_real_time = timestamp_in_s();
 					}
 				}
+				driver->time_now = this_time;
 
 				// Print setup flags, then just bail
 				if (!usbp->setup_flag) {
@@ -614,6 +623,7 @@ static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
 		FILE *pF = open_playback(usbmon_playback, "r");
 		sp->pcap = pcap_fopen_offline(pF, sp->errbuf);
 		sp->playback_factor = survive_configf(ctx, "playback-factor", SC_GET, 1.0);
+		survive_install_run_time_fn(ctx, survive_usbmon_playback_run_time, sp);
 	} else {
 		sp->pcap = pcap_open_live("usbmon0", PCAP_ERRBUF_SIZE, 0, -1, sp->errbuf);
 	}

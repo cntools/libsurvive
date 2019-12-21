@@ -1,4 +1,5 @@
 import ctypes
+import traceback
 import types
 
 import pysurvive.pysurvive_generated
@@ -38,7 +39,8 @@ def install_generic_process(ctx, fn, default_fn, install_fn, fn_type, map_args=N
             call_def = fn(*c_args)
             if call_def is None or call_def:
                 default_fn(*args)
-        except:
+        except Exception as e:
+            traceback.print_exc()
             ctx.contents.report_errorproc(ctx, SURVIVE_ERROR_GENERAL)
 
     fn_inst = fn_type(wrapper_fn)
@@ -63,6 +65,15 @@ def install_pose_fn(ctx, fn):
         return (so, timecode, list(pose.contents.Pos) + list(pose.contents.Rot))
 
     install_generic_process(ctx, fn, default_pose_process, pysurvive_generated.install_pose_fn, pose_process_func, map_args)
+
+def install_sweep_fn(ctx, fn):
+    install_generic_process(ctx, fn, default_sweep_process, pysurvive_generated.install_sweep_fn, sweep_process_func)
+
+def install_sync_fn(ctx, fn):
+    install_generic_process(ctx, fn, default_sync_process, pysurvive_generated.install_sync_fn, sync_process_func)
+
+def install_sweep_angle_fn(ctx, fn):
+    install_generic_process(ctx, fn, default_sweep_angle_process, pysurvive_generated.install_sweep_angle_fn, sweep_angle_process_func)
 
 def configs(ctx, name, method=SC_GET, default=None):
     return pysurvive_generated.configs(ctx, name, method, default)

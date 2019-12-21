@@ -136,8 +136,9 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 
 	so->last_time_between_sync[bsd_idx] = survive_timecode_difference(timecode, so->last_sync_time[bsd_idx]);
 	FLT hz = 48000000. / so->last_time_between_sync[bsd_idx];
-	// SV_INFO("Sync hz %2d: %2.6fhz (err: %0.6fhz) ootx: %d gen: %d", channel, hz, hz - freq_per_channel[channel],
-	// ootx, gen);
+	SV_VERBOSE(150, "Sync hz %2d: %2.6fhz (err: %0.6fhz) ootx: %d gen: %d", channel, hz,
+			   fabs(hz - freq_per_channel[channel]), ootx, gen);
+
 	so->last_sync_time[bsd_idx] = timecode;
 
 	survive_ootx_behavior(so, bsd_idx, ctx->lh_version, ootx);
@@ -184,6 +185,10 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 	//	time_since_sync += 0.5 / 48000000.;
 
 	FLT hz = 48000000. / so->last_time_between_sync[bsd_idx];
+	if (fabs(hz - freq_per_channel[channel]) > 1.0) {
+		hz = freq_per_channel[channel];
+	}
+
 	FLT time_per_rot = 1. / hz;
 
 	if (time_since_sync > time_per_rot)
