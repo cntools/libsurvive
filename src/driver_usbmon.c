@@ -65,6 +65,7 @@ static const int DEVICES_CNT = sizeof(devices) / sizeof(vive_device_t);
 typedef struct SurviveDriverUSBMon {
 	SurviveContext *ctx;
 	pcap_t *pcap;
+	double playback_factor;
 
 	pcap_dumper_t *pcapDumper;
 	bool record_all;
@@ -389,6 +390,13 @@ const char *requestTypeToStr(uint8_t requestType) {
 	return "<unknown>";
 }
 
+static double timestamp_in_s() {
+	static double start_time_s = 0;
+	if (start_time_s == 0.)
+		start_time_s = OGGetAbsoluteTime();
+	return OGGetAbsoluteTime() - start_time_s;
+}
+
 void *pcap_thread_fn(void *_driver) {
 	SurviveDriverUSBMon *driver = _driver;
 	struct SurviveContext *ctx = driver->ctx;
@@ -399,6 +407,7 @@ void *pcap_thread_fn(void *_driver) {
 
 	SV_INFO("Pcap thread started");
 	double start_time = 0;
+	double real_time_start = timestamp_in_s();
 	while (driver->keepRunning) {
 		int result = pcap_next_ex(driver->pcap, &pkthdr, (const uint8_t **)&usbp);
 		switch (result) {
@@ -421,7 +430,17 @@ void *pcap_thread_fn(void *_driver) {
 				if (start_time == 0) {
 					start_time = make_time(0, usbp);
 				}
+				double this_real_time = timestamp_in_s();
 				double this_time = make_time(start_time, usbp);
+				if (driver->playback_factor > 0.) {
+					double next_time_s_scaled = this_time * driver->playback_factor;
+					while (this_real_time < next_time_s_scaled) {
+						int sleep_time_ms = 1 + (next_time_s_scaled - this_real_time) * 1000.;
+						OGUSleep(sleep_time_ms * 1000);
+						this_real_time = timestamp_in_s();
+					}
+				}
+
 				// Print setup flags, then just bail
 				if (!usbp->setup_flag) {
 					if (is_config_start(usbp)) {
@@ -582,6 +601,7 @@ static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
 		return -1;
 
 	SurviveDriverUSBMon *sp = SV_CALLOC(1, sizeof(SurviveDriverUSBMon));
+	sp->playback_factor = -1;
 	sp->ctx = ctx;
 	sp->passiveMode = !enable && driver_id == 1;
 	if (sp->passiveMode) {
@@ -593,6 +613,7 @@ static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
 		SV_INFO("Opening '%s' for usb playback", usbmon_playback);
 		FILE *pF = open_playback(usbmon_playback, "r");
 		sp->pcap = pcap_fopen_offline(pF, sp->errbuf);
+		sp->playback_factor = survive_configf(ctx, "playback-factor", SC_GET, 1.0);
 	} else {
 		sp->pcap = pcap_open_live("usbmon0", PCAP_ERRBUF_SIZE, 0, -1, sp->errbuf);
 	}

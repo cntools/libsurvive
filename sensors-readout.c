@@ -1,6 +1,7 @@
 #include <survive.h>
 
 static volatile int keepRunning = 1;
+static void redraw(SurviveContext *ctx);
 
 #include "math.h"
 #include <os_generic.h>
@@ -75,7 +76,10 @@ void angle_fn(SurviveObject *so, int sensor_id, int acode, survive_timecode time
 void sweep_fn(SurviveObject *so, survive_channel channel, int sensor_id, survive_timecode timecode, int8_t plane,
 			  FLT angle) {
   record_data(so, sensor_id, timecode);
-	survive_default_sweep_angle_process(so, channel, sensor_id, timecode, plane, angle);
+  survive_default_sweep_angle_process(so, channel, sensor_id, timecode, plane, angle);
+
+  if (needsRedraw)
+	  redraw(so->ctx);
 }
 
 const char *column_width = "          ";
@@ -193,7 +197,7 @@ static void redraw(SurviveContext *ctx) {
 					print(s[axis].MX - s[axis].MN);
 				}
 				printf("\e[0m");
-				printf("\33[2K\r\n");
+				printf("\r\n\33[2K");
 			}
 			printf("\33[2K\r\n");
 		}
