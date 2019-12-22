@@ -427,7 +427,7 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	  fclose(f);
 	}
 
-	SV_INFO("Read config for %s", so->codename);
+	SV_VERBOSE(50, "Read config for %s", so->codename);
 
 	return 0;
 }

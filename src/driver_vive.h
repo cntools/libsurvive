@@ -70,6 +70,8 @@ struct HIDAPI_USB_Handle_t {
 #define USB_INTERFACE_HANDLE void *
 #endif
 
+struct SurviveUSBInfo;
+
 typedef struct SurviveUSBInterface {
 	struct SurviveViveData *sv;
 	SurviveContext *ctx;
@@ -82,6 +84,7 @@ typedef struct SurviveUSBInterface {
 #else
 	struct libusb_transfer *transfer;
 #endif
+	struct SurviveUSBInfo *usbInfo;
 	SurviveObject *assoc_obj;
 	int actual_len;
 	uint8_t buffer[INTBUFFSIZE];
@@ -89,6 +92,8 @@ typedef struct SurviveUSBInterface {
 	int which_interface_am_i; // for indexing into uiface
 	const char *hname;		  // human-readable names
 	size_t packet_count;
+
+	bool shutdown;
 } SurviveUSBInterface;
 
 void survive_dump_buffer(SurviveContext *ctx, const uint8_t *data, size_t length);

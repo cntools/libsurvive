@@ -433,7 +433,9 @@ void *pcap_thread_fn(void *_driver) {
 
 			if (dev) {
 				driver->packet_cnt++;
-				const char *dev_name = dev->so ? dev->so->codename : "(unknown)";
+				const char *dev_name = dev->device->codename;
+				if (dev->so)
+					dev_name = dev->so->codename;
 
 				if (start_time == 0) {
 					start_time = make_time(0, usbp);

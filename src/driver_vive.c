@@ -380,6 +380,7 @@ struct SurviveUSBInfo {
 	} lightcapMode;
 
 	size_t timeWithoutFlag;
+	bool tryConfigLoad;
 };
 
 static inline int update_feature_report_async(USBHANDLE dev, uint16_t iface, uint8_t *data, int datalen);
@@ -456,6 +457,7 @@ struct SurviveViveData {
 	size_t read_count;
 	int seconds_per_hz_output;
 
+	int cnt_per_device_type[sizeof(KnownDeviceTypes) / sizeof(KnownDeviceTypes[0])];
 	int hmd_mainboard_index;
 	int hmd_imu_index;
 
@@ -528,7 +530,7 @@ static void *HAPIReceiver(void *v) {
 #else
 static void handle_transfer(struct libusb_transfer *transfer) {
 	SurviveUSBInterface *iface = transfer->user_data;
-	if (iface->assoc_obj == 0) {
+	if (iface->shutdown) {
 		SurviveContext *ctx = iface->ctx;
 		SV_VERBOSE(100, "Cleaning up transfer on %d %s", iface->which_interface_am_i, iface->hname);
 		iface->ctx = 0;
@@ -567,6 +569,7 @@ static int AttachInterface(SurviveViveData *sv, struct SurviveUSBInfo *usbObject
 	iface->sv = sv;
 	iface->which_interface_am_i = which_interface_am_i;
 	iface->assoc_obj = usbObject->so;
+	iface->usbInfo = usbObject;
 	iface->hname = hname;
 	iface->cb = cb;
 
@@ -588,7 +591,7 @@ static int AttachInterface(SurviveViveData *sv, struct SurviveUSBInfo *usbObject
 #else
 	struct libusb_transfer *tx = iface->transfer = libusb_alloc_transfer(0);
 	// printf( "%p %d %p %p\n", iface, which_interface_am_i, tx, devh );
-	SV_INFO("Attaching %s(0x%x) for %s", hname, endpoint_num, assocobj ? assocobj->codename : "(unknown)");
+	SV_VERBOSE(50, "Attaching %s(0x%x) for %s", hname, endpoint_num, assocobj ? assocobj->codename : "(unknown)");
 
 	if (!iface->transfer) {
 		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Error: failed on libusb_alloc_transfer for %s", hname);
@@ -721,6 +724,14 @@ static inline int hid_get_feature_report_timeout(USBHANDLE device, uint16_t ifac
 	return -1;
 }
 
+static inline int get_feature_report_timeout_locked(SurviveContext *ctx, USBHANDLE device, uint16_t iface,
+													unsigned char *buf, size_t len) {
+	survive_release_ctx_lock(ctx);
+	int rtn = hid_get_feature_report_timeout(device, iface, buf, len);
+	survive_get_ctx_lock(ctx);
+	return rtn;
+}
+
 #ifdef HIDAPI
 typedef struct hid_device_info *survive_usb_device_t;
 typedef struct hid_device_info *survive_usb_devices_t;
@@ -795,6 +806,7 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 
 	return 0;
 }
+static void setup_hotplug(SurviveViveData *sv) {}
 #else
 typedef libusb_device *survive_usb_device_t;
 typedef libusb_device **survive_usb_devices_t;
@@ -817,6 +829,23 @@ typedef int survive_usb_device_enumerator;
 static survive_usb_device_t get_next_device(survive_usb_device_enumerator *iterator, survive_usb_devices_t list) {
 	assert(iterator);
 	return list[(*iterator)++];
+}
+
+int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d);
+int libusb_hotplug(libusb_context *usbctx, libusb_device *device, libusb_hotplug_event event, void *user_data) {
+	SurviveViveData *sv = user_data;
+	SurviveContext *ctx = sv->ctx;
+
+	if (event == LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED) {
+		survive_vive_add_usb_device(sv, device);
+	}
+
+	return 0;
+}
+static void setup_hotplug(SurviveViveData *sv) {
+	libusb_hotplug_register_callback(sv->usbctx, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT,
+									 LIBUSB_HOTPLUG_NO_FLAGS, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY,
+									 LIBUSB_HOTPLUG_MATCH_ANY, libusb_hotplug, sv, 0);
 }
 
 static int survive_get_ids(survive_usb_device_t d, uint16_t *idVendor, uint16_t *idProduct) {
@@ -865,7 +894,7 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 		}
 	}
 
-	SV_INFO("Successfully enumerated %s (%d) %04x:%04x", info->name, conf->bNumInterfaces, idVendor, idProduct);
+	SV_VERBOSE(40, "Successfully enumerated %s (%d) %04x:%04x", info->name, conf->bNumInterfaces, idVendor, idProduct);
 
 	usleep(100000);
 
@@ -877,38 +906,20 @@ cleanup_and_rtn:
 
 static void survive_close_usb_device(struct SurviveUSBInfo *usbInfo) {
 	for (size_t j = 0; j < usbInfo->interface_cnt; j++) {
-		usbInfo->interfaces[j].assoc_obj = 0;
+		usbInfo->interfaces[j].shutdown = 1;
 	}
 }
 
-int survive_usb_init(SurviveViveData *sv) {
+static int LoadConfig(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int iface);
+int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d) {
 	SurviveContext *ctx = sv->ctx;
 	const char *blacklist = survive_configs(ctx, "blacklist-devs", SC_GET, "-");
-
-	int r = survive_usb_subsystem_init(sv);
-	if (r) {
-		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "usb fault %d (%s)\n", r, survive_usb_error_name(r));
-		return r;
-	}
-
-	survive_usb_devices_t devs;
-	int ret = survive_get_usb_devices(sv, &devs);
-
-	if (ret < 0) {
-		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Couldn't get list of USB devices %d (%s)", ret,
-				 survive_usb_error_name(ret));
-		return ret;
-	}
-
-	// Open all interfaces.
-
 	for (const struct DeviceInfo *info = KnownDeviceTypes; info->name; info++) {
 		if (info == 0 || strstr(blacklist, info->name)) {
 			continue;
 		}
 
-		survive_usb_device_enumerator e = 0;
-		for (survive_usb_device_t d = 0; (d = get_next_device(&e, devs)) && sv->udev_cnt < MAX_USB_DEVS;) {
+		{
 			uint16_t idVendor;
 			uint16_t idProduct;
 			int ret = survive_get_ids(d, &idVendor, &idProduct);
@@ -947,33 +958,77 @@ int survive_usb_init(SurviveViveData *sv) {
 				continue;
 			}
 
-			SV_INFO("Successfully enumerated %s %04x:%04x", info->name, idVendor, idProduct);
+			int *cnt = (sv->cnt_per_device_type + (usbInfo->device_info - KnownDeviceTypes));
+
+			SV_VERBOSE(50, "Successfully enumerated %s %04x:%04x", info->name, idVendor, idProduct);
+
+			if (usbInfo->device_info->codename[0] != 0) {
+				char codename[4] = {0};
+				strcpy(codename, usbInfo->device_info->codename);
+				codename[2] += (*cnt);
+				*cnt = *cnt + 1;
+
+				SurviveObject *so = survive_create_device(ctx, "HTC", usbInfo, codename, 0);
+				survive_add_object(ctx, so);
+				usbInfo->so = so;
+			}
+
+			usbInfo->tryConfigLoad = 1;
+			/*
+			if (usbInfo->device_info->type != USB_DEV_HMD) {
+				int hasError = LoadConfig(sv, usbInfo, 0);
+
+				// Powered off devices are stripped of their SurviveObject
+				if (hasError != 0 && usbInfo->so) {
+					SV_INFO("%s config issue.", usbInfo->so->codename);
+				}
+			}
+*/
+
+			// There should only be one HMD, tie the mainboard interface to the surviveobject
+			if (info->type == USB_DEV_HMD_IMU_LH || info->type == USB_DEV_HMD) {
+				if (sv->hmd_imu_index != -1 && sv->hmd_mainboard_index != -1) {
+					sv->udev[sv->hmd_mainboard_index].so = sv->udev[sv->hmd_imu_index].so;
+				}
+			}
+
+			for (const struct Endpoint_t *endpoint = usbInfo->device_info->endpoints; endpoint->name; endpoint++) {
+				int errorCode = AttachInterface(sv, usbInfo, endpoint, usbInfo->handle, survive_data_cb);
+				if (errorCode < 0) {
+					SV_WARN("Could not attach interface %d: %d", endpoint);
+				}
+			}
 		}
+	}
+
+	return 0;
+}
+
+int survive_usb_init(SurviveViveData *sv) {
+	SurviveContext *ctx = sv->ctx;
+
+	int r = survive_usb_subsystem_init(sv);
+	if (r) {
+		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "usb fault %d (%s)\n", r, survive_usb_error_name(r));
+		return r;
+	}
+
+	setup_hotplug(sv);
+	survive_usb_devices_t devs;
+	int ret = survive_get_usb_devices(sv, &devs);
+
+	if (ret < 0) {
+		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Couldn't get list of USB devices %d (%s)", ret,
+				 survive_usb_error_name(ret));
+		return ret;
+	}
+
+	// Open all interfaces.
+	survive_usb_device_enumerator e = 0;
+	for (survive_usb_device_t d = 0; (d = get_next_device(&e, devs)) && sv->udev_cnt < MAX_USB_DEVS;) {
+		survive_vive_add_usb_device(sv, d);
 	}
 	survive_free_usb_devices(devs);
-
-	int cnt_per_device_type[sizeof(KnownDeviceTypes) / sizeof(KnownDeviceTypes[0])] = {0};
-	for (int i = 0; i < sv->udev_cnt; i++) {
-		struct SurviveUSBInfo *usbInfo = &sv->udev[i];
-
-		int *cnt = (cnt_per_device_type + (usbInfo->device_info - KnownDeviceTypes));
-
-		if (usbInfo->device_info->codename[0] != 0) {
-			char codename[4] = {0};
-			strcpy(codename, usbInfo->device_info->codename);
-			codename[2] += (*cnt);
-			*cnt = *cnt + 1;
-
-			SurviveObject *so = survive_create_device(ctx, "HTC", usbInfo, codename, 0);
-			survive_add_object(ctx, so);
-			usbInfo->so = so;
-		}
-	}
-
-	// There should only be one HMD, tie the mainboard interface to the surviveobject
-	if (sv->hmd_imu_index != -1 && sv->hmd_mainboard_index != -1) {
-		sv->udev[sv->hmd_mainboard_index].so = sv->udev[sv->hmd_imu_index].so;
-	}
 
 	SV_INFO("All enumerated devices attached.");
 
@@ -995,7 +1050,10 @@ int survive_vive_send_magic(SurviveContext *ctx, void *drv, int magic_code, void
 				uint8_t *data = alloca(sizeof(uint8_t) * magic->length);
 				memcpy(data, magic->magic, magic->length);
 
+				survive_release_ctx_lock(ctx);
 				r = update_feature_report(usbInfo->handle, 0, data, magic->length);
+				survive_get_ctx_lock(ctx);
+
 				if (r != magic->length && usbInfo->so)
 					SV_WARN("Could not turn on %s(%d) (%d/%zu - %s)", usbInfo->so->codename, usbInfo->device_info->type,
 							r, magic->length, survive_usb_error_name(r));
@@ -1074,7 +1132,7 @@ void survive_vive_usb_close(SurviveViveData *sv) {
 #else
 	for (i = 0; i < sv->udev_cnt; i++) {
 		for (j = 0; j < sv->udev[i].interface_cnt; j++) {
-			sv->udev[i].interfaces[j].assoc_obj = 0;
+			sv->udev[i].interfaces[j].shutdown = 1;
 		}
 		SurviveContext *ctx = sv->ctx;
 		for (j = 0; j < sv->udev[i].interface_cnt; j++) {
@@ -1130,6 +1188,31 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 		start = now;
 	}
 
+	for (int i = 0; i < sv->udev_cnt; i++) {
+		struct SurviveUSBInfo *usbInfo = &sv->udev[i];
+
+		if (usbInfo->tryConfigLoad) {
+			int err = LoadConfig(sv, usbInfo, 0);
+			if (err == 0) {
+				for (const struct Magic_t *magic = usbInfo->device_info->magics; magic->magic; magic++) {
+					if (magic->code == 1) {
+						uint8_t *data = alloca(sizeof(uint8_t) * magic->length);
+						memcpy(data, magic->magic, magic->length);
+
+						survive_release_ctx_lock(ctx);
+						int r = update_feature_report(usbInfo->handle, 0, data, magic->length);
+						survive_get_ctx_lock(ctx);
+
+						if (r != magic->length && usbInfo->so)
+							SV_WARN("Could not turn on %s(%d) (%d/%zu - %s)", usbInfo->so->codename,
+									usbInfo->device_info->type, r, magic->length, survive_usb_error_name(r));
+					}
+				}
+			}
+			usbInfo->tryConfigLoad = 0;
+		}
+	}
+
 #ifdef HIDAPI
 #ifdef HID_NONBLOCKING
 	survive_release_ctx_lock(ctx);
@@ -1181,12 +1264,14 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 	uint8_t uncompressed_data[65536] = {0};
 	USBHANDLE dev = usbInfo->handle;
 
+	const char *name = usbInfo->device_info->name;
+
 	if (send_extra_magic) {
 		uint8_t cfgbuffwide[257] = {0};
 
 		memset(cfgbuffwide, 0, sizeof(cfgbuff));
 		cfgbuffwide[0] = 0x01;
-		ret = hid_get_feature_report_timeout(dev, iface, cfgbuffwide, sizeof(cfgbuffwide));
+		ret = get_feature_report_timeout_locked(ctx, dev, iface, cfgbuffwide, sizeof(cfgbuffwide));
 		OGUSleep(1000);
 
 		int k;
@@ -1199,16 +1284,16 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 		}
 
 		cfgbuffwide[0] = VIVE_REPORT_COMMAND;
-		ret = hid_get_feature_report_timeout(dev, iface, cfgbuffwide, sizeof(cfgbuffwide));
+		ret = get_feature_report_timeout_locked(ctx, dev, iface, cfgbuffwide, sizeof(cfgbuffwide));
 		OGUSleep(1000);
 	}
 
 	// Send Report 16 to prepare the device for reading config info
 	memset(cfgbuff, 0, sizeof(cfgbuff));
 	cfgbuff[0] = VIVE_REPORT_CONFIG_READMODE;
-	if ((ret = hid_get_feature_report_timeout(dev, iface, cfgbuff, sizeof(cfgbuff))) < 0) {
+	if ((ret = get_feature_report_timeout_locked(ctx, dev, iface, cfgbuff, sizeof(cfgbuff))) < 0) {
 		if (usbInfo->device_info->type == USB_DEV_WATCHMAN1) {
-			SV_INFO("%s couldn't configure; probably turned off", usbInfo->so->codename);
+			SV_INFO("%s couldn't configure; probably turned off %d %s", name, ret, survive_usb_error_name(ret));
 		} else {
 			SV_WARN("Could not get survive config data for device %s:%d", usbInfo->device_info->name, iface);
 		}
@@ -1221,7 +1306,7 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 	cfgbuff[0] = VIVE_REPORT_CONFIG_READ;
 	cfgbuff[1] = 0xaa;
 	do {
-		if ((ret = hid_get_feature_report_timeout(dev, iface, cfgbuff, sizeof(cfgbuff))) < 0) {
+		if ((ret = get_feature_report_timeout_locked(ctx, dev, iface, cfgbuff, sizeof(cfgbuff))) < 0) {
 			SV_INFO("Could not read config data (after first packet) on device %s:%d (count: %d)",
 					usbInfo->device_info->name, iface, count);
 			return -2;
@@ -1233,13 +1318,12 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 			break;
 
 		if (size > (sizeof(cfgbuff) - 2)) {
-			SV_INFO("Too much data (%d) on packet from config for device %s:%d (count: %d)", size,
-					usbInfo->so->codename, iface, count);
+			SV_INFO("Too much data (%d) on packet from config for device %s:%d (count: %d)", size, name, iface, count);
 			return -3;
 		}
 
 		if (count + size >= sizeof(compressed_data)) {
-			SV_INFO("Configuration length too long %s:%d (count: %d)", usbInfo->so->codename, iface, count);
+			SV_INFO("Configuration length too long %s:%d (count: %d)", name, iface, count);
 			return -4;
 		}
 
@@ -1253,26 +1337,20 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 	} while (1);
 
 	if (count == 0) {
-		SV_INFO("Empty configuration for %s:%d", usbInfo->so->codename, iface);
+		SV_INFO("Empty configuration for %s:%d", name, iface);
 		return -5;
 	}
 
-	SV_INFO("Got config data length %d", count);
+	SV_VERBOSE(50, "Got config data length %d", count);
 
 	int len = survive_simple_inflate(ctx, compressed_data, count, uncompressed_data, sizeof(uncompressed_data) - 1);
 	if (len <= 0) {
-		SV_INFO("Error: data for config descriptor %s:%d is bad. (%d)", usbInfo->so->codename, iface, len);
+		SV_INFO("Error: data for config descriptor %s:%d is bad. (%d)", name, iface, len);
 		return -5;
 	}
 
 	*config = SV_MALLOC(len + 1);
 	memcpy(*config, uncompressed_data, len);
-
-	char fstname[128];
-	sprintf(fstname, "calinfo/%s.json", usbInfo->so->codename);
-	FILE *f = fopen(fstname, "wb");
-	fwrite(uncompressed_data, len, 1, f);
-	fclose(f);
 
 	return len;
 }
@@ -2301,6 +2379,7 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 		uint8_t input_flags = POP_BYTE(payloadPtr);
 		has_errors = !handle_input(w, input_flags, &payloadPtr, payloadEndPtr);
 	}
+
 	/*
 	if (flagUnknown01) {
 		//uint8_t unknownByte1 = POP_BYTE(payloadPtr);
@@ -2753,6 +2832,13 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 	SurviveObject *obj = si->assoc_obj;
 	uint8_t *readdata = si->buffer;
 
+	if (obj->conf == 0) {
+		if (si->usbInfo) {
+			si->usbInfo->tryConfigLoad = 1;
+		}
+		return;
+	}
+
 	if (!obj->driver) {
 		struct SurviveUSBInfo *d = obj->driver = calloc(1, sizeof(struct SurviveUSBInfo));
 		d->so = obj;
@@ -3094,11 +3180,13 @@ static int LoadConfig(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int i
 
 	bool extra_magic = usbInfo->device_info->type == USB_DEV_WATCHMAN1;
 
+	int *cnt = (sv->cnt_per_device_type + (usbInfo->device_info - KnownDeviceTypes));
+	// Don't create an object for stuff without a codename; ie the HMD main board
+
 	SurviveObject *so = usbInfo->so;
+
 	int len = survive_get_config(&ct0conf, sv, usbInfo, iface, extra_magic);
 	if (len < 0) {
-		usbInfo->so = 0;
-		survive_remove_object(ctx, so);
 		return len;
 	}
 
@@ -3110,7 +3198,9 @@ static int LoadConfig(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int i
 		fclose(f);
 	}
 
-	return so->ctx->configproc(so, ct0conf, len);
+	if (so)
+		return sv->ctx->configproc(so, ct0conf, len);
+	return -1;
 }
 
 int survive_vive_close(SurviveContext *ctx, void *driver) {
@@ -3154,6 +3244,7 @@ int DriverRegHTCVive(SurviveContext *ctx) {
 		goto fail_gracefully;
 	}
 
+	/*
 	for (int i = 0; i < sv->udev_cnt; i++) {
 		struct SurviveUSBInfo *usbInfo = &sv->udev[i];
 		if (usbInfo->device_info->type != USB_DEV_HMD) {
@@ -3168,18 +3259,14 @@ int DriverRegHTCVive(SurviveContext *ctx) {
 				survive_close_usb_device(usbInfo);
 			}
 		}
+
 	}
 
 	for (int i = 0; i < sv->udev_cnt; i++) {
 		struct SurviveUSBInfo *usbInfo = &sv->udev[i];
 
-		for (const struct Endpoint_t *endpoint = usbInfo->device_info->endpoints; endpoint->name; endpoint++) {
-			int errorCode = AttachInterface(sv, usbInfo, endpoint, usbInfo->handle, survive_data_cb);
-
-			if (errorCode != 0)
-				return -errorCode;
-		}
 	}
+		 */
 #ifdef HIDAPI
 	/*
 	// Tricky: use other interface for actual lightcap.  XXX THIS IS NOT YET RIGHT!!!
