@@ -383,6 +383,27 @@ struct SurviveUSBInfo {
 	bool tryConfigLoad;
 };
 
+struct SurviveViveData {
+	SurviveContext *ctx;
+	size_t udev_cnt;
+	struct SurviveUSBInfo udev[MAX_USB_DEVS];
+	struct libusb_context *usbctx;
+	size_t read_count;
+	int seconds_per_hz_output;
+
+	int cnt_per_device_type[sizeof(KnownDeviceTypes) / sizeof(KnownDeviceTypes[0])];
+	int hmd_mainboard_index;
+	int hmd_imu_index;
+
+	bool closing;
+};
+
+#ifdef HIDAPI
+#include "driver_vive.hidapi.h"
+#else
+#include "driver_vive.libusb.h"
+#endif
+
 static inline int update_feature_report_async(USBHANDLE dev, uint16_t iface, uint8_t *data, int datalen);
 
 static bool survive_device_is_rf(const struct DeviceInfo *device_info) {
@@ -449,21 +470,6 @@ void vive_switch_mode(struct SurviveUSBInfo *driverInfo, enum LightcapMode light
 	}
 }
 
-struct SurviveViveData {
-	SurviveContext *ctx;
-	size_t udev_cnt;
-	struct SurviveUSBInfo udev[MAX_USB_DEVS];
-	struct libusb_context *usbctx;
-	size_t read_count;
-	int seconds_per_hz_output;
-
-	int cnt_per_device_type[sizeof(KnownDeviceTypes) / sizeof(KnownDeviceTypes[0])];
-	int hmd_mainboard_index;
-	int hmd_imu_index;
-
-	bool closing;
-};
-
 static bool is_mode_switch_usb(uint8_t bmRequestType, uint8_t bRequest, uint16_t wValue, uint16_t wIndex,
 							   uint16_t length) {
 	return bmRequestType == 0x21 && bRequest == 0x09 && wValue == 0x304 && length >= 8;
@@ -502,58 +508,12 @@ void survive_data_cb(SurviveUSBInterface *si) {
 }
 
 // USB Subsystem
-void survive_usb_close(SurviveContext *t);
+void survive_usb_close(SurviveViveData *t);
 static int survive_usb_init(SurviveViveData *sv);
 int survive_usb_poll(SurviveContext *ctx);
 static int survive_get_config(char **config, SurviveViveData *ctx, struct SurviveUSBInfo *, int iface,
 							  int send_extra_magic);
 static int survive_vive_send_magic(SurviveContext *ctx, void *drv, int magic_code, void *data, int datalen);
-
-#ifdef HIDAPI
-static void *HAPIReceiver(void *v) {
-	SurviveUSBInterface *iface = v;
-	USB_INTERFACE_HANDLE *hp = &iface->uh;
-
-	if ((iface->actual_len = hid_read(*hp, iface->buffer, sizeof(iface->buffer))) > 0) {
-		// if( iface->actual_len  == 52 ) continue;
-		iface->packet_count++;
-		survive_data_cb(iface);
-	}
-	if (iface->actual_len < 0) {
-		SurviveContext* ctx = iface->sv->ctx;
-		SV_WARN("Error in hid read: %d", iface->actual_len);
-		iface->assoc_obj = 0;
-	}
-	// XXX TODO: Mark device as failed.
-	return 0;
-}
-#else
-static void handle_transfer(struct libusb_transfer *transfer) {
-	SurviveUSBInterface *iface = transfer->user_data;
-	if (iface->shutdown) {
-		SurviveContext *ctx = iface->ctx;
-		SV_VERBOSE(100, "Cleaning up transfer on %d %s", iface->which_interface_am_i, iface->hname);
-		iface->ctx = 0;
-		return;
-	}
-
-	SurviveContext *ctx = iface->ctx;
-
-	if (transfer->status != LIBUSB_TRANSFER_COMPLETED) {
-		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Transfer problem %s %d with %s", libusb_error_name(transfer->status),
-				 transfer->status, iface->hname);
-		return;
-	}
-
-	iface->actual_len = transfer->actual_length;
-	iface->cb(iface);
-	iface->packet_count++;
-
-	if (libusb_submit_transfer(transfer)) {
-		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Error resubmitting transfer for %s", iface->hname);
-	}
-}
-#endif
 
 static int AttachInterface(SurviveViveData *sv, struct SurviveUSBInfo *usbObject, const struct Endpoint_t *endpoint,
 						   USBHANDLE devh, usb_callback cb) {
@@ -610,107 +570,6 @@ static int AttachInterface(SurviveViveData *sv, struct SurviveUSBInfo *usbObject
 	return 0;
 }
 
-/*
-static void debug_cb( struct SurviveUSBInterface * si )
-{
-	int i;
-	int len = si->actual_len;
-	printf( "%16s: %d: ", si->hname, len );
-	for( i = 0; i < len; i++ )
-	{
-		printf( "%02x ", si->buffer[i] );
-	}
-	printf( "\n" );
-}*/
-
-// XXX TODO: Redo this subsystem for setting/updating feature reports.
-
-#ifdef HIDAPI
-
-static inline int update_feature_report_async(USBHANDLE dev, uint16_t iface, uint8_t *data, int datalen) {
-	errno = 0;
-	int r = hid_send_feature_report(dev->interfaces[iface], data, datalen);
-	assert(errno == 0);
-	// wprintf( L"HUR: (%p) %d (%d) [%d] %S\n", dev, r, datalen, data[0], hid_error(dev->interfaces[iface]) );
-	return r;
-}
-
-static inline int update_feature_report(USBHANDLE dev, uint16_t iface, uint8_t *data, int datalen) {
-	int r = hid_send_feature_report(dev->interfaces[iface], data, datalen);
-	// wprintf( L"HUR: (%p) %d (%d) [%d] %S\n", dev, r, datalen, data[0], hid_error(dev->interfaces[iface]) );
-	return r;
-}
-static inline int getupdate_feature_report(USBHANDLE dev, uint16_t iface, uint8_t *data, size_t datalen) {
-	int r = hid_get_feature_report(dev->interfaces[iface], data, datalen);
-	//	printf( "HGR: (%p) %d (%d) (%d)\n", dev, r, datalen, data[0] );
-	if (r == -1)
-		return -9; // Pretend it's not a critical error
-	return r;
-}
-
-#else
-
-static inline int update_feature_report(libusb_device_handle *dev, uint16_t interface, uint8_t *data, int datalen) {
-	//	int xfer;
-	//	int r = libusb_interrupt_transfer(dev, 0x01, data, datalen, &xfer, 1000);
-	//	printf( "XFER: %d / R: %d\n", xfer, r );
-	//	return xfer;
-	return libusb_control_transfer(dev, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_OUT,
-								   0x09, 0x300 | data[0], interface, data, datalen, 1000);
-}
-
-void monitor_transfer(struct libusb_transfer *transfer) {
-	assert(transfer->status == 0);
-	libusb_free_transfer(transfer);
-}
-
-int libusb_control_transfer_async(libusb_device_handle *dev_handle, uint8_t bmRequestType, uint8_t bRequest,
-								  uint16_t wValue, uint16_t wIndex, unsigned char *data, uint16_t wLength,
-								  unsigned int timeout) {
-	struct libusb_transfer *transfer = libusb_alloc_transfer(0);
-	unsigned char *buffer;
-	int r;
-	if (!transfer)
-		return LIBUSB_ERROR_NO_MEM;
-
-	buffer = SV_MALLOC(LIBUSB_CONTROL_SETUP_SIZE + wLength);
-	if (!buffer) {
-		libusb_free_transfer(transfer);
-		return LIBUSB_ERROR_NO_MEM;
-	}
-	libusb_fill_control_setup(buffer, bmRequestType, bRequest, wValue, wIndex, wLength);
-	if ((bmRequestType & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_OUT)
-		memcpy(buffer + LIBUSB_CONTROL_SETUP_SIZE, data, wLength);
-	libusb_fill_control_transfer(transfer, dev_handle, buffer, monitor_transfer, dev_handle, timeout);
-	transfer->flags = LIBUSB_TRANSFER_FREE_BUFFER;
-	r = libusb_submit_transfer(transfer);
-	if (r < 0) {
-		libusb_free_transfer(transfer);
-		return r;
-	}
-	return wLength;
-}
-
-static inline int update_feature_report_async(libusb_device_handle *dev, uint16_t interface, uint8_t *data,
-											  int datalen) {
-	return libusb_control_transfer_async(dev,
-										 LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_OUT,
-										 0x09, 0x300 | data[0], interface, data, datalen, 1000);
-}
-
-static inline int getupdate_feature_report(libusb_device_handle *dev, uint16_t interface, uint8_t *data, int datalen) {
-
-	int ret = libusb_control_transfer(dev, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_IN,
-									  0x01, 0x300 | data[0], interface, data, datalen, 1000);
-	if (ret == -9)
-		return -9;
-	if (ret < 0)
-		return -1;
-	return ret;
-}
-
-#endif
-
 static inline int hid_get_feature_report_timeout(USBHANDLE device, uint16_t iface, unsigned char *buf, size_t len) {
 	int ret;
 	uint8_t i = 0;
@@ -730,184 +589,6 @@ static inline int get_feature_report_timeout_locked(SurviveContext *ctx, USBHAND
 	int rtn = hid_get_feature_report_timeout(device, iface, buf, len);
 	survive_get_ctx_lock(ctx);
 	return rtn;
-}
-
-#ifdef HIDAPI
-typedef struct hid_device_info *survive_usb_device_t;
-typedef struct hid_device_info *survive_usb_devices_t;
-
-static int survive_usb_subsystem_init(SurviveViveData *sv) {
-	return hid_init();
-}
-static int survive_get_usb_devices(SurviveViveData *sv, survive_usb_devices_t *devs) {
-	*devs = hid_enumerate(0, 0);
-	return 0;
-}
-static void survive_free_usb_devices(survive_usb_devices_t devs) { hid_free_enumeration(devs); }
-
-typedef survive_usb_device_t survive_usb_device_enumerator;
-static survive_usb_device_t get_next_device(survive_usb_device_enumerator *iterator, survive_usb_devices_t list) {
-	if (*iterator == 0) {
-		return *iterator = list;
-	}
-
-	do {
-		*iterator = ((*iterator)->next);
-	} while (*iterator && (*iterator)->interface_number != 0 && (*iterator)->interface_number != -1);
-
-	return *iterator;
-}
-
-static int survive_get_ids(survive_usb_device_t d, uint16_t *idVendor, uint16_t *idProduct) {
-	*idVendor = d->vendor_id;
-	*idProduct = d->product_id;
-
-	return 0;
-}
-
-static const char *survive_usb_error_name(int ret) { return ""; }
-
-static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, struct SurviveUSBInfo *usbInfo) {
-	usbInfo->handle = SV_CALLOC(1, sizeof(struct HIDAPI_USB_Handle_t));
-	survive_usb_device_t c = d;
-
-	struct SurviveContext *ctx = sv->ctx;
-	
-
-	survive_usb_devices_t devs;
-	int ret = survive_get_usb_devices(sv, &devs);
-
-	if (ret < 0) {
-		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Couldn't get list of USB devices %d (%s)", ret,
-				 survive_usb_error_name(ret));
-		return ret;
-	}
-
-	if (d->serial_number == 0) {
-		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Couldn't get serial number for device %s", usbInfo->device_info->name);
-		return -1;
-	}
-
-	for (survive_usb_device_t c = devs; c; c = c->next) {
-		int interface_num = c->interface_number;
-		interface_num = interface_num < 0 ? 0 : interface_num;
-		if (c && c->serial_number && wcscmp(c->serial_number, d->serial_number)==0) {
-			
-			usbInfo->handle->interfaces[interface_num] = hid_open_path(c->path);
-
-			if (!usbInfo->handle->interfaces[interface_num]) {
-				SV_INFO("Warning: Could not find vive device %04x:%04x", d->vendor_id, d->product_id);
-				return -1;
-			}
-		}
-	}
-
-	survive_free_usb_devices(devs);
-
-	return 0;
-}
-static void setup_hotplug(SurviveViveData *sv) {}
-#else
-typedef libusb_device *survive_usb_device_t;
-typedef libusb_device **survive_usb_devices_t;
-
-static int survive_usb_subsystem_init(SurviveViveData *sv) {
-	int rtn = libusb_init(&sv->usbctx);
-#if LIBUSB_API_VERSION < 0x01000106
-	libusb_set_debug(NULL, LIBUSB_LOG_LEVEL_WARNING);
-#else
-	libusb_set_option(NULL, LIBUSB_OPTION_LOG_LEVEL, LIBUSB_LOG_LEVEL_WARNING);
-#endif
-	return rtn;
-}
-static int survive_get_usb_devices(SurviveViveData *sv, survive_usb_devices_t *devs) {
-	return libusb_get_device_list(sv->usbctx, devs);
-}
-static void survive_free_usb_devices(survive_usb_devices_t devs) { libusb_free_device_list(devs, 1); }
-
-typedef int survive_usb_device_enumerator;
-static survive_usb_device_t get_next_device(survive_usb_device_enumerator *iterator, survive_usb_devices_t list) {
-	assert(iterator);
-	return list[(*iterator)++];
-}
-
-int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d);
-int libusb_hotplug(libusb_context *usbctx, libusb_device *device, libusb_hotplug_event event, void *user_data) {
-	SurviveViveData *sv = user_data;
-	SurviveContext *ctx = sv->ctx;
-
-	if (event == LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED) {
-		survive_vive_add_usb_device(sv, device);
-	}
-
-	return 0;
-}
-static void setup_hotplug(SurviveViveData *sv) {
-	libusb_hotplug_register_callback(sv->usbctx, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT,
-									 LIBUSB_HOTPLUG_NO_FLAGS, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY,
-									 LIBUSB_HOTPLUG_MATCH_ANY, libusb_hotplug, sv, 0);
-}
-
-static int survive_get_ids(survive_usb_device_t d, uint16_t *idVendor, uint16_t *idProduct) {
-	struct libusb_device_descriptor desc;
-
-	int ret = libusb_get_device_descriptor(d, &desc);
-	*idVendor = 0;
-	*idProduct = 0;
-	if (ret)
-		return ret;
-
-	*idVendor = desc.idVendor;
-	*idProduct = desc.idProduct;
-
-	return ret;
-}
-
-static const char *survive_usb_error_name(int ret) { return libusb_error_name(ret); }
-
-static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, struct SurviveUSBInfo *usbInfo) {
-	struct libusb_config_descriptor *conf;
-	int ret = libusb_get_config_descriptor(d, 0, &conf);
-	if (ret)
-		goto cleanup_and_rtn;
-
-	const struct DeviceInfo *info = usbInfo->device_info;
-	ret = libusb_open(d, &usbInfo->handle);
-
-	uint16_t idVendor;
-	uint16_t idProduct;
-	survive_get_ids(d, &idVendor, &idProduct);
-
-	SurviveContext *ctx = sv->ctx;
-	if (!usbInfo->handle || ret) {
-		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Error: cannot open device \"%s\" with vid/pid %04x:%04x error %d (%s)",
-				 info->name, idVendor, idProduct, ret, libusb_error_name(ret));
-		goto cleanup_and_rtn;
-	}
-
-	libusb_set_auto_detach_kernel_driver(usbInfo->handle, 1);
-	for (int j = 0; j < conf->bNumInterfaces; j++) {
-		int ret = libusb_claim_interface(usbInfo->handle, j);
-		if (ret != 0) {
-			SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Could not claim interface %d of %s: %d", j, info->name, ret);
-			goto cleanup_and_rtn;
-		}
-	}
-
-	SV_VERBOSE(40, "Successfully enumerated %s (%d) %04x:%04x", info->name, conf->bNumInterfaces, idVendor, idProduct);
-
-	usleep(100000);
-
-cleanup_and_rtn:
-	libusb_free_config_descriptor(conf);
-	return ret;
-}
-#endif
-
-static void survive_close_usb_device(struct SurviveUSBInfo *usbInfo) {
-	for (size_t j = 0; j < usbInfo->interface_cnt; j++) {
-		usbInfo->interfaces[j].shutdown = 1;
-	}
 }
 
 static int LoadConfig(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int iface);
@@ -995,7 +676,7 @@ int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d) {
 			for (const struct Endpoint_t *endpoint = usbInfo->device_info->endpoints; endpoint->name; endpoint++) {
 				int errorCode = AttachInterface(sv, usbInfo, endpoint, usbInfo->handle, survive_data_cb);
 				if (errorCode < 0) {
-					SV_WARN("Could not attach interface %d: %d", endpoint);
+					SV_WARN("Could not attach interface %s: %d", endpoint->name, errorCode);
 				}
 			}
 		}
@@ -1111,46 +792,8 @@ int survive_vive_send_haptic(SurviveObject *so, uint8_t reserved, uint16_t pulse
 }
 
 void survive_vive_usb_close(SurviveViveData *sv) {
-	int i, j;
 	survive_release_ctx_lock(sv->ctx);
-#ifdef HIDAPI
-	for (i = 0; i < sv->udev_cnt; i++) {
-		for (int j = 0; j < 8; j++) {
-			hid_close(sv->udev[i].handle->interfaces[j]);
-		}
-
-		free(sv->udev[i].handle);
-#ifndef HID_NONBLOCKING
-		for (int j = 0; j < MAX_INTERFACES_PER_DEVICE; j++) {
-			OGJoinThread(sv->udev[i].interfaces->servicethread);
-		}
-#endif
-	}
-	// This is global, don't do it on account of other tasks.
-	// hid_exit();
-
-#else
-	for (i = 0; i < sv->udev_cnt; i++) {
-		for (j = 0; j < sv->udev[i].interface_cnt; j++) {
-			sv->udev[i].interfaces[j].shutdown = 1;
-		}
-		SurviveContext *ctx = sv->ctx;
-		for (j = 0; j < sv->udev[i].interface_cnt; j++) {
-			SurviveUSBInterface *iface = &sv->udev[i].interfaces[j];
-			SV_INFO("Cleaning up interface on %d %s", iface->which_interface_am_i, iface->hname);
-			libusb_cancel_transfer(sv->udev[i].interfaces[j].transfer);
-			while (sv->udev[i].interfaces[j].ctx) {
-				libusb_handle_events(sv->usbctx);
-			}
-			libusb_free_transfer(sv->udev[i].interfaces[j].transfer);
-
-			libusb_release_interface(sv->udev[i].handle, j);
-		}
-
-		libusb_close(sv->udev[i].handle);
-	}
-	libusb_exit(sv->usbctx);
-#endif
+	survive_usb_close(sv);
 	survive_get_ctx_lock(sv->ctx);
 }
 
@@ -2976,34 +2619,6 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 				dump_binary = true;
 			} else {
 				vive_switch_mode(obj->driver, LightcapMode_raw1);
-				/*
-								#ifdef HIDAPI
-								// TODO: This seems hacky....
-								for (int i = 0; si->sv && i < si->sv->udev_cnt; i++) {
-									struct SurviveUSBInfo *usbInfo = &si->sv->udev[i];
-									int r =
-										update_feature_report(usbInfo->handle, 0, vive_magic_raw_mode_1,
-				sizeof(vive_magic_raw_mode_1)); if (r != sizeof(vive_magic_raw_mode_1)) { SV_WARN("Could not send raw
-				mode to %s (%d): %S", obj->codename, r, hid_error(si->uh));
-									}
-								}
-				#else
-								if (si->transfer) {
-									int r = update_feature_report_async(si->transfer->dev_handle, 0,
-				vive_magic_raw_mode_1, sizeof(vive_magic_raw_mode_1)); if (r != sizeof(vive_magic_raw_mode_1)) {
-										SV_WARN("Could not send raw mode to %s (%d)", obj->codename, r);
-									}
-								} else {
-									static bool transfer_null_warning = false;
-									if (!transfer_null_warning) {
-										SV_WARN("Can't update the usb device %s out of raw 0 mode; dumping data",
-				obj->codename); transfer_null_warning = true;
-									}
-									// USBMON -- grab the output
-									// dump_binary = true;
-								}
-				#endif
-				 */
 			}
 
 			if (dump_binary) {
@@ -3205,6 +2820,9 @@ static int LoadConfig(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int i
 
 int survive_vive_close(SurviveContext *ctx, void *driver) {
 	SurviveViveData *sv = driver;
+	for (int i = 0; i < sv->udev_cnt; i++) {
+		survive_close_usb_device(&sv->udev[i]);
+	}
 	survive_vive_usb_close(sv);
 	free(sv);
 	return 0;
@@ -3244,29 +2862,6 @@ int DriverRegHTCVive(SurviveContext *ctx) {
 		goto fail_gracefully;
 	}
 
-	/*
-	for (int i = 0; i < sv->udev_cnt; i++) {
-		struct SurviveUSBInfo *usbInfo = &sv->udev[i];
-		if (usbInfo->device_info->type != USB_DEV_HMD) {
-			int hasError = LoadConfig(sv, usbInfo, 0);
-
-			// Powered off devices are stripped of their SurviveObject
-			if (hasError != 0 && usbInfo->so) {
-				SV_INFO("%s config issue.", usbInfo->so->codename);
-			}
-
-			if (hasError != 0) {
-				survive_close_usb_device(usbInfo);
-			}
-		}
-
-	}
-
-	for (int i = 0; i < sv->udev_cnt; i++) {
-		struct SurviveUSBInfo *usbInfo = &sv->udev[i];
-
-	}
-		 */
 #ifdef HIDAPI
 	/*
 	// Tricky: use other interface for actual lightcap.  XXX THIS IS NOT YET RIGHT!!!

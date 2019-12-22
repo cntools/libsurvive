@@ -220,6 +220,9 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 	SurviveContext *ctx = so->ctx;
 	PoserDataSVD *dd = so->PoserFnData;
 
+	if (pt == POSERDATA_DISASSOCIATE && dd == 0)
+		return 0;
+
 	if (!dd)
 		so->PoserFnData = dd = PoserDataSVD_new(so);
 

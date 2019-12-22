@@ -7,7 +7,6 @@ ENDIF()
 
 include_directories(redist include/libsurvive include)
 
-
 option(USE_HIDAPI "Use HIDAPI instead of libusb" OFF)
 option(USE_ASAN "Use address sanitizer" OFF)
 option(ENABLE_TESTS "Enable build / execution of tests" OFF)
@@ -15,6 +14,9 @@ option(ENABLE_TESTS "Enable build / execution of tests" OFF)
 IF (ENABLE_TESTS)
 	enable_testing()
 ENDIF()
+
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 
 IF(NOT WIN32)
 	include(CheckIncludeFile)
@@ -80,7 +82,7 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
         ./redist/linmath.c
         ./redist/mpfit/mpfit.c
         ./redist/puff.c
-	./redist/symbol_enumerator.c
+		./redist/symbol_enumerator.c
         ./src/ootx_decoder.c
         ./src/poser.c
         ./src/poser_general_optimizer.c
@@ -116,10 +118,7 @@ set_target_properties(survive PROPERTIES FOLDER "libraries")
 
 add_subdirectory(redist)
 
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
-
-target_link_libraries(survive minimal_opencv Threads::Threads ${CMAKE_DL_LIBS} ${ADDITIONAL_LIBRARIES})
+target_link_libraries(survive minimal_opencv ${CMAKE_THREAD_LIBS_INIT} Threads::Threads ${CMAKE_DL_LIBS} ${ADDITIONAL_LIBRARIES})
 IF(NOT WIN32)
 	target_link_libraries(survive z m usb-1.0 )
 else()

@@ -1,3 +1,4 @@
+#pragma once
 
 #ifdef HIDAPI
 #if defined(WINDOWS) || defined(WIN32) || defined(_WIN32)
