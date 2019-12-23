@@ -6,6 +6,7 @@
 #include "survive_config.h"
 #include "survive_default_devices.h"
 #include "survive_reproject_gen2.h"
+#include "survive_str.h"
 #include <assert.h>
 #include <json_helpers.h>
 #include <math.h>
@@ -224,16 +225,6 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 	return 0;
 }
 
-void str_append(char **pString, const char *str) {
-	size_t l1 = *pString ? strlen(*pString) : 0;
-	size_t l2 = strlen(str);
-
-	*pString = SV_REALLOC(*pString, l1 + l2 + 1);
-	(*pString)[l1] = 0;
-
-	strcat(*pString, str);
-}
-
 const BaseStationData simulated_bsd[2] = {
 	{.PositionSet = 1,
 	 .BaseStationID = 0,
@@ -281,7 +272,8 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	sp->velocity.AxisAngleRot[1] = .5;
 	sp->velocity.AxisAngleRot[2] = .5;
 
-	char *cfg = 0, *loc_buf = 0, *nor_buf = 0;
+	cstring cfg = {};
+	cstring loc = {}, nor_buf = {};
 
 	FLT r = .1;
 	srand(42);
@@ -311,13 +303,13 @@ int DriverRegSimulator(SurviveContext *ctx) {
 
 		char buffer[1024] = { 0 };
 		sprintf(buffer, "[%f, %f, %f],\n", locations[0], locations[1], locations[2]);
-		str_append(&loc_buf, buffer);
+		str_append(&loc, buffer);
 
 		sprintf(buffer, "[%f, %f, %f],\n", normals[0], normals[1], normals[2]);
 		str_append(&nor_buf, buffer);
 	}
-	nor_buf[strlen(nor_buf) - 2] = 0;
-	loc_buf[strlen(loc_buf) - 2] = 0;
+	nor_buf.d[nor_buf.length - 2] = 0;
+	loc.d[loc.length - 2] = 0;
 
 	double trackref_from_head[] = {rand(), rand(), rand(), rand(), rand(), rand(), rand()};
 	double trackref_from_imu[] = {rand(), rand(), rand(), rand(), rand(), rand(), rand()};
@@ -342,20 +334,20 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	str_append(&cfg, buffer);
 	str_append(&cfg, "     \"lighthouse_config\": {\n");
 	str_append(&cfg, "          \"modelNormals\": [\n");
-	str_append(&cfg, nor_buf);
+	str_append(&cfg, nor_buf.d);
 	str_append(&cfg, "          ],\n");
 	str_append(&cfg, "          \"modelPoints\": [\n");
-	str_append(&cfg, loc_buf);
+	str_append(&cfg, loc.d);
 	str_append(&cfg, "          ]\n");
 	str_append(&cfg, "     }\n");
 	str_append(&cfg, "}\n");
 	device->timebase_hz = 48000000;
 	device->imu_freq = 1000.0f;
 
-	ctx->configproc(device, cfg, strlen(cfg));
+	ctx->configproc(device, cfg.d, strlen(cfg.d));
 
-	free(loc_buf);
-	free(nor_buf);
+	str_free(&loc);
+	str_free(&nor_buf);
 
 	sp->so = device;
 	survive_add_object(ctx, device);

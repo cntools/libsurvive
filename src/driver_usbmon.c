@@ -213,8 +213,8 @@ static int usbmon_close(struct SurviveContext *ctx, void *_driver) {
 	struct pcap_stat stats = {};
 	pcap_stats(driver->pcap, &stats);
 
-	SV_INFO("usbmon saw %u/%u packets, %u dropped, %u dropped in driver", (uint32_t)driver->packet_cnt, stats.ps_recv,
-			stats.ps_drop, stats.ps_ifdrop);
+	SV_INFO("usbmon saw %u/%u packets, %u dropped, %u dropped in driver in %f seconds", (uint32_t)driver->packet_cnt,
+			stats.ps_recv, stats.ps_drop, stats.ps_ifdrop, driver->time_now);
 	if (driver->pcapDumper) {
 		pcap_dump_close(driver->pcapDumper);
 	}

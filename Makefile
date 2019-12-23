@@ -30,7 +30,7 @@ ifdef WINDOWS
 	LIBSURVIVE_CORE:=redist/puff.c redist/crc32.c redist/hid-windows.c winbuild/getdelim.c
 	CC:=i686-w64-mingw32-gcc
 else
-	CFLAGS+=-Iinclude/libsurvive -fPIC -g -O$(OPT) -Iredist -std=gnu99 -MD
+	CFLAGS+=-Iinclude/libsurvive -fPIC -g -O$(OPT) -Iredist -std=gnu99 -MD -DHAVE_FOPENCOOKIE=1
 	LDFLAGS+=-L/usr/local/lib -lpthread -lz -lm -g -llapacke  -lcblas -lm  -lusb-1.0 -ldl
 	LDFLAGS_TOOLS+=-Llib -lsurvive -Wl,-rpath,lib -lX11 $(LDFLAGS)
 endif
