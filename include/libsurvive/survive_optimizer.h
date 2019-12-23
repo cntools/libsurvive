@@ -38,6 +38,7 @@ typedef struct {
 	int cameraLength;
 	int ptsLength;
 
+	mp_config *cfg;
 } survive_optimizer;
 
 #define SURVIVE_OPTIMIZER_SETUP_BUFFERS(ctx, alloc_fn)                                                                 \

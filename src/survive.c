@@ -712,12 +712,6 @@ void survive_close(SurviveContext *ctx) {
 
 	config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
 
-	destroy_config_group(ctx->global_config_values);
-	destroy_config_group(ctx->temporary_config_values);
-
-	for (int lh = 0; lh < NUM_GEN2_LIGHTHOUSES; lh++)
-		destroy_config_group(ctx->lh_config + lh);
-
 	for (int i = 0; i < ctx->objs_ct; i++) {
 		survive_destroy_device(ctx->objs[i]);
 	}
@@ -731,6 +725,12 @@ void survive_close(SurviveContext *ctx) {
 			free(ctx->drivers[i]);
 		}
 	}
+
+	destroy_config_group(ctx->global_config_values);
+	destroy_config_group(ctx->temporary_config_values);
+
+	for (int lh = 0; lh < NUM_GEN2_LIGHTHOUSES; lh++)
+		destroy_config_group(ctx->lh_config + lh);
 
 	struct SurviveContext_private *pctx = ctx->private_members;
 	OGDeleteSema(pctx->poll_sema);

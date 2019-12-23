@@ -335,7 +335,9 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 	SurviveContext *ctx = optimizer->so->ctx;
 	// SV_INFO("Run start");
 
-	mp_config *cfg = survive_optimizer_get_cfg(ctx);
+	mp_config *cfg = optimizer->cfg;
+	if (cfg == 0)
+		cfg = survive_optimizer_get_cfg(ctx);
 
 #ifndef NDEBUG
 	for (int i = 0; i < survive_optimizer_get_parameters_count(optimizer); i++) {
@@ -352,8 +354,12 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 		}
 	}
 #endif
-	return mpfit(mpfunc, optimizer->measurementsCnt, survive_optimizer_get_parameters_count(optimizer),
-				 optimizer->parameters, optimizer->parameters_info, cfg, optimizer, result);
+	// MPFit runs on temporary storage; so parameters is manipulated in mpfunc. Save it and restore it here.
+	double *params = optimizer->parameters;
+	int rtn = mpfit(mpfunc, optimizer->measurementsCnt, survive_optimizer_get_parameters_count(optimizer),
+					optimizer->parameters, optimizer->parameters_info, cfg, optimizer, result);
+	optimizer->parameters = params;
+	return rtn;
 }
 
 void survive_optimizer_set_reproject_model(survive_optimizer *optimizer,
