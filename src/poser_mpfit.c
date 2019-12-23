@@ -308,7 +308,9 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 
 	if (canPossiblySolveLHS) {
 		serialize_mpfit(d, &mpfitctx);
+		mpfitctx.cfg = survive_optimizer_precise_config();
 	}
+
 	int res = survive_optimizer_run(&mpfitctx, &result);
 
 	double rtn = -1;
@@ -372,6 +374,8 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 
 	survive_optimizer_setup_cameras(&mpfitctx, so->ctx, false);
 	survive_optimizer_setup_pose(&mpfitctx, 0, true, false);
+
+	mpfitctx.cfg = survive_optimizer_precise_config();
 
 	SurviveSensorActivations activations;
 	PoserDataFullScene2Activations(pdfs, &activations);

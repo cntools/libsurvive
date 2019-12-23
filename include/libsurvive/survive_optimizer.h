@@ -99,7 +99,7 @@ SURVIVE_EXPORT void survive_optimizer_serialize(const survive_optimizer *optimiz
 SURVIVE_EXPORT survive_optimizer *survive_optimizer_load(const char *fn);
 
 SURVIVE_EXPORT FLT survive_optimizer_current_norm(const survive_optimizer *optimizer);
-
+SURVIVE_EXPORT mp_config *survive_optimizer_precise_config();
 SURVIVE_EXPORT int survive_optimizer_nonfixed_cnt(const survive_optimizer *optimizer);
 SURVIVE_EXPORT void survive_optimizer_get_nonfixed(const survive_optimizer *optimizer, double *params);
 SURVIVE_EXPORT void survive_optimizer_set_nonfixed(survive_optimizer *optimizer, double *params);

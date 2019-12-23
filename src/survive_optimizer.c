@@ -22,7 +22,7 @@ STATIC_CONFIG_ITEM(OPTIMIZER_STEPFACTOR, "optimizer-stepfactor", 'f', "Initial s
 STATIC_CONFIG_ITEM(OPTIMIZER_DOUSERSCALE, "optimizer-douserscale", 'i', "Scale variables by user values", 0);
 STATIC_CONFIG_ITEM(OPTIMIZER_MAXITER, "optimizer-maxiter", 'i', "Maximum iterations", 0);
 STATIC_CONFIG_ITEM(OPTIMIZER_MAXFEV, "optimizer-maxfev", 'i', "Maximum function evals", 0);
-STATIC_CONFIG_ITEM(OPTIMIZER_NORMTOL, "optimizer-normtol", 'f', "Convergence for norm", 0.0001);
+STATIC_CONFIG_ITEM(OPTIMIZER_NORMTOL, "optimizer-normtol", 'f', "Convergence for norm", 0.00005);
 STATIC_CONFIG_ITEM(OPTIMIZER_NPRINT, "optimizer-nprint", 'i', "", 0);
 
 static char *object_parameter_names[] = {"Pose x",	 "Pose y",	 "Pose z",	"Pose Rot w",
@@ -330,6 +330,9 @@ static mp_config *survive_optimizer_get_cfg(SurviveContext *ctx) {
 	cachedCfg.iterproc = 0;
 	return &cachedCfg;
 }
+
+mp_config precise_cfg = {};
+SURVIVE_EXPORT mp_config *survive_optimizer_precise_config() { return &precise_cfg; }
 
 int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result) {
 	SurviveContext *ctx = optimizer->so->ctx;
