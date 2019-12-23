@@ -302,10 +302,10 @@ libsurvive has an integrated tool that allows you to record and playback streams
 
 ```
 make
-./data_recorder --record my_playback_file
+./data_recorder --record my_playback_file.rec.gz
 ```
 
-This gives you a file -- my_playback_file -- with all the device configurations and events file you need to replay it.
+This gives you a file -- `my_playback_file.rec.gz` -- with all the device configurations and events file you need to replay it.
 
 You can also just let it stream to standard output, but this tends to be a lot of information. 
 
@@ -314,12 +314,49 @@ To actually replay it, put that directory path in the 'playback' configuration v
 You can also replay it just with command line options:
 
 ```
-./calibrate --playback my_playback_file
+./calibrate --playback my_playback_file.rec.gz
 ```
+
+Based on the naming convention used, this will gzip the data on the fly. Omit the `.gz` for the raw text format.
 
 ## Playback speed
 
 There is also a config variable -- `PlaybackFactor` -- which adjusts the speed at which playback happens. A value of 1 emulates the same time the events file took to create, a value of 0 streams the data in as fast as possible. 
+
+# USBMON
+
+Occasionally, when dealing with new hardware or certain types of bugs that cause an issue in the USB layer, it is necessary to have a raw capture of the USB data seen / sent. The USBMON driver lets you do this.
+
+Currently this driver is only available on linux and you must have libpcap installed -- `sudo apt install libpcap-dev`. You also need the `usbmon` kernel module installed; but many linux flavors come with that built in. 
+
+To start usbmon and prepare it for use for all users, run:
+
+```
+sudo modprobe usbmon
+sudo setfacl -m u:$USER:r /dev/usbmon* # In sensitive environments, you can run survive-cli with sudo instead.
+```
+
+To capture usb data, run:
+
+```
+./survive-cli --usbmon-record my-recording.pcap.gz --htcvive <additional options>` 
+```
+
+You can run that playback with:
+```
+./survive-cli --usbmon-playback my-recording.pcap.gz [--playback-factor x] <additional options>` 
+```
+
+If you are sending this file for analysis, note that you need the accompanying `*.usbdevs` file with it to be useful. If you follow the `*.pcap.gz` convention, run something like
+
+```
+zip logs.zip *.pcap* config.json
+```
+
+and post the `logs.zip` to an issue or to discord. 
+
+This driver specifically only captures devices on a white list of VR equipment; but if you don't want to publish raw USB
+data to the internet, ask in discord for who to send it to in a private message. 
 
 # Visualization
 
