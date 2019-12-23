@@ -25,7 +25,7 @@ static inline int survive_test_assert() { return -1; }
 
 #define ASSERT_EQ(val1, val2)                                                                                          \
 	if ((val1) != (val2)) {                                                                                            \
-		fprintf(stderr, "Assert failed: " #val1 " == " #val2 ": %d != %d\n", val1, val2);                              \
+		fprintf(stderr, "Assert failed: " #val1 " == " #val2 ": %ld != %ld\n", (long)val1, (long)val2);                \
 		return survive_test_assert();                                                                                  \
 	}
 

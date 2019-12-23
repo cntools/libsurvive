@@ -1,8 +1,13 @@
 project(libsurvive C)
 cmake_minimum_required(VERSION 3.5.1)
 
+option(ENABLE_WARNINGS_AS_ERRORS "Use to flag all warnings as errors" OFF)
+
 IF(UNIX)
 	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=gnu99 -rdynamic -Werror=incompatible-pointer-types -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces -Werror=implicit-function-declaration")
+	if(ENABLE_WARNINGS_AS_ERRORS)
+		SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror")
+	endif()
 ENDIF()
 
 include_directories(redist include/libsurvive include)
@@ -231,6 +236,6 @@ if(CTYPESGEN)
 		list(APPEND INCLUDE_FLAGS "-I${include_directory}")
 	endforeach()
 
-	add_custom_target(pysurvive ALL COMMAND ${CTYPESGEN} ${CMAKE_SOURCE_DIR}/include/libsurvive/*.h ${INCLUDE_FLAGS} --no-macros -L$<TARGET_FILE_DIR:survive> -llibsurvive.so
+	add_custom_target(pysurvive COMMAND ${CTYPESGEN} ${CMAKE_SOURCE_DIR}/include/libsurvive/*.h ${INCLUDE_FLAGS} --no-macros -L$<TARGET_FILE_DIR:survive> -llibsurvive.so
 			--strip-prefix=survive_ -P Survive -o ${PYTHON_GENERATED_DIR}pysurvive_generated.py )
 endif()
