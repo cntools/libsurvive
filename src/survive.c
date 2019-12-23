@@ -702,14 +702,6 @@ void survive_close(SurviveContext *ctx) {
 		SV_INFO("Driver %s reports status %d", DriverName, r);
 	}
 
-	for (int i = 0; i < ctx->driver_ct; i++) {
-		if (ctx->drivercloses[i]) {
-			ctx->drivercloses[i](ctx, ctx->drivers[i]);
-		} else {
-			free(ctx->drivers[i]);
-		}
-	}
-
 	for (int i = 0; i < ctx->objs_ct; i++) {
 		PoserData pd;
 		pd.pt = POSERDATA_DISASSOCIATE;
@@ -731,6 +723,15 @@ void survive_close(SurviveContext *ctx) {
 	}
 
 	survive_destroy_recording(ctx);
+
+	for (int i = 0; i < ctx->driver_ct; i++) {
+		if (ctx->drivercloses[i]) {
+			ctx->drivercloses[i](ctx, ctx->drivers[i]);
+		} else {
+			free(ctx->drivers[i]);
+		}
+	}
+
 	struct SurviveContext_private *pctx = ctx->private_members;
 	OGDeleteSema(pctx->poll_sema);
 	free(pctx);
