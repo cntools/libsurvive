@@ -35,6 +35,23 @@ STATIC_CONFIG_ITEM(SENSOR_VARIANCE, "sensor-variance", 'f', "Base variance for e
 STATIC_CONFIG_ITEM(DISABLE_LIGHTHOUSE, "disable-lighthouse", 'i', "Disable given lighthouse from tracking", -1);
 STATIC_CONFIG_ITEM(RUN_EVERY_N_SYNCS, "syncs-per-run", 'i', "Number of sync pulses before running optimizer", 1);
 
+typedef struct MPFITStats {
+	int meas_failures;
+	int total_iterations;
+	int total_fev;
+	int total_runs;
+	double sum_errors;
+	double sum_origerrors;
+	int status_cnts[9];
+} MPFITStats;
+
+typedef struct MPFITGlobalData {
+	size_t instances;
+	MPFITStats stats;
+} MPFITGlobalData;
+
+static MPFITGlobalData g;
+
 typedef struct MPFITData {
 	GeneralOptimizerData opt;
 
@@ -54,9 +71,8 @@ typedef struct MPFITData {
 	bool useKalman;
 
 	const char *serialize_prefix;
-	struct {
-		int meas_failures;
-	} stats;
+	MPFITStats stats;
+
 } MPFITData;
 
 static size_t remove_lh_from_meas(survive_optimizer_measurement *meas, size_t meas_size, int lh) {
@@ -331,6 +347,15 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 				(int)meas_size, res);
 	}
 
+	d->stats.total_fev += result.nfev;
+	d->stats.total_iterations += result.niter;
+	d->stats.total_runs++;
+	d->stats.sum_errors += result.bestnorm;
+	d->stats.sum_origerrors += result.orignorm;
+	if (result.status > 0) {
+		assert(result.status < 10);
+		d->stats.status_cnts[result.status - 1]++;
+	}
 	return rtn;
 }
 
@@ -430,10 +455,26 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 
 	return rtn;
 }
+
+static inline void print_stats(SurviveContext *ctx, MPFITStats *stats) {
+	SV_INFO("\tmeas failures     %d", stats->meas_failures);
+	SV_INFO("\ttotal iterations  %d", stats->total_iterations);
+	SV_INFO("\tavg iterations    %f", (double)stats->total_iterations / stats->total_runs);
+	SV_INFO("\ttotal fevals      %d", stats->total_fev);
+	SV_INFO("\tavg fevals        %f", (double)stats->total_fev / stats->total_runs);
+	SV_INFO("\ttotal runs        %d", stats->total_runs);
+	SV_INFO("\tavg error         %f", stats->sum_errors / stats->total_runs);
+	SV_INFO("\tavg orig error    %f", stats->sum_origerrors / stats->total_runs);
+	for (int i = 0; i < sizeof(stats->status_cnts) / sizeof(int); i++) {
+		SV_INFO("\tStatus %10s %d", survive_optimizer_error(i + 1), stats->status_cnts[i]);
+	}
+}
+
 int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 	SurviveContext *ctx = so->ctx;
 	if (so->PoserFnData == 0) {
 		so->PoserFnData = SV_CALLOC(1, sizeof(MPFITData));
+		g.instances++;
 		MPFITData *d = so->PoserFnData;
 
 		general_optimizer_data_init(&d->opt, so);
@@ -510,8 +551,28 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 	}
 
 	case POSERDATA_DISASSOCIATE: {
-		SV_INFO("MPFIT stats:");
-		SV_INFO("\tmeas failures %d", d->stats.meas_failures);
+		SV_INFO("MPFIT stats for %s:", so->codename);
+		if (ctx->log_level > 5) {
+			print_stats(ctx, &d->stats);
+		}
+
+		g.stats.total_fev += d->stats.total_fev;
+		g.stats.total_runs += d->stats.total_runs;
+		g.stats.sum_errors += d->stats.sum_errors;
+		g.stats.meas_failures += d->stats.meas_failures;
+		g.stats.total_iterations += d->stats.total_iterations;
+		g.stats.sum_origerrors += d->stats.sum_origerrors;
+		for (int i = 0; i < sizeof(d->stats.status_cnts) / sizeof(int); i++) {
+			g.stats.status_cnts[i] += d->stats.status_cnts[i];
+		}
+
+		g.instances--;
+		if (ctx->log_level >= 1) {
+			if (g.instances == 0) {
+				SV_INFO("MPFIT overall stats:");
+				print_stats(ctx, &g.stats);
+			}
+		}
 		general_optimizer_data_dtor(&d->opt);
 		survive_imu_tracker_free(&d->tracker);
 		survive_detach_config(ctx, "disable-lighthouse", &d->disable_lighthouse);

@@ -457,7 +457,7 @@ void *pcap_thread_fn(void *_driver) {
 					if (is_config_start(usbp)) {
 						dev->last_config_id = 0;
 						dev->compressed_data_idx = 0;
-						SV_INFO("%s start of config", dev_name);
+						SV_VERBOSE(200, "%s start of config", dev_name);
 					} else if (is_config_request(usbp)) {
 						dev->last_config_id = usbp->id;
 					} else if (is_command_setup(usbp)) {

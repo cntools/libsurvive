@@ -13,6 +13,18 @@
 
 #include "mpfit/mpfit.h"
 
+STATIC_CONFIG_ITEM(OPTIMIZER_FTOL, "optimizer-ftol", 'f', "Relative chi-square convergence criterium", 0.);
+STATIC_CONFIG_ITEM(OPTIMIZER_XTOL, "optimizer-xtol", 'f', "Relative parameter convergence criterium", 0.0001);
+STATIC_CONFIG_ITEM(OPTIMIZER_GTOL, "optimizer-gtol", 'f', "Orthogonality convergence criterium", 0.);
+STATIC_CONFIG_ITEM(OPTIMIZER_COVTOL, "optimizer-covtol", 'f', "Range tolerance for covariance calculation", 0.);
+STATIC_CONFIG_ITEM(OPTIMIZER_EPSFCN, "optimizer-epsfcn", 'f', "Finite derivative step size", 0.);
+STATIC_CONFIG_ITEM(OPTIMIZER_STEPFACTOR, "optimizer-stepfactor", 'f', "Initial step bound", 0.);
+STATIC_CONFIG_ITEM(OPTIMIZER_DOUSERSCALE, "optimizer-douserscale", 'i', "Scale variables by user values", 0);
+STATIC_CONFIG_ITEM(OPTIMIZER_MAXITER, "optimizer-maxiter", 'i', "Maximum iterations", 0);
+STATIC_CONFIG_ITEM(OPTIMIZER_MAXFEV, "optimizer-maxfev", 'i', "Maximum function evals", 0);
+STATIC_CONFIG_ITEM(OPTIMIZER_NORMTOL, "optimizer-normtol", 'f', "Convergence for norm", 0.0001);
+STATIC_CONFIG_ITEM(OPTIMIZER_NPRINT, "optimizer-nprint", 'i', "", 0);
+
 static char *object_parameter_names[] = {"Pose x",	 "Pose y",	 "Pose z",	"Pose Rot w",
 										 "Pose Rot x", "Pose Rot y", "Pose Rot z"};
 
@@ -286,15 +298,44 @@ const char *survive_optimizer_error(int status) {
 		CASE(MP_OK_PAR);
 		CASE(MP_OK_BOTH);
 		CASE(MP_OK_DIR);
+		CASE(MP_OK_NORM);
 
+		CASE(MP_MAXITER);
+		CASE(MP_FTOL);
+		CASE(MP_GTOL);
+		CASE(MP_XTOL);
 	default:
 		return "Unknown error";
 	}
 }
 
+static SurviveContext *cachedCtx = 0;
+static mp_config cachedCfg = {};
+
+static mp_config *survive_optimizer_get_cfg(SurviveContext *ctx) {
+	if (ctx != cachedCtx) {
+		cachedCfg = (mp_config){};
+		cachedCfg.maxiter = survive_configf(ctx, OPTIMIZER_MAXITER_TAG, SC_GET, 0);
+		cachedCfg.maxfev = survive_configf(ctx, OPTIMIZER_MAXFEV_TAG, SC_GET, 0);
+		cachedCfg.ftol = survive_configf(ctx, OPTIMIZER_FTOL_TAG, SC_GET, 0);
+		cachedCfg.normtol = survive_configf(ctx, OPTIMIZER_NORMTOL_TAG, SC_GET, 0);
+		cachedCfg.xtol = survive_configf(ctx, OPTIMIZER_XTOL_TAG, SC_GET, 0);
+		cachedCfg.gtol = survive_configf(ctx, OPTIMIZER_GTOL_TAG, SC_GET, 0);
+		cachedCfg.covtol = survive_configf(ctx, OPTIMIZER_COVTOL_TAG, SC_GET, 0);
+		cachedCfg.epsfcn = survive_configf(ctx, OPTIMIZER_EPSFCN_TAG, SC_GET, 0);
+		cachedCfg.stepfactor = survive_configf(ctx, OPTIMIZER_STEPFACTOR_TAG, SC_GET, 0);
+		cachedCfg.douserscale = survive_configi(ctx, OPTIMIZER_DOUSERSCALE_TAG, SC_GET, 0);
+		cachedCfg.nprint = survive_configi(ctx, OPTIMIZER_NPRINT_TAG, SC_GET, 0);
+	}
+	cachedCfg.iterproc = 0;
+	return &cachedCfg;
+}
+
 int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result) {
 	SurviveContext *ctx = optimizer->so->ctx;
 	// SV_INFO("Run start");
+
+	mp_config *cfg = survive_optimizer_get_cfg(ctx);
 
 #ifndef NDEBUG
 	for (int i = 0; i < survive_optimizer_get_parameters_count(optimizer); i++) {
@@ -311,9 +352,8 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 		}
 	}
 #endif
-
 	return mpfit(mpfunc, optimizer->measurementsCnt, survive_optimizer_get_parameters_count(optimizer),
-				 optimizer->parameters, optimizer->parameters_info, 0, optimizer, result);
+				 optimizer->parameters, optimizer->parameters_info, cfg, optimizer, result);
 }
 
 void survive_optimizer_set_reproject_model(survive_optimizer *optimizer,

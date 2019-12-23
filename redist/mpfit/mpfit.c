@@ -299,6 +299,7 @@ int mpfit(mp_func funct, int m, int npar, double *xall, mp_par *pars, mp_config 
 	conf.ftol = 1e-10;
 	conf.xtol = 1e-10;
 	conf.gtol = 1e-10;
+	conf.normtol = 0;
 	conf.stepfactor = 100.0;
 	conf.nprint = 1;
 	conf.epsfcn = MP_MACHEP0;
@@ -332,6 +333,9 @@ int mpfit(mp_func funct, int m, int npar, double *xall, mp_par *pars, mp_config 
 			conf.covtol = config->covtol;
 		if (config->nofinitecheck > 0)
 			conf.nofinitecheck = config->nofinitecheck;
+
+		if (config->normtol > 0.)
+			conf.normtol = sqrt(config->normtol);
 		conf.maxfev = config->maxfev;
 	}
 
@@ -842,6 +846,9 @@ L200:
 	 */
 	if ((fabs(actred) <= conf.ftol) && (prered <= conf.ftol) && (p5 * ratio <= one)) {
 		info = MP_OK_CHI;
+	}
+	if (mp_dmax1(fnorm, fnorm1) < conf.normtol) {
+		info = MP_OK_NORM;
 	}
 	if (delta <= conf.xtol * xnorm) {
 		info = MP_OK_PAR;

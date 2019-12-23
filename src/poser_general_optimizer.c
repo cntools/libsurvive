@@ -178,6 +178,6 @@ void general_optimizer_data_dtor(GeneralOptimizerData *d) {
 		d->so->PoserFnData = d->seed_poser_data;
 		d->seed_poser(d->so, &pd);
 	}
-	SV_INFO("\tseed runs %d / %d", d->stats.poser_seed_runs, d->stats.runs);
-	SV_INFO("\terror failures %d", d->stats.error_failures);
+	SV_INFO("\tseed runs         %d / %d", d->stats.poser_seed_runs, d->stats.runs);
+	SV_INFO("\terror failures    %d", d->stats.error_failures);
 }

@@ -92,6 +92,7 @@ struct mp_config_struct {
 				   1 = perform check
 					*/
 	mp_iterproc iterproc; /* Placeholder pointer - must set to 0 */
+	double normtol;		  /* Norm convergence criteria Default: 0 */
 };
 
 /* Definition of results structure, for when fit completes */
@@ -150,6 +151,7 @@ typedef int (*mp_func)(int m,				/* Number of functions (elts of fvec) */
 #define MP_FTOL (6)	/* ftol is too small; no further improvement*/
 #define MP_XTOL (7)	/* xtol is too small; no further improvement*/
 #define MP_GTOL (8)	/* gtol is too small; no further improvement*/
+#define MP_OK_NORM (9) /* norm is small enough according to user */
 
 /* Double precision numeric constants */
 #define MP_MACHEP0 2.2204460e-16

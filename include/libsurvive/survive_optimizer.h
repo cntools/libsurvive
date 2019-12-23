@@ -1,8 +1,10 @@
 #pragma once
+
 #include "math.h"
 #include "string.h"
 #include "survive.h"
 #include "survive_reproject.h"
+#include <mpfit/mpfit.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,6 +37,7 @@ typedef struct {
 	int poseLength;
 	int cameraLength;
 	int ptsLength;
+
 } survive_optimizer;
 
 #define SURVIVE_OPTIMIZER_SETUP_BUFFERS(ctx, alloc_fn)                                                                 \
