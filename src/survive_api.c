@@ -241,6 +241,7 @@ SURVIVE_EXPORT SurviveSimpleContext *survive_simple_init_with_logger(int argc, c
 int survive_simple_stop_thread(SurviveSimpleContext *actx) {
 	actx->running = false;
 	intptr_t error = (intptr_t)OGJoinThread(actx->thread);
+	actx->thread = 0;
 	if (error != 0) {
 		SurviveContext *ctx = actx->ctx;
 		SV_INFO("Warning: Loop exited with error %" PRIdPTR, error);
@@ -254,6 +255,16 @@ void survive_simple_close(SurviveSimpleContext *actx) {
 	}
 
 	survive_close(actx->ctx);
+
+	for (struct SurviveSimpleObject *n = actx->objects.head; n;) {
+		struct SurviveSimpleObject *freeMe = n;
+		n = n->next;
+		free(freeMe);
+	}
+	OGDeleteMutex(actx->poll_mutex);
+	OGJoinThread(actx->thread);
+	actx->thread = 0;
+	free(actx);
 }
 
 static inline void *__simple_thread(void *_actx) {

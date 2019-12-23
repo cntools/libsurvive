@@ -1,6 +1,7 @@
 #ifndef _SURVIVE_H
 #define _SURVIVE_H
 
+#include "assert.h"
 #include "poser.h"
 #include "survive_types.h"
 #include <stdbool.h>
@@ -486,6 +487,8 @@ SURVIVE_EXPORT void handle_lightcap(SurviveObject *so, const LightcapElement *le
 		if (ctx)                                                                                                       \
 			ctx->report_errorproc(ctx, errorCode);                                                                     \
 		SV_LOG_NULL_GUARD ctx->logproc(ctx, SURVIVE_LOG_LEVEL_INFO, stbuff);                                           \
+		if (!ctx)                                                                                                      \
+			assert(0);                                                                                                 \
 	}
 
 inline static void *sv_dynamic_ptr_check(char *file, int line, void *ptr) {

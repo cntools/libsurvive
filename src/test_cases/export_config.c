@@ -29,8 +29,9 @@ TEST(Survive, ExportConfig) {
 
 	FILE *fw = fopen("test_config.json", "w");
 	fwrite(cfg, 1, strlen(cfg), fw);
-	free(cfg);
 	fclose(fw);
 
+	survive_destroy_device(device);
+	free(ctx);
 	return 0;
 }

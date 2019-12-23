@@ -2369,7 +2369,7 @@ end : {
 	}
 }
 
-void survive_vive_register_driver(SurviveObject *so, uint16_t vid, uint16_t pid) {
+struct SurviveUSBInfo *survive_vive_register_driver(SurviveObject *so, uint16_t vid, uint16_t pid) {
 	struct SurviveUSBInfo *d = calloc(1, sizeof(struct SurviveUSBInfo));
 	so->driver = d;
 	d->so = so;
@@ -2386,6 +2386,8 @@ void survive_vive_register_driver(SurviveObject *so, uint16_t vid, uint16_t pid)
 		d->device_info = info;
 		break;
 	}
+
+	return d;
 }
 
 static inline uint16_t read_buffer16(uint8_t *readdata, int idx) {

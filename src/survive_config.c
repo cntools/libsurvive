@@ -922,6 +922,10 @@ SURVIVE_EXPORT void survive_attach_configs(SurviveContext *ctx, const char *tag,
 
 SURVIVE_EXPORT void survive_detach_config(SurviveContext *ctx, const char *tag, void * var )
 {
+	if (ctx == 0) {
+		return;
+	}
+
 	config_entry *cv = sc_search(ctx, tag);
 	if( !cv )
 	{

@@ -111,6 +111,8 @@ static int TestKalmanIntegratePose(FLT pvariance, FLT rot_variance) {
 		}
 	}
 
+	survive_imu_tracker_free(&kpose);
+
 	return 0;
 }
 

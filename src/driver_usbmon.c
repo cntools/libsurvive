@@ -41,6 +41,7 @@ typedef struct vive_device_inst_t {
 	int devIdxForType;
 	bool hasConfiged;
 	SurviveObject *so;
+	struct SurviveUSBInfo *usbInfo;
 
 	uint64_t last_config_id;
 	uint8_t compressed_data[8192];
@@ -186,7 +187,6 @@ static void ingest_config_request(vive_device_inst_t *dev, const struct _usb_hea
 
 		if (!dev->hasConfiged) {
 			if (ctx->configproc(dev->so, uncompressed_data, len) == 0) {
-				survive_add_object(ctx, dev->so);
 				dev->hasConfiged = true;
 				dev->last_config_id = 0;
 			} else {
@@ -219,6 +219,11 @@ static int usbmon_close(struct SurviveContext *ctx, void *_driver) {
 		pcap_dump_close(driver->pcapDumper);
 	}
 	pcap_close(driver->pcap);
+
+	for (int i = 0; i < driver->usb_devices_cnt; i++) {
+		vive_device_inst_t *dev = &driver->usb_devices[i];
+		free(dev->usbInfo);
+	}
 	free(driver);
 	return 0;
 }
@@ -348,7 +353,9 @@ static int setup_usb_devices(SurviveDriverUSBMon *sp) {
 
 			SurviveObject *so = survive_create_device(ctx, "UMN", 0, buff, 0);
 			sp->usb_devices[i].so = so;
-			survive_vive_register_driver(so, sp->usb_devices[i].device->vid, sp->usb_devices[i].device->pid);
+			sp->usb_devices[i].usbInfo =
+				survive_vive_register_driver(so, sp->usb_devices[i].device->vid, sp->usb_devices[i].device->pid);
+			survive_add_object(ctx, so);
 		}
 		char filter[256] = {};
 		sprintf(filter, "(usb.bus_id = %d and usb.device_address = %d)", sp->usb_devices[i].bus_id,
