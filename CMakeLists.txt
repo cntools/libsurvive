@@ -2,6 +2,7 @@ project(libsurvive C)
 cmake_minimum_required(VERSION 3.5.1)
 
 option(ENABLE_WARNINGS_AS_ERRORS "Use to flag all warnings as errors" OFF)
+include(CheckIncludeFile)
 
 IF(UNIX)
 	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=gnu99 -rdynamic -Werror=incompatible-pointer-types -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces -Werror=implicit-function-declaration")
@@ -24,7 +25,7 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 IF(NOT WIN32)
-	include(CheckIncludeFile)
+
 	check_include_file("lapacke.h" HAVE_LAPACKE_H)
 
 	option(USE_LAPACKE "Use LAPACKE" ${HAVE_LAPACKE_H})
@@ -184,15 +185,20 @@ foreach(PLUGIN ${PLUGINS})
 
 endforeach()
 
-foreach(executable data_recorder simple_pose_test survive-cli api_example sensors-readout)
-	add_executable(${executable} ${executable}.c )
-	target_link_libraries(${executable} survive)
-	set_target_properties(${executable} PROPERTIES FOLDER "apps")
-	foreach(PLUGIN ${PLUGINS})
-		add_dependencies(${executable} ${PLUGIN})
-	endforeach()
+SET(SURVIVE_EXECUTABLES data_recorder survive-cli api_example sensors-readout)
+IF(TARGET CNGFX)
+  list(APPEND SURVIVE_EXECUTABLES simple_pose_test)
+  set(simple_pose_test_ADDITIONAL_LIBS CNGFX)
+endif()
+
+foreach(executable ${SURVIVE_EXECUTABLES})
+  add_executable(${executable} ${executable}.c )
+  target_link_libraries(${executable} survive ${${executable}_ADDITIONAL_LIBS})
+  set_target_properties(${executable} PROPERTIES FOLDER "apps")
+  foreach(PLUGIN ${PLUGINS})
+    add_dependencies(${executable} ${PLUGIN})
+  endforeach()
 endforeach()
-target_link_libraries(simple_pose_test CNGFX)
 
 IF (ENABLE_TESTS)
 	add_subdirectory(src/test_cases)
