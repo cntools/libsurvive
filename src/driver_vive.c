@@ -380,6 +380,8 @@ struct SurviveUSBInfo {
 	} lightcapMode;
 
 	size_t timeWithoutFlag;
+	size_t packetsSeenWaitingForV2;
+
 	bool tryConfigLoad;
 };
 
@@ -1499,10 +1501,13 @@ exit_while:
 	return eventCount;
 }
 
-static void read_imu_data(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8_t *payloadEndPtr) {
+static bool read_imu_data(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8_t *payloadEndPtr) {
 	uint8_t *payloadPtr = *readPtr;
 
 	SurviveContext *ctx = w->ctx;
+	if (payloadEndPtr - payloadPtr < 7) {
+		return false;
+	}
 
 	// First byte is higher res time, followed by 6 shorts
 	uint8_t timeLSB = POP_BYTE(payloadPtr);
@@ -1515,11 +1520,13 @@ static void read_imu_data(SurviveObject *w, uint16_t time, uint8_t **readPtr, ui
 
 	FLT agm[9] = {aX, aY, aZ, rX, rY, rZ};
 
-	SV_VERBOSE(200, "IMU: %d " Point3_format " " Point3_format " From: %s", timeLSB, LINMATH_VEC3_EXPAND(agm),
-			   LINMATH_VEC3_EXPAND(agm + 3), packetToHex(*readPtr, payloadPtr));
+	SV_VERBOSE(200, "%s IMU: %d " Point3_format " " Point3_format " From: %s", w->codename, timeLSB,
+			   LINMATH_VEC3_EXPAND(agm), LINMATH_VEC3_EXPAND(agm + 3), packetToHex(*readPtr, payloadPtr));
 	w->ctx->raw_imuproc(w, 3, agm, ((uint32_t)time << 16) | (timeLSB << 8), 0);
 
 	*readPtr = payloadPtr;
+
+	return true;
 }
 #define UPDATE_PTR_AND_RETURN                                                                                          \
 	*readPtr = payloadPtr;                                                                                             \
@@ -2006,7 +2013,7 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 	bool flagUnknown40 = HAS_FLAG(flags, 0x40);
 
 	if (HAS_FLAG(flags, ~0xD1)) {
-		SV_VERBOSE(100, "Unknown flag %02x", flags);
+		SV_VERBOSE(100, "%s Unknown flag %02x", w->codename, flags);
 	}
 
 	if (flagIMU)
@@ -2015,7 +2022,7 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 	if (flagUnknown40) {
 		uint8_t unknownByte1 = POP_BYTE(payloadPtr);
 		uint8_t unknownByte2 = POP_BYTE(payloadPtr);
-		SV_VERBOSE(100, "Unknown flag 0x40 byte %02x %02x", unknownByte1, unknownByte2);
+		SV_VERBOSE(100, "%s Unknown flag 0x40 byte %02x %02x", w->codename, unknownByte1, unknownByte2);
 	}
 
 	if (flagInput) {
@@ -2048,7 +2055,13 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 				   unknownBytes[2], unknownBytes[3], unknownBytes[4] );
 	}
 */
+	if (driverInfo->packetsSeenWaitingForV2 > 200) {
+		driverInfo->packetsSeenWaitingForV2 = 0;
+		driverInfo->timeWithoutFlag = 0;
+	}
+
 	if (driverInfo->timeWithoutFlag > 0 && driverInfo->timeWithoutFlag < 20) {
+		driverInfo->packetsSeenWaitingForV2++;
 		if (flagLightcap) {
 			driverInfo->timeWithoutFlag = 1;
 			flagLightcap = false;
@@ -2079,7 +2092,7 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 	}
 	if (has_errors) {
 		survive_dump_buffer(ctx, originPayloadPtr, payloadEndPtr - originPayloadPtr);
-		assert(false);
+		// assert(false);
 	}
 }
 
