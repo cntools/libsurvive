@@ -2898,4 +2898,4 @@ fail_gracefully:
 	return -1;
 }
 
-REGISTER_LINKTIME(DriverRegHTCVive);
+REGISTER_LINKTIME(DriverRegHTCVive)
