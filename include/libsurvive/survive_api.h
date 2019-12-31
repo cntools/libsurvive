@@ -13,6 +13,7 @@ typedef struct SurviveSimpleContext SurviveSimpleContext;
 
 enum SurviveSimpleObject_type {
 	SurviveSimpleObject_LIGHTHOUSE,
+	SurviveSimpleObject_HMD,
 	SurviveSimpleObject_OBJECT,
 	SurviveSimpleObject_EXTERNAL
 };

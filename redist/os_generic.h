@@ -206,7 +206,7 @@ OSG_INLINE og_cv_t OGCreateConditionVariable() {
 	return cv;
 }
 
-#else
+#elif __linux__
 
 #include <pthread.h>
 #include <semaphore.h>

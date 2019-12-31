@@ -25,8 +25,7 @@ int EnumerateSymbols( SymEnumeratorCallback cb )
 	return 0;
 }
 
-#else
-	
+#elif __linux__
 
 #include <stdio.h>
 #include <dlfcn.h>

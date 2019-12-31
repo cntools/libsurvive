@@ -156,7 +156,6 @@ typedef struct {
 	SurviveObject *so;
 	vive_pose_t imu_pose;
 	vive_pose_t head;
-	int device_class;
 } scratch_space_t;
 
 static scratch_space_t scratch_space_init(SurviveObject *so) { return (scratch_space_t){.so = so}; }
@@ -281,9 +280,9 @@ static int process_jsontok(scratch_space_t *scratch, char *d, stack_entry_t *sta
 		if (stack && stack->key) {
 			if (jsoneq(d, stack->key, "device_class") == 0) {
 				if (strncmp("controller", d + t->start, t->end - t->start) == 0) {
-					scratch->device_class = 1;
+					scratch->so->object_type = SURVIVE_OBJECT_TYPE_CONTROLLER;
 				} else if (strncmp("hmd", d + t->start, t->end - t->start) == 0) {
-					scratch->device_class = 2;
+					scratch->so->object_type = SURVIVE_OBJECT_TYPE_HMD;
 				}
 			} else if (jsoneq(d, stack->key, "device_serial_number") == 0) {
 				int size = sizeof(scratch->so->serial_number);
@@ -343,6 +342,7 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 		return -2;
 	}
 
+	so->object_type = SURVIVE_OBJECT_TYPE_OTHER;
 	scratch_space_t scratch = scratch_space_init(so);
 	process_jsontok(&scratch, ct0conf, 0, t, r);
 
@@ -366,11 +366,10 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	ApplyPoseToPose(&so->head2imu, &trackref2imu, &so->head2trackref);
 
 	// Handle device-specific scaling.
-	if (strcmp(so->codename, "HMD") == 0 || scratch.device_class == 2) {
+	if (strcmp(so->codename, "HMD") == 0 || so->object_type == SURVIVE_OBJECT_TYPE_HMD) {
 		SV_INFO("%s is treated as HMD device", so->codename);
 		scale3d(so->acc_scale, so->acc_scale, 1. / 8192.0);
 		scale3d(so->acc_bias, so->acc_bias, 1. / 1000.); // Odd but seems right.
-
 		so->imu_freq = HMD_IMU_HZ;
 
 		FLT deg_per_sec = 500;

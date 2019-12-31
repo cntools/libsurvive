@@ -88,9 +88,15 @@ SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_extend_time(const 
  */
 SURVIVE_IMPORT extern survive_timecode SurviveSensorActivations_default_tolerance;
 
+typedef enum {
+	SURVIVE_OBJECT_TYPE_UNKNOWN = 0,
+	SURVIVE_OBJECT_TYPE_HMD,
+	SURVIVE_OBJECT_TYPE_CONTROLLER,
+	SURVIVE_OBJECT_TYPE_OTHER
+} SurviveObjectType;
+
 // DANGER: This structure may be redefined.  Note that it is logically split into 64-bit chunks
 // for optimization on 32- and 64-bit systems.
-
 struct SurviveObject {
 	SurviveContext *ctx;
 
@@ -98,6 +104,8 @@ struct SurviveObject {
 	char drivername[8]; // 8 letters for driver.  Currently "HTC"
 	char serial_number[16]; // 13 letters device serial number
 	void *driver;
+	SurviveObjectType object_type;
+
 	int32_t buttonmask;
 	int16_t axis1;
 

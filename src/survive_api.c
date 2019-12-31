@@ -191,7 +191,7 @@ static void new_object_fn(SurviveObject *so) {
 
 	SurviveSimpleObject *obj = SV_CALLOC(1, sizeof(struct SurviveSimpleObject));
 	obj->data.so = so;
-	obj->type = SurviveSimpleObject_OBJECT;
+	obj->type = so->object_type == SURVIVE_OBJECT_TYPE_HMD ? SurviveSimpleObject_HMD : SurviveSimpleObject_OBJECT;
 	obj->actx = actx;
 	obj->data.so->user_ptr = (void *)obj;
 	strncpy(obj->name, obj->data.so->codename, sizeof(obj->name));
@@ -310,6 +310,7 @@ survive_timecode survive_simple_object_get_latest_velocity(const SurviveSimpleOb
 		if (velocity)
 			*velocity = (SurviveVelocity){ 0 };
 		break;
+	case SurviveSimpleObject_HMD:
 	case SurviveSimpleObject_OBJECT:
 		if (velocity)
 			*velocity = sao->data.so->velocity;
@@ -340,6 +341,7 @@ uint32_t survive_simple_object_get_latest_pose(const SurviveSimpleObject *sao, S
 			*pose = sao->actx->ctx->bsd[sao->data.lh.lighthouse].Pose;
 		break;
 	}
+	case SurviveSimpleObject_HMD:
 	case SurviveSimpleObject_OBJECT:
 		if (pose)
 			*pose = sao->data.so->OutPose;
@@ -366,6 +368,7 @@ const char *survive_simple_serial_number(const SurviveSimpleObject *sao) {
 	case SurviveSimpleObject_LIGHTHOUSE: {
 		return sao->data.lh.serial_number;
 	}
+	case SurviveSimpleObject_HMD:
 	case SurviveSimpleObject_OBJECT:
 		return sao->data.so->serial_number;
 	case SurviveSimpleObject_EXTERNAL:
@@ -382,6 +385,7 @@ SurviveContext *survive_simple_get_ctx(SurviveSimpleContext *actx) { return actx
 
 SurviveObject *survive_simple_get_survive_object(const SurviveSimpleObject *sao) {
 	switch (sao->type) {
+	case SurviveSimpleObject_HMD:
 	case SurviveSimpleObject_OBJECT:
 		return sao->data.so;
 	default:
