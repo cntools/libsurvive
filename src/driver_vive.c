@@ -2824,7 +2824,7 @@ static int LoadConfig(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int i
 		char raw_fname[100];
 		sprintf(raw_fname, "%s_config.json", so->codename);
 		FILE *f = fopen(raw_fname, "w");
-		fwrite(ct0conf, strlen(ct0conf), 1, f);
+		fwrite(ct0conf, len, 1, f);
 		fclose(f);
 	}
 
