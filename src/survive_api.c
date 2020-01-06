@@ -140,6 +140,22 @@ static void pose_fn(SurviveObject *so, uint32_t timecode, SurvivePose *pose) {
 	sao->has_update = true;
 	OGUnlockMutex(actx->poll_mutex);
 }
+
+static inline SurviveSimpleObject *create_lighthouse(SurviveSimpleContext *actx, size_t i) {
+	SurviveSimpleObject *obj = SV_CALLOC(1, sizeof(struct SurviveSimpleObject));
+	obj->data.lh.lighthouse = i;
+	obj->type = SurviveSimpleObject_LIGHTHOUSE;
+	obj->actx = actx;
+
+	SurviveContext *ctx = actx->ctx;
+	obj->has_update = ctx->bsd[i].PositionSet;
+	ctx->bsd[i].user_ptr = obj;
+	snprintf(obj->name, 32, "LH%" PRIdPTR, i);
+	snprintf(obj->data.lh.serial_number, 16, "LHB-%X", ctx->bsd[i].BaseStationID);
+	SurviveSimpleObjectList_add(&actx->objects, obj);
+	return obj;
+}
+
 static void lh_fn(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose,
 	SurvivePose *object_pose) {
 	SurviveSimpleContext *actx = ctx->user_ptr;
@@ -147,6 +163,8 @@ static void lh_fn(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthou
 	survive_default_lighthouse_pose_process(ctx, lighthouse, lighthouse_pose, object_pose);
 
 	struct SurviveSimpleObject *sao = ctx->bsd[lighthouse].user_ptr;
+	if (sao == 0)
+		sao = create_lighthouse(actx, lighthouse);
 	sao->has_update = true;
 
 	OGUnlockMutex(actx->poll_mutex);
@@ -219,15 +237,7 @@ SURVIVE_EXPORT SurviveSimpleContext *survive_simple_init_with_logger(int argc, c
 
 	intptr_t i = 0;
 	for (i = 0; i < ctx->activeLighthouses; i++) {
-		SurviveSimpleObject *obj = SV_CALLOC(1, sizeof(struct SurviveSimpleObject));
-		obj->data.lh.lighthouse = i;
-		obj->type = SurviveSimpleObject_LIGHTHOUSE;
-		obj->actx = actx;
-		obj->has_update = ctx->bsd[i].PositionSet;
-		ctx->bsd[i].user_ptr = obj;
-		snprintf(obj->name, 32, "LH%" PRIdPTR, i);
-		snprintf(obj->data.lh.serial_number, 16, "LHB-%X", ctx->bsd[i].BaseStationID);
-		SurviveSimpleObjectList_add(&actx->objects, obj);
+		create_lighthouse(actx, i);
 	}
 
 	survive_install_pose_fn(ctx, pose_fn);
