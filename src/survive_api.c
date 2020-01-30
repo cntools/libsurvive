@@ -57,6 +57,17 @@ struct SurviveSimpleContext {
 	struct SurviveSimpleObjectList objects;
 };
 
+static enum SurviveSimpleObject_type to_simple_type(SurviveObjectType sot) {
+	switch (sot) {
+		case SURVIVE_OBJECT_TYPE_HMD:
+			return SurviveSimpleObject_HMD;
+		case SURVIVE_OBJECT_TYPE_CONTROLLER:
+			return SurviveSimpleObject_OBJECT;
+		default:
+			return SurviveSimpleObject_UNKNOWN;
+	}
+}
+
 static void insert_into_event_buffer(SurviveSimpleContext *actx, const SurviveSimpleEvent *event) {
 	bool buffer_full = actx->events_cnt == MAX_EVENT_SIZE;
 
@@ -190,6 +201,13 @@ static void button_fn(SurviveObject *so, uint8_t eventType, uint8_t buttonId, ui
 	OGUnlockMutex(actx->poll_mutex);
 }
 
+static int config_fn(struct SurviveObject *so, char *ct0conf, int len) {
+	int res = survive_default_config_process(so, ct0conf, len);
+	SurviveSimpleObject *sso = so->user_ptr;
+	sso->type = to_simple_type(so->object_type);
+	return res;
+}
+
 SURVIVE_EXPORT SurviveSimpleContext *survive_simple_init(int argc, char *const *argv) {
 	return survive_simple_init_with_logger(argc, argv, 0);
 }
@@ -209,7 +227,7 @@ static void new_object_fn(SurviveObject *so) {
 
 	SurviveSimpleObject *obj = SV_CALLOC(1, sizeof(struct SurviveSimpleObject));
 	obj->data.so = so;
-	obj->type = so->object_type == SURVIVE_OBJECT_TYPE_HMD ? SurviveSimpleObject_HMD : SurviveSimpleObject_OBJECT;
+	obj->type = to_simple_type(so->object_type);
 	obj->actx = actx;
 	obj->data.so->user_ptr = (void *)obj;
 	strncpy(obj->name, obj->data.so->codename, sizeof(obj->name));
@@ -245,6 +263,7 @@ SURVIVE_EXPORT SurviveSimpleContext *survive_simple_init_with_logger(int argc, c
 	survive_install_external_velocity_fn(ctx, external_velocity_fn);
 	survive_install_button_fn(ctx, button_fn);
 	survive_install_lighthouse_pose_fn(ctx, lh_fn);
+	survive_install_config_fn(ctx, config_fn);
 	return actx;
 }
 
