@@ -16,7 +16,7 @@ ENDIF()
 
 set(CNGFX_SRCS ./CNFG3D.c ./CNFGFunctions.c)
 IF(UNIX)
-  check_include_file("X11/xlib.h" HAVE_X11_H)
+  check_include_file("X11/Xlib.h" HAVE_X11_H)
 
   IF(HAVE_X11_H) 
     list(APPEND CNGFX_SRCS ./CNFGXDriver.c)
