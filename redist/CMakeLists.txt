@@ -69,6 +69,7 @@ IF(USE_LAPACKE OR WIN32) # NOT USE_OPENCV -- lapack / blas
 			set(WIN_PLATFORM "win32")
 		endif(CMAKE_SIZEOF_VOID_P MATCHES 8)
 
+		include_directories(${CMAKE_BINARY_DIR}/packages/OpenBLAS.0.2.14.1/lib/native/include/)
 		target_link_libraries(minimal_opencv
 			${CMAKE_BINARY_DIR}/packages/OpenBLAS.0.2.14.1/lib/native/lib/${WIN_PLATFORM}/libopenblas.dll.a
 			)
@@ -77,11 +78,11 @@ IF(USE_LAPACKE OR WIN32) # NOT USE_OPENCV -- lapack / blas
 	IF(WIN32)
 		find_program(NUGET nuget)
 		if(NOT NUGET)
-			file(DOWNLOAD https://dist.nuget.org/win-x86-commandline/v3.5.0/nuget.exe "${CMAKE_CURRENT_BINARY_DIR}/nuget.exe"
-				EXPECTED_MD5 406324e1744923a530a3f45b8e4fe1eb  STATUS status LOG log)
+			file(DOWNLOAD https://dist.nuget.org/win-x86-commandline/v5.4.0/nuget.exe "${CMAKE_CURRENT_BINARY_DIR}/nuget.exe"
+				EXPECTED_MD5 3195795bd14d6709f8eb3db752af1d92 STATUS status LOG log)
 			find_program(NUGET nuget HINTS "${CMAKE_CURRENT_BINARY_DIR}" )
 		endif()
-
+		message("Nuget is found at ${NUGET}")
 		add_custom_target(nuget-restore
 		  COMMAND ${NUGET} restore ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.sln
 		)

@@ -14,8 +14,10 @@ add_executable(test_replays test_replays.c)
 set_target_properties(test_replays PROPERTIES FOLDER "tests")
 target_link_libraries(test_replays survive)
 
-add_test(NAME lh1_test_cal COMMAND $<TARGET_FILE:test_replays>     ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/lh1_test_cal.rec.gz)
-add_test(NAME lh2_test_cal COMMAND $<TARGET_FILE:test_replays>     ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/lh2_test_cal.rec.gz)
+IF(NOT WIN32)
+  add_test(NAME lh1_test_cal COMMAND $<TARGET_FILE:test_replays>     ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/lh1_test_cal.rec.gz)
+  add_test(NAME lh2_test_cal COMMAND $<TARGET_FILE:test_replays>     ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/lh2_test_cal.rec.gz)
+ENDIF()
 
 if(PCAP_LIBRARY)
 	add_test(NAME lh2_test_cal_usb COMMAND $<TARGET_FILE:test_replays> ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/lh2_test_cal.pcap.gz)
@@ -31,7 +33,6 @@ ExternalProject_Add(libsurvive-extras-data
         INSTALL_COMMAND ""
         CONFIGURE_COMMAND ""
         SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data
-        EXCLUDE_FROM_ALL True
         )
 
 add_custom_target(run_all_tests COMMAND ${CMAKE_CTEST_COMMAND} DEPENDS test_replays libsurvive-extras-data survive_tests survive_plugins)
