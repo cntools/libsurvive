@@ -201,7 +201,7 @@ int survive_default_config_process(SurviveObject *so, char *ct0conf, int len) {
 }
 
 SURVIVE_EXPORT char *survive_export_config(SurviveObject *so) {
-	cstring str = {};
+	cstring str = {0};
 	str_append(&str, "{\n");
 	str_append(&str, "    \"device_class\": \"generic_tracker\",\n");
 	str_append(&str, "    \"imu\": {\n");

@@ -2,7 +2,7 @@
 #include "test_case.h"
 
 TEST(SurviveUtils, Str) {
-	cstring test = {};
+	cstring test = {0};
 	str_append(&test, "012345");
 	ASSERT_EQ(test.d[test.length], 0);
 	ASSERT_EQ(test.length, 6);

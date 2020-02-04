@@ -288,8 +288,8 @@ const struct DeviceInfo KnownDeviceTypes[] = {
 typedef struct SurviveUSBInterface SurviveUSBInterface;
 typedef struct SurviveViveData SurviveViveData;
 
-const char *survive_usb_interface_str(enum USB_IF_t interface) {
-	switch (interface) {
+const char *survive_usb_interface_str(enum USB_IF_t iface) {
+	switch (iface) {
 	case USB_IF_HMD_HEADSET_INFO:
 		return "USB_IF_HMD_HEADSET_INFO";
 	case USB_IF_HMD_IMU:
@@ -425,7 +425,7 @@ void vive_switch_mode(struct SurviveUSBInfo *driverInfo, enum LightcapMode light
 	SurviveObject *w = driverInfo->so;
 	if (driverInfo->timeWithoutFlag == 0) {
 		driverInfo->timeWithoutFlag = 1;
-		uint8_t buffer[9] = {};
+		uint8_t buffer[9] = {0};
 		size_t buffer_length = 0;
 		if (survive_device_is_rf(driverInfo->device_info)) {
 			buffer[0] = VIVE_REPORT_COMMAND;
@@ -1201,7 +1201,7 @@ static char *packetToHex(uint8_t *packet, uint8_t *packetEnd) {
 	return hexstr;
 }
 
-char bin[9] = {};
+char bin[9] = {0};
 static char *byteToBin(uint8_t b) {
 	for (int i = 0; i < 8; i++) {
 		bin[i] = ((b >> (7 - i)) & 1) ? '1' : '0';
@@ -1717,7 +1717,7 @@ static inline void parse_and_process_lightcap(SurviveObject *w, uint16_t time, u
 											  uint8_t *payloadEndPtr) {
 	LightcapElement les[10] = {0};
 	uint8_t *payloadPtrStart = payloadPtr;
-	ssize_t cnt = read_light_data(w, time, &payloadPtr, payloadEndPtr, les, 10);
+	int32_t cnt = read_light_data(w, time, &payloadPtr, payloadEndPtr, les, 10);
 	SurviveContext *ctx = w->ctx;
 #ifndef NDEBUG
 	for (int i = (int)cnt - 1; i >= 0; i--) {

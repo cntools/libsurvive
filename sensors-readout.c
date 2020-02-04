@@ -36,8 +36,8 @@ struct sensor_time_stats {
 	size_t hz_count;
 	survive_timecode hz_start;
 };
-struct sensor_stats stats[32][NUM_GEN2_LIGHTHOUSES][SENSORS_PER_OBJECT][2] = {};
-struct sensor_time_stats time_stats[32][SENSORS_PER_OBJECT] = {};
+struct sensor_stats stats[32][NUM_GEN2_LIGHTHOUSES][SENSORS_PER_OBJECT][2] = {0};
+struct sensor_time_stats time_stats[32][SENSORS_PER_OBJECT] = {0};
 
 void process_reading(int i, int lh, int sensor, int axis, FLT angle) {
 	struct sensor_stats *s = &stats[i][lh][sensor][axis];
@@ -118,7 +118,7 @@ char *new_str(const char *s) {
 	return rtn;
 }
 
-char *lines[10] = {};
+char *lines[10] = {0};
 size_t lines_idx = 0;
 
 int window_rows = -1, window_cols = -1;
