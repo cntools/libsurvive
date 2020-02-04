@@ -61,6 +61,7 @@ static enum SurviveSimpleObject_type to_simple_type(SurviveObjectType sot) {
 	switch (sot) {
 		case SURVIVE_OBJECT_TYPE_HMD:
 			return SurviveSimpleObject_HMD;
+		case SURVIVE_OBJECT_TYPE_OTHER:
 		case SURVIVE_OBJECT_TYPE_CONTROLLER:
 			return SurviveSimpleObject_OBJECT;
 		default:
