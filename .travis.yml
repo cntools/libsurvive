@@ -17,8 +17,8 @@ script:
    - ctest . -C Debug --output-on-failure
 
 before_deploy:
-  - if [[ "$TRAVIS_OS_NAME" != 'windows' ]]; then ls -lah Debug; fi
-  - 7z a libsurvive-$TRAVIS_TAG-$TRAVIS_OS_NAME.7z Debug/*
+  - if [[ "$TRAVIS_OS_NAME" != 'windows' ]]; then ls -lah; ls -lah Debug; fi
+  - 7z a libsurvive-$TRAVIS_TAG-$TRAVIS_OS_NAME.7z ./Debug/*
 
 deploy:
   - provider: releases
