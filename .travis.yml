@@ -5,7 +5,7 @@ matrix:
       - os: linux
       - os: windows
 
-before_install:
+Nbefore_install:
   - if [[ "$TRAVIS_OS_NAME" != 'windows' ]]; then sudo apt-get update -qq; fi
   - if [[ "$TRAVIS_OS_NAME" != 'windows' ]]; then sudo apt-get install build-essential zlib1g-dev libx11-dev libusb-1.0-0-dev freeglut3-dev liblapacke-dev libopenblas-dev libatlas-base-dev libpcap-dev; fi   
 
@@ -15,3 +15,17 @@ script:
    - cmake -DENABLE_TESTS=ON -DUSE_ASAN=ON ..
    - cmake --build .
    - ctest . -C Debug --output-on-failure
+
+before_deploy:
+  - 7z a Debug/libsurvive-$TRAVIS_TAG-$TRAVIS_OS_NAME.7z Debug/*
+
+deploy:
+  - provider: releases
+    skip_cleanup: true
+    file:
+      - Debug/libsurvive-*
+    on:
+      tags: true
+      branch: master
+    api_key:
+      secure: "xUJdIdxLmHj8PvyUH9d9Dl4bIOl/1m7dSDpG0YLJXOwHnP2u66sYTZ9tihyFHhtAZYJsQ5IlfjtPtCN5/FF6M2Ls00Mp4Ol9gjwUBnc8Ld/u+2Ap45PlhdIpIwIN/M27sWbvTfqKqu3yNYJzOeYnwM48LaTsxmjcGt9WswXzh1Mw2biW3KNTZEiPito0R/dHJydwqA3/2Ccb24DDRH/TNZPZNZwuqPSrNNgVzfLgPkPSM+TkSLg6AbR9y0BP6hmPVbxe9cfF+HlPv8MmxuCxw0SFLE0QRfTloUoFXFD/x+2JGdfpk2RIARSJpxpIOW8Lou8ZQr4zk5FRdca7E2nQMIDC4jS0OGkxxw4B3MIyQgcDZPnBFJYzxmNIvVMe8w9tqBIFxSMdjDm7p82m1iDhNllXtosslI8WlOmpwl4XQHLtzFJwYswNoQxZBxVUMWCacqBoaBdbkVOxWi3MAXpb545YlWBWqVdHmKiU4owIHXg8gv2ocWcAA5oqmEYyImbj01biHf4VUe+OlBf6EXZPKuXios+pwZ5w1/G37hBlc+wwuLuhYvn6fMeIYrjMkypTQ5UG2B9vBKbOMD7Dsexkl0fVJowFoF2bFb2Fv+NvKXEE+SSWRFDc+0i2r/pCq1Hk3Vf1SmYyy8yYNmfO5qxDXxEG5Z2eFNqwjNQ3km4HxKM="
