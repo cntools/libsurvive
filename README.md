@@ -1,4 +1,5 @@
-# libsurvive
+# libsurvive [![Build Status](https://travis-ci.com/cntools/libsurvive.svg?branch=master)](https://travis-ci.com/cntools/libsurvive)
+
 
 ![Logo](https://cloud.githubusercontent.com/assets/2748168/24084003/9095c98a-0cb8-11e7-88a3-575f9f4c7bb4.png)
 
