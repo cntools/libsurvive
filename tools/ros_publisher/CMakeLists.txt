@@ -3,6 +3,12 @@ project(survive_publisher)
 
 add_compile_options(-std=c++14)
 
+if(NOT TARGET survive)
+  message("Adding base cmake...")
+  set_property(GLOBAL PROPERTY SURVIVE_IN_CATKIN_MAKE On)
+  add_subdirectory(../../ survive_build)
+endif()
+
 find_package(catkin REQUIRED COMPONENTS 
   roscpp
   geometry_msgs

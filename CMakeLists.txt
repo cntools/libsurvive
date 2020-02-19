@@ -204,12 +204,16 @@ IF (ENABLE_TESTS)
 	add_subdirectory(src/test_cases)
 ENDIF()
 
-find_package(catkin QUIET COMPONENTS
-	roscpp
-	geometry_msgs)
-IF(catkin_DIR)
-	add_subdirectory(tools/ros_publisher)
-ENDIF()
+get_property(survive_in_catkin_make GLOBAL PROPERTY SURVIVE_IN_CATKIN_MAKE)
+
+if(NOT survive_in_catkin_make)
+  find_package(catkin QUIET COMPONENTS
+    roscpp
+    geometry_msgs)
+  IF(catkin_DIR)
+    add_subdirectory(tools/ros_publisher)
+  ENDIF()
+endif()
 
 find_library(OPENVR_LIBRARIES
 		NAMES
