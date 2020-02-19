@@ -272,8 +272,8 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	sp->velocity.AxisAngleRot[1] = .5;
 	sp->velocity.AxisAngleRot[2] = .5;
 
-	cstring cfg = {};
-	cstring loc = {}, nor_buf = {};
+	cstring cfg = {0};
+	cstring loc = {0}, nor_buf = {0};
 
 	FLT r = .1;
 	srand(42);

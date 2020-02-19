@@ -53,7 +53,7 @@ enum USB_IF_t {
 	MAX_INTERFACES
 };
 
-SURVIVE_EXPORT const char *survive_usb_interface_str(enum USB_IF_t interface);
+SURVIVE_EXPORT const char *survive_usb_interface_str(enum USB_IF_t iface);
 
 struct SurviveViveData;
 

@@ -19,6 +19,7 @@ SurviveObject *survive_create_device(SurviveContext *ctx, const char *driver_nam
 	memcpy(device->codename, device_name, strlen(device_name));
 	memcpy(device->drivername, driver_name, strlen(driver_name));
 
+	device->object_type = SURVIVE_OBJECT_TYPE_OTHER;
 	device->timebase_hz = 48000000;
 	device->imu_freq = VIVE_DEFAULT_IMU_HZ;
 	device->haptic = fn;

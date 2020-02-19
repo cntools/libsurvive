@@ -48,7 +48,7 @@ SURVIVE_EXPORT void survive_reproject_full_y_jac_obj_pose_gen2(SurviveAngleReadi
 					     const LinmathVec3d ptInObj, SurviveAngleReading out);
 
   SURVIVE_IMPORT extern const survive_reproject_model_t survive_reproject_gen2_model;
-
+  
 #ifdef __cplusplus
 }
 #endif

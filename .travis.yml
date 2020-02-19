@@ -1,0 +1,33 @@
+language: c
+
+matrix:
+   include:
+      - os: linux
+      - os: windows
+
+Nbefore_install:
+  - if [[ "$TRAVIS_OS_NAME" != 'windows' ]]; then sudo apt-get update -qq; fi
+  - if [[ "$TRAVIS_OS_NAME" != 'windows' ]]; then sudo apt-get install -y p7zip-full build-essential zlib1g-dev libx11-dev libusb-1.0-0-dev freeglut3-dev liblapacke-dev libopenblas-dev libatlas-base-dev libpcap-dev; fi   
+
+script:
+   - mkdir -p bin
+   - cd bin
+   - cmake -DENABLE_TESTS=ON -DUSE_ASAN=ON ..
+   - cmake --build .
+   - ctest . -C Debug --output-on-failure
+
+before_deploy:
+  - if [[ "$TRAVIS_OS_NAME" == 'linux' ]]; then 7z a ../libsurvive-$TRAVIS_TAG-$TRAVIS_OS_NAME.7z . -xr@../travis-exclusion.lst; fi
+  - if [[ "$TRAVIS_OS_NAME" == 'windows' ]]; then 7z a libsurvive-$TRAVIS_TAG-$TRAVIS_OS_NAME.7z ./Debug/*; fi
+
+deploy:
+  - provider: releases
+    skip_cleanup: true
+    file_glob: true
+    file:
+      - libsurvive-*.7z
+    on:
+      tags: true
+      branch: master
+    api_key:
+      secure: "M1emRQwfKx4FCU5Nil9NsxgWdX8dzOD9HYDLwfUwcBel/M8r9uRkmqMtdfiV6m+V0al6QC1bE6GD+tzY5jsCasN3/RegfRjOKUG7Hhn6aYYZEevsTssBObGbhOHGqmli03RS6hFqtOLtulZ7/2CjHjJhjGy9BrPySDwWuCbvSwMvhn7Jkv3LWgo7zkF5OrpJkCD8frWB7KlSS6lk50X8oEFFJjJeqn2n9nP2huXY2U0f+Qc2pv1YdXqT/UAHaFzsCxWww8HNL4TZpo/33dYEOaycBEmge3f0QBNb3tyaqm6Mf6iiODIyU8511j7Z3V2GSi5Y/LK6LSQZHhWYZXndZ3/BbWJ2s7ruGPKuloT0Qpkc7pCggnqpmBS5RhDt+RyqUBwgoIw54Q7Bund7JEWanwQXgccfe0o6xr/fMaMn6Bbz5lVsTJukO8+xWjYkGCQYTrQsXjI2dpHSXB2KfvXY1bCY929WToc7bW68M+Nwlwz5v6PWSAqMGivNB0R4P1f6Jy4LqwYpPTRjqrSw03ppnTNRqJQhDLKXDh+RboxOUmOu0BWA+Ec8oAHCnF227oxT5Jg9Z3Hut7fj1JREEZbRje/UErgZ/wnHz9kdRoYnm6I2+TeCwqtjFo9DDfJt2lInp2ab5rBznamzdlMU6J79Pdj1MUUMzcj2+2RHHXAH23g="

@@ -2,16 +2,16 @@
 #include <math.h>
 #include <survive_optimizer.h>
 #include <survive_reproject.h>
+#include <survive_reproject_gen2.h>
 
 #ifndef NOZLIB
-#include <survive_reproject_gen2.h>
 #include <zlib.h>
-
 #endif
 
 #include "survive_optimizer.h"
 
 #include "mpfit/mpfit.h"
+#include <malloc.h>
 
 STATIC_CONFIG_ITEM(OPTIMIZER_FTOL, "optimizer-ftol", 'f', "Relative chi-square convergence criterium", 0.);
 STATIC_CONFIG_ITEM(OPTIMIZER_XTOL, "optimizer-xtol", 'f', "Relative parameter convergence criterium", 0.0001);
@@ -310,11 +310,11 @@ const char *survive_optimizer_error(int status) {
 }
 
 static SurviveContext *cachedCtx = 0;
-static mp_config cachedCfg = {};
+static mp_config cachedCfg = {0};
 
 static mp_config *survive_optimizer_get_cfg(SurviveContext *ctx) {
 	if (ctx != cachedCtx) {
-		cachedCfg = (mp_config){};
+		cachedCfg = (mp_config){0};
 		cachedCfg.maxiter = survive_configf(ctx, OPTIMIZER_MAXITER_TAG, SC_GET, 0);
 		cachedCfg.maxfev = survive_configf(ctx, OPTIMIZER_MAXFEV_TAG, SC_GET, 0);
 		cachedCfg.ftol = survive_configf(ctx, OPTIMIZER_FTOL_TAG, SC_GET, 0);
@@ -331,7 +331,7 @@ static mp_config *survive_optimizer_get_cfg(SurviveContext *ctx) {
 	return &cachedCfg;
 }
 
-mp_config precise_cfg = {};
+mp_config precise_cfg = {0};
 SURVIVE_EXPORT mp_config *survive_optimizer_precise_config() { return &precise_cfg; }
 
 int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result) {
@@ -422,7 +422,10 @@ survive_optimizer *survive_optimizer_load(const char *fn) {
 	FILE *f = fopen(fn, "r");
 	int read_count = 0;
 
-	char buffer[LINE_MAX] = {};
+#ifndef LINE_MAX
+#define LINE_MAX 2048
+#endif 
+	char buffer[LINE_MAX] = { 0 };
 	read_count = fscanf(f, "object       %s\n", buffer);
 	read_count = fscanf(f, "currentBias  %lf\n", &opt->current_bias);
 	read_count = fscanf(f, "initialPose " SurvivePose_sformat "\n", SURVIVE_POSE_SCAN_EXPAND(opt->initialPose));
