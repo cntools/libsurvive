@@ -221,7 +221,7 @@ const struct DeviceInfo KnownDeviceTypes[] = {
 	 .type = USB_DEV_HMD,
 	 .name = "HMD",
 	 .codename = "",
-	 .endpoints = {{.num = 0x81, .name = "Mainboard", .type = USB_IF_HMD_HEADSET_INFO}},
+	 .endpoints = {{.num = 0x81, .name = "Mainboard Pro", .type = USB_IF_HMD_HEADSET_INFO}},
 	 .magics = {MAGIC_CTOR(true, vive_magic_power_on), MAGIC_CTOR(false, vive_magic_power_off)}},
 	{.vid = 0x28de,
 	 .pid = 0x2000,
@@ -656,17 +656,7 @@ int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d) {
 				usbInfo->so = so;
 			}
 
-			usbInfo->tryConfigLoad = 1;
-			/*
-			if (usbInfo->device_info->type != USB_DEV_HMD) {
-				int hasError = LoadConfig(sv, usbInfo, 0);
-
-				// Powered off devices are stripped of their SurviveObject
-				if (hasError != 0 && usbInfo->so) {
-					SV_INFO("%s config issue.", usbInfo->so->codename);
-				}
-			}
-*/
+			usbInfo->tryConfigLoad = info->type != USB_DEV_HMD;
 
 			// There should only be one HMD, tie the mainboard interface to the surviveobject
 			if (info->type == USB_DEV_HMD_IMU_LH || info->type == USB_DEV_HMD) {
@@ -938,7 +928,7 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 	cfgbuff[0] = VIVE_REPORT_CONFIG_READMODE;
 	if ((ret = get_feature_report_timeout_locked(ctx, dev, iface, cfgbuff, sizeof(cfgbuff))) < 0) {
 		if (usbInfo->device_info->type == USB_DEV_WATCHMAN1) {
-			SV_INFO("%s couldn't configure; probably turned off %d %s", name, ret, survive_usb_error_name(ret));
+			SV_WARN("%s couldn't configure; probably turned off %d %s", name, ret, survive_usb_error_name(ret));
 		} else {
 			SV_WARN("Could not get survive config data for device %s:%d", usbInfo->device_info->name, iface);
 		}
@@ -973,9 +963,10 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 		}
 
 		// Some (Tracker at least?) devices send a uint64_t before data; not sure what it means but skip it for now.
-		if (count == 0 && size >= 2 && cfgbuff[2] != 0x78) {
+		/*if (count == 0 && size >= 2 && cfgbuff[2] != 0x78) {
+			SV_INFO("Got preamble of %x %x %x", cfgbuff[0], cfgbuff[1], cfgbuff[2]);
 			continue;
-		}
+		}*/
 
 		memcpy(&compressed_data[count], cfgbuff + 2, size);
 		count += size;
@@ -986,7 +977,7 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 		return -5;
 	}
 
-	SV_VERBOSE(50, "Got config data length %d", count);
+	SV_VERBOSE(50, "Got config data length %d for %s:%d", count, name, iface);
 
 	int len = survive_simple_inflate(ctx, compressed_data, count, uncompressed_data, sizeof(uncompressed_data) - 1);
 	if (len <= 0) {
@@ -2490,6 +2481,9 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 	SurviveObject *obj = si->assoc_obj;
 	uint8_t *readdata = si->buffer;
 
+	if (iface == USB_IF_HMD_HEADSET_INFO && obj == 0)
+		return;
+
 	if (obj->conf == 0) {
 		if (si->usbInfo) {
 			si->usbInfo->tryConfigLoad = 1;
@@ -2501,9 +2495,6 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 		struct SurviveUSBInfo *d = obj->driver = calloc(1, sizeof(struct SurviveUSBInfo));
 		d->so = obj;
 	}
-
-	if (iface == USB_IF_HMD_HEADSET_INFO && obj == 0)
-		return;
 
 	int id = POP1;
 	size--;

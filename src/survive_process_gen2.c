@@ -8,6 +8,7 @@
 
 static FLT freq_per_channel[NUM_GEN2_LIGHTHOUSES] = {
 	50.0521, 50.1567, 50.3673, 50.5796, 50.6864, 50.9014, 51.0096, 51.1182,
+
 	51.2273, 51.6685, 52.2307, 52.6894, 52.9217, 53.2741, 53.7514, 54.1150,
 };
 
@@ -277,7 +278,7 @@ SURVIVE_EXPORT void survive_default_gen_detected_process(SurviveObject *so, int 
 		}
 
 		if (!calibrateForbidden) {
-			bool isCalibrated = true;
+			bool isCalibrated = ctx->activeLighthouses > 0;
 			for (int i = 0; i < ctx->activeLighthouses; i++) {
 				if (!ctx->bsd[i].PositionSet) {
 					SV_INFO("Lighthouse %d position is unset", i);

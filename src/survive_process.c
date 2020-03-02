@@ -20,6 +20,8 @@ void survive_ootx_behavior(SurviveObject *so, int8_t bsd_idx, int8_t lh_version,
 
 void survive_default_light_process( SurviveObject * so, int sensor_id, int acode, int timeinsweep, uint32_t timecode, uint32_t length, uint32_t lh)
 {
+	lh = survive_get_bsd_idx(so->ctx, lh);
+
 	survive_notify_gen1(so, "Lightcap called");
 
 	SurviveContext * ctx = so->ctx;

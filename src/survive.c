@@ -193,6 +193,16 @@ SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel c
 		return -1;
 	}
 
+	if (ctx->lh_version == 0) {
+		if (ctx->bsd[channel].mode == 0xFF) {
+			ctx->bsd[channel] = (BaseStationData){0};
+			ctx->bsd[channel].mode = channel;
+			ctx->activeLighthouses++;
+			SV_INFO("Adding lighthouse ch %d (cnt: %d)", channel, ctx->activeLighthouses);
+		}
+		return channel;
+	}
+
 	int8_t i = ctx->bsd_map[channel];
 	if (i != -1)
 		return i;
@@ -201,10 +211,10 @@ SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel c
 		if (ctx->bsd[i].mode == 0xFF) {
 			ctx->bsd[i] = (BaseStationData){0};
 			ctx->bsd[i].mode = channel;
-			SV_INFO("Adding lighthouse ch %d", channel);
 			if (ctx->activeLighthouses < i + 1) {
 				ctx->activeLighthouses = i + 1;
 			}
+			SV_INFO("Adding lighthouse ch %d (idx: %d, cnt: %d)", channel, i, ctx->activeLighthouses);
 			return ctx->bsd_map[channel] = i;
 		}
 	}

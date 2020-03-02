@@ -9,6 +9,7 @@ var timecode = {};
 var oldPoseTime = 0, poseCnt = 0;
 var oldPose = [ 0, 0, 0 ];
 var scene, camera, renderer, floor, fpv_camera;
+var fov_scale = 1;
 
 $(function() { $("#toggleBtn").click(function() { $("#cam").toggle(); }); });
 
@@ -166,7 +167,7 @@ function redrawCanvas(when) {
 	}
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-	var fov_degrees = 160;
+	var fov_degrees = 160 * fov_scale;
 	var fov_radians = fov_degrees / 180 * Math.PI;
 
 	function rad_to_x(ang) {

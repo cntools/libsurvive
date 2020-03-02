@@ -148,7 +148,8 @@ static size_t construct_input_from_scene(const MPFITData *d, size_t timecode, co
 static bool find_cameras_invalid_starting_condition(MPFITData *d, size_t meas_size) {
 	if (meas_size < d->required_meas * 2) {
 		SurviveContext *ctx = d->opt.so->ctx;
-		SV_INFO("Can't solve for cameras with just %u measurements", (unsigned int)meas_size);
+		if (meas_size > 0)
+			SV_INFO("Can't solve for cameras with just %u measurements", (unsigned int)meas_size);
 		return true;
 	}
 	return false;
@@ -390,11 +391,11 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 	}
 	mpfitctx.measurementsCnt = meas_size;
 
-	SurvivePose *cameras = survive_optimizer_get_camera(&mpfitctx);
-
 	if (find_cameras_invalid_starting_condition(d, meas_size)) {
 		return -1;
 	}
+
+	SurvivePose *cameras = survive_optimizer_get_camera(&mpfitctx);
 
 	{
 		SurviveContext *ctx = so->ctx;
@@ -461,6 +462,9 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 }
 
 static inline void print_stats(SurviveContext *ctx, MPFITStats *stats) {
+	if (stats->total_iterations == 0)
+		return;
+
 	SV_INFO("\tmeas failures     %d", stats->meas_failures);
 	SV_INFO("\ttotal iterations  %d", stats->total_iterations);
 	SV_INFO("\tavg iterations    %f", (double)stats->total_iterations / stats->total_runs);
