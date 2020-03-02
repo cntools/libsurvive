@@ -189,7 +189,9 @@ static inline void survive_close_usb_device(struct SurviveUSBInfo *usbInfo) {
 		SV_INFO("Cleaning up interface on %d %s", iface->which_interface_am_i, iface->hname);
 		libusb_cancel_transfer(usbInfo->interfaces[j].transfer);
 		while (usbInfo->interfaces[j].ctx) {
+			survive_release_ctx_lock(ctx);
 			libusb_handle_events(usbInfo->viveData->usbctx);
+			survive_get_ctx_lock(ctx);
 		}
 		libusb_free_transfer(usbInfo->interfaces[j].transfer);
 

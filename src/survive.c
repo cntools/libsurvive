@@ -722,10 +722,6 @@ void survive_close(SurviveContext *ctx) {
 
 	config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
 
-	for (int i = 0; i < ctx->objs_ct; i++) {
-		survive_destroy_device(ctx->objs[i]);
-	}
-
 	survive_destroy_recording(ctx);
 
 	for (int i = 0; i < ctx->driver_ct; i++) {
@@ -734,6 +730,10 @@ void survive_close(SurviveContext *ctx) {
 		} else {
 			free(ctx->drivers[i]);
 		}
+	}
+
+	for (int i = 0; i < ctx->objs_ct; i++) {
+		survive_destroy_device(ctx->objs[i]);
 	}
 
 	destroy_config_group(ctx->global_config_values);
