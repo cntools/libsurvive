@@ -197,7 +197,6 @@ int main( int argc, char ** argv )
 	//survive_install_button_fn(ctx, testprog_button_process);
 	survive_install_pose_fn(ctx, testprog_raw_pose_process);
 	//survive_install_imu_fn(ctx, testprog_imu_process);
-	survive_install_pose_fn(ctx, testprog_raw_pose_process);
 	//survive_install_angle_fn(ctx, testprog_angle_process );
 
 #if 0 // Don't reset poses
