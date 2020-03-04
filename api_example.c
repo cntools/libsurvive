@@ -3,11 +3,33 @@
 #include <survive_api.h>
 #include <os_generic.h>
 
+static volatile int keepRunning = 1;
+
+#ifdef __linux__
+
+#include <assert.h>
+#include <signal.h>
+#include <stdlib.h>
+
+void intHandler(int dummy) {
+	if (keepRunning == 0)
+		exit(-1);
+	keepRunning = 0;
+}
+
+#endif
+
 static void log_fn(SurviveSimpleContext *actx, SurviveLogLevel logLevel, const char *msg) {
 	fprintf(stderr, "SimpleApi: %s\n", msg);
 }
 
 int main(int argc, char **argv) {
+#ifdef __linux__
+	signal(SIGINT, intHandler);
+	signal(SIGTERM, intHandler);
+	signal(SIGKILL, intHandler);
+#endif
+
 	SurviveSimpleContext *actx = survive_simple_init_with_logger(argc, argv, log_fn);
 	if (actx == 0) // implies -help or similiar
 		return 0;
@@ -19,7 +41,7 @@ int main(int argc, char **argv) {
 		printf("Found '%s'\n", survive_simple_object_name(it));
 	}
 
-	while (survive_simple_is_running(actx)) {
+	while (survive_simple_is_running(actx) && keepRunning) {
 		OGUSleep(10000);
 		for (const SurviveSimpleObject *it = survive_simple_get_next_updated(actx); it != 0;
 			 it = survive_simple_get_next_updated(actx)) {
@@ -44,7 +66,7 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
-
+	printf("Cleaning up\n");
 	survive_simple_close(actx);
 	return 0;
 }

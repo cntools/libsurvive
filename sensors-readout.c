@@ -37,7 +37,7 @@ struct sensor_time_stats {
 	survive_timecode hz_start;
 };
 struct sensor_stats stats[32][NUM_GEN2_LIGHTHOUSES][SENSORS_PER_OBJECT][2] = {0};
-struct sensor_time_stats time_stats[32][SENSORS_PER_OBJECT] = {0};
+struct sensor_time_stats time_stats[32][NUM_GEN2_LIGHTHOUSES][SENSORS_PER_OBJECT] = {0};
 
 void process_reading(int i, int lh, int sensor, int axis, FLT angle) {
 	struct sensor_stats *s = &stats[i][lh][sensor][axis];
@@ -46,40 +46,40 @@ void process_reading(int i, int lh, int sensor, int axis, FLT angle) {
 	s->MX = fmax(angle, s->MX);
 }
 
-static void record_data(SurviveObject *so, int sensor_id, survive_timecode timecode) {
+static void record_data(SurviveObject *so, int sensor_id, survive_timecode timecode, uint32_t lh) {
 	size_t idx = 0;
 	for (idx = 0; idx < so->ctx->objs_ct && so->ctx->objs[idx] != so; idx++)
 		;
 
-	time_stats[idx][sensor_id].hit_count++;
+	time_stats[idx][lh][sensor_id].hit_count++;
 
 	double time_since_start =
-		survive_timecode_difference(timecode, time_stats[idx][sensor_id].hz_start) / (double)so->timebase_hz;
+		survive_timecode_difference(timecode, time_stats[idx][lh][sensor_id].hz_start) / (double)so->timebase_hz;
 	struct SurviveContext *ctx = so->ctx;
 
-	time_stats[idx][sensor_id].hz_count++;
-	if (time_since_start > 3. || time_stats[idx][sensor_id].hz_start == 0) {
-		if (time_stats[idx][sensor_id].hz_start != 0)
-			time_stats[idx][sensor_id].hz = time_stats[idx][sensor_id].hz_count / time_since_start;
-		time_stats[idx][sensor_id].hz_count = 0;
-		time_stats[idx][sensor_id].hz_start = timecode;
-	}  
+	time_stats[idx][lh][sensor_id].hz_count++;
+	if (time_since_start > 3. || time_stats[idx][lh][sensor_id].hz_start == 0) {
+		if (time_stats[idx][lh][sensor_id].hz_start != 0)
+			time_stats[idx][lh][sensor_id].hz = time_stats[idx][lh][sensor_id].hz_count / time_since_start;
+		time_stats[idx][lh][sensor_id].hz_count = 0;
+		time_stats[idx][lh][sensor_id].hz_start = timecode;
+	}
 }
 
 void angle_fn(SurviveObject *so, int sensor_id, int acode, survive_timecode timecode,
 	      FLT length, FLT angle, uint32_t lh) {
-  record_data(so, sensor_id, timecode);
-  
-  survive_default_angle_process(so, sensor_id, acode, timecode, length, angle, lh);
+	record_data(so, sensor_id, timecode, lh);
+
+	survive_default_angle_process(so, sensor_id, acode, timecode, length, angle, lh);
 }
 
 void sweep_fn(SurviveObject *so, survive_channel channel, int sensor_id, survive_timecode timecode, int8_t plane,
 			  FLT angle) {
-  record_data(so, sensor_id, timecode);
-  survive_default_sweep_angle_process(so, channel, sensor_id, timecode, plane, angle);
+	record_data(so, sensor_id, timecode, survive_get_bsd_idx(so->ctx, channel));
+	survive_default_sweep_angle_process(so, channel, sensor_id, timecode, plane, angle);
 
-  if (needsRedraw)
-	  redraw(so->ctx);
+	if (needsRedraw)
+		redraw(so->ctx);
 }
 
 const char *column_width = "          ";
@@ -183,8 +183,8 @@ static void redraw(SurviveContext *ctx) {
 
 				printf("| %2d.%02d    |", ctx->bsd[lh].mode, displaySensor);
 
-				print_int(time_stats[i][sensor].hit_count);
-				print(time_stats[i][sensor].hz);
+				print_int(time_stats[i][lh][sensor].hit_count);
+				print(time_stats[i][lh][sensor].hz);
 				for (int axis = 0; axis < 2; axis++) {
 					FLT f = so->activations.angles[sensor][lh][axis];
 					process_reading(i, lh, sensor, axis, f);
