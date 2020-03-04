@@ -16,7 +16,7 @@ static FLT moveThresholdAng = 0;
 bool SurviveSensorActivations_isReadingValid(const SurviveSensorActivations *self, survive_timecode tolerance,
 											 survive_timecode timecode_now, uint32_t idx, int lh, int axis) {
 	const uint32_t *data_timecode = self->timecode[idx][lh];
-	if (self->lh_gen != 1 && self->lengths[idx][lh][axis] == 0)
+	if (self->lh_gen != 1 && lh < 2 && self->lengths[idx][lh][axis] == 0)
 		return false;
 
 	if (isnan(self->angles[idx][lh][axis]))

@@ -587,10 +587,11 @@ uint8_t cg_stack_head = 0;
 
 void handle_config_group(char *tag) {
 	cg_stack_head++;
-	if (strcmp("lighthouse0", tag) == 0) {
-		cg_stack[cg_stack_head] = survive_context->lh_config;
-	} else if (strcmp("lighthouse1", tag) == 0) {
-		cg_stack[cg_stack_head] = survive_context->lh_config + 1;
+	int lh_idx;
+
+	int lhMatch = sscanf(tag, "lighthouse%d", &lh_idx);
+	if (lhMatch == 1) {
+		cg_stack[cg_stack_head] = survive_context->lh_config + lh_idx;
 	} else {
 		cg_stack[cg_stack_head] = survive_context->global_config_values;
 	}

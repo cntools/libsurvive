@@ -131,7 +131,7 @@ struct SurviveObject {
 	survive_timecode velocity_timecode;
 
 	SurvivePose
-		FromLHPose[NUM_GEN1_LIGHTHOUSES]; // Filled out by poser, contains computed position from each lighthouse.
+		FromLHPose[NUM_GEN2_LIGHTHOUSES]; // Filled out by poser, contains computed position from each lighthouse.
 
 	void *PoserFnData; // Initialized to zero, configured by poser, can be anything the poser wants.
 	PoserCB PoserFn;
