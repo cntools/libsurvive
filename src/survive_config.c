@@ -557,18 +557,29 @@ void write_config_group(FILE *f, config_group *cg, char *tag) {
 // struct SurviveContext;
 SurviveContext *survive_context;
 
-void config_save(SurviveContext *sctx, const char *path) {
+void config_save(SurviveContext *ctx, const char *path) {
 	uint16_t i = 0;
 
 	FILE *f = fopen(path, "w");
 
-	write_config_group(f, sctx->global_config_values, NULL);
+	if (f == 0) {
+		static bool warnedOnce = false;
+		if (!warnedOnce && strcmp(path, "/dev/null") != 0) {
+			SV_WARN("Could not open '%s' for writing; settings and calibration will not persist. This typically "
+					"happens if the path doesn't exist or root owns the file.",
+					path);
+			warnedOnce = true;
+		}
+		return;
+	}
+
+	write_config_group(f, ctx->global_config_values, NULL);
 
 	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
-		if (sctx->bsd[i].OOTXSet) {
+		if (ctx->bsd[i].OOTXSet) {
 			char name[128] = { 0 };
 			snprintf(name, 128, "lighthouse%d", i);
-			write_config_group(f, sctx->lh_config + i, name);
+			write_config_group(f, ctx->lh_config + i, name);
 		}
 	}
 
