@@ -318,13 +318,16 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 			case 'c':
 				vartoupdate = "configfile";
 				break;
+			case 'v':
+				vartoupdate = "v";
+				break;
 			default:
-				fprintf(ctx->log_target, "Error: unknown parameter %s\n", *av);
+				fprintf(stderr, "Error: unknown short parameter '%s'\n", *av);
 				showhelp = 1;
 			}
 
 			if (vartoupdate) {
-				const char *name = *av + 2; // Skip the '--';
+				const char *name = vartoupdate;
 				bool isLast = av + 1 == argvend;
 				bool nextIsOption = !isLast && av[1][0] == '-';
 				if (nextIsOption) {
