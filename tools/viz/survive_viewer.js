@@ -13,6 +13,11 @@ var fov_scale = 1;
 
 $(function() { $("#toggleBtn").click(function() { $("#cam").toggle(); }); });
 
+var lhColors = [
+	0xecba82, 0x4f3920, 0x8c7070, 0xf4eded, 0x4e6e5d, 0x3bc14a, 0x251351, 0xc97b84, 0xa85751, 0x251351, 0xc7eae4,
+	0xa7e8bd, 0xffd972, 0xaba361, 0x732c2c, 0x773344
+];
+
 var lighthouses = {};
 function add_lighthouse(idx, p, q) {
 	if (lighthouses[idx]) {
@@ -46,8 +51,7 @@ function add_lighthouse(idx, p, q) {
 
 	var lhBoxGeom = new THREE.CubeGeometry(.075, .075, .075);
 
-	var lhColors = {0 : 0x11111111, 1 : 0xFFFFFFFF};
-	var lhBoxMaterial = new THREE.MeshBasicMaterial({color : lhColors[idx]});
+	lhBoxMaterial = new THREE.MeshBasicMaterial({color : lhColors[idx]});
 	var lhBox = new THREE.Mesh(lhBoxGeom, lhBoxMaterial);
 	group.add(lhBox);
 
@@ -119,7 +123,7 @@ function recolorTrackers(when) {
 
 		for (var lh = 0; lh < 16; lh++) {
 			var bvalue = get_bvalue(key);
-			ctx.strokeStyle = (lh === 0 ? "#FF00" : "#00FF") + bvalue;
+			ctx.strokeStyle = "#" + lhColors[lh].toString(16);
 
 			if (angles[key][lh])
 
@@ -200,9 +204,9 @@ function redrawCanvas(when) {
 
 	for (var key in angles) {
 		for (var lh = 0; lh < 16; lh++) {
-			var bvalue = get_bvalue(key);
+			var bvalue = 0; // get_bvalue(key);
 
-			ctx.strokeStyle = (lh === 0 ? "#5500" : "#0055") + bvalue;
+			ctx.strokeStyle = "#" + lhColors[lh].toString(16);
 
 			if (angles[key][lh])
 

@@ -105,13 +105,14 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 
 	// Super degenerate inputs will project us basically right in the camera. Detect and reject
 	if (err > 1 || magnitude3d(rtn.Pos) < 0.25 || magnitude3d(rtn.Pos) > 25) {
-		// SV_WARN("pose is degenerate %d %f %f", (int)dd->bc.meas_cnt, err, magnitude3d(rtn.Pos));
+		SV_VERBOSE(200, "pose is degenerate %d %f %f", (int)dd->bc.meas_cnt, err, magnitude3d(rtn.Pos));
 		return rtn;
 	}
 
-	// SV_INFO("BaryCentricSVD for %s has err %f " SurvivePose_format, so->codename, err, SURVIVE_POSE_EXPAND(rtn));
+	SV_VERBOSE(200, "BaryCentricSVD for %s has err %f " SurvivePose_format " (Solving for camera: %d)", so->codename,
+			   err, SURVIVE_POSE_EXPAND(rtn), cameraToWorld);
 
-	FLT allowable_error = cameraToWorld ? dd->max_error_cal : dd->max_error_obj;
+	FLT allowable_error = cameraToWorld ? (dd->max_error_cal * 1.5) : dd->max_error_obj;
 	if (allowable_error < err) {
 		if (cameraToWorld) {
 			SV_WARN("Camera reprojection error was too high: %f for %d meas", err, (int)dd->bc.meas_cnt);
@@ -300,7 +301,9 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 						SurvivePose lh2obj = solve_correspondence(dd, true);
 						if (quatmagnitude(lh2obj.Rot) != 0) {
 							solved++;
-							SV_VERBOSE(5, "Possible SVD solution for %d", lh);
+							SV_VERBOSE(5,
+									   "Possible SVD solution for lighthouse %d, from object %s at " SurvivePose_format,
+									   lh, so->codename, SURVIVE_POSE_EXPAND(obj2world));
 							if (quatiszero(obj2world.Rot))
 								lh2world[lh] = lh2obj;
 							else

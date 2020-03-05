@@ -1775,9 +1775,8 @@ static int parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, ui
 				SV_WARN("Two or more lighthouses are on channel %d; tracking is most likely going to fail.",
 						conflicted_channel);
 			}
-
 			channel = data >> 4u;
-
+			SV_VERBOSE(200, "Channel %d (0x%02x)", channel, data);
 			idx++;
 		} else {
 			uint32_t timecode = 0;

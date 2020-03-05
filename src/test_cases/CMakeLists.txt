@@ -17,6 +17,7 @@ target_link_libraries(test_replays survive)
 IF(NOT WIN32)
   add_test(NAME lh1_test_cal COMMAND $<TARGET_FILE:test_replays>     ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/lh1_test_cal.rec.gz)
   add_test(NAME lh2_test_cal COMMAND $<TARGET_FILE:test_replays>     ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/lh2_test_cal.rec.gz)
+  add_test(NAME multi_cal COMMAND $<TARGET_FILE:test_replays> ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/multi-cal.rec.gz)
 ENDIF()
 
 if(PCAP_LIBRARY)

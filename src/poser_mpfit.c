@@ -105,6 +105,10 @@ static size_t construct_input_from_scene(const MPFITData *d, size_t timecode, co
 			continue;
 		}
 
+		if (!ctx->bsd[lh].PositionSet) {
+			SV_VERBOSE(200, "Allowing data from %d", lh);
+		}
+
 		bool isCandidate = !ctx->bsd[lh].PositionSet;
 		size_t candidate_meas = 10;
 
@@ -209,6 +213,15 @@ static inline void serialize_mpfit(MPFITData *d, survive_optimizer *mpfitctx) {
 	}
 }
 
+static int get_lh_count(const size_t *meas_for_lhs) {
+	int num_lh = 0;
+	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
+		if (meas_for_lhs[i])
+			num_lh++;
+	}
+	return num_lh;
+}
+
 static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, SurviveSensorActivations *scene,
 										  SurvivePose *out) {
 	SurviveObject *so = d->opt.so;
@@ -240,7 +253,7 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 	if (quatiszero(soLocation->Rot))
 		soLocation->Rot[0] = 1;
 
-	size_t meas_for_lhs[NUM_GEN2_LIGHTHOUSES] = { 0 };
+	size_t meas_for_lhs[NUM_GEN2_LIGHTHOUSES] = {0};
 	size_t meas_size = construct_input_from_scene(d, pdl->hdr.timecode, scene, meas_for_lhs, mpfitctx.measurements);
 
 	if (mpfitctx.current_bias > 0) {
@@ -278,19 +291,32 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 	if (canPossiblySolveLHS) {
 		if (general_optimizer_data_record_current_lhs(&d->opt, pdl, lhs)) {
 			for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
-				assert(!isnan(lhs[lh].Rot[0]));
-				if (quatiszero(lhs[lh].Rot) && meas_for_lhs[lh] > 0) {
-					SV_WARN("Seed poser failed for %d, not trying to solve LH system", lh);
-					meas_size = remove_lh_from_meas(mpfitctx.measurements, meas_size, lh);
-					meas_for_lhs[lh] = 0;
-					canPossiblySolveLHS = false;
-				} else if (meas_for_lhs[lh] > 0) {
-					SV_INFO("Attempting to solve for %d with %d meas (%s)", lh, (int)meas_for_lhs[lh], so->codename);
-					survive_optimizer_setup_camera(&mpfitctx, lh, &lhs[lh], false);
+				if (!so->ctx->bsd[lh].PositionSet) {
+					assert(!isnan(lhs[lh].Rot[0]));
+					if (quatiszero(lhs[lh].Rot) && meas_for_lhs[lh] > 0) {
+						SV_WARN("Seed poser failed for %d, not trying to solve LH system", lh);
+						canPossiblySolveLHS = false;
+						break;
+					}
 				}
 			}
 		} else {
 			canPossiblySolveLHS = false;
+		}
+	}
+
+	for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
+		if (!so->ctx->bsd[lh].PositionSet) {
+			if (canPossiblySolveLHS) {
+				if (meas_for_lhs[lh]) {
+					SV_INFO("Attempting to solve for %d with %lu meas", lh, meas_for_lhs[lh]);
+					survive_optimizer_setup_camera(&mpfitctx, lh, &lhs[lh], false);
+				}
+			} else {
+				SV_VERBOSE(200, "Removing data for %d", lh);
+				meas_size = remove_lh_from_meas(mpfitctx.measurements, meas_size, lh);
+				meas_for_lhs[lh] = 0;
+			}
 		}
 	}
 
@@ -345,9 +371,13 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 
 		*out = *soLocation;
 		rtn = result.bestnorm;
+
+		SV_VERBOSE(500, "MPFIT success %s %f/%f (%d measurements, %d result, %d lighthouses)", so->codename,
+				   result.orignorm, result.bestnorm, (int)meas_size, res, get_lh_count(meas_for_lhs));
+
 	} else {
-		SV_WARN("MPFIT failure %s %f/%f (%d measurements, %d)", so->codename, result.orignorm, result.bestnorm,
-				(int)meas_size, res);
+		SV_WARN("MPFIT failure %s %f/%f (%d measurements, %d result, %d lighthouses, %d canSolveLHs)", so->codename,
+				result.orignorm, result.bestnorm, (int)meas_size, res, get_lh_count(meas_for_lhs), canPossiblySolveLHS);
 	}
 
 	d->stats.total_fev += result.nfev;
