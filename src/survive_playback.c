@@ -586,6 +586,7 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 			size_t n = 0;
 			ssize_t r = gzgetdelim(&line, &n, ' ', f);
 			if (r <= 0) {
+				free(line);
 				return 0;
 			}
 
