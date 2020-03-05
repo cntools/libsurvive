@@ -41,8 +41,7 @@ int main(int argc, char **argv) {
 		printf("Found '%s'\n", survive_simple_object_name(it));
 	}
 
-	while (survive_simple_is_running(actx) && keepRunning) {
-		OGUSleep(10000);
+	while (survive_simple_wait_for_update(actx) && keepRunning) {
 		for (const SurviveSimpleObject *it = survive_simple_get_next_updated(actx); it != 0;
 			 it = survive_simple_get_next_updated(actx)) {
 			SurvivePose pose;

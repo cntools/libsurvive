@@ -101,6 +101,11 @@ SURVIVE_EXPORT const char *survive_simple_object_name(const SurviveSimpleObject 
  */
 SURVIVE_EXPORT const char *survive_simple_serial_number(const SurviveSimpleObject *sao);
 
+/***
+ * Block waiting for any kind of update from either locations or buttons
+ * @return returns whether or not we are still running
+ */
+SURVIVE_EXPORT bool survive_simple_wait_for_update(SurviveSimpleContext *actx);
 /**
  * Gets the next system event if there is one. Can return an event with NONE type.
  */

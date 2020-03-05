@@ -49,6 +49,7 @@ struct SurviveSimpleContext {
 	bool running;
 	og_thread_t thread;
 	og_mutex_t poll_mutex;
+	og_cv_t update_cv;
 
 	size_t events_cnt;
 	size_t event_next_write;
@@ -122,6 +123,11 @@ static SurviveSimpleObject *find_or_create_external(SurviveSimpleContext *actx, 
 	return so;
 }
 
+static void unlock_and_notify_change(SurviveSimpleContext *actx) {
+	OGBroadcastCond(actx->update_cv);
+	OGUnlockMutex(actx->poll_mutex);
+}
+
 static void external_velocity_fn(SurviveContext *ctx, const char *name, const SurviveVelocity *velocity) {
 	SurviveSimpleContext *actx = ctx->user_ptr;
 	OGLockMutex(actx->poll_mutex);
@@ -130,7 +136,7 @@ static void external_velocity_fn(SurviveContext *ctx, const char *name, const Su
 	SurviveSimpleObject *so = find_or_create_external(actx, name);
 	so->has_update = true;
 	so->data.seo.velocity = *velocity;
-	OGUnlockMutex(actx->poll_mutex);
+	unlock_and_notify_change(actx);
 }
 
 static void external_pose_fn(SurviveContext *ctx, const char *name, const SurvivePose *pose) {
@@ -141,7 +147,7 @@ static void external_pose_fn(SurviveContext *ctx, const char *name, const Surviv
 	SurviveSimpleObject *so = find_or_create_external(actx, name);
 	so->has_update = true;
 	so->data.seo.pose = *pose;
-	OGUnlockMutex(actx->poll_mutex);
+	unlock_and_notify_change(actx);
 }
 static void pose_fn(SurviveObject *so, uint32_t timecode, SurvivePose *pose) {
 	SurviveSimpleContext *actx = so->ctx->user_ptr;
@@ -150,7 +156,7 @@ static void pose_fn(SurviveObject *so, uint32_t timecode, SurvivePose *pose) {
 
 	struct SurviveSimpleObject *sao = so->user_ptr;
 	sao->has_update = true;
-	OGUnlockMutex(actx->poll_mutex);
+	unlock_and_notify_change(actx);
 }
 
 static inline SurviveSimpleObject *create_lighthouse(SurviveSimpleContext *actx, size_t i) {
@@ -179,7 +185,7 @@ static void lh_fn(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthou
 		sao = create_lighthouse(actx, lighthouse);
 	sao->has_update = true;
 
-	OGUnlockMutex(actx->poll_mutex);
+	unlock_and_notify_change(actx);
 }
 
 static void button_fn(SurviveObject *so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val,
@@ -199,7 +205,7 @@ static void button_fn(SurviveObject *so, uint8_t eventType, uint8_t buttonId, ui
 
 	insert_into_event_buffer(actx, &event);
 
-	OGUnlockMutex(actx->poll_mutex);
+	unlock_and_notify_change(actx);
 }
 
 static int config_fn(struct SurviveObject *so, char *ct0conf, int len) {
@@ -253,6 +259,7 @@ SURVIVE_EXPORT SurviveSimpleContext *survive_simple_init_with_logger(int argc, c
 
 	actx->ctx = ctx;
 	actx->poll_mutex = OGCreateMutex();
+	actx->update_cv = OGCreateConditionVariable();
 
 	intptr_t i = 0;
 	for (i = 0; i < ctx->activeLighthouses; i++) {
@@ -293,6 +300,7 @@ void survive_simple_close(SurviveSimpleContext *actx) {
 	}
 	OGDeleteMutex(actx->poll_mutex);
 	OGJoinThread(actx->thread);
+	OGDeleteConditionVariable(actx->update_cv);
 	actx->thread = 0;
 	free(actx);
 }
@@ -436,6 +444,13 @@ const SurviveSimpleButtonEvent *survive_simple_get_button_event(const SurviveSim
 	if (event->event_type == SurviveSimpleEventType_ButtonEvent)
 		return &event->button_event;
 	return 0;
+}
+
+bool survive_simple_wait_for_update(SurviveSimpleContext *actx) {
+	OGLockMutex(actx->poll_mutex);
+	OGWaitCond(actx->update_cv, actx->poll_mutex);
+	OGUnlockMutex(actx->poll_mutex);
+	return survive_simple_is_running(actx);
 }
 
 enum SurviveSimpleEventType survive_simple_next_event(SurviveSimpleContext *actx, SurviveSimpleEvent *event) {

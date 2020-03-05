@@ -30,8 +30,8 @@ int main(int argc, char **argv) {
 	};
 	
 	uint32_t seq = 1;
-	geometry_msgs::PoseStamped pose_msg = {};	
-	while (survive_simple_is_running(actx) && ros::ok()) {
+	geometry_msgs::PoseStamped pose_msg = {};
+	while (survive_simple_wait_for_update(actx) && ros::ok()) {
 		SurvivePose pose;
 
 		for (const SurviveSimpleObject *it = survive_simple_get_next_updated(actx); it != 0;
