@@ -21,35 +21,34 @@ static void bc_svd_choose_control_points(bc_svd *self) {
 		self->setup.control_points[0][j] /= self->setup.obj_cnt;
 
 	// Take C1, C2, and C3 from PCA on the reference points:
-	CvMat *PW0 = cvCreateMat(self->setup.obj_cnt, 3, CV_64F);
+	CvMat *PW0 = cvCreateMat(self->setup.obj_cnt, 3, CV_FLT);
 
-	double pw0tpw0[3 * 3] = {0}, dc[3], uct[3 * 3];
-	CvMat PW0tPW0 = cvMat(3, 3, CV_64F, pw0tpw0);
-	CvMat DC = cvMat(3, 1, CV_64F, dc);
-	CvMat UCt = cvMat(3, 3, CV_64F, uct);
+	FLT pw0tpw0[3 * 3] = {0}, dc[3], uct[3 * 3];
+	CvMat PW0tPW0 = cvMat(3, 3, CV_FLT, pw0tpw0);
+	CvMat DC = cvMat(3, 1, CV_FLT, dc);
+	CvMat UCt = cvMat(3, 3, CV_FLT, uct);
 
 	for (int i = 0; i < self->setup.obj_cnt; i++)
 		for (int j = 0; j < 3; j++)
-			PW0->data.db[3 * i + j] = self->setup.obj_pts[i][j] - self->setup.control_points[0][j];
+			CV_RAW_PTR(PW0)[3 * i + j] = self->setup.obj_pts[i][j] - self->setup.control_points[0][j];
 
 	cvMulTransposed(PW0, &PW0tPW0, 1, 0, 1);
 
 	cvSVD(&PW0tPW0, &DC, &UCt, 0, CV_SVD_MODIFY_A | CV_SVD_U_T);
-	assert(UCt.data.db == uct);
 
 	cvReleaseMat(&PW0);
 
 	for (int i = 1; i < 4; i++) {
-		double k = sqrt(dc[i - 1] / self->setup.obj_cnt);
+		FLT k = sqrt(dc[i - 1] / self->setup.obj_cnt);
 		for (int j = 0; j < 3; j++)
 			self->setup.control_points[i][j] = self->setup.control_points[0][j] + k * uct[3 * (i - 1) + j];
 	}
 }
 
 static void bc_svd_compute_barycentric_coordinates(bc_svd *self) {
-	double cc[3 * 3], cc_inv[3 * 3];
-	CvMat CC = cvMat(3, 3, CV_64F, cc);
-	CvMat CC_inv = cvMat(3, 3, CV_64F, cc_inv);
+	FLT cc[3 * 3], cc_inv[3 * 3];
+	CvMat CC = cvMat(3, 3, CV_FLT, cc);
+	CvMat CC_inv = cvMat(3, 3, CV_FLT, cc_inv);
 
 	for (int i = 0; i < 3; i++)
 		for (int j = 1; j < 4; j++)
@@ -57,10 +56,10 @@ static void bc_svd_compute_barycentric_coordinates(bc_svd *self) {
 
 	cvInvert(&CC, &CC_inv, 1);
 
-	double *ci = cc_inv;
+	FLT *ci = cc_inv;
 	for (int i = 0; i < self->setup.obj_cnt; i++) {
-		const double *pi = self->setup.obj_pts[i];
-		double *a = self->setup.alphas[i];
+		const FLT *pi = self->setup.obj_pts[i];
+		FLT *a = self->setup.alphas[i];
 
 		for (int j = 0; j < 3; j++)
 			a[1 + j] = ci[3 * j] * (pi[0] - self->setup.control_points[0][0]) +
@@ -91,15 +90,15 @@ void bc_svd_dtor(bc_svd *self) {
 	free(self->meas);
 }
 
-double bc_svd_compute_R_and_t(bc_svd *self, const double *ut, const double *betas, double R[3][3], double t[3]);
+FLT bc_svd_compute_R_and_t(bc_svd *self, const FLT *ut, const FLT *betas, FLT R[3][3], FLT t[3]);
 
-double dot(const double *v1, const double *v2) { return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2]; }
+FLT dot(const FLT *v1, const FLT *v2) { return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2]; }
 
-double dist2(const double *p1, const double *p2) {
+FLT dist2(const FLT *p1, const FLT *p2) {
 	return (p1[0] - p2[0]) * (p1[0] - p2[0]) + (p1[1] - p2[1]) * (p1[1] - p2[1]) + (p1[2] - p2[2]) * (p1[2] - p2[2]);
 }
 
-void bc_svd_compute_rho(bc_svd *self, double *rho) {
+void bc_svd_compute_rho(bc_svd *self, FLT *rho) {
 	rho[0] = dist2(self->setup.control_points[0], self->setup.control_points[1]);
 	rho[1] = dist2(self->setup.control_points[0], self->setup.control_points[2]);
 	rho[2] = dist2(self->setup.control_points[0], self->setup.control_points[3]);
@@ -110,7 +109,7 @@ void bc_svd_compute_rho(bc_svd *self, double *rho) {
 
 void bc_svd_reset_correspondences(bc_svd *self) { self->meas_cnt = 0; }
 
-void bc_svd_add_correspondence(bc_svd *self, size_t idx, double u, double v) {
+void bc_svd_add_correspondence(bc_svd *self, size_t idx, FLT u, FLT v) {
 	if (isnan(u) && isnan(v)) {
 		return;
 	}
@@ -136,10 +135,10 @@ void bc_svd_add_correspondence(bc_svd *self, size_t idx, double u, double v) {
 	}
 }
 
-void bc_svd_fill_M(bc_svd *self, CvMat *_M, const int row, const double *as, int axis, double angle) {
-	double *M = _M->data.db + row * 12;
+void bc_svd_fill_M(bc_svd *self, CvMat *_M, const int row, const FLT *as, int axis, FLT angle) {
+	FLT *M = CV_RAW_PTR(_M) + row * 12;
 
-	double eq[3] = {NAN, NAN, NAN};
+	FLT eq[3] = {NAN, NAN, NAN};
 	self->setup.fillFn(self->setup.user, eq, axis, angle);
 
 	for (int i = 0; i < 4; i++) {
@@ -149,13 +148,13 @@ void bc_svd_fill_M(bc_svd *self, CvMat *_M, const int row, const double *as, int
 	}
 }
 
-void bc_svd_compute_ccs(bc_svd *self, const double *betas, const double *ut) {
+void bc_svd_compute_ccs(bc_svd *self, const FLT *betas, const FLT *ut) {
 	for (int i = 0; i < 4; i++)
 		self->control_points_in_camera[i][0] = self->control_points_in_camera[i][1] =
 			self->control_points_in_camera[i][2] = 0.0f;
 
 	for (int i = 0; i < 4; i++) {
-		const double *v = ut + 12 * (11 - i);
+		const FLT *v = ut + 12 * (11 - i);
 		for (int j = 0; j < 4; j++)
 			for (int k = 0; k < 3; k++)
 				self->control_points_in_camera[j][k] += betas[i] * v[3 * j + k];
@@ -164,8 +163,8 @@ void bc_svd_compute_ccs(bc_svd *self, const double *betas, const double *ut) {
 
 void bc_svd_compute_pcs(bc_svd *self) {
 	for (int i = 0; i < self->setup.obj_cnt; i++) {
-		double *a = self->setup.alphas[i];
-		double *pc = self->object_pts_in_camera[i];
+		FLT *a = self->setup.alphas[i];
+		FLT *pc = self->object_pts_in_camera[i];
 
 		for (int j = 0; j < 3; j++)
 			pc[j] = a[0] * self->control_points_in_camera[0][j] + a[1] * self->control_points_in_camera[1][j] +
@@ -173,15 +172,15 @@ void bc_svd_compute_pcs(bc_svd *self) {
 	}
 }
 
-void bc_svd_compute_L_6x10(bc_svd *self, const double *ut, double *l_6x10) {
-	const double *v[4];
+void bc_svd_compute_L_6x10(bc_svd *self, const FLT *ut, FLT *l_6x10) {
+	const FLT *v[4];
 
 	v[0] = ut + 12 * 11;
 	v[1] = ut + 12 * 10;
 	v[2] = ut + 12 * 9;
 	v[3] = ut + 12 * 8;
 
-	double dv[4][6][3];
+	FLT dv[4][6][3];
 
 	for (int i = 0; i < 4; i++) {
 		int a = 0, b = 1;
@@ -199,7 +198,7 @@ void bc_svd_compute_L_6x10(bc_svd *self, const double *ut, double *l_6x10) {
 	}
 
 	for (int i = 0; i < 6; i++) {
-		double *row = l_6x10 + 10 * i;
+		FLT *row = l_6x10 + 10 * i;
 
 		row[0] = dot(dv[0][i], dv[0][i]);
 		row[1] = 2.0f * dot(dv[0][i], dv[1][i]);
@@ -214,10 +213,10 @@ void bc_svd_compute_L_6x10(bc_svd *self, const double *ut, double *l_6x10) {
 	}
 }
 
-void find_betas_approx_1(const CvMat *L_6x10, const CvMat *Rho, double *betas) {
-	double l_6x4[6 * 4], b4[4];
-	CvMat L_6x4 = cvMat(6, 4, CV_64F, l_6x4);
-	CvMat B4 = cvMat(4, 1, CV_64F, b4);
+void find_betas_approx_1(const CvMat *L_6x10, const CvMat *Rho, FLT *betas) {
+	FLT l_6x4[6 * 4], b4[4];
+	CvMat L_6x4 = cvMat(6, 4, CV_FLT, l_6x4);
+	CvMat B4 = cvMat(4, 1, CV_FLT, b4);
 
 	for (int i = 0; i < 6; i++) {
 		cvmSet(&L_6x4, i, 0, cvmGet(L_6x10, i, 0));
@@ -228,7 +227,6 @@ void find_betas_approx_1(const CvMat *L_6x10, const CvMat *Rho, double *betas) {
 
 	cvSolve(&L_6x4, Rho, &B4, CV_SVD);
 
-	assert(B4.data.db == b4);
 
 	if (b4[0] < 0) {
 		betas[0] = sqrt(-b4[0]);
@@ -243,10 +241,10 @@ void find_betas_approx_1(const CvMat *L_6x10, const CvMat *Rho, double *betas) {
 	}
 }
 
-void compute_A_and_b_gauss_newton(const double *l_6x10, const double *rho, double betas[4], CvMat *A, CvMat *b) {
+void compute_A_and_b_gauss_newton(const FLT *l_6x10, const FLT *rho, FLT betas[4], CvMat *A, CvMat *b) {
 	for (int i = 0; i < 6; i++) {
-		const double *rowL = l_6x10 + i * 10;
-		double *rowA = A->data.db + i * 4;
+		const FLT *rowL = l_6x10 + i * 10;
+		FLT *rowA = CV_RAW_PTR(A) + i * 4;
 
 		rowA[0] = 2 * rowL[0] * betas[0] + rowL[1] * betas[1] + rowL[3] * betas[2] + rowL[6] * betas[3];
 		rowA[1] = rowL[1] * betas[0] + 2 * rowL[2] * betas[1] + rowL[4] * betas[2] + rowL[7] * betas[3];
@@ -263,7 +261,7 @@ void compute_A_and_b_gauss_newton(const double *l_6x10, const double *rho, doubl
 
 void qr_solve(CvMat *A, CvMat *b, CvMat *X) {
 	static int max_nr = 0;
-	static double *A1, *A2;
+	static FLT *A1, *A2;
 
 	const int nr = A->rows;
 	const int nc = A->cols;
@@ -274,15 +272,15 @@ void qr_solve(CvMat *A, CvMat *b, CvMat *X) {
 	}
 	if (max_nr < nr) {
 		max_nr = nr;
-		A1 = SV_MALLOC(sizeof(double) * nr);
-		A2 = SV_MALLOC(sizeof(double) * nr);
+		A1 = SV_MALLOC(sizeof(FLT) * nr);
+		A2 = SV_MALLOC(sizeof(FLT) * nr);
 	}
 
-	double *pA = A->data.db, *ppAkk = pA;
+	FLT *pA = CV_RAW_PTR(A), *ppAkk = pA;
 	for (int k = 0; k < nc; k++) {
-		double *ppAik = ppAkk, eta = fabs(*ppAik);
+		FLT *ppAik = ppAkk, eta = fabs(*ppAik);
 		for (int i = k + 1; i < nr; i++) {
-			double elt = fabs(*ppAik);
+			FLT elt = fabs(*ppAik);
 			if (eta < elt)
 				eta = elt;
 			ppAik += nc;
@@ -293,25 +291,25 @@ void qr_solve(CvMat *A, CvMat *b, CvMat *X) {
 			// cerr << "God damnit, A is singular, this shouldn't happen." << endl;
 			return;
 		} else {
-			double *ppAik = ppAkk, sum = 0.0, inv_eta = 1. / eta;
+			FLT *ppAik = ppAkk, sum = 0.0, inv_eta = 1. / eta;
 			for (int i = k; i < nr; i++) {
 				*ppAik *= inv_eta;
 				sum += *ppAik * *ppAik;
 				ppAik += nc;
 			}
-			double sigma = sqrt(sum);
+			FLT sigma = sqrt(sum);
 			if (*ppAkk < 0)
 				sigma = -sigma;
 			*ppAkk += sigma;
 			A1[k] = sigma * *ppAkk;
 			A2[k] = -eta * sigma;
 			for (int j = k + 1; j < nc; j++) {
-				double *ppAik = ppAkk, sum = 0;
+				FLT *ppAik = ppAkk, sum = 0;
 				for (int i = k; i < nr; i++) {
 					sum += *ppAik * ppAik[j - k];
 					ppAik += nc;
 				}
-				double tau = sum / A1[k];
+				FLT tau = sum / A1[k];
 				ppAik = ppAkk;
 				for (int i = k; i < nr; i++) {
 					ppAik[j - k] -= tau * *ppAik;
@@ -323,9 +321,9 @@ void qr_solve(CvMat *A, CvMat *b, CvMat *X) {
 	}
 
 	// b <- Qt b
-	double *ppAjj = pA, *pb = b->data.db;
+	FLT *ppAjj = pA, *pb = CV_RAW_PTR(b);
 	for (int j = 0; j < nc; j++) {
-		double *ppAij = ppAjj, tau = 0;
+		FLT *ppAij = ppAjj, tau = 0;
 		for (int i = j; i < nr; i++) {
 			tau += *ppAij * pb[i];
 			ppAij += nc;
@@ -340,10 +338,10 @@ void qr_solve(CvMat *A, CvMat *b, CvMat *X) {
 	}
 
 	// X = R-1 b
-	double *pX = X->data.db;
+	FLT *pX = CV_RAW_PTR(X);
 	pX[nc - 1] = pb[nc - 1] / A2[nc - 1];
 	for (int i = nc - 2; i >= 0; i--) {
-		double *ppAij = pA + i * nc + (i + 1), sum = 0;
+		FLT *ppAij = pA + i * nc + (i + 1), sum = 0;
 
 		for (int j = i + 1; j < nc; j++) {
 			sum += *ppAij * pX[j];
@@ -353,16 +351,16 @@ void qr_solve(CvMat *A, CvMat *b, CvMat *X) {
 	}
 }
 
-void gauss_newton(const CvMat *L_6x10, const CvMat *Rho, double betas[4]) {
+void gauss_newton(const CvMat *L_6x10, const CvMat *Rho, FLT betas[4]) {
 	const int iterations_number = 5;
 
-	double a[6 * 4], b[6], x[4];
-	CvMat A = cvMat(6, 4, CV_64F, a);
-	CvMat B = cvMat(6, 1, CV_64F, b);
-	CvMat X = cvMat(4, 1, CV_64F, x);
+	FLT a[6 * 4], b[6], x[4];
+	CvMat A = cvMat(6, 4, CV_FLT, a);
+	CvMat B = cvMat(6, 1, CV_FLT, b);
+	CvMat X = cvMat(4, 1, CV_FLT, x);
 
 	for (int k = 0; k < iterations_number; k++) {
-		compute_A_and_b_gauss_newton(L_6x10->data.db, Rho->data.db, betas, &A, &B);
+		compute_A_and_b_gauss_newton(CV_RAW_PTR(L_6x10), CV_RAW_PTR(Rho), betas, &A, &B);
 		qr_solve(&A, &B, &X);
 
 		for (int i = 0; i < 4; i++)
@@ -370,10 +368,10 @@ void gauss_newton(const CvMat *L_6x10, const CvMat *Rho, double betas[4]) {
 	}
 }
 
-void find_betas_approx_2(const CvMat *L_6x10, const CvMat *Rho, double *betas) {
-	double l_6x3[6 * 3], b3[3];
-	CvMat L_6x3 = cvMat(6, 3, CV_64F, l_6x3);
-	CvMat B3 = cvMat(3, 1, CV_64F, b3);
+void find_betas_approx_2(const CvMat *L_6x10, const CvMat *Rho, FLT *betas) {
+	FLT l_6x3[6 * 3], b3[3];
+	CvMat L_6x3 = cvMat(6, 3, CV_FLT, l_6x3);
+	CvMat B3 = cvMat(3, 1, CV_FLT, b3);
 
 	for (int i = 0; i < 6; i++) {
 		cvmSet(&L_6x3, i, 0, cvmGet(L_6x10, i, 0));
@@ -401,10 +399,10 @@ void find_betas_approx_2(const CvMat *L_6x10, const CvMat *Rho, double *betas) {
 // betas10        = [B11 B12 B22 B13 B23 B33 B14 B24 B34 B44]
 // betas_approx_3 = [B11 B12 B22 B13 B23                    ]
 
-void bc_svd_find_betas_approx_3(bc_svd *self, const CvMat *L_6x10, const CvMat *Rho, double *betas) {
-	double l_6x5[6 * 5], b5[5];
-	CvMat L_6x5 = cvMat(6, 5, CV_64F, l_6x5);
-	CvMat B5 = cvMat(5, 1, CV_64F, b5);
+void bc_svd_find_betas_approx_3(bc_svd *self, const CvMat *L_6x10, const CvMat *Rho, FLT *betas) {
+	FLT l_6x5[6 * 5], b5[5];
+	CvMat L_6x5 = cvMat(6, 5, CV_FLT, l_6x5);
+	CvMat B5 = cvMat(5, 1, CV_FLT, b5);
 
 	for (int i = 0; i < 6; i++) {
 		cvmSet(&L_6x5, i, 0, cvmGet(L_6x10, i, 0));
@@ -429,7 +427,7 @@ void bc_svd_find_betas_approx_3(bc_svd *self, const CvMat *L_6x10, const CvMat *
 	betas[3] = 0.0;
 }
 
-void copy_R_and_t(const double R_src[3][3], const double t_src[3], double R_dst[3][3], double t_dst[3]) {
+void copy_R_and_t(const FLT R_src[3][3], const FLT t_src[3], FLT R_dst[3][3], FLT t_dst[3]) {
 	for (int i = 0; i < 3; i++) {
 		for (int j = 0; j < 3; j++)
 			R_dst[i][j] = R_src[i][j];
@@ -437,14 +435,24 @@ void copy_R_and_t(const double R_src[3][3], const double t_src[3], double R_dst[
 	}
 }
 
-double bc_svd_compute_pose(bc_svd *self, double R[3][3], double t[3]) {
+#ifdef USE_FLT
+#define SURVIVE_CV_F CV_FLT
+#else
+#define SURVIVE_CV_F CV_32F
+#endif
+
+#define CREATE_STACK_MAT(name, rows, cols)                                                                             \
+	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
+	CvMat name = cvMat(rows, cols, SURVIVE_CV_F, _##name);
+
+FLT bc_svd_compute_pose(bc_svd *self, FLT R[3][3], FLT t[3]) {
 	CREATE_STACK_MAT(M, self->meas_cnt, 12);
 	bool colCovered[12] = { 0 };
 	for (int i = 0; i < self->meas_cnt; i++) {
 		size_t obj_pt_idx = self->meas[i].obj_idx;
 		bc_svd_fill_M(self, &M, i, self->setup.alphas[obj_pt_idx], self->meas[i].axis, self->meas[i].angle);
 
-		double *_M = M.data.db + i * 12;
+		FLT *_M = CV_RAW_PTR(&M) + i * 12;
 		for (int j = 0; j < 12; j++) {
 			assert(!isnan(_M[j]));
 			if (_M[j] != 0.0)
@@ -457,27 +465,25 @@ double bc_svd_compute_pose(bc_svd *self, double R[3][3], double t[3]) {
 			return -1;
 	}
 
-	double mtm[12 * 12], d[12], ut[12 * 12];
-	CvMat MtM = cvMat(12, 12, CV_64F, mtm);
-	CvMat D = cvMat(12, 1, CV_64F, d);
-	CvMat Ut = cvMat(12, 12, CV_64F, ut);
+	FLT mtm[12 * 12], d[12], ut[12 * 12];
+	CvMat MtM = cvMat(12, 12, CV_FLT, mtm);
+	CvMat D = cvMat(12, 1, CV_FLT, d);
+	CvMat Ut = cvMat(12, 12, CV_FLT, ut);
 
 	cvMulTransposed(&M, &MtM, 1, 0, 1);
 
 	cvSVD(&MtM, &D, &Ut, 0, CV_SVD_MODIFY_A | CV_SVD_U_T);
 
-	assert(Ut.data.db == ut);
-
-	double l_6x10[6 * 10], rho[6];
-	CvMat L_6x10 = cvMat(6, 10, CV_64F, l_6x10);
-	CvMat Rho = cvMat(6, 1, CV_64F, rho);
+	FLT l_6x10[6 * 10], rho[6];
+	CvMat L_6x10 = cvMat(6, 10, CV_FLT, l_6x10);
+	CvMat Rho = cvMat(6, 1, CV_FLT, rho);
 
 	bc_svd_compute_L_6x10(self, ut, l_6x10);
 
 	bc_svd_compute_rho(self, rho);
 
-	double Betas[4][4] = { 0 }, rep_errors[4] = { 0 };
-	double Rs[4][3][3] = { 0 }, ts[4][3] = { 0 };
+	FLT Betas[4][4] = {0}, rep_errors[4] = {0};
+	FLT Rs[4][3][3] = {0}, ts[4][3] = {0};
 
 	find_betas_approx_1(&L_6x10, &Rho, Betas[1]);
 	gauss_newton(&L_6x10, &Rho, Betas[1]);
@@ -503,35 +509,35 @@ double bc_svd_compute_pose(bc_svd *self, double R[3][3], double t[3]) {
 	return rep_errors[N];
 }
 
-static double bc_svd_reprojection_error(bc_svd *self, const double R[3][3], const double t[3]) {
-	double sum2 = 0.0;
+static FLT bc_svd_reprojection_error(bc_svd *self, const FLT R[3][3], const FLT t[3]) {
+	FLT sum2 = 0.0;
 
 	for (int i = 0; i < self->meas_cnt; i++) {
 		size_t obj_idx = self->meas[i].obj_idx;
-		const double *pw = self->setup.obj_pts[obj_idx];
-		double Xc = dot(R[0], pw) + t[0];
-		double Yc = dot(R[1], pw) + t[1];
-		double Zc = dot(R[2], pw) + t[2];
+		const FLT *pw = self->setup.obj_pts[obj_idx];
+		FLT Xc = dot(R[0], pw) + t[0];
+		FLT Yc = dot(R[1], pw) + t[1];
+		FLT Zc = dot(R[2], pw) + t[2];
 
-		double eq[3];
+		FLT eq[3];
 
 		self->setup.fillFn(self->setup.user, eq, self->meas[i].axis, self->meas[i].angle);
-		double rerr = eq[0] * Xc + eq[1] * Yc + eq[2] * Zc;
+		FLT rerr = eq[0] * Xc + eq[1] * Yc + eq[2] * Zc;
 		sum2 += rerr * rerr;
 	}
 
 	return sqrt(sum2) / self->meas_cnt;
 }
 
-void bc_svd_estimate_R_and_t(bc_svd *self, double R[3][3], double t[3]) {
-	double pc0[3], pw0[3];
+void bc_svd_estimate_R_and_t(bc_svd *self, FLT R[3][3], FLT t[3]) {
+	FLT pc0[3], pw0[3];
 
 	pc0[0] = pc0[1] = pc0[2] = 0.0;
 	pw0[0] = pw0[1] = pw0[2] = 0.0;
 
 	for (int i = 0; i < self->setup.obj_cnt; i++) {
-		const double *pc = self->object_pts_in_camera[i];
-		const double *pw = self->setup.obj_pts[i];
+		const FLT *pc = self->object_pts_in_camera[i];
+		const FLT *pw = self->setup.obj_pts[i];
 
 		for (int j = 0; j < 3; j++) {
 			pc0[j] += pc[j];
@@ -543,17 +549,17 @@ void bc_svd_estimate_R_and_t(bc_svd *self, double R[3][3], double t[3]) {
 		pw0[j] /= self->setup.obj_cnt;
 	}
 
-	double abt[3 * 3], abt_d[3], abt_u[3 * 3], abt_v[3 * 3];
-	CvMat ABt = cvMat(3, 3, CV_64F, abt);
-	CvMat ABt_D = cvMat(3, 1, CV_64F, abt_d);
-	CvMat ABt_U = cvMat(3, 3, CV_64F, abt_u);
-	CvMat ABt_V = cvMat(3, 3, CV_64F, abt_v);
+	FLT abt[3 * 3], abt_d[3], abt_u[3 * 3], abt_v[3 * 3];
+	CvMat ABt = cvMat(3, 3, CV_FLT, abt);
+	CvMat ABt_D = cvMat(3, 1, CV_FLT, abt_d);
+	CvMat ABt_U = cvMat(3, 3, CV_FLT, abt_u);
+	CvMat ABt_V = cvMat(3, 3, CV_FLT, abt_v);
 
 	cvSetZero(&ABt);
 
 	for (int i = 0; i < self->setup.obj_cnt; i++) {
-		double *pc = self->object_pts_in_camera[i];
-		const double *pw = self->setup.obj_pts[i];
+		FLT *pc = self->object_pts_in_camera[i];
+		const FLT *pw = self->setup.obj_pts[i];
 
 		for (int j = 0; j < 3; j++) {
 			abt[3 * j] += (pc[j] - pc0[j]) * (pw[0] - pw0[0]);
@@ -568,8 +574,8 @@ void bc_svd_estimate_R_and_t(bc_svd *self, double R[3][3], double t[3]) {
 		for (int j = 0; j < 3; j++)
 			R[i][j] = dot(abt_u + 3 * i, abt_v + 3 * j);
 
-	const double det = R[0][0] * R[1][1] * R[2][2] + R[0][1] * R[1][2] * R[2][0] + R[0][2] * R[1][0] * R[2][1] -
-					   R[0][2] * R[1][1] * R[2][0] - R[0][1] * R[1][0] * R[2][2] - R[0][0] * R[1][2] * R[2][1];
+	const FLT det = R[0][0] * R[1][1] * R[2][2] + R[0][1] * R[1][2] * R[2][0] + R[0][2] * R[1][0] * R[2][1] -
+					R[0][2] * R[1][1] * R[2][0] - R[0][1] * R[1][0] * R[2][2] - R[0][0] * R[1][2] * R[2][1];
 
 	if (det < 0) {
 		R[2][0] = -R[2][0];
@@ -582,7 +588,7 @@ void bc_svd_estimate_R_and_t(bc_svd *self, double R[3][3], double t[3]) {
 	t[2] = pc0[2] - dot(R[2], pw0);
 }
 
-void print_pose(const double R[3][3], const double t[3]) {
+void print_pose(const FLT R[3][3], const FLT t[3]) {
 	for (unsigned i = 0; i < 3; i++) {
 		for (unsigned j = 0; j < 3; j++) {
 			printf("%g ", R[i][j]);
@@ -607,7 +613,7 @@ void bc_svd_solve_for_sign(bc_svd *self) {
 	}
 }
 
-double bc_svd_compute_R_and_t(bc_svd *self, const double *ut, const double *betas, double R[3][3], double t[3]) {
+FLT bc_svd_compute_R_and_t(bc_svd *self, const FLT *ut, const FLT *betas, FLT R[3][3], FLT t[3]) {
 	bc_svd_compute_ccs(self, betas, ut);
 	bc_svd_compute_pcs(self);
 
@@ -624,9 +630,9 @@ double bc_svd_compute_R_and_t(bc_svd *self, const double *ut, const double *beta
 // betas10        = [B11 B12 B22 B13 B23 B33 B14 B24 B34 B44]
 // betas_approx_2 = [B11 B12 B22                            ]
 
-void mat_to_quat(const double R[3][3], double q[4]) {
-	double tr = R[0][0] + R[1][1] + R[2][2];
-	double n4;
+void mat_to_quat(const FLT R[3][3], FLT q[4]) {
+	FLT tr = R[0][0] + R[1][1] + R[2][2];
+	FLT n4;
 
 	if (tr > 0.0f) {
 		q[0] = R[1][2] - R[2][1];
@@ -653,7 +659,7 @@ void mat_to_quat(const double R[3][3], double q[4]) {
 		q[3] = R[0][1] - R[1][0];
 		n4 = q[2];
 	}
-	double scale = 0.5f / (sqrt(n4));
+	FLT scale = 0.5f / (sqrt(n4));
 
 	q[0] *= scale;
 	q[1] *= scale;
@@ -661,20 +667,20 @@ void mat_to_quat(const double R[3][3], double q[4]) {
 	q[3] *= scale;
 }
 
-void relative_error(double *rot_err, double *transl_err, const double Rtrue[3][3], const double ttrue[3],
-					const double Rest[3][3], const double test[3]) {
-	double qtrue[4], qest[4];
+void relative_error(FLT *rot_err, FLT *transl_err, const FLT Rtrue[3][3], const FLT ttrue[3], const FLT Rest[3][3],
+					const FLT test[3]) {
+	FLT qtrue[4], qest[4];
 
 	mat_to_quat(Rtrue, qtrue);
 	mat_to_quat(Rest, qest);
 
-	double rot_err1 = sqrt((qtrue[0] - qest[0]) * (qtrue[0] - qest[0]) + (qtrue[1] - qest[1]) * (qtrue[1] - qest[1]) +
-						   (qtrue[2] - qest[2]) * (qtrue[2] - qest[2]) + (qtrue[3] - qest[3]) * (qtrue[3] - qest[3])) /
-					  sqrt(qtrue[0] * qtrue[0] + qtrue[1] * qtrue[1] + qtrue[2] * qtrue[2] + qtrue[3] * qtrue[3]);
+	FLT rot_err1 = sqrt((qtrue[0] - qest[0]) * (qtrue[0] - qest[0]) + (qtrue[1] - qest[1]) * (qtrue[1] - qest[1]) +
+						(qtrue[2] - qest[2]) * (qtrue[2] - qest[2]) + (qtrue[3] - qest[3]) * (qtrue[3] - qest[3])) /
+				   sqrt(qtrue[0] * qtrue[0] + qtrue[1] * qtrue[1] + qtrue[2] * qtrue[2] + qtrue[3] * qtrue[3]);
 
-	double rot_err2 = sqrt((qtrue[0] + qest[0]) * (qtrue[0] + qest[0]) + (qtrue[1] + qest[1]) * (qtrue[1] + qest[1]) +
-						   (qtrue[2] + qest[2]) * (qtrue[2] + qest[2]) + (qtrue[3] + qest[3]) * (qtrue[3] + qest[3])) /
-					  sqrt(qtrue[0] * qtrue[0] + qtrue[1] * qtrue[1] + qtrue[2] * qtrue[2] + qtrue[3] * qtrue[3]);
+	FLT rot_err2 = sqrt((qtrue[0] + qest[0]) * (qtrue[0] + qest[0]) + (qtrue[1] + qest[1]) * (qtrue[1] + qest[1]) +
+						(qtrue[2] + qest[2]) * (qtrue[2] + qest[2]) + (qtrue[3] + qest[3]) * (qtrue[3] + qest[3])) /
+				   sqrt(qtrue[0] * qtrue[0] + qtrue[1] * qtrue[1] + qtrue[2] * qtrue[2] + qtrue[3] * qtrue[3]);
 
 	*rot_err = fmin(rot_err1, rot_err2);
 

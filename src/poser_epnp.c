@@ -21,8 +21,8 @@ static SurvivePose solve_correspondence(SurviveObject *so, epnp *pnp, bool camer
 
 	double err = epnp_compute_pose(pnp, r, rtn.Pos);
 
-	CvMat R = cvMat(3, 3, CV_64F, r);
-	CvMat T = cvMat(3, 1, CV_64F, rtn.Pos);
+	CvMat R = cvMat(3, 3, CV_FLT, r);
+	CvMat T = cvMat(3, 1, CV_FLT, rtn.Pos);
 
 	// Super degenerate inputs will project us basically right in the camera. Detect and reject
 	if (err > 2 || magnitude3d(rtn.Pos) < 0.25 || magnitude3d(rtn.Pos) > 25) {
@@ -37,7 +37,7 @@ static SurvivePose solve_correspondence(SurviveObject *so, epnp *pnp, bool camer
 	// Requested output is camera -> world, so invert
 	if (cameraToWorld) {
 		FLT tmp[3];
-		CvMat Tmp = cvMat(3, 1, CV_64F, tmp);
+		CvMat Tmp = cvMat(3, 1, CV_FLT, tmp);
 		cvCopy(&T, &Tmp, 0);
 
 		// Flip the Rotation matrix

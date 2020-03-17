@@ -69,7 +69,9 @@ void survive_config_bind_variable( char vt, const char * name, const char * desc
 	switch( vt )
 	{
 	case 'i': config->data_default.i = va_arg(ap, int); break;
-	case 'f': config->data_default.f = va_arg(ap, FLT); break;
+	case 'f':
+		config->data_default.f = va_arg(ap, double);
+		break;
 	case 's': config->data_default.s = va_arg(ap, char *); break;
 	default:
 		fprintf( stderr, "Fatal: Internal error on variable %s.  Unknown type %c\n", name, vt );
@@ -409,6 +411,7 @@ void sstrcpy(char **dest, const char *src) {
 	*dest = ptr;
 
 	strcpy(*dest, src);
+	// printf("%s -> %s\r\n", *dest, src);
 }
 
 config_entry *find_config_entry(config_group *cg, const char *tag) {
@@ -460,7 +463,7 @@ uint16_t config_read_float_array(config_group *cg, const char *tag, FLT *values,
 
 	if (cv != NULL) {
 		for (unsigned int i = 0; i < CFG_MIN(count, cv->elements); i++) {
-			values[i] = ((double *)cv->data)[i];
+			values[i] = ((FLT *)cv->data)[i];
 		}
 		return cv->elements;
 	}
@@ -889,6 +892,7 @@ uint32_t survive_configi(SurviveContext *ctx, const char *tag, char flags, uint3
 }
 
 const char *survive_configs(SurviveContext *ctx, const char *tag, char flags, const char *def) {
+	SV_INFO("Configs %s -> %s", tag ? tag : "<unknown>", def ? def : "<not set>");
 	if (!(flags & SC_OVERRIDE)) {
 		config_entry *cv = sc_search(ctx, tag);
 		if (cv)

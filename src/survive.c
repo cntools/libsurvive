@@ -1,3 +1,4 @@
+
 // Copyright 2016 <>< C. N. Lohr, FULLY Under MIT/x11 License.
 // All MIT/x11 Licensed Code in this file may be relicensed freely under the GPL or LGPL licenses.
 
@@ -490,6 +491,10 @@ survive_driver_fn GetDriverByConfig(SurviveContext *ctx, const char *name, const
 }
 static inline SurviveDeviceDriverReturn callDriver(SurviveContext *ctx, const char *DriverName, char *buffer) {
 	DeviceDriver dd = (DeviceDriver)GetDriver(DriverName);
+	if (dd == 0) {
+		return -1;
+	}
+
 	SurviveDeviceDriverReturn r = dd(ctx);
 	if (r < 0) {
 		SV_WARN("Driver %s reports status %d", DriverName + strlen("DriverReg"), r);

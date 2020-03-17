@@ -85,9 +85,9 @@ void compareToCblasTrans() {
 
 	dclPrint(DMS(em1), m, n);
 
-	CvMat Em1 = cvMat(m, n, CV_64F, em1);
+	CvMat Em1 = cvMat(m, n, CV_FLT, em1);
 	FLT em1tem1[n][n];
-	CvMat Em1tEm1 = cvMat(n, n, CV_64F, em1tem1);
+	CvMat Em1tEm1 = cvMat(n, n, CV_FLT, em1tem1);
 	cvMulTransposed(&Em1, &Em1tEm1, 1, 0, 1);
 	print_mat(&Em1tEm1);
 

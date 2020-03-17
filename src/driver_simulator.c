@@ -403,8 +403,10 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 	propagate_state(driver, time_diff);
 
 	FLT time = survive_configf(ctx, "simulator-time", SC_GET, 0);
-	if (timestamp - driver->timestart > time && time > 0)
+	if (timestamp - driver->timestart > time && time > 0) {
+		SV_INFO("Simulation finished after %f seconds", realtime);
 		return 1;
+	}
 
 	return 0;
 }
@@ -492,6 +494,8 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	// ctx->bsd[0].Pose = sp->bsd[0].Pose;
 	// ctx->bsd[0].PositionSet = 1;
 
+	char buffer[1024] = {0};
+
 	for (int i = 0; i < device->sensor_ct; i++) {
 		FLT azi = rand();
 		FLT pol = rand();
@@ -501,18 +505,17 @@ int DriverRegSimulator(SurviveContext *ctx) {
 		normals[2] = locations[2] = r * cos(pol);
 		normalize3d(normals, normals);
 
-		char buffer[1024] = { 0 };
-		sprintf(buffer, "[%f, %f, %f],\n", locations[0], locations[1], locations[2]);
+		snprintf(buffer, sizeof(buffer), "[%f, %f, %f],\n", locations[0], locations[1], locations[2]);
 		str_append(&loc, buffer);
 
-		sprintf(buffer, "[%f, %f, %f],\n", normals[0], normals[1], normals[2]);
+		snprintf(buffer, sizeof(buffer), "[%f, %f, %f],\n", normals[0], normals[1], normals[2]);
 		str_append(&nor_buf, buffer);
 	}
 	nor_buf.d[nor_buf.length - 2] = 0;
 	loc.d[loc.length - 2] = 0;
 
-	double trackref_from_head[] = {rand(), rand(), rand(), rand(), rand(), rand(), rand()};
-	double trackref_from_imu[] = {rand(), rand(), rand(), rand(), rand(), rand(), rand()};
+	FLT trackref_from_head[] = {rand(), rand(), rand(), rand(), rand(), rand(), rand()};
+	FLT trackref_from_imu[] = {rand(), rand(), rand(), rand(), rand(), rand(), rand()};
 	for (int i = 0; i < 7; i++) {
 		trackref_from_head[i] = .1 * (trackref_from_head[i] / RAND_MAX - .5);
 		trackref_from_imu[i] = .1 * (trackref_from_imu[i] / RAND_MAX - .5);
@@ -521,23 +524,26 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	quatnormalize(trackref_from_head, trackref_from_head);
 	quatnormalize(trackref_from_imu, trackref_from_imu);
 
-	char buffer[1024] = {0};
-	sprintf(buffer,
-			"\"trackref_from_head\": [%f, %f, %f, %f, %f, %f, %f], \n"
-			"\"trackref_from_imu\": [%f, %f, %f, %f, %f, %f, %f], \n",
-			trackref_from_head[0], trackref_from_head[1], trackref_from_head[2], trackref_from_head[3],
-			trackref_from_head[4], trackref_from_head[5], trackref_from_head[6], trackref_from_imu[0],
-			trackref_from_imu[1], trackref_from_imu[2], trackref_from_imu[3], trackref_from_imu[4],
-			trackref_from_imu[5], trackref_from_imu[6]);
+	snprintf(buffer, sizeof(buffer),
+			 "\"trackref_from_head\": [%f, %f, %f, %f, %f, %f, %f], \n"
+			 "\"trackref_from_imu\": [%f, %f, %f, %f, %f, %f, %f], \n",
+			 trackref_from_head[0], trackref_from_head[1], trackref_from_head[2], trackref_from_head[3],
+			 trackref_from_head[4], trackref_from_head[5], trackref_from_head[6], trackref_from_imu[0],
+			 trackref_from_imu[1], trackref_from_imu[2], trackref_from_imu[3], trackref_from_imu[4],
+			 trackref_from_imu[5], trackref_from_imu[6]);
 
 	str_append(&cfg, "{\n");
 	str_append(&cfg, buffer);
 	str_append(&cfg, "     \"lighthouse_config\": {\n");
 	str_append(&cfg, "          \"modelNormals\": [\n");
 	str_append(&cfg, nor_buf.d);
+	str_free(&nor_buf);
+
 	str_append(&cfg, "          ],\n");
 	str_append(&cfg, "          \"modelPoints\": [\n");
 	str_append(&cfg, loc.d);
+	str_free(&loc);
+
 	str_append(&cfg, "          ]\n");
 	str_append(&cfg, "     }\n");
 	str_append(&cfg, "}\n");
@@ -545,9 +551,6 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	device->imu_freq = 1000.0f;
 
 	ctx->configproc(device, cfg.d, strlen(cfg.d));
-
-	str_free(&loc);
-	str_free(&nor_buf);
 
 	sp->so = device;
 	survive_add_object(ctx, device);

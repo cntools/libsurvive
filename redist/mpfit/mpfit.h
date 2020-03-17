@@ -19,6 +19,12 @@
 #ifndef MPFIT_H
 #define MPFIT_H
 
+#include "linmath.h"
+
+#ifndef FLT
+#define FLT double
+#endif
+
 /* This is a C library.  Allow compilation with a C++ compiler */
 #ifdef __cplusplus
 extern "C" {
@@ -31,11 +37,11 @@ extern "C" {
 struct mp_par_struct {
 	int fixed;		  /* 1 = fixed; 0 = free */
 	int limited[2];   /* 1 = low/upper limit; 0 = no limit */
-	double limits[2]; /* lower/upper limit boundary value */
+	FLT limits[2];	  /* lower/upper limit boundary value */
 
 	char *parname;		 /* Name of parameter, or 0 for none */
-	double step;		 /* Step size for finite difference */
-	double relstep;		 /* Relative step size for finite difference */
+	FLT step;			 /* Step size for finite difference */
+	FLT relstep;		 /* Relative step size for finite difference */
 	int side;			 /* Sidedness of finite difference derivative
 					 0 - one-sided derivative computed automatically
 					 1 - one-sided derivative (f(x+h) - f(x)  )/h
@@ -54,10 +60,10 @@ struct mp_par_struct {
 					you want to compare the user-analytical one to
 					(0, 1, -1, or 2).
 				 */
-	double deriv_reltol; /* Relative tolerance for derivative debug
-				printout */
-	double deriv_abstol; /* Absolute tolerance for derivative debug
-				printout */
+	FLT deriv_reltol;	 /* Relative tolerance for derivative debug
+				   printout */
+	FLT deriv_abstol;	 /* Absolute tolerance for derivative debug
+				   printout */
 };
 
 /* Just a placeholder - do not use!! */
@@ -68,12 +74,12 @@ struct mp_config_struct {
 	/* NOTE: the user may set the value explicitly; OR, if the passed
 	   value is zero, then the "Default" value will be substituted by
 	   mpfit(). */
-	double ftol;		  /* Relative chi-square convergence criterium Default: 1e-10 */
-	double xtol;		  /* Relative parameter convergence criterium  Default: 1e-10 */
-	double gtol;		  /* Orthogonality convergence criterium       Default: 1e-10 */
-	double epsfcn;		  /* Finite derivative step size               Default: MP_MACHEP0 */
-	double stepfactor;	/* Initial step bound                     Default: 100.0 */
-	double covtol;		  /* Range tolerance for covariance calculation Default: 1e-14 */
+	FLT ftol;			  /* Relative chi-square convergence criterium Default: 1e-10 */
+	FLT xtol;			  /* Relative parameter convergence criterium  Default: 1e-10 */
+	FLT gtol;			  /* Orthogonality convergence criterium       Default: 1e-10 */
+	FLT epsfcn;			  /* Finite derivative step size               Default: MP_MACHEP0 */
+	FLT stepfactor;		  /* Initial step bound                     Default: 100.0 */
+	FLT covtol;			  /* Range tolerance for covariance calculation Default: 1e-14 */
 	int maxiter;		  /* Maximum number of iterations.  If maxiter == MP_NO_ITER,
 							 then basic error checking is done, and parameter
 							 errors/covariances are estimated based on input
@@ -92,13 +98,13 @@ struct mp_config_struct {
 				   1 = perform check
 					*/
 	mp_iterproc iterproc; /* Placeholder pointer - must set to 0 */
-	double normtol;		  /* Norm convergence criteria Default: 0 */
+	FLT normtol;		  /* Norm convergence criteria Default: 0 */
 };
 
 /* Definition of results structure, for when fit completes */
 struct mp_result_struct {
-	double bestnorm; /* Final chi^2 */
-	double orignorm; /* Starting value of chi^2 */
+	FLT bestnorm;	 /* Final chi^2 */
+	FLT orignorm;	 /* Starting value of chi^2 */
 	int niter;		 /* Number of iterations */
 	int nfev;		 /* Number of function evaluations */
 	int status;		 /* Fitting status code */
@@ -108,12 +114,12 @@ struct mp_result_struct {
 	int npegged; /* Number of pegged parameters */
 	int nfunc;   /* Number of residuals (= num. of data points) */
 
-	double *resid;	/* Final residuals
-			   nfunc-vector, or 0 if not desired */
-	double *xerror;   /* Final parameter uncertainties (1-sigma)
-			 npar-vector, or 0 if not desired */
-	double *covar;	/* Final parameter covariance matrix
-			   npar x npar array, or 0 if not desired */
+	FLT *resid;		  /* Final residuals
+					 nfunc-vector, or 0 if not desired */
+	FLT *xerror;	  /* Final parameter uncertainties (1-sigma)
+				npar-vector, or 0 if not desired */
+	FLT *covar;		  /* Final parameter covariance matrix
+					 npar x npar array, or 0 if not desired */
 	char version[20]; /* MPFIT version string */
 };
 
@@ -125,9 +131,9 @@ typedef struct mp_result_struct mp_result;
 /* Enforce type of fitting function */
 typedef int (*mp_func)(int m,				/* Number of functions (elts of fvec) */
 					   int n,				/* Number of variables (elts of x) */
-					   double *x,			/* I - Parameters */
-					   double *fvec,		/* O - function values */
-					   double **dvec,		/* O - function derivatives (optional)*/
+					   FLT *x,				/* I - Parameters */
+					   FLT *fvec,			/* O - function values */
+					   FLT **dvec,			/* O - function derivatives (optional)*/
 					   void *private_data); /* I/O - function private data*/
 
 /* Error codes */
@@ -153,10 +159,10 @@ typedef int (*mp_func)(int m,				/* Number of functions (elts of fvec) */
 #define MP_GTOL (8)	/* gtol is too small; no further improvement*/
 #define MP_OK_NORM (9) /* norm is small enough according to user */
 
-/* Double precision numeric constants */
-#define MP_MACHEP0 2.2204460e-16
-#define MP_DWARF 2.2250739e-308
-#define MP_GIANT 1.7976931e+308
+/* FLT precision numeric constants */
+#define MP_MACHEP0 (FLT)2.2204460e-16
+#define MP_DWARF (FLT)2.2250739e-308
+#define MP_GIANT (FLT)1.7976931e+308
 
 #if 0
 /* Float precision */
@@ -165,11 +171,11 @@ typedef int (*mp_func)(int m,				/* Number of functions (elts of fvec) */
 #define MP_GIANT 3.40282e+38
 #endif
 
-#define MP_RDWARF (sqrt(MP_DWARF * 1.5) * 10)
-#define MP_RGIANT (sqrt(MP_GIANT) * 0.1)
+#define MP_RDWARF (FLT_SQRT(MP_DWARF * (FLT)1.5) * (FLT)10)
+#define MP_RGIANT (FLT_SQRT(MP_GIANT) * (FLT)0.1)
 
 /* External function prototype declarations */
-extern int mpfit(mp_func funct, int m, int npar, double *xall, mp_par *pars, mp_config *config, void *private_data,
+extern int mpfit(mp_func funct, int m, int npar, FLT *xall, mp_par *pars, mp_config *config, void *private_data,
 				 mp_result *result);
 
 /* C99 uses isfinite() instead of finite() */

@@ -146,7 +146,7 @@ endif()
 SET(PLUGINS
         driver_dummy driver_vive driver_simulator
         disambiguator_turvey disambiguator_statebased disambiguator_charles
-        poser_dummy poser_mpfit poser_epnp poser_imu poser_charlesrefine
+        poser_dummy poser_mpfit poser_imu poser_charlesrefine
 		poser_barycentric_svd
 )
 
@@ -171,7 +171,6 @@ if(UNIX)
 	list(APPEND PLUGINS driver_udp)
 endif()
 
-set(poser_epnp_ADDITIONAL_SRCS src/epnp/epnp.c)
 set(poser_barycentric_svd_ADDITIONAL_SRCS src/barycentric_svd/barycentric_svd.c )
 
 add_custom_target(survive_plugins)

@@ -7,6 +7,26 @@
 #pragma GCC push_options
 #pragma GCC optimize("Ofast")
 
+#define USE_SINGLE_POINT
+
+#ifdef USE_SINGLE_POINT
+#define FLT_REPROJECT float
+
+#define asin_REPROJECT asinf
+#define cos_REPROJECT cosf
+#define atan2_REPROJECT atan2f
+#define sqrt_REPROJECT sqrtf
+#define pow_REPROJECT powf
+#else
+#define FLT_REPROJECT FLT
+
+#define asin_REPROJECT asin
+#define cos_REPROJECT cos
+#define atan2_REPROJECT atan2
+#define sqrt_REPROJECT sqrt
+#define pow_REPROJECT pow
+#endif
+
 #include "generated/survive_reproject.generated.h"
 
 /***
@@ -50,8 +70,8 @@
 // a_i = \sum f[i] * (N-i) * a^(N-i-1)
 // m_i = \sum f[i] * a^(N-i-1)
 // It's useful to see them as separate eqs but not ultimately useful.
-static inline void calc_cal_series(double s, double *m, double *a) {
-	const double f[6] = {-8.0108022e-06, 0.0028679863, 5.3685255000000001e-06, 0.0076069798000000001};
+static inline void calc_cal_series(FLT s, FLT *m, FLT *a) {
+	const FLT f[6] = {-8.0108022e-06, 0.0028679863, 5.3685255000000001e-06, 0.0076069798000000001};
 
 	*m = f[0], *a = 0;
 	for (int i = 1; i < 6; i++) {
@@ -69,35 +89,35 @@ static inline FLT survive_reproject_axis_gen2(const BaseStationCal *bcal, FLT X,
 	const FLT ogeePhase = bcal->ogeephase;
 	const FLT ogeeMag = bcal->ogeemag;
 
-	double B = atan2(Z, X);
+	FLT B = atan2(Z, X);
 
-	double Ydeg = tilt + (axis ? -1 : 1) * M_PI / 6.;
-	double tanA = tan(Ydeg);
-	double normXZ = sqrt(X * X + Z * Z);
+	FLT Ydeg = tilt + (axis ? -1 : 1) * M_PI / 6.;
+	FLT tanA = tan(Ydeg);
+	FLT normXZ = sqrt(X * X + Z * Z);
 
-	double asinArg = linmath_enforce_range(tanA * Y / normXZ, -1, 1);
+	FLT asinArg = linmath_enforce_range(tanA * Y / normXZ, -1, 1);
 
-	double sinYdeg = sin(Ydeg);
-	double cosYdeg = cos(Ydeg);
+	FLT sinYdeg = sin(Ydeg);
+	FLT cosYdeg = cos(Ydeg);
 
-	double sinPart = sin(B - asin(asinArg) + ogeePhase) * ogeeMag;
+	FLT sinPart = sin(B - asin(asinArg) + ogeePhase) * ogeeMag;
 
-	double normXYZ = sqrt(X * X + Y * Y + Z * Z);
+	FLT normXYZ = sqrt(X * X + Y * Y + Z * Z);
 
-	double modAsinArg = linmath_enforce_range(Y / normXYZ / cosYdeg, -1, 1);
+	FLT modAsinArg = linmath_enforce_range(Y / normXYZ / cosYdeg, -1, 1);
 
-	double asinOut = asin(modAsinArg);
+	FLT asinOut = asin(modAsinArg);
 
-	double mod, acc;
+	FLT mod, acc;
 	calc_cal_series(asinOut, &mod, &acc);
 
-	double BcalCurved = sinPart + curve;
-	double asinArg2 = linmath_enforce_range(asinArg + mod * BcalCurved / (cosYdeg - acc * BcalCurved * sinYdeg), -1, 1);
+	FLT BcalCurved = sinPart + curve;
+	FLT asinArg2 = linmath_enforce_range(asinArg + mod * BcalCurved / (cosYdeg - acc * BcalCurved * sinYdeg), -1, 1);
 
-	double asinOut2 = asin(asinArg2);
-	double sinOut2 = sin(B - asinOut2 + gibPhase);
+	FLT asinOut2 = asin(asinArg2);
+	FLT sinOut2 = sin(B - asinOut2 + gibPhase);
 
-	double rtn = B - asinOut2 + sinOut2 * gibMag - phase - M_PI / 2.;
+	FLT rtn = B - asinOut2 + sinOut2 * gibMag - phase - M_PI / 2.;
 	assert(!isnan(rtn));
 	return rtn;
 }

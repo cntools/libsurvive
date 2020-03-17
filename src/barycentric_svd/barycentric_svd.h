@@ -9,9 +9,9 @@
 
 #include "../redist/linmath.h"
 
-typedef double LinmathPoint4d[4];
+typedef FLT LinmathPoint4d[4];
 
-typedef void (*bc_svd_fill_M_fn)(void *user, double *eq, int axis, double angle);
+typedef void (*bc_svd_fill_M_fn)(void *user, FLT *eq, int axis, FLT angle);
 
 typedef struct {
 	size_t obj_cnt;
@@ -44,10 +44,10 @@ void bc_svd_bc_svd(bc_svd *self, void *user, bc_svd_fill_M_fn fillFn, const Linm
 void bc_svd_dtor(bc_svd *self);
 
 void bc_svd_reset_correspondences(bc_svd *self);
-void bc_svd_add_correspondence(bc_svd *self, size_t idx, double u, double v);
+void bc_svd_add_correspondence(bc_svd *self, size_t idx, FLT u, FLT v);
 
-double bc_svd_compute_pose(bc_svd *self, double R[3][3], double t[3]);
-void relative_error(double *rot_err, double *transl_err, const double Rtrue[3][3], const double ttrue[3],
-					const double Rest[3][3], const double test[3]);
-void bc_svd_print_pose(bc_svd *self, const double R[3][3], const double t[3]);
-void print_pose(const double R[3][3], const double t[3]);
+FLT bc_svd_compute_pose(bc_svd *self, FLT R[3][3], FLT t[3]);
+void relative_error(FLT *rot_err, FLT *transl_err, const FLT Rtrue[3][3], const FLT ttrue[3], const FLT Rest[3][3],
+					const FLT test[3]);
+void bc_svd_print_pose(bc_svd *self, const FLT R[3][3], const FLT t[3]);
+void print_pose(const FLT R[3][3], const FLT t[3]);

@@ -150,7 +150,7 @@ static void testKabsch2() {
 
 	LinmathPoint3d openvrPts[] = {{1, 0, 0}, {0, 0, 1}, {0, 1, 0}};
 
-	KabschCentered(q, (double *)survivePts, (double *)openvrPts, 3);
+	KabschCentered(q, (FLT *)survivePts, (FLT *)openvrPts, 3);
 }
 
 static void testQuatFind(const LinmathQuat _q1, const LinmathQuat _q2) {

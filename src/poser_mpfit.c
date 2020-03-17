@@ -135,15 +135,14 @@ static size_t construct_input_from_scene(const MPFITData *d, size_t timecode, co
 						SurviveSensorActivations_isPairValid(scene, sensor_time_window, timecode, sensor, lh);
 				}
 				if (isReadingValue) {
-					const double *a = scene->angles[sensor][lh];
+					const FLT *a = scene->angles[sensor][lh];
 					meas->object = 0;
 					meas->axis = axis;
 					meas->value = a[axis];
 					meas->sensor_idx = sensor;
 					meas->lh = lh;
 					survive_timecode diff = survive_timecode_difference(timecode, scene->timecode[sensor][lh][axis]);
-					meas->variance =
-						d->sensor_variance + diff * d->sensor_variance_per_second / (double)so->timebase_hz;
+					meas->variance = d->sensor_variance + diff * d->sensor_variance_per_second / (FLT)so->timebase_hz;
 					// SV_INFO("Adding meas %d %d %d %f", lh, sensor, axis, meas->value);
 					meas++;
 					rtn++;
@@ -209,7 +208,7 @@ static void mpfit_set_cameras(SurviveObject *so, uint8_t lighthouse, SurvivePose
 
 	assert(!quatiszero(pose->Rot));
 	for (int i = 0; i < 7; i++)
-		assert(!isnan(((double *)pose)[i]));
+		assert(!isnan(((FLT *)pose)[i]));
 
 	if (obj_pose && !quatiszero(obj_pose->Rot))
 		*survive_optimizer_get_pose(ctx) = *obj_pose;
@@ -593,7 +592,7 @@ static FLT run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 	serialize_mpfit(d, &mpfitctx);
 	int res = survive_optimizer_run(&mpfitctx, &result);
 
-	double rtn = -1;
+	FLT rtn = -1;
 	bool status_failure = res <= 0;
 	SurviveContext *ctx = so->ctx;
 
@@ -626,9 +625,9 @@ static inline void print_stats(SurviveContext *ctx, MPFITStats *stats) {
 
 	SV_INFO("\tmeas failures     %d", stats->meas_failures);
 	SV_INFO("\ttotal iterations  %d", stats->total_iterations);
-	SV_INFO("\tavg iterations    %f", (double)stats->total_iterations / stats->total_runs);
+	SV_INFO("\tavg iterations    %f", (FLT)stats->total_iterations / stats->total_runs);
 	SV_INFO("\ttotal fevals      %d", stats->total_fev);
-	SV_INFO("\tavg fevals        %f", (double)stats->total_fev / stats->total_runs);
+	SV_INFO("\tavg fevals        %f", (FLT)stats->total_fev / stats->total_runs);
 	SV_INFO("\ttotal runs        %d", stats->total_runs);
 	SV_INFO("\tavg error         %10.10f", stats->sum_errors / stats->total_runs);
 	SV_INFO("\tavg orig error    %10.10f", stats->sum_origerrors / stats->total_runs);
@@ -690,7 +689,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 	case POSERDATA_FULL_SCENE: {
 		SurviveContext *ctx = so->ctx;
 		PoserDataFullScene *pdfs = (PoserDataFullScene *)(pd);
-		double error = run_mpfit_find_cameras(d, pdfs);
+		FLT error = run_mpfit_find_cameras(d, pdfs);
 		// std::cerr << "Average reproj error: " << error << std::endl;
 		return 0;
 	}

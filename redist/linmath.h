@@ -27,8 +27,7 @@ extern "C" {
 #define LINMATHPI ((FLT)3.14159265358979323846)
 
 // uncomment the following line to use double precision instead of single precision.
-//#define USE_DOUBLE
-
+#define USE_FLOAT
 
 #define CREATE_STACK_MAT(name, rows, cols)                                                                             \
 	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
@@ -46,7 +45,12 @@ extern "C" {
 #define FLT_ATAN2 atan2f
 #define FLT_FABS__ fabsf
 #define FLT_STRTO strtof
+
 #define SURVIVE_CV_F CV_32F
+#define CV_FLT CV_32F
+#define CV_RAW_PTR(X) ((X)->data.fl)
+#define FLT_POW powf
+
 #else
 
 #define USE_DOUBLE 1
@@ -61,6 +65,8 @@ extern "C" {
 #define FLT_FABS__ fabs
 #define FLT_STRTO strtod
 #define SURVIVE_CV_F CV_64F
+#define CV_FLT CV_64F
+#define CV_RAW_PTR(X) ((X)->data.db)
 #endif
 
 #ifdef TCC

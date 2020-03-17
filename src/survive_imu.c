@@ -74,10 +74,6 @@ static void FindUpRotation(LinmathQuat correction_world, const LinmathQuat obj2w
 	quatfrom2vectors(correction_world, local_accel, localG);
 }
 
-#define CREATE_STACK_MAT(name, rows, cols)                                                                             \
-	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
-	CvMat name = cvMat(rows, cols, SURVIVE_CV_F, _##name);
-
 void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU *data) {
 	SurviveContext *ctx = tracker->so->ctx;
 
@@ -243,8 +239,8 @@ static void pos_predict(FLT t, const survive_kalman_state_t *k, const CvMat *f_i
 	}
 }
 
-SURVIVE_EXPORT void survive_imu_integrate_velocity_acceleration(SurviveIMUTracker *tracker, double time,
-																const FLT *velocity_accel, const double *R) {
+SURVIVE_EXPORT void survive_imu_integrate_velocity_acceleration(SurviveIMUTracker *tracker, FLT time,
+																const FLT *velocity_accel, const FLT *R) {
 	FLT _H[6 * 9] = {
 		0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
@@ -253,8 +249,8 @@ SURVIVE_EXPORT void survive_imu_integrate_velocity_acceleration(SurviveIMUTracke
 	CvMat Zp = cvMat(6, 1, SURVIVE_CV_F, (void *)velocity_accel);
 	survive_kalman_predict_update_state(time, &tracker->position, &Zp, &H, R);
 }
-SURVIVE_EXPORT void survive_imu_integrate_velocity(SurviveIMUTracker *tracker, double time, const LinmathVec3d velocity,
-												   const double *R) {
+SURVIVE_EXPORT void survive_imu_integrate_velocity(SurviveIMUTracker *tracker, FLT time, const LinmathVec3d velocity,
+												   const FLT *R) {
 	FLT _H[3 * 9] = {
 		0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
 	};
@@ -263,8 +259,8 @@ SURVIVE_EXPORT void survive_imu_integrate_velocity(SurviveIMUTracker *tracker, d
 	survive_kalman_predict_update_state(time, &tracker->position, &Zp, &H, R);
 }
 
-SURVIVE_EXPORT void survive_imu_integrate_acceleration(SurviveIMUTracker *tracker, double time,
-													   const LinmathVec3d accel, const double *R) {
+SURVIVE_EXPORT void survive_imu_integrate_acceleration(SurviveIMUTracker *tracker, FLT time, const LinmathVec3d accel,
+													   const FLT *R) {
 	FLT _H[3 * 9] = {
 		0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
 	};
@@ -272,9 +268,9 @@ SURVIVE_EXPORT void survive_imu_integrate_acceleration(SurviveIMUTracker *tracke
 	CvMat Zp = cvMat(3, 1, SURVIVE_CV_F, (void *)accel);
 	survive_kalman_predict_update_state(time, &tracker->position, &Zp, &H, R);
 }
-SURVIVE_EXPORT void survive_imu_integrate_rotation_angular_velocity(SurviveIMUTracker *tracker, double time,
+SURVIVE_EXPORT void survive_imu_integrate_rotation_angular_velocity(SurviveIMUTracker *tracker, FLT time,
 																	const FLT *rotation_angular_velocity,
-																	const double *R) {
+																	const FLT *R) {
 	FLT _H_rot[7 * 7] = {
 		1., 0, 0, 0, 0, 0, 0, 0, 1., 0, 0, 0, 0, 0, 0, 0, 1., 0, 0, 0, 0, 0, 0, 0, 1.,
 		0,	0, 0, 0, 0, 0, 0, 1, 0,	 0, 0, 0, 0, 0, 0, 1, 0,  0, 0, 0, 0, 0, 0, 1,
@@ -288,8 +284,8 @@ SURVIVE_EXPORT void survive_imu_integrate_rotation_angular_velocity(SurviveIMUTr
 	quatnormalize(tracker->rot.state, tracker->rot.state);
 }
 
-SURVIVE_EXPORT void survive_imu_integrate_angular_velocity(SurviveIMUTracker *tracker, double time,
-														   const LinmathAxisAngle angular_velocity, const double *R) {
+SURVIVE_EXPORT void survive_imu_integrate_angular_velocity(SurviveIMUTracker *tracker, FLT time,
+														   const LinmathAxisAngle angular_velocity, const FLT *R) {
 	FLT _H_rot[3 * 7] = {
 		0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1,
 	};
@@ -303,8 +299,7 @@ SURVIVE_EXPORT void survive_imu_integrate_angular_velocity(SurviveIMUTracker *tr
 	quatnormalize(tracker->rot.state, tracker->rot.state);
 }
 
-void survive_imu_integrate_rotation(SurviveIMUTracker *tracker, double time, const LinmathQuat rotation,
-									const double *R) {
+void survive_imu_integrate_rotation(SurviveIMUTracker *tracker, FLT time, const LinmathQuat rotation, const FLT *R) {
 	FLT _H_rot[4 * 7] = {
 		1., 0, 0, 0, 0, 0, 0, 0, 1., 0, 0, 0, 0, 0, 0, 0, 1., 0, 0, 0, 0, 0, 0, 0, 1., 0, 0, 0,
 	};
@@ -315,8 +310,7 @@ void survive_imu_integrate_rotation(SurviveIMUTracker *tracker, double time, con
 	quatnormalize(tracker->rot.state, tracker->rot.state);
 }
 
-void survive_imu_integrate_position(SurviveIMUTracker *tracker, double time, const LinmathVec3d position,
-									const double *R) {
+void survive_imu_integrate_position(SurviveIMUTracker *tracker, FLT time, const LinmathVec3d position, const FLT *R) {
 	FLT _H[3 * 9] = {
 		1., 0, 0, 0, 0, 0, 0, 0, 0, 0, 1., 0, 0, 0, 0, 0, 0, 0, 0, 0, 1., 0, 0, 0, 0, 0, 0,
 	};

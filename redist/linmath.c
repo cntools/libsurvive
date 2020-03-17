@@ -864,24 +864,24 @@ inline void PoseToMatrix(FLT *matrix44, const LinmathPose *pose_in) {
 void KabschCentered(LinmathQuat qout, const FLT *ptsA, const FLT *ptsB, int num_pts) {
 	// Note: The following follows along with https://en.wikipedia.org/wiki/Kabsch_algorithm
 	// for the most part but we use some transpose identities to let avoid unneeded transposes
-	CvMat A = cvMat(num_pts, 3, CV_64F, (FLT *)ptsA);
-	CvMat B = cvMat(num_pts, 3, CV_64F, (FLT *)ptsB);
+	CvMat A = cvMat(num_pts, 3, CV_FLT, (FLT *)ptsA);
+	CvMat B = cvMat(num_pts, 3, CV_FLT, (FLT *)ptsB);
 
-	double _C[9] = {0};
-	CvMat C = cvMat(3, 3, CV_64F, _C);
+	FLT _C[9] = {0};
+	CvMat C = cvMat(3, 3, CV_FLT, _C);
 	cvGEMM(&B, &A, 1, 0, 0, &C, CV_GEMM_A_T);
 
-	double _U[9] = {0};
-	double _W[9] = {0};
-	double _VT[9] = {0};
-	CvMat U = cvMat(3, 3, CV_64F, _U);
-	CvMat W = cvMat(3, 3, CV_64F, _W);
-	CvMat VT = cvMat(3, 3, CV_64F, _VT);
+	FLT _U[9] = {0};
+	FLT _W[9] = {0};
+	FLT _VT[9] = {0};
+	CvMat U = cvMat(3, 3, CV_FLT, _U);
+	CvMat W = cvMat(3, 3, CV_FLT, _W);
+	CvMat VT = cvMat(3, 3, CV_FLT, _VT);
 
 	cvSVD(&C, &W, &U, &VT, CV_SVD_V_T | CV_SVD_MODIFY_A);
 
-	double _R[9] = {0};
-	CvMat R = cvMat(3, 3, CV_64F, _R);
+	FLT _R[9] = {0};
+	CvMat R = cvMat(3, 3, CV_FLT, _R);
 	cvGEMM(&U, &VT, 1, 0, 0, &R, 0);
 
 	// Enforce RH rule

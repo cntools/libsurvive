@@ -29,7 +29,7 @@ STATIC_CONFIG_ITEM(OPTIMIZER_NPRINT, "optimizer-nprint", 'i', "", 0)
 static char *object_parameter_names[] = {"Pose x",	 "Pose y",	 "Pose z",	"Pose Rot w",
 										 "Pose Rot x", "Pose Rot y", "Pose Rot z"};
 
-static void setup_pose_param_limits(survive_optimizer *mpfit_ctx, double *parameter,
+static void setup_pose_param_limits(survive_optimizer *mpfit_ctx, FLT *parameter,
 									struct mp_par_struct *pose_param_info) {
 	for (int i = 0; i < 7; i++) {
 		pose_param_info[i].limited[0] = pose_param_info[i].limited[1] = (i >= 3 ? false : true);
@@ -127,7 +127,7 @@ void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx, SurviveContex
 	}
 
 	size_t start = survive_optimizer_get_calibration_index(mpfit_ctx);
-	for (int i = start; i < start + 2 * sizeof(BaseStationCal) / sizeof(double) * mpfit_ctx->cameraLength; i++) {
+	for (int i = start; i < start + 2 * sizeof(BaseStationCal) / sizeof(FLT) * mpfit_ctx->cameraLength; i++) {
 		mpfit_ctx->parameters_info[i].parname = "Fcal parameter";
 		mpfit_ctx->parameters_info[i].fixed = true;
 	}
@@ -135,10 +135,10 @@ void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx, SurviveContex
 
 int survive_optimizer_get_parameters_count(const survive_optimizer *ctx) {
 	return ctx->cameraLength * 7 + ctx->poseLength * 7 + ctx->ptsLength * 3 +
-		   2 * ctx->cameraLength * sizeof(BaseStationCal) / sizeof(double);
+		   2 * ctx->cameraLength * sizeof(BaseStationCal) / sizeof(FLT);
 }
 
-double *survive_optimizer_get_sensors(survive_optimizer *ctx) {
+FLT *survive_optimizer_get_sensors(survive_optimizer *ctx) {
 	if (ctx->ptsLength == 0)
 		return ctx->so->sensor_locations;
 
@@ -146,8 +146,7 @@ double *survive_optimizer_get_sensors(survive_optimizer *ctx) {
 }
 
 int survive_optimizer_get_sensors_index(const survive_optimizer *ctx) {
-	return survive_optimizer_get_calibration_index(ctx) +
-		   2 * ctx->cameraLength * sizeof(BaseStationCal) / sizeof(double);
+	return survive_optimizer_get_calibration_index(ctx) + 2 * ctx->cameraLength * sizeof(BaseStationCal) / sizeof(FLT);
 }
 
 BaseStationCal *survive_optimizer_get_calibration(survive_optimizer *ctx, int lh) {
@@ -178,10 +177,10 @@ static inline void run_pair_measurement(survive_optimizer *mpfunc_ctx, size_t me
 										const survive_reproject_model_t *reprojectModel,
 										const survive_optimizer_measurement *meas, const LinmathAxisAnglePose *pose,
 										const LinmathAxisAnglePose *obj2lh, const LinmathAxisAnglePose *world2lh,
-										double *deviates, double **derivs) {
+										FLT *deviates, FLT **derivs) {
 	SurviveContext *ctx = mpfunc_ctx->so->ctx;
 	const int lh = meas->lh;
-	const double *sensor_points = survive_optimizer_get_sensors(mpfunc_ctx);
+	const FLT *sensor_points = survive_optimizer_get_sensors(mpfunc_ctx);
 	const struct BaseStationCal *cal = survive_optimizer_get_calibration(mpfunc_ctx, lh);
 	const FLT *pt = &sensor_points[meas->sensor_idx * 3];
 
@@ -238,10 +237,10 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
 								   const survive_reproject_model_t *reprojectModel,
 								   const survive_optimizer_measurement *meas, const LinmathAxisAnglePose *pose,
 								   const LinmathAxisAnglePose *obj2lh, const LinmathAxisAnglePose *world2lh,
-								   double *deviates, double **derivs) {
+								   FLT *deviates, FLT **derivs) {
 	SurviveContext *ctx = mpfunc_ctx->so->ctx;
 	const int lh = meas->lh;
-	const double *sensor_points = survive_optimizer_get_sensors(mpfunc_ctx);
+	const FLT *sensor_points = survive_optimizer_get_sensors(mpfunc_ctx);
 	const struct BaseStationCal *cal = survive_optimizer_get_calibration(mpfunc_ctx, lh);
 	const FLT *pt = &sensor_points[meas->sensor_idx * 3];
 
@@ -278,7 +277,7 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
 	}
 }
 
-static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, void *private) {
+static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *private) {
 	survive_optimizer *mpfunc_ctx = private;
 	SurviveContext *ctx = mpfunc_ctx->so ? mpfunc_ctx->so->ctx : 0;
 
@@ -293,7 +292,7 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 			// quatnormalize(cameras[i].Rot, cameras[i].Rot);
 		}
 	}
-	const double *sensor_points = survive_optimizer_get_sensors(mpfunc_ctx);
+	const FLT *sensor_points = survive_optimizer_get_sensors(mpfunc_ctx);
 
 	int pose_idx = -1;
 	// SurvivePose *pose = 0;
@@ -463,8 +462,9 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 		}
 	}
 #endif
+
 	// MPFit runs on temporary storage; so parameters is manipulated in mpfunc. Save it and restore it here.
-	double *params = optimizer->parameters;
+	FLT *params = optimizer->parameters;
 	int rtn = mpfit(mpfunc, optimizer->measurementsCnt, survive_optimizer_get_parameters_count(optimizer),
 					optimizer->parameters, optimizer->parameters_info, cfg, optimizer, result);
 	optimizer->parameters = params;
@@ -616,12 +616,12 @@ survive_optimizer *survive_optimizer_load(const char *fn) {
 SURVIVE_EXPORT FLT survive_optimizer_current_norm(const survive_optimizer *opt) {
 	int m = opt->measurementsCnt;
 	int npar = survive_optimizer_get_parameters_count(opt);
-	double *p = opt->parameters;
-	double *deviates = alloca(sizeof(double) * m);
-	double **derivs = 0;
+	FLT *p = opt->parameters;
+	FLT *deviates = alloca(sizeof(FLT) * m);
+	FLT **derivs = 0;
 	mpfunc(m, npar, p, deviates, 0, (void *)opt);
 
-	double fnorm = 0;
+	FLT fnorm = 0;
 	for (size_t i = 0; i < m; i++) {
 		fnorm += deviates[i] * deviates[i];
 	}
@@ -636,15 +636,14 @@ SURVIVE_EXPORT int survive_optimizer_nonfixed_cnt(const survive_optimizer *ctx) 
 	}
 	return rtn;
 }
-
-SURVIVE_EXPORT void survive_optimizer_get_nonfixed(const survive_optimizer *ctx, double *params) {
+SURVIVE_EXPORT void survive_optimizer_get_nonfixed(const survive_optimizer *ctx, FLT *params) {
 	for (int i = 0; i < survive_optimizer_get_parameters_count(ctx); i++) {
 		if (!ctx->parameters_info[i].fixed)
 			*(params++) = ctx->parameters[i];
 	}
 }
 
-SURVIVE_EXPORT void survive_optimizer_set_nonfixed(survive_optimizer *ctx, double *params) {
+SURVIVE_EXPORT void survive_optimizer_set_nonfixed(survive_optimizer *ctx, FLT *params) {
 	for (int i = 0; i < survive_optimizer_get_parameters_count(ctx); i++) {
 		if (!ctx->parameters_info[i].fixed)
 			ctx->parameters[i] = *(params++);

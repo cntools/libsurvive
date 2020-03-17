@@ -448,7 +448,13 @@ SURVIVE_EXPORT double survive_run_time(const SurviveContext *ctx);
 SURVIVE_EXPORT void RegisterDriver(const char *name, survive_driver_fn data);
 
 #define REGISTER_LINKTIME(func)                                                                                        \
-	SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##func() { RegisterDriver(#func, (survive_driver_fn)&func); }
+	SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##func() {                                                                 \
+		static bool loaded = false;                                                                                    \
+		if (loaded == false) {                                                                                         \
+			RegisterDriver(#func, (survive_driver_fn)&func);                                                           \
+		};                                                                                                             \
+		loaded = true;                                                                                                 \
+	}
 
 ///////////////////////// General stuff for writing drivers ///////
 

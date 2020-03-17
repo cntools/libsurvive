@@ -12,7 +12,7 @@
  *    see http://cow.physics.wisc.edu/~craigm/idl/idl.html)
  */
 
-/* Main mpfit library routines (double precision)
+/* Main mpfit library routines (FLT precision)
    $Id: mpfit.c,v 1.24 2013/04/23 18:37:38 craigm Exp $
  */
 
@@ -24,21 +24,18 @@
 #include <string.h>
 
 /* Forward declarations of functions in this module */
-static int mp_fdjac2(mp_func funct, int m, int n, int *ifree, int npar, double *x, double *fvec, double *fjac,
-					 int ldfjac, double epsfcn, double *wa, void *priv, int *nfev, double *step, double *dstep,
-					 int *dside, int *qulimited, double *ulimit, int *ddebug, double *ddrtol, double *ddatol,
-					 double *wa2, double **dvecptr);
-static void mp_qrfac(int m, int n, double *a, int lda, int pivot, int *ipvt, int lipvt, double *rdiag, double *acnorm,
-					 double *wa);
-static void mp_qrsolv(int n, double *r, int ldr, int *ipvt, double *diag, double *qtb, double *x, double *sdiag,
-					  double *wa);
-static void mp_lmpar(int n, double *r, int ldr, int *ipvt, int *ifree, double *diag, double *qtb, double delta,
-					 double *par, double *x, double *sdiag, double *wa1, double *wa2);
-static double mp_enorm(int n, double *x);
-static double mp_dmax1(double a, double b);
-static double mp_dmin1(double a, double b);
+static int mp_fdjac2(mp_func funct, int m, int n, int *ifree, int npar, FLT *x, FLT *fvec, FLT *fjac, int ldfjac,
+					 FLT epsfcn, FLT *wa, void *priv, int *nfev, FLT *step, FLT *dstep, int *dside, int *qulimited,
+					 FLT *ulimit, int *ddebug, FLT *ddrtol, FLT *ddatol, FLT *wa2, FLT **dvecptr);
+static void mp_qrfac(int m, int n, FLT *a, int lda, int pivot, int *ipvt, int lipvt, FLT *rdiag, FLT *acnorm, FLT *wa);
+static void mp_qrsolv(int n, FLT *r, int ldr, int *ipvt, FLT *diag, FLT *qtb, FLT *x, FLT *sdiag, FLT *wa);
+static void mp_lmpar(int n, FLT *r, int ldr, int *ipvt, int *ifree, FLT *diag, FLT *qtb, FLT delta, FLT *par, FLT *x,
+					 FLT *sdiag, FLT *wa1, FLT *wa2);
+static FLT mp_enorm(int n, FLT *x);
+static FLT mp_dmax1(FLT a, FLT b);
+static FLT mp_dmin1(FLT a, FLT b);
 static int mp_min0(int a, int b);
-static int mp_covar(int n, double *r, int ldr, int *ipvt, double tol, double *wa);
+static int mp_covar(int n, FLT *r, int ldr, int *ipvt, FLT tol, FLT *wa);
 
 /* Macro to call user function */
 #define mp_call(funct, m, n, x, fvec, dvec, priv) (*(funct))(m, n, x, fvec, dvec, priv)
@@ -56,242 +53,242 @@ static int mp_covar(int n, double *r, int ldr, int *ipvt, double tol, double *wa
 	}
 
 /*
-*     **********
-*
-*     subroutine mpfit
-*
-*     the purpose of mpfit is to minimize the sum of the squares of
-*     m nonlinear functions in n variables by a modification of
-*     the levenberg-marquardt algorithm. the user must provide a
-*     subroutine which calculates the functions. the jacobian is
-*     then calculated by a finite-difference approximation.
-*
-*     mp_funct funct - function to be minimized
-*     int m          - number of data points
-*     int npar       - number of fit parameters
-*     double *xall   - array of n initial parameter values
-*                      upon return, contains adjusted parameter values
-*     mp_par *pars   - array of npar structures specifying constraints;
-*                      or 0 (null pointer) for unconstrained fitting
-*                      [ see README and mpfit.h for definition & use of mp_par]
-*     mp_config *config - pointer to structure which specifies the
-*                      configuration of mpfit(); or 0 (null pointer)
-*                      if the default configuration is to be used.
-*                      See README and mpfit.h for definition and use
-*                      of config.
-*     void *private  - any private user data which is to be passed directly
-*                      to funct without modification by mpfit().
-*     mp_result *result - pointer to structure, which upon return, contains
-*                      the results of the fit.  The user should zero this
-*                      structure.  If any of the array values are to be
-*                      returned, the user should allocate storage for them
-*                      and assign the corresponding pointer in *result.
-*                      Upon return, *result will be updated, and
-*                      any of the non-null arrays will be filled.
-*
-*
-* FORTRAN DOCUMENTATION BELOW
-*
-*
-*     the subroutine statement is
-*
-*	subroutine lmdif(fcn,m,n,x,fvec,ftol,xtol,gtol,maxfev,epsfcn,
-*			 diag,mode,factor,nprint,info,nfev,fjac,
-*			 ldfjac,ipvt,qtf,wa1,wa2,wa3,wa4)
-*
-*     where
-*
-*	fcn is the name of the user-supplied subroutine which
-*	  calculates the functions. fcn must be declared
-*	  in an external statement in the user calling
-*	  program, and should be written as follows.
-*
-*	  subroutine fcn(m,n,x,fvec,iflag)
-*	  integer m,n,iflag
-*	  double precision x(n),fvec(m)
-*	  ----------
-*	  calculate the functions at x and
-*	  return this vector in fvec.
-*	  ----------
-*	  return
-*	  end
-*
-*	  the value of iflag should not be changed by fcn unless
-*	  the user wants to terminate execution of lmdif.
-*	  in this case set iflag to a negative integer.
-*
-*	m is a positive integer input variable set to the number
-*	  of functions.
-*
-*	n is a positive integer input variable set to the number
-*	  of variables. n must not exceed m.
-*
-*	x is an array of length n. on input x must contain
-*	  an initial estimate of the solution vector. on output x
-*	  contains the final estimate of the solution vector.
-*
-*	fvec is an output array of length m which contains
-*	  the functions evaluated at the output x.
-*
-*	ftol is a nonnegative input variable. termination
-*	  occurs when both the actual and predicted relative
-*	  reductions in the sum of squares are at most ftol.
-*	  therefore, ftol measures the relative error desired
-*	  in the sum of squares.
-*
-*	xtol is a nonnegative input variable. termination
-*	  occurs when the relative error between two consecutive
-*	  iterates is at most xtol. therefore, xtol measures the
-*	  relative error desired in the approximate solution.
-*
-*	gtol is a nonnegative input variable. termination
-*	  occurs when the cosine of the angle between fvec and
-*	  any column of the jacobian is at most gtol in absolute
-*	  value. therefore, gtol measures the orthogonality
-*	  desired between the function vector and the columns
-*	  of the jacobian.
-*
-*	maxfev is a positive integer input variable. termination
-*	  occurs when the number of calls to fcn is at least
-*	  maxfev by the end of an iteration.
-*
-*	epsfcn is an input variable used in determining a suitable
-*	  step length for the forward-difference approximation. this
-*	  approximation assumes that the relative errors in the
-*	  functions are of the order of epsfcn. if epsfcn is less
-*	  than the machine precision, it is assumed that the relative
-*	  errors in the functions are of the order of the machine
-*	  precision.
-*
-*	diag is an array of length n. if mode = 1 (see
-*	  below), diag is internally set. if mode = 2, diag
-*	  must contain positive entries that serve as
-*	  multiplicative scale factors for the variables.
-*
-*	mode is an integer input variable. if mode = 1, the
-*	  variables will be scaled internally. if mode = 2,
-*	  the scaling is specified by the input diag. other
-*	  values of mode are equivalent to mode = 1.
-*
-*	factor is a positive input variable used in determining the
-*	  initial step bound. this bound is set to the product of
-*	  factor and the euclidean norm of diag*x if nonzero, or else
-*	  to factor itself. in most cases factor should lie in the
-*	  interval (.1,100.). 100. is a generally recommended value.
-*
-*	nprint is an integer input variable that enables controlled
-*	  printing of iterates if it is positive. in this case,
-*	  fcn is called with iflag = 0 at the beginning of the first
-*	  iteration and every nprint iterations thereafter and
-*	  immediately prior to return, with x and fvec available
-*	  for printing. if nprint is not positive, no special calls
-*	  of fcn with iflag = 0 are made.
-*
-*	info is an integer output variable. if the user has
-*	  terminated execution, info is set to the (negative)
-*	  value of iflag. see description of fcn. otherwise,
-*	  info is set as follows.
-*
-*	  info = 0  improper input parameters.
-*
-*	  info = 1  both actual and predicted relative reductions
-*		    in the sum of squares are at most ftol.
-*
-*	  info = 2  relative error between two consecutive iterates
-*		    is at most xtol.
-*
-*	  info = 3  conditions for info = 1 and info = 2 both hold.
-*
-*	  info = 4  the cosine of the angle between fvec and any
-*		    column of the jacobian is at most gtol in
-*		    absolute value.
-*
-*	  info = 5  number of calls to fcn has reached or
-*		    exceeded maxfev.
-*
-*	  info = 6  ftol is too small. no further reduction in
-*		    the sum of squares is possible.
-*
-*	  info = 7  xtol is too small. no further improvement in
-*		    the approximate solution x is possible.
-*
-*	  info = 8  gtol is too small. fvec is orthogonal to the
-*		    columns of the jacobian to machine precision.
-*
-*	nfev is an integer output variable set to the number of
-*	  calls to fcn.
-*
-*	fjac is an output m by n array. the upper n by n submatrix
-*	  of fjac contains an upper triangular matrix r with
-*	  diagonal elements of nonincreasing magnitude such that
-*
-*		 t     t	   t
-*		p *(jac *jac)*p = r *r,
-*
-*	  where p is a permutation matrix and jac is the final
-*	  calculated jacobian. column j of p is column ipvt(j)
-*	  (see below) of the identity matrix. the lower trapezoidal
-*	  part of fjac contains information generated during
-*	  the computation of r.
-*
-*	ldfjac is a positive integer input variable not less than m
-*	  which specifies the leading dimension of the array fjac.
-*
-*	ipvt is an integer output array of length n. ipvt
-*	  defines a permutation matrix p such that jac*p = q*r,
-*	  where jac is the final calculated jacobian, q is
-*	  orthogonal (not stored), and r is upper triangular
-*	  with diagonal elements of nonincreasing magnitude.
-*	  column j of p is column ipvt(j) of the identity matrix.
-*
-*	qtf is an output array of length n which contains
-*	  the first n elements of the vector (q transpose)*fvec.
-*
-*	wa1, wa2, and wa3 are work arrays of length n.
-*
-*	wa4 is a work array of length m.
-*
-*     subprograms called
-*
-*	user-supplied ...... fcn
-*
-*	minpack-supplied ... dpmpar,enorm,fdjac2,lmpar,qrfac
-*
-*	fortran-supplied ... dabs,dmax1,dmin1,dsqrt,mod
-*
-*     argonne national laboratory. minpack project. march 1980.
-*     burton s. garbow, kenneth e. hillstrom, jorge j. more
-*
-* ********** */
+ *     **********
+ *
+ *     subroutine mpfit
+ *
+ *     the purpose of mpfit is to minimize the sum of the squares of
+ *     m nonlinear functions in n variables by a modification of
+ *     the levenberg-marquardt algorithm. the user must provide a
+ *     subroutine which calculates the functions. the jacobian is
+ *     then calculated by a finite-difference approximation.
+ *
+ *     mp_funct funct - function to be minimized
+ *     int m          - number of data points
+ *     int npar       - number of fit parameters
+ *     FLT *xall   - array of n initial parameter values
+ *                      upon return, contains adjusted parameter values
+ *     mp_par *pars   - array of npar structures specifying constraints;
+ *                      or 0 (null pointer) for unconstrained fitting
+ *                      [ see README and mpfit.h for definition & use of mp_par]
+ *     mp_config *config - pointer to structure which specifies the
+ *                      configuration of mpfit(); or 0 (null pointer)
+ *                      if the default configuration is to be used.
+ *                      See README and mpfit.h for definition and use
+ *                      of config.
+ *     void *private  - any private user data which is to be passed directly
+ *                      to funct without modification by mpfit().
+ *     mp_result *result - pointer to structure, which upon return, contains
+ *                      the results of the fit.  The user should zero this
+ *                      structure.  If any of the array values are to be
+ *                      returned, the user should allocate storage for them
+ *                      and assign the corresponding pointer in *result.
+ *                      Upon return, *result will be updated, and
+ *                      any of the non-null arrays will be filled.
+ *
+ *
+ * FORTRAN DOCUMENTATION BELOW
+ *
+ *
+ *     the subroutine statement is
+ *
+ *	subroutine lmdif(fcn,m,n,x,fvec,ftol,xtol,gtol,maxfev,epsfcn,
+ *			 diag,mode,factor,nprint,info,nfev,fjac,
+ *			 ldfjac,ipvt,qtf,wa1,wa2,wa3,wa4)
+ *
+ *     where
+ *
+ *	fcn is the name of the user-supplied subroutine which
+ *	  calculates the functions. fcn must be declared
+ *	  in an external statement in the user calling
+ *	  program, and should be written as follows.
+ *
+ *	  subroutine fcn(m,n,x,fvec,iflag)
+ *	  integer m,n,iflag
+ *	  FLT precision x(n),fvec(m)
+ *	  ----------
+ *	  calculate the functions at x and
+ *	  return this vector in fvec.
+ *	  ----------
+ *	  return
+ *	  end
+ *
+ *	  the value of iflag should not be changed by fcn unless
+ *	  the user wants to terminate execution of lmdif.
+ *	  in this case set iflag to a negative integer.
+ *
+ *	m is a positive integer input variable set to the number
+ *	  of functions.
+ *
+ *	n is a positive integer input variable set to the number
+ *	  of variables. n must not exceed m.
+ *
+ *	x is an array of length n. on input x must contain
+ *	  an initial estimate of the solution vector. on output x
+ *	  contains the final estimate of the solution vector.
+ *
+ *	fvec is an output array of length m which contains
+ *	  the functions evaluated at the output x.
+ *
+ *	ftol is a nonnegative input variable. termination
+ *	  occurs when both the actual and predicted relative
+ *	  reductions in the sum of squares are at most ftol.
+ *	  therefore, ftol measures the relative error desired
+ *	  in the sum of squares.
+ *
+ *	xtol is a nonnegative input variable. termination
+ *	  occurs when the relative error between two consecutive
+ *	  iterates is at most xtol. therefore, xtol measures the
+ *	  relative error desired in the approximate solution.
+ *
+ *	gtol is a nonnegative input variable. termination
+ *	  occurs when the cosine of the angle between fvec and
+ *	  any column of the jacobian is at most gtol in absolute
+ *	  value. therefore, gtol measures the orthogonality
+ *	  desired between the function vector and the columns
+ *	  of the jacobian.
+ *
+ *	maxfev is a positive integer input variable. termination
+ *	  occurs when the number of calls to fcn is at least
+ *	  maxfev by the end of an iteration.
+ *
+ *	epsfcn is an input variable used in determining a suitable
+ *	  step length for the forward-difference approximation. this
+ *	  approximation assumes that the relative errors in the
+ *	  functions are of the order of epsfcn. if epsfcn is less
+ *	  than the machine precision, it is assumed that the relative
+ *	  errors in the functions are of the order of the machine
+ *	  precision.
+ *
+ *	diag is an array of length n. if mode = 1 (see
+ *	  below), diag is internally set. if mode = 2, diag
+ *	  must contain positive entries that serve as
+ *	  multiplicative scale factors for the variables.
+ *
+ *	mode is an integer input variable. if mode = 1, the
+ *	  variables will be scaled internally. if mode = 2,
+ *	  the scaling is specified by the input diag. other
+ *	  values of mode are equivalent to mode = 1.
+ *
+ *	factor is a positive input variable used in determining the
+ *	  initial step bound. this bound is set to the product of
+ *	  factor and the euclidean norm of diag*x if nonzero, or else
+ *	  to factor itself. in most cases factor should lie in the
+ *	  interval (.1,100.). 100. is a generally recommended value.
+ *
+ *	nprint is an integer input variable that enables controlled
+ *	  printing of iterates if it is positive. in this case,
+ *	  fcn is called with iflag = 0 at the beginning of the first
+ *	  iteration and every nprint iterations thereafter and
+ *	  immediately prior to return, with x and fvec available
+ *	  for printing. if nprint is not positive, no special calls
+ *	  of fcn with iflag = 0 are made.
+ *
+ *	info is an integer output variable. if the user has
+ *	  terminated execution, info is set to the (negative)
+ *	  value of iflag. see description of fcn. otherwise,
+ *	  info is set as follows.
+ *
+ *	  info = 0  improper input parameters.
+ *
+ *	  info = 1  both actual and predicted relative reductions
+ *		    in the sum of squares are at most ftol.
+ *
+ *	  info = 2  relative error between two consecutive iterates
+ *		    is at most xtol.
+ *
+ *	  info = 3  conditions for info = 1 and info = 2 both hold.
+ *
+ *	  info = 4  the cosine of the angle between fvec and any
+ *		    column of the jacobian is at most gtol in
+ *		    absolute value.
+ *
+ *	  info = 5  number of calls to fcn has reached or
+ *		    exceeded maxfev.
+ *
+ *	  info = 6  ftol is too small. no further reduction in
+ *		    the sum of squares is possible.
+ *
+ *	  info = 7  xtol is too small. no further improvement in
+ *		    the approximate solution x is possible.
+ *
+ *	  info = 8  gtol is too small. fvec is orthogonal to the
+ *		    columns of the jacobian to machine precision.
+ *
+ *	nfev is an integer output variable set to the number of
+ *	  calls to fcn.
+ *
+ *	fjac is an output m by n array. the upper n by n submatrix
+ *	  of fjac contains an upper triangular matrix r with
+ *	  diagonal elements of nonincreasing magnitude such that
+ *
+ *		 t     t	   t
+ *		p *(jac *jac)*p = r *r,
+ *
+ *	  where p is a permutation matrix and jac is the final
+ *	  calculated jacobian. column j of p is column ipvt(j)
+ *	  (see below) of the identity matrix. the lower trapezoidal
+ *	  part of fjac contains information generated during
+ *	  the computation of r.
+ *
+ *	ldfjac is a positive integer input variable not less than m
+ *	  which specifies the leading dimension of the array fjac.
+ *
+ *	ipvt is an integer output array of length n. ipvt
+ *	  defines a permutation matrix p such that jac*p = q*r,
+ *	  where jac is the final calculated jacobian, q is
+ *	  orthogonal (not stored), and r is upper triangular
+ *	  with diagonal elements of nonincreasing magnitude.
+ *	  column j of p is column ipvt(j) of the identity matrix.
+ *
+ *	qtf is an output array of length n which contains
+ *	  the first n elements of the vector (q transpose)*fvec.
+ *
+ *	wa1, wa2, and wa3 are work arrays of length n.
+ *
+ *	wa4 is a work array of length m.
+ *
+ *     subprograms called
+ *
+ *	user-supplied ...... fcn
+ *
+ *	minpack-supplied ... dpmpar,enorm,fdjac2,lmpar,qrfac
+ *
+ *	fortran-supplied ... dabs,dmax1,dmin1,dFLT_SQRT,mod
+ *
+ *     argonne national laboratory. minpack project. march 1980.
+ *     burton s. garbow, kenneth e. hillstrom, jorge j. more
+ *
+ * ********** */
 
-int mpfit(mp_func funct, int m, int npar, double *xall, mp_par *pars, mp_config *config, void *private_data,
+int mpfit(mp_func funct, int m, int npar, FLT *xall, mp_par *pars, mp_config *config, void *private_data,
 		  mp_result *result) {
 	mp_config conf;
 	int i, j, info, iflag, nfree, npegged, iter;
 	int qanylim = 0;
 
 	int ij, jj, l;
-	double actred, delta, dirder, fnorm, fnorm1, gnorm, orignorm;
-	double par, pnorm, prered, ratio;
-	double sum, temp, temp1, temp2, temp3, xnorm, alpha;
-	static double one = 1.0;
-	static double p1 = 0.1;
-	static double p5 = 0.5;
-	static double p25 = 0.25;
-	static double p75 = 0.75;
-	static double p0001 = 1.0e-4;
-	static double zero = 0.0;
+	FLT actred, delta, dirder, fnorm, fnorm1, gnorm, orignorm;
+	FLT par, pnorm, prered, ratio;
+	FLT sum, temp, temp1, temp2, temp3, xnorm, alpha;
+	static FLT one = 1.0;
+	static FLT p1 = 0.1;
+	static FLT p5 = 0.5;
+	static FLT p25 = 0.25;
+	static FLT p75 = 0.75;
+	static FLT p0001 = 1.0e-4;
+	static FLT zero = 0.0;
 	int nfev = 0;
 
-	double *step = 0, *dstep = 0, *llim = 0, *ulim = 0;
+	FLT *step = 0, *dstep = 0, *llim = 0, *ulim = 0;
 	int *pfixed = 0, *mpside = 0, *ifree = 0, *qllim = 0, *qulim = 0;
 	int *ddebug = 0;
-	double *ddrtol = 0, *ddatol = 0;
+	FLT *ddrtol = 0, *ddatol = 0;
 
-	double *fvec = 0, *qtf = 0;
-	double *x = 0, *xnew = 0, *fjac = 0, *diag = 0;
-	double *wa1 = 0, *wa2 = 0, *wa3 = 0, *wa4 = 0;
-	double **dvecptr = 0;
+	FLT *fvec = 0, *qtf = 0;
+	FLT *x = 0, *xnew = 0, *fjac = 0, *diag = 0;
+	FLT *wa1 = 0, *wa2 = 0, *wa3 = 0, *wa4 = 0;
+	FLT **dvecptr = 0;
 	int *ipvt = 0;
 
 	int ldfjac;
@@ -336,7 +333,7 @@ int mpfit(mp_func funct, int m, int npar, double *xall, mp_par *pars, mp_config 
 			conf.nofinitecheck = config->nofinitecheck;
 
 		if (config->normtol > 0.)
-			conf.normtol = sqrt(config->normtol);
+			conf.normtol = FLT_SQRT(config->normtol);
 		conf.maxfev = config->maxfev;
 	}
 
@@ -371,12 +368,12 @@ int mpfit(mp_func funct, int m, int npar, double *xall, mp_par *pars, mp_config 
 		}
 
 	/* Finite differencing step, absolute and relative, and sidedness of deriv */
-	mp_malloc(step, double, npar);
-	mp_malloc(dstep, double, npar);
+	mp_malloc(step, FLT, npar);
+	mp_malloc(dstep, FLT, npar);
 	mp_malloc(mpside, int, npar);
 	mp_malloc(ddebug, int, npar);
-	mp_malloc(ddrtol, double, npar);
-	mp_malloc(ddatol, double, npar);
+	mp_malloc(ddrtol, FLT, npar);
+	mp_malloc(ddatol, FLT, npar);
 	if (pars)
 		for (i = 0; i < npar; i++) {
 			step[i] = pars[i].step;
@@ -417,8 +414,8 @@ int mpfit(mp_func funct, int m, int npar, double *xall, mp_par *pars, mp_config 
 
 		mp_malloc(qulim, int, nfree);
 		mp_malloc(qllim, int, nfree);
-		mp_malloc(ulim, double, nfree);
-		mp_malloc(llim, double, nfree);
+		mp_malloc(ulim, FLT, nfree);
+		mp_malloc(llim, FLT, nfree);
 
 		for (i = 0; i < nfree; i++) {
 			qllim[i] = pars[ifree[i]].limited[0];
@@ -444,19 +441,19 @@ int mpfit(mp_func funct, int m, int npar, double *xall, mp_par *pars, mp_config 
 	}
 
 	/* Allocate temporary storage */
-	mp_malloc(fvec, double, m);
-	mp_malloc(qtf, double, nfree);
-	mp_malloc(x, double, nfree);
-	mp_malloc(xnew, double, npar);
-	mp_malloc(fjac, double, m *nfree);
+	mp_malloc(fvec, FLT, m);
+	mp_malloc(qtf, FLT, nfree);
+	mp_malloc(x, FLT, nfree);
+	mp_malloc(xnew, FLT, npar);
+	mp_malloc(fjac, FLT, m * nfree);
 	ldfjac = m;
-	mp_malloc(diag, double, npar);
-	mp_malloc(wa1, double, npar);
-	mp_malloc(wa2, double, npar);
-	mp_malloc(wa3, double, npar);
-	mp_malloc(wa4, double, m);
+	mp_malloc(diag, FLT, npar);
+	mp_malloc(wa1, FLT, npar);
+	mp_malloc(wa2, FLT, npar);
+	mp_malloc(wa3, FLT, npar);
+	mp_malloc(wa4, FLT, m);
 	mp_malloc(ipvt, int, npar);
-	mp_malloc(dvecptr, double *, npar);
+	mp_malloc(dvecptr, FLT *, npar);
 
 	/* Evaluate user function with initial parameter values */
 	iflag = mp_call(funct, m, npar, xall, fvec, 0, private_data);
@@ -707,8 +704,8 @@ L200:
 
 		/* Scale the resulting vector, advance to the next position */
 		for (j = 0; j < nfree; j++) {
-			double sgnu, sgnl;
-			double ulim1, llim1;
+			FLT sgnu, sgnl;
+			FLT ulim1, llim1;
 
 			wa1[j] = wa1[j] * alpha;
 			wa2[j] = x[j] + wa1[j];
@@ -789,7 +786,7 @@ L200:
 	 */
 
 	temp1 = mp_enorm(nfree, wa3) * alpha / fnorm;
-	temp2 = (sqrt(alpha * par) * pnorm) / fnorm;
+	temp2 = (FLT_SQRT(alpha * par) * pnorm) / fnorm;
 	prered = temp1 * temp1 + (temp2 * temp2) / p5;
 	dirder = -(temp1 * temp1 + temp2 * temp2);
 
@@ -947,9 +944,9 @@ L300:
 				result->xerror[j] = 0;
 
 			for (j = 0; j < nfree; j++) {
-				double cc = fjac[j * ldfjac + j];
+				FLT cc = fjac[j * ldfjac + j];
 				if (cc > 0)
-					result->xerror[ifree[j]] = sqrt(cc);
+					result->xerror[ifree[j]] = FLT_SQRT(cc);
 			}
 		}
 	}
@@ -1029,96 +1026,95 @@ CLEANUP:
 
 /************************fdjac2.c*************************/
 
-static int mp_fdjac2(mp_func funct, int m, int n, int *ifree, int npar, double *x, double *fvec, double *fjac,
-					 int ldfjac, double epsfcn, double *wa, void *priv, int *nfev, double *step, double *dstep,
-					 int *dside, int *qulimited, double *ulimit, int *ddebug, double *ddrtol, double *ddatol,
-					 double *wa2, double **dvec) {
+static int mp_fdjac2(mp_func funct, int m, int n, int *ifree, int npar, FLT *x, FLT *fvec, FLT *fjac, int ldfjac,
+					 FLT epsfcn, FLT *wa, void *priv, int *nfev, FLT *step, FLT *dstep, int *dside, int *qulimited,
+					 FLT *ulimit, int *ddebug, FLT *ddrtol, FLT *ddatol, FLT *wa2, FLT **dvec) {
 	/*
-	*     **********
-	*
-	*     subroutine fdjac2
-	*
-	*     this subroutine computes a forward-difference approximation
-	*     to the m by n jacobian matrix associated with a specified
-	*     problem of m functions in n variables.
-	*
-	*     the subroutine statement is
-	*
-	*	subroutine fdjac2(fcn,m,n,x,fvec,fjac,ldfjac,iflag,epsfcn,wa)
-	*
-	*     where
-	*
-	*	fcn is the name of the user-supplied subroutine which
-	*	  calculates the functions. fcn must be declared
-	*	  in an external statement in the user calling
-	*	  program, and should be written as follows.
-	*
-	*	  subroutine fcn(m,n,x,fvec,iflag)
-	*	  integer m,n,iflag
-	*	  double precision x(n),fvec(m)
-	*	  ----------
-	*	  calculate the functions at x and
-	*	  return this vector in fvec.
-	*	  ----------
-	*	  return
-	*	  end
-	*
-	*	  the value of iflag should not be changed by fcn unless
-	*	  the user wants to terminate execution of fdjac2.
-	*	  in this case set iflag to a negative integer.
-	*
-	*	m is a positive integer input variable set to the number
-	*	  of functions.
-	*
-	*	n is a positive integer input variable set to the number
-	*	  of variables. n must not exceed m.
-	*
-	*	x is an input array of length n.
-	*
-	*	fvec is an input array of length m which must contain the
-	*	  functions evaluated at x.
-	*
-	*	fjac is an output m by n array which contains the
-	*	  approximation to the jacobian matrix evaluated at x.
-	*
-	*	ldfjac is a positive integer input variable not less than m
-	*	  which specifies the leading dimension of the array fjac.
-	*
-	*	iflag is an integer variable which can be used to terminate
-	*	  the execution of fdjac2. see description of fcn.
-	*
-	*	epsfcn is an input variable used in determining a suitable
-	*	  step length for the forward-difference approximation. this
-	*	  approximation assumes that the relative errors in the
-	*	  functions are of the order of epsfcn. if epsfcn is less
-	*	  than the machine precision, it is assumed that the relative
-	*	  errors in the functions are of the order of the machine
-	*	  precision.
-	*
-	*	wa is a work array of length m.
-	*
-	*     subprograms called
-	*
-	*	user-supplied ...... fcn
-	*
-	*	minpack-supplied ... dpmpar
-	*
-	*	fortran-supplied ... dabs,dmax1,dsqrt
-	*
-	*     argonne national laboratory. minpack project. march 1980.
-	*     burton s. garbow, kenneth e. hillstrom, jorge j. more
-	*
-		  **********
-	*/
+	 *     **********
+	 *
+	 *     subroutine fdjac2
+	 *
+	 *     this subroutine computes a forward-difference approximation
+	 *     to the m by n jacobian matrix associated with a specified
+	 *     problem of m functions in n variables.
+	 *
+	 *     the subroutine statement is
+	 *
+	 *	subroutine fdjac2(fcn,m,n,x,fvec,fjac,ldfjac,iflag,epsfcn,wa)
+	 *
+	 *     where
+	 *
+	 *	fcn is the name of the user-supplied subroutine which
+	 *	  calculates the functions. fcn must be declared
+	 *	  in an external statement in the user calling
+	 *	  program, and should be written as follows.
+	 *
+	 *	  subroutine fcn(m,n,x,fvec,iflag)
+	 *	  integer m,n,iflag
+	 *	  FLT precision x(n),fvec(m)
+	 *	  ----------
+	 *	  calculate the functions at x and
+	 *	  return this vector in fvec.
+	 *	  ----------
+	 *	  return
+	 *	  end
+	 *
+	 *	  the value of iflag should not be changed by fcn unless
+	 *	  the user wants to terminate execution of fdjac2.
+	 *	  in this case set iflag to a negative integer.
+	 *
+	 *	m is a positive integer input variable set to the number
+	 *	  of functions.
+	 *
+	 *	n is a positive integer input variable set to the number
+	 *	  of variables. n must not exceed m.
+	 *
+	 *	x is an input array of length n.
+	 *
+	 *	fvec is an input array of length m which must contain the
+	 *	  functions evaluated at x.
+	 *
+	 *	fjac is an output m by n array which contains the
+	 *	  approximation to the jacobian matrix evaluated at x.
+	 *
+	 *	ldfjac is a positive integer input variable not less than m
+	 *	  which specifies the leading dimension of the array fjac.
+	 *
+	 *	iflag is an integer variable which can be used to terminate
+	 *	  the execution of fdjac2. see description of fcn.
+	 *
+	 *	epsfcn is an input variable used in determining a suitable
+	 *	  step length for the forward-difference approximation. this
+	 *	  approximation assumes that the relative errors in the
+	 *	  functions are of the order of epsfcn. if epsfcn is less
+	 *	  than the machine precision, it is assumed that the relative
+	 *	  errors in the functions are of the order of the machine
+	 *	  precision.
+	 *
+	 *	wa is a work array of length m.
+	 *
+	 *     subprograms called
+	 *
+	 *	user-supplied ...... fcn
+	 *
+	 *	minpack-supplied ... dpmpar
+	 *
+	 *	fortran-supplied ... dabs,dmax1,dFLT_SQRT
+	 *
+	 *     argonne national laboratory. minpack project. march 1980.
+	 *     burton s. garbow, kenneth e. hillstrom, jorge j. more
+	 *
+	 **********
+	 */
 	int i, j, ij;
 	int iflag = 0;
-	double eps, h, temp;
-	static double zero = 0.0;
+	FLT eps, h, temp;
+	static FLT zero = 0.0;
 	int has_analytical_deriv = 0, has_numerical_deriv = 0;
 	int has_debug_deriv = 0;
 
 	temp = mp_dmax1(epsfcn, MP_MACHEP0);
-	eps = sqrt(temp);
+	eps = FLT_SQRT(temp);
 	ij = 0;
 	ldfjac = 0; /* Prevent compiler warning */
 	if (ldfjac) {
@@ -1170,7 +1166,7 @@ static int mp_fdjac2(mp_func funct, int m, int n, int *ifree, int npar, double *
 		for (j = 0; j < n; j++) { /* Loop thru free parms */
 			int dsidei = (dside) ? (dside[ifree[j]]) : (0);
 			int debug = ddebug[ifree[j]];
-			double dr = ddrtol[ifree[j]], da = ddatol[ifree[j]];
+			FLT dr = ddrtol[ifree[j]], da = ddatol[ifree[j]];
 
 			/* Check for debugging */
 			if (debug) {
@@ -1215,7 +1211,7 @@ static int mp_fdjac2(mp_func funct, int m, int n, int *ifree, int npar, double *
 				} else {
 					/* Debug path for correctness */
 					for (i = 0; i < m; i++, ij++) {
-						double fjold = fjac[ij];
+						FLT fjold = fjac[ij];
 						fjac[ij] = (wa[i] - fvec[i]) / h; /* fjac[i+m*j] */
 						assert(isfinite(fjac[ij]));
 						if ((da == 0 && dr == 0 && (fjold != 0 || fjac[ij] != 0)) ||
@@ -1250,7 +1246,7 @@ static int mp_fdjac2(mp_func funct, int m, int n, int *ifree, int npar, double *
 				} else {
 					/* Debug path for correctness */
 					for (i = 0; i < m; i++, ij++) {
-						double fjold = fjac[ij];
+						FLT fjold = fjac[ij];
 						fjac[ij] = (wa2[i] - wa[i]) / (2 * h); /* fjac[i+m*j] */
 						if ((da == 0 && dr == 0 && (fjold != 0 || fjac[ij] != 0)) ||
 							((da != 0 || dr != 0) && (fabs(fjold - fjac[ij]) > da + fabs(fjold) * dr))) {
@@ -1278,90 +1274,89 @@ DONE:
 
 /************************qrfac.c*************************/
 
-static void mp_qrfac(int m, int n, double *a, int lda, int pivot, int *ipvt, int lipvt, double *rdiag, double *acnorm,
-					 double *wa) {
+static void mp_qrfac(int m, int n, FLT *a, int lda, int pivot, int *ipvt, int lipvt, FLT *rdiag, FLT *acnorm, FLT *wa) {
 	/*
-	*     **********
-	*
-	*     subroutine qrfac
-	*
-	*     this subroutine uses householder transformations with column
-	*     pivoting (optional) to compute a qr factorization of the
-	*     m by n matrix a. that is, qrfac determines an orthogonal
-	*     matrix q, a permutation matrix p, and an upper trapezoidal
-	*     matrix r with diagonal elements of nonincreasing magnitude,
-	*     such that a*p = q*r. the householder transformation for
-	*     column k, k = 1,2,...,min(m,n), is of the form
-	*
-	*			    t
-	*	    i - (1/u(k))*u*u
-	*
-	*     where u has zeros in the first k-1 positions. the form of
-	*     this transformation and the method of pivoting first
-	*     appeared in the corresponding linpack subroutine.
-	*
-	*     the subroutine statement is
-	*
-	*	subroutine qrfac(m,n,a,lda,pivot,ipvt,lipvt,rdiag,acnorm,wa)
-	*
-	*     where
-	*
-	*	m is a positive integer input variable set to the number
-	*	  of rows of a.
-	*
-	*	n is a positive integer input variable set to the number
-	*	  of columns of a.
-	*
-	*	a is an m by n array. on input a contains the matrix for
-	*	  which the qr factorization is to be computed. on output
-	*	  the strict upper trapezoidal part of a contains the strict
-	*	  upper trapezoidal part of r, and the lower trapezoidal
-	*	  part of a contains a factored form of q (the non-trivial
-	*	  elements of the u vectors described above).
-	*
-	*	lda is a positive integer input variable not less than m
-	*	  which specifies the leading dimension of the array a.
-	*
-	*	pivot is a logical input variable. if pivot is set true,
-	*	  then column pivoting is enforced. if pivot is set false,
-	*	  then no column pivoting is done.
-	*
-	*	ipvt is an integer output array of length lipvt. ipvt
-	*	  defines the permutation matrix p such that a*p = q*r.
-	*	  column j of p is column ipvt(j) of the identity matrix.
-	*	  if pivot is false, ipvt is not referenced.
-	*
-	*	lipvt is a positive integer input variable. if pivot is false,
-	*	  then lipvt may be as small as 1. if pivot is true, then
-	*	  lipvt must be at least n.
-	*
-	*	rdiag is an output array of length n which contains the
-	*	  diagonal elements of r.
-	*
-	*	acnorm is an output array of length n which contains the
-	*	  norms of the corresponding columns of the input matrix a.
-	*	  if this information is not needed, then acnorm can coincide
-	*	  with rdiag.
-	*
-	*	wa is a work array of length n. if pivot is false, then wa
-	*	  can coincide with rdiag.
-	*
-	*     subprograms called
-	*
-	*	minpack-supplied ... dpmpar,enorm
-	*
-	*	fortran-supplied ... dmax1,dsqrt,min0
-	*
-	*     argonne national laboratory. minpack project. march 1980.
-	*     burton s. garbow, kenneth e. hillstrom, jorge j. more
-	*
-	*     **********
-	*/
+	 *     **********
+	 *
+	 *     subroutine qrfac
+	 *
+	 *     this subroutine uses householder transformations with column
+	 *     pivoting (optional) to compute a qr factorization of the
+	 *     m by n matrix a. that is, qrfac determines an orthogonal
+	 *     matrix q, a permutation matrix p, and an upper trapezoidal
+	 *     matrix r with diagonal elements of nonincreasing magnitude,
+	 *     such that a*p = q*r. the householder transformation for
+	 *     column k, k = 1,2,...,min(m,n), is of the form
+	 *
+	 *			    t
+	 *	    i - (1/u(k))*u*u
+	 *
+	 *     where u has zeros in the first k-1 positions. the form of
+	 *     this transformation and the method of pivoting first
+	 *     appeared in the corresponding linpack subroutine.
+	 *
+	 *     the subroutine statement is
+	 *
+	 *	subroutine qrfac(m,n,a,lda,pivot,ipvt,lipvt,rdiag,acnorm,wa)
+	 *
+	 *     where
+	 *
+	 *	m is a positive integer input variable set to the number
+	 *	  of rows of a.
+	 *
+	 *	n is a positive integer input variable set to the number
+	 *	  of columns of a.
+	 *
+	 *	a is an m by n array. on input a contains the matrix for
+	 *	  which the qr factorization is to be computed. on output
+	 *	  the strict upper trapezoidal part of a contains the strict
+	 *	  upper trapezoidal part of r, and the lower trapezoidal
+	 *	  part of a contains a factored form of q (the non-trivial
+	 *	  elements of the u vectors described above).
+	 *
+	 *	lda is a positive integer input variable not less than m
+	 *	  which specifies the leading dimension of the array a.
+	 *
+	 *	pivot is a logical input variable. if pivot is set true,
+	 *	  then column pivoting is enforced. if pivot is set false,
+	 *	  then no column pivoting is done.
+	 *
+	 *	ipvt is an integer output array of length lipvt. ipvt
+	 *	  defines the permutation matrix p such that a*p = q*r.
+	 *	  column j of p is column ipvt(j) of the identity matrix.
+	 *	  if pivot is false, ipvt is not referenced.
+	 *
+	 *	lipvt is a positive integer input variable. if pivot is false,
+	 *	  then lipvt may be as small as 1. if pivot is true, then
+	 *	  lipvt must be at least n.
+	 *
+	 *	rdiag is an output array of length n which contains the
+	 *	  diagonal elements of r.
+	 *
+	 *	acnorm is an output array of length n which contains the
+	 *	  norms of the corresponding columns of the input matrix a.
+	 *	  if this information is not needed, then acnorm can coincide
+	 *	  with rdiag.
+	 *
+	 *	wa is a work array of length n. if pivot is false, then wa
+	 *	  can coincide with rdiag.
+	 *
+	 *     subprograms called
+	 *
+	 *	minpack-supplied ... dpmpar,enorm
+	 *
+	 *	fortran-supplied ... dmax1,dFLT_SQRT,min0
+	 *
+	 *     argonne national laboratory. minpack project. march 1980.
+	 *     burton s. garbow, kenneth e. hillstrom, jorge j. more
+	 *
+	 *     **********
+	 */
 	int i, ij, jj, j, jp1, k, kmax, minmn;
-	double ajnorm, sum, temp;
-	static double zero = 0.0;
-	static double one = 1.0;
-	static double p05 = 0.05;
+	FLT ajnorm, sum, temp;
+	static FLT zero = 0.0;
+	static FLT one = 1.0;
+	static FLT p05 = 0.05;
 
 	lda = 0;   /* Prevent compiler warning */
 	lipvt = 0; /* Prevent compiler warning */
@@ -1458,7 +1453,7 @@ static void mp_qrfac(int m, int n, double *a, int lda, int pivot, int *ipvt, int
 				if ((pivot != 0) && (rdiag[k] != zero)) {
 					temp = a[j + m * k] / rdiag[k];
 					temp = mp_dmax1(zero, one - temp * temp);
-					rdiag[k] *= sqrt(temp);
+					rdiag[k] *= FLT_SQRT(temp);
 					temp = rdiag[k] / wa[k];
 					if ((p05 * temp * temp) <= MP_MACHEP0) {
 						rdiag[k] = mp_enorm(m - j - 1, &a[jp1 + m * k]);
@@ -1478,92 +1473,91 @@ static void mp_qrfac(int m, int n, double *a, int lda, int pivot, int *ipvt, int
 
 /************************qrsolv.c*************************/
 
-static void mp_qrsolv(int n, double *r, int ldr, int *ipvt, double *diag, double *qtb, double *x, double *sdiag,
-					  double *wa) {
+static void mp_qrsolv(int n, FLT *r, int ldr, int *ipvt, FLT *diag, FLT *qtb, FLT *x, FLT *sdiag, FLT *wa) {
 	/*
-	*     **********
-	*
-	*     subroutine qrsolv
-	*
-	*     given an m by n matrix a, an n by n diagonal matrix d,
-	*     and an m-vector b, the problem is to determine an x which
-	*     solves the system
-	*
-	*	    a*x = b ,	  d*x = 0 ,
-	*
-	*     in the least squares sense.
-	*
-	*     this subroutine completes the solution of the problem
-	*     if it is provided with the necessary information from the
-	*     qr factorization, with column pivoting, of a. that is, if
-	*     a*p = q*r, where p is a permutation matrix, q has orthogonal
-	*     columns, and r is an upper triangular matrix with diagonal
-	*     elements of nonincreasing magnitude, then qrsolv expects
-	*     the full upper triangle of r, the permutation matrix p,
-	*     and the first n components of (q transpose)*b. the system
-	*     a*x = b, d*x = 0, is then equivalent to
-	*
-	*		   t	   t
-	*	    r*z = q *b ,  p *d*p*z = 0 ,
-	*
-	*     where x = p*z. if this system does not have full rank,
-	*     then a least squares solution is obtained. on output qrsolv
-	*     also provides an upper triangular matrix s such that
-	*
-	*	     t	 t		 t
-	*	    p *(a *a + d*d)*p = s *s .
-	*
-	*     s is computed within qrsolv and may be of separate interest.
-	*
-	*     the subroutine statement is
-	*
-	*	subroutine qrsolv(n,r,ldr,ipvt,diag,qtb,x,sdiag,wa)
-	*
-	*     where
-	*
-	*	n is a positive integer input variable set to the order of r.
-	*
-	*	r is an n by n array. on input the full upper triangle
-	*	  must contain the full upper triangle of the matrix r.
-	*	  on output the full upper triangle is unaltered, and the
-	*	  strict lower triangle contains the strict upper triangle
-	*	  (transposed) of the upper triangular matrix s.
-	*
-	*	ldr is a positive integer input variable not less than n
-	*	  which specifies the leading dimension of the array r.
-	*
-	*	ipvt is an integer input array of length n which defines the
-	*	  permutation matrix p such that a*p = q*r. column j of p
-	*	  is column ipvt(j) of the identity matrix.
-	*
-	*	diag is an input array of length n which must contain the
-	*	  diagonal elements of the matrix d.
-	*
-	*	qtb is an input array of length n which must contain the first
-	*	  n elements of the vector (q transpose)*b.
-	*
-	*	x is an output array of length n which contains the least
-	*	  squares solution of the system a*x = b, d*x = 0.
-	*
-	*	sdiag is an output array of length n which contains the
-	*	  diagonal elements of the upper triangular matrix s.
-	*
-	*	wa is a work array of length n.
-	*
-	*     subprograms called
-	*
-	*	fortran-supplied ... dabs,dsqrt
-	*
-	*     argonne national laboratory. minpack project. march 1980.
-	*     burton s. garbow, kenneth e. hillstrom, jorge j. more
-	*
-	*     **********
-	*/
+	 *     **********
+	 *
+	 *     subroutine qrsolv
+	 *
+	 *     given an m by n matrix a, an n by n diagonal matrix d,
+	 *     and an m-vector b, the problem is to determine an x which
+	 *     solves the system
+	 *
+	 *	    a*x = b ,	  d*x = 0 ,
+	 *
+	 *     in the least squares sense.
+	 *
+	 *     this subroutine completes the solution of the problem
+	 *     if it is provided with the necessary information from the
+	 *     qr factorization, with column pivoting, of a. that is, if
+	 *     a*p = q*r, where p is a permutation matrix, q has orthogonal
+	 *     columns, and r is an upper triangular matrix with diagonal
+	 *     elements of nonincreasing magnitude, then qrsolv expects
+	 *     the full upper triangle of r, the permutation matrix p,
+	 *     and the first n components of (q transpose)*b. the system
+	 *     a*x = b, d*x = 0, is then equivalent to
+	 *
+	 *		   t	   t
+	 *	    r*z = q *b ,  p *d*p*z = 0 ,
+	 *
+	 *     where x = p*z. if this system does not have full rank,
+	 *     then a least squares solution is obtained. on output qrsolv
+	 *     also provides an upper triangular matrix s such that
+	 *
+	 *	     t	 t		 t
+	 *	    p *(a *a + d*d)*p = s *s .
+	 *
+	 *     s is computed within qrsolv and may be of separate interest.
+	 *
+	 *     the subroutine statement is
+	 *
+	 *	subroutine qrsolv(n,r,ldr,ipvt,diag,qtb,x,sdiag,wa)
+	 *
+	 *     where
+	 *
+	 *	n is a positive integer input variable set to the order of r.
+	 *
+	 *	r is an n by n array. on input the full upper triangle
+	 *	  must contain the full upper triangle of the matrix r.
+	 *	  on output the full upper triangle is unaltered, and the
+	 *	  strict lower triangle contains the strict upper triangle
+	 *	  (transposed) of the upper triangular matrix s.
+	 *
+	 *	ldr is a positive integer input variable not less than n
+	 *	  which specifies the leading dimension of the array r.
+	 *
+	 *	ipvt is an integer input array of length n which defines the
+	 *	  permutation matrix p such that a*p = q*r. column j of p
+	 *	  is column ipvt(j) of the identity matrix.
+	 *
+	 *	diag is an input array of length n which must contain the
+	 *	  diagonal elements of the matrix d.
+	 *
+	 *	qtb is an input array of length n which must contain the first
+	 *	  n elements of the vector (q transpose)*b.
+	 *
+	 *	x is an output array of length n which contains the least
+	 *	  squares solution of the system a*x = b, d*x = 0.
+	 *
+	 *	sdiag is an output array of length n which contains the
+	 *	  diagonal elements of the upper triangular matrix s.
+	 *
+	 *	wa is a work array of length n.
+	 *
+	 *     subprograms called
+	 *
+	 *	fortran-supplied ... dabs,dFLT_SQRT
+	 *
+	 *     argonne national laboratory. minpack project. march 1980.
+	 *     burton s. garbow, kenneth e. hillstrom, jorge j. more
+	 *
+	 *     **********
+	 */
 	int i, ij, ik, kk, j, jp1, k, kp1, l, nsing;
-	double cosx, cotan, qtbpj, sinx, sum, tanx, temp;
-	static double zero = 0.0;
-	static double p25 = 0.25;
-	static double p5 = 0.5;
+	FLT cosx, cotan, qtbpj, sinx, sum, tanx, temp;
+	static FLT zero = 0.0;
+	static FLT p25 = 0.25;
+	static FLT p5 = 0.5;
 
 	/*
 	 *     copy r and (q transpose)*b to preserve input and initialize s.
@@ -1613,11 +1607,11 @@ static void mp_qrsolv(int n, double *r, int ldr, int *ipvt, double *diag, double
 			kk = k + ldr * k;
 			if (fabs(r[kk]) < fabs(sdiag[k])) {
 				cotan = r[kk] / sdiag[k];
-				sinx = p5 / sqrt(p25 + p25 * cotan * cotan);
+				sinx = p5 / FLT_SQRT(p25 + p25 * cotan * cotan);
 				cosx = sinx * cotan;
 			} else {
 				tanx = sdiag[k] / r[kk];
-				cosx = p5 / sqrt(p25 + p25 * tanx * tanx);
+				cosx = p5 / FLT_SQRT(p25 + p25 * tanx * tanx);
 				sinx = cosx * tanx;
 			}
 			/*
@@ -1695,8 +1689,8 @@ L150:
 
 /************************lmpar.c*************************/
 
-static void mp_lmpar(int n, double *r, int ldr, int *ipvt, int *ifree, double *diag, double *qtb, double delta,
-					 double *par, double *x, double *sdiag, double *wa1, double *wa2) {
+static void mp_lmpar(int n, FLT *r, int ldr, int *ipvt, int *ifree, FLT *diag, FLT *qtb, FLT delta, FLT *par, FLT *x,
+					 FLT *sdiag, FLT *wa1, FLT *wa2) {
 	/*     **********
 	 *
 	 *     subroutine lmpar
@@ -1706,7 +1700,7 @@ static void mp_lmpar(int n, double *r, int ldr, int *ipvt, int *ifree, double *d
 	 *     the problem is to determine a value for the parameter
 	 *     par such that if x solves the system
 	 *
-	 *	    a*x = b ,	  sqrt(par)*d*x = 0 ,
+	 *	    a*x = b ,	  FLT_SQRT(par)*d*x = 0 ,
 	 *
 	 *     in the least squares sense, and dxnorm is the euclidean
 	 *     norm of d*x, then either par is zero and
@@ -1773,7 +1767,7 @@ static void mp_lmpar(int n, double *r, int ldr, int *ipvt, int *ifree, double *d
 	 *	  on output par contains the final estimate.
 	 *
 	 *	x is an output array of length n which contains the least
-	 *	  squares solution of the system a*x = b, sqrt(par)*d*x = 0,
+	 *	  squares solution of the system a*x = b, FLT_SQRT(par)*d*x = 0,
 	 *	  for the output par.
 	 *
 	 *	sdiag is an output array of length n which contains the
@@ -1785,7 +1779,7 @@ static void mp_lmpar(int n, double *r, int ldr, int *ipvt, int *ifree, double *d
 	 *
 	 *	minpack-supplied ... dpmpar,mp_enorm,qrsolv
 	 *
-	 *	fortran-supplied ... dabs,mp_dmax1,dmin1,dsqrt
+	 *	fortran-supplied ... dabs,mp_dmax1,dmin1,dFLT_SQRT
 	 *
 	 *     argonne national laboratory. minpack project. march 1980.
 	 *     burton s. garbow, kenneth e. hillstrom, jorge j. more
@@ -1793,12 +1787,12 @@ static void mp_lmpar(int n, double *r, int ldr, int *ipvt, int *ifree, double *d
 	 *     **********
 	 */
 	int i, iter, ij, jj, j, jm1, jp1, k, l, nsing;
-	double dxnorm, fp, gnorm, parc, parl, paru;
-	double sum, temp;
-	static double zero = 0.0;
-	/* static double one = 1.0; */
-	static double p1 = 0.1;
-	static double p001 = 0.001;
+	FLT dxnorm, fp, gnorm, parc, parl, paru;
+	FLT sum, temp;
+	static FLT zero = 0.0;
+	/* static FLT one = 1.0; */
+	static FLT p1 = 0.1;
+	static FLT p001 = 0.001;
 
 	/*
 	 *     compute and store in x the gauss-newton direction. if the
@@ -1914,7 +1908,7 @@ L150:
 	 */
 	if (*par == zero)
 		*par = mp_dmax1(MP_DWARF, p001 * paru);
-	temp = sqrt(*par);
+	temp = FLT_SQRT(*par);
 	for (j = 0; j < n; j++)
 		wa1[j] = temp * diag[ifree[j]];
 	mp_qrsolv(n, r, ldr, ipvt, wa1, qtb, x, sdiag, wa2);
@@ -1984,7 +1978,7 @@ L220:
 
 /************************enorm.c*************************/
 
-static double mp_enorm(int n, double *x) {
+static FLT mp_enorm(int n, FLT *x) {
 	/*
 	 *     **********
 	 *
@@ -2007,7 +2001,7 @@ static double mp_enorm(int n, double *x) {
 	 *
 	 *     the function statement is
 	 *
-	 *	double precision function enorm(n,x)
+	 *	FLT precision function enorm(n,x)
 	 *
 	 *     where
 	 *
@@ -2017,7 +2011,7 @@ static double mp_enorm(int n, double *x) {
 	 *
 	 *     subprograms called
 	 *
-	 *	fortran-supplied ... dabs,dsqrt
+	 *	fortran-supplied ... dabs,dFLT_SQRT
 	 *
 	 *     argonne national laboratory. minpack project. march 1980.
 	 *     burton s. garbow, kenneth e. hillstrom, jorge j. more
@@ -2025,12 +2019,12 @@ static double mp_enorm(int n, double *x) {
 	 *     **********
 	 */
 	int i;
-	double agiant, floatn, s1, s2, s3, xabs, x1max, x3max;
-	double ans, temp;
-	double rdwarf = MP_RDWARF;
-	double rgiant = MP_RGIANT;
-	static double zero = 0.0;
-	static double one = 1.0;
+	FLT agiant, floatn, s1, s2, s3, xabs, x1max, x3max;
+	FLT ans, temp;
+	FLT rdwarf = MP_RDWARF;
+	FLT rgiant = MP_RGIANT;
+	static FLT zero = 0.0;
+	static FLT one = 1.0;
 
 	s1 = zero;
 	s2 = zero;
@@ -2083,7 +2077,7 @@ static double mp_enorm(int n, double *x) {
 	 */
 	if (s1 != zero) {
 		temp = s1 + (s2 / x1max) / x1max;
-		ans = x1max * sqrt(temp);
+		ans = x1max * FLT_SQRT(temp);
 		return (ans);
 	}
 	if (s2 != zero) {
@@ -2091,9 +2085,9 @@ static double mp_enorm(int n, double *x) {
 			temp = s2 * (one + (x3max / s2) * (x3max * s3));
 		else
 			temp = x3max * ((s2 / x3max) + (x3max * s3));
-		ans = sqrt(temp);
+		ans = FLT_SQRT(temp);
 	} else {
-		ans = x3max * sqrt(s3);
+		ans = x3max * FLT_SQRT(s3);
 	}
 	return (ans);
 	/*
@@ -2103,14 +2097,14 @@ static double mp_enorm(int n, double *x) {
 
 /************************lmmisc.c*************************/
 
-static double mp_dmax1(double a, double b) {
+static FLT mp_dmax1(FLT a, FLT b) {
 	if (a >= b)
 		return (a);
 	else
 		return (b);
 }
 
-static double mp_dmin1(double a, double b) {
+static FLT mp_dmin1(FLT a, FLT b) {
 	if (a <= b)
 		return (a);
 	else
@@ -2193,15 +2187,15 @@ c
 c     **********
 */
 
-static int mp_covar(int n, double *r, int ldr, int *ipvt, double tol, double *wa) {
+static int mp_covar(int n, FLT *r, int ldr, int *ipvt, FLT tol, FLT *wa) {
 	int i, ii, j, jj, k, l;
 	int kk, kj, ji, j0, k0, jj0;
 	int sing;
-	double one = 1.0, temp, tolr, zero = 0.0;
+	FLT one = 1.0, temp, tolr, zero = 0.0;
 
-/*
- * form the inverse of r in the full upper triangle of r.
- */
+	/*
+	 * form the inverse of r in the full upper triangle of r.
+	 */
 
 #if 0
   for (j=0; j<n; j++) {

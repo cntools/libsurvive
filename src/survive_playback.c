@@ -4,6 +4,8 @@
 #define _GNU_SOURCE
 #endif
 
+#include <survive.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <survive.h>
@@ -13,13 +15,14 @@
 #include <string.h>
 
 #ifdef NOZLIB
+#include <unistd.h>
 #define gzFile FILE *
 #define gzopen fopen
 #define gzprintf fprintf
 #define gzclose fclose
 #define gzvprintf vfprintf
 #define gzerror_dropin ferror
-#define gzwrite write
+#define gzwrite(file, buf, len) fwrite(buf, 1, len, file)
 #define gzeof feof
 #define gzseek fseek
 #define gzgetc fgetc
@@ -154,7 +157,9 @@ void survive_recording_config_process(SurviveObject *so, char *ct0conf, int len)
 
 	write_to_output(recordingData, "%s CONFIG ", so->codename);
 	write_to_output_raw(recordingData, buffer, len);
+
 	write_to_output_raw(recordingData, "\r\n", 2);
+
 	free(buffer);
 }
 
@@ -164,7 +169,7 @@ void survive_recording_lighthouse_process(SurviveContext *ctx, uint8_t lighthous
 	if (recordingData == 0)
 		return;
 
-	write_to_output(recordingData, "%d LH_POSE %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\n", lighthouse,
+	write_to_output(recordingData, "%d LH_POSE %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\r\n", lighthouse,
 					lh_pose->Pos[0], lh_pose->Pos[1], lh_pose->Pos[2], lh_pose->Rot[0], lh_pose->Rot[1],
 					lh_pose->Rot[2], lh_pose->Rot[3]);
 }
@@ -173,7 +178,7 @@ void survive_recording_velocity_process(SurviveObject *so, uint8_t lighthouse, c
 	if (recordingData == 0)
 		return;
 
-	write_to_output(recordingData, "%s VELOCITY %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\n", so->codename, pose->Pos[0],
+	write_to_output(recordingData, "%s VELOCITY %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\r\n", so->codename, pose->Pos[0],
 					pose->Pos[1], pose->Pos[2], pose->AxisAngleRot[0], pose->AxisAngleRot[1], pose->AxisAngleRot[2]);
 }
 void survive_recording_raw_pose_process(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose) {
@@ -181,7 +186,7 @@ void survive_recording_raw_pose_process(SurviveObject *so, uint8_t lighthouse, S
 	if (recordingData == 0)
 		return;
 
-	write_to_output(recordingData, "%s POSE %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\n", so->codename, pose->Pos[0],
+	write_to_output(recordingData, "%s POSE %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\r\n", so->codename, pose->Pos[0],
 					pose->Pos[1], pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
 }
 
@@ -190,7 +195,7 @@ void survive_recording_external_velocity_process(SurviveContext *ctx, const char
 	if (recordingData == 0)
 		return;
 
-	write_to_output(recordingData, "%s EXTERNAL_VELOCITY %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\n", name, pose->Pos[0],
+	write_to_output(recordingData, "%s EXTERNAL_VELOCITY %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\r\n", name, pose->Pos[0],
 					pose->Pos[1], pose->Pos[2], pose->AxisAngleRot[0], pose->AxisAngleRot[1], pose->AxisAngleRot[2]);
 }
 
@@ -199,7 +204,7 @@ void survive_recording_external_pose_process(SurviveContext *ctx, const char *na
 	if (recordingData == 0)
 		return;
 
-	write_to_output(recordingData, "%s EXTERNAL_POSE %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\n", name, pose->Pos[0],
+	write_to_output(recordingData, "%s EXTERNAL_POSE %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\r\n", name, pose->Pos[0],
 					pose->Pos[1], pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
 }
 
@@ -208,7 +213,7 @@ void survive_recording_info_process(SurviveContext *ctx, const char *fault) {
 	if (recordingData == 0)
 		return;
 
-	write_to_output(recordingData, "INFO LOG %s\n", fault);
+	write_to_output(recordingData, "INFO LOG %s\r\n", fault);
 }
 
 // survive_channel channel, int sensor_id, survive_timecode timecode, int8_t plane, FLT angle
@@ -268,7 +273,7 @@ void survive_recording_angle_process(struct SurviveObject *so, int sensor_id, in
 		return;
 	}
 
-	write_to_output(recordingData, "%s A %d %d %u %0.6f %0.6f %u\n", so->codename, sensor_id, acode, timecode, length,
+	write_to_output(recordingData, "%s A %d %d %u %0.6f %0.6f %u\r\n", so->codename, sensor_id, acode, timecode, length,
 					angle, lh);
 }
 
@@ -278,7 +283,7 @@ void survive_recording_lightcap(SurviveObject *so, LightcapElement *le) {
 		return;
 
 	if (recordingData->writeRawLight) {
-		write_to_output(recordingData, "%s C %d %u %u\n", so->codename, le->sensor_id, le->timestamp, le->length);
+		write_to_output(recordingData, "%s C %d %u %u\r\n", so->codename, le->sensor_id, le->timestamp, le->length);
 	}
 }
 
@@ -293,7 +298,7 @@ void survive_recording_light_process(struct SurviveObject *so, int sensor_id, in
 	}
 	
 	if (acode == -1) {
-		write_to_output(recordingData, "%s S %d %d %d %u %u %u\n", so->codename, sensor_id, acode, timeinsweep,
+		write_to_output(recordingData, "%s S %d %d %d %u %u %u\r\n", so->codename, sensor_id, acode, timeinsweep,
 						timecode, length, lh);
 		return;
 	}
@@ -324,7 +329,7 @@ void survive_recording_light_process(struct SurviveObject *so, int sensor_id, in
 		break;
 	}
 
-	write_to_output(recordingData, "%s %s %s %d %d %d %u %u %u\n", so->codename, LH_ID, LH_Axis, sensor_id, acode,
+	write_to_output(recordingData, "%s %s %s %d %d %d %u %u %u\r\n", so->codename, LH_ID, LH_Axis, sensor_id, acode,
 					timeinsweep, timecode, length, lh);
 }
 
@@ -336,8 +341,8 @@ void survive_recording_imu_process(struct SurviveObject *so, int mask, FLT *acce
 	if (!recordingData->writeCalIMU) {
 		return;
 	}
-	
-	write_to_output(recordingData, "%s I %d %u %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f  %0.6f %0.6f %0.6f %d\n",
+
+	write_to_output(recordingData, "%s I %d %u %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f  %0.6f %0.6f %0.6f %d\r\n",
 					so->codename, mask, timecode, accelgyro[0], accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4],
 					accelgyro[5], accelgyro[6], accelgyro[7], accelgyro[8], id);
 }
@@ -351,7 +356,7 @@ void survive_recording_raw_imu_process(struct SurviveObject *so, int mask, FLT *
 		return;
 	}
 
-	write_to_output(recordingData, "%s i %d %u %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f  %0.6f %0.6f %0.6f %d\n",
+	write_to_output(recordingData, "%s i %d %u %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f  %0.6f %0.6f %0.6f %d\r\n",
 					so->codename, mask, timecode, accelgyro[0], accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4],
 					accelgyro[5], accelgyro[6], accelgyro[7], accelgyro[8], id);
 }
@@ -365,7 +370,7 @@ static SurviveObject *find_or_warn(SurvivePlaybackData *driver, const char *dev)
 		static bool display_once = false;
 		SurviveContext *ctx = driver->ctx;
 		if (display_once == false) {
-			SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Could not find device named %s from lineno %d\n", dev,
+			SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Could not find device named %s from lineno %d\r\n", dev,
 					 driver->lineno);
 		}
 		display_once = true;
@@ -453,7 +458,7 @@ static int parse_and_run_pose(const char *line, SurvivePlaybackData *driver) {
 	char name[128] = "replay_";
 	SurvivePose pose;
 
-	int rr = sscanf(line, "%s POSE " SurvivePose_sformat "\n", name + strlen(name), &pose.Pos[0], &pose.Pos[1],
+	int rr = sscanf(line, "%s POSE " SurvivePose_sformat "\r\n", name + strlen(name), &pose.Pos[0], &pose.Pos[1],
 					&pose.Pos[2], &pose.Rot[0], &pose.Rot[1], &pose.Rot[2], &pose.Rot[3]);
 
 	SurviveContext *ctx = driver->ctx;
@@ -496,7 +501,7 @@ static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver, bool
 	if (!so) {
 		static bool display_once = false;
 		if (display_once == false) {
-			SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Could not find device named %s from lineno %d\n", dev,
+			SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Could not find device named %s from lineno %d", dev,
 					 driver->lineno);
 		}
 		display_once = true;
@@ -532,7 +537,7 @@ static int parse_and_run_rawlight(const char *line, SurvivePlaybackData *driver)
 		static bool display_once = false;
 		SurviveContext *ctx = driver->ctx;
 		if (display_once == false) {
-			SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Could not find device named %s from lineno %d\n", dev,
+			SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Could not find device named %s from lineno %d", dev,
 					 driver->lineno);
 		}
 		display_once = true;

@@ -1,8 +1,9 @@
 #define SURVIVE_ENABLE_FULL_API
+#include "stdbool.h"
+
 #include <assert.h>
 #include <survive_api.h>
 
-#include "survive_api.h"
 #include "inttypes.h"
 #include "os_generic.h"
 #include "stdio.h"
