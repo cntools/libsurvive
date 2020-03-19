@@ -395,7 +395,7 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 		*out = *soLocation;
 		rtn = result->bestnorm;
 
-		SV_VERBOSE(500, "MPFIT success %s %f/%10.10f (%d measurements, %d result, %d lighthouses)", so->codename,
+		SV_VERBOSE(110, "MPFIT success %s %f/%10.10f (%d measurements, %d result, %d lighthouses)", so->codename,
 				   result->orignorm, result->bestnorm, (int)meas_size, res, get_lh_count(meas_for_lhs));
 
 	} else {
@@ -708,6 +708,11 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		SV_INFO("MPFIT stats for %s:", so->codename);
 		if (ctx->log_level > 5) {
 			print_stats(ctx, &d->stats);
+
+			if (d->async_optimizer) {
+				SV_INFO("\tjobs submitted     %lu", d->async_optimizer->submitted);
+				SV_INFO("\tjobs completed     %lu", d->async_optimizer->completed);
+			}
 		}
 
 		g.stats.total_fev += d->stats.total_fev;
@@ -732,7 +737,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		survive_detach_config(ctx, "disable-lighthouse", &d->disable_lighthouse);
 		survive_detach_config(ctx, "sensor-variance-per-sec", &d->sensor_variance_per_second);
 		survive_detach_config(ctx, "sensor-variance", &d->sensor_variance);
-
+		survive_async_free(d->async_optimizer);
 		free(d);
 		so->PoserFnData = 0;
 		return 0;

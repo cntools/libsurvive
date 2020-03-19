@@ -1,27 +1,15 @@
 #include "survive_async_optimizer.h"
 
-typedef struct survive_async_optimizer {
-	survive_async_optimizer_cb cb;
-	void *user;
-
-	og_thread_t async_thread;
-
-	int8_t active_buffer;
-	bool buffer_ready[2];
-	struct survive_async_optimizer_buffer buffers[2];
-	og_mutex_t active_buffer_lock;
-
-	og_cv_t job_available;
-} survive_async_optimizer;
-
 static void run_buffer(survive_async_optimizer *self, uint8_t idx) {
 	struct mp_result_struct results = {};
 	OGUnlockMutex(self->active_buffer_lock);
 	self->active_buffer = idx;
+	self->completed++;
 	int status = survive_optimizer_run(&self->buffers[idx].optimizer, &results);
 	if (self->cb) {
 		self->cb(&self->buffers[idx], status, &results);
 	}
+	self->buffer_ready[idx] = false;
 	self->active_buffer = -1;
 	OGLockMutex(self->active_buffer_lock);
 }
@@ -64,6 +52,7 @@ survive_async_optimizer_buffer *survive_async_optimizer_alloc_optimizer(struct s
 		rtn = &self->buffers[0];
 		self->buffer_ready[0] = false;
 	}
+	self->submitted++;
 	OGUnlockMutex(self->active_buffer_lock);
 	return rtn;
 }
@@ -77,6 +66,10 @@ void survive_async_optimizer_run(struct survive_async_optimizer *self, survive_a
 }
 
 void survive_async_free(struct survive_async_optimizer *self) {
+	if (self == 0) {
+		return;
+	}
+
 	OGLockMutex(self->active_buffer_lock);
 	self->cb = 0;
 	OGSignalCond(self->job_available);
@@ -86,6 +79,11 @@ void survive_async_free(struct survive_async_optimizer *self) {
 
 	OGDeleteConditionVariable(self->job_available);
 	OGDeleteMutex(self->active_buffer_lock);
+
+	for (int i = 0; i < 2; i++) {
+		SURVIVE_OPTIMIZER_CLEANUP_HEAP_BUFFERS(self->buffers[i].optimizer);
+		free(self->buffers[i].user);
+	}
 
 	free(self);
 }

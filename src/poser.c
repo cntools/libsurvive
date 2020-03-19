@@ -50,7 +50,7 @@ void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const S
 	} else {
 		static int report_in_imu = -1;
 		if (report_in_imu == -1) {
-			survive_attach_configi(so->ctx, "report-in-imu", &report_in_imu);
+			report_in_imu = survive_configi(so->ctx, REPORT_IN_IMU_TAG, SC_GET, 0);
 		}
 
 		SurvivePose head2world;

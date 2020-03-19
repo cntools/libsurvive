@@ -59,7 +59,11 @@ typedef struct {
 #define SURVIVE_OPTIMIZER_SETUP_HEAP_BUFFERS(ctx) SURVIVE_OPTIMIZER_SETUP_BUFFERS(ctx, survive_optimizer_realloc)
 #define SURVIVE_OPTIMIZER_CLEANUP_STACK_BUFFERS(ctx)
 #define SURVIVE_OPTIMIZER_CLEANUP_HEAP_BUFFERS(ctx)                                                                    \
-	{ free(ctx.parameters); }
+	{                                                                                                                  \
+		free(ctx.parameters);                                                                                          \
+		free(ctx.parameters_info);                                                                                     \
+		free(ctx.measurements);                                                                                        \
+	}
 
 SURVIVE_EXPORT void *survive_optimizer_realloc(void *old_ptr, size_t size);
 
