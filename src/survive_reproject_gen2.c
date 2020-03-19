@@ -7,26 +7,6 @@
 #pragma GCC push_options
 #pragma GCC optimize("Ofast")
 
-#define USE_SINGLE_POINT
-
-#ifdef USE_SINGLE_POINT
-#define FLT_REPROJECT float
-
-#define asin_REPROJECT asinf
-#define cos_REPROJECT cosf
-#define atan2_REPROJECT atan2f
-#define sqrt_REPROJECT sqrtf
-#define pow_REPROJECT powf
-#else
-#define FLT_REPROJECT FLT
-
-#define asin_REPROJECT asin
-#define cos_REPROJECT cos
-#define atan2_REPROJECT atan2
-#define sqrt_REPROJECT sqrt
-#define pow_REPROJECT pow
-#endif
-
 #include "generated/survive_reproject.generated.h"
 
 /***
@@ -91,22 +71,22 @@ static inline FLT survive_reproject_axis_gen2(const BaseStationCal *bcal, FLT X,
 
 	FLT B = atan2(Z, X);
 
-	FLT Ydeg = tilt + (axis ? -1 : 1) * M_PI / 6.;
-	FLT tanA = tan(Ydeg);
+	FLT Ydeg = tilt + (axis ? -1 : 1) * LINMATHPI / 6.;
+	FLT tanA = FLT_TAN(Ydeg);
 	FLT normXZ = sqrt(X * X + Z * Z);
 
 	FLT asinArg = linmath_enforce_range(tanA * Y / normXZ, -1, 1);
 
-	FLT sinYdeg = sin(Ydeg);
-	FLT cosYdeg = cos(Ydeg);
+	FLT sinYdeg = FLT_SIN(Ydeg);
+	FLT cosYdeg = FLT_COS(Ydeg);
 
-	FLT sinPart = sin(B - asin(asinArg) + ogeePhase) * ogeeMag;
+	FLT sinPart = FLT_SIN(B - FLT_ASIN(asinArg) + ogeePhase) * ogeeMag;
 
-	FLT normXYZ = sqrt(X * X + Y * Y + Z * Z);
+	FLT normXYZ = FLT_SQRT(X * X + Y * Y + Z * Z);
 
 	FLT modAsinArg = linmath_enforce_range(Y / normXYZ / cosYdeg, -1, 1);
 
-	FLT asinOut = asin(modAsinArg);
+	FLT asinOut = FLT_ASIN(modAsinArg);
 
 	FLT mod, acc;
 	calc_cal_series(asinOut, &mod, &acc);
@@ -117,7 +97,7 @@ static inline FLT survive_reproject_axis_gen2(const BaseStationCal *bcal, FLT X,
 	FLT asinOut2 = asin(asinArg2);
 	FLT sinOut2 = sin(B - asinOut2 + gibPhase);
 
-	FLT rtn = B - asinOut2 + sinOut2 * gibMag - phase - M_PI / 2.;
+	FLT rtn = B - asinOut2 + sinOut2 * gibMag - phase - LINMATHPI_2;
 	assert(!isnan(rtn));
 	return rtn;
 }

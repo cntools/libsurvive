@@ -24,7 +24,9 @@ extern "C" {
 #define PFTHREE(x) (x)[0], (x)[1], (x)[2]
 #define PFFOUR(x) (x)[0], (x)[1], (x)[2], (x)[3]
 
-#define LINMATHPI ((FLT)3.14159265358979323846)
+#define LINMATHPI ((FLT)3.14159265358979323846)	  /* pi */
+#define LINMATHPI_2 ((FLT)1.57079632679489661923) /* pi/2 */
+#define LINMATHPI_4 ((FLT)0.78539816339744830962) /* pi/4 */
 
 #define CREATE_STACK_MAT(name, rows, cols)                                                                             \
 	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \

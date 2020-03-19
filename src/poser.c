@@ -129,7 +129,7 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 
 			// Find the space with the same origin, but rotated so that gravity is up
 			SurvivePose lighthouse2objUp = {0}, object2objUp = {0};
-			float accel_mag = quatmagnitude(so->activations.accel);
+			FLT accel_mag = quatmagnitude(so->activations.accel);
 			if (accel_mag != 0.0 && !isnan(accel_mag)) {
 				quatfrom2vectors(object2objUp.Rot, so->activations.accel, up);
 			} else {

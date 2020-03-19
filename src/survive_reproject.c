@@ -8,45 +8,25 @@
 #pragma GCC push_options
 #pragma GCC optimize("Ofast")
 
-#define USE_SINGLE_POINT
-
-#ifdef USE_SINGLE_POINT
-#define FLT_REPROJECT float
-
-#define asin_REPROJECT asinf
-#define cos_REPROJECT cosf
-#define atan2_REPROJECT atan2f
-#define sqrt_REPROJECT sqrtf
-#define pow_REPROJECT powf
-#else
-#define FLT_REPROJECT FLT
-
-#define asin_REPROJECT asin
-#define cos_REPROJECT cos
-#define atan2_REPROJECT atan2
-#define sqrt_REPROJECT sqrt
-#define pow_REPROJECT pow
-#endif
-
 #include "generated/survive_reproject.generated.h"
 
 static inline FLT survive_reproject_axis(const BaseStationCal *bcal, FLT axis_value, FLT other_axis_value, FLT Z,
 										 bool invert_axis_value) {
-	FLT_REPROJECT ang = (FLT)M_PI_2 - (invert_axis_value ? -1.f : 1.f) * (FLT_ATAN2(axis_value, Z));
+	FLT ang = (FLT)M_PI_2 - (invert_axis_value ? -1.f : 1.f) * (FLT_ATAN2(axis_value, Z));
 
-	const FLT_REPROJECT phase = bcal->phase;
-	const FLT_REPROJECT curve = bcal->curve;
-	const FLT_REPROJECT tilt = bcal->tilt;
-	const FLT_REPROJECT gibPhase = bcal->gibpha;
-	const FLT_REPROJECT gibMag = bcal->gibmag;
+	const FLT phase = bcal->phase;
+	const FLT curve = bcal->curve;
+	const FLT tilt = bcal->tilt;
+	const FLT gibPhase = bcal->gibpha;
+	const FLT gibMag = bcal->gibmag;
 
-	const FLT_REPROJECT mag = FLT_SQRT(axis_value * axis_value + Z * Z);
+	const FLT mag = FLT_SQRT(axis_value * axis_value + Z * Z);
 
 	ang -= phase;
-	FLT_REPROJECT asin_arg = linmath_enforce_range((tilt)*other_axis_value / mag, -1, 1);
-	ang -= asin_REPROJECT(asin_arg);
-	ang -= cos_REPROJECT(gibPhase + ang) * gibMag;
-	ang += curve * atan2_REPROJECT(other_axis_value, Z) * atan2_REPROJECT(other_axis_value, Z);
+	FLT asin_arg = linmath_enforce_range((tilt)*other_axis_value / mag, -1, 1);
+	ang -= FLT_ASIN(asin_arg);
+	ang -= FLT_COS(gibPhase + ang) * gibMag;
+	ang += curve * FLT_ATAN2(other_axis_value, Z) * FLT_ATAN2(other_axis_value, Z);
 
 	assert(!isnan(ang));
 	return ang;

@@ -435,12 +435,6 @@ void copy_R_and_t(const FLT R_src[3][3], const FLT t_src[3], FLT R_dst[3][3], FL
 	}
 }
 
-#ifdef USE_FLT
-#define SURVIVE_CV_F CV_FLT
-#else
-#define SURVIVE_CV_F CV_32F
-#endif
-
 #define CREATE_STACK_MAT(name, rows, cols)                                                                             \
 	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
 	CvMat name = cvMat(rows, cols, SURVIVE_CV_F, _##name);

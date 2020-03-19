@@ -1691,7 +1691,7 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 			// Battery Status
 			// Happens On USB plugged in. Switch to wired mode?
 			uint8_t batStatus = POP_BYTE(payloadPtr);
-			int percent = (int)((((float)(batStatus & 0x7f)) / 0x7f) * 100);
+			int percent = (int)((((FLT)(batStatus & 0x7f)) / 0x7f) * 100);
 			bool charging = (batStatus & 0x80) == 0x80;
 #ifdef KNUCKLES_INFO
 			SV_INFO("KAS: @%04hX | Status  [Battery: % 3i%%] [%s]", time, percent,
