@@ -247,3 +247,7 @@ if(CTYPESGEN)
 	add_custom_target(pysurvive COMMAND ${CTYPESGEN} ${CMAKE_SOURCE_DIR}/include/libsurvive/*.h ${INCLUDE_FLAGS} --no-macros -L$<TARGET_FILE_DIR:survive> -llibsurvive.so
 			--strip-prefix=survive_ -P Survive -o ${PYTHON_GENERATED_DIR}pysurvive_generated.py )
 endif()
+
+include(GNUInstallDirs)
+configure_file(survive.pc.in survive.pc @ONLY)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/survive.pc" DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
