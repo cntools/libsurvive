@@ -236,6 +236,11 @@ INSTALL(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink survive
 
 install(DIRECTORY include/libsurvive DESTINATION include)
 
+file(GLOB REDIST_HEADERS
+  "redist/*.h"
+)
+install(FILES ${REDIST_HEADERS} DESTINATION include/libsurvive/redist)
+
 find_program(CTYPESGEN ctypesgen PATHS $ENV{HOME}/anaconda3/bin)
 if(CTYPESGEN)
 	get_property(include_directories DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
