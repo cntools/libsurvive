@@ -3,7 +3,7 @@
 #include <math.h>
 #include <survive.h>
 
-STATIC_CONFIG_ITEM(MOVMENT_THRESHOLD_GYRO, "move-threshold-gyro", 'f', "Threshold to count gyro norms as moving", .05);
+STATIC_CONFIG_ITEM(MOVMENT_THRESHOLD_GYRO, "move-threshold-gyro", 'f', "Threshold to count gyro norms as moving", .075);
 STATIC_CONFIG_ITEM(MOVMENT_THRESHOLD_ACC, "move-threshold-acc", 'f', "Threshold to count acc diff norms as moving",
 				   .03);
 STATIC_CONFIG_ITEM(MOVMENT_THRESHOLD_ANG, "move-threshold-ang", 'f', "Threshold to count light angle diffs as moving",
