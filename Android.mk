@@ -8,6 +8,7 @@ endif
 
 COMMON_CFLAGS := \
     -DBUILD_LH1_SUPPORT \
+    -DSURVIVE_LIBUSB_UNVER_DIR \
     -Wno-error=unused-function \
     -Wno-error=unused-parameter \
     -Wno-error=unused-variable \

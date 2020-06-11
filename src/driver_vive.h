@@ -10,6 +10,8 @@
 #else
 #ifdef SURVIVE_LIBUSB_NO_DIR
 #include <libusb.h>
+#elif defined(SURVIVE_LIBUSB_UNVER_DIR)
+#include <libusb/libusb.h>
 #else
 #include <libusb-1.0/libusb.h>
 #endif
