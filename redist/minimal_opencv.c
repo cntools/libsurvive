@@ -55,7 +55,7 @@ SURVIVE_LOCAL_ONLY CvMat *cvCloneMat(const CvMat *mat) {
 
 static size_t mat_size_bytes(const CvMat *mat) { return (size_t)CV_ELEM_SIZE(mat->type) * mat->cols * mat->rows; }
 
-SURVIVE_LOCAL_ONLY void cvCopy(const CvMat *srcarr, CvMat *dstarr, const CvMat *mask) {
+void cvCopy(const CvMat *srcarr, CvMat *dstarr, const CvMat *mask) {
 	assert(mask == 0 && "This isn't implemented yet");
 	assert(srcarr->rows == dstarr->rows);
 	assert(srcarr->cols == dstarr->cols);
