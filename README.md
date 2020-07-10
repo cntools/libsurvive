@@ -151,80 +151,42 @@ The limiting factor for Vive viability on a given computer is the maximum availa
 To support the Vive on HDMI, you either need a newer version of HDMI, or you need to define a custom resolution that respects pixel clock and video port limits, and is also accepted and displayed by the Vive. So far, we have not had success using custom resolutions on linux or on Windows. Windows imposes additional limitations in the form of restriction of WHQL certified drivers forbidden from using custom display resolutions (only allowing those defined by EDID in the monitor). Intel has released uncertified beta drivers for Haswell and newer processors, which should be able to support custom resolutions for the Vive (untested at this time).
 
 # Getting Started
+
+lapacke and OpenCV are both supported as math backends, though it is recommended to install lapacke to avoid compilation issues with recent OpenCV versions.
+
+```
+sudo apt-get install liblapacke-dev libopenblas-dev libatlas-base-dev
+```
+
 ```
 git clone https://github.com/cnlohr/libsurvive.git && cd libsurvive
 make
 
-# If you get and error complaining about lapacke.h, you may need to install the following dependencies
-sudo apt-get install liblapacke-dev libopenblas-dev libatlas-base-dev
-
-# Create calibration files for connected HMDs, Trackers.  
-# See below for more detailed information about the configuration files that the calibration process.
-./calibrate
+# Run any libsurvive application to create calibration files for connected HMDs, Trackers.
+./survive-cli
 ```
 
 ## General Information
 
-The default configuration of libsurvive requires both basestations and both controllers to be active. 
+Libsurvive automatically runs lighthouse calibration on starting up as needed and caches the calibration in the current working directory. The lighthouse calibration is stored as `config.json`. Additionally, each device contains a fixed configuration, which is dumped to a file `<devicename>_config.json`.
 
-Here is an example of a default configuration file that libsurvive will create as `config.json` in the current working directory when any libsurvive client is executed:
+All libsurvive tools support libsurvive specific command line arguments. Third party applications using libsurvive may choose to support this, but are free not to.
 
-```
-"lighthousecount":"2",
-"poser":"PoserTurveyTori",
-"RequiredTrackersForCal":"",
-"AllowAllTrackersForCal":"1",
-"lighthouse0":{
-"index":"0",
-"id":"138441170",
-"pose":["0.000000","0.000000","0.000000","0.000000","0.000000","0.000000","0.000000"],
-"fcalphase":["-0.011757","0.020172"],
-"fcaltilt":["-0.003302","-0.001370"],
-"fcalcurve":["0.000323","-0.002600"],
-"fcalgibpha":["-4.316406","0.740723"],
-"fcalgibmag":["0.001188","-0.009270"]
-}
-"lighthouse1":{
-"index":"-1"
-}
-```
+See for example `survive-cli --help` for available arguments.
 
 ### LH1 Calibration / Setup
 
-To make libsurvive calibrate and run with one basestation, `lighthousecount` needs to be changed to `1`. You can also pass in `-l 1` as command line arguments.
+On the first start, any libsurvive application will automatically calibrate. This involves determining the positions of the lighthouse basestations relative to the tracked device, including the positions of the basestations relative to each other. When moving a basestation, you should probably re-run calibration.
 
-It may be annoying to always require the controllers for calibration. To make libsurvive calibrate by using the HMD, `RequiredTrackersForCal` needs to be changed to the magic string `HMD`. The strings for the controllers are `WM0` and `WM1`, short for  "Watchman". Other possible values are `WW0` (Wired Watchman) for a controller directly connected with USB or `TR0` for a Vive tracker directly connected with USB (When connected wirelessly, the tracker uses the dongles, so uses `WM0` or `WM1`).
+Calibration can be forced to run again with the argument `--force-calibrate`, or by simply deleting the config.json file.
 
-Lastly, to ensure libsurvive calibrates using the HMD, `AllowAllTrackersForCal` can be changed to `0`.
+`--requiredtrackersforcal T20` can be used to calibrate using the sensors of a specific device, here the `T20` device.
 
-Here is an example for such an altered `config.json` file
+**The HMD should not be moved while calibrating!** The tracked device should not be too near the lighthouse basestation, try to get at least 30-50 cm distance between them.
 
-```
-"lighthousecount":"1",
-"poser":"PoserTurveyTori",
-"RequiredTrackersForCal":"HMD",
-"AllowAllTrackersForCal":"0",
-"lighthouse0":{
-"index":"0",
-"id":"138441170",
-"pose":["0.000000","0.000000","0.000000","0.000000","0.000000","0.000000","0.000000"],
-"fcalphase":["-0.011757","0.020172"],
-"fcaltilt":["-0.003302","-0.001370"],
-"fcalcurve":["0.000323","-0.002600"],
-"fcalgibpha":["-4.316406","0.740723"],
-"fcalgibmag":["0.001188","-0.009270"]
-}
-"lighthouse1":{
-"index":"-1"
-}
-```
+Calibration can take a few seconds, but it should not take much longer than 10-20 seconds. If it takes much longer, try to move the device so that more sensors are hit by the basestations and make sure there are no reflective surfaces. If nothing helps, libsurvive may fail to detect that your device is not being moved, or a bug prevents calibration from running.
 
-Running libsurvive's `./test` with this `config.json` in the same directory should now go through the calibration and start printing poses with only the HMD and only one lighthouse basestation active. Enabling and tracking controllers will still work with this configuration.
-
-**For best results the HMD should not be moved while calibrating!**
-
-The important calibration steps are denoted by libsurvive printing
-
+lighthouse v1 calibration is successful after going through 4 stages:
 ```
 Info: Stage 2 good - continuing. 32 1 0
 Info: Stage 2 good - continuing. 32 1 1
@@ -235,67 +197,33 @@ Info: Stage 2 moving to stage 3. 32 1 5
 Lighthouse Pose: [0][ 0.28407975, 0.93606335,-0.37406892] [ 0.05594964,-0.33792987, 0.93887696, 0.03439615]
 Info: Stage 4 succeeded.
 ```
-
-If libsurvive does not print these steps, make sure that the lighthouse basestation is visible to enough sensors on the HMD.
-
-Sometimes libsurvive goes very quickly through these steps and fills in all pose values as `NaN` or `-NaN`. This appears to be a bug in libsurvive that has not be found yet. Reflective surfaces nearby may trigger this problem more often.
-
-[Here is a short demo video how successfuly running ./test should look like](https://haagch.frickel.club/Peek%202018-02-21%2023-23.webm).
-
-If there is already calibration data present, the library will use it. Pass `--calibrate` to force a new calibration pass.
-Conversely, if there isn't calibration data the library will auto-calibrate. Pass `--no-calibrate` to disable this calibration.
+[For reference, here is an older recording of how a properly running calibration looks like](https://haagch.frickel.club/Peek%202018-02-21%2023-23.webm).
 
 ### LH2 Calibration / Setup
 
 Calibration and setup for lighthouse 2 setups has been streamlined somewhat. On initial startup, it will take ~10 seconds
 from seeing a lighthouse to reading its ID and calibration data. After that, it waits for the device to not move and then
-automatically solves for it's position. 
+automatically solves for its position.
 
 When it sees new lighthouse devices; it will solve for their position in the global system whenever it sees no device
-movement based on the IMU. 
+movement based on the IMU.
+
+lighthouse v2 calibration is successful when libsurvive found Positions of the basestations:
+```
+Info: Attempting to solve for 0 with 30 meas
+Info: Attempting to solve for 1 with 21 meas
+Info: Solved for 0 with error of 0.005446/0.000000
+Info: Solved for 1 with error of 0.005446/0.000000
+Info: Using LH 0 (d99e7eac) as reference lighthouse
+Info: Position found for LH 0(d99e7eac)
+Info: Position found for LH 1(fe0398ef)
+```
 
 ## Using libsurvive in your own application
 
-Example code for libsurvive can be found in [test.c](https://github.com/cnlohr/libsurvive/blob/master/test.c). [calibrate.c](https://github.com/cnlohr/libsurvive/blob/master/calibrate.c) may contain some interesting code too.
+Libsurvive offers a low level API as well as a higher level application API.
 
-Here is minimal example that demonstrates using libsurvive's callback functionality to fill in pose data into a user defined data structure that is stored in libsurvive's SurviveContext.
-
-```c
-#include <stdio.h>
-#include <string.h>
-#include <survive.h>
-
-typedef struct {
-	double rotation[4];
-	double pos[3];
-} libsurvive_hmd;
-
-void testprog_raw_pose_process(SurviveObject *so, uint8_t lighthouse, FLT *pos, FLT *quat) {
-	survive_default_pose_process(so, lighthouse, pos, quat);
-	printf("(Callback) Pose: [%1.1x][%s][% 08.8f,% 08.8f,% 08.8f] [% 08.8f,% 08.8f,% 08.8f,% 08.8f]\n", lighthouse, so->codename, pos[0], pos[1], pos[2], quat[0], quat[1], quat[2], quat[3]);
-	if (strcmp(so->codename, "HMD") == 0 && lighthouse == 0) {
-		libsurvive_hmd *hmd = so->ctx->user_ptr;
-		hmd->pos[0] = pos[0]; hmd->pos[1] = pos[1]; hmd->pos[2] = pos[2];
-		hmd->rotation[0] = quat[0]; hmd->rotation[1] = quat[1]; hmd->rotation[2] = quat[2]; hmd->rotation[3] = quat[3];
-	}
-}
-
-int main(int argc, char** argv) {
-	struct SurviveContext *ctx = survive_init( 0 );
-	survive_install_raw_pose_fn(ctx, testprog_raw_pose_process);
-	survive_cal_install(ctx);
-	libsurvive_hmd *hmd = &(libsurvive_hmd) { 0 };
-	ctx->user_ptr = hmd;
-	while(survive_poll(ctx) == 0) {
-		//printf("(Main) HMD Pose: [% 08.8f,% 08.8f,% 08.8f] [% 08.8f,% 08.8f,% 08.8f,% 08.8f]\n", hmd->pos[0], hmd->pos[1], hmd->pos[2], hmd->rotation[0], hmd->rotation[1], hmd->rotation[2], hmd->rotation[3]);
-	}
-	return 0;
-}
-```
-
-Compiling this minimal example only requires the include path for survive.h as well as the libsurvive library: `gcc demo.c -Iinclude/libsurvive/ -Llib -lsurvive -Wl,-rpath=./lib -o libsurvive-demo`.
-
- As mentioned, only the pose from lighthouse number `0` is used. Since the callback is called for all tracked devices, `so->codename` can be used to differentiate between devices like `HMD`, `WM0`, etc.
+Example code for the application interface can be found in [api_example.c](https://github.com/cntools/libsurvive/blob/master/api_example.c). Have a look at the other libsurvive tools a the top level of the repository for example usage of the lower level API.
 
 # Record / Playback
 
