@@ -137,7 +137,7 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 
 	libusb_set_auto_detach_kernel_driver(usbInfo->handle, 1);
 	for (int j = 0; j < conf->bNumInterfaces; j++) {
-		int ret = libusb_claim_interface(usbInfo->handle, j);
+		ret = libusb_claim_interface(usbInfo->handle, j);
 		if (ret != 0) {
 			SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Could not claim interface %d of %s: %d", j, info->name, ret);
 			goto cleanup_and_rtn;
