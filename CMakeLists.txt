@@ -236,6 +236,11 @@ INSTALL(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink survive
 
 install(DIRECTORY include/libsurvive DESTINATION include)
 
+file(GLOB REDIST_HEADERS
+  "redist/*.h"
+)
+install(FILES ${REDIST_HEADERS} DESTINATION include/libsurvive/redist)
+
 find_program(CTYPESGEN ctypesgen PATHS $ENV{HOME}/anaconda3/bin)
 if(CTYPESGEN)
 	get_property(include_directories DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
@@ -247,3 +252,7 @@ if(CTYPESGEN)
 	add_custom_target(pysurvive COMMAND ${CTYPESGEN} ${CMAKE_SOURCE_DIR}/include/libsurvive/*.h ${INCLUDE_FLAGS} --no-macros -L$<TARGET_FILE_DIR:survive> -llibsurvive.so
 			--strip-prefix=survive_ -P Survive -o ${PYTHON_GENERATED_DIR}pysurvive_generated.py )
 endif()
+
+include(GNUInstallDirs)
+configure_file(survive.pc.in survive.pc @ONLY)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/survive.pc" DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
