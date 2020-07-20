@@ -37,6 +37,8 @@ STATIC_CONFIG_ITEM(DISABLE_LIGHTHOUSE, "disable-lighthouse", 'i', "Disable given
 STATIC_CONFIG_ITEM(RUN_EVERY_N_SYNCS, "syncs-per-run", 'i', "Number of sync pulses before running optimizer", 1);
 STATIC_CONFIG_ITEM(RUN_POSER_ASYNC, "poser-async", 'i', "Run the poser in it's own thread", 0);
 
+STATIC_CONFIG_ITEM(PRECISE_POSE, "precise", 'i', "Always calculate precise pose", 0);
+
 typedef struct MPFITStats {
 	int meas_failures;
 	int total_iterations;
@@ -72,6 +74,7 @@ typedef struct MPFITData {
 
   SurviveIMUTracker tracker;
   bool useIMU;
+  bool alwaysPrecise;
   bool useKalman;
 
   const char *serialize_prefix;
@@ -341,7 +344,7 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 
 	mpfitctx->initialPose = *soLocation;
 
-	if (canPossiblySolveLHS) {
+	if (canPossiblySolveLHS || d->alwaysPrecise) {
 		serialize_mpfit(d, mpfitctx);
 		mpfitctx->cfg = survive_optimizer_precise_config();
 	}
@@ -639,6 +642,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		survive_imu_tracker_init(&d->tracker, so);
 
 		d->useIMU = (bool)survive_configi(ctx, "use-imu", SC_GET, 1);
+		d->alwaysPrecise = (bool)survive_configi(ctx, "precise", SC_GET, 0);
 		d->useKalman = (bool)survive_configi(ctx, "use-kalman", SC_GET, 1);
 		d->required_meas = survive_configi(ctx, "required-meas", SC_GET, 8);
 		d->syncs_per_run = survive_configi(ctx, "syncs-per-run", SC_GET, 1);

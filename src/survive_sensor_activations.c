@@ -103,6 +103,13 @@ void SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct Po
 
 	FLT *angle = &self->angles[l->sensor_id][l->lh][axis];
 
+	if (!isnan(*angle) && fabs(*angle - l->angle) > moveThresholdAng) {
+		survive_long_timecode long_timecode = ((survive_long_timecode)self->rollover_count << 32u) | l->hdr.timecode;
+		// assert(long_timecode > self->last_movement);
+		// fprintf(stderr, "%f \n", fabs(*angle - l->angle));
+		self->last_movement = long_timecode;
+	}
+
 	*data_timecode = l->hdr.timecode;
 	*angle = l->angle;
 	self->last_light = lightData->common.hdr.timecode;

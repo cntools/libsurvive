@@ -98,7 +98,7 @@ static void print_label(const char *l) { printf("%*s|", 10, l); }
 
 int printf_fn(SurviveContext *ctx, const char *fault, ...) { return 0; }
 
-int lh = 0;
+int lh = -1;
 bool useRawSensorId = false;
 static uint8_t get_raw_sensor_id(SurviveObject *so, uint8_t sensor_id) {
 	if (so->channel_map) {
@@ -130,7 +130,7 @@ static void redraw(SurviveContext *ctx) {
 
 		printf("Object: %s: ", so->codename);
 
-		{
+		if (lh >= 0) {
 			double v[2] = {0, 0};
 			int v_cnt[2] = {0};
 			for (int sensor = 0; sensor < so->sensor_ct; sensor++) {
@@ -234,6 +234,14 @@ void info_fn(SurviveContext *ctx, SurviveLogLevel logLevel, const char *fault) {
 	redraw(ctx);
 }
 
+static void inc_lh(SurviveContext *ctx) {
+	do {
+		lh++;
+	} while (lh < NUM_GEN2_LIGHTHOUSES && !ctx->bsd[lh].OOTXSet);
+	if (lh == NUM_GEN2_LIGHTHOUSES)
+		lh = -1;
+}
+
 void *KBThread(void *user) {
 	SurviveContext *ctx = user;
 
@@ -242,9 +250,7 @@ void *KBThread(void *user) {
 		system("clear");
 
 		if (c == 'l') {
-			lh++;
-			if (!ctx->bsd[lh].OOTXSet)
-				lh = 0;
+			inc_lh(ctx);
 		} else if (c == 'q') {
 			keepRunning = false;
 		} else if (c == 'r') {
@@ -256,9 +262,7 @@ void *KBThread(void *user) {
 		} else {
 			needsRedraw = true;
 			if (c == 10) {
-				lh++;
-				if (!ctx->bsd[lh].OOTXSet)
-					lh = -1;
+				inc_lh(ctx);
 			}
 		}
 	}

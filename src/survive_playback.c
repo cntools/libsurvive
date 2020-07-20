@@ -148,12 +148,12 @@ void survive_recording_config_process(SurviveObject *so, char *ct0conf, int len)
 	char *buffer = SV_CALLOC(1, len + 1);
 	memcpy(buffer, ct0conf, len);
 	for (int i = 0; i < len; i++)
-		if (buffer[i] == '\n')
+		if (buffer[i] == '\n' || buffer[i] == '\r')
 			buffer[i] = ' ';
 
 	write_to_output(recordingData, "%s CONFIG ", so->codename);
 	write_to_output_raw(recordingData, buffer, len);
-	write_to_output_raw(recordingData, "\n", 1);
+	write_to_output_raw(recordingData, "\r\n", 2);
 	free(buffer);
 }
 
