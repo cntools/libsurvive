@@ -40,18 +40,25 @@ static int mp_covar(int n, FLT *r, int ldr, int *ipvt, FLT tol, FLT *wa);
 /* Macro to call user function */
 #define mp_call(funct, m, n, x, fvec, dvec, priv) (*(funct))(m, n, x, fvec, dvec, priv)
 
+#define mp_declare(dest, type)                                                                                         \
+	int verify_alloc_free_##dest;                                                                                      \
+	type *dest = 0;
+
 /* Macro to safely allocate memory */
 #define mp_malloc(dest, type, size)                                                                                    \
-	dest = (type *)malloc(sizeof(type) * size);                                                                        \
+	(void)(verify_alloc_free_##dest);                                                                                  \
+	dest = (type *)alloca(sizeof(type) * size);                                                                        \
 	if (dest == 0) {                                                                                                   \
 		info = MP_ERR_MEMORY;                                                                                          \
 		goto CLEANUP;                                                                                                  \
 	} else {                                                                                                           \
-		int _k;                                                                                                        \
-		for (_k = 0; _k < (size); _k++)                                                                                \
+		for (int _k = 0; _k < (size); _k++)                                                                            \
 			dest[_k] = 0;                                                                                              \
 	}
 
+//#define mp_free(dest) if(dest) { free(dest); }
+#define mp_free(dest)                                                                                                  \
+	{ (void)(verify_alloc_free_##dest); };
 /*
  *     **********
  *
@@ -280,16 +287,32 @@ int mpfit(mp_func funct, int m, int npar, FLT *xall, mp_par *pars, mp_config *co
 	static FLT zero = 0.0;
 	int nfev = 0;
 
-	FLT *step = 0, *dstep = 0, *llim = 0, *ulim = 0;
-	int *pfixed = 0, *mpside = 0, *ifree = 0, *qllim = 0, *qulim = 0;
-	int *ddebug = 0;
-	FLT *ddrtol = 0, *ddatol = 0;
+	mp_declare(step, FLT);
+	mp_declare(dstep, FLT);
+	mp_declare(llim, FLT) mp_declare(ulim, FLT);
+	mp_declare(pfixed, int);
+	mp_declare(ifree, int);
+	mp_declare(mpside, int);
+	mp_declare(qllim, int);
+	mp_declare(qulim, int);
 
-	FLT *fvec = 0, *qtf = 0;
-	FLT *x = 0, *xnew = 0, *fjac = 0, *diag = 0;
-	FLT *wa1 = 0, *wa2 = 0, *wa3 = 0, *wa4 = 0;
-	FLT **dvecptr = 0;
-	int *ipvt = 0;
+	mp_declare(ddebug, int);
+	mp_declare(ddrtol, FLT);
+	mp_declare(ddatol, FLT);
+
+	mp_declare(fvec, FLT);
+	mp_declare(qtf, FLT);
+	mp_declare(x, FLT);
+	mp_declare(xnew, FLT);
+	mp_declare(fjac, FLT);
+	mp_declare(diag, FLT);
+	mp_declare(wa1, FLT);
+	mp_declare(wa2, FLT);
+	mp_declare(wa3, FLT);
+	mp_declare(wa4, FLT);
+
+	mp_declare(dvecptr, FLT *);
+	mp_declare(ipvt, int);
 
 	int ldfjac;
 
@@ -972,55 +995,30 @@ L300:
 	}
 
 CLEANUP:
-	if (fvec)
-		free(fvec);
-	if (qtf)
-		free(qtf);
-	if (x)
-		free(x);
-	if (xnew)
-		free(xnew);
-	if (fjac)
-		free(fjac);
-	if (diag)
-		free(diag);
-	if (wa1)
-		free(wa1);
-	if (wa2)
-		free(wa2);
-	if (wa3)
-		free(wa3);
-	if (wa4)
-		free(wa4);
-	if (ipvt)
-		free(ipvt);
-	if (pfixed)
-		free(pfixed);
-	if (step)
-		free(step);
-	if (dstep)
-		free(dstep);
-	if (mpside)
-		free(mpside);
-	if (ddebug)
-		free(ddebug);
-	if (ddrtol)
-		free(ddrtol);
-	if (ddatol)
-		free(ddatol);
-	if (ifree)
-		free(ifree);
-	if (qllim)
-		free(qllim);
-	if (qulim)
-		free(qulim);
-	if (llim)
-		free(llim);
-	if (ulim)
-		free(ulim);
-	if (dvecptr)
-		free(dvecptr);
-
+	mp_free(fvec);
+	mp_free(qtf);
+	mp_free(x);
+	mp_free(xnew);
+	mp_free(fjac);
+	mp_free(diag);
+	mp_free(wa1);
+	mp_free(wa2);
+	mp_free(wa3);
+	mp_free(wa4);
+	mp_free(ipvt);
+	mp_free(pfixed);
+	mp_free(step);
+	mp_free(dstep);
+	mp_free(mpside);
+	mp_free(ddebug);
+	mp_free(ddrtol);
+	mp_free(ddatol);
+	mp_free(ifree);
+	mp_free(qllim);
+	mp_free(qulim);
+	mp_free(llim);
+	mp_free(ulim);
+	mp_free(dvecptr);
 	return info;
 }
 
