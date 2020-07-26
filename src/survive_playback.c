@@ -263,6 +263,9 @@ void survive_recording_sweep_process(SurviveObject *so, survive_channel channel,
 		return;
 	}
 
+	if (!recordingData->writeAngle)
+		return;
+
 	const char *dev = so->codename;
 	write_to_output(recordingData, SWEEP_PRINTF, SWEEP_PRINTF_ARGS);
 }

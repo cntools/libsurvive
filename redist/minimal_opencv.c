@@ -118,7 +118,7 @@ static void icvCheckHuge(CvMat *arr) {
 		arr->type &= ~CV_MAT_CONT_FLAG;
 }
 
-SURVIVE_LOCAL_ONLY CvMat *cvCreateMatHeader(int rows, int cols, int type) {
+static CvMat *cvInitMatHeader(CvMat *arr, int rows, int cols, int type) {
 	type = CV_MAT_TYPE(type);
 
 	assert(!(rows < 0 || cols < 0));
@@ -126,8 +126,6 @@ SURVIVE_LOCAL_ONLY CvMat *cvCreateMatHeader(int rows, int cols, int type) {
 	int min_step = CV_ELEM_SIZE(type);
 	assert(!(min_step <= 0));
 	min_step *= cols;
-
-	CvMat *arr = (CvMat *)cvAlloc(sizeof(*arr));
 
 	arr->step = min_step;
 	arr->type = CV_MAT_MAGIC_VAL | type | CV_MAT_CONT_FLAG;
@@ -139,6 +137,10 @@ SURVIVE_LOCAL_ONLY CvMat *cvCreateMatHeader(int rows, int cols, int type) {
 
 	icvCheckHuge(arr);
 	return arr;
+}
+
+SURVIVE_LOCAL_ONLY CvMat *cvCreateMatHeader(int rows, int cols, int type) {
+	return cvInitMatHeader((CvMat *)cvAlloc(sizeof(CvMat)), rows, cols, type);
 }
 
 /* the alignment of all the allocated buffers */
@@ -182,6 +184,13 @@ SURVIVE_LOCAL_ONLY void cvCreateData(CvMat *arr) {
 	} else
 		CV_Error(CV_StsBadArg, "unrecognized or unsupported array type");
 }
+
+#define CV_CREATE_MAT_HEADER_ALLOCA(stack_mat, rows, cols, type)                                                       \
+	CvMat *stack_mat = cvInitMatHeader(alloca(sizeof(CvMat)), rows, cols, type);
+
+#define CV_CREATE_MAT_ALLOCA(stack_mat, height, width, type)                                                           \
+	CV_CREATE_MAT_HEADER_ALLOCA(stack_mat, height, width, type);                                                       \
+	stack_mat->data.ptr = alloca(mat_size_bytes(stack_mat));
 
 SURVIVE_LOCAL_ONLY CvMat *cvCreateMat(int height, int width, int type) {
 	CvMat *arr = cvCreateMatHeader(height, width, type);
@@ -249,6 +258,10 @@ SURVIVE_LOCAL_ONLY double cvInvert(const CvMat *srcarr, CvMat *dstarr, int metho
 	return 0;
 }
 
+#define CV_CLONE_MAT_ALLOCA(stack_mat, mat)                                                                            \
+	CV_CREATE_MAT_ALLOCA(stack_mat, mat->rows, mat->cols, mat->type)                                                   \
+	cvCopy(mat, stack_mat, 0);
+
 SURVIVE_LOCAL_ONLY CvMat *cvCloneMat(const CvMat *mat) {
 	CvMat *rtn = cvCreateMat(mat->rows, mat->cols, mat->type);
 	cvCopy(mat, rtn, 0);
@@ -271,7 +284,8 @@ SURVIVE_LOCAL_ONLY int cvSolve(const CvMat *Aarr, const CvMat *xarr, CvMat *Barr
 		assert(type == CV_MAT_TYPE(Barr->type) && (type == CV_32F || type == CV_64F));
 
 		cvCopy(xarr, Barr, 0);
-		CvMat *a_ws = cvCloneMat(Aarr);
+		FLT *a_ws = alloca(mat_size_bytes(Aarr));
+		memcpy(a_ws, CV_RAW_PTR(Aarr), mat_size_bytes(Aarr));
 
 		lapack_int brows = Barr->rows;
 		lapack_int bcols = Barr->cols;
@@ -279,7 +293,7 @@ SURVIVE_LOCAL_ONLY int cvSolve(const CvMat *Aarr, const CvMat *xarr, CvMat *Barr
 
 		lapack_int *ipiv = malloc(sizeof(lapack_int) * MIN(Aarr->rows, Aarr->cols));
 
-		inf = LAPACKE_getrf(LAPACK_ROW_MAJOR, arows, acols, CV_RAW_PTR(a_ws), lda, ipiv);
+		inf = LAPACKE_getrf(LAPACK_ROW_MAJOR, arows, acols, (a_ws), lda, ipiv);
 		assert(inf >= 0);
 		if (inf > 0) {
 			printf("Warning: Singular matrix: \n");
@@ -288,16 +302,15 @@ SURVIVE_LOCAL_ONLY int cvSolve(const CvMat *Aarr, const CvMat *xarr, CvMat *Barr
 
 #ifdef DEBUG_PRINT
 		printf("Solve A * x = B:\n");
-		print_mat(a_ws);
+		// print_mat(a_ws);
 		print_mat(Barr);
 #endif
 
-		inf = LAPACKE_getrs(LAPACK_ROW_MAJOR, CblasNoTrans, arows, bcols, CV_RAW_PTR(a_ws), lda, ipiv, CV_RAW_PTR(Barr),
-							ldb);
+		inf = LAPACKE_getrs(LAPACK_ROW_MAJOR, CblasNoTrans, arows, bcols, (a_ws), lda, ipiv, CV_RAW_PTR(Barr), ldb);
 		assert(inf == 0);
 
 		free(ipiv);
-		cvReleaseMat(&a_ws);
+		// cvReleaseMat(&a_ws);
 	} else if (method == DECOMP_SVD) {
 
 #ifdef DEBUG_PRINT
@@ -308,32 +321,34 @@ SURVIVE_LOCAL_ONLY int cvSolve(const CvMat *Aarr, const CvMat *xarr, CvMat *Barr
 		bool xLargerThanB = xarr->rows > acols;
 		CvMat *xCpy = 0;
 		if (xLargerThanB) {
-			xCpy = cvCloneMat(xarr);
+			CV_CLONE_MAT_ALLOCA(xCpyStack, xarr);
+			xCpy = xCpyStack;
 		} else {
 			xCpy = Barr;
 			memcpy(CV_RAW_PTR(Barr), CV_RAW_PTR(xarr), mat_size_bytes(xarr));
 		}
 
-		CvMat *aCpy = cvCloneMat(Aarr);
+		// CvMat *aCpy = cvCloneMat(Aarr);
+		FLT *aCpy = alloca(mat_size_bytes(Aarr));
+		memcpy(aCpy, CV_RAW_PTR(Aarr), mat_size_bytes(Aarr));
 
-		FLT *S = malloc(sizeof(FLT) * MIN(arows, acols));
+		FLT *S = alloca(sizeof(FLT) * MIN(arows, acols));
+		// FLT *S = malloc(sizeof(FLT) * MIN(arows, acols));
 		FLT rcond = -1;
-		lapack_int *rank = malloc(sizeof(lapack_int) * MIN(arows, acols));
-		lapack_int inf = LAPACKE_gelss(LAPACK_ROW_MAJOR, arows, acols, xcols, CV_RAW_PTR(aCpy), acols, CV_RAW_PTR(xCpy),
-									   xcols, S, rcond, rank);
-		free(rank);
-		free(S);
-
+		lapack_int *rank = alloca(sizeof(lapack_int) * MIN(arows, acols));
+		// lapack_int *rank = malloc(sizeof(lapack_int) * MIN(arows, acols));
+		lapack_int inf = LAPACKE_gelss(LAPACK_ROW_MAJOR, arows, acols, xcols, (aCpy), acols, CV_RAW_PTR(xCpy), xcols, S,
+									   rcond, rank);
 		assert(Barr->rows == acols);
 		assert(Barr->cols == xCpy->cols);
 
 		if (xLargerThanB) {
 			xCpy->rows = acols;
 			cvCopy(xCpy, Barr, 0);
-			cvReleaseMat(&xCpy);
+			// cvReleaseMat(&xCpy);
 		}
 
-		cvReleaseMat(&aCpy);
+		// cvReleaseMat(&aCpy);
 #ifdef DEBUG_PRINT
 		print_mat(Barr);
 #endif
@@ -346,10 +361,9 @@ SURVIVE_LOCAL_ONLY void cvTranspose(const CvMat *M, CvMat *dst) {
 	bool inPlace = M == dst || CV_RAW_PTR(M) == CV_RAW_PTR(dst);
 	FLT *src = CV_RAW_PTR(M);
 
-	CvMat *tmp = 0;
 	if (inPlace) {
-		tmp = cvCloneMat(dst);
-		src = CV_RAW_PTR(tmp);
+		src = alloca(mat_size_bytes(M));
+		memcpy(src, CV_RAW_PTR(M), mat_size_bytes(M));
 	} else {
 	  assert(M->rows == dst->cols);
 	  assert(M->cols == dst->rows);
@@ -359,10 +373,6 @@ SURVIVE_LOCAL_ONLY void cvTranspose(const CvMat *M, CvMat *dst) {
 		for (unsigned j = 0; j < M->cols; j++) {
 			CV_RAW_PTR(dst)[j * M->rows + i] = src[i * M->cols + j];
 		}
-	}
-
-	if (inPlace) {
-		cvReleaseMat(&tmp);
 	}
 }
 
@@ -391,11 +401,11 @@ SURVIVE_LOCAL_ONLY void cvSVD(CvMat *aarr, CvMat *warr, CvMat *uarr, CvMat *varr
 	lapack_int ulda = uarr ? uarr->cols : acols;
 	lapack_int plda = varr ? varr->cols : acols;
 
-	FLT *superb = malloc(sizeof(FLT) * MIN(arows, acols));
+	FLT *superb = alloca(sizeof(FLT) * MIN(arows, acols));
 	inf = LAPACKE_gesvd(LAPACK_ROW_MAJOR, jobu, jobvt, arows, acols, CV_RAW_PTR(aarr), acols, pw, pu, ulda, pv, plda,
 						superb);
 
-	free(superb);
+	// free(superb);
 
 	switch (inf) {
 	case -6:
