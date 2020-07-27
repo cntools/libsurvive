@@ -137,7 +137,7 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 
 	so->last_time_between_sync[bsd_idx] = survive_timecode_difference(timecode, so->last_sync_time[bsd_idx]);
 	FLT hz = 48000000. / so->last_time_between_sync[bsd_idx];
-	SV_VERBOSE(150, "Sync hz %2d: %2.6fhz (err: %0.6fhz) ootx: %d gen: %d", channel, hz,
+	SV_VERBOSE(250, "Sync hz %2d: %2.6fhz (err: %0.6fhz) ootx: %d gen: %d", channel, hz,
 			   fabs(hz - freq_per_channel[channel]), ootx, gen);
 
 	so->last_sync_time[bsd_idx] = timecode;

@@ -1648,8 +1648,9 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 					HAS_FLAG(touchFlags, 0x40) ? "#" : "_", touchFlags, gripForce, trackpadForce);
 
 			} else {
-				SV_WARN("Unknown gen two event 0x%02hX 0b%s [Time:%04hX] [Payload: %s] <<ABORT FURTHER READ>>",
-						*(payloadPtr - 1), byteToBin(*(payloadPtr - 1)), time, packetToHex(payloadPtr, payloadEndPtr));
+				SV_WARN("Unknown gen two event %s 0x%02hX 0b%s [Time:%04hX] [Payload: %s] <<ABORT FURTHER READ>>",
+						w->codename, *(payloadPtr - 1), byteToBin(*(payloadPtr - 1)), time,
+						packetToHex(payloadPtr, payloadEndPtr));
 				// Since we don't know how much data this should consume, proceeding to IMU/Light decode is likely
 				// to choke.
 				return false;
@@ -1776,7 +1777,7 @@ static int parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, ui
 						conflicted_channel);
 			}
 			channel = data >> 4u;
-			SV_VERBOSE(200, "Channel %d (0x%02x)", channel, data);
+			SV_VERBOSE(250, "%s Channel %d (0x%02x)", obj->codename, channel, data);
 			idx++;
 		} else {
 			uint32_t timecode = 0;
@@ -1798,7 +1799,7 @@ static int parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, ui
 				if (unused && dump_binary) {
 					SV_WARN("Not sure what this is: %x", unused);
 				}
-				SV_VERBOSE(200, "Sync %s %02d %d %8u", obj->codename, channel, ootx, timecode);
+				SV_VERBOSE(250, "Sync %s %02d %d %8u", obj->codename, channel, ootx, timecode);
 				if (channel == 255) {
 					SV_WARN("No channel specified for sync");
 					dump_binary = true;
@@ -1817,7 +1818,7 @@ static int parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, ui
 				bool half_clock_flag = timecode & 0x4u;
 				uint8_t sensor = (timecode >> 27u);
 				timecode = fix_time24((timecode >> 3u) & 0xFFFFFFu, reference_time);
-				SV_VERBOSE(200, "Sweep %s %02d.%02d %8u", obj->codename, channel, sensor, timecode);
+				SV_VERBOSE(250, "Sweep %s %02d.%02d %8u", obj->codename, channel, sensor, timecode);
 				if (channel == 255) {
 					SV_WARN("No channel specified for sweep");
 					dump_binary = true;
@@ -1851,6 +1852,13 @@ exit_loop:
 	return has_errors ? -1 : idx;
 }
 
+#define VERIFY_LENGTH_OR_FAIL(payloadPtr, len)                                                                         \
+	if (payloadEndPtr - payloadPtr < (len)) {                                                                          \
+		SV_WARN("%s handle_input needed %d bytes but had %u", w->codename, (len),                                      \
+				(uint32_t)(payloadEndPtr - payloadPtr));                                                               \
+		goto exit_failure;                                                                                             \
+	}
+
 static bool handle_input(SurviveObject *w, uint8_t flags, uint8_t **payloadPtr, uint8_t *payloadEndPtr) {
 	/*
 	 * Flags for input events are as follows:
@@ -1880,11 +1888,13 @@ static bool handle_input(SurviveObject *w, uint8_t flags, uint8_t **payloadPtr, 
 		memset(&bEvent, 0, sizeof(bEvent));
 		if (flagButton) {
 			bEvent.pressedButtonsValid = 1;
+			VERIFY_LENGTH_OR_FAIL(*payloadPtr, 1);
 			bEvent.pressedButtons = POP_BYTE(*payloadPtr);
 		}
 
 		if (flagTrigger) {
 			bEvent.triggerHighResValid = 1;
+			VERIFY_LENGTH_OR_FAIL(*payloadPtr, 1);
 			bEvent.triggerHighRes = POP_BYTE(*payloadPtr) * 128;
 		}
 
@@ -1892,6 +1902,7 @@ static bool handle_input(SurviveObject *w, uint8_t flags, uint8_t **payloadPtr, 
 			bEvent.touchpadHorizontalValid = 1;
 			bEvent.touchpadVerticalValid = 1;
 
+			VERIFY_LENGTH_OR_FAIL(*payloadPtr, 4);
 			bEvent.touchpadHorizontal = POP_SHORT(*payloadPtr);
 			bEvent.touchpadVertical = POP_SHORT(*payloadPtr);
 		}
@@ -1906,6 +1917,7 @@ static bool handle_input(SurviveObject *w, uint8_t flags, uint8_t **payloadPtr, 
 			// Knucles
 
 			// Resistive contact sensors in buttons?
+			VERIFY_LENGTH_OR_FAIL(*payloadPtr, 7);
 			uint8_t touchFlags = POP_BYTE(*payloadPtr);
 			// 0x01 = Trigger
 			// 0x08 = Menu
@@ -1944,6 +1956,9 @@ static bool handle_input(SurviveObject *w, uint8_t flags, uint8_t **payloadPtr, 
 		}
 	}
 	return true;
+
+exit_failure:
+	return false;
 }
 
 static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payloadPtr, uint8_t *payloadEndPtr) {
@@ -1957,7 +1972,12 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 
 	uint8_t flags = POP_BYTE(payloadPtr);
 	bool has_errors = false;
-	bool flagLightcap = HAS_FLAG(flags, 0x10);
+
+	// Some kind of startup heartbeat?
+	if (flags == 0xe2) {
+		SV_VERBOSE(200, "Heartbeat(?) packet %s: '%s'", w->codename, packetToHex(payloadPtr, payloadEndPtr));
+		return;
+	}
 
 	// Info: Watchman v2(KN1): '34 f2 3f 9f a2 c9             | 61 06 8c 0a 44 '
 	// Info: Watchman v2(KN1): '34 f2 7a 9e fe c8             | 61 b4 6e 27 02 7e 95 7c 7c d6 b3 7c 5c a6 da 7c bc '
@@ -1994,13 +2014,17 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 	// Info: Watchman v2(KN1): 'c0 92 52 fb 7d f1 ea f9 ce ff 2f 00 dc ff 20 01 '
 
 	// bool has_errors = !read_event(w, time, &payloadPtr, payloadEndPtr);
-	bool flagIMU = HAS_FLAG(flags, 0x80);
+
 	bool flagUnknown01 = HAS_FLAG(flags, 0x01);
+	bool flagUnknown02 = HAS_FLAG(flags, 0x02);
 	// Haptic on the trackpad thing on the knuckles?
 	bool flagUnknown04 = HAS_FLAG(flags, 0x04);
 	bool flagUnknown08 = HAS_FLAG(flags, 0x08);
+
+	bool flagLightcap = HAS_FLAG(flags, 0x10);
 	bool flagInput = HAS_FLAG(flags, 0x20);
 	bool flagUnknown40 = HAS_FLAG(flags, 0x40);
+	bool flagIMU = HAS_FLAG(flags, 0x80);
 
 	if (HAS_FLAG(flags, ~0xD1)) {
 		SV_VERBOSE(100, "%s Unknown flag %02x", w->codename, flags);
@@ -2009,42 +2033,19 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 	if (flagIMU)
 		read_imu_data(w, time, &payloadPtr, payloadEndPtr);
 
+	// These things seem infrequent and of variable length;
 	if (flagUnknown40) {
-		uint8_t unknownByte1 = POP_BYTE(payloadPtr);
-		uint8_t unknownByte2 = POP_BYTE(payloadPtr);
-		SV_VERBOSE(100, "%s Unknown flag 0x40 byte %02x %02x", w->codename, unknownByte1, unknownByte2);
+		SV_VERBOSE(200, "%s Unknown flag 0x40 bytes dropping rest of data %s", w->codename,
+				   packetToHex(payloadPtr, payloadEndPtr));
+		return;
 	}
 
 	if (flagInput) {
+		VERIFY_LENGTH_OR_FAIL(payloadPtr, 1);
 		uint8_t input_flags = POP_BYTE(payloadPtr);
 		has_errors = !handle_input(w, input_flags, &payloadPtr, payloadEndPtr);
 	}
 
-	/*
-	if (flagUnknown01) {
-		//uint8_t unknownByte1 = POP_BYTE(payloadPtr);
-		//uint8_t unknownByte2 = POP_BYTE(payloadPtr);
-		//SV_VERBOSE(100, "Unknown flag 0x1 %02x", unknownByte1);
-		SV_VERBOSE(100, "Unknown flag 0x01");
-	}
-
-	if (flagUnknown08) {
-		uint8_t unknownBytes[] = {POP_BYTE(payloadPtr), POP_BYTE(payloadPtr), POP_BYTE(payloadPtr),
-								  POP_BYTE(payloadPtr), POP_BYTE(payloadPtr), POP_BYTE(payloadPtr),
-								  POP_BYTE(payloadPtr), POP_BYTE(payloadPtr), POP_BYTE(payloadPtr)};
-
-		SV_VERBOSE(100, "Unknown flag 0x8 %02x %02x %02x %02x %02x %02x ...", unknownBytes[0], unknownBytes[1],
-				   unknownBytes[2], unknownBytes[3], unknownBytes[4], unknownBytes[5]);
-	}
-
-	if (flagUnknown04) {
-		uint8_t unknownBytes[] = {POP_BYTE(payloadPtr), POP_BYTE(payloadPtr), POP_BYTE(payloadPtr),
-								  POP_BYTE(payloadPtr), POP_BYTE(payloadPtr) };
-
-		SV_VERBOSE(100, "Unknown flag 0x20 %02x %02x %02x %02x %02x %02x", unknownBytes[0], unknownBytes[1],
-				   unknownBytes[2], unknownBytes[3], unknownBytes[4] );
-	}
-*/
 	if (driverInfo->packetsSeenWaitingForV2 > 200) {
 		driverInfo->packetsSeenWaitingForV2 = 0;
 		driverInfo->timeWithoutFlag = 0;
@@ -2055,6 +2056,7 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 		if (flagLightcap) {
 			driverInfo->timeWithoutFlag = 1;
 			flagLightcap = false;
+
 			SV_VERBOSE(200, "Discard %s %lu: '%s'", w->codename, driverInfo->timeWithoutFlag,
 					   packetToHex(payloadPtr, payloadEndPtr));
 		} else {
@@ -2080,10 +2082,13 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 			SV_WARN("Did not read full input packet; %ld bytes remain", payloadEndPtr - payloadPtr);
 		}
 	}
-	if (has_errors) {
-		survive_dump_buffer(ctx, originPayloadPtr, payloadEndPtr - originPayloadPtr);
-		// assert(false);
+
+	if (!has_errors) {
+		return;
 	}
+
+exit_failure:
+	survive_dump_buffer(ctx, originPayloadPtr, payloadEndPtr - originPayloadPtr);
 }
 
 static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
@@ -2138,7 +2143,7 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 	uint8_t *payloadEndPtr = payloadPtr + payloadSize;
 
 	if (w->ctx->lh_version == 1) {
-		SV_VERBOSE(150, "Watchman v2(%s): '%s'", w->codename, packetToHex(payloadPtr, payloadEndPtr));
+		SV_VERBOSE(150, "Watchman v2(%s): '%s'", w->codename, packetToHex(readdata, payloadEndPtr));
 		handle_watchman_v2(w, time, payloadPtr, payloadEndPtr);
 		return;
 	}
