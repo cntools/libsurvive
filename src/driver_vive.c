@@ -1531,6 +1531,12 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 	if (!HAS_FLAG(*payloadPtr, 0xE0))
 		return true;
 
+	// This is some kind of heartbeat
+	if (*payloadPtr == 0xE2) {
+		*readPtr = payloadEndPtr;
+		return true;
+	}
+
 	/*
 	 * Event Flags
 	 * ===========
@@ -2196,6 +2202,10 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 		}
 	}
 }
+#define DEBUG_WATCHMAN_PRINTF(...)                                                                                     \
+	if (ctx->log_level > 200) {                                                                                        \
+		ctx->printfproc(ctx, __VA_ARGS__);                                                                             \
+	}
 
 int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, uint8_t time1,
 							survive_timecode reference_time, uint8_t *readdata, size_t qty, LightcapElement *les,
@@ -2204,13 +2214,11 @@ int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, ui
 	assert(qty > 0);
 	uint8_t *mptr = readdata + qty - 3 - 1; //-3 for timecode, -1 to
 
-#ifdef DEBUG_WATCHMAN
-	fprintf(stderr, "_%s lc Data: ", codename);
+	DEBUG_WATCHMAN_PRINTF("_%s lc Data: ", codename);
 	for (int i = 0; i < qty; i++) {
-		fprintf(stderr, "%02x ", readdata[i]);
+		DEBUG_WATCHMAN_PRINTF("%02x ", readdata[i]);
 	}
-	fprintf(stderr, "\n");
-#endif
+	DEBUG_WATCHMAN_PRINTF("\n");
 
 	uint32_t mytime = (mptr[3] << 16) | (mptr[2] << 8) | (mptr[1] << 0);
 
@@ -2236,17 +2244,14 @@ int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, ui
 	}
 
 	times[timecount++] = mytime; //
-#ifdef DEBUG_WATCHMAN
-	fprintf(stderr, "_%s Packet Start Time: %u\n", codename, mytime);
-#endif
+	DEBUG_WATCHMAN_PRINTF("_%s Packet Start Time: %u\n", codename, mytime);
 
 	// First, pull off the times, starting with the current time, then all the delta times going backwards.
 	{
 		while (mptr - readdata > (timecount >> 1)) {
 			uint32_t time_delta = 0;
-#ifdef DEBUG_WATCHMAN
-			fprintf(stderr, "%s\t", codename);
-#endif
+
+			DEBUG_WATCHMAN_PRINTF("%s\t", codename);
 
 			// https://en.wikipedia.org/wiki/Variable-length_quantity
 			uint8_t codebyte = 0;
@@ -2261,14 +2266,10 @@ int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, ui
 					fault = 7;
 					goto end;
 				}
-#ifdef DEBUG_WATCHMAN
-				fprintf(stderr, "%02x ", codebyte);
-#endif
+				DEBUG_WATCHMAN_PRINTF("%02x ", codebyte);
 			}
 			times[timecount++] = (mytime -= time_delta);
-#ifdef DEBUG_WATCHMAN
-			fprintf(stderr, " newtime: %u (%u)\n", mytime, time_delta);
-#endif
+			DEBUG_WATCHMAN_PRINTF(" newtime: %u (%u)\n", mytime, time_delta);
 		}
 
 		leds = timecount >> 1;
@@ -2306,13 +2307,11 @@ int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, ui
 			while (marked[timepl])
 				timepl++;
 
-#ifdef DEBUG_WATCHMAN
-			fprintf(stderr, "TP %d   TC: %d : ", timepl, timecount);
+			DEBUG_WATCHMAN_PRINTF("TP %d   TC: %d : ", timepl, timecount);
 			for (int i = 0; i < timecount; i++) {
-				fprintf(stderr, "%d", marked[i]);
+				DEBUG_WATCHMAN_PRINTF("%d", marked[i]);
 			}
-			fprintf(stderr, "\n");
-#endif
+			DEBUG_WATCHMAN_PRINTF("\n");
 
 			if (timepl > timecount) {
 				fault = 3;
@@ -2348,9 +2347,8 @@ int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, ui
 			le->length = endtime - starttime;
 			le->timestamp = starttime;
 
-#ifdef DEBUG_WATCHMAN
-			fprintf(stderr, "_%s Event: %d %u %u-%u\n", codename, led, le->length, endtime, starttime);
-#endif
+			DEBUG_WATCHMAN_PRINTF("_%s Event: %d %u %u-%u\n", codename, led, le->length, endtime, starttime);
+
 			int swap = lese - 2;
 			while (swap >= 0 && les[swap].timestamp < les[swap + 1].timestamp) {
 				LightcapElement l;
@@ -2365,14 +2363,14 @@ int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, ui
 	return lese;
 
 end : {
-#ifdef DEBUG_WATCHMAN_ERRORS
-	SV_INFO("Light decoding fault: %d", fault);
-	fprintf(stderr, "Info: _%s %u %u ", codename, time1, reference_time);
+
+	DEBUG_WATCHMAN_PRINTF("Light decoding fault: %d", fault);
+	DEBUG_WATCHMAN_PRINTF("Info: _%s %u %u ", codename, time1, reference_time);
 	for (int i = 0; i < qty; i++) {
-		fprintf(stderr, "%02x ", readdata[i]);
+		DEBUG_WATCHMAN_PRINTF("%02x ", readdata[i]);
 	}
-	fprintf(stderr, "\n");
-#endif
+	DEBUG_WATCHMAN_PRINTF("\n");
+
 	return -fault;
 	}
 }
