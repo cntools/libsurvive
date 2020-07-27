@@ -28,7 +28,17 @@ IF(NOT WIN32)
 
 	check_include_file("lapacke.h" HAVE_LAPACKE_H)
 
+	option(USE_OPENBLAS "Use OpenBLAS -- requires USE_LAPACKE ON" OFF)
+
 	option(USE_LAPACKE "Use LAPACKE" ${HAVE_LAPACKE_H})
+	option(USE_OPENBLAS "Use OpenBLAS" OFF)
+
+	if(USE_OPENBLAS)
+		set(BLAS_BACKEND "openblas")
+	else()
+		set(BLAS_BACKEND "cblas")
+	endif()
+
 	if(NOT USE_LAPACKE)
 		find_package( OpenCV )
 		option(USE_OPENCV "Use OpenCV" ${OpenCV_FOUND})

@@ -61,7 +61,7 @@ ENDIF()
 
 IF(USE_LAPACKE OR WIN32) # NOT USE_OPENCV -- lapack / blas
 	IF(UNIX)
-	  target_link_libraries(minimal_opencv cblas lapacke)
+	  target_link_libraries(minimal_opencv ${BLAS_BACKEND} lapacke)
 	else()
 		if (CMAKE_SIZEOF_VOID_P MATCHES 8)
 			set(WIN_PLATFORM "x64")
