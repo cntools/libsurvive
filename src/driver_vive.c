@@ -2203,7 +2203,7 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 	}
 }
 #define DEBUG_WATCHMAN_PRINTF(...)                                                                                     \
-	if (ctx->log_level > 200) {                                                                                        \
+	if (ctx && ctx->log_level > 200) {                                                                                 \
 		ctx->printfproc(ctx, __VA_ARGS__);                                                                             \
 	}
 
