@@ -148,6 +148,13 @@ SET(PLUGINS
 		poser_barycentric_svd
 )
 
+check_include_file("gattlib.h" HAVE_GATTLIB_H)
+option(BUILD_GATT_SUPPORT "Whether or not to include gatt support for the basestations -- requires gattlib (https://github.com/labapart/gattlib)" ${HAVE_GATTLIB_H})
+if(BUILD_GATT_SUPPORT)
+	LIST(APPEND PLUGINS  driver_gatt)
+	set(driver_gatt_ADDITIONAL_LIBS gattlib)
+endif()
+
 IF(USE_LAPACKE)
 	LIST(APPEND PLUGINS poser_sba)
 ENDIF()

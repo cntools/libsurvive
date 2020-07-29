@@ -2840,8 +2840,6 @@ int DriverRegHTCVive(SurviveContext *ctx) {
 	SurviveViveData *sv = SV_CALLOC(1, sizeof(SurviveViveData));
 	sv->hmd_imu_index = sv->hmd_mainboard_index = -1;
 
-	// Note: don't sleep for HTCVive, the handle_events call can block
-	ctx->poll_min_time_ms = 0;
 	survive_attach_configi(ctx, SECONDS_PER_HZ_OUTPUT_TAG, &sv->seconds_per_hz_output);
 	if(sv->seconds_per_hz_output > 0) {
 	  SV_INFO("Reporting usb hz in %d second intervals", sv->seconds_per_hz_output);
@@ -2861,6 +2859,14 @@ int DriverRegHTCVive(SurviveContext *ctx) {
 		// TODO: Cleanup any libUSB stuff sitting around.
 		SV_WARN("USB Init failed");
 		goto fail_gracefully;
+	}
+
+	DeviceDriver dd = GetDriver("DriverRegGatt");
+	if (dd) {
+		SurviveDeviceDriverReturn r = dd(ctx);
+		if (r < 0) {
+			SV_WARN("GATT could not start error %d", r);
+		}
 	}
 
 	if (sv->udev_cnt) {
@@ -2883,6 +2889,8 @@ int DriverRegHTCVive(SurviveContext *ctx) {
 	sv->uiface[USB_DEV_TRACKER1_LIGHTCAP].actual_len = 64;
 */
 #endif
+	// Note: don't sleep for HTCVive, the handle_events call can block
+	ctx->poll_min_time_ms = 0;
 
 	return 0;
 fail_gracefully:

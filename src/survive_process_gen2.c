@@ -153,7 +153,7 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 								.lh = bsd_idx,
 							}};
 
-	if (so->PoserFn) {
+	if (so->PoserFn && ctx->lh_version != -1) {
 		so->PoserFn(so, (PoserData *)&l);
 	}
 }
@@ -261,6 +261,7 @@ SURVIVE_EXPORT void survive_default_gen_detected_process(SurviveObject *so, int 
 
 	SV_INFO("Detected LH gen %d system.", lh_version + 1);
 	ctx->lh_version = lh_version;
+	survive_configi(ctx, "lighthouse-gen", SC_OVERRIDE | SC_SET, lh_version + 1);
 
 	if (ctx->lh_version == 0) {
 		int fastCalibrate = survive_configi(ctx, "fast-calibrate", SC_GET, 0);

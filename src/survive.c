@@ -518,9 +518,7 @@ int survive_startup(SurviveContext *ctx) {
 
 	const char *DriverName;
 
-	int loadedDrivers = 0;
-
-	bool defaultExplicitlyEnabled = false;
+	bool loadDefaultDriver = true;
 	char buffer[1024] = "Loaded drivers: ";
 	{
 		int i = 0;
@@ -534,12 +532,17 @@ int survive_startup(SurviveContext *ctx) {
 				driverNameSuffix_p++;
 			}
 
-			int enabled = survive_config_is_set(ctx, driverNameSuffix);
-			if (strcmp("htcvive", driverNameSuffix) == 0) {
-				defaultExplicitlyEnabled = enabled;
-			} else {
+			int enabled = survive_configi(ctx, driverNameSuffix, SC_GET, 0) == 1;
+			int manually_enabled = survive_config_is_set(ctx, driverNameSuffix);
+
+			// Some driver flags aren't int types; so enabled can be false but manually_enabled true.
+			enabled |= manually_enabled;
+
+			// We load htcvive later if nothing else was loaded
+			if (strcmp("htcvive", driverNameSuffix) != 0) {
 				if (enabled && callDriver(ctx, DriverName, buffer) == SURVIVE_DRIVER_NORMAL) {
-					loadedDrivers++;
+					// Auto drivers dont preclude the default HTC driver
+					loadDefaultDriver = manually_enabled == false;
 				}
 			}
 		}
@@ -550,8 +553,8 @@ int survive_startup(SurviveContext *ctx) {
 	}
 
 	// Load the vive driver by default, even if not enabled as a flag
-	if ((loadedDrivers == 0 || defaultExplicitlyEnabled) && callDriver(ctx, "DriverRegHTCVive", buffer)) {
-		loadedDrivers++;
+	if ((loadDefaultDriver == true)) {
+		callDriver(ctx, "DriverRegHTCVive", buffer);
 	}
 
 	if (ctx->currentError != SURVIVE_OK) {

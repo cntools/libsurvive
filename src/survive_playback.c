@@ -55,14 +55,16 @@ ssize_t gzgetdelim(char **RESTRICT_KEYWORD lineptr, size_t *RESTRICT_KEYWORD n, 
 ssize_t gzgetline(char **RESTRICT_KEYWORD lineptr, size_t *RESTRICT_KEYWORD n, gzFile RESTRICT_KEYWORD stream);
 
 STATIC_CONFIG_ITEM(PLAYBACK_REPLAY_POSE, "playback-replay-pose", 'i', "Whether or not to output pose", 0);
-STATIC_CONFIG_ITEM( RECORD, "record", 's', "File to record to if you wish to make a recording.", "" );
+STATIC_CONFIG_ITEM(RECORD, "record", 's', "File to record to if you wish to make a recording.", "");
 STATIC_CONFIG_ITEM(RECORD_STDOUT, "record-stdout", 'i', "Whether or not to dump recording data to stdout", 0);
-STATIC_CONFIG_ITEM( PLAYBACK, "playback", 's', "File to be used for playback if playing a recording.", "" );
-STATIC_CONFIG_ITEM( PLAYBACK_FACTOR, "playback-factor", 'f', "Time factor of playback -- 1 is run at the same timing as original, 0 is run as fast as possible.", 1.0f );
-STATIC_CONFIG_ITEM( PLAYBACK_RECORD_RAWLIGHT, "record-rawlight", 'i', "Whether or not to output raw light data", 1 );
-STATIC_CONFIG_ITEM( PLAYBACK_RECORD_IMU, "record-imu", 'i', "Whether or not to output imu data", 1 );
+STATIC_CONFIG_ITEM(PLAYBACK, "playback", 's', "File to be used for playback if playing a recording.", 0);
+STATIC_CONFIG_ITEM(PLAYBACK_FACTOR, "playback-factor", 'f',
+				   "Time factor of playback -- 1 is run at the same timing as original, 0 is run as fast as possible.",
+				   1.0f);
+STATIC_CONFIG_ITEM(PLAYBACK_RECORD_RAWLIGHT, "record-rawlight", 'i', "Whether or not to output raw light data", 1);
+STATIC_CONFIG_ITEM(PLAYBACK_RECORD_IMU, "record-imu", 'i', "Whether or not to output imu data", 1);
 STATIC_CONFIG_ITEM(PLAYBACK_RECORD_CAL_IMU, "record-cal-imu", 'i', "Whether or not to output calibrated imu data", 0);
-STATIC_CONFIG_ITEM( PLAYBACK_RECORD_ANGLE, "record-angle", 'i', "Whether or not to output angle data", 1 );
+STATIC_CONFIG_ITEM(PLAYBACK_RECORD_ANGLE, "record-angle", 'i', "Whether or not to output angle data", 1);
 
 typedef struct SurviveRecordingData {
 	SurviveContext *ctx;
@@ -766,9 +768,9 @@ void survive_install_recording(SurviveContext *ctx) {
 }
 
 int DriverRegPlayback(SurviveContext *ctx) {
-	const char *playback_file = survive_configs(ctx, "playback", SC_GET, "");
+	const char *playback_file = survive_configs(ctx, "playback", SC_GET, 0);
 
-	if (strlen(playback_file) == 0) {
+	if (playback_file == 0 || strlen(playback_file) == 0) {
 		SV_WARN("The playback argument requires a filename");
 		return -1;
 	}
