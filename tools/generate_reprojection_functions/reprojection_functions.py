@@ -367,7 +367,8 @@ def generate_ccode(name, args, expressions):
     sys.stderr.write("Running CSE\n")
     cse_output = sp.cse(flatten)
 
-    def arg_str((_, a)):
+    def arg_str(arg):
+        a = arg[1]
         if isinstance(a, tuple):
             return "const FLT *%s" % str(flatten_args(a)[0]).split('_', 1)[0]
         else:
@@ -456,24 +457,25 @@ if __name__ == "__main__":
         print("#define pow __safe_pow")
         print('#endif')
         print('#define GEN_FLT FLT')
-        # generate_ccode("reproject_axis_x_jac_obj_p_axisangle", reproject_axisangle_axis_params ,jacobian(reproject_axis_x_axisangle(*reproject_axisangle_axis_params), ( (obj_px, obj_py, obj_pz, obj_qi,obj_qj,obj_qk) )))
-        # generate_ccode("reproject_axis_y_jac_obj_p_axisangle", reproject_axisangle_axis_params , jacobian(reproject_axis_y_axisangle(*reproject_axisangle_axis_params ), (obj_px, obj_py, obj_pz, obj_qi,obj_qj,obj_qk) ))
-        # generate_ccode("reproject_jac_obj_p_axisangle", reproject_axisangle_params, jacobian(reproject_axisangle(*reproject_axisangle_params), (obj_px, obj_py, obj_pz, obj_qi,obj_qj,obj_qk)))
 
-        generate_ccode("reproject_jac_obj_p_gen2", reproject_gen2_params,
-                       jacobian(reproject_gen2(*reproject_gen2_params), (obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk)))
-        generate_ccode("reproject_axis_x_jac_obj_p_gen2", reproject_axis_gen2_params,
-                       jacobian(reproject_axis_x_gen2(*reproject_axis_gen2_params),
-                                (obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk)))
-        generate_ccode("reproject_axis_y_jac_obj_p_gen2", reproject_axis_gen2_params,
-                       jacobian(reproject_axis_y_gen2(*reproject_axis_gen2_params),
-                                (obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk)))
+        jac_of = {
+            "all": (obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk, lh_px, lh_py, lh_pz, lh_qw, lh_qi, lh_qj,
+                    lh_qk),
+            "lh_p": (lh_px, lh_py, lh_pz, lh_qw, lh_qi, lh_qj, lh_qk),
+            "obj_p": (obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk)
+        }
 
-        generate_ccode("reproject_jac_obj_p", reproject_params,
-                       jacobian(reproject(*reproject_params), (obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk)))
-        generate_ccode("reproject_axis_x_jac_obj_p", reproject_axis_params,
-                       jacobian(reproject_axis_x(*reproject_axis_params),
-                                (obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk)))
-        generate_ccode("reproject_axis_y_jac_obj_p", reproject_axis_params,
-                       jacobian(reproject_axis_y(*reproject_axis_params),
-                                (obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk)))
+        for k, v in jac_of.items():
+            generate_ccode("reproject_jac_" + k + "_gen2", reproject_gen2_params,
+                           jacobian(reproject_gen2(*reproject_gen2_params), v))
+            generate_ccode("reproject_axis_x_jac_" + k + "_gen2", reproject_axis_gen2_params,
+                           jacobian(reproject_axis_x_gen2(*reproject_axis_gen2_params), v))
+            generate_ccode("reproject_axis_y_jac_" + k + "_gen2", reproject_axis_gen2_params,
+                           jacobian(reproject_axis_y_gen2(*reproject_axis_gen2_params), v))
+
+            generate_ccode("reproject_jac_" + k, reproject_params,
+                           jacobian(reproject(*reproject_params), v))
+            generate_ccode("reproject_axis_x_jac_" + k, reproject_axis_params,
+                           jacobian(reproject_axis_x(*reproject_axis_params), v))
+            generate_ccode("reproject_axis_y_jac_" + k, reproject_axis_params,
+                           jacobian(reproject_axis_y(*reproject_axis_params), v))

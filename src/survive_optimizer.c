@@ -11,6 +11,7 @@
 #include "survive_optimizer.h"
 
 #include "mpfit/mpfit.h"
+#include "survive_default_devices.h"
 #include <malloc.h>
 
 STATIC_CONFIG_ITEM(OPTIMIZER_FTOL, "optimizer-ftol", 'f', "Relative chi-square convergence criterium", 0.);
@@ -66,9 +67,8 @@ void survive_optimizer_setup_pose(survive_optimizer *mpfit_ctx, const SurvivePos
 	}
 }
 
-static char *lh_parameter_names[] = {"LH0 x",	 "LH0 y",	 "LH0 z",		"LH0 Rot w", "LH0 Rot x",
-									 "LH0 Rot y", "LH0 Rot z", "LH1 x",		"LH1 y",	 "LH1 z",
-									 "LH1 Rot w", "LH1 Rot x", "LH1 Rot y", "LH1 Rot z"
+static char *lh_parameter_names[] = {"LH x",	 "LH y",	 "LH z",	"LH Rot w",
+									 "LH Rot x", "LH Rot y", "LH Rot z"
 
 };
 
@@ -89,6 +89,17 @@ void survive_optimizer_setup_camera(survive_optimizer *mpfit_ctx, int8_t lh, con
 	for (int i = start; i < start + 7; i++) {
 		mpfit_ctx->parameters_info[i].fixed = isFixed || poseIsInvalid;
 		mpfit_ctx->parameters_info[i].parname = lh_parameter_names[i - start];
+
+		if (isFixed == false && mpfit_ctx->reprojectModel->reprojectFullJacLhPose) {
+			if (false) {
+				mpfit_ctx->parameters_info[i].side = 1;
+				mpfit_ctx->parameters_info[i].deriv_debug = 1;
+				mpfit_ctx->parameters_info[i].deriv_abstol = .0001;
+				mpfit_ctx->parameters_info[i].deriv_reltol = .0001;
+			} else {
+				mpfit_ctx->parameters_info[i].side = 3;
+			}
+		}
 	}
 }
 
@@ -244,26 +255,56 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 		}
 
 		if (derivs) {
-			if (nextIsPair) {
-				FLT out[7 * 2] = { 0 };
-				reprojectModel->reprojectFullJacObjPose(out, pose, pt, world2lh, cal);
+			int jac_offset_obj = pose_idx;
+			int jac_offset_lh = (lh + mpfunc_ctx->poseLength) * 7;
 
-				for (int j = 0; j < 7; j++) {
-					if (derivs[j]) {
-						derivs[j][i] = out[j];
-						derivs[j][i + 1] = out[j + 7];
+			if (nextIsPair) {
+				if (jac_offset_obj >= 0 && derivs[jac_offset_obj]) {
+					FLT out[7 * 2] = {0};
+					reprojectModel->reprojectFullJacObjPose(out, pose, pt, world2lh, cal);
+
+					for (int j = 0; j < 7; j++) {
+						assert(derivs[jac_offset_obj + j] &&
+							   "all 7 parameters should be the same for jacobian calculation");
+						derivs[jac_offset_obj + j][i] = out[j];
+						derivs[jac_offset_obj + j][i + 1] = out[j + 7];
+						assert(!isnan(out[j]));
+						assert(!isnan(out[j + 7]));
 					}
-					assert(!isnan(out[j]));
-					assert(!isnan(out[j + 7]));
 				}
-			} else {
-				FLT out[7] = { 0 };
-				reprojectModel->reprojectAxisJacobFn[meas->axis](out, pose, pt, world2lh, cal);
-				for (int j = 0; j < 7; j++) {
-					if (derivs[j]) {
-						derivs[j][i] = out[j];
+
+				if (jac_offset_lh >= 0 && derivs[jac_offset_lh]) {
+					FLT out[7 * 2] = {0};
+					reprojectModel->reprojectFullJacLhPose(out, pose, pt, world2lh, cal);
+
+					for (int j = 0; j < 7; j++) {
+						assert(derivs[jac_offset_lh + j] &&
+							   "all 7 parameters should be the same for jacobian calculation");
+						derivs[jac_offset_lh + j][i] = out[j];
+						derivs[jac_offset_lh + j][i + 1] = out[j + 7];
+						assert(!isnan(out[j]));
+						assert(!isnan(out[j + 7]));
 					}
-					assert(!isnan(out[j]));
+				}
+
+			} else {
+				FLT out[7] = {0};
+				if (jac_offset_obj >= 0 && derivs[jac_offset_obj]) {
+					reprojectModel->reprojectAxisJacobFn[meas->axis](out, pose, pt, world2lh, cal);
+					for (int j = 0; j < 7; j++) {
+						assert(derivs[jac_offset_obj + j]);
+						derivs[jac_offset_obj + j][i] = out[j];
+						assert(!isnan(out[j]));
+					}
+				}
+
+				if (jac_offset_lh >= 0 && derivs[jac_offset_lh]) {
+					reprojectModel->reprojectAxisJacobLhPoseFn[meas->axis](out, pose, pt, world2lh, cal);
+					for (int j = 0; j < 7; j++) {
+						assert(derivs[jac_offset_lh + j]);
+						derivs[jac_offset_lh + j][i] = out[j];
+						assert(!isnan(out[j]));
+					}
 				}
 			}
 		}
@@ -335,8 +376,7 @@ mp_config precise_cfg = {0};
 SURVIVE_EXPORT mp_config *survive_optimizer_precise_config() { return &precise_cfg; }
 
 int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result) {
-	SurviveContext *ctx = optimizer->so->ctx;
-	// SV_INFO("Run start");
+	SurviveContext *ctx = optimizer->so ? optimizer->so->ctx : 0;
 
 	mp_config *cfg = optimizer->cfg;
 	if (cfg == 0)
@@ -424,9 +464,10 @@ survive_optimizer *survive_optimizer_load(const char *fn) {
 
 #ifndef LINE_MAX
 #define LINE_MAX 2048
-#endif 
+#endif
 	char buffer[LINE_MAX] = { 0 };
-	read_count = fscanf(f, "object       %s\n", buffer);
+	char device_name[LINE_MAX] = {0};
+	read_count = fscanf(f, "object       %s\n", device_name);
 	read_count = fscanf(f, "currentBias  %lf\n", &opt->current_bias);
 	read_count = fscanf(f, "initialPose " SurvivePose_sformat "\n", SURVIVE_POSE_SCAN_EXPAND(opt->initialPose));
 	int model = 0;
@@ -442,7 +483,7 @@ survive_optimizer *survive_optimizer_load(const char *fn) {
 	assert(success);
 
 	(void)read_count;
-	assert(read_count == survive_optimizer_get_parameters_count(opt));
+	assert(param_count == survive_optimizer_get_parameters_count(opt));
 
 	SURVIVE_OPTIMIZER_SETUP_HEAP_BUFFERS(*opt);
 
@@ -476,6 +517,24 @@ survive_optimizer *survive_optimizer_load(const char *fn) {
 	}
 
 	fclose(f);
+
+	SurviveObject *so = survive_create_device(0, "SLV", opt, "SV0", 0);
+	char filename[1024] = {0};
+	sprintf(filename, "%s_config.json", device_name);
+	FILE *fp = fopen(filename, "r");
+	if (fp) {
+		fseek(fp, 0L, SEEK_END);
+		int len = ftell(fp);
+		fseek(fp, 0L, SEEK_SET);
+		if (len > 0) {
+			char *ct0conf = (char *)malloc(len);
+			fread(ct0conf, 1, len, fp);
+			survive_default_config_process(so, ct0conf, len);
+			fclose(fp);
+		}
+	}
+	opt->so = so;
+
 	return opt;
 }
 

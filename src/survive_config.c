@@ -853,7 +853,7 @@ const char *survive_configs(SurviveContext *ctx, const char *tag, char flags, co
 	}
 	else if( foundtype == 'i' )
 	{
-		survive_configi( ctx, tag, flags, atoi( def ) );
+		survive_configi(ctx, tag, flags, atoi(def ? def : "0"));
 	}
 	else if( foundtype == 'f' )
 	{

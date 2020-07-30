@@ -2862,7 +2862,7 @@ int DriverRegHTCVive(SurviveContext *ctx) {
 	}
 
 	DeviceDriver dd = GetDriver("DriverRegGatt");
-	if (dd) {
+	if (dd && (survive_config_is_set(ctx, "gatt") == 0 || survive_configi(ctx, "gatt", SC_GET, 0) == 1)) {
 		SurviveDeviceDriverReturn r = dd(ctx);
 		if (r < 0) {
 			SV_WARN("GATT could not start error %d", r);

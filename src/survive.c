@@ -532,11 +532,9 @@ int survive_startup(SurviveContext *ctx) {
 				driverNameSuffix_p++;
 			}
 
-			int enabled = survive_configi(ctx, driverNameSuffix, SC_GET, 0) == 1;
+			int enabled = survive_configi(ctx, driverNameSuffix, SC_GET, 0) == 1 ||
+						  survive_configs(ctx, driverNameSuffix, SC_GET, 0) != 0;
 			int manually_enabled = survive_config_is_set(ctx, driverNameSuffix);
-
-			// Some driver flags aren't int types; so enabled can be false but manually_enabled true.
-			enabled |= manually_enabled;
 
 			// We load htcvive later if nothing else was loaded
 			if (strcmp("htcvive", driverNameSuffix) != 0) {

@@ -141,7 +141,7 @@ static void write_to_output(SurviveRecordingData *recordingData, const char *for
 	}
 }
 void survive_recording_config_process(SurviveObject *so, char *ct0conf, int len) {
-	SurviveRecordingData *recordingData = so->ctx->recptr;
+	SurviveRecordingData *recordingData = so->ctx ? so->ctx->recptr : 0;
 	if (recordingData == 0)
 		return;
 

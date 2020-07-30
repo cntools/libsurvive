@@ -202,7 +202,7 @@ foreach(PLUGIN ${PLUGINS})
 
 endforeach()
 
-SET(SURVIVE_EXECUTABLES data_recorder survive-cli api_example sensors-readout)
+SET(SURVIVE_EXECUTABLES data_recorder survive-cli api_example sensors-readout survive-solver)
 IF(TARGET CNGFX)
   list(APPEND SURVIVE_EXECUTABLES simple_pose_test)
   set(simple_pose_test_ADDITIONAL_LIBS CNGFX)
