@@ -85,50 +85,53 @@ if(HAVE_FOPENCOOKIE)
 endif()
 
 SET(SURVIVE_SRCS ${SURVIVE_SRCS}
-        ./include/libsurvive/poser.h
-		./include/libsurvive/survive.h
-        ./include/libsurvive/survive_api.h
-        ./include/libsurvive/survive_optimizer.h
-        ./include/libsurvive/survive_reproject.h
-        ./include/libsurvive/survive_types.h
-        ./redist/crc32.c
-        ./redist/glutil.c
-        ./redist/jsmn.c
-        ./redist/json_helpers.c
-        ./redist/linmath.c
-        ./redist/mpfit/mpfit.c
-        ./redist/puff.c
-		./redist/symbol_enumerator.c
-        ./src/ootx_decoder.c
-        ./src/poser.c
-        ./src/poser_general_optimizer.c
-        ./src/survive.c
-        ./src/survive_api.c
-        ./src/survive_cal.c
-        ./src/survive_config.c
-        ./src/survive_default_devices.c
-        ./src/survive_disambiguator.c
-        ./src/survive_driverman.c
-        ./src/survive_imu.c
-        ./src/survive_optimizer.c
-        ./src/survive_playback.c        
-		./src/survive_plugins.c
-        ./src/survive_process.c
-		./src/survive_process_gen2.c
-		./src/survive_reproject.c
-        ./src/survive_reproject.generated.h
-        ./src/survive_sensor_activations.c
-        ./src/survive_usb.c
-		./src/survive_kalman.c
-		./src/barycentric_svd/barycentric_svd.c
-		./src/barycentric_svd/barycentric_svd.h
-        ./src/survive_reproject_gen2.c
-		src/lfsr.c
-		src/lfsr.h
-		src/lfsr_lh2.h
-		src/lfsr_lh2.c
-        src/survive_str.h src/survive_str.c src/test_cases/str.c)
-
+  ./include/libsurvive/poser.h
+  ./include/libsurvive/survive.h
+  ./include/libsurvive/survive_api.h
+  ./include/libsurvive/survive_optimizer.h
+  ./include/libsurvive/survive_reproject.h
+  ./include/libsurvive/survive_types.h
+  ./redist/crc32.c
+  ./redist/glutil.c
+  ./redist/jsmn.c
+  ./redist/json_helpers.c
+  ./redist/linmath.c
+  ./redist/mpfit/mpfit.c
+  ./redist/puff.c
+  ./redist/symbol_enumerator.c
+  ./src/ootx_decoder.c
+  ./src/poser.c
+  ./src/poser_general_optimizer.c
+  ./src/survive.c
+  ./src/survive_api.c
+  ./src/survive_cal.c
+  ./src/survive_config.c
+  ./src/survive_default_devices.c
+  ./src/survive_disambiguator.c
+  ./src/survive_driverman.c
+  ./src/survive_imu.c
+  ./src/survive_optimizer.c
+  ./src/survive_playback.c        
+  ./src/survive_plugins.c
+  ./src/survive_process.c
+  ./src/survive_process_gen2.c
+  ./src/survive_reproject.c
+  ./src/survive_reproject.generated.h
+  ./src/survive_sensor_activations.c
+  ./src/survive_usb.c
+  ./src/survive_kalman.c
+  ./src/barycentric_svd/barycentric_svd.c
+  ./src/barycentric_svd/barycentric_svd.h
+  ./src/survive_reproject_gen2.c
+  src/lfsr.c
+  src/lfsr.h
+  src/lfsr_lh2.h
+  src/lfsr_lh2.c
+  src/survive_str.h src/survive_str.c src/test_cases/str.c
+  src/survive_async_optimizer.c
+  src/survive_async_optimizer.h
+  )
+	      
 add_library(survive SHARED ${SURVIVE_SRCS})
 set_target_properties(survive PROPERTIES FOLDER "libraries")
 

@@ -17,6 +17,7 @@
  */
 
 #include "mpfit.h"
+#include <assert.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -589,6 +590,7 @@ OUTER_LOOP:
 			}
 		}
 		fjac[jj] = wa1[j];
+		assert(isfinite(fjac[jj]));
 		jj += m + 1; /* fjac[j+m*j] */
 		qtf[j] = wa4[j];
 	}
@@ -710,6 +712,7 @@ L200:
 
 			wa1[j] = wa1[j] * alpha;
 			wa2[j] = x[j] + wa1[j];
+			assert(isfinite(wa2[j]));
 
 			/* Adjust the output values.  If the step put us exactly
 			 * on a boundary, make sure it is exact.
@@ -1157,8 +1160,9 @@ static int mp_fdjac2(mp_func funct, int m, int n, int *ifree, int npar, double *
 	}
 
 	if (has_debug_deriv) {
-		printf("FJAC DEBUG BEGIN\n");
-		printf("#  %10s %10s %10s %10s %10s %10s\n", "IPNT", "FUNC", "DERIV_U", "DERIV_N", "DIFF_ABS", "DIFF_REL");
+		fprintf(stderr, "FJAC DEBUG BEGIN\n");
+		fprintf(stderr, "#  %10s %10s %10s %10s %10s %10s\n", "IPNT", "FUNC", "DERIV_U", "DERIV_N", "DIFF_ABS",
+				"DIFF_REL");
 	}
 
 	/* Any parameters requiring numerical derivatives */
@@ -1170,7 +1174,7 @@ static int mp_fdjac2(mp_func funct, int m, int n, int *ifree, int npar, double *
 
 			/* Check for debugging */
 			if (debug) {
-				printf("FJAC PARM %d\n", ifree[j]);
+				fprintf(stderr, "FJAC PARM %d\n", ifree[j]);
 			}
 
 			/* Skip parameters already done by user-computed partials */
@@ -1206,16 +1210,18 @@ static int mp_fdjac2(mp_func funct, int m, int n, int *ifree, int npar, double *
 					/* Non-debug path for speed */
 					for (i = 0; i < m; i++, ij++) {
 						fjac[ij] = (wa[i] - fvec[i]) / h; /* fjac[i+m*j] */
+						assert(isfinite(fjac[ij]));
 					}
 				} else {
 					/* Debug path for correctness */
 					for (i = 0; i < m; i++, ij++) {
 						double fjold = fjac[ij];
 						fjac[ij] = (wa[i] - fvec[i]) / h; /* fjac[i+m*j] */
+						assert(isfinite(fjac[ij]));
 						if ((da == 0 && dr == 0 && (fjold != 0 || fjac[ij] != 0)) ||
 							((da != 0 || dr != 0) && (fabs(fjold - fjac[ij]) > da + fabs(fjold) * dr))) {
-							printf("   %10d %10.4g %10.4g %10.4g %10.4g %10.4g\n", i, fvec[i], fjold, fjac[ij],
-								   fjold - fjac[ij], (fjold == 0) ? (0) : ((fjold - fjac[ij]) / fjold));
+							fprintf(stderr, "   %10d %10.4g %10.4g %10.4g %10.4g %10.4g\n", i, fvec[i], fjold, fjac[ij],
+									fjold - fjac[ij], (fjold == 0) ? (0) : ((fjold - fjac[ij]) / fjold));
 						}
 					}
 				} /* end debugging */
@@ -1248,8 +1254,8 @@ static int mp_fdjac2(mp_func funct, int m, int n, int *ifree, int npar, double *
 						fjac[ij] = (wa2[i] - wa[i]) / (2 * h); /* fjac[i+m*j] */
 						if ((da == 0 && dr == 0 && (fjold != 0 || fjac[ij] != 0)) ||
 							((da != 0 || dr != 0) && (fabs(fjold - fjac[ij]) > da + fabs(fjold) * dr))) {
-							printf("   %10d %10.4g %10.4g %10.4g %10.4g %10.4g\n", i, fvec[i], fjold, fjac[ij],
-								   fjold - fjac[ij], (fjold == 0) ? (0) : ((fjold - fjac[ij]) / fjold));
+							fprintf(stderr, "   %10d %10.4g %10.4g %10.4g %10.4g %10.4g\n", i, fvec[i], fjold, fjac[ij],
+									fjold - fjac[ij], (fjold == 0) ? (0) : ((fjold - fjac[ij]) / fjold));
 						}
 					}
 				} /* end debugging */
@@ -1258,7 +1264,7 @@ static int mp_fdjac2(mp_func funct, int m, int n, int *ifree, int npar, double *
 		}	 /* if (has_numerical_derivative) */
 
 	if (has_debug_deriv) {
-		printf("FJAC DEBUG END\n");
+		fprintf(stderr, "FJAC DEBUG END\n");
 	}
 
 DONE:
@@ -1631,7 +1637,9 @@ static void mp_qrsolv(int n, double *r, int ldr, int *ipvt, double *diag, double
 				for (i = kp1; i < n; i++) {
 					temp = cosx * r[ik] + sinx * sdiag[i];
 					sdiag[i] = -sinx * r[ik] + cosx * sdiag[i];
+					assert(isfinite(sdiag[i]));
 					r[ik] = temp;
+					assert(isfinite(temp));
 					ik += 1; /* [i+ldr*k] */
 				}
 			}
@@ -1932,12 +1940,14 @@ L150:
 	jj = 0;
 	for (j = 0; j < n; j++) {
 		wa1[j] = wa1[j] / sdiag[j];
+		assert(isfinite(sdiag[j]));
 		temp = wa1[j];
 		jp1 = j + 1;
 		if (jp1 < n) {
 			ij = jp1 + jj;
 			for (i = jp1; i < n; i++) {
 				wa1[i] -= r[ij] * temp;
+				assert(isfinite(wa1[i]));
 				ij += 1; /* [i+ldr*j] */
 			}
 		}
@@ -2196,9 +2206,9 @@ static int mp_covar(int n, double *r, int ldr, int *ipvt, double tol, double *wa
 #if 0
   for (j=0; j<n; j++) {
     for (i=0; i<n; i++) {
-      printf("%f ", r[j*ldr+i]);
+      fprintf(stderr,"%f ", r[j*ldr+i]);
     }
-    printf("\n");
+    fprintf(stderr,"\n");
   }
 #endif
 
@@ -2286,9 +2296,9 @@ static int mp_covar(int n, double *r, int ldr, int *ipvt, double tol, double *wa
 #if 0
   for (j=0; j<n; j++) {
     for (i=0; i<n; i++) {
-      printf("%f ", r[j*ldr+i]);
+      fprintf(stderr,"%f ", r[j*ldr+i]);
     }
-    printf("\n");
+    fprintf(stderr,"\n");
   }
 #endif
 

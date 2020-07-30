@@ -34,14 +34,32 @@ typedef void (*survive_reproject_full_jac_obj_pose_fn_t)(FLT *out, const Survive
 typedef survive_reproject_full_jac_obj_pose_fn_t survive_reproject_full_jac_lh_pose_fn_t;
 typedef survive_reproject_axis_jacob_fn_t survive_reproject_axis_jacob_lh_pose_fn_t;
 
+typedef void (*survive_reproject_axisangle_axis_jacob_fn_t)(FLT *out, const LinmathAxisAnglePose *,
+															const LinmathPoint3d, const LinmathAxisAnglePose *,
+															const BaseStationCal *);
+typedef void (*survive_reproject_axisangle_full_jac_obj_pose_fn_t)(FLT *out, const LinmathAxisAnglePose *obj2world,
+																   const LinmathVec3d ptInObj,
+																   const LinmathAxisAnglePose *world2lh,
+																   const BaseStationCal *bcal);
+
+typedef survive_reproject_axisangle_axis_jacob_fn_t survive_reproject_axisangle_full_jac_lh_pose_fn_t;
+typedef survive_reproject_axisangle_full_jac_obj_pose_fn_t survive_reproject_axisangle_axis_jacob_lh_pose_fn_t;
+
 typedef struct survive_reproject_model_t {
-	survive_reproject_axis_fn_t reprojectAxisFn[2];
-	survive_reproject_axis_jacob_fn_t reprojectAxisJacobFn[2];
 	survive_reproject_xy_fn_t reprojectXY;
+	survive_reproject_axis_fn_t reprojectAxisFn[2];
+
 	survive_reproject_full_jac_obj_pose_fn_t reprojectFullJacObjPose;
+	survive_reproject_axis_jacob_fn_t reprojectAxisJacobFn[2];
 
 	survive_reproject_full_jac_lh_pose_fn_t reprojectFullJacLhPose;
 	survive_reproject_axis_jacob_lh_pose_fn_t reprojectAxisJacobLhPoseFn[2];
+
+	survive_reproject_axisangle_full_jac_obj_pose_fn_t reprojectAxisAngleFullJacObjPose;
+	survive_reproject_axisangle_axis_jacob_fn_t reprojectAxisAngleAxisJacobFn[2];
+
+	survive_reproject_axisangle_full_jac_lh_pose_fn_t reprojectAxisAngleFullJacLhPose;
+	survive_reproject_axisangle_axis_jacob_lh_pose_fn_t reprojectAxisAngleAxisJacobLhPoseFn[2];
 } survive_reproject_model_t;
 
 SURVIVE_IMPORT extern const survive_reproject_model_t survive_reproject_model;

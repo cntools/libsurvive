@@ -133,9 +133,9 @@ LINMATH_EXPORT void mean3d(LinmathVec3d out, const FLT *pts, int num_pts) {
 }
 
 // algorithm found here: http://inside.mines.edu/fs_home/gmurray/ArbitraryAxisRotation/
-inline void rotatearoundaxis(FLT *outvec3, FLT *invec3, FLT *axis, FLT angle) {
-	// TODO: this really should be external.
-	normalize3d(axis, axis);
+inline void rotatearoundaxis(FLT *outvec3, const FLT *invec3, const FLT *_axis, FLT angle) {
+	FLT axis[3];
+	normalize3d(axis, _axis);
 
 	FLT s = FLT_SIN(angle);
 	FLT c = FLT_COS(angle);
@@ -151,6 +151,15 @@ inline void rotatearoundaxis(FLT *outvec3, FLT *invec3, FLT *axis, FLT angle) {
 	outvec3[0] = u * (u * x + v * y + w * z) * (1 - c) + x * c + (-w * y + v * z) * s;
 	outvec3[1] = v * (u * x + v * y + w * z) * (1 - c) + y * c + (w * x - u * z) * s;
 	outvec3[2] = w * (u * x + v * y + w * z) * (1 - c) + z * c + (-v * x + u * y) * s;
+}
+
+inline void axisanglerotatevector(FLT *vec3out, const LinmathAxisAngle axisAngle, const FLT *vec3in) {
+	FLT angle = norm3d(axisAngle);
+	if (angle == 0.0) {
+		copy3d(vec3out, vec3in);
+	} else {
+		rotatearoundaxis(vec3out, vec3in, axisAngle, angle);
+	}
 }
 
 inline void angleaxisfrom2vect(FLT *angle, FLT *axis, FLT *src, FLT *dest) {
@@ -302,6 +311,10 @@ inline void quatfromaxisanglemag(LinmathQuat q, const LinmathAxisAngleMag axisan
 	}
 }
 inline void quatfromaxisangle(LinmathQuat q, const FLT *axis, FLT radians) {
+	if (radians == 0.0) {
+		quatcopy(q, LinmathQuat_Identity);
+		return;
+	}
 	FLT v[3];
 	normalize3d(v, axis);
 
@@ -500,6 +513,16 @@ inline void quatfind(LinmathQuat q, const LinmathQuat q0, const LinmathQuat q1) 
 	quatrotateabout(q, q1, iq0);
 }
 
+inline void axisanglerotateabout(LinmathAxisAngle out, const LinmathAxisAngle a0, const LinmathAxisAngle a1) {
+	LinmathQuat q0, q1, qout;
+	quatfromaxisangle(q0, a0, norm3d(a0));
+	quatfromaxisangle(q1, a1, norm3d(a1));
+
+	quatrotateabout(qout, q0, q1);
+	FLT mag;
+	axisanglefromquat(&mag, out, qout);
+	scale3d(out, out, mag);
+}
 inline void quatrotateabout(LinmathQuat qout, const LinmathQuat q1, const LinmathQuat q2) {
 	// NOTE: Does not normalize
 	LinmathQuat rtn;
@@ -794,6 +817,23 @@ inline void ApplyPoseToPoint(LinmathPoint3d pout, const LinmathPose *pose, const
 inline void ApplyPoseToPose(LinmathPose *pout, const LinmathPose *lhs_pose, const LinmathPose *rhs_pose) {
 	ApplyPoseToPoint(pout->Pos, lhs_pose, rhs_pose->Pos);
 	quatrotateabout(pout->Rot, lhs_pose->Rot, rhs_pose->Rot);
+	for (int i = 0; i < 3; i++)
+		assert(!isnan(pout->Pos[i]));
+}
+
+inline void ApplyAxisAnglePoseToPoint(LinmathPoint3d pout, const LinmathAxisAnglePose *pose, const LinmathPoint3d pin) {
+	LinmathPoint3d tmp;
+	axisanglerotatevector(tmp, pose->AxisAngleRot, pin);
+	add3d(pout, tmp, pose->Pos);
+	for (int i = 0; i < 3; i++)
+		assert(isfinite(pout[i]));
+}
+inline void ApplyAxisAnglePoseToPose(LinmathAxisAnglePose *pout, const LinmathAxisAnglePose *lhs_pose,
+									 const LinmathAxisAnglePose *rhs_pose) {
+	ApplyAxisAnglePoseToPoint(pout->Pos, lhs_pose, rhs_pose->Pos);
+
+	axisanglerotateabout(pout->AxisAngleRot, lhs_pose->AxisAngleRot, rhs_pose->AxisAngleRot);
+	// quatrotateabout(pout->Rot, lhs_pose->Rot, rhs_pose->Rot);
 	for (int i = 0; i < 3; i++)
 		assert(!isnan(pout->Pos[i]));
 }

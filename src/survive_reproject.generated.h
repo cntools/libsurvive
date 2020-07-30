@@ -1,14 +1,4 @@
 // NOTE: Auto-generated code; see tools/generate_reprojection_functions
-#include <linmath.h>
-#include <math.h>
-static inline double __safe_asin(double x) { return asin(linmath_enforce_range(x, -1, 1)); }
-#define asin __safe_asin
-#ifndef WIN32
-#include <complex.h>
-static inline double __safe_pow(double x, double y) { return x >= 0 ? pow(x, y) : creal(cpow(x, y)); }
-#define pow __safe_pow
-#endif
-#define GEN_FLT FLT
 static inline void gen_reproject_jac_all_gen2(FLT *out, const FLT *obj, const FLT *sensor, const FLT *lh,
 											  const FLT phase_0, const FLT phase_1, const FLT tilt_0, const FLT tilt_1,
 											  const FLT curve_0, const FLT curve_1, const FLT gibPhase_0,

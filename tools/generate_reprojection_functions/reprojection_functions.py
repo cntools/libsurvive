@@ -5,7 +5,7 @@ import sys
 import types
 
 import sympy as sp
-from sympy import sqrt, atan2, tan, asin, cos, evaluate, Pow, sin
+from sympy import sqrt, atan2, tan, asin, cos, evaluate, Pow, sin, Piecewise
 
 obj_qw, obj_qi, obj_qj, obj_qk = sp.symbols('obj_qw,obj_qi,obj_qj,obj_qk')
 obj_px, obj_py, obj_pz = sp.symbols('obj_px,obj_py,obj_pz')
@@ -60,7 +60,11 @@ def axisanglemagnitude(q):
 
 def axisanglerotationmatrix(a):
     R = axisanglemagnitude(a)
-    x, y, z = [a[0] / R, a[1] / R, a[2] / R]
+
+    x = Piecewise(( a[0] / R, R > 0), (1, True))
+    y = Piecewise(( a[1] / R, R > 0), (0, True))
+    z = Piecewise(( a[2] / R, R > 0), (0, True))
+
     csr = sp.cos(R)
     one_minus_csr = (1 - csr)
     snr = sp.sin(R)
@@ -150,9 +154,9 @@ def reproject_axis_gen2(X, Y, Z, axis,
                         curve_cal,
                         gibPhase_cal, gibMag_cal,
                         ogeePhase_cal, ogeeMag_cal):
-    B = atan2(Z, X);
+    B = atan2(Z, X)
 
-    Ydeg = tilt_cal + (-1 if axis else 1) * math.pi / 6.;
+    Ydeg = tilt_cal + (-1 if axis else 1) * math.pi / 6.
     tanA = tan(Ydeg)
     normXZ = sqrt(X * X + Z * Z)
 
@@ -213,6 +217,40 @@ def reproject_gen2(p, pt, lh_p,
         reproject_axis_y_gen2(p, pt, lh_p, phase_1, tilt_1, curve_1, gibPhase_1, gibMag_1, ogeePhase_1, ogeeMag_1)
     ))
 
+
+def reproject_axisangle_axis_x_gen2(p_axisangle, pt, lh_p_axisangle,
+                          phase_cal,
+                          tilt_cal,
+                          curve_cal,
+                          gibPhase_cal, gibMag_cal,
+                          ogeePhase_cal, ogeeMag_cal):
+    XYZ = apply_axisangle_pose_to_pt(lh_p_axisangle, apply_axisangle_pose_to_pt(p_axisangle, pt))
+
+    return reproject_axis_gen2(XYZ[0], XYZ[1], -XYZ[2], 0, phase_cal, tilt_cal, curve_cal, gibPhase_cal, gibMag_cal, ogeePhase_cal, ogeeMag_cal)
+
+def reproject_axisangle_axis_y_gen2(p_axisangle, pt, lh_p_axisangle,
+                          phase_cal,
+                          tilt_cal,
+                          curve_cal,
+                          gibPhase_cal, gibMag_cal,
+                          ogeePhase_cal, ogeeMag_cal):
+    XYZ = apply_axisangle_pose_to_pt(lh_p_axisangle, apply_axisangle_pose_to_pt(p_axisangle, pt))
+
+    return reproject_axis_gen2(XYZ[0], XYZ[1], -XYZ[2], 1, phase_cal, tilt_cal, curve_cal, gibPhase_cal, gibMag_cal, ogeePhase_cal, ogeeMag_cal)
+
+def reproject_axisangle_gen2(p_axisangle, pt, lh_p_axisangle,
+                   phase_0, phase_1,
+                   tilt_0, tilt_1,
+                   curve_0, curve_1,
+                   gibPhase_0, gibPhase_1, gibMag_0, gibMag_1,
+                   ogeePhase_0, ogeePhase_1, ogeeMag_0, ogeeMag_1):
+
+    XYZ = apply_axisangle_pose_to_pt(lh_p_axisangle, apply_axisangle_pose_to_pt(p_axisangle, pt))
+
+    return sp.Matrix((
+        reproject_axis_gen2(XYZ[0], XYZ[1], -XYZ[2], 0, phase_0, tilt_0, curve_0, gibPhase_0, gibMag_0, ogeePhase_0, ogeeMag_0),
+        reproject_axis_gen2(XYZ[0], XYZ[1], -XYZ[2], 1, phase_1, tilt_1, curve_1, gibPhase_1, gibMag_1, ogeePhase_1, ogeeMag_1),
+    ))
 def reproject_axis_x(p, pt, lh_p,
                      phase_cal,
                      tilt_cal,
@@ -384,14 +422,14 @@ def generate_ccode(name, args, expressions):
                 print("\tconst GEN_FLT %s = *(%s++);" % (str(v), name))
 
     print("\n".join(
-        map(lambda item: "\tconst GEN_FLT %s = %s;" % (sp.ccode(item[0]), sp.ccode(c_filter(item[1]))), cse_output[0])))
+        map(lambda item: "\tconst GEN_FLT %s = %s;" % (sp.ccode(item[0]), sp.ccode(c_filter(item[1])).replace("\n", " ").replace("\t", " ")), cse_output[0])))
 
     for item in cse_output[1]:
         if hasattr(item, "tolist"):
             for item1 in sum(item.tolist(), []):
-                print("\t*(out++) = %s;" % sp.ccode(c_filter(item1)))
+                print("\t*(out++) = %s;" % sp.ccode(c_filter(item1)).replace("\n", " ").replace("\t", " "))
         else:
-            print("\t*(out++) = %s;" % sp.ccode(c_filter(item)))
+            print("\t*(out++) = %s;" % sp.ccode(c_filter(item)).replace("\n", " ").replace("\t", " "))
     print("}")
     print("")
 
@@ -412,6 +450,12 @@ reproject_axisangle_params = (obj_p_axisangle, sensor_pt, lh_p_axisangle, phase_
                               curve_0, curve_1,
                               gibPhase_0, gibPhase_1, gibMag_0, gibMag_1)
 
+reproject_axisangle_gen2_params = (obj_p_axisangle, sensor_pt, lh_p_axisangle, phase_0, phase_1,
+                         tilt_0, tilt_1,
+                         curve_0, curve_1,
+                         gibPhase_0, gibPhase_1, gibMag_0, gibMag_1,
+                         ogeePhase_0, ogeePhase_1, ogeeMag_0, ogeeMag_1)
+
 reproject_axis_params = (obj_p, sensor_pt, lh_p, phase_0,
                          tilt_0,
                          curve_0,
@@ -428,6 +472,11 @@ reproject_axisangle_axis_params = (obj_p_axisangle, sensor_pt, lh_p_axisangle, p
                                    curve_0,
                                    gibPhase_0, gibMag_0)
 
+reproject_axisangle_axis_gen2_params = (obj_p_axisangle, sensor_pt, lh_p_axisangle, phase_0,
+                              tilt_0,
+                              curve_0,
+                              gibPhase_0, gibMag_0,
+                              ogeePhase_0, ogeeMag_0)
 
 def jacobian(v, of):
     if hasattr(v, 'jacobian'):
@@ -445,6 +494,7 @@ if __name__ == "__main__":
         generate_ccode("reproject", reproject_params, reproject)
         generate_ccode("reproject_gen2", reproject_gen2_params, reproject_gen2)
         generate_ccode("apply_pose", [obj_p, sensor_pt], apply_pose_to_pt)
+        generate_ccode("apply_axisangle_pose_to_pt", [obj_p_axisangle, sensor_pt], apply_axisangle_pose_to_pt)
     else:
         print("// NOTE: Auto-generated code; see tools/generate_reprojection_functions")
         print("#include <linmath.h>")
@@ -458,24 +508,47 @@ if __name__ == "__main__":
         print('#endif')
         print('#define GEN_FLT FLT')
 
-        jac_of = {
-            "all": (obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk, lh_px, lh_py, lh_pz, lh_qw, lh_qi, lh_qj,
-                    lh_qk),
-            "lh_p": (lh_px, lh_py, lh_pz, lh_qw, lh_qi, lh_qj, lh_qk),
-            "obj_p": (obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk)
-        }
+        if len(sys.argv) > 1 and sys.argv[1] == "--aangle":
+            jac_of = {
+                "all": (obj_px, obj_py, obj_pz, obj_qi, obj_qj, obj_qk,
+                        lh_px, lh_py, lh_pz, lh_qi, lh_qj, lh_qk),
+                "lh_p": (lh_px, lh_py, lh_pz, lh_qi, lh_qj, lh_qk),
+                "obj_p": (obj_px, obj_py, obj_pz, obj_qi, obj_qj, obj_qk)
+            }
 
-        for k, v in jac_of.items():
-            generate_ccode("reproject_jac_" + k + "_gen2", reproject_gen2_params,
-                           jacobian(reproject_gen2(*reproject_gen2_params), v))
-            generate_ccode("reproject_axis_x_jac_" + k + "_gen2", reproject_axis_gen2_params,
-                           jacobian(reproject_axis_x_gen2(*reproject_axis_gen2_params), v))
-            generate_ccode("reproject_axis_y_jac_" + k + "_gen2", reproject_axis_gen2_params,
-                           jacobian(reproject_axis_y_gen2(*reproject_axis_gen2_params), v))
+            for k, v in jac_of.items():
+                generate_ccode("reproject_axisangle_jac_" + k + "_gen2", reproject_axisangle_gen2_params,
+                               jacobian(reproject_axisangle_gen2(*reproject_axisangle_gen2_params), v))
+                generate_ccode("reproject_axisangle_axis_x_jac_" + k + "_gen2", reproject_axisangle_axis_gen2_params,
+                               jacobian(reproject_axisangle_axis_x_gen2(*reproject_axisangle_axis_gen2_params), v))
+                generate_ccode("reproject_axisangle_axis_y_jac_" + k + "_gen2", reproject_axisangle_axis_gen2_params,
+                               jacobian(reproject_axisangle_axis_y_gen2(*reproject_axisangle_axis_gen2_params), v))
 
-            generate_ccode("reproject_jac_" + k, reproject_params,
-                           jacobian(reproject(*reproject_params), v))
-            generate_ccode("reproject_axis_x_jac_" + k, reproject_axis_params,
-                           jacobian(reproject_axis_x(*reproject_axis_params), v))
-            generate_ccode("reproject_axis_y_jac_" + k, reproject_axis_params,
-                           jacobian(reproject_axis_y(*reproject_axis_params), v))
+                generate_ccode("reproject_axisangle_jac_" + k, reproject_axisangle_params,
+                               jacobian(reproject_axisangle(*reproject_axisangle_params), v))
+                generate_ccode("reproject_axisangle_axis_x_jac_" + k, reproject_axisangle_axis_params,
+                               jacobian(reproject_axis_x_axisangle(*reproject_axisangle_axis_params), v))
+                generate_ccode("reproject_axisangle_axis_y_jac_" + k, reproject_axisangle_axis_params,
+                               jacobian(reproject_axis_y_axisangle(*reproject_axisangle_axis_params), v))
+        else:
+            jac_of = {
+                "all": (obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk, lh_px, lh_py, lh_pz, lh_qw, lh_qi, lh_qj,
+                        lh_qk),
+                "lh_p": (lh_px, lh_py, lh_pz, lh_qw, lh_qi, lh_qj, lh_qk),
+                "obj_p": (obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk)
+            }
+
+            for k, v in jac_of.items():
+                generate_ccode("reproject_jac_" + k + "_gen2", reproject_gen2_params,
+                               jacobian(reproject_gen2(*reproject_gen2_params), v))
+                generate_ccode("reproject_axis_x_jac_" + k + "_gen2", reproject_axis_gen2_params,
+                               jacobian(reproject_axis_x_gen2(*reproject_axis_gen2_params), v))
+                generate_ccode("reproject_axis_y_jac_" + k + "_gen2", reproject_axis_gen2_params,
+                               jacobian(reproject_axis_y_gen2(*reproject_axis_gen2_params), v))
+
+                generate_ccode("reproject_jac_" + k, reproject_params,
+                               jacobian(reproject(*reproject_params), v))
+                generate_ccode("reproject_axis_x_jac_" + k, reproject_axis_params,
+                               jacobian(reproject_axis_x(*reproject_axis_params), v))
+                generate_ccode("reproject_axis_y_jac_" + k, reproject_axis_params,
+                               jacobian(reproject_axis_y(*reproject_axis_params), v))

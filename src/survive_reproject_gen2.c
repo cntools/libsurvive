@@ -7,6 +7,7 @@
 #pragma GCC push_options
 #pragma GCC optimize("Ofast")
 
+#include "survive_reproject.axisangle.generated.h"
 #include "survive_reproject.generated.h"
 
 /***
@@ -187,6 +188,42 @@ void survive_reproject_full_y_jac_obj_pose_gen2(SurviveAngleReading out, const S
 										gibMag_1, ogeePhase_1, ogeeMag_1);
 }
 
+void survive_axisangle_reproject_full_x_jac_lh_pose_gen2(SurviveAngleReading out, const LinmathAxisAnglePose *obj_pose,
+														 const double *obj_pt, const LinmathAxisAnglePose *world2lh,
+														 const BaseStationCal *bcal) {
+	EXPAND_BCAL();
+
+	gen_reproject_axisangle_axis_x_jac_lh_p_gen2(out, obj_pose->Pos, obj_pt, world2lh->Pos, phase_0, tilt_0, curve_0,
+												 gibPhase_0, gibMag_0, ogeePhase_0, ogeeMag_0);
+}
+
+void survive_axisangle_reproject_full_y_jac_lh_pose_gen2(SurviveAngleReading out, const LinmathAxisAnglePose *obj_pose,
+														 const double *obj_pt, const LinmathAxisAnglePose *world2lh,
+														 const BaseStationCal *bcal) {
+	EXPAND_BCAL();
+
+	gen_reproject_axisangle_axis_y_jac_lh_p_gen2(out, obj_pose->Pos, obj_pt, world2lh->Pos, phase_1, tilt_1, curve_1,
+												 gibPhase_1, gibMag_1, ogeePhase_1, ogeeMag_1);
+}
+
+void survive_axisangle_reproject_full_x_jac_obj_pose_gen2(SurviveAngleReading out, const LinmathAxisAnglePose *obj_pose,
+														  const double *obj_pt, const LinmathAxisAnglePose *world2lh,
+														  const BaseStationCal *bcal) {
+	EXPAND_BCAL();
+
+	gen_reproject_axisangle_axis_x_jac_obj_p_gen2(out, obj_pose->Pos, obj_pt, world2lh->Pos, phase_0, tilt_0, curve_0,
+												  gibPhase_0, gibMag_0, ogeePhase_0, ogeeMag_0);
+}
+
+void survive_axisangle_reproject_full_y_jac_obj_pose_gen2(SurviveAngleReading out, const LinmathAxisAnglePose *obj_pose,
+														  const double *obj_pt, const LinmathAxisAnglePose *world2lh,
+														  const BaseStationCal *bcal) {
+	EXPAND_BCAL();
+
+	gen_reproject_axisangle_axis_y_jac_obj_p_gen2(out, obj_pose->Pos, obj_pt, world2lh->Pos, phase_1, tilt_1, curve_1,
+												  gibPhase_1, gibMag_1, ogeePhase_1, ogeeMag_1);
+}
+
 void survive_reproject_full_x_jac_lh_pose_gen2(SurviveAngleReading out, const SurvivePose *obj_pose,
 											   const double *obj_pt, const SurvivePose *world2lh,
 											   const BaseStationCal *bcal) {
@@ -213,6 +250,26 @@ void survive_reproject_full_jac_lh_pose_gen2(SurviveAngleReading out, const Surv
 	gen_reproject_jac_lh_p_gen2(out, obj_pose->Pos, obj_pt, world2lh->Pos, phase_0, phase_1, tilt_0, tilt_1, curve_0,
 								curve_1, gibPhase_0, gibPhase_1, gibMag_0, gibMag_1, ogeePhase_0, ogeePhase_1,
 								ogeeMag_0, ogeeMag_1);
+}
+
+void survive_axisangle_reproject_full_jac_obj_pose_gen2(SurviveAngleReading out, const LinmathAxisAnglePose *obj_pose,
+														const LinmathVec3d obj_pt, const LinmathAxisAnglePose *world2lh,
+														const BaseStationCal *bcal) {
+	EXPAND_BCAL();
+
+	gen_reproject_axisangle_jac_obj_p_gen2(out, obj_pose->Pos, obj_pt, world2lh->Pos, phase_0, phase_1, tilt_0, tilt_1,
+										   curve_0, curve_1, gibPhase_0, gibPhase_1, gibMag_0, gibMag_1, ogeePhase_0,
+										   ogeePhase_1, ogeeMag_0, ogeeMag_1);
+}
+
+void survive_axisangle_reproject_full_jac_lh_pose_gen2(SurviveAngleReading out, const LinmathAxisAnglePose *obj_pose,
+													   const LinmathVec3d obj_pt, const LinmathAxisAnglePose *world2lh,
+													   const BaseStationCal *bcal) {
+	EXPAND_BCAL();
+
+	gen_reproject_axisangle_jac_lh_p_gen2(out, obj_pose->Pos, obj_pt, world2lh->Pos, phase_0, phase_1, tilt_0, tilt_1,
+										  curve_0, curve_1, gibPhase_0, gibPhase_1, gibMag_0, gibMag_1, ogeePhase_0,
+										  ogeePhase_1, ogeeMag_0, ogeeMag_1);
 }
 
 void survive_reproject_full_jac_obj_pose_gen2(SurviveAngleReading out, const SurvivePose *obj_pose,
@@ -244,4 +301,12 @@ const survive_reproject_model_t survive_reproject_gen2_model = {
 	.reprojectFullJacLhPose = survive_reproject_full_jac_lh_pose_gen2,
 	.reprojectAxisJacobLhPoseFn = {survive_reproject_full_x_jac_lh_pose_gen2,
 								   survive_reproject_full_y_jac_lh_pose_gen2},
+	.reprojectAxisAngleFullJacObjPose = survive_axisangle_reproject_full_jac_obj_pose_gen2,
+	.reprojectAxisAngleAxisJacobFn = {survive_axisangle_reproject_full_x_jac_obj_pose_gen2,
+									  survive_axisangle_reproject_full_y_jac_obj_pose_gen2},
+
+	.reprojectAxisAngleFullJacLhPose = survive_axisangle_reproject_full_jac_lh_pose_gen2,
+	.reprojectAxisAngleAxisJacobLhPoseFn = {survive_axisangle_reproject_full_x_jac_lh_pose_gen2,
+											survive_axisangle_reproject_full_y_jac_lh_pose_gen2},
+
 };

@@ -56,7 +56,9 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 	FLT timestep = 0.001;
 
 	if (last_time != 0 && last_time + timefactor * timestep > realtime) {
+		survive_release_ctx_lock(ctx);
 		OGUSleep((timefactor * timestep + realtime - last_time) * 1e6);
+		survive_get_ctx_lock(ctx);
 	}
 	last_time = realtime;
 

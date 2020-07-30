@@ -25,10 +25,23 @@ static int test_path(const char *name, int main_argc, char **main_argv) {
 
 	char *playbackFlag = strstr(name, "pcap") ? "--usbmon-playback" : "--playback";
 
-	char *argv[] = {"",			  "--init-configfile", configPath,			"--playback-replay-pose",
-					playbackFlag, (char *)name,		   "--playback-factor", "0"};
+	char *argv[] = {"",
+					"--init-configfile",
+					configPath,
+					"--playback-replay-pose",
+					playbackFlag,
+					(char *)name,
+					"--playback-factor",
+					"0",
+					"--v",
+					"100"};
 	int argc = sizeof(argv) / sizeof(argv[0]);
 
+	fprintf(stderr, "Run with: './survive-cli");
+	for (int i = 0; i < sizeof(argv) / sizeof(argv[0]); i++) {
+		fprintf(stderr, " %s", argv[i]);
+	}
+	fprintf(stderr, "'\n");
 	int total_argc = argc + main_argc;
 	char **total_argv = alloca(sizeof(char *) * total_argc);
 	for (int i = 0; i < argc; i++) {
@@ -46,6 +59,7 @@ static int test_path(const char *name, int main_argc, char **main_argv) {
 
 	SurvivePose originalLH[NUM_GEN2_LIGHTHOUSES] = {0};
 
+	printf("Ground truth LH poses:\n");
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
 		SurvivePose pose = ctx->bsd[i].Pose;
 		originalLH[i] = pose;

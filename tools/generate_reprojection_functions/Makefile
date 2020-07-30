@@ -11,7 +11,7 @@ ifdef USE_ASAN
 	CFLAGS+=-fsanitize=address -fsanitize=undefined -DSURVIVE_ASAN_CHECKS=1
 endif
 
-check_generated: check_generated.c survive_reproject.generated.h survive_reproject.aux.generated.h $(LIBSURVIVE)
+check_generated: check_generated.c #survive_reproject.generated.h survive_reproject.aux.generated.h survive_reproject.axisangle.generated.h $(LIBSURVIVE)
 	cd ../..;make
 	gcc $(CFLAGS) -o $@ $^ $(LDFLAGS) -lm -lc -lgcc  -llapacke  -lcblas -lm  -lusb-1.0 -ldl
 
@@ -20,6 +20,12 @@ clean :
 
 ../../src/survive_reproject.generated.h: reprojection_functions.py
 	python reprojection_functions.py > ../../src/survive_reproject.generated.h
+
+../../src/survive_reproject.axisangle.generated.h: reprojection_functions.py
+	python reprojection_functions.py --aangle > ../../src/survive_reproject.axisangle.generated.h
+
+survive_reproject.axisangle.generated.h: ../../src/survive_reproject.axisangle.generated.h
+	cp ../../src/survive_reproject.axisangle.generated.h survive_reproject.axisangle.generated.h
 
 survive_reproject.generated.h: ../../src/survive_reproject.generated.h
 	cp ../../src/survive_reproject.generated.h survive_reproject.generated.h

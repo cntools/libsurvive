@@ -8,6 +8,7 @@
 #pragma GCC push_options
 #pragma GCC optimize("Ofast")
 
+#include "survive_reproject.axisangle.generated.h"
 #include "survive_reproject.generated.h"
 
 static inline FLT survive_reproject_axis(const BaseStationCal *bcal, FLT axis_value, FLT other_axis_value, FLT Z,

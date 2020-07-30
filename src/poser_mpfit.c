@@ -12,6 +12,7 @@
 #include "math.h"
 #include "poser_general_optimizer.h"
 #include "string.h"
+#include "survive_async_optimizer.h"
 #include "survive_cal.h"
 #include "survive_config.h"
 #include "survive_reproject.h"
@@ -34,6 +35,7 @@ STATIC_CONFIG_ITEM(SENSOR_VARIANCE_PER_SEC, "sensor-variance-per-sec", 'f',
 STATIC_CONFIG_ITEM(SENSOR_VARIANCE, "sensor-variance", 'f', "Base variance for each sensor input", 1.0);
 STATIC_CONFIG_ITEM(DISABLE_LIGHTHOUSE, "disable-lighthouse", 'i', "Disable given lighthouse from tracking", -1);
 STATIC_CONFIG_ITEM(RUN_EVERY_N_SYNCS, "syncs-per-run", 'i', "Number of sync pulses before running optimizer", 1);
+STATIC_CONFIG_ITEM(RUN_POSER_ASYNC, "poser-async", 'i', "Run the poser in it's own thread", 0);
 
 typedef struct MPFITStats {
 	int meas_failures;
@@ -58,21 +60,24 @@ typedef struct MPFITData {
 	int disable_lighthouse;
 	int sensor_time_window;
 	// > 0; use jacobian, 0 don't use, < 0 debug
-	int use_jacobian_function;
+	int use_jacobian_function_obj;
+	int use_jacobian_function_lh;
 	int required_meas;
   int syncs_per_run;
-    int syncs_per_run_cnt;
+  int run_async;
+  int syncs_per_run_cnt;
 
-	FLT sensor_variance;
-	FLT sensor_variance_per_second;
+  FLT sensor_variance;
+  FLT sensor_variance_per_second;
 
-	SurviveIMUTracker tracker;
-	bool useIMU;
-	bool useKalman;
+  SurviveIMUTracker tracker;
+  bool useIMU;
+  bool useKalman;
 
-	const char *serialize_prefix;
-	MPFITStats stats;
+  const char *serialize_prefix;
+  MPFITStats stats;
 
+  struct survive_async_optimizer *async_optimizer;
 } MPFITData;
 
 static size_t remove_lh_from_meas(survive_optimizer_measurement *meas, size_t meas_size, int lh) {
@@ -222,29 +227,31 @@ static int get_lh_count(const size_t *meas_for_lhs) {
 	return num_lh;
 }
 
-static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, SurviveSensorActivations *scene,
-										  SurvivePose *out) {
+struct async_optimizer_user {
+	MPFITData *d;
+	PoserDataLight pdl;
+	bool canPossiblySolveLHS;
+	bool worldEstablished;
+	size_t meas_for_lhs[NUM_GEN2_LIGHTHOUSES];
+};
+
+static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer *mpfitctx,
+						   SurviveSensorActivations *scene) {
+	MPFITData *d = user->d;
+	PoserDataLight *pdl = &user->pdl;
+	size_t *meas_for_lhs = user->meas_for_lhs;
+
 	SurviveObject *so = d->opt.so;
 	struct SurviveContext *ctx = so->ctx;
+
+	SurvivePose *soLocation = survive_optimizer_get_pose(mpfitctx);
+	survive_optimizer_setup_cameras(mpfitctx, so->ctx, true, d->use_jacobian_function_lh);
 
 	bool worldEstablished = false;
 	for (int lh = 0; lh < ctx->activeLighthouses && !worldEstablished; lh++)
 		worldEstablished |= ctx->bsd[lh].PositionSet;
 
-	survive_optimizer mpfitctx = {
-		.reprojectModel = ctx->lh_version == 0 ? &survive_reproject_model : &survive_reproject_gen2_model,
-		.so = so,
-		//.current_bias = 0.01,
-		.poseLength = 1,
-		.cameraLength = so->ctx->activeLighthouses,
-	};
-
-	SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(mpfitctx);
-
-	SurvivePose *soLocation = survive_optimizer_get_pose(&mpfitctx);
-	survive_optimizer_setup_cameras(&mpfitctx, so->ctx, true);
-
-	survive_optimizer_setup_pose(&mpfitctx, 0, !worldEstablished, d->use_jacobian_function);
+	survive_optimizer_setup_pose(mpfitctx, 0, !worldEstablished, d->use_jacobian_function_obj);
 
 	if (worldEstablished && !general_optimizer_data_record_current_pose(&d->opt, pdl, soLocation)) {
 		return -1;
@@ -253,10 +260,9 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 	if (quatiszero(soLocation->Rot))
 		soLocation->Rot[0] = 1;
 
-	size_t meas_for_lhs[NUM_GEN2_LIGHTHOUSES] = {0};
-	size_t meas_size = construct_input_from_scene(d, pdl->hdr.timecode, scene, meas_for_lhs, mpfitctx.measurements);
+	size_t meas_size = construct_input_from_scene(d, pdl->hdr.timecode, scene, meas_for_lhs, mpfitctx->measurements);
 
-	if (mpfitctx.current_bias > 0) {
+	if (mpfitctx->current_bias > 0) {
 		meas_size += 7;
 	}
 
@@ -287,7 +293,7 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 		}
 	}
 
-	SurvivePose lhs[NUM_GEN2_LIGHTHOUSES] = { 0 };
+	SurvivePose lhs[NUM_GEN2_LIGHTHOUSES] = {0};
 	if (canPossiblySolveLHS) {
 		if (general_optimizer_data_record_current_lhs(&d->opt, pdl, lhs)) {
 			for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
@@ -310,89 +316,203 @@ static double run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Sur
 			if (canPossiblySolveLHS) {
 				if (meas_for_lhs[lh]) {
 					SV_INFO("Attempting to solve for %d with %lu meas", lh, meas_for_lhs[lh]);
-					survive_optimizer_setup_camera(&mpfitctx, lh, &lhs[lh], false);
+					survive_optimizer_setup_camera(mpfitctx, lh, &lhs[lh], false, d->use_jacobian_function_lh);
 				}
 			} else {
 				SV_VERBOSE(200, "Removing data for %d", lh);
-				meas_size = remove_lh_from_meas(mpfitctx.measurements, meas_size, lh);
+				meas_size = remove_lh_from_meas(mpfitctx->measurements, meas_size, lh);
 				meas_for_lhs[lh] = 0;
 			}
 		}
 	}
 
+	user->worldEstablished = worldEstablished;
+	user->canPossiblySolveLHS = canPossiblySolveLHS;
+
 	if (!worldEstablished && !canPossiblySolveLHS) {
 		return -1;
 	}
 
-	mpfitctx.measurementsCnt = meas_size;
+	mpfitctx->measurementsCnt = meas_size;
 
 	if (d->useKalman || d->useIMU) {
 		survive_imu_tracker_predict(&d->tracker, pdl->hdr.timecode, soLocation);
 	}
 
-	mp_result result = {0};
-	mpfitctx.initialPose = *soLocation;
+	mpfitctx->initialPose = *soLocation;
 
 	if (canPossiblySolveLHS) {
-		serialize_mpfit(d, &mpfitctx);
-		mpfitctx.cfg = survive_optimizer_precise_config();
+		serialize_mpfit(d, mpfitctx);
+		mpfitctx->cfg = survive_optimizer_precise_config();
 	}
 
-	int res = survive_optimizer_run(&mpfitctx, &result);
+	return 0;
+}
 
-	double rtn = -1;
+static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const mp_result *result,
+									struct async_optimizer_user *user_data, SurvivePose *out) {
+	FLT rtn = -1;
+
+	size_t meas_size = mpfitctx->measurementsCnt;
+	SurvivePose *soLocation = survive_optimizer_get_pose(mpfitctx);
+	bool canPossiblySolveLHS = user_data->canPossiblySolveLHS;
+	bool worldEstablished = user_data->worldEstablished;
+	size_t *meas_for_lhs = user_data->meas_for_lhs;
+	MPFITData *d = user_data->d;
+	PoserDataLight *pdl = &user_data->pdl;
+
+	SurviveObject *so = d->opt.so;
+	struct SurviveContext *ctx = so->ctx;
+
 	bool status_failure = res <= 0;
 	if (status_failure) {
-		SV_WARN("MPFIT status failure %s %f/%f (%d measurements, %d)", so->codename, result.orignorm, result.bestnorm,
+		SV_WARN("MPFIT status failure %s %f/%f (%d measurements, %d)", so->codename, result->orignorm, result->bestnorm,
 				(int)meas_size, res);
 
 		general_optimizer_data_record_failure(&d->opt);
 		return -1;
 	}
 
-	bool error_failure = !general_optimizer_data_record_success(&d->opt, result.bestnorm);
+	bool error_failure = !general_optimizer_data_record_success(&d->opt, result->bestnorm);
 	if (!status_failure && !error_failure) {
 		quatnormalize(soLocation->Rot, soLocation->Rot);
 
 		if (canPossiblySolveLHS) {
 			if (!worldEstablished)
-				*soLocation = (SurvivePose){ 0 };
+				*soLocation = (SurvivePose){0};
 
-			SurvivePose *opt_cameras = survive_optimizer_get_camera(&mpfitctx);
+			SurvivePose *opt_cameras = survive_optimizer_get_camera(mpfitctx);
 			SurvivePose cameras[NUM_GEN2_LIGHTHOUSES] = {0};
-			for (int i = 0; i < mpfitctx.cameraLength; i++) {
+			for (int i = 0; i < mpfitctx->cameraLength; i++) {
 				if (meas_for_lhs[i] > 0 && !quatiszero(opt_cameras[i].Rot)) {
 					cameras[i] = InvertPoseRtn(&opt_cameras[i]);
-					SV_INFO("Solved for %d with error of %f/%f", i, result.orignorm, result.bestnorm);
+					SV_INFO("Solved for %d with error of %f/%10.10f", i, result->orignorm, result->bestnorm);
 				}
 			}
 			PoserData_lighthouse_poses_func(&pdl->hdr, so, cameras, ctx->activeLighthouses, soLocation);
 		}
 
 		*out = *soLocation;
-		rtn = result.bestnorm;
+		rtn = result->bestnorm;
 
-		SV_VERBOSE(500, "MPFIT success %s %f/%f (%d measurements, %d result, %d lighthouses)", so->codename,
-				   result.orignorm, result.bestnorm, (int)meas_size, res, get_lh_count(meas_for_lhs));
+		SV_VERBOSE(500, "MPFIT success %s %f/%10.10f (%d measurements, %d result, %d lighthouses)", so->codename,
+				   result->orignorm, result->bestnorm, (int)meas_size, res, get_lh_count(meas_for_lhs));
 
 	} else {
 		SV_WARN("MPFIT failure %s %f/%f (%d measurements, %d result, %d lighthouses, %d canSolveLHs)", so->codename,
-				result.orignorm, result.bestnorm, (int)meas_size, res, get_lh_count(meas_for_lhs), canPossiblySolveLHS);
+				result->orignorm, result->bestnorm, (int)meas_size, res, get_lh_count(meas_for_lhs),
+				canPossiblySolveLHS);
 	}
 
-	d->stats.total_fev += result.nfev;
-	d->stats.total_iterations += result.niter;
+	d->stats.total_fev += result->nfev;
+	d->stats.total_iterations += result->niter;
 	d->stats.total_runs++;
-	d->stats.sum_errors += result.bestnorm;
-	d->stats.sum_origerrors += result.orignorm;
-	if (result.status > 0) {
-		assert(result.status < 10);
-		d->stats.status_cnts[result.status - 1]++;
+	d->stats.sum_errors += result->bestnorm;
+	d->stats.sum_origerrors += result->orignorm;
+	if (result->status > 0) {
+		assert(result->status < 10);
+		d->stats.status_cnts[result->status - 1]++;
 	}
 	return rtn;
 }
 
-static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
+static void handle_results(MPFITData *d, PoserDataLight *lightData, FLT error, SurvivePose *estimate) {
+	SurviveObject *so = d->opt.so;
+	if (error > 0) {
+
+		FLT var_meters = d->useKalman ? (FLT)0.01 + error : 0;
+		FLT var_quat = d->useKalman ? (FLT)0.01 + error : 0;
+		FLT var[2] = {var_meters, var_quat};
+
+		if (d->useKalman) {
+			survive_imu_tracker_integrate_observation(lightData->hdr.timecode, &d->tracker, estimate, var);
+			SurvivePose predicted = {0};
+			survive_imu_tracker_predict(&d->tracker, lightData->hdr.timecode, &predicted);
+
+			// SV_INFO("MPFIT VAR %f", var[0]);
+
+			SurviveVelocity vel = survive_imu_velocity(&d->tracker);
+			PoserData_poser_pose_func_with_velocity(&lightData->hdr, so, &predicted, &vel);
+		} else {
+			PoserData_poser_pose_func(&lightData->hdr, so, estimate);
+		}
+	}
+}
+
+static void async_optimizer_cb(struct survive_async_optimizer_buffer *buffer, int res,
+							   struct mp_result_struct *result) {
+	SurvivePose out = {0};
+	struct async_optimizer_user *user = buffer->user;
+
+	survive_get_ctx_lock(user->d->opt.so->ctx);
+	FLT error = handle_optimizer_results(&buffer->optimizer, res, result, user, &out);
+	handle_results(user->d, &user->pdl, error, &out);
+	survive_release_ctx_lock(user->d->opt.so->ctx);
+}
+
+typedef void (*handle_results_fn)(MPFITData *d, PoserDataLight *lightData, FLT error, SurvivePose *estimate);
+static void run_mpfit_find_3d_structure_async(MPFITData *d, PoserDataLight *pdl, SurviveSensorActivations *scene,
+											  SurvivePose *out) {
+	SurviveObject *so = d->opt.so;
+	struct SurviveContext *ctx = so->ctx;
+
+	survive_async_optimizer_buffer *opt_buff = survive_async_optimizer_alloc_optimizer(d->async_optimizer);
+
+	opt_buff->optimizer.reprojectModel =
+		ctx->lh_version == 0 ? &survive_reproject_model : &survive_reproject_gen2_model;
+	opt_buff->optimizer.so = so;
+	opt_buff->optimizer.poseLength = 1;
+	opt_buff->optimizer.cameraLength = so->ctx->activeLighthouses;
+
+	SURVIVE_OPTIMIZER_SETUP_HEAP_BUFFERS(opt_buff->optimizer);
+
+	struct async_optimizer_user *user_data = opt_buff->user;
+	if (user_data == 0) {
+		user_data = opt_buff->user = SV_NEW(struct async_optimizer_user);
+	}
+
+	user_data->d = d;
+	user_data->pdl = *pdl;
+
+	int setup_results = setup_optimizer(opt_buff->user, &opt_buff->optimizer, scene);
+	if (setup_results < 0) {
+		handle_results(d, pdl, -1, out);
+		return;
+	}
+
+	survive_async_optimizer_run(d->async_optimizer, opt_buff);
+	/*
+	 */
+}
+
+static FLT run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, SurviveSensorActivations *scene,
+									   SurvivePose *out) {
+	SurviveObject *so = d->opt.so;
+	struct SurviveContext *ctx = so->ctx;
+
+	survive_optimizer mpfitctx = {
+		.reprojectModel = ctx->lh_version == 0 ? &survive_reproject_model : &survive_reproject_gen2_model,
+		.so = so,
+		//.current_bias = 0.01,
+		.poseLength = 1,
+		.cameraLength = so->ctx->activeLighthouses,
+	};
+
+	SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(mpfitctx);
+
+	struct async_optimizer_user user_data = {.d = d, .pdl = *pdl};
+
+	int setup_results = setup_optimizer(&user_data, &mpfitctx, scene);
+	if (setup_results < 0) {
+		return setup_results;
+	}
+
+	mp_result result = {0};
+	int res = survive_optimizer_run(&mpfitctx, &result);
+	return handle_optimizer_results(&mpfitctx, res, &result, &user_data, out);
+}
+
+static FLT run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 	SurviveObject *so = d->opt.so;
 
 	survive_optimizer mpfitctx = {.so = so,
@@ -403,7 +523,7 @@ static double run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 
 	SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(mpfitctx);
 
-	survive_optimizer_setup_cameras(&mpfitctx, so->ctx, false);
+	survive_optimizer_setup_cameras(&mpfitctx, so->ctx, false, d->use_jacobian_function_lh);
 	survive_optimizer_setup_pose(&mpfitctx, 0, true, false);
 
 	mpfitctx.cfg = survive_optimizer_precise_config();
@@ -501,8 +621,8 @@ static inline void print_stats(SurviveContext *ctx, MPFITStats *stats) {
 	SV_INFO("\ttotal fevals      %d", stats->total_fev);
 	SV_INFO("\tavg fevals        %f", (double)stats->total_fev / stats->total_runs);
 	SV_INFO("\ttotal runs        %d", stats->total_runs);
-	SV_INFO("\tavg error         %f", stats->sum_errors / stats->total_runs);
-	SV_INFO("\tavg orig error    %f", stats->sum_origerrors / stats->total_runs);
+	SV_INFO("\tavg error         %10.10f", stats->sum_errors / stats->total_runs);
+	SV_INFO("\tavg orig error    %10.10f", stats->sum_origerrors / stats->total_runs);
 	for (int i = 0; i < sizeof(stats->status_cnts) / sizeof(int); i++) {
 		SV_INFO("\tStatus %10s %d", survive_optimizer_error(i + 1), stats->status_cnts[i]);
 	}
@@ -522,8 +642,18 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		d->useKalman = (bool)survive_configi(ctx, "use-kalman", SC_GET, 1);
 		d->required_meas = survive_configi(ctx, "required-meas", SC_GET, 8);
 		d->syncs_per_run = survive_configi(ctx, "syncs-per-run", SC_GET, 1);
+		d->run_async = survive_configi(ctx, RUN_POSER_ASYNC_TAG, SC_GET, 0);
+		if (d->run_async) {
+			d->async_optimizer = survive_async_init(async_optimizer_cb);
+		}
 		d->sensor_time_window = survive_configi(ctx, "time-window", SC_GET, SurviveSensorActivations_default_tolerance);
-		d->use_jacobian_function = survive_configi(ctx, "use-jacobian-function", SC_GET, 1);
+		d->use_jacobian_function_obj = survive_configi(ctx, "use-jacobian-function", SC_GET, 1);
+		d->use_jacobian_function_lh = survive_configi(ctx, "use-jacobian-function-lh", SC_GET, 1);
+		if (d->use_jacobian_function_lh * d->use_jacobian_function_obj < 0) {
+			d->use_jacobian_function_lh = d->use_jacobian_function_obj = -1;
+			SV_WARN("MPFit doesn't properly support having some analytical parameters and debug parameters. Setting "
+					"all to debug.");
+		}
 		d->serialize_prefix = survive_configs(ctx, "serialize-lh-mpfit", SC_GET, 0);
 		survive_attach_configi(ctx, "disable-lighthouse", &d->disable_lighthouse);
 		survive_attach_configf(ctx, "sensor-variance-per-sec", &d->sensor_variance_per_second);
@@ -540,7 +670,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		SV_VERBOSE(110, "\tsensor-variance-per-sec: %f", d->sensor_variance_per_second);
 		SV_VERBOSE(110, "\tuse-imu: %d", d->useIMU);
 		SV_VERBOSE(110, "\tuse-kalman: %d", d->useKalman);
-		SV_VERBOSE(110, "\tuse-jacobian-function: %d", d->use_jacobian_function);
+		SV_VERBOSE(110, "\tuse-jacobian-function: %d", d->use_jacobian_function_obj);
 	}
 	MPFITData *d = so->PoserFnData;
 	switch (pd->pt) {
@@ -563,26 +693,12 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		FLT error = -1;
 		if (++d->syncs_per_run_cnt >= d->syncs_per_run) {
 			d->syncs_per_run_cnt = 0;
-			error = run_mpfit_find_3d_structure(d, lightData, scene, &estimate);
 
-			if (error > 0) {
-
-				FLT var_meters = d->useKalman ? 0.01 + error : 0;
-				FLT var_quat = d->useKalman ? 0.01 + error : 0;
-				FLT var[2] = {var_meters, var_quat};
-
-				if (d->useKalman) {
-					survive_imu_tracker_integrate_observation(lightData->hdr.timecode, &d->tracker, &estimate, var);
-					SurvivePose predicted = {0};
-					survive_imu_tracker_predict(&d->tracker, lightData->hdr.timecode, &predicted);
-
-					// SV_INFO("MPFIT VAR %f", var[0]);
-
-					SurviveVelocity vel = survive_imu_velocity(&d->tracker);
-					PoserData_poser_pose_func_with_velocity(&lightData->hdr, so, &predicted, &vel);
-				} else {
-					PoserData_poser_pose_func(&lightData->hdr, so, &estimate);
-				}
+			if (d->run_async) {
+				run_mpfit_find_3d_structure_async(d, lightData, scene, &estimate);
+			} else {
+				error = run_mpfit_find_3d_structure(d, lightData, scene, &estimate);
+				handle_results(d, lightData, error, &estimate);
 			}
 		}
 		return 0;

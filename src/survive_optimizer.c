@@ -32,7 +32,7 @@ static char *object_parameter_names[] = {"Pose x",	 "Pose y",	 "Pose z",	"Pose R
 static void setup_pose_param_limits(survive_optimizer *mpfit_ctx, double *parameter,
 									struct mp_par_struct *pose_param_info) {
 	for (int i = 0; i < 7; i++) {
-		pose_param_info[i].limited[0] = pose_param_info[i].limited[1] = 1;
+		pose_param_info[i].limited[0] = pose_param_info[i].limited[1] = (i >= 3 ? false : true);
 
 		pose_param_info[i].limits[0] = -(i >= 3 ? 1.0001 : 20.);
 		pose_param_info[i].limits[1] = -pose_param_info[i].limits[0];
@@ -54,9 +54,11 @@ void survive_optimizer_setup_pose(survive_optimizer *mpfit_ctx, const SurvivePos
 		mpfit_ctx->parameters_info[i].fixed = isFixed;
 		mpfit_ctx->parameters_info[i].parname = object_parameter_names[i % 7];
 
-		if (use_jacobian_function != 0 && mpfit_ctx->reprojectModel->reprojectFullJacObjPose) {
+		if (use_jacobian_function != 0 &&
+			mpfit_ctx->reprojectModel
+				->reprojectAxisAngleFullJacObjPose /*mpfit_ctx->reprojectModel->reprojectFullJacObjPose*/) {
 			if (use_jacobian_function < 0) {
-				mpfit_ctx->parameters_info[i].side = 1;
+				mpfit_ctx->parameters_info[i].side = 2;
 				mpfit_ctx->parameters_info[i].deriv_debug = 1;
 				mpfit_ctx->parameters_info[i].deriv_abstol = .0001;
 				mpfit_ctx->parameters_info[i].deriv_reltol = .0001;
@@ -72,7 +74,8 @@ static char *lh_parameter_names[] = {"LH x",	 "LH y",	 "LH z",	"LH Rot w",
 
 };
 
-void survive_optimizer_setup_camera(survive_optimizer *mpfit_ctx, int8_t lh, const SurvivePose *pose, bool isFixed) {
+void survive_optimizer_setup_camera(survive_optimizer *mpfit_ctx, int8_t lh, const SurvivePose *pose, bool isFixed,
+									int use_jacobian_function) {
 	SurvivePose *cameras = survive_optimizer_get_camera(mpfit_ctx);
 	int start = survive_optimizer_get_camera_index(mpfit_ctx) + lh * 7;
 
@@ -87,15 +90,18 @@ void survive_optimizer_setup_camera(survive_optimizer *mpfit_ctx, int8_t lh, con
 	setup_pose_param_limits(mpfit_ctx, mpfit_ctx->parameters + start, mpfit_ctx->parameters_info + start);
 
 	for (int i = start; i < start + 7; i++) {
-		mpfit_ctx->parameters_info[i].fixed = isFixed || poseIsInvalid;
+		mpfit_ctx->parameters_info[i].fixed = (isFixed || poseIsInvalid);
 		mpfit_ctx->parameters_info[i].parname = lh_parameter_names[i - start];
 
-		if (isFixed == false && mpfit_ctx->reprojectModel->reprojectFullJacLhPose) {
-			if (false) {
-				mpfit_ctx->parameters_info[i].side = 1;
+		if (use_jacobian_function != 0 &&
+			mpfit_ctx->reprojectModel
+				->reprojectAxisAngleFullJacLhPose /*mpfit_ctx->reprojectModel->reprojectFullJacLhPose*/) {
+			if (use_jacobian_function < 0) {
+				mpfit_ctx->parameters_info[i].side = 2;
 				mpfit_ctx->parameters_info[i].deriv_debug = 1;
 				mpfit_ctx->parameters_info[i].deriv_abstol = .0001;
 				mpfit_ctx->parameters_info[i].deriv_reltol = .0001;
+
 			} else {
 				mpfit_ctx->parameters_info[i].side = 3;
 			}
@@ -103,13 +109,14 @@ void survive_optimizer_setup_camera(survive_optimizer *mpfit_ctx, int8_t lh, con
 	}
 }
 
-void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx, SurviveContext *ctx, bool isFixed) {
+void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx, SurviveContext *ctx, bool isFixed,
+									 int use_jacobian_function) {
 	for (int lh = 0; lh < mpfit_ctx->cameraLength; lh++) {
 		if (ctx->bsd[lh].PositionSet)
-			survive_optimizer_setup_camera(mpfit_ctx, lh, &ctx->bsd[lh].Pose, isFixed);
+			survive_optimizer_setup_camera(mpfit_ctx, lh, &ctx->bsd[lh].Pose, isFixed, use_jacobian_function);
 		else {
 			SurvivePose id = {.Rot[0] = 1.};
-			survive_optimizer_setup_camera(mpfit_ctx, lh, &id, isFixed);
+			survive_optimizer_setup_camera(mpfit_ctx, lh, &id, isFixed, use_jacobian_function);
 		}
 	}
 
@@ -167,6 +174,109 @@ SurvivePose *survive_optimizer_get_pose(survive_optimizer *ctx) {
 		return (SurvivePose *)ctx->parameters;
 	return &ctx->initialPose;
 }
+static inline void run_pair_measurement(survive_optimizer *mpfunc_ctx, size_t meas_idx,
+										const survive_reproject_model_t *reprojectModel,
+										const survive_optimizer_measurement *meas, const LinmathAxisAnglePose *pose,
+										const LinmathAxisAnglePose *obj2lh, const LinmathAxisAnglePose *world2lh,
+										double *deviates, double **derivs) {
+	SurviveContext *ctx = mpfunc_ctx->so->ctx;
+	const int lh = meas->lh;
+	const double *sensor_points = survive_optimizer_get_sensors(mpfunc_ctx);
+	const struct BaseStationCal *cal = survive_optimizer_get_calibration(mpfunc_ctx, lh);
+	const FLT *pt = &sensor_points[meas->sensor_idx * 3];
+
+	LinmathPoint3d sensorPtInLH;
+	ApplyAxisAnglePoseToPoint(sensorPtInLH, obj2lh, pt);
+
+	FLT out[2];
+	reprojectModel->reprojectXY(cal, sensorPtInLH, out);
+
+	deviates[0] = (out[meas[0].axis] - meas[0].value) / meas[0].variance;
+	deviates[1] = (out[meas[1].axis] - meas[1].value) / meas[1].variance;
+
+	assert(isfinite(deviates[0]));
+	assert(isfinite(deviates[1]));
+
+	if (derivs) {
+		int jac_offset_lh = (lh + mpfunc_ctx->poseLength) * 7;
+		int jac_offset_obj = meas->object * 7;
+
+		LinmathAxisAnglePose safe_pose = *pose, safe_world2lh = *world2lh;
+		if (magnitude3d(safe_pose.AxisAngleRot) == 0)
+			safe_pose.AxisAngleRot[0] = 1e-10;
+		if (magnitude3d(safe_world2lh.AxisAngleRot) == 0)
+			safe_world2lh.AxisAngleRot[0] = 1e-10;
+
+		if (derivs[jac_offset_obj]) {
+			FLT out[7 * 2] = {0};
+			// reprojectModel->reprojectFullJacObjPose(out, pose, pt, world2lh, cal);
+			reprojectModel->reprojectAxisAngleFullJacObjPose(out, pose, pt, world2lh, cal);
+			// SV_INFO("Double obj %3d %3d %f", jac_offset_obj, meas_idx, out[0]);
+			for (int j = 0; j < 6; j++) {
+				assert(derivs[jac_offset_obj + j] && "all 7 parameters should be the same for jacobian calculation");
+				derivs[jac_offset_obj + j][meas_idx] = out[j];
+				derivs[jac_offset_obj + j][meas_idx + 1] = out[j + 6];
+				assert(!isnan(out[j]));
+				assert(!isnan(out[j + 6]));
+			}
+		}
+
+		if (derivs[jac_offset_lh]) {
+			FLT out[7 * 2] = {0};
+			reprojectModel->reprojectAxisAngleFullJacLhPose(out, pose, pt, world2lh, cal);
+			for (int j = 0; j < 6; j++) {
+				assert(derivs[jac_offset_lh + j] && "all 7 parameters should be the same for jacobian calculation");
+				derivs[jac_offset_lh + j][meas_idx] = out[j];
+				derivs[jac_offset_lh + j][meas_idx + 1] = out[j + 6];
+				assert(!isnan(out[j]));
+				assert(!isnan(out[j + 6]));
+			}
+		}
+	}
+}
+static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_idx,
+								   const survive_reproject_model_t *reprojectModel,
+								   const survive_optimizer_measurement *meas, const LinmathAxisAnglePose *pose,
+								   const LinmathAxisAnglePose *obj2lh, const LinmathAxisAnglePose *world2lh,
+								   double *deviates, double **derivs) {
+	SurviveContext *ctx = mpfunc_ctx->so->ctx;
+	const int lh = meas->lh;
+	const double *sensor_points = survive_optimizer_get_sensors(mpfunc_ctx);
+	const struct BaseStationCal *cal = survive_optimizer_get_calibration(mpfunc_ctx, lh);
+	const FLT *pt = &sensor_points[meas->sensor_idx * 3];
+
+	LinmathPoint3d sensorPtInLH;
+	ApplyAxisAnglePoseToPoint(sensorPtInLH, obj2lh, pt);
+
+	FLT out = reprojectModel->reprojectAxisFn[meas->axis](cal, sensorPtInLH);
+	deviates[0] = (out - meas->value) / meas->variance;
+	assert(isfinite(deviates[0]));
+
+	if (derivs) {
+		int jac_offset_lh = (lh + mpfunc_ctx->poseLength) * 7;
+		int jac_offset_obj = meas->object * 7;
+
+		FLT out[7] = {0};
+
+		if (derivs[jac_offset_obj]) {
+			reprojectModel->reprojectAxisAngleAxisJacobFn[meas->axis](out, pose, pt, world2lh, cal);
+			for (int j = 0; j < 6; j++) {
+				assert(derivs[jac_offset_obj + j]);
+				derivs[jac_offset_obj + j][meas_idx] = out[j];
+				assert(!isnan(out[j]));
+			}
+		}
+
+		if (derivs[jac_offset_lh]) {
+			reprojectModel->reprojectAxisAngleAxisJacobLhPoseFn[meas->axis](out, pose, pt, world2lh, cal);
+			for (int j = 0; j < 6; j++) {
+				assert(derivs[jac_offset_lh + j]);
+				derivs[jac_offset_lh + j][meas_idx] = out[j];
+				assert(!isnan(out[j]));
+			}
+		}
+	}
+}
 
 static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, void *private) {
 	survive_optimizer *mpfunc_ctx = private;
@@ -180,14 +290,16 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 	int start = survive_optimizer_get_camera_index(mpfunc_ctx);
 	for (int i = 0; i < mpfunc_ctx->cameraLength; i++) {
 		if (!mpfunc_ctx->parameters_info[start + 7 * i].fixed) {
-			quatnormalize(cameras[i].Rot, cameras[i].Rot);
+			// quatnormalize(cameras[i].Rot, cameras[i].Rot);
 		}
 	}
 	const double *sensor_points = survive_optimizer_get_sensors(mpfunc_ctx);
 
 	int pose_idx = -1;
-	SurvivePose *pose = 0;
-	SurvivePose obj2lh[NUM_GEN2_LIGHTHOUSES] = {0};
+	// SurvivePose *pose = 0;
+	// SurvivePose obj2lh[NUM_GEN2_LIGHTHOUSES] = {0};
+	LinmathAxisAnglePose *pose = 0;
+	LinmathAxisAnglePose obj2lh[NUM_GEN2_LIGHTHOUSES] = {0};
 
 	int meas_count = m;
 	if (mpfunc_ctx->current_bias > 0) {
@@ -205,22 +317,23 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 		const survive_optimizer_measurement *meas = &mpfunc_ctx->measurements[i];
 		const int lh = meas->lh;
 		const struct BaseStationCal *cal = survive_optimizer_get_calibration(mpfunc_ctx, lh);
-		const SurvivePose *world2lh = &cameras[lh];
+		LinmathAxisAnglePose *world2lh = (LinmathAxisAnglePose *)&cameras[lh];
 		const FLT *pt = &sensor_points[meas->sensor_idx * 3];
 
 		if (pose_idx != meas->object) {
 			pose_idx = meas->object;
 			assert(pose_idx < mpfunc_ctx->poseLength);
-			pose = &survive_optimizer_get_pose(mpfunc_ctx)[meas->object];
+			pose = (LinmathAxisAnglePose *)(&survive_optimizer_get_pose(mpfunc_ctx)[meas->object]);
 
 			// SV_INFO("Before\t" SurvivePose_format, SURVIVE_POSE_EXPAND(*pose));
-			quatnormalize(pose->Rot, pose->Rot);
+			// quatnormalize(pose->Rot, pose->Rot);
 			// SV_INFO("After\t" SurvivePose_format, SURVIVE_POSE_EXPAND(*pose));
 
 			int lh_count =
 				mpfunc_ctx->cameraLength > 0 ? mpfunc_ctx->cameraLength : mpfunc_ctx->so->ctx->activeLighthouses;
 			for (int lh = 0; lh < lh_count; lh++) {
-				ApplyPoseToPose(&obj2lh[lh], &cameras[lh], pose);
+				// ApplyPoseToPose(&obj2lh[lh], &cameras[lh], pose);
+				ApplyAxisAnglePoseToPose(&obj2lh[lh], (const LinmathAxisAnglePose *)&cameras[lh], pose);
 			}
 		}
 
@@ -230,90 +343,21 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 			i + 1 < m && meas[0].axis == 0 && meas[1].axis == 1 && meas[0].sensor_idx == meas[1].sensor_idx;
 
 		LinmathPoint3d sensorPtInLH;
-		ApplyPoseToPoint(sensorPtInLH, &obj2lh[lh], pt);
-
-		FLT injected_error = 0;
-		if (mpfunc_ctx->ptsLength > 0) {
-			// injected_error += norm3d(pt) * .01;
-		}
+		ApplyAxisAnglePoseToPoint(sensorPtInLH, &obj2lh[lh], pt);
 
 		if (nextIsPair) {
-			FLT out[2];
-
-			reprojectModel->reprojectXY(cal, sensorPtInLH, out);
-
-			deviates[i] = (out[meas[0].axis] - meas[0].value) / meas[0].variance + injected_error;
-			deviates[i + 1] = (out[meas[1].axis] - meas[1].value) / meas[1].variance + injected_error;
-
-			assert(isfinite(deviates[i]));
-			assert(isfinite(deviates[i + 1]));
-		} else {
-			FLT out = reprojectModel->reprojectAxisFn[meas->axis](cal, sensorPtInLH);
-			deviates[i] = (out - meas->value) / meas->variance + injected_error;
-
-			assert(isfinite(deviates[i]));
-		}
-
-		if (derivs) {
-			int jac_offset_obj = pose_idx;
-			int jac_offset_lh = (lh + mpfunc_ctx->poseLength) * 7;
-
-			if (nextIsPair) {
-				if (jac_offset_obj >= 0 && derivs[jac_offset_obj]) {
-					FLT out[7 * 2] = {0};
-					reprojectModel->reprojectFullJacObjPose(out, pose, pt, world2lh, cal);
-
-					for (int j = 0; j < 7; j++) {
-						assert(derivs[jac_offset_obj + j] &&
-							   "all 7 parameters should be the same for jacobian calculation");
-						derivs[jac_offset_obj + j][i] = out[j];
-						derivs[jac_offset_obj + j][i + 1] = out[j + 7];
-						assert(!isnan(out[j]));
-						assert(!isnan(out[j + 7]));
-					}
-				}
-
-				if (jac_offset_lh >= 0 && derivs[jac_offset_lh]) {
-					FLT out[7 * 2] = {0};
-					reprojectModel->reprojectFullJacLhPose(out, pose, pt, world2lh, cal);
-
-					for (int j = 0; j < 7; j++) {
-						assert(derivs[jac_offset_lh + j] &&
-							   "all 7 parameters should be the same for jacobian calculation");
-						derivs[jac_offset_lh + j][i] = out[j];
-						derivs[jac_offset_lh + j][i + 1] = out[j + 7];
-						assert(!isnan(out[j]));
-						assert(!isnan(out[j + 7]));
-					}
-				}
-
-			} else {
-				FLT out[7] = {0};
-				if (jac_offset_obj >= 0 && derivs[jac_offset_obj]) {
-					reprojectModel->reprojectAxisJacobFn[meas->axis](out, pose, pt, world2lh, cal);
-					for (int j = 0; j < 7; j++) {
-						assert(derivs[jac_offset_obj + j]);
-						derivs[jac_offset_obj + j][i] = out[j];
-						assert(!isnan(out[j]));
-					}
-				}
-
-				if (jac_offset_lh >= 0 && derivs[jac_offset_lh]) {
-					reprojectModel->reprojectAxisJacobLhPoseFn[meas->axis](out, pose, pt, world2lh, cal);
-					for (int j = 0; j < 7; j++) {
-						assert(derivs[jac_offset_lh + j]);
-						derivs[jac_offset_lh + j][i] = out[j];
-						assert(!isnan(out[j]));
-					}
-				}
-			}
-		}
-
-		// Skip the next point -- we handled it already
-		if (nextIsPair)
+			run_pair_measurement(mpfunc_ctx, i, reprojectModel, meas, pose, &obj2lh[lh], world2lh, deviates + i,
+								 derivs);
 			i++;
+		} else {
+			run_single_measurement(mpfunc_ctx, i, reprojectModel, meas, pose, &obj2lh[lh], world2lh, deviates + i,
+								   derivs);
+		}
 	}
 
+	FLT d = derivs ? (derivs[28] ? derivs[28][0] : 0) : 0;
+	if (d != 0.0)
+		SV_INFO("Derivs %f", d)
 	return 0;
 }
 
@@ -382,6 +426,13 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 	if (cfg == 0)
 		cfg = survive_optimizer_get_cfg(ctx);
 
+	SurvivePose *poses = survive_optimizer_get_pose(optimizer);
+	for (int i = 0; i < optimizer->poseLength + optimizer->cameraLength; i++) {
+		quattoaxisanglemag(poses[i].Rot, poses[i].Rot);
+		poses[i].Rot[3] = 0; // NAN;
+		optimizer->parameters_info[i * 7 + 6].fixed = true;
+	}
+
 #ifndef NDEBUG
 	for (int i = 0; i < survive_optimizer_get_parameters_count(optimizer); i++) {
 		if ((optimizer->parameters_info[i].limited[0] &&
@@ -402,6 +453,10 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 	int rtn = mpfit(mpfunc, optimizer->measurementsCnt, survive_optimizer_get_parameters_count(optimizer),
 					optimizer->parameters, optimizer->parameters_info, cfg, optimizer, result);
 	optimizer->parameters = params;
+
+	for (int i = 0; i < optimizer->poseLength + optimizer->cameraLength; i++) {
+		quatfromaxisangle(poses[i].Rot, poses[i].Rot, norm3d(poses[i].Rot));
+	}
 	return rtn;
 }
 
@@ -430,14 +485,16 @@ void survive_optimizer_serialize(const survive_optimizer *opt, const char *fn) {
 
 	fprintf(f, "\n");
 	fprintf(f, "parameters   %d\n", survive_optimizer_get_parameters_count(opt));
-	fprintf(f, "\t#<name>: <fixed> <value> <min> <max> <use_jacobian>\n");
+	fprintf(f, "#	          <name>:        <idx>      <fixed>             <value>            <min>            <max> "
+			   "<use_jacobian>\n");
 	for (int i = 0; i < survive_optimizer_get_parameters_count(opt); i++) {
 		struct mp_par_struct *info = &opt->parameters_info[i];
-		fprintf(f, "\t%10s:", opt->parameters_info[i].parname);
-		fprintf(f, " %d", info->fixed);
+		fprintf(f, "\t%16s:", opt->parameters_info[i].parname);
+		fprintf(f, " %12d", i);
+		fprintf(f, " %12d", info->fixed);
 		fprintf(f, " %+0.16f", opt->parameters[i]);
 		fprintf(f, " %+16.f %+16.f", info->limits[0], info->limits[1]);
-		fprintf(f, " %d\n", info->side);
+		fprintf(f, " %14d\n", info->side);
 	}
 
 	fprintf(f, "\n");
@@ -490,6 +547,8 @@ survive_optimizer *survive_optimizer_load(const char *fn) {
 	for (int i = 0; i < survive_optimizer_get_parameters_count(opt); i++) {
 		struct mp_par_struct *info = &opt->parameters_info[i];
 		read_count = fscanf(f, "\t");
+		int idx;
+		read_count = fscanf(f, "%d ", &idx);
 		opt->parameters_info[i].parname = calloc(128, 1);
 		char *b = opt->parameters_info[i].parname;
 		char c = fgetc(f);
@@ -519,8 +578,8 @@ survive_optimizer *survive_optimizer_load(const char *fn) {
 	fclose(f);
 
 	SurviveObject *so = survive_create_device(0, "SLV", opt, "SV0", 0);
-	char filename[1024] = {0};
-	sprintf(filename, "%s_config.json", device_name);
+	char filename[FILENAME_MAX] = {0};
+	snprintf(filename, FILENAME_MAX, "%s_config.json", device_name);
 	FILE *fp = fopen(filename, "r");
 	if (fp) {
 		fseek(fp, 0L, SEEK_END);
@@ -561,8 +620,8 @@ SURVIVE_EXPORT int survive_optimizer_nonfixed_cnt(const survive_optimizer *ctx) 
 	}
 	return rtn;
 }
+
 SURVIVE_EXPORT void survive_optimizer_get_nonfixed(const survive_optimizer *ctx, double *params) {
-	int rtn = 0;
 	for (int i = 0; i < survive_optimizer_get_parameters_count(ctx); i++) {
 		if (!ctx->parameters_info[i].fixed)
 			*(params++) = ctx->parameters[i];
@@ -570,9 +629,38 @@ SURVIVE_EXPORT void survive_optimizer_get_nonfixed(const survive_optimizer *ctx,
 }
 
 SURVIVE_EXPORT void survive_optimizer_set_nonfixed(survive_optimizer *ctx, double *params) {
-	int rtn = 0;
 	for (int i = 0; i < survive_optimizer_get_parameters_count(ctx); i++) {
 		if (!ctx->parameters_info[i].fixed)
 			ctx->parameters[i] = *(params++);
 	}
 }
+
+SURVIVE_EXPORT size_t survive_optimizer_get_total_buffer_size(const survive_optimizer *ctx) {
+	size_t par_count = survive_optimizer_get_parameters_count(ctx);
+	size_t sensor_cnt = ctx->so ? ctx->so->sensor_ct : 32;
+	return par_count * (sizeof(FLT) +				  // parameters
+						sizeof(struct mp_par_struct)) // parameters_info
+		   + ctx->poseLength * sizeof(survive_optimizer_measurement) * 2 * sensor_cnt *
+				 NUM_GEN2_LIGHTHOUSES; // measurements
+}
+
+SURVIVE_EXPORT void survive_optimizer_setup_buffers(survive_optimizer *ctx, void *parameter_buffer,
+													void *parameter_info_buffer, void *measurements_buffer) {
+	size_t par_count = survive_optimizer_get_parameters_count(ctx);
+	ctx->parameters = (FLT *)parameter_buffer;
+	for (int i = 0; i < par_count; i++)
+		ctx->parameters[i] = NAN;
+	size_t par_offset = par_count * sizeof(FLT);
+	ctx->parameters_info = (struct mp_par_struct *)(parameter_info_buffer);
+	size_t sensor_cnt = ctx->so ? ctx->so->sensor_ct : 32;
+
+	size_t par_info_offset = par_offset + sizeof(struct mp_par_struct) * par_count;
+
+	ctx->measurements = (survive_optimizer_measurement *)(measurements_buffer);
+	memset(ctx->parameters_info, 0, sizeof(mp_par) * par_count);
+	for (int i = 0; i < survive_optimizer_get_parameters_count(ctx); i++) {
+		ctx->parameters_info[i].fixed = 1;
+	}
+}
+
+SURVIVE_EXPORT void *survive_optimizer_realloc(void *old_ptr, size_t size) { return realloc(old_ptr, size); }

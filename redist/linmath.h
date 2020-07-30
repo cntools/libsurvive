@@ -69,6 +69,7 @@ typedef FLT LinmathPoint2d[2];
 typedef FLT LinmathPoint3d[3];
 typedef FLT LinmathVec3d[3];
 typedef FLT LinmathEulerAngle[3];
+typedef FLT LinmathAxisAngle[3];
 typedef FLT LinmathAxisAngleMag[4];
 
 typedef struct LinmathEulerPose {
@@ -80,6 +81,11 @@ typedef struct LinmathPose {
 	LinmathPoint3d Pos;
 	LinmathQuat Rot;
 } LinmathPose;
+
+typedef struct LinmathAxisAnglePose {
+	LinmathPoint3d Pos;
+	LinmathAxisAngle AxisAngleRot;
+} LinmathAxisAnglePose;
 
 LINMATH_EXPORT extern LinmathQuat LinmathQuat_Identity;
 LINMATH_EXPORT extern LinmathPose LinmathPose_Identity;
@@ -115,7 +121,7 @@ LINMATH_EXPORT FLT magnitude3d(const FLT *a);
 LINMATH_EXPORT FLT dist3d(const FLT *a, const FLT *b);
 LINMATH_EXPORT FLT anglebetween3d(FLT *a, FLT *b);
 
-LINMATH_EXPORT void rotatearoundaxis(FLT *outvec3, FLT *invec3, FLT *axis, FLT angle);
+LINMATH_EXPORT void rotatearoundaxis(FLT *outvec3, const FLT *invec3, const FLT *axis, FLT angle);
 LINMATH_EXPORT void angleaxisfrom2vect(FLT *angle, FLT *axis, FLT *src, FLT *dest);
 LINMATH_EXPORT void axisanglefromquat(FLT *angle, FLT *axis, LinmathQuat quat);
 // Quaternion things...
@@ -173,6 +179,7 @@ LINMATH_EXPORT void quatfind(LinmathQuat q, const LinmathQuat q0, const LinmathQ
  * same as quat multiply, not piecewise multiply.
  */
 LINMATH_EXPORT void quatrotateabout(LinmathQuat q, const LinmathQuat q0, const LinmathQuat q1);
+LINMATH_EXPORT void axisanglerotateabout(LinmathAxisAngle q, const LinmathAxisAngle q0, const LinmathAxisAngle q1);
 
 /***
  * Finds q = qv*t. If 'qv' is thought of an angular velocity, and t is the scalar time span of rotation, q is the
@@ -206,11 +213,18 @@ LINMATH_EXPORT void eulerrotatevector(FLT *vec3out, const LinmathEulerAngle quat
 LINMATH_EXPORT void quatfrom2vectors(LinmathQuat q, const FLT *src, const FLT *dest);
 LINMATH_EXPORT void eulerfrom2vectors(LinmathEulerAngle q, const FLT *src, const FLT *dest);
 
+LINMATH_EXPORT void axisanglerotatevector(FLT *vec3out, const LinmathAxisAngle axisAngle, const FLT *vec3in);
+
 // This is the quat equivalent of 'pout = pose * pin' if pose were a 4x4 matrix in homogenous space
 LINMATH_EXPORT void ApplyPoseToPoint(LinmathPoint3d pout, const LinmathPose *pose, const LinmathPoint3d pin);
 
 // This is the quat equivalent of 'pout = lhs_pose * rhs_pose' if poses were a 4x4 matrix in homogenous space
 LINMATH_EXPORT void ApplyPoseToPose(LinmathPose *pout, const LinmathPose *lhs_pose, const LinmathPose *rhs_pose);
+
+LINMATH_EXPORT void ApplyAxisAnglePoseToPoint(LinmathPoint3d pout, const LinmathAxisAnglePose *pose,
+											  const LinmathPoint3d pin);
+LINMATH_EXPORT void ApplyAxisAnglePoseToPose(LinmathAxisAnglePose *pout, const LinmathAxisAnglePose *lhs_pose,
+											 const LinmathAxisAnglePose *rhs_pose);
 
 // This is the quat equivlant of 'pose_in^-1'; so that ApplyPoseToPose(..., InvertPose(..., pose_in), pose_in) ==
 // Identity ( [0, 0, 0], [1, 0, 0, 0] )
