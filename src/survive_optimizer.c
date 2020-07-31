@@ -355,9 +355,6 @@ static int mpfunc(int m, int n, double *p, double *deviates, double **derivs, vo
 		}
 	}
 
-	FLT d = derivs ? (derivs[28] ? derivs[28][0] : 0) : 0;
-	if (d != 0.0)
-		SV_INFO("Derivs %f", d)
 	return 0;
 }
 
