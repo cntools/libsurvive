@@ -153,6 +153,17 @@ void survive_reproject_gen2(const SurviveContext *ctx, int lighthouse, LinmathVe
 	survive_reproject_from_pose_gen2(ctx, lighthouse, &world2lh, ptInWorld, out);
 }
 
+void survive_reproject_full_gen2(const BaseStationCal *bcal, const SurvivePose *world2lh, const SurvivePose *obj2world,
+								 const LinmathVec3d obj_pt, SurviveAngleReading out) {
+	LinmathVec3d world_pt;
+	ApplyPoseToPoint(world_pt, obj2world, obj_pt);
+
+	LinmathPoint3d t_pt;
+	ApplyPoseToPoint(t_pt, world2lh, world_pt);
+
+	survive_reproject_xy_gen2(bcal, t_pt, out);
+}
+
 const survive_reproject_model_t survive_reproject_gen2_model = {
 	.reprojectAxisFn = {survive_reproject_axis_x_gen2, survive_reproject_axis_y_gen2},
 	.reprojectXY = survive_reproject_xy_gen2,

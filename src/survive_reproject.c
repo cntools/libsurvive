@@ -63,7 +63,6 @@ void survive_reproject_full(const BaseStationCal *bcal, const SurvivePose *world
 
 	survive_reproject_xy(bcal, t_pt, out);
 }
-
 void survive_reproject_from_pose_with_bcal(const BaseStationCal *bcal, const SurvivePose *world2lh,
 										   LinmathVec3d const ptInWorld, SurviveAngleReading out) {
 	LinmathPoint3d ptInLh;
