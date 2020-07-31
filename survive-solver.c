@@ -1,3 +1,5 @@
+#include <malloc.h>
+
 #include "src/survive_default_devices.h"
 #include "survive_optimizer.h"
 #include <survive.h>
