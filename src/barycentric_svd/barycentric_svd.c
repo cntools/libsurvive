@@ -6,6 +6,8 @@
 #include "survive.h"
 #include <malloc.h>
 
+#pragma GCC diagnostic ignored "-Wpedantic"
+
 static void bc_svd_choose_control_points(bc_svd *self) {
 	// Take C0 as the reference points centroid:
 	self->setup.control_points[0][0] = self->setup.control_points[0][1] = self->setup.control_points[0][2] = 0;

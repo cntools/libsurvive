@@ -802,4 +802,4 @@ void DisambiguatorStateBased(SurviveObject *so, const LightcapElement *le) {
 	d->last_timestamp = le->timestamp;
 }
 
-REGISTER_LINKTIME(DisambiguatorStateBased);
+REGISTER_LINKTIME(DisambiguatorStateBased)

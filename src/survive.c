@@ -26,17 +26,17 @@
 #define z_const const
 #endif
 
-STATIC_CONFIG_ITEM(SURVIVE_VERBOSE, "v", 'i', "Verbosity level", 0);
-STATIC_CONFIG_ITEM( BLACKLIST_DEVS, "blacklist-devs", 's', "List any devs (or substrings of devs) to blacklist.", "-" );
-STATIC_CONFIG_ITEM( CONFIG_FILE, "configfile", 's', "Default configuration file", "config.json" );
-STATIC_CONFIG_ITEM(INIT_CONFIG_FILE, "init-configfile", 's', "Initial configuration file", 0);
-STATIC_CONFIG_ITEM( CONFIG_D_CALI, "disable-calibrate", 'i', "Enables or disables calibration", 0 );
-STATIC_CONFIG_ITEM(CONFIG_FAST_CALI, "fast-calibrate", 'i', "Use fast calibration", 0);
-STATIC_CONFIG_ITEM( CONFIG_F_CALI, "force-calibrate", 'i', "Forces calibration even if one exists.", 0 );
-STATIC_CONFIG_ITEM(CONFIG_F_OOTX, "force-ootx", 'i', "Forces ootx capture even if its in the config file.", 0);
-STATIC_CONFIG_ITEM(CONFIG_LIGHTHOUSE_COUNT, "lighthousecount", 'i', "How many lighthouses to look for.", 0);
+STATIC_CONFIG_ITEM(SURVIVE_VERBOSE, "v", 'i', "Verbosity level", 0)
+STATIC_CONFIG_ITEM(BLACKLIST_DEVS, "blacklist-devs", 's', "List any devs (or substrings of devs) to blacklist.", "-")
+STATIC_CONFIG_ITEM(CONFIG_FILE, "configfile", 's', "Default configuration file", "config.json")
+STATIC_CONFIG_ITEM(INIT_CONFIG_FILE, "init-configfile", 's', "Initial configuration file", 0)
+STATIC_CONFIG_ITEM(CONFIG_D_CALI, "disable-calibrate", 'i', "Enables or disables calibration", 0)
+STATIC_CONFIG_ITEM(CONFIG_FAST_CALI, "fast-calibrate", 'i', "Use fast calibration", 0)
+STATIC_CONFIG_ITEM(CONFIG_F_CALI, "force-calibrate", 'i', "Forces calibration even if one exists.", 0)
+STATIC_CONFIG_ITEM(CONFIG_F_OOTX, "force-ootx", 'i', "Forces ootx capture even if its in the config file.", 0)
+STATIC_CONFIG_ITEM(CONFIG_LIGHTHOUSE_COUNT, "lighthousecount", 'i', "How many lighthouses to look for.", 0)
 STATIC_CONFIG_ITEM(LIGHTHOUSE_GEN, "lighthouse-gen", 'i',
-				   "Which lighthouse gen to use -- 1 for LH1, 2 for LH2, 0 (default) for auto-detect", 0);
+				   "Which lighthouse gen to use -- 1 for LH1, 2 for LH2, 0 (default) for auto-detect", 0)
 
 #ifdef WIN32
 #define RUNTIME_SYMNUM
@@ -458,17 +458,18 @@ survive_timecode survive_timecode_difference(survive_timecode most_recent, survi
 	return diff;
 }
 
-void *GetDriverByConfig(SurviveContext *ctx, const char *name, const char *configname, const char *configdef) {
+survive_driver_fn GetDriverByConfig(SurviveContext *ctx, const char *name, const char *configname,
+									const char *configdef) {
 	const char *Preferred = survive_configs(ctx, configname, SC_SETCONFIG, configdef);
 	const char *DriverName = 0;
 	const char *picked = 0;
 	int i = 0;
-	void *func = 0;
+	survive_driver_fn func = 0;
 	int prefixLen = strlen(name);
 
 	SV_VERBOSE(1, "Available %ss:", name);
 	while ((DriverName = GetDriverNameMatching(name, i++))) {
-		void *p = GetDriver(DriverName);
+		survive_driver_fn p = GetDriver(DriverName);
 
 		bool match = strcmp(DriverName, Preferred) == 0 || strcmp(DriverName + prefixLen, Preferred) == 0;
 		SV_VERBOSE(1, "\t%c%s", match ? '*' : ' ', DriverName + prefixLen);
@@ -488,7 +489,7 @@ void *GetDriverByConfig(SurviveContext *ctx, const char *name, const char *confi
 	return func;
 }
 static inline SurviveDeviceDriverReturn callDriver(SurviveContext *ctx, const char *DriverName, char *buffer) {
-	DeviceDriver dd = GetDriver(DriverName);
+	DeviceDriver dd = (DeviceDriver)GetDriver(DriverName);
 	SurviveDeviceDriverReturn r = dd(ctx);
 	if (r < 0) {
 		SV_WARN("Driver %s reports status %d", DriverName + strlen("DriverReg"), r);
@@ -513,7 +514,7 @@ int survive_startup(SurviveContext *ctx) {
 	ctx->buttonservicethread = OGCreateThread(button_servicer, ctx);
 	OGNameThread(ctx->buttonservicethread, "Button Service");
 
-	PoserCB PreferredPoserCB = GetDriverByConfig(ctx, "Poser", "poser", "MPFIT");
+	PoserCB PreferredPoserCB = (PoserCB)GetDriverByConfig(ctx, "Poser", "poser", "MPFIT");
 	ctx->lightcapproc = GetDriverByConfig(ctx, "Disambiguator", "disambiguator", "StateBased");
 
 	const char *DriverName;
@@ -624,7 +625,7 @@ int survive_add_object(SurviveContext *ctx, SurviveObject *obj) {
 	ctx->objs_ct = oldct + 1;
 
 	ctx->new_objectproc(obj);
-	PoserCB PreferredPoserCB = GetDriverByConfig(ctx, "Poser", "poser", "MPFIT");
+	PoserCB PreferredPoserCB = (PoserCB)GetDriverByConfig(ctx, "Poser", "poser", "MPFIT");
 	obj->PoserFn = PreferredPoserCB;
 
 	return 0;
@@ -638,7 +639,7 @@ void survive_remove_object(SurviveContext *ctx, SurviveObject *obj) {
 	}
 
 	if (obj_idx == ctx->objs_ct) {
-		SV_INFO("Warning: Tried to remove un-added object %p(%s)", obj, obj->codename);
+		SV_INFO("Warning: Tried to remove un-added object %p(%s)", (void *)obj, obj->codename);
 		return;
 	}
 
@@ -710,8 +711,8 @@ void survive_close(SurviveContext *ctx) {
 	OGDeleteSema(ctx->buttonQueue.buttonservicesem);
 
 	while ((DriverName = GetDriverNameMatching("DriverUnreg", r++))) {
-		DeviceDriver dd = GetDriver(DriverName);
-		SV_INFO("De-registering driver %s (%p)", DriverName, dd);
+		DeviceDriver dd = (DeviceDriver)GetDriver(DriverName);
+		SV_INFO("De-registering driver %s", DriverName);
 		r = dd(ctx);
 		SV_INFO("Driver %s reports status %d", DriverName, r);
 	}

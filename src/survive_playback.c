@@ -54,17 +54,17 @@ ssize_t gzgetdelim(char **RESTRICT_KEYWORD lineptr, size_t *RESTRICT_KEYWORD n, 
 				   gzFile RESTRICT_KEYWORD stream);
 ssize_t gzgetline(char **RESTRICT_KEYWORD lineptr, size_t *RESTRICT_KEYWORD n, gzFile RESTRICT_KEYWORD stream);
 
-STATIC_CONFIG_ITEM(PLAYBACK_REPLAY_POSE, "playback-replay-pose", 'i', "Whether or not to output pose", 0);
-STATIC_CONFIG_ITEM(RECORD, "record", 's', "File to record to if you wish to make a recording.", "");
-STATIC_CONFIG_ITEM(RECORD_STDOUT, "record-stdout", 'i', "Whether or not to dump recording data to stdout", 0);
-STATIC_CONFIG_ITEM(PLAYBACK, "playback", 's', "File to be used for playback if playing a recording.", 0);
+STATIC_CONFIG_ITEM(PLAYBACK_REPLAY_POSE, "playback-replay-pose", 'i', "Whether or not to output pose", 0)
+STATIC_CONFIG_ITEM(RECORD, "record", 's', "File to record to if you wish to make a recording.", "")
+STATIC_CONFIG_ITEM(RECORD_STDOUT, "record-stdout", 'i', "Whether or not to dump recording data to stdout", 0)
+STATIC_CONFIG_ITEM(PLAYBACK, "playback", 's', "File to be used for playback if playing a recording.", 0)
 STATIC_CONFIG_ITEM(PLAYBACK_FACTOR, "playback-factor", 'f',
 				   "Time factor of playback -- 1 is run at the same timing as original, 0 is run as fast as possible.",
-				   1.0f);
-STATIC_CONFIG_ITEM(PLAYBACK_RECORD_RAWLIGHT, "record-rawlight", 'i', "Whether or not to output raw light data", 1);
-STATIC_CONFIG_ITEM(PLAYBACK_RECORD_IMU, "record-imu", 'i', "Whether or not to output imu data", 1);
-STATIC_CONFIG_ITEM(PLAYBACK_RECORD_CAL_IMU, "record-cal-imu", 'i', "Whether or not to output calibrated imu data", 0);
-STATIC_CONFIG_ITEM(PLAYBACK_RECORD_ANGLE, "record-angle", 'i', "Whether or not to output angle data", 1);
+				   1.0f)
+STATIC_CONFIG_ITEM(PLAYBACK_RECORD_RAWLIGHT, "record-rawlight", 'i', "Whether or not to output raw light data", 1)
+STATIC_CONFIG_ITEM(PLAYBACK_RECORD_IMU, "record-imu", 'i', "Whether or not to output imu data", 1)
+STATIC_CONFIG_ITEM(PLAYBACK_RECORD_CAL_IMU, "record-cal-imu", 'i', "Whether or not to output calibrated imu data", 0)
+STATIC_CONFIG_ITEM(PLAYBACK_RECORD_ANGLE, "record-angle", 'i', "Whether or not to output angle data", 1)
 
 typedef struct SurviveRecordingData {
 	SurviveContext *ctx;
@@ -211,12 +211,12 @@ void survive_recording_info_process(SurviveContext *ctx, const char *fault) {
 }
 
 // survive_channel channel, int sensor_id, survive_timecode timecode, int8_t plane, FLT angle
-#define SWEEP_ANGLE_SCANF "%s B %hhu %u %u %hhu " FLT_sformat "\n"
-#define SWEEP_ANGLE_PRINTF "%s B %hhu %u %u %hhu " FLT_format "\n"
+#define SWEEP_ANGLE_SCANF "%s B %hhu %d %u %hhd " FLT_sformat "\n"
+#define SWEEP_ANGLE_PRINTF "%s B %hhu %u %u %hhd " FLT_format "\n"
 #define SWEEP_ANGLE_SCANF_ARGS dev, &channel, &sensor_id, &timecode, &plane, &angle
 #define SWEEP_ANGLE_PRINTF_ARGS dev, channel, sensor_id, timecode, plane, angle
 
-#define SWEEP_SCANF "%s W %hhu %u %u %hhu\n"
+#define SWEEP_SCANF "%s W %hhu %d %u %hhu\n"
 #define SWEEP_PRINTF SWEEP_SCANF
 #define SWEEP_SCANF_ARGS dev, &channel, &sensor_id, &timecode, &flag
 #define SWEEP_PRINTF_ARGS dev, channel, sensor_id, timecode, flag
@@ -236,7 +236,7 @@ void survive_recording_sync_process(SurviveObject *so, survive_channel channel, 
 	}
 
 	write_to_output(recordingData, SYNC_PRINTF, SYNC_PRINTF_ARGS);
-};
+}
 
 void survive_recording_sweep_angle_process(SurviveObject *so, survive_channel channel, int sensor_id,
 										   survive_timecode timecode, int8_t plane, FLT angle) {
@@ -554,7 +554,7 @@ static int parse_and_run_lightcode(const char *line, SurvivePlaybackData *driver
 	uint32_t lh = 0;
 	SurviveContext *ctx = driver->ctx;
 
-	int rr = sscanf(line, "%8s %8s %8s %u %d %d %d %u %u\n", dev, lhn, axn, &sensor_id, &acode, &timeinsweep, &timecode,
+	int rr = sscanf(line, "%8s %8s %8s %d %d %d %u %u %u\n", dev, lhn, axn, &sensor_id, &acode, &timeinsweep, &timecode,
 					&length, &lh);
 
 	if (rr != 9) {
@@ -863,7 +863,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	return 0;
 }
 
-REGISTER_LINKTIME(DriverRegPlayback);
+REGISTER_LINKTIME(DriverRegPlayback)
 
 #define _GETDELIM_GROWBY 128 /* amount to grow line buffer by */
 #define _GETDELIM_MINLEN 4   /* minimum line buffer size */

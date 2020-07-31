@@ -464,4 +464,4 @@ void DisambiguatorTurvey(SurviveObject *so, LightcapElement *le) {
 	handle_lightcap2_sweep(so, le);
 }
 
-REGISTER_LINKTIME(DisambiguatorTurvey);
+REGISTER_LINKTIME(DisambiguatorTurvey)

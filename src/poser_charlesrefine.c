@@ -551,4 +551,4 @@ int PoserCharlesRefine(SurviveObject *so, PoserData *pd) {
 	return -1;
 }
 
-REGISTER_LINKTIME(PoserCharlesRefine);
+REGISTER_LINKTIME(PoserCharlesRefine)

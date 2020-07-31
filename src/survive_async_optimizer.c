@@ -1,7 +1,7 @@
 #include "survive_async_optimizer.h"
 
 static void run_buffer(survive_async_optimizer *self, uint8_t idx) {
-	struct mp_result_struct results = {};
+	struct mp_result_struct results = {0};
 	OGUnlockMutex(self->active_buffer_lock);
 	self->active_buffer = idx;
 	self->completed++;

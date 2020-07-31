@@ -104,6 +104,8 @@ typedef enum {
 	SURVIVE_LOG_LEVEL_INFO = 2,
 } SurviveLogLevel;
 
+typedef void (*survive_driver_fn)();
+
 typedef int (*printf_process_func)(SurviveContext *ctx, const char *format, ...);
 typedef void (*log_process_func)(SurviveContext *ctx, SurviveLogLevel logLevel, const char *fault);
 typedef void (*report_error_process_func)(SurviveContext *ctx, SurviveError error);

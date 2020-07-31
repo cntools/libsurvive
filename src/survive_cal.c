@@ -27,10 +27,10 @@
 int mkdir(const char *);
 #endif
 
-
-STATIC_CONFIG_ITEM( REQ_TRACK_FOR_CAL, "requiredtrackersforcal", 's', "Which devices will be used, i.e. HMD,WM0,WM1", "" );
-STATIC_CONFIG_ITEM( ALLOW_TRACK_FOR_CAL, "allowalltrackersforcal", 'i', "Allow use of additional connected devices for calibration", 0 );
-STATIC_CONFIG_ITEM(OOTX_IGNORE_SYNC_ERROR, "ootx-ignore-sync-error", 'i', "Ignore sync errors on ootx packets", 0);
+STATIC_CONFIG_ITEM(REQ_TRACK_FOR_CAL, "requiredtrackersforcal", 's', "Which devices will be used, i.e. HMD,WM0,WM1", "")
+STATIC_CONFIG_ITEM(ALLOW_TRACK_FOR_CAL, "allowalltrackersforcal", 'i',
+				   "Allow use of additional connected devices for calibration", 0)
+STATIC_CONFIG_ITEM(OOTX_IGNORE_SYNC_ERROR, "ootx-ignore-sync-error", 'i', "Ignore sync errors on ootx packets", 0)
 
 #define PTS_BEFORE_COMMON 32
 #define NEEDED_COMMON_POINTS 10
@@ -65,7 +65,7 @@ void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 	SurviveCalData * cd = ctx->calptr;
 	int id = ct->user1;
 
-	SV_INFO( "Got OOTX packet %d %p", id, cd );
+	SV_INFO("Got OOTX packet %d %p", id, (void *)cd);
 
 	lighthouse_info_v6 v6;
 	init_lighthouse_info_v6(&v6, packet->data);

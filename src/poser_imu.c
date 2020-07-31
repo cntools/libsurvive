@@ -80,4 +80,4 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 	return -1;
 }
 
-REGISTER_LINKTIME(PoserIMU);
+REGISTER_LINKTIME(PoserIMU)

@@ -439,4 +439,4 @@ int PoserSBA(SurviveObject *so, PoserData *pd) {
 	return -1;
 }
 
-REGISTER_LINKTIME(PoserSBA);
+REGISTER_LINKTIME(PoserSBA)

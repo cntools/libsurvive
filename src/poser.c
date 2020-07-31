@@ -33,8 +33,8 @@ SURVIVE_EXPORT int32_t PoserData_size(const PoserData *poser_data) {
 }
 
 STATIC_CONFIG_ITEM(CENTER_ON_LH0, "center-on-lh0", 'i',
-				   "Alternative scheme for setting initial position; LH0 is 0, 0 looking in the +X direction", 0);
-STATIC_CONFIG_ITEM(REPORT_IN_IMU, "report-in-imu", 'i', "Debug option to output poses in IMU space.", 0);
+				   "Alternative scheme for setting initial position; LH0 is 0, 0 looking in the +X direction", 0)
+STATIC_CONFIG_ITEM(REPORT_IN_IMU, "report-in-imu", 'i', "Debug option to output poses in IMU space.", 0)
 void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world) {
 	SurviveContext *ctx = so->ctx;
 	for (int i = 0; i < 3; i++) {

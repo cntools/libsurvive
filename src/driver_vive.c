@@ -285,7 +285,7 @@ const struct DeviceInfo KnownDeviceTypes[] = {
 				MAGIC_CTOR(true, vive_magic_protocol_switch)}},
 	{0}};
 
-typedef struct SurviveUSBInterface SurviveUSBInterface;
+// typedef struct SurviveUSBInterface SurviveUSBInterface;
 typedef struct SurviveViveData SurviveViveData;
 
 const char *survive_usb_interface_str(enum USB_IF_t iface) {
@@ -789,7 +789,7 @@ void survive_vive_usb_close(SurviveViveData *sv) {
 	survive_get_ctx_lock(sv->ctx);
 }
 
-STATIC_CONFIG_ITEM(SECONDS_PER_HZ_OUTPUT, "usb-hz-output", 'i', "Seconds between outputing usb stats", -1);
+STATIC_CONFIG_ITEM(SECONDS_PER_HZ_OUTPUT, "usb-hz-output", 'i', "Seconds between outputing usb stats", -1)
 int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 	SurviveViveData *sv = v;
 	sv->read_count++;
@@ -2861,7 +2861,7 @@ int DriverRegHTCVive(SurviveContext *ctx) {
 		goto fail_gracefully;
 	}
 
-	DeviceDriver dd = GetDriver("DriverRegGatt");
+	DeviceDriver dd = (DeviceDriver)GetDriver("DriverRegGatt");
 	if (dd && (survive_config_is_set(ctx, "gatt") == 0 || survive_configi(ctx, "gatt", SC_GET, 0) == 1)) {
 		SurviveDeviceDriverReturn r = dd(ctx);
 		if (r < 0) {

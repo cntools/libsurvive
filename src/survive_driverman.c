@@ -7,17 +7,17 @@
 #include <stdio.h>
 #include <string.h>
 
-static void *Drivers[MAX_DRIVERS];
+static survive_driver_fn Drivers[MAX_DRIVERS];
 static const char *DriverNames[MAX_DRIVERS];
 static int NrDrivers;
 
-void RegisterDriver(const char *element, void *data) {
+void RegisterDriver(const char *element, survive_driver_fn data) {
 	Drivers[NrDrivers] = data;
 	DriverNames[NrDrivers] = element;
 	NrDrivers++;
 }
 
-void *GetDriver(const char *element) {
+survive_driver_fn GetDriver(const char *element) {
 	int i;
 
 	if (element == 0)
@@ -30,7 +30,7 @@ void *GetDriver(const char *element) {
 	return 0;
 }
 
-void *GetDriverWithPrefix(const char *prefix, const char *name) {
+survive_driver_fn GetDriverWithPrefix(const char *prefix, const char *name) {
 	const char *DriverName = 0;
 	const char *picked = 0;
 	int i = 0;
@@ -38,7 +38,7 @@ void *GetDriverWithPrefix(const char *prefix, const char *name) {
 	int prefixLen = strlen(prefix);
 
 	while ((DriverName = GetDriverNameMatching(prefix, i++))) {
-		void *p = GetDriver(DriverName);
+		survive_driver_fn p = GetDriver(DriverName);
 
 		bool match = strcmp(DriverName, name) == 0 || (strcmp(DriverName + prefixLen, name) == 0);
 		if (match) {

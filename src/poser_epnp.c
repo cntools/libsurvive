@@ -196,4 +196,4 @@ int PoserEPNP(SurviveObject *so, PoserData *pd) {
 	return -1;
 }
 
-REGISTER_LINKTIME(PoserEPNP);
+REGISTER_LINKTIME(PoserEPNP)

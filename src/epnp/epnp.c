@@ -31,6 +31,8 @@
 #include "stdlib.h"
 #include <survive.h>
 
+#pragma GCC diagnostic ignored "-Wpedantic"
+
 void print_mat(const CvMat *M) {
 	if (!M) {
 		printf("null\n");

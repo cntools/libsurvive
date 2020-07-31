@@ -159,4 +159,4 @@ int DriverRegUDP(SurviveContext *ctx) {
 	return 0;
 }
 
-REGISTER_LINKTIME(DriverRegUDP);
+REGISTER_LINKTIME(DriverRegUDP)

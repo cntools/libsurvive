@@ -7,6 +7,8 @@
 #include <survive.h>
 #include <survive_reproject.h>
 
+#pragma GCC diagnostic ignored "-Wpedantic"
+
 typedef struct {
 	SurviveObject *so;
 	uint32_t required_meas;
@@ -16,8 +18,6 @@ typedef struct {
 
 	bc_svd bc;
 } PoserDataSVD;
-
-typedef FLT LinmathPoint2d[2];
 
 static void survive_fill_m(void *user, double *eq, int axis, FLT angle) {
 	SurviveObject *so = user;
@@ -336,4 +336,4 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 	return 0;
 }
 
-REGISTER_LINKTIME(PoserBaryCentricSVD);
+REGISTER_LINKTIME(PoserBaryCentricSVD)

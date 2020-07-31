@@ -21,12 +21,12 @@
 #include <pcap/usb.h>
 #include <zlib.h>
 
-STATIC_CONFIG_ITEM(USBMON_RECORD, "usbmon-record", 's', "File to save .pcap to.", 0);
-STATIC_CONFIG_ITEM(USBMON_PLAYBACK, "usbmon-playback", 's', "File to replay .pcap from.", 0);
-STATIC_CONFIG_ITEM(USBMON_RECORD_ALL, "usbmon-record-all", 'i', "Whether or not to record all usb traffic", 0);
-STATIC_CONFIG_ITEM(USBMON_OUTPUT_EVERYTHING, "usbmon-output-all", 'i', "Whether or not to log all usb traffic", 0);
-STATIC_CONFIG_ITEM(USBMON_OUTPUT, "usbmon-output", 'i', "Whether or not to log any generic usb traffic", 0);
-STATIC_CONFIG_ITEM(USBMON_ONLY_RECORD, "usbmon-only-record", 'i', "Record only; don't forward to libsurvive", 0);
+STATIC_CONFIG_ITEM(USBMON_RECORD, "usbmon-record", 's', "File to save .pcap to.", 0)
+STATIC_CONFIG_ITEM(USBMON_PLAYBACK, "usbmon-playback", 's', "File to replay .pcap from.", 0)
+STATIC_CONFIG_ITEM(USBMON_RECORD_ALL, "usbmon-record-all", 'i', "Whether or not to record all usb traffic", 0)
+STATIC_CONFIG_ITEM(USBMON_OUTPUT_EVERYTHING, "usbmon-output-all", 'i', "Whether or not to log all usb traffic", 0)
+STATIC_CONFIG_ITEM(USBMON_OUTPUT, "usbmon-output", 'i', "Whether or not to log any generic usb traffic", 0)
+STATIC_CONFIG_ITEM(USBMON_ONLY_RECORD, "usbmon-only-record", 'i', "Record only; don't forward to libsurvive", 0)
 
 typedef struct vive_device_t {
 	uint16_t vid, pid;
@@ -61,7 +61,7 @@ struct vive_device_t devices[] = {{.vid = 0x28de, .pid = 0x2000, .codename = "HM
 								  {.vid = 0x28de, .pid = 0x2300, .codename = "T2", .def_config = "T2%d_config.json"},
 								  {.vid = 0x28de, .pid = 0x2012, .codename = "WW", .def_config = "WW%d_config.json"},
 								  {.vid = 0x28de, .pid = 0x2102, .codename = "KN", .def_config = "KN%d_config.json"},
-								  {}};
+								  {0}};
 
 static const int DEVICES_CNT = sizeof(devices) / sizeof(vive_device_t);
 
@@ -210,7 +210,7 @@ static int usbmon_close(struct SurviveContext *ctx, void *_driver) {
 	SV_VERBOSE(100, "Waiting on pcap thread...");
 	OGJoinThread(driver->pcap_thread);
 
-	struct pcap_stat stats = {};
+	struct pcap_stat stats = {0};
 	pcap_stats(driver->pcap, &stats);
 
 	SV_INFO("usbmon saw %u/%u packets, %u dropped, %u dropped in driver in %f seconds", (uint32_t)driver->packet_cnt,
@@ -233,7 +233,7 @@ static usb_info_t *get_usb_info_from_file(const char *fname) {
 	FILE *f = fopen(fname, "r");
 	while (!feof(f)) {
 		char name[128];
-		if (fscanf(f, "%hd %hd %d %d %s ", &rtn[count].vid, &rtn[count].pid, &rtn[count].bus_id, &rtn[count].dev_id,
+		if (fscanf(f, "%hu %hu %d %d %s ", &rtn[count].vid, &rtn[count].pid, &rtn[count].bus_id, &rtn[count].dev_id,
 				   name) == 5) {
 			count++;
 		}
@@ -308,7 +308,7 @@ static size_t fill_device_inst(SurviveContext *ctx, vive_device_inst_t *insts, c
 	}
 
 	return rtn;
-};
+}
 
 static int setup_usb_devices(SurviveDriverUSBMon *sp) {
 	SurviveContext *ctx = sp->ctx;
@@ -357,7 +357,7 @@ static int setup_usb_devices(SurviveDriverUSBMon *sp) {
 				survive_vive_register_driver(so, sp->usb_devices[i].device->vid, sp->usb_devices[i].device->pid);
 			survive_add_object(ctx, so);
 		}
-		char filter[256] = {};
+		char filter[256] = {0};
 		sprintf(filter, "(usb.bus_id = %d and usb.device_address = %d)", sp->usb_devices[i].bus_id,
 				sp->usb_devices[i].dev_id);
 
@@ -651,7 +651,7 @@ static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
 
 	if (usbmon_record && *usbmon_record) {
 		FILE *fd = open_playback(usbmon_record, "w");
-		SV_INFO("Opening %s for usb recording (%p)", usbmon_record, fd);
+		SV_INFO("Opening %s for usb recording (%p)", usbmon_record, (void *)fd);
 		sp->pcapDumper = pcap_dump_fopen(sp->pcap, fd);
 		sp->record_all = survive_configi(ctx, "usbmon-record-all", SC_GET, 0);
 		if (sp->record_all) {
@@ -675,10 +675,10 @@ static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
 }
 
 int DriverRegUSBMon(SurviveContext *ctx) { return DriverRegUSBMon_(ctx, 0); }
-REGISTER_LINKTIME(DriverRegUSBMon);
+REGISTER_LINKTIME(DriverRegUSBMon)
 
 int DriverRegUSBMon_Record(SurviveContext *ctx) { return DriverRegUSBMon_(ctx, 1); }
-REGISTER_LINKTIME(DriverRegUSBMon_Record);
+REGISTER_LINKTIME(DriverRegUSBMon_Record)
 
 int DriverRegUSBMon_Playback(SurviveContext *ctx) { return DriverRegUSBMon_(ctx, 2); }
-REGISTER_LINKTIME(DriverRegUSBMon_Playback);
+REGISTER_LINKTIME(DriverRegUSBMon_Playback)

@@ -13,11 +13,12 @@
 //Driver registration
 #define MAX_DRIVERS 32
 
-SURVIVE_EXPORT void * GetDriver( const char * name );
+SURVIVE_EXPORT survive_driver_fn GetDriver(const char *name);
 SURVIVE_EXPORT const char * GetDriverNameMatching( const char * prefix, int place );
-SURVIVE_EXPORT void *GetDriverWithPrefix(const char *prefix, const char *name);
+SURVIVE_EXPORT survive_driver_fn GetDriverWithPrefix(const char *prefix, const char *name);
 SURVIVE_EXPORT void   ListDrivers();
-SURVIVE_EXPORT void *GetDriverByConfig(SurviveContext *ctx, const char *name, const char *configname, const char *configdef);
+SURVIVE_EXPORT survive_driver_fn GetDriverByConfig(SurviveContext *ctx, const char *name, const char *configname,
+												   const char *configdef);
 
 void survive_load_plugins(const char *additional_plugin_dir);
 typedef double (*survive_run_time_fn)(const SurviveContext *ctx, void *user);

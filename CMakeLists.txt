@@ -5,7 +5,7 @@ option(ENABLE_WARNINGS_AS_ERRORS "Use to flag all warnings as errors" OFF)
 include(CheckIncludeFile)
 
 IF(UNIX)
-	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=gnu99 -rdynamic -Werror=incompatible-pointer-types -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces -Werror=implicit-function-declaration")
+	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=gnu99 -rdynamic -Werror=incompatible-pointer-types -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces -Werror=implicit-function-declaration -Wpedantic")
 	if(ENABLE_WARNINGS_AS_ERRORS)
 		SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror")
 	endif()
@@ -118,8 +118,7 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
   ./src/survive_reproject.c
   ./src/survive_reproject.generated.h
   ./src/survive_sensor_activations.c
-  ./src/survive_usb.c
-  ./src/survive_kalman.c
+		./src/survive_kalman.c
   ./src/barycentric_svd/barycentric_svd.c
   ./src/barycentric_svd/barycentric_svd.h
   ./src/survive_reproject_gen2.c

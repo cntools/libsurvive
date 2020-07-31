@@ -50,6 +50,4 @@ int PoserDummy( SurviveObject * so, PoserData * pd )
 	return 0;
 }
 
-
-REGISTER_LINKTIME( PoserDummy );
-
+REGISTER_LINKTIME(PoserDummy)

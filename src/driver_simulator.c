@@ -16,8 +16,8 @@
 #include <survive.h>
 #include <survive_reproject.h>
 
-STATIC_CONFIG_ITEM(Simulator_DRIVER_ENABLE, "simulator", 'i', "Load a Simulator driver for testing.", 0);
-STATIC_CONFIG_ITEM(Simulator_TIME, "simulator-time", 'f', "Seconds to run simulator for.", 0.0);
+STATIC_CONFIG_ITEM(Simulator_DRIVER_ENABLE, "simulator", 'i', "Load a Simulator driver for testing.", 0)
+STATIC_CONFIG_ITEM(Simulator_TIME, "simulator-time", 'f', "Seconds to run simulator for.", 0.0)
 
 struct SurviveDriverSimulator {
 	int lh_version;
@@ -360,4 +360,4 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	return 0;
 }
 
-REGISTER_LINKTIME(DriverRegSimulator);
+REGISTER_LINKTIME(DriverRegSimulator)

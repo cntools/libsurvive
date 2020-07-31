@@ -90,6 +90,7 @@ static void *dynamic_pointer(const ElfW(Addr) addr, const ElfW(Addr) base, const
 static int callback(struct dl_phdr_info *info,
                size_t size, void *data)
 {
+#pragma GCC diagnostic ignored "-Wpedantic"
 	SymEnumeratorCallback cb = (SymEnumeratorCallback)data;
 	const ElfW(Addr)                 base = info->dlpi_addr;
 	const ElfW(Phdr) *const          header = info->dlpi_phdr;

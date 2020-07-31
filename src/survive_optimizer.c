@@ -14,17 +14,17 @@
 #include "survive_default_devices.h"
 #include <malloc.h>
 
-STATIC_CONFIG_ITEM(OPTIMIZER_FTOL, "optimizer-ftol", 'f', "Relative chi-square convergence criterium", 0.);
-STATIC_CONFIG_ITEM(OPTIMIZER_XTOL, "optimizer-xtol", 'f', "Relative parameter convergence criterium", 0.0001);
-STATIC_CONFIG_ITEM(OPTIMIZER_GTOL, "optimizer-gtol", 'f', "Orthogonality convergence criterium", 0.);
-STATIC_CONFIG_ITEM(OPTIMIZER_COVTOL, "optimizer-covtol", 'f', "Range tolerance for covariance calculation", 0.);
-STATIC_CONFIG_ITEM(OPTIMIZER_EPSFCN, "optimizer-epsfcn", 'f', "Finite derivative step size", 0.);
-STATIC_CONFIG_ITEM(OPTIMIZER_STEPFACTOR, "optimizer-stepfactor", 'f', "Initial step bound", 0.);
-STATIC_CONFIG_ITEM(OPTIMIZER_DOUSERSCALE, "optimizer-douserscale", 'i', "Scale variables by user values", 0);
-STATIC_CONFIG_ITEM(OPTIMIZER_MAXITER, "optimizer-maxiter", 'i', "Maximum iterations", 0);
-STATIC_CONFIG_ITEM(OPTIMIZER_MAXFEV, "optimizer-maxfev", 'i', "Maximum function evals", 0);
-STATIC_CONFIG_ITEM(OPTIMIZER_NORMTOL, "optimizer-normtol", 'f', "Convergence for norm", 0.00005);
-STATIC_CONFIG_ITEM(OPTIMIZER_NPRINT, "optimizer-nprint", 'i', "", 0);
+STATIC_CONFIG_ITEM(OPTIMIZER_FTOL, "optimizer-ftol", 'f', "Relative chi-square convergence criterium", 0.)
+STATIC_CONFIG_ITEM(OPTIMIZER_XTOL, "optimizer-xtol", 'f', "Relative parameter convergence criterium", 0.0001)
+STATIC_CONFIG_ITEM(OPTIMIZER_GTOL, "optimizer-gtol", 'f', "Orthogonality convergence criterium", 0.)
+STATIC_CONFIG_ITEM(OPTIMIZER_COVTOL, "optimizer-covtol", 'f', "Range tolerance for covariance calculation", 0.)
+STATIC_CONFIG_ITEM(OPTIMIZER_EPSFCN, "optimizer-epsfcn", 'f', "Finite derivative step size", 0.)
+STATIC_CONFIG_ITEM(OPTIMIZER_STEPFACTOR, "optimizer-stepfactor", 'f', "Initial step bound", 0.)
+STATIC_CONFIG_ITEM(OPTIMIZER_DOUSERSCALE, "optimizer-douserscale", 'i', "Scale variables by user values", 0)
+STATIC_CONFIG_ITEM(OPTIMIZER_MAXITER, "optimizer-maxiter", 'i', "Maximum iterations", 0)
+STATIC_CONFIG_ITEM(OPTIMIZER_MAXFEV, "optimizer-maxfev", 'i', "Maximum function evals", 0)
+STATIC_CONFIG_ITEM(OPTIMIZER_NORMTOL, "optimizer-normtol", 'f', "Convergence for norm", 0.00005)
+STATIC_CONFIG_ITEM(OPTIMIZER_NPRINT, "optimizer-nprint", 'i', "", 0)
 
 static char *object_parameter_names[] = {"Pose x",	 "Pose y",	 "Pose z",	"Pose Rot w",
 										 "Pose Rot x", "Pose Rot y", "Pose Rot z"};

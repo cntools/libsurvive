@@ -205,4 +205,4 @@ void DisambiguatorCharles(SurviveObject *so, LightcapElement *le) {
 	}
 }
 
-REGISTER_LINKTIME(DisambiguatorCharles);
+REGISTER_LINKTIME(DisambiguatorCharles)

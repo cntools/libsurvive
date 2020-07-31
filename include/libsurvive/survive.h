@@ -113,7 +113,7 @@ struct SurviveObject {
 	int16_t axis3;
 	int8_t charge;
 	int8_t charging : 1;
-	int8_t ison : 1;
+	uint8_t ison : 1;
 	int8_t additional_flags : 6;
 
 	// Pose Information, also "poser" field.
@@ -443,10 +443,10 @@ SURVIVE_EXPORT void survive_default_new_object_process(SurviveObject *so);
 SURVIVE_EXPORT double survive_run_time(const SurviveContext *ctx);
 ////////////////////// Survive Drivers ////////////////////////////
 
-SURVIVE_EXPORT void RegisterDriver(const char *name, void *data);
+SURVIVE_EXPORT void RegisterDriver(const char *name, survive_driver_fn data);
 
 #define REGISTER_LINKTIME(func)                                                                                        \
-	SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##func() { RegisterDriver(#func, (void *)&func); }
+	SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##func() { RegisterDriver(#func, (survive_driver_fn)&func); }
 
 ///////////////////////// General stuff for writing drivers ///////
 

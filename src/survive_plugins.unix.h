@@ -11,10 +11,13 @@
 #include <unistd.h>
 
 #include "assert.h"
+
+#pragma GCC diagnostic ignored "-Wpedantic"
+
 static const char* plugin_ext() { return ".so"; }
 
 static const char *get_so_filename() {
-	static char so_path[1024] = {};
+	static char so_path[1024] = {0};
 	if (so_path[0] == 0) {
 
 		Dl_info dl_info;

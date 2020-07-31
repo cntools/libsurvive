@@ -43,7 +43,7 @@ static inline int survive_test_assert() { return -1; }
 
 #define TEST(suite, test_name)                                                                                         \
 	int Test##suite##test_name();                                                                                      \
-	REGISTER_LINKTIME(Test##suite##test_name);                                                                         \
+	REGISTER_LINKTIME(Test##suite##test_name)                                                                          \
 	int Test##suite##test_name()
 
 typedef int (*TestCase)();

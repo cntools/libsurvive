@@ -126,8 +126,6 @@ LINMATH_EXPORT void angleaxisfrom2vect(FLT *angle, FLT *axis, FLT *src, FLT *des
 LINMATH_EXPORT void axisanglefromquat(FLT *angle, FLT *axis, LinmathQuat quat);
 // Quaternion things...
 
-typedef FLT LinmathEulerAngle[3];
-
 LINMATH_EXPORT FLT quatdist(const LinmathQuat q1, const LinmathQuat q2);
 LINMATH_EXPORT FLT quatdifference(const LinmathQuat q1, const LinmathQuat q2);
 LINMATH_EXPORT void quatset(LinmathQuat q, FLT w, FLT x, FLT y, FLT z);

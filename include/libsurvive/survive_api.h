@@ -153,9 +153,7 @@ SURVIVE_EXPORT void survive_simple_unlock(SurviveSimpleContext *actx);
 
 struct SurviveSimpleEvent {
 	enum SurviveSimpleEventType event_type;
-	union {
-		SurviveSimpleButtonEvent SURVIVE_ENCAPSULATE_DECORATOR(button_event);
-	};
+	SurviveSimpleButtonEvent SURVIVE_ENCAPSULATE_DECORATOR(button_event);
 };
 
 #ifdef __cplusplus

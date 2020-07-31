@@ -184,7 +184,7 @@ LDFLAGS_PLUGINS=$(LDFLAGS) -L./lib/plugins
 ./lib/plugins/poser_sba.so: ./src/poser_sba.c $(SBA)
 	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS_PLUGINS)
 
-./lib/plugins/driver_vive.so: ./src/driver_vive.c ./src/survive_usb.c
+./lib/plugins/driver_vive.so: ./src/driver_vive.c
 	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS_PLUGINS)
 
 ./lib/plugins/poser_epnp.so: ./src/poser_epnp.c src/epnp/epnp.c ./redist/minimal_opencv.c

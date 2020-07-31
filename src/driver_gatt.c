@@ -9,8 +9,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-STATIC_CONFIG_ITEM(GATT_ENABLE, "gatt", 'i', "Enable GATT communication to basestation", 0);
-STATIC_CONFIG_ITEM(GATT_POWER_DOWN, "gatt-sleep-at-exit", 'i', "Put basestations to sleep at exit", 0);
+STATIC_CONFIG_ITEM(GATT_ENABLE, "gatt", 'i', "Enable GATT communication to basestation", 0)
+STATIC_CONFIG_ITEM(GATT_POWER_DOWN, "gatt-sleep-at-exit", 'i', "Put basestations to sleep at exit", 0)
 
 struct gatt_info;
 struct connection_t {
@@ -227,4 +227,4 @@ int DriverRegGatt(SurviveContext *ctx) {
 	survive_add_driver(ctx, driver, NULL, gatt_close, NULL);
 	return 0;
 }
-REGISTER_LINKTIME(DriverRegGatt);
+REGISTER_LINKTIME(DriverRegGatt)

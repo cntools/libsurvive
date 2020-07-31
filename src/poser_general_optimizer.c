@@ -6,19 +6,19 @@
 #include <malloc.h>
 #include <stdio.h>
 
-STATIC_CONFIG_ITEM(CONFIG_MAX_ERROR, "max-error", 'f', "Maximum error permitted by poser_general_optimizer.", 1.0);
+STATIC_CONFIG_ITEM(CONFIG_MAX_ERROR, "max-error", 'f', "Maximum error permitted by poser_general_optimizer.", 1.0)
 STATIC_CONFIG_ITEM(CONFIG_MAX_CAL_ERROR, "max-cal-error", 'f', "Maximum error permitted by poser_general_optimizer.",
-				   0.001);
-STATIC_CONFIG_ITEM(CONFIG_FAIL_TO_RESET, "failures-to-reset", 'i', "Failures needed before seed poser is re-run.", 1);
+				   0.001)
+STATIC_CONFIG_ITEM(CONFIG_FAIL_TO_RESET, "failures-to-reset", 'i', "Failures needed before seed poser is re-run.", 1)
 STATIC_CONFIG_ITEM(CONFIG_SUC_TO_RESET, "successes-to-reset", 'i',
-				   "Reset periodically even if there were no failures. Set to -1 to disable.", -1);
-STATIC_CONFIG_ITEM(CONFIG_SEED_POSER, "seed-poser", 's', "Poser to be used to seed optimizer.", "BaryCentricSVD");
+				   "Reset periodically even if there were no failures. Set to -1 to disable.", -1)
+STATIC_CONFIG_ITEM(CONFIG_SEED_POSER, "seed-poser", 's', "Poser to be used to seed optimizer.", "BaryCentricSVD")
 
 STATIC_CONFIG_ITEM(CONFIG_REQUIRED_MEAS, "required-meas", 'i',
-				   "Minimum number of measurements needed to try and solve for position", 8);
+				   "Minimum number of measurements needed to try and solve for position", 8)
 STATIC_CONFIG_ITEM(CONFIG_TIME_WINDOW, "time-window", 'i',
 				   "The length, in ticks, between sensor inputs to treat them as one snapshot",
-				   (int)SurviveSensorActivations_default_tolerance * 2);
+				   (int)SurviveSensorActivations_default_tolerance * 2)
 
 void general_optimizer_data_init(GeneralOptimizerData *d, SurviveObject *so) {
 	memset(d, 0, sizeof(*d));
@@ -37,7 +37,7 @@ void general_optimizer_data_init(GeneralOptimizerData *d, SurviveObject *so) {
 	SV_VERBOSE(110, "\tmax-error: %f", d->max_error);
 	SV_VERBOSE(110, "\tsuccesses-to-reset: %d", d->successes_to_reset);
 	SV_VERBOSE(110, "\tfailures-to-reset: %d", d->failures_to_reset);
-	SV_VERBOSE(110, "\tseed-poser: %s(%p)", subposer, d->seed_poser);
+	SV_VERBOSE(110, "\tseed-poser: %s", subposer);
 }
 void general_optimizer_data_record_failure(GeneralOptimizerData *d) {
 	d->stats.error_failures++;
