@@ -247,7 +247,8 @@ void *KBThread(void *user) {
 
 	while (keepRunning) {
 		int c = tolower(getchar());
-		system("clear");
+		int err_clear = system("clear");
+		(void)err_clear;
 
 		if (c == 'l') {
 			inc_lh(ctx);
@@ -298,7 +299,8 @@ int main(int argc, char **argv) {
 	survive_install_light_fn(ctx, light_fn);
 	survive_startup(ctx);
 
-	system("clear");
+	int clear_err = system("clear");
+	(void)clear_err;
 
 	og_thread_t kbThread = OGCreateThread(KBThread, ctx);
 

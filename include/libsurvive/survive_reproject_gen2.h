@@ -36,14 +36,6 @@ SURVIVE_EXPORT void survive_reproject_gen2(const SurviveContext *ctx, int lighth
 										 const LinmathVec3d ptInObj, const SurvivePose *world2lh,
 										 const BaseStationCal *bcal);
 
-SURVIVE_EXPORT void survive_reproject_full_x_jac_obj_pose_gen2(SurviveAngleReading out, const SurvivePose *obj2world,
-										   const LinmathVec3d ptInObj, const SurvivePose *world2lh,
-										   const BaseStationCal *bcal);
-
-SURVIVE_EXPORT void survive_reproject_full_y_jac_obj_pose_gen2(SurviveAngleReading out, const SurvivePose *obj2world,
-										   const LinmathVec3d ptInObj, const SurvivePose *world2lh,
-										   const BaseStationCal *bcal);
-
   SURVIVE_EXPORT void survive_reproject_full_gen2(const BaseStationCal *bcal, const SurvivePose *world2lh, const SurvivePose *obj2world,
 					     const LinmathVec3d ptInObj, SurviveAngleReading out);
 

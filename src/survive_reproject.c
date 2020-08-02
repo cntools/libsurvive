@@ -8,8 +8,7 @@
 #pragma GCC push_options
 #pragma GCC optimize("Ofast")
 
-#include "survive_reproject.axisangle.generated.h"
-#include "survive_reproject.generated.h"
+#include "generated/survive_reproject.generated.h"
 
 static inline FLT survive_reproject_axis(const BaseStationCal *bcal, FLT axis_value, FLT other_axis_value, FLT Z,
 										 bool invert_axis_value) {
@@ -65,71 +64,6 @@ void survive_reproject_full(const BaseStationCal *bcal, const SurvivePose *world
 	survive_reproject_xy(bcal, t_pt, out);
 }
 
-#define EXPAND_BCAL()                                                                                                  \
-	FLT phase_0 = bcal[0].phase;                                                                                       \
-	FLT phase_1 = bcal[1].phase;                                                                                       \
-	FLT tilt_0 = bcal[0].tilt;                                                                                         \
-	FLT tilt_1 = bcal[1].tilt;                                                                                         \
-	FLT curve_0 = bcal[0].curve;                                                                                       \
-	FLT curve_1 = bcal[1].curve;                                                                                       \
-	FLT gibPhase_0 = bcal[0].gibpha;                                                                                   \
-	FLT gibPhase_1 = bcal[1].gibpha;                                                                                   \
-	FLT gibMag_0 = bcal[0].gibmag;                                                                                     \
-	FLT gibMag_1 = bcal[1].gibmag;                                                                                     \
-	FLT ogeePhase_0 = bcal[0].ogeephase;                                                                               \
-	FLT ogeePhase_1 = bcal[1].ogeephase;                                                                               \
-	FLT ogeeMag_0 = bcal[0].ogeemag;                                                                                   \
-	FLT ogeeMag_1 = bcal[1].ogeemag;
-
-void survive_reproject_full_x_jac_obj_pose(SurviveAngleReading out, const SurvivePose *obj_pose, const double *obj_pt,
-										   const SurvivePose *world2lh, const BaseStationCal *bcal) {
-	EXPAND_BCAL();
-
-	gen_reproject_axis_x_jac_obj_p(out, obj_pose->Pos, obj_pt, world2lh->Pos, phase_0, tilt_0, curve_0, gibPhase_0,
-								   gibMag_0);
-}
-
-void survive_reproject_full_y_jac_obj_pose(SurviveAngleReading out, const SurvivePose *obj_pose, const double *obj_pt,
-										   const SurvivePose *world2lh, const BaseStationCal *bcal) {
-	EXPAND_BCAL();
-
-	gen_reproject_axis_y_jac_obj_p(out, obj_pose->Pos, obj_pt, world2lh->Pos, phase_1, tilt_1, curve_1, gibPhase_1,
-								   gibMag_1);
-}
-
-void survive_reproject_full_x_jac_lh_pose(SurviveAngleReading out, const SurvivePose *obj_pose, const double *obj_pt,
-										  const SurvivePose *world2lh, const BaseStationCal *bcal) {
-	EXPAND_BCAL();
-
-	gen_reproject_axis_x_jac_lh_p(out, obj_pose->Pos, obj_pt, world2lh->Pos, phase_0, tilt_0, curve_0, gibPhase_0,
-								  gibMag_0);
-}
-
-void survive_reproject_full_y_jac_lh_pose(SurviveAngleReading out, const SurvivePose *obj_pose, const double *obj_pt,
-										  const SurvivePose *world2lh, const BaseStationCal *bcal) {
-	EXPAND_BCAL();
-
-	gen_reproject_axis_y_jac_lh_p(out, obj_pose->Pos, obj_pt, world2lh->Pos, phase_1, tilt_1, curve_1, gibPhase_1,
-								  gibMag_1);
-}
-
-void survive_reproject_full_jac_obj_pose(SurviveAngleReading out, const SurvivePose *obj_pose,
-										 const LinmathVec3d obj_pt, const SurvivePose *world2lh,
-										 const BaseStationCal *bcal) {
-	EXPAND_BCAL();
-
-	gen_reproject_jac_obj_p(out, obj_pose->Pos, obj_pt, world2lh->Pos, phase_0, phase_1, tilt_0, tilt_1, curve_0,
-							curve_1, gibPhase_0, gibPhase_1, gibMag_0, gibMag_1);
-}
-
-void survive_reproject_full_jac_lh_pose(SurviveAngleReading out, const SurvivePose *obj_pose, const LinmathVec3d obj_pt,
-										const SurvivePose *world2lh, const BaseStationCal *bcal) {
-	EXPAND_BCAL();
-
-	gen_reproject_jac_lh_p(out, obj_pose->Pos, obj_pt, world2lh->Pos, phase_0, phase_1, tilt_0, tilt_1, curve_0,
-						   curve_1, gibPhase_0, gibPhase_1, gibMag_0, gibMag_1);
-}
-
 void survive_reproject_from_pose_with_bcal(const BaseStationCal *bcal, const SurvivePose *world2lh,
 										   LinmathVec3d const ptInWorld, SurviveAngleReading out) {
 	LinmathPoint3d ptInLh;
@@ -158,9 +92,8 @@ void survive_apply_bsd_calibration(const SurviveContext *ctx, int lh, const FLT 
 
 const survive_reproject_model_t SURVIVE_EXPORT survive_reproject_model = {
 	.reprojectAxisFn = {survive_reproject_axis_x, survive_reproject_axis_y},
-	.reprojectAxisJacobFn = {survive_reproject_full_x_jac_obj_pose, survive_reproject_full_y_jac_obj_pose},
+	.reprojectAxisJacobFn = {gen_reproject_axis_x_jac_obj_p, gen_reproject_axis_y_jac_obj_p},
 	.reprojectXY = survive_reproject_xy,
-	.reprojectFullJacObjPose = survive_reproject_full_jac_obj_pose,
-	.reprojectFullJacLhPose = survive_reproject_full_jac_lh_pose,
-	.reprojectAxisJacobLhPoseFn = {survive_reproject_full_x_jac_lh_pose, survive_reproject_full_y_jac_lh_pose},
-};
+	.reprojectFullJacObjPose = gen_reproject_jac_obj_p,
+	.reprojectFullJacLhPose = gen_reproject_jac_lh_p,
+	.reprojectAxisJacobLhPoseFn = {gen_reproject_axis_x_jac_lh_p, gen_reproject_axis_y_jac_lh_p}};

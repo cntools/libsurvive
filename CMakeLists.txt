@@ -116,7 +116,7 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
   ./src/survive_process.c
   ./src/survive_process_gen2.c
   ./src/survive_reproject.c
-  ./src/survive_reproject.generated.h
+		src/generated/survive_reproject.generated.h
   ./src/survive_sensor_activations.c
 		./src/survive_kalman.c
   ./src/barycentric_svd/barycentric_svd.c
@@ -157,10 +157,6 @@ if(BUILD_GATT_SUPPORT)
 	set(driver_gatt_ADDITIONAL_LIBS gattlib)
 endif()
 
-IF(USE_LAPACKE)
-	LIST(APPEND PLUGINS poser_sba)
-ENDIF()
-
 IF(NOT WIN32)
   find_library(PCAP_LIBRARY pcap)
   if(PCAP_LIBRARY)
@@ -175,7 +171,6 @@ if(UNIX)
 	list(APPEND PLUGINS driver_udp)
 endif()
 
-set(poser_sba_ADDITIONAL_LIBS sba)
 set(poser_epnp_ADDITIONAL_SRCS src/epnp/epnp.c)
 set(poser_barycentric_svd_ADDITIONAL_SRCS src/barycentric_svd/barycentric_svd.c )
 

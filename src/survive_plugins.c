@@ -148,6 +148,8 @@ void survive_load_plugins(const char *plugin_dir) {
 			void *handle = survive_load_plugin(plugin_list.data[i]);
 			assert(handle == false);
 			fprintf(stderr, "Error loading %s: %s\n", plugin_list.data[i], survive_load_plugin_error());
+			free(plugin_list.data[i]);
+			plugin_list.data[i] = 0;
 		}
 	}
 

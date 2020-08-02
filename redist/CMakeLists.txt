@@ -1,19 +1,3 @@
-
-if(USE_LAPACKE)
-	add_library(sba ./sba/sba_levmar_wrap.c
-			./sba/sba_chkjac.c
-			./sba/sba_lapack.c
-			./sba/sba_levmar.c
-			./sba/sba_crsm.c
-			)
-	set_target_properties(sba PROPERTIES FOLDER "libraries")
-	
-	IF(NOT WIN32)
-		target_link_libraries(sba lapacke lapack cblas )
-	ENDIF()
-
-ENDIF()
-
 set(CNGFX_SRCS ./CNFG3D.c ./CNFGFunctions.c)
 IF(UNIX)
   check_include_file("X11/Xlib.h" HAVE_X11_H)
