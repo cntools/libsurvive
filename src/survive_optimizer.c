@@ -430,6 +430,24 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 		optimizer->parameters_info[i * 7 + 6].fixed = true;
 	}
 
+	int p = survive_optimizer_get_parameters_count(optimizer);
+	FLT *deviates = alloca(sizeof(FLT) * optimizer->measurementsCnt);
+	mpfunc(optimizer->measurementsCnt, p, optimizer->parameters, deviates, 0, optimizer);
+	FLT avg_dev = 0;
+	for (int i = 0; i < optimizer->measurementsCnt; i++) {
+		avg_dev += fabs(deviates[i]);
+	}
+	avg_dev = avg_dev / (FLT)optimizer->measurementsCnt;
+	for (int i = 0; i < optimizer->measurementsCnt; i++) {
+		if (fabs(deviates[i]) > avg_dev * 10) {
+			survive_optimizer_measurement *meas = &optimizer->measurements[i];
+			meas->variance = 1000;
+			optimizer->stats.dropped_data_cnt++;
+			SV_VERBOSE(500, "Ignoring noisy data at lh %d sensor %d axis %d val %f (%f/%f)", meas->lh, meas->sensor_idx,
+					   meas->axis, meas->value, deviates[i], avg_dev);
+		}
+	}
+
 #ifndef NDEBUG
 	for (int i = 0; i < survive_optimizer_get_parameters_count(optimizer); i++) {
 		if ((optimizer->parameters_info[i].limited[0] &&
@@ -544,8 +562,7 @@ survive_optimizer *survive_optimizer_load(const char *fn) {
 	for (int i = 0; i < survive_optimizer_get_parameters_count(opt); i++) {
 		struct mp_par_struct *info = &opt->parameters_info[i];
 		read_count = fscanf(f, "\t");
-		int idx;
-		read_count = fscanf(f, "%d ", &idx);
+
 		opt->parameters_info[i].parname = calloc(128, 1);
 		char *b = opt->parameters_info[i].parname;
 		char c = fgetc(f);
@@ -553,6 +570,8 @@ survive_optimizer *survive_optimizer_load(const char *fn) {
 			*(b++) = c;
 			c = fgetc(f);
 		}
+		int idx;
+		read_count = fscanf(f, "%d ", &idx);
 		read_count = fscanf(f, " %d", &info->fixed);
 		read_count = fscanf(f, " %lf", &opt->parameters[i]);
 		read_count = fscanf(f, " %lf %lf", &info->limits[0], &info->limits[1]);

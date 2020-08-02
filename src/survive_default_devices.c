@@ -403,30 +403,6 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 		// scale3d(so->gyro_scale, so->gyro_scale, 3.14159 / 1800. / 1.8);
 	}
 
-	char fname[64];
-
-	sprintf(fname, "calinfo/%s_points.csv", so->codename);
-	FILE *f = fopen(fname, "w");
-	int j;
-	if(f) {
-	  for (j = 0; j < so->sensor_ct; j++) {
-	    fprintf(f, "%f %f %f\n", so->sensor_locations[j * 3 + 0],
-		    so->sensor_locations[j * 3 + 1],
-		    so->sensor_locations[j * 3 + 2]);
-	  }
-	  fclose(f);
-	}
-
-	if(f) {
-	  sprintf(fname, "calinfo/%s_normals.csv", so->codename);
-	  f = fopen(fname, "w");
-	  for (j = 0; j < so->sensor_ct; j++) {
-	    fprintf(f, "%f %f %f\n", so->sensor_normals[j * 3 + 0],
-		    so->sensor_normals[j * 3 + 1], so->sensor_normals[j * 3 + 2]);
-	  }
-	  fclose(f);
-	}
-
 	SV_VERBOSE(50, "Read config for %s", so->codename);
 
 	return 0;

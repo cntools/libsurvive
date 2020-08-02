@@ -40,6 +40,10 @@ typedef struct {
 	int ptsLength;
 
 	mp_config *cfg;
+
+	struct {
+		uint32_t dropped_data_cnt;
+	} stats;
 } survive_optimizer;
 
 #define SURVIVE_OPTIMIZER_SETUP_BUFFERS(ctx, alloc_fn)                                                                 \

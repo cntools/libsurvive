@@ -2813,14 +2813,6 @@ static int LoadConfig(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int i
 		return len;
 	}
 
-	{
-		char raw_fname[100];
-		sprintf(raw_fname, "%s_config.json", so->codename);
-		FILE *f = fopen(raw_fname, "w");
-		fwrite(ct0conf, len, 1, f);
-		fclose(f);
-	}
-
 	if (so)
 		return sv->ctx->configproc(so, ct0conf, len);
 	return -1;

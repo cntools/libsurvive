@@ -86,6 +86,7 @@ struct SurvivePlaybackData {
 	double time_now;
 	FLT playback_factor;
 	bool hasRawLight;
+	bool hasSweepAngle;
 	bool outputExternalPose;
 
 	uint32_t total_sleep_time;
@@ -394,6 +395,7 @@ static int parse_and_run_sweep(char *line, SurvivePlaybackData *driver) {
 		return -1;
 	}
 
+	driver->hasSweepAngle = true;
 	driver->ctx->sweepproc(so, channel, sensor_id, timecode, flag);
 	return 0;
 }
@@ -631,7 +633,7 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 				parse_and_run_sweep(line, driver);
 			break;
 		case 'B':
-			if (op[1] == 0)
+			if (op[1] == 0 && driver->hasSweepAngle == false)
 				parse_and_run_sweep_angle(line, driver);
 			break;
 		case 'Y':

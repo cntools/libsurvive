@@ -6,9 +6,9 @@
 #include <malloc.h>
 #include <stdio.h>
 
-STATIC_CONFIG_ITEM(CONFIG_MAX_ERROR, "max-error", 'f', "Maximum error permitted by poser_general_optimizer.", 1.0)
+STATIC_CONFIG_ITEM(CONFIG_MAX_ERROR, "max-error", 'f', "Maximum error permitted by poser_general_optimizer.", .001)
 STATIC_CONFIG_ITEM(CONFIG_MAX_CAL_ERROR, "max-cal-error", 'f', "Maximum error permitted by poser_general_optimizer.",
-				   0.001)
+				   0.0001)
 STATIC_CONFIG_ITEM(CONFIG_FAIL_TO_RESET, "failures-to-reset", 'i', "Failures needed before seed poser is re-run.", 1)
 STATIC_CONFIG_ITEM(CONFIG_SUC_TO_RESET, "successes-to-reset", 'i',
 				   "Reset periodically even if there were no failures. Set to -1 to disable.", -1)

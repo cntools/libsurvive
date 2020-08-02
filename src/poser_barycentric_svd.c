@@ -112,7 +112,7 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 	SV_VERBOSE(200, "BaryCentricSVD for %s has err %f " SurvivePose_format " (Solving for camera: %d)", so->codename,
 			   err, SURVIVE_POSE_EXPAND(rtn), cameraToWorld);
 
-	FLT allowable_error = cameraToWorld ? (dd->max_error_cal * 1.5) : dd->max_error_obj;
+	FLT allowable_error = (cameraToWorld ? (dd->max_error_cal) : dd->max_error_obj) * 10.0;
 	if (allowable_error < err) {
 		if (cameraToWorld) {
 			SV_WARN("Camera reprojection error was too high: %f for %d meas", err, (int)dd->bc.meas_cnt);

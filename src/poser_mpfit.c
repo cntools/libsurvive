@@ -47,6 +47,7 @@ typedef struct MPFITStats {
 	double sum_errors;
 	double sum_origerrors;
 	int status_cnts[9];
+	int dropped_data;
 } MPFITStats;
 
 typedef struct MPFITGlobalData {
@@ -214,9 +215,8 @@ static void mpfit_set_cameras(SurviveObject *so, uint8_t lighthouse, SurvivePose
 
 static inline void serialize_mpfit(MPFITData *d, survive_optimizer *mpfitctx) {
 	if (d->serialize_prefix) {
-		static int cnt = 0;
 		char path[1024] = {0};
-		snprintf(path, 1023, "%s_%s_%d.opt", d->serialize_prefix, d->opt.so->codename, cnt++);
+		snprintf(path, 1023, "%s_%s_%d.opt", d->serialize_prefix, d->opt.so->codename, d->stats.total_runs);
 		survive_optimizer_serialize(mpfitctx, path);
 	}
 }
@@ -344,8 +344,8 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 
 	mpfitctx->initialPose = *soLocation;
 
+	serialize_mpfit(d, mpfitctx);
 	if (canPossiblySolveLHS || d->alwaysPrecise) {
-		serialize_mpfit(d, mpfitctx);
 		mpfitctx->cfg = survive_optimizer_precise_config();
 	}
 
@@ -402,11 +402,12 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 				   result->orignorm, result->bestnorm, (int)meas_size, res, get_lh_count(meas_for_lhs));
 
 	} else {
-		SV_WARN("MPFIT failure %s %f/%f (%d measurements, %d result, %d lighthouses, %d canSolveLHs)", so->codename,
-				result->orignorm, result->bestnorm, (int)meas_size, res, get_lh_count(meas_for_lhs),
-				canPossiblySolveLHS);
+		SV_WARN("MPFIT failure %s %f/%f (%d measurements, %d result, %d lighthouses, %d canSolveLHs, run #%d)",
+				so->codename, result->orignorm, result->bestnorm, (int)meas_size, res, get_lh_count(meas_for_lhs),
+				canPossiblySolveLHS, d->stats.total_runs);
 	}
 
+	d->stats.dropped_data += mpfitctx->stats.dropped_data_cnt;
 	d->stats.total_fev += result->nfev;
 	d->stats.total_iterations += result->niter;
 	d->stats.total_runs++;
@@ -626,6 +627,7 @@ static inline void print_stats(SurviveContext *ctx, MPFITStats *stats) {
 	SV_INFO("\ttotal runs        %d", stats->total_runs);
 	SV_INFO("\tavg error         %10.10f", stats->sum_errors / stats->total_runs);
 	SV_INFO("\tavg orig error    %10.10f", stats->sum_origerrors / stats->total_runs);
+	SV_INFO("\tnoisey data cnt   %d", stats->dropped_data);
 	for (int i = 0; i < sizeof(stats->status_cnts) / sizeof(int); i++) {
 		SV_INFO("\tStatus %10s %d", survive_optimizer_error(i + 1), stats->status_cnts[i]);
 	}
@@ -719,6 +721,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 			}
 		}
 
+		g.stats.dropped_data += d->stats.dropped_data;
 		g.stats.total_fev += d->stats.total_fev;
 		g.stats.total_runs += d->stats.total_runs;
 		g.stats.sum_errors += d->stats.sum_errors;

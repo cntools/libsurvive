@@ -199,6 +199,15 @@ int survive_default_config_process(SurviveObject *so, char *ct0conf, int len) {
 	survive_recording_config_process(so, ct0conf, len);
 	so->conf = ct0conf;
 	so->conf_cnt = len;
+
+	if (survive_configi(so->ctx, "serialize-device-config", SC_GET, 0) != 0) {
+		char raw_fname[128];
+		sprintf(raw_fname, "%s_config.json", so->codename);
+		FILE *f = fopen(raw_fname, "w");
+		fwrite(ct0conf, len, 1, f);
+		fclose(f);
+	}
+
 	return survive_load_htc_config_format(so, ct0conf, len);
 }
 

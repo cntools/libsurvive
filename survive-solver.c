@@ -32,7 +32,8 @@ int main(int argc, char **argv) {
 
 	printf("Parameter errors:\n");
 	for (int i = 0; i < survive_optimizer_get_parameters_count(mpctx); i++)
-		printf("%4d %+3.5f\n", i, result.xerror[i]);
+		if (result.xerror[i] != 0)
+			printf("%4d %+3.5f\n", i, result.xerror[i]);
 
 	for (int i = 0; i < survive_optimizer_get_parameters_count(mpctx); i++) {
 		for (int j = 0; j < survive_optimizer_get_parameters_count(mpctx); j++)
