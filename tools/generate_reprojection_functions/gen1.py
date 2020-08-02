@@ -1,20 +1,6 @@
 import math
-import sys
-import types
-import itertools
-import inspect
-
-# import symengine as se
-from collections import defaultdict
-
-from collections.abc import Iterable
-
-import symengine as sp
-from symengine import sqrt, atan2, tan, asin, cos, Pow, sin, Piecewise, Symbol, cse
-from sympy import evaluate, Atom
-
+from symengine import atan2, asin
 from common_math import *
-
 
 def reproject_axis(axis_value, other_axis_value, Z, cal):
     # We do this weirdness to only have to calculate atan2(X, Z) and atan2(Y, Z); never atan2(Z, -X) et al

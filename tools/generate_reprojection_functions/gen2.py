@@ -1,18 +1,3 @@
-import math
-import sys
-import types
-import itertools
-import inspect
-
-#import symengine as se
-from collections import defaultdict
-
-from collections.abc import Iterable
-
-import symengine as sp
-from symengine import sqrt, atan2, tan, asin, cos, Pow, sin, Piecewise, Symbol, cse
-from sympy import evaluate, Atom
-
 from common_math import *
 
 def calc_cal_series(s):
