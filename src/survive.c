@@ -541,7 +541,7 @@ int survive_startup(SurviveContext *ctx) {
 			if (strcmp("htcvive", driverNameSuffix) != 0) {
 				if (enabled && callDriver(ctx, DriverName, buffer) == SURVIVE_DRIVER_NORMAL) {
 					// Auto drivers dont preclude the default HTC driver
-					loadDefaultDriver = manually_enabled == false;
+					loadDefaultDriver &= manually_enabled == false;
 				}
 			}
 		}
@@ -552,7 +552,7 @@ int survive_startup(SurviveContext *ctx) {
 	}
 
 	// Load the vive driver by default, even if not enabled as a flag
-	if ((loadDefaultDriver == true)) {
+	if (loadDefaultDriver == true || survive_configi(ctx, "htcvive", SC_GET, 0) != 0) {
 		callDriver(ctx, "DriverRegHTCVive", buffer);
 	}
 

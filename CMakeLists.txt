@@ -238,7 +238,7 @@ if(OPENVR_LIBRARIES)
 	add_subdirectory(tools/openvr_driver)
 endif()
 
-
+file(COPY survive-websocketd DESTINATION ${CMAKE_BINARY_DIR})
 install(TARGETS ${PLUGINS} DESTINATION lib/libsurvive/plugins)
 
 install(TARGETS survive DESTINATION lib/libsurvive)

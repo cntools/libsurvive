@@ -1,0 +1,3 @@
+#!/bin/bash
+
+websocketd --port 8080 ./survive-cli --record-stdout --record-cal-imu $@
