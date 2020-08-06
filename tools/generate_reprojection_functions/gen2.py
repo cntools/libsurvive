@@ -1,5 +1,9 @@
 from common_math import *
 
+import math
+
+from symengine import sqrt, cos, sin, Piecewise, atan2, tan, asin
+
 def calc_cal_series(s):
     f = [-8.0108022e-06, 0.0028679863, 5.3685255000000001e-06, 0.0076069798000000001, 0, 0]
 

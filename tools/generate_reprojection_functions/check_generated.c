@@ -5,6 +5,9 @@
 #include <math.h>
 #include <os_generic.h>
 
+#include "minimal_opencv.h"
+
+#include "survive_imu.generated.h"
 #include "survive_reproject.aux.generated.h"
 
 SurvivePose AxisAnglePose2Pose(LinmathAxisAnglePose *p) {
@@ -22,11 +25,22 @@ static const survive_calibration_config default_config = {
 
 double next_rand(double mx) { return (float)rand() / (float)(RAND_MAX / mx) - mx / 2.; }
 
+void random_quat(LinmathQuat rtn) {
+	const LinmathEulerAngle euler = {next_rand(2 * M_PI), next_rand(2 * M_PI), next_rand(2 * M_PI)};
+	quatfromeuler(rtn, euler);
+}
+
+void random_axis_angle(LinmathAxisAngle a) {
+	for (int i = 0; i < 3; i++) {
+		a[i] = next_rand(2 * M_PI) - M_PI;
+	}
+}
+
 SurvivePose random_pose() {
-  const LinmathEulerAngle euler = { next_rand(2 * M_PI), next_rand(2 * M_PI), next_rand(2 * M_PI) };
-  SurvivePose rtn = {.Pos = {next_rand(10), next_rand(10), next_rand(10)} };
-  quatfromeuler(rtn.Rot, euler);
-  return rtn;
+	const LinmathEulerAngle euler = {next_rand(2 * M_PI), next_rand(2 * M_PI), next_rand(2 * M_PI)};
+	SurvivePose rtn = {.Pos = {next_rand(10), next_rand(10), next_rand(10)}};
+	quatfromeuler(rtn.Rot, euler);
+	return rtn;
 }
 
 LinmathAxisAnglePose random_pose_axisangle() {
@@ -163,6 +177,46 @@ void check_reproject_gen2_cal() {
 	double ang = survive_reproject_axis_x_gen2(&bsd.fcal[0], xyz);
 	ang += M_PI * 2. * (0 + 1.) / 3.;
 	printf("%.16f\n", ang);
+}
+
+void check_apply_ang_velocity() {
+	LinmathQuat qo, qi;
+	random_quat(qi);
+	LinmathAxisAngle v;
+	random_axis_angle(v);
+	FLT t = next_rand(5);
+	survive_apply_ang_velocity(qo, v, t, qi);
+
+	LinmathQuat qo2;
+	gen_apply_ang_velocity(qo2, v, t, qi);
+
+	printf("Lib: " Quat_format "\n", LINMATH_QUAT_EXPAND(qo));
+	printf("Gen: " Quat_format "\n", LINMATH_QUAT_EXPAND(qo2));
+}
+
+extern void rot_predict_quat(FLT t, const void *k, const CvMat *f_in, CvMat *f_out);
+
+void check_rot_predict_quat() {
+	FLT _mi[7] = {};
+	FLT _mo1[7] = {};
+	FLT _mo2[7] = {};
+	CvMat mi = cvMat(7, 1, CV_64F, _mi);
+	CvMat mo1 = cvMat(7, 1, CV_64F, _mo1);
+	CvMat mo2 = cvMat(7, 1, CV_64F, _mo2);
+
+	FLT t = next_rand(5);
+
+	random_quat(_mi);
+	random_axis_angle(_mi + 4);
+
+	rot_predict_quat(t, 0, &mi, &mo1);
+
+	gen_imu_rot_f(_mo2, t, _mi);
+
+	printf("Lib: " SurvivePose_format "\n", LINMATH_QUAT_EXPAND(_mo1), LINMATH_VEC3_EXPAND(_mo1 + 4));
+	printf("Gen: " SurvivePose_format "\t"
+		   "\n",
+		   LINMATH_QUAT_EXPAND(_mo2), LINMATH_VEC3_EXPAND(_mo2 + 4));
 }
 
 /*
@@ -431,6 +485,12 @@ int main(int argc) {
 	check_reproject_gen2_cal();
 
 	if (argc == 1) {
+		printf("Check apply ang vel...\n");
+		check_apply_ang_velocity();
+
+		printf("Check rot predict...\n");
+		check_rot_predict_quat();
+
 		printf("Check apply pose...\n");
 		check_apply_pose();
 		printf("Check jacobian...\n");

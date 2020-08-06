@@ -85,9 +85,12 @@ def generate_ccode(func, name=None, args=None, suffix = None):
         if callable(a):
             return get_type(a())
         if hasattr(a, "__iter__"):
-            return get_type(a[0])
+            ty = get_type(a[0])
+            if ty[-1] != "*":
+                ty += "*"
+            return ty
         if isinstance(a, SurviveType):
-            return a.__class__.__name__
+            return a.__class__.__name__ + "*"
         return "FLT"
 
     def get_name(a):
@@ -97,7 +100,7 @@ def generate_ccode(func, name=None, args=None, suffix = None):
 
     def arg_str(arg):
         a = arg[1]
-        return "const %s *%s" % (get_type(a), get_name(a))
+        return "const %s %s" % (get_type(a), get_name(a))
 
     print("static inline void gen_%s(FLT* out, %s) {" % (name, ", ".join(map(arg_str, enumerate(args)))))
 
@@ -112,12 +115,15 @@ def generate_ccode(func, name=None, args=None, suffix = None):
         map(lambda item: "\tconst GEN_FLT %s = %s;" % (
             sp.ccode(item[0]), sp.ccode(c_filter(item[1])).replace("\n", " ").replace("\t", " ")), cse_output[0])))
 
+    output_idx = 0
     for item in cse_output[1]:
         if hasattr(item, "tolist"):
             for item1 in sum(item.tolist(), []):
-                print("\t*(out++) = %s;" % sp.ccode(c_filter(item1)).replace("\n", " ").replace("\t", " "))
+                print("\tout[%d] = %s;" % (output_idx, sp.ccode(c_filter(item1)).replace("\n", " ").replace("\t", " ")))
+                output_idx += 1
         else:
-            print("\t*(out++) = %s;" % sp.ccode(c_filter(item)).replace("\n", " ").replace("\t", " "))
+            print("\tout[%d] = %s;" % (output_idx, sp.ccode(c_filter(item)).replace("\n", " ").replace("\t", " ")))
+            output_idx += 1
     print("}")
     print("")
 
@@ -143,7 +149,9 @@ def flat_values(a):
         return flat_values(a.__dict__.values())
     return [a]
 
-def generate_jacobians(func, suffix=None):
+def generate_jacobians(func, suffix=None,transpose=False):
+    rtn = {}
+
     func_args = [globals()[n] for n in inspect.getfullargspec(func).args]
     jac_of = {arg.__name__: flat_values(map_arg(arg)) for arg in func_args}
 
@@ -152,5 +160,9 @@ def generate_jacobians(func, suffix=None):
     for name, jac_value in jac_of.items():
         fname = func.__name__  + '_jac_' + name
         this_jac = jacobian(feval, jac_value)
+        if transpose:
+            this_jac = this_jac.transpose()
         print("// Jacobian of", func.__name__, "wrt", jac_value)
         generate_ccode(this_jac, fname, func_args, suffix=suffix)
+        rtn[fname] = this_jac
+    return rtn
