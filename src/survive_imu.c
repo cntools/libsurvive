@@ -89,8 +89,9 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 	FLT time = data->hdr.timecode / (FLT)tracker->so->timebase_hz;
 	FLT time_diff = time - tracker->rot.t;
 
-	if (time_diff < 0) {
-		SV_WARN("Processing imu data from the past %fs", time - tracker->rot.t);
+	if (time_diff < -.01) {
+		// SV_WARN("Processing imu data from the past %fs", time - tracker->rot.t);
+		tracker->stats.late_imu_dropped++;
 		return;
 	}
 
@@ -107,7 +108,7 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 		SurviveSensorActivations_stationary_time(&tracker->so->activations) > (tracker->so->timebase_hz / 10.);
 
 	bool hasRotation = false;
-	bool hasAngularVel = false;
+	bool hasAngularVel = standStill;
 	FLT rotation_state_update[7] = {0};
 	FLT rotation_variance[] = {tracker->mahony_variance, tracker->mahony_variance, tracker->mahony_variance,
 							   tracker->mahony_variance, tracker->gyro_var,		   tracker->gyro_var,
@@ -123,7 +124,7 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 		hasRotation = true;
 	}
 
-	if (tracker->gyro_var >= 0) {
+	if (tracker->gyro_var >= 0 && !standStill) {
 		quatrotatevector(rotation_state_update + 4, obj2world, data->gyro);
 		hasAngularVel = true;
 	}
@@ -341,6 +342,7 @@ void survive_imu_tracker_integrate_observation(survive_long_timecode timecode, S
 			// time = tracker->rot.t;
 		} else {
 			// SV_WARN("Processing light data from the past %fs", time - tracker->rot.t );
+			tracker->stats.late_light_dropped++;
 			return;
 		}
 	}
@@ -350,7 +352,7 @@ void survive_imu_tracker_integrate_observation(survive_long_timecode timecode, S
 			   LINMATH_VEC3_EXPAND(pose->Pos), LINMATH_VEC3_EXPAND(Rp));
 	survive_imu_integrate_position(tracker, time, pose->Pos, Rp);
 
-	FLT Rr[] = {.1 + R[1], .1 + R[1], .1 + R[1], .1 + R[1]};
+	FLT Rr[] = {.01 + R[1], .01 + R[1], .01 + R[1], .01 + R[1]};
 	SV_VERBOSE(200, "Integrating pose rotation " Point4_format " with cov " Point4_format,
 			   LINMATH_VEC4_EXPAND(pose->Rot), LINMATH_VEC4_EXPAND(Rr));
 	survive_imu_integrate_rotation(tracker, time, pose->Rot, Rr);
@@ -360,16 +362,16 @@ STATIC_CONFIG_ITEM(POSE_POSITION_VARIANCE_SEC, "filter-pose-var-per-sec", 'f', "
 STATIC_CONFIG_ITEM(POSE_ROT_VARIANCE_SEC, "filter-pose-rot-var-per-sec", 'f', "Position rotational variance per second",
 				   1e-1)
 
-STATIC_CONFIG_ITEM(VELOCITY_POSITION_VARIANCE_SEC, "filter-vel-var-per-sec", 'f', "Velocity variance per second", -1)
+STATIC_CONFIG_ITEM(VELOCITY_POSITION_VARIANCE_SEC, "filter-vel-var-per-sec", 'f', "Velocity variance per second", -1.)
 STATIC_CONFIG_ITEM(VELOCITY_ROT_VARIANCE_SEC, "filter-vel-rot-var-per-sec", 'f',
-				   "Velocity rotational variance per second", -1)
+				   "Velocity rotational variance per second", -1.)
 
 STATIC_CONFIG_ITEM(ACCEL_POSITION_VARIANCE_SEC_TAG, "filter-acc-var-per-sec", 'f', "Accel variance per second", -1.)
 
 STATIC_CONFIG_ITEM(IMU_ACC_VARIANCE, "imu-acc-variance", 'f', "Variance of accelerometer", 1e3)
 STATIC_CONFIG_ITEM(IMU_GYRO_VARIANCE, "imu-gyro-variance", 'f', "Variance of gyroscope", 1e-1)
 STATIC_CONFIG_ITEM(IMU_MAHONY_VARIANCE, "imu-mahony-variance", 'f', "Variance of mahony filter (negative to disable)",
-				   -1)
+				   -1.)
 
 void rot_f_quat(FLT t, FLT *F, const struct CvMat *x) {
 	(void)x;
@@ -501,12 +503,6 @@ SurviveVelocity survive_imu_velocity(const SurviveIMUTracker *tracker) {
 void survive_imu_tracker_free(SurviveIMUTracker *tracker) {
 	survive_kalman_state_free(&tracker->position);
 	survive_kalman_state_free(&tracker->rot);
-
-	survive_detach_config(tracker->so->ctx, VELOCITY_POSITION_VARIANCE_SEC_TAG, &tracker->pos_Q_per_sec[4]);
-	survive_detach_config(tracker->so->ctx, VELOCITY_ROT_VARIANCE_SEC_TAG, &tracker->rot_Q_per_sec[3]);
-
-	survive_detach_config(tracker->so->ctx, POSE_POSITION_VARIANCE_SEC_TAG, &tracker->pos_Q_per_sec[0]);
-	survive_detach_config(tracker->so->ctx, POSE_ROT_VARIANCE_SEC_TAG, &tracker->rot_Q_per_sec[0]);
 
 	survive_detach_config(tracker->so->ctx, IMU_MAHONY_VARIANCE_TAG, &tracker->mahony_variance);
 

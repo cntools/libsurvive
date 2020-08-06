@@ -85,6 +85,11 @@ typedef struct SurviveIMUTracker {
 	LinmathVec3d world_up_while_still;
 	int up_while_still_cnt;
 	LinmathQuat imuerror_correction_local;
+
+	struct {
+		uint32_t late_imu_dropped;
+		uint32_t late_light_dropped;
+	} stats;
 } SurviveIMUTracker;
 
 SURVIVE_EXPORT SurviveVelocity survive_imu_velocity(const SurviveIMUTracker *tracker);
