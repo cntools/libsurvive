@@ -206,12 +206,18 @@ void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so, S
 
 		uint32_t lh_indices[NUM_GEN2_LIGHTHOUSES] = {0};
 		uint32_t cnt = 0;
+
+		uint32_t reference_basestation = survive_configi(so->ctx, "reference-basestation", SC_GET, 0);
+
 		for (int lh = 0; lh < lighthouse_count; lh++) {
 			SurvivePose lh2object = lighthouse_pose[lh];
 			if (quatmagnitude(lh2object.Rot) != 0.0) {
 				lh_indices[cnt] = lh;
 				uint32_t lh0 = lh_indices[0];
-				if (so->ctx->bsd[lh].BaseStationID < so->ctx->bsd[lh0].BaseStationID) {
+				bool preferThisBSD = reference_basestation == 0
+										 ? (so->ctx->bsd[lh].BaseStationID < so->ctx->bsd[lh0].BaseStationID)
+										 : reference_basestation == so->ctx->bsd[lh].BaseStationID;
+				if (preferThisBSD) {
 					lh_indices[0] = lh;
 					lh_indices[cnt] = lh0;
 				}

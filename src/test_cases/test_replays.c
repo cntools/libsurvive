@@ -25,16 +25,18 @@ static int test_path(const char *name, int main_argc, char **main_argv) {
 
 	char *playbackFlag = strstr(name, "pcap") ? "--usbmon-playback" : "--playback";
 
-	char *argv[] = {"",
-					"--init-configfile",
-					configPath,
-					"--playback-replay-pose",
-					playbackFlag,
-					(char *)name,
-					"--playback-factor",
-					"0",
-					"--v",
-					"100"};
+	char *argv[] = {
+		"",
+		"--init-configfile",
+		configPath,
+		"--playback-replay-pose",
+		playbackFlag,
+		(char *)name,
+		"--playback-factor",
+		"0",
+		"--v",
+		"100",
+	};
 	int argc = sizeof(argv) / sizeof(argv[0]);
 
 	fprintf(stderr, "Run with: './survive-cli");
@@ -60,14 +62,20 @@ static int test_path(const char *name, int main_argc, char **main_argv) {
 	SurvivePose originalLH[NUM_GEN2_LIGHTHOUSES] = {0};
 
 	printf("Ground truth LH poses:\n");
+	uint32_t ref_lh = 0;
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
 		SurvivePose pose = ctx->bsd[i].Pose;
 		originalLH[i] = pose;
 		ctx->bsd[i].PositionSet = 0;
 		ctx->bsd[i].Pose = LinmathPose_Identity;
-		printf(" LH%2d: " SurvivePose_format "\n", i, pose.Pos[0], pose.Pos[1], pose.Pos[2], pose.Rot[0], pose.Rot[1],
-			   pose.Rot[2], pose.Rot[3]);
+		printf(" LH%2d (%08x): " SurvivePose_format "\n", i, ctx->bsd[i].BaseStationID, pose.Pos[0], pose.Pos[1],
+			   pose.Pos[2], pose.Rot[0], pose.Rot[1], pose.Rot[2], pose.Rot[3]);
+		if (pose.Pos[0] == 0.0) {
+			ref_lh = ctx->bsd[i].BaseStationID;
+		}
 	}
+
+	survive_configi(ctx, "reference-basestation", SC_SET, ref_lh);
 
 	survive_simple_start_thread(actx);
 
@@ -109,7 +117,8 @@ static int test_path(const char *name, int main_argc, char **main_argv) {
 
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
 		SurvivePose pose = originalLH[i];
-		printf(" LH%2d: " SurvivePose_format "\n", i, SURVIVE_POSE_EXPAND(ctx->bsd[i].Pose));
+		printf(" LH%2d (%08x): " SurvivePose_format "\n", i, ctx->bsd[i].BaseStationID,
+			   SURVIVE_POSE_EXPAND(ctx->bsd[i].Pose));
 		double err[2] = {0};
 		diff(err, &pose, &ctx->bsd[i].Pose);
 		printf("       " SurvivePose_format "\terr: %f %f\n", pose.Pos[0], pose.Pos[1], pose.Pos[2], pose.Rot[0],
