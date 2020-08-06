@@ -29,6 +29,11 @@ extern "C" {
 // uncomment the following line to use double precision instead of single precision.
 //#define USE_DOUBLE
 
+
+#define CREATE_STACK_MAT(name, rows, cols)                                                                             \
+	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
+	CvMat name = cvMat(rows, cols, SURVIVE_CV_F, _##name);
+
 #ifdef USE_FLOAT
 
 #define FLT float
@@ -41,7 +46,7 @@ extern "C" {
 #define FLT_ATAN2 atan2f
 #define FLT_FABS__ fabsf
 #define FLT_STRTO strtof
-
+#define SURVIVE_CV_F CV_32F
 #else
 
 #define USE_DOUBLE 1
@@ -55,7 +60,7 @@ extern "C" {
 #define FLT_ATAN2 atan2
 #define FLT_FABS__ fabs
 #define FLT_STRTO strtod
-
+#define SURVIVE_CV_F CV_64F
 #endif
 
 #ifdef TCC

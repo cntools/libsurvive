@@ -437,16 +437,6 @@ void copy_R_and_t(const double R_src[3][3], const double t_src[3], double R_dst[
 	}
 }
 
-#ifdef USE_DOUBLE
-#define SURVIVE_CV_F CV_64F
-#else
-#define SURVIVE_CV_F CV_32F
-#endif
-
-#define CREATE_STACK_MAT(name, rows, cols)                                                                             \
-	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
-	CvMat name = cvMat(rows, cols, SURVIVE_CV_F, _##name);
-
 double bc_svd_compute_pose(bc_svd *self, double R[3][3], double t[3]) {
 	CREATE_STACK_MAT(M, self->meas_cnt, 12);
 	bool colCovered[12] = { 0 };

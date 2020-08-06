@@ -38,6 +38,7 @@ SURVIVE_LOCAL_ONLY void cvCopy(const CvMat *srcarr, CvMat *dstarr, const CvMat *
 	memcpy(dstarr->data.db, srcarr->data.db, mat_size_bytes(srcarr));
 }
 
+// dst = alpha * src1 * src2 + beta * src3
 SURVIVE_LOCAL_ONLY void cvGEMM(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src3, double beta,
 							   CvMat *dst, int tABC) {
 
@@ -224,7 +225,11 @@ SURVIVE_LOCAL_ONLY double cvInvert(const CvMat *srcarr, CvMat *dstarr, int metho
 		cvReleaseMat(&u);
 		cvReleaseMat(&v);
 		cvReleaseMat(&um);
+	} else {
+		assert(0 && "Bad argument");
+		return -1;
 	}
+
 	return 0;
 }
 

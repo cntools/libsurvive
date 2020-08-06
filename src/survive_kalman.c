@@ -3,11 +3,9 @@
 #include <memory.h>
 #include <minimal_opencv.h>
 
-#ifdef USE_DOUBLE
-#define SURVIVE_CV_F CV_64F
-#else
-#define SURVIVE_CV_F CV_32F
-#endif
+#include "math.h"
+
+#define KALMAN_LOG_LEVEL 1000
 
 #define CREATE_STACK_MAT(name, rows, cols)                                                                             \
 	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \

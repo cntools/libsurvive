@@ -67,12 +67,6 @@ static void RotateAccel(LinmathVec3d rAcc, const LinmathQuat rot, const LinmathV
 	scale3d(rAcc, rAcc, 9.80665);
 }
 
-#ifdef USE_DOUBLE
-#define SURVIVE_CV_F CV_64F
-#else
-#define SURVIVE_CV_F CV_32F
-#endif
-
 #define CREATE_STACK_MAT(name, rows, cols)                                                                             \
 	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
 	CvMat name = cvMat(rows, cols, SURVIVE_CV_F, _##name);
