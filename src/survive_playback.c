@@ -739,6 +739,12 @@ void survive_destroy_recording(SurviveContext *ctx) {
 	}
 }
 
+void survive_record_config(SurviveContext *ctx, const char *tag, uint8_t type, void *user) {
+	char buf[128];
+	survive_config_as_str(ctx, buf, sizeof(buf), tag, "");
+	write_to_output(ctx->recptr, "OPTION %s %c %s\n", tag, type, buf);
+}
+
 void survive_install_recording(SurviveContext *ctx) {
 	const char *dataout_file = survive_configs(ctx, "record", SC_GET, "");
 	int record_to_stdout = survive_configi(ctx, "record-stdout", SC_GET, 0);
@@ -769,6 +775,8 @@ void survive_install_recording(SurviveContext *ctx) {
 		ctx->recptr->writeCalIMU = survive_configi(ctx, "record-cal-imu", SC_GET, 0);
 		ctx->recptr->writeAngle = survive_configi(ctx, "record-angle", SC_GET, 1);
 	}
+
+	survive_config_iterate(ctx, survive_record_config, ctx->recptr);
 }
 
 int DriverRegPlayback(SurviveContext *ctx) {
