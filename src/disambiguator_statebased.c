@@ -175,6 +175,17 @@ typedef struct {
 	uint32_t first_sync_timestamp;
 	uint32_t longest_sync_length;
 
+	struct {
+		uint32_t sync_count[2];
+		uint32_t drop_syncs[2];
+
+		uint32_t sweep_hit_count;
+		uint32_t drop_sweeps;
+
+		uint32_t confidence_resets;
+		uint32_t sync_time_error;
+	} stats;
+
 	/**  This part of the structure is general use when we know our state */
 	enum LighthouseState state;
 
@@ -559,9 +570,10 @@ static void RunACodeCapture(int target_acode, Disambiguator_data_t *d, const Lig
 		if (d->confidence < penalty) {
 			SetState(d, le, LS_UNKNOWN);
 			SV_WARN("Disambiguator got lost at %u; refinding state for %s", le->timestamp, d->so->codename);
+			d->stats.confidence_resets++;
 		}
 		d->confidence -= penalty;
-
+		d->stats.sync_time_error++;
 		DEBUG_TB("Disambiguator missed %s; %d expected %d but got %d(%d) - %u %d", d->so->codename, error, target_acode,
 				 le->length, d->confidence, d->mod_offset[0], le->timestamp);
 		return;
@@ -618,9 +630,13 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 				next_state = 0;
 
 			int index_code = LS_Params[next_state].is_sweep ? -1 : -2;
-			if (d->confidence > 80)
+			if (d->confidence > 80) {
 				ctx->lightproc(d->so, index_code, acode, 0, lastSync.timestamp, lastSync.length,
 							   LS_Params[d->state].lh);
+				d->stats.sync_count[index_code + 2]++;
+			} else {
+				d->stats.drop_syncs[index_code + 2]++;
+			}
 		}
 	} else {
 		// Leaving a sweep ...
@@ -656,6 +672,9 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 					if (d->confidence > 80) {
 						d->so->ctx->lightproc(d->so, i, LSParam_acode(d->state), offset_from, le->timestamp, le->length,
 											  lh);
+						d->stats.sweep_hit_count++;
+					} else {
+						d->stats.drop_sweeps++;
 					}
 				}
 			}
@@ -728,6 +747,18 @@ void DisambiguatorStateBased(SurviveObject *so, const LightcapElement *le) {
 
 	// Signal to destroy self
 	if (le == 0) {
+		Disambiguator_data_t *d = so->disambiguator_data;
+		if (d) {
+			SV_VERBOSE(5, "StateBased Disambiguator statistics:");
+			SV_VERBOSE(5, "\tsync_time_error         %u", d->stats.sync_time_error);
+			SV_VERBOSE(5, "\tconfidence_resets       %u", d->stats.confidence_resets);
+			SV_VERBOSE(5, "\tdrop_sweeps             %u", d->stats.drop_sweeps);
+			SV_VERBOSE(5, "\tsweep_hit_count         %u", d->stats.sweep_hit_count);
+			for (int i = 0; i < 2; i++) {
+				SV_VERBOSE(5, "\tsync_count[%d]           %u", i, d->stats.sync_count[i]);
+				SV_VERBOSE(5, "\tdrop_syncs[%d]           %u", i, d->stats.drop_syncs[i]);
+			}
+		}
 		free(ctx->disambiguator_data);
 		ctx->disambiguator_data = 0;
 
@@ -756,6 +787,7 @@ void DisambiguatorStateBased(SurviveObject *so, const LightcapElement *le) {
 	}
 
 	Disambiguator_data_t *d = so->disambiguator_data;
+
 	// It seems like the first few hundred lightcapelements are missing a ton of data; let it stabilize.
 	if (d->stabalize < 200) {
 		d->stabalize++;
