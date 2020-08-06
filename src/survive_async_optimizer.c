@@ -2,16 +2,16 @@
 
 static void run_buffer(survive_async_optimizer *self, uint8_t idx) {
 	struct mp_result_struct results = {0};
-	OGUnlockMutex(self->active_buffer_lock);
 	self->active_buffer = idx;
+	OGUnlockMutex(self->active_buffer_lock);
 	self->completed++;
 	int status = survive_optimizer_run(&self->buffers[idx].optimizer, &results);
 	if (self->cb) {
 		self->cb(&self->buffers[idx], status, &results);
 	}
+	OGLockMutex(self->active_buffer_lock);
 	self->buffer_ready[idx] = false;
 	self->active_buffer = -1;
-	OGLockMutex(self->active_buffer_lock);
 }
 
 static void *async_thread(void *param) {
