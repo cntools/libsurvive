@@ -21,6 +21,11 @@ STATIC_CONFIG_ITEM(Simulator_TIME, "simulator-time", 'f', "Seconds to run simula
 STATIC_CONFIG_ITEM(Simulator_OBJ_RADIUS, "simulator-obj-radius", 'f', "Radius of the simulated object", 0.1)
 STATIC_CONFIG_ITEM(Simulator_SHOW_GT_DEVICE, "simulator-show-gt", 'i',
 				   "0: No GT device, 1: Show GT device, 2: Only GT device", 1)
+STATIC_CONFIG_ITEM(Simulator_SENSOR_NOISE, "simulator-sensor-noise", 'f',
+				   "Covariance of noise to apply to light sensors", 1e-1)
+STATIC_CONFIG_ITEM(Simulator_SENSOR_DROPRATE, "simulator-sensor-droprate", 'f', "Chance to drop a sensor reading", .1)
+
+STATIC_CONFIG_ITEM(Simulator_INIT_TIME, "simulator-init-time", 'f', "Init time -- object wont move for this long", 2.)
 
 typedef struct SurviveDriverSimulatorLHState {
 	FLT last_eval_time;
@@ -29,6 +34,7 @@ typedef struct SurviveDriverSimulatorLHState {
 	FLT start_time;
 } SurviveDriverSimulatorLHState;
 
+typedef SurviveVelocity SurviveAcceleration;
 struct SurviveDriverSimulator {
 	int lh_version;
 	SurviveContext *ctx;
@@ -39,10 +45,15 @@ struct SurviveDriverSimulator {
 
 	SurvivePose position;
 	SurviveVelocity velocity;
+	SurviveAcceleration accel;
 
 	FLT time_last_imu;
 	FLT time_last_light;
 	FLT time_last_iterate;
+
+	FLT sensor_noise;
+	FLT sensor_droprate;
+	FLT init_time;
 
 	FLT timestart;
 	FLT current_timestamp;
@@ -93,17 +104,19 @@ static bool lighthouse_sensor_angle(SurviveDriverSimulator *driver, int lh, size
 		normalize3d(dirLh, ptInLh);
 		scale3d(dirLh, dirLh, -1);
 		FLT facingness = dot3d(normalInLh, dirLh);
-		if (facingness > 0) {
-
+		if (facingness > 0 && linmath_rand(0, 1.) > driver->sensor_droprate) {
 			if (driver->lh_version == 0) {
 				survive_reproject_xy(driver->bsd[lh].fcal, ptInLh, ang);
-				return true;
 			} else {
 				survive_reproject_xy_gen2(driver->bsd[lh].fcal, ptInLh, ang);
 				ang[1] += 4 * LINMATHPI / 3.;
 				ang[0] += 2 * LINMATHPI / 3.;
-				return true;
 			}
+
+			for (int i = 0; i < 2; i++) {
+				ang[i] += linmath_normrand(0, driver->sensor_noise);
+			}
+			return true;
 		}
 	}
 	return false;
@@ -187,7 +200,7 @@ static void run_lighthouse_v1(SurviveDriverSimulator *driver, int lh, FLT timest
 }
 
 static bool run_imu(struct SurviveContext *ctx, SurviveDriverSimulator *driver, double timestamp,
-					double time_between_imu, bool isIniting, SurviveVelocity *accel, survive_timecode timecode) {
+					double time_between_imu, survive_timecode timecode) {
 	bool update_gt = false;
 	if (timestamp > time_between_imu + driver->time_last_imu) {
 		update_gt = true;
@@ -196,19 +209,17 @@ static bool run_imu(struct SurviveContext *ctx, SurviveDriverSimulator *driver, 
 							0, 0, 0,  // Gyro
 							0, 0, 0}; // Mag
 
-		add3d(accelgyro, accelgyro, (*accel).Pos);
+		add3d(accelgyro, accelgyro, driver->accel.Pos);
 		scale3d(accelgyro, accelgyro, 1. / 9.80665);
 
 		SV_VERBOSE(200, "(Gt)Acc\t\t" Point3_format "\t%f", LINMATH_VEC3_EXPAND(accelgyro), norm3d(accelgyro));
 		accelgyro[2] += 1;
 
+		SurvivePose ip = InvertPoseRtn(&driver->position);
 		LinmathQuat q;
 		quatgetconjugate(q, driver->position.Rot);
 		quatrotatevector(accelgyro, q, accelgyro);
-
 		quatrotatevector(accelgyro + 3, q, driver->velocity.AxisAngleRot);
-		// quatfromaxisanglemag(accelgyro + 3, driver->velocity.AxisAngleRot);
-		// copy3d(accelgyro+3, driver->velocity.AxisAngleRot);
 
 		SV_VERBOSE(200, "Ang: " Point3_format, LINMATH_VEC3_EXPAND(driver->velocity.AxisAngleRot));
 		SV_VERBOSE(200, "GT: " SurvivePose_format " %f", SURVIVE_POSE_EXPAND(driver->position),
@@ -233,7 +244,6 @@ bool run_light(const struct SurviveContext *ctx, SurviveDriverSimulator *driver,
 			int lh = driver->acode >> 1;
 
 			run_lighthouse_v1(driver, lh, timestamp);
-
 			driver->time_last_light = timestamp;
 		}
 	} else {
@@ -257,22 +267,19 @@ bool run_light(const struct SurviveContext *ctx, SurviveDriverSimulator *driver,
 	}
 	return update_gt;
 }
-static void propagate_state(SurviveDriverSimulator *driver, bool isIniting, SurviveVelocity *accel, double time_diff) {
-	if (!isIniting) {
-		SurviveVelocity velGain;
-		scale3d(velGain.Pos, accel->Pos, time_diff);
-		scale3d(velGain.AxisAngleRot, accel->AxisAngleRot, time_diff);
+static void propagate_state(SurviveDriverSimulator *driver, double time_diff) {
+	SurviveVelocity velGain;
+	scale3d(velGain.Pos, driver->accel.Pos, time_diff);
+	scale3d(velGain.AxisAngleRot, driver->accel.AxisAngleRot, time_diff);
 
-		add3d(driver->velocity.Pos, driver->velocity.Pos, velGain.Pos);
-		add3d(driver->velocity.AxisAngleRot, velGain.AxisAngleRot, driver->velocity.AxisAngleRot);
+	add3d(driver->velocity.Pos, driver->velocity.Pos, velGain.Pos);
+	add3d(driver->velocity.AxisAngleRot, velGain.AxisAngleRot, driver->velocity.AxisAngleRot);
 
-		SurviveVelocity posGain;
-		scale3d(posGain.Pos, driver->velocity.Pos, time_diff);
-		add3d(driver->position.Pos, driver->position.Pos, posGain.Pos);
+	SurviveVelocity posGain;
+	scale3d(posGain.Pos, driver->velocity.Pos, time_diff);
+	add3d(driver->position.Pos, driver->position.Pos, posGain.Pos);
 
-		survive_apply_ang_velocity(driver->position.Rot, driver->velocity.AxisAngleRot, time_diff,
-								   driver->position.Rot);
-	}
+	survive_apply_ang_velocity(driver->position.Rot, driver->velocity.AxisAngleRot, time_diff, driver->position.Rot);
 }
 static void update_gt_device(struct SurviveContext *ctx, const SurviveDriverSimulator *driver) {
 	if (driver->show_gt_device_cfg == 0)
@@ -291,6 +298,54 @@ static void update_gt_device(struct SurviveContext *ctx, const SurviveDriverSimu
 	survive_default_external_pose_process(ctx, "Sim_GT", &head2world);
 	survive_default_external_velocity_process(ctx, "Sim_GT", &driver->velocity);
 }
+void apply_attractors(struct SurviveContext *ctx, SurviveDriverSimulator *driver) {
+	SurviveVelocity accel = {0};
+
+	LinmathVec3d attractors[] = {{1, 1, 1}, {-1, 0, 1}, {0, -1, .5}};
+	size_t attractor_cnt = survive_configi(ctx, "attractors", SC_GET, sizeof(attractors) / sizeof(LinmathVec3d));
+	if (attractor_cnt > sizeof(attractors) / sizeof(LinmathVec3d)) {
+		attractor_cnt = sizeof(attractors) / sizeof(LinmathVec3d);
+	}
+
+	for (int i = 0; i < attractor_cnt; i++) {
+		LinmathVec3d acc;
+		sub3d(acc, attractors[i], driver->position.Pos);
+		FLT r = norm3d(acc);
+		scale3d(acc, acc, 1. / r / r);
+		add3d(accel.Pos, accel.Pos, acc);
+	}
+
+	if (attractor_cnt == 0) {
+		// accel.Pos[0] = 1 * cos(timestamp);
+	}
+
+	for (int i = 0; i < 3; i++) {
+		// accel.AxisAngleRot[i] += (((rand() / (FLT)RAND_MAX) - .5) * 10);
+		// accel.AxisAngleRot[i] = cos(timestamp);
+	}
+
+	memcpy(&driver->accel, &accel, sizeof(accel));
+}
+static void apply_initial_position(SurviveDriverSimulator *driver) {
+	FLT up[] = {0, 0, 1};
+	FLT ones[] = {1, 1, 1};
+	quatfrom2vectors(driver->position.Rot, up, ones);
+	for (int i = 0; i < 3; i++)
+		driver->position.Pos[i] = .1;
+}
+
+static void apply_initial_velocity(SurviveDriverSimulator *sp) {
+	SurviveContext *ctx = sp->ctx;
+
+	sp->velocity.AxisAngleRot[0] = sp->velocity.AxisAngleRot[1] = sp->velocity.AxisAngleRot[2] = 1.;
+
+	size_t attractor_cnt = survive_configi(ctx, "attractors", SC_GET, 1);
+	if (attractor_cnt) {
+		for (int i = 0; i < 3; i++)
+			sp->velocity.Pos[i] = 2. * rand() / RAND_MAX - 1.;
+	}
+}
+
 static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 	SurviveDriverSimulator *driver = _driver;
 	static FLT last_time = 0;
@@ -308,51 +363,28 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 	}
 	last_time = realtime;
 
+	bool wasIniting = driver->current_timestamp < driver->init_time;
 	FLT timestamp = (driver->current_timestamp += timestep);
 	FLT time_between_imu = 1. / driver->so->imu_freq;
 	FLT time_between_pulses = 0.00833333333;
 	FLT time_between_gt = time_between_imu;
-	bool isIniting = timestamp < 2;
+	bool isIniting = timestamp < driver->init_time || driver->init_time < 0;
 
 	bool update_gt = false;
 
 	FLT t = (timestamp - driver->timestart);
 
-	// SurvivePose accel = {.Pos = {cos(t * 3) * 4, cos(t * 2) * 3, cos(t * 4) * 2},
-	//					 .Rot = {10 + cos(t) * 2, cos(t), sin(t), (cos(t) + sin(t))}};
-
-	// SurviveVelocity accel = {.AxisAngleRot = {cos(t), sin(t), (cos(t) + sin(t))}};
-	SurviveVelocity accel = {0};
-
-	LinmathVec3d attractors[] = {{1, 1, 1}, {-1, 0, 1}, {0, -1, .5}};
-	size_t attractor_cnt = survive_configi(ctx, "attractors", SC_GET, sizeof(attractors) / sizeof(LinmathVec3d));
-	if (attractor_cnt > sizeof(attractors) / sizeof(LinmathVec3d)) {
-		attractor_cnt = sizeof(attractors) / sizeof(LinmathVec3d);
+	if (wasIniting == true && isIniting == false) {
+		apply_initial_velocity(driver);
 	}
 
-	for (int i = 0; isIniting == false && i < attractor_cnt; i++) {
-		LinmathVec3d acc;
-		sub3d(acc, attractors[i], driver->position.Pos);
-		FLT r = norm3d(acc);
-		scale3d(acc, acc, 1. / r / r);
-		add3d(accel.Pos, accel.Pos, acc);
+	if (isIniting == false) {
+		apply_attractors(ctx, driver);
 	}
 
-	if (isIniting == false && attractor_cnt == 0) {
-		// accel.Pos[0] = 1 * cos(timestamp);
-	}
-
-	for (int i = 0; i < 3; i++) {
-		// accel.AxisAngleRot[i] += (((rand() / (FLT)RAND_MAX) - .5) * 10);
-		// accel.AxisAngleRot[i] = cos(timestamp);
-	}
-
-	// scale3d(accel.Pos, accel.Pos, 0);
-	// scale3d(accel.Rot + 1, accel.Rot + 1, 0);
-	// quatrotatevector(accel.Pos, accel.Rot, accel.Pos);
 	survive_timecode timecode = (survive_timecode)round(timestamp * 48000000.);
 
-	update_gt |= run_imu(ctx, driver, timestamp, time_between_imu, isIniting, &accel, timecode);
+	update_gt |= run_imu(ctx, driver, timestamp, time_between_imu, timecode);
 	update_gt |= run_light(ctx, driver, timestamp, time_between_pulses);
 
 	if (update_gt) {
@@ -368,7 +400,7 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 	// SV_INFO("%.013f", time_diff);
 	driver->time_last_iterate = timestamp;
 
-	propagate_state(driver, isIniting, &accel, time_diff);
+	propagate_state(driver, time_diff);
 
 	FLT time = survive_configf(ctx, "simulator-time", SC_GET, 0);
 	if (timestamp - driver->timestart > time && time > 0)
@@ -413,9 +445,14 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	SurviveDriverSimulator *sp = SV_CALLOC(1, sizeof(SurviveDriverSimulator));
 	sp->ctx = ctx;
 	ctx->poll_min_time_ms = 0;
-	sp->position.Rot[0] = 1;
+
+	apply_initial_position(sp);
 
 	survive_attach_configi(ctx, Simulator_SHOW_GT_DEVICE_TAG, &sp->show_gt_device_cfg);
+	survive_attach_configf(ctx, Simulator_SENSOR_NOISE_TAG, &sp->sensor_noise);
+	survive_attach_configf(ctx, Simulator_INIT_TIME_TAG, &sp->init_time);
+	survive_attach_configf(ctx, Simulator_SENSOR_DROPRATE_TAG, &sp->sensor_droprate);
+
 	SV_INFO("Setting up Simulator driver.");
 
 	int use_lh2 = ctx->lh_version_forced != 1;
@@ -427,22 +464,6 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	device->head2imu.Rot[0] = 1;
 	device->head2trackref.Rot[0] = 1;
 	device->imu2trackref.Rot[0] = 1;
-
-	for (int i = 0; i < 4; i++)
-		sp->position.Rot[i] = 1;
-	sp->position.Rot[0] = 2;
-
-	quatnormalize(sp->position.Rot, sp->position.Rot);
-
-	size_t attractor_cnt = survive_configi(ctx, "attractors", SC_GET, 1);
-	if (attractor_cnt) {
-		for (int i = 0; i < 3; i++)
-			sp->velocity.Pos[i] = 2. * rand() / RAND_MAX - 1.;
-	}
-
-	sp->velocity.AxisAngleRot[0] = 1;
-	sp->velocity.AxisAngleRot[1] = 1;
-	sp->velocity.AxisAngleRot[2] = 1;
 
 	cstring cfg = {0};
 	cstring loc = {0}, nor_buf = {0};

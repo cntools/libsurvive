@@ -540,6 +540,9 @@ inline void quatrotateabout(LinmathQuat qout, const LinmathQuat q1, const Linmat
 	if (aliased) {
 		quatcopy(qout, rtn);
 	}
+
+	for (int i = 0; i < 4; i++)
+		assert(!isnan(qout[i]));
 }
 
 inline void findnearestaxisanglemag(LinmathAxisAngleMag out, const LinmathAxisAngleMag inc,
@@ -918,3 +921,31 @@ LINMATH_EXPORT void Kabsch(LinmathPose *B2Atx, const FLT *_ptsA, const FLT *_pts
 
 LINMATH_EXPORT LinmathQuat LinmathQuat_Identity = {1.0};
 LINMATH_EXPORT LinmathPose LinmathPose_Identity = {.Rot = {1.0}};
+
+inline FLT linmath_rand(FLT min, FLT max) {
+	FLT r = rand() / (FLT)RAND_MAX;
+	r *= (max - min);
+	r += min;
+	return r;
+}
+FLT linmath_normrand(FLT mu, FLT sigma) {
+	static const double epsilon = 0.0000001;
+
+	static double z1;
+	static bool generate;
+	generate = !generate;
+
+	if (!generate)
+		return z1 * sigma + mu;
+
+	double u1, u2;
+	do {
+		u1 = rand() * (1.0 / RAND_MAX);
+		u2 = rand() * (1.0 / RAND_MAX);
+	} while (u1 <= epsilon);
+
+	double z0;
+	z0 = sqrt(-2.0 * log(u1)) * cos(LINMATHPI * 2. * u2);
+	z1 = sqrt(-2.0 * log(u1)) * sin(LINMATHPI * 2. * u2);
+	return z0 * sigma + mu;
+}

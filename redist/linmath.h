@@ -290,6 +290,9 @@ static inline LinmathPose EulerPose2Pose(const LinmathEulerPose *pose) {
 	return p;
 }
 
+LINMATH_EXPORT FLT linmath_rand(FLT min, FLT max);
+LINMATH_EXPORT FLT linmath_normrand(FLT mu, FLT sigma);
+
 #ifdef __cplusplus
 }
 #endif
