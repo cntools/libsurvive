@@ -33,8 +33,16 @@ extern "C" {
 #define _FLT_format(f) _FLT_format2(f)
 #define FLT_format _FLT_format(FLT)
 
+#define Point10_format Point9_format "\t" FLT_format
+#define Point9_format Point8_format "\t" FLT_format
+#define Point8_format Point7_format "\t" FLT_format
+#define Point7_format Point6_format "\t" FLT_format
+#define Point6_format Point5_format "\t" FLT_format
+#define Point5_format Point4_format "\t" FLT_format
+#define Point4_format Point3_format "\t" FLT_format
 #define Point3_format FLT_format "\t" FLT_format "\t" FLT_format
-#define Quat_format FLT_format "\t" FLT_format "\t" FLT_format "\t" FLT_format
+
+#define Quat_format Point4_format
 #define SurvivePose_format Point3_format "\t" Quat_format
 #define SurviveVel_format Point3_format "\t" Point3_format
 
@@ -51,6 +59,14 @@ extern "C" {
 
 #define LINMATH_QUAT_EXPAND(q) (q)[0], (q)[1], (q)[2], (q)[3]
 #define LINMATH_VEC3_EXPAND(p) (p)[0], (p)[1], (p)[2]
+#define LINMATH_VEC4_EXPAND(p) LINMATH_VEC3_EXPAND(p), (p)[3]
+#define LINMATH_VEC5_EXPAND(p) LINMATH_VEC4_EXPAND(p), (p)[4]
+#define LINMATH_VEC6_EXPAND(p) LINMATH_VEC5_EXPAND(p), (p)[5]
+#define LINMATH_VEC7_EXPAND(p) LINMATH_VEC6_EXPAND(p), (p)[6]
+#define LINMATH_VEC8_EXPAND(p) LINMATH_VEC7_EXPAND(p), (p)[7]
+#define LINMATH_VEC9_EXPAND(p) LINMATH_VEC8_EXPAND(p), (p)[8]
+#define LINMATH_VEC10_EXPAND(p) LINMATH_VEC9_EXPAND(p), (p)[9]
+
 #define SURVIVE_VELOCITY_EXPAND(v) LINMATH_VEC3_EXPAND((v).Pos), LINMATH_VEC3_EXPAND((v).AxisAngleRot)
 #define SURVIVE_POSE_EXPAND(p) (p).Pos[0], (p).Pos[1], (p).Pos[2], (p).Rot[0], (p).Rot[1], (p).Rot[2], (p).Rot[3]
 #define SURVIVE_POSE_SCAN_EXPAND(p)                                                                                    \

@@ -35,7 +35,7 @@ bool SurviveSensorActivations_isPairValid(const SurviveSensorActivations *self, 
 	return !(timecode_now - data_timecode[0] > tolerance || timecode_now - data_timecode[1] > tolerance);
 }
 
-survive_timecode SurviveSensorActivations_stationary_time(const SurviveSensorActivations *self) {
+survive_long_timecode SurviveSensorActivations_stationary_time(const SurviveSensorActivations *self) {
 	survive_long_timecode last_time = 0;
 	if (self->imu_init_cnt > 0) {
 		last_time = self->last_light;
@@ -44,8 +44,6 @@ survive_timecode SurviveSensorActivations_stationary_time(const SurviveSensorAct
 	}
 	survive_long_timecode last_move = self->last_movement;
 	survive_long_timecode time_elapsed = last_time - last_move;
-	if (time_elapsed > 0xFFFFFFFF)
-		return 0xFFFFFFFF;
 
 	return time_elapsed;
 }

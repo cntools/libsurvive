@@ -79,7 +79,7 @@ SURVIVE_EXPORT bool SurviveSensorActivations_isPairValid(const SurviveSensorActi
 /**
  * Returns the amount of time stationary
  */
-SURVIVE_EXPORT survive_timecode SurviveSensorActivations_stationary_time(const SurviveSensorActivations *self);
+SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_stationary_time(const SurviveSensorActivations *self);
 /**
  * Default tolerance that gives a somewhat accuate representation of current state.
  *

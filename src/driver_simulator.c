@@ -22,7 +22,7 @@ STATIC_CONFIG_ITEM(Simulator_OBJ_RADIUS, "simulator-obj-radius", 'f', "Radius of
 STATIC_CONFIG_ITEM(Simulator_SHOW_GT_DEVICE, "simulator-show-gt", 'i',
 				   "0: No GT device, 1: Show GT device, 2: Only GT device", 1)
 STATIC_CONFIG_ITEM(Simulator_SENSOR_NOISE, "simulator-sensor-noise", 'f',
-				   "Covariance of noise to apply to light sensors", 1e-1)
+				   "Covariance of noise to apply to light sensors", .001)
 STATIC_CONFIG_ITEM(Simulator_SENSOR_DROPRATE, "simulator-sensor-droprate", 'f', "Chance to drop a sensor reading", .1)
 
 STATIC_CONFIG_ITEM(Simulator_INIT_TIME, "simulator-init-time", 'f', "Init time -- object wont move for this long", 2.)
@@ -428,15 +428,14 @@ static void simulation_compare(SurviveObject *so, uint32_t timecode, SurvivePose
 	SurvivePose p = InvertPoseRtn(&driver->position);
 	ApplyPoseToPose(&p, &p, &so->OutPoseIMU);
 
-	SV_VERBOSE(200, "Simulation diff:\t%+f\t%+f\t" SurvivePose_format, norm3d(p.Pos), norm3d(p.Rot + 1),
-			   SURVIVE_POSE_EXPAND(p));
-
-	SV_VERBOSE(200, "Simulation position " SurvivePose_format "\t", SURVIVE_POSE_EXPAND(driver->position));
-	SV_VERBOSE(200, "Simulation velocity " SurviveVel_format "\t", SURVIVE_VELOCITY_EXPAND(driver->velocity));
-	SV_VERBOSE(200, "Object     velocity " SurviveVel_format "\t", SURVIVE_VELOCITY_EXPAND(so->velocity));
-
 	if (norm3d(p.Pos) > .1 || norm3d(p.Rot + 1) > .2) {
-		SV_WARN("Simulation unsync");
+		SV_VERBOSE(200, "Simulation unsync");
+		SV_VERBOSE(200, "Simulation diff:\t%+f\t%+f\t" SurvivePose_format, norm3d(p.Pos), norm3d(p.Rot + 1),
+				   SURVIVE_POSE_EXPAND(p));
+
+		SV_VERBOSE(200, "Simulation position " SurvivePose_format "\t", SURVIVE_POSE_EXPAND(driver->position));
+		SV_VERBOSE(200, "Simulation velocity " SurviveVel_format "\t", SURVIVE_VELOCITY_EXPAND(driver->velocity));
+		SV_VERBOSE(200, "Object     velocity " SurviveVel_format "\t", SURVIVE_VELOCITY_EXPAND(so->velocity));
 	}
 	driver->pose_fn(so, timecode, pose);
 }
@@ -448,12 +447,12 @@ int DriverRegSimulator(SurviveContext *ctx) {
 
 	apply_initial_position(sp);
 
+	SV_INFO("Setting up Simulator driver.");
+
 	survive_attach_configi(ctx, Simulator_SHOW_GT_DEVICE_TAG, &sp->show_gt_device_cfg);
 	survive_attach_configf(ctx, Simulator_SENSOR_NOISE_TAG, &sp->sensor_noise);
 	survive_attach_configf(ctx, Simulator_INIT_TIME_TAG, &sp->init_time);
 	survive_attach_configf(ctx, Simulator_SENSOR_DROPRATE_TAG, &sp->sensor_droprate);
-
-	SV_INFO("Setting up Simulator driver.");
 
 	int use_lh2 = ctx->lh_version_forced != 1;
 

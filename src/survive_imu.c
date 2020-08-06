@@ -9,11 +9,15 @@
 #include <minimal_opencv.h>
 #include <malloc.h>
 
+#include "generated/survive_imu.generated.h"
+
 // Mahoney is due to https://hal.archives-ouvertes.fr/hal-00488376/document
 // See also http://www.olliw.eu/2013/imu-data-fusing/#chapter41 and
 // http://x-io.co.uk/open-source-imu-and-ahrs-algorithms/
 static void mahony_ahrs(SurviveIMUTracker *tracker, LinmathQuat q, const LinmathVec3d _gyro,
 						const LinmathVec3d _accel) {
+	SurviveContext *ctx = tracker->so->ctx;
+
 	LinmathVec3d gyro;
 	memcpy(gyro, _gyro, 3 * sizeof(FLT));
 
@@ -25,7 +29,6 @@ static void mahony_ahrs(SurviveIMUTracker *tracker, LinmathQuat q, const Linmath
 	const FLT int_gain = 0;
 
 	FLT mag_accel = magnitude3d(accel);
-
 	if (mag_accel != 0.0) {
 		scale3d(accel, accel, 1. / mag_accel);
 
@@ -61,235 +64,369 @@ static const int imu_calibration_iterations = 100;
 static void RotateAccel(LinmathVec3d rAcc, const LinmathQuat rot, const LinmathVec3d accel) {
 	quatrotatevector(rAcc, rot, accel);
 	LinmathVec3d G = {0, 0, -1};
-	SurviveContext *ctx = 0;
-	// SV_VERBOSE(100, "RotateAccel: %f\t" Point3_format, magnitude3d(rAcc), LINMATH_VEC3_EXPAND(rAcc));
 	add3d(rAcc, rAcc, G);
 	scale3d(rAcc, rAcc, 9.80665);
+}
+
+static void FindUpRotation(LinmathQuat correction_world, const LinmathQuat obj2world, const LinmathVec3d local_accel) {
+	LinmathVec3d localG = {0, 0, -1};
+
+	quatfrom2vectors(correction_world, local_accel, localG);
 }
 
 #define CREATE_STACK_MAT(name, rows, cols)                                                                             \
 	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
 	CvMat name = cvMat(rows, cols, SURVIVE_CV_F, _##name);
 
-void update_rotation_from_rotvel(FLT t, survive_kalman_state_t *k, const CvMat *H, const CvMat *K, const CvMat *x_t0,
-								 CvMat *x_t1, const FLT *z) {
-	CvMat Z = cvMat(1, k->max_dim_cnt, SURVIVE_CV_F, (void *)(z));
-
-	CREATE_STACK_MAT(y, 1, k->max_dim_cnt);
-	// y = Z - H * X_K|k-1
-	cvGEMM(H, x_t0, -1, &Z, 1, &y, 0);
-
-	// X_k|k = X_k|k-1 + K * y
-	cvGEMM(K, &y, 1, x_t0, 1, x_t1, 0);
-}
-
-static void update_rotation_from_rotation(FLT t, survive_kalman_state_t *k, const CvMat *H, const CvMat *K,
-										  const CvMat *x_t0, CvMat *x_t1, const FLT *z) {
-	FLT k_rot = K->data.db[0];
-	FLT k_rot_vel = K->data.db[1];
-
-	FLT p_rot = k->info.P[0];
-	FLT p_rot_vel = k->info.P[1];
-
-	FLT f_rot = p_rot / (k_rot + p_rot);
-	FLT f_rot_vel = p_rot_vel / (k_rot_vel + p_rot_vel);
-
-	if (quatiszero(x_t0->data.db)) {
-		quatcopy(x_t1->data.db, z);
-		return;
-	}
-
-	LinmathQuat original;
-	survive_apply_ang_velocity(original, x_t0->data.db + 4, -t, x_t0->data.db);
-
-	quatslerp(x_t1->data.db, x_t0->data.db, z, K->data.db[0]);
-
-	if (t > .001) {
-		SurviveAngularVelocity ang_vel;
-		survive_find_ang_velocity(ang_vel, t, original, x_t1->data.db);
-		linmath_interpolate(x_t1->data.db + 4, 3, x_t0->data.db + 4, ang_vel, K->data.db[1]);
-	}
-	// printf("x0      " Point3_format "\n", LINMATH_VEC3_EXPAND(x_t0->data.db + 4));
-	// printf("ang_vel " Point3_format "\n", LINMATH_VEC3_EXPAND(ang_vel));
-	// printf("x1      " Point3_format "\n", LINMATH_VEC3_EXPAND(x_t1->data.db + 4));
-}
-
 void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU *data) {
 	SurviveContext *ctx = tracker->so->ctx;
 
 	// Wait til observation is in before reading IMU; gets rid of bad IMU data at the start
-	if (tracker->last_data.datamask == 0) {
-		tracker->imu_kalman_update = data->hdr.timecode;
-		tracker->last_kalman_update = tracker->obs_kalman_update = data->hdr.timecode;
+	if (tracker->rot.t == 0 || tracker->position.t == 0) {
+		return;
+	}
+	SV_VERBOSE(200, "%s imu mag %f", tracker->so->codename, norm3d(data->accel));
+	FLT time = data->hdr.timecode / (FLT)tracker->so->timebase_hz;
+	FLT time_diff = time - tracker->rot.t;
+
+	if (time_diff < 0) {
+		SV_WARN("Processing imu data from the past %fs", time - tracker->rot.t);
 		return;
 	}
 
-	if (tracker->last_data.datamask == 1) {
-		tracker->last_data = *data;
-		tracker->imu_kalman_update = data->hdr.timecode;
-		tracker->last_kalman_update = tracker->obs_kalman_update = data->hdr.timecode;
-		return;
-	}
+	LinmathQuat obj2world = {0};
+	survive_kalman_predict_state(time, &tracker->rot, 0, 4, obj2world);
+	quatnormalize(obj2world, obj2world);
 
-	// double n = 1. / norm3d(data->accel);
-	// if(n > .999 && n < 1.001)
-	// tracker->acc_bias = tracker->acc_bias * .95 + (1 / norm3d(data->accel)) * .05;
-
-	// SV_INFO("%7f %7f", n, tracker->acc_bias);
-
-	FLT time_diff =
-		survive_timecode_difference(data->hdr.timecode, tracker->last_kalman_update) / (FLT)tracker->so->timebase_hz;
-	FLT time_since_obs =
-		survive_timecode_difference(data->hdr.timecode, tracker->obs_kalman_update) / (FLT)tracker->so->timebase_hz;
-
-	// printf("i%u %f\n", data->timecode, time_diff);
-	LinmathQuat rot;
-	survive_kalman_predict_state(0, &tracker->rot, 0, rot);
-
-	assert(time_diff >= 0);
-	if (time_since_obs > .05) {
-		return;
-	}
 	if (time_diff > 0.5) {
-		SV_WARN("%s is probably dropping IMU packets; %f time reported between %u %u", tracker->so->codename, time_diff,
-				data->hdr.timecode, tracker->imu_kalman_update);
+		SV_WARN("%s is probably dropping IMU packets; %f time reported between %lu", tracker->so->codename, time_diff,
+				data->hdr.timecode);
 	}
+
+	bool standStill =
+		SurviveSensorActivations_stationary_time(&tracker->so->activations) > (tracker->so->timebase_hz / 10.);
+
+	bool hasRotation = false;
+	bool hasAngularVel = false;
+	FLT rotation_state_update[7] = {0};
+	FLT rotation_variance[] = {tracker->mahony_variance, tracker->mahony_variance, tracker->mahony_variance,
+							   tracker->mahony_variance, tracker->gyro_var,		   tracker->gyro_var,
+							   tracker->gyro_var};
+
+	LinmathVec3d accel_corrected;
+	copy3d(accel_corrected, data->accel);
+	// quatrotatevector(accel_corrected, tracker->imuerror_correction_local, data->accel);
 
 	if (tracker->mahony_variance >= 0) {
-		LinmathQuat pose_rot;
-		quatcopy(pose_rot, rot);
-		mahony_ahrs(tracker, pose_rot, data->gyro, data->accel);
-
-		const FLT Hr[] = {1, 0};
-		LinmathAxisAngleMag input;
-		quattoaxisanglemag(input, pose_rot);
-
-		survive_kalman_predict_update_state(time_diff, &tracker->rot, input, Hr,
-											tracker->rot.info.P[0] + tracker->mahony_variance);
-		time_diff = 0;
+		quatcopy(rotation_state_update, obj2world);
+		mahony_ahrs(tracker, rotation_state_update, data->gyro, accel_corrected);
+		hasRotation = true;
 	}
 
-	FLT Rv[2] = {tracker->rot.info.P[0] + tracker->acc_var, tracker->rot.info.P[0] + tracker->gyro_var};
+	if (tracker->gyro_var >= 0) {
+		quatrotatevector(rotation_state_update + 4, obj2world, data->gyro);
+		hasAngularVel = true;
+	}
 
-	LinmathVec3d rAcc = {0};
-	RotateAccel(rAcc, rot, data->accel);
+	if (hasAngularVel && hasRotation) {
+		SV_VERBOSE(200, "Integrating gyro/mahony " Point7_format " with cov " Point7_format,
+				   LINMATH_VEC7_EXPAND(rotation_state_update), LINMATH_VEC7_EXPAND(rotation_variance));
+		survive_imu_integrate_rotation_angular_velocity(tracker, time, rotation_state_update, rotation_variance);
+	} else if (hasAngularVel) {
+		SV_VERBOSE(200, "Integrating gyro " Point3_format " with cov " Point3_format,
+				   LINMATH_VEC3_EXPAND(rotation_state_update + 4), LINMATH_VEC3_EXPAND(rotation_variance + 4));
+		survive_imu_integrate_angular_velocity(tracker, time, rotation_state_update + 4, rotation_variance + 4);
+	} else if (hasRotation) {
+		SV_VERBOSE(200, "Integrating mahony " Point4_format " with cov " Point4_format,
+				   LINMATH_VEC4_EXPAND(rotation_state_update), LINMATH_VEC4_EXPAND(rotation_variance));
+		survive_imu_integrate_rotation(tracker, time, rotation_state_update, rotation_variance);
+	}
 
-	const FLT Hp[] = {0, 0, 1};
-	survive_kalman_predict_update_state(time_diff, &tracker->position, rAcc, Hp, Rv[0]);
+	survive_kalman_predict_state(time, &tracker->rot, 0, 4, obj2world);
+	quatnormalize(obj2world, obj2world);
 
-	const FLT Hr[] = {0, 1};
-	FLT rot_vel[4] = { 0 };
-	quatrotatevector(rot_vel, rot, data->gyro);
-	// survive_kalman_predict_update_state(time_diff, &tracker->rot, rot_vel, Hr, Rv[1]);
-	survive_kalman_predict_update_state_extended(time_diff, &tracker->rot, rot_vel, Hr, update_rotation_from_rotvel,
-												 Rv[1]);
+	if (standStill) {
+		FLT zeros[6] = {0.};
+		FLT v = 1e-2;
+		FLT R[] = {v, v, v, v, v, v};
+		SV_VERBOSE(200, "Integrating stand still " Point6_format " with cov " Point6_format, LINMATH_VEC6_EXPAND(zeros),
+				   LINMATH_VEC6_EXPAND(R));
+		LinmathVec3d rAcc = {0};
+		RotateAccel(rAcc, obj2world, accel_corrected);
 
-	tracker->imu_kalman_update = tracker->last_kalman_update = data->hdr.timecode;
+		SV_VERBOSE(200, "Acc of " Point3_format " error " Point4_format, LINMATH_VEC3_EXPAND(rAcc),
+				   LINMATH_QUAT_EXPAND(tracker->imuerror_correction_local));
+		survive_imu_integrate_velocity_acceleration(tracker, time, zeros, R);
+
+		LinmathPoint3d corrected;
+		quatrotatevector(corrected, tracker->imuerror_correction_local, data->accel);
+		quatrotatevector(rAcc, obj2world, corrected);
+
+		add3d(tracker->world_up_while_still, tracker->world_up_while_still, data->accel);
+		tracker->up_while_still_cnt++;
+	} else {
+		if (tracker->up_while_still_cnt) {
+			scale3d(tracker->world_up_while_still, tracker->world_up_while_still, 1. / tracker->up_while_still_cnt);
+			tracker->up_while_still_cnt = 0;
+
+			FindUpRotation(tracker->imuerror_correction_local, obj2world, tracker->world_up_while_still);
+
+			LinmathPoint3d rAcc;
+			LinmathPoint3d corrected;
+			quatrotatevector(corrected, tracker->imuerror_correction_local, tracker->world_up_while_still);
+			quatrotatevector(rAcc, obj2world, corrected);
+
+			memset(tracker->world_up_while_still, 0, sizeof(LinmathQuat));
+		}
+
+		if (tracker->acc_var >= 0) {
+			FLT v = tracker->acc_var;
+
+			LinmathVec3d rAcc = {0};
+			RotateAccel(rAcc, obj2world, accel_corrected);
+			FLT R[] = {v, v, v};
+			SV_VERBOSE(200, "Integrating accelerometer " Point3_format " with cov " Point3_format,
+					   LINMATH_VEC3_EXPAND(rAcc), LINMATH_VEC3_EXPAND(R));
+			survive_imu_integrate_acceleration(tracker, time, rAcc, R);
+		}
+	}
 }
 
-void survive_imu_tracker_predict(const SurviveIMUTracker *tracker, survive_timecode timecode, SurvivePose *out) {
-	if (tracker->position.info.P[0] > 100 || tracker->rot.info.P[0] > 100)
+void survive_imu_tracker_predict(const SurviveIMUTracker *tracker, survive_long_timecode timecode, SurvivePose *out) {
+	if (tracker->position.info.P[0] > 100 || tracker->rot.info.P[0] > 100 || tracker->position.t == 0)
 		return;
 
-	FLT t = survive_timecode_difference(timecode, tracker->last_kalman_update) / (FLT)tracker->so->timebase_hz;
+	FLT t = timecode / (FLT)tracker->so->timebase_hz;
 
-	survive_kalman_predict_state(t, &tracker->position, 0, out->Pos);
-
-	// LinmathAxisAngleMag r;
-	survive_kalman_predict_state(t, &tracker->rot, 0, out->Rot);
+	survive_kalman_predict_state(t, &tracker->position, 0, 3, out->Pos);
+	survive_kalman_predict_state(t, &tracker->rot, 0, 4, out->Rot);
 	quatnormalize(out->Rot, out->Rot);
-	// quatfromaxisanglemag(out->Rot, r);
+	/*
+	LinmathAxisAngle aa;
+	survive_kalman_predict_state(t, &tracker->rot, 0, 3, aa);
+	quatfromaxisanglemag(out->Rot, aa);
+*/
+	struct SurviveContext *ctx = tracker->so->ctx;
+	SV_VERBOSE(300, "Predict pose %f %f " SurvivePose_format, t, t - tracker->rot.t, SURVIVE_POSE_EXPAND(*out))
 }
 
-SURVIVE_EXPORT void survive_imu_tracker_update(SurviveIMUTracker *tracker, survive_timecode timecode,
+SURVIVE_EXPORT void survive_imu_tracker_update(SurviveIMUTracker *tracker, survive_long_timecode timecode,
 											   SurvivePose *out) {
 	survive_imu_tracker_predict(tracker, timecode, out);
 }
 
-/*
-static void linear_update(FLT t, survive_kalman_state_t *k, const CvMat* H, const CvMat* K, const CvMat* x_t0, CvMat*
-x_t1, const FLT* z) { int state_cnt = k->info.state_cnt; CREATE_STACK_MAT(x, state_cnt, k->dimension_cnt);
-
-	CREATE_STACK_MAT(F, state_cnt, state_cnt);
-	k->info.F_fn(t, _F);
-
-	survive_kalman_predict(t, k, x_t0, &x);
-
-	CvMat Z = cvMat(1, k->dimension_cnt, SURVIVE_CV_F, (void *) (z));
-
-	CREATE_STACK_MAT(y, 1, k->dimension_cnt);
-	// y = Z - H * X_K|k-1
-	cvGEMM(H, &x, -1, &Z, 1, &y, 0);
-
-	// X_k|k = X_k|k-1 + K * y
-	cvGEMM(K, &y, 1, &x, 1, x_t1, 0);
-}
-*/
-
-static void rot_predict(FLT t, const survive_kalman_state_t *k, const CvMat *f_in, CvMat *f_out) {
+void rot_predict_quat(FLT t, const survive_kalman_state_t *k, const CvMat *f_in, CvMat *f_out) {
 	(void)k;
 
-	const FLT *rot = f_in->data.db;
-	const FLT *vel = f_in->data.db + 4;
-	copy3d(f_out->data.db + 4, vel);
-	f_out->data.db[7] = 0;
+	const FLT *rot = CV_FLT_PTR(f_in);
+	const FLT *vel = CV_FLT_PTR(f_in) + 4;
+	copy3d(CV_FLT_PTR(f_out) + 4, vel);
 
-	survive_apply_ang_velocity(f_out->data.db, vel, t, rot);
+	survive_apply_ang_velocity(CV_FLT_PTR(f_out), vel, t, rot);
 }
 
-void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTracker *tracker, const SurvivePose *pose,
-											   const FLT *R) {
+static void pos_predict(FLT t, const survive_kalman_state_t *k, const CvMat *f_in, CvMat *f_out) {
+	(void)k;
+
+	const FLT *pos = CV_FLT_PTR(f_in);
+	const FLT *vel = CV_FLT_PTR(f_in) + 3;
+	const FLT *acc = CV_FLT_PTR(f_in) + 6;
+
+	FLT *out = CV_FLT_PTR(f_out);
+	memcpy(out, pos, sizeof(FLT) * 9);
+
+	FLT t2 = t * t / 2.;
+	for (int i = 0; i < 3; i++) {
+		out[i] += t * vel[i] + t2 * acc[i];
+		out[i + 3] += t * acc[i];
+	}
+}
+
+SURVIVE_EXPORT void survive_imu_integrate_velocity_acceleration(SurviveIMUTracker *tracker, double time,
+																const FLT *velocity_accel, const double *R) {
+	FLT _H[6 * 9] = {
+		0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+	};
+	CvMat H = cvMat(6, tracker->position.info.state_cnt, SURVIVE_CV_F, _H);
+	CvMat Zp = cvMat(6, 1, SURVIVE_CV_F, (void *)velocity_accel);
+	survive_kalman_predict_update_state(time, &tracker->position, &Zp, &H, R);
+}
+SURVIVE_EXPORT void survive_imu_integrate_velocity(SurviveIMUTracker *tracker, double time, const LinmathVec3d velocity,
+												   const double *R) {
+	FLT _H[3 * 9] = {
+		0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+	};
+	CvMat H = cvMat(3, tracker->position.info.state_cnt, SURVIVE_CV_F, _H);
+	CvMat Zp = cvMat(3, 1, SURVIVE_CV_F, (void *)velocity);
+	survive_kalman_predict_update_state(time, &tracker->position, &Zp, &H, R);
+}
+
+SURVIVE_EXPORT void survive_imu_integrate_acceleration(SurviveIMUTracker *tracker, double time,
+													   const LinmathVec3d accel, const double *R) {
+	FLT _H[3 * 9] = {
+		0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+	};
+	CvMat H = cvMat(3, tracker->position.info.state_cnt, SURVIVE_CV_F, _H);
+	CvMat Zp = cvMat(3, 1, SURVIVE_CV_F, (void *)accel);
+	survive_kalman_predict_update_state(time, &tracker->position, &Zp, &H, R);
+}
+SURVIVE_EXPORT void survive_imu_integrate_rotation_angular_velocity(SurviveIMUTracker *tracker, double time,
+																	const FLT *rotation_angular_velocity,
+																	const double *R) {
+	FLT _H_rot[7 * 7] = {
+		1., 0, 0, 0, 0, 0, 0, 0, 1., 0, 0, 0, 0, 0, 0, 0, 1., 0, 0, 0, 0, 0, 0, 0, 1.,
+		0,	0, 0, 0, 0, 0, 0, 1, 0,	 0, 0, 0, 0, 0, 0, 1, 0,  0, 0, 0, 0, 0, 0, 1,
+	};
+
+	struct SurviveContext *ctx = tracker->so->ctx;
+
+	CvMat H_rot = cvMat(7, tracker->rot.info.state_cnt, SURVIVE_CV_F, _H_rot);
+	CvMat Zr = cvMat(7, 1, SURVIVE_CV_F, (void *)rotation_angular_velocity);
+	survive_kalman_predict_update_state(time, &tracker->rot, &Zr, &H_rot, R);
+	quatnormalize(tracker->rot.state, tracker->rot.state);
+}
+
+SURVIVE_EXPORT void survive_imu_integrate_angular_velocity(SurviveIMUTracker *tracker, double time,
+														   const LinmathAxisAngle angular_velocity, const double *R) {
+	FLT _H_rot[3 * 7] = {
+		0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1,
+	};
+
+	struct SurviveContext *ctx = tracker->so->ctx;
+	SV_VERBOSE(120, "integrate_angular_velocity " Point3_format, LINMATH_VEC3_EXPAND(angular_velocity));
+
+	CvMat H_rot = cvMat(3, tracker->rot.info.state_cnt, SURVIVE_CV_F, _H_rot);
+	CvMat Zr = cvMat(3, 1, SURVIVE_CV_F, (void *)angular_velocity);
+	survive_kalman_predict_update_state(time, &tracker->rot, &Zr, &H_rot, R);
+	quatnormalize(tracker->rot.state, tracker->rot.state);
+}
+
+void survive_imu_integrate_rotation(SurviveIMUTracker *tracker, double time, const LinmathQuat rotation,
+									const double *R) {
+	FLT _H_rot[4 * 7] = {
+		1., 0, 0, 0, 0, 0, 0, 0, 1., 0, 0, 0, 0, 0, 0, 0, 1., 0, 0, 0, 0, 0, 0, 0, 1., 0, 0, 0,
+	};
+
+	CvMat H_rot = cvMat(4, tracker->rot.info.state_cnt, SURVIVE_CV_F, _H_rot);
+	CvMat Zr = cvMat(4, 1, SURVIVE_CV_F, (void *)rotation);
+	survive_kalman_predict_update_state(time, &tracker->rot, &Zr, &H_rot, R);
+	quatnormalize(tracker->rot.state, tracker->rot.state);
+}
+
+void survive_imu_integrate_position(SurviveIMUTracker *tracker, double time, const LinmathVec3d position,
+									const double *R) {
+	FLT _H[3 * 9] = {
+		1., 0, 0, 0, 0, 0, 0, 0, 0, 0, 1., 0, 0, 0, 0, 0, 0, 0, 0, 0, 1., 0, 0, 0, 0, 0, 0,
+	};
+	CvMat H = cvMat(3, tracker->position.info.state_cnt, SURVIVE_CV_F, _H);
+	CvMat Zp = cvMat(3, 1, SURVIVE_CV_F, (void *)position);
+	survive_kalman_predict_update_state(time, &tracker->position, &Zp, &H, R);
+}
+
+void survive_imu_tracker_integrate_observation(survive_long_timecode timecode, SurviveIMUTracker *tracker,
+											   const SurvivePose *pose, const FLT *R) {
 	if (tracker->last_data.datamask == 0) {
 		tracker->last_data.datamask = 1;
-		tracker->imu_kalman_update = timecode;
-		tracker->last_kalman_update = tracker->obs_kalman_update = timecode;
 	}
 
-	FLT time_diff = survive_timecode_difference(timecode, tracker->last_kalman_update) / (FLT)tracker->so->timebase_hz;
-	// assert(time_diff >= 0 && time_diff < 10);
+	struct SurviveContext *ctx = tracker->so->ctx;
+	FLT time = timecode / (FLT)tracker->so->timebase_hz;
+	if (tracker->position.t == 0) {
+		tracker->rot.t = tracker->position.t = time;
+	}
 
-	// FLT H[] = {1., time_diff, time_diff * time_diff / 2.};
-	FLT H[] = {1., 0, 0};
-	survive_kalman_predict_update_state(time_diff, &tracker->position, pose->Pos, H, R[0]);
+	if (time - tracker->rot.t < 0) {
+		if (time - tracker->rot.t > -.1) {
+			// time = tracker->rot.t;
+		} else {
+			// SV_WARN("Processing light data from the past %fs", time - tracker->rot.t );
+			return;
+		}
+	}
 
-	LinmathQuat cur_rot;
-	// LinmathAxisAngleMag aa_rot, cur_rot;
-	// quattoaxisanglemag(aa_rot, pose->Rot);
+	FLT Rp[] = {.01 + R[0], .01 + R[0], .01 + R[0]};
+	SV_VERBOSE(200, "Integrating pose position " Point3_format " with cov " Point3_format,
+			   LINMATH_VEC3_EXPAND(pose->Pos), LINMATH_VEC3_EXPAND(Rp));
+	survive_imu_integrate_position(tracker, time, pose->Pos, Rp);
 
-	survive_kalman_predict_state(time_diff, &tracker->rot, 0, cur_rot);
-	// findnearestaxisanglemag(aa_rot, aa_rot, cur_rot);
-
-	survive_kalman_predict_update_state_extended(time_diff, &tracker->rot, pose->Rot, H, update_rotation_from_rotation,
-												 R[1]);
-
-	// findnearestaxisanglemag(tracker->rot.state, tracker->rot.state, 0);
-
-	tracker->last_kalman_update = tracker->obs_kalman_update = timecode;
+	FLT Rr[] = {.1 + R[1], .1 + R[1], .1 + R[1], .1 + R[1]};
+	SV_VERBOSE(200, "Integrating pose rotation " Point4_format " with cov " Point4_format,
+			   LINMATH_VEC4_EXPAND(pose->Rot), LINMATH_VEC4_EXPAND(Rr));
+	survive_imu_integrate_rotation(tracker, time, pose->Rot, Rr);
 }
 
-STATIC_CONFIG_ITEM(POSE_POSITION_VARIANCE_SEC, "filter-pose-var-per-sec", 'f', "Position variance per second", 0.001)
+STATIC_CONFIG_ITEM(POSE_POSITION_VARIANCE_SEC, "filter-pose-var-per-sec", 'f', "Position variance per second", 5e-2)
 STATIC_CONFIG_ITEM(POSE_ROT_VARIANCE_SEC, "filter-pose-rot-var-per-sec", 'f', "Position rotational variance per second",
-				   0.01)
+				   1e-1)
 
-STATIC_CONFIG_ITEM(VELOCITY_POSITION_VARIANCE_SEC, "filter-vel-var-per-sec", 'f', "Velocity variance per second", 1.0)
+STATIC_CONFIG_ITEM(VELOCITY_POSITION_VARIANCE_SEC, "filter-vel-var-per-sec", 'f', "Velocity variance per second", -1)
 STATIC_CONFIG_ITEM(VELOCITY_ROT_VARIANCE_SEC, "filter-vel-rot-var-per-sec", 'f',
-				   "Velocity rotational variance per second", 0.1)
+				   "Velocity rotational variance per second", -1)
 
-STATIC_CONFIG_ITEM(IMU_ACC_VARIANCE, "imu-acc-variance", 'f', "Variance of accelerometer", 1.0)
-STATIC_CONFIG_ITEM(IMU_GYRO_VARIANCE, "imu-gyro-variance", 'f', "Variance of gyroscope", 0.001)
+STATIC_CONFIG_ITEM(ACCEL_POSITION_VARIANCE_SEC_TAG, "filter-acc-var-per-sec", 'f', "Accel variance per second", -1.)
+
+STATIC_CONFIG_ITEM(IMU_ACC_VARIANCE, "imu-acc-variance", 'f', "Variance of accelerometer", 1e3)
+STATIC_CONFIG_ITEM(IMU_GYRO_VARIANCE, "imu-gyro-variance", 'f', "Variance of gyroscope", 1e-1)
 STATIC_CONFIG_ITEM(IMU_MAHONY_VARIANCE, "imu-mahony-variance", 'f', "Variance of mahony filter (negative to disable)",
-				   -1.)
+				   -1)
 
-void rot_f(FLT t, FLT *F) {
-	FLT f[] = {1, t, 0, 1};
+void rot_f_quat(FLT t, FLT *F, const struct CvMat *x) {
+	(void)x;
 
-	memcpy(F, f, sizeof(FLT) * 4);
+	// assert(fabs(t) < .1 && t >= 0);
+	if (fabs(t) > .11)
+		t = .11;
+
+	// fprintf(stderr, "F eval: %f " SurvivePose_format "\n", t, SURVIVE_POSE_EXPAND(*(SurvivePose*)x->data.db));
+	gen_imu_rot_f_jac_imu_rot(F, t, CV_FLT_PTR(x));
+
+	for (int j = 0; j < 49; j++)
+		assert(!isnan(F[j]));
 }
 
-void pos_f(FLT t, FLT *F) {
-	FLT f[] = {1, t, t * t / 2., 0, 1, t, 0, 0, 1};
+void rot_f_aa(FLT t, FLT *F, const struct CvMat *x) {
+	(void)x;
 
-	memcpy(F, f, sizeof(FLT) * 9);
+	// assert(fabs(t) < .1 && t >= 0);
+	if (fabs(t) > .1)
+		t = 0;
+
+	// fprintf(stderr, "F eval: %f " SurvivePose_format "\n", t, SURVIVE_POSE_EXPAND(*(SurvivePose*)x->data.db));
+	gen_imu_rot_f_aa_jac_imu_rot_aa(F, t, CV_FLT_PTR(x));
+	for (int j = 0; j < 36; j++)
+		assert(!isnan(F[j]));
+}
+
+static void pos_f(FLT t, FLT *F, const struct CvMat *x) {
+	(void)x;
+
+	// assert(fabs(t) < .1 && t >= 0);
+	if (fabs(t) > .25)
+		t = .25;
+
+	FLT t2 = t * t / 2.;
+	const FLT f[] = {1, 0, 0, t, 0, 0, t2, 0, 0, 0, 1, 0, 0, t, 0, 0, t2, 0, 0, 0, 1, 0, 0, t, 0, 0, t2,
+					 0, 0, 0, 1, 0, 0, t,  0, 0, 0, 0, 0, 0, 1, 0, 0, t,  0, 0, 0, 0, 0, 0, 1, 0, 0, t,
+					 0, 0, 0, 0, 0, 0, 1,  0, 0, 0, 0, 0, 0, 0, 0, 0, 1,  0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
+	assert(sizeof(f) / sizeof(FLT) == 81);
+	memcpy(F, f, sizeof(f));
+}
+
+static inline void mat_eye_diag(CvMat *m, const FLT *v) {
+	for (int i = 0; i < m->rows; i++) {
+		for (int j = 0; j < m->cols; j++) {
+			CV_FLT_PTR(m)[j * m->cols + i] = i == j ? v[i] : 0.;
+		}
+	}
+}
+
+static inline void arr_eye_diag(FLT *m, int rows, int cols, const FLT *v) {
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
+			(m)[j * cols + i] = i == j ? v[i] : 0.;
+		}
+	}
 }
 
 void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so) {
@@ -303,26 +440,47 @@ void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so) {
 	// origin has a variance of 10m; and the quat can be varied by 4 -- which is
 	// more than any actual normalized quat could be off by.
 
-	tracker->pos_Q_per_sec[8] = 1.;
+	FLT accel_pos_var = survive_configf(ctx, ACCEL_POSITION_VARIANCE_SEC_TAG_TAG, SC_GET, 0.0);
 
-	survive_attach_configf(tracker->so->ctx, VELOCITY_POSITION_VARIANCE_SEC_TAG, &tracker->pos_Q_per_sec[4]);
-	survive_attach_configf(tracker->so->ctx, VELOCITY_ROT_VARIANCE_SEC_TAG, &tracker->rot_Q_per_sec[3]);
+	FLT vel_pos_var = survive_configf(ctx, VELOCITY_POSITION_VARIANCE_SEC_TAG, SC_GET, 0.0);
+	FLT vel_rot_var = survive_configf(ctx, VELOCITY_ROT_VARIANCE_SEC_TAG, SC_GET, 0.0);
 
-	survive_attach_configf(tracker->so->ctx, POSE_POSITION_VARIANCE_SEC_TAG, &tracker->pos_Q_per_sec[0]);
-	survive_attach_configf(tracker->so->ctx, POSE_ROT_VARIANCE_SEC_TAG, &tracker->rot_Q_per_sec[0]);
+	FLT pos_var = survive_configf(ctx, POSE_POSITION_VARIANCE_SEC_TAG, SC_GET, 0.0);
+	FLT rot_var = survive_configf(ctx, POSE_ROT_VARIANCE_SEC_TAG, SC_GET, 0.0);
+
+	if (vel_rot_var < 0)
+		vel_rot_var = rot_var;
+	if (vel_pos_var < 0)
+		vel_pos_var = pos_var;
+	if (accel_pos_var < 0)
+		accel_pos_var = vel_pos_var;
 
 	survive_attach_configf(tracker->so->ctx, IMU_MAHONY_VARIANCE_TAG, &tracker->mahony_variance);
-
 	survive_attach_configf(tracker->so->ctx, IMU_ACC_VARIANCE_TAG, &tracker->acc_var);
 	survive_attach_configf(tracker->so->ctx, IMU_GYRO_VARIANCE_TAG, &tracker->gyro_var);
 
-	size_t rotational_dims[] = {4, 3};
-	size_t position_dims[] = {3, 3, 3};
-	survive_kalman_state_init(&tracker->rot, 2, rot_f, tracker->rot_Q_per_sec, 0, rotational_dims, 0);
-	tracker->rot.info.Predict_fn = rot_predict;
-	// tracker->rot.info.Map_fn = rot_map;
+	survive_kalman_set_logging_level(ctx->log_level);
+	survive_kalman_state_init(&tracker->rot, 7, rot_f_quat, tracker->rot_Q_per_sec, 0, 0);
+	tracker->rot.info.Predict_fn = rot_predict_quat;
 
-	survive_kalman_state_init(&tracker->position, 3, pos_f, tracker->pos_Q_per_sec, 0, position_dims, 0);
+	// tracker->rot.state[0] = 1.;
+
+	survive_kalman_state_init(&tracker->position, 9, pos_f, tracker->pos_Q_per_sec, 0, 0);
+	tracker->position.info.Predict_fn = pos_predict;
+
+	tracker->imuerror_correction_local[0] = 1.;
+
+	FLT pos_Q_diag[] = {pos_var,	 pos_var,		pos_var,	   vel_pos_var,	 vel_pos_var,
+						vel_pos_var, accel_pos_var, accel_pos_var, accel_pos_var};
+	FLT rot_Q_diag[] = {rot_var, rot_var, rot_var, rot_var, vel_rot_var, vel_rot_var, vel_rot_var};
+	arr_eye_diag(tracker->pos_Q_per_sec, 9, 9, pos_Q_diag);
+	arr_eye_diag(tracker->rot_Q_per_sec, 7, 7, rot_Q_diag);
+
+	FLT pos_P_diag[9] = {1e9, 1e9, 1e9};
+	FLT rot_P_diag[7] = {1e9, 1e9, 1e9, 1e9};
+
+	survive_kalman_set_P(&tracker->position, pos_P_diag);
+	survive_kalman_set_P(&tracker->rot, rot_P_diag);
 
 	SV_VERBOSE(110, "\t%s: %f", POSE_POSITION_VARIANCE_SEC_TAG, tracker->pos_Q_per_sec[0]);
 	SV_VERBOSE(110, "\t%s: %f", POSE_ROT_VARIANCE_SEC_TAG, tracker->rot_Q_per_sec[0]);
@@ -335,20 +493,9 @@ void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so) {
 
 SurviveVelocity survive_imu_velocity(const SurviveIMUTracker *tracker) {
 	SurviveVelocity rtn = {0};
-	survive_kalman_predict_state(0, &tracker->position, 1, rtn.Pos);
-	survive_kalman_predict_state(0, &tracker->rot, 1, rtn.AxisAngleRot);
+	survive_kalman_predict_state(0, &tracker->position, 3, 6, rtn.Pos);
+	survive_kalman_predict_state(0, &tracker->rot, 4, 7, rtn.AxisAngleRot);
 	return rtn;
-}
-
-void survive_imu_tracker_integrate_velocity(SurviveIMUTracker *tracker, survive_timecode timecode, const FLT *Rv,
-											const SurviveVelocity *vel) {
-	const FLT H[] = {0, 1, 0};
-	FLT time_diff = survive_timecode_difference(timecode, tracker->last_kalman_update) / (FLT)tracker->so->timebase_hz;
-
-	survive_kalman_predict_update_state(time_diff, &tracker->position, vel->Pos, H, Rv[0]);
-	survive_kalman_predict_update_state(time_diff, &tracker->rot, vel->AxisAngleRot, H, Rv[1]);
-
-	tracker->last_kalman_update = tracker->obs_kalman_update = timecode;
 }
 
 void survive_imu_tracker_free(SurviveIMUTracker *tracker) {

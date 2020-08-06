@@ -65,32 +65,54 @@ typedef struct SurviveIMUTracker {
 
 	FLT mahony_variance;
 
-	survive_timecode last_kalman_update;
-	survive_timecode imu_kalman_update;
-	survive_timecode obs_kalman_update;
+	// Laid out as a 3 x 3
+	// | position |
+	// | velocity |
+	// | accel    |
 	survive_kalman_state_t position;
-	FLT pos_Q_per_sec[9];
+	FLT pos_Q_per_sec[81];
 
+	// Laid out as a 2 x 4
+	// | rotation   | <-- quat
+	// | angular, 0 | <-- axis / angle with 0 padding
 	survive_kalman_state_t rot;
-	FLT rot_Q_per_sec[4];
+	FLT rot_Q_per_sec[49];
 
 	PoserDataIMU last_data;
 
 	LinmathVec3d integralFB;
 
+	LinmathVec3d world_up_while_still;
+	int up_while_still_cnt;
+	LinmathQuat imuerror_correction_local;
 } SurviveIMUTracker;
 
 SURVIVE_EXPORT SurviveVelocity survive_imu_velocity(const SurviveIMUTracker *tracker);
-SURVIVE_EXPORT void survive_imu_tracker_predict(const SurviveIMUTracker *tracker, survive_timecode timecode,
+SURVIVE_EXPORT void survive_imu_tracker_predict(const SurviveIMUTracker *tracker, survive_long_timecode timecode,
 												SurvivePose *out);
-SURVIVE_EXPORT void survive_imu_tracker_update(SurviveIMUTracker *tracker, survive_timecode timecode, SurvivePose *out);
+SURVIVE_EXPORT void survive_imu_tracker_update(SurviveIMUTracker *tracker, survive_long_timecode timecode,
+											   SurvivePose *out);
 SURVIVE_EXPORT void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so);
 SURVIVE_EXPORT void survive_imu_tracker_free(SurviveIMUTracker *tracker);
 SURVIVE_EXPORT void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU *data);
-SURVIVE_EXPORT void survive_imu_tracker_integrate_observation(uint32_t timecode, SurviveIMUTracker *tracker,
-															  const SurvivePose *pose, const FLT *variance);
-SURVIVE_EXPORT void survive_imu_tracker_integrate_velocity(SurviveIMUTracker *tracker, survive_timecode timecode,
-														   const FLT *Rv, const SurviveVelocity *vel);
+SURVIVE_EXPORT void survive_imu_integrate_rotation(SurviveIMUTracker *tracker, double time, const LinmathQuat rotation,
+												   const double *R);
+
+SURVIVE_EXPORT void survive_imu_integrate_velocity_acceleration(SurviveIMUTracker *tracker, double time,
+																const FLT *velocity, const double *R);
+SURVIVE_EXPORT void survive_imu_integrate_velocity(SurviveIMUTracker *tracker, double time, const LinmathVec3d velocity,
+												   const double *R);
+SURVIVE_EXPORT void survive_imu_integrate_acceleration(SurviveIMUTracker *tracker, double time,
+													   const LinmathVec3d accel, const double *R);
+SURVIVE_EXPORT void survive_imu_integrate_rotation_angular_velocity(SurviveIMUTracker *tracker, double time,
+																	const FLT *rotation_angular_velocity,
+																	const double *R);
+SURVIVE_EXPORT void survive_imu_integrate_angular_velocity(SurviveIMUTracker *tracker, double time,
+														   const LinmathAxisAngle angular_velocity, const double *R);
+
+SURVIVE_EXPORT void survive_imu_tracker_integrate_observation(survive_long_timecode timecode,
+															  SurviveIMUTracker *tracker, const SurvivePose *pose,
+															  const FLT *variance);
 #ifdef __cplusplus
 };
 #endif
