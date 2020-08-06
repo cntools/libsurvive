@@ -27,7 +27,7 @@ typedef void (*poser_lighthouse_pose_func)(SurviveObject *so, uint8_t lighthouse
 typedef struct
 {
 	PoserType pt;
-	uint32_t timecode; // In object-local ticks.
+	survive_long_timecode timecode; // In object-local ticks.
 	poser_pose_func poseproc;
 	poser_lighthouse_pose_func lighthouseposeproc;
 	void *userdata;

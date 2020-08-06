@@ -35,19 +35,12 @@ bool SurviveSensorActivations_isPairValid(const SurviveSensorActivations *self, 
 	return !(timecode_now - data_timecode[0] > tolerance || timecode_now - data_timecode[1] > tolerance);
 }
 
-survive_long_timecode survive_extend_time(const SurviveObject *so, survive_timecode time) {
-	return SurviveSensorActivations_extend_time(&so->activations, time);
-}
-survive_long_timecode SurviveSensorActivations_extend_time(const SurviveSensorActivations *self,
-														   survive_timecode time) {
-	return ((survive_long_timecode)self->rollover_count << 32u) | time;
-}
 survive_timecode SurviveSensorActivations_stationary_time(const SurviveSensorActivations *self) {
 	survive_long_timecode last_time = 0;
 	if (self->imu_init_cnt > 0) {
-		last_time = ((survive_long_timecode)self->rollover_count << 32u) | self->last_light;
+		last_time = self->last_light;
 	} else {
-		last_time = ((survive_long_timecode)self->rollover_count << 32u) | self->last_imu;
+		last_time = self->last_imu;
 	}
 	survive_long_timecode last_move = self->last_movement;
 	survive_long_timecode time_elapsed = last_time - last_move;
@@ -58,11 +51,8 @@ survive_timecode SurviveSensorActivations_stationary_time(const SurviveSensorAct
 }
 
 void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct PoserDataIMU *imuData) {
-	if (self->last_imu > imuData->hdr.timecode) {
-		self->rollover_count++;
-	}
 	self->last_imu = imuData->hdr.timecode;
-
+	//fprintf(stderr, "imu tc: %16lx\n", self->last_imu);
 	if (self->imu_init_cnt > 0) {
 		self->imu_init_cnt--;
 		return;
@@ -84,34 +74,38 @@ void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct Pos
 	}
 
 	if (norm3d(imuData->gyro) > moveThresholdGyro || dist3d(self->accel, imuData->accel) > moveThresholdAcc) {
-		survive_long_timecode long_timecode =
-			((survive_long_timecode)self->rollover_count << 32u) | imuData->hdr.timecode;
-		self->last_movement = long_timecode;
+		self->last_movement = imuData->hdr.timecode;
 		// fprintf(stderr, "%f %f\n", norm3d(imuData->gyro), dist3d(self->accel, imuData->accel));
 	}
 }
 void SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct PoserDataLightGen2 *lightData) {
 	self->lh_gen = 1;
 
-	int axis = lightData->plane;
-	PoserDataLight *l = &lightData->common;
-	if (l->sensor_id >= SENSORS_PER_OBJECT)
-		return;
+	if(lightData->common.hdr.pt == POSERDATA_LIGHT_GEN2) {
+		int axis = lightData->plane;
+		PoserDataLight *l = &lightData->common;
+		if (l->sensor_id >= SENSORS_PER_OBJECT)
+			return;
 
-	uint32_t *data_timecode = &self->timecode[l->sensor_id][l->lh][axis];
+		uint32_t *data_timecode = &self->timecode[l->sensor_id][l->lh][axis];
 
-	FLT *angle = &self->angles[l->sensor_id][l->lh][axis];
+		FLT *angle = &self->angles[l->sensor_id][l->lh][axis];
 
-	if (!isnan(*angle) && fabs(*angle - l->angle) > moveThresholdAng) {
-		survive_long_timecode long_timecode = ((survive_long_timecode)self->rollover_count << 32u) | l->hdr.timecode;
-		// assert(long_timecode > self->last_movement);
-		// fprintf(stderr, "%f \n", fabs(*angle - l->angle));
-		self->last_movement = long_timecode;
+		if (!isnan(*angle) && fabs(*angle - l->angle) > moveThresholdAng) {
+			survive_long_timecode long_timecode = l->hdr.timecode;
+			// assert(long_timecode > self->last_movement);
+			// fprintf(stderr, "%f \n", fabs(*angle - l->angle));
+			// self->last_movement = long_timecode;
+		}
+
+		*data_timecode = l->hdr.timecode;
+		*angle = l->angle;
 	}
 
-	*data_timecode = l->hdr.timecode;
-	*angle = l->angle;
-	self->last_light = lightData->common.hdr.timecode;
+	if(lightData->common.hdr.timecode > self->last_light) {
+		self->last_light = lightData->common.hdr.timecode;
+		//fprintf(stderr, "lgt tc: %16lx\n", self->last_light);
+	}
 }
 
 SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveObject *so, SurviveSensorActivations *self) {
@@ -141,9 +135,6 @@ SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveObject *so, SurviveSens
 
 void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLightGen1 *_lightData) {
 	self->lh_gen = 0;
-	if (self->imu_init_cnt > 0 && self->last_light > _lightData->common.hdr.timecode) {
-		self->rollover_count++;
-	}
 
 	int axis = (_lightData->acode & 1);
 	PoserDataLight *lightData = &_lightData->common;
@@ -154,14 +145,12 @@ void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 	// printf("error %10.7f\n", fabs(*angle - lightData->angle));
 	if (*length == 0 || fabs(*angle - lightData->angle) > 0.05) {
 		self->last_movement = 0;
-		survive_long_timecode long_timecode =
-			((survive_long_timecode)self->rollover_count << 32u) | lightData->hdr.timecode;
+		survive_long_timecode long_timecode = lightData->hdr.timecode;
 		self->last_movement = long_timecode;
 	}
 
 	if (*length == 0 || fabs(*angle - lightData->angle) > moveThresholdAcc) {
-		survive_long_timecode long_timecode =
-			((survive_long_timecode)self->rollover_count << 32u) | lightData->hdr.timecode;
+		survive_long_timecode long_timecode = lightData->hdr.timecode;
 		// assert(long_timecode > self->last_movement);
 		self->last_movement = long_timecode;
 	}
@@ -169,8 +158,24 @@ void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 	*angle = lightData->angle;
 	*data_timecode = lightData->hdr.timecode;
 	*length = (uint32_t)(_lightData->length * 48000000);
-	self->last_light = lightData->hdr.timecode;
+	if(lightData->hdr.timecode > self->last_light)
+		self->last_light = lightData->hdr.timecode;
 }
+
+static inline survive_long_timecode make_long_timecode(survive_long_timecode prev, survive_timecode current) {
+	survive_long_timecode rtn = current | (prev & 0xFFFFFFFF00000000);
+	if(rtn < prev && rtn + 0x80000000 < prev) {
+		rtn += 0x100000000;
+	}
+	return rtn;
+}
+SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_long_timecode_imu(const SurviveSensorActivations *self, survive_timecode timecode) {
+	return make_long_timecode(self->last_imu, timecode);
+}
+SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_long_timecode_light(const SurviveSensorActivations *self, survive_timecode timecode) {
+	return make_long_timecode(self->last_light, timecode);
+}
+
 
 FLT SurviveSensorActivations_difference(const SurviveSensorActivations *rhs, const SurviveSensorActivations *lhs) {
 	FLT rtn = 0;
