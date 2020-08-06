@@ -345,9 +345,9 @@ static inline SurviveContext *survive_init(int argc, char *const *argv) {
 // For any of these, you may pass in 0 for the function pointer to use default behavior.
 // In general unless you are doing wacky things like recording or playing back data, you won't need to use this.
 #define SURVIVE_HOOK_PROCESS_DEF(hook)                                                                                 \
-	SURVIVE_EXPORT void survive_install_##hook##_fn(SurviveContext *ctx, hook##_process_func fbp);
+	SURVIVE_EXPORT hook##_process_func survive_install_##hook##_fn(SurviveContext *ctx, hook##_process_func fbp);
 #define SURVIVE_HOOK_FEEDBACK_DEF(hook)                                                                                \
-	SURVIVE_EXPORT void survive_install_##hook##_fn(SurviveContext *ctx, hook##_feedback_func fbp);
+	SURVIVE_EXPORT hook##_feedback_func survive_install_##hook##_fn(SurviveContext *ctx, hook##_feedback_func fbp);
 #include "survive_hooks.h"
 
 SURVIVE_EXPORT int survive_startup(SurviveContext *ctx);
@@ -373,6 +373,9 @@ enum survive_config_flags {
 SURVIVE_EXPORT bool survive_config_is_set(SurviveContext *ctx, const char *tag);
 SURVIVE_EXPORT FLT survive_configf(SurviveContext *ctx, const char *tag, char flags, FLT def);
 SURVIVE_EXPORT uint32_t survive_configi(SurviveContext *ctx, const char *tag, char flags, uint32_t def);
+SURVIVE_EXPORT void survive_config_as_str(SurviveContext *ctx, char *output, size_t n, const char *tag,
+										  const char *def);
+
 SURVIVE_EXPORT const char *survive_configs(SurviveContext *ctx, const char *tag, char flags, const char *def);
 
 SURVIVE_EXPORT void survive_attach_configi(SurviveContext *ctx, const char *tag, int * var );

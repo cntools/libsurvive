@@ -93,6 +93,35 @@ static const char *USAGE_FORMAT_INT = USAGE_FORMAT "%13d    ";
 static const char *USAGE_FORMAT_FLOAT = USAGE_FORMAT "%13f    ";
 static const char *USAGE_FORMAT_STRING = USAGE_FORMAT "%13s    ";
 
+static int type_char(char type) {
+	switch (type) {
+	case CONFIG_UINT32:
+		return 'i';
+	case CONFIG_FLOAT:
+		return 'f';
+	case CONFIG_STRING:
+		return 's';
+	case CONFIG_FLOAT_ARRAY:
+		return 'a';
+	default:
+		return 'u';
+	}
+}
+
+static void survive_config_iterate_grp(SurviveContext *ctx, config_group *grp, survive_config_iterate_fn fn,
+									   void *user) {
+	for (int i = 0; i < grp->used_entries; i++) {
+		config_entry *ce = &grp->config_entries[i];
+		uint8_t type = type_char(ce->type);
+		fn(ctx, ce->tag, type, user);
+	}
+}
+
+void survive_config_iterate(SurviveContext *ctx, survive_config_iterate_fn fn, void *user) {
+	survive_config_iterate_grp(ctx, ctx->temporary_config_values, fn, user);
+	survive_config_iterate_grp(ctx, ctx->global_config_values, fn, user);
+}
+
 static void PrintConfigGroup(config_group * grp, const char ** chkval, int * cvs, int verbose )
 {
 	int i, j;
@@ -745,6 +774,38 @@ static uint32_t config_entry_as_uint32_t(config_entry *entry) {
 		break;
 	}
 	return 0;
+}
+
+SURVIVE_EXPORT void survive_config_as_str(SurviveContext *ctx, char *output, size_t n, const char *tag,
+										  const char *def) {
+	if (n == 0 || output == 0)
+		return;
+
+	config_entry *entry = sc_search(ctx, tag);
+	if (entry == 0) {
+		if (def == 0) {
+			output[0] = 0;
+		} else {
+			strncpy(output, def, n);
+		}
+	}
+
+	switch (entry->type) {
+	case CONFIG_FLOAT:
+		snprintf(output, n, "%f", (float)entry->numeric.f);
+		break;
+	case CONFIG_UINT32:
+		snprintf(output, n, "%i", entry->numeric.i);
+		break;
+	case CONFIG_STRING:
+		snprintf(output, n, "%s", entry->data);
+		break;
+	case CONFIG_FLOAT_ARRAY:
+
+		snprintf(output, n, "%s", entry->data);
+	case CONFIG_UNKNOWN:
+		break;
+	}
 }
 
 bool survive_config_is_set(SurviveContext *ctx, const char *tag) {
