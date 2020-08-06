@@ -11,6 +11,8 @@ var oldPose = [ 0, 0, 0 ];
 var scene, camera, renderer, floor, fpv_camera;
 var fov_scale = 1;
 
+var report_in_imu = false;
+
 $(function() { $("#toggleBtn").click(function() { $("#cam").toggle(); }); });
 
 var lhColors = [
@@ -273,6 +275,7 @@ function create_tracked_object(info) {
 	group.add(group_rot);
 	if (info.config && info.config.lighthouse_config) {
 		var trackref = new THREE.Group();
+		var sensorref = new THREE.Group();
 		var imuref = new THREE.Group();
 
 		var trackref_from_head = info.config.trackref_from_head;
@@ -300,7 +303,11 @@ function create_tracked_object(info) {
 			imuref.position.fromArray(pa);
 			imuref.quaternion.fromArray(qa);
 			imuref.verticesNeedUpdate = true;
+
+			var axes = new THREE.AxesHelper(.075);
+			imuref.add(axes);
 		}
+
 		for (var idx in info.config.lighthouse_config.modelPoints) {
 			var p = info.config.lighthouse_config.modelPoints[idx];
 			var pn = info.config.lighthouse_config.modelNormals[idx];
@@ -317,13 +324,16 @@ function create_tracked_object(info) {
 			var normal =
 				new THREE.Line(normalGeom, new THREE.LineBasicMaterial({color : idx == 4 ? 0xFF0000 : 0x00FF00}));
 			group.sensors[idx] = sensorMaterial;
-			trackref.add(normal);
-			trackref.add(newSensor);
+
+			sensorref.add(normal);
+			sensorref.add(newSensor);
 		}
 
 		group_rot.add(trackref);
 		trackref.add(imuref);
+		trackref.add(sensorref);
 		group.trackref = trackref;
+		group.sensorref = sensorref;
 		group.imuref = imuref;
 	} else {
 		axesLength = 1.5;
@@ -335,8 +345,8 @@ function create_tracked_object(info) {
 	objs[info.tracker] = group;
 	objs[info.tracker].group = group;
 	objs[info.tracker].group_rot = group_rot;
-	if (objs[info.tracker].trackref)
-		objs[info.tracker].trackref.visible = false;
+	if (objs[info.tracker].sensorref)
+		objs[info.tracker].sensorref.visible = false;
 
 	objs[info.tracker].group.position.set(NaN);
 	var velocityGeom = new THREE.Geometry();
@@ -426,13 +436,14 @@ function update_object(v, allow_unsetup) {
 			poseCnt = 0;
 		}
 		poseCnt++;
+
 		objs[obj.tracker].group.position.set(obj.position[0], obj.position[1], obj.position[2]);
 		objs[obj.tracker].group_rot.quaternion.set(obj.quat[1], obj.quat[2], obj.quat[3], obj.quat[0]);
 		objs[obj.tracker].group.verticesNeedUpdate = true;
 		objs[obj.tracker].group_rot.verticesNeedUpdate = true;
 
-		if (objs[obj.tracker].trackref)
-			objs[obj.tracker].trackref.visible = $("#model")[0].checked;
+		if (objs[obj.tracker].sensorref)
+			objs[obj.tracker].sensorref.visible = $("#model")[0].checked;
 
 		if (objs[obj.tracker].oldPose == null) {
 			objs[obj.tracker].oldPose = [ 0, 0, 0 ];
@@ -528,6 +539,15 @@ var survive_log_handlers = {
 		var obj = {config : config, tracker : v[1]};
 
 		create_tracked_object(obj);
+	},
+	'OPTION' : function(v) {
+		var opt = {name : v[2], type : v[3], value : v[4]};
+
+		switch (opt.name) {
+		case 'report-in-imu':
+			report_in_imu = parseInt(opt.value);
+			break;
+		}
 	},
 	'B' : function(v, tracker) {
 		// #define SWEEP_ANGLE_PRINTF_ARGS dev, channel, sensor_id, timecode, plane, angle
@@ -634,6 +654,9 @@ function process_survive_handlers(msg) {
 
 	if (survive_log_handlers[s[2]]) {
 		survive_log_handlers[s[2]](s);
+	}
+	if (survive_log_handlers[s[1]]) {
+		survive_log_handlers[s[1]](s);
 	}
 
 	return {};
