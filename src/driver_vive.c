@@ -1373,7 +1373,7 @@ static int32_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPt
 	}
 
 	times[0] = lastEventTime;
-	SV_VERBOSE(200, "Packet Start Time: %u (0x%x) (ref: %u) Payload: %s", lastEventTime, lastEventTime, reference_time,
+	SV_VERBOSE(500, "Packet Start Time: %u (0x%x) (ref: %u) Payload: %s", lastEventTime, lastEventTime, reference_time,
 			   packetToHex(payloadPtr, payloadEndPtr));
 
 	while (idsPtr + (timeIndex >> 1u) < eventPtr) {
@@ -1398,7 +1398,7 @@ static int32_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPt
 		}
 		// Store the event time
 		times[++timeIndex] = lastEventTime;
-		SV_VERBOSE(200, "Time: [%zd] %u (%u) %s", timeIndex, lastEventTime, timeDelta,
+		SV_VERBOSE(500, "Time: [%zd] %u (%u) %s", timeIndex, lastEventTime, timeDelta,
 				   packetToHex(eventPtr + 1, eventPtrStart + 1));
 	}
 
@@ -1423,7 +1423,7 @@ exit_while:
 	for (int i = 0; i < (timeIndex >> 1) + 1; i++) {
 		sensors[i].sensorId = ((*idsPtr) >> 3) & 0x1F;
 		sensors[i].edgeCount = (*idsPtr) & 0x7;
-		SV_VERBOSE(200, "Sensor: %2d Edge: %d (%02x)", sensors[i].sensorId, sensors[i].edgeCount, (*idsPtr));
+		SV_VERBOSE(500, "Sensor: %2d Edge: %d (%02x)", sensors[i].sensorId, sensors[i].edgeCount, (*idsPtr));
 		idsPtr++;
 	}
 
@@ -1511,7 +1511,7 @@ static bool read_imu_data(SurviveObject *w, uint16_t time, uint8_t **readPtr, ui
 
 	FLT agm[9] = {aX, aY, aZ, rX, rY, rZ};
 
-	SV_VERBOSE(200, "%s IMU: %d " Point3_format " " Point3_format " From: %s", w->codename, timeLSB,
+	SV_VERBOSE(500, "%s IMU: %d " Point3_format " " Point3_format " From: %s", w->codename, timeLSB,
 			   LINMATH_VEC3_EXPAND(agm), LINMATH_VEC3_EXPAND(agm + 3), packetToHex(*readPtr, payloadPtr));
 	w->ctx->raw_imuproc(w, 3, agm, ((uint32_t)time << 16) | (timeLSB << 8), 0);
 
@@ -1783,7 +1783,7 @@ static int parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, ui
 						conflicted_channel);
 			}
 			channel = data >> 4u;
-			SV_VERBOSE(250, "%s Channel %d (0x%02x)", obj->codename, channel, data);
+			SV_VERBOSE(500, "%s Channel %d (0x%02x)", obj->codename, channel, data);
 			idx++;
 		} else {
 			uint32_t timecode = 0;
@@ -1805,7 +1805,7 @@ static int parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, ui
 				if (unused && dump_binary) {
 					SV_WARN("Not sure what this is: %x", unused);
 				}
-				SV_VERBOSE(250, "Sync %s %02d %d %8u", obj->codename, channel, ootx, timecode);
+				SV_VERBOSE(500, "Sync %s %02d %d %8u", obj->codename, channel, ootx, timecode);
 				if (channel == 255) {
 					SV_WARN("No channel specified for sync");
 					dump_binary = true;
@@ -1824,7 +1824,7 @@ static int parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, ui
 				bool half_clock_flag = timecode & 0x4u;
 				uint8_t sensor = (timecode >> 27u);
 				timecode = fix_time24((timecode >> 3u) & 0xFFFFFFu, reference_time);
-				SV_VERBOSE(250, "Sweep %s %02d.%02d %8u", obj->codename, channel, sensor, timecode);
+				SV_VERBOSE(500, "Sweep %s %02d.%02d %8u", obj->codename, channel, sensor, timecode);
 				if (channel == 255) {
 					SV_WARN("No channel specified for sweep");
 					dump_binary = true;
@@ -1981,7 +1981,7 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 
 	// Some kind of startup heartbeat?
 	if (flags == 0xe2) {
-		SV_VERBOSE(200, "Heartbeat(?) packet %s: '%s'", w->codename, packetToHex(payloadPtr, payloadEndPtr));
+		SV_VERBOSE(500, "Heartbeat(?) packet %s: '%s'", w->codename, packetToHex(payloadPtr, payloadEndPtr));
 		return;
 	}
 
@@ -2203,7 +2203,7 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 	}
 }
 #define DEBUG_WATCHMAN_PRINTF(...)                                                                                     \
-	if (ctx && ctx->log_level > 200) {                                                                                 \
+	if (ctx && ctx->log_level > 500) {                                                                                 \
 		ctx->printfproc(ctx, __VA_ARGS__);                                                                             \
 	}
 

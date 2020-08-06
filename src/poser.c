@@ -63,7 +63,7 @@ void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const S
 
 		for (int i = 0; i < 7; i++)
 			assert(!isnan(((double *)imu2world)[i]));
-		SV_VERBOSE(500, "Object %s has pose " SurvivePose_format, so->codename, SURVIVE_POSE_EXPAND(head2world));
+
 		so->ctx->poseproc(so, PoserData_timecode(poser_data), &head2world);
 	}
 }
