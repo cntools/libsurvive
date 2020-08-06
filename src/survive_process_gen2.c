@@ -148,10 +148,13 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 								.hdr =
 									{
 										.pt = POSERDATA_SYNC_GEN2,
-										.timecode = timecode,
+										.timecode = SurviveSensorActivations_long_timecode_light(&so->activations, timecode),
 									},
 								.lh = bsd_idx,
 							}};
+
+	if (bsd_idx < ctx->activeLighthouses)
+		SurviveSensorActivations_add_gen2(&so->activations, &l);
 
 	if (so->PoserFn && ctx->lh_version != -1) {
 		so->PoserFn(so, (PoserData *)&l);
@@ -225,7 +228,7 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 									.hdr =
 										{
 											.pt = POSERDATA_LIGHT_GEN2,
-											.timecode = timecode,
+											.timecode = SurviveSensorActivations_long_timecode_light(&so->activations, timecode),
 										},
 									.sensor_id = sensor_id,
 									.angle = angle,
