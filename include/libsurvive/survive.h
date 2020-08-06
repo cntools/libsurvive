@@ -388,7 +388,7 @@ SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel c
 #define STATIC_CONFIG_ITEM(variable, name, type, description, default_value)                                           \
 	const char *variable##_TAG = name;                                                                                 \
 	SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##variable() {                                                             \
-		survive_config_bind_variable(type, name, description, default_value);                                          \
+		survive_config_bind_variable(type, name, description, default_value, 0xcafebeef);                              \
 	}
 SURVIVE_EXPORT void survive_config_bind_variable(char vt, const char *name, const char *description,
 												 ...); // Only used at boot.

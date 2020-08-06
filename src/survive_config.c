@@ -61,10 +61,11 @@ void survive_config_bind_variable( char vt, const char * name, const char * desc
 	if( !config->name ) config->name = name;
 	if( config->type && config->type != vt )
 	{
-		fprintf( stderr, "Fatal: Internal error on variable %s.  Types disagree [%c/%c].\n", name, config->type, vt ); 
+		fprintf(stderr, "Fatal: Internal error on variable %s.  Types disagree [%c/%c].\n", name, config->type, vt);
 		exit( -2 );
 	}
 	config->type = vt;
+
 	switch( vt )
 	{
 	case 'i': config->data_default.i = va_arg(ap, int); break;
@@ -73,6 +74,16 @@ void survive_config_bind_variable( char vt, const char * name, const char * desc
 	default:
 		fprintf( stderr, "Fatal: Internal error on variable %s.  Unknown type %c\n", name, vt );
 	}
+
+	uint32_t marker = va_arg(ap, uint32_t);
+	if (marker != 0xcafebeef) {
+		fprintf(stderr, "Fatal: Internal error on variable %s.\n", name);
+		fprintf(stderr,
+				"This is happening because the default value doesn't have the same type as the indicated type.\n");
+		fprintf(stderr, "Note that 'f' types MUST be seen as float/double type to the compiler; ie '1.' and not '1'\n");
+		exit(-2);
+	}
+	va_end(ap);
 }
 
 int survive_print_help_for_parameter( const char * tomap )
