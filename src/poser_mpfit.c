@@ -38,6 +38,8 @@ STATIC_CONFIG_ITEM(RUN_EVERY_N_SYNCS, "syncs-per-run", 'i', "Number of sync puls
 STATIC_CONFIG_ITEM(RUN_POSER_ASYNC, "poser-async", 'i', "Run the poser in it's own thread", 0)
 
 STATIC_CONFIG_ITEM(PRECISE_POSE, "precise", 'i', "Always calculate precise pose", 0)
+STATIC_CONFIG_ITEM(USE_STATIONARY_SENSOR_WINDOW, "use-stationary-sensor-window", 'i',
+				   "Use larger time window when stationary", 1)
 
 typedef struct MPFITStats {
 	int meas_failures;
@@ -69,6 +71,7 @@ typedef struct MPFITData {
   int syncs_per_run;
   int run_async;
   int syncs_per_run_cnt;
+  int syncs_to_setup;
 
   FLT sensor_variance;
   FLT sensor_variance_per_second;
@@ -77,7 +80,7 @@ typedef struct MPFITData {
   bool useIMU;
   bool alwaysPrecise;
   bool useKalman;
-
+  bool useStationaryWindow;
   const char *serialize_prefix;
   MPFITStats stats;
 
@@ -102,7 +105,8 @@ static size_t construct_input_from_scene(const MPFITData *d, size_t timecode, co
 	SurviveContext *ctx = so->ctx;
 
 	bool isStationary = SurviveSensorActivations_stationary_time(scene) > so->timebase_hz;
-	survive_timecode sensor_time_window = isStationary ? (so->timebase_hz) : d->sensor_time_window;
+	survive_timecode sensor_time_window =
+		isStationary && d->useStationaryWindow ? (so->timebase_hz) : d->sensor_time_window;
 
 	const bool force_pair = false;
 	for (uint8_t lh = 0; lh < ctx->activeLighthouses; lh++) {
@@ -115,7 +119,7 @@ static size_t construct_input_from_scene(const MPFITData *d, size_t timecode, co
 		}
 
 		if (!ctx->bsd[lh].PositionSet) {
-			SV_VERBOSE(200, "Allowing data from %d", lh);
+			SV_VERBOSE(500, "Allowing data from %d", lh);
 		}
 
 		bool isCandidate = !ctx->bsd[lh].PositionSet;
@@ -322,7 +326,7 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 					survive_optimizer_setup_camera(mpfitctx, lh, &lhs[lh], false, d->use_jacobian_function_lh);
 				}
 			} else {
-				SV_VERBOSE(200, "Removing data for %d", lh);
+				// SV_VERBOSE(200, "Removing data for %d", lh);
 				meas_size = remove_lh_from_meas(mpfitctx->measurements, meas_size, lh);
 				meas_for_lhs[lh] = 0;
 			}
@@ -338,8 +342,9 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 
 	mpfitctx->measurementsCnt = meas_size;
 
-	if (d->useKalman || d->useIMU) {
-		survive_imu_tracker_predict(&d->tracker, pdl->hdr.timecode, soLocation);
+	if ((d->useKalman || d->useIMU)) {
+		survive_long_timecode tc = so->activations.last_light;
+		survive_imu_tracker_predict(&d->tracker, tc, soLocation);
 	}
 
 	mpfitctx->initialPose = *soLocation;
@@ -398,8 +403,9 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 		*out = *soLocation;
 		rtn = result->bestnorm;
 
-		SV_VERBOSE(110, "MPFIT success %s %f/%10.10f (%d measurements, %d result, %d lighthouses)", so->codename,
-				   result->orignorm, result->bestnorm, (int)meas_size, res, get_lh_count(meas_for_lhs));
+		SV_VERBOSE(110, "MPFIT success %s %fs %f/%10.10f (%d measurements, %d result, %d lighthouses)", so->codename,
+				   pdl->hdr.timecode / (FLT)48000000, result->orignorm, result->bestnorm, (int)meas_size, res,
+				   get_lh_count(meas_for_lhs));
 
 	} else {
 		SV_WARN("MPFIT failure %s %f/%f (%d measurements, %d result, %d lighthouses, %d canSolveLHs, run #%d)",
@@ -424,19 +430,18 @@ static void handle_results(MPFITData *d, PoserDataLight *lightData, FLT error, S
 	SurviveObject *so = d->opt.so;
 	if (error > 0) {
 
-		FLT var_meters = d->useKalman ? (FLT)0.01 + error : 0;
-		FLT var_quat = d->useKalman ? (FLT)0.01 + error : 0;
+		FLT var_meters = d->useKalman ? error : 0;
+		FLT var_quat = d->useKalman ? error : 0;
 		FLT var[2] = {var_meters, var_quat};
 
 		if (d->useKalman) {
-			survive_imu_tracker_integrate_observation(lightData->hdr.timecode, &d->tracker, estimate, var);
-			SurvivePose predicted = {0};
-			survive_imu_tracker_predict(&d->tracker, lightData->hdr.timecode, &predicted);
-
-			// SV_INFO("MPFIT VAR %f", var[0]);
-
+			survive_long_timecode tc = lightData->hdr.timecode;
+			survive_imu_tracker_integrate_observation(tc, &d->tracker, estimate, var);
+			SurvivePose predicted = *estimate;
+			survive_imu_tracker_predict(&d->tracker, tc, &predicted);
 			SurviveVelocity vel = survive_imu_velocity(&d->tracker);
 			PoserData_poser_pose_func_with_velocity(&lightData->hdr, so, &predicted, &vel);
+			// PoserData_poser_pose_func(&lightData->hdr, so, estimate);
 		} else {
 			PoserData_poser_pose_func(&lightData->hdr, so, estimate);
 		}
@@ -645,7 +650,9 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 
 		d->useIMU = (bool)survive_configi(ctx, "use-imu", SC_GET, 1);
 		d->alwaysPrecise = (bool)survive_configi(ctx, "precise", SC_GET, 0);
+		d->useStationaryWindow = (bool)survive_configi(ctx, USE_STATIONARY_SENSOR_WINDOW_TAG, SC_GET, 1);
 		d->useKalman = (bool)survive_configi(ctx, "use-kalman", SC_GET, 1);
+		d->syncs_to_setup = 16;
 		d->required_meas = survive_configi(ctx, "required-meas", SC_GET, 8);
 		d->syncs_per_run = survive_configi(ctx, "syncs-per-run", SC_GET, 1);
 		d->run_async = survive_configi(ctx, RUN_POSER_ASYNC_TAG, SC_GET, 0);
@@ -692,6 +699,10 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		// No poses if calibration is ongoing
 		if (ctx->calptr && ctx->calptr->stage < 5)
 			return 0;
+		if (d->syncs_to_setup > 0) {
+			d->syncs_to_setup--;
+			return 0;
+		}
 		SurviveSensorActivations *scene = &so->activations;
 		PoserDataLight *lightData = (PoserDataLight *)pd;
 		SurvivePose estimate = {0};
