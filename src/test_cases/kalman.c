@@ -258,6 +258,7 @@ TEST(Kalman, ExampleExtended) {
 		memcpy(_true_state, _next_state, sizeof(_true_state));
 	}
 
+	survive_kalman_state_free(&position);
 	return 0;
 }
 
@@ -309,5 +310,6 @@ TEST(Kalman, AngleQuat) {
 		rot_predict_quat(.1, 0, &true_state, &true_state);
 	}
 
+	survive_kalman_state_free(&rotation);
 	return 0;
 }
