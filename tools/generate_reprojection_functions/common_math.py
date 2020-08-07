@@ -143,7 +143,7 @@ def quatrotateabout(q1, q2):
 def axisanglemagnitude(axis_angle):
     qw, qi, qj = axis_angle
     mag = qw * qw + qi * qi + qj * qj
-    return Piecewise((sp.sqrt(mag), mag > 0), (1e-10, True))
+    return Piecewise((sp.sqrt(mag), mag > 1e-20), (1e-10, True))
 
 
 def axisanglerotationmatrix(axis_angle):

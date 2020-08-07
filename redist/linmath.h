@@ -26,9 +26,6 @@ extern "C" {
 
 #define LINMATHPI ((FLT)3.14159265358979323846)
 
-// uncomment the following line to use double precision instead of single precision.
-#define USE_FLOAT
-
 #define CREATE_STACK_MAT(name, rows, cols)                                                                             \
 	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
 	CvMat name = cvMat(rows, cols, SURVIVE_CV_F, _##name);

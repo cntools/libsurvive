@@ -90,7 +90,7 @@ static int ParsePoints(SurviveContext *ctx, SurviveObject *so, char *ct0conf, FL
 			int elemlen = tk->end - tk->start;
 
 			if (tk->type != 4 || elemlen > sizeof(ctt) - 1) {
-				SV_GENERAL_ERROR("Parse error in JSON %d %d %d", tk->type, elemlen, sizeof(ctt));
+				SV_GENERAL_ERROR("Parse error in JSON\n");
 				return 1;
 			}
 
@@ -330,20 +330,16 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	SurviveContext *ctx = so->ctx;
 	// From JSMN example.
 	jsmn_parser p;
-// jsmntok_t t[4096];
-#define TOKEN_POOL_SIZE 256
-	jsmntok_t *t = SV_MALLOC(TOKEN_POOL_SIZE * sizeof(jsmntok_t));
+	jsmntok_t t[4096];
 	jsmn_init(&p);
 
-	int r = jsmn_parse(&p, ct0conf, len, t, TOKEN_POOL_SIZE);
+	int r = jsmn_parse(&p, ct0conf, len, t, sizeof(t) / sizeof(t[0]));
 	if (r < 0) {
 		SV_INFO("Failed to parse JSON in HMD configuration: %d\n", r);
-		free(t);
 		return -1;
 	}
 	if (r < 1 || t[0].type != JSMN_OBJECT) {
 		SV_INFO("Object expected in HMD configuration\n");
-		free(t);
 		return -2;
 	}
 
@@ -408,7 +404,7 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	}
 
 	SV_VERBOSE(50, "Read config for %s", so->codename);
-	free(t);
+
 	return 0;
 }
 

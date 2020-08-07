@@ -377,8 +377,9 @@ void rot_f_quat(FLT t, FLT *F, const struct CvMat *x) {
 	// fprintf(stderr, "F eval: %f " SurvivePose_format "\n", t, SURVIVE_POSE_EXPAND(*(SurvivePose*)x->data.db));
 	gen_imu_rot_f_jac_imu_rot(F, t, CV_FLT_PTR(x));
 
-	for (int j = 0; j < 49; j++)
+	for (int j = 0; j < 49; j++) {
 		assert(!isnan(F[j]));
+	}
 }
 
 void rot_f_aa(FLT t, FLT *F, const struct CvMat *x) {

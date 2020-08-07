@@ -892,7 +892,6 @@ uint32_t survive_configi(SurviveContext *ctx, const char *tag, char flags, uint3
 }
 
 const char *survive_configs(SurviveContext *ctx, const char *tag, char flags, const char *def) {
-	SV_INFO("Configs %s -> %s", tag ? tag : "<unknown>", def ? def : "<not set>");
 	if (!(flags & SC_OVERRIDE)) {
 		config_entry *cv = sc_search(ctx, tag);
 		if (cv)

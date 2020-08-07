@@ -13,6 +13,11 @@ ENDIF()
 
 include_directories(redist include/libsurvive include)
 
+option(USE_SINGLE_PRECISION "Use float instead of double" OFF)
+if(USE_SINGLE_PRECISION)
+    add_definitions(-DUSE_FLOAT)
+endif()
+
 option(USE_HIDAPI "Use HIDAPI instead of libusb" OFF)
 option(USE_ASAN "Use address sanitizer" OFF)
 option(ENABLE_TESTS "Enable build / execution of tests" OFF)
