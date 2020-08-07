@@ -634,6 +634,11 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 			return 0;
 		}
 
+		if (strcmp(dev, "OPTION") == 0) {
+			free(line);
+			return 0;
+		}
+
 		survive_get_ctx_lock(ctx);
 		switch (op[0]) {
 		case 'W':
