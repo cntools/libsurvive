@@ -18,6 +18,8 @@ typedef struct {
 	uint8_t sensor_idx;
 	uint8_t axis;
 	int object;
+
+	bool invalid;
 } survive_optimizer_measurement;
 
 struct mp_par_struct;
@@ -40,6 +42,8 @@ typedef struct {
 	int ptsLength;
 
 	mp_config *cfg;
+
+	bool needsFiltering;
 
 	struct {
 		uint32_t dropped_data_cnt;

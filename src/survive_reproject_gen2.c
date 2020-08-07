@@ -121,16 +121,6 @@ FLT survive_reproject_axis_y_gen2(const BaseStationCal *bcal, LinmathVec3d const
 void survive_reproject_xy_gen2(const BaseStationCal *bcal, LinmathVec3d const ptInLh, SurviveAngleReading out) {
 	out[0] = survive_reproject_axis_x_gen2_inline(bcal, ptInLh);
 	out[1] = survive_reproject_axis_y_gen2_inline(bcal, ptInLh);
-
-	/*
-	FLT X = ptInLh[0], Y = ptInLh[1], Z = ptInLh[2];
-	FLT tan30 = 0.57735026919;
-	FLT B = atan2(X, -Z);
-	FLT A = asin(linmath_enforce_range(tan30 * Y / sqrt(X * X + Z * Z), -1, 1));
-
-	volatile FLT u = -A - B;
-	volatile FLT v = A - B;
-*/
 	assert(!isnan(out[0]));
 	assert(!isnan(out[1]));
 }
