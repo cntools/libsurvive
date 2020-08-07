@@ -198,11 +198,7 @@ void survive_imu_tracker_predict(const SurviveIMUTracker *tracker, survive_long_
 	survive_kalman_predict_state(t, &tracker->position, 0, 3, out->Pos);
 	survive_kalman_predict_state(t, &tracker->rot, 0, 4, out->Rot);
 	quatnormalize(out->Rot, out->Rot);
-	/*
-	LinmathAxisAngle aa;
-	survive_kalman_predict_state(t, &tracker->rot, 0, 3, aa);
-	quatfromaxisanglemag(out->Rot, aa);
-*/
+
 	struct SurviveContext *ctx = tracker->so->ctx;
 	SV_VERBOSE(300, "Predict pose %f %f " SurvivePose_format, t, t - tracker->rot.t, SURVIVE_POSE_EXPAND(*out))
 }

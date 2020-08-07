@@ -308,10 +308,6 @@ void survive_kalman_predict_update_state(FLT t, survive_kalman_state_t *k, const
 
 void survive_kalman_predict_state(FLT t, const survive_kalman_state_t *k, size_t start_index, size_t end_index,
 								  FLT *_out) {
-	int state_cnt = k->info.state_cnt;
-	CREATE_STACK_MAT(F, state_cnt, state_cnt);
-	(void)F;
-
 	CREATE_STACK_MAT(tmpOut, k->info.state_cnt, 1);
 	CvMat x = cvMat(k->info.state_cnt, 1, SURVIVE_CV_F, k->state);
 

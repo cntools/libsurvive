@@ -464,7 +464,7 @@ function update_object(v, allow_unsetup) {
 			record_position(obj.tracker, time, obj);
 		}
 
-		if ("HMD" === obj.tracker) {
+		if ("HMD" === obj.tracker || "T20" == obj.tracker) {
 			var up = new THREE.Vector3(0, 1, 0);
 			var out = new THREE.Vector3(0, 0, -1);
 
@@ -704,7 +704,7 @@ function init() {
 	// SCENE //
 	///////////
 	scene = new THREE.Scene();
-
+	scene.background = new THREE.Color(0x888888);
 	var SCREEN_WIDTH = window.innerWidth, SCREEN_HEIGHT = window.innerHeight;
 	// camera attributes
 	var VIEW_ANGLE = 45, ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT, NEAR = 0.01, FAR = 200;
@@ -720,6 +720,12 @@ function init() {
 	scene.add(camera);
 	camera.position.set(5, 2, 5.00);
 	camera.lookAt(scene.position);
+
+	// Function called when download progresses
+	var onProgress = function(xhr) { console.log((xhr.loaded / xhr.total * 100) + '% loaded'); };
+
+	// Function called when download errors
+	var onError = function(error) { console.log('An error happened' + error); };
 
 	for (var z = 0; z < 5; z++) {
 		for (var i = -4; i < 5; i++) {
@@ -788,17 +794,44 @@ function init() {
 	scene.add(light);
 
 	var floorMaterial =
-		new THREE.MeshBasicMaterial({color : 0x000000, opacity : 0.15, transparent : true, side : THREE.FrontSide});
-	var floorGeometry = new THREE.PlaneGeometry(10, 10);
+		new THREE.MeshBasicMaterial({color : 0x888888, opacity : 1., transparent : true, side : THREE.FrontSide});
+	var floorGeometry = new THREE.PlaneGeometry(100, 100);
 	floor = new THREE.Mesh(floorGeometry, floorMaterial);
 	floor.position.z = -1;
 
-	scene.add(floor);
+	// scene.add(floor);
 
-	var skyBoxGeometry = new THREE.CubeGeometry(50, 50, 50);
-	var skyBoxMaterial = new THREE.MeshBasicMaterial({color : 0x888888, side : THREE.BackSide});
-	var skyBox = new THREE.Mesh(skyBoxGeometry, skyBoxMaterial);
-	scene.add(skyBox);
+	/**
+	 * Will be called when load completes.
+	 * The argument will be the loaded texture.
+	 */
+	var onLoad =
+		function(texture) {
+		var s = 50;
+		var im_w = 4096;
+		var im_h = 2048;
+		var circ = 2 * Math.PI * s;
+		var h = circ * im_h / im_w;
+		var skyBoxGeometry = new THREE.CylinderGeometry(s, s, h, 32);
+		texture.wrapS = THREE.RepeatWrapping;
+		texture.wrapT = THREE.RepeatWrapping;
+
+		var height = 10;
+		var width = 10;
+
+		texture.repeat.set(5, 5);
+
+		var skyBoxMaterial = new THREE.MeshBasicMaterial(
+			{map : texture, color : 0x888888, side : THREE.BackSide, transparent : true, opacity : .3});
+		var skyBox = new THREE.Mesh(skyBoxGeometry, skyBoxMaterial);
+		skyBox.rotateX(Math.PI / 2);
+		// skyBox.translateY(h/2.-2.);
+		scene.add(skyBox);
+	}
+
+	var loader = new THREE.TextureLoader();
+	loader.load('https://i.imgur.com/zUrlBcp.jpg', // 'https://i.imgur.com/7lmxb0b.jpg',
+				onLoad, onProgress, onError);
 
 	var axes = new THREE.AxesHelper(5);
 	scene.add(axes);

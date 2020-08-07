@@ -3,8 +3,10 @@ import sys
 import types
 from collections.abc import Iterable
 
-from symengine import Pow, cse
+from symengine import Pow, cse, Mul
 from sympy import evaluate
+
+import sympy
 
 from gen2 import *
 
@@ -46,21 +48,87 @@ def c_filter(item):
     if item.is_Atom or isinstance(item, Piecewise):
         return item
 
-    with evaluate(False):
+    with sympy.evaluate(False):
         newargs = list(map(c_filter, item.args))
         rtn = item.__class__(*newargs)
 
         # powers of 2 and 3 should just be shown as x*x*x in C; it's faster to skip the function call
-        if item.__class__ == Pow and item.args[1] == 2:
-            rtn = item.args[0] * item.args[0]
-        elif item.__class__ == Pow and item.args[1] == 3:
-            rtn = item.args[0] * item.args[0] * item.args[0]
-        if item.__class__ == Pow and item.args[1] == -2:
-            rtn = 1 / (item.args[0] * item.args[0])
-        elif item.__class__ == Pow and item.args[1] == -3:
-            rtn = 1 / (item.args[0] * item.args[0] * item.args[0])
+
 
         return rtn
+
+def expand_pow(x):
+    pass
+
+def number(x):
+    if x.is_Number:
+        return float(x)
+    return None
+
+def clean_parens(txt):
+    if txt[0] == '(' and txt[-1] == ')':
+        cnt = 0
+        for c in txt[1:-1]:
+            if c == '(':
+                cnt += 1
+            if c == ')':
+                cnt -= 1
+            if cnt < 0:
+                return txt
+        return clean_parens(txt[1:-1])
+    return txt
+
+def ccode_wrapper(item, depth = 0):
+    #return sp.ccode(item)
+
+    if item.is_Atom:
+        if item == True:
+            return "true"
+        if item == False:
+            return "false"
+        return sp.ccode(item)
+
+    newargs = list(map(lambda x: ccode_wrapper(x, depth+1), item.args))
+
+    infixes = {
+        Mul: '*',
+        sp.Add: '+',
+        sp.GreaterThan: '>=',
+        sp.StrictGreaterThan: '>',
+        sp.LessThan: '<=',
+        sp.StrictLessThan: '<'
+    }
+
+    if item.__class__ == Pow:
+        if number(item.args[1]) == 0.5:
+            return "sqrt(%s)" % newargs[0]
+        if number(item.args[1]) == 2:
+           return "(%s * %s)" % (newargs[0], newargs[0])
+        if number(item.args[1]) == 3:
+            return "(%s * %s * %s)" % (newargs[0], newargs[0], newargs[0])
+        # if number(item.args[1]) == -0.5:
+        #     return "(1. / sqrt(%s))" % newargs[0]
+        # if number(item.args[1]) == -1:
+        #     return "(1. / %s)" % (newargs[0])
+        # if number(item.args[1]) == -2:
+        #     return "(1. / (%s * %s))" % (newargs[0], newargs[0])
+        # if number(item.args[1]) == -3:
+        #     return "(1. / (%s * %s * %s))" % (newargs[0], newargs[0], newargs[0])
+        return "pow(%s, %s)" % tuple(newargs)
+    elif item.__class__ in infixes:
+        return "(" + (" " + infixes[item.__class__] + " ").join(newargs) + ")"
+    elif item.__class__ == sp.Piecewise:
+        if item.args[1] == True:
+            return newargs[0]
+        if item.args[1] == False:
+            return newargs[2]
+        return "(%s ? %s : %s)" % (newargs[1], newargs[0], newargs[2])
+
+    return item.__class__.__name__ + "(" + ", ".join(map(clean_parens, newargs)) + ")"
+    #raise Exception("Unhandled type " + item.__class__.__name__)
+
+def ccode(item):
+    return clean_parens(ccode_wrapper(item))
 
 def generate_ccode(func, name=None, args=None, suffix = None):
     if callable(func):
@@ -113,16 +181,16 @@ def generate_ccode(func, name=None, args=None, suffix = None):
 
     print("\n".join(
         map(lambda item: "\tconst GEN_FLT %s = %s;" % (
-            sp.ccode(item[0]), sp.ccode(c_filter(item[1])).replace("\n", " ").replace("\t", " ")), cse_output[0])))
+            sp.ccode(item[0]), ccode(c_filter(item[1])).replace("\n", " ").replace("\t", " ")), cse_output[0])))
 
     output_idx = 0
     for item in cse_output[1]:
         if hasattr(item, "tolist"):
             for item1 in sum(item.tolist(), []):
-                print("\tout[%d] = %s;" % (output_idx, sp.ccode(c_filter(item1)).replace("\n", " ").replace("\t", " ")))
+                print("\tout[%d] = %s;" % (output_idx, ccode(c_filter(item1)).replace("\n", " ").replace("\t", " ")))
                 output_idx += 1
         else:
-            print("\tout[%d] = %s;" % (output_idx, sp.ccode(c_filter(item)).replace("\n", " ").replace("\t", " ")))
+            print("\tout[%d] = %s;" % (output_idx, ccode(c_filter(item)).replace("\n", " ").replace("\t", " ")))
             output_idx += 1
     print("}")
     print("")

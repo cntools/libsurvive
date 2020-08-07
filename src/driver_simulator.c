@@ -91,18 +91,20 @@ static bool lighthouse_sensor_angle(SurviveDriverSimulator *driver, int lh, size
 	LinmathVec3d ptInWorld;
 	LinmathVec3d normalInWorld;
 	ApplyPoseToPoint(ptInWorld, &driver->position, pt);
-	quatrotatevector(normalInWorld, driver->position.Rot, driver->so->sensor_normals + idx * 3);
-
 	SurvivePose world2lh = InvertPoseRtn(&driver->bsd[lh].Pose);
 	LinmathPoint3d ptInLh;
-	LinmathVec3d normalInLh;
 	ApplyPoseToPoint(ptInLh, &world2lh, ptInWorld);
-	quatrotatevector(normalInLh, world2lh.Rot, normalInWorld);
 
 	if (ptInLh[2] < 0) {
 		LinmathVec3d dirLh;
 		normalize3d(dirLh, ptInLh);
 		scale3d(dirLh, dirLh, -1);
+
+		quatrotatevector(normalInWorld, driver->position.Rot, driver->so->sensor_normals + idx * 3);
+
+		LinmathVec3d normalInLh;
+		quatrotatevector(normalInLh, world2lh.Rot, normalInWorld);
+
 		FLT facingness = dot3d(normalInLh, dirLh);
 		if (facingness > 0 && linmath_rand(0, 1.) > driver->sensor_droprate) {
 			if (driver->lh_version == 0) {

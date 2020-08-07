@@ -1,6 +1,8 @@
 import symengine as sp
 from symengine import sqrt, cos, sin, Piecewise, atan2
 
+import math
+
 phase_0, phase_1 = sp.symbols('phase_0, phase_1')
 tilt_0, tilt_1 = sp.symbols('tilt_0, tilt_1')
 curve_0, curve_1 = sp.symbols('curve_0, curve_1')
