@@ -73,7 +73,7 @@ static double timestamp_in_s() {
 
 static FLT lighthouse_lasttime_of_angle(SurviveDriverSimulator *driver, int lh, FLT timestamp, FLT angle) {
 	SurviveDriverSimulatorLHState *lhs = &driver->lhstates[lh];
-	return timestamp - fmod(timestamp - lhs->start_time, lhs->period_s) + angle / (2 * M_PI) * lhs->period_s;
+	return timestamp - fmod(timestamp - lhs->start_time, lhs->period_s) + angle / (2 * LINMATHPI) * lhs->period_s;
 }
 static FLT lighthouse_sync_time(SurviveDriverSimulator *driver, int lh, FLT timestamp) {
 	return lighthouse_lasttime_of_angle(driver, lh, timestamp, 0);
@@ -81,7 +81,7 @@ static FLT lighthouse_sync_time(SurviveDriverSimulator *driver, int lh, FLT time
 FLT lighthouse_angle(SurviveDriverSimulator *driver, int lh, FLT timestamp) {
 	SurviveDriverSimulatorLHState *lhs = &driver->lhstates[lh];
 
-	FLT angle = fmod(timestamp - lhs->start_time, lhs->period_s) / lhs->period_s * 2. * M_PI;
+	FLT angle = fmod(timestamp - lhs->start_time, lhs->period_s) / lhs->period_s * 2. * LINMATHPI;
 	return angle;
 }
 static bool lighthouse_sensor_angle(SurviveDriverSimulator *driver, int lh, size_t idx, SurviveAngleReading ang) {
