@@ -835,7 +835,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 		char dev[32];
 		char command[32];
 
-		if (sscanf(line, "%lf %s %s", &time, dev, command) != 3) {
+		if (sscanf(line, FLT_sformat " %s %s", &time, dev, command) != 3) {
 			free(line);
 			break;
 		}

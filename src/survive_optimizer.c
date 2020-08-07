@@ -540,7 +540,7 @@ survive_optimizer *survive_optimizer_load(const char *fn) {
 	char buffer[LINE_MAX] = { 0 };
 	char device_name[LINE_MAX] = {0};
 	read_count = fscanf(f, "object       %s\n", device_name);
-	read_count = fscanf(f, "currentBias  %lf\n", &opt->current_bias);
+	read_count = fscanf(f, "currentBias  " FLT_sformat "\n", &opt->current_bias);
 	read_count = fscanf(f, "initialPose " SurvivePose_sformat "\n", SURVIVE_POSE_SCAN_EXPAND(opt->initialPose));
 	int model = 0;
 	read_count = fscanf(f, "model        %d\n", &model);
@@ -573,8 +573,8 @@ survive_optimizer *survive_optimizer_load(const char *fn) {
 		int idx;
 		read_count = fscanf(f, "%d ", &idx);
 		read_count = fscanf(f, " %d", &info->fixed);
-		read_count = fscanf(f, " %lf", &opt->parameters[i]);
-		read_count = fscanf(f, " %lf %lf", &info->limits[0], &info->limits[1]);
+		read_count = fscanf(f, " " FLT_sformat, &opt->parameters[i]);
+		read_count = fscanf(f, " " FLT_sformat " " FLT_sformat, &info->limits[0], &info->limits[1]);
 		read_count = fscanf(f, " %d\n", &info->side);
 	}
 
@@ -587,8 +587,8 @@ survive_optimizer *survive_optimizer_load(const char *fn) {
 		read_count = fscanf(f, " %hhu", &meas->axis);
 		read_count = fscanf(f, " %hhu", &meas->sensor_idx);
 		read_count = fscanf(f, " %d", &meas->object);
-		read_count = fscanf(f, " %lf", &meas->value);
-		read_count = fscanf(f, " %lf\n", &meas->variance);
+		read_count = fscanf(f, " " FLT_sformat, &meas->value);
+		read_count = fscanf(f, " " FLT_sformat "\n", &meas->variance);
 	}
 
 	fclose(f);
