@@ -62,7 +62,7 @@ void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const S
 		}
 
 		for (int i = 0; i < 7; i++)
-			assert(!isnan(((double *)imu2world)[i]));
+			assert(!isnan(((FLT *)imu2world)[i]));
 
 		so->ctx->poseproc(so, PoserData_timecode(poser_data), &head2world);
 	}
@@ -77,7 +77,7 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 									SurvivePose *lighthouse_pose, SurvivePose *object_pose) {
 	if (poser_data->lighthouseposeproc) {
 		for (int i = 0; i < 7; i++)
-			assert(!isnan(((double *)lighthouse_pose)[i]));
+			assert(!isnan(((FLT *)lighthouse_pose)[i]));
 
 		assert(!quatiszero(lighthouse_pose->Rot));
 
@@ -175,7 +175,7 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 		}
 
 		for (int i = 0; i < 7; i++)
-			assert(!isnan(((double *)&lighthouse2world)[i]));
+			assert(!isnan(((FLT *)&lighthouse2world)[i]));
 
 		so->ctx->lighthouse_poseproc(so->ctx, lighthouse, &lighthouse2world, &obj2world);
 	}
@@ -248,13 +248,13 @@ void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so, S
 void PoserDataFullScene2Activations(const PoserDataFullScene *pdfs, SurviveSensorActivations *activations) {
 	SurviveSensorActivations_ctor(0, activations);
 	for (int i = 0; i < SENSORS_PER_OBJECT * NUM_GEN1_LIGHTHOUSES * 2; i++) {
-		double length = ((double *)pdfs->lengths)[i] * 48000000;
+		FLT length = ((FLT *)pdfs->lengths)[i] * 48000000;
 		if (length > 0)
 			((survive_timecode *)activations->lengths)[i] = (survive_timecode)length;
 	}
 
 	for (int i = 0; i < SENSORS_PER_OBJECT * NUM_GEN2_LIGHTHOUSES * 2; i++) {
-		((double *)activations->angles)[i] = ((double *)pdfs->angles)[i];
+		((FLT *)activations->angles)[i] = ((FLT *)pdfs->angles)[i];
 	}
 
 	memcpy(activations->accel, pdfs->lastimu.accel, sizeof(activations->accel));
@@ -267,11 +267,11 @@ SURVIVE_EXPORT void Activations2PoserDataFullScene(const struct SurviveSensorAct
 	for (int i = 0; i < SENSORS_PER_OBJECT * NUM_GEN1_LIGHTHOUSES * 2; i++) {
 		survive_timecode length = ((survive_timecode *)activations->lengths)[i];
 		if (length > 0)
-			((double *)pdfs->lengths)[i] = length / 48000000.;
+			((FLT *)pdfs->lengths)[i] = length / 48000000.;
 	}
 
 	for (int i = 0; i < SENSORS_PER_OBJECT * NUM_GEN2_LIGHTHOUSES * 2; i++) {
-		((double *)pdfs->angles)[i] = ((double *)activations->angles)[i];
+		((FLT *)pdfs->angles)[i] = ((FLT *)activations->angles)[i];
 	}
 
 	memcpy(pdfs->lastimu.accel, activations->accel, sizeof(activations->accel));

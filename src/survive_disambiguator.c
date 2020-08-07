@@ -53,7 +53,7 @@ void handle_lightcap(SurviveObject *so, const LightcapElement *_le) {
 	survive_recording_lightcap(so, &le);
 #ifdef LOG_LIGHTDATA
 	static FILE *flog;
-	static double start = 0;
+	static FLT start = 0;
 	if (!flog) {
 		flog = fopen("lightcap.txt", "wb");
 		start = OGGetAbsoluteTime();

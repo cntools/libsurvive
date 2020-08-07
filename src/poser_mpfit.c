@@ -46,8 +46,8 @@ typedef struct MPFITStats {
 	int total_iterations;
 	int total_fev;
 	int total_runs;
-	double sum_errors;
-	double sum_origerrors;
+	FLT sum_errors;
+	FLT sum_origerrors;
 	int status_cnts[9];
 	int dropped_data;
 } MPFITStats;

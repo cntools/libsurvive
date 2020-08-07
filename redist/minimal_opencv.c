@@ -451,7 +451,7 @@ SURVIVE_LOCAL_ONLY void cvReleaseMat(CvMat **mat) {
 SURVIVE_LOCAL_ONLY double cvDet(const CvMat *M) {
 	assert(M->rows == M->cols);
 	assert(M->rows <= 3 && "cvDet unimplemented for matrices >3");
-	assert(CV_64F == CV_MAT_TYPE(M->type) && "cvDet unimplemented for float");
+
 	FLT *m = CV_RAW_PTR(M);
 
 	switch (M->rows) {
