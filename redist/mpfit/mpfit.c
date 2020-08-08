@@ -23,6 +23,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <malloc.h>
+
 /* Forward declarations of functions in this module */
 static int mp_fdjac2(mp_func funct, int m, int n, int *ifree, int npar, FLT *x, FLT *fvec, FLT *fjac, int ldfjac,
 					 FLT epsfcn, FLT *wa, void *priv, int *nfev, FLT *step, FLT *dstep, int *dside, int *qulimited,

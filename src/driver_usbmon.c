@@ -630,10 +630,18 @@ static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
 	} else {
 		SV_INFO("Starting usbmon");
 	}
-	if (usbmon_playback && *usbmon_playback) {
+
+	bool isPlaybackMode = usbmon_playback && *usbmon_playback;
+	if (isPlaybackMode) {
 		SV_INFO("Opening '%s' for usb playback", usbmon_playback);
 		FILE *pF = open_playback(usbmon_playback, "r");
 		sp->pcap = pcap_fopen_offline(pF, sp->errbuf);
+
+#if !defined(HAVE_FOPENCOOKIE)
+		if (strcmp(".gz", usbmon_playback + strlen(usbmon_playback) - 3) == 0) {
+			SV_WARN("Trying to open a compressed file without FOPENCOOKIE support in the usbmon driver.");
+		}
+#endif
 		sp->playback_factor = survive_configf(ctx, "playback-factor", SC_GET, 1.0);
 		survive_install_run_time_fn(ctx, survive_usbmon_playback_run_time, sp);
 	} else {
@@ -641,10 +649,13 @@ static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
 	}
 
 	if (sp->pcap == NULL) {
-		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT,
-				 "pcap_open_live() failed due to [%s] - You probably need to call 'sudo modprobe usbmon'. If you want "
-				 "to capture as a normal user; try 'sudo setfacl -m u:$USER:r /dev/usbmon*'",
-				 sp->errbuf);
+
+		const char *playback_error = "pcap_fopen_offline failed due to [%s] - The file either doesn't exist, is "
+									 "corrupted, or uses compression which isn't enabled for this driver binary";
+		const char *live_error =
+			"pcap_open_live() failed due to [%s] - You probably need to call 'sudo modprobe usbmon'. If you want "
+			"to capture as a normal user; try 'sudo setfacl -m u:$USER:r /dev/usbmon*'";
+		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, isPlaybackMode ? playback_error : live_error, sp->errbuf);
 		return SURVIVE_DRIVER_ERROR;
 	}
 

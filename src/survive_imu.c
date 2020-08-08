@@ -237,19 +237,30 @@ static void pos_predict(FLT t, const survive_kalman_state_t *k, const CvMat *f_i
 
 SURVIVE_EXPORT void survive_imu_integrate_velocity_acceleration(SurviveIMUTracker *tracker, FLT time,
 																const FLT *velocity_accel, const FLT *R) {
+	// clang-format off
 	FLT _H[6 * 9] = {
-		0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+		0, 0, 0, 1, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 1, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 1, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 1, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 1, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 1,
 	};
+	// clang-format on
 	CvMat H = cvMat(6, tracker->position.info.state_cnt, SURVIVE_CV_F, _H);
 	CvMat Zp = cvMat(6, 1, SURVIVE_CV_F, (void *)velocity_accel);
 	survive_kalman_predict_update_state(time, &tracker->position, &Zp, &H, R);
+
+	SurviveContext *ctx = tracker->so->ctx;
+	SV_VERBOSE(200, "Resultant state " Point9_format, LINMATH_VEC9_EXPAND(tracker->position.state));
 }
 SURVIVE_EXPORT void survive_imu_integrate_velocity(SurviveIMUTracker *tracker, FLT time, const LinmathVec3d velocity,
 												   const FLT *R) {
+	// clang-format off
 	FLT _H[3 * 9] = {
 		0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
 	};
+	// clang-format on
 	CvMat H = cvMat(3, tracker->position.info.state_cnt, SURVIVE_CV_F, _H);
 	CvMat Zp = cvMat(3, 1, SURVIVE_CV_F, (void *)velocity);
 	survive_kalman_predict_update_state(time, &tracker->position, &Zp, &H, R);
@@ -257,21 +268,29 @@ SURVIVE_EXPORT void survive_imu_integrate_velocity(SurviveIMUTracker *tracker, F
 
 SURVIVE_EXPORT void survive_imu_integrate_acceleration(SurviveIMUTracker *tracker, FLT time, const LinmathVec3d accel,
 													   const FLT *R) {
+	// clang-format off
 	FLT _H[3 * 9] = {
-		0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+		0, 0, 0, 0, 0, 0, 1, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 1, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 1,
 	};
+	// clang-format on
 	CvMat H = cvMat(3, tracker->position.info.state_cnt, SURVIVE_CV_F, _H);
 	CvMat Zp = cvMat(3, 1, SURVIVE_CV_F, (void *)accel);
 	survive_kalman_predict_update_state(time, &tracker->position, &Zp, &H, R);
+
+	SurviveContext *ctx = tracker->so->ctx;
+	SV_VERBOSE(200, "Resultant state " Point9_format, LINMATH_VEC9_EXPAND(tracker->position.state));
 }
 SURVIVE_EXPORT void survive_imu_integrate_rotation_angular_velocity(SurviveIMUTracker *tracker, FLT time,
 																	const FLT *rotation_angular_velocity,
 																	const FLT *R) {
+	// clang-format off
 	FLT _H_rot[7 * 7] = {
 		1., 0, 0, 0, 0, 0, 0, 0, 1., 0, 0, 0, 0, 0, 0, 0, 1., 0, 0, 0, 0, 0, 0, 0, 1.,
 		0,	0, 0, 0, 0, 0, 0, 1, 0,	 0, 0, 0, 0, 0, 0, 1, 0,  0, 0, 0, 0, 0, 0, 1,
 	};
-
+	// clang-format on
 	struct SurviveContext *ctx = tracker->so->ctx;
 
 	CvMat H_rot = cvMat(7, tracker->rot.info.state_cnt, SURVIVE_CV_F, _H_rot);
@@ -282,10 +301,11 @@ SURVIVE_EXPORT void survive_imu_integrate_rotation_angular_velocity(SurviveIMUTr
 
 SURVIVE_EXPORT void survive_imu_integrate_angular_velocity(SurviveIMUTracker *tracker, FLT time,
 														   const LinmathAxisAngle angular_velocity, const FLT *R) {
+	// clang-format off
 	FLT _H_rot[3 * 7] = {
 		0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1,
 	};
-
+	// clang-format on
 	struct SurviveContext *ctx = tracker->so->ctx;
 	SV_VERBOSE(120, "integrate_angular_velocity " Point3_format, LINMATH_VEC3_EXPAND(angular_velocity));
 
@@ -296,10 +316,11 @@ SURVIVE_EXPORT void survive_imu_integrate_angular_velocity(SurviveIMUTracker *tr
 }
 
 void survive_imu_integrate_rotation(SurviveIMUTracker *tracker, FLT time, const LinmathQuat rotation, const FLT *R) {
+	// clang-format off
 	FLT _H_rot[4 * 7] = {
 		1., 0, 0, 0, 0, 0, 0, 0, 1., 0, 0, 0, 0, 0, 0, 0, 1., 0, 0, 0, 0, 0, 0, 0, 1., 0, 0, 0,
 	};
-
+	// clang-format on
 	CvMat H_rot = cvMat(4, tracker->rot.info.state_cnt, SURVIVE_CV_F, _H_rot);
 	CvMat Zr = cvMat(4, 1, SURVIVE_CV_F, (void *)rotation);
 	survive_kalman_predict_update_state(time, &tracker->rot, &Zr, &H_rot, R);
@@ -307,9 +328,11 @@ void survive_imu_integrate_rotation(SurviveIMUTracker *tracker, FLT time, const 
 }
 
 void survive_imu_integrate_position(SurviveIMUTracker *tracker, FLT time, const LinmathVec3d position, const FLT *R) {
+	// clang-format off
 	FLT _H[3 * 9] = {
 		1., 0, 0, 0, 0, 0, 0, 0, 0, 0, 1., 0, 0, 0, 0, 0, 0, 0, 0, 0, 1., 0, 0, 0, 0, 0, 0,
 	};
+	// clang-format on
 	CvMat H = cvMat(3, tracker->position.info.state_cnt, SURVIVE_CV_F, _H);
 	CvMat Zp = cvMat(3, 1, SURVIVE_CV_F, (void *)position);
 	survive_kalman_predict_update_state(time, &tracker->position, &Zp, &H, R);
@@ -471,6 +494,8 @@ void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so) {
 
 	FLT pos_P_diag[9] = {1e9, 1e9, 1e9};
 	FLT rot_P_diag[7] = {1e9, 1e9, 1e9, 1e9};
+
+	tracker->rot.state[0] = 1.;
 
 	survive_kalman_set_P(&tracker->position, pos_P_diag);
 	survive_kalman_set_P(&tracker->rot, rot_P_diag);

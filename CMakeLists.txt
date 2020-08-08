@@ -12,7 +12,7 @@ IF(UNIX)
 ENDIF()
 
 IF(WIN32)
-	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4244 /wd4996 /wd4018")
+	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4244 /wd4996 /wd4018 /wd4101 /wd4477 /wd4068 /wd4217")
 endif()
 
 include_directories(redist include/libsurvive include)
@@ -87,7 +87,6 @@ list (APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
 
 include (CheckSymbolExists)
 check_symbol_exists (fopencookie stdio.h stdlib.h unistd.h HAVE_FOPENCOOKIE)
-check_symbol_exists (funopen stdio.h stdlib.h unistd.h HAVE_FUNOPEN)
 
 if(HAVE_FOPENCOOKIE)
 	add_definitions(-DHAVE_FOPENCOOKIE)
