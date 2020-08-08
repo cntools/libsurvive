@@ -182,6 +182,10 @@ struct SurviveObject {
 
 	char *conf;
 	size_t conf_cnt;
+
+	struct {
+		uint32_t hit_from_lhs[NUM_GEN2_LIGHTHOUSES];
+	} stats;
 };
 
 // These exports are mostly for language binding against

@@ -156,6 +156,8 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 	if (bsd_idx < ctx->activeLighthouses)
 		SurviveSensorActivations_add_gen2(&so->activations, &l);
 
+	so->stats.hit_from_lhs[bsd_idx]++;
+
 	if (so->PoserFn && ctx->lh_version != -1) {
 		so->PoserFn(so, (PoserData *)&l);
 	}

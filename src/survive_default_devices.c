@@ -409,6 +409,12 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 }
 
 void survive_destroy_device(SurviveObject *so) {
+	SurviveContext *ctx = so->ctx;
+	SV_VERBOSE(5, "Statistics for %s (driver %s)", so->codename, so->drivername);
+	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
+		if (so->stats.hit_from_lhs[i])
+			SV_VERBOSE(5, "\tHits from LH %2d:\t%8d", i, so->stats.hit_from_lhs[i]);
+	}
 	free(so->sensor_locations);
 	free(so->sensor_normals);
 	free(so->conf);
