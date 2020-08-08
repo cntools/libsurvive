@@ -233,7 +233,8 @@ TEST(Kalman, ExampleExtended) {
 	CREATE_STACK_MAT(Z, 3, 1);
 
 	for (int i = 1; i < 21; i++) {
-		LinmathPoint3d sensor = {20 + 20 * cos(2. * M_PI / 30 * (i)), 20 + 20 * sin(2. * M_PI / 30 * (i)), 50};
+		LinmathPoint3d sensor = {20 + 20 * cos(2. * LINMATHPI / 30 * (i)), 20 + 20 * sin(2. * LINMATHPI / 30 * (i)),
+								 50};
 
 		meas_model(i, &Z, &true_state, sensor);
 
