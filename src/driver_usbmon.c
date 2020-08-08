@@ -207,8 +207,11 @@ static int usbmon_close(struct SurviveContext *ctx, void *_driver) {
 	SurviveDriverUSBMon *driver = _driver;
 	driver->keepRunning = false;
 	pcap_breakloop(driver->pcap);
+
+	survive_release_ctx_lock(ctx);
 	SV_VERBOSE(100, "Waiting on pcap thread...");
 	OGJoinThread(driver->pcap_thread);
+	survive_get_ctx_lock(ctx);
 
 	struct pcap_stat stats = {0};
 	pcap_stats(driver->pcap, &stats);
@@ -664,6 +667,7 @@ static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
 	if (device_count) {
 		sp->keepRunning = true;
 		sp->pcap_thread = OGCreateThread(pcap_thread_fn, sp);
+		OGNameThread(sp->pcap_thread, "pcap_thread");
 
 		survive_add_driver(ctx, sp, usbmon_poll, usbmon_close, 0);
 	} else {
