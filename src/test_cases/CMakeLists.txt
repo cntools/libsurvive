@@ -26,6 +26,9 @@ if(PCAP_LIBRARY)
 	add_test(NAME wireless_tracker_test_cal_usb COMMAND $<TARGET_FILE:test_replays> ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/wireless-tracker.pcap.gz)
 	add_test(NAME vive_cal_usb COMMAND $<TARGET_FILE:test_replays> ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/vive_cal.pcap.gz)
     add_test(NAME vive_index_cal COMMAND $<TARGET_FILE:test_replays> ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/vive-index-cal.pcap.gz)
+
+    # This calibrates 5 lighthouses across three objects
+    add_test(NAME vive-and-controllers COMMAND $<TARGET_FILE:test_replays> ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/vive-and-controllers.pcap.gz)
 endif()
 
 include(ExternalProject)

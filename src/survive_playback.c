@@ -15,7 +15,6 @@
 #include <string.h>
 
 #ifdef NOZLIB
-#include <unistd.h>
 #define gzFile FILE *
 #define gzopen fopen
 #define gzprintf fprintf

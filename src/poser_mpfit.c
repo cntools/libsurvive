@@ -75,6 +75,7 @@ typedef struct MPFITData {
   int syncs_per_run;
   int run_async;
   int syncs_per_run_cnt;
+  int syncs_seen;
   int syncs_to_setup;
 
   FLT sensor_variance;
@@ -289,7 +290,12 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 	}
 
 	bool needsInitialEstimate = false;
-	if (bestObjForCal || SurviveSensorActivations_stationary_time(&so->activations) > 3 * so->timebase_hz) {
+
+	// This just spaces out the controllers; forces an order onto what trys to calibrate what
+	int syncs_required = 200 - so->sensor_ct * 2 - (so->codename[2] - '0') * 10;
+
+	if (bestObjForCal || (d->syncs_seen > syncs_required &&
+						  SurviveSensorActivations_stationary_time(&so->activations) > 3 * so->timebase_hz)) {
 		for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
 			if (!so->ctx->bsd[lh].OOTXSet) {
 				// Wait til this thing gets OOTX, and then solve for as much as we can. Avoids doing
@@ -716,8 +722,8 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		// No poses if calibration is ongoing
 		if (ctx->calptr && ctx->calptr->stage < 5)
 			return 0;
-		if (d->syncs_to_setup > 0) {
-			d->syncs_to_setup--;
+		d->syncs_seen++;
+		if (d->syncs_seen < d->syncs_to_setup) {
 			return 0;
 		}
 		SurviveSensorActivations *scene = &so->activations;

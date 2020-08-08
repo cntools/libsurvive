@@ -11,6 +11,10 @@ IF(UNIX)
 	endif()
 ENDIF()
 
+IF(WIN32)
+	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4244 /wd4996 /wd4018")
+endif()
+
 include_directories(redist include/libsurvive include)
 
 option(USE_SINGLE_PRECISION "Use float instead of double" OFF)
