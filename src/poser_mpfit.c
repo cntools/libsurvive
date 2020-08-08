@@ -288,7 +288,8 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 		}
 	}
 
-	if (bestObjForCal) {
+	bool needsInitialEstimate = false;
+	if (bestObjForCal || SurviveSensorActivations_stationary_time(&so->activations) > 3 * so->timebase_hz) {
 		for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
 			if (!so->ctx->bsd[lh].OOTXSet) {
 				// Wait til this thing gets OOTX, and then solve for as much as we can. Avoids doing
@@ -297,17 +298,23 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 				break;
 			}
 
-			if (!so->ctx->bsd[lh].PositionSet && meas_for_lhs[lh] > 0) {
+			bool needsSolve = !so->ctx->bsd[lh].PositionSet;
+			if (needsSolve && meas_for_lhs[lh] > 0) {
 				canPossiblySolveLHS = true;
+				needsInitialEstimate = !so->ctx->bsd[lh].PositionSet;
 			}
 		}
 	}
 
 	SurvivePose lhs[NUM_GEN2_LIGHTHOUSES] = {0};
 	if (canPossiblySolveLHS) {
-		if (general_optimizer_data_record_current_lhs(&d->opt, pdl, lhs)) {
+		if (!needsInitialEstimate || general_optimizer_data_record_current_lhs(&d->opt, pdl, lhs)) {
 			for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
-				if (!so->ctx->bsd[lh].PositionSet) {
+				bool needsSolve = !so->ctx->bsd[lh].PositionSet;
+				if (needsSolve) {
+					if (so->ctx->bsd[lh].PositionSet) {
+						memcpy(&lhs[lh], &so->ctx->bsd[lh].Pose, sizeof(SurvivePose));
+					}
 					assert(!isnan(lhs[lh].Rot[0]));
 					if (quatiszero(lhs[lh].Rot) && meas_for_lhs[lh] > 0) {
 						SV_WARN("Seed poser failed for %d, not trying to solve LH system", lh);
@@ -325,7 +332,8 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 		if (!so->ctx->bsd[lh].PositionSet) {
 			if (canPossiblySolveLHS) {
 				if (meas_for_lhs[lh]) {
-					SV_INFO("Attempting to solve for %d with %lu meas", lh, meas_for_lhs[lh]);
+					SV_INFO("Attempting to solve for %d with %lu meas from device %s", lh, meas_for_lhs[lh],
+							so->codename);
 					survive_optimizer_setup_camera(mpfitctx, lh, &lhs[lh], false, d->use_jacobian_function_lh);
 				}
 			} else {
@@ -701,7 +709,6 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		SurviveContext *ctx = so->ctx;
 		PoserDataFullScene *pdfs = (PoserDataFullScene *)(pd);
 		FLT error = run_mpfit_find_cameras(d, pdfs);
-		// std::cerr << "Average reproj error: " << error << std::endl;
 		return 0;
 	}
 	case POSERDATA_SYNC_GEN2:
