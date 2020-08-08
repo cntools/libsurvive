@@ -46,7 +46,10 @@ typedef struct {
 	bool needsFiltering;
 
 	struct {
-		uint32_t dropped_data_cnt;
+		uint32_t total_meas_cnt;
+		uint32_t total_lh_cnt;
+		uint32_t dropped_meas_cnt;
+		uint32_t dropped_lh_cnt;
 	} stats;
 } survive_optimizer;
 

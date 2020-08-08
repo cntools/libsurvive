@@ -284,6 +284,7 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 	size_t lh_meas_cnt[NUM_GEN2_LIGHTHOUSES] = {0};
 
 	FLT avg_dev = 0, lh_avg_dev = 0;
+	optimizer->stats.total_meas_cnt += optimizer->measurementsCnt;
 	for (int i = 0; i < optimizer->measurementsCnt; i++) {
 		survive_optimizer_measurement *meas = &optimizer->measurements[i];
 		lh_deviates[meas->lh] += fabs(deviates[i]);
@@ -297,16 +298,24 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 			lh_deviates[i] = lh_deviates[i] / (FLT)lh_meas_cnt[i];
 			lh_avg_dev += lh_deviates[i];
 			obs_lhs++;
+
+			optimizer->stats.total_lh_cnt++;
 		}
 	}
 
+	FLT unbias_dev = lh_avg_dev / (obs_lhs - 1.);
 	lh_avg_dev = lh_avg_dev / (FLT)obs_lhs;
+
 	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
-		if (lh_deviates[i] > 2. * lh_avg_dev) {
-			SV_VERBOSE(500, "Data from LH %d seems suspect (%f/%f)", i, lh_deviates[i], lh_avg_dev);
+		FLT corrected_dev = unbias_dev - lh_deviates[i] / (obs_lhs - 1.);
+		if (lh_deviates[i] > 100 * corrected_dev) {
+			SV_VERBOSE(100, "Data from LH %d seems suspect for %s (%f/%f -- %f)", i, optimizer->so->codename,
+					   lh_deviates[i], corrected_dev, lh_deviates[i] / corrected_dev);
 			lh_meas_cnt[i] = 0;
+			optimizer->stats.dropped_lh_cnt++;
 		} else if (lh_deviates[i] > 0.) {
-			SV_VERBOSE(1000, "Data from LH %d seems OK (%f/%f)", i, lh_deviates[i], lh_avg_dev);
+			SV_VERBOSE(500, "Data from LH %d seems OK for %s (%f/%f -- %f)", i, optimizer->so->codename, lh_deviates[i],
+					   lh_avg_dev, lh_deviates[i] / corrected_dev);
 		}
 	}
 
@@ -322,16 +331,16 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 	avg_dev = avg_dev / (FLT)valid_meas;
 	for (int i = 0; i < optimizer->measurementsCnt; i++) {
 		survive_optimizer_measurement *meas = &optimizer->measurements[i];
-		if (lh_meas_cnt[meas->lh] == 0 || fabs(deviates[i]) > avg_dev * 10) {
+		if (lh_meas_cnt[meas->lh] == 0 || fabs(deviates[i]) > avg_dev * 15) {
 			meas->invalid = true;
-			deviates[i] = 0.;
-			optimizer->stats.dropped_data_cnt++;
+			optimizer->stats.dropped_meas_cnt++;
 
-			SV_VERBOSE(500, "Ignoring noisy data at lh %d sensor %d axis %d val %f (%f/%f)", meas->lh, meas->sensor_idx,
-					   meas->axis, meas->value, deviates[i], avg_dev);
+			SV_VERBOSE(100, "Ignoring noisy data at lh %d sensor %d axis %d val %f (%7.7f/%7.7f)", meas->lh,
+					   meas->sensor_idx, meas->axis, meas->value, fabs(deviates[i]), avg_dev);
+			deviates[i] = 0.;
 		} else {
-			SV_VERBOSE(1000, "Data at lh %d sensor %d axis %d val %f (%f/%f)", meas->lh, meas->sensor_idx, meas->axis,
-					   meas->value, deviates[i], avg_dev);
+			SV_VERBOSE(1000, "Data at lh %d sensor %d axis %d val %f (%7.7f/%7.7f)", meas->lh, meas->sensor_idx,
+					   meas->axis, meas->value, fabs(deviates[i]), avg_dev);
 		}
 	}
 
@@ -592,6 +601,8 @@ survive_optimizer *survive_optimizer_load(const char *fn) {
 	survive_optimizer *opt = calloc(sizeof(survive_optimizer), 1);
 
 	FILE *f = fopen(fn, "r");
+	if (f == 0)
+		return 0;
 	int read_count = 0;
 
 #ifndef LINE_MAX

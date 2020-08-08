@@ -6,6 +6,12 @@
 
 int main(int argc, char **argv) {
 	survive_optimizer *mpctx = survive_optimizer_load(argv[1]);
+
+	if (mpctx == 0) {
+		fprintf(stderr, "%s doesn't' exit or didn't load properly\n", argv[1]);
+		return -1;
+	}
+
 	struct mp_result_struct result = {0};
 
 	SurvivePose *objects = survive_optimizer_get_pose(mpctx);
@@ -26,19 +32,40 @@ int main(int argc, char **argv) {
 
 	int status = survive_optimizer_run(mpctx, &result);
 
+	FLT lh_errors[NUM_GEN2_LIGHTHOUSES] = {0};
+	size_t lh_cnt[NUM_GEN2_LIGHTHOUSES] = {0};
+
 	printf("Residuals:\n");
-	for (int i = 0; i < mpctx->measurementsCnt; i++)
-		printf("%4d %+3.5f\n", i, result.resid[i]);
+	for (int i = 0; i < mpctx->measurementsCnt; i++) {
+		survive_optimizer_measurement *meas = &mpctx->measurements[i];
+		printf("%4d LH %2d Axis %d Sensor %2d Object %d Valid %d %+3.5f\n", i, meas->lh, meas->axis, meas->sensor_idx,
+			   meas->object, meas->invalid, result.resid[i]);
+
+		lh_errors[meas->lh] += fabs(result.resid[i]);
+		lh_cnt[meas->lh]++;
+	}
+	printf("\n");
+	printf("LH errors:\n");
+	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
+		if (lh_cnt[i]) {
+			printf("\t%d %d %f\n", i, lh_cnt[i], lh_errors[i] / (FLT)lh_cnt[i]);
+		}
+	}
+	printf("\n");
 
 	printf("Parameter errors:\n");
 	for (int i = 0; i < survive_optimizer_get_parameters_count(mpctx); i++)
 		if (result.xerror[i] != 0)
 			printf("%4d %+3.5f\n", i, result.xerror[i]);
-
+	printf("\n");
+	printf("Covariances: \n");
 	for (int i = 0; i < survive_optimizer_get_parameters_count(mpctx); i++) {
-		for (int j = 0; j < survive_optimizer_get_parameters_count(mpctx); j++)
-			printf("%+3.3f   ", result.covar[i + j * survive_optimizer_get_parameters_count(mpctx)]);
-		printf("\n");
+		for (int j = 0; j < survive_optimizer_get_parameters_count(mpctx); j++) {
+			FLT v = result.covar[i + j * survive_optimizer_get_parameters_count(mpctx)];
+			if (v != 0) {
+				printf("%3d %3d\t%+3.3f\n", i, j, v);
+			}
+		}
 	}
 
 	printf("MPFIT status %f/%f (%d measurements, %d - %s)\n", result.orignorm, result.bestnorm,

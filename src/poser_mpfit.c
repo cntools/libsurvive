@@ -49,7 +49,11 @@ typedef struct MPFITStats {
 	FLT sum_errors;
 	FLT sum_origerrors;
 	int status_cnts[9];
-	int dropped_data;
+
+	uint32_t total_meas_cnt;
+	uint32_t total_lh_cnt;
+	uint32_t dropped_meas_cnt;
+	uint32_t dropped_lh_cnt;
 } MPFITStats;
 
 typedef struct MPFITGlobalData {
@@ -412,7 +416,10 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 				canPossiblySolveLHS, d->stats.total_runs);
 	}
 
-	d->stats.dropped_data += mpfitctx->stats.dropped_data_cnt;
+	d->stats.dropped_meas_cnt += mpfitctx->stats.dropped_meas_cnt;
+	d->stats.dropped_lh_cnt += mpfitctx->stats.dropped_lh_cnt;
+	d->stats.total_meas_cnt += mpfitctx->stats.total_meas_cnt;
+	d->stats.total_lh_cnt += mpfitctx->stats.total_lh_cnt;
 	d->stats.total_fev += result->nfev;
 	d->stats.total_iterations += result->niter;
 	d->stats.total_runs++;
@@ -631,7 +638,11 @@ static inline void print_stats(SurviveContext *ctx, MPFITStats *stats) {
 	SV_INFO("\ttotal runs        %d", stats->total_runs);
 	SV_INFO("\tavg error         %10.10f", stats->sum_errors / stats->total_runs);
 	SV_INFO("\tavg orig error    %10.10f", stats->sum_origerrors / stats->total_runs);
-	SV_INFO("\tnoisey data cnt   %d", stats->dropped_data);
+	SV_INFO("\tnoisy meas cnt    %7d / %8d (%4.2f%%)", stats->dropped_meas_cnt, stats->total_meas_cnt,
+			100. * (stats->dropped_meas_cnt / (FLT)stats->total_meas_cnt));
+	SV_INFO("\tdropped lh cnt    %7d / %8d (%4.2f%%)", stats->dropped_lh_cnt, stats->total_lh_cnt,
+			100. * (stats->dropped_lh_cnt / (FLT)stats->total_lh_cnt));
+
 	for (int i = 0; i < sizeof(stats->status_cnts) / sizeof(int); i++) {
 		SV_INFO("\tStatus %10s %d", survive_optimizer_error(i + 1), stats->status_cnts[i]);
 	}
@@ -731,7 +742,10 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 			}
 		}
 
-		g.stats.dropped_data += d->stats.dropped_data;
+		g.stats.total_lh_cnt += d->stats.total_lh_cnt;
+		g.stats.dropped_lh_cnt += d->stats.dropped_lh_cnt;
+		g.stats.total_meas_cnt += d->stats.total_meas_cnt;
+		g.stats.dropped_meas_cnt += d->stats.dropped_meas_cnt;
 		g.stats.total_fev += d->stats.total_fev;
 		g.stats.total_runs += d->stats.total_runs;
 		g.stats.sum_errors += d->stats.sum_errors;
