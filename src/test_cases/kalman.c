@@ -231,7 +231,7 @@ static inline void mat_eye_diag(CvMat *m, const FLT *v) {
 
 // https://www.intechopen.com/books/introduction-and-implementations-of-the-kalman-filter/introduction-to-kalman-filter-and-its-applications
 TEST(Kalman, ExampleExtended) {
-	survive_kalman_set_logging_level(1000);
+	// survive_kalman_set_logging_level(1000);
 
 	survive_kalman_state_t position;
 

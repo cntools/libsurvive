@@ -7,13 +7,23 @@
 
 #include "minimal_opencv.h"
 
-#include "survive_imu.generated.h"
-#include "survive_reproject.aux.generated.h"
+#include "test_case.h"
 
-SurvivePose AxisAnglePose2Pose(LinmathAxisAnglePose *p) {
-	SurvivePose rtn;
+#include "../generated/survive_imu.generated.h"
+#include "../generated/survive_reproject.generated.h"
 
-	return rtn;
+#ifdef HAVE_AUX_GENERATED
+#include "../generated/survive_reproject.aux.generated.h"
+#endif
+
+static void rot_predict_quat(FLT t, const void *k, const CvMat *f_in, CvMat *f_out) {
+	(void)k;
+
+	const FLT *rot = CV_FLT_PTR(f_in);
+	const FLT *vel = CV_FLT_PTR(f_in) + 4;
+	copy3d(CV_FLT_PTR(f_out) + 4, vel);
+
+	survive_apply_ang_velocity(CV_FLT_PTR(f_out), vel, t, rot);
 }
 
 typedef struct survive_calibration_config {
@@ -64,6 +74,7 @@ void print_point(const FLT *Pos) {
 	printf("[%f %f %f]\n", Pos[0], Pos[1], Pos[2]);
 }
 
+#ifdef HAVE_AUX_GENERATED
 void check_rotate_vector() {
 	SurvivePose obj = random_pose();
 	FLT pt[3];
@@ -97,28 +108,28 @@ void check_invert() {
 	print_pose(&gen_inv);
 	print_pose(&inv);
 }
-
-void check_reproject() {
+#endif
+TEST(Generated, Reproject) {
 	SurvivePose obj = random_pose();
 	LinmathVec3d pt;
 	random_point(pt);
 	SurvivePose world2lh = random_pose();
 
-	BaseStationData bsd = {};
+	BaseStationData bsd = { 0 };
 	// for (int i = 0; i < 10; i++)
 	//*((FLT *)&bsd.fcal[0].phase + i) = next_rand(1);
 
-	FLT out_pt[2] = {0};
+	FLT out_pt[3] = {0}, out_pt_gen[3] = { 0 };
 	int cycles = 50000000;
 
 	double start_gen = OGGetAbsoluteTime();
 	for (int i = 0; i < cycles; i++) {
 		obj.Pos[0] += .001;
 
-		gen_reproject(out_pt, &obj, pt, &world2lh, bsd.fcal);
+		gen_reproject(out_pt_gen, &obj, pt, &world2lh, bsd.fcal);
 	}
 	double stop_gen = OGGetAbsoluteTime();
-	printf("gen: %f %f (%f)\n", out_pt[0], out_pt[1], stop_gen - start_gen);
+	printf("Generated: %f %f (%f)\n", out_pt_gen[0], out_pt_gen[1], stop_gen - start_gen);
 
 	double start_reproject = OGGetAbsoluteTime();
 	for (int i = 0; i < cycles; i++) {
@@ -126,43 +137,42 @@ void check_reproject() {
 	}
 	double stop_reproject = OGGetAbsoluteTime();
 
-	printf("%f %f (%f)\n", out_pt[0], out_pt[1], stop_reproject - start_reproject);
-	out_pt[0] = out_pt[1] = 0;
+	printf("Non-gen:   %f %f (%f)\n", out_pt[0], out_pt[1], stop_reproject - start_reproject);
+	return dist3d(out_pt_gen, out_pt) < 1e-5 ? 0 : -1;
 }
 
-void check_reproject_gen2() {
+TEST(Generated, reproject_gen2) {
 	SurvivePose obj = random_pose();
 	LinmathVec3d pt;
 	random_point(pt);
 	SurvivePose world2lh = random_pose();
 
-	BaseStationData bsd = {};
+	BaseStationData bsd = { 0 };
 	// for (int i = 0; i < 10; i++)
 	//*((FLT *)&bsd.fcal[0].phase + i) = next_rand(1);
 
-	FLT out_pt[2] = {0};
-	int cycles = 50000000;
+	FLT out_pt[3] = {0}, out_pt_gen[3] = {0};
+	int cycles = 10000000;
 
 	double start_gen = OGGetAbsoluteTime();
 	for (int i = 0; i < cycles; i++) {
-		obj.Pos[0] += .001;
-		gen_reproject_gen2(out_pt, &obj, pt, &world2lh, bsd.fcal);
+		gen_reproject_gen2(out_pt_gen, &obj, pt, &world2lh, bsd.fcal);
 	}
 	double stop_gen = OGGetAbsoluteTime();
-	printf("gen: %f %f (%f)\n", out_pt[0], out_pt[1], stop_gen - start_gen);
+	printf("generated    : %f %f (%f)\n", out_pt_gen[0], out_pt_gen[1], stop_gen - start_gen);
 
 	double start_reproject = OGGetAbsoluteTime();
 	for (int i = 0; i < cycles; i++) {
-		gen_reproject_gen2(out_pt, &obj, pt, &world2lh, bsd.fcal);
+		survive_reproject_full_gen2(bsd.fcal, &world2lh, &obj, pt, out_pt);
 	}
 	double stop_reproject = OGGetAbsoluteTime();
 
-	printf("%f %f (%f)\n", out_pt[0], out_pt[1], stop_reproject - start_reproject);
-	out_pt[0] = out_pt[1] = 0;
+	printf("non-generated: %f %f (%f)\n", out_pt[0], out_pt[1], stop_reproject - start_reproject);
+	return dist3d(out_pt_gen, out_pt) < 1e-5 ? 0 : -1;
 }
 
-void check_reproject_gen2_cal() {
-	BaseStationData bsd = {};
+TEST(Generated, reproject_gen2_vals) {
+	BaseStationData bsd = { 0 };
 	double cal[] = {-0.047119140625, 0, 0.15478515625, 2.369140625, -0.00440216064453125, 0.4765625, -0.1766357421875};
 
 	bsd.fcal[0].phase = 0;
@@ -177,8 +187,11 @@ void check_reproject_gen2_cal() {
 	double ang = survive_reproject_axis_x_gen2(&bsd.fcal[0], xyz);
 	ang += M_PI * 2. * (0 + 1.) / 3.;
 	printf("%.16f\n", ang);
+	return fabs(ang - 2.024090911337) < 1e-5 ? 0 : -1;
 }
 
+
+#ifdef HAVE_AUX_GENERATED
 void check_apply_ang_velocity() {
 	LinmathQuat qo, qi;
 	random_quat(qi);
@@ -193,13 +206,14 @@ void check_apply_ang_velocity() {
 	printf("Lib: " Quat_format "\n", LINMATH_QUAT_EXPAND(qo));
 	printf("Gen: " Quat_format "\n", LINMATH_QUAT_EXPAND(qo2));
 }
+#endif
 
 extern void rot_predict_quat(FLT t, const void *k, const CvMat *f_in, CvMat *f_out);
 
-void check_rot_predict_quat() {
-	FLT _mi[7] = {};
-	FLT _mo1[7] = {};
-	FLT _mo2[7] = {};
+TEST(Generated, rot_predict_quat) {
+	FLT _mi[7] = { 0 };
+	FLT _mo1[7] = { 0 };
+	FLT _mo2[7] = { 0 };
 	CvMat mi = cvMat(7, 1, CV_64F, _mi);
 	CvMat mo1 = cvMat(7, 1, CV_64F, _mo1);
 	CvMat mo2 = cvMat(7, 1, CV_64F, _mo2);
@@ -217,12 +231,17 @@ void check_rot_predict_quat() {
 	printf("Gen: " SurvivePose_format "\t"
 		   "\n",
 		   LINMATH_QUAT_EXPAND(_mo2), LINMATH_VEC3_EXPAND(_mo2 + 4));
+
+	FLT err = 0;
+	for(int i = 0;i < 7;i++)
+		err += fabs((_mo1[i] - _mo2[i]) * (_mo1[i] - _mo2[i]));
+	return err > 1e-5 ? -1 : 0;
 }
 
 /*
 void check_jacobian_axisangle() {
 	LinmathAxisAnglePose obj2world = random_pose_axisangle();
-	// SurvivePose obj2world = {};
+	// SurvivePose obj2world = { 0 };
 	// memset(obj2world.Rot, 0, sizeof(FLT) * 3);
 
 	LinmathVec3d pt;
@@ -231,10 +250,10 @@ void check_jacobian_axisangle() {
 	LinmathAxisAnglePose world2lh = random_pose_axisangle();
 	// memset(world2lh.Rot, 0, sizeof(FLT) * 4);
 	// world2lh.Rot[1] = 1.;
-	// SurvivePose lh = {}; lh.Rot[0] = 1.;
+	// SurvivePose lh = { 0 }; lh.Rot[0] = 1.;
 
 	survive_calibration_config config;
-	BaseStationData bsd = {};
+	BaseStationData bsd = { 0 };
 	for (int i = 0; i < 10; i++)
 		*((FLT *)&bsd.fcal[0].phase + i) = next_rand(0.5);
 
@@ -245,7 +264,7 @@ void check_jacobian_axisangle() {
 	FLT out_pt[2] = {0};
 
 	for (int i = 0; i < 6; i++) {
-		FLT out[2] = {};
+		FLT out[2] = { 0 };
 
 		double H = 1e-10;
 		for (int n = 0; n < 2; n++) {
@@ -294,7 +313,7 @@ void check_jacobian_axisangle() {
 }
 */
 
-void check_speed() {
+TEST(Generated, Speed) {
 	SurvivePose obj2world = random_pose();
 
 	memset(obj2world.Rot, 0, sizeof(FLT) * 4);
@@ -306,10 +325,10 @@ void check_speed() {
 	SurvivePose world2lh = random_pose();
 	// memset(world2lh.Rot, 0, sizeof(FLT) * 4);
 	// world2lh.Rot[1] = 1.;
-	// SurvivePose lh = {}; lh.Rot[0] = 1.;
+	// SurvivePose lh = { 0 }; lh.Rot[0] = 1.;
 
 	survive_calibration_config config;
-	BaseStationData bsd = {};
+	BaseStationData bsd = { 0 };
 	for (int i = 0; i < 10; i++)
 		*((FLT *)&bsd.fcal[0].phase + i) = next_rand(0.5);
 
@@ -319,11 +338,13 @@ void check_speed() {
 		// survive_reproject_full_jac_obj_pose
 		gen_reproject_jac_obj_p(out_jac, &obj2world, pt, &world2lh, bsd.fcal);
 	}
+
+	return 0;
 }
 
-void check_jacobian() {
+TEST(Generated, jacobian) {
 	SurvivePose obj2world = random_pose();
-	// SurvivePose obj2world = {};
+	// SurvivePose obj2world = { 0 };
 	memset(obj2world.Rot, 0, sizeof(FLT) * 4);
 	obj2world.Rot[1] = 1.;
 
@@ -333,10 +354,10 @@ void check_jacobian() {
 	SurvivePose world2lh = random_pose();
 	// memset(world2lh.Rot, 0, sizeof(FLT) * 4);
 	// world2lh.Rot[1] = 1.;
-	// SurvivePose lh = {}; lh.Rot[0] = 1.;
+	// SurvivePose lh = { 0 }; lh.Rot[0] = 1.;
 
 	survive_calibration_config config;
-	BaseStationData bsd = {};
+	BaseStationData bsd = { 0 };
 	for (int i = 0; i < 10; i++)
 		*((FLT *)&bsd.fcal[0].phase + i) = next_rand(0.5);
 
@@ -349,7 +370,7 @@ void check_jacobian() {
 	FLT out_pt[2] = {0};
 
 	for(int i = 0;i < 7;i++) {
-	  FLT out[2] = {};
+	  FLT out[2] = { 0 };
 
 	  double H = 1e-10;
 	  for (int n = 0; n < 2; n++) {
@@ -386,19 +407,22 @@ void check_jacobian() {
 	  printf("\n");
 	}
 	printf("\n");
+	bool fail = false;
 	for(int j = 0;j < 2;j++) {
 	  for(int i = 0;i < 7;i++) {
 		  printf("%+.08f ", comp_jac[i + j * 7] - out_jac[i + j * 7]);
+		  fail |= fabs(comp_jac[i + j * 7] - out_jac[i + j * 7]) > 1e-1;
 	  }
 	  printf("\n");
 	}
 	
-	out_pt[0] = out_pt[1] = 0;  
+	out_pt[0] = out_pt[1] = 0;
+	return fail ? -1 : 0;
 }
 
-void check_jacobian_gen2() {
+TEST(Generated, jacobian_gen2) {
 	SurvivePose obj2world = random_pose();
-	// SurvivePose obj2world = {};
+	// SurvivePose obj2world = { 0 };
 	memset(obj2world.Rot, 0, sizeof(FLT) * 4);
 	obj2world.Rot[1] = 1.;
 
@@ -408,10 +432,10 @@ void check_jacobian_gen2() {
 	SurvivePose world2lh = random_pose();
 	// memset(world2lh.Rot, 0, sizeof(FLT) * 4);
 	// world2lh.Rot[1] = 1.;
-	// SurvivePose lh = {}; lh.Rot[0] = 1.;
+	// SurvivePose lh = { 0 }; lh.Rot[0] = 1.;
 
 	survive_calibration_config config;
-	BaseStationData bsd = {};
+	BaseStationData bsd = { 0 };
 	for (int i = 0; i < 10; i++)
 		*((FLT *)&bsd.fcal[0].phase + i) = next_rand(0.5);
 
@@ -423,7 +447,7 @@ void check_jacobian_gen2() {
 	FLT out_pt[2] = {0};
 
 	for (int i = 0; i < 7; i++) {
-		FLT out[2] = {};
+		FLT out[2] = { 0 };
 
 		double H = 1e-10;
 		for (int n = 0; n < 2; n++) {
@@ -459,16 +483,19 @@ void check_jacobian_gen2() {
 		printf("\n");
 	}
 	printf("\n");
+	bool fail = false;
 	for (int j = 0; j < 2; j++) {
 		for (int i = 0; i < 7; i++) {
 			printf("%+.08f ", comp_jac[i + j * 7] - out_jac[i + j * 7]);
+			fail |= fabs(comp_jac[i + j * 7] - out_jac[i + j * 7]) > 1e-1;
 		}
 		printf("\n");
 	}
 
-	out_pt[0] = out_pt[1] = 0;
+	return fail ? 0 : -1;
 }
 
+#ifdef HAVE_AUX_GENERATED
 void check_apply_pose() {
 	SurvivePose obj = random_pose();
 	LinmathVec3d pt, out, gen_out;
@@ -480,37 +507,4 @@ void check_apply_pose() {
 	print_point(out);
 	print_point(gen_out);	
 }
-
-int main(int argc) {
-	check_reproject_gen2_cal();
-
-	if (argc == 1) {
-		printf("Check apply ang vel...\n");
-		check_apply_ang_velocity();
-
-		printf("Check rot predict...\n");
-		check_rot_predict_quat();
-
-		printf("Check apply pose...\n");
-		check_apply_pose();
-		printf("Check jacobian...\n");
-		check_jacobian();
-		printf("Check jacobian gen2...\n");
-		check_jacobian_gen2();
-		// printf("Check jacobian axis angle...\n");
-		// check_jacobian_axisangle();
-
-		printf("Check rotate_vector...\n");
-		check_rotate_vector();
-		printf("Check invert...\n");
-		check_invert();
-		printf("Check reproject...\n");
-		check_reproject();
-
-		printf("Check reproject_gen2...\n");
-		check_reproject_gen2();
-	}
-	printf("Check speed...\n");
-	check_speed();
-	return 0;
-}
+#endif
