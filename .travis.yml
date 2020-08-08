@@ -9,19 +9,28 @@ dist: xenial
 
 jobs:
    include:
-      - os: linux
-      - os: windows
+     - os: linux
+       env: USE_ASAN=ON CONFIG=Debug
+     - os: linux
+       env: USE_ASAN=OFF CONFIG=Release
+     - os: windows
+       env: CONFIG=Debug
 
 before_install:
   - if [[ "$TRAVIS_OS_NAME" != 'windows' ]]; then sudo apt-get update -qq; fi
   - if [[ "$TRAVIS_OS_NAME" != 'windows' ]]; then sudo apt-get install -y p7zip-full build-essential zlib1g-dev libx11-dev libusb-1.0-0-dev freeglut3-dev liblapacke-dev libopenblas-dev libatlas-base-dev libpcap-dev; fi   
 
+stages:
+  - build
+  - test
+  - performance test
+
 script:
    - mkdir -p bin
    - cd bin
-   - cmake -DENABLE_TESTS=ON -DUSE_ASAN=ON ..
+   - cmake -DENABLE_TESTS=ON -DUSE_ASAN=${USE_ASAN} -DCMAKE_BUILD_TYPE=${CONFIG} ..
    - cmake --build .
-   - ctest . -C Debug --output-on-failure
+   - ctest . -C ${CONFIG} --output-on-failure
 
 before_deploy:
   - if [[ "$TRAVIS_OS_NAME" == 'linux' ]]; then 7z a ../libsurvive-$TRAVIS_TAG-$TRAVIS_OS_NAME.7z . -xr@../travis-exclusion.lst; fi
