@@ -674,7 +674,10 @@ survive_optimizer *survive_optimizer_load(const char *fn) {
 		fseek(fp, 0L, SEEK_SET);
 		if (len > 0) {
 			char *ct0conf = (char *)malloc(len);
-			fread(ct0conf, 1, len, fp);
+			size_t read_size = fread(ct0conf, 1, len, fp);
+			if (read_size != len) {
+				fprintf(stderr, "Could not read full full config file %s\n", filename);
+			}
 			survive_default_config_process(so, ct0conf, len);
 			fclose(fp);
 		}

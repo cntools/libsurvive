@@ -153,9 +153,9 @@ endif()
 
 SET(PLUGINS
         driver_dummy driver_vive driver_simulator
-        disambiguator_turvey disambiguator_statebased disambiguator_charles
-        poser_dummy poser_mpfit poser_imu poser_charlesrefine
-		poser_barycentric_svd
+        disambiguator_statebased
+        poser_dummy poser_mpfit poser_imu
+	poser_barycentric_svd
 )
 
 check_include_file("gattlib.h" HAVE_GATTLIB_H)
@@ -173,10 +173,6 @@ IF(NOT WIN32)
   else()
     message("Can't build usbmon plugin -- pcap library was not found")
   endif()
-endif()
-
-if(UNIX)
-	list(APPEND PLUGINS driver_udp)
 endif()
 
 set(poser_barycentric_svd_ADDITIONAL_SRCS src/barycentric_svd/barycentric_svd.c )
