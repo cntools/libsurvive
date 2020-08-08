@@ -2,6 +2,8 @@
 #include "survive.h"
 #include <linmath.h>
 #include <math.h>
+static inline double __safe_sqrt(double x) { return x > 0 ? sqrt(x) : 0; }
+#define sqrt __safe_sqrt
 static inline double __safe_asin(double x) { return asin(linmath_enforce_range(x, -1, 1)); }
 #define asin __safe_asin
 #ifndef WIN32

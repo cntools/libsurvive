@@ -43,20 +43,6 @@ def make_sympy(expressions):
         flatten.append(expressions)
     return flatten
 
-
-def c_filter(item):
-    if item.is_Atom or isinstance(item, Piecewise):
-        return item
-
-    with sympy.evaluate(False):
-        newargs = list(map(c_filter, item.args))
-        rtn = item.__class__(*newargs)
-
-        # powers of 2 and 3 should just be shown as x*x*x in C; it's faster to skip the function call
-
-
-        return rtn
-
 def expand_pow(x):
     pass
 
@@ -100,20 +86,22 @@ def ccode_wrapper(item, depth = 0):
     }
 
     if item.__class__ == Pow:
-        if number(item.args[1]) == 0.5:
-            return "sqrt(%s)" % newargs[0]
-        if number(item.args[1]) == 2:
-           return "(%s * %s)" % (newargs[0], newargs[0])
-        if number(item.args[1]) == 3:
-            return "(%s * %s * %s)" % (newargs[0], newargs[0], newargs[0])
-        # if number(item.args[1]) == -0.5:
-        #     return "(1. / sqrt(%s))" % newargs[0]
-        # if number(item.args[1]) == -1:
-        #     return "(1. / %s)" % (newargs[0])
-        # if number(item.args[1]) == -2:
-        #     return "(1. / (%s * %s))" % (newargs[0], newargs[0])
-        # if number(item.args[1]) == -3:
-        #     return "(1. / (%s * %s * %s))" % (newargs[0], newargs[0], newargs[0])
+        # Basically it's always faster to never call pow
+        if item.args[1].is_Number and abs(item.args[1]) < 20:
+            invert = item.args[1] < 0
+            num, den = abs(item.args[1]).get_num_den()
+
+            if den == 1 or den == 2:
+                mul_cnt = num if den == 1 else (num - 1) / 2
+                muls = [newargs[0]] * int(mul_cnt)
+                if den == 2:
+                    muls.append("sqrt(" + clean_parens(newargs[0]) + ")")
+                v = " * ".join(muls)
+                if len(muls) > 1:
+                    v = "(" + v + ")"
+                if invert:
+                    v = "(1. / " + v + ")"
+                return v
         return "pow(%s, %s)" % tuple(newargs)
     elif item.__class__ in infixes:
         return "(" + (" " + infixes[item.__class__] + " ").join(newargs) + ")"
@@ -181,16 +169,16 @@ def generate_ccode(func, name=None, args=None, suffix = None):
 
     print("\n".join(
         map(lambda item: "\tconst GEN_FLT %s = %s;" % (
-            sp.ccode(item[0]), ccode(c_filter(item[1])).replace("\n", " ").replace("\t", " ")), cse_output[0])))
+            sp.ccode(item[0]), ccode(item[1]).replace("\n", " ").replace("\t", " ")), cse_output[0])))
 
     output_idx = 0
     for item in cse_output[1]:
         if hasattr(item, "tolist"):
             for item1 in sum(item.tolist(), []):
-                print("\tout[%d] = %s;" % (output_idx, ccode(c_filter(item1)).replace("\n", " ").replace("\t", " ")))
+                print("\tout[%d] = %s;" % (output_idx, ccode(item1).replace("\n", " ").replace("\t", " ")))
                 output_idx += 1
         else:
-            print("\tout[%d] = %s;" % (output_idx, ccode(c_filter(item)).replace("\n", " ").replace("\t", " ")))
+            print("\tout[%d] = %s;" % (output_idx, ccode(item).replace("\n", " ").replace("\t", " ")))
             output_idx += 1
     print("}")
     print("")
