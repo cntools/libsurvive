@@ -688,6 +688,7 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 
 		free(line);
 	} else {
+		SV_VERBOSE(100, "EOF for playback received.");
 		if (f) {
 			gzclose(driver->playback_file);
 		}
@@ -700,7 +701,6 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 
 static void *playback_thread(void *_driver) {
 	SurvivePlaybackData *driver = _driver;
-	driver->keepRunning = true;
 	while (driver->keepRunning) {
 		double next_time_s_scaled = driver->next_time_s * driver->playback_factor;
 		double time_now = timestamp_in_s();
@@ -879,6 +879,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 
 	gzseek(sp->playback_file, 0, SEEK_SET); // same as rewind(f);
 
+	sp->keepRunning = true;
 	sp->playback_thread = OGCreateThread(playback_thread, sp);
 	OGNameThread(sp->playback_thread, "playback");
 	survive_add_driver(ctx, sp, playback_poll, playback_close, 0);
