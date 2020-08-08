@@ -86,8 +86,8 @@ ENDIF()
 list (APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
 
 include (CheckSymbolExists)
-check_symbol_exists (fopencookie stdio.h HAVE_FOPENCOOKIE)
-check_symbol_exists (funopen stdio.h HAVE_FUNOPEN)
+check_symbol_exists (fopencookie stdio.h stdlib.h unistd.h HAVE_FOPENCOOKIE)
+check_symbol_exists (funopen stdio.h stdlib.h unistd.h HAVE_FUNOPEN)
 
 if(HAVE_FOPENCOOKIE)
 	add_definitions(-DHAVE_FOPENCOOKIE)

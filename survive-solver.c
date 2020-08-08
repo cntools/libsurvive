@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
 	printf("LH errors:\n");
 	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
 		if (lh_cnt[i]) {
-			printf("\t%d %d %f\n", i, lh_cnt[i], lh_errors[i] / (FLT)lh_cnt[i]);
+			printf("\t%d %d %f\n", i, (int)lh_cnt[i], lh_errors[i] / (FLT)lh_cnt[i]);
 		}
 	}
 	printf("\n");

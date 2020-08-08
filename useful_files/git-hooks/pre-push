@@ -5,14 +5,22 @@ ROOT=`git rev-parse --show-toplevel`
 cd $ROOT
 mkdir -p bin
 cd bin
-cmake -DUSE_ASAN=ON -DENABLE_WARNINGS_AS_ERRORS=ON -DENABLE_TESTS=ON ..
-make run_all_tests
+cmake -DUSE_ASAN=ON -DENABLE_WARNINGS_AS_ERRORS=ON -DENABLE_TESTS=ON -DHAVE_FOPENCOOKIE=ON ..
+make -j4 run_all_tests
 
 cd $ROOT
 mkdir -p bin_hidapi
 cd bin_hidapi
-cmake -DUSE_ASAN=ON -DENABLE_WARNINGS_AS_ERRORS=ON -DENABLE_TESTS=ON -DUSE_HIDAPI=On ..
-make run_all_tests
+cmake -DUSE_ASAN=ON -DENABLE_WARNINGS_AS_ERRORS=ON -DENABLE_TESTS=ON -DUSE_HIDAPI=On -DHAVE_FOPENCOOKIE=ON ..
+make -j4 run_all_tests
+
+
+cd $ROOT
+mkdir -p bin_float
+cd bin_float
+cmake -DUSE_ASAN=ON -DENABLE_WARNINGS_AS_ERRORS=ON -DENABLE_TESTS=ON -DUSE_SINGLE_PRECISION=On -DHAVE_FOPENCOOKIE=ON ..
+make -j4 
+make -j4 run_all_tests 
 
 cd $ROOT
 make

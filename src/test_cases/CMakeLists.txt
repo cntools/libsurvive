@@ -41,4 +41,4 @@ ExternalProject_Add(libsurvive-extras-data
         SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data
         )
 
-add_custom_target(run_all_tests COMMAND ${CMAKE_CTEST_COMMAND} DEPENDS test_replays libsurvive-extras-data survive_tests survive_plugins)
+add_custom_target(run_all_tests COMMAND ${CMAKE_CTEST_COMMAND} -j 8 DEPENDS test_replays libsurvive-extras-data survive_tests survive_plugins)
