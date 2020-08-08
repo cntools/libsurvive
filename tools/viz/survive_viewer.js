@@ -13,11 +13,38 @@ var fov_scale = 1;
 
 var report_in_imu = false;
 
+var raycaster = new THREE.Raycaster();
+
+var mouse = new THREE.Vector2();
+
+function onMouseMove(event) {
+	// calculate mouse position in normalized device coordinates
+	// (-1 to +1) for both components
+
+	mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+	mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+	var foundObj = false;
+	var intersects = raycaster.intersectObjects(scene.children, true);
+	for (var i = 0; i < intersects.length; i++) {
+		if (intersects[i].object.tooltip) {
+			$("#tooltip").text(intersects[i].object.tooltip);
+			$("#tooltip").css({top : event.clientY, left : event.clientX, position : 'absolute', display : 'block'});
+			foundObj = true;
+			break;
+		}
+	}
+
+	if (!foundObj) {
+		$("#tooltip").css({display : 'none'});
+	}
+}
+
 $(function() { $("#toggleBtn").click(function() { $("#cam").toggle(); }); });
 
 var lhColors = [
 	0xecba82, 0x4f3920, 0x8c7070, 0xf4eded, 0x4e6e5d, 0x3bc14a, 0x251351, 0xc97b84, 0xa85751, 0x251351, 0xc7eae4,
-	0xa7e8bd, 0xffd972, 0xaba361, 0x732c2c, 0x773344
+	0xa7e8bd, 0xffd972, 0xaba361, 0x732c2c, 0x773344c
 ];
 
 var lighthouses = {};
@@ -55,6 +82,7 @@ function add_lighthouse(idx, p, q) {
 
 	lhBoxMaterial = new THREE.MeshBasicMaterial({color : lhColors[idx]});
 	var lhBox = new THREE.Mesh(lhBoxGeom, lhBoxMaterial);
+	lhBox.tooltip = "Lighthouse " + (idx)
 	group.add(lhBox);
 
 	cone.translateZ(-height / 2);
@@ -317,6 +345,7 @@ function create_tracked_object(info) {
 			var sensorMaterial = new THREE.MeshBasicMaterial({color : color});
 			var newSensor = new THREE.Mesh(sensorGeometry, sensorMaterial);
 			newSensor.position.set(p[0], p[1], p[2]);
+			newSensor.tooltip = info.tracker + " " + idx;
 
 			var normalGeom = new THREE.Geometry();
 			normalGeom.vertices.push(newSensor.position,
@@ -721,6 +750,7 @@ function init() {
 	camera.position.set(5, 2, 5.00);
 	camera.lookAt(scene.position);
 
+	window.addEventListener('mousemove', onMouseMove, false);
 	// Function called when download progresses
 	var onProgress = function(xhr) { console.log((xhr.loaded / xhr.total * 100) + '% loaded'); };
 
@@ -875,5 +905,9 @@ function render() {
 	ang = ang % (2 * Math.PI);
 
 	var use_fpv = $("#fpv").length > 0 && $("#fpv")[0].checked;
-	renderer.render(scene, use_fpv ? fpv_camera : camera);
+	var renderCamera = use_fpv ? fpv_camera : camera;
+	// update the picking ray with the camera and mouse position
+	raycaster.setFromCamera(mouse, renderCamera);
+
+	renderer.render(scene, renderCamera);
 }

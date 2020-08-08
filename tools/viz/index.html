@@ -10,7 +10,7 @@
     <script src="survive_viewer.js"></script>
   </head>
   <body>
-    <div id="ThreeJS" style="z-index: 1; position: absolute; left:0px; top:0px"></div>
+    <div id="ThreeJS" style="z-index: 1; position: absolute; left:0px; top:0px" ></div>
     <div id="cam-control" style="z-index: 2;border:1px solid white;position:absolute">
       <input type="checkbox" id="trails" checked>Trails</input><br/>
       <input type="checkbox" id="fpv">FPV</input><br/>
@@ -35,6 +35,11 @@
     z-index: 3;">
 
     </div>
+    <div style="z-index: 3;display: none;position: absolute;
+    background: lightyellow;
+    padding: 3px;
+    border-radius: 3px;
+    border: 1px solid black;" id="tooltip"></div>
     <input type="range" id="time" style="
     right: 20px;
     width: 50%;
