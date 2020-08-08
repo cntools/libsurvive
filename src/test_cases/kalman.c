@@ -5,6 +5,34 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "../generated/survive_imu.generated.h"
+#include "malloc.h"
+
+static void rot_predict_quat(FLT t, const survive_kalman_state_t *k, const CvMat *f_in, CvMat *f_out) {
+	(void)k;
+
+	const FLT *rot = CV_FLT_PTR(f_in);
+	const FLT *vel = CV_FLT_PTR(f_in) + 4;
+	copy3d(CV_FLT_PTR(f_out) + 4, vel);
+
+	survive_apply_ang_velocity(CV_FLT_PTR(f_out), vel, t, rot);
+}
+
+static void rot_f_quat(FLT t, FLT *F, const struct CvMat *x) {
+	(void)x;
+
+	// assert(fabs(t) < .1 && t >= 0);
+	if (fabs(t) > .11)
+		t = .11;
+
+	// fprintf(stderr, "F eval: %f " SurvivePose_format "\n", t, SURVIVE_POSE_EXPAND(*(SurvivePose*)x->data.db));
+	gen_imu_rot_f_jac_imu_rot(F, t, CV_FLT_PTR(x));
+
+	for (int j = 0; j < 49; j++) {
+		assert(!isnan(F[j]));
+	}
+}
+
 static const double two_pi = 2.0 * 3.14159265358979323846;
 
 static double CDF(double x, double sigma) {
@@ -168,9 +196,9 @@ void map_to_obs(void *user, FLT t, const struct CvMat *Z, const struct CvMat *x_
 	CREATE_STACK_MAT(h_x_t, 3, 1);
 	meas_model(t, &h_x_t, x_t, s);
 
-	CREATE_STACK_MAT(I, 3, 3);
-	mat_eye(&I, 1);
-	cvGEMM(&I, Z, 1., &h_x_t, -1, yhat, 0);
+	CREATE_STACK_MAT(Id, 3, 3);
+	mat_eye(&Id, 1);
+	cvGEMM(&Id, Z, 1., &h_x_t, -1, yhat, 0);
 
 	FLT *xt = CV_FLT_PTR(x_t);
 	LinmathPoint3d d;

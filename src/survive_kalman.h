@@ -76,9 +76,9 @@ typedef struct CvMat survive_kalman_gain_matrix;
  * @param H Input observation model -- maps measurement to state space
  * @param R Observation noise
  */
-void survive_kalman_predict_update_covariance(FLT t, survive_kalman_t *k, survive_kalman_gain_matrix *K,
-											  const struct CvMat *F, const survive_kalman_measurement_matrix *H,
-											  const FLT *R);
+SURVIVE_EXPORT void survive_kalman_predict_update_covariance(FLT t, survive_kalman_t *k, survive_kalman_gain_matrix *K,
+															 const struct CvMat *F,
+															 const survive_kalman_measurement_matrix *H, const FLT *R);
 
 // Given a measurement array z (size of 1xdimension_cnt), an H array (size of 1xstate_cnt), and an observation variance
 // R, propogate the entire thing -- variance matrix and state
@@ -89,8 +89,8 @@ void survive_kalman_predict_update_covariance(FLT t, survive_kalman_t *k, surviv
  * @param index Which state vector to pull out
  * @param out Pre allocated output buffer.
  */
-void survive_kalman_predict_state(FLT t, const survive_kalman_state_t *k, size_t start_index, size_t end_index,
-								  FLT *out);
+SURVIVE_EXPORT void survive_kalman_predict_state(FLT t, const survive_kalman_state_t *k, size_t start_index,
+												 size_t end_index, FLT *out);
 
 /**
  * Run predict and update, also updating the state matrix.
@@ -100,16 +100,17 @@ void survive_kalman_predict_state(FLT t, const survive_kalman_state_t *k, size_t
  * @param H Input observation model
  * @param R Observation noise
  */
-void survive_kalman_predict_update_state(FLT t, survive_kalman_state_t *k, const struct CvMat *Z,
-										 const survive_kalman_measurement_matrix *H, const FLT *R);
-void survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k, const struct CvMat *Z, const FLT *R,
-												  Map_to_obs Hfn, void *user);
+SURVIVE_EXPORT void survive_kalman_predict_update_state(FLT t, survive_kalman_state_t *k, const struct CvMat *Z,
+														const survive_kalman_measurement_matrix *H, const FLT *R);
+SURVIVE_EXPORT void survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k,
+																 const struct CvMat *Z, const FLT *R, Map_to_obs Hfn,
+																 void *user);
 
-void survive_kalman_init(survive_kalman_t *k, size_t state_cnt, F_fn_t F, const FLT *Q_per_sec, FLT *P);
-void survive_kalman_free(survive_kalman_t *k);
-void survive_kalman_state_init(survive_kalman_state_t *k, size_t state_cnt, F_fn_t F, const FLT *Q_per_sec, FLT *P,
-							   FLT *state);
-void survive_kalman_state_free(survive_kalman_state_t *k);
-void survive_kalman_set_P(survive_kalman_state_t *k, const FLT *d);
-void survive_kalman_set_logging_level(int verbosity);
+SURVIVE_EXPORT void survive_kalman_init(survive_kalman_t *k, size_t state_cnt, F_fn_t F, const FLT *Q_per_sec, FLT *P);
+SURVIVE_EXPORT void survive_kalman_free(survive_kalman_t *k);
+SURVIVE_EXPORT void survive_kalman_state_init(survive_kalman_state_t *k, size_t state_cnt, F_fn_t F,
+											  const FLT *Q_per_sec, FLT *P, FLT *state);
+SURVIVE_EXPORT void survive_kalman_state_free(survive_kalman_state_t *k);
+SURVIVE_EXPORT void survive_kalman_set_P(survive_kalman_state_t *k, const FLT *d);
+SURVIVE_EXPORT void survive_kalman_set_logging_level(int verbosity);
 #endif

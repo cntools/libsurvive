@@ -208,7 +208,7 @@ SURVIVE_EXPORT void survive_imu_tracker_update(SurviveIMUTracker *tracker, survi
 	survive_imu_tracker_predict(tracker, timecode, out);
 }
 
-void rot_predict_quat(FLT t, const survive_kalman_state_t *k, const CvMat *f_in, CvMat *f_out) {
+static void rot_predict_quat(FLT t, const survive_kalman_state_t *k, const CvMat *f_in, CvMat *f_out) {
 	(void)k;
 
 	const FLT *rot = CV_FLT_PTR(f_in);
@@ -386,7 +386,7 @@ STATIC_CONFIG_ITEM(IMU_GYRO_VARIANCE, "imu-gyro-variance", 'f', "Variance of gyr
 STATIC_CONFIG_ITEM(IMU_MAHONY_VARIANCE, "imu-mahony-variance", 'f', "Variance of mahony filter (negative to disable)",
 				   -1.)
 
-void rot_f_quat(FLT t, FLT *F, const struct CvMat *x) {
+static void rot_f_quat(FLT t, FLT *F, const struct CvMat *x) {
 	(void)x;
 
 	// assert(fabs(t) < .1 && t >= 0);
