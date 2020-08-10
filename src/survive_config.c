@@ -376,7 +376,8 @@ void config_set_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8_
 	config_set_uint32(cg, "mode", bsd->mode);
 	config_set_float_a(cg, "pose", &bsd->Pose.Pos[0], 7);
 
-	quatnormalize(bsd->Pose.Rot, bsd->Pose.Rot);
+	if (!quatiszero(bsd->Pose.Rot))
+		quatnormalize(bsd->Pose.Rot, bsd->Pose.Rot);
 
 	FLT cal[sizeof(bsd->fcal)] = { 0 };
 

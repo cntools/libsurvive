@@ -303,19 +303,21 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 		}
 	}
 
-	FLT unbias_dev = lh_avg_dev / (obs_lhs - 1.);
-	lh_avg_dev = lh_avg_dev / (FLT)obs_lhs;
+	if (obs_lhs > 1) {
+		FLT unbias_dev = lh_avg_dev / (obs_lhs - 1.);
+		lh_avg_dev = lh_avg_dev / (FLT)obs_lhs;
 
-	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
-		FLT corrected_dev = unbias_dev - lh_deviates[i] / (obs_lhs - 1.);
-		if (lh_deviates[i] > 100 * corrected_dev) {
-			SV_VERBOSE(100, "Data from LH %d seems suspect for %s (%f/%f -- %f)", i, optimizer->so->codename,
-					   lh_deviates[i], corrected_dev, lh_deviates[i] / corrected_dev);
-			lh_meas_cnt[i] = 0;
-			optimizer->stats.dropped_lh_cnt++;
-		} else if (lh_deviates[i] > 0.) {
-			SV_VERBOSE(500, "Data from LH %d seems OK for %s (%f/%f -- %f)", i, optimizer->so->codename, lh_deviates[i],
-					   lh_avg_dev, lh_deviates[i] / corrected_dev);
+		for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
+			FLT corrected_dev = unbias_dev - lh_deviates[i] / (obs_lhs - 1.);
+			if (lh_deviates[i] > 100 * corrected_dev) {
+				SV_VERBOSE(100, "Data from LH %d seems suspect for %s (%f/%f -- %f)", i, optimizer->so->codename,
+						   lh_deviates[i], corrected_dev, lh_deviates[i] / corrected_dev);
+				lh_meas_cnt[i] = 0;
+				optimizer->stats.dropped_lh_cnt++;
+			} else if (lh_deviates[i] > 0.) {
+				SV_VERBOSE(500, "Data from LH %d seems OK for %s (%f/%f -- %f)", i, optimizer->so->codename,
+						   lh_deviates[i], lh_avg_dev, lh_deviates[i] / corrected_dev);
+			}
 		}
 	}
 
