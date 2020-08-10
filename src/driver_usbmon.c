@@ -203,6 +203,13 @@ static int usbmon_poll(struct SurviveContext *ctx, void *_driver) {
 	return 0;
 }
 
+static double timestamp_in_s() {
+	static double start_time_s = 0;
+	if (start_time_s == 0.)
+		start_time_s = OGGetAbsoluteTime();
+	return OGGetAbsoluteTime() - start_time_s;
+}
+
 static int usbmon_close(struct SurviveContext *ctx, void *_driver) {
 	SurviveDriverUSBMon *driver = _driver;
 	driver->keepRunning = false;
@@ -216,8 +223,9 @@ static int usbmon_close(struct SurviveContext *ctx, void *_driver) {
 	struct pcap_stat stats = {0};
 	pcap_stats(driver->pcap, &stats);
 
-	SV_INFO("usbmon saw %u/%u packets, %u dropped, %u dropped in driver in %f seconds", (uint32_t)driver->packet_cnt,
-			stats.ps_recv, stats.ps_drop, stats.ps_ifdrop, driver->time_now);
+	SV_INFO("usbmon saw %u/%u packets, %u dropped, %u dropped in driver in %.2f seconds (%.2fs runtime)",
+			(uint32_t)driver->packet_cnt, stats.ps_recv, stats.ps_drop, stats.ps_ifdrop, driver->time_now,
+			timestamp_in_s());
 	if (driver->pcapDumper) {
 		pcap_dump_close(driver->pcapDumper);
 	}
@@ -401,13 +409,6 @@ const char *requestTypeToStr(uint8_t requestType) {
 		return "SYNC_FRAME";
 	}
 	return "<unknown>";
-}
-
-static double timestamp_in_s() {
-	static double start_time_s = 0;
-	if (start_time_s == 0.)
-		start_time_s = OGGetAbsoluteTime();
-	return OGGetAbsoluteTime() - start_time_s;
 }
 
 static double survive_usbmon_playback_run_time(const SurviveContext *ctx, void *_driver) {
