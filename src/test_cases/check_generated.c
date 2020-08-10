@@ -1,4 +1,5 @@
 #include "string.h"
+#include <fenv.h>
 #include <libsurvive/survive.h>
 #include <libsurvive/survive_reproject.h>
 #include <libsurvive/survive_reproject_gen2.h>
@@ -33,24 +34,305 @@ typedef struct survive_calibration_config {
 static const survive_calibration_config default_config = {
 	.phase_scale = 1., .tilt_scale = 1. / 10., .curve_scale = 1. / 10., .gib_scale = -1. / 10.};
 
-double next_rand(double mx) { return (float)rand() / (float)(RAND_MAX / mx) - mx / 2.; }
+static double next_rand(double mx) { return (float)rand() / (float)(RAND_MAX / mx) - mx / 2.; }
 
-void random_quat(LinmathQuat rtn) {
-	const LinmathEulerAngle euler = {next_rand(2 * M_PI), next_rand(2 * M_PI), next_rand(2 * M_PI)};
-	quatfromeuler(rtn, euler);
+static size_t random_quat(LinmathQuat rtn) {
+	if (rtn) {
+		const LinmathEulerAngle euler = {next_rand(2 * M_PI), next_rand(2 * M_PI), next_rand(2 * M_PI)};
+		quatfromeuler(rtn, euler);
+		// quatcopy(rtn, LinmathQuat_Identity);
+	}
+	return sizeof(FLT) * 7;
 }
 
-void random_axis_angle(LinmathAxisAngle a) {
+static void random_axis_angle(LinmathAxisAngle a) {
 	for (int i = 0; i < 3; i++) {
 		a[i] = next_rand(2 * M_PI) - M_PI;
 	}
 }
+
+typedef size_t (*generate_input)(FLT *output);
+typedef void (*general_fn)(FLT *output, const FLT *input);
+
+static void print_array(const char *label, const FLT *a, size_t t, size_t columns) {
+	if (label)
+		TEST_PRINTF("%32s: \t", label);
+	for (int i = 0; i < t; i++) {
+		if (a[i] == 0.0 || (fabs(a[i]) > .000001 && fabs(a[i]) < 1e4))
+			TEST_PRINTF("%+6.6lf"
+						"\t",
+						(double)a[i]);
+		else if (isnan(a[i])) {
+			TEST_PRINTF("%6snan\t", "");
+		} else {
+			TEST_PRINTF("%+2.3le\t", (double)a[i]);
+		}
+		if (columns != 0 && i % columns == (columns - 1)) {
+			TEST_PRINTF("\n%32s  \t", "");
+		}
+	}
+	TEST_PRINTF("\n");
+}
+static FLT diff_array(FLT *out, const FLT *a, const FLT *b, size_t len) {
+	FLT rtn = 0;
+	for (int i = 0; i < len; i++) {
+		rtn += (a[i] - b[i]) * (a[i] - b[i]);
+		if (out)
+			out[i] = fabs(a[i] - b[i]);
+	}
+	return sqrt(rtn) / (FLT)len;
+}
+static FLT print_diff_array(const char *label, const FLT *a, const FLT *b, size_t len, size_t columns) {
+	FLT array[len];
+	FLT rtn = diff_array(array, a, b, len);
+	print_array(label, array, len, columns);
+	return rtn;
+}
+
+static FLT test_gen_jacobian_function(const char *name, generate_input input_fn, general_fn nongen, general_fn gen,
+									  general_fn generated_jacobian, size_t outputs, size_t jac_start_idx,
+									  size_t jac_length) {
+	size_t inputs = input_fn(0) / sizeof(FLT);
+	FLT output_gen[outputs * jac_length], output[outputs * jac_length];
+
+	FLT input[inputs];
+	for (int n = 0; n < inputs; n++) {
+		input[n] = NAN;
+	}
+	input_fn(input);
+
+	for (int n = 0; n < outputs * jac_length; n++) {
+		output_gen[n] = NAN;
+	}
+	generated_jacobian(output_gen, input);
+
+	for (int i = 0; i < jac_length; i++) {
+		int M = 10;
+		FLT D[outputs][M][M];
+		for (int d = 0; d < M; d++) {
+			for (int m = 0; m < M; m++) {
+				for (int n = 0; n < outputs; n++) {
+					D[n][m][d] = NAN;
+				}
+			}
+		}
+		for (int d = 0; d < M; d++) {
+			FLT H = 2;
+			for (int m = d; m < M; m++) {
+
+				if (d == 0) {
+					FLT out[outputs];
+					FLT out_pt[outputs];
+
+					for (int n = 0; n < 2; n++) {
+						FLT input_copy[inputs];
+						memcpy(input_copy, input, sizeof(FLT) * inputs);
+
+						int s = n == 0 ? 1 : -1;
+						input_copy[jac_start_idx + i] += s * H;
+						// print_array("Input", input_copy, inputs, 0);
+						nongen(n == 0 ? out : out_pt, input_copy);
+						FLT gen_output[outputs];
+						gen(gen_output, input_copy);
+						FLT err = diff_array(0, gen_output, n == 0 ? out : out_pt, outputs);
+						if (err > 1e-5) {
+							TEST_PRINTF("Gen/nongen mismatch\n");
+						}
+
+						// print_array("Output", n == 0 ? out : out_pt, outputs, 0);
+					}
+
+					for (int n = 0; n < outputs; n++) {
+						D[n][m][d] = (out[n] - out_pt[n]) / (2.) / H;
+					}
+
+					H = H / 2.;
+				} else {
+					for (int n = 0; n < outputs; n++) {
+						D[n][m][d] = (pow(4., d) * D[n][m][d - 1] - D[n][m - 1][d - 1]) / (pow(4., d) - 1);
+					}
+				}
+			}
+		}
+
+		for (int n = 0; n < outputs; n++) {
+			// TEST_PRINTF("For input %d output %d: \n", i, n);
+			output[i + n * jac_length] = D[n][M - 1][M - 1];
+			// print_array("D", (double*)D[n], M*M, M);
+		}
+	}
+
+	TEST_PRINTF("Testing generated jacobian %s\n", name);
+	print_array("inputs", input, inputs, 0);
+
+	print_array("gen jacobian outputs", output_gen, outputs * jac_length, jac_length);
+	print_array("jacobian outputs", output, outputs * jac_length, jac_length);
+
+	FLT err = print_diff_array("Differences", output, output_gen, outputs * jac_length, jac_length);
+	TEST_PRINTF("SSE: %f\n", err);
+	return err;
+}
+
+typedef struct gen_function_jacobian_def {
+	const char *suffix;
+	general_fn jacobian;
+	size_t jacobian_start_idx;
+	size_t jacobian_length;
+} gen_function_jacobian_def;
+typedef struct gen_function_def {
+	const char *name;
+	general_fn generated;
+	general_fn check;
+	generate_input generate_inputs;
+	size_t outputs;
+	const struct gen_function_jacobian_def jacobians[16];
+} gen_function_def;
+
+static double run_cycles(general_fn runme, const FLT *inputs, FLT *outputs) {
+	FLT runtime = 1;
+	size_t cycles = 0;
+
+	double start_gen = OGGetAbsoluteTime();
+	double stop_gen = 0;
+	do {
+		runme(outputs, inputs);
+		cycles++;
+		stop_gen = OGGetAbsoluteTime();
+	} while (start_gen + runtime > stop_gen);
+
+	return cycles / (stop_gen - start_gen);
+}
+
+static FLT test_gen_function(const char *name, generate_input input_fn, general_fn nongen, general_fn generated,
+							 size_t outputs) {
+	FLT output_gen[outputs], output[outputs];
+
+	size_t inputs = input_fn(0) / sizeof(FLT);
+
+	FLT input[inputs];
+	input_fn(input);
+
+	for (int i = 0; i < 1000; i++) {
+		input_fn(input);
+		generated(output_gen, input);
+		nongen(output, input);
+
+		FLT err = diff_array(0, output, output_gen, outputs);
+		if (err > 1e-5) {
+			TEST_PRINTF("%s eval mismatch: \n", name);
+			print_array("inputs", input, inputs, 0);
+			print_array("gen outputs", output, outputs, 0);
+			print_array("outputs", output_gen, outputs, 0);
+
+			FLT err = print_diff_array("Differences", output, output_gen, outputs, 0);
+			TEST_PRINTF("Difference: %f\n", err);
+		}
+	}
+
+	input_fn(input);
+	FLT gen_hz = run_cycles(generated, input, output_gen);
+	FLT hz = run_cycles(nongen, input, output);
+
+	printf("Testing generated %-32s gen: %8.2fkz nongen: %8.2fkz\n", name, gen_hz / 1000., hz / 1000.);
+	TEST_PRINTF("Testing generated %-32s gen: %8.2fkz nongen: %8.2fkz\n", name, gen_hz / 1000., hz / 1000.);
+	print_array("inputs", input, inputs, 0);
+	print_array("gen outputs", output, outputs, 0);
+	print_array("outputs", output_gen, outputs, 0);
+
+	FLT err = print_diff_array("Differences", output, output_gen, outputs, 0);
+	TEST_PRINTF("Difference: %f\n", err);
+
+	return err;
+}
+
+static int test_gen_function_def(const gen_function_def *def) {
+	bool failed = false;
+	FLT err = test_gen_function(def->name, def->generate_inputs, def->check, def->generated, def->outputs);
+	failed |= err > 1e-5;
+	for (int i = 0; i < 16 && def->jacobians[i].jacobian; i++) {
+		const gen_function_jacobian_def *jdef = &def->jacobians[i];
+		char name[64] = {0};
+		strcat(name, def->name);
+		strcat(name, "_");
+		strcat(name, jdef->suffix);
+		failed |= test_gen_jacobian_function(name, def->generate_inputs, def->check, def->generated, jdef->jacobian,
+											 def->outputs, jdef->jacobian_start_idx, jdef->jacobian_length) > 1e-5;
+	}
+	return failed ? -1 : 0;
+}
+
+static size_t random_quat_quat(FLT *output) {
+	if (output) {
+		random_quat(output);
+		random_quat(output + 4);
+	}
+	return sizeof(FLT) * 8;
+}
+
+static void general_gen_quatrotateabout(FLT *out, const FLT *input) { gen_quatrotateabout(out, input, input + 4); }
+static void general_quatrotateabout(FLT *out, const FLT *input) { quatrotateabout(out, input, input + 4); }
+static void general_gen_quatrotateabout_jac_q1(FLT *out, const FLT *input) {
+	gen_quatrotateabout_jac_q1(out, input, input + 4);
+}
+static void general_gen_quatrotateabout_jac_q2(FLT *out, const FLT *input) {
+	gen_quatrotateabout_jac_q2(out, input, input + 4);
+}
+
+gen_function_def quatrotateabout_def = {
+	.name = "quatrotateabout",
+	.generated = general_gen_quatrotateabout,
+	.check = general_quatrotateabout,
+	.generate_inputs = random_quat_quat,
+	.outputs = 4,
+	.jacobians = {{.suffix = "q1", .jacobian = general_gen_quatrotateabout_jac_q1, .jacobian_length = 4},
+				  {.suffix = "q2",
+				   .jacobian = general_gen_quatrotateabout_jac_q2,
+				   .jacobian_length = 4,
+				   .jacobian_start_idx = 4}}};
+
+TEST(Generated, quatrotateabout) { return test_gen_function_def(&quatrotateabout_def); }
+
+static void general_quatrotatevector(FLT *out, const FLT *input) { quatrotatevector(out, input, input + 4); }
+static void general_gen_quatrotatevector(FLT *out, const FLT *input) { gen_quatrotatevector(out, input, input + 4); }
+static void general_gen_quatrotatevector_jac_q(FLT *out, const FLT *input) {
+	gen_quatrotatevector_jac_q(out, input, input + 4);
+}
+static void general_gen_quatrotatevector_jac_pt(FLT *out, const FLT *input) {
+	gen_quatrotatevector_jac_pt(out, input, input + 4);
+}
+
+static size_t random_quat_vec3(FLT *output) {
+	if (output) {
+		random_quat(output);
+		random_axis_angle(output + 4);
+	}
+	return sizeof(FLT) * 7;
+}
+
+gen_function_def quatrotatevector_def = {
+	.name = "quatrotatevector",
+	.generated = general_gen_quatrotatevector,
+	.check = general_quatrotatevector,
+	.generate_inputs = random_quat_vec3,
+	.outputs = 3,
+	.jacobians = {{.suffix = "q", .jacobian = general_gen_quatrotatevector_jac_q, .jacobian_length = 4},
+				  {.suffix = "pt",
+				   .jacobian = general_gen_quatrotatevector_jac_pt,
+				   .jacobian_length = 3,
+				   .jacobian_start_idx = 4}}};
+
+TEST(Generated, quatrotatevector) { return test_gen_function_def(&quatrotatevector_def); }
 
 SurvivePose random_pose() {
 	const LinmathEulerAngle euler = {next_rand(2 * M_PI), next_rand(2 * M_PI), next_rand(2 * M_PI)};
 	SurvivePose rtn = {.Pos = {next_rand(10), next_rand(10), next_rand(10)}};
 	quatfromeuler(rtn.Rot, euler);
 	return rtn;
+}
+
+void random_pose_into(FLT *out) {
+	SurvivePose rtn = random_pose();
+	memcpy(out, rtn.Pos, sizeof(SurvivePose));
 }
 
 LinmathAxisAnglePose random_pose_axisangle() {
@@ -65,14 +347,22 @@ void random_point(FLT *out) {
 	out[2] = next_rand(1);
 }
 
-void print_pose(const SurvivePose *pose) {
-	printf("[%f %f %f] [%f %f %f %f]\n", pose->Pos[0], pose->Pos[1], pose->Pos[2], pose->Rot[0], pose->Rot[1],
-		   pose->Rot[2], pose->Rot[3]);
+void random_fcal(BaseStationCal *fcal) {
+	fcal->curve = next_rand(0.5);
+	fcal->gibmag = next_rand(0.5);
+	fcal->gibpha = next_rand(0.5);
+	fcal->ogeemag = next_rand(0.5);
+	fcal->ogeephase = next_rand(0.5);
+	fcal->phase = next_rand(0.5);
+	fcal->tilt = next_rand(0.5);
 }
 
-void print_point(const FLT *Pos) {
-	printf("[%f %f %f]\n", Pos[0], Pos[1], Pos[2]);
+void print_pose(const SurvivePose *pose) {
+	TEST_PRINTF("[%f %f %f] [%f %f %f %f]\n", pose->Pos[0], pose->Pos[1], pose->Pos[2], pose->Rot[0], pose->Rot[1],
+				pose->Rot[2], pose->Rot[3]);
 }
+
+void print_point(const FLT *Pos) { TEST_PRINTF("[%f %f %f]\n", Pos[0], Pos[1], Pos[2]); }
 
 #ifdef HAVE_AUX_GENERATED
 void check_rotate_vector() {
@@ -88,7 +378,7 @@ void check_rotate_vector() {
 		gen_quatrotatevector(gen_out, obj.Rot, pt);
 	}
 	stop = OGGetAbsoluteTime();
-	printf("gen: %f %f %f (%f)\n", gen_out[0], gen_out[1], gen_out[2], stop - start);
+	TEST_PRINTF("gen: %f %f %f (%f)\n", gen_out[0], gen_out[1], gen_out[2], stop - start);
 
 	start = OGGetAbsoluteTime();
 	for (int i = 0; i < cycles; i++) {
@@ -96,7 +386,7 @@ void check_rotate_vector() {
 	}
 	stop = OGGetAbsoluteTime();
 
-	printf("%f %f %f (%f)\n", out[0], out[1], out[2], stop - start);
+	TEST_PRINTF("%f %f %f (%f)\n", out[0], out[1], out[2], stop - start);
 }
 
 void check_invert() {
@@ -109,67 +399,6 @@ void check_invert() {
 	print_pose(&inv);
 }
 #endif
-TEST(Generated, Reproject) {
-	SurvivePose obj = random_pose();
-	LinmathVec3d pt;
-	random_point(pt);
-	SurvivePose world2lh = random_pose();
-
-	BaseStationData bsd = { 0 };
-	// for (int i = 0; i < 10; i++)
-	//*((FLT *)&bsd.fcal[0].phase + i) = next_rand(1);
-
-	FLT out_pt[3] = {0}, out_pt_gen[3] = { 0 };
-	int cycles = 50000000;
-
-	double start_gen = OGGetAbsoluteTime();
-	for (int i = 0; i < cycles; i++) {
-		obj.Pos[0] += .001;
-
-		gen_reproject(out_pt_gen, &obj, pt, &world2lh, bsd.fcal);
-	}
-	double stop_gen = OGGetAbsoluteTime();
-	printf("Generated: %f %f (%f)\n", out_pt_gen[0], out_pt_gen[1], stop_gen - start_gen);
-
-	double start_reproject = OGGetAbsoluteTime();
-	for (int i = 0; i < cycles; i++) {
-		survive_reproject_full(bsd.fcal, &world2lh, &obj, pt, out_pt);
-	}
-	double stop_reproject = OGGetAbsoluteTime();
-
-	printf("Non-gen:   %f %f (%f)\n", out_pt[0], out_pt[1], stop_reproject - start_reproject);
-	return dist3d(out_pt_gen, out_pt) < 1e-5 ? 0 : -1;
-}
-
-TEST(Generated, reproject_gen2) {
-	SurvivePose obj = random_pose();
-	LinmathVec3d pt;
-	random_point(pt);
-	SurvivePose world2lh = random_pose();
-
-	BaseStationData bsd = { 0 };
-	// for (int i = 0; i < 10; i++)
-	//*((FLT *)&bsd.fcal[0].phase + i) = next_rand(1);
-
-	FLT out_pt[3] = {0}, out_pt_gen[3] = {0};
-	int cycles = 10000000;
-
-	double start_gen = OGGetAbsoluteTime();
-	for (int i = 0; i < cycles; i++) {
-		gen_reproject_gen2(out_pt_gen, &obj, pt, &world2lh, bsd.fcal);
-	}
-	double stop_gen = OGGetAbsoluteTime();
-	printf("generated    : %f %f (%f)\n", out_pt_gen[0], out_pt_gen[1], stop_gen - start_gen);
-
-	double start_reproject = OGGetAbsoluteTime();
-	for (int i = 0; i < cycles; i++) {
-		survive_reproject_full_gen2(bsd.fcal, &world2lh, &obj, pt, out_pt);
-	}
-	double stop_reproject = OGGetAbsoluteTime();
-
-	printf("non-generated: %f %f (%f)\n", out_pt[0], out_pt[1], stop_reproject - start_reproject);
-	return dist3d(out_pt_gen, out_pt) < 1e-5 ? 0 : -1;
-}
 
 TEST(Generated, reproject_gen2_vals) {
 	BaseStationData bsd = { 0 };
@@ -186,7 +415,7 @@ TEST(Generated, reproject_gen2_vals) {
 	LinmathPoint3d xyz = {0.37831748940152643, -0.29826620924843278, -3.0530035758130878};
 	double ang = survive_reproject_axis_x_gen2(&bsd.fcal[0], xyz);
 	ang += M_PI * 2. * (0 + 1.) / 3.;
-	printf("%.16f\n", ang);
+	TEST_PRINTF("%.16f\n", ang);
 	return fabs(ang - 2.024090911337) < 1e-5 ? 0 : -1;
 }
 
@@ -203,8 +432,8 @@ void check_apply_ang_velocity() {
 	LinmathQuat qo2;
 	gen_apply_ang_velocity(qo2, v, t, qi);
 
-	printf("Lib: " Quat_format "\n", LINMATH_QUAT_EXPAND(qo));
-	printf("Gen: " Quat_format "\n", LINMATH_QUAT_EXPAND(qo2));
+	TEST_PRINTF("Lib: " Quat_format "\n", LINMATH_QUAT_EXPAND(qo));
+	TEST_PRINTF("Gen: " Quat_format "\n", LINMATH_QUAT_EXPAND(qo2));
 }
 #endif
 
@@ -227,91 +456,16 @@ TEST(Generated, rot_predict_quat) {
 
 	gen_imu_rot_f(_mo2, t, _mi);
 
-	printf("Lib: " SurvivePose_format "\n", LINMATH_QUAT_EXPAND(_mo1), LINMATH_VEC3_EXPAND(_mo1 + 4));
-	printf("Gen: " SurvivePose_format "\t"
-		   "\n",
-		   LINMATH_QUAT_EXPAND(_mo2), LINMATH_VEC3_EXPAND(_mo2 + 4));
+	TEST_PRINTF("Lib: " SurvivePose_format "\n", LINMATH_QUAT_EXPAND(_mo1), LINMATH_VEC3_EXPAND(_mo1 + 4));
+	TEST_PRINTF("Gen: " SurvivePose_format "\t"
+				"\n",
+				LINMATH_QUAT_EXPAND(_mo2), LINMATH_VEC3_EXPAND(_mo2 + 4));
 
 	FLT err = 0;
 	for(int i = 0;i < 7;i++)
 		err += fabs((_mo1[i] - _mo2[i]) * (_mo1[i] - _mo2[i]));
 	return err > 1e-5 ? -1 : 0;
 }
-
-/*
-void check_jacobian_axisangle() {
-	LinmathAxisAnglePose obj2world = random_pose_axisangle();
-	// SurvivePose obj2world = { 0 };
-	// memset(obj2world.Rot, 0, sizeof(FLT) * 3);
-
-	LinmathVec3d pt;
-	random_point(pt);
-
-	LinmathAxisAnglePose world2lh = random_pose_axisangle();
-	// memset(world2lh.Rot, 0, sizeof(FLT) * 4);
-	// world2lh.Rot[1] = 1.;
-	// SurvivePose lh = { 0 }; lh.Rot[0] = 1.;
-
-	survive_calibration_config config;
-	BaseStationData bsd = { 0 };
-	for (int i = 0; i < 10; i++)
-		*((FLT *)&bsd.fcal[0].phase + i) = next_rand(0.5);
-
-	FLT out_jac[14] = {0};
-	survive_reproject_full_jac_obj_pose_axisangle(out_jac, &obj2world, pt, &world2lh, bsd.fcal);
-
-	FLT comp_jac[14] = {0};
-	FLT out_pt[2] = {0};
-
-	for (int i = 0; i < 6; i++) {
-		FLT out[2] = { 0 };
-
-		double H = 1e-10;
-		for (int n = 0; n < 2; n++) {
-			LinmathAxisAnglePose p = obj2world;
-			int s = n == 0 ? 1 : -1;
-			if (i < 3)
-				p.Pos[i] += s * H;
-			else {
-				H = 2.5e-10;
-				p.Rot[i - 3] += s * H;
-			}
-
-			// quatnormalize(p.Rot, p.Rot);
-
-			SurvivePose world2lhq = AxisAnglePose2Pose(&world2lh);
-			SurvivePose pq = AxisAnglePose2Pose(&p);
-			survive_reproject_full(bsd.fcal, &world2lhq, &pq, pt, n == 0 ? out : out_pt);
-		}
-
-		comp_jac[i] = (out[0] - out_pt[0]) / (2. * H);
-		comp_jac[i + 6] = (out[1] - out_pt[1]) / (2. * H);
-	}
-
-	for (int j = 0; j < 2; j++) {
-		for (int i = 0; i < 6; i++) {
-			printf("%+.08f ", out_jac[i + j * 6]);
-		}
-		printf("\n");
-	}
-	printf("\n");
-	for (int j = 0; j < 2; j++) {
-		for (int i = 0; i < 6; i++) {
-			printf("%+.08f ", comp_jac[i + j * 6]);
-		}
-		printf("\n");
-	}
-	printf("\n");
-	for (int j = 0; j < 2; j++) {
-		for (int i = 0; i < 6; i++) {
-			printf("%+.08f ", comp_jac[i + j * 6] - out_jac[i + j * 6]);
-		}
-		printf("\n");
-	}
-
-	out_pt[0] = out_pt[1] = 0;
-}
-*/
 
 TEST(Generated, Speed) {
 	SurvivePose obj2world = random_pose();
@@ -334,7 +488,7 @@ TEST(Generated, Speed) {
 
 	FLT out_jac[14] = {0};
 
-	for (int i = 0; i < 20000000; i++) {
+	for (int i = 0; i < 200000; i++) {
 		// survive_reproject_full_jac_obj_pose
 		gen_reproject_jac_obj_p(out_jac, &obj2world, pt, &world2lh, bsd.fcal);
 	}
@@ -342,158 +496,81 @@ TEST(Generated, Speed) {
 	return 0;
 }
 
-TEST(Generated, jacobian) {
-	SurvivePose obj2world = random_pose();
-	// SurvivePose obj2world = { 0 };
-	memset(obj2world.Rot, 0, sizeof(FLT) * 4);
-	obj2world.Rot[1] = 1.;
+struct reproject_input {
+	SurvivePose p;
+	BaseStationCal fcal[2];
+	SurvivePose world2lh;
+	LinmathPoint3d pt;
+};
 
-	LinmathVec3d pt;
-	random_point(pt);
-
-	SurvivePose world2lh = random_pose();
-	// memset(world2lh.Rot, 0, sizeof(FLT) * 4);
-	// world2lh.Rot[1] = 1.;
-	// SurvivePose lh = { 0 }; lh.Rot[0] = 1.;
-
-	survive_calibration_config config;
-	BaseStationData bsd = { 0 };
-	for (int i = 0; i < 10; i++)
-		*((FLT *)&bsd.fcal[0].phase + i) = next_rand(0.5);
-
-	FLT out_jac[14] = {0};
-	// survive_reproject_full_jac_obj_pose(out_jac, &obj2world, pt, &world2lh, bsd.fcal);
-	gen_reproject_jac_obj_p(out_jac, &obj2world, pt, &world2lh, bsd.fcal);
-	// survive_reproject_full_jac_obj_pose(out_jac, &obj2world, pt, &world2lh, bsd.fcal);
-
-	FLT comp_jac[14] = {0};
-	FLT out_pt[2] = {0};
-
-	for(int i = 0;i < 7;i++) {
-	  FLT out[2] = { 0 };
-
-	  double H = 1e-10;
-	  for (int n = 0; n < 2; n++) {
-		  SurvivePose p = obj2world;
-		  int s = n == 0 ? 1 : -1;
-		  if (i < 3)
-			  p.Pos[i] += s * H;
-		  else {
-			  H = 2.5e-10;
-			  p.Rot[i - 3] += s * H;
-		  }
-
-		  // quatnormalize(p.Rot, p.Rot);
-
-		  survive_reproject_full(bsd.fcal, &world2lh, &p, pt, n == 0 ? out : out_pt);
-	  }
-
-	  comp_jac[i] = (out[0] - out_pt[0]) / (2. * H);
-	  comp_jac[i + 7] = (out[1] - out_pt[1]) / (2. * H);
+size_t generate_reproject_input(FLT *out) {
+	if (out != 0) {
+		struct reproject_input *s = (struct reproject_input *)out;
+		s->p = random_pose();
+		// s->p.Rot[1] = .1;
+		// quatnormalize(s->p.Rot, s->p.Rot);
+		s->world2lh = random_pose();
+		random_point(s->pt);
+		random_fcal(s->fcal);
+		random_fcal(s->fcal + 1);
 	}
-
-
-	for(int j = 0;j < 2;j++) {
-	  for(int i = 0;i < 7;i++) {
-		  printf("%+.08f ", out_jac[i + j * 7]);
-	  }
-	  printf("\n");
-	}
-	printf("\n");
-	for(int j = 0;j < 2;j++) {
-	  for(int i = 0;i < 7;i++) {
-		  printf("%+.08f ", comp_jac[i + j * 7]);
-	  }
-	  printf("\n");
-	}
-	printf("\n");
-	bool fail = false;
-	for(int j = 0;j < 2;j++) {
-	  for(int i = 0;i < 7;i++) {
-		  printf("%+.08f ", comp_jac[i + j * 7] - out_jac[i + j * 7]);
-		  fail |= fabs(comp_jac[i + j * 7] - out_jac[i + j * 7]) > 1e-1;
-	  }
-	  printf("\n");
-	}
-	
-	out_pt[0] = out_pt[1] = 0;
-	return fail ? -1 : 0;
+	return sizeof(struct reproject_input);
 }
 
-TEST(Generated, jacobian_gen2) {
-	SurvivePose obj2world = random_pose();
-	// SurvivePose obj2world = { 0 };
-	memset(obj2world.Rot, 0, sizeof(FLT) * 4);
-	obj2world.Rot[1] = 1.;
-
-	LinmathVec3d pt;
-	random_point(pt);
-
-	SurvivePose world2lh = random_pose();
-	// memset(world2lh.Rot, 0, sizeof(FLT) * 4);
-	// world2lh.Rot[1] = 1.;
-	// SurvivePose lh = { 0 }; lh.Rot[0] = 1.;
-
-	survive_calibration_config config;
-	BaseStationData bsd = { 0 };
-	for (int i = 0; i < 10; i++)
-		*((FLT *)&bsd.fcal[0].phase + i) = next_rand(0.5);
-
-	FLT out_jac[14] = {0};
-	// survive_reproject_full_jac_obj_pose_gen2(out_jac, &obj2world, pt, &world2lh, bsd.fcal);
-	gen_reproject_gen2_jac_obj_p(out_jac, &obj2world, pt, &world2lh, bsd.fcal);
-
-	FLT comp_jac[14] = {0};
-	FLT out_pt[2] = {0};
-
-	for (int i = 0; i < 7; i++) {
-		FLT out[2] = { 0 };
-
-		double H = 1e-10;
-		for (int n = 0; n < 2; n++) {
-			SurvivePose p = obj2world;
-			int s = n == 0 ? 1 : -1;
-			if (i < 3)
-				p.Pos[i] += s * H;
-			else {
-				H = 2.5e-10;
-				p.Rot[i - 3] += s * H;
-			}
-
-			// quatnormalize(p.Rot, p.Rot);
-			gen_reproject_gen2(n == 0 ? out : out_pt, &p, pt, &world2lh, bsd.fcal);
-			// survive_reproject_full_gen2(bsd.fcal, &world2lh, &p, pt, n == 0 ? out : out_pt);
-		}
-
-		comp_jac[i] = (out[0] - out_pt[0]) / (2. * H);
-		comp_jac[i + 7] = (out[1] - out_pt[1]) / (2. * H);
-	}
-
-	for (int j = 0; j < 2; j++) {
-		for (int i = 0; i < 7; i++) {
-			printf("%+.08f ", out_jac[i + j * 7]);
-		}
-		printf("\n");
-	}
-	printf("\n");
-	for (int j = 0; j < 2; j++) {
-		for (int i = 0; i < 7; i++) {
-			printf("%+.08f ", comp_jac[i + j * 7]);
-		}
-		printf("\n");
-	}
-	printf("\n");
-	bool fail = false;
-	for (int j = 0; j < 2; j++) {
-		for (int i = 0; i < 7; i++) {
-			printf("%+.08f ", comp_jac[i + j * 7] - out_jac[i + j * 7]);
-			fail |= fabs(comp_jac[i + j * 7] - out_jac[i + j * 7]) > 1e-1;
-		}
-		printf("\n");
-	}
-
-	return fail ? 0 : -1;
+static void general_gen_reproject(FLT *out, const FLT *_input) {
+	// static inline void gen_reproject(FLT* out, const SurvivePose* obj_p, const FLT* sensor_pt, const SurvivePose*
+	// lh_p, const BaseStationCal* bsd) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	gen_reproject(out, &input->p, input->pt, &input->world2lh, input->fcal);
 }
+static void general_gen_reproject_gen2(FLT *out, const FLT *_input) {
+	// static inline void gen_reproject(FLT* out, const SurvivePose* obj_p, const FLT* sensor_pt, const SurvivePose*
+	// lh_p, const BaseStationCal* bsd) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	gen_reproject_gen2(out, &input->p, input->pt, &input->world2lh, input->fcal);
+}
+
+void general_gen_reproject_jac_obj(FLT *out, const FLT *_input) {
+	// static inline void gen_reproject(FLT* out, const SurvivePose* obj_p, const FLT* sensor_pt, const SurvivePose*
+	// lh_p, const BaseStationCal* bsd) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	gen_reproject_jac_obj_p(out, &input->p, input->pt, &input->world2lh, input->fcal);
+}
+void general_gen_reproject_gen2_jac_obj(FLT *out, const FLT *_input) {
+	// static inline void gen_reproject(FLT* out, const SurvivePose* obj_p, const FLT* sensor_pt, const SurvivePose*
+	// lh_p, const BaseStationCal* bsd) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	gen_reproject_gen2_jac_obj_p(out, &input->p, input->pt, &input->world2lh, input->fcal);
+}
+
+static void general_reproject(FLT *out, const FLT *_input) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	survive_reproject_full(input->fcal, &input->world2lh, &input->p, input->pt, out);
+}
+static void general_reproject_gen2(FLT *out, const FLT *_input) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	survive_reproject_full_gen2(input->fcal, &input->world2lh, &input->p, input->pt, out);
+}
+
+gen_function_def reproject_def = {
+	.name = "reproject",
+	.generated = general_gen_reproject,
+	.check = general_reproject,
+	.generate_inputs = generate_reproject_input,
+	.outputs = 2,
+	.jacobians = {{.suffix = "obj", .jacobian = general_gen_reproject_jac_obj, .jacobian_length = 7}}};
+
+TEST(Generated, reproject) { return test_gen_function_def(&reproject_def); }
+
+gen_function_def reproject_gen2_def = {
+	.name = "reproject_gen2",
+	.generated = general_gen_reproject_gen2,
+	.check = general_reproject_gen2,
+	.generate_inputs = generate_reproject_input,
+	.outputs = 2,
+	.jacobians = {{.suffix = "obj", .jacobian = general_gen_reproject_gen2_jac_obj, .jacobian_length = 7}}};
+
+TEST(Generated, reproject_gen2) { return test_gen_function_def(&reproject_gen2_def); }
 
 #ifdef HAVE_AUX_GENERATED
 void check_apply_pose() {
@@ -508,3 +585,36 @@ void check_apply_pose() {
 	print_point(gen_out);	
 }
 #endif
+
+static void general_gen_reproject_x_gen2(FLT *out, const FLT *_input) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	gen_reproject_axis_x_gen2(out, &input->p, input->pt, &input->world2lh, input->fcal);
+}
+
+static void general_gen_reproject_x_gen2_jac_obj(FLT *out, const FLT *_input) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	gen_reproject_axis_x_gen2_jac_obj_p(out, &input->p, input->pt, &input->world2lh, input->fcal);
+}
+static void general_reproject_x_gen2(FLT *out, const FLT *_input) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+
+	LinmathVec3d world_pt;
+	ApplyPoseToPoint(world_pt, &input->p, input->pt);
+
+	LinmathPoint3d t_pt;
+	ApplyPoseToPoint(t_pt, &input->world2lh, world_pt);
+
+	*out = survive_reproject_axis_x_gen2(input->fcal, t_pt);
+}
+
+gen_function_def reproject_axis_x_gen2_def = {
+	.name = "reproject_axis_x_gen2",
+	.generated = general_gen_reproject_x_gen2,
+	.check = general_reproject_x_gen2,
+	.generate_inputs = generate_reproject_input,
+	.outputs = 1,
+	.jacobians = {
+		{.suffix = "obj", .jacobian = general_gen_reproject_x_gen2_jac_obj, .jacobian_length = 7},
+	}};
+
+TEST(Generated, reproject_axis_x) { return test_gen_function_def(&reproject_axis_x_gen2_def); }

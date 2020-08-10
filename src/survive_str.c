@@ -43,3 +43,9 @@ int str_append_printf(cstring *str, const char *format, ...) {
 	assert(strlen(str->d) == str->length);
 	return rtn;
 }
+
+void str_clear(cstring *str) {
+	str->length = 0;
+	if (str->size > 0)
+		str->d[0] = 0;
+}

@@ -1,3 +1,4 @@
+#include "../survive_str.h"
 #include "math.h"
 #include "survive.h"
 
@@ -47,3 +48,6 @@ static inline int survive_test_assert() { return -1; }
 	int Test##suite##test_name()
 
 typedef int (*TestCase)();
+
+extern cstring logs;
+#define TEST_PRINTF(...) str_append_printf(&logs, __VA_ARGS__)

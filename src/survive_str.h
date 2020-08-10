@@ -14,4 +14,5 @@ char *str_increase_by(cstring *str, size_t len);
 SURVIVE_EXPORT void str_append(cstring *str, const char *add);
 SURVIVE_EXPORT int str_append_printf(cstring *str, const char *format, ...);
 SURVIVE_EXPORT void str_free(cstring *str);
+SURVIVE_EXPORT void str_clear(cstring *str);
 #endif

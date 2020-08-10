@@ -29,6 +29,10 @@ def flatten_args(bla, prefix=''):
 
 def make_sympy(expressions):
     flatten = []
+
+    if type(expressions) == sp.MutableDenseMatrix:
+        return expressions
+
     if hasattr(expressions, "atoms"):
         return [expressions]
 
@@ -118,10 +122,20 @@ def ccode_wrapper(item, depth = 0):
 def ccode(item):
     return clean_parens(ccode_wrapper(item))
 
+def get_argument(n):
+    if n in globals():
+        return globals()[n]
+    return sympy.symbols(n)
+
+def get_name(a):
+    if hasattr(a, '__name__'):
+        return a.__name__
+    return str(a)
+
 def generate_ccode(func, name=None, args=None, suffix = None):
     if callable(func):
         name = func.__name__
-        args = [globals()[n] for n in inspect.getfullargspec(func).args]
+        args = [get_argument(n) for n in inspect.getfullargspec(func).args]
 
     if suffix is not None:
         name = name + "_" + suffix
@@ -135,6 +149,7 @@ def generate_ccode(func, name=None, args=None, suffix = None):
     flatten = make_sympy(func)
 
     sys.stderr.write("Running CSE\n")
+
     cse_output = cse(sp.Matrix(flatten))
 
     def get_type(a):
@@ -148,11 +163,6 @@ def generate_ccode(func, name=None, args=None, suffix = None):
         if isinstance(a, SurviveType):
             return a.__class__.__name__ + "*"
         return "FLT"
-
-    def get_name(a):
-        if hasattr(a, '__name__'):
-            return a.__name__
-        return str(a)
 
     def arg_str(arg):
         a = arg[1]
@@ -208,13 +218,15 @@ def flat_values(a):
 def generate_jacobians(func, suffix=None,transpose=False):
     rtn = {}
 
-    func_args = [globals()[n] for n in inspect.getfullargspec(func).args]
-    jac_of = {arg.__name__: flat_values(map_arg(arg)) for arg in func_args}
+    func_args = [get_argument(n) for n in inspect.getfullargspec(func).args]
+    jac_of = {get_name(arg): flat_values(map_arg(arg)) for arg in func_args}
 
     feval = (func(*map_arg(func_args)))
 
     for name, jac_value in jac_of.items():
         fname = func.__name__  + '_jac_' + name
+        if type(feval) == list:
+            feval = sp.MutableDenseMatrix(feval)
         this_jac = jacobian(feval, jac_value)
         if transpose:
             this_jac = this_jac.transpose()
