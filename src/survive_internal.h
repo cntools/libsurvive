@@ -22,7 +22,7 @@ SURVIVE_EXPORT survive_driver_fn GetDriverByConfig(SurviveContext *ctx, const ch
 
 void survive_load_plugins(const char *additional_plugin_dir);
 typedef double (*survive_run_time_fn)(const SurviveContext *ctx, void *user);
-void survive_install_run_time_fn(SurviveContext *ctx, survive_run_time_fn fn, void *user);
+SURVIVE_EXPORT void survive_install_run_time_fn(SurviveContext *ctx, survive_run_time_fn fn, void *user);
 
 #endif
 

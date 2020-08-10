@@ -5,7 +5,7 @@ option(ENABLE_WARNINGS_AS_ERRORS "Use to flag all warnings as errors" OFF)
 include(CheckIncludeFile)
 
 IF(UNIX)
-	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=gnu99 -rdynamic -Werror=incompatible-pointer-types -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces -Werror=implicit-function-declaration -Wpedantic -Werror=return-type")
+	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=gnu99 -rdynamic -Werror=incompatible-pointer-types -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces -Werror=implicit-function-declaration -Wpedantic -Werror=return-type -fvisibility=hidden -Werror=vla")
 	if(ENABLE_WARNINGS_AS_ERRORS)
 		SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror")
 	endif()

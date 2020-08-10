@@ -1,12 +1,17 @@
 SET(SURVIVE_TESTS
         reproject
         check_generated
-        kalman rotate_angvel watchman export_config)
+        kalman rotate_angvel export_config)
+
+IF(NOT WIN32)
+    LIST(APPEND SURVIVE_TESTS watchman)
+    set(watchman_ADDITIONAL_LIBS driver_vive)
+endif()
 SET(SURVIVE_TESTS_EXE)
 foreach(test ${SURVIVE_TESTS})
     list(APPEND SURVIVE_TESTS_EXE test-${test})
     add_executable(test-${test} ${test}.c main.c)
-    target_link_libraries(test-${test} survive driver_vive)
+    target_link_libraries(test-${test} survive ${${test}_ADDITIONAL_LIBS})
     add_test(NAME ${test} COMMAND test-${test})
     set_target_properties(test-${test} PROPERTIES FOLDER "tests")
 endforeach()
@@ -44,4 +49,4 @@ ExternalProject_Add(libsurvive-extras-data
         SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data
         )
 
-add_custom_target(run_all_tests COMMAND ${CMAKE_CTEST_COMMAND} -j 8 DEPENDS test_replays libsurvive-extras-data survive_plugins ${SURVIVE_TESTS_EXE})
+add_custom_target(run_all_tests COMMAND ${CMAKE_CTEST_COMMAND} -j 8 --output-on-failure DEPENDS test_replays libsurvive-extras-data survive_plugins ${SURVIVE_TESTS_EXE})

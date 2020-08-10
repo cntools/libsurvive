@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "minimal_opencv.h"
+#include <malloc.h>
 
 #ifndef M_PI
 # define M_PI           3.14159265358979323846  /* pi */
@@ -899,24 +900,15 @@ LINMATH_EXPORT void Kabsch(LinmathPose *B2Atx, const FLT *_ptsA, const FLT *_pts
 	FLT centerA[3];
 	FLT centerB[3];
 
-#ifndef _WIN32
-	FLT ptsA[num_pts * 3];
-	FLT ptsB[num_pts * 3];
-#else
-	FLT *ptsA = malloc(num_pts * 3 * sizeof(FLT));
-	FLT *ptsB = malloc(num_pts * 3 * sizeof(FLT));
-#endif
+	FLT *ptsA = alloca(num_pts * 3 * sizeof(FLT));
+	FLT *ptsB = alloca(num_pts * 3 * sizeof(FLT));
+
 	center3d(ptsA, centerA, _ptsA, num_pts);
 	center3d(ptsB, centerB, _ptsB, num_pts);
 
 	KabschCentered(B2Atx->Rot, ptsA, ptsB, num_pts);
 	quatrotatevector(centerA, B2Atx->Rot, centerA);
 	sub3d(B2Atx->Pos, centerB, centerA);
-
-#ifdef _WIN32
-	free(ptsA);
-	free(ptsB);
-#endif
 }
 
 LINMATH_EXPORT LinmathQuat LinmathQuat_Identity = {1.0};

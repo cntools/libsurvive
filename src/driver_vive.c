@@ -2207,9 +2207,9 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 		ctx->printfproc(ctx, __VA_ARGS__);                                                                             \
 	}
 
-int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, uint8_t time1,
-							survive_timecode reference_time, uint8_t *readdata, size_t qty, LightcapElement *les,
-							size_t output_cnt) {
+SURVIVE_EXPORT int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, uint8_t time1,
+										   survive_timecode reference_time, uint8_t *readdata, size_t qty,
+										   LightcapElement *les, size_t output_cnt) {
 
 	assert(qty > 0);
 	uint8_t *mptr = readdata + qty - 3 - 1; //-3 for timecode, -1 to
@@ -2373,7 +2373,7 @@ end : {
 
 	return -fault;
 	}
-}
+	}
 
 struct SurviveUSBInfo *survive_vive_register_driver(SurviveObject *so, uint16_t vid, uint16_t pid) {
 	struct SurviveUSBInfo *d = calloc(1, sizeof(struct SurviveUSBInfo));

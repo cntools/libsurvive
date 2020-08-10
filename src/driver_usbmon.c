@@ -317,7 +317,7 @@ static int setup_usb_devices(SurviveDriverUSBMon *sp) {
 	SurviveContext *ctx = sp->ctx;
 	int rtn = 0;
 
-	int device_cnts[DEVICES_CNT];
+	int *device_cnts = alloca(sizeof(int) * DEVICES_CNT);
 	memset(device_cnts, 0, sizeof(int) * DEVICES_CNT);
 
 	const char *usbmon_record = survive_configs(ctx, "usbmon-record", SC_GET, 0);

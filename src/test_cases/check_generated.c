@@ -17,6 +17,14 @@
 #include "../generated/survive_reproject.aux.generated.h"
 #endif
 
+#ifndef M_PI
+#define M_PI LINMATHPI
+#endif
+
+#include "malloc.h"
+
+#define STACK_ALLOC(nmembers) (FLT *)alloca(nmembers * sizeof(FLT))
+
 static void rot_predict_quat(FLT t, const void *k, const CvMat *f_in, CvMat *f_out) {
 	(void)k;
 
@@ -83,7 +91,7 @@ static FLT diff_array(FLT *out, const FLT *a, const FLT *b, size_t len) {
 	return sqrt(rtn) / (FLT)len;
 }
 static FLT print_diff_array(const char *label, const FLT *a, const FLT *b, size_t len, size_t columns) {
-	FLT array[len];
+	FLT *array = STACK_ALLOC(len);
 	FLT rtn = diff_array(array, a, b, len);
 	print_array(label, array, len, columns);
 	return rtn;
@@ -93,9 +101,9 @@ static FLT test_gen_jacobian_function(const char *name, generate_input input_fn,
 									  general_fn generated_jacobian, size_t outputs, size_t jac_start_idx,
 									  size_t jac_length) {
 	size_t inputs = input_fn(0) / sizeof(FLT);
-	FLT output_gen[outputs * jac_length], output[outputs * jac_length];
+	FLT *output_gen = STACK_ALLOC(outputs * jac_length), *output = STACK_ALLOC(outputs * jac_length);
 
-	FLT input[inputs];
+	FLT *input = STACK_ALLOC(inputs);
 	for (int n = 0; n < inputs; n++) {
 		input[n] = NAN;
 	}
@@ -106,9 +114,22 @@ static FLT test_gen_jacobian_function(const char *name, generate_input input_fn,
 	}
 	generated_jacobian(output_gen, input);
 
+	FLT *out = STACK_ALLOC(outputs);
+	FLT *out_pt = STACK_ALLOC(outputs);
+	FLT *input_copy = STACK_ALLOC(inputs);
+	FLT *gen_output = STACK_ALLOC(outputs);
+
+	const int M = 10;
+	// This thing is to maintain compatibility with VS C compiler -- it chokes on FLT D[outputs][M][M];
+	FLT ***D = alloca(outputs * sizeof(FLT **));
+	for (int i = 0; i < outputs; i++) {
+		D[i] = alloca(M * sizeof(FLT *));
+		for (int j = 0; j < M; j++) {
+			D[i][j] = alloca(M * sizeof(FLT));
+		}
+	}
+
 	for (int i = 0; i < jac_length; i++) {
-		int M = 10;
-		FLT D[outputs][M][M];
 		for (int d = 0; d < M; d++) {
 			for (int m = 0; m < M; m++) {
 				for (int n = 0; n < outputs; n++) {
@@ -121,18 +142,13 @@ static FLT test_gen_jacobian_function(const char *name, generate_input input_fn,
 			for (int m = d; m < M; m++) {
 
 				if (d == 0) {
-					FLT out[outputs];
-					FLT out_pt[outputs];
-
 					for (int n = 0; n < 2; n++) {
-						FLT input_copy[inputs];
 						memcpy(input_copy, input, sizeof(FLT) * inputs);
 
 						int s = n == 0 ? 1 : -1;
 						input_copy[jac_start_idx + i] += s * H;
 						// print_array("Input", input_copy, inputs, 0);
 						nongen(n == 0 ? out : out_pt, input_copy);
-						FLT gen_output[outputs];
 						gen(gen_output, input_copy);
 						FLT err = diff_array(0, gen_output, n == 0 ? out : out_pt, outputs);
 						if (err > 1e-5) {
@@ -205,11 +221,11 @@ static double run_cycles(general_fn runme, const FLT *inputs, FLT *outputs) {
 
 static FLT test_gen_function(const char *name, generate_input input_fn, general_fn nongen, general_fn generated,
 							 size_t outputs) {
-	FLT output_gen[outputs], output[outputs];
+	FLT *output_gen = STACK_ALLOC(outputs), *output = STACK_ALLOC(outputs);
 
 	size_t inputs = input_fn(0) / sizeof(FLT);
 
-	FLT input[inputs];
+	FLT *input = STACK_ALLOC(inputs);
 	input_fn(input);
 
 	for (int i = 0; i < 1000; i++) {

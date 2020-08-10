@@ -1,9 +1,13 @@
+
 #include "linmath.h"
+#ifndef WIN32
+#include <alloca.h>
+#endif
 #include <assert.h>
+#include <malloc.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <malloc.h>
 
 bool assertFLTEquals(FLT a, FLT b) { return fabs(a - b) < 0.0001; }
 
@@ -122,13 +126,9 @@ void testKabsch() {
 	quatnormalize(tx2.Rot, tx2.Rot);
 
 	const int N = sizeof(pts) / sizeof(FLT) / 3;
-#ifdef _WIN32
-	FLT *txPts = _alloca(N * 3 * sizeof(FLT));
-	FLT *txPts2 = _alloca(N * 3 * sizeof(FLT));
-#else
-	FLT txPts[N * 3];
-	FLT txPts2[N * 3];
-#endif
+
+	FLT *txPts = alloca(N * 3 * sizeof(FLT));
+	FLT *txPts2 = alloca(N * 3 * sizeof(FLT));
 	for (int i = 0; i < N; i++) {
 		ApplyPoseToPoint(txPts + i * 3, &tx, pts + i * 3);
 		ApplyPoseToPoint(txPts2 + i * 3, &tx2, pts + i * 3);
