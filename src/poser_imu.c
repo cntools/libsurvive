@@ -26,6 +26,18 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 	case POSERDATA_IMU: {
 		PoserDataIMU *imu = (PoserDataIMU *)pd;
 
+		if (dd->tracker.rot.t == 0) {
+			dd->tracker.rot.t = dd->tracker.position.t = imu->hdr.timecode / (FLT)so->timebase_hz;
+
+			LinmathQuat q;
+			LinmathVec3d up = {0, 0, 1};
+			quatfrom2vectors(q, up, imu->accel);
+
+			FLT R[4] = {0};
+			survive_imu_integrate_rotation(&dd->tracker, dd->tracker.rot.t, q, R);
+			return 0;
+		}
+
 		survive_imu_tracker_integrate_imu(&dd->tracker, imu);
 
 		SurvivePose pose = { 0 };
