@@ -10,6 +10,8 @@ typedef void (*F_fn_t)(FLT t, FLT *f_out, const struct CvMat *x0);
 typedef void (*Predict_fn_t)(FLT t, const struct survive_kalman_state_s *k, const struct CvMat *x0, struct CvMat *x1);
 typedef void (*Update_fn_t)(FLT t, struct survive_kalman_state_s *k, const struct CvMat *H, const struct CvMat *K,
 							const struct CvMat *x_t0, struct CvMat *x_t1, const FLT *z);
+
+// Generates both the y difference term and the H jacobian term
 typedef void (*Map_to_obs)(void *user, FLT t, const struct CvMat *Z, const struct CvMat *x_t, struct CvMat *y,
 						   struct CvMat *H_k);
 

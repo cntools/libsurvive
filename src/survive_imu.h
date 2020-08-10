@@ -61,9 +61,10 @@ typedef struct SurviveIMUTracker {
 	SurviveObject *so;
 
 	FLT acc_var;
+	FLT acc_tilt_var;
 	FLT gyro_var;
-
-	FLT mahony_variance;
+	FLT light_pos_var;
+	FLT light_rot_var;
 
 	// Laid out as a 3 x 3
 	// | position |
@@ -79,12 +80,6 @@ typedef struct SurviveIMUTracker {
 	FLT rot_Q_per_sec[49];
 
 	PoserDataIMU last_data;
-
-	LinmathVec3d integralFB;
-
-	LinmathVec3d world_up_while_still;
-	int up_while_still_cnt;
-	LinmathQuat imuerror_correction_local;
 
 	struct {
 		uint32_t late_imu_dropped;

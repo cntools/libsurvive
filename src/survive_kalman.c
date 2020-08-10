@@ -182,6 +182,8 @@ void survive_kalman_update_covariance(survive_kalman_t *k, survive_kalman_gain_m
 	// P_k|k = (I - K * H) * P_k|k-1
 	cvGEMM(&ikh, &tmp, 1, 0, 0, &Pk_k, 0);
 
+	// sv_print_mat_v(100, "K", K, true);
+
 	if (log_level > KALMAN_LOG_LEVEL) {
 		fprintf(stderr, "INFO gain\t");
 		sv_print_mat("K", K, true);
@@ -263,6 +265,7 @@ void survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t 
 		// h_x_t, struct CvMat* H_k);
 		Hfn(user, t - k->t, Z, &x2, &y, &HStorage);
 		H = &HStorage;
+		sv_print_mat_v(100, "Hk", H, true);
 	} else {
 		H = (struct CvMat *)user;
 		cvGEMM(H, &x2, -1, Z, 1, &y, 0);
