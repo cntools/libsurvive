@@ -788,8 +788,13 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 	}
 	case POSERDATA_IMU: {
 		PoserDataIMU *imu = (PoserDataIMU *)pd;
-		if (ctx->calptr && ctx->calptr->stage < 5) {
-		} else if (d->useIMU) {
+		if (d->stats.total_runs == 0)
+			return 0;
+
+		if (ctx->calptr && ctx->calptr->stage < 5)
+			return 0;
+
+		if (d->useIMU) {
 			survive_imu_tracker_integrate_imu(&d->tracker, imu);
 			// SV_INFO("diff?%8u", imu->timecode);
 			SurvivePose out = { 0 };
