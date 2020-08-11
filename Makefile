@@ -42,7 +42,7 @@ ifdef USE_ASAN
 endif
 
 MPFIT:=redist/mpfit/mpfit.c
-LIBSURVIVE_CORE+=src/survive.c src/survive_str.c src/survive_process.c src/survive_process_gen2.c src/ootx_decoder.c src/survive_driverman.c src/survive_default_devices.c src/survive_playback.c src/survive_config.c src/survive_cal.c src/poser.c src/survive_sensor_activations.c src/survive_disambiguator.c src/survive_imu.c src/survive_kalman.c src/survive_api.c src/survive_plugins.c src/poser_general_optimizer.c src/lfsr_lh2.c src/lfsr.c
+LIBSURVIVE_CORE+=src/survive.c src/survive_str.c src/survive_process.c src/survive_process_gen2.c src/ootx_decoder.c src/survive_driverman.c src/survive_default_devices.c src/survive_playback.c src/survive_config.c src/survive_cal.c src/poser.c src/survive_sensor_activations.c src/survive_disambiguator.c src/survive_imu.c src/survive_kalman.c src/survive_api.c src/survive_plugins.c src/poser_general_optimizer.c src/lfsr_lh2.c src/lfsr.c 
 MINIMAL_NEEDED+=src/survive_reproject.c src/survive_reproject_gen2.c redist/minimal_opencv.c 
 AUX_NEEDED+=
 PLUGINS+=driver_dummy driver_vive disambiguator_statebased poser_dummy poser_mpfit poser_imu driver_usbmon driver_simulator poser_barycentric_svd
@@ -184,7 +184,7 @@ LDFLAGS_PLUGINS=$(LDFLAGS) -L./lib/plugins
 ./lib/plugins/poser_barycentric_svd.so: ./src/poser_barycentric_svd.c src/barycentric_svd/barycentric_svd.c ./redist/minimal_opencv.c
 	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS_PLUGINS)
 
-./lib/plugins/poser_mpfit.so: src/poser_mpfit.c ./src/survive_optimizer.c $(MPFIT)
+./lib/plugins/poser_mpfit.so: src/poser_mpfit.c ./src/survive_optimizer.c $(MPFIT) src/survive_async_optimizer.c
 	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS_PLUGINS)
 
 ./lib/plugins/driver_usbmon.so: src/driver_usbmon.c ./lib/plugins/driver_vive.so
