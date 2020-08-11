@@ -19,8 +19,16 @@ def imu_rot_f_aa(time, imu_rot_aa):
 
 def imu_predict_up(imu_rot):
     G = [ 0, 0, 1]
-    rot = imu_rot[0:4]
+    rot = quatgetreciprocal(quatnormalize(imu_rot[0:4]))
     return quatrotatevector(rot, G)
+
+def imu_predict_gyro(imu_rot):
+    rot = quatgetreciprocal(quatnormalize(imu_rot[0:4]))
+    rotv = imu_rot[4:7]
+    return quatrotatevector(rot, rotv)
+
+def imu_predict(imu_rot):
+    return [*imu_predict_up(imu_rot), *imu_predict_gyro(imu_rot)]
 
 def imu_correct_up(mu, imu_rot, up_in_obj):
     rot = imu_rot[0:4]
@@ -56,7 +64,7 @@ if __name__ == "__main__":
 
         #print(numdifftools.Jacobian(f)(+0.680413))
 
-        for f in [quatrotatevector, imu_rot_f, imu_rot_f_aa, imu_correct_up, imu_predict_up, quatrotateabout]:
+        for f in [quatrotatevector, imu_rot_f, imu_rot_f_aa, imu_correct_up, imu_predict_up, quatrotateabout, imu_predict, imu_predict_gyro]:
             generate_ccode(f)
             j = generate_jacobians(f, transpose= f == imu_rot_f)
 

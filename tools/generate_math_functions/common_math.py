@@ -208,7 +208,6 @@ def axisanglerotatevector(axis_angle, sensor_pt):
 def quatgetreciprocal(q):
     return [q[0], -q[1], -q[2], -q[3]]
 
-
 def apply_axisangle_pose_to_pt(obj_p_axisangle, sensor_pt):
     px, py, pz = obj_p_axisangle.Pos
     return (axisanglerotatevector(obj_p_axisangle.Rot, sensor_pt) + sp.Matrix((px, py, pz)))

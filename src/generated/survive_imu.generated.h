@@ -1,6 +1,6 @@
 #pragma once
 #include "common.h"
-/** Applying function <function quatrotatevector at 0x7f3ff6444170> */
+/** Applying function <function quatrotatevector at 0x7fe08d8e2290> */
 static inline void gen_quatrotatevector(FLT *out, const FLT *q, const FLT *pt) {
 	const GEN_FLT obj_qw = q[0];
 	const GEN_FLT obj_qi = q[1];
@@ -91,7 +91,7 @@ static inline void gen_quatrotatevector_jac_pt(FLT *out, const FLT *q, const FLT
 	out[8] = x1 + x8;
 }
 
-/** Applying function <function imu_rot_f at 0x7f4024688a70> */
+/** Applying function <function imu_rot_f at 0x7fe0bbb1e050> */
 static inline void gen_imu_rot_f(FLT *out, const FLT time, const FLT *imu_rot) {
 	const GEN_FLT obj_qw = imu_rot[0];
 	const GEN_FLT obj_qi = imu_rot[1];
@@ -478,7 +478,7 @@ static inline void gen_imu_rot_f_jac_imu_rot(FLT *out, const FLT time, const FLT
 	out[48] = 1;
 }
 
-/** Applying function <function imu_rot_f_aa at 0x7f3ff64467a0> */
+/** Applying function <function imu_rot_f_aa at 0x7fe08d8e48c0> */
 static inline void gen_imu_rot_f_aa(FLT *out, const FLT time, const FLT *imu_rot_aa) {
 	const GEN_FLT aa_x = imu_rot_aa[0];
 	const GEN_FLT aa_y = imu_rot_aa[1];
@@ -1273,7 +1273,7 @@ static inline void gen_imu_rot_f_aa_jac_imu_rot_aa(FLT *out, const FLT time, con
 	out[35] = 1;
 }
 
-/** Applying function <function imu_correct_up at 0x7f3ff468cef0> */
+/** Applying function <function imu_correct_up at 0x7fe08bb29170> */
 static inline void gen_imu_correct_up(FLT *out, const FLT mu, const FLT *imu_rot, const FLT *up_in_obj) {
 	const GEN_FLT obj_qw = imu_rot[0];
 	const GEN_FLT obj_qi = imu_rot[1];
@@ -6309,7 +6309,7 @@ static inline void gen_imu_correct_up_jac_up_in_obj(FLT *out, const FLT mu, cons
 	out[20] = 0;
 }
 
-/** Applying function <function imu_predict_up at 0x7f3ff468ce60> */
+/** Applying function <function imu_predict_up at 0x7fe08bb11f80> */
 static inline void gen_imu_predict_up(FLT *out, const FLT *imu_rot) {
 	const GEN_FLT obj_qw = imu_rot[0];
 	const GEN_FLT obj_qi = imu_rot[1];
@@ -6318,10 +6318,14 @@ static inline void gen_imu_predict_up(FLT *out, const FLT *imu_rot) {
 	const GEN_FLT aa_x = imu_rot[4];
 	const GEN_FLT aa_y = imu_rot[5];
 	const GEN_FLT aa_z = imu_rot[6];
-
-	out[0] = 2 * ((obj_qw * obj_qj) + (obj_qk * obj_qi));
-	out[1] = 2 * ((obj_qk * obj_qj) + (-1 * obj_qw * obj_qi));
-	out[2] = 1 + (2 * ((-1 * (obj_qi * obj_qi)) + (-1 * (obj_qj * obj_qj))));
+	const GEN_FLT x0 = obj_qj * obj_qj;
+	const GEN_FLT x1 = obj_qi * obj_qi;
+	const GEN_FLT x2 = 1. / ((obj_qw * obj_qw) + (obj_qk * obj_qk) + x1 + x0);
+	const GEN_FLT x3 = x2 * obj_qk;
+	const GEN_FLT x4 = x2 * obj_qw;
+	out[0] = 2 * ((-1 * x4 * obj_qj) + (x3 * obj_qi));
+	out[1] = 2 * ((x3 * obj_qj) + (x4 * obj_qi));
+	out[2] = 1 + (2 * ((-1 * x2 * x1) + (-1 * x0 * x2)));
 }
 
 // Jacobian of imu_predict_up wrt [obj_qw, obj_qi, obj_qj, obj_qk, aa_x, aa_y, aa_z]
@@ -6333,34 +6337,55 @@ static inline void gen_imu_predict_up_jac_imu_rot(FLT *out, const FLT *imu_rot) 
 	const GEN_FLT aa_x = imu_rot[4];
 	const GEN_FLT aa_y = imu_rot[5];
 	const GEN_FLT aa_z = imu_rot[6];
-	const GEN_FLT x0 = 2 * obj_qj;
-	const GEN_FLT x1 = 2 * obj_qk;
-	const GEN_FLT x2 = 2 * obj_qw;
-	const GEN_FLT x3 = 2 * obj_qi;
-	out[0] = x0;
-	out[1] = x1;
-	out[2] = x2;
-	out[3] = x3;
+	const GEN_FLT x0 = obj_qw * obj_qw;
+	const GEN_FLT x1 = obj_qj * obj_qj;
+	const GEN_FLT x2 = obj_qi * obj_qi;
+	const GEN_FLT x3 = obj_qk * obj_qk;
+	const GEN_FLT x4 = x0 + x3 + x2 + x1;
+	const GEN_FLT x5 = 1. / (x4 * x4);
+	const GEN_FLT x6 = 2 * x5;
+	const GEN_FLT x7 = x6 * obj_qj;
+	const GEN_FLT x8 = 1. / x4;
+	const GEN_FLT x9 = x8 * obj_qj;
+	const GEN_FLT x10 = x6 * obj_qk;
+	const GEN_FLT x11 = obj_qw * obj_qi;
+	const GEN_FLT x12 = -1 * x11 * x10;
+	const GEN_FLT x13 = x7 * x11;
+	const GEN_FLT x14 = x8 * obj_qk;
+	const GEN_FLT x15 = x8 * obj_qw;
+	const GEN_FLT x16 = x6 * obj_qw;
+	const GEN_FLT x17 = x7 * obj_qk;
+	const GEN_FLT x18 = -1 * x17 * obj_qi;
+	const GEN_FLT x19 = x17 * obj_qw;
+	const GEN_FLT x20 = x6 * obj_qi;
+	const GEN_FLT x21 = x8 * obj_qi;
+	const GEN_FLT x22 = 4 * x5;
+	const GEN_FLT x23 = x1 * x22;
+	const GEN_FLT x24 = x2 * x22;
+	out[0] = 2 * (x12 + (-1 * x9) + (x0 * x7));
+	out[1] = 2 * (x14 + (-1 * x2 * x10) + x13);
+	out[2] = 2 * (x18 + (x1 * x16) + (-1 * x15));
+	out[3] = 2 * (x21 + (-1 * x3 * x20) + x19);
 	out[4] = 0;
 	out[5] = 0;
 	out[6] = 0;
-	out[7] = -1 * x3;
-	out[8] = -1 * x2;
-	out[9] = x1;
-	out[10] = x0;
+	out[7] = 2 * (x21 + (-1 * x0 * x20) + (-1 * x19));
+	out[8] = 2 * (x15 + (-1 * x2 * x16) + x18);
+	out[9] = 2 * ((-1 * x13) + x14 + (-1 * x1 * x10));
+	out[10] = 2 * (x12 + x9 + (-1 * x3 * x7));
 	out[11] = 0;
 	out[12] = 0;
 	out[13] = 0;
-	out[14] = 0;
-	out[15] = -4 * obj_qi;
-	out[16] = -4 * obj_qj;
-	out[17] = 0;
+	out[14] = (x24 * obj_qw) + (x23 * obj_qw);
+	out[15] = (x22 * (obj_qi * obj_qi * obj_qi)) + (-4 * x21) + (x23 * obj_qi);
+	out[16] = (x24 * obj_qj) + (x22 * (obj_qj * obj_qj * obj_qj)) + (-4 * x9);
+	out[17] = (x24 * obj_qk) + (x23 * obj_qk);
 	out[18] = 0;
 	out[19] = 0;
 	out[20] = 0;
 }
 
-/** Applying function <function quatrotateabout at 0x7f3ff6444050> */
+/** Applying function <function quatrotateabout at 0x7fe08d8e2170> */
 static inline void gen_quatrotateabout(FLT *out, const FLT *q1, const FLT *q2) {
 	const GEN_FLT obj_qw = q1[0];
 	const GEN_FLT obj_qi = q1[1];
@@ -6437,4 +6462,320 @@ static inline void gen_quatrotateabout_jac_q2(FLT *out, const FLT *q1, const FLT
 	out[13] = x1;
 	out[14] = obj_qi;
 	out[15] = obj_qw;
+}
+
+/** Applying function <function imu_predict at 0x7fe08bb290e0> */
+static inline void gen_imu_predict(FLT *out, const FLT *imu_rot) {
+	const GEN_FLT obj_qw = imu_rot[0];
+	const GEN_FLT obj_qi = imu_rot[1];
+	const GEN_FLT obj_qj = imu_rot[2];
+	const GEN_FLT obj_qk = imu_rot[3];
+	const GEN_FLT aa_x = imu_rot[4];
+	const GEN_FLT aa_y = imu_rot[5];
+	const GEN_FLT aa_z = imu_rot[6];
+	const GEN_FLT x0 = obj_qj * obj_qj;
+	const GEN_FLT x1 = obj_qi * obj_qi;
+	const GEN_FLT x2 = (obj_qw * obj_qw) + (obj_qk * obj_qk) + x1 + x0;
+	const GEN_FLT x3 = 1. / x2;
+	const GEN_FLT x4 = x3 * obj_qk;
+	const GEN_FLT x5 = x3 * obj_qw;
+	const GEN_FLT x6 = 1. / sqrt(x2);
+	const GEN_FLT x7 = x6 * aa_y;
+	const GEN_FLT x8 = x6 * obj_qi;
+	const GEN_FLT x9 = x6 * obj_qk;
+	const GEN_FLT x10 = (x8 * aa_z) + (-1 * x9 * aa_x) + (x7 * obj_qw);
+	const GEN_FLT x11 = x6 * obj_qw;
+	const GEN_FLT x12 = x6 * obj_qj;
+	const GEN_FLT x13 = x6 * ((x12 * aa_x) + (-1 * x7 * obj_qi) + (x11 * aa_z));
+	const GEN_FLT x14 = (-1 * x12 * aa_z) + (x7 * obj_qk) + (x11 * aa_x);
+	out[0] = 2 * ((-1 * x5 * obj_qj) + (x4 * obj_qi));
+	out[1] = 2 * ((x4 * obj_qj) + (x5 * obj_qi));
+	out[2] = 1 + (2 * ((-1 * x1 * x3) + (-1 * x0 * x3)));
+	out[3] = aa_x + (2 * ((-1 * x13 * obj_qj) + (x9 * x10)));
+	out[4] = aa_y + (2 * ((-1 * x9 * x14) + (x13 * obj_qi)));
+	out[5] = aa_z + (2 * ((-1 * x8 * x10) + (x14 * x12)));
+}
+
+// Jacobian of imu_predict wrt [obj_qw, obj_qi, obj_qj, obj_qk, aa_x, aa_y, aa_z]
+static inline void gen_imu_predict_jac_imu_rot(FLT *out, const FLT *imu_rot) {
+	const GEN_FLT obj_qw = imu_rot[0];
+	const GEN_FLT obj_qi = imu_rot[1];
+	const GEN_FLT obj_qj = imu_rot[2];
+	const GEN_FLT obj_qk = imu_rot[3];
+	const GEN_FLT aa_x = imu_rot[4];
+	const GEN_FLT aa_y = imu_rot[5];
+	const GEN_FLT aa_z = imu_rot[6];
+	const GEN_FLT x0 = obj_qw * obj_qw;
+	const GEN_FLT x1 = obj_qj * obj_qj;
+	const GEN_FLT x2 = obj_qi * obj_qi;
+	const GEN_FLT x3 = obj_qk * obj_qk;
+	const GEN_FLT x4 = x0 + x3 + x2 + x1;
+	const GEN_FLT x5 = 1. / (x4 * x4);
+	const GEN_FLT x6 = 2 * x5;
+	const GEN_FLT x7 = x0 * x6;
+	const GEN_FLT x8 = 1. / x4;
+	const GEN_FLT x9 = x8 * obj_qj;
+	const GEN_FLT x10 = 2 * obj_qk;
+	const GEN_FLT x11 = x5 * x10;
+	const GEN_FLT x12 = x11 * obj_qw;
+	const GEN_FLT x13 = -1 * x12 * obj_qi;
+	const GEN_FLT x14 = 2 * obj_qw;
+	const GEN_FLT x15 = x5 * x14;
+	const GEN_FLT x16 = obj_qj * obj_qi;
+	const GEN_FLT x17 = x15 * x16;
+	const GEN_FLT x18 = x8 * obj_qk;
+	const GEN_FLT x19 = x8 * obj_qw;
+	const GEN_FLT x20 = -1 * x11 * x16;
+	const GEN_FLT x21 = x12 * obj_qj;
+	const GEN_FLT x22 = x3 * x6;
+	const GEN_FLT x23 = x8 * obj_qi;
+	const GEN_FLT x24 = 4 * x5;
+	const GEN_FLT x25 = x1 * x24;
+	const GEN_FLT x26 = x2 * x24;
+	const GEN_FLT x27 = 1. / (x4 * sqrt(x4));
+	const GEN_FLT x28 = x27 * aa_x;
+	const GEN_FLT x29 = obj_qw * obj_qk;
+	const GEN_FLT x30 = x28 * x29;
+	const GEN_FLT x31 = x27 * aa_z;
+	const GEN_FLT x32 = x31 * obj_qw;
+	const GEN_FLT x33 = -1 * x32 * obj_qi;
+	const GEN_FLT x34 = x27 * aa_y;
+	const GEN_FLT x35 = 1. / sqrt(x4);
+	const GEN_FLT x36 = x35 * aa_y;
+	const GEN_FLT x37 = x33 + x36 + (-1 * x0 * x34) + x30;
+	const GEN_FLT x38 = 2 * x35;
+	const GEN_FLT x39 = x38 * obj_qk;
+	const GEN_FLT x40 = x27 * x10;
+	const GEN_FLT x41 = x35 * aa_z;
+	const GEN_FLT x42 = x35 * aa_x;
+	const GEN_FLT x43 = (-1 * x42 * obj_qk) + (x41 * obj_qi) + (x36 * obj_qw);
+	const GEN_FLT x44 = x43 * obj_qw;
+	const GEN_FLT x45 = x34 * obj_qw;
+	const GEN_FLT x46 = x45 * obj_qi;
+	const GEN_FLT x47 = x28 * obj_qj;
+	const GEN_FLT x48 = -1 * x47 * obj_qw;
+	const GEN_FLT x49 = x41 + (-1 * x0 * x31) + x48 + x46;
+	const GEN_FLT x50 = x38 * obj_qj;
+	const GEN_FLT x51 = 2 * x27;
+	const GEN_FLT x52 = x51 * obj_qj;
+	const GEN_FLT x53 = (-1 * x36 * obj_qi) + (x42 * obj_qj) + (x41 * obj_qw);
+	const GEN_FLT x54 = x53 * obj_qw;
+	const GEN_FLT x55 = x28 * obj_qi;
+	const GEN_FLT x56 = x41 + (-1 * x2 * x31) + (-1 * x46) + (x55 * obj_qk);
+	const GEN_FLT x57 = x40 * obj_qi;
+	const GEN_FLT x58 = x57 * x43;
+	const GEN_FLT x59 = x33 + (x2 * x34) + (-1 * x47 * obj_qi) + (-1 * x36);
+	const GEN_FLT x60 = x51 * x16;
+	const GEN_FLT x61 = x60 * x53;
+	const GEN_FLT x62 = x47 * obj_qk;
+	const GEN_FLT x63 = x31 * x16;
+	const GEN_FLT x64 = x38 * ((-1 * x45 * obj_qj) + (-1 * x63) + x62);
+	const GEN_FLT x65 = x40 * obj_qj;
+	const GEN_FLT x66 = x32 * obj_qj;
+	const GEN_FLT x67 = (-1 * x66) + x42 + (-1 * x1 * x28) + (x34 * x16);
+	const GEN_FLT x68 = x53 * x38;
+	const GEN_FLT x69 = x1 * x51;
+	const GEN_FLT x70 = x31 * obj_qk;
+	const GEN_FLT x71 = -1 * x34 * x29;
+	const GEN_FLT x72 = x71 + (-1 * x70 * obj_qi) + (-1 * x42) + (x3 * x28);
+	const GEN_FLT x73 = x43 * x38;
+	const GEN_FLT x74 = x3 * x51;
+	const GEN_FLT x75 = x34 * obj_qk;
+	const GEN_FLT x76 = x75 * obj_qi;
+	const GEN_FLT x77 = x38 * ((-1 * x31 * x29) + (-1 * x62) + x76);
+	const GEN_FLT x78 = 2 * x8;
+	const GEN_FLT x79 = -1 * x1 * x78;
+	const GEN_FLT x80 = 1 + (-1 * x3 * x78);
+	const GEN_FLT x81 = x10 * x19;
+	const GEN_FLT x82 = 2 * x23;
+	const GEN_FLT x83 = x82 * obj_qj;
+	const GEN_FLT x84 = x23 * x10;
+	const GEN_FLT x85 = x9 * x14;
+	const GEN_FLT x86 = x38 * obj_qi;
+	const GEN_FLT x87 = x51 * obj_qi;
+	const GEN_FLT x88 = x42 + (-1 * x0 * x28) + x71 + x66;
+	const GEN_FLT x89 = (-1 * x41 * obj_qj) + (x36 * obj_qk) + (x42 * obj_qw);
+	const GEN_FLT x90 = x89 * obj_qw;
+	const GEN_FLT x91 = x2 * x51;
+	const GEN_FLT x92 = x38 * ((-1 * x55 * obj_qw) + x63 + (-1 * x76));
+	const GEN_FLT x93 = x48 + (-1 * x41) + (-1 * x75 * obj_qj) + (x1 * x31);
+	const GEN_FLT x94 = x89 * x65;
+	const GEN_FLT x95 = x89 * x38;
+	const GEN_FLT x96 = (-1 * x30) + x36 + (-1 * x3 * x34) + (x70 * obj_qj);
+	const GEN_FLT x97 = -1 * x2 * x78;
+	const GEN_FLT x98 = x82 * obj_qw;
+	const GEN_FLT x99 = x9 * x10;
+	out[0] = 2 * (x13 + (-1 * x9) + (x7 * obj_qj));
+	out[1] = 2 * (x18 + (-1 * x2 * x11) + x17);
+	out[2] = 2 * (x20 + (x1 * x15) + (-1 * x19));
+	out[3] = 2 * (x23 + (-1 * x22 * obj_qi) + x21);
+	out[4] = 0;
+	out[5] = 0;
+	out[6] = 0;
+	out[7] = 2 * (x23 + (-1 * x7 * obj_qi) + (-1 * x21));
+	out[8] = 2 * (x19 + (-1 * x2 * x15) + x20);
+	out[9] = 2 * ((-1 * x17) + x18 + (-1 * x1 * x11));
+	out[10] = 2 * (x13 + x9 + (-1 * x22 * obj_qj));
+	out[11] = 0;
+	out[12] = 0;
+	out[13] = 0;
+	out[14] = (x26 * obj_qw) + (x25 * obj_qw);
+	out[15] = (x24 * (obj_qi * obj_qi * obj_qi)) + (-4 * x23) + (x25 * obj_qi);
+	out[16] = (x26 * obj_qj) + (x24 * (obj_qj * obj_qj * obj_qj)) + (-4 * x9);
+	out[17] = (x26 * obj_qk) + (x25 * obj_qk);
+	out[18] = 0;
+	out[19] = 0;
+	out[20] = 0;
+	out[21] = (x54 * x52) + (-1 * x50 * x49) + (-1 * x40 * x44) + (x37 * x39);
+	out[22] = x61 + (-1 * x58) + (-1 * x50 * x59) + (x56 * x39);
+	out[23] = (x69 * x53) + (-1 * x67 * x50) + (-1 * x65 * x43) + (-1 * x68) + (x64 * obj_qk);
+	out[24] = (x65 * x53) + x73 + (-1 * x77 * obj_qj) + (-1 * x74 * x43) + (x72 * x39);
+	out[25] = x80 + x79;
+	out[26] = x83 + x81;
+	out[27] = (-1 * x85) + x84;
+	out[28] = (x90 * x40) + (-1 * x88 * x39) + (-1 * x87 * x54) + (x86 * x49);
+	out[29] = (-1 * x92 * obj_qk) + (x89 * x57) + (-1 * x53 * x91) + x68 + (x86 * x59);
+	out[30] = x94 + (-1 * x93 * x39) + (-1 * x61) + (x86 * x67);
+	out[31] = (-1 * x96 * x39) + (x89 * x74) + (-1 * x53 * x57) + (-1 * x95) + (x77 * obj_qi);
+	out[32] = (-1 * x81) + x83;
+	out[33] = x80 + x97;
+	out[34] = x99 + x98;
+	out[35] = (x87 * x44) + (-1 * x86 * x37) + (-1 * x52 * x90) + (x88 * x50);
+	out[36] = (-1 * x73) + (-1 * x86 * x56) + (x91 * x43) + (-1 * x89 * x60) + (x92 * obj_qj);
+	out[37] = (-1 * x64 * obj_qi) + (-1 * x89 * x69) + x95 + (x60 * x43) + (x50 * x93);
+	out[38] = x58 + (-1 * x86 * x72) + (-1 * x94) + (x50 * x96);
+	out[39] = x84 + x85;
+	out[40] = (-1 * x98) + x99;
+	out[41] = 1 + x97 + x79;
+}
+
+/** Applying function <function imu_predict_gyro at 0x7fe08bb29050> */
+static inline void gen_imu_predict_gyro(FLT *out, const FLT *imu_rot) {
+	const GEN_FLT obj_qw = imu_rot[0];
+	const GEN_FLT obj_qi = imu_rot[1];
+	const GEN_FLT obj_qj = imu_rot[2];
+	const GEN_FLT obj_qk = imu_rot[3];
+	const GEN_FLT aa_x = imu_rot[4];
+	const GEN_FLT aa_y = imu_rot[5];
+	const GEN_FLT aa_z = imu_rot[6];
+	const GEN_FLT x0 = 1. / sqrt((obj_qw * obj_qw) + (obj_qk * obj_qk) + (obj_qi * obj_qi) + (obj_qj * obj_qj));
+	const GEN_FLT x1 = x0 * aa_y;
+	const GEN_FLT x2 = x0 * aa_z;
+	const GEN_FLT x3 = x0 * aa_x;
+	const GEN_FLT x4 = x0 * ((-1 * x3 * obj_qk) + (x2 * obj_qi) + (x1 * obj_qw));
+	const GEN_FLT x5 = x0 * ((-1 * x1 * obj_qi) + (x3 * obj_qj) + (x2 * obj_qw));
+	const GEN_FLT x6 = x0 * ((-1 * x2 * obj_qj) + (x1 * obj_qk) + (x3 * obj_qw));
+	out[0] = aa_x + (2 * ((-1 * x5 * obj_qj) + (x4 * obj_qk)));
+	out[1] = aa_y + (2 * ((-1 * x6 * obj_qk) + (x5 * obj_qi)));
+	out[2] = aa_z + (2 * ((-1 * x4 * obj_qi) + (x6 * obj_qj)));
+}
+
+// Jacobian of imu_predict_gyro wrt [obj_qw, obj_qi, obj_qj, obj_qk, aa_x, aa_y, aa_z]
+static inline void gen_imu_predict_gyro_jac_imu_rot(FLT *out, const FLT *imu_rot) {
+	const GEN_FLT obj_qw = imu_rot[0];
+	const GEN_FLT obj_qi = imu_rot[1];
+	const GEN_FLT obj_qj = imu_rot[2];
+	const GEN_FLT obj_qk = imu_rot[3];
+	const GEN_FLT aa_x = imu_rot[4];
+	const GEN_FLT aa_y = imu_rot[5];
+	const GEN_FLT aa_z = imu_rot[6];
+	const GEN_FLT x0 = obj_qj * obj_qj;
+	const GEN_FLT x1 = obj_qi * obj_qi;
+	const GEN_FLT x2 = obj_qk * obj_qk;
+	const GEN_FLT x3 = obj_qw * obj_qw;
+	const GEN_FLT x4 = x3 + x2 + x1 + x0;
+	const GEN_FLT x5 = 1. / (x4 * sqrt(x4));
+	const GEN_FLT x6 = x5 * aa_x;
+	const GEN_FLT x7 = x6 * obj_qw;
+	const GEN_FLT x8 = x7 * obj_qk;
+	const GEN_FLT x9 = x5 * aa_z;
+	const GEN_FLT x10 = x9 * obj_qw;
+	const GEN_FLT x11 = -1 * x10 * obj_qi;
+	const GEN_FLT x12 = x5 * aa_y;
+	const GEN_FLT x13 = 1. / sqrt(x4);
+	const GEN_FLT x14 = x13 * aa_y;
+	const GEN_FLT x15 = x14 + (-1 * x3 * x12) + x11 + x8;
+	const GEN_FLT x16 = 2 * x13;
+	const GEN_FLT x17 = x16 * obj_qk;
+	const GEN_FLT x18 = x13 * aa_z;
+	const GEN_FLT x19 = x13 * aa_x;
+	const GEN_FLT x20 = (-1 * x19 * obj_qk) + (x18 * obj_qi) + (x14 * obj_qw);
+	const GEN_FLT x21 = 2 * x5;
+	const GEN_FLT x22 = x21 * obj_qw;
+	const GEN_FLT x23 = x22 * x20;
+	const GEN_FLT x24 = x12 * obj_qw;
+	const GEN_FLT x25 = x24 * obj_qi;
+	const GEN_FLT x26 = x6 * obj_qj;
+	const GEN_FLT x27 = -1 * x26 * obj_qw;
+	const GEN_FLT x28 = x18 + (-1 * x3 * x9) + x27 + x25;
+	const GEN_FLT x29 = x16 * obj_qj;
+	const GEN_FLT x30 = (-1 * x14 * obj_qi) + (x19 * obj_qj) + (x18 * obj_qw);
+	const GEN_FLT x31 = x30 * x21;
+	const GEN_FLT x32 = x31 * obj_qw;
+	const GEN_FLT x33 = obj_qk * obj_qi;
+	const GEN_FLT x34 = (-1 * x25) + x18 + (-1 * x1 * x9) + (x6 * x33);
+	const GEN_FLT x35 = x20 * x21;
+	const GEN_FLT x36 = x33 * x35;
+	const GEN_FLT x37 = x11 + (x1 * x12) + (-1 * x26 * obj_qi) + (-1 * x14);
+	const GEN_FLT x38 = obj_qj * obj_qi;
+	const GEN_FLT x39 = x31 * x38;
+	const GEN_FLT x40 = x26 * obj_qk;
+	const GEN_FLT x41 = x9 * x38;
+	const GEN_FLT x42 = x16 * ((-1 * x24 * obj_qj) + (-1 * x41) + x40);
+	const GEN_FLT x43 = obj_qk * obj_qj;
+	const GEN_FLT x44 = x10 * obj_qj;
+	const GEN_FLT x45 = (-1 * x44) + x19 + (-1 * x0 * x6) + (x38 * x12);
+	const GEN_FLT x46 = x30 * x16;
+	const GEN_FLT x47 = x0 * x21;
+	const GEN_FLT x48 = -1 * x24 * obj_qk;
+	const GEN_FLT x49 = x48 + (-1 * x9 * x33) + (-1 * x19) + (x2 * x6);
+	const GEN_FLT x50 = x20 * x16;
+	const GEN_FLT x51 = x2 * x21;
+	const GEN_FLT x52 = x33 * x12;
+	const GEN_FLT x53 = x16 * ((-1 * x10 * obj_qk) + (-1 * x40) + x52);
+	const GEN_FLT x54 = 2 * (1. / x4);
+	const GEN_FLT x55 = -1 * x0 * x54;
+	const GEN_FLT x56 = 1 + (-1 * x2 * x54);
+	const GEN_FLT x57 = x54 * obj_qk;
+	const GEN_FLT x58 = x57 * obj_qw;
+	const GEN_FLT x59 = x54 * x38;
+	const GEN_FLT x60 = x57 * obj_qi;
+	const GEN_FLT x61 = x54 * obj_qw;
+	const GEN_FLT x62 = x61 * obj_qj;
+	const GEN_FLT x63 = x16 * obj_qi;
+	const GEN_FLT x64 = x19 + (-1 * x3 * x6) + x48 + x44;
+	const GEN_FLT x65 = (x14 * obj_qk) + (-1 * x18 * obj_qj) + (x19 * obj_qw);
+	const GEN_FLT x66 = x65 * x22;
+	const GEN_FLT x67 = x1 * x21;
+	const GEN_FLT x68 = x16 * ((-1 * x7 * obj_qi) + x41 + (-1 * x52));
+	const GEN_FLT x69 = x65 * x21;
+	const GEN_FLT x70 = x27 + (-1 * x43 * x12) + (-1 * x18) + (x0 * x9);
+	const GEN_FLT x71 = x69 * x43;
+	const GEN_FLT x72 = x65 * x16;
+	const GEN_FLT x73 = x16 * ((-1 * x8) + x14 + (-1 * x2 * x12) + (x9 * x43));
+	const GEN_FLT x74 = -1 * x1 * x54;
+	const GEN_FLT x75 = x61 * obj_qi;
+	const GEN_FLT x76 = x57 * obj_qj;
+	const GEN_FLT x77 = x38 * x21;
+	out[0] = (-1 * x28 * x29) + (-1 * x23 * obj_qk) + (x32 * obj_qj) + (x15 * x17);
+	out[1] = x39 + (-1 * x37 * x29) + (-1 * x36) + (x34 * x17);
+	out[2] = (x47 * x30) + (-1 * x46) + (-1 * x45 * x29) + (-1 * x43 * x35) + (x42 * obj_qk);
+	out[3] = (x43 * x31) + (-1 * x53 * obj_qj) + (-1 * x51 * x20) + x50 + (x49 * x17);
+	out[4] = x56 + x55;
+	out[5] = x59 + x58;
+	out[6] = (-1 * x62) + x60;
+	out[7] = (x66 * obj_qk) + (-1 * x64 * x17) + (-1 * x32 * obj_qi) + (x63 * x28);
+	out[8] = (x69 * x33) + (-1 * x68 * obj_qk) + x46 + (-1 * x67 * x30) + (x63 * x37);
+	out[9] = (-1 * x70 * x17) + (-1 * x39) + x71 + (x63 * x45);
+	out[10] = (x65 * x51) + (-1 * x73 * obj_qk) + (-1 * x31 * x33) + (-1 * x72) + (x53 * obj_qi);
+	out[11] = (-1 * x58) + x59;
+	out[12] = x56 + x74;
+	out[13] = x76 + x75;
+	out[14] = (x23 * obj_qi) + (-1 * x63 * x15) + (-1 * x66 * obj_qj) + (x64 * x29);
+	out[15] = (-1 * x50) + (-1 * x63 * x34) + (x67 * x20) + (-1 * x77 * x65) + (x68 * obj_qj);
+	out[16] = (-1 * x42 * obj_qi) + (-1 * x65 * x47) + x72 + (x77 * x20) + (x70 * x29);
+	out[17] = x36 + (-1 * x71) + (-1 * x63 * x49) + (x73 * obj_qj);
+	out[18] = x60 + x62;
+	out[19] = (-1 * x75) + x76;
+	out[20] = 1 + x74 + x55;
 }
