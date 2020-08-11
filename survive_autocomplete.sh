@@ -16,4 +16,6 @@ complete -o nospace -F _script ./calibrate
 complete -o nospace -F _script ./simple_pose_test
 complete -o nospace -F _script ./data_recorder
 complete -o nospace -F _script ./survive-cli
+complete -o nospace -F _script ./survive-websocketd
+
 

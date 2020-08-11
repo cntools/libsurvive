@@ -84,6 +84,12 @@ typedef struct SurviveIMUTracker {
 	struct {
 		uint32_t late_imu_dropped;
 		uint32_t late_light_dropped;
+
+		FLT light_pos_gain;
+		FLT light_rot_gain;
+		FLT acc_tilt_gain;
+		FLT acc_gain;
+		FLT gyro_gain;
 	} stats;
 } SurviveIMUTracker;
 
@@ -95,19 +101,19 @@ SURVIVE_EXPORT void survive_imu_tracker_update(SurviveIMUTracker *tracker, survi
 SURVIVE_EXPORT void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so);
 SURVIVE_EXPORT void survive_imu_tracker_free(SurviveIMUTracker *tracker);
 SURVIVE_EXPORT void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU *data);
-SURVIVE_EXPORT void survive_imu_integrate_rotation(SurviveIMUTracker *tracker, FLT time, const LinmathQuat rotation,
-												   const FLT *R);
+SURVIVE_EXPORT FLT survive_imu_integrate_rotation(SurviveIMUTracker *tracker, FLT time, const LinmathQuat rotation,
+												  const FLT *R);
 
 SURVIVE_EXPORT void survive_imu_integrate_velocity_acceleration(SurviveIMUTracker *tracker, FLT time,
 																const FLT *velocity, const FLT *R);
 SURVIVE_EXPORT void survive_imu_integrate_velocity(SurviveIMUTracker *tracker, FLT time, const LinmathVec3d velocity,
 												   const FLT *R);
-SURVIVE_EXPORT void survive_imu_integrate_acceleration(SurviveIMUTracker *tracker, FLT time, const LinmathVec3d accel,
-													   const FLT *R);
-SURVIVE_EXPORT void survive_imu_integrate_rotation_angular_velocity(SurviveIMUTracker *tracker, FLT time,
-																	const FLT *rotation_angular_velocity, const FLT *R);
-SURVIVE_EXPORT void survive_imu_integrate_angular_velocity(SurviveIMUTracker *tracker, FLT time,
-														   const LinmathAxisAngle angular_velocity, const FLT *R);
+SURVIVE_EXPORT FLT survive_imu_integrate_acceleration(SurviveIMUTracker *tracker, FLT time, const LinmathVec3d accel,
+													  const FLT *R);
+SURVIVE_EXPORT FLT survive_imu_integrate_rotation_angular_velocity(SurviveIMUTracker *tracker, FLT time,
+																   const FLT *rotation_angular_velocity, const FLT *R);
+SURVIVE_EXPORT FLT survive_imu_integrate_angular_velocity(SurviveIMUTracker *tracker, FLT time,
+														  const LinmathAxisAngle angular_velocity, const FLT *R);
 
 SURVIVE_EXPORT void survive_imu_tracker_integrate_observation(survive_long_timecode timecode,
 															  SurviveIMUTracker *tracker, const SurvivePose *pose,

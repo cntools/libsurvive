@@ -397,7 +397,7 @@ function create_tracked_object(info) {
 var displayTrails = false;
 var trails = {};
 var MAX_LINE_POINTS = 100000;
-var trail_colors = [ 0x0, 0xffffff, 0x305ea8, 0x5e30a8 ];
+var trail_colors = [ 0x0, 0xffffff, 0x11FF11, 0x8888ff ];
 var trail_idx = 0;
 function get_trails(obj) {
 	if (trails[obj.tracker] == null) {

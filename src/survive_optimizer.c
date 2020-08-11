@@ -337,7 +337,7 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 			meas->invalid = true;
 			optimizer->stats.dropped_meas_cnt++;
 
-			SV_VERBOSE(100, "Ignoring noisy data at lh %d sensor %d axis %d val %f (%7.7f/%7.7f)", meas->lh,
+			SV_VERBOSE(110, "Ignoring noisy data at lh %d sensor %d axis %d val %f (%7.7f/%7.7f)", meas->lh,
 					   meas->sensor_idx, meas->axis, meas->value, fabs(deviates[i]), avg_dev);
 			deviates[i] = 0.;
 		} else {

@@ -283,6 +283,7 @@ void destroy_config_group(config_group *cg) {
 	if (cg->config_entries == NULL)
 		return;
 
+	cg->used_entries = 0;
 	for (i = 0; i < cg->max_entries; ++i) {
 		destroy_config_entry(cg->config_entries + i);
 	}

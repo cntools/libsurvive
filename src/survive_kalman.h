@@ -102,11 +102,10 @@ SURVIVE_EXPORT void survive_kalman_predict_state(FLT t, const survive_kalman_sta
  * @param H Input observation model
  * @param R Observation noise
  */
-SURVIVE_EXPORT void survive_kalman_predict_update_state(FLT t, survive_kalman_state_t *k, const struct CvMat *Z,
-														const survive_kalman_measurement_matrix *H, const FLT *R);
-SURVIVE_EXPORT void survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k,
-																 const struct CvMat *Z, const FLT *R, Map_to_obs Hfn,
-																 void *user);
+SURVIVE_EXPORT FLT survive_kalman_predict_update_state(FLT t, survive_kalman_state_t *k, const struct CvMat *Z,
+													   const survive_kalman_measurement_matrix *H, const FLT *R);
+SURVIVE_EXPORT FLT survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k, const struct CvMat *Z,
+																const FLT *R, Map_to_obs Hfn, void *user);
 
 SURVIVE_EXPORT void survive_kalman_init(survive_kalman_t *k, size_t state_cnt, F_fn_t F, const FLT *Q_per_sec, FLT *P);
 SURVIVE_EXPORT void survive_kalman_free(survive_kalman_t *k);
