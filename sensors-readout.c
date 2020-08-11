@@ -150,13 +150,13 @@ static void redraw(SurviveContext *ctx) {
 
 		printf("\n");
 
-		printf("|\\te[4m");
+		printf("|\x1B[4m");
 		const char *labels[] = {"ch.sensor", "Hits",	"Hits/sec", "X",	 "Y",		"min X",
 								"max X",	 "width X", "min Y",	"max Y", "width Y", 0};
 		for (const char **l = labels; *l; l++) {
 			print_label(*l);
 		}
-		printf("\\e[0m\n");
+		printf("\x1B[0m\n");
 
 		int lh_start = lh == -1 ? 0 : lh;
 		int lh_end = lh == -1 ? NUM_GEN2_LIGHTHOUSES : (lh + 1);
@@ -175,9 +175,9 @@ static void redraw(SurviveContext *ctx) {
 					continue;
 
 				if (sensor % 2 == 0)
-					printf("\\e[2m");
+					printf("\x1B[2m");
 				if (sensor == so->sensor_ct - 1)
-					printf("\\e[4m");
+					printf("\x1B[4m");
 
 				uint8_t displaySensor = useRawSensorId ? get_raw_sensor_id(so, sensor) : sensor;
 
@@ -196,7 +196,7 @@ static void redraw(SurviveContext *ctx) {
 					print(s[axis].MX);
 					print(s[axis].MX - s[axis].MN);
 				}
-				printf("\\e[0m");
+				printf("\x1B[0m");
 				printf("\r\n\33[2K");
 			}
 			printf("\33[2K\r\n");
