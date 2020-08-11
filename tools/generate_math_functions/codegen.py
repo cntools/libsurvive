@@ -143,12 +143,12 @@ def generate_ccode(func, name=None, args=None, suffix = None):
     sys.stderr.write("Writing out %s\n" % name)
 
     if isinstance(func, types.FunctionType):
-        print("/** Applying function %s */" % str(func))
         func = func(*map_arg(args))
 
     flatten = make_sympy(func)
 
     sys.stderr.write("Running CSE\n")
+    singular_return = len(flatten) == 1
 
     cse_output = cse(sp.Matrix(flatten))
 
@@ -168,7 +168,10 @@ def generate_ccode(func, name=None, args=None, suffix = None):
         a = arg[1]
         return "const %s %s" % (get_type(a), get_name(a))
 
-    print("static inline void gen_%s(FLT* out, %s) {" % (name, ", ".join(map(arg_str, enumerate(args)))))
+    if singular_return:
+        print("static inline FLT gen_%s(%s) {" % (name, ", ".join(map(arg_str, enumerate(args)))))
+    else:
+        print("static inline void gen_%s(FLT* out, %s) {" % (name, ", ".join(map(arg_str, enumerate(args)))))
 
     # Unroll struct types
     for idx, a in enumerate(args):
@@ -188,7 +191,10 @@ def generate_ccode(func, name=None, args=None, suffix = None):
                 print("\tout[%d] = %s;" % (output_idx, ccode(item1).replace("\n", " ").replace("\t", " ")))
                 output_idx += 1
         else:
-            print("\tout[%d] = %s;" % (output_idx, ccode(item).replace("\n", " ").replace("\t", " ")))
+            if singular_return:
+                print("\treturn %s;" % (ccode(item).replace("\n", " ").replace("\t", " ")))
+            else:
+                print("\tout[%d] = %s;" % (output_idx, ccode(item).replace("\n", " ").replace("\t", " ")))
             output_idx += 1
     print("}")
     print("")

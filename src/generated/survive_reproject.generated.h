@@ -1,6 +1,5 @@
 #pragma once
 #include "common.h"
-/** Applying function <function reproject_gen2 at 0x7f248a258170> */
 static inline void gen_reproject_gen2_axis_angle(FLT *out, const LinmathAxisAnglePose *obj_p, const FLT *sensor_pt,
 												 const LinmathAxisAnglePose *lh_p, const BaseStationCal *bsd) {
 	const GEN_FLT obj_px = (*obj_p).Pos[0];
@@ -2808,10 +2807,8 @@ static inline void gen_reproject_gen2_jac_bsd_axis_angle(FLT *out, const Linmath
 	out[27] = x251 + (x235 * x251);
 }
 
-/** Applying function <function reproject_axis_x_gen2 at 0x7f248a258050> */
-static inline void gen_reproject_axis_x_gen2_axis_angle(FLT *out, const LinmathAxisAnglePose *obj_p,
-														const FLT *sensor_pt, const LinmathAxisAnglePose *lh_p,
-														const BaseStationCal *bsc0) {
+static inline FLT gen_reproject_axis_x_gen2_axis_angle(const LinmathAxisAnglePose *obj_p, const FLT *sensor_pt,
+													   const LinmathAxisAnglePose *lh_p, const BaseStationCal *bsc0) {
 	const GEN_FLT obj_px = (*obj_p).Pos[0];
 	const GEN_FLT obj_py = (*obj_p).Pos[1];
 	const GEN_FLT obj_pz = (*obj_p).Pos[2];
@@ -2929,7 +2926,7 @@ static inline void gen_reproject_axis_x_gen2_axis_angle(FLT *out, const LinmathA
 								   ((x37 * (x40 + (x37 * (x39 + (x37 * (x38 + (x37 * (-8.0108022e-06 +
 																					  (-1.60216044e-05 * x37))))))))) +
 									(x40 * x37))))))));
-	out[0] = -1.5707963267949 + x44 + (-1 * phase_0) + (sin(x44 + gibPhase_0) * gibMag_0);
+	return -1.5707963267949 + x44 + (-1 * phase_0) + (sin(x44 + gibPhase_0) * gibMag_0);
 }
 
 // Jacobian of reproject_axis_x_gen2 wrt [obj_px, obj_py, obj_pz, obj_qi, obj_qj, obj_qk]
@@ -4962,10 +4959,8 @@ static inline void gen_reproject_axis_x_gen2_jac_bsc0_axis_angle(FLT *out, const
 	out[6] = x174 + (x174 * x158);
 }
 
-/** Applying function <function reproject_axis_y_gen2 at 0x7f248a2580e0> */
-static inline void gen_reproject_axis_y_gen2_axis_angle(FLT *out, const LinmathAxisAnglePose *obj_p,
-														const FLT *sensor_pt, const LinmathAxisAnglePose *lh_p,
-														const BaseStationCal *bsc1) {
+static inline FLT gen_reproject_axis_y_gen2_axis_angle(const LinmathAxisAnglePose *obj_p, const FLT *sensor_pt,
+													   const LinmathAxisAnglePose *lh_p, const BaseStationCal *bsc1) {
 	const GEN_FLT obj_px = (*obj_p).Pos[0];
 	const GEN_FLT obj_py = (*obj_p).Pos[1];
 	const GEN_FLT obj_pz = (*obj_p).Pos[2];
@@ -5083,7 +5078,7 @@ static inline void gen_reproject_axis_y_gen2_axis_angle(FLT *out, const LinmathA
 																					  (-1.60216044e-05 * x40))))))))) +
 									(x40 * x43)))))))) +
 		x33;
-	out[0] = -1.5707963267949 + x44 + (sin(x44 + gibPhase_1) * gibMag_1) + (-1 * phase_1);
+	return -1.5707963267949 + x44 + (sin(x44 + gibPhase_1) * gibMag_1) + (-1 * phase_1);
 }
 
 // Jacobian of reproject_axis_y_gen2 wrt [obj_px, obj_py, obj_pz, obj_qi, obj_qj, obj_qk]
@@ -7112,7 +7107,6 @@ static inline void gen_reproject_axis_y_gen2_jac_bsc1_axis_angle(FLT *out, const
 	out[6] = x174 + (x174 * x158);
 }
 
-/** Applying function <function reproject at 0x7f24b8523b00> */
 static inline void gen_reproject_axis_angle(FLT *out, const LinmathAxisAnglePose *obj_p, const FLT *sensor_pt,
 											const LinmathAxisAnglePose *lh_p, const BaseStationCal *bsd) {
 	const GEN_FLT obj_px = (*obj_p).Pos[0];
@@ -8983,9 +8977,8 @@ static inline void gen_reproject_jac_bsd_axis_angle(FLT *out, const LinmathAxisA
 	out[27] = x133;
 }
 
-/** Applying function <function reproject_axis_x at 0x7f248a257a70> */
-static inline void gen_reproject_axis_x_axis_angle(FLT *out, const LinmathAxisAnglePose *obj_p, const FLT *sensor_pt,
-												   const LinmathAxisAnglePose *lh_p, const BaseStationCal *bsc0) {
+static inline FLT gen_reproject_axis_x_axis_angle(const LinmathAxisAnglePose *obj_p, const FLT *sensor_pt,
+												  const LinmathAxisAnglePose *lh_p, const BaseStationCal *bsc0) {
 	const GEN_FLT obj_px = (*obj_p).Pos[0];
 	const GEN_FLT obj_py = (*obj_p).Pos[1];
 	const GEN_FLT obj_pz = (*obj_p).Pos[2];
@@ -9088,8 +9081,8 @@ static inline void gen_reproject_axis_x_axis_angle(FLT *out, const LinmathAxisAn
 	const GEN_FLT x34 = (x28 * (x5 + ((x2 * x2) * x6))) + ((x27 + (-1 * x26)) * x25) + ((x31 + x30) * x22) + lh_px;
 	const GEN_FLT x35 =
 		(-1 * atan2(x34, x33)) + (-1 * phase_0) + (-1 * asin((1. / sqrt((x34 * x34) + (x32 * x32))) * x29 * tilt_0));
-	out[0] = x35 + (-1 * cos(1.5707963267949 + x35 + gibPhase_0) * gibMag_0) +
-			 ((atan2(x29, x33) * atan2(x29, x33)) * curve_0);
+	return x35 + (-1 * cos(1.5707963267949 + x35 + gibPhase_0) * gibMag_0) +
+		   ((atan2(x29, x33) * atan2(x29, x33)) * curve_0);
 }
 
 // Jacobian of reproject_axis_x wrt [obj_px, obj_py, obj_pz, obj_qi, obj_qj, obj_qk]
@@ -10651,9 +10644,8 @@ static inline void gen_reproject_axis_x_jac_bsc0_axis_angle(FLT *out, const Linm
 	out[6] = x114;
 }
 
-/** Applying function <function reproject_axis_y at 0x7f248a257b00> */
-static inline void gen_reproject_axis_y_axis_angle(FLT *out, const LinmathAxisAnglePose *obj_p, const FLT *sensor_pt,
-												   const LinmathAxisAnglePose *lh_p, const BaseStationCal *bsc1) {
+static inline FLT gen_reproject_axis_y_axis_angle(const LinmathAxisAnglePose *obj_p, const FLT *sensor_pt,
+												  const LinmathAxisAnglePose *lh_p, const BaseStationCal *bsc1) {
 	const GEN_FLT obj_px = (*obj_p).Pos[0];
 	const GEN_FLT obj_py = (*obj_p).Pos[1];
 	const GEN_FLT obj_pz = (*obj_p).Pos[2];
@@ -10756,8 +10748,8 @@ static inline void gen_reproject_axis_y_axis_angle(FLT *out, const LinmathAxisAn
 	const GEN_FLT x34 = -1 * x32;
 	const GEN_FLT x35 = (-1 * atan2(-1 * x33, x34)) + (-1 * phase_1) +
 						(-1 * asin((1. / sqrt((x33 * x33) + (x32 * x32))) * x29 * tilt_1));
-	out[0] = x35 + ((atan2(x29, x34) * atan2(x29, x34)) * curve_1) +
-			 (-1 * cos(1.5707963267949 + x35 + gibPhase_1) * gibMag_1);
+	return x35 + ((atan2(x29, x34) * atan2(x29, x34)) * curve_1) +
+		   (-1 * cos(1.5707963267949 + x35 + gibPhase_1) * gibMag_1);
 }
 
 // Jacobian of reproject_axis_y wrt [obj_px, obj_py, obj_pz, obj_qi, obj_qj, obj_qk]
@@ -12318,7 +12310,6 @@ static inline void gen_reproject_axis_y_jac_bsc1_axis_angle(FLT *out, const Linm
 	out[6] = x113;
 }
 
-/** Applying function <function reproject_gen2 at 0x7f248a258170> */
 static inline void gen_reproject_gen2(FLT *out, const SurvivePose *obj_p, const FLT *sensor_pt, const SurvivePose *lh_p,
 									  const BaseStationCal *bsd) {
 	const GEN_FLT obj_px = (*obj_p).Pos[0];
@@ -13909,9 +13900,8 @@ static inline void gen_reproject_gen2_jac_bsd(FLT *out, const SurvivePose *obj_p
 	out[27] = (-1 * x116) + (-1 * x112 * x116);
 }
 
-/** Applying function <function reproject_axis_x_gen2 at 0x7f248a258050> */
-static inline void gen_reproject_axis_x_gen2(FLT *out, const SurvivePose *obj_p, const FLT *sensor_pt,
-											 const SurvivePose *lh_p, const BaseStationCal *bsc0) {
+static inline FLT gen_reproject_axis_x_gen2(const SurvivePose *obj_p, const FLT *sensor_pt, const SurvivePose *lh_p,
+											const BaseStationCal *bsc0) {
 	const GEN_FLT obj_px = (*obj_p).Pos[0];
 	const GEN_FLT obj_py = (*obj_p).Pos[1];
 	const GEN_FLT obj_pz = (*obj_p).Pos[2];
@@ -13965,8 +13955,8 @@ static inline void gen_reproject_axis_x_gen2(FLT *out, const SurvivePose *obj_p,
 		  (x17 + (-1 * x16 * sin(x12) *
 				  ((x18 * (x21 + (x18 * (x20 + (x18 * (x19 + (x18 * (-8.0108022e-06 + (-1.60216044e-05 * x18))))))))) +
 				   (x21 * x18)))))));
-	out[0] = -1.5707963267949 + x15 + (-1 * x22) + (-1 * sin((-1 * x15) + x22 + (-1 * gibPhase_0)) * gibMag_0) +
-			 (-1 * phase_0);
+	return -1.5707963267949 + x15 + (-1 * x22) + (-1 * sin((-1 * x15) + x22 + (-1 * gibPhase_0)) * gibMag_0) +
+		   (-1 * phase_0);
 }
 
 // Jacobian of reproject_axis_x_gen2 wrt [obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk]
@@ -14853,9 +14843,8 @@ static inline void gen_reproject_axis_x_gen2_jac_bsc0(FLT *out, const SurvivePos
 	out[6] = (-1 * x62 * x66) + (-1 * x66);
 }
 
-/** Applying function <function reproject_axis_y_gen2 at 0x7f248a2580e0> */
-static inline void gen_reproject_axis_y_gen2(FLT *out, const SurvivePose *obj_p, const FLT *sensor_pt,
-											 const SurvivePose *lh_p, const BaseStationCal *bsc1) {
+static inline FLT gen_reproject_axis_y_gen2(const SurvivePose *obj_p, const FLT *sensor_pt, const SurvivePose *lh_p,
+											const BaseStationCal *bsc1) {
 	const GEN_FLT obj_px = (*obj_p).Pos[0];
 	const GEN_FLT obj_py = (*obj_p).Pos[1];
 	const GEN_FLT obj_pz = (*obj_p).Pos[2];
@@ -14910,7 +14899,7 @@ static inline void gen_reproject_axis_y_gen2(FLT *out, const SurvivePose *obj_p,
 								  ((x15 * (x18 + (x15 * (x17 + (x15 * (x16 + (x15 * (-8.0108022e-06 +
 																					 (-1.60216044e-05 * x15))))))))) +
 								   (x15 * x18))))))));
-	out[0] = -1.5707963267949 + x22 + (sin(x22 + gibPhase_1) * gibMag_1) + (-1 * phase_1);
+	return -1.5707963267949 + x22 + (sin(x22 + gibPhase_1) * gibMag_1) + (-1 * phase_1);
 }
 
 // Jacobian of reproject_axis_y_gen2 wrt [obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk]
@@ -15811,7 +15800,6 @@ static inline void gen_reproject_axis_y_gen2_jac_bsc1(FLT *out, const SurvivePos
 	out[6] = (-1 * x65) + (-1 * x61 * x65);
 }
 
-/** Applying function <function reproject at 0x7f24b8523b00> */
 static inline void gen_reproject(FLT *out, const SurvivePose *obj_p, const FLT *sensor_pt, const SurvivePose *lh_p,
 								 const BaseStationCal *bsd) {
 	const GEN_FLT obj_px = (*obj_p).Pos[0];
@@ -16499,9 +16487,8 @@ static inline void gen_reproject_jac_bsd(FLT *out, const SurvivePose *obj_p, con
 	out[27] = 0;
 }
 
-/** Applying function <function reproject_axis_x at 0x7f248a257a70> */
-static inline void gen_reproject_axis_x(FLT *out, const SurvivePose *obj_p, const FLT *sensor_pt,
-										const SurvivePose *lh_p, const BaseStationCal *bsc0) {
+static inline FLT gen_reproject_axis_x(const SurvivePose *obj_p, const FLT *sensor_pt, const SurvivePose *lh_p,
+									   const BaseStationCal *bsc0) {
 	const GEN_FLT obj_px = (*obj_p).Pos[0];
 	const GEN_FLT obj_py = (*obj_p).Pos[1];
 	const GEN_FLT obj_pz = (*obj_p).Pos[2];
@@ -16541,8 +16528,8 @@ static inline void gen_reproject_axis_x(FLT *out, const SurvivePose *obj_p, cons
 	const GEN_FLT x12 = x4 + (2 * ((x6 * lh_qj) + (-1 * x9 * lh_qk))) + lh_px;
 	const GEN_FLT x13 =
 		(-1 * atan2(x12, x11)) + (-1 * phase_0) + (-1 * asin((1. / sqrt((x12 * x12) + (x10 * x10))) * x8 * tilt_0));
-	out[0] =
-		x13 + (-1 * cos(1.5707963267949 + x13 + gibPhase_0) * gibMag_0) + ((atan2(x8, x11) * atan2(x8, x11)) * curve_0);
+	return x13 + (-1 * cos(1.5707963267949 + x13 + gibPhase_0) * gibMag_0) +
+		   ((atan2(x8, x11) * atan2(x8, x11)) * curve_0);
 }
 
 // Jacobian of reproject_axis_x wrt [obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk]
@@ -16987,9 +16974,8 @@ static inline void gen_reproject_axis_x_jac_bsc0(FLT *out, const SurvivePose *ob
 	out[6] = 0;
 }
 
-/** Applying function <function reproject_axis_y at 0x7f248a257b00> */
-static inline void gen_reproject_axis_y(FLT *out, const SurvivePose *obj_p, const FLT *sensor_pt,
-										const SurvivePose *lh_p, const BaseStationCal *bsc1) {
+static inline FLT gen_reproject_axis_y(const SurvivePose *obj_p, const FLT *sensor_pt, const SurvivePose *lh_p,
+									   const BaseStationCal *bsc1) {
 	const GEN_FLT obj_px = (*obj_p).Pos[0];
 	const GEN_FLT obj_py = (*obj_p).Pos[1];
 	const GEN_FLT obj_pz = (*obj_p).Pos[2];
@@ -17029,8 +17015,8 @@ static inline void gen_reproject_axis_y(FLT *out, const SurvivePose *obj_p, cons
 	const GEN_FLT x12 = -1 * x8;
 	const GEN_FLT x13 =
 		(-1 * atan2(-1 * x10, x12)) + (-1 * asin(x11 * (1. / sqrt((x10 * x10) + (x8 * x8))) * tilt_1)) + (-1 * phase_1);
-	out[0] = x13 + ((atan2(x11, x12) * atan2(x11, x12)) * curve_1) +
-			 (-1 * cos(1.5707963267949 + x13 + gibPhase_1) * gibMag_1);
+	return x13 + ((atan2(x11, x12) * atan2(x11, x12)) * curve_1) +
+		   (-1 * cos(1.5707963267949 + x13 + gibPhase_1) * gibMag_1);
 }
 
 // Jacobian of reproject_axis_y wrt [obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk]

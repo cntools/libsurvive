@@ -24,6 +24,9 @@ typedef FLT SurviveAngleReading[2];
 typedef FLT (*survive_reproject_axis_fn_t)(const BaseStationCal *, const FLT *pt);
 typedef void (*survive_reproject_xy_fn_t)(const BaseStationCal *bcal, LinmathVec3d const ptInLh, FLT *out);
 
+typedef FLT (*survive_reproject_full_xy_fn_t)(const SurvivePose *obj2world, const LinmathVec3d ptInObj,
+											  const SurvivePose *world2lh, const BaseStationCal *bcal);
+
 //
 typedef void (*survive_reproject_axis_jacob_fn_t)(FLT *out, const SurvivePose *, const LinmathPoint3d,
 												  const SurvivePose *, const BaseStationCal *);
@@ -48,6 +51,7 @@ typedef survive_reproject_axisangle_full_jac_obj_pose_fn_t survive_reproject_axi
 typedef struct survive_reproject_model_t {
 	survive_reproject_xy_fn_t reprojectXY;
 	survive_reproject_axis_fn_t reprojectAxisFn[2];
+	survive_reproject_full_xy_fn_t reprojectAxisFullFn[2];
 
 	survive_reproject_full_jac_obj_pose_fn_t reprojectFullJacObjPose;
 	survive_reproject_axis_jacob_fn_t reprojectAxisJacobFn[2];

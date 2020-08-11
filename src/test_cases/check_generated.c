@@ -604,7 +604,7 @@ void check_apply_pose() {
 
 static void general_gen_reproject_x_gen2(FLT *out, const FLT *_input) {
 	struct reproject_input *input = (struct reproject_input *)_input;
-	gen_reproject_axis_x_gen2(out, &input->p, input->pt, &input->world2lh, input->fcal);
+	*out = gen_reproject_axis_x_gen2(&input->p, input->pt, &input->world2lh, input->fcal);
 }
 
 static void general_gen_reproject_x_gen2_jac_obj(FLT *out, const FLT *_input) {

@@ -53,7 +53,7 @@ if __name__ == "__main__":
     else:
         print("#pragma once")
         print("#include \"common.h\"")
-
+        print("// clang-format off")
         def f(h):
             print(h, +0.680413 - h)
             q1 = np.array([h[0],	+0.164668,	+0.708549,	-0.088767,	+0.898978,	+0.182254,	+0.002019,	+0.398268])

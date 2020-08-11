@@ -157,6 +157,8 @@ void survive_reproject_full_gen2(const BaseStationCal *bcal, const SurvivePose *
 const survive_reproject_model_t survive_reproject_gen2_model = {
 	.reprojectAxisFn = {survive_reproject_axis_x_gen2, survive_reproject_axis_y_gen2},
 	.reprojectXY = survive_reproject_xy_gen2,
+	.reprojectAxisFullFn = {gen_reproject_axis_x_gen2, gen_reproject_axis_y_gen2},
+
 	.reprojectAxisJacobFn = {gen_reproject_axis_x_gen2_jac_obj_p, gen_reproject_axis_y_gen2_jac_obj_p},
 	.reprojectFullJacObjPose = gen_reproject_gen2_jac_obj_p,
 	.reprojectFullJacLhPose = gen_reproject_gen2_jac_lh_p,
