@@ -5,9 +5,11 @@
 #include "survive_internal.h"
 #include "survive_kalman.h"
 #include <assert.h>
+#include <malloc.h>
 #include <memory.h>
 #include <minimal_opencv.h>
-#include <malloc.h>
+#include <survive_reproject.h>
+#include <survive_reproject_gen2.h>
 
 #include "generated/survive_imu.generated.h"
 
@@ -35,13 +37,92 @@ static void RotateAccel(LinmathVec3d rAcc, const LinmathQuat rot, const LinmathV
 	add3d(rAcc, rAcc, G);
 	scale3d(rAcc, rAcc, 9.80665);
 }
+struct map_light_data_ctx {
+	PoserDataLight *pdl;
+	SurviveIMUTracker *tracker;
+	bool rotation;
+};
+static void map_light_data(void *user, FLT t, const struct CvMat *Z, const struct CvMat *x_t, struct CvMat *y,
+						   struct CvMat *H_k) {
+	struct map_light_data_ctx *cbctx = (struct map_light_data_ctx *)user;
+	const struct PoserDataLight *pdl = cbctx->pdl;
+	const SurviveIMUTracker *tracker = cbctx->tracker;
+	SurviveObject *so = cbctx->tracker->so;
+	struct SurviveContext *ctx = cbctx->tracker->so->ctx;
+	const survive_reproject_model_t *mdl =
+		cbctx->tracker->so->ctx->lh_version == 0 ? &survive_reproject_model : &survive_reproject_gen2_model;
+
+	int axis = 0;
+	switch (pdl->hdr.pt) {
+	case POSERDATA_LIGHT:
+		axis = (((PoserDataLightGen1 *)pdl)->acode & 1);
+		break;
+	case POSERDATA_LIGHT_GEN2:
+		axis = ((PoserDataLightGen2 *)pdl)->plane;
+		break;
+	default:
+		assert(0);
+	}
+
+	survive_reproject_full_xy_fn_t project_fn = mdl->reprojectAxisFullFn[axis];
+	survive_reproject_axis_jacob_fn_t project_jacob_fn = mdl->reprojectAxisJacobFn[axis];
+
+	SurvivePose world2lh = InvertPoseRtn(&ctx->bsd[pdl->lh].Pose);
+
+	SurvivePose obj2world;
+	if (cbctx->rotation) {
+		copy3d(obj2world.Pos, tracker->position.state);
+		quatcopy(obj2world.Rot, CV_FLT_PTR(x_t));
+	} else {
+		copy3d(obj2world.Pos, CV_FLT_PTR(x_t));
+		quatcopy(obj2world.Rot, tracker->rot.state);
+	}
+	FLT *ptInObj = &so->sensor_locations[pdl->sensor_id * 3];
+	FLT h_x = project_fn(&obj2world, ptInObj, &world2lh, &ctx->bsd[pdl->lh].fcal[axis]);
+	CV_FLT_PTR(y)[0] = CV_FLT_PTR(Z)[0] - h_x;
+
+	memset(CV_FLT_PTR(H_k), 0, sizeof(FLT) * H_k->cols * H_k->rows);
+
+	FLT jac[7] = {0};
+	project_jacob_fn(jac, &obj2world, ptInObj, &world2lh, &ctx->bsd[pdl->lh].fcal[axis]);
+
+	if (cbctx->rotation) {
+		quatcopy(CV_FLT_PTR(H_k), jac + 3);
+	} else {
+		copy3d(CV_FLT_PTR(H_k), jac);
+	}
+}
+void survive_imu_tracker_integrate_light(SurviveIMUTracker *tracker, PoserDataLight *data) {
+	SurviveContext *ctx = tracker->so->ctx;
+
+	// Wait til observation is in before reading IMU; gets rid of bad IMU data at the start
+	if (tracker->rot.t == 0 || tracker->position.t == 0) {
+		return;
+	}
+
+	FLT time = data->hdr.timecode / (FLT)tracker->so->timebase_hz;
+
+	FLT R = tracker->light_var;
+
+	if (R >= 0) {
+		CvMat Z = cvMat(1, 1, CV_FLT, &data->angle);
+		struct map_light_data_ctx cbctx = {
+			.tracker = tracker,
+			.pdl = data,
+		};
+		survive_kalman_predict_update_state_extended(time, &tracker->position, &Z, &R, map_light_data, &cbctx);
+		cbctx.rotation = 1;
+		survive_kalman_predict_update_state_extended(time, &tracker->rot, &Z, &R, map_light_data, &cbctx);
+		quatnormalize(tracker->rot.state, tracker->rot.state);
+	}
+}
 
 struct map_imu_data_ctx {
 	bool use_gyro, use_accel;
 	SurviveIMUTracker *tracker;
 };
-void map_imu_data(void *user, FLT t, const struct CvMat *Z, const struct CvMat *x_t, struct CvMat *y,
-				  struct CvMat *H_k) {
+static void map_imu_data(void *user, FLT t, const struct CvMat *Z, const struct CvMat *x_t, struct CvMat *y,
+						 struct CvMat *H_k) {
 	struct map_imu_data_ctx *fn_ctx = user;
 	FLT h_x[6];
 
@@ -68,6 +149,7 @@ void map_imu_data(void *user, FLT t, const struct CvMat *Z, const struct CvMat *
 	subnd(CV_FLT_PTR(y), CV_FLT_PTR(Z), h_x, Z->rows);
 	SV_VERBOSE(200, "y     " Point6_format, LINMATH_VEC6_EXPAND(CV_FLT_PTR(y)))
 }
+
 void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU *data) {
 	SurviveContext *ctx = tracker->so->ctx;
 
@@ -372,6 +454,7 @@ STATIC_CONFIG_ITEM(VELOCITY_ROT_VARIANCE_SEC, "filter-vel-rot-var-per-sec", 'f',
 STATIC_CONFIG_ITEM(ACCEL_POSITION_VARIANCE_SEC_TAG, "filter-acc-var-per-sec", 'f', "Accel variance per second",
 				   0.000000001)
 
+STATIC_CONFIG_ITEM(LIGHT_VARIANCE, "light-variance", 'f', "Variance of light sensor readings", -1)
 STATIC_CONFIG_ITEM(LIGHT_POS_VARIANCE, "light-pos-variance", 'f', "Variance of position integration from light capture",
 				   .01)
 STATIC_CONFIG_ITEM(LIGHT_ROT_VARIANCE, "light-rot-variance", 'f', "Variance of rotation integration from light capture",
@@ -430,6 +513,7 @@ static void survive_imu_tracker_config(SurviveIMUTracker *tracker, survive_attac
 	fn(tracker->so->ctx, IMU_GYRO_VARIANCE_TAG, &tracker->gyro_var);
 	fn(tracker->so->ctx, LIGHT_POS_VARIANCE_TAG, &tracker->light_pos_var);
 	fn(tracker->so->ctx, LIGHT_ROT_VARIANCE_TAG, &tracker->light_rot_var);
+	fn(tracker->so->ctx, LIGHT_VARIANCE_TAG, &tracker->light_var);
 }
 
 void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so) {
@@ -515,4 +599,12 @@ void survive_imu_tracker_free(SurviveIMUTracker *tracker) {
 	survive_kalman_state_free(&tracker->rot);
 
 	survive_imu_tracker_config(tracker, (survive_attach_detach_fn)survive_detach_config);
+}
+void survive_imu_tracker_report_state(PoserData *pd, SurviveIMUTracker *tracker) {
+	SurvivePose pose = {0};
+	survive_imu_tracker_predict(tracker, pd->timecode, &pose);
+	if (!quatiszero(pose.Rot)) {
+		SurviveVelocity velocity = survive_imu_velocity(tracker);
+		PoserData_poser_pose_func_with_velocity(pd, tracker->so, &pose, &velocity);
+	}
 }

@@ -717,6 +717,18 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		FLT error = run_mpfit_find_cameras(d, pdfs);
 		return 0;
 	}
+	case POSERDATA_LIGHT:
+	case POSERDATA_LIGHT_GEN2: {
+		if (d->tracker.rot.t == 0) {
+			return 0;
+		}
+
+		PoserDataLight *pdl = (PoserDataLight *)pd;
+
+		survive_imu_tracker_integrate_light(&d->tracker, pdl);
+		survive_imu_tracker_report_state(pd, &d->tracker);
+		break;
+	}
 	case POSERDATA_SYNC_GEN2:
 	case POSERDATA_SYNC: {
 		// No poses if calibration is ongoing

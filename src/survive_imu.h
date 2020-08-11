@@ -65,6 +65,7 @@ typedef struct SurviveIMUTracker {
 	FLT gyro_var;
 	FLT light_pos_var;
 	FLT light_rot_var;
+	FLT light_var;
 
 	// Laid out as a 3 x 3
 	// | position |
@@ -101,6 +102,7 @@ SURVIVE_EXPORT void survive_imu_tracker_update(SurviveIMUTracker *tracker, survi
 SURVIVE_EXPORT void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so);
 SURVIVE_EXPORT void survive_imu_tracker_free(SurviveIMUTracker *tracker);
 SURVIVE_EXPORT void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU *data);
+SURVIVE_EXPORT void survive_imu_tracker_integrate_light(SurviveIMUTracker *tracker, PoserDataLight *data);
 SURVIVE_EXPORT FLT survive_imu_integrate_rotation(SurviveIMUTracker *tracker, FLT time, const LinmathQuat rotation,
 												  const FLT *R);
 
@@ -118,6 +120,8 @@ SURVIVE_EXPORT FLT survive_imu_integrate_angular_velocity(SurviveIMUTracker *tra
 SURVIVE_EXPORT void survive_imu_tracker_integrate_observation(survive_long_timecode timecode,
 															  SurviveIMUTracker *tracker, const SurvivePose *pose,
 															  const FLT *variance);
+SURVIVE_EXPORT void survive_imu_tracker_report_state(PoserData *pd, SurviveIMUTracker *tracker);
+
 #ifdef __cplusplus
 };
 #endif

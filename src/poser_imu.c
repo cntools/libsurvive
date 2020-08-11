@@ -29,26 +29,32 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 		if (dd->tracker.rot.t == 0) {
 			dd->tracker.rot.t = dd->tracker.position.t = imu->hdr.timecode / (FLT)so->timebase_hz;
 
-			LinmathQuat q;
+			SurvivePose pose;
 			LinmathVec3d up = {0, 0, 1};
-			quatfrom2vectors(q, up, imu->accel);
+			quatfrom2vectors(pose.Rot, up, imu->accel);
 
-			FLT R[4] = {0};
-			survive_imu_integrate_rotation(&dd->tracker, dd->tracker.rot.t, q, R);
+			FLT R[7] = {0};
+			// survive_imu_integrate_rotation(&dd->tracker, dd->tracker.rot.t, q, R);
+			survive_imu_tracker_integrate_observation(imu->hdr.timecode, &dd->tracker, &pose, R);
 			return 0;
 		}
 
 		survive_imu_tracker_integrate_imu(&dd->tracker, imu);
-
-		SurvivePose pose = { 0 };
-		survive_imu_tracker_predict(&dd->tracker, imu->hdr.timecode, &pose);
-		if (!quatiszero(pose.Rot)) {
-			SurviveVelocity velocity = survive_imu_velocity(&dd->tracker);
-			PoserData_poser_pose_func_with_velocity(pd, so, &pose, &velocity);
-		}
-
+		survive_imu_tracker_report_state(pd, &dd->tracker);
 		return 0;
 	}
+	case POSERDATA_LIGHT:
+	case POSERDATA_LIGHT_GEN2: {
+		if (dd->tracker.rot.t == 0) {
+			return 0;
+		}
+
+		PoserDataLight *pdl = (PoserDataLight *)pd;
+
+		survive_imu_tracker_integrate_light(&dd->tracker, pdl);
+		survive_imu_tracker_report_state(pd, &dd->tracker);
+	}
+
 	default:
 		return -1;
 	}
