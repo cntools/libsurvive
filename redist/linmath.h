@@ -4,6 +4,7 @@
 #define _LINMATH_H
 
 #include <stdbool.h>
+#include <stdlib.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -104,6 +105,8 @@ LINMATH_EXPORT extern LinmathPose LinmathPose_Identity;
 LINMATH_EXPORT void cross3d(FLT *out, const FLT *a, const FLT *b);
 
 LINMATH_EXPORT void sub3d(FLT *out, const FLT *a, const FLT *b);
+LINMATH_EXPORT void subnd(FLT *out, const FLT *a, const FLT *b, size_t size);
+LINMATH_EXPORT void addnd(FLT *out, const FLT *a, const FLT *b, size_t size);
 
 LINMATH_EXPORT void add3d(FLT *out, const FLT *a, const FLT *b);
 
