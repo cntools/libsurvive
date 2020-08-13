@@ -75,7 +75,7 @@ const char* config_read_str(config_group *cg, const char *tag, const char *def);
 void survive_config_bind_variable( char vt, const char * name, const char * description, ... );
 void survive_print_known_configs( SurviveContext * ctx, int verbose );
 void survive_config_populate_ctx( SurviveContext * ctx );
-int survive_print_help_for_parameter( const char * tomap );
+int survive_print_help_for_parameter(SurviveContext *ctx, const char *tomap);
 
 typedef void (*survive_config_iterate_fn)(SurviveContext *ctx, const char *name, uint8_t type, void *user);
 void survive_config_iterate(SurviveContext *ctx, survive_config_iterate_fn fn, void *user);

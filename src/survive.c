@@ -355,13 +355,17 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 	}
 
 	const char *log_file = survive_configs(ctx, "log", SC_GET, 0);
-	ctx->log_target = log_file ? fopen(log_file, "w") : stderr;
+	ctx->log_target = log_file ? fopen(log_file, "w") : stdout;
 
-	const char *config_prefix_fields[] = {"playback", "usbmon-playback", 0};
+	const char *config_prefix_fields[] = {"playback", "usbmon-playback", "simulator", 0};
 	for (const char **name = config_prefix_fields; *name; name++) {
 		if (!survive_config_is_set(ctx, "configfile") && survive_config_is_set(ctx, *name)) {
 			char configfile[256] = { 0 };
-			const char *recordname = survive_configs(ctx, *name, SC_GET, "");
+			const char *recordname = survive_configs(ctx, *name, SC_GET, 0);
+
+			// If a non-arg driver is used; just use the name of the driver
+			if (recordname == 0)
+				recordname = *name;
 
 			const char *end = recordname + strlen(recordname);
 			while (end != recordname && !(*end == '/' || *end == '\\'))
@@ -411,8 +415,13 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 		const char * checkconfig = matchingparam;
 		if( matchingparam == 0 ) checkconfig = lastparam;
 
-		if( checkconfig && strlen( checkconfig ) > 2 && survive_print_help_for_parameter( checkconfig+2 ) )
-		{
+		FILE *f = fopen("args.txt", "w");
+		for (int i = 0; i < argc; i++) {
+			fprintf(f, "'%s' ", argv[i]);
+		}
+		fprintf(f, "\n");
+
+		if (checkconfig && strlen(checkconfig) > 2 && survive_print_help_for_parameter(ctx, checkconfig + 2)) {
 			exit(0);
 		}
 

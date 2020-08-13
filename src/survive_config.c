@@ -32,12 +32,22 @@ struct static_conf_t
 static struct static_conf_t *head = 0;
 static struct static_conf_t *tail = 0;
 
-static struct static_conf_t *find_or_create_conf_t(const char *name) {
+static struct static_conf_t *find_static_conf_t(const char *name) {
 	struct static_conf_t *curr = head;
 	while (curr) {
 		if (strcmp(curr->name, name) == 0)
-			return curr;
+			break;
 		curr = curr->next;
+	}
+
+	return curr;
+}
+
+static struct static_conf_t *find_or_create_conf_t(const char *name) {
+	struct static_conf_t *curr = find_static_conf_t(name);
+
+	if (curr) {
+		return curr;
 	}
 
 	curr = SV_CALLOC(1, sizeof(struct static_conf_t));
@@ -88,51 +98,31 @@ void survive_config_bind_variable( char vt, const char * name, const char * desc
 	va_end(ap);
 }
 
-int survive_print_help_for_parameter( const char * tomap )
-{
+int survive_print_help_for_parameter(SurviveContext *ctx, const char *tomap) {
 	for (struct static_conf_t *config = head; config; config = config->next) {
 		if (strcmp(config->name, tomap) == 0) {
+			char val[128];
+			survive_config_as_str(ctx, val, 128, config->name, "");
 			char sthelp[160];
-			snprintf(sthelp, 159, "    %s: %s [%c]", config->name, config->description, config->type);
-			fprintf( stderr, "\0337\033[1A\033[1000D%s\0338", sthelp );
+			snprintf(sthelp, 159, "    %s: %s \t\tdefault: %s\t\t(%c)", config->name, config->description, val,
+					 config->type);
+
+			fprintf(stderr, "\0337\033[1A\033[1000D\033[K%s\0338", sthelp);
 			return 1;
 		}
 	}
 	return 0;
 }
 
-#define USAGE_FORMAT " --%-25s"
-static const char *USAGE_FORMAT_INT = USAGE_FORMAT "%13d    ";
-static const char *USAGE_FORMAT_FLOAT = USAGE_FORMAT "%13f    ";
-static const char *USAGE_FORMAT_STRING = USAGE_FORMAT "%13s    ";
-
-static int type_char(char type) {
-	switch (type) {
-	case CONFIG_UINT32:
-		return 'i';
-	case CONFIG_FLOAT:
-		return 'f';
-	case CONFIG_STRING:
-		return 's';
-	case CONFIG_FLOAT_ARRAY:
-		return 'a';
-	default:
-		return 'u';
-	}
-}
-
-static void survive_config_iterate_grp(SurviveContext *ctx, config_group *grp, survive_config_iterate_fn fn,
-									   void *user) {
-	for (int i = 0; i < grp->used_entries; i++) {
-		config_entry *ce = &grp->config_entries[i];
-		uint8_t type = type_char(ce->type);
-		fn(ctx, ce->tag, type, user);
-	}
-}
+#define USAGE_FORMAT " --%-40s"
+static const char *USAGE_FORMAT_INT = USAGE_FORMAT "%15d    ";
+static const char *USAGE_FORMAT_FLOAT = USAGE_FORMAT "%15f    ";
+static const char *USAGE_FORMAT_STRING = USAGE_FORMAT "%15s    ";
 
 void survive_config_iterate(SurviveContext *ctx, survive_config_iterate_fn fn, void *user) {
-	survive_config_iterate_grp(ctx, ctx->temporary_config_values, fn, user);
-	survive_config_iterate_grp(ctx, ctx->global_config_values, fn, user);
+	for (struct static_conf_t *config = head; config; config = config->next) {
+		fn(ctx, config->name, config->type, user);
+	}
 }
 
 static void PrintConfigGroup(config_group * grp, const char ** chkval, int * cvs, int verbose )
@@ -164,7 +154,7 @@ static void PrintConfigGroup(config_group * grp, const char ** chkval, int * cvs
 				case CONFIG_FLOAT_ARRAY: printf( "[FA] %20s", ce->tag ); break;
 				}
 
-				printf("%s%-12s", stobuf,
+				printf("%s %-12s    ", stobuf,
 					   (ce->type == CONFIG_FLOAT)
 						   ? ":float"
 						   : (ce->type == CONFIG_UINT32) ? ":int" : (ce->type == CONFIG_STRING) ? ":string" : ".");
@@ -197,7 +187,7 @@ void survive_print_known_configs( SurviveContext * ctx, int verbose )
 	memset( checked_values, 0, sizeof( checked_values ) );
 	PrintConfigGroup( ctx->temporary_config_values, checked_values, &cvs, verbose );
 	PrintConfigGroup( ctx->global_config_values, checked_values, &cvs, verbose );
-	int j;
+
 	for (struct static_conf_t *config = head; config; config = config->next) {
 		for( i = 0; i < cvs; i++ )
 		{
@@ -230,7 +220,7 @@ void survive_print_known_configs( SurviveContext * ctx, int verbose )
 				const char *type_desc = (config->type == 'f')
 											? ":float"
 											: (config->type == 'i') ? ":int" : (config->type == 's') ? ":string" : ".";
-				printf("%s%-12s %s\n", stobuf, type_desc, config->description);
+				printf("%s %-12s     %s\n", stobuf, type_desc, config->description);
 			}
 			else
 			{
@@ -792,10 +782,35 @@ static uint32_t config_entry_as_uint32_t(config_entry *entry) {
 	return 0;
 }
 
+SURVIVE_EXPORT char survive_config_type(SurviveContext *ctx, const char *tag) {
+	config_entry *entry = sc_search(ctx, tag);
+	if (entry == 0) {
+		return entry->type;
+	}
+
+	return 0;
+}
+
 SURVIVE_EXPORT void survive_config_as_str(SurviveContext *ctx, char *output, size_t n, const char *tag,
 										  const char *def) {
 	if (n == 0 || output == 0)
 		return;
+
+	struct static_conf_t *sc = find_static_conf_t(tag);
+	if (sc) {
+		switch (sc->type) {
+		case 'f':
+			snprintf(output, n, "%f", survive_configf(ctx, tag, SC_GET, (float)sc->data_default.f));
+			break;
+		case 'i':
+			snprintf(output, n, "%i", survive_configi(ctx, tag, SC_GET, sc->data_default.i));
+			break;
+		case 's':
+			snprintf(output, n, "%s", survive_configs(ctx, tag, SC_GET, sc->data_default.s));
+			break;
+		}
+		return;
+	}
 
 	config_entry *entry = sc_search(ctx, tag);
 	if (entry == 0) {
@@ -804,6 +819,7 @@ SURVIVE_EXPORT void survive_config_as_str(SurviveContext *ctx, char *output, siz
 		} else {
 			strncpy(output, def, n);
 		}
+		return;
 	}
 
 	switch (entry->type) {
