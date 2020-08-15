@@ -45,6 +45,11 @@ inline void invert3d(FLT *out, const FLT *a) {
 	out[1] = 1. / a[1];
 	out[2] = 1. / a[2];
 }
+inline void scalend(FLT *out, const FLT *a, FLT scalar, size_t size) {
+	for (size_t i = 0; i < size; i++) {
+		out[i] = a[i] * scalar;
+	}
+}
 inline void scale3d(FLT *out, const FLT *a, FLT scalar) {
 	out[0] = a[0] * scalar;
 	out[1] = a[1] * scalar;

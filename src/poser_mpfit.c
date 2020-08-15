@@ -361,7 +361,7 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 
 	if ((d->useKalman || d->useIMU)) {
 		survive_long_timecode tc = so->activations.last_light;
-		survive_imu_tracker_predict(&d->tracker, tc, soLocation);
+		// survive_imu_tracker_predict(&d->tracker, tc, soLocation);
 	}
 
 	mpfitctx->initialPose = *soLocation;
@@ -398,7 +398,7 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 		return -1;
 	}
 
-	bool error_failure = !general_optimizer_data_record_success(&d->opt, result->bestnorm);
+	bool error_failure = !general_optimizer_data_record_success(&d->opt, result->bestnorm, soLocation);
 	if (!status_failure && !error_failure) {
 		quatnormalize(soLocation->Rot, soLocation->Rot);
 
@@ -456,12 +456,7 @@ static void handle_results(MPFITData *d, PoserDataLight *lightData, FLT error, S
 
 		if (d->useKalman) {
 			survive_long_timecode tc = lightData->hdr.timecode;
-			survive_imu_tracker_integrate_observation(tc, &d->tracker, estimate, var);
-			SurvivePose predicted = *estimate;
-			survive_imu_tracker_predict(&d->tracker, tc, &predicted);
-			SurviveVelocity vel = survive_imu_velocity(&d->tracker);
-			PoserData_poser_pose_func_with_velocity(&lightData->hdr, so, &predicted, &vel);
-			// PoserData_poser_pose_func(&lightData->hdr, so, estimate);
+			survive_imu_tracker_integrate_observation(&lightData->hdr, &d->tracker, estimate, var);
 		} else {
 			PoserData_poser_pose_func(&lightData->hdr, so, estimate);
 		}
@@ -618,7 +613,7 @@ static FLT run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 	SurviveContext *ctx = so->ctx;
 
 	if (!status_failure) {
-		general_optimizer_data_record_success(&d->opt, result.bestnorm);
+		general_optimizer_data_record_success(&d->opt, result.bestnorm, 0);
 		rtn = result.bestnorm;
 
 		SurvivePose lh2worlds[NUM_GEN2_LIGHTHOUSES] = { 0 };
@@ -641,21 +636,27 @@ static FLT run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 }
 
 static inline void print_stats(SurviveContext *ctx, MPFITStats *stats) {
-	if (stats->total_iterations == 0)
-		return;
+	// if (stats->total_iterations == 0)
+	//		return;
+	int total_runs = stats->total_runs;
+	if (total_runs == 0)
+		total_runs++;
 
 	SV_INFO("\tmeas failures     %d", stats->meas_failures);
 	SV_INFO("\ttotal iterations  %d", stats->total_iterations);
-	SV_INFO("\tavg iterations    %f", (FLT)stats->total_iterations / stats->total_runs);
+	SV_INFO("\tavg iterations    %f", (FLT)stats->total_iterations / total_runs);
 	SV_INFO("\ttotal fevals      %d", stats->total_fev);
-	SV_INFO("\tavg fevals        %f", (FLT)stats->total_fev / stats->total_runs);
+	SV_INFO("\tavg fevals        %f", (FLT)stats->total_fev / total_runs);
 	SV_INFO("\ttotal runs        %d", stats->total_runs);
-	SV_INFO("\tavg error         %10.10f", stats->sum_errors / stats->total_runs);
-	SV_INFO("\tavg orig error    %10.10f", stats->sum_origerrors / stats->total_runs);
-	SV_INFO("\tnoisy meas cnt    %7d / %8d (%4.2f%%)", stats->dropped_meas_cnt, stats->total_meas_cnt,
-			100. * (stats->dropped_meas_cnt / (FLT)stats->total_meas_cnt));
-	SV_INFO("\tdropped lh cnt    %7d / %8d (%4.2f%%)", stats->dropped_lh_cnt, stats->total_lh_cnt,
-			100. * (stats->dropped_lh_cnt / (FLT)stats->total_lh_cnt));
+	SV_INFO("\tavg error         %10.10f", stats->sum_errors / total_runs);
+	SV_INFO("\tavg orig error    %10.10f", stats->sum_origerrors / total_runs);
+	if (stats->total_meas_cnt)
+		SV_INFO("\tnoisy meas cnt    %7d / %8d (%4.2f%%)", stats->dropped_meas_cnt, stats->total_meas_cnt,
+				100. * (stats->dropped_meas_cnt / (FLT)stats->total_meas_cnt));
+
+	if (stats->total_lh_cnt)
+		SV_INFO("\tdropped lh cnt    %7d / %8d (%4.2f%%)", stats->dropped_lh_cnt, stats->total_lh_cnt,
+				100. * (stats->dropped_lh_cnt / (FLT)stats->total_lh_cnt));
 
 	for (int i = 0; i < sizeof(stats->status_cnts) / sizeof(int); i++) {
 		SV_INFO("\tStatus %10s %d", survive_optimizer_error(i + 1), stats->status_cnts[i]);
@@ -719,14 +720,13 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 	}
 	case POSERDATA_LIGHT:
 	case POSERDATA_LIGHT_GEN2: {
-		if (d->tracker.rot.t == 0) {
+		if (d->tracker.model.t == 0) {
 			return 0;
 		}
 
 		PoserDataLight *pdl = (PoserDataLight *)pd;
 
 		survive_imu_tracker_integrate_light(&d->tracker, pdl);
-		survive_imu_tracker_report_state(pd, &d->tracker);
 		break;
 	}
 	case POSERDATA_SYNC_GEN2:
@@ -808,21 +808,8 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 
 		if (d->useIMU) {
 			survive_imu_tracker_integrate_imu(&d->tracker, imu);
-			// SV_INFO("diff?%8u", imu->timecode);
-			SurvivePose out = { 0 };
-			survive_imu_tracker_predict(&d->tracker, imu->hdr.timecode, &out);
-			if (!quatiszero(out.Rot)) {
-				SurviveVelocity vel = survive_imu_velocity(&d->tracker);
-				PoserData_poser_pose_func_with_velocity(pd, so, &out, &vel);
-			}
-			// SV_INFO("%+.07f %+.07f %+.07f", imu->gyro[0], imu->gyro[1], imu->gyro[2]);
 		} else if (d->useKalman) {
-			SurvivePose out = { 0 };
-			survive_imu_tracker_predict(&d->tracker, imu->hdr.timecode, &out);
-			if (!quatiszero(out.Rot)) {
-				SurviveVelocity vel = survive_imu_velocity(&d->tracker);
-				PoserData_poser_pose_func_with_velocity(pd, so, &out, &vel);
-			}
+			survive_imu_tracker_report_state(pd, &d->tracker);
 		}
 
 		general_optimizer_data_record_imu(&d->opt, imu);

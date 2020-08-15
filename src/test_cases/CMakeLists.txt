@@ -23,7 +23,9 @@ set_target_properties(test_replays PROPERTIES FOLDER "tests")
 target_link_libraries(test_replays survive)
 
 IF(NOT WIN32)
-  add_test(NAME lh1_test_cal COMMAND $<TARGET_FILE:test_replays>     ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/lh1_test_cal.rec.gz)
+    # This file doesn't have raw gyro data and it was recorded with the wrong corrective values. So we ignore the IMU input
+  add_test(NAME lh1_test_cal COMMAND $<TARGET_FILE:test_replays>     ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/lh1_test_cal.rec.gz --imu-acc-variance -1 --imu-gyro-variance -1)
+    
   add_test(NAME lh2_test_cal COMMAND $<TARGET_FILE:test_replays>     ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/lh2_test_cal.rec.gz)
   add_test(NAME multi_cal COMMAND $<TARGET_FILE:test_replays> ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/multi-cal.rec.gz)
 ENDIF()

@@ -67,6 +67,7 @@ STATIC_CONFIG_ITEM(PLAYBACK_RECORD_RAWLIGHT, "record-rawlight", 'i', "Whether or
 STATIC_CONFIG_ITEM(PLAYBACK_RECORD_IMU, "record-imu", 'i', "Whether or not to output imu data", 1)
 STATIC_CONFIG_ITEM(PLAYBACK_RECORD_CAL_IMU, "record-cal-imu", 'i', "Whether or not to output calibrated imu data", 0)
 STATIC_CONFIG_ITEM(PLAYBACK_RECORD_ANGLE, "record-angle", 'i', "Whether or not to output angle data", 1)
+STATIC_CONFIG_ITEM(PLAYBACK_RUN_TIME, "run-time", 'f', "How long to run for", -1.)
 
 typedef struct SurviveRecordingData {
 	SurviveContext *ctx;

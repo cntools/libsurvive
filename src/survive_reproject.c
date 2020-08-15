@@ -95,4 +95,8 @@ const survive_reproject_model_t SURVIVE_EXPORT survive_reproject_model = {
 	.reprojectXY = survive_reproject_xy,
 	.reprojectFullJacObjPose = gen_reproject_jac_obj_p,
 	.reprojectFullJacLhPose = gen_reproject_jac_lh_p,
-	.reprojectAxisJacobLhPoseFn = {gen_reproject_axis_x_jac_lh_p, gen_reproject_axis_y_jac_lh_p}};
+	.reprojectAxisJacobLhPoseFn = {gen_reproject_axis_x_jac_lh_p, gen_reproject_axis_y_jac_lh_p},
+
+	.reprojectAxisFullFn = {gen_reproject_axis_x, gen_reproject_axis_y},
+
+};

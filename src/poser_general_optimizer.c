@@ -44,11 +44,13 @@ void general_optimizer_data_record_failure(GeneralOptimizerData *d) {
 	if (d->failures_to_reset_cntr > 0)
 		d->failures_to_reset_cntr--;
 }
-bool general_optimizer_data_record_success(GeneralOptimizerData *d, FLT error) {
+bool general_optimizer_data_record_success(GeneralOptimizerData *d, FLT error, const SurvivePose *pose) {
 	d->stats.runs++;
 	if (d->max_error <= 0 || d->max_error > error) {
 		if (d->successes_to_reset_cntr > 0)
 			d->successes_to_reset_cntr--;
+		if (pose)
+			d->lastSuccess = *pose;
 		d->failures_to_reset_cntr = d->failures_to_reset;
 		return true;
 	}
@@ -115,7 +117,7 @@ bool general_optimizer_data_record_current_lhs(GeneralOptimizerData *d, PoserDat
 	return false;
 }
 bool general_optimizer_data_record_current_pose(GeneralOptimizerData *d, PoserDataLight *l, SurvivePose *soLocation) {
-	*soLocation = *survive_object_last_imu2world(d->so);
+	*soLocation = d->lastSuccess; // *survive_object_last_imu2world(d->so);
 	bool currentPositionValid = quatmagnitude(soLocation->Rot) != 0;
 	SurviveContext *ctx = d->so->ctx;
 

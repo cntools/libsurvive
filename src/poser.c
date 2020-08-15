@@ -69,8 +69,8 @@ void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const S
 }
 void PoserData_poser_pose_func_with_velocity(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world,
 											 const SurviveVelocity *velocity) {
-	PoserData_poser_pose_func(poser_data, so, imu2world);
 	so->ctx->velocityproc(so, PoserData_timecode(poser_data), velocity);
+	PoserData_poser_pose_func(poser_data, so, imu2world);
 }
 
 void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse,

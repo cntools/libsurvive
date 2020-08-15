@@ -89,8 +89,8 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 	SurvivePose rtn = {0};
 	SurviveContext *ctx = so->ctx;
 	// std::cerr << "Solving for " << cal_imagePoints.size() << " correspondents" << std::endl;
-	if (dd->bc.meas_cnt <= 6) {
-		SV_WARN("Can't solve for only %u points\n", (int)dd->bc.meas_cnt);
+	if (dd->bc.meas_cnt < 2) {
+		SV_WARN("Can't solve for only %u points", (int)dd->bc.meas_cnt);
 		return rtn;
 	}
 

@@ -26,33 +26,31 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 	case POSERDATA_IMU: {
 		PoserDataIMU *imu = (PoserDataIMU *)pd;
 
-		if (dd->tracker.rot.t == 0) {
-			dd->tracker.rot.t = dd->tracker.position.t = imu->hdr.timecode / (FLT)so->timebase_hz;
+		if (dd->tracker.model.t == 0) {
+			dd->tracker.model.t = imu->hdr.timecode / (FLT)so->timebase_hz;
 
 			SurvivePose pose;
 			LinmathVec3d up = {0, 0, 1};
-			quatfrom2vectors(pose.Rot, up, imu->accel);
+			quatfrom2vectors(pose.Rot, imu->accel, up);
 
 			FLT R[7] = {0};
 			// survive_imu_integrate_rotation(&dd->tracker, dd->tracker.rot.t, q, R);
-			survive_imu_tracker_integrate_observation(imu->hdr.timecode, &dd->tracker, &pose, R);
+			survive_imu_tracker_integrate_observation(&imu->hdr, &dd->tracker, &pose, R);
 			return 0;
 		}
 
 		survive_imu_tracker_integrate_imu(&dd->tracker, imu);
-		survive_imu_tracker_report_state(pd, &dd->tracker);
 		return 0;
 	}
 	case POSERDATA_LIGHT:
 	case POSERDATA_LIGHT_GEN2: {
-		if (dd->tracker.rot.t == 0) {
+		if (dd->tracker.model.t == 0) {
 			return 0;
 		}
 
 		PoserDataLight *pdl = (PoserDataLight *)pd;
 
 		survive_imu_tracker_integrate_light(&dd->tracker, pdl);
-		survive_imu_tracker_report_state(pd, &dd->tracker);
 	}
 
 	default:

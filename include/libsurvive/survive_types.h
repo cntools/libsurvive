@@ -27,20 +27,29 @@ extern "C" {
 #endif
 #endif
 
-#define float_format "%+f"
-#define double_format "%+lf"
+#define float_format "%+e"
+#define double_format "%+le"
 #define _FLT_format2(f) f##_format
 #define _FLT_format(f) _FLT_format2(f)
 #define FLT_format _FLT_format(FLT)
 
-#define Point10_format Point9_format "\t" FLT_format
-#define Point9_format Point8_format "\t" FLT_format
-#define Point8_format Point7_format "\t" FLT_format
-#define Point7_format Point6_format "\t" FLT_format
-#define Point6_format Point5_format "\t" FLT_format
-#define Point5_format Point4_format "\t" FLT_format
-#define Point4_format Point3_format "\t" FLT_format
-#define Point3_format FLT_format "\t" FLT_format "\t" FLT_format
+#define Point19_format Point18_format "   " FLT_format
+#define Point18_format Point17_format "   " FLT_format
+#define Point17_format Point16_format "   " FLT_format
+#define Point16_format Point15_format "   " FLT_format
+#define Point15_format Point14_format "   " FLT_format
+#define Point14_format Point13_format "   " FLT_format
+#define Point13_format Point12_format "   " FLT_format
+#define Point12_format Point11_format "   " FLT_format
+#define Point11_format Point10_format "   " FLT_format
+#define Point10_format Point9_format "   " FLT_format
+#define Point9_format Point8_format "   " FLT_format
+#define Point8_format Point7_format "   " FLT_format
+#define Point7_format Point6_format "   " FLT_format
+#define Point6_format Point5_format "   " FLT_format
+#define Point5_format Point4_format "   " FLT_format
+#define Point4_format Point3_format "   " FLT_format
+#define Point3_format FLT_format "   " FLT_format "   " FLT_format
 
 #define Quat_format Point4_format
 #define SurvivePose_format Point3_format "\t" Quat_format
@@ -66,6 +75,15 @@ extern "C" {
 #define LINMATH_VEC8_EXPAND(p) LINMATH_VEC7_EXPAND(p), (p)[7]
 #define LINMATH_VEC9_EXPAND(p) LINMATH_VEC8_EXPAND(p), (p)[8]
 #define LINMATH_VEC10_EXPAND(p) LINMATH_VEC9_EXPAND(p), (p)[9]
+#define LINMATH_VEC11_EXPAND(p) LINMATH_VEC10_EXPAND(p), (p)[10]
+#define LINMATH_VEC12_EXPAND(p) LINMATH_VEC11_EXPAND(p), (p)[11]
+#define LINMATH_VEC13_EXPAND(p) LINMATH_VEC12_EXPAND(p), (p)[12]
+#define LINMATH_VEC14_EXPAND(p) LINMATH_VEC13_EXPAND(p), (p)[13]
+#define LINMATH_VEC15_EXPAND(p) LINMATH_VEC14_EXPAND(p), (p)[14]
+#define LINMATH_VEC16_EXPAND(p) LINMATH_VEC15_EXPAND(p), (p)[15]
+#define LINMATH_VEC17_EXPAND(p) LINMATH_VEC16_EXPAND(p), (p)[16]
+#define LINMATH_VEC18_EXPAND(p) LINMATH_VEC17_EXPAND(p), (p)[17]
+#define LINMATH_VEC19_EXPAND(p) LINMATH_VEC18_EXPAND(p), (p)[18]
 
 #define SURVIVE_VELOCITY_EXPAND(v) LINMATH_VEC3_EXPAND((v).Pos), LINMATH_VEC3_EXPAND((v).AxisAngleRot)
 #define SURVIVE_POSE_EXPAND(p) (p).Pos[0], (p).Pos[1], (p).Pos[2], (p).Rot[0], (p).Rot[1], (p).Rot[2], (p).Rot[3]
@@ -74,10 +92,14 @@ extern "C" {
 
 typedef LinmathPose SurvivePose;
 typedef LinmathAxisAngleMag SurviveAngularVelocity;
-typedef struct {
-	LinmathVec3d Pos;
-	SurviveAngularVelocity AxisAngleRot;
-} SurviveVelocity;
+typedef LinmathAxisAnglePose SurviveVelocity;
+
+typedef struct survive_kalman_model_t {
+	SurvivePose Pose;
+	SurviveVelocity Velocity;
+	LinmathVec3d Acc;
+	LinmathVec3d GyroBias;
+} SurviveKalmanModel;
 
 //Careful with this, you can't just add another one right now, would take minor changes in survive_data.c and the cal tools.
 //It will also require a recompile.  TODO: revisit this and correct the comment once fixed.

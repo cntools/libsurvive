@@ -110,8 +110,8 @@ int TestKalmanIntegratePose(FLT pvariance, FLT rot_variance) {
 	LinmathQuat qq;
 	quatfromaxisanglemag(qq, vel.AxisAngleRot);
 
-	survive_timecode time = 0;
-	survive_timecode ticks_per_second = 4800000;
+	survive_long_timecode time = 0;
+	survive_long_timecode ticks_per_second = 4800000;
 	for (int i = 0; i < 100; i++) {
 		time += ticks_per_second;
 
@@ -120,7 +120,9 @@ int TestKalmanIntegratePose(FLT pvariance, FLT rot_variance) {
 		SurvivePose obs = randomMovement(&pose, 0 * pvariance, 0 * rot_variance);
 
 		FLT variance[2] = {pvariance, rot_variance};
-		survive_imu_tracker_integrate_observation(time, &kpose, &obs, variance);
+		PoserDataLightGen2 pd = {0};
+		pd.common.hdr.timecode = time;
+		survive_imu_tracker_integrate_observation(&pd.common.hdr, &kpose, &obs, variance);
 
 		SurvivePose estimate;
 		SurviveVelocity estimate_v = survive_imu_velocity(&kpose);
@@ -144,19 +146,6 @@ int TestKalmanIntegratePose(FLT pvariance, FLT rot_variance) {
 
 	return 0;
 }
-/*
-TEST(Kalman, Exact) {
-	const FLT pvariance = 0.0000000001;
-	const FLT rot_variance = 0.01;
-	return TestKalmanIntegratePose(pvariance, rot_variance);
-}
-
-TEST(Kalman, Inexact) {
-	const FLT pvariance = 1.;
-	const FLT rot_variance = 0.01;
-	return TestKalmanIntegratePose(pvariance, rot_variance);
-}
-*/
 #include "string.h"
 
 static void pos_f(FLT t, FLT *F, const struct CvMat *x) {
@@ -189,7 +178,7 @@ static inline void mat_eye(CvMat *m, FLT v) {
 	}
 }
 
-void map_to_obs(void *user, FLT t, const struct CvMat *Z, const struct CvMat *x_t, struct CvMat *yhat,
+bool map_to_obs(void *user, FLT t, const struct CvMat *Z, const struct CvMat *x_t, struct CvMat *yhat,
 				struct CvMat *H_k) {
 
 	const FLT *s = (FLT *)user;
@@ -219,6 +208,7 @@ void map_to_obs(void *user, FLT t, const struct CvMat *Z, const struct CvMat *x_
 	H[12] = x / n;
 	H[13] = y / n;
 	H[14] = z / n;
+	return true;
 }
 
 static inline void mat_eye_diag(CvMat *m, const FLT *v) {
@@ -240,7 +230,7 @@ TEST(Kalman, ExampleExtended) {
 	};
 	FLT P_init[6] = {1, 1, 1, 0, 0, 0};
 
-	survive_kalman_state_init(&position, 6, pos_f, pos_Q_per_sec, 0, 0);
+	survive_kalman_state_init(&position, 6, pos_f, 0, pos_Q_per_sec, 0);
 	CvMat P = cvMat(6, 6, SURVIVE_CV_F, position.info.P);
 	mat_eye_diag(&P, P_init);
 
@@ -279,6 +269,12 @@ TEST(Kalman, ExampleExtended) {
 		fprintf(stderr, "GT     " SurviveVel_format "\n", SURVIVE_VELOCITY_EXPAND(*(SurviveVelocity *)_true_state));
 		fprintf(stderr, "Sensor " Point3_format "\n", LINMATH_VEC3_EXPAND(sensor));
 
+		FLT diff[6];
+		subnd(diff, position.state, _true_state, 6);
+		FLT err = normnd(diff, 6);
+		fprintf(stderr, "Error %f\n", err);
+		assert(err < 1);
+
 		FLT _next_state[6];
 		CvMat next_state = cvMat(6, 1, SURVIVE_CV_F, _next_state);
 		// SURVIVE_LOCAL_ONLY void cvGEMM(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src3, double
@@ -292,21 +288,25 @@ TEST(Kalman, ExampleExtended) {
 }
 
 TEST(Kalman, AngleQuat) {
-	// survive_kalman_set_logging_level(1000);
+	// survive_kalman_set_logging_level(1001);
 	survive_kalman_state_t rotation;
 
 	FLT av = 1e0, vv = 1e0;
+	// clang-format off
 	FLT pos_Q_per_sec[49] = {
-		av, 0, 0, 0, 0, 0, 0, 0,  av, 0, 0, 0, 0, 0, 0, 0,	av, 0, 0, 0, 0, 0, 0, 0,  av,
-		0,	0, 0, 0, 0, 0, 0, vv, 0,  0, 0, 0, 0, 0, 0, vv, 0,	0, 0, 0, 0, 0, 0, vv,
+		av, 0, 0, 0, 0, 0, 0,
+		0, av, 0, 0, 0, 0, 0,
+		0,  0,av, 0, 0, 0, 0,
+		0,  0, 0, av,0,	0, 0,
+		0, 0, 0, 0, vv, 0, 0,
+		0, 0, 0, 0, 0, vv, 0,
+		0, 0, 0, 0, 0, 0, vv,
 	};
-
-	extern void rot_f_quat(FLT t, FLT * F, const struct CvMat *x);
-	extern void rot_predict_quat(FLT t, const survive_kalman_state_t *k, const CvMat *f_in, CvMat *f_out);
-	survive_kalman_state_init(&rotation, 7, rot_f_quat, pos_Q_per_sec, 0, 0);
+	// clang-format on
+	survive_kalman_state_init(&rotation, 7, rot_f_quat, 0, pos_Q_per_sec, 0);
 	rotation.info.Predict_fn = rot_predict_quat;
 
-	FLT P_init[] = {1, 1, 1, 1, 1, 1, 1};
+	FLT P_init[] = {100, 100, 100, 100, 100, 100, 100};
 	survive_kalman_set_P(&rotation, P_init);
 
 	CREATE_STACK_MAT(true_state, 7, 1);
@@ -316,17 +316,22 @@ TEST(Kalman, AngleQuat) {
 
 	CREATE_STACK_MAT(Z, 4, 1);
 
+	// clang-format off
 	FLT _H[] = {
-		1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+		1, 0, 0, 0, 0, 0, 0,
+		0, 1, 0, 0, 0, 0, 0,
+		0, 0, 1, 0, 0, 0, 0,
+		0, 0, 0, 1, 0, 0, 0,
 	};
+	// clang-format on
 	CvMat H = cvMat(4, 7, SURVIVE_CV_F, _H);
 
 	for (int i = 1; i < 100; i++) {
 		FLT t = i * .1;
 
-		FLT rv = .0;
+		FLT rv = .01;
 		FLT R[] = {rv, rv, rv, rv};
-		memcpy(_Z, _true_state, sizeof(4) * sizeof(FLT));
+		memcpy(_Z, _true_state, 4 * sizeof(FLT));
 		for (int j = 0; j < 4; j++) {
 			_Z[j] += generateGaussianNoise(0, R[j]);
 		}
@@ -335,6 +340,12 @@ TEST(Kalman, AngleQuat) {
 		quatnormalize(rotation.state, rotation.state);
 		fprintf(stderr, "Guess  " SurvivePose_format "\n", SURVIVE_POSE_EXPAND(*(SurvivePose *)rotation.state));
 		fprintf(stderr, "GT     " SurvivePose_format "\n", SURVIVE_POSE_EXPAND(*(SurvivePose *)_true_state));
+
+		FLT diff[7];
+		subnd(diff, rotation.state, _true_state, 7);
+		FLT err = normnd(diff, 7);
+		fprintf(stderr, "Error %f\n", err);
+		assert(err < 1);
 
 		rot_predict_quat(.1, 0, &true_state, &true_state);
 	}

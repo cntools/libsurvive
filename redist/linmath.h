@@ -110,6 +110,7 @@ LINMATH_EXPORT void addnd(FLT *out, const FLT *a, const FLT *b, size_t size);
 
 LINMATH_EXPORT void add3d(FLT *out, const FLT *a, const FLT *b);
 
+LINMATH_EXPORT void scalend(FLT *out, const FLT *a, FLT scalar, size_t size);
 LINMATH_EXPORT void scale3d(FLT *out, const FLT *a, FLT scalar);
 LINMATH_EXPORT void invert3d(FLT *out, const FLT *a);
 

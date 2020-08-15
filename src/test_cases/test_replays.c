@@ -58,6 +58,10 @@ static int test_path(const char *name, int main_argc, char **main_argv) {
 	}
 
 	SurviveSimpleContext *actx = survive_simple_init(total_argc, total_argv);
+	if (actx == 0) {
+		return -1;
+	}
+
 	SurviveContext *ctx = survive_simple_get_ctx(actx);
 	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
 		ctx->bsd[i].PositionSet = false;

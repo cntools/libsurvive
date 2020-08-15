@@ -7,12 +7,13 @@ struct survive_kalman_state_s;
 struct CvMat;
 
 typedef void (*F_fn_t)(FLT t, FLT *f_out, const struct CvMat *x0);
+typedef void (*Q_fn_t)(void *user, FLT t, const struct CvMat *x, FLT *Q_out);
 typedef void (*Predict_fn_t)(FLT t, const struct survive_kalman_state_s *k, const struct CvMat *x0, struct CvMat *x1);
 typedef void (*Update_fn_t)(FLT t, struct survive_kalman_state_s *k, const struct CvMat *H, const struct CvMat *K,
 							const struct CvMat *x_t0, struct CvMat *x_t1, const FLT *z);
 
 // Generates both the y difference term and the H jacobian term
-typedef void (*Map_to_obs)(void *user, FLT t, const struct CvMat *Z, const struct CvMat *x_t, struct CvMat *y,
+typedef bool (*Map_to_obs)(void *user, FLT t, const struct CvMat *Z, const struct CvMat *x_t, struct CvMat *y,
 						   struct CvMat *H_k);
 
 /**
@@ -27,6 +28,8 @@ typedef struct survive_kalman_s {
 	// [x, y, z, vx, vy, vz]
 	int state_cnt;
 
+	void *user;
+
 	// f(x_k-1|k-1, uk) so that X_k|k-1 = f(x_k-1|k-1, uk)
 	Predict_fn_t Predict_fn;
 
@@ -37,11 +40,10 @@ typedef struct survive_kalman_s {
 
 	// Added covariance per sec is time varying; but is a constant matrix that is multiplied by delta T. Process noise
 	// for these models will always have a time component essentially.
-	const FLT *Q_per_sec;
+	Q_fn_t Q_fn;
 
 	// Store the actual P matrix (state_cnt x state_cnt). A pointer can be passed in as storage; otherwise its on the
 	// heap.
-	bool P_is_heap;
 	FLT *P;
 } survive_kalman_t;
 
@@ -104,13 +106,18 @@ SURVIVE_EXPORT void survive_kalman_predict_state(FLT t, const survive_kalman_sta
  */
 SURVIVE_EXPORT FLT survive_kalman_predict_update_state(FLT t, survive_kalman_state_t *k, const struct CvMat *Z,
 													   const survive_kalman_measurement_matrix *H, const FLT *R);
+SURVIVE_EXPORT FLT survive_kalman_predict_update_state_adaptive(FLT t, survive_kalman_state_t *k, const struct CvMat *Z,
+																const survive_kalman_measurement_matrix *H, FLT *R);
 SURVIVE_EXPORT FLT survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k, const struct CvMat *Z,
 																const FLT *R, Map_to_obs Hfn, void *user);
+SURVIVE_EXPORT FLT survive_kalman_predict_update_state_extended_adaptive(FLT t, survive_kalman_state_t *k,
+																		 const struct CvMat *Z, FLT *R, Map_to_obs Hfn,
+																		 void *user);
 
-SURVIVE_EXPORT void survive_kalman_init(survive_kalman_t *k, size_t state_cnt, F_fn_t F, const FLT *Q_per_sec, FLT *P);
+SURVIVE_EXPORT void survive_kalman_init(survive_kalman_t *k, size_t state_cnt, F_fn_t F, Q_fn_t q_fn, void *user);
 SURVIVE_EXPORT void survive_kalman_free(survive_kalman_t *k);
-SURVIVE_EXPORT void survive_kalman_state_init(survive_kalman_state_t *k, size_t state_cnt, F_fn_t F,
-											  const FLT *Q_per_sec, FLT *P, FLT *state);
+SURVIVE_EXPORT void survive_kalman_state_init(survive_kalman_state_t *k, size_t state_cnt, F_fn_t F, Q_fn_t q_fn,
+											  void *user, FLT *state);
 SURVIVE_EXPORT void survive_kalman_state_free(survive_kalman_state_t *k);
 SURVIVE_EXPORT void survive_kalman_set_P(survive_kalman_state_t *k, const FLT *d);
 SURVIVE_EXPORT void survive_kalman_set_logging_level(int verbosity);

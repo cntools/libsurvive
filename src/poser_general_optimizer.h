@@ -18,13 +18,15 @@ typedef struct GeneralOptimizerData {
 	PoserCB seed_poser;
 	void *seed_poser_data;
 	SurviveObject *so;
+
+	SurvivePose lastSuccess;
 } GeneralOptimizerData;
 
 SURVIVE_EXPORT void general_optimizer_data_init(GeneralOptimizerData *d, SurviveObject *so);
 SURVIVE_EXPORT void general_optimizer_data_dtor(GeneralOptimizerData *d);
 
 SURVIVE_EXPORT void general_optimizer_data_record_failure(GeneralOptimizerData *d);
-SURVIVE_EXPORT bool general_optimizer_data_record_success(GeneralOptimizerData *d, FLT error);
+SURVIVE_EXPORT bool general_optimizer_data_record_success(GeneralOptimizerData *d, FLT error, const SurvivePose *pose);
 SURVIVE_EXPORT void general_optimizer_data_record_imu(GeneralOptimizerData *d, PoserDataIMU *imu);
 SURVIVE_EXPORT bool general_optimizer_data_record_current_pose(GeneralOptimizerData *d, PoserDataLight *l,
 															   SurvivePose *p);

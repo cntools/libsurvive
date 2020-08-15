@@ -93,7 +93,7 @@ void SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct Po
 			survive_long_timecode long_timecode = l->hdr.timecode;
 			// assert(long_timecode > self->last_movement);
 			// fprintf(stderr, "%f \n", fabs(*angle - l->angle));
-			// self->last_movement = long_timecode;
+			self->last_movement = long_timecode;
 		}
 
 		*data_timecode = l->hdr.timecode;

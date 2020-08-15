@@ -207,16 +207,16 @@ static inline void run_pair_measurement(survive_optimizer *mpfunc_ctx, size_t me
 			safe_world2lh.AxisAngleRot[0] = 1e-10;
 
 		if (derivs[jac_offset_obj]) {
-			FLT out[7 * 2] = {0};
+			FLT jout[7 * 2] = {0};
 			// reprojectModel->reprojectFullJacObjPose(out, pose, pt, world2lh, cal);
-			reprojectModel->reprojectAxisAngleFullJacObjPose(out, pose, pt, world2lh, cal);
+			reprojectModel->reprojectAxisAngleFullJacObjPose(jout, pose, pt, world2lh, cal);
 			// SV_INFO("Double obj %3d %3d %f", jac_offset_obj, meas_idx, out[0]);
 			for (int j = 0; j < 6; j++) {
 				assert(derivs[jac_offset_obj + j] && "all 7 parameters should be the same for jacobian calculation");
-				derivs[jac_offset_obj + j][meas_idx] = out[j];
-				derivs[jac_offset_obj + j][meas_idx + 1] = out[j + 6];
-				assert(!isnan(out[j]));
-				assert(!isnan(out[j + 6]));
+				derivs[jac_offset_obj + j][meas_idx] = jout[j];
+				derivs[jac_offset_obj + j][meas_idx + 1] = jout[j + 6];
+				assert(!isnan(jout[j]));
+				assert(!isnan(jout[j + 6]));
 			}
 		}
 

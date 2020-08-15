@@ -249,6 +249,11 @@ SURVIVE_EXPORT SurviveSimpleContext *survive_simple_init_with_logger(int argc, c
 	actx->log_fn = fn;
 
 	SurviveContext *ctx = survive_init_with_logger(argc, argv, actx, simple_log_fn);
+	if (ctx == 0) {
+		free(actx);
+		return 0;
+	}
+
 	survive_install_new_object_fn(ctx, new_object_fn);
 
 	if (ctx == 0) {

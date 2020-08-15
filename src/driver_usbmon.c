@@ -70,6 +70,7 @@ typedef struct SurviveDriverUSBMon {
 	pcap_t *pcap;
 	double playback_factor;
 	double time_now;
+	double run_time;
 
 	pcap_dumper_t *pcapDumper;
 	bool record_all;
@@ -462,6 +463,8 @@ void *pcap_thread_fn(void *_driver) {
 					}
 				}
 				driver->time_now = this_time;
+				if (this_time > driver->run_time && driver->run_time > 0)
+					driver->keepRunning = false;
 
 				// Print setup flags, then just bail
 				if (!usbp->setup_flag) {
@@ -634,7 +637,11 @@ static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
 
 	bool isPlaybackMode = usbmon_playback && *usbmon_playback;
 	if (isPlaybackMode) {
-		SV_INFO("Opening '%s' for usb playback", usbmon_playback);
+		sp->playback_factor = survive_configf(ctx, "playback-factor", SC_GET, 1.0);
+		sp->run_time = survive_configf(ctx, "run-time", SC_GET, -1);
+
+		SV_INFO("Opening '%s' for usb playback for %4.2f seconds at time factor %f", usbmon_playback, sp->run_time,
+				sp->playback_factor);
 		FILE *pF = open_playback(usbmon_playback, "r");
 		sp->pcap = pcap_fopen_offline(pF, sp->errbuf);
 
@@ -643,7 +650,6 @@ static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
 			SV_WARN("Trying to open a compressed file without FOPENCOOKIE support in the usbmon driver.");
 		}
 #endif
-		sp->playback_factor = survive_configf(ctx, "playback-factor", SC_GET, 1.0);
 		survive_install_run_time_fn(ctx, survive_usbmon_playback_run_time, sp);
 	} else {
 		sp->pcap = pcap_open_live("usbmon0", PCAP_ERRBUF_SIZE, 0, -1, sp->errbuf);

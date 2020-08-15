@@ -377,6 +377,7 @@ enum survive_config_flags {
 SURVIVE_EXPORT bool survive_config_is_set(SurviveContext *ctx, const char *tag);
 SURVIVE_EXPORT FLT survive_configf(SurviveContext *ctx, const char *tag, char flags, FLT def);
 SURVIVE_EXPORT uint32_t survive_configi(SurviveContext *ctx, const char *tag, char flags, uint32_t def);
+SURVIVE_EXPORT char survive_config_type(SurviveContext *ctx, const char *tag);
 SURVIVE_EXPORT void survive_config_as_str(SurviveContext *ctx, char *output, size_t n, const char *tag,
 										  const char *def);
 
