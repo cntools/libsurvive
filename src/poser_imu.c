@@ -33,9 +33,7 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 			LinmathVec3d up = {0, 0, 1};
 			quatfrom2vectors(pose.Rot, imu->accel, up);
 
-			FLT R[7] = {0};
-			// survive_imu_integrate_rotation(&dd->tracker, dd->tracker.rot.t, q, R);
-			survive_kalman_tracker_integrate_observation(&imu->hdr, &dd->tracker, &pose, R);
+			survive_kalman_tracker_integrate_observation(&imu->hdr, &dd->tracker, &pose, 0);
 			return 0;
 		}
 
@@ -51,6 +49,13 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 		PoserDataLight *pdl = (PoserDataLight *)pd;
 
 		survive_kalman_tracker_integrate_light(&dd->tracker, pdl);
+	} break;
+	case POSERDATA_DISASSOCIATE: {
+
+		survive_kalman_tracker_free(&dd->tracker);
+		free(dd);
+		so->PoserFnData = 0;
+		return 0;
 	}
 
 	default:

@@ -15,25 +15,16 @@
 
 #define SURVIVE_MODEL_STATE_CNT (sizeof(SurviveKalmanModel) / sizeof(FLT))
 
-static bool survive_kalman_tracker_position_found(SurviveKalmanTracker *tracker) {
-	FLT pos_variance = 0;
-	FLT vel_variance = 0;
-	FLT var_diag[SURVIVE_MODEL_STATE_CNT];
+static FLT survive_kalman_tracker_position_var2(SurviveKalmanTracker *tracker, FLT *var_diag) {
+	FLT _var_diag[SURVIVE_MODEL_STATE_CNT];
+	if (var_diag == 0)
+		var_diag = _var_diag;
+
 	for (int i = 0; i < SURVIVE_MODEL_STATE_CNT; i++) {
-		if (i < 7)
-			pos_variance += fabs(tracker->model.P[SURVIVE_MODEL_STATE_CNT * i + i]);
-		else if (i < 13)
-			vel_variance += fabs(tracker->model.P[SURVIVE_MODEL_STATE_CNT * i + i]);
-		var_diag[i] = tracker->model.P[SURVIVE_MODEL_STATE_CNT * i + i];
+		var_diag[i] = fabs(tracker->model.P[SURVIVE_MODEL_STATE_CNT * i + i]);
 	}
 
-	if (pos_variance > .1) {
-		SurviveContext *ctx = tracker->so->ctx;
-
-		SV_WARN("Variance is too high: %f -- " Point19_format, pos_variance, LINMATH_VEC19_EXPAND(var_diag));
-		return false;
-	}
-	return true;
+	return normnd2(var_diag, 7);
 }
 
 static void normalize_model(SurviveKalmanTracker *pTracker) {
@@ -117,7 +108,8 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 
 	// A single light cap measurement has an infinite amount of solutions along a plane; so it only helps if we are
 	// already in a good place
-	if (!survive_kalman_tracker_position_found(tracker)) {
+	if (tracker->light_threshold_var > 0 &&
+		survive_kalman_tracker_position_var2(tracker, 0) > tracker->light_threshold_var) {
 		return;
 	}
 
@@ -394,7 +386,7 @@ FLT survive_imu_integrate_pose(SurviveKalmanTracker *tracker, FLT time, const Su
 }
 
 void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTracker *tracker, const SurvivePose *pose,
-											   const FLT *R) {
+												  const FLT *oR) {
 
 	survive_long_timecode timecode = pd->timecode;
 
@@ -417,7 +409,9 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
 	if (tracker->obs_pos_var >= 0 && tracker->obs_rot_var >= 0) {
 		FLT R[] = {tracker->obs_pos_var, tracker->obs_pos_var, tracker->obs_pos_var, tracker->obs_rot_var,
 				   tracker->obs_rot_var, tracker->obs_rot_var, tracker->obs_rot_var};
-
+		if (oR) {
+			addnd(R, R, oR, 7);
+		}
 		tracker->stats.obs_total_error += survive_imu_integrate_pose(tracker, time, pose, R);
 		tracker->stats.obs_count++;
 
@@ -433,6 +427,11 @@ STATIC_CONFIG_ITEM(PROCESS_WEIGHT_VEL, "process-weight-vel", 'f', "Velocity vari
 STATIC_CONFIG_ITEM(PROCESS_WEIGHT_POS, "process-weight-pos", 'f', "Position variance per second", 0.)
 STATIC_CONFIG_ITEM(PROCESS_WEIGHT_ROTATION, "process-weight-rot", 'f', "Rotation variance per second", 0.)
 
+STATIC_CONFIG_ITEM(KALMAN_REPORT_IGNORE_START, "report-ignore-start", 'i', "Number of reports to ignore at startup", 0)
+STATIC_CONFIG_ITEM(KALMAN_REPORT_IGNORE_THRESHOLD, "report-ignore-threshold", 'f',
+				   "Minimum variance to report posefrom the kalman filter", 1.)
+STATIC_CONFIG_ITEM(KALMAN_LIGHTCAP_IGNORE_THRESHOLD, "light-ignore-threshold", 'f',
+				   "Minimum variance to allow light data into the kalman filter", 1.)
 STATIC_CONFIG_ITEM(LIGHT_VARIANCE, "light-variance", 'f', "Variance of light sensor readings", 1e-6)
 STATIC_CONFIG_ITEM(OBS_POS_VARIANCE, "obs-pos-variance", 'f', "Variance of position integration from light capture",
 				   .02)
@@ -445,6 +444,9 @@ STATIC_CONFIG_ITEM(IMU_GYRO_VARIANCE, "imu-gyro-variance", 'f', "Variance of gyr
 typedef void (*survive_attach_detach_fn)(SurviveContext *ctx, const char *tag, FLT *var);
 
 static void survive_kalman_tracker_config(SurviveKalmanTracker *tracker, survive_attach_detach_fn fn) {
+	fn(tracker->so->ctx, KALMAN_LIGHTCAP_IGNORE_THRESHOLD_TAG, &tracker->light_threshold_var);
+	fn(tracker->so->ctx, KALMAN_REPORT_IGNORE_THRESHOLD_TAG, &tracker->report_threshold_var);
+
 	fn(tracker->so->ctx, IMU_ACC_VARIANCE_TAG, &tracker->acc_var);
 	fn(tracker->so->ctx, IMU_GYRO_VARIANCE_TAG, &tracker->gyro_var);
 
@@ -473,6 +475,8 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 
 	survive_kalman_tracker_config(tracker, survive_attach_configf);
 
+	survive_attach_configi(tracker->so->ctx, KALMAN_REPORT_IGNORE_START_TAG, &tracker->report_ignore_start);
+
 	survive_kalman_set_logging_level(ctx->log_level);
 	size_t state_cnt = sizeof(SurviveKalmanModel) / sizeof(FLT);
 	survive_kalman_state_init(&tracker->model, state_cnt, model_predict_jac, model_q_fn, tracker,
@@ -496,8 +500,10 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 				  tracker->gyro_var, tracker->gyro_var, tracker->gyro_var};
 	arr_eye_diag(tracker->IMU_R, 6, 6, Rimu);
 
-	SV_VERBOSE(110, "\t%s: %f", IMU_ACC_VARIANCE_TAG, tracker->acc_var);
-	SV_VERBOSE(110, "\t%s: %f", IMU_GYRO_VARIANCE_TAG, tracker->gyro_var);
+	SV_VERBOSE(10, "\t%s: %f", IMU_ACC_VARIANCE_TAG, tracker->acc_var);
+	SV_VERBOSE(10, "\t%s: %f", IMU_GYRO_VARIANCE_TAG, tracker->gyro_var);
+	SV_VERBOSE(10, "\t%s: %f", KALMAN_LIGHTCAP_IGNORE_THRESHOLD_TAG, tracker->light_threshold_var);
+	SV_VERBOSE(10, "\t%s: %f", KALMAN_REPORT_IGNORE_THRESHOLD_TAG, tracker->report_threshold_var);
 }
 
 SurviveVelocity survive_kalman_tracker_velocity(const SurviveKalmanTracker *tracker) {
@@ -512,6 +518,17 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 	SV_VERBOSE(5, "IMU %s tracker statistics:", tracker->so->codename);
 	SV_VERBOSE(5, "\t%-32s %u", "late imu", tracker->stats.late_imu_dropped);
 	SV_VERBOSE(5, "\t%-32s %u", "late light", tracker->stats.late_light_dropped);
+
+	SV_VERBOSE(5, "\t%-32s %u of %u (%2.2f%%)", "Dropped poses", (unsigned)tracker->stats.dropped_poses,
+			   (unsigned)(tracker->stats.reported_poses + tracker->stats.dropped_poses),
+			   100. * tracker->stats.dropped_poses /
+				   (FLT)(tracker->stats.reported_poses + tracker->stats.dropped_poses))
+
+	FLT var[SURVIVE_MODEL_STATE_CNT] = {0};
+	scalend(var, tracker->stats.reported_var, 1. / tracker->stats.reported_poses, SURVIVE_MODEL_STATE_CNT);
+	SV_VERBOSE(5, "\t%-32s " Point19_format, "Mean reported variance", LINMATH_VEC19_EXPAND(var));
+	scalend(var, tracker->stats.dropped_var, 1. / tracker->stats.reported_poses, SURVIVE_MODEL_STATE_CNT);
+	SV_VERBOSE(5, "\t%-32s " Point19_format, "Mean dropped variance", LINMATH_VEC19_EXPAND(var));
 
 	SV_VERBOSE(5, "\t%-32s %e (%7u integrations)", "Obs error",
 			   tracker->stats.obs_total_error / (FLT)tracker->stats.obs_count, (unsigned)tracker->stats.obs_count);
@@ -530,9 +547,11 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 		SV_VERBOSE(5, "\t%-32s " Point7_format, i == 0 ? "Observation R" : "",
 				   LINMATH_VEC7_EXPAND(tracker->Obs_R + 7 * i));
 	}
+	SV_VERBOSE(5, " ");
 
 	survive_kalman_state_free(&tracker->model);
 
+	survive_detach_config(tracker->so->ctx, KALMAN_REPORT_IGNORE_START_TAG, &tracker->report_ignore_start);
 	survive_kalman_tracker_config(tracker, (survive_attach_detach_fn)survive_detach_config);
 }
 
@@ -548,25 +567,27 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 
 	survive_kalman_tracker_predict(tracker, t, &pose);
 
-	FLT pos_variance = 0;
-	FLT vel_variance = 0;
 	FLT var_diag[SURVIVE_MODEL_STATE_CNT];
-	for (int i = 0; i < SURVIVE_MODEL_STATE_CNT; i++) {
-		if (i < 7)
-			pos_variance += fabs(tracker->model.P[SURVIVE_MODEL_STATE_CNT * i + i]);
-		else if (i < 13)
-			vel_variance += fabs(tracker->model.P[SURVIVE_MODEL_STATE_CNT * i + i]);
-		var_diag[i] = tracker->model.P[SURVIVE_MODEL_STATE_CNT * i + i];
-	}
-	SurviveContext *ctx = tracker->so->ctx;
-
-	SV_VERBOSE(110, "Tracker variance " Point16_format, LINMATH_VEC16_EXPAND(var_diag));
-	SV_VERBOSE(110, "Tracker Bias            " Point3_format, LINMATH_VEC3_EXPAND(tracker->state.GyroBias));
-	if (!survive_kalman_tracker_position_found(tracker)) {
+	if ((tracker->report_threshold_var > 0 &&
+		 survive_kalman_tracker_position_var2(tracker, var_diag) >= tracker->report_threshold_var) ||
+		tracker->report_ignore_start > 0) {
+		tracker->stats.dropped_poses++;
+		addnd(tracker->stats.dropped_var, var_diag, tracker->stats.dropped_var, SURVIVE_MODEL_STATE_CNT);
+		if (tracker->report_ignore_start > 0) {
+			tracker->report_ignore_start--;
+		}
 		return;
 	}
 
-	SV_VERBOSE(110, "Tracker report " SurvivePose_format, SURVIVE_POSE_EXPAND(pose));
+	addnd(tracker->stats.reported_var, var_diag, tracker->stats.reported_var, SURVIVE_MODEL_STATE_CNT);
+
+	SurviveContext *ctx = tracker->so->ctx;
+	SV_VERBOSE(110, "Tracker variance %s " Point16_format, tracker->so->codename, LINMATH_VEC16_EXPAND(var_diag));
+	SV_VERBOSE(110, "Tracker Bias %s     " Point3_format, tracker->so->codename,
+			   LINMATH_VEC3_EXPAND(tracker->state.GyroBias));
+
+	tracker->stats.reported_poses++;
+	SV_VERBOSE(110, "Tracker report %s   " SurvivePose_format, tracker->so->codename, SURVIVE_POSE_EXPAND(pose));
 
 	SurviveVelocity velocity = survive_kalman_tracker_velocity(tracker);
 	PoserData_poser_pose_func_with_velocity(pd, tracker->so, &pose, &velocity);

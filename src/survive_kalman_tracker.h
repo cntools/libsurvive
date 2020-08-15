@@ -37,6 +37,9 @@ typedef struct SurviveKalmanTracker {
 	FLT obs_rot_var;
 	FLT light_var;
 
+	FLT light_threshold_var, report_threshold_var;
+	int32_t report_ignore_start;
+
 	FLT process_weight_acc, process_weight_vel, process_weight_pos;
 	FLT process_weight_ang_velocity, process_weight_rotation;
 
@@ -54,6 +57,10 @@ typedef struct SurviveKalmanTracker {
 		size_t lightcap_count;
 		FLT obs_total_error;
 		size_t obs_count;
+
+		size_t reported_poses, dropped_poses;
+		FLT dropped_var[19];
+		FLT reported_var[19];
 	} stats;
 
 	FLT Obs_R[7 * 7];

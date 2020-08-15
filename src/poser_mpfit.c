@@ -452,11 +452,10 @@ static void handle_results(MPFITData *d, PoserDataLight *lightData, FLT error, S
 
 		FLT var_meters = d->useKalman ? error : 0;
 		FLT var_quat = d->useKalman ? error : 0;
-		FLT var[2] = {var_meters, var_quat};
+		FLT var[] = {var_meters, var_meters, var_meters, var_quat, var_quat, var_quat, var_quat};
 
 		if (d->useKalman) {
-			survive_long_timecode tc = lightData->hdr.timecode;
-			survive_kalman_tracker_integrate_observation(&lightData->hdr, &d->tracker, estimate, var);
+			survive_kalman_tracker_integrate_observation(&lightData->hdr, &d->tracker, estimate, 0);
 		} else {
 			PoserData_poser_pose_func(&lightData->hdr, so, estimate);
 		}

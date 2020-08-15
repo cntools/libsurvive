@@ -57,13 +57,14 @@ inline void scale3d(FLT *out, const FLT *a, FLT scalar) {
 }
 
 LINMATH_EXPORT FLT norm3d(const FLT *in) { return FLT_SQRT(in[0] * in[0] + in[1] * in[1] + in[2] * in[2]); }
-LINMATH_EXPORT FLT normnd(const FLT *in, size_t n) {
+LINMATH_EXPORT FLT normnd2(const FLT *in, size_t n) {
 	FLT r = 0;
 	for (int i = 0; i < n; i++) {
 		r += in[i] * in[i];
 	}
-	return FLT_SQRT(r);
+	return r;
 }
+LINMATH_EXPORT FLT normnd(const FLT *in, size_t n) { return FLT_SQRT(normnd2(in, n)); }
 inline void normalize3d(FLT *out, const FLT *in) {
 	FLT r = ((FLT)1.) / norm3d(in);
 	out[0] = in[0] * r;
