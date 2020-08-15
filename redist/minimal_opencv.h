@@ -123,7 +123,7 @@ typedef struct CvMat {
 
 } CvMat;
 
-#define CV_FLT_PTR(m) ((FLT*)(m->data.ptr))
+#define CV_FLT_PTR(m) ((FLT *)((m)->data.ptr))
 
 /*
 The function is a fast replacement for cvGetReal2D in the case of single-channel floating-point

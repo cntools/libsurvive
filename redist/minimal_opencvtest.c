@@ -7,12 +7,16 @@
 void print_mat(const CvMat *M) {
 	for (int i = 0; i < M->rows; i++) {
 		for (int j = 0; j < M->cols; j++) {
-			printf("%f\t", cvmGet(M, i, j));
+			printf("%f,\t", cvmGet(M, i, j));
 		}
 		printf("\n");
 	}
 	printf("\n");
 }
+
+#define PRINT_MAT(name)                                                                                                \
+	printf(#name "\n");                                                                                                \
+	print_mat(&name);
 
 void test_gemm() {
   double _2x3[2*3] = {1, 2, 3, 4, 5, 6};
@@ -29,18 +33,20 @@ void test_gemm() {
 
   cvGEMM(&m2x3, &m3x2, 1, 0, 0, &m2x2, 0);
   cvGEMM(&m3x2, &m2x3, 1, 0, 0, &m3x3, 0);
-  print_mat(&m3x3);
-  print_mat(&m2x2);
+  PRINT_MAT(m2x3);
+  PRINT_MAT(m3x2);
+  PRINT_MAT(m3x3);
+  PRINT_MAT(m2x2);
 
   cvGEMM(&m2x3, &m2x3, 1, 0, 0, &m3x3, CV_GEMM_A_T);
   cvGEMM(&m2x3, &m2x3, 1, 0, 0, &m2x2, CV_GEMM_B_T);
-  print_mat(&m3x3);
-  print_mat(&m2x2);
+  PRINT_MAT(m3x3);
+  PRINT_MAT(m2x2);
 
   cvGEMM(&m2x3, &m3x2, 1, 0, 0, &m3x3, CV_GEMM_A_T | CV_GEMM_B_T);
   //  cvGEMM(&m3x2, &m2x3, 1, 0, 0, &m2x2, CV_GEMM_A_T | CV_GEMM_B_T);
 
-  print_mat(&m3x3);
+  PRINT_MAT(m3x3);
 }
 
 static void test_solve() {
@@ -88,9 +94,31 @@ static void test_svd() {
 
 	cvSVD(&m3x3, &w, &u, &v, 0);
 
-	print_mat(&w);
-	print_mat(&u);
-	print_mat(&v);
+	PRINT_MAT(w);
+	PRINT_MAT(u);
+	PRINT_MAT(v);
+}
+
+static void test_multrans() {
+	double _A[3] = {1, 2, 3};
+	CvMat A = cvMat(3, 1, CV_64F, _A);
+
+	double _B[9];
+	CvMat B = cvMat(3, 3, CV_64F, _B);
+
+	double _C[1];
+	CvMat C = cvMat(1, 1, CV_64F, _C);
+
+	cvMulTransposed(&A, &B, 0, 0, 1);
+	PRINT_MAT(B);
+	double ans[] = {1, 2, 3, 2, 4, 6, 3, 6, 9};
+	for (int i = 0; i < 9; i++) {
+		assert(ans[i] == _B[i]);
+	}
+
+	cvMulTransposed(&A, &C, 1, 0, 10);
+	PRINT_MAT(C);
+	assert(_C[0] == 140);
 }
 
 int main()
@@ -98,6 +126,7 @@ int main()
   test_gemm();
   test_solve();
   test_svd();
+  test_multrans();
   return 0;
 }
 

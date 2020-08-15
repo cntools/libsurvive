@@ -92,12 +92,14 @@ SURVIVE_LOCAL_ONLY void cvGEMM(const CvMat *src1, const CvMat *src2, double alph
 			   lda, CV_RAW_PTR(src2), ldb, beta, CV_RAW_PTR(dst), dst->cols);
 }
 
+// dst = scale * src ^ t * src     iff order == 1
+// dst = scale *     src * src ^ t iff order == 0
 SURVIVE_LOCAL_ONLY void cvMulTransposed(const CvMat *src, CvMat *dst, int order, const CvMat *delta, double scale) {
 	lapack_int rows = src->rows;
 	lapack_int cols = src->cols;
 
-	lapack_int drows = dst->rows;
-	assert(drows == cols);
+	lapack_int drows = order == 0 ? dst->rows : dst->cols;
+	assert(drows == dst->cols);
 	assert(order == 1 ? (dst->cols == src->cols) : (dst->cols == src->rows));
 	assert(delta == 0 && "This isn't implemented yet");
 	double beta = 0;
@@ -107,8 +109,9 @@ SURVIVE_LOCAL_ONLY void cvMulTransposed(const CvMat *src, CvMat *dst, int order,
 
 	lapack_int dstCols = dst->cols;
 
-	cblas_gemm(CblasRowMajor, isAT ? CblasTrans : CblasNoTrans, isBT ? CblasTrans : CblasNoTrans, cols, dstCols, rows,
-			   scale, CV_RAW_PTR(src), cols, CV_RAW_PTR(src), cols, beta, CV_RAW_PTR(dst), dstCols);
+	cblas_gemm(CblasRowMajor, isAT ? CblasTrans : CblasNoTrans, isBT ? CblasTrans : CblasNoTrans, dst->rows, dst->cols,
+			   order == 1 ? src->rows : src->cols, scale, CV_RAW_PTR(src), src->cols, CV_RAW_PTR(src), src->cols, beta,
+			   CV_RAW_PTR(dst), dstCols);
 }
 
 SURVIVE_LOCAL_ONLY void *cvAlloc(size_t size) { return malloc(size); }
