@@ -114,6 +114,7 @@ LINMATH_EXPORT void scale3d(FLT *out, const FLT *a, FLT scalar);
 LINMATH_EXPORT void invert3d(FLT *out, const FLT *a);
 
 LINMATH_EXPORT FLT norm3d(const FLT *in);
+LINMATH_EXPORT FLT normnd(const FLT *in, size_t n);
 LINMATH_EXPORT void normalize3d(FLT *out, const FLT *in);
 
 LINMATH_EXPORT void linmath_interpolate(FLT *out, int n, const FLT *A, const FLT *B, FLT t);
