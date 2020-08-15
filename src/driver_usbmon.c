@@ -86,8 +86,7 @@ typedef struct SurviveDriverUSBMon {
 	bool passiveMode;
 	size_t packet_cnt;
 
-	bool keepRunning;
-	og_thread_t pcap_thread;
+	bool *keepRunning;
 } SurviveDriverUSBMon;
 
 vive_device_inst_t *find_device_inst(SurviveDriverUSBMon *d, int bus_id, int dev_id) {
@@ -197,13 +196,6 @@ static void ingest_config_request(vive_device_inst_t *dev, const struct _usb_hea
 	}
 }
 
-static int usbmon_poll(struct SurviveContext *ctx, void *_driver) {
-	SurviveDriverUSBMon *driver = _driver;
-	if (driver->keepRunning == false)
-		return -1;
-	return 0;
-}
-
 static double timestamp_in_s() {
 	static double start_time_s = 0;
 	if (start_time_s == 0.)
@@ -213,13 +205,6 @@ static double timestamp_in_s() {
 
 static int usbmon_close(struct SurviveContext *ctx, void *_driver) {
 	SurviveDriverUSBMon *driver = _driver;
-	driver->keepRunning = false;
-	pcap_breakloop(driver->pcap);
-
-	survive_release_ctx_lock(ctx);
-	SV_VERBOSE(100, "Waiting on pcap thread...");
-	OGJoinThread(driver->pcap_thread);
-	survive_get_ctx_lock(ctx);
 
 	struct pcap_stat stats = {0};
 	pcap_stats(driver->pcap, &stats);
@@ -428,7 +413,7 @@ void *pcap_thread_fn(void *_driver) {
 	SV_INFO("Pcap thread started");
 	double start_time = 0;
 	double real_time_start = timestamp_in_s();
-	while (driver->keepRunning && ctx->currentError == SURVIVE_OK) {
+	while ((driver->keepRunning == 0 || *driver->keepRunning) && ctx->currentError == SURVIVE_OK) {
 		int result = pcap_next_ex(driver->pcap, &pkthdr, (const uint8_t **)&usbp);
 		switch (result) {
 		case 0:
@@ -464,7 +449,7 @@ void *pcap_thread_fn(void *_driver) {
 				}
 				driver->time_now = this_time;
 				if (this_time > driver->run_time && driver->run_time > 0)
-					driver->keepRunning = false;
+					*driver->keepRunning = false;
 
 				// Print setup flags, then just bail
 				if (!usbp->setup_flag) {
@@ -577,7 +562,7 @@ void *pcap_thread_fn(void *_driver) {
 		case PCAP_ERROR:
 			SV_WARN("Pcap error %s", pcap_geterr(driver->pcap));
 		case PCAP_ERROR_BREAK:
-			driver->keepRunning = false;
+			*driver->keepRunning = false;
 			goto exit_loop;
 		default:
 			SV_WARN("Pcap next got %d", result);
@@ -683,11 +668,12 @@ static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
 
 	int device_count = setup_usb_devices(sp);
 	if (device_count) {
-		sp->keepRunning = true;
-		sp->pcap_thread = OGCreateThread(pcap_thread_fn, sp);
-		OGNameThread(sp->pcap_thread, "pcap_thread");
+		// sp->keepRunning = true;
+		// sp->pcap_thread = OGCreateThread(pcap_thread_fn, sp);
+		// OGNameThread(sp->pcap_thread, "pcap_thread");
 
-		survive_add_driver(ctx, sp, usbmon_poll, usbmon_close, 0);
+		sp->keepRunning = survive_add_threaded_driver(ctx, sp, "pcap_thread", pcap_thread_fn, usbmon_close);
+		// survive_add_driver(ctx, sp, usbmon_poll, usbmon_close, 0);
 	} else {
 		usbmon_close(ctx, sp);
 		SV_ERROR(SURVIVE_ERROR_NO_TRACKABLE_OBJECTS, "USBMon found no devices");

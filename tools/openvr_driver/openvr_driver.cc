@@ -48,7 +48,7 @@ static vr::HmdQuaternion_t survive2openvr() {
 
 	LinmathPoint3d openvrPts[] = {{1, 0, 0}, {0, 0, -1}, {0, 1, 0}};
 
-	KabschCentered(q, (double *)survivePts, (double *)openvrPts, 3);
+	KabschCentered(q, (FLT *)survivePts, (FLT *)openvrPts, 3);
 
 	return vr::HmdQuaternion_t{q[0], q[1], q[2], q[3]};
 }

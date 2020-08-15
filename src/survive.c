@@ -697,6 +697,46 @@ void survive_add_driver(SurviveContext *ctx, void *payload, DeviceDriverCb poll,
 	ctx->drivermagics[oldct] = magic;
 	ctx->driver_ct = oldct + 1;
 }
+struct survive_threaded_driver {
+	void *driver_data;
+	DeviceDriverCb thread_fn, close_fn;
+
+	bool keep_running;
+	og_thread_t thread;
+};
+
+static int threaded_driver_poll(struct SurviveContext *ctx, void *_driver) {
+	struct survive_threaded_driver *driver = _driver;
+	if (driver->keep_running == false)
+		return -1;
+	return 0;
+}
+
+static int threaded_driver_close(struct SurviveContext *ctx, void *_driver) {
+	struct survive_threaded_driver *driver = _driver;
+	driver->keep_running = false;
+	survive_release_ctx_lock(ctx);
+	OGJoinThread(driver->thread);
+	survive_get_ctx_lock(ctx);
+	driver->close_fn(ctx, driver->driver_data);
+
+	free(driver);
+	return 0;
+}
+
+bool *survive_add_threaded_driver(SurviveContext *ctx, void *_driver, const char *name, void *(routine)(void *),
+								  DeviceDriverCb close) {
+	struct survive_threaded_driver *driver = SV_CALLOC(1, sizeof(struct survive_threaded_driver));
+	driver->driver_data = _driver;
+	driver->close_fn = close;
+
+	driver->keep_running = true;
+	driver->thread = OGCreateThread(routine, _driver);
+	OGNameThread(driver->thread, name);
+
+	survive_add_driver(ctx, driver, threaded_driver_poll, threaded_driver_close, 0);
+	return &driver->keep_running;
+}
 
 int survive_send_magic(SurviveContext *ctx, int magic_code, void *data, int datalen) {
 	int oldct = ctx->driver_ct;

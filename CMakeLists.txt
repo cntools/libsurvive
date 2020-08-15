@@ -1,4 +1,4 @@
-project(libsurvive C)
+project(libsurvive C CXX)
 cmake_minimum_required(VERSION 3.5.1)
 
 option(ENABLE_WARNINGS_AS_ERRORS "Use to flag all warnings as errors" OFF)
@@ -179,9 +179,27 @@ set(poser_barycentric_svd_ADDITIONAL_SRCS src/barycentric_svd/barycentric_svd.c 
 
 add_custom_target(survive_plugins)
 
+find_library(OPENVR_LIBRARIES
+		NAMES
+		openvr_api
+		PATH_SUFFIXES
+		osx32
+		linux64)
+
+if(OPENVR_LIBRARIES AND NOT USE_SINGLE_PRECISION)
+	add_subdirectory(tools/openvr_driver)
+	include_directories(redist include/libsurvive include)
+	LIST(APPEND PLUGINS driver_openvr)
+	set(driver_openvr_ADDITIONAL_LIBS ${OPENVR_LIBRARIES})
+endif()
+
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 foreach(PLUGIN ${PLUGINS})
-    add_library(${PLUGIN} SHARED src/${PLUGIN}.c ${${PLUGIN}_ADDITIONAL_SRCS})
+	SET(SRC src/${PLUGIN}.c)
+	if(NOT EXISTS ${CMAKE_SOURCE_DIR}/${SRC})
+		SET(SRC src/${PLUGIN}.cc)
+	endif()
+    add_library(${PLUGIN} SHARED ${SRC} ${${PLUGIN}_ADDITIONAL_SRCS})
     target_link_libraries(${PLUGIN} survive ${${PLUGIN}_ADDITIONAL_LIBS})
 
 	add_dependencies(survive_plugins ${PLUGIN})
@@ -229,17 +247,6 @@ option(BUILD_ROS_PUBLISHER "Build the ros publisher" catkin_DIR)
 IF(BUILD_ROS_PUBLISHER)
 	add_subdirectory(tools/ros_publisher)
 ENDIF()
-
-find_library(OPENVR_LIBRARIES
-		NAMES
-		openvr_api
-		PATH_SUFFIXES
-		osx32
-		linux64
-		)
-if(OPENVR_LIBRARIES)
-	add_subdirectory(tools/openvr_driver)
-endif()
 
 file(COPY survive-websocketd DESTINATION ${CMAKE_BINARY_DIR})
 install(TARGETS ${PLUGINS} DESTINATION lib/libsurvive/plugins)
