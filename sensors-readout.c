@@ -6,6 +6,8 @@ static void redraw(SurviveContext *ctx);
 #include "math.h"
 #include <os_generic.h>
 #include <stdlib.h>
+#include <variance.h>
+
 #ifdef __linux__
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -26,8 +28,12 @@ void intHandler(int dummy) {
 #endif
 bool needsRedraw = false;
 bool surviveIsDone = false;
+
+struct variance_measure imu_variance = {.size = 6};
+
 struct sensor_stats {
 	double MN, MX;
+	struct variance_measure variance;
 };
 struct sensor_time_stats {
 	size_t hit_count;
@@ -42,6 +48,10 @@ struct sensor_time_stats time_stats[32][NUM_GEN2_LIGHTHOUSES][SENSORS_PER_OBJECT
 void process_reading(int i, int lh, int sensor, int axis, FLT angle) {
 	struct sensor_stats *s = &stats[i][lh][sensor][axis];
 
+	if (isnan(angle))
+		return;
+
+	variance_measure_add(&stats[i][lh][sensor][axis].variance, &angle);
 	s->MN = fmin(angle, s->MN);
 	s->MX = fmax(angle, s->MX);
 }
@@ -63,6 +73,8 @@ static void record_data(SurviveObject *so, int sensor_id, survive_timecode timec
 			time_stats[idx][lh][sensor_id].hz = time_stats[idx][lh][sensor_id].hz_count / time_since_start;
 		time_stats[idx][lh][sensor_id].hz_count = 0;
 		time_stats[idx][lh][sensor_id].hz_start = timecode;
+
+		variance_measure_reset(&stats[idx][lh][sensor_id]->variance);
 	}
 }
 
@@ -87,6 +99,8 @@ static void print_int(int i) { printf("%9d |", i); }
 static void print(float f) {
 	if (isnan(f)) {
 		printf("%s|", column_width);
+	} else if (fabs(f) > 0 && fabs(f) < 1e-4) {
+		printf("%+9.2e |", f);
 	} else if (fabs(f) < 10.) {
 		printf("%+9.6f |", f);
 	} else {
@@ -144,15 +158,27 @@ static void redraw(SurviveContext *ctx) {
 			}
 
 			for (int axis = 0; axis < 2; axis++) {
-				printf("%1.6f ", v[axis] / (double)v_cnt[axis]);
+				printf("%1.6f ", v[axis] / (v_cnt[axis] == 0 ? 1 : (double)v_cnt[axis]));
 			}
 		}
+
+		FLT calc_imu_var[6];
+		variance_measure_calc(&imu_variance, calc_imu_var);
+
+		printf("IMU: ");
+		for (int i = 0; i < 3; i++)
+			print(so->activations.accel[i]);
+		for (int i = 0; i < 3; i++)
+			print(so->activations.gyro[i]);
+		printf("Var: ");
+		for (int i = 0; i < 6; i++)
+			print(calc_imu_var[i]);
 
 		printf("\n");
 
 		printf("|\x1B[4m");
-		const char *labels[] = {"ch.sensor", "Hits",	"Hits/sec", "X",	 "Y",		"min X",
-								"max X",	 "width X", "min Y",	"max Y", "width Y", 0};
+		const char *labels[] = {"ch.sensor", "Hits",  "Hits/sec", "X",	   "Y",		  "min X", "max X",
+								"width X",	 "var X", "min Y",	  "max Y", "width Y", "var Y", 0};
 		for (const char **l = labels; *l; l++) {
 			print_label(*l);
 		}
@@ -195,7 +221,12 @@ static void redraw(SurviveContext *ctx) {
 					print(s[axis].MN);
 					print(s[axis].MX);
 					print(s[axis].MX - s[axis].MN);
+
+					FLT var;
+					variance_measure_calc(&s[axis].variance, &var);
+					print(var);
 				}
+
 				printf("\x1B[0m");
 				printf("\r\n\33[2K");
 			}
@@ -224,6 +255,7 @@ void light_fn(SurviveObject *so, int sensor_id, int acode, int timeinsweep, surv
 }
 
 void imu_fn(SurviveObject *so, int mode, FLT *accelgyro, survive_timecode timecode, int id) {
+	variance_measure_add(&imu_variance, accelgyro);
 	survive_default_imu_process(so, mode, accelgyro, timecode, id);
 }
 
