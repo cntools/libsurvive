@@ -204,10 +204,10 @@ static void add_correspondences(SurviveObject *so, bc_svd *bc, uint32_t timecode
 	for (size_t sensor_idx = 0; sensor_idx < so->sensor_ct; sensor_idx++) {
 		FLT angles[2] = {NAN, NAN};
 		for (uint8_t axis = 0; axis < 2; axis++) {
-			bool isReadingValue =
+			bool isReadingValid =
 				SurviveSensorActivations_isReadingValid(scene, sensor_time_window, timecode, sensor_idx, lh, axis);
 
-			if (isReadingValue) {
+			if (isReadingValid) {
 				angles[axis] = scene->angles[sensor_idx][lh][axis];
 			}
 		}

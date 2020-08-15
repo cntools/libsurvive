@@ -174,10 +174,6 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 
 	survive_notify_gen2(so, "sweep called");
 
-	if (ctx->calptr) {
-		// survive_cal_light( so, sensor_id, acode, timeinsweep, timecode, length, lh);
-	}
-
 	survive_recording_sweep_process(so, channel, sensor_id, timecode, half_clock_flag);
 
 	survive_timecode last_sweep = so->last_sync_time[bsd_idx];
@@ -203,8 +199,8 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 	FLT angle = time_since_sync / time_per_rot * 2. * LINMATHPI;
 	FLT angle2 = (time_since_sync + .5 / 48000000.) / time_per_rot * 2. * LINMATHPI;
 
-	// SV_INFO("Sensor ch%2d %2d %12f %12f %d %.16f", channel, sensor_id, angle / M_PI * 180., angle2 / M_PI * 180.,
-	// half_clock_flag, time_since_sync);
+	// SV_INFO("Sensor ch%2d %2d %12f %12f %d %.16f", channel, sensor_id, angle / LINMATHPI * 180., angle2 / LINMATHPI *
+	// 180., half_clock_flag, time_since_sync);
 
 	int8_t plane = angle > LINMATHPI;
 	if (plane)
@@ -218,7 +214,6 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survive_channel channel, int sensor_id,
 														survive_timecode timecode, int8_t plane, FLT angle) {
 	struct SurviveContext *ctx = so->ctx;
-	// SV_INFO("Sensor ch%2d %2d %12f", channel, sensor_id, angle / M_PI * 180.);
 	int8_t bsd_idx = survive_get_bsd_idx(ctx, channel);
 	if (bsd_idx == -1) {
 		SV_WARN("Invalid channel requested(%d) for %s", channel, so->codename)
@@ -242,6 +237,7 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 	if (bsd_idx < ctx->activeLighthouses)
 		SurviveSensorActivations_add_gen2(&so->activations, &l);
 
+	SV_VERBOSE(500, "Sensor ch%2d.%02d.%d %12fdeg", channel, sensor_id, plane, angle / LINMATHPI * 180.);
 	survive_recording_sweep_angle_process(so, channel, sensor_id, timecode, plane, angle);
 
 	if (so->PoserFn) {

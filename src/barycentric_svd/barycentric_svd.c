@@ -442,9 +442,12 @@ void copy_R_and_t(const FLT R_src[3][3], const FLT t_src[3], FLT R_dst[3][3], FL
 FLT bc_svd_compute_pose(bc_svd *self, FLT R[3][3], FLT t[3]) {
 	CREATE_STACK_MAT(M, self->meas_cnt, 12);
 	bool colCovered[12] = { 0 };
+	bool has_axis[2] = {false, false};
 	for (int i = 0; i < self->meas_cnt; i++) {
 		size_t obj_pt_idx = self->meas[i].obj_idx;
-		bc_svd_fill_M(self, &M, i, self->setup.alphas[obj_pt_idx], self->meas[i].axis, self->meas[i].angle);
+		const bc_svd_meas_t *meas = &self->meas[i];
+		bc_svd_fill_M(self, &M, i, self->setup.alphas[obj_pt_idx], meas->axis, meas->angle);
+		has_axis[meas->axis] = true;
 
 		FLT *_M = CV_RAW_PTR(&M) + i * 12;
 		for (int j = 0; j < 12; j++) {
@@ -452,6 +455,11 @@ FLT bc_svd_compute_pose(bc_svd *self, FLT R[3][3], FLT t[3]) {
 			if (_M[j] != 0.0)
 				colCovered[j] = true;
 		}
+	}
+
+	// Gen2 can technically solve with just one axis but it's very very very noisey
+	if (has_axis[0] == false || has_axis[1] == false) {
+		return -1;
 	}
 
 	for (int j = 0; j < 12; j++) {

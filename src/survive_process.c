@@ -156,7 +156,8 @@ void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighth
 	config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
 
 	survive_recording_lighthouse_process(ctx, lighthouse, lighthouse_pose, object_pose);
-	SV_INFO("Position found for LH %d(%08x)", lighthouse, ctx->bsd[lighthouse].BaseStationID);
+	SV_VERBOSE(10, "Position found for LH %d(ID: %08x, mode: %d) " SurvivePose_format, lighthouse,
+			   ctx->bsd[lighthouse].BaseStationID, ctx->bsd[lighthouse].mode, SURVIVE_POSE_EXPAND(*lighthouse_pose));
 }
 
 int survive_default_config_process(SurviveObject *so, char *ct0conf, int len) {

@@ -455,7 +455,7 @@ static void handle_results(MPFITData *d, PoserDataLight *lightData, FLT error, S
 		FLT var[] = {var_meters, var_meters, var_meters, var_quat, var_quat, var_quat, var_quat};
 
 		if (d->useKalman) {
-			survive_kalman_tracker_integrate_observation(&lightData->hdr, &d->tracker, estimate, 0);
+			survive_kalman_tracker_integrate_observation(&lightData->hdr, &d->tracker, estimate, var);
 		} else {
 			PoserData_poser_pose_func(&lightData->hdr, so, estimate);
 		}
@@ -516,7 +516,6 @@ static FLT run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Surviv
 	survive_optimizer mpfitctx = {
 		.reprojectModel = ctx->lh_version == 0 ? &survive_reproject_model : &survive_reproject_gen2_model,
 		.so = so,
-		//.current_bias = 0.01,
 		.poseLength = 1,
 		.cameraLength = so->ctx->activeLighthouses,
 	};
