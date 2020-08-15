@@ -1,4 +1,4 @@
-#include "survive_imu.h"
+#include "survive_kalman_tracker.h"
 #include <survive.h>
 
 #include <stdio.h>
@@ -7,7 +7,7 @@
 #include <memory.h>
 
 struct PoserIMUData_t {
-	SurviveIMUTracker tracker;
+	SurviveKalmanTracker tracker;
 	SurviveSensorActivations previous_sweep;
 	bool inited;
 };
@@ -19,7 +19,7 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 
 	if (!dd) {
 		so->PoserFnData = dd = SV_CALLOC(1, sizeof(struct PoserIMUData_t));
-		survive_imu_tracker_init(&dd->tracker, so);
+		survive_kalman_tracker_init(&dd->tracker, so);
 	}
 
 	switch (pt) {
@@ -35,11 +35,11 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 
 			FLT R[7] = {0};
 			// survive_imu_integrate_rotation(&dd->tracker, dd->tracker.rot.t, q, R);
-			survive_imu_tracker_integrate_observation(&imu->hdr, &dd->tracker, &pose, R);
+			survive_kalman_tracker_integrate_observation(&imu->hdr, &dd->tracker, &pose, R);
 			return 0;
 		}
 
-		survive_imu_tracker_integrate_imu(&dd->tracker, imu);
+		survive_kalman_tracker_integrate_imu(&dd->tracker, imu);
 		return 0;
 	}
 	case POSERDATA_LIGHT:
@@ -50,7 +50,7 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 
 		PoserDataLight *pdl = (PoserDataLight *)pd;
 
-		survive_imu_tracker_integrate_light(&dd->tracker, pdl);
+		survive_kalman_tracker_integrate_light(&dd->tracker, pdl);
 	}
 
 	default:

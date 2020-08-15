@@ -1,4 +1,4 @@
-#include "../survive_imu.h"
+#include "../survive_kalman_tracker.h"
 #include "test_case.h"
 #include <math.h>
 #include <minimal_opencv.h>
@@ -94,9 +94,9 @@ static void survive_apply_velocity(SurvivePose *p_1, FLT t, const SurvivePose *p
 }
 
 int TestKalmanIntegratePose(FLT pvariance, FLT rot_variance) {
-	SurviveIMUTracker kpose = { 0 };
+	SurviveKalmanTracker kpose = {0};
 	SurviveObject so = {.timebase_hz = 48000000};
-	survive_imu_tracker_init(&kpose, &so);
+	survive_kalman_tracker_init(&kpose, &so);
 	SurvivePose pose = LinmathPose_Identity;
 
 	srand(42);
@@ -122,11 +122,11 @@ int TestKalmanIntegratePose(FLT pvariance, FLT rot_variance) {
 		FLT variance[2] = {pvariance, rot_variance};
 		PoserDataLightGen2 pd = {0};
 		pd.common.hdr.timecode = time;
-		survive_imu_tracker_integrate_observation(&pd.common.hdr, &kpose, &obs, variance);
+		survive_kalman_tracker_integrate_observation(&pd.common.hdr, &kpose, &obs, variance);
 
 		SurvivePose estimate;
-		SurviveVelocity estimate_v = survive_imu_velocity(&kpose);
-		survive_imu_tracker_predict(&kpose, time, &estimate);
+		SurviveVelocity estimate_v = survive_kalman_tracker_velocity(&kpose);
+		survive_kalman_tracker_predict(&kpose, time, &estimate);
 
 		printf("Observation " SurvivePose_format "\n", SURVIVE_POSE_EXPAND(obs));
 		printf("Actual      " SurvivePose_format " " SurviveVel_format "\n", SURVIVE_POSE_EXPAND(pose),
@@ -142,7 +142,7 @@ int TestKalmanIntegratePose(FLT pvariance, FLT rot_variance) {
 		}
 	}
 
-	survive_imu_tracker_free(&kpose);
+	survive_kalman_tracker_free(&kpose);
 
 	return 0;
 }
@@ -157,7 +157,7 @@ static void pos_f(FLT t, FLT *F, const struct CvMat *x) {
 	memcpy(F, f, sizeof(f));
 }
 
-void meas_model(FLT t, struct CvMat *Z, const struct CvMat *x_t, const FLT *s) {
+void meas_model(struct CvMat *Z, const struct CvMat *x_t, const FLT *s) {
 	FLT *_h_x = CV_FLT_PTR(Z);
 	FLT *xt = CV_FLT_PTR(x_t);
 
@@ -178,12 +178,11 @@ static inline void mat_eye(CvMat *m, FLT v) {
 	}
 }
 
-bool map_to_obs(void *user, FLT t, const struct CvMat *Z, const struct CvMat *x_t, struct CvMat *yhat,
-				struct CvMat *H_k) {
+bool map_to_obs(void *user, const struct CvMat *Z, const struct CvMat *x_t, struct CvMat *yhat, struct CvMat *H_k) {
 
 	const FLT *s = (FLT *)user;
 	CREATE_STACK_MAT(h_x_t, 3, 1);
-	meas_model(t, &h_x_t, x_t, s);
+	meas_model(&h_x_t, x_t, s);
 
 	CREATE_STACK_MAT(Id, 3, 3);
 	mat_eye(&Id, 1);
@@ -231,7 +230,7 @@ TEST(Kalman, ExampleExtended) {
 	FLT P_init[6] = {1, 1, 1, 0, 0, 0};
 
 	survive_kalman_state_init(&position, 6, pos_f, 0, pos_Q_per_sec, 0);
-	CvMat P = cvMat(6, 6, SURVIVE_CV_F, position.info.P);
+	CvMat P = cvMat(6, 6, SURVIVE_CV_F, position.P);
 	mat_eye_diag(&P, P_init);
 
 	FLT _F[36];
@@ -254,7 +253,7 @@ TEST(Kalman, ExampleExtended) {
 		LinmathPoint3d sensor = {20 + 20 * cos(2. * LINMATHPI / 30 * (i)), 20 + 20 * sin(2. * LINMATHPI / 30 * (i)),
 								 50};
 
-		meas_model(i, &Z, &true_state, sensor);
+		meas_model(&Z, &true_state, sensor);
 
 		fprintf(stderr, "z_true " Point3_format "\n", LINMATH_VEC3_EXPAND(_Z));
 
@@ -304,7 +303,7 @@ TEST(Kalman, AngleQuat) {
 	};
 	// clang-format on
 	survive_kalman_state_init(&rotation, 7, rot_f_quat, 0, pos_Q_per_sec, 0);
-	rotation.info.Predict_fn = rot_predict_quat;
+	rotation.Predict_fn = rot_predict_quat;
 
 	FLT P_init[] = {100, 100, 100, 100, 100, 100, 100};
 	survive_kalman_set_P(&rotation, P_init);

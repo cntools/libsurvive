@@ -4,7 +4,7 @@
 
 #include "mpfit/mpfit.h"
 #include "poser.h"
-#include "survive_imu.h"
+#include "survive_kalman_tracker.h"
 #include <survive.h>
 
 #include "assert.h"
@@ -81,7 +81,7 @@ typedef struct MPFITData {
   FLT sensor_variance;
   FLT sensor_variance_per_second;
 
-  SurviveIMUTracker tracker;
+  SurviveKalmanTracker tracker;
   bool useIMU;
   bool alwaysPrecise;
   bool useKalman;
@@ -456,7 +456,7 @@ static void handle_results(MPFITData *d, PoserDataLight *lightData, FLT error, S
 
 		if (d->useKalman) {
 			survive_long_timecode tc = lightData->hdr.timecode;
-			survive_imu_tracker_integrate_observation(&lightData->hdr, &d->tracker, estimate, var);
+			survive_kalman_tracker_integrate_observation(&lightData->hdr, &d->tracker, estimate, var);
 		} else {
 			PoserData_poser_pose_func(&lightData->hdr, so, estimate);
 		}
@@ -671,7 +671,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		MPFITData *d = so->PoserFnData;
 
 		general_optimizer_data_init(&d->opt, so);
-		survive_imu_tracker_init(&d->tracker, so);
+		survive_kalman_tracker_init(&d->tracker, so);
 
 		d->useIMU = (bool)survive_configi(ctx, "use-imu", SC_GET, 1);
 		d->alwaysPrecise = (bool)survive_configi(ctx, "precise", SC_GET, 0);
@@ -726,7 +726,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 
 		PoserDataLight *pdl = (PoserDataLight *)pd;
 
-		survive_imu_tracker_integrate_light(&d->tracker, pdl);
+		survive_kalman_tracker_integrate_light(&d->tracker, pdl);
 		break;
 	}
 	case POSERDATA_SYNC_GEN2:
@@ -789,7 +789,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 			}
 		}
 		general_optimizer_data_dtor(&d->opt);
-		survive_imu_tracker_free(&d->tracker);
+		survive_kalman_tracker_free(&d->tracker);
 		survive_detach_config(ctx, "disable-lighthouse", &d->disable_lighthouse);
 		survive_detach_config(ctx, "sensor-variance-per-sec", &d->sensor_variance_per_second);
 		survive_detach_config(ctx, "sensor-variance", &d->sensor_variance);
@@ -807,9 +807,9 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 			return 0;
 
 		if (d->useIMU) {
-			survive_imu_tracker_integrate_imu(&d->tracker, imu);
+			survive_kalman_tracker_integrate_imu(&d->tracker, imu);
 		} else if (d->useKalman) {
-			survive_imu_tracker_report_state(pd, &d->tracker);
+			survive_kalman_tracker_report_state(pd, &d->tracker);
 		}
 
 		general_optimizer_data_record_imu(&d->opt, imu);

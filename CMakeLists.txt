@@ -117,7 +117,7 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
   ./src/survive_default_devices.c
   ./src/survive_disambiguator.c
   ./src/survive_driverman.c
-  ./src/survive_imu.c
+        src/survive_kalman_tracker.c
   ./src/survive_optimizer.c
   ./src/survive_playback.c        
   ./src/survive_plugins.c

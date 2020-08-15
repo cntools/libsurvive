@@ -5,6 +5,8 @@
 
 #include "math.h"
 
+typedef struct CvMat survive_kalman_gain_matrix;
+
 #define KALMAN_LOG_LEVEL 1000
 
 #define CREATE_STACK_MAT(name, rows, cols)                                                                             \
@@ -70,9 +72,9 @@ static void sv_print_mat(const char *name, const CvMat *M, bool newlines) {
 }
 
 static void kalman_linear_predict(FLT t, const survive_kalman_state_t *k, const CvMat *x_t0_t0, CvMat *x_t0_t1) {
-	int state_cnt = k->info.state_cnt;
+	int state_cnt = k->state_cnt;
 	CREATE_STACK_MAT(F, state_cnt, state_cnt);
-	k->info.F_fn(t, _F, x_t0_t0);
+	k->F_fn(t, _F, x_t0_t0);
 
 	// X_k|k-1 = F * X_k-1|k-1
 	cvGEMM(&F, x_t0_t0, 1, 0, 0, x_t0_t1, 0);
@@ -82,7 +84,9 @@ void user_is_q(void *user, FLT t, const struct CvMat *x, FLT *Q_out) {
 	const FLT *q = (const FLT *)user;
 	scalend(Q_out, q, t, x->rows * x->rows);
 }
-void survive_kalman_init(survive_kalman_t *k, size_t state_cnt, F_fn_t F, Q_fn_t q_fn, void *user) {
+
+void survive_kalman_state_init(survive_kalman_state_t *k, size_t state_cnt, kalman_transition_fn_t F,
+							   kalman_process_noise_fn_t q_fn, void *user, FLT *state) {
 	memset(k, 0, sizeof(*k));
 
 	k->state_cnt = (int)state_cnt;
@@ -93,34 +97,25 @@ void survive_kalman_init(survive_kalman_t *k, size_t state_cnt, F_fn_t F, Q_fn_t
 
 	k->Predict_fn = kalman_linear_predict;
 	k->user = user;
-}
-
-void survive_kalman_free(survive_kalman_t *k) {
-	free(k->P);
-	k->P = 0;
-}
-
-void survive_kalman_state_init(survive_kalman_state_t *k, size_t state_cnt, F_fn_t F, Q_fn_t q_fn, void *user,
-							   FLT *state) {
-	memset(k, 0, sizeof(*k));
-	survive_kalman_init(&k->info, state_cnt, F, q_fn, user);
 
 	k->state = state;
 
 	if (!k->state) {
 		k->State_is_heap = true;
-		k->state = SV_CALLOC(1, sizeof(FLT) * k->info.state_cnt);
+		k->state = SV_CALLOC(1, sizeof(FLT) * k->state_cnt);
 	}
 }
 
 void survive_kalman_state_free(survive_kalman_state_t *k) {
-	survive_kalman_free(&k->info);
+	free(k->P);
+	k->P = 0;
+
 	if (k->State_is_heap)
 		free(k->state);
 	k->state = 0;
 }
 
-void survive_kalman_predict_covariance(FLT t, const CvMat *F, const CvMat *x, survive_kalman_t *k) {
+void survive_kalman_predict_covariance(FLT t, const CvMat *F, const CvMat *x, survive_kalman_state_t *k) {
 	int dims = k->state_cnt;
 
 	CREATE_STACK_MAT(tmp, dims, dims);
@@ -145,8 +140,8 @@ void survive_kalman_predict_covariance(FLT t, const CvMat *F, const CvMat *x, su
 	}
 }
 
-static void survive_kalman_update_covariance(survive_kalman_t *k, survive_kalman_gain_matrix *K,
-											 const survive_kalman_measurement_matrix *H, const CvMat *R) {
+static void survive_kalman_update_covariance(survive_kalman_state_t *k, survive_kalman_gain_matrix *K,
+											 const struct CvMat *H, const CvMat *R) {
 	int dims = k->state_cnt;
 
 	CvMat Pk_k = cvMat(dims, dims, SURVIVE_CV_F, k->P);
@@ -209,7 +204,7 @@ static inline void survive_kalman_predict(FLT t, survive_kalman_state_t *k, cons
 	if (t == k->t) {
 		cvCopy(x_t0_t0, x_t0_t1, 0);
 	} else {
-		k->info.Predict_fn(t - k->t, k, x_t0_t0, x_t0_t1);
+		k->Predict_fn(t - k->t, k, x_t0_t0, x_t0_t1);
 	}
 	if (log_level > KALMAN_LOG_LEVEL) {
 		fprintf(stdout, "INFO kalman_predict to ");
@@ -236,15 +231,16 @@ static void linear_update(FLT dt, survive_kalman_state_t *k, const CvMat *y, con
 	cvGEMM(K, y, 1, x_t0, 1, x_t1, 0);
 }
 
-static CvMat *survive_kalman_find_residual(FLT dt, survive_kalman_state_t *k, Map_to_obs Hfn, void *user,
-										   const struct CvMat *Z, const struct CvMat *x, CvMat *y, CvMat *H) {
+static CvMat *survive_kalman_find_residual(FLT dt, survive_kalman_state_t *k, kalman_measurement_model_fn_t Hfn,
+										   void *user, const struct CvMat *Z, const struct CvMat *x, CvMat *y,
+										   CvMat *H) {
 	for (int i = 0; i < H->rows * H->cols; i++)
 		CV_FLT_PTR(H)[i] = INFINITY;
 	CvMat *rtn = 0;
 	if (Hfn) {
-		// typedef void (*Map_to_obs)(void* user, FLT t, const struct CvMat * Z, const struct CvMat *x_t, struct CvMat*
-		// h_x_t, struct CvMat* H_k);
-		bool okay = Hfn(user, dt, Z, x, y, H);
+		// typedef void (*kalman_measurement_model_fn_t)(void* user, FLT t, const struct CvMat * Z, const struct CvMat
+		// *x_t, struct CvMat* h_x_t, struct CvMat* H_k);
+		bool okay = Hfn(user, Z, x, y, H);
 		if (okay == false) {
 			return 0;
 		}
@@ -259,10 +255,11 @@ static CvMat *survive_kalman_find_residual(FLT dt, survive_kalman_state_t *k, Ma
 	return rtn;
 }
 
-FLT survive_kalman_predict_update_state_extended_adaptive_internal(FLT t, survive_kalman_state_t *k,
-																   const struct CvMat *Z, FLT *Rv, Map_to_obs Hfn,
-																   void *user, bool adaptive) {
-	int state_cnt = k->info.state_cnt;
+static FLT survive_kalman_predict_update_state_extended_adaptive_internal(FLT t, survive_kalman_state_t *k,
+																		  const struct CvMat *Z, FLT *Rv,
+																		  kalman_measurement_model_fn_t Hfn, void *user,
+																		  bool adaptive) {
+	int state_cnt = k->state_cnt;
 	struct CvMat *H = 0;
 	FLT dt = t - k->t;
 
@@ -273,8 +270,9 @@ FLT survive_kalman_predict_update_state_extended_adaptive_internal(FLT t, surviv
 	}
 
 	CREATE_STACK_MAT(Pm, state_cnt, state_cnt);
+	// Adaptive update happens on the covariance matrix prior; so save it.
 	if (adaptive)
-		memcpy(_Pm, k->info.P, sizeof(FLT) * state_cnt * state_cnt);
+		memcpy(_Pm, k->P, sizeof(FLT) * state_cnt * state_cnt);
 
 	CREATE_STACK_MAT(y, Z->rows, Z->cols);
 
@@ -300,12 +298,12 @@ FLT survive_kalman_predict_update_state_extended_adaptive_internal(FLT t, surviv
 		for (int i = 0; i < state_cnt * state_cnt; i++)
 			_F[i] = NAN;
 
-		k->info.F_fn(dt, _F, &x1);
+		k->F_fn(dt, _F, &x1);
 		for (int i = 0; i < F.rows * F.cols; i++)
 			assert(!isnan(_F[i]));
 
 		// Run predict
-		survive_kalman_predict_covariance(dt, &F, &x2, &k->info);
+		survive_kalman_predict_covariance(dt, &F, &x2, k);
 	}
 
 	// Run update; filling in K
@@ -316,7 +314,7 @@ FLT survive_kalman_predict_update_state_extended_adaptive_internal(FLT t, surviv
 		mat_eye_diag(&R, Rv);
 	}
 
-	survive_kalman_update_covariance(&k->info, &K, H, &R);
+	survive_kalman_update_covariance(k, &K, H, &R);
 
 	linear_update(dt, k, &y, &K, &x2, &x1);
 
@@ -326,9 +324,11 @@ FLT survive_kalman_predict_update_state_extended_adaptive_internal(FLT t, surviv
 	}
 
 	if (adaptive) {
+		// https://arxiv.org/pdf/1702.00884.pdf
 		CREATE_STACK_MAT(PostHStorage, Z->rows, state_cnt);
 		CREATE_STACK_MAT(HPkHt, Z->rows, Z->rows);
 		CREATE_STACK_MAT(yyt, Z->rows, Z->rows);
+
 		CvMat *PostH = survive_kalman_find_residual(dt, k, Hfn, user, Z, &x1, &y, &PostHStorage);
 		cvMulTransposed(&y, &yyt, false, 0, 1);
 
@@ -347,13 +347,16 @@ FLT survive_kalman_predict_update_state_extended_adaptive_internal(FLT t, surviv
 		for (int i = 0; i < Z->rows; i++) {
 			for (int j = 0; j < Z->rows; j++) {
 				size_t idx = i + j * Z->rows;
+
+				// HPkHt should in theory have positive diagonal but
+				// rounding errors can push it over. Absolute value of it here
+				// to preserve a positive diaganol in R.
 				FLT HpkH = i == j ? fabs(_HPkHt[idx]) : _HPkHt[idx];
 				Rs[idx] = a * Rs[idx] + b * (_yyt[idx] + HpkH);
 			}
 		}
 
 		sv_print_mat_v(200, "Adaptive R", &R, true);
-		assert(Z->rows > 1 || Rs[0] > 0);
 	}
 
 	k->t = t;
@@ -362,45 +365,38 @@ FLT survive_kalman_predict_update_state_extended_adaptive_internal(FLT t, surviv
 }
 
 FLT survive_kalman_predict_update_state_extended_adaptive(FLT t, survive_kalman_state_t *k, const struct CvMat *Z,
-														  FLT *R, Map_to_obs Hfn, void *user) {
+														  FLT *R, kalman_measurement_model_fn_t Hfn, void *user) {
 	return survive_kalman_predict_update_state_extended_adaptive_internal(t, k, Z, R, Hfn, user, true);
 }
 
 FLT survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k, const struct CvMat *Z, const FLT *R,
-												 Map_to_obs Hfn, void *user) {
+												 kalman_measurement_model_fn_t Hfn, void *user) {
 	return survive_kalman_predict_update_state_extended_adaptive_internal(t, k, Z, (FLT *)R, Hfn, user, false);
 }
 
-void linear_measurement(void *user, FLT t, const struct CvMat *Z, const struct CvMat *x_t, struct CvMat *h_x_t,
-						struct CvMat *H_k) {
-	const survive_kalman_measurement_matrix *H;
-}
-
-FLT survive_kalman_predict_update_state(FLT t, survive_kalman_state_t *k, const struct CvMat *Z,
-										const survive_kalman_measurement_matrix *H, const FLT *R) {
-	// survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k, const struct CvMat *Z, const FLT*
-	// R, Map_to_obs Hfn, void* user) {
+FLT survive_kalman_predict_update_state(FLT t, survive_kalman_state_t *k, const struct CvMat *Z, const struct CvMat *H,
+										const FLT *R) {
 	return survive_kalman_predict_update_state_extended(t, k, Z, R, 0, (void *)H);
 }
 SURVIVE_EXPORT FLT survive_kalman_predict_update_state_adaptive(FLT t, survive_kalman_state_t *k, const struct CvMat *Z,
-																const survive_kalman_measurement_matrix *H, FLT *R) {
+																const struct CvMat *H, FLT *R) {
 	return survive_kalman_predict_update_state_extended_adaptive(t, k, Z, R, 0, (void *)H);
 }
 
 void survive_kalman_predict_state(FLT t, const survive_kalman_state_t *k, size_t start_index, size_t end_index,
 								  FLT *_out) {
-	CREATE_STACK_MAT(tmpOut, k->info.state_cnt, 1);
-	CvMat x = cvMat(k->info.state_cnt, 1, SURVIVE_CV_F, k->state);
+	CREATE_STACK_MAT(tmpOut, k->state_cnt, 1);
+	CvMat x = cvMat(k->state_cnt, 1, SURVIVE_CV_F, k->state);
 
 	FLT dt = t == 0. ? 0 : t - k->t;
 	FLT *copyFrom = k->state;
 	if (dt > 0) {
-		k->info.Predict_fn(dt, k, &x, &tmpOut);
+		k->Predict_fn(dt, k, &x, &tmpOut);
 		copyFrom = _tmpOut;
 	}
 	memcpy(_out, copyFrom + start_index, (end_index - start_index) * sizeof(FLT));
 }
 void survive_kalman_set_P(survive_kalman_state_t *k, const FLT *p) {
-	CvMat P = cvMat(k->info.state_cnt, k->info.state_cnt, SURVIVE_CV_F, k->info.P);
+	CvMat P = cvMat(k->state_cnt, k->state_cnt, SURVIVE_CV_F, k->P);
 	mat_eye_diag(&P, p);
 }

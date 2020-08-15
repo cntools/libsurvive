@@ -1,9 +1,9 @@
-#include "survive_imu.h"
+#include "survive_kalman_tracker.h"
 #include "linmath.h"
 #include "math.h"
-#include "survive_imu.h"
 #include "survive_internal.h"
 #include "survive_kalman.h"
+#include "survive_kalman_tracker.h"
 #include <assert.h>
 #include <malloc.h>
 #include <memory.h>
@@ -15,16 +15,16 @@
 
 #define SURVIVE_MODEL_STATE_CNT (sizeof(SurviveKalmanModel) / sizeof(FLT))
 
-static bool survive_imu_tracker_position_found(SurviveIMUTracker *tracker) {
+static bool survive_kalman_tracker_position_found(SurviveKalmanTracker *tracker) {
 	FLT pos_variance = 0;
 	FLT vel_variance = 0;
 	FLT var_diag[SURVIVE_MODEL_STATE_CNT];
 	for (int i = 0; i < SURVIVE_MODEL_STATE_CNT; i++) {
 		if (i < 7)
-			pos_variance += fabs(tracker->model.info.P[SURVIVE_MODEL_STATE_CNT * i + i]);
+			pos_variance += fabs(tracker->model.P[SURVIVE_MODEL_STATE_CNT * i + i]);
 		else if (i < 13)
-			vel_variance += fabs(tracker->model.info.P[SURVIVE_MODEL_STATE_CNT * i + i]);
-		var_diag[i] = tracker->model.info.P[SURVIVE_MODEL_STATE_CNT * i + i];
+			vel_variance += fabs(tracker->model.P[SURVIVE_MODEL_STATE_CNT * i + i]);
+		var_diag[i] = tracker->model.P[SURVIVE_MODEL_STATE_CNT * i + i];
 	}
 
 	if (pos_variance > .1) {
@@ -36,7 +36,7 @@ static bool survive_imu_tracker_position_found(SurviveIMUTracker *tracker) {
 	return true;
 }
 
-static void normalize_model(SurviveIMUTracker *pTracker) {
+static void normalize_model(SurviveKalmanTracker *pTracker) {
 	quatnormalize(pTracker->state.Pose.Rot, pTracker->state.Pose.Rot);
 }
 
@@ -58,17 +58,24 @@ static inline void arr_eye_diag(FLT *m, int rows, int cols, const FLT *v) {
 
 struct map_light_data_ctx {
 	PoserDataLight *pdl;
-	SurviveIMUTracker *tracker;
+	SurviveKalmanTracker *tracker;
 };
-static bool map_light_data(void *user, FLT t, const struct CvMat *Z, const struct CvMat *x_t, struct CvMat *y,
+
+/**
+ * This function reuses the reproject functions to estimate what it thinks the lightcap angle should be based on x_t,
+ * and uses that measurement to compare from the actual observed angle. These functions have jacobian functions that
+ * correspond to them; see @survive_reproject.c and @survive_reproject_gen2.c
+ */
+static bool map_light_data(void *user, const struct CvMat *Z, const struct CvMat *x_t, struct CvMat *y,
 						   struct CvMat *H_k) {
 	struct map_light_data_ctx *cbctx = (struct map_light_data_ctx *)user;
 	const struct PoserDataLight *pdl = cbctx->pdl;
-	const SurviveIMUTracker *tracker = cbctx->tracker;
-	SurviveObject *so = cbctx->tracker->so;
-	struct SurviveContext *ctx = cbctx->tracker->so->ctx;
+	const SurviveKalmanTracker *tracker = cbctx->tracker;
+
+	SurviveObject *so = tracker->so;
+	struct SurviveContext *ctx = tracker->so->ctx;
 	const survive_reproject_model_t *mdl =
-		cbctx->tracker->so->ctx->lh_version == 0 ? &survive_reproject_model : &survive_reproject_gen2_model;
+		tracker->so->ctx->lh_version == 0 ? &survive_reproject_model : &survive_reproject_gen2_model;
 
 	int axis = 0;
 	switch (pdl->hdr.pt) {
@@ -105,12 +112,12 @@ static bool map_light_data(void *user, FLT t, const struct CvMat *Z, const struc
 	return true;
 }
 
-void survive_imu_tracker_integrate_light(SurviveIMUTracker *tracker, PoserDataLight *data) {
+void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, PoserDataLight *data) {
 	SurviveContext *ctx = tracker->so->ctx;
 
 	// A single light cap measurement has an infinite amount of solutions along a plane; so it only helps if we are
 	// already in a good place
-	if (!survive_imu_tracker_position_found(tracker)) {
+	if (!survive_kalman_tracker_position_found(tracker)) {
 		return;
 	}
 
@@ -127,26 +134,35 @@ void survive_imu_tracker_integrate_light(SurviveIMUTracker *tracker, PoserDataLi
 			.tracker = tracker,
 			.pdl = data,
 		};
-		// survive_kalman_predict_update_state_extended_adaptive(time, &tracker->model, &Z, &tracker->light_var,
-		// map_light_data, &cbctx);
+
 		tracker->stats.lightcap_total_error += survive_kalman_predict_update_state_extended(
 			time, &tracker->model, &Z, &tracker->light_var, map_light_data, &cbctx);
 		tracker->stats.lightcap_count++;
 
 		normalize_model(tracker);
+		survive_kalman_tracker_report_state(&data->hdr, tracker);
 	}
 	SV_VERBOSE(200, "Resultant state %f (%f) (lightcap) " Point16_format, time, delta,
 			   LINMATH_VEC16_EXPAND(tracker->model.state));
-
-	survive_imu_tracker_report_state(&data->hdr, tracker);
-	// assert(norm3d(tracker->state.Acc) < 1);
 }
 
 struct map_imu_data_ctx {
 	bool use_gyro, use_accel;
-	SurviveIMUTracker *tracker;
+	SurviveKalmanTracker *tracker;
 };
-static bool map_imu_data(void *user, FLT t, const struct CvMat *Z, const struct CvMat *x_t, struct CvMat *y,
+
+/**
+ * The prediction for IMU given x_t is:
+ *
+ * [Position, Rotation, Velocity, Ang_Velocity, Acc, Gyro_Bias] = x_t
+ *
+ * acc_predict  = Rotation^-1 * (Acc/9.80665 + [0, 0, 1])
+ * gyro_predict = Rotation^-1 * Ang_Velocity + Gyro_Bias
+ *
+ * The actual code for this is generated from tools/generate_math_functions/imu_functions.py. It isn't done in
+ * C natively to allow for the jacobian code to be generated using symengine
+ */
+static bool map_imu_data(void *user, const struct CvMat *Z, const struct CvMat *x_t, struct CvMat *y,
 						 struct CvMat *H_k) {
 	struct map_imu_data_ctx *fn_ctx = user;
 	FLT h_x[6];
@@ -170,13 +186,14 @@ static bool map_imu_data(void *user, FLT t, const struct CvMat *Z, const struct 
 	return true;
 }
 
-void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU *data) {
+void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDataIMU *data) {
 	SurviveContext *ctx = tracker->so->ctx;
 
 	// Wait til observation is in before reading IMU; gets rid of bad IMU data at the start
 	if (tracker->model.t == 0) {
 		return;
 	}
+
 	SV_VERBOSE(200, "%s imu mag %f", tracker->so->codename, norm3d(data->accel));
 	FLT time = data->hdr.timecode / (FLT)tracker->so->timebase_hz;
 	FLT time_diff = time - tracker->model.t;
@@ -192,16 +209,10 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 				data->hdr.timecode);
 	}
 
-	bool standStill =
-		SurviveSensorActivations_stationary_time(&tracker->so->activations) > (tracker->so->timebase_hz / 10.);
-
-	bool hasRotation = false;
-	bool hasAngularVel = standStill;
-	FLT rotation_state_update[7] = {0};
-	FLT rotation_variance[] = {1e10, 1e10, 1e10, 1e10, 1e10, 1e10};
+	FLT rotation_variance[] = {1e5, 1e5, 1e5, 1e5, 1e5, 1e5};
 
 	struct map_imu_data_ctx fn_ctx = {.tracker = tracker};
-	if (tracker->acc_var >= 0 && fabs(tracker->model.info.P[0]) < 1.) {
+	if (tracker->acc_var >= 0 && fabs(tracker->model.P[0]) < 1.) {
 		fn_ctx.use_accel = true;
 		for (int i = 0; i < 3; i++)
 			rotation_variance[i] = tracker->acc_var;
@@ -229,23 +240,10 @@ void survive_imu_tracker_integrate_imu(SurviveIMUTracker *tracker, PoserDataIMU 
 		normalize_model(tracker);
 	}
 
-	if (false && standStill) {
-		FLT n = norm3d(data->accel);
-
-		assert(fabs(1. - n) < .01);
-		FLT zeros[9] = {0.};
-		FLT v = 1e-10;
-		FLT R[] = {v, v, v, v, v, v, v, v, v};
-		SV_VERBOSE(200, "Integrating stand still " Point9_format " with cov " Point9_format, LINMATH_VEC9_EXPAND(zeros),
-				   LINMATH_VEC9_EXPAND(R));
-
-		survive_imu_integrate_velocity_angular_velocity_acceleration(tracker, time, zeros, R);
-	}
-
-	survive_imu_tracker_report_state(&data->hdr, tracker);
+	survive_kalman_tracker_report_state(&data->hdr, tracker);
 }
 
-void survive_imu_tracker_predict(const SurviveIMUTracker *tracker, FLT t, SurvivePose *out) {
+void survive_kalman_tracker_predict(const SurviveKalmanTracker *tracker, FLT t, SurvivePose *out) {
 	// if (tracker->model.info.P[0] > 100 || tracker->model.info.P[0] > 100 || tracker->model.t == 0)
 	//	return;
 
@@ -258,18 +256,21 @@ void survive_imu_tracker_predict(const SurviveIMUTracker *tracker, FLT t, Surviv
 	struct SurviveContext *ctx = tracker->so->ctx;
 	SV_VERBOSE(300, "Predict pose %f %f " SurvivePose_format, t, t - tracker->model.t, SURVIVE_POSE_EXPAND(*out))
 }
-static void model_q_fn(void *user, FLT t, const CvMat *x, FLT *q_out) {
-	SurviveIMUTracker *tracker = (SurviveIMUTracker *)user;
-	SurviveKalmanModel *state = (SurviveKalmanModel *)CV_FLT_PTR(x);
 
-	FLT q_p = tracker->position_process_weight;
-	FLT s_w = tracker->rotation_process_weight;
+static void model_q_fn(void *user, FLT t, const CvMat *x, FLT *q_out) {
+	SurviveKalmanTracker *tracker = (SurviveKalmanTracker *)user;
+	SurviveKalmanModel *state = (SurviveKalmanModel *)CV_FLT_PTR(x);
+	/*
+	 * Due to the rotational terms in the model, the process noise covariance is complicated. It mixes a XYZ third order
+	 * positional model with a second order rotational model with tuning parameters
+	 */
 
 	FLT t2 = t * t;
 	FLT t3 = t * t * t;
 	FLT t4 = t2 * t2;
 	FLT t5 = t3 * t2;
 
+	/* ================== Positional ============================== */
 	// Estimation with Applications to Tracking and Navigation: Theory Algorithms and Software Ch 6
 	// http://wiki.dmdevelopment.ru/wiki/Download/Books/Digitalimageprocessing/%D0%9D%D0%BE%D0%B2%D0%B0%D1%8F%20%D0%BF%D0%BE%D0%B4%D0%B1%D0%BE%D1%80%D0%BA%D0%B0%20%D0%BA%D0%BD%D0%B8%D0%B3%20%D0%BF%D0%BE%20%D1%86%D0%B8%D1%84%D1%80%D0%BE%D0%B2%D0%BE%D0%B9%20%D0%BE%D0%B1%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B5%20%D1%81%D0%B8%D0%B3%D0%BD%D0%B0%D0%BB%D0%BE%D0%B2/Estimation%20with%20Applications%20to%20Tracking%20and%20Navigation/booktext@id89013302placeboie.pdf
 
@@ -278,43 +279,35 @@ static void model_q_fn(void *user, FLT t, const CvMat *x, FLT *q_out) {
 
 	FLT Q_vel[] = {t3 / 3., t2 / 2., t};
 
-	FLT p_p = q_p * Q_acc[0] + tracker->vel_var * Q_vel[0] + tracker->pos_var * t;
-	FLT p_v = q_p * Q_acc[1] + tracker->vel_var * Q_vel[1];
+	FLT q_p = tracker->process_weight_acc;
+	FLT p_p = q_p * Q_acc[0] + tracker->process_weight_vel * Q_vel[0] + tracker->process_weight_pos * t;
+	FLT p_v = q_p * Q_acc[1] + tracker->process_weight_vel * Q_vel[1];
 	FLT p_a = q_p * Q_acc[2];
-	FLT v_v = q_p * Q_acc[3] + tracker->vel_var * Q_vel[2];
+	FLT v_v = q_p * Q_acc[3] + tracker->process_weight_vel * Q_vel[2];
 	FLT v_a = q_p * Q_acc[4];
 	FLT a_a = q_p * Q_acc[5];
 
+
+	/* ================== Rotational ==============================
+	 * 	https://www.ucalgary.ca/engo_webdocs/GL/96.20096.JSchleppe.pdf
+	 *      !!! NOTE: This document uses x,y,z,w quaternions !!!
+	  This is a rework using the same methodology. Some helper output functions are in the tools/generate_math_functions
+	  code.
+	 */
+	FLT s_w = tracker->process_weight_ang_velocity;
 	FLT s_f = s_w / 12. * t3;
 	FLT s_s = s_w / 4. * t2;
-
-	FLT *q = state->Pose.Rot;
 	FLT qw = state->Pose.Rot[0], qx = state->Pose.Rot[1], qy = state->Pose.Rot[2], qz = state->Pose.Rot[3];
 	FLT qws = qw * qw, qxs = qx * qx, qys = qy * qy, qzs = qz * qz;
 	FLT qs = qws + qxs + qys + qzs;
 
+	FLT rv = tracker->process_weight_rotation * t;
+
+	/* The gyro bias is expected to change, but slowly through time */
 	FLT gb = 1e-10 * t;
 
-	/*
-	 * 	https://www.ucalgary.ca/engo_webdocs/GL/96.20096.JSchleppe.pdf
-	 *      !!! NOTE: This document uses x,y,z,w quaternions !!!
-	 *      This is a rework using the same methodology. Some helper output functions are in the
-	 tools/generate_math_functions
-	 *      code.
-	 sf = sw / 12 * t3
-	 ss = sw / 4 * t2
-	   (qs-qws)*sf,     -qw*qx*sf,     -qw*qy*sf,    -qw*qz*sf,              -qx*ss, -qy*ss, -qz*ss,
-		 -qw*qx*sf, (qs - qxs)*sf,     -qx*qy*sf,    -qx*qz*sf,               qw*ss, -qz*ss,  qy*ss,
-		 -qw*qy*sf,     -qx*qy*sf, (qs - qys)*sf,    -qy*qz*sf,               qz*ss,  qw*ss, -qx*ss,
-		 -qw*qz*sf,     -qx*qz*sf,     -qy*qz*sf, (qs -qzs)*sf,              -qy*ss,  qx*ss,  qw*ss,
 
-
-
-			-qx*ss,      qw*ss,            qz*ss,       -qy*ss,                t*sw,      0,      0,
-			-qy*ss,     -qz*ss,            qw*ss,        qx*ss,                   0,   t*sw,      0,
-			-qz*ss,      qy*ss,           -qx*ss,        qw*ss,                   0,      0,   t*sw,
-
-	 */
+	// This is the best way I could think to write the final block matrix...
 	// clang-format off
 	FLT Q[] = {
 	//	      x        y        z                 qw                 qx                 qy                 qz         vx       vy       vz          avx      avy      avz       ax       ay       az        bx, by, bz,
@@ -322,10 +315,10 @@ static void model_q_fn(void *user, FLT t, const CvMat *x, FLT *q_out) {
 		      0,     p_p,       0,                 0,                 0,                 0,                 0,         0,     p_v,       0,           0,       0,       0,       0,     p_a,       0,        0,  0,  0, // y
 		      0,       0,     p_p,                 0,                 0,                 0,                 0,         0,       0,     p_v,           0,       0,       0,       0,       0,     p_a,        0,  0,  0, // z
 
-		      0,       0,       0,      s_f*(qs-qws),      s_f*(-qw*qx),      s_f*(-qw*qy),      s_f*(-qw*qz),         0,       0,       0,     -s_s*qx, -s_s*qy, -s_s*qz,       0,       0,       0,        0,  0,  0, // qw
-		      0,       0,       0,      s_f*(-qw*qx),      s_f*(qs-qxs),      s_f*(-qx*qy),      s_f*(-qx*qz),         0,       0,       0,      s_s*qw, -s_s*qz,  s_s*qy,       0,       0,       0,        0,  0,  0, // qx
-		      0,       0,       0,      s_f*(-qw*qy),      s_f*(-qx*qy),      s_f*(qs-qys),      s_f*(-qy*qz),         0,       0,       0,      s_s*qz,  s_s*qw, -s_s*qx,       0,       0,       0,        0,  0,  0, // qy
-		      0,       0,       0,      s_f*(-qw*qz),      s_f*(-qx*qz),      s_f*(-qy*qz),      s_f*(qs-qzs),         0,       0,       0,     -s_s*qy,  s_s*qx,  s_s*qw,       0,       0,       0,        0,  0,  0, // qz
+		      0,       0,       0,   rv+s_f*(qs-qws),      s_f*(-qw*qx),      s_f*(-qw*qy),      s_f*(-qw*qz),         0,       0,       0,     -s_s*qx, -s_s*qy, -s_s*qz,       0,       0,       0,        0,  0,  0, // qw
+		      0,       0,       0,      s_f*(-qw*qx),   rv+s_f*(qs-qxs),      s_f*(-qx*qy),      s_f*(-qx*qz),         0,       0,       0,      s_s*qw, -s_s*qz,  s_s*qy,       0,       0,       0,        0,  0,  0, // qx
+		      0,       0,       0,      s_f*(-qw*qy),      s_f*(-qx*qy),   rv+s_f*(qs-qys),      s_f*(-qy*qz),         0,       0,       0,      s_s*qz,  s_s*qw, -s_s*qx,       0,       0,       0,        0,  0,  0, // qy
+		      0,       0,       0,      s_f*(-qw*qz),      s_f*(-qx*qz),      s_f*(-qy*qz),   rv+s_f*(qs-qzs),         0,       0,       0,     -s_s*qy,  s_s*qx,  s_s*qw,       0,       0,       0,        0,  0,  0, // qz
 
 
 		      p_v,     0,       0,                 0,                 0,                 0,                 0,       v_v,       0,       0,           0,       0,       0,     v_a,       0,       0,        0,  0,  0, // vx
@@ -355,6 +348,11 @@ static void model_q_fn(void *user, FLT t, const CvMat *x, FLT *q_out) {
 	// clang-format on
 	memcpy(q_out, Q, sizeof(FLT) * SURVIVE_MODEL_STATE_CNT * SURVIVE_MODEL_STATE_CNT);
 }
+
+/**
+ * The prediction model and associated F matrix use generated code to simplifiy the jacobian. This might not be strictly
+ * necessary but allows for quicker development.
+ */
 static void model_predict(FLT t, const survive_kalman_state_t *k, const CvMat *f_in, CvMat *f_out) {
 	assert(t > 0);
 	const SurviveKalmanModel *s = (const SurviveKalmanModel *)k->state;
@@ -369,52 +367,7 @@ static void model_predict_jac(FLT t, FLT *f_out, const struct CvMat *x0) {
 	}
 }
 
-void survive_imu_integrate_velocity_angular_velocity_acceleration(SurviveIMUTracker *tracker, FLT time,
-																  const FLT *vel_aa_acc, const FLT *R) {
-	// clang-format off
-	FLT _H[] = {
-		0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
-	};
-	assert(sizeof(_H) == sizeof(FLT) * 9 * tracker->model.info.state_cnt);
-	// clang-format on
-	CvMat H = cvMat(9, tracker->model.info.state_cnt, SURVIVE_CV_F, _H);
-	CvMat Zp = cvMat(9, 1, SURVIVE_CV_F, (void *)vel_aa_acc);
-	survive_kalman_predict_update_state(time, &tracker->model, &Zp, &H, R);
-
-	SurviveContext *ctx = tracker->so->ctx;
-	SV_VERBOSE(200, "Resultant state %f (vel_accel) " Point16_format, time, LINMATH_VEC16_EXPAND(tracker->model.state));
-}
-
-SURVIVE_EXPORT void survive_imu_integrate_velocity_acceleration(SurviveIMUTracker *tracker, FLT time,
-																const FLT *velocity_accel, const FLT *R) {
-	// clang-format off
-	FLT _H[] = {
-		0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
-	};
-	assert(sizeof(_H) == sizeof(FLT) * 6 * tracker->model.info.state_cnt);
-	// clang-format on
-	CvMat H = cvMat(6, tracker->model.info.state_cnt, SURVIVE_CV_F, _H);
-	CvMat Zp = cvMat(6, 1, SURVIVE_CV_F, (void *)velocity_accel);
-	survive_kalman_predict_update_state(time, &tracker->model, &Zp, &H, R);
-
-	SurviveContext *ctx = tracker->so->ctx;
-	SV_VERBOSE(200, "Resultant state %f (vel_accel) " Point16_format, time, LINMATH_VEC16_EXPAND(tracker->model.state));
-}
-
-FLT survive_imu_integrate_pose(SurviveIMUTracker *tracker, FLT time, const SurvivePose *pose, const FLT *R) {
+FLT survive_imu_integrate_pose(SurviveKalmanTracker *tracker, FLT time, const SurvivePose *pose, const FLT *R) {
 	// clang-format off
 	FLT _H[] = {
 		1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -427,7 +380,7 @@ FLT survive_imu_integrate_pose(SurviveIMUTracker *tracker, FLT time, const Survi
 	};
 	assert(sizeof(_H) == (SURVIVE_MODEL_STATE_CNT * sizeof(FLT) * 7));
 	// clang-format on
-	CvMat H = cvMat(7, tracker->model.info.state_cnt, SURVIVE_CV_F, _H);
+	CvMat H = cvMat(7, tracker->model.state_cnt, SURVIVE_CV_F, _H);
 	CvMat Zp = cvMat(7, 1, SURVIVE_CV_F, (void *)pose->Pos);
 	FLT rtn = 0;
 	if (R) {
@@ -440,28 +393,10 @@ FLT survive_imu_integrate_pose(SurviveIMUTracker *tracker, FLT time, const Survi
 	return rtn;
 }
 
-FLT survive_imu_integrate_position(SurviveIMUTracker *tracker, FLT time, const LinmathVec3d position, const FLT *R) {
-	// clang-format off
-	FLT _H[] = {
-		1., 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 1., 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 1., 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	};
-	assert(sizeof(_H) == (SURVIVE_MODEL_STATE_CNT * sizeof(FLT) * 3));
-	// clang-format on
-	CvMat H = cvMat(3, tracker->model.info.state_cnt, SURVIVE_CV_F, _H);
-	CvMat Zp = cvMat(3, 1, SURVIVE_CV_F, (void *)position);
-	return survive_kalman_predict_update_state(time, &tracker->model, &Zp, &H, R);
-}
-
-void survive_imu_tracker_integrate_observation(PoserData *pd, SurviveIMUTracker *tracker, const SurvivePose *pose,
+void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTracker *tracker, const SurvivePose *pose,
 											   const FLT *R) {
 
 	survive_long_timecode timecode = pd->timecode;
-
-	if (tracker->last_data.datamask == 0) {
-		tracker->last_data.datamask = 1;
-	}
 
 	struct SurviveContext *ctx = tracker->so->ctx;
 	FLT time = timecode / (FLT)tracker->so->timebase_hz;
@@ -479,34 +414,29 @@ void survive_imu_tracker_integrate_observation(PoserData *pd, SurviveIMUTracker 
 		}
 	}
 
-	if (tracker->light_pos_var >= 0 && tracker->light_rot_var >= 0) {
-		FLT R[] = {tracker->light_pos_var, tracker->light_pos_var, tracker->light_pos_var, tracker->light_rot_var,
-				   tracker->light_rot_var, tracker->light_rot_var, tracker->light_rot_var};
+	if (tracker->obs_pos_var >= 0 && tracker->obs_rot_var >= 0) {
+		FLT R[] = {tracker->obs_pos_var, tracker->obs_pos_var, tracker->obs_pos_var, tracker->obs_rot_var,
+				   tracker->obs_rot_var, tracker->obs_rot_var, tracker->obs_rot_var};
 
 		tracker->stats.obs_total_error += survive_imu_integrate_pose(tracker, time, pose, R);
 		tracker->stats.obs_count++;
 
-		survive_imu_tracker_report_state(pd, tracker);
+		survive_kalman_tracker_report_state(pd, tracker);
 	}
 }
 
-STATIC_CONFIG_ITEM(PROCESS_WEIGHT_POS, "process-weight-pos", 'f', "Position variance per second", 10.)
-STATIC_CONFIG_ITEM(PROCESS_WEIGHT_ROT, "process-weight-rot", 'f', "Rotation variance per second", 1.)
+STATIC_CONFIG_ITEM(PROCESS_WEIGHT_ACC, "process-weight-acc", 'f', "Acc variance per second", 10.)
 
-STATIC_CONFIG_ITEM(POSE_POSITION_VARIANCE_SEC, "filter-pose-var-per-sec", 'f', "Position variance per second", 0.)
-STATIC_CONFIG_ITEM(POSE_ROT_VARIANCE_SEC, "filter-pose-rot-var-per-sec", 'f', "Position rotational variance per second",
-				   0.)
+STATIC_CONFIG_ITEM(PROCESS_WEIGHT_ANGULAR_VELOCITY, "process-weight-ang-vel", 'f', "Angular velocity variance per second", 1.)
+STATIC_CONFIG_ITEM(PROCESS_WEIGHT_VEL, "process-weight-vel", 'f', "Velocity variance per second", 0.)
 
-STATIC_CONFIG_ITEM(VELOCITY_POSITION_VARIANCE_SEC, "filter-vel-var-per-sec", 'f', "Velocity variance per second", 0.)
-STATIC_CONFIG_ITEM(VELOCITY_ROT_VARIANCE_SEC, "filter-vel-rot-var-per-sec", 'f',
-				   "Velocity rotational variance per second", 0.)
-
-STATIC_CONFIG_ITEM(ACCEL_POSITION_VARIANCE_SEC_TAG, "filter-acc-var-per-sec", 'f', "Accel variance per second", 0.)
+STATIC_CONFIG_ITEM(PROCESS_WEIGHT_POS, "process-weight-pos", 'f', "Position variance per second", 0.)
+STATIC_CONFIG_ITEM(PROCESS_WEIGHT_ROTATION, "process-weight-rot", 'f', "Rotation variance per second", 0.)
 
 STATIC_CONFIG_ITEM(LIGHT_VARIANCE, "light-variance", 'f', "Variance of light sensor readings", 1e-6)
-STATIC_CONFIG_ITEM(LIGHT_POS_VARIANCE, "light-pos-variance", 'f', "Variance of position integration from light capture",
+STATIC_CONFIG_ITEM(OBS_POS_VARIANCE, "obs-pos-variance", 'f', "Variance of position integration from light capture",
 				   .02)
-STATIC_CONFIG_ITEM(LIGHT_ROT_VARIANCE, "light-rot-variance", 'f', "Variance of rotation integration from light capture",
+STATIC_CONFIG_ITEM(OBS_ROT_VARIANCE, "obs-rot-variance", 'f', "Variance of rotation integration from light capture",
 				   .01)
 
 STATIC_CONFIG_ITEM(IMU_ACC_VARIANCE, "imu-acc-variance", 'f', "Variance of accelerometer", 5e-5)
@@ -514,17 +444,23 @@ STATIC_CONFIG_ITEM(IMU_GYRO_VARIANCE, "imu-gyro-variance", 'f', "Variance of gyr
 
 typedef void (*survive_attach_detach_fn)(SurviveContext *ctx, const char *tag, FLT *var);
 
-static void survive_imu_tracker_config(SurviveIMUTracker *tracker, survive_attach_detach_fn fn) {
+static void survive_kalman_tracker_config(SurviveKalmanTracker *tracker, survive_attach_detach_fn fn) {
 	fn(tracker->so->ctx, IMU_ACC_VARIANCE_TAG, &tracker->acc_var);
 	fn(tracker->so->ctx, IMU_GYRO_VARIANCE_TAG, &tracker->gyro_var);
-	fn(tracker->so->ctx, LIGHT_POS_VARIANCE_TAG, &tracker->light_pos_var);
-	fn(tracker->so->ctx, LIGHT_ROT_VARIANCE_TAG, &tracker->light_rot_var);
+
+	fn(tracker->so->ctx, OBS_POS_VARIANCE_TAG, &tracker->obs_pos_var);
+	fn(tracker->so->ctx, OBS_ROT_VARIANCE_TAG, &tracker->obs_rot_var);
 	fn(tracker->so->ctx, LIGHT_VARIANCE_TAG, &tracker->light_var);
-	fn(tracker->so->ctx, PROCESS_WEIGHT_POS_TAG, &tracker->position_process_weight);
-	fn(tracker->so->ctx, PROCESS_WEIGHT_ROT_TAG, &tracker->rotation_process_weight);
+
+	fn(tracker->so->ctx, PROCESS_WEIGHT_ACC_TAG, &tracker->process_weight_acc);
+	fn(tracker->so->ctx, PROCESS_WEIGHT_VEL_TAG, &tracker->process_weight_vel);
+	fn(tracker->so->ctx, PROCESS_WEIGHT_POS_TAG, &tracker->process_weight_pos);
+
+	fn(tracker->so->ctx, PROCESS_WEIGHT_ANGULAR_VELOCITY_TAG, &tracker->process_weight_ang_velocity);
+	fn(tracker->so->ctx, PROCESS_WEIGHT_ROTATION_TAG, &tracker->process_weight_rotation);
 }
 
-void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so) {
+void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *so) {
 	memset(tracker, 0, sizeof(*tracker));
 
 	tracker->so = so;
@@ -535,38 +471,24 @@ void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so) {
 	// origin has a variance of 10m; and the quat can be varied by 4 -- which is
 	// more than any actual normalized quat could be off by.
 
-	FLT accel_pos_var = survive_configf(ctx, ACCEL_POSITION_VARIANCE_SEC_TAG_TAG, SC_GET, 0.0);
-
-	tracker->vel_var = survive_configf(ctx, VELOCITY_POSITION_VARIANCE_SEC_TAG, SC_GET, 0.0);
-	FLT vel_rot_var = survive_configf(ctx, VELOCITY_ROT_VARIANCE_SEC_TAG, SC_GET, 0.0);
-
-	tracker->pos_var = survive_configf(ctx, POSE_POSITION_VARIANCE_SEC_TAG, SC_GET, 0.0);
-	FLT rot_var = survive_configf(ctx, POSE_ROT_VARIANCE_SEC_TAG, SC_GET, 0.0);
-
-	survive_imu_tracker_config(tracker, survive_attach_configf);
+	survive_kalman_tracker_config(tracker, survive_attach_configf);
 
 	survive_kalman_set_logging_level(ctx->log_level);
 	size_t state_cnt = sizeof(SurviveKalmanModel) / sizeof(FLT);
 	survive_kalman_state_init(&tracker->model, state_cnt, model_predict_jac, model_q_fn, tracker,
 							  (FLT *)&tracker->state);
-	tracker->model.info.Predict_fn = model_predict;
+	tracker->model.Predict_fn = model_predict;
 	tracker->state.Pose.Rot[0] = 1;
 
 	for (int i = 0; i < 7; i++) {
-		tracker->model.info.P[i * SURVIVE_MODEL_STATE_CNT + i] = 1e3;
+		tracker->model.P[i * SURVIVE_MODEL_STATE_CNT + i] = 1e3;
 	}
 	for (int i = 16; i < 19; i++) {
-		tracker->model.info.P[i * SURVIVE_MODEL_STATE_CNT + i] = 1;
+		tracker->model.P[i * SURVIVE_MODEL_STATE_CNT + i] = 1;
 	}
 
-	// FLT Q_diag[] = {pos_var, pos_var, pos_var, rot_var, rot_var, rot_var, rot_var,
-	//				vel_pos_var, vel_pos_var, vel_pos_var, vel_rot_var, vel_rot_var, vel_rot_var,
-	//				accel_pos_var, accel_pos_var, accel_pos_var};
-	// assert(sizeof(Q_diag) == sizeof(FLT) * SURVIVE_MODEL_STATE_CNT * SURVIVE_MODEL_STATE_CNT);
-	// arr_eye_diag(tracker->Q_per_sec, state_cnt, state_cnt, Q_diag);
-
-	FLT Rrs = tracker->light_rot_var;
-	FLT Rps = tracker->light_pos_var;
+	FLT Rrs = tracker->obs_rot_var;
+	FLT Rps = tracker->obs_pos_var;
 	FLT Rr[] = {Rrs, Rrs, Rrs, Rrs, Rps, Rps, Rps};
 	arr_eye_diag(tracker->Obs_R, 7, 7, Rr);
 
@@ -574,21 +496,17 @@ void survive_imu_tracker_init(SurviveIMUTracker *tracker, SurviveObject *so) {
 				  tracker->gyro_var, tracker->gyro_var, tracker->gyro_var};
 	arr_eye_diag(tracker->IMU_R, 6, 6, Rimu);
 
-	SV_VERBOSE(110, "\t%s: %f", POSE_POSITION_VARIANCE_SEC_TAG, tracker->pos_var);
-	SV_VERBOSE(110, "\t%s: %f", POSE_ROT_VARIANCE_SEC_TAG, rot_var);
-	SV_VERBOSE(110, "\t%s: %f", VELOCITY_POSITION_VARIANCE_SEC_TAG, tracker->vel_var);
-	SV_VERBOSE(110, "\t%s: %f", VELOCITY_ROT_VARIANCE_SEC_TAG, vel_rot_var);
 	SV_VERBOSE(110, "\t%s: %f", IMU_ACC_VARIANCE_TAG, tracker->acc_var);
 	SV_VERBOSE(110, "\t%s: %f", IMU_GYRO_VARIANCE_TAG, tracker->gyro_var);
 }
 
-SurviveVelocity survive_imu_velocity(const SurviveIMUTracker *tracker) {
+SurviveVelocity survive_kalman_tracker_velocity(const SurviveKalmanTracker *tracker) {
 	SurviveVelocity rtn = {0};
 	survive_kalman_predict_state(0, &tracker->model, 7, 13, rtn.Pos);
 	return rtn;
 }
 
-void survive_imu_tracker_free(SurviveIMUTracker *tracker) {
+void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 	SurviveContext *ctx = tracker->so->ctx;
 
 	SV_VERBOSE(5, "IMU %s tracker statistics:", tracker->so->codename);
@@ -615,10 +533,10 @@ void survive_imu_tracker_free(SurviveIMUTracker *tracker) {
 
 	survive_kalman_state_free(&tracker->model);
 
-	survive_imu_tracker_config(tracker, (survive_attach_detach_fn)survive_detach_config);
+	survive_kalman_tracker_config(tracker, (survive_attach_detach_fn)survive_detach_config);
 }
 
-void survive_imu_tracker_report_state(PoserData *pd, SurviveIMUTracker *tracker) {
+void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tracker) {
 	SurvivePose pose = {0};
 
 	FLT t = pd->timecode / (FLT)tracker->so->timebase_hz;
@@ -628,28 +546,28 @@ void survive_imu_tracker_report_state(PoserData *pd, SurviveIMUTracker *tracker)
 		t = tracker->model.t;
 	}
 
-	survive_imu_tracker_predict(tracker, t, &pose);
+	survive_kalman_tracker_predict(tracker, t, &pose);
 
 	FLT pos_variance = 0;
 	FLT vel_variance = 0;
 	FLT var_diag[SURVIVE_MODEL_STATE_CNT];
 	for (int i = 0; i < SURVIVE_MODEL_STATE_CNT; i++) {
 		if (i < 7)
-			pos_variance += fabs(tracker->model.info.P[SURVIVE_MODEL_STATE_CNT * i + i]);
+			pos_variance += fabs(tracker->model.P[SURVIVE_MODEL_STATE_CNT * i + i]);
 		else if (i < 13)
-			vel_variance += fabs(tracker->model.info.P[SURVIVE_MODEL_STATE_CNT * i + i]);
-		var_diag[i] = tracker->model.info.P[SURVIVE_MODEL_STATE_CNT * i + i];
+			vel_variance += fabs(tracker->model.P[SURVIVE_MODEL_STATE_CNT * i + i]);
+		var_diag[i] = tracker->model.P[SURVIVE_MODEL_STATE_CNT * i + i];
 	}
 	SurviveContext *ctx = tracker->so->ctx;
 
 	SV_VERBOSE(110, "Tracker variance " Point16_format, LINMATH_VEC16_EXPAND(var_diag));
 	SV_VERBOSE(110, "Tracker Bias            " Point3_format, LINMATH_VEC3_EXPAND(tracker->state.GyroBias));
-	if (!survive_imu_tracker_position_found(tracker)) {
+	if (!survive_kalman_tracker_position_found(tracker)) {
 		return;
 	}
 
 	SV_VERBOSE(110, "Tracker report " SurvivePose_format, SURVIVE_POSE_EXPAND(pose));
 
-	SurviveVelocity velocity = survive_imu_velocity(tracker);
+	SurviveVelocity velocity = survive_kalman_tracker_velocity(tracker);
 	PoserData_poser_pose_func_with_velocity(pd, tracker->so, &pose, &velocity);
 }
