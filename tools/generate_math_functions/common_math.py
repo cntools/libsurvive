@@ -1,5 +1,6 @@
 import symengine as sp
 from symengine import sqrt, cos, sin, Piecewise, atan2
+import sympy
 
 import math
 
@@ -77,6 +78,18 @@ class LinmathAxisAnglePose(SurviveType):
     def Rot(self):
         return self.AxisAngleRot
 
+class SurviveKalmanModel(SurviveType):
+    def __init__(self, p, v, a, b):
+        self.Pose = p
+        self.Velocity = v
+        self.Acc = a
+        self.GyroBias = b
+
+def gyro_bias():
+    return sp.symbols('gbx, gby, gbz')
+
+def kalman_model():
+    return SurviveKalmanModel(obj_p(), obj_v(), obj_acc(), gyro_bias())
 
 def obj_p():
     if axis_angle_mode:
@@ -84,10 +97,39 @@ def obj_p():
     # return ((obj_px, obj_py, obj_pz), (obj_qw, obj_qi, obj_qj, obj_qk))
     return SurvivePose((obj_px, obj_py, obj_pz), (obj_qw, obj_qi, obj_qj, obj_qk))
 
+def rotation_phi(t, q):
+    qw, qx, qy, qz = q
+    return sympy.MutableDenseMatrix([
+        [1, 0, 0, 0, -qx*t/2, -qy*t/2, -qz*t/2],
+        [0, 1, 0, 0,  qw*t/2, -qz*t/2,  qy*t/2],
+        [0, 0, 1, 0,  qz*t/2,  qw*t/2, -qx*t/2],
+        [0, 0, 0, 1, -qy*t/2,  qx*t/2,  qw*t/2],
+        [0, 0, 0, 0, 1, 0, 0],
+        [0, 0, 0, 0, 0, 1, 0],
+        [0, 0, 0, 0, 0, 0, 1]])
+
+def cov(dt, q, sw):
+    t = sympy.symbols('t')
+    Q = sympy.MutableDenseMatrix([
+        [0] * 7,
+        [0] * 7,
+        [0] * 7,
+        [0] * 7,
+        [0, 0, 0, 0, sw, 0, 0],
+        [0, 0, 0, 0, 0, sw, 0],
+        [0, 0, 0, 0, 0, 0, sw],
+    ])
+    phi = rotation_phi(t, q)
+    return sympy.integrate(phi * Q * phi.transpose(), (t, 0, dt))
 
 def obj_p_axisangle():
     return LinmathAxisAnglePose((obj_px, obj_py, obj_pz), (obj_qi, obj_qj, obj_qk))
 
+def obj_v():
+    return LinmathAxisAnglePose(sp.symbols('vx, vy, vz'), sp.symbols('avx, avy, avz'))
+
+def obj_acc():
+    return sp.symbols('acc_x, acc_y, acc_z')
 
 def lh_p():
     if axis_angle_mode:
@@ -123,7 +165,7 @@ def q2():
 
 def quatnormalize(q):
     qw, qi, qj, qk = q
-    mag = quatmagnitude(q);
+    mag = quatmagnitude(q)
     return [qw / mag, qi / mag, qj / mag, qk / mag]
 
 
@@ -135,7 +177,7 @@ def axisanglenormalize(axis_angle):
 
 def quatmagnitude(q):
     qw, qi, qj, qk = q
-    return sqrt(qw * qw + qi * qi + qj * qj + qk * qk)
+    return sqrt(qw * qw + qi * qi + qj * qj + qk * qk + 1e-11)
 
 
 def quatrotationmatrix(q):
@@ -181,15 +223,15 @@ def quatrotatevector3(q, sensor_pt):
 def axisanglemagnitude(axis_angle):
     qw, qi, qj = axis_angle
     mag = qw * qw + qi * qi + qj * qj
-    return Piecewise((sp.sqrt(mag), mag > 1e-20), (1e-10, True))
+    return sp.sqrt(mag + 1e-10)
 
 
 def axisanglerotationmatrix(axis_angle):
     R = axisanglemagnitude(axis_angle)
 
-    x = Piecewise((axis_angle[0] / R, R > 0), (1, True))
-    y = Piecewise((axis_angle[1] / R, R > 0), (0, True))
-    z = Piecewise((axis_angle[2] / R, R > 0), (0, True))
+    x = axis_angle[0] / R
+    y = axis_angle[1] / R
+    z = axis_angle[2] / R
 
     csr = sp.cos(R)
     one_minus_csr = (1 - csr)
@@ -261,6 +303,15 @@ def apply_ang_velocity(axis_angle, time, q):
         return quatrotateabout(q1, axisangle2quat(q))
     return quatrotateabout(q1, q)
 
+def apply_kinematics(pos, time, vel, acc=None):
+    if acc is None:
+        acc = [0, 0, 0]
+
+    return [
+        pos[0] + time * vel[0] + acc[0] / 2 * time * time,
+        pos[1] + time * vel[1] + acc[1] / 2 * time * time,
+        pos[2] + time * vel[2] + acc[2] / 2 * time * time,
+    ]
 
 def simple_neg(x):
     if isinstance(x, sp.Expr):

@@ -91,21 +91,21 @@ def ccode_wrapper(item, depth = 0):
 
     if item.__class__ == Pow:
         # Basically it's always faster to never call pow
-        if item.args[1].is_Number and abs(item.args[1]) < 20:
-            invert = item.args[1] < 0
-            num, den = abs(item.args[1]).get_num_den()
-
-            if den == 1 or den == 2:
-                mul_cnt = num if den == 1 else (num - 1) / 2
-                muls = [newargs[0]] * int(mul_cnt)
-                if den == 2:
-                    muls.append("sqrt(" + clean_parens(newargs[0]) + ")")
-                v = " * ".join(muls)
-                if len(muls) > 1:
-                    v = "(" + v + ")"
-                if invert:
-                    v = "(1. / " + v + ")"
-                return v
+        # if item.args[1].is_Number and abs(item.args[1]) < 20:
+        #     invert = item.args[1] < 0
+        #     num, den = abs(item.args[1]).get_num_den()
+        #
+        #     if den == 1 or den == 2:
+        #         mul_cnt = num if den == 1 else (num - 1) / 2
+        #         muls = [newargs[0]] * int(mul_cnt)
+        #         if den == 2:
+        #             muls.append("sqrt(" + clean_parens(newargs[0]) + ")")
+        #         v = " * ".join(muls)
+        #         if len(muls) > 1:
+        #             v = "(" + v + ")"
+        #         if invert:
+        #             v = "(1. / " + v + ")"
+        #         return v
         return "pow(%s, %s)" % tuple(newargs)
     elif item.__class__ in infixes:
         return "(" + (" " + infixes[item.__class__] + " ").join(newargs) + ")"
@@ -128,6 +128,8 @@ def get_argument(n):
     return sympy.symbols(n)
 
 def get_name(a):
+    if type(a) == list:
+        return "_".join(map(get_name, a))
     if hasattr(a, '__name__'):
         return a.__name__
     return str(a)
@@ -221,11 +223,18 @@ def flat_values(a):
         return flat_values(a.__dict__.values())
     return [a]
 
-def generate_jacobians(func, suffix=None,transpose=False):
+def generate_jacobians(func, suffix=None,transpose=False,jac_all=False, jac_over=None):
     rtn = {}
 
     func_args = [get_argument(n) for n in inspect.getfullargspec(func).args]
-    jac_of = {get_name(arg): flat_values(map_arg(arg)) for arg in func_args}
+    jac_of = {}
+    if jac_over is not None:
+        jac_of[get_name(jac_over)] = flat_values(map_arg(jac_over))
+    else:
+        jac_of.update({get_name(arg): flat_values(map_arg(arg)) for arg in func_args})
+
+    if jac_all:
+        jac_of['all'] = sum(list(jac_of.values()), [])
 
     feval = (func(*map_arg(func_args)))
 
@@ -240,3 +249,7 @@ def generate_jacobians(func, suffix=None,transpose=False):
         generate_ccode(this_jac, fname, func_args, suffix=suffix)
         rtn[fname] = this_jac
     return rtn
+
+def generate_code_and_jacobians(f,transpose=False, jac_over=None):
+    generate_ccode(f)
+    generate_jacobians(f, transpose=transpose,jac_over=jac_over)

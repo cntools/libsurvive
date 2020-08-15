@@ -17,18 +17,23 @@ def imu_rot_f_aa(time, imu_rot_aa):
     ret = (*quat2axisangle(q), *rotv)
     return sp.Matrix(ret)
 
-def imu_predict_up(imu_rot):
-    G = [ 0, 0, 1]
-    rot = quatgetreciprocal(quatnormalize(imu_rot[0:4]))
+def imu_predict_up(kalman_model):
+    g = 9.80665
+    G = [ kalman_model.Acc[0]/g, kalman_model.Acc[1]/g, 1 + kalman_model.Acc[2]/g]
+    rot = quatgetreciprocal(quatnormalize(kalman_model.Pose.Rot))
     return quatrotatevector(rot, G)
 
-def imu_predict_gyro(imu_rot):
-    rot = quatgetreciprocal(quatnormalize(imu_rot[0:4]))
-    rotv = imu_rot[4:7]
-    return quatrotatevector(rot, rotv)
+def imu_predict_gyro(kalman_model):
+    rot = quatgetreciprocal(quatnormalize(kalman_model.Pose.Rot))
+    rotv = quatrotatevector(rot, kalman_model.Velocity.Rot)
+    return [rotv[0] + kalman_model.GyroBias[0],
+            rotv[1] + kalman_model.GyroBias[1],
+            rotv[2] + kalman_model.GyroBias[2]
+    ]
 
-def imu_predict(imu_rot):
-    return [*imu_predict_up(imu_rot), *imu_predict_gyro(imu_rot)]
+
+def imu_predict(kalman_model):
+    return [*imu_predict_up(kalman_model), *imu_predict_gyro(kalman_model)]
 
 def imu_correct_up(mu, imu_rot, up_in_obj):
     rot = imu_rot[0:4]
@@ -44,6 +49,28 @@ def imu_correct_up(mu, imu_rot, up_in_obj):
     qc = axisangle2quat(N)
     return sp.Matrix([*quatrotateabout(qc, rot), *rotv])
 
+def kalman_model_predict(t, kalman_model):
+    obj_p = kalman_model.Pose
+    obj_v = kalman_model.Velocity
+    obj_acc = kalman_model.Acc
+
+    pos = obj_p.Pos
+    vpos = obj_v.Pos
+    new_pos = [
+        pos[0] + vpos[0] * t + obj_acc[0] * t * t / 2,
+        pos[1] + vpos[1] * t + obj_acc[1] * t * t / 2,
+        pos[2] + vpos[2] * t + obj_acc[2] * t * t / 2
+    ]
+    new_rot = apply_ang_velocity(obj_v.Rot, t, obj_p.Rot)
+
+    new_vpos = [
+        vpos[0] + obj_acc[0] * t,
+        vpos[1] + obj_acc[1] * t,
+        vpos[2] + obj_acc[2] * t,
+    ]
+
+    return [ *new_pos, *new_rot, *new_vpos, *obj_v.Rot, *obj_acc, *kalman_model.GyroBias ]
+
 import numdifftools
 import numpy as np
 
@@ -54,19 +81,14 @@ if __name__ == "__main__":
         print("#pragma once")
         print("#include \"common.h\"")
         print("// clang-format off")
-        def f(h):
-            print(h, +0.680413 - h)
-            q1 = np.array([h[0],	+0.164668,	+0.708549,	-0.088767,	+0.898978,	+0.182254,	+0.002019,	+0.398268])
-            print(q1)
-            rtn = np.array(list(map(float, quatrotateabout(q1[0:4],q1[4:8]))))
-            print(rtn)
-            return rtn
 
-        #print(numdifftools.Jacobian(f)(+0.680413))
+        generate_code_and_jacobians(imu_rot_f, transpose=True)
+        generate_code_and_jacobians(kalman_model_predict)
+        for f in [quatrotatevector, imu_rot_f_aa, imu_correct_up, imu_predict_up, quatrotateabout,
+                  imu_predict, imu_predict_gyro]:
 
-        for f in [quatrotatevector, imu_rot_f, imu_rot_f_aa, imu_correct_up, imu_predict_up, quatrotateabout, imu_predict, imu_predict_gyro]:
             generate_ccode(f)
-            j = generate_jacobians(f, transpose= f == imu_rot_f)
+            j = generate_jacobians(f, transpose=f == imu_rot_f)
 
 
             ##print(j)
