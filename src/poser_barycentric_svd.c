@@ -328,8 +328,10 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 		return solve_fullscene(dd, (PoserDataFullScene *)(pd));
 	}
 	case POSERDATA_DISASSOCIATE: {
+		if (dd == so->PoserFnData) {
+			so->PoserFnData = 0;
+		}
 		PoserDataSVD_destroy(dd);
-		so->PoserFnData = 0;
 		// printf( "Need to disassociate.\n" );
 		break;
 	}

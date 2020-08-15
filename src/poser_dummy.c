@@ -41,8 +41,10 @@ int PoserDummy( SurviveObject * so, PoserData * pd )
 	}
 	case POSERDATA_DISASSOCIATE:
 	{
+		if (so->PoserFnData == dd) {
+			so->PoserFnData = 0;
+		}
 		free( dd );
-		so->PoserFnData = 0;
 		//printf( "Need to disassociate.\n" );
 		break;
 	}

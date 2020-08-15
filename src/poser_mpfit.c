@@ -663,6 +663,10 @@ static inline void print_stats(SurviveContext *ctx, MPFITStats *stats) {
 
 int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 	SurviveContext *ctx = so->ctx;
+	if (so->PoserFnData == 0 && pd->pt == POSERDATA_DISASSOCIATE) {
+		return 0;
+	}
+
 	if (so->PoserFnData == 0) {
 		so->PoserFnData = SV_CALLOC(1, sizeof(MPFITData));
 		g.instances++;
@@ -792,8 +796,10 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		survive_detach_config(ctx, "sensor-variance-per-sec", &d->sensor_variance_per_second);
 		survive_detach_config(ctx, "sensor-variance", &d->sensor_variance);
 		survive_async_free(d->async_optimizer);
+		if (d == so->PoserFnData) {
+			so->PoserFnData = 0;
+		}
 		free(d);
-		so->PoserFnData = 0;
 		return 0;
 	}
 	case POSERDATA_IMU: {

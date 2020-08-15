@@ -980,7 +980,9 @@ static void survive_attach_config(SurviveContext *ctx, const char *tag, void * v
 			SV_GENERAL_ERROR("Configuration item %s not initialized.\n", tag);
 			return;
 		}
-	} else {
+	}
+
+	{
 		update_list_t **ul = &cv->update_list;
 		while (*ul) {
 			if ((*ul)->value == var)
@@ -988,7 +990,7 @@ static void survive_attach_config(SurviveContext *ctx, const char *tag, void * v
 			ul = &((*ul)->next);
 		}
 
-		update_list_t *t = *ul = SV_MALLOC(sizeof(update_list_t));
+		update_list_t *t = *ul = SV_CALLOC(1, sizeof(update_list_t));
 		t->next = 0;
 		t->value = var;
 	}
@@ -1041,17 +1043,30 @@ SURVIVE_EXPORT void survive_detach_config(SurviveContext *ctx, const char *tag, 
 		return;
 	}
 
+	// printf("Tag: %s %p\n", tag, var);
+	// print_ul(&cv->update_list);
+	bool somethingFreed = false;
 	update_list_t ** ul = &cv->update_list;
+	update_list_t **lul = ul;
 	while( *ul )
 	{
 		if( (*ul)->value == var )
 		{
 			update_list_t * v = *ul;
-			*ul = (*ul)->next;
-			free( v );
+			v->value = 0;
+			(*lul)->next = v->next;
+			*ul = v->next;
+			free(v);
+			somethingFreed = true;
 		} else {
 			ul = &((*ul)->next);
 		}
+		lul = ul;
+	}
+
+	// print_ul(&cv->update_list);
+	if (somethingFreed == false) {
+		SV_WARN("Found no config item to detach %s", tag);
 	}
 }
 

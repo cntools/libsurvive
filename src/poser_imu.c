@@ -53,8 +53,9 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 	case POSERDATA_DISASSOCIATE: {
 
 		survive_kalman_tracker_free(&dd->tracker);
+		if (dd == so->PoserFnData)
+			so->PoserFnData = 0;
 		free(dd);
-		so->PoserFnData = 0;
 		return 0;
 	}
 
