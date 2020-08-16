@@ -245,39 +245,6 @@ void survive_default_raw_imu_process(SurviveObject *so, int mask, FLT *accelgyro
 	calibrate_acc(so, agm);
 	calibrate_gyro(so, agm + 3);
 
-	static FLT accum[3] = {0};
-	static survive_timecode start = 0;
-	static uint32_t cnt = 0.;
-
-	survive_timecode stationary_time = SurviveSensorActivations_stationary_time(&so->activations);
-	FLT n = norm3d(agm);
-
-	if (stationary_time > so->timebase_hz / 2 && n > .95 && n < 1.05) {
-		scale3d(so->acc_scale, so->acc_scale, 1. / n);
-
-		FLT gerr = norm3d(accelgyromag + 3);
-		/*
-		FLT gcorrect[3];
-		scale3d(gcorrect, accelgyromag + 3, .1);
-		scale3d(so->gyro_bias, so->gyro_bias, .9);
-		add3d(so->gyro_bias, so->gyro_bias, gcorrect);
-*/
-		if (norm3d(accum) != 0.) {
-			survive_timecode end = timecode;
-			FLT seconds = (end - start) / (FLT)so->timebase_hz;
-			scale3d(accum, accum, 1. / (FLT)cnt * seconds);
-			// SV_VERBOSE(100, "%s accum %fsec " Point3_format, so->codename, seconds, LINMATH_VEC3_EXPAND(accum));
-		}
-		scale3d(accum, accum, 0);
-		cnt = 0;
-		start = timecode;
-		// SV_VERBOSE(200, "%s acc adjust %f %f gyro %f " Point3_format, so->codename, n, 1. / n, gerr,
-		// LINMATH_VEC3_EXPAND(so->gyro_bias));
-	} else {
-		add3d(accum, agm + 3, accum);
-		cnt++;
-	}
-
 	survive_recording_raw_imu_process(so, mask, accelgyromag, timecode, id);
 
 	so->ctx->imuproc(so, 3, agm, timecode, id);
