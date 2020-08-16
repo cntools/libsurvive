@@ -11,11 +11,22 @@ var oldPose = [ 0, 0, 0 ];
 var scene, camera, renderer, floor, fpv_camera;
 var fov_scale = 1;
 
+var external_group = new THREE.Group();
 var report_in_imu = false;
 
 var raycaster = new THREE.Raycaster();
 
 var mouse = new THREE.Vector2();
+
+var showModel = true;
+var showIMU = true;
+var useFPV = false;
+
+var tooltipDisplayed = false;
+var tooltip = $("#tooltip");
+
+var fps = 0;
+var frames = 0;
 
 function onMouseMove(event) {
 	// calculate mouse position in normalized device coordinates
@@ -28,15 +39,17 @@ function onMouseMove(event) {
 	var intersects = raycaster.intersectObjects(scene.children, true);
 	for (var i = 0; i < intersects.length; i++) {
 		if (intersects[i].object.tooltip) {
-			$("#tooltip").text(intersects[i].object.tooltip);
-			$("#tooltip").css({top : event.clientY, left : event.clientX, position : 'absolute', display : 'block'});
+			tooltip.text(intersects[i].object.tooltip);
+			tooltip.css({top : event.clientY, left : event.clientX, position : 'absolute', display : 'block'});
 			foundObj = true;
+			tooltipDisplayed = true;
 			break;
 		}
 	}
 
-	if (!foundObj) {
-		$("#tooltip").css({display : 'none'});
+	if (!foundObj && tooltipDisplayed) {
+		tooltip.css({display : 'none'});
+		tooltipDisplayed = false;
 	}
 }
 
@@ -293,7 +306,7 @@ function invertPose(pa, quat) {
 	return [ p, iq ];
 }
 
-function create_tracked_object(info) {
+function create_tracked_object(info, external) {
 	var sensorGeometry = new THREE.SphereGeometry(.01, 32, 16);
 	var group = new THREE.Group();
 	var group_rot = new THREE.Group();
@@ -377,6 +390,9 @@ function create_tracked_object(info) {
 	if (objs[info.tracker].sensorref)
 		objs[info.tracker].sensorref.visible = false;
 
+	group.oldPoseTime = 0;
+	group.poseCnt = 0;
+
 	objs[info.tracker].group.position.set(NaN);
 	var velocityGeom = new THREE.Geometry();
 	velocityGeom.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0));
@@ -391,15 +407,19 @@ function create_tracked_object(info) {
 	group.add(objs[info.tracker].velocity);
 	group.add(objs[info.tracker].angVelocity);
 
-	scene.add(group);
+	if (external) {
+		external_group.add(group);
+	} else {
+		scene.add(group);
+	}
 }
 
 var displayTrails = false;
 var trails = {};
 var MAX_LINE_POINTS = 100000;
-var trail_colors = [ 0x0, 0xffffff, 0x11FF11, 0x8888ff ];
+var trail_colors = [ 0x0, 0xffffff, 0x11FF11, 0x8888ff, 0xff8888 ];
 var trail_idx = 0;
-function get_trails(obj) {
+function get_trails(obj, external) {
 	if (trails[obj.tracker] == null) {
 		var geometry = new THREE.Geometry();
 		var material = new THREE.LineBasicMaterial({color : trail_colors[trail_idx++ % trail_colors.length]});
@@ -411,7 +431,10 @@ function get_trails(obj) {
 
 		trails[obj.tracker] = new THREE.Line(geometry, material);
 
-		scene.add(trails[obj.tracker]);
+		if (external)
+			external_group.add(trails[obj.tracker]);
+		else
+			scene.add(trails[obj.tracker]);
 	}
 
 	return trails[obj.tracker]
@@ -424,8 +447,22 @@ function update_trails() {
 		trails[name].visible = this.checked;
 	}
 }
-
 $(function() { $("#trails").change(update_trails); });
+
+function update_external() {
+	var val = this.checked ? 1.5 : 0;
+	external_group.position.set(0, val, 0);
+}
+$(function() { $("#external_displace").change(update_external); });
+
+function update_show_model() { showModel = this.checked; }
+$(function() { $("#model").change(update_show_model); });
+
+function update_show_imu() { showIMU = this.checked; }
+$(function() { $("#imu").change(update_show_imu); });
+
+function update_fpv() { useFPV = this.checked; }
+$(function() { $("#fpv").change(update_fpv); });
 
 function update_velocity(v) {
 	var obj = {
@@ -444,7 +481,7 @@ function update_velocity(v) {
 	objs[obj.tracker].angVelocity.geometry.vertices[1].set(obj.euler[0], obj.euler[1], obj.euler[2]);
 	objs[obj.tracker].angVelocity.geometry.verticesNeedUpdate = true;
 }
-function update_object(v, allow_unsetup) {
+function update_object(v, allow_unsetup, external) {
 	allow_unsetup = true;
 	var obj = {
 		tracker : v[1],
@@ -453,43 +490,47 @@ function update_object(v, allow_unsetup) {
 	};
 	var time = parseFloat(v[0]);
 
-	if (allow_unsetup && objs[obj.tracker] == null) {
-		create_tracked_object({tracker : obj.tracker});
+	var objr = objs[obj.tracker];
+
+	var now = new Date().getTime();
+
+	if (allow_unsetup && objr == null) {
+		create_tracked_object({tracker : obj.tracker}, external);
+		objr = objs[obj.tracker];
 	}
 
-	if (objs[obj.tracker]) {
-		var now = new Date().getTime();
-		if (oldPoseTime + 5000 < now) {
-			oldPoseTime = now;
-			console.log((poseCnt / 5) + "hz");
-			poseCnt = 0;
+	if (objr) {
+		if (objr.oldPoseTime + 5000 < now) {
+			objr.oldPoseTime = now;
+			console.log(obj.tracker, (objr.poseCnt / 5) + "hz");
+			objr.poseCnt = 0;
 		}
-		poseCnt++;
+		objr.poseCnt++;
 
-		objs[obj.tracker].group.position.set(obj.position[0], obj.position[1], obj.position[2]);
-		objs[obj.tracker].group_rot.quaternion.set(obj.quat[1], obj.quat[2], obj.quat[3], obj.quat[0]);
-		objs[obj.tracker].group.verticesNeedUpdate = true;
-		objs[obj.tracker].group_rot.verticesNeedUpdate = true;
+		objr.group.position.set(obj.position[0], obj.position[1], obj.position[2]);
+		objr.group_rot.quaternion.set(obj.quat[1], obj.quat[2], obj.quat[3], obj.quat[0]);
+		objr.group.verticesNeedUpdate = true;
+		objr.group_rot.verticesNeedUpdate = true;
 
-		if (objs[obj.tracker].sensorref)
-			objs[obj.tracker].sensorref.visible = $("#model")[0].checked;
+		if (objr.sensorref)
+			objr.sensorref.visible = showModel;
 
-		if (objs[obj.tracker].oldPose == null) {
-			objs[obj.tracker].oldPose = [ 0, 0, 0 ];
+		if (objr.oldPose == null) {
+			objr.oldPose = [ 0, 0, 0 ];
 		}
 
 		var d = 0;
 		for (var i = 0; i < 3; i++) {
-			d += Math.pow(obj.position[i] - objs[obj.tracker].oldPose[i], 2.);
+			d += Math.pow(obj.position[i] - objr.oldPose[i], 2.);
 		}
 
-		var trails = get_trails(obj);
+		var trails = get_trails(obj, external);
 		if (trails && Math.sqrt(d) > .01) {
 			trails.geometry.vertices.push(trails.geometry.vertices.shift()); // shift the array
 			trails.geometry.vertices[MAX_LINE_POINTS - 1] =
 				new THREE.Vector3(obj.position[0], obj.position[1], obj.position[2]);
 			trails.geometry.verticesNeedUpdate = true;
-			objs[obj.tracker].oldPose = obj.position;
+			objr.oldPose = obj.position;
 			record_position(obj.tracker, time, obj);
 		}
 
@@ -497,9 +538,9 @@ function update_object(v, allow_unsetup) {
 			var up = new THREE.Vector3(0, 1, 0);
 			var out = new THREE.Vector3(0, 0, -1);
 
-			fpv_camera.up = up.applyQuaternion(objs[obj.tracker].group_rot.quaternion);
-			var lookAt = out.applyQuaternion(objs[obj.tracker].group_rot.quaternion);
-			lookAt.add(objs[obj.tracker].position);
+			fpv_camera.up = up.applyQuaternion(objr.group_rot.quaternion);
+			var lookAt = out.applyQuaternion(objr.group_rot.quaternion);
+			lookAt.add(objr.position);
 
 			fpv_camera.position.set(obj.position[0], obj.position[1], obj.position[2]);
 			fpv_camera.lookAt(lookAt);
@@ -560,8 +601,8 @@ var survive_log_handlers = {
 	},
 	"POSE" : update_object,
 	"VELOCITY" : update_velocity,
-	"EXTERNAL_VELOCITY" : function(v) { update_velocity(v, true); },
-	"EXTERNAL_POSE" : function(v) { update_object(v, true); },
+	"EXTERNAL_VELOCITY" : function(v) { update_velocity(v, true, true); },
+	"EXTERNAL_POSE" : function(v) { update_object(v, true, true); },
 	"CONFIG" : function(v, tracker) {
 		var configStr = v.slice(3).join(' ');
 		var config = JSON.parse(configStr);
@@ -619,10 +660,13 @@ var survive_log_handlers = {
 	'LOG' : function(v) {
 		var msg = v.slice(3).join(' ');
 
+		/*
 		var consoleDiv = $("#console");
 		consoleDiv.append(msg + "</br>");
 
 		scrollConsoleToTop();
+		 */
+		console.log(msg);
 	},
 	"I" : function(v, tracker) {
 		var obj = {
@@ -657,8 +701,7 @@ var survive_log_handlers = {
 			}
 
 			if (downAxes[obj.tracker].line) {
-				downAxes[obj.tracker].gyro_geom.line.visible = downAxes[obj.tracker].line.visible =
-					$("#imu")[0].checked;
+				downAxes[obj.tracker].gyro_geom.line.visible = downAxes[obj.tracker].line.visible = showIMU;
 			}
 			if (objs[obj.tracker].position) {
 				var q = obj.accelgyro;
@@ -829,6 +872,9 @@ function init() {
 	floor = new THREE.Mesh(floorGeometry, floorMaterial);
 	floor.position.z = -1;
 
+	external_group.position.set(0, 1.5, 0);
+	scene.add(external_group);
+
 	// scene.add(floor);
 
 	/**
@@ -869,12 +915,22 @@ function init() {
 	update_trails.call($("#trails")[0]);
 }
 
-function animate() {
+var last_time = null;
+function animate(time) {
 	requestAnimationFrame(animate);
 	recolorTrackers(timecode);
 	render();
 	redrawCanvas(timecode);
+	frames++;
+	if (last_time != null)
+		fps = fps * .5 + 1000 / (time - last_time + 1);
+	// console.log(
+	last_time = time;
 }
+
+function measure_fps() { $("#fps").text((Math.round(fps)) + " fps"); }
+setInterval(measure_fps, 1000);
+
 var showPlanes = false;
 var ang = 0;
 function render() {
@@ -904,8 +960,7 @@ function render() {
 	ang += 0.01;
 	ang = ang % (2 * Math.PI);
 
-	var use_fpv = $("#fpv").length > 0 && $("#fpv")[0].checked;
-	var renderCamera = use_fpv ? fpv_camera : camera;
+	var renderCamera = useFPV ? fpv_camera : camera;
 	// update the picking ray with the camera and mouse position
 	raycaster.setFromCamera(mouse, renderCamera);
 

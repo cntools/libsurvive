@@ -16,6 +16,7 @@
       <input type="checkbox" id="fpv">FPV</input><br/>
       <input type="checkbox" id="model" checked>Model</input><br/>
       <input type="checkbox" id="imu" checked>IMU</input><br/>
+      <input type="checkbox" id="external_displace" checked>Shift External</input><br/>
 
       <button id="toggleBtn">
         Toggle 2D View
@@ -24,15 +25,23 @@
         <canvas width=800 height=800 id="camcanvas"></canvas>
       </div>
     </div>
+    <div id="fps" style="
+    z-index:3;
+    position:absolute;
+    right:20px;
+    top:10px;
+">30fps</div>
     <div id="console" style="width: 500px;
     height: 200px;
     border: 1px solid white;
     position: absolute;
     bottom: 20px;
     overflow: auto;
-    white-space: pre-wrap;
+    white-space: pre;
     background-color: rgba(0,200,200, .25);
-    z-index: 3;">
+    z-index: 3;
+    display:none;
+">
 
     </div>
     <div style="z-index: 3;display: none;position: absolute;
