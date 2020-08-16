@@ -660,12 +660,11 @@ var survive_log_handlers = {
 	'LOG' : function(v) {
 		var msg = v.slice(3).join(' ');
 
-		/*
 		var consoleDiv = $("#console");
 		consoleDiv.append(msg + "</br>");
 
 		scrollConsoleToTop();
-		 */
+
 		console.log(msg);
 	},
 	"I" : function(v, tracker) {

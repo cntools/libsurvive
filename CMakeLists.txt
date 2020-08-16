@@ -264,6 +264,7 @@ file(GLOB REDIST_HEADERS
   "redist/*.h"
 )
 install(FILES ${REDIST_HEADERS} DESTINATION include/libsurvive/redist)
+install(PROGRAMS survive-websocketd DESTINATION bin)
 
 find_program(CTYPESGEN ctypesgen PATHS $ENV{HOME}/anaconda3/bin)
 if(CTYPESGEN)

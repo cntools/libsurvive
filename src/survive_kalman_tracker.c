@@ -195,6 +195,10 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 		return;
 	}
 
+	if (tracker->stats.obs_count < 16) {
+		return;
+	}
+
 	SV_VERBOSE(200, "%s imu mag %f", tracker->so->codename, norm3d(data->accel));
 	FLT time = data->hdr.timecode / (FLT)tracker->so->timebase_hz;
 	FLT time_diff = time - tracker->model.t;
