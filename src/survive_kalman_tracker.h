@@ -37,7 +37,10 @@ typedef struct SurviveKalmanTracker {
 	FLT obs_rot_var;
 	FLT light_var;
 
+	int adaptive_imu, adaptive_lightcap, adaptive_obs;
+
 	FLT light_threshold_var, report_threshold_var;
+	int32_t light_required_obs;
 	int32_t report_ignore_start;
 
 	FLT process_weight_acc, process_weight_vel, process_weight_pos;

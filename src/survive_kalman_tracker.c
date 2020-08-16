@@ -113,6 +113,10 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 		return;
 	}
 
+	if (tracker->light_required_obs > tracker->stats.obs_count) {
+		return;
+	}
+
 	if (!ctx->bsd[data->lh].PositionSet) {
 		return;
 	}
@@ -127,12 +131,17 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 			.pdl = data,
 		};
 
-		tracker->stats.lightcap_total_error += survive_kalman_predict_update_state_extended(
-			time, &tracker->model, &Z, &tracker->light_var, map_light_data, &cbctx);
+		if (tracker->adaptive_lightcap) {
+			tracker->stats.lightcap_total_error += survive_kalman_predict_update_state_extended_adaptive(
+				time, &tracker->model, &Z, &tracker->light_var, map_light_data, &cbctx);
+		} else {
+			tracker->stats.lightcap_total_error += survive_kalman_predict_update_state_extended(
+				time, &tracker->model, &Z, &tracker->light_var, map_light_data, &cbctx);
+		}
 		tracker->stats.lightcap_count++;
 
 		normalize_model(tracker);
-		survive_kalman_tracker_report_state(&data->hdr, tracker);
+		// survive_kalman_tracker_report_state(&data->hdr, tracker);
 	}
 	SV_VERBOSE(200, "Resultant state %f (%f) (lightcap) " Point16_format, time, delta,
 			   LINMATH_VEC16_EXPAND(tracker->model.state));
@@ -204,7 +213,7 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 	FLT rotation_variance[] = {1e5, 1e5, 1e5, 1e5, 1e5, 1e5};
 
 	struct map_imu_data_ctx fn_ctx = {.tracker = tracker};
-	if (tracker->acc_var >= 0 && fabs(tracker->model.P[0]) < 1.) {
+	if (tracker->acc_var >= 0) {
 		fn_ctx.use_accel = true;
 		for (int i = 0; i < 3; i++)
 			rotation_variance[i] = tracker->acc_var;
@@ -225,8 +234,13 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 		SV_VERBOSE(200, "Integrating IMU " Point6_format " with cov " Point6_format,
 				   LINMATH_VEC6_EXPAND((FLT *)&data->accel[0]), LINMATH_VEC6_EXPAND(R));
 
-		tracker->stats.imu_total_error += survive_kalman_predict_update_state_extended_adaptive(
-			time, &tracker->model, &Z, tracker->IMU_R, map_imu_data, &fn_ctx);
+		if (tracker->adaptive_imu) {
+			tracker->stats.imu_total_error += survive_kalman_predict_update_state_extended_adaptive(
+				time, &tracker->model, &Z, tracker->IMU_R, map_imu_data, &fn_ctx);
+		} else {
+			tracker->stats.imu_total_error +=
+				survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, R, map_imu_data, &fn_ctx);
+		}
 		tracker->stats.imu_count++;
 		SV_VERBOSE(200, "Resultant state %f (imu) " Point19_format, time, LINMATH_VEC19_EXPAND(tracker->model.state));
 		normalize_model(tracker);
@@ -412,12 +426,17 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
 		if (oR) {
 			addnd(R, R, oR, 7);
 		}
-		tracker->stats.obs_total_error += survive_imu_integrate_pose(tracker, time, pose, R);
+		tracker->stats.obs_total_error +=
+			survive_imu_integrate_pose(tracker, time, pose, tracker->adaptive_obs ? 0 : R);
 		tracker->stats.obs_count++;
 
 		survive_kalman_tracker_report_state(pd, tracker);
 	}
 }
+
+STATIC_CONFIG_ITEM(KALMAN_USE_ADAPTIVE_IMU, "use-adaptive-imu", 'i', "Use adaptive kalman for IMU", 0)
+STATIC_CONFIG_ITEM(KALMAN_USE_ADAPTIVE_LIGHTCAP, "use-adaptive-lightcap", 'i', "Use adaptive kalman for Lightcap", 0)
+STATIC_CONFIG_ITEM(KALMAN_USE_ADAPTIVE_OBS, "use-adaptive-obs", 'i', "Use adaptive kalman for observations", 0)
 
 STATIC_CONFIG_ITEM(PROCESS_WEIGHT_ACC, "process-weight-acc", 'f', "Acc variance per second", 10.)
 
@@ -429,9 +448,12 @@ STATIC_CONFIG_ITEM(PROCESS_WEIGHT_ROTATION, "process-weight-rot", 'f', "Rotation
 
 STATIC_CONFIG_ITEM(KALMAN_REPORT_IGNORE_START, "report-ignore-start", 'i', "Number of reports to ignore at startup", 0)
 STATIC_CONFIG_ITEM(KALMAN_REPORT_IGNORE_THRESHOLD, "report-ignore-threshold", 'f',
-				   "Minimum variance to report posefrom the kalman filter", 1.)
+				   "Minimum variance to report pose from the kalman filter", 1.)
 STATIC_CONFIG_ITEM(KALMAN_LIGHTCAP_IGNORE_THRESHOLD, "light-ignore-threshold", 'f',
 				   "Minimum variance to allow light data into the kalman filter", 1.)
+STATIC_CONFIG_ITEM(KALMAN_LIGHTCAP_REQUIRED_OBS, "light-required-obs", 'i',
+				   "Minimum observations to allow light data into the kalman filter", 10)
+
 STATIC_CONFIG_ITEM(LIGHT_VARIANCE, "light-variance", 'f', "Variance of light sensor readings", 1e-6)
 STATIC_CONFIG_ITEM(OBS_POS_VARIANCE, "obs-pos-variance", 'f', "Variance of position integration from light capture",
 				   .02)
@@ -476,6 +498,10 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	survive_kalman_tracker_config(tracker, survive_attach_configf);
 
 	survive_attach_configi(tracker->so->ctx, KALMAN_REPORT_IGNORE_START_TAG, &tracker->report_ignore_start);
+	survive_attach_configi(tracker->so->ctx, KALMAN_LIGHTCAP_REQUIRED_OBS_TAG, &tracker->light_required_obs);
+	survive_attach_configi(tracker->so->ctx, KALMAN_USE_ADAPTIVE_IMU_TAG, &tracker->adaptive_imu);
+	survive_attach_configi(tracker->so->ctx, KALMAN_USE_ADAPTIVE_LIGHTCAP_TAG, &tracker->adaptive_lightcap);
+	survive_attach_configi(tracker->so->ctx, KALMAN_USE_ADAPTIVE_OBS_TAG, &tracker->adaptive_obs);
 
 	survive_kalman_set_logging_level(ctx->log_level);
 	size_t state_cnt = sizeof(SurviveKalmanModel) / sizeof(FLT);
@@ -552,6 +578,11 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 	survive_kalman_state_free(&tracker->model);
 
 	survive_detach_config(tracker->so->ctx, KALMAN_REPORT_IGNORE_START_TAG, &tracker->report_ignore_start);
+	survive_detach_config(tracker->so->ctx, KALMAN_USE_ADAPTIVE_IMU_TAG, &tracker->adaptive_imu);
+	survive_detach_config(tracker->so->ctx, KALMAN_USE_ADAPTIVE_LIGHTCAP_TAG, &tracker->adaptive_lightcap);
+	survive_detach_config(tracker->so->ctx, KALMAN_USE_ADAPTIVE_OBS_TAG, &tracker->adaptive_obs);
+	survive_detach_config(tracker->so->ctx, KALMAN_LIGHTCAP_REQUIRED_OBS_TAG, &tracker->light_required_obs);
+
 	survive_kalman_tracker_config(tracker, (survive_attach_detach_fn)survive_detach_config);
 }
 
