@@ -2,7 +2,7 @@ all: build
 
 build:
 	mkdir -p bin
-	cd bin && cmake .. && cmake --build . -j 4
+	cd bin && cmake .. && cmake --build . 
 
 install: build
 	cd bin && cmake --build . --target install
