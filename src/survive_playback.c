@@ -373,8 +373,7 @@ static SurviveObject *find_or_warn(SurvivePlaybackData *driver, const char *dev)
 		static bool display_once = false;
 		SurviveContext *ctx = driver->ctx;
 		if (display_once == false) {
-			SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Could not find device named %s from lineno %d\r\n", dev,
-					 driver->lineno);
+			SV_WARN("Could not find device named %s from lineno %d\r\n", dev, driver->lineno);
 		}
 		display_once = true;
 
@@ -400,7 +399,7 @@ static int parse_and_run_sweep(char *line, SurvivePlaybackData *driver) {
 
 	SurviveObject *so = find_or_warn(driver, dev);
 	if (!so) {
-		return -1;
+		return 0;
 	}
 
 	driver->hasSweepAngle = true;
@@ -424,7 +423,7 @@ static int parse_and_run_sync(char *line, SurvivePlaybackData *driver) {
 
 	SurviveObject *so = find_or_warn(driver, dev);
 	if (!so) {
-		return -1;
+		return 0;
 	}
 
 	driver->ctx->syncproc(so, channel, timecode, ootx, gen);
@@ -450,7 +449,7 @@ static int parse_and_run_sweep_angle(char *line, SurvivePlaybackData *driver) {
 
 	SurviveObject *so = find_or_warn(driver, dev);
 	if (!so) {
-		return -1;
+		return 0;
 	}
 
 	driver->ctx->sweep_angleproc(so, channel, sensor_id, timecode, plane, angle);
@@ -500,18 +499,9 @@ static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver, bool
 
 	assert(raw ^ i_char == 'I');
 
-	SurviveObject *so = survive_get_so_by_name(driver->ctx, dev);
-	if (!so) {
-		static bool display_once = false;
-		if (display_once == false) {
-			SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Could not find device named %s from lineno %d", dev,
-					 driver->lineno);
-		}
-		display_once = true;
-		return -1;
-	}
-
-	(raw ? driver->ctx->raw_imuproc : driver->ctx->imuproc)(so, mask, accelgyro, timecode, id);
+	SurviveObject *so = find_or_warn(driver, dev);
+	if (so)
+		(raw ? driver->ctx->raw_imuproc : driver->ctx->imuproc)(so, mask, accelgyro, timecode, id);
 	return 0;
 }
 
@@ -535,18 +525,7 @@ static int parse_and_run_rawlight(const char *line, SurvivePlaybackData *driver)
 	LightcapElement le;
 	int rr = sscanf(line, "%s %s %hhu %u %hu\n", dev, op, &le.sensor_id, &le.timestamp, &le.length);
 
-	SurviveObject *so = survive_get_so_by_name(driver->ctx, dev);
-	if (!so) {
-		static bool display_once = false;
-		SurviveContext *ctx = driver->ctx;
-		if (display_once == false) {
-			SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Could not find device named %s from lineno %d", dev,
-					 driver->lineno);
-		}
-		display_once = true;
-
-		return -1;
-	}
+	SurviveObject *so = find_or_warn(driver, dev);
 
 	handle_lightcap(so, &le);
 	return 0;
@@ -572,19 +551,9 @@ static int parse_and_run_lightcode(const char *line, SurvivePlaybackData *driver
 		return -1;
 	}
 
-	SurviveObject *so = survive_get_so_by_name(driver->ctx, dev);
-	if (!so) {
-		static bool display_once = false;
-		if (display_once == false) {
-			SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Could not find device named %s from lineno %d\n", dev,
-					 driver->lineno);
-		}
-		display_once = true;
-
-		return -1;
-	}
-
-	driver->ctx->lightproc(so, sensor_id, acode, timeinsweep, timecode, length, lh);
+	SurviveObject *so = find_or_warn(driver, dev);
+	if (so)
+		driver->ctx->lightproc(so, sensor_id, acode, timeinsweep, timecode, length, lh);
 	return 0;
 }
 
@@ -620,6 +589,7 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 
 		size_t n = 0;
 		ssize_t r = gzgetline(&line, &n, f);
+
 		if (r <= 0) {
 			free(line);
 			return 0;
