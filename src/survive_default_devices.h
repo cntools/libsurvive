@@ -22,4 +22,5 @@ SURVIVE_EXPORT SurviveObject *survive_create_ww0(SurviveContext *ctx, const char
 								  void *driver);
 
 SURVIVE_EXPORT int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int length);
+SURVIVE_EXPORT int survive_load_htc_config_format_from_file(SurviveObject *so, const char *filename);
 #endif

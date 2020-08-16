@@ -46,11 +46,16 @@ typedef struct vive_device_inst_t {
 	uint64_t last_config_id;
 	uint8_t compressed_data[8192];
 	uint16_t compressed_data_idx;
+	size_t packets_without_config;
+	bool tried_config_file;
+
+	uint8_t serial[32];
 } vive_device_inst_t;
 
 typedef struct usb_info_t {
 	uint16_t vid, pid;
 	int bus_id, dev_id;
+	uint8_t serial[32];
 } usb_info_t;
 
 #define VIVE_DEVICE_INST_MAX 32
@@ -266,6 +271,14 @@ static usb_info_t *get_usb_info_from_libusb() {
 									 .bus_id = libusb_get_bus_number(device),
 									 .dev_id = libusb_get_device_address(device)};
 
+		if (desc.iSerialNumber != 0) {
+			libusb_device_handle *handle;
+			int error = libusb_open(device, &handle);
+			if (error >= 0) {
+				libusb_get_string_descriptor_ascii(handle, desc.iSerialNumber, rtn[fill_cnt].serial, 32);
+				libusb_close(handle);
+			}
+		}
 		fill_cnt++;
 	}
 
@@ -286,7 +299,7 @@ static size_t fill_device_inst(SurviveContext *ctx, vive_device_inst_t *insts, c
 				insts->device = dev;
 				insts->bus_id = usb_dev->bus_id;
 				insts->dev_id = usb_dev->dev_id;
-
+				memcpy(insts->serial, usb_dev->serial, 32);
 				if (save_file) {
 					fprintf(save_file, "%d %d %d %d %s\n", usb_dev->vid, usb_dev->pid, insts->bus_id, insts->dev_id,
 							dev->codename);
@@ -517,6 +530,7 @@ void *pcap_thread_fn(void *_driver) {
 
 				if (usbp->id == dev->last_config_id && usbp->event_type == 'C' && dev->hasConfiged == false) {
 					ingest_config_request(dev, usbp, pktData);
+					dev->packets_without_config = 0;
 					goto continue_loop;
 				}
 
@@ -554,6 +568,23 @@ void *pcap_thread_fn(void *_driver) {
 					memcpy(si.buffer, pktData, usbp->data_len);
 
 					survive_data_cb(&si);
+				} else if (!dev->hasConfiged) {
+					if (dev->packets_without_config++ > 100 && dev->tried_config_file == false) {
+
+						for (int i = 0; i < 2 && !dev->hasConfiged; i++) {
+							char filename[128] = {0};
+							snprintf(filename, sizeof(filename), "%s_config.json",
+									 i == 0 ? dev->serial : (uint8_t *)dev_name);
+							int res = survive_load_htc_config_format_from_file(dev->so, filename);
+							SV_VERBOSE(50,
+									   "Too long without config packet for %s; trying to read config from file %s: %d",
+									   dev_name, filename, res);
+							if (res == 0) {
+								dev->hasConfiged = true;
+							}
+							dev->tried_config_file = true;
+						}
+					}
 				}
 			}
 

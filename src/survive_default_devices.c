@@ -408,6 +408,25 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	return 0;
 }
 
+int survive_load_htc_config_format_from_file(SurviveObject *so, const char *filename) {
+	SurviveContext *ctx = so->ctx;
+
+	FILE *fp = fopen(filename, "r");
+	if (fp) {
+		fseek(fp, 0L, SEEK_END);
+		int len = ftell(fp);
+		fseek(fp, 0L, SEEK_SET);
+		if (len > 0) {
+			char *ct0conf = (char *)malloc(len);
+			fread(ct0conf, 1, len, fp);
+			ctx->configproc(so, ct0conf, len);
+			fclose(fp);
+		}
+		return 0;
+	}
+	return -1;
+}
+
 void survive_destroy_device(SurviveObject *so) {
 	SurviveContext *ctx = so->ctx;
 	SV_VERBOSE(5, "Statistics for %s (driver %s)", so->codename, so->drivername);

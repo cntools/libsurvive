@@ -160,20 +160,25 @@ void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighth
 			   ctx->bsd[lighthouse].BaseStationID, ctx->bsd[lighthouse].mode, SURVIVE_POSE_EXPAND(*lighthouse_pose));
 }
 
+STATIC_CONFIG_ITEM(SURVIVE_SERIALIZE_DEV_CONFIG, "serialize-device-config", 'i', "Serialize device config files", 0)
+
 int survive_default_config_process(SurviveObject *so, char *ct0conf, int len) {
 	survive_recording_config_process(so, ct0conf, len);
 	so->conf = ct0conf;
 	so->conf_cnt = len;
 
+	int rtn = survive_load_htc_config_format(so, ct0conf, len);
 	if (survive_configi(so->ctx, "serialize-device-config", SC_GET, 0) != 0) {
-		char raw_fname[128];
-		sprintf(raw_fname, "%s_config.json", so->codename);
-		FILE *f = fopen(raw_fname, "w");
-		fwrite(ct0conf, len, 1, f);
-		fclose(f);
+		for (int i = 0; i < 2; i++) {
+			char raw_fname[128];
+			sprintf(raw_fname, "%s_config.json", i == 0 ? so->serial_number : so->codename);
+			FILE *f = fopen(raw_fname, "w");
+			fwrite(ct0conf, len, 1, f);
+			fclose(f);
+		}
 	}
 
-	return survive_load_htc_config_format(so, ct0conf, len);
+	return rtn;
 }
 
 SURVIVE_EXPORT char *survive_export_config(SurviveObject *so) {
