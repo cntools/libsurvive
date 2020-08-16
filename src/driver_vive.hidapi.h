@@ -113,7 +113,7 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 
 	return 0;
 }
-static void setup_hotplug(SurviveViveData *sv) {}
+static bool setup_hotplug(SurviveViveData *sv) { return false; }
 
 static inline void survive_close_usb_device(struct SurviveUSBInfo *usbInfo) {
 	for (int j = 0; j < 8; j++) {

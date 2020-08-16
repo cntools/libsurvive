@@ -783,13 +783,14 @@ int survive_vive_send_haptic(SurviveObject *so, uint8_t reserved, uint16_t pulse
 	return -2;
 }
 
+STATIC_CONFIG_ITEM(SECONDS_PER_HZ_OUTPUT, "usb-hz-output", 'i', "Seconds between outputing usb stats", -1)
 void survive_vive_usb_close(SurviveViveData *sv) {
 	survive_release_ctx_lock(sv->ctx);
 	survive_usb_close(sv);
 	survive_get_ctx_lock(sv->ctx);
+	survive_detach_config(sv->ctx, SECONDS_PER_HZ_OUTPUT_TAG, &sv->seconds_per_hz_output);
 }
 
-STATIC_CONFIG_ITEM(SECONDS_PER_HZ_OUTPUT, "usb-hz-output", 'i', "Seconds between outputing usb stats", -1)
 int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 	SurviveViveData *sv = v;
 	sv->read_count++;
@@ -2861,7 +2862,12 @@ int DriverRegHTCVive(SurviveContext *ctx) {
 		}
 	}
 
-	if (sv->udev_cnt) {
+	bool hasHotplug = true;
+#ifdef HIDAPI
+	hasHotplug = false;
+#endif
+
+	if (sv->udev_cnt || hasHotplug) {
 		survive_add_driver(ctx, sv, survive_vive_usb_poll, survive_vive_close, survive_vive_send_magic);
 	} else {
 		SV_INFO("No USB devices detected");

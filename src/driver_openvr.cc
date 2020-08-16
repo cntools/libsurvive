@@ -46,13 +46,13 @@ static SurviveVelocity surviveVelocityFromDevicePose(const vr::TrackedDevicePose
 }
 
 struct OpenVRDriver {
-	vr::IVRSystem &vr_system;
-	SurviveContext *ctx = 0;
-	bool *keep_running = 0;
+	vr::IVRSystem *vr_system = nullptr;
+	SurviveContext *ctx = nullptr;
+	bool *keep_running = nullptr;
 
 	SurvivePose openvr2survive = {0};
 
-	OpenVRDriver(vr::IVRSystem &vrSystem, SurviveContext *ctx) : vr_system(vrSystem), ctx(ctx) {}
+	OpenVRDriver(SurviveContext *ctx) : ctx(ctx) {}
 
 	~OpenVRDriver() { vr::VR_Shutdown(); }
 
@@ -140,7 +140,7 @@ struct OpenVRDriver {
 
 	void getPropString(vr::TrackedDeviceIndex_t unDevice, vr::TrackedDeviceProperty prop, char *pchBuffer,
 					   size_t availBytes) {
-		size_t propLength = vr_system.GetStringTrackedDeviceProperty(unDevice, prop, pchBuffer, availBytes, nullptr);
+		size_t propLength = vr_system->GetStringTrackedDeviceProperty(unDevice, prop, pchBuffer, availBytes, nullptr);
 		pchBuffer[propLength] = 0;
 	}
 
@@ -157,18 +157,34 @@ struct OpenVRDriver {
 
 	int init_time = 500;
 	int poll() {
+		if (vr_system == 0) {
+			OGUSleep(10000 * 50);
+			vr::EVRInitError eError = vr::VRInitError_None;
+			vr_system = vr::VR_Init(&eError, vr::VRApplication_Background);
+			if (eError != vr::VRInitError_None || vr_system == nullptr) {
+				SV_WARN("Unable to init VR runtime: %s", vr::VR_GetVRInitErrorAsEnglishDescription(eError));
+				return 0;
+			}
+		}
+
 		OGUSleep(10000);
 
 		vr::VREvent_t event = {0};
-		while (vr_system.PollNextEvent(&event, sizeof(event))) {
+		while (vr_system->PollNextEvent(&event, sizeof(event))) {
 			SV_VERBOSE(200, "(OpenVR) Event: %s (%d)",
-					   vr_system.GetEventTypeNameFromEnum(static_cast<vr::EVREventType>(event.eventType)),
+					   vr_system->GetEventTypeNameFromEnum(static_cast<vr::EVREventType>(event.eventType)),
 					   event.eventType);
+
+			if (event.eventType == 700) {
+				vr_system = 0;
+				vr::VR_Shutdown();
+				return 0;
+			}
 		}
 
 		vr::TrackedDevicePose_t trackedDevicePoses[vr::k_unMaxTrackedDeviceCount] = {};
-		vr_system.GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseRawAndUncalibrated, 0, trackedDevicePoses,
-												  vr::k_unMaxTrackedDeviceCount);
+		vr_system->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseRawAndUncalibrated, 0, trackedDevicePoses,
+												   vr::k_unMaxTrackedDeviceCount);
 
 		for (vr::TrackedDeviceIndex_t unDevice = 0; unDevice < vr::k_unMaxTrackedDeviceCount; unDevice++) {
 			auto &trackedDevicePose = trackedDevicePoses[unDevice];
@@ -186,6 +202,8 @@ struct OpenVRDriver {
 				device_list.push_back(&dev);
 				getPropString(unDevice, vr::Prop_SerialNumber_String, dev.name, sizeof(dev.name));
 				dev.bsd_idx = get_bsd_idx(dev);
+
+				SV_INFO("New OpenVR device %s", dev.name);
 			}
 
 			dev.vr_pose = pose;
@@ -230,13 +248,8 @@ static int openvr_close(struct SurviveContext *ctx, void *_driver) {
 
 int DriverRegOpenVR(SurviveContext *ctx) {
 	vr::EVRInitError eError = vr::VRInitError_None;
-	auto vr_system = vr::VR_Init(&eError, vr::VRApplication_Utility);
-	if (eError != vr::VRInitError_None || vr_system == 0) {
-		SV_WARN("Unable to init VR runtime: %s", vr::VR_GetVRInitErrorAsEnglishDescription(eError));
-		return -1;
-	}
 
-	auto driver = new OpenVRDriver(*vr_system, ctx);
+	auto driver = new OpenVRDriver(ctx);
 	driver->keep_running = survive_add_threaded_driver(ctx, driver, "OpenVR driver", openvr_thread, openvr_close);
 	return 0;
 }

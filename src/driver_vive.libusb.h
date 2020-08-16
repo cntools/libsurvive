@@ -92,10 +92,11 @@ int libusb_hotplug(libusb_context *usbctx, libusb_device *device, libusb_hotplug
 
 	return 0;
 }
-static void setup_hotplug(SurviveViveData *sv) {
+static bool setup_hotplug(SurviveViveData *sv) {
 	libusb_hotplug_register_callback(sv->usbctx, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT,
 									 LIBUSB_HOTPLUG_NO_FLAGS, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY,
 									 LIBUSB_HOTPLUG_MATCH_ANY, libusb_hotplug, sv, 0);
+	return 0;
 }
 
 static int survive_get_ids(survive_usb_device_t d, uint16_t *idVendor, uint16_t *idProduct) {
@@ -130,8 +131,8 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 
 	SurviveContext *ctx = sv->ctx;
 	if (!usbInfo->handle || ret) {
-		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Error: cannot open device \"%s\" with vid/pid %04x:%04x error %d (%s)",
-				 info->name, idVendor, idProduct, ret, libusb_error_name(ret));
+		SV_WARN("Error: cannot open device \"%s\" with vid/pid %04x:%04x error %d (%s)", info->name, idVendor,
+				idProduct, ret, libusb_error_name(ret));
 		goto cleanup_and_rtn;
 	}
 
@@ -139,7 +140,7 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 	for (int j = 0; j < conf->bNumInterfaces; j++) {
 		ret = libusb_claim_interface(usbInfo->handle, j);
 		if (ret != 0) {
-			SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Could not claim interface %d of %s: %d", j, info->name, ret);
+			SV_WARN("Could not claim interface %d of %s: %d %s", j, info->name, ret, libusb_error_name(ret));
 			goto cleanup_and_rtn;
 		}
 	}

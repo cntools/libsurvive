@@ -1069,5 +1069,3 @@ SURVIVE_EXPORT void survive_detach_config(SurviveContext *ctx, const char *tag, 
 		SV_WARN("Found no config item to detach %s", tag);
 	}
 }
-
-
