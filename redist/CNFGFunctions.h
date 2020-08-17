@@ -9,6 +9,14 @@ extern "C" {
 
 #include <stdint.h>
 
+#ifndef CN_EXPORT
+#if defined(_WIN32) && !defined(TCC)
+#define CN_EXPORT __declspec(dllexport)
+#else
+#define CN_EXPORT __attribute__((visibility("default")))
+#endif
+#endif
+
 typedef struct {
     short x, y; 
 } RDPoint; 
@@ -18,41 +26,39 @@ extern uint32_t CNFGBGColor;
 extern uint32_t CNFGLastColor;
 extern uint32_t CNFGDialogColor; //background for boxes
 
-void CNFGDrawText( const char * text, int scale );
-void CNFGDrawBox(  int x1, int y1, int x2, int y2 );
-void CNFGGetTextExtents( const char * text, int * w, int * h, int textsize  );
-void CNFGDrawTextbox( int x, int y, const char * text, int textsize ); //ignores pen.
+CN_EXPORT void CNFGDrawText(const char *text, int scale);
+CN_EXPORT void CNFGDrawBox(int x1, int y1, int x2, int y2);
+CN_EXPORT void CNFGGetTextExtents(const char *text, int *w, int *h, int textsize);
+CN_EXPORT void CNFGDrawTextbox(int x, int y, const char *text, int textsize); // ignores pen.
 
 //To be provided by driver.
-uint32_t CNFGColor( uint32_t RGB );
-void CNFGUpdateScreenWithBitmap( unsigned long * data, int w, int h );
-void CNFGTackPixel( short x1, short y1 );
-void CNFGTackSegment( short x1, short y1, short x2, short y2 );
-void CNFGTackRectangle( short x1, short y1, short x2, short y2 );
-void CNFGTackPoly( RDPoint * points, int verts );
-void CNFGClearFrame();
-void CNFGSwapBuffers();
+CN_EXPORT uint32_t CNFGColor(uint32_t RGB);
+CN_EXPORT void CNFGUpdateScreenWithBitmap(unsigned long *data, int w, int h);
+CN_EXPORT void CNFGTackPixel(short x1, short y1);
+CN_EXPORT void CNFGTackSegment(short x1, short y1, short x2, short y2);
+CN_EXPORT void CNFGTackRectangle(short x1, short y1, short x2, short y2);
+CN_EXPORT void CNFGTackPoly(RDPoint *points, int verts);
+CN_EXPORT void CNFGClearFrame();
+CN_EXPORT void CNFGSwapBuffers();
 
-void CNFGGetDimensions( short * x, short * y );
-int CNFGSetup( const char * WindowName, int w, int h ); //return 0 if ok.
-void CNFGSetupFullscreen( const char * WindowName, int screen_number );
-void CNFGHandleInput();
-
+CN_EXPORT void CNFGGetDimensions(short *x, short *y);
+CN_EXPORT int CNFGSetup(const char *WindowName, int w, int h); // return 0 if ok.
+CN_EXPORT void CNFGSetupFullscreen(const char *WindowName, int screen_number);
+CN_EXPORT void CNFGHandleInput();
 
 //You must provide:
-void HandleKey( int keycode, int bDown );
-void HandleButton( int x, int y, int button, int bDown );
-void HandleMotion( int x, int y, int mask );
-void HandleDestroy();
-
+CN_EXPORT void HandleKey(int keycode, int bDown);
+CN_EXPORT void HandleButton(int x, int y, int button, int bDown);
+CN_EXPORT void HandleMotion(int x, int y, int mask);
+CN_EXPORT void HandleDestroy();
 
 //Internal function for resizing rasterizer for rasterizer-mode.
-void CNFGInternalResize( short x, short y ); //don't call this.
+CN_EXPORT void CNFGInternalResize(short x, short y); // don't call this.
 
 //Not available on all systems.  Use The OGL portion with care.
 #ifdef CNFGOGL
-void   CNFGSetVSync( int vson );
-void * CNFGGetExtension( const char * extname );
+CN_EXPORT void CNFGSetVSync(int vson);
+CN_EXPORT void *CNFGGetExtension(const char *extname);
 #endif
 
 #ifdef __cplusplus
