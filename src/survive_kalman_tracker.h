@@ -37,6 +37,8 @@ typedef struct SurviveKalmanTracker {
 	FLT obs_rot_var;
 	FLT light_var;
 
+	FLT last_light_time;
+
 	int adaptive_imu, adaptive_lightcap, adaptive_obs;
 
 	FLT light_threshold_var, report_threshold_var;

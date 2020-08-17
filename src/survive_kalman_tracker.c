@@ -123,6 +123,7 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 
 	FLT time = data->hdr.timecode / (FLT)tracker->so->timebase_hz;
 	FLT delta = time - tracker->model.t;
+	tracker->last_light_time = time;
 
 	if (tracker->light_var >= 0) {
 		CvMat Z = cvMat(1, 1, CV_FLT, &data->angle);
@@ -215,6 +216,25 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 	}
 
 	FLT rotation_variance[] = {1e5, 1e5, 1e5, 1e5, 1e5, 1e5};
+
+	if (time - tracker->last_light_time > .1) {
+		FLT _H[] = {
+			0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+		};
+		CvMat H = cvMat(9, tracker->model.state_cnt, SURVIVE_CV_F, _H);
+		FLT v = 1e-5;
+		FLT R[] = {
+			1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5,
+		};
+		CREATE_STACK_MAT(Z, 9, 1);
+		memset(_Z, 0, sizeof(FLT) * 9);
+
+		tracker->stats.imu_total_error += survive_kalman_predict_update_state(time, &tracker->model, &Z, &H, R);
+	}
 
 	struct map_imu_data_ctx fn_ctx = {.tracker = tracker};
 	if (tracker->acc_var >= 0) {
@@ -423,6 +443,7 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
 			return;
 		}
 	}
+	tracker->last_light_time = time;
 
 	if (tracker->obs_pos_var >= 0 && tracker->obs_rot_var >= 0) {
 		FLT R[] = {tracker->obs_pos_var, tracker->obs_pos_var, tracker->obs_pos_var, tracker->obs_rot_var,
