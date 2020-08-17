@@ -59,7 +59,7 @@ end goal is to have a system where the user is never aware of any calibration re
 on a CNC please get in our [discord](https://discordapp.com/invite/7QbCAGS)
 - Better handling of data starvation -- if the USB or radio connection stutters too long, the tracking will occasionally
 glitch out for a brief period. 
-- 
+- Use something like usbmon for windows
 
 # Getting Started
 
