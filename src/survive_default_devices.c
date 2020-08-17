@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <survive.h>
 
 #define HMD_IMU_HZ 1000.0f
 #define VIVE_DEFAULT_IMU_HZ 250.0f
@@ -409,6 +410,9 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 }
 
 int survive_load_htc_config_format_from_file(SurviveObject *so, const char *filename) {
+	if (so == 0 || so->ctx == 0)
+		return -1;
+
 	SurviveContext *ctx = so->ctx;
 
 	FILE *fp = fopen(filename, "r");
@@ -431,8 +435,16 @@ void survive_destroy_device(SurviveObject *so) {
 	SurviveContext *ctx = so->ctx;
 	SV_VERBOSE(5, "Statistics for %s (driver %s)", so->codename, so->drivername);
 	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
-		if (so->stats.hit_from_lhs[i])
-			SV_VERBOSE(5, "\tHits from LH %2d:\t%8d", i, so->stats.hit_from_lhs[i]);
+		if (so->stats.hit_from_lhs[i]) {
+			SV_VERBOSE(5, "\tLH %2d", i);
+			SV_VERBOSE(5, "\t\tSyncs:             %8u", so->stats.syncs[i]);
+			SV_VERBOSE(5, "\t\tSkipped Syncs:     %8u", so->stats.skipped_syncs[i]);
+			SV_VERBOSE(5, "\t\tSync resets:       %8u", so->stats.sync_resets[i]);
+			SV_VERBOSE(5, "\t\tBad Syncs:         %8u", so->stats.bad_syncs[i]);
+			SV_VERBOSE(5, "\t\tHits:              %8u", so->stats.hit_from_lhs[i]);
+			SV_VERBOSE(5, "\t\tDrops:             %8u", so->stats.dropped_light[i]);
+			SV_VERBOSE(5, "\t\tRejected Data:     %8u", so->stats.rejected_data[i]);
+		}
 	}
 	free(so->sensor_locations);
 	free(so->sensor_normals);

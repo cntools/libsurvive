@@ -878,7 +878,7 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 	return 0;
 }
 
-static inline survive_timecode fix_time24(survive_timecode time24, survive_timecode refTime) {
+static inline survive_timecode fix_time24(SurviveContext *ctx, survive_timecode time24, survive_timecode refTime) {
 	survive_timecode upper_ref = refTime & 0xFF000000u;
 	survive_timecode lower_ref = refTime & 0x00FFFFFFu;
 
@@ -887,6 +887,9 @@ static inline survive_timecode fix_time24(survive_timecode time24, survive_timec
 	} else if (lower_ref < time24 && time24 - lower_ref > (1 << 23u) && upper_ref > 0) {
 		upper_ref -= 0x01000000;
 	}
+
+	//	SV_VERBOSE(250, "fix_time24 time24: %x refTime: %x upper_ref: %x (%x) rtn: %x", time24, refTime, upper_ref,
+	//refTime & 0xFF000000u, upper_ref | time24);
 
 	return upper_ref | time24;
 }
@@ -1801,7 +1804,8 @@ static int parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, ui
 				// encodes like so: 0bXXXX ABTTT TTTT TTTT TTTT TTTT TTTT TTSC
 				bool ootx = (timecode >> 26u) & 1u;
 				bool g = (timecode >> 27u) & 1u;
-				timecode = fix_time24((timecode >> 2u) & 0xFFFFFFu, reference_time);
+				uint32_t time24 = (timecode >> 2u) & 0xFFFFFFu;
+				timecode = fix_time24(ctx, time24, reference_time);
 				uint8_t unused = timecode >> 28;
 				if (unused && dump_binary) {
 					SV_WARN("Not sure what this is: %x", unused);
@@ -1824,7 +1828,7 @@ static int parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, ui
 				// Since nothing in libsurvive thinks anything is 96mhz; pass in a flag
 				bool half_clock_flag = timecode & 0x4u;
 				uint8_t sensor = (timecode >> 27u);
-				timecode = fix_time24((timecode >> 3u) & 0xFFFFFFu, reference_time);
+				timecode = fix_time24(ctx, (timecode >> 3u) & 0xFFFFFFu, reference_time);
 				SV_VERBOSE(500, "Sweep %s %02d.%02d %8u", obj->codename, channel, sensor, timecode);
 				if (channel == 255) {
 					SV_WARN("No channel specified for sweep");

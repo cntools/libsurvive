@@ -676,7 +676,7 @@ int parse_floats(char *tag, char **values, uint8_t count) {
 
 int parse_uint32(char *tag, char **values, uint16_t count) {
 	uint16_t i = 0;
-	FLT *l;
+	uint32_t *l;
 	l = alloca(sizeof(FLT) * count);
 	char *end = NULL;
 	config_group *cg = cg_stack[cg_stack_head];

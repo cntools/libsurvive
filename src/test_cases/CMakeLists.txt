@@ -39,6 +39,9 @@ if(PCAP_LIBRARY)
 
     # This calibrates 5 lighthouses across three objects
     add_test(NAME vive-and-controllers COMMAND $<TARGET_FILE:test_replays> ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/vive-and-controllers.pcap.gz)
+
+    # This calibrates a wireless tracker with 4 lh. Originally OOTX didn't work.
+    add_test(NAME tracker-cal-attempt COMMAND $<TARGET_FILE:test_replays> ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/tracker-cal-attempt.pcap.gz --force-ootx)
 endif()
 
 include(ExternalProject)

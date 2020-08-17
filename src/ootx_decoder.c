@@ -18,7 +18,7 @@
 
 //char* fmt_str = "L Y HMD %d 5 1 206230 %d\n";
 
-void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit);
+void ootx_pump_bit(ootx_decoder_context *ctx, int8_t dbit);
 
 void ootx_error(ootx_decoder_context *ctx, const char *msg) {
 	if (ctx->ootx_error_clbk)
@@ -98,10 +98,14 @@ uint8_t ootx_process_bit(ootx_decoder_context *ctx, uint32_t length) {
 	return dbit;
 }
 
-void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
-//	uint8_t dbit = ootx_decode_bit(length);
-	++(ctx->bits_processed);
+void ootx_pump_bit(ootx_decoder_context *ctx, int8_t dbit) {
+	//	uint8_t dbit = ootx_decode_bit(length);
+	if (dbit < 0) {
+		dbit = ctx->bits_processed == 16;
+	}
 
+	++(ctx->bits_processed);
+	ctx->stats.bits_seen++;
 	if ( ootx_detect_preamble(ctx, dbit) ) {
 		/*	data stream can start over at any time so we must
 			always look for preamble bits */
@@ -117,10 +121,12 @@ void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
 		{
 			// printf("Bad sync bit\n");
 			if (ctx->ignore_sync_bit_error == 0) {
-				if (ctx->found_preamble)
+				if (ctx->found_preamble) {
 					ootx_error(ctx, "OOTX Decoder: Bad sync bit");
+					ctx->stats.bad_sync_bits++;
+				}
 				ootx_reset_buffer(ctx);
-			} else {
+			} else if (ctx->found_preamble) {
 				ootx_error(ctx, "OOTX Decoder: Ignoring bad sync bit");
 			}
 		}
@@ -158,9 +164,13 @@ void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit) {
 			crc = crc32( crc, op.data,op.length);
 
 			if (crc != op.crc32) {
-				if (ctx->ootx_bad_crc_clbk != NULL)
+				if (ctx->ootx_bad_crc_clbk != NULL) {
 					ctx->ootx_bad_crc_clbk(ctx, &op, crc);
+					ctx->stats.bad_crcs++;
+				}
 			} else if (ctx->ootx_packet_clbk != NULL) {
+				ctx->stats.packets_found++;
+				ctx->stats.used_bytes += op.length;
 				ctx->ootx_packet_clbk(ctx, &op);
 			}
 

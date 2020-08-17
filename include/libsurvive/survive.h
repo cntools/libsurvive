@@ -29,7 +29,7 @@ typedef struct SurviveSensorActivations_s {
 
 	// Valid for gen2; somewhat different meaning though -- refers to angle of the rotor when the sweep happened.
 	FLT angles[SENSORS_PER_OBJECT][NUM_GEN2_LIGHTHOUSES][2];				// 2 Axes (Angles in LH space)
-	survive_timecode timecode[SENSORS_PER_OBJECT][NUM_GEN2_LIGHTHOUSES][2]; // Timecode per axis in ticks
+	survive_long_timecode timecode[SENSORS_PER_OBJECT][NUM_GEN2_LIGHTHOUSES][2]; // Timecode per axis in ticks
 
 	// Valid only for Gen1
 	survive_timecode lengths[SENSORS_PER_OBJECT][NUM_GEN1_LIGHTHOUSES][2]; // Timecode per axis in ticks
@@ -57,7 +57,7 @@ SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_long_timecode_ligh
 SURVIVE_EXPORT FLT SurviveSensorActivations_difference(const SurviveSensorActivations *rhs,
         const SurviveSensorActivations *lhs);
 SURVIVE_EXPORT void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLightGen1 *lightData);
-SURVIVE_EXPORT void SurviveSensorActivations_add_gen2(SurviveSensorActivations *self,
+SURVIVE_EXPORT bool SurviveSensorActivations_add_gen2(SurviveSensorActivations *self,
 													  struct PoserDataLightGen2 *lightData);
 
 SURVIVE_EXPORT void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct PoserDataIMU *imuData);
@@ -151,13 +151,8 @@ struct SurviveObject {
 	// Flood info, for calculating which laser is currently sweeping.
 	void *disambiguator_data;
 	int8_t oldcode;
-	int8_t sync_set_number; // 0 = master, 1 = slave, -1 = fault.
-	int8_t did_handle_ootx; // If unset, will send lightcap data for sync pulses next time a sensor is hit.
 	survive_timecode last_time_between_sync[NUM_GEN2_LIGHTHOUSES];
 	survive_timecode last_sync_time[NUM_GEN2_LIGHTHOUSES];
-	survive_timecode last_sync_length[NUM_GEN1_LIGHTHOUSES];
-	survive_timecode recent_sync_time;
-	survive_timecode last_lighttime; // May be a 24- or 32- bit number depending on what device.
 
 	FLT imu_freq;
 
@@ -184,7 +179,13 @@ struct SurviveObject {
 	size_t conf_cnt;
 
 	struct {
+		uint32_t syncs[NUM_GEN2_LIGHTHOUSES];
+		uint32_t skipped_syncs[NUM_GEN2_LIGHTHOUSES];
+		uint32_t bad_syncs[NUM_GEN2_LIGHTHOUSES];
 		uint32_t hit_from_lhs[NUM_GEN2_LIGHTHOUSES];
+		uint32_t rejected_data[NUM_GEN2_LIGHTHOUSES];
+		uint32_t dropped_light[NUM_GEN2_LIGHTHOUSES];
+		uint32_t sync_resets[NUM_GEN2_LIGHTHOUSES];
 	} stats;
 };
 

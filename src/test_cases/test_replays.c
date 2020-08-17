@@ -78,13 +78,15 @@ static int test_path(const char *name, int main_argc, char **main_argv) {
 		ctx->bsd[i].Pose = LinmathPose_Identity;
 		fprintf(stderr, " LH%2d (%08x): " SurvivePose_format "\n", i, ctx->bsd[i].BaseStationID, pose.Pos[0],
 				pose.Pos[1], pose.Pos[2], pose.Rot[0], pose.Rot[1], pose.Rot[2], pose.Rot[3]);
-		if (pose.Pos[0] == 0.0) {
+		if (fabs(pose.Pos[0]) < 1e-10) {
 			ref_lh = ctx->bsd[i].BaseStationID;
 		}
 	}
 
+	SV_INFO("Setting %08x as reference base station", ref_lh);
 	survive_configi(ctx, "reference-basestation", SC_SET, ref_lh);
 
+	SV_WARN(" =============== Starting thread =============== ")
 	survive_simple_start_thread(actx);
 
 	while (survive_simple_is_running(actx)) {

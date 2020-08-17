@@ -27,10 +27,17 @@ typedef struct ootx_decoder_context {
 	uint8_t bits_processed;
 	uint8_t found_preamble;
 
-	uint8_t bit_count[2];
 	int ignore_sync_bit_error;
 	void * user;
 	int user1;
+
+	struct {
+		uint32_t bits_seen;
+		uint32_t bad_sync_bits;
+		uint32_t bad_crcs;
+		uint32_t packets_found;
+		uint32_t used_bytes;
+	} stats;
 
 	void (*ootx_error_clbk)(struct ootx_decoder_context *ctx, const char *msg);
 	void (*ootx_packet_clbk)(struct ootx_decoder_context *ctx, ootx_packet *packet);
@@ -88,7 +95,7 @@ void ootx_init_decoder_context(ootx_decoder_context *ctx);
 void ootx_free_decoder_context(ootx_decoder_context *ctx);
 
 uint8_t ootx_process_bit(ootx_decoder_context *ctx, uint32_t length);
-void ootx_pump_bit(ootx_decoder_context *ctx, uint8_t dbit);
+void ootx_pump_bit(ootx_decoder_context *ctx, int8_t dbit);
 
 uint8_t ootx_decode_bit(uint32_t length);
 

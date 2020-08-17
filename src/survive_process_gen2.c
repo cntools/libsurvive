@@ -5,6 +5,7 @@
 #include "survive_playback.h"
 #include <assert.h>
 #include <math.h>
+#include <survive.h>
 
 static FLT freq_per_channel[NUM_GEN2_LIGHTHOUSES] = {
 	50.0521, 50.1567, 50.3673, 50.5796, 50.6864, 50.9014, 51.0096, 51.1182,
@@ -20,6 +21,7 @@ static void ootx_error_clbk_d(ootx_decoder_context *ct, const char *msg) {
 		SV_INFO("(%d) %s", ctx->bsd[id].mode != 255 ? ctx->bsd[id].mode : id, msg);
 }
 
+STATIC_CONFIG_ITEM(SERIALIZE_OOTX, "serialize-ootx", 'i', "Serialize out ootx", 0)
 static void ootx_packet_clbk_d_gen2(ootx_decoder_context *ct, ootx_packet *packet) {
 	SurviveContext *ctx = ((SurviveObject *)(ct->user))->ctx;
 	int id = ct->user1;
@@ -27,12 +29,20 @@ static void ootx_packet_clbk_d_gen2(ootx_decoder_context *ct, ootx_packet *packe
 	lighthouse_info_v15 v15;
 	init_lighthouse_info_v15(&v15, packet->data);
 
+	if (survive_configi(ctx, SERIALIZE_OOTX_TAG, SC_GET, 0) == 1) {
+		char filename[128];
+		snprintf(filename, 128, "LH%02d_%08x.ootx", v15.mode_current & 0x7F, v15.id);
+		FILE *f = fopen(filename, "w");
+		fwrite(packet->data, packet->length, 1, f);
+		fclose(f);
+	}
+
 	BaseStationData *b = &ctx->bsd[id];
 
 	bool doSave = b->BaseStationID != v15.id || b->OOTXSet == false;
 
 	if (doSave) {
-		SV_INFO("Got OOTX packet %d", ctx->bsd[id].mode);
+		SV_INFO("Got OOTX packet %d %08x", ctx->bsd[id].mode, v15.id);
 
 		b->BaseStationID = v15.id;
 		for (int i = 0; i < 2; i++) {
@@ -91,7 +101,7 @@ static void ootx_packet_cblk_d_gen1(ootx_decoder_context *ct, ootx_packet *packe
 	config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
 }
 
-void survive_ootx_behavior(SurviveObject *so, int8_t bsd_idx, int8_t lh_version, bool ootx) {
+void survive_ootx_behavior(SurviveObject *so, int8_t bsd_idx, int8_t lh_version, int ootx) {
 	struct SurviveContext *ctx = so->ctx;
 	if (ctx->bsd[bsd_idx].OOTXSet == false) {
 		ootx_decoder_context *decoderContext = ctx->bsd[bsd_idx].ootx_data;
@@ -107,6 +117,7 @@ void survive_ootx_behavior(SurviveObject *so, int8_t bsd_idx, int8_t lh_version,
 			ootx_init_decoder_context(decoderContext);
 			decoderContext->user1 = bsd_idx;
 			decoderContext->user = so;
+			decoderContext->ignore_sync_bit_error = survive_configi(ctx, "ootx-ignore-sync-error", SC_SETCONFIG, 0);
 			decoderContext->ootx_packet_clbk = lh_version ? ootx_packet_clbk_d_gen2 : ootx_packet_cblk_d_gen1;
 			decoderContext->ootx_error_clbk = ootx_error_clbk_d;
 		}
@@ -115,6 +126,15 @@ void survive_ootx_behavior(SurviveObject *so, int8_t bsd_idx, int8_t lh_version,
 
 			if (ctx->bsd[bsd_idx].OOTXSet) {
 				ctx->bsd[bsd_idx].ootx_data = 0;
+
+				SV_VERBOSE(5, "OOTX stats for %s LH%d", so->codename, bsd_idx);
+				SV_VERBOSE(5, "\tBits seen:         %u (%d bytes)", decoderContext->stats.bits_seen,
+						   decoderContext->stats.bits_seen / 8);
+				SV_VERBOSE(5, "\tBad CRCs:          %u", decoderContext->stats.bad_crcs);
+				SV_VERBOSE(5, "\tBad sync bits:     %u", decoderContext->stats.bad_sync_bits);
+				SV_VERBOSE(5, "\tPackets found:     %u", decoderContext->stats.packets_found);
+				SV_VERBOSE(5, "\tPayload size:     %u", decoderContext->stats.used_bytes);
+
 				ootx_free_decoder_context(decoderContext);
 				free(decoderContext);
 			}
@@ -135,11 +155,43 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 
 	survive_recording_sync_process(so, channel, timecode, ootx, gen);
 
-	so->last_time_between_sync[bsd_idx] = survive_timecode_difference(timecode, so->last_sync_time[bsd_idx]);
-	FLT hz = 48000000. / so->last_time_between_sync[bsd_idx];
-	SV_VERBOSE(250, "Sync hz %2d: %2.6fhz (err: %0.6fhz) ootx: %d gen: %d", channel, hz,
-			   fabs(hz - freq_per_channel[channel]), ootx, gen);
+	bool isIniting = so->last_sync_time[bsd_idx] == 0;
 
+	if (!isIniting) {
+		survive_timecode time_delta = survive_timecode_difference(timecode, so->last_sync_time[bsd_idx]);
+		survive_timecode predicted_time = 48000000. / freq_per_channel[channel];
+		int rotations_since = (time_delta + predicted_time / 2) / predicted_time;
+		int skipped_syncs = rotations_since - 1;
+		time_delta -= predicted_time * skipped_syncs;
+
+		FLT hz = 48000000. / time_delta;
+		FLT err = fabs(hz - freq_per_channel[channel]);
+
+		if (err > 1) {
+			if (skipped_syncs > 10) {
+				so->last_sync_time[bsd_idx] = 0;
+				so->stats.sync_resets[bsd_idx]++;
+			}
+			SV_VERBOSE(100, "Sync hz %2d: %8.6fhz (err: %0.6fhz) ootx: %d gen: %d time: %u count: %u", channel, hz, err,
+					   ootx, gen, timecode, so->stats.syncs[bsd_idx]);
+			so->stats.bad_syncs[bsd_idx]++;
+			return;
+		} else {
+			SV_VERBOSE(250, "Sync hz %2d: %8.6fhz (err: %0.6fhz) ootx: %d gen: %d time: %u count: %u", channel, hz, err,
+					   ootx, gen, timecode, so->stats.syncs[bsd_idx]);
+		}
+
+		so->stats.skipped_syncs[bsd_idx] += skipped_syncs;
+		// Every skipped sync halves our ootx success rate; but if we don't send anything in it will be wrong 100% of
+		// the time
+		for (int i = 0; i < skipped_syncs && i < 3; i++) {
+			survive_ootx_behavior(so, bsd_idx, ctx->lh_version, -1);
+		}
+
+		so->last_time_between_sync[bsd_idx] = time_delta;
+	}
+
+	so->stats.syncs[bsd_idx]++;
 	so->last_sync_time[bsd_idx] = timecode;
 
 	survive_ootx_behavior(so, bsd_idx, ctx->lh_version, ootx);
@@ -154,7 +206,9 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 							}};
 
 	if (bsd_idx < ctx->activeLighthouses)
-		SurviveSensorActivations_add_gen2(&so->activations, &l);
+		if (SurviveSensorActivations_add_gen2(&so->activations, &l) == false) {
+			so->stats.rejected_data[bsd_idx]++;
+		}
 
 	so->stats.hit_from_lhs[bsd_idx]++;
 
@@ -177,12 +231,16 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 	survive_recording_sweep_process(so, channel, sensor_id, timecode, half_clock_flag);
 
 	survive_timecode last_sweep = so->last_sync_time[bsd_idx];
+	if (last_sweep == 0) {
+		return;
+	}
 	assert(channel <= NUM_GEN2_LIGHTHOUSES);
 
 	// SV_INFO("Sensor ch%2d %2d %d %12x %6d", channel, sensor_id, flag, timecode, timecode
 	// so->last_sync_time[bsd_idx]);
 
-	FLT time_since_sync = (survive_timecode_difference(timecode, last_sweep) / 48000000.);
+	survive_timecode time_delta = survive_timecode_difference(timecode, last_sweep);
+	FLT time_since_sync = (time_delta / 48000000.);
 	// if (half_clock_flag)
 	//	time_since_sync += 0.5 / 48000000.;
 
@@ -191,16 +249,24 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 		hz = freq_per_channel[channel];
 	}
 
-	FLT time_per_rot = 1. / hz;
+	survive_timecode predicted_time = 48000000. / freq_per_channel[channel];
+	int rotations_since = (time_delta) / predicted_time;
 
-	if (time_since_sync > time_per_rot)
+	FLT time_per_rot = 1. / hz;
+	time_since_sync -= time_per_rot * rotations_since;
+
+	if (rotations_since > 5) {
+		SV_VERBOSE(100, "Dropping light data %d %f %f %u", channel, time_since_sync * 1000., time_per_rot * 1000.,
+				   timecode);
+		so->stats.dropped_light[bsd_idx]++;
 		return;
+	}
 
 	FLT angle = time_since_sync / time_per_rot * 2. * LINMATHPI;
 	FLT angle2 = (time_since_sync + .5 / 48000000.) / time_per_rot * 2. * LINMATHPI;
 
-	// SV_INFO("Sensor ch%2d %2d %12f %12f %d %.16f", channel, sensor_id, angle / LINMATHPI * 180., angle2 / LINMATHPI *
-	// 180., half_clock_flag, time_since_sync);
+	SV_VERBOSE(500, "Sensor ch%2d %2d %12f %12f %d %.16f", channel, sensor_id, angle / LINMATHPI * 180.,
+			   angle2 / LINMATHPI * 180., half_clock_flag, time_since_sync);
 
 	int8_t plane = angle > LINMATHPI;
 	if (plane)
@@ -208,6 +274,7 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 	else
 		angle -= 2 * LINMATHPI / 3.;
 
+	so->stats.hit_from_lhs[bsd_idx]++;
 	so->ctx->sweep_angleproc(so, channel, sensor_id, timecode, plane, angle);
 }
 
@@ -233,11 +300,14 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 								},
 							.plane = plane};
 
+	SV_VERBOSE(500, "Sensor ch%2d.%02d.%d %12fdeg", channel, sensor_id, plane, angle / LINMATHPI * 180.);
+
 	// Simulate the use of only one lighthouse in playback mode.
 	if (bsd_idx < ctx->activeLighthouses)
-		SurviveSensorActivations_add_gen2(&so->activations, &l);
+		if (SurviveSensorActivations_add_gen2(&so->activations, &l) == false) {
+			so->stats.rejected_data[bsd_idx]++;
+		}
 
-	SV_VERBOSE(500, "Sensor ch%2d.%02d.%d %12fdeg", channel, sensor_id, plane, angle / LINMATHPI * 180.);
 	survive_recording_sweep_angle_process(so, channel, sensor_id, timecode, plane, angle);
 
 	if (so->PoserFn) {
