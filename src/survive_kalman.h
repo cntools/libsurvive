@@ -122,6 +122,8 @@ SURVIVE_EXPORT FLT survive_kalman_predict_update_state_extended(FLT t, survive_k
 SURVIVE_EXPORT void survive_kalman_state_init(survive_kalman_state_t *k, size_t state_cnt, kalman_transition_fn_t F,
 											  kalman_process_noise_fn_t q_fn, void *user, FLT *state);
 
+SURVIVE_EXPORT void survive_kalman_state_reset(survive_kalman_state_t *k);
+
 SURVIVE_EXPORT void survive_kalman_state_free(survive_kalman_state_t *k);
 SURVIVE_EXPORT void survive_kalman_set_P(survive_kalman_state_t *k, const FLT *d);
 SURVIVE_EXPORT void survive_kalman_set_logging_level(int verbosity);

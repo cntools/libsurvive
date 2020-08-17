@@ -594,6 +594,17 @@ int survive_startup(SurviveContext *ctx) {
 		}
 	}
 
+	FLT random_noise = survive_configf(ctx, "random-bsd-noise", SC_GET, -1);
+	if (random_noise > 0) {
+		for (int i = 0; i < ctx->activeLighthouses; i++) {
+			for (int j = 0; j < 3; j++)
+				ctx->bsd[i].Pose.Pos[j] += linmath_normrand(0, random_noise);
+			for (int j = 0; j < 4; j++)
+				ctx->bsd[i].Pose.Rot[j] += linmath_normrand(0, random_noise * .1);
+			quatnormalize(ctx->bsd[i].Pose.Rot, ctx->bsd[i].Pose.Rot);
+		}
+	}
+
 	int ootxMandatory = survive_configi(ctx, "force-ootx", SC_GET, 0);
 	if (ootxMandatory) {
 		SV_INFO("Force ootx flag set -- clearing ootx on all lighthouses");

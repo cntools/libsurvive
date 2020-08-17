@@ -285,10 +285,36 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 
 	FLT avg_dev = 0, lh_avg_dev = 0;
 	optimizer->stats.total_meas_cnt += optimizer->measurementsCnt;
+
+	size_t valid_meas = 0;
 	for (int i = 0; i < optimizer->measurementsCnt; i++) {
 		survive_optimizer_measurement *meas = &optimizer->measurements[i];
-		lh_deviates[meas->lh] += fabs(deviates[i]);
-		lh_meas_cnt[meas->lh]++;
+		avg_dev += fabs(deviates[i]);
+		valid_meas++;
+	}
+
+	avg_dev = avg_dev / (FLT)valid_meas;
+	for (int i = 0; i < optimizer->measurementsCnt; i++) {
+		survive_optimizer_measurement *meas = &optimizer->measurements[i];
+		if (fabs(deviates[i]) > avg_dev * 15) {
+			meas->invalid = true;
+			optimizer->stats.dropped_meas_cnt++;
+
+			SV_VERBOSE(110, "Ignoring noisy data at lh %d sensor %d axis %d val %f (%7.7f/%7.7f)", meas->lh,
+					   meas->sensor_idx, meas->axis, meas->value, fabs(deviates[i]), avg_dev);
+			deviates[i] = 0.;
+		} else {
+			SV_VERBOSE(1000, "Data at lh %d sensor %d axis %d val %f (%7.7f/%7.7f)", meas->lh, meas->sensor_idx,
+					   meas->axis, meas->value, fabs(deviates[i]), avg_dev);
+		}
+	}
+
+	for (int i = 0; i < optimizer->measurementsCnt; i++) {
+		survive_optimizer_measurement *meas = &optimizer->measurements[i];
+		if (meas->invalid == false) {
+			lh_deviates[meas->lh] += fabs(deviates[i]);
+			lh_meas_cnt[meas->lh]++;
+		}
 	}
 
 	size_t obs_lhs = 0;
@@ -314,39 +340,18 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 						   lh_deviates[i], corrected_dev, lh_deviates[i] / corrected_dev);
 				lh_meas_cnt[i] = 0;
 				optimizer->stats.dropped_lh_cnt++;
-
-				// survive_lighthouse_adjust_confidence(optimizer->so->ctx, i, -.1);
-
 			} else if (lh_deviates[i] > 0.) {
 				SV_VERBOSE(500, "Data from LH %d seems OK for %s (%f/%f -- %f)", i, optimizer->so->codename,
 						   lh_deviates[i], lh_avg_dev, lh_deviates[i] / corrected_dev);
-				// survive_lighthouse_adjust_confidence(optimizer->so->ctx, i, .01);
 			}
 		}
 	}
 
-	size_t valid_meas = 0;
-	for (int i = 0; i < optimizer->measurementsCnt; i++) {
-		survive_optimizer_measurement *meas = &optimizer->measurements[i];
-		if (lh_meas_cnt[meas->lh]) {
-			avg_dev += fabs(deviates[i]);
-			valid_meas++;
-		}
-	}
 
-	avg_dev = avg_dev / (FLT)valid_meas;
 	for (int i = 0; i < optimizer->measurementsCnt; i++) {
 		survive_optimizer_measurement *meas = &optimizer->measurements[i];
-		if (lh_meas_cnt[meas->lh] == 0 || fabs(deviates[i]) > avg_dev * 15) {
+		if (lh_meas_cnt[meas->lh] == 0) {
 			meas->invalid = true;
-			optimizer->stats.dropped_meas_cnt++;
-
-			SV_VERBOSE(110, "Ignoring noisy data at lh %d sensor %d axis %d val %f (%7.7f/%7.7f)", meas->lh,
-					   meas->sensor_idx, meas->axis, meas->value, fabs(deviates[i]), avg_dev);
-			deviates[i] = 0.;
-		} else {
-			SV_VERBOSE(1000, "Data at lh %d sensor %d axis %d val %f (%7.7f/%7.7f)", meas->lh, meas->sensor_idx,
-					   meas->axis, meas->value, fabs(deviates[i]), avg_dev);
 		}
 	}
 

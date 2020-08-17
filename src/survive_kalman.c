@@ -85,6 +85,11 @@ void user_is_q(void *user, FLT t, const struct CvMat *x, FLT *Q_out) {
 	scalend(Q_out, q, t, x->rows * x->rows);
 }
 
+SURVIVE_EXPORT void survive_kalman_state_reset(survive_kalman_state_t *k) {
+	k->t = 0;
+	memset(k->P, 0, k->state_cnt * k->state_cnt * sizeof(FLT));
+}
+
 void survive_kalman_state_init(survive_kalman_state_t *k, size_t state_cnt, kalman_transition_fn_t F,
 							   kalman_process_noise_fn_t q_fn, void *user, FLT *state) {
 	memset(k, 0, sizeof(*k));

@@ -137,6 +137,9 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 
 		tracker->stats.lightcap_total_error += rtn;
 
+		tracker->light_residuals_all *= .9;
+		tracker->light_residuals_all += .1 * rtn;
+
 		tracker->light_residuals[data->lh] *= .9;
 		tracker->light_residuals[data->lh] += .1 * rtn;
 
@@ -145,14 +148,16 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 
 		if (tracker->light_residuals[data->lh] > .1) {
 			// SV_WARN("Light residual for lh%d is too high -- %f", data->lh, tracker->light_residuals[data->lh]);
+			survive_lighthouse_adjust_confidence(ctx, data->lh, -.1);
 		}
 		tracker->stats.lightcap_count++;
 
 		normalize_model(tracker);
 		// survive_kalman_tracker_report_state(&data->hdr, tracker);
 	}
-	SV_VERBOSE(400, "Resultant state %f (%f) (lightcap %2d) (error %e)  " Point16_format, time, delta, data->lh,
-			   tracker->light_residuals[data->lh], LINMATH_VEC16_EXPAND(tracker->model.state));
+	SV_VERBOSE(400, "Resultant state %f (%f) (lightcap %2d) (error %e, %e)  " Point16_format, time, delta, data->lh,
+			   tracker->light_residuals[data->lh], tracker->light_residuals_all,
+			   LINMATH_VEC16_EXPAND(tracker->model.state));
 }
 
 struct map_imu_data_ctx {
@@ -181,17 +186,17 @@ static bool map_imu_data(void *user, const struct CvMat *Z, const struct CvMat *
 
 	SurviveContext *ctx = fn_ctx->tracker->so->ctx;
 
-	SV_VERBOSE(200, "X     " Point16_format, LINMATH_VEC16_EXPAND(CV_FLT_PTR(x_t)))
-	SV_VERBOSE(200, "Z     " Point6_format, LINMATH_VEC6_EXPAND(CV_FLT_PTR(Z)))
+	SV_VERBOSE(400, "X     " Point16_format, LINMATH_VEC16_EXPAND(CV_FLT_PTR(x_t)))
+	SV_VERBOSE(400, "Z     " Point6_format, LINMATH_VEC6_EXPAND(CV_FLT_PTR(Z)))
 
 	SurviveKalmanModel *s = (SurviveKalmanModel *)CV_FLT_PTR(x_t);
 	gen_imu_predict(h_x, s);
 	assert(H_k->rows * H_k->cols == SURVIVE_MODEL_STATE_CNT * 6);
 	gen_imu_predict_jac_kalman_model(CV_FLT_PTR(H_k), s);
 
-	SV_VERBOSE(200, "h_x   " Point6_format, LINMATH_VEC6_EXPAND(h_x))
+	SV_VERBOSE(400, "h_x   " Point6_format, LINMATH_VEC6_EXPAND(h_x))
 	subnd(CV_FLT_PTR(y), CV_FLT_PTR(Z), h_x, Z->rows);
-	SV_VERBOSE(200, "y     " Point6_format, LINMATH_VEC6_EXPAND(CV_FLT_PTR(y)))
+	SV_VERBOSE(400, "y     " Point6_format, LINMATH_VEC6_EXPAND(CV_FLT_PTR(y)))
 	return true;
 }
 
@@ -207,7 +212,6 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 		return;
 	}
 
-	SV_VERBOSE(200, "%s imu mag %f", tracker->so->codename, norm3d(data->accel));
 	FLT time = data->hdr.timecode / (FLT)tracker->so->timebase_hz;
 	FLT time_diff = time - tracker->model.t;
 
@@ -262,14 +266,19 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 		int offset = 0;
 		CvMat Z = cvMat(rows, 1, CV_FLT, data->accel + offset);
 
-		SV_VERBOSE(200, "Integrating IMU " Point6_format " with cov " Point6_format,
+		SV_VERBOSE(400, "Integrating IMU " Point6_format " with cov " Point6_format,
 				   LINMATH_VEC6_EXPAND((FLT *)&data->accel[0]), LINMATH_VEC6_EXPAND(R));
 
-		tracker->stats.imu_total_error += survive_kalman_predict_update_state_extended(
-			time, &tracker->model, &Z, R, map_imu_data, &fn_ctx, tracker->adaptive_imu);
+		FLT err = survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, R, map_imu_data, &fn_ctx,
+															   tracker->adaptive_imu);
+
+		tracker->stats.imu_total_error += err;
+		tracker->imu_residuals *= .9;
+		tracker->imu_residuals += .1 * err;
 
 		tracker->stats.imu_count++;
-		SV_VERBOSE(200, "Resultant state %f (imu) " Point19_format, time, LINMATH_VEC19_EXPAND(tracker->model.state));
+		SV_VERBOSE(400, "Resultant state %f (imu %e) " Point19_format, time, tracker->imu_residuals,
+				   LINMATH_VEC19_EXPAND(tracker->model.state));
 		normalize_model(tracker);
 	}
 
@@ -420,7 +429,7 @@ FLT survive_imu_integrate_pose(SurviveKalmanTracker *tracker, FLT time, const Su
 	rtn = survive_kalman_predict_update_state(time, &tracker->model, &Zp, &H, R ? R : tracker->Obs_R, R == 0);
 
 	SurviveContext *ctx = tracker->so->ctx;
-	SV_VERBOSE(200, "Resultant state %f (pose) " Point16_format, time, LINMATH_VEC16_EXPAND(tracker->model.state));
+	SV_VERBOSE(400, "Resultant state %f (pose) " Point16_format, time, LINMATH_VEC16_EXPAND(tracker->model.state));
 	return rtn;
 }
 
@@ -510,6 +519,36 @@ static void survive_kalman_tracker_config(SurviveKalmanTracker *tracker, survive
 	fn(tracker->so->ctx, PROCESS_WEIGHT_ROTATION_TAG, &tracker->process_weight_rotation);
 }
 
+void survive_kalman_tracker_reinit(SurviveKalmanTracker *tracker) {
+
+	tracker->report_ignore_start_cnt = 0;
+	tracker->last_light_time = 0;
+	tracker->light_residuals_all = 0;
+	survive_kalman_state_reset(&tracker->model);
+
+	memset(&tracker->state, 0, sizeof(tracker->state));
+	tracker->state.Pose.Rot[0] = 1;
+
+	size_t state_cnt = sizeof(SurviveKalmanModel) / sizeof(FLT);
+	memset(tracker->model.P, 0, state_cnt * state_cnt * sizeof(FLT));
+
+	for (int i = 0; i < 7; i++) {
+		tracker->model.P[i * SURVIVE_MODEL_STATE_CNT + i] = 1e3;
+	}
+	for (int i = 16; i < 19; i++) {
+		tracker->model.P[i * SURVIVE_MODEL_STATE_CNT + i] = 1;
+	}
+
+	FLT Rrs = tracker->obs_rot_var;
+	FLT Rps = tracker->obs_pos_var;
+	FLT Rr[] = {Rrs, Rrs, Rrs, Rrs, Rps, Rps, Rps};
+	arr_eye_diag(tracker->Obs_R, 7, 7, Rr);
+
+	FLT Rimu[] = {tracker->acc_var,	 tracker->acc_var,	tracker->acc_var,
+				  tracker->gyro_var, tracker->gyro_var, tracker->gyro_var};
+	arr_eye_diag(tracker->IMU_R, 6, 6, Rimu);
+}
+
 void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *so) {
 	memset(tracker, 0, sizeof(*tracker));
 
@@ -534,23 +573,8 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	survive_kalman_state_init(&tracker->model, state_cnt, model_predict_jac, model_q_fn, tracker,
 							  (FLT *)&tracker->state);
 	tracker->model.Predict_fn = model_predict;
-	tracker->state.Pose.Rot[0] = 1;
 
-	for (int i = 0; i < 7; i++) {
-		tracker->model.P[i * SURVIVE_MODEL_STATE_CNT + i] = 1e3;
-	}
-	for (int i = 16; i < 19; i++) {
-		tracker->model.P[i * SURVIVE_MODEL_STATE_CNT + i] = 1;
-	}
-
-	FLT Rrs = tracker->obs_rot_var;
-	FLT Rps = tracker->obs_pos_var;
-	FLT Rr[] = {Rrs, Rrs, Rrs, Rrs, Rps, Rps, Rps};
-	arr_eye_diag(tracker->Obs_R, 7, 7, Rr);
-
-	FLT Rimu[] = {tracker->acc_var,	 tracker->acc_var,	tracker->acc_var,
-				  tracker->gyro_var, tracker->gyro_var, tracker->gyro_var};
-	arr_eye_diag(tracker->IMU_R, 6, 6, Rimu);
+	survive_kalman_tracker_reinit(tracker);
 
 	SV_VERBOSE(10, "\t%s: %f", IMU_ACC_VARIANCE_TAG, tracker->acc_var);
 	SV_VERBOSE(10, "\t%s: %f", IMU_GYRO_VARIANCE_TAG, tracker->gyro_var);
@@ -623,6 +647,40 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 	survive_kalman_tracker_config(tracker, (survive_attach_detach_fn)survive_detach_config);
 }
 
+void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *tracker) {
+	SurviveContext *ctx = tracker->so->ctx;
+	SV_WARN("Too many failures; reseting calibration %e (%lu stationary)", tracker->light_residuals_all,
+			SurviveSensorActivations_stationary_time(&tracker->so->activations));
+	tracker->light_residuals_all = 0;
+	{
+		survive_kalman_tracker_reinit(tracker);
+		memset(&tracker->so->OutPoseIMU, 0, sizeof(SurvivePose));
+		memset(&tracker->so->OutPose, 0, sizeof(SurvivePose));
+	}
+
+	bool objectsAreValid = false;
+	for (int i = 0; i < ctx->objs_ct && !objectsAreValid; i++) {
+		objectsAreValid |= !quatiszero(ctx->objs[i]->OutPoseIMU.Rot);
+	}
+
+	if (!objectsAreValid) {
+		for (int lh = 0; lh < ctx->activeLighthouses; lh++) {
+			ctx->bsd[lh].PositionSet = 0;
+			SV_WARN("LH%d %f", lh, tracker->light_residuals[lh]);
+		}
+	}
+}
+
+bool survive_kalman_tracker_check_valid(SurviveKalmanTracker *tracker) {
+	bool isValid = tracker->light_residuals_all < 5e-2 ||
+				   (SurviveSensorActivations_stationary_time(&tracker->so->activations) < 48000000 / 10);
+	if (!isValid) {
+		survive_kalman_tracker_lost_tracking(tracker);
+		return false;
+	}
+	return true;
+}
+
 void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tracker) {
 	SurvivePose pose = {0};
 
@@ -633,29 +691,31 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 		t = tracker->model.t;
 	}
 
+	if (!survive_kalman_tracker_check_valid(tracker)) {
+		tracker->stats.dropped_poses++;
+		return;
+	}
+
 	survive_kalman_tracker_predict(tracker, t, &pose);
 
 	FLT var_diag[SURVIVE_MODEL_STATE_CNT];
 	if ((tracker->report_threshold_var > 0 &&
 		 survive_kalman_tracker_position_var2(tracker, var_diag) >= tracker->report_threshold_var) ||
-		tracker->report_ignore_start > 0) {
+		tracker->report_ignore_start < tracker->report_ignore_start_cnt) {
 		tracker->stats.dropped_poses++;
 		addnd(tracker->stats.dropped_var, var_diag, tracker->stats.dropped_var, SURVIVE_MODEL_STATE_CNT);
-		if (tracker->report_ignore_start > 0) {
-			tracker->report_ignore_start--;
-		}
+		tracker->report_ignore_start_cnt++;
 		return;
 	}
-
+	SurviveContext *ctx = tracker->so->ctx;
 	addnd(tracker->stats.reported_var, var_diag, tracker->stats.reported_var, SURVIVE_MODEL_STATE_CNT);
 
-	SurviveContext *ctx = tracker->so->ctx;
-	SV_VERBOSE(110, "Tracker variance %s " Point16_format, tracker->so->codename, LINMATH_VEC16_EXPAND(var_diag));
-	SV_VERBOSE(110, "Tracker Bias %s     " Point3_format, tracker->so->codename,
+	SV_VERBOSE(400, "Tracker variance %s " Point16_format, tracker->so->codename, LINMATH_VEC16_EXPAND(var_diag));
+	SV_VERBOSE(400, "Tracker Bias %s     " Point3_format, tracker->so->codename,
 			   LINMATH_VEC3_EXPAND(tracker->state.GyroBias));
 
 	tracker->stats.reported_poses++;
-	SV_VERBOSE(110, "Tracker report %s   " SurvivePose_format, tracker->so->codename, SURVIVE_POSE_EXPAND(pose));
+	SV_VERBOSE(400, "Tracker report %s   " SurvivePose_format, tracker->so->codename, SURVIVE_POSE_EXPAND(pose));
 
 	SurviveVelocity velocity = survive_kalman_tracker_velocity(tracker);
 	PoserData_poser_pose_func_with_velocity(pd, tracker->so, &pose, &velocity);

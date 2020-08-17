@@ -146,7 +146,7 @@ static void write_to_output(SurviveRecordingData *recordingData, const char *for
 }
 void survive_recording_config_process(SurviveObject *so, char *ct0conf, int len) {
 	SurviveRecordingData *recordingData = so->ctx ? so->ctx->recptr : 0;
-	if (recordingData == 0)
+	if (recordingData == 0 || len < 0)
 		return;
 
 	char *buffer = SV_CALLOC(1, len + 1);
@@ -815,8 +815,8 @@ int DriverRegPlayback(SurviveContext *ctx) {
 			break;
 		}
 
-		// 10 seconds is enough time for all configurations; don't read the whole file -- could be huge
-		if (time > 10) {
+		// 60 seconds is enough time for all configurations; don't read the whole file -- could be huge
+		if (time > 60) {
 			free(line);
 			break;
 		}

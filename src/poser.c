@@ -177,6 +177,7 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 		for (int i = 0; i < 7; i++)
 			assert(!isnan(((FLT *)&lighthouse2world)[i]));
 
+		so->ctx->bsd[lighthouse].confidence = 1.;
 		so->ctx->lighthouse_poseproc(so->ctx, lighthouse, &lighthouse2world, &obj2world);
 	}
 }
@@ -277,4 +278,23 @@ SURVIVE_EXPORT void Activations2PoserDataFullScene(const struct SurviveSensorAct
 	memcpy(pdfs->lastimu.accel, activations->accel, sizeof(activations->accel));
 	memcpy(pdfs->lastimu.gyro, activations->gyro, sizeof(activations->gyro));
 	memcpy(pdfs->lastimu.mag, activations->mag, sizeof(activations->mag));
+}
+FLT survive_lighthouse_adjust_confidence(SurviveContext *ctx, uint8_t bsd_idx, FLT v) {
+	ctx->bsd[bsd_idx].confidence += v;
+
+	if (ctx->bsd[bsd_idx].confidence < 0) {
+		ctx->bsd[bsd_idx].PositionSet = 0;
+		SV_WARN("Position for LH%d seems bad; queuing for recal", bsd_idx);
+	} else if (ctx->bsd[bsd_idx].confidence > 1.) {
+		return ctx->bsd[bsd_idx].confidence = 1;
+	}
+
+	return ctx->bsd[bsd_idx].confidence;
+}
+
+SURVIVE_EXPORT FLT survive_adjust_confidence(SurviveObject *so, FLT delta) {
+	so->poseConfidence += delta;
+	if (so->poseConfidence < 0) {
+	}
+	return so->poseConfidence;
 }

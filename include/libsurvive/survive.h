@@ -123,7 +123,7 @@ struct SurviveObject {
 
 	// objImu2world
 	SurvivePose OutPoseIMU;
-
+	FLT poseConfidence;
 	survive_timecode OutPose_timecode;
 
 	SurviveVelocity velocity;
@@ -229,6 +229,7 @@ struct BaseStationData {
 	int8_t accel[3]; //"Up" vector
 	uint8_t mode;
 
+	FLT confidence;
 	void *ootx_data;
 	void *user_ptr;
 };

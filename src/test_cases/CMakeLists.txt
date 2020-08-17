@@ -42,6 +42,9 @@ if(PCAP_LIBRARY)
 
     # This calibrates a wireless tracker with 4 lh. Originally OOTX didn't work.
     add_test(NAME tracker-cal-attempt COMMAND $<TARGET_FILE:test_replays> ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/tracker-cal-attempt.pcap.gz --force-ootx)
+
+    # In this one lighthouse 2 moves by about a foot
+    add_test(NAME tracker-lh-move COMMAND $<TARGET_FILE:test_replays> ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/tracker-lh-move.pcap.gz)
 endif()
 
 include(ExternalProject)

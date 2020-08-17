@@ -20,11 +20,6 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" != 'windows' ]]; then sudo apt-get update -qq; fi
   - if [[ "$TRAVIS_OS_NAME" != 'windows' ]]; then sudo apt-get install -y p7zip-full build-essential zlib1g-dev libx11-dev libusb-1.0-0-dev freeglut3-dev liblapacke-dev libopenblas-dev libatlas-base-dev libpcap-dev; fi   
 
-stages:
-  - build
-  - test
-  - performance test
-
 script:
    - mkdir -p bin
    - cd bin
@@ -33,15 +28,13 @@ script:
    - ctest . -C ${CONFIG} --output-on-failure
 
 before_deploy:
-  - if [[ "$TRAVIS_OS_NAME" == 'linux' ]]; then 7z a ../libsurvive-$TRAVIS_TAG-$TRAVIS_COMMIT-$TRAVIS_OS_NAME.7z . -xr@../travis-exclusion.lst; fi
-  - if [[ "$TRAVIS_OS_NAME" == 'windows' ]]; then 7z a libsurvive-$TRAVIS_TAG-$TRAVIS_COMMIT-$TRAVIS_OS_NAME.7z ./Release/*; fi
+  - if [[ "$TRAVIS_OS_NAME" == 'linux' ]]; then 7z a ../libsurvive-$TRAVIS_TAG-$TRAVIS_OS_NAME.7z . -xr@../travis-exclusion.lst; fi
+  - if [[ "$TRAVIS_OS_NAME" == 'windows' ]]; then 7z a libsurvive-$TRAVIS_TAG-$TRAVIS_OS_NAME.7z ./Release/*; fi
 
 deploy:
   - provider: releases
-    file_glob: true
     api_key: $GITHUB_TOKEN
-    file:
-      - libsurvive-*.7z
+    file: libsurvive-$TRAVIS_TAG-$TRAVIS_OS_NAME.7z
     on:
       branch: master
       condition: $CONFIG=Release

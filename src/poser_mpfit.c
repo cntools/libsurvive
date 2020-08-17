@@ -257,6 +257,7 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 
 	SurvivePose *soLocation = survive_optimizer_get_pose(mpfitctx);
 	survive_optimizer_setup_cameras(mpfitctx, so->ctx, true, d->use_jacobian_function_lh);
+	bool objectStationary = SurviveSensorActivations_stationary_time(&so->activations) > 3 * so->timebase_hz;
 
 	bool worldEstablished = false;
 	for (int lh = 0; lh < ctx->activeLighthouses && !worldEstablished; lh++)
@@ -294,8 +295,7 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 	// This just spaces out the controllers; forces an order onto what trys to calibrate what
 	int syncs_required = 200 - so->sensor_ct * 2 - (so->codename[2] - '0') * 10;
 
-	if (bestObjForCal || (d->syncs_seen > syncs_required &&
-						  SurviveSensorActivations_stationary_time(&so->activations) > 3 * so->timebase_hz)) {
+	if (bestObjForCal || (d->syncs_seen > syncs_required && objectStationary)) {
 		for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
 			if (!so->ctx->bsd[lh].OOTXSet) {
 				// Wait til this thing gets OOTX, and then solve for as much as we can. Avoids doing
@@ -304,7 +304,9 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 				break;
 			}
 
-			bool needsSolve = !so->ctx->bsd[lh].PositionSet;
+			bool needsSolve =
+				!so->ctx->bsd[lh].PositionSet || (canPossiblySolveLHS == false && (so->ctx->bsd[lh].confidence) < 0);
+
 			if (needsSolve && meas_for_lhs[lh] > 0) {
 				canPossiblySolveLHS = true;
 				needsInitialEstimate = !so->ctx->bsd[lh].PositionSet;
@@ -347,7 +349,13 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 				meas_size = remove_lh_from_meas(mpfitctx->measurements, meas_size, lh);
 				meas_for_lhs[lh] = 0;
 			}
+		} else if (canPossiblySolveLHS) {
+			SV_INFO("Assuming %d with %lu meas from device %s as given", lh, meas_for_lhs[lh], so->codename);
 		}
+	}
+
+	if (canPossiblySolveLHS) {
+		SV_INFO("Assuming object position of " SurvivePose_format, SURVIVE_POSE_EXPAND(*soLocation));
 	}
 
 	user->worldEstablished = worldEstablished;
@@ -425,9 +433,15 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 				   get_lh_count(meas_for_lhs));
 
 	} else {
-		SV_WARN("MPFIT failure %s %f/%f (%d measurements, %d result, %d lighthouses, %d canSolveLHs, run #%d)",
+		SV_WARN("MPFIT failure %s %f/%f (%d measurements, %d result, %d lighthouses, %d canSolveLHs, %d since success, "
+				"run #%d)",
 				so->codename, result->orignorm, result->bestnorm, (int)meas_size, res, get_lh_count(meas_for_lhs),
-				canPossiblySolveLHS, d->stats.total_runs);
+				canPossiblySolveLHS, d->opt.failures_since_success, d->stats.total_runs);
+
+		if (d->opt.failures_since_success > 10 &&
+			SurviveSensorActivations_stationary_time(&so->activations) > (48000000 / 10)) {
+			survive_kalman_tracker_lost_tracking(&d->tracker);
+		}
 	}
 
 	d->stats.dropped_meas_cnt += mpfitctx->stats.dropped_meas_cnt;

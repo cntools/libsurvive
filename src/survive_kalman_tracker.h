@@ -44,6 +44,7 @@ typedef struct SurviveKalmanTracker {
 	FLT light_threshold_var, report_threshold_var;
 	int32_t light_required_obs;
 	int32_t report_ignore_start;
+	int32_t report_ignore_start_cnt;
 
 	FLT process_weight_acc, process_weight_vel, process_weight_pos;
 	FLT process_weight_ang_velocity, process_weight_rotation;
@@ -72,6 +73,8 @@ typedef struct SurviveKalmanTracker {
 		FLT reported_var[19];
 	} stats;
 
+	FLT imu_residuals;
+	FLT light_residuals_all;
 	FLT light_residuals[NUM_GEN2_LIGHTHOUSES];
 
 	FLT Obs_R[7 * 7];
@@ -90,7 +93,7 @@ SURVIVE_EXPORT void survive_kalman_tracker_integrate_light(SurviveKalmanTracker 
 SURVIVE_EXPORT void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTracker *tracker,
 																 const SurvivePose *pose, const FLT *variance);
 SURVIVE_EXPORT void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tracker);
-
+SURVIVE_EXPORT void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *tracker);
 #ifdef __cplusplus
 };
 #endif

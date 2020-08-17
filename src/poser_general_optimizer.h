@@ -7,6 +7,7 @@ typedef struct GeneralOptimizerData {
 	int successes_to_reset;
 	int successes_to_reset_cntr;
 
+	uint32_t failures_since_success;
 	FLT max_error;
 
 	struct {

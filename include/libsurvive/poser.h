@@ -80,6 +80,9 @@ SURVIVE_EXPORT void PoserData_lighthouse_poses_func(PoserData *poser_data, Survi
 													SurvivePose *lighthouse_pose, uint32_t lighthouse_count,
 													SurvivePose *object_pose);
 
+SURVIVE_EXPORT FLT survive_lighthouse_adjust_confidence(SurviveContext *ctx, uint8_t bsd_idx, FLT delta);
+SURVIVE_EXPORT FLT survive_adjust_confidence(SurviveObject *so, FLT delta);
+
 typedef struct PoserDataIMU {
 	PoserData hdr;
 	uint8_t datamask;  //0 = accel present, 1 = gyro present, 2 = mag present.

@@ -23,7 +23,7 @@ var showIMU = true;
 var useFPV = false;
 
 var tooltipDisplayed = false;
-var tooltip = $("#tooltip");
+var tooltip;
 
 var fps = 0;
 var frames = 0;
@@ -558,6 +558,7 @@ function record_position(name, time, position) {
 }
 
 $(function() {
+	tooltip = $("#tooltip");
 	$("#time").on('change mousemove', function(event, ui) {
 		var time = $("#time").val() * max_time / 100.;
 

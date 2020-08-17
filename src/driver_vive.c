@@ -490,13 +490,13 @@ void survive_data_on_setup_write(SurviveObject *so, uint8_t bmRequestType, uint8
 	driverInfo->timeWithoutFlag = 1;
 	if (is_mode_switch_usb(bmRequestType, bRequest, wValue, wIndex, length)) {
 		enum LightcapMode m = data[1] == 0 ? LightcapMode_raw0 : data[1] == 1 ? LightcapMode_raw1 : LightcapMode_raw2;
-		SV_INFO("LightcapMode %d -> %d", driverInfo->lightcapMode, m);
+		SV_INFO("LightcapMode usb %s %d -> %d", so->codename, driverInfo->lightcapMode, m);
 		driverInfo->lightcapMode = m;
 	}
 
 	if (is_mode_switch_rf(bmRequestType, bRequest, wValue, wIndex, data, length)) {
 		enum LightcapMode m = data[4] == 0 ? LightcapMode_raw0 : data[7] == 1 ? LightcapMode_raw2 : LightcapMode_raw1;
-		SV_INFO("LightcapMode %d -> %d", driverInfo->lightcapMode, m);
+		SV_INFO("LightcapMode rf %s %d -> %d", so->codename, driverInfo->lightcapMode, m);
 		driverInfo->lightcapMode = m;
 	}
 }
@@ -1976,6 +1976,10 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 	struct SurviveContext *ctx = w->ctx;
 	const uint8_t *originPayloadPtr = payloadPtr;
 	struct SurviveUSBInfo *driverInfo = w->driver;
+	if (driverInfo->tryConfigLoad) {
+		return;
+	}
+
 	if (driverInfo->lightcapMode != LightcapMode_raw1) {
 		vive_switch_mode(driverInfo, LightcapMode_raw1);
 		return;

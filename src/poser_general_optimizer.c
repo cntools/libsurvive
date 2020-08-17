@@ -41,6 +41,7 @@ void general_optimizer_data_init(GeneralOptimizerData *d, SurviveObject *so) {
 }
 void general_optimizer_data_record_failure(GeneralOptimizerData *d) {
 	d->stats.error_failures++;
+	d->failures_since_success++;
 	if (d->failures_to_reset_cntr > 0)
 		d->failures_to_reset_cntr--;
 }
@@ -52,6 +53,7 @@ bool general_optimizer_data_record_success(GeneralOptimizerData *d, FLT error, c
 		if (pose)
 			d->lastSuccess = *pose;
 		d->failures_to_reset_cntr = d->failures_to_reset;
+		d->failures_since_success = 0;
 		return true;
 	}
 
@@ -117,7 +119,7 @@ bool general_optimizer_data_record_current_lhs(GeneralOptimizerData *d, PoserDat
 	return false;
 }
 bool general_optimizer_data_record_current_pose(GeneralOptimizerData *d, PoserDataLight *l, SurvivePose *soLocation) {
-	*soLocation = d->lastSuccess; // *survive_object_last_imu2world(d->so);
+	*soLocation = *survive_object_last_imu2world(d->so);
 	bool currentPositionValid = quatmagnitude(soLocation->Rot) != 0;
 	SurviveContext *ctx = d->so->ctx;
 

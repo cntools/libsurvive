@@ -187,7 +187,7 @@ static void ingest_config_request(vive_device_inst_t *dev, const struct _usb_hea
 		if (len <= 0) {
 			SV_WARN("Error: data for config descriptor");
 		} else {
-			SV_INFO("usbmon loaded %d total bytes of config data", len);
+			SV_INFO("usbmon loaded %d total bytes of config data for %s", len, dev->so->codename);
 		}
 
 		if (!dev->hasConfiged) {

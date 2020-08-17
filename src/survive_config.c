@@ -407,7 +407,7 @@ void sstrcpy(char **dest, const char *src) {
 }
 
 config_entry *find_config_entry(config_group *cg, const char *tag) {
-	if (cg == NULL) {
+	if (cg == NULL || tag == NULL) {
 		return NULL;
 	}
 
