@@ -364,23 +364,14 @@ static FLT survive_kalman_predict_update_state_extended_adaptive_internal(FLT t,
 	return normnd(_y, y.rows * y.cols);
 }
 
-FLT survive_kalman_predict_update_state_extended_adaptive(FLT t, survive_kalman_state_t *k, const struct CvMat *Z,
-														  FLT *R, kalman_measurement_model_fn_t Hfn, void *user) {
-	return survive_kalman_predict_update_state_extended_adaptive_internal(t, k, Z, R, Hfn, user, true);
-}
-
 FLT survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k, const struct CvMat *Z, const FLT *R,
-												 kalman_measurement_model_fn_t Hfn, void *user) {
-	return survive_kalman_predict_update_state_extended_adaptive_internal(t, k, Z, (FLT *)R, Hfn, user, false);
+												 kalman_measurement_model_fn_t Hfn, void *user, bool adaptive) {
+	return survive_kalman_predict_update_state_extended_adaptive_internal(t, k, Z, (FLT *)R, Hfn, user, adaptive);
 }
 
 FLT survive_kalman_predict_update_state(FLT t, survive_kalman_state_t *k, const struct CvMat *Z, const struct CvMat *H,
-										const FLT *R) {
-	return survive_kalman_predict_update_state_extended(t, k, Z, R, 0, (void *)H);
-}
-SURVIVE_EXPORT FLT survive_kalman_predict_update_state_adaptive(FLT t, survive_kalman_state_t *k, const struct CvMat *Z,
-																const struct CvMat *H, FLT *R) {
-	return survive_kalman_predict_update_state_extended_adaptive(t, k, Z, R, 0, (void *)H);
+										const FLT *R, bool adaptive) {
+	return survive_kalman_predict_update_state_extended(t, k, Z, R, 0, (void *)H, adaptive);
 }
 
 void survive_kalman_predict_state(FLT t, const survive_kalman_state_t *k, size_t start_index, size_t end_index,

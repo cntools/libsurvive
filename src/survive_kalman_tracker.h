@@ -60,6 +60,10 @@ typedef struct SurviveKalmanTracker {
 		size_t imu_count;
 		FLT lightcap_total_error;
 		size_t lightcap_count;
+
+		FLT lightcap_error_by_lh[NUM_GEN2_LIGHTHOUSES];
+		size_t lightcap_count_by_lh[NUM_GEN2_LIGHTHOUSES];
+
 		FLT obs_total_error;
 		size_t obs_count;
 
@@ -67,6 +71,8 @@ typedef struct SurviveKalmanTracker {
 		FLT dropped_var[19];
 		FLT reported_var[19];
 	} stats;
+
+	FLT light_residuals[NUM_GEN2_LIGHTHOUSES];
 
 	FLT Obs_R[7 * 7];
 	FLT IMU_R[6 * 6];

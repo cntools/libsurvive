@@ -262,7 +262,7 @@ TEST(Kalman, ExampleExtended) {
 		}
 
 		FLT R[] = {.0004, .0004, 1};
-		survive_kalman_predict_update_state_extended(i, &position, &Z, R, map_to_obs, sensor);
+		survive_kalman_predict_update_state_extended(i, &position, &Z, R, map_to_obs, sensor, 0);
 
 		fprintf(stderr, "Guess  " SurviveVel_format "\n", SURVIVE_VELOCITY_EXPAND(*(SurviveVelocity *)position.state));
 		fprintf(stderr, "GT     " SurviveVel_format "\n", SURVIVE_VELOCITY_EXPAND(*(SurviveVelocity *)_true_state));
@@ -335,7 +335,7 @@ TEST(Kalman, AngleQuat) {
 			_Z[j] += generateGaussianNoise(0, R[j]);
 		}
 		quatnormalize(_Z, _Z);
-		survive_kalman_predict_update_state(t, &rotation, &Z, &H, R);
+		survive_kalman_predict_update_state(t, &rotation, &Z, &H, R, 0);
 		quatnormalize(rotation.state, rotation.state);
 		fprintf(stderr, "Guess  " SurvivePose_format "\n", SURVIVE_POSE_EXPAND(*(SurvivePose *)rotation.state));
 		fprintf(stderr, "GT     " SurvivePose_format "\n", SURVIVE_POSE_EXPAND(*(SurvivePose *)_true_state));

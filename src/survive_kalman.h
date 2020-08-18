@@ -13,6 +13,18 @@
  *
  * This implementation supports both nonlinear prediction models and nonlinear measurement models. Each phase
  * incorporates a time delta to approximate a continous model.
+ *
+ * Adaptive functionality:
+ *
+ * https://arxiv.org/pdf/1702.00884.pdf
+ *
+ * The R matrix should be initialized to reasonable values on the first all and then is updated based on the residual
+ * error -- higher error generates higher variance values:
+ *
+ * R_k = a * R_k-1 + (1 - a) * (e*e^t + H * P_k-1 * H^t)
+ *
+ * a is set to .3 for this implementation.
+
  */
 
 struct survive_kalman_state_s;
@@ -73,33 +85,11 @@ SURVIVE_EXPORT void survive_kalman_predict_state(FLT t, const survive_kalman_sta
  * @param z measurement -- CvMat of n x 1
  * @param H Input observation model -- CvMat of n x state_cnt
  * @param R Observation noise -- The diagonal of the measurement covariance matrix; length n
+ * @param adapative Whether or not R is an adaptive matrix. When true, R should be a full n x n matrix.
+ *
  */
 SURVIVE_EXPORT FLT survive_kalman_predict_update_state(FLT t, survive_kalman_state_t *k, const struct CvMat *Z,
-													   const struct CvMat *H, const FLT *R);
-
-/**
- * Run predict and update, updating the state matrix. This is for purely linear measurement models but requests an
- * adaptive R matrix update.
- *
- * https://arxiv.org/pdf/1702.00884.pdf
- *
- * The R matrix should be initialized to reasonable values on the first all and then is updated based on the residual
- * error -- higher error generates higher variance values:
- *
- * R_k = a * R_k-1 + (1 - a) * (e*e^t + H * P_k-1 * H^t)
- *
- * a is set to .3 for this implementation.
- *
- * @param t absolute time
- * @param k kalman state info
- * @param z measurement -- CvMat of n x 1
- * @param H Input observation model -- CvMat of n x state_cnt
- * @param R Observation noise matrix. n x n matrix that will be updated in place
- *
- * @returns Returns the average residual error
- */
-SURVIVE_EXPORT FLT survive_kalman_predict_update_state_adaptive(FLT t, survive_kalman_state_t *k, const struct CvMat *Z,
-																const struct CvMat *H, FLT *R);
+													   const struct CvMat *H, const FLT *R, bool adaptive);
 
 /**
  * Run predict and update, updating the state matrix. This is for non-linear measurement models.
@@ -110,29 +100,13 @@ SURVIVE_EXPORT FLT survive_kalman_predict_update_state_adaptive(FLT t, survive_k
  * @param R Observation noise -- The diagonal of the measurement covariance matrix; length n
  * @param H Input observation model -- CvMat of n x state_cnt
  * @param Hfn Observation function that gives both the residual vector and the jacobian associated with it.
+ * @param adapative Whether or not R is an adaptive matrix. When true, R should be a full n x n matrix.
  *
  * @returns Returns the average residual error
  */
 SURVIVE_EXPORT FLT survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k, const struct CvMat *Z,
 																const FLT *R, kalman_measurement_model_fn_t Hfn,
-																void *user);
-
-/**
- * Run predict and update, updating the state matrix. This is for non-linear measurement models with an adaptive R
- * noise matrix. See @survive_kalman_predict_update_state_adaptive
- *
- * @param t absolute time
- * @param k kalman state info
- * @param z measurement -- CvMat of n x 1
- * @param R Observation noise matrix. n x n matrix that will be updated in place
- * @param H Input observation model -- CvMat of n x state_cnt
- * @param Hfn Observation function that gives both the residual vector and the jacobian associated with it.
- *
- * @returns Returns the average residual error
- */
-SURVIVE_EXPORT FLT survive_kalman_predict_update_state_extended_adaptive(FLT t, survive_kalman_state_t *k,
-																		 const struct CvMat *Z, FLT *R,
-																		 kalman_measurement_model_fn_t Hfn, void *user);
+																void *user, bool adapative);
 
 /**
  * Initialize a kalman state object

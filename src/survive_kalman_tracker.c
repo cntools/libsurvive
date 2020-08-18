@@ -132,20 +132,27 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 			.pdl = data,
 		};
 
-		if (tracker->adaptive_lightcap) {
-			tracker->stats.lightcap_total_error += survive_kalman_predict_update_state_extended_adaptive(
-				time, &tracker->model, &Z, &tracker->light_var, map_light_data, &cbctx);
-		} else {
-			tracker->stats.lightcap_total_error += survive_kalman_predict_update_state_extended(
-				time, &tracker->model, &Z, &tracker->light_var, map_light_data, &cbctx);
+		FLT rtn = survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, &tracker->light_var,
+															   map_light_data, &cbctx, tracker->adaptive_lightcap);
+
+		tracker->stats.lightcap_total_error += rtn;
+
+		tracker->light_residuals[data->lh] *= .9;
+		tracker->light_residuals[data->lh] += .1 * rtn;
+
+		tracker->stats.lightcap_error_by_lh[data->lh] += rtn;
+		tracker->stats.lightcap_count_by_lh[data->lh]++;
+
+		if (tracker->light_residuals[data->lh] > .1) {
+			// SV_WARN("Light residual for lh%d is too high -- %f", data->lh, tracker->light_residuals[data->lh]);
 		}
 		tracker->stats.lightcap_count++;
 
 		normalize_model(tracker);
 		// survive_kalman_tracker_report_state(&data->hdr, tracker);
 	}
-	SV_VERBOSE(200, "Resultant state %f (%f) (lightcap) " Point16_format, time, delta,
-			   LINMATH_VEC16_EXPAND(tracker->model.state));
+	SV_VERBOSE(400, "Resultant state %f (%f) (lightcap %2d) (error %e)  " Point16_format, time, delta, data->lh,
+			   tracker->light_residuals[data->lh], LINMATH_VEC16_EXPAND(tracker->model.state));
 }
 
 struct map_imu_data_ctx {
@@ -233,7 +240,7 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 		CREATE_STACK_MAT(Z, 9, 1);
 		memset(_Z, 0, sizeof(FLT) * 9);
 
-		tracker->stats.imu_total_error += survive_kalman_predict_update_state(time, &tracker->model, &Z, &H, R);
+		tracker->stats.imu_total_error += survive_kalman_predict_update_state(time, &tracker->model, &Z, &H, R, false);
 	}
 
 	struct map_imu_data_ctx fn_ctx = {.tracker = tracker};
@@ -258,13 +265,9 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 		SV_VERBOSE(200, "Integrating IMU " Point6_format " with cov " Point6_format,
 				   LINMATH_VEC6_EXPAND((FLT *)&data->accel[0]), LINMATH_VEC6_EXPAND(R));
 
-		if (tracker->adaptive_imu) {
-			tracker->stats.imu_total_error += survive_kalman_predict_update_state_extended_adaptive(
-				time, &tracker->model, &Z, tracker->IMU_R, map_imu_data, &fn_ctx);
-		} else {
-			tracker->stats.imu_total_error +=
-				survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, R, map_imu_data, &fn_ctx);
-		}
+		tracker->stats.imu_total_error += survive_kalman_predict_update_state_extended(
+			time, &tracker->model, &Z, R, map_imu_data, &fn_ctx, tracker->adaptive_imu);
+
 		tracker->stats.imu_count++;
 		SV_VERBOSE(200, "Resultant state %f (imu) " Point19_format, time, LINMATH_VEC19_EXPAND(tracker->model.state));
 		normalize_model(tracker);
@@ -413,11 +416,9 @@ FLT survive_imu_integrate_pose(SurviveKalmanTracker *tracker, FLT time, const Su
 	CvMat H = cvMat(7, tracker->model.state_cnt, SURVIVE_CV_F, _H);
 	CvMat Zp = cvMat(7, 1, SURVIVE_CV_F, (void *)pose->Pos);
 	FLT rtn = 0;
-	if (R) {
-		rtn = survive_kalman_predict_update_state(time, &tracker->model, &Zp, &H, R);
-	} else {
-		rtn = survive_kalman_predict_update_state_adaptive(time, &tracker->model, &Zp, &H, tracker->Obs_R);
-	}
+
+	rtn = survive_kalman_predict_update_state(time, &tracker->model, &Zp, &H, R ? R : tracker->Obs_R, R == 0);
+
 	SurviveContext *ctx = tracker->so->ctx;
 	SV_VERBOSE(200, "Resultant state %f (pose) " Point16_format, time, LINMATH_VEC16_EXPAND(tracker->model.state));
 	return rtn;
@@ -598,6 +599,17 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 		SV_VERBOSE(5, "\t%-32s " Point7_format, i == 0 ? "Observation R" : "",
 				   LINMATH_VEC7_EXPAND(tracker->Obs_R + 7 * i));
 	}
+
+	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
+		if (tracker->stats.lightcap_count_by_lh[i]) {
+			SV_VERBOSE(5, "\tLighthouse %d", i);
+			SV_VERBOSE(5, "\t\t%-32s %e", "Avg error",
+					   tracker->stats.lightcap_error_by_lh[i] / tracker->stats.lightcap_count_by_lh[i]);
+			SV_VERBOSE(5, "\t\t%-32s %u", "Count", (unsigned)tracker->stats.lightcap_count_by_lh[i]);
+			SV_VERBOSE(5, "\t\t%-32s %e", "Current error", tracker->light_residuals[i]);
+		}
+	}
+
 	SV_VERBOSE(5, " ");
 
 	survive_kalman_state_free(&tracker->model);

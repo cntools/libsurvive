@@ -314,9 +314,13 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 						   lh_deviates[i], corrected_dev, lh_deviates[i] / corrected_dev);
 				lh_meas_cnt[i] = 0;
 				optimizer->stats.dropped_lh_cnt++;
+
+				// survive_lighthouse_adjust_confidence(optimizer->so->ctx, i, -.1);
+
 			} else if (lh_deviates[i] > 0.) {
 				SV_VERBOSE(500, "Data from LH %d seems OK for %s (%f/%f -- %f)", i, optimizer->so->codename,
 						   lh_deviates[i], lh_avg_dev, lh_deviates[i] / corrected_dev);
+				// survive_lighthouse_adjust_confidence(optimizer->so->ctx, i, .01);
 			}
 		}
 	}
