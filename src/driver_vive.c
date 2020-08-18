@@ -1515,7 +1515,7 @@ static bool read_imu_data(SurviveObject *w, uint16_t time, uint8_t **readPtr, ui
 
 	FLT agm[9] = {aX, aY, aZ, rX, rY, rZ};
 
-	SV_VERBOSE(500, "%s IMU: %d " Point3_format " " Point3_format " From: %s", w->codename, timeLSB,
+	SV_VERBOSE(750, "%s IMU: %d " Point3_format " " Point3_format " From: %s", w->codename, timeLSB,
 			   LINMATH_VEC3_EXPAND(agm), LINMATH_VEC3_EXPAND(agm + 3), packetToHex(*readPtr, payloadPtr));
 	w->ctx->raw_imuproc(w, 3, agm, ((uint32_t)time << 16) | (timeLSB << 8), 0);
 
@@ -1787,7 +1787,7 @@ static int parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, ui
 						conflicted_channel);
 			}
 			channel = data >> 4u;
-			SV_VERBOSE(500, "%s Channel %d (0x%02x)", obj->codename, channel, data);
+			SV_VERBOSE(750, "%s Channel %d (0x%02x)", obj->codename, channel, data);
 			idx++;
 		} else {
 			uint32_t timecode = 0;
@@ -1810,7 +1810,7 @@ static int parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, ui
 				if (unused && dump_binary) {
 					SV_WARN("Not sure what this is: %x", unused);
 				}
-				SV_VERBOSE(500, "Sync %s %02d %d %8u", obj->codename, channel, ootx, timecode);
+				SV_VERBOSE(750, "Sync %s %02d %d %8u", obj->codename, channel, ootx, timecode);
 				if (channel == 255) {
 					SV_WARN("No channel specified for sync");
 					dump_binary = true;
@@ -1829,7 +1829,7 @@ static int parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, ui
 				bool half_clock_flag = timecode & 0x4u;
 				uint8_t sensor = (timecode >> 27u);
 				timecode = fix_time24(ctx, (timecode >> 3u) & 0xFFFFFFu, reference_time);
-				SV_VERBOSE(500, "Sweep %s %02d.%02d %8u", obj->codename, channel, sensor, timecode);
+				SV_VERBOSE(750, "Sweep %s %02d.%02d %8u", obj->codename, channel, sensor, timecode);
 				if (channel == 255) {
 					SV_WARN("No channel specified for sweep");
 					dump_binary = true;
@@ -2158,12 +2158,12 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 	uint8_t *payloadEndPtr = payloadPtr + payloadSize;
 
 	if (w->ctx->lh_version == 1) {
-		SV_VERBOSE(150, "Watchman v2(%s): '%s'", w->codename, packetToHex(readdata, payloadEndPtr));
+		SV_VERBOSE(750, "Watchman v2(%s): '%s'", w->codename, packetToHex(readdata, payloadEndPtr));
 		handle_watchman_v2(w, time, payloadPtr, payloadEndPtr);
 		return;
 	}
 
-	SV_VERBOSE(150, "Watchman v1(%s): %s", w->codename, packetToHex(payloadPtr, payloadEndPtr));
+	SV_VERBOSE(750, "Watchman v1(%s): %s", w->codename, packetToHex(payloadPtr, payloadEndPtr));
 	/*
 	if (w->ctx->lh_version == -1) {
 		attempt_lh_detection(w, payloadPtr, payloadEndPtr);

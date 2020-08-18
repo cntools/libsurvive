@@ -174,11 +174,12 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 			}
 			SV_VERBOSE(100, "Sync hz %2d: %8.6fhz (err: %0.6fhz) ootx: %d gen: %d time: %u count: %u", channel, hz, err,
 					   ootx, gen, timecode, so->stats.syncs[bsd_idx]);
-			so->stats.bad_syncs[bsd_idx]++;
+			so->stats.bad_syncs[bsd_idx] += skipped_syncs;
+			so->sync_count[bsd_idx] += skipped_syncs;
 			return;
 		} else {
-			SV_VERBOSE(250, "Sync hz %2d: %8.6fhz (err: %0.6fhz) ootx: %d gen: %d time: %u count: %u", channel, hz, err,
-					   ootx, gen, timecode, so->stats.syncs[bsd_idx]);
+			SV_VERBOSE(400, "Sync   ch%2d       %6.3fhz (err: %0.6fhz) ootx: %d gen: %d time: %u count: %u", channel,
+					   hz, err, ootx, gen, timecode, so->stats.syncs[bsd_idx]);
 		}
 
 		so->stats.skipped_syncs[bsd_idx] += skipped_syncs;
@@ -192,6 +193,7 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 	}
 
 	so->stats.syncs[bsd_idx]++;
+	so->sync_count[bsd_idx]++;
 	so->last_sync_time[bsd_idx] = timecode;
 
 	survive_ootx_behavior(so, bsd_idx, ctx->lh_version, ootx);
@@ -265,17 +267,18 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 	FLT angle = time_since_sync / time_per_rot * 2. * LINMATHPI;
 	FLT angle2 = (time_since_sync + .5 / 48000000.) / time_per_rot * 2. * LINMATHPI;
 
-	SV_VERBOSE(500, "Sensor ch%2d %2d %12f %12f %d %.16f", channel, sensor_id, angle / LINMATHPI * 180.,
-			   angle2 / LINMATHPI * 180., half_clock_flag, time_since_sync);
+	SV_VERBOSE(500, "Sensor ch%2d.%02d   %+6.3fdeg %12f %d %.16f %d", channel, sensor_id, angle / LINMATHPI * 180.,
+			   angle2 / LINMATHPI * 180., half_clock_flag, time_since_sync, rotations_since + so->sync_count[bsd_idx]);
 
 	int8_t plane = angle > LINMATHPI;
+	FLT angle_for_axis = angle;
 	if (plane)
-		angle -= 4 * LINMATHPI / 3.;
+		angle_for_axis -= 4 * LINMATHPI / 3.;
 	else
-		angle -= 2 * LINMATHPI / 3.;
+		angle_for_axis -= 2 * LINMATHPI / 3.;
 
 	so->stats.hit_from_lhs[bsd_idx]++;
-	so->ctx->sweep_angleproc(so, channel, sensor_id, timecode, plane, angle);
+	so->ctx->sweep_angleproc(so, channel, sensor_id, timecode, plane, angle_for_axis);
 }
 
 SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survive_channel channel, int sensor_id,
@@ -287,20 +290,22 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 		return;
 	}
 
-	PoserDataLightGen2 l = {.common =
-								{
-									.hdr =
-										{
-											.pt = POSERDATA_LIGHT_GEN2,
-											.timecode = SurviveSensorActivations_long_timecode_light(&so->activations, timecode),
-										},
-									.sensor_id = sensor_id,
-									.angle = angle,
-									.lh = bsd_idx,
-								},
-							.plane = plane};
+	PoserDataLightGen2 l = {
+		.common =
+			{
+				.hdr =
+					{
+						.pt = POSERDATA_LIGHT_GEN2,
+						.timecode = SurviveSensorActivations_long_timecode_light(&so->activations, timecode),
+					},
+				.sensor_id = sensor_id,
+				.angle = angle,
+				.lh = bsd_idx,
+			},
+		.plane = plane,
+		.sync = so->sync_count[bsd_idx]};
 
-	SV_VERBOSE(500, "Sensor ch%2d.%02d.%d %12fdeg", channel, sensor_id, plane, angle / LINMATHPI * 180.);
+	SV_VERBOSE(500, "Sensor ch%2d.%02d.%d %+6.3fdeg", channel, sensor_id, plane, angle / LINMATHPI * 180.);
 
 	// Simulate the use of only one lighthouse in playback mode.
 	if (bsd_idx < ctx->activeLighthouses)

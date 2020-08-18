@@ -153,6 +153,7 @@ struct SurviveObject {
 	int8_t oldcode;
 	survive_timecode last_time_between_sync[NUM_GEN2_LIGHTHOUSES];
 	survive_timecode last_sync_time[NUM_GEN2_LIGHTHOUSES];
+	survive_timecode sync_count[NUM_GEN2_LIGHTHOUSES];
 
 	FLT imu_freq;
 

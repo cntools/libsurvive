@@ -112,6 +112,7 @@ typedef struct PoserDataLightGen2 {
 	PoserDataLight common;
 
 	int8_t plane;
+	uint32_t sync;
 } PoserDataLightGen2;
 
 typedef struct

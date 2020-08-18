@@ -96,6 +96,9 @@ void sweep_fn(SurviveObject *so, survive_channel channel, int sensor_id, survive
 
 const char *column_width = "          ";
 static void print_int(int i) { printf("%9d |", i); }
+
+static void print_small(float f) { printf("%+3.2f ", f); }
+
 static void print(float f) {
 	if (isnan(f)) {
 		printf("%s|", column_width);
@@ -142,7 +145,8 @@ static void redraw(SurviveContext *ctx) {
 	for (int i = 0; i < ctx->objs_ct; i++) {
 		SurviveObject *so = ctx->objs[i];
 
-		printf("Object: %s: ", so->codename);
+		printf("%s (%+5.2fs still): ", so->codename,
+			   SurviveSensorActivations_stationary_time(&so->activations) / 48000000.);
 
 		if (lh >= 0) {
 			double v[2] = {0, 0};
@@ -167,12 +171,12 @@ static void redraw(SurviveContext *ctx) {
 
 		printf("IMU: ");
 		for (int i = 0; i < 3; i++)
-			print(so->activations.accel[i]);
+			print_small(so->activations.accel[i]);
 		for (int i = 0; i < 3; i++)
-			print(so->activations.gyro[i]);
+			print_small(so->activations.gyro[i]);
 		printf("Var: ");
 		for (int i = 0; i < 6; i++)
-			print(calc_imu_var[i]);
+			print_small(calc_imu_var[i]);
 
 		printf("\n");
 
