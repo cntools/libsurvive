@@ -214,7 +214,7 @@ int main( int argc, char ** argv )
 		p->Rot[3] = 0;
 	}
 #endif
-	OGCreateThread( GUIThread, 0 );
+	OGCreateThread(GUIThread, "GUI", 0);
 
 	if( !ctx )
 	{

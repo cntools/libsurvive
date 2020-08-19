@@ -38,7 +38,7 @@ struct survive_async_optimizer *survive_async_init(survive_async_optimizer_cb cb
 	self->active_buffer_lock = OGCreateMutex();
 	self->job_available = OGCreateConditionVariable();
 
-	self->async_thread = OGCreateThread(async_thread, self);
+	self->async_thread = OGCreateThread(async_thread, "async optimizer", self);
 	return self;
 }
 

@@ -40,6 +40,7 @@ SURVIVE_LOCAL_ONLY void cvCopy(const CvMat *srcarr, CvMat *dstarr, const CvMat *
 
 #ifdef USE_FLOAT
 #define cblas_gemm cblas_sgemm
+#define cblas_symm cblas_ssymm
 #define LAPACKE_getrs LAPACKE_sgetrs
 #define LAPACKE_getrf LAPACKE_sgetrf
 #define LAPACKE_getri LAPACKE_sgetri
@@ -47,6 +48,7 @@ SURVIVE_LOCAL_ONLY void cvCopy(const CvMat *srcarr, CvMat *dstarr, const CvMat *
 #define LAPACKE_gesvd LAPACKE_sgesvd
 #else
 #define cblas_gemm cblas_dgemm
+#define cblas_symm cblas_dsymm
 #define LAPACKE_getrs LAPACKE_dgetrs
 #define LAPACKE_getrf LAPACKE_dgetrf
 #define LAPACKE_getri LAPACKE_dgetri
@@ -54,6 +56,74 @@ SURVIVE_LOCAL_ONLY void cvCopy(const CvMat *srcarr, CvMat *dstarr, const CvMat *
 #define LAPACKE_gesvd LAPACKE_dgesvd
 #endif
 
+// dst = alpha * src1 * src2 + beta * src3 or dst = alpha * src2 * src1 + beta * src3 where src1 is symm
+SURVIVE_LOCAL_ONLY void cvSYMM(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src3, double beta,
+							   CvMat *dst, bool src1First) {
+
+	int rows1 = src1->rows;
+	int cols1 = src1->cols;
+
+	int rows2 = src2->rows;
+	int cols2 = src2->cols;
+
+	if (src3) {
+		int rows3 = src3->rows;
+		int cols3 = src3->cols;
+		assert(rows3 == dst->rows);
+		assert(cols3 == dst->cols);
+	}
+
+	// assert(src3 == 0 || beta != 0);
+	assert(cols1 == rows2);
+	assert(rows1 == dst->rows);
+	assert(cols2 == dst->cols);
+
+	lapack_int lda = src1->cols;
+	lapack_int ldb = src2->cols;
+
+	if (src3)
+		cvCopy(src3, dst, 0);
+	else
+		beta = 0;
+
+	assert(CV_RAW_PTR(dst) != CV_RAW_PTR(src1));
+	assert(CV_RAW_PTR(dst) != CV_RAW_PTR(src2));
+	/*
+		void cblas_dsymm(OPENBLAS_CONST enum CBLAS_ORDER Order,
+						 OPENBLAS_CONST enum CBLAS_SIDE Side,
+						 OPENBLAS_CONST enum CBLAS_UPLO Uplo,
+						 OPENBLAS_CONST blasint M,
+						 OPENBLAS_CONST blasint N,
+						 OPENBLAS_CONST double alpha,
+						 OPENBLAS_CONST double *A,
+						 OPENBLAS_CONST blasint lda,
+						 OPENBLAS_CONST double *B,
+						 OPENBLAS_CONST blasint ldb,
+						 OPENBLAS_CONST double beta,
+						 double *C,
+						 OPENBLAS_CONST blasint ldc);
+	*/
+	cblas_symm(CblasRowMajor, src1First ? CblasLeft : CblasRight, CblasUpper, dst->rows, dst->cols, alpha,
+			   CV_RAW_PTR(src1), lda, CV_RAW_PTR(src2), ldb, beta, CV_RAW_PTR(dst), dst->cols);
+}
+
+// Special case dst = alpha * src2 * src1 * src2' + beta * src3
+void mulBABt(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src3, double beta, CvMat *dst) {
+	size_t dims = src2->rows;
+	assert(src2->cols == src2->rows);
+	CREATE_STACK_MAT(tmp, dims, dims);
+
+	// This has been profiled; and weirdly enough the SYMM version is slower for a 19x19 matrix. Guessing access order
+	// or some other cache thing matters more than the additional 2x multiplications.
+//#define USE_SYM
+#ifdef USE_SYM
+	cvSYMM(src1, src2, 1, 0, 0, &tmp, false);
+	cvGEMM(&tmp, src2, alpha, src3, beta, dst, CV_GEMM_B_T);
+#else
+	cvGEMM(src1, src2, 1, 0, 0, &tmp, CV_GEMM_B_T);
+	cvGEMM(src2, &tmp, alpha, src3, beta, dst, 0);
+#endif
+}
 // dst = alpha * src1 * src2 + beta * src3
 SURVIVE_LOCAL_ONLY void cvGEMM(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src3, double beta,
 							   CvMat *dst, int tABC) {

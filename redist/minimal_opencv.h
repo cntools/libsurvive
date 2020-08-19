@@ -207,6 +207,9 @@ CvMat *cvCreateMat(int height, int width, int type);
 
 double cvInvert(const CvMat *srcarr, CvMat *dstarr, int method);
 
+// Special case dst = alpha * src2 * src1 * src2' + beta * src3
+void mulBABt(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src3, double beta, CvMat *dst);
+
 void cvGEMM(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src3, double beta, CvMat *dst, int tABC);
 
 int cvSolve(const CvMat *Aarr, const CvMat *Barr, CvMat *xarr, int method);

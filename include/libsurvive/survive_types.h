@@ -1,6 +1,7 @@
 #ifndef _SURVIVE_TYPES_H
 #define _SURVIVE_TYPES_H
 
+#include "inttypes.h"
 #include "linmath.h"
 #include "stdint.h"
 

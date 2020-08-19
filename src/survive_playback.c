@@ -851,8 +851,8 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	gzseek(sp->playback_file, 0, SEEK_SET); // same as rewind(f);
 
 	sp->keepRunning = true;
-	sp->playback_thread = OGCreateThread(playback_thread, sp);
-	OGNameThread(sp->playback_thread, "playback");
+	sp->playback_thread = OGCreateThread(playback_thread, "playback", sp);
+
 	survive_add_driver(ctx, sp, playback_poll, playback_close, 0);
 	return 0;
 }
@@ -894,7 +894,7 @@ ssize_t gzgetdelim(char **RESTRICT_KEYWORD lineptr, size_t *RESTRICT_KEYWORD n, 
 	bytes = 0;
 	pos = buf;
 	while ((c = gzgetc(stream)) != EOF) {
-		if (bytes + 1 >= SSIZE_MAX) {
+		if (bytes + 1 >= (SIZE_MAX / 2)) {
 			errno = EOVERFLOW;
 			return -1;
 		}

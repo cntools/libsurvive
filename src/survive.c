@@ -525,8 +525,7 @@ int survive_startup(SurviveContext *ctx) {
 	ctx->buttonQueue.buttonservicesem = OGCreateSema();
 
 	// start the thread to process button data
-	ctx->buttonservicethread = OGCreateThread(button_servicer, ctx);
-	OGNameThread(ctx->buttonservicethread, "Button Service");
+	ctx->buttonservicethread = OGCreateThread(button_servicer, "Button service", ctx);
 
 	PoserCB PreferredPoserCB = (PoserCB)GetDriverByConfig(ctx, "Poser", "poser", "MPFIT");
 	ctx->lightcapproc = GetDriverByConfig(ctx, "Disambiguator", "disambiguator", "StateBased");
@@ -743,8 +742,7 @@ bool *survive_add_threaded_driver(SurviveContext *ctx, void *_driver, const char
 	driver->close_fn = close;
 
 	driver->keep_running = true;
-	driver->thread = OGCreateThread(routine, _driver);
-	OGNameThread(driver->thread, name);
+	driver->thread = OGCreateThread(routine, name, _driver);
 
 	survive_add_driver(ctx, driver, threaded_driver_poll, threaded_driver_close, 0);
 	return &driver->keep_running;
@@ -891,7 +889,7 @@ struct SurviveObject *survive_get_so_by_name(struct SurviveContext *ctx, const c
 
 #include <puff.h>
 
-int survive_simple_inflate(struct SurviveContext *ctx, const char *input, int inlen, char *output, int outlen) {
+int survive_simple_inflate(struct SurviveContext *ctx, const uint8_t *input, int inlen, uint8_t *output, int outlen) {
 	// Tricky: we actually get 2 bytes of data on the front.  I don't know what it's for. 0x78 0x9c - puff doesn't deal
 	// with it well.
 	unsigned long ol = outlen;

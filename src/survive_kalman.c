@@ -123,24 +123,18 @@ void survive_kalman_state_free(survive_kalman_state_t *k) {
 void survive_kalman_predict_covariance(FLT t, const CvMat *F, const CvMat *x, survive_kalman_state_t *k) {
 	int dims = k->state_cnt;
 
-	CREATE_STACK_MAT(tmp, dims, dims);
-
 	CvMat Pk1_k1 = cvMat(dims, dims, SURVIVE_CV_F, (void *)k->P);
 	sv_print_mat("Pk-1_k-1", &Pk1_k1, 1);
 	CREATE_STACK_MAT(Q, dims, dims);
 	k->Q_fn(k->user, t, x, _Q);
 
-	// tmp = k->P * F^T
-	cvGEMM(&Pk1_k1, F, 1, 0, 0, &tmp, CV_GEMM_B_T);
-
-	// k->P = F * tmp + Q * t
-	cvGEMM(F, &tmp, 1, &Q, 1, &Pk1_k1, 0);
+	// k->P = F * k->P * F^T + Q
+	mulBABt(&Pk1_k1, F, 1, &Q, 1, &Pk1_k1);
 
 	if (log_level > KALMAN_LOG_LEVEL) {
 		SV_KALMAN_VERBOSE(110, "T: %f", t);
 		sv_print_mat("Q", &Q, 1);
 		sv_print_mat("F", F, 1);
-		sv_print_mat("tmp", &tmp, 1);
 		sv_print_mat("Pk1_k-1", &Pk1_k1, 1);
 	}
 }

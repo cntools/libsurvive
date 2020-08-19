@@ -12,7 +12,7 @@
 		double OGGetFileTime( const char * file );
 
 	Thread functions
-		og_thread_t OGCreateThread( void * (routine)( void * ), void * parameter );
+		og_thread_t OGCreateThread( void * (routine)( void * ), const char* name, void * parameter );
 		void * OGJoinThread( og_thread_t ot );
 		void OGCancelThread( og_thread_t ot );
 
@@ -123,9 +123,7 @@ OSG_INLINE double OGGetFileTime(const char *file) {
 	return ft.dwHighDateTime + ft.dwLowDateTime;
 }
 
-OSG_INLINE void OGNameThread(og_thread_t t, const char *name) {}
-
-OSG_INLINE og_thread_t OGCreateThread(void *(routine)(void *), void *parameter) {
+OSG_INLINE og_thread_t OGCreateThread(void *(routine)(void *), const char *name, void *parameter) {
 	return (og_thread_t)CreateThread(0, 0, (LPTHREAD_START_ROUTINE)routine, parameter, 0, 0);
 }
 
@@ -252,18 +250,16 @@ OSG_INLINE double OGGetFileTime(const char *file) {
 	return buff.st_mtime;
 }
 
-OSG_INLINE void OGNameThread(og_thread_t t, const char *name) {
-#ifdef _GNU_SOURCE
-	pthread_setname_np(*(pthread_t *)t, name);
-#endif
-}
-OSG_INLINE og_thread_t OGCreateThread(void *(routine)(void *), void *parameter) {
+OSG_INLINE og_thread_t OGCreateThread(void *(routine)(void *), const char *name, void *parameter) {
 	pthread_t *ret = (pthread_t *)malloc(sizeof(pthread_t));
 	int r = pthread_create(ret, 0, routine, parameter);
 	if (r) {
 		free(ret);
 		return 0;
 	}
+#ifdef _GNU_SOURCE
+	pthread_setname_np(*ret, name);
+#endif
 	return (og_thread_t)ret;
 }
 

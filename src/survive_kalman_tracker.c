@@ -222,8 +222,8 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 	}
 
 	if (time_diff > 0.5) {
-		SV_WARN("%s is probably dropping IMU packets; %f time reported between %lu", tracker->so->codename, time_diff,
-				data->hdr.timecode);
+		SV_WARN("%s is probably dropping IMU packets; %f time reported between %" PRIu64, tracker->so->codename,
+				time_diff, data->hdr.timecode);
 	}
 
 	FLT rotation_variance[] = {1e5, 1e5, 1e5, 1e5, 1e5, 1e5};
@@ -649,7 +649,7 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 
 void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *tracker) {
 	SurviveContext *ctx = tracker->so->ctx;
-	SV_WARN("Too many failures; reseting calibration %e (%lu stationary)", tracker->light_residuals_all,
+	SV_WARN("Too many failures; reseting calibration %e (%" PRIu64 " stationary)", tracker->light_residuals_all,
 			SurviveSensorActivations_stationary_time(&tracker->so->activations));
 	tracker->light_residuals_all = 0;
 	{

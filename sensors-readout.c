@@ -338,7 +338,7 @@ int main(int argc, char **argv) {
 	int clear_err = system("clear");
 	(void)clear_err;
 
-	og_thread_t kbThread = OGCreateThread(KBThread, ctx);
+	og_thread_t kbThread = OGCreateThread(KBThread, "kb-thread", ctx);
 
 	while (keepRunning && survive_poll(ctx) == 0) {
 		FLT this_time = OGGetAbsoluteTime();

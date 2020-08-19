@@ -78,8 +78,13 @@ if(USE_HIDAPI OR WIN32)
 	endif()
 endif()
 
-IF(WIN32)
+check_include_file("zlib.h" HAVE_ZLIB_H)
+
+IF(NOT HAVE_ZLIB_H)
   add_definitions(-DNOZLIB)
+ENDIF()
+
+IF(WIN32)
   set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>)
 ENDIF()
 
@@ -145,8 +150,11 @@ set_target_properties(survive PROPERTIES FOLDER "libraries")
 add_subdirectory(redist)
 
 target_link_libraries(survive minimal_opencv ${CMAKE_THREAD_LIBS_INIT} Threads::Threads ${CMAKE_DL_LIBS} ${ADDITIONAL_LIBRARIES})
+IF(HAVE_ZLIB_H)
+  target_link_libraries(survive z)
+ENDIF()
 IF(NOT WIN32)
-	target_link_libraries(survive z m usb-1.0 )
+	target_link_libraries(survive m )
 else()
 	target_link_libraries(survive DbgHelp SetupAPI)
 endif()
@@ -157,6 +165,8 @@ SET(PLUGINS
         poser_dummy poser_mpfit poser_imu
 	poser_barycentric_svd
 )
+
+set(driver_vive_ADDITIONAL_LIBS usb-1.0)
 
 check_include_file("gattlib.h" HAVE_GATTLIB_H)
 option(BUILD_GATT_SUPPORT "Whether or not to include gatt support for the basestations -- requires gattlib (https://github.com/labapart/gattlib)" ${HAVE_GATTLIB_H})

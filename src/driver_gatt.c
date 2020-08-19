@@ -159,7 +159,7 @@ static void ble_discovered_device(void *adapter, const char *addr, const char *n
 	connection->driver = driver;
 	connection->addr = strdup(addr);
 	strncpy(connection->name, name, sizeof(connection->name) - 1);
-	connection->thread = OGCreateThread(ble_connect_device, connection);
+	connection->thread = OGCreateThread(ble_connect_device, "ble-connect", connection);
 
 	LIST_INSERT_HEAD(&driver->ble_connections, connection, entries);
 }
@@ -222,7 +222,7 @@ int DriverRegGatt(SurviveContext *ctx) {
 
 	LIST_INIT(&driver->ble_connections);
 
-	driver->thread = OGCreateThread(gatt_thread, driver);
+	driver->thread = OGCreateThread(gatt_thread, "gatt", driver);
 
 	survive_add_driver(ctx, driver, NULL, gatt_close, NULL);
 	return 0;
