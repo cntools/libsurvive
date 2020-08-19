@@ -153,6 +153,7 @@ target_link_libraries(survive minimal_opencv ${CMAKE_THREAD_LIBS_INIT} Threads::
 IF(HAVE_ZLIB_H)
   target_link_libraries(survive z)
 ENDIF()
+
 IF(NOT WIN32)
 	target_link_libraries(survive m )
 else()
@@ -166,8 +167,6 @@ SET(PLUGINS
 	poser_barycentric_svd
 )
 
-set(driver_vive_ADDITIONAL_LIBS usb-1.0)
-
 check_include_file("gattlib.h" HAVE_GATTLIB_H)
 option(BUILD_GATT_SUPPORT "Whether or not to include gatt support for the basestations -- requires gattlib (https://github.com/labapart/gattlib)" ${HAVE_GATTLIB_H})
 if(BUILD_GATT_SUPPORT)
@@ -176,7 +175,9 @@ if(BUILD_GATT_SUPPORT)
 endif()
 
 IF(NOT WIN32)
-  find_library(PCAP_LIBRARY pcap)
+	set(driver_vive_ADDITIONAL_LIBS usb-1.0)
+
+	find_library(PCAP_LIBRARY pcap)
   if(PCAP_LIBRARY)
     list(APPEND PLUGINS driver_usbmon)
     set(driver_usbmon_ADDITIONAL_LIBS "${PCAP_LIBRARY}" driver_vive)

@@ -1015,8 +1015,7 @@ static void survive_attach_config(SurviveContext *ctx, const char *tag, void * v
 	}
 }
 
-SURVIVE_EXPORT void survive_attach_configi(SurviveContext *ctx, const char *tag, int * var )
-{
+SURVIVE_EXPORT void survive_attach_configi(SurviveContext *ctx, const char *tag, int32_t *var) {
 	survive_attach_config( ctx, tag, var, 'i' );
 }
 

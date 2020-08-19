@@ -386,7 +386,7 @@ SURVIVE_EXPORT void survive_config_as_str(SurviveContext *ctx, char *output, siz
 
 SURVIVE_EXPORT const char *survive_configs(SurviveContext *ctx, const char *tag, char flags, const char *def);
 
-SURVIVE_EXPORT void survive_attach_configi(SurviveContext *ctx, const char *tag, int * var );
+SURVIVE_EXPORT void survive_attach_configi(SurviveContext *ctx, const char *tag, int32_t *var);
 SURVIVE_EXPORT void survive_attach_configf(SurviveContext *ctx, const char *tag, FLT * var );
 SURVIVE_EXPORT void survive_attach_configs(SurviveContext *ctx, const char *tag, char * var );
 SURVIVE_EXPORT void survive_detach_config(SurviveContext *ctx, const char *tag, void * var );
