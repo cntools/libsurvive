@@ -69,9 +69,9 @@ OSG_INLINE og_mutex_t OGCreateMutex() {
 	return mutex;
 }
 
-OSG_INLINE void OGLockMutex(og_mutex_t om) { EnterCriticalSection(om); }
+OSG_INLINE void OGLockMutex(og_mutex_t om) { EnterCriticalSection((CRITICAL_SECTION*)om); }
 
-OSG_INLINE void OGUnlockMutex(og_mutex_t om) { LeaveCriticalSection(om); }
+OSG_INLINE void OGUnlockMutex(og_mutex_t om) { LeaveCriticalSection((CRITICAL_SECTION*)om); }
 
 OSG_INLINE void OGDeleteMutex(og_mutex_t om) { free(om); }
 
@@ -120,9 +120,9 @@ OSG_INLINE void OGUnlockSema(og_sema_t os) { ReleaseSemaphore((HANDLE)os, 1, 0);
 
 OSG_INLINE void OGDeleteSema(og_sema_t os) { CloseHandle(os); }
 
-OSG_INLINE void OGSignalCond(og_cv_t cv) { WakeConditionVariable(cv); }
-OSG_INLINE void OGBroadcastCond(og_cv_t cv) { WakeAllConditionVariable(cv); }
-OSG_INLINE void OGWaitCond(og_cv_t cv, og_mutex_t m) { SleepConditionVariableCS(cv, m, INFINITE); }
+OSG_INLINE void OGSignalCond(og_cv_t cv) { WakeConditionVariable((PCONDITION_VARIABLE)cv); }
+OSG_INLINE void OGBroadcastCond(og_cv_t cv) { WakeAllConditionVariable((PCONDITION_VARIABLE)cv); }
+OSG_INLINE void OGWaitCond(og_cv_t cv, og_mutex_t m) { SleepConditionVariableCS((PCONDITION_VARIABLE)cv,(CRITICAL_SECTION*)m, INFINITE); }
 
 OSG_INLINE void OGDeleteConditionVariable(og_cv_t cv) { free(cv); }
 

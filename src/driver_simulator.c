@@ -31,7 +31,6 @@ STATIC_CONFIG_ITEM(Simulator_SENSOR_TIME_JITTER, "simulator-sensor-time-jitter",
 STATIC_CONFIG_ITEM(Simulator_GYRO_NOISE, "simulator-gyro-noise", 'f', "Variance of noise to apply to gyro", 1e-4)
 STATIC_CONFIG_ITEM(Simulator_ACC_NOISE, "simulator-acc-noise", 'f', "Variance of noise to apply to accelerometer", 5e-5)
 STATIC_CONFIG_ITEM(Simulator_GYRO_BIAS, "simulator-gyro-bias", 'f', "Scale of bias to apply to gyro", 1e-1)
-
 STATIC_CONFIG_ITEM(Simulator_SENSOR_DROPRATE, "simulator-sensor-droprate", 'f', "Chance to drop a sensor reading", .1)
 
 STATIC_CONFIG_ITEM(Simulator_INIT_TIME, "simulator-init-time", 'f', "Init time -- object wont move for this long", 2.)

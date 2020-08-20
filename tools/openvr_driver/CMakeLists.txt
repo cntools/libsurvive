@@ -40,4 +40,4 @@ FILE(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources/settings/default.vrsettings DEST
 
 add_library(driver_survive SHARED openvr_driver.cc)
 set_target_properties(driver_survive PROPERTIES PREFIX "")
-target_link_libraries(driver_survive lapacke lapack cblas survive )
+target_link_libraries(driver_survive survive )

@@ -13,6 +13,7 @@ foreach(test ${SURVIVE_TESTS})
     add_executable(test-${test} ${test}.c main.c)
     target_link_libraries(test-${test} survive ${${test}_ADDITIONAL_LIBS})
     add_test(NAME ${test} COMMAND test-${test})
+    add_dependencies(test-${test} survive_plugins)
     set_target_properties(test-${test} PROPERTIES FOLDER "tests")
 endforeach()
 
