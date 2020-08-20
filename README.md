@@ -268,9 +268,12 @@ for testing different features.
 
 # FAQ
 
- * There is an unofficial [OpenHMD/libsurvive fork](https://github.com/ChristophHaag/OpenHMD/tree/libsurvive) that replaces OpenHMD's Vive driver with libsurvive. OpenHMD will not merge this branch as it depends on libsurvive as an external dependency, but it may pave the way for more code sharing.
-   * This OpenHMD/libsurvive fork can be plugged into [SteamVR-OpenHMD](https://github.com/ChristophHaag/SteamVR-OpenHMD) which allows SteamVR to use OpenHMD drivers.
-   * Godot 3.x has a [native OpenHMD plugin](https://github.com/BastiaanOlij/godot_openhmd) though it needs work for building and running properly and it is still missing motion controller support.
+Other projects using libsurvive
+
+ * The [Monado OpenXR runtime](https://monado.freedesktop.org/) uses libsurvive as one of its HMD and controller drivers.
+   * OpenXR applications that run on Monado include the [OpenXR plugin for Godot 3.x](https://github.com/GodotVR/godot_openxr)
+ * There is a very unofficial (and not upstreamable) [OpenHMD/libsurvive fork](https://github.com/ChristophHaag/OpenHMD/commits/libsurvive2) that adds a libsurvive driver.
+   * This OpenHMD/libsurvive fork can be plugged into [SteamVR-OpenHMD](https://github.com/ChristophHaag/SteamVR-OpenHMD) or used natively with the [OpenHMD plugin for Godot 3.x](https://github.com/BastiaanOlij/godot_openhmd).
 
 ## Addendum and notes
 
