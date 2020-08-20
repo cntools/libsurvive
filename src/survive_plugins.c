@@ -1,3 +1,5 @@
+#ifndef SURVIVE_DISABLE_PLUGINS
+
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
@@ -12,7 +14,7 @@
 
 #ifdef _WIN32
 #include "survive_plugins.windows.h"
-#else
+#elif __linux__
 #include "survive_plugins.unix.h"
 #endif
 
@@ -155,3 +157,6 @@ void survive_load_plugins(const char *plugin_dir) {
 
 	free(plugin_list.data);
 }
+#else
+void survive_load_plugins(const char *plugin_dir) {}
+#endif

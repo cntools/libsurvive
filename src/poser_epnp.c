@@ -17,9 +17,9 @@ static SurvivePose solve_correspondence(SurviveObject *so, epnp *pnp, bool camer
 		return rtn;
 	}
 
-	double r[3][3];
+	FLT r[3][3];
 
-	double err = epnp_compute_pose(pnp, r, rtn.Pos);
+	FLT err = epnp_compute_pose(pnp, r, rtn.Pos);
 
 	CvMat R = cvMat(3, 3, CV_FLT, r);
 	CvMat T = cvMat(3, 1, CV_FLT, rtn.Pos);

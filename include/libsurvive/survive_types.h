@@ -19,7 +19,10 @@
 extern "C" {
 #endif
 
-
+#ifndef PRIu64
+#define PRIu64 "l" PRIu32
+#endif
+  
 #ifndef FLT
 #ifdef USE_DOUBLE
 #define FLT double

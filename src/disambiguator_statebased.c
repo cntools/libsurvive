@@ -231,8 +231,6 @@ static int find_acode(uint32_t pulseLen) {
 }
 
 static int32_t overlap_area(const LightcapElement *a, const LightcapElement *b) {
-	LightcapElement ole = {0};
-
 	if (a->timestamp > b->timestamp)
 		return overlap_area(b, a);
 
@@ -655,7 +653,7 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 			}
 		}
 		if (cnt > 0) {
-			double var = 3;
+			FLT var = 3;
 			size_t minl = DIV_ROUND_CLOSEST(avg_length, cnt * 4);
 			size_t maxl = var * DIV_ROUND_CLOSEST(avg_length, cnt);
 

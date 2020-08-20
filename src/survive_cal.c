@@ -439,16 +439,9 @@ static void handle_calibration( struct SurviveCalData *cd )
 
 	//Either advance to stage 4 or go resetting will go back to stage 2.
 	//What is stage 4?  Are we done then?
-#ifdef WINDOWS
-	mkdir( "calinfo" );
-#else
-	mkdir( "calinfo", 0755 );
-#endif
 	int sen, axis, lh;
 
 	//Just to get it out of the way early, we'll calculate the sync-pulse-lengths here.
-	FILE * sync_time_info = fopen( "calinfo/synctime.csv", "w" );
-
 	for( sen = 0; sen < MAX_SENSORS_TO_CAL; sen++ )
 		for (lh = 0; lh < NUM_GEN1_LIGHTHOUSES; lh++) {
 			int count = cd->all_sync_counts[sen][lh];
@@ -469,17 +462,8 @@ static void handle_calibration( struct SurviveCalData *cd )
 				stddev += (cd->all_sync_times[sen][lh][i] - avg) * (cd->all_sync_times[sen][lh][i] - avg);
 			}
 			stddev /= count;
-
-			fprintf(sync_time_info, "%d %d %f %d %f\n", sen, lh, totaltime / count, count, stddev);
 	}
 
-	fclose( sync_time_info );
-
-
-
-
-	FILE * hists = fopen( "calinfo/histograms.csv", "w" );
-	FILE * ptinfo = fopen( "calinfo/ptinfo.csv", "w" );
 	for( sen = 0; sen < MAX_SENSORS_TO_CAL; sen++ )
 		for (lh = 0; lh < NUM_GEN1_LIGHTHOUSES; lh++)
 			for (axis = 0; axis < 2; axis++) {
@@ -594,16 +578,6 @@ static void handle_calibration( struct SurviveCalData *cd )
 			continue;
 		}
 
-		fprintf( hists, "%02d_%d_%d, ", sen, lh, axis );
-
-		for( i = 0; i < HISTOGRAMSIZE; i++ )
-		{
-			fprintf( hists, "%d ", histo[i] );
-		}
-		fprintf( hists, "\n" );
-
-		fprintf( ptinfo, "%d %d %d %d %f %f %f %f %f %f\n", sen, lh, axis, count, avgsweep, avglen*1000000, stddevang*1000000000, stddevlen*1000000000, max_outlier_length*1000000000, max_outlier_angle*1000000000 );
-
 		int dataindex = sen * (2 * NUM_GEN1_LIGHTHOUSES) + lh * 2 + axis;
 		cd->avgsweeps[dataindex] = avgsweep;
 		cd->avglens[dataindex] = avglen;
@@ -611,15 +585,11 @@ static void handle_calibration( struct SurviveCalData *cd )
 		cd->stdlens[dataindex] = stddevlen;
 		cd->ctsweeps[dataindex] = count;
 	}
-	fclose( hists );
-	fclose( ptinfo );
 
 	int obj;
 
 	//Poses of lighthouses relative to objects.
 	SurvivePose objphl[MAX_POSE_OBJECTS][NUM_GEN1_LIGHTHOUSES];
-
-	FILE * fobjp = fopen( "calinfo/objposes.csv", "w" );
 
 	for( obj = 0; obj < cd->numPoseObjects; obj++ )
 	{
@@ -656,7 +626,6 @@ static void handle_calibration( struct SurviveCalData *cd )
 			SV_INFO( "Failed calibration on dev %d\n", obj );
 			reset_calibration( cd );
 			cd->stage = 2;
-			fclose( fobjp );
 			return;
 		}
 
@@ -669,9 +638,6 @@ static void handle_calibration( struct SurviveCalData *cd )
 			SurvivePose * lhp = &ctx->bsd[lh].Pose; //Need to somehow put pose here.
 
 			memcpy( &objphl[obj][lh], objfromlh, sizeof( SurvivePose ) );
-
-			fprintf( fobjp, "%f %f %f\n", objfromlh->Pos[0], objfromlh->Pos[1], objfromlh->Pos[2] );
-			fprintf( fobjp, "%f %f %f %f\n", objfromlh->Rot[0], objfromlh->Rot[1], objfromlh->Rot[2], objfromlh->Rot[3] );
 
 			if (ctx->bsd[lh].PositionSet) {
 				if (compute_reprojection_error) {
@@ -711,9 +677,6 @@ static void handle_calibration( struct SurviveCalData *cd )
 		}
 
 	}
-	fclose( fobjp );
-
-
 
 	SV_INFO( "Stage 4 succeeded." );
 	reset_calibration( cd );
