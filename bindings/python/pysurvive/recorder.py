@@ -69,9 +69,11 @@ class RecordedData:
             return
         last_sweep = self.so.contents.last_sync_time[bsd_idx]
         time_since_sync = (pysurvive.timecode_difference(timecode, last_sweep) / 48000000.)
-        hz = 48000000. / self.so.contents.last_time_between_sync[bsd_idx]
-        time_per_rot = 1. / hz
 
+
+        hz = 48000000. / last_sweep if last_sweep > 0 else 1.
+        time_per_rot = 1. / hz
+        
         if time_since_sync > time_per_rot:
             return
 
@@ -159,8 +161,12 @@ class RecordedData:
         times = [x[0] for x in self.poses]
         poses = [x[1][0:3] for x in self.poses]
 
+
+        print(np.diff(times))
+        print(np.diff(poses, axis=0))
+        
         data = np.stack([times[1:], np.linalg.norm(
-            np.diff(poses, axis=0) / np.diff(times), axis=1
+            np.diff(poses, axis=0) / np.diff(times)[:, None], axis=1
         )])
 
         diff_data = insert_blanks(data)

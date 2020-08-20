@@ -14,13 +14,19 @@ jobs:
      - os: linux
        env: USE_ASAN=OFF CONFIG=Release
      - os: windows
-       env: CONFIG=Release
+       env: CONFIG=Release	
 
 before_install:
   - if [[ "$TRAVIS_OS_NAME" != 'windows' ]]; then sudo apt-get update -qq; fi
-  - if [[ "$TRAVIS_OS_NAME" != 'windows' ]]; then sudo apt-get install -y p7zip-full build-essential zlib1g-dev libx11-dev libusb-1.0-0-dev freeglut3-dev liblapacke-dev libopenblas-dev libatlas-base-dev libpcap-dev; fi   
+  - if [[ "$TRAVIS_OS_NAME" != 'windows' ]]; then sudo apt-get install -y p7zip-full build-essential zlib1g-dev libx11-dev libusb-1.0-0-dev freeglut3-dev liblapacke-dev libopenblas-dev libatlas-base-dev libpcap-dev python3 python3-pip; fi   
 
 script:
+   - if [[ "$TRAVIS_OS_NAME" != 'windows' ]]; then virtualenv --python=python3 venv; fi
+   - if [[ "$TRAVIS_OS_NAME" != 'windows' ]]; then source ./venv/bin/activate; fi   
+   - if [[ "$TRAVIS_OS_NAME" != 'windows' ]]; then python3 setup.py install; fi
+   - if [[ "$TRAVIS_OS_NAME" != 'windows' ]]; then cd bindings/python; fi
+   - if [[ "$TRAVIS_OS_NAME" != 'windows' ]]; then python3 ./example.py --simulator --simulator-time .1 --playback-factor 0; fi
+   - if [[ "$TRAVIS_OS_NAME" != 'windows' ]]; then cd ../..; fi
    - mkdir -p bin
    - cd bin
    - cmake -DENABLE_TESTS=ON -DUSE_ASAN=${USE_ASAN} -DCMAKE_BUILD_TYPE=${CONFIG} ..

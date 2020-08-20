@@ -277,16 +277,21 @@ file(GLOB REDIST_HEADERS
 install(FILES ${REDIST_HEADERS} DESTINATION include/libsurvive/redist)
 install(PROGRAMS survive-websocketd DESTINATION bin)
 
-find_program(CTYPESGEN ctypesgen PATHS $ENV{HOME}/anaconda3/bin)
-if(CTYPESGEN)
-	get_property(include_directories DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
-	set(INCLUDE_FLAGS "")
-	foreach(include_directory ${include_directories})
-		list(APPEND INCLUDE_FLAGS "-I${include_directory}")
-	endforeach()
+if(PYTHON_GENERATED_DIR)
+  find_package (Python COMPONENTS Interpreter Development)
+  find_program(CTYPESGEN ctypesgen REQUIRED)
 
-	add_custom_target(pysurvive COMMAND ${CTYPESGEN} ${CMAKE_SOURCE_DIR}/include/libsurvive/*.h ${INCLUDE_FLAGS} --no-macros -L$<TARGET_FILE_DIR:survive> -llibsurvive.so
-			--strip-prefix=survive_ -P Survive -o ${PYTHON_GENERATED_DIR}pysurvive_generated.py )
+  message("-- Building python bindings file to ${PYTHON_GENERATED_DIR}")
+  message("-- ctypesgen found at ${CTYPESGEN}") 
+  get_property(include_directories DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
+  set(INCLUDE_FLAGS "")
+  foreach(include_directory ${include_directories})
+    list(APPEND INCLUDE_FLAGS "-I${include_directory}")
+  endforeach()
+
+  add_custom_target(pysurvive ALL COMMAND ${Python_EXECUTABLE} ${CTYPESGEN} ${CMAKE_SOURCE_DIR}/include/libsurvive/*.h ${INCLUDE_FLAGS} --no-macros -L$<TARGET_FILE_DIR:survive> -llibsurvive.so
+    --strip-prefix=survive_ -P Survive -o ${PYTHON_GENERATED_DIR}pysurvive_generated.py )
+
 endif()
 
 include(GNUInstallDirs)
