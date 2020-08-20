@@ -168,13 +168,8 @@ void json_load_file(const char* path) {
 
 	jsmn_parser parser;
 	jsmn_init(&parser);
-
-	int32_t items = jsmn_parse(&parser, JSON_STRING, JSON_STRING_LEN, NULL, 0);
-	if (items < 0) return;
-	jsmntok_t* tokens = malloc(items * sizeof(jsmntok_t));
-
-	jsmn_init(&parser);
-	items = jsmn_parse(&parser, JSON_STRING, JSON_STRING_LEN, tokens, items);
+	int32_t items = jsmn_parse(&parser, JSON_STRING, JSON_STRING_LEN);
+    jsmntok_t* tokens = parser.token_pool;
 
 	int16_t children = -1;
 
@@ -210,7 +205,7 @@ void json_load_file(const char* path) {
 		free(value);
 	}
 
-	free(tokens);
+	jsmn_free(&parser);
 	free(JSON_STRING);
 }
 

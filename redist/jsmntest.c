@@ -23,9 +23,11 @@ int main()
 	fclose( f );
 
 	jsmn_parser p;
-	jsmntok_t t[4096];
-	jsmn_init(&p);
-	int r = jsmn_parse(&p, JSON_STRING, len, t, sizeof(t)/sizeof(t[0]));	
+    jsmn_init(&p);
+
+	int r = jsmn_parse(&p, JSON_STRING, len);
+    jsmntok_t* t = p.token_pool;
+
 	if (r < 0) {
 		printf("Failed to parse JSON: %d\n", r);
 		return 1;
@@ -69,6 +71,7 @@ int main()
 //					JSON_STRING + t[i+1].start);
 		}
 	}
+    jsmn_free(&p);
 	return EXIT_SUCCESS;
 
 

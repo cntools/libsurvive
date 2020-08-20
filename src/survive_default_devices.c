@@ -72,26 +72,24 @@ static int jsoneq(const char *json, const jsmntok_t *tok, const char *s) {
 }
 
 static int ParsePoints(SurviveContext *ctx, SurviveObject *so, char *ct0conf, FLT **floats_out, const jsmntok_t *t) {
-	int k;
+  char ctt[128] = { 0 };
 	int pts = t[1].size;
 	const jsmntok_t *tk;
-
+	
 	so->sensor_ct = 0;
 	assert(*floats_out == 0);
-	*floats_out = SV_MALLOC(sizeof(**floats_out) * 32 * 3);
+	*floats_out = SV_CALLOC(1, sizeof(**floats_out) * 32 * 3);
 
-	for (k = 0; k < pts; k++) {
+	for (int k = 0; k < pts; k++) {
 		tk = &t[2 + k * 4];
 
-		int m;
-		for (m = 0; m < 3; m++) {
-			char ctt[128];
+		for (int m = 0; m < 3; m++) {
 
 			tk++;
 			int elemlen = tk->end - tk->start;
 
 			if (tk->type != 4 || elemlen > sizeof(ctt) - 1) {
-				SV_GENERAL_ERROR("Parse error in JSON\n");
+			  SV_GENERAL_ERROR("Parse error in JSON %d %d %lu", tk->type, elemlen, sizeof(ctt));
 				return 1;
 			}
 
@@ -331,22 +329,23 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	SurviveContext *ctx = so->ctx;
 	// From JSMN example.
 	jsmn_parser p;
-	jsmntok_t t[4096];
 	jsmn_init(&p);
 
-	int r = jsmn_parse(&p, ct0conf, len, t, sizeof(t) / sizeof(t[0]));
+	int r = jsmn_parse(&p, ct0conf, len);
 	if (r < 0) {
 		SV_INFO("Failed to parse JSON in HMD configuration: %d\n", r);
+		jsmn_free(&p);
 		return -1;
 	}
-	if (r < 1 || t[0].type != JSMN_OBJECT) {
+	if (r < 1 || p.token_pool[0].type != JSMN_OBJECT) {
 		SV_INFO("Object expected in HMD configuration\n");
+		jsmn_free(&p);
 		return -2;
 	}
 
 	so->object_type = SURVIVE_OBJECT_TYPE_OTHER;
 	scratch_space_t scratch = scratch_space_init(so);
-	process_jsontok(&scratch, ct0conf, 0, t, r);
+	process_jsontok(&scratch, ct0conf, 0, p.token_pool, r);
 
 	solve_vive_pose(&so->imu2trackref, &scratch.imu_pose);
 	solve_vive_pose(&so->head2trackref, &scratch.head);
@@ -405,7 +404,7 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	}
 
 	SV_VERBOSE(50, "Read config for %s", so->codename);
-
+    jsmn_free(&p);
 	return 0;
 }
 
