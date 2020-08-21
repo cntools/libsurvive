@@ -13,6 +13,7 @@ typedef struct GeneralOptimizerData {
 	struct {
 		int runs;
 		int poser_seed_runs;
+		int32_t successes;
 		int error_failures;
 	} stats;
 

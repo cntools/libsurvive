@@ -54,6 +54,7 @@ bool general_optimizer_data_record_success(GeneralOptimizerData *d, FLT error, c
 			d->lastSuccess = *pose;
 		d->failures_to_reset_cntr = d->failures_to_reset;
 		d->failures_since_success = 0;
+		d->stats.successes++;
 		return true;
 	}
 

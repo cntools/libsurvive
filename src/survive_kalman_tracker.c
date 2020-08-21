@@ -13,15 +13,39 @@
 
 #include "generated/survive_imu.generated.h"
 
-#define SURVIVE_MODEL_STATE_CNT (sizeof(SurviveKalmanModel) / sizeof(FLT))
+#define SURVIVE_MODEL_MAX_STATE_CNT (sizeof(SurviveKalmanModel) / sizeof(FLT))
+
+static SurviveKalmanModel copy_model(const FLT *src, size_t state_size) {
+	SurviveKalmanModel rtn = {0};
+	assert(state_size >= 7);
+	memcpy(rtn.Pose.Pos, src, sizeof(FLT) * state_size);
+	return rtn;
+}
+
+static void copy_matrix(CvMat *dst, const FLT *src, size_t src_stride) {
+	for (int i = 0; i < dst->cols; i++) {
+		for (int j = 0; j < dst->rows; j++) {
+			cvmSet(dst, j, i, src[i + j * src_stride]);
+		}
+	}
+}
+
+static void copy_array(FLT *dst, size_t dst_stride, size_t rows, const FLT *src, size_t src_stride) {
+	assert(dst_stride >= 7);
+	for (int i = 0; i < dst_stride; i++) {
+		for (int j = 0; j < rows; j++) {
+			dst[i + j * dst_stride] = src[i + j * src_stride];
+		}
+	}
+}
 
 static FLT survive_kalman_tracker_position_var2(SurviveKalmanTracker *tracker, FLT *var_diag) {
-	FLT _var_diag[SURVIVE_MODEL_STATE_CNT];
+	FLT _var_diag[SURVIVE_MODEL_MAX_STATE_CNT];
 	if (var_diag == 0)
 		var_diag = _var_diag;
 
-	for (int i = 0; i < SURVIVE_MODEL_STATE_CNT; i++) {
-		var_diag[i] = fabs(tracker->model.P[SURVIVE_MODEL_STATE_CNT * i + i]);
+	for (int i = 0; i < tracker->model.state_cnt; i++) {
+		var_diag[i] = fabs(tracker->model.P[tracker->model.state_cnt * i + i]);
 	}
 
 	return normnd2(var_diag, 7);
@@ -29,6 +53,12 @@ static FLT survive_kalman_tracker_position_var2(SurviveKalmanTracker *tracker, F
 
 static void normalize_model(SurviveKalmanTracker *pTracker) {
 	quatnormalize(pTracker->state.Pose.Rot, pTracker->state.Pose.Rot);
+	for (int i = 0; i < 3; i++) {
+		assert(isfinite(pTracker->state.Pose.Pos[i]));
+	}
+	for (int i = 0; i < 4; i++) {
+		assert(isfinite(pTracker->state.Pose.Rot[i]));
+	}
 }
 
 static inline void mat_eye_diag(CvMat *m, const FLT *v) {
@@ -193,10 +223,14 @@ static bool map_imu_data(void *user, const struct CvMat *Z, const struct CvMat *
 	SV_VERBOSE(400, "X     " Point16_format, LINMATH_VEC16_EXPAND(CV_FLT_PTR(x_t)))
 	SV_VERBOSE(400, "Z     " Point6_format, LINMATH_VEC6_EXPAND(CV_FLT_PTR(Z)))
 
-	SurviveKalmanModel *s = (SurviveKalmanModel *)CV_FLT_PTR(x_t);
-	gen_imu_predict(h_x, s);
-	assert(H_k->rows * H_k->cols == SURVIVE_MODEL_STATE_CNT * 6);
-	gen_imu_predict_jac_kalman_model(CV_FLT_PTR(H_k), s);
+	// SurviveKalmanModel *s = (SurviveKalmanModel *)CV_FLT_PTR(x_t);
+	SurviveKalmanModel s = copy_model(CV_FLT_PTR(x_t), x_t->rows);
+	gen_imu_predict(h_x, &s);
+	assert(H_k->rows * H_k->cols == H_k->cols * 6);
+
+	FLT _H_k[6 * SURVIVE_MODEL_MAX_STATE_CNT] = {0};
+	gen_imu_predict_jac_kalman_model(_H_k, &s);
+	copy_matrix(H_k, _H_k, SURVIVE_MODEL_MAX_STATE_CNT);
 
 	SV_VERBOSE(400, "h_x   " Point6_format, LINMATH_VEC6_EXPAND(h_x))
 	subnd(CV_FLT_PTR(y), CV_FLT_PTR(Z), h_x, Z->rows);
@@ -237,13 +271,12 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 	FLT rotation_variance[] = {1e5, 1e5, 1e5, 1e5, 1e5, 1e5};
 
 	if (time - tracker->last_light_time > .1) {
-		FLT _H[] = {
-			0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
-			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
-		};
+		// clang-format off
+		FLT _H[9 * 19] = { 0 };
+		for(int i = 0;i < 9;i++) {
+			_H[7 + i + (tracker->model.state_cnt * i)] = 1.;
+		}
+
 		CvMat H = cvMat(9, tracker->model.state_cnt, SURVIVE_CV_F, _H);
 		FLT v = 1e-5;
 		FLT R[] = {
@@ -309,7 +342,9 @@ void survive_kalman_tracker_predict(const SurviveKalmanTracker *tracker, FLT t, 
 
 static void model_q_fn(void *user, FLT t, const CvMat *x, FLT *q_out) {
 	SurviveKalmanTracker *tracker = (SurviveKalmanTracker *)user;
-	SurviveKalmanModel *state = (SurviveKalmanModel *)CV_FLT_PTR(x);
+	size_t state_cnt = x->rows;
+	SurviveKalmanModel state = copy_model(CV_FLT_PTR(x), state_cnt);
+
 	/*
 	 * Due to the rotational terms in the model, the process noise covariance is complicated. It mixes a XYZ third order
 	 * positional model with a second order rotational model with tuning parameters
@@ -347,7 +382,7 @@ static void model_q_fn(void *user, FLT t, const CvMat *x, FLT *q_out) {
 	FLT s_w = tracker->process_weight_ang_velocity;
 	FLT s_f = s_w / 12. * t3;
 	FLT s_s = s_w / 4. * t2;
-	FLT qw = state->Pose.Rot[0], qx = state->Pose.Rot[1], qy = state->Pose.Rot[2], qz = state->Pose.Rot[3];
+	FLT qw = state.Pose.Rot[0], qx = state.Pose.Rot[1], qy = state.Pose.Rot[2], qz = state.Pose.Rot[3];
 	FLT qws = qw * qw, qxs = qx * qx, qys = qy * qy, qzs = qz * qz;
 	FLT qs = qws + qxs + qys + qzs;
 
@@ -389,14 +424,16 @@ static void model_q_fn(void *user, FLT t, const CvMat *x, FLT *q_out) {
 			  0,       0,       0,                 0,                 0,                 0,                 0,         0,       0,       0,           0,       0,       0,       0,       0,       0,        0,  0, gb , // bz
 
 	};
-	assert(sizeof(Q) == sizeof(FLT) * SURVIVE_MODEL_STATE_CNT * SURVIVE_MODEL_STATE_CNT);
-	for(int i = 0;i < SURVIVE_MODEL_STATE_CNT;i++) {
+	// clang-format on
+
+	assert(sizeof(Q) == sizeof(FLT) * SURVIVE_MODEL_MAX_STATE_CNT * SURVIVE_MODEL_MAX_STATE_CNT);
+	for (int i = 0; i < SURVIVE_MODEL_MAX_STATE_CNT; i++) {
 		for(int j = 0;j < i;j++) {
-			assert(Q[j + i * SURVIVE_MODEL_STATE_CNT] == Q[i + j * SURVIVE_MODEL_STATE_CNT]);
+			assert(Q[j + i * SURVIVE_MODEL_MAX_STATE_CNT] == Q[i + j * SURVIVE_MODEL_MAX_STATE_CNT]);
 		}
 	}
-	// clang-format on
-	memcpy(q_out, Q, sizeof(FLT) * SURVIVE_MODEL_STATE_CNT * SURVIVE_MODEL_STATE_CNT);
+
+	copy_array(q_out, state_cnt, state_cnt, Q, SURVIVE_MODEL_MAX_STATE_CNT);
 }
 
 /**
@@ -405,31 +442,34 @@ static void model_q_fn(void *user, FLT t, const CvMat *x, FLT *q_out) {
  */
 static void model_predict(FLT t, const survive_kalman_state_t *k, const CvMat *f_in, CvMat *f_out) {
 	assert(t > 0);
-	const SurviveKalmanModel *s = (const SurviveKalmanModel *)k->state;
-	gen_kalman_model_predict(CV_FLT_PTR(f_out), t, s);
+
+	SurviveKalmanModel s_in = copy_model(CV_FLT_PTR(f_in), f_in->rows);
+	SurviveKalmanModel s_out = {0};
+	gen_kalman_model_predict(s_out.Pose.Pos, t, &s_in);
+
+	memcpy(CV_FLT_PTR(f_out), s_out.Pose.Pos, f_in->rows * sizeof(FLT));
 }
 static void model_predict_jac(FLT t, FLT *f_out, const struct CvMat *x0) {
-	const SurviveKalmanModel *s = (const SurviveKalmanModel *)CV_FLT_PTR(x0);
+	SurviveKalmanModel s = copy_model(CV_FLT_PTR(x0), x0->rows);
+
+	size_t state_cnt = x0->rows;
 	if (t == 0) {
-		arr_eye_diag(f_out, SURVIVE_MODEL_STATE_CNT, SURVIVE_MODEL_STATE_CNT, 0);
+		arr_eye_diag(f_out, state_cnt, state_cnt, 0);
 	} else {
-		gen_kalman_model_predict_jac_kalman_model(f_out, t, s);
+		FLT jacobian[SURVIVE_MODEL_MAX_STATE_CNT * SURVIVE_MODEL_MAX_STATE_CNT];
+		gen_kalman_model_predict_jac_kalman_model(jacobian, t, &s);
+		copy_array(f_out, state_cnt, state_cnt, jacobian, SURVIVE_MODEL_MAX_STATE_CNT);
 	}
 }
 
 FLT survive_imu_integrate_pose(SurviveKalmanTracker *tracker, FLT time, const SurvivePose *pose, const FLT *R) {
-	// clang-format off
-	FLT _H[] = {
-		1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	};
-	assert(sizeof(_H) == (SURVIVE_MODEL_STATE_CNT * sizeof(FLT) * 7));
-	// clang-format on
+	FLT _H[7 * SURVIVE_MODEL_MAX_STATE_CNT] = {0};
+
+	size_t state_cnt = tracker->model.state_cnt;
+	for (int i = 0; i < 7; i++) {
+		_H[i + i * state_cnt] = 1.;
+	}
+
 	CvMat H = cvMat(7, tracker->model.state_cnt, SURVIVE_CV_F, _H);
 	CvMat Zp = cvMat(7, 1, SURVIVE_CV_F, (void *)pose->Pos);
 	FLT rtn = 0;
@@ -483,6 +523,9 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
 	}
 }
 
+STATIC_CONFIG_ITEM(KALMAN_LIGHT_ERROR_THRESHOLD, "light-error-threshold", 'f', "Error limit to invalidate position",
+				   5e-2)
+
 STATIC_CONFIG_ITEM(KALMAN_USE_ADAPTIVE_IMU, "use-adaptive-imu", 'i', "Use adaptive kalman for IMU", 0)
 STATIC_CONFIG_ITEM(KALMAN_USE_ADAPTIVE_LIGHTCAP, "use-adaptive-lightcap", 'i', "Use adaptive kalman for Lightcap", 0)
 STATIC_CONFIG_ITEM(KALMAN_USE_ADAPTIVE_OBS, "use-adaptive-obs", 'i', "Use adaptive kalman for observations", 0)
@@ -495,6 +538,10 @@ STATIC_CONFIG_ITEM(PROCESS_WEIGHT_VEL, "process-weight-vel", 'f', "Velocity vari
 STATIC_CONFIG_ITEM(PROCESS_WEIGHT_POS, "process-weight-pos", 'f', "Position variance per second", 0.)
 STATIC_CONFIG_ITEM(PROCESS_WEIGHT_ROTATION, "process-weight-rot", 'f', "Rotation variance per second", 0.)
 
+STATIC_CONFIG_ITEM(KALMAN_MODEL_ACCEL, "model-acc", 'i',
+				   "Whether or not to model the acceleration in the kalman filter", 1)
+STATIC_CONFIG_ITEM(KALMAN_USE_GYRO_BIAS, "model-gyro-bias", 'i',
+				   "Whether or not to model the gyro bias in the kalman filter", 1)
 STATIC_CONFIG_ITEM(KALMAN_REPORT_IGNORE_START, "report-ignore-start", 'i', "Number of reports to ignore at startup", 0)
 STATIC_CONFIG_ITEM(KALMAN_REPORT_IGNORE_THRESHOLD, "report-ignore-threshold", 'f',
 				   "Minimum variance to report pose from the kalman filter", 1.)
@@ -518,6 +565,7 @@ STATIC_CONFIG_ITEM(USE_KALMAN, "use-kalman", 'i', "Apply kalman filter as part o
 typedef void (*survive_attach_detach_fn)(SurviveContext *ctx, const char *tag, FLT *var);
 
 static void survive_kalman_tracker_config(SurviveKalmanTracker *tracker, survive_attach_detach_fn fn) {
+	fn(tracker->so->ctx, KALMAN_LIGHT_ERROR_THRESHOLD_TAG, &tracker->light_error_threshold);
 	fn(tracker->so->ctx, KALMAN_LIGHTCAP_IGNORE_THRESHOLD_TAG, &tracker->light_threshold_var);
 	fn(tracker->so->ctx, KALMAN_REPORT_IGNORE_THRESHOLD_TAG, &tracker->report_threshold_var);
 
@@ -546,14 +594,14 @@ void survive_kalman_tracker_reinit(SurviveKalmanTracker *tracker) {
 	memset(&tracker->state, 0, sizeof(tracker->state));
 	tracker->state.Pose.Rot[0] = 1;
 
-	size_t state_cnt = sizeof(SurviveKalmanModel) / sizeof(FLT);
+	size_t state_cnt = tracker->model.state_cnt;
 	memset(tracker->model.P, 0, state_cnt * state_cnt * sizeof(FLT));
 
 	for (int i = 0; i < 7; i++) {
-		tracker->model.P[i * SURVIVE_MODEL_STATE_CNT + i] = 1e3;
+		tracker->model.P[i * state_cnt + i] = 1e3;
 	}
-	for (int i = 16; i < 19; i++) {
-		tracker->model.P[i * SURVIVE_MODEL_STATE_CNT + i] = 1;
+	for (int i = 16; i < state_cnt; i++) {
+		tracker->model.P[i * state_cnt + i] = 1;
 	}
 
 	FLT Rrs = tracker->obs_rot_var;
@@ -566,6 +614,8 @@ void survive_kalman_tracker_reinit(SurviveKalmanTracker *tracker) {
 	arr_eye_diag(tracker->IMU_R, 6, 6, Rimu);
 }
 
+static void print_configf(SurviveContext *ctx, const char *tag, FLT *var) { SV_VERBOSE(10, "\t%-32s %e", tag, *var); }
+
 void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *so) {
 	memset(tracker, 0, sizeof(*tracker));
 
@@ -577,13 +627,15 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	// origin has a variance of 10m; and the quat can be varied by 4 -- which is
 	// more than any actual normalized quat could be off by.
 
-	survive_kalman_tracker_config(tracker, survive_attach_configf);
-
+	tracker->model_gyro_bias = survive_configi(tracker->so->ctx, KALMAN_USE_GYRO_BIAS_TAG, SC_GET, 1);
+	tracker->model_accel = survive_configi(tracker->so->ctx, KALMAN_MODEL_ACCEL_TAG, SC_GET, 1);
 	survive_attach_configi(tracker->so->ctx, KALMAN_REPORT_IGNORE_START_TAG, &tracker->report_ignore_start);
 	survive_attach_configi(tracker->so->ctx, KALMAN_LIGHTCAP_REQUIRED_OBS_TAG, &tracker->light_required_obs);
 	survive_attach_configi(tracker->so->ctx, KALMAN_USE_ADAPTIVE_IMU_TAG, &tracker->adaptive_imu);
 	survive_attach_configi(tracker->so->ctx, KALMAN_USE_ADAPTIVE_LIGHTCAP_TAG, &tracker->adaptive_lightcap);
 	survive_attach_configi(tracker->so->ctx, KALMAN_USE_ADAPTIVE_OBS_TAG, &tracker->adaptive_obs);
+
+	survive_kalman_tracker_config(tracker, survive_attach_configf);
 
 	bool use_imu = (bool)survive_configi(ctx, "use-imu", SC_GET, 1);
 	if (!use_imu) {
@@ -595,16 +647,28 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 
 	survive_kalman_set_logging_level(ctx->log_level);
 	size_t state_cnt = sizeof(SurviveKalmanModel) / sizeof(FLT);
+
+	if (!tracker->model_gyro_bias) {
+		state_cnt -= 3;
+	}
+
+	if (tracker->model_gyro_bias && !tracker->model_accel) {
+		SV_WARN("Use of gyro bias but no acceleration model is not implemented. Turning acceleration model on.");
+		tracker->model_accel = true;
+	}
+
+	if (!tracker->model_accel) {
+		state_cnt -= 3;
+	}
+
 	survive_kalman_state_init(&tracker->model, state_cnt, model_predict_jac, model_q_fn, tracker,
 							  (FLT *)&tracker->state);
 	tracker->model.Predict_fn = model_predict;
 
 	survive_kalman_tracker_reinit(tracker);
 
-	SV_VERBOSE(10, "\t%s: %f", IMU_ACC_VARIANCE_TAG, tracker->acc_var);
-	SV_VERBOSE(10, "\t%s: %f", IMU_GYRO_VARIANCE_TAG, tracker->gyro_var);
-	SV_VERBOSE(10, "\t%s: %f", KALMAN_LIGHTCAP_IGNORE_THRESHOLD_TAG, tracker->light_threshold_var);
-	SV_VERBOSE(10, "\t%s: %f", KALMAN_REPORT_IGNORE_THRESHOLD_TAG, tracker->report_threshold_var);
+	SV_VERBOSE(10, "Tracker config for %s", tracker->so->codename);
+	survive_kalman_tracker_config(tracker, print_configf);
 }
 
 SurviveVelocity survive_kalman_tracker_velocity(const SurviveKalmanTracker *tracker) {
@@ -625,10 +689,10 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 			   100. * tracker->stats.dropped_poses /
 				   (FLT)(tracker->stats.reported_poses + tracker->stats.dropped_poses))
 
-	FLT var[SURVIVE_MODEL_STATE_CNT] = {0};
-	scalend(var, tracker->stats.reported_var, 1. / tracker->stats.reported_poses, SURVIVE_MODEL_STATE_CNT);
+	FLT var[SURVIVE_MODEL_MAX_STATE_CNT] = {0};
+	scalend(var, tracker->stats.reported_var, 1. / tracker->stats.reported_poses, SURVIVE_MODEL_MAX_STATE_CNT);
 	SV_VERBOSE(5, "\t%-32s " Point19_format, "Mean reported variance", LINMATH_VEC19_EXPAND(var));
-	scalend(var, tracker->stats.dropped_var, 1. / tracker->stats.reported_poses, SURVIVE_MODEL_STATE_CNT);
+	scalend(var, tracker->stats.dropped_var, 1. / tracker->stats.reported_poses, SURVIVE_MODEL_MAX_STATE_CNT);
 	SV_VERBOSE(5, "\t%-32s " Point19_format, "Mean dropped variance", LINMATH_VEC19_EXPAND(var));
 
 	SV_VERBOSE(5, "\t%-32s %e (%7u integrations)", "Obs error",
@@ -697,8 +761,10 @@ void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *tracker) {
 }
 
 bool survive_kalman_tracker_check_valid(SurviveKalmanTracker *tracker) {
-	bool isValid = tracker->light_residuals_all < 5e-2 ||
-				   (SurviveSensorActivations_stationary_time(&tracker->so->activations) < 48000000 / 10);
+	bool isValid =
+		tracker->light_error_threshold <= 0 || tracker->light_residuals_all < tracker->light_error_threshold ||
+		(SurviveSensorActivations_stationary_time(&tracker->so->activations) < tracker->so->timebase_hz / 10);
+
 	if (!isValid) {
 		survive_kalman_tracker_lost_tracking(tracker);
 		return false;
@@ -723,17 +789,18 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 
 	survive_kalman_tracker_predict(tracker, t, &pose);
 
-	FLT var_diag[SURVIVE_MODEL_STATE_CNT];
+	size_t state_cnt = tracker->model.state_cnt;
+	FLT var_diag[SURVIVE_MODEL_MAX_STATE_CNT];
 	if ((tracker->report_threshold_var > 0 &&
 		 survive_kalman_tracker_position_var2(tracker, var_diag) >= tracker->report_threshold_var) ||
 		tracker->report_ignore_start < tracker->report_ignore_start_cnt) {
 		tracker->stats.dropped_poses++;
-		addnd(tracker->stats.dropped_var, var_diag, tracker->stats.dropped_var, SURVIVE_MODEL_STATE_CNT);
+		addnd(tracker->stats.dropped_var, var_diag, tracker->stats.dropped_var, state_cnt);
 		tracker->report_ignore_start_cnt++;
 		return;
 	}
 	SurviveContext *ctx = tracker->so->ctx;
-	addnd(tracker->stats.reported_var, var_diag, tracker->stats.reported_var, SURVIVE_MODEL_STATE_CNT);
+	addnd(tracker->stats.reported_var, var_diag, tracker->stats.reported_var, state_cnt);
 
 	SV_VERBOSE(400, "Tracker variance %s " Point16_format, tracker->so->codename, LINMATH_VEC16_EXPAND(var_diag));
 	SV_VERBOSE(400, "Tracker Bias %s     " Point3_format, tracker->so->codename,

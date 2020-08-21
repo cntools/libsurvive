@@ -131,7 +131,7 @@ void survive_kalman_predict_covariance(FLT t, const CvMat *F, const CvMat *x, su
 	// k->P = F * k->P * F^T + Q
 	mulBABt(&Pk1_k1, F, 1, &Q, 1, &Pk1_k1);
 
-	if (log_level > KALMAN_LOG_LEVEL) {
+	if (log_level >= KALMAN_LOG_LEVEL) {
 		SV_KALMAN_VERBOSE(110, "T: %f", t);
 		sv_print_mat("Q", &Q, 1);
 		sv_print_mat("F", F, 1);
@@ -299,7 +299,7 @@ static FLT survive_kalman_predict_update_state_extended_adaptive_internal(FLT t,
 
 		k->F_fn(dt, _F, &x1);
 		for (int i = 0; i < F.rows * F.cols; i++)
-			assert(!isnan(_F[i]));
+			assert(isfinite(_F[i]));
 
 		// Run predict
 		survive_kalman_predict_covariance(dt, &F, &x2, k);

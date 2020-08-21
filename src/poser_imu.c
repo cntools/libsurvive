@@ -31,6 +31,7 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 			LinmathVec3d up = {0, 0, 1};
 			quatfrom2vectors(pose.Rot, imu->accel, up);
 
+			so->tracker->stats.obs_count = 30;
 			survive_kalman_tracker_integrate_observation(&imu->hdr, so->tracker, &pose, 0);
 			return 0;
 		}

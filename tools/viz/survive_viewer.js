@@ -423,12 +423,15 @@ function get_trails(obj, external) {
 	if (trails[obj.tracker] == null) {
 		var geometry = new THREE.Geometry();
 		var material = new THREE.LineBasicMaterial({color : trail_colors[trail_idx++ % trail_colors.length]});
+		// var material = new THREE.PointsMaterial({color : trail_colors[trail_idx++ % trail_colors.length], size:
+		// .001});
 
 		for (i = 0; i < MAX_LINE_POINTS; i++) {
 			geometry.vertices.push(new THREE.Vector3(obj.position[0], obj.position[1], obj.position[2]));
 		}
 		geometry.dynamic = true;
 
+		// trails[obj.tracker] = new THREE.Points(geometry, material);
 		trails[obj.tracker] = new THREE.Line(geometry, material);
 
 		if (external)

@@ -436,8 +436,8 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 				so->codename, result->orignorm, result->bestnorm, (int)meas_size, res, get_lh_count(meas_for_lhs),
 				canPossiblySolveLHS, d->opt.failures_since_success, d->stats.total_runs);
 
-		if (d->opt.failures_since_success > 10 &&
-			SurviveSensorActivations_stationary_time(&so->activations) > (48000000 / 10)) {
+		if (d->opt.failures_since_success > 10 && d->opt.stats.successes < 10 &&
+			(SurviveSensorActivations_stationary_time(&so->activations) > (48000000 / 10))) {
 			survive_kalman_tracker_lost_tracking(so->tracker);
 		}
 	}

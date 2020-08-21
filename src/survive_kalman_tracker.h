@@ -39,10 +39,12 @@ typedef struct SurviveKalmanTracker {
 
 	FLT last_light_time;
 
+	bool model_gyro_bias;
+	bool model_accel;
 	bool use_raw_obs;
 	int adaptive_imu, adaptive_lightcap, adaptive_obs;
 
-	FLT light_threshold_var, report_threshold_var;
+	FLT light_threshold_var, report_threshold_var, light_error_threshold;
 	int32_t light_required_obs;
 	int32_t report_ignore_start;
 	int32_t report_ignore_start_cnt;
