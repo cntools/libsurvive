@@ -37,10 +37,9 @@ This should calibrate and display your setup.
 ## Windows
 
 For windows you must open the CMakeLists file in something like [CMake GUI](https://cmake.org/runningcmake/) to build
-from source.
+from source using one of the visual studio generators. The build uses NuGet to get the [necessary development dependencies](https://www.nuget.org/packages/lapacke/).
 
-Windows binaries will be provided shortly. [Websocketd](http://websocketd.com/) should work the same with with the 
-visualization tool.
+[Websocketd](http://websocketd.com/) should work the same with with the visualization tool.
 
 # Current Status
 
