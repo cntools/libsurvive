@@ -4,7 +4,6 @@
 
 #include "mpfit/mpfit.h"
 #include "poser.h"
-#include "survive_kalman_tracker.h"
 #include <survive.h>
 
 #include "assert.h"
@@ -15,6 +14,7 @@
 #include "survive_async_optimizer.h"
 #include "survive_cal.h"
 #include "survive_config.h"
+#include "survive_kalman_tracker.h"
 #include "survive_reproject.h"
 #include "survive_reproject_gen2.h"
 
@@ -81,7 +81,6 @@ typedef struct MPFITData {
   FLT sensor_variance;
   FLT sensor_variance_per_second;
 
-  SurviveKalmanTracker tracker;
   bool useIMU;
   bool alwaysPrecise;
   bool useKalman;
@@ -440,7 +439,7 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 
 		if (d->opt.failures_since_success > 10 &&
 			SurviveSensorActivations_stationary_time(&so->activations) > (48000000 / 10)) {
-			survive_kalman_tracker_lost_tracking(&d->tracker);
+			survive_kalman_tracker_lost_tracking(so->tracker);
 		}
 	}
 
@@ -468,11 +467,7 @@ static void handle_results(MPFITData *d, PoserDataLight *lightData, FLT error, S
 		FLT var_quat = d->useKalman ? error : 0;
 		FLT var[] = {var_meters, var_meters, var_meters, var_quat, var_quat, var_quat, var_quat};
 
-		if (d->useKalman) {
-			survive_kalman_tracker_integrate_observation(&lightData->hdr, &d->tracker, estimate, var);
-		} else {
-			PoserData_poser_pose_func(&lightData->hdr, so, estimate);
-		}
+		PoserData_poser_pose_func(&lightData->hdr, so, estimate);
 	}
 }
 
@@ -687,7 +682,6 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		MPFITData *d = so->PoserFnData;
 
 		general_optimizer_data_init(&d->opt, so);
-		survive_kalman_tracker_init(&d->tracker, so);
 
 		d->useIMU = (bool)survive_configi(ctx, "use-imu", SC_GET, 1);
 		d->alwaysPrecise = (bool)survive_configi(ctx, "precise", SC_GET, 0);
@@ -733,17 +727,6 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		PoserDataFullScene *pdfs = (PoserDataFullScene *)(pd);
 		FLT error = run_mpfit_find_cameras(d, pdfs);
 		return 0;
-	}
-	case POSERDATA_LIGHT:
-	case POSERDATA_LIGHT_GEN2: {
-		if (d->tracker.model.t == 0) {
-			return 0;
-		}
-
-		PoserDataLight *pdl = (PoserDataLight *)pd;
-
-		survive_kalman_tracker_integrate_light(&d->tracker, pdl);
-		break;
 	}
 	case POSERDATA_SYNC_GEN2:
 	case POSERDATA_SYNC: {
@@ -805,7 +788,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 			}
 		}
 		general_optimizer_data_dtor(&d->opt);
-		survive_kalman_tracker_free(&d->tracker);
+
 		survive_detach_config(ctx, "disable-lighthouse", &d->disable_lighthouse);
 		survive_detach_config(ctx, "sensor-variance-per-sec", &d->sensor_variance_per_second);
 		survive_detach_config(ctx, "sensor-variance", &d->sensor_variance);
@@ -823,12 +806,6 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 
 		if (ctx->calptr && ctx->calptr->stage < 5)
 			return 0;
-
-		if (d->useIMU) {
-			survive_kalman_tracker_integrate_imu(&d->tracker, imu);
-		} else if (d->useKalman) {
-			survive_kalman_tracker_report_state(pd, &d->tracker);
-		}
 
 		general_optimizer_data_record_imu(&d->opt, imu);
 	}

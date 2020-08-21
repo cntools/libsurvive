@@ -718,5 +718,27 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 	SV_VERBOSE(400, "Tracker report %s   " SurvivePose_format, tracker->so->codename, SURVIVE_POSE_EXPAND(pose));
 
 	SurviveVelocity velocity = survive_kalman_tracker_velocity(tracker);
-	PoserData_poser_pose_func_with_velocity(pd, tracker->so, &pose, &velocity);
+
+	SurviveObject *so = tracker->so;
+
+	/*
+	 * static int report_in_imu = -1;
+		if (report_in_imu == -1) {
+			report_in_imu = survive_configi(so->ctx, REPORT_IN_IMU_TAG, SC_GET, 0);
+		}
+
+		SurvivePose head2world;
+		so->OutPoseIMU = *imu2world;
+		if (!report_in_imu) {
+			ApplyPoseToPose(&head2world, imu2world, &so->head2imu);
+		} else {
+			head2world = *imu2world;
+		}
+
+		for (int i = 0; i < 7; i++)
+			assert(!isnan(((FLT *)imu2world)[i]));
+
+	 */
+	so->ctx->imuposeproc(so, pd->timecode, &pose);
+	so->ctx->velocityproc(so, pd->timecode, &velocity);
 }

@@ -1,4 +1,5 @@
 #include "math.h"
+#include "survive_kalman_tracker.h"
 #include <assert.h>
 #include <linmath.h>
 #include <stdint.h>
@@ -10,8 +11,6 @@
 #include <poser.h>
 #include <stdlib.h>
 #include <string.h>
-
-static survive_timecode PoserData_timecode(const PoserData *poser_data) { return poser_data->timecode; }
 
 SURVIVE_EXPORT int32_t PoserData_size(const PoserData *poser_data) {
 	switch (poser_data->pt) {
@@ -34,7 +33,7 @@ SURVIVE_EXPORT int32_t PoserData_size(const PoserData *poser_data) {
 
 STATIC_CONFIG_ITEM(CENTER_ON_LH0, "center-on-lh0", 'i',
 				   "Alternative scheme for setting initial position; LH0 is 0, 0 looking in the +X direction", 0)
-STATIC_CONFIG_ITEM(REPORT_IN_IMU, "report-in-imu", 'i', "Debug option to output poses in IMU space.", 0)
+
 void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world) {
 	SurviveContext *ctx = so->ctx;
 	for (int i = 0; i < 3; i++) {
@@ -46,30 +45,14 @@ void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const S
 		}
 	}
 	if (poser_data->poseproc) {
-		poser_data->poseproc(so, PoserData_timecode(poser_data), imu2world, poser_data->userdata);
+		poser_data->poseproc(so, poser_data->timecode, imu2world, poser_data->userdata);
 	} else {
-		static int report_in_imu = -1;
-		if (report_in_imu == -1) {
-			report_in_imu = survive_configi(so->ctx, REPORT_IN_IMU_TAG, SC_GET, 0);
-		}
-
-		SurvivePose head2world;
-		so->OutPoseIMU = *imu2world;
-		if (!report_in_imu) {
-			ApplyPoseToPose(&head2world, imu2world, &so->head2imu);
-		} else {
-			head2world = *imu2world;
-		}
-
-		for (int i = 0; i < 7; i++)
-			assert(!isnan(((FLT *)imu2world)[i]));
-
-		so->ctx->poseproc(so, PoserData_timecode(poser_data), &head2world);
+		survive_kalman_tracker_integrate_observation(poser_data, so->tracker, imu2world, 0);
 	}
 }
 void PoserData_poser_pose_func_with_velocity(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world,
 											 const SurviveVelocity *velocity) {
-	so->ctx->velocityproc(so, PoserData_timecode(poser_data), velocity);
+	so->ctx->velocityproc(so, poser_data->timecode, velocity);
 	PoserData_poser_pose_func(poser_data, so, imu2world);
 }
 

@@ -187,6 +187,7 @@ typedef void (*imu_process_func)(SurviveObject *so, int mask, FLT *accelgyro, su
 typedef void (*button_process_func)(SurviveObject *so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id,
 									uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val);
 typedef void (*pose_process_func)(SurviveObject *so, survive_timecode timecode, SurvivePose *pose);
+typedef pose_process_func imupose_process_func;
 typedef void (*velocity_process_func)(SurviveObject *so, survive_timecode timecode, const SurviveVelocity *pose);
 typedef void (*external_pose_process_func)(SurviveContext *so, const char *name, const SurvivePose *pose);
 typedef void (*external_velocity_process_func)(SurviveContext *so, const char *name, const SurviveVelocity *velocity);

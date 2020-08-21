@@ -473,6 +473,8 @@ uint16_t config_read_float_array(config_group *cg, const char *tag, FLT *values,
 config_entry *next_unused_entry(config_group *cg, const char * tag) {
 	config_entry *cv = NULL;
 	//	assert(cg->used_entries < cg->max_entries);
+	if (cg == NULL)
+		return NULL;
 
 	if (cg->used_entries >= cg->max_entries)
 		resize_config_group(cg, cg->max_entries + 10);
@@ -509,6 +511,9 @@ const uint32_t config_set_uint32(config_group *cg, const char *tag, const uint32
 	if (cv == NULL)
 		cv = next_unused_entry(cg,tag);
 
+	if (cv == NULL)
+		return value;
+
 	sstrcpy(&(cv->tag), tag);
 	cv->numeric.i = value;
 	cv->type = CONFIG_UINT32;
@@ -520,6 +525,9 @@ const uint32_t config_set_uint32(config_group *cg, const char *tag, const uint32
 }
 
 const FLT config_set_float(config_group *cg, const char *tag, const FLT value) {
+	if (cg == NULL)
+		return value;
+
 	config_entry *cv = find_config_entry(cg, tag);
 	if (cv == NULL)
 		cv = next_unused_entry(cg,tag);

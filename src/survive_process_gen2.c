@@ -2,6 +2,7 @@
 #include "survive.h"
 #include "survive_config.h"
 #include "survive_internal.h"
+#include "survive_kalman_tracker.h"
 #include "survive_playback.h"
 #include <assert.h>
 #include <math.h>
@@ -314,6 +315,7 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 		}
 
 	survive_recording_sweep_angle_process(so, channel, sensor_id, timecode, plane, angle);
+	survive_kalman_tracker_integrate_light(so->tracker, &l.common);
 
 	if (so->PoserFn) {
 		so->PoserFn(so, (PoserData *)&l);

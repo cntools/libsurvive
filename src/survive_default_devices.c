@@ -1,6 +1,7 @@
 #include "survive_default_devices.h"
 #include "assert.h"
 #include "json_helpers.h"
+#include "survive_kalman_tracker.h"
 #include <jsmn.h>
 #include <math.h>
 #include <stdio.h>
@@ -33,6 +34,9 @@ SurviveObject *survive_create_device(SurviveContext *ctx, const char *driver_nam
 	}
 
 	SurviveSensorActivations_ctor(device, &device->activations);
+
+	device->tracker = SV_MALLOC(sizeof(struct SurviveKalmanTracker));
+	survive_kalman_tracker_init(device->tracker, device);
 
 	return device;
 }
@@ -445,6 +449,9 @@ void survive_destroy_device(SurviveObject *so) {
 			SV_VERBOSE(5, "\t\tRejected Data:     %8u", so->stats.rejected_data[i]);
 		}
 	}
+
+	survive_kalman_tracker_free(so->tracker);
+	free(so->tracker);
 	free(so->sensor_locations);
 	free(so->sensor_normals);
 	free(so->conf);

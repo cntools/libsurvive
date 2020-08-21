@@ -8,11 +8,13 @@
 #include <assert.h>
 #include <survive.h>
 
+#include "math.h"
 #include "string.h"
+#include "survive_kalman_tracker.h"
 #include "survive_str.h"
 
-//XXX TODO: Once data is avialble in the context, use the stuff here to handle converting from time codes to
-//proper angles, then from there perform the rest of the solution. 
+// XXX TODO: Once data is avialble in the context, use the stuff here to handle converting from time codes to
+// proper angles, then from there perform the rest of the solution.
 
 #define TIMECENTER_TICKS (48000000/240) //for now.
 
@@ -112,6 +114,7 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 	if (ctx->calptr) {
 		survive_cal_angle(so, sensor_id, acode, timecode, length, angle, lh);
 	}
+	survive_kalman_tracker_integrate_light(so->tracker, &l.common);
 	if (so->PoserFn) {
 		so->PoserFn( so, (PoserData *)&l );
 	}
@@ -125,6 +128,29 @@ void survive_default_button_process(SurviveObject * so, uint8_t eventType, uint8
 {
 }
 
+STATIC_CONFIG_ITEM(REPORT_IN_IMU, "report-in-imu", 'i', "Debug option to output poses in IMU space.", 0)
+void survive_default_imupose_process(SurviveObject *so, uint32_t timecode, SurvivePose *imu2world) {
+	so->OutPoseIMU = *imu2world;
+
+	static int report_in_imu = -1;
+	if (report_in_imu == -1) {
+		report_in_imu = survive_configi(so->ctx, REPORT_IN_IMU_TAG, SC_GET, 0);
+	}
+
+	SurvivePose head2world;
+	so->OutPoseIMU = *imu2world;
+	if (!report_in_imu) {
+		ApplyPoseToPose(&head2world, imu2world, &so->head2imu);
+	} else {
+		head2world = *imu2world;
+	}
+
+	for (int i = 0; i < 7; i++)
+		assert(!isnan(((FLT *)imu2world)[i]));
+
+	SurviveContext *ctx = so->ctx;
+	ctx->poseproc(so, timecode, &head2world);
+}
 void survive_default_pose_process(SurviveObject *so, uint32_t timecode, SurvivePose *pose) {
 	so->OutPose = *pose;
 	so->OutPose_timecode = timecode;
@@ -270,6 +296,7 @@ void survive_default_imu_process( SurviveObject * so, int mask, FLT * accelgyrom
 
 	SurviveSensorActivations_add_imu(&so->activations, &imu);
 
+	survive_kalman_tracker_integrate_imu(so->tracker, &imu);
 	if (so->PoserFn) {
 		so->PoserFn( so, (PoserData *)&imu );
 	}
