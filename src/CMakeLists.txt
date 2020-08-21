@@ -78,7 +78,7 @@ endif()
 SET(PLUGINS
         driver_dummy driver_vive driver_simulator
         disambiguator_statebased
-        poser_dummy poser_mpfit poser_imu
+        poser_dummy poser_mpfit poser_kalman_only
 	poser_barycentric_svd
 )
 

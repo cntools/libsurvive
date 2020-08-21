@@ -11,7 +11,7 @@ struct PoserIMUData_t {
 	bool inited;
 };
 
-int PoserIMU(SurviveObject *so, PoserData *pd) {
+int PoserKalmanOnly(SurviveObject *so, PoserData *pd) {
 	PoserType pt = pd->pt;
 	SurviveContext *ctx = so->ctx;
 	struct PoserIMUData_t *dd = so->PoserFnData;
@@ -51,4 +51,4 @@ int PoserIMU(SurviveObject *so, PoserData *pd) {
 	return -1;
 }
 
-REGISTER_LINKTIME(PoserIMU)
+REGISTER_LINKTIME(PoserKalmanOnly)
