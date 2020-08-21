@@ -28,8 +28,6 @@
 STATIC_CONFIG_ITEM(SERIALIZE_SOLVE, "serialize-lh-mpfit", 's', "Serialize MPFIT formulization", 0)
 STATIC_CONFIG_ITEM(USE_JACOBIAN_FUNCTION, "use-jacobian-function", 'i',
 				   "If set to false, a slower numerical approximation of the jacobian is used", 1)
-STATIC_CONFIG_ITEM(USE_IMU, "use-imu", 'i', "Use the IMU as part of the pose solver", 1)
-STATIC_CONFIG_ITEM(USE_KALMAN, "use-kalman", 'i', "Apply kalman filter as part of the pose solver", 1)
 STATIC_CONFIG_ITEM(SENSOR_VARIANCE_PER_SEC, "sensor-variance-per-sec", 'f',
 				   "Variance per second to add to the sensor input -- discounts older data", 0.0)
 STATIC_CONFIG_ITEM(SENSOR_VARIANCE, "sensor-variance", 'f', "Base variance for each sensor input", 1.0)
@@ -81,9 +79,8 @@ typedef struct MPFITData {
   FLT sensor_variance;
   FLT sensor_variance_per_second;
 
-  bool useIMU;
   bool alwaysPrecise;
-  bool useKalman;
+
   bool useStationaryWindow;
   const char *serialize_prefix;
   MPFITStats stats;
@@ -366,10 +363,12 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 
 	mpfitctx->measurementsCnt = meas_size;
 
+	/*
 	if ((d->useKalman || d->useIMU)) {
 		survive_long_timecode tc = so->activations.last_light;
-		// survive_imu_tracker_predict(&d->tracker, tc, soLocation);
+		//survive_kalman_tracker_predict(so->tracker, tc, soLocation);
 	}
+	 */
 
 	mpfitctx->initialPose = *soLocation;
 
@@ -463,8 +462,8 @@ static void handle_results(MPFITData *d, PoserDataLight *lightData, FLT error, S
 	SurviveObject *so = d->opt.so;
 	if (error > 0) {
 
-		FLT var_meters = d->useKalman ? error : 0;
-		FLT var_quat = d->useKalman ? error : 0;
+		FLT var_meters = error;
+		FLT var_quat = error;
 		FLT var[] = {var_meters, var_meters, var_meters, var_quat, var_quat, var_quat, var_quat};
 
 		PoserData_poser_pose_func(&lightData->hdr, so, estimate);
@@ -683,10 +682,9 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 
 		general_optimizer_data_init(&d->opt, so);
 
-		d->useIMU = (bool)survive_configi(ctx, "use-imu", SC_GET, 1);
 		d->alwaysPrecise = (bool)survive_configi(ctx, "precise", SC_GET, 0);
 		d->useStationaryWindow = (bool)survive_configi(ctx, USE_STATIONARY_SENSOR_WINDOW_TAG, SC_GET, 1);
-		d->useKalman = (bool)survive_configi(ctx, "use-kalman", SC_GET, 1);
+
 		d->syncs_to_setup = 16;
 		d->required_meas = survive_configi(ctx, "required-meas", SC_GET, 8);
 		d->syncs_per_run = survive_configi(ctx, "syncs-per-run", SC_GET, 1);
@@ -716,8 +714,6 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		SV_VERBOSE(110, "\ttime-window: %d", d->sensor_time_window);
 		SV_VERBOSE(110, "\tsensor-variance: %f", d->sensor_variance);
 		SV_VERBOSE(110, "\tsensor-variance-per-sec: %f", d->sensor_variance_per_second);
-		SV_VERBOSE(110, "\tuse-imu: %d", d->useIMU);
-		SV_VERBOSE(110, "\tuse-kalman: %d", d->useKalman);
 		SV_VERBOSE(110, "\tuse-jacobian-function: %d", d->use_jacobian_function_obj);
 	}
 	MPFITData *d = so->PoserFnData;

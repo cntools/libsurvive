@@ -106,6 +106,10 @@ static bool map_light_data(void *user, const struct CvMat *Z, const struct CvMat
 void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, PoserDataLight *data) {
 	SurviveContext *ctx = tracker->so->ctx;
 
+	if (tracker->use_raw_obs) {
+		return;
+	}
+
 	// A single light cap measurement has an infinite amount of solutions along a plane; so it only helps if we are
 	// already in a good place
 	if (tracker->light_threshold_var > 0 &&
@@ -202,6 +206,10 @@ static bool map_imu_data(void *user, const struct CvMat *Z, const struct CvMat *
 
 void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDataIMU *data) {
 	SurviveContext *ctx = tracker->so->ctx;
+
+	if (tracker->use_raw_obs) {
+		return;
+	}
 
 	// Wait til observation is in before reading IMU; gets rid of bad IMU data at the start
 	if (tracker->model.t == 0) {
@@ -435,6 +443,12 @@ FLT survive_imu_integrate_pose(SurviveKalmanTracker *tracker, FLT time, const Su
 
 void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTracker *tracker, const SurvivePose *pose,
 												  const FLT *oR) {
+	if (tracker->use_raw_obs) {
+		SurviveObject *so = tracker->so;
+
+		so->ctx->imuposeproc(so, pd->timecode, pose);
+		return;
+	}
 
 	survive_long_timecode timecode = pd->timecode;
 
@@ -497,6 +511,9 @@ STATIC_CONFIG_ITEM(OBS_ROT_VARIANCE, "obs-rot-variance", 'f', "Variance of rotat
 
 STATIC_CONFIG_ITEM(IMU_ACC_VARIANCE, "imu-acc-variance", 'f', "Variance of accelerometer", 5e-5)
 STATIC_CONFIG_ITEM(IMU_GYRO_VARIANCE, "imu-gyro-variance", 'f', "Variance of gyroscope", 1e-2)
+
+STATIC_CONFIG_ITEM(USE_IMU, "use-imu", 'i', "Use the IMU as part of the pose solver", 1)
+STATIC_CONFIG_ITEM(USE_KALMAN, "use-kalman", 'i', "Apply kalman filter as part of the pose solver", 1)
 
 typedef void (*survive_attach_detach_fn)(SurviveContext *ctx, const char *tag, FLT *var);
 
@@ -567,6 +584,14 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	survive_attach_configi(tracker->so->ctx, KALMAN_USE_ADAPTIVE_IMU_TAG, &tracker->adaptive_imu);
 	survive_attach_configi(tracker->so->ctx, KALMAN_USE_ADAPTIVE_LIGHTCAP_TAG, &tracker->adaptive_lightcap);
 	survive_attach_configi(tracker->so->ctx, KALMAN_USE_ADAPTIVE_OBS_TAG, &tracker->adaptive_obs);
+
+	bool use_imu = (bool)survive_configi(ctx, "use-imu", SC_GET, 1);
+	if (!use_imu) {
+		tracker->gyro_var = tracker->acc_var = -1;
+	}
+
+	bool use_kalman = (bool)survive_configi(ctx, "use-kalman", SC_GET, 1);
+	tracker->use_raw_obs = !use_kalman;
 
 	survive_kalman_set_logging_level(ctx->log_level);
 	size_t state_cnt = sizeof(SurviveKalmanModel) / sizeof(FLT);

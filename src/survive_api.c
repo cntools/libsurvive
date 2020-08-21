@@ -150,7 +150,7 @@ static void external_pose_fn(SurviveContext *ctx, const char *name, const Surviv
 	so->data.seo.pose = *pose;
 	unlock_and_notify_change(actx);
 }
-static void pose_fn(SurviveObject *so, uint32_t timecode, SurvivePose *pose) {
+static void pose_fn(SurviveObject *so, uint32_t timecode, const SurvivePose *pose) {
 	SurviveSimpleContext *actx = so->ctx->user_ptr;
 	OGLockMutex(actx->poll_mutex);
 	survive_default_pose_process(so, timecode, pose);

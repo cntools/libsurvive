@@ -440,8 +440,8 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 SURVIVE_EXPORT void survive_default_button_process(SurviveObject *so, uint8_t eventType, uint8_t buttonId,
 												   uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id,
 												   uint16_t axis2Val);
-SURVIVE_EXPORT void survive_default_imupose_process(SurviveObject *so, uint32_t timecode, SurvivePose *imu2world);
-SURVIVE_EXPORT void survive_default_pose_process(SurviveObject *so, survive_timecode timecode, SurvivePose *pose);
+SURVIVE_EXPORT void survive_default_imupose_process(SurviveObject *so, uint32_t timecode, const SurvivePose *imu2world);
+SURVIVE_EXPORT void survive_default_pose_process(SurviveObject *so, survive_timecode timecode, const SurvivePose *pose);
 SURVIVE_EXPORT void survive_default_velocity_process(SurviveObject *so, survive_timecode timecode,
 													 const SurviveVelocity *pose);
 SURVIVE_EXPORT void survive_default_external_pose_process(SurviveContext *so, const char *name,

@@ -129,7 +129,7 @@ void survive_default_button_process(SurviveObject * so, uint8_t eventType, uint8
 }
 
 STATIC_CONFIG_ITEM(REPORT_IN_IMU, "report-in-imu", 'i', "Debug option to output poses in IMU space.", 0)
-void survive_default_imupose_process(SurviveObject *so, uint32_t timecode, SurvivePose *imu2world) {
+void survive_default_imupose_process(SurviveObject *so, uint32_t timecode, const SurvivePose *imu2world) {
 	so->OutPoseIMU = *imu2world;
 
 	static int report_in_imu = -1;
@@ -151,7 +151,7 @@ void survive_default_imupose_process(SurviveObject *so, uint32_t timecode, Survi
 	SurviveContext *ctx = so->ctx;
 	ctx->poseproc(so, timecode, &head2world);
 }
-void survive_default_pose_process(SurviveObject *so, uint32_t timecode, SurvivePose *pose) {
+void survive_default_pose_process(SurviveObject *so, uint32_t timecode, const SurvivePose *pose) {
 	so->OutPose = *pose;
 	so->OutPose_timecode = timecode;
 	survive_recording_raw_pose_process(so, timecode, pose);
