@@ -187,7 +187,7 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 		tracker->stats.lightcap_count++;
 
 		normalize_model(tracker);
-		// survive_kalman_tracker_report_state(&data->hdr, tracker);
+		survive_kalman_tracker_report_state(&data->hdr, tracker);
 	}
 	SV_VERBOSE(400, "Resultant state %f (%f) (lightcap %2d) (error %e, %e)  " Point16_format, time, delta, data->lh,
 			   tracker->light_residuals[data->lh], tracker->light_residuals_all,
@@ -524,6 +524,7 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
 
 STATIC_CONFIG_ITEM(KALMAN_LIGHT_ERROR_THRESHOLD, "light-error-threshold", 'f', "Error limit to invalidate position",
 				   5e-2)
+STATIC_CONFIG_ITEM(KALMAN_MIN_REPORT_TIME, "min-report-time", 'f', "Minimum kalman report time in s", .005)
 
 STATIC_CONFIG_ITEM(KALMAN_USE_ADAPTIVE_IMU, "use-adaptive-imu", 'i', "Use adaptive kalman for IMU", 0)
 STATIC_CONFIG_ITEM(KALMAN_USE_ADAPTIVE_LIGHTCAP, "use-adaptive-lightcap", 'i', "Use adaptive kalman for Lightcap", 0)
@@ -564,6 +565,7 @@ STATIC_CONFIG_ITEM(USE_KALMAN, "use-kalman", 'i', "Apply kalman filter as part o
 typedef void (*survive_attach_detach_fn)(SurviveContext *ctx, const char *tag, FLT *var);
 
 static void survive_kalman_tracker_config(SurviveKalmanTracker *tracker, survive_attach_detach_fn fn) {
+	fn(tracker->so->ctx, KALMAN_MIN_REPORT_TIME_TAG, &tracker->min_report_time);
 	fn(tracker->so->ctx, KALMAN_LIGHT_ERROR_THRESHOLD_TAG, &tracker->light_error_threshold);
 	fn(tracker->so->ctx, KALMAN_LIGHTCAP_IGNORE_THRESHOLD_TAG, &tracker->light_threshold_var);
 	fn(tracker->so->ctx, KALMAN_REPORT_IGNORE_THRESHOLD_TAG, &tracker->report_threshold_var);
@@ -680,6 +682,9 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 	SurviveContext *ctx = tracker->so->ctx;
 
 	SV_VERBOSE(5, "IMU %s tracker statistics:", tracker->so->codename);
+	SV_VERBOSE(5, "\t%-32s %u", "state_cnt", tracker->model.state_cnt);
+	SV_VERBOSE(5, "\t%-32s %f", "avg hz",
+			   tracker->stats.reported_poses / (FLT)(tracker->last_report_time - tracker->first_report_time));
 	SV_VERBOSE(5, "\t%-32s %u", "late imu", tracker->stats.late_imu_dropped);
 	SV_VERBOSE(5, "\t%-32s %u", "late light", tracker->stats.late_light_dropped);
 
@@ -781,6 +786,10 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 		t = tracker->model.t;
 	}
 
+	if (t - tracker->last_report_time < tracker->min_report_time) {
+		return;
+	}
+
 	if (!survive_kalman_tracker_check_valid(tracker)) {
 		tracker->stats.dropped_poses++;
 		return;
@@ -812,6 +821,10 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 
 	SurviveObject *so = tracker->so;
 
+	if (tracker->first_report_time == 0) {
+		tracker->first_report_time = t;
+	}
+	tracker->last_report_time = t;
 	so->ctx->imuposeproc(so, pd->timecode, &pose);
 	so->ctx->velocityproc(so, pd->timecode, &velocity);
 }
