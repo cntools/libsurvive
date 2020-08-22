@@ -43,7 +43,7 @@ from source using one of the visual studio generators. This will also let you se
 to get the [necessary development dependencies](https://www.nuget.org/packages/lapacke/). After you generate the project, open the
 solution in visual studio and run build all. 
 
-[Websocketd](http://websocketd.com/) should work the same with with the visualization tool; assuming you put it somewhere in the system path. In the build binary folder there should be a `survive-websocketd.ps1` which can be ran as a PowerShell file. 
+[Websocketd](http://websocketd.com/) should work the same with with the visualization tool; assuming you put it somewhere in the system path. In the build binary folder (`./build-win/Release` if you built from `make.ps1`) there should be a `survive-websocketd.ps1` which can be ran as a PowerShell file. 
 
 # Current Status
 
