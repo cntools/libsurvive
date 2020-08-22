@@ -228,6 +228,12 @@ void survive_print_known_configs( SurviveContext * ctx, int verbose )
 			else
 			{
 				printf( "--%s ", name );
+
+				// Also display '--no-*' formatted options. We only do this for 'i' types since that is how we represent
+				// flags internally; and it'd be sorta useless to have them show up for default-off options. If the
+				// default is not 1, it's either not a flag or already off.
+				if (config->type == 'i' && config->data_default.i == 1)
+					printf("--no-%s ", name);
 			}
 		}
 	}
@@ -339,6 +345,11 @@ bool config_read_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8
 
 	config_read_float_array(cg, "pose", &bsd->Pose.Pos[0], defaults, 7);
 
+	FLT accel[3] = {0};
+	config_read_float_array(cg, "accel", accel, defaults, 3);
+	for (int i = 0; i < 3; i++)
+		bsd->accel[i] = accel[i];
+
 	FLT cal[sizeof(bsd->fcal)] = { 0 };
 	config_read_float_array(cg, "fcalphase", cal, defaults, 2);
 	config_read_float_array(cg, "fcaltilt", cal + 2, defaults, 2);
@@ -369,7 +380,8 @@ void config_set_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8_
 	config_set_uint32(cg, "id", bsd->BaseStationID);
 	config_set_uint32(cg, "mode", bsd->mode);
 	config_set_float_a(cg, "pose", &bsd->Pose.Pos[0], 7);
-
+	FLT accel[] = {bsd->accel[0], bsd->accel[1], bsd->accel[2]};
+	config_set_float_a(cg, "accel", accel, 3);
 	if (!quatiszero(bsd->Pose.Rot))
 		quatnormalize(bsd->Pose.Rot, bsd->Pose.Rot);
 

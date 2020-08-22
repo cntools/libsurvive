@@ -433,17 +433,10 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 	{
 		const char * lastparam = (autocomplete_match[2]==0)?autocomplete_match[1]:autocomplete_match[2];
 		const char * matchingparam = (autocomplete_match[2]==0)?0:autocomplete_match[1];
-		//First see if any of the parameters perfectly match a config item, if so print some help.
-		//fprintf( stderr, "!!! %s !!! %s !!!\n", lastparam, matchingparam );
 
+		// First see if any of the parameters perfectly match a config item, if so print some help.
 		const char * checkconfig = matchingparam;
 		if( matchingparam == 0 ) checkconfig = lastparam;
-
-		FILE *f = fopen("args.txt", "w");
-		for (int i = 0; i < argc; i++) {
-			fprintf(f, "'%s' ", argv[i]);
-		}
-		fprintf(f, "\n");
 
 		if (checkconfig && strlen(checkconfig) > 2 && survive_print_help_for_parameter(ctx, checkconfig + 2)) {
 			exit(0);
