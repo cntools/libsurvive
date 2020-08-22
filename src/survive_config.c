@@ -616,15 +616,16 @@ const char *survive_config_file_path(struct SurviveContext *ctx, char *path) {
 	const char *configpath = survive_config_file_name(ctx);
 
 	if (isalpha(configpath[0])) {
-		const char *xdg_config_home = getenv("XDG_CONFIG_HOME");
-		const char *home = getenv("HOME");
+		const char *home = 0;
 		size_t idx = 0;
-		if (xdg_config_home) {
-			idx = snprintf(path, FILENAME_MAX, "%s/libsurvive", xdg_config_home);
-		} else if (home) {
+
+		if (home = getenv("XDG_CONFIG_HOME")) {
+			idx = snprintf(path, FILENAME_MAX, "%s/libsurvive", home);
+		} else if (home = getenv("HOME")) {
 			idx = snprintf(path, FILENAME_MAX, "%s/.config/libsurvive", home);
-		} else {
-		};
+		} else if (home = getenv("LOCALAPPDATA")) {
+			idx = snprintf(path, FILENAME_MAX, "%s/libsurvive", home);
+		}
 
 #ifdef _WIN32
 		_mkdir(path);
