@@ -36,10 +36,14 @@ This should calibrate and display your setup.
 
 ## Windows
 
-For windows you must open the CMakeLists file in something like [CMake GUI](https://cmake.org/runningcmake/) to build
-from source using one of the visual studio generators. The build uses NuGet to get the [necessary development dependencies](https://www.nuget.org/packages/lapacke/).
+If you have `cmake` installed on your path you can simply run the `make.ps1` script by right clicking it and seleting `Run with PowerShell`.
 
-[Websocketd](http://websocketd.com/) should work the same with with the visualization tool.
+A more manual approach is to open CMakeLists file in something like [CMake GUI](https://cmake.org/runningcmake/) to build
+from source using one of the visual studio generators. This will also let you set various build options. The build uses NuGet 
+to get the [necessary development dependencies](https://www.nuget.org/packages/lapacke/). After you generate the project, open the
+solution in visual studio and run build all. 
+
+[Websocketd](http://websocketd.com/) should work the same with with the visualization tool; assuming you put it somewhere in the system path. In the build binary folder there should be a `survive-websocketd.ps1` which can be ran as a PowerShell file. 
 
 # Current Status
 
