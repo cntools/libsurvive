@@ -106,7 +106,15 @@ IF(WIN32)
   set_target_properties( survive-cli PROPERTIES VS_USER_PROPS "$(SolutionDir)\\packages\\OpenBLAS.0.2.14.1\\build\\native\\openblas.targets" )
 endif()
 
-file(COPY survive-websocketd DESTINATION ${CMAKE_BINARY_DIR})
+SET(SURVIVE_WEBSOCKETD ${CMAKE_CURRENT_SOURCE_DIR}/useful_files/survive-websocketd)
+if(WIN32)
+	SET(SURVIVE_WEBSOCKETD ${CMAKE_CURRENT_SOURCE_DIR}/useful_files/survive-websocketd.ps1)
+endif()
+
+add_custom_command(TARGET survive-cli POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy ${SURVIVE_WEBSOCKETD} $<TARGET_FILE_DIR:survive-cli>
+)
+install(PROGRAMS survive${SURVIVE_WEBSOCKETD} DESTINATION bin)
 
 INSTALL(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink survive ${CMAKE_INSTALL_PREFIX}/lib)")
 install(DIRECTORY include/libsurvive DESTINATION include)
@@ -115,7 +123,6 @@ file(GLOB REDIST_HEADERS
   "redist/*.h"
 )
 install(FILES ${REDIST_HEADERS} DESTINATION include/libsurvive/redist)
-install(PROGRAMS survive-websocketd DESTINATION bin)
 
 if(PYTHON_GENERATED_DIR)
   find_package (Python COMPONENTS Interpreter Development)
