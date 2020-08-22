@@ -746,6 +746,7 @@ void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *tracker) {
 			SurviveSensorActivations_stationary_time(&tracker->so->activations));
 	tracker->light_residuals_all = 0;
 	{
+		tracker->so->OutPoseIMU = (SurvivePose){0};
 		survive_kalman_tracker_reinit(tracker);
 		memset(&tracker->so->OutPoseIMU, 0, sizeof(SurvivePose));
 		memset(&tracker->so->OutPose, 0, sizeof(SurvivePose));
