@@ -10,3 +10,4 @@ install: build
 clean:
 	rm -rf bin
 
+.PHONY: build install clean

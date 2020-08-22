@@ -479,7 +479,7 @@ static void simulation_lh_compare(SurviveContext *ctx, uint8_t lighthouse, Survi
 	driver->lh_fn(ctx, lighthouse, lighthouse_pose, object_pose);
 }
 
-static void simulation_compare(SurviveObject *so, uint32_t timecode, const SurvivePose *pose) {
+static void simulation_compare(SurviveObject *so, uint32_t timecode, const SurvivePose *imupose) {
 	SurviveContext *ctx = so->ctx;
 	SurviveDriverSimulator *driver = so->driver;
 	SurvivePose p = InvertPoseRtn(&driver->position);
@@ -518,7 +518,8 @@ static void simulation_compare(SurviveObject *so, uint32_t timecode, const Survi
 			SV_VERBOSE(200, "Simulation unsync");
 		}
 	}
-	driver->pose_fn(so, timecode, pose);
+
+	survive_default_imupose_process(so, timecode, imupose);
 }
 
 static int simulator_close(struct SurviveContext *ctx, void *_driver) {
@@ -674,7 +675,7 @@ int DriverRegSimulator(SurviveContext *ctx) {
 		survive_notify_gen1(device, "Simulator setup for lh1");
 	}
 
-	sp->pose_fn = survive_install_pose_fn(ctx, simulation_compare);
+	sp->pose_fn = survive_install_imupose_fn(ctx, simulation_compare);
 	sp->lh_fn = survive_install_lighthouse_pose_fn(ctx, simulation_lh_compare);
 	survive_add_driver(ctx, sp, Simulator_poll, simulator_close, 0);
 	return 0;
