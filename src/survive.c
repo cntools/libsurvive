@@ -27,9 +27,10 @@
 #define z_const const
 #endif
 
+#define DEFAULT_CONFIG_PATH "config.json"
 STATIC_CONFIG_ITEM(SURVIVE_VERBOSE, "v", 'i', "Verbosity level", 0)
 STATIC_CONFIG_ITEM(BLACKLIST_DEVS, "blacklist-devs", 's', "List any devs (or substrings of devs) to blacklist.", "-")
-STATIC_CONFIG_ITEM(CONFIG_FILE, "configfile", 's', "Default configuration file", "config.json")
+STATIC_CONFIG_ITEM(CONFIG_FILE, "configfile", 's', "Default configuration file", DEFAULT_CONFIG_PATH)
 STATIC_CONFIG_ITEM(INIT_CONFIG_FILE, "init-configfile", 's', "Initial configuration file", 0)
 STATIC_CONFIG_ITEM(CONFIG_D_CALI, "disable-calibrate", 'i', "Enables or disables calibration", 0)
 STATIC_CONFIG_ITEM(CONFIG_FAST_CALI, "fast-calibrate", 'i', "Use fast calibration", 0)
@@ -39,6 +40,9 @@ STATIC_CONFIG_ITEM(CONFIG_LIGHTHOUSE_COUNT, "lighthousecount", 'i', "How many li
 STATIC_CONFIG_ITEM(LIGHTHOUSE_GEN, "lighthouse-gen", 'i',
 				   "Which lighthouse gen to use -- 1 for LH1, 2 for LH2, 0 (default) for auto-detect", 0)
 
+const char *survive_config_file_name(struct SurviveContext *ctx) {
+	return survive_configs(ctx, "configfile", SC_GET, DEFAULT_CONFIG_PATH);
+}
 #ifdef WIN32
 #define RUNTIME_SYMNUM
 #endif
@@ -242,6 +246,34 @@ void survive_release_ctx_lock(SurviveContext *ctx) {
 	// SV_VERBOSE(100, "Signaled on %lx", pthread_self());
 }
 
+static inline bool find_correct_config_file(struct SurviveContext *ctx, const char **config_prefix_fields) {
+	for (const char **name = config_prefix_fields; *name; name++) {
+		if (survive_config_is_set(ctx, *name)) {
+			char configfile[256] = {0};
+			const char *recordname = survive_configs(ctx, *name, SC_GET, 0);
+
+			// If a non-arg driver is used; just use the name of the driver
+			if (recordname == 0)
+				recordname = *name;
+
+			const char *end = recordname + strlen(recordname);
+			while (end != recordname && !(*end == '/' || *end == '\\'))
+				end--;
+			if (*end == '/' || *end == '\\')
+				end++;
+
+			if (end[0] != 0) {
+				recordname = end;
+				snprintf(configfile, 256, "%s.json", recordname);
+				survive_configs(ctx, "configfile", SC_SET | SC_OVERRIDE, configfile);
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 SurviveContext *survive_init_internal(int argc, char *const *argv, void *userData, log_process_func log_func) {
 	int i;
 
@@ -357,29 +389,11 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 	const char *log_file = survive_configs(ctx, "log", SC_GET, 0);
 	ctx->log_target = log_file ? fopen(log_file, "w") : stdout;
 
-	const char *config_prefix_fields[] = {"playback", "usbmon-playback", "simulator", 0};
-	for (const char **name = config_prefix_fields; *name; name++) {
-		if (!survive_config_is_set(ctx, "configfile") && survive_config_is_set(ctx, *name)) {
-			char configfile[256] = { 0 };
-			const char *recordname = survive_configs(ctx, *name, SC_GET, 0);
+	bool user_set_configfile = survive_config_is_set(ctx, "configfile");
 
-			// If a non-arg driver is used; just use the name of the driver
-			if (recordname == 0)
-				recordname = *name;
-
-			const char *end = recordname + strlen(recordname);
-			while (end != recordname && !(*end == '/' || *end == '\\'))
-				end--;
-			if (*end == '/' || *end == '\\')
-				end++;
-
-			if (end[0] != 0) {
-				recordname = end;
-				snprintf(configfile, 256, "%s.json", recordname);
-				survive_configs(ctx, "configfile", SC_SET | SC_OVERRIDE, configfile);
-				SV_INFO("Config file is %s", configfile);
-			}
-		}
+	if (!user_set_configfile) {
+		const char *playback_config_prefix_fields[] = {"playback", "usbmon-playback", "simulator", 0};
+		find_correct_config_file(ctx, playback_config_prefix_fields);
 	}
 
 	ctx->log_level = survive_configi(ctx, "v", SC_SETCONFIG, 0);
@@ -387,13 +401,23 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 	ctx->lh_version_forced = survive_configi(ctx, "lighthouse-gen", SC_SETCONFIG, 0) - 1;
 
 	const char *init_config = survive_configs(ctx, "init-configfile", SC_GET, 0);
-	;
+	char config_path[FILENAME_MAX];
 	if (init_config == 0) {
-		init_config = survive_configs(ctx, "configfile", SC_GET, "config.json");
+		survive_config_file_path(ctx, config_path);
 	} else {
+		strncpy(config_path, init_config, FILENAME_MAX);
 		SV_INFO("Initial config file is %s", init_config);
 	}
-	config_read(ctx, init_config);
+	config_read(ctx, config_path);
+	SV_VERBOSE(5, "Config file is %.512s", config_path);
+
+	const char *record_config_prefix_fields[] = {"record", "usbmon-record", 0};
+	if (!user_set_configfile && find_correct_config_file(ctx, record_config_prefix_fields)) {
+		survive_config_file_path(ctx, config_path);
+		SV_VERBOSE(5, "Config file switched to %.512s", config_path);
+		config_save(ctx);
+	}
+
 	ctx->activeLighthouses = 0;
 
 	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
@@ -583,7 +607,7 @@ int survive_startup(SurviveContext *ctx) {
 	}
 
 	// saving the config extra to make sure that the user has a config file they can change.
-	config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
+	config_save(ctx);
 
 	int calibrateMandatory = survive_configi(ctx, "force-calibrate", SC_GET, 0);
 	if (calibrateMandatory) {
@@ -795,7 +819,7 @@ void survive_close(SurviveContext *ctx) {
 		ctx->lightcapproc(ctx->objs[i], 0);
 	}
 
-	config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
+	config_save(ctx);
 
 	survive_destroy_recording(ctx);
 

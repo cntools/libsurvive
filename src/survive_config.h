@@ -59,7 +59,7 @@ void config_set_lighthouse(config_group* lh_config, BaseStationData* bsd, uint8_
 bool config_read_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8_t idx);
 
 void config_read(SurviveContext* sctx, const char* path);
-void config_save(SurviveContext* sctx, const char* path);
+void config_save(SurviveContext *ctx);
 
 const FLT config_set_float(config_group *cg, const char *tag, const FLT value);
 const uint32_t config_set_uint32(config_group *cg, const char *tag, const uint32_t value);

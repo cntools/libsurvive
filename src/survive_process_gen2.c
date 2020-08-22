@@ -65,7 +65,7 @@ static void ootx_packet_clbk_d_gen2(ootx_decoder_context *ct, ootx_packet *packe
 		b->OOTXSet = 1;
 
 		config_set_lighthouse(ctx->lh_config, b, id);
-		config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
+		config_save(ctx);
 	}
 }
 
@@ -99,7 +99,7 @@ static void ootx_packet_cblk_d_gen1(ootx_decoder_context *ct, ootx_packet *packe
 	b->OOTXSet = 1;
 
 	config_set_lighthouse(ctx->lh_config, b, id);
-	config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
+	config_save(ctx);
 }
 
 void survive_ootx_behavior(SurviveObject *so, int8_t bsd_idx, int8_t lh_version, int ootx) {

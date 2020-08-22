@@ -13,6 +13,8 @@
 //Driver registration
 #define MAX_DRIVERS 32
 
+SURVIVE_EXPORT const char *survive_config_file_name(struct SurviveContext *ctx);
+SURVIVE_EXPORT const char *survive_config_file_path(struct SurviveContext *ctx, char *path);
 SURVIVE_EXPORT survive_driver_fn GetDriver(const char *name);
 SURVIVE_EXPORT const char * GetDriverNameMatching( const char * prefix, int place );
 SURVIVE_EXPORT survive_driver_fn GetDriverWithPrefix(const char *prefix, const char *name);

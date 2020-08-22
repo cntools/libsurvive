@@ -8,9 +8,12 @@
 #else
 #include <malloc.h> //for alloca
 #endif
+
+#include "ctype.h"
 #include "math.h"
 #include <errno.h>
 #include <stdarg.h>
+#include <sys/stat.h>
 
 //Static-time registration system.
 
@@ -597,18 +600,44 @@ void write_config_group(FILE *f, config_group *cg, char *tag) {
 	}
 }
 
-// struct SurviveContext;
-SurviveContext *survive_context;
+const char *survive_config_file_path(struct SurviveContext *ctx, char *path) {
+	const char *configpath = survive_config_file_name(ctx);
 
-void config_save(SurviveContext *ctx, const char *path) {
-	uint16_t i = 0;
+	if (isalpha(configpath[0])) {
+		const char *xdg_config_home = getenv("XDG_CONFIG_HOME");
+		const char *home = getenv("HOME");
+		size_t idx = 0;
+		if (xdg_config_home) {
+			idx = snprintf(path, FILENAME_MAX, "%s/libsurvive", xdg_config_home);
+		} else if (home) {
+			idx = snprintf(path, FILENAME_MAX, "%s/.config/libsurvive", home);
+		} else {
+		};
+
+#ifdef _WIN32
+		_mkdir(path);
+#else
+		mkdir(path, 0755);
+#endif
+		snprintf(path + idx, FILENAME_MAX - idx, "/%s", configpath);
+	} else {
+		strncpy(path, configpath, FILENAME_MAX);
+	}
+	return path;
+}
+
+// struct SurviveContext
+SurviveContext *survive_context;
+void config_save(SurviveContext *ctx) {
+	char path[FILENAME_MAX] = "";
+	survive_config_file_path(ctx, path);
 
 	FILE *f = fopen(path, "w");
 
 	if (f == 0) {
 		static bool warnedOnce = false;
 		if (!warnedOnce && strcmp(path, "/dev/null") != 0) {
-			SV_WARN("Could not open '%s' for writing; settings and calibration will not persist. This typically "
+			SV_WARN("Could not open '%.512s' for writing; settings and calibration will not persist. This typically "
 					"happens if the path doesn't exist or root owns the file.",
 					path);
 			warnedOnce = true;
@@ -732,9 +761,15 @@ void handle_tag_value(char *tag, char **values, uint8_t count) {
 	//	else if (count>1) config_set_str
 }
 
-void config_read(SurviveContext *sctx, const char *path) {
+void config_read(SurviveContext *sctx, const char *init_path) {
 	survive_context = sctx;
 
+	char path[FILENAME_MAX] = "";
+	if (init_path) {
+		strncpy(path, init_path, FILENAME_MAX);
+	} else {
+		survive_config_file_path(sctx, path);
+	}
 	json_begin_object = handle_config_group;
 	json_end_object = pop_config_group;
 	json_tag_value = handle_tag_value;

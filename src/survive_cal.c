@@ -94,7 +94,7 @@ void ootx_packet_clbk_d(ootx_decoder_context *ct, ootx_packet* packet)
 	lighthouses_completed++;
 
 	if (lighthouses_completed >= ctx->activeLighthouses) {
-		config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
+		config_save(ctx);
 	}
 }
 

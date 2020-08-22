@@ -86,8 +86,8 @@ they are. During this time you should not move the devices.
 Calibration should work with any device, but the HMD gives the best results due to it's size and number of sensors. If
 the HMD and other controllers are present at startup, it will automatically prioritize using the data from the HMD.
 
-Once you do this one time, it is saved in `config.json` in your working directory. If you delete this file, it will simply
-recalibrate. 
+Once you do this one time, it is saved in `config.json` in `XDG_CONFIG_HOME/libsurvive`. If you delete this file, it will simply
+recalibrate; but it is faster to use the `--force-calibrate` flag. Some drivers change the name of this file -- notably recordings will instead use `<event_file>.json`. 
 
 If you have a large space, and you can not centrally locate a single device to 'see' all lighthouses, you can calibrate
 a few lighthouses and move the tracked object into the field of view of the uncalibrated lighthouse while keeping it in

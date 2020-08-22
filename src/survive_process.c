@@ -13,9 +13,6 @@
 #include "survive_kalman_tracker.h"
 #include "survive_str.h"
 
-// XXX TODO: Once data is avialble in the context, use the stuff here to handle converting from time codes to
-// proper angles, then from there perform the rest of the solution.
-
 #define TIMECENTER_TICKS (48000000/240) //for now.
 
 void survive_ootx_behavior(SurviveObject *so, int8_t bsd_idx, int8_t lh_version, int ootx);
@@ -179,7 +176,7 @@ void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighth
 	}
 
 	config_set_lighthouse(ctx->lh_config, &ctx->bsd[lighthouse], lighthouse);
-	config_save(ctx, survive_configs(ctx, "configfile", SC_GET, "config.json"));
+	config_save(ctx);
 
 	survive_recording_lighthouse_process(ctx, lighthouse, lighthouse_pose, object_pose);
 	SV_VERBOSE(10, "Position found for LH %d(ID: %08x, mode: %2d) " SurvivePose_format, lighthouse,
