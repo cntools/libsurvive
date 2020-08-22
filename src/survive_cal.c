@@ -23,10 +23,6 @@
 
 #include "survive_config.h"
 
-#ifdef WINDOWS
-int mkdir(const char *);
-#endif
-
 STATIC_CONFIG_ITEM(REQ_TRACK_FOR_CAL, "requiredtrackersforcal", 's', "Which devices will be used, i.e. HMD,WM0,WM1", "")
 STATIC_CONFIG_ITEM(ALLOW_TRACK_FOR_CAL, "allowalltrackersforcal", 'i',
 				   "Allow use of additional connected devices for calibration", 0)

@@ -34,6 +34,7 @@ STATIC_CONFIG_ITEM(Simulator_GYRO_BIAS, "simulator-gyro-bias", 'f', "Scale of bi
 STATIC_CONFIG_ITEM(Simulator_SENSOR_DROPRATE, "simulator-sensor-droprate", 'f', "Chance to drop a sensor reading", .1)
 
 STATIC_CONFIG_ITEM(Simulator_INIT_TIME, "simulator-init-time", 'f', "Init time -- object wont move for this long", 2.)
+STATIC_CONFIG_ITEM(Simulator_FCAL_NOISE, "simulator-fcal-noise", 'f', "Noise to apply to BSD fcal parameters", 0.)
 
 typedef struct SurviveDriverSimulatorLHState {
 	FLT last_eval_time;
@@ -592,9 +593,24 @@ int DriverRegSimulator(SurviveContext *ctx) {
 		sp->lhstates[i].period_s = 1. / freq_per_channel[ctx->bsd[i].mode];
 	}
 
+	BaseStationCal fcalNoise = {.phase = .1,
+								.tilt = .002,
+								.curve = .005,
+								.gibpha = LINMATHPI,
+								.gibmag = .01,
+								.ogeephase = LINMATHPI,
+								.ogeemag = .25};
+
 	if (ctx->activeLighthouses == 0) {
 		for (int i = 0; i < sizeof(simulated_bsd) / sizeof(simulated_bsd[0]); i++) {
 			ctx->bsd[i] = simulated_bsd[i];
+
+			for (int axis = 0; axis < 2; axis++) {
+				for (int cal_idx = 0; cal_idx < sizeof(fcalNoise) / sizeof(FLT); cal_idx++) {
+					((FLT *)(&ctx->bsd[i].fcal[axis]))[cal_idx] =
+						linmath_rand(-((FLT *)&fcalNoise)[cal_idx], ((FLT *)&fcalNoise)[cal_idx]);
+				}
+			}
 			ctx->activeLighthouses++;
 
 			ctx->bsd_map[ctx->bsd[i].mode] = i;
@@ -602,6 +618,16 @@ int DriverRegSimulator(SurviveContext *ctx) {
 			sp->lhstates[i].period_s = 1. / freq_per_channel[ctx->bsd[i].mode];
 
 			sp->bsd[i] = ctx->bsd[i];
+		}
+	}
+
+	FLT fcal_noise = survive_configf(ctx, Simulator_FCAL_NOISE_TAG, SC_GET, 0);
+	for (int i = 0; i < ctx->activeLighthouses; i++) {
+		for (int axis = 0; axis < 2; axis++) {
+			for (int cal_idx = 0; cal_idx < sizeof(fcalNoise) / sizeof(FLT); cal_idx++) {
+				((FLT *)(&ctx->bsd[i].fcal[axis]))[cal_idx] +=
+					fcal_noise * linmath_rand(-((FLT *)&fcalNoise)[cal_idx], ((FLT *)&fcalNoise)[cal_idx]);
+			}
 		}
 	}
 

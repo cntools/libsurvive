@@ -2847,14 +2847,6 @@ int DriverRegHTCVive(SurviveContext *ctx) {
 	}
 	sv->ctx = ctx;
 
-#ifdef _WIN32
-	CreateDirectoryA("calinfo", NULL);
-#elif defined WINDOWS
-	mkdir("calinfo");
-#else
-	mkdir("calinfo", 0755);
-#endif
-
 	// USB must happen last.
 	if (survive_usb_init(sv)) {
 		// TODO: Cleanup any libUSB stuff sitting around.
