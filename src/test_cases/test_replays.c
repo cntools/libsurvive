@@ -9,7 +9,7 @@
 #include <survive.h>
 #include <survive_api.h>
 
-static void diff(double *out, const SurvivePose *a, const SurvivePose *b) {
+static void diff(FLT *out, const SurvivePose *a, const SurvivePose *b) {
 	SurvivePose iB = InvertPoseRtn(b);
 	SurvivePose nearId;
 	ApplyPoseToPose(&nearId, a, &iB);
@@ -17,25 +17,83 @@ static void diff(double *out, const SurvivePose *a, const SurvivePose *b) {
 	out[1] = norm3d(nearId.Pos);
 }
 
-static int test_path(const char *name, int main_argc, char **main_argv) {
-	int rtn = 0;
-#ifdef USE_FLOAT
-	double max_pos_error = .08, max_rot_error = .005;
-#else
-	double max_pos_error = .08, max_rot_error = .001;
-#endif
-	char configPath[FILENAME_MAX] = {0};
-	sprintf(configPath, "%s.json", name);
+SurviveSimpleObject *get_test_version(SurviveSimpleContext *actx, const char *name) {
+	if (strncmp(name, "replay_", strlen("replay_")) == 0) {
+		return survive_simple_get_object(actx, name + strlen("replay_"));
+	}
+	return 0;
+}
 
-	char *playbackFlag = strstr(name, "pcap") ? "--usbmon-playback" : "--playback";
+struct replay_ctx {
+	int mismatched;
+	pose_process_func pose_fn;
+	external_pose_process_func external_pose_fn;
+};
+
+static bool check(SurviveSimpleContext *actx, const SurviveSimpleObject *sao, FLT max_pos_error, FLT max_rot_error) {
+	FLT err[2] = {0};
+
+	SurvivePose pose = {0};
+	survive_simple_object_get_latest_pose(sao, &pose);
+
+	SurviveSimpleObject *test_sao = get_test_version(actx, survive_simple_object_name(sao));
+	if (test_sao == 0)
+		return true;
+
+	SurvivePose compare_pose = {0};
+	survive_simple_object_get_latest_pose(test_sao, &compare_pose);
+
+	if (quatiszero(compare_pose.Rot))
+		return true;
+
+	diff(err, &pose, &compare_pose);
+
+	if (err[1] > max_pos_error || err[0] > max_rot_error) {
+		fprintf(stderr, "%s: " SurvivePose_format "\n", survive_simple_object_name(sao), pose.Pos[0], pose.Pos[1],
+				pose.Pos[2], pose.Rot[0], pose.Rot[1], pose.Rot[2], pose.Rot[3]);
+
+		fprintf(stderr, "       %s: " SurvivePose_format " %f\t%f\n", survive_simple_object_name(test_sao),
+				compare_pose.Pos[0], compare_pose.Pos[1], compare_pose.Pos[2], compare_pose.Rot[0], compare_pose.Rot[1],
+				compare_pose.Rot[2], compare_pose.Rot[3], err[0], err[1]);
+
+		fprintf(stderr, "TEST FAILED, %s deviates too much -- %f %f\n", survive_simple_object_name(sao), err[0],
+				err[1]);
+		return false;
+	}
+	return true;
+}
+
+#ifdef USE_FLOAT
+FLT max_pos_error = .08, max_rot_error = .005;
+#else
+FLT max_pos_error = .08, max_rot_error = .001;
+#endif
+
+static void external_pose_fn(SurviveContext *ctx, const char *name, const SurvivePose *pose) {
+	SurviveSimpleContext *actx = ctx->user_ptr;
+	struct replay_ctx *rctx = survive_simple_get_user(actx);
+	rctx->external_pose_fn(ctx, name, pose);
+
+	struct SurviveSimpleObject *sao = survive_simple_get_object(actx, name);
+
+	if (rctx->mismatched == 0 && !check(actx, sao, max_pos_error * 10., max_rot_error * 10.)) {
+		rctx->mismatched++;
+	}
+}
+
+static int test_path(const char *filename, int main_argc, char **main_argv) {
+	int rtn = 0;
+
+	char configPath[FILENAME_MAX] = {0};
+	sprintf(configPath, "%s.json", filename);
 
 	char *argv[] = {
 		"",
 		"--init-configfile",
 		configPath,
 		"--playback-replay-pose",
-		playbackFlag,
-		(char *)name,
+		"--playback",
+		(char *)filename,
 		"--playback-factor",
 		"0",
 		"--v",
@@ -43,7 +101,13 @@ static int test_path(const char *name, int main_argc, char **main_argv) {
 	};
 	int argc = sizeof(argv) / sizeof(argv[0]);
 
-	fprintf(stderr, "Run with: './survive-cli");
+	fprintf(stderr, "Test with: './src/test_cases/test_replays '%s'", filename);
+	for (int i = 0; i < main_argc; i++) {
+		fprintf(stderr, " %s", main_argv[i]);
+	}
+	fprintf(stderr, "'\n");
+
+	fprintf(stderr, "Run  with: './survive-cli");
 	for (int i = 0; i < sizeof(argv) / sizeof(argv[0]); i++) {
 		fprintf(stderr, " %s", argv[i]);
 	}
@@ -57,10 +121,12 @@ static int test_path(const char *name, int main_argc, char **main_argv) {
 		total_argv[i + argc] = main_argv[i];
 	}
 
+	struct replay_ctx rctx = {0};
 	SurviveSimpleContext *actx = survive_simple_init(total_argc, total_argv);
 	if (actx == 0) {
 		return -1;
 	}
+	survive_simple_set_user(actx, &rctx);
 
 	SurviveContext *ctx = survive_simple_get_ctx(actx);
 	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
@@ -89,6 +155,9 @@ static int test_path(const char *name, int main_argc, char **main_argv) {
 	SV_WARN(" =============== Starting thread =============== ")
 	survive_simple_start_thread(actx);
 
+	// rctx.pose_fn = survive_install_pose_fn(ctx, pose_fn);
+	rctx.external_pose_fn = survive_install_external_pose_fn(ctx, external_pose_fn);
+
 	while (survive_simple_is_running(actx)) {
 		OGUSleep(10000);
 	}
@@ -97,31 +166,11 @@ static int test_path(const char *name, int main_argc, char **main_argv) {
 		 it = survive_simple_get_next_object(actx, it)) {
 		SurvivePose pose;
 		const char *name = survive_simple_object_name(it);
-		uint32_t timecode = survive_simple_object_get_latest_pose(it, &pose);
 
-		if (strncmp(name, "replay_", strlen("replay_")) == 0) {
-			fprintf(stderr, "%s: " SurvivePose_format "\n", survive_simple_object_name(it), pose.Pos[0], pose.Pos[1],
-					pose.Pos[2], pose.Rot[0], pose.Rot[1], pose.Rot[2], pose.Rot[3]);
+		survive_simple_object_get_latest_pose(it, &pose);
 
-			for (const SurviveSimpleObject *it2 = survive_simple_get_first_object(actx); it2 != 0;
-				 it2 = survive_simple_get_next_object(actx, it2)) {
-
-				const char *name2 = survive_simple_object_name(it2);
-				if (strcmp(name2, name + strlen("replay_")) == 0) {
-					SurvivePose pose2;
-					survive_simple_object_get_latest_pose(it2, &pose2);
-					double err[2] = {0};
-					diff(err, &pose, &pose2);
-					fprintf(stderr, "       %s: " SurvivePose_format " %f\t%f\n", survive_simple_object_name(it2),
-							pose2.Pos[0], pose2.Pos[1], pose2.Pos[2], pose2.Rot[0], pose2.Rot[1], pose2.Rot[2],
-							pose2.Rot[3], err[0], err[1]);
-					if (err[1] > max_pos_error || err[0] > max_rot_error) {
-						fprintf(stderr, "TEST FAILED, %s deviates too much -- %f %f\n", survive_simple_object_name(it2),
-								err[0], err[1]);
-						rtn = -1;
-					}
-				}
-			}
+		if (!check(actx, it, max_pos_error, max_rot_error)) {
+			rctx.mismatched++;
 		}
 	}
 
@@ -129,20 +178,20 @@ static int test_path(const char *name, int main_argc, char **main_argv) {
 		SurvivePose pose = originalLH[i];
 		fprintf(stderr, " LH%2d (%08x): " SurvivePose_format "\n", i, ctx->bsd[i].BaseStationID,
 				SURVIVE_POSE_EXPAND(ctx->bsd[i].Pose));
-		double err[2] = {0};
+		FLT err[2] = {0};
 		diff(err, &pose, &ctx->bsd[i].Pose);
 		fprintf(stderr, "                  " SurvivePose_format "\terr: %f %f\n", pose.Pos[0], pose.Pos[1], pose.Pos[2],
 				pose.Rot[0], pose.Rot[1], pose.Rot[2], pose.Rot[3], err[0], err[1]);
 
 		if (err[1] > max_pos_error || err[0] > max_rot_error) {
 			fprintf(stderr, "TEST FAILED, LH%d deviates too much -- %f %f\n", i, err[0], err[1]);
-			rtn = -1;
+			rctx.mismatched++;
 		}
 
 		if (ctx->bsd[i].OOTXSet == false || ctx->bsd[i].PositionSet == false) {
 			fprintf(stderr, "TEST FAILED, LH%d was not solved for either ootx or position: %d %d\n", i,
 					ctx->bsd[i].OOTXSet, ctx->bsd[i].PositionSet);
-			rtn = -1;
+			rctx.mismatched++;
 		}
 	}
 
@@ -152,6 +201,9 @@ static int test_path(const char *name, int main_argc, char **main_argv) {
 	}
 
 	survive_simple_close(actx);
+	if (rctx.mismatched > 0)
+		return -2;
+
 	return rtn;
 }
 

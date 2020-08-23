@@ -44,6 +44,8 @@ typedef struct SurviveSimpleButtonEvent {
  * @return Pointer to the simple context
  */
 SURVIVE_EXPORT SurviveSimpleContext *survive_simple_init(int argc, char *const *argv);
+SURVIVE_EXPORT void survive_simple_set_user(SurviveSimpleContext *, void *user);
+SURVIVE_EXPORT void *survive_simple_get_user(SurviveSimpleContext *);
 SURVIVE_EXPORT SurviveSimpleContext *survive_simple_init_with_logger(int argc, char *const *argv,
 																	 SurviveSimpleLogFn fn);
 
@@ -71,6 +73,10 @@ SURVIVE_EXPORT const SurviveSimpleObject *survive_simple_get_first_object(Surviv
  */
 SURVIVE_EXPORT const SurviveSimpleObject *survive_simple_get_next_object(SurviveSimpleContext *actx,
 																		 const SurviveSimpleObject *curr);
+/**
+ * Get a known object from a name.
+ */
+SURVIVE_EXPORT SurviveSimpleObject *survive_simple_get_object(SurviveSimpleContext *actx, const char *name);
 
 SURVIVE_EXPORT size_t survive_simple_get_object_count(SurviveSimpleContext *actx);
 

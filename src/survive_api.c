@@ -46,6 +46,7 @@ struct SurviveSimpleObjectList {
 struct SurviveSimpleContext {
 	SurviveContext *ctx;
 	SurviveSimpleLogFn log_fn;
+	void *user;
 
 	bool running;
 	og_thread_t thread;
@@ -220,6 +221,9 @@ SURVIVE_EXPORT SurviveSimpleContext *survive_simple_init(int argc, char *const *
 	return survive_simple_init_with_logger(argc, argv, 0);
 }
 
+SURVIVE_EXPORT void survive_simple_set_user(SurviveSimpleContext *actx, void *user) { actx->user = user; }
+SURVIVE_EXPORT void *survive_simple_get_user(SurviveSimpleContext *actx) { return actx->user; }
+
 static void simple_log_fn(SurviveContext *ctx, SurviveLogLevel logLevel, const char *msg) {
 	SurviveSimpleContext *actx = ctx->user_ptr;
 	if (actx == 0 || actx->log_fn == 0) {
@@ -328,6 +332,15 @@ void survive_simple_start_thread(SurviveSimpleContext *actx) {
 
 const SurviveSimpleObject *survive_simple_get_next_object(SurviveSimpleContext *actx, const SurviveSimpleObject *curr) {
 	return curr->next;
+}
+
+SurviveSimpleObject *survive_simple_get_object(SurviveSimpleContext *actx, const char *name) {
+	for (struct SurviveSimpleObject *n = actx->objects.head; n; n = n->next) {
+		if (strcmp(name, n->name) == 0) {
+			return n;
+		}
+	}
+	return 0;
 }
 
 const SurviveSimpleObject *survive_simple_get_first_object(SurviveSimpleContext *actx) { return actx->objects.head; }
