@@ -736,16 +736,28 @@ void survive_install_recording(SurviveContext *ctx) {
 		ctx->recptr = SV_CALLOC(1, sizeof(struct SurviveRecordingData));
 		ctx->recptr->ctx = ctx;
 		if (strlen(dataout_file) > 0) {
-			bool useCompression = strncmp(dataout_file + strlen(dataout_file) - 3, ".gz", 3) == 0;
-
-			ctx->recptr->output_file = gzopen(dataout_file, useCompression ? "w" : "wT");
-			if (ctx->recptr->output_file == 0) {
-				SV_INFO("Could not open %s for writing", dataout_file);
-				free(ctx->recptr);
-				ctx->recptr = 0;
+			if (strstr(dataout_file, ".pcap")) {
+				int (*usb_driver)(SurviveContext *) = (int (*)(SurviveContext *))GetDriver("DriverRegUSBMon_Record");
+				if (usb_driver) {
+					usb_driver(ctx);
+					return;
+				}
+				SV_WARN("Playback file %s is a USB packet capture, but the usbmon playback driver does not exist.",
+						dataout_file);
 				return;
+			} else {
+
+				bool useCompression = strncmp(dataout_file + strlen(dataout_file) - 3, ".gz", 3) == 0;
+
+				ctx->recptr->output_file = gzopen(dataout_file, useCompression ? "w" : "wT");
+				if (ctx->recptr->output_file == 0) {
+					SV_INFO("Could not open %s for writing", dataout_file);
+					free(ctx->recptr);
+					ctx->recptr = 0;
+					return;
+				}
+				SV_INFO("Recording to '%s' Compression: %d", dataout_file, useCompression);
 			}
-			SV_INFO("Recording to '%s' Compression: %d", dataout_file, useCompression);
 		}
 
 		ctx->recptr->alwaysWriteStdOut = record_to_stdout;
@@ -767,6 +779,16 @@ int DriverRegPlayback(SurviveContext *ctx) {
 
 	if (playback_file == 0 || strlen(playback_file) == 0) {
 		SV_WARN("The playback argument requires a filename");
+		return -1;
+	}
+
+	if (strstr(playback_file, ".pcap")) {
+		int (*usb_driver)(SurviveContext *) = (int (*)(SurviveContext *))GetDriver("DriverRegUSBMon_Playback");
+		if (usb_driver) {
+			return usb_driver(ctx);
+		}
+		SV_WARN("Playback file %s is a USB packet capture, but the usbmon playback driver does not exist.",
+				playback_file);
 		return -1;
 	}
 

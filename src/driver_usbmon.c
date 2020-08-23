@@ -320,6 +320,24 @@ static size_t fill_device_inst(SurviveContext *ctx, vive_device_inst_t *insts, c
 	return rtn;
 }
 
+static const char *usbmon_record_file(SurviveContext *ctx) {
+	const char *usbmon_record = survive_configs(ctx, "usbmon-record", SC_GET, 0);
+	if (usbmon_record == 0) {
+		usbmon_record = survive_configs(ctx, "record", SC_GET, 0);
+		if (strstr(usbmon_record, ".pcap"))
+			return usbmon_record;
+		return NULL;
+	}
+	return usbmon_record;
+}
+
+static const char *usbmon_playback_file(SurviveContext *ctx) {
+	const char *usbmon_playback = survive_configs(ctx, "usbmon-playback", SC_GET, 0);
+	if (usbmon_playback == 0)
+		return survive_configs(ctx, "playback", SC_GET, 0);
+	return usbmon_playback;
+}
+
 static int setup_usb_devices(SurviveDriverUSBMon *sp) {
 	SurviveContext *ctx = sp->ctx;
 	int rtn = 0;
@@ -327,8 +345,8 @@ static int setup_usb_devices(SurviveDriverUSBMon *sp) {
 	int *device_cnts = alloca(sizeof(int) * DEVICES_CNT);
 	memset(device_cnts, 0, sizeof(int) * DEVICES_CNT);
 
-	const char *usbmon_record = survive_configs(ctx, "usbmon-record", SC_GET, 0);
-	const char *usbmon_playback = survive_configs(ctx, "usbmon-playback", SC_GET, 0);
+	const char *usbmon_record = usbmon_record_file(ctx);
+	const char *usbmon_playback = usbmon_playback_file(ctx);
 
 	FILE *listing_file = 0;
 
@@ -635,8 +653,8 @@ static FILE *open_playback(const char *fn, const char *mode) {
 
 static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
 	int enable = survive_configi(ctx, "usbmon", SC_GET, 0);
-	const char *usbmon_record = survive_configs(ctx, "usbmon-record", SC_GET, 0);
-	const char *usbmon_playback = survive_configs(ctx, "usbmon-playback", SC_GET, 0);
+	const char *usbmon_record = usbmon_record_file(ctx);
+	const char *usbmon_playback = usbmon_playback_file(ctx);
 
 	if (enable && driver_id != 0)
 		return -1;
