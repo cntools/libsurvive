@@ -27,6 +27,7 @@ var tooltip;
 
 var fps = 0;
 var frames = 0;
+var bsd_map = {};
 
 function onMouseMove(event) {
 	// calculate mouse position in normalized device coordinates
@@ -93,10 +94,11 @@ function add_lighthouse(idx, p, q) {
 
 	var lhBoxGeom = new THREE.CubeGeometry(.075, .075, .075);
 
-	lhBoxMaterial = new THREE.MeshBasicMaterial({color : lhColors[idx]});
+	lhBoxMaterial = new THREE.MeshBasicMaterial({color : lhColors[idx], flatShading : false});
 	var lhBox = new THREE.Mesh(lhBoxGeom, lhBoxMaterial);
 	lhBox.tooltip = "Lighthouse " + (idx)
 	group.add(lhBox);
+	console.log(idx, lhColors[idx])
 
 	cone.translateZ(-height / 2);
 	cone.rotateZ(Math.PI / 4);
@@ -627,20 +629,25 @@ var survive_log_handlers = {
 		// #define SWEEP_ANGLE_PRINTF_ARGS dev, channel, sensor_id, timecode, plane, angle
 		var obj = {
 			tracker : v[1],
-			lighthouse : parseInt(v[3]),
+			channel : parseInt(v[3]),
 			sensor_id : parseInt(v[4]),
 			timecode : parseInt(v[5]),
 			plane : parseInt(v[6]),
 			angle : parseFloat(v[7])
 		};
 
+		if (bsd_map[obj.channel] === undefined) {
+			bsd_map[obj.channel] = Object.keys(bsd_map).length;
+		}
+
+		var lighthouse = bsd_map[obj.channel];
 		angles[obj.tracker] = angles[obj.tracker] || {};
-		angles[obj.tracker][obj.lighthouse] = angles[obj.tracker][obj.lighthouse] || {};
-		angles[obj.tracker][obj.lighthouse][obj.sensor_id] = angles[obj.tracker][obj.lighthouse][obj.sensor_id] || {};
+		angles[obj.tracker][lighthouse] = angles[obj.tracker][lighthouse] || {};
+		angles[obj.tracker][lighthouse][obj.sensor_id] = angles[obj.tracker][lighthouse][obj.sensor_id] || {};
 
 		var axis = obj.plane;
 
-		angles[obj.tracker][obj.lighthouse][obj.sensor_id][axis] = [ obj.angle, obj.timecode ];
+		angles[obj.tracker][lighthouse][obj.sensor_id][axis] = [ obj.angle, obj.timecode ];
 		timecode[obj.tracker] = obj.timecode;
 	},
 	'A' : function(v, tracker) {
