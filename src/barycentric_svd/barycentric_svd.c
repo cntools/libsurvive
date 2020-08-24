@@ -129,6 +129,7 @@ void bc_svd_add_correspondence(bc_svd *self, size_t idx, FLT u, FLT v) {
 			self->meas = SV_REALLOC(self->meas, sizeof(self->meas[0]) * self->meas_space);
 		}
 
+		assert(idx < self->setup.obj_cnt);
 		self->meas[self->meas_cnt] = (bc_svd_meas_t){.angle = angle, .axis = i, .obj_idx = idx};
 
 		self->meas_cnt++;
@@ -144,6 +145,7 @@ void bc_svd_fill_M(bc_svd *self, CvMat *_M, const int row, const FLT *as, int ax
 	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 3; j++) {
 			M[i * 3 + j] = eq[j] * as[i];
+			assert(isfinite(M[i * 3 + j]));
 		}
 	}
 }
@@ -451,7 +453,7 @@ FLT bc_svd_compute_pose(bc_svd *self, FLT R[3][3], FLT t[3]) {
 
 		FLT *_M = CV_RAW_PTR(&M) + i * 12;
 		for (int j = 0; j < 12; j++) {
-			assert(!isnan(_M[j]));
+			assert(isfinite(_M[j]));
 			if (_M[j] != 0.0)
 				colCovered[j] = true;
 		}
@@ -516,6 +518,7 @@ static FLT bc_svd_reprojection_error(bc_svd *self, const FLT R[3][3], const FLT 
 
 	for (int i = 0; i < self->meas_cnt; i++) {
 		size_t obj_idx = self->meas[i].obj_idx;
+		assert(obj_idx < self->setup.obj_cnt);
 		const FLT *pw = self->setup.obj_pts[obj_idx];
 		FLT Xc = dot(R[0], pw) + t[0];
 		FLT Yc = dot(R[1], pw) + t[1];

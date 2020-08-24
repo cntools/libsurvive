@@ -84,6 +84,7 @@ static void survive_default_report_error_process(struct SurviveContext *ctx, Sur
 }
 
 int survive_default_printf_process(struct SurviveContext *ctx, const char *format, ...) {
+  if(ctx->log_target == 0) return 0;
 	va_list args;
 	va_start(args, format);
 	int rtn = vfprintf(ctx->log_target, format, args);
@@ -92,20 +93,25 @@ int survive_default_printf_process(struct SurviveContext *ctx, const char *forma
 }
 
 static void survive_default_error(struct SurviveContext *ctx, SurviveError errorCode, const char *fault) {
+  if(ctx->log_target == 0) return;
 	set_stderr_color(ctx->log_target, 2);
-	ctx->printfproc(ctx, "Error %d: %s\n", errorCode, fault);
+	ctx->printfproc(ctx, "Error %d: %s", errorCode, fault);
 	reset_stderr(ctx->log_target);
+	ctx->printfproc(ctx, "\n");
 	fflush(ctx->log_target);
 }
 
 static void survive_default_info(struct SurviveContext *ctx, const char *fault) {
-	survive_recording_info_process(ctx, fault);
+  	survive_recording_info_process(ctx, fault);
+	
+    if(ctx->log_target == 0) return;
 	ctx->printfproc(ctx, "Info: %s\n", fault);
 	fflush(ctx->log_target);
 }
 
 static void survive_default_warn(struct SurviveContext *ctx, const char *fault) {
-	survive_recording_info_process(ctx, fault);
+  	survive_recording_info_process(ctx, fault);
+    if(ctx->log_target == 0) return;
 	set_stderr_color(ctx->log_target, 1);
 	ctx->printfproc(ctx, "Warning: %s\n", fault);
 	reset_stderr(ctx->log_target);

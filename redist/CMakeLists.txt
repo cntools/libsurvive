@@ -89,3 +89,4 @@ IF (ENABLE_TESTS)
 ENDIF()
 
 install(TARGETS minimal_opencv DESTINATION lib)
+install(TARGETS mpfit DESTINATION lib)
