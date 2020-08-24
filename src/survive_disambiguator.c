@@ -1,6 +1,6 @@
 #include "survive.h"
 
-#include "survive_playback.h"
+#include "survive_recording.h"
 #include <assert.h>
 #include <os_generic.h>
 #include <stdio.h>

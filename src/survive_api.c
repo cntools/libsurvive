@@ -171,7 +171,7 @@ static inline SurviveSimpleObject *create_lighthouse(SurviveSimpleContext *actx,
 	obj->has_update = ctx->bsd[i].PositionSet;
 	ctx->bsd[i].user_ptr = obj;
 	snprintf(obj->name, 32, "LH%" PRIdPTR, i);
-	snprintf(obj->data.lh.serial_number, 16, "LHB-%X", ctx->bsd[i].BaseStationID);
+	snprintf(obj->data.lh.serial_number, 16, "LHB-%X", (unsigned)ctx->bsd[i].BaseStationID);
 	SurviveSimpleObjectList_add(&actx->objects, obj);
 	return obj;
 }

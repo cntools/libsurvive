@@ -4,7 +4,7 @@
 #include "survive_cal.h"
 #include "survive_config.h"
 #include "survive_default_devices.h"
-#include "survive_playback.h"
+#include "survive_recording.h"
 #include <assert.h>
 #include <survive.h>
 
@@ -25,7 +25,6 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 
 	SurviveContext * ctx = so->ctx;
 	int base_station = lh;
-	int axis = acode & 1;
 
 	if (sensor_id == -1 || sensor_id == -2) {
 		uint8_t dbit = (acode & 2) >> 1;
@@ -179,7 +178,7 @@ void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighth
 
 	survive_recording_lighthouse_process(ctx, lighthouse, lighthouse_pose);
 	SV_VERBOSE(10, "Position found for LH %d(ID: %08x, mode: %2d) " SurvivePose_format, lighthouse,
-			   ctx->bsd[lighthouse].BaseStationID, ctx->bsd[lighthouse].mode, SURVIVE_POSE_EXPAND(*lighthouse_pose));
+		   (unsigned)ctx->bsd[lighthouse].BaseStationID, ctx->bsd[lighthouse].mode, SURVIVE_POSE_EXPAND(*lighthouse_pose));
 }
 
 STATIC_CONFIG_ITEM(SURVIVE_SERIALIZE_DEV_CONFIG, "serialize-device-config", 'i', "Serialize device config files", 0)
@@ -274,7 +273,7 @@ void survive_default_raw_imu_process(SurviveObject *so, int mask, FLT *accelgyro
 
 	survive_recording_raw_imu_process(so, mask, accelgyromag, timecode, id);
 
-	so->ctx->imuproc(so, 3, agm, timecode, id);
+	ctx->imuproc(so, 3, agm, timecode, id);
 }
 void survive_default_imu_process( SurviveObject * so, int mask, FLT * accelgyromag, uint32_t timecode, int id )
 {

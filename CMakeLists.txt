@@ -15,6 +15,7 @@ option(ENABLE_TESTS "Enable build / execution of tests" OFF)
 
 option(USE_OPENBLAS "Use OpenBLAS" OFF)
 
+
 SET(SURVIVE_LIBRARY_TYPE SHARED)
 if(BUILD_STATIC)
   SET(SURVIVE_LIBRARY_TYPE STATIC)
@@ -112,10 +113,12 @@ if(WIN32)
 	SET(SURVIVE_WEBSOCKETD ${CMAKE_CURRENT_SOURCE_DIR}/useful_files/survive-websocketd.ps1)
 endif()
 
-add_custom_command(TARGET survive-cli POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy ${SURVIVE_WEBSOCKETD} $<TARGET_FILE_DIR:survive-cli>
-)
-install(PROGRAMS ${SURVIVE_WEBSOCKETD} DESTINATION bin)
+IF(TARGET survive-cli)
+  add_custom_command(TARGET survive-cli POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${SURVIVE_WEBSOCKETD} $<TARGET_FILE_DIR:survive-cli>
+    )
+  install(PROGRAMS survive${SURVIVE_WEBSOCKETD} DESTINATION bin)
+endif()
 
 install(DIRECTORY include/libsurvive DESTINATION include)
 

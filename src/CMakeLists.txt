@@ -24,7 +24,7 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
   survive_driverman.c
   survive_kalman_tracker.c
   survive_optimizer.c
-  survive_playback.c        
+  survive_recording.c        
   survive_plugins.c
   survive_process.c
   survive_process_gen2.c
@@ -76,7 +76,7 @@ endif()
 
 
 SET(PLUGINS
-        driver_dummy driver_vive driver_simulator
+        driver_dummy driver_vive driver_simulator driver_playback
         disambiguator_statebased
         poser_dummy poser_mpfit poser_kalman_only
 	poser_barycentric_svd

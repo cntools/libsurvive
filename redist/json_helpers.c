@@ -94,7 +94,7 @@ giveup:
 }
 
 void json_write_uint32(FILE* f, const char* tag, uint32_t v) {
-	fprintf(f, "\"%s\":\"%d\"", tag, v);
+	fprintf(f, "\"%s\":\"%"PRIu32"\"", tag, v);
 }
 
 void json_write_float(FILE* f, const char* tag, float v) {
@@ -230,8 +230,6 @@ int parse_float_array_in_place(char *str, const jsmntok_t *token, FLT *f, uint8_
 	return count;
 }
 int parse_float_array(char *str, const jsmntok_t *token, FLT **f, uint8_t count) {
-	uint16_t i = 0;
-
 	if (count == 0)
 		return 0;
 
@@ -264,8 +262,6 @@ int parse_int_array_in_place(char *str, const jsmntok_t *token, int *f, uint8_t 
 	return count;
 }
 int parse_int_array(char *str, const jsmntok_t *token, int **f, uint8_t count) {
-	uint16_t i = 0;
-
 	if (count == 0)
 		return 0;
 

@@ -26,6 +26,7 @@ SURVIVE_EXPORT int32_t PoserData_size(const PoserData *poser_data) {
 	case POSERDATA_LIGHT_GEN2:
 	case POSERDATA_SYNC_GEN2:
 		return sizeof(PoserDataLightGen2);
+	default: break;
 	}
 	assert(false);
 	return 0;

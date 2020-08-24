@@ -75,6 +75,13 @@ extern "C" {
   OSG_INLINE int OGUSleep(int ius);
   OSG_INLINE double OGGetAbsoluteTime();
 
+  static inline double OGRelativeTime() {
+    static double start_time_s = 0;
+    if (start_time_s == 0.)
+      start_time_s = OGGetAbsoluteTime();
+    return OGGetAbsoluteTime() - start_time_s;
+  }
+  
   OSG_INLINE uint64_t OGGetAbsoluteTimeMS();  
 
   OSG_INLINE og_thread_t OGCreateThread(void *(routine)(void *), const char * name, void *parameter);

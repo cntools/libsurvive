@@ -3,7 +3,7 @@
 #include "survive_config.h"
 #include "survive_internal.h"
 #include "survive_kalman_tracker.h"
-#include "survive_playback.h"
+#include "survive_recording.h"
 #include <assert.h>
 #include <math.h>
 #include <survive.h>
@@ -32,7 +32,7 @@ static void ootx_packet_clbk_d_gen2(ootx_decoder_context *ct, ootx_packet *packe
 
 	if (survive_configi(ctx, SERIALIZE_OOTX_TAG, SC_GET, 0) == 1) {
 		char filename[128];
-		snprintf(filename, 128, "LH%02d_%08x.ootx", v15.mode_current & 0x7F, v15.id);
+		snprintf(filename, 128, "LH%02d_%08x.ootx", v15.mode_current & 0x7F, (unsigned)v15.id);
 		FILE *f = fopen(filename, "w");
 		fwrite(packet->data, packet->length, 1, f);
 		fclose(f);
@@ -43,7 +43,7 @@ static void ootx_packet_clbk_d_gen2(ootx_decoder_context *ct, ootx_packet *packe
 	bool doSave = b->BaseStationID != v15.id || b->OOTXSet == false;
 
 	if (doSave) {
-		SV_INFO("Got OOTX packet %d %08x", ctx->bsd[id].mode, v15.id);
+	  SV_INFO("Got OOTX packet %d %08x", ctx->bsd[id].mode, (unsigned)v15.id);
 
 		b->BaseStationID = v15.id;
 		for (int i = 0; i < 2; i++) {

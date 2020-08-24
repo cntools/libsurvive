@@ -15,7 +15,7 @@
 #include "os_generic.h"
 #include "survive_config.h"
 #include "survive_default_devices.h"
-#include "survive_playback.h"
+#include "survive_recording.h"
 
 #include <stdarg.h>
 
@@ -178,8 +178,8 @@ static void *button_servicer(void *context) {
 
 void survive_verify_FLT_size(uint32_t user_size) {
 	if (sizeof(FLT) != user_size) {
-		fprintf(stderr, "FLT type incompatible; the shared library libsurvive has FLT size %lu vs user program %u\n",
-				(unsigned long)sizeof(FLT), user_size);
+		fprintf(stderr, "FLT type incompatible; the shared library libsurvive has FLT size %lu vs user program %lu\n",
+			(unsigned long)sizeof(FLT), (unsigned long)user_size);
 		fprintf(stderr, "Add '#define FLT %s' before including survive.h or recompile the shared library with the "
 						"appropriate flag. \n",
 				sizeof(FLT) == sizeof(double) ? "double" : "float");
@@ -431,7 +431,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 			if (ctx->bsd[i].mode >= 0 && ctx->bsd[i].mode < 16)
 				ctx->bsd_map[ctx->bsd[i].mode] = i;
 			ctx->activeLighthouses++;
-			SV_VERBOSE(50, "Adding LH %d mode: %d id: %08x", i, ctx->bsd[i].mode, ctx->bsd[i].BaseStationID);
+			SV_VERBOSE(50, "Adding LH %d mode: %d id: %08x", i, ctx->bsd[i].mode, (unsigned)ctx->bsd[i].BaseStationID);
 		}
 	}
 

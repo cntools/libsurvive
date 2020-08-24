@@ -1,4 +1,33 @@
-#include <survive.h>
+
+
+#define PRI_CHANNEL PRIu8
+#define PRI_PLANE PRId8
+#define PRI_FLAG PRIu8
+#define PRI_GEN PRIu8
+#define SCN_PLANE SCNd8
+#define SCN_CHANNEL SCNu8
+#define SCN_FLAG SCNu8
+#define SCN_GEN SCNu8
+
+// survive_channel channel, int sensor_id, survive_timecode timecode, int8_t plane, FLT angle
+#define SWEEP_ANGLE_SCANF  "%s B %"SCN_CHANNEL" %d %u %" SCN_PLANE " " FLT_sformat "\n"
+#define SWEEP_ANGLE_PRINTF "%s B %"PRI_CHANNEL" %u %u %" PRI_PLANE " " FLT_format "\n"
+#define SWEEP_ANGLE_SCANF_ARGS dev, &channel, &sensor_id, &timecode, &plane, &angle
+#define SWEEP_ANGLE_PRINTF_ARGS dev, channel, sensor_id, timecode, plane, angle
+
+// survive_channel channel, int sensor_id, survive_timecode timecode, bool flag
+#define SWEEP_PRINTF_ARGS dev, channel, sensor_id, timecode, flag
+#define SWEEP_SCANF_ARGS dev, &channel, &sensor_id, &timecode, &flag
+#define SWEEP_SCANF "%s W %"SCN_CHANNEL" %d %u %"SCN_FLAG"\n"
+#define SWEEP_PRINTF "%s W %"PRI_CHANNEL" %d %u %"PRI_FLAG"\n"
+
+
+
+#define SYNC_SCANF_ARGS dev, &channel, &timecode, &ootx, &gen
+#define SYNC_PRINTF_ARGS dev, channel, timecode, ootx, gen
+#define SYNC_SCANF "%s Y %"SCN_CHANNEL" %u %"SCN_FLAG" %"SCN_GEN"\n"
+#define SYNC_PRINTF "%s Y %"PRI_CHANNEL" %u %"PRI_FLAG" %"PRI_GEN"\n"
+
 
 void survive_destroy_recording(SurviveContext *ctx);
 void survive_install_recording(SurviveContext *ctx);
