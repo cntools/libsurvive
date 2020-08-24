@@ -80,7 +80,7 @@ int DriverRegDummy(SurviveContext *ctx) {
 
 	sp->so = device;
 	survive_add_object(ctx, device);
-	survive_add_driver(ctx, sp, dummy_poll, dummy_close, 0);
+	survive_add_driver(ctx, sp, dummy_poll, dummy_close);
 	return 0;
 }
 

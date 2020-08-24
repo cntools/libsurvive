@@ -143,11 +143,68 @@ cloned repo.
 
 ## Using libsurvive in your own application
 
-Libsurvive offers a low level API as well as a higher level application API.
+### Lower level API
+
+This section is mainly concerned about *consuming* data from the library; for information on how to *provide* data, see
+the [drivers section](https://github.com/cntools/libsurvive/#drivers).
+
+The main way to extend and use libsurvive is to use the various callbacks exposed by the library to get information from
+the system. Use of libsurvive in this way is recommended if you need access to all data going in -- IMU data, individual
+light data, and/or final pose data. However care needs to be taken to not bog down the system. In general these callbacks
+are invoked from the thread collecting the data; so if you have unnecessary delays in processing data will be dropped 
+which will cause poor tracking performance. 
+
+The full list of hooks is [here](https://github.com/cntools/libsurvive/blob/master/include/libsurvive/survive_hooks.h). 
+The function types are [here](https://github.com/cntools/libsurvive/blob/master/include/libsurvive/survive_types.h#L168). 
+
+You install your custom hook via:
+
+`<hook-name>_process_func survive_install_<hook-name>_fn(SurviveContext *ctx, <hook-name>_process_func fbp);`
+
+This returns the previously set function for that particular hook; which you can choose to call in your own callback. This
+is somewhat more cumbersome than just having the callbacks return `true` or `false`; but allows the flexibility to call
+the previously defined function before or after your code, or not at all. 
+
+These hooks are used internally within libsurvive; if you provide a hook and do not either call the previously defined or
+default function, some data will not make it to the posers. 
+
+`SurviveContext` and `SurviveObject` both have a `user_ptr` variable which is zero initialized and not used internally, 
+and is meant to be set by library consumers for their own purposes. This allows you to install the hook, and not resort 
+to using globals. 
+
+These interfaces are relatively stable, but aren't guaranteed to not change. 
+
+Have a look at the other libsurvive tools a the top level of the repository for example usage of the lower level API:
+- survive-cli.c
+- sensors-readout.c
+- simple_pose_test.c
+
+### High level API
+
+The high level `Simple` API is recommended for applications which just need position and velocity data as fast as they
+can process that data. It has a few main advantages:
+
+- User code runs in it's own thread; so you can't starve libsurvive of data
+- Much more insulated against lower level API changes; so you can upgrade libsurvive versions more easily
+
+The main loop logic tends to look like this in `C`:
+
+```C
+while (survive_simple_wait_for_update(actx) && keepRunning) {
+    for (const SurviveSimpleObject *it = survive_simple_get_next_updated(actx); it != 0;
+         it = survive_simple_get_next_updated(actx)) {
+        SurvivePose pose;
+        uint32_t timecode = survive_simple_object_get_latest_pose(it, &pose);
+        printf("%s %s (%u): %f %f %f %f %f %f %f\n", survive_simple_object_name(it),
+               survive_simple_serial_number(it), timecode, pose.Pos[0], pose.Pos[1], pose.Pos[2], pose.Rot[0],
+               pose.Rot[1], pose.Rot[2], pose.Rot[3]);
+    }
+}
+```
 
 Example code for the application interface can be found in [api_example.c](https://github.com/cntools/libsurvive/blob/master/api_example.c).
- 
-Have a look at the other libsurvive tools a the top level of the repository for example usage of the lower level API.
+
+The full header for the simpler API is available [here](https://github.com/cntools/libsurvive/blob/master/include/libsurvive/survive_api.h). 
 
 ### Python Bindings
 
@@ -268,6 +325,60 @@ for testing different features.
 - `playback` - The playback driver is what enables record/playback functionality. It replays a file into the various data points.
 - `usbmon` - USBmon can be ran concurrent with steamvr to allow both systems to use the tracked object data. 
 - `openvr` - This driver exposes external poses and velocities and can be ran with `usbmon` to compare the two systems.
+
+## Custom Drivers
+
+Integrating a driver is meant to be relatively straight forward and the above mentioned ones are good references for how 
+to do it. 
+
+The general approach is to compile to a shared object / DLL with the name of `driver_<name>.so` in the plugins folder. 
+The internals of libsurvive enumerate these plugins and run libsurvive registered function from the form:
+
+```C
+int DriverRegExample(SurviveContext *ctx) {
+    if(...error...) {
+       return SURVIVE_DRIVER_ERROR;
+    }
+    return SURVIVE_DRIVER_NORMAL;
+}
+REGISTER_LINKTIME(DriverRegExample)
+```
+
+It isn't necessary for a driver to register anything else; but to be integrated into libsurvive the driver must either
+expose a poll / close function or a thread / close function.
+
+The simpliest approach is a poll driver:
+
+```void survive_add_driver(SurviveContext *ctx, void *user_ptr, DeviceDriverCb poll, DeviceDriverCb close)```
+
+The poll function is called continuously while the system is running; and the close function is called at
+shutdown. 
+
+More versatile is a threaded driver:
+
+```bool *survive_add_threaded_driver(SurviveContext *ctx, void *driver_data, const char *name, void *(routine)(void *), DeviceDriverCb close);```
+
+This starts a thread with the given function and name. 
+
+In the threaded driver case, when accessing any members of `SurviveContext` or `SurviveObject`, you
+ must lock and release around that access with the following functions:
+
+```
+void survive_get_ctx_lock(SurviveContext *ctx);
+void survive_release_ctx_lock(SurviveContext *ctx);
+```
+
+Improper locking or unlocking can result in race conditions or dead locks. 
+
+Within either the threaded function or the polling function, it is then up to the driver to call the appropriate
+hook functions with whatever data they are exposing. Generally the driver will also call `survive_create_device` 
+and only concern itself with that device. More than one driver can be running at a time; but they all assume the same
+lighthouse configuration. 
+
+A good example of this in action is `driver_simulator.c` which calls various light data and IMU callbacks
+with a custom `SurviveObject` type. `driver_openvr.cc` demonstrates how to incorporate external position data into the 
+library. 
+
 
 # FAQ
 

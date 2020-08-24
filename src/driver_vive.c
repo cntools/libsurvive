@@ -2868,7 +2868,7 @@ int DriverRegHTCVive(SurviveContext *ctx) {
 #endif
 
 	if (sv->udev_cnt || hasHotplug) {
-		survive_add_driver(ctx, sv, survive_vive_usb_poll, survive_vive_close, survive_vive_send_magic);
+		survive_add_driver(ctx, sv, survive_vive_usb_poll, survive_vive_close);
 	} else {
 		SV_INFO("No USB devices detected");
 		goto fail_gracefully;

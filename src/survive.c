@@ -632,7 +632,7 @@ int survive_startup(SurviveContext *ctx) {
 	// If lighthouse positions are known, broadcast them
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
 		if (ctx->bsd[i].PositionSet) {
-			ctx->lighthouse_poseproc(ctx, i, &ctx->bsd[i].Pose, 0);
+			ctx->lighthouse_poseproc(ctx, i, &ctx->bsd[i].Pose);
 		}
 	}
 
@@ -712,17 +712,14 @@ const void *survive_get_driver(const SurviveContext *ctx, DeviceDriverCb pollFn)
 	return 0;
 }
 
-void survive_add_driver(SurviveContext *ctx, void *payload, DeviceDriverCb poll, DeviceDriverCb close,
-						DeviceDriverMagicCb magic) {
+void survive_add_driver(SurviveContext *ctx, void *payload, DeviceDriverCb poll, DeviceDriverCb close) {
 	int oldct = ctx->driver_ct;
 	ctx->drivers = SV_REALLOC(ctx->drivers, sizeof(void *) * (oldct + 1));
 	ctx->driverpolls = SV_REALLOC(ctx->driverpolls, sizeof(DeviceDriverCb *) * (oldct + 1));
 	ctx->drivercloses = SV_REALLOC(ctx->drivercloses, sizeof(DeviceDriverCb *) * (oldct + 1));
-	ctx->drivermagics = SV_REALLOC(ctx->drivermagics, sizeof(DeviceDriverMagicCb *) * (oldct + 1));
 	ctx->drivers[oldct] = payload;
 	ctx->driverpolls[oldct] = poll;
 	ctx->drivercloses[oldct] = close;
-	ctx->drivermagics[oldct] = magic;
 	ctx->driver_ct = oldct + 1;
 }
 struct survive_threaded_driver {
@@ -761,19 +758,8 @@ bool *survive_add_threaded_driver(SurviveContext *ctx, void *_driver, const char
 	driver->keep_running = true;
 	driver->thread = OGCreateThread(routine, name, _driver);
 
-	survive_add_driver(ctx, driver, threaded_driver_poll, threaded_driver_close, 0);
+	survive_add_driver(ctx, driver, threaded_driver_poll, threaded_driver_close);
 	return &driver->keep_running;
-}
-
-int survive_send_magic(SurviveContext *ctx, int magic_code, void *data, int datalen) {
-	int oldct = ctx->driver_ct;
-	int i;
-	for (i = 0; i < oldct; i++) {
-		if (ctx->drivermagics[i]) {
-			ctx->drivermagics[i](ctx, ctx->drivers[i], magic_code, data, datalen);
-		}
-	}
-	return 0;
 }
 
 int survive_haptic(SurviveObject *so, uint8_t reserved, uint16_t pulseHigh, uint16_t pulseLow, uint16_t repeatCount) {
@@ -841,7 +827,6 @@ void survive_close(SurviveContext *ctx) {
 	free(ctx->objs);
 	free(ctx->drivers);
 	free(ctx->driverpolls);
-	free(ctx->drivermagics);
 	free(ctx->drivercloses);
 	free(ctx->global_config_values);
 	free(ctx->temporary_config_values);

@@ -468,8 +468,7 @@ const BaseStationData simulated_bsd[5] = {
 	{.PositionSet = 1, .BaseStationID = 1, .Pose = {.Pos = {0, 0, 6}, .Rot = {1, 0, 0, 0}}, .mode = 4, .OOTXSet = 1},
 };
 
-static void simulation_lh_compare(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose,
-								  SurvivePose *object_pose) {
+static void simulation_lh_compare(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose) {
 	const SurviveDriverSimulator *driver = survive_get_driver(ctx, Simulator_poll);
 
 	SV_VERBOSE(50, "Simulation LH%d position " SurvivePose_format "\t", lighthouse,
@@ -477,7 +476,7 @@ static void simulation_lh_compare(SurviveContext *ctx, uint8_t lighthouse, Survi
 	SV_VERBOSE(50, "Found      LH%d position " SurvivePose_format "\t", lighthouse,
 			   SURVIVE_POSE_EXPAND(*lighthouse_pose));
 
-	driver->lh_fn(ctx, lighthouse, lighthouse_pose, object_pose);
+	driver->lh_fn(ctx, lighthouse, lighthouse_pose);
 }
 
 static void simulation_compare(SurviveObject *so, uint32_t timecode, const SurvivePose *imupose) {
@@ -703,7 +702,7 @@ int DriverRegSimulator(SurviveContext *ctx) {
 
 	sp->pose_fn = survive_install_imupose_fn(ctx, simulation_compare);
 	sp->lh_fn = survive_install_lighthouse_pose_fn(ctx, simulation_lh_compare);
-	survive_add_driver(ctx, sp, Simulator_poll, simulator_close, 0);
+	survive_add_driver(ctx, sp, Simulator_poll, simulator_close);
 	return 0;
 }
 

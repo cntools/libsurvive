@@ -6,6 +6,7 @@
 #define SURVIVE_HOOK_FEEDBACK_DEF(name)
 #endif
 
+// See the documentation in the typedef section of survive_types.h for the usage and meaning of these.
 SURVIVE_HOOK_PROCESS_DEF(new_object)
 SURVIVE_HOOK_PROCESS_DEF(printf)
 SURVIVE_HOOK_PROCESS_DEF(log)

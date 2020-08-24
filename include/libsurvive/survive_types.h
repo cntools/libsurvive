@@ -164,39 +164,106 @@ typedef struct {
 	uint32_t timestamp;
 } LightcapElement;
 
+/************************************************ Hook definitions ****************************************************/
+/**
+ * This is called when libsurvive figures out if its looking at a gen1 or gen2 system.
+ */
+typedef void (*gen_detected_process_func)(SurviveObject *so, int gen);
+
 // LH1 specific callbacks
+/**
+ * This processes the raw light data for lighthouse v1 systems.
+ */
 typedef void (*lightcap_process_func)(SurviveObject *so, const LightcapElement *le);
+
+/**
+ * This is called on disambiguated data in a v1 system; so it contains the lighthouse index of the data as well as
+ * the time in sweep of the event.
+ */
 typedef void (*light_process_func)(SurviveObject *so, int sensor_id, int acode, int timeinsweep,
 								   survive_timecode timecode, survive_timecode length, uint32_t lighthouse);
+
+/**
+ * This is called with the calculated angle and axis for a single lighthouse sensor event
+ */
 typedef void (*angle_process_func)(SurviveObject *so, int sensor_id, int acode, survive_timecode timecode, FLT length,
 								   FLT angle, uint32_t lh);
 
 // LH2 specific callbacks
-typedef void (*gen_detected_process_func)(SurviveObject *so, int gen);
-typedef void (*sync_process_func)(SurviveObject *so, survive_channel channel, survive_timecode timeinsweep, bool ootx,
+/**
+ * Represents a sync event which shows the base station rotor was at 0 degrees at the given time. The channel is
+ * the channel of the lighthouse _not_ the index of it.
+ */
+typedef void (*sync_process_func)(SurviveObject *so, survive_channel channel, survive_timecode timeofsync, bool ootx,
 								  bool gen);
+/**
+ * Represents a sweep event which shows the given sensor was hit by the given channel at a given time with the channel
+ * of the lighthouse _not_ the index of it.
+ */
 typedef void (*sweep_process_func)(SurviveObject *so, survive_channel channel, int sensor_id, survive_timecode timecode,
 								   bool half_clock_flag);
 
-// Angle is defined as the rotor angle at time of sweep
+/**
+ * The calculated angle and plane of a gen2 event along a given sensor and channel.
+ */
 typedef void (*sweep_angle_process_func)(SurviveObject *so, survive_channel channel, int sensor_id,
 										 survive_timecode timecode, int8_t plane, FLT angle);
 
+/**
+ * Raw accelerometer data straight from the device; with no scaling or bias applied. accelgyro is a vector of length
+ * 6 in [acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z ]
+ */
 typedef void (*raw_imu_process_func)(SurviveObject *so, int mask, FLT *accelgyro, survive_timecode timecode, int id);
+
+/**
+ * Processed accelerometer data straight from the device; with no scaling or bias applied. accelgyro is a vector of
+ * length 6 in [acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z ]. Acc is scaled to G's -- a stationary object should have a
+ * norm of
+ * 1. The gyro is in units of radians.
+ */
 typedef void (*imu_process_func)(SurviveObject *so, int mask, FLT *accelgyro, survive_timecode timecode, int id);
+
+/**
+ * A general button press event
+ */
 typedef void (*button_process_func)(SurviveObject *so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id,
 									uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val);
+
+/**
+ * Called when a pose is solved for at a given time. Given in 'tracking' coordinate frame.
+ */
 typedef void (*pose_process_func)(SurviveObject *so, survive_timecode timecode, const SurvivePose *pose);
+
+/**
+ * Called when a pose is solve for at a given time. Given in the IMU coordinate frame.
+ */
 typedef pose_process_func imupose_process_func;
+
+/**
+ * Called when a new velocity estimate is calculated. Velocity is in global frame.
+ */
 typedef void (*velocity_process_func)(SurviveObject *so, survive_timecode timecode, const SurviveVelocity *pose);
+
+/**
+ * External pose and velocity callbacks are called by a few drivers to expose external localizations into libsurvive.
+ * The names are unique keys for that object.
+ */
 typedef void (*external_pose_process_func)(SurviveContext *so, const char *name, const SurvivePose *pose);
 typedef void (*external_velocity_process_func)(SurviveContext *so, const char *name, const SurviveVelocity *velocity);
-typedef void (*lighthouse_pose_process_func)(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose,
-											 SurvivePose *object_pose);
 
-typedef int(*haptic_func)(SurviveObject * so, uint8_t reserved, uint16_t pulseHigh , uint16_t pulseLow, uint16_t repeatCount);
+/**
+ * Called when a lighthouse has a new estimated position.
+ */
+typedef void (*lighthouse_pose_process_func)(SurviveContext *ctx, uint8_t bsd_idx, SurvivePose *lighthouse_pose);
 
+/**
+ * Called when a new object is added into the system.
+ */
 typedef void (*new_object_process_func)(SurviveObject *so);
+/************************************************ End Hook definitions ************************************************/
+
+typedef int (*haptic_func)(SurviveObject *so, uint8_t reserved, uint16_t pulseHigh, uint16_t pulseLow,
+						   uint16_t repeatCount);
 
 //Device drivers (prefix your drivers with "DriverReg") i.e.
 //		REGISTER_LINKTIME( DriverRegHTCVive );

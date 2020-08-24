@@ -224,7 +224,7 @@ int DriverRegGatt(SurviveContext *ctx) {
 
 	driver->thread = OGCreateThread(gatt_thread, "gatt", driver);
 
-	survive_add_driver(ctx, driver, NULL, gatt_close, NULL);
+	survive_add_driver(ctx, driver, NULL, gatt_close);
 	return 0;
 }
 REGISTER_LINKTIME(DriverRegGatt)

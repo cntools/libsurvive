@@ -1,5 +1,6 @@
+cmake_minimum_required(VERSION 3.12.4)
+
 project(libsurvive C CXX)
-cmake_minimum_required(VERSION 3.5.1)
 include(CheckIncludeFile)
 include (CheckSymbolExists)
 

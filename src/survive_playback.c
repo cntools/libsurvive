@@ -163,8 +163,7 @@ void survive_recording_config_process(SurviveObject *so, char *ct0conf, int len)
 	free(buffer);
 }
 
-void survive_recording_lighthouse_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lh_pose,
-										  SurvivePose *obj) {
+void survive_recording_lighthouse_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lh_pose) {
 	SurviveRecordingData *recordingData = ctx->recptr;
 	if (recordingData == 0)
 		return;
@@ -875,7 +874,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	sp->keepRunning = true;
 	sp->playback_thread = OGCreateThread(playback_thread, "playback", sp);
 
-	survive_add_driver(ctx, sp, playback_poll, playback_close, 0);
+	survive_add_driver(ctx, sp, playback_poll, playback_close);
 	return 0;
 }
 

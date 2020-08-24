@@ -297,7 +297,6 @@ struct SurviveContext {
 	void **drivers;
 	DeviceDriverCb *driverpolls;
 	DeviceDriverCb *drivercloses;
-	DeviceDriverMagicCb *drivermagics;
 	int driver_ct;
 
 	SurviveState state;
@@ -369,7 +368,6 @@ SURVIVE_EXPORT SurviveObject *survive_get_so_by_name(SurviveContext *ctx, const 
 
 // Utilitiy functions.
 SURVIVE_EXPORT int survive_simple_inflate(SurviveContext *ctx, const uint8_t *input, int inlen, uint8_t *output, int outlen);
-SURVIVE_EXPORT int survive_send_magic(SurviveContext *ctx, int magic_code, void *data, int datalen);
 
 // These functions search both the stored-general and temporary sections for a parameter and return it.
 enum survive_config_flags {
@@ -449,7 +447,7 @@ SURVIVE_EXPORT void survive_default_external_pose_process(SurviveContext *so, co
 SURVIVE_EXPORT void survive_default_external_velocity_process(SurviveContext *so, const char *name,
 															  const SurviveVelocity *velocity);
 SURVIVE_EXPORT void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse,
-															SurvivePose *lh_pose, SurvivePose *obj_pose);
+															SurvivePose *lh_pose);
 SURVIVE_EXPORT int survive_default_config_process(SurviveObject *so, char *ct0conf, int len);
 SURVIVE_EXPORT void survive_default_gen_detected_process(SurviveObject *so, int lh_version);
 SURVIVE_EXPORT void survive_default_new_object_process(SurviveObject *so);
@@ -473,9 +471,9 @@ SURVIVE_EXPORT void RegisterDriver(const char *name, survive_driver_fn data);
 SURVIVE_EXPORT int survive_add_object(SurviveContext *ctx, SurviveObject *obj);
 SURVIVE_EXPORT void survive_remove_object(SurviveContext *ctx, SurviveObject *obj);
 SURVIVE_EXPORT const void *survive_get_driver(const SurviveContext *ctx, DeviceDriverCb pollFn);
-SURVIVE_EXPORT void survive_add_driver(SurviveContext *ctx, void *payload, DeviceDriverCb poll, DeviceDriverCb close,
-						DeviceDriverMagicCb magic);
-SURVIVE_EXPORT bool *survive_add_threaded_driver(SurviveContext *ctx, void *_driver, const char *name,
+SURVIVE_EXPORT void survive_add_driver(SurviveContext *ctx, void *driver_data, DeviceDriverCb poll,
+									   DeviceDriverCb close);
+SURVIVE_EXPORT bool *survive_add_threaded_driver(SurviveContext *ctx, void *driver_data, const char *name,
 												 void *(routine)(void *), DeviceDriverCb close);
 SURVIVE_EXPORT char *survive_export_config(SurviveObject *so);
 

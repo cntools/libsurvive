@@ -161,7 +161,7 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 			assert(!isnan(((FLT *)&lighthouse2world)[i]));
 
 		so->ctx->bsd[lighthouse].confidence = 1.;
-		so->ctx->lighthouse_poseproc(so->ctx, lighthouse, &lighthouse2world, &obj2world);
+		so->ctx->lighthouse_poseproc(so->ctx, lighthouse, &lighthouse2world);
 	}
 }
 
