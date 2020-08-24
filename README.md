@@ -13,6 +13,32 @@ Since the focus is on tracking; it does not independently run the HMD. For an op
 
 Most of the development is discussed on Discord.  [Join the chat and discussion in our discord!](https://discordapp.com/invite/7QbCAGS)
 
+Table of Contents
+=================
+
+   * [Quick start](#quick-start)
+      * [Debian](#debian)
+      * [Windows](#windows)
+   * [Current Status](#current-status)
+   * [Roadmap](#roadmap)
+   * [Getting Started](#getting-started)
+      * [Calibration](#calibration)
+      * [Visualization](#visualization)
+      * [libsurvive Tools](#libsurvive-tools)
+      * [Using libsurvive in your own application](#using-libsurvive-in-your-own-application)
+         * [Lower level API](#lower-level-api)
+         * [High level API](#high-level-api)
+         * [Python Bindings](#python-bindings)
+         * [C# Bindings](#c-bindings)
+      * [Data recording](#data-recording)
+         * [Normal recording](#normal-recording)
+         * [Raw USB recording](#raw-usb-recording)
+      * [Common command line flags](#common-command-line-flags)
+   * [Drivers](#drivers)
+      * [Custom Drivers](#custom-drivers)
+   * [FAQ](#faq)
+      * [Addendum and notes](#addendum-and-notes)
+
 # Quick start
 
 ## Debian
