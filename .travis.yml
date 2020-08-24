@@ -31,7 +31,7 @@ script:
    - cd bin
    - cmake -DENABLE_TESTS=ON -DUSE_ASAN=${USE_ASAN} -DCMAKE_BUILD_TYPE=${CONFIG} ..
    - cmake --build . --config ${CONFIG}
-   - ctest . -C ${CONFIG} --output-on-failure
+   - ctest . -C ${CONFIG} --output-on-failure -j30
 
 before_deploy:
   - if [[ "$TRAVIS_OS_NAME" == 'linux' ]]; then 7z a ../libsurvive-$TRAVIS_TAG-$TRAVIS_OS_NAME.7z . -xr@../travis-exclusion.lst; fi
