@@ -128,7 +128,7 @@ file(GLOB REDIST_HEADERS
 install(FILES ${REDIST_HEADERS} DESTINATION include/libsurvive/redist)
 
 if(PYTHON_GENERATED_DIR)
-  find_package (Python COMPONENTS Interpreter Development)
+  find_package (Python3 COMPONENTS Interpreter Development)
   find_program(CTYPESGEN ctypesgen REQUIRED)
 
   message("-- Building python bindings file to ${PYTHON_GENERATED_DIR}")
@@ -139,7 +139,7 @@ if(PYTHON_GENERATED_DIR)
     list(APPEND INCLUDE_FLAGS "-I${include_directory}")
   endforeach()
 
-  add_custom_target(pysurvive ALL COMMAND ${Python_EXECUTABLE} ${CTYPESGEN} ${CMAKE_SOURCE_DIR}/include/libsurvive/*.h ${INCLUDE_FLAGS} --no-macros -L$<TARGET_FILE_DIR:survive> -llibsurvive.so
+  add_custom_target(pysurvive ALL COMMAND ${Python3_EXECUTABLE} ${CTYPESGEN} ${CMAKE_SOURCE_DIR}/include/libsurvive/*.h ${INCLUDE_FLAGS} --no-macros -L$<TARGET_FILE_DIR:survive> -llibsurvive.so
     --strip-prefix=survive_ -P Survive -o ${PYTHON_GENERATED_DIR}pysurvive_generated.py )
 endif()
 
