@@ -288,3 +288,95 @@ void survive_poser_invoke(SurviveObject *so, PoserData *poserData, size_t poserD
 		so->PoserFn(so, &so->PoserFnData, poserData);
 	}
 }
+
+struct survive_threaded_poser {
+	og_thread_t thread;
+
+	union PoserDataAll PoserData;
+	bool active, has_new_data;
+	og_cv_t data_available;
+	og_mutex_t data_available_lock;
+
+	SurviveObject *so;
+	PoserCB innerPoser;
+	void *innerPoserData;
+
+	uint32_t run_count, new_data_count;
+};
+
+void *survive_threaded_poser_thread_fn(void *_poser) {
+	struct survive_threaded_poser *self = (struct survive_threaded_poser *)_poser;
+	OGLockMutex(self->data_available_lock);
+	while (self->active) {
+		OGWaitCond(self->data_available, self->data_available_lock);
+
+		while (self->has_new_data) {
+			SurviveObject *so = self->so;
+			self->has_new_data = false;
+			OGUnlockMutex(self->data_available_lock);
+
+			survive_get_ctx_lock(self->so->ctx);
+			self->innerPoser(so, &self->innerPoserData, &self->PoserData.pd);
+			survive_release_ctx_lock(self->so->ctx);
+			self->run_count++;
+
+			OGLockMutex(self->data_available_lock);
+		}
+	}
+	OGUnlockMutex(self->data_available_lock);
+	return 0;
+}
+
+struct survive_threaded_poser *survive_create_threaded_poser(SurviveObject *so, PoserCB innerPoser) {
+	struct survive_threaded_poser *poser = SV_CALLOC(1, sizeof(struct survive_threaded_poser));
+	poser->so = so;
+	poser->innerPoser = innerPoser;
+	poser->data_available = OGCreateConditionVariable();
+	poser->data_available_lock = OGCreateMutex();
+	poser->active = 1;
+	poser->thread = OGCreateThread(survive_threaded_poser_thread_fn, "threaded poser", poser);
+	return poser;
+}
+int survive_threaded_poser_fn(SurviveObject *so, void **user, PoserData *pd) {
+	struct survive_threaded_poser *self = (struct survive_threaded_poser *)*user;
+
+	switch (pd->pt) {
+	case POSERDATA_DISASSOCIATE: {
+		OGLockMutex(self->data_available_lock);
+		self->active = 0;
+		OGSignalCond(self->data_available);
+		OGUnlockMutex(self->data_available_lock);
+		survive_release_ctx_lock(self->so->ctx);
+		OGJoinThread(self->thread);
+		survive_get_ctx_lock(self->so->ctx);
+
+		self->innerPoser(so, &self->innerPoserData, pd);
+
+		SurviveContext *ctx = so->ctx;
+		SV_VERBOSE(5, "Threaded stats:");
+		SV_VERBOSE(5, "\tRan       %d", self->run_count);
+		SV_VERBOSE(5, "\tNew data  %d", self->new_data_count);
+
+		OGDeleteMutex(self->data_available_lock);
+		OGDeleteConditionVariable(self->data_available);
+		free(self);
+		*user = 0;
+		return 0;
+	}
+	case POSERDATA_SYNC_GEN2:
+	case POSERDATA_SYNC: {
+		OGLockMutex(self->data_available_lock);
+		memcpy(&self->PoserData.pd, pd, PoserData_size(pd));
+		self->has_new_data = true;
+		self->new_data_count++;
+		OGSignalCond(self->data_available);
+		OGUnlockMutex(self->data_available_lock);
+		return 0;
+	}
+	default: {
+		self->innerPoser(so, &self->innerPoserData, pd);
+	}
+	}
+
+	return 0;
+}

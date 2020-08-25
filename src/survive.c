@@ -40,6 +40,8 @@ STATIC_CONFIG_ITEM(CONFIG_LIGHTHOUSE_COUNT, "lighthousecount", 'i', "How many li
 STATIC_CONFIG_ITEM(LIGHTHOUSE_GEN, "lighthouse-gen", 'i',
 				   "Which lighthouse gen to use -- 1 for LH1, 2 for LH2, 0 (default) for auto-detect", 0)
 
+STATIC_CONFIG_ITEM(THREADED_POSERS, "threaded-posers", 'i', "Whether or not to run each poser in their own thread.", 0)
+
 const char *survive_config_file_name(struct SurviveContext *ctx) {
 	return survive_configs(ctx, "configfile", SC_GET, DEFAULT_CONFIG_PATH);
 }
@@ -601,9 +603,18 @@ int survive_startup(SurviveContext *ctx) {
 	buffer[strlen(buffer) - 2] = 0;
 	SV_INFO("%s", buffer);
 
-	// Apply poser to objects.
-	for (int i = 0; i < ctx->objs_ct; i++) {
-		ctx->objs[i]->PoserFn = PreferredPoserCB;
+	bool use_async_posers = survive_configi(ctx, THREADED_POSERS_TAG, SC_GET, 0);
+
+	if (use_async_posers) {
+		for (int i = 0; i < ctx->objs_ct; i++) {
+			ctx->objs[i]->PoserFnData = survive_create_threaded_poser(ctx->objs[i], PreferredPoserCB);
+			ctx->objs[i]->PoserFn = survive_threaded_poser_fn;
+		}
+	} else {
+		// Apply poser to objects.
+		for (int i = 0; i < ctx->objs_ct; i++) {
+			ctx->objs[i]->PoserFn = PreferredPoserCB;
+		}
 	}
 
 	// saving the config extra to make sure that the user has a config file they can change.

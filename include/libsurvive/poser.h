@@ -2,6 +2,7 @@
 #define _LSPOSER_H
 
 #include "survive_types.h"
+#include <os_generic.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -126,6 +127,14 @@ typedef struct
 	PoserDataIMU lastimu;
 } PoserDataFullScene;
 
+union PoserDataAll {
+	PoserData pd;
+	PoserDataFullScene pdfl;
+	PoserDataLight pdl1;
+	PoserDataLightGen2 pdlg2;
+	PoserDataIMU pdimu;
+};
+
 struct SurviveSensorActivations_s;
 SURVIVE_EXPORT void PoserDataFullScene2Activations(const PoserDataFullScene *pdfs, struct SurviveSensorActivations_s *activations);
 SURVIVE_EXPORT void Activations2PoserDataFullScene(const struct SurviveSensorActivations_s *activations,
@@ -137,6 +146,9 @@ typedef int (*PoserCB)(SurviveObject *so, void **user, PoserData *pd);
 #define SURVIVE_POSER_INVOKE(so, poserData) survive_poser_invoke(so, (PoserData *)poserData, sizeof(*poserData));
 void survive_poser_invoke(SurviveObject *so, PoserData *poserData, size_t poserDataSize);
 
+struct survive_threaded_poser;
+struct survive_threaded_poser *survive_create_threaded_poser(SurviveObject *so, PoserCB innerPoser);
+int survive_threaded_poser_fn(SurviveObject *so, void **user, PoserData *pd);
 
 #ifdef __cplusplus
 };
