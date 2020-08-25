@@ -226,6 +226,7 @@ static int usbmon_close(struct SurviveContext *ctx, void *_driver) {
 		vive_device_inst_t *dev = &driver->usb_devices[i];
 		free(dev->usbInfo);
 	}
+	survive_install_run_time_fn(ctx, 0, 0);
 	free(driver);
 	return 0;
 }

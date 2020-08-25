@@ -397,13 +397,14 @@ static int playback_close(struct SurviveContext *ctx, void *_driver) {
 	survive_release_ctx_lock(ctx);
 	OGJoinThread(driver->playback_thread);
 	survive_get_ctx_lock(ctx);
-	SV_VERBOSE(100, "Playback thread slept for %"PRIu32"ms", driver->total_sleep_time);
+	SV_VERBOSE(50, "Playback thread slept for %" PRIu32 "ms", driver->total_sleep_time);
+	SV_VERBOSE(10, "Playback thread played back %6.2fs in %6.2fs real-time", driver->time_now, OGRelativeTime());
 	if (driver->playback_file)
 		gzclose(driver->playback_file);
 	driver->playback_file = 0;
 
 	survive_detach_config(ctx, "playback-factor", &driver->playback_factor);
-
+	survive_install_run_time_fn(ctx, 0, 0);
 	free(driver);
 	return 0;
 }

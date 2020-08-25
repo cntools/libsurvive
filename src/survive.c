@@ -237,6 +237,7 @@ struct SurviveContext_private {
 	og_sema_t poll_sema;
 	survive_run_time_fn runTimeFn;
 	void *runTimeFnUser;
+	double lastRunTime;
 };
 
 void survive_get_ctx_lock(SurviveContext *ctx) {
@@ -987,14 +988,23 @@ static double timestamp_in_s() {
 double survive_run_time(const SurviveContext *ctx) {
 	struct SurviveContext_private *pctx = ctx->private_members;
 	if (pctx->runTimeFn) {
-		return pctx->runTimeFn(ctx, pctx->runTimeFnUser);
+		return pctx->lastRunTime = pctx->runTimeFn(ctx, pctx->runTimeFnUser);
 	}
 
-	return timestamp_in_s();
+	return pctx->lastRunTime = timestamp_in_s();
 }
 
+double static_time(const SurviveContext *ctx, void *user) {
+	struct SurviveContext_private *pctx = user;
+	return pctx->lastRunTime;
+}
 void survive_install_run_time_fn(SurviveContext *ctx, survive_run_time_fn fn, void *user) {
 	struct SurviveContext_private *pctx = ctx->private_members;
-	pctx->runTimeFn = fn;
-	pctx->runTimeFnUser = user;
+	if (fn == 0 && pctx->runTimeFn != 0) {
+		pctx->runTimeFn = static_time;
+		pctx->runTimeFnUser = pctx;
+	} else {
+		pctx->runTimeFn = fn;
+		pctx->runTimeFnUser = user;
+	}
 }
