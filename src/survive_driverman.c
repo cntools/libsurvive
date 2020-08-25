@@ -17,6 +17,8 @@ void RegisterDriver(const char *element, survive_driver_fn data) {
 	NrDrivers++;
 }
 
+void RegisterPoserDriver(const char *element, PoserCB poser) { RegisterDriver(element, (survive_driver_fn)poser); }
+
 survive_driver_fn GetDriver(const char *element) {
 	int i;
 

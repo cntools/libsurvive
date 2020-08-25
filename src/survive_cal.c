@@ -614,7 +614,8 @@ static void handle_calibration( struct SurviveCalData *cd )
 
 		int r = -1;
 		if (cd->poseobjects[obj]->PoserFn) {
-			r = cd->poseobjects[obj]->PoserFn(cd->poseobjects[obj], (PoserData *)&fsd);
+			r = cd->poseobjects[obj]->PoserFn(cd->poseobjects[obj], &cd->poseobjects[obj]->PoserFnData,
+											  (PoserData *)&fsd);
 		}
 
 		if( r )

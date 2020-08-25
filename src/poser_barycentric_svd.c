@@ -217,16 +217,16 @@ static void add_correspondences(SurviveObject *so, bc_svd *bc, uint32_t timecode
 	}
 }
 
-int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
+int PoserBaryCentricSVD(SurviveObject *so, void **user, PoserData *pd) {
 	PoserType pt = pd->pt;
 	SurviveContext *ctx = so->ctx;
-	PoserDataSVD *dd = so->PoserFnData;
+	PoserDataSVD *dd = *user;
 
 	if (pt == POSERDATA_DISASSOCIATE && dd == 0)
 		return 0;
 
 	if (!dd)
-		so->PoserFnData = dd = PoserDataSVD_new(so);
+		*user = dd = PoserDataSVD_new(so);
 
 	switch (pt) {
 	case POSERDATA_SYNC:
@@ -328,9 +328,7 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 		return solve_fullscene(dd, (PoserDataFullScene *)(pd));
 	}
 	case POSERDATA_DISASSOCIATE: {
-		if (dd == so->PoserFnData) {
-			so->PoserFnData = 0;
-		}
+		*user = 0;
 		PoserDataSVD_destroy(dd);
 		// printf( "Need to disassociate.\n" );
 		break;
@@ -339,4 +337,4 @@ int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 	return 0;
 }
 
-REGISTER_LINKTIME(PoserBaryCentricSVD)
+REGISTER_POSER(PoserBaryCentricSVD)

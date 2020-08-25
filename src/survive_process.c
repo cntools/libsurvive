@@ -39,7 +39,6 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 
 	//We don't use sync times, yet.
 	if (sensor_id <= -1) {
-		if (so->PoserFn) {
 			PoserDataLightGen1 l = {
 				.common =
 					{
@@ -55,9 +54,10 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 				.acode = acode,
 				.length = length,
 			};
-			so->PoserFn(so, (PoserData *)&l);
-		}
-		return;
+
+			SURVIVE_POSER_INVOKE(so, &l);
+
+			return;
 	}
 
 	if (base_station > NUM_GEN1_LIGHTHOUSES)
@@ -111,9 +111,7 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 		survive_cal_angle(so, sensor_id, acode, timecode, length, angle, lh);
 	}
 	survive_kalman_tracker_integrate_light(so->tracker, &l.common);
-	if (so->PoserFn) {
-		so->PoserFn( so, (PoserData *)&l );
-	}
+	SURVIVE_POSER_INVOKE(so, &l);
 }
 
 void survive_default_lightcap_process(SurviveObject *so, const LightcapElement *le) {
@@ -292,9 +290,7 @@ void survive_default_imu_process( SurviveObject * so, int mask, FLT * accelgyrom
 	SurviveSensorActivations_add_imu(&so->activations, &imu);
 
 	survive_kalman_tracker_integrate_imu(so->tracker, &imu);
-	if (so->PoserFn) {
-		so->PoserFn( so, (PoserData *)&imu );
-	}
+	SURVIVE_POSER_INVOKE(so, &imu);
 
 	survive_recording_imu_process(so, mask, accelgyromag, timecode, id);
 }

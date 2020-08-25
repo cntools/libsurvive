@@ -514,8 +514,6 @@ static void run_mpfit_find_3d_structure_async(MPFITData *d, PoserDataLight *pdl,
 	}
 
 	survive_async_optimizer_run(d->async_optimizer, opt_buff);
-	/*
-	 */
 }
 
 static FLT run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, SurviveSensorActivations *scene,
@@ -587,10 +585,9 @@ static FLT run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 			pdfs->hdr.pt = hdr.pt;
 			pdfs->hdr.lighthouseposeproc = mpfit_set_cameras;
 			pdfs->hdr.userdata = &mpfitctx;
-			so->PoserFnData = d->opt.seed_poser_data;
-			d->opt.seed_poser(so, &pdfs->hdr);
-			d->opt.seed_poser_data = so->PoserFnData;
-			so->PoserFnData = d;
+
+			d->opt.seed_poser(so, &d->opt.seed_poser_data, &pdfs->hdr);
+
 			pdfs->hdr = hdr;
 		} else {
 			SV_INFO("Not using a seed poser for MPFIT; results will likely be way off");
@@ -671,16 +668,16 @@ static inline void print_stats(SurviveContext *ctx, MPFITStats *stats) {
 	}
 }
 
-int PoserMPFIT(SurviveObject *so, PoserData *pd) {
+int PoserMPFIT(SurviveObject *so, void **user, PoserData *pd) {
 	SurviveContext *ctx = so->ctx;
-	if (so->PoserFnData == 0 && pd->pt == POSERDATA_DISASSOCIATE) {
+	if (*user == 0 && pd->pt == POSERDATA_DISASSOCIATE) {
 		return 0;
 	}
 
-	if (so->PoserFnData == 0) {
-		so->PoserFnData = SV_CALLOC(1, sizeof(MPFITData));
+	if (*user == 0) {
+		*user = SV_CALLOC(1, sizeof(MPFITData));
 		g.instances++;
-		MPFITData *d = so->PoserFnData;
+		MPFITData *d = *user;
 
 		general_optimizer_data_init(&d->opt, so);
 
@@ -718,7 +715,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		SV_VERBOSE(110, "\tsensor-variance-per-sec: %f", d->sensor_variance_per_second);
 		SV_VERBOSE(110, "\tuse-jacobian-function: %d", d->use_jacobian_function_obj);
 	}
-	MPFITData *d = so->PoserFnData;
+	MPFITData *d = *user;
 	switch (pd->pt) {
 	case POSERDATA_FULL_SCENE: {
 		SurviveContext *ctx = so->ctx;
@@ -791,9 +788,7 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 		survive_detach_config(ctx, "sensor-variance-per-sec", &d->sensor_variance_per_second);
 		survive_detach_config(ctx, "sensor-variance", &d->sensor_variance);
 		survive_async_free(d->async_optimizer);
-		if (d == so->PoserFnData) {
-			so->PoserFnData = 0;
-		}
+		*user = 0;
 		free(d);
 		return 0;
 	}
@@ -811,4 +806,4 @@ int PoserMPFIT(SurviveObject *so, PoserData *pd) {
 	return -1;
 }
 
-REGISTER_LINKTIME(PoserMPFIT)
+REGISTER_POSER(PoserMPFIT)

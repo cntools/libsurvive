@@ -282,3 +282,9 @@ SURVIVE_EXPORT FLT survive_adjust_confidence(SurviveObject *so, FLT delta) {
 	}
 	return so->poseConfidence;
 }
+
+void survive_poser_invoke(SurviveObject *so, PoserData *poserData, size_t poserDataSize) {
+	if (so->PoserFn) {
+		so->PoserFn(so, &so->PoserFnData, poserData);
+	}
+}

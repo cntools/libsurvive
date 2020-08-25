@@ -132,7 +132,10 @@ SURVIVE_EXPORT void Activations2PoserDataFullScene(const struct SurviveSensorAct
 												   PoserDataFullScene *pdfs);
 
 //When you write your posers, use the following definition, and register with REGISTER_LINKTIME.
-typedef int (*PoserCB)( SurviveObject * so, PoserData * pd );
+typedef int (*PoserCB)(SurviveObject *so, void **user, PoserData *pd);
+
+#define SURVIVE_POSER_INVOKE(so, poserData) survive_poser_invoke(so, (PoserData *)poserData, sizeof(*poserData));
+void survive_poser_invoke(SurviveObject *so, PoserData *poserData, size_t poserDataSize);
 
 
 #ifdef __cplusplus

@@ -11,13 +11,13 @@ struct PoserIMUData_t {
 	bool inited;
 };
 
-int PoserKalmanOnly(SurviveObject *so, PoserData *pd) {
+int PoserKalmanOnly(SurviveObject *so, void **user, PoserData *pd) {
 	PoserType pt = pd->pt;
 	SurviveContext *ctx = so->ctx;
-	struct PoserIMUData_t *dd = so->PoserFnData;
+	struct PoserIMUData_t *dd = *user;
 
 	if (!dd) {
-		so->PoserFnData = dd = SV_CALLOC(1, sizeof(struct PoserIMUData_t));
+		*user = dd = SV_CALLOC(1, sizeof(struct PoserIMUData_t));
 	}
 
 	switch (pt) {
@@ -39,8 +39,7 @@ int PoserKalmanOnly(SurviveObject *so, PoserData *pd) {
 		return 0;
 	}
 	case POSERDATA_DISASSOCIATE: {
-		if (dd == so->PoserFnData)
-			so->PoserFnData = 0;
+		*user = 0;
 		free(dd);
 		return 0;
 	}
@@ -51,4 +50,4 @@ int PoserKalmanOnly(SurviveObject *so, PoserData *pd) {
 	return -1;
 }
 
-REGISTER_LINKTIME(PoserKalmanOnly)
+REGISTER_POSER(PoserKalmanOnly)

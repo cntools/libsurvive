@@ -215,8 +215,8 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 
 	so->stats.hit_from_lhs[bsd_idx]++;
 
-	if (so->PoserFn && ctx->lh_version != -1) {
-		so->PoserFn(so, (PoserData *)&l);
+	if (ctx->lh_version != -1) {
+		SURVIVE_POSER_INVOKE(so, &l);
 	}
 }
 SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_channel channel, int sensor_id,
@@ -317,9 +317,7 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 	survive_recording_sweep_angle_process(so, channel, sensor_id, timecode, plane, angle);
 	survive_kalman_tracker_integrate_light(so->tracker, &l.common);
 
-	if (so->PoserFn) {
-		so->PoserFn(so, (PoserData *)&l);
-	}
+	SURVIVE_POSER_INVOKE(so, &l);
 }
 
 SURVIVE_EXPORT void survive_default_gen_detected_process(SurviveObject *so, int lh_version) {

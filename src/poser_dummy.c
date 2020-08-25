@@ -8,14 +8,13 @@ typedef struct
 	//Stuff
 } DummyData;
 
-int PoserDummy( SurviveObject * so, PoserData * pd )
-{
+int PoserDummy(SurviveObject *so, void **user, PoserData *pd) {
 	PoserType pt = pd->pt;
 	SurviveContext * ctx = so->ctx;
-	DummyData *dd = so->PoserFnData;
+	DummyData *dd = *user;
 
 	if (!dd)
-		so->PoserFnData = dd = SV_MALLOC(sizeof(DummyData));
+		*user = dd = SV_MALLOC(sizeof(DummyData));
 
 	switch( pt )
 	{
@@ -41,9 +40,7 @@ int PoserDummy( SurviveObject * so, PoserData * pd )
 	}
 	case POSERDATA_DISASSOCIATE:
 	{
-		if (so->PoserFnData == dd) {
-			so->PoserFnData = 0;
-		}
+		*user = 0;
 		free( dd );
 		//printf( "Need to disassociate.\n" );
 		break;
@@ -52,4 +49,4 @@ int PoserDummy( SurviveObject * so, PoserData * pd )
 	return 0;
 }
 
-REGISTER_LINKTIME(PoserDummy)
+REGISTER_POSER(PoserDummy)

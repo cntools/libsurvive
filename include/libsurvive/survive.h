@@ -455,12 +455,22 @@ SURVIVE_EXPORT double survive_run_time(const SurviveContext *ctx);
 ////////////////////// Survive Drivers ////////////////////////////
 
 SURVIVE_EXPORT void RegisterDriver(const char *name, survive_driver_fn data);
+SURVIVE_EXPORT void RegisterPoserDriver(const char *name, PoserCB data);
 
 #define REGISTER_LINKTIME(func)                                                                                        \
 	SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##func() {                                                                 \
 		static bool loaded = false;                                                                                    \
 		if (loaded == false) {                                                                                         \
 			RegisterDriver(#func, (survive_driver_fn)&func);                                                           \
+		};                                                                                                             \
+		loaded = true;                                                                                                 \
+	}
+
+#define REGISTER_POSER(func)                                                                                           \
+	SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##func() {                                                                 \
+		static bool loaded = false;                                                                                    \
+		if (loaded == false) {                                                                                         \
+			RegisterPoserDriver(#func, func);                                                                          \
 		};                                                                                                             \
 		loaded = true;                                                                                                 \
 	}
