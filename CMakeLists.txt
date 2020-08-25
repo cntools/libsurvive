@@ -115,9 +115,8 @@ endif()
 add_custom_command(TARGET survive-cli POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy ${SURVIVE_WEBSOCKETD} $<TARGET_FILE_DIR:survive-cli>
 )
-install(PROGRAMS survive${SURVIVE_WEBSOCKETD} DESTINATION bin)
+install(PROGRAMS ${SURVIVE_WEBSOCKETD} DESTINATION bin)
 
-INSTALL(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink survive ${CMAKE_INSTALL_PREFIX}/lib)")
 install(DIRECTORY include/libsurvive DESTINATION include)
 
 file(GLOB REDIST_HEADERS
