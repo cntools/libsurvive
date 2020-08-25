@@ -243,7 +243,7 @@ static CvMat *survive_kalman_find_residual(FLT dt, survive_kalman_state_t *k, ka
 		if (okay == false) {
 			return 0;
 		}
-		sv_print_mat_v(500, "Hk", H, true);
+		sv_print_mat_v(600, "Hk", H, true);
 		rtn = H;
 	} else {
 		rtn = (struct CvMat *)user;

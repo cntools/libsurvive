@@ -289,6 +289,9 @@ void survive_default_imu_process( SurviveObject * so, int mask, FLT * accelgyrom
 
 	SurviveSensorActivations_add_imu(&so->activations, &imu);
 
+	SurviveContext *ctx = so->ctx;
+
+	SV_VERBOSE(400, "IMU %d: " Point6_format, timecode, LINMATH_VEC3_EXPAND(imu.accel), LINMATH_VEC3_EXPAND(imu.gyro))
 	survive_kalman_tracker_integrate_imu(so->tracker, &imu);
 	SURVIVE_POSER_INVOKE(so, &imu);
 

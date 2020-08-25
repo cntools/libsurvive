@@ -189,7 +189,7 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 		normalize_model(tracker);
 		survive_kalman_tracker_report_state(&data->hdr, tracker);
 	}
-	SV_VERBOSE(400, "Resultant state %f (%f) (lightcap %2d) (error %e, %e)  " Point16_format, time, delta, data->lh,
+	SV_VERBOSE(600, "Resultant state %f (%f) (lightcap %2d) (error %e, %e)  " Point16_format, time, delta, data->lh,
 			   tracker->light_residuals[data->lh], tracker->light_residuals_all,
 			   LINMATH_VEC16_EXPAND(tracker->model.state));
 }
@@ -220,8 +220,8 @@ static bool map_imu_data(void *user, const struct CvMat *Z, const struct CvMat *
 
 	SurviveContext *ctx = fn_ctx->tracker->so->ctx;
 
-	SV_VERBOSE(400, "X     " Point16_format, LINMATH_VEC16_EXPAND(CV_FLT_PTR(x_t)))
-	SV_VERBOSE(400, "Z     " Point6_format, LINMATH_VEC6_EXPAND(CV_FLT_PTR(Z)))
+	SV_VERBOSE(600, "X     " Point16_format, LINMATH_VEC16_EXPAND(CV_FLT_PTR(x_t)))
+	SV_VERBOSE(600, "Z     " Point6_format, LINMATH_VEC6_EXPAND(CV_FLT_PTR(Z)))
 
 	// SurviveKalmanModel *s = (SurviveKalmanModel *)CV_FLT_PTR(x_t);
 	SurviveKalmanModel s = copy_model(CV_FLT_PTR(x_t), x_t->rows);
@@ -232,9 +232,9 @@ static bool map_imu_data(void *user, const struct CvMat *Z, const struct CvMat *
 	gen_imu_predict_jac_kalman_model(_H_k, &s);
 	copy_matrix(H_k, _H_k, SURVIVE_MODEL_MAX_STATE_CNT);
 
-	SV_VERBOSE(400, "h_x   " Point6_format, LINMATH_VEC6_EXPAND(h_x))
+	SV_VERBOSE(600, "h_x   " Point6_format, LINMATH_VEC6_EXPAND(h_x))
 	subnd(CV_FLT_PTR(y), CV_FLT_PTR(Z), h_x, Z->rows);
-	SV_VERBOSE(400, "y     " Point6_format, LINMATH_VEC6_EXPAND(CV_FLT_PTR(y)))
+	SV_VERBOSE(600, "y     " Point6_format, LINMATH_VEC6_EXPAND(CV_FLT_PTR(y)))
 	return true;
 }
 
@@ -307,7 +307,7 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 		int offset = 0;
 		CvMat Z = cvMat(rows, 1, CV_FLT, data->accel + offset);
 
-		SV_VERBOSE(400, "Integrating IMU " Point6_format " with cov " Point6_format,
+		SV_VERBOSE(600, "Integrating IMU " Point6_format " with cov " Point6_format,
 				   LINMATH_VEC6_EXPAND((FLT *)&data->accel[0]), LINMATH_VEC6_EXPAND(R));
 
 		FLT err = survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, R, map_imu_data, &fn_ctx,
@@ -318,7 +318,7 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 		tracker->imu_residuals += .1 * err;
 
 		tracker->stats.imu_count++;
-		SV_VERBOSE(400, "Resultant state %f (imu %e) " Point19_format, time, tracker->imu_residuals,
+		SV_VERBOSE(600, "Resultant state %f (imu %e) " Point19_format, time, tracker->imu_residuals,
 				   LINMATH_VEC19_EXPAND(tracker->model.state));
 		normalize_model(tracker);
 	}
@@ -441,7 +441,7 @@ static void model_q_fn(void *user, FLT t, const CvMat *x, FLT *q_out) {
  * necessary but allows for quicker development.
  */
 static void model_predict(FLT t, const survive_kalman_state_t *k, const CvMat *f_in, CvMat *f_out) {
-	assert(t > 0);
+	// assert(t > 0);
 
 	SurviveKalmanModel s_in = copy_model(CV_FLT_PTR(f_in), f_in->rows);
 	SurviveKalmanModel s_out = {0};
@@ -477,7 +477,7 @@ static FLT integrate_pose(SurviveKalmanTracker *tracker, FLT time, const Survive
 	rtn = survive_kalman_predict_update_state(time, &tracker->model, &Zp, &H, R ? R : tracker->Obs_R, R == 0);
 
 	SurviveContext *ctx = tracker->so->ctx;
-	SV_VERBOSE(400, "Resultant state %f (pose) " Point16_format, time, LINMATH_VEC16_EXPAND(tracker->model.state));
+	SV_VERBOSE(600, "Resultant state %f (pose) " Point16_format, time, LINMATH_VEC16_EXPAND(tracker->model.state));
 	return rtn;
 }
 
@@ -818,12 +818,12 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 	SurviveContext *ctx = tracker->so->ctx;
 	addnd(tracker->stats.reported_var, var_diag, tracker->stats.reported_var, state_cnt);
 
-	SV_VERBOSE(400, "Tracker variance %s " Point16_format, tracker->so->codename, LINMATH_VEC16_EXPAND(var_diag));
-	SV_VERBOSE(400, "Tracker Bias %s     " Point3_format, tracker->so->codename,
+	SV_VERBOSE(600, "Tracker variance %s " Point16_format, tracker->so->codename, LINMATH_VEC16_EXPAND(var_diag));
+	SV_VERBOSE(600, "Tracker Bias %s     " Point3_format, tracker->so->codename,
 			   LINMATH_VEC3_EXPAND(tracker->state.GyroBias));
 
 	tracker->stats.reported_poses++;
-	SV_VERBOSE(400, "Tracker report %s   " SurvivePose_format, tracker->so->codename, SURVIVE_POSE_EXPAND(pose));
+	SV_VERBOSE(600, "Tracker report %s   " SurvivePose_format, tracker->so->codename, SURVIVE_POSE_EXPAND(pose));
 
 	SurviveVelocity velocity = survive_kalman_tracker_velocity(tracker);
 

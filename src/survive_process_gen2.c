@@ -268,8 +268,9 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 	FLT angle = time_since_sync / time_per_rot * 2. * LINMATHPI;
 	FLT angle2 = (time_since_sync + .5 / 48000000.) / time_per_rot * 2. * LINMATHPI;
 
-	SV_VERBOSE(500, "Sensor ch%2d.%02d   %+6.3fdeg %12f %d %.16f %d", channel, sensor_id, angle / LINMATHPI * 180.,
-			   angle2 / LINMATHPI * 180., half_clock_flag, time_since_sync, rotations_since + so->sync_count[bsd_idx]);
+	SV_VERBOSE(500, "Sensor ch%2d.%02d   %+6.3fdeg %12f %d %.16f %d %d", channel, sensor_id, angle / LINMATHPI * 180.,
+			   angle2 / LINMATHPI * 180., half_clock_flag, time_since_sync, rotations_since + so->sync_count[bsd_idx],
+			   timecode);
 
 	int8_t plane = angle > LINMATHPI;
 	FLT angle_for_axis = angle;
