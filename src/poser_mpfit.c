@@ -100,7 +100,8 @@ static size_t remove_lh_from_meas(survive_optimizer_measurement *meas, size_t me
 }
 
 static size_t construct_input_from_scene(const MPFITData *d, size_t timecode, const SurviveSensorActivations *scene,
-										 size_t *meas_for_lhs, survive_optimizer_measurement *meas) {
+										 size_t *meas_for_lhs, survive_optimizer_measurement *meas,
+										 survive_long_timecode *most_recent_time) {
 	size_t rtn = 0;
 	SurviveObject *so = d->opt.so;
 	SurviveContext *ctx = so->ctx;
@@ -144,6 +145,9 @@ static size_t construct_input_from_scene(const MPFITData *d, size_t timecode, co
 					meas->lh = lh;
 					survive_timecode diff = survive_timecode_difference(timecode, scene->timecode[sensor][lh][axis]);
 					meas->variance = d->sensor_variance + diff * d->sensor_variance_per_second / (FLT)so->timebase_hz;
+					if (most_recent_time && scene->timecode[sensor][lh][axis] > *most_recent_time) {
+						*most_recent_time = scene->timecode[sensor][lh][axis];
+					}
 					// SV_INFO("Adding meas %d %d %d %f", lh, sensor, axis, meas->value);
 					meas++;
 					rtn++;
@@ -268,7 +272,8 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 	if (quatiszero(soLocation->Rot))
 		soLocation->Rot[0] = 1;
 
-	size_t meas_size = construct_input_from_scene(d, pdl->hdr.timecode, scene, meas_for_lhs, mpfitctx->measurements);
+	size_t meas_size = construct_input_from_scene(d, pdl->hdr.timecode, scene, meas_for_lhs, mpfitctx->measurements,
+												  &user->pdl.hdr.timecode);
 
 	if (mpfitctx->current_bias > 0) {
 		meas_size += 7;
@@ -568,7 +573,7 @@ static FLT run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
 	activations.last_imu = so->timebase_hz * 2;
 
 	size_t meas_for_lhs[NUM_GEN2_LIGHTHOUSES] = {0};
-	size_t meas_size = construct_input_from_scene(d, 0, &activations, meas_for_lhs, mpfitctx.measurements);
+	size_t meas_size = construct_input_from_scene(d, 0, &activations, meas_for_lhs, mpfitctx.measurements, 0);
 
 	if (mpfitctx.current_bias > 0) {
 		meas_size += 7;
