@@ -538,7 +538,11 @@ static FLT run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Surviv
 	}
 
 	mp_result result = {0};
+
+	survive_release_ctx_lock(ctx);
 	int res = survive_optimizer_run(&mpfitctx, &result);
+	survive_get_ctx_lock(ctx);
+
 	return handle_optimizer_results(&mpfitctx, res, &result, &user_data, out);
 }
 

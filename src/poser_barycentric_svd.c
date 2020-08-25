@@ -253,7 +253,10 @@ int PoserBaryCentricSVD(SurviveObject *so, void **user, PoserData *pd) {
 
 					if (dd->bc.meas_cnt >= dd->required_meas) {
 
+						survive_release_ctx_lock(so->ctx);
 						SurvivePose obj2Lh = solve_correspondence(dd, false);
+						survive_get_ctx_lock(so->ctx);
+
 						if (quatmagnitude(obj2Lh.Rot) != 0) {
 							SurvivePose *lh2world = &so->ctx->bsd[lh].Pose;
 
