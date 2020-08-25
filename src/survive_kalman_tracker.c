@@ -498,23 +498,32 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
 		tracker->model.t = time;
 	}
 
+	FLT R[] = {tracker->obs_pos_var, tracker->obs_pos_var, tracker->obs_pos_var, tracker->obs_rot_var,
+			   tracker->obs_rot_var, tracker->obs_rot_var, tracker->obs_rot_var};
+	if (oR) {
+		addnd(R, R, oR, 7);
+	}
+
 	if (time - tracker->model.t < 0) {
 		if (time - tracker->model.t > -.1) {
-			// time = tracker->model.t;
+			FLT tdiff = tracker->model.t - time;
+
+			// Scale up the covariance
+			FLT pS = 10, rS = 1;
+			FLT Raug[] = {pS * tdiff, pS * tdiff, pS * tdiff, rS * tdiff, rS * tdiff, rS * tdiff, rS * tdiff};
+			addnd(R, R, Raug, 7);
+
+			time = tracker->model.t;
 		} else {
 			// SV_WARN("Processing light data from the past %fs", time - tracker->model.t );
 			tracker->stats.late_light_dropped++;
 			return;
 		}
 	}
+
 	tracker->last_light_time = time;
 
 	if (tracker->obs_pos_var >= 0 && tracker->obs_rot_var >= 0) {
-		FLT R[] = {tracker->obs_pos_var, tracker->obs_pos_var, tracker->obs_pos_var, tracker->obs_rot_var,
-				   tracker->obs_rot_var, tracker->obs_rot_var, tracker->obs_rot_var};
-		if (oR) {
-			addnd(R, R, oR, 7);
-		}
 		tracker->stats.obs_total_error += integrate_pose(tracker, time, pose, tracker->adaptive_obs ? 0 : R);
 		tracker->stats.obs_count++;
 
