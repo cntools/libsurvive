@@ -272,6 +272,10 @@ SURVIVE_LOCAL_ONLY CvMat *cvCreateMat(int height, int width, int type) {
 	return arr;
 }
 
+#define CREATE_CV_STACK_MAT(name, rows, cols, type)		\
+  FLT *_##name = alloca(rows * cols * sizeof(FLT));		\
+  CvMat name = cvMat(rows, cols, SURVIVE_CV_F, _##name);
+
 SURVIVE_LOCAL_ONLY double cvInvert(const CvMat *srcarr, CvMat *dstarr, int method) {
 	lapack_int inf;
 	lapack_int rows = srcarr->rows;
@@ -286,7 +290,7 @@ SURVIVE_LOCAL_ONLY double cvInvert(const CvMat *srcarr, CvMat *dstarr, int metho
 	print_mat(srcarr);
 #endif
 	if (method == DECOMP_LU) {
-		lapack_int *ipiv = malloc(sizeof(lapack_int) * MIN(srcarr->rows, srcarr->cols));
+		lapack_int *ipiv = alloca(sizeof(lapack_int) * MIN(srcarr->rows, srcarr->cols));
 		inf = LAPACKE_getrf(LAPACK_ROW_MAJOR, rows, cols, a, lda, ipiv);
 		assert(inf == 0);
 
@@ -297,32 +301,28 @@ SURVIVE_LOCAL_ONLY double cvInvert(const CvMat *srcarr, CvMat *dstarr, int metho
 			// print_mat(srcarr);
 		}
 
-		free(ipiv);
+		//free(ipiv);
 
 	} else if (method == DECOMP_SVD) {
 		// TODO: There is no way this needs this many allocations,
 		// but in my defense I was very tired when I wrote this code
-		CvMat *w = cvCreateMat(1, MIN(dstarr->rows, dstarr->cols), dstarr->type);
-		CvMat *u = cvCreateMat(dstarr->cols, dstarr->cols, dstarr->type);
-		CvMat *v = cvCreateMat(dstarr->rows, dstarr->rows, dstarr->type);
-		CvMat *um = cvCreateMat(w->cols, w->cols, w->type);
+	  CREATE_CV_STACK_MAT(w, 1, MIN(dstarr->rows, dstarr->cols), dstarr->type);
+	  CREATE_CV_STACK_MAT(u, dstarr->cols, dstarr->cols, dstarr->type);
+	  CREATE_CV_STACK_MAT(v, dstarr->rows, dstarr->rows, dstarr->type);
+	  CREATE_CV_STACK_MAT(um, w.cols, w.cols, w.type);
 
-		cvSVD(dstarr, w, u, v, 0);
+		cvSVD(dstarr, &w, &u, &v, 0);
 
-		cvSetZero(um);
-		for (int i = 0; i < w->cols; i++) {
-			cvmSet(um, i, i, 1. / CV_RAW_PTR(w)[i]);
+		cvSetZero(&um);
+		for (int i = 0; i < w.cols; i++) {
+			cvmSet(&um, i, i, 1. / (_w)[i]);
 		}
 
 		CvMat *tmp = cvCreateMat(dstarr->cols, dstarr->rows, dstarr->type);
-		cvGEMM(v, um, 1, 0, 0, tmp, CV_GEMM_A_T);
-		cvGEMM(tmp, u, 1, 0, 0, dstarr, CV_GEMM_B_T);
+		cvGEMM(&v, &um, 1, 0, 0, tmp, CV_GEMM_A_T);
+		cvGEMM(tmp, &u, 1, 0, 0, dstarr, CV_GEMM_B_T);
 
 		cvReleaseMat(&tmp);
-		cvReleaseMat(&w);
-		cvReleaseMat(&u);
-		cvReleaseMat(&v);
-		cvReleaseMat(&um);
 	} else {
 		assert(0 && "Bad argument");
 		return -1;
@@ -364,7 +364,7 @@ SURVIVE_LOCAL_ONLY int cvSolve(const CvMat *Aarr, const CvMat *xarr, CvMat *Barr
 		lapack_int bcols = Barr->cols;
 		lapack_int ldb = bcols; // Barr->step / sizeof(double);
 
-		lapack_int *ipiv = malloc(sizeof(lapack_int) * MIN(Aarr->rows, Aarr->cols));
+		lapack_int *ipiv = alloca(sizeof(lapack_int) * MIN(Aarr->rows, Aarr->cols));
 
 		inf = LAPACKE_getrf(LAPACK_ROW_MAJOR, arows, acols, (a_ws), lda, ipiv);
 		assert(inf >= 0);
@@ -382,7 +382,7 @@ SURVIVE_LOCAL_ONLY int cvSolve(const CvMat *Aarr, const CvMat *xarr, CvMat *Barr
 		inf = LAPACKE_getrs(LAPACK_ROW_MAJOR, CblasNoTrans, arows, bcols, (a_ws), lda, ipiv, CV_RAW_PTR(Barr), ldb);
 		assert(inf == 0);
 
-		free(ipiv);
+		//free(ipiv);
 		// cvReleaseMat(&a_ws);
 	} else if (method == DECOMP_SVD) {
 

@@ -86,6 +86,7 @@ typedef struct SurviveKalmanTracker {
 	FLT IMU_R[6 * 6];
 	FLT Lightcap_R;
 
+	bool use_error_for_lh_pos;
 } SurviveKalmanTracker;
 
 SURVIVE_EXPORT SurviveVelocity survive_kalman_tracker_velocity(const SurviveKalmanTracker *tracker);

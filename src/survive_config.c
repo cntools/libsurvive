@@ -629,7 +629,7 @@ const char *survive_config_file_path(struct SurviveContext *ctx, char *path) {
 
 #ifdef _WIN32
 		_mkdir(path);
-#else
+#elif __linux__
 		mkdir(path, 0755);
 #endif
 		snprintf(path + idx, FILENAME_MAX - idx, "/%s", configpath);

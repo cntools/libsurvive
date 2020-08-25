@@ -180,7 +180,7 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 		tracker->stats.lightcap_error_by_lh[data->lh] += rtn;
 		tracker->stats.lightcap_count_by_lh[data->lh]++;
 
-		if (tracker->light_residuals[data->lh] > .1) {
+		if (tracker->light_residuals[data->lh] > .1 && tracker->use_error_for_lh_pos) {
 			// SV_WARN("Light residual for lh%d is too high -- %f", data->lh, tracker->light_residuals[data->lh]);
 			survive_lighthouse_adjust_confidence(ctx, data->lh, -.1);
 		}
@@ -522,6 +522,9 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
 	}
 }
 
+STATIC_CONFIG_ITEM(KALMAN_USE_ERROR_FOR_LH_CONFIDENCE, "light-error-for-lh-confidence", 'i',
+				   "Whether or not to invalidate LH positions based on kalman errors", 1)
+
 STATIC_CONFIG_ITEM(KALMAN_LIGHT_ERROR_THRESHOLD, "light-error-threshold", 'f', "Error limit to invalidate position", .1)
 STATIC_CONFIG_ITEM(KALMAN_MIN_REPORT_TIME, "min-report-time", 'f', "Minimum kalman report time in s", .005)
 
@@ -634,6 +637,8 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	survive_attach_configi(tracker->so->ctx, KALMAN_USE_ADAPTIVE_IMU_TAG, &tracker->adaptive_imu);
 	survive_attach_configi(tracker->so->ctx, KALMAN_USE_ADAPTIVE_LIGHTCAP_TAG, &tracker->adaptive_lightcap);
 	survive_attach_configi(tracker->so->ctx, KALMAN_USE_ADAPTIVE_OBS_TAG, &tracker->adaptive_obs);
+
+	tracker->use_error_for_lh_pos = survive_configi(ctx, KALMAN_USE_ERROR_FOR_LH_CONFIDENCE_TAG, SC_GET, 1);
 
 	survive_kalman_tracker_config(tracker, survive_attach_configf);
 
@@ -751,6 +756,9 @@ void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *tracker) {
 		memset(&tracker->so->OutPose, 0, sizeof(SurvivePose));
 	}
 
+	if(!tracker->use_error_for_lh_pos)
+        return;
+	
 	bool objectsAreValid = false;
 	for (int i = 0; i < ctx->objs_ct && !objectsAreValid; i++) {
 		objectsAreValid |= !quatiszero(ctx->objs[i]->OutPoseIMU.Rot);

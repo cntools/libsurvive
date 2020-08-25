@@ -569,7 +569,9 @@ void survive_optimizer_set_reproject_model(survive_optimizer *optimizer,
 
 void survive_optimizer_serialize(const survive_optimizer *opt, const char *fn) {
 	FILE *f = fopen(fn, "w");
-
+	if(f == 0)
+	  return;
+	
 	fprintf(f, "object       %s\n", opt->so->codename);
 	fprintf(f, "currentBias  %+0.16f\n", opt->current_bias);
 	fprintf(f, "initialPose " SurvivePose_format "\n", SURVIVE_POSE_EXPAND(opt->initialPose));

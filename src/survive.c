@@ -806,8 +806,6 @@ void survive_close(SurviveContext *ctx) {
 
 	config_save(ctx);
 
-	survive_destroy_recording(ctx);
-
 	for (int i = 0; i < ctx->driver_ct; i++) {
 		if (ctx->drivercloses[i]) {
 			ctx->drivercloses[i](ctx, ctx->drivers[i]);
@@ -820,6 +818,8 @@ void survive_close(SurviveContext *ctx) {
 		survive_destroy_device(ctx->objs[i]);
 	}
 
+	survive_destroy_recording(ctx);
+		
 	destroy_config_group(ctx->global_config_values);
 	destroy_config_group(ctx->temporary_config_values);
 
