@@ -16,15 +16,6 @@ void intHandler(int dummy) {
 
 #endif
 
-static void button_process(SurviveObject *so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val,
-						   uint8_t axis2Id, uint16_t axis2Val) {
-	struct SurviveContext *ctx = so->ctx;
-	survive_default_button_process(so, eventType, buttonId, axis1Id, axis1Val, axis2Id, axis2Val);
-
-	SV_VERBOSE(150, "%s button event type: %02d id: %02u axis1id: %02u axis1val %5u axis2id: %u02 axis2val %5u",
-			   so->codename, eventType, buttonId, axis1Id, axis1Val, axis2Id, axis2Val);
-}
-
 int main(int argc, char **argv) {
 #ifdef __linux__
 	signal(SIGINT, intHandler);
@@ -37,7 +28,6 @@ int main(int argc, char **argv) {
 		return 0;
 
 	survive_startup(ctx);
-	survive_install_button_fn(ctx, &button_process);
 	while (keepRunning && survive_poll(ctx) == 0) {
 	}
 

@@ -19,6 +19,8 @@ enum SurviveSimpleObject_type {
 	SurviveSimpleObject_EXTERNAL
 };
 
+typedef SurviveObjectSubtype SurviveSimpleSubobject_type;
+
 struct SurviveSimpleObject;
 typedef struct SurviveSimpleObject SurviveSimpleObject;
 typedef void (*SurviveSimpleLogFn)(struct SurviveSimpleContext *ctx, SurviveLogLevel logLevel, const char *msg);
@@ -31,11 +33,11 @@ typedef struct SurviveSimpleEvent SurviveSimpleEvent;
 #define SURVIVE_MAX_AXIS_COUNT 8
 typedef struct SurviveSimpleButtonEvent {
 	SurviveSimpleObject *object;
-	uint8_t event_type;
-	uint8_t button_id;
+	enum SurviveInputEvent event_type;
+	enum SurviveButton button_id;
 
 	uint8_t axis_count;
-	uint8_t axis_ids[SURVIVE_MAX_AXIS_COUNT];
+	enum SurviveAxis axis_ids[SURVIVE_MAX_AXIS_COUNT];
 	uint16_t axis_val[SURVIVE_MAX_AXIS_COUNT];
 } SurviveSimpleButtonEvent;
 
@@ -119,7 +121,7 @@ SURVIVE_EXPORT enum SurviveSimpleEventType survive_simple_next_event(SurviveSimp
 																	 SurviveSimpleEvent *event);
 
 SURVIVE_EXPORT enum SurviveSimpleObject_type survive_simple_object_get_type(const struct SurviveSimpleObject *sao);
-
+SURVIVE_EXPORT SurviveSimpleSubobject_type survive_simple_object_get_subtype(const struct SurviveSimpleObject *sao);
 /**
  * Given an event with the type of 'button', it returns the internal ButtonEvent structure. If the type isn't a button,
  * it returns null.

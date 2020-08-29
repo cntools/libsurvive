@@ -114,14 +114,16 @@ typedef struct survive_kalman_model_t {
 #define SENSORS_PER_OBJECT	32
 
 // These are used for the eventType of button_process_func
-#define BUTTON_EVENT_BUTTON_NONE   0
-#define BUTTON_EVENT_BUTTON_DOWN   1
-#define BUTTON_EVENT_BUTTON_UP     2
-#define BUTTON_EVENT_AXIS_CHANGED  3
-#define BUTTON_EVENT_TOUCH_DOWN    4
-#define BUTTON_EVENT_TOUCH_UP      5
+enum SurviveInputEvent {
+	SURVIVE_INPUT_EVENT_NONE = 0,
+	SURVIVE_INPUT_EVENT_BUTTON_DOWN,
+	SURVIVE_INPUT_EVENT_BUTTON_UP,
+	SURVIVE_INPUT_EVENT_AXIS_CHANGED,
+	SURVIVE_INPUT_EVENT_TOUCH_DOWN,
+	SURVIVE_INPUT_EVENT_TOUCH_UP
+};
 
-enum SurviveButtons {
+enum SurviveButton {
 	SURVIVE_BUTTON_UNKNOWN = 255,
 
 	SURVIVE_BUTTON_TRACKPAD = 1,
@@ -151,6 +153,16 @@ enum SurviveAxis {
 	SURVIVE_AXIS_IPD = 0,
 	SURVIVE_AXIS_FACE_PROXIMITY = 1
 };
+
+typedef enum {
+	SURVIVE_OBJECT_SUBTYPE_GENERIC = 0,
+	SURVIVE_OBJECT_SUBTYPE_INDEX,
+	SURVIVE_OBJECT_SUBTYPE_WAND,
+	SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R,
+	SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L,
+	SURVIVE_OBJECT_SUBTYPE_TRACKER,
+	SURVIVE_OBJECT_SUBTYPE_TRACKER_GEN2,
+} SurviveObjectSubtype;
 
 typedef uint32_t survive_timecode;
 typedef uint64_t survive_long_timecode;
@@ -259,8 +271,8 @@ typedef void (*imu_process_func)(SurviveObject *so, int mask, FLT *accelgyro, su
 /**
  * A general button press event
  */
-typedef void (*button_process_func)(SurviveObject *so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id,
-									uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val);
+typedef void (*button_process_func)(SurviveObject *so, enum SurviveInputEvent eventType, enum SurviveButton buttonId,
+									const enum SurviveAxis *axisIds, const int32_t *axisVals);
 
 /**
  * Called when a pose is solved for at a given time. Given in 'tracking' coordinate frame.
@@ -309,6 +321,10 @@ typedef enum SurviveDeviceDriverReturn {
 
 typedef int (*DeviceDriverCb)( struct SurviveContext * ctx, void * driver );
 typedef int (*DeviceDriverMagicCb)( struct SurviveContext * ctx, void * driver, int magic_code, void * data, int datalen );
+
+SURVIVE_EXPORT const char *SurviveInputEventStr(enum SurviveInputEvent evt);
+SURVIVE_EXPORT const char *SurviveButtonsStr(SurviveObjectSubtype objectSubtype, enum SurviveButton b);
+SURVIVE_EXPORT const char *SurviveAxisStr(SurviveObjectSubtype objectSubtype, enum SurviveAxis b);
 
 #ifdef __cplusplus
 };

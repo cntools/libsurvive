@@ -40,8 +40,8 @@ void survive_recording_velocity_process(SurviveObject *so, uint8_t lighthouse, c
 void survive_recording_info_process(SurviveContext *ctx, const char *fault);
 void survive_recording_sweep_process(SurviveObject *so, survive_channel channel, int sensor_id,
 									 survive_timecode timecode, bool flag);
-void survive_recording_button_process(SurviveObject *so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id,
-									  uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val);
+void survive_recording_button_process(SurviveObject *so, enum SurviveInputEvent eventType, enum SurviveButton buttonId,
+									  const enum SurviveAxis *axisIds, const int32_t *axisVals);
 void survive_recording_angle_process(struct SurviveObject *so, int sensor_id, int acode, uint32_t timecode, FLT length,
 									 FLT angle, uint32_t lh);
 void survive_recording_sweep_angle_process(SurviveObject *so, survive_channel channel, int sensor_id,

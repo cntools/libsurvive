@@ -1046,7 +1046,7 @@ typedef struct {
 	uint8_t proximityValid;
 	uint8_t rawAxisCnt;
 
-	int16_t rawAxis[16];
+	int32_t rawAxis[16];
 	uint8_t proximity[6];
 	uint32_t pressedButtons;
 	uint32_t touchedButtons;
@@ -1085,8 +1085,9 @@ static ButtonQueueEntry *prepareNextButtonEvent(SurviveObject *so) {
 	memset(entry, 0, sizeof(ButtonQueueEntry));
 	assert(so);
 	entry->so = so;
-	entry->axis1Id = -1;
-	entry->axis2Id = -1;
+	for (int i = 0; i < 16; i++) {
+		entry->ids[i] = SURVIVE_AXIS_UNKNOWN;
+	}
 	entry->buttonId = -1;
 	return entry;
 }
@@ -1139,20 +1140,20 @@ static void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
 
 	if (event->pressedButtonsValid) {
 		// printf("trigger %8.8x\n", event->triggerHighRes);
-		entry = registerButtonOnOff(so, entry, event->pressedButtons, so->buttonmask, BUTTON_EVENT_BUTTON_DOWN,
-									BUTTON_EVENT_BUTTON_UP);
+		entry = registerButtonOnOff(so, entry, event->pressedButtons, so->buttonmask, SURVIVE_INPUT_EVENT_BUTTON_DOWN,
+									SURVIVE_INPUT_EVENT_BUTTON_UP);
 	}
 
 	if (event->touchedButtonsValid) {
-		entry = registerButtonOnOff(so, entry, event->touchedButtons, so->touchmask, BUTTON_EVENT_TOUCH_DOWN,
-									BUTTON_EVENT_TOUCH_UP);
+		entry = registerButtonOnOff(so, entry, event->touchedButtons, so->touchmask, SURVIVE_INPUT_EVENT_TOUCH_DOWN,
+									SURVIVE_INPUT_EVENT_TOUCH_UP);
 	}
 
 	if (event->triggerHighResValid) {
 		if (so->axis[0] != event->triggerHighRes) {
-			entry->eventType = BUTTON_EVENT_AXIS_CHANGED;
-			entry->axis1Id = 1;
-			entry->axis1Val = event->triggerHighRes;
+			entry->eventType = SURVIVE_INPUT_EVENT_AXIS_CHANGED;
+			entry->ids[0] = 1;
+			entry->axisValues[0] = event->triggerHighRes;
 			incrementAndPostButtonQueue(so->ctx);
 			entry = prepareNextButtonEvent(so);
 		}
@@ -1164,43 +1165,36 @@ static void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
 
 	if ((event->touchpadHorizontalValid) && (event->touchpadVerticalValid)) {
 		if ((so->axis[1] != event->touchpadHorizontal) || (so->axis[2] != event->touchpadVertical)) {
-			entry->eventType = BUTTON_EVENT_AXIS_CHANGED;
-			entry->axis1Val = event->touchpadHorizontal;
-			entry->axis1Id = 2;
-			entry->axis2Id = 3;
+			entry->eventType = SURVIVE_INPUT_EVENT_AXIS_CHANGED;
+			entry->axisValues[0] = (int16_t)event->touchpadHorizontal;
+			entry->axisValues[1] = (int16_t)event->touchpadVertical;
+			entry->ids[0] = 2;
+			entry->ids[1] = 3;
 
 			if (so->object_subtype == SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R ||
 				so->object_subtype == SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L) {
 				if ((so->buttonmask & (1 << SURVIVE_BUTTON_TRACKPAD)) == 0) {
-					entry->axis1Id = SURVIVE_AXIS_JOYSTICK_X;
-					entry->axis2Id = SURVIVE_AXIS_JOYSTICK_Y;
+					entry->ids[0] = SURVIVE_AXIS_JOYSTICK_X;
+					entry->ids[1] = SURVIVE_AXIS_JOYSTICK_Y;
 				}
 			}
 
-			entry->axis2Val = event->touchpadVertical;
 			incrementAndPostButtonQueue(so->ctx);
 			entry = prepareNextButtonEvent(so);
 		}
 	}
 
 	if (event->proximityValid) {
-		for (int i = 0; i < 4; i++) {
+		size_t axisCnt = 0;
+		for (int i = 0; i < 6; i++) {
 			if (event->proximity[i] != so->axis[SURVIVE_AXIS_MIDDLE_FINGER_PROXIMITY + i]) {
-				entry->eventType = BUTTON_EVENT_AXIS_CHANGED;
-				entry->axis1Id = SURVIVE_AXIS_MIDDLE_FINGER_PROXIMITY + i;
-				entry->axis1Val = event->proximity[i];
-				incrementAndPostButtonQueue(so->ctx);
-				entry = prepareNextButtonEvent(so);
+				entry->eventType = SURVIVE_INPUT_EVENT_AXIS_CHANGED;
+				entry->ids[axisCnt] = SURVIVE_AXIS_MIDDLE_FINGER_PROXIMITY + i;
+				entry->axisValues[axisCnt++] = event->proximity[i];
 			}
 		}
 
-		if (event->proximity[4] != so->axis[SURVIVE_AXIS_GRIP_FORCE] ||
-			event->proximity[5] != so->axis[SURVIVE_AXIS_TRACKPAD_FORCE]) {
-			entry->eventType = BUTTON_EVENT_AXIS_CHANGED;
-			entry->axis1Id = SURVIVE_AXIS_GRIP_FORCE;
-			entry->axis1Val = event->proximity[4];
-			entry->axis2Id = SURVIVE_AXIS_TRACKPAD_FORCE;
-			entry->axis2Val = event->proximity[5];
+		if (axisCnt > 0) {
 			incrementAndPostButtonQueue(so->ctx);
 			entry = prepareNextButtonEvent(so);
 		}
@@ -1209,9 +1203,9 @@ static void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
 	for (int i = 0; i < event->rawAxisCnt; i++) {
 		if (event->rawAxis[i] != so->axis[i]) {
 			so->axis[i] = event->rawAxis[i];
-			entry->eventType = BUTTON_EVENT_AXIS_CHANGED;
-			entry->axis1Id = i;
-			entry->axis1Val = event->rawAxis[i];
+			entry->eventType = SURVIVE_INPUT_EVENT_AXIS_CHANGED;
+			entry->ids[0] = i;
+			entry->axisValues[0] = event->rawAxis[i];
 			incrementAndPostButtonQueue(so->ctx);
 			entry = prepareNextButtonEvent(so);
 		}
@@ -2855,7 +2849,7 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 				//                                      [ IPD][prox]              [F]
 				// 00 08 16 00   00 00 00 00   00 00 00 45 2b 3d 00 00   00 00 00 00   01 00 00 96   01 00 00 00   00 00
 				// 00 00
-				int16_t IPD = readdata[11] | (readdata[12] << 8u);
+				uint16_t IPD = readdata[11] | (readdata[12] << 8u);
 				int16_t proximity = readdata[13] | (readdata[14] << 8u);
 				uint8_t onFace = readdata[19];
 

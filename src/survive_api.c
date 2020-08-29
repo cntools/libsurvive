@@ -189,21 +189,25 @@ static void lh_fn(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthou
 	unlock_and_notify_change(actx);
 }
 
-static void button_fn(SurviveObject *so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val,
-					  uint8_t axis2Id, uint16_t axis2Val) {
+static void button_fn(SurviveObject *so, enum SurviveInputEvent eventType, enum SurviveButton buttonId,
+					  const enum SurviveAxis *axisIds, const int32_t *axisVals) {
 	SurviveSimpleContext *actx = so->ctx->user_ptr;
 	OGLockMutex(actx->poll_mutex);
-	survive_default_button_process(so, eventType, buttonId, axis1Id, axis1Val, axis2Id, axis2Val);
+	survive_default_button_process(so, eventType, buttonId, axisIds, axisVals);
 	struct SurviveSimpleObject *sao = so->user_ptr;
 
 	SurviveSimpleEvent event = {.event_type = SurviveSimpleEventType_ButtonEvent,
-								.button_event = {.object = sao,
-												 .event_type = eventType,
-												 .button_id = buttonId,
-												 .axis_count = 2,
-												 .axis_ids = {axis1Id, axis2Id},
-												 .axis_val = {axis1Val, axis2Val}}};
+								.button_event = {
+									.object = sao,
+									.event_type = eventType,
+									.button_id = buttonId,
+								}};
 
+	for (int i = 0; i < 16 && axisIds && axisIds[i] != 255; i++) {
+		event.button_event.axis_count++;
+		event.button_event.axis_ids[i] = axisIds[i];
+		event.button_event.axis_val[i] = axisVals[i];
+	}
 	insert_into_event_buffer(actx, &event);
 
 	unlock_and_notify_change(actx);
@@ -480,4 +484,11 @@ enum SurviveSimpleEventType survive_simple_next_event(SurviveSimpleContext *actx
 
 enum SurviveSimpleObject_type survive_simple_object_get_type(const struct SurviveSimpleObject *sao) {
 	return sao->type;
+}
+SurviveSimpleSubobject_type survive_simple_object_get_subtype(const struct SurviveSimpleObject *sao) {
+	const SurviveObject *so = survive_simple_get_survive_object(sao);
+	if (so == 0)
+		return SURVIVE_OBJECT_SUBTYPE_GENERIC;
+
+	return so->object_subtype;
 }

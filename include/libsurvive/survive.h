@@ -94,17 +94,6 @@ typedef enum {
 	SURVIVE_OBJECT_TYPE_OTHER
 } SurviveObjectType;
 
-typedef enum {
-	SURVIVE_OBJECT_SUBTYPE_GENERIC = 0,
-	SURVIVE_OBJECT_SUBTYPE_INDEX,
-	SURVIVE_OBJECT_SUBTYPE_WAND,
-	SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R,
-	SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L,
-	SURVIVE_OBJECT_SUBTYPE_TRACKER,
-	SURVIVE_OBJECT_SUBTYPE_TRACKER_GEN2,
-} SurviveObjectSubtype;
-
-
 struct SurviveObject {
 	SurviveContext *ctx;
 
@@ -257,10 +246,10 @@ typedef struct {
 	uint8_t isPopulated; // probably can remove this given the semaphore in the parent struct.   helps with debugging
 	uint8_t eventType;
 	uint8_t buttonId;
-	uint8_t axis1Id;
-	uint16_t axis1Val;
-	uint8_t axis2Id;
-	uint16_t axis2Val;
+
+	enum SurviveAxis ids[16];
+	int32_t axisValues[16];
+
 	SurviveObject *so;
 } ButtonQueueEntry;
 
@@ -442,12 +431,9 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 												  survive_timecode timecode, bool flag);
 SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survive_channel channel, int sensor_id,
 														survive_timecode timecode, int8_t plane, FLT angle);
-
-SURVIVE_EXPORT const char *SurviveButtonsStr(SurviveObjectSubtype objectSubtype, enum SurviveButtons b);
-SURVIVE_EXPORT const char *SurviveAxisStr(SurviveObjectSubtype objectSubtype, enum SurviveAxis b);
-SURVIVE_EXPORT void survive_default_button_process(SurviveObject *so, uint8_t eventType, uint8_t buttonId,
-												   uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id,
-												   uint16_t axis2Val);
+SURVIVE_EXPORT void survive_default_button_process(SurviveObject *so, enum SurviveInputEvent eventType,
+												   enum SurviveButton buttonId, const enum SurviveAxis *axisIds,
+												   const int32_t *axisVals);
 SURVIVE_EXPORT void survive_default_imupose_process(SurviveObject *so, uint32_t timecode, const SurvivePose *imu2world);
 SURVIVE_EXPORT void survive_default_pose_process(SurviveObject *so, survive_timecode timecode, const SurvivePose *pose);
 SURVIVE_EXPORT void survive_default_velocity_process(SurviveObject *so, survive_timecode timecode,

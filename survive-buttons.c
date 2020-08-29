@@ -29,7 +29,7 @@ struct ObjectButtonInfo {
 	struct button_state buttons[32];
 	struct axis_state {
 		bool changed;
-		int16_t v;
+		int32_t v;
 	} axes[16];
 };
 
@@ -50,42 +50,39 @@ struct ObjectButtonInfo* ButtonInfoBySO(SurviveObject* so) {
 FLT last_redraw = 0;
 bool needsRedraw = true;
 
-static void button_process(SurviveObject *so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val,
-						   uint8_t axis2Id, uint16_t axis2Val) {
+static void button_process(SurviveObject *so, enum SurviveInputEvent eventType, enum SurviveButton buttonId,
+						   const enum SurviveAxis *axisIds, const int32_t *axisVals) {
 
 	struct SurviveContext *ctx = so->ctx;
-	survive_default_button_process(so, eventType, buttonId, axis1Id, axis1Val, axis2Id, axis2Val);
+	survive_default_button_process(so, eventType, buttonId, axisIds, axisVals);
 	struct ObjectButtonInfo* info = ButtonInfoBySO(so);
 
 	switch (eventType) {
-	case BUTTON_EVENT_BUTTON_DOWN: {
+	case SURVIVE_INPUT_EVENT_BUTTON_DOWN: {
 		info->buttons[buttonId].changed = true;
 		info->buttons[buttonId].pressed = true;
 		break;
 	}
-	case BUTTON_EVENT_BUTTON_UP: {
+	case SURVIVE_INPUT_EVENT_BUTTON_UP: {
 		info->buttons[buttonId].changed = true;
 		info->buttons[buttonId].pressed = false;
 		break;
 	}
-	case BUTTON_EVENT_TOUCH_DOWN: {
+	case SURVIVE_INPUT_EVENT_TOUCH_DOWN: {
 		info->buttons[buttonId].changed = true;
 		info->buttons[buttonId].touch = true;
 		break;
 	}
-	case BUTTON_EVENT_TOUCH_UP: {
+	case SURVIVE_INPUT_EVENT_TOUCH_UP: {
 		info->buttons[buttonId].changed = true;
 		info->buttons[buttonId].touch = false;
 		break;
 	}
-	case BUTTON_EVENT_AXIS_CHANGED: {
-		if (axis1Id != 255) {
-			info->axes[axis1Id].changed = true;
-			info->axes[axis1Id].v = axis1Val;
-		}
-		if (axis2Id != 255) {
-			info->axes[axis2Id].changed = true;
-			info->axes[axis2Id].v = axis2Val;
+	case SURVIVE_INPUT_EVENT_AXIS_CHANGED: {
+		for (int i = 0; i < 16 && axisIds[i] != 255; i++) {
+			int axisId = axisIds[i];
+			info->axes[axisId].changed = true;
+			info->axes[axisId].v = axisVals[i];
 		}
 		break;
 	}
@@ -116,8 +113,8 @@ static void redraw(SurviveContext *ctx) {
 			if (!buttonInfos[i].axes[k].changed)
 				continue;
 
-			printf("\33[2KAxis   %24s (%2d) %8d %8hu\r\n", SurviveAxisStr(so->object_subtype, k), k,
-				   buttonInfos[i].axes[k].v, buttonInfos[i].axes[k].v);
+			printf("\33[2KAxis   %24s (%2d) %8d\r\n", SurviveAxisStr(so->object_subtype, k), k,
+				   buttonInfos[i].axes[k].v);
 		}
 
 		for(int j = 0;j < 32;j++) {

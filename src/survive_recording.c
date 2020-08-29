@@ -189,8 +189,8 @@ void survive_recording_sweep_process(SurviveObject *so, survive_channel channel,
 	write_to_output(recordingData, SWEEP_PRINTF, SWEEP_PRINTF_ARGS);
 }
 
-void survive_recording_button_process(SurviveObject *so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id,
-									  uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val) {
+void survive_recording_button_process(SurviveObject *so, enum SurviveInputEvent eventType, enum SurviveButton buttonId,
+									  const enum SurviveAxis *axisId, const int32_t *axisVals) {
 	SurviveRecordingData *recordingData = so->ctx->recptr;
 
 	if (!recordingData) {
@@ -198,8 +198,7 @@ void survive_recording_button_process(SurviveObject *so, uint8_t eventType, uint
 	}
 
 	const char *dev = so->codename;
-	write_to_output(recordingData, "%s BUTTON %u %u %u %u %u %u", dev, eventType, buttonId, axis1Id, axis1Val, axis2Id,
-					axis2Val);
+	write_to_output(recordingData, "%s BUTTON %u %u", dev, eventType, buttonId);
 }
 void survive_recording_angle_process(struct SurviveObject *so, int sensor_id, int acode, uint32_t timecode, FLT length,
 									 FLT angle, uint32_t lh) {

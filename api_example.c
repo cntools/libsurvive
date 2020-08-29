@@ -57,8 +57,18 @@ int main(int argc, char **argv) {
 			switch (event.event_type) {
 			case SurviveSimpleEventType_ButtonEvent: {
 				const struct SurviveSimpleButtonEvent *button_event = survive_simple_get_button_event(&event);
-				printf("%s button event %d %d\n", survive_simple_object_name(button_event->object),
-					   (int)button_event->event_type, button_event->button_id);
+				SurviveObjectSubtype subtype = survive_simple_object_get_subtype(button_event->object);
+				printf("%s input %s (%d) ", survive_simple_object_name(button_event->object),
+					   SurviveInputEventStr(button_event->event_type), button_event->event_type);
+				if (button_event->button_id != 255) {
+					printf(" button %16s (%2d) ", SurviveButtonsStr(subtype, button_event->button_id),
+						   button_event->button_id);
+				}
+				for (int i = 0; i < button_event->axis_count; i++) {
+					printf(" %20s (%2d) %8d   ", SurviveAxisStr(subtype, button_event->axis_ids[i]),
+						   button_event->axis_ids[i], button_event->axis_val[i]);
+				}
+				printf("\n");
 			}
 			case SurviveSimpleEventType_None:
 				break;

@@ -150,7 +150,7 @@ static void *button_servicer(void *context) {
 			// should never happen.  indicates failure of code pushing stuff onto
 			// the buttonQueue
 			// if it does happen, it will kill all future button input
-			printf("ERROR: Unpopulated ButtonQueueEntry! NextReadIndex=%d\n", ctx->buttonQueue.nextReadIndex);
+			SV_WARN("Unpopulated ButtonQueueEntry! NextReadIndex=%d\n", ctx->buttonQueue.nextReadIndex);
 			return NULL;
 		}
 
@@ -165,10 +165,9 @@ static void *button_servicer(void *context) {
 		button_process_func butt_func = ctx->buttonproc;
 		if (butt_func) {
 			survive_get_ctx_lock(ctx);
-			survive_recording_button_process(entry->so, entry->eventType, entry->buttonId, entry->axis1Id,
-											 entry->axis1Val, entry->axis2Id, entry->axis2Val);
-			butt_func(entry->so, entry->eventType, entry->buttonId, entry->axis1Id, entry->axis1Val, entry->axis2Id,
-					  entry->axis2Val);
+			survive_recording_button_process(entry->so, entry->eventType, entry->buttonId, entry->ids,
+											 entry->axisValues);
+			butt_func(entry->so, entry->eventType, entry->buttonId, entry->ids, entry->axisValues);
 			survive_release_ctx_lock(ctx);
 		}
 
@@ -1066,7 +1065,28 @@ const char *SurviveAxisStr(SurviveObjectSubtype objectSubtype, enum SurviveAxis 
 	}
 	return 0;
 }
-const char *SurviveButtonsStr(SurviveObjectSubtype objectSubtype, enum SurviveButtons b) {
+
+const char *SurviveInputEventStr(enum SurviveInputEvent evt) {
+	switch (evt) {
+	case SURVIVE_INPUT_EVENT_NONE:
+		return "None";
+	case SURVIVE_INPUT_EVENT_BUTTON_DOWN:
+		return "Button Down";
+	case SURVIVE_INPUT_EVENT_BUTTON_UP:
+		return "Button Up";
+	case SURVIVE_INPUT_EVENT_AXIS_CHANGED:
+		return "Axis Changed";
+	case SURVIVE_INPUT_EVENT_TOUCH_DOWN:
+		return "Touch Down";
+	case SURVIVE_INPUT_EVENT_TOUCH_UP:
+		return "Touch Up";
+	default:
+		break;
+	}
+	return 0;
+}
+
+const char *SurviveButtonsStr(SurviveObjectSubtype objectSubtype, enum SurviveButton b) {
 	switch (objectSubtype) {
 	case SURVIVE_OBJECT_SUBTYPE_INDEX:
 		switch (b) {

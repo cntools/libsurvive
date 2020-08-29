@@ -118,9 +118,8 @@ void survive_default_lightcap_process(SurviveObject *so, const LightcapElement *
 	survive_notify_gen1(so, "Lightcap called");
 }
 
-void survive_default_button_process(SurviveObject * so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id, uint16_t axis2Val)
-{
-}
+void survive_default_button_process(SurviveObject *so, enum SurviveInputEvent eventType, enum SurviveButton buttonId,
+									const enum SurviveAxis *axisIds, const int32_t *axisValues) {}
 
 STATIC_CONFIG_ITEM(REPORT_IN_IMU, "report-in-imu", 'i', "Debug option to output poses in IMU space.", 0)
 void survive_default_imupose_process(SurviveObject *so, uint32_t timecode, const SurvivePose *imu2world) {
