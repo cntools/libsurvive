@@ -329,8 +329,9 @@ int main(int argc, char **argv) {
 
 	FLT last_redraw = OGGetAbsoluteTime();
 	survive_install_sweep_angle_fn(ctx, sweep_fn);
-	survive_install_angle_fn(ctx, angle_fn);	
+	survive_install_angle_fn(ctx, angle_fn);
 	survive_install_printf_fn(ctx, printf_fn);
+	survive_install_log_fn(ctx, info_fn);
 	survive_install_imu_fn(ctx, imu_fn);
 	survive_install_light_fn(ctx, light_fn);
 	survive_startup(ctx);
