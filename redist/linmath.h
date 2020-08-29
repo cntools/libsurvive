@@ -3,7 +3,9 @@
 #ifndef _LINMATH_H
 #define _LINMATH_H
 
+#include <malloc.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 #ifdef __cplusplus
@@ -304,6 +306,42 @@ static inline LinmathPose EulerPose2Pose(const LinmathEulerPose *pose) {
 LINMATH_EXPORT FLT linmath_rand(FLT min, FLT max);
 LINMATH_EXPORT FLT linmath_normrand(FLT mu, FLT sigma);
 
+struct sparse_matrix {
+	size_t rows, cols;
+	int16_t *col_index;
+	int16_t *row_index;
+	FLT *data;
+};
+
+#define ALLOC_SPARSE_MATRIX(n, N_ROWS, N_COLS)                                                                         \
+	struct sparse_matrix n = {                                                                                         \
+		.rows = N_ROWS,                                                                                                \
+		.cols = N_COLS,                                                                                                \
+		.col_index = alloca(sizeof(uint16_t) * N_ROWS * N_COLS),                                                       \
+		.row_index = alloca(sizeof(uint16_t) * (N_ROWS + 1)),                                                          \
+		.data = alloca(sizeof(FLT) * N_ROWS * N_COLS),                                                                 \
+	};
+
+struct CvMat;
+LINMATH_EXPORT void sparse_multiply_sparse_by_dense_sym(struct CvMat *out, const struct sparse_matrix *lhs,
+														const struct CvMat *rhs);
+LINMATH_EXPORT size_t create_sparse_matrix(struct sparse_matrix *out, const struct CvMat *in);
+
+/**
+ * This is a very specialized matrix function to calculate out = A * B * A^t + C
+ * which assumes:
+ * - A is sparse (If not at least 50% zeros; slower than gemm_ABAt_add)
+ * - B is symmetric
+ *
+ * At about 20% 0's; this is twice as fast as gemm_ABAt_add
+ */
+LINMATH_EXPORT void matrix_ABAt_add(struct CvMat *out, const struct CvMat *A, const struct CvMat *B,
+									const struct CvMat *C);
+/**
+ *  Standard implementation of out = A * B * A^t + C for testing; just uses cvGEMM
+ */
+LINMATH_EXPORT void gemm_ABAt_add(struct CvMat *out, const struct CvMat *A, const struct CvMat *B,
+								  const struct CvMat *C);
 #ifdef __cplusplus
 }
 #endif

@@ -425,8 +425,8 @@ int survive_load_htc_config_format_from_file(SurviveObject *so, const char *file
 		fseek(fp, 0L, SEEK_SET);
 		if (len > 0) {
 			char *ct0conf = (char *)malloc(len);
-			fread(ct0conf, 1, len, fp);
-			ctx->configproc(so, ct0conf, len);
+			size_t read = fread(ct0conf, 1, len, fp);
+			ctx->configproc(so, ct0conf, read);
 			fclose(fp);
 		}
 		return 0;

@@ -414,7 +414,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 	if (init_config == 0) {
 		survive_config_file_path(ctx, config_path);
 	} else {
-		strncpy(config_path, init_config, FILENAME_MAX);
+		strncpy(config_path, init_config, FILENAME_MAX - 1);
 		SV_INFO("Initial config file is %s", init_config);
 	}
 	config_read(ctx, config_path);

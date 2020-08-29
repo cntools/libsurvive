@@ -779,7 +779,7 @@ void config_read(SurviveContext *sctx, const char *init_path) {
 
 	char path[FILENAME_MAX] = "";
 	if (init_path) {
-		strncpy(path, init_path, FILENAME_MAX);
+		strncpy(path, init_path, FILENAME_MAX - 1);
 	} else {
 		survive_config_file_path(sctx, path);
 	}

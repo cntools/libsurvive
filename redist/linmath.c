@@ -961,3 +961,137 @@ FLT linmath_normrand(FLT mu, FLT sigma) {
 	z1 = sqrt(-2.0 * log(u1)) * sin(LINMATHPI * 2. * u2);
 	return z0 * sigma + mu;
 }
+
+#pragma GCC push_options
+#pragma GCC optimize("O3")
+#define RM_IDX(row, col, cols) (col + (row * cols))
+
+#ifdef _MSC_VER
+#define RESTRICT_KEYWORD
+#else
+#define RESTRICT_KEYWORD restrict
+#endif
+
+static inline void sparse_multiply_dense_by_sparse_t_to_sym(struct CvMat *out, const CvMat *lhs,
+															const struct sparse_matrix *rhs, const CvMat *aug) {
+	int16_t m = lhs->rows;
+	int16_t k = rhs->cols;
+	int16_t n = rhs->rows;
+	assert(lhs->cols == rhs->cols);
+	assert(out->rows == lhs->rows);
+	assert(out->cols == rhs->rows);
+	assert(out->cols == out->rows);
+
+	const FLT *RESTRICT_KEYWORD A = CV_FLT_PTR(lhs);
+	FLT *RESTRICT_KEYWORD C = CV_FLT_PTR(out);
+
+	if (aug == 0) {
+		for (int i = 0; i < m * n; i++)
+			C[i] = 0;
+	} else {
+		memcpy(C, CV_FLT_PTR(aug), sizeof(FLT) * m * n);
+	}
+
+	const int16_t *RESTRICT_KEYWORD row_index = rhs->row_index;
+	const int16_t *RESTRICT_KEYWORD col_index = rhs->col_index;
+	const FLT *RESTRICT_KEYWORD data = rhs->data;
+	int16_t out_cols = out->cols;
+	int_fast16_t rhs_cols = rhs->cols;
+
+	for (int i = 0; i < n; i++) {
+		int row_start = row_index[i];
+		int row_end = row_index[i + 1];
+
+		for (int z = row_start; z < row_end; z++) {
+			int p = col_index[z];
+			FLT v = data[z]; // B(i, p)
+
+			for (int j = i; j < m; j++) {
+				FLT r = A[RM_IDX(j, p, rhs_cols)]; // A(j, p)
+
+				FLT add = v * r;
+				C[RM_IDX(i, j, out_cols)] += add;
+				if (i != j)
+					C[RM_IDX(j, i, out_cols)] += add;
+			}
+		}
+	}
+}
+
+inline void sparse_multiply_sparse_by_dense_sym(struct CvMat *out, const struct sparse_matrix *lhs, const CvMat *rhs) {
+	int16_t m = lhs->rows;
+	int16_t n = rhs->cols;
+	assert(lhs->cols == rhs->rows);
+	assert(out->rows == lhs->rows);
+	assert(out->cols == rhs->cols);
+	assert(rhs->cols == rhs->rows);
+
+	const FLT *RESTRICT_KEYWORD B = CV_FLT_PTR(rhs);
+	FLT *RESTRICT_KEYWORD C = CV_FLT_PTR(out);
+
+	for (int i = 0; i < m * n; i++)
+		C[i] = 0;
+
+	const int16_t *RESTRICT_KEYWORD row_index = lhs->row_index;
+	const int16_t *RESTRICT_KEYWORD col_index = lhs->col_index;
+	const FLT *RESTRICT_KEYWORD data = lhs->data;
+	int16_t out_cols = out->cols;
+	int_fast16_t rhs_cols = rhs->cols;
+
+	for (int i = 0; i < m; i++) {
+		int row_start = row_index[i];
+		int row_end = row_index[i + 1];
+
+		for (int z = row_start; z < row_end; z++) {
+			for (int j = 0; j < n; j++) {
+
+				int p = col_index[z];
+				FLT v = data[z];				   // A(i, p)
+				FLT r = B[RM_IDX(p, j, rhs_cols)]; // B(p, j)
+
+				C[RM_IDX(i, j, out_cols)] += v * r;
+			}
+		}
+	}
+}
+
+inline size_t create_sparse_matrix(struct sparse_matrix *out, const struct CvMat *in) {
+	int16_t *col_idxs = out->col_index;
+	int16_t *row_idxs = out->row_index;
+	size_t idx = 0;
+	FLT *data = out->data;
+	memset(out->row_index, -1, sizeof(uint16_t) * (out->rows + 1));
+	memset(out->col_index, -1, sizeof(uint16_t) * (out->rows * out->cols));
+
+	const FLT *RESTRICT_KEYWORD input = CV_FLT_PTR(in);
+	for (int i = 0; i < in->rows; i++) {
+		*(row_idxs++) = idx;
+		for (int j = 0; j < in->cols; j++) {
+			FLT v = input[RM_IDX(i, j, in->cols)];
+			if (fabs(v) > 1e-10) {
+				idx++;
+				*(col_idxs++) = j;
+				*(data++) = v;
+			}
+		}
+	}
+	*(row_idxs++) = idx;
+	return idx;
+}
+
+inline void gemm_ABAt_add(struct CvMat *out, const struct CvMat *A, const struct CvMat *B, const struct CvMat *C) {
+	CREATE_STACK_MAT(tmp, A->rows, B->cols);
+	cvGEMM(A, B, 1, 0, 0, &tmp, 0);
+	cvGEMM(&tmp, A, 1, C, 1, out, CV_GEMM_B_T);
+}
+
+void matrix_ABAt_add(struct CvMat *out, const struct CvMat *A, const struct CvMat *B, const struct CvMat *C) {
+	ALLOC_SPARSE_MATRIX(s, A->rows, A->cols);
+	size_t nonzeros = create_sparse_matrix(&s, A);
+
+	CREATE_STACK_MAT(tmp, s.rows, B->cols);
+	sparse_multiply_sparse_by_dense_sym(&tmp, &s, B);
+	sparse_multiply_dense_by_sparse_t_to_sym(out, &tmp, &s, C);
+}
+
+#pragma GCC pop_options

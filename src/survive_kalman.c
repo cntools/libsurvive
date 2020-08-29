@@ -129,7 +129,7 @@ void survive_kalman_predict_covariance(FLT t, const CvMat *F, const CvMat *x, su
 	k->Q_fn(k->user, t, x, _Q);
 
 	// k->P = F * k->P * F^T + Q
-	mulBABt(&Pk1_k1, F, 1, &Q, 1, &Pk1_k1);
+	matrix_ABAt_add(&Pk1_k1, F, &Pk1_k1, &Q);
 
 	if (log_level >= KALMAN_LOG_LEVEL) {
 		SV_KALMAN_VERBOSE(110, "T: %f", t);
@@ -161,8 +161,23 @@ static void survive_kalman_update_covariance(survive_kalman_state_t *k, survive_
 	sv_print_mat("S", &S, 1);
 
 	CREATE_STACK_MAT(iS, H->rows, H->rows);
-	cvInvert(&S, &iS, DECOMP_LU);
 
+	FLT diag = 0, non_diag = 0;
+	for (int i = 0; i < H->rows; i++) {
+		for (int j = 0; j < H->rows; j++) {
+			if (i == j) {
+				diag += fabs(_S[i + j * H->rows]);
+				_iS[i + j * H->rows] = 1. / _S[i + j * H->rows];
+			} else {
+				non_diag += fabs(_S[i + j * H->rows]);
+				_iS[i + j * H->rows] = 0;
+			}
+		}
+	}
+
+	if (diag == 0 || non_diag / diag > 1e-5) {
+		cvInvert(&S, &iS, DECOMP_LU);
+	}
 	sv_print_mat("iS", &iS, 1);
 
 	cvGEMM(&Pk_k1Ht, &iS, 1, 0, 0, K, 0);
