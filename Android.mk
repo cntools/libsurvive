@@ -87,6 +87,10 @@ ifeq ($(SURVIVE_MATH_BACKEND),eigen)
         redist/minimal_opencv.eigen.cpp
 endif
 
+ifneq ($(TARGET_SURVIVE_CONFIG_PATH),)
+    LOCAL_CFLAGS += -DSURVIVE_CONFIG_PATH=\"$(TARGET_SURVIVE_CONFIG_PATH)\"
+endif
+
 include $(BUILD_SHARED_LIBRARY)
 
 # driver_vive
