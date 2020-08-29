@@ -4,7 +4,12 @@ project(libsurvive C CXX)
 include(CheckIncludeFile)
 include (CheckSymbolExists)
 
-option(DO_CORE_BUILD "Only build essentials by default" OFF)
+SET(CORE_BUILD_DEFAULT OFF)
+if(ANDROID)
+  SET(CORE_BUILD_DEFAULT ON)
+endif()
+
+option(DO_CORE_BUILD "Only build essentials by default" ${CORE_BUILD_DEFAULT})
 option(BUILD_STATIC "Build as static library" ${DO_CORE_BUILD})
 
 option(USE_SINGLE_PRECISION "Use float instead of double" OFF)
@@ -29,7 +34,7 @@ check_include_file("gattlib.h" HAVE_GATTLIB_H)
 option(BUILD_GATT_SUPPORT "Whether or not to include gatt support for the basestations -- requires gattlib (https://github.com/labapart/gattlib)" ${HAVE_GATTLIB_H})
 
 check_include_file("zlib.h" HAVE_ZLIB_H)
-IF(NOT HAVE_ZLIB_H)
+IF(NOT HAVE_ZLIB_H OR ANDROID)
   add_definitions(-DNOZLIB)
 ENDIF()
 
@@ -37,6 +42,9 @@ SET(NOT_CORE_BUILD ON)
 if(DO_CORE_BUILD)
   SET(NOT_CORE_BUILD OFF)
 endif()
+
+include_directories(${CMAKE_INSTALL_PREFIX}/include)
+link_directories(${CMAKE_INSTALL_PREFIX}/lib)
 
 IF(UNIX)
 	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=gnu99 -rdynamic -Werror=incompatible-pointer-types -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces -Werror=implicit-function-declaration -Wpedantic -Werror=return-type -fvisibility=hidden -Werror=vla")

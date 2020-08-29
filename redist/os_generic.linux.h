@@ -70,11 +70,13 @@ OSG_INLINE void *OGJoinThread(og_thread_t ot) {
 }
 
 OSG_INLINE void OGCancelThread(og_thread_t ot) {
+#ifndef ANDROID
 	if (!ot) {
 		return;
 	}
 	pthread_cancel(*(pthread_t *)ot);
 	free(ot);
+#endif
 }
 
 static inline void _OGHandlePosixError(const char *msg, int err) {
