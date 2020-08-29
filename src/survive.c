@@ -1046,6 +1046,10 @@ const char *SurviveAxisStr(SurviveObjectSubtype objectSubtype, enum SurviveAxis 
 			return "Trackpad X";
 		case SURVIVE_AXIS_TRACKPAD_Y:
 			return "Trackpad Y";
+		case SURVIVE_AXIS_JOYSTICK_X:
+			return "Joystick X";
+		case SURVIVE_AXIS_JOYSTICK_Y:
+			return "Joystick Y";
 		case SURVIVE_AXIS_MIDDLE_FINGER_PROXIMITY:
 			return "Middle proximity";
 		case SURVIVE_AXIS_RING_FINGER_PROXIMITY:

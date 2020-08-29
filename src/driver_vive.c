@@ -1157,12 +1157,26 @@ static void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
 			entry = prepareNextButtonEvent(so);
 		}
 	}
+
+	if (event->pressedButtonsValid) {
+		so->buttonmask = event->pressedButtons;
+	}
+
 	if ((event->touchpadHorizontalValid) && (event->touchpadVerticalValid)) {
 		if ((so->axis[1] != event->touchpadHorizontal) || (so->axis[2] != event->touchpadVertical)) {
 			entry->eventType = BUTTON_EVENT_AXIS_CHANGED;
-			entry->axis1Id = 2;
 			entry->axis1Val = event->touchpadHorizontal;
+			entry->axis1Id = 2;
 			entry->axis2Id = 3;
+
+			if (so->object_subtype == SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R ||
+				so->object_subtype == SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L) {
+				if ((so->buttonmask & (1 << SURVIVE_BUTTON_TRACKPAD)) == 0) {
+					entry->axis1Id = SURVIVE_AXIS_JOYSTICK_X;
+					entry->axis2Id = SURVIVE_AXIS_JOYSTICK_Y;
+				}
+			}
+
 			entry->axis2Val = event->touchpadVertical;
 			incrementAndPostButtonQueue(so->ctx);
 			entry = prepareNextButtonEvent(so);
@@ -1203,9 +1217,6 @@ static void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
 		}
 	}
 
-	if (event->pressedButtonsValid) {
-		so->buttonmask = event->pressedButtons;
-	}
 	if(event->touchedButtonsValid) {
 		so->touchmask = event->touchedButtons;
 	}
