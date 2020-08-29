@@ -7,6 +7,7 @@ static volatile int keepRunning = 1;
 #include <assert.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <sys/ioctl.h>
 
 void intHandler(int dummy) {
 	if(keepRunning == 0)
@@ -20,15 +21,16 @@ void intHandler(int dummy) {
 struct button_state {
 	bool changed;
 	bool pressed;
-	struct axis_state {
-		bool changed;
-		uint16_t v;
-	} axes[8];
+	bool touch;
 };
 
 struct ObjectButtonInfo {
 	SurviveObject * so;
 	struct button_state buttons[32];
+	struct axis_state {
+		bool changed;
+		int16_t v;
+	} axes[16];
 };
 
 struct ObjectButtonInfo buttonInfos[32];
@@ -45,6 +47,8 @@ struct ObjectButtonInfo* ButtonInfoBySO(SurviveObject* so) {
 	return 0;
 }
 
+FLT last_redraw = 0;
+bool needsRedraw = true;
 
 static void button_process(SurviveObject *so, uint8_t eventType, uint8_t buttonId, uint8_t axis1Id, uint16_t axis1Val,
 						   uint8_t axis2Id, uint16_t axis2Val) {
@@ -53,26 +57,52 @@ static void button_process(SurviveObject *so, uint8_t eventType, uint8_t buttonI
 	survive_default_button_process(so, eventType, buttonId, axis1Id, axis1Val, axis2Id, axis2Val);
 	struct ObjectButtonInfo* info = ButtonInfoBySO(so);
 
-	info->buttons[buttonId].changed = true;
-	if(eventType == BUTTON_EVENT_BUTTON_DOWN) {
+	switch (eventType) {
+	case BUTTON_EVENT_BUTTON_DOWN: {
+		info->buttons[buttonId].changed = true;
 		info->buttons[buttonId].pressed = true;
-	} else if(eventType == BUTTON_EVENT_BUTTON_UP){
+		break;
+	}
+	case BUTTON_EVENT_BUTTON_UP: {
+		info->buttons[buttonId].changed = true;
 		info->buttons[buttonId].pressed = false;
-	} else if(eventType == BUTTON_EVENT_AXIS_CHANGED){
-		info->buttons[buttonId].axes[axis1Id].changed = true;
-		info->buttons[buttonId].axes[axis1Id].v = axis1Val;
-		info->buttons[buttonId].axes[axis2Id].changed = true;
-		info->buttons[buttonId].axes[axis2Id].v = axis2Val;
+		break;
+	}
+	case BUTTON_EVENT_TOUCH_DOWN: {
+		info->buttons[buttonId].changed = true;
+		info->buttons[buttonId].touch = true;
+		break;
+	}
+	case BUTTON_EVENT_TOUCH_UP: {
+		info->buttons[buttonId].changed = true;
+		info->buttons[buttonId].touch = false;
+		break;
+	}
+	case BUTTON_EVENT_AXIS_CHANGED: {
+		if (axis1Id != 255) {
+			info->axes[axis1Id].changed = true;
+			info->axes[axis1Id].v = axis1Val;
+		}
+		if (axis2Id != 255) {
+			info->axes[axis2Id].changed = true;
+			info->axes[axis2Id].v = axis2Val;
+		}
+		break;
+	}
 	}
 
-	//SV_INFO("%s button event type: %02d id: %02u axis1id: %02u axis1val %5u axis2id: %u02 axis2val %5u",
-	//so->codename, eventType, buttonId, axis1Id, axis1Val, axis2Id, axis2Val);
+	/*
+	SV_INFO("%s button event type: %02d id: (%12s)%02u axis1id: %2u axis1val %5u axis2id: %2u axis2val %5u",
+			so->codename, eventType, SurviveButtonsStr(so->object_subtype, buttonId), buttonId, axis1Id, axis1Val,
+	axis2Id, axis2Val);
+*/
+	needsRedraw = true;
 }
 
-FLT last_redraw = 0;
-bool needsRedraw = true;
+char *lines[20] = {0};
+size_t lines_idx = 0;
 
-
+int window_rows = -1, window_cols = -1;
 #define gotoxy(x, y) printf("\033[%d;%dH", (y), (x))
 static void redraw(SurviveContext *ctx) {
 	printf("\033[;H");
@@ -80,34 +110,67 @@ static void redraw(SurviveContext *ctx) {
 		if(buttonInfos[i].so == 0)
 			break;
 
-		printf("Object %s\r\n", buttonInfos[i].so->codename);
+		SurviveObject *so = buttonInfos[i].so;
+		printf("Object %s (pressed: %08x, touched: %08x) \r\n", so->codename, so->buttonmask, so->touchmask);
+		for (int k = 0; k < 16; k++) {
+			if (!buttonInfos[i].axes[k].changed)
+				continue;
+
+			printf("\33[2KAxis   %24s (%2d) %8d %8hu\r\n", SurviveAxisStr(so->object_subtype, k), k,
+				   buttonInfos[i].axes[k].v, buttonInfos[i].axes[k].v);
+		}
+
 		for(int j = 0;j < 32;j++) {
 			if(buttonInfos[i].buttons[j].changed == false)
 				continue;
 
-			printf("Button %3d (%s) ", j, buttonInfos[i].buttons[j].pressed ? "DOWN" : "UP");
-			for(int k = 0;k<8;k++) {
-				if(!buttonInfos[i].buttons[j].axes[k].changed)
-					continue;
+			printf("\33[2KButton %24s (%2d) (%s%s) \r\n", SurviveButtonsStr(so->object_subtype, j), j,
+				   buttonInfos[i].buttons[j].pressed ? "DOWN" : "UP",
+				   buttonInfos[i].buttons[j].touch ? ", CONTACT" : "");
+		}
+		printf("\r\n");
+	}
 
-				printf("Axis %2d %5u ", k, buttonInfos[i].buttons[j].axes[k].v);
-			}
-			printf("\r\n");
+	if (window_cols != -1) {
+		gotoxy(0, window_rows - 20 - 1);
+		printf("=== Log ===\n");
+		for (int i = 0; i < 20; i++) {
+			char *line = lines[(lines_idx + i) % 20];
+			if (line != 0)
+				printf("\33[2K\r %s\n", line);
 		}
 	}
 
 	needsRedraw = false;
 }
+char *new_str(const char *s) {
+	char *rtn = calloc(strlen(s) + 1, sizeof(char));
+	strcpy(rtn, s);
+	return rtn;
+}
+
 int printf_fn(SurviveContext *ctx, const char *fault, ...) { return 0; }
-void info_fn(SurviveContext *ctx, SurviveLogLevel logLevel, const char *fault) { }
+void info_fn(SurviveContext *ctx, SurviveLogLevel logLevel, const char *fault) {
+	free(lines[lines_idx % 20]);
+	lines[lines_idx % 20] = new_str(fault);
+	lines_idx++;
+	needsRedraw = true;
+}
 
 int main(int argc, char **argv) {
 #ifdef __linux__
 	signal(SIGINT, intHandler);
 	signal(SIGTERM, intHandler);
 	signal(SIGKILL, intHandler);
+
+	struct winsize w;
+	ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+	window_cols = w.ws_col;
+	window_rows = w.ws_row;
 #endif
-	system("clear");
+	int retcode = system("clear");
+	(void)retcode;
+
 	SurviveContext *ctx = survive_init(argc, argv);
 	if (ctx == 0) // implies -help or similiar
 		return 0;

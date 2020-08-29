@@ -1043,7 +1043,11 @@ typedef struct {
 	uint8_t touchpadHorizontalValid;
 	uint8_t touchpadVerticalValid;
 	uint8_t triggerHighResValid;
+	uint8_t proximityValid;
+	uint8_t rawAxisCnt;
 
+	int16_t rawAxis[16];
+	uint8_t proximity[6];
 	uint32_t pressedButtons;
 	uint32_t touchedButtons;
 	uint16_t triggerOrBattery;
@@ -1059,7 +1063,7 @@ void incrementAndPostButtonQueue(SurviveContext *ctx) {
 
 	if ((ctx->buttonQueue.nextWriteIndex + 1) % BUTTON_QUEUE_MAX_LEN == ctx->buttonQueue.nextReadIndex) {
 		// There's not enough space to write this entry.  Clear it out and move along
-		// printf("Button Buffer Full\n");
+		SV_WARN("Button buffer full");
 		memset(entry, 0, sizeof(ButtonQueueEntry));
 		return;
 	}
@@ -1081,9 +1085,52 @@ static ButtonQueueEntry *prepareNextButtonEvent(SurviveObject *so) {
 	memset(entry, 0, sizeof(ButtonQueueEntry));
 	assert(so);
 	entry->so = so;
+	entry->axis1Id = -1;
+	entry->axis2Id = -1;
+	entry->buttonId = -1;
 	return entry;
 }
 
+static inline ButtonQueueEntry *registerButtonOnOff(SurviveObject *so, ButtonQueueEntry *entry, uint32_t incoming_mask,
+													uint32_t current_mask, uint8_t eventTypeDown, uint8_t eventTypeUp) {
+	for (uint8_t a = 0; a < 16; a++) {
+		if ((incoming_mask & (1u << a)) != (current_mask & (1u << a))) {
+			// Hey, the button did something
+			if (incoming_mask & (1u << a)) {
+				// it went down
+				entry->eventType = eventTypeDown;
+			} else {
+				// it went up
+				entry->eventType = eventTypeUp;
+			}
+			entry->buttonId = a;
+			if (entry->buttonId == 0) {
+				// this fixes 2 issues.  First, is the a button id of 0 indicates no button pressed.
+				// second is that the trigger shows up as button 0 coming from the wireless controller,
+				// but we infer it from the position on the wired controller.  On the wired, we treat it
+				// as buttonId 24 (look further down in this function)
+				entry->buttonId = 24;
+			}
+			incrementAndPostButtonQueue(so->ctx);
+			entry = prepareNextButtonEvent(so);
+		}
+	}
+	// if the trigger button is depressed & it wasn't before
+	if (((incoming_mask & (0xff000000)) == 0xff000000) && (current_mask & (0xff000000)) != 0xff000000) {
+		entry->eventType = eventTypeDown;
+		entry->buttonId = 24;
+		incrementAndPostButtonQueue(so->ctx);
+		entry = prepareNextButtonEvent(so);
+	}
+	// if the trigger button isn't depressed but it was before
+	else if (((incoming_mask & (0xff000000)) != 0xff000000) && (current_mask & (0xff000000)) == 0xff000000) {
+		entry->eventType = eventTypeUp;
+		entry->buttonId = 24;
+		incrementAndPostButtonQueue(so->ctx);
+		entry = prepareNextButtonEvent(so);
+	}
+	return entry;
+}
 // important!  This must be the only place that we're posting to the buttonEntryQueue
 // if that ever needs to be changed, you will have to add locking so that only one
 // thread is posting at a time.
@@ -1092,47 +1139,17 @@ static void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
 
 	if (event->pressedButtonsValid) {
 		// printf("trigger %8.8x\n", event->triggerHighRes);
-		for (int a = 0; a < 16; a++) {
-			if (((event->pressedButtons) & (1 << a)) != ((so->buttonmask) & (1 << a))) {
-				// Hey, the button did something
-				if (event->pressedButtons & (1 << a)) {
-					// it went down
-					entry->eventType = BUTTON_EVENT_BUTTON_DOWN;
-				} else {
-					// it went up
-					entry->eventType = BUTTON_EVENT_BUTTON_UP;
-				}
-				entry->buttonId = a;
-				if (entry->buttonId == 0) {
-					// this fixes 2 issues.  First, is the a button id of 0 indicates no button pressed.
-					// second is that the trigger shows up as button 0 coming from the wireless controller,
-					// but we infer it from the position on the wired controller.  On the wired, we treat it
-					// as buttonId 24 (look further down in this function)
-					entry->buttonId = 24;
-				}
-				incrementAndPostButtonQueue(so->ctx);
-				entry = prepareNextButtonEvent(so);
-			}
-		}
-		// if the trigger button is depressed & it wasn't before
-		if ((((event->pressedButtons) & (0xff000000)) == 0xff000000) &&
-			((so->buttonmask) & (0xff000000)) != 0xff000000) {
-			entry->eventType = BUTTON_EVENT_BUTTON_DOWN;
-			entry->buttonId = 24;
-			incrementAndPostButtonQueue(so->ctx);
-			entry = prepareNextButtonEvent(so);
-		}
-		// if the trigger button isn't depressed but it was before
-		else if ((((event->pressedButtons) & (0xff000000)) != 0xff000000) &&
-				 ((so->buttonmask) & (0xff000000)) == 0xff000000) {
-			entry->eventType = BUTTON_EVENT_BUTTON_UP;
-			entry->buttonId = 24;
-			incrementAndPostButtonQueue(so->ctx);
-			entry = prepareNextButtonEvent(so);
-		}
+		entry = registerButtonOnOff(so, entry, event->pressedButtons, so->buttonmask, BUTTON_EVENT_BUTTON_DOWN,
+									BUTTON_EVENT_BUTTON_UP);
 	}
+
+	if (event->touchedButtonsValid) {
+		entry = registerButtonOnOff(so, entry, event->touchedButtons, so->touchmask, BUTTON_EVENT_TOUCH_DOWN,
+									BUTTON_EVENT_TOUCH_UP);
+	}
+
 	if (event->triggerHighResValid) {
-		if (so->axis1 != event->triggerHighRes) {
+		if (so->axis[0] != event->triggerHighRes) {
 			entry->eventType = BUTTON_EVENT_AXIS_CHANGED;
 			entry->axis1Id = 1;
 			entry->axis1Val = event->triggerHighRes;
@@ -1141,12 +1158,46 @@ static void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
 		}
 	}
 	if ((event->touchpadHorizontalValid) && (event->touchpadVerticalValid)) {
-		if ((so->axis2 != event->touchpadHorizontal) || (so->axis3 != event->touchpadVertical)) {
+		if ((so->axis[1] != event->touchpadHorizontal) || (so->axis[2] != event->touchpadVertical)) {
 			entry->eventType = BUTTON_EVENT_AXIS_CHANGED;
 			entry->axis1Id = 2;
 			entry->axis1Val = event->touchpadHorizontal;
 			entry->axis2Id = 3;
 			entry->axis2Val = event->touchpadVertical;
+			incrementAndPostButtonQueue(so->ctx);
+			entry = prepareNextButtonEvent(so);
+		}
+	}
+
+	if (event->proximityValid) {
+		for (int i = 0; i < 4; i++) {
+			if (event->proximity[i] != so->axis[SURVIVE_AXIS_MIDDLE_FINGER_PROXIMITY + i]) {
+				entry->eventType = BUTTON_EVENT_AXIS_CHANGED;
+				entry->axis1Id = SURVIVE_AXIS_MIDDLE_FINGER_PROXIMITY + i;
+				entry->axis1Val = event->proximity[i];
+				incrementAndPostButtonQueue(so->ctx);
+				entry = prepareNextButtonEvent(so);
+			}
+		}
+
+		if (event->proximity[4] != so->axis[SURVIVE_AXIS_GRIP_FORCE] ||
+			event->proximity[5] != so->axis[SURVIVE_AXIS_TRACKPAD_FORCE]) {
+			entry->eventType = BUTTON_EVENT_AXIS_CHANGED;
+			entry->axis1Id = SURVIVE_AXIS_GRIP_FORCE;
+			entry->axis1Val = event->proximity[4];
+			entry->axis2Id = SURVIVE_AXIS_TRACKPAD_FORCE;
+			entry->axis2Val = event->proximity[5];
+			incrementAndPostButtonQueue(so->ctx);
+			entry = prepareNextButtonEvent(so);
+		}
+	}
+
+	for (int i = 0; i < event->rawAxisCnt; i++) {
+		if (event->rawAxis[i] != so->axis[i]) {
+			so->axis[i] = event->rawAxis[i];
+			entry->eventType = BUTTON_EVENT_AXIS_CHANGED;
+			entry->axis1Id = i;
+			entry->axis1Val = event->rawAxis[i];
 			incrementAndPostButtonQueue(so->ctx);
 			entry = prepareNextButtonEvent(so);
 		}
@@ -1161,14 +1212,19 @@ static void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
 	if (event->batteryChargeValid) {
 		so->charge = event->batteryCharge;
 	}
+	if (event->triggerHighResValid) {
+		so->axis[0] = event->triggerHighRes;
+	}
 	if (event->touchpadHorizontalValid) {
-		so->axis2 = event->touchpadHorizontal;
+		so->axis[1] = event->touchpadHorizontal;
 	}
 	if (event->touchpadVerticalValid) {
-		so->axis3 = event->touchpadVertical;
+		so->axis[2] = event->touchpadVertical;
 	}
-	if (event->triggerHighResValid) {
-		so->axis1 = event->triggerHighRes;
+	if (event->proximityValid) {
+		for (int i = 0; i < 6; i++) {
+			so->axis[3 + i] = event->proximity[i];
+		}
 	}
 }
 
@@ -1595,12 +1651,12 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 
 		bool firstGen = ((flags & 0x7) != 0);
 
+		buttonEvent bEvent = {0};
 		if (firstGen) {
 			bool flagTrigger = HAS_FLAG(flags, 0x4);
 			bool flagMotion = HAS_FLAG(flags, 0x2);
 			bool flagButton = HAS_FLAG(flags, 0x1);
 
-			buttonEvent bEvent = { 0 };
 			if (flagButton) {
 				bEvent.pressedButtonsValid = 1;
 				bEvent.pressedButtons = POP_BYTE(payloadPtr);
@@ -1619,7 +1675,6 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 				bEvent.touchpadVertical = POP_SHORT(payloadPtr);
 			}
 
-			registerButtonEvent(w, &bEvent);
 		} else {
 			// Second gen event (Eg Knuckles proximity)
 			uint8_t genTwoType =
@@ -1637,35 +1692,21 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 				// 0x10 = Button A
 				// 0x20 = Button B
 				// 0x40 = Thumbstick
-				buttonEvent bEvent = { 0 };
+
 				bEvent.touchedButtonsValid = 1;
-				bEvent.touchedButtons = touchFlags;
-
-
+				bEvent.touchedButtons = (touchFlags & ~0x40u);
+				bEvent.touchedButtons |= ((touchFlags & 0x40u) >> 4);
+				bEvent.proximityValid = 1;
 
 				// Non-touching proximity to fingers
-				uint8_t fingerProximity[4];
-				fingerProximity[0] = POP_BYTE(payloadPtr); // Middle finger
-				fingerProximity[1] = POP_BYTE(payloadPtr); // Ring finger
-				fingerProximity[2] = POP_BYTE(payloadPtr); // Pinky finger
-				fingerProximity[3] = POP_BYTE(payloadPtr); // Index finger (trigger)
-				(void)fingerProximity;
+				bEvent.proximity[0] = POP_BYTE(payloadPtr); // Middle finger
+				bEvent.proximity[1] = POP_BYTE(payloadPtr); // Ring finger
+				bEvent.proximity[2] = POP_BYTE(payloadPtr); // Pinky finger
+				bEvent.proximity[3] = POP_BYTE(payloadPtr); // Index finger (trigger)
 
 				// Contact force (Squeeze strength)
-				uint8_t gripForce = POP_BYTE(payloadPtr);
-				uint8_t trackpadForce = POP_BYTE(payloadPtr);
-				(void)gripForce;
-				(void)trackpadForce;
-
-				SV_VERBOSE(
-					150,
-					"KAS: @%04hX | Grip    [Proximity: %02X %02X %02X %02X] [Touch: %s%s%s%s%s (%02X)] [Grip: %02X "
-					"%02X]",
-					time, fingerProximity[3], fingerProximity[0], fingerProximity[1], fingerProximity[2],
-					HAS_FLAG(touchFlags, 0x01) ? "#" : "_", HAS_FLAG(touchFlags, 0x08) ? "#" : "_",
-					HAS_FLAG(touchFlags, 0x10) ? "#" : "_", HAS_FLAG(touchFlags, 0x20) ? "#" : "_",
-					HAS_FLAG(touchFlags, 0x40) ? "#" : "_", touchFlags, gripForce, trackpadForce);
-
+				bEvent.proximity[4] = POP_BYTE(payloadPtr);
+				bEvent.proximity[5] = POP_BYTE(payloadPtr);
 			} else {
 				SV_WARN("Unknown gen two event %s 0x%02hX 0b%s [Time:%04hX] [Payload: %s] <<ABORT FURTHER READ>>",
 						w->codename, *(payloadPtr - 1), byteToBin(*(payloadPtr - 1)), time,
@@ -1675,6 +1716,7 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 				return false;
 			}
 		}
+		registerButtonEvent(w, &bEvent);
 	} else {
 		/*
 		 * Flags for non-input (status) events are as follows:
@@ -1899,6 +1941,7 @@ static bool handle_input(SurviveObject *w, uint8_t flags, uint8_t **payloadPtr, 
 	struct SurviveContext *ctx = w->ctx;
 	bool firstGen = ((flags & 0x7) != 0);
 	buttonEvent bEvent = { 0 };
+	uint8_t *payloadStart = *payloadPtr;
 
 	if (firstGen) {
 		bool flagTrigger = HAS_FLAG(flags, 0x4);
@@ -1926,7 +1969,6 @@ static bool handle_input(SurviveObject *w, uint8_t flags, uint8_t **payloadPtr, 
 			bEvent.touchpadVertical = POP_SHORT(*payloadPtr);
 		}
 		SV_VERBOSE(150, "handle_input flags %d %d %d", flagButton, flagTrigger, flagMotion);
-		registerButtonEvent(w, &bEvent);
 	} else {
 		// Second gen event (Eg Knuckles proximity)
 		uint8_t genTwoType =
@@ -1945,32 +1987,21 @@ static bool handle_input(SurviveObject *w, uint8_t flags, uint8_t **payloadPtr, 
 			// 0x40 = Thumbstick
 
 			bEvent.touchedButtonsValid = 1;
-			bEvent.touchedButtons = touchFlags;
+			bEvent.touchedButtons = (touchFlags & ~0x40u);
+			bEvent.touchedButtons |= ((touchFlags & 0x40u) >> 4);
+
+			bEvent.proximityValid = 1;
 
 			// Non-touching proximity to fingers
-			uint8_t fingerProximity[4];
-			fingerProximity[0] = POP_BYTE(*payloadPtr); // Middle finger
-			fingerProximity[1] = POP_BYTE(*payloadPtr); // Ring finger
-			fingerProximity[2] = POP_BYTE(*payloadPtr); // Pinky finger
-			fingerProximity[3] = POP_BYTE(*payloadPtr); // Index finger (trigger)
-			(void)fingerProximity;
+			bEvent.proximity[0] = POP_BYTE(*payloadPtr); // Middle finger
+			bEvent.proximity[1] = POP_BYTE(*payloadPtr); // Ring finger
+			bEvent.proximity[2] = POP_BYTE(*payloadPtr); // Pinky finger
+			bEvent.proximity[3] = POP_BYTE(*payloadPtr); // Index finger (trigger)
 
 			// Contact force (Squeeze strength)
-			uint8_t gripForce = POP_BYTE(*payloadPtr);
-			uint8_t trackpadForce = POP_BYTE(*payloadPtr);
-			(void)gripForce;
-			(void)trackpadForce;
-
-			registerButtonEvent(w, &bEvent);
-
-			SV_VERBOSE(
-				150,
-				"handle_input A1 : | Grip    [Proximity: %02X %02X %02X %02X] [Touch: %s%s%s%s%s (%02X)] [Grip: %02X "
-				"%02X]",
-				fingerProximity[3], fingerProximity[0], fingerProximity[1], fingerProximity[2],
-				HAS_FLAG(touchFlags, 0x01) ? "#" : "_", HAS_FLAG(touchFlags, 0x08) ? "#" : "_",
-				HAS_FLAG(touchFlags, 0x10) ? "#" : "_", HAS_FLAG(touchFlags, 0x20) ? "#" : "_",
-				HAS_FLAG(touchFlags, 0x40) ? "#" : "_", touchFlags, gripForce, trackpadForce);
+			bEvent.proximity[4] = POP_BYTE(*payloadPtr);
+			// Trackpad force
+			bEvent.proximity[5] = POP_BYTE(*payloadPtr);
 		} else {
 			SV_WARN("Unknown gen two event 0x%02hX 0b%s [Payload: %s] <<ABORT FURTHER READ>>", *(*payloadPtr - 1),
 					byteToBin(*(*payloadPtr - 1)), packetToHex(*payloadPtr, payloadEndPtr));
@@ -1979,6 +2010,8 @@ static bool handle_input(SurviveObject *w, uint8_t flags, uint8_t **payloadPtr, 
 			return false;
 		}
 	}
+
+	registerButtonEvent(w, &bEvent);
 	return true;
 
 exit_failure:
@@ -2545,16 +2578,24 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 	case USB_IF_HMD_HEADSET_INFO: {
 		SurviveObject *headset = obj;
 		readdata += 2;
-		headset->buttonmask = POP1; // Lens
-		headset->axis2 = POP2;		// Lens Separation
+		buttonEvent event = {0};
+
+		event.touchedButtonsValid = 0;
+		event.touchedButtons = POP1; // Lens
+		event.rawAxisCnt = 3;
+
+		event.rawAxis[1] = POP2; // Lens Separation
 		readdata += 2;
-		headset->buttonmask |= POP1; // Button
+		event.touchedButtons |= POP1; // Button
 		readdata += 3;
 		readdata++; // Proxchange, No change = 0, Decrease = 1, Increase = 2
 		readdata++;
-		headset->axis3 = POP2; // Proximity  	<< how close to face are you?  Less than 80 = not on face.
-		headset->axis1 = POP2; // IPD   		<< what is this?
+		event.rawAxis[2] = POP2; // Proximity  	<< how close to face are you?  Less than 80 = not on face.
+		event.rawAxis[0] = POP2; // IPD   		<< what is this?
 		headset->ison = 1;
+
+		registerButtonEvent(headset, &event);
+
 		break;
 	}
 	case USB_IF_HMD_IMU:
@@ -2800,6 +2841,23 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 			}
 			case 0x0800: {
 				// HMD Spews this at a frequent interval
+				//                                      [ IPD][prox]              [F]
+				// 00 08 16 00   00 00 00 00   00 00 00 45 2b 3d 00 00   00 00 00 00   01 00 00 96   01 00 00 00   00 00
+				// 00 00
+				int16_t IPD = readdata[11] | (readdata[12] << 8u);
+				int16_t proximity = readdata[13] | (readdata[14] << 8u);
+				uint8_t onFace = readdata[19];
+
+				survive_dump_buffer(ctx, readdata, 32);
+
+				buttonEvent evt = {0};
+				evt.rawAxisCnt = 2;
+				evt.rawAxis[0] = IPD;
+				evt.rawAxis[1] = proximity;
+				evt.pressedButtonsValid = 1;
+				evt.pressedButtons = onFace;
+				registerButtonEvent(obj, &evt);
+
 				break;
 			}
 			case 0x100: {

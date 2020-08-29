@@ -165,6 +165,8 @@ static void *button_servicer(void *context) {
 		button_process_func butt_func = ctx->buttonproc;
 		if (butt_func) {
 			survive_get_ctx_lock(ctx);
+			survive_recording_button_process(entry->so, entry->eventType, entry->buttonId, entry->axis1Id,
+											 entry->axis1Val, entry->axis2Id, entry->axis2Val);
 			butt_func(entry->so, entry->eventType, entry->buttonId, entry->axis1Id, entry->axis1Val, entry->axis2Id,
 					  entry->axis2Val);
 			survive_release_ctx_lock(ctx);
@@ -1018,4 +1020,77 @@ void survive_install_run_time_fn(SurviveContext *ctx, survive_run_time_fn fn, vo
 		pctx->runTimeFn = fn;
 		pctx->runTimeFnUser = user;
 	}
+}
+
+const char *SurviveAxisStr(SurviveObjectSubtype objectSubtype, enum SurviveAxis b) {
+	switch (objectSubtype) {
+	case SURVIVE_OBJECT_SUBTYPE_INDEX:
+		switch (b) {
+		case SURVIVE_AXIS_IPD:
+			return "IPD";
+		case SURVIVE_AXIS_FACE_PROXIMITY:
+			return "Face Proximity";
+		}
+		break;
+	case SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R:
+	case SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L:
+	case SURVIVE_OBJECT_SUBTYPE_WAND:
+		switch (b) {
+		case SURVIVE_AXIS_TRACKPAD_FORCE:
+			return "Trackpad force";
+		case SURVIVE_AXIS_UNKNOWN:
+			return "Unknown";
+		case SURVIVE_AXIS_TRIGGER:
+			return "Trigger";
+		case SURVIVE_AXIS_TRACKPAD_X:
+			return "Trackpad X";
+		case SURVIVE_AXIS_TRACKPAD_Y:
+			return "Trackpad Y";
+		case SURVIVE_AXIS_MIDDLE_FINGER_PROXIMITY:
+			return "Middle proximity";
+		case SURVIVE_AXIS_RING_FINGER_PROXIMITY:
+			return "Ring proximity";
+		case SURVIVE_AXIS_PINKY_FINGER_PROXIMITY:
+			return "Pinky proximity";
+		case SURVIVE_AXIS_TRIGGER_FINGER_PROXIMITY:
+			return "Trigger proximity";
+		case SURVIVE_AXIS_GRIP_FORCE:
+			return "Grip force";
+		}
+	default:
+		break;
+	}
+	return 0;
+}
+const char *SurviveButtonsStr(SurviveObjectSubtype objectSubtype, enum SurviveButtons b) {
+	switch (objectSubtype) {
+	case SURVIVE_OBJECT_SUBTYPE_INDEX:
+		switch (b) {
+		case SURVIVE_BUTTON_ON_FACE:
+			return "On face";
+		}
+		break;
+	case SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R:
+	case SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L:
+	case SURVIVE_OBJECT_SUBTYPE_WAND:
+		switch (b) {
+		case SURVIVE_BUTTON_TRACKPAD:
+			return "Trackpad";
+		case SURVIVE_BUTTON_THUMBSTICK:
+			return "Thumbstick";
+		case SURVIVE_BUTTON_SYSTEM:
+			return "System";
+		case SURVIVE_BUTTON_A:
+			return "A";
+		case SURVIVE_BUTTON_B:
+			return "B";
+		case SURVIVE_BUTTON_TRIGGER:
+			return "Trigger";
+		default:
+			break;
+		}
+	default:
+		break;
+	}
+	return 0;
 }

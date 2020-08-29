@@ -116,10 +116,8 @@ struct SurviveObject {
 	SurviveObjectSubtype object_subtype;
 	int32_t buttonmask;
 	int32_t touchmask;
-	int16_t axis1;
+	int16_t axis[16];
 
-	int16_t axis2;
-	int16_t axis3;
 	int8_t charge;
 	int8_t charging : 1;
 	uint8_t ison : 1;
@@ -445,6 +443,8 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survive_channel channel, int sensor_id,
 														survive_timecode timecode, int8_t plane, FLT angle);
 
+SURVIVE_EXPORT const char *SurviveButtonsStr(SurviveObjectSubtype objectSubtype, enum SurviveButtons b);
+SURVIVE_EXPORT const char *SurviveAxisStr(SurviveObjectSubtype objectSubtype, enum SurviveAxis b);
 SURVIVE_EXPORT void survive_default_button_process(SurviveObject *so, uint8_t eventType, uint8_t buttonId,
 												   uint8_t axis1Id, uint16_t axis1Val, uint8_t axis2Id,
 												   uint16_t axis2Val);
