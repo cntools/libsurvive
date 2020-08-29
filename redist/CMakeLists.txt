@@ -81,7 +81,7 @@ IF (ENABLE_TESTS)
 	target_link_libraries(lintest minimal_opencv)
 	set_target_properties(lintest PROPERTIES FOLDER "tests")
 
-	add_executable(minimal_opencvtest minimal_opencvtest.c)
+	add_executable(minimal_opencvtest minimal_opencvtest.c linmath.c)
 	target_link_libraries(minimal_opencvtest minimal_opencv)
 	set_target_properties(minimal_opencvtest PROPERTIES FOLDER "tests")
 

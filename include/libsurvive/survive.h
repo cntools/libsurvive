@@ -94,8 +94,17 @@ typedef enum {
 	SURVIVE_OBJECT_TYPE_OTHER
 } SurviveObjectType;
 
-// DANGER: This structure may be redefined.  Note that it is logically split into 64-bit chunks
-// for optimization on 32- and 64-bit systems.
+typedef enum {
+	SURVIVE_OBJECT_SUBTYPE_GENERIC = 0,
+	SURVIVE_OBJECT_SUBTYPE_INDEX,
+	SURVIVE_OBJECT_SUBTYPE_WAND,
+	SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R,
+	SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L,
+	SURVIVE_OBJECT_SUBTYPE_TRACKER,
+	SURVIVE_OBJECT_SUBTYPE_TRACKER_GEN2,
+} SurviveObjectSubtype;
+
+
 struct SurviveObject {
 	SurviveContext *ctx;
 
@@ -104,8 +113,9 @@ struct SurviveObject {
 	char serial_number[16]; // 13 letters device serial number
 	void *driver;
 	SurviveObjectType object_type;
-
+	SurviveObjectSubtype object_subtype;
 	int32_t buttonmask;
+	int32_t touchmask;
 	int16_t axis1;
 
 	int16_t axis2;

@@ -294,6 +294,12 @@ static int process_jsontok(scratch_space_t *scratch, char *d, stack_entry_t *sta
 					size = t->end - t->start;
 
 				memcpy(scratch->so->serial_number, d + t->start, size);
+			} else if (jsoneq(d, stack->key, "model_number") == 0) {
+				if(strncmp("Knuckles Right", d + t->start, t->end - t->start) == 0) {
+					scratch->so->object_subtype = SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R;
+				} else if (strncmp("Knuckles Left", d + t->start, t->end - t->start) == 0) {
+					scratch->so->object_subtype = SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L;
+				}
 			}
 		}
 
@@ -355,7 +361,6 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	solve_vive_pose(&so->head2trackref, &scratch.head);
 
 	SurvivePose trackref2imu = InvertPoseRtn(&so->imu2trackref);
-	// InvertPose(&so->head2trackref, &so->head2trackref);
 
 	bool sensorsAreZero = true;
 	for (int i = 0; i < so->sensor_ct; i++) {

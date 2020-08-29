@@ -1,7 +1,8 @@
 #include <errno.h>
+#include <math.h>
 
-#include "survive.h"
 #include "os_generic.h"
+#include "survive.h"
 
 #include "survive_recording.h"
 #include "survive_internal.h"
@@ -270,6 +271,10 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 			if (sscanf(line, "%lf", &driver->next_time_s) != 1) {
 				free(line);
 				return 0;
+			}
+
+			if(!isfinite(driver->next_time_s)) {
+				driver->next_time_s = 0;
 			}
 			free(line);
 			line = 0;

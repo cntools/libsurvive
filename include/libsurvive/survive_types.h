@@ -118,6 +118,18 @@ typedef struct survive_kalman_model_t {
 #define BUTTON_EVENT_BUTTON_DOWN   1
 #define BUTTON_EVENT_BUTTON_UP     2
 #define BUTTON_EVENT_AXIS_CHANGED  3
+#define BUTTON_EVENT_TOUCH_DOWN    4
+#define BUTTON_EVENT_TOUCH_UP      5
+
+enum SurviveButtons{
+	SURVIVE_BUTTON_UNKNOWN = 0,
+	SURVIVE_BUTTON_TRACKPAD = 1,
+	SURVIVE_BUTTON_THUMBSTICK = 2,
+	SURVIVE_BUTTON_SYSTEM = 3,
+	SURVIVE_BUTTON_A = 4,
+	SURVIVE_BUTTON_B = 5,
+	SURVIVE_BUTTON_TRIGGER = 24,
+};
 
 typedef uint32_t survive_timecode;
 typedef uint64_t survive_long_timecode;

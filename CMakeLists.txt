@@ -88,7 +88,7 @@ add_subdirectory(redist)
 add_subdirectory(src)
 add_subdirectory(tools)
 
-SET(SURVIVE_EXECUTABLES data_recorder survive-cli api_example sensors-readout survive-solver)
+SET(SURVIVE_EXECUTABLES data_recorder survive-cli api_example sensors-readout survive-solver survive-buttons)
 foreach(executable ${SURVIVE_EXECUTABLES})
   option(ENABLE_${executable} "Build ${executable}" ${NOT_CORE_BUILD})
 
@@ -117,7 +117,7 @@ IF(TARGET survive-cli)
   add_custom_command(TARGET survive-cli POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy ${SURVIVE_WEBSOCKETD} $<TARGET_FILE_DIR:survive-cli>
     )
-  install(PROGRAMS survive${SURVIVE_WEBSOCKETD} DESTINATION bin)
+  install(PROGRAMS ${SURVIVE_WEBSOCKETD} DESTINATION bin)
 endif()
 
 install(DIRECTORY include/libsurvive DESTINATION include)

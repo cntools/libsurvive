@@ -1036,6 +1036,7 @@ typedef struct {
 	// could use a bitfield here, but since this data is short-lived,
 	// the space savings probably isn't worth the processing overhead.
 	uint8_t pressedButtonsValid;
+	uint32_t touchedButtonsValid;
 	uint8_t triggerOfBatteryValid;
 	uint8_t batteryChargeValid;
 	uint8_t hardwareIdValid;
@@ -1044,6 +1045,7 @@ typedef struct {
 	uint8_t triggerHighResValid;
 
 	uint32_t pressedButtons;
+	uint32_t touchedButtons;
 	uint16_t triggerOrBattery;
 	uint8_t batteryCharge;
 	uint32_t hardwareId;
@@ -1152,6 +1154,9 @@ static void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
 
 	if (event->pressedButtonsValid) {
 		so->buttonmask = event->pressedButtons;
+	}
+	if(event->touchedButtonsValid) {
+		so->touchmask = event->touchedButtons;
 	}
 	if (event->batteryChargeValid) {
 		so->charge = event->batteryCharge;
@@ -1595,8 +1600,7 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 			bool flagMotion = HAS_FLAG(flags, 0x2);
 			bool flagButton = HAS_FLAG(flags, 0x1);
 
-			static buttonEvent bEvent;
-			memset(&bEvent, 0, sizeof(bEvent));
+			buttonEvent bEvent = { 0 };
 			if (flagButton) {
 				bEvent.pressedButtonsValid = 1;
 				bEvent.pressedButtons = POP_BYTE(payloadPtr);
@@ -1633,6 +1637,11 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 				// 0x10 = Button A
 				// 0x20 = Button B
 				// 0x40 = Thumbstick
+				buttonEvent bEvent = { 0 };
+				bEvent.touchedButtonsValid = 1;
+				bEvent.touchedButtons = touchFlags;
+
+
 
 				// Non-touching proximity to fingers
 				uint8_t fingerProximity[4];
@@ -1889,14 +1898,13 @@ static bool handle_input(SurviveObject *w, uint8_t flags, uint8_t **payloadPtr, 
 	 */
 	struct SurviveContext *ctx = w->ctx;
 	bool firstGen = ((flags & 0x7) != 0);
+	buttonEvent bEvent = { 0 };
 
 	if (firstGen) {
 		bool flagTrigger = HAS_FLAG(flags, 0x4);
 		bool flagMotion = HAS_FLAG(flags, 0x2);
 		bool flagButton = HAS_FLAG(flags, 0x1);
 
-		static buttonEvent bEvent;
-		memset(&bEvent, 0, sizeof(bEvent));
 		if (flagButton) {
 			bEvent.pressedButtonsValid = 1;
 			VERIFY_LENGTH_OR_FAIL(*payloadPtr, 1);
@@ -1936,6 +1944,9 @@ static bool handle_input(SurviveObject *w, uint8_t flags, uint8_t **payloadPtr, 
 			// 0x20 = Button B
 			// 0x40 = Thumbstick
 
+			bEvent.touchedButtonsValid = 1;
+			bEvent.touchedButtons = touchFlags;
+
 			// Non-touching proximity to fingers
 			uint8_t fingerProximity[4];
 			fingerProximity[0] = POP_BYTE(*payloadPtr); // Middle finger
@@ -1949,6 +1960,8 @@ static bool handle_input(SurviveObject *w, uint8_t flags, uint8_t **payloadPtr, 
 			uint8_t trackpadForce = POP_BYTE(*payloadPtr);
 			(void)gripForce;
 			(void)trackpadForce;
+
+			registerButtonEvent(w, &bEvent);
 
 			SV_VERBOSE(
 				150,
@@ -2769,29 +2782,53 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 			//} usb_buttons_raw;
 
 			// usb_buttons_raw *raw = (usb_buttons_raw*) readdata;
-			if (read_buffer16(readdata, 0) == 0x100) {
-				buttonEvent bEvent;
-				memset(&bEvent, 0, sizeof(bEvent));
+			uint16_t reportType = read_buffer16(readdata, 0);
 
-				bEvent.pressedButtonsValid = 1;
-				bEvent.pressedButtons = read_buffer32(readdata, 0x7);
-				bEvent.triggerHighResValid = 1;
-				// bEvent.triggerHighRes = raw->triggerHighRes;
-				// bEvent.triggerHighRes = (raw->pressedButtons & 0xff000000) >> 24; // this seems to provide the same
-				// data at 2x the resolution as above bEvent.triggerHighRes = raw->triggerRaw;
+			switch(reportType) {
+			case 0x0400: {
+				// Very infrequent; doesnt seem periodic.
+				// 00 04 0b 68   00 00 00 00   00 00 00 3e   0f 93 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00     |    ...h  ....  ...>  ....  ....  ....  ....  ....
+				// 00 04 0b 17   00 00 00 00   00 00 00 3e   0f 93 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00     |    ....  ....  ...>  ....  ....  ....  ....  ....
+				break;
+			}
+			case 0x0700: {
+				// Not sure what this is exacty; comes in at ~20hz as an incrementing counter.
+				uint8_t unsure = readdata[2]; // Was always 0x3c?
+				uint8_t timer = readdata[3];
+				SV_VERBOSE(2000, "%f    0x700 Report %2x %2x", OGRelativeTime(), unsure, timer);
+				break;
+			}
+			case 0x0800: {
+				// HMD Spews this at a frequent interval
+				break;
+			}
+			case 0x100: {
+					buttonEvent bEvent;
+					memset(&bEvent, 0, sizeof(bEvent));
 
-				bEvent.triggerHighRes = read_buffer16(readdata, 0x19);
-				bEvent.touchpadHorizontalValid = 1;
-				// bEvent.touchpadHorizontal = raw->touchpadHorizontal;
-				bEvent.touchpadHorizontal = read_buffer16(readdata, 0x13);
-				bEvent.touchpadVerticalValid = 1;
-				// bEvent.touchpadVertical = raw->touchpadVertical;
-				bEvent.touchpadVertical = read_buffer16(readdata, 0x15);
+					bEvent.pressedButtonsValid = 1;
+					bEvent.pressedButtons = read_buffer32(readdata, 0x7);
+					bEvent.triggerHighResValid = 1;
+					// bEvent.triggerHighRes = raw->triggerHighRes;
+					// bEvent.triggerHighRes = (raw->pressedButtons & 0xff000000) >> 24; // this seems to provide the same
+					// data at 2x the resolution as above bEvent.triggerHighRes = raw->triggerRaw;
 
-				// printf("%4.4x\n", bEvent.triggerHighRes);
-				registerButtonEvent(obj, &bEvent);
+					bEvent.triggerHighRes = read_buffer16(readdata, 0x19);
+					bEvent.touchpadHorizontalValid = 1;
+					// bEvent.touchpadHorizontal = raw->touchpadHorizontal;
+					bEvent.touchpadHorizontal = read_buffer16(readdata, 0x13);
+					bEvent.touchpadVerticalValid = 1;
+					// bEvent.touchpadVertical = raw->touchpadVertical;
+					bEvent.touchpadVertical = read_buffer16(readdata, 0x15);
 
-				// printf("Buttons: %8.8x\n", raw->pressedButtons);
+					// printf("%4.4x\n", bEvent.triggerHighRes);
+					registerButtonEvent(obj, &bEvent);
+
+					// printf("Buttons: %8.8x\n", raw->pressedButtons);
+				}
+				default: {
+					survive_dump_buffer(ctx, readdata, size);
+				}
 			}
 		} else {
 			SV_WARN("Unknown report id 0x%02x for %s", id, obj->codename);
