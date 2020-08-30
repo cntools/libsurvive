@@ -9,14 +9,24 @@ namespace libsurvive
     using SurviveObjectPtr = IntPtr;
     using SurvivePosePtr = IntPtr;
 
-    [StructLayout(LayoutKind.Sequential)]
+	using SurviveSimpleContextPtr = IntPtr;
+	using SurviveSimpleObjectPtr = IntPtr;
+
+	[StructLayout(LayoutKind.Sequential)]
     public class SurvivePose
     {
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
+		public SurvivePose() {
+			Pos = new double[3];
+			Rot = new double[4];
+			Rot[0] = 1;
+		}
+		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
         public double[] Pos; // Position in the form xyz
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
-        public double[] Rot; // Quaternion in the form wxyz        
-    }
+		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
+		public double[] Rot; // Quaternion in the form wxyz
+
+		public override string ToString() { return string.Join(",", Pos) + ", " + string.Join(",", Rot); }
+	}
 
 	[StructLayout(LayoutKind.Sequential)]
 	public class SurviveIMUData {
@@ -26,6 +36,19 @@ namespace libsurvive
 		public double[] Gyro; // Position in the form xyz
 		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
 		public double[] Mag; // Position in the form xyz
+	}
+
+	[StructLayout(LayoutKind.Sequential)]
+	public class SurviveSimpleButtonEvent {
+		public SurviveSimpleObjectPtr obj;
+		public UInt32 event_type;
+		public UInt32 button_id;
+
+		public Byte axis_count;
+		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
+		public UInt32[] axis_ids;
+		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
+		public Int32[] axis_values;
 	}
 
 	class Cfunctions
@@ -129,6 +152,66 @@ namespace libsurvive
 
         //#pragma warning restore IDE1006 // Naming Styles
     }
+
+	class Cfunctions_api {
+		[DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_simple_init")]
+		public static extern SurviveSimpleContextPtr survive_simple_init(int argc, string[] args);
+
+		[DllImport("libsurvive", CallingConvention = CallingConvention.StdCall,
+				   EntryPoint = "survive_simple_init_with_logger")]
+		public static extern SurviveSimpleContextPtr survive_simple_init_with_logger(int argc, string[] args,
+																					 SurviveSimpleLogFn fn);
+
+		[DllImport("libsurvive", CallingConvention = CallingConvention.StdCall,
+				   EntryPoint = "survive_simple_start_thread")]
+		public static extern void survive_simple_start_thread(SurviveSimpleContextPtr actx);
+
+		[DllImport("libsurvive", CallingConvention = CallingConvention.StdCall,
+				   EntryPoint = "survive_simple_get_first_object")]
+		public static extern SurviveSimpleObjectPtr survive_simple_get_first_object(SurviveSimpleContextPtr actx);
+
+		[DllImport("libsurvive", CallingConvention = CallingConvention.StdCall,
+				   EntryPoint = "survive_simple_get_next_object")]
+		public static extern SurviveSimpleObjectPtr survive_simple_get_next_object(SurviveSimpleContextPtr actx,
+																				   SurviveSimpleObjectPtr aso);
+
+		[DllImport("libsurvive", CallingConvention = CallingConvention.Cdecl, EntryPoint = "survive_simple_object_name",
+				   CharSet = CharSet.Ansi)]
+		public static extern IntPtr survive_simple_object_name(SurviveSimpleObjectPtr aso);
+
+		[DllImport("libsurvive", CallingConvention = CallingConvention.StdCall,
+				   EntryPoint = "survive_simple_serial_number")]
+		public static extern string survive_simple_serial_number(SurviveSimpleObjectPtr aso);
+
+		[DllImport("libsurvive", CallingConvention = CallingConvention.StdCall,
+				   EntryPoint = "survive_simple_wait_for_update")]
+		public static extern bool survive_simple_wait_for_update(SurviveSimpleContextPtr actx);
+
+		[DllImport("libsurvive", CallingConvention = CallingConvention.StdCall,
+				   EntryPoint = "survive_simple_get_next_updated")]
+		public static extern SurviveSimpleObjectPtr survive_simple_get_next_updated(SurviveSimpleContextPtr actx);
+
+		[DllImport("libsurvive", CallingConvention = CallingConvention.Cdecl,
+				   EntryPoint = "survive_simple_object_get_latest_pose")]
+		public static extern double survive_simple_object_get_latest_pose(SurviveSimpleObjectPtr aso, IntPtr pose);
+
+		[DllImport("libsurvive", CallingConvention = CallingConvention.StdCall,
+				   EntryPoint = "survive_simple_next_event")]
+		public static extern UInt32 survive_simple_next_event(SurviveSimpleObjectPtr aso, IntPtr evt);
+
+		[DllImport("libsurvive", CallingConvention = CallingConvention.StdCall,
+				   EntryPoint = "survive_simple_get_button_event")]
+		public static extern SurviveSimpleButtonEvent survive_simple_get_button_event(IntPtr evt);
+
+		[DllImport("libsurvive", CallingConvention = CallingConvention.StdCall, EntryPoint = "survive_simple_close")]
+		public static extern void survive_simple_close(SurviveSimpleContextPtr actx);
+
+		[DllImport("libsurvive", CallingConvention = CallingConvention.StdCall,
+				   EntryPoint = "survive_simple_is_running")]
+		public static extern bool survive_simple_is_running(SurviveSimpleContextPtr actx);
+	}
+	[UnmanagedFunctionPointer(CallingConvention.StdCall)]
+	public delegate void SurviveSimpleLogFn(SurviveSimpleContextPtr actx, UInt32 logLevel, string msg);
 
 	[UnmanagedFunctionPointer(CallingConvention.StdCall)]
 	public delegate int config_func(SurviveObjectPtr so, string ct0conf, int len);

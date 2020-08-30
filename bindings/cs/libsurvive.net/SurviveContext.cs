@@ -44,8 +44,12 @@ namespace libsurvive
         internal void Init(string[] args)
         {
             string[] newArgs = new string[args.Length + 1];
-            newArgs[0] = System.Reflection.Assembly.GetEntryAssembly().FullName;
-            Array.Copy(args, 0, newArgs, 1, args.Length);
+			newArgs[0] = "program";
+			if (System.Reflection.Assembly.GetEntryAssembly() != null) {
+				newArgs[0] = System.Reflection.Assembly.GetEntryAssembly().FullName;
+			}
+
+			Array.Copy(args, 0, newArgs, 1, args.Length);
 
 			ctx = Cfunctions.Survive_init_internal(newArgs.Length, newArgs, IntPtr.Zero, log_func);
 
