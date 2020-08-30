@@ -12,16 +12,10 @@ namespace Demo
     {
         static void Main(string[] args)
         {
-            LibSurViveAPI api = LibSurViveAPI.Instance;
-
-            var so = api.GetSurviveObjectByName("HMD");
-            
-        }
-
-        public static void HMDUpdate(int ObjectID, Vector3 pos)
-        {
-
-        }
-
-    }
+			SurviveContext api = new SurviveContext(args);
+			while (api.Poll() == 0) {
+			}
+			api.Close();
+		}
+	}
 }
