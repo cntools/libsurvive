@@ -333,9 +333,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 	const char * autocomplete_match[3] = { 0, 0, 0};
 	int showhelp = 0;
 	for (; av < argvend; av++) {
-		if ((*av)[0] != '-')
-			showhelp = 1;
-		else {
+		if ((*av)[0] == '-') {
 			const char *vartoupdate = 0;
 
 			switch ((*av)[1]) {
@@ -365,8 +363,9 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 				vartoupdate = "v";
 				break;
 			default:
-				fprintf(stderr, "Error: unknown short parameter '%s'\n", *av);
-				showhelp = 1;
+				break;
+				// fprintf(stderr, "Error: unknown short parameter '%s'\n", *av);
+				// showhelp = 1;
 			}
 
 			if (vartoupdate) {

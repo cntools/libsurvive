@@ -121,10 +121,10 @@ struct SurviveObject {
 	// objImu2world
 	SurvivePose OutPoseIMU;
 	FLT poseConfidence;
-	survive_timecode OutPose_timecode;
+	survive_long_timecode OutPose_timecode;
 
 	SurviveVelocity velocity;
-	survive_timecode velocity_timecode;
+	survive_long_timecode velocity_timecode;
 
 	SurvivePose
 		FromLHPose[NUM_GEN2_LIGHTHOUSES]; // Filled out by poser, contains computed position from each lighthouse.

@@ -360,8 +360,8 @@ const SurviveSimpleObject *survive_simple_get_next_updated(SurviveSimpleContext 
 	return 0;
 }
 
-survive_timecode survive_simple_object_get_latest_velocity(const SurviveSimpleObject *sao, SurviveVelocity *velocity) {
-	uint32_t timecode = 0;
+FLT survive_simple_object_get_latest_velocity(const SurviveSimpleObject *sao, SurviveVelocity *velocity) {
+	FLT timecode = 0;
 	OGLockMutex(sao->actx->poll_mutex);
 
 	switch (sao->type) {
@@ -373,7 +373,8 @@ survive_timecode survive_simple_object_get_latest_velocity(const SurviveSimpleOb
 	case SurviveSimpleObject_OBJECT:
 		if (velocity)
 			*velocity = sao->data.so->velocity;
-		timecode = sao->data.so->velocity_timecode;
+		timecode = sao->data.so->velocity_timecode / (FLT)sao->data.so->timebase_hz;
+		;
 		break;
 	case SurviveSimpleObject_EXTERNAL:
 		if (velocity)
@@ -390,8 +391,8 @@ survive_timecode survive_simple_object_get_latest_velocity(const SurviveSimpleOb
 	return timecode;
 }
 
-uint32_t survive_simple_object_get_latest_pose(const SurviveSimpleObject *sao, SurvivePose *pose) {
-	uint32_t timecode = 0;
+FLT survive_simple_object_get_latest_pose(const SurviveSimpleObject *sao, SurvivePose *pose) {
+	FLT timecode = 0;
 	OGLockMutex(sao->actx->poll_mutex);
 
 	switch (sao->type) {
@@ -404,7 +405,7 @@ uint32_t survive_simple_object_get_latest_pose(const SurviveSimpleObject *sao, S
 	case SurviveSimpleObject_OBJECT:
 		if (pose)
 			*pose = sao->data.so->OutPose;
-		timecode = sao->data.so->OutPose_timecode;
+		timecode = sao->data.so->OutPose_timecode / (FLT)sao->data.so->timebase_hz;
 		break;
 	case SurviveSimpleObject_EXTERNAL:
 		if (pose)

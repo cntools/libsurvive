@@ -38,7 +38,7 @@ typedef struct SurviveSimpleButtonEvent {
 
 	uint8_t axis_count;
 	enum SurviveAxis axis_ids[SURVIVE_MAX_AXIS_COUNT];
-	uint16_t axis_val[SURVIVE_MAX_AXIS_COUNT];
+	int32_t axis_val[SURVIVE_MAX_AXIS_COUNT];
 } SurviveSimpleButtonEvent;
 
 /***
@@ -90,14 +90,12 @@ SURVIVE_EXPORT const SurviveSimpleObject *survive_simple_get_next_updated(Surviv
 /**
  * Gets the pose of a given object
  */
-SURVIVE_EXPORT survive_timecode survive_simple_object_get_latest_pose(const SurviveSimpleObject *sao,
-																	  SurvivePose *pose);
+SURVIVE_EXPORT FLT survive_simple_object_get_latest_pose(const SurviveSimpleObject *sao, SurvivePose *pose);
 
 /**
  * Gets the velocity of a given object
  */
-SURVIVE_EXPORT survive_timecode survive_simple_object_get_latest_velocity(const SurviveSimpleObject *sao,
-																		  SurviveVelocity *pose);
+SURVIVE_EXPORT FLT survive_simple_object_get_latest_velocity(const SurviveSimpleObject *sao, SurviveVelocity *pose);
 
 /**
  * Gets the null terminated name of the object.
