@@ -128,6 +128,18 @@ IF(TARGET survive-cli)
   install(PROGRAMS ${SURVIVE_WEBSOCKETD} DESTINATION bin)
 endif()
 
+find_program(DOTNET dotnet)
+if(DOTNET)
+  execute_process(
+    COMMAND ${DOTNET} build -c Release
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bindings/cs/)
+
+  file(GLOB_RECURSE CS_BINDINGS
+    "${CMAKE_CURRENT_SOURCE_DIR}/bindings/cs/libsurvive.net/bin/Release/*.dll")
+
+  install(FILES ${CS_BINDINGS} DESTINATION "lib")
+endif()
+
 install(DIRECTORY include/libsurvive DESTINATION include)
 
 file(GLOB REDIST_HEADERS
