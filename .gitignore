@@ -6,7 +6,6 @@ lib
 calibrate_client
 calibrate
 test
-data_recorder
 simple_pose_test
 cmake-build-*
 survive

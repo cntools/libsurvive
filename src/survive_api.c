@@ -311,8 +311,9 @@ void survive_simple_close(SurviveSimpleContext *actx) {
 		n = n->next;
 		free(freeMe);
 	}
+
 	OGDeleteMutex(actx->poll_mutex);
-	OGJoinThread(actx->thread);
+
 	OGDeleteConditionVariable(actx->update_cv);
 	actx->thread = 0;
 	free(actx);
@@ -470,7 +471,7 @@ const SurviveSimpleButtonEvent *survive_simple_get_button_event(const SurviveSim
 
 bool survive_simple_wait_for_update(SurviveSimpleContext *actx) {
 	OGLockMutex(actx->poll_mutex);
-	OGWaitCond(actx->update_cv, actx->poll_mutex);
+	OGWaitCondTimeout(actx->update_cv, actx->poll_mutex, 100);
 	OGUnlockMutex(actx->poll_mutex);
 	return survive_simple_is_running(actx);
 }

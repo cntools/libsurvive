@@ -63,19 +63,19 @@ typedef void *og_mutex_t;
 typedef void *og_sema_t;
 typedef void *og_cv_t;
 
+#include "stdbool.h"
+#include "stdint.h"
+#include "stdlib.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include "stdlib.h"
-#include "stdint.h"
-  
-  OSG_INLINE void OGSleep(int is);
+OSG_INLINE void OGSleep(int is);
+OSG_INLINE int OGUSleep(int ius);
+OSG_INLINE double OGGetAbsoluteTime();
 
-  OSG_INLINE int OGUSleep(int ius);
-  OSG_INLINE double OGGetAbsoluteTime();
-
-  static inline double OGRelativeTime() {
+static inline double OGRelativeTime() {
     static double start_time_s = 0;
     if (start_time_s == 0.)
       start_time_s = OGGetAbsoluteTime();

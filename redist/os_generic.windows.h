@@ -122,7 +122,13 @@ OSG_INLINE void OGDeleteSema(og_sema_t os) { CloseHandle(os); }
 
 OSG_INLINE void OGSignalCond(og_cv_t cv) { WakeConditionVariable((PCONDITION_VARIABLE)cv); }
 OSG_INLINE void OGBroadcastCond(og_cv_t cv) { WakeAllConditionVariable((PCONDITION_VARIABLE)cv); }
-OSG_INLINE void OGWaitCond(og_cv_t cv, og_mutex_t m) { SleepConditionVariableCS((PCONDITION_VARIABLE)cv,(CRITICAL_SECTION*)m, INFINITE); }
+OSG_INLINE void OGWaitCond(og_cv_t cv, og_mutex_t m) {
+	SleepConditionVariableCS((PCONDITION_VARIABLE)cv, (CRITICAL_SECTION *)m, INFINITE);
+}
+
+OSG_INLINE bool OGWaitCondTimeout(og_cv_t cv, og_mutex_t m, int ms) {
+	return SleepConditionVariableCS((PCONDITION_VARIABLE)cv, (CRITICAL_SECTION *)m, ms) != 0;
+}
 
 OSG_INLINE void OGDeleteConditionVariable(og_cv_t cv) { free(cv); }
 

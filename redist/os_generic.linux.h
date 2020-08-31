@@ -2,6 +2,7 @@
 #error Do not include this file directly
 #endif
 
+#include <errno.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdint.h>
@@ -149,6 +150,19 @@ OSG_INLINE void OGBroadcastCond(og_cv_t cv) {
 }
 OSG_INLINE void OGWaitCond(og_cv_t cv, og_mutex_t m) {
 	_OGHandlePosixError("OGWaitCond", pthread_cond_wait((pthread_cond_t *)cv, (pthread_mutex_t *)m));
+}
+OSG_INLINE bool OGWaitCondTimeout(og_cv_t cv, og_mutex_t m, int ms) {
+	struct timespec ts = {0};
+	clock_gettime(CLOCK_REALTIME, &ts);
+	uint64_t waittil = (uint64_t)ts.tv_sec * 1000000000 + ts.tv_nsec + ms * 1000000;
+
+	ts.tv_sec = waittil / 1000000000;
+	ts.tv_nsec = waittil % 1000000000;
+
+	int err = pthread_cond_timedwait((pthread_cond_t *)cv, (pthread_mutex_t *)m, &ts);
+	if (err != 0 && err != ETIMEDOUT)
+		_OGHandlePosixError("OGWaitCond", err);
+	return err == 0;
 }
 
 OSG_INLINE void OGDeleteConditionVariable(og_cv_t cv) {
