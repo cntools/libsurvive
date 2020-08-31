@@ -1092,9 +1092,82 @@ static ButtonQueueEntry *prepareNextButtonEvent(SurviveObject *so) {
 	return entry;
 }
 
+enum ButtonEventSource { BUTTON_EVENT_SOURCE_DEFAULT = 0, BUTTON_EVENT_SOURCE_RF = 1 };
+
+static void get_eventTypes_for_idx(const SurviveObject *so, uint8_t idx, uint8_t *down, uint8_t *up,
+								   enum ButtonEventSource source) {
+	switch (source) {
+	case BUTTON_EVENT_SOURCE_RF: {
+		switch (so->object_subtype) {
+		case SURVIVE_OBJECT_SUBTYPE_WAND: {
+			switch (idx) {
+			case 1:
+				*down = SURVIVE_INPUT_EVENT_TOUCH_DOWN;
+				*up = SURVIVE_INPUT_EVENT_TOUCH_UP;
+				break;
+			}
+		}
+		}
+	}
+	default:
+		switch (so->object_subtype) {
+		case SURVIVE_OBJECT_SUBTYPE_WAND: {
+			switch (idx) {
+			case 20:
+				*down = SURVIVE_INPUT_EVENT_TOUCH_DOWN;
+				*up = SURVIVE_INPUT_EVENT_TOUCH_UP;
+				break;
+			}
+		}
+		}
+	}
+}
+
+static uint8_t get_button_id_for_idx(const SurviveObject *so, uint8_t idx, enum ButtonEventSource source) {
+	switch (source) {
+	case BUTTON_EVENT_SOURCE_RF: {
+		switch (so->object_subtype) {
+		case SURVIVE_OBJECT_SUBTYPE_WAND: {
+			switch (idx) {
+			case 7:
+				return SURVIVE_BUTTON_TRACKPAD;
+			case 5:
+				return SURVIVE_BUTTON_MENU;
+			case 4:
+				return SURVIVE_BUTTON_GRIP;
+			default:
+				break;
+			}
+		}
+		}
+	}
+	default: {
+		switch (so->object_subtype) {
+		case SURVIVE_OBJECT_SUBTYPE_WAND: {
+			switch (idx) {
+			case 20:
+			case 18:
+				return SURVIVE_BUTTON_TRACKPAD;
+			case 13:
+				return SURVIVE_BUTTON_SYSTEM;
+			case 12:
+				return SURVIVE_BUTTON_MENU;
+			case 2:
+				return SURVIVE_BUTTON_GRIP;
+			}
+		}
+		}
+	}
+	}
+	return idx;
+}
+
 static inline ButtonQueueEntry *registerButtonOnOff(SurviveObject *so, ButtonQueueEntry *entry, uint32_t incoming_mask,
-													uint32_t current_mask, uint8_t eventTypeDown, uint8_t eventTypeUp) {
-	for (uint8_t a = 0; a < 16; a++) {
+													uint32_t current_mask, uint8_t defaultEventTypeDown,
+													uint8_t defaultEventTypeUp, enum ButtonEventSource source) {
+	for (uint8_t a = 0; a < 32; a++) {
+		uint8_t eventTypeDown = defaultEventTypeDown, eventTypeUp = defaultEventTypeUp;
+		get_eventTypes_for_idx(so, a, &eventTypeDown, &eventTypeUp, source);
 		if ((incoming_mask & (1u << a)) != (current_mask & (1u << a))) {
 			// Hey, the button did something
 			if (incoming_mask & (1u << a)) {
@@ -1104,7 +1177,7 @@ static inline ButtonQueueEntry *registerButtonOnOff(SurviveObject *so, ButtonQue
 				// it went up
 				entry->eventType = eventTypeUp;
 			}
-			entry->buttonId = a;
+			entry->buttonId = get_button_id_for_idx(so, a, source);
 			if (entry->buttonId == 0) {
 				// this fixes 2 issues.  First, is the a button id of 0 indicates no button pressed.
 				// second is that the trigger shows up as button 0 coming from the wireless controller,
@@ -1118,14 +1191,14 @@ static inline ButtonQueueEntry *registerButtonOnOff(SurviveObject *so, ButtonQue
 	}
 	// if the trigger button is depressed & it wasn't before
 	if (((incoming_mask & (0xff000000)) == 0xff000000) && (current_mask & (0xff000000)) != 0xff000000) {
-		entry->eventType = eventTypeDown;
+		entry->eventType = defaultEventTypeDown;
 		entry->buttonId = 24;
 		incrementAndPostButtonQueue(so->ctx);
 		entry = prepareNextButtonEvent(so);
 	}
 	// if the trigger button isn't depressed but it was before
 	else if (((incoming_mask & (0xff000000)) != 0xff000000) && (current_mask & (0xff000000)) == 0xff000000) {
-		entry->eventType = eventTypeUp;
+		entry->eventType = defaultEventTypeUp;
 		entry->buttonId = 24;
 		incrementAndPostButtonQueue(so->ctx);
 		entry = prepareNextButtonEvent(so);
@@ -1135,18 +1208,18 @@ static inline ButtonQueueEntry *registerButtonOnOff(SurviveObject *so, ButtonQue
 // important!  This must be the only place that we're posting to the buttonEntryQueue
 // if that ever needs to be changed, you will have to add locking so that only one
 // thread is posting at a time.
-static void registerButtonEvent(SurviveObject *so, buttonEvent *event) {
+static void registerButtonEvent(SurviveObject *so, buttonEvent *event, enum ButtonEventSource source) {
 	ButtonQueueEntry *entry = prepareNextButtonEvent(so);
 
 	if (event->pressedButtonsValid) {
 		// printf("trigger %8.8x\n", event->triggerHighRes);
 		entry = registerButtonOnOff(so, entry, event->pressedButtons, so->buttonmask, SURVIVE_INPUT_EVENT_BUTTON_DOWN,
-									SURVIVE_INPUT_EVENT_BUTTON_UP);
+									SURVIVE_INPUT_EVENT_BUTTON_UP, source);
 	}
 
 	if (event->touchedButtonsValid) {
 		entry = registerButtonOnOff(so, entry, event->touchedButtons, so->touchmask, SURVIVE_INPUT_EVENT_TOUCH_DOWN,
-									SURVIVE_INPUT_EVENT_TOUCH_UP);
+									SURVIVE_INPUT_EVENT_TOUCH_UP, source);
 	}
 
 	if (event->triggerHighResValid) {
@@ -1721,7 +1794,7 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 				return false;
 			}
 		}
-		registerButtonEvent(w, &bEvent);
+		registerButtonEvent(w, &bEvent, BUTTON_EVENT_SOURCE_RF);
 	} else {
 		/*
 		 * Flags for non-input (status) events are as follows:
@@ -2016,7 +2089,7 @@ static bool handle_input(SurviveObject *w, uint8_t flags, uint8_t **payloadPtr, 
 		}
 	}
 
-	registerButtonEvent(w, &bEvent);
+	registerButtonEvent(w, &bEvent, BUTTON_EVENT_SOURCE_DEFAULT);
 	return true;
 
 exit_failure:
@@ -2599,7 +2672,7 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 		event.rawAxis[0] = POP2; // IPD   		<< what is this?
 		headset->ison = 1;
 
-		registerButtonEvent(headset, &event);
+		registerButtonEvent(headset, &event, BUTTON_EVENT_SOURCE_DEFAULT);
 
 		break;
 	}
@@ -2859,7 +2932,7 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 				evt.rawAxis[1] = proximity;
 				evt.pressedButtonsValid = 1;
 				evt.pressedButtons = onFace;
-				registerButtonEvent(obj, &evt);
+				registerButtonEvent(obj, &evt, BUTTON_EVENT_SOURCE_DEFAULT);
 
 				break;
 			}
@@ -2870,22 +2943,16 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 					bEvent.pressedButtonsValid = 1;
 					bEvent.pressedButtons = read_buffer32(readdata, 0x7);
 					bEvent.triggerHighResValid = 1;
-					// bEvent.triggerHighRes = raw->triggerHighRes;
-					// bEvent.triggerHighRes = (raw->pressedButtons & 0xff000000) >> 24; // this seems to provide the same
-					// data at 2x the resolution as above bEvent.triggerHighRes = raw->triggerRaw;
 
 					bEvent.triggerHighRes = read_buffer16(readdata, 0x19);
 					bEvent.touchpadHorizontalValid = 1;
-					// bEvent.touchpadHorizontal = raw->touchpadHorizontal;
+
 					bEvent.touchpadHorizontal = read_buffer16(readdata, 0x13);
 					bEvent.touchpadVerticalValid = 1;
-					// bEvent.touchpadVertical = raw->touchpadVertical;
+
 					bEvent.touchpadVertical = read_buffer16(readdata, 0x15);
 
-					// printf("%4.4x\n", bEvent.triggerHighRes);
-					registerButtonEvent(obj, &bEvent);
-
-					// printf("Buttons: %8.8x\n", raw->pressedButtons);
+					registerButtonEvent(obj, &bEvent, BUTTON_EVENT_SOURCE_DEFAULT);
 				}
 				default: {
 					survive_dump_buffer(ctx, readdata, size);

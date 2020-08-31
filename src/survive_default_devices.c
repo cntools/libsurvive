@@ -301,6 +301,8 @@ static int process_jsontok(scratch_space_t *scratch, char *d, stack_entry_t *sta
 					scratch->so->object_subtype = SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L;
 				} else if (strncmp("Utah MP", d + t->start, t->end - t->start) == 0) {
 					scratch->so->object_subtype = SURVIVE_OBJECT_SUBTYPE_INDEX;
+				} else if (strncmp("Vive Controller MV", d + t->start, t->end - t->start) == 0) {
+					scratch->so->object_subtype = SURVIVE_OBJECT_SUBTYPE_WAND;
 				}
 			}
 		}

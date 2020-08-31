@@ -108,7 +108,10 @@ static void redraw(SurviveContext *ctx) {
 			break;
 
 		SurviveObject *so = buttonInfos[i].so;
-		printf("Object %s (pressed: %08x, touched: %08x) \r\n", so->codename, so->buttonmask, so->touchmask);
+		printf("Object %s (%s %s) (pressed: %08x, touched: %08x) \r\n", so->codename,
+			   SurviveObjectTypeStr(so->object_type), SurviveObjectSubtypeStr(so->object_subtype), so->buttonmask,
+			   so->touchmask);
+
 		for (int k = 0; k < 16; k++) {
 			if (!buttonInfos[i].axes[k].changed)
 				continue;

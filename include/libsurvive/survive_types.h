@@ -131,6 +131,8 @@ enum SurviveButton {
 	SURVIVE_BUTTON_SYSTEM = 3,
 	SURVIVE_BUTTON_A = 4,
 	SURVIVE_BUTTON_B = 5,
+	SURVIVE_BUTTON_MENU = 6,
+	SURVIVE_BUTTON_GRIP = 7,
 
 	SURVIVE_BUTTON_TRIGGER = 24,
 	SURVIVE_BUTTON_ON_FACE = 24,
@@ -153,6 +155,13 @@ enum SurviveAxis {
 	SURVIVE_AXIS_IPD = 0,
 	SURVIVE_AXIS_FACE_PROXIMITY = 1
 };
+
+typedef enum {
+	SURVIVE_OBJECT_TYPE_UNKNOWN = 0,
+	SURVIVE_OBJECT_TYPE_HMD,
+	SURVIVE_OBJECT_TYPE_CONTROLLER,
+	SURVIVE_OBJECT_TYPE_OTHER
+} SurviveObjectType;
 
 typedef enum {
 	SURVIVE_OBJECT_SUBTYPE_GENERIC = 0,
@@ -326,6 +335,8 @@ SURVIVE_EXPORT const char *SurviveInputEventStr(enum SurviveInputEvent evt);
 SURVIVE_EXPORT const char *SurviveButtonsStr(SurviveObjectSubtype objectSubtype, enum SurviveButton b);
 SURVIVE_EXPORT const char *SurviveAxisStr(SurviveObjectSubtype objectSubtype, enum SurviveAxis b);
 
+SURVIVE_EXPORT const char *SurviveObjectTypeStr(SurviveObjectType t);
+SURVIVE_EXPORT const char *SurviveObjectSubtypeStr(SurviveObjectSubtype t);
 #ifdef __cplusplus
 };
 #endif

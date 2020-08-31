@@ -1109,6 +1109,10 @@ const char *SurviveButtonsStr(SurviveObjectSubtype objectSubtype, enum SurviveBu
 			return "B";
 		case SURVIVE_BUTTON_TRIGGER:
 			return "Trigger";
+		case SURVIVE_BUTTON_MENU:
+			return "Menu";
+		case SURVIVE_BUTTON_GRIP:
+			return "Grip";
 		default:
 			break;
 		}
@@ -1116,4 +1120,39 @@ const char *SurviveButtonsStr(SurviveObjectSubtype objectSubtype, enum SurviveBu
 		break;
 	}
 	return 0;
+}
+
+const char *SurviveObjectTypeStr(SurviveObjectType t) {
+	switch (t) {
+	case SURVIVE_OBJECT_TYPE_HMD:
+		return "HMD";
+	case SURVIVE_OBJECT_TYPE_CONTROLLER:
+		return "Controller";
+	case SURVIVE_OBJECT_TYPE_OTHER:
+		return "Other";
+	default:
+		break;
+	}
+	return "Unknown";
+}
+SURVIVE_EXPORT const char *SurviveObjectSubtypeStr(SurviveObjectSubtype t) {
+	switch (t) {
+	default:
+		break;
+	case SURVIVE_OBJECT_SUBTYPE_GENERIC:
+		return "Generic";
+	case SURVIVE_OBJECT_SUBTYPE_INDEX:
+		return "Index HMD";
+	case SURVIVE_OBJECT_SUBTYPE_WAND:
+		return "Wand";
+	case SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R:
+		return "Knuckles(R)";
+	case SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L:
+		return "Knuckles(L)";
+	case SURVIVE_OBJECT_SUBTYPE_TRACKER:
+		return "Tracker";
+	case SURVIVE_OBJECT_SUBTYPE_TRACKER_GEN2:
+		return "Tracker 2";
+	}
+	return "Unknown";
 }

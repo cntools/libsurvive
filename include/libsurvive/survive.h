@@ -87,13 +87,6 @@ SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_stationary_time(co
  */
 SURVIVE_IMPORT extern survive_timecode SurviveSensorActivations_default_tolerance;
 
-typedef enum {
-	SURVIVE_OBJECT_TYPE_UNKNOWN = 0,
-	SURVIVE_OBJECT_TYPE_HMD,
-	SURVIVE_OBJECT_TYPE_CONTROLLER,
-	SURVIVE_OBJECT_TYPE_OTHER
-} SurviveObjectType;
-
 struct SurviveObject {
 	SurviveContext *ctx;
 
