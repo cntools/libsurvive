@@ -872,7 +872,7 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 	survive_get_ctx_lock(ctx);
 
 	if (r) {
-		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Libusb poll failed. %d (%s)", r, libusb_error_name(r));
+		SV_WARN("Libusb poll failed. %d (%s)", r, libusb_error_name(r));
 	}
 #endif
 	return 0;
@@ -2852,8 +2852,6 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 				uint16_t IPD = readdata[11] | (readdata[12] << 8u);
 				int16_t proximity = readdata[13] | (readdata[14] << 8u);
 				uint8_t onFace = readdata[19];
-
-				survive_dump_buffer(ctx, readdata, 32);
 
 				buttonEvent evt = {0};
 				evt.rawAxisCnt = 2;

@@ -12,6 +12,8 @@ public class SurviveObject : MonoBehaviour {
 	private Dictionary<string, GameObject> survive_objects;
 	SurviveAPI survive;
 
+	void InfoFn(IntPtr ctx, UInt32 loglevl, string fault) { Debug.Log(fault); }
+
 	private GameObject prototypeObject;
 	// Start is called before the first frame update
 	void Start() {
@@ -25,11 +27,10 @@ public class SurviveObject : MonoBehaviour {
 			argList.RemoveRange(1, idx);
 		}
 
-		if (argList.Count == 1) {
-			argList.Add("--simulator");
-		}
+		argList.Add("--v");
+		argList.Add("10");
 
-		survive = new SurviveAPI(argList.ToArray());
+		survive = new SurviveAPI(argList.ToArray(), logFunc : InfoFn);
 		prototypeObject = gameObject.transform.Find("PrototypeObject") ?.gameObject;
 		prototypeObject.SetActive(false);
 	}
@@ -48,24 +49,22 @@ public class SurviveObject : MonoBehaviour {
 
 	// Update is called once per frame
 	void Update() {
-		var updated = survive?.GetNextUpdated();
+		SurviveAPIOObject updated;
+		while ((updated = survive?.GetNextUpdated()) != null) {
+			var updatedObject = getObject(updated.Name);
 
-		if (updated == null)
-			return;
-
-		var updatedObject = getObject(updated.Name);
-
-		Vector3 newPosition = Vector3.zero;
-		Quaternion newRotation = Quaternion.identity;
-		SurvivePose pose = updated.LatestPose;
-		newPosition.x = (float) pose.Pos[0];
-		newPosition.y = (float) pose.Pos[1];
-		newPosition.z = (float) pose.Pos[2];
-		newRotation.w = (float) pose.Rot[0];
-		newRotation.x = (float) pose.Rot[1];
-		newRotation.y = (float) pose.Rot[2];
-		newRotation.z = (float) pose.Rot[3];
-		updatedObject.transform.localPosition = newPosition;
-		updatedObject.transform.localRotation = newRotation;
+			Vector3 newPosition = Vector3.zero;
+			Quaternion newRotation = Quaternion.identity;
+			SurvivePose pose = updated.LatestPose;
+			newPosition.x = (float) pose.Pos[0];
+			newPosition.y = (float) pose.Pos[1];
+			newPosition.z = (float) pose.Pos[2];
+			newRotation.w = (float) pose.Rot[0];
+			newRotation.x = (float) pose.Rot[1];
+			newRotation.y = (float) pose.Rot[2];
+			newRotation.z = (float) pose.Rot[3];
+			updatedObject.transform.localPosition = newPosition;
+			updatedObject.transform.localRotation = newRotation;
+		}
 	}
 }
