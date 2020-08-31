@@ -13,6 +13,10 @@ Since the focus is on tracking; it does not independently run the HMD. For an op
 
 Most of the development is discussed on Discord.  [Join the chat and discussion in our discord!](https://discordapp.com/invite/7QbCAGS)
 
+An example application is libsurvive running the controllers and HMD in Godot:
+[![Watch video](https://img.youtube.com/vi/yC75XknKTo0/0.jpg)](https://www.youtube.com/watch?v=yC75XknKTo0)
+
+
 Table of Contents
 =================
 
@@ -70,6 +74,8 @@ to get the [necessary development dependencies](https://www.nuget.org/packages/l
 solution in visual studio and run build all. 
 
 [Websocketd](http://websocketd.com/) should work the same with with the visualization tool; assuming you put it somewhere in the system path. In the build binary folder (`./build-win/Release` if you built from `make.ps1`) there should be a `survive-websocketd.ps1` which can be ran as a PowerShell file. 
+
+Probably the easiest way to get started with libsurvive on windows is to check out the [release binaries](https://github.com/cntools/libsurvive/releases).
 
 # Current Status
 
@@ -257,8 +263,79 @@ There are more examples in `./bindings/python`.
 
 ### C# Bindings
 
-There are currently bindings in `./bindings/cs` for C#/.net although they are somewhat out of date and still need to be 
-tied into the CI system. If anyone has interest in these bindings please hop into the [discord](https://discordapp.com/invite/7QbCAGS). 
+The C# bindings wrap both the low level access API and the higher level simpler to use API. It is recommended to use the
+higher level API since the low level one relies heavily on callbacks and marshalling makes working with it prone to 
+errors that are not always easy to solve. 
+
+Build the solution [here](https://github.com/cntools/libsurvive/tree/master/bindings/cs) with either visual studio or by
+running something like
+
+```
+dotnet build -c Release
+```
+
+from a terminal to generate the binary `libsurvive.net.dll`. This works in linux as well as windows; but the 
+filename still ends in `dll`. When you run against this binary, `libsurvive.so` needs to either be in the same directory
+(with desired plugins), or on the system path. 
+
+The high level api is exposed through the `libsurvive.SurviveAPI` object. It's use is pretty easy; it can just poll for
+updates to object positions or button events as in the [Demo project](https://github.com/cntools/libsurvive/tree/master/bindings/cs/Demo/Program.cs):
+
+```cs
+using libsurvive;
+using System;
+
+namespace Demo
+{
+    
+    class Program
+    {
+		static void Main() {
+			string[] args = System.Environment.GetCommandLineArgs();
+			var api = new SurviveAPI(args);
+
+			while (api.WaitForUpdate()) {
+				SurviveAPIOObject obj;
+				while ((obj = api.GetNextUpdated()) != null) {
+					Console.WriteLine(obj.Name + ": " + obj.LatestPose);
+				}
+			}
+
+			api.Close();
+		}
+	}
+}
+
+```
+
+It's also meant to be easy to integrate into code bases based on frame updates; such as in the [Unity example](https://github.com/cntools/libsurvive/blob/master/bindings/cs/UnityViewer/Assets/SurviveObject.cs):
+
+```cs
+// Update is called once per frame
+void Update() {
+    var updated = survive?.GetNextUpdated();
+
+    if (updated == null)
+        return;
+
+    var updatedObject = getObject(updated.Name);
+
+    Vector3 newPosition = Vector3.zero;
+    Quaternion newRotation = Quaternion.identity;
+    SurvivePose pose = updated.LatestPose;
+    newPosition.x = (float) pose.Pos[0];
+    newPosition.y = (float) pose.Pos[1];
+    newPosition.z = (float) pose.Pos[2];
+    newRotation.w = (float) pose.Rot[0];
+    newRotation.x = (float) pose.Rot[1];
+    newRotation.y = (float) pose.Rot[2];
+    newRotation.z = (float) pose.Rot[3];
+    updatedObject.transform.localPosition = newPosition;
+    updatedObject.transform.localRotation = newRotation;
+}
+```
+
+[![Watch video](https://img.youtube.com/vi/FiRLrWWOhLg/0.jpg)](https://www.youtube.com/watch?v=FiRLrWWOhLg&feature=youtu.be)
 
 ## Data recording
 
