@@ -743,10 +743,6 @@ static void PropagateState(Disambiguator_data_t *d, const LightcapElement *le) {
 void DisambiguatorStateBased(SurviveObject *so, const LightcapElement *le) {
 	SurviveContext *ctx = so->ctx;
 
-	if (ctx->state == SURVIVE_CLOSING) {
-		return;
-	}
-
 	// Signal to destroy self
 	if (le == 0) {
 		Disambiguator_data_t *d = so->disambiguator_data;
@@ -766,6 +762,10 @@ void DisambiguatorStateBased(SurviveObject *so, const LightcapElement *le) {
 
 		free(so->disambiguator_data);
 		so->disambiguator_data = 0;
+		return;
+	}
+
+	if (ctx->state == SURVIVE_CLOSING) {
 		return;
 	}
 

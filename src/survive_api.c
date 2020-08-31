@@ -313,6 +313,7 @@ void survive_simple_close(SurviveSimpleContext *actx) {
 	}
 
 	OGDeleteMutex(actx->poll_mutex);
+	OGJoinThread(actx->thread);
 
 	OGDeleteConditionVariable(actx->update_cv);
 	actx->thread = 0;
