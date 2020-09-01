@@ -287,6 +287,8 @@ static int process_jsontok(scratch_space_t *scratch, char *d, stack_entry_t *sta
 					scratch->so->object_type = SURVIVE_OBJECT_TYPE_CONTROLLER;
 				} else if (strncmp("hmd", d + t->start, t->end - t->start) == 0) {
 					scratch->so->object_type = SURVIVE_OBJECT_TYPE_HMD;
+				} else if (strncmp("generic_tracker", d + t->start, t->end - t->start) == 0) {
+					scratch->so->object_type = SURVIVE_OBJECT_TYPE_OTHER;
 				}
 			} else if (jsoneq(d, stack->key, "device_serial_number") == 0) {
 				int size = sizeof(scratch->so->serial_number);
@@ -303,6 +305,10 @@ static int process_jsontok(scratch_space_t *scratch, char *d, stack_entry_t *sta
 					scratch->so->object_subtype = SURVIVE_OBJECT_SUBTYPE_INDEX;
 				} else if (strncmp("Vive Controller MV", d + t->start, t->end - t->start) == 0) {
 					scratch->so->object_subtype = SURVIVE_OBJECT_SUBTYPE_WAND;
+				}
+			} else if (jsoneq(d, stack->key, "model_name") == 0) {
+				if (strncmp("Vive Tracker MV", d + t->start, t->end - t->start) == 0) {
+					scratch->so->object_subtype = SURVIVE_OBJECT_SUBTYPE_TRACKER;
 				}
 			}
 		}

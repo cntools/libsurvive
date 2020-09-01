@@ -155,6 +155,10 @@ enum vive_commands {
 	// SX..
 	VIVE_COMMAND_UNKNOWN1 = 0x96,
 
+	// Info: WM sent command 0xad with 3 bytes:
+	// 01 10 27
+	VIVE_COMMAND_PAIR = 0xAD,
+
 	// Keepalive?
 	// Tracker/lh1/rf: (steamvr -> device):
 	//                 (device -> steamvr): 57 16 a0 b9   32 33 46 45   41 33 44 44   44 41 00 00   00 00 00 00   00 00
@@ -186,6 +190,7 @@ static uint8_t vive_magic_rf_raw_mode_1[] = {
 	VIVE_REPORT_COMMAND, VIVE_COMMAND_CHANGE_PROTOCOL, 0x6, 0x01, 0x01, 0x00, 0x02, 0x00, 0x00};
 static uint8_t vive_magic_protocol_switch[] = {
 	VIVE_REPORT_COMMAND, VIVE_COMMAND_CHANGE_PROTOCOL, 0x3, 0x00, 0x01, 0x00};
+static uint8_t vive_request_pairing[] = {VIVE_REPORT_COMMAND, VIVE_COMMAND_PAIR, 0x03, 0x01, 0x10, 0x27};
 static uint8_t vive_magic_protocol_super_magic[] = {VIVE_REPORT_COMMAND,
 													VIVE_COMMAND_UNKNOWN1,
 													0x10,
@@ -397,7 +402,8 @@ struct SurviveViveData {
 	int hmd_mainboard_index;
 	int hmd_imu_index;
 
-	bool closing;
+	FLT lastPairTime;
+	bool requestPairing;
 };
 
 #ifdef HIDAPI
@@ -783,6 +789,7 @@ int survive_vive_send_haptic(SurviveObject *so, uint8_t reserved, uint16_t pulse
 	return -2;
 }
 
+STATIC_CONFIG_ITEM(PAIR_DEVICE, "pair-device", 'i', "Turn on pairing mode", 0)
 STATIC_CONFIG_ITEM(SECONDS_PER_HZ_OUTPUT, "usb-hz-output", 'i', "Seconds between outputing usb stats", -1)
 void survive_vive_usb_close(SurviveViveData *sv) {
 	survive_release_ctx_lock(sv->ctx);
@@ -826,6 +833,16 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 
 	for (int i = 0; i < sv->udev_cnt; i++) {
 		struct SurviveUSBInfo *usbInfo = &sv->udev[i];
+
+		FLT now = OGRelativeTime();
+		if (usbInfo->device_info->pid == 0x2101 && usbInfo->so->conf == 0 && sv->requestPairing &&
+			(sv->lastPairTime + 1) < now && now > 3) {
+			survive_release_ctx_lock(ctx);
+			int r = update_feature_report(usbInfo->handle, 0, vive_request_pairing, sizeof(vive_request_pairing));
+			survive_get_ctx_lock(ctx);
+			SV_VERBOSE(10, "Pairing attempt...");
+			sv->lastPairTime = now;
+		}
 
 		if (usbInfo->tryConfigLoad) {
 			int err = LoadConfig(sv, usbInfo, 0);
@@ -2987,8 +3004,10 @@ static int LoadConfig(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int i
 		return len;
 	}
 
-	if (so)
+	if (so) {
+		SV_VERBOSE(10, "Successfully configured %s", so->codename);
 		return sv->ctx->configproc(so, ct0conf, len);
+	}
 	return -1;
 }
 
@@ -3007,6 +3026,8 @@ int DriverRegHTCVive(SurviveContext *ctx) {
 	sv->hmd_imu_index = sv->hmd_mainboard_index = -1;
 
 	survive_attach_configi(ctx, SECONDS_PER_HZ_OUTPUT_TAG, &sv->seconds_per_hz_output);
+	sv->requestPairing = survive_configi(ctx, PAIR_DEVICE_TAG, SC_GET, 0);
+
 	if(sv->seconds_per_hz_output > 0) {
 	  SV_INFO("Reporting usb hz in %d second intervals", sv->seconds_per_hz_output);
 	}

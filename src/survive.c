@@ -1093,6 +1093,7 @@ const char *SurviveButtonsStr(SurviveObjectSubtype objectSubtype, enum SurviveBu
 			return "On face";
 		}
 		break;
+	case SURVIVE_OBJECT_SUBTYPE_TRACKER:
 	case SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R:
 	case SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L:
 	case SURVIVE_OBJECT_SUBTYPE_WAND:
