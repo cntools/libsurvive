@@ -56,6 +56,12 @@ static void write_to_output_raw(SurviveRecordingData *recordingData, const char 
 	}
 }
 
+#ifdef SURVIVE_HEX_FLOATS
+#define FLT_PRINTF "%0.6a "
+#else
+#define FLT_PRINTF "%0.6f "
+#endif
+
 static void write_to_output(SurviveRecordingData *recordingData, const char *format, ...) {
 	if (!recordingData) {
 		return;
@@ -66,7 +72,7 @@ static void write_to_output(SurviveRecordingData *recordingData, const char *for
 	if (recordingData->output_file) {
 		va_list args;
 		va_start(args, format);
-		gzprintf(recordingData->output_file, "%0.6f ", ts);
+		gzprintf(recordingData->output_file, FLT_PRINTF, ts);
 		gzvprintf(recordingData->output_file, format, args);
 
 		va_end(args);
@@ -75,7 +81,7 @@ static void write_to_output(SurviveRecordingData *recordingData, const char *for
 	if (recordingData->alwaysWriteStdOut) {
 		va_list args;
 		va_start(args, format);
-		fprintf(stdout, "%0.6f ", ts);
+		fprintf(stdout, FLT_PRINTF, ts);
 		vfprintf(stdout, format, args);
 		va_end(args);
 	}
@@ -104,8 +110,9 @@ void survive_recording_lighthouse_process(SurviveContext *ctx, uint8_t lighthous
 	if (recordingData == 0)
 		return;
 
-	write_to_output(recordingData, "%d LH_POSE %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\r\n", lighthouse,
-					lh_pose->Pos[0], lh_pose->Pos[1], lh_pose->Pos[2], lh_pose->Rot[0], lh_pose->Rot[1],
+	write_to_output(recordingData,
+					"%d LH_POSE " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF "\r\n",
+					lighthouse, lh_pose->Pos[0], lh_pose->Pos[1], lh_pose->Pos[2], lh_pose->Rot[0], lh_pose->Rot[1],
 					lh_pose->Rot[2], lh_pose->Rot[3]);
 }
 void survive_recording_velocity_process(SurviveObject *so, uint8_t lighthouse, const SurviveVelocity *pose) {
@@ -113,16 +120,19 @@ void survive_recording_velocity_process(SurviveObject *so, uint8_t lighthouse, c
 	if (recordingData == 0)
 		return;
 
-	write_to_output(recordingData, "%s VELOCITY %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\r\n", so->codename, pose->Pos[0],
-					pose->Pos[1], pose->Pos[2], pose->AxisAngleRot[0], pose->AxisAngleRot[1], pose->AxisAngleRot[2]);
+	write_to_output(recordingData,
+					"%s VELOCITY " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF "\r\n",
+					so->codename, pose->Pos[0], pose->Pos[1], pose->Pos[2], pose->AxisAngleRot[0],
+					pose->AxisAngleRot[1], pose->AxisAngleRot[2]);
 }
 void survive_recording_raw_pose_process(SurviveObject *so, uint8_t lighthouse, const SurvivePose *pose) {
 	SurviveRecordingData *recordingData = so->ctx->recptr;
 	if (recordingData == 0)
 		return;
 
-	write_to_output(recordingData, "%s POSE %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\r\n", so->codename, pose->Pos[0],
-					pose->Pos[1], pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
+	write_to_output(
+		recordingData, "%s POSE " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF "\r\n",
+		so->codename, pose->Pos[0], pose->Pos[1], pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
 }
 
 void survive_recording_external_velocity_process(SurviveContext *ctx, const char *name, const SurviveVelocity *pose) {
@@ -130,8 +140,10 @@ void survive_recording_external_velocity_process(SurviveContext *ctx, const char
 	if (recordingData == 0)
 		return;
 
-	write_to_output(recordingData, "%s EXTERNAL_VELOCITY %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\r\n", name, pose->Pos[0],
-					pose->Pos[1], pose->Pos[2], pose->AxisAngleRot[0], pose->AxisAngleRot[1], pose->AxisAngleRot[2]);
+	write_to_output(recordingData,
+					"%s EXTERNAL_VELOCITY " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF "\r\n",
+					name, pose->Pos[0], pose->Pos[1], pose->Pos[2], pose->AxisAngleRot[0], pose->AxisAngleRot[1],
+					pose->AxisAngleRot[2]);
 }
 
 void survive_recording_external_pose_process(SurviveContext *ctx, const char *name, const SurvivePose *pose) {
@@ -139,8 +151,10 @@ void survive_recording_external_pose_process(SurviveContext *ctx, const char *na
 	if (recordingData == 0)
 		return;
 
-	write_to_output(recordingData, "%s EXTERNAL_POSE %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f\r\n", name, pose->Pos[0],
-					pose->Pos[1], pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
+	write_to_output(
+		recordingData,
+		"%s EXTERNAL_POSE " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF "\r\n", name,
+		pose->Pos[0], pose->Pos[1], pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
 }
 
 void survive_recording_info_process(SurviveContext *ctx, const char *fault) {
@@ -207,8 +221,8 @@ void survive_recording_angle_process(struct SurviveObject *so, int sensor_id, in
 		return;
 	}
 
-	write_to_output(recordingData, "%s A %d %d %u %0.6f %0.6f %u\r\n", so->codename, sensor_id, acode, timecode, length,
-					angle, lh);
+	write_to_output(recordingData, "%s A %d %d %u " FLT_PRINTF FLT_PRINTF "%u\r\n", so->codename, sensor_id, acode,
+					timecode, length, angle, lh);
 }
 
 void survive_recording_lightcap(SurviveObject *so, LightcapElement *le) {
@@ -276,7 +290,9 @@ void survive_recording_imu_process(struct SurviveObject *so, int mask, FLT *acce
 		return;
 	}
 
-	write_to_output(recordingData, "%s I %d %u %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f  %0.6f %0.6f %0.6f %d\r\n",
+	write_to_output(recordingData,
+					"%s I %d %u " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF
+					" " FLT_PRINTF FLT_PRINTF FLT_PRINTF "%d\r\n",
 					so->codename, mask, timecode, accelgyro[0], accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4],
 					accelgyro[5], accelgyro[6], accelgyro[7], accelgyro[8], id);
 }
@@ -290,7 +306,9 @@ void survive_recording_raw_imu_process(struct SurviveObject *so, int mask, FLT *
 		return;
 	}
 
-	write_to_output(recordingData, "%s i %d %u %0.6f %0.6f %0.6f %0.6f %0.6f %0.6f  %0.6f %0.6f %0.6f %d\r\n",
+	write_to_output(recordingData,
+					"%s i %d %u " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF
+					" " FLT_PRINTF FLT_PRINTF FLT_PRINTF "%d\r\n",
 					so->codename, mask, timecode, accelgyro[0], accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4],
 					accelgyro[5], accelgyro[6], accelgyro[7], accelgyro[8], id);
 }

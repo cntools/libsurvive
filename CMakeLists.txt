@@ -17,9 +17,12 @@ option(ENABLE_WARNINGS_AS_ERRORS "Use to flag all warnings as errors" OFF)
 option(USE_HIDAPI "Use HIDAPI instead of libusb" OFF)
 option(USE_ASAN "Use address sanitizer" OFF)
 option(ENABLE_TESTS "Enable build / execution of tests" OFF)
-
+option(USE_HEX_FLOAT_PRINTF "Use hex floats when recording" OFF)
 option(USE_OPENBLAS "Use OpenBLAS" OFF)
 
+if(USE_HEX_FLOAT_PRINTF)
+  add_definitions(-DSURVIVE_HEX_FLOATS)
+endif()
 
 SET(SURVIVE_LIBRARY_TYPE SHARED)
 if(BUILD_STATIC)
