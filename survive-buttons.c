@@ -29,7 +29,7 @@ struct ObjectButtonInfo {
 	struct button_state buttons[32];
 	struct axis_state {
 		bool changed;
-		int32_t v;
+		SurviveAxisVal_t v;
 	} axes[16];
 };
 
@@ -51,7 +51,7 @@ FLT last_redraw = 0;
 bool needsRedraw = true;
 
 static void button_process(SurviveObject *so, enum SurviveInputEvent eventType, enum SurviveButton buttonId,
-						   const enum SurviveAxis *axisIds, const int32_t *axisVals) {
+						   const enum SurviveAxis *axisIds, const SurviveAxisVal_t *axisVals) {
 
 	struct SurviveContext *ctx = so->ctx;
 	survive_default_button_process(so, eventType, buttonId, axisIds, axisVals);
@@ -116,7 +116,7 @@ static void redraw(SurviveContext *ctx) {
 			if (!buttonInfos[i].axes[k].changed)
 				continue;
 
-			printf("\33[2KAxis   %24s (%2d) %8d\r\n", SurviveAxisStr(so->object_subtype, k), k,
+			printf("\33[2KAxis   %24s (%2d) %+5.4f\r\n", SurviveAxisStr(so->object_subtype, k), k,
 				   buttonInfos[i].axes[k].v);
 		}
 

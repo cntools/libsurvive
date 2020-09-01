@@ -38,7 +38,7 @@ typedef struct SurviveSimpleButtonEvent {
 
 	uint8_t axis_count;
 	enum SurviveAxis axis_ids[SURVIVE_MAX_AXIS_COUNT];
-	int32_t axis_val[SURVIVE_MAX_AXIS_COUNT];
+	SurviveAxisVal_t axis_val[SURVIVE_MAX_AXIS_COUNT];
 } SurviveSimpleButtonEvent;
 
 /***

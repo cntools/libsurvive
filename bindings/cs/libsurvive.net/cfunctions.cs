@@ -48,7 +48,7 @@ namespace libsurvive
 		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
 		public UInt32[] axis_ids;
 		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
-		public Int32[] axis_values;
+		public float[] axis_values;
 	}
 
 	class Cfunctions

@@ -835,8 +835,8 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 		struct SurviveUSBInfo *usbInfo = &sv->udev[i];
 
 		FLT now = OGRelativeTime();
-		if (usbInfo->device_info->pid == 0x2101 && usbInfo->so->conf == 0 && sv->requestPairing &&
-			(sv->lastPairTime + 1) < now && now > 3) {
+		if ((usbInfo->device_info->pid == 0x2102 || usbInfo->device_info->pid == 0x2101) && usbInfo->so->conf == 0 &&
+			sv->requestPairing && (sv->lastPairTime + 1) < now && now > 3) {
 			survive_release_ctx_lock(ctx);
 			int r = update_feature_report(usbInfo->handle, 0, vive_request_pairing, sizeof(vive_request_pairing));
 			survive_get_ctx_lock(ctx);
@@ -1063,16 +1063,16 @@ typedef struct {
 	uint8_t proximityValid;
 	uint8_t rawAxisCnt;
 
-	int32_t rawAxis[16];
-	uint8_t proximity[6];
+	SurviveAxisVal_t rawAxis[16];
+	SurviveAxisVal_t /*uint8_t*/ proximity[6];
 	uint32_t pressedButtons;
 	uint32_t touchedButtons;
 	uint16_t triggerOrBattery;
 	uint8_t batteryCharge;
 	uint32_t hardwareId;
-	uint16_t touchpadHorizontal;
-	uint16_t touchpadVertical;
-	uint16_t triggerHighRes;
+	SurviveAxisVal_t /*uint16_t*/ touchpadHorizontal;
+	SurviveAxisVal_t /*uint16_t*/ touchpadVertical;
+	SurviveAxisVal_t /*uint16_t*/ triggerHighRes;
 } buttonEvent;
 
 void incrementAndPostButtonQueue(SurviveContext *ctx) {
@@ -1116,6 +1116,8 @@ static void get_eventTypes_for_idx(const SurviveObject *so, uint8_t idx, uint8_t
 	switch (source) {
 	case BUTTON_EVENT_SOURCE_RF: {
 		switch (so->object_subtype) {
+		case SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R:
+		case SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L:
 		case SURVIVE_OBJECT_SUBTYPE_WAND: {
 			switch (idx) {
 			case 1:
@@ -1160,6 +1162,7 @@ static uint8_t get_button_id_for_idx(const SurviveObject *so, uint8_t idx, enum 
 	}
 	default: {
 		switch (so->object_subtype) {
+		case SURVIVE_OBJECT_SUBTYPE_TRACKER:
 		case SURVIVE_OBJECT_SUBTYPE_WAND: {
 			switch (idx) {
 			case 20:
@@ -1254,20 +1257,33 @@ static void registerButtonEvent(SurviveObject *so, buttonEvent *event, enum Butt
 	}
 
 	if ((event->touchpadHorizontalValid) && (event->touchpadVerticalValid)) {
-		if ((so->axis[1] != event->touchpadHorizontal) || (so->axis[2] != event->touchpadVertical)) {
-			entry->eventType = SURVIVE_INPUT_EVENT_AXIS_CHANGED;
-			entry->axisValues[0] = (int16_t)event->touchpadHorizontal;
-			entry->axisValues[1] = (int16_t)event->touchpadVertical;
-			entry->ids[0] = 2;
-			entry->ids[1] = 3;
+		enum SurviveAxis ax = SURVIVE_AXIS_TRACKPAD_X;
+		enum SurviveAxis ay = SURVIVE_AXIS_TRACKPAD_Y;
 
-			if (so->object_subtype == SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R ||
-				so->object_subtype == SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L) {
-				if ((so->buttonmask & (1 << SURVIVE_BUTTON_TRACKPAD)) == 0) {
-					entry->ids[0] = SURVIVE_AXIS_JOYSTICK_X;
-					entry->ids[1] = SURVIVE_AXIS_JOYSTICK_Y;
+		if (so->object_subtype == SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R ||
+			so->object_subtype == SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L) {
+			if ((so->buttonmask & (1 << SURVIVE_BUTTON_TRACKPAD)) == 0) {
+
+				if ((so->axis[ax] != 0) || (so->axis[ay] != 0)) {
+					entry->eventType = SURVIVE_INPUT_EVENT_AXIS_CHANGED;
+
+					entry->axisValues[0] = so->axis[entry->ids[0] = ax] = 0;
+					entry->axisValues[1] = so->axis[entry->ids[1] = ay] = 0;
+
+					incrementAndPostButtonQueue(so->ctx);
+					entry = prepareNextButtonEvent(so);
 				}
+
+				ax = SURVIVE_AXIS_JOYSTICK_X;
+				ay = SURVIVE_AXIS_JOYSTICK_Y;
 			}
+		}
+
+		if ((so->axis[ax] != event->touchpadHorizontal) || (so->axis[ay] != event->touchpadVertical)) {
+			entry->eventType = SURVIVE_INPUT_EVENT_AXIS_CHANGED;
+
+			entry->axisValues[0] = so->axis[entry->ids[0] = ax] = event->touchpadHorizontal;
+			entry->axisValues[1] = so->axis[entry->ids[1] = ay] = event->touchpadVertical;
 
 			incrementAndPostButtonQueue(so->ctx);
 			entry = prepareNextButtonEvent(so);
@@ -1309,12 +1325,6 @@ static void registerButtonEvent(SurviveObject *so, buttonEvent *event, enum Butt
 	}
 	if (event->triggerHighResValid) {
 		so->axis[0] = event->triggerHighRes;
-	}
-	if (event->touchpadHorizontalValid) {
-		so->axis[1] = event->touchpadHorizontal;
-	}
-	if (event->touchpadVerticalValid) {
-		so->axis[2] = event->touchpadVertical;
 	}
 	if (event->proximityValid) {
 		for (int i = 0; i < 6; i++) {
@@ -1759,15 +1769,15 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 
 			if (flagTrigger) {
 				bEvent.triggerHighResValid = 1;
-				bEvent.triggerHighRes = POP_BYTE(payloadPtr) * 128;
+				bEvent.triggerHighRes = POP_BYTE(payloadPtr) / 255.;
 			}
 
 			if (flagMotion) {
 				bEvent.touchpadHorizontalValid = 1;
 				bEvent.touchpadVerticalValid = 1;
 
-				bEvent.touchpadHorizontal = POP_SHORT(payloadPtr);
-				bEvent.touchpadVertical = POP_SHORT(payloadPtr);
+				bEvent.touchpadHorizontal = (int16_t)POP_SHORT(payloadPtr) / 32768.;
+				bEvent.touchpadVertical = (int16_t)POP_SHORT(payloadPtr) / 32768.;
 			}
 
 		} else {
@@ -1794,14 +1804,14 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 				bEvent.proximityValid = 1;
 
 				// Non-touching proximity to fingers
-				bEvent.proximity[0] = POP_BYTE(payloadPtr); // Middle finger
-				bEvent.proximity[1] = POP_BYTE(payloadPtr); // Ring finger
-				bEvent.proximity[2] = POP_BYTE(payloadPtr); // Pinky finger
-				bEvent.proximity[3] = POP_BYTE(payloadPtr); // Index finger (trigger)
+				bEvent.proximity[0] = POP_BYTE(payloadPtr) / 255.; // Middle finger
+				bEvent.proximity[1] = POP_BYTE(payloadPtr) / 255.; // Ring finger
+				bEvent.proximity[2] = POP_BYTE(payloadPtr) / 255.; // Pinky finger
+				bEvent.proximity[3] = POP_BYTE(payloadPtr) / 255.; // Index finger (trigger)
 
 				// Contact force (Squeeze strength)
-				bEvent.proximity[4] = POP_BYTE(payloadPtr);
-				bEvent.proximity[5] = POP_BYTE(payloadPtr);
+				bEvent.proximity[4] = POP_BYTE(payloadPtr) / 255.;
+				bEvent.proximity[5] = POP_BYTE(payloadPtr) / 255.;
 			} else {
 				SV_WARN("Unknown gen two event %s 0x%02hX 0b%s [Time:%04hX] [Payload: %s] <<ABORT FURTHER READ>>",
 						w->codename, *(payloadPtr - 1), byteToBin(*(payloadPtr - 1)), time,
@@ -2052,7 +2062,7 @@ static bool handle_input(SurviveObject *w, uint8_t flags, uint8_t **payloadPtr, 
 		if (flagTrigger) {
 			bEvent.triggerHighResValid = 1;
 			VERIFY_LENGTH_OR_FAIL(*payloadPtr, 1);
-			bEvent.triggerHighRes = POP_BYTE(*payloadPtr) * 128;
+			bEvent.triggerHighRes = POP_BYTE(*payloadPtr) / 255.;
 		}
 
 		if (flagMotion) {
@@ -2060,8 +2070,8 @@ static bool handle_input(SurviveObject *w, uint8_t flags, uint8_t **payloadPtr, 
 			bEvent.touchpadVerticalValid = 1;
 
 			VERIFY_LENGTH_OR_FAIL(*payloadPtr, 4);
-			bEvent.touchpadHorizontal = POP_SHORT(*payloadPtr);
-			bEvent.touchpadVertical = POP_SHORT(*payloadPtr);
+			bEvent.touchpadHorizontal = (int16_t)POP_SHORT(*payloadPtr) / 32768.;
+			bEvent.touchpadVertical = (int16_t)POP_SHORT(*payloadPtr) / 32768.;
 		}
 		SV_VERBOSE(150, "handle_input flags %d %d %d", flagButton, flagTrigger, flagMotion);
 	} else {
@@ -2088,15 +2098,15 @@ static bool handle_input(SurviveObject *w, uint8_t flags, uint8_t **payloadPtr, 
 			bEvent.proximityValid = 1;
 
 			// Non-touching proximity to fingers
-			bEvent.proximity[0] = POP_BYTE(*payloadPtr); // Middle finger
-			bEvent.proximity[1] = POP_BYTE(*payloadPtr); // Ring finger
-			bEvent.proximity[2] = POP_BYTE(*payloadPtr); // Pinky finger
-			bEvent.proximity[3] = POP_BYTE(*payloadPtr); // Index finger (trigger)
+			bEvent.proximity[0] = POP_BYTE(*payloadPtr) / 255.; // Middle finger
+			bEvent.proximity[1] = POP_BYTE(*payloadPtr) / 255.; // Ring finger
+			bEvent.proximity[2] = POP_BYTE(*payloadPtr) / 255.; // Pinky finger
+			bEvent.proximity[3] = POP_BYTE(*payloadPtr) / 255.; // Index finger (trigger)
 
 			// Contact force (Squeeze strength)
-			bEvent.proximity[4] = POP_BYTE(*payloadPtr);
+			bEvent.proximity[4] = POP_BYTE(*payloadPtr) / 255.;
 			// Trackpad force
-			bEvent.proximity[5] = POP_BYTE(*payloadPtr);
+			bEvent.proximity[5] = POP_BYTE(*payloadPtr) / 255.;
 		} else {
 			SV_WARN("Unknown gen two event 0x%02hX 0b%s [Payload: %s] <<ABORT FURTHER READ>>", *(*payloadPtr - 1),
 					byteToBin(*(*payloadPtr - 1)), packetToHex(*payloadPtr, payloadEndPtr));
@@ -2106,7 +2116,7 @@ static bool handle_input(SurviveObject *w, uint8_t flags, uint8_t **payloadPtr, 
 		}
 	}
 
-	registerButtonEvent(w, &bEvent, BUTTON_EVENT_SOURCE_DEFAULT);
+	registerButtonEvent(w, &bEvent, BUTTON_EVENT_SOURCE_RF);
 	return true;
 
 exit_failure:
@@ -2945,8 +2955,9 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 
 				buttonEvent evt = {0};
 				evt.rawAxisCnt = 2;
-				evt.rawAxis[0] = IPD;
-				evt.rawAxis[1] = proximity;
+				evt.rawAxis[0] = IPD / 65536.;
+				evt.rawAxis[1] = proximity / 32768.;
+
 				evt.pressedButtonsValid = 1;
 				evt.pressedButtons = onFace;
 				registerButtonEvent(obj, &evt, BUTTON_EVENT_SOURCE_DEFAULT);
@@ -2961,13 +2972,12 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 					bEvent.pressedButtons = read_buffer32(readdata, 0x7);
 					bEvent.triggerHighResValid = 1;
 
-					bEvent.triggerHighRes = read_buffer16(readdata, 0x19);
+					bEvent.triggerHighRes = read_buffer16(readdata, 0x19) / 32768.;
 					bEvent.touchpadHorizontalValid = 1;
-
-					bEvent.touchpadHorizontal = read_buffer16(readdata, 0x13);
 					bEvent.touchpadVerticalValid = 1;
 
-					bEvent.touchpadVertical = read_buffer16(readdata, 0x15);
+					bEvent.touchpadHorizontal = (int16_t)read_buffer16(readdata, 0x13) / 32768.;
+					bEvent.touchpadVertical = (int16_t)read_buffer16(readdata, 0x15) / 32768.;
 
 					registerButtonEvent(obj, &bEvent, BUTTON_EVENT_SOURCE_DEFAULT);
 				}

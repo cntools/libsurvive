@@ -204,7 +204,7 @@ void survive_recording_sweep_process(SurviveObject *so, survive_channel channel,
 }
 
 void survive_recording_button_process(SurviveObject *so, enum SurviveInputEvent eventType, enum SurviveButton buttonId,
-									  const enum SurviveAxis *axisId, const int32_t *axisVals) {
+									  const enum SurviveAxis *axisId, const float *axisVals) {
 	SurviveRecordingData *recordingData = so->ctx->recptr;
 
 	if (!recordingData) {

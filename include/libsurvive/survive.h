@@ -98,7 +98,7 @@ struct SurviveObject {
 	SurviveObjectSubtype object_subtype;
 	int32_t buttonmask;
 	int32_t touchmask;
-	int16_t axis[16];
+	SurviveAxisVal_t axis[16];
 
 	int8_t charge;
 	int8_t charging : 1;
@@ -241,7 +241,7 @@ typedef struct {
 	uint8_t buttonId;
 
 	enum SurviveAxis ids[16];
-	int32_t axisValues[16];
+	SurviveAxisVal_t axisValues[16];
 
 	SurviveObject *so;
 } ButtonQueueEntry;
@@ -426,7 +426,7 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 														survive_timecode timecode, int8_t plane, FLT angle);
 SURVIVE_EXPORT void survive_default_button_process(SurviveObject *so, enum SurviveInputEvent eventType,
 												   enum SurviveButton buttonId, const enum SurviveAxis *axisIds,
-												   const int32_t *axisVals);
+												   const SurviveAxisVal_t *axisVals);
 SURVIVE_EXPORT void survive_default_imupose_process(SurviveObject *so, uint32_t timecode, const SurvivePose *imu2world);
 SURVIVE_EXPORT void survive_default_pose_process(SurviveObject *so, survive_timecode timecode, const SurvivePose *pose);
 SURVIVE_EXPORT void survive_default_velocity_process(SurviveObject *so, survive_timecode timecode,

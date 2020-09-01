@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
 						   button_event->button_id);
 				}
 				for (int i = 0; i < button_event->axis_count; i++) {
-					printf(" %20s (%2d) %8d   ", SurviveAxisStr(subtype, button_event->axis_ids[i]),
+					printf(" %20s (%2d) %+5.4f   ", SurviveAxisStr(subtype, button_event->axis_ids[i]),
 						   button_event->axis_ids[i], button_event->axis_val[i]);
 				}
 				printf("\n");

@@ -119,7 +119,7 @@ void survive_default_lightcap_process(SurviveObject *so, const LightcapElement *
 }
 
 void survive_default_button_process(SurviveObject *so, enum SurviveInputEvent eventType, enum SurviveButton buttonId,
-									const enum SurviveAxis *axisIds, const int32_t *axisValues) {}
+									const enum SurviveAxis *axisIds, const SurviveAxisVal_t *axisValues) {}
 
 STATIC_CONFIG_ITEM(REPORT_IN_IMU, "report-in-imu", 'i', "Debug option to output poses in IMU space.", 0)
 void survive_default_imupose_process(SurviveObject *so, uint32_t timecode, const SurvivePose *imu2world) {
@@ -193,6 +193,9 @@ int survive_default_config_process(SurviveObject *so, char *ct0conf, int len) {
 			FILE *f = fopen(raw_fname, "w");
 			fwrite(ct0conf, len, 1, f);
 			fclose(f);
+
+			SurviveContext *ctx = so->ctx;
+			SV_INFO("Wrote out %d bytes to %s", len, raw_fname);
 		}
 	}
 

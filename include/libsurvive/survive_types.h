@@ -156,6 +156,7 @@ enum SurviveAxis {
 	SURVIVE_AXIS_IPD = 0,
 	SURVIVE_AXIS_FACE_PROXIMITY = 1
 };
+typedef float SurviveAxisVal_t;
 
 typedef enum {
 	SURVIVE_OBJECT_TYPE_UNKNOWN = 0,
@@ -282,7 +283,7 @@ typedef void (*imu_process_func)(SurviveObject *so, int mask, FLT *accelgyro, su
  * A general button press event
  */
 typedef void (*button_process_func)(SurviveObject *so, enum SurviveInputEvent eventType, enum SurviveButton buttonId,
-									const enum SurviveAxis *axisIds, const int32_t *axisVals);
+									const enum SurviveAxis *axisIds, const SurviveAxisVal_t *axisVals);
 
 /**
  * Called when a pose is solved for at a given time. Given in 'tracking' coordinate frame.

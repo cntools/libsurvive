@@ -190,7 +190,7 @@ static void lh_fn(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthou
 }
 
 static void button_fn(SurviveObject *so, enum SurviveInputEvent eventType, enum SurviveButton buttonId,
-					  const enum SurviveAxis *axisIds, const int32_t *axisVals) {
+					  const enum SurviveAxis *axisIds, const SurviveAxisVal_t *axisVals) {
 	SurviveSimpleContext *actx = so->ctx->user_ptr;
 	OGLockMutex(actx->poll_mutex);
 	survive_default_button_process(so, eventType, buttonId, axisIds, axisVals);
