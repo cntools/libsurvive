@@ -685,6 +685,7 @@ int survive_startup(SurviveContext *ctx) {
 		return rtn;                                                                                                    \
 	}
 
+#include "ootx_decoder.h"
 #include "survive_hooks.h"
 
 void survive_default_new_object_process(SurviveObject *so) {}
@@ -844,8 +845,14 @@ void survive_close(SurviveContext *ctx) {
 	destroy_config_group(ctx->global_config_values);
 	destroy_config_group(ctx->temporary_config_values);
 
-	for (int lh = 0; lh < NUM_GEN2_LIGHTHOUSES; lh++)
+	for (int lh = 0; lh < NUM_GEN2_LIGHTHOUSES; lh++) {
+		ootx_decoder_context *decoderContext = ctx->bsd[lh].ootx_data;
+		if (decoderContext) {
+			ootx_free_decoder_context(decoderContext);
+			free(decoderContext);
+		}
 		destroy_config_group(ctx->lh_config + lh);
+	}
 
 	struct SurviveContext_private *pctx = ctx->private_members;
 	OGDeleteSema(pctx->poll_sema);
