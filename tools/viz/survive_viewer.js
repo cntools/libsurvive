@@ -486,6 +486,7 @@ function update_velocity(v) {
 	objs[obj.tracker].angVelocity.geometry.vertices[1].set(obj.euler[0], obj.euler[1], obj.euler[2]);
 	objs[obj.tracker].angVelocity.geometry.verticesNeedUpdate = true;
 }
+
 function update_object(v, allow_unsetup, external) {
 	allow_unsetup = true;
 	var obj = {
@@ -594,6 +595,37 @@ function scrollConsoleToTop() {
 		scrollPending = true;
 	}
 }
+var polys = {};
+
+function add_poly(v) {
+	var fv = v.map(parseFloat);
+
+	var geometry = new THREE.Geometry();
+	var name = v[2];
+
+	scene.remove(polys[name]);
+
+	for (var i = 3; i < v.length; i += 3) {
+		geometry.vertices.push(new THREE.Vector3(fv[i], fv[i + 1], fv[i + 2]))
+	}
+
+	var material =
+		new THREE.MeshBasicMaterial({color : 0x00ff00, opacity : .5, transparent : true, side : THREE.DoubleSide});
+	if (geometry.vertices.length === 4) {
+		geometry.faces.push(new THREE.Face3(0, 1, 2));
+		geometry.faces.push(new THREE.Face3(2, 3, 0));
+
+		var mesh = new THREE.Mesh(geometry, material);
+		mesh.tooltip = name;
+		polys[name] = mesh;
+
+		scene.add(mesh);
+	} else if (geometry.vertices.length === 2) {
+		var line = new THREE.Line(geometry, material);
+		polys[name] = line;
+		scene.add(line);
+	}
+}
 
 var survive_log_handlers = {
 	"LH_POSE" : function(v) {
@@ -605,6 +637,7 @@ var survive_log_handlers = {
 
 		add_lighthouse(obj.lighthouse, obj.position, obj.quat);
 	},
+	"POLY" : add_poly,
 	"POSE" : update_object,
 	"VELOCITY" : update_velocity,
 	"EXTERNAL_VELOCITY" : function(v) { update_velocity(v, true, true); },
@@ -616,6 +649,11 @@ var survive_log_handlers = {
 
 		create_tracked_object(obj);
 	},
+	'W' : function() {},
+	'C' : function() {},
+	'Y' : function() {},
+	'BUTTON' : function() {},
+	'i' : function() {},
 	'OPTION' : function(v) {
 		var opt = {name : v[2], type : v[3], value : v[4]};
 
@@ -733,12 +771,18 @@ var survive_log_handlers = {
 function add_survive_log_handler(name, entry) { survive_log_handlers[name] = entry; }
 function process_survive_handlers(msg) {
 	var s = msg.split(' ').filter(function(x) { return x; });
-
+	var handled = false;
 	if (survive_log_handlers[s[2]]) {
 		survive_log_handlers[s[2]](s);
+		handled = true;
 	}
 	if (survive_log_handlers[s[1]]) {
 		survive_log_handlers[s[1]](s);
+		handled = true;
+	}
+
+	if (!handled) {
+		console.log(msg);
 	}
 
 	return {};
