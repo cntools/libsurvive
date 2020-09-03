@@ -195,8 +195,46 @@ static void testQuatAsAngularVelocity() {
 	}
 }
 
+static void testFindBestIntersections() {
+	size_t num = 10;
+	struct LinmathLine3d lines[10] = {0};
+
+	LinmathPoint3d gt_pt = {linmath_rand(-10, 10), linmath_rand(-10, 10), linmath_rand(-10, 10)};
+	FLT sigmas[] = {0, .01, .1, 1.};
+
+	for (int s = 0; s < sizeof(sigmas) / sizeof(sigmas[0]); s++) {
+		FLT sigma = sigmas[s];
+
+		for (int i = 0; i < num; i++) {
+			LinmathPoint3d noise = {linmath_normrand(0, sigma), linmath_normrand(0, sigma), linmath_normrand(0, sigma)};
+			LinmathPoint3d pt;
+			add3d(pt, gt_pt, noise);
+
+			LinmathPoint3d dir = {linmath_rand(-1, 1), linmath_rand(-1, 1), linmath_rand(-1, 1)};
+			normalize3d(dir, dir);
+
+			FLT t1 = linmath_rand(-10, 10);
+			FLT t2 = linmath_rand(-10, 10);
+
+			struct LinmathLine3d *line = &lines[i];
+			scale3d(line->a, dir, t1);
+			add3d(line->a, line->a, pt);
+
+			scale3d(line->b, dir, t2);
+			add3d(line->b, line->b, pt);
+		}
+
+		LinmathPoint3d o_pt = {0};
+		linmath_find_best_intersection(o_pt, lines, num);
+
+		FLT err = dist3d(gt_pt, o_pt);
+		assert(err < (sigma + 1e-10));
+	}
+}
 int main()
 {
+	testFindBestIntersections();
+
 	testInvertPose();
 	testApplyPoseToPoint();
 	testApplyPoseToPose();

@@ -100,6 +100,15 @@ typedef struct LinmathAxisAnglePose {
 	LinmathAxisAngle AxisAngleRot;
 } LinmathAxisAnglePose;
 
+struct LinmathLine3d {
+	LinmathVec3d a, b;
+};
+
+struct LinmathPlane {
+	LinmathVec3d origin;
+	LinmathVec3d normal;
+};
+
 LINMATH_EXPORT extern LinmathQuat LinmathQuat_Identity;
 LINMATH_EXPORT extern LinmathPose LinmathPose_Identity;
 
@@ -259,9 +268,11 @@ LINMATH_EXPORT void PoseToMatrix(FLT *mat44, const LinmathPose *pose_in);
 //
 // This assumes that the space A and B share an origin.
 LINMATH_EXPORT void KabschCentered(LinmathQuat B2Atx, const FLT *ptsA, const FLT *ptsB, int num_pts);
+LINMATH_EXPORT void KabschCenteredScaled(LinmathQuat B2Atx, FLT *scale, const FLT *ptsA, const FLT *ptsB, int num_pts);
 
 // Same as above except it solves for the center for you
 LINMATH_EXPORT void Kabsch(LinmathPose *B2Atx, const FLT *ptsA, const FLT *ptsB, int num_pts);
+LINMATH_EXPORT void KabschScaled(LinmathPose *B2Atx, FLT *scale, const FLT *ptsA, const FLT *ptsB, int num_pts);
 // Matrix Stuff
 
 typedef struct {
@@ -306,6 +317,10 @@ static inline LinmathPose EulerPose2Pose(const LinmathEulerPose *pose) {
 LINMATH_EXPORT FLT linmath_rand(FLT min, FLT max);
 LINMATH_EXPORT FLT linmath_normrand(FLT mu, FLT sigma);
 
+LINMATH_EXPORT void linmath_find_best_intersection(LinmathPoint3d pt, const struct LinmathLine3d *lines, size_t num);
+LINMATH_EXPORT void linmath_get_line_dir(LinmathPoint3d dir, const struct LinmathLine3d *ray);
+LINMATH_EXPORT void linmath_pt_along_line(LinmathPoint3d pt, const struct LinmathLine3d *ray, FLT t);
+LINMATH_EXPORT FLT linmath_point_distance_from_line(struct LinmathLine3d *ray, LinmathVec3d pt, FLT *t);
 struct sparse_matrix {
 	size_t rows, cols;
 	int16_t *col_index;

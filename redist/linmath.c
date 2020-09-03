@@ -881,8 +881,10 @@ inline void PoseToMatrix(FLT *matrix44, const LinmathPose *pose_in) {
 	matrix44[7] = pose_in->Pos[1];
 	matrix44[11] = pose_in->Pos[2];
 }
-
 void KabschCentered(LinmathQuat qout, const FLT *ptsA, const FLT *ptsB, int num_pts) {
+	KabschCenteredScaled(qout, 0, ptsA, ptsB, num_pts);
+}
+void KabschCenteredScaled(LinmathQuat qout, FLT *scale, const FLT *ptsA, const FLT *ptsB, int num_pts) {
 	// Note: The following follows along with https://en.wikipedia.org/wiki/Kabsch_algorithm
 	// for the most part but we use some transpose identities to let avoid unneeded transposes
 	CvMat A = cvMat(num_pts, 3, CV_FLT, (FLT *)ptsA);
@@ -913,10 +915,18 @@ void KabschCentered(LinmathQuat qout, const FLT *ptsA, const FLT *ptsB, int num_
 		cvGEMM(&U, &VT, 1, 0, 0, &R, 0);
 	}
 
+	if (scale) {
+		*scale = 0;
+		for (int i = 0; i < num_pts; i++) {
+			*scale += norm3d(ptsA + 3 * i) / norm3d(ptsB + 3 * i);
+		}
+		*scale = *scale / num_pts;
+	}
+
 	quatfrommatrix33(qout, _R);
 }
 
-LINMATH_EXPORT void Kabsch(LinmathPose *B2Atx, const FLT *_ptsA, const FLT *_ptsB, int num_pts) {
+LINMATH_EXPORT void KabschScaled(LinmathPose *B2Atx, FLT *scale, const FLT *_ptsA, const FLT *_ptsB, int num_pts) {
 	FLT centerA[3];
 	FLT centerB[3];
 
@@ -926,11 +936,13 @@ LINMATH_EXPORT void Kabsch(LinmathPose *B2Atx, const FLT *_ptsA, const FLT *_pts
 	center3d(ptsA, centerA, _ptsA, num_pts);
 	center3d(ptsB, centerB, _ptsB, num_pts);
 
-	KabschCentered(B2Atx->Rot, ptsA, ptsB, num_pts);
+	KabschCenteredScaled(B2Atx->Rot, scale, ptsA, ptsB, num_pts);
 	quatrotatevector(centerA, B2Atx->Rot, centerA);
 	sub3d(B2Atx->Pos, centerB, centerA);
 }
-
+LINMATH_EXPORT void Kabsch(LinmathPose *B2Atx, const FLT *_ptsA, const FLT *_ptsB, int num_pts) {
+	KabschScaled(B2Atx, 0, _ptsA, _ptsB, num_pts);
+}
 LINMATH_EXPORT LinmathQuat LinmathQuat_Identity = {1.0};
 LINMATH_EXPORT LinmathPose LinmathPose_Identity = {.Rot = {1.0}};
 
@@ -1095,3 +1107,71 @@ void matrix_ABAt_add(struct CvMat *out, const struct CvMat *A, const struct CvMa
 }
 
 #pragma GCC pop_options
+
+void linmath_get_line_dir(LinmathPoint3d dir, const struct LinmathLine3d *ray) {
+	sub3d(dir, ray->b, ray->a);
+	normalize3d(dir, dir);
+}
+
+void linmath_find_best_intersection(LinmathPoint3d pt, const struct LinmathLine3d *lines, size_t num) {
+	// http://mathforum.org/library/drmath/view/69105.html
+	CREATE_STACK_MAT(A, num * 2, 3);
+	CREATE_STACK_MAT(B, num * 2, 1);
+
+	for (int i = 0; i < num; i++) {
+		LinmathPoint3d dir;
+		linmath_get_line_dir(dir, &lines[i]);
+
+		// https://stackoverflow.com/a/33658815
+		LinmathPoint3d n1 = {0, 0, 1};
+		LinmathPoint3d tmp;
+		scale3d(tmp, dir, dot3d(n1, dir));
+		sub3d(n1, n1, tmp);
+
+		LinmathPoint3d n2;
+		cross3d(n2, n1, dir);
+
+		assert(fabs(dot3d(dir, n1)) < 1e-7);
+		assert(fabs(dot3d(dir, n2)) < 1e-7);
+		assert(fabs(dot3d(n1, n2)) < 1e-7);
+
+		FLT d1 = dot3d(n1, lines[i].a);
+		FLT d2 = dot3d(n2, lines[i].a);
+
+		for (int j = 0; j < 3; j++) {
+			cvmSet(&A, i * 2 + 0, j, n1[j]);
+			cvmSet(&B, i * 2 + 0, 0, d1);
+
+			cvmSet(&A, i * 2 + 1, j, n2[j]);
+			cvmSet(&B, i * 2 + 1, 0, d2);
+		}
+	}
+
+	CvMat x = cvMat(3, 1, CV_FLT, pt);
+	cvSolve(&A, &B, &x, CV_SVD);
+}
+
+void linmath_pt_along_line(LinmathPoint3d pt, const struct LinmathLine3d *ray, FLT t) {
+	LinmathPoint3d rayDirection;
+	linmath_get_line_dir(rayDirection, ray);
+	scale3d(pt, rayDirection, t);
+	add3d(pt, ray->a, pt);
+}
+
+FLT linmath_point_distance_from_line(struct LinmathLine3d *ray, LinmathVec3d pt, FLT *t) {
+	LinmathVec3d pt_a, pt_b, b_a;
+	sub3d(pt_a, pt, ray->a);
+	sub3d(pt_b, pt, ray->b);
+	sub3d(b_a, ray->b, ray->a);
+
+	LinmathVec3d pt_cross;
+	cross3d(pt_cross, pt_a, pt_b);
+
+	if (t) {
+		LinmathVec3d a_pt;
+		sub3d(a_pt, ray->a, pt);
+
+		*t = -dot3d(a_pt, b_a) / norm3d(b_a) / norm3d(b_a);
+	}
+	return norm3d(pt_cross) / norm3d(b_a);
+}
