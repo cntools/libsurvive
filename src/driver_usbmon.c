@@ -479,6 +479,11 @@ void *pcap_thread_fn(void *_driver) {
 						this_real_time = timestamp_in_s();
 					}
 				}
+
+				while (survive_input_event_count(ctx) > 0) {
+					OGUSleep(1000);
+				}
+
 				driver->time_now = this_time;
 				if (this_time > driver->run_time && driver->run_time > 0)
 					*driver->keepRunning = false;

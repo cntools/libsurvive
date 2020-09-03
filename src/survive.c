@@ -133,7 +133,13 @@ void survive_default_log_process(struct SurviveContext *ctx, SurviveLogLevel ll,
 		return;
 	}
 }
-
+size_t survive_input_event_count(const SurviveContext *ctx) {
+	if (ctx->buttonQueue.nextReadIndex > ctx->buttonQueue.nextWriteIndex) {
+		return (ctx->buttonQueue.nextWriteIndex + sizeof(ctx->buttonQueue.entry) / sizeof(ctx->buttonQueue.entry[0])) -
+			   ctx->buttonQueue.nextReadIndex;
+	}
+	return ctx->buttonQueue.nextWriteIndex - ctx->buttonQueue.nextReadIndex;
+}
 static void *button_servicer(void *context) {
 	SurviveContext *ctx = (SurviveContext *)context;
 
@@ -170,6 +176,7 @@ static void *button_servicer(void *context) {
 			butt_func(entry->so, entry->eventType, entry->buttonId, entry->ids, entry->axisValues);
 			survive_release_ctx_lock(ctx);
 		}
+		ctx->buttonQueue.processed_events++;
 
 		ctx->buttonQueue.nextReadIndex++;
 		if (ctx->buttonQueue.nextReadIndex >= BUTTON_QUEUE_MAX_LEN) {
@@ -798,6 +805,8 @@ void survive_close(SurviveContext *ctx) {
 	OGUnlockSema(ctx->buttonQueue.buttonservicesem);
 	OGJoinThread(ctx->buttonservicethread);
 	OGDeleteSema(ctx->buttonQueue.buttonservicesem);
+
+	SV_VERBOSE(10, "Button events processed: %d", (int)ctx->buttonQueue.processed_events);
 
 	while ((DriverName = GetDriverNameMatching("DriverUnreg", r++))) {
 		DeviceDriver dd = (DeviceDriver)GetDriver(DriverName);

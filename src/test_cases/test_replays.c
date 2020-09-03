@@ -10,6 +10,11 @@
 #include <survive_api.h>
 
 static void diff(FLT *out, const SurvivePose *a, const SurvivePose *b) {
+	if (quatiszero(a->Rot) && quatiszero(b->Rot)) {
+		out[0] = out[1] = 0;
+		return;
+	}
+
 	SurvivePose iB = InvertPoseRtn(b);
 	SurvivePose nearId;
 	ApplyPoseToPose(&nearId, a, &iB);
@@ -81,6 +86,31 @@ static void external_pose_fn(SurviveContext *ctx, const char *name, const Surviv
 	}
 }
 
+static void button_fn(SurviveObject *so, enum SurviveInputEvent eventType, enum SurviveButton buttonId,
+					  const enum SurviveAxis *axisIds, const SurviveAxisVal_t *axisVals) {
+	struct SurviveContext *ctx = so->ctx;
+	if (buttonId != SURVIVE_BUTTON_UNKNOWN) {
+		const char *buttonName = SurviveButtonsStr(so->object_subtype, buttonId);
+		if (buttonName == 0) {
+			SV_WARN("Unrecognized input from %s, button id %d", so->codename, buttonId);
+			exit(-8);
+		}
+	}
+
+	for (int i = 0; i < 16 && axisIds[i] != SURVIVE_AXIS_UNKNOWN; i++) {
+		const char *axisName = SurviveAxisStr(so->object_subtype, axisIds[i]);
+		if (axisName == 0) {
+			SV_WARN("Unrecognized input from %s, axis id %d", so->codename, axisIds[i]);
+			exit(-9);
+		}
+
+		if (axisVals[i] > 1.1 || axisVals[i] < -1.1) {
+			SV_WARN("Value out of range for %s axis id %d", so->codename, axisIds[i]);
+			exit(-9);
+		}
+	}
+}
+
 static int test_path(const char *filename, int main_argc, char **main_argv) {
 	int rtn = 0;
 
@@ -134,12 +164,17 @@ static int test_path(const char *filename, int main_argc, char **main_argv) {
 	}
 
 	SurvivePose originalLH[NUM_GEN2_LIGHTHOUSES] = {0};
+	bool originalHasOOTX[NUM_GEN2_LIGHTHOUSES] = {0};
+	bool originalHasPosition[NUM_GEN2_LIGHTHOUSES] = {0};
 
 	fprintf(stderr, "Ground truth LH poses:\n");
 	uint32_t ref_lh = 0;
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
 		SurvivePose pose = ctx->bsd[i].Pose;
 		originalLH[i] = pose;
+		originalHasOOTX[i] = ctx->bsd[i].OOTXSet;
+		originalHasPosition[i] = ctx->bsd[i].PositionSet;
+
 		ctx->bsd[i].PositionSet = 0;
 		ctx->bsd[i].Pose = LinmathPose_Identity;
 		fprintf(stderr, " LH%2d (%08x): " SurvivePose_format "\n", i, ctx->bsd[i].BaseStationID, pose.Pos[0],
@@ -157,6 +192,7 @@ static int test_path(const char *filename, int main_argc, char **main_argv) {
 
 	// rctx.pose_fn = survive_install_pose_fn(ctx, pose_fn);
 	rctx.external_pose_fn = survive_install_external_pose_fn(ctx, external_pose_fn);
+	survive_install_button_fn(ctx, button_fn);
 
 	while (survive_simple_is_running(actx)) {
 		OGUSleep(10000);
@@ -188,7 +224,8 @@ static int test_path(const char *filename, int main_argc, char **main_argv) {
 			rctx.mismatched++;
 		}
 
-		if (ctx->bsd[i].OOTXSet == false || ctx->bsd[i].PositionSet == false) {
+		if ((!ctx->bsd[i].OOTXSet && (ctx->bsd[i].OOTXSet != originalHasOOTX[i])) ||
+			(!ctx->bsd[i].PositionSet && (ctx->bsd[i].PositionSet != originalHasPosition[i]))) {
 			fprintf(stderr, "TEST FAILED, LH%d was not solved for either ootx or position: %d %d\n", i,
 					ctx->bsd[i].OOTXSet, ctx->bsd[i].PositionSet);
 			rctx.mismatched++;
