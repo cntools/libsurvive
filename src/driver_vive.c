@@ -1075,14 +1075,44 @@ typedef struct {
 	SurviveAxisVal_t /*uint16_t*/ triggerHighRes;
 } buttonEvent;
 
-void incrementAndPostButtonQueue(SurviveContext *ctx) {
+static ButtonQueueEntry *prepareNextButtonEvent(SurviveObject *so) {
+	ButtonQueueEntry *entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
+	memset(entry, 0, sizeof(ButtonQueueEntry));
+	assert(so);
+	entry->so = so;
+	for (int i = 0; i < 16; i++) {
+		entry->ids[i] = SURVIVE_AXIS_UNKNOWN;
+	}
+	entry->buttonId = SURVIVE_BUTTON_UNKNOWN;
+	return entry;
+}
+
+static ButtonQueueEntry *incrementAndPostButtonQueue(SurviveObject *so) {
+	SurviveContext *ctx = so->ctx;
 	ButtonQueueEntry *entry = &(ctx->buttonQueue.entry[ctx->buttonQueue.nextWriteIndex]);
+
+	for (int i = 0; i < entry->ids && entry->ids[i] != 255; i++)
+		so->axis[entry->ids[i]] = entry->axisValues[i];
+
+	if (entry->buttonId != 255) {
+		bool isTouch =
+			entry->eventType == SURVIVE_INPUT_EVENT_TOUCH_UP || entry->eventType == SURVIVE_INPUT_EVENT_TOUCH_DOWN;
+		bool isClear =
+			entry->eventType == SURVIVE_INPUT_EVENT_TOUCH_UP || entry->eventType == SURVIVE_INPUT_EVENT_BUTTON_UP;
+
+		uint32_t mask = 1u << entry->buttonId;
+		uint32_t *maskp = isTouch ? &so->touchmask : &so->buttonmask;
+		if (isClear)
+			*maskp &= ~mask;
+		else
+			*maskp |= mask;
+	}
 
 	if ((ctx->buttonQueue.nextWriteIndex + 1) % BUTTON_QUEUE_MAX_LEN == ctx->buttonQueue.nextReadIndex) {
 		// There's not enough space to write this entry.  Clear it out and move along
 		SV_WARN("Button buffer full");
 		memset(entry, 0, sizeof(ButtonQueueEntry));
-		return;
+		return 0;
 	}
 	entry->isPopulated = 1;
 	ctx->buttonQueue.nextWriteIndex++;
@@ -1095,21 +1125,15 @@ void incrementAndPostButtonQueue(SurviveContext *ctx) {
 	// clear out any old data in the entry so we always start with a clean slate.
 	entry = &(ctx->buttonQueue.entry[ctx->buttonQueue.nextWriteIndex]);
 	memset(entry, 0, sizeof(ButtonQueueEntry));
+	return prepareNextButtonEvent(so);
 }
 
-static ButtonQueueEntry *prepareNextButtonEvent(SurviveObject *so) {
-	ButtonQueueEntry *entry = &(so->ctx->buttonQueue.entry[so->ctx->buttonQueue.nextWriteIndex]);
-	memset(entry, 0, sizeof(ButtonQueueEntry));
-	assert(so);
-	entry->so = so;
-	for (int i = 0; i < 16; i++) {
-		entry->ids[i] = SURVIVE_AXIS_UNKNOWN;
-	}
-	entry->buttonId = -1;
-	return entry;
-}
+enum ButtonEventSource {
+	BUTTON_EVENT_SOURCE_DEFAULT = 0,
+	BUTTON_EVENT_SOURCE_RF = 1,
 
-enum ButtonEventSource { BUTTON_EVENT_SOURCE_DEFAULT = 0, BUTTON_EVENT_SOURCE_RF = 1 };
+	BUTTON_TOUCH_EVENT_SOURCE = 0x80
+};
 
 static void get_eventTypes_for_idx(const SurviveObject *so, uint8_t idx, uint8_t *down, uint8_t *up,
 								   enum ButtonEventSource source) {
@@ -1159,6 +1183,16 @@ static uint8_t get_button_id_for_idx(const SurviveObject *so, uint8_t idx, enum 
 			}
 		}
 		}
+		break;
+	}
+	case (BUTTON_EVENT_SOURCE_RF | BUTTON_TOUCH_EVENT_SOURCE): {
+		switch (so->object_subtype) {
+		case SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R:
+		case SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L:
+			if (idx == 1) {
+				return SURVIVE_BUTTON_UNKNOWN;
+			}
+		}
 	}
 	default: {
 		switch (so->object_subtype) {
@@ -1183,12 +1217,19 @@ static uint8_t get_button_id_for_idx(const SurviveObject *so, uint8_t idx, enum 
 }
 
 static inline ButtonQueueEntry *registerButtonOnOff(SurviveObject *so, ButtonQueueEntry *entry, uint32_t incoming_mask,
-													uint32_t current_mask, uint8_t defaultEventTypeDown,
-													uint8_t defaultEventTypeUp, enum ButtonEventSource source) {
+													uint8_t defaultEventTypeDown, uint8_t defaultEventTypeUp,
+													enum ButtonEventSource source) {
 	for (uint8_t a = 0; a < 32; a++) {
 		uint8_t eventTypeDown = defaultEventTypeDown, eventTypeUp = defaultEventTypeUp;
 		get_eventTypes_for_idx(so, a, &eventTypeDown, &eventTypeUp, source);
-		if ((incoming_mask & (1u << a)) != (current_mask & (1u << a))) {
+
+		uint8_t current_mask = eventTypeDown == SURVIVE_INPUT_EVENT_BUTTON_DOWN ? so->buttonmask : so->touchmask;
+
+		uint8_t id = get_button_id_for_idx(so, a, source);
+		if (id == 255)
+			continue;
+
+		if ((incoming_mask & (1u << a)) != (current_mask & (1u << id))) {
 			// Hey, the button did something
 			if (incoming_mask & (1u << a)) {
 				// it went down
@@ -1197,32 +1238,24 @@ static inline ButtonQueueEntry *registerButtonOnOff(SurviveObject *so, ButtonQue
 				// it went up
 				entry->eventType = eventTypeUp;
 			}
-			entry->buttonId = get_button_id_for_idx(so, a, source);
-			if (entry->buttonId == 0) {
-				// this fixes 2 issues.  First, is the a button id of 0 indicates no button pressed.
-				// second is that the trigger shows up as button 0 coming from the wireless controller,
-				// but we infer it from the position on the wired controller.  On the wired, we treat it
-				// as buttonId 24 (look further down in this function)
-				entry->buttonId = 24;
-			}
-			incrementAndPostButtonQueue(so->ctx);
-			entry = prepareNextButtonEvent(so);
+			entry->buttonId = id;
+			entry = incrementAndPostButtonQueue(so);
 		}
 	}
+	/*
 	// if the trigger button is depressed & it wasn't before
 	if (((incoming_mask & (0xff000000)) == 0xff000000) && (current_mask & (0xff000000)) != 0xff000000) {
 		entry->eventType = defaultEventTypeDown;
 		entry->buttonId = 24;
-		incrementAndPostButtonQueue(so->ctx);
-		entry = prepareNextButtonEvent(so);
+		entry = incrementAndPostButtonQueue(so);
 	}
 	// if the trigger button isn't depressed but it was before
 	else if (((incoming_mask & (0xff000000)) != 0xff000000) && (current_mask & (0xff000000)) == 0xff000000) {
 		entry->eventType = defaultEventTypeUp;
 		entry->buttonId = 24;
-		incrementAndPostButtonQueue(so->ctx);
-		entry = prepareNextButtonEvent(so);
+		entry = incrementAndPostButtonQueue(so);
 	}
+	 */
 	return entry;
 }
 // important!  This must be the only place that we're posting to the buttonEntryQueue
@@ -1233,27 +1266,22 @@ static void registerButtonEvent(SurviveObject *so, buttonEvent *event, enum Butt
 
 	if (event->pressedButtonsValid) {
 		// printf("trigger %8.8x\n", event->triggerHighRes);
-		entry = registerButtonOnOff(so, entry, event->pressedButtons, so->buttonmask, SURVIVE_INPUT_EVENT_BUTTON_DOWN,
+		entry = registerButtonOnOff(so, entry, event->pressedButtons, SURVIVE_INPUT_EVENT_BUTTON_DOWN,
 									SURVIVE_INPUT_EVENT_BUTTON_UP, source);
 	}
 
 	if (event->touchedButtonsValid) {
-		entry = registerButtonOnOff(so, entry, event->touchedButtons, so->touchmask, SURVIVE_INPUT_EVENT_TOUCH_DOWN,
-									SURVIVE_INPUT_EVENT_TOUCH_UP, source);
+		entry = registerButtonOnOff(so, entry, event->touchedButtons, SURVIVE_INPUT_EVENT_TOUCH_DOWN,
+									SURVIVE_INPUT_EVENT_TOUCH_UP, source | BUTTON_TOUCH_EVENT_SOURCE);
 	}
 
 	if (event->triggerHighResValid) {
-		if (so->axis[0] != event->triggerHighRes) {
+		if (so->axis[1] != event->triggerHighRes) {
 			entry->eventType = SURVIVE_INPUT_EVENT_AXIS_CHANGED;
 			entry->ids[0] = 1;
 			entry->axisValues[0] = event->triggerHighRes;
-			incrementAndPostButtonQueue(so->ctx);
-			entry = prepareNextButtonEvent(so);
+			entry = incrementAndPostButtonQueue(so);
 		}
-	}
-
-	if (event->pressedButtonsValid) {
-		so->buttonmask = event->pressedButtons;
 	}
 
 	if ((event->touchpadHorizontalValid) && (event->touchpadVerticalValid)) {
@@ -1267,11 +1295,12 @@ static void registerButtonEvent(SurviveObject *so, buttonEvent *event, enum Butt
 				if ((so->axis[ax] != 0) || (so->axis[ay] != 0)) {
 					entry->eventType = SURVIVE_INPUT_EVENT_AXIS_CHANGED;
 
-					entry->axisValues[0] = so->axis[entry->ids[0] = ax] = 0;
-					entry->axisValues[1] = so->axis[entry->ids[1] = ay] = 0;
+					entry->ids[0] = ax;
+					entry->ids[1] = ay;
+					entry->axisValues[0] = 0;
+					entry->axisValues[1] = 0;
 
-					incrementAndPostButtonQueue(so->ctx);
-					entry = prepareNextButtonEvent(so);
+					entry = incrementAndPostButtonQueue(so);
 				}
 
 				ax = SURVIVE_AXIS_JOYSTICK_X;
@@ -1282,11 +1311,12 @@ static void registerButtonEvent(SurviveObject *so, buttonEvent *event, enum Butt
 		if ((so->axis[ax] != event->touchpadHorizontal) || (so->axis[ay] != event->touchpadVertical)) {
 			entry->eventType = SURVIVE_INPUT_EVENT_AXIS_CHANGED;
 
-			entry->axisValues[0] = so->axis[entry->ids[0] = ax] = event->touchpadHorizontal;
-			entry->axisValues[1] = so->axis[entry->ids[1] = ay] = event->touchpadVertical;
+			entry->ids[0] = ax;
+			entry->ids[1] = ay;
+			entry->axisValues[0] = event->touchpadHorizontal;
+			entry->axisValues[1] = event->touchpadVertical;
 
-			incrementAndPostButtonQueue(so->ctx);
-			entry = prepareNextButtonEvent(so);
+			entry = incrementAndPostButtonQueue(so);
 		}
 	}
 
@@ -1301,35 +1331,21 @@ static void registerButtonEvent(SurviveObject *so, buttonEvent *event, enum Butt
 		}
 
 		if (axisCnt > 0) {
-			incrementAndPostButtonQueue(so->ctx);
-			entry = prepareNextButtonEvent(so);
+			entry = incrementAndPostButtonQueue(so);
 		}
 	}
 
 	for (int i = 0; i < event->rawAxisCnt; i++) {
 		if (event->rawAxis[i] != so->axis[i]) {
-			so->axis[i] = event->rawAxis[i];
 			entry->eventType = SURVIVE_INPUT_EVENT_AXIS_CHANGED;
 			entry->ids[0] = i;
 			entry->axisValues[0] = event->rawAxis[i];
-			incrementAndPostButtonQueue(so->ctx);
-			entry = prepareNextButtonEvent(so);
+			entry = incrementAndPostButtonQueue(so);
 		}
 	}
 
-	if(event->touchedButtonsValid) {
-		so->touchmask = event->touchedButtons;
-	}
 	if (event->batteryChargeValid) {
 		so->charge = event->batteryCharge;
-	}
-	if (event->triggerHighResValid) {
-		so->axis[0] = event->triggerHighRes;
-	}
-	if (event->proximityValid) {
-		for (int i = 0; i < 6; i++) {
-			so->axis[3 + i] = event->proximity[i];
-		}
 	}
 }
 

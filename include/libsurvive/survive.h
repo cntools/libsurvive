@@ -96,8 +96,8 @@ struct SurviveObject {
 	void *driver;
 	SurviveObjectType object_type;
 	SurviveObjectSubtype object_subtype;
-	int32_t buttonmask;
-	int32_t touchmask;
+	uint32_t buttonmask;
+	uint32_t touchmask;
 	SurviveAxisVal_t axis[16];
 
 	int8_t charge;
@@ -237,8 +237,8 @@ struct config_group;
 // axis1 will be x, axis2 will be y.
 typedef struct {
 	uint8_t isPopulated; // probably can remove this given the semaphore in the parent struct.   helps with debugging
-	uint8_t eventType;
-	uint8_t buttonId;
+	enum SurviveInputEvent eventType;
+	enum SurviveButton buttonId;
 
 	enum SurviveAxis ids[16];
 	SurviveAxisVal_t axisValues[16];

@@ -212,7 +212,7 @@ void survive_recording_button_process(SurviveObject *so, enum SurviveInputEvent 
 	}
 
 	const char *dev = so->codename;
-	write_to_output(recordingData, "%s BUTTON %u %u", dev, eventType, buttonId);
+	write_to_output(recordingData, "%s BUTTON %u %u\r\n", dev, eventType, buttonId);
 }
 void survive_recording_angle_process(struct SurviveObject *so, int sensor_id, int acode, uint32_t timecode, FLT length,
 									 FLT angle, uint32_t lh) {
