@@ -9,3 +9,9 @@ find_package(catkin QUIET COMPONENTS
 IF(catkin_DIR)
   add_subdirectory(ros_publisher)
 ENDIF()
+
+find_library(XDO_LIB xdo)
+message("========== ${XDO_LIB}")
+if(XDO_LIB)
+  add_subdirectory(vive_mouse)
+endif()
