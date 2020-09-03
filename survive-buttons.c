@@ -79,6 +79,7 @@ static void button_process(SurviveObject *so, enum SurviveInputEvent eventType, 
 		break;
 	}
 	case SURVIVE_INPUT_EVENT_AXIS_CHANGED: {
+		assert(buttonId == SURVIVE_BUTTON_UNKNOWN);
 		for (int i = 0; i < 16 && axisIds[i] != 255; i++) {
 			int axisId = axisIds[i];
 			info->axes[axisId].changed = true;

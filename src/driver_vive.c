@@ -1091,7 +1091,7 @@ static ButtonQueueEntry *incrementAndPostButtonQueue(SurviveObject *so) {
 	SurviveContext *ctx = so->ctx;
 	ButtonQueueEntry *entry = &(ctx->buttonQueue.entry[ctx->buttonQueue.nextWriteIndex]);
 
-	for (int i = 0; i < entry->ids && entry->ids[i] != 255; i++)
+	for (int i = 0; i < (sizeof(entry->ids) / sizeof(entry->ids[0])) && entry->ids[i] != 255; i++)
 		so->axis[entry->ids[i]] = entry->axisValues[i];
 
 	if (entry->buttonId != 255) {

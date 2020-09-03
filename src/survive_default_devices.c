@@ -272,6 +272,23 @@ static int process_jsonarray(scratch_space_t *scratch, char *ct0conf, stack_entr
 	return 0;
 }
 
+struct key_value {
+	const char *key;
+	int32_t value;
+};
+
+struct key_value model_number_subtypes[] = {
+	{"Knuckles Right", SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R},
+	{"Knuckles EV3.0 Right", SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R},
+	{"Knuckles Left", SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L},
+	{"Knuckles EV3.0 Left", SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L},
+	{"Utah MP", SURVIVE_OBJECT_SUBTYPE_INDEX},
+	{"Vive Controller MV", SURVIVE_OBJECT_SUBTYPE_WAND},
+	{"Vive. Controller MV", SURVIVE_OBJECT_SUBTYPE_WAND},
+	{"VIVE Tracker Pro MV", SURVIVE_OBJECT_SUBTYPE_TRACKER},
+	{"Vive Tracker MV", SURVIVE_OBJECT_SUBTYPE_TRACKER},
+};
+
 static int process_jsontok(scratch_space_t *scratch, char *d, stack_entry_t *stack, jsmntok_t *t, int count) {
 	int i, j, k;
 	assert(count >= 0);
@@ -297,18 +314,22 @@ static int process_jsontok(scratch_space_t *scratch, char *d, stack_entry_t *sta
 
 				memcpy(scratch->so->serial_number, d + t->start, size);
 			} else if (jsoneq(d, stack->key, "model_number") == 0) {
-				if (strncmp("Knuckles Right", d + t->start, t->end - t->start) == 0 ||
-					strncmp("Knuckles EV3.0 Right", d + t->start, t->end - t->start) == 0) {
-					scratch->so->object_subtype = SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R;
-				} else if (strncmp("Knuckles Left", d + t->start, t->end - t->start) == 0 ||
-						   strncmp("Knuckles EV3.0 Left", d + t->start, t->end - t->start) == 0) {
-					scratch->so->object_subtype = SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L;
-				} else if (strncmp("Utah MP", d + t->start, t->end - t->start) == 0) {
-					scratch->so->object_subtype = SURVIVE_OBJECT_SUBTYPE_INDEX;
-				} else if (strncmp("Vive Controller MV", d + t->start, t->end - t->start) == 0) {
-					scratch->so->object_subtype = SURVIVE_OBJECT_SUBTYPE_WAND;
-				} else if (strncmp("VIVE Tracker Pro MV", d + t->start, t->end - t->start) == 0) {
-					scratch->so->object_subtype = SURVIVE_OBJECT_SUBTYPE_TRACKER;
+
+				const char *str = d + t->start;
+				size_t len = t->end - t->start;
+
+				for (int idx = 0; idx < sizeof(model_number_subtypes) / sizeof(model_number_subtypes[0]); idx++) {
+					if (strncmp(model_number_subtypes[idx].key, str, len) == 0) {
+						scratch->so->object_subtype = model_number_subtypes[idx].value;
+						break;
+					}
+				}
+
+				if (scratch->so->object_subtype == SURVIVE_OBJECT_SUBTYPE_GENERIC) {
+					SurviveContext *ctx = scratch->so->ctx;
+					SV_WARN("Unknown model_number %.*s. Please submit an issue with this value describing your device "
+							"so it can be added to the known list.",
+							(int)len, str);
 				}
 			} else if (jsoneq(d, stack->key, "model_name") == 0) {
 				if (strncmp("Vive Tracker MV", d + t->start, t->end - t->start) == 0) {
