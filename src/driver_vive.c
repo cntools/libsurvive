@@ -1088,6 +1088,10 @@ static ButtonQueueEntry *prepareNextButtonEvent(SurviveObject *so) {
 
 static ButtonQueueEntry *incrementAndPostButtonQueue(SurviveObject *so) {
 	SurviveContext *ctx = so->ctx;
+
+	if (ctx->buttonQueue.buttonservicesem == 0)
+		return 0;
+
 	ButtonQueueEntry *entry = &(ctx->buttonQueue.entry[ctx->buttonQueue.nextWriteIndex]);
 
 	for (int i = 0; i < (sizeof(entry->ids) / sizeof(entry->ids[0])) && entry->ids[i] != 255; i++)

@@ -806,6 +806,7 @@ void survive_close(SurviveContext *ctx) {
 	OGUnlockSema(ctx->buttonQueue.buttonservicesem);
 	OGJoinThread(ctx->buttonservicethread);
 	OGDeleteSema(ctx->buttonQueue.buttonservicesem);
+	ctx->buttonQueue.buttonservicesem = 0;
 
 	SV_VERBOSE(10, "Button events processed: %d", (int)ctx->buttonQueue.processed_events);
 

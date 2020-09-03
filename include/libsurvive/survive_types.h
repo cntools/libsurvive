@@ -138,7 +138,7 @@ enum SurviveButton {
 	SURVIVE_BUTTON_MENU = 6,
 	SURVIVE_BUTTON_GRIP = 7,
 
-	SURVIVE_BUTTON_ON_FACE = 24,
+	SURVIVE_BUTTON_ON_FACE = 0,
 };
 
 enum SurviveAxis {
