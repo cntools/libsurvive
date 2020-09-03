@@ -89,11 +89,10 @@ static void button_process(SurviveObject *so, enum SurviveInputEvent eventType, 
 	}
 	}
 
-	/*
-	SV_INFO("%s button event type: %02d id: (%12s)%02u axis1id: %2u axis1val %5u axis2id: %2u axis2val %5u",
-			so->codename, eventType, SurviveButtonsStr(so->object_subtype, buttonId), buttonId, axis1Id, axis1Val,
-	axis2Id, axis2Val);
-*/
+	SV_VERBOSE(50, "%s button event type: %02d id: (%12s) %03u axis1id: %2u axis1val %5.3f axis2id: %2u axis2val %5.3f",
+			   so->codename, eventType, SurviveButtonsStr(so->object_subtype, buttonId), buttonId, axisIds[0],
+			   axisVals[0], axisIds[1], axisVals[1]);
+
 	needsRedraw = true;
 }
 

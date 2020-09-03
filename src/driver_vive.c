@@ -516,10 +516,9 @@ void survive_data_cb(SurviveUSBInterface *si) {
 }
 
 // USB Subsystem
-void survive_usb_close(SurviveViveData *t);
 static int survive_usb_init(SurviveViveData *sv);
 int survive_usb_poll(SurviveContext *ctx);
-static int survive_get_config(char **config, SurviveViveData *ctx, struct SurviveUSBInfo *, int iface,
+static int survive_get_config(char **config, SurviveViveData *sv, struct SurviveUSBInfo *, int iface,
 							  int send_extra_magic);
 static int survive_vive_send_magic(SurviveContext *ctx, void *drv, int magic_code, void *data, int datalen);
 
@@ -1095,6 +1094,7 @@ static ButtonQueueEntry *incrementAndPostButtonQueue(SurviveObject *so) {
 		so->axis[entry->ids[i]] = entry->axisValues[i];
 
 	if (entry->buttonId != 255) {
+		assert(entry->buttonId < 32);
 		bool isTouch =
 			entry->eventType == SURVIVE_INPUT_EVENT_TOUCH_UP || entry->eventType == SURVIVE_INPUT_EVENT_TOUCH_DOWN;
 		bool isClear =
@@ -1102,10 +1102,13 @@ static ButtonQueueEntry *incrementAndPostButtonQueue(SurviveObject *so) {
 
 		uint32_t mask = 1u << entry->buttonId;
 		uint32_t *maskp = isTouch ? &so->touchmask : &so->buttonmask;
+		uint32_t maskv = *maskp;
 		if (isClear)
 			*maskp &= ~mask;
 		else
 			*maskp |= mask;
+		// assert(maskv != *maskp);
+		SV_VERBOSE(75, "Set %d %d %d", entry->buttonId, isTouch, isClear);
 	}
 
 	if ((ctx->buttonQueue.nextWriteIndex + 1) % BUTTON_QUEUE_MAX_LEN == ctx->buttonQueue.nextReadIndex) {
@@ -1135,144 +1138,198 @@ enum ButtonEventSource {
 	BUTTON_TOUCH_EVENT_SOURCE = 0x80
 };
 
-static void get_eventTypes_for_idx(const SurviveObject *so, uint8_t idx, uint8_t *down, uint8_t *up,
-								   enum ButtonEventSource source) {
-	switch (source) {
-	case BUTTON_EVENT_SOURCE_RF: {
-		switch (so->object_subtype) {
-		case SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R:
-		case SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L:
-		case SURVIVE_OBJECT_SUBTYPE_WAND: {
-			switch (idx) {
-			case 1:
-				*down = SURVIVE_INPUT_EVENT_TOUCH_DOWN;
-				*up = SURVIVE_INPUT_EVENT_TOUCH_UP;
-				break;
-			}
-		}
-		}
-	}
-	default:
-		switch (so->object_subtype) {
-		case SURVIVE_OBJECT_SUBTYPE_WAND: {
-			switch (idx) {
-			case 20:
-				*down = SURVIVE_INPUT_EVENT_TOUCH_DOWN;
-				*up = SURVIVE_INPUT_EVENT_TOUCH_UP;
-				break;
-			}
-		}
-		}
+struct DeviceMapping {
+	bool isRF;
+	SurviveObjectSubtype objectSubtype;
+	bool isTouch[64];
+	enum SurviveButton buttonMap[64];
+	enum SurviveAxis axisMap[16];
+};
+
+static void init_device_mapping(struct DeviceMapping *mapping) {
+	memset(mapping, 0, sizeof(struct DeviceMapping));
+	for (int i = 0; i < 64; i++)
+		mapping->buttonMap[i] = SURVIVE_BUTTON_UNKNOWN;
+	for (int i = 0; i < 16; i++)
+		mapping->axisMap[i] = SURVIVE_AXIS_UNKNOWN;
+
+	for (int i = 32; i < 64; i++) {
+		mapping->isTouch[i] = true;
 	}
 }
 
-static uint8_t get_button_id_for_idx(const SurviveObject *so, uint8_t idx, enum ButtonEventSource source) {
-	switch (source) {
-	case BUTTON_EVENT_SOURCE_RF: {
-		switch (so->object_subtype) {
-		case SURVIVE_OBJECT_SUBTYPE_WAND: {
-			switch (idx) {
-			case 7:
-				return SURVIVE_BUTTON_TRACKPAD;
-			case 5:
-				return SURVIVE_BUTTON_MENU;
-			case 4:
-				return SURVIVE_BUTTON_GRIP;
-			default:
-				break;
-			}
-		}
-		}
-		break;
+static struct DeviceMapping *RFWandMapping() {
+	static struct DeviceMapping mapping = {0};
+	if (mapping.objectSubtype == SURVIVE_OBJECT_SUBTYPE_GENERIC) {
+		init_device_mapping(&mapping);
+
+		mapping.isRF = true;
+		mapping.objectSubtype = SURVIVE_OBJECT_SUBTYPE_WAND;
+		mapping.axisMap[1] = SURVIVE_AXIS_TRIGGER;
+		mapping.axisMap[2] = SURVIVE_AXIS_TRACKPAD_X;
+		mapping.axisMap[3] = SURVIVE_AXIS_TRACKPAD_Y;
+
+		mapping.buttonMap[0] = SURVIVE_BUTTON_TRIGGER;
+		mapping.buttonMap[1] = SURVIVE_BUTTON_TRACKPAD;
+		mapping.isTouch[1] = true;
+		mapping.buttonMap[2] = SURVIVE_BUTTON_TRACKPAD;
+		mapping.buttonMap[3] = SURVIVE_BUTTON_SYSTEM;
+		mapping.buttonMap[4] = SURVIVE_BUTTON_GRIP;
+		mapping.buttonMap[5] = SURVIVE_BUTTON_MENU;
 	}
-	case (BUTTON_EVENT_SOURCE_RF | BUTTON_TOUCH_EVENT_SOURCE): {
-		switch (so->object_subtype) {
-		case SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R:
-		case SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L:
-			if (idx == 1) {
-				return SURVIVE_BUTTON_UNKNOWN;
-			}
-		}
+	return &mapping;
+}
+static struct DeviceMapping *WiredWandMapping() {
+	static struct DeviceMapping mapping = {0};
+	if (mapping.objectSubtype == SURVIVE_OBJECT_SUBTYPE_GENERIC) {
+		init_device_mapping(&mapping);
+
+		mapping.isRF = false;
+		mapping.objectSubtype = SURVIVE_OBJECT_SUBTYPE_WAND;
+		mapping.axisMap[1] = SURVIVE_AXIS_TRIGGER;
+		mapping.axisMap[2] = SURVIVE_AXIS_TRACKPAD_X;
+		mapping.axisMap[3] = SURVIVE_AXIS_TRACKPAD_Y;
+
+		mapping.buttonMap[0] = SURVIVE_BUTTON_TRIGGER;
+		mapping.buttonMap[2] = SURVIVE_BUTTON_GRIP;
+		mapping.buttonMap[12] = SURVIVE_BUTTON_MENU;
+		mapping.buttonMap[13] = SURVIVE_BUTTON_SYSTEM;
+		mapping.buttonMap[18] = SURVIVE_BUTTON_TRACKPAD;
+		mapping.buttonMap[20] = SURVIVE_BUTTON_TRACKPAD;
+		mapping.isTouch[20] = true;
 	}
-	default: {
-		switch (so->object_subtype) {
-		case SURVIVE_OBJECT_SUBTYPE_TRACKER:
-		case SURVIVE_OBJECT_SUBTYPE_WAND: {
-			switch (idx) {
-			case 20:
-			case 18:
-				return SURVIVE_BUTTON_TRACKPAD;
-			case 13:
-				return SURVIVE_BUTTON_SYSTEM;
-			case 12:
-				return SURVIVE_BUTTON_MENU;
-			case 2:
-				return SURVIVE_BUTTON_GRIP;
-			}
+	return &mapping;
+}
+static struct DeviceMapping *RFKnuckles() {
+	static struct DeviceMapping mapping = {0};
+	if (mapping.objectSubtype == SURVIVE_OBJECT_SUBTYPE_GENERIC) {
+		init_device_mapping(&mapping);
+
+		mapping.isRF = false;
+		mapping.objectSubtype = SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L;
+		mapping.axisMap[1] = SURVIVE_AXIS_TRIGGER;
+		mapping.axisMap[2] = SURVIVE_AXIS_TRACKPAD_X;
+		mapping.axisMap[3] = SURVIVE_AXIS_TRACKPAD_Y;
+		mapping.axisMap[4] = SURVIVE_AXIS_MIDDLE_FINGER_PROXIMITY;
+		mapping.axisMap[5] = SURVIVE_AXIS_RING_FINGER_PROXIMITY;
+		mapping.axisMap[6] = SURVIVE_AXIS_PINKY_FINGER_PROXIMITY;
+		mapping.axisMap[7] = SURVIVE_AXIS_TRIGGER_FINGER_PROXIMITY;
+		mapping.axisMap[8] = SURVIVE_AXIS_GRIP_FORCE;
+		mapping.axisMap[9] = SURVIVE_AXIS_TRACKPAD_FORCE;
+		mapping.axisMap[10] = SURVIVE_AXIS_JOYSTICK_X;
+		mapping.axisMap[11] = SURVIVE_AXIS_JOYSTICK_Y;
+
+		mapping.buttonMap[0] = SURVIVE_BUTTON_TRIGGER;
+		mapping.buttonMap[1] = SURVIVE_BUTTON_TRACKPAD;
+		mapping.isTouch[1] = true;
+
+		mapping.buttonMap[2] = SURVIVE_BUTTON_THUMBSTICK;
+		mapping.buttonMap[3] = SURVIVE_BUTTON_SYSTEM;
+		mapping.buttonMap[4] = SURVIVE_BUTTON_A;
+		mapping.buttonMap[5] = SURVIVE_BUTTON_B;
+		mapping.buttonMap[6] = SURVIVE_BUTTON_MENU;
+
+		for (int i = 0; i < 32; i++) {
+			mapping.buttonMap[i + 32] = mapping.buttonMap[i];
 		}
-		}
+		mapping.buttonMap[1 + 32] = SURVIVE_BUTTON_UNKNOWN;
 	}
+	return &mapping;
+}
+static struct DeviceMapping *WiredTracker() {
+	static struct DeviceMapping mapping = {0};
+	if (mapping.objectSubtype == SURVIVE_OBJECT_SUBTYPE_GENERIC) {
+		init_device_mapping(&mapping);
+
+		mapping.isRF = false;
+		mapping.objectSubtype = SURVIVE_OBJECT_SUBTYPE_TRACKER;
+		mapping.buttonMap[13] = SURVIVE_BUTTON_SYSTEM;
 	}
+	return &mapping;
+}
+struct DeviceMapping *getDeviceMapping(SurviveObjectSubtype type, enum ButtonEventSource source) {
+	static struct DeviceMapping *DeviceMappings[SURVIVE_OBJECT_SUBTYPE_COUNT * 2] = {0};
+	static bool init = false;
+	if (init == false) {
+		init = true;
+
+		DeviceMappings[SURVIVE_OBJECT_SUBTYPE_WAND] = WiredWandMapping();
+		DeviceMappings[SURVIVE_OBJECT_SUBTYPE_TRACKER] = WiredTracker();
+
+		DeviceMappings[SURVIVE_OBJECT_SUBTYPE_WAND + SURVIVE_OBJECT_SUBTYPE_COUNT] = RFWandMapping();
+		DeviceMappings[SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R + SURVIVE_OBJECT_SUBTYPE_COUNT] = RFKnuckles();
+		DeviceMappings[SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L + SURVIVE_OBJECT_SUBTYPE_COUNT] = RFKnuckles();
+	}
+	return DeviceMappings[type + SURVIVE_OBJECT_SUBTYPE_COUNT * ((source & (BUTTON_EVENT_SOURCE_RF)) != 0)];
+}
+static enum SurviveButton get_button_id_for_idx_from_mapping(struct DeviceMapping *mapping, uint8_t idx,
+															 bool *isTouchEvent, enum ButtonEventSource source) {
+	size_t buttonIdx = idx + ((source & BUTTON_TOUCH_EVENT_SOURCE) != 0) * 32;
+	*isTouchEvent = mapping->isTouch[buttonIdx];
+	enum SurviveButton rtn = mapping->buttonMap[buttonIdx];
+	assert(rtn == 255 || rtn < 32);
+	return rtn;
+}
+
+static enum SurviveButton get_button_id_for_idx(const SurviveObject *so, uint8_t idx, bool *isTouchEvent,
+												enum ButtonEventSource source) {
+	struct DeviceMapping *mapping = getDeviceMapping(so->object_subtype, source);
+	if (mapping) {
+		return get_button_id_for_idx_from_mapping(mapping, idx, isTouchEvent, source);
+	}
+
 	return idx;
 }
 
+#define HAS_BIT_FLAG(x, idx) (((x) & (1u << (idx))) != 0u)
+
 static inline ButtonQueueEntry *registerButtonOnOff(SurviveObject *so, ButtonQueueEntry *entry, uint32_t incoming_mask,
-													uint8_t defaultEventTypeDown, uint8_t defaultEventTypeUp,
 													enum ButtonEventSource source) {
+	struct SurviveContext *ctx = so->ctx;
 	for (uint8_t a = 0; a < 32; a++) {
-		uint8_t eventTypeDown = defaultEventTypeDown, eventTypeUp = defaultEventTypeUp;
-		get_eventTypes_for_idx(so, a, &eventTypeDown, &eventTypeUp, source);
+		bool isTouchEvent = (source & BUTTON_TOUCH_EVENT_SOURCE) != 0;
+		enum SurviveButton id = get_button_id_for_idx(so, a, &isTouchEvent, source);
+		enum SurviveInputEvent eventTypeDown =
+			isTouchEvent ? SURVIVE_INPUT_EVENT_TOUCH_DOWN : SURVIVE_INPUT_EVENT_BUTTON_DOWN;
+		enum SurviveInputEvent eventTypeUp =
+			isTouchEvent ? SURVIVE_INPUT_EVENT_TOUCH_UP : SURVIVE_INPUT_EVENT_BUTTON_UP;
 
 		uint8_t current_mask = eventTypeDown == SURVIVE_INPUT_EVENT_BUTTON_DOWN ? so->buttonmask : so->touchmask;
 
-		uint8_t id = get_button_id_for_idx(so, a, source);
-		if (id == 255)
+		if (id == 255) {
+			if (HAS_BIT_FLAG(incoming_mask, a))
+				SV_WARN("%s has unknown button input %d %d", so->codename, a, source);
+			// assert(
 			continue;
+		}
 
-		if ((incoming_mask & (1u << a)) != (current_mask & (1u << id))) {
-			// Hey, the button did something
-			if (incoming_mask & (1u << a)) {
-				// it went down
-				entry->eventType = eventTypeDown;
-			} else {
-				// it went up
-				entry->eventType = eventTypeUp;
-			}
+		if (HAS_BIT_FLAG(incoming_mask, a) != HAS_BIT_FLAG(current_mask, id)) {
+			entry->eventType = HAS_BIT_FLAG(incoming_mask, a) ? eventTypeDown : eventTypeUp;
 			entry->buttonId = id;
+
+			SV_VERBOSE(75, "a %d\n", a);
 			entry = incrementAndPostButtonQueue(so);
 		}
 	}
-	/*
-	// if the trigger button is depressed & it wasn't before
-	if (((incoming_mask & (0xff000000)) == 0xff000000) && (current_mask & (0xff000000)) != 0xff000000) {
-		entry->eventType = defaultEventTypeDown;
-		entry->buttonId = 24;
-		entry = incrementAndPostButtonQueue(so);
-	}
-	// if the trigger button isn't depressed but it was before
-	else if (((incoming_mask & (0xff000000)) != 0xff000000) && (current_mask & (0xff000000)) == 0xff000000) {
-		entry->eventType = defaultEventTypeUp;
-		entry->buttonId = 24;
-		entry = incrementAndPostButtonQueue(so);
-	}
-	 */
+
 	return entry;
 }
+
 // important!  This must be the only place that we're posting to the buttonEntryQueue
 // if that ever needs to be changed, you will have to add locking so that only one
 // thread is posting at a time.
 static void registerButtonEvent(SurviveObject *so, buttonEvent *event, enum ButtonEventSource source) {
 	ButtonQueueEntry *entry = prepareNextButtonEvent(so);
+	struct SurviveContext *ctx = so->ctx;
 
 	if (event->pressedButtonsValid) {
-		// printf("trigger %8.8x\n", event->triggerHighRes);
-		entry = registerButtonOnOff(so, entry, event->pressedButtons, SURVIVE_INPUT_EVENT_BUTTON_DOWN,
-									SURVIVE_INPUT_EVENT_BUTTON_UP, source);
+		SV_VERBOSE(75, "buttons %8x", event->pressedButtons);
+		entry = registerButtonOnOff(so, entry, event->pressedButtons, source);
 	}
 
 	if (event->touchedButtonsValid) {
-		entry = registerButtonOnOff(so, entry, event->touchedButtons, SURVIVE_INPUT_EVENT_TOUCH_DOWN,
-									SURVIVE_INPUT_EVENT_TOUCH_UP, source | BUTTON_TOUCH_EVENT_SOURCE);
+		SV_VERBOSE(75, "touched %8x", event->touchedButtons);
+		entry = registerButtonOnOff(so, entry, event->touchedButtons, source | BUTTON_TOUCH_EVENT_SOURCE);
 	}
 
 	if (event->triggerHighResValid) {
@@ -1290,7 +1347,7 @@ static void registerButtonEvent(SurviveObject *so, buttonEvent *event, enum Butt
 
 		if (so->object_subtype == SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R ||
 			so->object_subtype == SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L) {
-			if ((so->buttonmask & (1 << SURVIVE_BUTTON_TRACKPAD)) == 0) {
+			if (!HAS_BIT_FLAG(so->touchmask, SURVIVE_BUTTON_TRACKPAD)) {
 
 				if ((so->axis[ax] != 0) || (so->axis[ay] != 0)) {
 					entry->eventType = SURVIVE_INPUT_EVENT_AXIS_CHANGED;
