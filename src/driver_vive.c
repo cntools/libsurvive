@@ -1113,7 +1113,6 @@ static ButtonQueueEntry *incrementAndPostButtonQueue(SurviveObject *so) {
 		else
 			*maskp |= mask;
 		// assert(maskv != *maskp);
-		SV_VERBOSE(75, "Set %d %d %d", entry->buttonId, isTouch, isClear);
 	}
 
 	if ((ctx->buttonQueue.nextWriteIndex + 1) % BUTTON_QUEUE_MAX_LEN == ctx->buttonQueue.nextReadIndex) {
@@ -1313,7 +1312,6 @@ static inline ButtonQueueEntry *registerButtonOnOff(SurviveObject *so, ButtonQue
 			entry->eventType = HAS_BIT_FLAG(incoming_mask, a) ? eventTypeDown : eventTypeUp;
 			entry->buttonId = id;
 
-			SV_VERBOSE(75, "a %d\n", a);
 			entry = incrementAndPostButtonQueue(so);
 		}
 	}
