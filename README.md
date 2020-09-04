@@ -155,8 +155,6 @@ Info: Attempting to solve for 1 with 21 meas
 Info: Solved for 0 with error of 0.005446/0.000000
 Info: Solved for 1 with error of 0.005446/0.000000
 Info: Using LH 0 (d99e7eac) as reference lighthouse
-Info: Position found for LH 0(d99e7eac)
-Info: Position found for LH 1(fe0398ef)
 ```
 
 ## Visualization
