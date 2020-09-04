@@ -92,7 +92,8 @@ static void button_fn(SurviveObject *so, enum SurviveInputEvent eventType, enum 
 	if (buttonId != SURVIVE_BUTTON_UNKNOWN) {
 		const char *buttonName = SurviveButtonsStr(so->object_subtype, buttonId);
 		if (buttonName == 0) {
-			SV_WARN("Unrecognized input from %s, button id %d", so->codename, buttonId);
+			SV_WARN("Unrecognized input from %s(%s), button id %d", so->codename,
+					SurviveObjectSubtypeStr(so->object_subtype), buttonId);
 			exit(-8);
 		}
 	}
@@ -100,12 +101,14 @@ static void button_fn(SurviveObject *so, enum SurviveInputEvent eventType, enum 
 	for (int i = 0; i < 16 && axisIds[i] != SURVIVE_AXIS_UNKNOWN; i++) {
 		const char *axisName = SurviveAxisStr(so->object_subtype, axisIds[i]);
 		if (axisName == 0) {
-			SV_WARN("Unrecognized input from %s, axis id %d", so->codename, axisIds[i]);
+			SV_WARN("Unrecognized input from %s(%s), axis id %d %f", so->codename,
+					SurviveObjectSubtypeStr(so->object_subtype), axisIds[i], axisVals[i]);
 			exit(-9);
 		}
 
 		if (axisVals[i] > 1.1 || axisVals[i] < -1.1) {
-			SV_WARN("Value out of range for %s axis id %d", so->codename, axisIds[i]);
+			SV_WARN("Value out of range for %s(%s) axis id %d %f", so->codename,
+					SurviveObjectSubtypeStr(so->object_subtype), axisIds[i], axisVals[i]);
 			exit(-9);
 		}
 	}

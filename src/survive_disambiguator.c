@@ -5,8 +5,6 @@
 #include <os_generic.h>
 #include <stdio.h>
 
-//#define LOG_LIGHTDATA
-
 uint8_t survive_map_sensor_id(SurviveObject *so, uint8_t reported_id) {
 	if (so->channel_map) {
 		assert(reported_id < 32);
@@ -22,18 +20,20 @@ uint8_t survive_map_sensor_id(SurviveObject *so, uint8_t reported_id) {
 	return reported_id;
 }
 
-void handle_lightcap(SurviveObject *so, const LightcapElement *_le) {
+bool handle_lightcap(SurviveObject *so, const LightcapElement *_le) {
 	// Gen2 devices can trigger this on startup; but later packets should
 	// reliably change to lh_version == 1. If we see 50+ lightcap packets
 	// without these gen2 packets we can just call it for gen1.
 	if (so->ctx->lh_version == -1) {
 		static size_t pulse_count = 0;
 		static size_t total_count = 0;
+		static size_t large_size_count = 0;
 
 		total_count++;
 
 		if (_le->length >= 0x8000) {
-			survive_notify_gen2(so, "Lightcap length >= 0x8000");
+			// if(large_size_count++ > 30)
+			//	survive_notify_gen2(so, "Lightcap length >= 0x8000");
 		} else if (_le->length >= 3000 && _le->length < 6500) {
 			pulse_count++;
 			// Only look for the OOTX pulses; otherwise we get false hits and can potentially choose gen1
@@ -46,23 +46,17 @@ void handle_lightcap(SurviveObject *so, const LightcapElement *_le) {
 		if (total_count > 100) {
 			survive_notify_gen2(so, "no OOTX pulses detected");
 		}
-		return;
+		return true;
 	}
 
 	LightcapElement le = *_le;
 	survive_recording_lightcap(so, &le);
-#ifdef LOG_LIGHTDATA
-	static FILE *flog;
-	static FLT start = 0;
-	if (!flog) {
-		flog = fopen("lightcap.txt", "wb");
-		start = OGGetAbsoluteTime();
-	}
-	fprintf(flog, "%.6f %2d %4d %9d\n", OGGetAbsoluteTime() - start, le->sensor_id, le->length, le->timestamp);
-#endif
+
 	le.sensor_id = survive_map_sensor_id(so, le.sensor_id);
 	if (le.sensor_id == (uint8_t)-1) {
-		return;
+		return false;
 	}
 	so->ctx->lightcapproc(so, &le);
+
+	return true;
 }

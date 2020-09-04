@@ -1,3 +1,8 @@
 #!/bin/bash
 
+if [ "$1" == "-m" ]; then
+    `dirname $0`/survive-cli --record-stdout --record-cal-imu --no-record-imu $@
+    exit $?
+fi;
+
 websocketd --passenv HOME --port 8080 `dirname $0`/survive-cli --record-stdout --record-cal-imu --no-record-imu $@

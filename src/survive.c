@@ -1041,7 +1041,7 @@ void survive_install_run_time_fn(SurviveContext *ctx, survive_run_time_fn fn, vo
 
 const char *SurviveAxisStr(SurviveObjectSubtype objectSubtype, enum SurviveAxis b) {
 	switch (objectSubtype) {
-	case SURVIVE_OBJECT_SUBTYPE_INDEX:
+	case SURVIVE_OBJECT_SUBTYPE_INDEX_HMD:
 		switch (b) {
 		case SURVIVE_AXIS_IPD:
 			return "IPD";
@@ -1106,12 +1106,13 @@ const char *SurviveInputEventStr(enum SurviveInputEvent evt) {
 
 const char *SurviveButtonsStr(SurviveObjectSubtype objectSubtype, enum SurviveButton b) {
 	switch (objectSubtype) {
-	case SURVIVE_OBJECT_SUBTYPE_INDEX:
+	case SURVIVE_OBJECT_SUBTYPE_INDEX_HMD:
 		switch (b) {
 		case SURVIVE_BUTTON_ON_FACE:
 			return "On face";
 		}
 		break;
+	case SURVIVE_OBJECT_SUBTYPE_TRACKER_GEN2:
 	case SURVIVE_OBJECT_SUBTYPE_TRACKER:
 	case SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R:
 	case SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L:
@@ -1161,7 +1162,7 @@ SURVIVE_EXPORT const char *SurviveObjectSubtypeStr(SurviveObjectSubtype t) {
 		break;
 	case SURVIVE_OBJECT_SUBTYPE_GENERIC:
 		return "Generic";
-	case SURVIVE_OBJECT_SUBTYPE_INDEX:
+	case SURVIVE_OBJECT_SUBTYPE_INDEX_HMD:
 		return "Index HMD";
 	case SURVIVE_OBJECT_SUBTYPE_WAND:
 		return "Wand";

@@ -603,7 +603,6 @@ void *pcap_thread_fn(void *_driver) {
 				} else if (!dev->hasConfiged) {
 					if (driver->allow_fs_read && dev->packets_without_config++ > 1000 &&
 						dev->tried_config_file == false) {
-
 						for (int i = 0; i < 2 && !dev->hasConfiged; i++) {
 							char filename[128] = {0};
 							snprintf(filename, sizeof(filename), "%s_config.json",

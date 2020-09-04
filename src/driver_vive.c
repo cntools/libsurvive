@@ -948,7 +948,8 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 	cfgbuff[0] = VIVE_REPORT_CONFIG_READMODE;
 	if ((ret = get_feature_report_timeout_locked(ctx, dev, iface, cfgbuff, sizeof(cfgbuff))) < 0) {
 		if (usbInfo->device_info->type == USB_DEV_WATCHMAN1) {
-			SV_WARN("%s couldn't configure; probably turned off %d %s", name, ret, survive_usb_error_name(ret));
+			SV_WARN("%s couldn't configure; probably turned off %d %s", usbInfo->so->codename, ret,
+					survive_usb_error_name(ret));
 		} else {
 			SV_WARN("Could not get survive config data for device %s:%d", usbInfo->device_info->name, iface);
 		}
@@ -1259,6 +1260,7 @@ struct DeviceMapping *getDeviceMapping(SurviveObjectSubtype type, enum ButtonEve
 
 		DeviceMappings[SURVIVE_OBJECT_SUBTYPE_WAND] = WiredWandMapping();
 		DeviceMappings[SURVIVE_OBJECT_SUBTYPE_TRACKER] = WiredTracker();
+		DeviceMappings[SURVIVE_OBJECT_SUBTYPE_TRACKER_GEN2] = WiredTracker();
 
 		DeviceMappings[SURVIVE_OBJECT_SUBTYPE_WAND + SURVIVE_OBJECT_SUBTYPE_COUNT] = RFWandMapping();
 		DeviceMappings[SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R + SURVIVE_OBJECT_SUBTYPE_COUNT] = RFKnuckles();
@@ -1327,12 +1329,12 @@ static void registerButtonEvent(SurviveObject *so, buttonEvent *event, enum Butt
 	struct SurviveContext *ctx = so->ctx;
 
 	if (event->pressedButtonsValid) {
-		SV_VERBOSE(75, "buttons %8x", event->pressedButtons);
+		SV_VERBOSE(1000, "buttons %8x", event->pressedButtons);
 		entry = registerButtonOnOff(so, entry, event->pressedButtons, source);
 	}
 
 	if (event->touchedButtonsValid) {
-		SV_VERBOSE(75, "touched %8x", event->touchedButtons);
+		SV_VERBOSE(1000, "touched %8x", event->touchedButtons);
 		entry = registerButtonOnOff(so, entry, event->touchedButtons, source | BUTTON_TOUCH_EVENT_SOURCE);
 	}
 
@@ -2208,7 +2210,7 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 		return;
 	}
 
-	if (driverInfo->lightcapMode != LightcapMode_raw1) {
+	if (w->ctx->lh_version == 1 && driverInfo->lightcapMode != LightcapMode_raw1) {
 		vive_switch_mode(driverInfo, LightcapMode_raw1);
 		return;
 	}
@@ -2309,7 +2311,7 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 
 	if (flagLightcap && !has_errors) {
 		if (driverInfo->lightcapMode == LightcapMode_raw0) {
-			// parse_and_process_lightcap(w, time, payloadPtr, payloadEndPtr);
+			parse_and_process_lightcap(w, time, payloadPtr, payloadEndPtr);
 		} else {
 			int read = parse_and_process_raw1_lightcap(w, time, payloadPtr, payloadEndPtr - payloadPtr);
 			if (read == -1)
@@ -2332,6 +2334,22 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 
 exit_failure:
 	survive_dump_buffer(ctx, originPayloadPtr, payloadEndPtr - originPayloadPtr);
+}
+
+static bool use_watchman_v2(SurviveObject *w) {
+	if (w->ctx->lh_version == 1) {
+		return true;
+	}
+
+	switch (w->object_subtype) {
+	case SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L:
+	case SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R:
+	case SURVIVE_OBJECT_SUBTYPE_INDEX_HMD:
+	case SURVIVE_OBJECT_SUBTYPE_TRACKER_GEN2:
+		return true;
+	default:
+		return false;
+	}
 }
 
 static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
@@ -2385,7 +2403,8 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 	uint8_t *payloadPtr = &readdata[3];
 	uint8_t *payloadEndPtr = payloadPtr + payloadSize;
 
-	if (w->ctx->lh_version == 1) {
+	struct SurviveUSBInfo *driver = w->driver;
+	if (use_watchman_v2(w)) {
 		SV_VERBOSE(750, "Watchman v2(%s): '%s'", w->codename, packetToHex(readdata, payloadEndPtr));
 		handle_watchman_v2(w, time, payloadPtr, payloadEndPtr);
 		return;
@@ -2398,7 +2417,6 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 		return;
 	}
 	 */
-	struct SurviveUSBInfo *driver = w->driver;
 	if (driver->lightcapMode != LightcapMode_raw0) {
 		return;
 	}
@@ -2723,6 +2741,20 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 	if (iface == USB_IF_HMD_HEADSET_INFO && obj == 0)
 		return;
 
+	int id = POP1;
+	size--;
+
+	if (!obj->driver) {
+		struct SurviveUSBInfo *d = obj->driver = calloc(1, sizeof(struct SurviveUSBInfo));
+		d->so = obj;
+	}
+
+	// We handle this here since it's one of the few things we use without a config loaded.
+	if (si->which_interface_am_i == USB_IF_TRACKER_INFO) {
+		parse_tracker_info(obj, id, readdata, size);
+		return;
+	}
+
 	if (obj->conf == 0) {
 		if (si->usbInfo) {
 			si->usbInfo->tryConfigLoad = 1;
@@ -2730,28 +2762,6 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 		return;
 	}
 
-	if (!obj->driver) {
-		struct SurviveUSBInfo *d = obj->driver = calloc(1, sizeof(struct SurviveUSBInfo));
-		d->so = obj;
-	}
-
-	int id = POP1;
-	size--;
-	//	printf( "%16s Size: %2d ID: %d / %d\n", si->hname, size, id, iface );
-//	SV_INFO("%s interface %d", obj->codename, iface);
-#if 0
-	if(  si->which_interface_am_i == 9 )
-	{
-		int i;
-		printf( "%16s: %d: %d: %d: ", si->hname, id, size, sizeof(LightcapElement) );
-		for( i = 0; i < size-1; i++ )
-		{
-			printf( "%02x ", readdata[i] );
-		}
-		printf( "\n" );
-		
-	}
-#endif
 	switch (si->which_interface_am_i) {
 	case USB_IF_TRACKER_INFO: {
 		parse_tracker_info(obj, id, readdata, size);
@@ -2848,10 +2858,14 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 				//SV_INFO("%d %d %d %d %d", id, le.sensor_id, le.length, le.timestamp, si->buffer + size - readdata);
 
 				if (obj->ctx->lh_version != 1) {
-					handle_lightcap(obj, &le);
-				} else if (dump_binary) {
-					fprintf(stderr, "sensor: %2d         time: %3.5f length: %4d end_time: %8u\n", le.sensor_id,
-							le.timestamp / 48000000., le.length, le.length + le.timestamp);
+					bool success = handle_lightcap(obj, &le);
+					if (!success)
+						dump_binary = 1;
+				}
+
+				if (dump_binary) {
+					SV_VERBOSE(100, "%s sensor: %2d         time: %3.5f length: %4d end_time: %8u", obj->codename,
+							   le.sensor_id, le.timestamp / 48000000., le.length, le.length + le.timestamp);
 				}
 			}
 		} else if (id == VIVE_REPORT_USB_LIGHTCAP_REPORT_V2) { // LHv2
