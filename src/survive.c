@@ -967,6 +967,7 @@ int survive_simple_inflate(struct SurviveContext *ctx, const uint8_t *input, int
 		fwrite(input, inlen, 1, f);
 		fclose(f);
 
+		inflateEnd(&zs);
 		return -1;
 	}
 	int len = zs.total_out;

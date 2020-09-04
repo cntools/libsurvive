@@ -27,6 +27,8 @@ STATIC_CONFIG_ITEM(USBMON_RECORD_ALL, "usbmon-record-all", 'i', "Whether or not 
 STATIC_CONFIG_ITEM(USBMON_OUTPUT_EVERYTHING, "usbmon-output-all", 'i', "Whether or not to log all usb traffic", 0)
 STATIC_CONFIG_ITEM(USBMON_OUTPUT, "usbmon-output", 'i', "Whether or not to log any generic usb traffic", 0)
 STATIC_CONFIG_ITEM(USBMON_ONLY_RECORD, "usbmon-only-record", 'i', "Record only; don't forward to libsurvive", 0)
+STATIC_CONFIG_ITEM(USBMON_ALLOW_FS_CONFIG, "usbmon-allow-fs-config", 'i',
+				   "If we dont see a config section; try to read it from filesystem -- could be very wrong", 0)
 
 typedef struct vive_device_t {
 	uint16_t vid, pid;
@@ -80,6 +82,7 @@ typedef struct SurviveDriverUSBMon {
 	pcap_dumper_t *pcapDumper;
 	bool record_all;
 	bool record_only;
+	bool allow_fs_read;
 
 	bool output_usb_stream;
 	bool output_everything;
@@ -165,9 +168,10 @@ static void ingest_config_request(vive_device_inst_t *dev, const struct _usb_hea
 	if (dev->so == 0) {
 		return;
 	}
-
+	struct SurviveContext *ctx = dev->so->ctx;
 	uint16_t cnt = pktData[1];
-	SurviveContext *ctx = dev->so->ctx;
+
+	SV_VERBOSE(100, "Ingesting config data for %s(%p); %d bytes", dev->so->codename, (void *)dev, cnt);
 
 	if (cnt) {
 		// Some (Tracker at least?) devices send a uint64_t before data; not sure what it means but skip it for now.
@@ -549,13 +553,10 @@ void *pcap_thread_fn(void *_driver) {
 								ctx, "<-- %10.6f E: %s 0x%016lx event_type: %c transfer_type: %d status: %d\n",
 								this_time, dev_name, usbp->id, usbp->event_type, usbp->transfer_type, usbp->status);
 					}
+					if (usbp->id == dev->last_config_id) {
+						dev->last_config_id = 0;
+					}
 					goto continue_loop; // Only want responses
-				}
-
-				if (usbp->id == dev->last_config_id && usbp->event_type == 'C' && dev->hasConfiged == false) {
-					ingest_config_request(dev, usbp, pktData);
-					dev->packets_without_config = 0;
-					goto continue_loop;
 				}
 
 				int interface = interface_lookup(dev, usbp->endpoint_number);
@@ -573,6 +574,13 @@ void *pcap_thread_fn(void *_driver) {
 						survive_usb_interface_str(interface), usbp->data_len);
 
 					survive_dump_buffer(ctx, pktData, usbp->data_len);
+				}
+
+				if (usbp->id == dev->last_config_id && usbp->event_type == 'C' && dev->hasConfiged == false) {
+					ingest_config_request(dev, usbp, pktData);
+					dev->last_config_id = 0;
+					dev->packets_without_config = 0;
+					goto continue_loop;
 				}
 
 				bool forward_to_data_cb = driver->record_only == false &&
@@ -593,7 +601,8 @@ void *pcap_thread_fn(void *_driver) {
 
 					survive_data_cb(&si);
 				} else if (!dev->hasConfiged) {
-					if (dev->packets_without_config++ > 100 && dev->tried_config_file == false) {
+					if (driver->allow_fs_read && dev->packets_without_config++ > 1000 &&
+						dev->tried_config_file == false) {
 
 						for (int i = 0; i < 2 && !dev->hasConfiged; i++) {
 							char filename[128] = {0};
@@ -709,6 +718,7 @@ static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
 	sp->output_everything = survive_configi(ctx, "usbmon-output-all", SC_GET, 0);
 	sp->output_usb_stream = sp->output_everything || survive_configi(ctx, "usbmon-output", SC_GET, 0);
 	sp->record_only = survive_configi(ctx, "usbmon-only-record", SC_GET, 0);
+	sp->allow_fs_read = survive_configi(ctx, USBMON_ALLOW_FS_CONFIG_TAG, SC_GET, 0);
 
 	if (usbmon_record && *usbmon_record) {
 		FILE *fd = open_playback(usbmon_record, "w");
