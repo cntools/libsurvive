@@ -53,6 +53,10 @@ static bool check(SurviveSimpleContext *actx, const SurviveSimpleObject *sao, FL
 
 	diff(err, &pose, &compare_pose);
 
+	fprintf(stderr, "%2.4f       %s: " SurvivePose_format " %f\t%f\n", survive_run_time(survive_simple_get_ctx(actx)),
+			survive_simple_object_name(test_sao), compare_pose.Pos[0], compare_pose.Pos[1], compare_pose.Pos[2],
+			compare_pose.Rot[0], compare_pose.Rot[1], compare_pose.Rot[2], compare_pose.Rot[3], err[0], err[1]);
+
 	if (err[1] > max_pos_error || err[0] > max_rot_error) {
 		fprintf(stderr, "%s: " SurvivePose_format "\n", survive_simple_object_name(sao), pose.Pos[0], pose.Pos[1],
 				pose.Pos[2], pose.Rot[0], pose.Rot[1], pose.Rot[2], pose.Rot[3]);
@@ -61,8 +65,8 @@ static bool check(SurviveSimpleContext *actx, const SurviveSimpleObject *sao, FL
 				compare_pose.Pos[0], compare_pose.Pos[1], compare_pose.Pos[2], compare_pose.Rot[0], compare_pose.Rot[1],
 				compare_pose.Rot[2], compare_pose.Rot[3], err[0], err[1]);
 
-		fprintf(stderr, "TEST FAILED, %s deviates too much -- %f %f\n", survive_simple_object_name(sao), err[0],
-				err[1]);
+		fprintf(stderr, "TEST FAILED, %s deviates too much -- rot: %f pos: %f\n", survive_simple_object_name(sao),
+				err[0], err[1]);
 		return false;
 	}
 	return true;
@@ -223,7 +227,7 @@ static int test_path(const char *filename, int main_argc, char **main_argv) {
 				pose.Rot[0], pose.Rot[1], pose.Rot[2], pose.Rot[3], err[0], err[1]);
 
 		if (err[1] > max_pos_error || err[0] > max_rot_error) {
-			fprintf(stderr, "TEST FAILED, LH%d deviates too much -- %f %f\n", i, err[0], err[1]);
+			fprintf(stderr, "TEST FAILED, LH%d deviates too much -- rot: %f pos: %f\n", i, err[0], err[1]);
 			rctx.mismatched++;
 		}
 

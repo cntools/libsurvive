@@ -559,7 +559,7 @@ STATIC_CONFIG_ITEM(KALMAN_REPORT_IGNORE_THRESHOLD, "report-ignore-threshold", 'f
 STATIC_CONFIG_ITEM(KALMAN_LIGHTCAP_IGNORE_THRESHOLD, "light-ignore-threshold", 'f',
 				   "Minimum variance to allow light data into the kalman filter", 1.)
 STATIC_CONFIG_ITEM(KALMAN_LIGHTCAP_REQUIRED_OBS, "light-required-obs", 'i',
-				   "Minimum observations to allow light data into the kalman filter", 10)
+				   "Minimum observations to allow light data into the kalman filter", 16)
 
 STATIC_CONFIG_ITEM(LIGHT_VARIANCE, "light-variance", 'f', "Variance of light sensor readings", 1e-6)
 STATIC_CONFIG_ITEM(OBS_POS_VARIANCE, "obs-pos-variance", 'f', "Variance of position integration from light capture",

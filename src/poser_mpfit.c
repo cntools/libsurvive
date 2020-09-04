@@ -310,6 +310,7 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 		}
 	}
 
+	size_t skipped_lh_cnt = 0;
 	for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
 		if (!so->ctx->bsd[lh].PositionSet) {
 			if (canPossiblySolveLHS) {
@@ -317,6 +318,8 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 					SV_INFO("Attempting to solve for %d with %lu meas from device %s", lh, meas_for_lhs[lh],
 							so->codename);
 					survive_optimizer_setup_camera(mpfitctx, lh, &lhs[lh], false, d->use_jacobian_function_lh);
+				} else {
+					skipped_lh_cnt++;
 				}
 			} else {
 				// SV_VERBOSE(200, "Removing data for %d", lh);
@@ -326,6 +329,11 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 		} else if (canPossiblySolveLHS) {
 			SV_INFO("Assuming %d with %lu meas from device %s as given", lh, meas_for_lhs[lh], so->codename);
 		}
+	}
+
+	if (skipped_lh_cnt > 0 && survive_run_time(ctx) < 4) {
+		// Heurestic -- stuff can come on in weird orders; give a little time to solve everything at once.
+		canPossiblySolveLHS = false;
 	}
 
 	if (canPossiblySolveLHS) {
