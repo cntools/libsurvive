@@ -14,8 +14,6 @@
 
 SURVIVE_EXPORT int32_t PoserData_size(const PoserData *poser_data) {
 	switch (poser_data->pt) {
-	case POSERDATA_FULL_SCENE:
-		return sizeof(PoserDataFullScene);
 	case POSERDATA_DISASSOCIATE:
 		return sizeof(PoserData);
 	case POSERDATA_IMU:
@@ -230,39 +228,7 @@ void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so, S
 			*object_pose = object2World;
 	}
 }
-void PoserDataFullScene2Activations(const PoserDataFullScene *pdfs, SurviveSensorActivations *activations) {
-	SurviveSensorActivations_ctor(0, activations);
-	for (int i = 0; i < SENSORS_PER_OBJECT * NUM_GEN1_LIGHTHOUSES * 2; i++) {
-		FLT length = ((FLT *)pdfs->lengths)[i] * 48000000;
-		if (length > 0)
-			((survive_timecode *)activations->lengths)[i] = (survive_timecode)length;
-	}
 
-	for (int i = 0; i < SENSORS_PER_OBJECT * NUM_GEN2_LIGHTHOUSES * 2; i++) {
-		((FLT *)activations->angles)[i] = ((FLT *)pdfs->angles)[i];
-	}
-
-	memcpy(activations->accel, pdfs->lastimu.accel, sizeof(activations->accel));
-	memcpy(activations->gyro, pdfs->lastimu.gyro, sizeof(activations->gyro));
-	memcpy(activations->mag, pdfs->lastimu.mag, sizeof(activations->mag));
-}
-
-SURVIVE_EXPORT void Activations2PoserDataFullScene(const struct SurviveSensorActivations_s *activations,
-												   PoserDataFullScene *pdfs) {
-	for (int i = 0; i < SENSORS_PER_OBJECT * NUM_GEN1_LIGHTHOUSES * 2; i++) {
-		survive_timecode length = ((survive_timecode *)activations->lengths)[i];
-		if (length > 0)
-			((FLT *)pdfs->lengths)[i] = length / 48000000.;
-	}
-
-	for (int i = 0; i < SENSORS_PER_OBJECT * NUM_GEN2_LIGHTHOUSES * 2; i++) {
-		((FLT *)pdfs->angles)[i] = ((FLT *)activations->angles)[i];
-	}
-
-	memcpy(pdfs->lastimu.accel, activations->accel, sizeof(activations->accel));
-	memcpy(pdfs->lastimu.gyro, activations->gyro, sizeof(activations->gyro));
-	memcpy(pdfs->lastimu.mag, activations->mag, sizeof(activations->mag));
-}
 FLT survive_lighthouse_adjust_confidence(SurviveContext *ctx, uint8_t bsd_idx, FLT v) {
 	ctx->bsd[bsd_idx].confidence += v;
 

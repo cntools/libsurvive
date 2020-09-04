@@ -652,6 +652,8 @@ var survive_log_handlers = {
 	'W' : function() {},
 	'C' : function() {},
 	'Y' : function() {},
+	'L' : function() {},
+	'R' : function() {},
 	'BUTTON' : function() {},
 	'i' : function() {},
 	'OPTION' : function(v) {

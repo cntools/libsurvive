@@ -11,12 +11,12 @@ extern "C" {
 typedef enum PoserType_t {
 	POSERDATA_NONE = 0,
 	POSERDATA_IMU,
-	POSERDATA_LIGHT,		// Single lighting event.
-	POSERDATA_FULL_SCENE,   // Full, statified X, Y sweep data for both lighthouses.
+	POSERDATA_LIGHT, // Single lighting event.
+
 	POSERDATA_DISASSOCIATE, // If you get this, it doesn't contain data.  It just tells you to please disassociate from
 							// the current SurviveObject and delete your poserdata.
 	POSERDATA_SYNC,			// Sync pulse.
-	POSERDATA_LIGHT_GEN2,   // Gen2 lighting event.
+	POSERDATA_LIGHT_GEN2,	// Gen2 lighting event.
 	POSERDATA_SYNC_GEN2,	// Gen2 sync pulse
 
 } PoserType;
@@ -116,29 +116,14 @@ typedef struct PoserDataLightGen2 {
 	uint32_t sync;
 } PoserDataLightGen2;
 
-typedef struct
-{
-	PoserData hdr;
-
-	// If "lengths[...]" < 0, means not a valid piece of sweep information.
-	FLT lengths[SENSORS_PER_OBJECT][NUM_GEN1_LIGHTHOUSES][2];
-	FLT angles[SENSORS_PER_OBJECT][NUM_GEN2_LIGHTHOUSES][2]; // 2 Axes  (Angles in LH space)
-
-	PoserDataIMU lastimu;
-} PoserDataFullScene;
-
 union PoserDataAll {
 	PoserData pd;
-	PoserDataFullScene pdfl;
 	PoserDataLight pdl1;
 	PoserDataLightGen2 pdlg2;
 	PoserDataIMU pdimu;
 };
 
 struct SurviveSensorActivations_s;
-SURVIVE_EXPORT void PoserDataFullScene2Activations(const PoserDataFullScene *pdfs, struct SurviveSensorActivations_s *activations);
-SURVIVE_EXPORT void Activations2PoserDataFullScene(const struct SurviveSensorActivations_s *activations,
-												   PoserDataFullScene *pdfs);
 
 //When you write your posers, use the following definition, and register with REGISTER_LINKTIME.
 typedef int (*PoserCB)(SurviveObject *so, void **user, PoserData *pd);

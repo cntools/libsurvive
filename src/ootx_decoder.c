@@ -13,6 +13,7 @@
 #ifdef NOZLIB
 #include "crc32.h"
 #else
+#include <os_generic.h>
 #include <zlib.h>
 #endif
 
@@ -33,6 +34,8 @@ void ootx_init_decoder_context(ootx_decoder_context *ctx) {
 	ctx->bits_processed = 0;
 	ctx->found_preamble = 0;
 	ctx->ignore_sync_bit_error = 0;
+
+	ctx->stats.started_s = OGGetAbsoluteTime();
 
 	ctx->payload_size = (uint16_t*)ctx->buffer;
 	*(ctx->payload_size) = 0;

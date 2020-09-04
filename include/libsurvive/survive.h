@@ -269,6 +269,7 @@ enum SurviveCalFlag {
 };
 
 struct SurviveContext {
+	int lh_version_configed;
 	int lh_version_forced;
 	int lh_version; // -1 is unknown, 0 is LHv1 -- pulse, ootx, etc. 1 is LHv2 -- single motor rotated beams
 
@@ -280,7 +281,6 @@ struct SurviveContext {
 	BaseStationData bsd[NUM_GEN2_LIGHTHOUSES];
 	int8_t bsd_map[NUM_GEN2_LIGHTHOUSES]; // maps channels to idxs
 
-	SurviveCalData *calptr;				 // If and only if the calibration subsystem is attached.
 	void *disambiguator_data;			 // global disambiguator data
 	struct SurviveRecordingData *recptr; // Iff recording is attached
 	SurviveObject **objs;
@@ -392,9 +392,6 @@ SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel c
 	}
 SURVIVE_EXPORT void survive_config_bind_variable(char vt, const char *name, const char *description,
 												 ...); // Only used at boot.
-
-// Install the calibrator.
-SURVIVE_EXPORT void survive_cal_install(SurviveContext *ctx); // XXX This will be removed if not already done so.
 
 // Read back a human-readable string description of the calibration status
 SURVIVE_EXPORT int survive_cal_get_status(SurviveContext *ctx, char *description, int description_length);

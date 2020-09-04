@@ -556,7 +556,7 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	for (int i = 0; i < 3; i++)
 		sp->gyro_bias[i] = linmath_normrand(0, sp->gyro_bias_scale);
 
-	int use_lh2 = ctx->lh_version_forced != 1;
+	int use_lh2 = ctx->lh_version_configed != 1;
 
 	// Create a new SurviveObject...
 	SurviveObject *device = survive_create_device(ctx, "SIM", sp, "SM0", 0);

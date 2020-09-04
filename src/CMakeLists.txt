@@ -17,8 +17,7 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
   poser_general_optimizer.c
   survive.c
   survive_api.c
-  survive_cal.c
-  survive_config.c
+        survive_config.c
   survive_default_devices.c
   survive_disambiguator.c
   survive_driverman.c

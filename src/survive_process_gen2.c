@@ -135,6 +135,8 @@ void survive_ootx_behavior(SurviveObject *so, int8_t bsd_idx, int8_t lh_version,
 				SV_VERBOSE(5, "\tBad sync bits:     %u", decoderContext->stats.bad_sync_bits);
 				SV_VERBOSE(5, "\tPackets found:     %u", decoderContext->stats.packets_found);
 				SV_VERBOSE(5, "\tPayload size:     %u", decoderContext->stats.used_bytes);
+				FLT d = OGGetAbsoluteTime() - decoderContext->stats.started_s;
+				SV_VERBOSE(5, "\tTime:             %2.2f (%2.2fb/s)", d, decoderContext->stats.bits_seen / d);
 
 				ootx_free_decoder_context(decoderContext);
 				free(decoderContext);
@@ -337,47 +339,14 @@ SURVIVE_EXPORT void survive_default_gen_detected_process(SurviveObject *so, int 
 	assert(ctx->lh_version == -1);
 
 	SV_INFO("Detected LH gen %d system.", lh_version + 1);
-	ctx->lh_version = lh_version;
-	survive_configi(ctx, "lighthouse-gen", SC_OVERRIDE | SC_SET, lh_version + 1);
-
-	if (ctx->lh_version == 0) {
-		int fastCalibrate = survive_configi(ctx, "fast-calibrate", SC_GET, 0);
-		if (fastCalibrate) {
-			SV_INFO("Using fast calibration");
-			return;
-		}
-
-		int calibrateMandatory = survive_configi(ctx, "force-calibrate", SC_GET, 0);
-		int calibrateForbidden = survive_configi(ctx, "disable-calibrate", SC_GET, 1) == 1;
-		if (calibrateMandatory && calibrateForbidden) {
-			SV_INFO("Contradictory settings --force-calibrate and --disable-calibrate specified. Switching to normal "
-					"behavior.");
-			calibrateMandatory = calibrateForbidden = 0;
-		}
-
-		if (!calibrateForbidden) {
-			bool isCalibrated = ctx->activeLighthouses > 0;
-			for (int i = 0; i < ctx->activeLighthouses; i++) {
-				if (!ctx->bsd[i].PositionSet) {
-					SV_INFO("Lighthouse %d position is unset", i);
-					isCalibrated = false;
-				}
-			}
-
-			bool doCalibrate = isCalibrated == false || calibrateMandatory;
-
-			if (!isCalibrated) {
-				SV_INFO(
-					"Uncalibrated configuration detected. Attaching calibration. Please don't move tracked objects for "
-					"the duration of calibration. Pass '--disable-calibrate' to skip calibration");
-			} else if (doCalibrate) {
-				SV_INFO("Calibration requested. Previous calibration will be overwritten.");
-			}
-
-			if (doCalibrate && ctx->objs_ct > 0) {
-				ctx->bsd[0].PositionSet = ctx->bsd[1].PositionSet = false;
-				survive_cal_install(ctx);
-			}
+	if (lh_version != ctx->lh_version_configed && ctx->lh_version_configed != -1) {
+		SV_WARN("Configuration was valid for gen %d; resetting BSD positions and OOTX", ctx->lh_version_configed + 1);
+		for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
+			ctx->bsd[i].PositionSet = ctx->bsd[i].OOTXSet = 0;
+			ctx->bsd[i].mode = -1;
 		}
 	}
+	ctx->lh_version = lh_version;
+	survive_configi(ctx, "configed-lighthouse-gen", SC_OVERRIDE | SC_SETCONFIG, lh_version + 1);
+	config_save(ctx);
 }

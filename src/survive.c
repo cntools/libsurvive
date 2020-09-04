@@ -413,8 +413,6 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 	}
 
 	ctx->log_level = survive_configi(ctx, "v", SC_SETCONFIG, 0);
-	ctx->lh_version = -1;
-	ctx->lh_version_forced = survive_configi(ctx, "lighthouse-gen", SC_SETCONFIG, 0) - 1;
 
 	const char *init_config = survive_configs(ctx, "init-configfile", SC_GET, 0);
 	char config_path[FILENAME_MAX];
@@ -433,6 +431,10 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 		SV_VERBOSE(5, "Config file switched to %.512s", config_path);
 		config_save(ctx);
 	}
+
+	ctx->lh_version = -1;
+	ctx->lh_version_configed = survive_configi(ctx, "configed-lighthouse-gen", SC_GET, 0) - 1;
+	ctx->lh_version_forced = survive_configi(ctx, "lighthouse-gen", SC_GET, 0) - 1;
 
 	ctx->activeLighthouses = 0;
 
@@ -866,7 +868,6 @@ void survive_close(SurviveContext *ctx) {
 	free(ctx->global_config_values);
 	free(ctx->temporary_config_values);
 	free(ctx->lh_config);
-	free(ctx->calptr);
 	free(ctx->recptr);
 
 	free(ctx);

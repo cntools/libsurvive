@@ -12,7 +12,6 @@
 #include "poser_general_optimizer.h"
 #include "string.h"
 #include "survive_async_optimizer.h"
-#include "survive_cal.h"
 #include "survive_config.h"
 #include "survive_kalman_tracker.h"
 #include "survive_reproject.h"
@@ -166,16 +165,6 @@ static size_t construct_input_from_scene(const MPFITData *d, size_t timecode, co
 	return rtn;
 }
 
-static bool find_cameras_invalid_starting_condition(MPFITData *d, size_t meas_size) {
-	if (meas_size < d->required_meas * 2) {
-		SurviveContext *ctx = d->opt.so->ctx;
-		if (meas_size > 0)
-			SV_INFO("Can't solve for cameras with just %u measurements", (unsigned int)meas_size);
-		return true;
-	}
-	return false;
-}
-
 static bool invalid_starting_condition(MPFITData *d, size_t meas_size, const size_t *meas_for_lhs) {
 	static int failure_count = 500;
 	struct SurviveObject *so = d->opt.so;
@@ -203,22 +192,6 @@ static bool invalid_starting_condition(MPFITData *d, size_t meas_size, const siz
 	}
 	failure_count = 0;
 	return false;
-}
-
-static void mpfit_set_cameras(SurviveObject *so, uint8_t lighthouse, SurvivePose *pose, SurvivePose *obj_pose,
-							  void *user) {
-	survive_optimizer *ctx = (survive_optimizer *)user;
-	SurvivePose *cameras = survive_optimizer_get_camera(ctx);
-	cameras[lighthouse] = InvertPoseRtn(pose);
-
-	assert(!quatiszero(pose->Rot));
-	for (int i = 0; i < 7; i++)
-		assert(!isnan(((FLT *)pose)[i]));
-
-	if (obj_pose && !quatiszero(obj_pose->Rot))
-		*survive_optimizer_get_pose(ctx) = *obj_pose;
-	else
-		*survive_optimizer_get_pose(ctx) = LinmathPose_Identity;
 }
 
 static inline void serialize_mpfit(MPFITData *d, survive_optimizer *mpfitctx) {
@@ -551,104 +524,6 @@ static FLT run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Surviv
 	return handle_optimizer_results(&mpfitctx, res, &result, &user_data, out);
 }
 
-static FLT run_mpfit_find_cameras(MPFITData *d, PoserDataFullScene *pdfs) {
-	SurviveObject *so = d->opt.so;
-
-	survive_optimizer mpfitctx = {.so = so,
-								  .poseLength = 1,
-								  .cameraLength = so->ctx->activeLighthouses,
-								  .reprojectModel =
-									  so->ctx->lh_version ? &survive_reproject_gen2_model : &survive_reproject_model};
-
-	SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(mpfitctx);
-
-	survive_optimizer_setup_cameras(&mpfitctx, so->ctx, false, d->use_jacobian_function_lh);
-	survive_optimizer_setup_pose(&mpfitctx, 0, true, false);
-
-	mpfitctx.cfg = survive_optimizer_precise_config();
-
-	SurviveSensorActivations activations;
-	PoserDataFullScene2Activations(pdfs, &activations);
-	activations.lh_gen = so->ctx->lh_version;
-	activations.last_imu = so->timebase_hz * 2;
-
-	size_t meas_for_lhs[NUM_GEN2_LIGHTHOUSES] = {0};
-	size_t meas_size = construct_input_from_scene(d, 0, &activations, meas_for_lhs, mpfitctx.measurements, 0);
-
-	if (mpfitctx.current_bias > 0) {
-		meas_size += 7;
-	}
-	mpfitctx.measurementsCnt = meas_size;
-
-	if (find_cameras_invalid_starting_condition(d, meas_size)) {
-		return -1;
-	}
-
-	SurvivePose *cameras = survive_optimizer_get_camera(&mpfitctx);
-
-	{
-		SurviveContext *ctx = so->ctx;
-		if (d->opt.seed_poser) {
-			PoserData hdr = pdfs->hdr;
-			memset(&pdfs->hdr, 0, sizeof(pdfs->hdr)); // Clear callback functions
-			pdfs->hdr.pt = hdr.pt;
-			pdfs->hdr.lighthouseposeproc = mpfit_set_cameras;
-			pdfs->hdr.userdata = &mpfitctx;
-
-			d->opt.seed_poser(so, &d->opt.seed_poser_data, &pdfs->hdr);
-
-			pdfs->hdr = hdr;
-		} else {
-			SV_INFO("Not using a seed poser for MPFIT; results will likely be way off");
-			for (int i = 0; i < so->ctx->activeLighthouses; i++) {
-				so->ctx->bsd[i].Pose = (SurvivePose){0};
-				so->ctx->bsd[i].Pose.Rot[0] = 1.;
-			}
-		}
-	}
-
-	for (int i = 0; i < so->ctx->activeLighthouses; i++) {
-		if (meas_for_lhs[i] && quatiszero(cameras[i].Rot)) {
-			SurviveContext *ctx = so->ctx;
-			SV_WARN("Seed poser did not solve some lighthouses, bailing.");
-			return -1;
-		}
-	}
-
-	mp_result result = {0};
-
-	mpfitctx.initialPose.Rot[0] = 1;
-
-	serialize_mpfit(d, &mpfitctx);
-	int res = survive_optimizer_run(&mpfitctx, &result);
-
-	FLT rtn = -1;
-	bool status_failure = res <= 0;
-	SurviveContext *ctx = so->ctx;
-
-	if (!status_failure) {
-		general_optimizer_data_record_success(&d->opt, result.bestnorm, 0);
-		rtn = result.bestnorm;
-
-		SurvivePose lh2worlds[NUM_GEN2_LIGHTHOUSES] = { 0 };
-		for (int i = 0; i < so->ctx->activeLighthouses; i++) {
-			if (quatmagnitude(cameras[i].Rot) != 0) {
-				quatnormalize(cameras[i].Rot, cameras[i].Rot);
-				lh2worlds[i] = InvertPoseRtn(&cameras[i]);
-				SV_INFO("Solved for %d with error of %f/%f", i, result.orignorm, result.bestnorm);
-			}
-		}
-
-		PoserData_lighthouse_poses_func(&pdfs->hdr, so, lh2worlds, so->ctx->activeLighthouses, 0);
-		SV_INFO("MPFIT success %f %d", result.bestnorm, res);
-	} else {
-		SV_INFO("MPFIT failure %f %d", result.bestnorm, res);
-		// general_optimizer_data_record_failure(&d->opt);
-	}
-
-	return rtn;
-}
-
 static inline void print_stats(SurviveContext *ctx, MPFITStats *stats) {
 	// if (stats->total_iterations == 0)
 	//		return;
@@ -726,17 +601,9 @@ int PoserMPFIT(SurviveObject *so, void **user, PoserData *pd) {
 	}
 	MPFITData *d = *user;
 	switch (pd->pt) {
-	case POSERDATA_FULL_SCENE: {
-		SurviveContext *ctx = so->ctx;
-		PoserDataFullScene *pdfs = (PoserDataFullScene *)(pd);
-		FLT error = run_mpfit_find_cameras(d, pdfs);
-		return 0;
-	}
 	case POSERDATA_SYNC_GEN2:
 	case POSERDATA_SYNC: {
 		// No poses if calibration is ongoing
-		if (ctx->calptr && ctx->calptr->stage < 5)
-			return 0;
 		d->syncs_seen++;
 		if (d->syncs_seen < d->syncs_to_setup) {
 			return 0;
@@ -804,9 +671,6 @@ int PoserMPFIT(SurviveObject *so, void **user, PoserData *pd) {
 	case POSERDATA_IMU: {
 		PoserDataIMU *imu = (PoserDataIMU *)pd;
 		if (d->stats.total_runs == 0)
-			return 0;
-
-		if (ctx->calptr && ctx->calptr->stage < 5)
 			return 0;
 
 		general_optimizer_data_record_imu(&d->opt, imu);

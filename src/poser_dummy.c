@@ -32,12 +32,6 @@ int PoserDummy(SurviveObject *so, void **user, PoserData *pd) {
 		//printf( "LIG:%s %d @ %f rad, %f s (AC %d) (TC %d)\n", so->codename, l->sensor_id, l->angle, l->length, l->acode, l->timecode );
 		break;
 	}
-	case POSERDATA_FULL_SCENE:
-	{
-		PoserDataFullScene * fs = (PoserDataFullScene*)pd;
-		//printf( "Full scene data.\n" );
-		break;
-	}
 	case POSERDATA_DISASSOCIATE:
 	{
 		*user = 0;

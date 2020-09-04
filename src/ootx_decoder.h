@@ -37,6 +37,7 @@ typedef struct ootx_decoder_context {
 		uint32_t bad_crcs;
 		uint32_t packets_found;
 		uint32_t used_bytes;
+		double started_s;
 	} stats;
 
 	void (*ootx_error_clbk)(struct ootx_decoder_context *ctx, const char *msg);

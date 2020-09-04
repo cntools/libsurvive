@@ -1,7 +1,6 @@
 //<>< (C) 2016 C. N. Lohr, FULLY Under MIT/x11 License.
 //All MIT/x11 Licensed Code in this file may be relicensed freely under the GPL or LGPL licenses.
 
-#include "survive_cal.h"
 #include "survive_config.h"
 #include "survive_default_devices.h"
 #include "survive_recording.h"
@@ -29,10 +28,6 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 	if (sensor_id == -1 || sensor_id == -2) {
 		uint8_t dbit = (acode & 2) >> 1;
 		survive_ootx_behavior(so, lh, ctx->lh_version, dbit);
-	}
-
-	if (ctx->calptr && ctx->bsd[lh].OOTXSet) {
-		survive_cal_light( so, sensor_id, acode, timeinsweep, timecode, length, lh);
 	}
 
 	survive_recording_light_process(so, sensor_id, acode, timeinsweep, timecode, length, lh);
@@ -107,9 +102,6 @@ void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode
 
 	survive_recording_angle_process(so, sensor_id, acode, timecode, length, angle, lh);
 
-	if (ctx->calptr) {
-		survive_cal_angle(so, sensor_id, acode, timecode, length, angle, lh);
-	}
 	survive_kalman_tracker_integrate_light(so->tracker, &l.common);
 	SURVIVE_POSER_INVOKE(so, &l);
 }

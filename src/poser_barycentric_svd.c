@@ -152,47 +152,6 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 	return rtn;
 }
 
-static int solve_fullscene(PoserDataSVD *dd, PoserDataFullScene *pdfs) {
-	SurviveObject *so = dd->so;
-
-	SurvivePose object2World = so->OutPoseIMU;
-
-	// If a LH has its position; wait until we have a position on the object we can use.
-	if (quatiszero(object2World.Rot)) {
-		for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
-			if (so->ctx->bsd[lh].PositionSet) {
-				return 0;
-			}
-		}
-	}
-
-	SurvivePose lh2objects[NUM_GEN2_LIGHTHOUSES] = { 0 };
-
-	for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
-		if (so->ctx->bsd[lh].PositionSet) {
-			continue;
-		}
-
-		bc_svd_reset_correspondences(&dd->bc);
-		for (size_t i = 0; i < so->sensor_ct; i++) {
-			FLT *_ang = pdfs->angles[i][lh];
-			bc_svd_add_correspondence(&dd->bc, i, (_ang[0]), (_ang[1]));
-		}
-
-		SurviveContext *ctx = so->ctx;
-		if (dd->bc.meas_cnt <= 8) {
-			continue;
-		}
-
-		SV_INFO("Solving for %d correspondents on lh %d", (int)dd->bc.meas_cnt, lh);
-		lh2objects[lh] = solve_correspondence(dd, true);
-	}
-
-	PoserData_lighthouse_poses_func(&pdfs->hdr, so, lh2objects, so->ctx->activeLighthouses, 0);
-
-	return 0;
-}
-
 static void add_correspondences(SurviveObject *so, bc_svd *bc, uint32_t timecode, int lh) {
 	SurviveSensorActivations *scene = &so->activations;
 	bc_svd_reset_correspondences(bc);
@@ -325,10 +284,6 @@ int PoserBaryCentricSVD(SurviveObject *so, void **user, PoserData *pd) {
 		}
 
 		return 0;
-	}
-
-	case POSERDATA_FULL_SCENE: {
-		return solve_fullscene(dd, (PoserDataFullScene *)(pd));
 	}
 	case POSERDATA_DISASSOCIATE: {
 		*user = 0;
