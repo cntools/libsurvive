@@ -198,6 +198,21 @@ static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver, bool
 	return 0;
 }
 
+static int parse_and_run_lhpose(const char *line, struct SurvivePlaybackData *driver) {
+	SurvivePose pose;
+	int lh = -1;
+	int rr = sscanf(line, "%d LH_POSE " SurvivePose_sformat "\n", &lh, &pose.Pos[0], &pose.Pos[1], &pose.Pos[2],
+					&pose.Rot[0], &pose.Rot[1], &pose.Rot[2], &pose.Rot[3]);
+
+	SurviveContext *ctx = driver->ctx;
+	if (driver->outputExternalPose) {
+		char buffer[32] = {0};
+		snprintf(buffer, 31, "previous_LH%d", lh);
+		ctx->external_poseproc(ctx, buffer, &pose);
+	}
+	return 0;
+}
+
 static int parse_and_run_externalpose(const char *line, SurvivePlaybackData *driver) {
 	char name[128] = { 0 };
 	SurvivePose pose;
@@ -332,6 +347,10 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 				parse_and_run_rawlight(line, driver);
 			break;
 		case 'L':
+			if (strcmp(op, "LH_POSE") == 0) {
+				parse_and_run_lhpose(line, driver);
+				break;
+			}
 		case 'R':
 			if (op[1] == 0 && driver->hasRawLight == false)
 				parse_and_run_lightcode(line, driver);
