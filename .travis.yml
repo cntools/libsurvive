@@ -10,11 +10,13 @@ dist: xenial
 jobs:
    include:
      - os: linux
-       env: USE_ASAN=ON CONFIG=Debug
+       env: USE_ASAN=ON CONFIG=Release USE_SINGLE_PRECISION=On RELEASE_FILE_SUFFIX=".f"
      - os: linux
-       env: USE_ASAN=OFF CONFIG=Release
+       env: USE_ASAN=ON CONFIG=Debug USE_SINGLE_PRECISION=Off
+     - os: linux
+       env: USE_ASAN=OFF CONFIG=Release USE_SINGLE_PRECISION=Off
      - os: windows
-       env: CONFIG=Release CMAKE_GENERATOR_PLATFORM=x64 CMAKE_GENERATOR="Visual Studio 15 2017" VERBOSE=1
+       env: CONFIG=Release CMAKE_GENERATOR_PLATFORM=x64 CMAKE_GENERATOR="Visual Studio 15 2017" VERBOSE=1 USE_SINGLE_PRECISION=Off
 
 install:
   - ./useful_files/travis/$TRAVIS_OS_NAME.install.sh
@@ -28,7 +30,7 @@ before_deploy:
 deploy:
   - provider: releases
     api_key: $GITHUB_TOKEN
-    file: libsurvive-$TRAVIS_TAG-$TRAVIS_OS_NAME-$CONFIG.7z
+    file: libsurvive-$TRAVIS_TAG-$TRAVIS_OS_NAME-$CONFIG.$USE_SINGLE_PRECISION.7z
     skip_cleanup: true
     on:
       branch: master
