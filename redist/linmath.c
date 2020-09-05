@@ -1155,9 +1155,9 @@ void linmath_find_best_intersection(LinmathPoint3d pt, const struct LinmathLine3
 		LinmathPoint3d n2;
 		cross3d(n2, n1, dir);
 
-		assert(fabs(dot3d(dir, n1)) < 1e-7);
-		assert(fabs(dot3d(dir, n2)) < 1e-7);
-		assert(fabs(dot3d(n1, n2)) < 1e-7);
+		assert(fabs(dot3d(dir, n1)) < 1e-6);
+		assert(fabs(dot3d(dir, n2)) < 1e-6);
+		assert(fabs(dot3d(n1, n2)) < 1e-6);
 
 		FLT d1 = dot3d(n1, lines[i].a);
 		FLT d2 = dot3d(n2, lines[i].a);

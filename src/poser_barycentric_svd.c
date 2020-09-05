@@ -280,19 +280,20 @@ int PoserBaryCentricSVD(SurviveObject *so, void **user, PoserData *pd) {
 								err = 1. - err_q[0];
 							}
 
-							SV_VERBOSE(5,
-									   "Possible SVD solution for lighthouse %d, from object %s at " SurvivePose_format
-									   "; accel error is %6.5f",
-									   lh, so->codename, SURVIVE_POSE_EXPAND(obj2world), err);
-
 							if (err < .01) {
 								solved++;
 								if (quatiszero(obj2world.Rot))
 									lh2world[lh] = lh2obj;
 								else
 									ApplyPoseToPose(&lh2world[lh], &obj2world, &lh2obj);
+
+								SV_VERBOSE(
+									10,
+									"Possible SVD solution for lighthouse %d, from object %s at " SurvivePose_format
+									"; accel error is %6.5f",
+									lh, so->codename, SURVIVE_POSE_EXPAND(lh2world[lh]), err);
 							} else {
-								SV_VERBOSE(5, "Discarding SVD solution; up vectors seemed wrong");
+								SV_VERBOSE(5, "Discarding SVD solution; up vectors seemed wrong %f", err);
 							}
 						}
 					} else {

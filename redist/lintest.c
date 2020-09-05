@@ -228,7 +228,7 @@ static void testFindBestIntersections() {
 		linmath_find_best_intersection(o_pt, lines, num);
 
 		FLT err = dist3d(gt_pt, o_pt);
-		assert(err < (sigma + 1e-10));
+		assert(err < (sigma + 1e-5));
 	}
 }
 int main()
