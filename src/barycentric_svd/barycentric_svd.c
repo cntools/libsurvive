@@ -502,7 +502,7 @@ FLT bc_svd_compute_pose(bc_svd *self, FLT R[3][3], FLT t[3]) {
 	rep_errors[2] = bc_svd_compute_R_and_t(self, ut, Betas[3], Rs[3], ts[3]);
 
 	int N = 0;
-	if (rep_errors[0] < rep_errors[1])
+	if (rep_errors[1] < rep_errors[0])
 		N = 1;
 	if (rep_errors[2] < rep_errors[N])
 		N = 2;
