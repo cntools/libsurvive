@@ -91,12 +91,20 @@ void survive_apply_bsd_calibration(const SurviveContext *ctx, int lh, const FLT 
 
 const survive_reproject_model_t SURVIVE_EXPORT survive_reproject_model = {
 	.reprojectAxisFn = {survive_reproject_axis_x, survive_reproject_axis_y},
-	.reprojectAxisJacobFn = {gen_reproject_axis_x_jac_obj_p, gen_reproject_axis_y_jac_obj_p},
 	.reprojectXY = survive_reproject_xy,
+	.reprojectAxisFullFn = {gen_reproject_axis_x, gen_reproject_axis_y},
+
+	.reprojectAxisJacobFn = {gen_reproject_axis_x_jac_obj_p, gen_reproject_axis_y_jac_obj_p},
 	.reprojectFullJacObjPose = gen_reproject_jac_obj_p,
 	.reprojectFullJacLhPose = gen_reproject_jac_lh_p,
 	.reprojectAxisJacobLhPoseFn = {gen_reproject_axis_x_jac_lh_p, gen_reproject_axis_y_jac_lh_p},
 
-	.reprojectAxisFullFn = {gen_reproject_axis_x, gen_reproject_axis_y},
+	.reprojectAxisAngleFullJacObjPose = gen_reproject_jac_obj_p_axis_angle,
+	.reprojectAxisAngleAxisJacobFn = {gen_reproject_axis_x_jac_obj_p_axis_angle,
+									  gen_reproject_axis_y_jac_obj_p_axis_angle},
+
+	.reprojectAxisAngleFullJacLhPose = gen_reproject_jac_lh_p_axis_angle,
+	.reprojectAxisAngleAxisJacobLhPoseFn = {gen_reproject_axis_x_jac_lh_p_axis_angle,
+											gen_reproject_axis_y_jac_lh_p_axis_angle},
 
 };

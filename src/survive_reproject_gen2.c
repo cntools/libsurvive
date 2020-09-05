@@ -162,11 +162,11 @@ const survive_reproject_model_t survive_reproject_gen2_model = {
 	.reprojectAxisJacobFn = {gen_reproject_axis_x_gen2_jac_obj_p, gen_reproject_axis_y_gen2_jac_obj_p},
 	.reprojectFullJacObjPose = gen_reproject_gen2_jac_obj_p,
 	.reprojectFullJacLhPose = gen_reproject_gen2_jac_lh_p,
-	.reprojectAxisJacobLhPoseFn = {gen_reproject_axis_x_jac_lh_p, gen_reproject_axis_y_jac_lh_p},
+	.reprojectAxisJacobLhPoseFn = {gen_reproject_axis_x_gen2_jac_lh_p, gen_reproject_axis_y_gen2_jac_lh_p},
 
 	.reprojectAxisAngleFullJacObjPose = gen_reproject_gen2_jac_obj_p_axis_angle,
-	.reprojectAxisAngleAxisJacobFn = {gen_reproject_axis_x_jac_obj_p_axis_angle,
-									  gen_reproject_axis_y_jac_obj_p_axis_angle},
+	.reprojectAxisAngleAxisJacobFn = {gen_reproject_axis_x_gen2_jac_obj_p_axis_angle,
+									  gen_reproject_axis_y_gen2_jac_obj_p_axis_angle},
 
 	.reprojectAxisAngleFullJacLhPose = gen_reproject_gen2_jac_lh_p_axis_angle,
 	.reprojectAxisAngleAxisJacobLhPoseFn = {gen_reproject_axis_x_gen2_jac_lh_p_axis_angle,
