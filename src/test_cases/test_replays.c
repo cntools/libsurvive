@@ -80,6 +80,9 @@ FLT max_pos_error = .08, max_rot_error = .001;
 
 static void external_pose_fn(SurviveContext *ctx, const char *name, const SurvivePose *pose) {
 	SurviveSimpleContext *actx = ctx->user_ptr;
+	if (actx == 0)
+		return;
+
 	struct replay_ctx *rctx = survive_simple_get_user(actx);
 	rctx->external_pose_fn(ctx, name, pose);
 
