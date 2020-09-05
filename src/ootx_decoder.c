@@ -10,10 +10,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <os_generic.h>
+
 #ifdef NOZLIB
 #include "crc32.h"
 #else
-#include <os_generic.h>
 #include <zlib.h>
 #endif
 
