@@ -486,29 +486,28 @@ FLT bc_svd_compute_pose(bc_svd *self, FLT R[3][3], FLT t[3]) {
 
 	bc_svd_compute_rho(self, rho);
 
-	FLT Betas[4][4] = {0}, rep_errors[4] = {0};
+	FLT Betas[4][4] = {0}, rep_errors[3] = {0};
 	FLT Rs[4][3][3] = {0}, ts[4][3] = {0};
 
 	find_betas_approx_1(&L_6x10, &Rho, Betas[1]);
 	gauss_newton(&L_6x10, &Rho, Betas[1]);
-
-	rep_errors[1] = bc_svd_compute_R_and_t(self, ut, Betas[1], Rs[1], ts[1]);
+	rep_errors[0] = bc_svd_compute_R_and_t(self, ut, Betas[1], Rs[1], ts[1]);
 
 	find_betas_approx_2(&L_6x10, &Rho, Betas[2]);
 	gauss_newton(&L_6x10, &Rho, Betas[2]);
-	rep_errors[2] = bc_svd_compute_R_and_t(self, ut, Betas[2], Rs[2], ts[2]);
+	rep_errors[1] = bc_svd_compute_R_and_t(self, ut, Betas[2], Rs[2], ts[2]);
 
 	bc_svd_find_betas_approx_3(self, &L_6x10, &Rho, Betas[3]);
 	gauss_newton(&L_6x10, &Rho, Betas[3]);
-	rep_errors[3] = bc_svd_compute_R_and_t(self, ut, Betas[3], Rs[3], ts[3]);
+	rep_errors[2] = bc_svd_compute_R_and_t(self, ut, Betas[3], Rs[3], ts[3]);
 
-	int N = 1;
-	if (rep_errors[2] < rep_errors[1])
+	int N = 0;
+	if (rep_errors[0] < rep_errors[1])
+		N = 1;
+	if (rep_errors[2] < rep_errors[N])
 		N = 2;
-	if (rep_errors[3] < rep_errors[N])
-		N = 3;
 
-	copy_R_and_t(Rs[N], ts[N], R, t);
+	copy_R_and_t(Rs[N + 1], ts[N + 1], R, t);
 
 	return rep_errors[N];
 }

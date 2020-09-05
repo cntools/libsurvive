@@ -54,6 +54,9 @@ static FLT survive_kalman_tracker_position_var2(SurviveKalmanTracker *tracker, F
 static void normalize_model(SurviveKalmanTracker *pTracker) {
 	quatnormalize(pTracker->state.Pose.Rot, pTracker->state.Pose.Rot);
 	for (int i = 0; i < 3; i++) {
+		pTracker->state.GyroBias[i] = linmath_enforce_range(pTracker->state.GyroBias[i], -1e-1, 1e-1);
+	}
+	for (int i = 0; i < 3; i++) {
 		assert(isfinite(pTracker->state.Pose.Pos[i]));
 	}
 	for (int i = 0; i < 4; i++) {
@@ -755,8 +758,9 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 
 void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *tracker) {
 	SurviveContext *ctx = tracker->so->ctx;
-	SV_WARN("Too many failures; reseting calibration %e (%" PRIu64 " stationary)", tracker->light_residuals_all,
-			SurviveSensorActivations_stationary_time(&tracker->so->activations));
+	SV_WARN("Too many failures for %s; reseting calibration %e (%7.4f stationary)", tracker->so->codename,
+			tracker->light_residuals_all,
+			SurviveSensorActivations_stationary_time(&tracker->so->activations) / 48000000.);
 	tracker->light_residuals_all = 0;
 	{
 		tracker->so->OutPoseIMU = (SurvivePose){0};

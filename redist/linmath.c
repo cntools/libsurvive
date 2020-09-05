@@ -528,6 +528,30 @@ inline void quatadd(LinmathQuat qout, const FLT *a, const FLT *b) {
 	qout[3] = a[3] + b[3];
 }
 
+void quatfind_between_vectors(LinmathQuat q, const LinmathPoint3d _p0, const LinmathPoint3d _p1) {
+	LinmathPoint3d p0, p1;
+	normalize3d(p0, _p0);
+	normalize3d(p1, _p1);
+
+	FLT d = dot3d(p0, p1);
+
+	if (d < -0.999999) {
+
+	} else if (d > 0.999999) {
+		LinmathPoint3d tmp, xUnit = {1, 0, 0}, yUnit = {0, 1, 0};
+		cross3d(tmp, xUnit, p0);
+		if (norm3d(tmp) < .00001)
+			cross3d(tmp, yUnit, p0);
+		quatnormalize(tmp, tmp);
+		quatscale(tmp, tmp, LINMATHPI);
+
+		quatfromaxisanglemag(q, tmp);
+	} else {
+		cross3d(q + 1, p0, p1);
+		q[0] = 1 + d;
+		quatnormalize(q, q);
+	}
+}
 inline void quatfind(LinmathQuat q, const LinmathQuat q0, const LinmathQuat q1) {
 	LinmathQuat iq0;
 	quatgetconjugate(iq0, q0);

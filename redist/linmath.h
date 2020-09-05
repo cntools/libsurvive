@@ -199,6 +199,10 @@ LINMATH_EXPORT void quatgetreciprocal(LinmathQuat qout, const LinmathQuat qin);
  */
 LINMATH_EXPORT void quatfind(LinmathQuat q, const LinmathQuat q0, const LinmathQuat q1);
 /***
+ * Find q such that q * p0 = p1; where p0, p1, are vectors
+ */
+LINMATH_EXPORT void quatfind_between_vectors(LinmathQuat q, const LinmathPoint3d p0, const LinmathPoint3d p1);
+/***
  * Find q such that q0 * q1 = q; where q0, q1, q are unit quaternions
  *
  * same as quat multiply, not piecewise multiply.

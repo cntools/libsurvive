@@ -263,14 +263,37 @@ int PoserBaryCentricSVD(SurviveObject *so, void **user, PoserData *pd) {
 					if (dd->bc.meas_cnt >= dd->required_meas) {
 						SurvivePose lh2obj = solve_correspondence(dd, true);
 						if (quatmagnitude(lh2obj.Rot) != 0) {
-							solved++;
+							LinmathPoint3d up = {ctx->bsd[lh].accel[0], ctx->bsd[lh].accel[1], ctx->bsd[lh].accel[2]};
+							FLT err = 0;
+
+							// Some older replays don't have the accel
+							if (norm3d(up) > 0) {
+								normalize3d(up, up);
+								LinmathPoint3d lhUpInObj;
+								quatrotatevector(lhUpInObj, lh2obj.Rot, up);
+
+								LinmathPoint3d objUp;
+								normalize3d(objUp, so->activations.accel);
+
+								LinmathQuat err_q;
+								quatfind_between_vectors(err_q, objUp, lhUpInObj);
+								err = 1. - err_q[0];
+							}
+
 							SV_VERBOSE(5,
-									   "Possible SVD solution for lighthouse %d, from object %s at " SurvivePose_format,
-									   lh, so->codename, SURVIVE_POSE_EXPAND(obj2world));
-							if (quatiszero(obj2world.Rot))
-								lh2world[lh] = lh2obj;
-							else
-								ApplyPoseToPose(&lh2world[lh], &obj2world, &lh2obj);
+									   "Possible SVD solution for lighthouse %d, from object %s at " SurvivePose_format
+									   "; accel error is %6.5f",
+									   lh, so->codename, SURVIVE_POSE_EXPAND(obj2world), err);
+
+							if (err < .01) {
+								solved++;
+								if (quatiszero(obj2world.Rot))
+									lh2world[lh] = lh2obj;
+								else
+									ApplyPoseToPose(&lh2world[lh], &obj2world, &lh2obj);
+							} else {
+								SV_VERBOSE(5, "Discarding SVD solution; up vectors seemed wrong");
+							}
 						}
 					} else {
 						SV_WARN("Couldn't solve for LH %d with %d measures", lh, (int)dd->bc.meas_cnt);

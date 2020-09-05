@@ -403,7 +403,13 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 			for (int i = 0; i < mpfitctx->cameraLength; i++) {
 				if (meas_for_lhs[i] > 0 && !quatiszero(opt_cameras[i].Rot)) {
 					cameras[i] = InvertPoseRtn(&opt_cameras[i]);
-					SV_INFO("Solved for %d with error of %f/%10.10f", i, result->orignorm, result->bestnorm);
+
+					LinmathPoint3d up = {ctx->bsd[i].accel[0], ctx->bsd[i].accel[1], ctx->bsd[i].accel[2]};
+					normalize3d(up, up);
+					LinmathPoint3d err;
+					quatrotatevector(err, cameras[i].Rot, up);
+					SV_INFO("Solved for %d with error of %f/%10.10f (acc err %5.4f)", i, result->orignorm,
+							result->bestnorm, 1 + err[2]);
 				}
 			}
 			PoserData_lighthouse_poses_func(&pdl->hdr, so, cameras, ctx->activeLighthouses, soLocation);
