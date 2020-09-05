@@ -790,12 +790,12 @@ bool *survive_add_threaded_driver(SurviveContext *ctx, void *_driver, const char
 	return &driver->keep_running;
 }
 
-int survive_haptic(SurviveObject *so, uint8_t reserved, uint16_t pulseHigh, uint16_t pulseLow, uint16_t repeatCount) {
+int survive_haptic(SurviveObject *so, FLT freq, FLT amp, FLT duration) {
 	if (NULL == so || NULL == so->haptic) {
 		return -404;
 	}
 
-	return so->haptic(so, reserved, pulseHigh, pulseLow, repeatCount);
+	return so->haptic(so, freq, amp, duration);
 }
 
 void survive_close(SurviveContext *ctx) {

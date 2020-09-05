@@ -397,8 +397,7 @@ SURVIVE_EXPORT void survive_config_bind_variable(char vt, const char *name, cons
 SURVIVE_EXPORT int survive_cal_get_status(SurviveContext *ctx, char *description, int description_length);
 
 // Induce haptic feedback
-SURVIVE_EXPORT int survive_haptic(SurviveObject *so, uint8_t reserved, uint16_t pulseHigh, uint16_t pulseLow,
-								  uint16_t repeatCount);
+SURVIVE_EXPORT int survive_haptic(SurviveObject *so, FLT freq, FLT amp, FLT duration);
 
 SURVIVE_EXPORT void survive_find_ang_velocity(SurviveAngularVelocity out, FLT tdiff, const LinmathQuat from,
 											  const LinmathQuat to);

@@ -495,3 +495,14 @@ SurviveSimpleSubobject_type survive_simple_object_get_subtype(const struct Survi
 
 	return so->object_subtype;
 }
+int survive_simple_object_haptic(struct SurviveSimpleObject *sao, FLT frequency, FLT amplitude, FLT time_s) {
+	SurviveObject *so = survive_simple_get_survive_object(sao);
+	return survive_haptic(so, frequency, amplitude, time_s);
+}
+SurviveAxisVal_t survive_simple_object_get_input_axis(const struct SurviveSimpleObject *sao, enum SurviveAxis axis) {
+	SurviveObject *so = survive_simple_get_survive_object(sao);
+	if (so == 0 || axis > 16)
+		return 0;
+
+	return so->axis[axis];
+}

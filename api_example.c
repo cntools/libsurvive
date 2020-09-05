@@ -60,9 +60,17 @@ int main(int argc, char **argv) {
 				SurviveObjectSubtype subtype = survive_simple_object_get_subtype(button_event->object);
 				printf("%s input %s (%d) ", survive_simple_object_name(button_event->object),
 					   SurviveInputEventStr(button_event->event_type), button_event->event_type);
+
+				FLT v1 = survive_simple_object_get_input_axis(button_event->object, SURVIVE_AXIS_TRACKPAD_X) / 2. + .5;
+
 				if (button_event->button_id != 255) {
 					printf(" button %16s (%2d) ", SurviveButtonsStr(subtype, button_event->button_id),
 						   button_event->button_id);
+
+					if (button_event->button_id == SURVIVE_BUTTON_SYSTEM) {
+						FLT v = 1 - survive_simple_object_get_input_axis(button_event->object, SURVIVE_AXIS_TRIGGER);
+						survive_simple_object_haptic(button_event->object, 30, v, .5);
+					}
 				}
 				for (int i = 0; i < button_event->axis_count; i++) {
 					printf(" %20s (%2d) %+5.4f   ", SurviveAxisStr(subtype, button_event->axis_ids[i]),

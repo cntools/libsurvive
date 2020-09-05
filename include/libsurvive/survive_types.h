@@ -322,8 +322,7 @@ typedef void (*lighthouse_pose_process_func)(SurviveContext *ctx, uint8_t bsd_id
 typedef void (*new_object_process_func)(SurviveObject *so);
 /************************************************ End Hook definitions ************************************************/
 
-typedef int (*haptic_func)(SurviveObject *so, uint8_t reserved, uint16_t pulseHigh, uint16_t pulseLow,
-						   uint16_t repeatCount);
+typedef int (*haptic_func)(SurviveObject *so, FLT freq, FLT amp, FLT duration);
 
 //Device drivers (prefix your drivers with "DriverReg") i.e.
 //		REGISTER_LINKTIME( DriverRegHTCVive );

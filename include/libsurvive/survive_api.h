@@ -118,7 +118,11 @@ SURVIVE_EXPORT bool survive_simple_wait_for_update(SurviveSimpleContext *actx);
 SURVIVE_EXPORT enum SurviveSimpleEventType survive_simple_next_event(SurviveSimpleContext *actx,
 																	 SurviveSimpleEvent *event);
 
+SURVIVE_EXPORT int survive_simple_object_haptic(struct SurviveSimpleObject *sao, FLT frequency, FLT amplitude,
+												FLT time_s);
 SURVIVE_EXPORT enum SurviveSimpleObject_type survive_simple_object_get_type(const struct SurviveSimpleObject *sao);
+SURVIVE_EXPORT SurviveAxisVal_t survive_simple_object_get_input_axis(const struct SurviveSimpleObject *sao,
+																	 enum SurviveAxis axis);
 SURVIVE_EXPORT SurviveSimpleSubobject_type survive_simple_object_get_subtype(const struct SurviveSimpleObject *sao);
 /**
  * Given an event with the type of 'button', it returns the internal ButtonEvent structure. If the type isn't a button,

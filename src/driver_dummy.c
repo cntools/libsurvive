@@ -45,13 +45,6 @@ static int dummy_close(struct SurviveContext *ctx, void *_driver) {
 	return 0;
 }
 
-int dummy_haptic(SurviveObject *so, uint8_t reserved, uint16_t pulseHigh, uint16_t pulseLow, uint16_t repeatCount) {
-	/*
-		If your device has haptics, you can add the control for them here.
-	*/
-	return 0;
-}
-
 int DriverRegDummy(SurviveContext *ctx) {
 	SurviveDriverDummy *sp = SV_CALLOC(1, sizeof(SurviveDriverDummy));
 	sp->ctx = ctx;
@@ -76,7 +69,6 @@ int DriverRegDummy(SurviveContext *ctx) {
 
 	device->timebase_hz = 48000000;
 	device->imu_freq = 1000.0f;
-	device->haptic = dummy_haptic;
 
 	sp->so = device;
 	survive_add_object(ctx, device);

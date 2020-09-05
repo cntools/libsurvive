@@ -426,6 +426,56 @@ static bool survive_device_is_rf(const struct DeviceInfo *device_info) {
 	return true;
 }
 
+static struct SurviveUSBInfo *survive_get_usb_info(SurviveObject *so) { return (struct SurviveUSBInfo *)so->driver; }
+
+static int survive_vive_send_haptic(SurviveObject *so, FLT frequency, FLT amplitude, FLT duration_seconds) {
+	SurviveViveData *sv = ((struct SurviveUSBInfo *)so->driver)->viveData;
+	SurviveContext *ctx = so->ctx;
+
+	if (NULL == sv) {
+		return -500;
+	}
+
+	// Due to https://gitlab.freedesktop.org/monado/monado/-/blob/master/src/xrt/drivers/vive/vive_controller.c#L398
+	FLT high_plus_low = 1000.f * 1000.f / frequency;
+	FLT pulse_low = amplitude * high_plus_low / 2.;
+
+	/* Vive Controller doesn't vibrate with value == 0.
+	 * Not sure if this actually happens, but let's fix it anyway. */
+	if (pulse_low == 0)
+		pulse_low = 1;
+
+	FLT pulse_high = high_plus_low - pulse_low;
+
+	uint16_t repeat_count = duration_seconds * frequency;
+	if (repeat_count == 0)
+		repeat_count = 1;
+
+	uint16_t pulse_high16 = pulse_high, pulse_low16 = pulse_low;
+	if (pulse_high > UINT16_MAX)
+		pulse_high16 = UINT16_MAX;
+	if (pulse_low > UINT16_MAX)
+		pulse_low16 = UINT16_MAX;
+
+	uint8_t vive_controller_haptic_pulse[] = {
+		VIVE_REPORT_COMMAND, VIVE_COMMAND_HAPTIC_PULSE, 0x07,		 0x00,
+		pulse_high16,		 pulse_high16 >> 8u,		pulse_low16, pulse_low16 >> 8u,
+		repeat_count,		 repeat_count >> 8u,
+	};
+
+	struct SurviveUSBInfo *usbInfo = survive_get_usb_info(so);
+
+	int r = update_feature_report_async(usbInfo->handle, 0, vive_controller_haptic_pulse,
+										sizeof(vive_controller_haptic_pulse));
+
+	if (r != sizeof(vive_controller_haptic_pulse)) {
+		SV_WARN("HAPTIC FAILED %d", r);
+		return -1;
+	}
+
+	return 0;
+}
+
 void vive_switch_mode(struct SurviveUSBInfo *driverInfo, enum LightcapMode lightcapMode) {
 	SurviveContext *ctx = driverInfo->so->ctx;
 	SurviveObject *w = driverInfo->so;
@@ -656,7 +706,7 @@ int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d) {
 				codename[2] += (*cnt);
 				*cnt = *cnt + 1;
 
-				SurviveObject *so = survive_create_device(ctx, "HTC", usbInfo, codename, 0);
+				SurviveObject *so = survive_create_device(ctx, "HTC", usbInfo, codename, survive_vive_send_haptic);
 				survive_add_object(ctx, so);
 				usbInfo->so = so;
 			}
@@ -742,50 +792,6 @@ int survive_vive_send_magic(SurviveContext *ctx, void *drv, int magic_code, void
 	SV_INFO("Powered unit on.");
 
 	return 0;
-}
-
-int survive_vive_send_haptic(SurviveObject *so, uint8_t reserved, uint16_t pulseHigh, uint16_t pulseLow,
-							 uint16_t repeatCount) {
-	SurviveViveData *sv = ((struct SurviveUSBInfo *)so->driver)->viveData;
-	SurviveContext *ctx = so->ctx;
-
-	if (NULL == sv) {
-		return -500;
-	}
-
-	int r;
-	uint8_t vive_controller_haptic_pulse[64] = {
-		VIVE_REPORT_COMMAND,
-		VIVE_COMMAND_HAPTIC_PULSE,
-		0x07,
-		0x00,
-		pulseHigh & 0xff00 >> 8,
-		pulseHigh & 0xff,
-		pulseLow & 0xff00 >> 8,
-		pulseLow & 0xff,
-		repeatCount & 0xff00 >> 8,
-		repeatCount & 0xff,
-	};
-
-	for (int i = 0; i < sv->udev_cnt; i++) {
-		struct SurviveUSBInfo *usbInfo = &sv->udev[i];
-
-		if (usbInfo->so == so) {
-			r = update_feature_report(usbInfo->handle, 0, vive_controller_haptic_pulse,
-									  sizeof(vive_controller_haptic_pulse));
-			r = getupdate_feature_report(usbInfo->handle, 0, vive_controller_haptic_pulse,
-										 sizeof(vive_controller_haptic_pulse));
-
-			if (r != sizeof(vive_controller_haptic_pulse)) {
-				SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "HAPTIC FAILED **************************\n");
-				return -1;
-			}
-
-			return 0;
-		}
-	}
-
-	return -2;
 }
 
 STATIC_CONFIG_ITEM(PAIR_DEVICE, "pair-device", 'i', "Turn on pairing mode", 0)
