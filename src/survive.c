@@ -740,6 +740,14 @@ const void *survive_get_driver(const SurviveContext *ctx, DeviceDriverCb pollFn)
 	return 0;
 }
 
+const void *survive_get_driver_by_closefn(const SurviveContext *ctx, DeviceDriverCb closeFn) {
+	for (int i = 0; i < ctx->driver_ct; i++) {
+		if (ctx->drivercloses[i] == closeFn)
+			return ctx->drivers[i];
+	}
+	return 0;
+}
+
 void survive_add_driver(SurviveContext *ctx, void *payload, DeviceDriverCb poll, DeviceDriverCb close) {
 	int oldct = ctx->driver_ct;
 	ctx->drivers = SV_REALLOC(ctx->drivers, sizeof(void *) * (oldct + 1));

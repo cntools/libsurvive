@@ -78,7 +78,7 @@ SET(PLUGINS
         driver_dummy driver_vive driver_simulator driver_playback
         disambiguator_statebased
         poser_dummy poser_mpfit poser_kalman_only
-	poser_barycentric_svd
+	poser_barycentric_svd driver_global_scene_solver
 )
 
 if(BUILD_GATT_SUPPORT)

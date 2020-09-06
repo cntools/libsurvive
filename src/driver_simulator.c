@@ -533,6 +533,89 @@ static int simulator_close(struct SurviveContext *ctx, void *_driver) {
 
 	return 0;
 }
+
+cstring generate_simulated_object(FLT r, size_t sensor_ct) {
+	cstring cfg = {0};
+	cstring loc = {0}, nor_buf = {0};
+
+	char buffer[1024] = {0};
+
+	for (int i = 0; i < sensor_ct; i++) {
+		FLT azi = rand();
+		FLT pol = rand();
+		LinmathVec3d normals, locations;
+		normals[0] = locations[0] = r * cos(azi) * sin(pol);
+		normals[1] = locations[1] = r * sin(azi) * sin(pol);
+		normals[2] = locations[2] = r * cos(pol);
+		normalize3d(normals, normals);
+
+		snprintf(buffer, sizeof(buffer), "[%f, %f, %f],\n", locations[0], locations[1], locations[2]);
+		str_append(&loc, buffer);
+
+		snprintf(buffer, sizeof(buffer), "[%f, %f, %f],\n", normals[0], normals[1], normals[2]);
+		str_append(&nor_buf, buffer);
+	}
+	nor_buf.d[nor_buf.length - 2] = 0;
+	loc.d[loc.length - 2] = 0;
+
+	FLT trackref_from_head[] = {rand(), rand(), rand(), rand(), rand(), rand(), rand()};
+	FLT trackref_from_imu[] = {rand(), rand(), rand(), rand(), rand(), rand(), rand()};
+	for (int i = 0; i < 7; i++) {
+		trackref_from_head[i] = .1 * (trackref_from_head[i] / RAND_MAX - .5);
+		trackref_from_imu[i] = .1 * (trackref_from_imu[i] / RAND_MAX - .5);
+	}
+
+	quatnormalize(trackref_from_head, trackref_from_head);
+	quatnormalize(trackref_from_imu, trackref_from_imu);
+
+	snprintf(buffer, sizeof(buffer),
+			 "\"trackref_from_head\": [%f, %f, %f, %f, %f, %f, %f], \n"
+			 "\"trackref_from_imu\": [%f, %f, %f, %f, %f, %f, %f], \n",
+			 trackref_from_head[0], trackref_from_head[1], trackref_from_head[2], trackref_from_head[3],
+			 trackref_from_head[4], trackref_from_head[5], trackref_from_head[6], trackref_from_imu[0],
+			 trackref_from_imu[1], trackref_from_imu[2], trackref_from_imu[3], trackref_from_imu[4],
+			 trackref_from_imu[5], trackref_from_imu[6]);
+
+	str_append(&cfg, "{\n");
+	str_append(&cfg, buffer);
+	str_append(&cfg, "     \"lighthouse_config\": {\n");
+	str_append(&cfg, "          \"modelNormals\": [\n");
+	str_append(&cfg, nor_buf.d);
+	str_free(&nor_buf);
+
+	str_append(&cfg, "          ],\n");
+	str_append(&cfg, "          \"modelPoints\": [\n");
+	str_append(&cfg, loc.d);
+	str_free(&loc);
+
+	str_append(&cfg, "          ]\n");
+	str_append(&cfg, "     }\n");
+	str_append(&cfg, "}\n");
+
+	return cfg;
+}
+
+SURVIVE_EXPORT SurviveObject *survive_create_simulation_device(SurviveContext *ctx, void *driver,
+															   const char *device_name) {
+	SurviveObject *device = survive_create_device(ctx, "SIM", driver, device_name, 0);
+	device->sensor_ct = survive_configi(ctx, "simulator-obj-sensors", SC_GET, 20);
+
+	device->head2imu.Rot[0] = 1;
+	device->head2trackref.Rot[0] = 1;
+	device->imu2trackref.Rot[0] = 1;
+
+	FLT r = survive_configf(ctx, "simulator-obj-radius", SC_GET, 0.1);
+
+	cstring cfg = generate_simulated_object(r, device->sensor_ct);
+
+	device->timebase_hz = 48000000;
+	device->imu_freq = 1000.0f;
+
+	ctx->configproc(device, cfg.d, strlen(cfg.d));
+
+	return device;
+}
+
 int DriverRegSimulator(SurviveContext *ctx) {
 	SurviveDriverSimulator *sp = SV_CALLOC(1, sizeof(SurviveDriverSimulator));
 	sp->ctx = ctx;
@@ -559,17 +642,8 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	int use_lh2 = ctx->lh_version_configed != 1;
 
 	// Create a new SurviveObject...
-	SurviveObject *device = survive_create_device(ctx, "SIM", sp, "SM0", 0);
-	device->sensor_ct = survive_configi(ctx, "simulator-obj-sensors", SC_GET, 20);
+	SurviveObject *device = survive_create_simulation_device(ctx, sp, "SM0");
 
-	device->head2imu.Rot[0] = 1;
-	device->head2trackref.Rot[0] = 1;
-	device->imu2trackref.Rot[0] = 1;
-
-	cstring cfg = {0};
-	cstring loc = {0}, nor_buf = {0};
-
-	FLT r = survive_configf(ctx, "simulator-obj-radius", SC_GET, 0.1);
 	srand(42);
 
 	FLT freq_per_channel[NUM_GEN2_LIGHTHOUSES] = {
@@ -632,64 +706,6 @@ int DriverRegSimulator(SurviveContext *ctx) {
 
 	// ctx->bsd[0].Pose = sp->bsd[0].Pose;
 	// ctx->bsd[0].PositionSet = 1;
-
-	char buffer[1024] = {0};
-
-	for (int i = 0; i < device->sensor_ct; i++) {
-		FLT azi = rand();
-		FLT pol = rand();
-		LinmathVec3d normals, locations;
-		normals[0] = locations[0] = r * cos(azi) * sin(pol);
-		normals[1] = locations[1] = r * sin(azi) * sin(pol);
-		normals[2] = locations[2] = r * cos(pol);
-		normalize3d(normals, normals);
-
-		snprintf(buffer, sizeof(buffer), "[%f, %f, %f],\n", locations[0], locations[1], locations[2]);
-		str_append(&loc, buffer);
-
-		snprintf(buffer, sizeof(buffer), "[%f, %f, %f],\n", normals[0], normals[1], normals[2]);
-		str_append(&nor_buf, buffer);
-	}
-	nor_buf.d[nor_buf.length - 2] = 0;
-	loc.d[loc.length - 2] = 0;
-
-	FLT trackref_from_head[] = {rand(), rand(), rand(), rand(), rand(), rand(), rand()};
-	FLT trackref_from_imu[] = {rand(), rand(), rand(), rand(), rand(), rand(), rand()};
-	for (int i = 0; i < 7; i++) {
-		trackref_from_head[i] = .1 * (trackref_from_head[i] / RAND_MAX - .5);
-		trackref_from_imu[i] = .1 * (trackref_from_imu[i] / RAND_MAX - .5);
-	}
-
-	quatnormalize(trackref_from_head, trackref_from_head);
-	quatnormalize(trackref_from_imu, trackref_from_imu);
-
-	snprintf(buffer, sizeof(buffer),
-			 "\"trackref_from_head\": [%f, %f, %f, %f, %f, %f, %f], \n"
-			 "\"trackref_from_imu\": [%f, %f, %f, %f, %f, %f, %f], \n",
-			 trackref_from_head[0], trackref_from_head[1], trackref_from_head[2], trackref_from_head[3],
-			 trackref_from_head[4], trackref_from_head[5], trackref_from_head[6], trackref_from_imu[0],
-			 trackref_from_imu[1], trackref_from_imu[2], trackref_from_imu[3], trackref_from_imu[4],
-			 trackref_from_imu[5], trackref_from_imu[6]);
-
-	str_append(&cfg, "{\n");
-	str_append(&cfg, buffer);
-	str_append(&cfg, "     \"lighthouse_config\": {\n");
-	str_append(&cfg, "          \"modelNormals\": [\n");
-	str_append(&cfg, nor_buf.d);
-	str_free(&nor_buf);
-
-	str_append(&cfg, "          ],\n");
-	str_append(&cfg, "          \"modelPoints\": [\n");
-	str_append(&cfg, loc.d);
-	str_free(&loc);
-
-	str_append(&cfg, "          ]\n");
-	str_append(&cfg, "     }\n");
-	str_append(&cfg, "}\n");
-	device->timebase_hz = 48000000;
-	device->imu_freq = 1000.0f;
-
-	ctx->configproc(device, cfg.d, strlen(cfg.d));
 
 	sp->so = device;
 	survive_add_object(ctx, device);

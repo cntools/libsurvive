@@ -31,8 +31,8 @@ static void *async_thread(void *param) {
 	return 0;
 }
 
-struct survive_async_optimizer *survive_async_init(survive_async_optimizer_cb cb) {
-	survive_async_optimizer *self = SV_NEW(survive_async_optimizer);
+struct survive_async_optimizer *survive_async_optimizer_init(struct survive_async_optimizer *self,
+															 survive_async_optimizer_cb cb) {
 	self->cb = cb;
 	self->active_buffer = -1;
 	self->active_buffer_lock = OGCreateMutex();

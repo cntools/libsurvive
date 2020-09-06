@@ -485,15 +485,14 @@ static void run_mpfit_find_3d_structure_async(MPFITData *d, PoserDataLight *pdl,
 
 	opt_buff->optimizer.reprojectModel =
 		ctx->lh_version == 0 ? &survive_reproject_model : &survive_reproject_gen2_model;
-	opt_buff->optimizer.so = so;
 	opt_buff->optimizer.poseLength = 1;
 	opt_buff->optimizer.cameraLength = so->ctx->activeLighthouses;
 
-	SURVIVE_OPTIMIZER_SETUP_HEAP_BUFFERS(opt_buff->optimizer);
+	SURVIVE_OPTIMIZER_SETUP_HEAP_BUFFERS(opt_buff->optimizer, so);
 
 	struct async_optimizer_user *user_data = opt_buff->user;
 	if (user_data == 0) {
-		user_data = opt_buff->user = SV_NEW(struct async_optimizer_user);
+		user_data = opt_buff->user = SV_CALLOC(1, sizeof(struct survive_async_optimizer));
 	}
 
 	user_data->d = d;
@@ -515,12 +514,11 @@ static FLT run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Surviv
 
 	survive_optimizer mpfitctx = {
 		.reprojectModel = ctx->lh_version == 0 ? &survive_reproject_model : &survive_reproject_gen2_model,
-		.so = so,
 		.poseLength = 1,
 		.cameraLength = so->ctx->activeLighthouses,
 	};
 
-	SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(mpfitctx);
+	SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(mpfitctx, so);
 
 	struct async_optimizer_user user_data = {.d = d, .pdl = *pdl};
 
@@ -587,7 +585,7 @@ int PoserMPFIT(SurviveObject *so, void **user, PoserData *pd) {
 		d->syncs_per_run = survive_configi(ctx, "syncs-per-run", SC_GET, 1);
 		d->run_async = survive_configi(ctx, RUN_POSER_ASYNC_TAG, SC_GET, 0);
 		if (d->run_async) {
-			d->async_optimizer = survive_async_init(async_optimizer_cb);
+			d->async_optimizer = SV_NEW(survive_async_optimizer, async_optimizer_cb);
 		}
 		d->sensor_time_window = survive_configi(ctx, "time-window", SC_GET, SurviveSensorActivations_default_tolerance);
 		d->use_jacobian_function_obj = survive_configi(ctx, "use-jacobian-function", SC_GET, 1);

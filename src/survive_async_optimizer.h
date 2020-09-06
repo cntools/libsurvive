@@ -28,7 +28,8 @@ typedef struct survive_async_optimizer {
 	size_t completed;
 } survive_async_optimizer;
 
-SURVIVE_EXPORT struct survive_async_optimizer *survive_async_init(survive_async_optimizer_cb cb);
+SURVIVE_EXPORT struct survive_async_optimizer *survive_async_optimizer_init(struct survive_async_optimizer *self,
+																			survive_async_optimizer_cb cb);
 SURVIVE_EXPORT void survive_async_free(struct survive_async_optimizer *optimizer);
 
 SURVIVE_EXPORT survive_async_optimizer_buffer *

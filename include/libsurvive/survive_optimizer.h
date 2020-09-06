@@ -25,10 +25,10 @@ typedef struct {
 struct mp_par_struct;
 struct mp_result_struct;
 
-typedef struct {
+typedef struct survive_optimizer {
 	const survive_reproject_model_t *reprojectModel;
 
-	SurviveObject *so;
+	SurviveObject **sos;
 	survive_optimizer_measurement *measurements;
 	size_t measurementsCnt;
 	FLT current_bias;
@@ -51,23 +51,31 @@ typedef struct {
 		uint32_t dropped_meas_cnt;
 		uint32_t dropped_lh_cnt;
 	} stats;
+
+	void *user;
+	void (*iteration_cb)(struct survive_optimizer *opt_ctx, int m, int n, FLT *p, FLT *deviates, FLT **derivs);
 } survive_optimizer;
 
-#define SURVIVE_OPTIMIZER_SETUP_BUFFERS(ctx, alloc_fn)                                                                 \
+#define SURVIVE_OPTIMIZER_SETUP_BUFFERS(ctx, alloc_fn, ...)                                                            \
 	{                                                                                                                  \
 		size_t par_count = survive_optimizer_get_parameters_count(&(ctx));                                             \
-		size_t sensor_cnt = (ctx).so ? (ctx).so->sensor_ct : 32;                                                       \
+		size_t sensor_cnt = 32;                                                                                        \
 		void *param_buffer = alloc_fn(((ctx).parameters), par_count * sizeof(FLT));                                    \
 		void *param_info_buffer = alloc_fn(((ctx).parameters_info), par_count * sizeof(struct mp_par_struct));         \
 		void *measurement_buffer =                                                                                     \
 			alloc_fn(((ctx).measurements), (ctx).poseLength * sizeof(survive_optimizer_measurement) * 2 * sensor_cnt * \
 											   NUM_GEN2_LIGHTHOUSES);                                                  \
-		survive_optimizer_setup_buffers(&(ctx), param_buffer, param_info_buffer, measurement_buffer);                  \
+		void *sos_buffer = alloc_fn((ctx).sos, sizeof(SurviveObject *) * (ctx).poseLength);                            \
+		survive_optimizer_setup_buffers(&(ctx), param_buffer, param_info_buffer, measurement_buffer, sos_buffer);      \
+		SurviveObject *sos[] = {__VA_ARGS__};                                                                          \
+		memcpy((ctx).sos, sos, sizeof(sos));                                                                           \
 	}
 
 #define SURVIVE_OPTIMIZER_ALLOCA(ctx, size) alloca(size)
-#define SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(ctx) SURVIVE_OPTIMIZER_SETUP_BUFFERS(ctx, SURVIVE_OPTIMIZER_ALLOCA)
-#define SURVIVE_OPTIMIZER_SETUP_HEAP_BUFFERS(ctx) SURVIVE_OPTIMIZER_SETUP_BUFFERS(ctx, survive_optimizer_realloc)
+#define SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(ctx, ...)                                                                \
+	SURVIVE_OPTIMIZER_SETUP_BUFFERS(ctx, SURVIVE_OPTIMIZER_ALLOCA, __VA_ARGS__)
+#define SURVIVE_OPTIMIZER_SETUP_HEAP_BUFFERS(ctx, ...)                                                                 \
+	SURVIVE_OPTIMIZER_SETUP_BUFFERS(ctx, survive_optimizer_realloc, __VA_ARGS__)
 #define SURVIVE_OPTIMIZER_CLEANUP_STACK_BUFFERS(ctx)
 #define SURVIVE_OPTIMIZER_CLEANUP_HEAP_BUFFERS(ctx)                                                                    \
 	{                                                                                                                  \
@@ -83,7 +91,8 @@ SURVIVE_EXPORT int survive_optimizer_get_parameters_count(const survive_optimize
 SURVIVE_EXPORT size_t survive_optimizer_get_total_buffer_size(const survive_optimizer *ctx);
 
 SURVIVE_EXPORT void survive_optimizer_setup_buffers(survive_optimizer *ctx, void *parameter_buffer,
-													void *parameter_info_buffer, void *measurements_buffer);
+													void *parameter_info_buffer, void *measurements_buffer,
+													void *so_buffer);
 
 SURVIVE_EXPORT SurvivePose *survive_optimizer_get_pose(survive_optimizer *ctx);
 
@@ -97,7 +106,10 @@ SURVIVE_EXPORT BaseStationCal *survive_optimizer_get_calibration(survive_optimiz
 
 SURVIVE_EXPORT int survive_optimizer_get_sensors_index(const survive_optimizer *ctx);
 
-SURVIVE_EXPORT FLT *survive_optimizer_get_sensors(survive_optimizer *ctx);
+SURVIVE_EXPORT FLT *survive_optimizer_get_sensors(survive_optimizer *ctx, size_t idx);
+
+SURVIVE_EXPORT void survive_optimizer_setup_pose_n(survive_optimizer *mpfit_ctx, const SurvivePose *pose, size_t n,
+												   bool isFixed, int use_jacobian_function);
 
 SURVIVE_EXPORT void survive_optimizer_setup_pose(survive_optimizer *mpfit_ctx, const SurvivePose *pose, bool isFixed,
 												 int use_jacobian_function);

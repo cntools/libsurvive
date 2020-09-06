@@ -153,7 +153,7 @@ void survive_recording_external_pose_process(SurviveContext *ctx, const char *na
 
 	write_to_output(
 		recordingData,
-		"%s EXTERNAL_POSE " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF "\r\n", name,
+		"%s EXTERNAL_POSE " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF "\n", name,
 		pose->Pos[0], pose->Pos[1], pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
 }
 

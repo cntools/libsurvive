@@ -470,6 +470,7 @@ SURVIVE_EXPORT void RegisterPoserDriver(const char *name, PoserCB data);
 SURVIVE_EXPORT int survive_add_object(SurviveContext *ctx, SurviveObject *obj);
 SURVIVE_EXPORT void survive_remove_object(SurviveContext *ctx, SurviveObject *obj);
 SURVIVE_EXPORT const void *survive_get_driver(const SurviveContext *ctx, DeviceDriverCb pollFn);
+SURVIVE_EXPORT const void *survive_get_driver_by_closefn(const SurviveContext *ctx, DeviceDriverCb closeFn);
 SURVIVE_EXPORT void survive_add_driver(SurviveContext *ctx, void *driver_data, DeviceDriverCb poll,
 									   DeviceDriverCb close);
 SURVIVE_EXPORT bool *survive_add_threaded_driver(SurviveContext *ctx, void *driver_data, const char *name,
@@ -527,7 +528,8 @@ inline static void *sv_dynamic_ptr_check(char *file, int line, void *ptr) {
 
 #define SV_MALLOC(size) sv_dynamic_ptr_check(__FILE__, __LINE__, malloc(size))
 #define SV_CALLOC(num, size) sv_dynamic_ptr_check(__FILE__, __LINE__, calloc((num), (size)))
-#define SV_NEW(type) ((type *)sv_dynamic_ptr_check(__FILE__, __LINE__, calloc(1, (sizeof(type)))))
+#define SV_NEW(type, ...)                                                                                              \
+	type##_init(((type *)sv_dynamic_ptr_check(__FILE__, __LINE__, calloc(1, (sizeof(struct type))))), __VA_ARGS__)
 #define SV_REALLOC(ptr, size) sv_dynamic_ptr_check(__FILE__, __LINE__, realloc(ptr, (size)))
 
 static inline void survive_notify_gen2(struct SurviveObject *so, const char *msg) {
