@@ -1,15 +1,10 @@
 #include "os_generic.h"
 #include "survive.h"
 
-#include "gattlib.h"
-#include <os_generic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <survive_optimizer.h>
 #include <survive_reproject_gen2.h>
-#include <sys/queue.h>
-#include <sys/socket.h>
-#include <unistd.h>
 
 STATIC_CONFIG_ITEM(GSS_ENABLE, "globalscenesolver", 'i', "Enable global scene solver", 0)
 
