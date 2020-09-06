@@ -15,3 +15,5 @@ message("========== ${XDO_LIB}")
 if(XDO_LIB)
   add_subdirectory(vive_mouse)
 endif()
+
+add_subdirectory(visualize_mpfit)

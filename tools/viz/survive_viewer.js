@@ -597,6 +597,25 @@ function scrollConsoleToTop() {
 }
 var polys = {};
 
+function add_sphere(v) {
+	var fv = v.map(parseFloat);
+
+	var geometry = new THREE.SphereGeometry(fv[3], 4, 4);
+	var name = v[2];
+
+	scene.remove(polys[name]);
+
+	var material =
+		new THREE.MeshBasicMaterial({color : fv[4], opacity : .5, transparent : true, side : THREE.DoubleSide});
+
+	var mesh = new THREE.Mesh(geometry, material);
+	mesh.position.set(fv[5], fv[6], fv[7]);
+	mesh.tooltip = name;
+	polys[name] = mesh;
+
+	scene.add(mesh);
+}
+
 function add_poly(v) {
 	var fv = v.map(parseFloat);
 
@@ -638,6 +657,7 @@ var survive_log_handlers = {
 		add_lighthouse(obj.lighthouse, obj.position, obj.quat);
 	},
 	"POLY" : add_poly,
+	"SPHERE" : add_sphere,
 	"POSE" : update_object,
 	"VELOCITY" : update_velocity,
 	"EXTERNAL_VELOCITY" : function(v) { update_velocity(v, true, true); },
