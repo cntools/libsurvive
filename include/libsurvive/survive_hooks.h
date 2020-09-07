@@ -18,6 +18,7 @@ SURVIVE_HOOK_PROCESS_DEF(gen_detected)
 // Gen 1 hooks
 SURVIVE_HOOK_PROCESS_DEF(lightcap)
 SURVIVE_HOOK_PROCESS_DEF(light)
+SURVIVE_HOOK_PROCESS_DEF(light_pulse)
 SURVIVE_HOOK_PROCESS_DEF(angle)
 
 // Gen 2 hook

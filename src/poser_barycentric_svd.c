@@ -176,6 +176,57 @@ static void add_correspondences(SurviveObject *so, bc_svd *bc, uint32_t timecode
 	}
 }
 
+void solve_global_scene(struct SurviveObject *so, PoserDataSVD *dd, PoserDataGlobalScenes *gss) {
+	SurviveContext *ctx = so->ctx;
+
+	if (gss->scenes == 0 || gss->scenes_cnt == 0)
+		return;
+	struct PoserDataGlobalScene *scene = gss->scenes;
+
+	bool needsObject = quatiszero(scene->pose.Rot);
+
+	for (int lh = 0; lh < ctx->activeLighthouses; lh++) {
+
+		bool needsLH = quatiszero(gss->world2lhs[lh].Rot);
+
+		if (needsObject && needsLH)
+			continue;
+
+		if (!needsObject && !needsLH)
+			continue;
+
+		bc_svd *bc = &dd->bc;
+		bc_svd_reset_correspondences(bc);
+
+		const BaseStationCal *cal = ctx->bsd[lh].fcal;
+		for (size_t m = 0; m < scene->meas_cnt; m++) {
+			if (scene->meas[m].lh == lh)
+				bc_svd_add_single_correspondence(bc, scene->meas[m].sensor_idx, scene->meas[m].axis,
+												 scene->meas[m].value + cal[scene->meas[m].axis].phase);
+		}
+
+		if (dd->bc.meas_cnt >= dd->required_meas) {
+			SurvivePose lh2obj = solve_correspondence(dd, true);
+			if (quatmagnitude(lh2obj.Rot) != 0) {
+				if (needsLH) {
+					SurvivePose obj2world = scene->pose;
+					SurvivePose lh2world;
+					ApplyPoseToPose(&lh2world, &obj2world, &lh2obj);
+
+					PoserData_lighthouse_pose_func(&gss->hdr, so, lh, &lh2world, 0);
+				} else if (needsObject) {
+					SurvivePose world2lh = gss->world2lhs[lh];
+					SurvivePose lh2world = InvertPoseRtn(&world2lh);
+					SurvivePose obj2lh = InvertPoseRtn(&lh2obj);
+					SurvivePose obj2world;
+					ApplyPoseToPose(&obj2world, &lh2world, &obj2lh);
+					PoserData_poser_pose_func(&gss->hdr, so, &obj2world);
+					needsObject = false;
+				}
+			}
+		}
+	}
+}
 int PoserBaryCentricSVD(SurviveObject *so, void **user, PoserData *pd) {
 	PoserType pt = pd->pt;
 	SurviveContext *ctx = so->ctx;
@@ -188,6 +239,12 @@ int PoserBaryCentricSVD(SurviveObject *so, void **user, PoserData *pd) {
 		*user = dd = PoserDataSVD_new(so);
 
 	switch (pt) {
+	case POSERDATA_GLOBAL_SCENES: {
+		// dd->globalDataAvailable = true;
+		PoserDataGlobalScenes *gs = (PoserDataGlobalScenes *)pd;
+		solve_global_scene(so, dd, gs);
+		return 0;
+	}
 	case POSERDATA_SYNC:
 	case POSERDATA_SYNC_GEN2: {
 		if (so->has_sensor_locations == false) {

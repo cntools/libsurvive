@@ -51,9 +51,8 @@ void survive_optimizer_setup_pose_n(survive_optimizer *mpfit_ctx, const SurviveP
 		mpfit_ctx->parameters_info[i].fixed = isFixed;
 		mpfit_ctx->parameters_info[i].parname = object_parameter_names[i % 7];
 
-		if (use_jacobian_function != 0 &&
-			mpfit_ctx->reprojectModel
-				->reprojectAxisAngleFullJacObjPose /*mpfit_ctx->reprojectModel->reprojectFullJacObjPose*/) {
+		if (use_jacobian_function != 0) {
+			assert(mpfit_ctx->reprojectModel->reprojectAxisAngleFullJacObjPose);
 			if (use_jacobian_function < 0) {
 				mpfit_ctx->parameters_info[i].side = 2;
 				mpfit_ctx->parameters_info[i].deriv_debug = 1;
@@ -119,7 +118,7 @@ void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx, SurviveContex
 		if (ctx->bsd[lh].PositionSet)
 			survive_optimizer_setup_camera(mpfit_ctx, lh, &ctx->bsd[lh].Pose, isFixed, use_jacobian_function);
 		else {
-			SurvivePose id = {.Rot[0] = 1.};
+			SurvivePose id = {.Pos = {-3, 0, 1}, .Rot = {-0.70710678118, 0, 0.70710678118, 0}};
 			survive_optimizer_setup_camera(mpfit_ctx, lh, &id, isFixed, use_jacobian_function);
 		}
 	}

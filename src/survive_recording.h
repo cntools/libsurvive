@@ -28,7 +28,9 @@
 #define SYNC_SCANF "%s Y %"SCN_CHANNEL" %u %"SCN_FLAG" %"SCN_GEN"\n"
 #define SYNC_PRINTF "%s Y %"PRI_CHANNEL" %u %"PRI_FLAG" %"PRI_GEN"\n"
 
-
+struct SurviveRecordingData;
+SURVIVE_EXPORT void survive_recording_write_to_output(struct SurviveRecordingData *recordingData, const char *format,
+													  ...);
 void survive_destroy_recording(SurviveContext *ctx);
 void survive_install_recording(SurviveContext *ctx);
 void survive_recording_config_process(SurviveObject *so, char *ct0conf, int len);

@@ -63,11 +63,19 @@ var lhColors = [
 
 var lighthouses = {};
 function add_lighthouse(idx, p, q) {
+	var trails = get_trails({tracker : "LH" + idx, position : p});
 	if (lighthouses[idx]) {
 		var group = lighthouses[idx];
 		group.position.fromArray(p);
 		group.quaternion.fromArray([ q[1], q[2], q[3], q[0] ]);
 		group.verticesNeedUpdate = true;
+
+		if (trails) {
+			trails.geometry.vertices.push(trails.geometry.vertices.shift()); // shift the array
+			trails.geometry.vertices[MAX_LINE_POINTS - 1] = new THREE.Vector3(p[0], p[1], p[2]);
+			trails.geometry.verticesNeedUpdate = true;
+		}
+
 		return;
 	}
 
@@ -94,7 +102,8 @@ function add_lighthouse(idx, p, q) {
 
 	var lhBoxGeom = new THREE.CubeGeometry(.075, .075, .075);
 
-	lhBoxMaterial = new THREE.MeshBasicMaterial({color : lhColors[idx], flatShading : false});
+	lhBoxMaterial =
+		new THREE.MeshBasicMaterial({color : lhColors[idx], flatShading : false, transparent : true, opacity : .75});
 	var lhBox = new THREE.Mesh(lhBoxGeom, lhBoxMaterial);
 	lhBox.tooltip = "Lighthouse " + (idx)
 	group.add(lhBox);
@@ -106,25 +115,6 @@ function add_lighthouse(idx, p, q) {
 
 	group.add(cone);
 	group.add(lh);
-
-	var material1 =
-		new THREE.MeshBasicMaterial({color : 0x00FF00, opacity : .2, transparent : true, side : THREE.DoubleSide});
-
-	var material2 =
-		new THREE.MeshBasicMaterial({color : 0xFF0000, opacity : .2, transparent : true, side : THREE.DoubleSide});
-
-	var geometry = new THREE.PlaneGeometry(3, 3);
-
-	var mesh = new THREE.PlaneHelper(null, 3, 0x00FF00);
-	group.plane1 = mesh;
-	var mesh2 = new THREE.PlaneHelper(null, 3, 0xFF0000);
-	group.plane2 = mesh2;
-
-	mesh.visible = false;
-	mesh2.visible = false;
-
-	group.add(mesh);
-	group.add(mesh2);
 
 	scene.add(group);
 }
@@ -1010,32 +1000,6 @@ setInterval(measure_fps, 1000);
 var showPlanes = false;
 var ang = 0;
 function render() {
-	Object.keys(lighthouses).forEach(function(idx) {
-		var lh = lighthouses[idx];
-
-		{
-			var a = ang - Math.PI * 2 / 3;
-			var plane = new THREE.Plane(new THREE.Vector3(Math.cos(a), 0.57735026919, -Math.sin(a)));
-			// lh.plane.translate(plane.coplanarPoint());
-			// lh.plane1.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), plane.normal);
-			lh.plane1.plane = plane;
-
-			lh.plane1.visible = showPlanes && (ang > Math.PI * 2 / 3 - 1.5 && ang < Math.PI * 2 / 3 + 1.5);
-		}
-
-		{
-			var a = ang - Math.PI * 4 / 3;
-			var plane = new THREE.Plane(new THREE.Vector3(Math.cos(a), -0.57735026919, -Math.sin(a)));
-			// lh.plane.translate(plane.coplanarPoint());
-			// lh.plane2.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), plane.normal);
-			lh.plane2.plane = plane;
-
-			lh.plane2.visible = showPlanes && (ang > Math.PI * 4 / 3 - 1.5 && ang < Math.PI * 4 / 3 + 1.5);
-		}
-	});
-	ang += 0.01;
-	ang = ang % (2 * Math.PI);
-
 	var renderCamera = useFPV ? fpv_camera : camera;
 	// update the picking ray with the camera and mouse position
 	raycaster.setFromCamera(mouse, renderCamera);

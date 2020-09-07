@@ -109,30 +109,24 @@ void bc_svd_compute_rho(bc_svd *self, FLT *rho) {
 
 void bc_svd_reset_correspondences(bc_svd *self) { self->meas_cnt = 0; }
 
+void bc_svd_add_single_correspondence(bc_svd *self, size_t idx, int axis, FLT angle) {
+	if (isnan(angle))
+		return;
+
+	if (self->meas_space <= self->meas_cnt) {
+		self->meas_space = self->meas_space * 2 + 1;
+		self->meas = SV_REALLOC(self->meas, sizeof(self->meas[0]) * self->meas_space);
+	}
+
+	assert(idx < self->setup.obj_cnt);
+	self->meas[self->meas_cnt] = (bc_svd_meas_t){.angle = angle, .axis = axis, .obj_idx = idx};
+
+	self->meas_cnt++;
+}
 void bc_svd_add_correspondence(bc_svd *self, size_t idx, FLT u, FLT v) {
-	if (isnan(u) && isnan(v)) {
-		return;
-	}
-
-	bool only_pairs = false;
-	if (only_pairs && (isnan(u) || isnan(v))) {
-		return;
-	}
-
 	for (int i = 0; i < 2; i++) {
 		FLT angle = i == 0 ? u : v;
-		if (isnan(angle))
-			continue;
-
-		if (self->meas_space <= self->meas_cnt) {
-			self->meas_space = self->meas_space * 2 + 1;
-			self->meas = SV_REALLOC(self->meas, sizeof(self->meas[0]) * self->meas_space);
-		}
-
-		assert(idx < self->setup.obj_cnt);
-		self->meas[self->meas_cnt] = (bc_svd_meas_t){.angle = angle, .axis = i, .obj_idx = idx};
-
-		self->meas_cnt++;
+		bc_svd_add_single_correspondence(self, idx, i, angle);
 	}
 }
 

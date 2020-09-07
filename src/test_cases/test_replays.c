@@ -225,7 +225,9 @@ static int test_path(const char *filename, int main_argc, char **main_argv) {
 		fprintf(stderr, " LH%2d (%08x): " SurvivePose_format "\n", i, ctx->bsd[i].BaseStationID,
 				SURVIVE_POSE_EXPAND(ctx->bsd[i].Pose));
 		FLT err[2] = {0};
-		diff(err, &pose, &ctx->bsd[i].Pose);
+		if (!quatiszero(pose.Rot))
+			diff(err, &pose, &ctx->bsd[i].Pose);
+
 		fprintf(stderr, "                  " SurvivePose_format "\terr: %f %f\n", pose.Pos[0], pose.Pos[1], pose.Pos[2],
 				pose.Rot[0], pose.Rot[1], pose.Rot[2], pose.Rot[3], err[0], err[1]);
 

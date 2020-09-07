@@ -38,17 +38,18 @@ bool SurviveSensorActivations_isPairValid(const SurviveSensorActivations *self, 
 	return !(timecode_now - data_timecode[0] > tolerance || timecode_now - data_timecode[1] > tolerance);
 }
 
-survive_long_timecode SurviveSensorActivations_stationary_time(const SurviveSensorActivations *self) {
-	survive_long_timecode last_time = 0;
-	if (self->imu_init_cnt > 0) {
-		last_time = self->last_light;
-	} else {
+survive_long_timecode SurviveSensorActivations_last_time(const SurviveSensorActivations *self) {
+	survive_long_timecode last_time = self->last_light;
+	if (self->last_imu > last_time) {
 		last_time = self->last_imu;
 	}
+	return last_time;
+}
+survive_long_timecode SurviveSensorActivations_stationary_time(const SurviveSensorActivations *self) {
+	survive_long_timecode last_time = SurviveSensorActivations_last_time(self);
 	survive_long_timecode last_move = self->last_movement;
-	survive_long_timecode time_elapsed = last_time - last_move;
-
-	return time_elapsed;
+	assert(last_move <= last_time);
+	return last_time - last_move;
 }
 
 void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct PoserDataIMU *imuData) {
@@ -97,10 +98,11 @@ bool SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct Po
 
 		if (*data_timecode == 0 || change_rate < filterLightChange) {
 			if (!isnan(*angle) && fabs(*angle - l->angle) > moveThresholdAng) {
-
-				// fprintf(stderr, "MOVEMENT %f %f\n", fabs(*angle - l->angle), change_rate);
-				self->last_movement = long_timecode;
+				self->last_light_change = self->last_movement = long_timecode;
 			}
+
+			if (isnan(*angle))
+				self->last_light_change = long_timecode;
 
 			*data_timecode = l->hdr.timecode;
 			*angle = l->angle;
@@ -151,17 +153,11 @@ void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 
 	FLT *angle = &self->angles[lightData->sensor_id][lightData->lh][axis];
 	uint32_t *length = &self->lengths[lightData->sensor_id][lightData->lh][axis];
-	// printf("error %10.7f\n", fabs(*angle - lightData->angle));
-	if (*length == 0 || fabs(*angle - lightData->angle) > 0.05) {
-		self->last_movement = 0;
-		survive_long_timecode long_timecode = lightData->hdr.timecode;
-		self->last_movement = long_timecode;
-	}
 
 	if (*length == 0 || fabs(*angle - lightData->angle) > moveThresholdAcc) {
 		survive_long_timecode long_timecode = lightData->hdr.timecode;
 		// assert(long_timecode > self->last_movement);
-		self->last_movement = long_timecode;
+		self->last_light_change = self->last_movement = long_timecode;
 	}
 
 	*angle = lightData->angle;

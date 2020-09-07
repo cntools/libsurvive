@@ -243,6 +243,9 @@ typedef void (*lightcap_process_func)(SurviveObject *so, const LightcapElement *
 typedef void (*light_process_func)(SurviveObject *so, int sensor_id, int acode, int timeinsweep,
 								   survive_timecode timecode, survive_timecode length, uint32_t lighthouse);
 
+typedef void (*light_pulse_process_func)(SurviveObject *so, int sensor_id, int acode, survive_timecode timecode,
+										 FLT length, uint32_t lh);
+
 /**
  * This is called with the calculated angle and axis for a single lighthouse sensor event
  */

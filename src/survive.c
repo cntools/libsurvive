@@ -617,13 +617,10 @@ int survive_startup(SurviveContext *ctx) {
 	if (use_async_posers) {
 		for (int i = 0; i < ctx->objs_ct; i++) {
 			ctx->objs[i]->PoserFnData = survive_create_threaded_poser(ctx->objs[i], PreferredPoserCB);
-			ctx->objs[i]->PoserFn = survive_threaded_poser_fn;
 		}
+		ctx->PoserFn = survive_threaded_poser_fn;
 	} else {
-		// Apply poser to objects.
-		for (int i = 0; i < ctx->objs_ct; i++) {
-			ctx->objs[i]->PoserFn = PreferredPoserCB;
-		}
+		ctx->PoserFn = PreferredPoserCB;
 	}
 
 	// saving the config extra to make sure that the user has a config file they can change.
@@ -699,8 +696,6 @@ int survive_add_object(SurviveContext *ctx, SurviveObject *obj) {
 	ctx->objs_ct = oldct + 1;
 
 	ctx->new_objectproc(obj);
-	PoserCB PreferredPoserCB = (PoserCB)GetDriverByConfig(ctx, "Poser", "poser", "MPFIT");
-	obj->PoserFn = PreferredPoserCB;
 
 	return 0;
 }
@@ -830,12 +825,12 @@ void survive_close(SurviveContext *ctx) {
 	for (int i = 0; i < ctx->objs_ct; i++) {
 		PoserData pd;
 		pd.pt = POSERDATA_DISASSOCIATE;
-		if (ctx->objs[i]->PoserFn) {
-			ctx->objs[i]->PoserFn(ctx->objs[i], &ctx->objs[i]->PoserFnData, &pd);
-			ctx->objs[i]->PoserFn = 0;
+		if (ctx->PoserFn) {
+			ctx->PoserFn(ctx->objs[i], &ctx->objs[i]->PoserFnData, &pd);
 		}
 		ctx->lightcapproc(ctx->objs[i], 0);
 	}
+	ctx->PoserFn = 0;
 
 	config_save(ctx);
 

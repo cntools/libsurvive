@@ -171,7 +171,7 @@ static void ingest_config_request(vive_device_inst_t *dev, const struct _usb_hea
 	struct SurviveContext *ctx = dev->so->ctx;
 	uint16_t cnt = pktData[1];
 
-	SV_VERBOSE(100, "Ingesting config data for %s(%p); %d bytes", dev->so->codename, (void *)dev, cnt);
+	SV_VERBOSE(500, "Ingesting config data for %s(%p); %d bytes", dev->so->codename, (void *)dev, cnt);
 
 	if (cnt) {
 		// Some (Tracker at least?) devices send a uint64_t before data; not sure what it means but skip it for now.

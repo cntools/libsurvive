@@ -63,7 +63,7 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 
 		assert(!quatiszero(lighthouse_pose->Rot));
 
-		if (quatiszero(object_pose->Rot)) {
+		if (object_pose && quatiszero(object_pose->Rot)) {
 			*object_pose = (SurvivePose){.Rot = {1.}};
 		}
 		poser_data->lighthouseposeproc(so, lighthouse, lighthouse_pose, object_pose, poser_data->userdata);
@@ -164,6 +164,23 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 	}
 }
 
+int8_t survive_get_reference_bsd(SurviveContext *ctx, SurvivePose *lighthouse_pose, uint32_t lighthouse_count) {
+	uint32_t reference_basestation = survive_configi(ctx, "reference-basestation", SC_GET, 0);
+	int8_t ref = 0;
+	for (int lh = 0; lh < lighthouse_count; lh++) {
+		SurvivePose lh2object = lighthouse_pose[lh];
+		if (quatmagnitude(lh2object.Rot) != 0.0) {
+			uint32_t lh0 = ref;
+			bool preferThisBSD = reference_basestation == 0 ? (ctx->bsd[lh].BaseStationID < ctx->bsd[lh0].BaseStationID)
+															: reference_basestation == ctx->bsd[lh].BaseStationID;
+			if (preferThisBSD) {
+				ref = lh;
+			}
+		}
+	}
+	return ref;
+}
+
 void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so, SurvivePose *lighthouse_pose,
 									 uint32_t lighthouse_count, SurvivePose *object_pose) {
 
@@ -250,8 +267,8 @@ SURVIVE_EXPORT FLT survive_adjust_confidence(SurviveObject *so, FLT delta) {
 }
 
 void survive_poser_invoke(SurviveObject *so, PoserData *poserData, size_t poserDataSize) {
-	if (so->PoserFn) {
-		so->PoserFn(so, &so->PoserFnData, poserData);
+	if (so->ctx->PoserFn) {
+		so->ctx->PoserFn(so, &so->PoserFnData, poserData);
 	}
 }
 

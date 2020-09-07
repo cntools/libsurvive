@@ -14,6 +14,7 @@
 #include "survive_async_optimizer.h"
 #include "survive_config.h"
 #include "survive_kalman_tracker.h"
+#include "survive_recording.h"
 #include "survive_reproject.h"
 #include "survive_reproject_gen2.h"
 
@@ -84,6 +85,7 @@ typedef struct MPFITData {
   const char *serialize_prefix;
   MPFITStats stats;
 
+  bool globalDataAvailable;
   struct survive_async_optimizer *async_optimizer;
 } MPFITData;
 
@@ -282,7 +284,7 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 				!so->ctx->bsd[lh].PositionSet || (canPossiblySolveLHS == false && (so->ctx->bsd[lh].confidence) < 0);
 
 			if (needsSolve && meas_for_lhs[lh] > 0) {
-				canPossiblySolveLHS = true;
+				canPossiblySolveLHS = !d->globalDataAvailable;
 				needsInitialEstimate = !so->ctx->bsd[lh].PositionSet;
 			}
 		}
@@ -564,12 +566,247 @@ static inline void print_stats(SurviveContext *ctx, MPFITStats *stats) {
 	}
 }
 
+bool find_initial_camera(PoserDataGlobalScenes *gss, int lh, SurvivePose *pose) {
+	if (!quatiszero(pose->Rot))
+		return false;
+
+	int best_scene = -1;
+	int best_scene_cnt = 5;
+	for (int i = 0; i < gss->scenes_cnt; i++) {
+		int cnt = 0;
+		for (int m = 0; m < gss->scenes[i].meas_cnt; m++) {
+			if (!quatiszero(gss->scenes[i].pose.Rot) && gss->scenes[i].meas[m].lh == lh)
+				cnt++;
+		}
+
+		if (cnt > best_scene_cnt) {
+			best_scene = i;
+			best_scene_cnt = cnt;
+		}
+	}
+
+	if (best_scene == -1)
+		return false;
+
+	return 0;
+}
+
+struct global_data {
+	bool updated;
+	SurvivePose *camera;
+	SurvivePose *pose;
+};
+
+void global_pose(SurviveObject *so, uint32_t lighthouse, const SurvivePose *pose, void *user) {
+	struct global_data *gd = user;
+	*gd->pose = *pose;
+	gd->updated |= true;
+
+	SurviveContext *ctx = so->ctx;
+	SV_VERBOSE(10, "Initial pose (%s) " SurvivePose_format, so->codename, SURVIVE_POSE_EXPAND(*pose));
+}
+void global_lh_pose(SurviveObject *so, uint8_t lighthouse, SurvivePose *lighthouse_pose, SurvivePose *object_pose,
+					void *user) {
+	struct global_data *gd = user;
+	gd->camera[lighthouse] = InvertPoseRtn(lighthouse_pose);
+	gd->updated |= true;
+
+	SurviveContext *ctx = so->ctx;
+	SV_VERBOSE(10, "Initial LH pose (%d) " SurvivePose_format, lighthouse, SURVIVE_POSE_EXPAND(*lighthouse_pose));
+}
+
+bool solve_global_scene(struct SurviveContext *ctx, PoserDataGlobalScenes *gss) {
+	if (gss->scenes_cnt == 0 || gss->scenes == 0)
+		return false;
+
+	size_t meas_cnt = 0;
+	size_t scenes_cnt = gss->scenes_cnt;
+	for (int i = 0; i < scenes_cnt; i++) {
+		meas_cnt += gss->scenes[i].meas_cnt;
+	}
+
+	survive_optimizer mpfitctx = {
+		.reprojectModel = ctx->lh_version == 1 ? &survive_reproject_gen2_model : &survive_reproject_model,
+		.poseLength = scenes_cnt,
+		.cameraLength = ctx->activeLighthouses,
+		.measurementsCnt = meas_cnt,
+	};
+
+	SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(mpfitctx, 0);
+
+	survive_optimizer_setup_cameras(&mpfitctx, ctx, false, true);
+
+	survive_optimizer_measurement *meas = mpfitctx.measurements;
+	for (int i = 0; i < scenes_cnt; i++) {
+		meas_cnt += gss->scenes[i].meas_cnt;
+		mpfitctx.sos[i] = gss->scenes[i].so;
+		survive_optimizer_setup_pose_n(&mpfitctx, &gss->scenes[i].pose, i, false, true);
+
+		LinmathPoint3d err_up;
+		quatrotatevector(err_up, gss->scenes[i].pose.Rot, gss->scenes[i].accel);
+		normalize3d(err_up, err_up);
+
+		SV_VERBOSE(10, "Scene with pose (%s) " SurvivePose_format " %6.4f", mpfitctx.sos[i]->codename,
+				   SURVIVE_POSE_EXPAND(gss->scenes[i].pose), fabs(err_up[2] - 1.));
+		for (int j = 0; j < gss->scenes[i].meas_cnt; j++) {
+			meas->object = i;
+			meas->variance = 1;
+			meas->value = gss->scenes[i].meas[j].value;
+			meas->lh = gss->scenes[i].meas[j].lh;
+			meas->axis = gss->scenes[i].meas[j].axis;
+			meas->sensor_idx = gss->scenes[i].meas[j].sensor_idx;
+			meas->invalid = false;
+			meas++;
+		}
+	}
+
+	int worldEstablishedLh = -1;
+	for (int lh = 0; lh < ctx->activeLighthouses && worldEstablishedLh == -1; lh++)
+		if (ctx->bsd[lh].PositionSet)
+			worldEstablishedLh = lh;
+
+	int bestObjForCal = -1;
+	int bestObjForCalSensorCnt = 0;
+	for (int scene = 0; scene < gss->scenes_cnt; scene++) {
+		if (gss->scenes[scene].so->sensor_ct > bestObjForCalSensorCnt) {
+			bestObjForCal = scene;
+			bestObjForCalSensorCnt = (int)gss->scenes[scene].so->sensor_ct;
+		}
+	}
+
+	SV_VERBOSE(10, "Best object for fixing was %s (%d)", gss->scenes[bestObjForCal].so->codename, bestObjForCal);
+
+	int start = bestObjForCal * 7;
+	if (worldEstablishedLh != -1)
+		start = survive_optimizer_get_camera_index(&mpfitctx) + 7 * worldEstablishedLh;
+	else {
+		bool updates = true;
+
+		if (quatiszero(survive_optimizer_get_pose(&mpfitctx)[bestObjForCal].Rot)) {
+			const FLT up[3] = {0, 0, 1};
+			quatfrom2vectors(survive_optimizer_get_pose(&mpfitctx)[bestObjForCal].Rot, gss->scenes[bestObjForCal].accel,
+							 up);
+			// quatcopy(survive_optimizer_get_pose(&mpfitctx)[bestObjForCal].Rot, LinmathQuat_Identity);
+		}
+
+		for (int i = 0; i < mpfitctx.cameraLength; i++) {
+			memset(survive_optimizer_get_camera(&mpfitctx)[i].Rot, 0, sizeof(FLT) * 4);
+		}
+
+		while (updates) {
+			updates = false;
+
+			for (int s = 0; s < scenes_cnt; s++) {
+				SurviveObject *so = gss->scenes[s].so;
+				MPFITData *d = (MPFITData *)so->PoserFnData;
+
+				struct global_data gd = {.camera = survive_optimizer_get_camera(&mpfitctx),
+										 .pose = survive_optimizer_get_pose(&mpfitctx) + s};
+
+				if (quatiszero(gd.camera->Rot) && quatiszero(gd.pose->Rot))
+					continue;
+
+				struct PoserDataGlobalScene scene = gss->scenes[s];
+				memcpy(&scene.pose, gd.pose, sizeof(SurvivePose));
+
+				struct PoserDataGlobalScenes seed_gss = {.scenes_cnt = 1,
+														 .scenes = &scene,
+														 .world2lhs = gd.camera,
+														 .hdr = {.pt = POSERDATA_GLOBAL_SCENES,
+																 .lighthouseposeproc = global_lh_pose,
+																 .poseproc = global_pose,
+																 .userdata = &gd}};
+
+				d->opt.seed_poser(so, &d->opt.seed_poser_data, &seed_gss.hdr);
+
+				updates |= gd.updated;
+			}
+		}
+	}
+
+	for (int i = start; i < start + 7; i++) {
+		mpfitctx.parameters_info[i].fixed = true;
+	}
+
+	mp_result result = {0};
+	mpfitctx.cfg = survive_optimizer_precise_config();
+
+	survive_release_ctx_lock(ctx);
+	int res = survive_optimizer_run(&mpfitctx, &result);
+	survive_get_ctx_lock(ctx);
+	bool status_failure = res <= 0;
+	if (status_failure) {
+		SV_WARN("MPFIT status failure %f/%f (%d measurements, %d, %s)", result.orignorm, result.bestnorm,
+				(int)mpfitctx.measurementsCnt, res, survive_optimizer_error(res));
+
+		return false;
+	} else {
+		SV_INFO("MPFIT success %f/%10.10f (%d measurements, %d, %s)", result.orignorm, result.bestnorm,
+				(int)mpfitctx.measurementsCnt, res, survive_optimizer_error(res));
+
+		SurvivePose *opt_cameras = survive_optimizer_get_camera(&mpfitctx);
+		SurvivePose cameras[NUM_GEN2_LIGHTHOUSES] = {0};
+		for (int i = 0; i < mpfitctx.cameraLength; i++) {
+			if (!quatiszero(opt_cameras[i].Rot)) {
+				cameras[i] = InvertPoseRtn(&opt_cameras[i]);
+
+				LinmathPoint3d up = {ctx->bsd[i].accel[0], ctx->bsd[i].accel[1], ctx->bsd[i].accel[2]};
+				normalize3d(up, up);
+				LinmathPoint3d err;
+				quatrotatevector(err, cameras[i].Rot, up);
+				SV_INFO("Global solve with %d scenes for %d with error of %f/%10.10f (acc err %5.4f)", (int)scenes_cnt,
+						i, result.orignorm, result.bestnorm, fabs(err[2] - 1));
+			}
+		}
+
+		if (worldEstablishedLh == -1) {
+			int ref = survive_get_reference_bsd(ctx, cameras, mpfitctx.cameraLength);
+			SurvivePose reflh2objUp = cameras[ref];
+			FLT ang = atan2(reflh2objUp.Pos[1], reflh2objUp.Pos[0]);
+			FLT ang_target = M_PI / 2.;
+			FLT euler[3] = {0, 0, ang_target - ang};
+			SurvivePose objUp2World = {0};
+			quatfromeuler(objUp2World.Rot, euler);
+
+			for (int i = 0; i < mpfitctx.cameraLength; i++) {
+				ApplyPoseToPose(&cameras[i], &objUp2World, &cameras[i]);
+			}
+			for (int i = 0; i < mpfitctx.poseLength; i++) {
+				SurvivePose *p = &survive_optimizer_get_pose(&mpfitctx)[i];
+				ApplyPoseToPose(p, &objUp2World, p);
+			}
+		}
+
+		PoserData_lighthouse_poses_func(0, mpfitctx.sos[0], cameras, ctx->activeLighthouses,
+										&survive_optimizer_get_pose(&mpfitctx)[bestObjForCal]);
+
+		for (int i = 0; i < mpfitctx.poseLength; i++) {
+			SurvivePose *p = &survive_optimizer_get_pose(&mpfitctx)[i];
+
+			memcpy(&gss->scenes[i].pose, p, sizeof(SurvivePose));
+
+			LinmathPoint3d err_up;
+			quatrotatevector(err_up, p->Rot, gss->scenes[i].accel);
+			normalize3d(err_up, err_up);
+
+			SV_VERBOSE(10, "Solved scene with pose (%s) " SurvivePose_format " %5.4f", mpfitctx.sos[i]->codename,
+					   SURVIVE_POSE_EXPAND(*p), fabs(err_up[2] - 1));
+
+			if (!quatiszero(p->Rot)) {
+				survive_recording_write_to_output(ctx->recptr, "SPHERE %s_%d %f %d " Point3_format "\n",
+												  gss->scenes[i].so->codename, (int)gss->scenes_cnt, .05, 0xFF,
+												  LINMATH_VEC3_EXPAND(p->Pos));
+			}
+		}
+	}
+
+	return true;
+}
 int PoserMPFIT(SurviveObject *so, void **user, PoserData *pd) {
 	SurviveContext *ctx = so->ctx;
 	if (*user == 0 && pd->pt == POSERDATA_DISASSOCIATE) {
 		return 0;
 	}
-
 	if (*user == 0) {
 		*user = SV_CALLOC(1, sizeof(MPFITData));
 		g.instances++;
@@ -611,8 +848,14 @@ int PoserMPFIT(SurviveObject *so, void **user, PoserData *pd) {
 		SV_VERBOSE(110, "\tsensor-variance-per-sec: %f", d->sensor_variance_per_second);
 		SV_VERBOSE(110, "\tuse-jacobian-function: %d", d->use_jacobian_function_obj);
 	}
+
 	MPFITData *d = *user;
 	switch (pd->pt) {
+	case POSERDATA_GLOBAL_SCENES: {
+		d->globalDataAvailable = true;
+		PoserDataGlobalScenes *gs = (PoserDataGlobalScenes *)pd;
+		return solve_global_scene(ctx, gs) ? 0 : -1;
+	}
 	case POSERDATA_SYNC_GEN2:
 	case POSERDATA_SYNC: {
 		// No poses if calibration is ongoing

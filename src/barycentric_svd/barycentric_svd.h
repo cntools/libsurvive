@@ -44,6 +44,7 @@ void bc_svd_bc_svd(bc_svd *self, void *user, bc_svd_fill_M_fn fillFn, const Linm
 void bc_svd_dtor(bc_svd *self);
 
 void bc_svd_reset_correspondences(bc_svd *self);
+void bc_svd_add_single_correspondence(bc_svd *self, size_t idx, int axis, FLT u);
 void bc_svd_add_correspondence(bc_svd *self, size_t idx, FLT u, FLT v);
 
 FLT bc_svd_compute_pose(bc_svd *self, FLT R[3][3], FLT t[3]);

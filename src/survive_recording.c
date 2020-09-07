@@ -62,7 +62,7 @@ static void write_to_output_raw(SurviveRecordingData *recordingData, const char 
 #define FLT_PRINTF "%0.6f "
 #endif
 
-static void write_to_output(SurviveRecordingData *recordingData, const char *format, ...) {
+void survive_recording_write_to_output(struct SurviveRecordingData *recordingData, const char *format, ...) {
 	if (!recordingData) {
 		return;
 	}
@@ -97,7 +97,7 @@ void survive_recording_config_process(SurviveObject *so, char *ct0conf, int len)
 		if (buffer[i] == '\n' || buffer[i] == '\r')
 			buffer[i] = ' ';
 
-	write_to_output(recordingData, "%s CONFIG ", so->codename);
+	survive_recording_write_to_output(recordingData, "%s CONFIG ", so->codename);
 	write_to_output_raw(recordingData, buffer, len);
 
 	write_to_output_raw(recordingData, "\r\n", 2);
@@ -110,27 +110,28 @@ void survive_recording_lighthouse_process(SurviveContext *ctx, uint8_t lighthous
 	if (recordingData == 0)
 		return;
 
-	write_to_output(recordingData,
-					"%d LH_POSE " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF "\r\n",
-					lighthouse, lh_pose->Pos[0], lh_pose->Pos[1], lh_pose->Pos[2], lh_pose->Rot[0], lh_pose->Rot[1],
-					lh_pose->Rot[2], lh_pose->Rot[3]);
+	survive_recording_write_to_output(
+		recordingData,
+		"%d LH_POSE " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF "\r\n", lighthouse,
+		lh_pose->Pos[0], lh_pose->Pos[1], lh_pose->Pos[2], lh_pose->Rot[0], lh_pose->Rot[1], lh_pose->Rot[2],
+		lh_pose->Rot[3]);
 }
 void survive_recording_velocity_process(SurviveObject *so, uint8_t lighthouse, const SurviveVelocity *pose) {
 	SurviveRecordingData *recordingData = so->ctx->recptr;
 	if (recordingData == 0)
 		return;
 
-	write_to_output(recordingData,
-					"%s VELOCITY " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF "\r\n",
-					so->codename, pose->Pos[0], pose->Pos[1], pose->Pos[2], pose->AxisAngleRot[0],
-					pose->AxisAngleRot[1], pose->AxisAngleRot[2]);
+	survive_recording_write_to_output(
+		recordingData, "%s VELOCITY " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF "\r\n",
+		so->codename, pose->Pos[0], pose->Pos[1], pose->Pos[2], pose->AxisAngleRot[0], pose->AxisAngleRot[1],
+		pose->AxisAngleRot[2]);
 }
 void survive_recording_raw_pose_process(SurviveObject *so, uint8_t lighthouse, const SurvivePose *pose) {
 	SurviveRecordingData *recordingData = so->ctx->recptr;
 	if (recordingData == 0)
 		return;
 
-	write_to_output(
+	survive_recording_write_to_output(
 		recordingData, "%s POSE " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF "\r\n",
 		so->codename, pose->Pos[0], pose->Pos[1], pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
 }
@@ -140,10 +141,10 @@ void survive_recording_external_velocity_process(SurviveContext *ctx, const char
 	if (recordingData == 0)
 		return;
 
-	write_to_output(recordingData,
-					"%s EXTERNAL_VELOCITY " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF "\r\n",
-					name, pose->Pos[0], pose->Pos[1], pose->Pos[2], pose->AxisAngleRot[0], pose->AxisAngleRot[1],
-					pose->AxisAngleRot[2]);
+	survive_recording_write_to_output(
+		recordingData, "%s EXTERNAL_VELOCITY " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF "\r\n",
+		name, pose->Pos[0], pose->Pos[1], pose->Pos[2], pose->AxisAngleRot[0], pose->AxisAngleRot[1],
+		pose->AxisAngleRot[2]);
 }
 
 void survive_recording_external_pose_process(SurviveContext *ctx, const char *name, const SurvivePose *pose) {
@@ -151,7 +152,7 @@ void survive_recording_external_pose_process(SurviveContext *ctx, const char *na
 	if (recordingData == 0)
 		return;
 
-	write_to_output(
+	survive_recording_write_to_output(
 		recordingData,
 		"%s EXTERNAL_POSE " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF "\n", name,
 		pose->Pos[0], pose->Pos[1], pose->Pos[2], pose->Rot[0], pose->Rot[1], pose->Rot[2], pose->Rot[3]);
@@ -162,7 +163,7 @@ void survive_recording_info_process(SurviveContext *ctx, const char *fault) {
 	if (recordingData == 0)
 		return;
 
-	write_to_output(recordingData, "INFO LOG %s\r\n", fault);
+	survive_recording_write_to_output(recordingData, "INFO LOG %s\r\n", fault);
 }
 
 void survive_recording_sync_process(SurviveObject *so, survive_channel channel, survive_timecode timecode, bool ootx,
@@ -174,7 +175,7 @@ void survive_recording_sync_process(SurviveObject *so, survive_channel channel, 
 		return;
 	}
 
-	write_to_output(recordingData, SYNC_PRINTF, SYNC_PRINTF_ARGS);
+	survive_recording_write_to_output(recordingData, SYNC_PRINTF, SYNC_PRINTF_ARGS);
 }
 
 void survive_recording_sweep_angle_process(SurviveObject *so, survive_channel channel, int sensor_id,
@@ -185,7 +186,7 @@ void survive_recording_sweep_angle_process(SurviveObject *so, survive_channel ch
 	}
 
 	const char *dev = so->codename;
-	write_to_output(recordingData, SWEEP_ANGLE_PRINTF, SWEEP_ANGLE_PRINTF_ARGS);
+	survive_recording_write_to_output(recordingData, SWEEP_ANGLE_PRINTF, SWEEP_ANGLE_PRINTF_ARGS);
 }
 
 void survive_recording_sweep_process(SurviveObject *so, survive_channel channel, int sensor_id,
@@ -200,7 +201,7 @@ void survive_recording_sweep_process(SurviveObject *so, survive_channel channel,
 		return;
 
 	const char *dev = so->codename;
-	write_to_output(recordingData, SWEEP_PRINTF, SWEEP_PRINTF_ARGS);
+	survive_recording_write_to_output(recordingData, SWEEP_PRINTF, SWEEP_PRINTF_ARGS);
 }
 
 void survive_recording_button_process(SurviveObject *so, enum SurviveInputEvent eventType, enum SurviveButton buttonId,
@@ -212,7 +213,7 @@ void survive_recording_button_process(SurviveObject *so, enum SurviveInputEvent 
 	}
 
 	const char *dev = so->codename;
-	write_to_output(recordingData, "%s BUTTON %u %u\r\n", dev, eventType, buttonId);
+	survive_recording_write_to_output(recordingData, "%s BUTTON %u %u\r\n", dev, eventType, buttonId);
 }
 void survive_recording_angle_process(struct SurviveObject *so, int sensor_id, int acode, uint32_t timecode, FLT length,
 									 FLT angle, uint32_t lh) {
@@ -221,8 +222,8 @@ void survive_recording_angle_process(struct SurviveObject *so, int sensor_id, in
 		return;
 	}
 
-	write_to_output(recordingData, "%s A %d %d %u " FLT_PRINTF FLT_PRINTF "%u\r\n", so->codename, sensor_id, acode,
-					timecode, length, angle, lh);
+	survive_recording_write_to_output(recordingData, "%s A %d %d %u " FLT_PRINTF FLT_PRINTF "%u\r\n", so->codename,
+									  sensor_id, acode, timecode, length, angle, lh);
 }
 
 void survive_recording_lightcap(SurviveObject *so, LightcapElement *le) {
@@ -231,7 +232,8 @@ void survive_recording_lightcap(SurviveObject *so, LightcapElement *le) {
 		return;
 
 	if (recordingData->writeRawLight) {
-		write_to_output(recordingData, "%s C %d %u %u\r\n", so->codename, le->sensor_id, le->timestamp, le->length);
+		survive_recording_write_to_output(recordingData, "%s C %d %u %u\r\n", so->codename, le->sensor_id,
+										  le->timestamp, le->length);
 	}
 }
 
@@ -246,8 +248,8 @@ void survive_recording_light_process(struct SurviveObject *so, int sensor_id, in
 	}
 	
 	if (acode == -1) {
-		write_to_output(recordingData, "%s S %d %d %d %u %u %u\r\n", so->codename, sensor_id, acode, timeinsweep,
-						timecode, length, lh);
+		survive_recording_write_to_output(recordingData, "%s S %d %d %d %u %u %u\r\n", so->codename, sensor_id, acode,
+										  timeinsweep, timecode, length, lh);
 		return;
 	}
 
@@ -277,8 +279,8 @@ void survive_recording_light_process(struct SurviveObject *so, int sensor_id, in
 		break;
 	}
 
-	write_to_output(recordingData, "%s %s %s %d %d %d %u %u %u\r\n", so->codename, LH_ID, LH_Axis, sensor_id, acode,
-					timeinsweep, timecode, length, lh);
+	survive_recording_write_to_output(recordingData, "%s %s %s %d %d %d %u %u %u\r\n", so->codename, LH_ID, LH_Axis,
+									  sensor_id, acode, timeinsweep, timecode, length, lh);
 }
 
 void survive_recording_imu_process(struct SurviveObject *so, int mask, FLT *accelgyro, uint32_t timecode, int id) {
@@ -290,11 +292,12 @@ void survive_recording_imu_process(struct SurviveObject *so, int mask, FLT *acce
 		return;
 	}
 
-	write_to_output(recordingData,
-					"%s I %d %u " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF
-					" " FLT_PRINTF FLT_PRINTF FLT_PRINTF "%d\r\n",
-					so->codename, mask, timecode, accelgyro[0], accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4],
-					accelgyro[5], accelgyro[6], accelgyro[7], accelgyro[8], id);
+	survive_recording_write_to_output(recordingData,
+									  "%s I %d %u " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF
+									  " " FLT_PRINTF FLT_PRINTF FLT_PRINTF "%d\r\n",
+									  so->codename, mask, timecode, accelgyro[0], accelgyro[1], accelgyro[2],
+									  accelgyro[3], accelgyro[4], accelgyro[5], accelgyro[6], accelgyro[7],
+									  accelgyro[8], id);
 }
 
 void survive_recording_raw_imu_process(struct SurviveObject *so, int mask, FLT *accelgyro, uint32_t timecode, int id) {
@@ -306,11 +309,12 @@ void survive_recording_raw_imu_process(struct SurviveObject *so, int mask, FLT *
 		return;
 	}
 
-	write_to_output(recordingData,
-					"%s i %d %u " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF
-					" " FLT_PRINTF FLT_PRINTF FLT_PRINTF "%d\r\n",
-					so->codename, mask, timecode, accelgyro[0], accelgyro[1], accelgyro[2], accelgyro[3], accelgyro[4],
-					accelgyro[5], accelgyro[6], accelgyro[7], accelgyro[8], id);
+	survive_recording_write_to_output(recordingData,
+									  "%s i %d %u " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF
+									  " " FLT_PRINTF FLT_PRINTF FLT_PRINTF "%d\r\n",
+									  so->codename, mask, timecode, accelgyro[0], accelgyro[1], accelgyro[2],
+									  accelgyro[3], accelgyro[4], accelgyro[5], accelgyro[6], accelgyro[7],
+									  accelgyro[8], id);
 }
 
 void survive_destroy_recording(SurviveContext *ctx) {
@@ -324,7 +328,7 @@ void survive_destroy_recording(SurviveContext *ctx) {
 void survive_record_config(SurviveContext *ctx, const char *tag, uint8_t type, void *user) {
 	char buf[128];
 	survive_config_as_str(ctx, buf, sizeof(buf), tag, "");
-	write_to_output(ctx->recptr, "OPTION %s %c %s\n", tag, type, buf);
+	survive_recording_write_to_output(ctx->recptr, "OPTION %s %c %s\n", tag, type, buf);
 }
 
 void survive_install_recording(SurviveContext *ctx) {

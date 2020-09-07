@@ -37,6 +37,7 @@ typedef struct SurviveSensorActivations_s {
 	size_t imu_init_cnt;
 	survive_long_timecode last_imu;
 	survive_long_timecode last_light;
+	survive_long_timecode last_light_change;
 	survive_long_timecode last_movement; // Tracks the timecode of the last IMU packet which saw movement.
 
 	FLT accel[3];
@@ -80,6 +81,7 @@ SURVIVE_EXPORT bool SurviveSensorActivations_isPairValid(const SurviveSensorActi
  * Returns the amount of time stationary
  */
 SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_stationary_time(const SurviveSensorActivations *self);
+SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_last_time(const SurviveSensorActivations *self);
 /**
  * Default tolerance that gives a somewhat accuate representation of current state.
  *
@@ -123,7 +125,7 @@ struct SurviveObject {
 		FromLHPose[NUM_GEN2_LIGHTHOUSES]; // Filled out by poser, contains computed position from each lighthouse.
 
 	void *PoserFnData; // Initialized to zero, configured by poser, can be anything the poser wants.
-	PoserCB PoserFn;
+
 	// Device-specific information about the location of the sensors.  This data will be used by the poser.
 	// These are stored in the IMU's coordinate frame so that posers don't have to do a ton of manipulation
 	// to do sensor fusion.
@@ -286,6 +288,8 @@ struct SurviveContext {
 	SurviveObject **objs;
 	int objs_ct;
 
+	PoserCB PoserFn;
+
 	void **drivers;
 	DeviceDriverCb *driverpolls;
 	DeviceDriverCb *drivercloses;
@@ -416,6 +420,8 @@ SURVIVE_EXPORT void survive_default_imu_process(SurviveObject *so, int mode, FLT
 SURVIVE_EXPORT void survive_default_angle_process(SurviveObject *so, int sensor_id, int acode, survive_timecode timecode,
 												  FLT length, FLT angle, uint32_t lh);
 
+SURVIVE_EXPORT void survive_default_light_pulse_process(SurviveObject *so, int sensor_id, int acode,
+														survive_timecode timecode, FLT length, uint32_t lh);
 SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_channel channel,
 												 survive_timecode timeinsweep, bool ootx, bool gen);
 SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_channel channel, int sensor_id,

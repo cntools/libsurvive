@@ -19,6 +19,7 @@ typedef enum PoserType_t {
 	POSERDATA_LIGHT_GEN2,	// Gen2 lighting event.
 	POSERDATA_SYNC_GEN2,	// Gen2 sync pulse
 
+	POSERDATA_GLOBAL_SCENES
 } PoserType;
 
 typedef void (*poser_pose_func)(SurviveObject *so, uint32_t lighthouse, const SurvivePose *pose, void *user);
@@ -80,6 +81,8 @@ SURVIVE_EXPORT void PoserData_lighthouse_pose_func(PoserData *poser_data, Surviv
 SURVIVE_EXPORT void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so,
 													SurvivePose *lighthouse_pose, uint32_t lighthouse_count,
 													SurvivePose *object_pose);
+SURVIVE_EXPORT int8_t survive_get_reference_bsd(SurviveContext *ctx, SurvivePose *lighthouse_pose,
+												uint32_t lighthouse_count);
 
 SURVIVE_EXPORT FLT survive_lighthouse_adjust_confidence(SurviveContext *ctx, uint8_t bsd_idx, FLT delta);
 SURVIVE_EXPORT FLT survive_adjust_confidence(SurviveObject *so, FLT delta);
@@ -116,11 +119,35 @@ typedef struct PoserDataLightGen2 {
 	uint32_t sync;
 } PoserDataLightGen2;
 
+typedef struct {
+	FLT value;
+	uint8_t lh;
+	uint8_t sensor_idx;
+	uint8_t axis;
+} PoserDataGlobalSceneMeasurement;
+
+struct PoserDataGlobalScene {
+	struct SurviveObject *so;
+	SurvivePose pose;
+	LinmathPoint3d accel;
+	size_t meas_cnt;
+	PoserDataGlobalSceneMeasurement *meas;
+};
+
+typedef struct PoserDataGlobalScenes {
+	PoserData hdr;
+
+	SurvivePose *world2lhs;
+	size_t scenes_cnt;
+	struct PoserDataGlobalScene *scenes;
+} PoserDataGlobalScenes;
+
 union PoserDataAll {
 	PoserData pd;
 	PoserDataLight pdl1;
 	PoserDataLightGen2 pdlg2;
 	PoserDataIMU pdimu;
+	PoserDataGlobalScenes pdgs;
 };
 
 struct SurviveSensorActivations_s;

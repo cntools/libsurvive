@@ -32,7 +32,8 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 
 	survive_recording_light_process(so, sensor_id, acode, timeinsweep, timecode, length, lh);
 
-	//We don't use sync times, yet.
+	FLT length_sec = length / (FLT)so->timebase_hz;
+
 	if (sensor_id <= -1) {
 			PoserDataLightGen1 l = {
 				.common =
@@ -52,6 +53,8 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 
 			SURVIVE_POSER_INVOKE(so, &l);
 
+			ctx->light_pulseproc(so, sensor_id, acode, timecode, length_sec, lh);
+
 			return;
 	}
 
@@ -70,10 +73,11 @@ void survive_default_light_process( SurviveObject * so, int sensor_id, int acode
 	FLT angle = centered_timeinsweep * (1. / TIMECENTER_TICKS * 3.14159265359 / 2.0);
 	assert(angle >= -LINMATHPI && angle <= LINMATHPI);
 
-	FLT length_sec = length / (FLT)so->timebase_hz;
 	ctx->angleproc( so, sensor_id, acode, timecode, length_sec, angle, lh);
 }
 
+void survive_default_light_pulse_process(SurviveObject *so, int sensor_id, int acode, survive_timecode timecode,
+										 FLT length, uint32_t lh) {}
 
 void survive_default_angle_process( SurviveObject * so, int sensor_id, int acode, uint32_t timecode, FLT length, FLT angle, uint32_t lh)
 {
