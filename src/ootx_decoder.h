@@ -19,6 +19,9 @@ typedef struct {
 
 typedef struct ootx_decoder_context {
 	uint8_t buffer[OOTX_MAX_BUFF_SIZE];
+
+	bool bits_post_preamble[64 * 8];
+
 	uint16_t buf_offset;
 	uint8_t bits_written;
 	uint16_t* payload_size;
@@ -37,6 +40,8 @@ typedef struct ootx_decoder_context {
 		uint32_t bad_crcs;
 		uint32_t packets_found;
 		uint32_t used_bytes;
+		uint32_t package_bits;
+		uint32_t guess_bits;
 		double started_s;
 	} stats;
 
@@ -92,10 +97,9 @@ void init_lighthouse_info_v15(lighthouse_info_v15 *lhi, uint8_t *data);
 void init_lighthouse_info_v6(lighthouse_info_v6* lhi, uint8_t* data);
 void print_lighthouse_info_v6(lighthouse_info_v6* lhi);
 
-void ootx_init_decoder_context(ootx_decoder_context *ctx);
+void ootx_init_decoder_context(ootx_decoder_context *ctx, float time);
 void ootx_free_decoder_context(ootx_decoder_context *ctx);
 
-uint8_t ootx_process_bit(ootx_decoder_context *ctx, uint32_t length);
 void ootx_pump_bit(ootx_decoder_context *ctx, int8_t dbit);
 
 uint8_t ootx_decode_bit(uint32_t length);

@@ -27,7 +27,7 @@ void ootx_error(ootx_decoder_context *ctx, const char *msg) {
 		ctx->ootx_error_clbk(ctx, msg);
 }
 
-void ootx_init_decoder_context(ootx_decoder_context *ctx) {
+void ootx_init_decoder_context(ootx_decoder_context *ctx, float start) {
 	ctx->buf_offset = 0;
 	ctx->bits_written = 0;
 
@@ -36,7 +36,7 @@ void ootx_init_decoder_context(ootx_decoder_context *ctx) {
 	ctx->found_preamble = 0;
 	ctx->ignore_sync_bit_error = 0;
 
-	ctx->stats.started_s = OGGetAbsoluteTime();
+	ctx->stats.started_s = start;
 
 	ctx->payload_size = (uint16_t*)ctx->buffer;
 	*(ctx->payload_size) = 0;
@@ -45,15 +45,21 @@ void ootx_init_decoder_context(ootx_decoder_context *ctx) {
 void ootx_free_decoder_context(ootx_decoder_context *ctx) {
 	ctx->payload_size = NULL;
 }
-uint8_t ootx_decode_bit(uint32_t length) {
-	uint8_t t = (uint8_t)((length - 2750) / 500); //why 2750?
-//	return ((t & 0x02)>0)?0xFF:0x00; //easier if we need to bitshift right
-	return ((t & 0x02)>>1);
-}
 
-uint8_t ootx_detect_preamble(ootx_decoder_context *ctx, uint8_t dbit) {
+static bool ootx_detect_preamble(ootx_decoder_context *ctx, int8_t dbit) {
 	ctx->preamble <<= 1;
 //	ctx->preamble |= (0x01 & dbit);
+	if (dbit < 0) {
+		// Tend to not trigger preamble if we already have one
+		if (ctx->found_preamble)
+			dbit = 1;
+		else {
+			// If we don't have a preamble; and we just saw a bunch of 0's, trigger a preamble.
+			// if we dont have a bunch of 0's, inject a 0 and maybe it's part of the preamble.
+			dbit = ((ctx->preamble & 0x0001ffff) == 0x00000000) ? 1 : 0;
+		}
+	}
+
 	ctx->preamble |= dbit;
 	if ((ctx->preamble & 0x0003ffff) == 0x00000001) return 1;
 	return 0;
@@ -61,7 +67,6 @@ uint8_t ootx_detect_preamble(ootx_decoder_context *ctx, uint8_t dbit) {
 
 void ootx_reset_buffer(ootx_decoder_context *ctx) {
 	ctx->buf_offset = 0;
-	ctx->buffer[0] = 0;
 	ctx->bits_written = 0;
 	ctx->found_preamble = 0;
 	*(ctx->payload_size) = 0;
@@ -77,36 +82,37 @@ void ootx_inc_buffer_offset(ootx_decoder_context *ctx) {
 		ctx->buf_offset = 0;
 		ctx->found_preamble = 0;
 	}
-
-	ctx->buffer[ctx->buf_offset] = 0;
 }
 
-void ootx_write_to_buffer(ootx_decoder_context *ctx, uint8_t dbit) {
+static void ootx_write_to_buffer(ootx_decoder_context *ctx, int8_t dbit) {
 	uint8_t *current_byte = ctx->buffer + ctx->buf_offset;
 
-	*current_byte <<= 1;
-//	*current_byte |= (0x01 & dbit);
-	*current_byte |= dbit;
+	// Purposefully leave the value as is if dbit is -1
+	uint8_t mask = (1u << (7u - ctx->bits_written));
+	if (dbit == 0) {
+		*current_byte &= ~mask;
+	} else if (dbit == 1) {
+		*current_byte |= mask;
+	} else {
+		ctx->stats.guess_bits++;
+	}
+	ctx->stats.package_bits++;
 
-	++(ctx->bits_written);
-	if (ctx->bits_written>7) {
+	if (++ctx->bits_written > 7) {
 		ctx->bits_written=0;
-//		printf("%d\n", *current_byte);
 		ootx_inc_buffer_offset(ctx);
 	}
 }
 
-uint8_t ootx_process_bit(ootx_decoder_context *ctx, uint32_t length) {
-	uint8_t dbit = ootx_decode_bit(length);
-	ootx_pump_bit( ctx, dbit );
-	return dbit;
-}
-
 void ootx_pump_bit(ootx_decoder_context *ctx, int8_t dbit) {
-	//	uint8_t dbit = ootx_decode_bit(length);
-	if (dbit < 0) {
-		dbit = ctx->bits_processed == 16;
-	}
+	/*if (dbit < 0) {
+		if(ctx->found_preamble) {
+			size_t bits_cnt = ctx->bits_written + ctx->buf_offset * 8;
+			dbit = ctx->bits_processed == 16 ? 1 : ctx->bits_post_preamble[bits_cnt];
+		} else {
+			dbit = ((ctx->preamble & 0x0001ffff) == 0x00000000) ? 1 : ctx->bits_processed == 16;
+		}
+	}*/
 
 	++(ctx->bits_processed);
 	ctx->stats.bits_seen++;
@@ -120,9 +126,7 @@ void ootx_pump_bit(ootx_decoder_context *ctx, int8_t dbit) {
 	}
 	else if(ctx->bits_processed>16) {
 		//every 17th bit needs to be dropped (sync bit)
-//		printf("drop %d\n", dbit);
-		if( !dbit )
-		{
+		if (dbit == 0) {
 			// printf("Bad sync bit\n");
 			if (ctx->ignore_sync_bit_error == 0) {
 				if (ctx->found_preamble) {
@@ -148,17 +152,9 @@ void ootx_pump_bit(ootx_decoder_context *ctx, int8_t dbit) {
 		uint16_t padded_length = *(ctx->payload_size);
 		padded_length += (padded_length&0x01); //extra null byte if odd
 
-/*		int k;
-		printf( ":" );
-		for( k = 0; k < 36; k++ )
-		{
-			printf( "%02x ", ctx->buffer[k] );
-		}
-		printf( "\n" );*/
-
 		if (ctx->buf_offset >= (padded_length+6)) {
 			/*	once we have a complete ootx packet, send it out in the callback */
-			ootx_packet op;
+			ootx_packet op = {0};
 
 			op.length = *(ctx->payload_size);
 			op.data = ctx->buffer+2;
@@ -170,8 +166,8 @@ void ootx_pump_bit(ootx_decoder_context *ctx, int8_t dbit) {
 			if (crc != op.crc32) {
 				if (ctx->ootx_bad_crc_clbk != NULL) {
 					ctx->ootx_bad_crc_clbk(ctx, &op, crc);
-					ctx->stats.bad_crcs++;
 				}
+				ctx->stats.bad_crcs++;
 			} else if (ctx->ootx_packet_clbk != NULL) {
 				ctx->stats.packets_found++;
 				ctx->stats.used_bytes += op.length;
@@ -183,7 +179,7 @@ void ootx_pump_bit(ootx_decoder_context *ctx, int8_t dbit) {
 	}
 }
 
-uint8_t* get_ptr(uint8_t* data, uint8_t bytes, uint16_t* idx) {
+static uint8_t *get_ptr(uint8_t *data, uint8_t bytes, uint16_t *idx) {
 	uint8_t* x = data + *idx;
 	*idx += bytes;
 	return x;
@@ -211,7 +207,7 @@ struct unaligned_u16_t {
 };
 #endif
 
-float _half_to_float(uint8_t* data) {
+static float _half_to_float(uint8_t *data) {
 	uint16_t x = ((struct unaligned_u16_t*)data)->v;
 	union iFloat fnum;
 	fnum.f = 0;

@@ -221,6 +221,7 @@ void solve_global_scene(struct SurviveObject *so, PoserDataSVD *dd, PoserDataGlo
 					SurvivePose obj2world;
 					ApplyPoseToPose(&obj2world, &lh2world, &obj2lh);
 					PoserData_poser_pose_func(&gss->hdr, so, &obj2world);
+					scene->pose = obj2world;
 					needsObject = false;
 				}
 			}

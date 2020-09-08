@@ -14,6 +14,13 @@ static FLT freq_per_channel[NUM_GEN2_LIGHTHOUSES] = {
 	51.2273, 51.6685, 52.2307, 52.6894, 52.9217, 53.2741, 53.7514, 54.1150,
 };
 
+static void ootx_bad_crc_clbk(ootx_decoder_context *ct, ootx_packet *pkt, uint32_t checksum) {
+	SurviveContext *ctx = ((SurviveObject *)(ct->user))->ctx;
+	int id = ct->user1;
+
+	if (!ctx->bsd[id].OOTXSet)
+		SV_VERBOSE(200, "(%d) Failed CRC", ctx->bsd[id].mode != 255 ? ctx->bsd[id].mode : id);
+}
 static void ootx_error_clbk_d(ootx_decoder_context *ct, const char *msg) {
 	SurviveContext *ctx = ((SurviveObject *)(ct->user))->ctx;
 	int id = ct->user1;
@@ -64,8 +71,7 @@ static void ootx_packet_clbk_d_gen2(ootx_decoder_context *ct, ootx_packet *packe
 		b->mode = v15.mode_current & 0x7F;
 		b->OOTXSet = 1;
 
-		config_set_lighthouse(ctx->lh_config, b, id);
-		config_save(ctx);
+		ctx->ootx_receivedproc(ctx, id);
 	}
 }
 
@@ -98,10 +104,31 @@ static void ootx_packet_cblk_d_gen1(ootx_decoder_context *ct, ootx_packet *packe
 	b->mode = v6.mode_current;
 	b->OOTXSet = 1;
 
-	config_set_lighthouse(ctx->lh_config, b, id);
-	config_save(ctx);
+	ctx->ootx_receivedproc(ctx, id);
 }
+void survive_ootx_free_decoder_context(struct SurviveContext *ctx, int bsd_idx) {
+	ootx_decoder_context *decoderContext = ctx->bsd[bsd_idx].ootx_data;
+	ctx->bsd[bsd_idx].ootx_data = 0;
+	if (decoderContext == 0)
+		return;
 
+	SV_VERBOSE(5, "OOTX stats for LH%d", bsd_idx);
+	SV_VERBOSE(5, "\tBits seen:         %u (%d bytes)", decoderContext->stats.bits_seen,
+			   decoderContext->stats.bits_seen / 8);
+	SV_VERBOSE(5, "\tBad CRCs:          %u", decoderContext->stats.bad_crcs);
+	SV_VERBOSE(5, "\tBad sync bits:     %u", decoderContext->stats.bad_sync_bits);
+	SV_VERBOSE(5, "\tPackets found:     %u", decoderContext->stats.packets_found);
+	SV_VERBOSE(5, "\tPayload size:      %u", decoderContext->stats.used_bytes);
+	SV_VERBOSE(5, "\tPackage bits:      %u", decoderContext->stats.package_bits);
+	SV_VERBOSE(5, "\tGuessed bits:      %u (%5.2f%%)", decoderContext->stats.guess_bits,
+			   decoderContext->stats.guess_bits / (FLT)decoderContext->stats.package_bits * 100.);
+	FLT d = survive_run_time(ctx) - decoderContext->stats.started_s;
+	SV_VERBOSE(5, "\tTime:              %2.2f (%2.2fb/s, %2.2fb/s)", d, decoderContext->stats.bits_seen / d,
+			   decoderContext->stats.used_bytes * 8 / d);
+
+	ootx_free_decoder_context(decoderContext);
+	free(decoderContext);
+}
 void survive_ootx_behavior(SurviveObject *so, int8_t bsd_idx, int8_t lh_version, int ootx) {
 	struct SurviveContext *ctx = so->ctx;
 	if (ctx->bsd[bsd_idx].OOTXSet == false) {
@@ -115,31 +142,19 @@ void survive_ootx_behavior(SurviveObject *so, int8_t bsd_idx, int8_t lh_version,
 				SV_INFO("OOTX not set for LH %d; attaching ootx decoder using device %s", bsd_idx, so->codename);
 			}
 			decoderContext = ctx->bsd[bsd_idx].ootx_data = SV_CALLOC(1, sizeof(ootx_decoder_context));
-			ootx_init_decoder_context(decoderContext);
+			ootx_init_decoder_context(decoderContext, survive_run_time(ctx));
 			decoderContext->user1 = bsd_idx;
 			decoderContext->user = so;
 			decoderContext->ignore_sync_bit_error = survive_configi(ctx, "ootx-ignore-sync-error", SC_SETCONFIG, 0);
 			decoderContext->ootx_packet_clbk = lh_version ? ootx_packet_clbk_d_gen2 : ootx_packet_cblk_d_gen1;
 			decoderContext->ootx_error_clbk = ootx_error_clbk_d;
+			decoderContext->ootx_bad_crc_clbk = ootx_bad_crc_clbk;
 		}
 		if (decoderContext->user == so) {
 			ootx_pump_bit(decoderContext, ootx);
 
 			if (ctx->bsd[bsd_idx].OOTXSet) {
-				ctx->bsd[bsd_idx].ootx_data = 0;
-
-				SV_VERBOSE(5, "OOTX stats for %s LH%d", so->codename, bsd_idx);
-				SV_VERBOSE(5, "\tBits seen:         %u (%d bytes)", decoderContext->stats.bits_seen,
-						   decoderContext->stats.bits_seen / 8);
-				SV_VERBOSE(5, "\tBad CRCs:          %u", decoderContext->stats.bad_crcs);
-				SV_VERBOSE(5, "\tBad sync bits:     %u", decoderContext->stats.bad_sync_bits);
-				SV_VERBOSE(5, "\tPackets found:     %u", decoderContext->stats.packets_found);
-				SV_VERBOSE(5, "\tPayload size:     %u", decoderContext->stats.used_bytes);
-				FLT d = OGGetAbsoluteTime() - decoderContext->stats.started_s;
-				SV_VERBOSE(5, "\tTime:             %2.2f (%2.2fb/s)", d, decoderContext->stats.bits_seen / d);
-
-				ootx_free_decoder_context(decoderContext);
-				free(decoderContext);
+				survive_ootx_free_decoder_context(ctx, bsd_idx);
 			}
 		}
 	}
@@ -188,7 +203,7 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 		so->stats.skipped_syncs[bsd_idx] += skipped_syncs;
 		// Every skipped sync halves our ootx success rate; but if we don't send anything in it will be wrong 100% of
 		// the time
-		for (int i = 0; i < skipped_syncs && i < 3; i++) {
+		for (int i = 0; i < skipped_syncs; i++) {
 			survive_ootx_behavior(so, bsd_idx, ctx->lh_version, -1);
 		}
 

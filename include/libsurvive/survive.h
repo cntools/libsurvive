@@ -402,13 +402,15 @@ SURVIVE_EXPORT int survive_cal_get_status(SurviveContext *ctx, char *description
 
 // Induce haptic feedback
 SURVIVE_EXPORT int survive_haptic(SurviveObject *so, FLT freq, FLT amp, FLT duration);
-
+SURVIVE_EXPORT void survive_ootx_free_decoder_context(struct SurviveContext *ctx, int bsd_idx);
 SURVIVE_EXPORT void survive_find_ang_velocity(SurviveAngularVelocity out, FLT tdiff, const LinmathQuat from,
 											  const LinmathQuat to);
 SURVIVE_EXPORT void survive_apply_ang_velocity(LinmathQuat out, const SurviveAngularVelocity v, FLT t,
 											   const LinmathQuat t0);
 // Call these from your callback if overridden.
 // Accept higher-level data.
+SURVIVE_EXPORT void survive_default_ootx_received_process(struct SurviveContext *ctx, uint8_t bsd_idx);
+
 SURVIVE_EXPORT int survive_default_printf_process(struct SurviveContext *ctx, const char *format, ...);
 SURVIVE_EXPORT void survive_default_log_process(struct SurviveContext *ctx, SurviveLogLevel ll, const char *fault);
 SURVIVE_EXPORT void survive_default_lightcap_process(SurviveObject *so, const LightcapElement *element);

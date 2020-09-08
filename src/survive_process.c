@@ -119,8 +119,6 @@ void survive_default_button_process(SurviveObject *so, enum SurviveInputEvent ev
 
 STATIC_CONFIG_ITEM(REPORT_IN_IMU, "report-in-imu", 'i', "Debug option to output poses in IMU space.", 0)
 void survive_default_imupose_process(SurviveObject *so, uint32_t timecode, const SurvivePose *imu2world) {
-	so->OutPoseIMU = *imu2world;
-
 	static int report_in_imu = -1;
 	if (report_in_imu == -1) {
 		report_in_imu = survive_configi(so->ctx, REPORT_IN_IMU_TAG, SC_GET, 0);
@@ -158,6 +156,10 @@ void survive_default_external_pose_process(SurviveContext *ctx, const char *name
 	survive_recording_external_pose_process(ctx, name, pose);
 }
 
+void survive_default_ootx_received_process(struct SurviveContext *ctx, uint8_t bsd_idx) {
+	config_set_lighthouse(ctx->lh_config, &ctx->bsd[bsd_idx], bsd_idx);
+	config_save(ctx);
+}
 void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose) {
 	if (lighthouse_pose) {
 		ctx->bsd[lighthouse].Pose = *lighthouse_pose;

@@ -14,6 +14,7 @@ SURVIVE_HOOK_PROCESS_DEF(report_error)
 
 SURVIVE_HOOK_PROCESS_DEF(config)
 SURVIVE_HOOK_PROCESS_DEF(gen_detected)
+SURVIVE_HOOK_PROCESS_DEF(ootx_received)
 
 // Gen 1 hooks
 SURVIVE_HOOK_PROCESS_DEF(lightcap)

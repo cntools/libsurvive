@@ -243,6 +243,8 @@ typedef void (*lightcap_process_func)(SurviveObject *so, const LightcapElement *
 typedef void (*light_process_func)(SurviveObject *so, int sensor_id, int acode, int timeinsweep,
 								   survive_timecode timecode, survive_timecode length, uint32_t lighthouse);
 
+typedef void (*ootx_received_process_func)(struct SurviveContext *ctx, uint8_t bsd_idx);
+
 typedef void (*light_pulse_process_func)(SurviveObject *so, int sensor_id, int acode, survive_timecode timecode,
 										 FLT length, uint32_t lh);
 

@@ -7,7 +7,7 @@
 #include <survive_optimizer.h>
 #include <survive_reproject_gen2.h>
 
-STATIC_CONFIG_ITEM(GSS_ENABLE, "globalscenesolver", 'i', "Enable global scene solver", 1)
+STATIC_CONFIG_ITEM(GSS_ENABLE, "globalscenesolver", 'i', "Enable global scene solver", 0)
 
 #ifndef GSS_NUM_STORED_SCENES
 #define GSS_NUM_STORED_SCENES 16
@@ -27,6 +27,7 @@ typedef struct global_scene_solver {
 
 	sync_process_func prior_sync_fn;
 	light_pulse_process_func prior_light_pulse;
+	ootx_received_process_func prior_ootx_fn;
 } global_scene_solver;
 
 static size_t add_scenes(struct global_scene_solver *gss, SurviveObject *so) {
@@ -104,34 +105,48 @@ static void check_for_new_objects(global_scene_solver *gss) {
 	}
 }
 
+static void set_needs_solve(global_scene_solver *gss) {
+	FLT now = survive_run_time(gss->ctx);
+
+	for (int lh = 0; lh < gss->ctx->activeLighthouses; lh++) {
+		if (!gss->ctx->bsd[lh].OOTXSet)
+			return;
+	}
+
+	gss->needsSolve = true;
+	gss->last_addition = now;
+}
+
 static size_t check_object(global_scene_solver *gss, int i, SurviveObject *so) {
 	size_t scenes_added = 0;
 	SurviveContext *ctx = gss->ctx;
 
 	survive_long_timecode last_event_time = SurviveSensorActivations_last_time(&so->activations);
 	survive_long_timecode last_change = so->activations.last_light_change;
-	if (so->activations.last_movement != gss->last_capture_time[i] &&
-		((last_event_time - last_change) > so->timebase_hz * .1)) {
+	survive_long_timecode standstill_time = SurviveSensorActivations_stationary_time(&so->activations);
+	survive_long_timecode lockout_time = so->timebase_hz * .1;
 
+	bool activations_changed = so->activations.last_light_change != gss->last_capture_time[i];
+	bool spreadout = (last_event_time - gss->last_capture_time[i]) > so->timebase_hz * 3;
+	bool light_static = (last_event_time - last_change) > lockout_time;
+	bool not_moving = (standstill_time > lockout_time);
+
+	if (activations_changed && spreadout && light_static && not_moving) {
 		size_t new_scenes = add_scenes(gss, so);
 		if (new_scenes) {
-			gss->last_capture_time[i] = so->activations.last_movement;
-		}
-		scenes_added += new_scenes;
-
-		if (new_scenes) {
-			SV_VERBOSE(10, "Adding scene for %s at %6.4f (%f)", so->codename, survive_run_time(ctx),
+			gss->last_capture_time[i] = so->activations.last_light_change;
+			scenes_added += new_scenes;
+			SV_VERBOSE(10, "Adding scene (%d) for %s at %6.4f (%f)", (int)gss->scenes_cnt % GSS_NUM_STORED_SCENES,
+					   so->codename, survive_run_time(ctx),
 					   SurviveSensorActivations_stationary_time(&so->activations) / 48000000.);
 		}
 	}
 
-	FLT now = survive_run_time(ctx);
 	if (scenes_added) {
-		gss->needsSolve = true;
-		gss->last_addition = now;
+		set_needs_solve(gss);
 	}
 
-	if (gss->needsSolve && (gss->last_addition + 1) < now) {
+	if (gss->needsSolve && (gss->last_addition + 1) < survive_run_time(ctx)) {
 		gss->needsSolve = false;
 		run_optimization(gss);
 	}
@@ -184,11 +199,21 @@ global_scene_solver *global_scene_solver_init(global_scene_solver *driver, Survi
 	return driver;
 }
 
+static void ootx_recv(struct SurviveContext *ctx, uint8_t bsd_idx) {
+	global_scene_solver *gss =
+		(global_scene_solver *)survive_get_driver_by_closefn(ctx, DriverRegGlobalSceneSolverClose);
+
+	gss->prior_ootx_fn(ctx, bsd_idx);
+
+	set_needs_solve(gss);
+}
 int DriverRegGlobalSceneSolver(SurviveContext *ctx) {
 	global_scene_solver *driver = SV_NEW(global_scene_solver, ctx);
 
 	driver->prior_sync_fn = survive_install_sync_fn(ctx, sync_fn);
 	driver->prior_light_pulse = survive_install_light_pulse_fn(ctx, light_pulse_fn);
+	driver->prior_ootx_fn = survive_install_ootx_received_fn(ctx, ootx_recv);
+
 	survive_add_driver(ctx, driver, DriverRegGlobalSceneSolverPoll, DriverRegGlobalSceneSolverClose);
 	return 0;
 }

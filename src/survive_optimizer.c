@@ -64,6 +64,13 @@ void survive_optimizer_setup_pose_n(survive_optimizer *mpfit_ctx, const SurviveP
 		}
 	}
 }
+void survive_optimizer_fix_camera(survive_optimizer *mpfit_ctx, int cam_idx) {
+	int start = survive_optimizer_get_camera_index(mpfit_ctx) + cam_idx * 7;
+	for (int i = start; i < start + 7; i++) {
+		mpfit_ctx->parameters[i] = 0;
+		mpfit_ctx->parameters_info[i].fixed = 1;
+	}
+}
 void survive_optimizer_setup_pose(survive_optimizer *mpfit_ctx, const SurvivePose *poses, bool isFixed,
 								  int use_jacobian_function) {
 
@@ -115,10 +122,10 @@ void survive_optimizer_setup_camera(survive_optimizer *mpfit_ctx, int8_t lh, con
 void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx, SurviveContext *ctx, bool isFixed,
 									 int use_jacobian_function) {
 	for (int lh = 0; lh < mpfit_ctx->cameraLength; lh++) {
-		if (ctx->bsd[lh].PositionSet)
+		if (!quatiszero(ctx->bsd[lh].Pose.Rot))
 			survive_optimizer_setup_camera(mpfit_ctx, lh, &ctx->bsd[lh].Pose, isFixed, use_jacobian_function);
 		else {
-			SurvivePose id = {.Pos = {-3, 0, 1}, .Rot = {-0.70710678118, 0, 0.70710678118, 0}};
+			SurvivePose id = {.Rot = {1}};
 			survive_optimizer_setup_camera(mpfit_ctx, lh, &id, isFixed, use_jacobian_function);
 		}
 	}
@@ -338,15 +345,15 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 		}
 	}
 
-	if (obs_lhs > 1) {
+	if (obs_lhs > 2) {
 		FLT unbias_dev = lh_avg_dev / (obs_lhs - 1.);
 		lh_avg_dev = lh_avg_dev / (FLT)obs_lhs;
 
 		for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
 			FLT corrected_dev = unbias_dev - lh_deviates[i] / (obs_lhs - 1.);
 			if (lh_deviates[i] > 100 * corrected_dev) {
-				SV_VERBOSE(200, "Data from LH %d seems suspect for %s (%f/%f -- %f)", i, optimizer->sos[0]->codename,
-						   lh_deviates[i], corrected_dev, lh_deviates[i] / corrected_dev);
+				SV_VERBOSE(100, "Data from LH %d seems suspect for %s (%f/%10.10f -- %f)", i,
+						   optimizer->sos[0]->codename, lh_deviates[i], corrected_dev, lh_deviates[i] / corrected_dev);
 				lh_meas_cnt[i] = 0;
 				optimizer->stats.dropped_lh_cnt++;
 			} else if (lh_deviates[i] > 0.) {
@@ -355,7 +362,6 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 			}
 		}
 	}
-
 
 	for (int i = 0; i < optimizer->measurementsCnt; i++) {
 		survive_optimizer_measurement *meas = &optimizer->measurements[i];
@@ -554,7 +560,7 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 
 	// MPFit runs on temporary storage; so parameters is manipulated in mpfunc. Save it and restore it here.
 	FLT *params = optimizer->parameters;
-	optimizer->needsFiltering = true;
+	optimizer->needsFiltering = !optimizer->nofilter;
 	int rtn = mpfit(mpfunc, optimizer->measurementsCnt, survive_optimizer_get_parameters_count(optimizer),
 					optimizer->parameters, optimizer->parameters_info, cfg, optimizer, result);
 	optimizer->parameters = params;

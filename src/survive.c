@@ -650,6 +650,7 @@ int survive_startup(SurviveContext *ctx) {
 		SV_INFO("Force ootx flag set -- clearing ootx on all lighthouses");
 		for (int i = 0; i < ctx->activeLighthouses; i++) {
 			ctx->bsd[i].OOTXSet = 0;
+			memset(ctx->bsd[i].fcal, 0, sizeof(ctx->bsd[i].fcal));
 		}
 	}
 
@@ -844,6 +845,10 @@ void survive_close(SurviveContext *ctx) {
 
 	for (int i = 0; i < ctx->objs_ct; i++) {
 		survive_destroy_device(ctx->objs[i]);
+	}
+
+	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
+		survive_ootx_free_decoder_context(ctx, i);
 	}
 
 	survive_destroy_recording(ctx);

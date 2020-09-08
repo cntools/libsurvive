@@ -40,6 +40,7 @@ typedef struct survive_optimizer {
 	int poseLength;
 	int cameraLength;
 	int ptsLength;
+	bool nofilter;
 
 	mp_config *cfg;
 
@@ -110,6 +111,8 @@ SURVIVE_EXPORT FLT *survive_optimizer_get_sensors(survive_optimizer *ctx, size_t
 
 SURVIVE_EXPORT void survive_optimizer_setup_pose_n(survive_optimizer *mpfit_ctx, const SurvivePose *pose, size_t n,
 												   bool isFixed, int use_jacobian_function);
+
+SURVIVE_EXPORT void survive_optimizer_fix_camera(survive_optimizer *mpfit_ctx, int cam_idx);
 
 SURVIVE_EXPORT void survive_optimizer_setup_pose(survive_optimizer *mpfit_ctx, const SurvivePose *pose, bool isFixed,
 												 int use_jacobian_function);

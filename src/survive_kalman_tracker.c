@@ -790,6 +790,10 @@ bool survive_kalman_tracker_check_valid(SurviveKalmanTracker *tracker) {
 		tracker->light_error_threshold <= 0 || tracker->light_residuals_all < tracker->light_error_threshold ||
 		(SurviveSensorActivations_stationary_time(&tracker->so->activations) < tracker->so->timebase_hz / 10);
 
+	for (int i = 0; i < 3; i++) {
+		isValid &= fabsf(tracker->state.Pose.Pos[i]) < 20;
+	}
+
 	if (!isValid) {
 		survive_kalman_tracker_lost_tracking(tracker);
 		return false;
