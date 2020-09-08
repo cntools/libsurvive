@@ -34,7 +34,7 @@ static size_t add_scenes(struct global_scene_solver *gss, SurviveObject *so) {
 	size_t rtn = 0;
 	SurviveContext *ctx = so->ctx;
 
-	survive_timecode sensor_time_window = SurviveSensorActivations_stationary_time(&so->activations) / 2;
+	survive_long_timecode sensor_time_window = SurviveSensorActivations_stationary_time(&so->activations) / 2;
 
 	SurviveSensorActivations *activations = &so->activations;
 
@@ -47,11 +47,12 @@ static size_t add_scenes(struct global_scene_solver *gss, SurviveObject *so) {
 	scene->meas_cnt = 0;
 	scene->meas = SV_REALLOC(scene->meas, 32 * 2 * ctx->activeLighthouses * sizeof(scene->meas[0]));
 
+	size_t lh_meas[NUM_GEN2_LIGHTHOUSES] = {0};
 	for (uint8_t lh = 0; lh < ctx->activeLighthouses; lh++) {
 		for (uint8_t sensor = 0; sensor < so->sensor_ct; sensor++) {
 			for (uint8_t axis = 0; axis < 2; axis++) {
-				bool isReadingValid = SurviveSensorActivations_isReadingValid(
-					activations, sensor_time_window, activations->last_light, sensor, lh, axis);
+				bool isReadingValid =
+					SurviveSensorActivations_isReadingValid(activations, sensor_time_window, sensor, lh, axis);
 
 				if (isReadingValid) {
 					const FLT *a = activations->angles[sensor][lh];
@@ -62,7 +63,7 @@ static size_t add_scenes(struct global_scene_solver *gss, SurviveObject *so) {
 					meas->value = a[axis];
 					meas->sensor_idx = sensor;
 					meas->lh = lh;
-
+					lh_meas[lh]++;
 					scene->meas_cnt++;
 				}
 			}
@@ -72,6 +73,9 @@ static size_t add_scenes(struct global_scene_solver *gss, SurviveObject *so) {
 	if (scene->meas_cnt > 10) {
 		gss->scenes_cnt++;
 		rtn++;
+		for (int i = 0; i < ctx->activeLighthouses; i++) {
+			SV_VERBOSE(100, "Scene %d for lh %d", (int)lh_meas[i], i);
+		}
 	}
 
 	return rtn;
@@ -129,7 +133,7 @@ static size_t check_object(global_scene_solver *gss, int i, SurviveObject *so) {
 	bool activations_changed = so->activations.last_light_change != gss->last_capture_time[i];
 	bool spreadout = (last_event_time - gss->last_capture_time[i]) > so->timebase_hz * 3;
 	bool light_static = (last_event_time - last_change) > lockout_time;
-	bool not_moving = (standstill_time > lockout_time);
+	bool not_moving = (standstill_time > so->timebase_hz);
 
 	if (activations_changed && spreadout && light_static && not_moving) {
 		size_t new_scenes = add_scenes(gss, so);
@@ -179,16 +183,18 @@ static void light_pulse_fn(SurviveObject *so, int sensor_id, int acode, survive_
 						   uint32_t lh) {
 	global_scene_solver *gss =
 		(global_scene_solver *)survive_get_driver_by_closefn(so->ctx, DriverRegGlobalSceneSolverClose);
+	gss->prior_light_pulse(so, sensor_id, acode, timecode, length, lh);
+
 	check_for_new_objects(gss);
 	check_object(gss, survive_get_so_idx(so), so);
-	gss->prior_light_pulse(so, sensor_id, acode, timecode, length, lh);
 }
 static void sync_fn(SurviveObject *so, survive_channel channel, survive_timecode timeofsync, bool ootx, bool gen) {
 	global_scene_solver *gss =
 		(global_scene_solver *)survive_get_driver_by_closefn(so->ctx, DriverRegGlobalSceneSolverClose);
+	gss->prior_sync_fn(so, channel, timeofsync, ootx, gen);
+
 	check_for_new_objects(gss);
 	check_object(gss, survive_get_so_idx(so), so);
-	gss->prior_sync_fn(so, channel, timeofsync, ootx, gen);
 }
 
 global_scene_solver *global_scene_solver_init(global_scene_solver *driver, SurviveContext *ctx) {

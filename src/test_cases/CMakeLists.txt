@@ -21,6 +21,7 @@ add_definitions(-DDEBUG_WATCHMAN)
 
 add_executable(test_replays test_replays.c)
 set_target_properties(test_replays PROPERTIES FOLDER "tests")
+add_dependencies(test_replays ${SURVIVE_BUILT_PLUGINS})
 target_link_libraries(test_replays survive)
 
 if(NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data)

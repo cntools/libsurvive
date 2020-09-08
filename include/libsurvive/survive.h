@@ -48,6 +48,7 @@ typedef struct SurviveSensorActivations_s {
 struct PoserDataLight;
 struct PoserDataIMU;
 
+SURVIVE_EXPORT void SurviveSensorActivations_reset(SurviveSensorActivations *self);
 SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveObject *so, SurviveSensorActivations *self);
 SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_long_timecode_imu(const SurviveSensorActivations *self, survive_timecode timecode);
 SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_long_timecode_light(const SurviveSensorActivations *self, survive_timecode timecode);
@@ -67,8 +68,9 @@ SURVIVE_EXPORT void SurviveSensorActivations_add_imu(SurviveSensorActivations *s
  * Returns true iff the given sensor and lighthouse at given axis were seen at most `tolerance` ticks before the given
  * `timecode_now`.
  */
-SURVIVE_EXPORT bool SurviveSensorActivations_isReadingValid(const SurviveSensorActivations *self, survive_timecode tolerance,
-											 survive_timecode timecode_now, uint32_t sensor_idx, int lh, int axis);
+SURVIVE_EXPORT bool SurviveSensorActivations_isReadingValid(const SurviveSensorActivations *self,
+															survive_long_timecode tolerance, uint32_t sensor_idx,
+															int lh, int axis);
 
 /**
  * Returns true iff both angles for the given sensor and lighthouse were seen at most `tolerance` ticks before the given

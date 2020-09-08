@@ -361,6 +361,12 @@ SURVIVE_EXPORT void survive_default_gen_detected_process(SurviveObject *so, int 
 			ctx->bsd[i].mode = -1;
 		}
 	}
+
+	for (int i = 0; i < ctx->objs_ct; i++) {
+		// When the USB devices transition; they reset their clock or something -- so clear out old data.
+		SurviveSensorActivations_reset(&ctx->objs[i]->activations);
+	}
+
 	ctx->lh_version = lh_version;
 	survive_configi(ctx, "configed-lighthouse-gen", SC_OVERRIDE | SC_SETCONFIG, lh_version + 1);
 	config_save(ctx);

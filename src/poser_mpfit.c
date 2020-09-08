@@ -100,9 +100,9 @@ static size_t remove_lh_from_meas(survive_optimizer_measurement *meas, size_t me
 	return rtn;
 }
 
-static size_t construct_input_from_scene(const MPFITData *d, size_t timecode, const SurviveSensorActivations *scene,
-										 size_t *meas_for_lhs, survive_optimizer_measurement *meas,
-										 survive_long_timecode *most_recent_time) {
+static size_t construct_input_from_scene(const MPFITData *d, survive_long_timecode timecode,
+										 const SurviveSensorActivations *scene, size_t *meas_for_lhs,
+										 survive_optimizer_measurement *meas, survive_long_timecode *most_recent_time) {
 	size_t rtn = 0;
 	SurviveObject *so = d->opt.so;
 	SurviveContext *ctx = so->ctx;
@@ -111,7 +111,6 @@ static size_t construct_input_from_scene(const MPFITData *d, size_t timecode, co
 	survive_timecode sensor_time_window =
 		isStationary && d->useStationaryWindow ? (so->timebase_hz) : d->sensor_time_window;
 
-	const bool force_pair = false;
 	for (uint8_t lh = 0; lh < ctx->activeLighthouses; lh++) {
 		if (d->disable_lighthouse == lh) {
 			continue;
@@ -132,11 +131,8 @@ static size_t construct_input_from_scene(const MPFITData *d, size_t timecode, co
 		for (uint8_t sensor = 0; sensor < so->sensor_ct; sensor++) {
 			for (uint8_t axis = 0; axis < 2; axis++) {
 				bool isReadingValue =
-					SurviveSensorActivations_isReadingValid(scene, sensor_time_window, timecode, sensor, lh, axis);
-				if (force_pair) {
-					isReadingValue =
-						SurviveSensorActivations_isPairValid(scene, sensor_time_window, timecode, sensor, lh);
-				}
+					SurviveSensorActivations_isReadingValid(scene, sensor_time_window, sensor, lh, axis);
+
 				if (isReadingValue) {
 					const FLT *a = scene->angles[sensor][lh];
 					meas->object = 0;
@@ -347,6 +343,9 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 
 	if (!worldEstablished && !canPossiblySolveLHS) {
 		return -1;
+	}
+	if (!worldEstablished && d->globalDataAvailable) {
+		return -2;
 	}
 
 	mpfitctx->measurementsCnt = meas_size;
@@ -734,6 +733,14 @@ bool solve_global_scene(struct SurviveContext *ctx, PoserDataGlobalScenes *gss) 
 		}
 	}
 
+	for (int i = 0; i < ctx->activeLighthouses; i++) {
+		if (quatiszero(survive_optimizer_get_camera(&mpfitctx)[i].Rot)) {
+			lh_meas[i] = 0;
+			survive_optimizer_fix_camera(&mpfitctx, i);
+			SV_VERBOSE(10, "No estimate for %d", i);
+		}
+	}
+
 	for (int i = start; i < start + 7; i++) {
 		mpfitctx.parameters_info[i].fixed = true;
 	}
@@ -773,7 +780,7 @@ bool solve_global_scene(struct SurviveContext *ctx, PoserDataGlobalScenes *gss) 
 			int ref = survive_get_reference_bsd(ctx, cameras, mpfitctx.cameraLength);
 			SurvivePose reflh2objUp = cameras[ref];
 			FLT ang = atan2(reflh2objUp.Pos[1], reflh2objUp.Pos[0]);
-			FLT ang_target = M_PI / 2.;
+			FLT ang_target = LINMATHPI / 2.;
 			FLT euler[3] = {0, 0, ang_target - ang};
 			SurvivePose objUp2World = {0};
 			quatfromeuler(objUp2World.Rot, euler);

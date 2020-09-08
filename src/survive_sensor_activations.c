@@ -15,8 +15,8 @@ static FLT moveThresholdAcc = 0;
 static FLT moveThresholdAng = 0;
 static FLT filterLightChange = 0;
 
-bool SurviveSensorActivations_isReadingValid(const SurviveSensorActivations *self, survive_timecode tolerance,
-											 survive_timecode timecode_now, uint32_t idx, int lh, int axis) {
+bool SurviveSensorActivations_isReadingValid(const SurviveSensorActivations *self, survive_long_timecode tolerance,
+											 uint32_t idx, int lh, int axis) {
 	const survive_long_timecode *data_timecode = self->timecode[idx][lh];
 	if (self->lh_gen != 1 && lh < 2 && self->lengths[idx][lh][axis] == 0)
 		return false;
@@ -24,7 +24,9 @@ bool SurviveSensorActivations_isReadingValid(const SurviveSensorActivations *sel
 	if (isnan(self->angles[idx][lh][axis]))
 		return false;
 
-	return survive_timecode_difference(timecode_now, data_timecode[axis]) <= tolerance;
+	survive_long_timecode timecode_now = SurviveSensorActivations_last_time(self);
+	assert(timecode_now >= data_timecode[axis]);
+	return timecode_now - data_timecode[axis] <= tolerance;
 }
 bool SurviveSensorActivations_isPairValid(const SurviveSensorActivations *self, uint32_t tolerance,
 										  uint32_t timecode_now, uint32_t idx, int lh) {
@@ -54,7 +56,7 @@ survive_long_timecode SurviveSensorActivations_stationary_time(const SurviveSens
 
 void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct PoserDataIMU *imuData) {
 	self->last_imu = imuData->hdr.timecode;
-	//fprintf(stderr, "imu tc: %16lx\n", self->last_imu);
+	// fprintf(stderr, "imu tc: %f\n", self->last_imu/ 48000000.);
 	if (self->imu_init_cnt > 0) {
 		self->imu_init_cnt--;
 		return;
@@ -104,6 +106,7 @@ bool SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct Po
 			if (isnan(*angle))
 				self->last_light_change = long_timecode;
 
+			// fprintf(stderr, "Time %f\n", l->hdr.timecode / 48000000.);
 			*data_timecode = l->hdr.timecode;
 			*angle = l->angle;
 		} else {
@@ -118,14 +121,7 @@ bool SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct Po
 	return true;
 }
 
-SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveObject *so, SurviveSensorActivations *self) {
-	if (so) {
-		moveThresholdAcc = survive_configf(so->ctx, MOVMENT_THRESHOLD_ACC_TAG, SC_GET, 0);
-		moveThresholdGyro = survive_configf(so->ctx, MOVMENT_THRESHOLD_GYRO_TAG, SC_GET, 0);
-		moveThresholdAng = survive_configf(so->ctx, MOVMENT_THRESHOLD_ANG_TAG, SC_GET, 0);
-		filterLightChange = survive_configf(so->ctx, FILTER_THRESHOLD_ANG_TAG, SC_GET, 0);
-	}
-
+SURVIVE_EXPORT void SurviveSensorActivations_reset(SurviveSensorActivations *self) {
 	memset(self, 0, sizeof(SurviveSensorActivations));
 
 	for (int i = 0; i < SENSORS_PER_OBJECT; i++) {
@@ -141,6 +137,16 @@ SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveObject *so, SurviveSens
 	}
 
 	self->imu_init_cnt = 30;
+}
+SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveObject *so, SurviveSensorActivations *self) {
+	if (so) {
+		moveThresholdAcc = survive_configf(so->ctx, MOVMENT_THRESHOLD_ACC_TAG, SC_GET, 0);
+		moveThresholdGyro = survive_configf(so->ctx, MOVMENT_THRESHOLD_GYRO_TAG, SC_GET, 0);
+		moveThresholdAng = survive_configf(so->ctx, MOVMENT_THRESHOLD_ANG_TAG, SC_GET, 0);
+		filterLightChange = survive_configf(so->ctx, FILTER_THRESHOLD_ANG_TAG, SC_GET, 0);
+	}
+
+	SurviveSensorActivations_reset(self);
 	self->lh_gen = -1;
 }
 
