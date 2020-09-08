@@ -338,7 +338,7 @@ int PoserBaryCentricSVD(SurviveObject *so, void **user, PoserData *pd) {
 								err = 1. - err_q[0];
 							}
 
-							if (err < .01) {
+							if (err < .25) {
 								solved++;
 								if (quatiszero(obj2world.Rot))
 									lh2world[lh] = lh2obj;
