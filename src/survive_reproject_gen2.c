@@ -5,7 +5,7 @@
 #include <survive_reproject_gen2.h>
 
 #pragma GCC push_options
-#pragma GCC optimize("Ofast")
+#pragma GCC optimize("O3")
 
 #include "generated/survive_reproject.generated.h"
 

@@ -19,6 +19,11 @@ option(USE_ASAN "Use address sanitizer" OFF)
 option(ENABLE_TESTS "Enable build / execution of tests" OFF)
 option(USE_HEX_FLOAT_PRINTF "Use hex floats when recording" OFF)
 option(USE_OPENBLAS "Use OpenBLAS" OFF)
+option(BUILD_LH1_SUPPORT "Build LH1 support" ON)
+
+if(BUILD_LH1_SUPPORT)
+  add_definitions(-DBUILD_LH1_SUPPORT)
+endif()
 
 if(USE_HEX_FLOAT_PRINTF)
   add_definitions(-DSURVIVE_HEX_FLOATS)
@@ -74,14 +79,15 @@ IF(ENABLE_TESTS)
 ENDIF()
 
  find_library(OPENVR_LIBRARIES
-                NAMES
-               openvr_api
-               openvr_api64
-                PATH_SUFFIXES
-                osx32
-               linux64
-               PATHS
-               "C:/Program Files (x86)/OpenVRSDK/lib")
+              NAMES
+              openvr_api
+              openvr_api64
+              PATH_SUFFIXES
+              osx32
+              linux64
+              PATHS
+              "C:/Program Files (x86)/OpenVRSDK/lib"
+)
 
 find_path(OPENVR_INCLUDE_PATH
                NAMES openvr/openvr.h openvr/openvr_driver.h

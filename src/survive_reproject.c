@@ -6,10 +6,10 @@
 #include <survive_reproject.h>
 
 #pragma GCC push_options
-#pragma GCC optimize("Ofast")
-
+#pragma GCC optimize("O3")
+#ifdef BUILD_LH1_SUPPORT
 #include "generated/survive_reproject.generated.h"
-
+#endif
 static inline FLT survive_reproject_axis(const BaseStationCal *bcal, FLT axis_value, FLT other_axis_value, FLT Z,
 										 bool invert_axis_value) {
 	FLT ang = (FLT)M_PI_2 - (invert_axis_value ? -1.f : 1.f) * (FLT_ATAN2(axis_value, Z));
@@ -90,6 +90,7 @@ void survive_apply_bsd_calibration(const SurviveContext *ctx, int lh, const FLT 
 #pragma GCC pop_options
 
 const survive_reproject_model_t SURVIVE_EXPORT survive_reproject_model = {
+#ifdef BUILD_LH1_SUPPORT
 	.reprojectAxisFn = {survive_reproject_axis_x, survive_reproject_axis_y},
 	.reprojectXY = survive_reproject_xy,
 	.reprojectAxisFullFn = {gen_reproject_axis_x, gen_reproject_axis_y},
@@ -106,5 +107,7 @@ const survive_reproject_model_t SURVIVE_EXPORT survive_reproject_model = {
 	.reprojectAxisAngleFullJacLhPose = gen_reproject_jac_lh_p_axis_angle,
 	.reprojectAxisAngleAxisJacobLhPoseFn = {gen_reproject_axis_x_jac_lh_p_axis_angle,
 											gen_reproject_axis_y_jac_lh_p_axis_angle},
-
+#else
+	0
+#endif
 };

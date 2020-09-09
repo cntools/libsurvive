@@ -25,13 +25,14 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
   survive_optimizer.c
   survive_recording.c        
   survive_plugins.c
-  survive_process.c
+        survive_process.c
   survive_process_gen2.c
-  survive_reproject.c
   survive_sensor_activations.c
   survive_kalman.c
   barycentric_svd/barycentric_svd.c
   survive_reproject_gen2.c
+        survive_process_gen1.c
+        survive_reproject.c
   lfsr.c
   lfsr_lh2.c
   survive_str.h survive_str.c test_cases/str.c
@@ -39,7 +40,6 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
   ../redist/linmath.c ../redist/puff.c ../redist/symbol_enumerator.c
   ../redist/jsmn.c ../redist/json_helpers.c ../redist/crc32.c
   )
-
 
 if(USE_HIDAPI OR WIN32)
   add_definitions (-DHIDAPI)
