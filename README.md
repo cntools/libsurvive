@@ -51,16 +51,22 @@ git clone git@github.com:cntools/libsurvive.git
 cd libsurvive
 sudo cp ./useful_files/81-vive.rules to /etc/udev/rules.d/
 sudo udevadm control --reload-rules && udevadm trigger
-sudo apt-get install build-essential zlib1g-dev libx11-dev libusb-1.0-0-dev freeglut3-dev liblapacke-dev libopenblas-dev libatlas-base-dev websocketd
+sudo apt-get install build-essential zlib1g-dev libx11-dev libusb-1.0-0-dev freeglut3-dev liblapacke-dev libopenblas-dev libatlas-base-dev cmake
 sudo make
 ```
 
 Plug in a headset / tracker / controller / etc and run:
 ```
-./bin/survive-websocketd & xdg-open ./tools/viz/index.html
+./bin/survive-cli
 ```
 
 This should calibrate and display your setup. 
+
+For visualization, you can either download a binary of [websocketd](https://github.com/joewalnes/websocketd/releases/) or enable the experimental apt source and use `sudo apt install websocketd`. After which you can run:
+
+```
+./bin/survive-websocketd & xdg-open ./tools/viz/index.html
+```
 
 [![Watch video](https://img.youtube.com/vi/l4doRSXM0tU/0.jpg)](https://www.youtube.com/watch?v=l4doRSXM0tU)
 
