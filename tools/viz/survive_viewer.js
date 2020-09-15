@@ -241,8 +241,6 @@ function redrawCanvas(when) {
 		for (var lh = 0; lh < 16; lh++) {
 			var bvalue = 0; // get_bvalue(key);
 
-			ctx.strokeStyle = "#" + lhColors[lh].toString(16);
-
 			if (angles[key][lh])
 
 				for (var id in angles[key][lh]) {
@@ -261,6 +259,12 @@ function redrawCanvas(when) {
 					ctx.font = "14px Arial";
 					// ctx.fillText(id, x, y);
 
+					ctx.strokeStyle = "#000000"
+					ctx.beginPath();
+					ctx.arc(x, y, 2, 0, 2 * Math.PI);
+					ctx.stroke();
+
+					ctx.strokeStyle = "#" + lhColors[lh].toString(16);
 					ctx.beginPath();
 					ctx.arc(x, y, 1, 0, 2 * Math.PI);
 					ctx.stroke();

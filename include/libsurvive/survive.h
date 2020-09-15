@@ -29,6 +29,9 @@ typedef struct SurviveSensorActivations_s {
 
 	// Valid for gen2; somewhat different meaning though -- refers to angle of the rotor when the sweep happened.
 	FLT angles[SENSORS_PER_OBJECT][NUM_GEN2_LIGHTHOUSES][2];				// 2 Axes (Angles in LH space)
+	FLT angles_center[NUM_GEN2_LIGHTHOUSES][2];
+	int angles_center_cnt[NUM_GEN2_LIGHTHOUSES][2];
+
 	survive_long_timecode timecode[SENSORS_PER_OBJECT][NUM_GEN2_LIGHTHOUSES][2]; // Timecode per axis in ticks
 
 	// Valid only for Gen1
@@ -183,6 +186,9 @@ struct SurviveObject {
 		uint32_t rejected_data[NUM_GEN2_LIGHTHOUSES];
 		uint32_t dropped_light[NUM_GEN2_LIGHTHOUSES];
 		uint32_t sync_resets[NUM_GEN2_LIGHTHOUSES];
+
+		uint32_t extent_hits, extent_misses, naive_hits;
+		FLT min_extent, max_extent;
 	} stats;
 };
 

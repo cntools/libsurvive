@@ -106,6 +106,13 @@ bool SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct Po
 			if (isnan(*angle))
 				self->last_light_change = long_timecode;
 
+			if (self->angles_center_cnt[l->lh][axis] == 0) {
+				self->angles_center[l->lh][axis] = l->angle;
+			} else {
+				self->angles_center[l->lh][axis] *= .9;
+				self->angles_center[l->lh][axis] += .1 * l->angle;
+			}
+			self->angles_center_cnt[l->lh][axis]++;
 			// fprintf(stderr, "Time %f\n", l->hdr.timecode / 48000000.);
 			*data_timecode = l->hdr.timecode;
 			*angle = l->angle;
@@ -128,6 +135,7 @@ SURVIVE_EXPORT void SurviveSensorActivations_reset(SurviveSensorActivations *sel
 		for (int j = 0; j < NUM_GEN2_LIGHTHOUSES; j++) {
 			for (int h = 0; h < 2; h++) {
 				self->angles[i][j][h] = NAN;
+				self->angles_center[j][h] = NAN;
 			}
 		}
 	}

@@ -236,6 +236,49 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 		SURVIVE_POSER_INVOKE(so, &l);
 	}
 }
+
+static inline int8_t determine_plane(SurviveObject *so, int8_t bsd_idx, FLT angle) {
+	static int naive_plane_only = -1;
+	if (naive_plane_only == -1)
+		naive_plane_only = survive_configi(so->ctx, "naive-plane-only", SC_GET, 0);
+	int8_t naive_plane = angle > LINMATHPI;
+	if (naive_plane_only != 0)
+		return naive_plane;
+
+	int8_t plane = naive_plane;
+	FLT m = .05;
+	bool borderLine = angle > LINMATHPI * (1 - 2 * m) && angle < LINMATHPI * (1 + 2 * m);
+	bool veryBorderLine = angle > LINMATHPI * (1 - m) && angle < LINMATHPI * (1 + m);
+	FLT angle_for_axis[2] = {angle - 2. / 3. * LINMATHPI, angle - 4. / 3. * LINMATHPI};
+
+	if (borderLine) {
+		if (veryBorderLine)
+			plane = -1;
+
+		FLT err[2] = {0};
+		for (int i = 0; i < 2; i++) {
+			err[i] = fabsf(angle_for_axis[i] - so->activations.angles_center[bsd_idx][i]);
+			if (isnan(err[i]))
+				err[i] = 1.;
+		}
+
+		if (err[0] <= .1 || err[1] <= .1) {
+			plane = err[1] < err[0];
+		}
+
+		if (plane != -1 && naive_plane != plane) {
+			so->stats.extent_hits++;
+			so->stats.min_extent = linmath_min(angle - LINMATHPI, so->stats.min_extent);
+			so->stats.max_extent = linmath_max(angle - LINMATHPI, so->stats.max_extent);
+		} else if (plane == -1) {
+			so->stats.extent_misses++;
+		} else if (plane == naive_plane) {
+			so->stats.naive_hits++;
+		}
+	}
+
+	return plane;
+}
 SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_channel channel, int sensor_id,
 												  survive_timecode timecode, bool half_clock_flag) {
 	struct SurviveContext *ctx = so->ctx;
@@ -285,19 +328,17 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 	FLT angle = time_since_sync / time_per_rot * 2. * LINMATHPI;
 	FLT angle2 = (time_since_sync + .5 / 48000000.) / time_per_rot * 2. * LINMATHPI;
 
-	SV_VERBOSE(500, "Sensor ch%2d.%02d   %+6.3fdeg %12f %d %.16f %d %d", channel, sensor_id, angle / LINMATHPI * 180.,
-			   angle2 / LINMATHPI * 180., half_clock_flag, time_since_sync, rotations_since + so->sync_count[bsd_idx],
-			   timecode);
+	SV_VERBOSE(500, "%7.3f Sensor ch%2d.%02d   %+8.3fdeg %12f %d %.16f %u %u", survive_run_time(ctx), channel,
+			   sensor_id, angle / LINMATHPI * 180., angle2 / LINMATHPI * 180., half_clock_flag, time_since_sync,
+			   rotations_since + so->sync_count[bsd_idx], timecode);
 
-	int8_t plane = angle > LINMATHPI;
-	FLT angle_for_axis = angle;
-	if (plane)
-		angle_for_axis -= 4 * LINMATHPI / 3.;
-	else
-		angle_for_axis -= 2 * LINMATHPI / 3.;
+	FLT angle_for_axis[2] = {angle - 2. / 3. * LINMATHPI, angle - 4. / 3. * LINMATHPI};
+	int8_t plane = determine_plane(so, bsd_idx, angle);
 
 	so->stats.hit_from_lhs[bsd_idx]++;
-	so->ctx->sweep_angleproc(so, channel, sensor_id, timecode, plane, angle_for_axis);
+
+	if (plane >= 0)
+		so->ctx->sweep_angleproc(so, channel, sensor_id, timecode, plane, angle_for_axis[plane]);
 }
 
 SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survive_channel channel, int sensor_id,
@@ -324,17 +365,19 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 		.plane = plane,
 		.sync = so->sync_count[bsd_idx]};
 
-	SV_VERBOSE(500, "Sensor ch%2d.%02d.%d %+6.3fdeg", channel, sensor_id, plane, angle / LINMATHPI * 180.);
+	SV_VERBOSE(500, "%7.3f Sensor ch%2d.%02d.%d %+8.3fdeg", survive_run_time(ctx), channel, sensor_id, plane,
+			   angle / LINMATHPI * 180.);
 
 	// Simulate the use of only one lighthouse in playback mode.
-	if (bsd_idx < ctx->activeLighthouses)
+	if (bsd_idx < ctx->activeLighthouses) {
 		if (SurviveSensorActivations_add_gen2(&so->activations, &l) == false) {
 			so->stats.rejected_data[bsd_idx]++;
+		} else {
+			survive_kalman_tracker_integrate_light(so->tracker, &l.common);
 		}
+	}
 
 	survive_recording_sweep_angle_process(so, channel, sensor_id, timecode, plane, angle);
-	survive_kalman_tracker_integrate_light(so->tracker, &l.common);
-
 	SURVIVE_POSER_INVOKE(so, &l);
 }
 

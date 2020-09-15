@@ -472,6 +472,12 @@ int survive_load_htc_config_format_from_file(SurviveObject *so, const char *file
 void survive_destroy_device(SurviveObject *so) {
 	SurviveContext *ctx = so->ctx;
 	SV_VERBOSE(5, "Statistics for %s (driver %s)", so->codename, so->drivername);
+	SV_VERBOSE(5, "\tExtent hits               %6u", so->stats.extent_hits);
+	SV_VERBOSE(5, "\tNaive hits                %6u", so->stats.naive_hits);
+	SV_VERBOSE(5, "\tExtent misses             %6u", so->stats.extent_misses);
+	SV_VERBOSE(5, "\tExtent min                %6.4f", so->stats.min_extent);
+	SV_VERBOSE(5, "\tExtent max                %6.4f", so->stats.max_extent);
+
 	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
 		if (so->stats.hit_from_lhs[i]) {
 			SV_VERBOSE(5, "\tLH %2d", i);

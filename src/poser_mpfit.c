@@ -410,7 +410,7 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 					LinmathPoint3d err;
 					quatrotatevector(err, cameras[i].Rot, up);
 					SV_INFO("Solved for %d with error of %f/%10.10f (acc err %5.4f)", i, result->orignorm,
-							result->bestnorm, 1 + err[2]);
+							result->bestnorm, fabs(err[2] - 1.));
 				}
 			}
 			PoserData_lighthouse_poses_func(&pdl->hdr, so, cameras, ctx->activeLighthouses, soLocation);
