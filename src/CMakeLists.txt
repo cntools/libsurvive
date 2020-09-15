@@ -87,6 +87,8 @@ if(BUILD_GATT_SUPPORT)
 endif()
 
 IF(NOT WIN32)
+  LIST(APPEND PLUGINS driver_udp)
+
 	set(driver_vive_ADDITIONAL_LIBS usb-1.0)
 
 	find_library(PCAP_LIBRARY pcap)
