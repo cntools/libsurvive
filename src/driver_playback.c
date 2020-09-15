@@ -16,6 +16,8 @@ STATIC_CONFIG_ITEM(PLAYBACK, "playback", 's', "File to be used for playback if p
 STATIC_CONFIG_ITEM(PLAYBACK_FACTOR, "playback-factor", 'f',
 				   "Time factor of playback -- 1 is run at the same timing as original, 0 is run as fast as possible.",
 				   1.0f)
+STATIC_CONFIG_ITEM(PLAYBACK_TIME, "playback-time", 'f', "End time of playback", -1.0f)
+
 STATIC_CONFIG_ITEM(PLAYBACK_RUN_TIME, "run-time", 'f', "How long to run for", -1.)
 
 
@@ -44,7 +46,8 @@ typedef struct SurvivePlaybackData {
     double next_time_s;
     double time_now;
     FLT playback_factor;
-    bool hasRawLight;
+	FLT playback_time;
+	bool hasRawLight;
     bool hasSweepAngle;
     bool outputExternalPose;
 
@@ -393,6 +396,10 @@ static void *playback_thread(void *_driver) {
 	while (driver->keepRunning) {
 		double next_time_s_scaled = driver->next_time_s * driver->playback_factor;
 		double time_now = OGRelativeTime();
+		if (driver->playback_time >= 0 && driver->time_now > driver->playback_time) {
+			driver->keepRunning = false;
+			return 0;
+		}
 		if (next_time_s_scaled == 0 || next_time_s_scaled < time_now) {
 			int rtnVal = playback_pump_msg(driver->ctx, driver);
 			if (rtnVal < 0)
@@ -428,6 +435,7 @@ static int playback_close(struct SurviveContext *ctx, void *_driver) {
 	driver->playback_file = 0;
 
 	survive_detach_config(ctx, "playback-factor", &driver->playback_factor);
+	survive_detach_config(ctx, "playback-time", &driver->playback_time);
 	survive_install_run_time_fn(ctx, 0, 0);
 	free(driver);
 	return 0;
@@ -464,8 +472,10 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	}
 	survive_install_run_time_fn(ctx, survive_playback_run_time, sp);
 	survive_attach_configf(ctx, "playback-factor", &sp->playback_factor);
+	survive_attach_configf(ctx, "playback-time", &sp->playback_time);
 
-	SV_INFO("Using playback file '%s' with timefactor of %f", playback_file, sp->playback_factor);
+	SV_INFO("Using playback file '%s' with timefactor of %f until %f", playback_file, sp->playback_factor,
+			sp->playback_time);
 
 	ctx->poll_min_time_ms = 1;
 	if (sp->playback_factor == 0.0)
