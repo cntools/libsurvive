@@ -823,6 +823,14 @@ void survive_close(SurviveContext *ctx) {
 		SV_INFO("Driver %s reports status %d", DriverName, r);
 	}
 
+	for (int i = 0; i < ctx->driver_ct; i++) {
+		if (ctx->drivercloses[i]) {
+			ctx->drivercloses[i](ctx, ctx->drivers[i]);
+		} else {
+			free(ctx->drivers[i]);
+		}
+	}
+
 	for (int i = 0; i < ctx->objs_ct; i++) {
 		PoserData pd;
 		pd.pt = POSERDATA_DISASSOCIATE;
@@ -835,13 +843,6 @@ void survive_close(SurviveContext *ctx) {
 
 	config_save(ctx);
 
-	for (int i = 0; i < ctx->driver_ct; i++) {
-		if (ctx->drivercloses[i]) {
-			ctx->drivercloses[i](ctx, ctx->drivers[i]);
-		} else {
-			free(ctx->drivers[i]);
-		}
-	}
 
 	for (int i = 0; i < ctx->objs_ct; i++) {
 		survive_destroy_device(ctx->objs[i]);
