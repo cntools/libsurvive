@@ -16,6 +16,7 @@
 #include <survive.h>
 #include <survive_reproject.h>
 
+#include "survive_recording.h"
 #include "variance.h"
 
 STATIC_CONFIG_ITEM(Simulator_DRIVER_ENABLE, "simulator", 'i', "Load a Simulator driver for testing.", 0)
@@ -35,6 +36,7 @@ STATIC_CONFIG_ITEM(Simulator_SENSOR_DROPRATE, "simulator-sensor-droprate", 'f', 
 
 STATIC_CONFIG_ITEM(Simulator_INIT_TIME, "simulator-init-time", 'f', "Init time -- object wont move for this long", 2.)
 STATIC_CONFIG_ITEM(Simulator_FCAL_NOISE, "simulator-fcal-noise", 'f', "Noise to apply to BSD fcal parameters", 0.)
+STATIC_CONFIG_ITEM(Simulator_LH_VERSION, "simulator-lh-gen", 'i', "Lighthouse generation", 2)
 
 typedef struct SurviveDriverSimulatorLHState {
 	FLT last_eval_time;
@@ -340,13 +342,20 @@ void apply_attractors(struct SurviveContext *ctx, SurviveDriverSimulator *driver
 		attractor_cnt = sizeof(attractors) / sizeof(LinmathVec3d);
 	}
 
+	static bool reported = false;
+
 	for (int i = 0; i < attractor_cnt; i++) {
 		LinmathVec3d acc;
 		sub3d(acc, attractors[i], driver->position.Pos);
 		FLT r = norm3d(acc);
 		scale3d(acc, acc, s / r / r);
 		add3d(accel.Pos, accel.Pos, acc);
+		if (reported == false && ctx->recptr) {
+			survive_recording_write_to_output(ctx->recptr, "SPHERE attractor_%d %f %d " Point3_format "\n", i, .05,
+											  0x00FF00, LINMATH_VEC3_EXPAND(attractors[i]));
+		}
 	}
+	reported = true;
 
 	if (attractor_cnt == 0) {
 		// accel.Pos[0] = 1 * cos(timestamp);
@@ -639,8 +648,8 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	for (int i = 0; i < 3; i++)
 		sp->gyro_bias[i] = linmath_normrand(0, sp->gyro_bias_scale);
 
-	int use_lh2 = ctx->lh_version_configed != 1;
-
+	int use_lh2 = survive_configi(ctx, Simulator_LH_VERSION_TAG, SC_GET, 2) == 2;
+	int max_lighthouses = use_lh2 ? 16 : 2;
 	// Create a new SurviveObject...
 	SurviveObject *device = survive_create_simulation_device(ctx, sp, "SM0");
 
@@ -651,6 +660,9 @@ int DriverRegSimulator(SurviveContext *ctx) {
 		51.2273, 51.6685, 52.2307, 52.6894, 52.9217, 53.2741, 53.7514, 54.1150,
 	};
 
+	if (ctx->activeLighthouses > max_lighthouses) {
+		ctx->activeLighthouses = max_lighthouses;
+	}
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
 		sp->bsd[i] = ctx->bsd[i];
 		if (!ctx->bsd[i].PositionSet) {
@@ -710,6 +722,9 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	sp->so = device;
 	survive_add_object(ctx, device);
 	sp->lh_version = use_lh2 ? 1 : 0;
+	ctx->lh_version = sp->lh_version;
+	ctx->lh_version_configed = ctx->lh_version;
+
 	if (use_lh2) {
 		survive_notify_gen2(device, "Simulator setup for lh2");
 	} else {
