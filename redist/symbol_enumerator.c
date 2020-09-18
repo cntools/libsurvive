@@ -1,9 +1,9 @@
-#include <stdio.h>
 #include "symbol_enumerator.h"
 
 #if defined( WIN32 ) || defined( WINDOWS ) || defined( USE_WINDOWS ) || defined( _WIN32 )
-
+#include <stdio.h>
 #include <windows.h>
+
 #include <dbghelp.h>
 
 BOOL CALLBACK mycb(PSYMBOL_INFO pSymInfo, ULONG SymbolSize, PVOID UserContext) {
@@ -26,6 +26,7 @@ int EnumerateSymbols( SymEnumeratorCallback cb )
 }
 
 #elif __linux__
+#define _GNU_SOURCE
 
 #include <stdio.h>
 #include <dlfcn.h>
@@ -35,6 +36,10 @@ int EnumerateSymbols( SymEnumeratorCallback cb )
 
 #ifndef __GNUC__
 #define __int128_t long long long
+#endif
+
+#ifndef __WORDSIZE
+#define __WORDSIZE (sizeof(size_t) * 8)
 #endif
 
 #include <link.h>
