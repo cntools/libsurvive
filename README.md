@@ -418,7 +418,10 @@ The most useful command line option for debugging is `--v` -- this sets the repo
 Running at higher verbosity (>100) will make the visualization tool sluggish. 
 
 `--force-calibrate`: This reruns calibration but reuses OOTX; which makes it much faster to run. 
+
 `--playback-factor`: When playing back a recording, this will speed up the playback (0 is run everything as fast as possible) or slow it down (2 takes twice as much time)
+
+`--lighthouse-gen`: Force the system to use a particular generation of lighthouse. Right now, sometimes the system misidentified lighthouse 1 (The purely square base stations) for lighthouse 2 (The rounded face base stations) or vice versa. As we find these cases, we are fixing them but this lets a misbehaving system be useful in the meantime. 
 
 # Drivers
 
