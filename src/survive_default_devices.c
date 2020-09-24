@@ -282,7 +282,8 @@ struct key_value model_number_subtypes[] = {
 	{"Knuckles Left", SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L},  {"Knuckles EV3.0 Left", SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L},
 	{"Utah MP", SURVIVE_OBJECT_SUBTYPE_INDEX_HMD},		   {"Vive Controller MV", SURVIVE_OBJECT_SUBTYPE_WAND},
 	{"Vive. Controller MV", SURVIVE_OBJECT_SUBTYPE_WAND},  {"VIVE Tracker Pro MV", SURVIVE_OBJECT_SUBTYPE_TRACKER_GEN2},
-	{"Vive Tracker MV", SURVIVE_OBJECT_SUBTYPE_TRACKER},   {"Vive MV", SURVIVE_OBJECT_SUBTYPE_VIVE_HMD}};
+	{"Vive. Tracker MV", SURVIVE_OBJECT_SUBTYPE_TRACKER},  {"Vive Tracker MV", SURVIVE_OBJECT_SUBTYPE_TRACKER},
+	{"Vive MV", SURVIVE_OBJECT_SUBTYPE_VIVE_HMD},		   {"Vive. MV", SURVIVE_OBJECT_SUBTYPE_VIVE_HMD}};
 
 static int process_jsontok(scratch_space_t *scratch, char *d, stack_entry_t *stack, jsmntok_t *t, int count) {
 	int i, j, k;
@@ -322,9 +323,10 @@ static int process_jsontok(scratch_space_t *scratch, char *d, stack_entry_t *sta
 
 				if (scratch->so->object_subtype == SURVIVE_OBJECT_SUBTYPE_GENERIC) {
 					SurviveContext *ctx = scratch->so->ctx;
-					SV_WARN("Unknown model_number %.*s. Please submit an issue with this value describing your device "
-							"so it can be added to the known list.",
-							(int)len, str);
+					SV_WARN(
+						"Unknown model_number '%.*s'. Please submit an issue with this value describing your device "
+						"so it can be added to the known list.",
+						(int)len, str);
 				}
 			} else if (jsoneq(d, stack->key, "model_name") == 0) {
 				if (strncmp("Vive Tracker MV", d + t->start, t->end - t->start) == 0) {
