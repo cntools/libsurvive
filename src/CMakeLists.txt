@@ -51,7 +51,10 @@ if(USE_HIDAPI OR WIN32)
 endif()
 
 add_library(survive ${SURVIVE_LIBRARY_TYPE} ${SURVIVE_SRCS})
-set_target_properties(survive PROPERTIES FOLDER "libraries")
+set_target_properties(survive PROPERTIES
+	FOLDER "libraries"
+	SOVERSION ${PROJECT_VERSION_MAJOR}
+	VERSION ${PROJECT_VERSION})
 
 target_link_libraries(survive minimal_opencv ${ADDITIONAL_LIBRARIES} mpfit)
 IF(HAVE_ZLIB_H)
