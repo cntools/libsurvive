@@ -17,16 +17,14 @@
 static const char* plugin_ext() { return ".so"; }
 
 static const char *get_so_filename() {
-	static char so_path[1024] = {0};
+	static char so_path[PATH_MAX] = {0};
 	if (so_path[0] == 0) {
 
 		Dl_info dl_info;
 		dladdr((void *)get_so_filename, &dl_info);
-		ssize_t len = readlink(dl_info.dli_fname, so_path, sizeof(so_path));
-		if (len == -1) {
+		char *dst = realpath(dl_info.dli_fname, so_path);
+		if (dst == 0) {
 			strncpy(so_path, dl_info.dli_fname, sizeof(so_path) - 1);
-		} else {
-			so_path[len] = 0;
 		}
 	}
 	return so_path;
