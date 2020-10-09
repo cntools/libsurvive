@@ -20,12 +20,19 @@ SUBSYSTEM=="usb", ATTRS{idVendor}=="114d", ATTRS{idProduct}=="8a12", TAG+="uacce
 
 
 #libsurvive
-SUBSYSTEM=="usb", ATTRS{idVendor}=="0bb4", ATTRS{idProduct}=="2c87", MODE="0666" # HTC HMD
-SUBSYSTEM=="usb", ATTRS{idVendor}=="0bb4", ATTRS{idProduct}=="030e", MODE="0666" # HTC HMD Pro(?)
-SUBSYSTEM=="usb", ATTRS{idVendor}=="28de", ATTRS{idProduct}=="2000", MODE="0666" # Light input
-SUBSYSTEM=="usb", ATTRS{idVendor}=="28de", ATTRS{idProduct}=="2101", MODE="0666" # Watchman
-SUBSYSTEM=="usb", ATTRS{idVendor}=="28de", ATTRS{idProduct}=="2012", MODE="0666" # Watchman wired
-SUBSYSTEM=="usb", ATTRS{idVendor}=="28de", ATTRS{idProduct}=="2022", MODE="0666" # Tracker wired
+# HTC HMD
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0bb4", ATTRS{idProduct}=="2c87", MODE="0666"
+# HTC HMD Pro(?)
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0bb4", ATTRS{idProduct}=="030e", MODE="0666"
+# Light input
+SUBSYSTEM=="usb", ATTRS{idVendor}=="28de", ATTRS{idProduct}=="2000", MODE="0666"
+# Watchman
+SUBSYSTEM=="usb", ATTRS{idVendor}=="28de", ATTRS{idProduct}=="2101", MODE="0666"
+# Watchman wired
+SUBSYSTEM=="usb", ATTRS{idVendor}=="28de", ATTRS{idProduct}=="2012", MODE="0666"
+# Tracker wired
+SUBSYSTEM=="usb", ATTRS{idVendor}=="28de", ATTRS{idProduct}=="2022", MODE="0666"
+# Tracker 2018 wired
 SUBSYSTEM=="usb", ATTRS{idVendor}=="28de", ATTRS{idProduct}=="2300", MODE="0666" # Tracker 2018 wired
 
 #KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0bb4", ATTR{idProduct}=="2c87", MODE="0666" # HTC
