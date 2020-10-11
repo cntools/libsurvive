@@ -1,7 +1,7 @@
 set -o xtrace
 
 #choco upgrade dotnetcore
-choco install python
+choco install python --version=3.8.6
 
 export PATH="/c/Python38/:$PATH"
 python -m ensurepip
