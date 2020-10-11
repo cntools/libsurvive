@@ -75,7 +75,7 @@ void survive_optimizer_setup_pose(survive_optimizer *mpfit_ctx, const SurvivePos
 								  int use_jacobian_function) {
 
 	for (int i = 0; i < mpfit_ctx->poseLength; i++) {
-		survive_optimizer_setup_pose_n(mpfit_ctx, &poses[i], i, isFixed, use_jacobian_function);
+		survive_optimizer_setup_pose_n(mpfit_ctx, poses ? &poses[i] : 0, i, isFixed, use_jacobian_function);
 	}
 }
 
