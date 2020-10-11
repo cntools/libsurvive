@@ -16,6 +16,10 @@
 
 static const char* plugin_ext() { return ".so"; }
 
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
+
 static const char *get_so_filename() {
 	static char so_path[PATH_MAX] = {0};
 	if (so_path[0] == 0) {
@@ -31,7 +35,7 @@ static const char *get_so_filename() {
 }
 
 static const char *get_exe_filename() {
-	static char exe_path[1024] = {};
+	static char exe_path[PATH_MAX] = {};
 	if (exe_path[0] == 0) {
 		size_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path));
 		exe_path[len] = 0;

@@ -103,6 +103,12 @@ find_library(OPENVR_LIBRARIES
   osx32
   linux64)
 
+SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libsurvive/plugins;${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}\
+/libsurvive")
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 add_subdirectory(redist)
 add_subdirectory(src)
 add_subdirectory(tools)
