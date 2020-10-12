@@ -11,7 +11,6 @@ IF(catkin_DIR)
 ENDIF()
 
 find_library(XDO_LIB xdo)
-message("========== ${XDO_LIB}")
 if(XDO_LIB)
   add_subdirectory(vive_mouse)
 endif()

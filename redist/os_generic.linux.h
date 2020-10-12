@@ -48,8 +48,17 @@ OSG_INLINE double OGGetFileTime(const char *file) {
 }
 
 OSG_INLINE og_thread_t OGCreateThread(void *(routine)(void *), const char *name, void *parameter) {
+	pthread_attr_t tattr = {0};
+
+	pthread_attr_init(&tattr);
+	// TODO: Something smarter than this maybe; but it probably doesn't matter since it's all virtualized anyway. This
+	// will be in line with the default stack size on glibc, but musl has a 128kb default which we'll almost certainly
+	// go over.
+	pthread_attr_setstacksize(&tattr, 2000 * 4096);
 	pthread_t *ret = (pthread_t *)malloc(sizeof(pthread_t));
-	int r = pthread_create(ret, 0, routine, parameter);
+	int r = pthread_create(ret, &tattr, routine, parameter);
+	pthread_attr_destroy(&tattr);
+
 	if (r) {
 		free(ret);
 		return 0;
