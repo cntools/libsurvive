@@ -181,7 +181,7 @@ namespace libsurvive
 
 		[DllImport("libsurvive", CallingConvention = CallingConvention.StdCall,
 				   EntryPoint = "survive_simple_serial_number")]
-		public static extern string survive_simple_serial_number(SurviveSimpleObjectPtr aso);
+		public static extern IntPtr survive_simple_serial_number(SurviveSimpleObjectPtr aso);
 
 		[DllImport("libsurvive", CallingConvention = CallingConvention.StdCall,
 				   EntryPoint = "survive_simple_wait_for_update")]

@@ -36,7 +36,7 @@ public class SurviveAPIOObject : IDisposable {
 
 	public string Name => Marshal.PtrToStringAnsi(Cfunctions_api.survive_simple_object_name(Aso));
 
-	public string SerialNumber => Cfunctions_api.survive_simple_serial_number(Aso);
+	public string SerialNumber => Marshal.PtrToStringAnsi(Cfunctions_api.survive_simple_serial_number(Aso));
 
 	public void Dispose() { Marshal.FreeHGlobal(latestPosePtr); }
 }

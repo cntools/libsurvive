@@ -18,7 +18,7 @@ namespace Demo
 			while (api.WaitForUpdate()) {
 				SurviveAPIOObject obj;
 				while ((obj = api.GetNextUpdated()) != null) {
-					Console.WriteLine(obj.Name + ": " + obj.LatestPose);
+					Console.WriteLine(obj.Name + "(" + obj.SerialNumber + ") : " + obj.LatestPose);
 				}
 			}
 

@@ -167,10 +167,12 @@ if(DOTNET)
 
   install(FILES ${CS_BINDINGS} DESTINATION "bin")
 
-  file(GLOB_RECURSE CS_DEMO
-    "${CMAKE_CURRENT_SOURCE_DIR}/bindings/cs/Demo/bin/Release/Demo.*")
+  if(WIN32)
+    file(GLOB_RECURSE CS_DEMO
+      "${CMAKE_CURRENT_SOURCE_DIR}/bindings/cs/Demo/bin/Release/Demo.*")
 
-  install(FILES ${CS_DEMO} DESTINATION "bin")
+    install(FILES ${CS_DEMO} DESTINATION "bin")
+  endif()
 endif()
 
 if(EXISTS /etc/bash_completion.d)
