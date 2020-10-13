@@ -55,6 +55,9 @@ set_target_properties(survive PROPERTIES
 	FOLDER "libraries"
 	SOVERSION ${PROJECT_VERSION_MAJOR}
 	VERSION ${PROJECT_VERSION})
+if(WIN32)
+    set_target_properties(survive PROPERTIES PREFIX "lib")
+endif()
 
 target_link_libraries(survive minimal_opencv ${ADDITIONAL_LIBRARIES} mpfit)
 IF(HAVE_ZLIB_H)
@@ -147,7 +150,12 @@ function(SURVIVE_REGISTER_PLUGIN PLUGIN)
   #set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE "${OUTPUT_DIR}Release/plugins")
   #set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${OUTPUT_DIR}RelWithDebInfo/plugins")
 
+if(NOT WIN32)
   install(TARGETS ${PLUGIN} DESTINATION lib/libsurvive/plugins)
+else()
+  install(TARGETS ${PLUGIN} DESTINATION bin/plugins)
+endif()
+
 endfunction()
 
 foreach(PLUGIN ${PLUGINS})
@@ -168,6 +176,11 @@ ENDIF()
 
 set(SURVIVE_BUILT_PLUGINS "${SURVIVE_BUILT_PLUGINS}" PARENT_SCOPE)
 
+if(NOT WIN32)
 install(TARGETS ${SURVIVE_BUILT_PLUGINS} DESTINATION lib/libsurvive/plugins)
 install(TARGETS survive DESTINATION lib/libsurvive)
 install(TARGETS survive DESTINATION lib)
+else()
+install(TARGETS ${SURVIVE_BUILT_PLUGINS} DESTINATION bin/plugins)
+install(TARGETS survive DESTINATION bin)
+endif()

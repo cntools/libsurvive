@@ -147,14 +147,30 @@ endif()
 
 find_program(DOTNET dotnet)
 if(DOTNET)
+  SET(DOTNET_RUNTIME_FLAGS "")
+  if(WIN32)
+	if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+		SET(DOTNET_RUNTIME_FLAGS "--runtime;win-x64") 
+
+	elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
+		SET(DOTNET_RUNTIME_FLAGS "--runtime;win-x86") 
+	endif()
+  endif()
+  
+	message("${DOTNET} build -c Release ${DOTNET_RUNTIME_FLAGS}")
   execute_process(
-    COMMAND ${DOTNET} build -c Release
+    COMMAND ${DOTNET} build -c Release ${DOTNET_RUNTIME_FLAGS}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bindings/cs/)
 
   file(GLOB_RECURSE CS_BINDINGS
     "${CMAKE_CURRENT_SOURCE_DIR}/bindings/cs/libsurvive.net/bin/Release/*.dll")
 
-  install(FILES ${CS_BINDINGS} DESTINATION "lib")
+  install(FILES ${CS_BINDINGS} DESTINATION "bin")
+
+  file(GLOB_RECURSE CS_DEMO
+    "${CMAKE_CURRENT_SOURCE_DIR}/bindings/cs/Demo/bin/Release/Demo.*")
+
+  install(FILES ${CS_DEMO} DESTINATION "bin")
 endif()
 
 if(EXISTS /etc/bash_completion.d)
