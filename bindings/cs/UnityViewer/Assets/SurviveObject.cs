@@ -67,4 +67,12 @@ public class SurviveObject : MonoBehaviour {
 			updatedObject.transform.localRotation = newRotation;
 		}
 	}
+	
+	void OnApplicationQuit() {
+		if (survive != null){
+			survive.Close();
+			survive.Dispose();		
+			survive = null;
+		}
+	}
 }
