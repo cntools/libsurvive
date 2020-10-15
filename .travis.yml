@@ -30,7 +30,7 @@ before_deploy:
 deploy:
   - provider: releases
     api_key: $GITHUB_TOKEN
-    file: libsurvive-$TRAVIS_TAG-$TRAVIS_OS_NAME-$CONFIG.$USE_SINGLE_PRECISION.7z
+    file: libsurvive-$TRAVIS_TAG-$TRAVIS_OS_NAME-$CONFIG$RELEASE_FILE_SUFFIX.zip
     skip_cleanup: true
     on:
       branch: master
