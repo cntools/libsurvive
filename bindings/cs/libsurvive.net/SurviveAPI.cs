@@ -44,6 +44,7 @@ public class SurviveAPIOObject : IDisposable {
 public class SurviveAPI : IDisposable {
 	protected IntPtr actx;
 	protected bool threadStarted = false;
+	private SurviveSimpleLogFn logFunction;
 
 	public void Dispose() { Close(); }
 
@@ -66,7 +67,9 @@ public class SurviveAPI : IDisposable {
 		if (logFunc == null) {
 			logFunc = InfoEvent;
 		}
-		actx = Cfunctions_api.survive_simple_init_with_logger(args.Length, args, logFunc);
+
+		logFunction = logFunc;
+		actx = Cfunctions_api.survive_simple_init_with_logger(args.Length, args, logFunction);
 
 		if (actx == IntPtr.Zero) {
 			throw new Exception("There was a problem initializing the lib!");
