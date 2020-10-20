@@ -113,7 +113,7 @@ enum vive_report_ids {
 	// ..5(  ]...  .wat  chma  n...  ....  .Val  veBu
 	// 69 6c 64 65   72 30 32 00   00 09 00 0e   11 00 00 bd   26 1a 02 0a   02 f1 52 2c   5c 00 00 00   00 00 00 00 |
 	// ilde  r02.  ....  ....  &...  ..R,  \...  ....
-	VIVE_REPORT_USB_TRACKER_UNKNOWN = 0x13,
+	VIVE_REPORT_VERSION_ALT = 0x13,
 
 	// Tracker/lh1/usb: (steamvr -> device): 16 01 00 00   00
 	VIVE_REPORT_REBOOT = 0x16
@@ -183,6 +183,7 @@ static uint8_t vive_magic_power_off[] = {
 	0x00, 0xd0, 0xf7, 0x33, 0x00, 0x3c, 0x68, 0x29, 0x65, 0x24, 0xf9, 0x33, 0x00, 0x00, 0x00, 0x00,
 };
 static uint8_t vive_magic_raw_mode_1[] = {VIVE_REPORT_CHANGE_MODE, 0x01, 0x00, 0x00, 0x00};
+static uint8_t vive_request_version_info[] = {VIVE_REPORT_VERSION};
 
 static uint8_t vive_magic_rf_raw_mode_0[] = {
 	VIVE_REPORT_COMMAND, VIVE_COMMAND_CHANGE_PROTOCOL, 0x6, 0x01, 0x00, 0x00, 0x02, 0x00, 0x00};
@@ -916,6 +917,7 @@ static inline survive_timecode fix_time24(SurviveContext *ctx, survive_timecode 
 	return upper_ref | time24;
 }
 
+static void parse_tracker_version_info(SurviveObject *so, uint8_t *data, size_t size);
 static int survive_get_config(char **config, SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int iface,
 							  int send_extra_magic) {
 	SurviveContext *ctx = sv->ctx;
@@ -1014,6 +1016,15 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 
 	*config = SV_MALLOC(len + 1);
 	memcpy(*config, uncompressed_data, len);
+
+	memcpy(cfgbuff, vive_request_version_info, sizeof(vive_request_version_info));
+	if ((ret = get_feature_report_timeout_locked(ctx, dev, iface, cfgbuff, 0x42)) < 0) {
+		SV_INFO("Could not read config data (after first packet) on device %s:%d (count: %d)",
+				usbInfo->device_info->name, iface, count);
+		return -2;
+	} else {
+		parse_tracker_version_info(usbInfo->so, cfgbuff + 1, ret - 1);
+	}
 
 	return len;
 }
@@ -2666,6 +2677,10 @@ static inline uint32_t read_buffer32(uint8_t *readdata, int idx) {
 	return rtn;
 }
 
+static uint32_t earliest_working_revision(uint32_t hw_id) { return 1541806442; }
+
+static uint32_t latest_working_revision(uint32_t hw_id) { return 1597880106; }
+
 static void parse_tracker_version_info(SurviveObject *so, uint8_t *data, size_t size) {
 	SurviveContext *ctx = so->ctx;
 
@@ -2673,9 +2688,9 @@ static void parse_tracker_version_info(SurviveObject *so, uint8_t *data, size_t 
 	struct {
 		uint32_t revision;
 		uint32_t some_other_number;
-		char fw_name[31];
-		uint16_t a, b, c, d;
-		uint8_t e;
+		char fw_name[32];
+		uint32_t hardware_id;
+		uint32_t a;
 		uint16_t fpga_major_version;
 		uint8_t fpga_minor_version;
 		uint8_t fpga_patch_version;
@@ -2686,9 +2701,21 @@ static void parse_tracker_version_info(SurviveObject *so, uint8_t *data, size_t 
 	} version_info;
 #pragma pack(pop)
 	memcpy(&version_info, data, sizeof(version_info));
-	SV_INFO("Device %s has FW version %u and FPGA version %u/%u/%u; named %31s", so->codename, version_info.revision,
-			version_info.fpga_major_version, version_info.fpga_minor_version, version_info.fpga_patch_version,
-			version_info.fw_name);
+	SV_INFO("Device %s has watchman FW version %u and FPGA version %u/%u/%u; named '%31s'. Hardware id 0x%08x",
+			so->codename, version_info.revision, version_info.fpga_major_version, version_info.fpga_minor_version,
+			version_info.fpga_patch_version, version_info.fw_name, version_info.hardware_id);
+	uint32_t earliest_version = earliest_working_revision(version_info.hardware_id);
+	uint32_t latest_version = latest_working_revision(version_info.hardware_id);
+	if (earliest_version > version_info.revision) {
+		SV_WARN("The detected version for device %s is %d; the earliest that is verified to work is %d. You may want "
+				"to upgrade. If this version seems to work, please create an issue at "
+				"https://github.com/cntools/libsurvive/issues with this message so we can update the version list.",
+				so->codename, version_info.revision, earliest_version)
+	} else if (latest_version < version_info.revision) {
+		SV_WARN("The detected version for device %s is %d; the latest that is verified to work is %d. You may have to "
+				"upgrade libsurvive to support this device.",
+				so->codename, version_info.revision, latest_version);
+	}
 }
 
 static void parse_tracker_info(SurviveObject *so, uint8_t id, uint8_t *readdata, size_t size) {
@@ -2703,6 +2730,7 @@ static void parse_tracker_info(SurviveObject *so, uint8_t id, uint8_t *readdata,
 		SV_INFO("Info 4: ")
 		goto dump_data;
 	}
+	case VIVE_REPORT_VERSION_ALT:
 	case VIVE_REPORT_VERSION: {
 		parse_tracker_version_info(so, readdata, size);
 		break;
