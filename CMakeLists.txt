@@ -190,16 +190,18 @@ if(PYTHON_GENERATED_DIR)
   find_package (Python3 COMPONENTS Interpreter Development)
   find_program(CTYPESGEN ctypesgen REQUIRED)
 
-  message("-- Building python bindings file to ${PYTHON_GENERATED_DIR}")
-  message("-- ctypesgen found at ${CTYPESGEN}") 
-  get_property(include_directories DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
-  set(INCLUDE_FLAGS "")
-  foreach(include_directory ${include_directories})
-    list(APPEND INCLUDE_FLAGS "-I${include_directory}")
-  endforeach()
+  if(CTYPESGEN)
+    message("-- Building python bindings file to ${PYTHON_GENERATED_DIR}")
+    message("-- ctypesgen found at ${CTYPESGEN}") 
+    get_property(include_directories DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
+    set(INCLUDE_FLAGS "")
+    foreach(include_directory ${include_directories})
+      list(APPEND INCLUDE_FLAGS "-I${include_directory}")
+    endforeach()
 
-  add_custom_target(pysurvive ALL COMMAND ${Python3_EXECUTABLE} ${CTYPESGEN} ${CMAKE_SOURCE_DIR}/include/libsurvive/*.h ${INCLUDE_FLAGS} --no-macros -L$<TARGET_FILE_DIR:survive> -llibsurvive.so
-    --strip-prefix=survive_ -P Survive -o ${PYTHON_GENERATED_DIR}pysurvive_generated.py )
+    add_custom_target(pysurvive ALL COMMAND ${Python3_EXECUTABLE} ${CTYPESGEN} ${CMAKE_SOURCE_DIR}/include/libsurvive/*.h ${INCLUDE_FLAGS} --no-macros -L$<TARGET_FILE_DIR:survive> -llibsurvive.so
+      --strip-prefix=survive_ -P Survive -o ${PYTHON_GENERATED_DIR}pysurvive_generated.py )
+  endif()
 endif()
 
 include(GNUInstallDirs)

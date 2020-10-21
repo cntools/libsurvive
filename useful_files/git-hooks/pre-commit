@@ -1,5 +1,8 @@
 #!/bin/sh
 
+ROOT=`git rev-parse --show-toplevel`
+
+git add $ROOT/bindings/python/pysurvive/pysurvive_generated.py
 
 DIRNAME=`dirname "$0"`
 python2.7 $DIRNAME/pre-commit.py $@

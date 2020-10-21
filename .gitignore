@@ -58,6 +58,5 @@ build
 
 venv
 .eggs/
-bindings/python/pysurvive/pysurvive_generated.py
 dist/
 pysurvive.egg-info/

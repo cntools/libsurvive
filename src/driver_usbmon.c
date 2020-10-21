@@ -17,8 +17,6 @@
 
 #include "driver_vive.h"
 
-#include <libusb-1.0/libusb.h>
-#include <pcap/usb.h>
 #include <zlib.h>
 
 STATIC_CONFIG_ITEM(USBMON_RECORD, "usbmon-record", 's', "File to save .pcap to.", 0)
@@ -75,6 +73,8 @@ static const int DEVICES_CNT = sizeof(devices) / sizeof(vive_device_t);
 typedef struct SurviveDriverUSBMon {
 	SurviveContext *ctx;
 	pcap_t *pcap;
+	int datalink;
+
 	double playback_factor;
 	double time_now;
 	double run_time;
@@ -102,6 +102,10 @@ vive_device_inst_t *find_device_inst(SurviveDriverUSBMon *d, int bus_id, int dev
 		if (d->usb_devices[i].bus_id == bus_id && d->usb_devices[i].dev_id == dev_id)
 			return &d->usb_devices[i];
 	}
+
+	struct SurviveContext *ctx = d->ctx;
+	SV_WARN("Could not find device for 0x%04x 0x%04x", bus_id, dev_id);
+
 	return 0;
 }
 
@@ -238,7 +242,7 @@ static usb_info_t *get_usb_info_from_file(const char *fname) {
 	usb_info_t *rtn = SV_CALLOC(MAX_USB_DEVS, sizeof(usb_info_t));
 	size_t count = 0;
 	FILE *f = fopen(fname, "r");
-	while (!feof(f)) {
+	while (f && !feof(f)) {
 		char name[128];
 		if (fscanf(f, "%hu %hu %d %d %s ", &rtn[count].vid, &rtn[count].pid, &rtn[count].bus_id, &rtn[count].dev_id,
 				   name) == 5) {
@@ -711,6 +715,12 @@ static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
 			"pcap_open_live() failed due to [%s] - You probably need to call 'sudo modprobe usbmon'. If you want "
 			"to capture as a normal user; try 'sudo setfacl -m u:$USER:r /dev/usbmon*'";
 		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, isPlaybackMode ? playback_error : live_error, sp->errbuf);
+		return SURVIVE_DRIVER_ERROR;
+	}
+
+	sp->datalink = pcap_datalink(sp->pcap);
+	if (sp->datalink != DLT_USBPCAP && sp->datalink != DLT_USB_LINUX_MMAPPED) {
+		SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "USBMON driver does not support datalink type %d", sp->datalink);
 		return SURVIVE_DRIVER_ERROR;
 	}
 

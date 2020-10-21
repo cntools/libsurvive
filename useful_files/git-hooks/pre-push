@@ -5,7 +5,7 @@ ROOT=`git rev-parse --show-toplevel`
 cd $ROOT
 mkdir -p bin
 cd bin
-cmake -DUSE_ASAN=ON -DENABLE_WARNINGS_AS_ERRORS=ON -DENABLE_TESTS=ON -DHAVE_FOPENCOOKIE=ON ..
+cmake -DUSE_ASAN=ON -DENABLE_WARNINGS_AS_ERRORS=ON -DENABLE_TESTS=ON -DHAVE_FOPENCOOKIE=ON -DPYTHON_GENERATED_DIR=$ROOT/bindings/python/pysurvive ..
 make -j4 run_all_tests
 
 cd $ROOT
