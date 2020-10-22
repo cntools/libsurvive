@@ -31,8 +31,8 @@ deploy:
   - provider: releases
     api_key: $GITHUB_TOKEN
     file:
-	- libsurvive-$TRAVIS_TAG-$TRAVIS_OS_NAME-$CONFIG$RELEASE_FILE_SUFFIX.zip
-	- dist/*.whl
+      - libsurvive-$TRAVIS_TAG-$TRAVIS_OS_NAME-$CONFIG$RELEASE_FILE_SUFFIX.zip
+      - dist/*.whl
     skip_cleanup: true
     on:
       branch: master
