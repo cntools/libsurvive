@@ -97,6 +97,40 @@ typedef struct SurviveDriverUSBMon {
 	bool *keepRunning;
 } SurviveDriverUSBMon;
 
+#define USBPCAP_CONTROL_STAGE_SETUP 0
+#define USBPCAP_CONTROL_STAGE_DATA 1
+#define USBPCAP_CONTROL_STAGE_STATUS 2
+#define USBPCAP_CONTROL_STAGE_COMPLETE 3
+
+#pragma pack(push, 1)
+typedef struct {
+	uint16_t headerLen; /* This header length */
+	uint64_t irpId;		/* I/O Request packet ID */
+	uint32_t status;	/* USB status code
+							   (on return from host controller) */
+	uint16_t function;	/* URB Function */
+	uint8_t info;		/* I/O Request info */
+
+	uint16_t bus;	  /* bus (RootHub) number */
+	uint16_t device;  /* device address */
+	uint8_t endpoint; /* endpoint number and transfer direction */
+	uint8_t transfer; /* transfer type */
+
+	uint32_t dataLength; /* Data length */
+} USBPCAP_BUFFER_PACKET_HEADER, *PUSBPCAP_BUFFER_PACKET_HEADER;
+
+typedef struct {
+	USBPCAP_BUFFER_PACKET_HEADER header;
+	uint8_t stage;
+} USBPCAP_BUFFER_CONTROL_HEADER, *PUSBPCAP_BUFFER_CONTROL_HEADER;
+
+typedef union USBPCAP_BUFFER_UNION {
+	USBPCAP_BUFFER_PACKET_HEADER hdr;
+	USBPCAP_BUFFER_CONTROL_HEADER ctrl;
+} USBPCAP_BUFFER_UNION;
+
+#pragma pack(pop)
+
 vive_device_inst_t *find_device_inst(SurviveDriverUSBMon *d, int bus_id, int dev_id) {
 	for (size_t i = 0; i < d->usb_devices_cnt; i++) {
 		if (d->usb_devices[i].bus_id == bus_id && d->usb_devices[i].dev_id == dev_id)
@@ -168,7 +202,8 @@ static bool is_command_setup(const struct _usb_header_mmapped *usbp) {
 		   usbp->s.setup.wValue == 0x3ff;
 }
 
-static void ingest_config_request(vive_device_inst_t *dev, const struct _usb_header_mmapped *usbp, uint8_t *pktData) {
+static void ingest_config_request(vive_device_inst_t *dev, const struct _usb_header_mmapped *usbp,
+								  const uint8_t *pktData) {
 	if (dev->so == 0) {
 		return;
 	}
@@ -252,7 +287,10 @@ static usb_info_t *get_usb_info_from_file(const char *fname) {
 	return rtn;
 }
 
-static usb_info_t *get_usb_info_from_libusb() {
+#ifdef HIDAPI
+static usb_info_t *get_usb_info_from_os() { return 0; }
+#else
+static usb_info_t *get_usb_info_from_os() {
 	usb_info_t *rtn = 0;
 
 	libusb_context *context = NULL;
@@ -296,6 +334,7 @@ static usb_info_t *get_usb_info_from_libusb() {
 
 	return rtn;
 }
+#endif
 
 static size_t fill_device_inst(SurviveContext *ctx, vive_device_inst_t *insts, const usb_info_t *usb_dev,
 							   FILE *save_file) {
@@ -371,7 +410,7 @@ static int setup_usb_devices(SurviveDriverUSBMon *sp) {
 		sprintf(fname, "%s.usbdevs", usbmon_playback);
 		usbInfo = get_usb_info_from_file(fname);
 	} else {
-		usbInfo = get_usb_info_from_libusb();
+		usbInfo = get_usb_info_from_os();
 	}
 
 	sp->usb_devices_cnt = fill_device_inst(ctx, sp->usb_devices, usbInfo, listing_file);
@@ -442,6 +481,55 @@ static double survive_usbmon_playback_run_time(const SurviveContext *ctx, void *
 	return driver->time_now;
 }
 
+#define USBPCAP_TRANSFER_ISOCHRONOUS 0
+#define USBPCAP_TRANSFER_INTERRUPT 1
+#define USBPCAP_TRANSFER_CONTROL 2
+#define USBPCAP_TRANSFER_BULK 3
+#define USBPCAP_TRANSFER_IRP_INFO 0xFE
+#define USBPCAP_TRANSFER_UNKNOWN 0xFF
+
+const uint8_t *fill_usb_header(const void *_hdr, struct pcap_pkthdr *pkthdr, pcap_usb_header_mmapped *usbp) {
+	const USBPCAP_BUFFER_PACKET_HEADER *hdr = _hdr;
+
+	usbp->id = hdr->irpId;
+	usbp->event_type = 0; // ???
+	usbp->transfer_type = hdr->transfer;
+	usbp->endpoint_number = hdr->endpoint;
+	usbp->device_address = hdr->device;
+	usbp->bus_id = hdr->bus;
+
+	usbp->status = hdr->status;
+	usbp->urb_len = 0; // ???
+	usbp->data_len = hdr->dataLength;
+	usbp->data_flag = hdr->dataLength == 0;
+	usbp->ts_sec = pkthdr->ts.tv_sec;
+	usbp->ts_usec = pkthdr->ts.tv_usec;
+
+	usbp->setup_flag = 1;
+
+	const uint8_t *data_ptr = (const uint8_t *)_hdr + hdr->headerLen;
+	if (hdr->transfer == USBPCAP_TRANSFER_CONTROL) {
+		const USBPCAP_BUFFER_CONTROL_HEADER *ctrl = _hdr;
+		switch (ctrl->stage) {
+		case USBPCAP_CONTROL_STAGE_SETUP:
+			usbp->setup_flag = 0;
+			usbp->event_type = 'S';
+			assert(hdr->dataLength == 8);
+			memcpy(&usbp->s.setup, data_ptr, hdr->dataLength);
+			break;
+		case USBPCAP_CONTROL_STAGE_COMPLETE:
+			usbp->event_type = 'C';
+			break;
+		case USBPCAP_CONTROL_STAGE_DATA:
+			break;
+		case USBPCAP_CONTROL_STAGE_STATUS:
+			break;
+		}
+	} else if (hdr->transfer == USBPCAP_TRANSFER_INTERRUPT) {
+	}
+
+	return data_ptr;
+}
 void *pcap_thread_fn(void *_driver) {
 	SurviveDriverUSBMon *driver = _driver;
 	struct SurviveContext *ctx = driver->ctx;
@@ -449,21 +537,31 @@ void *pcap_thread_fn(void *_driver) {
 
 	struct pcap_pkthdr *pkthdr = 0;
 	const usb_header_t *usbp = 0;
+	pcap_usb_header_mmapped usbpcap_translation = {0};
 
 	SV_INFO("Pcap thread started");
 	double start_time = 0;
 	double real_time_start = timestamp_in_s();
 	while ((driver->keepRunning == 0 || *driver->keepRunning) && ctx->currentError == SURVIVE_OK) {
-		int result = pcap_next_ex(driver->pcap, &pkthdr, (const uint8_t **)&usbp);
+		void *hdr = 0;
+		int result = pcap_next_ex(driver->pcap, &pkthdr, (const uint8_t **)&hdr);
+
 		switch (result) {
 		case 0:
 			goto continue_loop;
 		case 1: {
-			// if (usbp = (usb_header_t *)pcap_next(driver->pcap, &pkthdr)) {
+			const uint8_t *pktData = (uint8_t *)&usbp[1];
+			if (driver->datalink == DLT_USBPCAP) {
+				pktData = fill_usb_header(hdr, pkthdr, &usbpcap_translation);
+				usbp = &usbpcap_translation;
+			} else {
+				usbp = hdr;
+				// Packet data is directly after the packet header
+				pktData = (uint8_t *)&usbp[1];
+			}
+
 			vive_device_inst_t *dev = find_device_inst(driver, usbp->bus_id, usbp->device_address);
 
-			// Packet data is directly after the packet header
-			uint8_t *pktData = (uint8_t *)&usbp[1];
 			if (driver->pcapDumper && (dev || driver->record_all)) {
 				pcap_dump((uint8_t *)driver->pcapDumper, pkthdr, (uint8_t *)usbp);
 			}
@@ -587,9 +685,11 @@ void *pcap_thread_fn(void *_driver) {
 					goto continue_loop;
 				}
 
+				bool is_standard_endpoint =
+					interface == USB_IF_TRACKER_INFO && ((usbp->endpoint_number >> 5) & 0x3) == 0;
 				bool forward_to_data_cb = driver->record_only == false &&
 										  (interface != 0 && (dev->hasConfiged || interface == USB_IF_TRACKER_INFO)) &&
-										  dev->so != 0;
+										  dev->so != 0 && !is_standard_endpoint && usbp->data_len > 0;
 
 				if (forward_to_data_cb) {
 					SurviveUSBInterface si = {.ctx = ctx,
