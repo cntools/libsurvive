@@ -506,6 +506,7 @@ void vive_switch_mode(struct SurviveUSBInfo *driverInfo, enum LightcapMode light
 			int r = update_feature_report_async(driverInfo->handle, 0, buffer, buffer_length);
 			if (r != buffer_length) {
 				SV_WARN("Could not send raw mode to %s (%d)", w->codename, r);
+				return;
 			}
 
 			if (!survive_device_is_rf(driverInfo->device_info)) {
@@ -2861,10 +2862,8 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 	case USB_IF_WATCHMAN2: {
 		SurviveObject *w = obj;
 		if (id == VIVE_REPORT_RF_WATCHMAN) {
-			assert(size == 29);
-			handle_watchman(w, readdata);
-		} else if (id == VIVE_REPORT_RF_WATCHMANx2) {
-			assert(size == 29 * 2);
+			handle_watchman(w, readdata);			
+		} else if (id == VIVE_REPORT_RF_WATCHMANx2) {			
 			handle_watchman(w, readdata);
 			handle_watchman(w, readdata + 29);
 		} else if (id == VIVE_REPORT_RF_TURN_OFF) {

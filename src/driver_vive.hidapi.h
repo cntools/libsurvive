@@ -6,14 +6,19 @@
 
 static inline int update_feature_report_async(USBHANDLE dev, uint16_t iface, uint8_t *data, int datalen) {
 	errno = 0;
-	int r = hid_send_feature_report(dev->interfaces[iface], data, datalen);
+	uint8_t buffer[255];
+	memcpy(buffer, data, datalen);
+	int r = hid_send_feature_report(dev->interfaces[iface], buffer, sizeof(buffer));
 	assert(errno == 0);
-	// wprintf( L"HUR: (%p) %d (%d) [%d] %S\n", dev, r, datalen, data[0], hid_error(dev->interfaces[iface]) );
-	return r;
+	if (r == -1) {
+		wprintf(L"async: (%p) %d (%d) [%d] %S\n", dev, r, datalen, data[0], hid_error(dev->interfaces[iface]));
+		return -1; 
+	}
+	return datalen;
 }
 
 static inline int update_feature_report(USBHANDLE dev, uint16_t iface, uint8_t *data, int datalen) {
-	int r = hid_send_feature_report(dev->interfaces[iface], data, datalen);
+	int r = update_feature_report_async(dev, iface, data, datalen);
 	// wprintf( L"HUR: (%p) %d (%d) [%d] %S\n", dev, r, datalen, data[0], hid_error(dev->interfaces[iface]) );
 	return r;
 }
