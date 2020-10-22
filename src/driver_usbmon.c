@@ -1,6 +1,7 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
+#define WIN32_LEAN_AND_MEAN
 
 #include "errno.h"
 #include "os_generic.h"
@@ -16,8 +17,6 @@
 #include <pcap.h>
 
 #include "driver_vive.h"
-
-#include <zlib.h>
 
 STATIC_CONFIG_ITEM(USBMON_RECORD, "usbmon-record", 's', "File to save .pcap to.", 0)
 STATIC_CONFIG_ITEM(USBMON_PLAYBACK, "usbmon-playback", 's', "File to replay .pcap from.", 0)
@@ -339,6 +338,9 @@ static usb_info_t *get_usb_info_from_os() {
 static size_t fill_device_inst(SurviveContext *ctx, vive_device_inst_t *insts, const usb_info_t *usb_dev,
 							   FILE *save_file) {
 	size_t rtn = 0;
+	if(usb_dev == 0)
+		return 0;
+
 	while (usb_dev->vid != 0 && usb_dev->pid != 0) {
 		bool foundDevice = false;
 		for (vive_device_t *dev = devices; dev->vid != 0; dev++) {
@@ -769,7 +771,14 @@ static FILE *open_playback(const char *fn, const char *mode) {
 #endif
 }
 
+
 static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
+	HANDLE hPipe = CreateNamedPipe(TEXT("\\\\.\\pipe\\wireshark"), PIPE_ACCESS_DUPLEX,
+							PIPE_TYPE_BYTE | PIPE_READMODE_BYTE |
+								PIPE_WAIT, // FILE_FLAG_FIRST_PIPE_INSTANCE is not needed but forces CreateNamedPipe(..)
+										   // to fail if the pipe already exists...
+							1, 1024 * 16, 1024 * 16, NMPWAIT_USE_DEFAULT_WAIT, NULL);
+							
 	int enable = survive_configi(ctx, "usbmon", SC_GET, 0);
 	const char *usbmon_record = usbmon_record_file(ctx);
 	const char *usbmon_playback = usbmon_playback_file(ctx);
@@ -804,16 +813,25 @@ static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
 #endif
 		survive_install_run_time_fn(ctx, survive_usbmon_playback_run_time, sp);
 	} else {
+		#ifdef WIN32
+		sp->pcap = pcap_hopen_offline(hPipe, sp->errbuf);
+		#else
 		sp->pcap = pcap_open_live("usbmon0", PCAP_ERRBUF_SIZE, 0, -1, sp->errbuf);
+		#endif
 	}
 
 	if (sp->pcap == NULL) {
 
 		const char *playback_error = "pcap_fopen_offline failed due to [%s] - The file either doesn't exist, is "
 									 "corrupted, or uses compression which isn't enabled for this driver binary";
+#ifdef WIN32
+		const char *live_error =
+			"pcap_open_live() failed due to [%s]";
+#else		
 		const char *live_error =
 			"pcap_open_live() failed due to [%s] - You probably need to call 'sudo modprobe usbmon'. If you want "
 			"to capture as a normal user; try 'sudo setfacl -m u:$USER:r /dev/usbmon*'";
+#endif
 		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, isPlaybackMode ? playback_error : live_error, sp->errbuf);
 		return SURVIVE_DRIVER_ERROR;
 	}
@@ -841,7 +859,7 @@ static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
 	}
 
 	int device_count = setup_usb_devices(sp);
-	if (device_count) {
+	if (device_count || true) {
 		// sp->keepRunning = true;
 		// sp->pcap_thread = OGCreateThread(pcap_thread_fn, sp);
 		// OGNameThread(sp->pcap_thread, "pcap_thread");

@@ -94,18 +94,29 @@ endif()
 
 IF(NOT WIN32)
   LIST(APPEND PLUGINS driver_udp)
-
-	set(driver_vive_ADDITIONAL_LIBS usb-1.0)
-
-	find_library(PCAP_LIBRARY pcap)
-  if(PCAP_LIBRARY)
-    list(APPEND PLUGINS driver_usbmon)
-    set(driver_usbmon_ADDITIONAL_LIBS "${PCAP_LIBRARY};z" driver_vive)
-  else()
-    message("Can't build usbmon plugin -- pcap library was not found")
-  endif()
+  set(driver_vive_ADDITIONAL_LIBS usb-1.0)
 endif()
 
+find_file(WPCAP_DLL NAMES wpcap.dll PATHS "C:/Windows/System32/Npcap")
+if(WPCAP_DLL)
+	file(DOWNLOAD https://nmap.org/npcap/dist/npcap-sdk-1.06.zip ${CMAKE_CURRENT_BINARY_DIR}/npcap-sdk-1.06.zip
+       TIMEOUT 5  # seconds
+       TLS_VERIFY ON)
+	file(ARCHIVE_EXTRACT INPUT ${CMAKE_CURRENT_BINARY_DIR}/npcap-sdk-1.06.zip DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/npcap)
+	include_directories(${CMAKE_CURRENT_BINARY_DIR}/npcap/Include)
+endif()
+
+find_library(PCAP_LIBRARY NAMES wpcap pcap PATHS ${CMAKE_CURRENT_BINARY_DIR}/npcap/Lib/x64 ${CMAKE_CURRENT_BINARY_DIR}/npcap/Lib REQUIRED)
+if(PCAP_LIBRARY)
+    list(APPEND PLUGINS driver_usbmon)
+    set(driver_usbmon_ADDITIONAL_LIBS "${PCAP_LIBRARY}" driver_vive)
+	IF(HAVE_ZLIB_H)
+		set(driver_usbmon_ADDITIONAL_LIBS "${driver_usbmon_ADDITIONAL_LIBS};z")
+	endif()
+else()
+    message("Can't build usbmon plugin -- pcap library was not found")
+endif()
+  
 set(poser_barycentric_svd_ADDITIONAL_SRCS barycentric_svd/barycentric_svd.c )
 
 add_custom_target(survive_plugins)
