@@ -186,7 +186,7 @@ file(GLOB REDIST_HEADERS
 )
 install(FILES ${REDIST_HEADERS} DESTINATION include/libsurvive/redist)
 
-if(PYTHON_GENERATED_DIR)
+if(NOT WIN32 AND PYTHON_GENERATED_DIR)
   find_package (Python3 COMPONENTS Interpreter Development)
   find_program(CTYPESGEN ctypesgen REQUIRED)
 

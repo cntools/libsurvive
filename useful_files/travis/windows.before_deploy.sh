@@ -1,1 +1,3 @@
-7z a libsurvive-$TRAVIS_TAG-$TRAVIS_OS_NAME-$CONFIG.7z ./bin/INSTALL_ROOT/ ./*/pysurvive-*.egg
+set -o xtrace
+
+7z a libsurvive-$TRAVIS_TAG-$TRAVIS_OS_NAME-$CONFIG.zip ./bin/INSTALL_ROOT/*

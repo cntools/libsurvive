@@ -30,6 +30,7 @@ before_deploy:
 deploy:
   - provider: releases
     api_key: $GITHUB_TOKEN
+    file_glob: true
     file:
       - libsurvive-$TRAVIS_TAG-$TRAVIS_OS_NAME-$CONFIG$RELEASE_FILE_SUFFIX.zip
       - dist/*.whl
