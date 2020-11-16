@@ -42,6 +42,7 @@ typedef struct config_group {
 	config_entry *config_entries;
 	uint16_t	used_entries;
 	uint16_t	max_entries;
+	og_mutex_t write_lock;
 	SurviveContext * ctx;
 } config_group;
 
@@ -61,14 +62,14 @@ bool config_read_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8
 void config_read(SurviveContext* sctx, const char* path);
 void config_save(SurviveContext *ctx);
 
-const FLT config_set_float(config_group *cg, const char *tag, const FLT value);
-const uint32_t config_set_uint32(config_group *cg, const char *tag, const uint32_t value);
+FLT config_set_float(config_group *cg, const char *tag, FLT value);
+uint32_t config_set_uint32(config_group *cg, const char *tag, uint32_t value);
 const char* config_set_str(config_group *cg, const char *tag, const char* value);
 
 //These functions look for a parameter in a specific group, and then chose the best to return. If the parameter does not exist, default will be written.
-FLT config_read_float(config_group *cg, const char *tag, const FLT def);
+FLT config_read_float(config_group *cg, const char *tag, FLT def);
 uint16_t config_read_float_array(config_group *cg, const char *tag, FLT* values, const FLT* def, uint8_t count);
-uint32_t config_read_uint32(config_group *cg, const char *tag, const uint32_t def);
+uint32_t config_read_uint32(config_group *cg, const char *tag, uint32_t def);
 const char* config_read_str(config_group *cg, const char *tag, const char *def);
 
 //These are for the internal non-function configuration system.

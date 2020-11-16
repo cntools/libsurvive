@@ -262,6 +262,8 @@ void destroy_config_entry(config_entry *ce) {
 
 void init_config_group(config_group *cg, uint8_t count, SurviveContext * ctx) {
 	uint16_t i = 0;
+	cg->write_lock = OGCreateMutex();
+
 	cg->used_entries = 0;
 	cg->max_entries = count;
 	cg->config_entries = NULL;
@@ -286,7 +288,7 @@ void destroy_config_group(config_group *cg) {
 	for (i = 0; i < cg->max_entries; ++i) {
 		destroy_config_entry(cg->config_entries + i);
 	}
-
+	OGDeleteMutex(cg->write_lock);
 	free(cg->config_entries);
 }
 
@@ -421,17 +423,34 @@ void sstrcpy(char **dest, const char *src) {
 	// printf("%s -> %s\r\n", *dest, src);
 }
 
+static void config_group_lock(config_group *cg) {
+	if (cg == 0)
+		return;
+
+	OGLockMutex(cg->write_lock);
+}
+
+static void config_group_unlock(config_group *cg) {
+	if (cg == 0)
+		return;
+
+	OGUnlockMutex(cg->write_lock);
+}
+
 config_entry *find_config_entry(config_group *cg, const char *tag) {
 	if (cg == NULL || tag == NULL) {
 		return NULL;
 	}
 
+	OGLockMutex(cg->write_lock);
 	uint16_t i = 0;
 	for (i = 0; i < cg->used_entries; ++i) {
 		if (strcmp(cg->config_entries[i].tag, tag) == 0) {
+			config_group_unlock(cg);
 			return cg->config_entries + i;
 		}
 	}
+	config_group_unlock(cg);
 	return NULL;
 }
 
@@ -502,6 +521,8 @@ config_entry *next_unused_entry(config_group *cg, const char * tag) {
 }
 
 const char *config_set_str(config_group *cg, const char *tag, const char *value) {
+	OGLockMutex(cg->write_lock);
+
 	config_entry *cv = find_config_entry(cg, tag);
 	if (cv == NULL)
 		cv = next_unused_entry(cg,tag);
@@ -517,17 +538,21 @@ const char *config_set_str(config_group *cg, const char *tag, const char *value)
 
 	update_list_t * t = cv->update_list;
 	while( t ) { *((const char **)t->value) = value; t = t->next; }
+	config_group_unlock(cg);
 
 	return value;
 }
 
-const uint32_t config_set_uint32(config_group *cg, const char *tag, const uint32_t value) {
+uint32_t config_set_uint32(config_group *cg, const char *tag, const uint32_t value) {
+	config_group_lock(cg);
 	config_entry *cv = find_config_entry(cg, tag);
 	if (cv == NULL)
 		cv = next_unused_entry(cg,tag);
 
-	if (cv == NULL)
+	if (cv == NULL) {
+		config_group_unlock(cg);
 		return value;
+	}
 
 	sstrcpy(&(cv->tag), tag);
 	cv->numeric.i = value;
@@ -535,14 +560,16 @@ const uint32_t config_set_uint32(config_group *cg, const char *tag, const uint32
 
 	update_list_t * t = cv->update_list;
 	while( t ) { *((uint32_t*)t->value) = value; t = t->next; }
+	config_group_unlock(cg);
 
 	return value;
 }
 
-const FLT config_set_float(config_group *cg, const char *tag, const FLT value) {
+FLT config_set_float(config_group *cg, const char *tag, const FLT value) {
 	if (cg == NULL)
 		return value;
 
+	config_group_lock(cg);
 	config_entry *cv = find_config_entry(cg, tag);
 	if (cv == NULL)
 		cv = next_unused_entry(cg,tag);
@@ -554,11 +581,13 @@ const FLT config_set_float(config_group *cg, const char *tag, const FLT value) {
 	
 	update_list_t * t = cv->update_list;
 	while( t ) { *((FLT*)t->value) = value; t = t->next; }
+	config_group_unlock(cg);
 
 	return value;
 }
 
 const FLT *config_set_float_a(config_group *cg, const char *tag, const FLT *values, uint8_t count) {
+	config_group_lock(cg);
 	config_entry *cv = find_config_entry(cg, tag);
 	if (cv == NULL)
 		cv = next_unused_entry(cg,tag);
@@ -573,6 +602,7 @@ const FLT *config_set_float_a(config_group *cg, const char *tag, const FLT *valu
 	cv->type = CONFIG_FLOAT_ARRAY;
 	cv->elements = count;
 
+	config_group_unlock(cg);
 	return values;
 }
 
