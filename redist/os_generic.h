@@ -75,44 +75,47 @@ OSG_INLINE void OGSleep(int is);
 OSG_INLINE int OGUSleep(int ius);
 OSG_INLINE double OGGetAbsoluteTime();
 
-static inline double OGRelativeTime() {
-    static double start_time_s = 0;
-    if (start_time_s == 0.)
-      start_time_s = OGGetAbsoluteTime();
-    return OGGetAbsoluteTime() - start_time_s;
-  }
-  
-  OSG_INLINE uint64_t OGGetAbsoluteTimeMS();  
+static inline double OGStartTimeS() {
+	static double start_time_s = 0;
+	if (start_time_s == 0.)
+		start_time_s = OGGetAbsoluteTime();
+	return start_time_s;
+}
 
-  OSG_INLINE og_thread_t OGCreateThread(void *(routine)(void *), const char * name, void *parameter);
+static inline double OGRelativeTime() { return OGGetAbsoluteTime() - OGStartTimeS(); }
 
-  OSG_INLINE void *OGJoinThread(og_thread_t ot);
-  
-  OSG_INLINE void OGCancelThread(og_thread_t ot);
+OSG_INLINE uint64_t OGGetAbsoluteTimeUS();
+OSG_INLINE uint64_t OGGetAbsoluteTimeMS() { return (OGGetAbsoluteTimeUS() + 999) / 1000; }
 
-  OSG_INLINE og_mutex_t OGCreateMutex();
+OSG_INLINE og_thread_t OGCreateThread(void *(routine)(void *), const char *name, void *parameter);
 
-  OSG_INLINE void OGLockMutex(og_mutex_t om);
+OSG_INLINE void *OGJoinThread(og_thread_t ot);
 
-  OSG_INLINE void OGUnlockMutex(og_mutex_t om);
+OSG_INLINE void OGCancelThread(og_thread_t ot);
 
-  OSG_INLINE void OGDeleteMutex(og_mutex_t om);
+OSG_INLINE og_mutex_t OGCreateMutex();
 
-  OSG_INLINE og_sema_t OGCreateSema();
+OSG_INLINE void OGLockMutex(og_mutex_t om);
 
-  OSG_INLINE void OGLockSema(og_sema_t os);
+OSG_INLINE void OGUnlockMutex(og_mutex_t om);
 
-  OSG_INLINE void OGUnlockSema(og_sema_t os);
+OSG_INLINE void OGDeleteMutex(og_mutex_t om);
 
-  OSG_INLINE void OGDeleteSema(og_sema_t os);
+OSG_INLINE og_sema_t OGCreateSema();
 
-  OSG_INLINE void OGSignalCond(og_cv_t cv);
-  OSG_INLINE void OGBroadcastCond(og_cv_t cv);
-  OSG_INLINE void OGWaitCond(og_cv_t cv, og_mutex_t m);
+OSG_INLINE void OGLockSema(og_sema_t os);
 
-  OSG_INLINE void OGDeleteConditionVariable(og_cv_t cv);
+OSG_INLINE void OGUnlockSema(og_sema_t os);
 
-  OSG_INLINE og_cv_t OGCreateConditionVariable();  
+OSG_INLINE void OGDeleteSema(og_sema_t os);
+
+OSG_INLINE void OGSignalCond(og_cv_t cv);
+OSG_INLINE void OGBroadcastCond(og_cv_t cv);
+OSG_INLINE void OGWaitCond(og_cv_t cv, og_mutex_t m);
+
+OSG_INLINE void OGDeleteConditionVariable(og_cv_t cv);
+
+OSG_INLINE og_cv_t OGCreateConditionVariable();  
 
 #if defined(WIN32) || defined(WINDOWS) || defined(_WIN32)
 #define USE_WINDOWS

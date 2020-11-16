@@ -37,7 +37,7 @@ static void *HAPIReceiver(void *v) {
 	if ((iface->actual_len = hid_read(*hp, iface->buffer, sizeof(iface->buffer))) > 0) {
 		// if( iface->actual_len  == 52 ) continue;
 		iface->packet_count++;
-		survive_data_cb(iface);
+		survive_data_cb(OGGetAbsoluteTimeUS(), iface);
 	}
 	if (iface->actual_len < 0) {
 		SurviveContext *ctx = iface->sv->ctx;

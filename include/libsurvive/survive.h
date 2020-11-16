@@ -43,6 +43,8 @@ typedef struct SurviveSensorActivations_s {
 	survive_long_timecode last_light_change;
 	survive_long_timecode last_movement; // Tracks the timecode of the last IMU packet which saw movement.
 
+	FLT runtime_offset;
+
 	FLT accel[3];
 	FLT gyro[3];
 	FLT mag[3];
@@ -65,6 +67,9 @@ SURVIVE_EXPORT void SurviveSensorActivations_add(SurviveSensorActivations *self,
 SURVIVE_EXPORT bool SurviveSensorActivations_add_gen2(SurviveSensorActivations *self,
 													  struct PoserDataLightGen2 *lightData);
 
+SURVIVE_EXPORT void SurviveSensorActivations_register_runtime(SurviveSensorActivations *self, survive_long_timecode tc,
+															  uint64_t runtime_clock);
+SURVIVE_EXPORT uint64_t SurviveSensorActivations_runtime(SurviveSensorActivations *self, survive_long_timecode tc);
 SURVIVE_EXPORT void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct PoserDataIMU *imuData);
 
 /**
@@ -441,9 +446,11 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 SURVIVE_EXPORT void survive_default_button_process(SurviveObject *so, enum SurviveInputEvent eventType,
 												   enum SurviveButton buttonId, const enum SurviveAxis *axisIds,
 												   const SurviveAxisVal_t *axisVals);
-SURVIVE_EXPORT void survive_default_imupose_process(SurviveObject *so, uint32_t timecode, const SurvivePose *imu2world);
-SURVIVE_EXPORT void survive_default_pose_process(SurviveObject *so, survive_timecode timecode, const SurvivePose *pose);
-SURVIVE_EXPORT void survive_default_velocity_process(SurviveObject *so, survive_timecode timecode,
+SURVIVE_EXPORT void survive_default_imupose_process(SurviveObject *so, survive_long_timecode timecode,
+													const SurvivePose *imu2world);
+SURVIVE_EXPORT void survive_default_pose_process(SurviveObject *so, survive_long_timecode timecode,
+												 const SurvivePose *pose);
+SURVIVE_EXPORT void survive_default_velocity_process(SurviveObject *so, survive_long_timecode timecode,
 													 const SurviveVelocity *pose);
 SURVIVE_EXPORT void survive_default_external_pose_process(SurviveContext *so, const char *name,
 														  const SurvivePose *pose);

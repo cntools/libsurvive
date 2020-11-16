@@ -277,7 +277,7 @@ void findScreenCoordinates(LinmathPoint2d xy, struct ScreenInfo *info, struct Li
 }
 
 xdo_t *xdo = 0;
-static void pose_fn(SurviveObject *so, survive_timecode timecode, const SurvivePose *pose) {
+static void pose_fn(SurviveObject *so, survive_long_timecode timecode, const SurvivePose *pose) {
 	survive_default_pose_process(so, timecode, pose);
 	struct LinmathLine3d r = getRay(so);
 

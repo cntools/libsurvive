@@ -155,6 +155,8 @@ cleanup_and_rtn:
 }
 
 static void handle_transfer(struct libusb_transfer *transfer) {
+	uint64_t time = OGGetAbsoluteTimeUS();
+
 	SurviveUSBInterface *iface = transfer->user_data;
 	if (iface->shutdown) {
 		SurviveContext *ctx = iface->ctx;
@@ -172,7 +174,8 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 	}
 
 	iface->actual_len = transfer->actual_length;
-	iface->cb(iface);
+
+	iface->cb(time, iface);
 	iface->packet_count++;
 
 	if (libusb_submit_transfer(transfer)) {

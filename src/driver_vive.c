@@ -559,11 +559,11 @@ void survive_data_on_setup_write(SurviveObject *so, uint8_t bmRequestType, uint8
 	}
 }
 
-void survive_data_cb_locked(SurviveUSBInterface *si);
-void survive_data_cb(SurviveUSBInterface *si) {
+void survive_data_cb_locked(uint64_t time_received_us, SurviveUSBInterface *si);
+void survive_data_cb(uint64_t time_received_us, SurviveUSBInterface *si) {
 	SurviveContext *ctx = si->ctx;
 	survive_get_ctx_lock(ctx);
-	survive_data_cb_locked(si);
+	survive_data_cb_locked(time_received_us, si);
 	survive_release_ctx_lock(ctx);
 }
 
@@ -1757,7 +1757,8 @@ exit_while:
 	return eventCount;
 }
 
-static bool read_imu_data(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8_t *payloadEndPtr) {
+static bool read_imu_data(SurviveObject *w, uint64_t time_in_us, uint16_t time, uint8_t **readPtr,
+						  uint8_t *payloadEndPtr) {
 	uint8_t *payloadPtr = *readPtr;
 
 	SurviveContext *ctx = w->ctx;
@@ -1780,6 +1781,8 @@ static bool read_imu_data(SurviveObject *w, uint16_t time, uint8_t **readPtr, ui
 			   LINMATH_VEC3_EXPAND(agm), LINMATH_VEC3_EXPAND(agm + 3), packetToHex(*readPtr, payloadPtr));
 	w->ctx->raw_imuproc(w, 3, agm, ((uint32_t)time << 16) | (timeLSB << 8), 0);
 
+	SurviveSensorActivations_register_runtime(&w->activations, w->activations.last_imu, time_in_us);
+
 	*readPtr = payloadPtr;
 
 	return true;
@@ -1788,7 +1791,8 @@ static bool read_imu_data(SurviveObject *w, uint16_t time, uint8_t **readPtr, ui
 	*readPtr = payloadPtr;                                                                                             \
 	return true;
 
-static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8_t *payloadEndPtr) {
+static bool read_event(SurviveObject *w, uint64_t time_in_us, uint16_t time, uint8_t **readPtr,
+					   uint8_t *payloadEndPtr) {
 	uint8_t *payloadPtr = *readPtr;
 	SurviveContext *ctx = w->ctx;
 
@@ -1953,7 +1957,7 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 					(charging ? "CHARGING" : "ON BATTERY"));
 #endif
 			// Maybe read another event, IMU data or Light Data
-			bool rtn = read_event(w, time, &payloadPtr, payloadEndPtr);
+			bool rtn = read_event(w, time_in_us, time, &payloadPtr, payloadEndPtr);
 			*readPtr = payloadPtr;
 			return rtn;
 		}
@@ -1961,7 +1965,7 @@ static bool read_event(SurviveObject *w, uint16_t time, uint8_t **readPtr, uint8
 
 	// Read off any IMU data present
 	if (flagIMU)
-		read_imu_data(w, time, &payloadPtr, payloadEndPtr);
+		read_imu_data(w, time_in_us, time, &payloadPtr, payloadEndPtr);
 
 	UPDATE_PTR_AND_RETURN
 }
@@ -2218,7 +2222,8 @@ exit_failure:
 	return false;
 }
 
-static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payloadPtr, uint8_t *payloadEndPtr) {
+static void handle_watchman_v2(SurviveObject *w, uint64_t time_in_us, uint16_t time, uint8_t *payloadPtr,
+							   uint8_t *payloadEndPtr) {
 	struct SurviveContext *ctx = w->ctx;
 	const uint8_t *originPayloadPtr = payloadPtr;
 	struct SurviveUSBInfo *driverInfo = w->driver;
@@ -2292,7 +2297,7 @@ static void handle_watchman_v2(SurviveObject *w, uint16_t time, uint8_t *payload
 	}
 
 	if (flagIMU)
-		read_imu_data(w, time, &payloadPtr, payloadEndPtr);
+		read_imu_data(w, time_in_us, time, &payloadPtr, payloadEndPtr);
 
 	// These things seem infrequent and of variable length;
 	if (flagUnknown40) {
@@ -2368,7 +2373,7 @@ static bool use_watchman_v2(SurviveObject *w) {
 	}
 }
 
-static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
+static void handle_watchman(SurviveObject *w, uint64_t time_in_us, uint8_t *readdata) {
 	struct SurviveUSBInfo *driverInfo = w->driver;
 
 	// KASPER'S DECODE
@@ -2422,7 +2427,7 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 	struct SurviveUSBInfo *driver = w->driver;
 	if (use_watchman_v2(w)) {
 		SV_VERBOSE(750, "Watchman v2(%s): '%s'", w->codename, packetToHex(readdata, payloadEndPtr));
-		handle_watchman_v2(w, time, payloadPtr, payloadEndPtr);
+		handle_watchman_v2(w, time_in_us, time, payloadPtr, payloadEndPtr);
 		return;
 	}
 
@@ -2438,7 +2443,7 @@ static void handle_watchman(SurviveObject *w, uint8_t *readdata) {
 	}
 
 	// Read any non-light events that may be in the packet
-	if (!read_event(w, time, &payloadPtr, payloadEndPtr)) {
+	if (!read_event(w, time_in_us, time, &payloadPtr, payloadEndPtr)) {
 		SV_WARN("Read event failed; full payload: %s", packetToHex(&readdata[3], payloadEndPtr));
 		return;
 	}
@@ -2764,7 +2769,7 @@ dump_data:
 	survive_dump_buffer(ctx, readdata, size);
 }
 
-void survive_data_cb_locked(SurviveUSBInterface *si) {
+void survive_data_cb_locked(uint64_t time_received_us, SurviveUSBInterface *si) {
 	int size = si->actual_len;
 	SurviveContext *ctx = si->ctx;
 	int iface = si->which_interface_am_i;
@@ -2853,6 +2858,8 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 
 				// assert(timecode <= obj->timebase_hz);
 				ctx->raw_imuproc(obj, 3, agm, timecode, code);
+				SurviveSensorActivations_register_runtime(&obj->activations, obj->activations.last_imu,
+														  time_received_us);
 			}
 		}
 		// DONE OK.
@@ -2862,10 +2869,10 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 	case USB_IF_WATCHMAN2: {
 		SurviveObject *w = obj;
 		if (id == VIVE_REPORT_RF_WATCHMAN) {
-			handle_watchman(w, readdata);			
-		} else if (id == VIVE_REPORT_RF_WATCHMANx2) {			
-			handle_watchman(w, readdata);
-			handle_watchman(w, readdata + 29);
+			handle_watchman(w, time_received_us, readdata);
+		} else if (id == VIVE_REPORT_RF_WATCHMANx2) {
+			handle_watchman(w, time_received_us, readdata);
+			handle_watchman(w, time_received_us, readdata + 29);
 		} else if (id == VIVE_REPORT_RF_TURN_OFF) {
 			w->ison = 0; // turning off
 		} else {
@@ -3113,7 +3120,6 @@ void survive_data_cb_locked(SurviveUSBInterface *si) {
 	} break;
 	default: { SV_WARN("Unknown interface %d for %s", si->which_interface_am_i, obj->codename); }
 	}
-
 }
 
 ///////////////////////////////////////////////////////////////////////////////

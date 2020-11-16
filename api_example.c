@@ -34,6 +34,7 @@ int main(int argc, char **argv) {
 	if (actx == 0) // implies -help or similiar
 		return 0;
 
+	double start_time = OGGetAbsoluteTime();
 	survive_simple_start_thread(actx);
 
 	for (const SurviveSimpleObject *it = survive_simple_get_first_object(actx); it != 0;
@@ -45,8 +46,8 @@ int main(int argc, char **argv) {
 		for (const SurviveSimpleObject *it = survive_simple_get_next_updated(actx); it != 0;
 			 it = survive_simple_get_next_updated(actx)) {
 			SurvivePose pose;
-			uint32_t timecode = survive_simple_object_get_latest_pose(it, &pose);
-			printf("%s %s (%u): %f %f %f %f %f %f %f\n", survive_simple_object_name(it),
+			FLT timecode = survive_simple_object_get_latest_pose(it, &pose) - start_time;
+			printf("%s %s (%7.3f): %f %f %f %f %f %f %f\n", survive_simple_object_name(it),
 				   survive_simple_serial_number(it), timecode, pose.Pos[0], pose.Pos[1], pose.Pos[2], pose.Rot[0],
 				   pose.Rot[1], pose.Rot[2], pose.Rot[3]);
 		}

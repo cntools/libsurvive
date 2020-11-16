@@ -89,11 +89,13 @@ SURVIVE_EXPORT const SurviveSimpleObject *survive_simple_get_next_updated(Surviv
 
 /**
  * Gets the pose of a given object
+ * @return Time in seconds since epoch of the pose
  */
 SURVIVE_EXPORT FLT survive_simple_object_get_latest_pose(const SurviveSimpleObject *sao, SurvivePose *pose);
 
 /**
  * Gets the velocity of a given object
+ * @return Time in seconds since epoch of the velocity
  */
 SURVIVE_EXPORT FLT survive_simple_object_get_latest_velocity(const SurviveSimpleObject *sao, SurviveVelocity *pose);
 

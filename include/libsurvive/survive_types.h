@@ -297,7 +297,7 @@ typedef void (*button_process_func)(SurviveObject *so, enum SurviveInputEvent ev
 /**
  * Called when a pose is solved for at a given time. Given in 'tracking' coordinate frame.
  */
-typedef void (*pose_process_func)(SurviveObject *so, survive_timecode timecode, const SurvivePose *pose);
+typedef void (*pose_process_func)(SurviveObject *so, survive_long_timecode timecode, const SurvivePose *pose);
 
 /**
  * Called when a pose is solve for at a given time. Given in the IMU coordinate frame.
@@ -307,7 +307,7 @@ typedef pose_process_func imupose_process_func;
 /**
  * Called when a new velocity estimate is calculated. Velocity is in global frame.
  */
-typedef void (*velocity_process_func)(SurviveObject *so, survive_timecode timecode, const SurviveVelocity *pose);
+typedef void (*velocity_process_func)(SurviveObject *so, survive_long_timecode timecode, const SurviveVelocity *pose);
 
 /**
  * External pose and velocity callbacks are called by a few drivers to expose external localizations into libsurvive.

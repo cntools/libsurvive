@@ -54,6 +54,21 @@ survive_long_timecode SurviveSensorActivations_stationary_time(const SurviveSens
 	return last_time - last_move;
 }
 
+void SurviveSensorActivations_register_runtime(SurviveSensorActivations *self, survive_long_timecode tc,
+											   uint64_t runtime_clock) {
+	double runtime_offset = runtime_clock - (uint64_t)(tc * 0.0208333333);
+	if (self->runtime_offset == 0)
+		self->runtime_offset = runtime_offset;
+	else {
+		printf("%f\n", self->runtime_offset - runtime_offset);
+		self->runtime_offset = self->runtime_offset * .90 + .1 * runtime_offset;
+	}
+}
+
+uint64_t SurviveSensorActivations_runtime(SurviveSensorActivations *self, survive_long_timecode tc) {
+	return self->runtime_offset + (uint64_t)(tc * 0.0208333333);
+}
+
 void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct PoserDataIMU *imuData) {
 	self->last_imu = imuData->hdr.timecode;
 	// fprintf(stderr, "imu tc: %f\n", self->last_imu/ 48000000.);

@@ -12,6 +12,18 @@ OSG_INLINE int OGUSleep(int ius) {
 	return 0;
 }
 
+OSG_INLINE uint64_t OGGetAbsoluteTimeUS() {
+	static LARGE_INTEGER lpf;
+	LARGE_INTEGER li;
+
+	if (!lpf.QuadPart) {
+		QueryPerformanceFrequency(&lpf);
+	}
+
+	QueryPerformanceCounter(&li);
+	return li.QuadPart * 1000 * 1000 / lpf.QuadPart;
+}
+
 OSG_INLINE double OGGetAbsoluteTime() {
 	static LARGE_INTEGER lpf;
 	LARGE_INTEGER li;

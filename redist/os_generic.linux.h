@@ -22,11 +22,11 @@ OSG_INLINE int OGUSleep(int ius) {
 	return nanosleep(&sleep, 0);
 }
 
-OSG_INLINE uint64_t OGGetAbsoluteTimeMS() {
+OSG_INLINE uint64_t OGGetAbsoluteTimeUS() {
 	struct timeval tv;
 
 	gettimeofday(&tv, NULL);
-	return (((uint64_t)tv.tv_sec) * 1000) + (tv.tv_usec / 1000);
+	return ((uint64_t)tv.tv_sec * 1000000) + tv.tv_usec;
 }
 
 OSG_INLINE double OGGetAbsoluteTime() {

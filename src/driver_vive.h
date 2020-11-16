@@ -59,7 +59,7 @@ struct SurviveViveData;
 
 struct SurviveUSBInterface;
 
-typedef void (*usb_callback)(struct SurviveUSBInterface *ti);
+typedef void (*usb_callback)(uint64_t time_recv_us, struct SurviveUSBInterface *ti);
 #ifdef HIDAPI
 struct HIDAPI_USB_Handle_t {
 	hid_device *interfaces[8];
@@ -98,7 +98,7 @@ typedef struct SurviveUSBInterface {
 } SurviveUSBInterface;
 
 SURVIVE_EXPORT void survive_dump_buffer(SurviveContext *ctx, const uint8_t *data, size_t length);
-SURVIVE_EXPORT void survive_data_cb(SurviveUSBInterface *si);
+SURVIVE_EXPORT void survive_data_cb(uint64_t time_received_us, SurviveUSBInterface *si);
 SURVIVE_EXPORT void survive_data_on_setup_write(SurviveObject *so, uint8_t bmRequestType, uint8_t bRequest,
 												uint16_t wValue, uint16_t wIndex, const uint8_t *data, size_t length);
 SURVIVE_EXPORT int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, uint8_t time1,

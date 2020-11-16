@@ -702,8 +702,8 @@ void *pcap_thread_fn(void *_driver) {
 					si.actual_len = usbp->data_len;
 					memset(si.buffer, 0xCA, sizeof(si.buffer));
 					memcpy(si.buffer, pktData, usbp->data_len);
-
-					survive_data_cb(&si);
+					uint64_t time = usbp->ts_sec * 1000000 + usbp->ts_usec;
+					survive_data_cb(time, &si);
 				} else if (!dev->hasConfiged) {
 					if (driver->allow_fs_read && dev->packets_without_config++ > 1000 &&
 						dev->tried_config_file == false) {

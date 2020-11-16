@@ -151,7 +151,7 @@ static void external_pose_fn(SurviveContext *ctx, const char *name, const Surviv
 	so->data.seo.pose = *pose;
 	unlock_and_notify_change(actx);
 }
-static void pose_fn(SurviveObject *so, uint32_t timecode, const SurvivePose *pose) {
+static void pose_fn(SurviveObject *so, survive_long_timecode timecode, const SurvivePose *pose) {
 	SurviveSimpleContext *actx = so->ctx->user_ptr;
 	OGLockMutex(actx->poll_mutex);
 	survive_default_pose_process(so, timecode, pose);
@@ -370,13 +370,13 @@ FLT survive_simple_object_get_latest_velocity(const SurviveSimpleObject *sao, Su
 	case SurviveSimpleObject_LIGHTHOUSE:
 		if (velocity)
 			*velocity = (SurviveVelocity){ 0 };
+		timecode = OGStartTimeS();
 		break;
 	case SurviveSimpleObject_HMD:
 	case SurviveSimpleObject_OBJECT:
 		if (velocity)
 			*velocity = sao->data.so->velocity;
-		timecode = sao->data.so->velocity_timecode / (FLT)sao->data.so->timebase_hz;
-		;
+		timecode = SurviveSensorActivations_runtime(&sao->data.so->activations, sao->data.so->velocity_timecode) * 1e-6;
 		break;
 	case SurviveSimpleObject_EXTERNAL:
 		if (velocity)
@@ -401,13 +401,14 @@ FLT survive_simple_object_get_latest_pose(const SurviveSimpleObject *sao, Surviv
 	case SurviveSimpleObject_LIGHTHOUSE: {
 		if (pose)
 			*pose = sao->actx->ctx->bsd[sao->data.lh.lighthouse].Pose;
+		timecode = OGStartTimeS();
 		break;
 	}
 	case SurviveSimpleObject_HMD:
 	case SurviveSimpleObject_OBJECT:
 		if (pose)
 			*pose = sao->data.so->OutPose;
-		timecode = sao->data.so->OutPose_timecode / (FLT)sao->data.so->timebase_hz;
+		timecode = SurviveSensorActivations_runtime(&sao->data.so->activations, sao->data.so->OutPose_timecode) * 1e-6;
 		break;
 	case SurviveSimpleObject_EXTERNAL:
 		if (pose)

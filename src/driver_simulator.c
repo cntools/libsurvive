@@ -488,7 +488,7 @@ static void simulation_lh_compare(SurviveContext *ctx, uint8_t lighthouse, Survi
 	driver->lh_fn(ctx, lighthouse, lighthouse_pose);
 }
 
-static void simulation_compare(SurviveObject *so, uint32_t timecode, const SurvivePose *imupose) {
+static void simulation_compare(SurviveObject *so, survive_long_timecode timecode, const SurvivePose *imupose) {
 	SurviveContext *ctx = so->ctx;
 	SurviveDriverSimulator *driver = so->driver;
 	SurvivePose p = InvertPoseRtn(&driver->position);
