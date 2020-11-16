@@ -60,7 +60,6 @@ void SurviveSensorActivations_register_runtime(SurviveSensorActivations *self, s
 	if (self->runtime_offset == 0)
 		self->runtime_offset = runtime_offset;
 	else {
-		printf("%f\n", self->runtime_offset - runtime_offset);
 		self->runtime_offset = self->runtime_offset * .90 + .1 * runtime_offset;
 	}
 }
