@@ -36,18 +36,6 @@ OSG_INLINE double OGGetAbsoluteTime() {
 	return (double)li.QuadPart / (double)lpf.QuadPart;
 }
 
-OSG_INLINE uint64_t OGGetAbsoluteTimeMS() {
-	static LARGE_INTEGER lpf;
-	LARGE_INTEGER li;
-
-	if (!lpf.QuadPart) {
-		QueryPerformanceFrequency(&lpf);
-	}
-
-	QueryPerformanceCounter(&li);
-	return li.QuadPart * 1000 / lpf.QuadPart;
-}
-
 OSG_INLINE double OGGetFileTime(const char *file) {
 	FILETIME ft;
 
