@@ -54,23 +54,27 @@ bool handle_lightcap(SurviveObject *so, const LightcapElement *_le) {
 		// would have a hard time generating this signature.
 		bool isOOTXPulseLength = _le->length >= 3000 && _le->length < 6500;
 		if (isOOTXPulseLength) {
+			bool firstPulse = dv->last_pulse_times[_le->sensor_id] == 0;
+
 			uint32_t pulse_dist = _le->timestamp - dv->last_pulse_times[_le->sensor_id];
 			dv->last_pulse_times[_le->sensor_id] = _le->timestamp;
 
-			uint32_t dist_at_120hz = 400000;
-			uint32_t dist_at_60hz = 2 * dist_at_120hz;
-			bool matches_60hz_lh1 = (pulse_dist > dist_at_60hz * .95 && pulse_dist < dist_at_60hz * 1.05);
-			bool matches_120hz_lh1 = (pulse_dist > dist_at_120hz * .95 && pulse_dist < dist_at_120hz * 1.05);
-			if (matches_120hz_lh1 || matches_60hz_lh1) {
-				if (dv->pulse_count++ > 10) {
-					remove_all_disambiguate_version(ctx);
-					survive_notify_gen1(so, "OOTX pulses detected");
-					return true;
+			if (!firstPulse) {
+				uint32_t dist_at_120hz = 400000;
+				uint32_t dist_at_60hz = 2 * dist_at_120hz;
+				bool matches_60hz_lh1 = (pulse_dist > dist_at_60hz * .95 && pulse_dist < dist_at_60hz * 1.05);
+				bool matches_120hz_lh1 = (pulse_dist > dist_at_120hz * .95 && pulse_dist < dist_at_120hz * 1.05);
+				if (matches_120hz_lh1 || matches_60hz_lh1) {
+					if (dv->pulse_count++ > 10) {
+						remove_all_disambiguate_version(ctx);
+						survive_notify_gen1(so, "OOTX pulses detected");
+						return true;
+					}
 				}
 			}
 		}
 
-		if (dv->total_count > 100) {
+		if (dv->total_count > 500) {
 			remove_all_disambiguate_version(ctx);
 			survive_notify_gen2(so, "no OOTX pulses detected");
 		}
