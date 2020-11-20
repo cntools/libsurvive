@@ -3,12 +3,19 @@ import traceback
 import types
 import os
 
-wheel_path=os.path.dirname(os.path.abspath(__file__)) + "/../lib"
-old_path = os.environ.get("LD_LIBRARY_PATH")
-if old_path:
-    os.environ["LD_LIBRARY_PATH"] = old_path + ":" + wheel_path
-else:
-    os.environ["LD_LIBRARY_PATH"] = wheel_path
+def fixup_env(env):
+    wheel_dir = os.path.dirname(os.path.abspath(__file__))
+    dirs = ["lib", "bin"]
+    rel_dir = ["/../", "/../../../"]
+    wheel_path = os.pathsep.join(map(os.path.abspath, [wheel_dir + x + y for x in rel_dir for y in dirs]))
+    old_path = os.environ.get(env)
+    if old_path:
+        os.environ[env] = old_path + os.pathsep + wheel_path
+    else:
+        os.environ[env] = wheel_path
+
+fixup_env("PATH")
+fixup_env("LD_LIBRARY_PATH")
 
 import pysurvive.pysurvive_generated
 from pysurvive.pysurvive_generated import *

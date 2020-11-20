@@ -1,0 +1,116 @@
+name: Build and Test
+
+on:
+  push:
+  release:
+    types:
+      - created
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        build_type: [Release]
+        os: [ubuntu-16.04, ubuntu-18.04, windows-latest]
+        include:
+        - os: ubuntu-18.04
+          build_type: Debug
+          config_flags: "-DUSE_ASAN=ON"
+          deps: libasan6
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - if: contains(matrix.os, 'ubuntu')
+      name: Get Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install p7zip-full build-essential zlib1g-dev libx11-dev libusb-1.0-0-dev freeglut3-dev liblapacke-dev libopenblas-dev libatlas-base-dev libpcap-dev python3 python3-pip apt-transport-https dotnet-sdk-3.1 libpcap-dev python-virtualenv ninja-build ${{ matrix.deps }}
+    - uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+    - name: Setup windows flags
+      if: contains(matrix.os, 'windows')
+      id: flags
+      run: echo "::set-output name=SETUP_PY_FLAGS::-G 'Visual Studio 16 2019'"
+
+    - name: Build/Test Python Bindings (Linux)
+      run: |
+        python --version
+        python -m pip install wheel setuptools
+        python setup.py install bdist_wheel -v ${{ steps.flags.outputs.SETUP_PY_FLAGS }}
+        python -m pysurvive --simulator --simulator-time .1 --playback-factor 0
+
+    - name: Create Build Environment
+      # Some projects don't allow in-source building, so create a separate build directory
+      # We'll use this as our working directory for all subsequent commands
+      run: cmake -E make_directory ${{runner.workspace}}/build
+
+    - name: Configure CMake
+      # Use a bash shell so we can use the same syntax for environment variable
+      # access regardless of the host operating system
+      shell: bash
+      working-directory: ${{runner.workspace}}/build
+      # Note the current convention is to use the -S and -B options here to specify source 
+      # and build directories, but this is only available with CMake 3.13 and higher.  
+      # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DENABLE_TESTS=ON -DCMAKE_INSTALL_PREFIX=install_root ${{matrix.config_flags}}
+
+    - name: Build
+      working-directory: ${{runner.workspace}}/build
+      shell: bash
+      # Execute the build.  You can specify a specific target with "--target <NAME>"
+      run: cmake --build . --config $BUILD_TYPE
+      
+    - name: Install
+      working-directory: ${{runner.workspace}}/build
+      shell: bash
+      # Execute the build.  You can specify a specific target with "--target <NAME>"
+      run: cmake --build . --config $BUILD_TYPE --target install
+
+    - name: Set bundle name
+      id: bundle
+      run: echo "::set-output name=BUNDLE_FILE_NAME::libsurvive-$(git describe --tags)-${{ matrix.os }}.zip"
+
+    - name: Bundle
+      if: matrix.build_type == 'Release'
+      working-directory: ${{runner.workspace}}/libsurvive
+      run: 7z a ${{runner.workspace}}/build/${{ steps.bundle.outputs.BUNDLE_FILE_NAME }} ${{runner.workspace}}/build/install_root/*
+
+    - uses: actions/upload-artifact@v2
+      name: Upload
+      if: matrix.build_type == 'Release'
+      with:
+        path: | 
+          ${{runner.workspace}}/build/${{steps.bundle.outputs.BUNDLE_FILE_NAME}}
+          ${{runner.workspace}}/libsurvive/dist/*.whl
+    - name: Get release
+      id: get_release
+      if: github.event_name == 'release'
+      uses: bruceadams/get-release@v1.2.2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload Release Asset
+      id: upload-release-asset
+      continue-on-error: true
+      if: github.event_name == 'release'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.get_release.outputs.upload_url }}
+        asset_path: ${{runner.workspace}}/build/${{steps.bundle.outputs.BUNDLE_FILE_NAME}}
+        asset_name: ${{steps.bundle.outputs.BUNDLE_FILE_NAME}}
+        asset_content_type: application/zip
+
+    - name: Test
+      working-directory: ${{runner.workspace}}/build
+      shell: bash
+      # Execute tests defined by the CMake configuration.
+      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+      run: ctest -C $BUILD_TYPE --output-on-failure -j30

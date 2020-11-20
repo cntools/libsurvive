@@ -533,7 +533,7 @@ class LibraryLoader(object):
         for path in paths:
             try:
                 return self.Lookup(path)
-            except:
+            except Exception as e:
                 pass
 
         raise ImportError("Could not load %s." % libname)
@@ -561,9 +561,9 @@ class LibraryLoader(object):
                 if path:
                     yield path
 
-            # then we search all paths identified as platform-specific lib paths
-            for path in self.getplatformpaths(libname):
-                yield path
+                # then we search all paths identified as platform-specific lib paths
+                for path in self.getplatformpaths(fmt % libname):
+                    yield path
 
             # Finally, we'll try the users current working directory
             for fmt in self.name_formats:
@@ -639,6 +639,11 @@ class DarwinLibraryLoader(LibraryLoader):
 
 
 class PosixLibraryLoader(LibraryLoader):
+    name_formats = [
+        "lib%s.so",
+        "%s.so",
+        "%s",
+    ]    
     _ld_so_cache = None
 
     _include = re.compile(r"^\s*include\s+(?P<pattern>.*)")
@@ -811,7 +816,7 @@ del loaderclass
 add_library_search_dirs(['/home/justin/source/oss/libsurvive/build/temp.linux-x86_64-3.7'])
 
 # Begin libraries
-_libs["libsurvive.so"] = load_library("libsurvive.so")
+_libs["libsurvive.so"] = load_library("libsurvive")
 
 # 1 libraries
 # End libraries

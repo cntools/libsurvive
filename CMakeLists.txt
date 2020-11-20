@@ -20,7 +20,14 @@ option(USE_HIDAPI "Use HIDAPI instead of libusb" OFF)
 option(USE_ASAN "Use address sanitizer" OFF)
 option(ENABLE_TESTS "Enable build / execution of tests" OFF)
 option(USE_HEX_FLOAT_PRINTF "Use hex floats when recording" OFF)
-option(USE_OPENBLAS "Use OpenBLAS" OFF)
+
+find_library(CBLAS_LIB NAMES cblas)
+set(USE_OPENBLAS_DEFAULT OFF)
+if(NOT CBLAS_LIB)
+  set(USE_OPENBLAS_DEFAULT ON)
+endif()
+
+option(USE_OPENBLAS "Use OpenBLAS" ${USE_OPENBLAS_DEFAULT})
 option(BUILD_LH1_SUPPORT "Build LH1 support" ON)
 
 if(BUILD_LH1_SUPPORT)
@@ -150,10 +157,10 @@ if(DOTNET)
   SET(DOTNET_RUNTIME_FLAGS "")
   if(WIN32)
 	if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-		SET(DOTNET_RUNTIME_FLAGS "--runtime;win-x64") 
+		#SET(DOTNET_RUNTIME_FLAGS "--runtime;win-x64")
 
 	elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
-		SET(DOTNET_RUNTIME_FLAGS "--runtime;win-x86") 
+		#SET(DOTNET_RUNTIME_FLAGS "--runtime;win-x86")
 	endif()
   endif()
   

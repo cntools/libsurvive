@@ -10,6 +10,7 @@
 #define gzeof feof
 #define gzseek fseek
 #define gzgetc fgetc
+#define HAVE_GZVPRINTF 1
 #else
 #include <zlib.h>
 static inline int gzerror_dropin(gzFile f) {

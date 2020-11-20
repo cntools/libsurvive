@@ -1,5 +1,9 @@
 #include <cblas.h>
+#ifdef LAPACKE_FOLDER
+#include <lapacke/lapacke.h>
+#else
 #include <lapacke.h>
+#endif
 
 #include "math.h"
 #include "minimal_opencv.h"
