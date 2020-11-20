@@ -101,7 +101,7 @@ static size_t remove_lh_from_meas(survive_optimizer_measurement *meas, size_t me
 }
 
 static size_t construct_input_from_scene(const MPFITData *d, survive_long_timecode timecode,
-										 const SurviveSensorActivations *scene, size_t *meas_for_lhs,
+										 const SurviveSensorActivations *scene, size_t *meas_for_lhs_axis,
 										 survive_optimizer_measurement *meas, survive_long_timecode *most_recent_time) {
 	size_t rtn = 0;
 	SurviveObject *so = d->opt.so;
@@ -149,11 +149,11 @@ static size_t construct_input_from_scene(const MPFITData *d, survive_long_timeco
 					meas++;
 					rtn++;
 					meas_for_lh++;
+					if (meas_for_lhs_axis) {
+						meas_for_lhs_axis[lh * 2 + axis]++;
+					}
 				}
 			}
-		}
-		if (meas_for_lhs) {
-			meas_for_lhs[lh] = meas_for_lh;
 		}
 		if (isCandidate && meas_for_lh < candidate_meas) {
 			meas -= meas_for_lh;
@@ -163,27 +163,31 @@ static size_t construct_input_from_scene(const MPFITData *d, survive_long_timeco
 	return rtn;
 }
 
-static bool invalid_starting_condition(MPFITData *d, size_t meas_size, const size_t *meas_for_lhs) {
+static bool invalid_starting_condition(MPFITData *d, size_t meas_size, const size_t *meas_for_lhs_axis) {
 	static int failure_count = 500;
 	struct SurviveObject *so = d->opt.so;
 
 	size_t meas_size_known_lh = 0;
-	if (meas_for_lhs) {
+	size_t axis_known_lh = 0;
+	if (meas_for_lhs_axis) {
 		for (uint8_t lh = 0; lh < so->ctx->activeLighthouses; lh++) {
-			if (so->ctx->bsd[lh].PositionSet)
-				meas_size_known_lh += meas_for_lhs[lh];
+			if (so->ctx->bsd[lh].PositionSet) {
+				meas_size_known_lh += meas_for_lhs_axis[2 * lh] + meas_for_lhs_axis[2 * lh + 1];
+				for (int axis = 0; axis < 2; axis++)
+					axis_known_lh += meas_for_lhs_axis[2 * lh + axis] > 0;
+			}
 		}
 	} else {
 		meas_size_known_lh = meas_size;
 	}
 
-	if (meas_size_known_lh < d->required_meas) {
+	if (meas_size_known_lh < d->required_meas || axis_known_lh < 2) {
 		if (failure_count++ == 500) {
 			SurviveContext *ctx = so->ctx;
 			SV_INFO("Can't solve for position with just %u measurements", (unsigned int)meas_size_known_lh);
 			failure_count = 0;
 		}
-		if (meas_size_known_lh < d->required_meas) {
+		if (meas_size_known_lh < d->required_meas || axis_known_lh < 2) {
 			d->stats.meas_failures++;
 		}
 		return true;
@@ -200,10 +204,21 @@ static inline void serialize_mpfit(MPFITData *d, survive_optimizer *mpfitctx) {
 	}
 }
 
-static int get_lh_count(const size_t *meas_for_lhs) {
+static inline bool has_data_for_lh(const size_t *meas_for_lhs_axis, int lh) {
+	return meas_for_lhs_axis[2 * lh] > 0 && meas_for_lhs_axis[2 * lh + 1] > 0;
+}
+static inline int get_axis_count(const size_t *meas_for_lhs_axis) {
+	int num_axis = 0;
+	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES * 2; i++) {
+		if (meas_for_lhs_axis[i] > 0)
+			num_axis++;
+	}
+	return num_axis;
+}
+static inline int get_lh_count(const size_t *meas_for_lhs_axis) {
 	int num_lh = 0;
 	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
-		if (meas_for_lhs[i])
+		if (meas_for_lhs_axis[2 * i] > 0 || meas_for_lhs_axis[2 * i + 1] > 0)
 			num_lh++;
 	}
 	return num_lh;
@@ -214,14 +229,14 @@ struct async_optimizer_user {
 	PoserDataLight pdl;
 	bool canPossiblySolveLHS;
 	bool worldEstablished;
-	size_t meas_for_lhs[NUM_GEN2_LIGHTHOUSES];
+	size_t meas_for_lhs_axis[NUM_GEN2_LIGHTHOUSES * 2];
 };
 
 static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer *mpfitctx,
 						   SurviveSensorActivations *scene) {
 	MPFITData *d = user->d;
 	PoserDataLight *pdl = &user->pdl;
-	size_t *meas_for_lhs = user->meas_for_lhs;
+	size_t *meas_for_lhs_axis = user->meas_for_lhs_axis;
 
 	SurviveObject *so = d->opt.so;
 	struct SurviveContext *ctx = so->ctx;
@@ -243,14 +258,14 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 	if (quatiszero(soLocation->Rot))
 		soLocation->Rot[0] = 1;
 
-	size_t meas_size = construct_input_from_scene(d, pdl->hdr.timecode, scene, meas_for_lhs, mpfitctx->measurements,
-												  &user->pdl.hdr.timecode);
+	size_t meas_size = construct_input_from_scene(d, pdl->hdr.timecode, scene, meas_for_lhs_axis,
+												  mpfitctx->measurements, &user->pdl.hdr.timecode);
 
 	if (mpfitctx->current_bias > 0) {
 		meas_size += 7;
 	}
 
-	if (worldEstablished && invalid_starting_condition(d, meas_size, meas_for_lhs)) {
+	if (worldEstablished && invalid_starting_condition(d, meas_size, meas_for_lhs_axis)) {
 		return -1;
 	}
 
@@ -279,7 +294,7 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 			bool needsSolve =
 				!so->ctx->bsd[lh].PositionSet || (canPossiblySolveLHS == false && (so->ctx->bsd[lh].confidence) < 0);
 
-			if (needsSolve && meas_for_lhs[lh] > 0) {
+			if (needsSolve && has_data_for_lh(meas_for_lhs_axis, lh)) {
 				canPossiblySolveLHS = !d->globalDataAvailable;
 				needsInitialEstimate = !so->ctx->bsd[lh].PositionSet;
 			}
@@ -296,7 +311,7 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 						memcpy(&lhs[lh], &so->ctx->bsd[lh].Pose, sizeof(SurvivePose));
 					}
 					assert(!isnan(lhs[lh].Rot[0]));
-					if (quatiszero(lhs[lh].Rot) && meas_for_lhs[lh] > 0) {
+					if (quatiszero(lhs[lh].Rot) && has_data_for_lh(meas_for_lhs_axis, lh)) {
 						SV_WARN("Seed poser failed for %d, not trying to solve LH system", lh);
 						canPossiblySolveLHS = false;
 						break;
@@ -312,9 +327,9 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 	for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
 		if (!so->ctx->bsd[lh].PositionSet) {
 			if (canPossiblySolveLHS) {
-				if (meas_for_lhs[lh]) {
-					SV_INFO("Attempting to solve for %d with %lu meas from device %s", lh, meas_for_lhs[lh],
-							so->codename);
+				if (has_data_for_lh(meas_for_lhs_axis, lh)) {
+					SV_INFO("Attempting to solve for %d with %lu/%lu meas from device %s", lh,
+							meas_for_lhs_axis[2 * lh], meas_for_lhs_axis[2 * lh + 1], so->codename);
 					survive_optimizer_setup_camera(mpfitctx, lh, &lhs[lh], false, d->use_jacobian_function_lh);
 				} else {
 					skipped_lh_cnt++;
@@ -322,10 +337,11 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 			} else {
 				// SV_VERBOSE(200, "Removing data for %d", lh);
 				meas_size = remove_lh_from_meas(mpfitctx->measurements, meas_size, lh);
-				meas_for_lhs[lh] = 0;
+				meas_for_lhs_axis[2 * lh] = meas_for_lhs_axis[2 * lh + 1] = 0;
 			}
 		} else if (canPossiblySolveLHS) {
-			SV_INFO("Assuming %d with %lu meas from device %s as given", lh, meas_for_lhs[lh], so->codename);
+			SV_INFO("Assuming %d with %lu/%lu meas from device %s as given", lh, meas_for_lhs_axis[2 * lh],
+					meas_for_lhs_axis[2 * lh + 1], so->codename);
 		}
 	}
 
@@ -375,7 +391,7 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 	SurvivePose *soLocation = survive_optimizer_get_pose(mpfitctx);
 	bool canPossiblySolveLHS = user_data->canPossiblySolveLHS;
 	bool worldEstablished = user_data->worldEstablished;
-	size_t *meas_for_lhs = user_data->meas_for_lhs;
+	size_t *meas_for_lhs_axis = user_data->meas_for_lhs_axis;
 	MPFITData *d = user_data->d;
 	PoserDataLight *pdl = &user_data->pdl;
 
@@ -402,7 +418,7 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 			SurvivePose *opt_cameras = survive_optimizer_get_camera(mpfitctx);
 			SurvivePose cameras[NUM_GEN2_LIGHTHOUSES] = {0};
 			for (int i = 0; i < mpfitctx->cameraLength; i++) {
-				if (meas_for_lhs[i] > 0 && !quatiszero(opt_cameras[i].Rot)) {
+				if (has_data_for_lh(meas_for_lhs_axis, i) > 0 && !quatiszero(opt_cameras[i].Rot)) {
 					cameras[i] = InvertPoseRtn(&opt_cameras[i]);
 
 					LinmathPoint3d up = {ctx->bsd[i].accel[0], ctx->bsd[i].accel[1], ctx->bsd[i].accel[2]};
@@ -419,17 +435,19 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 		*out = *soLocation;
 		rtn = result->bestnorm;
 
-		SV_VERBOSE(110, "MPFIT success %s %f7.5s %f/%10.10f (%d measurements, %d result, %d lighthouses)", so->codename,
-				   survive_run_time(ctx), result->orignorm, result->bestnorm, (int)meas_size, res,
-				   get_lh_count(meas_for_lhs));
+		SV_VERBOSE(110, "MPFIT success %s %f7.5s %f/%10.10f (%d measurements, %d result, %d lighthouses, %d axis)",
+				   so->codename, survive_run_time(ctx), result->orignorm, result->bestnorm, (int)meas_size, res,
+				   get_lh_count(meas_for_lhs_axis), get_axis_count(meas_for_lhs_axis));
 
 	} else {
 		SV_VERBOSE(100,
-				   "MPFIT failure %s %f7.5s %f/%10.10f (%d measurements, %d result, %d lighthouses, %d canSolveLHs, %d "
+				   "MPFIT failure %s %f7.5s %f/%10.10f (%d measurements, %d result, %d lighthouses, %d axis, %d "
+				   "canSolveLHs, %d "
 				   "since success, "
 				   "run #%d)",
 				   so->codename, survive_run_time(ctx), result->orignorm, result->bestnorm, (int)meas_size, res,
-				   get_lh_count(meas_for_lhs), canPossiblySolveLHS, d->opt.failures_since_success, d->stats.total_runs);
+				   get_lh_count(meas_for_lhs_axis), get_axis_count(meas_for_lhs_axis), canPossiblySolveLHS,
+				   d->opt.failures_since_success, d->stats.total_runs);
 
 		if (d->opt.failures_since_success > 10 && d->opt.stats.successes < 10 &&
 			(SurviveSensorActivations_stationary_time(&so->activations) > (48000000 / 10))) {
