@@ -55,6 +55,9 @@ set_target_properties(survive PROPERTIES
 	FOLDER "libraries"
 	SOVERSION ${PROJECT_VERSION_MAJOR}
 	VERSION ${PROJECT_VERSION})
+set_target_properties(survive PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+set_target_properties(survive PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+
 if(WIN32)
     set_target_properties(survive PROPERTIES PREFIX "lib")
 endif()

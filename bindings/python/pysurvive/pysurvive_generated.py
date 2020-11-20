@@ -1,7 +1,7 @@
 r"""Wrapper for poser.h
 
 Generated with:
-/home/justin/source/oss/libsurvive/.eggs/ctypesgen-1.0.2-py3.7.egg/ctypesgen/ctypesgen /home/justin/source/oss/libsurvive/include/libsurvive/poser.h /home/justin/source/oss/libsurvive/include/libsurvive/survive.h /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h /home/justin/source/oss/libsurvive/include/libsurvive/survive_hooks.h /home/justin/source/oss/libsurvive/include/libsurvive/survive_optimizer.h /home/justin/source/oss/libsurvive/include/libsurvive/survive_reproject.h /home/justin/source/oss/libsurvive/include/libsurvive/survive_reproject_gen2.h /home/justin/source/oss/libsurvive/include/libsurvive/survive_types.h -I/usr/local/include -I/home/justin/source/oss/libsurvive/redist -I/home/justin/source/oss/libsurvive/include/libsurvive -I/home/justin/source/oss/libsurvive/include --no-macros -L/home/justin/source/oss/libsurvive/build/lib.linux-x86_64-3.7 -llibsurvive.so --strip-prefix=survive_ -P Survive -o /home/justin/source/oss/libsurvive/bindings/python/pysurvive/pysurvive_generated.py
+/home/justin/source/oss/libsurvive/.eggs/ctypesgen-1.0.2-py3.7.egg/ctypesgen/ctypesgen /home/justin/source/oss/libsurvive/include/libsurvive/poser.h /home/justin/source/oss/libsurvive/include/libsurvive/survive.h /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h /home/justin/source/oss/libsurvive/include/libsurvive/survive_hooks.h /home/justin/source/oss/libsurvive/include/libsurvive/survive_optimizer.h /home/justin/source/oss/libsurvive/include/libsurvive/survive_reproject.h /home/justin/source/oss/libsurvive/include/libsurvive/survive_reproject_gen2.h /home/justin/source/oss/libsurvive/include/libsurvive/survive_types.h -I/usr/local/include -I/home/justin/source/oss/libsurvive/redist -I/home/justin/source/oss/libsurvive/include/libsurvive -I/home/justin/source/oss/libsurvive/include --no-macros -L/home/justin/source/oss/libsurvive/build/temp.linux-x86_64-3.7 -llibsurvive.so --strip-prefix=survive_ -P Survive -o /home/justin/source/oss/libsurvive/bindings/python/pysurvive/pysurvive_generated.py
 
 Do not modify this file.
 """
@@ -340,7 +340,7 @@ class String(MutableString, Union):
 
     _fields_ = [("raw", POINTER(c_char)), ("data", c_char_p)]
 
-    def __init__(self, obj=""):
+    def __init__(self, obj=b""):
         if isinstance(obj, (bytes, UserString)):
             self.data = bytes(obj)
         else:
@@ -444,7 +444,7 @@ def ord_if_char(value):
 # End preamble
 
 _libs = {}
-_libdirs = ['/home/justin/source/oss/libsurvive/build/lib.linux-x86_64-3.7']
+_libdirs = ['/home/justin/source/oss/libsurvive/build/temp.linux-x86_64-3.7']
 
 # Begin loader
 
@@ -808,7 +808,7 @@ del loaderclass
 
 # End loader
 
-add_library_search_dirs(['/home/justin/source/oss/libsurvive/build/lib.linux-x86_64-3.7'])
+add_library_search_dirs(['/home/justin/source/oss/libsurvive/build/temp.linux-x86_64-3.7'])
 
 # Begin libraries
 _libs["libsurvive.so"] = load_library("libsurvive.so")
@@ -1088,19 +1088,19 @@ if _libs["libsurvive.so"].has("survive_timecode_difference", "cdecl"):
     survive_timecode_difference.argtypes = [survive_timecode, survive_timecode]
     survive_timecode_difference.restype = survive_timecode
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 97
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 102
 class struct_SurviveObject(Structure):
     pass
 
 SurviveObject = struct_SurviveObject# /home/justin/source/oss/libsurvive/include/libsurvive/survive_types.h: 190
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 281
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 286
 class struct_SurviveContext(Structure):
     pass
 
 SurviveContext = struct_SurviveContext# /home/justin/source/oss/libsurvive/include/libsurvive/survive_types.h: 191
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 220
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 225
 class struct_BaseStationData(Structure):
     pass
 
@@ -1187,11 +1187,11 @@ imu_process_func = CFUNCTYPE(UNCHECKED(None), POINTER(SurviveObject), c_int, POI
 
 button_process_func = CFUNCTYPE(UNCHECKED(None), POINTER(SurviveObject), enum_SurviveInputEvent, enum_SurviveButton, POINTER(enum_SurviveAxis), POINTER(SurviveAxisVal_t))# /home/justin/source/oss/libsurvive/include/libsurvive/survive_types.h: 294
 
-pose_process_func = CFUNCTYPE(UNCHECKED(None), POINTER(SurviveObject), survive_timecode, POINTER(SurvivePose))# /home/justin/source/oss/libsurvive/include/libsurvive/survive_types.h: 300
+pose_process_func = CFUNCTYPE(UNCHECKED(None), POINTER(SurviveObject), survive_long_timecode, POINTER(SurvivePose))# /home/justin/source/oss/libsurvive/include/libsurvive/survive_types.h: 300
 
 imupose_process_func = pose_process_func# /home/justin/source/oss/libsurvive/include/libsurvive/survive_types.h: 305
 
-velocity_process_func = CFUNCTYPE(UNCHECKED(None), POINTER(SurviveObject), survive_timecode, POINTER(SurviveVelocity))# /home/justin/source/oss/libsurvive/include/libsurvive/survive_types.h: 310
+velocity_process_func = CFUNCTYPE(UNCHECKED(None), POINTER(SurviveObject), survive_long_timecode, POINTER(SurviveVelocity))# /home/justin/source/oss/libsurvive/include/libsurvive/survive_types.h: 310
 
 external_pose_process_func = CFUNCTYPE(UNCHECKED(None), POINTER(SurviveContext), String, POINTER(SurvivePose))# /home/justin/source/oss/libsurvive/include/libsurvive/survive_types.h: 316
 
@@ -1545,6 +1545,7 @@ struct_SurviveSensorActivations_s.__slots__ = [
     'last_light',
     'last_light_change',
     'last_movement',
+    'runtime_offset',
     'accel',
     'gyro',
     'mag',
@@ -1561,96 +1562,109 @@ struct_SurviveSensorActivations_s._fields_ = [
     ('last_light', survive_long_timecode),
     ('last_light_change', survive_long_timecode),
     ('last_movement', survive_long_timecode),
+    ('runtime_offset', c_double),
     ('accel', c_double * int(3)),
     ('gyro', c_double * int(3)),
     ('mag', c_double * int(3)),
 ]
 
-SurviveSensorActivations = struct_SurviveSensorActivations_s# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 49
+SurviveSensorActivations = struct_SurviveSensorActivations_s# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 51
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 54
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 56
 if _libs["libsurvive.so"].has("SurviveSensorActivations_reset", "cdecl"):
     SurviveSensorActivations_reset = _libs["libsurvive.so"].get("SurviveSensorActivations_reset", "cdecl")
     SurviveSensorActivations_reset.argtypes = [POINTER(SurviveSensorActivations)]
     SurviveSensorActivations_reset.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 55
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 57
 if _libs["libsurvive.so"].has("SurviveSensorActivations_ctor", "cdecl"):
     SurviveSensorActivations_ctor = _libs["libsurvive.so"].get("SurviveSensorActivations_ctor", "cdecl")
     SurviveSensorActivations_ctor.argtypes = [POINTER(SurviveObject), POINTER(SurviveSensorActivations)]
     SurviveSensorActivations_ctor.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 56
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 58
 if _libs["libsurvive.so"].has("SurviveSensorActivations_long_timecode_imu", "cdecl"):
     SurviveSensorActivations_long_timecode_imu = _libs["libsurvive.so"].get("SurviveSensorActivations_long_timecode_imu", "cdecl")
     SurviveSensorActivations_long_timecode_imu.argtypes = [POINTER(SurviveSensorActivations), survive_timecode]
     SurviveSensorActivations_long_timecode_imu.restype = survive_long_timecode
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 57
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 59
 if _libs["libsurvive.so"].has("SurviveSensorActivations_long_timecode_light", "cdecl"):
     SurviveSensorActivations_long_timecode_light = _libs["libsurvive.so"].get("SurviveSensorActivations_long_timecode_light", "cdecl")
     SurviveSensorActivations_long_timecode_light.argtypes = [POINTER(SurviveSensorActivations), survive_timecode]
     SurviveSensorActivations_long_timecode_light.restype = survive_long_timecode
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 62
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 64
 if _libs["libsurvive.so"].has("SurviveSensorActivations_difference", "cdecl"):
     SurviveSensorActivations_difference = _libs["libsurvive.so"].get("SurviveSensorActivations_difference", "cdecl")
     SurviveSensorActivations_difference.argtypes = [POINTER(SurviveSensorActivations), POINTER(SurviveSensorActivations)]
     SurviveSensorActivations_difference.restype = c_double
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 64
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 66
 if _libs["libsurvive.so"].has("SurviveSensorActivations_add", "cdecl"):
     SurviveSensorActivations_add = _libs["libsurvive.so"].get("SurviveSensorActivations_add", "cdecl")
     SurviveSensorActivations_add.argtypes = [POINTER(SurviveSensorActivations), POINTER(struct_PoserDataLightGen1)]
     SurviveSensorActivations_add.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 65
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 67
 if _libs["libsurvive.so"].has("SurviveSensorActivations_add_gen2", "cdecl"):
     SurviveSensorActivations_add_gen2 = _libs["libsurvive.so"].get("SurviveSensorActivations_add_gen2", "cdecl")
     SurviveSensorActivations_add_gen2.argtypes = [POINTER(SurviveSensorActivations), POINTER(struct_PoserDataLightGen2)]
     SurviveSensorActivations_add_gen2.restype = c_bool
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 68
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 70
+if _libs["libsurvive.so"].has("SurviveSensorActivations_register_runtime", "cdecl"):
+    SurviveSensorActivations_register_runtime = _libs["libsurvive.so"].get("SurviveSensorActivations_register_runtime", "cdecl")
+    SurviveSensorActivations_register_runtime.argtypes = [POINTER(SurviveSensorActivations), survive_long_timecode, c_uint64]
+    SurviveSensorActivations_register_runtime.restype = None
+
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 72
+if _libs["libsurvive.so"].has("SurviveSensorActivations_runtime", "cdecl"):
+    SurviveSensorActivations_runtime = _libs["libsurvive.so"].get("SurviveSensorActivations_runtime", "cdecl")
+    SurviveSensorActivations_runtime.argtypes = [POINTER(SurviveSensorActivations), survive_long_timecode]
+    SurviveSensorActivations_runtime.restype = c_uint64
+
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 73
 if _libs["libsurvive.so"].has("SurviveSensorActivations_add_imu", "cdecl"):
     SurviveSensorActivations_add_imu = _libs["libsurvive.so"].get("SurviveSensorActivations_add_imu", "cdecl")
     SurviveSensorActivations_add_imu.argtypes = [POINTER(SurviveSensorActivations), POINTER(struct_PoserDataIMU)]
     SurviveSensorActivations_add_imu.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 74
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 79
 if _libs["libsurvive.so"].has("SurviveSensorActivations_isReadingValid", "cdecl"):
     SurviveSensorActivations_isReadingValid = _libs["libsurvive.so"].get("SurviveSensorActivations_isReadingValid", "cdecl")
     SurviveSensorActivations_isReadingValid.argtypes = [POINTER(SurviveSensorActivations), survive_long_timecode, c_uint32, c_int, c_int]
     SurviveSensorActivations_isReadingValid.restype = c_bool
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 82
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 87
 if _libs["libsurvive.so"].has("SurviveSensorActivations_isPairValid", "cdecl"):
     SurviveSensorActivations_isPairValid = _libs["libsurvive.so"].get("SurviveSensorActivations_isPairValid", "cdecl")
     SurviveSensorActivations_isPairValid.argtypes = [POINTER(SurviveSensorActivations), survive_timecode, survive_timecode, c_uint32, c_int]
     SurviveSensorActivations_isPairValid.restype = c_bool
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 88
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 93
 if _libs["libsurvive.so"].has("SurviveSensorActivations_stationary_time", "cdecl"):
     SurviveSensorActivations_stationary_time = _libs["libsurvive.so"].get("SurviveSensorActivations_stationary_time", "cdecl")
     SurviveSensorActivations_stationary_time.argtypes = [POINTER(SurviveSensorActivations)]
     SurviveSensorActivations_stationary_time.restype = survive_long_timecode
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 89
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 94
 if _libs["libsurvive.so"].has("SurviveSensorActivations_last_time", "cdecl"):
     SurviveSensorActivations_last_time = _libs["libsurvive.so"].get("SurviveSensorActivations_last_time", "cdecl")
     SurviveSensorActivations_last_time.argtypes = [POINTER(SurviveSensorActivations)]
     SurviveSensorActivations_last_time.restype = survive_long_timecode
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 95
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 100
 try:
     SurviveSensorActivations_default_tolerance = (survive_timecode).in_dll(_libs["libsurvive.so"], "SurviveSensorActivations_default_tolerance")
 except:
     pass
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 179
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 184
 class struct_SurviveKalmanTracker(Structure):
     pass
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 181
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 186
 class struct_anon_49(Structure):
     pass
 
@@ -1786,61 +1800,61 @@ struct_SurviveObject._fields_ = [
     ('stats', struct_anon_49),
 ]
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 196
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 201
 if _libs["libsurvive.so"].has("survive_object_codename", "cdecl"):
     survive_object_codename = _libs["libsurvive.so"].get("survive_object_codename", "cdecl")
     survive_object_codename.argtypes = [POINTER(SurviveObject)]
     survive_object_codename.restype = c_char_p
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 197
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 202
 if _libs["libsurvive.so"].has("survive_object_last_imu2world", "cdecl"):
     survive_object_last_imu2world = _libs["libsurvive.so"].get("survive_object_last_imu2world", "cdecl")
     survive_object_last_imu2world.argtypes = [POINTER(SurviveObject)]
     survive_object_last_imu2world.restype = POINTER(SurvivePose)
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 198
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 203
 if _libs["libsurvive.so"].has("survive_object_drivername", "cdecl"):
     survive_object_drivername = _libs["libsurvive.so"].get("survive_object_drivername", "cdecl")
     survive_object_drivername.argtypes = [POINTER(SurviveObject)]
     survive_object_drivername.restype = c_char_p
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 199
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 204
 if _libs["libsurvive.so"].has("survive_object_charge", "cdecl"):
     survive_object_charge = _libs["libsurvive.so"].get("survive_object_charge", "cdecl")
     survive_object_charge.argtypes = [POINTER(SurviveObject)]
     survive_object_charge.restype = c_int8
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 200
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 205
 if _libs["libsurvive.so"].has("survive_object_charging", "cdecl"):
     survive_object_charging = _libs["libsurvive.so"].get("survive_object_charging", "cdecl")
     survive_object_charging.argtypes = [POINTER(SurviveObject)]
     survive_object_charging.restype = c_bool
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 202
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 207
 if _libs["libsurvive.so"].has("survive_object_pose", "cdecl"):
     survive_object_pose = _libs["libsurvive.so"].get("survive_object_pose", "cdecl")
     survive_object_pose.argtypes = [POINTER(SurviveObject)]
     survive_object_pose.restype = POINTER(SurvivePose)
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 204
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 209
 if _libs["libsurvive.so"].has("survive_object_sensor_ct", "cdecl"):
     survive_object_sensor_ct = _libs["libsurvive.so"].get("survive_object_sensor_ct", "cdecl")
     survive_object_sensor_ct.argtypes = [POINTER(SurviveObject)]
     survive_object_sensor_ct.restype = c_int8
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 205
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 210
 if _libs["libsurvive.so"].has("survive_object_sensor_locations", "cdecl"):
     survive_object_sensor_locations = _libs["libsurvive.so"].get("survive_object_sensor_locations", "cdecl")
     survive_object_sensor_locations.argtypes = [POINTER(SurviveObject)]
     survive_object_sensor_locations.restype = POINTER(c_double)
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 206
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 211
 if _libs["libsurvive.so"].has("survive_object_sensor_normals", "cdecl"):
     survive_object_sensor_normals = _libs["libsurvive.so"].get("survive_object_sensor_normals", "cdecl")
     survive_object_sensor_normals.argtypes = [POINTER(SurviveObject)]
     survive_object_sensor_normals.restype = POINTER(c_double)
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 218
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 223
 class struct_BaseStationCal(Structure):
     pass
 
@@ -1863,7 +1877,7 @@ struct_BaseStationCal._fields_ = [
     ('ogeemag', c_double),
 ]
 
-BaseStationCal = struct_BaseStationCal# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 218
+BaseStationCal = struct_BaseStationCal# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 223
 
 struct_BaseStationData.__slots__ = [
     'PositionSet',
@@ -1890,11 +1904,11 @@ struct_BaseStationData._fields_ = [
     ('user_ptr', POINTER(None)),
 ]
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 240
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 245
 class struct_config_group(Structure):
     pass
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 257
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 262
 class struct_anon_50(Structure):
     pass
 
@@ -1915,9 +1929,9 @@ struct_anon_50._fields_ = [
     ('so', POINTER(SurviveObject)),
 ]
 
-ButtonQueueEntry = struct_anon_50# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 257
+ButtonQueueEntry = struct_anon_50# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 262
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 266
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 271
 class struct_anon_51(Structure):
     pass
 
@@ -1936,37 +1950,37 @@ struct_anon_51._fields_ = [
     ('processed_events', c_size_t),
 ]
 
-ButtonQueue = struct_anon_51# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 266
+ButtonQueue = struct_anon_51# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 271
 
-enum_anon_52 = c_int# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 268
+enum_anon_52 = c_int# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 273
 
-SURVIVE_STOPPED = 0# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 268
+SURVIVE_STOPPED = 0# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 273
 
-SURVIVE_RUNNING = (SURVIVE_STOPPED + 1)# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 268
+SURVIVE_RUNNING = (SURVIVE_STOPPED + 1)# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 273
 
-SURVIVE_CLOSING = (SURVIVE_RUNNING + 1)# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 268
+SURVIVE_CLOSING = (SURVIVE_RUNNING + 1)# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 273
 
-SURVIVE_STATE_MAX = (SURVIVE_CLOSING + 1)# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 268
+SURVIVE_STATE_MAX = (SURVIVE_CLOSING + 1)# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 273
 
-SurviveState = enum_anon_52# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 268
+SurviveState = enum_anon_52# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 273
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 270
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 275
 class struct_SurviveRecordingData(Structure):
     pass
 
-enum_SurviveCalFlag = c_int# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 272
+enum_SurviveCalFlag = c_int# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 277
 
-SVCal_None = 0# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 272
+SVCal_None = 0# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 277
 
-SVCal_Phase = 1# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 272
+SVCal_Phase = 1# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 277
 
-SVCal_Tilt = 2# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 272
+SVCal_Tilt = 2# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 277
 
-SVCal_Curve = 4# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 272
+SVCal_Curve = 4# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 277
 
-SVCal_Gib = 8# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 272
+SVCal_Gib = 8# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 277
 
-SVCal_All = (((SVCal_Gib | SVCal_Curve) | SVCal_Tilt) | SVCal_Phase)# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 272
+SVCal_All = (((SVCal_Gib | SVCal_Curve) | SVCal_Tilt) | SVCal_Phase)# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 277
 
 struct_SurviveContext.__slots__ = [
     'lh_version_configed',
@@ -2073,13 +2087,13 @@ struct_SurviveContext._fields_ = [
     ('private_members', POINTER(None)),
 ]
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 327
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 332
 if _libs["libsurvive.so"].has("survive_verify_FLT_size", "cdecl"):
     survive_verify_FLT_size = _libs["libsurvive.so"].get("survive_verify_FLT_size", "cdecl")
     survive_verify_FLT_size.argtypes = [c_uint32]
     survive_verify_FLT_size.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 330
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 335
 if _libs["libsurvive.so"].has("survive_init_internal", "cdecl"):
     survive_init_internal = _libs["libsurvive.so"].get("survive_init_internal", "cdecl")
     survive_init_internal.argtypes = [c_int, POINTER(POINTER(c_char)), POINTER(None), log_process_func]
@@ -2223,125 +2237,125 @@ if _libs["libsurvive.so"].has("survive_install_lighthouse_pose_fn", "cdecl"):
     survive_install_lighthouse_pose_fn.argtypes = [POINTER(SurviveContext), lighthouse_pose_process_func]
     survive_install_lighthouse_pose_fn.restype = lighthouse_pose_process_func
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 365
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 370
 if _libs["libsurvive.so"].has("survive_startup", "cdecl"):
     survive_startup = _libs["libsurvive.so"].get("survive_startup", "cdecl")
     survive_startup.argtypes = [POINTER(SurviveContext)]
     survive_startup.restype = c_int
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 366
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 371
 if _libs["libsurvive.so"].has("survive_poll", "cdecl"):
     survive_poll = _libs["libsurvive.so"].get("survive_poll", "cdecl")
     survive_poll.argtypes = [POINTER(SurviveContext)]
     survive_poll.restype = c_int
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 367
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 372
 if _libs["libsurvive.so"].has("survive_close", "cdecl"):
     survive_close = _libs["libsurvive.so"].get("survive_close", "cdecl")
     survive_close.argtypes = [POINTER(SurviveContext)]
     survive_close.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 368
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 373
 if _libs["libsurvive.so"].has("survive_get_ctx_lock", "cdecl"):
     survive_get_ctx_lock = _libs["libsurvive.so"].get("survive_get_ctx_lock", "cdecl")
     survive_get_ctx_lock.argtypes = [POINTER(SurviveContext)]
     survive_get_ctx_lock.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 369
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 374
 if _libs["libsurvive.so"].has("survive_release_ctx_lock", "cdecl"):
     survive_release_ctx_lock = _libs["libsurvive.so"].get("survive_release_ctx_lock", "cdecl")
     survive_release_ctx_lock.argtypes = [POINTER(SurviveContext)]
     survive_release_ctx_lock.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 371
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 376
 if _libs["libsurvive.so"].has("survive_get_so_by_name", "cdecl"):
     survive_get_so_by_name = _libs["libsurvive.so"].get("survive_get_so_by_name", "cdecl")
     survive_get_so_by_name.argtypes = [POINTER(SurviveContext), String]
     survive_get_so_by_name.restype = POINTER(SurviveObject)
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 374
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 379
 if _libs["libsurvive.so"].has("survive_simple_inflate", "cdecl"):
     survive_simple_inflate = _libs["libsurvive.so"].get("survive_simple_inflate", "cdecl")
     survive_simple_inflate.argtypes = [POINTER(SurviveContext), POINTER(c_uint8), c_int, POINTER(c_uint8), c_int]
     survive_simple_inflate.restype = c_int
 
-enum_survive_config_flags = c_int# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 377
+enum_survive_config_flags = c_int# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 382
 
-SC_GET = 0# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 377
+SC_GET = 0# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 382
 
-SC_SET = 1# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 377
+SC_SET = 1# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 382
 
-SC_OVERRIDE = 2# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 377
+SC_OVERRIDE = 2# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 382
 
-SC_SETCONFIG = 4# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 377
+SC_SETCONFIG = 4# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 382
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 384
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 389
 if _libs["libsurvive.so"].has("survive_config_is_set", "cdecl"):
     survive_config_is_set = _libs["libsurvive.so"].get("survive_config_is_set", "cdecl")
     survive_config_is_set.argtypes = [POINTER(SurviveContext), String]
     survive_config_is_set.restype = c_bool
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 385
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 390
 if _libs["libsurvive.so"].has("survive_configf", "cdecl"):
     survive_configf = _libs["libsurvive.so"].get("survive_configf", "cdecl")
     survive_configf.argtypes = [POINTER(SurviveContext), String, c_char, c_double]
     survive_configf.restype = c_double
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 386
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 391
 if _libs["libsurvive.so"].has("survive_configi", "cdecl"):
     survive_configi = _libs["libsurvive.so"].get("survive_configi", "cdecl")
     survive_configi.argtypes = [POINTER(SurviveContext), String, c_char, c_uint32]
     survive_configi.restype = c_uint32
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 387
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 392
 if _libs["libsurvive.so"].has("survive_config_type", "cdecl"):
     survive_config_type = _libs["libsurvive.so"].get("survive_config_type", "cdecl")
     survive_config_type.argtypes = [POINTER(SurviveContext), String]
     survive_config_type.restype = c_char
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 388
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 393
 if _libs["libsurvive.so"].has("survive_config_as_str", "cdecl"):
     survive_config_as_str = _libs["libsurvive.so"].get("survive_config_as_str", "cdecl")
     survive_config_as_str.argtypes = [POINTER(SurviveContext), String, c_size_t, String, String]
     survive_config_as_str.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 391
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 396
 if _libs["libsurvive.so"].has("survive_configs", "cdecl"):
     survive_configs = _libs["libsurvive.so"].get("survive_configs", "cdecl")
     survive_configs.argtypes = [POINTER(SurviveContext), String, c_char, String]
     survive_configs.restype = c_char_p
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 393
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 398
 if _libs["libsurvive.so"].has("survive_attach_configi", "cdecl"):
     survive_attach_configi = _libs["libsurvive.so"].get("survive_attach_configi", "cdecl")
     survive_attach_configi.argtypes = [POINTER(SurviveContext), String, POINTER(c_int32)]
     survive_attach_configi.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 394
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 399
 if _libs["libsurvive.so"].has("survive_attach_configf", "cdecl"):
     survive_attach_configf = _libs["libsurvive.so"].get("survive_attach_configf", "cdecl")
     survive_attach_configf.argtypes = [POINTER(SurviveContext), String, POINTER(c_double)]
     survive_attach_configf.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 395
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 400
 if _libs["libsurvive.so"].has("survive_attach_configs", "cdecl"):
     survive_attach_configs = _libs["libsurvive.so"].get("survive_attach_configs", "cdecl")
     survive_attach_configs.argtypes = [POINTER(SurviveContext), String, String]
     survive_attach_configs.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 396
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 401
 if _libs["libsurvive.so"].has("survive_detach_config", "cdecl"):
     survive_detach_config = _libs["libsurvive.so"].get("survive_detach_config", "cdecl")
     survive_detach_config.argtypes = [POINTER(SurviveContext), String, POINTER(None)]
     survive_detach_config.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 398
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 403
 if _libs["libsurvive.so"].has("survive_get_bsd_idx", "cdecl"):
     survive_get_bsd_idx = _libs["libsurvive.so"].get("survive_get_bsd_idx", "cdecl")
     survive_get_bsd_idx.argtypes = [POINTER(SurviveContext), survive_channel]
     survive_get_bsd_idx.restype = c_int8
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 405
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 410
 if _libs["libsurvive.so"].has("survive_config_bind_variable", "cdecl"):
     _func = _libs["libsurvive.so"].get("survive_config_bind_variable", "cdecl")
     _restype = None
@@ -2349,7 +2363,7 @@ if _libs["libsurvive.so"].has("survive_config_bind_variable", "cdecl"):
     _argtypes = [c_char, String, String]
     survive_config_bind_variable = _variadic_function(_func,_restype,_argtypes,_errcheck)
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 409
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 414
 for _lib in _libs.values():
     if not _lib.has("survive_cal_get_status", "cdecl"):
         continue
@@ -2358,37 +2372,37 @@ for _lib in _libs.values():
     survive_cal_get_status.restype = c_int
     break
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 412
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 417
 if _libs["libsurvive.so"].has("survive_haptic", "cdecl"):
     survive_haptic = _libs["libsurvive.so"].get("survive_haptic", "cdecl")
     survive_haptic.argtypes = [POINTER(SurviveObject), c_double, c_double, c_double]
     survive_haptic.restype = c_int
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 413
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 418
 if _libs["libsurvive.so"].has("survive_ootx_free_decoder_context", "cdecl"):
     survive_ootx_free_decoder_context = _libs["libsurvive.so"].get("survive_ootx_free_decoder_context", "cdecl")
     survive_ootx_free_decoder_context.argtypes = [POINTER(struct_SurviveContext), c_int]
     survive_ootx_free_decoder_context.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 414
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 419
 if _libs["libsurvive.so"].has("survive_find_ang_velocity", "cdecl"):
     survive_find_ang_velocity = _libs["libsurvive.so"].get("survive_find_ang_velocity", "cdecl")
     survive_find_ang_velocity.argtypes = [SurviveAngularVelocity, c_double, LinmathQuat, LinmathQuat]
     survive_find_ang_velocity.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 416
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 421
 if _libs["libsurvive.so"].has("survive_apply_ang_velocity", "cdecl"):
     survive_apply_ang_velocity = _libs["libsurvive.so"].get("survive_apply_ang_velocity", "cdecl")
     survive_apply_ang_velocity.argtypes = [LinmathQuat, SurviveAngularVelocity, c_double, LinmathQuat]
     survive_apply_ang_velocity.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 420
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 425
 if _libs["libsurvive.so"].has("survive_default_ootx_received_process", "cdecl"):
     survive_default_ootx_received_process = _libs["libsurvive.so"].get("survive_default_ootx_received_process", "cdecl")
     survive_default_ootx_received_process.argtypes = [POINTER(struct_SurviveContext), c_uint8]
     survive_default_ootx_received_process.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 422
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 427
 if _libs["libsurvive.so"].has("survive_default_printf_process", "cdecl"):
     _func = _libs["libsurvive.so"].get("survive_default_printf_process", "cdecl")
     _restype = c_int
@@ -2396,189 +2410,189 @@ if _libs["libsurvive.so"].has("survive_default_printf_process", "cdecl"):
     _argtypes = [POINTER(struct_SurviveContext), String]
     survive_default_printf_process = _variadic_function(_func,_restype,_argtypes,_errcheck)
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 423
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 428
 if _libs["libsurvive.so"].has("survive_default_log_process", "cdecl"):
     survive_default_log_process = _libs["libsurvive.so"].get("survive_default_log_process", "cdecl")
     survive_default_log_process.argtypes = [POINTER(struct_SurviveContext), SurviveLogLevel, String]
     survive_default_log_process.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 424
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 429
 if _libs["libsurvive.so"].has("survive_default_lightcap_process", "cdecl"):
     survive_default_lightcap_process = _libs["libsurvive.so"].get("survive_default_lightcap_process", "cdecl")
     survive_default_lightcap_process.argtypes = [POINTER(SurviveObject), POINTER(LightcapElement)]
     survive_default_lightcap_process.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 425
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 430
 if _libs["libsurvive.so"].has("survive_default_light_process", "cdecl"):
     survive_default_light_process = _libs["libsurvive.so"].get("survive_default_light_process", "cdecl")
     survive_default_light_process.argtypes = [POINTER(SurviveObject), c_int, c_int, c_int, survive_timecode, survive_timecode, c_uint32]
     survive_default_light_process.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 427
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 432
 if _libs["libsurvive.so"].has("survive_default_raw_imu_process", "cdecl"):
     survive_default_raw_imu_process = _libs["libsurvive.so"].get("survive_default_raw_imu_process", "cdecl")
     survive_default_raw_imu_process.argtypes = [POINTER(SurviveObject), c_int, POINTER(c_double), survive_timecode, c_int]
     survive_default_raw_imu_process.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 429
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 434
 if _libs["libsurvive.so"].has("survive_default_imu_process", "cdecl"):
     survive_default_imu_process = _libs["libsurvive.so"].get("survive_default_imu_process", "cdecl")
     survive_default_imu_process.argtypes = [POINTER(SurviveObject), c_int, POINTER(c_double), survive_timecode, c_int]
     survive_default_imu_process.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 430
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 435
 if _libs["libsurvive.so"].has("survive_default_angle_process", "cdecl"):
     survive_default_angle_process = _libs["libsurvive.so"].get("survive_default_angle_process", "cdecl")
     survive_default_angle_process.argtypes = [POINTER(SurviveObject), c_int, c_int, survive_timecode, c_double, c_double, c_uint32]
     survive_default_angle_process.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 433
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 438
 if _libs["libsurvive.so"].has("survive_default_light_pulse_process", "cdecl"):
     survive_default_light_pulse_process = _libs["libsurvive.so"].get("survive_default_light_pulse_process", "cdecl")
     survive_default_light_pulse_process.argtypes = [POINTER(SurviveObject), c_int, c_int, survive_timecode, c_double, c_uint32]
     survive_default_light_pulse_process.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 435
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 440
 if _libs["libsurvive.so"].has("survive_default_sync_process", "cdecl"):
     survive_default_sync_process = _libs["libsurvive.so"].get("survive_default_sync_process", "cdecl")
     survive_default_sync_process.argtypes = [POINTER(SurviveObject), survive_channel, survive_timecode, c_bool, c_bool]
     survive_default_sync_process.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 437
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 442
 if _libs["libsurvive.so"].has("survive_default_sweep_process", "cdecl"):
     survive_default_sweep_process = _libs["libsurvive.so"].get("survive_default_sweep_process", "cdecl")
     survive_default_sweep_process.argtypes = [POINTER(SurviveObject), survive_channel, c_int, survive_timecode, c_bool]
     survive_default_sweep_process.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 439
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 444
 if _libs["libsurvive.so"].has("survive_default_sweep_angle_process", "cdecl"):
     survive_default_sweep_angle_process = _libs["libsurvive.so"].get("survive_default_sweep_angle_process", "cdecl")
     survive_default_sweep_angle_process.argtypes = [POINTER(SurviveObject), survive_channel, c_int, survive_timecode, c_int8, c_double]
     survive_default_sweep_angle_process.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 441
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 446
 if _libs["libsurvive.so"].has("survive_default_button_process", "cdecl"):
     survive_default_button_process = _libs["libsurvive.so"].get("survive_default_button_process", "cdecl")
     survive_default_button_process.argtypes = [POINTER(SurviveObject), enum_SurviveInputEvent, enum_SurviveButton, POINTER(enum_SurviveAxis), POINTER(SurviveAxisVal_t)]
     survive_default_button_process.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 444
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 449
 if _libs["libsurvive.so"].has("survive_default_imupose_process", "cdecl"):
     survive_default_imupose_process = _libs["libsurvive.so"].get("survive_default_imupose_process", "cdecl")
-    survive_default_imupose_process.argtypes = [POINTER(SurviveObject), c_uint32, POINTER(SurvivePose)]
+    survive_default_imupose_process.argtypes = [POINTER(SurviveObject), survive_long_timecode, POINTER(SurvivePose)]
     survive_default_imupose_process.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 445
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 451
 if _libs["libsurvive.so"].has("survive_default_pose_process", "cdecl"):
     survive_default_pose_process = _libs["libsurvive.so"].get("survive_default_pose_process", "cdecl")
-    survive_default_pose_process.argtypes = [POINTER(SurviveObject), survive_timecode, POINTER(SurvivePose)]
+    survive_default_pose_process.argtypes = [POINTER(SurviveObject), survive_long_timecode, POINTER(SurvivePose)]
     survive_default_pose_process.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 446
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 453
 if _libs["libsurvive.so"].has("survive_default_velocity_process", "cdecl"):
     survive_default_velocity_process = _libs["libsurvive.so"].get("survive_default_velocity_process", "cdecl")
-    survive_default_velocity_process.argtypes = [POINTER(SurviveObject), survive_timecode, POINTER(SurviveVelocity)]
+    survive_default_velocity_process.argtypes = [POINTER(SurviveObject), survive_long_timecode, POINTER(SurviveVelocity)]
     survive_default_velocity_process.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 448
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 455
 if _libs["libsurvive.so"].has("survive_default_external_pose_process", "cdecl"):
     survive_default_external_pose_process = _libs["libsurvive.so"].get("survive_default_external_pose_process", "cdecl")
     survive_default_external_pose_process.argtypes = [POINTER(SurviveContext), String, POINTER(SurvivePose)]
     survive_default_external_pose_process.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 450
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 457
 if _libs["libsurvive.so"].has("survive_default_external_velocity_process", "cdecl"):
     survive_default_external_velocity_process = _libs["libsurvive.so"].get("survive_default_external_velocity_process", "cdecl")
     survive_default_external_velocity_process.argtypes = [POINTER(SurviveContext), String, POINTER(SurviveVelocity)]
     survive_default_external_velocity_process.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 452
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 459
 if _libs["libsurvive.so"].has("survive_default_lighthouse_pose_process", "cdecl"):
     survive_default_lighthouse_pose_process = _libs["libsurvive.so"].get("survive_default_lighthouse_pose_process", "cdecl")
     survive_default_lighthouse_pose_process.argtypes = [POINTER(SurviveContext), c_uint8, POINTER(SurvivePose)]
     survive_default_lighthouse_pose_process.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 454
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 461
 if _libs["libsurvive.so"].has("survive_default_config_process", "cdecl"):
     survive_default_config_process = _libs["libsurvive.so"].get("survive_default_config_process", "cdecl")
     survive_default_config_process.argtypes = [POINTER(SurviveObject), String, c_int]
     survive_default_config_process.restype = c_int
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 455
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 462
 if _libs["libsurvive.so"].has("survive_default_gen_detected_process", "cdecl"):
     survive_default_gen_detected_process = _libs["libsurvive.so"].get("survive_default_gen_detected_process", "cdecl")
     survive_default_gen_detected_process.argtypes = [POINTER(SurviveObject), c_int]
     survive_default_gen_detected_process.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 456
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 463
 if _libs["libsurvive.so"].has("survive_default_new_object_process", "cdecl"):
     survive_default_new_object_process = _libs["libsurvive.so"].get("survive_default_new_object_process", "cdecl")
     survive_default_new_object_process.argtypes = [POINTER(SurviveObject)]
     survive_default_new_object_process.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 457
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 464
 if _libs["libsurvive.so"].has("survive_run_time", "cdecl"):
     survive_run_time = _libs["libsurvive.so"].get("survive_run_time", "cdecl")
     survive_run_time.argtypes = [POINTER(SurviveContext)]
     survive_run_time.restype = c_double
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 459
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 466
 if _libs["libsurvive.so"].has("survive_input_event_count", "cdecl"):
     survive_input_event_count = _libs["libsurvive.so"].get("survive_input_event_count", "cdecl")
     survive_input_event_count.argtypes = [POINTER(SurviveContext)]
     survive_input_event_count.restype = c_size_t
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 462
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 469
 if _libs["libsurvive.so"].has("RegisterDriver", "cdecl"):
     RegisterDriver = _libs["libsurvive.so"].get("RegisterDriver", "cdecl")
     RegisterDriver.argtypes = [String, survive_driver_fn]
     RegisterDriver.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 463
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 470
 if _libs["libsurvive.so"].has("RegisterPoserDriver", "cdecl"):
     RegisterPoserDriver = _libs["libsurvive.so"].get("RegisterPoserDriver", "cdecl")
     RegisterPoserDriver.argtypes = [String, PoserCB]
     RegisterPoserDriver.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 486
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 493
 if _libs["libsurvive.so"].has("survive_add_object", "cdecl"):
     survive_add_object = _libs["libsurvive.so"].get("survive_add_object", "cdecl")
     survive_add_object.argtypes = [POINTER(SurviveContext), POINTER(SurviveObject)]
     survive_add_object.restype = c_int
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 487
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 494
 if _libs["libsurvive.so"].has("survive_remove_object", "cdecl"):
     survive_remove_object = _libs["libsurvive.so"].get("survive_remove_object", "cdecl")
     survive_remove_object.argtypes = [POINTER(SurviveContext), POINTER(SurviveObject)]
     survive_remove_object.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 488
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 495
 if _libs["libsurvive.so"].has("survive_get_driver", "cdecl"):
     survive_get_driver = _libs["libsurvive.so"].get("survive_get_driver", "cdecl")
     survive_get_driver.argtypes = [POINTER(SurviveContext), DeviceDriverCb]
     survive_get_driver.restype = POINTER(c_ubyte)
     survive_get_driver.errcheck = lambda v,*a : cast(v, c_void_p)
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 489
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 496
 if _libs["libsurvive.so"].has("survive_get_driver_by_closefn", "cdecl"):
     survive_get_driver_by_closefn = _libs["libsurvive.so"].get("survive_get_driver_by_closefn", "cdecl")
     survive_get_driver_by_closefn.argtypes = [POINTER(SurviveContext), DeviceDriverCb]
     survive_get_driver_by_closefn.restype = POINTER(c_ubyte)
     survive_get_driver_by_closefn.errcheck = lambda v,*a : cast(v, c_void_p)
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 490
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 497
 if _libs["libsurvive.so"].has("survive_add_driver", "cdecl"):
     survive_add_driver = _libs["libsurvive.so"].get("survive_add_driver", "cdecl")
     survive_add_driver.argtypes = [POINTER(SurviveContext), POINTER(None), DeviceDriverCb, DeviceDriverCb]
     survive_add_driver.restype = None
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 492
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 499
 if _libs["libsurvive.so"].has("survive_add_threaded_driver", "cdecl"):
     survive_add_threaded_driver = _libs["libsurvive.so"].get("survive_add_threaded_driver", "cdecl")
     survive_add_threaded_driver.argtypes = [POINTER(SurviveContext), POINTER(None), String, CFUNCTYPE(UNCHECKED(POINTER(c_ubyte)), POINTER(None)), DeviceDriverCb]
     survive_add_threaded_driver.restype = POINTER(c_bool)
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 494
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 501
 if _libs["libsurvive.so"].has("survive_export_config", "cdecl"):
     survive_export_config = _libs["libsurvive.so"].get("survive_export_config", "cdecl")
     survive_export_config.argtypes = [POINTER(SurviveObject)]
@@ -2588,19 +2602,19 @@ if _libs["libsurvive.so"].has("survive_export_config", "cdecl"):
         survive_export_config.restype = String
         survive_export_config.errcheck = ReturnString
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 497
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 504
 if _libs["libsurvive.so"].has("survive_map_sensor_id", "cdecl"):
     survive_map_sensor_id = _libs["libsurvive.so"].get("survive_map_sensor_id", "cdecl")
     survive_map_sensor_id.argtypes = [POINTER(SurviveObject), c_uint8]
     survive_map_sensor_id.restype = c_uint8
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 498
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 505
 if _libs["libsurvive.so"].has("handle_lightcap", "cdecl"):
     handle_lightcap = _libs["libsurvive.so"].get("handle_lightcap", "cdecl")
     handle_lightcap.argtypes = [POINTER(SurviveObject), POINTER(LightcapElement)]
     handle_lightcap.restype = c_bool
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 557
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 564
 for _lib in _libs.values():
     try:
         ctx = (POINTER(struct_SurviveContext)).in_dll(_lib, "ctx")
@@ -2608,7 +2622,7 @@ for _lib in _libs.values():
     except:
         pass
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 558
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 565
 for _lib in _libs.values():
     try:
         stbuff = (c_char * int(1024)).in_dll(_lib, "stbuff")
@@ -2616,7 +2630,7 @@ for _lib in _libs.values():
     except:
         pass
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 569
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 576
 for _lib in _libs.values():
     try:
         ctx = (POINTER(struct_SurviveContext)).in_dll(_lib, "ctx")
@@ -2624,7 +2638,7 @@ for _lib in _libs.values():
     except:
         pass
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 570
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 577
 for _lib in _libs.values():
     try:
         stbuff = (c_char * int(1024)).in_dll(_lib, "stbuff")
@@ -2666,7 +2680,7 @@ SurviveSimpleEventType_None = 0# /home/justin/source/oss/libsurvive/include/libs
 
 SurviveSimpleEventType_ButtonEvent = (SurviveSimpleEventType_None + 1)# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 28
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 164
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 166
 class struct_SurviveSimpleEvent(Structure):
     pass
 
@@ -2768,67 +2782,67 @@ if _libs["libsurvive.so"].has("survive_simple_get_next_updated", "cdecl"):
     survive_simple_get_next_updated.argtypes = [POINTER(SurviveSimpleContext)]
     survive_simple_get_next_updated.restype = POINTER(SurviveSimpleObject)
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 93
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 94
 if _libs["libsurvive.so"].has("survive_simple_object_get_latest_pose", "cdecl"):
     survive_simple_object_get_latest_pose = _libs["libsurvive.so"].get("survive_simple_object_get_latest_pose", "cdecl")
     survive_simple_object_get_latest_pose.argtypes = [POINTER(SurviveSimpleObject), POINTER(SurvivePose)]
     survive_simple_object_get_latest_pose.restype = c_double
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 98
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 100
 if _libs["libsurvive.so"].has("survive_simple_object_get_latest_velocity", "cdecl"):
     survive_simple_object_get_latest_velocity = _libs["libsurvive.so"].get("survive_simple_object_get_latest_velocity", "cdecl")
     survive_simple_object_get_latest_velocity.argtypes = [POINTER(SurviveSimpleObject), POINTER(SurviveVelocity)]
     survive_simple_object_get_latest_velocity.restype = c_double
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 103
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 105
 if _libs["libsurvive.so"].has("survive_simple_object_name", "cdecl"):
     survive_simple_object_name = _libs["libsurvive.so"].get("survive_simple_object_name", "cdecl")
     survive_simple_object_name.argtypes = [POINTER(SurviveSimpleObject)]
     survive_simple_object_name.restype = c_char_p
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 108
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 110
 if _libs["libsurvive.so"].has("survive_simple_serial_number", "cdecl"):
     survive_simple_serial_number = _libs["libsurvive.so"].get("survive_simple_serial_number", "cdecl")
     survive_simple_serial_number.argtypes = [POINTER(SurviveSimpleObject)]
     survive_simple_serial_number.restype = c_char_p
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 114
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 116
 if _libs["libsurvive.so"].has("survive_simple_wait_for_update", "cdecl"):
     survive_simple_wait_for_update = _libs["libsurvive.so"].get("survive_simple_wait_for_update", "cdecl")
     survive_simple_wait_for_update.argtypes = [POINTER(SurviveSimpleContext)]
     survive_simple_wait_for_update.restype = c_bool
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 118
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 120
 if _libs["libsurvive.so"].has("survive_simple_next_event", "cdecl"):
     survive_simple_next_event = _libs["libsurvive.so"].get("survive_simple_next_event", "cdecl")
     survive_simple_next_event.argtypes = [POINTER(SurviveSimpleContext), POINTER(SurviveSimpleEvent)]
     survive_simple_next_event.restype = enum_SurviveSimpleEventType
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 121
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 123
 if _libs["libsurvive.so"].has("survive_simple_object_haptic", "cdecl"):
     survive_simple_object_haptic = _libs["libsurvive.so"].get("survive_simple_object_haptic", "cdecl")
     survive_simple_object_haptic.argtypes = [POINTER(struct_SurviveSimpleObject), c_double, c_double, c_double]
     survive_simple_object_haptic.restype = c_int
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 123
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 125
 if _libs["libsurvive.so"].has("survive_simple_object_get_type", "cdecl"):
     survive_simple_object_get_type = _libs["libsurvive.so"].get("survive_simple_object_get_type", "cdecl")
     survive_simple_object_get_type.argtypes = [POINTER(struct_SurviveSimpleObject)]
     survive_simple_object_get_type.restype = enum_SurviveSimpleObject_type
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 124
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 126
 if _libs["libsurvive.so"].has("survive_simple_object_get_input_axis", "cdecl"):
     survive_simple_object_get_input_axis = _libs["libsurvive.so"].get("survive_simple_object_get_input_axis", "cdecl")
     survive_simple_object_get_input_axis.argtypes = [POINTER(struct_SurviveSimpleObject), enum_SurviveAxis]
     survive_simple_object_get_input_axis.restype = SurviveAxisVal_t
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 126
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 128
 if _libs["libsurvive.so"].has("survive_simple_object_get_subtype", "cdecl"):
     survive_simple_object_get_subtype = _libs["libsurvive.so"].get("survive_simple_object_get_subtype", "cdecl")
     survive_simple_object_get_subtype.argtypes = [POINTER(struct_SurviveSimpleObject)]
     survive_simple_object_get_subtype.restype = SurviveSimpleSubobject_type
 
-# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 131
+# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 133
 if _libs["libsurvive.so"].has("survive_simple_get_button_event", "cdecl"):
     survive_simple_get_button_event = _libs["libsurvive.so"].get("survive_simple_get_button_event", "cdecl")
     survive_simple_get_button_event.argtypes = [POINTER(SurviveSimpleEvent)]
@@ -3381,11 +3395,11 @@ except:
 
 survive_kalman_model_t = struct_survive_kalman_model_t# /home/justin/source/oss/libsurvive/include/libsurvive/survive_types.h: 107
 
-SurviveObject = struct_SurviveObject# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 97
+SurviveObject = struct_SurviveObject# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 102
 
-SurviveContext = struct_SurviveContext# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 281
+SurviveContext = struct_SurviveContext# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 286
 
-BaseStationData = struct_BaseStationData# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 220
+BaseStationData = struct_BaseStationData# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 225
 
 SurviveCalData = struct_SurviveCalData# /home/justin/source/oss/libsurvive/include/libsurvive/survive_types.h: 193
 
@@ -3407,19 +3421,19 @@ SurviveSensorActivations_s = struct_SurviveSensorActivations_s# /home/justin/sou
 
 survive_threaded_poser = struct_survive_threaded_poser# /home/justin/source/oss/libsurvive/include/libsurvive/poser.h: 161
 
-SurviveKalmanTracker = struct_SurviveKalmanTracker# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 179
+SurviveKalmanTracker = struct_SurviveKalmanTracker# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 184
 
-BaseStationCal = struct_BaseStationCal# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 218
+BaseStationCal = struct_BaseStationCal# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 223
 
-config_group = struct_config_group# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 240
+config_group = struct_config_group# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 245
 
-SurviveRecordingData = struct_SurviveRecordingData# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 270
+SurviveRecordingData = struct_SurviveRecordingData# /home/justin/source/oss/libsurvive/include/libsurvive/survive.h: 275
 
 SurviveSimpleContext = struct_SurviveSimpleContext# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 11
 
 SurviveSimpleObject = struct_SurviveSimpleObject# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 24
 
-SurviveSimpleEvent = struct_SurviveSimpleEvent# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 164
+SurviveSimpleEvent = struct_SurviveSimpleEvent# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 166
 
 SurviveSimpleButtonEvent = struct_SurviveSimpleButtonEvent# /home/justin/source/oss/libsurvive/include/libsurvive/survive_api.h: 42
 

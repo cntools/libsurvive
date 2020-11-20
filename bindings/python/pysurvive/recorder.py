@@ -30,6 +30,7 @@ class RecordedData:
         self.angle_per_sweep = defaultdict(list)
         self.time_since_move = []
         self.poses = []
+        self.velocities = []
         self.raw_angles = defaultdict(list)
 
     def record_imu(self, time, mode, accelgyro, timecode, id):
@@ -41,6 +42,9 @@ class RecordedData:
 
     def record_pose(self, time, timecode, pose):
         self.poses.append((time, pose))
+
+    def record_velocity(self, time, timecode, velocity):
+        self.velocities.append((time, velocity))
 
     def record_light(self, time, sensor_id, acode, timeinsweep, timecode, length, lh):
         key = (lh, acode & 1)
@@ -145,7 +149,12 @@ class RecordedData:
         ax = fig.add_subplot(plot_rows, plot_cols, plot_num + 1, title=self.name + ' Accels')
 
         ax.plot([self.imu_times[0],self.imu_times[-1]], [moveThreshAcc] * 2, linewidth=1)
-        ax.plot(self.imu_times[1:], np.linalg.norm(np.diff(self.accels, axis=0), axis=1), linewidth=1)
+        ax.plot(self.imu_times[1:], np.linalg.norm(np.diff(self.accels, axis=0), axis=1), linewidth=1, label="Norm diff");
+        ax.plot(self.imu_times, np.linalg.norm(self.accels, axis=1), linewidth=1, label="Norm")
+        accels = np.array(self.accels)
+        for i in range(3):
+            ax.plot(self.imu_times, accels[:, i], linewidth=1, label=axes_name[i])
+        ax.legend()
 
         return 2
 
@@ -195,7 +204,7 @@ class RecordedData:
             diff_data = insert_blanks(data)
             times = diff_data[:, 0]
             data = diff_data[:, 1]
-            ax.plot(times, data, label=k, linewidth=1)
+            ax.plot(times, data, '.', label=k, linewidth=1)
         return 1
 
     def plot_moving(self, fig = None, plot_num = 1, plot_rows = 1, plot_cols = 1, figsize=None, **kwargs):
@@ -225,7 +234,8 @@ class RecordedData:
         ax = fig.add_subplot(plot_rows, plot_cols, plot_num, title=self.name + ' light')
         for k,v in self.angle_per_sweep.items():
             vv = np.array(list(filter(lambda x: x is not None, map(pv, v))))
-            ax.plot(vv[:, 0], (vv[:, 1]), label=k, linewidth=1)
+            if len(vv):
+                ax.plot(vv[:, 0], (vv[:, 1]), label=k, linewidth=1)
 
         for k,v in self.angles.items():
             vv = np.array(v)
@@ -252,9 +262,10 @@ class RecordedData:
                     ax.plot(times, v, linewidth=1, label=k)
             graphs += 1
 
-        graphs += self.plot_light_angles(fig, plot_num, plot_rows + graphs, plot_cols, figsize, **kwargs)
+        graphs += self.plot_light_angles(fig, plot_num + graphs, plot_rows + graphs, plot_cols, figsize, **kwargs)
 
         graphs += self.plot_light_diff(fig, plot_num=plot_num + graphs, plot_cols=plot_cols, plot_rows=plot_rows, **kwargs)
+        fig.tight_layout()
 
         return graphs
 
@@ -309,6 +320,7 @@ def install(ctx):
     pysurvive.install_light_fn(ctx, partial(cb_fn, RecordedData.record_light))
     pysurvive.install_imu_fn(ctx, partial(cb_fn, RecordedData.record_imu))
     pysurvive.install_pose_fn(ctx, partial(cb_fn, RecordedData.record_pose))
+    pysurvive.install_velocity_fn(ctx, partial(cb_fn, RecordedData.record_velocity))
     pysurvive.install_sweep_fn(ctx, partial(cb_fn, RecordedData.record_sweep))
     pysurvive.install_sync_fn(ctx, partial(cb_fn, RecordedData.record_sync))
     pysurvive.install_sweep_angle_fn(ctx, partial(cb_fn, RecordedData.record_sweep_angle))

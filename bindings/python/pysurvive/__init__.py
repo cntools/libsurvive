@@ -1,6 +1,14 @@
 import ctypes
 import traceback
 import types
+import os
+
+wheel_path=os.path.dirname(os.path.abspath(__file__)) + "/../lib"
+old_path = os.environ.get("LD_LIBRARY_PATH")
+if old_path:
+    os.environ["LD_LIBRARY_PATH"] = old_path + ":" + wheel_path
+else:
+    os.environ["LD_LIBRARY_PATH"] = wheel_path
 
 import pysurvive.pysurvive_generated
 from pysurvive.pysurvive_generated import *
@@ -65,6 +73,13 @@ def install_pose_fn(ctx, fn):
         return (so, timecode, list(pose.contents.Pos) + list(pose.contents.Rot))
 
     install_generic_process(ctx, fn, default_pose_process, pysurvive_generated.install_pose_fn, pose_process_func, map_args)
+
+def install_velocity_fn(ctx, fn):
+    def map_args(so, timecode, pose):
+        return (so, timecode, list(pose.contents.Pos) + list(pose.contents.AxisAngleRot))
+
+    install_generic_process(ctx, fn, default_velocity_process, pysurvive_generated.install_velocity_fn, velocity_process_func, map_args)
+
 
 def install_sweep_fn(ctx, fn):
     install_generic_process(ctx, fn, default_sweep_process, pysurvive_generated.install_sweep_fn, sweep_process_func)

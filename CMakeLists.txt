@@ -175,8 +175,8 @@ if(DOTNET)
   endif()
 endif()
 
-if(EXISTS /etc/bash_completion.d)
-  install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/survive_autocomplete.sh DESTINATION "/etc/bash_completion.d")
+if(EXISTS ${CMAKE_INSTALL_PREFIX}/etc/bash_completion.d)
+  install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/survive_autocomplete.sh DESTINATION "${CMAKE_INSTALL_PREFIX}/etc/bash_completion.d")
 endif()
 
 install(DIRECTORY include/libsurvive DESTINATION include)
