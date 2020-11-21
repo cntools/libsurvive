@@ -73,12 +73,6 @@ elseif(WIN32)
   endif()
   message("Nuget is found at ${NUGET}")
   add_custom_command(TARGET minimal_opencv PRE_BUILD COMMAND ${NUGET} restore ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.sln)
-
-  file(GLOB_RECURSE OPENBLAS_DLLS
-    "${CMAKE_BINARY_DIR}/packages/*.dll")
-
-  install(FILES ${OPENBLAS_DLLS} DESTINATION "bin")
-  
 ENDIF()
 
 IF (ENABLE_TESTS)

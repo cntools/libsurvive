@@ -187,3 +187,22 @@ else()
 install(TARGETS ${SURVIVE_BUILT_PLUGINS} DESTINATION bin/plugins)
 install(TARGETS survive DESTINATION bin)
 endif()
+
+
+if(WIN32)
+  cmake_policy(SET CMP0087 NEW)
+  install(CODE [[  
+  file(GET_RUNTIME_DEPENDENCIES LIBRARIES $<TARGET_FILE:survive>
+    RESOLVED_DEPENDENCIES_VAR _r_deps
+    UNRESOLVED_DEPENDENCIES_VAR _u_deps
+	POST_EXCLUDE_REGEXES ".*[Ww][Ii][Nn][Dd][Oo][Ww][Ss][/\\][Ss]ystem32.*"
+  )
+  foreach(_file ${_r_deps})
+    file(INSTALL
+      DESTINATION "${CMAKE_INSTALL_PREFIX}/bin"
+      TYPE SHARED_LIBRARY     
+      FILES "${_file}"
+    )
+  endforeach()
+]])
+endif()
