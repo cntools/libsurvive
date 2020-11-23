@@ -535,7 +535,7 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
 }
 
 STATIC_CONFIG_ITEM(KALMAN_USE_ERROR_FOR_LH_CONFIDENCE, "light-error-for-lh-confidence", 'i',
-				   "Whether or not to invalidate LH positions based on kalman errors", 1)
+				   "Whether or not to invalidate LH positions based on kalman errors", 0)
 
 STATIC_CONFIG_ITEM(KALMAN_LIGHT_ERROR_THRESHOLD, "light-error-threshold", 'f', "Error limit to invalidate position", .1)
 STATIC_CONFIG_ITEM(KALMAN_MIN_REPORT_TIME, "min-report-time", 'f', "Minimum kalman report time in s", .005)
