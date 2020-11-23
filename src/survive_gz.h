@@ -10,7 +10,6 @@
 #define gzeof feof
 #define gzseek fseek
 #define gzgetc fgetc
-#define HAVE_GZVPRINTF 1
 #else
 #include <zlib.h>
 static inline int gzerror_dropin(gzFile f) {
@@ -18,4 +17,13 @@ static inline int gzerror_dropin(gzFile f) {
 	gzerror(f, &rtn);
 	return rtn;
 }
+
+#ifdef HAVE_NO_GZVPRINTF
+static int gzvprintf(gzFile file, const char *format, va_list va) {
+	static char buffer[4096] = {0};
+	int rtn = vsprintf(buffer, format, va);
+	return gzwrite(file, buffer, rtn);
+}
+#endif
+
 #endif

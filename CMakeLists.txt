@@ -38,6 +38,25 @@ if(USE_HEX_FLOAT_PRINTF)
   add_definitions(-DSURVIVE_HEX_FLOATS)
 endif()
 
+set(CMAKE_REQUIRED_LIBRARIES z)
+
+# Check Symbol exists doesn't like -Werror=pedantic
+include(CheckCSourceCompiles)
+check_c_source_compiles("
+    #include <zlib.h>
+    #include <stdarg.h>
+    int main(void) {
+      va_list args;
+      gzvprintf(0, 0, args);
+      return 0;
+    }
+  "
+  HAVE_GZVPRINTF
+)
+if(NOT HAVE_GZVPRINTF)
+  add_definitions(-DHAVE_NO_GZVPRINTF)
+endif()
+
 SET(SURVIVE_LIBRARY_TYPE SHARED)
 if(BUILD_STATIC)
   SET(SURVIVE_LIBRARY_TYPE STATIC)

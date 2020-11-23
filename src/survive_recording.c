@@ -62,14 +62,6 @@ static void write_to_output_raw(SurviveRecordingData *recordingData, const char 
 #define FLT_PRINTF "%0.6f "
 #endif
 
-#ifndef HAVE_GZVPRINTF
-static int gzvprintf(gzFile file, const char *format, va_list va) {
-	static char buffer[4096] = {0};
-	int rtn = vsprintf(buffer, format, va);
-	return gzwrite(file, buffer, rtn);
-}
-#endif
-
 void survive_recording_write_to_output(struct SurviveRecordingData *recordingData, const char *format, ...) {
 	if (!recordingData) {
 		return;

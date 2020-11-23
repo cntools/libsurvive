@@ -7,15 +7,8 @@ endif()
 list (APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
 check_symbol_exists (fopencookie stdio.h HAVE_FOPENCOOKIE)
 
-set(CMAKE_REQUIRED_LIBRARIES z)
-check_symbol_exists (gzvprintf zlib.h HAVE_GZVPRINTF)
-
 if(HAVE_FOPENCOOKIE)
   add_definitions(-DHAVE_FOPENCOOKIE)
-endif()
-
-if(HAVE_GZVPRINTF)
-    add_definitions(-DHAVE_GZVPRINTF)
 endif()
 
 
