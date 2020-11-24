@@ -133,7 +133,7 @@ static size_t check_object(global_scene_solver *gss, int i, SurviveObject *so) {
 	bool activations_changed = so->activations.last_light_change != gss->last_capture_time[i];
 	bool spreadout = (last_event_time - gss->last_capture_time[i]) > so->timebase_hz * 3;
 	bool light_static = (last_event_time - last_change) > lockout_time;
-	bool not_moving = (standstill_time > so->timebase_hz);
+	bool not_moving = (standstill_time > so->timebase_hz / 2);
 
 	if (activations_changed && spreadout && light_static && not_moving) {
 		size_t new_scenes = add_scenes(gss, so);
