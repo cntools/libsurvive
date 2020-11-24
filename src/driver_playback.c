@@ -242,16 +242,15 @@ static int parse_and_run_config(const char *line, SurvivePlaybackData *driver) {
 	size_t len = strlen(configStart);
 
 	SurviveObject *so = survive_create_device(ctx, "replay", driver, dev, 0);
+	survive_add_object(ctx, so);
 
 	char *config = SV_CALLOC(1, len + 1);
 	memcpy(config, configStart, len);
 
 	if (ctx->configproc(so, config, len) == 0) {
 		SV_INFO("Found %s in playback file...", dev);
-		survive_add_object(ctx, so);
 	} else {
 		SV_WARN("Found %s in playback file, but could not read config description", dev);
-		free(so);
 	}
 	return 0;
 }
