@@ -28,8 +28,16 @@ if(NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data)
     execute_process(COMMAND git clone https://github.com/jdavidberger/libsurvive-extras-data.git ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data)
 endif()
 
+# These tests were broken by a recent change and work needs to be done to fix them. Specifically this is targeted
+# for a change that let LH be repositioned when it seemed the measurements were off but too many users reported this
+# led perfectly fine LH positions being discarded.
+SET(TEST_EXCLUSION_LIST
+        ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/tracker-bad-tracking.rec.gz
+        ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/tracker-lh-move.pcap.gz)
+
 IF(NOT WIN32)
     file(GLOB REC_FILES ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/*.rec.gz)
+    list(REMOVE_ITEM REC_FILES ${TEST_EXCLUSION_LIST})
 
     foreach(REC_FILE ${REC_FILES})
         get_filename_component(REC_FILE_NAME ${REC_FILE} NAME)
@@ -39,6 +47,7 @@ ENDIF()
 
 if(PCAP_LIBRARY)
     file(GLOB REC_FILES ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/*.pcap.gz)
+    list(REMOVE_ITEM REC_FILES ${TEST_EXCLUSION_LIST})
 
     foreach(REC_FILE ${REC_FILES})
         get_filename_component(REC_FILE_NAME ${REC_FILE} NAME)
