@@ -44,7 +44,8 @@ typedef struct SurvivePlaybackData {
     int lineno;
 
     double next_time_s;
-    double time_now;
+	double time_start;
+	double time_now;
     FLT playback_factor;
 	FLT playback_time;
 	bool hasRawLight;
@@ -52,8 +53,7 @@ typedef struct SurvivePlaybackData {
     bool outputExternalPose;
 
     uint32_t total_sleep_time;
-    bool keepRunning;
-    og_thread_t playback_thread;
+	bool *keepRunning;
 } SurvivePlaybackData;
 
 static double survive_playback_run_time(const SurviveContext *ctx, void *_sp) {
@@ -228,6 +228,34 @@ static int parse_and_run_externalpose(const char *line, SurvivePlaybackData *dri
 	return 0;
 }
 
+static int parse_and_run_config(const char *line, SurvivePlaybackData *driver) {
+	const char *configStart = line;
+	SurviveContext *ctx = driver->ctx;
+
+	char dev[10] = {0};
+	for (int i = 0; i < sizeof(dev) && *configStart != ' '; i++) {
+		dev[i] = *configStart++;
+	}
+
+	configStart += strlen("CONFIG") + 1;
+
+	size_t len = strlen(configStart);
+
+	SurviveObject *so = survive_create_device(ctx, "replay", driver, dev, 0);
+
+	char *config = SV_CALLOC(1, len + 1);
+	memcpy(config, configStart, len);
+
+	if (ctx->configproc(so, config, len) == 0) {
+		SV_INFO("Found %s in playback file...", dev);
+		survive_add_object(ctx, so);
+	} else {
+		SV_WARN("Found %s in playback file, but could not read config description", dev);
+		free(so);
+	}
+	return 0;
+}
+
 static int parse_and_run_rawlight(const char *line, SurvivePlaybackData *driver) {
 	driver->hasRawLight = 1;
 
@@ -298,7 +326,7 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 			line = 0;
 		}
 
-		if (driver->next_time_s * driver->playback_factor > OGRelativeTime())
+		if (driver->next_time_s * driver->playback_factor > (OGRelativeTime() + driver->time_start))
 			return 0;
 
 		driver->time_now = driver->next_time_s;
@@ -346,8 +374,11 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 				break;
 			}
 		case 'C':
-			if (op[1] == 0)
+			if (op[1] == 0) {
 				parse_and_run_rawlight(line, driver);
+			} else if (strcmp(op, "CONFIG") == 0) {
+				parse_and_run_config(line, driver);
+			}
 			break;
 		case 'L':
 			if (strcmp(op, "LH_POSE") == 0) {
@@ -393,17 +424,17 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 
 static void *playback_thread(void *_driver) {
 	SurvivePlaybackData *driver = _driver;
-	while (driver->keepRunning) {
+	while (driver->keepRunning == 0 || *driver->keepRunning) {
 		double next_time_s_scaled = driver->next_time_s * driver->playback_factor;
-		double time_now = OGRelativeTime();
+		double time_now = OGRelativeTime() + driver->time_start;
 		if (driver->playback_time >= 0 && driver->time_now > driver->playback_time) {
-			driver->keepRunning = false;
+			*driver->keepRunning = false;
 			return 0;
 		}
 		if (next_time_s_scaled == 0 || next_time_s_scaled < time_now) {
 			int rtnVal = playback_pump_msg(driver->ctx, driver);
 			if (rtnVal < 0)
-				driver->keepRunning = false;
+				*driver->keepRunning = false;
 		} else {
 			int sleep_time_ms = 1 + (next_time_s_scaled - time_now) * 1000.;
 			int sr = OGUSleep(sleep_time_ms * 1000);
@@ -414,19 +445,11 @@ static void *playback_thread(void *_driver) {
 	return 0;
 }
 
-static int playback_poll(struct SurviveContext *ctx, void *_driver) {
-	SurvivePlaybackData *driver = _driver;
-	if (driver->keepRunning == false)
-		return -1;
-	return 0;
-}
-
 static int playback_close(struct SurviveContext *ctx, void *_driver) {
 	SurvivePlaybackData *driver = _driver;
-	driver->keepRunning = false;
+
 	SV_VERBOSE(100, "Waiting on playback thread...");
 	survive_release_ctx_lock(ctx);
-	OGJoinThread(driver->playback_thread);
 	survive_get_ctx_lock(ctx);
 	SV_VERBOSE(50, "Playback thread slept for %" PRIu32 "ms", driver->total_sleep_time);
 	SV_VERBOSE(10, "Playback thread played back %6.2fs in %6.2fs real-time", driver->time_now, OGRelativeTime());
@@ -477,21 +500,12 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	SV_INFO("Using playback file '%s' with timefactor of %f until %f", playback_file, sp->playback_factor,
 			sp->playback_time);
 
-	ctx->poll_min_time_ms = 1;
-	if (sp->playback_factor == 0.0)
-		ctx->poll_min_time_ms = 0;
+	FLT time = 0;
+	char *line = 0;
+	size_t n;
+	int r = gzgetline(&line, &n, sp->playback_file);
 
-	FLT time;
-	while (!gzeof(sp->playback_file) && !gzerror_dropin(sp->playback_file)) {
-		char *line = 0;
-		size_t n;
-		int r = gzgetline(&line, &n, sp->playback_file);
-
-		if (r <= 0) {
-			free(line);
-			continue;
-		}
-
+	if (r > 0) {
 		if (line[0] == 0x1f) {
 			SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Attempting to playback a gz compressed file without gz support.");
 			free(line);
@@ -501,50 +515,15 @@ int DriverRegPlayback(SurviveContext *ctx) {
 		char dev[32];
 		char command[32];
 
-		if (sscanf(line, FLT_sformat " %s %s", &time, dev, command) != 3) {
-			free(line);
-			break;
+		if (sscanf(line, FLT_sformat " %s %s", &time, dev, command) == 3) {
+			sp->time_start = time;
 		}
-
-		// 60 seconds is enough time for all configurations; don't read the whole file -- could be huge
-		if (time > 60) {
-			free(line);
-			break;
-		}
-
-		if (strcmp(command, "CONFIG") == 0) {
-			char *configStart = line;
-
-			// Skip three spaces
-			for (int i = 0; i < 3; i++) {
-				while (*(++configStart) != ' ')
-					;
-			}
-			size_t len = strlen(configStart);
-
-			SurviveObject *so = survive_create_device(ctx, "replay", sp, dev, 0);
-
-			char *config = SV_CALLOC(1, len + 1);
-			memcpy(config, configStart, len);
-
-			if (ctx->configproc(so, config, len) == 0) {
-				SV_INFO("Found %s in playback file...", dev);
-				survive_add_object(ctx, so);
-			} else {
-				SV_WARN("Found %s in playback file, but could not read config description", dev);
-				free(so);
-			}
-		}
-
-		free(line);
 	}
 
+	free(line);
 	gzseek(sp->playback_file, 0, SEEK_SET); // same as rewind(f);
 
-	sp->keepRunning = true;
-	sp->playback_thread = OGCreateThread(playback_thread, "playback", sp);
-
-	survive_add_driver(ctx, sp, playback_poll, playback_close);
+	sp->keepRunning = survive_add_threaded_driver(ctx, sp, "playback", playback_thread, playback_close);
 	return 0;
 }
 
