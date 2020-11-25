@@ -86,6 +86,8 @@ typedef struct SurviveKalmanTracker {
 	FLT IMU_R[6 * 6];
 	FLT Lightcap_R;
 
+	FLT acc_scale;
+
 	bool use_error_for_lh_pos;
 } SurviveKalmanTracker;
 

@@ -39,16 +39,16 @@ static void copy_array(FLT *dst, size_t dst_stride, size_t rows, const FLT *src,
 	}
 }
 
-static FLT survive_kalman_tracker_position_var2(SurviveKalmanTracker *tracker, FLT *var_diag) {
+static inline FLT survive_kalman_tracker_position_var2(SurviveKalmanTracker *tracker, FLT *var_diag, size_t cnt) {
 	FLT _var_diag[SURVIVE_MODEL_MAX_STATE_CNT];
 	if (var_diag == 0)
 		var_diag = _var_diag;
 
-	for (int i = 0; i < tracker->model.state_cnt; i++) {
+	for (int i = 0; i < cnt; i++) {
 		var_diag[i] = fabs(tracker->model.P[tracker->model.state_cnt * i + i]);
 	}
 
-	return normnd2(var_diag, 7);
+	return normnd2(var_diag, cnt);
 }
 
 static void normalize_model(SurviveKalmanTracker *pTracker) {
@@ -85,6 +85,20 @@ struct map_light_data_ctx {
 	SurviveKalmanTracker *tracker;
 };
 
+static inline int get_axis(const struct PoserDataLight *pdl) {
+	switch (pdl->hdr.pt) {
+	case POSERDATA_LIGHT:
+		return (((PoserDataLightGen1 *)pdl)->acode & 1);
+		break;
+	case POSERDATA_LIGHT_GEN2:
+		return ((PoserDataLightGen2 *)pdl)->plane;
+		break;
+	default:
+		assert(0);
+	}
+	return 0;
+}
+
 /**
  * This function reuses the reproject functions to estimate what it thinks the lightcap angle should be based on x_t,
  * and uses that measurement to compare from the actual observed angle. These functions have jacobian functions that
@@ -101,17 +115,7 @@ static bool map_light_data(void *user, const struct CvMat *Z, const struct CvMat
 	const survive_reproject_model_t *mdl =
 		tracker->so->ctx->lh_version == 0 ? &survive_reproject_model : &survive_reproject_gen2_model;
 
-	int axis = 0;
-	switch (pdl->hdr.pt) {
-	case POSERDATA_LIGHT:
-		axis = (((PoserDataLightGen1 *)pdl)->acode & 1);
-		break;
-	case POSERDATA_LIGHT_GEN2:
-		axis = ((PoserDataLightGen2 *)pdl)->plane;
-		break;
-	default:
-		assert(0);
-	}
+	int axis = get_axis(pdl);
 
 	survive_reproject_full_xy_fn_t project_fn = mdl->reprojectAxisFullFn[axis];
 	survive_reproject_axis_jacob_fn_t project_jacob_fn = mdl->reprojectAxisJacobFn[axis];
@@ -146,7 +150,7 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 	// A single light cap measurement has an infinite amount of solutions along a plane; so it only helps if we are
 	// already in a good place
 	if (tracker->light_threshold_var > 0 &&
-		survive_kalman_tracker_position_var2(tracker, 0) > tracker->light_threshold_var) {
+		survive_kalman_tracker_position_var2(tracker, 0, 7) > tracker->light_threshold_var) {
 		return;
 	}
 
@@ -169,8 +173,18 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 			.pdl = data,
 		};
 
-		FLT rtn = survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, &tracker->light_var,
-															   map_light_data, &cbctx, tracker->adaptive_lightcap);
+		bool ramp_in = tracker->stats.obs_count < 1000;
+		FLT light_var = tracker->light_var;
+		if (ramp_in) {
+			FLT var_add = tracker->obs_pos_var / (tracker->stats.obs_count);
+			light_var = var_add + tracker->light_var;
+		}
+
+		FLT rtn = survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, &light_var, map_light_data,
+															   &cbctx, tracker->adaptive_lightcap);
+		if (!ramp_in && tracker->adaptive_lightcap) {
+			tracker->light_var = light_var;
+		}
 
 		tracker->stats.lightcap_total_error += rtn;
 
@@ -189,7 +203,8 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 
 		SV_DATA_LOG("res_error_light_", &rtn, 1);
 		SV_DATA_LOG("res_error_light_avg", &tracker->light_residuals_all, 1);
-		SV_DATA_LOG("res_error_light[%d, %d]", &tracker->light_residuals[data->lh], 1, data->lh, data->sensor_id);
+		SV_DATA_LOG("res_error_light[%d, %d, %d]", &tracker->light_residuals[data->lh], 1, data->lh, data->sensor_id,
+					get_axis(data));
 
 		if (tracker->light_residuals[data->lh] > .1 && tracker->use_error_for_lh_pos) {
 			// SV_WARN("Light residual for lh%d is too high -- %f", data->lh, tracker->light_residuals[data->lh]);
@@ -251,6 +266,11 @@ static bool map_imu_data(void *user, const struct CvMat *Z, const struct CvMat *
 
 void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDataIMU *data) {
 	SurviveContext *ctx = tracker->so->ctx;
+
+	FLT norm = 1. / norm3d(data->accel);
+	FLT w = SurviveSensorActivations_stationary_time(&tracker->so->activations) > .1 ? .9 : .01;
+	tracker->acc_scale *= 1. - w;
+	tracker->acc_scale += w * norm;
 
 	if (tracker->use_raw_obs) {
 		return;
@@ -316,10 +336,14 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 		FLT *R = rotation_variance;
 		int rows = 6;
 		int offset = 0;
-		CvMat Z = cvMat(rows, 1, CV_FLT, data->accel + offset);
+		FLT accelgyro[6];
+		scale3d(accelgyro, data->accel, tracker->acc_scale);
+		copy3d(accelgyro+3, data->gyro);
+
+		CvMat Z = cvMat(rows, 1, CV_FLT, accelgyro + offset);
 
 		SV_VERBOSE(600, "Integrating IMU " Point6_format " with cov " Point6_format,
-				   LINMATH_VEC6_EXPAND((FLT *)&data->accel[0]), LINMATH_VEC6_EXPAND(R));
+				   LINMATH_VEC6_EXPAND((FLT *)&accelgyro[0]), LINMATH_VEC6_EXPAND(R));
 
 		FLT err = survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, R, map_imu_data, &fn_ctx,
 															   tracker->adaptive_imu);
@@ -625,7 +649,7 @@ void survive_kalman_tracker_reinit(SurviveKalmanTracker *tracker) {
 	size_t state_cnt = tracker->model.state_cnt;
 	memset(tracker->model.P, 0, state_cnt * state_cnt * sizeof(FLT));
 
-	for (int i = 0; i < 7; i++) {
+	for (int i = 0; i < state_cnt; i++) {
 		tracker->model.P[i * state_cnt + i] = 1e3;
 	}
 	for (int i = 16; i < state_cnt; i++) {
@@ -647,6 +671,7 @@ static void print_configf(SurviveContext *ctx, const char *tag, FLT *var) { SV_V
 void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *so) {
 	memset(tracker, 0, sizeof(*tracker));
 
+	tracker->acc_scale = 1.0;
 	tracker->so = so;
 
 	struct SurviveContext *ctx = tracker->so->ctx;
@@ -837,17 +862,18 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 
 	size_t state_cnt = tracker->model.state_cnt;
 	FLT var_diag[SURVIVE_MODEL_MAX_STATE_CNT];
-	if ((tracker->report_threshold_var > 0 &&
-		 survive_kalman_tracker_position_var2(tracker, var_diag) >= tracker->report_threshold_var) ||
-		tracker->report_ignore_start < tracker->report_ignore_start_cnt) {
+	FLT p_threshold = survive_kalman_tracker_position_var2(tracker, var_diag, 7 + 6);
+	SurviveContext *ctx = tracker->so->ctx;
+	SurviveObject *so = tracker->so;
+	SV_DATA_LOG("tracker_P", var_diag, 7 + 6);
+
+	if ((tracker->report_threshold_var > 0 && p_threshold >= tracker->report_threshold_var) ||
+		(tracker->report_ignore_start > tracker->report_ignore_start_cnt)) {
 		tracker->stats.dropped_poses++;
 		addnd(tracker->stats.dropped_var, var_diag, tracker->stats.dropped_var, state_cnt);
 		tracker->report_ignore_start_cnt++;
 		return;
 	}
-	SurviveContext *ctx = tracker->so->ctx;
-	SurviveObject *so = tracker->so;
-	SV_DATA_LOG("tracker_P", var_diag, SURVIVE_MODEL_MAX_STATE_CNT);
 
 	addnd(tracker->stats.reported_var, var_diag, tracker->stats.reported_var, state_cnt);
 
