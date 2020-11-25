@@ -21,6 +21,8 @@ jobs:
           build_type: Debug
           config_flags: "-DUSE_ASAN=ON"
           deps: libasan6
+        - os: windows-latest
+          build_type: Debug
     steps:
     - uses: actions/checkout@v2
       with:
