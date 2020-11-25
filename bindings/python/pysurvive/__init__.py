@@ -53,7 +53,8 @@ def install_generic_process(ctx, fn, default_fn, install_fn, fn_type, map_args=N
             c_args = map_args(*args) if map_args is not None else args
             call_def = fn(*c_args)
             if call_def is None or call_def:
-                default_fn(*args)
+                if default_fn is not None:
+                    default_fn(*args)
         except Exception as e:
             traceback.print_exc()
             ctx.contents.report_errorproc(ctx, SURVIVE_ERROR_GENERAL)
@@ -68,6 +69,13 @@ def install_imu_fn(ctx, fn):
         return (ctx, mode, list(map(lambda x: accelgyro[x], range(9))), timecode, id)
 
     install_generic_process(ctx, fn, default_imu_process, pysurvive_generated.install_imu_fn, imu_process_func, map_args)
+
+
+def install_datalog_fn(ctx, fn):
+    def map_args(ctx, name, vals, cnt):
+        return (ctx, name, list(map(lambda x: vals[x], range(cnt))))
+
+    install_generic_process(ctx, fn, None, pysurvive_generated.install_datalog_fn, datalog_process_func, map_args)
 
 def install_light_fn(ctx, fn):
     install_generic_process(ctx, fn, default_light_process, pysurvive_generated.install_light_fn, light_process_func)
