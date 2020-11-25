@@ -91,21 +91,21 @@ def ccode_wrapper(item, depth = 0):
 
     if item.__class__ == Pow:
         # Basically it's always faster to never call pow
-        # if item.args[1].is_Number and abs(item.args[1]) < 20:
-        #     invert = item.args[1] < 0
-        #     num, den = abs(item.args[1]).get_num_den()
-        #
-        #     if den == 1 or den == 2:
-        #         mul_cnt = num if den == 1 else (num - 1) / 2
-        #         muls = [newargs[0]] * int(mul_cnt)
-        #         if den == 2:
-        #             muls.append("sqrt(" + clean_parens(newargs[0]) + ")")
-        #         v = " * ".join(muls)
-        #         if len(muls) > 1:
-        #             v = "(" + v + ")"
-        #         if invert:
-        #             v = "(1. / " + v + ")"
-        #         return v
+        if item.args[1].is_Number and abs(item.args[1]) < 20:
+            invert = item.args[1] < 0
+            num, den = abs(item.args[1]).get_num_den()
+
+            if den == 1 or den == 2:
+                mul_cnt = num if den == 1 else (num - 1) / 2
+                muls = [newargs[0]] * int(mul_cnt)
+                if den == 2:
+                    muls.append("sqrt(" + clean_parens(newargs[0]) + ")")
+                v = " * ".join(muls)
+                if len(muls) > 1:
+                    v = "(" + v + ")"
+                if invert:
+                    v = "(1. / " + v + ")"
+                return v
         return "pow(%s, %s)" % tuple(newargs)
     elif item.__class__ in infixes:
         return "(" + (" " + infixes[item.__class__] + " ").join(newargs) + ")"

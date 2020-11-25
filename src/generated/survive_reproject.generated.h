@@ -33,25 +33,25 @@ static inline void gen_reproject_gen2_axis_angle(FLT *out, const LinmathAxisAngl
 	const GEN_FLT ogeePhase_1 = bsd[1].ogeemag;
 	const GEN_FLT x0 = 0.523598775598299 + tilt_0;
 	const GEN_FLT x1 = cos(x0);
-	const GEN_FLT x2 = pow(lh_qk, 2);
-	const GEN_FLT x3 = pow(lh_qj, 2);
-	const GEN_FLT x4 = pow(lh_qi, 2);
+	const GEN_FLT x2 = lh_qk * lh_qk;
+	const GEN_FLT x3 = lh_qj * lh_qj;
+	const GEN_FLT x4 = lh_qi * lh_qi;
 	const GEN_FLT x5 = 1e-10 + x4 + x3 + x2;
-	const GEN_FLT x6 = pow(x5, 1.0 / 2.0);
-	const GEN_FLT x7 = pow(x6, -1) * sin(x6);
+	const GEN_FLT x6 = sqrt(x5);
+	const GEN_FLT x7 = (1. / x6) * sin(x6);
 	const GEN_FLT x8 = x7 * lh_qi;
 	const GEN_FLT x9 = cos(x6);
-	const GEN_FLT x10 = pow(x5, -1) * (1 + (-1 * x9));
+	const GEN_FLT x10 = (1. / x5) * (1 + (-1 * x9));
 	const GEN_FLT x11 = x10 * lh_qj;
 	const GEN_FLT x12 = x11 * lh_qk;
-	const GEN_FLT x13 = pow(obj_qk, 2);
-	const GEN_FLT x14 = pow(obj_qj, 2);
-	const GEN_FLT x15 = pow(obj_qi, 2);
+	const GEN_FLT x13 = obj_qk * obj_qk;
+	const GEN_FLT x14 = obj_qj * obj_qj;
+	const GEN_FLT x15 = obj_qi * obj_qi;
 	const GEN_FLT x16 = 1e-10 + x15 + x14 + x13;
-	const GEN_FLT x17 = pow(x16, 1.0 / 2.0);
+	const GEN_FLT x17 = sqrt(x16);
 	const GEN_FLT x18 = cos(x17);
-	const GEN_FLT x19 = pow(x16, -1) * (1 + (-1 * x18));
-	const GEN_FLT x20 = pow(x17, -1) * sin(x17);
+	const GEN_FLT x19 = (1. / x16) * (1 + (-1 * x18));
+	const GEN_FLT x20 = (1. / x17) * sin(x17);
 	const GEN_FLT x21 = x20 * obj_qi;
 	const GEN_FLT x22 = x19 * obj_qk * obj_qj;
 	const GEN_FLT x23 = x20 * obj_qj;
@@ -72,42 +72,40 @@ static inline void gen_reproject_gen2_axis_angle(FLT *out, const LinmathAxisAngl
 	const GEN_FLT x35 = x10 * lh_qk * lh_qi;
 	const GEN_FLT x36 = ((x35 + (-1 * x34)) * x30) + (x29 * (x12 + x8)) + (x26 * (x9 + (x2 * x10))) + lh_pz;
 	const GEN_FLT x37 = (x30 * (x9 + (x4 * x10))) + ((x32 + (-1 * x31)) * x29) + ((x35 + x34) * x26) + lh_px;
-	const GEN_FLT x38 = pow(x37, 2) + pow(x36, 2);
-	const GEN_FLT x39 = x33 * pow((x38 + pow(x33, 2)), -1.0 / 2.0);
-	const GEN_FLT x40 = asin(pow(x1, -1) * x39);
+	const GEN_FLT x38 = (x37 * x37) + (x36 * x36);
+	const GEN_FLT x39 = x33 * (1. / sqrt(x38 + (x33 * x33)));
+	const GEN_FLT x40 = asin((1. / x1) * x39);
 	const GEN_FLT x41 = 0.0028679863 + (x40 * (-8.0108022e-06 + (-8.0108022e-06 * x40)));
 	const GEN_FLT x42 = 5.3685255e-06 + (x40 * x41);
 	const GEN_FLT x43 = 0.0076069798 + (x40 * x42);
-	const GEN_FLT x44 = x33 * pow(x38, -1.0 / 2.0);
+	const GEN_FLT x44 = x33 * (1. / sqrt(x38));
 	const GEN_FLT x45 = tan(x0) * x44;
 	const GEN_FLT x46 = atan2(-1 * x36, x37);
 	const GEN_FLT x47 = (sin(x46 + (-1 * asin(x45)) + ogeeMag_0) * ogeePhase_0) + curve_0;
 	const GEN_FLT x48 = asin(
 		x45 +
-		(pow(x40, 2) * x43 * x47 *
-		 pow((x1 +
-			  (-1 * sin(x0) * x47 *
-			   ((x40 * (x43 + (x40 * (x42 + (x40 * (x41 + (x40 * (-8.0108022e-06 + (-1.60216044e-05 * x40))))))))) +
-				(x40 * x43)))),
-			 -1)));
+		((x40 * x40) * x43 * x47 *
+		 (1. /
+		  (x1 + (-1 * sin(x0) * x47 *
+				 ((x40 * (x43 + (x40 * (x42 + (x40 * (x41 + (x40 * (-8.0108022e-06 + (-1.60216044e-05 * x40))))))))) +
+				  (x40 * x43)))))));
 	const GEN_FLT x49 = -1 * x46;
 	const GEN_FLT x50 = -1.5707963267949 + x46;
 	const GEN_FLT x51 = 0.523598775598299 + (-1 * tilt_1);
 	const GEN_FLT x52 = -1 * x44 * tan(x51);
 	const GEN_FLT x53 = (sin(x46 + ogeeMag_1 + (-1 * asin(x52))) * ogeePhase_1) + curve_1;
 	const GEN_FLT x54 = cos(x51);
-	const GEN_FLT x55 = asin(pow(x54, -1) * x39);
+	const GEN_FLT x55 = asin((1. / x54) * x39);
 	const GEN_FLT x56 = 0.0028679863 + (x55 * (-8.0108022e-06 + (-8.0108022e-06 * x55)));
 	const GEN_FLT x57 = 5.3685255e-06 + (x56 * x55);
 	const GEN_FLT x58 = 0.0076069798 + (x57 * x55);
 	const GEN_FLT x59 = asin(
 		x52 +
-		(x53 * x58 * pow(x55, 2) *
-		 pow((x54 +
-			  (x53 * sin(x51) *
-			   ((x55 * (x58 + (x55 * (x57 + (x55 * (x56 + (x55 * (-8.0108022e-06 + (-1.60216044e-05 * x55))))))))) +
-				(x58 * x55)))),
-			 -1)));
+		(x53 * x58 * (x55 * x55) *
+		 (1. /
+		  (x54 + (x53 * sin(x51) *
+				  ((x55 * (x58 + (x55 * (x57 + (x55 * (x56 + (x55 * (-8.0108022e-06 + (-1.60216044e-05 * x55))))))))) +
+				   (x58 * x55)))))));
 	out[0] = x50 + (-1 * x48) + (-1 * sin(x49 + x48 + (-1 * gibPhase_0)) * gibMag_0) + (-1 * phase_0);
 	out[1] = x50 + (-1 * sin(x49 + x59 + (-1 * gibPhase_1)) * gibMag_1) + (-1 * x59) + (-1 * phase_1);
 }
@@ -145,29 +143,29 @@ static inline void gen_reproject_gen2_jac_obj_p_axis_angle(FLT *out, const Linma
 	const GEN_FLT gibMag_1 = bsd[1].gibmag;
 	const GEN_FLT ogeeMag_1 = bsd[1].ogeephase;
 	const GEN_FLT ogeePhase_1 = bsd[1].ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
-	const GEN_FLT x5 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x4 = sqrt(x3);
+	const GEN_FLT x5 = (1. / x4) * sin(x4);
 	const GEN_FLT x6 = x5 * lh_qj;
 	const GEN_FLT x7 = cos(x4);
-	const GEN_FLT x8 = pow(x3, -1) * (1 + (-1 * x7));
+	const GEN_FLT x8 = (1. / x3) * (1 + (-1 * x7));
 	const GEN_FLT x9 = x8 * lh_qk * lh_qi;
 	const GEN_FLT x10 = x9 + (-1 * x6);
 	const GEN_FLT x11 = x9 + x6;
-	const GEN_FLT x12 = pow(obj_qk, 2);
-	const GEN_FLT x13 = pow(obj_qj, 2);
-	const GEN_FLT x14 = pow(obj_qi, 2);
+	const GEN_FLT x12 = obj_qk * obj_qk;
+	const GEN_FLT x13 = obj_qj * obj_qj;
+	const GEN_FLT x14 = obj_qi * obj_qi;
 	const GEN_FLT x15 = 1e-10 + x14 + x13 + x12;
-	const GEN_FLT x16 = pow(x15, -1);
-	const GEN_FLT x17 = pow(x15, 1.0 / 2.0);
+	const GEN_FLT x16 = 1. / x15;
+	const GEN_FLT x17 = sqrt(x15);
 	const GEN_FLT x18 = cos(x17);
 	const GEN_FLT x19 = 1 + (-1 * x18);
 	const GEN_FLT x20 = x19 * x16;
 	const GEN_FLT x21 = sin(x17);
-	const GEN_FLT x22 = x21 * pow(x17, -1);
+	const GEN_FLT x22 = x21 * (1. / x17);
 	const GEN_FLT x23 = x22 * obj_qi;
 	const GEN_FLT x24 = x20 * obj_qj;
 	const GEN_FLT x25 = x24 * obj_qk;
@@ -188,28 +186,28 @@ static inline void gen_reproject_gen2_jac_obj_p_axis_angle(FLT *out, const Linma
 	const GEN_FLT x40 = ((x18 + (x20 * x14)) * sensor_x) + ((x33 + x39) * sensor_y) + ((x29 + x26) * sensor_z) + obj_px;
 	const GEN_FLT x41 = x7 + (x2 * x8);
 	const GEN_FLT x42 = (x40 * x41) + (x30 * x11) + (x34 * x38) + lh_px;
-	const GEN_FLT x43 = pow(x42, -1);
+	const GEN_FLT x43 = 1. / x42;
 	const GEN_FLT x44 = x7 + (x0 * x8);
 	const GEN_FLT x45 = x5 * lh_qi;
 	const GEN_FLT x46 = x36 * lh_qk;
 	const GEN_FLT x47 = x46 + x45;
 	const GEN_FLT x48 = (x40 * x10) + (x47 * x34) + (x44 * x30) + lh_pz;
-	const GEN_FLT x49 = pow(x42, 2);
-	const GEN_FLT x50 = x48 * pow(x49, -1);
-	const GEN_FLT x51 = x49 + pow(x48, 2);
-	const GEN_FLT x52 = pow(x51, -1);
+	const GEN_FLT x49 = x42 * x42;
+	const GEN_FLT x50 = x48 * (1. / x49);
+	const GEN_FLT x51 = x49 + (x48 * x48);
+	const GEN_FLT x52 = 1. / x51;
 	const GEN_FLT x53 = x52 * x49;
 	const GEN_FLT x54 = ((x50 * x41) + (-1 * x43 * x10)) * x53;
 	const GEN_FLT x55 = x46 + (-1 * x45);
 	const GEN_FLT x56 = x7 + (x1 * x8);
 	const GEN_FLT x57 = x37 + x35;
 	const GEN_FLT x58 = (x57 * x40) + lh_py + (x56 * x34) + (x55 * x30);
-	const GEN_FLT x59 = pow(x58, 2);
+	const GEN_FLT x59 = x58 * x58;
 	const GEN_FLT x60 = x51 + x59;
-	const GEN_FLT x61 = pow(x60, -1.0 / 2.0);
+	const GEN_FLT x61 = 1. / sqrt(x60);
 	const GEN_FLT x62 = 0.523598775598299 + tilt_0;
 	const GEN_FLT x63 = cos(x62);
-	const GEN_FLT x64 = pow(x63, -1);
+	const GEN_FLT x64 = 1. / x63;
 	const GEN_FLT x65 = x64 * x61;
 	const GEN_FLT x66 = asin(x65 * x58);
 	const GEN_FLT x67 = 8.0108022e-06 * x66;
@@ -223,7 +221,7 @@ static inline void gen_reproject_gen2_jac_obj_p_axis_angle(FLT *out, const Linma
 	const GEN_FLT x75 = x70 + (x74 * x66);
 	const GEN_FLT x76 = x71 + (x75 * x66);
 	const GEN_FLT x77 = (x76 * x66) + x72;
-	const GEN_FLT x78 = pow(x51, -1.0 / 2.0);
+	const GEN_FLT x78 = 1. / sqrt(x51);
 	const GEN_FLT x79 = tan(x62);
 	const GEN_FLT x80 = x79 * x78;
 	const GEN_FLT x81 = x80 * x58;
@@ -233,21 +231,21 @@ static inline void gen_reproject_gen2_jac_obj_p_axis_angle(FLT *out, const Linma
 	const GEN_FLT x85 = sin(x62);
 	const GEN_FLT x86 = x84 * x85;
 	const GEN_FLT x87 = x63 + (-1 * x86 * x77);
-	const GEN_FLT x88 = pow(x87, -1);
-	const GEN_FLT x89 = pow(x66, 2);
+	const GEN_FLT x88 = 1. / x87;
+	const GEN_FLT x89 = x66 * x66;
 	const GEN_FLT x90 = x89 * x84;
 	const GEN_FLT x91 = x88 * x90;
 	const GEN_FLT x92 = x81 + (x71 * x91);
-	const GEN_FLT x93 = pow((1 + (-1 * pow(x92, 2))), -1.0 / 2.0);
-	const GEN_FLT x94 = pow(x60, -1) * x59;
-	const GEN_FLT x95 = pow((1 + (-1 * pow(x63, -2) * x94)), -1.0 / 2.0);
+	const GEN_FLT x93 = 1. / sqrt(1 + (-1 * (x92 * x92)));
+	const GEN_FLT x94 = (1. / x60) * x59;
+	const GEN_FLT x95 = 1. / sqrt(1 + (-1 * (1. / (x63 * x63)) * x94));
 	const GEN_FLT x96 = 2 * x58;
 	const GEN_FLT x97 = 2 * x42;
 	const GEN_FLT x98 = 2 * x48;
 	const GEN_FLT x99 = (x98 * x10) + (x97 * x41);
 	const GEN_FLT x100 = x99 + (x57 * x96);
 	const GEN_FLT x101 = 1.0 / 2.0 * x58;
-	const GEN_FLT x102 = pow(x60, -3.0 / 2.0) * x101;
+	const GEN_FLT x102 = (1. / (x60 * sqrt(x60))) * x101;
 	const GEN_FLT x103 = x64 * x102;
 	const GEN_FLT x104 = (x65 * x57) + (-1 * x100 * x103);
 	const GEN_FLT x105 = x95 * x104;
@@ -258,15 +256,15 @@ static inline void gen_reproject_gen2_jac_obj_p_axis_angle(FLT *out, const Linma
 	const GEN_FLT x110 = (x66 * (x108 + (-1 * x67 * x105))) + (x69 * x105);
 	const GEN_FLT x111 = (x66 * x110) + (x70 * x105);
 	const GEN_FLT x112 = x52 * x59;
-	const GEN_FLT x113 = pow((1 + (-1 * pow(x79, 2) * x112)), -1.0 / 2.0);
-	const GEN_FLT x114 = pow(x51, -3.0 / 2.0) * x101;
+	const GEN_FLT x113 = 1. / sqrt(1 + (-1 * (x79 * x79) * x112));
+	const GEN_FLT x114 = (1. / (x51 * sqrt(x51))) * x101;
 	const GEN_FLT x115 = x99 * x114;
 	const GEN_FLT x116 = x78 * x57;
 	const GEN_FLT x117 = (x79 * x116) + (-1 * x79 * x115);
 	const GEN_FLT x118 = cos(x83) * ogeePhase_0;
 	const GEN_FLT x119 = x118 * ((-1 * x113 * x117) + x54);
 	const GEN_FLT x120 = x85 * x77;
-	const GEN_FLT x121 = pow(x87, -2) * x71 * x90;
+	const GEN_FLT x121 = (1. / (x87 * x87)) * x71 * x90;
 	const GEN_FLT x122 = x88 * x89 * x71;
 	const GEN_FLT x123 =
 		x93 * (x117 + (x91 * x111) + (x119 * x122) +
@@ -326,9 +324,9 @@ static inline void gen_reproject_gen2_jac_obj_p_axis_angle(FLT *out, const Linma
 				   (x76 * x146))))) +
 			   (x91 * x151) + (x139 * x148) + (x106 * x146));
 	const GEN_FLT x153 = -1 * x142;
-	const GEN_FLT x154 = pow(obj_qi, 3);
-	const GEN_FLT x155 = x21 * pow(x15, -3.0 / 2.0);
-	const GEN_FLT x156 = 2 * pow(x15, -2) * x19;
+	const GEN_FLT x154 = obj_qi * obj_qi * obj_qi;
+	const GEN_FLT x155 = x21 * (1. / (x15 * sqrt(x15)));
+	const GEN_FLT x156 = 2 * (1. / (x15 * x15)) * x19;
 	const GEN_FLT x157 = x18 * x16;
 	const GEN_FLT x158 = x157 * obj_qi;
 	const GEN_FLT x159 = x158 * obj_qk;
@@ -391,7 +389,7 @@ static inline void gen_reproject_gen2_jac_obj_p_axis_angle(FLT *out, const Linma
 	const GEN_FLT x204 = x181 * x157;
 	const GEN_FLT x205 = (-1 * x180) + x204;
 	const GEN_FLT x206 = x178 + x28;
-	const GEN_FLT x207 = pow(obj_qj, 3);
+	const GEN_FLT x207 = obj_qj * obj_qj * obj_qj;
 	const GEN_FLT x208 = (-1 * x13 * x167) + (x176 * obj_qk);
 	const GEN_FLT x209 = x208 + x166;
 	const GEN_FLT x210 = ((x209 + x185) * sensor_z) +
@@ -434,7 +432,7 @@ static inline void gen_reproject_gen2_jac_obj_p_axis_angle(FLT *out, const Linma
 	const GEN_FLT x233 = x214 + x24;
 	const GEN_FLT x234 =
 		((x161 + x233) * sensor_z) + ((x208 + x39) * sensor_y) + ((x186 + (-1 * x187) + x230) * sensor_x);
-	const GEN_FLT x235 = pow(obj_qk, 3);
+	const GEN_FLT x235 = obj_qk * obj_qk * obj_qk;
 	const GEN_FLT x236 = (((-1 * x235 * x156) + (x235 * x155) + x39 + (2 * x166)) * sensor_z) +
 						 ((x175 + x233) * sensor_y) + ((x211 + x231) * sensor_x);
 	const GEN_FLT x237 = (x44 * x236) + (x47 * x234) + (x10 * x232);
@@ -462,7 +460,7 @@ static inline void gen_reproject_gen2_jac_obj_p_axis_angle(FLT *out, const Linma
 	const GEN_FLT x250 = -1 * x239;
 	const GEN_FLT x251 = 0.523598775598299 + (-1 * tilt_1);
 	const GEN_FLT x252 = cos(x251);
-	const GEN_FLT x253 = pow(x252, -1);
+	const GEN_FLT x253 = 1. / x252;
 	const GEN_FLT x254 = x61 * x253;
 	const GEN_FLT x255 = asin(x58 * x254);
 	const GEN_FLT x256 = 8.0108022e-06 * x255;
@@ -484,18 +482,18 @@ static inline void gen_reproject_gen2_jac_obj_p_axis_angle(FLT *out, const Linma
 	const GEN_FLT x272 = sin(x251);
 	const GEN_FLT x273 = x272 * x271;
 	const GEN_FLT x274 = x252 + (x273 * x266);
-	const GEN_FLT x275 = pow(x274, -1);
-	const GEN_FLT x276 = pow(x255, 2);
+	const GEN_FLT x275 = 1. / x274;
+	const GEN_FLT x276 = x255 * x255;
 	const GEN_FLT x277 = x276 * x271;
 	const GEN_FLT x278 = x277 * x275;
 	const GEN_FLT x279 = x269 + (x278 * x260);
-	const GEN_FLT x280 = pow((1 + (-1 * pow(x279, 2))), -1.0 / 2.0);
-	const GEN_FLT x281 = pow((1 + (-1 * pow(x267, 2) * x112)), -1.0 / 2.0);
+	const GEN_FLT x280 = 1. / sqrt(1 + (-1 * (x279 * x279)));
+	const GEN_FLT x281 = 1. / sqrt(1 + (-1 * (x267 * x267) * x112));
 	const GEN_FLT x282 = (-1 * x267 * x116) + (x267 * x115);
 	const GEN_FLT x283 = cos(x270) * ogeePhase_1;
 	const GEN_FLT x284 = x283 * ((-1 * x282 * x281) + x54);
 	const GEN_FLT x285 = x276 * x275 * x260;
-	const GEN_FLT x286 = pow((1 + (-1 * x94 * pow(x252, -2))), -1.0 / 2.0);
+	const GEN_FLT x286 = 1. / sqrt(1 + (-1 * x94 * (1. / (x252 * x252))));
 	const GEN_FLT x287 = x253 * x102;
 	const GEN_FLT x288 = x286 * ((x57 * x254) + (-1 * x287 * x100));
 	const GEN_FLT x289 = 2 * x275 * x271 * x261;
@@ -504,7 +502,7 @@ static inline void gen_reproject_gen2_jac_obj_p_axis_angle(FLT *out, const Linma
 	const GEN_FLT x292 = (x288 * x259) + (x291 * x255);
 	const GEN_FLT x293 = x272 * x266;
 	const GEN_FLT x294 = 2.40324066e-05 * x255;
-	const GEN_FLT x295 = x277 * pow(x274, -2) * x260;
+	const GEN_FLT x295 = x277 * (1. / (x274 * x274)) * x260;
 	const GEN_FLT x296 =
 		x280 *
 		(x282 +
@@ -655,27 +653,27 @@ static inline void gen_reproject_gen2_jac_sensor_pt_axis_angle(FLT *out, const L
 	const GEN_FLT gibMag_1 = bsd[1].gibmag;
 	const GEN_FLT ogeeMag_1 = bsd[1].ogeephase;
 	const GEN_FLT ogeePhase_1 = bsd[1].ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
-	const GEN_FLT x5 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x4 = sqrt(x3);
+	const GEN_FLT x5 = (1. / x4) * sin(x4);
 	const GEN_FLT x6 = x5 * lh_qj;
 	const GEN_FLT x7 = cos(x4);
-	const GEN_FLT x8 = pow(x3, -1) * (1 + (-1 * x7));
+	const GEN_FLT x8 = (1. / x3) * (1 + (-1 * x7));
 	const GEN_FLT x9 = x8 * lh_qk;
 	const GEN_FLT x10 = x9 * lh_qi;
 	const GEN_FLT x11 = x10 + x6;
-	const GEN_FLT x12 = pow(obj_qk, 2);
-	const GEN_FLT x13 = pow(obj_qj, 2);
-	const GEN_FLT x14 = pow(obj_qi, 2);
+	const GEN_FLT x12 = obj_qk * obj_qk;
+	const GEN_FLT x13 = obj_qj * obj_qj;
+	const GEN_FLT x14 = obj_qi * obj_qi;
 	const GEN_FLT x15 = 1e-10 + x14 + x13 + x12;
-	const GEN_FLT x16 = pow(x15, 1.0 / 2.0);
+	const GEN_FLT x16 = sqrt(x15);
 	const GEN_FLT x17 = cos(x16);
-	const GEN_FLT x18 = pow(x15, -1) * (1 + (-1 * x17));
+	const GEN_FLT x18 = (1. / x15) * (1 + (-1 * x17));
 	const GEN_FLT x19 = x17 + (x12 * x18);
-	const GEN_FLT x20 = pow(x16, -1) * sin(x16);
+	const GEN_FLT x20 = (1. / x16) * sin(x16);
 	const GEN_FLT x21 = x20 * obj_qi;
 	const GEN_FLT x22 = x18 * obj_qk * obj_qj;
 	const GEN_FLT x23 = x22 + x21;
@@ -699,7 +697,7 @@ static inline void gen_reproject_gen2_jac_sensor_pt_axis_angle(FLT *out, const L
 	const GEN_FLT x41 = (x40 * sensor_x) + (x39 * sensor_y) + (x38 * sensor_z) + obj_px;
 	const GEN_FLT x42 = x7 + (x2 * x8);
 	const GEN_FLT x43 = (x41 * x42) + (x34 * x37) + (x28 * x11) + lh_px;
-	const GEN_FLT x44 = pow(x43, -1);
+	const GEN_FLT x44 = 1. / x43;
 	const GEN_FLT x45 = x10 + (-1 * x6);
 	const GEN_FLT x46 = x5 * lh_qi;
 	const GEN_FLT x47 = x9 * lh_qj;
@@ -708,10 +706,10 @@ static inline void gen_reproject_gen2_jac_sensor_pt_axis_angle(FLT *out, const L
 	const GEN_FLT x50 = (x49 * x27) + (x48 * x33) + (x40 * x45);
 	const GEN_FLT x51 = (x27 * x11) + (x33 * x37) + (x40 * x42);
 	const GEN_FLT x52 = (x41 * x45) + (x48 * x34) + (x49 * x28) + lh_pz;
-	const GEN_FLT x53 = pow(x43, 2);
-	const GEN_FLT x54 = pow(x53, -1) * x52;
-	const GEN_FLT x55 = x53 + pow(x52, 2);
-	const GEN_FLT x56 = pow(x55, -1);
+	const GEN_FLT x53 = x43 * x43;
+	const GEN_FLT x54 = (1. / x53) * x52;
+	const GEN_FLT x55 = x53 + (x52 * x52);
+	const GEN_FLT x56 = 1. / x55;
 	const GEN_FLT x57 = x53 * x56;
 	const GEN_FLT x58 = ((x54 * x51) + (-1 * x50 * x44)) * x57;
 	const GEN_FLT x59 = 0.523598775598299 + tilt_0;
@@ -720,25 +718,25 @@ static inline void gen_reproject_gen2_jac_sensor_pt_axis_angle(FLT *out, const L
 	const GEN_FLT x62 = x7 + (x1 * x8);
 	const GEN_FLT x63 = x36 + x35;
 	const GEN_FLT x64 = (x63 * x41) + lh_py + (x62 * x34) + (x61 * x28);
-	const GEN_FLT x65 = pow(x64, 2);
+	const GEN_FLT x65 = x64 * x64;
 	const GEN_FLT x66 = x55 + x65;
-	const GEN_FLT x67 = x65 * pow(x66, -1);
-	const GEN_FLT x68 = pow((1 + (-1 * pow(x60, -2) * x67)), -1.0 / 2.0);
+	const GEN_FLT x67 = x65 * (1. / x66);
+	const GEN_FLT x68 = 1. / sqrt(1 + (-1 * (1. / (x60 * x60)) * x67));
 	const GEN_FLT x69 = (x61 * x27) + (x62 * x33) + (x63 * x40);
 	const GEN_FLT x70 = 2 * x64;
 	const GEN_FLT x71 = 2 * x43;
 	const GEN_FLT x72 = 2 * x52;
 	const GEN_FLT x73 = (x72 * x50) + (x71 * x51);
 	const GEN_FLT x74 = x73 + (x70 * x69);
-	const GEN_FLT x75 = pow(x60, -1);
+	const GEN_FLT x75 = 1. / x60;
 	const GEN_FLT x76 = 1.0 / 2.0 * x64;
-	const GEN_FLT x77 = x76 * pow(x66, -3.0 / 2.0);
+	const GEN_FLT x77 = x76 * (1. / (x66 * sqrt(x66)));
 	const GEN_FLT x78 = x75 * x77;
-	const GEN_FLT x79 = pow(x66, -1.0 / 2.0);
+	const GEN_FLT x79 = 1. / sqrt(x66);
 	const GEN_FLT x80 = x79 * x75;
 	const GEN_FLT x81 = ((x80 * x69) + (-1 * x78 * x74)) * x68;
 	const GEN_FLT x82 = tan(x59);
-	const GEN_FLT x83 = pow(x55, -1.0 / 2.0);
+	const GEN_FLT x83 = 1. / sqrt(x55);
 	const GEN_FLT x84 = x83 * x64;
 	const GEN_FLT x85 = x82 * x84;
 	const GEN_FLT x86 = atan2(-1 * x52, x43);
@@ -759,15 +757,15 @@ static inline void gen_reproject_gen2_jac_sensor_pt_axis_angle(FLT *out, const L
 	const GEN_FLT x101 = sin(x59);
 	const GEN_FLT x102 = x88 * x101;
 	const GEN_FLT x103 = x60 + (-1 * x100 * x102);
-	const GEN_FLT x104 = pow(x103, -1);
+	const GEN_FLT x104 = 1. / x103;
 	const GEN_FLT x105 = 2 * x88 * x95 * x104;
 	const GEN_FLT x106 = x81 * x91;
 	const GEN_FLT x107 = 2.40324066e-05 * x89;
 	const GEN_FLT x108 = (x89 * (x106 + (-1 * x81 * x90))) + (x81 * x92);
 	const GEN_FLT x109 = (x89 * x108) + (x81 * x93);
 	const GEN_FLT x110 = x65 * x56;
-	const GEN_FLT x111 = pow((1 + (-1 * pow(x82, 2) * x110)), -1.0 / 2.0);
-	const GEN_FLT x112 = x76 * pow(x55, -3.0 / 2.0);
+	const GEN_FLT x111 = 1. / sqrt(1 + (-1 * (x82 * x82) * x110));
+	const GEN_FLT x112 = x76 * (1. / (x55 * sqrt(x55)));
 	const GEN_FLT x113 = x73 * x112;
 	const GEN_FLT x114 = x83 * x69;
 	const GEN_FLT x115 = (x82 * x114) + (-1 * x82 * x113);
@@ -775,14 +773,14 @@ static inline void gen_reproject_gen2_jac_sensor_pt_axis_angle(FLT *out, const L
 	const GEN_FLT x117 = cos(x87) * ogeePhase_0;
 	const GEN_FLT x118 = x101 * x100;
 	const GEN_FLT x119 = x118 * x117;
-	const GEN_FLT x120 = pow(x89, 2);
+	const GEN_FLT x120 = x89 * x89;
 	const GEN_FLT x121 = x88 * x120;
-	const GEN_FLT x122 = x94 * pow(x103, -2) * x121;
+	const GEN_FLT x122 = x94 * (1. / (x103 * x103)) * x121;
 	const GEN_FLT x123 = x94 * x104 * x120;
 	const GEN_FLT x124 = x117 * x123;
 	const GEN_FLT x125 = x104 * x121;
 	const GEN_FLT x126 = x85 + (x94 * x125);
-	const GEN_FLT x127 = pow((1 + (-1 * pow(x126, 2))), -1.0 / 2.0);
+	const GEN_FLT x127 = 1. / sqrt(1 + (-1 * (x126 * x126)));
 	const GEN_FLT x128 =
 		x127 * (x115 + (x109 * x125) +
 				(-1 * x122 *
@@ -848,14 +846,14 @@ static inline void gen_reproject_gen2_jac_sensor_pt_axis_angle(FLT *out, const L
 	const GEN_FLT x164 = -1 * x150;
 	const GEN_FLT x165 = 0.523598775598299 + (-1 * tilt_1);
 	const GEN_FLT x166 = tan(x165);
-	const GEN_FLT x167 = pow((1 + (-1 * x110 * pow(x166, 2))), -1.0 / 2.0);
+	const GEN_FLT x167 = 1. / sqrt(1 + (-1 * x110 * (x166 * x166)));
 	const GEN_FLT x168 = (-1 * x114 * x166) + (x113 * x166);
 	const GEN_FLT x169 = -1 * x84 * x166;
 	const GEN_FLT x170 = x86 + ogeeMag_1 + (-1 * asin(x169));
 	const GEN_FLT x171 = cos(x170) * ogeePhase_1;
 	const GEN_FLT x172 = x171 * ((-1 * x168 * x167) + x58);
 	const GEN_FLT x173 = cos(x165);
-	const GEN_FLT x174 = pow(x173, -1);
+	const GEN_FLT x174 = 1. / x173;
 	const GEN_FLT x175 = x79 * x174;
 	const GEN_FLT x176 = asin(x64 * x175);
 	const GEN_FLT x177 = 8.0108022e-06 * x176;
@@ -863,7 +861,7 @@ static inline void gen_reproject_gen2_jac_sensor_pt_axis_angle(FLT *out, const L
 	const GEN_FLT x179 = 0.0028679863 + (x178 * x176);
 	const GEN_FLT x180 = 5.3685255e-06 + (x179 * x176);
 	const GEN_FLT x181 = 0.0076069798 + (x176 * x180);
-	const GEN_FLT x182 = pow(x176, 2);
+	const GEN_FLT x182 = x176 * x176;
 	const GEN_FLT x183 = x176 * x181;
 	const GEN_FLT x184 = -8.0108022e-06 + (-1.60216044e-05 * x176);
 	const GEN_FLT x185 = x179 + (x176 * x184);
@@ -874,9 +872,9 @@ static inline void gen_reproject_gen2_jac_sensor_pt_axis_angle(FLT *out, const L
 	const GEN_FLT x190 = sin(x165);
 	const GEN_FLT x191 = x189 * x190;
 	const GEN_FLT x192 = x173 + (x188 * x191);
-	const GEN_FLT x193 = pow(x192, -1);
+	const GEN_FLT x193 = 1. / x192;
 	const GEN_FLT x194 = x181 * x182 * x193;
-	const GEN_FLT x195 = pow((1 + (-1 * x67 * pow(x173, -2))), -1.0 / 2.0);
+	const GEN_FLT x195 = 1. / sqrt(1 + (-1 * x67 * (1. / (x173 * x173))));
 	const GEN_FLT x196 = x77 * x174;
 	const GEN_FLT x197 = (x69 * x175) + (-1 * x74 * x196);
 	const GEN_FLT x198 = x197 * x195;
@@ -889,9 +887,9 @@ static inline void gen_reproject_gen2_jac_sensor_pt_axis_angle(FLT *out, const L
 	const GEN_FLT x205 = x188 * x190;
 	const GEN_FLT x206 = x186 * x195;
 	const GEN_FLT x207 = 2.40324066e-05 * x176;
-	const GEN_FLT x208 = x203 * x181 * pow(x192, -2);
+	const GEN_FLT x208 = x203 * x181 * (1. / (x192 * x192));
 	const GEN_FLT x209 = x169 + (x204 * x181);
-	const GEN_FLT x210 = pow((1 + (-1 * pow(x209, 2))), -1.0 / 2.0);
+	const GEN_FLT x210 = 1. / sqrt(1 + (-1 * (x209 * x209)));
 	const GEN_FLT x211 =
 		x210 *
 		(x168 +
@@ -982,14 +980,14 @@ static inline void gen_reproject_gen2_jac_lh_p_axis_angle(FLT *out, const Linmat
 	const GEN_FLT gibMag_1 = bsd[1].gibmag;
 	const GEN_FLT ogeeMag_1 = bsd[1].ogeephase;
 	const GEN_FLT ogeePhase_1 = bsd[1].ogeemag;
-	const GEN_FLT x0 = pow(obj_qk, 2);
-	const GEN_FLT x1 = pow(obj_qj, 2);
-	const GEN_FLT x2 = pow(obj_qi, 2);
+	const GEN_FLT x0 = obj_qk * obj_qk;
+	const GEN_FLT x1 = obj_qj * obj_qj;
+	const GEN_FLT x2 = obj_qi * obj_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
+	const GEN_FLT x4 = sqrt(x3);
 	const GEN_FLT x5 = cos(x4);
-	const GEN_FLT x6 = pow(x3, -1) * (1 + (-1 * x5));
-	const GEN_FLT x7 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x6 = (1. / x3) * (1 + (-1 * x5));
+	const GEN_FLT x7 = (1. / x4) * sin(x4);
 	const GEN_FLT x8 = x7 * obj_qi;
 	const GEN_FLT x9 = x6 * obj_qk;
 	const GEN_FLT x10 = x9 * obj_qj;
@@ -997,21 +995,21 @@ static inline void gen_reproject_gen2_jac_lh_p_axis_angle(FLT *out, const Linmat
 	const GEN_FLT x12 = x9 * obj_qi;
 	const GEN_FLT x13 =
 		((x12 + (-1 * x11)) * sensor_x) + ((x10 + x8) * sensor_y) + ((x5 + (x0 * x6)) * sensor_z) + obj_pz;
-	const GEN_FLT x14 = pow(lh_qk, 2);
-	const GEN_FLT x15 = pow(lh_qj, 2);
-	const GEN_FLT x16 = pow(lh_qi, 2);
+	const GEN_FLT x14 = lh_qk * lh_qk;
+	const GEN_FLT x15 = lh_qj * lh_qj;
+	const GEN_FLT x16 = lh_qi * lh_qi;
 	const GEN_FLT x17 = 1e-10 + x16 + x15 + x14;
-	const GEN_FLT x18 = pow(x17, 1.0 / 2.0);
+	const GEN_FLT x18 = sqrt(x17);
 	const GEN_FLT x19 = cos(x18);
 	const GEN_FLT x20 = 1 + (-1 * x19);
-	const GEN_FLT x21 = pow(x17, -1);
+	const GEN_FLT x21 = 1. / x17;
 	const GEN_FLT x22 = x20 * x21;
 	const GEN_FLT x23 = x7 * obj_qk;
 	const GEN_FLT x24 = x6 * obj_qj * obj_qi;
 	const GEN_FLT x25 =
 		((x24 + x23) * sensor_x) + ((x5 + (x1 * x6)) * sensor_y) + ((x10 + (-1 * x8)) * sensor_z) + obj_py;
 	const GEN_FLT x26 = sin(x18);
-	const GEN_FLT x27 = x26 * pow(x18, -1);
+	const GEN_FLT x27 = x26 * (1. / x18);
 	const GEN_FLT x28 = x27 * lh_qi;
 	const GEN_FLT x29 = x22 * lh_qj;
 	const GEN_FLT x30 = x29 * lh_qk;
@@ -1026,35 +1024,35 @@ static inline void gen_reproject_gen2_jac_lh_p_axis_angle(FLT *out, const Linmat
 	const GEN_FLT x38 = -1 * x37;
 	const GEN_FLT x39 = x29 * lh_qi;
 	const GEN_FLT x40 = (x31 * (x19 + (x22 * x16))) + ((x39 + x38) * x25) + ((x35 + x32) * x13) + lh_px;
-	const GEN_FLT x41 = pow(x40, 2);
-	const GEN_FLT x42 = x41 + pow(x36, 2);
-	const GEN_FLT x43 = pow(x42, -1);
+	const GEN_FLT x41 = x40 * x40;
+	const GEN_FLT x42 = x41 + (x36 * x36);
+	const GEN_FLT x43 = 1. / x42;
 	const GEN_FLT x44 = x43 * x36;
 	const GEN_FLT x45 = 0.523598775598299 + tilt_0;
 	const GEN_FLT x46 = tan(x45);
 	const GEN_FLT x47 = -1 * x28;
 	const GEN_FLT x48 = ((x39 + x37) * x31) + lh_py + (x25 * (x19 + (x22 * x15))) + ((x30 + x47) * x13);
-	const GEN_FLT x49 = pow(x42, -3.0 / 2.0) * x48;
+	const GEN_FLT x49 = (1. / (x42 * sqrt(x42))) * x48;
 	const GEN_FLT x50 = x40 * x49;
 	const GEN_FLT x51 = x50 * x46;
 	const GEN_FLT x52 = 2 * x40;
-	const GEN_FLT x53 = pow(x48, 2);
+	const GEN_FLT x53 = x48 * x48;
 	const GEN_FLT x54 = x42 + x53;
-	const GEN_FLT x55 = pow(x54, -3.0 / 2.0);
+	const GEN_FLT x55 = 1. / (x54 * sqrt(x54));
 	const GEN_FLT x56 = x55 * x48;
 	const GEN_FLT x57 = x52 * x56;
 	const GEN_FLT x58 = cos(x45);
-	const GEN_FLT x59 = pow(x58, -1);
-	const GEN_FLT x60 = pow(x54, -1) * x53;
-	const GEN_FLT x61 = pow((1 + (-1 * x60 * pow(x58, -2))), -1.0 / 2.0);
+	const GEN_FLT x59 = 1. / x58;
+	const GEN_FLT x60 = (1. / x54) * x53;
+	const GEN_FLT x61 = 1. / sqrt(1 + (-1 * x60 * (1. / (x58 * x58))));
 	const GEN_FLT x62 = x61 * x59;
-	const GEN_FLT x63 = pow(x42, -1.0 / 2.0);
+	const GEN_FLT x63 = 1. / sqrt(x42);
 	const GEN_FLT x64 = x63 * x46;
 	const GEN_FLT x65 = x64 * x48;
 	const GEN_FLT x66 = atan2(-1 * x36, x40);
 	const GEN_FLT x67 = x66 + (-1 * asin(x65)) + ogeeMag_0;
 	const GEN_FLT x68 = (sin(x67) * ogeePhase_0) + curve_0;
-	const GEN_FLT x69 = pow(x54, -1.0 / 2.0);
+	const GEN_FLT x69 = 1. / sqrt(x54);
 	const GEN_FLT x70 = x69 * x59;
 	const GEN_FLT x71 = asin(x70 * x48);
 	const GEN_FLT x72 = 8.0108022e-06 * x71;
@@ -1071,7 +1069,7 @@ static inline void gen_reproject_gen2_jac_lh_p_axis_angle(FLT *out, const Linmat
 	const GEN_FLT x83 = sin(x45);
 	const GEN_FLT x84 = x83 * x68;
 	const GEN_FLT x85 = x58 + (-1 * x82 * x84);
-	const GEN_FLT x86 = pow(x85, -1);
+	const GEN_FLT x86 = 1. / x85;
 	const GEN_FLT x87 = x86 * x77 * x68;
 	const GEN_FLT x88 = x87 * x62;
 	const GEN_FLT x89 = x56 * x40;
@@ -1082,19 +1080,19 @@ static inline void gen_reproject_gen2_jac_lh_p_axis_angle(FLT *out, const Linmat
 	const GEN_FLT x94 = (x71 * (x91 + (x72 * x90))) + (-1 * x89 * x93);
 	const GEN_FLT x95 = (x71 * x94) + (-1 * x75 * x90);
 	const GEN_FLT x96 = x53 * x43;
-	const GEN_FLT x97 = pow((1 + (-1 * x96 * pow(x46, 2))), -1.0 / 2.0);
+	const GEN_FLT x97 = 1. / sqrt(1 + (-1 * x96 * (x46 * x46)));
 	const GEN_FLT x98 = (x51 * x97) + x44;
 	const GEN_FLT x99 = cos(x67) * ogeePhase_0;
 	const GEN_FLT x100 = x82 * x83;
 	const GEN_FLT x101 = x99 * x100;
-	const GEN_FLT x102 = pow(x71, 2);
+	const GEN_FLT x102 = x71 * x71;
 	const GEN_FLT x103 = x68 * x102;
-	const GEN_FLT x104 = pow(x85, -2) * x76 * x103;
+	const GEN_FLT x104 = (1. / (x85 * x85)) * x76 * x103;
 	const GEN_FLT x105 = x86 * x76 * x102;
 	const GEN_FLT x106 = x99 * x105;
 	const GEN_FLT x107 = x86 * x103;
 	const GEN_FLT x108 = x65 + (x76 * x107);
-	const GEN_FLT x109 = pow((1 + (-1 * pow(x108, 2))), -1.0 / 2.0);
+	const GEN_FLT x109 = 1. / sqrt(1 + (-1 * (x108 * x108)));
 	const GEN_FLT x110 =
 		x109 * ((x95 * x107) + (x98 * x106) +
 				(-1 * x104 *
@@ -1147,9 +1145,9 @@ static inline void gen_reproject_gen2_jac_lh_p_axis_angle(FLT *out, const Linmat
 			 (-1 * x81 * x129))))) +
 		 (x107 * x132) + (-1 * x88 * x127) + (-1 * x125));
 	const GEN_FLT x135 = x22 * lh_qk;
-	const GEN_FLT x136 = x26 * pow(x17, -3.0 / 2.0);
+	const GEN_FLT x136 = x26 * (1. / (x17 * sqrt(x17)));
 	const GEN_FLT x137 = x16 * x136;
-	const GEN_FLT x138 = 2 * x20 * pow(x17, -2);
+	const GEN_FLT x138 = 2 * x20 * (1. / (x17 * x17));
 	const GEN_FLT x139 = x138 * lh_qk;
 	const GEN_FLT x140 = (-1 * x16 * x139) + (x137 * lh_qk);
 	const GEN_FLT x141 = x140 + x135;
@@ -1169,8 +1167,8 @@ static inline void gen_reproject_gen2_jac_lh_p_axis_angle(FLT *out, const Linmat
 	const GEN_FLT x155 = x138 * lh_qi;
 	const GEN_FLT x156 = (-1 * x14 * x155) + (x154 * lh_qi);
 	const GEN_FLT x157 = (x13 * (x156 + x47)) + (x25 * (x153 + x148 + (-1 * x137))) + ((x147 + x141) * x31);
-	const GEN_FLT x158 = pow(x40, -1);
-	const GEN_FLT x159 = pow(lh_qi, 3);
+	const GEN_FLT x158 = 1. / x40;
+	const GEN_FLT x159 = lh_qi * lh_qi * lh_qi;
 	const GEN_FLT x160 = (-1 * x16 * x151) + (x137 * lh_qj);
 	const GEN_FLT x161 = x160 + x29;
 	const GEN_FLT x162 = x144 * x149;
@@ -1178,7 +1176,7 @@ static inline void gen_reproject_gen2_jac_lh_p_axis_angle(FLT *out, const Linmat
 	const GEN_FLT x164 = x146 + (-1 * x143);
 	const GEN_FLT x165 =
 		((x164 + x141) * x13) + ((x163 + x161) * x25) + (((-1 * x138 * x159) + (x136 * x159) + (2 * x34) + x47) * x31);
-	const GEN_FLT x166 = pow(x41, -1) * x36;
+	const GEN_FLT x166 = (1. / x41) * x36;
 	const GEN_FLT x167 = x41 * x43;
 	const GEN_FLT x168 = ((x166 * x165) + (-1 * x157 * x158)) * x167;
 	const GEN_FLT x169 = x162 + (-1 * x150);
@@ -1220,7 +1218,7 @@ static inline void gen_reproject_gen2_jac_lh_p_axis_angle(FLT *out, const Linmat
 	const GEN_FLT x196 = (-1 * x195) + x194;
 	const GEN_FLT x197 = (x13 * (x153 + x188 + (-1 * x170))) + ((x196 + x193) * x25) + (x31 * (x160 + x33));
 	const GEN_FLT x198 = ((x166 * x197) + (-1 * x192 * x158)) * x167;
-	const GEN_FLT x199 = pow(lh_qj, 3);
+	const GEN_FLT x199 = lh_qj * lh_qj * lh_qj;
 	const GEN_FLT x200 = x195 + (-1 * x194);
 	const GEN_FLT x201 =
 		((x190 + x147) * x13) + ((x200 + x193) * x31) + (((-1 * x199 * x138) + (x199 * x136) + (2 * x29) + x33) * x25);
@@ -1248,7 +1246,7 @@ static inline void gen_reproject_gen2_jac_lh_p_axis_angle(FLT *out, const Linmat
 	const GEN_FLT x215 = ((x214 + x163) * x13) + (x25 * (x189 + x38)) + (x31 * (x153 + x213 + (-1 * x154)));
 	const GEN_FLT x216 = x156 + x34;
 	const GEN_FLT x217 = ((x216 + x200) * x13) + (x25 * (x172 + (-1 * x213) + x154)) + (x31 * (x140 + x38));
-	const GEN_FLT x218 = pow(lh_qk, 3);
+	const GEN_FLT x218 = lh_qk * lh_qk * lh_qk;
 	const GEN_FLT x219 =
 		(x13 * ((-1 * x218 * x138) + (2 * x135) + (x218 * x136) + x38)) + ((x214 + x169) * x25) + ((x216 + x196) * x31);
 	const GEN_FLT x220 = (x219 * x174) + (x52 * x217);
@@ -1274,7 +1272,7 @@ static inline void gen_reproject_gen2_jac_lh_p_axis_angle(FLT *out, const Linmat
 	const GEN_FLT x231 = -1 * x226;
 	const GEN_FLT x232 = 0.523598775598299 + (-1 * tilt_1);
 	const GEN_FLT x233 = cos(x232);
-	const GEN_FLT x234 = pow(x233, -1);
+	const GEN_FLT x234 = 1. / x233;
 	const GEN_FLT x235 = x69 * x234;
 	const GEN_FLT x236 = asin(x48 * x235);
 	const GEN_FLT x237 = 8.0108022e-06 * x236;
@@ -1296,19 +1294,19 @@ static inline void gen_reproject_gen2_jac_lh_p_axis_angle(FLT *out, const Linmat
 	const GEN_FLT x253 = sin(x232);
 	const GEN_FLT x254 = x252 * x253;
 	const GEN_FLT x255 = x233 + (x254 * x247);
-	const GEN_FLT x256 = pow(x255, -1);
-	const GEN_FLT x257 = pow(x236, 2);
+	const GEN_FLT x256 = 1. / x255;
+	const GEN_FLT x257 = x236 * x236;
 	const GEN_FLT x258 = x252 * x257;
 	const GEN_FLT x259 = x256 * x258;
 	const GEN_FLT x260 = x250 + (x259 * x241);
-	const GEN_FLT x261 = pow((1 + (-1 * pow(x260, 2))), -1.0 / 2.0);
+	const GEN_FLT x261 = 1. / sqrt(1 + (-1 * (x260 * x260)));
 	const GEN_FLT x262 = x50 * x248;
-	const GEN_FLT x263 = pow((1 + (-1 * x96 * pow(x248, 2))), -1.0 / 2.0);
+	const GEN_FLT x263 = 1. / sqrt(1 + (-1 * x96 * (x248 * x248)));
 	const GEN_FLT x264 = (-1 * x262 * x263) + x44;
 	const GEN_FLT x265 = cos(x251) * ogeePhase_1;
 	const GEN_FLT x266 = x256 * x257 * x241;
 	const GEN_FLT x267 = x266 * x265;
-	const GEN_FLT x268 = pow((1 + (-1 * x60 * pow(x233, -2))), -1.0 / 2.0);
+	const GEN_FLT x268 = 1. / sqrt(1 + (-1 * x60 * (1. / (x233 * x233))));
 	const GEN_FLT x269 = x234 * x268;
 	const GEN_FLT x270 = x252 * x256 * x242;
 	const GEN_FLT x271 = x270 * x269;
@@ -1322,7 +1320,7 @@ static inline void gen_reproject_gen2_jac_lh_p_axis_angle(FLT *out, const Linmat
 	const GEN_FLT x279 = x268 * x244;
 	const GEN_FLT x280 = x89 * x234;
 	const GEN_FLT x281 = x268 * x246;
-	const GEN_FLT x282 = pow(x255, -2) * x258 * x241;
+	const GEN_FLT x282 = (1. / (x255 * x255)) * x258 * x241;
 	const GEN_FLT x283 =
 		x261 *
 		((-1 * x282 *
@@ -1474,25 +1472,25 @@ static inline void gen_reproject_gen2_jac_bsd_axis_angle(FLT *out, const Linmath
 	const GEN_FLT ogeePhase_1 = bsd[1].ogeemag;
 	const GEN_FLT x0 = 0.523598775598299 + tilt_0;
 	const GEN_FLT x1 = tan(x0);
-	const GEN_FLT x2 = pow(lh_qk, 2);
-	const GEN_FLT x3 = pow(lh_qj, 2);
-	const GEN_FLT x4 = pow(lh_qi, 2);
+	const GEN_FLT x2 = lh_qk * lh_qk;
+	const GEN_FLT x3 = lh_qj * lh_qj;
+	const GEN_FLT x4 = lh_qi * lh_qi;
 	const GEN_FLT x5 = 1e-10 + x4 + x3 + x2;
-	const GEN_FLT x6 = pow(x5, 1.0 / 2.0);
-	const GEN_FLT x7 = pow(x6, -1) * sin(x6);
+	const GEN_FLT x6 = sqrt(x5);
+	const GEN_FLT x7 = (1. / x6) * sin(x6);
 	const GEN_FLT x8 = x7 * lh_qi;
 	const GEN_FLT x9 = cos(x6);
-	const GEN_FLT x10 = pow(x5, -1) * (1 + (-1 * x9));
+	const GEN_FLT x10 = (1. / x5) * (1 + (-1 * x9));
 	const GEN_FLT x11 = x10 * lh_qj;
 	const GEN_FLT x12 = x11 * lh_qk;
-	const GEN_FLT x13 = pow(obj_qk, 2);
-	const GEN_FLT x14 = pow(obj_qj, 2);
-	const GEN_FLT x15 = pow(obj_qi, 2);
+	const GEN_FLT x13 = obj_qk * obj_qk;
+	const GEN_FLT x14 = obj_qj * obj_qj;
+	const GEN_FLT x15 = obj_qi * obj_qi;
 	const GEN_FLT x16 = 1e-10 + x15 + x14 + x13;
-	const GEN_FLT x17 = pow(x16, 1.0 / 2.0);
+	const GEN_FLT x17 = sqrt(x16);
 	const GEN_FLT x18 = cos(x17);
-	const GEN_FLT x19 = pow(x16, -1) * (1 + (-1 * x18));
-	const GEN_FLT x20 = pow(x17, -1) * sin(x17);
+	const GEN_FLT x19 = (1. / x16) * (1 + (-1 * x18));
+	const GEN_FLT x20 = (1. / x17) * sin(x17);
 	const GEN_FLT x21 = x20 * obj_qi;
 	const GEN_FLT x22 = x19 * obj_qk * obj_qj;
 	const GEN_FLT x23 = x20 * obj_qj;
@@ -1513,24 +1511,24 @@ static inline void gen_reproject_gen2_jac_bsd_axis_angle(FLT *out, const Linmath
 	const GEN_FLT x35 = x10 * lh_qk * lh_qi;
 	const GEN_FLT x36 = ((x35 + (-1 * x34)) * x30) + (x29 * (x12 + x8)) + (x26 * (x9 + (x2 * x10))) + lh_pz;
 	const GEN_FLT x37 = (x30 * (x9 + (x4 * x10))) + ((x32 + (-1 * x31)) * x29) + ((x35 + x34) * x26) + lh_px;
-	const GEN_FLT x38 = pow(x37, 2) + pow(x36, 2);
-	const GEN_FLT x39 = x33 * pow(x38, -1.0 / 2.0);
+	const GEN_FLT x38 = (x37 * x37) + (x36 * x36);
+	const GEN_FLT x39 = x33 * (1. / sqrt(x38));
 	const GEN_FLT x40 = x1 * x39;
 	const GEN_FLT x41 = atan2(-1 * x36, x37);
 	const GEN_FLT x42 = x41 + (-1 * asin(x40)) + ogeeMag_0;
 	const GEN_FLT x43 = sin(x42);
 	const GEN_FLT x44 = (x43 * ogeePhase_0) + curve_0;
 	const GEN_FLT x45 = cos(x0);
-	const GEN_FLT x46 = pow(x33, 2);
+	const GEN_FLT x46 = x33 * x33;
 	const GEN_FLT x47 = x38 + x46;
-	const GEN_FLT x48 = pow(x47, -1.0 / 2.0) * x33;
-	const GEN_FLT x49 = asin(pow(x45, -1) * x48);
+	const GEN_FLT x48 = (1. / sqrt(x47)) * x33;
+	const GEN_FLT x49 = asin((1. / x45) * x48);
 	const GEN_FLT x50 = 8.0108022e-06 * x49;
 	const GEN_FLT x51 = -8.0108022e-06 + (-1 * x50);
 	const GEN_FLT x52 = 0.0028679863 + (x51 * x49);
 	const GEN_FLT x53 = 5.3685255e-06 + (x52 * x49);
 	const GEN_FLT x54 = 0.0076069798 + (x53 * x49);
-	const GEN_FLT x55 = pow(x49, 2);
+	const GEN_FLT x55 = x49 * x49;
 	const GEN_FLT x56 = x54 * x49;
 	const GEN_FLT x57 = -8.0108022e-06 + (-1.60216044e-05 * x49);
 	const GEN_FLT x58 = x52 + (x57 * x49);
@@ -1541,24 +1539,24 @@ static inline void gen_reproject_gen2_jac_bsd_axis_angle(FLT *out, const Linmath
 	const GEN_FLT x63 = x62 * x44;
 	const GEN_FLT x64 = x63 * x61;
 	const GEN_FLT x65 = x45 + (-1 * x64);
-	const GEN_FLT x66 = pow(x65, -1);
+	const GEN_FLT x66 = 1. / x65;
 	const GEN_FLT x67 = x66 * x55;
 	const GEN_FLT x68 = x67 * x54;
 	const GEN_FLT x69 = x40 + (x68 * x44);
-	const GEN_FLT x70 = pow((1 + (-1 * pow(x69, 2))), -1.0 / 2.0);
-	const GEN_FLT x71 = pow(x45, -2);
-	const GEN_FLT x72 = x46 * pow(x47, -1);
-	const GEN_FLT x73 = x71 * x48 * pow((1 + (-1 * x71 * x72)), -1.0 / 2.0);
-	const GEN_FLT x74 = pow(x1, 2);
+	const GEN_FLT x70 = 1. / sqrt(1 + (-1 * (x69 * x69)));
+	const GEN_FLT x71 = 1. / (x45 * x45);
+	const GEN_FLT x72 = x46 * (1. / x47);
+	const GEN_FLT x73 = x71 * x48 * (1. / sqrt(1 + (-1 * x71 * x72)));
+	const GEN_FLT x74 = x1 * x1;
 	const GEN_FLT x75 = x39 * (1 + x74);
 	const GEN_FLT x76 = x73 * x62;
 	const GEN_FLT x77 = x76 * x51;
 	const GEN_FLT x78 = (x49 * (x77 + (-1 * x76 * x50))) + (x76 * x52);
 	const GEN_FLT x79 = (x78 * x49) + (x76 * x53);
 	const GEN_FLT x80 = cos(x42) * ogeePhase_0;
-	const GEN_FLT x81 = x46 * pow(x38, -1);
-	const GEN_FLT x82 = x75 * pow((1 + (-1 * x81 * x74)), -1.0 / 2.0);
-	const GEN_FLT x83 = pow(x65, -2) * x54 * x55;
+	const GEN_FLT x81 = x46 * (1. / x38);
+	const GEN_FLT x82 = x75 * (1. / sqrt(1 + (-1 * x81 * x74)));
+	const GEN_FLT x83 = (1. / (x65 * x65)) * x54 * x55;
 	const GEN_FLT x84 = x80 * x68;
 	const GEN_FLT x85 =
 		x70 *
@@ -1586,13 +1584,13 @@ static inline void gen_reproject_gen2_jac_bsd_axis_angle(FLT *out, const Linmath
 	const GEN_FLT x97 = sin(x96);
 	const GEN_FLT x98 = (x97 * ogeePhase_1) + curve_1;
 	const GEN_FLT x99 = cos(x93);
-	const GEN_FLT x100 = asin(pow(x99, -1) * x48);
+	const GEN_FLT x100 = asin((1. / x99) * x48);
 	const GEN_FLT x101 = 8.0108022e-06 * x100;
 	const GEN_FLT x102 = -8.0108022e-06 + (-1 * x101);
 	const GEN_FLT x103 = 0.0028679863 + (x100 * x102);
 	const GEN_FLT x104 = 5.3685255e-06 + (x100 * x103);
 	const GEN_FLT x105 = 0.0076069798 + (x100 * x104);
-	const GEN_FLT x106 = pow(x100, 2);
+	const GEN_FLT x106 = x100 * x100;
 	const GEN_FLT x107 = x100 * x105;
 	const GEN_FLT x108 = -8.0108022e-06 + (-1.60216044e-05 * x100);
 	const GEN_FLT x109 = x103 + (x100 * x108);
@@ -1603,25 +1601,25 @@ static inline void gen_reproject_gen2_jac_bsd_axis_angle(FLT *out, const Linmath
 	const GEN_FLT x114 = x98 * x113;
 	const GEN_FLT x115 = x112 * x114;
 	const GEN_FLT x116 = x99 + x115;
-	const GEN_FLT x117 = pow(x116, -1);
+	const GEN_FLT x117 = 1. / x116;
 	const GEN_FLT x118 = x106 * x117;
 	const GEN_FLT x119 = x105 * x118;
 	const GEN_FLT x120 = x95 + (x98 * x119);
 	const GEN_FLT x121 = x86 + asin(x120) + (-1 * gibPhase_1);
 	const GEN_FLT x122 = cos(x121) * gibMag_1;
-	const GEN_FLT x123 = pow((1 + (-1 * pow(x120, 2))), -1.0 / 2.0);
-	const GEN_FLT x124 = pow(x94, 2);
+	const GEN_FLT x123 = 1. / sqrt(1 + (-1 * (x120 * x120)));
+	const GEN_FLT x124 = x94 * x94;
 	const GEN_FLT x125 = x39 * (1 + x124);
 	const GEN_FLT x126 = cos(x96) * ogeePhase_1;
 	const GEN_FLT x127 = x119 * x126;
-	const GEN_FLT x128 = x125 * pow((1 + (-1 * x81 * x124)), -1.0 / 2.0);
-	const GEN_FLT x129 = pow(x99, -2);
-	const GEN_FLT x130 = x48 * x129 * pow((1 + (-1 * x72 * x129)), -1.0 / 2.0);
+	const GEN_FLT x128 = x125 * (1. / sqrt(1 + (-1 * x81 * x124)));
+	const GEN_FLT x129 = 1. / (x99 * x99);
+	const GEN_FLT x130 = x48 * x129 * (1. / sqrt(1 + (-1 * x72 * x129)));
 	const GEN_FLT x131 = x113 * x130;
 	const GEN_FLT x132 = -1 * x102 * x131;
 	const GEN_FLT x133 = (-1 * x103 * x131) + (x100 * (x132 + (x101 * x131)));
 	const GEN_FLT x134 = (-1 * x104 * x131) + (x100 * x133);
-	const GEN_FLT x135 = x105 * x106 * pow(x116, -2);
+	const GEN_FLT x135 = x105 * x106 * (1. / (x116 * x116));
 	const GEN_FLT x136 =
 		x123 * ((-1 * x98 * x135 *
 				 ((x114 * ((x100 * x134) + (-1 * x105 * x131) +
@@ -1690,25 +1688,25 @@ static inline FLT gen_reproject_axis_x_gen2_axis_angle(const LinmathAxisAnglePos
 	const GEN_FLT gibMag_0 = (*bsc0).gibmag;
 	const GEN_FLT ogeeMag_0 = (*bsc0).ogeephase;
 	const GEN_FLT ogeePhase_0 = (*bsc0).ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
-	const GEN_FLT x5 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x4 = sqrt(x3);
+	const GEN_FLT x5 = (1. / x4) * sin(x4);
 	const GEN_FLT x6 = x5 * lh_qi;
 	const GEN_FLT x7 = cos(x4);
-	const GEN_FLT x8 = pow(x3, -1) * (1 + (-1 * x7));
+	const GEN_FLT x8 = (1. / x3) * (1 + (-1 * x7));
 	const GEN_FLT x9 = x8 * lh_qj;
 	const GEN_FLT x10 = x9 * lh_qk;
-	const GEN_FLT x11 = pow(obj_qk, 2);
-	const GEN_FLT x12 = pow(obj_qj, 2);
-	const GEN_FLT x13 = pow(obj_qi, 2);
+	const GEN_FLT x11 = obj_qk * obj_qk;
+	const GEN_FLT x12 = obj_qj * obj_qj;
+	const GEN_FLT x13 = obj_qi * obj_qi;
 	const GEN_FLT x14 = 1e-10 + x13 + x12 + x11;
-	const GEN_FLT x15 = pow(x14, 1.0 / 2.0);
+	const GEN_FLT x15 = sqrt(x14);
 	const GEN_FLT x16 = cos(x15);
-	const GEN_FLT x17 = pow(x14, -1) * (1 + (-1 * x16));
-	const GEN_FLT x18 = pow(x15, -1) * sin(x15);
+	const GEN_FLT x17 = (1. / x14) * (1 + (-1 * x16));
+	const GEN_FLT x18 = (1. / x15) * sin(x15);
 	const GEN_FLT x19 = x18 * obj_qi;
 	const GEN_FLT x20 = x17 * obj_qk;
 	const GEN_FLT x21 = x20 * obj_qj;
@@ -1731,22 +1729,21 @@ static inline FLT gen_reproject_axis_x_gen2_axis_angle(const LinmathAxisAnglePos
 	const GEN_FLT x35 = x8 * lh_qk * lh_qi;
 	const GEN_FLT x36 = ((x35 + (-1 * x34)) * x28) + (x27 * (x10 + x6)) + (x24 * (x7 + (x0 * x8))) + lh_pz;
 	const GEN_FLT x37 = ((x30 + (-1 * x29)) * x27) + ((x35 + x34) * x24) + (x28 * (x7 + (x2 * x8))) + lh_px;
-	const GEN_FLT x38 = pow(x37, 2) + pow(x36, 2);
-	const GEN_FLT x39 = asin(x31 * pow(x33, -1) * pow((x38 + pow(x31, 2)), -1.0 / 2.0));
+	const GEN_FLT x38 = (x37 * x37) + (x36 * x36);
+	const GEN_FLT x39 = asin(x31 * (1. / x33) * (1. / sqrt(x38 + (x31 * x31))));
 	const GEN_FLT x40 = 0.0028679863 + (x39 * (-8.0108022e-06 + (-8.0108022e-06 * x39)));
 	const GEN_FLT x41 = 5.3685255e-06 + (x40 * x39);
 	const GEN_FLT x42 = 0.0076069798 + (x41 * x39);
-	const GEN_FLT x43 = x31 * pow(x38, -1.0 / 2.0) * tan(x32);
+	const GEN_FLT x43 = x31 * (1. / sqrt(x38)) * tan(x32);
 	const GEN_FLT x44 = atan2(-1 * x36, x37);
 	const GEN_FLT x45 = (sin(x44 + (-1 * asin(x43)) + ogeeMag_0) * ogeePhase_0) + curve_0;
 	const GEN_FLT x46 = asin(
 		x43 +
-		(x42 * x45 * pow(x39, 2) *
-		 pow((x33 +
-			  (-1 * x45 * sin(x32) *
-			   ((x39 * (x42 + (x39 * (x41 + (x39 * (x40 + (x39 * (-8.0108022e-06 + (-1.60216044e-05 * x39))))))))) +
-				(x42 * x39)))),
-			 -1)));
+		(x42 * x45 * (x39 * x39) *
+		 (1. /
+		  (x33 + (-1 * x45 * sin(x32) *
+				  ((x39 * (x42 + (x39 * (x41 + (x39 * (x40 + (x39 * (-8.0108022e-06 + (-1.60216044e-05 * x39))))))))) +
+				   (x42 * x39)))))));
 	return -1.5707963267949 + x44 + (-1 * x46) + (sin(x44 + (-1 * x46) + gibPhase_0) * gibMag_0) + (-1 * phase_0);
 }
 
@@ -1777,29 +1774,29 @@ static inline void gen_reproject_axis_x_gen2_jac_obj_p_axis_angle(FLT *out, cons
 	const GEN_FLT gibMag_0 = (*bsc0).gibmag;
 	const GEN_FLT ogeeMag_0 = (*bsc0).ogeephase;
 	const GEN_FLT ogeePhase_0 = (*bsc0).ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
-	const GEN_FLT x5 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x4 = sqrt(x3);
+	const GEN_FLT x5 = (1. / x4) * sin(x4);
 	const GEN_FLT x6 = x5 * lh_qj;
 	const GEN_FLT x7 = cos(x4);
-	const GEN_FLT x8 = pow(x3, -1) * (1 + (-1 * x7));
+	const GEN_FLT x8 = (1. / x3) * (1 + (-1 * x7));
 	const GEN_FLT x9 = x8 * lh_qk * lh_qi;
 	const GEN_FLT x10 = x9 + (-1 * x6);
 	const GEN_FLT x11 = x9 + x6;
-	const GEN_FLT x12 = pow(obj_qk, 2);
-	const GEN_FLT x13 = pow(obj_qj, 2);
-	const GEN_FLT x14 = pow(obj_qi, 2);
+	const GEN_FLT x12 = obj_qk * obj_qk;
+	const GEN_FLT x13 = obj_qj * obj_qj;
+	const GEN_FLT x14 = obj_qi * obj_qi;
 	const GEN_FLT x15 = 1e-10 + x14 + x13 + x12;
-	const GEN_FLT x16 = pow(x15, -1);
-	const GEN_FLT x17 = pow(x15, 1.0 / 2.0);
+	const GEN_FLT x16 = 1. / x15;
+	const GEN_FLT x17 = sqrt(x15);
 	const GEN_FLT x18 = cos(x17);
 	const GEN_FLT x19 = 1 + (-1 * x18);
 	const GEN_FLT x20 = x19 * x16;
 	const GEN_FLT x21 = sin(x17);
-	const GEN_FLT x22 = x21 * pow(x17, -1);
+	const GEN_FLT x22 = x21 * (1. / x17);
 	const GEN_FLT x23 = x22 * obj_qi;
 	const GEN_FLT x24 = x20 * obj_qk;
 	const GEN_FLT x25 = x24 * obj_qj;
@@ -1820,16 +1817,16 @@ static inline void gen_reproject_axis_x_gen2_jac_obj_p_axis_angle(FLT *out, cons
 	const GEN_FLT x40 = ((x18 + (x20 * x14)) * sensor_x) + ((x33 + x39) * sensor_y) + ((x28 + x26) * sensor_z) + obj_px;
 	const GEN_FLT x41 = x7 + (x2 * x8);
 	const GEN_FLT x42 = (x40 * x41) + (x29 * x11) + (x34 * x38) + lh_px;
-	const GEN_FLT x43 = pow(x42, -1);
+	const GEN_FLT x43 = 1. / x42;
 	const GEN_FLT x44 = x7 + (x0 * x8);
 	const GEN_FLT x45 = x5 * lh_qi;
 	const GEN_FLT x46 = x36 * lh_qk;
 	const GEN_FLT x47 = x46 + x45;
 	const GEN_FLT x48 = (x40 * x10) + (x44 * x29) + (x47 * x34) + lh_pz;
-	const GEN_FLT x49 = pow(x42, 2);
-	const GEN_FLT x50 = x48 * pow(x49, -1);
-	const GEN_FLT x51 = x49 + pow(x48, 2);
-	const GEN_FLT x52 = pow(x51, -1);
+	const GEN_FLT x49 = x42 * x42;
+	const GEN_FLT x50 = x48 * (1. / x49);
+	const GEN_FLT x51 = x49 + (x48 * x48);
+	const GEN_FLT x52 = 1. / x51;
 	const GEN_FLT x53 = x52 * x49;
 	const GEN_FLT x54 = ((x50 * x41) + (-1 * x43 * x10)) * x53;
 	const GEN_FLT x55 = x46 + (-1 * x45);
@@ -1838,10 +1835,10 @@ static inline void gen_reproject_axis_x_gen2_jac_obj_p_axis_angle(FLT *out, cons
 	const GEN_FLT x58 = (x57 * x40) + lh_py + (x56 * x34) + (x55 * x29);
 	const GEN_FLT x59 = 0.523598775598299 + tilt_0;
 	const GEN_FLT x60 = cos(x59);
-	const GEN_FLT x61 = pow(x60, -1);
-	const GEN_FLT x62 = pow(x58, 2);
+	const GEN_FLT x61 = 1. / x60;
+	const GEN_FLT x62 = x58 * x58;
 	const GEN_FLT x63 = x51 + x62;
-	const GEN_FLT x64 = pow(x63, -1.0 / 2.0) * x61;
+	const GEN_FLT x64 = (1. / sqrt(x63)) * x61;
 	const GEN_FLT x65 = asin(x64 * x58);
 	const GEN_FLT x66 = 8.0108022e-06 * x65;
 	const GEN_FLT x67 = -8.0108022e-06 + (-1 * x66);
@@ -1855,7 +1852,7 @@ static inline void gen_reproject_axis_x_gen2_jac_obj_p_axis_angle(FLT *out, cons
 	const GEN_FLT x75 = x70 + (x74 * x65);
 	const GEN_FLT x76 = (x75 * x65) + x71;
 	const GEN_FLT x77 = tan(x59);
-	const GEN_FLT x78 = x77 * pow(x51, -1.0 / 2.0);
+	const GEN_FLT x78 = x77 * (1. / sqrt(x51));
 	const GEN_FLT x79 = x78 * x58;
 	const GEN_FLT x80 = atan2(-1 * x48, x42);
 	const GEN_FLT x81 = x80 + (-1 * asin(x79)) + ogeeMag_0;
@@ -1863,32 +1860,32 @@ static inline void gen_reproject_axis_x_gen2_jac_obj_p_axis_angle(FLT *out, cons
 	const GEN_FLT x83 = sin(x59);
 	const GEN_FLT x84 = x82 * x83;
 	const GEN_FLT x85 = x60 + (-1 * x84 * x76);
-	const GEN_FLT x86 = pow(x85, -1);
-	const GEN_FLT x87 = pow(x65, 2);
+	const GEN_FLT x86 = 1. / x85;
+	const GEN_FLT x87 = x65 * x65;
 	const GEN_FLT x88 = x82 * x87;
 	const GEN_FLT x89 = x88 * x86;
 	const GEN_FLT x90 = x79 + (x89 * x70);
-	const GEN_FLT x91 = pow((1 + (-1 * pow(x90, 2))), -1.0 / 2.0);
-	const GEN_FLT x92 = pow((1 + (-1 * pow(x60, -2) * pow(x63, -1) * x62)), -1.0 / 2.0);
+	const GEN_FLT x91 = 1. / sqrt(1 + (-1 * (x90 * x90)));
+	const GEN_FLT x92 = 1. / sqrt(1 + (-1 * (1. / (x60 * x60)) * (1. / x63) * x62));
 	const GEN_FLT x93 = 2 * x58;
 	const GEN_FLT x94 = 2 * x42;
 	const GEN_FLT x95 = 2 * x48;
 	const GEN_FLT x96 = (x95 * x10) + (x94 * x41);
 	const GEN_FLT x97 = 1.0 / 2.0 * x58;
-	const GEN_FLT x98 = pow(x63, -3.0 / 2.0) * x61 * x97;
+	const GEN_FLT x98 = (1. / (x63 * sqrt(x63))) * x61 * x97;
 	const GEN_FLT x99 = x92 * ((x64 * x57) + (-1 * x98 * (x96 + (x57 * x93))));
 	const GEN_FLT x100 = 2 * x82 * x86 * x71;
 	const GEN_FLT x101 = x67 * x99;
 	const GEN_FLT x102 = 2.40324066e-05 * x65;
 	const GEN_FLT x103 = (x65 * (x101 + (-1 * x66 * x99))) + (x68 * x99);
 	const GEN_FLT x104 = (x65 * x103) + (x69 * x99);
-	const GEN_FLT x105 = pow((1 + (-1 * pow(x77, 2) * x62 * x52)), -1.0 / 2.0);
-	const GEN_FLT x106 = x77 * pow(x51, -3.0 / 2.0) * x97;
+	const GEN_FLT x105 = 1. / sqrt(1 + (-1 * (x77 * x77) * x62 * x52));
+	const GEN_FLT x106 = x77 * (1. / (x51 * sqrt(x51))) * x97;
 	const GEN_FLT x107 = (x78 * x57) + (-1 * x96 * x106);
 	const GEN_FLT x108 = cos(x81) * ogeePhase_0;
 	const GEN_FLT x109 = x108 * ((-1 * x105 * x107) + x54);
 	const GEN_FLT x110 = x83 * x76;
-	const GEN_FLT x111 = x88 * pow(x85, -2) * x70;
+	const GEN_FLT x111 = x88 * (1. / (x85 * x85)) * x70;
 	const GEN_FLT x112 = x86 * x87 * x70;
 	const GEN_FLT x113 =
 		x91 * (x107 + (x89 * x104) + (x109 * x112) +
@@ -1939,9 +1936,9 @@ static inline void gen_reproject_axis_x_gen2_jac_obj_p_axis_angle(FLT *out, cons
 						   (x74 * x128))) +
 				   (x75 * x128))))) +
 			   (x124 * x130) + (x100 * x128));
-	const GEN_FLT x135 = pow(obj_qi, 3);
-	const GEN_FLT x136 = x21 * pow(x15, -3.0 / 2.0);
-	const GEN_FLT x137 = 2 * pow(x15, -2) * x19;
+	const GEN_FLT x135 = obj_qi * obj_qi * obj_qi;
+	const GEN_FLT x136 = x21 * (1. / (x15 * sqrt(x15)));
+	const GEN_FLT x137 = 2 * (1. / (x15 * x15)) * x19;
 	const GEN_FLT x138 = x18 * x16;
 	const GEN_FLT x139 = x138 * obj_qk;
 	const GEN_FLT x140 = x139 * obj_qi;
@@ -2002,7 +1999,7 @@ static inline void gen_reproject_axis_x_gen2_jac_obj_p_axis_angle(FLT *out, cons
 	const GEN_FLT x183 = x139 * obj_qj;
 	const GEN_FLT x184 = x141 * obj_qj;
 	const GEN_FLT x185 = (-1 * x184) + x183;
-	const GEN_FLT x186 = pow(obj_qj, 3);
+	const GEN_FLT x186 = obj_qj * obj_qj * obj_qj;
 	const GEN_FLT x187 = (-1 * x13 * x161) + (x157 * obj_qk);
 	const GEN_FLT x188 = x187 + x24;
 	const GEN_FLT x189 = ((x165 + x188) * sensor_z) +
@@ -2043,7 +2040,7 @@ static inline void gen_reproject_axis_x_gen2_jac_obj_p_axis_angle(FLT *out, cons
 	const GEN_FLT x210 = x193 + x144;
 	const GEN_FLT x211 =
 		((x143 + x210) * sensor_z) + ((x187 + x39) * sensor_y) + ((x166 + (-1 * x167) + x207) * sensor_x);
-	const GEN_FLT x212 = pow(obj_qk, 3);
+	const GEN_FLT x212 = obj_qk * obj_qk * obj_qk;
 	const GEN_FLT x213 = (((-1 * x212 * x137) + x39 + (x212 * x136) + (2 * x24)) * sensor_z) +
 						 ((x156 + x210) * sensor_y) + ((x208 + x190) * sensor_x);
 	const GEN_FLT x214 = (x44 * x213) + (x47 * x211) + (x10 * x209);
@@ -2102,27 +2099,27 @@ static inline void gen_reproject_axis_x_gen2_jac_sensor_pt_axis_angle(FLT *out, 
 	const GEN_FLT gibMag_0 = (*bsc0).gibmag;
 	const GEN_FLT ogeeMag_0 = (*bsc0).ogeephase;
 	const GEN_FLT ogeePhase_0 = (*bsc0).ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
-	const GEN_FLT x5 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x4 = sqrt(x3);
+	const GEN_FLT x5 = (1. / x4) * sin(x4);
 	const GEN_FLT x6 = x5 * lh_qj;
 	const GEN_FLT x7 = cos(x4);
-	const GEN_FLT x8 = pow(x3, -1) * (1 + (-1 * x7));
+	const GEN_FLT x8 = (1. / x3) * (1 + (-1 * x7));
 	const GEN_FLT x9 = x8 * lh_qi;
 	const GEN_FLT x10 = x9 * lh_qk;
 	const GEN_FLT x11 = x10 + x6;
-	const GEN_FLT x12 = pow(obj_qk, 2);
-	const GEN_FLT x13 = pow(obj_qj, 2);
-	const GEN_FLT x14 = pow(obj_qi, 2);
+	const GEN_FLT x12 = obj_qk * obj_qk;
+	const GEN_FLT x13 = obj_qj * obj_qj;
+	const GEN_FLT x14 = obj_qi * obj_qi;
 	const GEN_FLT x15 = 1e-10 + x14 + x13 + x12;
-	const GEN_FLT x16 = pow(x15, 1.0 / 2.0);
+	const GEN_FLT x16 = sqrt(x15);
 	const GEN_FLT x17 = cos(x16);
-	const GEN_FLT x18 = pow(x15, -1) * (1 + (-1 * x17));
+	const GEN_FLT x18 = (1. / x15) * (1 + (-1 * x17));
 	const GEN_FLT x19 = x17 + (x12 * x18);
-	const GEN_FLT x20 = pow(x16, -1) * sin(x16);
+	const GEN_FLT x20 = (1. / x16) * sin(x16);
 	const GEN_FLT x21 = x20 * obj_qi;
 	const GEN_FLT x22 = x18 * obj_qk;
 	const GEN_FLT x23 = x22 * obj_qj;
@@ -2146,7 +2143,7 @@ static inline void gen_reproject_axis_x_gen2_jac_sensor_pt_axis_angle(FLT *out, 
 	const GEN_FLT x41 = (x40 * sensor_x) + (x39 * sensor_y) + (x38 * sensor_z) + obj_px;
 	const GEN_FLT x42 = x7 + (x2 * x8);
 	const GEN_FLT x43 = (x41 * x42) + (x34 * x37) + (x28 * x11) + lh_px;
-	const GEN_FLT x44 = pow(x43, -1);
+	const GEN_FLT x44 = 1. / x43;
 	const GEN_FLT x45 = x10 + (-1 * x6);
 	const GEN_FLT x46 = x5 * lh_qi;
 	const GEN_FLT x47 = x8 * lh_qk * lh_qj;
@@ -2155,34 +2152,34 @@ static inline void gen_reproject_axis_x_gen2_jac_sensor_pt_axis_angle(FLT *out, 
 	const GEN_FLT x50 = (x49 * x27) + (x48 * x33) + (x40 * x45);
 	const GEN_FLT x51 = (x27 * x11) + (x33 * x37) + (x40 * x42);
 	const GEN_FLT x52 = (x41 * x45) + (x48 * x34) + (x49 * x28) + lh_pz;
-	const GEN_FLT x53 = pow(x43, 2);
-	const GEN_FLT x54 = pow(x53, -1) * x52;
-	const GEN_FLT x55 = x53 + pow(x52, 2);
-	const GEN_FLT x56 = pow(x55, -1);
+	const GEN_FLT x53 = x43 * x43;
+	const GEN_FLT x54 = (1. / x53) * x52;
+	const GEN_FLT x55 = x53 + (x52 * x52);
+	const GEN_FLT x56 = 1. / x55;
 	const GEN_FLT x57 = x53 * x56;
 	const GEN_FLT x58 = ((x54 * x51) + (-1 * x50 * x44)) * x57;
 	const GEN_FLT x59 = x47 + (-1 * x46);
 	const GEN_FLT x60 = x7 + (x1 * x8);
 	const GEN_FLT x61 = x36 + x35;
 	const GEN_FLT x62 = (x61 * x41) + lh_py + (x60 * x34) + (x59 * x28);
-	const GEN_FLT x63 = pow(x62, 2);
+	const GEN_FLT x63 = x62 * x62;
 	const GEN_FLT x64 = 0.523598775598299 + tilt_0;
 	const GEN_FLT x65 = cos(x64);
 	const GEN_FLT x66 = x55 + x63;
-	const GEN_FLT x67 = pow((1 + (-1 * x63 * pow(x65, -2) * pow(x66, -1))), -1.0 / 2.0);
+	const GEN_FLT x67 = 1. / sqrt(1 + (-1 * x63 * (1. / (x65 * x65)) * (1. / x66)));
 	const GEN_FLT x68 = (x59 * x27) + (x60 * x33) + (x61 * x40);
 	const GEN_FLT x69 = 2 * x62;
 	const GEN_FLT x70 = 2 * x43;
 	const GEN_FLT x71 = 2 * x52;
 	const GEN_FLT x72 = (x71 * x50) + (x70 * x51);
-	const GEN_FLT x73 = pow(x65, -1);
+	const GEN_FLT x73 = 1. / x65;
 	const GEN_FLT x74 = 1.0 / 2.0 * x62;
-	const GEN_FLT x75 = x73 * x74 * pow(x66, -3.0 / 2.0);
-	const GEN_FLT x76 = x73 * pow(x66, -1.0 / 2.0);
+	const GEN_FLT x75 = x73 * x74 * (1. / (x66 * sqrt(x66)));
+	const GEN_FLT x76 = x73 * (1. / sqrt(x66));
 	const GEN_FLT x77 = (x76 * x68) + (-1 * x75 * (x72 + (x68 * x69)));
 	const GEN_FLT x78 = x77 * x67;
 	const GEN_FLT x79 = tan(x64);
-	const GEN_FLT x80 = x79 * pow(x55, -1.0 / 2.0);
+	const GEN_FLT x80 = x79 * (1. / sqrt(x55));
 	const GEN_FLT x81 = x80 * x62;
 	const GEN_FLT x82 = atan2(-1 * x52, x43);
 	const GEN_FLT x83 = x82 + (-1 * asin(x81)) + ogeeMag_0;
@@ -2202,28 +2199,28 @@ static inline void gen_reproject_axis_x_gen2_jac_sensor_pt_axis_angle(FLT *out, 
 	const GEN_FLT x97 = sin(x64);
 	const GEN_FLT x98 = x84 * x97;
 	const GEN_FLT x99 = x65 + (-1 * x98 * x96);
-	const GEN_FLT x100 = pow(x99, -1);
+	const GEN_FLT x100 = 1. / x99;
 	const GEN_FLT x101 = 2 * x84 * x91 * x100;
 	const GEN_FLT x102 = x87 * x78;
 	const GEN_FLT x103 = 2.40324066e-05 * x85;
 	const GEN_FLT x104 = (x85 * (x102 + (-1 * x86 * x78))) + (x88 * x78);
 	const GEN_FLT x105 = x89 * x67;
 	const GEN_FLT x106 = (x85 * x104) + (x77 * x105);
-	const GEN_FLT x107 = pow((1 + (-1 * pow(x79, 2) * x63 * x56)), -1.0 / 2.0);
-	const GEN_FLT x108 = x79 * x74 * pow(x55, -3.0 / 2.0);
+	const GEN_FLT x107 = 1. / sqrt(1 + (-1 * (x79 * x79) * x63 * x56));
+	const GEN_FLT x108 = x79 * x74 * (1. / (x55 * sqrt(x55)));
 	const GEN_FLT x109 = (x80 * x68) + (-1 * x72 * x108);
 	const GEN_FLT x110 = (-1 * x109 * x107) + x58;
 	const GEN_FLT x111 = cos(x83) * ogeePhase_0;
 	const GEN_FLT x112 = x97 * x96;
 	const GEN_FLT x113 = x111 * x112;
-	const GEN_FLT x114 = pow(x85, 2);
+	const GEN_FLT x114 = x85 * x85;
 	const GEN_FLT x115 = x84 * x114;
-	const GEN_FLT x116 = x90 * pow(x99, -2) * x115;
+	const GEN_FLT x116 = x90 * (1. / (x99 * x99)) * x115;
 	const GEN_FLT x117 = x90 * x100 * x114;
 	const GEN_FLT x118 = x111 * x117;
 	const GEN_FLT x119 = x100 * x115;
 	const GEN_FLT x120 = x81 + (x90 * x119);
-	const GEN_FLT x121 = pow((1 + (-1 * pow(x120, 2))), -1.0 / 2.0);
+	const GEN_FLT x121 = 1. / sqrt(1 + (-1 * (x120 * x120)));
 	const GEN_FLT x122 =
 		x121 * ((x106 * x119) + (x110 * x118) + x109 +
 				(-1 * x116 *
@@ -2309,14 +2306,14 @@ static inline void gen_reproject_axis_x_gen2_jac_lh_p_axis_angle(FLT *out, const
 	const GEN_FLT gibMag_0 = (*bsc0).gibmag;
 	const GEN_FLT ogeeMag_0 = (*bsc0).ogeephase;
 	const GEN_FLT ogeePhase_0 = (*bsc0).ogeemag;
-	const GEN_FLT x0 = pow(obj_qk, 2);
-	const GEN_FLT x1 = pow(obj_qj, 2);
-	const GEN_FLT x2 = pow(obj_qi, 2);
+	const GEN_FLT x0 = obj_qk * obj_qk;
+	const GEN_FLT x1 = obj_qj * obj_qj;
+	const GEN_FLT x2 = obj_qi * obj_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
+	const GEN_FLT x4 = sqrt(x3);
 	const GEN_FLT x5 = cos(x4);
-	const GEN_FLT x6 = pow(x3, -1) * (1 + (-1 * x5));
-	const GEN_FLT x7 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x6 = (1. / x3) * (1 + (-1 * x5));
+	const GEN_FLT x7 = (1. / x4) * sin(x4);
 	const GEN_FLT x8 = x7 * obj_qi;
 	const GEN_FLT x9 = x6 * obj_qk;
 	const GEN_FLT x10 = x9 * obj_qj;
@@ -2324,12 +2321,12 @@ static inline void gen_reproject_axis_x_gen2_jac_lh_p_axis_angle(FLT *out, const
 	const GEN_FLT x12 = x9 * obj_qi;
 	const GEN_FLT x13 =
 		((x12 + (-1 * x11)) * sensor_x) + ((x10 + x8) * sensor_y) + ((x5 + (x0 * x6)) * sensor_z) + obj_pz;
-	const GEN_FLT x14 = pow(lh_qk, 2);
-	const GEN_FLT x15 = pow(lh_qj, 2);
-	const GEN_FLT x16 = pow(lh_qi, 2);
+	const GEN_FLT x14 = lh_qk * lh_qk;
+	const GEN_FLT x15 = lh_qj * lh_qj;
+	const GEN_FLT x16 = lh_qi * lh_qi;
 	const GEN_FLT x17 = 1e-10 + x16 + x15 + x14;
-	const GEN_FLT x18 = pow(x17, -1);
-	const GEN_FLT x19 = pow(x17, 1.0 / 2.0);
+	const GEN_FLT x18 = 1. / x17;
+	const GEN_FLT x19 = sqrt(x17);
 	const GEN_FLT x20 = cos(x19);
 	const GEN_FLT x21 = 1 + (-1 * x20);
 	const GEN_FLT x22 = x21 * x18;
@@ -2338,7 +2335,7 @@ static inline void gen_reproject_axis_x_gen2_jac_lh_p_axis_angle(FLT *out, const
 	const GEN_FLT x25 =
 		((x24 + x23) * sensor_x) + ((x5 + (x1 * x6)) * sensor_y) + ((x10 + (-1 * x8)) * sensor_z) + obj_py;
 	const GEN_FLT x26 = sin(x19);
-	const GEN_FLT x27 = x26 * pow(x19, -1);
+	const GEN_FLT x27 = x26 * (1. / x19);
 	const GEN_FLT x28 = x27 * lh_qi;
 	const GEN_FLT x29 = x22 * lh_qj;
 	const GEN_FLT x30 = x29 * lh_qk;
@@ -2353,31 +2350,31 @@ static inline void gen_reproject_axis_x_gen2_jac_lh_p_axis_angle(FLT *out, const
 	const GEN_FLT x38 = -1 * x37;
 	const GEN_FLT x39 = x29 * lh_qi;
 	const GEN_FLT x40 = (x31 * (x20 + (x22 * x16))) + ((x39 + x38) * x25) + ((x35 + x32) * x13) + lh_px;
-	const GEN_FLT x41 = pow(x40, 2);
-	const GEN_FLT x42 = x41 + pow(x36, 2);
-	const GEN_FLT x43 = pow(x42, -1);
+	const GEN_FLT x41 = x40 * x40;
+	const GEN_FLT x42 = x41 + (x36 * x36);
+	const GEN_FLT x43 = 1. / x42;
 	const GEN_FLT x44 = x43 * x36;
 	const GEN_FLT x45 = -1 * x28;
 	const GEN_FLT x46 = lh_py + ((x39 + x37) * x31) + (x25 * (x20 + (x22 * x15))) + ((x30 + x45) * x13);
 	const GEN_FLT x47 = x40 * x46;
 	const GEN_FLT x48 = 0.523598775598299 + tilt_0;
 	const GEN_FLT x49 = tan(x48);
-	const GEN_FLT x50 = pow(x42, -3.0 / 2.0) * x49;
+	const GEN_FLT x50 = (1. / (x42 * sqrt(x42))) * x49;
 	const GEN_FLT x51 = x50 * x47;
 	const GEN_FLT x52 = 2 * x40;
-	const GEN_FLT x53 = pow(x46, 2);
+	const GEN_FLT x53 = x46 * x46;
 	const GEN_FLT x54 = cos(x48);
 	const GEN_FLT x55 = x42 + x53;
-	const GEN_FLT x56 = pow((1 + (-1 * pow(x54, -2) * x53 * pow(x55, -1))), -1.0 / 2.0);
-	const GEN_FLT x57 = pow(x54, -1);
-	const GEN_FLT x58 = x57 * pow(x55, -3.0 / 2.0);
+	const GEN_FLT x56 = 1. / sqrt(1 + (-1 * (1. / (x54 * x54)) * x53 * (1. / x55)));
+	const GEN_FLT x57 = 1. / x54;
+	const GEN_FLT x58 = x57 * (1. / (x55 * sqrt(x55)));
 	const GEN_FLT x59 = x58 * x46;
-	const GEN_FLT x60 = pow(x42, -1.0 / 2.0) * x49;
+	const GEN_FLT x60 = (1. / sqrt(x42)) * x49;
 	const GEN_FLT x61 = x60 * x46;
 	const GEN_FLT x62 = atan2(-1 * x36, x40);
 	const GEN_FLT x63 = x62 + (-1 * asin(x61)) + ogeeMag_0;
 	const GEN_FLT x64 = (sin(x63) * ogeePhase_0) + curve_0;
-	const GEN_FLT x65 = x57 * pow(x55, -1.0 / 2.0);
+	const GEN_FLT x65 = x57 * (1. / sqrt(x55));
 	const GEN_FLT x66 = asin(x65 * x46);
 	const GEN_FLT x67 = 8.0108022e-06 * x66;
 	const GEN_FLT x68 = -8.0108022e-06 + (-1 * x67);
@@ -2393,7 +2390,7 @@ static inline void gen_reproject_axis_x_gen2_jac_lh_p_axis_angle(FLT *out, const
 	const GEN_FLT x78 = sin(x48);
 	const GEN_FLT x79 = x78 * x64;
 	const GEN_FLT x80 = x54 + (-1 * x79 * x77);
-	const GEN_FLT x81 = pow(x80, -1);
+	const GEN_FLT x81 = 1. / x80;
 	const GEN_FLT x82 = x81 * x72 * x64;
 	const GEN_FLT x83 = x82 * x56 * x59;
 	const GEN_FLT x84 = x58 * x47;
@@ -2403,19 +2400,19 @@ static inline void gen_reproject_axis_x_gen2_jac_lh_p_axis_angle(FLT *out, const
 	const GEN_FLT x88 = x69 * x56;
 	const GEN_FLT x89 = (x66 * (x86 + (x85 * x67))) + (-1 * x88 * x84);
 	const GEN_FLT x90 = (x89 * x66) + (-1 * x85 * x70);
-	const GEN_FLT x91 = pow((1 + (-1 * x53 * x43 * pow(x49, 2))), -1.0 / 2.0);
+	const GEN_FLT x91 = 1. / sqrt(1 + (-1 * x53 * x43 * (x49 * x49)));
 	const GEN_FLT x92 = (x51 * x91) + x44;
 	const GEN_FLT x93 = cos(x63) * ogeePhase_0;
 	const GEN_FLT x94 = x78 * x77;
 	const GEN_FLT x95 = x93 * x94;
-	const GEN_FLT x96 = pow(x66, 2);
+	const GEN_FLT x96 = x66 * x66;
 	const GEN_FLT x97 = x64 * x96;
-	const GEN_FLT x98 = pow(x80, -2) * x71 * x97;
+	const GEN_FLT x98 = (1. / (x80 * x80)) * x71 * x97;
 	const GEN_FLT x99 = x81 * x71 * x96;
 	const GEN_FLT x100 = x93 * x99;
 	const GEN_FLT x101 = x81 * x97;
 	const GEN_FLT x102 = x61 + (x71 * x101);
-	const GEN_FLT x103 = pow((1 + (-1 * pow(x102, 2))), -1.0 / 2.0);
+	const GEN_FLT x103 = 1. / sqrt(1 + (-1 * (x102 * x102)));
 	const GEN_FLT x104 =
 		x103 * ((x90 * x101) + (x92 * x100) +
 				(-1 * x98 *
@@ -2464,9 +2461,9 @@ static inline void gen_reproject_axis_x_gen2_jac_lh_p_axis_angle(FLT *out, const
 			 (-1 * x76 * x119))))) +
 		 (-1 * x116));
 	const GEN_FLT x125 = x22 * lh_qk;
-	const GEN_FLT x126 = x26 * pow(x17, -3.0 / 2.0);
+	const GEN_FLT x126 = x26 * (1. / (x17 * sqrt(x17)));
 	const GEN_FLT x127 = x16 * x126;
-	const GEN_FLT x128 = 2 * x21 * pow(x17, -2);
+	const GEN_FLT x128 = 2 * x21 * (1. / (x17 * x17));
 	const GEN_FLT x129 = x128 * lh_qk;
 	const GEN_FLT x130 = (-1 * x16 * x129) + (x127 * lh_qk);
 	const GEN_FLT x131 = x130 + x125;
@@ -2483,8 +2480,8 @@ static inline void gen_reproject_axis_x_gen2_jac_lh_p_axis_angle(FLT *out, const
 	const GEN_FLT x142 = x128 * lh_qi;
 	const GEN_FLT x143 = (-1 * x14 * x142) + (x141 * lh_qi);
 	const GEN_FLT x144 = (x13 * (x143 + x45)) + (x25 * (x140 + x137 + (-1 * x127))) + ((x136 + x131) * x31);
-	const GEN_FLT x145 = pow(x40, -1);
-	const GEN_FLT x146 = pow(lh_qi, 3);
+	const GEN_FLT x145 = 1. / x40;
+	const GEN_FLT x146 = lh_qi * lh_qi * lh_qi;
 	const GEN_FLT x147 = x128 * lh_qj;
 	const GEN_FLT x148 = (-1 * x16 * x147) + (x127 * lh_qj);
 	const GEN_FLT x149 = x148 + x29;
@@ -2495,7 +2492,7 @@ static inline void gen_reproject_axis_x_gen2_jac_lh_p_axis_angle(FLT *out, const
 	const GEN_FLT x154 = x135 + (-1 * x133);
 	const GEN_FLT x155 =
 		((x154 + x131) * x13) + ((x153 + x149) * x25) + (((-1 * x128 * x146) + (x126 * x146) + (2 * x34) + x45) * x31);
-	const GEN_FLT x156 = pow(x41, -1) * x36;
+	const GEN_FLT x156 = (1. / x41) * x36;
 	const GEN_FLT x157 = x41 * x43;
 	const GEN_FLT x158 = ((x155 * x156) + (-1 * x144 * x145)) * x157;
 	const GEN_FLT x159 = x152 + (-1 * x150);
@@ -2534,7 +2531,7 @@ static inline void gen_reproject_axis_x_gen2_jac_lh_p_axis_angle(FLT *out, const
 	const GEN_FLT x183 = (-1 * x182) + x181;
 	const GEN_FLT x184 = (x13 * (x140 + x175 + (-1 * x160))) + ((x183 + x180) * x25) + (x31 * (x148 + x33));
 	const GEN_FLT x185 = ((x184 * x156) + (-1 * x179 * x145)) * x157;
-	const GEN_FLT x186 = pow(lh_qj, 3);
+	const GEN_FLT x186 = lh_qj * lh_qj * lh_qj;
 	const GEN_FLT x187 = x182 + (-1 * x181);
 	const GEN_FLT x188 =
 		((x177 + x136) * x13) + ((x187 + x180) * x31) + (((-1 * x128 * x186) + (x126 * x186) + (2 * x29) + x33) * x25);
@@ -2559,7 +2556,7 @@ static inline void gen_reproject_axis_x_gen2_jac_lh_p_axis_angle(FLT *out, const
 	const GEN_FLT x199 = (x25 * (x176 + x38)) + ((x198 + x153) * x13) + (x31 * (x140 + x197 + (-1 * x141)));
 	const GEN_FLT x200 = x143 + x34;
 	const GEN_FLT x201 = (x25 * (x162 + (-1 * x197) + x141)) + ((x200 + x187) * x13) + (x31 * (x130 + x38));
-	const GEN_FLT x202 = pow(lh_qk, 3);
+	const GEN_FLT x202 = lh_qk * lh_qk * lh_qk;
 	const GEN_FLT x203 =
 		(x13 * ((x202 * x126) + (-1 * x202 * x128) + (2 * x125) + x38)) + ((x198 + x159) * x25) + ((x200 + x183) * x31);
 	const GEN_FLT x204 = (x203 * x117) + (x52 * x201);
@@ -2616,25 +2613,25 @@ static inline void gen_reproject_axis_x_gen2_jac_bsc0_axis_angle(FLT *out, const
 	const GEN_FLT ogeePhase_0 = (*bsc0).ogeemag;
 	const GEN_FLT x0 = 0.523598775598299 + tilt_0;
 	const GEN_FLT x1 = tan(x0);
-	const GEN_FLT x2 = pow(lh_qk, 2);
-	const GEN_FLT x3 = pow(lh_qj, 2);
-	const GEN_FLT x4 = pow(lh_qi, 2);
+	const GEN_FLT x2 = lh_qk * lh_qk;
+	const GEN_FLT x3 = lh_qj * lh_qj;
+	const GEN_FLT x4 = lh_qi * lh_qi;
 	const GEN_FLT x5 = 1e-10 + x4 + x3 + x2;
-	const GEN_FLT x6 = pow(x5, 1.0 / 2.0);
-	const GEN_FLT x7 = pow(x6, -1) * sin(x6);
+	const GEN_FLT x6 = sqrt(x5);
+	const GEN_FLT x7 = (1. / x6) * sin(x6);
 	const GEN_FLT x8 = x7 * lh_qi;
 	const GEN_FLT x9 = cos(x6);
-	const GEN_FLT x10 = pow(x5, -1) * (1 + (-1 * x9));
+	const GEN_FLT x10 = (1. / x5) * (1 + (-1 * x9));
 	const GEN_FLT x11 = x10 * lh_qj;
 	const GEN_FLT x12 = x11 * lh_qk;
-	const GEN_FLT x13 = pow(obj_qk, 2);
-	const GEN_FLT x14 = pow(obj_qj, 2);
-	const GEN_FLT x15 = pow(obj_qi, 2);
+	const GEN_FLT x13 = obj_qk * obj_qk;
+	const GEN_FLT x14 = obj_qj * obj_qj;
+	const GEN_FLT x15 = obj_qi * obj_qi;
 	const GEN_FLT x16 = 1e-10 + x15 + x14 + x13;
-	const GEN_FLT x17 = pow(x16, 1.0 / 2.0);
+	const GEN_FLT x17 = sqrt(x16);
 	const GEN_FLT x18 = cos(x17);
-	const GEN_FLT x19 = pow(x16, -1) * (1 + (-1 * x18));
-	const GEN_FLT x20 = pow(x17, -1) * sin(x17);
+	const GEN_FLT x19 = (1. / x16) * (1 + (-1 * x18));
+	const GEN_FLT x20 = (1. / x17) * sin(x17);
 	const GEN_FLT x21 = x20 * obj_qi;
 	const GEN_FLT x22 = x19 * obj_qk;
 	const GEN_FLT x23 = x22 * obj_qj;
@@ -2655,24 +2652,24 @@ static inline void gen_reproject_axis_x_gen2_jac_bsc0_axis_angle(FLT *out, const
 	const GEN_FLT x35 = x10 * lh_qk * lh_qi;
 	const GEN_FLT x36 = ((x35 + (-1 * x34)) * x30) + (x29 * (x12 + x8)) + (x26 * (x9 + (x2 * x10))) + lh_pz;
 	const GEN_FLT x37 = (x30 * (x9 + (x4 * x10))) + ((x32 + (-1 * x31)) * x29) + ((x35 + x34) * x26) + lh_px;
-	const GEN_FLT x38 = pow(x37, 2) + pow(x36, 2);
-	const GEN_FLT x39 = x33 * pow(x38, -1.0 / 2.0);
+	const GEN_FLT x38 = (x37 * x37) + (x36 * x36);
+	const GEN_FLT x39 = x33 * (1. / sqrt(x38));
 	const GEN_FLT x40 = x1 * x39;
 	const GEN_FLT x41 = atan2(-1 * x36, x37);
 	const GEN_FLT x42 = x41 + (-1 * asin(x40)) + ogeeMag_0;
 	const GEN_FLT x43 = sin(x42);
 	const GEN_FLT x44 = (x43 * ogeePhase_0) + curve_0;
 	const GEN_FLT x45 = cos(x0);
-	const GEN_FLT x46 = pow(x33, 2);
+	const GEN_FLT x46 = x33 * x33;
 	const GEN_FLT x47 = x38 + x46;
-	const GEN_FLT x48 = pow(x47, -1.0 / 2.0) * x33;
-	const GEN_FLT x49 = asin(pow(x45, -1) * x48);
+	const GEN_FLT x48 = (1. / sqrt(x47)) * x33;
+	const GEN_FLT x49 = asin((1. / x45) * x48);
 	const GEN_FLT x50 = 8.0108022e-06 * x49;
 	const GEN_FLT x51 = -8.0108022e-06 + (-1 * x50);
 	const GEN_FLT x52 = 0.0028679863 + (x51 * x49);
 	const GEN_FLT x53 = 5.3685255e-06 + (x52 * x49);
 	const GEN_FLT x54 = 0.0076069798 + (x53 * x49);
-	const GEN_FLT x55 = pow(x49, 2);
+	const GEN_FLT x55 = x49 * x49;
 	const GEN_FLT x56 = sin(x0);
 	const GEN_FLT x57 = x54 * x49;
 	const GEN_FLT x58 = -8.0108022e-06 + (-1.60216044e-05 * x49);
@@ -2683,23 +2680,23 @@ static inline void gen_reproject_axis_x_gen2_jac_bsc0_axis_angle(FLT *out, const
 	const GEN_FLT x63 = x62 * x44;
 	const GEN_FLT x64 = x63 * x56;
 	const GEN_FLT x65 = x45 + (-1 * x64);
-	const GEN_FLT x66 = pow(x65, -1);
+	const GEN_FLT x66 = 1. / x65;
 	const GEN_FLT x67 = x66 * x55;
 	const GEN_FLT x68 = x67 * x54;
 	const GEN_FLT x69 = x40 + (x68 * x44);
-	const GEN_FLT x70 = pow((1 + (-1 * pow(x69, 2))), -1.0 / 2.0);
+	const GEN_FLT x70 = 1. / sqrt(1 + (-1 * (x69 * x69)));
 	const GEN_FLT x71 = x56 * x44;
-	const GEN_FLT x72 = pow(x45, -2);
-	const GEN_FLT x73 = x72 * x48 * pow((1 + (-1 * x72 * x46 * pow(x47, -1))), -1.0 / 2.0);
-	const GEN_FLT x74 = pow(x1, 2);
+	const GEN_FLT x72 = 1. / (x45 * x45);
+	const GEN_FLT x73 = x72 * x48 * (1. / sqrt(1 + (-1 * x72 * x46 * (1. / x47))));
+	const GEN_FLT x74 = x1 * x1;
 	const GEN_FLT x75 = x39 * (1 + x74);
 	const GEN_FLT x76 = x73 * x56;
 	const GEN_FLT x77 = x76 * x51;
 	const GEN_FLT x78 = (x49 * (x77 + (-1 * x76 * x50))) + (x76 * x52);
 	const GEN_FLT x79 = (x78 * x49) + (x76 * x53);
 	const GEN_FLT x80 = cos(x42) * ogeePhase_0;
-	const GEN_FLT x81 = x75 * pow((1 + (-1 * x74 * x46 * pow(x38, -1))), -1.0 / 2.0);
-	const GEN_FLT x82 = pow(x65, -2) * x54 * x55;
+	const GEN_FLT x81 = x75 * (1. / sqrt(1 + (-1 * x74 * x46 * (1. / x38))));
+	const GEN_FLT x82 = (1. / (x65 * x65)) * x54 * x55;
 	const GEN_FLT x83 = x80 * x68;
 	const GEN_FLT x84 =
 		x70 *
@@ -2752,25 +2749,25 @@ static inline FLT gen_reproject_axis_y_gen2_axis_angle(const LinmathAxisAnglePos
 	const GEN_FLT gibMag_1 = (*bsc1).gibmag;
 	const GEN_FLT ogeeMag_1 = (*bsc1).ogeephase;
 	const GEN_FLT ogeePhase_1 = (*bsc1).ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
-	const GEN_FLT x5 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x4 = sqrt(x3);
+	const GEN_FLT x5 = (1. / x4) * sin(x4);
 	const GEN_FLT x6 = x5 * lh_qi;
 	const GEN_FLT x7 = cos(x4);
-	const GEN_FLT x8 = pow(x3, -1) * (1 + (-1 * x7));
+	const GEN_FLT x8 = (1. / x3) * (1 + (-1 * x7));
 	const GEN_FLT x9 = x8 * lh_qj;
 	const GEN_FLT x10 = x9 * lh_qk;
-	const GEN_FLT x11 = pow(obj_qk, 2);
-	const GEN_FLT x12 = pow(obj_qj, 2);
-	const GEN_FLT x13 = pow(obj_qi, 2);
+	const GEN_FLT x11 = obj_qk * obj_qk;
+	const GEN_FLT x12 = obj_qj * obj_qj;
+	const GEN_FLT x13 = obj_qi * obj_qi;
 	const GEN_FLT x14 = 1e-10 + x13 + x12 + x11;
-	const GEN_FLT x15 = pow(x14, 1.0 / 2.0);
+	const GEN_FLT x15 = sqrt(x14);
 	const GEN_FLT x16 = cos(x15);
-	const GEN_FLT x17 = pow(x14, -1) * (1 + (-1 * x16));
-	const GEN_FLT x18 = pow(x15, -1) * sin(x15);
+	const GEN_FLT x17 = (1. / x14) * (1 + (-1 * x16));
+	const GEN_FLT x18 = (1. / x15) * sin(x15);
 	const GEN_FLT x19 = x18 * obj_qi;
 	const GEN_FLT x20 = x17 * obj_qk;
 	const GEN_FLT x21 = x20 * obj_qj;
@@ -2792,23 +2789,22 @@ static inline FLT gen_reproject_axis_y_gen2_axis_angle(const LinmathAxisAnglePos
 	const GEN_FLT x34 = x8 * lh_qk * lh_qi;
 	const GEN_FLT x35 = ((x34 + (-1 * x33)) * x28) + (x27 * (x10 + x6)) + (x24 * (x7 + (x0 * x8))) + lh_pz;
 	const GEN_FLT x36 = ((x30 + (-1 * x29)) * x27) + ((x34 + x33) * x24) + (x28 * (x7 + (x2 * x8))) + lh_px;
-	const GEN_FLT x37 = pow(x36, 2) + pow(x35, 2);
-	const GEN_FLT x38 = -1 * x31 * pow(x37, -1.0 / 2.0) * tan(x32);
+	const GEN_FLT x37 = (x36 * x36) + (x35 * x35);
+	const GEN_FLT x38 = -1 * x31 * (1. / sqrt(x37)) * tan(x32);
 	const GEN_FLT x39 = atan2(-1 * x35, x36);
 	const GEN_FLT x40 = (sin(x39 + ogeeMag_1 + (-1 * asin(x38))) * ogeePhase_1) + curve_1;
 	const GEN_FLT x41 = cos(x32);
-	const GEN_FLT x42 = asin(pow(x41, -1) * x31 * pow((x37 + pow(x31, 2)), -1.0 / 2.0));
+	const GEN_FLT x42 = asin((1. / x41) * x31 * (1. / sqrt(x37 + (x31 * x31))));
 	const GEN_FLT x43 = 0.0028679863 + (x42 * (-8.0108022e-06 + (-8.0108022e-06 * x42)));
 	const GEN_FLT x44 = 5.3685255e-06 + (x42 * x43);
 	const GEN_FLT x45 = 0.0076069798 + (x42 * x44);
 	const GEN_FLT x46 = asin(
 		x38 +
-		(x40 * pow(x42, 2) * x45 *
-		 pow((x41 +
-			  (x40 * sin(x32) *
-			   ((x42 * (x45 + (x42 * (x44 + (x42 * (x43 + (x42 * (-8.0108022e-06 + (-1.60216044e-05 * x42))))))))) +
-				(x42 * x45)))),
-			 -1)));
+		(x40 * (x42 * x42) * x45 *
+		 (1. /
+		  (x41 + (x40 * sin(x32) *
+				  ((x42 * (x45 + (x42 * (x44 + (x42 * (x43 + (x42 * (-8.0108022e-06 + (-1.60216044e-05 * x42))))))))) +
+				   (x42 * x45)))))));
 	return -1.5707963267949 + x39 + (-1 * sin((-1 * x39) + x46 + (-1 * gibPhase_1)) * gibMag_1) + (-1 * x46) +
 		   (-1 * phase_1);
 }
@@ -2840,30 +2836,30 @@ static inline void gen_reproject_axis_y_gen2_jac_obj_p_axis_angle(FLT *out, cons
 	const GEN_FLT gibMag_1 = (*bsc1).gibmag;
 	const GEN_FLT ogeeMag_1 = (*bsc1).ogeephase;
 	const GEN_FLT ogeePhase_1 = (*bsc1).ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
-	const GEN_FLT x5 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x4 = sqrt(x3);
+	const GEN_FLT x5 = (1. / x4) * sin(x4);
 	const GEN_FLT x6 = x5 * lh_qj;
 	const GEN_FLT x7 = cos(x4);
-	const GEN_FLT x8 = pow(x3, -1) * (1 + (-1 * x7));
+	const GEN_FLT x8 = (1. / x3) * (1 + (-1 * x7));
 	const GEN_FLT x9 = x8 * lh_qi;
 	const GEN_FLT x10 = x9 * lh_qk;
 	const GEN_FLT x11 = x10 + (-1 * x6);
 	const GEN_FLT x12 = x10 + x6;
-	const GEN_FLT x13 = pow(obj_qk, 2);
-	const GEN_FLT x14 = pow(obj_qj, 2);
-	const GEN_FLT x15 = pow(obj_qi, 2);
+	const GEN_FLT x13 = obj_qk * obj_qk;
+	const GEN_FLT x14 = obj_qj * obj_qj;
+	const GEN_FLT x15 = obj_qi * obj_qi;
 	const GEN_FLT x16 = 1e-10 + x15 + x14 + x13;
-	const GEN_FLT x17 = pow(x16, -1);
-	const GEN_FLT x18 = pow(x16, 1.0 / 2.0);
+	const GEN_FLT x17 = 1. / x16;
+	const GEN_FLT x18 = sqrt(x16);
 	const GEN_FLT x19 = cos(x18);
 	const GEN_FLT x20 = 1 + (-1 * x19);
 	const GEN_FLT x21 = x20 * x17;
 	const GEN_FLT x22 = sin(x18);
-	const GEN_FLT x23 = x22 * pow(x18, -1);
+	const GEN_FLT x23 = x22 * (1. / x18);
 	const GEN_FLT x24 = x23 * obj_qi;
 	const GEN_FLT x25 = x21 * obj_qj;
 	const GEN_FLT x26 = x25 * obj_qk;
@@ -2883,16 +2879,16 @@ static inline void gen_reproject_axis_y_gen2_jac_obj_p_axis_angle(FLT *out, cons
 	const GEN_FLT x40 = ((x34 + x39) * sensor_y) + ((x19 + (x21 * x15)) * sensor_x) + ((x30 + x27) * sensor_z) + obj_px;
 	const GEN_FLT x41 = x7 + (x2 * x8);
 	const GEN_FLT x42 = (x40 * x41) + (x31 * x12) + (x35 * x38) + lh_px;
-	const GEN_FLT x43 = pow(x42, -1);
-	const GEN_FLT x44 = pow(x42, 2);
+	const GEN_FLT x43 = 1. / x42;
+	const GEN_FLT x44 = x42 * x42;
 	const GEN_FLT x45 = x7 + (x0 * x8);
 	const GEN_FLT x46 = x5 * lh_qi;
 	const GEN_FLT x47 = x8 * lh_qk * lh_qj;
 	const GEN_FLT x48 = x47 + x46;
 	const GEN_FLT x49 = (x40 * x11) + (x45 * x31) + (x48 * x35) + lh_pz;
-	const GEN_FLT x50 = pow(x44, -1) * x49;
-	const GEN_FLT x51 = x44 + pow(x49, 2);
-	const GEN_FLT x52 = pow(x51, -1);
+	const GEN_FLT x50 = (1. / x44) * x49;
+	const GEN_FLT x51 = x44 + (x49 * x49);
+	const GEN_FLT x52 = 1. / x51;
 	const GEN_FLT x53 = x52 * x44;
 	const GEN_FLT x54 = ((x50 * x41) + (-1 * x43 * x11)) * x53;
 	const GEN_FLT x55 = x47 + (-1 * x46);
@@ -2901,19 +2897,19 @@ static inline void gen_reproject_axis_y_gen2_jac_obj_p_axis_angle(FLT *out, cons
 	const GEN_FLT x58 = (x57 * x40) + lh_py + (x56 * x35) + (x55 * x31);
 	const GEN_FLT x59 = 0.523598775598299 + (-1 * tilt_1);
 	const GEN_FLT x60 = cos(x59);
-	const GEN_FLT x61 = pow(x60, -1);
-	const GEN_FLT x62 = pow(x58, 2);
+	const GEN_FLT x61 = 1. / x60;
+	const GEN_FLT x62 = x58 * x58;
 	const GEN_FLT x63 = x51 + x62;
-	const GEN_FLT x64 = pow(x63, -1.0 / 2.0) * x61;
+	const GEN_FLT x64 = (1. / sqrt(x63)) * x61;
 	const GEN_FLT x65 = asin(x64 * x58);
 	const GEN_FLT x66 = 8.0108022e-06 * x65;
 	const GEN_FLT x67 = -8.0108022e-06 + (-1 * x66);
 	const GEN_FLT x68 = 0.0028679863 + (x67 * x65);
 	const GEN_FLT x69 = 5.3685255e-06 + (x68 * x65);
 	const GEN_FLT x70 = 0.0076069798 + (x65 * x69);
-	const GEN_FLT x71 = pow(x65, 2);
+	const GEN_FLT x71 = x65 * x65;
 	const GEN_FLT x72 = tan(x59);
-	const GEN_FLT x73 = x72 * pow(x51, -1.0 / 2.0);
+	const GEN_FLT x73 = x72 * (1. / sqrt(x51));
 	const GEN_FLT x74 = -1 * x73 * x58;
 	const GEN_FLT x75 = atan2(-1 * x49, x42);
 	const GEN_FLT x76 = x75 + ogeeMag_1 + (-1 * asin(x74));
@@ -2927,26 +2923,26 @@ static inline void gen_reproject_axis_y_gen2_jac_obj_p_axis_angle(FLT *out, cons
 	const GEN_FLT x84 = sin(x59);
 	const GEN_FLT x85 = x84 * x77;
 	const GEN_FLT x86 = x60 + (x83 * x85);
-	const GEN_FLT x87 = pow(x86, -1);
+	const GEN_FLT x87 = 1. / x86;
 	const GEN_FLT x88 = x87 * x77;
 	const GEN_FLT x89 = x88 * x71;
 	const GEN_FLT x90 = x74 + (x89 * x70);
-	const GEN_FLT x91 = pow((1 + (-1 * pow(x90, 2))), -1.0 / 2.0);
-	const GEN_FLT x92 = pow((1 + (-1 * pow(x72, 2) * x62 * x52)), -1.0 / 2.0);
+	const GEN_FLT x91 = 1. / sqrt(1 + (-1 * (x90 * x90)));
+	const GEN_FLT x92 = 1. / sqrt(1 + (-1 * (x72 * x72) * x62 * x52));
 	const GEN_FLT x93 = 2 * x42;
 	const GEN_FLT x94 = 2 * x49;
 	const GEN_FLT x95 = (x94 * x11) + (x93 * x41);
 	const GEN_FLT x96 = 1.0 / 2.0 * x58;
-	const GEN_FLT x97 = x72 * pow(x51, -3.0 / 2.0) * x96;
+	const GEN_FLT x97 = x72 * (1. / (x51 * sqrt(x51))) * x96;
 	const GEN_FLT x98 = (-1 * x73 * x57) + (x97 * x95);
 	const GEN_FLT x99 = (-1 * x92 * x98) + x54;
 	const GEN_FLT x100 = cos(x76) * ogeePhase_1;
 	const GEN_FLT x101 = x71 * x70;
 	const GEN_FLT x102 = x87 * x101;
 	const GEN_FLT x103 = x100 * x102;
-	const GEN_FLT x104 = pow((1 + (-1 * pow(x60, -2) * pow(x63, -1) * x62)), -1.0 / 2.0);
+	const GEN_FLT x104 = 1. / sqrt(1 + (-1 * (1. / (x60 * x60)) * (1. / x63) * x62));
 	const GEN_FLT x105 = 2 * x58;
-	const GEN_FLT x106 = pow(x63, -3.0 / 2.0) * x61 * x96;
+	const GEN_FLT x106 = (1. / (x63 * sqrt(x63))) * x61 * x96;
 	const GEN_FLT x107 = (x64 * x57) + (-1 * x106 * (x95 + (x57 * x105)));
 	const GEN_FLT x108 = x104 * x107;
 	const GEN_FLT x109 = 2 * x88 * x78;
@@ -2957,7 +2953,7 @@ static inline void gen_reproject_axis_y_gen2_jac_obj_p_axis_angle(FLT *out, cons
 	const GEN_FLT x114 = x100 * x113;
 	const GEN_FLT x115 = x82 * x104;
 	const GEN_FLT x116 = 2.40324066e-05 * x65;
-	const GEN_FLT x117 = pow(x86, -2) * x77 * x101;
+	const GEN_FLT x117 = (1. / (x86 * x86)) * x77 * x101;
 	const GEN_FLT x118 =
 		x91 * (x98 +
 			   (-1 * x117 *
@@ -3004,9 +3000,9 @@ static inline void gen_reproject_axis_y_gen2_jac_obj_p_axis_angle(FLT *out, cons
 				   (x115 * x134))) +
 		   (x114 * x133))) +
 		 (x103 * x133));
-	const GEN_FLT x140 = pow(obj_qi, 3);
-	const GEN_FLT x141 = x22 * pow(x16, -3.0 / 2.0);
-	const GEN_FLT x142 = 2 * x20 * pow(x16, -2);
+	const GEN_FLT x140 = obj_qi * obj_qi * obj_qi;
+	const GEN_FLT x141 = x22 * (1. / (x16 * sqrt(x16)));
+	const GEN_FLT x142 = 2 * x20 * (1. / (x16 * x16));
 	const GEN_FLT x143 = x19 * x17;
 	const GEN_FLT x144 = x143 * obj_qk;
 	const GEN_FLT x145 = x144 * obj_qi;
@@ -3068,7 +3064,7 @@ static inline void gen_reproject_axis_y_gen2_jac_obj_p_axis_angle(FLT *out, cons
 	const GEN_FLT x189 = x144 * obj_qj;
 	const GEN_FLT x190 = x146 * obj_qj;
 	const GEN_FLT x191 = (-1 * x190) + x189;
-	const GEN_FLT x192 = pow(obj_qj, 3);
+	const GEN_FLT x192 = obj_qj * obj_qj * obj_qj;
 	const GEN_FLT x193 = (-1 * x14 * x166) + (x162 * obj_qk);
 	const GEN_FLT x194 = x193 + x157;
 	const GEN_FLT x195 = ((x170 + x194) * sensor_z) +
@@ -3110,7 +3106,7 @@ static inline void gen_reproject_axis_y_gen2_jac_obj_p_axis_angle(FLT *out, cons
 	const GEN_FLT x217 = x199 + x25;
 	const GEN_FLT x218 =
 		((x148 + x217) * sensor_z) + ((x193 + x39) * sensor_y) + ((x171 + (-1 * x172) + x214) * sensor_x);
-	const GEN_FLT x219 = pow(obj_qk, 3);
+	const GEN_FLT x219 = obj_qk * obj_qk * obj_qk;
 	const GEN_FLT x220 = (((-1 * x219 * x142) + x39 + (x219 * x141) + (2 * x157)) * sensor_z) +
 						 ((x161 + x217) * sensor_y) + ((x215 + x196) * sensor_x);
 	const GEN_FLT x221 = (x48 * x218) + (x45 * x220) + (x11 * x216);
@@ -3170,27 +3166,27 @@ static inline void gen_reproject_axis_y_gen2_jac_sensor_pt_axis_angle(FLT *out, 
 	const GEN_FLT gibMag_1 = (*bsc1).gibmag;
 	const GEN_FLT ogeeMag_1 = (*bsc1).ogeephase;
 	const GEN_FLT ogeePhase_1 = (*bsc1).ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
-	const GEN_FLT x5 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x4 = sqrt(x3);
+	const GEN_FLT x5 = (1. / x4) * sin(x4);
 	const GEN_FLT x6 = x5 * lh_qj;
 	const GEN_FLT x7 = cos(x4);
-	const GEN_FLT x8 = pow(x3, -1) * (1 + (-1 * x7));
+	const GEN_FLT x8 = (1. / x3) * (1 + (-1 * x7));
 	const GEN_FLT x9 = x8 * lh_qk;
 	const GEN_FLT x10 = x9 * lh_qi;
 	const GEN_FLT x11 = x10 + x6;
-	const GEN_FLT x12 = pow(obj_qk, 2);
-	const GEN_FLT x13 = pow(obj_qj, 2);
-	const GEN_FLT x14 = pow(obj_qi, 2);
+	const GEN_FLT x12 = obj_qk * obj_qk;
+	const GEN_FLT x13 = obj_qj * obj_qj;
+	const GEN_FLT x14 = obj_qi * obj_qi;
 	const GEN_FLT x15 = 1e-10 + x14 + x13 + x12;
-	const GEN_FLT x16 = pow(x15, 1.0 / 2.0);
+	const GEN_FLT x16 = sqrt(x15);
 	const GEN_FLT x17 = cos(x16);
-	const GEN_FLT x18 = pow(x15, -1) * (1 + (-1 * x17));
+	const GEN_FLT x18 = (1. / x15) * (1 + (-1 * x17));
 	const GEN_FLT x19 = x17 + (x12 * x18);
-	const GEN_FLT x20 = pow(x16, -1) * sin(x16);
+	const GEN_FLT x20 = (1. / x16) * sin(x16);
 	const GEN_FLT x21 = x20 * obj_qi;
 	const GEN_FLT x22 = x18 * obj_qk * obj_qj;
 	const GEN_FLT x23 = x22 + x21;
@@ -3214,7 +3210,7 @@ static inline void gen_reproject_axis_y_gen2_jac_sensor_pt_axis_angle(FLT *out, 
 	const GEN_FLT x41 = (x40 * sensor_x) + (x39 * sensor_y) + (x38 * sensor_z) + obj_px;
 	const GEN_FLT x42 = x7 + (x2 * x8);
 	const GEN_FLT x43 = (x41 * x42) + (x34 * x37) + (x28 * x11) + lh_px;
-	const GEN_FLT x44 = pow(x43, -1);
+	const GEN_FLT x44 = 1. / x43;
 	const GEN_FLT x45 = x10 + (-1 * x6);
 	const GEN_FLT x46 = x5 * lh_qi;
 	const GEN_FLT x47 = x9 * lh_qj;
@@ -3222,28 +3218,28 @@ static inline void gen_reproject_axis_y_gen2_jac_sensor_pt_axis_angle(FLT *out, 
 	const GEN_FLT x49 = x7 + (x0 * x8);
 	const GEN_FLT x50 = (x49 * x27) + (x48 * x33) + (x40 * x45);
 	const GEN_FLT x51 = (x27 * x11) + (x33 * x37) + (x40 * x42);
-	const GEN_FLT x52 = pow(x43, 2);
+	const GEN_FLT x52 = x43 * x43;
 	const GEN_FLT x53 = (x41 * x45) + (x48 * x34) + (x49 * x28) + lh_pz;
-	const GEN_FLT x54 = x53 * pow(x52, -1);
-	const GEN_FLT x55 = x52 + pow(x53, 2);
-	const GEN_FLT x56 = pow(x55, -1);
+	const GEN_FLT x54 = x53 * (1. / x52);
+	const GEN_FLT x55 = x52 + (x53 * x53);
+	const GEN_FLT x56 = 1. / x55;
 	const GEN_FLT x57 = x52 * x56;
 	const GEN_FLT x58 = ((x54 * x51) + (-1 * x50 * x44)) * x57;
 	const GEN_FLT x59 = x47 + (-1 * x46);
 	const GEN_FLT x60 = x7 + (x1 * x8);
 	const GEN_FLT x61 = x36 + x35;
 	const GEN_FLT x62 = (x61 * x41) + lh_py + (x60 * x34) + (x59 * x28);
-	const GEN_FLT x63 = pow(x62, 2);
+	const GEN_FLT x63 = x62 * x62;
 	const GEN_FLT x64 = 0.523598775598299 + (-1 * tilt_1);
 	const GEN_FLT x65 = tan(x64);
-	const GEN_FLT x66 = pow((1 + (-1 * x63 * pow(x65, 2) * x56)), -1.0 / 2.0);
+	const GEN_FLT x66 = 1. / sqrt(1 + (-1 * x63 * (x65 * x65) * x56));
 	const GEN_FLT x67 = 2 * x43;
 	const GEN_FLT x68 = 2 * x53;
 	const GEN_FLT x69 = (x68 * x50) + (x67 * x51);
 	const GEN_FLT x70 = 1.0 / 2.0 * x62;
-	const GEN_FLT x71 = x70 * x65 * pow(x55, -3.0 / 2.0);
+	const GEN_FLT x71 = x70 * x65 * (1. / (x55 * sqrt(x55)));
 	const GEN_FLT x72 = (x59 * x27) + (x60 * x33) + (x61 * x40);
-	const GEN_FLT x73 = x65 * pow(x55, -1.0 / 2.0);
+	const GEN_FLT x73 = x65 * (1. / sqrt(x55));
 	const GEN_FLT x74 = (-1 * x73 * x72) + (x71 * x69);
 	const GEN_FLT x75 = -1 * x73 * x62;
 	const GEN_FLT x76 = atan2(-1 * x53, x43);
@@ -3251,16 +3247,16 @@ static inline void gen_reproject_axis_y_gen2_jac_sensor_pt_axis_angle(FLT *out, 
 	const GEN_FLT x78 = cos(x77) * ogeePhase_1;
 	const GEN_FLT x79 = x78 * ((-1 * x74 * x66) + x58);
 	const GEN_FLT x80 = cos(x64);
-	const GEN_FLT x81 = pow(x80, -1);
+	const GEN_FLT x81 = 1. / x80;
 	const GEN_FLT x82 = x55 + x63;
-	const GEN_FLT x83 = x81 * pow(x82, -1.0 / 2.0);
+	const GEN_FLT x83 = x81 * (1. / sqrt(x82));
 	const GEN_FLT x84 = asin(x83 * x62);
 	const GEN_FLT x85 = 8.0108022e-06 * x84;
 	const GEN_FLT x86 = -8.0108022e-06 + (-1 * x85);
 	const GEN_FLT x87 = 0.0028679863 + (x84 * x86);
 	const GEN_FLT x88 = 5.3685255e-06 + (x84 * x87);
 	const GEN_FLT x89 = 0.0076069798 + (x88 * x84);
-	const GEN_FLT x90 = pow(x84, 2);
+	const GEN_FLT x90 = x84 * x84;
 	const GEN_FLT x91 = x89 * x84;
 	const GEN_FLT x92 = -8.0108022e-06 + (-1.60216044e-05 * x84);
 	const GEN_FLT x93 = x87 + (x84 * x92);
@@ -3271,11 +3267,11 @@ static inline void gen_reproject_axis_y_gen2_jac_sensor_pt_axis_angle(FLT *out, 
 	const GEN_FLT x98 = sin(x64);
 	const GEN_FLT x99 = x98 * x97;
 	const GEN_FLT x100 = x80 + (x99 * x96);
-	const GEN_FLT x101 = pow(x100, -1);
+	const GEN_FLT x101 = 1. / x100;
 	const GEN_FLT x102 = x89 * x90 * x101;
-	const GEN_FLT x103 = pow((1 + (-1 * pow(x80, -2) * pow(x82, -1) * x63)), -1.0 / 2.0);
+	const GEN_FLT x103 = 1. / sqrt(1 + (-1 * (1. / (x80 * x80)) * (1. / x82) * x63));
 	const GEN_FLT x104 = 2 * x62;
-	const GEN_FLT x105 = x81 * pow(x82, -3.0 / 2.0) * x70;
+	const GEN_FLT x105 = x81 * (1. / (x82 * sqrt(x82))) * x70;
 	const GEN_FLT x106 = x103 * ((x83 * x72) + (-1 * x105 * (x69 + (x72 * x104))));
 	const GEN_FLT x107 = 2 * x91 * x97 * x101;
 	const GEN_FLT x108 = x86 * x106;
@@ -3285,9 +3281,9 @@ static inline void gen_reproject_axis_y_gen2_jac_sensor_pt_axis_angle(FLT *out, 
 	const GEN_FLT x112 = x101 * x111;
 	const GEN_FLT x113 = x98 * x96;
 	const GEN_FLT x114 = 2.40324066e-05 * x84;
-	const GEN_FLT x115 = x89 * pow(x100, -2) * x111;
+	const GEN_FLT x115 = x89 * (1. / (x100 * x100)) * x111;
 	const GEN_FLT x116 = x75 + (x89 * x112);
-	const GEN_FLT x117 = pow((1 + (-1 * pow(x116, 2))), -1.0 / 2.0);
+	const GEN_FLT x117 = 1. / sqrt(1 + (-1 * (x116 * x116)));
 	const GEN_FLT x118 =
 		x117 *
 		(x74 +
@@ -3374,14 +3370,14 @@ static inline void gen_reproject_axis_y_gen2_jac_lh_p_axis_angle(FLT *out, const
 	const GEN_FLT gibMag_1 = (*bsc1).gibmag;
 	const GEN_FLT ogeeMag_1 = (*bsc1).ogeephase;
 	const GEN_FLT ogeePhase_1 = (*bsc1).ogeemag;
-	const GEN_FLT x0 = pow(obj_qk, 2);
-	const GEN_FLT x1 = pow(obj_qj, 2);
-	const GEN_FLT x2 = pow(obj_qi, 2);
+	const GEN_FLT x0 = obj_qk * obj_qk;
+	const GEN_FLT x1 = obj_qj * obj_qj;
+	const GEN_FLT x2 = obj_qi * obj_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
+	const GEN_FLT x4 = sqrt(x3);
 	const GEN_FLT x5 = cos(x4);
-	const GEN_FLT x6 = pow(x3, -1) * (1 + (-1 * x5));
-	const GEN_FLT x7 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x6 = (1. / x3) * (1 + (-1 * x5));
+	const GEN_FLT x7 = (1. / x4) * sin(x4);
 	const GEN_FLT x8 = x7 * obj_qi;
 	const GEN_FLT x9 = x6 * obj_qk;
 	const GEN_FLT x10 = x9 * obj_qj;
@@ -3389,12 +3385,12 @@ static inline void gen_reproject_axis_y_gen2_jac_lh_p_axis_angle(FLT *out, const
 	const GEN_FLT x12 = x9 * obj_qi;
 	const GEN_FLT x13 =
 		((x12 + (-1 * x11)) * sensor_x) + ((x10 + x8) * sensor_y) + ((x5 + (x0 * x6)) * sensor_z) + obj_pz;
-	const GEN_FLT x14 = pow(lh_qk, 2);
-	const GEN_FLT x15 = pow(lh_qj, 2);
-	const GEN_FLT x16 = pow(lh_qi, 2);
+	const GEN_FLT x14 = lh_qk * lh_qk;
+	const GEN_FLT x15 = lh_qj * lh_qj;
+	const GEN_FLT x16 = lh_qi * lh_qi;
 	const GEN_FLT x17 = 1e-10 + x16 + x15 + x14;
-	const GEN_FLT x18 = pow(x17, -1);
-	const GEN_FLT x19 = pow(x17, 1.0 / 2.0);
+	const GEN_FLT x18 = 1. / x17;
+	const GEN_FLT x19 = sqrt(x17);
 	const GEN_FLT x20 = cos(x19);
 	const GEN_FLT x21 = 1 + (-1 * x20);
 	const GEN_FLT x22 = x21 * x18;
@@ -3403,7 +3399,7 @@ static inline void gen_reproject_axis_y_gen2_jac_lh_p_axis_angle(FLT *out, const
 	const GEN_FLT x25 =
 		((x24 + x23) * sensor_x) + ((x5 + (x1 * x6)) * sensor_y) + ((x10 + (-1 * x8)) * sensor_z) + obj_py;
 	const GEN_FLT x26 = sin(x19);
-	const GEN_FLT x27 = x26 * pow(x19, -1);
+	const GEN_FLT x27 = x26 * (1. / x19);
 	const GEN_FLT x28 = x27 * lh_qi;
 	const GEN_FLT x29 = x22 * lh_qk;
 	const GEN_FLT x30 = x29 * lh_qj;
@@ -3418,27 +3414,27 @@ static inline void gen_reproject_axis_y_gen2_jac_lh_p_axis_angle(FLT *out, const
 	const GEN_FLT x38 = x22 * lh_qi;
 	const GEN_FLT x39 = x38 * lh_qj;
 	const GEN_FLT x40 = (x31 * (x20 + (x22 * x16))) + ((x39 + x37) * x25) + ((x34 + x32) * x13) + lh_px;
-	const GEN_FLT x41 = pow(x40, 2);
-	const GEN_FLT x42 = x41 + pow(x35, 2);
-	const GEN_FLT x43 = pow(x42, -1);
+	const GEN_FLT x41 = x40 * x40;
+	const GEN_FLT x42 = x41 + (x35 * x35);
+	const GEN_FLT x43 = 1. / x42;
 	const GEN_FLT x44 = x43 * x35;
 	const GEN_FLT x45 = -1 * x28;
 	const GEN_FLT x46 = ((x39 + x36) * x31) + lh_py + (x25 * (x20 + (x22 * x15))) + ((x30 + x45) * x13);
 	const GEN_FLT x47 = 0.523598775598299 + (-1 * tilt_1);
 	const GEN_FLT x48 = cos(x47);
-	const GEN_FLT x49 = pow(x48, -1);
-	const GEN_FLT x50 = pow(x46, 2);
+	const GEN_FLT x49 = 1. / x48;
+	const GEN_FLT x50 = x46 * x46;
 	const GEN_FLT x51 = x42 + x50;
-	const GEN_FLT x52 = pow(x51, -1.0 / 2.0) * x49;
+	const GEN_FLT x52 = (1. / sqrt(x51)) * x49;
 	const GEN_FLT x53 = asin(x52 * x46);
 	const GEN_FLT x54 = 8.0108022e-06 * x53;
 	const GEN_FLT x55 = -8.0108022e-06 + (-1 * x54);
 	const GEN_FLT x56 = 0.0028679863 + (x53 * x55);
 	const GEN_FLT x57 = 5.3685255e-06 + (x53 * x56);
 	const GEN_FLT x58 = 0.0076069798 + (x53 * x57);
-	const GEN_FLT x59 = pow(x53, 2);
+	const GEN_FLT x59 = x53 * x53;
 	const GEN_FLT x60 = tan(x47);
-	const GEN_FLT x61 = x60 * pow(x42, -1.0 / 2.0);
+	const GEN_FLT x61 = x60 * (1. / sqrt(x42));
 	const GEN_FLT x62 = -1 * x61 * x46;
 	const GEN_FLT x63 = atan2(-1 * x35, x40);
 	const GEN_FLT x64 = x63 + ogeeMag_1 + (-1 * asin(x62));
@@ -3452,23 +3448,23 @@ static inline void gen_reproject_axis_y_gen2_jac_lh_p_axis_angle(FLT *out, const
 	const GEN_FLT x72 = sin(x47);
 	const GEN_FLT x73 = x72 * x65;
 	const GEN_FLT x74 = x48 + (x71 * x73);
-	const GEN_FLT x75 = pow(x74, -1);
+	const GEN_FLT x75 = 1. / x74;
 	const GEN_FLT x76 = x75 * x65;
 	const GEN_FLT x77 = x76 * x59;
 	const GEN_FLT x78 = x62 + (x77 * x58);
-	const GEN_FLT x79 = pow((1 + (-1 * pow(x78, 2))), -1.0 / 2.0);
+	const GEN_FLT x79 = 1. / sqrt(1 + (-1 * (x78 * x78)));
 	const GEN_FLT x80 = x40 * x46;
-	const GEN_FLT x81 = x60 * pow(x42, -3.0 / 2.0);
+	const GEN_FLT x81 = x60 * (1. / (x42 * sqrt(x42)));
 	const GEN_FLT x82 = x80 * x81;
-	const GEN_FLT x83 = pow((1 + (-1 * pow(x60, 2) * x50 * x43)), -1.0 / 2.0);
+	const GEN_FLT x83 = 1. / sqrt(1 + (-1 * (x60 * x60) * x50 * x43));
 	const GEN_FLT x84 = (-1 * x82 * x83) + x44;
 	const GEN_FLT x85 = cos(x64) * ogeePhase_1;
 	const GEN_FLT x86 = x58 * x59;
 	const GEN_FLT x87 = x86 * x75;
 	const GEN_FLT x88 = x85 * x87;
-	const GEN_FLT x89 = pow((1 + (-1 * x50 * pow(x51, -1) * pow(x48, -2))), -1.0 / 2.0);
+	const GEN_FLT x89 = 1. / sqrt(1 + (-1 * x50 * (1. / x51) * (1. / (x48 * x48))));
 	const GEN_FLT x90 = 2 * x46;
-	const GEN_FLT x91 = pow(x51, -3.0 / 2.0) * x49;
+	const GEN_FLT x91 = (1. / (x51 * sqrt(x51))) * x49;
 	const GEN_FLT x92 = x76 * x66;
 	const GEN_FLT x93 = x89 * x92 * x91 * x90;
 	const GEN_FLT x94 = x80 * x91;
@@ -3482,7 +3478,7 @@ static inline void gen_reproject_axis_y_gen2_jac_lh_p_axis_angle(FLT *out, const
 	const GEN_FLT x102 = 2.40324066e-05 * x53;
 	const GEN_FLT x103 = x89 * x58;
 	const GEN_FLT x104 = x89 * x70;
-	const GEN_FLT x105 = x86 * pow(x74, -2) * x65;
+	const GEN_FLT x105 = x86 * (1. / (x74 * x74)) * x65;
 	const GEN_FLT x106 =
 		x79 *
 		((-1 * x105 *
@@ -3530,9 +3526,9 @@ static inline void gen_reproject_axis_y_gen2_jac_lh_p_axis_angle(FLT *out, const
 			 (-1 * x104 * x122))) +
 		   (x101 * x120))) +
 		 x119 + (x77 * x126) + (-1 * x93 * x35) + (x88 * x120));
-	const GEN_FLT x128 = x26 * pow(x17, -3.0 / 2.0);
+	const GEN_FLT x128 = x26 * (1. / (x17 * sqrt(x17)));
 	const GEN_FLT x129 = x16 * x128;
-	const GEN_FLT x130 = 2 * x21 * pow(x17, -2);
+	const GEN_FLT x130 = 2 * x21 * (1. / (x17 * x17));
 	const GEN_FLT x131 = x130 * lh_qk;
 	const GEN_FLT x132 = (-1 * x16 * x131) + (x129 * lh_qk);
 	const GEN_FLT x133 = x132 + x29;
@@ -3552,8 +3548,8 @@ static inline void gen_reproject_axis_y_gen2_jac_lh_p_axis_angle(FLT *out, const
 	const GEN_FLT x147 = x14 * x130;
 	const GEN_FLT x148 = (-1 * x147 * lh_qi) + (x146 * lh_qi);
 	const GEN_FLT x149 = (x13 * (x148 + x45)) + (x25 * (x145 + x139 + (-1 * x129))) + ((x138 + x133) * x31);
-	const GEN_FLT x150 = pow(x40, -1);
-	const GEN_FLT x151 = pow(lh_qi, 3);
+	const GEN_FLT x150 = 1. / x40;
+	const GEN_FLT x151 = lh_qi * lh_qi * lh_qi;
 	const GEN_FLT x152 = x22 * lh_qj;
 	const GEN_FLT x153 = (-1 * x16 * x143) + (x129 * lh_qj);
 	const GEN_FLT x154 = x153 + x152;
@@ -3562,7 +3558,7 @@ static inline void gen_reproject_axis_y_gen2_jac_lh_p_axis_angle(FLT *out, const
 	const GEN_FLT x157 = x137 + (-1 * x134);
 	const GEN_FLT x158 =
 		((x157 + x133) * x13) + ((x156 + x154) * x25) + (((-1 * x130 * x151) + (x128 * x151) + (2 * x38) + x45) * x31);
-	const GEN_FLT x159 = pow(x41, -1) * x35;
+	const GEN_FLT x159 = (1. / x41) * x35;
 	const GEN_FLT x160 = x41 * x43;
 	const GEN_FLT x161 = ((x158 * x159) + (-1 * x149 * x150)) * x160;
 	const GEN_FLT x162 = 2 * x40;
@@ -3604,7 +3600,7 @@ static inline void gen_reproject_axis_y_gen2_jac_lh_p_axis_angle(FLT *out, const
 	const GEN_FLT x189 = (x13 * (x145 + x180 + (-1 * x167))) + ((x188 + x185) * x25) + (x31 * (x153 + x33));
 	const GEN_FLT x190 = ((x189 * x159) + (-1 * x184 * x150)) * x160;
 	const GEN_FLT x191 = (x163 * x184) + (x162 * x189);
-	const GEN_FLT x192 = pow(lh_qj, 3);
+	const GEN_FLT x192 = lh_qj * lh_qj * lh_qj;
 	const GEN_FLT x193 = x187 + (-1 * x186);
 	const GEN_FLT x194 =
 		((x138 + x182) * x13) + ((x193 + x185) * x31) + (x25 * ((-1 * x192 * x130) + (x128 * x192) + (2 * x152) + x33));
@@ -3626,7 +3622,7 @@ static inline void gen_reproject_axis_y_gen2_jac_lh_p_axis_angle(FLT *out, const
 		 (x77 * x200) + (x114 * x197) + (x88 * x196));
 	const GEN_FLT x202 = x148 + x38;
 	const GEN_FLT x203 = x183 + x152;
-	const GEN_FLT x204 = pow(lh_qk, 3);
+	const GEN_FLT x204 = lh_qk * lh_qk * lh_qk;
 	const GEN_FLT x205 =
 		(((x204 * x128) + (-1 * x204 * x130) + (2 * x29) + x37) * x13) + ((x203 + x166) * x25) + ((x202 + x188) * x31);
 	const GEN_FLT x206 = x14 * x135;
@@ -3687,25 +3683,25 @@ static inline void gen_reproject_axis_y_gen2_jac_bsc1_axis_angle(FLT *out, const
 	const GEN_FLT ogeePhase_1 = (*bsc1).ogeemag;
 	const GEN_FLT x0 = 0.523598775598299 + (-1 * tilt_1);
 	const GEN_FLT x1 = tan(x0);
-	const GEN_FLT x2 = pow(lh_qk, 2);
-	const GEN_FLT x3 = pow(lh_qj, 2);
-	const GEN_FLT x4 = pow(lh_qi, 2);
+	const GEN_FLT x2 = lh_qk * lh_qk;
+	const GEN_FLT x3 = lh_qj * lh_qj;
+	const GEN_FLT x4 = lh_qi * lh_qi;
 	const GEN_FLT x5 = 1e-10 + x4 + x3 + x2;
-	const GEN_FLT x6 = pow(x5, 1.0 / 2.0);
-	const GEN_FLT x7 = pow(x6, -1) * sin(x6);
+	const GEN_FLT x6 = sqrt(x5);
+	const GEN_FLT x7 = (1. / x6) * sin(x6);
 	const GEN_FLT x8 = x7 * lh_qi;
 	const GEN_FLT x9 = cos(x6);
-	const GEN_FLT x10 = pow(x5, -1) * (1 + (-1 * x9));
+	const GEN_FLT x10 = (1. / x5) * (1 + (-1 * x9));
 	const GEN_FLT x11 = x10 * lh_qk;
 	const GEN_FLT x12 = x11 * lh_qj;
-	const GEN_FLT x13 = pow(obj_qk, 2);
-	const GEN_FLT x14 = pow(obj_qj, 2);
-	const GEN_FLT x15 = pow(obj_qi, 2);
+	const GEN_FLT x13 = obj_qk * obj_qk;
+	const GEN_FLT x14 = obj_qj * obj_qj;
+	const GEN_FLT x15 = obj_qi * obj_qi;
 	const GEN_FLT x16 = 1e-10 + x15 + x14 + x13;
-	const GEN_FLT x17 = pow(x16, 1.0 / 2.0);
+	const GEN_FLT x17 = sqrt(x16);
 	const GEN_FLT x18 = cos(x17);
-	const GEN_FLT x19 = pow(x16, -1) * (1 + (-1 * x18));
-	const GEN_FLT x20 = pow(x17, -1) * sin(x17);
+	const GEN_FLT x19 = (1. / x16) * (1 + (-1 * x18));
+	const GEN_FLT x20 = (1. / x17) * sin(x17);
 	const GEN_FLT x21 = x20 * obj_qi;
 	const GEN_FLT x22 = x19 * obj_qk * obj_qj;
 	const GEN_FLT x23 = x20 * obj_qj;
@@ -3726,24 +3722,24 @@ static inline void gen_reproject_axis_y_gen2_jac_bsc1_axis_angle(FLT *out, const
 	const GEN_FLT x35 = x11 * lh_qi;
 	const GEN_FLT x36 = ((x35 + (-1 * x34)) * x30) + (x29 * (x12 + x8)) + (x26 * (x9 + (x2 * x10))) + lh_pz;
 	const GEN_FLT x37 = (x30 * (x9 + (x4 * x10))) + ((x32 + (-1 * x31)) * x29) + ((x35 + x34) * x26) + lh_px;
-	const GEN_FLT x38 = pow(x37, 2) + pow(x36, 2);
-	const GEN_FLT x39 = x33 * pow(x38, -1.0 / 2.0);
+	const GEN_FLT x38 = (x37 * x37) + (x36 * x36);
+	const GEN_FLT x39 = x33 * (1. / sqrt(x38));
 	const GEN_FLT x40 = -1 * x1 * x39;
 	const GEN_FLT x41 = atan2(-1 * x36, x37);
 	const GEN_FLT x42 = x41 + ogeeMag_1 + (-1 * asin(x40));
 	const GEN_FLT x43 = sin(x42);
 	const GEN_FLT x44 = (x43 * ogeePhase_1) + curve_1;
 	const GEN_FLT x45 = cos(x0);
-	const GEN_FLT x46 = pow(x33, 2);
+	const GEN_FLT x46 = x33 * x33;
 	const GEN_FLT x47 = x38 + x46;
-	const GEN_FLT x48 = pow(x47, -1.0 / 2.0) * x33;
-	const GEN_FLT x49 = asin(pow(x45, -1) * x48);
+	const GEN_FLT x48 = (1. / sqrt(x47)) * x33;
+	const GEN_FLT x49 = asin((1. / x45) * x48);
 	const GEN_FLT x50 = 8.0108022e-06 * x49;
 	const GEN_FLT x51 = -8.0108022e-06 + (-1 * x50);
 	const GEN_FLT x52 = 0.0028679863 + (x51 * x49);
 	const GEN_FLT x53 = 5.3685255e-06 + (x52 * x49);
 	const GEN_FLT x54 = 0.0076069798 + (x53 * x49);
-	const GEN_FLT x55 = pow(x49, 2);
+	const GEN_FLT x55 = x49 * x49;
 	const GEN_FLT x56 = x54 * x49;
 	const GEN_FLT x57 = -8.0108022e-06 + (-1.60216044e-05 * x49);
 	const GEN_FLT x58 = x52 + (x57 * x49);
@@ -3754,23 +3750,23 @@ static inline void gen_reproject_axis_y_gen2_jac_bsc1_axis_angle(FLT *out, const
 	const GEN_FLT x63 = x62 * x44;
 	const GEN_FLT x64 = x63 * x61;
 	const GEN_FLT x65 = x45 + x64;
-	const GEN_FLT x66 = pow(x65, -1);
+	const GEN_FLT x66 = 1. / x65;
 	const GEN_FLT x67 = x66 * x55;
 	const GEN_FLT x68 = x67 * x54;
 	const GEN_FLT x69 = x40 + (x68 * x44);
-	const GEN_FLT x70 = pow((1 + (-1 * pow(x69, 2))), -1.0 / 2.0);
-	const GEN_FLT x71 = pow(x1, 2);
+	const GEN_FLT x70 = 1. / sqrt(1 + (-1 * (x69 * x69)));
+	const GEN_FLT x71 = x1 * x1;
 	const GEN_FLT x72 = x39 * (1 + x71);
 	const GEN_FLT x73 = cos(x42) * ogeePhase_1;
 	const GEN_FLT x74 = x73 * x68;
-	const GEN_FLT x75 = x72 * pow((1 + (-1 * x71 * x46 * pow(x38, -1))), -1.0 / 2.0);
-	const GEN_FLT x76 = pow(x45, -2);
-	const GEN_FLT x77 = x76 * x48 * pow((1 + (-1 * x76 * x46 * pow(x47, -1))), -1.0 / 2.0);
+	const GEN_FLT x75 = x72 * (1. / sqrt(1 + (-1 * x71 * x46 * (1. / x38))));
+	const GEN_FLT x76 = 1. / (x45 * x45);
+	const GEN_FLT x77 = x76 * x48 * (1. / sqrt(1 + (-1 * x76 * x46 * (1. / x47))));
 	const GEN_FLT x78 = x77 * x62;
 	const GEN_FLT x79 = -1 * x78 * x51;
 	const GEN_FLT x80 = (-1 * x78 * x52) + (x49 * (x79 + (x78 * x50)));
 	const GEN_FLT x81 = (-1 * x78 * x53) + (x80 * x49);
-	const GEN_FLT x82 = pow(x65, -2) * x54 * x55;
+	const GEN_FLT x82 = (1. / (x65 * x65)) * x54 * x55;
 	const GEN_FLT x83 =
 		x70 * ((-1 * x82 * x44 *
 				((-1 * x61 * x44 * x45) +
@@ -3827,25 +3823,25 @@ static inline void gen_reproject_axis_angle(FLT *out, const LinmathAxisAnglePose
 	const GEN_FLT gibMag_1 = bsd[1].gibmag;
 	const GEN_FLT ogeeMag_1 = bsd[1].ogeephase;
 	const GEN_FLT ogeePhase_1 = bsd[1].ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
-	const GEN_FLT x5 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x4 = sqrt(x3);
+	const GEN_FLT x5 = (1. / x4) * sin(x4);
 	const GEN_FLT x6 = x5 * lh_qi;
 	const GEN_FLT x7 = cos(x4);
-	const GEN_FLT x8 = pow(x3, -1) * (1 + (-1 * x7));
+	const GEN_FLT x8 = (1. / x3) * (1 + (-1 * x7));
 	const GEN_FLT x9 = x8 * lh_qj;
 	const GEN_FLT x10 = x9 * lh_qk;
-	const GEN_FLT x11 = pow(obj_qk, 2);
-	const GEN_FLT x12 = pow(obj_qj, 2);
-	const GEN_FLT x13 = pow(obj_qi, 2);
+	const GEN_FLT x11 = obj_qk * obj_qk;
+	const GEN_FLT x12 = obj_qj * obj_qj;
+	const GEN_FLT x13 = obj_qi * obj_qi;
 	const GEN_FLT x14 = 1e-10 + x13 + x12 + x11;
-	const GEN_FLT x15 = pow(x14, 1.0 / 2.0);
+	const GEN_FLT x15 = sqrt(x14);
 	const GEN_FLT x16 = cos(x15);
-	const GEN_FLT x17 = pow(x14, -1) * (1 + (-1 * x16));
-	const GEN_FLT x18 = pow(x15, -1) * sin(x15);
+	const GEN_FLT x17 = (1. / x14) * (1 + (-1 * x16));
+	const GEN_FLT x18 = (1. / x15) * sin(x15);
 	const GEN_FLT x19 = x18 * obj_qi;
 	const GEN_FLT x20 = x17 * obj_qk;
 	const GEN_FLT x21 = x20 * obj_qj;
@@ -3866,14 +3862,15 @@ static inline void gen_reproject_axis_angle(FLT *out, const LinmathAxisAnglePose
 	const GEN_FLT x33 = x8 * lh_qk * lh_qi;
 	const GEN_FLT x34 = ((x33 + (-1 * x32)) * x28) + (x27 * (x10 + x6)) + (x24 * (x7 + (x0 * x8))) + lh_pz;
 	const GEN_FLT x35 = -1 * x34;
-	const GEN_FLT x36 = pow(x34, 2);
+	const GEN_FLT x36 = x34 * x34;
 	const GEN_FLT x37 = ((x30 + (-1 * x29)) * x27) + ((x33 + x32) * x24) + (x28 * (x7 + (x2 * x8))) + lh_px;
 	const GEN_FLT x38 = atan2(x37, x35);
-	const GEN_FLT x39 = (-1 * x38) + (-1 * phase_0) + (-1 * asin(x31 * pow((pow(x37, 2) + x36), -1.0 / 2.0) * tilt_0));
+	const GEN_FLT x39 = (-1 * x38) + (-1 * phase_0) + (-1 * asin(x31 * (1. / sqrt((x37 * x37) + x36)) * tilt_0));
 	const GEN_FLT x40 =
-		(-1 * atan2(-1 * x31, x35)) + (-1 * phase_1) + (-1 * asin(x37 * pow((pow(x31, 2) + x36), -1.0 / 2.0) * tilt_1));
-	out[0] = x39 + (-1 * cos(1.5707963267949 + x39 + gibPhase_0) * gibMag_0) + (pow(atan2(x31, x35), 2) * curve_0);
-	out[1] = x40 + (-1 * cos(1.5707963267949 + x40 + gibPhase_1) * gibMag_1) + (pow(x38, 2) * curve_1);
+		(-1 * atan2(-1 * x31, x35)) + (-1 * phase_1) + (-1 * asin(x37 * (1. / sqrt((x31 * x31) + x36)) * tilt_1));
+	out[0] = x39 + (-1 * cos(1.5707963267949 + x39 + gibPhase_0) * gibMag_0) +
+			 ((atan2(x31, x35) * atan2(x31, x35)) * curve_0);
+	out[1] = x40 + (-1 * cos(1.5707963267949 + x40 + gibPhase_1) * gibMag_1) + ((x38 * x38) * curve_1);
 }
 
 // Jacobian of reproject wrt [obj_px, obj_py, obj_pz, obj_qi, obj_qj, obj_qk]
@@ -3908,30 +3905,30 @@ static inline void gen_reproject_jac_obj_p_axis_angle(FLT *out, const LinmathAxi
 	const GEN_FLT gibMag_1 = bsd[1].gibmag;
 	const GEN_FLT ogeeMag_1 = bsd[1].ogeephase;
 	const GEN_FLT ogeePhase_1 = bsd[1].ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
-	const GEN_FLT x5 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x4 = sqrt(x3);
+	const GEN_FLT x5 = (1. / x4) * sin(x4);
 	const GEN_FLT x6 = x5 * lh_qj;
 	const GEN_FLT x7 = cos(x4);
-	const GEN_FLT x8 = pow(x3, -1) * (1 + (-1 * x7));
+	const GEN_FLT x8 = (1. / x3) * (1 + (-1 * x7));
 	const GEN_FLT x9 = x8 * lh_qk;
 	const GEN_FLT x10 = x9 * lh_qi;
 	const GEN_FLT x11 = x10 + (-1 * x6);
 	const GEN_FLT x12 = x10 + x6;
-	const GEN_FLT x13 = pow(obj_qk, 2);
-	const GEN_FLT x14 = pow(obj_qj, 2);
-	const GEN_FLT x15 = pow(obj_qi, 2);
+	const GEN_FLT x13 = obj_qk * obj_qk;
+	const GEN_FLT x14 = obj_qj * obj_qj;
+	const GEN_FLT x15 = obj_qi * obj_qi;
 	const GEN_FLT x16 = 1e-10 + x15 + x14 + x13;
-	const GEN_FLT x17 = pow(x16, -1);
-	const GEN_FLT x18 = pow(x16, 1.0 / 2.0);
+	const GEN_FLT x17 = 1. / x16;
+	const GEN_FLT x18 = sqrt(x16);
 	const GEN_FLT x19 = cos(x18);
 	const GEN_FLT x20 = 1 + (-1 * x19);
 	const GEN_FLT x21 = x20 * x17;
 	const GEN_FLT x22 = sin(x18);
-	const GEN_FLT x23 = x22 * pow(x18, -1);
+	const GEN_FLT x23 = x22 * (1. / x18);
 	const GEN_FLT x24 = x23 * obj_qi;
 	const GEN_FLT x25 = x21 * obj_qk;
 	const GEN_FLT x26 = x25 * obj_qj;
@@ -3956,13 +3953,13 @@ static inline void gen_reproject_jac_obj_p_axis_angle(FLT *out, const LinmathAxi
 	const GEN_FLT x45 = x9 * lh_qj;
 	const GEN_FLT x46 = x45 + x44;
 	const GEN_FLT x47 = (x40 * x11) + (x46 * x35) + (x43 * x30) + lh_pz;
-	const GEN_FLT x48 = pow(x47, 2);
-	const GEN_FLT x49 = pow(x48, -1);
+	const GEN_FLT x48 = x47 * x47;
+	const GEN_FLT x49 = 1. / x48;
 	const GEN_FLT x50 = x42 * x49;
-	const GEN_FLT x51 = pow(x47, -1);
-	const GEN_FLT x52 = pow(x42, 2);
+	const GEN_FLT x51 = 1. / x47;
+	const GEN_FLT x52 = x42 * x42;
 	const GEN_FLT x53 = x48 + x52;
-	const GEN_FLT x54 = pow(x53, -1);
+	const GEN_FLT x54 = 1. / x53;
 	const GEN_FLT x55 = x54 * x48;
 	const GEN_FLT x56 = ((-1 * x51 * x41) + (x50 * x11)) * x55;
 	const GEN_FLT x57 = 2 * x42;
@@ -3972,10 +3969,10 @@ static inline void gen_reproject_jac_obj_p_axis_angle(FLT *out, const LinmathAxi
 	const GEN_FLT x61 = x7 + (x1 * x8);
 	const GEN_FLT x62 = x37 + x36;
 	const GEN_FLT x63 = lh_py + (x61 * x35) + (x62 * x40) + (x60 * x30);
-	const GEN_FLT x64 = 1.0 / 2.0 * x63 * pow(x53, -3.0 / 2.0) * tilt_0;
-	const GEN_FLT x65 = pow(x53, -1.0 / 2.0) * tilt_0;
-	const GEN_FLT x66 = pow(x63, 2);
-	const GEN_FLT x67 = pow((1 + (-1 * x66 * x54 * pow(tilt_0, 2))), -1.0 / 2.0);
+	const GEN_FLT x64 = 1.0 / 2.0 * x63 * (1. / (x53 * sqrt(x53))) * tilt_0;
+	const GEN_FLT x65 = (1. / sqrt(x53)) * tilt_0;
+	const GEN_FLT x66 = x63 * x63;
+	const GEN_FLT x67 = 1. / sqrt(1 + (-1 * x66 * x54 * (tilt_0 * tilt_0)));
 	const GEN_FLT x68 = (-1 * x67 * ((x62 * x65) + (-1 * x64 * (x59 + (x57 * x41))))) + (-1 * x56);
 	const GEN_FLT x69 = -1 * x47;
 	const GEN_FLT x70 = atan2(x42, x69);
@@ -3985,7 +3982,7 @@ static inline void gen_reproject_jac_obj_p_axis_angle(FLT *out, const LinmathAxi
 	const GEN_FLT x73 = x72 * x11;
 	const GEN_FLT x74 = x62 * x51;
 	const GEN_FLT x75 = x48 + x66;
-	const GEN_FLT x76 = pow(x75, -1);
+	const GEN_FLT x76 = 1. / x75;
 	const GEN_FLT x77 = x76 * x48;
 	const GEN_FLT x78 = 2 * x77 * atan2(x63, x69) * curve_0;
 	const GEN_FLT x79 = ((-1 * x51 * x38) + (x50 * x46)) * x55;
@@ -3998,9 +3995,9 @@ static inline void gen_reproject_jac_obj_p_axis_angle(FLT *out, const LinmathAxi
 	const GEN_FLT x86 = (-1 * x67 * ((x60 * x65) + (-1 * x64 * (x85 + (x57 * x12))))) + (-1 * x84);
 	const GEN_FLT x87 = x72 * x43;
 	const GEN_FLT x88 = x60 * x51;
-	const GEN_FLT x89 = pow(obj_qi, 3);
-	const GEN_FLT x90 = x22 * pow(x16, -3.0 / 2.0);
-	const GEN_FLT x91 = 2 * x20 * pow(x16, -2);
+	const GEN_FLT x89 = obj_qi * obj_qi * obj_qi;
+	const GEN_FLT x90 = x22 * (1. / (x16 * sqrt(x16)));
+	const GEN_FLT x91 = 2 * x20 * (1. / (x16 * x16));
 	const GEN_FLT x92 = x21 * obj_qj;
 	const GEN_FLT x93 = x90 * x15;
 	const GEN_FLT x94 = x91 * x15;
@@ -4047,7 +4044,7 @@ static inline void gen_reproject_jac_obj_p_axis_angle(FLT *out, const LinmathAxi
 	const GEN_FLT x132 = x97 * x114;
 	const GEN_FLT x133 = (-1 * x115) + x132;
 	const GEN_FLT x134 = x112 + x33;
-	const GEN_FLT x135 = pow(obj_qj, 3);
+	const GEN_FLT x135 = obj_qj * obj_qj * obj_qj;
 	const GEN_FLT x136 = (-1 * x91 * x14 * obj_qk) + (x110 * obj_qk);
 	const GEN_FLT x137 = x136 + x25;
 	const GEN_FLT x138 = ((x137 + x119) * sensor_z) +
@@ -4074,7 +4071,7 @@ static inline void gen_reproject_jac_obj_p_axis_angle(FLT *out, const LinmathAxi
 	const GEN_FLT x155 = x142 + x92;
 	const GEN_FLT x156 =
 		((x155 + x101) * sensor_z) + ((x136 + x39) * sensor_y) + (((-1 * x121) + x120 + x152) * sensor_x);
-	const GEN_FLT x157 = pow(obj_qk, 3);
+	const GEN_FLT x157 = obj_qk * obj_qk * obj_qk;
 	const GEN_FLT x158 = (((-1 * x91 * x157) + (x90 * x157) + x39 + (2 * x25)) * sensor_z) +
 						 ((x155 + x109) * sensor_y) + ((x139 + x153) * sensor_x);
 	const GEN_FLT x159 = (x43 * x158) + (x46 * x156) + (x11 * x154);
@@ -4085,10 +4082,10 @@ static inline void gen_reproject_jac_obj_p_axis_angle(FLT *out, const LinmathAxi
 	const GEN_FLT x164 = (-1 * x67 * ((x65 * x163) + (-1 * x64 * (x162 + (x57 * x160))))) + (-1 * x161);
 	const GEN_FLT x165 = x72 * x159;
 	const GEN_FLT x166 = x51 * x163;
-	const GEN_FLT x167 = pow((1 + (-1 * x76 * x52 * pow(tilt_1, 2))), -1.0 / 2.0);
+	const GEN_FLT x167 = 1. / sqrt(1 + (-1 * x76 * x52 * (tilt_1 * tilt_1)));
 	const GEN_FLT x168 = 2 * x63;
-	const GEN_FLT x169 = 1.0 / 2.0 * pow(x75, -3.0 / 2.0) * x42 * tilt_1;
-	const GEN_FLT x170 = pow(x75, -1.0 / 2.0) * tilt_1;
+	const GEN_FLT x169 = 1.0 / 2.0 * (1. / (x75 * sqrt(x75))) * x42 * tilt_1;
+	const GEN_FLT x170 = (1. / sqrt(x75)) * tilt_1;
 	const GEN_FLT x171 =
 		(-1 * x167 * ((x41 * x170) + (-1 * x169 * (x59 + (x62 * x168))))) + (-1 * (x74 + (-1 * x73)) * x77);
 	const GEN_FLT x172 =
@@ -4152,27 +4149,27 @@ static inline void gen_reproject_jac_sensor_pt_axis_angle(FLT *out, const Linmat
 	const GEN_FLT gibMag_1 = bsd[1].gibmag;
 	const GEN_FLT ogeeMag_1 = bsd[1].ogeephase;
 	const GEN_FLT ogeePhase_1 = bsd[1].ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
-	const GEN_FLT x5 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x4 = sqrt(x3);
+	const GEN_FLT x5 = (1. / x4) * sin(x4);
 	const GEN_FLT x6 = x5 * lh_qj;
 	const GEN_FLT x7 = cos(x4);
-	const GEN_FLT x8 = pow(x3, -1) * (1 + (-1 * x7));
+	const GEN_FLT x8 = (1. / x3) * (1 + (-1 * x7));
 	const GEN_FLT x9 = x8 * lh_qk;
 	const GEN_FLT x10 = x9 * lh_qi;
 	const GEN_FLT x11 = x10 + (-1 * x6);
-	const GEN_FLT x12 = pow(obj_qi, 2);
-	const GEN_FLT x13 = pow(obj_qk, 2);
-	const GEN_FLT x14 = pow(obj_qj, 2);
+	const GEN_FLT x12 = obj_qi * obj_qi;
+	const GEN_FLT x13 = obj_qk * obj_qk;
+	const GEN_FLT x14 = obj_qj * obj_qj;
 	const GEN_FLT x15 = 1e-10 + x12 + x14 + x13;
-	const GEN_FLT x16 = pow(x15, 1.0 / 2.0);
+	const GEN_FLT x16 = sqrt(x15);
 	const GEN_FLT x17 = cos(x16);
-	const GEN_FLT x18 = pow(x15, -1) * (1 + (-1 * x17));
+	const GEN_FLT x18 = (1. / x15) * (1 + (-1 * x17));
 	const GEN_FLT x19 = x17 + (x12 * x18);
-	const GEN_FLT x20 = pow(x16, -1) * sin(x16);
+	const GEN_FLT x20 = (1. / x16) * sin(x16);
 	const GEN_FLT x21 = x20 * obj_qk;
 	const GEN_FLT x22 = x18 * obj_qj * obj_qi;
 	const GEN_FLT x23 = x22 + x21;
@@ -4197,8 +4194,8 @@ static inline void gen_reproject_jac_sensor_pt_axis_angle(FLT *out, const Linmat
 	const GEN_FLT x42 = x22 + (-1 * x21);
 	const GEN_FLT x43 = (x19 * sensor_x) + (x41 * sensor_z) + (x42 * sensor_y) + obj_px;
 	const GEN_FLT x44 = (x43 * x11) + (x31 * x37) + (x40 * x26) + lh_pz;
-	const GEN_FLT x45 = pow(x44, 2);
-	const GEN_FLT x46 = pow(x45, -1);
+	const GEN_FLT x45 = x44 * x44;
+	const GEN_FLT x46 = 1. / x45;
 	const GEN_FLT x47 = x10 + x6;
 	const GEN_FLT x48 = x5 * lh_qk;
 	const GEN_FLT x49 = x8 * lh_qj * lh_qi;
@@ -4207,24 +4204,24 @@ static inline void gen_reproject_jac_sensor_pt_axis_angle(FLT *out, const Linmat
 	const GEN_FLT x52 = (x50 * x40) + (x51 * x43) + (x47 * x37) + lh_px;
 	const GEN_FLT x53 = x52 * x46;
 	const GEN_FLT x54 = (x47 * x30) + (x50 * x23) + (x51 * x19);
-	const GEN_FLT x55 = pow(x44, -1);
-	const GEN_FLT x56 = pow(x52, 2);
+	const GEN_FLT x55 = 1. / x44;
+	const GEN_FLT x56 = x52 * x52;
 	const GEN_FLT x57 = x45 + x56;
-	const GEN_FLT x58 = pow(x57, -1);
+	const GEN_FLT x58 = 1. / x57;
 	const GEN_FLT x59 = x58 * x45;
 	const GEN_FLT x60 = ((-1 * x54 * x55) + (x53 * x32)) * x59;
 	const GEN_FLT x61 = x25 + (-1 * x24);
 	const GEN_FLT x62 = x7 + (x1 * x8);
 	const GEN_FLT x63 = x49 + x48;
 	const GEN_FLT x64 = (x63 * x43) + lh_py + (x62 * x40) + (x61 * x37);
-	const GEN_FLT x65 = pow(x64, 2);
-	const GEN_FLT x66 = pow((1 + (-1 * x65 * x58 * pow(tilt_0, 2))), -1.0 / 2.0);
+	const GEN_FLT x65 = x64 * x64;
+	const GEN_FLT x66 = 1. / sqrt(1 + (-1 * x65 * x58 * (tilt_0 * tilt_0)));
 	const GEN_FLT x67 = 2 * x52;
 	const GEN_FLT x68 = 2 * x44;
 	const GEN_FLT x69 = x68 * x32;
-	const GEN_FLT x70 = 1.0 / 2.0 * x64 * pow(x57, -3.0 / 2.0) * tilt_0;
+	const GEN_FLT x70 = 1.0 / 2.0 * x64 * (1. / (x57 * sqrt(x57))) * tilt_0;
 	const GEN_FLT x71 = (x61 * x30) + (x62 * x23) + (x63 * x19);
-	const GEN_FLT x72 = pow(x57, -1.0 / 2.0) * tilt_0;
+	const GEN_FLT x72 = (1. / sqrt(x57)) * tilt_0;
 	const GEN_FLT x73 = (-1 * x66 * ((x71 * x72) + (-1 * x70 * (x69 + (x67 * x54))))) + (-1 * x60);
 	const GEN_FLT x74 = -1 * x44;
 	const GEN_FLT x75 = atan2(x52, x74);
@@ -4234,7 +4231,7 @@ static inline void gen_reproject_jac_sensor_pt_axis_angle(FLT *out, const Linmat
 	const GEN_FLT x78 = x77 * x32;
 	const GEN_FLT x79 = x71 * x55;
 	const GEN_FLT x80 = x45 + x65;
-	const GEN_FLT x81 = pow(x80, -1);
+	const GEN_FLT x81 = 1. / x80;
 	const GEN_FLT x82 = x81 * x45;
 	const GEN_FLT x83 = 2 * x82 * atan2(x64, x74) * curve_0;
 	const GEN_FLT x84 = (x31 * x36) + (x39 * x26) + (x42 * x11);
@@ -4253,10 +4250,10 @@ static inline void gen_reproject_jac_sensor_pt_axis_angle(FLT *out, const Linmat
 	const GEN_FLT x97 = (-1 * x66 * ((x72 * x96) + (-1 * x70 * (x95 + (x67 * x93))))) + (-1 * x94);
 	const GEN_FLT x98 = x77 * x92;
 	const GEN_FLT x99 = x55 * x96;
-	const GEN_FLT x100 = pow((1 + (-1 * x81 * x56 * pow(tilt_1, 2))), -1.0 / 2.0);
+	const GEN_FLT x100 = 1. / sqrt(1 + (-1 * x81 * x56 * (tilt_1 * tilt_1)));
 	const GEN_FLT x101 = 2 * x64;
-	const GEN_FLT x102 = 1.0 / 2.0 * pow(x80, -3.0 / 2.0) * x52 * tilt_1;
-	const GEN_FLT x103 = pow(x80, -1.0 / 2.0) * tilt_1;
+	const GEN_FLT x102 = 1.0 / 2.0 * (1. / (x80 * sqrt(x80))) * x52 * tilt_1;
+	const GEN_FLT x103 = (1. / sqrt(x80)) * tilt_1;
 	const GEN_FLT x104 =
 		(-1 * x100 * ((x54 * x103) + (-1 * x102 * (x69 + (x71 * x101))))) + (-1 * (x79 + (-1 * x78)) * x82);
 	const GEN_FLT x105 =
@@ -4307,28 +4304,28 @@ static inline void gen_reproject_jac_lh_p_axis_angle(FLT *out, const LinmathAxis
 	const GEN_FLT gibMag_1 = bsd[1].gibmag;
 	const GEN_FLT ogeeMag_1 = bsd[1].ogeephase;
 	const GEN_FLT ogeePhase_1 = bsd[1].ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
+	const GEN_FLT x4 = sqrt(x3);
 	const GEN_FLT x5 = sin(x4);
-	const GEN_FLT x6 = pow(x4, -1) * x5;
+	const GEN_FLT x6 = (1. / x4) * x5;
 	const GEN_FLT x7 = x6 * lh_qj;
 	const GEN_FLT x8 = cos(x4);
 	const GEN_FLT x9 = 1 + (-1 * x8);
-	const GEN_FLT x10 = pow(x3, -1);
+	const GEN_FLT x10 = 1. / x3;
 	const GEN_FLT x11 = x9 * x10;
 	const GEN_FLT x12 = x11 * lh_qi;
 	const GEN_FLT x13 = x12 * lh_qk;
-	const GEN_FLT x14 = pow(obj_qk, 2);
-	const GEN_FLT x15 = pow(obj_qj, 2);
-	const GEN_FLT x16 = pow(obj_qi, 2);
+	const GEN_FLT x14 = obj_qk * obj_qk;
+	const GEN_FLT x15 = obj_qj * obj_qj;
+	const GEN_FLT x16 = obj_qi * obj_qi;
 	const GEN_FLT x17 = 1e-10 + x16 + x15 + x14;
-	const GEN_FLT x18 = pow(x17, 1.0 / 2.0);
+	const GEN_FLT x18 = sqrt(x17);
 	const GEN_FLT x19 = cos(x18);
-	const GEN_FLT x20 = pow(x17, -1) * (1 + (-1 * x19));
-	const GEN_FLT x21 = pow(x18, -1) * sin(x18);
+	const GEN_FLT x20 = (1. / x17) * (1 + (-1 * x19));
+	const GEN_FLT x21 = (1. / x18) * sin(x18);
 	const GEN_FLT x22 = x21 * obj_qi;
 	const GEN_FLT x23 = x20 * obj_qk * obj_qj;
 	const GEN_FLT x24 = x21 * obj_qj;
@@ -4347,39 +4344,39 @@ static inline void gen_reproject_jac_lh_p_axis_angle(FLT *out, const LinmathAxis
 	const GEN_FLT x35 =
 		((x19 + (x20 * x16)) * sensor_x) + ((x29 + (-1 * x28)) * sensor_y) + ((x26 + x24) * sensor_z) + obj_px;
 	const GEN_FLT x36 = (x35 * (x8 + (x2 * x11))) + ((x34 + x32) * x30) + (x27 * (x13 + x7)) + lh_px;
-	const GEN_FLT x37 = pow(x36, 2);
+	const GEN_FLT x37 = x36 * x36;
 	const GEN_FLT x38 = x6 * lh_qi;
 	const GEN_FLT x39 = x33 * lh_qk;
 	const GEN_FLT x40 = -1 * x7;
 	const GEN_FLT x41 = ((x39 + x38) * x30) + (x27 * (x8 + (x0 * x11))) + ((x13 + x40) * x35) + lh_pz;
-	const GEN_FLT x42 = pow(x41, 2);
+	const GEN_FLT x42 = x41 * x41;
 	const GEN_FLT x43 = x42 + x37;
-	const GEN_FLT x44 = pow(x43, -1);
+	const GEN_FLT x44 = 1. / x43;
 	const GEN_FLT x45 = x41 * x44;
 	const GEN_FLT x46 = -1 * x38;
 	const GEN_FLT x47 = ((x34 + x31) * x35) + lh_py + (x30 * (x8 + (x1 * x11))) + ((x39 + x46) * x27);
-	const GEN_FLT x48 = pow(x47, 2);
-	const GEN_FLT x49 = pow((1 + (-1 * x44 * x48 * pow(tilt_0, 2))), -1.0 / 2.0);
-	const GEN_FLT x50 = pow(x43, -3.0 / 2.0) * x47 * tilt_0;
+	const GEN_FLT x48 = x47 * x47;
+	const GEN_FLT x49 = 1. / sqrt(1 + (-1 * x44 * x48 * (tilt_0 * tilt_0)));
+	const GEN_FLT x50 = (1. / (x43 * sqrt(x43))) * x47 * tilt_0;
 	const GEN_FLT x51 = x50 * x49;
 	const GEN_FLT x52 = (x51 * x36) + x45;
-	const GEN_FLT x53 = pow(x43, -1.0 / 2.0) * tilt_0;
+	const GEN_FLT x53 = (1. / sqrt(x43)) * tilt_0;
 	const GEN_FLT x54 = -1 * x41;
 	const GEN_FLT x55 = atan2(x36, x54);
 	const GEN_FLT x56 =
 		sin(1.5707963267949 + (-1 * x55) + (-1 * phase_0) + (-1 * asin(x53 * x47)) + gibPhase_0) * gibMag_0;
 	const GEN_FLT x57 = x53 * x49;
 	const GEN_FLT x58 = x42 + x48;
-	const GEN_FLT x59 = pow(x58, -1);
+	const GEN_FLT x59 = 1. / x58;
 	const GEN_FLT x60 = x59 * x41;
 	const GEN_FLT x61 = 2 * atan2(x47, x54) * curve_0;
 	const GEN_FLT x62 = x44 * x36;
 	const GEN_FLT x63 = (x51 * x41) + (-1 * x62);
 	const GEN_FLT x64 = x59 * x47;
 	const GEN_FLT x65 = x11 * lh_qk;
-	const GEN_FLT x66 = pow(x3, -3.0 / 2.0) * x5;
+	const GEN_FLT x66 = (1. / (x3 * sqrt(x3))) * x5;
 	const GEN_FLT x67 = x2 * x66;
-	const GEN_FLT x68 = 2 * pow(x3, -2) * x9;
+	const GEN_FLT x68 = 2 * (1. / (x3 * x3)) * x9;
 	const GEN_FLT x69 = x2 * x68;
 	const GEN_FLT x70 = (-1 * x69 * lh_qk) + (x67 * lh_qk);
 	const GEN_FLT x71 = x70 + x65;
@@ -4397,9 +4394,9 @@ static inline void gen_reproject_jac_lh_p_axis_angle(FLT *out, const LinmathAxis
 	const GEN_FLT x83 = x0 * x68;
 	const GEN_FLT x84 = (-1 * x83 * lh_qi) + (x82 * lh_qi);
 	const GEN_FLT x85 = ((x84 + x46) * x27) + (x30 * (x81 + x77 + (-1 * x67))) + ((x76 + x71) * x35);
-	const GEN_FLT x86 = pow(x42, -1);
+	const GEN_FLT x86 = 1. / x42;
 	const GEN_FLT x87 = x86 * x36;
-	const GEN_FLT x88 = pow(lh_qi, 3);
+	const GEN_FLT x88 = lh_qi * lh_qi * lh_qi;
 	const GEN_FLT x89 = (-1 * x69 * lh_qj) + (x67 * lh_qj);
 	const GEN_FLT x90 = x89 + x33;
 	const GEN_FLT x91 = x74 * lh_qk;
@@ -4408,7 +4405,7 @@ static inline void gen_reproject_jac_lh_p_axis_angle(FLT *out, const LinmathAxis
 	const GEN_FLT x94 = x75 + (-1 * x73);
 	const GEN_FLT x95 =
 		((x94 + x71) * x27) + ((x93 + x90) * x30) + (((-1 * x88 * x68) + (x88 * x66) + (2 * x12) + x46) * x35);
-	const GEN_FLT x96 = pow(x41, -1);
+	const GEN_FLT x96 = 1. / x41;
 	const GEN_FLT x97 = x42 * x44;
 	const GEN_FLT x98 = ((-1 * x96 * x95) + (x85 * x87)) * x97;
 	const GEN_FLT x99 = 2 * x36;
@@ -4439,7 +4436,7 @@ static inline void gen_reproject_jac_lh_p_axis_angle(FLT *out, const LinmathAxis
 	const GEN_FLT x124 = ((x123 + x120) * x30) + (x27 * (x81 + x115 + (-1 * x104))) + ((x89 + x40) * x35);
 	const GEN_FLT x125 = ((-1 * x96 * x124) + (x87 * x119)) * x97;
 	const GEN_FLT x126 = x100 * x119;
-	const GEN_FLT x127 = pow(lh_qj, 3);
+	const GEN_FLT x127 = lh_qj * lh_qj * lh_qj;
 	const GEN_FLT x128 = x122 + (-1 * x121);
 	const GEN_FLT x129 =
 		(x27 * (x117 + x76)) + ((x128 + x120) * x35) + (((-1 * x68 * x127) + (x66 * x127) + (2 * x33) + x40) * x30);
@@ -4448,7 +4445,7 @@ static inline void gen_reproject_jac_lh_p_axis_angle(FLT *out, const LinmathAxis
 	const GEN_FLT x132 = x96 * x129;
 	const GEN_FLT x133 = x84 + x12;
 	const GEN_FLT x134 = x118 + x33;
-	const GEN_FLT x135 = pow(lh_qk, 3);
+	const GEN_FLT x135 = lh_qk * lh_qk * lh_qk;
 	const GEN_FLT x136 =
 		(((x66 * x135) + (-1 * x68 * x135) + (2 * x65) + x32) * x27) + ((x134 + x103) * x30) + ((x133 + x123) * x35);
 	const GEN_FLT x137 = x0 * x74;
@@ -4459,14 +4456,14 @@ static inline void gen_reproject_jac_lh_p_axis_angle(FLT *out, const LinmathAxis
 	const GEN_FLT x142 = (-1 * x49 * ((x53 * x141) + (-1 * x102 * (x140 + (x99 * x138))))) + (-1 * x139);
 	const GEN_FLT x143 = x110 * x136;
 	const GEN_FLT x144 = x96 * x141;
-	const GEN_FLT x145 = pow((1 + (-1 * x59 * x37 * pow(tilt_1, 2))), -1.0 / 2.0);
-	const GEN_FLT x146 = pow(x58, -1.0 / 2.0) * tilt_1;
+	const GEN_FLT x145 = 1. / sqrt(1 + (-1 * x59 * x37 * (tilt_1 * tilt_1)));
+	const GEN_FLT x146 = (1. / sqrt(x58)) * tilt_1;
 	const GEN_FLT x147 = x146 * x145;
 	const GEN_FLT x148 =
 		sin(1.5707963267949 + (-1 * atan2(-1 * x47, x54)) + (-1 * phase_1) + (-1 * asin(x36 * x146)) + gibPhase_1) *
 		gibMag_1;
 	const GEN_FLT x149 = 2 * x55 * curve_1;
-	const GEN_FLT x150 = pow(x58, -3.0 / 2.0) * x36 * tilt_1;
+	const GEN_FLT x150 = (1. / (x58 * sqrt(x58))) * x36 * tilt_1;
 	const GEN_FLT x151 = x145 * x150;
 	const GEN_FLT x152 = (x47 * x151) + (-1 * x60);
 	const GEN_FLT x153 = (x41 * x151) + x64;
@@ -4525,25 +4522,25 @@ static inline void gen_reproject_jac_bsd_axis_angle(FLT *out, const LinmathAxisA
 	const GEN_FLT gibMag_1 = bsd[1].gibmag;
 	const GEN_FLT ogeeMag_1 = bsd[1].ogeephase;
 	const GEN_FLT ogeePhase_1 = bsd[1].ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
-	const GEN_FLT x5 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x4 = sqrt(x3);
+	const GEN_FLT x5 = (1. / x4) * sin(x4);
 	const GEN_FLT x6 = x5 * lh_qi;
 	const GEN_FLT x7 = cos(x4);
-	const GEN_FLT x8 = pow(x3, -1) * (1 + (-1 * x7));
+	const GEN_FLT x8 = (1. / x3) * (1 + (-1 * x7));
 	const GEN_FLT x9 = x8 * lh_qj;
 	const GEN_FLT x10 = x9 * lh_qk;
-	const GEN_FLT x11 = pow(obj_qk, 2);
-	const GEN_FLT x12 = pow(obj_qj, 2);
-	const GEN_FLT x13 = pow(obj_qi, 2);
+	const GEN_FLT x11 = obj_qk * obj_qk;
+	const GEN_FLT x12 = obj_qj * obj_qj;
+	const GEN_FLT x13 = obj_qi * obj_qi;
 	const GEN_FLT x14 = 1e-10 + x13 + x12 + x11;
-	const GEN_FLT x15 = pow(x14, 1.0 / 2.0);
+	const GEN_FLT x15 = sqrt(x14);
 	const GEN_FLT x16 = cos(x15);
-	const GEN_FLT x17 = pow(x14, -1) * (1 + (-1 * x16));
-	const GEN_FLT x18 = pow(x15, -1) * sin(x15);
+	const GEN_FLT x17 = (1. / x14) * (1 + (-1 * x16));
+	const GEN_FLT x18 = (1. / x15) * sin(x15);
 	const GEN_FLT x19 = x18 * obj_qi;
 	const GEN_FLT x20 = x17 * obj_qk;
 	const GEN_FLT x21 = x20 * obj_qj;
@@ -4563,26 +4560,26 @@ static inline void gen_reproject_jac_bsd_axis_angle(FLT *out, const LinmathAxisA
 	const GEN_FLT x32 = x5 * lh_qj;
 	const GEN_FLT x33 = x8 * lh_qk * lh_qi;
 	const GEN_FLT x34 = ((x33 + (-1 * x32)) * x28) + (x27 * (x10 + x6)) + (x24 * (x7 + (x0 * x8))) + lh_pz;
-	const GEN_FLT x35 = pow(x34, 2);
+	const GEN_FLT x35 = x34 * x34;
 	const GEN_FLT x36 = ((x30 + (-1 * x29)) * x27) + ((x33 + x32) * x24) + (x28 * (x7 + (x2 * x8))) + lh_px;
-	const GEN_FLT x37 = pow(x36, 2);
+	const GEN_FLT x37 = x36 * x36;
 	const GEN_FLT x38 = x37 + x35;
-	const GEN_FLT x39 = x31 * pow(x38, -1.0 / 2.0);
+	const GEN_FLT x39 = x31 * (1. / sqrt(x38));
 	const GEN_FLT x40 = -1 * x34;
 	const GEN_FLT x41 = atan2(x36, x40);
 	const GEN_FLT x42 = 1.5707963267949 + (-1 * x41) + (-1 * phase_0) + (-1 * asin(x39 * tilt_0)) + gibPhase_0;
 	const GEN_FLT x43 = sin(x42) * gibMag_0;
-	const GEN_FLT x44 = pow(x31, 2);
-	const GEN_FLT x45 = x39 * pow((1 + (-1 * x44 * pow(x38, -1) * pow(tilt_0, 2))), -1.0 / 2.0);
+	const GEN_FLT x44 = x31 * x31;
+	const GEN_FLT x45 = x39 * (1. / sqrt(1 + (-1 * x44 * (1. / x38) * (tilt_0 * tilt_0))));
 	const GEN_FLT x46 = x44 + x35;
-	const GEN_FLT x47 = pow(x46, -1.0 / 2.0) * x36;
+	const GEN_FLT x47 = (1. / sqrt(x46)) * x36;
 	const GEN_FLT x48 =
 		1.5707963267949 + (-1 * phase_1) + (-1 * atan2(-1 * x31, x40)) + (-1 * asin(x47 * tilt_1)) + gibPhase_1;
 	const GEN_FLT x49 = sin(x48) * gibMag_1;
-	const GEN_FLT x50 = x47 * pow((1 + (-1 * pow(x46, -1) * x37 * pow(tilt_1, 2))), -1.0 / 2.0);
+	const GEN_FLT x50 = x47 * (1. / sqrt(1 + (-1 * (1. / x46) * x37 * (tilt_1 * tilt_1))));
 	out[0] = -1 + (-1 * x43);
 	out[1] = (-1 * x43 * x45) + (-1 * x45);
-	out[2] = pow(atan2(x31, x40), 2);
+	out[2] = atan2(x31, x40) * atan2(x31, x40);
 	out[3] = x43;
 	out[4] = -1 * cos(x42);
 	out[5] = 0;
@@ -4603,7 +4600,7 @@ static inline void gen_reproject_jac_bsd_axis_angle(FLT *out, const LinmathAxisA
 	out[20] = 0;
 	out[21] = -1 + (-1 * x49);
 	out[22] = (-1 * x50 * x49) + (-1 * x50);
-	out[23] = pow(x41, 2);
+	out[23] = x41 * x41;
 	out[24] = x49;
 	out[25] = -1 * cos(x48);
 	out[26] = 0;
@@ -4634,25 +4631,25 @@ static inline FLT gen_reproject_axis_x_axis_angle(const LinmathAxisAnglePose *ob
 	const GEN_FLT gibMag_0 = (*bsc0).gibmag;
 	const GEN_FLT ogeeMag_0 = (*bsc0).ogeephase;
 	const GEN_FLT ogeePhase_0 = (*bsc0).ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
-	const GEN_FLT x5 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x4 = sqrt(x3);
+	const GEN_FLT x5 = (1. / x4) * sin(x4);
 	const GEN_FLT x6 = x5 * lh_qi;
 	const GEN_FLT x7 = cos(x4);
-	const GEN_FLT x8 = pow(x3, -1) * (1 + (-1 * x7));
+	const GEN_FLT x8 = (1. / x3) * (1 + (-1 * x7));
 	const GEN_FLT x9 = x8 * lh_qj;
 	const GEN_FLT x10 = x9 * lh_qk;
-	const GEN_FLT x11 = pow(obj_qk, 2);
-	const GEN_FLT x12 = pow(obj_qj, 2);
-	const GEN_FLT x13 = pow(obj_qi, 2);
+	const GEN_FLT x11 = obj_qk * obj_qk;
+	const GEN_FLT x12 = obj_qj * obj_qj;
+	const GEN_FLT x13 = obj_qi * obj_qi;
 	const GEN_FLT x14 = 1e-10 + x13 + x12 + x11;
-	const GEN_FLT x15 = pow(x14, 1.0 / 2.0);
+	const GEN_FLT x15 = sqrt(x14);
 	const GEN_FLT x16 = cos(x15);
-	const GEN_FLT x17 = pow(x14, -1) * (1 + (-1 * x16));
-	const GEN_FLT x18 = pow(x15, -1) * sin(x15);
+	const GEN_FLT x17 = (1. / x14) * (1 + (-1 * x16));
+	const GEN_FLT x18 = (1. / x15) * sin(x15);
 	const GEN_FLT x19 = x18 * obj_qi;
 	const GEN_FLT x20 = x17 * obj_qk;
 	const GEN_FLT x21 = x20 * obj_qj;
@@ -4674,9 +4671,10 @@ static inline FLT gen_reproject_axis_x_axis_angle(const LinmathAxisAnglePose *ob
 	const GEN_FLT x34 = ((x33 + (-1 * x32)) * x28) + (x27 * (x10 + x6)) + (x24 * (x7 + (x0 * x8))) + lh_pz;
 	const GEN_FLT x35 = -1 * x34;
 	const GEN_FLT x36 = ((x30 + (-1 * x29)) * x27) + ((x33 + x32) * x24) + (x28 * (x7 + (x2 * x8))) + lh_px;
-	const GEN_FLT x37 = (-1 * atan2(x36, x35)) + (-1 * phase_0) +
-						(-1 * asin(pow((pow(x36, 2) + pow(x34, 2)), -1.0 / 2.0) * x31 * tilt_0));
-	return x37 + (-1 * cos(1.5707963267949 + x37 + gibPhase_0) * gibMag_0) + (pow(atan2(x31, x35), 2) * curve_0);
+	const GEN_FLT x37 =
+		(-1 * atan2(x36, x35)) + (-1 * phase_0) + (-1 * asin((1. / sqrt((x36 * x36) + (x34 * x34))) * x31 * tilt_0));
+	return x37 + (-1 * cos(1.5707963267949 + x37 + gibPhase_0) * gibMag_0) +
+		   ((atan2(x31, x35) * atan2(x31, x35)) * curve_0);
 }
 
 // Jacobian of reproject_axis_x wrt [obj_px, obj_py, obj_pz, obj_qi, obj_qj, obj_qk]
@@ -4705,29 +4703,29 @@ static inline void gen_reproject_axis_x_jac_obj_p_axis_angle(FLT *out, const Lin
 	const GEN_FLT gibMag_0 = (*bsc0).gibmag;
 	const GEN_FLT ogeeMag_0 = (*bsc0).ogeephase;
 	const GEN_FLT ogeePhase_0 = (*bsc0).ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
-	const GEN_FLT x5 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x4 = sqrt(x3);
+	const GEN_FLT x5 = (1. / x4) * sin(x4);
 	const GEN_FLT x6 = x5 * lh_qj;
 	const GEN_FLT x7 = cos(x4);
-	const GEN_FLT x8 = pow(x3, -1) * (1 + (-1 * x7));
+	const GEN_FLT x8 = (1. / x3) * (1 + (-1 * x7));
 	const GEN_FLT x9 = x8 * lh_qk * lh_qi;
 	const GEN_FLT x10 = x9 + (-1 * x6);
 	const GEN_FLT x11 = x9 + x6;
-	const GEN_FLT x12 = pow(obj_qk, 2);
-	const GEN_FLT x13 = pow(obj_qj, 2);
-	const GEN_FLT x14 = pow(obj_qi, 2);
+	const GEN_FLT x12 = obj_qk * obj_qk;
+	const GEN_FLT x13 = obj_qj * obj_qj;
+	const GEN_FLT x14 = obj_qi * obj_qi;
 	const GEN_FLT x15 = 1e-10 + x14 + x13 + x12;
-	const GEN_FLT x16 = pow(x15, -1);
-	const GEN_FLT x17 = pow(x15, 1.0 / 2.0);
+	const GEN_FLT x16 = 1. / x15;
+	const GEN_FLT x17 = sqrt(x15);
 	const GEN_FLT x18 = cos(x17);
 	const GEN_FLT x19 = 1 + (-1 * x18);
 	const GEN_FLT x20 = x19 * x16;
 	const GEN_FLT x21 = sin(x17);
-	const GEN_FLT x22 = x21 * pow(x17, -1);
+	const GEN_FLT x22 = x21 * (1. / x17);
 	const GEN_FLT x23 = x22 * obj_qi;
 	const GEN_FLT x24 = x20 * obj_qj;
 	const GEN_FLT x25 = x24 * obj_qk;
@@ -4753,12 +4751,12 @@ static inline void gen_reproject_axis_x_jac_obj_p_axis_angle(FLT *out, const Lin
 	const GEN_FLT x45 = x36 * lh_qk;
 	const GEN_FLT x46 = x45 + x44;
 	const GEN_FLT x47 = (x40 * x10) + (x46 * x34) + (x43 * x30) + lh_pz;
-	const GEN_FLT x48 = pow(x47, 2);
-	const GEN_FLT x49 = pow(x48, -1);
+	const GEN_FLT x48 = x47 * x47;
+	const GEN_FLT x49 = 1. / x48;
 	const GEN_FLT x50 = x42 * x49;
-	const GEN_FLT x51 = pow(x47, -1);
-	const GEN_FLT x52 = x48 + pow(x42, 2);
-	const GEN_FLT x53 = pow(x52, -1);
+	const GEN_FLT x51 = 1. / x47;
+	const GEN_FLT x52 = x48 + (x42 * x42);
+	const GEN_FLT x53 = 1. / x52;
 	const GEN_FLT x54 = x53 * x48;
 	const GEN_FLT x55 = 2 * x42;
 	const GEN_FLT x56 = 2 * x47;
@@ -4766,24 +4764,24 @@ static inline void gen_reproject_axis_x_jac_obj_p_axis_angle(FLT *out, const Lin
 	const GEN_FLT x58 = x7 + (x1 * x8);
 	const GEN_FLT x59 = x37 + x35;
 	const GEN_FLT x60 = (x59 * x40) + lh_py + (x58 * x34) + (x57 * x30);
-	const GEN_FLT x61 = 1.0 / 2.0 * x60 * pow(x52, -3.0 / 2.0) * tilt_0;
-	const GEN_FLT x62 = pow(x52, -1.0 / 2.0) * tilt_0;
-	const GEN_FLT x63 = pow(x60, 2);
-	const GEN_FLT x64 = pow((1 + (-1 * x63 * x53 * pow(tilt_0, 2))), -1.0 / 2.0);
+	const GEN_FLT x61 = 1.0 / 2.0 * x60 * (1. / (x52 * sqrt(x52))) * tilt_0;
+	const GEN_FLT x62 = (1. / sqrt(x52)) * tilt_0;
+	const GEN_FLT x63 = x60 * x60;
+	const GEN_FLT x64 = 1. / sqrt(1 + (-1 * x63 * x53 * (tilt_0 * tilt_0)));
 	const GEN_FLT x65 = (-1 * x64 * ((x62 * x59) + (-1 * ((x56 * x10) + (x55 * x41)) * x61))) +
 						(-1 * ((-1 * x51 * x41) + (x50 * x10)) * x54);
 	const GEN_FLT x66 = -1 * x47;
 	const GEN_FLT x67 =
 		sin(1.5707963267949 + (-1 * phase_0) + (-1 * atan2(x42, x66)) + (-1 * asin(x60 * x62)) + gibPhase_0) * gibMag_0;
 	const GEN_FLT x68 = x60 * x49;
-	const GEN_FLT x69 = 2 * pow((x48 + x63), -1) * x48 * atan2(x60, x66) * curve_0;
+	const GEN_FLT x69 = 2 * (1. / (x48 + x63)) * x48 * atan2(x60, x66) * curve_0;
 	const GEN_FLT x70 = (-1 * x64 * ((x62 * x58) + (-1 * ((x56 * x46) + (x55 * x38)) * x61))) +
 						(-1 * ((-1 * x51 * x38) + (x50 * x46)) * x54);
 	const GEN_FLT x71 = (-1 * x64 * ((x62 * x57) + (-1 * ((x56 * x43) + (x55 * x11)) * x61))) +
 						(-1 * ((-1 * x51 * x11) + (x50 * x43)) * x54);
-	const GEN_FLT x72 = pow(obj_qi, 3);
-	const GEN_FLT x73 = x21 * pow(x15, -3.0 / 2.0);
-	const GEN_FLT x74 = 2 * pow(x15, -2) * x19;
+	const GEN_FLT x72 = obj_qi * obj_qi * obj_qi;
+	const GEN_FLT x73 = x21 * (1. / (x15 * sqrt(x15)));
+	const GEN_FLT x74 = 2 * (1. / (x15 * x15)) * x19;
 	const GEN_FLT x75 = x73 * x14;
 	const GEN_FLT x76 = x74 * obj_qj;
 	const GEN_FLT x77 = (-1 * x76 * x14) + (x75 * obj_qj);
@@ -4826,7 +4824,7 @@ static inline void gen_reproject_axis_x_jac_obj_p_axis_angle(FLT *out, const Lin
 	const GEN_FLT x112 = x80 * obj_qj;
 	const GEN_FLT x113 = (-1 * x99) + x112;
 	const GEN_FLT x114 = x97 + x28;
-	const GEN_FLT x115 = pow(obj_qj, 3);
+	const GEN_FLT x115 = obj_qj * obj_qj * obj_qj;
 	const GEN_FLT x116 = (-1 * x86 * x13) + (x95 * obj_qk);
 	const GEN_FLT x117 = x116 + x85;
 	const GEN_FLT x118 = ((x103 + x117) * sensor_z) +
@@ -4851,7 +4849,7 @@ static inline void gen_reproject_axis_x_jac_obj_p_axis_angle(FLT *out, const Lin
 	const GEN_FLT x132 = x122 + x24;
 	const GEN_FLT x133 =
 		((x132 + x84) * sensor_z) + ((x116 + x39) * sensor_y) + ((x104 + (-1 * x105) + x129) * sensor_x);
-	const GEN_FLT x134 = pow(obj_qk, 3);
+	const GEN_FLT x134 = obj_qk * obj_qk * obj_qk;
 	const GEN_FLT x135 = ((x39 + (x73 * x134) + (-1 * x74 * x134) + (2 * x85)) * sensor_z) + ((x132 + x94) * sensor_y) +
 						 ((x119 + x130) * sensor_x);
 	const GEN_FLT x136 = (x43 * x135) + (x46 * x133) + (x10 * x131);
@@ -4893,27 +4891,27 @@ static inline void gen_reproject_axis_x_jac_sensor_pt_axis_angle(FLT *out, const
 	const GEN_FLT gibMag_0 = (*bsc0).gibmag;
 	const GEN_FLT ogeeMag_0 = (*bsc0).ogeephase;
 	const GEN_FLT ogeePhase_0 = (*bsc0).ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
-	const GEN_FLT x5 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x4 = sqrt(x3);
+	const GEN_FLT x5 = (1. / x4) * sin(x4);
 	const GEN_FLT x6 = x5 * lh_qj;
 	const GEN_FLT x7 = cos(x4);
-	const GEN_FLT x8 = pow(x3, -1) * (1 + (-1 * x7));
+	const GEN_FLT x8 = (1. / x3) * (1 + (-1 * x7));
 	const GEN_FLT x9 = x8 * lh_qi;
 	const GEN_FLT x10 = x9 * lh_qk;
 	const GEN_FLT x11 = x10 + (-1 * x6);
-	const GEN_FLT x12 = pow(obj_qi, 2);
-	const GEN_FLT x13 = pow(obj_qk, 2);
-	const GEN_FLT x14 = pow(obj_qj, 2);
+	const GEN_FLT x12 = obj_qi * obj_qi;
+	const GEN_FLT x13 = obj_qk * obj_qk;
+	const GEN_FLT x14 = obj_qj * obj_qj;
 	const GEN_FLT x15 = 1e-10 + x12 + x14 + x13;
-	const GEN_FLT x16 = pow(x15, 1.0 / 2.0);
+	const GEN_FLT x16 = sqrt(x15);
 	const GEN_FLT x17 = cos(x16);
-	const GEN_FLT x18 = pow(x15, -1) * (1 + (-1 * x17));
+	const GEN_FLT x18 = (1. / x15) * (1 + (-1 * x17));
 	const GEN_FLT x19 = x17 + (x12 * x18);
-	const GEN_FLT x20 = pow(x16, -1) * sin(x16);
+	const GEN_FLT x20 = (1. / x16) * sin(x16);
 	const GEN_FLT x21 = x20 * obj_qk;
 	const GEN_FLT x22 = x18 * obj_qj * obj_qi;
 	const GEN_FLT x23 = x22 + x21;
@@ -4944,32 +4942,32 @@ static inline void gen_reproject_axis_x_jac_sensor_pt_axis_angle(FLT *out, const
 	const GEN_FLT x48 = x7 + (x2 * x8);
 	const GEN_FLT x49 = (x47 * x48) + (x41 * x44) + (x33 * x38) + lh_px;
 	const GEN_FLT x50 = (x47 * x11) + (x31 * x38) + (x41 * x26) + lh_pz;
-	const GEN_FLT x51 = pow(x50, 2);
-	const GEN_FLT x52 = pow(x51, -1);
+	const GEN_FLT x51 = x50 * x50;
+	const GEN_FLT x52 = 1. / x51;
 	const GEN_FLT x53 = x52 * x49;
 	const GEN_FLT x54 = (x30 * x33) + (x44 * x23) + (x48 * x19);
-	const GEN_FLT x55 = pow(x50, -1);
-	const GEN_FLT x56 = x51 + pow(x49, 2);
-	const GEN_FLT x57 = pow(x56, -1);
+	const GEN_FLT x55 = 1. / x50;
+	const GEN_FLT x56 = x51 + (x49 * x49);
+	const GEN_FLT x57 = 1. / x56;
 	const GEN_FLT x58 = x51 * x57;
 	const GEN_FLT x59 = x25 + (-1 * x24);
 	const GEN_FLT x60 = x7 + (x1 * x8);
 	const GEN_FLT x61 = x43 + x42;
 	const GEN_FLT x62 = (x61 * x47) + lh_py + (x60 * x41) + (x59 * x38);
-	const GEN_FLT x63 = pow(x62, 2);
-	const GEN_FLT x64 = pow((1 + (-1 * x63 * x57 * pow(tilt_0, 2))), -1.0 / 2.0);
+	const GEN_FLT x63 = x62 * x62;
+	const GEN_FLT x64 = 1. / sqrt(1 + (-1 * x63 * x57 * (tilt_0 * tilt_0)));
 	const GEN_FLT x65 = 2 * x49;
 	const GEN_FLT x66 = 2 * x50;
-	const GEN_FLT x67 = 1.0 / 2.0 * x62 * pow(x56, -3.0 / 2.0) * tilt_0;
+	const GEN_FLT x67 = 1.0 / 2.0 * x62 * (1. / (x56 * sqrt(x56))) * tilt_0;
 	const GEN_FLT x68 = (x59 * x30) + (x60 * x23) + (x61 * x19);
-	const GEN_FLT x69 = pow(x56, -1.0 / 2.0) * tilt_0;
+	const GEN_FLT x69 = (1. / sqrt(x56)) * tilt_0;
 	const GEN_FLT x70 = (-1 * x64 * ((x68 * x69) + (-1 * ((x66 * x32) + (x65 * x54)) * x67))) +
 						(-1 * ((-1 * x54 * x55) + (x53 * x32)) * x58);
 	const GEN_FLT x71 = -1 * x50;
 	const GEN_FLT x72 =
 		sin(1.5707963267949 + (-1 * atan2(x49, x71)) + (-1 * phase_0) + (-1 * asin(x62 * x69)) + gibPhase_0) * gibMag_0;
 	const GEN_FLT x73 = x62 * x52;
-	const GEN_FLT x74 = 2 * pow((x51 + x63), -1) * x51 * atan2(x62, x71) * curve_0;
+	const GEN_FLT x74 = 2 * (1. / (x51 + x63)) * x51 * atan2(x62, x71) * curve_0;
 	const GEN_FLT x75 = (x40 * x26) + (x31 * x37) + (x46 * x11);
 	const GEN_FLT x76 = (x33 * x37) + (x40 * x44) + (x46 * x48);
 	const GEN_FLT x77 = (x59 * x37) + (x60 * x40) + (x61 * x46);
@@ -5011,28 +5009,28 @@ static inline void gen_reproject_axis_x_jac_lh_p_axis_angle(FLT *out, const Linm
 	const GEN_FLT gibMag_0 = (*bsc0).gibmag;
 	const GEN_FLT ogeeMag_0 = (*bsc0).ogeephase;
 	const GEN_FLT ogeePhase_0 = (*bsc0).ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
+	const GEN_FLT x4 = sqrt(x3);
 	const GEN_FLT x5 = sin(x4);
-	const GEN_FLT x6 = pow(x4, -1) * x5;
+	const GEN_FLT x6 = (1. / x4) * x5;
 	const GEN_FLT x7 = x6 * lh_qj;
 	const GEN_FLT x8 = cos(x4);
 	const GEN_FLT x9 = 1 + (-1 * x8);
-	const GEN_FLT x10 = pow(x3, -1);
+	const GEN_FLT x10 = 1. / x3;
 	const GEN_FLT x11 = x9 * x10;
 	const GEN_FLT x12 = x11 * lh_qk;
 	const GEN_FLT x13 = x12 * lh_qi;
-	const GEN_FLT x14 = pow(obj_qk, 2);
-	const GEN_FLT x15 = pow(obj_qj, 2);
-	const GEN_FLT x16 = pow(obj_qi, 2);
+	const GEN_FLT x14 = obj_qk * obj_qk;
+	const GEN_FLT x15 = obj_qj * obj_qj;
+	const GEN_FLT x16 = obj_qi * obj_qi;
 	const GEN_FLT x17 = 1e-10 + x16 + x15 + x14;
-	const GEN_FLT x18 = pow(x17, 1.0 / 2.0);
+	const GEN_FLT x18 = sqrt(x17);
 	const GEN_FLT x19 = cos(x18);
-	const GEN_FLT x20 = pow(x17, -1) * (1 + (-1 * x19));
-	const GEN_FLT x21 = pow(x18, -1) * sin(x18);
+	const GEN_FLT x20 = (1. / x17) * (1 + (-1 * x19));
+	const GEN_FLT x21 = (1. / x18) * sin(x18);
 	const GEN_FLT x22 = x21 * obj_qi;
 	const GEN_FLT x23 = x20 * obj_qk * obj_qj;
 	const GEN_FLT x24 = x21 * obj_qj;
@@ -5055,28 +5053,28 @@ static inline void gen_reproject_axis_x_jac_lh_p_axis_angle(FLT *out, const Linm
 	const GEN_FLT x38 = x33 * lh_qk;
 	const GEN_FLT x39 = -1 * x7;
 	const GEN_FLT x40 = ((x13 + x39) * x35) + ((x38 + x37) * x30) + (x27 * (x8 + (x0 * x11))) + lh_pz;
-	const GEN_FLT x41 = pow(x40, 2);
-	const GEN_FLT x42 = x41 + pow(x36, 2);
-	const GEN_FLT x43 = pow(x42, -1);
+	const GEN_FLT x41 = x40 * x40;
+	const GEN_FLT x42 = x41 + (x36 * x36);
+	const GEN_FLT x43 = 1. / x42;
 	const GEN_FLT x44 = -1 * x37;
 	const GEN_FLT x45 = (x30 * (x8 + (x1 * x11))) + ((x34 + x31) * x35) + lh_py + ((x38 + x44) * x27);
-	const GEN_FLT x46 = pow(x45, 2);
-	const GEN_FLT x47 = pow((1 + (-1 * x43 * x46 * pow(tilt_0, 2))), -1.0 / 2.0);
-	const GEN_FLT x48 = pow(x42, -3.0 / 2.0) * x45 * tilt_0;
+	const GEN_FLT x46 = x45 * x45;
+	const GEN_FLT x47 = 1. / sqrt(1 + (-1 * x43 * x46 * (tilt_0 * tilt_0)));
+	const GEN_FLT x48 = (1. / (x42 * sqrt(x42))) * x45 * tilt_0;
 	const GEN_FLT x49 = x47 * x48;
 	const GEN_FLT x50 = (x49 * x36) + (x40 * x43);
-	const GEN_FLT x51 = pow(x42, -1.0 / 2.0) * tilt_0;
+	const GEN_FLT x51 = (1. / sqrt(x42)) * tilt_0;
 	const GEN_FLT x52 = -1 * x40;
 	const GEN_FLT x53 =
 		sin(1.5707963267949 + (-1 * atan2(x36, x52)) + (-1 * phase_0) + (-1 * asin(x51 * x45)) + gibPhase_0) * gibMag_0;
 	const GEN_FLT x54 = x51 * x47;
 	const GEN_FLT x55 = 2 * x40;
-	const GEN_FLT x56 = pow((x41 + x46), -1) * atan2(x45, x52) * curve_0;
+	const GEN_FLT x56 = (1. / (x41 + x46)) * atan2(x45, x52) * curve_0;
 	const GEN_FLT x57 = (x40 * x49) + (-1 * x43 * x36);
 	const GEN_FLT x58 = 2 * x56;
-	const GEN_FLT x59 = pow(x3, -3.0 / 2.0) * x5;
+	const GEN_FLT x59 = (1. / (x3 * sqrt(x3))) * x5;
 	const GEN_FLT x60 = x2 * x59;
-	const GEN_FLT x61 = 2 * pow(x3, -2) * x9;
+	const GEN_FLT x61 = 2 * (1. / (x3 * x3)) * x9;
 	const GEN_FLT x62 = x61 * lh_qk;
 	const GEN_FLT x63 = (-1 * x2 * x62) + (x60 * lh_qk);
 	const GEN_FLT x64 = x63 + x12;
@@ -5093,10 +5091,10 @@ static inline void gen_reproject_axis_x_jac_lh_p_axis_angle(FLT *out, const Linm
 	const GEN_FLT x75 = x0 * x61;
 	const GEN_FLT x76 = (-1 * x75 * lh_qi) + (x74 * lh_qi);
 	const GEN_FLT x77 = ((x76 + x44) * x27) + (x30 * (x73 + x71 + (-1 * x60))) + ((x70 + x64) * x35);
-	const GEN_FLT x78 = pow(x41, -1);
+	const GEN_FLT x78 = 1. / x41;
 	const GEN_FLT x79 = x78 * x36;
 	const GEN_FLT x80 = x11 * lh_qi;
-	const GEN_FLT x81 = pow(lh_qi, 3);
+	const GEN_FLT x81 = lh_qi * lh_qi * lh_qi;
 	const GEN_FLT x82 = (-1 * x2 * x61 * lh_qj) + (x60 * lh_qj);
 	const GEN_FLT x83 = x82 + x33;
 	const GEN_FLT x84 = x59 * lh_qk * lh_qi;
@@ -5106,7 +5104,7 @@ static inline void gen_reproject_axis_x_jac_lh_p_axis_angle(FLT *out, const Linm
 	const GEN_FLT x88 = x69 + (-1 * x66);
 	const GEN_FLT x89 =
 		((x88 + x64) * x27) + ((x87 + x83) * x30) + (((-1 * x81 * x61) + (x81 * x59) + (2 * x80) + x44) * x35);
-	const GEN_FLT x90 = pow(x40, -1);
+	const GEN_FLT x90 = 1. / x40;
 	const GEN_FLT x91 = x41 * x43;
 	const GEN_FLT x92 = 2 * x36;
 	const GEN_FLT x93 = 1.0 / 2.0 * x48;
@@ -5129,7 +5127,7 @@ static inline void gen_reproject_axis_x_jac_lh_p_axis_angle(FLT *out, const Linm
 	const GEN_FLT x109 = x85 * lh_qj;
 	const GEN_FLT x110 = (-1 * x109) + x108;
 	const GEN_FLT x111 = (x27 * (x73 + x102 + (-1 * x95))) + ((x110 + x107) * x30) + ((x82 + x39) * x35);
-	const GEN_FLT x112 = pow(lh_qj, 3);
+	const GEN_FLT x112 = lh_qj * lh_qj * lh_qj;
 	const GEN_FLT x113 = x109 + (-1 * x108);
 	const GEN_FLT x114 =
 		(x27 * (x104 + x70)) + ((x113 + x107) * x35) + (((-1 * x61 * x112) + (x59 * x112) + (2 * x33) + x39) * x30);
@@ -5137,7 +5135,7 @@ static inline void gen_reproject_axis_x_jac_lh_p_axis_angle(FLT *out, const Linm
 						 (-1 * ((-1 * x90 * x111) + (x79 * x106)) * x91);
 	const GEN_FLT x116 = x76 + x80;
 	const GEN_FLT x117 = x105 + x33;
-	const GEN_FLT x118 = pow(lh_qk, 3);
+	const GEN_FLT x118 = lh_qk * lh_qk * lh_qk;
 	const GEN_FLT x119 =
 		(((x59 * x118) + (-1 * x61 * x118) + (2 * x12) + x32) * x27) + (x30 * (x117 + x94)) + ((x116 + x110) * x35);
 	const GEN_FLT x120 = x0 * x67;
@@ -5179,25 +5177,25 @@ static inline void gen_reproject_axis_x_jac_bsc0_axis_angle(FLT *out, const Linm
 	const GEN_FLT gibMag_0 = (*bsc0).gibmag;
 	const GEN_FLT ogeeMag_0 = (*bsc0).ogeephase;
 	const GEN_FLT ogeePhase_0 = (*bsc0).ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
-	const GEN_FLT x5 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x4 = sqrt(x3);
+	const GEN_FLT x5 = (1. / x4) * sin(x4);
 	const GEN_FLT x6 = x5 * lh_qi;
 	const GEN_FLT x7 = cos(x4);
-	const GEN_FLT x8 = pow(x3, -1) * (1 + (-1 * x7));
+	const GEN_FLT x8 = (1. / x3) * (1 + (-1 * x7));
 	const GEN_FLT x9 = x8 * lh_qk;
 	const GEN_FLT x10 = x9 * lh_qj;
-	const GEN_FLT x11 = pow(obj_qk, 2);
-	const GEN_FLT x12 = pow(obj_qj, 2);
-	const GEN_FLT x13 = pow(obj_qi, 2);
+	const GEN_FLT x11 = obj_qk * obj_qk;
+	const GEN_FLT x12 = obj_qj * obj_qj;
+	const GEN_FLT x13 = obj_qi * obj_qi;
 	const GEN_FLT x14 = 1e-10 + x13 + x12 + x11;
-	const GEN_FLT x15 = pow(x14, 1.0 / 2.0);
+	const GEN_FLT x15 = sqrt(x14);
 	const GEN_FLT x16 = cos(x15);
-	const GEN_FLT x17 = pow(x14, -1) * (1 + (-1 * x16));
-	const GEN_FLT x18 = pow(x15, -1) * sin(x15);
+	const GEN_FLT x17 = (1. / x14) * (1 + (-1 * x16));
+	const GEN_FLT x18 = (1. / x15) * sin(x15);
 	const GEN_FLT x19 = x18 * obj_qi;
 	const GEN_FLT x20 = x17 * obj_qj;
 	const GEN_FLT x21 = x20 * obj_qk;
@@ -5218,16 +5216,16 @@ static inline void gen_reproject_axis_x_jac_bsc0_axis_angle(FLT *out, const Linm
 	const GEN_FLT x33 = x9 * lh_qi;
 	const GEN_FLT x34 = ((x33 + (-1 * x32)) * x28) + (x27 * (x10 + x6)) + (x24 * (x7 + (x0 * x8))) + lh_pz;
 	const GEN_FLT x35 = ((x30 + (-1 * x29)) * x27) + ((x33 + x32) * x24) + (x28 * (x7 + (x2 * x8))) + lh_px;
-	const GEN_FLT x36 = pow(x35, 2) + pow(x34, 2);
-	const GEN_FLT x37 = x31 * pow(x36, -1.0 / 2.0);
+	const GEN_FLT x36 = (x35 * x35) + (x34 * x34);
+	const GEN_FLT x37 = x31 * (1. / sqrt(x36));
 	const GEN_FLT x38 = -1 * x34;
 	const GEN_FLT x39 =
 		1.5707963267949 + (-1 * atan2(x35, x38)) + (-1 * phase_0) + (-1 * asin(x37 * tilt_0)) + gibPhase_0;
 	const GEN_FLT x40 = sin(x39) * gibMag_0;
-	const GEN_FLT x41 = x37 * pow((1 + (-1 * pow(x31, 2) * pow(x36, -1) * pow(tilt_0, 2))), -1.0 / 2.0);
+	const GEN_FLT x41 = x37 * (1. / sqrt(1 + (-1 * (x31 * x31) * (1. / x36) * (tilt_0 * tilt_0))));
 	out[0] = -1 + (-1 * x40);
 	out[1] = (-1 * x40 * x41) + (-1 * x41);
-	out[2] = pow(atan2(x31, x38), 2);
+	out[2] = atan2(x31, x38) * atan2(x31, x38);
 	out[3] = x40;
 	out[4] = -1 * cos(x39);
 	out[5] = 0;
@@ -5258,24 +5256,24 @@ static inline FLT gen_reproject_axis_y_axis_angle(const LinmathAxisAnglePose *ob
 	const GEN_FLT gibMag_1 = (*bsc1).gibmag;
 	const GEN_FLT ogeeMag_1 = (*bsc1).ogeephase;
 	const GEN_FLT ogeePhase_1 = (*bsc1).ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
-	const GEN_FLT x5 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x4 = sqrt(x3);
+	const GEN_FLT x5 = (1. / x4) * sin(x4);
 	const GEN_FLT x6 = x5 * lh_qj;
 	const GEN_FLT x7 = cos(x4);
-	const GEN_FLT x8 = pow(x3, -1) * (1 + (-1 * x7));
+	const GEN_FLT x8 = (1. / x3) * (1 + (-1 * x7));
 	const GEN_FLT x9 = x8 * lh_qk * lh_qi;
-	const GEN_FLT x10 = pow(obj_qk, 2);
-	const GEN_FLT x11 = pow(obj_qj, 2);
-	const GEN_FLT x12 = pow(obj_qi, 2);
+	const GEN_FLT x10 = obj_qk * obj_qk;
+	const GEN_FLT x11 = obj_qj * obj_qj;
+	const GEN_FLT x12 = obj_qi * obj_qi;
 	const GEN_FLT x13 = 1e-10 + x12 + x11 + x10;
-	const GEN_FLT x14 = pow(x13, 1.0 / 2.0);
+	const GEN_FLT x14 = sqrt(x13);
 	const GEN_FLT x15 = cos(x14);
-	const GEN_FLT x16 = pow(x13, -1) * (1 + (-1 * x15));
-	const GEN_FLT x17 = pow(x14, -1) * sin(x14);
+	const GEN_FLT x16 = (1. / x13) * (1 + (-1 * x15));
+	const GEN_FLT x17 = (1. / x14) * sin(x14);
 	const GEN_FLT x18 = x17 * obj_qi;
 	const GEN_FLT x19 = x16 * obj_qk;
 	const GEN_FLT x20 = x19 * obj_qj;
@@ -5299,8 +5297,9 @@ static inline FLT gen_reproject_axis_y_axis_angle(const LinmathAxisAnglePose *ob
 	const GEN_FLT x35 = -1 * x34;
 	const GEN_FLT x36 = ((x29 + x27) * x30) + lh_py + (x26 * (x7 + (x1 * x8))) + ((x33 + (-1 * x32)) * x23);
 	const GEN_FLT x37 = (-1 * atan2(-1 * x36, x35)) + (-1 * phase_1) +
-						(-1 * asin(pow((pow(x36, 2) + pow(x34, 2)), -1.0 / 2.0) * x31 * tilt_1));
-	return x37 + (-1 * cos(1.5707963267949 + x37 + gibPhase_1) * gibMag_1) + (pow(atan2(x31, x35), 2) * curve_1);
+						(-1 * asin((1. / sqrt((x36 * x36) + (x34 * x34))) * x31 * tilt_1));
+	return x37 + (-1 * cos(1.5707963267949 + x37 + gibPhase_1) * gibMag_1) +
+		   ((atan2(x31, x35) * atan2(x31, x35)) * curve_1);
 }
 
 // Jacobian of reproject_axis_y wrt [obj_px, obj_py, obj_pz, obj_qi, obj_qj, obj_qk]
@@ -5329,32 +5328,32 @@ static inline void gen_reproject_axis_y_jac_obj_p_axis_angle(FLT *out, const Lin
 	const GEN_FLT gibMag_1 = (*bsc1).gibmag;
 	const GEN_FLT ogeeMag_1 = (*bsc1).ogeephase;
 	const GEN_FLT ogeePhase_1 = (*bsc1).ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
-	const GEN_FLT x5 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x4 = sqrt(x3);
+	const GEN_FLT x5 = (1. / x4) * sin(x4);
 	const GEN_FLT x6 = x5 * lh_qj;
 	const GEN_FLT x7 = cos(x4);
-	const GEN_FLT x8 = pow(x3, -1) * (1 + (-1 * x7));
+	const GEN_FLT x8 = (1. / x3) * (1 + (-1 * x7));
 	const GEN_FLT x9 = x8 * lh_qk * lh_qi;
 	const GEN_FLT x10 = x9 + (-1 * x6);
 	const GEN_FLT x11 = x5 * lh_qi;
 	const GEN_FLT x12 = x8 * lh_qj;
 	const GEN_FLT x13 = x12 * lh_qk;
 	const GEN_FLT x14 = x13 + (-1 * x11);
-	const GEN_FLT x15 = pow(obj_qk, 2);
-	const GEN_FLT x16 = pow(obj_qj, 2);
-	const GEN_FLT x17 = pow(obj_qi, 2);
+	const GEN_FLT x15 = obj_qk * obj_qk;
+	const GEN_FLT x16 = obj_qj * obj_qj;
+	const GEN_FLT x17 = obj_qi * obj_qi;
 	const GEN_FLT x18 = 1e-10 + x17 + x16 + x15;
-	const GEN_FLT x19 = pow(x18, -1);
-	const GEN_FLT x20 = pow(x18, 1.0 / 2.0);
+	const GEN_FLT x19 = 1. / x18;
+	const GEN_FLT x20 = sqrt(x18);
 	const GEN_FLT x21 = cos(x20);
 	const GEN_FLT x22 = 1 + (-1 * x21);
 	const GEN_FLT x23 = x22 * x19;
 	const GEN_FLT x24 = sin(x20);
-	const GEN_FLT x25 = x24 * pow(x20, -1);
+	const GEN_FLT x25 = x24 * (1. / x20);
 	const GEN_FLT x26 = x25 * obj_qi;
 	const GEN_FLT x27 = x23 * obj_qk;
 	const GEN_FLT x28 = x27 * obj_qj;
@@ -5377,23 +5376,23 @@ static inline void gen_reproject_axis_y_jac_obj_p_axis_angle(FLT *out, const Lin
 	const GEN_FLT x45 = x7 + (x0 * x8);
 	const GEN_FLT x46 = x13 + x11;
 	const GEN_FLT x47 = (x40 * x10) + (x46 * x37) + (x45 * x32) + lh_pz;
-	const GEN_FLT x48 = pow(x47, 2);
-	const GEN_FLT x49 = pow(x48, -1);
+	const GEN_FLT x48 = x47 * x47;
+	const GEN_FLT x49 = 1. / x48;
 	const GEN_FLT x50 = x44 * x49;
-	const GEN_FLT x51 = pow(x47, -1);
-	const GEN_FLT x52 = pow(x44, 2) + x48;
-	const GEN_FLT x53 = pow(x52, -1);
+	const GEN_FLT x51 = 1. / x47;
+	const GEN_FLT x52 = (x44 * x44) + x48;
+	const GEN_FLT x53 = 1. / x52;
 	const GEN_FLT x54 = x53 * x48;
 	const GEN_FLT x55 = x9 + x6;
 	const GEN_FLT x56 = x42 + (-1 * x41);
 	const GEN_FLT x57 = x7 + (x2 * x8);
 	const GEN_FLT x58 = (x57 * x40) + (x56 * x37) + (x55 * x32) + lh_px;
-	const GEN_FLT x59 = pow(x58, 2);
-	const GEN_FLT x60 = pow((1 + (-1 * x53 * x59 * pow(tilt_1, 2))), -1.0 / 2.0);
+	const GEN_FLT x59 = x58 * x58;
+	const GEN_FLT x60 = 1. / sqrt(1 + (-1 * x53 * x59 * (tilt_1 * tilt_1)));
 	const GEN_FLT x61 = 2 * x44;
 	const GEN_FLT x62 = 2 * x47;
-	const GEN_FLT x63 = 1.0 / 2.0 * pow(x52, -3.0 / 2.0) * x58 * tilt_1;
-	const GEN_FLT x64 = pow(x52, -1.0 / 2.0) * tilt_1;
+	const GEN_FLT x63 = 1.0 / 2.0 * (1. / (x52 * sqrt(x52))) * x58 * tilt_1;
+	const GEN_FLT x64 = (1. / sqrt(x52)) * tilt_1;
 	const GEN_FLT x65 = (-1 * x60 * ((x64 * x57) + (-1 * ((x62 * x10) + (x61 * x43)) * x63))) +
 						(-1 * ((x51 * x43) + (-1 * x50 * x10)) * x54);
 	const GEN_FLT x66 = -1 * x47;
@@ -5401,14 +5400,14 @@ static inline void gen_reproject_axis_y_jac_obj_p_axis_angle(FLT *out, const Lin
 		sin(1.5707963267949 + (-1 * atan2(-1 * x44, x66)) + (-1 * phase_1) + (-1 * asin(x64 * x58)) + gibPhase_1) *
 		gibMag_1;
 	const GEN_FLT x68 = x58 * x49;
-	const GEN_FLT x69 = 2 * pow((x48 + x59), -1) * x48 * atan2(x58, x66) * curve_1;
+	const GEN_FLT x69 = 2 * (1. / (x48 + x59)) * x48 * atan2(x58, x66) * curve_1;
 	const GEN_FLT x70 = (-1 * x60 * ((x64 * x56) + (-1 * ((x62 * x46) + (x61 * x38)) * x63))) +
 						(-1 * ((x51 * x38) + (-1 * x50 * x46)) * x54);
 	const GEN_FLT x71 = (-1 * x60 * ((x64 * x55) + (-1 * ((x62 * x45) + (x61 * x14)) * x63))) +
 						(-1 * ((x51 * x14) + (-1 * x50 * x45)) * x54);
-	const GEN_FLT x72 = pow(obj_qi, 3);
-	const GEN_FLT x73 = x24 * pow(x18, -3.0 / 2.0);
-	const GEN_FLT x74 = 2 * x22 * pow(x18, -2);
+	const GEN_FLT x72 = obj_qi * obj_qi * obj_qi;
+	const GEN_FLT x73 = x24 * (1. / (x18 * sqrt(x18)));
+	const GEN_FLT x74 = 2 * x22 * (1. / (x18 * x18));
 	const GEN_FLT x75 = x21 * x19;
 	const GEN_FLT x76 = x75 * obj_qk;
 	const GEN_FLT x77 = x76 * obj_qi;
@@ -5450,7 +5449,7 @@ static inline void gen_reproject_axis_y_jac_obj_p_axis_angle(FLT *out, const Lin
 	const GEN_FLT x111 = x76 * obj_qj;
 	const GEN_FLT x112 = (-1 * x97) + x111;
 	const GEN_FLT x113 = x95 + x35;
-	const GEN_FLT x114 = pow(obj_qj, 3);
+	const GEN_FLT x114 = obj_qj * obj_qj * obj_qj;
 	const GEN_FLT x115 = (-1 * x89 * x16) + (x94 * obj_qk);
 	const GEN_FLT x116 = x115 + x27;
 	const GEN_FLT x117 = ((x101 + x116) * sensor_z) +
@@ -5473,7 +5472,7 @@ static inline void gen_reproject_axis_y_jac_obj_p_axis_angle(FLT *out, const Lin
 	const GEN_FLT x130 = x121 + x81;
 	const GEN_FLT x131 =
 		((x80 + x130) * sensor_z) + ((x115 + x39) * sensor_y) + ((x102 + (-1 * x103) + x127) * sensor_x);
-	const GEN_FLT x132 = pow(obj_qk, 3);
+	const GEN_FLT x132 = obj_qk * obj_qk * obj_qk;
 	const GEN_FLT x133 = (((-1 * x74 * x132) + x39 + (x73 * x132) + (2 * x27)) * sensor_z) + ((x93 + x130) * sensor_y) +
 						 ((x118 + x128) * sensor_x);
 	const GEN_FLT x134 = (x45 * x133) + (x46 * x131) + (x10 * x129);
@@ -5515,27 +5514,27 @@ static inline void gen_reproject_axis_y_jac_sensor_pt_axis_angle(FLT *out, const
 	const GEN_FLT gibMag_1 = (*bsc1).gibmag;
 	const GEN_FLT ogeeMag_1 = (*bsc1).ogeephase;
 	const GEN_FLT ogeePhase_1 = (*bsc1).ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
-	const GEN_FLT x5 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x4 = sqrt(x3);
+	const GEN_FLT x5 = (1. / x4) * sin(x4);
 	const GEN_FLT x6 = x5 * lh_qj;
 	const GEN_FLT x7 = cos(x4);
-	const GEN_FLT x8 = pow(x3, -1) * (1 + (-1 * x7));
+	const GEN_FLT x8 = (1. / x3) * (1 + (-1 * x7));
 	const GEN_FLT x9 = x8 * lh_qk;
 	const GEN_FLT x10 = x9 * lh_qi;
 	const GEN_FLT x11 = x10 + (-1 * x6);
-	const GEN_FLT x12 = pow(obj_qi, 2);
-	const GEN_FLT x13 = pow(obj_qk, 2);
-	const GEN_FLT x14 = pow(obj_qj, 2);
+	const GEN_FLT x12 = obj_qi * obj_qi;
+	const GEN_FLT x13 = obj_qk * obj_qk;
+	const GEN_FLT x14 = obj_qj * obj_qj;
 	const GEN_FLT x15 = 1e-10 + x12 + x14 + x13;
-	const GEN_FLT x16 = pow(x15, 1.0 / 2.0);
+	const GEN_FLT x16 = sqrt(x15);
 	const GEN_FLT x17 = cos(x16);
-	const GEN_FLT x18 = pow(x15, -1) * (1 + (-1 * x17));
+	const GEN_FLT x18 = (1. / x15) * (1 + (-1 * x17));
 	const GEN_FLT x19 = x17 + (x12 * x18);
-	const GEN_FLT x20 = pow(x16, -1) * sin(x16);
+	const GEN_FLT x20 = (1. / x16) * sin(x16);
 	const GEN_FLT x21 = x20 * obj_qk;
 	const GEN_FLT x22 = x18 * obj_qj * obj_qi;
 	const GEN_FLT x23 = x22 + x21;
@@ -5560,8 +5559,8 @@ static inline void gen_reproject_axis_y_jac_sensor_pt_axis_angle(FLT *out, const
 	const GEN_FLT x42 = x22 + (-1 * x21);
 	const GEN_FLT x43 = (x19 * sensor_x) + (x41 * sensor_z) + (x42 * sensor_y) + obj_px;
 	const GEN_FLT x44 = (x43 * x11) + (x31 * x37) + (x40 * x26) + lh_pz;
-	const GEN_FLT x45 = pow(x44, 2);
-	const GEN_FLT x46 = pow(x45, -1);
+	const GEN_FLT x45 = x44 * x44;
+	const GEN_FLT x46 = 1. / x45;
 	const GEN_FLT x47 = x25 + (-1 * x24);
 	const GEN_FLT x48 = x7 + (x1 * x8);
 	const GEN_FLT x49 = x5 * lh_qk;
@@ -5570,21 +5569,21 @@ static inline void gen_reproject_axis_y_jac_sensor_pt_axis_angle(FLT *out, const
 	const GEN_FLT x52 = lh_py + (x40 * x48) + (x51 * x43) + (x47 * x37);
 	const GEN_FLT x53 = x52 * x46;
 	const GEN_FLT x54 = (x47 * x30) + (x48 * x23) + (x51 * x19);
-	const GEN_FLT x55 = pow(x44, -1);
-	const GEN_FLT x56 = x45 + pow(x52, 2);
-	const GEN_FLT x57 = pow(x56, -1);
+	const GEN_FLT x55 = 1. / x44;
+	const GEN_FLT x56 = x45 + (x52 * x52);
+	const GEN_FLT x57 = 1. / x56;
 	const GEN_FLT x58 = x57 * x45;
 	const GEN_FLT x59 = x10 + x6;
 	const GEN_FLT x60 = x50 + (-1 * x49);
 	const GEN_FLT x61 = x7 + (x2 * x8);
 	const GEN_FLT x62 = (x61 * x43) + (x60 * x40) + (x59 * x37) + lh_px;
-	const GEN_FLT x63 = pow(x62, 2);
-	const GEN_FLT x64 = pow((1 + (-1 * x63 * x57 * pow(tilt_1, 2))), -1.0 / 2.0);
+	const GEN_FLT x63 = x62 * x62;
+	const GEN_FLT x64 = 1. / sqrt(1 + (-1 * x63 * x57 * (tilt_1 * tilt_1)));
 	const GEN_FLT x65 = 2 * x52;
 	const GEN_FLT x66 = 2 * x44;
-	const GEN_FLT x67 = 1.0 / 2.0 * x62 * pow(x56, -3.0 / 2.0) * tilt_1;
+	const GEN_FLT x67 = 1.0 / 2.0 * x62 * (1. / (x56 * sqrt(x56))) * tilt_1;
 	const GEN_FLT x68 = (x59 * x30) + (x60 * x23) + (x61 * x19);
-	const GEN_FLT x69 = pow(x56, -1.0 / 2.0) * tilt_1;
+	const GEN_FLT x69 = (1. / sqrt(x56)) * tilt_1;
 	const GEN_FLT x70 = (-1 * x64 * ((x68 * x69) + (-1 * ((x66 * x32) + (x65 * x54)) * x67))) +
 						(-1 * ((x54 * x55) + (-1 * x53 * x32)) * x58);
 	const GEN_FLT x71 = -1 * x44;
@@ -5592,7 +5591,7 @@ static inline void gen_reproject_axis_y_jac_sensor_pt_axis_angle(FLT *out, const
 		sin(1.5707963267949 + (-1 * atan2(-1 * x52, x71)) + (-1 * phase_1) + (-1 * asin(x62 * x69)) + gibPhase_1) *
 		gibMag_1;
 	const GEN_FLT x73 = x62 * x46;
-	const GEN_FLT x74 = 2 * pow((x45 + x63), -1) * x45 * atan2(x62, x71) * curve_1;
+	const GEN_FLT x74 = 2 * (1. / (x45 + x63)) * x45 * atan2(x62, x71) * curve_1;
 	const GEN_FLT x75 = (x31 * x36) + (x39 * x26) + (x42 * x11);
 	const GEN_FLT x76 = x75 * x46;
 	const GEN_FLT x77 = (x47 * x36) + (x48 * x39) + (x51 * x42);
@@ -5635,28 +5634,28 @@ static inline void gen_reproject_axis_y_jac_lh_p_axis_angle(FLT *out, const Linm
 	const GEN_FLT gibMag_1 = (*bsc1).gibmag;
 	const GEN_FLT ogeeMag_1 = (*bsc1).ogeephase;
 	const GEN_FLT ogeePhase_1 = (*bsc1).ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
+	const GEN_FLT x4 = sqrt(x3);
 	const GEN_FLT x5 = sin(x4);
-	const GEN_FLT x6 = pow(x4, -1) * x5;
+	const GEN_FLT x6 = (1. / x4) * x5;
 	const GEN_FLT x7 = x6 * lh_qj;
-	const GEN_FLT x8 = pow(x3, -1);
+	const GEN_FLT x8 = 1. / x3;
 	const GEN_FLT x9 = cos(x4);
 	const GEN_FLT x10 = 1 + (-1 * x9);
 	const GEN_FLT x11 = x8 * x10;
 	const GEN_FLT x12 = x11 * lh_qi;
 	const GEN_FLT x13 = x12 * lh_qk;
-	const GEN_FLT x14 = pow(obj_qk, 2);
-	const GEN_FLT x15 = pow(obj_qj, 2);
-	const GEN_FLT x16 = pow(obj_qi, 2);
+	const GEN_FLT x14 = obj_qk * obj_qk;
+	const GEN_FLT x15 = obj_qj * obj_qj;
+	const GEN_FLT x16 = obj_qi * obj_qi;
 	const GEN_FLT x17 = 1e-10 + x16 + x15 + x14;
-	const GEN_FLT x18 = pow(x17, 1.0 / 2.0);
+	const GEN_FLT x18 = sqrt(x17);
 	const GEN_FLT x19 = cos(x18);
-	const GEN_FLT x20 = pow(x17, -1) * (1 + (-1 * x19));
-	const GEN_FLT x21 = pow(x18, -1) * sin(x18);
+	const GEN_FLT x20 = (1. / x17) * (1 + (-1 * x19));
+	const GEN_FLT x21 = (1. / x18) * sin(x18);
 	const GEN_FLT x22 = x21 * obj_qi;
 	const GEN_FLT x23 = x20 * obj_qk * obj_qj;
 	const GEN_FLT x24 = x21 * obj_qj;
@@ -5674,35 +5673,35 @@ static inline void gen_reproject_axis_y_jac_lh_p_axis_angle(FLT *out, const Linm
 	const GEN_FLT x34 =
 		((x19 + (x20 * x16)) * sensor_x) + ((x29 + (-1 * x28)) * sensor_y) + ((x26 + x24) * sensor_z) + obj_px;
 	const GEN_FLT x35 = (x34 * (x9 + (x2 * x11))) + ((x33 + x32) * x30) + (x27 * (x13 + x7)) + lh_px;
-	const GEN_FLT x36 = pow(x35, 2);
+	const GEN_FLT x36 = x35 * x35;
 	const GEN_FLT x37 = x6 * lh_qi;
 	const GEN_FLT x38 = x11 * lh_qj;
 	const GEN_FLT x39 = x38 * lh_qk;
 	const GEN_FLT x40 = -1 * x7;
 	const GEN_FLT x41 = ((x39 + x37) * x30) + (x27 * (x9 + (x0 * x11))) + ((x13 + x40) * x34) + lh_pz;
-	const GEN_FLT x42 = pow(x41, 2);
+	const GEN_FLT x42 = x41 * x41;
 	const GEN_FLT x43 = -1 * x37;
 	const GEN_FLT x44 = ((x33 + x31) * x34) + lh_py + (x30 * (x9 + (x1 * x11))) + ((x39 + x43) * x27);
-	const GEN_FLT x45 = pow(x44, 2) + x42;
-	const GEN_FLT x46 = pow(x45, -1);
-	const GEN_FLT x47 = pow((1 + (-1 * x46 * x36 * pow(tilt_1, 2))), -1.0 / 2.0);
-	const GEN_FLT x48 = pow(x45, -1.0 / 2.0) * tilt_1;
+	const GEN_FLT x45 = (x44 * x44) + x42;
+	const GEN_FLT x46 = 1. / x45;
+	const GEN_FLT x47 = 1. / sqrt(1 + (-1 * x46 * x36 * (tilt_1 * tilt_1)));
+	const GEN_FLT x48 = (1. / sqrt(x45)) * tilt_1;
 	const GEN_FLT x49 = x47 * x48;
 	const GEN_FLT x50 = -1 * x41;
 	const GEN_FLT x51 =
 		sin(1.5707963267949 + (-1 * phase_1) + (-1 * asin(x48 * x35)) + (-1 * atan2(-1 * x44, x50)) + gibPhase_1) *
 		gibMag_1;
 	const GEN_FLT x52 = 2 * x41;
-	const GEN_FLT x53 = pow((x42 + x36), -1) * atan2(x35, x50) * curve_1;
-	const GEN_FLT x54 = pow(x45, -3.0 / 2.0) * x35 * tilt_1;
+	const GEN_FLT x53 = (1. / (x42 + x36)) * atan2(x35, x50) * curve_1;
+	const GEN_FLT x54 = (1. / (x45 * sqrt(x45))) * x35 * tilt_1;
 	const GEN_FLT x55 = x54 * x47;
 	const GEN_FLT x56 = (x55 * x44) + (-1 * x41 * x46);
 	const GEN_FLT x57 = (x55 * x41) + (x44 * x46);
 	const GEN_FLT x58 = 2 * x53;
 	const GEN_FLT x59 = x11 * lh_qk;
-	const GEN_FLT x60 = pow(x3, -3.0 / 2.0) * x5;
+	const GEN_FLT x60 = (1. / (x3 * sqrt(x3))) * x5;
 	const GEN_FLT x61 = x2 * x60;
-	const GEN_FLT x62 = 2 * pow(x3, -2) * x10;
+	const GEN_FLT x62 = 2 * (1. / (x3 * x3)) * x10;
 	const GEN_FLT x63 = x62 * lh_qk;
 	const GEN_FLT x64 = (-1 * x2 * x63) + (x61 * lh_qk);
 	const GEN_FLT x65 = x64 + x59;
@@ -5720,7 +5719,7 @@ static inline void gen_reproject_axis_y_jac_lh_p_axis_angle(FLT *out, const Linm
 	const GEN_FLT x77 = x62 * lh_qi;
 	const GEN_FLT x78 = (-1 * x0 * x77) + (x76 * lh_qi);
 	const GEN_FLT x79 = ((x78 + x43) * x27) + (x30 * (x75 + x71 + (-1 * x61))) + ((x70 + x65) * x34);
-	const GEN_FLT x80 = pow(x42, -1);
+	const GEN_FLT x80 = 1. / x42;
 	const GEN_FLT x81 = x80 * x44;
 	const GEN_FLT x82 = (-1 * x2 * x73) + (x61 * lh_qj);
 	const GEN_FLT x83 = x82 + x38;
@@ -5732,11 +5731,11 @@ static inline void gen_reproject_axis_y_jac_lh_p_axis_angle(FLT *out, const Linm
 	const GEN_FLT x89 = (-1 * x1 * x77) + (x88 * lh_qi);
 	const GEN_FLT x90 = x74 + (-1 * x6);
 	const GEN_FLT x91 = (x27 * (x90 + (-1 * x71) + x61)) + ((x89 + x43) * x30) + ((x87 + x83) * x34);
-	const GEN_FLT x92 = pow(x41, -1);
+	const GEN_FLT x92 = 1. / x41;
 	const GEN_FLT x93 = x42 * x46;
 	const GEN_FLT x94 = 2 * x44;
 	const GEN_FLT x95 = 1.0 / 2.0 * x54;
-	const GEN_FLT x96 = pow(lh_qi, 3);
+	const GEN_FLT x96 = lh_qi * lh_qi * lh_qi;
 	const GEN_FLT x97 = (-1 * x86) + x84;
 	const GEN_FLT x98 = x69 + (-1 * x67);
 	const GEN_FLT x99 =
@@ -5750,7 +5749,7 @@ static inline void gen_reproject_axis_y_jac_lh_p_axis_angle(FLT *out, const Linm
 	const GEN_FLT x105 = x104 + x59;
 	const GEN_FLT x106 = (-1 * x0 * x73) + (x76 * lh_qj);
 	const GEN_FLT x107 = (x27 * (x106 + x40)) + (x30 * (x98 + x105)) + (x34 * (x90 + (-1 * x103) + x88));
-	const GEN_FLT x108 = pow(lh_qj, 3);
+	const GEN_FLT x108 = lh_qj * lh_qj * lh_qj;
 	const GEN_FLT x109 = x89 + x12;
 	const GEN_FLT x110 = x66 * lh_qk;
 	const GEN_FLT x111 = x85 * lh_qj;
@@ -5763,7 +5762,7 @@ static inline void gen_reproject_axis_y_jac_lh_p_axis_angle(FLT *out, const Linm
 						 (-1 * ((x92 * x113) + (-1 * x81 * x107)) * x93);
 	const GEN_FLT x117 = x78 + x12;
 	const GEN_FLT x118 = x106 + x38;
-	const GEN_FLT x119 = pow(lh_qk, 3);
+	const GEN_FLT x119 = lh_qk * lh_qk * lh_qk;
 	const GEN_FLT x120 =
 		(((x60 * x119) + (-1 * x62 * x119) + (2 * x59) + x32) * x27) + (x30 * (x118 + x87)) + ((x117 + x114) * x34);
 	const GEN_FLT x121 = x0 * x68;
@@ -5805,25 +5804,25 @@ static inline void gen_reproject_axis_y_jac_bsc1_axis_angle(FLT *out, const Linm
 	const GEN_FLT gibMag_1 = (*bsc1).gibmag;
 	const GEN_FLT ogeeMag_1 = (*bsc1).ogeephase;
 	const GEN_FLT ogeePhase_1 = (*bsc1).ogeemag;
-	const GEN_FLT x0 = pow(lh_qk, 2);
-	const GEN_FLT x1 = pow(lh_qj, 2);
-	const GEN_FLT x2 = pow(lh_qi, 2);
+	const GEN_FLT x0 = lh_qk * lh_qk;
+	const GEN_FLT x1 = lh_qj * lh_qj;
+	const GEN_FLT x2 = lh_qi * lh_qi;
 	const GEN_FLT x3 = 1e-10 + x2 + x1 + x0;
-	const GEN_FLT x4 = pow(x3, 1.0 / 2.0);
-	const GEN_FLT x5 = pow(x4, -1) * sin(x4);
+	const GEN_FLT x4 = sqrt(x3);
+	const GEN_FLT x5 = (1. / x4) * sin(x4);
 	const GEN_FLT x6 = x5 * lh_qj;
 	const GEN_FLT x7 = cos(x4);
-	const GEN_FLT x8 = pow(x3, -1) * (1 + (-1 * x7));
+	const GEN_FLT x8 = (1. / x3) * (1 + (-1 * x7));
 	const GEN_FLT x9 = x8 * lh_qk;
 	const GEN_FLT x10 = x9 * lh_qi;
-	const GEN_FLT x11 = pow(obj_qk, 2);
-	const GEN_FLT x12 = pow(obj_qj, 2);
-	const GEN_FLT x13 = pow(obj_qi, 2);
+	const GEN_FLT x11 = obj_qk * obj_qk;
+	const GEN_FLT x12 = obj_qj * obj_qj;
+	const GEN_FLT x13 = obj_qi * obj_qi;
 	const GEN_FLT x14 = 1e-10 + x13 + x12 + x11;
-	const GEN_FLT x15 = pow(x14, 1.0 / 2.0);
+	const GEN_FLT x15 = sqrt(x14);
 	const GEN_FLT x16 = cos(x15);
-	const GEN_FLT x17 = pow(x14, -1) * (1 + (-1 * x16));
-	const GEN_FLT x18 = pow(x15, -1) * sin(x15);
+	const GEN_FLT x17 = (1. / x14) * (1 + (-1 * x16));
+	const GEN_FLT x18 = (1. / x15) * sin(x15);
 	const GEN_FLT x19 = x18 * obj_qi;
 	const GEN_FLT x20 = x17 * obj_qk;
 	const GEN_FLT x21 = x20 * obj_qj;
@@ -5844,16 +5843,16 @@ static inline void gen_reproject_axis_y_jac_bsc1_axis_angle(FLT *out, const Linm
 	const GEN_FLT x33 = x9 * lh_qj;
 	const GEN_FLT x34 = (x30 * (x10 + (-1 * x6))) + ((x33 + x32) * x27) + (x24 * (x7 + (x0 * x8))) + lh_pz;
 	const GEN_FLT x35 = ((x29 + x28) * x30) + (x27 * (x7 + (x1 * x8))) + lh_py + ((x33 + (-1 * x32)) * x24);
-	const GEN_FLT x36 = pow(x35, 2) + pow(x34, 2);
-	const GEN_FLT x37 = x31 * pow(x36, -1.0 / 2.0);
+	const GEN_FLT x36 = (x35 * x35) + (x34 * x34);
+	const GEN_FLT x37 = x31 * (1. / sqrt(x36));
 	const GEN_FLT x38 = -1 * x34;
 	const GEN_FLT x39 =
 		1.5707963267949 + (-1 * atan2(-1 * x35, x38)) + (-1 * phase_1) + (-1 * asin(x37 * tilt_1)) + gibPhase_1;
 	const GEN_FLT x40 = sin(x39) * gibMag_1;
-	const GEN_FLT x41 = x37 * pow((1 + (-1 * pow(x31, 2) * pow(x36, -1) * pow(tilt_1, 2))), -1.0 / 2.0);
+	const GEN_FLT x41 = x37 * (1. / sqrt(1 + (-1 * (x31 * x31) * (1. / x36) * (tilt_1 * tilt_1))));
 	out[0] = -1 + (-1 * x40);
 	out[1] = (-1 * x40 * x41) + (-1 * x41);
-	out[2] = pow(atan2(x31, x38), 2);
+	out[2] = atan2(x31, x38) * atan2(x31, x38);
 	out[3] = x40;
 	out[4] = -1 * cos(x39);
 	out[5] = 0;
@@ -5905,29 +5904,28 @@ static inline void gen_reproject_gen2(FLT *out, const SurvivePose *obj_p, const 
 	const GEN_FLT x9 = x6 + (2 * ((x8 * lh_qi) + (-1 * x7 * lh_qj))) + lh_pz;
 	const GEN_FLT x10 = (x5 * lh_qi) + (-1 * x3 * lh_qj) + (x6 * lh_qw);
 	const GEN_FLT x11 = x3 + (2 * ((x10 * lh_qj) + (-1 * x8 * lh_qk))) + lh_px;
-	const GEN_FLT x12 = pow(x11, 2) + pow(x9, 2);
+	const GEN_FLT x12 = (x11 * x11) + (x9 * x9);
 	const GEN_FLT x13 = x5 + (2 * ((x7 * lh_qk) + (-1 * x10 * lh_qi))) + lh_py;
-	const GEN_FLT x14 = x13 * pow(x12, -1.0 / 2.0);
+	const GEN_FLT x14 = x13 * (1. / sqrt(x12));
 	const GEN_FLT x15 = tan(x0) * x14;
 	const GEN_FLT x16 = atan2(-1 * x9, x11);
 	const GEN_FLT x17 = (sin(x16 + (-1 * asin(x15)) + ogeeMag_0) * ogeePhase_0) + curve_0;
 	const GEN_FLT x18 = cos(x0);
-	const GEN_FLT x19 = x13 * pow((x12 + pow(x13, 2)), -1.0 / 2.0);
-	const GEN_FLT x20 = asin(x19 * pow(x18, -1));
+	const GEN_FLT x19 = x13 * (1. / sqrt(x12 + (x13 * x13)));
+	const GEN_FLT x20 = asin(x19 * (1. / x18));
 	const GEN_FLT x21 = 0.0028679863 + (x20 * (-8.0108022e-06 + (-8.0108022e-06 * x20)));
 	const GEN_FLT x22 = 5.3685255e-06 + (x20 * x21);
 	const GEN_FLT x23 = 0.0076069798 + (x22 * x20);
 	const GEN_FLT x24 = asin(
 		x15 +
-		(x23 * pow(x20, 2) * x17 *
-		 pow((x18 +
-			  (-1 * sin(x0) * x17 *
-			   ((x20 * (x23 + (x20 * (x22 + (x20 * (x21 + (x20 * (-8.0108022e-06 + (-1.60216044e-05 * x20))))))))) +
-				(x23 * x20)))),
-			 -1)));
+		(x23 * (x20 * x20) * x17 *
+		 (1. /
+		  (x18 + (-1 * sin(x0) * x17 *
+				  ((x20 * (x23 + (x20 * (x22 + (x20 * (x21 + (x20 * (-8.0108022e-06 + (-1.60216044e-05 * x20))))))))) +
+				   (x23 * x20)))))));
 	const GEN_FLT x25 = 0.523598775598299 + (-1 * tilt_1);
 	const GEN_FLT x26 = cos(x25);
-	const GEN_FLT x27 = asin(pow(x26, -1) * x19);
+	const GEN_FLT x27 = asin((1. / x26) * x19);
 	const GEN_FLT x28 = 0.0028679863 + (x27 * (-8.0108022e-06 + (-8.0108022e-06 * x27)));
 	const GEN_FLT x29 = 5.3685255e-06 + (x28 * x27);
 	const GEN_FLT x30 = 0.0076069798 + (x29 * x27);
@@ -5935,12 +5933,11 @@ static inline void gen_reproject_gen2(FLT *out, const SurvivePose *obj_p, const 
 	const GEN_FLT x32 = (sin(x16 + (-1 * asin(x31)) + ogeeMag_1) * ogeePhase_1) + curve_1;
 	const GEN_FLT x33 =
 		(-1 *
-		 asin(x31 + (x30 * x32 * pow(x27, 2) *
-					 pow((x26 + (x32 * sin(x25) *
-								 ((x27 * (x30 + (x27 * (x29 + (x27 * (x28 + (x27 * (-8.0108022e-06 +
-																					(-1.60216044e-05 * x27))))))))) +
-								  (x30 * x27)))),
-						 -1)))) +
+		 asin(x31 + (x30 * x32 * (x27 * x27) *
+					 (1. / (x26 + (x32 * sin(x25) *
+								   ((x27 * (x30 + (x27 * (x29 + (x27 * (x28 + (x27 * (-8.0108022e-06 +
+																					  (-1.60216044e-05 * x27))))))))) +
+									(x30 * x27)))))))) +
 		x16;
 	out[0] = -1.5707963267949 + x16 + (-1 * x24) + (-1 * sin((-1 * x16) + x24 + (-1 * gibPhase_0)) * gibMag_0) +
 			 (-1 * phase_0);
@@ -6004,25 +6001,25 @@ static inline void gen_reproject_gen2_jac_obj_p(FLT *out, const SurvivePose *obj
 	const GEN_FLT x20 = (x19 * lh_qk) + (-1 * x18 * lh_qi) + (x13 * lh_qw);
 	const GEN_FLT x21 = (x13 * lh_qi) + (-1 * x19 * lh_qj) + (x18 * lh_qw);
 	const GEN_FLT x22 = x19 + (2 * ((x21 * lh_qj) + (-1 * x20 * lh_qk))) + lh_px;
-	const GEN_FLT x23 = pow(x22, -1);
-	const GEN_FLT x24 = -2 * pow(lh_qk, 2);
-	const GEN_FLT x25 = -2 * pow(lh_qj, 2);
+	const GEN_FLT x23 = 1. / x22;
+	const GEN_FLT x24 = -2 * (lh_qk * lh_qk);
+	const GEN_FLT x25 = -2 * (lh_qj * lh_qj);
 	const GEN_FLT x26 = 1 + x25 + x24;
-	const GEN_FLT x27 = pow(x22, 2);
+	const GEN_FLT x27 = x22 * x22;
 	const GEN_FLT x28 = (x18 * lh_qj) + (-1 * x13 * lh_qk) + (x19 * lh_qw);
 	const GEN_FLT x29 = x18 + (2 * ((x20 * lh_qi) + (-1 * x28 * lh_qj))) + lh_pz;
-	const GEN_FLT x30 = x29 * pow(x27, -1);
-	const GEN_FLT x31 = x27 + pow(x29, 2);
-	const GEN_FLT x32 = pow(x31, -1);
+	const GEN_FLT x30 = x29 * (1. / x27);
+	const GEN_FLT x31 = x27 + (x29 * x29);
+	const GEN_FLT x32 = 1. / x31;
 	const GEN_FLT x33 = x32 * x27;
 	const GEN_FLT x34 = x33 * ((x30 * x26) + (-1 * x4 * x23));
 	const GEN_FLT x35 = 0.523598775598299 + tilt_0;
 	const GEN_FLT x36 = cos(x35);
-	const GEN_FLT x37 = pow(x36, -1);
+	const GEN_FLT x37 = 1. / x36;
 	const GEN_FLT x38 = x13 + (2 * ((x28 * lh_qk) + (-1 * x21 * lh_qi))) + lh_py;
-	const GEN_FLT x39 = pow(x38, 2);
+	const GEN_FLT x39 = x38 * x38;
 	const GEN_FLT x40 = x31 + x39;
-	const GEN_FLT x41 = pow(x40, -1.0 / 2.0);
+	const GEN_FLT x41 = 1. / sqrt(x40);
 	const GEN_FLT x42 = x41 * x38;
 	const GEN_FLT x43 = asin(x42 * x37);
 	const GEN_FLT x44 = 8.0108022e-06 * x43;
@@ -6037,7 +6034,7 @@ static inline void gen_reproject_gen2_jac_obj_p(FLT *out, const SurvivePose *obj
 	const GEN_FLT x53 = x48 + (x52 * x43);
 	const GEN_FLT x54 = (x53 * x43) + x49;
 	const GEN_FLT x55 = sin(x35);
-	const GEN_FLT x56 = pow(x31, -1.0 / 2.0);
+	const GEN_FLT x56 = 1. / sqrt(x31);
 	const GEN_FLT x57 = tan(x35);
 	const GEN_FLT x58 = x57 * x56;
 	const GEN_FLT x59 = x58 * x38;
@@ -6046,14 +6043,14 @@ static inline void gen_reproject_gen2_jac_obj_p(FLT *out, const SurvivePose *obj
 	const GEN_FLT x62 = (sin(x61) * ogeePhase_0) + curve_0;
 	const GEN_FLT x63 = x62 * x55;
 	const GEN_FLT x64 = x36 + (-1 * x63 * x54);
-	const GEN_FLT x65 = pow(x64, -1);
-	const GEN_FLT x66 = pow(x43, 2);
+	const GEN_FLT x65 = 1. / x64;
+	const GEN_FLT x66 = x43 * x43;
 	const GEN_FLT x67 = x62 * x66;
 	const GEN_FLT x68 = x67 * x65;
 	const GEN_FLT x69 = x59 + (x68 * x48);
-	const GEN_FLT x70 = pow((1 + (-1 * pow(x69, 2))), -1.0 / 2.0);
+	const GEN_FLT x70 = 1. / sqrt(1 + (-1 * (x69 * x69)));
 	const GEN_FLT x71 = x32 * x39;
-	const GEN_FLT x72 = pow((1 + (-1 * x71 * pow(x57, 2))), -1.0 / 2.0);
+	const GEN_FLT x72 = 1. / sqrt(1 + (-1 * x71 * (x57 * x57)));
 	const GEN_FLT x73 = x0 * lh_qi;
 	const GEN_FLT x74 = x2 * lh_qw;
 	const GEN_FLT x75 = x74 + x73;
@@ -6062,7 +6059,7 @@ static inline void gen_reproject_gen2_jac_obj_p(FLT *out, const SurvivePose *obj
 	const GEN_FLT x78 = 2 * x29;
 	const GEN_FLT x79 = (x4 * x78) + (x77 * x26);
 	const GEN_FLT x80 = 1.0 / 2.0 * x38;
-	const GEN_FLT x81 = x80 * pow(x31, -3.0 / 2.0);
+	const GEN_FLT x81 = x80 * (1. / (x31 * sqrt(x31)));
 	const GEN_FLT x82 = x81 * x57;
 	const GEN_FLT x83 = (-1 * x82 * x79) + (x76 * x57);
 	const GEN_FLT x84 = cos(x61) * ogeePhase_0;
@@ -6070,12 +6067,12 @@ static inline void gen_reproject_gen2_jac_obj_p(FLT *out, const SurvivePose *obj
 	const GEN_FLT x86 = x65 * x66 * x48;
 	const GEN_FLT x87 = 2 * x38;
 	const GEN_FLT x88 = x79 + (x87 * x75);
-	const GEN_FLT x89 = x80 * pow(x40, -3.0 / 2.0);
+	const GEN_FLT x89 = x80 * (1. / (x40 * sqrt(x40)));
 	const GEN_FLT x90 = x89 * x37;
 	const GEN_FLT x91 = x75 * x41;
 	const GEN_FLT x92 = (x91 * x37) + (-1 * x88 * x90);
-	const GEN_FLT x93 = pow(x40, -1) * x39;
-	const GEN_FLT x94 = pow((1 + (-1 * x93 * pow(x36, -2))), -1.0 / 2.0);
+	const GEN_FLT x93 = (1. / x40) * x39;
+	const GEN_FLT x94 = 1. / sqrt(1 + (-1 * x93 * (1. / (x36 * x36))));
 	const GEN_FLT x95 = x94 * x47;
 	const GEN_FLT x96 = x94 * x44;
 	const GEN_FLT x97 = x94 * x45;
@@ -6091,7 +6088,7 @@ static inline void gen_reproject_gen2_jac_obj_p(FLT *out, const SurvivePose *obj
 	const GEN_FLT x107 = x52 * x94;
 	const GEN_FLT x108 = x94 * x48;
 	const GEN_FLT x109 = x54 * x55;
-	const GEN_FLT x110 = pow(x64, -2) * x67 * x48;
+	const GEN_FLT x110 = (1. / (x64 * x64)) * x67 * x48;
 	const GEN_FLT x111 = 2 * x62 * x65 * x49;
 	const GEN_FLT x112 = x94 * x111;
 	const GEN_FLT x113 =
@@ -6111,7 +6108,7 @@ static inline void gen_reproject_gen2_jac_obj_p(FLT *out, const SurvivePose *obj
 	const GEN_FLT x118 = x117 + x115;
 	const GEN_FLT x119 = x73 + (-1 * x74);
 	const GEN_FLT x120 = ((x30 * x119) + (-1 * x23 * x118)) * x33;
-	const GEN_FLT x121 = 1 + (-2 * pow(lh_qi, 2));
+	const GEN_FLT x121 = 1 + (-2 * (lh_qi * lh_qi));
 	const GEN_FLT x122 = x121 + x24;
 	const GEN_FLT x123 = (x78 * x118) + (x77 * x119);
 	const GEN_FLT x124 = x81 * x123;
@@ -6299,10 +6296,10 @@ static inline void gen_reproject_gen2_jac_obj_p(FLT *out, const SurvivePose *obj
 			   (x68 * x251) + (x245 * x127));
 	const GEN_FLT x253 = 0.523598775598299 + (-1 * tilt_1);
 	const GEN_FLT x254 = cos(x253);
-	const GEN_FLT x255 = pow(x254, -1);
+	const GEN_FLT x255 = 1. / x254;
 	const GEN_FLT x256 = asin(x42 * x255);
 	const GEN_FLT x257 = 8.0108022e-06 * x256;
-	const GEN_FLT x258 = pow((1 + (-1 * x93 * pow(x254, -2))), -1.0 / 2.0);
+	const GEN_FLT x258 = 1. / sqrt(1 + (-1 * x93 * (1. / (x254 * x254))));
 	const GEN_FLT x259 = x89 * x255;
 	const GEN_FLT x260 = (x91 * x255) + (-1 * x88 * x259);
 	const GEN_FLT x261 = x260 * x258;
@@ -6330,11 +6327,11 @@ static inline void gen_reproject_gen2_jac_obj_p(FLT *out, const SurvivePose *obj
 	const GEN_FLT x283 = (sin(x282) * ogeePhase_1) + curve_1;
 	const GEN_FLT x284 = x278 * x283;
 	const GEN_FLT x285 = x254 + (x277 * x284);
-	const GEN_FLT x286 = pow(x285, -1);
-	const GEN_FLT x287 = pow(x256, 2);
+	const GEN_FLT x286 = 1. / x285;
+	const GEN_FLT x287 = x256 * x256;
 	const GEN_FLT x288 = x287 * x283;
 	const GEN_FLT x289 = x286 * x288;
-	const GEN_FLT x290 = pow((1 + (-1 * x71 * pow(x279, 2))), -1.0 / 2.0);
+	const GEN_FLT x290 = 1. / sqrt(1 + (-1 * x71 * (x279 * x279)));
 	const GEN_FLT x291 = x81 * x279;
 	const GEN_FLT x292 = (x79 * x291) + (-1 * x76 * x279);
 	const GEN_FLT x293 = cos(x282) * ogeePhase_1;
@@ -6348,9 +6345,9 @@ static inline void gen_reproject_gen2_jac_obj_p(FLT *out, const SurvivePose *obj
 	const GEN_FLT x301 = x276 * x258;
 	const GEN_FLT x302 = x271 * x258;
 	const GEN_FLT x303 = x278 * x277;
-	const GEN_FLT x304 = x271 * x288 * pow(x285, -2);
+	const GEN_FLT x304 = x271 * x288 * (1. / (x285 * x285));
 	const GEN_FLT x305 = x281 + (x271 * x289);
-	const GEN_FLT x306 = pow((1 + (-1 * pow(x305, 2))), -1.0 / 2.0);
+	const GEN_FLT x306 = 1. / sqrt(1 + (-1 * (x305 * x305)));
 	const GEN_FLT x307 =
 		(-1 * x306 *
 		 (x292 +
@@ -6526,8 +6523,8 @@ static inline void gen_reproject_gen2_jac_sensor_pt(FLT *out, const SurvivePose 
 	const GEN_FLT x5 = x0 * obj_qi;
 	const GEN_FLT x6 = x2 * obj_qw;
 	const GEN_FLT x7 = x6 + x5;
-	const GEN_FLT x8 = -2 * pow(obj_qk, 2);
-	const GEN_FLT x9 = 1 + (-2 * pow(obj_qj, 2));
+	const GEN_FLT x8 = -2 * (obj_qk * obj_qk);
+	const GEN_FLT x9 = 1 + (-2 * (obj_qj * obj_qj));
 	const GEN_FLT x10 = x9 + x8;
 	const GEN_FLT x11 = (x10 * lh_qw) + (-1 * x7 * lh_qk) + (x4 * lh_qj);
 	const GEN_FLT x12 = 2 * lh_qj;
@@ -6543,25 +6540,25 @@ static inline void gen_reproject_gen2_jac_sensor_pt(FLT *out, const SurvivePose 
 	const GEN_FLT x22 = (x21 * lh_qk) + (-1 * x20 * lh_qi) + (x18 * lh_qw);
 	const GEN_FLT x23 = (x18 * lh_qi) + (-1 * x21 * lh_qj) + (x20 * lh_qw);
 	const GEN_FLT x24 = x21 + (2 * ((x23 * lh_qj) + (-1 * x22 * lh_qk))) + lh_px;
-	const GEN_FLT x25 = pow(x24, -1);
+	const GEN_FLT x25 = 1. / x24;
 	const GEN_FLT x26 = 2 * lh_qk;
 	const GEN_FLT x27 = (x4 * lh_qw) + (-1 * x10 * lh_qj) + (x7 * lh_qi);
 	const GEN_FLT x28 = x10 + (x27 * x12) + (-1 * x26 * x13);
-	const GEN_FLT x29 = pow(x24, 2);
+	const GEN_FLT x29 = x24 * x24;
 	const GEN_FLT x30 = (x20 * lh_qj) + (-1 * x18 * lh_qk) + (x21 * lh_qw);
 	const GEN_FLT x31 = x20 + (2 * ((x22 * lh_qi) + (-1 * x30 * lh_qj))) + lh_pz;
-	const GEN_FLT x32 = x31 * pow(x29, -1);
-	const GEN_FLT x33 = x29 + pow(x31, 2);
-	const GEN_FLT x34 = pow(x33, -1);
+	const GEN_FLT x32 = x31 * (1. / x29);
+	const GEN_FLT x33 = x29 + (x31 * x31);
+	const GEN_FLT x34 = 1. / x33;
 	const GEN_FLT x35 = x34 * x29;
 	const GEN_FLT x36 = ((x32 * x28) + (-1 * x25 * x15)) * x35;
 	const GEN_FLT x37 = 0.523598775598299 + tilt_0;
 	const GEN_FLT x38 = cos(x37);
-	const GEN_FLT x39 = pow(x38, -1);
+	const GEN_FLT x39 = 1. / x38;
 	const GEN_FLT x40 = x18 + (2 * ((x30 * lh_qk) + (-1 * x23 * lh_qi))) + lh_py;
-	const GEN_FLT x41 = pow(x40, 2);
+	const GEN_FLT x41 = x40 * x40;
 	const GEN_FLT x42 = x33 + x41;
-	const GEN_FLT x43 = pow(x42, -1.0 / 2.0);
+	const GEN_FLT x43 = 1. / sqrt(x42);
 	const GEN_FLT x44 = x40 * x43;
 	const GEN_FLT x45 = asin(x44 * x39);
 	const GEN_FLT x46 = 8.0108022e-06 * x45;
@@ -6577,7 +6574,7 @@ static inline void gen_reproject_gen2_jac_sensor_pt(FLT *out, const SurvivePose 
 	const GEN_FLT x56 = (x55 * x45) + x51;
 	const GEN_FLT x57 = sin(x37);
 	const GEN_FLT x58 = tan(x37);
-	const GEN_FLT x59 = pow(x33, -1.0 / 2.0);
+	const GEN_FLT x59 = 1. / sqrt(x33);
 	const GEN_FLT x60 = x59 * x40;
 	const GEN_FLT x61 = x60 * x58;
 	const GEN_FLT x62 = atan2(-1 * x31, x24);
@@ -6585,31 +6582,31 @@ static inline void gen_reproject_gen2_jac_sensor_pt(FLT *out, const SurvivePose 
 	const GEN_FLT x64 = (sin(x63) * ogeePhase_0) + curve_0;
 	const GEN_FLT x65 = x64 * x57;
 	const GEN_FLT x66 = x38 + (-1 * x65 * x56);
-	const GEN_FLT x67 = pow(x66, -1);
-	const GEN_FLT x68 = pow(x45, 2);
+	const GEN_FLT x67 = 1. / x66;
+	const GEN_FLT x68 = x45 * x45;
 	const GEN_FLT x69 = x64 * x68;
 	const GEN_FLT x70 = x67 * x69;
 	const GEN_FLT x71 = x61 + (x70 * x50);
-	const GEN_FLT x72 = pow((1 + (-1 * pow(x71, 2))), -1.0 / 2.0);
+	const GEN_FLT x72 = 1. / sqrt(1 + (-1 * (x71 * x71)));
 	const GEN_FLT x73 = x7 + (x26 * x11) + (-1 * x27 * x14);
 	const GEN_FLT x74 = x73 * x59;
 	const GEN_FLT x75 = 2 * x24;
 	const GEN_FLT x76 = 2 * x31;
 	const GEN_FLT x77 = (x76 * x15) + (x75 * x28);
 	const GEN_FLT x78 = 1.0 / 2.0 * x40;
-	const GEN_FLT x79 = x78 * pow(x33, -3.0 / 2.0);
+	const GEN_FLT x79 = x78 * (1. / (x33 * sqrt(x33)));
 	const GEN_FLT x80 = x79 * x58;
 	const GEN_FLT x81 = (-1 * x80 * x77) + (x74 * x58);
 	const GEN_FLT x82 = x41 * x34;
-	const GEN_FLT x83 = pow((1 + (-1 * x82 * pow(x58, 2))), -1.0 / 2.0);
+	const GEN_FLT x83 = 1. / sqrt(1 + (-1 * x82 * (x58 * x58)));
 	const GEN_FLT x84 = (-1 * x81 * x83) + x36;
 	const GEN_FLT x85 = cos(x63) * ogeePhase_0;
 	const GEN_FLT x86 = x67 * x68 * x50;
 	const GEN_FLT x87 = x85 * x86;
-	const GEN_FLT x88 = x41 * pow(x42, -1);
-	const GEN_FLT x89 = pow((1 + (-1 * x88 * pow(x38, -2))), -1.0 / 2.0);
+	const GEN_FLT x88 = x41 * (1. / x42);
+	const GEN_FLT x89 = 1. / sqrt(1 + (-1 * x88 * (1. / (x38 * x38))));
 	const GEN_FLT x90 = 2 * x40;
-	const GEN_FLT x91 = x78 * pow(x42, -3.0 / 2.0);
+	const GEN_FLT x91 = x78 * (1. / (x42 * sqrt(x42)));
 	const GEN_FLT x92 = x91 * (x77 + (x73 * x90));
 	const GEN_FLT x93 = x73 * x43;
 	const GEN_FLT x94 = (x93 * x39) + (-1 * x92 * x39);
@@ -6621,7 +6618,7 @@ static inline void gen_reproject_gen2_jac_sensor_pt(FLT *out, const SurvivePose 
 	const GEN_FLT x100 = 2.40324066e-05 * x45;
 	const GEN_FLT x101 = x57 * x56;
 	const GEN_FLT x102 = x85 * x101;
-	const GEN_FLT x103 = pow(x66, -2) * x69 * x50;
+	const GEN_FLT x103 = (1. / (x66 * x66)) * x69 * x50;
 	const GEN_FLT x104 = 2 * x64 * x67 * x51;
 	const GEN_FLT x105 =
 		x72 * (x81 + (x95 * x104) +
@@ -6637,7 +6634,7 @@ static inline void gen_reproject_gen2_jac_sensor_pt(FLT *out, const SurvivePose 
 	const GEN_FLT x107 = x2 * obj_qj;
 	const GEN_FLT x108 = 2 * obj_qw * obj_qi;
 	const GEN_FLT x109 = x108 + x107;
-	const GEN_FLT x110 = -2 * pow(obj_qi, 2);
+	const GEN_FLT x110 = -2 * (obj_qi * obj_qi);
 	const GEN_FLT x111 = 1 + x8 + x110;
 	const GEN_FLT x112 = x5 + (-1 * x6);
 	const GEN_FLT x113 = (x112 * lh_qw) + (-1 * x111 * lh_qk) + (x109 * lh_qj);
@@ -6700,10 +6697,10 @@ static inline void gen_reproject_gen2_jac_sensor_pt(FLT *out, const SurvivePose 
 			   (x70 * x152) + (x87 * x145));
 	const GEN_FLT x154 = 0.523598775598299 + (-1 * tilt_1);
 	const GEN_FLT x155 = cos(x154);
-	const GEN_FLT x156 = pow(x155, -1);
+	const GEN_FLT x156 = 1. / x155;
 	const GEN_FLT x157 = asin(x44 * x156);
 	const GEN_FLT x158 = 8.0108022e-06 * x157;
-	const GEN_FLT x159 = pow((1 + (-1 * x88 * pow(x155, -2))), -1.0 / 2.0);
+	const GEN_FLT x159 = 1. / sqrt(1 + (-1 * x88 * (1. / (x155 * x155))));
 	const GEN_FLT x160 = ((x93 * x156) + (-1 * x92 * x156)) * x159;
 	const GEN_FLT x161 = -8.0108022e-06 + (-1 * x158);
 	const GEN_FLT x162 = x161 * x160;
@@ -6725,13 +6722,13 @@ static inline void gen_reproject_gen2_jac_sensor_pt(FLT *out, const SurvivePose 
 	const GEN_FLT x178 = (sin(x177) * ogeePhase_1) + curve_1;
 	const GEN_FLT x179 = x178 * x174;
 	const GEN_FLT x180 = x155 + (x179 * x173);
-	const GEN_FLT x181 = pow(x180, -1);
-	const GEN_FLT x182 = pow(x157, 2);
+	const GEN_FLT x181 = 1. / x180;
+	const GEN_FLT x182 = x157 * x157;
 	const GEN_FLT x183 = x178 * x182;
 	const GEN_FLT x184 = x181 * x183;
 	const GEN_FLT x185 = x79 * x175;
 	const GEN_FLT x186 = (x77 * x185) + (-1 * x74 * x175);
-	const GEN_FLT x187 = pow((1 + (-1 * x82 * pow(x175, 2))), -1.0 / 2.0);
+	const GEN_FLT x187 = 1. / sqrt(1 + (-1 * x82 * (x175 * x175)));
 	const GEN_FLT x188 = (-1 * x187 * x186) + x36;
 	const GEN_FLT x189 = cos(x177) * ogeePhase_1;
 	const GEN_FLT x190 = x167 * x181 * x182;
@@ -6740,9 +6737,9 @@ static inline void gen_reproject_gen2_jac_sensor_pt(FLT *out, const SurvivePose 
 	const GEN_FLT x193 = 2.40324066e-05 * x157;
 	const GEN_FLT x194 = x174 * x173;
 	const GEN_FLT x195 = x189 * x194;
-	const GEN_FLT x196 = x167 * pow(x180, -2) * x183;
+	const GEN_FLT x196 = x167 * (1. / (x180 * x180)) * x183;
 	const GEN_FLT x197 = x176 + (x167 * x184);
-	const GEN_FLT x198 = pow((1 + (-1 * pow(x197, 2))), -1.0 / 2.0);
+	const GEN_FLT x198 = 1. / sqrt(1 + (-1 * (x197 * x197)));
 	const GEN_FLT x199 =
 		(-1 * x198 *
 		 (x186 +
@@ -6854,17 +6851,17 @@ static inline void gen_reproject_gen2_jac_lh_p(FLT *out, const SurvivePose *obj_
 	const GEN_FLT x20 = x7 * lh_qi;
 	const GEN_FLT x21 = x20 + (-1 * x19) + x18;
 	const GEN_FLT x22 = x3 + (2 * ((x21 * lh_qj) + (-1 * x16 * lh_qk))) + lh_px;
-	const GEN_FLT x23 = pow(x22, 2);
-	const GEN_FLT x24 = x23 + pow(x17, 2);
-	const GEN_FLT x25 = pow(x24, -1);
+	const GEN_FLT x23 = x22 * x22;
+	const GEN_FLT x24 = x23 + (x17 * x17);
+	const GEN_FLT x25 = 1. / x24;
 	const GEN_FLT x26 = x25 * x17;
 	const GEN_FLT x27 = x7 + (2 * ((x12 * lh_qk) + (-1 * x21 * lh_qi))) + lh_py;
 	const GEN_FLT x28 = 0.523598775598299 + tilt_0;
 	const GEN_FLT x29 = cos(x28);
-	const GEN_FLT x30 = pow(x29, -1);
-	const GEN_FLT x31 = pow(x27, 2);
+	const GEN_FLT x30 = 1. / x29;
+	const GEN_FLT x31 = x27 * x27;
 	const GEN_FLT x32 = x24 + x31;
-	const GEN_FLT x33 = pow(x32, -1.0 / 2.0);
+	const GEN_FLT x33 = 1. / sqrt(x32);
 	const GEN_FLT x34 = x30 * x33;
 	const GEN_FLT x35 = asin(x34 * x27);
 	const GEN_FLT x36 = 8.0108022e-06 * x35;
@@ -6879,7 +6876,7 @@ static inline void gen_reproject_gen2_jac_lh_p(FLT *out, const SurvivePose *obj_
 	const GEN_FLT x45 = x40 + (x44 * x35);
 	const GEN_FLT x46 = (x45 * x35) + x41;
 	const GEN_FLT x47 = sin(x28);
-	const GEN_FLT x48 = pow(x24, -1.0 / 2.0);
+	const GEN_FLT x48 = 1. / sqrt(x24);
 	const GEN_FLT x49 = tan(x28);
 	const GEN_FLT x50 = x48 * x49;
 	const GEN_FLT x51 = x50 * x27;
@@ -6888,26 +6885,26 @@ static inline void gen_reproject_gen2_jac_lh_p(FLT *out, const SurvivePose *obj_
 	const GEN_FLT x54 = (sin(x53) * ogeePhase_0) + curve_0;
 	const GEN_FLT x55 = x54 * x47;
 	const GEN_FLT x56 = x29 + (-1 * x55 * x46);
-	const GEN_FLT x57 = pow(x56, -1);
-	const GEN_FLT x58 = pow(x35, 2);
+	const GEN_FLT x57 = 1. / x56;
+	const GEN_FLT x58 = x35 * x35;
 	const GEN_FLT x59 = x54 * x58;
 	const GEN_FLT x60 = x57 * x59;
 	const GEN_FLT x61 = x51 + (x60 * x40);
-	const GEN_FLT x62 = pow((1 + (-1 * pow(x61, 2))), -1.0 / 2.0);
-	const GEN_FLT x63 = pow(x24, -3.0 / 2.0) * x27;
+	const GEN_FLT x62 = 1. / sqrt(1 + (-1 * (x61 * x61)));
+	const GEN_FLT x63 = (1. / (x24 * sqrt(x24))) * x27;
 	const GEN_FLT x64 = x63 * x22;
 	const GEN_FLT x65 = x64 * x49;
 	const GEN_FLT x66 = x31 * x25;
-	const GEN_FLT x67 = pow((1 + (-1 * x66 * pow(x49, 2))), -1.0 / 2.0);
+	const GEN_FLT x67 = 1. / sqrt(1 + (-1 * x66 * (x49 * x49)));
 	const GEN_FLT x68 = (x67 * x65) + x26;
 	const GEN_FLT x69 = cos(x53) * ogeePhase_0;
 	const GEN_FLT x70 = x58 * x57 * x40;
 	const GEN_FLT x71 = x70 * x69;
-	const GEN_FLT x72 = pow(x32, -3.0 / 2.0);
+	const GEN_FLT x72 = 1. / (x32 * sqrt(x32));
 	const GEN_FLT x73 = x72 * x27;
 	const GEN_FLT x74 = x73 * x22;
-	const GEN_FLT x75 = pow(x32, -1) * x31;
-	const GEN_FLT x76 = pow((1 + (-1 * x75 * pow(x29, -2))), -1.0 / 2.0);
+	const GEN_FLT x75 = (1. / x32) * x31;
+	const GEN_FLT x76 = 1. / sqrt(1 + (-1 * x75 * (1. / (x29 * x29))));
 	const GEN_FLT x77 = x76 * x30;
 	const GEN_FLT x78 = x74 * x77;
 	const GEN_FLT x79 = -1 * x78 * x37;
@@ -6916,7 +6913,7 @@ static inline void gen_reproject_gen2_jac_lh_p(FLT *out, const SurvivePose *obj_
 	const GEN_FLT x82 = 2.40324066e-05 * x35;
 	const GEN_FLT x83 = x46 * x47;
 	const GEN_FLT x84 = x83 * x69;
-	const GEN_FLT x85 = pow(x56, -2) * x59 * x40;
+	const GEN_FLT x85 = (1. / (x56 * x56)) * x59 * x40;
 	const GEN_FLT x86 = 2 * x27;
 	const GEN_FLT x87 = x86 * x72 * x22;
 	const GEN_FLT x88 = x54 * x57 * x41;
@@ -6969,12 +6966,12 @@ static inline void gen_reproject_gen2_jac_lh_p(FLT *out, const SurvivePose *obj_
 						   (x35 * ((x35 * ((-1 * x42 * x106) + (x82 * x106) + x107)) + x108 + (-1 * x43 * x106))))) +
 				   (-1 * x45 * x106))))) +
 			   (x60 * x109) + (x70 * x104) + (-1 * x103));
-	const GEN_FLT x113 = pow(x22, -1);
+	const GEN_FLT x113 = 1. / x22;
 	const GEN_FLT x114 = 2 * x19;
 	const GEN_FLT x115 = (2 * x20) + (-1 * x114);
 	const GEN_FLT x116 = 2 * x8;
 	const GEN_FLT x117 = (2 * x11) + (-1 * x116);
-	const GEN_FLT x118 = pow(x23, -1) * x17;
+	const GEN_FLT x118 = (1. / x23) * x17;
 	const GEN_FLT x119 = x25 * x23;
 	const GEN_FLT x120 = ((x118 * x117) + (-1 * x113 * x115)) * x119;
 	const GEN_FLT x121 = 2 * x14;
@@ -7080,11 +7077,11 @@ static inline void gen_reproject_gen2_jac_lh_p(FLT *out, const SurvivePose *obj_
 	const GEN_FLT x186 = tan(x185);
 	const GEN_FLT x187 = x64 * x186;
 	const GEN_FLT x188 = cos(x185);
-	const GEN_FLT x189 = pow(x188, -1);
+	const GEN_FLT x189 = 1. / x188;
 	const GEN_FLT x190 = x33 * x189;
 	const GEN_FLT x191 = asin(x27 * x190);
 	const GEN_FLT x192 = 8.0108022e-06 * x191;
-	const GEN_FLT x193 = pow((1 + (-1 * x75 * pow(x188, -2))), -1.0 / 2.0);
+	const GEN_FLT x193 = 1. / sqrt(1 + (-1 * x75 * (1. / (x188 * x188))));
 	const GEN_FLT x194 = x189 * x193;
 	const GEN_FLT x195 = x74 * x194;
 	const GEN_FLT x196 = -8.0108022e-06 + (-1 * x192);
@@ -7107,11 +7104,11 @@ static inline void gen_reproject_gen2_jac_lh_p(FLT *out, const SurvivePose *obj_
 	const GEN_FLT x213 = (sin(x212) * ogeePhase_1) + curve_1;
 	const GEN_FLT x214 = x213 * x209;
 	const GEN_FLT x215 = x188 + (x214 * x208);
-	const GEN_FLT x216 = pow(x215, -1);
-	const GEN_FLT x217 = pow(x191, 2);
+	const GEN_FLT x216 = 1. / x215;
+	const GEN_FLT x217 = x191 * x191;
 	const GEN_FLT x218 = x213 * x217;
 	const GEN_FLT x219 = x218 * x216;
-	const GEN_FLT x220 = pow((1 + (-1 * x66 * pow(x186, 2))), -1.0 / 2.0);
+	const GEN_FLT x220 = 1. / sqrt(1 + (-1 * x66 * (x186 * x186)));
 	const GEN_FLT x221 = (-1 * x220 * x187) + x26;
 	const GEN_FLT x222 = cos(x212) * ogeePhase_1;
 	const GEN_FLT x223 = x217 * x216 * x202;
@@ -7121,9 +7118,9 @@ static inline void gen_reproject_gen2_jac_lh_p(FLT *out, const SurvivePose *obj_
 	const GEN_FLT x227 = 2.40324066e-05 * x191;
 	const GEN_FLT x228 = x208 * x209;
 	const GEN_FLT x229 = x222 * x228;
-	const GEN_FLT x230 = x218 * pow(x215, -2) * x202;
+	const GEN_FLT x230 = x218 * (1. / (x215 * x215)) * x202;
 	const GEN_FLT x231 = x211 + (x219 * x202);
-	const GEN_FLT x232 = pow((1 + (-1 * pow(x231, 2))), -1.0 / 2.0);
+	const GEN_FLT x232 = 1. / sqrt(1 + (-1 * (x231 * x231)));
 	const GEN_FLT x233 =
 		(-1 * x232 *
 		 ((-1 * x230 *
@@ -7301,18 +7298,18 @@ static inline void gen_reproject_gen2_jac_bsd(FLT *out, const SurvivePose *obj_p
 	const GEN_FLT x11 = (x6 * lh_qk) + (-1 * x4 * lh_qi) + (x7 * lh_qw);
 	const GEN_FLT x12 = x4 + (2 * ((x11 * lh_qi) + (-1 * x9 * lh_qj))) + lh_pz;
 	const GEN_FLT x13 = x6 + (2 * ((x8 * lh_qj) + (-1 * x11 * lh_qk))) + lh_px;
-	const GEN_FLT x14 = pow(x13, 2) + pow(x12, 2);
-	const GEN_FLT x15 = pow(x14, -1.0 / 2.0) * x10;
+	const GEN_FLT x14 = (x13 * x13) + (x12 * x12);
+	const GEN_FLT x15 = (1. / sqrt(x14)) * x10;
 	const GEN_FLT x16 = x1 * x15;
 	const GEN_FLT x17 = atan2(-1 * x12, x13);
 	const GEN_FLT x18 = x17 + (-1 * asin(x16)) + ogeeMag_0;
 	const GEN_FLT x19 = sin(x18);
 	const GEN_FLT x20 = (x19 * ogeePhase_0) + curve_0;
 	const GEN_FLT x21 = cos(x0);
-	const GEN_FLT x22 = pow(x10, 2);
+	const GEN_FLT x22 = x10 * x10;
 	const GEN_FLT x23 = x14 + x22;
-	const GEN_FLT x24 = pow(x23, -1.0 / 2.0) * x10;
-	const GEN_FLT x25 = asin(x24 * pow(x21, -1));
+	const GEN_FLT x24 = (1. / sqrt(x23)) * x10;
+	const GEN_FLT x25 = asin(x24 * (1. / x21));
 	const GEN_FLT x26 = 8.0108022e-06 * x25;
 	const GEN_FLT x27 = -8.0108022e-06 + (-1 * x26);
 	const GEN_FLT x28 = 0.0028679863 + (x25 * x27);
@@ -7328,26 +7325,26 @@ static inline void gen_reproject_gen2_jac_bsd(FLT *out, const SurvivePose *obj_p
 	const GEN_FLT x38 = x37 * x20;
 	const GEN_FLT x39 = x36 * x38;
 	const GEN_FLT x40 = x21 + (-1 * x39);
-	const GEN_FLT x41 = pow(x40, -1);
-	const GEN_FLT x42 = pow(x25, 2);
+	const GEN_FLT x41 = 1. / x40;
+	const GEN_FLT x42 = x25 * x25;
 	const GEN_FLT x43 = x41 * x42;
 	const GEN_FLT x44 = x43 * x30;
 	const GEN_FLT x45 = x16 + (x44 * x20);
-	const GEN_FLT x46 = pow((1 + (-1 * pow(x45, 2))), -1.0 / 2.0);
-	const GEN_FLT x47 = pow(x1, 2);
+	const GEN_FLT x46 = 1. / sqrt(1 + (-1 * (x45 * x45)));
+	const GEN_FLT x47 = x1 * x1;
 	const GEN_FLT x48 = x15 * (1 + x47);
 	const GEN_FLT x49 = cos(x18) * ogeePhase_0;
 	const GEN_FLT x50 = x44 * x49;
-	const GEN_FLT x51 = x22 * pow(x14, -1);
-	const GEN_FLT x52 = x48 * pow((1 + (-1 * x51 * x47)), -1.0 / 2.0);
-	const GEN_FLT x53 = pow(x21, -2);
-	const GEN_FLT x54 = x22 * pow(x23, -1);
-	const GEN_FLT x55 = x53 * x24 * pow((1 + (-1 * x54 * x53)), -1.0 / 2.0);
+	const GEN_FLT x51 = x22 * (1. / x14);
+	const GEN_FLT x52 = x48 * (1. / sqrt(1 + (-1 * x51 * x47)));
+	const GEN_FLT x53 = 1. / (x21 * x21);
+	const GEN_FLT x54 = x22 * (1. / x23);
+	const GEN_FLT x55 = x53 * x24 * (1. / sqrt(1 + (-1 * x54 * x53)));
 	const GEN_FLT x56 = x55 * x37;
 	const GEN_FLT x57 = x56 * x27;
 	const GEN_FLT x58 = (x56 * x28) + (x25 * (x57 + (-1 * x56 * x26)));
 	const GEN_FLT x59 = (x58 * x25) + (x56 * x29);
-	const GEN_FLT x60 = pow(x40, -2) * x42 * x30;
+	const GEN_FLT x60 = (1. / (x40 * x40)) * x42 * x30;
 	const GEN_FLT x61 =
 		x46 * ((-1 * x60 * x20 *
 				((x52 * x49 * x36 * x37) +
@@ -7366,14 +7363,14 @@ static inline void gen_reproject_gen2_jac_bsd(FLT *out, const SurvivePose *obj_p
 	const GEN_FLT x67 = ((x64 * x19) + (x44 * x19)) * x46;
 	const GEN_FLT x68 = 0.523598775598299 + (-1 * tilt_1);
 	const GEN_FLT x69 = tan(x68);
-	const GEN_FLT x70 = pow(x69, 2);
+	const GEN_FLT x70 = x69 * x69;
 	const GEN_FLT x71 = x15 * (1 + x70);
 	const GEN_FLT x72 = cos(x68);
-	const GEN_FLT x73 = asin(pow(x72, -1) * x24);
+	const GEN_FLT x73 = asin((1. / x72) * x24);
 	const GEN_FLT x74 = 8.0108022e-06 * x73;
 	const GEN_FLT x75 = sin(x68);
-	const GEN_FLT x76 = pow(x72, -2);
-	const GEN_FLT x77 = x76 * x24 * pow((1 + (-1 * x76 * x54)), -1.0 / 2.0);
+	const GEN_FLT x76 = 1. / (x72 * x72);
+	const GEN_FLT x77 = x76 * x24 * (1. / sqrt(1 + (-1 * x76 * x54)));
 	const GEN_FLT x78 = x75 * x77;
 	const GEN_FLT x79 = -8.0108022e-06 + (-1 * x74);
 	const GEN_FLT x80 = -1 * x79 * x78;
@@ -7385,7 +7382,7 @@ static inline void gen_reproject_gen2_jac_bsd(FLT *out, const SurvivePose *obj_p
 	const GEN_FLT x86 = x17 + (-1 * asin(x85)) + ogeeMag_1;
 	const GEN_FLT x87 = sin(x86);
 	const GEN_FLT x88 = (x87 * ogeePhase_1) + curve_1;
-	const GEN_FLT x89 = pow(x73, 2);
+	const GEN_FLT x89 = x73 * x73;
 	const GEN_FLT x90 = 0.0076069798 + (x83 * x73);
 	const GEN_FLT x91 = x73 * x90;
 	const GEN_FLT x92 = -8.0108022e-06 + (-1.60216044e-05 * x73);
@@ -7396,16 +7393,16 @@ static inline void gen_reproject_gen2_jac_bsd(FLT *out, const SurvivePose *obj_p
 	const GEN_FLT x97 = x88 * x96;
 	const GEN_FLT x98 = x75 * x97;
 	const GEN_FLT x99 = x72 + x98;
-	const GEN_FLT x100 = pow(x99, -1);
+	const GEN_FLT x100 = 1. / x99;
 	const GEN_FLT x101 = x89 * x100;
 	const GEN_FLT x102 = x90 * x101;
 	const GEN_FLT x103 = cos(x86) * ogeePhase_1;
 	const GEN_FLT x104 = x103 * x102;
-	const GEN_FLT x105 = x71 * pow((1 + (-1 * x70 * x51)), -1.0 / 2.0);
+	const GEN_FLT x105 = x71 * (1. / sqrt(1 + (-1 * x70 * x51)));
 	const GEN_FLT x106 = x88 * x75;
-	const GEN_FLT x107 = x89 * x90 * pow(x99, -2);
+	const GEN_FLT x107 = x89 * x90 * (1. / (x99 * x99));
 	const GEN_FLT x108 = x85 + (x88 * x102);
-	const GEN_FLT x109 = pow((1 + (-1 * pow(x108, 2))), -1.0 / 2.0);
+	const GEN_FLT x109 = 1. / sqrt(1 + (-1 * (x108 * x108)));
 	const GEN_FLT x110 =
 		x109 * ((-1 * x88 * x107 *
 				 ((-1 * x72 * x97) +
@@ -7489,25 +7486,24 @@ static inline FLT gen_reproject_axis_x_gen2(const SurvivePose *obj_p, const FLT 
 	const GEN_FLT x8 = x5 + (2 * ((x7 * lh_qi) + (-1 * x6 * lh_qj))) + lh_pz;
 	const GEN_FLT x9 = (x4 * lh_qi) + (-1 * x2 * lh_qj) + (x5 * lh_qw);
 	const GEN_FLT x10 = x2 + (2 * ((x9 * lh_qj) + (-1 * x7 * lh_qk))) + lh_px;
-	const GEN_FLT x11 = pow(x10, 2) + pow(x8, 2);
+	const GEN_FLT x11 = (x10 * x10) + (x8 * x8);
 	const GEN_FLT x12 = 0.523598775598299 + tilt_0;
 	const GEN_FLT x13 = (2 * ((x6 * lh_qk) + (-1 * x9 * lh_qi))) + x4 + lh_py;
-	const GEN_FLT x14 = x13 * pow(x11, -1.0 / 2.0) * tan(x12);
+	const GEN_FLT x14 = x13 * (1. / sqrt(x11)) * tan(x12);
 	const GEN_FLT x15 = atan2(-1 * x8, x10);
 	const GEN_FLT x16 = (sin(x15 + (-1 * asin(x14)) + ogeeMag_0) * ogeePhase_0) + curve_0;
 	const GEN_FLT x17 = cos(x12);
-	const GEN_FLT x18 = asin(x13 * pow(x17, -1) * pow((x11 + pow(x13, 2)), -1.0 / 2.0));
+	const GEN_FLT x18 = asin(x13 * (1. / x17) * (1. / sqrt(x11 + (x13 * x13))));
 	const GEN_FLT x19 = 0.0028679863 + (x18 * (-8.0108022e-06 + (-8.0108022e-06 * x18)));
 	const GEN_FLT x20 = 5.3685255e-06 + (x19 * x18);
 	const GEN_FLT x21 = 0.0076069798 + (x20 * x18);
 	const GEN_FLT x22 = asin(
 		x14 +
-		(x21 * pow(x18, 2) * x16 *
-		 pow((x17 +
-			  (-1 * x16 * sin(x12) *
-			   ((x18 * (x21 + (x18 * (x20 + (x18 * (x19 + (x18 * (-8.0108022e-06 + (-1.60216044e-05 * x18))))))))) +
-				(x21 * x18)))),
-			 -1)));
+		(x21 * (x18 * x18) * x16 *
+		 (1. /
+		  (x17 + (-1 * x16 * sin(x12) *
+				  ((x18 * (x21 + (x18 * (x20 + (x18 * (x19 + (x18 * (-8.0108022e-06 + (-1.60216044e-05 * x18))))))))) +
+				   (x21 * x18)))))));
 	return -1.5707963267949 + x15 + (-1 * x22) + (-1 * sin((-1 * x15) + x22 + (-1 * gibPhase_0)) * gibMag_0) +
 		   (-1 * phase_0);
 }
@@ -7562,25 +7558,25 @@ static inline void gen_reproject_axis_x_gen2_jac_obj_p(FLT *out, const SurvivePo
 	const GEN_FLT x20 = (x19 * lh_qk) + (-1 * x18 * lh_qi) + (x13 * lh_qw);
 	const GEN_FLT x21 = (x13 * lh_qi) + (-1 * x19 * lh_qj) + (x18 * lh_qw);
 	const GEN_FLT x22 = x19 + (2 * ((x21 * lh_qj) + (-1 * x20 * lh_qk))) + lh_px;
-	const GEN_FLT x23 = pow(x22, -1);
-	const GEN_FLT x24 = -2 * pow(lh_qk, 2);
-	const GEN_FLT x25 = -2 * pow(lh_qj, 2);
+	const GEN_FLT x23 = 1. / x22;
+	const GEN_FLT x24 = -2 * (lh_qk * lh_qk);
+	const GEN_FLT x25 = -2 * (lh_qj * lh_qj);
 	const GEN_FLT x26 = 1 + x25 + x24;
 	const GEN_FLT x27 = (x18 * lh_qj) + (-1 * x13 * lh_qk) + (x19 * lh_qw);
 	const GEN_FLT x28 = x18 + (2 * ((x20 * lh_qi) + (-1 * x27 * lh_qj))) + lh_pz;
-	const GEN_FLT x29 = pow(x22, 2);
-	const GEN_FLT x30 = x28 * pow(x29, -1);
-	const GEN_FLT x31 = x29 + pow(x28, 2);
-	const GEN_FLT x32 = pow(x31, -1);
+	const GEN_FLT x29 = x22 * x22;
+	const GEN_FLT x30 = x28 * (1. / x29);
+	const GEN_FLT x31 = x29 + (x28 * x28);
+	const GEN_FLT x32 = 1. / x31;
 	const GEN_FLT x33 = x32 * x29;
 	const GEN_FLT x34 = x33 * ((x30 * x26) + (-1 * x4 * x23));
 	const GEN_FLT x35 = x13 + (2 * ((x27 * lh_qk) + (-1 * x21 * lh_qi))) + lh_py;
 	const GEN_FLT x36 = 0.523598775598299 + tilt_0;
 	const GEN_FLT x37 = cos(x36);
-	const GEN_FLT x38 = pow(x37, -1);
-	const GEN_FLT x39 = pow(x35, 2);
+	const GEN_FLT x38 = 1. / x37;
+	const GEN_FLT x39 = x35 * x35;
 	const GEN_FLT x40 = x31 + x39;
-	const GEN_FLT x41 = pow(x40, -1.0 / 2.0) * x38;
+	const GEN_FLT x41 = (1. / sqrt(x40)) * x38;
 	const GEN_FLT x42 = asin(x41 * x35);
 	const GEN_FLT x43 = 8.0108022e-06 * x42;
 	const GEN_FLT x44 = -8.0108022e-06 + (-1 * x43);
@@ -7595,20 +7591,20 @@ static inline void gen_reproject_axis_x_gen2_jac_obj_p(FLT *out, const SurvivePo
 	const GEN_FLT x53 = (x52 * x42) + x48;
 	const GEN_FLT x54 = sin(x36);
 	const GEN_FLT x55 = tan(x36);
-	const GEN_FLT x56 = x55 * pow(x31, -1.0 / 2.0);
+	const GEN_FLT x56 = x55 * (1. / sqrt(x31));
 	const GEN_FLT x57 = x56 * x35;
 	const GEN_FLT x58 = atan2(-1 * x28, x22);
 	const GEN_FLT x59 = x58 + (-1 * asin(x57)) + ogeeMag_0;
 	const GEN_FLT x60 = (sin(x59) * ogeePhase_0) + curve_0;
 	const GEN_FLT x61 = x60 * x54;
 	const GEN_FLT x62 = x37 + (-1 * x61 * x53);
-	const GEN_FLT x63 = pow(x62, -1);
-	const GEN_FLT x64 = pow(x42, 2);
+	const GEN_FLT x63 = 1. / x62;
+	const GEN_FLT x64 = x42 * x42;
 	const GEN_FLT x65 = x60 * x64;
 	const GEN_FLT x66 = x63 * x65;
 	const GEN_FLT x67 = x57 + (x66 * x47);
-	const GEN_FLT x68 = pow((1 + (-1 * pow(x67, 2))), -1.0 / 2.0);
-	const GEN_FLT x69 = pow((1 + (-1 * pow(x55, 2) * x32 * x39)), -1.0 / 2.0);
+	const GEN_FLT x68 = 1. / sqrt(1 + (-1 * (x67 * x67)));
+	const GEN_FLT x69 = 1. / sqrt(1 + (-1 * (x55 * x55) * x32 * x39));
 	const GEN_FLT x70 = 2 * lh_qi;
 	const GEN_FLT x71 = x70 * lh_qj;
 	const GEN_FLT x72 = x0 * lh_qk;
@@ -7617,15 +7613,15 @@ static inline void gen_reproject_axis_x_gen2_jac_obj_p(FLT *out, const SurvivePo
 	const GEN_FLT x75 = 2 * x28;
 	const GEN_FLT x76 = (x4 * x75) + (x74 * x26);
 	const GEN_FLT x77 = 1.0 / 2.0 * x35;
-	const GEN_FLT x78 = x77 * x55 * pow(x31, -3.0 / 2.0);
+	const GEN_FLT x78 = x77 * x55 * (1. / (x31 * sqrt(x31)));
 	const GEN_FLT x79 = (-1 * x78 * x76) + (x73 * x56);
 	const GEN_FLT x80 = (-1 * x79 * x69) + x34;
 	const GEN_FLT x81 = cos(x59) * ogeePhase_0;
 	const GEN_FLT x82 = x63 * x64 * x47;
 	const GEN_FLT x83 = x81 * x82;
-	const GEN_FLT x84 = pow((1 + (-1 * pow(x40, -1) * pow(x37, -2) * x39)), -1.0 / 2.0);
+	const GEN_FLT x84 = 1. / sqrt(1 + (-1 * (1. / x40) * (1. / (x37 * x37)) * x39));
 	const GEN_FLT x85 = 2 * x35;
-	const GEN_FLT x86 = x77 * pow(x40, -3.0 / 2.0) * x38;
+	const GEN_FLT x86 = x77 * (1. / (x40 * sqrt(x40))) * x38;
 	const GEN_FLT x87 = x84 * ((x73 * x41) + (-1 * x86 * (x76 + (x85 * x73))));
 	const GEN_FLT x88 = x87 * x44;
 	const GEN_FLT x89 = (x87 * x45) + (x42 * (x88 + (-1 * x87 * x43)));
@@ -7633,7 +7629,7 @@ static inline void gen_reproject_axis_x_gen2_jac_obj_p(FLT *out, const SurvivePo
 	const GEN_FLT x91 = 2.40324066e-05 * x42;
 	const GEN_FLT x92 = x54 * x53;
 	const GEN_FLT x93 = x81 * x92;
-	const GEN_FLT x94 = pow(x62, -2) * x65 * x47;
+	const GEN_FLT x94 = (1. / (x62 * x62)) * x65 * x47;
 	const GEN_FLT x95 = 2 * x60 * x63 * x48;
 	const GEN_FLT x96 =
 		x68 *
@@ -7651,7 +7647,7 @@ static inline void gen_reproject_axis_x_gen2_jac_obj_p(FLT *out, const SurvivePo
 	const GEN_FLT x100 = x99 + x98;
 	const GEN_FLT x101 = x71 + (-1 * x72);
 	const GEN_FLT x102 = ((x30 * x101) + (-1 * x23 * x100)) * x33;
-	const GEN_FLT x103 = 1 + (-2 * pow(lh_qi, 2));
+	const GEN_FLT x103 = 1 + (-2 * (lh_qi * lh_qi));
 	const GEN_FLT x104 = x103 + x24;
 	const GEN_FLT x105 = (x75 * x100) + (x74 * x101);
 	const GEN_FLT x106 = (-1 * x78 * x105) + (x56 * x104);
@@ -7861,8 +7857,8 @@ static inline void gen_reproject_axis_x_gen2_jac_sensor_pt(FLT *out, const Survi
 	const GEN_FLT x5 = x2 * obj_qj;
 	const GEN_FLT x6 = x0 * obj_qk;
 	const GEN_FLT x7 = x6 + x5;
-	const GEN_FLT x8 = -2 * pow(obj_qk, 2);
-	const GEN_FLT x9 = 1 + (-2 * pow(obj_qj, 2));
+	const GEN_FLT x8 = -2 * (obj_qk * obj_qk);
+	const GEN_FLT x9 = 1 + (-2 * (obj_qj * obj_qj));
 	const GEN_FLT x10 = x9 + x8;
 	const GEN_FLT x11 = 2 * ((x10 * lh_qw) + (-1 * x7 * lh_qk) + (x4 * lh_qj));
 	const GEN_FLT x12 = 2 * ((x7 * lh_qw) + (-1 * x4 * lh_qi) + (x10 * lh_qk));
@@ -7876,24 +7872,24 @@ static inline void gen_reproject_axis_x_gen2_jac_sensor_pt(FLT *out, const Survi
 	const GEN_FLT x20 = (x19 * lh_qk) + (-1 * x18 * lh_qi) + (x16 * lh_qw);
 	const GEN_FLT x21 = (x16 * lh_qi) + (-1 * x19 * lh_qj) + (x18 * lh_qw);
 	const GEN_FLT x22 = x19 + (2 * ((x21 * lh_qj) + (-1 * x20 * lh_qk))) + lh_px;
-	const GEN_FLT x23 = pow(x22, -1);
+	const GEN_FLT x23 = 1. / x22;
 	const GEN_FLT x24 = 2 * ((x4 * lh_qw) + (-1 * x10 * lh_qj) + (x7 * lh_qi));
 	const GEN_FLT x25 = (x24 * lh_qj) + x10 + (-1 * x12 * lh_qk);
 	const GEN_FLT x26 = (x18 * lh_qj) + (-1 * x16 * lh_qk) + (x19 * lh_qw);
 	const GEN_FLT x27 = x18 + (2 * ((x20 * lh_qi) + (-1 * x26 * lh_qj))) + lh_pz;
-	const GEN_FLT x28 = pow(x22, 2);
-	const GEN_FLT x29 = pow(x28, -1) * x27;
-	const GEN_FLT x30 = x28 + pow(x27, 2);
-	const GEN_FLT x31 = pow(x30, -1);
+	const GEN_FLT x28 = x22 * x22;
+	const GEN_FLT x29 = (1. / x28) * x27;
+	const GEN_FLT x30 = x28 + (x27 * x27);
+	const GEN_FLT x31 = 1. / x30;
 	const GEN_FLT x32 = x31 * x28;
 	const GEN_FLT x33 = ((x25 * x29) + (-1 * x23 * x13)) * x32;
 	const GEN_FLT x34 = (2 * ((x26 * lh_qk) + (-1 * x21 * lh_qi))) + x16 + lh_py;
 	const GEN_FLT x35 = 0.523598775598299 + tilt_0;
 	const GEN_FLT x36 = cos(x35);
-	const GEN_FLT x37 = pow(x36, -1);
-	const GEN_FLT x38 = pow(x34, 2);
+	const GEN_FLT x37 = 1. / x36;
+	const GEN_FLT x38 = x34 * x34;
 	const GEN_FLT x39 = x30 + x38;
-	const GEN_FLT x40 = x37 * pow(x39, -1.0 / 2.0);
+	const GEN_FLT x40 = x37 * (1. / sqrt(x39));
 	const GEN_FLT x41 = asin(x40 * x34);
 	const GEN_FLT x42 = 8.0108022e-06 * x41;
 	const GEN_FLT x43 = -8.0108022e-06 + (-1 * x42);
@@ -7908,34 +7904,34 @@ static inline void gen_reproject_axis_x_gen2_jac_sensor_pt(FLT *out, const Survi
 	const GEN_FLT x52 = (x51 * x41) + x47;
 	const GEN_FLT x53 = sin(x35);
 	const GEN_FLT x54 = tan(x35);
-	const GEN_FLT x55 = x54 * pow(x30, -1.0 / 2.0);
+	const GEN_FLT x55 = x54 * (1. / sqrt(x30));
 	const GEN_FLT x56 = x55 * x34;
 	const GEN_FLT x57 = atan2(-1 * x27, x22);
 	const GEN_FLT x58 = x57 + (-1 * asin(x56)) + ogeeMag_0;
 	const GEN_FLT x59 = (sin(x58) * ogeePhase_0) + curve_0;
 	const GEN_FLT x60 = x53 * x59;
 	const GEN_FLT x61 = x36 + (-1 * x60 * x52);
-	const GEN_FLT x62 = pow(x61, -1);
-	const GEN_FLT x63 = pow(x41, 2);
+	const GEN_FLT x62 = 1. / x61;
+	const GEN_FLT x63 = x41 * x41;
 	const GEN_FLT x64 = x63 * x59;
 	const GEN_FLT x65 = x64 * x62;
 	const GEN_FLT x66 = x56 + (x65 * x46);
-	const GEN_FLT x67 = pow((1 + (-1 * pow(x66, 2))), -1.0 / 2.0);
+	const GEN_FLT x67 = 1. / sqrt(1 + (-1 * (x66 * x66)));
 	const GEN_FLT x68 = x7 + (x11 * lh_qk) + (-1 * x24 * lh_qi);
 	const GEN_FLT x69 = 2 * x22;
 	const GEN_FLT x70 = 2 * x27;
 	const GEN_FLT x71 = (x70 * x13) + (x69 * x25);
 	const GEN_FLT x72 = 1.0 / 2.0 * x34;
-	const GEN_FLT x73 = x72 * x54 * pow(x30, -3.0 / 2.0);
+	const GEN_FLT x73 = x72 * x54 * (1. / (x30 * sqrt(x30)));
 	const GEN_FLT x74 = (-1 * x71 * x73) + (x68 * x55);
-	const GEN_FLT x75 = pow((1 + (-1 * pow(x54, 2) * x31 * x38)), -1.0 / 2.0);
+	const GEN_FLT x75 = 1. / sqrt(1 + (-1 * (x54 * x54) * x31 * x38));
 	const GEN_FLT x76 = (-1 * x75 * x74) + x33;
 	const GEN_FLT x77 = cos(x58) * ogeePhase_0;
 	const GEN_FLT x78 = x63 * x62 * x46;
 	const GEN_FLT x79 = x78 * x77;
-	const GEN_FLT x80 = pow((1 + (-1 * pow(x36, -2) * x38 * pow(x39, -1))), -1.0 / 2.0);
+	const GEN_FLT x80 = 1. / sqrt(1 + (-1 * (1. / (x36 * x36)) * x38 * (1. / x39)));
 	const GEN_FLT x81 = 2 * x34;
-	const GEN_FLT x82 = x72 * x37 * pow(x39, -3.0 / 2.0);
+	const GEN_FLT x82 = x72 * x37 * (1. / (x39 * sqrt(x39)));
 	const GEN_FLT x83 = x80 * ((x68 * x40) + (-1 * x82 * (x71 + (x81 * x68))));
 	const GEN_FLT x84 = x83 * x43;
 	const GEN_FLT x85 = (x83 * x44) + (x41 * (x84 + (-1 * x83 * x42)));
@@ -7943,7 +7939,7 @@ static inline void gen_reproject_axis_x_gen2_jac_sensor_pt(FLT *out, const Survi
 	const GEN_FLT x87 = 2.40324066e-05 * x41;
 	const GEN_FLT x88 = x53 * x52;
 	const GEN_FLT x89 = x88 * x77;
-	const GEN_FLT x90 = x64 * pow(x61, -2) * x46;
+	const GEN_FLT x90 = x64 * (1. / (x61 * x61)) * x46;
 	const GEN_FLT x91 = 2 * x62 * x59 * x47;
 	const GEN_FLT x92 =
 		x67 *
@@ -7959,7 +7955,7 @@ static inline void gen_reproject_axis_x_gen2_jac_sensor_pt(FLT *out, const Survi
 	const GEN_FLT x94 = 2 * obj_qk * obj_qj;
 	const GEN_FLT x95 = x2 * obj_qw;
 	const GEN_FLT x96 = x95 + x94;
-	const GEN_FLT x97 = -2 * pow(obj_qi, 2);
+	const GEN_FLT x97 = -2 * (obj_qi * obj_qi);
 	const GEN_FLT x98 = 1 + x8 + x97;
 	const GEN_FLT x99 = x5 + (-1 * x6);
 	const GEN_FLT x100 = 2 * ((x99 * lh_qw) + (-1 * x98 * lh_qk) + (x96 * lh_qj));
@@ -8067,17 +8063,17 @@ static inline void gen_reproject_axis_x_gen2_jac_lh_p(FLT *out, const SurvivePos
 	const GEN_FLT x20 = x7 * lh_qi;
 	const GEN_FLT x21 = x20 + (-1 * x19) + x18;
 	const GEN_FLT x22 = x3 + (2 * ((x21 * lh_qj) + (-1 * x16 * lh_qk))) + lh_px;
-	const GEN_FLT x23 = pow(x22, 2);
-	const GEN_FLT x24 = x23 + pow(x17, 2);
-	const GEN_FLT x25 = pow(x24, -1);
+	const GEN_FLT x23 = x22 * x22;
+	const GEN_FLT x24 = x23 + (x17 * x17);
+	const GEN_FLT x25 = 1. / x24;
 	const GEN_FLT x26 = x25 * x17;
 	const GEN_FLT x27 = x7 + (2 * ((x12 * lh_qk) + (-1 * x21 * lh_qi))) + lh_py;
 	const GEN_FLT x28 = 0.523598775598299 + tilt_0;
 	const GEN_FLT x29 = cos(x28);
-	const GEN_FLT x30 = pow(x29, -1);
-	const GEN_FLT x31 = pow(x27, 2);
+	const GEN_FLT x30 = 1. / x29;
+	const GEN_FLT x31 = x27 * x27;
 	const GEN_FLT x32 = x24 + x31;
-	const GEN_FLT x33 = x30 * pow(x32, -1.0 / 2.0);
+	const GEN_FLT x33 = x30 * (1. / sqrt(x32));
 	const GEN_FLT x34 = asin(x33 * x27);
 	const GEN_FLT x35 = 8.0108022e-06 * x34;
 	const GEN_FLT x36 = -8.0108022e-06 + (-1 * x35);
@@ -8092,29 +8088,29 @@ static inline void gen_reproject_axis_x_gen2_jac_lh_p(FLT *out, const SurvivePos
 	const GEN_FLT x45 = (x44 * x34) + x40;
 	const GEN_FLT x46 = sin(x28);
 	const GEN_FLT x47 = tan(x28);
-	const GEN_FLT x48 = x47 * pow(x24, -1.0 / 2.0);
+	const GEN_FLT x48 = x47 * (1. / sqrt(x24));
 	const GEN_FLT x49 = x48 * x27;
 	const GEN_FLT x50 = atan2(-1 * x17, x22);
 	const GEN_FLT x51 = x50 + (-1 * asin(x49)) + ogeeMag_0;
 	const GEN_FLT x52 = (sin(x51) * ogeePhase_0) + curve_0;
 	const GEN_FLT x53 = x52 * x46;
 	const GEN_FLT x54 = x29 + (-1 * x53 * x45);
-	const GEN_FLT x55 = pow(x54, -1);
-	const GEN_FLT x56 = pow(x34, 2);
+	const GEN_FLT x55 = 1. / x54;
+	const GEN_FLT x56 = x34 * x34;
 	const GEN_FLT x57 = x52 * x56;
 	const GEN_FLT x58 = x57 * x55;
 	const GEN_FLT x59 = x49 + (x58 * x39);
-	const GEN_FLT x60 = pow((1 + (-1 * pow(x59, 2))), -1.0 / 2.0);
+	const GEN_FLT x60 = 1. / sqrt(1 + (-1 * (x59 * x59)));
 	const GEN_FLT x61 = x22 * x27;
-	const GEN_FLT x62 = x47 * pow(x24, -3.0 / 2.0);
+	const GEN_FLT x62 = x47 * (1. / (x24 * sqrt(x24)));
 	const GEN_FLT x63 = x61 * x62;
-	const GEN_FLT x64 = pow((1 + (-1 * pow(x47, 2) * x31 * x25)), -1.0 / 2.0);
+	const GEN_FLT x64 = 1. / sqrt(1 + (-1 * (x47 * x47) * x31 * x25));
 	const GEN_FLT x65 = (x63 * x64) + x26;
 	const GEN_FLT x66 = cos(x51) * ogeePhase_0;
 	const GEN_FLT x67 = x56 * x55 * x39;
 	const GEN_FLT x68 = x67 * x66;
-	const GEN_FLT x69 = pow((1 + (-1 * pow(x32, -1) * x31 * pow(x29, -2))), -1.0 / 2.0);
-	const GEN_FLT x70 = x30 * pow(x32, -3.0 / 2.0);
+	const GEN_FLT x69 = 1. / sqrt(1 + (-1 * (1. / x32) * x31 * (1. / (x29 * x29))));
+	const GEN_FLT x70 = x30 * (1. / (x32 * sqrt(x32)));
 	const GEN_FLT x71 = x70 * x61;
 	const GEN_FLT x72 = x71 * x69;
 	const GEN_FLT x73 = -1 * x72 * x36;
@@ -8125,7 +8121,7 @@ static inline void gen_reproject_axis_x_gen2_jac_lh_p(FLT *out, const SurvivePos
 	const GEN_FLT x78 = x69 * x44;
 	const GEN_FLT x79 = x45 * x46;
 	const GEN_FLT x80 = x79 * x66;
-	const GEN_FLT x81 = pow(x54, -2) * x57 * x39;
+	const GEN_FLT x81 = (1. / (x54 * x54)) * x57 * x39;
 	const GEN_FLT x82 = 2 * x27;
 	const GEN_FLT x83 = x52 * x55 * x40;
 	const GEN_FLT x84 = x83 * x69;
@@ -8175,12 +8171,12 @@ static inline void gen_reproject_axis_x_gen2_jac_lh_p(FLT *out, const SurvivePos
 						   (x34 * (x103 + (x34 * ((-1 * x41 * x101) + (x77 * x101) + x102)) + (-1 * x42 * x101))))) +
 				   (-1 * x78 * x100))))) +
 			   (x58 * x104) + (x68 * x98) + (-1 * x97));
-	const GEN_FLT x107 = pow(x22, -1);
+	const GEN_FLT x107 = 1. / x22;
 	const GEN_FLT x108 = 2 * x19;
 	const GEN_FLT x109 = (2 * x20) + (-1 * x108);
 	const GEN_FLT x110 = 2 * x8;
 	const GEN_FLT x111 = (2 * x11) + (-1 * x110);
-	const GEN_FLT x112 = pow(x23, -1) * x17;
+	const GEN_FLT x112 = (1. / x23) * x17;
 	const GEN_FLT x113 = x25 * x23;
 	const GEN_FLT x114 = ((x111 * x112) + (-1 * x109 * x107)) * x113;
 	const GEN_FLT x115 = 2 * x14;
@@ -8323,19 +8319,19 @@ static inline void gen_reproject_axis_x_gen2_jac_bsc0(FLT *out, const SurvivePos
 	const GEN_FLT x10 = x7 + (2 * ((x9 * lh_qi) + (-1 * x8 * lh_qj))) + lh_pz;
 	const GEN_FLT x11 = (x6 * lh_qi) + (-1 * x4 * lh_qj) + (x7 * lh_qw);
 	const GEN_FLT x12 = x4 + (2 * ((x11 * lh_qj) + (-1 * x9 * lh_qk))) + lh_px;
-	const GEN_FLT x13 = pow(x12, 2) + pow(x10, 2);
+	const GEN_FLT x13 = (x12 * x12) + (x10 * x10);
 	const GEN_FLT x14 = x6 + (2 * ((x8 * lh_qk) + (-1 * x11 * lh_qi))) + lh_py;
-	const GEN_FLT x15 = x14 * pow(x13, -1.0 / 2.0);
+	const GEN_FLT x15 = x14 * (1. / sqrt(x13));
 	const GEN_FLT x16 = x1 * x15;
 	const GEN_FLT x17 = atan2(-1 * x10, x12);
 	const GEN_FLT x18 = x17 + (-1 * asin(x16)) + ogeeMag_0;
 	const GEN_FLT x19 = sin(x18);
 	const GEN_FLT x20 = (x19 * ogeePhase_0) + curve_0;
 	const GEN_FLT x21 = cos(x0);
-	const GEN_FLT x22 = pow(x14, 2);
+	const GEN_FLT x22 = x14 * x14;
 	const GEN_FLT x23 = x13 + x22;
-	const GEN_FLT x24 = pow(x23, -1.0 / 2.0) * x14;
-	const GEN_FLT x25 = asin(x24 * pow(x21, -1));
+	const GEN_FLT x24 = (1. / sqrt(x23)) * x14;
+	const GEN_FLT x25 = asin(x24 * (1. / x21));
 	const GEN_FLT x26 = 8.0108022e-06 * x25;
 	const GEN_FLT x27 = -8.0108022e-06 + (-1 * x26);
 	const GEN_FLT x28 = 0.0028679863 + (x25 * x27);
@@ -8351,25 +8347,25 @@ static inline void gen_reproject_axis_x_gen2_jac_bsc0(FLT *out, const SurvivePos
 	const GEN_FLT x38 = x37 * x20;
 	const GEN_FLT x39 = x31 * x38;
 	const GEN_FLT x40 = x21 + (-1 * x39);
-	const GEN_FLT x41 = pow(x40, -1);
-	const GEN_FLT x42 = pow(x25, 2);
+	const GEN_FLT x41 = 1. / x40;
+	const GEN_FLT x42 = x25 * x25;
 	const GEN_FLT x43 = x41 * x42;
 	const GEN_FLT x44 = x43 * x30;
 	const GEN_FLT x45 = x16 + (x44 * x20);
-	const GEN_FLT x46 = pow((1 + (-1 * pow(x45, 2))), -1.0 / 2.0);
-	const GEN_FLT x47 = pow(x1, 2);
+	const GEN_FLT x46 = 1. / sqrt(1 + (-1 * (x45 * x45)));
+	const GEN_FLT x47 = x1 * x1;
 	const GEN_FLT x48 = x15 * (1 + x47);
 	const GEN_FLT x49 = cos(x18) * ogeePhase_0;
 	const GEN_FLT x50 = x44 * x49;
-	const GEN_FLT x51 = x48 * pow((1 + (-1 * x47 * x22 * pow(x13, -1))), -1.0 / 2.0);
-	const GEN_FLT x52 = pow(x21, -2);
-	const GEN_FLT x53 = x52 * x24 * pow((1 + (-1 * x52 * x22 * pow(x23, -1))), -1.0 / 2.0);
+	const GEN_FLT x51 = x48 * (1. / sqrt(1 + (-1 * x47 * x22 * (1. / x13))));
+	const GEN_FLT x52 = 1. / (x21 * x21);
+	const GEN_FLT x53 = x52 * x24 * (1. / sqrt(1 + (-1 * x52 * x22 * (1. / x23))));
 	const GEN_FLT x54 = x53 * x31;
 	const GEN_FLT x55 = x54 * x27;
 	const GEN_FLT x56 = (x54 * x28) + (x25 * (x55 + (-1 * x54 * x26)));
 	const GEN_FLT x57 = (x56 * x25) + (x54 * x29);
 	const GEN_FLT x58 = x31 * x20;
-	const GEN_FLT x59 = pow(x40, -2) * x42 * x30;
+	const GEN_FLT x59 = (1. / (x40 * x40)) * x42 * x30;
 	const GEN_FLT x60 =
 		x46 * ((2 * x53 * x58 * x41 * x32) +
 			   (-1 * x59 * x20 *
@@ -8436,23 +8432,22 @@ static inline FLT gen_reproject_axis_y_gen2(const SurvivePose *obj_p, const FLT 
 	const GEN_FLT x11 = (x6 * lh_qk) + (-1 * x4 * lh_qi) + (x7 * lh_qw);
 	const GEN_FLT x12 = x4 + (2 * ((x11 * lh_qi) + (-1 * x9 * lh_qj))) + lh_pz;
 	const GEN_FLT x13 = x6 + (2 * ((x8 * lh_qj) + (-1 * x11 * lh_qk))) + lh_px;
-	const GEN_FLT x14 = pow(x13, 2) + pow(x12, 2);
-	const GEN_FLT x15 = asin(pow(x1, -1) * x10 * pow((x14 + pow(x10, 2)), -1.0 / 2.0));
+	const GEN_FLT x14 = (x13 * x13) + (x12 * x12);
+	const GEN_FLT x15 = asin((1. / x1) * x10 * (1. / sqrt(x14 + (x10 * x10))));
 	const GEN_FLT x16 = 0.0028679863 + (x15 * (-8.0108022e-06 + (-8.0108022e-06 * x15)));
 	const GEN_FLT x17 = 5.3685255e-06 + (x15 * x16);
 	const GEN_FLT x18 = 0.0076069798 + (x15 * x17);
-	const GEN_FLT x19 = -1 * tan(x0) * pow(x14, -1.0 / 2.0) * x10;
+	const GEN_FLT x19 = -1 * tan(x0) * (1. / sqrt(x14)) * x10;
 	const GEN_FLT x20 = atan2(-1 * x12, x13);
 	const GEN_FLT x21 = (sin(x20 + (-1 * asin(x19)) + ogeeMag_1) * ogeePhase_1) + curve_1;
 	const GEN_FLT x22 =
 		x20 +
 		(-1 *
-		 asin(x19 + (x21 * pow(x15, 2) * x18 *
-					 pow((x1 + (sin(x0) * x21 *
-								((x15 * (x18 + (x15 * (x17 + (x15 * (x16 + (x15 * (-8.0108022e-06 +
-																				   (-1.60216044e-05 * x15))))))))) +
-								 (x15 * x18)))),
-						 -1))));
+		 asin(x19 + (x21 * (x15 * x15) * x18 *
+					 (1. / (x1 + (sin(x0) * x21 *
+								  ((x15 * (x18 + (x15 * (x17 + (x15 * (x16 + (x15 * (-8.0108022e-06 +
+																					 (-1.60216044e-05 * x15))))))))) +
+								   (x15 * x18))))))));
 	return -1.5707963267949 + x22 + (sin(x22 + gibPhase_1) * gibMag_1) + (-1 * phase_1);
 }
 
@@ -8506,28 +8501,28 @@ static inline void gen_reproject_axis_y_gen2_jac_obj_p(FLT *out, const SurvivePo
 	const GEN_FLT x20 = (x19 * lh_qk) + (-1 * x18 * lh_qi) + (x13 * lh_qw);
 	const GEN_FLT x21 = (x13 * lh_qi) + (-1 * x19 * lh_qj) + (x18 * lh_qw);
 	const GEN_FLT x22 = x19 + (2 * ((x21 * lh_qj) + (-1 * x20 * lh_qk))) + lh_px;
-	const GEN_FLT x23 = pow(x22, -1);
-	const GEN_FLT x24 = -2 * pow(lh_qk, 2);
-	const GEN_FLT x25 = -2 * pow(lh_qj, 2);
+	const GEN_FLT x23 = 1. / x22;
+	const GEN_FLT x24 = -2 * (lh_qk * lh_qk);
+	const GEN_FLT x25 = -2 * (lh_qj * lh_qj);
 	const GEN_FLT x26 = 1 + x25 + x24;
 	const GEN_FLT x27 = (x18 * lh_qj) + (-1 * x13 * lh_qk) + (x19 * lh_qw);
 	const GEN_FLT x28 = x18 + (2 * ((x20 * lh_qi) + (-1 * x27 * lh_qj))) + lh_pz;
-	const GEN_FLT x29 = pow(x22, 2);
-	const GEN_FLT x30 = x28 * pow(x29, -1);
-	const GEN_FLT x31 = x29 + pow(x28, 2);
-	const GEN_FLT x32 = pow(x31, -1);
+	const GEN_FLT x29 = x22 * x22;
+	const GEN_FLT x30 = x28 * (1. / x29);
+	const GEN_FLT x31 = x29 + (x28 * x28);
+	const GEN_FLT x32 = 1. / x31;
 	const GEN_FLT x33 = x32 * x29;
 	const GEN_FLT x34 = x33 * ((x30 * x26) + (-1 * x4 * x23));
 	const GEN_FLT x35 = x13 + (2 * ((x27 * lh_qk) + (-1 * x21 * lh_qi))) + lh_py;
 	const GEN_FLT x36 = 0.523598775598299 + (-1 * tilt_1);
 	const GEN_FLT x37 = cos(x36);
-	const GEN_FLT x38 = pow(x37, -1);
-	const GEN_FLT x39 = pow(x35, 2);
+	const GEN_FLT x38 = 1. / x37;
+	const GEN_FLT x39 = x35 * x35;
 	const GEN_FLT x40 = x31 + x39;
-	const GEN_FLT x41 = pow(x40, -1.0 / 2.0) * x38;
+	const GEN_FLT x41 = (1. / sqrt(x40)) * x38;
 	const GEN_FLT x42 = asin(x41 * x35);
 	const GEN_FLT x43 = 8.0108022e-06 * x42;
-	const GEN_FLT x44 = pow((1 + (-1 * pow(x40, -1) * pow(x37, -2) * x39)), -1.0 / 2.0);
+	const GEN_FLT x44 = 1. / sqrt(1 + (-1 * (1. / x40) * (1. / (x37 * x37)) * x39));
 	const GEN_FLT x45 = 2 * lh_qj;
 	const GEN_FLT x46 = x45 * lh_qi;
 	const GEN_FLT x47 = x2 * lh_qw;
@@ -8537,7 +8532,7 @@ static inline void gen_reproject_axis_y_gen2_jac_obj_p(FLT *out, const SurvivePo
 	const GEN_FLT x51 = 2 * x28;
 	const GEN_FLT x52 = (x4 * x51) + (x50 * x26);
 	const GEN_FLT x53 = 1.0 / 2.0 * x35;
-	const GEN_FLT x54 = x53 * pow(x40, -3.0 / 2.0) * x38;
+	const GEN_FLT x54 = x53 * (1. / (x40 * sqrt(x40))) * x38;
 	const GEN_FLT x55 = x44 * ((x41 * x48) + (-1 * x54 * (x52 + (x48 * x49))));
 	const GEN_FLT x56 = -8.0108022e-06 + (-1 * x43);
 	const GEN_FLT x57 = x56 * x55;
@@ -8554,19 +8549,19 @@ static inline void gen_reproject_axis_y_gen2_jac_obj_p(FLT *out, const SurvivePo
 	const GEN_FLT x68 = (x67 * x42) + x63;
 	const GEN_FLT x69 = sin(x36);
 	const GEN_FLT x70 = tan(x36);
-	const GEN_FLT x71 = x70 * pow(x31, -1.0 / 2.0);
+	const GEN_FLT x71 = x70 * (1. / sqrt(x31));
 	const GEN_FLT x72 = -1 * x71 * x35;
 	const GEN_FLT x73 = atan2(-1 * x28, x22);
 	const GEN_FLT x74 = x73 + (-1 * asin(x72)) + ogeeMag_1;
 	const GEN_FLT x75 = (sin(x74) * ogeePhase_1) + curve_1;
 	const GEN_FLT x76 = x75 * x69;
 	const GEN_FLT x77 = x37 + (x76 * x68);
-	const GEN_FLT x78 = pow(x77, -1);
-	const GEN_FLT x79 = pow(x42, 2);
+	const GEN_FLT x78 = 1. / x77;
+	const GEN_FLT x79 = x42 * x42;
 	const GEN_FLT x80 = x79 * x75;
 	const GEN_FLT x81 = x80 * x78;
-	const GEN_FLT x82 = pow((1 + (-1 * pow(x70, 2) * x32 * x39)), -1.0 / 2.0);
-	const GEN_FLT x83 = x70 * x53 * pow(x31, -3.0 / 2.0);
+	const GEN_FLT x82 = 1. / sqrt(1 + (-1 * (x70 * x70) * x32 * x39));
+	const GEN_FLT x83 = x70 * x53 * (1. / (x31 * sqrt(x31)));
 	const GEN_FLT x84 = (x83 * x52) + (-1 * x71 * x48);
 	const GEN_FLT x85 = (-1 * x82 * x84) + x34;
 	const GEN_FLT x86 = cos(x74) * ogeePhase_1;
@@ -8576,9 +8571,9 @@ static inline void gen_reproject_axis_y_gen2_jac_obj_p(FLT *out, const SurvivePo
 	const GEN_FLT x90 = 2.40324066e-05 * x42;
 	const GEN_FLT x91 = x68 * x69;
 	const GEN_FLT x92 = x86 * x91;
-	const GEN_FLT x93 = x80 * pow(x77, -2) * x62;
+	const GEN_FLT x93 = x80 * (1. / (x77 * x77)) * x62;
 	const GEN_FLT x94 = x72 + (x81 * x62);
-	const GEN_FLT x95 = pow((1 + (-1 * pow(x94, 2))), -1.0 / 2.0);
+	const GEN_FLT x95 = 1. / sqrt(1 + (-1 * (x94 * x94)));
 	const GEN_FLT x96 =
 		(-1 * x95 *
 		 ((-1 * x93 *
@@ -8594,7 +8589,7 @@ static inline void gen_reproject_axis_y_gen2_jac_obj_p(FLT *out, const SurvivePo
 	const GEN_FLT x100 = x99 + x98;
 	const GEN_FLT x101 = x46 + (-1 * x47);
 	const GEN_FLT x102 = ((x30 * x101) + (-1 * x23 * x100)) * x33;
-	const GEN_FLT x103 = 1 + (-2 * pow(lh_qi, 2));
+	const GEN_FLT x103 = 1 + (-2 * (lh_qi * lh_qi));
 	const GEN_FLT x104 = x103 + x24;
 	const GEN_FLT x105 = (x51 * x100) + (x50 * x101);
 	const GEN_FLT x106 = x44 * ((x41 * x104) + (-1 * x54 * (x105 + (x49 * x104))));
@@ -8809,8 +8804,8 @@ static inline void gen_reproject_axis_y_gen2_jac_sensor_pt(FLT *out, const Survi
 	const GEN_FLT x5 = x2 * obj_qj;
 	const GEN_FLT x6 = x0 * obj_qk;
 	const GEN_FLT x7 = x6 + x5;
-	const GEN_FLT x8 = -2 * pow(obj_qj, 2);
-	const GEN_FLT x9 = 1 + (-2 * pow(obj_qk, 2));
+	const GEN_FLT x8 = -2 * (obj_qj * obj_qj);
+	const GEN_FLT x9 = 1 + (-2 * (obj_qk * obj_qk));
 	const GEN_FLT x10 = x9 + x8;
 	const GEN_FLT x11 = (x10 * lh_qw) + (-1 * x7 * lh_qk) + (x4 * lh_qj);
 	const GEN_FLT x12 = 2 * lh_qj;
@@ -8826,35 +8821,35 @@ static inline void gen_reproject_axis_y_gen2_jac_sensor_pt(FLT *out, const Survi
 	const GEN_FLT x22 = (x21 * lh_qk) + (-1 * x20 * lh_qi) + (x18 * lh_qw);
 	const GEN_FLT x23 = (x18 * lh_qi) + (-1 * x21 * lh_qj) + (x20 * lh_qw);
 	const GEN_FLT x24 = x21 + (2 * ((x23 * lh_qj) + (-1 * x22 * lh_qk))) + lh_px;
-	const GEN_FLT x25 = pow(x24, -1);
+	const GEN_FLT x25 = 1. / x24;
 	const GEN_FLT x26 = 2 * lh_qk;
 	const GEN_FLT x27 = (x4 * lh_qw) + (-1 * x10 * lh_qj) + (x7 * lh_qi);
 	const GEN_FLT x28 = x10 + (x27 * x12) + (-1 * x26 * x13);
 	const GEN_FLT x29 = (x20 * lh_qj) + (-1 * x18 * lh_qk) + (x21 * lh_qw);
 	const GEN_FLT x30 = x20 + (2 * ((x22 * lh_qi) + (-1 * x29 * lh_qj))) + lh_pz;
-	const GEN_FLT x31 = pow(x24, 2);
-	const GEN_FLT x32 = x30 * pow(x31, -1);
-	const GEN_FLT x33 = x31 + pow(x30, 2);
-	const GEN_FLT x34 = pow(x33, -1);
+	const GEN_FLT x31 = x24 * x24;
+	const GEN_FLT x32 = x30 * (1. / x31);
+	const GEN_FLT x33 = x31 + (x30 * x30);
+	const GEN_FLT x34 = 1. / x33;
 	const GEN_FLT x35 = x31 * x34;
 	const GEN_FLT x36 = ((x32 * x28) + (-1 * x25 * x15)) * x35;
 	const GEN_FLT x37 = x18 + (2 * ((x29 * lh_qk) + (-1 * x23 * lh_qi))) + lh_py;
 	const GEN_FLT x38 = 0.523598775598299 + (-1 * tilt_1);
 	const GEN_FLT x39 = cos(x38);
-	const GEN_FLT x40 = pow(x39, -1);
-	const GEN_FLT x41 = pow(x37, 2);
+	const GEN_FLT x40 = 1. / x39;
+	const GEN_FLT x41 = x37 * x37;
 	const GEN_FLT x42 = x33 + x41;
-	const GEN_FLT x43 = x40 * pow(x42, -1.0 / 2.0);
+	const GEN_FLT x43 = x40 * (1. / sqrt(x42));
 	const GEN_FLT x44 = asin(x43 * x37);
 	const GEN_FLT x45 = 8.0108022e-06 * x44;
-	const GEN_FLT x46 = pow((1 + (-1 * x41 * pow(x42, -1) * pow(x39, -2))), -1.0 / 2.0);
+	const GEN_FLT x46 = 1. / sqrt(1 + (-1 * x41 * (1. / x42) * (1. / (x39 * x39))));
 	const GEN_FLT x47 = x7 + (x26 * x11) + (-1 * x27 * x14);
 	const GEN_FLT x48 = 2 * x37;
 	const GEN_FLT x49 = 2 * x24;
 	const GEN_FLT x50 = 2 * x30;
 	const GEN_FLT x51 = (x50 * x15) + (x49 * x28);
 	const GEN_FLT x52 = 1.0 / 2.0 * x37;
-	const GEN_FLT x53 = x52 * x40 * pow(x42, -3.0 / 2.0);
+	const GEN_FLT x53 = x52 * x40 * (1. / (x42 * sqrt(x42)));
 	const GEN_FLT x54 = (x43 * x47) + (-1 * x53 * (x51 + (x47 * x48)));
 	const GEN_FLT x55 = x54 * x46;
 	const GEN_FLT x56 = -8.0108022e-06 + (-1 * x45);
@@ -8873,20 +8868,20 @@ static inline void gen_reproject_axis_y_gen2_jac_sensor_pt(FLT *out, const Survi
 	const GEN_FLT x69 = (x68 * x44) + x64;
 	const GEN_FLT x70 = sin(x38);
 	const GEN_FLT x71 = tan(x38);
-	const GEN_FLT x72 = x71 * pow(x33, -1.0 / 2.0);
+	const GEN_FLT x72 = x71 * (1. / sqrt(x33));
 	const GEN_FLT x73 = -1 * x72 * x37;
 	const GEN_FLT x74 = atan2(-1 * x30, x24);
 	const GEN_FLT x75 = x74 + (-1 * asin(x73)) + ogeeMag_1;
 	const GEN_FLT x76 = (sin(x75) * ogeePhase_1) + curve_1;
 	const GEN_FLT x77 = x70 * x76;
 	const GEN_FLT x78 = x39 + (x77 * x69);
-	const GEN_FLT x79 = pow(x78, -1);
-	const GEN_FLT x80 = pow(x44, 2);
+	const GEN_FLT x79 = 1. / x78;
+	const GEN_FLT x80 = x44 * x44;
 	const GEN_FLT x81 = x80 * x76;
 	const GEN_FLT x82 = x81 * x79;
-	const GEN_FLT x83 = x71 * x52 * pow(x33, -3.0 / 2.0);
+	const GEN_FLT x83 = x71 * x52 * (1. / (x33 * sqrt(x33)));
 	const GEN_FLT x84 = (x83 * x51) + (-1 * x72 * x47);
-	const GEN_FLT x85 = pow((1 + (-1 * pow(x71, 2) * x41 * x34)), -1.0 / 2.0);
+	const GEN_FLT x85 = 1. / sqrt(1 + (-1 * (x71 * x71) * x41 * x34));
 	const GEN_FLT x86 = (-1 * x84 * x85) + x36;
 	const GEN_FLT x87 = cos(x75) * ogeePhase_1;
 	const GEN_FLT x88 = x80 * x79 * x63;
@@ -8895,9 +8890,9 @@ static inline void gen_reproject_axis_y_gen2_jac_sensor_pt(FLT *out, const Survi
 	const GEN_FLT x91 = 2.40324066e-05 * x44;
 	const GEN_FLT x92 = x70 * x69;
 	const GEN_FLT x93 = x87 * x92;
-	const GEN_FLT x94 = x81 * pow(x78, -2) * x63;
+	const GEN_FLT x94 = x81 * (1. / (x78 * x78)) * x63;
 	const GEN_FLT x95 = x73 + (x82 * x63);
-	const GEN_FLT x96 = pow((1 + (-1 * pow(x95, 2))), -1.0 / 2.0);
+	const GEN_FLT x96 = 1. / sqrt(1 + (-1 * (x95 * x95)));
 	const GEN_FLT x97 =
 		(-1 * x96 *
 		 ((-1 * x94 *
@@ -8911,7 +8906,7 @@ static inline void gen_reproject_axis_y_gen2_jac_sensor_pt(FLT *out, const Survi
 	const GEN_FLT x99 = 2 * obj_qk * obj_qj;
 	const GEN_FLT x100 = x0 * obj_qi;
 	const GEN_FLT x101 = x100 + x99;
-	const GEN_FLT x102 = -2 * pow(obj_qi, 2);
+	const GEN_FLT x102 = -2 * (obj_qi * obj_qi);
 	const GEN_FLT x103 = x9 + x102;
 	const GEN_FLT x104 = x5 + (-1 * x6);
 	const GEN_FLT x105 = (x104 * lh_qw) + (-1 * x103 * lh_qk) + (x101 * lh_qj);
@@ -9022,25 +9017,25 @@ static inline void gen_reproject_axis_y_gen2_jac_lh_p(FLT *out, const SurvivePos
 	const GEN_FLT x20 = x7 * lh_qi;
 	const GEN_FLT x21 = x20 + (-1 * x19) + x18;
 	const GEN_FLT x22 = x3 + (2 * ((x21 * lh_qj) + (-1 * x16 * lh_qk))) + lh_px;
-	const GEN_FLT x23 = pow(x22, 2);
-	const GEN_FLT x24 = x23 + pow(x17, 2);
-	const GEN_FLT x25 = pow(x24, -1);
+	const GEN_FLT x23 = x22 * x22;
+	const GEN_FLT x24 = x23 + (x17 * x17);
+	const GEN_FLT x25 = 1. / x24;
 	const GEN_FLT x26 = x25 * x17;
 	const GEN_FLT x27 = x7 + (2 * ((x12 * lh_qk) + (-1 * x21 * lh_qi))) + lh_py;
 	const GEN_FLT x28 = x22 * x27;
 	const GEN_FLT x29 = 0.523598775598299 + (-1 * tilt_1);
 	const GEN_FLT x30 = tan(x29);
-	const GEN_FLT x31 = x30 * pow(x24, -3.0 / 2.0);
+	const GEN_FLT x31 = x30 * (1. / (x24 * sqrt(x24)));
 	const GEN_FLT x32 = x31 * x28;
 	const GEN_FLT x33 = cos(x29);
-	const GEN_FLT x34 = pow(x33, -1);
-	const GEN_FLT x35 = pow(x27, 2);
+	const GEN_FLT x34 = 1. / x33;
+	const GEN_FLT x35 = x27 * x27;
 	const GEN_FLT x36 = x24 + x35;
-	const GEN_FLT x37 = x34 * pow(x36, -1.0 / 2.0);
+	const GEN_FLT x37 = x34 * (1. / sqrt(x36));
 	const GEN_FLT x38 = asin(x37 * x27);
 	const GEN_FLT x39 = 8.0108022e-06 * x38;
-	const GEN_FLT x40 = pow((1 + (-1 * pow(x33, -2) * pow(x36, -1) * x35)), -1.0 / 2.0);
-	const GEN_FLT x41 = x34 * pow(x36, -3.0 / 2.0);
+	const GEN_FLT x40 = 1. / sqrt(1 + (-1 * (1. / (x33 * x33)) * (1. / x36) * x35));
+	const GEN_FLT x41 = x34 * (1. / (x36 * sqrt(x36)));
 	const GEN_FLT x42 = x41 * x28;
 	const GEN_FLT x43 = x40 * x42;
 	const GEN_FLT x44 = -8.0108022e-06 + (-1 * x39);
@@ -9058,18 +9053,18 @@ static inline void gen_reproject_axis_y_gen2_jac_lh_p(FLT *out, const SurvivePos
 	const GEN_FLT x56 = x51 + (x55 * x38);
 	const GEN_FLT x57 = (x56 * x38) + x52;
 	const GEN_FLT x58 = sin(x29);
-	const GEN_FLT x59 = x30 * pow(x24, -1.0 / 2.0);
+	const GEN_FLT x59 = x30 * (1. / sqrt(x24));
 	const GEN_FLT x60 = -1 * x59 * x27;
 	const GEN_FLT x61 = atan2(-1 * x17, x22);
 	const GEN_FLT x62 = x61 + (-1 * asin(x60)) + ogeeMag_1;
 	const GEN_FLT x63 = (sin(x62) * ogeePhase_1) + curve_1;
 	const GEN_FLT x64 = x63 * x58;
 	const GEN_FLT x65 = x33 + (x64 * x57);
-	const GEN_FLT x66 = pow(x65, -1);
-	const GEN_FLT x67 = pow(x38, 2);
+	const GEN_FLT x66 = 1. / x65;
+	const GEN_FLT x67 = x38 * x38;
 	const GEN_FLT x68 = x63 * x67;
 	const GEN_FLT x69 = x68 * x66;
-	const GEN_FLT x70 = pow((1 + (-1 * pow(x30, 2) * x35 * x25)), -1.0 / 2.0);
+	const GEN_FLT x70 = 1. / sqrt(1 + (-1 * (x30 * x30) * x35 * x25));
 	const GEN_FLT x71 = (-1 * x70 * x32) + x26;
 	const GEN_FLT x72 = cos(x62) * ogeePhase_1;
 	const GEN_FLT x73 = x67 * x66 * x51;
@@ -9082,9 +9077,9 @@ static inline void gen_reproject_axis_y_gen2_jac_lh_p(FLT *out, const SurvivePos
 	const GEN_FLT x80 = x51 * x40;
 	const GEN_FLT x81 = x58 * x57;
 	const GEN_FLT x82 = x81 * x72;
-	const GEN_FLT x83 = x68 * pow(x65, -2) * x51;
+	const GEN_FLT x83 = x68 * (1. / (x65 * x65)) * x51;
 	const GEN_FLT x84 = x60 + (x69 * x51);
-	const GEN_FLT x85 = pow((1 + (-1 * pow(x84, 2))), -1.0 / 2.0);
+	const GEN_FLT x85 = 1. / sqrt(1 + (-1 * (x84 * x84)));
 	const GEN_FLT x86 =
 		(-1 * x85 *
 		 ((-1 * x83 *
@@ -9129,12 +9124,12 @@ static inline void gen_reproject_axis_y_gen2_jac_lh_p(FLT *out, const SurvivePos
 					  (-1 * x55 * x100))))))) +
 		  (-1 * x78 * x41 * x17 * x105) + (x74 * x104) + (x69 * x103) + x98)) +
 		x96;
-	const GEN_FLT x107 = pow(x22, -1);
+	const GEN_FLT x107 = 1. / x22;
 	const GEN_FLT x108 = 2 * x19;
 	const GEN_FLT x109 = (2 * x20) + (-1 * x108);
 	const GEN_FLT x110 = 2 * x8;
 	const GEN_FLT x111 = (2 * x11) + (-1 * x110);
-	const GEN_FLT x112 = pow(x23, -1) * x17;
+	const GEN_FLT x112 = (1. / x23) * x17;
 	const GEN_FLT x113 = x25 * x23;
 	const GEN_FLT x114 = ((x111 * x112) + (-1 * x109 * x107)) * x113;
 	const GEN_FLT x115 = 2 * x14;
@@ -9272,7 +9267,7 @@ static inline void gen_reproject_axis_y_gen2_jac_bsc1(FLT *out, const SurvivePos
 	const GEN_FLT ogeePhase_1 = (*bsc1).ogeemag;
 	const GEN_FLT x0 = 0.523598775598299 + (-1 * tilt_1);
 	const GEN_FLT x1 = tan(x0);
-	const GEN_FLT x2 = pow(x1, 2);
+	const GEN_FLT x2 = x1 * x1;
 	const GEN_FLT x3 = (obj_qj * sensor_z) + (-1 * obj_qk * sensor_y) + (obj_qw * sensor_x);
 	const GEN_FLT x4 = (obj_qk * sensor_x) + (-1 * obj_qi * sensor_z) + (obj_qw * sensor_y);
 	const GEN_FLT x5 = sensor_z + (2 * ((x4 * obj_qi) + (-1 * x3 * obj_qj))) + obj_pz;
@@ -9285,18 +9280,18 @@ static inline void gen_reproject_axis_y_gen2_jac_bsc1(FLT *out, const SurvivePos
 	const GEN_FLT x12 = (x7 * lh_qk) + (-1 * x5 * lh_qi) + (x8 * lh_qw);
 	const GEN_FLT x13 = x5 + (2 * ((x12 * lh_qi) + (-1 * x10 * lh_qj))) + lh_pz;
 	const GEN_FLT x14 = x7 + (2 * ((x9 * lh_qj) + (-1 * x12 * lh_qk))) + lh_px;
-	const GEN_FLT x15 = pow(x14, 2) + pow(x13, 2);
-	const GEN_FLT x16 = pow(x15, -1.0 / 2.0) * x11;
+	const GEN_FLT x15 = (x14 * x14) + (x13 * x13);
+	const GEN_FLT x16 = (1. / sqrt(x15)) * x11;
 	const GEN_FLT x17 = (1 + x2) * x16;
 	const GEN_FLT x18 = cos(x0);
-	const GEN_FLT x19 = pow(x11, 2);
+	const GEN_FLT x19 = x11 * x11;
 	const GEN_FLT x20 = x15 + x19;
-	const GEN_FLT x21 = pow(x20, -1.0 / 2.0) * x11;
-	const GEN_FLT x22 = asin(x21 * pow(x18, -1));
+	const GEN_FLT x21 = (1. / sqrt(x20)) * x11;
+	const GEN_FLT x22 = asin(x21 * (1. / x18));
 	const GEN_FLT x23 = 8.0108022e-06 * x22;
 	const GEN_FLT x24 = sin(x0);
-	const GEN_FLT x25 = pow(x18, -2);
-	const GEN_FLT x26 = x25 * x21 * pow((1 + (-1 * x25 * pow(x20, -1) * x19)), -1.0 / 2.0);
+	const GEN_FLT x25 = 1. / (x18 * x18);
+	const GEN_FLT x26 = x25 * x21 * (1. / sqrt(1 + (-1 * x25 * (1. / x20) * x19)));
 	const GEN_FLT x27 = x24 * x26;
 	const GEN_FLT x28 = -8.0108022e-06 + (-1 * x23);
 	const GEN_FLT x29 = -1 * x28 * x27;
@@ -9309,7 +9304,7 @@ static inline void gen_reproject_axis_y_gen2_jac_bsc1(FLT *out, const SurvivePos
 	const GEN_FLT x36 = x35 + (-1 * asin(x34)) + ogeeMag_1;
 	const GEN_FLT x37 = sin(x36);
 	const GEN_FLT x38 = (x37 * ogeePhase_1) + curve_1;
-	const GEN_FLT x39 = pow(x22, 2);
+	const GEN_FLT x39 = x22 * x22;
 	const GEN_FLT x40 = 0.0076069798 + (x32 * x22);
 	const GEN_FLT x41 = x40 * x22;
 	const GEN_FLT x42 = -8.0108022e-06 + (-1.60216044e-05 * x22);
@@ -9320,15 +9315,15 @@ static inline void gen_reproject_axis_y_gen2_jac_bsc1(FLT *out, const SurvivePos
 	const GEN_FLT x47 = x38 * x24;
 	const GEN_FLT x48 = x46 * x47;
 	const GEN_FLT x49 = x18 + x48;
-	const GEN_FLT x50 = pow(x49, -1);
+	const GEN_FLT x50 = 1. / x49;
 	const GEN_FLT x51 = x50 * x39;
 	const GEN_FLT x52 = x51 * x40;
 	const GEN_FLT x53 = cos(x36) * ogeePhase_1;
 	const GEN_FLT x54 = x53 * x52;
-	const GEN_FLT x55 = x17 * pow((1 + (-1 * x2 * pow(x15, -1) * x19)), -1.0 / 2.0);
-	const GEN_FLT x56 = x40 * pow(x49, -2) * x39;
+	const GEN_FLT x55 = x17 * (1. / sqrt(1 + (-1 * x2 * (1. / x15) * x19)));
+	const GEN_FLT x56 = x40 * (1. / (x49 * x49)) * x39;
 	const GEN_FLT x57 = x34 + (x52 * x38);
-	const GEN_FLT x58 = pow((1 + (-1 * pow(x57, 2))), -1.0 / 2.0);
+	const GEN_FLT x58 = 1. / sqrt(1 + (-1 * (x57 * x57)));
 	const GEN_FLT x59 =
 		x58 * ((-1 * x56 * x38 *
 				((-1 * x53 * x55 * x46 * x24) + (-1 * x46 * x38 * x18) +
@@ -9399,14 +9394,15 @@ static inline void gen_reproject(FLT *out, const SurvivePose *obj_p, const FLT *
 	const GEN_FLT x9 = (x4 * lh_qk) + (-1 * x2 * lh_qi) + (x5 * lh_qw);
 	const GEN_FLT x10 = x2 + (2 * ((x9 * lh_qi) + (-1 * x7 * lh_qj))) + lh_pz;
 	const GEN_FLT x11 = -1 * x10;
-	const GEN_FLT x12 = pow(x10, 2);
+	const GEN_FLT x12 = x10 * x10;
 	const GEN_FLT x13 = x4 + (2 * ((x6 * lh_qj) + (-1 * x9 * lh_qk))) + lh_px;
 	const GEN_FLT x14 = atan2(x13, x11);
-	const GEN_FLT x15 = (-1 * x14) + (-1 * phase_0) + (-1 * asin(x8 * pow((pow(x13, 2) + x12), -1.0 / 2.0) * tilt_0));
+	const GEN_FLT x15 = (-1 * x14) + (-1 * phase_0) + (-1 * asin(x8 * (1. / sqrt((x13 * x13) + x12)) * tilt_0));
 	const GEN_FLT x16 =
-		(-1 * atan2(-1 * x8, x11)) + (-1 * asin(x13 * pow((pow(x8, 2) + x12), -1.0 / 2.0) * tilt_1)) + (-1 * phase_1);
-	out[0] = x15 + (-1 * cos(1.5707963267949 + x15 + gibPhase_0) * gibMag_0) + (pow(atan2(x8, x11), 2) * curve_0);
-	out[1] = x16 + (pow(x14, 2) * curve_1) + (-1 * cos(1.5707963267949 + x16 + gibPhase_1) * gibMag_1);
+		(-1 * atan2(-1 * x8, x11)) + (-1 * asin(x13 * (1. / sqrt((x8 * x8) + x12)) * tilt_1)) + (-1 * phase_1);
+	out[0] =
+		x15 + (-1 * cos(1.5707963267949 + x15 + gibPhase_0) * gibMag_0) + ((atan2(x8, x11) * atan2(x8, x11)) * curve_0);
+	out[1] = x16 + ((x14 * x14) * curve_1) + (-1 * cos(1.5707963267949 + x16 + gibPhase_1) * gibMag_1);
 }
 
 // Jacobian of reproject wrt [obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk]
@@ -9468,30 +9464,30 @@ static inline void gen_reproject_jac_obj_p(FLT *out, const SurvivePose *obj_p, c
 	const GEN_FLT x22 = x19 + (2 * ((x21 * lh_qj) + (-1 * x20 * lh_qk))) + lh_px;
 	const GEN_FLT x23 = (x18 * lh_qj) + (-1 * x13 * lh_qk) + (x19 * lh_qw);
 	const GEN_FLT x24 = x18 + (2 * ((x20 * lh_qi) + (-1 * x23 * lh_qj))) + lh_pz;
-	const GEN_FLT x25 = pow(x24, 2);
-	const GEN_FLT x26 = pow(x25, -1);
+	const GEN_FLT x25 = x24 * x24;
+	const GEN_FLT x26 = 1. / x25;
 	const GEN_FLT x27 = x22 * x26;
-	const GEN_FLT x28 = -2 * pow(lh_qk, 2);
-	const GEN_FLT x29 = -2 * pow(lh_qj, 2);
+	const GEN_FLT x28 = -2 * (lh_qk * lh_qk);
+	const GEN_FLT x29 = -2 * (lh_qj * lh_qj);
 	const GEN_FLT x30 = 1 + x29 + x28;
-	const GEN_FLT x31 = pow(x24, -1);
-	const GEN_FLT x32 = pow(x22, 2);
+	const GEN_FLT x31 = 1. / x24;
+	const GEN_FLT x32 = x22 * x22;
 	const GEN_FLT x33 = x25 + x32;
-	const GEN_FLT x34 = pow(x33, -1);
+	const GEN_FLT x34 = 1. / x33;
 	const GEN_FLT x35 = x34 * x25;
 	const GEN_FLT x36 = x35 * ((-1 * x30 * x31) + (x4 * x27));
 	const GEN_FLT x37 = x0 * lh_qi;
 	const GEN_FLT x38 = 2 * lh_qw;
 	const GEN_FLT x39 = x38 * lh_qk;
 	const GEN_FLT x40 = x39 + x37;
-	const GEN_FLT x41 = pow(x33, -1.0 / 2.0) * tilt_0;
+	const GEN_FLT x41 = (1. / sqrt(x33)) * tilt_0;
 	const GEN_FLT x42 = 2 * x22;
 	const GEN_FLT x43 = 2 * x24;
 	const GEN_FLT x44 = x4 * x43;
 	const GEN_FLT x45 = x13 + (2 * ((x23 * lh_qk) + (-1 * x21 * lh_qi))) + lh_py;
-	const GEN_FLT x46 = 1.0 / 2.0 * x45 * pow(x33, -3.0 / 2.0) * tilt_0;
-	const GEN_FLT x47 = pow(x45, 2);
-	const GEN_FLT x48 = pow((1 + (-1 * x47 * x34 * pow(tilt_0, 2))), -1.0 / 2.0);
+	const GEN_FLT x46 = 1.0 / 2.0 * x45 * (1. / (x33 * sqrt(x33))) * tilt_0;
+	const GEN_FLT x47 = x45 * x45;
+	const GEN_FLT x48 = 1. / sqrt(1 + (-1 * x47 * x34 * (tilt_0 * tilt_0)));
 	const GEN_FLT x49 = (-1 * x48 * ((-1 * x46 * (x44 + (x42 * x30))) + (x40 * x41))) + (-1 * x36);
 	const GEN_FLT x50 = -1 * x24;
 	const GEN_FLT x51 = atan2(x22, x50);
@@ -9501,7 +9497,7 @@ static inline void gen_reproject_jac_obj_p(FLT *out, const SurvivePose *obj_p, c
 	const GEN_FLT x54 = x4 * x53;
 	const GEN_FLT x55 = x40 * x31;
 	const GEN_FLT x56 = x25 + x47;
-	const GEN_FLT x57 = pow(x56, -1);
+	const GEN_FLT x57 = 1. / x56;
 	const GEN_FLT x58 = x57 * x25;
 	const GEN_FLT x59 = 2 * x58 * atan2(x45, x50) * curve_0;
 	const GEN_FLT x60 = x0 * lh_qk;
@@ -9509,7 +9505,7 @@ static inline void gen_reproject_jac_obj_p(FLT *out, const SurvivePose *obj_p, c
 	const GEN_FLT x62 = x61 + x60;
 	const GEN_FLT x63 = x37 + (-1 * x39);
 	const GEN_FLT x64 = ((-1 * x63 * x31) + (x62 * x27)) * x35;
-	const GEN_FLT x65 = 1 + (-2 * pow(lh_qi, 2));
+	const GEN_FLT x65 = 1 + (-2 * (lh_qi * lh_qi));
 	const GEN_FLT x66 = x65 + x28;
 	const GEN_FLT x67 = x62 * x43;
 	const GEN_FLT x68 = (-1 * x48 * ((-1 * x46 * (x67 + (x63 * x42))) + (x66 * x41))) + (-1 * x64);
@@ -9594,10 +9590,10 @@ static inline void gen_reproject_jac_obj_p(FLT *out, const SurvivePose *obj_p, c
 	const GEN_FLT x147 = x53 * x140;
 	const GEN_FLT x148 = x31 * x144;
 	const GEN_FLT x149 = 2 * x51 * curve_1;
-	const GEN_FLT x150 = pow((1 + (-1 * x57 * x32 * pow(tilt_1, 2))), -1.0 / 2.0);
-	const GEN_FLT x151 = pow(x56, -1.0 / 2.0) * tilt_1;
+	const GEN_FLT x150 = 1. / sqrt(1 + (-1 * x57 * x32 * (tilt_1 * tilt_1)));
+	const GEN_FLT x151 = (1. / sqrt(x56)) * tilt_1;
 	const GEN_FLT x152 = 2 * x45;
-	const GEN_FLT x153 = 1.0 / 2.0 * pow(x56, -3.0 / 2.0) * x22 * tilt_1;
+	const GEN_FLT x153 = 1.0 / 2.0 * (1. / (x56 * sqrt(x56))) * x22 * tilt_1;
 	const GEN_FLT x154 =
 		(-1 * x150 * ((-1 * x153 * (x44 + (x40 * x152))) + (x30 * x151))) + (-1 * (x55 + (-1 * x54)) * x58);
 	const GEN_FLT x155 =
@@ -9673,8 +9669,8 @@ static inline void gen_reproject_jac_sensor_pt(FLT *out, const SurvivePose *obj_
 	const GEN_FLT x5 = x0 * obj_qi;
 	const GEN_FLT x6 = x2 * obj_qw;
 	const GEN_FLT x7 = x6 + x5;
-	const GEN_FLT x8 = -2 * pow(obj_qk, 2);
-	const GEN_FLT x9 = -2 * pow(obj_qj, 2);
+	const GEN_FLT x8 = -2 * (obj_qk * obj_qk);
+	const GEN_FLT x9 = -2 * (obj_qj * obj_qj);
 	const GEN_FLT x10 = 1 + x9 + x8;
 	const GEN_FLT x11 = (x10 * lh_qw) + (-1 * x7 * lh_qk) + (x4 * lh_qj);
 	const GEN_FLT x12 = 2 * lh_qj;
@@ -9690,29 +9686,29 @@ static inline void gen_reproject_jac_sensor_pt(FLT *out, const SurvivePose *obj_
 	const GEN_FLT x22 = (-1 * x20 * lh_qk) + (x21 * lh_qj) + (x18 * lh_qw);
 	const GEN_FLT x23 = (x18 * lh_qk) + (-1 * x21 * lh_qi) + (x20 * lh_qw);
 	const GEN_FLT x24 = x21 + (2 * ((x23 * lh_qi) + (-1 * x22 * lh_qj))) + lh_pz;
-	const GEN_FLT x25 = pow(x24, 2);
-	const GEN_FLT x26 = pow(x25, -1);
+	const GEN_FLT x25 = x24 * x24;
+	const GEN_FLT x26 = 1. / x25;
 	const GEN_FLT x27 = (-1 * x18 * lh_qj) + (x20 * lh_qi) + (x21 * lh_qw);
 	const GEN_FLT x28 = x18 + (2 * ((x27 * lh_qj) + (-1 * x23 * lh_qk))) + lh_px;
 	const GEN_FLT x29 = x28 * x26;
 	const GEN_FLT x30 = 2 * lh_qk;
 	const GEN_FLT x31 = (x4 * lh_qw) + (-1 * x10 * lh_qj) + (x7 * lh_qi);
 	const GEN_FLT x32 = x10 + (x31 * x12) + (-1 * x30 * x13);
-	const GEN_FLT x33 = pow(x24, -1);
-	const GEN_FLT x34 = pow(x28, 2);
+	const GEN_FLT x33 = 1. / x24;
+	const GEN_FLT x34 = x28 * x28;
 	const GEN_FLT x35 = x25 + x34;
-	const GEN_FLT x36 = pow(x35, -1);
+	const GEN_FLT x36 = 1. / x35;
 	const GEN_FLT x37 = x36 * x25;
 	const GEN_FLT x38 = ((-1 * x32 * x33) + (x29 * x15)) * x37;
 	const GEN_FLT x39 = x20 + (2 * ((x22 * lh_qk) + (-1 * x27 * lh_qi))) + lh_py;
-	const GEN_FLT x40 = pow(x39, 2);
-	const GEN_FLT x41 = pow((1 + (-1 * x40 * x36 * pow(tilt_0, 2))), -1.0 / 2.0);
+	const GEN_FLT x40 = x39 * x39;
+	const GEN_FLT x41 = 1. / sqrt(1 + (-1 * x40 * x36 * (tilt_0 * tilt_0)));
 	const GEN_FLT x42 = x7 + (x30 * x11) + (-1 * x31 * x14);
-	const GEN_FLT x43 = pow(x35, -1.0 / 2.0) * tilt_0;
+	const GEN_FLT x43 = (1. / sqrt(x35)) * tilt_0;
 	const GEN_FLT x44 = 2 * x28;
 	const GEN_FLT x45 = 2 * x24;
 	const GEN_FLT x46 = x45 * x15;
-	const GEN_FLT x47 = 1.0 / 2.0 * pow(x35, -3.0 / 2.0) * x39 * tilt_0;
+	const GEN_FLT x47 = 1.0 / 2.0 * (1. / (x35 * sqrt(x35))) * x39 * tilt_0;
 	const GEN_FLT x48 = (-1 * x41 * ((-1 * x47 * (x46 + (x44 * x32))) + (x42 * x43))) + (-1 * x38);
 	const GEN_FLT x49 = -1 * x24;
 	const GEN_FLT x50 = atan2(x28, x49);
@@ -9722,13 +9718,13 @@ static inline void gen_reproject_jac_sensor_pt(FLT *out, const SurvivePose *obj_
 	const GEN_FLT x53 = x52 * x15;
 	const GEN_FLT x54 = x42 * x33;
 	const GEN_FLT x55 = x25 + x40;
-	const GEN_FLT x56 = pow(x55, -1);
+	const GEN_FLT x56 = 1. / x55;
 	const GEN_FLT x57 = x56 * x25;
 	const GEN_FLT x58 = 2 * x57 * atan2(x39, x49) * curve_0;
 	const GEN_FLT x59 = x2 * obj_qj;
 	const GEN_FLT x60 = 2 * obj_qw * obj_qi;
 	const GEN_FLT x61 = x60 + x59;
-	const GEN_FLT x62 = 1 + (-2 * pow(obj_qi, 2));
+	const GEN_FLT x62 = 1 + (-2 * (obj_qi * obj_qi));
 	const GEN_FLT x63 = x62 + x8;
 	const GEN_FLT x64 = x5 + (-1 * x6);
 	const GEN_FLT x65 = (x64 * lh_qw) + (-1 * x63 * lh_qk) + (x61 * lh_qj);
@@ -9757,10 +9753,10 @@ static inline void gen_reproject_jac_sensor_pt(FLT *out, const SurvivePose *obj_
 	const GEN_FLT x88 = x81 * x52;
 	const GEN_FLT x89 = x85 * x33;
 	const GEN_FLT x90 = 2 * x50 * curve_1;
-	const GEN_FLT x91 = pow((1 + (-1 * x56 * x34 * pow(tilt_1, 2))), -1.0 / 2.0);
-	const GEN_FLT x92 = pow(x55, -1.0 / 2.0) * tilt_1;
+	const GEN_FLT x91 = 1. / sqrt(1 + (-1 * x56 * x34 * (tilt_1 * tilt_1)));
+	const GEN_FLT x92 = (1. / sqrt(x55)) * tilt_1;
 	const GEN_FLT x93 = 2 * x39;
-	const GEN_FLT x94 = 1.0 / 2.0 * pow(x55, -3.0 / 2.0) * x28 * tilt_1;
+	const GEN_FLT x94 = 1.0 / 2.0 * (1. / (x55 * sqrt(x55))) * x28 * tilt_1;
 	const GEN_FLT x95 = (-1 * x91 * ((-1 * x94 * (x46 + (x93 * x42))) + (x92 * x32))) + (-1 * (x54 + (-1 * x53)) * x57);
 	const GEN_FLT x96 =
 		sin(1.5707963267949 + (-1 * atan2(-1 * x39, x49)) + (-1 * phase_1) + (-1 * asin(x92 * x28)) + gibPhase_1) *
@@ -9827,30 +9823,30 @@ static inline void gen_reproject_jac_lh_p(FLT *out, const SurvivePose *obj_p, co
 	const GEN_FLT x15 = x3 * lh_qi;
 	const GEN_FLT x16 = x15 + (-1 * x14) + x13;
 	const GEN_FLT x17 = x10 + (2 * ((x16 * lh_qj) + (-1 * x12 * lh_qk))) + lh_px;
-	const GEN_FLT x18 = pow(x17, 2);
+	const GEN_FLT x18 = x17 * x17;
 	const GEN_FLT x19 = x10 * lh_qw;
 	const GEN_FLT x20 = x3 * lh_qk;
 	const GEN_FLT x21 = x7 * lh_qj;
 	const GEN_FLT x22 = x21 + (-1 * x20) + x19;
 	const GEN_FLT x23 = x7 + (2 * ((x12 * lh_qi) + (-1 * x22 * lh_qj))) + lh_pz;
-	const GEN_FLT x24 = pow(x23, 2);
+	const GEN_FLT x24 = x23 * x23;
 	const GEN_FLT x25 = x24 + x18;
-	const GEN_FLT x26 = pow(x25, -1);
+	const GEN_FLT x26 = 1. / x25;
 	const GEN_FLT x27 = x23 * x26;
 	const GEN_FLT x28 = x3 + (2 * ((x22 * lh_qk) + (-1 * x16 * lh_qi))) + lh_py;
-	const GEN_FLT x29 = pow(x28, 2);
-	const GEN_FLT x30 = pow((1 + (-1 * x29 * x26 * pow(tilt_0, 2))), -1.0 / 2.0);
-	const GEN_FLT x31 = pow(x25, -3.0 / 2.0) * x28 * tilt_0;
+	const GEN_FLT x29 = x28 * x28;
+	const GEN_FLT x30 = 1. / sqrt(1 + (-1 * x29 * x26 * (tilt_0 * tilt_0)));
+	const GEN_FLT x31 = (1. / (x25 * sqrt(x25))) * x28 * tilt_0;
 	const GEN_FLT x32 = x30 * x31;
 	const GEN_FLT x33 = (x32 * x17) + x27;
-	const GEN_FLT x34 = pow(x25, -1.0 / 2.0) * tilt_0;
+	const GEN_FLT x34 = (1. / sqrt(x25)) * tilt_0;
 	const GEN_FLT x35 = -1 * x23;
 	const GEN_FLT x36 = atan2(x17, x35);
 	const GEN_FLT x37 =
 		sin(1.5707963267949 + (-1 * x36) + (-1 * phase_0) + (-1 * asin(x34 * x28)) + gibPhase_0) * gibMag_0;
 	const GEN_FLT x38 = x30 * x34;
 	const GEN_FLT x39 = x24 + x29;
-	const GEN_FLT x40 = pow(x39, -1);
+	const GEN_FLT x40 = 1. / x39;
 	const GEN_FLT x41 = x40 * x23;
 	const GEN_FLT x42 = 2 * atan2(x28, x35) * curve_0;
 	const GEN_FLT x43 = x26 * x17;
@@ -9858,11 +9854,11 @@ static inline void gen_reproject_jac_lh_p(FLT *out, const SurvivePose *obj_p, co
 	const GEN_FLT x45 = x40 * x28;
 	const GEN_FLT x46 = 2 * x14;
 	const GEN_FLT x47 = (2 * x15) + (-1 * x46);
-	const GEN_FLT x48 = pow(x24, -1);
+	const GEN_FLT x48 = 1. / x24;
 	const GEN_FLT x49 = x48 * x17;
 	const GEN_FLT x50 = 2 * x20;
 	const GEN_FLT x51 = (2 * x21) + (-1 * x50);
-	const GEN_FLT x52 = pow(x23, -1);
+	const GEN_FLT x52 = 1. / x23;
 	const GEN_FLT x53 = x24 * x26;
 	const GEN_FLT x54 = ((-1 * x52 * x51) + (x47 * x49)) * x53;
 	const GEN_FLT x55 = 2 * x8;
@@ -9910,14 +9906,14 @@ static inline void gen_reproject_jac_lh_p(FLT *out, const SurvivePose *obj_p, co
 	const GEN_FLT x97 = (-1 * x30 * ((-1 * x60 * (x96 + (x57 * x93))) + (x95 * x34))) + (-1 * x94);
 	const GEN_FLT x98 = x62 * x92;
 	const GEN_FLT x99 = x52 * x95;
-	const GEN_FLT x100 = pow((1 + (-1 * x40 * x18 * pow(tilt_1, 2))), -1.0 / 2.0);
-	const GEN_FLT x101 = pow(x39, -1.0 / 2.0) * tilt_1;
+	const GEN_FLT x100 = 1. / sqrt(1 + (-1 * x40 * x18 * (tilt_1 * tilt_1)));
+	const GEN_FLT x101 = (1. / sqrt(x39)) * tilt_1;
 	const GEN_FLT x102 = x101 * x100;
 	const GEN_FLT x103 = 2 * x36 * curve_1;
 	const GEN_FLT x104 =
 		sin(1.5707963267949 + (-1 * atan2(-1 * x28, x35)) + (-1 * asin(x17 * x101)) + (-1 * phase_1) + gibPhase_1) *
 		gibMag_1;
-	const GEN_FLT x105 = pow(x39, -3.0 / 2.0) * x17 * tilt_1;
+	const GEN_FLT x105 = (1. / (x39 * sqrt(x39))) * x17 * tilt_1;
 	const GEN_FLT x106 = x100 * x105;
 	const GEN_FLT x107 = (x28 * x106) + (-1 * x41);
 	const GEN_FLT x108 = (x23 * x106) + x45;
@@ -9991,28 +9987,28 @@ static inline void gen_reproject_jac_bsd(FLT *out, const SurvivePose *obj_p, con
 	const GEN_FLT x6 = (x5 * lh_qj) + (-1 * x4 * lh_qk) + (x2 * lh_qw);
 	const GEN_FLT x7 = (x2 * lh_qk) + (-1 * x5 * lh_qi) + (x4 * lh_qw);
 	const GEN_FLT x8 = x5 + (2 * ((x7 * lh_qi) + (-1 * x6 * lh_qj))) + lh_pz;
-	const GEN_FLT x9 = pow(x8, 2);
+	const GEN_FLT x9 = x8 * x8;
 	const GEN_FLT x10 = (x4 * lh_qi) + (-1 * x2 * lh_qj) + (x5 * lh_qw);
 	const GEN_FLT x11 = x2 + (2 * ((x10 * lh_qj) + (-1 * x7 * lh_qk))) + lh_px;
-	const GEN_FLT x12 = pow(x11, 2);
+	const GEN_FLT x12 = x11 * x11;
 	const GEN_FLT x13 = x12 + x9;
 	const GEN_FLT x14 = (2 * ((x6 * lh_qk) + (-1 * x10 * lh_qi))) + x4 + lh_py;
-	const GEN_FLT x15 = x14 * pow(x13, -1.0 / 2.0);
+	const GEN_FLT x15 = x14 * (1. / sqrt(x13));
 	const GEN_FLT x16 = -1 * x8;
 	const GEN_FLT x17 = atan2(x11, x16);
 	const GEN_FLT x18 = 1.5707963267949 + (-1 * x17) + (-1 * phase_0) + (-1 * asin(x15 * tilt_0)) + gibPhase_0;
 	const GEN_FLT x19 = sin(x18) * gibMag_0;
-	const GEN_FLT x20 = pow(x14, 2);
-	const GEN_FLT x21 = x15 * pow((1 + (-1 * x20 * pow(x13, -1) * pow(tilt_0, 2))), -1.0 / 2.0);
+	const GEN_FLT x20 = x14 * x14;
+	const GEN_FLT x21 = x15 * (1. / sqrt(1 + (-1 * x20 * (1. / x13) * (tilt_0 * tilt_0))));
 	const GEN_FLT x22 = x20 + x9;
-	const GEN_FLT x23 = pow(x22, -1.0 / 2.0) * x11;
+	const GEN_FLT x23 = (1. / sqrt(x22)) * x11;
 	const GEN_FLT x24 =
 		1.5707963267949 + (-1 * atan2(-1 * x14, x16)) + (-1 * asin(x23 * tilt_1)) + (-1 * phase_1) + gibPhase_1;
 	const GEN_FLT x25 = sin(x24) * gibMag_1;
-	const GEN_FLT x26 = x23 * pow((1 + (-1 * pow(x22, -1) * x12 * pow(tilt_1, 2))), -1.0 / 2.0);
+	const GEN_FLT x26 = x23 * (1. / sqrt(1 + (-1 * (1. / x22) * x12 * (tilt_1 * tilt_1))));
 	out[0] = -1 + (-1 * x19);
 	out[1] = (-1 * x21) + (-1 * x21 * x19);
-	out[2] = pow(atan2(x14, x16), 2);
+	out[2] = atan2(x14, x16) * atan2(x14, x16);
 	out[3] = x19;
 	out[4] = -1 * cos(x18);
 	out[5] = 0;
@@ -10033,7 +10029,7 @@ static inline void gen_reproject_jac_bsd(FLT *out, const SurvivePose *obj_p, con
 	out[20] = 0;
 	out[21] = -1 + (-1 * x25);
 	out[22] = (-1 * x25 * x26) + (-1 * x26);
-	out[23] = pow(x17, 2);
+	out[23] = x17 * x17;
 	out[24] = x25;
 	out[25] = -1 * cos(x24);
 	out[26] = 0;
@@ -10079,9 +10075,10 @@ static inline FLT gen_reproject_axis_x(const SurvivePose *obj_p, const FLT *sens
 	const GEN_FLT x10 = x2 + (2 * ((x9 * lh_qi) + (-1 * x7 * lh_qj))) + lh_pz;
 	const GEN_FLT x11 = -1 * x10;
 	const GEN_FLT x12 = x4 + (2 * ((x6 * lh_qj) + (-1 * x9 * lh_qk))) + lh_px;
-	const GEN_FLT x13 = (-1 * atan2(x12, x11)) + (-1 * phase_0) +
-						(-1 * asin(pow((pow(x12, 2) + pow(x10, 2)), -1.0 / 2.0) * x8 * tilt_0));
-	return x13 + (-1 * cos(1.5707963267949 + x13 + gibPhase_0) * gibMag_0) + (pow(atan2(x8, x11), 2) * curve_0);
+	const GEN_FLT x13 =
+		(-1 * atan2(x12, x11)) + (-1 * phase_0) + (-1 * asin((1. / sqrt((x12 * x12) + (x10 * x10))) * x8 * tilt_0));
+	return x13 + (-1 * cos(1.5707963267949 + x13 + gibPhase_0) * gibMag_0) +
+		   ((atan2(x8, x11) * atan2(x8, x11)) * curve_0);
 }
 
 // Jacobian of reproject_axis_x wrt [obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk]
@@ -10134,42 +10131,42 @@ static inline void gen_reproject_axis_x_jac_obj_p(FLT *out, const SurvivePose *o
 	const GEN_FLT x20 = (x19 * lh_qj) + (-1 * x18 * lh_qk) + (x13 * lh_qw);
 	const GEN_FLT x21 = (x13 * lh_qk) + (-1 * x19 * lh_qi) + (x18 * lh_qw);
 	const GEN_FLT x22 = (2 * ((x21 * lh_qi) + (-1 * x20 * lh_qj))) + x19 + lh_pz;
-	const GEN_FLT x23 = pow(x22, 2);
-	const GEN_FLT x24 = pow(x23, -1);
+	const GEN_FLT x23 = x22 * x22;
+	const GEN_FLT x24 = 1. / x23;
 	const GEN_FLT x25 = (x18 * lh_qi) + (-1 * x13 * lh_qj) + (x19 * lh_qw);
 	const GEN_FLT x26 = x13 + (2 * ((x25 * lh_qj) + (-1 * x21 * lh_qk))) + lh_px;
 	const GEN_FLT x27 = x24 * x26;
-	const GEN_FLT x28 = -2 * pow(lh_qk, 2);
-	const GEN_FLT x29 = -2 * pow(lh_qj, 2);
+	const GEN_FLT x28 = -2 * (lh_qk * lh_qk);
+	const GEN_FLT x29 = -2 * (lh_qj * lh_qj);
 	const GEN_FLT x30 = 1 + x29 + x28;
-	const GEN_FLT x31 = pow(x22, -1);
-	const GEN_FLT x32 = x23 + pow(x26, 2);
-	const GEN_FLT x33 = pow(x32, -1);
+	const GEN_FLT x31 = 1. / x22;
+	const GEN_FLT x32 = x23 + (x26 * x26);
+	const GEN_FLT x33 = 1. / x32;
 	const GEN_FLT x34 = x33 * x23;
 	const GEN_FLT x35 = 2 * lh_qi;
 	const GEN_FLT x36 = x35 * lh_qj;
 	const GEN_FLT x37 = x2 * lh_qw;
 	const GEN_FLT x38 = x37 + x36;
-	const GEN_FLT x39 = pow(x32, -1.0 / 2.0) * tilt_0;
+	const GEN_FLT x39 = (1. / sqrt(x32)) * tilt_0;
 	const GEN_FLT x40 = 2 * x26;
 	const GEN_FLT x41 = 2 * x22;
 	const GEN_FLT x42 = x18 + (2 * ((x20 * lh_qk) + (-1 * x25 * lh_qi))) + lh_py;
-	const GEN_FLT x43 = 1.0 / 2.0 * x42 * pow(x32, -3.0 / 2.0) * tilt_0;
-	const GEN_FLT x44 = pow(x42, 2);
-	const GEN_FLT x45 = pow((1 + (-1 * x44 * x33 * pow(tilt_0, 2))), -1.0 / 2.0);
+	const GEN_FLT x43 = 1.0 / 2.0 * x42 * (1. / (x32 * sqrt(x32))) * tilt_0;
+	const GEN_FLT x44 = x42 * x42;
+	const GEN_FLT x45 = 1. / sqrt(1 + (-1 * x44 * x33 * (tilt_0 * tilt_0)));
 	const GEN_FLT x46 = (-1 * x45 * ((-1 * x43 * ((x4 * x41) + (x40 * x30))) + (x38 * x39))) +
 						(-1 * x34 * ((-1 * x30 * x31) + (x4 * x27)));
 	const GEN_FLT x47 = -1 * x22;
 	const GEN_FLT x48 =
 		sin(1.5707963267949 + (-1 * atan2(x26, x47)) + (-1 * phase_0) + (-1 * asin(x42 * x39)) + gibPhase_0) * gibMag_0;
 	const GEN_FLT x49 = x42 * x24;
-	const GEN_FLT x50 = 2 * pow((x23 + x44), -1) * x23 * atan2(x42, x47) * curve_0;
+	const GEN_FLT x50 = 2 * (1. / (x23 + x44)) * x23 * atan2(x42, x47) * curve_0;
 	const GEN_FLT x51 = x2 * lh_qj;
 	const GEN_FLT x52 = x35 * lh_qw;
 	const GEN_FLT x53 = x52 + x51;
 	const GEN_FLT x54 = x53 * x24;
 	const GEN_FLT x55 = x36 + (-1 * x37);
-	const GEN_FLT x56 = 1 + (-2 * pow(lh_qi, 2));
+	const GEN_FLT x56 = 1 + (-2 * (lh_qi * lh_qi));
 	const GEN_FLT x57 = x56 + x28;
 	const GEN_FLT x58 = (-1 * x45 * ((-1 * ((x53 * x41) + (x55 * x40)) * x43) + (x57 * x39))) +
 						(-1 * ((-1 * x55 * x31) + (x54 * x26)) * x34);
@@ -10288,8 +10285,8 @@ static inline void gen_reproject_axis_x_jac_sensor_pt(FLT *out, const SurvivePos
 	const GEN_FLT x14 = x11 * obj_qj;
 	const GEN_FLT x15 = x9 * obj_qk;
 	const GEN_FLT x16 = x15 + x14;
-	const GEN_FLT x17 = -2 * pow(obj_qj, 2);
-	const GEN_FLT x18 = 1 + (-2 * pow(obj_qk, 2));
+	const GEN_FLT x17 = -2 * (obj_qj * obj_qj);
+	const GEN_FLT x18 = 1 + (-2 * (obj_qk * obj_qk));
 	const GEN_FLT x19 = x18 + x17;
 	const GEN_FLT x20 = (x19 * lh_qw) + (-1 * x16 * lh_qk) + (x13 * lh_qj);
 	const GEN_FLT x21 = 2 * lh_qj;
@@ -10298,34 +10295,34 @@ static inline void gen_reproject_axis_x_jac_sensor_pt(FLT *out, const SurvivePos
 	const GEN_FLT x24 = x13 + (x22 * x23) + (-1 * x20 * x21);
 	const GEN_FLT x25 = (x4 * lh_qj) + (-1 * x2 * lh_qk) + (x5 * lh_qw);
 	const GEN_FLT x26 = x4 + (2 * ((x6 * lh_qi) + (-1 * x25 * lh_qj))) + lh_pz;
-	const GEN_FLT x27 = pow(x26, 2);
-	const GEN_FLT x28 = pow(x27, -1);
+	const GEN_FLT x27 = x26 * x26;
+	const GEN_FLT x28 = 1. / x27;
 	const GEN_FLT x29 = x24 * x28;
 	const GEN_FLT x30 = 2 * lh_qk;
 	const GEN_FLT x31 = (x13 * lh_qw) + (-1 * x19 * lh_qj) + (x16 * lh_qi);
 	const GEN_FLT x32 = x19 + (x31 * x21) + (-1 * x30 * x22);
-	const GEN_FLT x33 = pow(x26, -1);
-	const GEN_FLT x34 = x27 + pow(x8, 2);
-	const GEN_FLT x35 = pow(x34, -1);
+	const GEN_FLT x33 = 1. / x26;
+	const GEN_FLT x34 = x27 + (x8 * x8);
+	const GEN_FLT x35 = 1. / x34;
 	const GEN_FLT x36 = x35 * x27;
 	const GEN_FLT x37 = x2 + (2 * ((x25 * lh_qk) + (-1 * x7 * lh_qi))) + lh_py;
-	const GEN_FLT x38 = pow(x37, 2);
-	const GEN_FLT x39 = pow((1 + (-1 * x35 * x38 * pow(tilt_0, 2))), -1.0 / 2.0);
+	const GEN_FLT x38 = x37 * x37;
+	const GEN_FLT x39 = 1. / sqrt(1 + (-1 * x35 * x38 * (tilt_0 * tilt_0)));
 	const GEN_FLT x40 = x16 + (x30 * x20) + (-1 * x31 * x23);
-	const GEN_FLT x41 = pow(x34, -1.0 / 2.0) * tilt_0;
+	const GEN_FLT x41 = (1. / sqrt(x34)) * tilt_0;
 	const GEN_FLT x42 = 2 * x8;
 	const GEN_FLT x43 = 2 * x26;
-	const GEN_FLT x44 = 1.0 / 2.0 * pow(x34, -3.0 / 2.0) * x37 * tilt_0;
+	const GEN_FLT x44 = 1.0 / 2.0 * (1. / (x34 * sqrt(x34))) * x37 * tilt_0;
 	const GEN_FLT x45 = (-1 * x39 * ((-1 * ((x43 * x24) + (x42 * x32)) * x44) + (x40 * x41))) +
 						(-1 * x36 * ((-1 * x32 * x33) + (x8 * x29)));
 	const GEN_FLT x46 = -1 * x26;
 	const GEN_FLT x47 =
 		sin(1.5707963267949 + (-1 * atan2(x8, x46)) + (-1 * phase_0) + (-1 * asin(x41 * x37)) + gibPhase_0) * gibMag_0;
-	const GEN_FLT x48 = 2 * pow((x27 + x38), -1) * x27 * atan2(x37, x46) * curve_0;
+	const GEN_FLT x48 = 2 * (1. / (x27 + x38)) * x27 * atan2(x37, x46) * curve_0;
 	const GEN_FLT x49 = 2 * obj_qk * obj_qj;
 	const GEN_FLT x50 = x9 * obj_qi;
 	const GEN_FLT x51 = x50 + x49;
-	const GEN_FLT x52 = -2 * pow(obj_qi, 2);
+	const GEN_FLT x52 = -2 * (obj_qi * obj_qi);
 	const GEN_FLT x53 = x18 + x52;
 	const GEN_FLT x54 = x14 + (-1 * x15);
 	const GEN_FLT x55 = (x54 * lh_qw) + (-1 * x53 * lh_qk) + (x51 * lh_qj);
@@ -10404,31 +10401,31 @@ static inline void gen_reproject_axis_x_jac_lh_p(FLT *out, const SurvivePose *ob
 	const GEN_FLT x20 = x7 * lh_qj;
 	const GEN_FLT x21 = x20 + (-1 * x19) + x18;
 	const GEN_FLT x22 = x7 + (2 * ((x12 * lh_qi) + (-1 * x21 * lh_qj))) + lh_pz;
-	const GEN_FLT x23 = pow(x22, 2);
-	const GEN_FLT x24 = x23 + pow(x17, 2);
-	const GEN_FLT x25 = pow(x24, -1);
+	const GEN_FLT x23 = x22 * x22;
+	const GEN_FLT x24 = x23 + (x17 * x17);
+	const GEN_FLT x25 = 1. / x24;
 	const GEN_FLT x26 = x3 + (2 * ((x21 * lh_qk) + (-1 * x16 * lh_qi))) + lh_py;
-	const GEN_FLT x27 = pow(x26, 2);
-	const GEN_FLT x28 = pow((1 + (-1 * x25 * x27 * pow(tilt_0, 2))), -1.0 / 2.0);
-	const GEN_FLT x29 = pow(x24, -3.0 / 2.0) * x26 * tilt_0;
+	const GEN_FLT x27 = x26 * x26;
+	const GEN_FLT x28 = 1. / sqrt(1 + (-1 * x25 * x27 * (tilt_0 * tilt_0)));
+	const GEN_FLT x29 = (1. / (x24 * sqrt(x24))) * x26 * tilt_0;
 	const GEN_FLT x30 = x28 * x29;
 	const GEN_FLT x31 = (x30 * x17) + (x25 * x22);
-	const GEN_FLT x32 = pow(x24, -1.0 / 2.0) * tilt_0;
+	const GEN_FLT x32 = (1. / sqrt(x24)) * tilt_0;
 	const GEN_FLT x33 = -1 * x22;
 	const GEN_FLT x34 =
 		sin(1.5707963267949 + (-1 * atan2(x17, x33)) + (-1 * phase_0) + (-1 * asin(x32 * x26)) + gibPhase_0) * gibMag_0;
 	const GEN_FLT x35 = x32 * x28;
 	const GEN_FLT x36 = 2 * x22;
-	const GEN_FLT x37 = pow((x23 + x27), -1) * atan2(x26, x33) * curve_0;
+	const GEN_FLT x37 = (1. / (x23 + x27)) * atan2(x26, x33) * curve_0;
 	const GEN_FLT x38 = (x30 * x22) + (-1 * x25 * x17);
 	const GEN_FLT x39 = 2 * x37;
 	const GEN_FLT x40 = 2 * x14;
 	const GEN_FLT x41 = (2 * x15) + (-1 * x40);
-	const GEN_FLT x42 = pow(x23, -1);
+	const GEN_FLT x42 = 1. / x23;
 	const GEN_FLT x43 = x42 * x17;
 	const GEN_FLT x44 = 2 * x19;
 	const GEN_FLT x45 = (2 * x20) + (-1 * x44);
-	const GEN_FLT x46 = pow(x22, -1);
+	const GEN_FLT x46 = 1. / x22;
 	const GEN_FLT x47 = x25 * x23;
 	const GEN_FLT x48 = 2 * x8;
 	const GEN_FLT x49 = (2 * x11) + (-1 * x48);
@@ -10509,17 +10506,17 @@ static inline void gen_reproject_axis_x_jac_bsc0(FLT *out, const SurvivePose *ob
 	const GEN_FLT x8 = x5 + (2 * ((x7 * lh_qi) + (-1 * x6 * lh_qj))) + lh_pz;
 	const GEN_FLT x9 = (x4 * lh_qi) + (-1 * x2 * lh_qj) + (x5 * lh_qw);
 	const GEN_FLT x10 = x2 + (2 * ((x9 * lh_qj) + (-1 * x7 * lh_qk))) + lh_px;
-	const GEN_FLT x11 = pow(x10, 2) + pow(x8, 2);
+	const GEN_FLT x11 = (x10 * x10) + (x8 * x8);
 	const GEN_FLT x12 = (2 * ((x6 * lh_qk) + (-1 * x9 * lh_qi))) + x4 + lh_py;
-	const GEN_FLT x13 = x12 * pow(x11, -1.0 / 2.0);
+	const GEN_FLT x13 = x12 * (1. / sqrt(x11));
 	const GEN_FLT x14 = -1 * x8;
 	const GEN_FLT x15 =
 		1.5707963267949 + (-1 * atan2(x10, x14)) + (-1 * phase_0) + (-1 * asin(x13 * tilt_0)) + gibPhase_0;
 	const GEN_FLT x16 = sin(x15) * gibMag_0;
-	const GEN_FLT x17 = x13 * pow((1 + (-1 * pow(x12, 2) * pow(x11, -1) * pow(tilt_0, 2))), -1.0 / 2.0);
+	const GEN_FLT x17 = x13 * (1. / sqrt(1 + (-1 * (x12 * x12) * (1. / x11) * (tilt_0 * tilt_0))));
 	out[0] = -1 + (-1 * x16);
 	out[1] = (-1 * x17) + (-1 * x17 * x16);
-	out[2] = pow(atan2(x12, x14), 2);
+	out[2] = atan2(x12, x14) * atan2(x12, x14);
 	out[3] = x16;
 	out[4] = -1 * cos(x15);
 	out[5] = 0;
@@ -10565,9 +10562,10 @@ static inline FLT gen_reproject_axis_y(const SurvivePose *obj_p, const FLT *sens
 	const GEN_FLT x10 = (2 * ((x6 * lh_qk) + (-1 * x9 * lh_qi))) + x4 + lh_py;
 	const GEN_FLT x11 = x2 + (2 * ((x9 * lh_qj) + (-1 * x7 * lh_qk))) + lh_px;
 	const GEN_FLT x12 = -1 * x8;
-	const GEN_FLT x13 = (-1 * atan2(-1 * x10, x12)) +
-						(-1 * asin(x11 * pow((pow(x10, 2) + pow(x8, 2)), -1.0 / 2.0) * tilt_1)) + (-1 * phase_1);
-	return x13 + (pow(atan2(x11, x12), 2) * curve_1) + (-1 * cos(1.5707963267949 + x13 + gibPhase_1) * gibMag_1);
+	const GEN_FLT x13 =
+		(-1 * atan2(-1 * x10, x12)) + (-1 * asin(x11 * (1. / sqrt((x10 * x10) + (x8 * x8))) * tilt_1)) + (-1 * phase_1);
+	return x13 + ((atan2(x11, x12) * atan2(x11, x12)) * curve_1) +
+		   (-1 * cos(1.5707963267949 + x13 + gibPhase_1) * gibMag_1);
 }
 
 // Jacobian of reproject_axis_y wrt [obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk]
@@ -10622,29 +10620,29 @@ static inline void gen_reproject_axis_y_jac_obj_p(FLT *out, const SurvivePose *o
 	const GEN_FLT x22 = x19 + (2 * ((x21 * lh_qj) + (-1 * x20 * lh_qk))) + lh_px;
 	const GEN_FLT x23 = (x18 * lh_qj) + (-1 * x13 * lh_qk) + (x19 * lh_qw);
 	const GEN_FLT x24 = x18 + (2 * ((x20 * lh_qi) + (-1 * x23 * lh_qj))) + lh_pz;
-	const GEN_FLT x25 = pow(x24, 2);
-	const GEN_FLT x26 = pow(x25, -1);
+	const GEN_FLT x25 = x24 * x24;
+	const GEN_FLT x26 = 1. / x25;
 	const GEN_FLT x27 = x22 * x26;
-	const GEN_FLT x28 = -2 * pow(lh_qk, 2);
-	const GEN_FLT x29 = -2 * pow(lh_qj, 2);
+	const GEN_FLT x28 = -2 * (lh_qk * lh_qk);
+	const GEN_FLT x29 = -2 * (lh_qj * lh_qj);
 	const GEN_FLT x30 = 1 + x29 + x28;
-	const GEN_FLT x31 = pow(x24, -1);
-	const GEN_FLT x32 = pow(x22, 2);
+	const GEN_FLT x31 = 1. / x24;
+	const GEN_FLT x32 = x22 * x22;
 	const GEN_FLT x33 = -1 * x24;
-	const GEN_FLT x34 = 2 * pow((x25 + x32), -1) * x25 * atan2(x22, x33) * curve_1;
+	const GEN_FLT x34 = 2 * (1. / (x25 + x32)) * x25 * atan2(x22, x33) * curve_1;
 	const GEN_FLT x35 = x13 + (2 * ((x23 * lh_qk) + (-1 * x21 * lh_qi))) + lh_py;
 	const GEN_FLT x36 = x35 * x26;
 	const GEN_FLT x37 = x0 * lh_qi;
 	const GEN_FLT x38 = x2 * lh_qw;
 	const GEN_FLT x39 = x38 + x37;
-	const GEN_FLT x40 = x25 + pow(x35, 2);
-	const GEN_FLT x41 = pow(x40, -1);
+	const GEN_FLT x40 = x25 + (x35 * x35);
+	const GEN_FLT x41 = 1. / x40;
 	const GEN_FLT x42 = x41 * x25;
-	const GEN_FLT x43 = pow((1 + (-1 * x41 * x32 * pow(tilt_1, 2))), -1.0 / 2.0);
-	const GEN_FLT x44 = pow(x40, -1.0 / 2.0) * tilt_1;
+	const GEN_FLT x43 = 1. / sqrt(1 + (-1 * x41 * x32 * (tilt_1 * tilt_1)));
+	const GEN_FLT x44 = (1. / sqrt(x40)) * tilt_1;
 	const GEN_FLT x45 = 2 * x35;
 	const GEN_FLT x46 = 2 * x24;
-	const GEN_FLT x47 = 1.0 / 2.0 * pow(x40, -3.0 / 2.0) * x22 * tilt_1;
+	const GEN_FLT x47 = 1.0 / 2.0 * (1. / (x40 * sqrt(x40))) * x22 * tilt_1;
 	const GEN_FLT x48 = (-1 * x43 * ((-1 * x47 * ((x4 * x46) + (x45 * x39))) + (x44 * x30))) +
 						(-1 * x42 * ((x31 * x39) + (-1 * x4 * x36)));
 	const GEN_FLT x49 =
@@ -10655,7 +10653,7 @@ static inline void gen_reproject_axis_y_jac_obj_p(FLT *out, const SurvivePose *o
 	const GEN_FLT x52 = x51 * lh_qw;
 	const GEN_FLT x53 = x52 + x50;
 	const GEN_FLT x54 = x37 + (-1 * x38);
-	const GEN_FLT x55 = 1 + (-2 * pow(lh_qi, 2));
+	const GEN_FLT x55 = 1 + (-2 * (lh_qi * lh_qi));
 	const GEN_FLT x56 = x55 + x28;
 	const GEN_FLT x57 = (-1 * x43 * ((-1 * ((x53 * x46) + (x56 * x45)) * x47) + (x54 * x44))) +
 						(-1 * ((x56 * x31) + (-1 * x53 * x36)) * x42);
@@ -10773,8 +10771,8 @@ static inline void gen_reproject_axis_y_jac_sensor_pt(FLT *out, const SurvivePos
 	const GEN_FLT x14 = x11 * obj_qj;
 	const GEN_FLT x15 = x9 * obj_qk;
 	const GEN_FLT x16 = x15 + x14;
-	const GEN_FLT x17 = -2 * pow(obj_qk, 2);
-	const GEN_FLT x18 = 1 + (-2 * pow(obj_qj, 2));
+	const GEN_FLT x17 = -2 * (obj_qk * obj_qk);
+	const GEN_FLT x18 = 1 + (-2 * (obj_qj * obj_qj));
 	const GEN_FLT x19 = x18 + x17;
 	const GEN_FLT x20 = (x19 * lh_qw) + (-1 * x16 * lh_qk) + (x13 * lh_qj);
 	const GEN_FLT x21 = 2 * lh_qj;
@@ -10783,26 +10781,26 @@ static inline void gen_reproject_axis_y_jac_sensor_pt(FLT *out, const SurvivePos
 	const GEN_FLT x24 = x13 + (x22 * x23) + (-1 * x20 * x21);
 	const GEN_FLT x25 = (x4 * lh_qj) + (-1 * x2 * lh_qk) + (x5 * lh_qw);
 	const GEN_FLT x26 = x4 + (2 * ((x6 * lh_qi) + (-1 * x25 * lh_qj))) + lh_pz;
-	const GEN_FLT x27 = pow(x26, 2);
-	const GEN_FLT x28 = pow(x27, -1);
+	const GEN_FLT x27 = x26 * x26;
+	const GEN_FLT x28 = 1. / x27;
 	const GEN_FLT x29 = x24 * x28;
 	const GEN_FLT x30 = 2 * lh_qk;
 	const GEN_FLT x31 = (x13 * lh_qw) + (-1 * x19 * lh_qj) + (x16 * lh_qi);
 	const GEN_FLT x32 = x19 + (x31 * x21) + (-1 * x30 * x22);
-	const GEN_FLT x33 = pow(x26, -1);
-	const GEN_FLT x34 = pow(x8, 2);
+	const GEN_FLT x33 = 1. / x26;
+	const GEN_FLT x34 = x8 * x8;
 	const GEN_FLT x35 = -1 * x26;
-	const GEN_FLT x36 = 2 * pow((x27 + x34), -1) * x27 * atan2(x8, x35) * curve_1;
+	const GEN_FLT x36 = 2 * (1. / (x27 + x34)) * x27 * atan2(x8, x35) * curve_1;
 	const GEN_FLT x37 = x2 + (2 * ((x25 * lh_qk) + (-1 * x7 * lh_qi))) + lh_py;
 	const GEN_FLT x38 = x16 + (x30 * x20) + (-1 * x31 * x23);
-	const GEN_FLT x39 = x27 + pow(x37, 2);
-	const GEN_FLT x40 = pow(x39, -1);
+	const GEN_FLT x39 = x27 + (x37 * x37);
+	const GEN_FLT x40 = 1. / x39;
 	const GEN_FLT x41 = x40 * x27;
-	const GEN_FLT x42 = pow((1 + (-1 * x40 * x34 * pow(tilt_1, 2))), -1.0 / 2.0);
-	const GEN_FLT x43 = pow(x39, -1.0 / 2.0) * tilt_1;
+	const GEN_FLT x42 = 1. / sqrt(1 + (-1 * x40 * x34 * (tilt_1 * tilt_1)));
+	const GEN_FLT x43 = (1. / sqrt(x39)) * tilt_1;
 	const GEN_FLT x44 = 2 * x37;
 	const GEN_FLT x45 = 2 * x26;
-	const GEN_FLT x46 = 1.0 / 2.0 * x8 * pow(x39, -3.0 / 2.0) * tilt_1;
+	const GEN_FLT x46 = 1.0 / 2.0 * x8 * (1. / (x39 * sqrt(x39))) * tilt_1;
 	const GEN_FLT x47 = (-1 * x42 * ((-1 * ((x45 * x24) + (x44 * x38)) * x46) + (x43 * x32))) +
 						(-1 * ((x33 * x38) + (-1 * x37 * x29)) * x41);
 	const GEN_FLT x48 =
@@ -10811,7 +10809,7 @@ static inline void gen_reproject_axis_y_jac_sensor_pt(FLT *out, const SurvivePos
 	const GEN_FLT x49 = 2 * obj_qk * obj_qj;
 	const GEN_FLT x50 = x9 * obj_qi;
 	const GEN_FLT x51 = x50 + x49;
-	const GEN_FLT x52 = -2 * pow(obj_qi, 2);
+	const GEN_FLT x52 = -2 * (obj_qi * obj_qi);
 	const GEN_FLT x53 = 1 + x17 + x52;
 	const GEN_FLT x54 = x14 + (-1 * x15);
 	const GEN_FLT x55 = (x54 * lh_qw) + (-1 * x53 * lh_qk) + (x51 * lh_qj);
@@ -10885,37 +10883,37 @@ static inline void gen_reproject_axis_y_jac_lh_p(FLT *out, const SurvivePose *ob
 	const GEN_FLT x15 = x3 * lh_qk;
 	const GEN_FLT x16 = x15 + (-1 * x14) + x13;
 	const GEN_FLT x17 = x10 + (2 * ((x16 * lh_qi) + (-1 * x12 * lh_qj))) + lh_pz;
-	const GEN_FLT x18 = pow(x17, 2);
+	const GEN_FLT x18 = x17 * x17;
 	const GEN_FLT x19 = x10 * lh_qw;
 	const GEN_FLT x20 = x3 * lh_qj;
 	const GEN_FLT x21 = x7 * lh_qi;
 	const GEN_FLT x22 = x21 + (-1 * x20) + x19;
 	const GEN_FLT x23 = x7 + (2 * ((x12 * lh_qk) + (-1 * x22 * lh_qi))) + lh_py;
-	const GEN_FLT x24 = pow(x23, 2) + x18;
-	const GEN_FLT x25 = pow(x24, -1);
+	const GEN_FLT x24 = (x23 * x23) + x18;
+	const GEN_FLT x25 = 1. / x24;
 	const GEN_FLT x26 = x3 + (2 * ((x22 * lh_qj) + (-1 * x16 * lh_qk))) + lh_px;
-	const GEN_FLT x27 = pow(x26, 2);
-	const GEN_FLT x28 = pow((1 + (-1 * x25 * x27 * pow(tilt_1, 2))), -1.0 / 2.0);
-	const GEN_FLT x29 = pow(x24, -1.0 / 2.0) * tilt_1;
+	const GEN_FLT x27 = x26 * x26;
+	const GEN_FLT x28 = 1. / sqrt(1 + (-1 * x25 * x27 * (tilt_1 * tilt_1)));
+	const GEN_FLT x29 = (1. / sqrt(x24)) * tilt_1;
 	const GEN_FLT x30 = x28 * x29;
 	const GEN_FLT x31 = 2 * x17;
 	const GEN_FLT x32 = -1 * x17;
-	const GEN_FLT x33 = pow((x18 + x27), -1) * atan2(x26, x32) * curve_1;
+	const GEN_FLT x33 = (1. / (x18 + x27)) * atan2(x26, x32) * curve_1;
 	const GEN_FLT x34 =
 		sin(1.5707963267949 + (-1 * atan2(-1 * x23, x32)) + (-1 * asin(x29 * x26)) + (-1 * phase_1) + gibPhase_1) *
 		gibMag_1;
-	const GEN_FLT x35 = pow(x24, -3.0 / 2.0) * x26 * tilt_1;
+	const GEN_FLT x35 = (1. / (x24 * sqrt(x24))) * x26 * tilt_1;
 	const GEN_FLT x36 = x35 * x28;
 	const GEN_FLT x37 = (x36 * x23) + (-1 * x25 * x17);
 	const GEN_FLT x38 = 2 * x33;
 	const GEN_FLT x39 = (x36 * x17) + (x25 * x23);
 	const GEN_FLT x40 = 2 * x20;
 	const GEN_FLT x41 = (2 * x21) + (-1 * x40);
-	const GEN_FLT x42 = pow(x18, -1);
+	const GEN_FLT x42 = 1. / x18;
 	const GEN_FLT x43 = x42 * x26;
 	const GEN_FLT x44 = 2 * x8;
 	const GEN_FLT x45 = (2 * x11) + (-1 * x44);
-	const GEN_FLT x46 = pow(x17, -1);
+	const GEN_FLT x46 = 1. / x17;
 	const GEN_FLT x47 = x38 * x18;
 	const GEN_FLT x48 = x42 * x23;
 	const GEN_FLT x49 = 2 * x14;
@@ -10996,17 +10994,17 @@ static inline void gen_reproject_axis_y_jac_bsc1(FLT *out, const SurvivePose *ob
 	const GEN_FLT x8 = x5 + (2 * ((x7 * lh_qi) + (-1 * x6 * lh_qj))) + lh_pz;
 	const GEN_FLT x9 = (x4 * lh_qi) + (-1 * x2 * lh_qj) + (x5 * lh_qw);
 	const GEN_FLT x10 = (2 * ((x6 * lh_qk) + (-1 * x9 * lh_qi))) + x4 + lh_py;
-	const GEN_FLT x11 = pow(x10, 2) + pow(x8, 2);
+	const GEN_FLT x11 = (x10 * x10) + (x8 * x8);
 	const GEN_FLT x12 = x2 + (2 * ((x9 * lh_qj) + (-1 * x7 * lh_qk))) + lh_px;
-	const GEN_FLT x13 = x12 * pow(x11, -1.0 / 2.0);
+	const GEN_FLT x13 = x12 * (1. / sqrt(x11));
 	const GEN_FLT x14 = -1 * x8;
 	const GEN_FLT x15 =
 		1.5707963267949 + (-1 * atan2(-1 * x10, x14)) + (-1 * asin(x13 * tilt_1)) + (-1 * phase_1) + gibPhase_1;
 	const GEN_FLT x16 = sin(x15) * gibMag_1;
-	const GEN_FLT x17 = x13 * pow((1 + (-1 * pow(x12, 2) * pow(x11, -1) * pow(tilt_1, 2))), -1.0 / 2.0);
+	const GEN_FLT x17 = x13 * (1. / sqrt(1 + (-1 * (x12 * x12) * (1. / x11) * (tilt_1 * tilt_1))));
 	out[0] = -1 + (-1 * x16);
 	out[1] = (-1 * x17 * x16) + (-1 * x17);
-	out[2] = pow(atan2(x12, x14), 2);
+	out[2] = atan2(x12, x14) * atan2(x12, x14);
 	out[3] = x16;
 	out[4] = -1 * cos(x15);
 	out[5] = 0;
