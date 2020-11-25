@@ -183,6 +183,14 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 		tracker->stats.lightcap_error_by_lh[data->lh] += rtn;
 		tracker->stats.lightcap_count_by_lh[data->lh]++;
 
+		SurviveObject *so = tracker->so;
+		assert(data->lh >= 0);
+		assert(data->sensor_id >= 0);
+
+		SV_DATA_LOG("res_error_light_", &rtn, 1);
+		SV_DATA_LOG("res_error_light_avg", &tracker->light_residuals_all, 1);
+		SV_DATA_LOG("res_error_light[%d, %d]", &tracker->light_residuals[data->lh], 1, data->lh, data->sensor_id);
+
 		if (tracker->light_residuals[data->lh] > .1 && tracker->use_error_for_lh_pos) {
 			// SV_WARN("Light residual for lh%d is too high -- %f", data->lh, tracker->light_residuals[data->lh]);
 			survive_lighthouse_adjust_confidence(ctx, data->lh, -.1);
@@ -315,7 +323,8 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 
 		FLT err = survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, R, map_imu_data, &fn_ctx,
 															   tracker->adaptive_imu);
-
+		SurviveObject* so = tracker->so;
+		SV_DATA_LOG("res_err_imu", &err, 1);
 		tracker->stats.imu_total_error += err;
 		tracker->imu_residuals *= .9;
 		tracker->imu_residuals += .1 * err;
@@ -527,8 +536,12 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
 	tracker->last_light_time = time;
 
 	if (tracker->obs_pos_var >= 0 && tracker->obs_rot_var >= 0) {
-		tracker->stats.obs_total_error += integrate_pose(tracker, time, pose, tracker->adaptive_obs ? 0 : R);
+		FLT obs_error = integrate_pose(tracker, time, pose, tracker->adaptive_obs ? 0 : R);
+		tracker->stats.obs_total_error += obs_error;
 		tracker->stats.obs_count++;
+
+		SurviveObject *so = tracker->so;
+		SV_DATA_LOG("res_err_obs", &obs_error, 1);
 
 		survive_kalman_tracker_report_state(pd, tracker);
 	}
@@ -833,6 +846,9 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 		return;
 	}
 	SurviveContext *ctx = tracker->so->ctx;
+	SurviveObject *so = tracker->so;
+	SV_DATA_LOG("tracker_P", var_diag, SURVIVE_MODEL_MAX_STATE_CNT);
+
 	addnd(tracker->stats.reported_var, var_diag, tracker->stats.reported_var, state_cnt);
 
 	SV_VERBOSE(600, "Tracker variance %s " Point16_format, tracker->so->codename, LINMATH_VEC16_EXPAND(var_diag));
@@ -844,11 +860,10 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 
 	SurviveVelocity velocity = survive_kalman_tracker_velocity(tracker);
 
-	SurviveObject *so = tracker->so;
-
 	if (tracker->first_report_time == 0) {
 		tracker->first_report_time = t;
 	}
+
 	tracker->last_report_time = t;
 	so->ctx->imuposeproc(so, pd->timecode, &pose);
 	so->ctx->velocityproc(so, pd->timecode, &velocity);

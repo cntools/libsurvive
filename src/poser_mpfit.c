@@ -398,6 +398,13 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 	SurviveObject *so = d->opt.so;
 	struct SurviveContext *ctx = so->ctx;
 
+	SV_DATA_LOG("mpfit_norm_best", &result->bestnorm, 1);
+	SV_DATA_LOG("mpfit_norm_orig", &result->orignorm, 1);
+
+	FLT iterations = result->niter, fev = result->nfev;
+	SV_DATA_LOG("mpfit_iterations", &iterations, 1);
+	SV_DATA_LOG("mpfit_nfevals", &fev, 1);
+
 	bool status_failure = res <= 0;
 	if (status_failure) {
 		SV_WARN("MPFIT status failure %s %f/%f (%d measurements, %d)", so->codename, result->orignorm, result->bestnorm,

@@ -667,6 +667,7 @@ int survive_startup(SurviveContext *ctx) {
 
 	return 0;
 }
+datalog_process_func survive_default_datalog_process = 0;
 
 #define SURVIVE_HOOK_FN_DEF(hook)                                                                                      \
 	SURVIVE_EXPORT void survive_install_##hook##_fn(SurviveContext *ctx, hook##_func fbp) {                            \

@@ -294,6 +294,7 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
 }
 
 static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
+	struct SurviveObject *so = optimizer->sos[0];
 	SurviveContext *ctx = optimizer->sos[0] ? optimizer->sos[0]->ctx : 0;
 
 	FLT lh_deviates[NUM_GEN2_LIGHTHOUSES] = {0};
@@ -310,6 +311,8 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 	}
 
 	avg_dev = avg_dev / (FLT)valid_meas;
+	SV_DATA_LOG("opt_avg_deviates", &avg_dev, 1);
+
 	for (int i = 0; i < optimizer->measurementsCnt; i++) {
 		survive_optimizer_measurement *meas = &optimizer->measurements[i];
 		if (fabs(deviates[i]) > avg_dev * 15) {
@@ -338,6 +341,7 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
 		if (lh_meas_cnt[i]) {
 			lh_deviates[i] = lh_deviates[i] / (FLT)lh_meas_cnt[i];
+			SV_DATA_LOG("opt_lh_deviate[%d]", &lh_deviates[i], 1, i);
 			lh_avg_dev += lh_deviates[i];
 			obs_lhs++;
 
@@ -345,12 +349,19 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 		}
 	}
 
-	if (obs_lhs > 2) {
-		FLT unbias_dev = lh_avg_dev / (obs_lhs - 1.);
-		lh_avg_dev = lh_avg_dev / (FLT)obs_lhs;
+	FLT unbias_dev = lh_avg_dev / (obs_lhs - 1.);
+	lh_avg_dev = lh_avg_dev / (FLT)obs_lhs;
 
+	SV_DATA_LOG("opt_lh_avg_deviates", &lh_avg_dev, 1);
+
+	if (obs_lhs > 2) {
 		for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
+			if (lh_meas_cnt[i] == 0)
+				continue;
+
 			FLT corrected_dev = unbias_dev - lh_deviates[i] / (obs_lhs - 1.);
+			SV_DATA_LOG("opt_lh_corrected_dev[%d]", &corrected_dev, 1, i);
+
 			if (lh_deviates[i] > 100 * corrected_dev) {
 				SV_VERBOSE(100, "Data from LH %d seems suspect for %s (%f/%10.10f -- %f)", i,
 						   optimizer->sos[0]->codename, lh_deviates[i], corrected_dev, lh_deviates[i] / corrected_dev);

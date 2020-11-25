@@ -50,6 +50,9 @@ survive_long_timecode SurviveSensorActivations_last_time(const SurviveSensorActi
 survive_long_timecode SurviveSensorActivations_stationary_time(const SurviveSensorActivations *self) {
 	survive_long_timecode last_time = SurviveSensorActivations_last_time(self);
 	survive_long_timecode last_move = self->last_movement;
+	if (last_move == 0)
+		return 0;
+
 	assert(last_move <= last_time);
 	return last_time - last_move;
 }
@@ -90,6 +93,8 @@ void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct Pos
 			self->mag[i] = .98 * self->mag[i] + .02 * imuData->mag[i];
 		}
 	}
+	struct SurviveObject *so = self->so;
+	SV_DATA_LOG("accel running average", self->accel, 3);
 
 	if (norm3d(imuData->gyro) > moveThresholdGyro || dist3d(self->accel, imuData->accel) > moveThresholdAcc) {
 		self->last_movement = imuData->hdr.timecode;
@@ -143,7 +148,9 @@ bool SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct Po
 }
 
 SURVIVE_EXPORT void SurviveSensorActivations_reset(SurviveSensorActivations *self) {
+	struct SurviveObject *so = self->so;
 	memset(self, 0, sizeof(SurviveSensorActivations));
+	self->so = so;
 
 	for (int i = 0; i < SENSORS_PER_OBJECT; i++) {
 		for (int j = 0; j < NUM_GEN2_LIGHTHOUSES; j++) {
@@ -169,6 +176,7 @@ SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveObject *so, SurviveSens
 	}
 
 	SurviveSensorActivations_reset(self);
+	self->so = so;
 	self->lh_gen = -1;
 }
 
@@ -182,7 +190,7 @@ void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 	FLT *angle = &self->angles[lightData->sensor_id][lightData->lh][axis];
 	uint32_t *length = &self->lengths[lightData->sensor_id][lightData->lh][axis];
 
-	if (*length == 0 || fabs(*angle - lightData->angle) > moveThresholdAcc) {
+	if (*length == 0 || fabs(*angle - lightData->angle) > moveThresholdAng) {
 		survive_long_timecode long_timecode = lightData->hdr.timecode;
 		// assert(long_timecode > self->last_movement);
 		self->last_light_change = self->last_movement = long_timecode;

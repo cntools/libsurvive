@@ -185,6 +185,8 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 		FLT hz = 48000000. / time_delta;
 		FLT err = fabs(hz - freq_per_channel[channel]);
 
+		SV_DATA_LOG("lh_freq_err[%d]", &err, 1, channel);
+
 		if (err > 1) {
 			if (skipped_syncs > 10) {
 				so->last_sync_time[bsd_idx] = 0;
@@ -304,8 +306,8 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 
 	survive_timecode time_delta = survive_timecode_difference(timecode, last_sweep);
 	FLT time_since_sync = (time_delta / 48000000.);
-	// if (half_clock_flag)
-	//	time_since_sync += 0.5 / 48000000.;
+	if (half_clock_flag)
+		time_since_sync += 0.5 / 48000000.;
 
 	FLT hz = 48000000. / so->last_time_between_sync[bsd_idx];
 	if (fabs(hz - freq_per_channel[channel]) > 1.0) {
@@ -313,7 +315,7 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 	}
 
 	survive_timecode predicted_time = 48000000. / freq_per_channel[channel];
-	int rotations_since = (time_delta) / predicted_time;
+	int rotations_since = time_delta / predicted_time;
 
 	FLT time_per_rot = 1. / hz;
 	time_since_sync -= time_per_rot * rotations_since;
@@ -334,6 +336,7 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 
 	FLT angle_for_axis[2] = {angle - 2. / 3. * LINMATHPI, angle - 4. / 3. * LINMATHPI};
 	int8_t plane = determine_plane(so, bsd_idx, angle);
+	SV_DATA_LOG("time_since_sync[%d,%d,%d]", &time_since_sync, 1, channel, sensor_id, plane);
 
 	so->stats.hit_from_lhs[bsd_idx]++;
 

@@ -25,6 +25,7 @@ extern "C" {
  * This struct encodes what the last effective angles seen on a sensor were, and when they occured.
  */
 typedef struct SurviveSensorActivations_s {
+	SurviveObject *so;
 	int lh_gen;
 
 	// Valid for gen2; somewhat different meaning though -- refers to angle of the rotor when the sweep happened.
@@ -503,6 +504,15 @@ SURVIVE_EXPORT char *survive_export_config(SurviveObject *so);
 // This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
 SURVIVE_EXPORT uint8_t survive_map_sensor_id(SurviveObject *so, uint8_t reported_id);
 SURVIVE_EXPORT bool handle_lightcap(SurviveObject *so, const LightcapElement *le);
+
+#define SV_DATA_LOG(fmt, v, n, ...)                                                                                    \
+	{                                                                                                                  \
+		if (so && so->ctx->datalogproc) {                                                                              \
+			char name[128];                                                                                            \
+			snprintf(name, sizeof(name) - 1, fmt, ##__VA_ARGS__);                                                      \
+			so->ctx->datalogproc(so, name, v, n);                                                                      \
+		}                                                                                                              \
+	}
 
 #define SV_LOG_NULL_GUARD                                                                                              \
 	if (ctx == 0) {                                                                                                    \
