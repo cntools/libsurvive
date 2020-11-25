@@ -307,6 +307,10 @@ static FLT survive_kalman_predict_update_state_extended_adaptive_internal(FLT t,
 		fprintf(stdout, "\n");
 	}
 
+	if (H == 0) {
+		return -1;
+	}
+
 	if (dt > 0) {
 		CREATE_STACK_MAT(F, state_cnt, state_cnt);
 		for (int i = 0; i < state_cnt * state_cnt; i++)
