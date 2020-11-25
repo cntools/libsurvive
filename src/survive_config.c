@@ -379,6 +379,7 @@ bool config_read_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8
 void config_set_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8_t idx) {
 	config_group *cg = lh_config + idx;
 	config_set_uint32(cg, "index", idx);
+	
 	config_set_uint32(cg, "id", bsd->BaseStationID);
 	config_set_uint32(cg, "mode", bsd->mode);
 	config_set_float_a(cg, "pose", &bsd->Pose.Pos[0], 7);
@@ -756,8 +757,7 @@ int parse_floats(char *tag, char **values, uint8_t count) {
 
 int parse_uint32(char *tag, char **values, uint16_t count) {
 	uint16_t i = 0;
-	uint32_t *l;
-	l = alloca(sizeof(FLT) * count);
+	uint32_t *l = alloca(sizeof(uint32_t) * count);
 	char *end = NULL;
 	config_group *cg = cg_stack[cg_stack_head];
 
@@ -770,7 +770,7 @@ int parse_uint32(char *tag, char **values, uint16_t count) {
 		end=NULL;
 	*/
 	for (i = 0; i < count; ++i) {
-		l[i] = strtol(values[i], &end, 10);
+		l[i] = strtoul(values[i], &end, 10);
 		//		if (values[i] == end) return 0; //not an integer
 		if (*end != '\0')
 			return 0; // not an integer
