@@ -79,8 +79,8 @@ if(DO_CORE_BUILD)
   SET(NOT_CORE_BUILD OFF)
 endif()
 
-include_directories(${CMAKE_INSTALL_PREFIX}/include)
-link_directories(${CMAKE_INSTALL_PREFIX}/lib)
+#include_directories(${CMAKE_INSTALL_PREFIX}/include)
+#link_directories(${CMAKE_INSTALL_PREFIX}/lib)
 
 IF(UNIX)
 	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=gnu99 -rdynamic -Werror=incompatible-pointer-types -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces -Werror=implicit-function-declaration -Wpedantic -Werror=return-type -fvisibility=hidden -Werror=vla")
@@ -150,7 +150,7 @@ foreach(executable ${SURVIVE_EXECUTABLES})
     foreach(plugin ${SURVIVE_BUILT_PLUGINS})
       add_dependencies(${executable} ${plugin})
     endforeach()
-    install(TARGETS ${executable} DESTINATION bin)
+    install(TARGETS ${executable} DESTINATION bin/${CMAKE_GENERATOR_PLATFORM})
   endif()
 endforeach()
 
@@ -168,7 +168,7 @@ IF(TARGET survive-cli)
   add_custom_command(TARGET survive-cli POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy ${SURVIVE_WEBSOCKETD} $<TARGET_FILE_DIR:survive-cli>
     )
-  install(PROGRAMS ${SURVIVE_WEBSOCKETD} DESTINATION bin)
+  install(PROGRAMS ${SURVIVE_WEBSOCKETD} DESTINATION bin/${CMAKE_GENERATOR_PLATFORM})
 endif()
 
 find_program(DOTNET dotnet)

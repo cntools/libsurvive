@@ -157,7 +157,7 @@ function(SURVIVE_REGISTER_PLUGIN PLUGIN)
 if(NOT WIN32)
   install(TARGETS ${PLUGIN} DESTINATION lib/libsurvive/plugins)
 else()
-  install(TARGETS ${PLUGIN} DESTINATION bin/plugins)
+  install(TARGETS ${PLUGIN} DESTINATION bin/${CMAKE_GENERATOR_PLATFORM}/plugins)
 endif()
 
 endfunction()
@@ -185,13 +185,14 @@ install(TARGETS ${SURVIVE_BUILT_PLUGINS} DESTINATION lib/libsurvive/plugins)
 install(TARGETS survive DESTINATION lib/libsurvive)
 install(TARGETS survive DESTINATION lib)
 else()
-install(TARGETS ${SURVIVE_BUILT_PLUGINS} DESTINATION bin/plugins)
-install(TARGETS survive DESTINATION bin)
+install(TARGETS ${SURVIVE_BUILT_PLUGINS} DESTINATION bin/${CMAKE_GENERATOR_PLATFORM}/plugins)
+install(TARGETS survive DESTINATION bin/${CMAKE_GENERATOR_PLATFORM})
 endif()
 
 
 if(WIN32)
   cmake_policy(SET CMP0087 NEW)
+  install(CODE "set(CMAKE_GENERATOR_PLATFORM \"${CMAKE_GENERATOR_PLATFORM}\")")
   install(CODE [[  
   file(GET_RUNTIME_DEPENDENCIES LIBRARIES $<TARGET_FILE:survive>
     RESOLVED_DEPENDENCIES_VAR _r_deps
@@ -200,7 +201,7 @@ if(WIN32)
   )
   foreach(_file ${_r_deps})
     file(INSTALL
-      DESTINATION "${CMAKE_INSTALL_PREFIX}/bin"
+      DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_GENERATOR_PLATFORM}"
       TYPE SHARED_LIBRARY     
       FILES "${_file}"
     )
