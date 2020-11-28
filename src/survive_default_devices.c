@@ -283,7 +283,9 @@ struct key_value model_number_subtypes[] = {
 	{"Utah MP", SURVIVE_OBJECT_SUBTYPE_INDEX_HMD},		   {"Vive Controller MV", SURVIVE_OBJECT_SUBTYPE_WAND},
 	{"Vive. Controller MV", SURVIVE_OBJECT_SUBTYPE_WAND},  {"VIVE Tracker Pro MV", SURVIVE_OBJECT_SUBTYPE_TRACKER_GEN2},
 	{"Vive. Tracker MV", SURVIVE_OBJECT_SUBTYPE_TRACKER},  {"Vive Tracker MV", SURVIVE_OBJECT_SUBTYPE_TRACKER},
-	{"Vive MV", SURVIVE_OBJECT_SUBTYPE_VIVE_HMD},		   {"Vive. MV", SURVIVE_OBJECT_SUBTYPE_VIVE_HMD}};
+	{"Vive MV", SURVIVE_OBJECT_SUBTYPE_VIVE_HMD},		   {"Vive. MV", SURVIVE_OBJECT_SUBTYPE_VIVE_HMD},
+	{"Vive_Pro MV", SURVIVE_OBJECT_SUBTYPE_VIVE_HMD},
+};
 
 static int process_jsontok(scratch_space_t *scratch, char *d, stack_entry_t *stack, jsmntok_t *t, int count) {
 	int i, j, k;
