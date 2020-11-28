@@ -36,7 +36,7 @@ jobs:
       with:
         python-version: '3.x'
     - name: Setup windows flags
-      if: contains(matrix.os, 'windows')
+      if: contains(matrix.os, 'windows') && matrix.build_type == 'Release'
       id: flags
       run: echo "::set-output name=SETUP_PY_FLAGS::-G 'Visual Studio 16 2019'"
 
