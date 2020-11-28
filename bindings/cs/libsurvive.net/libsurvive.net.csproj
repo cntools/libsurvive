@@ -11,7 +11,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/cntools/libsurvive</PackageProjectUrl>
     <RepositoryUrl>https://github.com/cntools/libsurvive</RepositoryUrl>
-    <PackageIcon>lib_survive_logo3.svg</PackageIcon>
+    <PackageIcon>lib_survive_logo3.png</PackageIcon>
     <RepositoryType></RepositoryType>
     <PackageTags>libsurvive vr ar steamvr openvr vive</PackageTags>
   </PropertyGroup>
@@ -35,7 +35,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)..\..\..\useful_files\lib_survive_logo3.svg">
+    <None Include="$(MSBuildThisFileDirectory)..\..\..\useful_files\lib_survive_logo3.png">
       <Pack>True</Pack>
       <PackagePath></PackagePath>
     </None>
