@@ -38,6 +38,13 @@ jobs:
       id: flags
       run: echo "::set-output name=SETUP_PY_FLAGS::-G 'Visual Studio 16 2019'"
 
+    - name: Deploy nuget package
+      if: contains(matrix.os, 'windows')
+      working-directory: ${{ github.workspace }}
+      env: 
+        NUGET_TOKEN: ${{ secrets.NUGET_TOKEN }}
+      run: .\make.ps1 --nuget
+      
     - name: Build/Test Python Bindings (Linux)
       run: |
         python --version
@@ -65,7 +72,7 @@ jobs:
       shell: bash
       # Execute the build.  You can specify a specific target with "--target <NAME>"
       run: cmake --build . --config $BUILD_TYPE
-      
+    
     - name: Install
       working-directory: ${{runner.workspace}}/build
       shell: bash

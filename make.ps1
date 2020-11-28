@@ -1,4 +1,4 @@
-Set-PSDebug -Trace 0
+Set-PSDebug -Trace 1
 $flag=$args[0]
 
 if($flag -eq "--nuget") {
@@ -20,6 +20,10 @@ if($flag -eq "--nuget") {
 	
 	dotnet build .\bindings\cs\libsurvive.net\libsurvive.net.csproj -c Release
 	dotnet msbuild .\bindings\cs\libsurvive.net\libsurvive.net.csproj -t:Pack -p:Configuration=Release -p:Version=$version
+	
+	if(Test-Path env:NUGET_TOKEN) {
+		dotnet nuget push .\bindings\cs\libsurvive.net\bin\Release\*.nupkg  -k $env:NUGET_TOKEN --source https://api.nuget.org/v3/index.json --skip-duplicate
+	}
 } else {
 	md build-win -ea 0
 	cd build-win
