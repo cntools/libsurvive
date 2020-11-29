@@ -60,3 +60,12 @@ jobs:
         name: Upload
         with:
           path: ${{runner.workspace}}/libsurvive/wheelhouse/*.whl
+
+      - name: Upload with twine
+        run: |
+          python -m pip install twine
+          python -m twine upload wheelhouse/*.whl --skip-existing
+        continue-on-error: true
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TWINE_TOKEN }}
