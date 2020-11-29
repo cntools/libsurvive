@@ -155,7 +155,7 @@ endforeach()
 
 IF(WIN32)
   # This property needs to be set on a target at the root; doesn't matter which
-  set_target_properties( survive-cli PROPERTIES VS_USER_PROPS "$(SolutionDir)\\packages\\OpenBLAS.0.2.14.1\\build\\native\\openblas.targets" )
+  set_target_properties( survive PROPERTIES VS_USER_PROPS "$(SolutionDir)\\packages\\OpenBLAS.0.2.14.1\\build\\native\\openblas.targets" )
 endif()
 
 SET(SURVIVE_WEBSOCKETD ${CMAKE_CURRENT_SOURCE_DIR}/useful_files/survive-websocketd)

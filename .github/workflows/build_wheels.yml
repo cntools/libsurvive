@@ -45,8 +45,6 @@ jobs:
         if: runner.os != 'Windows'
         run: python -m cibuildwheel
         env:
-          CIBW_ENVIRONMENT: LD_LIBRARY_PATH=/opt/rh/devtoolset-9/root/usr/lib64:/opt/rh/devtoolset-9/root/usr/lib:/opt/rh/devtoolset-9/root/usr/lib64/dyninst:/opt/rh/devtoolset-9/root/usr/lib/dyninst:/usr/local/lib64:/usr/local/lib:/usr/local/lib/libsurvive/plugins
-          CIBW_BEFORE_BUILD: rm -rf /project/bin && make install
           CIBW_BUILD_VERBOSITY: 3
           CIBW_MANYLINUX_X86_64_IMAGE: libsurvive_manylinux2014_x86_64
           CIBW_BUILD: cp3*manylinux_x86_64
