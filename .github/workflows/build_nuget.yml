@@ -1,0 +1,29 @@
+name: Build Nuget
+
+on:
+  push:
+  create:
+    tags: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build_nuget:
+    name: Build Nuget
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+
+      - name: Deploy nuget package
+        working-directory: ${{ github.workspace }}
+        env:
+          NUGET_TOKEN: ${{ secrets.NUGET_TOKEN }}
+        run: .\make.ps1 --nuget
+
+      - uses: actions/upload-artifact@v2
+        name: Upload
+        with:
+          path: ${{runner.workspace}}/libsurvive/bindings/cs/libsurvive.net/bin/Release/*.nupkg

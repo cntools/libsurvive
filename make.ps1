@@ -21,7 +21,7 @@ if($flag -eq "--nuget") {
 	dotnet build .\bindings\cs\libsurvive.net\libsurvive.net.csproj -c Release
 	dotnet msbuild .\bindings\cs\libsurvive.net\libsurvive.net.csproj -t:Pack -p:Configuration=Release -p:Version=$version
 	
-	if(Test-Path env:NUGET_TOKEN) {
+	if((Test-Path Env:NUGEt_TOKEN) -And ($Env:NUGET_TOKEN -ne "")) {
 		dotnet nuget push .\bindings\cs\libsurvive.net\bin\Release\*.nupkg  -k $env:NUGET_TOKEN --source https://api.nuget.org/v3/index.json --skip-duplicate
 	}
 } else {
