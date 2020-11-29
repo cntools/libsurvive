@@ -41,7 +41,7 @@ class LibraryLoader(object):
             return getattr(self.access["cdecl"], name)
 
     def __init__(self):
-        self.other_dirs = []
+        self.other_dirs = [os.path.dirname(os.path.realpath(__file__))]
 
     def __call__(self, libname):
         """Given the name of a library, load it."""
@@ -276,8 +276,6 @@ class PosixLibraryLoader(LibraryLoader):
         self._ld_so_cache = cache
 
     def getplatformpaths(self, libname):
-        yield os.path.dirname(os.path.realpath(__file__))
-
         if self._ld_so_cache is None:
             self._create_ld_so_cache()
 

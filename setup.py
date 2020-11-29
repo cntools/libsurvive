@@ -17,5 +17,6 @@ setup(name='pysurvive',
       package_dir={'pysurvive': 'bindings/python/pysurvive'},
       include_package_data=False,
       cmake_args=['-DPYTHON_GENERATED_DIR="'+ os.path.dirname(os.path.abspath(__file__))+'/bindings/python/pysurvive/"',
+				  "-DBUILD_APPLICATIONS=OFF",
                   "-DLIB_INSTALL_DIR=bindings/python/pysurvive"]
       )

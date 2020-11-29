@@ -142,6 +142,10 @@ SET(SURVIVE_EXECUTABLES survive-cli api_example sensors-readout survive-solver s
 foreach(executable ${SURVIVE_EXECUTABLES})
   option(ENABLE_${executable} "Build ${executable}" ${BUILD_APPLICATIONS})
 
+  if(${executable} STREQUAL "survive-cli" AND WIN32)
+	set(ENABLE_survive-cli ON)
+  endif()
+
   if(ENABLE_${executable})
     add_executable(${executable} ${executable}.c )
     target_link_libraries(${executable} survive ${${executable}_ADDITIONAL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
@@ -155,7 +159,7 @@ endforeach()
 
 IF(WIN32)
   # This property needs to be set on a target at the root; doesn't matter which
-  set_target_properties( survive PROPERTIES VS_USER_PROPS "$(SolutionDir)\\packages\\OpenBLAS.0.2.14.1\\build\\native\\openblas.targets" )
+  set_target_properties( survive-cli PROPERTIES VS_USER_PROPS "$(SolutionDir)\\packages\\OpenBLAS.0.2.14.1\\build\\native\\openblas.targets" )
 endif()
 
 SET(SURVIVE_WEBSOCKETD ${CMAKE_CURRENT_SOURCE_DIR}/useful_files/survive-websocketd)
