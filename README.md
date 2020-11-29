@@ -243,6 +243,13 @@ The full header for the simpler API is available [here](https://github.com/cntoo
 
 ### Python Bindings
 
+Python bindings are available for python3 on windows and linux through https://pypi.org/project/pysurvive/. You can 
+install them with
+
+```
+pip install pysurvive
+```
+
 To build the python bindings, run `python setup.py install` in the repo root. This should install the `pysurvive` package.
 
 An example which streams poses out as they come in:
@@ -269,6 +276,9 @@ There are more examples in `./bindings/python`.
 The C# bindings wrap both the low level access API and the higher level simpler to use API. It is recommended to use the
 higher level API since the low level one relies heavily on callbacks and marshalling makes working with it prone to 
 errors that are not always easy to solve. 
+
+Standard binaries are available at https://www.nuget.org/packages/libsurvive.net/. You can install them for a given
+C# project through the visual studio nuget manager tool.
 
 Build the solution [here](https://github.com/cntools/libsurvive/tree/master/bindings/cs) with either visual studio or by
 running something like
