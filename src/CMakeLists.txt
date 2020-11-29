@@ -52,6 +52,12 @@ if(USE_HIDAPI OR WIN32)
 endif()
 
 add_library(survive ${SURVIVE_LIBRARY_TYPE} ${SURVIVE_SRCS})
+
+#find_package (Python3 COMPONENTS Interpreter Development)
+#find_package(PythonExtensions REQUIRED)
+
+#python_extension_module(survive)
+
 set_target_properties(survive PROPERTIES
 	FOLDER "libraries"
 	SOVERSION ${PROJECT_VERSION_MAJOR}
@@ -123,6 +129,8 @@ endif()
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(SURVIVE_BUILT_PLUGINS)
 
+option(LIB_INSTALL_DIR "" lib)
+
 function(SURVIVE_REGISTER_PLUGIN PLUGIN)
   IF(NOT TARGET ${PLUGIN})
     SET(SRC ${PLUGIN}.c)
@@ -131,12 +139,14 @@ function(SURVIVE_REGISTER_PLUGIN PLUGIN)
     endif()
     add_library(${PLUGIN} ${SURVIVE_LIBRARY_TYPE} ${SRC} ${${PLUGIN}_ADDITIONAL_SRCS})
     target_link_libraries(${PLUGIN} survive ${${PLUGIN}_ADDITIONAL_LIBS})
+
+    set_target_properties(${PLUGIN} PROPERTIES INSTALL_RPATH "$ORIGIN/../..;$ORIGIN")
   ENDIF()
   
   target_link_libraries(${PLUGIN} survive)
   list(APPEND SURVIVE_BUILT_PLUGINS ${PLUGIN})
   set(SURVIVE_BUILT_PLUGINS "${SURVIVE_BUILT_PLUGINS}" PARENT_SCOPE)
-  
+
   add_dependencies(survive_plugins ${PLUGIN})
   STRING(REGEX REPLACE "(.*)\_.*" "\\1" plugin_type "${PLUGIN}")
   if(plugin_type)
@@ -148,16 +158,20 @@ function(SURVIVE_REGISTER_PLUGIN PLUGIN)
   if(NOT BUILD_STATIC)
     set_target_properties(${PLUGIN} PROPERTIES PREFIX "")
   endif()
-  set_target_properties(${PLUGIN} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${OUTPUT_DIR}plugins")
-  set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_DIR}plugins")
+
+  set(PLUGIN_SUFFIX "plugins")
+
+  set_target_properties(${PLUGIN} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${OUTPUT_DIR}${PLUGIN_SUFFIX}")
+  set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_DIR}${PLUGIN_SUFFIX}")
+
   #set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG "${OUTPUT_DIR}Debug/plugins")
   #set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE "${OUTPUT_DIR}Release/plugins")
   #set_target_properties(${PLUGIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${OUTPUT_DIR}RelWithDebInfo/plugins")
 
 if(NOT WIN32)
-  install(TARGETS ${PLUGIN} DESTINATION lib/libsurvive/plugins)
+  install(TARGETS ${PLUGIN} DESTINATION ${LIB_INSTALL_DIR}/libsurvive/${PLUGIN_SUFFIX})
 else()
-  install(TARGETS ${PLUGIN} DESTINATION bin/${CMAKE_GENERATOR_PLATFORM}/plugins)
+  install(TARGETS ${PLUGIN} DESTINATION bin/${CMAKE_GENERATOR_PLATFORM}/${PLUGIN_SUFFIX})
 endif()
 
 endfunction()
@@ -181,12 +195,11 @@ ENDIF()
 set(SURVIVE_BUILT_PLUGINS "${SURVIVE_BUILT_PLUGINS}" PARENT_SCOPE)
 
 if(NOT WIN32)
-install(TARGETS ${SURVIVE_BUILT_PLUGINS} DESTINATION lib/libsurvive/plugins)
-install(TARGETS survive DESTINATION lib/libsurvive)
-install(TARGETS survive DESTINATION lib)
+  install(TARGETS ${SURVIVE_BUILT_PLUGINS} DESTINATION ${LIB_INSTALL_DIR}/libsurvive/plugins)
+  install(TARGETS survive DESTINATION ${LIB_INSTALL_DIR})
 else()
-install(TARGETS ${SURVIVE_BUILT_PLUGINS} DESTINATION bin/${CMAKE_GENERATOR_PLATFORM}/plugins)
-install(TARGETS survive DESTINATION bin/${CMAKE_GENERATOR_PLATFORM})
+  install(TARGETS ${SURVIVE_BUILT_PLUGINS} DESTINATION bin/${CMAKE_GENERATOR_PLATFORM}/plugins)
+  install(TARGETS survive DESTINATION bin/${CMAKE_GENERATOR_PLATFORM})
 endif()
 
 

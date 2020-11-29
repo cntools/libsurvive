@@ -78,6 +78,7 @@ SET(NOT_CORE_BUILD ON)
 if(DO_CORE_BUILD)
   SET(NOT_CORE_BUILD OFF)
 endif()
+option(BUILD_APPLICATIONS "Build the default libsurvive applications" ${NOT_CORE_BUILD})
 
 #include_directories(${CMAKE_INSTALL_PREFIX}/include)
 #link_directories(${CMAKE_INSTALL_PREFIX}/lib)
@@ -131,8 +132,6 @@ find_library(OPENVR_LIBRARIES
 
 SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libsurvive/plugins;${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}\
-/libsurvive")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_subdirectory(redist)
@@ -141,7 +140,7 @@ add_subdirectory(tools)
 
 SET(SURVIVE_EXECUTABLES survive-cli api_example sensors-readout survive-solver survive-buttons)
 foreach(executable ${SURVIVE_EXECUTABLES})
-  option(ENABLE_${executable} "Build ${executable}" ${NOT_CORE_BUILD})
+  option(ENABLE_${executable} "Build ${executable}" ${BUILD_APPLICATIONS})
 
   if(ENABLE_${executable})
     add_executable(${executable} ${executable}.c )
@@ -213,8 +212,8 @@ file(GLOB REDIST_HEADERS
 install(FILES ${REDIST_HEADERS} DESTINATION include/libsurvive/redist)
 
 if(NOT WIN32 AND PYTHON_GENERATED_DIR)
-  find_package (Python3 COMPONENTS Interpreter Development)
-  find_program(CTYPESGEN ctypesgen REQUIRED)
+
+  find_program(CTYPESGEN ctypesgen)
 
   if(CTYPESGEN)
     message("-- Building python bindings file to ${PYTHON_GENERATED_DIR}")
@@ -225,9 +224,10 @@ if(NOT WIN32 AND PYTHON_GENERATED_DIR)
       list(APPEND INCLUDE_FLAGS "-I${include_directory}")
     endforeach()
 
-    add_custom_target(pysurvive ALL COMMAND ${Python3_EXECUTABLE} ${CTYPESGEN} ${CMAKE_SOURCE_DIR}/include/libsurvive/*.h ${INCLUDE_FLAGS} --no-macros -L$<TARGET_FILE_DIR:survive> -lsurvive
-      --strip-prefix=survive_ -P Survive -o ${PYTHON_GENERATED_DIR}pysurvive_generated.py )
+    add_custom_target(pysurvive ALL COMMAND ${Python3_EXECUTABLE} ${CTYPESGEN} ${CMAKE_SOURCE_DIR}/include/libsurvive/*.h ${INCLUDE_FLAGS}  --custom-library-loader --no-macros -L$<TARGET_FILE_DIR:survive> -lsurvive
+      --strip-prefix=survive_ -P Survive -o ${PYTHON_GENERATED_DIR}pysurvive_generated.py)
   endif()
+
 endif()
 
 include(GNUInstallDirs)

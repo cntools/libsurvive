@@ -1,6 +1,5 @@
 from setuptools import dist, find_packages
 dist.Distribution().fetch_build_eggs(['wheel', 'cmake_setuptools'])
-ctypesgen_install = dist.Distribution().fetch_build_egg('ctypesgen')
 
 dist.Distribution().fetch_build_eggs(['cmake_setuptools', 'scikit-build'])
 
@@ -16,6 +15,8 @@ setup(name='pysurvive',
       version=version,
       packages=['pysurvive'],
       package_dir={'pysurvive': 'bindings/python/pysurvive'},
-      include_package_data=True,
-      cmake_args=['-DPYTHON_GENERATED_DIR="'+ os.path.dirname(os.path.abspath(__file__))+'/bindings/python/pysurvive/"']
+      include_package_data=False,
+      cmake_args=['-DPYTHON_GENERATED_DIR="'+ os.path.dirname(os.path.abspath(__file__))+'/bindings/python/pysurvive/"',
+                  '-DBUILD_APPLICATIONS=OFF',
+                  "-DLIB_INSTALL_DIR=bindings/python/pysurvive"]
       )
