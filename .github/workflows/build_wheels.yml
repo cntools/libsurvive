@@ -49,8 +49,6 @@ jobs:
         if: runner.os != 'Windows'
         run: python -m cibuildwheel --use-binfmt
         env:
-          CIBW_REPAIR_WHEEL_COMMAND: "auditwheel -v repair -w {dest_dir} {wheel}"
-          CIBW_BUILD_VERBOSITY: 3
           CIBW_MANYLINUX_X86_64_IMAGE: libsurvive_manylinux2014_x86_64
           CIBW_MANYLINUX_AARCH64_IMAGE: libsurvive_manylinux2014_aarch64
           CIBW_BUILD: cp3*manylinux_x86_64 cp3*aarch64*
@@ -59,7 +57,6 @@ jobs:
         if: runner.os == 'Windows'
         run: python -m cibuildwheel
         env:
-          CIBW_BUILD_VERBOSITY: 3
           CIBW_BUILD: cp3*win*64
           CIBW_ENVIRONMENT: "CMAKE_GENERATOR='Visual Studio 16 2019'"
 
