@@ -171,7 +171,9 @@ static int test_path(const char *filename, int main_argc, char **main_argv) {
 	survive_simple_set_user(actx, &rctx);
 
 	SurviveContext *ctx = survive_simple_get_ctx(actx);
-	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
+	bool reset_lh = !survive_configi(ctx, "test-replay-dont-reset-lh", SC_GET, false);
+
+	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES && reset_lh; i++) {
 		ctx->bsd[i].PositionSet = false;
 	}
 
@@ -181,18 +183,21 @@ static int test_path(const char *filename, int main_argc, char **main_argv) {
 
 	fprintf(stderr, "Ground truth LH poses:\n");
 	uint32_t ref_lh = 0;
+
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
 		SurvivePose pose = ctx->bsd[i].Pose;
 		originalLH[i] = pose;
 		originalHasOOTX[i] = ctx->bsd[i].OOTXSet;
 		originalHasPosition[i] = ctx->bsd[i].PositionSet;
 
-		ctx->bsd[i].PositionSet = 0;
-		ctx->bsd[i].Pose = LinmathPose_Identity;
-		fprintf(stderr, " LH%2d (%08x): " SurvivePose_format "\n", i, ctx->bsd[i].BaseStationID, pose.Pos[0],
-				pose.Pos[1], pose.Pos[2], pose.Rot[0], pose.Rot[1], pose.Rot[2], pose.Rot[3]);
-		if (fabs(pose.Pos[0]) < 1e-10) {
-			ref_lh = ctx->bsd[i].BaseStationID;
+		if (reset_lh) {
+			ctx->bsd[i].PositionSet = 0;
+			ctx->bsd[i].Pose = LinmathPose_Identity;
+			fprintf(stderr, " LH%2d (%08x): " SurvivePose_format "\n", i, ctx->bsd[i].BaseStationID, pose.Pos[0],
+					pose.Pos[1], pose.Pos[2], pose.Rot[0], pose.Rot[1], pose.Rot[2], pose.Rot[3]);
+			if (fabs(pose.Pos[0]) < 1e-10) {
+				ref_lh = ctx->bsd[i].BaseStationID;
+			}
 		}
 	}
 
