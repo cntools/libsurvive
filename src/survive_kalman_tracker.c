@@ -173,7 +173,7 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 			.pdl = data,
 		};
 
-		bool ramp_in = tracker->stats.obs_count < 1000;
+		bool ramp_in = tracker->stats.lightcap_count < 1000;
 		FLT light_var = tracker->light_var;
 		if (ramp_in) {
 			FLT var_add = tracker->obs_pos_var / (tracker->stats.obs_count);
@@ -268,7 +268,7 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 	SurviveContext *ctx = tracker->so->ctx;
 
 	FLT norm = 1. / norm3d(data->accel);
-	FLT w = SurviveSensorActivations_stationary_time(&tracker->so->activations) > .1 ? .9 : .01;
+	FLT w = SurviveSensorActivations_stationary_time(&tracker->so->activations) > .1 ? .9 : 0.0;
 	tracker->acc_scale *= 1. - w;
 	tracker->acc_scale += w * norm;
 
