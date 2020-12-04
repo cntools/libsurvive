@@ -54,6 +54,8 @@ typedef struct SurviveKalmanTracker {
 	FLT process_weight_acc, process_weight_vel, process_weight_pos;
 	FLT process_weight_ang_velocity, process_weight_rotation;
 
+	FLT moving_acc_scale, stationary_acc_scale;
+
 	// Kalman state is layed out as SurviveKalmanModel
 	SurviveKalmanModel state;
 	survive_kalman_state_t model;
@@ -88,6 +90,7 @@ typedef struct SurviveKalmanTracker {
 
 	FLT acc_scale;
 
+	size_t light_rampin_length;
 	bool use_error_for_lh_pos;
 } SurviveKalmanTracker;
 

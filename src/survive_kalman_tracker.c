@@ -173,12 +173,13 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 			.pdl = data,
 		};
 
-		bool ramp_in = tracker->stats.lightcap_count < 1000;
+		SurviveObject *so = tracker->so;
+		bool ramp_in = tracker->stats.lightcap_count < tracker->light_rampin_length;
 		FLT light_var = tracker->light_var;
 		if (ramp_in) {
-			FLT var_add = tracker->obs_pos_var / (tracker->stats.obs_count);
-			light_var = var_add + tracker->light_var;
+			light_var += tracker->obs_pos_var / ((FLT)tracker->stats.lightcap_count + 1.);
 		}
+		SV_DATA_LOG("light_var", &light_var, 1);
 
 		FLT rtn = survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, &light_var, map_light_data,
 															   &cbctx, tracker->adaptive_lightcap);
@@ -197,7 +198,6 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 		tracker->stats.lightcap_error_by_lh[data->lh] += rtn;
 		tracker->stats.lightcap_count_by_lh[data->lh]++;
 
-		SurviveObject *so = tracker->so;
 		assert(data->lh >= 0);
 		assert(data->sensor_id >= 0);
 
@@ -264,13 +264,22 @@ static bool map_imu_data(void *user, const struct CvMat *Z, const struct CvMat *
 	return true;
 }
 
+STATIC_CONFIG_ITEM(KALMAN_STATIONARY_ACC_SCALE_ALPHA, "kalman-stationary-acc-scale-alpha", 'f',
+				   "Incorporate scale coefficient while not moving", 0.005)
+STATIC_CONFIG_ITEM(KALMAN_MOVING_ACC_SCALE_ALPHA, "kalman-moving-acc-scale-alpha", 'f',
+				   "Incorporate scale coefficient while moving", 0.)
+
 void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDataIMU *data) {
 	SurviveContext *ctx = tracker->so->ctx;
+	SurviveObject *so = tracker->so;
 
 	FLT norm = 1. / norm3d(data->accel);
-	FLT w = SurviveSensorActivations_stationary_time(&tracker->so->activations) > .1 ? .9 : 0.0;
+	FLT w = SurviveSensorActivations_stationary_time(&tracker->so->activations) > .1 ? tracker->stationary_acc_scale
+																					 : tracker->moving_acc_scale;
 	tracker->acc_scale *= 1. - w;
 	tracker->acc_scale += w * norm;
+
+	SV_DATA_LOG("acc_scale", &tracker->acc_scale, 1);
 
 	if (tracker->use_raw_obs) {
 		return;
@@ -573,6 +582,8 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
 
 STATIC_CONFIG_ITEM(KALMAN_USE_ERROR_FOR_LH_CONFIDENCE, "light-error-for-lh-confidence", 'i',
 				   "Whether or not to invalidate LH positions based on kalman errors", 0)
+STATIC_CONFIG_ITEM(KALMAN_LIGHTCAP_RAMPIN_LENGTH, "lightcap-rampin-length", 'i',
+				   "Number of lightcap measures to ramp in variance", 5000)
 
 STATIC_CONFIG_ITEM(KALMAN_LIGHT_ERROR_THRESHOLD, "light-error-threshold", 'f', "Error limit to invalidate position", .1)
 STATIC_CONFIG_ITEM(KALMAN_MIN_REPORT_TIME, "min-report-time", 'f', "Minimum kalman report time in s", .005)
@@ -634,6 +645,9 @@ static void survive_kalman_tracker_config(SurviveKalmanTracker *tracker, survive
 
 	fn(tracker->so->ctx, PROCESS_WEIGHT_ANGULAR_VELOCITY_TAG, &tracker->process_weight_ang_velocity);
 	fn(tracker->so->ctx, PROCESS_WEIGHT_ROTATION_TAG, &tracker->process_weight_rotation);
+
+	fn(tracker->so->ctx, KALMAN_MOVING_ACC_SCALE_ALPHA_TAG, &tracker->moving_acc_scale);
+	fn(tracker->so->ctx, KALMAN_STATIONARY_ACC_SCALE_ALPHA_TAG, &tracker->stationary_acc_scale);
 }
 
 void survive_kalman_tracker_reinit(SurviveKalmanTracker *tracker) {
@@ -689,6 +703,7 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	survive_attach_configi(tracker->so->ctx, KALMAN_USE_ADAPTIVE_OBS_TAG, &tracker->adaptive_obs);
 
 	tracker->use_error_for_lh_pos = survive_configi(ctx, KALMAN_USE_ERROR_FOR_LH_CONFIDENCE_TAG, SC_GET, 1);
+	tracker->light_rampin_length = survive_configi(ctx, KALMAN_LIGHTCAP_RAMPIN_LENGTH_TAG, SC_GET, 5000);
 
 	survive_kalman_tracker_config(tracker, survive_attach_configf);
 
