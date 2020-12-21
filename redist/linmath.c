@@ -536,16 +536,17 @@ void quatfind_between_vectors(LinmathQuat q, const LinmathPoint3d _p0, const Lin
 	FLT d = dot3d(p0, p1);
 
 	if (d < -0.999999) {
-
-	} else if (d > 0.999999) {
 		LinmathPoint3d tmp, xUnit = {1, 0, 0}, yUnit = {0, 1, 0};
+
 		cross3d(tmp, xUnit, p0);
 		if (norm3d(tmp) < .00001)
 			cross3d(tmp, yUnit, p0);
-		quatnormalize(tmp, tmp);
-		quatscale(tmp, tmp, LINMATHPI);
+		normalize3d(tmp, tmp);
+		scale3d(tmp, tmp, LINMATHPI);
 
 		quatfromaxisanglemag(q, tmp);
+	} else if (d >= 1.) {
+		quatcopy(q, LinmathQuat_Identity);
 	} else {
 		cross3d(q + 1, p0, p1);
 		q[0] = 1 + d;

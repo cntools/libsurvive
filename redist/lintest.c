@@ -167,6 +167,20 @@ static void testQuatFind(const LinmathQuat _q1, const LinmathQuat _q2) {
 	ASSERT_FLTA_EQUALS(tx_q2, q2, 4);
 }
 
+static void testQuatFind_between_vectors(const LinmathPoint3d _tmpA, const LinmathPoint3d _tmpB) {
+	LinmathQuat q;
+	LinmathPoint3d tmpA, tmpB;
+
+	normalize3d(tmpA, _tmpA);
+	normalize3d(tmpB, _tmpB);
+
+	quatfind_between_vectors(q, tmpA, tmpB);
+
+	LinmathPoint3d out;
+	quatrotatevector(out, q, tmpA);
+	assert(dist3d(tmpB, out) < .00001);
+}
+
 static void testQuatFinding() {
 	{ testQuatFind(LinmathQuat_Identity, LinmathQuat_Identity); }
 	{
@@ -177,6 +191,38 @@ static void testQuatFinding() {
 		LinmathQuat q1 = {1., .3, .1, -.4};
 		LinmathQuat q2 = {.2, -.13, .1, -.4};
 		testQuatFind(q1, q2);
+	}
+
+	{
+		LinmathPoint3d q1 = {1., .3, .1};
+		LinmathPoint3d q2 = {.2, -.13, .1};
+
+		testQuatFind_between_vectors(q1, q2);
+	}
+	{
+		LinmathPoint3d q1 = {1, 1, 1};
+		LinmathPoint3d q2 = {1, 1, 1};
+		testQuatFind_between_vectors(q1, q2);
+	}
+	{
+		LinmathPoint3d q1 = {1, 1, .999};
+		LinmathPoint3d q2 = {1, 1, 1};
+		testQuatFind_between_vectors(q1, q2);
+	}
+	{
+		LinmathPoint3d q1 = {-1, -1, -1};
+		LinmathPoint3d q2 = {1, 1, 1};
+		testQuatFind_between_vectors(q1, q2);
+	}
+	{
+		LinmathPoint3d q1 = {-1, 1, 1};
+		LinmathPoint3d q2 = {1, 1, 1};
+		testQuatFind_between_vectors(q1, q2);
+	}
+	{
+		LinmathPoint3d q1 = {0, .001, 0};
+		LinmathPoint3d q2 = {1, 1, 1};
+		testQuatFind_between_vectors(q1, q2);
 	}
 }
 
