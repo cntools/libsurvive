@@ -586,7 +586,8 @@ STATIC_CONFIG_ITEM(KALMAN_LIGHTCAP_RAMPIN_LENGTH, "lightcap-rampin-length", 'i',
 				   "Number of lightcap measures to ramp in variance", 5000)
 
 STATIC_CONFIG_ITEM(KALMAN_LIGHT_ERROR_THRESHOLD, "light-error-threshold", 'f', "Error limit to invalidate position", .1)
-STATIC_CONFIG_ITEM(KALMAN_MIN_REPORT_TIME, "min-report-time", 'f', "Minimum kalman report time in s", .005)
+STATIC_CONFIG_ITEM(KALMAN_MIN_REPORT_TIME, "min-report-time", 'f',
+				   "Minimum kalman report time in s (-1 defaults to 1. / imu_hz)", -1.)
 
 STATIC_CONFIG_ITEM(KALMAN_USE_ADAPTIVE_IMU, "use-adaptive-imu", 'i', "Use adaptive kalman for IMU", 0)
 STATIC_CONFIG_ITEM(KALMAN_USE_ADAPTIVE_LIGHTCAP, "use-adaptive-lightcap", 'i', "Use adaptive kalman for Lightcap", 0)
@@ -706,6 +707,10 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	tracker->light_rampin_length = survive_configi(ctx, KALMAN_LIGHTCAP_RAMPIN_LENGTH_TAG, SC_GET, 5000);
 
 	survive_kalman_tracker_config(tracker, survive_attach_configf);
+	if (tracker->min_report_time < 0) {
+		tracker->min_report_time = 1. / so->imu_freq;
+		SV_VERBOSE(10, "Setting min report time for %s to %fs", so->codename, tracker->min_report_time);
+	}
 
 	bool use_imu = (bool)survive_configi(ctx, "use-imu", SC_GET, 1);
 	if (!use_imu) {
