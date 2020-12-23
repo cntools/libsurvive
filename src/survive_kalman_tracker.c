@@ -707,10 +707,6 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	tracker->light_rampin_length = survive_configi(ctx, KALMAN_LIGHTCAP_RAMPIN_LENGTH_TAG, SC_GET, 5000);
 
 	survive_kalman_tracker_config(tracker, survive_attach_configf);
-	if (tracker->min_report_time < 0) {
-		tracker->min_report_time = 1. / so->imu_freq;
-		SV_VERBOSE(10, "Setting min report time for %s to %fs", so->codename, tracker->min_report_time);
-	}
 
 	bool use_imu = (bool)survive_configi(ctx, "use-imu", SC_GET, 1);
 	if (!use_imu) {
@@ -869,6 +865,17 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 		t = tracker->model.t;
 	}
 
+	if (tracker->so->conf == 0) {
+		return;
+	}
+
+	SurviveContext *ctx = tracker->so->ctx;
+	if (tracker->min_report_time < 0) {
+		tracker->min_report_time = 1. / tracker->so->imu_freq;
+		SV_VERBOSE(10, "Setting min report time for %s to %f ms", tracker->so->codename,
+				   tracker->min_report_time * 1000.);
+	}
+
 	if (t - tracker->last_report_time < tracker->min_report_time) {
 		return;
 	}
@@ -883,7 +890,6 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 	size_t state_cnt = tracker->model.state_cnt;
 	FLT var_diag[SURVIVE_MODEL_MAX_STATE_CNT];
 	FLT p_threshold = survive_kalman_tracker_position_var2(tracker, var_diag, 7 + 6);
-	SurviveContext *ctx = tracker->so->ctx;
 	SurviveObject *so = tracker->so;
 	SV_DATA_LOG("tracker_P", var_diag, 7 + 6);
 
