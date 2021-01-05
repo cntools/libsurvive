@@ -8,7 +8,7 @@ static void redraw(SurviveContext *ctx);
 #include <stdlib.h>
 #include <variance.h>
 
-#ifdef __linux__
+#ifndef _WIN32
 #include <sys/ioctl.h>
 #include <unistd.h>
 
