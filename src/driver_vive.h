@@ -8,7 +8,7 @@
 #include <hidapi.h>
 #define HID_NONBLOCKING
 #else
-#ifdef __FreeBSD__
+#ifdef SURVIVE_LIBUSB_NO_DIR
 #include <libusb.h>
 #else
 #include <libusb-1.0/libusb.h>
