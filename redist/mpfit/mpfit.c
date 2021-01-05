@@ -23,7 +23,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h>
+#endif
 
 /* Forward declarations of functions in this module */
 static int mp_fdjac2(mp_func funct, int m, int n, int *ifree, int npar, FLT *x, FLT *fvec, FLT *fjac, int ldfjac,

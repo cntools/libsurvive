@@ -1,6 +1,8 @@
 #include "lfsr.h"
 #include <assert.h>
+#if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h>
+#endif
 #include <stdbool.h>
 #include <survive.h>
 

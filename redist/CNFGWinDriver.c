@@ -5,7 +5,9 @@
 #include "CNFGFunctions.h"
 #include <windows.h>
 #include <stdlib.h>
+#if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h> //for alloca
+#endif
 
 static HBITMAP lsBitmap;
 static HINSTANCE lhInstance;

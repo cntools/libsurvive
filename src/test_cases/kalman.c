@@ -6,7 +6,9 @@
 #include <stdlib.h>
 
 #include "../generated/survive_imu.generated.h"
+#if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include "malloc.h"
+#endif
 
 static void rot_predict_quat(FLT t, const survive_kalman_state_t *k, const CvMat *f_in, CvMat *f_out) {
 	(void)k;

@@ -12,7 +12,9 @@
 
 #include "mpfit/mpfit.h"
 #include "survive_default_devices.h"
+#if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h>
+#endif
 
 STATIC_CONFIG_ITEM(OPTIMIZER_FTOL, "optimizer-ftol", 'f', "Relative chi-square convergence criterium", 0.)
 STATIC_CONFIG_ITEM(OPTIMIZER_XTOL, "optimizer-xtol", 'f', "Relative parameter convergence criterium", 0.0001)
