@@ -124,8 +124,8 @@ OSG_INLINE og_cv_t OGCreateConditionVariable();
 #define OS_GENERIC_DONT_INCLUDE_DIRECTLY
 #ifdef USE_WINDOWS
 #include "os_generic.windows.h"
-#elif __linux__
-#include "os_generic.linux.h"
+#else
+#include "os_generic.unix.h"
 #endif
 
 #undef OS_GENERIC_DONT_INCLUDE_DIRECTLY

@@ -64,7 +64,11 @@ OSG_INLINE og_thread_t OGCreateThread(void *(routine)(void *), const char *name,
 		return 0;
 	}
 #ifdef _GNU_SOURCE
+#ifdef __APPLE__
+	pthread_setname_np(name);
+#else
 	pthread_setname_np(*ret, name);
+#endif
 #endif
 	return (og_thread_t)ret;
 }

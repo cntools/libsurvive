@@ -9,6 +9,10 @@
 #include <sys/socket.h>
 #endif
 
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
+
 #include "os_generic.h"
 #include "survive_config.h"
 #include "survive_default_devices.h"
@@ -35,6 +39,11 @@ typedef struct SurviveDriverUDP SurviveDriverUDP;
 static void *UDP_poll(void *_driver) {
 	SurviveDriverUDP *driver = _driver;
 	struct SurviveContext *ctx = driver->so->ctx;
+
+#ifdef __APPLE__
+	int opt = 1;
+	setsockopt(driver->sock, SOL_SOCKET, SO_NOSIGPIPE, &opt, sizeof(opt));
+#endif
 
 	int cnt;
 	for (;;) {

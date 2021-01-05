@@ -14,7 +14,7 @@
 
 #ifdef _WIN32
 #include "survive_plugins.windows.h"
-#elif __linux__
+#else
 #include "survive_plugins.unix.h"
 #endif
 
