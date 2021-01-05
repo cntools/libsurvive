@@ -3,7 +3,9 @@
 #define SURVIVE_ENABLE_FULL_API
 
 #include <complex.h>
+#if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h>
+#endif
 #include <math.h>
 #include <os_generic.h>
 #include <survive.h>

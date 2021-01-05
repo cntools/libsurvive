@@ -5,7 +5,9 @@
 #include "survive_kalman.h"
 #include "survive_kalman_tracker.h"
 #include <assert.h>
+#if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h>
+#endif
 #include <memory.h>
 #include <minimal_opencv.h>
 #include <survive_reproject.h>

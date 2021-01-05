@@ -4,7 +4,9 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "survive.h"
+#if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h>
+#endif
 
 #pragma GCC diagnostic ignored "-Wpedantic"
 

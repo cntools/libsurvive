@@ -17,7 +17,9 @@ uint32_t inline clz(uint32_t value) {
 #endif
 #include "stdio.h"
 #include "string.h"
+#if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h>
+#endif
 
 lfsr_poly_t poly_pairs[32] = {
 	// x^17 + x^13 + x^12 + x^10 + x^7 + x^4 + x^2 + x^1 + 1

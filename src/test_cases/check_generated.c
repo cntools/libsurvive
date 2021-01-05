@@ -21,7 +21,9 @@
 #define M_PI LINMATHPI
 #endif
 
+#if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include "malloc.h"
+#endif
 
 #define STACK_ALLOC(nmembers) (FLT *)alloca(nmembers * sizeof(FLT))
 

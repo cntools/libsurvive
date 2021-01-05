@@ -1,7 +1,9 @@
 #include "barycentric_svd/barycentric_svd.h"
 #include "math.h"
 #include "minimal_opencv.h"
+#if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <survive.h>

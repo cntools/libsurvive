@@ -3,7 +3,9 @@
 #ifndef _LINMATH_H
 #define _LINMATH_H
 
+#if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h>
+#endif
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>

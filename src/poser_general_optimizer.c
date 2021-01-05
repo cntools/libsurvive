@@ -3,7 +3,9 @@
 #include "survive_internal.h"
 
 #include <assert.h>
+#if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h>
+#endif
 #include <stdio.h>
 
 STATIC_CONFIG_ITEM(CONFIG_MAX_ERROR, "max-error", 'f', "Maximum error permitted by poser_general_optimizer.", .01)

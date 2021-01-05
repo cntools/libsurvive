@@ -1,5 +1,7 @@
 #include "survive_kalman.h"
+#if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h>
+#endif
 #include <memory.h>
 #include <minimal_opencv.h>
 

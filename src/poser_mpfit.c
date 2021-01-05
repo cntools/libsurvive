@@ -1,6 +1,8 @@
 #include "survive_optimizer.h"
 
+#if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h>
+#endif
 
 #include "mpfit/mpfit.h"
 #include "poser.h"

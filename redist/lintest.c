@@ -4,7 +4,9 @@
 #include <alloca.h>
 #endif
 #include <assert.h>
+#if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h>
+#endif
 #include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
