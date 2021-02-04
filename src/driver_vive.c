@@ -28,7 +28,7 @@
 #include "json_helpers.h"
 #include "survive_config.h"
 #include "survive_default_devices.h"
-
+#include "survive_str.h"
 #include "driver_vive.h"
 #include "lfsr_lh2.h"
 //#define DEBUG_WATCHMAN 1
@@ -407,6 +407,10 @@ struct SurviveViveData {
 	bool requestPairing;
 };
 
+static void parse_tracker_version_info(SurviveObject *so, uint8_t *data, size_t size);
+static void send_devices_magics(SurviveContext *ctx, struct SurviveUSBInfo *usbInfo);
+static int LoadConfig(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int iface);
+
 #ifdef HIDAPI
 #include "driver_vive.hidapi.h"
 #else
@@ -636,7 +640,7 @@ static inline int hid_get_feature_report_timeout(USBHANDLE device, uint16_t ifac
 		ret = getupdate_feature_report(device, iface, buf, len);
 		if (ret != -9 && (ret != -1 || errno != EPIPE))
 			return ret;
-		OGUSleep(1000);
+		OGUSleep(1);
 	}
 
 	return -1;
@@ -805,6 +809,23 @@ void survive_vive_usb_close(SurviveViveData *sv) {
 	survive_detach_config(sv->ctx, SECONDS_PER_HZ_OUTPUT_TAG, &sv->seconds_per_hz_output);
 }
 
+static int survive_start_get_config(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int iface);
+static void send_devices_magics(SurviveContext *ctx, struct SurviveUSBInfo *usbInfo) {
+	for (const struct Magic_t *magic = usbInfo->device_info->magics; magic->magic; magic++) {
+		if (magic->code == 1) {
+			uint8_t *data = alloca(sizeof(uint8_t) * magic->length);
+			memcpy(data, magic->magic, magic->length);
+
+			survive_release_ctx_lock(ctx);
+			int r = update_feature_report(usbInfo->handle, 0, data, magic->length);
+			survive_get_ctx_lock(ctx);
+
+			if (r != magic->length && usbInfo->so)
+			SV_WARN("Could not turn on %s(%d) (%d/%zu - %s)", usbInfo->so->codename,
+					usbInfo->device_info->type, r, magic->length, survive_usb_error_name(r));
+		}
+	}
+}
 int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 	SurviveViveData *sv = v;
 	sv->read_count++;
@@ -852,23 +873,7 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 		}
 
 		if (usbInfo->tryConfigLoad) {
-			int err = LoadConfig(sv, usbInfo, 0);
-			if (err == 0) {
-				for (const struct Magic_t *magic = usbInfo->device_info->magics; magic->magic; magic++) {
-					if (magic->code == 1) {
-						uint8_t *data = alloca(sizeof(uint8_t) * magic->length);
-						memcpy(data, magic->magic, magic->length);
-
-						survive_release_ctx_lock(ctx);
-						int r = update_feature_report(usbInfo->handle, 0, data, magic->length);
-						survive_get_ctx_lock(ctx);
-
-						if (r != magic->length && usbInfo->so)
-							SV_WARN("Could not turn on %s(%d) (%d/%zu - %s)", usbInfo->so->codename,
-									usbInfo->device_info->type, r, magic->length, survive_usb_error_name(r));
-					}
-				}
-			}
+			survive_start_get_config(sv, usbInfo, 0);
 			usbInfo->tryConfigLoad = 0;
 		}
 	}
@@ -918,7 +923,6 @@ static inline survive_timecode fix_time24(SurviveContext *ctx, survive_timecode 
 	return upper_ref | time24;
 }
 
-static void parse_tracker_version_info(SurviveObject *so, uint8_t *data, size_t size);
 static int survive_get_config(char **config, SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int iface,
 							  int send_extra_magic) {
 	SurviveContext *ctx = sv->ctx;
@@ -936,20 +940,10 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 		memset(cfgbuffwide, 0, sizeof(cfgbuff));
 		cfgbuffwide[0] = 0x01;
 		ret = get_feature_report_timeout_locked(ctx, dev, iface, cfgbuffwide, sizeof(cfgbuffwide));
-		OGUSleep(1000);
-
-		int k;
 
 		uint8_t cfgbuff_send[64] = {VIVE_REPORT_COMMAND, 0x83};
-
-		// Switch mode to pull config?
-		for (k = 0; k < 10; k++) {
-			OGUSleep(1000);
-		}
-
 		cfgbuffwide[0] = VIVE_REPORT_COMMAND;
 		ret = get_feature_report_timeout_locked(ctx, dev, iface, cfgbuffwide, sizeof(cfgbuffwide));
-		OGUSleep(1000);
 	}
 
 	// Send Report 16 to prepare the device for reading config info
@@ -964,8 +958,6 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 		}
 		return -1;
 	}
-
-	OGUSleep(100000);
 
 	// Now do a bunch of Report 17 until there are no bytes left
 	cfgbuff[0] = VIVE_REPORT_CONFIG_READ;
@@ -2795,7 +2787,8 @@ void survive_data_cb_locked(uint64_t time_received_us, SurviveUSBInterface *si) 
 
 	if (obj->conf == 0) {
 		if (si->usbInfo) {
-			si->usbInfo->tryConfigLoad = 1;
+				//si->usbInfo->tryConfigLoad = 1;
+
 		}
 		return;
 	}

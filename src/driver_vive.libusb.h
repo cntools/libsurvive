@@ -206,3 +206,108 @@ static inline void survive_close_usb_device(struct SurviveUSBInfo *usbInfo) {
 }
 
 void survive_usb_close(SurviveViveData *sv) { libusb_exit(sv->usbctx); }
+
+
+struct survive_config_packet {
+	SurviveContext* ctx;
+	struct SurviveUSBInfo *usbInfo;
+
+	uint8_t buffer[256];
+
+	cstring cfg;
+	double start_time;
+};
+
+void handle_config_tx(struct libusb_transfer *transfer) {
+	struct survive_config_packet* packet = transfer->user_data;
+	SurviveContext * ctx = packet->ctx;
+	if(transfer->status == LIBUSB_TRANSFER_STALL) {
+		libusb_submit_transfer(transfer);
+		return;
+	}
+
+	if(transfer->status != LIBUSB_TRANSFER_COMPLETED) {
+		return;
+	}
+	uint8_t cmd = transfer->buffer[8];
+
+	switch(cmd) {
+	case VIVE_REPORT_CONFIG_READMODE:
+		transfer->buffer[8] = VIVE_REPORT_CONFIG_READ;
+		transfer->buffer[8 + 1] = 0xaa;
+		libusb_fill_control_setup(transfer->buffer,
+								  LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_IN, 0x01,
+								  0x300 | transfer->buffer[8], 0, 256);
+		goto resubmit;
+	case VIVE_REPORT_CONFIG_READ: {
+		size_t size = transfer->buffer[1 + 8];
+		str_append_n(&packet->cfg, (const char *)&transfer->buffer[2 + 8], size);
+		if (size == 0) {
+			uint8_t uncompressed_data[65536];
+			size_t uncompressed_data_len = survive_simple_inflate(ctx, (uint8_t *)packet->cfg.d, packet->cfg.length,
+																  uncompressed_data, sizeof(uncompressed_data) - 1);
+
+			packet->usbInfo->so->conf = SV_CALLOC(1, uncompressed_data_len + 1);
+			packet->usbInfo->so->conf_cnt = uncompressed_data_len;
+			memcpy(packet->usbInfo->so->conf, uncompressed_data, uncompressed_data_len);
+
+			transfer->buffer[8] = VIVE_REPORT_VERSION;
+			libusb_fill_control_setup(transfer->buffer,
+									  LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_IN, 0x01,
+									  0x300 | transfer->buffer[8], 0, 256);
+		}
+		goto resubmit;
+	}
+	case VIVE_REPORT_VERSION: {
+		parse_tracker_version_info(packet->usbInfo->so, &transfer->buffer[1 + 8], transfer->actual_length);
+		SurviveObject *so = packet->usbInfo->so;
+		ctx->configproc(so, so->conf, so->conf_cnt);
+		printf("Done in %f sec\n", OGRelativeTime() - packet->start_time);
+
+		send_devices_magics(ctx, packet->usbInfo);
+		goto cleanup;
+	}
+	default:
+	SV_WARN("Config state matchine saw packet of type %d; not sure how to proceed.", cmd);
+		goto cleanup;
+	}
+
+	return;
+	resubmit: {
+	int submit_transfer_error = libusb_submit_transfer(transfer);
+	if (submit_transfer_error != 0) {
+		SV_WARN("Config state machine could not submit transfer %d\n", submit_transfer_error);
+		goto cleanup;
+	}
+	return;
+}
+	cleanup:
+	free(packet);
+	libusb_free_transfer(transfer);
+}
+
+static int survive_start_get_config(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int iface) {
+	struct libusb_transfer *tx = libusb_alloc_transfer(0);
+	SurviveContext* ctx = sv->ctx;
+
+	struct survive_config_packet* config_packet = calloc(1, sizeof(struct survive_config_packet));
+	if (!tx) {
+		return -4;
+	}
+	config_packet->ctx = ctx;
+	config_packet->usbInfo = usbInfo;
+
+	USBHANDLE dev = usbInfo->handle;
+	config_packet->start_time = OGRelativeTime();
+	config_packet->buffer[8] = VIVE_REPORT_CONFIG_READMODE;
+	libusb_fill_control_setup(config_packet->buffer, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_IN,
+							  0x01, 0x300 | config_packet->buffer[8], iface, sizeof(config_packet->buffer));
+	libusb_fill_control_transfer(tx, dev, config_packet->buffer, handle_config_tx, config_packet, 1000);
+
+	int rc = libusb_submit_transfer(tx);
+	if (rc) {
+		return -6;
+	}
+
+	return 0;
+}
