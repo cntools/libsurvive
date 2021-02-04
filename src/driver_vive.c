@@ -634,7 +634,8 @@ static inline int hid_get_feature_report_timeout(USBHANDLE device, uint16_t ifac
 	uint8_t i = 0;
 	for (i = 0; i < 50; i++) {
 		ret = getupdate_feature_report(device, iface, buf, len);
-		if (ret != -9 && (ret != -1 || errno != EPIPE))
+		bool other_err = ret < 0;
+		if (ret != LIBUSB_ERROR_PIPE && (!other_err || errno != EPIPE))
 			return ret;
 		OGUSleep(1000);
 	}

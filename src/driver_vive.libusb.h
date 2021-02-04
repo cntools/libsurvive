@@ -51,10 +51,6 @@ static inline int getupdate_feature_report(libusb_device_handle *dev, uint16_t i
 
 	int ret = libusb_control_transfer(dev, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_IN,
 									  0x01, 0x300 | data[0], interface, data, datalen, 1000);
-	if (ret == -9)
-		return -9;
-	if (ret < 0)
-		return -1;
 	return ret;
 }
 
