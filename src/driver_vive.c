@@ -936,20 +936,13 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 		memset(cfgbuffwide, 0, sizeof(cfgbuff));
 		cfgbuffwide[0] = 0x01;
 		ret = get_feature_report_timeout_locked(ctx, dev, iface, cfgbuffwide, sizeof(cfgbuffwide));
-		OGUSleep(1000);
 
 		int k;
 
 		uint8_t cfgbuff_send[64] = {VIVE_REPORT_COMMAND, 0x83};
 
-		// Switch mode to pull config?
-		for (k = 0; k < 10; k++) {
-			OGUSleep(1000);
-		}
-
 		cfgbuffwide[0] = VIVE_REPORT_COMMAND;
 		ret = get_feature_report_timeout_locked(ctx, dev, iface, cfgbuffwide, sizeof(cfgbuffwide));
-		OGUSleep(1000);
 	}
 
 	// Send Report 16 to prepare the device for reading config info
@@ -965,7 +958,6 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 		return -1;
 	}
 
-	OGUSleep(100000);
 
 	// Now do a bunch of Report 17 until there are no bytes left
 	cfgbuff[0] = VIVE_REPORT_CONFIG_READ;
