@@ -632,7 +632,7 @@ static int AttachInterface(SurviveViveData *sv, struct SurviveUSBInfo *usbObject
 static inline int hid_get_feature_report_timeout(USBHANDLE device, uint16_t iface, unsigned char *buf, size_t len) {
 	int ret;
 	uint8_t i = 0;
-	for (i = 0; i < 50; i++) {
+	for (i = 0; i < 10; i++) {
 		ret = getupdate_feature_report(device, iface, buf, len);
 		bool other_err = ret < 0;
 		if (ret != LIBUSB_ERROR_PIPE && (!other_err || errno != EPIPE))
