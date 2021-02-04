@@ -134,3 +134,15 @@ static inline void survive_close_usb_device(struct SurviveUSBInfo *usbInfo) {
 }
 
 void survive_usb_close(SurviveViveData *sv) {}
+
+static int survive_start_get_config(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int iface) {
+	double time = OGRelativeTime();
+	SurviveContext* ctx = sv->ctx;
+	int err = LoadConfig(sv, usbInfo, 0);
+	double diff_time = OGRelativeTime() - time;
+
+	if (err == 0) {
+		send_devices_magics(ctx, usbInfo);
+	}
+	return err;
+}

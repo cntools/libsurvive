@@ -30,6 +30,9 @@ void str_append(cstring *str, const char *add) {
 	strcat(str_increase_by(str, add_len), add);
 	assert(strlen(str->d) == str->length);
 }
+void str_append_n(cstring* str, const char* buffer, size_t len) {
+	memcpy(str_increase_by(str, len), buffer, len);
+}
 
 int str_append_printf(cstring *str, const char *format, ...) {
 	va_list args;
