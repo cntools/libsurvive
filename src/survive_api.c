@@ -34,6 +34,8 @@ struct SurviveSimpleObject {
 	char name[32];
 	bool has_update;
 
+	char *conf;
+
 	SurviveSimpleObject *next;
 };
 
@@ -119,6 +121,7 @@ static SurviveSimpleObject *find_or_create_external(SurviveSimpleContext *actx, 
 	SurviveSimpleObject *so = SV_CALLOC(1, sizeof(struct SurviveSimpleObject));
 	so->type = SurviveSimpleObject_EXTERNAL;
 	so->actx = actx;
+	so->conf = NULL;
 	strncpy(so->name, name, sizeof(so->name) - 1);
 	SurviveSimpleObjectList_add(&actx->objects, so);
 
@@ -217,6 +220,8 @@ static int config_fn(struct SurviveObject *so, char *ct0conf, int len) {
 	int res = survive_default_config_process(so, ct0conf, len);
 	SurviveSimpleObject *sso = so->user_ptr;
 	sso->type = to_simple_type(so->object_type);
+	sso->conf = so->conf;
+	sso->has_update = true;
 	return res;
 }
 
