@@ -135,6 +135,149 @@ static inline void survive_close_usb_device(struct SurviveUSBInfo *usbInfo) {
 
 void survive_usb_close(SurviveViveData *sv) {}
 
+static inline int hid_get_feature_report_timeout(USBHANDLE device, uint16_t iface, unsigned char *buf, size_t len) {
+	int ret;
+	uint8_t i = 0;
+	for (i = 0; i < 50; i++) {
+		ret = getupdate_feature_report(device, iface, buf, len);
+		if (ret != -9 && (ret != -1 || errno != EPIPE))
+			return ret;
+		OGUSleep(1);
+	}
+
+	return -1;
+}
+
+static inline int get_feature_report_timeout_locked(SurviveContext *ctx, USBHANDLE device, uint16_t iface,
+													unsigned char *buf, size_t len) {
+	survive_release_ctx_lock(ctx);
+	int rtn = hid_get_feature_report_timeout(device, iface, buf, len);
+	survive_get_ctx_lock(ctx);
+	return rtn;
+}
+
+static int survive_get_config(char **config, SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int iface,
+							  int send_extra_magic) {
+	SurviveContext *ctx = sv->ctx;
+	int ret, count = 0, size = 0;
+	uint8_t cfgbuff[256] = {0};
+	uint8_t compressed_data[8192] = {0};
+	uint8_t uncompressed_data[65536] = {0};
+	USBHANDLE dev = usbInfo->handle;
+
+	const char *name = usbInfo->device_info->name;
+
+	if (send_extra_magic) {
+		uint8_t cfgbuffwide[257] = {0};
+
+		memset(cfgbuffwide, 0, sizeof(cfgbuff));
+		cfgbuffwide[0] = 0x01;
+		ret = get_feature_report_timeout_locked(ctx, dev, iface, cfgbuffwide, sizeof(cfgbuffwide));
+
+		uint8_t cfgbuff_send[64] = {VIVE_REPORT_COMMAND, 0x83};
+		cfgbuffwide[0] = VIVE_REPORT_COMMAND;
+		ret = get_feature_report_timeout_locked(ctx, dev, iface, cfgbuffwide, sizeof(cfgbuffwide));
+	}
+
+	// Send Report 16 to prepare the device for reading config info
+	memset(cfgbuff, 0, sizeof(cfgbuff));
+	cfgbuff[0] = VIVE_REPORT_CONFIG_READMODE;
+	if ((ret = get_feature_report_timeout_locked(ctx, dev, iface, cfgbuff, sizeof(cfgbuff))) < 0) {
+		if (usbInfo->device_info->type == USB_DEV_WATCHMAN1) {
+			SV_WARN("%s couldn't configure; probably turned off %d %s", usbInfo->so->codename, ret,
+					survive_usb_error_name(ret));
+		} else {
+			SV_WARN("Could not get survive config data for device %s:%d", usbInfo->device_info->name, iface);
+		}
+		return -1;
+	}
+
+	// Now do a bunch of Report 17 until there are no bytes left
+	cfgbuff[0] = VIVE_REPORT_CONFIG_READ;
+	cfgbuff[1] = 0xaa;
+	do {
+		if ((ret = get_feature_report_timeout_locked(ctx, dev, iface, cfgbuff, sizeof(cfgbuff))) < 0) {
+			SV_INFO("Could not read config data (after first packet) on device %s:%d (count: %d)",
+					usbInfo->device_info->name, iface, count);
+			return -2;
+		}
+
+		size = cfgbuff[1];
+
+		if (!size)
+			break;
+
+		if (size > (sizeof(cfgbuff) - 2)) {
+			SV_INFO("Too much data (%d) on packet from config for device %s:%d (count: %d)", size, name, iface, count);
+			return -3;
+		}
+
+		if (count + size >= sizeof(compressed_data)) {
+			SV_INFO("Configuration length too long %s:%d (count: %d)", name, iface, count);
+			return -4;
+		}
+
+		// Some (Tracker at least?) devices send a uint64_t before data; not sure what it means but skip it for now.
+		/*if (count == 0 && size >= 2 && cfgbuff[2] != 0x78) {
+			SV_INFO("Got preamble of %x %x %x", cfgbuff[0], cfgbuff[1], cfgbuff[2]);
+			continue;
+		}*/
+
+		memcpy(&compressed_data[count], cfgbuff + 2, size);
+		count += size;
+	} while (1);
+
+	if (count == 0) {
+		SV_INFO("Empty configuration for %s:%d", name, iface);
+		return -5;
+	}
+
+	SV_VERBOSE(50, "Got config data length %d for %s:%d", count, name, iface);
+
+	int len = survive_simple_inflate(ctx, compressed_data, count, uncompressed_data, sizeof(uncompressed_data) - 1);
+	if (len <= 0) {
+		SV_INFO("Error: data for config descriptor %s:%d is bad. (%d)", name, iface, len);
+		return -5;
+	}
+
+	*config = SV_MALLOC(len + 1);
+	memcpy(*config, uncompressed_data, len);
+
+	memcpy(cfgbuff, vive_request_version_info, sizeof(vive_request_version_info));
+	if ((ret = get_feature_report_timeout_locked(ctx, dev, iface, cfgbuff, 0x42)) < 0) {
+		SV_INFO("Could not read config data (after first packet) on device %s:%d (count: %d)",
+				usbInfo->device_info->name, iface, count);
+		return -2;
+	} else {
+		parse_tracker_version_info(usbInfo->so, cfgbuff + 1, ret - 1);
+	}
+
+	return len;
+}
+
+static int LoadConfig(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int iface) {
+	SurviveContext *ctx = sv->ctx;
+	char *ct0conf = 0;
+
+	bool extra_magic = usbInfo->device_info->type == USB_DEV_WATCHMAN1;
+
+	int *cnt = (sv->cnt_per_device_type + (usbInfo->device_info - KnownDeviceTypes));
+	// Don't create an object for stuff without a codename; ie the HMD main board
+
+	SurviveObject *so = usbInfo->so;
+
+	int len = survive_get_config(&ct0conf, sv, usbInfo, iface, extra_magic);
+	if (len < 0) {
+		return len;
+	}
+
+	if (so) {
+		SV_VERBOSE(10, "Successfully configured %s", so->codename);
+		return sv->ctx->configproc(so, ct0conf, len);
+	}
+	return -1;
+}
+
 static int survive_start_get_config(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int iface) {
 	double time = OGRelativeTime();
 	SurviveContext* ctx = sv->ctx;

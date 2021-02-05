@@ -216,6 +216,8 @@ static void button_fn(SurviveObject *so, enum SurviveInputEvent eventType, enum 
 static int config_fn(struct SurviveObject *so, char *ct0conf, int len) {
 	int res = survive_default_config_process(so, ct0conf, len);
 	SurviveSimpleContext *actx = so->ctx->user_ptr;
+
+	OGLockMutex(actx->poll_mutex);
 	SurviveSimpleObject *sso = so->user_ptr;
 	sso->type = to_simple_type(so->object_type);
 
