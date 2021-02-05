@@ -188,7 +188,7 @@ struct SurviveSimpleEvent {
 	union {
 		SurviveSimpleButtonEvent SURVIVE_ENCAPSULATE_DECORATOR(button_event);
 		SurviveSimpleConfigEvent SURVIVE_ENCAPSULATE_DECORATOR(config_event);
-	};
+	} d;
 };
 
 #ifdef __cplusplus

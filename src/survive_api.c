@@ -197,16 +197,16 @@ static void button_fn(SurviveObject *so, enum SurviveInputEvent eventType, enum 
 	struct SurviveSimpleObject *sao = so->user_ptr;
 
 	SurviveSimpleEvent event = {.event_type = SurviveSimpleEventType_ButtonEvent,
-								.button_event = {
-									.object = sao,
-									.event_type = eventType,
-									.button_id = buttonId,
-								}};
+								.d = {.button_event = {
+										  .object = sao,
+										  .event_type = eventType,
+										  .button_id = buttonId,
+									  }}};
 
 	for (int i = 0; i < 16 && axisIds && axisIds[i] != 255; i++) {
-		event.button_event.axis_count++;
-		event.button_event.axis_ids[i] = axisIds[i];
-		event.button_event.axis_val[i] = axisVals[i];
+		event.d.button_event.axis_count++;
+		event.d.button_event.axis_ids[i] = axisIds[i];
+		event.d.button_event.axis_val[i] = axisVals[i];
 	}
 	insert_into_event_buffer(actx, &event);
 
@@ -220,9 +220,9 @@ static int config_fn(struct SurviveObject *so, char *ct0conf, int len) {
 	sso->type = to_simple_type(so->object_type);
 
 	struct SurviveSimpleEvent event = {.event_type = SurviveSimpleEventType_ConfigEvent,
-									   .config_event = {
-										   .object = sso,
-									   }};
+									   .d = {.config_event = {
+												 .object = sso,
+											 }}};
 
 	insert_into_event_buffer(actx, &event);
 	unlock_and_notify_change(actx);
@@ -489,13 +489,13 @@ BaseStationData *survive_simple_get_bsd(const SurviveSimpleObject *sao) {
 
 const SurviveSimpleConfigEvent *survive_simple_get_config_event(const SurviveSimpleEvent *event) {
 	if (event->event_type == SurviveSimpleEventType_ConfigEvent)
-		return &event->config_event;
+		return &event->d.config_event;
 	return 0;
 }
 
 const SurviveSimpleButtonEvent *survive_simple_get_button_event(const SurviveSimpleEvent *event) {
 	if (event->event_type == SurviveSimpleEventType_ButtonEvent)
-		return &event->button_event;
+		return &event->d.button_event;
 	return 0;
 }
 
