@@ -72,6 +72,11 @@ static enum SurviveSimpleObject_type to_simple_type(SurviveObjectType sot) {
 	}
 }
 
+static void unlock_and_notify_change(SurviveSimpleContext *actx) {
+	OGBroadcastCond(actx->update_cv);
+	OGUnlockMutex(actx->poll_mutex);
+}
+
 static void insert_into_event_buffer(SurviveSimpleContext *actx, const SurviveSimpleEvent *event) {
 	bool buffer_full = actx->events_cnt == MAX_EVENT_SIZE;
 
@@ -79,6 +84,7 @@ static void insert_into_event_buffer(SurviveSimpleContext *actx, const SurviveSi
 	actx->event_next_write = (actx->event_next_write + 1) % MAX_EVENT_SIZE;
 	if (!buffer_full)
 		actx->events_cnt++;
+	unlock_and_notify_change(actx);
 }
 
 static bool pop_from_event_buffer(SurviveSimpleContext *actx, SurviveSimpleEvent *event) {
@@ -125,11 +131,6 @@ static SurviveSimpleObject *find_or_create_external(SurviveSimpleContext *actx, 
 	return so;
 }
 
-static void unlock_and_notify_change(SurviveSimpleContext *actx) {
-	OGBroadcastCond(actx->update_cv);
-	OGUnlockMutex(actx->poll_mutex);
-}
-
 static void external_velocity_fn(SurviveContext *ctx, const char *name, const SurviveVelocity *velocity) {
 	SurviveSimpleContext *actx = ctx->user_ptr;
 	OGLockMutex(actx->poll_mutex);
@@ -173,6 +174,15 @@ static inline SurviveSimpleObject *create_lighthouse(SurviveSimpleContext *actx,
 	snprintf(obj->name, 32, "LH%" PRIdPTR, i);
 	snprintf(obj->data.lh.serial_number, 16, "LHB-%X", (unsigned)ctx->bsd[i].BaseStationID);
 	SurviveSimpleObjectList_add(&actx->objects, obj);
+
+	OGLockMutex(actx->poll_mutex);
+	SurviveSimpleEvent event = {.event_type = SurviveSimpleEventType_DeviceAdded,
+								.d = {.object_event = {
+										  .time = survive_run_time(ctx),
+										  .object = obj,
+									  }}};
+	insert_into_event_buffer(actx, &event);
+
 	return obj;
 }
 
@@ -198,6 +208,7 @@ static void button_fn(SurviveObject *so, enum SurviveInputEvent eventType, enum 
 
 	SurviveSimpleEvent event = {.event_type = SurviveSimpleEventType_ButtonEvent,
 								.d = {.button_event = {
+										  .time = survive_run_time(so->ctx),
 										  .object = sao,
 										  .event_type = eventType,
 										  .button_id = buttonId,
@@ -209,8 +220,6 @@ static void button_fn(SurviveObject *so, enum SurviveInputEvent eventType, enum 
 		event.d.button_event.axis_val[i] = axisVals[i];
 	}
 	insert_into_event_buffer(actx, &event);
-
-	unlock_and_notify_change(actx);
 }
 
 static int config_fn(struct SurviveObject *so, char *ct0conf, int len) {
@@ -222,10 +231,11 @@ static int config_fn(struct SurviveObject *so, char *ct0conf, int len) {
 	sso->type = to_simple_type(so->object_type);
 
 	struct SurviveSimpleEvent event = {.event_type = SurviveSimpleEventType_ConfigEvent,
-									   .d = {.config_event = {.object = sso, .cfg = survive_simple_json_config(sso)}}};
+									   .d = {.config_event = {.time = survive_run_time(so->ctx),
+															  .object = sso,
+															  .cfg = survive_simple_json_config(sso)}}};
 
 	insert_into_event_buffer(actx, &event);
-	unlock_and_notify_change(actx);
 
 	return res;
 }
@@ -258,6 +268,15 @@ static void new_object_fn(SurviveObject *so) {
 	strncpy(obj->name, obj->data.so->codename, sizeof(obj->name));
 
 	SurviveSimpleObjectList_add(&actx->objects, obj);
+
+	OGLockMutex(actx->poll_mutex);
+	survive_default_new_object_process(so);
+	SurviveSimpleEvent event = {.event_type = SurviveSimpleEventType_DeviceAdded,
+								.d = {.object_event = {
+										  .time = survive_run_time(so->ctx),
+										  .object = obj,
+									  }}};
+	insert_into_event_buffer(actx, &event);
 }
 
 SURVIVE_EXPORT SurviveSimpleContext *survive_simple_init_with_logger(int argc, char *const *argv,
@@ -278,11 +297,11 @@ SURVIVE_EXPORT SurviveSimpleContext *survive_simple_init_with_logger(int argc, c
 		return 0;
 	}
 	ctx->user_ptr = actx;
-	survive_startup(ctx);
-
 	actx->ctx = ctx;
 	actx->poll_mutex = OGCreateMutex();
 	actx->update_cv = OGCreateConditionVariable();
+
+	survive_startup(ctx);
 
 	intptr_t i = 0;
 	for (i = 0; i < ctx->activeLighthouses; i++) {
@@ -521,20 +540,22 @@ enum SurviveSimpleEventType survive_simple_wait_for_event(SurviveSimpleContext *
 enum SurviveSimpleEventType survive_simple_next_event(SurviveSimpleContext *actx, SurviveSimpleEvent *event) {
 	event->event_type = SurviveSimpleEventType_None;
 
-	const SurviveSimpleObject *sso = survive_simple_get_next_updated(actx);
-	if (sso) {
-		event->event_type = SurviveSimpleEventType_PoseUpdateEvent;
-		event->d.pose_event = (SurviveSimplePoseUpdatedEvent){
-			.object = sso,
-		};
-		event->d.pose_event.time = survive_simple_object_get_latest_pose(sso, &event->d.pose_event.pose);
-		survive_simple_object_get_latest_velocity(sso, &event->d.pose_event.velocity);
-		return event->event_type;
-	}
-
 	OGLockMutex(actx->poll_mutex);
 	pop_from_event_buffer(actx, event);
 	OGUnlockMutex(actx->poll_mutex);
+
+	if (event->event_type == SurviveSimpleEventType_None) {
+		const SurviveSimpleObject *sso = survive_simple_get_next_updated(actx);
+		if (sso) {
+			event->event_type = SurviveSimpleEventType_PoseUpdateEvent;
+			event->d.pose_event = (SurviveSimplePoseUpdatedEvent){
+				.object = sso,
+			};
+			event->d.pose_event.time = survive_simple_object_get_latest_pose(sso, &event->d.pose_event.pose);
+			survive_simple_object_get_latest_velocity(sso, &event->d.pose_event.velocity);
+			return event->event_type;
+		}
+	}
 
 	if (event->event_type == SurviveSimpleEventType_None && survive_simple_is_running(actx) == false) {
 		return event->event_type = SurviveSimpleEventType_Shutdown;
@@ -563,4 +584,21 @@ SurviveAxisVal_t survive_simple_object_get_input_axis(const struct SurviveSimple
 		return 0;
 
 	return so->axis[axis];
+}
+const struct SurviveSimpleObjectEvent *survive_simple_get_object_event(const SurviveSimpleEvent *event) {
+	switch (event->event_type) {
+	case SurviveSimpleEventType_DeviceAdded:
+	case SurviveSimpleEventType_ButtonEvent:
+	case SurviveSimpleEventType_ConfigEvent:
+	case SurviveSimpleEventType_PoseUpdateEvent:
+		return &event->d.object_event;
+	case SurviveSimpleEventType_Shutdown:
+		return NULL;
+	}
+	return NULL;
+}
+FLT survive_simple_run_time(const struct SurviveSimpleContext *actx) {
+	if (actx->ctx == 0)
+		return 0;
+	return survive_run_time(actx->ctx);
 }

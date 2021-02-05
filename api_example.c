@@ -20,7 +20,7 @@ void intHandler(int dummy) {
 #endif
 
 static void log_fn(SurviveSimpleContext *actx, SurviveLogLevel logLevel, const char *msg) {
-	fprintf(stderr, "SimpleApi: %s\n", msg);
+	fprintf(stderr, "(%7.3f) SimpleApi: %s\n", survive_simple_run_time(actx), msg);
 }
 
 int main(int argc, char **argv) {
@@ -80,8 +80,13 @@ int main(int argc, char **argv) {
 		}
 		case SurviveSimpleEventType_ConfigEvent: {
 			const struct SurviveSimpleConfigEvent *cfg_event = survive_simple_get_config_event(&event);
-			printf("%s received configuration of length %u\n", survive_simple_object_name(cfg_event->object),
-				   (unsigned)strlen(cfg_event->cfg));
+			printf("(%f) %s received configuration of length %u\n", cfg_event->time,
+				   survive_simple_object_name(cfg_event->object), (unsigned)strlen(cfg_event->cfg));
+			break;
+		}
+		case SurviveSimpleEventType_DeviceAdded: {
+			const struct SurviveSimpleObjectEvent *obj_event = survive_simple_get_object_event(&event);
+			printf("(%f) Found '%s'\n", obj_event->time, survive_simple_object_name(obj_event->object));
 			break;
 		}
 		case SurviveSimpleEventType_None:

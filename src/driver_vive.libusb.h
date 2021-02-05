@@ -262,8 +262,7 @@ void handle_config_tx(struct libusb_transfer *transfer) {
 		parse_tracker_version_info(packet->usbInfo->so, &transfer->buffer[1 + 8], transfer->actual_length);
 		SurviveObject *so = packet->usbInfo->so;
 		ctx->configproc(so, so->conf, so->conf_cnt);
-		printf("Done in %f sec\n", OGRelativeTime() - packet->start_time);
-
+		SV_VERBOSE(100, "Config done in %f sec for %s", OGRelativeTime() - packet->start_time, so->codename);
 		send_devices_magics(ctx, packet->usbInfo);
 		goto cleanup;
 	}
@@ -304,6 +303,7 @@ static int survive_start_get_config(SurviveViveData *sv, struct SurviveUSBInfo *
 							  0x01, 0x300 | config_packet->buffer[8], iface, sizeof(config_packet->buffer));
 	libusb_fill_control_transfer(tx, dev, config_packet->buffer, handle_config_tx, config_packet, 1000);
 
+	SV_VERBOSE(100, "Request config for %s", usbInfo->so->codename);
 	int rc = libusb_submit_transfer(tx);
 	if (rc) {
 		return -6;
