@@ -24,8 +24,6 @@ jobs:
           deps: libasan6
         - os: windows-latest
           build_type: Debug
-        - os: macos-latest
-          build_type: Debug
     steps:
     - uses: actions/checkout@v2
       with:
