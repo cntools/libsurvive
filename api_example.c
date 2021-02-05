@@ -42,48 +42,53 @@ int main(int argc, char **argv) {
 		printf("Found '%s'\n", survive_simple_object_name(it));
 	}
 
-	while (survive_simple_wait_for_update(actx) && keepRunning) {
-		for (const SurviveSimpleObject *it = survive_simple_get_next_updated(actx); it != 0;
-			 it = survive_simple_get_next_updated(actx)) {
-			SurvivePose pose;
-			FLT timecode = survive_simple_object_get_latest_pose(it, &pose) - start_time;
-			printf("%s %s (%7.3f): %f %f %f %f %f %f %f\n", survive_simple_object_name(it),
-				   survive_simple_serial_number(it), timecode, pose.Pos[0], pose.Pos[1], pose.Pos[2], pose.Rot[0],
-				   pose.Rot[1], pose.Rot[2], pose.Rot[3]);
+	struct SurviveSimpleEvent event = {0};
+	while (survive_simple_wait_for_event(actx, &event) != SurviveSimpleEventType_Shutdown) {
+		switch (event.event_type) {
+		case SurviveSimpleEventType_PoseUpdateEvent: {
+			const struct SurviveSimplePoseUpdatedEvent *pose_event = survive_simple_get_pose_updated_event(&event);
+			SurvivePose pose = pose_event->pose;
+			FLT timecode = pose_event->time;
+			printf("%s %s (%7.3f): %f %f %f %f %f %f %f\n", survive_simple_object_name(pose_event->object),
+				   survive_simple_serial_number(pose_event->object), timecode, pose.Pos[0], pose.Pos[1], pose.Pos[2],
+				   pose.Rot[0], pose.Rot[1], pose.Rot[2], pose.Rot[3]);
+			break;
 		}
+		case SurviveSimpleEventType_ButtonEvent: {
+			const struct SurviveSimpleButtonEvent *button_event = survive_simple_get_button_event(&event);
+			SurviveObjectSubtype subtype = survive_simple_object_get_subtype(button_event->object);
+			printf("%s input %s (%d) ", survive_simple_object_name(button_event->object),
+				   SurviveInputEventStr(button_event->event_type), button_event->event_type);
 
-		struct SurviveSimpleEvent event = {0};
+			FLT v1 = survive_simple_object_get_input_axis(button_event->object, SURVIVE_AXIS_TRACKPAD_X) / 2. + .5;
 
-		while (survive_simple_next_event(actx, &event) != SurviveSimpleEventType_None) {
-			switch (event.event_type) {
-			case SurviveSimpleEventType_ButtonEvent: {
-				const struct SurviveSimpleButtonEvent *button_event = survive_simple_get_button_event(&event);
-				SurviveObjectSubtype subtype = survive_simple_object_get_subtype(button_event->object);
-				printf("%s input %s (%d) ", survive_simple_object_name(button_event->object),
-					   SurviveInputEventStr(button_event->event_type), button_event->event_type);
+			if (button_event->button_id != 255) {
+				printf(" button %16s (%2d) ", SurviveButtonsStr(subtype, button_event->button_id),
+					   button_event->button_id);
 
-				FLT v1 = survive_simple_object_get_input_axis(button_event->object, SURVIVE_AXIS_TRACKPAD_X) / 2. + .5;
-
-				if (button_event->button_id != 255) {
-					printf(" button %16s (%2d) ", SurviveButtonsStr(subtype, button_event->button_id),
-						   button_event->button_id);
-
-					if (button_event->button_id == SURVIVE_BUTTON_SYSTEM) {
-						FLT v = 1 - survive_simple_object_get_input_axis(button_event->object, SURVIVE_AXIS_TRIGGER);
-						survive_simple_object_haptic(button_event->object, 30, v, .5);
-					}
+				if (button_event->button_id == SURVIVE_BUTTON_SYSTEM) {
+					FLT v = 1 - survive_simple_object_get_input_axis(button_event->object, SURVIVE_AXIS_TRIGGER);
+					survive_simple_object_haptic(button_event->object, 30, v, .5);
 				}
-				for (int i = 0; i < button_event->axis_count; i++) {
-					printf(" %20s (%2d) %+5.4f   ", SurviveAxisStr(subtype, button_event->axis_ids[i]),
-						   button_event->axis_ids[i], button_event->axis_val[i]);
-				}
-				printf("\n");
 			}
-			case SurviveSimpleEventType_None:
-				break;
+			for (int i = 0; i < button_event->axis_count; i++) {
+				printf(" %20s (%2d) %+5.4f   ", SurviveAxisStr(subtype, button_event->axis_ids[i]),
+					   button_event->axis_ids[i], button_event->axis_val[i]);
 			}
+			printf("\n");
+			break;
+		}
+		case SurviveSimpleEventType_ConfigEvent: {
+			const struct SurviveSimpleConfigEvent *cfg_event = survive_simple_get_config_event(&event);
+			printf("%s received configuration of length %u\n", survive_simple_object_name(cfg_event->object),
+				   (unsigned)strlen(cfg_event->cfg));
+			break;
+		}
+		case SurviveSimpleEventType_None:
+			break;
 		}
 	}
+
 	printf("Cleaning up\n");
 	survive_simple_close(actx);
 	return 0;

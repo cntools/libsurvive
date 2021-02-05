@@ -222,9 +222,7 @@ static int config_fn(struct SurviveObject *so, char *ct0conf, int len) {
 	sso->type = to_simple_type(so->object_type);
 
 	struct SurviveSimpleEvent event = {.event_type = SurviveSimpleEventType_ConfigEvent,
-									   .d = {.config_event = {
-												 .object = sso,
-											 }}};
+									   .d = {.config_event = {.object = sso, .cfg = survive_simple_json_config(sso)}}};
 
 	insert_into_event_buffer(actx, &event);
 	unlock_and_notify_change(actx);
@@ -492,13 +490,20 @@ BaseStationData *survive_simple_get_bsd(const SurviveSimpleObject *sao) {
 const SurviveSimpleConfigEvent *survive_simple_get_config_event(const SurviveSimpleEvent *event) {
 	if (event->event_type == SurviveSimpleEventType_ConfigEvent)
 		return &event->d.config_event;
-	return 0;
+	return NULL;
 }
 
 const SurviveSimpleButtonEvent *survive_simple_get_button_event(const SurviveSimpleEvent *event) {
 	if (event->event_type == SurviveSimpleEventType_ButtonEvent)
 		return &event->d.button_event;
-	return 0;
+	return NULL;
+}
+
+const struct SurviveSimplePoseUpdatedEvent *survive_simple_get_pose_updated_event(const SurviveSimpleEvent *event) {
+	if (event->event_type == SurviveSimpleEventType_PoseUpdateEvent) {
+		return &event->d.pose_event;
+	}
+	return NULL;
 }
 
 bool survive_simple_wait_for_update(SurviveSimpleContext *actx) {
@@ -508,11 +513,33 @@ bool survive_simple_wait_for_update(SurviveSimpleContext *actx) {
 	return survive_simple_is_running(actx);
 }
 
+enum SurviveSimpleEventType survive_simple_wait_for_event(SurviveSimpleContext *actx, SurviveSimpleEvent *event) {
+	survive_simple_wait_for_update(actx);
+	return survive_simple_next_event(actx, event);
+}
+
 enum SurviveSimpleEventType survive_simple_next_event(SurviveSimpleContext *actx, SurviveSimpleEvent *event) {
 	event->event_type = SurviveSimpleEventType_None;
+
+	const SurviveSimpleObject *sso = survive_simple_get_next_updated(actx);
+	if (sso) {
+		event->event_type = SurviveSimpleEventType_PoseUpdateEvent;
+		event->d.pose_event = (SurviveSimplePoseUpdatedEvent){
+			.object = sso,
+		};
+		event->d.pose_event.time = survive_simple_object_get_latest_pose(sso, &event->d.pose_event.pose);
+		survive_simple_object_get_latest_velocity(sso, &event->d.pose_event.velocity);
+		return event->event_type;
+	}
+
 	OGLockMutex(actx->poll_mutex);
 	pop_from_event_buffer(actx, event);
 	OGUnlockMutex(actx->poll_mutex);
+
+	if (event->event_type == SurviveSimpleEventType_None && survive_simple_is_running(actx) == false) {
+		return event->event_type = SurviveSimpleEventType_Shutdown;
+	}
+
 	return event->event_type;
 }
 

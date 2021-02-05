@@ -29,7 +29,8 @@ enum SurviveSimpleEventType {
 	SurviveSimpleEventType_None = 0,
 	SurviveSimpleEventType_ButtonEvent = 1,
 	SurviveSimpleEventType_ConfigEvent = 2,
-	SurviveSimpleEventType_PoseUpdateEvent = 3
+	SurviveSimpleEventType_PoseUpdateEvent = 3,
+	SurviveSimpleEventType_Shutdown = 4
 };
 
 struct SurviveSimpleEvent;
@@ -48,7 +49,15 @@ typedef struct SurviveSimpleButtonEvent {
 
 typedef struct SurviveSimpleConfigEvent {
 	SurviveSimpleObject *object;
+	const char *cfg;
 } SurviveSimpleConfigEvent;
+
+typedef struct SurviveSimplePoseUpdatedEvent {
+	const SurviveSimpleObject *object;
+	FLT time;
+	SurvivePose pose;
+	SurviveVelocity velocity;
+} SurviveSimplePoseUpdatedEvent;
 
 /***
  * Initialize a new instance of an simple context -- mirrors survive_init
@@ -134,6 +143,13 @@ SURVIVE_EXPORT bool survive_simple_wait_for_update(SurviveSimpleContext *actx);
 SURVIVE_EXPORT enum SurviveSimpleEventType survive_simple_next_event(SurviveSimpleContext *actx,
 																	 SurviveSimpleEvent *event);
 
+/**
+ * Block waiting for any kind of event
+ * @return The type of event
+ */
+SURVIVE_EXPORT enum SurviveSimpleEventType survive_simple_wait_for_event(SurviveSimpleContext *actx,
+																		 SurviveSimpleEvent *event);
+
 SURVIVE_EXPORT int survive_simple_object_haptic(struct SurviveSimpleObject *sao, FLT frequency, FLT amplitude,
 												FLT time_s);
 SURVIVE_EXPORT enum SurviveSimpleObject_type survive_simple_object_get_type(const struct SurviveSimpleObject *sao);
@@ -145,6 +161,13 @@ SURVIVE_EXPORT SurviveSimpleSubobject_type survive_simple_object_get_subtype(con
  * it returns null.
  */
 SURVIVE_EXPORT const SurviveSimpleButtonEvent *survive_simple_get_button_event(const SurviveSimpleEvent *event);
+
+/**
+ * Given an event with the type of 'pose_update', it returns the internal PoseUpdated structure. If the type isn't a
+ * pose_update, it returns null.
+ */
+SURVIVE_EXPORT const struct SurviveSimplePoseUpdatedEvent *
+survive_simple_get_pose_updated_event(const SurviveSimpleEvent *event);
 
 /**
  * Given an event with the type of 'config', it returns the internal config structure. If the type isn't a config event,
@@ -188,6 +211,7 @@ struct SurviveSimpleEvent {
 	union {
 		SurviveSimpleButtonEvent SURVIVE_ENCAPSULATE_DECORATOR(button_event);
 		SurviveSimpleConfigEvent SURVIVE_ENCAPSULATE_DECORATOR(config_event);
+		SurviveSimplePoseUpdatedEvent SURVIVE_ENCAPSULATE_DECORATOR(pose_event);
 	} d;
 };
 
