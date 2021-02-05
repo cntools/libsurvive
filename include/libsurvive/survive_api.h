@@ -25,7 +25,12 @@ struct SurviveSimpleObject;
 typedef struct SurviveSimpleObject SurviveSimpleObject;
 typedef void (*SurviveSimpleLogFn)(struct SurviveSimpleContext *ctx, SurviveLogLevel logLevel, const char *msg);
 
-enum SurviveSimpleEventType { SurviveSimpleEventType_None = 0, SurviveSimpleEventType_ButtonEvent };
+enum SurviveSimpleEventType {
+	SurviveSimpleEventType_None = 0,
+	SurviveSimpleEventType_ButtonEvent = 1,
+	SurviveSimpleEventType_ConfigEvent = 2,
+	SurviveSimpleEventType_PoseUpdateEvent = 3
+};
 
 struct SurviveSimpleEvent;
 typedef struct SurviveSimpleEvent SurviveSimpleEvent;
@@ -40,6 +45,10 @@ typedef struct SurviveSimpleButtonEvent {
 	enum SurviveAxis axis_ids[SURVIVE_MAX_AXIS_COUNT];
 	SurviveAxisVal_t axis_val[SURVIVE_MAX_AXIS_COUNT];
 } SurviveSimpleButtonEvent;
+
+typedef struct SurviveSimpleConfigEvent {
+	SurviveSimpleObject *object;
+} SurviveSimpleConfigEvent;
 
 /***
  * Initialize a new instance of an simple context -- mirrors survive_init
@@ -109,6 +118,11 @@ SURVIVE_EXPORT const char *survive_simple_object_name(const SurviveSimpleObject 
  */
 SURVIVE_EXPORT const char *survive_simple_serial_number(const SurviveSimpleObject *sao);
 
+/**
+ * Gets the null terminated config string of the object
+ */
+SURVIVE_EXPORT const char *survive_simple_json_config(const SurviveSimpleObject *sao);
+
 /***
  * Block waiting for any kind of update from either locations or buttons
  * @return returns whether or not we are still running
@@ -131,6 +145,12 @@ SURVIVE_EXPORT SurviveSimpleSubobject_type survive_simple_object_get_subtype(con
  * it returns null.
  */
 SURVIVE_EXPORT const SurviveSimpleButtonEvent *survive_simple_get_button_event(const SurviveSimpleEvent *event);
+
+/**
+ * Given an event with the type of 'config', it returns the internal config structure. If the type isn't a config event,
+ * it returns null.
+ */
+SURVIVE_EXPORT const SurviveSimpleConfigEvent *survive_simple_get_config_event(const SurviveSimpleEvent *event);
 
 // The functions in this ifdef allow the possibility of breaking encapsulation and should be regarded as a relatively
 // unstable interface. If you have a use case which requires access to these functions, it means there should likely
@@ -165,7 +185,10 @@ SURVIVE_EXPORT void survive_simple_unlock(SurviveSimpleContext *actx);
 
 struct SurviveSimpleEvent {
 	enum SurviveSimpleEventType event_type;
-	SurviveSimpleButtonEvent SURVIVE_ENCAPSULATE_DECORATOR(button_event);
+	union {
+		SurviveSimpleButtonEvent SURVIVE_ENCAPSULATE_DECORATOR(button_event);
+		SurviveSimpleConfigEvent SURVIVE_ENCAPSULATE_DECORATOR(config_event);
+	};
 };
 
 #ifdef __cplusplus

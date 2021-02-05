@@ -215,8 +215,18 @@ static void button_fn(SurviveObject *so, enum SurviveInputEvent eventType, enum 
 
 static int config_fn(struct SurviveObject *so, char *ct0conf, int len) {
 	int res = survive_default_config_process(so, ct0conf, len);
+	SurviveSimpleContext *actx = so->ctx->user_ptr;
 	SurviveSimpleObject *sso = so->user_ptr;
 	sso->type = to_simple_type(so->object_type);
+
+	struct SurviveSimpleEvent event = {.event_type = SurviveSimpleEventType_ConfigEvent,
+									   .config_event = {
+										   .object = sso,
+									   }};
+
+	insert_into_event_buffer(actx, &event);
+	unlock_and_notify_change(actx);
+
 	return res;
 }
 
@@ -439,6 +449,18 @@ const char *survive_simple_serial_number(const SurviveSimpleObject *sao) {
 		return "";
 	}
 }
+SURVIVE_EXPORT const char *survive_simple_json_config(const SurviveSimpleObject *sao) {
+	switch (sao->type) {
+	case SurviveSimpleObject_HMD:
+	case SurviveSimpleObject_OBJECT:
+		return sao->data.so->conf;
+	case SurviveSimpleObject_EXTERNAL:
+	case SurviveSimpleObject_LIGHTHOUSE:
+	default:
+		return 0;
+	}
+	return 0;
+}
 
 void survive_simple_lock(SurviveSimpleContext *actx) { OGLockMutex(actx->poll_mutex); }
 
@@ -463,6 +485,12 @@ BaseStationData *survive_simple_get_bsd(const SurviveSimpleObject *sao) {
 	default:
 		return NULL;
 	}
+}
+
+const SurviveSimpleConfigEvent *survive_simple_get_config_event(const SurviveSimpleEvent *event) {
+	if (event->event_type == SurviveSimpleEventType_ConfigEvent)
+		return &event->config_event;
+	return 0;
 }
 
 const SurviveSimpleButtonEvent *survive_simple_get_button_event(const SurviveSimpleEvent *event) {
