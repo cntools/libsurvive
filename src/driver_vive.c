@@ -758,7 +758,6 @@ int survive_vive_send_magic(SurviveContext *ctx, void *drv, int magic_code, void
 			if (magic->code == magic_code) {
 				uint8_t *data = alloca(sizeof(uint8_t) * magic->length);
 				memcpy(data, magic->magic, magic->length);
-
 				survive_release_ctx_lock(ctx);
 				r = update_feature_report(usbInfo->handle, 0, data, magic->length);
 				survive_get_ctx_lock(ctx);

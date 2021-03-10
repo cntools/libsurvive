@@ -42,6 +42,7 @@ typedef struct vive_device_inst_t {
 	bool hasConfiged;
 	SurviveObject *so;
 	struct SurviveUSBInfo *usbInfo;
+	char name[16];
 
 	uint64_t last_config_id;
 	uint8_t compressed_data[8192];
@@ -61,6 +62,7 @@ typedef struct usb_info_t {
 #define VIVE_DEVICE_INST_MAX 32
 
 struct vive_device_t devices[] = {{.vid = 0x28de, .pid = 0x2000, .codename = "HMD", .def_config = "HMD_config.json"},
+								  {.vid = 0x0bb4, .pid = 0x2c87, .codename = "BD", .def_config = 0},
 								  {.vid = 0x28de, .pid = 0x2101, .codename = "WM", .def_config = "WM%d_config.json"},
 								  {.vid = 0x28de, .pid = 0x2022, .codename = "TR", .def_config = "TR%d_config.json"},
 								  {.vid = 0x28de, .pid = 0x2300, .codename = "T2", .def_config = "T2%d_config.json"},
@@ -137,8 +139,8 @@ vive_device_inst_t *find_device_inst(SurviveDriverUSBMon *d, int bus_id, int dev
 			return &d->usb_devices[i];
 	}
 
-	struct SurviveContext *ctx = d->ctx;
-	SV_WARN("Could not find device for 0x%04x 0x%04x", bus_id, dev_id);
+	// struct SurviveContext *ctx = d->ctx;
+	// SV_WARN("Could not find device for %d %d", bus_id, dev_id);
 
 	return 0;
 }
@@ -353,13 +355,16 @@ static size_t fill_device_inst(SurviveContext *ctx, vive_device_inst_t *insts, c
 							dev->codename);
 				}
 
+				SV_INFO("Device instance %s for %04x:%04x at %d %d", dev->codename, usb_dev->vid, usb_dev->pid,
+						usb_dev->bus_id, usb_dev->dev_id);
 				insts++;
 				rtn++;
 			}
 		}
 
-		if (!foundDevice && usb_dev->vid == 0x28de) {
-			SV_WARN("Didn't find device instance for %04x:%04x", usb_dev->vid, usb_dev->pid);
+		if (!foundDevice) {
+			SV_WARN("Didn't find device instance for %04x:%04x at %d %d", usb_dev->vid, usb_dev->pid, usb_dev->bus_id,
+					usb_dev->dev_id);
 		}
 
 		usb_dev++;
@@ -426,12 +431,15 @@ static int setup_usb_devices(SurviveDriverUSBMon *sp) {
 			if (dev_idx != 0) {
 				sprintf(buff, "%s%d", sp->usb_devices[i].device->codename, device_cnts[dev_idx]++);
 			}
+			memcpy(sp->usb_devices[i].name, buff, 16);
 
-			SurviveObject *so = survive_create_device(ctx, "UMN", 0, buff, 0);
-			sp->usb_devices[i].so = so;
-			sp->usb_devices[i].usbInfo =
-				survive_vive_register_driver(so, sp->usb_devices[i].device->vid, sp->usb_devices[i].device->pid);
-			survive_add_object(ctx, so);
+			if (sp->usb_devices[i].device->def_config) {
+				SurviveObject *so = survive_create_device(ctx, "UMN", 0, buff, 0);
+				sp->usb_devices[i].so = so;
+				sp->usb_devices[i].usbInfo =
+					survive_vive_register_driver(so, sp->usb_devices[i].device->vid, sp->usb_devices[i].device->pid);
+				survive_add_object(ctx, so);
+			}
 		}
 		char filter[256] = {0};
 		sprintf(filter, "(usb.bus_id = %d and usb.device_address = %d)", sp->usb_devices[i].bus_id,
@@ -568,7 +576,7 @@ void *pcap_thread_fn(void *_driver) {
 
 			if (dev) {
 				driver->packet_cnt++;
-				const char *dev_name = dev->device->codename;
+				const char *dev_name = dev->name;
 				if (dev->so)
 					dev_name = dev->so->codename;
 
@@ -611,11 +619,11 @@ void *pcap_thread_fn(void *_driver) {
 							ctx,
 							"--> %10.6f S: %s 0x%016lx event_type: %c transfer_type: %d bmRequestType: 0x%02x "
 							"bRequest: 0x%02x (%s) "
-							"wValue: 0x%04x wIndex: 0x%04x wLength: %4d\n",
+							"wValue: 0x%04x wIndex: 0x%04x wLength: %4d (%4d)\n",
 							this_time, dev_name, usbp->id, usbp->event_type, usbp->transfer_type,
 							usbp->s.setup.bmRequestType, usbp->s.setup.bRequest,
 							requestTypeToStr(usbp->s.setup.bRequest), usbp->s.setup.wValue, usbp->s.setup.wIndex,
-							usbp->s.setup.wLength);
+							usbp->s.setup.wLength, usbp->data_len);
 
 						survive_dump_buffer(ctx, pktData, usbp->data_len);
 					}

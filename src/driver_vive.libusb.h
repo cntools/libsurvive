@@ -222,8 +222,7 @@ void handle_config_tx(struct libusb_transfer *transfer) {
 	struct survive_config_packet* packet = transfer->user_data;
 	SurviveContext * ctx = packet->ctx;
 	if(transfer->status == LIBUSB_TRANSFER_STALL) {
-		libusb_submit_transfer(transfer);
-		return;
+		goto cleanup;
 	}
 
 	if(transfer->status != LIBUSB_TRANSFER_COMPLETED) {
