@@ -520,7 +520,7 @@ static enum LighthouseState SetState(Disambiguator_data_t *d, const LightcapElem
 				 best_d ? best_d->state : LS_UNKNOWN);
 	}
 
-	SV_VERBOSE(200, "%s Setting state %18s (%2d) -> %18s (%2d)", d->so->codename, LighthouseStateName(d->state),
+	SV_VERBOSE(400, "%s Setting state %18s (%2d) -> %18s (%2d)", d->so->codename, LighthouseStateName(d->state),
 			   d->state, LighthouseStateName(new_state), new_state);
 
 	d->state = new_state;

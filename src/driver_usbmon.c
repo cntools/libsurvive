@@ -139,9 +139,6 @@ vive_device_inst_t *find_device_inst(SurviveDriverUSBMon *d, int bus_id, int dev
 			return &d->usb_devices[i];
 	}
 
-	// struct SurviveContext *ctx = d->ctx;
-	// SV_WARN("Could not find device for %d %d", bus_id, dev_id);
-
 	return 0;
 }
 
@@ -426,11 +423,13 @@ static int setup_usb_devices(SurviveDriverUSBMon *sp) {
 
 	for (int i = 0; i < sp->usb_devices_cnt; i++) {
 		int dev_idx = sp->usb_devices[i].device - devices;
+		char buff[16] = "HMD";
+		if (dev_idx != 0) {
+			sprintf(buff, "%s%d", sp->usb_devices[i].device->codename, device_cnts[dev_idx]++);
+		}
+		memcpy(sp->usb_devices[i].name, buff, 16);
+
 		if (sp->passiveMode == false) {
-			char buff[16] = "HMD";
-			if (dev_idx != 0) {
-				sprintf(buff, "%s%d", sp->usb_devices[i].device->codename, device_cnts[dev_idx]++);
-			}
 			memcpy(sp->usb_devices[i].name, buff, 16);
 
 			if (sp->usb_devices[i].device->def_config) {
@@ -579,6 +578,8 @@ void *pcap_thread_fn(void *_driver) {
 				const char *dev_name = dev->name;
 				if (dev->so)
 					dev_name = dev->so->codename;
+				assert(dev_name);
+				const char *color_dev_name = survive_colorize(dev_name);
 
 				if (start_time == 0) {
 					start_time = make_time(0, usbp);
@@ -595,9 +596,16 @@ void *pcap_thread_fn(void *_driver) {
 				}
 
 				while (survive_input_event_count(ctx) > 0) {
-					OGUSleep(1000);
+					// OGUSleep(1000);
 				}
 
+#define COLORIZED_ID_STR SURVIVE_COLORIZED_FORMAT("%016lx")
+#define COLORIZED_ID SURVIVE_COLORIZED_DATA(usbp->id)
+				char color_set[16] = "";
+
+				unsigned hash = ((usbp->id + (usbp->id >> 8) + (usbp->id >> 16) + (usbp->id >> 24)) & 0xFF) % 8;
+				sprintf(color_set, "\033[0;%dm", (int)(hash + 30));
+				const char *color_reset = "\033[0m";
 				driver->time_now = this_time;
 				if (this_time > driver->run_time && driver->run_time > 0)
 					*driver->keepRunning = false;
@@ -607,23 +615,23 @@ void *pcap_thread_fn(void *_driver) {
 					if (is_config_start(usbp)) {
 						dev->last_config_id = 0;
 						dev->compressed_data_idx = 0;
-						SV_VERBOSE(200, "%s start of config", dev_name);
+						SV_VERBOSE(200, "%s start of config", color_dev_name);
 					} else if (is_config_request(usbp)) {
 						dev->last_config_id = usbp->id;
 					} else if (is_command_setup(usbp)) {
-						SV_INFO("%s sent command 0x%02x with %u bytes:", dev_name, pktData[1], pktData[2]);
+						SV_INFO("%s sent command 0x%02x with %u bytes:", color_dev_name, pktData[1], pktData[2]);
 						survive_dump_buffer(ctx, pktData + 3, pktData[2]);
 					}
 					if (driver->output_usb_stream) {
-						ctx->printfproc(
-							ctx,
-							"--> %10.6f S: %s 0x%016lx event_type: %c transfer_type: %d bmRequestType: 0x%02x "
-							"bRequest: 0x%02x (%s) "
-							"wValue: 0x%04x wIndex: 0x%04x wLength: %4d (%4d)\n",
-							this_time, dev_name, usbp->id, usbp->event_type, usbp->transfer_type,
-							usbp->s.setup.bmRequestType, usbp->s.setup.bRequest,
-							requestTypeToStr(usbp->s.setup.bRequest), usbp->s.setup.wValue, usbp->s.setup.wIndex,
-							usbp->s.setup.wLength, usbp->data_len);
+						ctx->printfproc(ctx,
+										"--> %10.6f S: %s " COLORIZED_ID_STR
+										" event_type: %c transfer_type: %d bmRequestType: 0x%02x "
+										"bRequest: 0x%02x (%s) "
+										"wValue: 0x%04x wIndex: 0x%04x wLength: %4d (%4d)\n",
+										this_time, color_dev_name, SURVIVE_COLORIZED_DATA(usbp->id), usbp->event_type,
+										usbp->transfer_type, usbp->s.setup.bmRequestType, usbp->s.setup.bRequest,
+										requestTypeToStr(usbp->s.setup.bRequest), usbp->s.setup.wValue,
+										usbp->s.setup.wIndex, usbp->s.setup.wLength, usbp->data_len);
 
 						survive_dump_buffer(ctx, pktData, usbp->data_len);
 					}
@@ -640,28 +648,37 @@ void *pcap_thread_fn(void *_driver) {
 
 					if (driver->output_usb_stream) {
 						if (usbp->event_type == 'C') {
-							ctx->printfproc(
-								ctx, "<-- %10.6f C: %s 0x%016lx event_type: %c transfer_type: %d 0x%02x (0x%02x):\n",
-								this_time, dev_name, usbp->id, usbp->event_type, usbp->transfer_type,
-								usbp->endpoint_number, usbp->data_len);
+							ctx->printfproc(ctx,
+											"<-- %10.6f C: %s " COLORIZED_ID_STR
+											" event_type: %c transfer_type: %d 0x%02x (0x%02x):\n",
+											this_time, color_dev_name, SURVIVE_COLORIZED_DATA(usbp->id),
+											usbp->event_type, usbp->transfer_type, usbp->endpoint_number,
+											usbp->data_len);
 						} else {
-							ctx->printfproc(
-								ctx, "--> %10.6f W: %s 0x%016lx event_type: %c transfer_type: %d 0x%02x (0x%02x):\n",
-								this_time, dev_name, usbp->id, usbp->event_type, usbp->transfer_type,
-								usbp->endpoint_number, usbp->data_len);
+							ctx->printfproc(ctx,
+											"--> %10.6f W: %s " COLORIZED_ID_STR
+											" event_type: %c transfer_type: %d 0x%02x (0x%02x):\n",
+											this_time, color_dev_name, SURVIVE_COLORIZED_DATA(usbp->id),
+											usbp->event_type, usbp->transfer_type, usbp->endpoint_number,
+											usbp->data_len);
 						}
 						survive_dump_buffer(ctx, pktData, usbp->data_len);
 					}
 					goto continue_loop; // Only want incoming data
 				}
 
+				int interface = interface_lookup(dev, usbp->endpoint_number);
+
 				if (usbp->status != 0) {
 					// EINPROGRESS is normal, EPIPE means stalled
 					if (driver->output_usb_stream) {
 						if ((usbp->status != -115 && usbp->status != -32) || driver->output_everything)
-							ctx->printfproc(
-								ctx, "<-- %10.6f E: %s 0x%016lx event_type: %c transfer_type: %d status: %d\n",
-								this_time, dev_name, usbp->id, usbp->event_type, usbp->transfer_type, usbp->status);
+							ctx->printfproc(ctx,
+											"<-- %10.6f E: %s " COLORIZED_ID_STR
+											" event_type: %c transfer_type: %d status: %d endpoint: 0x%02x (%s)\n",
+											this_time, color_dev_name, SURVIVE_COLORIZED_DATA(usbp->id),
+											usbp->event_type, usbp->transfer_type, usbp->status, usbp->endpoint_number,
+											survive_usb_interface_str(interface));
 					}
 					if (usbp->id == dev->last_config_id) {
 						dev->last_config_id = 0;
@@ -669,19 +686,18 @@ void *pcap_thread_fn(void *_driver) {
 					goto continue_loop; // Only want responses
 				}
 
-				int interface = interface_lookup(dev, usbp->endpoint_number);
-
 				bool output_read = driver->output_usb_stream &&
 								   (interface == 0 || driver->output_everything || interface == USB_IF_TRACKER_INFO) &&
 								   interface != USB_IF_W_WATCHMAN1_IMU && interface != USB_IF_TRACKER1_IMU &&
 								   interface != USB_IF_TRACKER0_IMU;
 
 				if (output_read) {
-					ctx->printfproc(
-						ctx,
-						"<-- %10.6f R: %s 0x%016lx event_type: %c transfer_type: %d endpoint: 0x%02x (%s) (0x%02x): \n",
-						this_time, dev_name, usbp->id, usbp->event_type, usbp->transfer_type, usbp->endpoint_number,
-						survive_usb_interface_str(interface), usbp->data_len);
+					ctx->printfproc(ctx,
+									"<-- %10.6f R: %s " COLORIZED_ID_STR
+									" event_type: %c transfer_type: %d endpoint: 0x%02x (%s) (0x%02x): \n",
+									this_time, color_dev_name, SURVIVE_COLORIZED_DATA(usbp->id), usbp->event_type,
+									usbp->transfer_type, usbp->endpoint_number, survive_usb_interface_str(interface),
+									usbp->data_len);
 
 					survive_dump_buffer(ctx, pktData, usbp->data_len);
 				}
@@ -697,7 +713,8 @@ void *pcap_thread_fn(void *_driver) {
 					interface == USB_IF_TRACKER_INFO && ((usbp->endpoint_number >> 5) & 0x3) == 0;
 				bool forward_to_data_cb = driver->record_only == false &&
 										  (interface != 0 && (dev->hasConfiged || interface == USB_IF_TRACKER_INFO)) &&
-										  dev->so != 0 && !is_standard_endpoint && usbp->data_len > 0;
+										  dev->so != 0 && !is_standard_endpoint && usbp->data_len > 0 &&
+										  usbp->status == 0;
 
 				if (forward_to_data_cb) {
 					SurviveUSBInterface si = {.ctx = ctx,
@@ -706,7 +723,6 @@ void *pcap_thread_fn(void *_driver) {
 											  .which_interface_am_i = interface,
 											  .hname = dev->so->codename};
 
-					// memcpy(si.buffer, (u_char*)&usbp[1], usbp->data);
 					si.actual_len = usbp->data_len;
 					memset(si.buffer, 0xCA, sizeof(si.buffer));
 					memcpy(si.buffer, pktData, usbp->data_len);
@@ -722,7 +738,7 @@ void *pcap_thread_fn(void *_driver) {
 							int res = survive_load_htc_config_format_from_file(dev->so, filename);
 							SV_VERBOSE(50,
 									   "Too long without config packet for %s; trying to read config from file %s: %d",
-									   dev_name, filename, res);
+									   color_dev_name, filename, res);
 							if (res == 0) {
 								dev->hasConfiged = true;
 							}

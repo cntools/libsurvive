@@ -1187,3 +1187,27 @@ SURVIVE_EXPORT const char *SurviveObjectSubtypeStr(SurviveObjectSubtype t) {
 	}
 	return "Unknown";
 }
+
+uint32_t survive_hash(const uint8_t *data, size_t len) {
+	// http://www.cse.yorku.ca/~oz/hash.html
+	uint32_t hash = 5381;
+
+	for (int i = 0; i < len; i++)
+		hash = ((hash << 5) + hash) + data[i]; /* hash * 33 + c */
+
+	return hash;
+}
+uint32_t survive_hash_str(const char *data) { return survive_hash((uint8_t *)data, strlen(data)); }
+SURVIVE_EXPORT const char *survive_colorize(const char *str) {
+	static __thread int next_buffer = 0;
+	static __thread char color_buffers[8][128] = {0};
+
+	char *color_buffer = color_buffers[next_buffer++ % 8];
+	size_t len = strlen(str);
+	if (len > sizeof(color_buffers[0]) - 18 - 1)
+		return str;
+
+	size_t written_length =
+		snprintf(color_buffer, sizeof(color_buffers[0]), SURVIVE_COLORIZED_FORMAT("%s"), SURVIVE_COLORIZED_STR(str));
+	return color_buffer;
+}

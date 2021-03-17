@@ -505,6 +505,14 @@ SURVIVE_EXPORT char *survive_export_config(SurviveObject *so);
 SURVIVE_EXPORT uint8_t survive_map_sensor_id(SurviveObject *so, uint8_t reported_id);
 SURVIVE_EXPORT bool handle_lightcap(SurviveObject *so, const LightcapElement *le);
 
+SURVIVE_EXPORT const char *survive_colorize(const char *str);
+SURVIVE_EXPORT uint32_t survive_hash(const uint8_t *data, size_t len);
+SURVIVE_EXPORT uint32_t survive_hash_str(const char *str);
+#define SV_CONST_COLOR(str, clr) "\033[0;" #clr "m" fmt "\033[0m"
+#define SURVIVE_COLORIZED_FORMAT(fmt) "\033[0;%dm" fmt "\033[0m"
+#define SURVIVE_COLORIZED_DATA(data) (survive_hash((uint8_t *)&(data), sizeof(data)) % 8 + 30), (data)
+#define SURVIVE_COLORIZED_STR(str) (survive_hash_str(str) % 8 + 30), str
+
 #define SV_DATA_LOG(fmt, v, n, ...)                                                                                    \
 	{                                                                                                                  \
 		if (so && so->ctx->datalogproc) {                                                                              \

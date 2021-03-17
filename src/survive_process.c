@@ -190,7 +190,8 @@ void survive_default_imu_process( SurviveObject * so, int mask, FLT * accelgyrom
 
 	SurviveContext *ctx = so->ctx;
 
-	SV_VERBOSE(400, "IMU %d: " Point6_format, timecode, LINMATH_VEC3_EXPAND(imu.accel), LINMATH_VEC3_EXPAND(imu.gyro))
+	SV_VERBOSE(300, "%s %s %x (%7.3f): " Point6_format, survive_colorize(so->codename), survive_colorize("IMU"),
+			   timecode, timecode / 48000000., LINMATH_VEC3_EXPAND(imu.accel), LINMATH_VEC3_EXPAND(imu.gyro))
 	survive_kalman_tracker_integrate_imu(so->tracker, &imu);
 	SURVIVE_POSER_INVOKE(so, &imu);
 

@@ -99,17 +99,21 @@ static bool setup_hotplug(SurviveViveData *sv) {
 	return 0;
 }
 
-static int survive_get_ids(survive_usb_device_t d, uint16_t *idVendor, uint16_t *idProduct) {
+static int survive_get_ids(survive_usb_device_t d, uint16_t *idVendor, uint16_t *idProduct, uint8_t *class_id) {
 	struct libusb_device_descriptor desc;
 
 	int ret = libusb_get_device_descriptor(d, &desc);
 	*idVendor = 0;
 	*idProduct = 0;
+	if (class_id)
+		*class_id = 0;
 	if (ret)
 		return ret;
 
 	*idVendor = desc.idVendor;
 	*idProduct = desc.idProduct;
+	if (class_id)
+		*class_id = desc.bDeviceClass;
 
 	return ret;
 }
@@ -127,7 +131,7 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 
 	uint16_t idVendor;
 	uint16_t idProduct;
-	survive_get_ids(d, &idVendor, &idProduct);
+	survive_get_ids(d, &idVendor, &idProduct, 0);
 
 	SurviveContext *ctx = sv->ctx;
 	if (!usbInfo->handle || ret) {

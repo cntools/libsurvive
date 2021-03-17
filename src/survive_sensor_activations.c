@@ -201,6 +201,11 @@ void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 	*length = (uint32_t)(_lightData->length * 48000000);
 	if(lightData->hdr.timecode > self->last_light)
 		self->last_light = lightData->hdr.timecode;
+
+	SurviveContext *ctx = self->so->ctx;
+	if (self->last_imu != 0 && fabs(lightData->hdr.timecode / 48000000. - self->last_imu / 48000000.) > 1)
+		SV_ERROR(4, "Bad time %f vs %f", lightData->hdr.timecode / 48000000., self->last_imu / 48000000.);
+	// fprintf(stderr, "lightcap tc: %f\n", lightData->hdr.timecode/ 48000000.);
 }
 
 static inline survive_long_timecode make_long_timecode(survive_long_timecode prev, survive_timecode current) {

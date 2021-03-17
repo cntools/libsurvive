@@ -641,7 +641,8 @@ int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d) {
 		{
 			uint16_t idVendor;
 			uint16_t idProduct;
-			int ret = survive_get_ids(d, &idVendor, &idProduct);
+			uint8_t class_id;
+			int ret = survive_get_ids(d, &idVendor, &idProduct, &class_id);
 
 			if (ret < 0) {
 				continue;
@@ -651,8 +652,10 @@ int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d) {
 				continue;
 			}
 
+			SV_VERBOSE(10, "%d %d %d %d", info->type, idVendor, idProduct, class_id);
 			if (info->type == USB_DEV_HMD) {
-				if (sv->hmd_mainboard_index != -1) {
+				SV_VERBOSE(10, "Mainboard class %d", class_id);
+				if (sv->hmd_mainboard_index != -1 || class_id != 0) {
 					continue;
 				}
 				sv->hmd_mainboard_index = sv->udev_cnt;
@@ -756,7 +759,7 @@ int survive_vive_send_magic(SurviveContext *ctx, void *drv, int magic_code, void
 		usbInfo->lightcapMode = LightcapMode_raw0;
 		for (const struct Magic_t *magic = usbInfo->device_info->magics; magic->magic; magic++) {
 			if (magic->code == magic_code) {
-				uint8_t *data = alloca(sizeof(uint8_t) * magic->length);
+				uint8_t *data = malloc(sizeof(uint8_t) * magic->length + 1);
 				memcpy(data, magic->magic, magic->length);
 				survive_release_ctx_lock(ctx);
 				r = update_feature_report(usbInfo->handle, 0, data, magic->length);
@@ -765,12 +768,13 @@ int survive_vive_send_magic(SurviveContext *ctx, void *drv, int magic_code, void
 				if (r != magic->length && usbInfo->so)
 					SV_WARN("Could not turn on %s(%d) (%d/%zu - %s)", usbInfo->so->codename, usbInfo->device_info->type,
 							r, magic->length, survive_usb_error_name(r));
+
+				free(data);
 			}
 		}
 	}
 
 	SV_INFO("Powered unit on.");
-
 	return 0;
 }
 
@@ -2761,7 +2765,9 @@ void survive_data_cb_locked(uint64_t time_received_us, SurviveUSBInterface *si) 
 				le.timestamp = POP4;
 				if (le.sensor_id > 0xfd)
 					continue;
-				//SV_INFO("%d %d %d %d %d", id, le.sensor_id, le.length, le.timestamp, si->buffer + size - readdata);
+				SV_VERBOSE(300, "%s %s %7.3f %2u %2u %5u %08x %4d", survive_colorize(obj->codename),
+						   survive_colorize("LIGHTCAP"), le.timestamp / 48000000., id, le.sensor_id, le.length,
+						   le.timestamp, (int)(si->buffer + size - readdata));
 
 				if (obj->ctx->lh_version != 1) {
 					bool success = handle_lightcap(obj, &le);
