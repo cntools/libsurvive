@@ -753,10 +753,10 @@ SurviveVelocity survive_kalman_tracker_velocity(const SurviveKalmanTracker *trac
 void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 	SurviveContext *ctx = tracker->so->ctx;
 
+	FLT runtime = (FLT)(tracker->last_report_time - tracker->first_report_time);
 	SV_VERBOSE(5, "IMU %s tracker statistics:", tracker->so->codename);
 	SV_VERBOSE(5, "\t%-32s %u", "state_cnt", tracker->model.state_cnt);
-	SV_VERBOSE(5, "\t%-32s %f", "avg hz",
-			   tracker->stats.reported_poses / (FLT)(tracker->last_report_time - tracker->first_report_time));
+	SV_VERBOSE(5, "\t%-32s %f", "avg hz", tracker->stats.reported_poses / runtime);
 	SV_VERBOSE(5, "\t%-32s %u", "late imu", tracker->stats.late_imu_dropped);
 	SV_VERBOSE(5, "\t%-32s %u", "late light", tracker->stats.late_light_dropped);
 
@@ -776,8 +776,9 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 	SV_VERBOSE(5, "\t%-32s %e (%7u integrations)", "Lightcap error",
 			   tracker->stats.lightcap_total_error / (FLT)tracker->stats.lightcap_count,
 			   (unsigned)tracker->stats.lightcap_count);
-	SV_VERBOSE(5, "\t%-32s %e (%7u integrations)", "IMU error",
-			   tracker->stats.imu_total_error / (FLT)tracker->stats.imu_count, (unsigned)tracker->stats.imu_count);
+	SV_VERBOSE(5, "\t%-32s %e (%7u integrations %fhz)", "IMU error",
+			   tracker->stats.imu_total_error / (FLT)tracker->stats.imu_count, (unsigned)tracker->stats.imu_count,
+			   (unsigned)tracker->stats.imu_count / runtime);
 	SV_VERBOSE(5, " ");
 	SV_VERBOSE(5, "\t%-32s " Point3_format, "gyro bias", LINMATH_VEC3_EXPAND(tracker->state.GyroBias));
 	SV_VERBOSE(5, "\t%-32s " FLT_format, "Lightcap R", tracker->light_var);

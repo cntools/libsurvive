@@ -71,9 +71,10 @@ static survive_usb_device_t get_next_device(survive_usb_device_enumerator *itera
 	return *iterator;
 }
 
-static int survive_get_ids(survive_usb_device_t d, uint16_t *idVendor, uint16_t *idProduct) {
+static int survive_get_ids(survive_usb_device_t d, uint16_t *idVendor, uint16_t *idProduct, uint8_t *class_id) {
 	*idVendor = d->vendor_id;
 	*idProduct = d->product_id;
+	*class_id = 1;
 
 	return 0;
 }
