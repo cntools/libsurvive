@@ -831,8 +831,11 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 					codename = iface->assoc_obj->codename;
 
 				total_packets += iface->packet_count;
-				SV_INFO("Iface %s %8s has %4zu packets (%6.2f hz)", codename,
-					iface->hname, iface->packet_count, iface->packet_count / (now - start));
+				FLT avg_cb_time = iface->sum_cb_time / (FLT)(iface->packet_count);
+				FLT avg_cb_submit_latency = iface->sum_submit_cb_time / (FLT)(iface->packet_count);
+				SV_INFO("Iface %s %8s has %4zu packets (%6.2f hz) Avg CB Time: %7.2f Avg CB Latency: %7.2f",
+						codename, iface->hname, iface->packet_count,
+						iface->packet_count / (now - start), avg_cb_time, avg_cb_submit_latency);
 
 				iface->packet_count = 0;
 			}
