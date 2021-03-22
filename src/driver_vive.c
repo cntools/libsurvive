@@ -821,14 +821,19 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 		seconds = now_seconds;
 		size_t total_packets = 0;
 		for (int i = 0; i < sv->udev_cnt; i++) {
+			const char *codename = sv->udev[i].so->codename;
 			if (sv->udev[i].so == 0)
 				continue;
 
 			for (int j = 0; j < sv->udev[i].interface_cnt; j++) {
 				SurviveUSBInterface *iface = &sv->udev[i].interfaces[j];
+				if (iface->assoc_obj)
+					codename = iface->assoc_obj->codename;
+
 				total_packets += iface->packet_count;
-				SV_INFO("Iface %s %8s has %4zu packets (%6.2f hz)", iface->assoc_obj->codename, iface->hname,
-						iface->packet_count, iface->packet_count / (now - start));
+				SV_INFO("Iface %s %8s has %4zu packets (%6.2f hz)", codename,
+					iface->hname, iface->packet_count, iface->packet_count / (now - start));
+
 				iface->packet_count = 0;
 			}
 		}
