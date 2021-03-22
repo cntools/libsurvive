@@ -45,6 +45,8 @@ struct sensor_time_stats {
 struct sensor_stats stats[32][NUM_GEN2_LIGHTHOUSES][SENSORS_PER_OBJECT][2] = {0};
 struct sensor_time_stats time_stats[32][NUM_GEN2_LIGHTHOUSES][SENSORS_PER_OBJECT] = {0};
 
+struct sensor_time_stats imu_time_stats[32];
+
 void process_reading(int i, int lh, int sensor, int axis, FLT angle) {
 	struct sensor_stats *s = &stats[i][lh][sensor][axis];
 
@@ -169,7 +171,7 @@ static void redraw(SurviveContext *ctx) {
 		FLT calc_imu_var[6];
 		variance_measure_calc(&imu_variance, calc_imu_var);
 
-		printf("IMU: ");
+		printf("IMU: %5.1fhz ", imu_time_stats[i].hz);
 		for (int i = 0; i < 3; i++)
 			print_small(so->activations.accel[i]);
 		for (int i = 0; i < 3; i++)
@@ -238,7 +240,7 @@ static void redraw(SurviveContext *ctx) {
 		}
 	}
 
-	if (window_cols != -1) {
+	if (window_cols != -1 && false) {
 		gotoxy(0, window_rows - 10 - 1);
 		printf("=== Log ===\n");
 		for (int i = 0; i < 10; i++) {
@@ -260,6 +262,26 @@ void light_fn(SurviveObject *so, int sensor_id, int acode, int timeinsweep, surv
 
 void imu_fn(SurviveObject *so, int mode, FLT *accelgyro, survive_timecode timecode, int id) {
 	variance_measure_add(&imu_variance, accelgyro);
+
+	size_t idx = 0;
+	for (idx = 0; idx < so->ctx->objs_ct && so->ctx->objs[idx] != so; idx++)
+		;
+
+	imu_time_stats[idx].hit_count++;
+
+	double time_since_start =
+		survive_timecode_difference(timecode, imu_time_stats[idx].hz_start) / (double)so->timebase_hz;
+	struct SurviveContext *ctx = so->ctx;
+
+	imu_time_stats[idx].hz_count++;
+	if (time_since_start > 3. || imu_time_stats[idx].hz_start == 0) {
+		if (imu_time_stats[idx].hz_start != 0)
+			imu_time_stats[idx].hz = imu_time_stats[idx].hz_count / time_since_start;
+		imu_time_stats[idx].hz_count = 0;
+		imu_time_stats[idx].hz_start = timecode;
+		variance_measure_reset(&imu_variance);
+	}
+
 	survive_default_imu_process(so, mode, accelgyro, timecode, id);
 }
 

@@ -38,6 +38,8 @@ typedef struct SurviveSensorActivations_s {
 	// Valid only for Gen1
 	survive_timecode lengths[SENSORS_PER_OBJECT][NUM_GEN1_LIGHTHOUSES][2]; // Timecode per axis in ticks
 
+	survive_long_timecode hits[SENSORS_PER_OBJECT][NUM_GEN2_LIGHTHOUSES][2];
+
 	size_t imu_init_cnt;
 	survive_long_timecode last_imu;
 	survive_long_timecode last_light;

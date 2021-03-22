@@ -179,10 +179,20 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 
 	iface->actual_len = transfer->actual_length;
 
-	uint64_t cb_start = OGGetAbsoluteTimeUS();
-	uint64_t submit_cb_time = cb_start - iface->last_submit_time;
+	transfer->buffer = iface->swap_buffer[iface->swap_buffer_idx++ % 2];
+
+	uint64_t submit_cb_time = OGGetAbsoluteTimeUS() - iface->last_submit_time;
+
+	iface->last_submit_time = OGGetAbsoluteTimeUS();
+	if (libusb_submit_transfer(transfer)) {
+		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Error resubmitting transfer for %s", iface->hname);
+	}
+
+	iface->buffer = iface->swap_buffer[iface->swap_buffer_idx % 2];
+
 	if (iface->max_submit_time < submit_cb_time)
 		iface->max_submit_time = submit_cb_time;
+	uint64_t cb_start = OGGetAbsoluteTimeUS();
 	iface->sum_submit_cb_time += submit_cb_time;
 	iface->cb(time, iface);
 	uint64_t cb_end = OGGetAbsoluteTimeUS();
@@ -194,11 +204,6 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 
 	iface->sum_cb_time += cb_time;
 	iface->packet_count++;
-
-	iface->last_submit_time = cb_end;
-	if (libusb_submit_transfer(transfer)) {
-		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Error resubmitting transfer for %s", iface->hname);
-	}
 }
 
 static inline void survive_close_usb_device(struct SurviveUSBInfo *usbInfo) {

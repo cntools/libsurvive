@@ -38,7 +38,7 @@ typedef struct SurviveKalmanTracker {
 	FLT light_var;
 
 	FLT last_light_time, last_report_time, first_report_time;
-
+	FLT first_imu_time, last_imu_time;
 	FLT min_report_time;
 
 	bool model_gyro_bias;

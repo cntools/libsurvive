@@ -190,6 +190,7 @@ void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 	FLT *angle = &self->angles[lightData->sensor_id][lightData->lh][axis];
 	uint32_t *length = &self->lengths[lightData->sensor_id][lightData->lh][axis];
 
+	self->hits[lightData->sensor_id][lightData->lh][axis]++;
 	if (*length == 0 || fabs(*angle - lightData->angle) > moveThresholdAng) {
 		survive_long_timecode long_timecode = lightData->hdr.timecode;
 		// assert(long_timecode > self->last_movement);

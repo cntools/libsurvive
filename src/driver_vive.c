@@ -618,7 +618,8 @@ static int AttachInterface(SurviveViveData *sv, struct SurviveUSBInfo *usbObject
 		return 4;
 	}
 
-	libusb_fill_interrupt_transfer(tx, devh, endpoint_num, iface->buffer, INTBUFFSIZE, handle_transfer, iface, 0);
+	libusb_fill_interrupt_transfer(tx, devh, endpoint_num, iface->swap_buffer[0], INTBUFFSIZE, handle_transfer, iface,
+								   0);
 
 	iface->last_submit_time = OGGetAbsoluteTimeUS();
 	int rc = libusb_submit_transfer(tx);
@@ -828,6 +829,7 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 					codename = iface->assoc_obj->codename;
 
 				total_packets += iface->packet_count;
+
 				FLT avg_cb_time = iface->sum_cb_time / (FLT)(iface->packet_count + .0001) / 1000.;
 				FLT avg_cb_submit_latency = iface->sum_submit_cb_time / (FLT)(iface->packet_count + .0001) / 1000.;
 
