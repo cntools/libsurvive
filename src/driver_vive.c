@@ -841,7 +841,7 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 						survive_colorize(codename), survive_colorize(iface->hname), iface->packet_count,
 						iface->packet_count / time_diff, avg_cb_time, avg_cb_submit_latency, iface->max_cb_time / 1000.,
 						iface->max_submit_time / 1000., iface->cb_time_violation,
-						iface->cb_time_violation / (FLT)(iface->packet_count + .0001));
+						100. * iface->cb_time_violation / (FLT)(iface->packet_count + .0001));
 				iface->max_cb_time = iface->max_submit_time = iface->sum_cb_time = iface->sum_submit_cb_time = 0;
 				iface->cb_time_violation = 0;
 				iface->packet_count = 0;
