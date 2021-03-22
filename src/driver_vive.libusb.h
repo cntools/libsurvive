@@ -183,7 +183,7 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 	iface->sum_submit_cb_time += cb_start - iface->last_submit_time;
 	iface->cb(time, iface);
 	uint64_t cb_end = OGGetAbsoluteTimeUS();
-	iface->sum_submit_cb_time += cb_end - cb_start;
+	iface->sum_cb_time += cb_end - cb_start;
 	iface->packet_count++;
 
 	iface->last_submit_time = cb_end;
