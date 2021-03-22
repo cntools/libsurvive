@@ -620,6 +620,7 @@ static int AttachInterface(SurviveViveData *sv, struct SurviveUSBInfo *usbObject
 
 	libusb_fill_interrupt_transfer(tx, devh, endpoint_num, iface->buffer, INTBUFFSIZE, handle_transfer, iface, 0);
 
+	iface->last_submit_time = OGGetAbsoluteTimeUS();
 	int rc = libusb_submit_transfer(tx);
 	if (rc) {
 		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Error: Could not submit transfer for %s 0x%02x (Code %d, %s)", hname,
@@ -830,12 +831,19 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 				FLT avg_cb_time = iface->sum_cb_time / (FLT)(iface->packet_count + .0001) / 1000.;
 				FLT avg_cb_submit_latency = iface->sum_submit_cb_time / (FLT)(iface->packet_count + .0001) / 1000.;
 
-				SV_INFO("Iface %3s %-32s has %5zu packets (%8.2f hz) Avg CB Time: %8.3fms Avg CB Latency: %8.3fms Max "
-						"CB Time: %8.3fms Max CB Latency: %8.3fms",
+				if (iface->time_constraint == 0 && iface->packet_count) {
+					iface->time_constraint = 1000. * avg_cb_submit_latency;
+					SV_INFO("Iface %3s %-32s has time constraint of %5.2fms", survive_colorize(codename),
+							survive_colorize(iface->hname), avg_cb_submit_latency);
+				}
+				SV_INFO("Iface %3s %-32s has %5zu packets (%8.2f hz) Avg CB Time: %5.2fms Avg CB Latency: %5.2fms Max "
+						"CB Time: %5.2fms Max CB Latency: %5.2fms Time Violations %4d (%7.5f%%)",
 						survive_colorize(codename), survive_colorize(iface->hname), iface->packet_count,
 						iface->packet_count / time_diff, avg_cb_time, avg_cb_submit_latency, iface->max_cb_time / 1000.,
-						iface->max_submit_time / 1000.);
+						iface->max_submit_time / 1000., iface->cb_time_violation,
+						iface->cb_time_violation / (FLT)(iface->packet_count + .0001));
 				iface->max_cb_time = iface->max_submit_time = iface->sum_cb_time = iface->sum_submit_cb_time = 0;
+				iface->cb_time_violation = 0;
 				iface->packet_count = 0;
 			}
 		}

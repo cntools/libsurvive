@@ -189,6 +189,8 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 	uint64_t cb_time = cb_end - cb_start;
 	if (iface->max_cb_time < cb_time)
 		iface->max_cb_time = cb_time;
+	if (cb_time > iface->time_constraint)
+		iface->cb_time_violation++;
 
 	iface->sum_cb_time += cb_time;
 	iface->packet_count++;
