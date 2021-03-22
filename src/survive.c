@@ -1199,6 +1199,9 @@ uint32_t survive_hash(const uint8_t *data, size_t len) {
 }
 uint32_t survive_hash_str(const char *data) { return survive_hash((uint8_t *)data, strlen(data)); }
 SURVIVE_EXPORT const char *survive_colorize(const char *str) {
+#ifdef _WIN32
+	return str;
+#else
 	static __thread int next_buffer = 0;
 	static __thread char color_buffers[8][128] = {0};
 
@@ -1210,4 +1213,5 @@ SURVIVE_EXPORT const char *survive_colorize(const char *str) {
 	size_t written_length =
 		snprintf(color_buffer, sizeof(color_buffers[0]), SURVIVE_COLORIZED_FORMAT("%s"), SURVIVE_COLORIZED_STR(str));
 	return color_buffer;
+#endif
 }
