@@ -808,17 +808,13 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 	SurviveViveData *sv = v;
 	sv->read_count++;
 
-	static double start = 0;
-	static int seconds = 0;
-	if(start == 0)
-		start = OGGetAbsoluteTime();
+	static double last_print = 0;
+	double now = survive_run_time(ctx);
 
-	double now = OGGetAbsoluteTime();
-	int now_seconds = (int)(now - start);
-	bool print = sv->seconds_per_hz_output > 0 && now_seconds > (seconds + sv->seconds_per_hz_output);
-	
+	FLT time_diff = now - last_print;
+	bool print = sv->seconds_per_hz_output > 0 && time_diff > sv->seconds_per_hz_output;
+
 	if (print) {
-		seconds = now_seconds;
 		size_t total_packets = 0;
 		for (int i = 0; i < sv->udev_cnt; i++) {
 			const char *codename = sv->udev[i].so->codename;
@@ -831,18 +827,22 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 					codename = iface->assoc_obj->codename;
 
 				total_packets += iface->packet_count;
-				FLT avg_cb_time = iface->sum_cb_time / (FLT)(iface->packet_count) / 1000.;
-				FLT avg_cb_submit_latency = iface->sum_submit_cb_time / (FLT)(iface->packet_count) / 1000.;
-				iface->sum_cb_time = iface->sum_submit_cb_time = 0;
-				SV_INFO("Iface %3s %-32s has %5zu packets (%8.2f hz) Avg CB Time: %8.3fms Avg CB Latency: %8.3fms",
+				FLT avg_cb_time = iface->sum_cb_time / (FLT)(iface->packet_count + .0001) / 1000.;
+				FLT avg_cb_submit_latency = iface->sum_submit_cb_time / (FLT)(iface->packet_count + .0001) / 1000.;
+
+				SV_INFO("Iface %3s %-32s has %5zu packets (%8.2f hz) Avg CB Time: %8.3fms Avg CB Latency: %8.3fms Max "
+						"CB Time: %8.3fms Max CB Latency: %8.3fms",
 						survive_colorize(codename), survive_colorize(iface->hname), iface->packet_count,
-						iface->packet_count / (now - start), avg_cb_time, avg_cb_submit_latency);
+						iface->packet_count / time_diff, avg_cb_time, avg_cb_submit_latency, iface->max_cb_time / 1000.,
+						iface->max_submit_time / 1000.);
+				iface->max_cb_time = iface->max_submit_time = iface->sum_cb_time = iface->sum_submit_cb_time = 0;
 				iface->packet_count = 0;
 			}
 		}
 
-		SV_INFO("Total                  %4zu packets (%6.2f hz)", total_packets, total_packets / (now - start));
-		start = now;
+		SV_INFO("Total                  %4zu packets (%6.2f hz) at %7.3fs", total_packets, total_packets / time_diff,
+				now);
+		last_print = now;
 	}
 
 	for (int i = 0; i < sv->udev_cnt; i++) {
