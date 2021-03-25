@@ -79,9 +79,15 @@ SURVIVE_EXPORT void SurviveSensorActivations_add_imu(SurviveSensorActivations *s
  * Returns true iff the given sensor and lighthouse at given axis were seen at most `tolerance` ticks before the given
  * `timecode_now`.
  */
-SURVIVE_EXPORT bool SurviveSensorActivations_isReadingValid(const SurviveSensorActivations *self,
-															survive_long_timecode tolerance, uint32_t sensor_idx,
-															int lh, int axis);
+SURVIVE_EXPORT bool SurviveSensorActivations_is_reading_valid(const SurviveSensorActivations *self,
+															  survive_long_timecode tolerance, uint32_t sensor_idx,
+															  int lh, int axis);
+
+SURVIVE_EXPORT survive_timecode SurviveSensorActivations_time_since_last_reading(const SurviveSensorActivations *self,
+																				 uint32_t sensor_idx, int lh, int axis);
+
+SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_last_reading(const SurviveSensorActivations *self,
+																		   uint32_t sensor_idx, int lh, int axis);
 
 /**
  * Returns true iff both angles for the given sensor and lighthouse were seen at most `tolerance` ticks before the given

@@ -52,7 +52,7 @@ static size_t add_scenes(struct global_scene_solver *gss, SurviveObject *so) {
 		for (uint8_t sensor = 0; sensor < so->sensor_ct; sensor++) {
 			for (uint8_t axis = 0; axis < 2; axis++) {
 				bool isReadingValid =
-					SurviveSensorActivations_isReadingValid(activations, sensor_time_window, sensor, lh, axis);
+					SurviveSensorActivations_is_reading_valid(activations, sensor_time_window, sensor, lh, axis);
 
 				if (isReadingValid) {
 					const FLT *a = activations->angles[sensor][lh];

@@ -832,7 +832,7 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 	survive_kalman_tracker_config(tracker, (survive_attach_detach_fn)survive_detach_config);
 }
 
-void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *tracker) {
+void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *tracker, bool allowLHReset) {
 	SurviveContext *ctx = tracker->so->ctx;
 	SV_WARN("Too many failures for %s; reseting calibration %e (%7.4f stationary)", tracker->so->codename,
 			tracker->light_residuals_all,
@@ -845,8 +845,8 @@ void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *tracker) {
 		memset(&tracker->so->OutPose, 0, sizeof(SurvivePose));
 	}
 
-	if(!tracker->use_error_for_lh_pos)
-        return;
+	if (!allowLHReset)
+		return;
 	
 	bool objectsAreValid = false;
 	for (int i = 0; i < ctx->objs_ct && !objectsAreValid; i++) {
@@ -871,7 +871,7 @@ bool survive_kalman_tracker_check_valid(SurviveKalmanTracker *tracker) {
 	}
 
 	if (!isValid) {
-		survive_kalman_tracker_lost_tracking(tracker);
+		survive_kalman_tracker_lost_tracking(tracker, tracker->use_error_for_lh_pos);
 		return false;
 	}
 	return true;

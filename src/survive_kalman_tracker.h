@@ -104,7 +104,7 @@ SURVIVE_EXPORT void survive_kalman_tracker_integrate_light(SurviveKalmanTracker 
 SURVIVE_EXPORT void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTracker *tracker,
 																 const SurvivePose *pose, const FLT *variance);
 SURVIVE_EXPORT void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tracker);
-SURVIVE_EXPORT void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *tracker);
+SURVIVE_EXPORT void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *tracker, bool allowLHReset);
 #ifdef __cplusplus
 };
 #endif
