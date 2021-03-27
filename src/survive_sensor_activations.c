@@ -24,10 +24,10 @@ survive_long_timecode SurviveSensorActivations_last_reading(const SurviveSensorA
 															int lh, int axis) {
 	const survive_long_timecode *data_timecode = self->timecode[sensor_idx][lh];
 	if (self->lh_gen != 1 && lh < 2 && self->lengths[sensor_idx][lh][axis] == 0)
-		return UINT32_MAX;
+		return UINT64_MAX;
 
 	if (isnan(self->angles[sensor_idx][lh][axis]))
-		return UINT32_MAX;
+		return UINT64_MAX;
 
 	return data_timecode[axis];
 }
