@@ -8,11 +8,12 @@ static inline int update_feature_report_async(USBHANDLE dev, uint16_t iface, uin
 	errno = 0;
 	uint8_t buffer[255];
 	memcpy(buffer, data, datalen);
+	errno = 0;
 	int r = hid_send_feature_report(dev->interfaces[iface], buffer, sizeof(buffer));
-	assert(errno == 0);
 	if (r == -1) {
-		wprintf(L"async: (%p) %d (%d) [%d] %S\n", dev, r, datalen, data[0], hid_error(dev->interfaces[iface]));
-		return -1; 
+		// fprintf(stderr,"async: (%p) %d (%d) [%d] %S errno %d\n", dev, r, datalen, data[0],
+		// hid_error(dev->interfaces[iface]), errno);
+		return -1;
 	}
 	return datalen;
 }
@@ -185,8 +186,7 @@ static int survive_get_config(char **config, SurviveViveData *sv, struct Survive
 	cfgbuff[0] = VIVE_REPORT_CONFIG_READMODE;
 	if ((ret = get_feature_report_timeout_locked(ctx, dev, iface, cfgbuff, sizeof(cfgbuff))) < 0) {
 		if (usbInfo->device_info->type == USB_DEV_WATCHMAN1) {
-			SV_WARN("%s couldn't configure; probably turned off %d %s", usbInfo->so->codename, ret,
-					survive_usb_error_name(ret));
+
 		} else {
 			SV_WARN("Could not get survive config data for device %s:%d", usbInfo->device_info->name, iface);
 		}
@@ -279,14 +279,40 @@ static int LoadConfig(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int i
 	return -1;
 }
 
-static int survive_start_get_config(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int iface) {
+static void send_devices_magics(SurviveContext *ctx, struct SurviveUSBInfo *usbInfo) {
+	for (const struct Magic_t *magic = usbInfo->device_info->magics; magic->magic; magic++) {
+		if (magic->code == 1) {
+			usbInfo->lightcapMode = LightcapMode_raw0;
+			uint8_t *data = alloca(sizeof(uint8_t) * magic->length);
+			memcpy(data, magic->magic, magic->length);
+
+			survive_release_ctx_lock(ctx);
+			int r = update_feature_report(usbInfo->handle, 0, data, magic->length);
+			survive_get_ctx_lock(ctx);
+
+			if (r != magic->length && usbInfo->so)
+				SV_WARN("Could not turn on %s(%d) (%d/%zu - %s)", usbInfo->so->codename, usbInfo->device_info->type, r,
+						magic->length, survive_usb_error_name(r));
+		}
+	}
+}
+static int survive_config_submit(struct SurviveUSBInfo *usbInfo, int iface) {
 	double time = OGRelativeTime();
+	SurviveViveData *sv = usbInfo->viveData;
 	SurviveContext* ctx = sv->ctx;
 	int err = LoadConfig(sv, usbInfo, 0);
 	double diff_time = OGRelativeTime() - time;
 
 	if (err == 0) {
 		send_devices_magics(ctx, usbInfo);
+		usbInfo->nextCfgSubmitTime = 0;
+	} else {
+		usbInfo->nextCfgSubmitTime = OGGetAbsoluteTime() + .1;
 	}
 	return err;
+}
+
+static int survive_start_get_config(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int iface) {
+	usbInfo->nextCfgSubmitTime = OGGetAbsoluteTime();
+	return 0;
 }

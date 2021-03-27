@@ -291,6 +291,7 @@ static inline bool find_correct_config_file(struct SurviveContext *ctx, const ch
 	return false;
 }
 
+static bool disable_colorization = false;
 SurviveContext *survive_init_internal(int argc, char *const *argv, void *userData, log_process_func log_func) {
 	int i;
 
@@ -403,6 +404,9 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 	}
 
 	const char *log_file = survive_configs(ctx, "log", SC_GET, 0);
+	int record_to_stdout = survive_configi(ctx, "record-stdout", SC_GET, 0);
+	if (log_file || record_to_stdout)
+		disable_colorization = true;
 	ctx->log_target = log_file ? fopen(log_file, "w") : stdout;
 
 	bool user_set_configfile = survive_config_is_set(ctx, "configfile");
@@ -691,7 +695,7 @@ datalog_process_func survive_default_datalog_process = 0;
 
 void survive_default_new_object_process(SurviveObject *so) {}
 int survive_add_object(SurviveContext *ctx, SurviveObject *obj) {
-	SV_INFO("Adding tracked object %s from %s", obj->codename, obj->drivername);
+	SV_INFO("Adding tracked object %s from %s", survive_colorize(obj->codename), survive_colorize(obj->drivername));
 	int oldct = ctx->objs_ct;
 	ctx->objs = SV_REALLOC(ctx->objs, sizeof(SurviveObject *) * (oldct + 1));
 	ctx->objs[oldct] = obj;
@@ -1199,6 +1203,9 @@ uint32_t survive_hash(const uint8_t *data, size_t len) {
 }
 uint32_t survive_hash_str(const char *data) { return survive_hash((uint8_t *)data, strlen(data)); }
 SURVIVE_EXPORT const char *survive_colorize(const char *str) {
+	if (disable_colorization) {
+		return str;
+	}
 #ifdef _WIN32
 	return str;
 #else

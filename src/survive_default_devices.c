@@ -446,8 +446,8 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 		// scale3d(so->gyro_scale, so->gyro_scale, 3.14159 / 1800. / 1.8);
 	}
 
-	SV_VERBOSE(50, "Read config for %s", so->codename);
-    jsmn_free(&p);
+	SV_VERBOSE(50, "Read config for %s", survive_colorize(so->codename));
+	jsmn_free(&p);
 	return 0;
 }
 

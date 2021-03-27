@@ -875,7 +875,7 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 	SurviveContext *ctx = tracker->so->ctx;
 	if (tracker->min_report_time < 0) {
 		tracker->min_report_time = 1. / tracker->so->imu_freq;
-		SV_VERBOSE(10, "Setting min report time for %s to %f ms", tracker->so->codename,
+		SV_VERBOSE(10, "Setting min report time for %s to %f ms", survive_colorize(tracker->so->codename),
 				   tracker->min_report_time * 1000.);
 	}
 

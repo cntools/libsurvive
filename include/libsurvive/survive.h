@@ -580,7 +580,7 @@ static inline void survive_notify_gen2(struct SurviveObject *so, const char *msg
 
 	if (so->ctx->lh_version != 1) {
 		struct SurviveContext *ctx = so->ctx;
-		SV_VERBOSE(100, "Gen2 reason: %s %s", so->codename, msg);
+		SV_VERBOSE(100, "Gen2 reason: %s %s", survive_colorize(so->codename), msg);
 		so->ctx->gen_detectedproc(so, 1);
 	}
 }
@@ -592,7 +592,7 @@ static inline void survive_notify_gen1(struct SurviveObject *so, const char *msg
 
 	if (so->ctx->lh_version != 0) {
 		struct SurviveContext *ctx = so->ctx;
-		SV_VERBOSE(100, "Gen1 reason: %s %s", so->codename, msg);
+		SV_VERBOSE(100, "Gen1 reason: %s %s", survive_colorize(so->codename), msg);
 		so->ctx->gen_detectedproc(so, 0);
 	}
 }

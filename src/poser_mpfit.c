@@ -331,7 +331,7 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 			if (canPossiblySolveLHS) {
 				if (has_data_for_lh(meas_for_lhs_axis, lh)) {
 					SV_INFO("Attempting to solve for %d with %lu/%lu meas from device %s", lh,
-							meas_for_lhs_axis[2 * lh], meas_for_lhs_axis[2 * lh + 1], so->codename);
+							meas_for_lhs_axis[2 * lh], meas_for_lhs_axis[2 * lh + 1], survive_colorize(so->codename));
 					survive_optimizer_setup_camera(mpfitctx, lh, &lhs[lh], false, d->use_jacobian_function_lh);
 				} else {
 					skipped_lh_cnt++;
@@ -343,7 +343,7 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 			}
 		} else if (canPossiblySolveLHS) {
 			SV_INFO("Assuming %d with %lu/%lu meas from device %s as given", lh, meas_for_lhs_axis[2 * lh],
-					meas_for_lhs_axis[2 * lh + 1], so->codename);
+					meas_for_lhs_axis[2 * lh + 1], survive_colorize(so->codename));
 		}
 	}
 
@@ -409,8 +409,8 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 
 	bool status_failure = res <= 0;
 	if (status_failure) {
-		SV_WARN("MPFIT status failure %s %f/%f (%d measurements, %d)", so->codename, result->orignorm, result->bestnorm,
-				(int)meas_size, res);
+		SV_WARN("MPFIT status failure %s %f/%f (%d measurements, %d)", survive_colorize(so->codename), result->orignorm,
+				result->bestnorm, (int)meas_size, res);
 
 		general_optimizer_data_record_failure(&d->opt);
 		return -1;
@@ -445,8 +445,8 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 		rtn = result->bestnorm;
 
 		SV_VERBOSE(110, "MPFIT success %s %f7.5s %f/%10.10f (%d measurements, %d result, %d lighthouses, %d axis)",
-				   so->codename, survive_run_time(ctx), result->orignorm, result->bestnorm, (int)meas_size, res,
-				   get_lh_count(meas_for_lhs_axis), get_axis_count(meas_for_lhs_axis));
+				   survive_colorize(so->codename), survive_run_time(ctx), result->orignorm, result->bestnorm,
+				   (int)meas_size, res, get_lh_count(meas_for_lhs_axis), get_axis_count(meas_for_lhs_axis));
 
 	} else {
 		SV_VERBOSE(100,
@@ -454,9 +454,9 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 				   "canSolveLHs, %d "
 				   "since success, "
 				   "run #%d)",
-				   so->codename, survive_run_time(ctx), result->orignorm, result->bestnorm, (int)meas_size, res,
-				   get_lh_count(meas_for_lhs_axis), get_axis_count(meas_for_lhs_axis), canPossiblySolveLHS,
-				   d->opt.failures_since_success, d->stats.total_runs);
+				   survive_colorize(so->codename), survive_run_time(ctx), result->orignorm, result->bestnorm,
+				   (int)meas_size, res, get_lh_count(meas_for_lhs_axis), get_axis_count(meas_for_lhs_axis),
+				   canPossiblySolveLHS, d->opt.failures_since_success, d->stats.total_runs);
 
 		if (d->opt.failures_since_success > 10 && d->opt.stats.successes < 10 &&
 			(SurviveSensorActivations_stationary_time(&so->activations) > (48000000 / 10))) {
@@ -629,7 +629,7 @@ void global_pose(SurviveObject *so, uint32_t lighthouse, const SurvivePose *pose
 	gd->updated |= true;
 
 	SurviveContext *ctx = so->ctx;
-	SV_VERBOSE(10, "Initial pose (%s) " SurvivePose_format, so->codename, SURVIVE_POSE_EXPAND(*pose));
+	SV_VERBOSE(10, "Initial pose (%s) " SurvivePose_format, survive_colorize(so->codename), SURVIVE_POSE_EXPAND(*pose));
 }
 void global_lh_pose(SurviveObject *so, uint8_t lighthouse, SurvivePose *lighthouse_pose, SurvivePose *object_pose,
 					void *user) {
@@ -715,7 +715,8 @@ bool solve_global_scene(struct SurviveContext *ctx, PoserDataGlobalScenes *gss) 
 		}
 	}
 
-	SV_VERBOSE(10, "Best object for fixing was %s (%d)", gss->scenes[bestObjForCal].so->codename, bestObjForCal);
+	SV_VERBOSE(10, "Best object for fixing was %s (%d)", survive_colorize(gss->scenes[bestObjForCal].so->codename),
+			   bestObjForCal);
 
 	int start = bestObjForCal * 7;
 	if (worldEstablishedLh != -1)

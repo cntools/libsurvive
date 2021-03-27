@@ -50,6 +50,7 @@ struct DeviceInfo {
 	} endpoints[MAX_INTERFACES_PER_DEVICE];
 
 	struct Magic_t {
+		const char *name;
 		bool code;
 		const uint8_t *magic;
 		const size_t length;
@@ -213,19 +214,19 @@ static uint8_t vive_magic_protocol_super_magic[] = {VIVE_REPORT_COMMAND,
 													0xb1};
 
 #define MAGIC_CTOR(ison, buffer)                                                                                       \
-	{ .code = ison, .magic = buffer, .length = sizeof(buffer) }
+	{ .name = #buffer, .code = ison, .magic = buffer, .length = sizeof(buffer) }
 const struct DeviceInfo KnownDeviceTypes[] = {
 	{.vid = 0x0bb4,
 	 .pid = 0x2c87,
 	 .type = USB_DEV_HMD,
-	 .name = "HMD",
+	 .name = "BRD",
 	 .codename = "",
 	 .endpoints = {{.num = 0x81, .name = "Mainboard", .type = USB_IF_HMD_HEADSET_INFO}},
 	 .magics = {MAGIC_CTOR(true, vive_magic_power_on), MAGIC_CTOR(false, vive_magic_power_off)}},
 	{.vid = 0x0bb4,
 	 .pid = 0x030e,
 	 .type = USB_DEV_HMD,
-	 .name = "HMD",
+	 .name = "BRD",
 	 .codename = "",
 	 .endpoints = {{.num = 0x81, .name = "Mainboard Pro", .type = USB_IF_HMD_HEADSET_INFO}},
 	 .magics = {MAGIC_CTOR(true, vive_magic_power_on), MAGIC_CTOR(false, vive_magic_power_off)}},
@@ -388,7 +389,8 @@ struct SurviveUSBInfo {
 	size_t timeWithoutFlag;
 	size_t packetsSeenWaitingForV2;
 
-	bool tryConfigLoad;
+	FLT nextCfgSubmitTime;
+	void *cfg_user;
 };
 
 struct SurviveViveData {
@@ -408,7 +410,6 @@ struct SurviveViveData {
 };
 
 static void parse_tracker_version_info(SurviveObject *so, uint8_t *data, size_t size);
-static void send_devices_magics(SurviveContext *ctx, struct SurviveUSBInfo *usbInfo);
 
 #ifdef HIDAPI
 #include "driver_vive.hidapi.h"
@@ -573,7 +574,6 @@ void survive_data_cb(uint64_t time_received_us, SurviveUSBInterface *si) {
 // USB Subsystem
 static int survive_usb_init(SurviveViveData *sv);
 int survive_usb_poll(SurviveContext *ctx);
-static int survive_vive_send_magic(SurviveContext *ctx, void *drv, int magic_code, void *data, int datalen);
 
 static int AttachInterface(SurviveViveData *sv, struct SurviveUSBInfo *usbObject, const struct Endpoint_t *endpoint,
 						   USBHANDLE devh, usb_callback cb) {
@@ -611,7 +611,8 @@ static int AttachInterface(SurviveViveData *sv, struct SurviveUSBInfo *usbObject
 #else
 	struct libusb_transfer *tx = iface->transfer = libusb_alloc_transfer(0);
 	// printf( "%p %d %p %p\n", iface, which_interface_am_i, tx, devh );
-	SV_VERBOSE(50, "Attaching %s(0x%x) for %s", hname, endpoint_num, assocobj ? assocobj->codename : "(unknown)");
+	SV_VERBOSE(50, "Attaching %s(0x%x) for %s", hname, endpoint_num,
+			   survive_colorize(assocobj ? assocobj->codename : "(unknown)"));
 
 	if (!iface->transfer) {
 		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Error: failed on libusb_alloc_transfer for %s", hname);
@@ -652,7 +653,6 @@ int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d) {
 				continue;
 			}
 
-			SV_VERBOSE(10, "%d %d %d %d", info->type, idVendor, idProduct, class_id);
 			if (info->type == USB_DEV_HMD) {
 				SV_VERBOSE(10, "Mainboard class %d", class_id);
 				if (sv->hmd_mainboard_index != -1 || class_id != 0) {
@@ -682,7 +682,7 @@ int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d) {
 
 			int *cnt = (sv->cnt_per_device_type + (usbInfo->device_info - KnownDeviceTypes));
 
-			SV_VERBOSE(50, "Successfully enumerated %s %04x:%04x", info->name, idVendor, idProduct);
+			SV_VERBOSE(50, "Successfully enumerated %s %04x:%04x", survive_colorize(info->name), idVendor, idProduct);
 
 			if (usbInfo->device_info->codename[0] != 0) {
 				char codename[4] = {0};
@@ -695,7 +695,7 @@ int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d) {
 				usbInfo->so = so;
 			}
 
-			usbInfo->tryConfigLoad = info->type != USB_DEV_HMD;
+			survive_start_get_config(sv, usbInfo, 0);
 
 			// There should only be one HMD, tie the mainboard interface to the surviveobject
 			if (info->type == USB_DEV_HMD_IMU_LH || info->type == USB_DEV_HMD) {
@@ -744,37 +744,9 @@ int survive_usb_init(SurviveViveData *sv) {
 
 	SV_INFO("All enumerated devices attached.");
 
-	survive_vive_send_magic(ctx, sv, 1, 0, 0);
+	// survive_vive_send_magic(ctx, sv, 1, 0, 0);
 
 	// libUSB initialized.  Continue.
-	return 0;
-}
-
-int survive_vive_send_magic(SurviveContext *ctx, void *drv, int magic_code, void *data, int datalen) {
-	int r;
-	SurviveViveData *sv = drv;
-
-	for (int i = 0; i < sv->udev_cnt; i++) {
-		struct SurviveUSBInfo *usbInfo = &sv->udev[i];
-		usbInfo->lightcapMode = LightcapMode_raw0;
-		for (const struct Magic_t *magic = usbInfo->device_info->magics; magic->magic; magic++) {
-			if (magic->code == magic_code) {
-				uint8_t *data = malloc(sizeof(uint8_t) * magic->length + 1);
-				memcpy(data, magic->magic, magic->length);
-				survive_release_ctx_lock(ctx);
-				r = update_feature_report(usbInfo->handle, 0, data, magic->length);
-				survive_get_ctx_lock(ctx);
-
-				if (r != magic->length && usbInfo->so)
-					SV_WARN("Could not turn on %s(%d) (%d/%zu - %s)", usbInfo->so->codename, usbInfo->device_info->type,
-							r, magic->length, survive_usb_error_name(r));
-
-				free(data);
-			}
-		}
-	}
-
-	SV_INFO("Powered unit on.");
 	return 0;
 }
 
@@ -788,22 +760,7 @@ void survive_vive_usb_close(SurviveViveData *sv) {
 }
 
 static int survive_start_get_config(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int iface);
-static void send_devices_magics(SurviveContext *ctx, struct SurviveUSBInfo *usbInfo) {
-	for (const struct Magic_t *magic = usbInfo->device_info->magics; magic->magic; magic++) {
-		if (magic->code == 1) {
-			uint8_t *data = alloca(sizeof(uint8_t) * magic->length);
-			memcpy(data, magic->magic, magic->length);
 
-			survive_release_ctx_lock(ctx);
-			int r = update_feature_report(usbInfo->handle, 0, data, magic->length);
-			survive_get_ctx_lock(ctx);
-
-			if (r != magic->length && usbInfo->so)
-			SV_WARN("Could not turn on %s(%d) (%d/%zu - %s)", usbInfo->so->codename,
-					usbInfo->device_info->type, r, magic->length, survive_usb_error_name(r));
-		}
-	}
-}
 int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 	SurviveViveData *sv = v;
 	sv->read_count++;
@@ -813,7 +770,7 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 	if(start == 0)
 		start = OGGetAbsoluteTime();
 
-	double now = OGGetAbsoluteTime();
+	FLT now = OGGetAbsoluteTime();
 	int now_seconds = (int)(now - start);
 	bool print = sv->seconds_per_hz_output > 0 && now_seconds > (seconds + sv->seconds_per_hz_output);
 	
@@ -831,8 +788,8 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 					codename = iface->assoc_obj->codename;
 
 				total_packets += iface->packet_count;
-				SV_INFO("Iface %s %8s has %4zu packets (%6.2f hz)", codename,
-					iface->hname, iface->packet_count, iface->packet_count / (now - start));
+				SV_INFO("Iface %s %-32s has %4zu packets (%6.2f hz)", survive_colorize(codename),
+						survive_colorize(iface->hname), iface->packet_count, iface->packet_count / (now - start));
 
 				iface->packet_count = 0;
 			}
@@ -845,7 +802,6 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 	for (int i = 0; i < sv->udev_cnt; i++) {
 		struct SurviveUSBInfo *usbInfo = &sv->udev[i];
 
-		FLT now = OGRelativeTime();
 		if ((usbInfo->device_info->pid == 0x2102 || usbInfo->device_info->pid == 0x2101) && usbInfo->so->conf == 0 &&
 			sv->requestPairing && (sv->lastPairTime + 1) < now && now > 3) {
 			survive_release_ctx_lock(ctx);
@@ -855,9 +811,8 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 			sv->lastPairTime = now;
 		}
 
-		if (usbInfo->tryConfigLoad) {
-			survive_start_get_config(sv, usbInfo, 0);
-			usbInfo->tryConfigLoad = 0;
+		if (usbInfo->nextCfgSubmitTime > 0 && usbInfo->nextCfgSubmitTime < now) {
+			survive_config_submit(usbInfo, 0);
 		}
 	}
 
@@ -2103,7 +2058,7 @@ static void handle_watchman_v2(SurviveObject *w, uint64_t time_in_us, uint16_t t
 	struct SurviveContext *ctx = w->ctx;
 	const uint8_t *originPayloadPtr = payloadPtr;
 	struct SurviveUSBInfo *driverInfo = w->driver;
-	if (driverInfo->tryConfigLoad) {
+	if (driverInfo->nextCfgSubmitTime > 0) {
 		return;
 	}
 
@@ -2559,7 +2514,7 @@ static inline uint32_t read_buffer32(uint8_t *readdata, int idx) {
 	return rtn;
 }
 
-static uint32_t earliest_working_revision(uint32_t hw_id) { return 1541806442; }
+static uint32_t earliest_working_revision(uint32_t hw_id) { return 1462663157; }
 
 static uint32_t latest_working_revision(uint32_t hw_id) { return 1597880106; }
 
@@ -2584,8 +2539,9 @@ static void parse_tracker_version_info(SurviveObject *so, uint8_t *data, size_t 
 #pragma pack(pop)
 	memcpy(&version_info, data, sizeof(version_info));
 	SV_INFO("Device %s has watchman FW version %u and FPGA version %u/%u/%u; named '%31s'. Hardware id 0x%08x",
-			so->codename, version_info.revision, version_info.fpga_major_version, version_info.fpga_minor_version,
-			version_info.fpga_patch_version, version_info.fw_name, version_info.hardware_id);
+			survive_colorize(so->codename), version_info.revision, version_info.fpga_major_version,
+			version_info.fpga_minor_version, version_info.fpga_patch_version, version_info.fw_name,
+			version_info.hardware_id);
 	uint32_t earliest_version = earliest_working_revision(version_info.hardware_id);
 	uint32_t latest_version = latest_working_revision(version_info.hardware_id);
 	if (earliest_version > version_info.revision) {

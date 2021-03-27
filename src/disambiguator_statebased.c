@@ -393,7 +393,7 @@ static enum LighthouseState find_relative_offset(Disambiguator_data_t *d, uint32
 	LightcapElement *re = d->sync_history + ri;
 	int acode = find_acode(re->length) & 0x5;
 
-	DEBUG_LOCK("Starting search... %s %d %d", d->so->codename, ri, acode);
+	DEBUG_LOCK("Starting search... %s %d %d", survive_colorize(d->so->codename), ri, acode);
 	for (enum LighthouseState guess = LS_UNKNOWN + 1; guess != LS_END; guess++) {
 		const LighthouseStateParameters *params = &LS_Params[guess];
 		// if (LSParam_acode(guess) == acode && !params->is_sweep) {
@@ -516,12 +516,12 @@ static enum LighthouseState SetState(Disambiguator_data_t *d, const LightcapElem
 
 	if (d->state == LS_UNKNOWN && new_state != LS_UNKNOWN) {
 		Disambiguator_data_t *best_d = get_best_latest_state(g);
-		DEBUG_TB("Setting state to %d for %s, best state is %d", new_state, d->so->codename,
+		DEBUG_TB("Setting state to %d for %s, best state is %d", new_state, survive_colorize(d->so->codename),
 				 best_d ? best_d->state : LS_UNKNOWN);
 	}
 
-	SV_VERBOSE(400, "%s Setting state %18s (%2d) -> %18s (%2d)", d->so->codename, LighthouseStateName(d->state),
-			   d->state, LighthouseStateName(new_state), new_state);
+	SV_VERBOSE(400, "%s Setting state %18s (%2d) -> %18s (%2d)", survive_colorize(d->so->codename),
+			   LighthouseStateName(d->state), d->state, LighthouseStateName(new_state), new_state);
 
 	d->state = new_state;
 	if (new_state == LS_UNKNOWN) {
@@ -567,19 +567,20 @@ static void RunACodeCapture(int target_acode, Disambiguator_data_t *d, const Lig
 		const int penalty = 3;
 		if (d->confidence < penalty) {
 			SetState(d, le, LS_UNKNOWN);
-			SV_WARN("Disambiguator got lost at %u; refinding state for %s", le->timestamp, d->so->codename);
+			SV_WARN("Disambiguator got lost at %u; refinding state for %s", le->timestamp,
+					survive_colorize(d->so->codename));
 			d->stats.confidence_resets++;
 		}
 		d->confidence -= penalty;
 		d->stats.sync_time_error++;
-		DEBUG_TB("Disambiguator missed %s; %d expected %d but got %d(%d) - %u %d", d->so->codename, error, target_acode,
-				 le->length, d->confidence, d->mod_offset[0], le->timestamp);
+		DEBUG_TB("Disambiguator missed %s; %d expected %d but got %d(%d) - %u %d", survive_colorize(d->so->codename),
+				 error, target_acode, le->length, d->confidence, d->mod_offset[0], le->timestamp);
 		return;
 	}
 
 	if (d->confidence < 50) {
-		DEBUG_TB("Disambiguator hit %s; %d expected %d but got %d(%d) - %u %u", d->so->codename, error, target_acode,
-				 le->length, d->confidence, d->mod_offset[0], le->timestamp);
+		DEBUG_TB("Disambiguator hit %s; %d expected %d but got %d(%d) - %u %u", survive_colorize(d->so->codename),
+				 error, target_acode, le->length, d->confidence, d->mod_offset[0], le->timestamp);
 	}
 
 	if (d->confidence < 100) {
@@ -608,7 +609,7 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 			uint32_t new_offset = SolveForMod_Offset(d, d->state, &lastSync);
 			int32_t delta = (new_offset - d->mod_offset[LS_Params[d->state].lh]) % end_of_mod;
 			if (abs(delta) > 100) {
-				SV_WARN("Drift in timecodes %s %u", d->so->codename, delta);
+				SV_WARN("Drift in timecodes %s %u", survive_colorize(d->so->codename), delta);
 			}
 			d->mod_offset[LS_Params[d->state].lh] = new_offset;
 			DEBUG_TB("New offset %d (%d)", new_offset, delta);
@@ -808,13 +809,13 @@ void DisambiguatorStateBased(SurviveObject *so, const LightcapElement *le) {
 			int le_offset = (le->timestamp - d->mod_offset[0]) % LSParam_offset_for_state(LS_END);
 			enum LighthouseState new_state1 = LighthouseState_findByOffset(le_offset, 0);
 			SetState(d, le, new_state);
-			SV_INFO("Locked onto state %d(%d, %d) at %u for %s", new_state, new_state1, le_offset, d->mod_offset[0],
-					d->so->codename);
+			SV_INFO("Locked onto state %2d(%2d, %8d) at %12u for %s", new_state, new_state1, le_offset,
+					d->mod_offset[0], survive_colorize(d->so->codename));
 		} else {
 			d->failures++;
 			if (d->failures > 1000) {
 				d->failures = 0;
-				SV_WARN("Could not find disambiguator state for %s", d->so->codename);
+				SV_WARN("Could not find disambiguator state for %s", survive_colorize(d->so->codename));
 			}
 		}
 	} else {
@@ -824,7 +825,7 @@ void DisambiguatorStateBased(SurviveObject *so, const LightcapElement *le) {
 			if (d->confidence < penalty) {
 				SetState(d, le, LS_UNKNOWN);
 				SV_WARN("Disambiguator got lost at %u (sync timeout %u); refinding state for %s", le->timestamp,
-						timediff, d->so->codename);
+						timediff, survive_colorize(d->so->codename));
 				return;
 			}
 
