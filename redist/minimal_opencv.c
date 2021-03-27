@@ -51,6 +51,8 @@ SURVIVE_LOCAL_ONLY void cvCopy(const CvMat *srcarr, CvMat *dstarr, const CvMat *
 #define LAPACKE_getri LAPACKE_sgetri
 #define LAPACKE_gelss LAPACKE_sgelss
 #define LAPACKE_gesvd LAPACKE_sgesvd
+#define LAPACKE_getri_work LAPACKE_sgetri_work
+#define LAPACKE_ge_trans LAPACKE_sge_trans
 #else
 #define cblas_gemm cblas_dgemm
 #define cblas_symm cblas_dsymm
@@ -60,6 +62,7 @@ SURVIVE_LOCAL_ONLY void cvCopy(const CvMat *srcarr, CvMat *dstarr, const CvMat *
 #define LAPACKE_gelss LAPACKE_dgelss
 #define LAPACKE_gesvd LAPACKE_dgesvd
 #define LAPACKE_getri_work LAPACKE_dgetri_work
+#define LAPACKE_ge_trans LAPACKE_dge_trans
 #endif
 
 // dst = alpha * src1 * src2 + beta * src3 or dst = alpha * src2 * src1 + beta * src3 where src1 is symm
@@ -334,7 +337,7 @@ SURVIVE_LOCAL_ONLY double cvInvert(const CvMat *srcarr, CvMat *dstarr, int metho
 		lapack_int lda_t = MAX(1, rows);
 
 		FLT *a_t = (FLT *)alloca(sizeof(FLT) * lda_t * MAX(1, cols));
-		LAPACKE_dge_trans(LAPACK_ROW_MAJOR, rows, cols, a, lda, a_t, lda_t);
+		LAPACKE_ge_trans(LAPACK_ROW_MAJOR, rows, cols, a, lda, a_t, lda_t);
 
 		inf = LAPACKE_getrf(LAPACK_COL_MAJOR, rows, cols, a_t, lda, ipiv);
 		assert(inf == 0);
@@ -342,7 +345,7 @@ SURVIVE_LOCAL_ONLY double cvInvert(const CvMat *srcarr, CvMat *dstarr, int metho
 		inf = LAPACKE_getri_static_alloc(LAPACK_COL_MAJOR, rows, a_t, lda, ipiv);
 		assert(inf >= 0);
 
-		LAPACKE_dge_trans(LAPACK_COL_MAJOR, rows, cols, a_t, lda, a, lda_t);
+		LAPACKE_ge_trans(LAPACK_COL_MAJOR, rows, cols, a_t, lda, a, lda_t);
 
 		if (inf > 0) {
 			printf("Warning: Singular matrix: \n");
