@@ -181,12 +181,31 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 
 	iface->actual_len = transfer->actual_length;
 
-	iface->cb(time, iface);
-	iface->packet_count++;
+	transfer->buffer = iface->swap_buffer[iface->swap_buffer_idx++ % 2];
 
+	uint64_t submit_cb_time = OGGetAbsoluteTimeUS() - iface->last_submit_time;
+
+	iface->last_submit_time = OGGetAbsoluteTimeUS();
 	if (libusb_submit_transfer(transfer)) {
 		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Error resubmitting transfer for %s", iface->hname);
 	}
+
+	iface->buffer = iface->swap_buffer[iface->swap_buffer_idx % 2];
+
+	if (iface->max_submit_time < submit_cb_time)
+		iface->max_submit_time = submit_cb_time;
+	uint64_t cb_start = OGGetAbsoluteTimeUS();
+	iface->sum_submit_cb_time += submit_cb_time;
+	iface->cb(time, iface);
+	uint64_t cb_end = OGGetAbsoluteTimeUS();
+	uint64_t cb_time = cb_end - cb_start;
+	if (iface->max_cb_time < cb_time)
+		iface->max_cb_time = cb_time;
+	if (iface->time_constraint && cb_time > iface->time_constraint)
+		iface->cb_time_violation++;
+
+	iface->sum_cb_time += cb_time;
+	iface->packet_count++;
 }
 
 struct survive_config_packet {

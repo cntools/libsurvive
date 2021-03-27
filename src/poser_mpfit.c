@@ -102,16 +102,35 @@ static size_t remove_lh_from_meas(survive_optimizer_measurement *meas, size_t me
 	return rtn;
 }
 
+struct async_optimizer_user {
+	MPFITData *d;
+	PoserDataLight pdl;
+	bool canPossiblySolveLHS;
+	bool worldEstablished;
+	size_t meas_for_lhs_axis[NUM_GEN2_LIGHTHOUSES * 2];
+
+	struct {
+		survive_long_timecode old_measurements_age;
+		uint32_t time_window;
+		uint32_t old_measurements;
+	} stats;
+};
+
 static size_t construct_input_from_scene(const MPFITData *d, survive_long_timecode timecode,
 										 const SurviveSensorActivations *scene, size_t *meas_for_lhs_axis,
-										 survive_optimizer_measurement *meas, survive_long_timecode *most_recent_time) {
+										 survive_optimizer_measurement *meas, struct async_optimizer_user *user) {
 	size_t rtn = 0;
 	SurviveObject *so = d->opt.so;
 	SurviveContext *ctx = so->ctx;
+	survive_long_timecode *most_recent_time = user ? &user->pdl.hdr.timecode : 0;
 
 	bool isStationary = SurviveSensorActivations_stationary_time(scene) > so->timebase_hz;
 	survive_timecode sensor_time_window =
 		isStationary && d->useStationaryWindow ? (so->timebase_hz) : d->sensor_time_window;
+
+	if (user) {
+		user->stats.time_window = sensor_time_window;
+	}
 
 	for (uint8_t lh = 0; lh < ctx->activeLighthouses; lh++) {
 		if (d->disable_lighthouse == lh) {
@@ -132,8 +151,9 @@ static size_t construct_input_from_scene(const MPFITData *d, survive_long_timeco
 		size_t meas_for_lh = 0;
 		for (uint8_t sensor = 0; sensor < so->sensor_ct; sensor++) {
 			for (uint8_t axis = 0; axis < 2; axis++) {
-				bool isReadingValue =
-					SurviveSensorActivations_isReadingValid(scene, sensor_time_window, sensor, lh, axis);
+				survive_timecode last_reading =
+					SurviveSensorActivations_time_since_last_reading(scene, sensor, lh, axis);
+				bool isReadingValue = last_reading < sensor_time_window;
 
 				if (isReadingValue) {
 					const FLT *a = scene->angles[sensor][lh];
@@ -154,6 +174,9 @@ static size_t construct_input_from_scene(const MPFITData *d, survive_long_timeco
 					if (meas_for_lhs_axis) {
 						meas_for_lhs_axis[lh * 2 + axis]++;
 					}
+				} else if (last_reading != UINT32_MAX && user) {
+					user->stats.old_measurements_age += last_reading;
+					user->stats.old_measurements++;
 				}
 			}
 		}
@@ -226,14 +249,6 @@ static inline int get_lh_count(const size_t *meas_for_lhs_axis) {
 	return num_lh;
 }
 
-struct async_optimizer_user {
-	MPFITData *d;
-	PoserDataLight pdl;
-	bool canPossiblySolveLHS;
-	bool worldEstablished;
-	size_t meas_for_lhs_axis[NUM_GEN2_LIGHTHOUSES * 2];
-};
-
 static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer *mpfitctx,
 						   SurviveSensorActivations *scene) {
 	MPFITData *d = user->d;
@@ -260,8 +275,8 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 	if (quatiszero(soLocation->Rot))
 		soLocation->Rot[0] = 1;
 
-	size_t meas_size = construct_input_from_scene(d, pdl->hdr.timecode, scene, meas_for_lhs_axis,
-												  mpfitctx->measurements, &user->pdl.hdr.timecode);
+	size_t meas_size =
+		construct_input_from_scene(d, pdl->hdr.timecode, scene, meas_for_lhs_axis, mpfitctx->measurements, user);
 
 	if (mpfitctx->current_bias > 0) {
 		meas_size += 7;
@@ -444,10 +459,13 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 		*out = *soLocation;
 		rtn = result->bestnorm;
 
-		SV_VERBOSE(110, "MPFIT success %s %f7.5s %f/%10.10f (%d measurements, %d result, %d lighthouses, %d axis)",
+		SV_VERBOSE(110,
+				   "MPFIT success %s %f7.5s %f/%10.10f (%3d measurements, %d result, %d lighthouses, %d axis, %6.3fms "
+				   "time_window, %2d old_meas (avg %6.3fms) )",
 				   survive_colorize(so->codename), survive_run_time(ctx), result->orignorm, result->bestnorm,
-				   (int)meas_size, res, get_lh_count(meas_for_lhs_axis), get_axis_count(meas_for_lhs_axis));
-
+				   (int)meas_size, res, get_lh_count(meas_for_lhs_axis), get_axis_count(meas_for_lhs_axis),
+				   user_data->stats.time_window / 48000000. * 1000., user_data->stats.old_measurements,
+				   user_data->stats.old_measurements_age / 48000000. * 1000. / user_data->stats.old_measurements);
 	} else {
 		SV_VERBOSE(100,
 				   "MPFIT failure %s %f7.5s %f/%10.10f (%d measurements, %d result, %d lighthouses, %d axis, %d "
@@ -460,7 +478,8 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 
 		if (d->opt.failures_since_success > 10 && d->opt.stats.successes < 10 &&
 			(SurviveSensorActivations_stationary_time(&so->activations) > (48000000 / 10))) {
-			survive_kalman_tracker_lost_tracking(so->tracker);
+			SV_WARN("Tracker lost for %s", so->codename);
+			survive_kalman_tracker_lost_tracking(so->tracker, true);
 		}
 	}
 

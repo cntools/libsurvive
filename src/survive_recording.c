@@ -352,7 +352,7 @@ void survive_install_recording(SurviveContext *ctx) {
 
 				bool useCompression = strncmp(dataout_file + strlen(dataout_file) - 3, ".gz", 3) == 0;
 
-				ctx->recptr->output_file = gzopen(dataout_file, useCompression ? "w" : "wT");
+				ctx->recptr->output_file = gzopen(dataout_file, useCompression ? "w6F" : "wT");
 				if (ctx->recptr->output_file == 0) {
 					SV_INFO("Could not open %s for writing", dataout_file);
 					free(ctx->recptr);

@@ -619,8 +619,10 @@ static int AttachInterface(SurviveViveData *sv, struct SurviveUSBInfo *usbObject
 		return 4;
 	}
 
-	libusb_fill_interrupt_transfer(tx, devh, endpoint_num, iface->buffer, INTBUFFSIZE, handle_transfer, iface, 0);
+	libusb_fill_interrupt_transfer(tx, devh, endpoint_num, iface->swap_buffer[0], INTBUFFSIZE, handle_transfer, iface,
+								   0);
 
+	iface->last_submit_time = OGGetAbsoluteTimeUS();
 	int rc = libusb_submit_transfer(tx);
 	if (rc) {
 		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Error: Could not submit transfer for %s 0x%02x (Code %d, %s)", hname,
@@ -765,17 +767,13 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 	SurviveViveData *sv = v;
 	sv->read_count++;
 
-	static double start = 0;
-	static int seconds = 0;
-	if(start == 0)
-		start = OGGetAbsoluteTime();
+	static FLT last_print = 0;
+	FLT now = survive_run_time(ctx);
 
-	FLT now = OGGetAbsoluteTime();
-	int now_seconds = (int)(now - start);
-	bool print = sv->seconds_per_hz_output > 0 && now_seconds > (seconds + sv->seconds_per_hz_output);
-	
+	FLT time_diff = now - last_print;
+	bool print = sv->seconds_per_hz_output > 0 && time_diff > sv->seconds_per_hz_output;
+
 	if (print) {
-		seconds = now_seconds;
 		size_t total_packets = 0;
 		for (int i = 0; i < sv->udev_cnt; i++) {
 			const char *codename = sv->udev[i].so->codename;
@@ -788,15 +786,30 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 					codename = iface->assoc_obj->codename;
 
 				total_packets += iface->packet_count;
-				SV_INFO("Iface %s %-32s has %4zu packets (%6.2f hz)", survive_colorize(codename),
-						survive_colorize(iface->hname), iface->packet_count, iface->packet_count / (now - start));
 
+				FLT avg_cb_time = iface->sum_cb_time / (FLT)(iface->packet_count + .0001) / 1000.;
+				FLT avg_cb_submit_latency = iface->sum_submit_cb_time / (FLT)(iface->packet_count + .0001) / 1000.;
+
+				if (iface->time_constraint == 0 && iface->packet_count) {
+					iface->time_constraint = 1000. * avg_cb_submit_latency;
+					SV_INFO("Iface %3s %-32s has time constraint of %5.2fms", survive_colorize(codename),
+							survive_colorize(iface->hname), avg_cb_submit_latency);
+				}
+				SV_INFO("Iface %3s %-32s has %5zu packets (%8.2f hz) Avg CB Time: %5.2fms Avg CB Latency: %5.2fms Max "
+						"CB Time: %5.2fms Max CB Latency: %5.2fms Time Violations %4d (%7.5f%%)",
+						survive_colorize(codename), survive_colorize(iface->hname), iface->packet_count,
+						iface->packet_count / time_diff, avg_cb_time, avg_cb_submit_latency, iface->max_cb_time / 1000.,
+						iface->max_submit_time / 1000., iface->cb_time_violation,
+						100. * iface->cb_time_violation / (FLT)(iface->packet_count + .0001));
+				iface->max_cb_time = iface->max_submit_time = iface->sum_cb_time = iface->sum_submit_cb_time = 0;
+				iface->cb_time_violation = 0;
 				iface->packet_count = 0;
 			}
 		}
 
-		SV_INFO("Total                  %4zu packets (%6.2f hz)", total_packets, total_packets / (now - start));
-		start = now;
+		SV_INFO("Total                  %4zu packets (%6.2f hz) at %7.3fs", total_packets, total_packets / time_diff,
+				now);
+		last_print = now;
 	}
 
 	for (int i = 0; i < sv->udev_cnt; i++) {

@@ -69,6 +69,7 @@ find_package(Threads)
 check_include_file("gattlib.h" HAVE_GATTLIB_H)
 option(BUILD_GATT_SUPPORT "Whether or not to include gatt support for the basestations -- requires gattlib (https://github.com/labapart/gattlib)" ${HAVE_GATTLIB_H})
 
+
 check_include_file("zlib.h" HAVE_ZLIB_H)
 IF(NOT HAVE_ZLIB_H OR ANDROID)
   add_definitions(-DNOZLIB)
