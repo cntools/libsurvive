@@ -220,9 +220,9 @@ struct survive_config_packet {
 	double start_time;
 
 	enum {
+		SURVIVE_CONFIG_STATE_MAGICS,
 		SURVIVE_CONFIG_STATE_CONFIG,
 		SURVIVE_CONFIG_STATE_VERSION,
-		SURVIVE_CONFIG_STATE_MAGICS,
 		SURVIVE_CONFIG_STATE_DONE
 	} state;
 	uint16_t stall_counter;
@@ -361,6 +361,11 @@ void handle_config_tx(struct libusb_transfer *transfer) {
 			SV_VERBOSE(100, "Magics done in %f sec for %s %s", OGGetAbsoluteTime() - packet->start_time,
 					   survive_colorize(so->codename), survive_colorize(packet->usbInfo->device_info->name));
 			packet->usbInfo->lightcapMode = LightcapMode_raw0;
+			if (packet->usbInfo->device_info->codename[0] == 0) {
+				packet->state = SURVIVE_CONFIG_STATE_DONE;
+				goto cleanup;
+			}
+
 			goto setup_next;
 		}
 
