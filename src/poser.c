@@ -33,6 +33,9 @@ SURVIVE_EXPORT int32_t PoserData_size(const PoserData *poser_data) {
 STATIC_CONFIG_ITEM(CENTER_ON_LH0, "center-on-lh0", 'i',
 				   "Alternative scheme for setting initial position; LH0 is 0, 0 looking in the +X direction", 0)
 
+STATIC_CONFIG_ITEM(HAPTIC_ON_CALIBRATE, "haptic-on-calibrate", 'i',
+				   "Trigger a haptic pulse when lighthouse positions are solved", 1);
+
 void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world) {
 	SurviveContext *ctx = so->ctx;
 	for (int i = 0; i < 3; i++) {
@@ -197,6 +200,8 @@ void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so, S
 										   poser_data->userdata);
 		}
 	} else {
+		bool hapticOnCalibrate = survive_configi(so->ctx, HAPTIC_ON_CALIBRATE_TAG, SC_GET, 0);
+
 		SurvivePose object2World;
 		if (object_pose == 0 || quatiszero(object_pose->Rot))
 			object2World = so->OutPoseIMU;
@@ -240,6 +245,10 @@ void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so, S
 			}
 
 			PoserData_lighthouse_pose_func(poser_data, so, lh, &lh2world, &object2World);
+		}
+
+		for (int i = 0; i < ctx->objs_ct; i++) {
+			survive_haptic(ctx->objs[i], 120, 1., .05);
 		}
 
 		if (object_pose)

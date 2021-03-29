@@ -385,6 +385,9 @@ void handle_config_tx(struct libusb_transfer *transfer) {
 									  0x300 | transfer->buffer[8], 0, 256);
 			goto resubmit;
 		case VIVE_REPORT_CONFIG_READ: {
+			SV_VERBOSE(110, "Config reponse in %f sec for %s %d %d", OGGetAbsoluteTime() - packet->start_time,
+					   survive_colorize(so->codename), transfer->buffer[8], transfer->buffer[9]);
+
 			size_t size = transfer->buffer[1 + 8];
 			str_append_n(&packet->cfg, (const char *)&transfer->buffer[2 + 8], size);
 			if (size == 0) {

@@ -220,7 +220,8 @@ void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 
 	SurviveContext *ctx = self->so->ctx;
 	if (self->last_imu != 0 && fabs(lightData->hdr.timecode / 48000000. - self->last_imu / 48000000.) > 1)
-		SV_ERROR(4, "Bad time %f vs %f", lightData->hdr.timecode / 48000000., self->last_imu / 48000000.);
+		SV_ERROR(4, "%s Bad time %f vs %f", survive_colorize(self->so->codename), lightData->hdr.timecode / 48000000.,
+				 self->last_imu / 48000000.);
 	// fprintf(stderr, "lightcap tc: %f\n", lightData->hdr.timecode/ 48000000.);
 }
 

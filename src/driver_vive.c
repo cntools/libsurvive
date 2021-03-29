@@ -438,6 +438,10 @@ static int survive_vive_send_haptic(SurviveObject *so, FLT frequency, FLT amplit
 	SurviveViveData *sv = ((struct SurviveUSBInfo *)so->driver)->viveData;
 	SurviveContext *ctx = so->ctx;
 
+	if (so->object_type == SURVIVE_OBJECT_TYPE_HMD || so->conf == 0) {
+		return 0;
+	}
+
 	if (NULL == sv) {
 		return -500;
 	}
@@ -463,6 +467,8 @@ static int survive_vive_send_haptic(SurviveObject *so, FLT frequency, FLT amplit
 	if (pulse_low > UINT16_MAX)
 		pulse_low16 = UINT16_MAX;
 
+	SV_VERBOSE(100, "Sending haptic pulse to %s %f %f %f", survive_colorize(so->codename), frequency, amplitude,
+			   duration_seconds);
 	uint8_t vive_controller_haptic_pulse[] = {
 		VIVE_REPORT_COMMAND, VIVE_COMMAND_HAPTIC_PULSE, 0x07,		 0x00,
 		pulse_high16,		 pulse_high16 >> 8u,		pulse_low16, pulse_low16 >> 8u,
@@ -2754,8 +2760,8 @@ void survive_data_cb_locked(uint64_t time_received_us, SurviveUSBInterface *si) 
 			handle_watchman(w, time_received_us, readdata + 29);
 		} else if (id == VIVE_REPORT_RF_TURN_OFF) {
 			w->ison = 0; // turning off
-		} else {
-			SV_INFO("Unknown watchman code %d\n", id);
+		} else if (id != 0) {
+			SV_WARN("Unknown watchman code %d", id);
 		}
 		break;
 	}
