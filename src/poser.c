@@ -247,8 +247,10 @@ void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so, S
 			PoserData_lighthouse_pose_func(poser_data, so, lh, &lh2world, &object2World);
 		}
 
-		for (int i = 0; i < ctx->objs_ct; i++) {
-			survive_haptic(ctx->objs[i], 120, 1., .05);
+		if (hapticOnCalibrate) {
+			for (int i = 0; i < ctx->objs_ct; i++) {
+				survive_haptic(ctx->objs[i], 120, 1., .05);
+			}
 		}
 
 		if (object_pose)
