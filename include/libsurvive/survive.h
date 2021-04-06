@@ -114,7 +114,7 @@ struct SurviveObject {
 	SurviveAxisVal_t axis[16];
 
 	int8_t charge;
-	int8_t charging : 1;
+	uint8_t charging : 1;
 	uint8_t ison : 1;
 	int8_t additional_flags : 6;
 
