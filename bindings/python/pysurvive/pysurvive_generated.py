@@ -1612,7 +1612,7 @@ struct_SurviveObject._fields_ = [
     ('touchmask', c_uint32),
     ('axis', SurviveAxisVal_t * int(16)),
     ('charge', c_int8),
-    ('charging', c_int8, 1),
+    ('charging', c_uint8, 1),
     ('ison', c_uint8, 1),
     ('additional_flags', c_int8, 6),
     ('PoseConfidence', c_double),
