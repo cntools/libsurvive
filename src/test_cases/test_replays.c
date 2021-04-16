@@ -140,6 +140,7 @@ static int test_path(const char *filename, int main_argc, char **main_argv) {
 		(char *)filename,
 		"--playback-factor",
 		"0",
+		"--no-threaded-posers",
 		"--v",
 		"100",
 	};
