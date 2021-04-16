@@ -79,6 +79,25 @@ static void test_solve() {
 	}
 }
 
+static void test_invert() {
+	printf("Invert:\n");
+
+	double _3x3[3 * 3] = {1, 2, 3, 4, 5, 6, 7, 8, 12};
+	CvMat m3x3 = cvMat(3, 3, CV_64F, _3x3);
+
+	double _d3x3[3 * 3] = {0};
+	CvMat d3x3 = cvMat(3, 3, CV_64F, _d3x3);
+
+	double _i3x3[3 * 3] = {0};
+	CvMat i3x3 = cvMat(3, 3, CV_64F, _i3x3);
+
+	cvInvert(&m3x3, &d3x3, DECOMP_LU);
+
+	cvGEMM(&m3x3, &d3x3, 1, 0, 0, &i3x3, 0);
+	print_mat(&d3x3);
+	print_mat(&i3x3);
+}
+
 static void test_svd() {
 	printf("SVD:\n");
 
@@ -259,6 +278,7 @@ void test_speedN(int N) {
 
 int main()
 {
+	test_invert();
 	test_gemm();
 	test_solve();
 	test_svd();

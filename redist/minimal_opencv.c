@@ -11,6 +11,7 @@
 #include "stdio.h"
 #include "string.h"
 
+#include <lapacke_utils.h>
 #include <limits.h>
 #include <stdarg.h>
 
@@ -50,6 +51,8 @@ SURVIVE_LOCAL_ONLY void cvCopy(const CvMat *srcarr, CvMat *dstarr, const CvMat *
 #define LAPACKE_getri LAPACKE_sgetri
 #define LAPACKE_gelss LAPACKE_sgelss
 #define LAPACKE_gesvd LAPACKE_sgesvd
+#define LAPACKE_getri_work LAPACKE_sgetri_work
+#define LAPACKE_ge_trans LAPACKE_sge_trans
 #else
 #define cblas_gemm cblas_dgemm
 #define cblas_symm cblas_dsymm
@@ -58,6 +61,8 @@ SURVIVE_LOCAL_ONLY void cvCopy(const CvMat *srcarr, CvMat *dstarr, const CvMat *
 #define LAPACKE_getri LAPACKE_dgetri
 #define LAPACKE_gelss LAPACKE_dgelss
 #define LAPACKE_gesvd LAPACKE_dgesvd
+#define LAPACKE_getri_work LAPACKE_dgetri_work
+#define LAPACKE_ge_trans LAPACKE_dge_trans
 #endif
 
 // dst = alpha * src1 * src2 + beta * src3 or dst = alpha * src2 * src1 + beta * src3 where src1 is symm
@@ -280,6 +285,39 @@ SURVIVE_LOCAL_ONLY CvMat *cvCreateMat(int height, int width, int type) {
   FLT *_##name = alloca(rows * cols * sizeof(FLT));		\
   CvMat name = cvMat(rows, cols, SURVIVE_CV_F, _##name);
 
+static inline lapack_int LAPACKE_getri_static_alloc(int matrix_layout, lapack_int n, FLT *a, lapack_int lda,
+													const lapack_int *ipiv) {
+	lapack_int info = 0;
+	lapack_int lwork = -1;
+	FLT *work = NULL;
+	FLT work_query;
+	if (matrix_layout != LAPACK_COL_MAJOR && matrix_layout != LAPACK_ROW_MAJOR) {
+		LAPACKE_xerbla("LAPACKE_dgetri", -1);
+		return -1;
+	}
+	/* Query optimal working array(s) size */
+	info = LAPACKE_getri_work(matrix_layout, n, a, lda, ipiv, &work_query, lwork);
+	if (info != 0) {
+		goto exit_level_0;
+	}
+	lwork = (lapack_int)work_query;
+	/* Allocate memory for work arrays */
+	work = (FLT *)alloca(sizeof(FLT) * lwork);
+	if (work == NULL) {
+		info = LAPACK_WORK_MEMORY_ERROR;
+		goto exit_level_0;
+	}
+	/* Call middle-level interface */
+	info = LAPACKE_getri_work(matrix_layout, n, a, lda, ipiv, work, lwork);
+	/* Release memory and exit */
+
+exit_level_0:
+	if (info == LAPACK_WORK_MEMORY_ERROR) {
+		LAPACKE_xerbla("LAPACKE_dgetri", info);
+	}
+	return info;
+}
+
 SURVIVE_LOCAL_ONLY double cvInvert(const CvMat *srcarr, CvMat *dstarr, int method) {
 	lapack_int inf;
 	lapack_int rows = srcarr->rows;
@@ -295,11 +333,20 @@ SURVIVE_LOCAL_ONLY double cvInvert(const CvMat *srcarr, CvMat *dstarr, int metho
 #endif
 	if (method == DECOMP_LU) {
 		lapack_int *ipiv = alloca(sizeof(lapack_int) * MIN(srcarr->rows, srcarr->cols));
-		inf = LAPACKE_getrf(LAPACK_ROW_MAJOR, rows, cols, a, lda, ipiv);
+
+		lapack_int lda_t = MAX(1, rows);
+
+		FLT *a_t = (FLT *)alloca(sizeof(FLT) * lda_t * MAX(1, cols));
+		LAPACKE_ge_trans(LAPACK_ROW_MAJOR, rows, cols, a, lda, a_t, lda_t);
+
+		inf = LAPACKE_getrf(LAPACK_COL_MAJOR, rows, cols, a_t, lda, ipiv);
 		assert(inf == 0);
 
-		inf = LAPACKE_getri(LAPACK_ROW_MAJOR, rows, a, lda, ipiv);
+		inf = LAPACKE_getri_static_alloc(LAPACK_COL_MAJOR, rows, a_t, lda, ipiv);
 		assert(inf >= 0);
+
+		LAPACKE_ge_trans(LAPACK_COL_MAJOR, rows, cols, a_t, lda, a, lda_t);
+
 		if (inf > 0) {
 			printf("Warning: Singular matrix: \n");
 			// print_mat(srcarr);

@@ -15,19 +15,34 @@ static FLT moveThresholdAcc = 0;
 static FLT moveThresholdAng = 0;
 static FLT filterLightChange = 0;
 
-bool SurviveSensorActivations_isReadingValid(const SurviveSensorActivations *self, survive_long_timecode tolerance,
-											 uint32_t idx, int lh, int axis) {
-	const survive_long_timecode *data_timecode = self->timecode[idx][lh];
-	if (self->lh_gen != 1 && lh < 2 && self->lengths[idx][lh][axis] == 0)
-		return false;
-
-	if (isnan(self->angles[idx][lh][axis]))
-		return false;
-
-	survive_long_timecode timecode_now = SurviveSensorActivations_last_time(self);
-	assert(timecode_now >= data_timecode[axis]);
-	return timecode_now - data_timecode[axis] <= tolerance;
+bool SurviveSensorActivations_is_reading_valid(const SurviveSensorActivations *self, survive_long_timecode tolerance,
+											   uint32_t sensor_idx, int lh, int axis) {
+	return SurviveSensorActivations_time_since_last_reading(self, sensor_idx, lh, axis) <= tolerance;
 }
+
+survive_long_timecode SurviveSensorActivations_last_reading(const SurviveSensorActivations *self, uint32_t sensor_idx,
+															int lh, int axis) {
+	const survive_long_timecode *data_timecode = self->timecode[sensor_idx][lh];
+	if (self->lh_gen != 1 && lh < 2 && self->lengths[sensor_idx][lh][axis] == 0)
+		return UINT64_MAX;
+
+	if (isnan(self->angles[sensor_idx][lh][axis]))
+		return UINT64_MAX;
+
+	return data_timecode[axis];
+}
+
+survive_timecode SurviveSensorActivations_time_since_last_reading(const SurviveSensorActivations *self,
+																  uint32_t sensor_idx, int lh, int axis) {
+	survive_long_timecode last_reading = SurviveSensorActivations_last_reading(self, sensor_idx, lh, axis);
+	survive_long_timecode timecode_now = self->last_light;
+
+	if (last_reading > timecode_now)
+		return UINT32_MAX;
+
+	return timecode_now - last_reading;
+}
+
 bool SurviveSensorActivations_isPairValid(const SurviveSensorActivations *self, uint32_t tolerance,
 										  uint32_t timecode_now, uint32_t idx, int lh) {
 	const survive_long_timecode *data_timecode = self->timecode[idx][lh];
@@ -190,6 +205,7 @@ void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 	FLT *angle = &self->angles[lightData->sensor_id][lightData->lh][axis];
 	uint32_t *length = &self->lengths[lightData->sensor_id][lightData->lh][axis];
 
+	self->hits[lightData->sensor_id][lightData->lh][axis]++;
 	if (*length == 0 || fabs(*angle - lightData->angle) > moveThresholdAng) {
 		survive_long_timecode long_timecode = lightData->hdr.timecode;
 		// assert(long_timecode > self->last_movement);

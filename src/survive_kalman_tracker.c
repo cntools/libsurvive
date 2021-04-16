@@ -365,6 +365,12 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 		tracker->imu_residuals += .1 * err;
 
 		tracker->stats.imu_count++;
+		if (tracker->first_imu_time == 0) {
+		  tracker->first_imu_time = time;
+		}
+		
+		tracker->last_imu_time = time;
+
 		SV_VERBOSE(600, "Resultant state %f (imu %e) " Point19_format, time, tracker->imu_residuals,
 				   LINMATH_VEC19_EXPAND(tracker->model.state));
 		normalize_model(tracker);
@@ -752,11 +758,13 @@ SurviveVelocity survive_kalman_tracker_velocity(const SurviveKalmanTracker *trac
 
 void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 	SurviveContext *ctx = tracker->so->ctx;
+	FLT report_runtime = tracker->last_report_time - tracker->first_report_time;
+	FLT imu_runtime = tracker->last_imu_time - tracker->first_imu_time;
 
-	FLT runtime = (FLT)(tracker->last_report_time - tracker->first_report_time);
 	SV_VERBOSE(5, "IMU %s tracker statistics:", tracker->so->codename);
 	SV_VERBOSE(5, "\t%-32s %u", "state_cnt", tracker->model.state_cnt);
-	SV_VERBOSE(5, "\t%-32s %f", "avg hz", tracker->stats.reported_poses / runtime);
+	SV_VERBOSE(5, "\t%-32s %f", "avg hz", tracker->stats.reported_poses / report_runtime);
+
 	SV_VERBOSE(5, "\t%-32s %u", "late imu", tracker->stats.late_imu_dropped);
 	SV_VERBOSE(5, "\t%-32s %u", "late light", tracker->stats.late_light_dropped);
 
@@ -771,14 +779,16 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 	scalend(var, tracker->stats.dropped_var, 1. / tracker->stats.reported_poses, SURVIVE_MODEL_MAX_STATE_CNT);
 	SV_VERBOSE(5, "\t%-32s " Point19_format, "Mean dropped variance", LINMATH_VEC19_EXPAND(var));
 
-	SV_VERBOSE(5, "\t%-32s %e (%7u integrations)", "Obs error",
-			   tracker->stats.obs_total_error / (FLT)tracker->stats.obs_count, (unsigned)tracker->stats.obs_count);
-	SV_VERBOSE(5, "\t%-32s %e (%7u integrations)", "Lightcap error",
+	SV_VERBOSE(5, "\t%-32s %e (%7u integrations, %7.3fhz)", "Obs error",
+			   tracker->stats.obs_total_error / (FLT)tracker->stats.obs_count, (unsigned)tracker->stats.obs_count,
+			   (unsigned)tracker->stats.obs_count / report_runtime);
+	SV_VERBOSE(5, "\t%-32s %e (%7u integrations, %7.3fhz)", "Lightcap error",
 			   tracker->stats.lightcap_total_error / (FLT)tracker->stats.lightcap_count,
-			   (unsigned)tracker->stats.lightcap_count);
-	SV_VERBOSE(5, "\t%-32s %e (%7u integrations %fhz)", "IMU error",
+			   (unsigned)tracker->stats.lightcap_count, (unsigned)tracker->stats.lightcap_count / report_runtime);
+	SV_VERBOSE(5, "\t%-32s %e (%7u integrations, %7.3fhz)", "IMU error",
 			   tracker->stats.imu_total_error / (FLT)tracker->stats.imu_count, (unsigned)tracker->stats.imu_count,
-			   (unsigned)tracker->stats.imu_count / runtime);
+			   (unsigned)tracker->stats.imu_count / imu_runtime);
+
 	SV_VERBOSE(5, " ");
 	SV_VERBOSE(5, "\t%-32s " Point3_format, "gyro bias", LINMATH_VEC3_EXPAND(tracker->state.GyroBias));
 	SV_VERBOSE(5, "\t%-32s " FLT_format, "Lightcap R", tracker->light_var);
@@ -798,6 +808,15 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 			SV_VERBOSE(5, "\t\t%-32s %u", "Count", (unsigned)tracker->stats.lightcap_count_by_lh[i]);
 			SV_VERBOSE(5, "\t\t%-32s %e", "Current error", tracker->light_residuals[i]);
 		}
+
+		for (int j = 0; j < SENSORS_PER_OBJECT; j++) {
+			for (int z = 0; z < 2; z++) {
+				if (tracker->so->activations.hits[j][i][z]) {
+					SV_VERBOSE(5, "\t\t %02d.%d %5d %f", j, z, (int)tracker->so->activations.hits[j][i][z],
+							   tracker->so->activations.hits[j][i][z] / report_runtime);
+				}
+			}
+		}
 	}
 
 	SV_VERBOSE(5, " ");
@@ -813,7 +832,7 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 	survive_kalman_tracker_config(tracker, (survive_attach_detach_fn)survive_detach_config);
 }
 
-void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *tracker) {
+void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *tracker, bool allowLHReset) {
 	SurviveContext *ctx = tracker->so->ctx;
 	SV_WARN("Too many failures for %s; reseting calibration %e (%7.4f stationary)", tracker->so->codename,
 			tracker->light_residuals_all,
@@ -826,9 +845,9 @@ void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *tracker) {
 		memset(&tracker->so->OutPose, 0, sizeof(SurvivePose));
 	}
 
-	if(!tracker->use_error_for_lh_pos)
-        return;
-	
+	if (!allowLHReset)
+		return;
+
 	bool objectsAreValid = false;
 	for (int i = 0; i < ctx->objs_ct && !objectsAreValid; i++) {
 		objectsAreValid |= !quatiszero(ctx->objs[i]->OutPoseIMU.Rot);
@@ -852,7 +871,7 @@ bool survive_kalman_tracker_check_valid(SurviveKalmanTracker *tracker) {
 	}
 
 	if (!isValid) {
-		survive_kalman_tracker_lost_tracking(tracker);
+		survive_kalman_tracker_lost_tracking(tracker, tracker->use_error_for_lh_pos);
 		return false;
 	}
 	return true;

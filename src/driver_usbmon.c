@@ -610,6 +610,7 @@ void *pcap_thread_fn(void *_driver) {
 				if (this_time > driver->run_time && driver->run_time > 0)
 					*driver->keepRunning = false;
 
+				survive_get_ctx_lock(ctx);
 				// Print setup flags, then just bail
 				if (!usbp->setup_flag) {
 					if (is_config_start(usbp)) {
@@ -641,6 +642,7 @@ void *pcap_thread_fn(void *_driver) {
 													usbp->s.setup.wValue, usbp->s.setup.wIndex, pktData,
 													usbp->data_len);
 					}
+					survive_release_ctx_lock(ctx);
 					goto continue_loop;
 				}
 
@@ -664,6 +666,7 @@ void *pcap_thread_fn(void *_driver) {
 						}
 						survive_dump_buffer(ctx, pktData, usbp->data_len);
 					}
+					survive_release_ctx_lock(ctx);
 					goto continue_loop; // Only want incoming data
 				}
 
@@ -683,6 +686,7 @@ void *pcap_thread_fn(void *_driver) {
 					if (usbp->id == dev->last_config_id) {
 						dev->last_config_id = 0;
 					}
+					survive_release_ctx_lock(ctx);
 					goto continue_loop; // Only want responses
 				}
 
@@ -706,6 +710,7 @@ void *pcap_thread_fn(void *_driver) {
 					ingest_config_request(dev, usbp, pktData);
 					dev->last_config_id = 0;
 					dev->packets_without_config = 0;
+					survive_release_ctx_lock(ctx);
 					goto continue_loop;
 				}
 
@@ -715,16 +720,19 @@ void *pcap_thread_fn(void *_driver) {
 										  (interface != 0 && (dev->hasConfiged || interface == USB_IF_TRACKER_INFO)) &&
 										  dev->so != 0 && !is_standard_endpoint && usbp->data_len > 0 &&
 										  usbp->status == 0;
-
+				survive_release_ctx_lock(ctx);
 				if (forward_to_data_cb) {
 					SurviveUSBInterface si = {.ctx = ctx,
 											  .actual_len = pkthdr->len,
 											  .assoc_obj = dev->so,
 											  .which_interface_am_i = interface,
-											  .hname = dev->so->codename};
+											  .hname = dev->so->codename,
+											  .buffer = si.swap_buffer[0]};
+
+					// memcpy(si.buffer, (u_char*)&usbp[1], usbp->data);
 
 					si.actual_len = usbp->data_len;
-					memset(si.buffer, 0xCA, sizeof(si.buffer));
+					memset(si.buffer, 0xCA, sizeof(si.swap_buffer));
 					memcpy(si.buffer, pktData, usbp->data_len);
 					uint64_t time = usbp->ts_sec * 1000000 + usbp->ts_usec;
 					survive_data_cb(time, &si);
