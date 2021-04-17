@@ -307,12 +307,12 @@ static int survive_config_submit(struct SurviveUSBInfo *usbInfo, int iface) {
 		send_devices_magics(ctx, usbInfo);
 		usbInfo->nextCfgSubmitTime = 0;
 	} else {
-		usbInfo->nextCfgSubmitTime = OGGetAbsoluteTime() + .1;
+		usbInfo->nextCfgSubmitTime = survive_run_time(usbInfo->so->ctx) + .1;
 	}
 	return err;
 }
 
 static int survive_start_get_config(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int iface) {
-	usbInfo->nextCfgSubmitTime = OGGetAbsoluteTime();
+	usbInfo->nextCfgSubmitTime = survive_run_time(usbInfo->so->ctx);
 	return 0;
 }

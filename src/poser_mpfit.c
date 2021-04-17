@@ -465,7 +465,8 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 				   survive_colorize(so->codename), survive_run_time(ctx), result->orignorm, result->bestnorm,
 				   (int)meas_size, res, get_lh_count(meas_for_lhs_axis), get_axis_count(meas_for_lhs_axis),
 				   user_data->stats.time_window / 48000000. * 1000., user_data->stats.old_measurements,
-				   user_data->stats.old_measurements_age / 48000000. * 1000. / user_data->stats.old_measurements);
+				   user_data->stats.old_measurements_age / 48000000. * 1000. /
+					   (.001 + user_data->stats.old_measurements));
 	} else {
 		SV_VERBOSE(100,
 				   "MPFIT failure %s %f7.5s %f/%10.10f (%d measurements, %d result, %d lighthouses, %d axis, %d "

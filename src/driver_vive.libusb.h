@@ -233,7 +233,7 @@ static int survive_config_submit(struct SurviveUSBInfo *usbInfo, int iface) {
 	struct survive_config_packet *config_packet = usbInfo->cfg_user;
 	SurviveContext *ctx = config_packet->sv->ctx;
 
-	SV_VERBOSE(650, "Submitting config for %s %s at %f",
+	SV_VERBOSE(110, "Submitting config for %s %s at %f",
 			   survive_colorize(usbInfo->so ? usbInfo->so->codename : usbInfo->device_info->codename),
 			   survive_colorize(usbInfo->device_info->name), usbInfo->nextCfgSubmitTime);
 	usbInfo->nextCfgSubmitTime = 0;
@@ -298,7 +298,7 @@ static inline void setup_magic(struct survive_config_packet *packet) {
 	packet->state = SURVIVE_CONFIG_STATE_MAGICS;
 
 	SV_VERBOSE(100, "Submitting magic %s at %f sec for %s - %s", survive_colorize(packet->current_magic->name),
-			   OGGetAbsoluteTime() - packet->start_time, survive_colorize(so ? so->codename : "BRD"),
+			   survive_run_time(ctx) - packet->start_time, survive_colorize(so ? so->codename : "BRD"),
 			   survive_colorize(packet->usbInfo->device_info->name));
 	memcpy(packet->buffer + 8, packet->current_magic->magic, packet->current_magic->length);
 	libusb_fill_control_setup(packet->buffer,
@@ -337,20 +337,20 @@ void handle_config_tx(struct libusb_transfer *transfer) {
 	}
 
 	if (transfer->status == LIBUSB_TRANSFER_STALL) {
-		SV_VERBOSE(650, "Waiting, Transfer status %d at %f sec for %s", transfer->status,
-				   OGGetAbsoluteTime() - packet->start_time, survive_colorize(so ? so->codename : "unknown"));
+		SV_VERBOSE(110, "Waiting, Transfer status %d at %f sec for %s", transfer->status,
+				   survive_run_time(ctx) - packet->start_time, survive_colorize(so ? so->codename : "unknown"));
 
 		if (packet->usbInfo->device_info->codename[0] == 0) {
 			goto cleanup;
 		}
 
-		packet->usbInfo->nextCfgSubmitTime = OGGetAbsoluteTime() + .02;
+		packet->usbInfo->nextCfgSubmitTime = survive_run_time(ctx) + .02;
 		return;
 	}
 	packet->stall_counter = 0;
 
 	if (transfer->status != LIBUSB_TRANSFER_COMPLETED) {
-		SV_WARN("Transfer status %d at %f sec for %s", transfer->status, OGGetAbsoluteTime() - packet->start_time,
+		SV_WARN("Transfer status %d at %f sec for %s", transfer->status, survive_run_time(ctx) - packet->start_time,
 				survive_colorize(so ? so->codename : "unknown"));
 		goto cleanup;
 	}
@@ -358,7 +358,7 @@ void handle_config_tx(struct libusb_transfer *transfer) {
 	switch (packet->state) {
 	case SURVIVE_CONFIG_STATE_MAGICS:
 		if (!packet->current_magic->magic) {
-			SV_VERBOSE(100, "Magics done in %f sec for %s %s", OGGetAbsoluteTime() - packet->start_time,
+			SV_VERBOSE(100, "Magics done in %f sec for %s %s", survive_run_time(ctx) - packet->start_time,
 					   survive_colorize(so->codename), survive_colorize(packet->usbInfo->device_info->name));
 			packet->usbInfo->lightcapMode = LightcapMode_raw0;
 			if (packet->usbInfo->device_info->codename[0] == 0) {
@@ -384,7 +384,7 @@ void handle_config_tx(struct libusb_transfer *transfer) {
 			size_t size = transfer->buffer[1 + 8];
 			str_append_n(&packet->cfg, (const char *)&transfer->buffer[2 + 8], size);
 			if (size == 0) {
-				SV_VERBOSE(100, "Config done in %f sec for %s", OGGetAbsoluteTime() - packet->start_time,
+				SV_VERBOSE(100, "Config done in %f sec for %s", survive_run_time(ctx) - packet->start_time,
 						   survive_colorize(so->codename));
 
 				uint8_t uncompressed_data[65536];
@@ -405,13 +405,13 @@ void handle_config_tx(struct libusb_transfer *transfer) {
 	case SURVIVE_CONFIG_STATE_VERSION: {
 		parse_tracker_version_info(packet->usbInfo->so, &transfer->buffer[1 + 8], transfer->actual_length);
 		ctx->configproc(so, so->conf, so->conf_cnt);
-		SV_VERBOSE(100, "Version done in %f sec for %s", OGGetAbsoluteTime() - packet->start_time,
+		SV_VERBOSE(100, "Version done in %f sec for %s", survive_run_time(ctx) - packet->start_time,
 				   survive_colorize(so->codename));
 
 		goto setup_next;
 	}
 	default:
-		SV_WARN("Config state matchine saw packet of type %d; not sure how to proceed.", cmd);
+		SV_WARN("Config state machine saw packet of type %d; not sure how to proceed.", cmd);
 		goto cleanup;
 	}
 	return;
@@ -425,6 +425,8 @@ setup_next : {
 		goto resubmit;
 };
 	resubmit: {
+		SV_VERBOSE(110, "Resubmit startup packet for %s %s at %f", survive_colorize(packet->usbInfo->so->codename),
+				   survive_colorize(packet->usbInfo->device_info->name), packet->usbInfo->nextCfgSubmitTime);
 		int submit_transfer_error = survive_config_submit(packet->usbInfo, 0);
 		if (submit_transfer_error != 0) {
 			SV_WARN("Config state machine could not submit transfer %d\n", submit_transfer_error);
@@ -433,8 +435,8 @@ setup_next : {
 	return;
 }
 	cleanup:
-		SV_VERBOSE(100, "Cleanup config for %s at %f", survive_colorize(packet->usbInfo->so->codename),
-				   packet->usbInfo->nextCfgSubmitTime);
+		SV_VERBOSE(100, "Cleanup config for %s %s at %f", survive_colorize(packet->usbInfo->so->codename),
+				   survive_colorize(packet->usbInfo->device_info->name), packet->usbInfo->nextCfgSubmitTime);
 		packet->usbInfo->nextCfgSubmitTime = 0;
 		packet->usbInfo->cfg_user = 0;
 		free(packet);
@@ -457,10 +459,9 @@ static int survive_start_get_config(SurviveViveData *sv, struct SurviveUSBInfo *
 	config_packet->sv = sv;
 	config_packet->usbInfo = usbInfo;
 	config_packet->current_magic = config_packet->usbInfo->device_info->magics;
-	config_packet->state = SURVIVE_CONFIG_STATE_CONFIG;
 
 	USBHANDLE dev = usbInfo->handle;
-	config_packet->start_time = OGGetAbsoluteTime();
+	config_packet->start_time = survive_run_time(ctx);
 
 	if (config_packet->usbInfo->device_info->codename[0] == 0) {
 		config_packet->state = SURVIVE_CONFIG_STATE_MAGICS;
@@ -471,7 +472,7 @@ static int survive_start_get_config(SurviveViveData *sv, struct SurviveUSBInfo *
 			   survive_colorize(usbInfo->so ? usbInfo->so->codename : usbInfo->device_info->name), (void *)tx,
 			   config_packet->state);
 
-	usbInfo->nextCfgSubmitTime = OGGetAbsoluteTime();
+	usbInfo->nextCfgSubmitTime = survive_run_time(ctx);
 
 	return 0;
 }

@@ -5,4 +5,4 @@ if [ "$1" == "-m" ]; then
     exit $?
 fi;
 
-websocketd --pasenv OPENBLAS_NUM_THREADS --passenv HOME --port 8080 `dirname $0`/survive-cli --record-stdout --record-cal-imu --no-record-imu $@
+websocketd --passenv OPENBLAS_NUM_THREADS --passenv HOME --port 8080 `dirname $0`/survive-cli --record-stdout --record-cal-imu --no-record-imu $@
