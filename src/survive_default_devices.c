@@ -160,6 +160,7 @@ typedef struct {
 	SurviveObject *so;
 	vive_pose_t imu_pose;
 	vive_pose_t head;
+	FLT sensor_scale;
 } scratch_space_t;
 
 static scratch_space_t scratch_space_init(SurviveObject *so) { return (scratch_space_t){.so = so}; }
@@ -272,19 +273,27 @@ static int process_jsonarray(scratch_space_t *scratch, char *ct0conf, stack_entr
 	return 0;
 }
 
-struct key_value {
+struct model_number_metadata {
 	const char *key;
 	int32_t value;
+	FLT sensor_scale;
 };
 
-struct key_value model_number_subtypes[] = {
-	{"Knuckles Right", SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R}, {"Knuckles EV3.0 Right", SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R},
-	{"Knuckles Left", SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L},  {"Knuckles EV3.0 Left", SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L},
-	{"Utah MP", SURVIVE_OBJECT_SUBTYPE_INDEX_HMD},		   {"Vive Controller MV", SURVIVE_OBJECT_SUBTYPE_WAND},
-	{"Vive. Controller MV", SURVIVE_OBJECT_SUBTYPE_WAND},  {"VIVE Tracker Pro MV", SURVIVE_OBJECT_SUBTYPE_TRACKER_GEN2},
-	{"Vive. Tracker MV", SURVIVE_OBJECT_SUBTYPE_TRACKER},  {"Vive Tracker MV", SURVIVE_OBJECT_SUBTYPE_TRACKER},
-	{"Vive MV", SURVIVE_OBJECT_SUBTYPE_VIVE_HMD},		   {"Vive. MV", SURVIVE_OBJECT_SUBTYPE_VIVE_HMD},
-	{"Vive_Pro MV", SURVIVE_OBJECT_SUBTYPE_VIVE_HMD},	   {"REF-HMD", SURVIVE_OBJECT_SUBTYPE_VIVE_HMD}};
+struct model_number_metadata model_number_subtypes[] = {
+	{"Knuckles Right", SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R, 0.999},
+	{"Knuckles EV3.0 Right", SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R, 0.999},
+	{"Knuckles Left", SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L, 0.999},
+	{"Knuckles EV3.0 Left", SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L, 0.999},
+	{"Utah MP", SURVIVE_OBJECT_SUBTYPE_INDEX_HMD, 1.0048},
+	{"Vive Controller MV", SURVIVE_OBJECT_SUBTYPE_WAND, 1.},
+	{"Vive. Controller MV", SURVIVE_OBJECT_SUBTYPE_WAND, 1.},
+	{"VIVE Tracker Pro MV", SURVIVE_OBJECT_SUBTYPE_TRACKER_GEN2, 1.0034},
+	{"Vive. Tracker MV", SURVIVE_OBJECT_SUBTYPE_TRACKER, 1.00585},
+	{"Vive Tracker MV", SURVIVE_OBJECT_SUBTYPE_TRACKER, 1.00585},
+	{"Vive MV", SURVIVE_OBJECT_SUBTYPE_VIVE_HMD, 1.004},
+	{"Vive. MV", SURVIVE_OBJECT_SUBTYPE_VIVE_HMD, 1.004},
+	{"Vive_Pro MV", SURVIVE_OBJECT_SUBTYPE_VIVE_HMD, 1.0028},
+	{"REF-HMD", SURVIVE_OBJECT_SUBTYPE_VIVE_HMD}};
 
 static int process_jsontok(scratch_space_t *scratch, char *d, stack_entry_t *stack, jsmntok_t *t, int count) {
 	int i, j, k;
@@ -318,6 +327,7 @@ static int process_jsontok(scratch_space_t *scratch, char *d, stack_entry_t *sta
 				for (int idx = 0; idx < sizeof(model_number_subtypes) / sizeof(model_number_subtypes[0]); idx++) {
 					if (strncmp(model_number_subtypes[idx].key, str, len) == 0) {
 						scratch->so->object_subtype = model_number_subtypes[idx].value;
+						scratch->sensor_scale = model_number_subtypes[idx].sensor_scale;
 						break;
 					}
 				}
@@ -399,6 +409,9 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	for (int i = 0; i < so->sensor_ct; i++) {
 		if (norm3d(&so->sensor_locations[i]) > .001) {
 			sensorsAreZero = false;
+		}
+		if (scratch.sensor_scale != 0.0) {
+			scale3d(&so->sensor_locations[i * 3], &so->sensor_locations[i * 3], scratch.sensor_scale);
 		}
 		ApplyPoseToPoint(&so->sensor_locations[i * 3], &trackref2imu, &so->sensor_locations[i * 3]);
 		quatrotatevector(&so->sensor_normals[i * 3], trackref2imu.Rot, &so->sensor_normals[i * 3]);
