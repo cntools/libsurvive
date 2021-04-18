@@ -459,23 +459,24 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 		*out = *soLocation;
 		rtn = result->bestnorm;
 
-		SV_VERBOSE(110,
-				   "MPFIT success %s %f7.5s %f/%10.10f (%3d measurements, %d result, %d lighthouses, %d axis, %6.3fms "
-				   "time_window, %2d old_meas (avg %6.3fms) )",
-				   survive_colorize(so->codename), survive_run_time(ctx), result->orignorm, result->bestnorm,
-				   (int)meas_size, res, get_lh_count(meas_for_lhs_axis), get_axis_count(meas_for_lhs_axis),
-				   user_data->stats.time_window / 48000000. * 1000., user_data->stats.old_measurements,
-				   user_data->stats.old_measurements_age / 48000000. * 1000. /
-					   (.001 + user_data->stats.old_measurements));
+		SV_VERBOSE(
+			110,
+			"MPFIT success %s %f7.5s %f/%10.10f (%3d measurements, %s result, %d lighthouses, %d axis, %6.3fms "
+			"time_window, %2d old_meas (avg %6.3fms) )",
+			survive_colorize(so->codename), survive_run_time(ctx), result->orignorm, result->bestnorm, (int)meas_size,
+			survive_optimizer_error(res), get_lh_count(meas_for_lhs_axis), get_axis_count(meas_for_lhs_axis),
+			user_data->stats.time_window / 48000000. * 1000., user_data->stats.old_measurements,
+			user_data->stats.old_measurements_age / 48000000. * 1000. / (.001 + user_data->stats.old_measurements));
 	} else {
 		SV_VERBOSE(100,
-				   "MPFIT failure %s %f7.5s %f/%10.10f (%d measurements, %d result, %d lighthouses, %d axis, %d "
+				   "MPFIT failure %s %f7.5s %f/%10.10f (%d measurements, %s result, %d lighthouses, %d axis, %d "
 				   "canSolveLHs, %d "
 				   "since success, "
 				   "run #%d)",
 				   survive_colorize(so->codename), survive_run_time(ctx), result->orignorm, result->bestnorm,
-				   (int)meas_size, res, get_lh_count(meas_for_lhs_axis), get_axis_count(meas_for_lhs_axis),
-				   canPossiblySolveLHS, d->opt.failures_since_success, d->stats.total_runs);
+				   (int)meas_size, survive_optimizer_error(res), get_lh_count(meas_for_lhs_axis),
+				   get_axis_count(meas_for_lhs_axis), canPossiblySolveLHS, d->opt.failures_since_success,
+				   d->stats.total_runs);
 
 		if (d->opt.failures_since_success > 10 && d->opt.stats.successes < 10 &&
 			(SurviveSensorActivations_stationary_time(&so->activations) > (48000000 / 10))) {
