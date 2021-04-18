@@ -220,8 +220,11 @@ struct survive_config_packet {
 	double start_time;
 
 	enum {
-		SURVIVE_CONFIG_STATE_MAGICS,
+		/**
+		 * CONFIG must come first; it effectively gates progress for controllers which might not be turned on yet.
+		 */
 		SURVIVE_CONFIG_STATE_CONFIG,
+		SURVIVE_CONFIG_STATE_MAGICS,
 		SURVIVE_CONFIG_STATE_VERSION,
 		SURVIVE_CONFIG_STATE_DONE
 	} state;
@@ -436,7 +439,7 @@ setup_next : {
 }
 	cleanup:
 		SV_VERBOSE(100, "Cleanup config for %s %s at %f", survive_colorize(packet->usbInfo->so->codename),
-				   survive_colorize(packet->usbInfo->device_info->name), packet->usbInfo->nextCfgSubmitTime);
+				   survive_colorize(packet->usbInfo->device_info->name), survive_run_time(ctx));
 		packet->usbInfo->nextCfgSubmitTime = 0;
 		packet->usbInfo->cfg_user = 0;
 		free(packet);
