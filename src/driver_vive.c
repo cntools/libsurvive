@@ -618,7 +618,7 @@ static int AttachInterface(SurviveViveData *sv, struct SurviveUSBInfo *usbObject
 		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Error: failed on libusb_alloc_transfer for %s", hname);
 		return 4;
 	}
-
+	memset(iface->swap_buffer, 0xCA, sizeof(iface->swap_buffer));
 	libusb_fill_interrupt_transfer(tx, devh, endpoint_num, iface->swap_buffer[0], INTBUFFSIZE, handle_transfer, iface,
 								   0);
 
@@ -1170,7 +1170,7 @@ static inline ButtonQueueEntry *registerButtonOnOff(SurviveObject *so, ButtonQue
 			continue;
 		}
 
-		if (HAS_BIT_FLAG(incoming_mask, a) != HAS_BIT_FLAG(current_mask, id)) {
+		if (entry && HAS_BIT_FLAG(incoming_mask, a) != HAS_BIT_FLAG(current_mask, id)) {
 			entry->eventType = HAS_BIT_FLAG(incoming_mask, a) ? eventTypeDown : eventTypeUp;
 			entry->buttonId = id;
 

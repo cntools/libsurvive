@@ -180,8 +180,9 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 	}
 
 	iface->actual_len = transfer->actual_length;
+	iface->buffer = iface->swap_buffer[iface->swap_buffer_idx++ % 2];
 
-	transfer->buffer = iface->swap_buffer[iface->swap_buffer_idx++ % 2];
+	transfer->buffer = iface->swap_buffer[iface->swap_buffer_idx % 2];
 
 	uint64_t submit_cb_time = OGGetAbsoluteTimeUS() - iface->last_submit_time;
 
@@ -190,7 +191,6 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Error resubmitting transfer for %s", iface->hname);
 	}
 
-	iface->buffer = iface->swap_buffer[iface->swap_buffer_idx % 2];
 
 	if (iface->max_submit_time < submit_cb_time)
 		iface->max_submit_time = submit_cb_time;
