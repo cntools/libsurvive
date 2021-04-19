@@ -73,7 +73,7 @@ static inline FLT survive_reproject_axis_gen2(const BaseStationCal *bcal, FLT X,
 
 	FLT Ydeg = tilt + (axis ? -1 : 1) * LINMATHPI / 6.;
 	FLT tanA = FLT_TAN(Ydeg);
-	FLT normXZ = sqrt(X * X + Z * Z);
+	FLT normXZ = FLT_SQRT(X * X + Z * Z);
 
 	FLT asinArg = linmath_enforce_range(tanA * Y / normXZ, -1, 1);
 
@@ -94,7 +94,7 @@ static inline FLT survive_reproject_axis_gen2(const BaseStationCal *bcal, FLT X,
 	FLT BcalCurved = sinPart + curve;
 	FLT asinArg2 = linmath_enforce_range(asinArg + mod * BcalCurved / (cosYdeg - acc * BcalCurved * sinYdeg), -1, 1);
 
-	FLT asinOut2 = asin(asinArg2);
+	FLT asinOut2 = FLT_ASIN(asinArg2);
 	FLT sinOut2 = sin(B - asinOut2 + gibPhase);
 
 	FLT rtn = B - asinOut2 + sinOut2 * gibMag - phase - LINMATHPI_2;

@@ -288,7 +288,6 @@ void init_lighthouse_info_v6(lighthouse_info_v6* lhi, uint8_t* data) {
 	lhi->fcal_1_gibmag = _half_to_float( get_ptr(data,sizeof(uint16_t),&idx) );
 	lhi->mode_current = *get_ptr(data,sizeof(uint8_t),&idx);
 	lhi->sys_faults = *get_ptr(data,sizeof(uint8_t),&idx);
-
 }
 
 void print_lighthouse_info_v6(lighthouse_info_v6* lhi) {
@@ -322,7 +321,7 @@ void init_lighthouse_info_v15(lighthouse_info_v15 *lhi, uint8_t *data) {
 		uint32_t id;				// Unique identifier of the base station
 		uint16_t fcal_phase[2];		//"phase" for rotor 0
 		uint16_t fcal_tilt[2];		//"tilt" for rotor 0
-		uint8_t unknown1;			// Dunno, was 7 then 8.
+		uint8_t sys_unlock_count;	// Lowest 8 bits of the rotor desynchronization counter
 		uint8_t ootx_model;			// 'OOTX model'?
 		uint16_t fcal_curve[2];		//"curve" for rotor 0
 		int8_t accel_dir[3];		//"orientation vector"
@@ -351,7 +350,7 @@ void init_lighthouse_info_v15(lighthouse_info_v15 *lhi, uint8_t *data) {
 		lhi->fcal_ogeephase[i] = _half_to_float((uint8_t *)&d->fcal_ogeephase[i]);
 	}
 
-	lhi->unknown1 = d->unknown1;
+	lhi->sys_unlock_count = d->sys_unlock_count;
 	lhi->ootx_model = d->ootx_model;
 
 	for (int i = 0; i < 3; i++)

@@ -12,6 +12,22 @@ typedef struct {
 	FLT expected[2];
 } ExampleAndValue;
 
+TEST(Reproject, ReprojectTestCase) {
+	BaseStationCal cal[2] = {
+		{0.0228424072265625, tan(-0.00945281982421875), 0.0023136138916015625, 1.810546875, 0.0206146240234375, 0, 0},
+		{0.0290985107421875, tan(-0.00785064697265625), 0.0020542144775390625, -1.1767578125, -0.01227569580078125, 0,
+		 0}};
+
+	LinmathPoint3d ptInLh = {0.6626900065515442, -1.4600844631038516, -2.2421641136382124};
+	SurviveAngleReading ang = {0};
+	survive_reproject_xy(cal, ptInLh, ang);
+
+	ASSERT_DOUBLE_EQ(ang[0], 1.2759991100686086 - M_PI_2);
+	ASSERT_DOUBLE_EQ(ang[1], 0.97860273679241472 - M_PI_2);
+
+	return 0;
+}
+
 TEST(Reproject, ReprojectFull) {
 	//	void survive_reproject_full(const BaseStationCal *bcal, const SurvivePose *lh2world, const SurvivePose
 	//*obj2world, 	                            const LinmathVec3d obj_pt, FLT *out) {

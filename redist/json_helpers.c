@@ -55,9 +55,11 @@ void json_write_float_array(FILE* f, const char* tag, float* v, uint8_t count) {
 
 	for (i=0;i<count;++i) {
 		if ( (i+1) < count) {
-			if( asprintf(&str2, "%s\"%f\"", str1,v[i]) < 0 ) goto giveup;
+			if (asprintf(&str2, "%s\"%.12f\"", str1, v[i]) < 0)
+				goto giveup;
 		} else {
-			if( asprintf(&str2, "%s\"%f\",", str1,v[i]) < 0 ) goto giveup;
+			if (asprintf(&str2, "%s\"%.12f\",", str1, v[i]) < 0)
+				goto giveup;
 		}
 		free(str1);
 		str1=str2;
@@ -78,9 +80,11 @@ void json_write_double_array(FILE* f, const char* tag, double* v, uint8_t count)
 
 	for (i=0;i<count;++i) {
 		if (i<(count-1)) {
-			if( asprintf(&str2, "%s\"%f\",", str1,v[i]) < 0 ) goto giveup;
+			if (asprintf(&str2, "%s\"%.12f\",", str1, v[i]) < 0)
+				goto giveup;
 		} else {
-			if( asprintf(&str2, "%s\"%f\"", str1,v[i]) < 0 ) goto giveup;
+			if (asprintf(&str2, "%s\"%.12f\"", str1, v[i]) < 0)
+				goto giveup;
 		}
 		free(str1);
 		str1=str2;
@@ -97,9 +101,7 @@ void json_write_uint32(FILE* f, const char* tag, uint32_t v) {
 	fprintf(f, "\"%s\":\"%"PRIu32"\"", tag, v);
 }
 
-void json_write_float(FILE* f, const char* tag, float v) {
-	fprintf(f, "\"%s\":\"%f\"", tag, v);
-}
+void json_write_float(FILE *f, const char *tag, float v) { fprintf(f, "\"%s\":\"%.12f\"", tag, v); }
 
 void json_write_str(FILE* f, const char* tag, const char* v) {
 	fprintf(f, "\"%s\":\"%s\"", tag, v);

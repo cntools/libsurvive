@@ -243,6 +243,7 @@ struct BaseStationData {
 
 	BaseStationCal fcal[2];
 
+	uint8_t sys_unlock_count;
 	int8_t accel[3]; //"Up" vector
 	uint8_t mode;
 

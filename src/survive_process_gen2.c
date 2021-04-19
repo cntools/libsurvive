@@ -66,6 +66,7 @@ static void ootx_packet_clbk_d_gen2(ootx_decoder_context *ct, ootx_packet *packe
 		for (int i = 0; i < 3; i++) {
 			b->accel[i] = v15.accel_dir[i];
 		}
+		b->sys_unlock_count = v15.sys_unlock_count;
 
 		// Although we know this already....
 		b->mode = v15.mode_current & 0x7F;
@@ -87,6 +88,7 @@ static void ootx_packet_cblk_d_gen1(ootx_decoder_context *ct, ootx_packet *packe
 
 	BaseStationData *b = &ctx->bsd[id];
 
+	b->sys_unlock_count = v6.sys_unlock_count;
 	b->BaseStationID = v6.id;
 	b->fcal[0].phase = v6.fcal_0_phase;
 	b->fcal[1].phase = v6.fcal_1_phase;

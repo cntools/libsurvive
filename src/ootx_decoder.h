@@ -79,7 +79,7 @@ typedef struct {
 	uint32_t id;			   // Unique identifier of the base station
 	float16 fcal_phase[2];	 //"phase" for rotor 0
 	float16 fcal_tilt[2];	  //"tilt" for rotor 0
-	uint8_t unknown1;		   // Think this might be FPGA code version?
+	uint8_t sys_unlock_count; // Think this might be FPGA code version?
 	uint8_t ootx_model;		   // 'OOTX model'?
 	float16 fcal_curve[2];	 //"curve" for rotor 0
 	int8_t accel_dir[3];	   //"orientation vector"

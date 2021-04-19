@@ -383,6 +383,7 @@ void config_set_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8_
 	config_set_uint32(cg, "id", bsd->BaseStationID);
 	config_set_uint32(cg, "mode", bsd->mode);
 	config_set_float_a(cg, "pose", &bsd->Pose.Pos[0], 7);
+	config_set_uint32(cg, "unlock_count", bsd->sys_unlock_count);
 	FLT accel[] = {bsd->accel[0], bsd->accel[1], bsd->accel[2]};
 	config_set_float_a(cg, "accel", accel, 3);
 	if (!quatiszero(bsd->Pose.Rot))
