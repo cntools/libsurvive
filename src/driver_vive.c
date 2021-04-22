@@ -2636,7 +2636,7 @@ void survive_data_cb_locked(uint64_t time_received_us, SurviveUSBInterface *si) 
 		return;
 	}
 
-	if (obj->conf == 0) {
+	if (obj->conf == 0 || (si->usbInfo && si->usbInfo->cfg_user)) {
 		if (si->usbInfo) {
 				//si->usbInfo->tryConfigLoad = 1;
 
