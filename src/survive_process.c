@@ -34,7 +34,7 @@ void survive_default_imupose_process(SurviveObject *so, survive_long_timecode ti
 		assert(!isnan(((FLT *)imu2world)[i]));
 
 	SurviveContext *ctx = so->ctx;
-	ctx->poseproc(so, timecode, &head2world);
+	SURVIVE_INVOKE_HOOK_SO(pose, so, timecode, &head2world);
 }
 void survive_default_pose_process(SurviveObject *so, survive_long_timecode timecode, const SurvivePose *pose) {
 	so->OutPose = *pose;
@@ -59,6 +59,7 @@ void survive_default_ootx_received_process(struct SurviveContext *ctx, uint8_t b
 	config_set_lighthouse(ctx->lh_config, &ctx->bsd[bsd_idx], bsd_idx);
 	config_save(ctx);
 }
+
 void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose) {
 	if (lighthouse_pose) {
 		ctx->bsd[lighthouse].Pose = *lighthouse_pose;
@@ -170,7 +171,7 @@ void survive_default_raw_imu_process(SurviveObject *so, int mask, FLT *accelgyro
 
 	survive_recording_raw_imu_process(so, mask, accelgyromag, timecode, id);
 
-	ctx->imuproc(so, 3, agm, timecode, id);
+	SURVIVE_INVOKE_HOOK_SO(imu, so, 3, agm, timecode, id);
 }
 void survive_default_imu_process( SurviveObject * so, int mask, FLT * accelgyromag, uint32_t timecode, int id )
 {

@@ -624,15 +624,16 @@ void *pcap_thread_fn(void *_driver) {
 						survive_dump_buffer(ctx, pktData + 3, pktData[2]);
 					}
 					if (driver->output_usb_stream) {
-						ctx->printfproc(ctx,
-										"--> %10.6f S: %s " COLORIZED_ID_STR
-										" event_type: %c transfer_type: %d bmRequestType: 0x%02x "
-										"bRequest: 0x%02x (%s) "
-										"wValue: 0x%04x wIndex: 0x%04x wLength: %4d (%4d)\n",
-										this_time, color_dev_name, SURVIVE_COLORIZED_DATA(usbp->id), usbp->event_type,
-										usbp->transfer_type, usbp->s.setup.bmRequestType, usbp->s.setup.bRequest,
-										requestTypeToStr(usbp->s.setup.bRequest), usbp->s.setup.wValue,
-										usbp->s.setup.wIndex, usbp->s.setup.wLength, usbp->data_len);
+						SURVIVE_INVOKE_HOOK(printf, ctx,
+											"--> %10.6f S: %s " COLORIZED_ID_STR
+											" event_type: %c transfer_type: %d bmRequestType: 0x%02x "
+											"bRequest: 0x%02x (%s) "
+											"wValue: 0x%04x wIndex: 0x%04x wLength: %4d (%4d)\n",
+											this_time, color_dev_name, SURVIVE_COLORIZED_DATA(usbp->id),
+											usbp->event_type, usbp->transfer_type, usbp->s.setup.bmRequestType,
+											usbp->s.setup.bRequest, requestTypeToStr(usbp->s.setup.bRequest),
+											usbp->s.setup.wValue, usbp->s.setup.wIndex, usbp->s.setup.wLength,
+											usbp->data_len);
 
 						survive_dump_buffer(ctx, pktData, usbp->data_len);
 					}
@@ -650,19 +651,19 @@ void *pcap_thread_fn(void *_driver) {
 
 					if (driver->output_usb_stream) {
 						if (usbp->event_type == 'C') {
-							ctx->printfproc(ctx,
-											"<-- %10.6f C: %s " COLORIZED_ID_STR
-											" event_type: %c transfer_type: %d 0x%02x (0x%02x):\n",
-											this_time, color_dev_name, SURVIVE_COLORIZED_DATA(usbp->id),
-											usbp->event_type, usbp->transfer_type, usbp->endpoint_number,
-											usbp->data_len);
+							SURVIVE_INVOKE_HOOK(printf, ctx,
+												"<-- %10.6f C: %s " COLORIZED_ID_STR
+												" event_type: %c transfer_type: %d 0x%02x (0x%02x):\n",
+												this_time, color_dev_name, SURVIVE_COLORIZED_DATA(usbp->id),
+												usbp->event_type, usbp->transfer_type, usbp->endpoint_number,
+												usbp->data_len);
 						} else {
-							ctx->printfproc(ctx,
-											"--> %10.6f W: %s " COLORIZED_ID_STR
-											" event_type: %c transfer_type: %d 0x%02x (0x%02x):\n",
-											this_time, color_dev_name, SURVIVE_COLORIZED_DATA(usbp->id),
-											usbp->event_type, usbp->transfer_type, usbp->endpoint_number,
-											usbp->data_len);
+							SURVIVE_INVOKE_HOOK(printf, ctx,
+												"--> %10.6f W: %s " COLORIZED_ID_STR
+												" event_type: %c transfer_type: %d 0x%02x (0x%02x):\n",
+												this_time, color_dev_name, SURVIVE_COLORIZED_DATA(usbp->id),
+												usbp->event_type, usbp->transfer_type, usbp->endpoint_number,
+												usbp->data_len);
 						}
 						survive_dump_buffer(ctx, pktData, usbp->data_len);
 					}
@@ -676,12 +677,12 @@ void *pcap_thread_fn(void *_driver) {
 					// EINPROGRESS is normal, EPIPE means stalled
 					if (driver->output_usb_stream) {
 						if ((usbp->status != -115 && usbp->status != -32) || driver->output_everything)
-							ctx->printfproc(ctx,
-											"<-- %10.6f E: %s " COLORIZED_ID_STR
-											" event_type: %c transfer_type: %d status: %d endpoint: 0x%02x (%s)\n",
-											this_time, color_dev_name, SURVIVE_COLORIZED_DATA(usbp->id),
-											usbp->event_type, usbp->transfer_type, usbp->status, usbp->endpoint_number,
-											survive_usb_interface_str(interface));
+							SURVIVE_INVOKE_HOOK(printf, ctx,
+												"<-- %10.6f E: %s " COLORIZED_ID_STR
+												" event_type: %c transfer_type: %d status: %d endpoint: 0x%02x (%s)\n",
+												this_time, color_dev_name, SURVIVE_COLORIZED_DATA(usbp->id),
+												usbp->event_type, usbp->transfer_type, usbp->status,
+												usbp->endpoint_number, survive_usb_interface_str(interface));
 					}
 					if (usbp->id == dev->last_config_id) {
 						dev->last_config_id = 0;
@@ -696,12 +697,12 @@ void *pcap_thread_fn(void *_driver) {
 								   interface != USB_IF_TRACKER0_IMU;
 
 				if (output_read) {
-					ctx->printfproc(ctx,
-									"<-- %10.6f R: %s " COLORIZED_ID_STR
-									" event_type: %c transfer_type: %d endpoint: 0x%02x (%s) (0x%02x): \n",
-									this_time, color_dev_name, SURVIVE_COLORIZED_DATA(usbp->id), usbp->event_type,
-									usbp->transfer_type, usbp->endpoint_number, survive_usb_interface_str(interface),
-									usbp->data_len);
+					SURVIVE_INVOKE_HOOK(printf, ctx,
+										"<-- %10.6f R: %s " COLORIZED_ID_STR
+										" event_type: %c transfer_type: %d endpoint: 0x%02x (%s) (0x%02x): \n",
+										this_time, color_dev_name, SURVIVE_COLORIZED_DATA(usbp->id), usbp->event_type,
+										usbp->transfer_type, usbp->endpoint_number,
+										survive_usb_interface_str(interface), usbp->data_len);
 
 					survive_dump_buffer(ctx, pktData, usbp->data_len);
 				}

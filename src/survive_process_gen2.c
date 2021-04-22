@@ -72,7 +72,7 @@ static void ootx_packet_clbk_d_gen2(ootx_decoder_context *ct, ootx_packet *packe
 		b->mode = v15.mode_current & 0x7F;
 		b->OOTXSet = 1;
 
-		ctx->ootx_receivedproc(ctx, id);
+		SURVIVE_INVOKE_HOOK(ootx_received, ctx, id);
 	}
 }
 
@@ -106,7 +106,7 @@ static void ootx_packet_cblk_d_gen1(ootx_decoder_context *ct, ootx_packet *packe
 	b->mode = v6.mode_current;
 	b->OOTXSet = 1;
 
-	ctx->ootx_receivedproc(ctx, id);
+	SURVIVE_INVOKE_HOOK(ootx_received, ctx, id);
 }
 void survive_ootx_free_decoder_context(struct SurviveContext *ctx, int bsd_idx) {
 	ootx_decoder_context *decoderContext = ctx->bsd[bsd_idx].ootx_data;
@@ -343,7 +343,7 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 	so->stats.hit_from_lhs[bsd_idx]++;
 
 	if (plane >= 0)
-		so->ctx->sweep_angleproc(so, channel, sensor_id, timecode, plane, angle_for_axis[plane]);
+		SURVIVE_INVOKE_HOOK_SO(sweep_angle, so, channel, sensor_id, timecode, plane, angle_for_axis[plane]);
 }
 
 SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survive_channel channel, int sensor_id,

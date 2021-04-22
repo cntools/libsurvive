@@ -51,7 +51,7 @@ void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const S
 }
 void PoserData_poser_pose_func_with_velocity(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world,
 											 const SurviveVelocity *velocity) {
-	so->ctx->velocityproc(so, poser_data->timecode, velocity);
+	SURVIVE_INVOKE_HOOK_SO(velocity, so, poser_data->timecode, velocity);
 	PoserData_poser_pose_func(poser_data, so, imu2world);
 }
 
@@ -66,6 +66,7 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 		if (object_pose && quatiszero(object_pose->Rot)) {
 			*object_pose = (SurvivePose){.Rot = {1.}};
 		}
+
 		poser_data->lighthouseposeproc(so, lighthouse, lighthouse_pose, object_pose, poser_data->userdata);
 	} else {
 		const FLT up[3] = {0, 0, 1};
@@ -160,7 +161,7 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 			assert(!isnan(((FLT *)&lighthouse2world)[i]));
 
 		so->ctx->bsd[lighthouse].confidence = 1.;
-		so->ctx->lighthouse_poseproc(so->ctx, lighthouse, &lighthouse2world);
+		SURVIVE_INVOKE_HOOK(lighthouse_pose, so->ctx, lighthouse, &lighthouse2world);
 	}
 }
 

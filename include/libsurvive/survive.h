@@ -373,6 +373,7 @@ static inline SurviveContext *survive_init(int argc, char *const *argv) {
 // In general unless you are doing wacky things like recording or playing back data, you won't need to use this.
 #define SURVIVE_HOOK_PROCESS_DEF(hook)                                                                                 \
 	SURVIVE_EXPORT hook##_process_func survive_install_##hook##_fn(SurviveContext *ctx, hook##_process_func fbp);
+
 #define SURVIVE_HOOK_FEEDBACK_DEF(hook)                                                                                \
 	SURVIVE_EXPORT hook##_feedback_func survive_install_##hook##_fn(SurviveContext *ctx, hook##_feedback_func fbp);
 #include "survive_hooks.h"
@@ -411,6 +412,20 @@ SURVIVE_EXPORT void survive_attach_configs(SurviveContext *ctx, const char *tag,
 SURVIVE_EXPORT void survive_detach_config(SurviveContext *ctx, const char *tag, void * var );
 
 SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel channel);
+
+#define SURVIVE_INVOKE_HOOK(hook, ctx, ...)                                                                            \
+	{                                                                                                                  \
+		if (ctx->hook##proc) {                                                                                         \
+			ctx->hook##proc(ctx, __VA_ARGS__);                                                                         \
+		}                                                                                                              \
+	}
+
+#define SURVIVE_INVOKE_HOOK_SO(hook, so, ...)                                                                          \
+	{                                                                                                                  \
+		if (so->ctx->hook##proc) {                                                                                     \
+			so->ctx->hook##proc(so __VA_OPT__(, ) __VA_ARGS__);                                                        \
+		}                                                                                                              \
+	}
 
 #define STATIC_CONFIG_ITEM(variable, name, type, description, default_value)                                           \
 	const char *variable##_TAG = name;                                                                                 \
@@ -527,7 +542,7 @@ SURVIVE_EXPORT uint32_t survive_hash_str(const char *str);
 		if (so && so->ctx->datalogproc) {                                                                              \
 			char name[128];                                                                                            \
 			snprintf(name, sizeof(name) - 1, fmt, ##__VA_ARGS__);                                                      \
-			so->ctx->datalogproc(so, name, v, n);                                                                      \
+			SURVIVE_INVOKE_HOOK_SO(datalog, so, name, v, n);                                                           \
 		}                                                                                                              \
 	}
 
@@ -540,14 +555,14 @@ SURVIVE_EXPORT uint32_t survive_hash_str(const char *str);
 	{                                                                                                                  \
 		char stbuff[1024];                                                                                             \
 		sprintf(stbuff, __VA_ARGS__);                                                                                  \
-		SV_LOG_NULL_GUARD ctx->logproc(ctx, SURVIVE_LOG_LEVEL_WARNING, stbuff);                                        \
+		SV_LOG_NULL_GUARD SURVIVE_INVOKE_HOOK(log, ctx, SURVIVE_LOG_LEVEL_WARNING, stbuff);                            \
 	}
 
 #define SV_INFO(...)                                                                                                   \
 	{                                                                                                                  \
 		char stbuff[1024];                                                                                             \
 		sprintf(stbuff, __VA_ARGS__);                                                                                  \
-		SV_LOG_NULL_GUARD ctx->logproc(ctx, SURVIVE_LOG_LEVEL_INFO, stbuff);                                           \
+		SV_LOG_NULL_GUARD SURVIVE_INVOKE_HOOK(log, ctx, SURVIVE_LOG_LEVEL_INFO, stbuff);                               \
 	}
 
 #define SV_VERBOSE(lvl, ...)                                                                                           \
@@ -562,8 +577,8 @@ SURVIVE_EXPORT uint32_t survive_hash_str(const char *str);
 		char stbuff[1024];                                                                                             \
 		sprintf(stbuff, __VA_ARGS__);                                                                                  \
 		if (ctx)                                                                                                       \
-			ctx->report_errorproc(ctx, errorCode);                                                                     \
-		SV_LOG_NULL_GUARD ctx->logproc(ctx, SURVIVE_LOG_LEVEL_INFO, stbuff);                                           \
+			SURVIVE_INVOKE_HOOK(report_error, ctx, errorCode);                                                         \
+		SV_LOG_NULL_GUARD SURVIVE_INVOKE_HOOK(log, ctx, SURVIVE_LOG_LEVEL_INFO, stbuff);                               \
 		if (!ctx)                                                                                                      \
 			assert(0);                                                                                                 \
 	}
@@ -590,7 +605,7 @@ static inline void survive_notify_gen2(struct SurviveObject *so, const char *msg
 	if (so->ctx->lh_version != 1) {
 		struct SurviveContext *ctx = so->ctx;
 		SV_VERBOSE(100, "Gen2 reason: %s %s", survive_colorize(so->codename), msg);
-		so->ctx->gen_detectedproc(so, 1);
+		SURVIVE_INVOKE_HOOK_SO(gen_detected, so, 1);
 	}
 }
 
@@ -602,7 +617,7 @@ static inline void survive_notify_gen1(struct SurviveObject *so, const char *msg
 	if (so->ctx->lh_version != 0) {
 		struct SurviveContext *ctx = so->ctx;
 		SV_VERBOSE(100, "Gen1 reason: %s %s", survive_colorize(so->codename), msg);
-		so->ctx->gen_detectedproc(so, 0);
+		SURVIVE_INVOKE_HOOK_SO(gen_detected, so, 0);
 	}
 }
 

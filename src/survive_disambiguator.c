@@ -88,7 +88,7 @@ bool handle_lightcap(SurviveObject *so, const LightcapElement *_le) {
 	if (le.sensor_id == (uint8_t)-1) {
 		return false;
 	}
-	so->ctx->lightcapproc(so, &le);
+	SURVIVE_INVOKE_HOOK_SO(lightcap, so, &le);
 
 	return true;
 }

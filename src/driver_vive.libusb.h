@@ -408,7 +408,7 @@ void handle_config_tx(struct libusb_transfer *transfer) {
 		}
 	case SURVIVE_CONFIG_STATE_VERSION: {
 		parse_tracker_version_info(packet->usbInfo->so, &transfer->buffer[1 + 8], transfer->actual_length);
-		ctx->configproc(so, so->conf, so->conf_cnt);
+		SURVIVE_INVOKE_HOOK_SO(config, so, so->conf, so->conf_cnt);
 		SV_VERBOSE(100, "Version done in %f sec for %s", survive_run_time(ctx) - packet->start_time,
 				   survive_colorize(so->codename));
 

@@ -539,7 +539,7 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
 	if (tracker->use_raw_obs) {
 		SurviveObject *so = tracker->so;
 
-		so->ctx->imuposeproc(so, pd->timecode, pose);
+		SURVIVE_INVOKE_HOOK_SO(imupose, so, pd->timecode, pose);
 		return;
 	}
 
@@ -939,6 +939,6 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 	}
 
 	tracker->last_report_time = t;
-	so->ctx->imuposeproc(so, pd->timecode, &pose);
-	so->ctx->velocityproc(so, pd->timecode, &velocity);
+	SURVIVE_INVOKE_HOOK_SO(imupose, so, pd->timecode, &pose);
+	SURVIVE_INVOKE_HOOK_SO(velocity, so, pd->timecode, &velocity);
 }

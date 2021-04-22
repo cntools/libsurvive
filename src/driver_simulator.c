@@ -202,20 +202,20 @@ static void run_lighthouse_v1(SurviveDriverSimulator *driver, int lh, FLT timest
 			if (lighthouse_sensor_angle(driver, lh, idx, ang)) {
 				if (driver->lh_version == 0) {
 					int acode = (lh << 2) + (driver->acode & 1);
-					ctx->angleproc(driver->so, idx, acode, timecode, .006, ang[driver->acode & 1], lh);
+					SURVIVE_INVOKE_HOOK_SO(angle, driver->so, idx, acode, timecode, .006, ang[driver->acode & 1], lh);
 				} else {
-					ctx->sweep_angleproc(driver->so, driver->bsd[lh].mode, idx, timecode, driver->acode & 1,
-										 ang[driver->acode & 1]);
+					SURVIVE_INVOKE_HOOK_SO(sweep_angle, driver->so, driver->bsd[lh].mode, idx, timecode,
+										   driver->acode & 1, ang[driver->acode & 1]);
 				}
 			}
 		}
 
 		if (driver->lh_version == 0) {
 			int acode = (lh << 2) + (driver->acode & 1);
-			ctx->lightproc(driver->so, -3, acode, 0, timecode, 100, lh);
+			SURVIVE_INVOKE_HOOK_SO(light, driver->so, -3, acode, 0, timecode, 100, lh);
 			driver->acode = (driver->acode + 1) % 4;
 		} else {
-			ctx->syncproc(driver->so, driver->bsd[lh].mode, timecode, false, false);
+			SURVIVE_INVOKE_HOOK_SO(sync, driver->so, driver->bsd[lh].mode, timecode, false, false);
 			driver->acode = (driver->acode + 1) % 4;
 		}
 	}
@@ -253,7 +253,7 @@ static bool run_imu(struct SurviveContext *ctx, SurviveDriverSimulator *driver, 
 		SV_VERBOSE(200, "GT: " SurvivePose_format " %f", SURVIVE_POSE_EXPAND(driver->position),
 				   quatmagnitude(driver->position.Rot));
 		if (driver->show_gt_device_cfg != 2) {
-			ctx->imuproc(driver->so, 3, accelgyro, timecode, 0);
+			SURVIVE_INVOKE_HOOK_SO(imu, driver->so, 3, accelgyro, timecode, 0);
 		}
 
 		for (int i = 0; i < 3; i++) {
@@ -291,9 +291,9 @@ bool run_light(const struct SurviveContext *ctx, SurviveDriverSimulator *driver,
 			survive_timecode timecode = (survive_timecode)round(events[i].time * 48000000.);
 			uint8_t lh = events[i].lh;
 			if (events[i].idx == -1) {
-				ctx->syncproc(driver->so, driver->bsd[lh].mode, timecode, 0, 0);
+				SURVIVE_INVOKE_HOOK_SO(sync, driver->so, driver->bsd[lh].mode, timecode, 0, 0);
 			} else {
-				ctx->sweepproc(driver->so, driver->bsd[lh].mode, events[i].idx, timecode, 0);
+				SURVIVE_INVOKE_HOOK_SO(sweep, driver->so, driver->bsd[lh].mode, events[i].idx, timecode, 0);
 			}
 		}
 	}
@@ -620,7 +620,7 @@ SURVIVE_EXPORT SurviveObject *survive_create_simulation_device(SurviveContext *c
 	device->timebase_hz = 48000000;
 	device->imu_freq = 1000.0f;
 
-	ctx->configproc(device, cfg.d, strlen(cfg.d));
+	SURVIVE_INVOKE_HOOK_SO(config, device, cfg.d, strlen(cfg.d));
 
 	return device;
 }

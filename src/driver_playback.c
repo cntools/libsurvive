@@ -99,7 +99,7 @@ static int parse_and_run_sweep(char *line, SurvivePlaybackData *driver) {
 	}
 
 	driver->hasSweepAngle = true;
-	driver->ctx->sweepproc(so, channel, sensor_id, timecode, flag);
+	SURVIVE_INVOKE_HOOK_SO(sweep, so, channel, sensor_id, timecode, flag);
 	return 0;
 }
 
@@ -122,7 +122,7 @@ static int parse_and_run_sync(char *line, SurvivePlaybackData *driver) {
 		return 0;
 	}
 
-	driver->ctx->syncproc(so, channel, timecode, ootx, gen);
+	SURVIVE_INVOKE_HOOK_SO(sync, so, channel, timecode, ootx, gen);
 	return 0;
 }
 
@@ -148,7 +148,7 @@ static int parse_and_run_sweep_angle(char *line, SurvivePlaybackData *driver) {
 		return 0;
 	}
 
-	driver->ctx->sweep_angleproc(so, channel, sensor_id, timecode, plane, angle);
+	SURVIVE_INVOKE_HOOK_SO(sweep_angle, so, channel, sensor_id, timecode, plane, angle);
 	return 0;
 }
 
@@ -165,7 +165,7 @@ static int parse_and_run_pose(const char *line, SurvivePlaybackData *driver) {
 		return 0;
 	}
 
-	ctx->external_poseproc(ctx, name, &pose);
+	SURVIVE_INVOKE_HOOK(external_pose, ctx, name, &pose);
 	return 0;
 }
 static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver, bool raw) {
@@ -196,8 +196,14 @@ static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver, bool
 	assert(raw ^ i_char == 'I');
 
 	SurviveObject *so = find_or_warn(driver, dev);
-	if (so)
-		(raw ? driver->ctx->raw_imuproc : driver->ctx->imuproc)(so, mask, accelgyro, timecode, id);
+	if (so) {
+		if (raw) {
+			SURVIVE_INVOKE_HOOK_SO(raw_imu, so, mask, accelgyro, timecode, id);
+		} else {
+			SURVIVE_INVOKE_HOOK_SO(imu, so, mask, accelgyro, timecode, id);
+		}
+	}
+
 	return 0;
 }
 
@@ -211,7 +217,7 @@ static int parse_and_run_lhpose(const char *line, struct SurvivePlaybackData *dr
 	if (driver->outputExternalPose) {
 		char buffer[32] = {0};
 		snprintf(buffer, 31, "previous_LH%d", lh);
-		ctx->external_poseproc(ctx, buffer, &pose);
+		SURVIVE_INVOKE_HOOK(external_pose, ctx, buffer, &pose);
 	}
 	return 0;
 }
@@ -224,7 +230,7 @@ static int parse_and_run_externalpose(const char *line, SurvivePlaybackData *dri
 					&pose.Rot[0], &pose.Rot[1], &pose.Rot[2], &pose.Rot[3]);
 
 	SurviveContext *ctx = driver->ctx;
-	ctx->external_poseproc(ctx, name, &pose);
+	SURVIVE_INVOKE_HOOK(external_pose, ctx, name, &pose);
 	return 0;
 }
 
@@ -292,7 +298,7 @@ static int parse_and_run_lightcode(const char *line, SurvivePlaybackData *driver
 
 	SurviveObject *so = find_or_warn(driver, dev);
 	if (so)
-		driver->ctx->lightproc(so, sensor_id, acode, timeinsweep, timecode, length, lh);
+		SURVIVE_INVOKE_HOOK_SO(light, so, sensor_id, acode, timeinsweep, timecode, length, lh);
 	return 0;
 }
 

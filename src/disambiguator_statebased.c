@@ -630,8 +630,8 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 
 			int index_code = LS_Params[next_state].is_sweep ? -1 : -2;
 			if (d->confidence > 80) {
-				ctx->lightproc(d->so, index_code, acode, 0, lastSync.timestamp, lastSync.length,
-							   LS_Params[d->state].lh);
+				SURVIVE_INVOKE_HOOK_SO(light, d->so, index_code, acode, 0, lastSync.timestamp, lastSync.length,
+									   LS_Params[d->state].lh);
 				d->stats.sync_count[index_code + 2]++;
 			} else {
 				d->stats.drop_syncs[index_code + 2]++;
@@ -669,8 +669,8 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 					assert(offset_from > 0);
 					// Send the lightburst out.
 					if (d->confidence > 80) {
-						d->so->ctx->lightproc(d->so, i, LSParam_acode(d->state), offset_from, le->timestamp, le->length,
-											  lh);
+						SURVIVE_INVOKE_HOOK_SO(light, d->so, i, LSParam_acode(d->state), offset_from, le->timestamp,
+											   le->length, lh);
 						d->stats.sweep_hit_count++;
 					} else {
 						d->stats.drop_sweeps++;
@@ -680,8 +680,8 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 		}
 
 		if (d->confidence > 80 && cnt > 0) {
-			ctx->lightproc(d->so, -3, LS_Params[d->state].acode, 0, best_timecode, DIV_ROUND_CLOSEST(avg_length, cnt),
-						   LS_Params[d->state].lh);
+			SURVIVE_INVOKE_HOOK_SO(light, d->so, -3, LS_Params[d->state].acode, 0, best_timecode,
+								   DIV_ROUND_CLOSEST(avg_length, cnt), LS_Params[d->state].lh);
 		}
 	}
 	SetState(d, le, new_state);

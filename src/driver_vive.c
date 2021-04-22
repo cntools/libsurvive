@@ -339,29 +339,29 @@ void survive_dump_buffer(SurviveContext *ctx, const uint8_t *data, size_t length
 	for (size_t i = 0; i < length; i += bytes_per_row) {
 		for (int j = 0; j < bytes_per_row; j++) {
 			if (j > 0 && j % 4 == 0)
-				ctx->printfproc(ctx, "  ");
+				SURVIVE_INVOKE_HOOK(printf, ctx, "  ");
 
 			if (i + j < length) {
-				ctx->printfproc(ctx, "%02x ", data[i + j]);
+				SURVIVE_INVOKE_HOOK(printf, ctx, "%02x ", data[i + j]);
 			} else {
-				ctx->printfproc(ctx, "   ");
+				SURVIVE_INVOKE_HOOK(printf, ctx, "   ");
 			}
 		}
 
-		ctx->printfproc(ctx, "    |    ");
+		SURVIVE_INVOKE_HOOK(printf, ctx, "    |    ");
 
 		for (int j = 0; j < bytes_per_row; j++) {
 			if (j > 0 && j % 4 == 0)
-				ctx->printfproc(ctx, "  ");
+				SURVIVE_INVOKE_HOOK(printf, ctx, "  ");
 			if (i + j < length) {
 				uint8_t d = data[i + j];
-				ctx->printfproc(ctx, "%c", d >= 32 && d < 127 ? d : '.');
+				SURVIVE_INVOKE_HOOK(printf, ctx, "%c", d >= 32 && d < 127 ? d : '.');
 			} else {
-				ctx->printfproc(ctx, "   ");
+				SURVIVE_INVOKE_HOOK(printf, ctx, "   ");
 			}
 		}
 
-		ctx->printfproc(ctx, "\n");
+		SURVIVE_INVOKE_HOOK(printf, ctx, "\n");
 	}
 }
 
@@ -1624,7 +1624,7 @@ static bool read_imu_data(SurviveObject *w, uint64_t time_in_us, uint16_t time, 
 
 	SV_VERBOSE(750, "%s IMU: %d " Point3_format " " Point3_format " From: %s", w->codename, timeLSB,
 			   LINMATH_VEC3_EXPAND(agm), LINMATH_VEC3_EXPAND(agm + 3), packetToHex(*readPtr, payloadPtr));
-	w->ctx->raw_imuproc(w, 3, agm, ((uint32_t)time << 16) | (timeLSB << 8), 0);
+	SURVIVE_INVOKE_HOOK_SO(raw_imu, w, 3, agm, ((uint32_t)time << 16) | (timeLSB << 8), 0);
 
 	SurviveSensorActivations_register_runtime(&w->activations, w->activations.last_imu, time_in_us);
 
@@ -1925,7 +1925,7 @@ static int parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, ui
 					dump_binary = true;
 					// has_errors = true;
 				} else {
-					obj->ctx->syncproc(obj, channel, timecode, ootx, g);
+					SURVIVE_INVOKE_HOOK_SO(sync, obj, channel, timecode, ootx, g);
 				}
 			} else {
 				//                                                         SC
@@ -1944,7 +1944,8 @@ static int parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, ui
 					dump_binary = true;
 					// has_errors = true;
 				} else {
-					obj->ctx->sweepproc(obj, channel, survive_map_sensor_id(obj, sensor), timecode, half_clock_flag);
+					SURVIVE_INVOKE_HOOK_SO(sweep, obj, channel, survive_map_sensor_id(obj, sensor), timecode,
+										   half_clock_flag);
 				}
 			}
 
@@ -1962,11 +1963,11 @@ exit_loop:
 	if (dump_binary) {
 		for (int i = 0; i < length; i++) {
 			if ((i + 2) % 4 == 0)
-				ctx->printfproc(ctx, "  ");
-			ctx->printfproc(ctx, "%02x ", packet[i]);
+				SURVIVE_INVOKE_HOOK(printf, ctx, "  ");
+			SURVIVE_INVOKE_HOOK(printf, ctx, "%02x ", packet[i]);
 		}
 
-		ctx->printfproc(ctx, "\n");
+		SURVIVE_INVOKE_HOOK(printf, ctx, "\n");
 	}
 
 	return has_errors ? -1 : idx;
@@ -2356,7 +2357,7 @@ static void handle_watchman(SurviveObject *w, uint64_t time_in_us, uint8_t *read
 }
 #define DEBUG_WATCHMAN_PRINTF(...)                                                                                     \
 	if (ctx && ctx->log_level > 500) {                                                                                 \
-		ctx->printfproc(ctx, __VA_ARGS__);                                                                             \
+		SURVIVE_INVOKE_HOOK(printf, ctx, __VA_ARGS__);                                                                 \
 	}
 
 SURVIVE_EXPORT int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, uint8_t time1,
@@ -2735,7 +2736,7 @@ void survive_data_cb_locked(uint64_t time_received_us, SurviveUSBInterface *si) 
 							  0};
 
 				// assert(timecode <= obj->timebase_hz);
-				ctx->raw_imuproc(obj, 3, agm, timecode, code);
+				SURVIVE_INVOKE_HOOK_SO(raw_imu, obj, 3, agm, timecode, code);
 				SurviveSensorActivations_register_runtime(&obj->activations, obj->activations.last_imu,
 														  time_received_us);
 			}

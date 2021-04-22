@@ -97,9 +97,9 @@ int survive_default_printf_process(struct SurviveContext *ctx, const char *forma
 static void survive_default_error(struct SurviveContext *ctx, SurviveError errorCode, const char *fault) {
   if(ctx->log_target == 0) return;
 	set_stderr_color(ctx->log_target, 2);
-	ctx->printfproc(ctx, "Error %d: %s", errorCode, fault);
+	SURVIVE_INVOKE_HOOK(printf, ctx, "Error %d: %s", errorCode, fault);
 	reset_stderr(ctx->log_target);
-	ctx->printfproc(ctx, "\n");
+	SURVIVE_INVOKE_HOOK(printf, ctx, "\n");
 	fflush(ctx->log_target);
 }
 
@@ -107,7 +107,7 @@ static void survive_default_info(struct SurviveContext *ctx, const char *fault) 
   	survive_recording_info_process(ctx, fault);
 	
     if(ctx->log_target == 0) return;
-	ctx->printfproc(ctx, "Info: %s\n", fault);
+	SURVIVE_INVOKE_HOOK(printf, ctx, "Info: %s\n", fault);
 	fflush(ctx->log_target);
 }
 
@@ -115,7 +115,7 @@ static void survive_default_warn(struct SurviveContext *ctx, const char *fault) 
   	survive_recording_info_process(ctx, fault);
     if(ctx->log_target == 0) return;
 	set_stderr_color(ctx->log_target, 1);
-	ctx->printfproc(ctx, "Warning: %s\n", fault);
+	SURVIVE_INVOKE_HOOK(printf, ctx, "Warning: %s\n", fault);
 	reset_stderr(ctx->log_target);
 	fflush(ctx->log_target);
 }
@@ -168,14 +168,10 @@ static void *button_servicer(void *context) {
 		//	entry->axis2Id,
 		//	entry->axis2Val);
 
-		button_process_func butt_func = ctx->buttonproc;
-		if (butt_func) {
-			survive_get_ctx_lock(ctx);
-			survive_recording_button_process(entry->so, entry->eventType, entry->buttonId, entry->ids,
-											 entry->axisValues);
-			butt_func(entry->so, entry->eventType, entry->buttonId, entry->ids, entry->axisValues);
-			survive_release_ctx_lock(ctx);
-		}
+		survive_get_ctx_lock(ctx);
+		survive_recording_button_process(entry->so, entry->eventType, entry->buttonId, entry->ids, entry->axisValues);
+		SURVIVE_INVOKE_HOOK_SO(button, entry->so, entry->eventType, entry->buttonId, entry->ids, entry->axisValues);
+		survive_release_ctx_lock(ctx);
 		ctx->buttonQueue.processed_events++;
 
 		ctx->buttonQueue.nextReadIndex++;
@@ -661,7 +657,7 @@ int survive_startup(SurviveContext *ctx) {
 	// If lighthouse positions are known, broadcast them
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
 		if (ctx->bsd[i].PositionSet) {
-			ctx->lighthouse_poseproc(ctx, i, &ctx->bsd[i].Pose);
+			SURVIVE_INVOKE_HOOK(lighthouse_pose, ctx, i, &ctx->bsd[i].Pose);
 		}
 	}
 
@@ -701,7 +697,7 @@ int survive_add_object(SurviveContext *ctx, SurviveObject *obj) {
 	ctx->objs[oldct] = obj;
 	ctx->objs_ct = oldct + 1;
 
-	ctx->new_objectproc(obj);
+	SURVIVE_INVOKE_HOOK_SO(new_object, obj);
 
 	return 0;
 }
@@ -842,7 +838,7 @@ void survive_close(SurviveContext *ctx) {
 		if (ctx->PoserFn) {
 			ctx->PoserFn(ctx->objs[i], &ctx->objs[i]->PoserFnData, &pd);
 		}
-		ctx->lightcapproc(ctx->objs[i], 0);
+		SURVIVE_INVOKE_HOOK_SO(lightcap, ctx->objs[i], 0);
 	}
 	ctx->PoserFn = 0;
 

@@ -45,8 +45,7 @@ void survive_default_light_process(SurviveObject *so, int sensor_id, int acode, 
 		};
 
 		SURVIVE_POSER_INVOKE(so, &l);
-
-		ctx->light_pulseproc(so, sensor_id, acode, timecode, length_sec, lh);
+		SURVIVE_INVOKE_HOOK_SO(light_pulse, so, sensor_id, acode, timecode, length_sec, lh);
 
 		return;
 	}
@@ -67,7 +66,7 @@ void survive_default_light_process(SurviveObject *so, int sensor_id, int acode, 
 	FLT angle = centered_timeinsweep * (1. / TIMECENTER_TICKS * 3.14159265359 / 2.0);
 	assert(angle >= -LINMATHPI && angle <= LINMATHPI);
 
-	ctx->angleproc(so, sensor_id, acode, timecode, length_sec, angle, lh);
+	SURVIVE_INVOKE_HOOK_SO(angle, so, sensor_id, acode, timecode, length_sec, angle, lh);
 }
 
 void survive_default_lightcap_process(SurviveObject *so, const LightcapElement *le) {

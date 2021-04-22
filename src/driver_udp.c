@@ -61,11 +61,11 @@ static void *UDP_poll(void *_driver) {
 		survive_get_ctx_lock(ctx);
 		switch (buffer[0]) {
 		case 1: {
-			ctx->configproc(driver->so, (char *)&buffer[1], cnt - 4);
+			SURVIVE_INVOKE_HOOK_SO(config, driver->so, (char *)&buffer[1], cnt - 4);
 			break;
 		}
 		case 2: {
-			ctx->poseproc(driver->so, OGRelativeTime() * 48000000., (const SurvivePose *)&buffer[1]);
+			SURVIVE_INVOKE_HOOK_SO(pose, driver->so, OGRelativeTime() * 48000000., (const SurvivePose *)&buffer[1]);
 			break;
 		}
 		}
