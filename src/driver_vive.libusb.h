@@ -176,6 +176,7 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 	if (transfer->status != LIBUSB_TRANSFER_COMPLETED) {
 		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Transfer problem %s %d with %s", libusb_error_name(transfer->status),
 				 transfer->status, iface->hname);
+		iface->ctx = 0;
 		return;
 	}
 
