@@ -264,8 +264,9 @@ static int parse_and_run_rawlight(const char *line, SurvivePlaybackData *driver)
 	int rr = sscanf(line, "%s %s %hhu %u %hu\n", dev, op, &le.sensor_id, &le.timestamp, &le.length);
 
 	SurviveObject *so = find_or_warn(driver, dev);
-
-	handle_lightcap(so, &le);
+	if (so) {
+		handle_lightcap(so, &le);
+	}
 	return 0;
 }
 

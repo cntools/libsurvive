@@ -2207,13 +2207,11 @@ static bool use_watchman_v2(SurviveObject *w) {
 	}
 
 	switch (w->object_subtype) {
-	case SURVIVE_OBJECT_SUBTYPE_KNUCKLES_L:
-	case SURVIVE_OBJECT_SUBTYPE_KNUCKLES_R:
-	case SURVIVE_OBJECT_SUBTYPE_INDEX_HMD:
-	case SURVIVE_OBJECT_SUBTYPE_TRACKER_GEN2:
-		return true;
-	default:
+	case SURVIVE_OBJECT_SUBTYPE_TRACKER:
+	case SURVIVE_OBJECT_SUBTYPE_WAND:
 		return false;
+	default:
+		return true;
 	}
 }
 
