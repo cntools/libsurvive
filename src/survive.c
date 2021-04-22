@@ -39,7 +39,8 @@ STATIC_CONFIG_ITEM(CONFIG_F_OOTX, "force-ootx", 'i', "Forces ootx capture even i
 STATIC_CONFIG_ITEM(CONFIG_LIGHTHOUSE_COUNT, "lighthousecount", 'i', "How many lighthouses to look for.", 0)
 STATIC_CONFIG_ITEM(LIGHTHOUSE_GEN, "lighthouse-gen", 'i',
 				   "Which lighthouse gen to use -- 1 for LH1, 2 for LH2, 0 (default) for auto-detect", 0)
-
+STATIC_CONFIG_ITEM(OUTPUT_CALLBACK_STATS, "output-callback-stats", 'f',
+				   "Print cb stats every given number of seconds. 0 disables this output.", 0.);
 STATIC_CONFIG_ITEM(THREADED_POSERS, "threaded-posers", 'i', "Whether or not to run each poser in their own thread.", 1)
 
 const char *survive_config_file_name(struct SurviveContext *ctx) {
@@ -244,6 +245,9 @@ struct SurviveContext_private {
 	survive_run_time_fn runTimeFn;
 	void *runTimeFnUser;
 	double lastRunTime;
+
+	double callbackStatsTimeBetween;
+	double lastCallbackStats;
 };
 
 void survive_get_ctx_lock(SurviveContext *ctx) {
@@ -437,6 +441,8 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 	ctx->lh_version_forced = survive_configi(ctx, "lighthouse-gen", SC_GET, 0) - 1;
 
 	ctx->activeLighthouses = 0;
+
+	pctx->callbackStatsTimeBetween = survive_configf(ctx, "output-callback-stats", SC_GET, 0.0);
 
 	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
 		if (config_read_lighthouse(ctx->lh_config, &(ctx->bsd[i]), i)) {
@@ -803,6 +809,17 @@ int survive_haptic(SurviveObject *so, FLT freq, FLT amp, FLT duration) {
 	return so->haptic(so, freq, amp, duration);
 }
 
+void survive_output_callback_stats(SurviveContext *ctx) {
+	SV_VERBOSE(10, "Callback statistics:");
+#define SURVIVE_HOOK_PROCESS_DEF(hook)                                                                                 \
+	SV_VERBOSE(10, "\t%-20s cnt: %5d avg time: %.7fms max time: %.7fms", #hook, ctx->hook##_call_cnt,                  \
+			   1000. * ctx->hook##_call_time / (1e-5 + ctx->hook##_call_cnt), ctx->hook##_max_call_time * 1000.);      \
+	ctx->hook##_call_cnt = 0;                                                                                          \
+	ctx->hook##_max_call_time = ctx->hook##_call_time = 0.;
+
+#include "survive_hooks.h"
+}
+
 void survive_close(SurviveContext *ctx) {
 	const char *DriverName;
 	int r = 0;
@@ -852,6 +869,8 @@ void survive_close(SurviveContext *ctx) {
 	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
 		survive_ootx_free_decoder_context(ctx, i);
 	}
+
+	survive_output_callback_stats(ctx);
 
 	survive_destroy_recording(ctx);
 		
@@ -917,6 +936,15 @@ int survive_poll(struct SurviveContext *ctx) {
 		if ((timeStart + ctx->poll_min_time_ms) > timeNow) {
 			uint64_t sleepTime = (timeStart + ctx->poll_min_time_ms) - timeNow;
 			OGUSleep(sleepTime * 1000);
+		}
+	}
+
+	struct SurviveContext_private *pctx = ctx->private_members;
+	if (pctx->callbackStatsTimeBetween != 0.) {
+		FLT now = OGRelativeTime();
+		if (pctx->lastCallbackStats + pctx->callbackStatsTimeBetween < now) {
+			survive_output_callback_stats(ctx);
+			pctx->lastCallbackStats = now;
 		}
 	}
 	survive_get_ctx_lock(ctx);

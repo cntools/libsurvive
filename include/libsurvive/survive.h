@@ -301,6 +301,12 @@ struct SurviveContext {
 #define SURVIVE_HOOK_PROCESS_DEF(hook) hook##_process_func hook##proc;
 #include "survive_hooks.h"
 
+#define SURVIVE_HOOK_PROCESS_DEF(hook)                                                                                 \
+	FLT hook##_call_time;                                                                                              \
+	uint32_t hook##_call_cnt;                                                                                          \
+	FLT hook##_max_call_time;
+#include "survive_hooks.h"
+
 	// Calibration data:
 	int activeLighthouses;
 	BaseStationData bsd[NUM_GEN2_LIGHTHOUSES];
@@ -416,14 +422,26 @@ SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel c
 #define SURVIVE_INVOKE_HOOK(hook, ctx, ...)                                                                            \
 	{                                                                                                                  \
 		if (ctx->hook##proc) {                                                                                         \
+			FLT start_time = OGRelativeTime();                                                                         \
 			ctx->hook##proc(ctx, __VA_ARGS__);                                                                         \
+			FLT this_time = OGRelativeTime() - start_time;                                                             \
+			if (this_time > ctx->hook##_max_call_time)                                                                 \
+				ctx->hook##_max_call_time = this_time;                                                                 \
+			ctx->hook##_call_time += this_time;                                                                        \
+			ctx->hook##_call_cnt++;                                                                                    \
 		}                                                                                                              \
 	}
 
 #define SURVIVE_INVOKE_HOOK_SO(hook, so, ...)                                                                          \
 	{                                                                                                                  \
 		if (so->ctx->hook##proc) {                                                                                     \
+			FLT start_time = OGRelativeTime();                                                                         \
 			so->ctx->hook##proc(so, ##__VA_ARGS__);                                                                    \
+			FLT this_time = OGRelativeTime() - start_time;                                                             \
+			if (this_time > so->ctx->hook##_max_call_time)                                                             \
+				so->ctx->hook##_max_call_time = this_time;                                                             \
+			so->ctx->hook##_call_time += this_time;                                                                    \
+			so->ctx->hook##_call_cnt++;                                                                                \
 		}                                                                                                              \
 	}
 
