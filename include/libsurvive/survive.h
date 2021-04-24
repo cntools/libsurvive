@@ -423,7 +423,7 @@ SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel c
 #define SURVIVE_INVOKE_HOOK_SO(hook, so, ...)                                                                          \
 	{                                                                                                                  \
 		if (so->ctx->hook##proc) {                                                                                     \
-			so->ctx->hook##proc(so __VA_OPT__(, ) __VA_ARGS__);                                                        \
+			so->ctx->hook##proc(so, ##__VA_ARGS__);                                                                    \
 		}                                                                                                              \
 	}
 
