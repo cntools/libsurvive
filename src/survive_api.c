@@ -454,6 +454,34 @@ FLT survive_simple_object_get_latest_pose(const SurviveSimpleObject *sao, Surviv
 	return timecode;
 }
 
+SURVIVE_EXPORT bool survive_simple_object_charging(const SurviveSimpleObject *sao) {
+	switch (sao->type) {
+	case SurviveSimpleObject_LIGHTHOUSE: {
+		return true;
+	}
+	case SurviveSimpleObject_HMD:
+	case SurviveSimpleObject_OBJECT:
+		return sao->data.so->charging;
+	case SurviveSimpleObject_EXTERNAL:
+	default:
+		return false;
+	}
+}
+
+SURVIVE_EXPORT uint8_t survive_simple_object_charge_percet(const SurviveSimpleObject *sao) {
+	switch (sao->type) {
+	case SurviveSimpleObject_LIGHTHOUSE: {
+		return 100;
+	}
+	case SurviveSimpleObject_HMD:
+	case SurviveSimpleObject_OBJECT:
+		return sao->data.so->charge;
+	case SurviveSimpleObject_EXTERNAL:
+	default:
+		return 0;
+	}
+}
+
 const char *survive_simple_object_name(const SurviveSimpleObject *sao) { return sao->name; }
 const char *survive_simple_serial_number(const SurviveSimpleObject *sao) {
 	switch (sao->type) {

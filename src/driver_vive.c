@@ -335,6 +335,7 @@ const char *survive_usb_interface_str(enum USB_IF_t iface) {
 
 void survive_dump_buffer(SurviveContext *ctx, const uint8_t *data, size_t length) {
 	int bytes_per_row = 32;
+	ctx->printfproc(ctx, "%.7f ", survive_run_time(ctx));
 	for (size_t i = 0; i < length; i += bytes_per_row) {
 		for (int j = 0; j < bytes_per_row; j++) {
 			if (j > 0 && j % 4 == 0)
@@ -1291,7 +1292,7 @@ static void registerButtonEvent(SurviveObject *so, buttonEvent *event, enum Butt
 #define HAS_FLAG(flags, flag) ((flags & (flag)) == (flag))
 
 char hexstr[512];
-static char *packetToHex(uint8_t *packet, uint8_t *packetEnd) {
+static char *packetToHex(const uint8_t *packet, const uint8_t *packetEnd) {
 	int count = packetEnd - packet;
 	int i;
 	for (i = 0; i < count; i++)
@@ -1602,7 +1603,7 @@ exit_while:
 }
 
 static bool read_imu_data(SurviveObject *w, uint64_t time_in_us, uint16_t time, uint8_t **readPtr,
-						  uint8_t *payloadEndPtr) {
+						  const uint8_t *payloadEndPtr) {
 	uint8_t *payloadPtr = *readPtr;
 
 	SurviveContext *ctx = w->ctx;
@@ -1634,6 +1635,16 @@ static bool read_imu_data(SurviveObject *w, uint64_t time_in_us, uint16_t time, 
 #define UPDATE_PTR_AND_RETURN                                                                                          \
 	*readPtr = payloadPtr;                                                                                             \
 	return true;
+
+static void handle_battery(SurviveObject *w, uint8_t batStatus) {
+	// int8_t percent = (int8_t)((((FLT)(batStatus & 0x7f)) / 0x7f) * 100);
+	int8_t percent = (batStatus & 0x7fu);
+	bool charging = (batStatus & 0x80) == 0x80;
+	w->charging = charging;
+	w->charge = percent;
+	SurviveContext *ctx = w->ctx;
+	SV_VERBOSE(100, "%s Battery charge %d%%(%s)", w->codename, percent, charging ? "Charging" : "Not charging");
+}
 
 static bool read_event(SurviveObject *w, uint64_t time_in_us, uint16_t time, uint8_t **readPtr,
 					   uint8_t *payloadEndPtr) {
@@ -1794,8 +1805,7 @@ static bool read_event(SurviveObject *w, uint64_t time_in_us, uint16_t time, uin
 			// Battery Status
 			// Happens On USB plugged in. Switch to wired mode?
 			uint8_t batStatus = POP_BYTE(payloadPtr);
-			int percent = (int)((((FLT)(batStatus & 0x7f)) / 0x7f) * 100);
-			bool charging = (batStatus & 0x80) == 0x80;
+			handle_battery(w, batStatus);
 #ifdef KNUCKLES_INFO
 			SV_INFO("KAS: @%04hX | Status  [Battery: % 3i%%] [%s]", time, percent,
 					(charging ? "CHARGING" : "ON BATTERY"));
@@ -1992,6 +2002,7 @@ static bool handle_input(SurviveObject *w, uint8_t flags, uint8_t **payloadPtr, 
 	uint8_t *payloadStart = *payloadPtr;
 
 	if (firstGen) {
+		bool flagUnknown = HAS_FLAG(flags, 0x8);
 		bool flagTrigger = HAS_FLAG(flags, 0x4);
 		bool flagMotion = HAS_FLAG(flags, 0x2);
 		bool flagButton = HAS_FLAG(flags, 0x1);
@@ -2016,6 +2027,10 @@ static bool handle_input(SurviveObject *w, uint8_t flags, uint8_t **payloadPtr, 
 			bEvent.touchpadHorizontal = (int16_t)POP_SHORT(*payloadPtr) / 32768.;
 			bEvent.touchpadVertical = (int16_t)POP_SHORT(*payloadPtr) / 32768.;
 		}
+
+		if (flagUnknown) {
+			SV_VERBOSE(150, "Unknown flag in handle_inut");
+		}
 		SV_VERBOSE(150, "handle_input flags %d %d %d", flagButton, flagTrigger, flagMotion);
 	} else {
 		// Second gen event (Eg Knuckles proximity)
@@ -2023,7 +2038,7 @@ static bool handle_input(SurviveObject *w, uint8_t flags, uint8_t **payloadPtr, 
 			POP_BYTE(*payloadPtr); // May be flags, but currently only observed to be 'a1' when knuckles
 
 		if (genTwoType == 0xA1) {
-			// Knucles
+			// Knuckles
 
 			// Resistive contact sensors in buttons?
 			VERIFY_LENGTH_OR_FAIL(*payloadPtr, 7);
@@ -2133,7 +2148,7 @@ static void handle_watchman_v2(SurviveObject *w, uint64_t time_in_us, uint16_t t
 
 	bool flagLightcap = HAS_FLAG(flags, 0x10);
 	bool flagInput = HAS_FLAG(flags, 0x20);
-	bool flagUnknown40 = HAS_FLAG(flags, 0x40);
+	bool flagMetaData = HAS_FLAG(flags, 0x40);
 	bool flagIMU = HAS_FLAG(flags, 0x80);
 
 	if (HAS_FLAG(flags, ~0xD1)) {
@@ -2143,11 +2158,30 @@ static void handle_watchman_v2(SurviveObject *w, uint64_t time_in_us, uint16_t t
 	if (flagIMU)
 		read_imu_data(w, time_in_us, time, &payloadPtr, payloadEndPtr);
 
-	// These things seem infrequent and of variable length;
-	if (flagUnknown40) {
-		SV_VERBOSE(200, "%s Unknown flag 0x40 bytes dropping rest of data %s", w->codename,
-				   packetToHex(payloadPtr, payloadEndPtr));
-		return;
+	// These things happen every 10 seconds
+	if (flagMetaData) {
+		uint8_t marker_byte = POP_BYTE(payloadPtr);
+
+		switch (marker_byte) {
+		case 0x80: {
+			uint8_t battery_byte = POP_BYTE(payloadPtr);
+			handle_battery(w, battery_byte);
+			break;
+		}
+		case 0x20: {
+			// Mode?
+			uint8_t unknown_byte = POP_BYTE(payloadPtr);
+			break;
+		}
+		default:
+			SV_VERBOSE(100, "%.7f %s Unknown metadata marker (%02x %02x) bytes dropping rest of data %s",
+					   survive_run_time(ctx), w->codename, flags, marker_byte,
+					   packetToHex(originPayloadPtr, payloadEndPtr));
+			return;
+		}
+	} else {
+		SV_VERBOSE(100, "%.7f %s ref flag 0x40(0x%x) bytes rest of data %s", survive_run_time(ctx), w->codename, flags,
+				   packetToHex(originPayloadPtr, payloadEndPtr));
 	}
 
 	if (flagInput) {
@@ -2910,6 +2944,9 @@ void survive_data_cb_locked(uint64_t time_received_us, SurviveUSBInterface *si) 
 				// Very infrequent; doesnt seem periodic.
 				// 00 04 0b 68   00 00 00 00   00 00 00 3e   0f 93 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00     |    ...h  ....  ...>  ....  ....  ....  ....  ....
 				// 00 04 0b 17   00 00 00 00   00 00 00 3e   0f 93 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00     |    ....  ....  ...>  ....  ....  ....  ....  ....
+				uint8_t second_cnt = readdata[3];
+				uint8_t battery_info = readdata[13];
+				handle_battery(obj, battery_info);
 				break;
 			}
 			case 0x0700: {

@@ -127,6 +127,16 @@ SURVIVE_EXPORT FLT survive_simple_object_get_latest_pose(const SurviveSimpleObje
 SURVIVE_EXPORT FLT survive_simple_object_get_latest_velocity(const SurviveSimpleObject *sao, SurviveVelocity *pose);
 
 /**
+ * @return Whether or not the object is charging
+ */
+SURVIVE_EXPORT bool survive_simple_object_charging(const SurviveSimpleObject *sao);
+
+/**
+ * @return The object charge percent from 0 to 100
+ */
+SURVIVE_EXPORT uint8_t survive_simple_object_charge_percet(const SurviveSimpleObject *sao);
+
+/**
  * Gets the null terminated name of the object.
  */
 SURVIVE_EXPORT const char *survive_simple_object_name(const SurviveSimpleObject *sao);
