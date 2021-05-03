@@ -304,6 +304,7 @@ struct SurviveContext {
 #define SURVIVE_HOOK_PROCESS_DEF(hook)                                                                                 \
 	FLT hook##_call_time;                                                                                              \
 	uint32_t hook##_call_cnt;                                                                                          \
+	uint32_t hook##_call_over_cnt;                                                                                     \
 	FLT hook##_max_call_time;
 #include "survive_hooks.h"
 
@@ -427,6 +428,8 @@ SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel c
 			FLT this_time = OGRelativeTime() - start_time;                                                             \
 			if (this_time > ctx->hook##_max_call_time)                                                                 \
 				ctx->hook##_max_call_time = this_time;                                                                 \
+			if (this_time > .001)                                                                                      \
+				ctx->hook##_call_over_cnt++;                                                                           \
 			ctx->hook##_call_time += this_time;                                                                        \
 			ctx->hook##_call_cnt++;                                                                                    \
 		}                                                                                                              \
@@ -440,6 +443,8 @@ SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel c
 			FLT this_time = OGRelativeTime() - start_time;                                                             \
 			if (this_time > so->ctx->hook##_max_call_time)                                                             \
 				so->ctx->hook##_max_call_time = this_time;                                                             \
+			if (this_time > .001)                                                                                      \
+				so->ctx->hook##_call_over_cnt++;                                                                       \
 			so->ctx->hook##_call_time += this_time;                                                                    \
 			so->ctx->hook##_call_cnt++;                                                                                \
 		}                                                                                                              \

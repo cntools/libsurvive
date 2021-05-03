@@ -812,11 +812,13 @@ int survive_haptic(SurviveObject *so, FLT freq, FLT amp, FLT duration) {
 void survive_output_callback_stats(SurviveContext *ctx) {
 	SV_VERBOSE(10, "Callback statistics:");
 #define SURVIVE_HOOK_PROCESS_DEF(hook)                                                                                 \
-	SV_VERBOSE(10, "\t%-20s cnt: %5d avg time: %.7fms max time: %.7fms", #hook, ctx->hook##_call_cnt,                  \
-			   1000. * ctx->hook##_call_time / (1e-5 + ctx->hook##_call_cnt), ctx->hook##_max_call_time * 1000.);      \
+	SV_VERBOSE(10, "\t%-20s cnt: %5d avg time: %.7fms max time: %.7fms cnt over 1ms: %d(%.7f%%)", #hook,               \
+			   ctx->hook##_call_cnt, 1000. * ctx->hook##_call_time / (1e-5 + ctx->hook##_call_cnt),                    \
+			   ctx->hook##_max_call_time * 1000., ctx->hook##_call_over_cnt,                                           \
+			   ctx->hook##_call_over_cnt / (FLT)(ctx->hook##_call_cnt + .0001));                                       \
 	ctx->hook##_call_cnt = 0;                                                                                          \
-	ctx->hook##_max_call_time = ctx->hook##_call_time = 0.;
-
+	ctx->hook##_max_call_time = ctx->hook##_call_time = 0.;                                                            \
+	ctx->hook##_call_over_cnt = 0;
 #include "survive_hooks.h"
 }
 
