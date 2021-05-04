@@ -21,14 +21,16 @@ endif()
 
 IF(USE_OPENCV)
 	SET(MINIMAL_OPENCV_SRCS ./minimal_opencv.h)
+ELSEIF(USE_EIGEN)
+    SET(MINIMAL_OPENCV_SRCS ./minimal_opencv.h minimal_opencv.c minimal_opencv.eigen.cc)
 ELSE()
-	SET(MINIMAL_OPENCV_SRCS ./minimal_opencv.c ./minimal_opencv.h)
+	SET(MINIMAL_OPENCV_SRCS minimal_opencv.blas.c minimal_opencv.c ./minimal_opencv.h)
 ENDIF()
 
 IF(WIN32)
 	set(packages_config "<packages><package id=\"lapacke\" version=\"0.1.0\" targetFramework=\"native\" /><package id=\"OpenBLAS\" version=\"0.2.14.1\" targetFramework=\"native\" /></packages>")
 	file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/packages.config ${packages_config})
-	ADD_DEFINITIONS(-DHAVE_LAPACK_CONFIG_H -DLAPACK_COMPLEX_STRUCTURE)
+    ADD_DEFINITIONS(-DHAVE_LAPACK_CONFIG_H -DLAPACK_COMPLEX_STRUCTURE)
 	set(MINIMAL_OPENCV_SRCS ${MINIMAL_OPENCV_SRCS} ${CMAKE_CURRENT_BINARY_DIR}/packages.config)
 endif()
 
@@ -71,8 +73,11 @@ endif()
 
 message("Using blas backend ${BLAS_BACKEND}")
 add_library(minimal_opencv STATIC ${MINIMAL_OPENCV_SRCS})
-set_target_properties(minimal_opencv PROPERTIES LINKER_LANGUAGE C)
 set_target_properties(minimal_opencv PROPERTIES FOLDER "libraries")
+
+IF(USE_EIGEN)
+    target_compile_options(minimal_opencv PRIVATE -fno-exceptions -fno-rtti -fPIC)
+ENDIF()
 
 IF(UNIX)  
   target_link_libraries(minimal_opencv ${BLAS_BACKEND} ${LAPACKE_LOCATION} m)

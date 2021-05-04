@@ -21,6 +21,17 @@ option(USE_ASAN "Use address sanitizer" OFF)
 option(ENABLE_TESTS "Enable build / execution of tests" OFF)
 option(USE_HEX_FLOAT_PRINTF "Use hex floats when recording" OFF)
 
+option(USE_OPENCV "Use opencv proper for math operations" OFF)
+option(USE_EIGEN "Use eigen for math operations" OFF)
+
+
+IF(USE_OPENCV)
+    add_compile_definitions(USE_OPENCV)
+ELSEIF(USE_EIGEN)
+    add_compile_definitions(USE_EIGEN)
+ELSE()
+ENDIF()
+
 find_library(CBLAS_LIB NAMES cblas)
 set(USE_OPENBLAS_DEFAULT OFF)
 if(NOT CBLAS_LIB)

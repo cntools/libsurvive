@@ -10,6 +10,7 @@
 
 #include "minimal_opencv.h"
 #if !defined(__FreeBSD__) && !defined(__APPLE__)
+#include <assert.h>
 #include <malloc.h>
 #endif
 
