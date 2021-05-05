@@ -63,10 +63,6 @@ void cvGEMM(const CvMat *_src1, const CvMat *_src2, double alpha, const CvMat *_
 const int DECOMP_SVD = 1;
 const int DECOMP_LU = 2;
 
-#define CREATE_CV_STACK_MAT(name, rows, cols, type)                                                                    \
-	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
-	CvMat name = cvMat(rows, cols, SURVIVE_CV_F, _##name);
-
 int cvSolve(const CvMat *_Aarr, const CvMat *_Barr, CvMat *_xarr, int method) {
 	auto Aarr = CONVERT_TO_EIGEN(_Aarr);
 	auto Barr = CONVERT_TO_EIGEN(_Barr);

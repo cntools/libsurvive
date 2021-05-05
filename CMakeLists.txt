@@ -96,7 +96,7 @@ option(BUILD_APPLICATIONS "Build the default libsurvive applications" ${NOT_CORE
 #link_directories(${CMAKE_INSTALL_PREFIX}/lib)
 
 IF(UNIX)
-	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=gnu99 -rdynamic -Werror=incompatible-pointer-types -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces -Werror=implicit-function-declaration -Werror=return-type -fvisibility=hidden -Werror=vla")
+	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=gnu99 -rdynamic -Werror=incompatible-pointer-types -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces -Werror=implicit-function-declaration -Werror=return-type -fvisibility=hidden -Werror=vla -fno-math-errno")
 	if(ENABLE_WARNINGS_AS_ERRORS)
 	  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror")
 	endif()
