@@ -2,7 +2,11 @@
 
 #include "linmath.h"
 #include "minimal_opencv.h"
-#include <eigen3/Eigen/Eigen>
+#include <Eigen/Core>
+#include <Eigen/LU>
+#include <Eigen/QR>
+#include <Eigen/SVD>
+
 #include <iostream>
 
 #ifdef USE_FLOAT
