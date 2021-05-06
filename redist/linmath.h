@@ -85,7 +85,7 @@ typedef FLT LinmathPoint3d[3];
 typedef FLT LinmathVec3d[3];
 typedef FLT LinmathEulerAngle[3];
 typedef FLT LinmathAxisAngle[3];
-typedef FLT LinmathAxisAngleMag[4];
+typedef FLT LinmathAxisAngleMag[3];
 
 typedef struct LinmathEulerPose {
 	LinmathPoint3d Pos;
@@ -152,7 +152,7 @@ LINMATH_EXPORT FLT anglebetween3d(FLT *a, FLT *b);
 
 LINMATH_EXPORT void rotatearoundaxis(FLT *outvec3, const FLT *invec3, const FLT *axis, FLT angle);
 LINMATH_EXPORT void angleaxisfrom2vect(FLT *angle, FLT *axis, FLT *src, FLT *dest);
-LINMATH_EXPORT void axisanglefromquat(FLT *angle, FLT *axis, LinmathQuat quat);
+LINMATH_EXPORT void axisanglefromquat(FLT *angle, FLT *axis, const LinmathQuat quat);
 // Quaternion things...
 
 LINMATH_EXPORT FLT quatdist(const LinmathQuat q1, const LinmathQuat q2);
@@ -164,7 +164,7 @@ LINMATH_EXPORT void quatcopy(LinmathQuat q, const LinmathQuat qin);
 LINMATH_EXPORT void quatfromeuler(LinmathQuat q, const LinmathEulerAngle euler);
 LINMATH_EXPORT void quattoeuler(LinmathEulerAngle euler, const LinmathQuat q);
 LINMATH_EXPORT void quatfromaxisangle(LinmathQuat q, const FLT *axis, FLT radians);
-LINMATH_EXPORT void quatfromaxisanglemag(LinmathQuat q, const LinmathAxisAngleMag axisangle);
+LINMATH_EXPORT void quatfromaxisanglemag(LinmathQuat q, const LinmathAxisAngle axisangle);
 LINMATH_EXPORT void quattoaxisanglemag(LinmathAxisAngleMag ang, const LinmathQuat q);
 LINMATH_EXPORT FLT quatmagnitude(const LinmathQuat q);
 LINMATH_EXPORT FLT quatinvsqmagnitude(const LinmathQuat q);

@@ -81,7 +81,8 @@ void survive_reproject(const SurviveContext *ctx, int lighthouse, LinmathVec3d c
 	survive_reproject_from_pose(ctx, lighthouse, &world2lh, ptInWorld, out);
 }
 
-void survive_apply_bsd_calibration(const SurviveContext *ctx, int lh, const FLT *in, SurviveAngleReading out) {
+void survive_apply_bsd_calibration(const SurviveContext *ctx, int lh, const SurviveAngleReading in,
+								   SurviveAngleReading out) {
 	const BaseStationCal *cal = ctx->bsd[lh].fcal;
 	out[0] = in[0] + cal[0].phase;
 	out[1] = in[1] + cal[1].phase;

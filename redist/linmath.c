@@ -218,7 +218,7 @@ inline void angleaxisfrom2vect(FLT *angle, FLT *axis, FLT *src, FLT *dest) {
 	cross3d(axis, v1, v0);
 }
 
-inline void axisanglefromquat(FLT *angle, FLT *axis, FLT *q) {
+inline void axisanglefromquat(FLT *angle, FLT *axis, const LinmathQuat q) {
 	// this way might be fine, too.
 	// FLT dist = FLT_SQRT((q[1] * q[1]) + (q[2] * q[2]) + (q[3] * q[3]));
 	//
@@ -260,7 +260,7 @@ inline FLT quatdifference(const LinmathQuat q1, const LinmathQuat q2) {
 	quatfind(diff, q1, q2);
 	return 1. - diff[0];
 }
-FLT quatdist(const FLT *q1, const FLT *q2) {
+FLT quatdist(const LinmathQuat q1, const LinmathQuat q2) {
 	FLT rtn = 0;
 	for (int i = 0; i < 4; i++) {
 		rtn += q1[i] * q2[i];
@@ -319,7 +319,7 @@ inline void quattoeuler(LinmathEulerAngle euler, const LinmathQuat q) {
 	euler[2] = FLT_ATAN2(2 * (q[0] * q[3] + q[1] * q[2]), 1 - 2 * (q[2] * q[2] + q[3] * q[3]));
 }
 
-inline void quatfromaxisanglemag(LinmathQuat q, const LinmathAxisAngleMag axisangle) {
+inline void quatfromaxisanglemag(LinmathQuat q, const LinmathAxisAngle axisangle) {
 	FLT radians = norm3d(axisangle);
 
 	if (radians == 0.0) {
@@ -401,7 +401,7 @@ inline void quattomatrix(FLT *matrix44, const LinmathQuat qin) {
 	matrix44[14] = 0;
 	matrix44[15] = 1;
 }
-inline void quatfrommatrix33(FLT *q, const FLT *m) {
+inline void quatfrommatrix33(LinmathQuat q, const FLT *m) {
 	FLT m00 = m[0], m01 = m[1], m02 = m[2], m10 = m[3], m11 = m[4], m12 = m[5], m20 = m[6], m21 = m[7], m22 = m[8];
 
 	FLT tr = m00 + m11 + m22;
@@ -516,14 +516,14 @@ inline void quatconjugateby(LinmathQuat q, const LinmathQuat r, const LinmathQua
 	quatrotateabout(q, q, r);
 	quatnormalize(q, q);
 }
-inline void quatsub(LinmathQuat qout, const FLT *a, const FLT *b) {
+inline void quatsub(LinmathQuat qout, const LinmathQuat a, const LinmathQuat b) {
 	qout[0] = a[0] - b[0];
 	qout[1] = a[1] - b[1];
 	qout[2] = a[2] - b[2];
 	qout[3] = a[3] - b[3];
 }
 
-inline void quatadd(LinmathQuat qout, const FLT *a, const FLT *b) {
+inline void quatadd(LinmathQuat qout, const LinmathQuat a, const LinmathQuat b) {
 	qout[0] = a[0] + b[0];
 	qout[1] = a[1] + b[1];
 	qout[2] = a[2] + b[2];
@@ -789,7 +789,7 @@ If you call this with a dest vector that is close to the inverse
 of this vector, we will rotate 180 degrees around a generated axis if
 since in this case ANY axis of rotation is valid.
 */
-inline void quatfrom2vectors(FLT *q, const FLT *src, const FLT *dest) {
+inline void quatfrom2vectors(LinmathQuat q, const FLT *src, const FLT *dest) {
 	// Based on Stan Melax's article in Game Programming Gems
 
 	// Copy, since cannot modify local
