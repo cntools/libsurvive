@@ -694,6 +694,7 @@ datalog_process_func survive_default_datalog_process = 0;
 
 #include "ootx_decoder.h"
 #include "survive_hooks.h"
+#include "survive_kalman_tracker.h"
 
 void survive_default_new_object_process(SurviveObject *so) {}
 int survive_add_object(SurviveContext *ctx, SurviveObject *obj) {
@@ -749,6 +750,18 @@ const void *survive_get_driver_by_closefn(const SurviveContext *ctx, DeviceDrive
 			return ctx->drivers[i];
 	}
 	return 0;
+}
+
+void survive_reset_lighthouse_positions(SurviveContext *ctx) {
+	// survive_get_ctx_lock(ctx);
+	SV_VERBOSE(100, "survive_reset_lighthouse_positions called");
+	for (int i = 0; i < ctx->activeLighthouses; i++) {
+		ctx->bsd[i].PositionSet = false;
+	}
+	for (int i = 0; i < ctx->objs_ct; i++) {
+		survive_kalman_tracker_lost_tracking(ctx->objs[i]->tracker, false);
+	}
+	// survive_release_ctx_lock(ctx);
 }
 
 void survive_add_driver(SurviveContext *ctx, void *payload, DeviceDriverCb poll, DeviceDriverCb close) {

@@ -547,6 +547,7 @@ SURVIVE_EXPORT void survive_add_driver(SurviveContext *ctx, void *driver_data, D
 SURVIVE_EXPORT bool *survive_add_threaded_driver(SurviveContext *ctx, void *driver_data, const char *name,
 												 void *(routine)(void *), DeviceDriverCb close);
 SURVIVE_EXPORT char *survive_export_config(SurviveObject *so);
+SURVIVE_EXPORT void survive_reset_lighthouse_positions(SurviveContext *ctx);
 
 // This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
 SURVIVE_EXPORT uint8_t survive_map_sensor_id(SurviveObject *so, uint8_t reported_id);
