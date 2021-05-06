@@ -660,6 +660,7 @@ static void survive_kalman_tracker_config(SurviveKalmanTracker *tracker, survive
 }
 
 void survive_kalman_tracker_reinit(SurviveKalmanTracker *tracker) {
+	memset(&tracker->stats, 0, sizeof(tracker->stats));
 
 	tracker->report_ignore_start_cnt = 0;
 	tracker->last_light_time = 0;
@@ -840,6 +841,7 @@ void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *tracker, bool al
 	tracker->light_residuals_all = 0;
 	{
 		tracker->so->OutPoseIMU = (SurvivePose){0};
+		tracker->so->poseConfidence = 0;
 		survive_kalman_tracker_reinit(tracker);
 		memset(&tracker->so->OutPoseIMU, 0, sizeof(SurvivePose));
 		memset(&tracker->so->OutPose, 0, sizeof(SurvivePose));
