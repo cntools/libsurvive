@@ -1,8 +1,10 @@
 #include <cblas.h>
 #ifdef LAPACKE_FOLDER
 #include <lapacke/lapacke.h>
+#include <lapacke/lapacke_utils.h>
 #else
 #include <lapacke.h>
+#include <lapacke_utils.h>
 #endif
 
 #include "math.h"
@@ -11,7 +13,6 @@
 #include "string.h"
 #include "sv_matrix.h"
 
-#include <lapacke_utils.h>
 #include <limits.h>
 #include <stdarg.h>
 
