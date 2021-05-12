@@ -79,7 +79,7 @@ struct lfsr_lookup_t {
 struct lfsr_lookup_t *lfsr_lookup_ctor(lfsr_poly_t p) {
 	uint32_t order = lfsr_order(p);
 	struct lfsr_lookup_t *lookup = SV_MALLOC(sizeof(struct lfsr_lookup_t));
-	lookup->table = (uint32_t *)SV_CALLOC(1 << order, sizeof(uint32_t));
+	lookup->table = (uint32_t *)SV_CALLOC_N(1 << order, sizeof(uint32_t));
 	lookup->order = order;
 	uint32_t start = 1;
 	uint32_t state = start;

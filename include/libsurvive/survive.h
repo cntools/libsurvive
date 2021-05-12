@@ -616,7 +616,8 @@ inline static void *sv_dynamic_ptr_check(char *file, int line, void *ptr) {
 }
 
 #define SV_MALLOC(size) sv_dynamic_ptr_check(__FILE__, __LINE__, malloc(size))
-#define SV_CALLOC(num, size) sv_dynamic_ptr_check(__FILE__, __LINE__, calloc((num), (size)))
+#define SV_CALLOC_N(num, size) sv_dynamic_ptr_check(__FILE__, __LINE__, calloc((num), (size)))
+#define SV_CALLOC(size) SV_CALLOC_N(1, size)
 #define SV_NEW(type, ...)                                                                                              \
 	type##_init(((type *)sv_dynamic_ptr_check(__FILE__, __LINE__, calloc(1, (sizeof(struct type))))), ##__VA_ARGS__)
 #define SV_REALLOC(ptr, size) sv_dynamic_ptr_check(__FILE__, __LINE__, realloc(ptr, (size)))

@@ -28,21 +28,21 @@
  */
 
 struct survive_kalman_state_s;
-struct CvMat;
+struct SvMat;
 
 // Generates the transition matrix F
-typedef void (*kalman_transition_fn_t)(FLT dt, FLT *f_out, const struct CvMat *x0);
+typedef void (*kalman_transition_fn_t)(FLT dt, FLT *f_out, const struct SvMat *x0);
 
 // Given state x0 and time delta; gives the new state x1. For a linear model, this is just x1 = F * x0
-typedef void (*kalman_predict_fn_t)(FLT dt, const struct survive_kalman_state_s *k, const struct CvMat *x0,
-									struct CvMat *x1);
+typedef void (*kalman_predict_fn_t)(FLT dt, const struct survive_kalman_state_s *k, const struct SvMat *x0,
+									struct SvMat *x1);
 
 // Given time and current state, generate the process noise Q_k.
-typedef void (*kalman_process_noise_fn_t)(void *user, FLT dt, const struct CvMat *x, FLT *Q_out);
+typedef void (*kalman_process_noise_fn_t)(void *user, FLT dt, const struct SvMat *x, FLT *Q_out);
 
 // Given a measurement Z, and state X_t, generates both the y difference term and the H jacobian term.
-typedef bool (*kalman_measurement_model_fn_t)(void *user, const struct CvMat *Z, const struct CvMat *x_t,
-											  struct CvMat *y, struct CvMat *H_k);
+typedef bool (*kalman_measurement_model_fn_t)(void *user, const struct SvMat *Z, const struct SvMat *x_t,
+											  struct SvMat *y, struct SvMat *H_k);
 
 typedef struct survive_kalman_state_s {
 	// The number of states stored. For instance, something that tracked position and velocity would have 6 states --
@@ -82,29 +82,29 @@ SURVIVE_EXPORT void survive_kalman_predict_state(FLT t, const survive_kalman_sta
  *
  * @param t absolute time
  * @param k kalman state info
- * @param z measurement -- CvMat of n x 1
- * @param H Input observation model -- CvMat of n x state_cnt
+ * @param z measurement -- SvMat of n x 1
+ * @param H Input observation model -- SvMat of n x state_cnt
  * @param R Observation noise -- The diagonal of the measurement covariance matrix; length n
  * @param adapative Whether or not R is an adaptive matrix. When true, R should be a full n x n matrix.
  *
  */
-SURVIVE_EXPORT FLT survive_kalman_predict_update_state(FLT t, survive_kalman_state_t *k, const struct CvMat *Z,
-													   const struct CvMat *H, const FLT *R, bool adaptive);
+SURVIVE_EXPORT FLT survive_kalman_predict_update_state(FLT t, survive_kalman_state_t *k, const struct SvMat *Z,
+													   const struct SvMat *H, const FLT *R, bool adaptive);
 
 /**
  * Run predict and update, updating the state matrix. This is for non-linear measurement models.
  *
  * @param t absolute time
  * @param k kalman state info
- * @param z measurement -- CvMat of n x 1
+ * @param z measurement -- SvMat of n x 1
  * @param R Observation noise -- The diagonal of the measurement covariance matrix; length n
- * @param H Input observation model -- CvMat of n x state_cnt
+ * @param H Input observation model -- SvMat of n x state_cnt
  * @param Hfn Observation function that gives both the residual vector and the jacobian associated with it.
  * @param adapative Whether or not R is an adaptive matrix. When true, R should be a full n x n matrix.
  *
  * @returns Returns the average residual error
  */
-SURVIVE_EXPORT FLT survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k, const struct CvMat *Z,
+SURVIVE_EXPORT FLT survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k, const struct SvMat *Z,
 																const FLT *R, kalman_measurement_model_fn_t Hfn,
 																void *user, bool adapative);
 

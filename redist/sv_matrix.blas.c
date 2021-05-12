@@ -6,10 +6,10 @@
 #endif
 
 #include "math.h"
-#include "minimal_opencv.h"
 #include "stdbool.h"
 #include "stdio.h"
 #include "string.h"
+#include "sv_matrix.h"
 
 #include <lapacke_utils.h>
 #include <limits.h>
@@ -25,15 +25,14 @@
 #define SURVIVE_LOCAL_ONLY __attribute__((visibility("hidden")))
 #endif
 
-SURVIVE_LOCAL_ONLY int cvRound(float f) { return roundf(f); }
-#define CV_Error(code, msg) assert(0 && msg); // cv::error( code, msg, CV_Func, __FILE__, __LINE__ )
+#define SV_Error(code, msg) assert(0 && msg); // cv::error( code, msg, SV_Func, __FILE__, __LINE__ )
 
 const int DECOMP_SVD = 1;
 const int DECOMP_LU = 2;
 
-void print_mat(const CvMat *M);
+void print_mat(const SvMat *M);
 
-static size_t mat_size_bytes(const CvMat *mat) { return (size_t)CV_ELEM_SIZE(mat->type) * mat->cols * mat->rows; }
+static size_t mat_size_bytes(const SvMat *mat) { return (size_t)SV_ELEM_SIZE(mat->type) * mat->cols * mat->rows; }
 
 #ifdef USE_FLOAT
 #define cblas_gemm cblas_sgemm
@@ -58,8 +57,8 @@ static size_t mat_size_bytes(const CvMat *mat) { return (size_t)CV_ELEM_SIZE(mat
 #endif
 
 // dst = alpha * src1 * src2 + beta * src3 or dst = alpha * src2 * src1 + beta * src3 where src1 is symm
-SURVIVE_LOCAL_ONLY void cvSYMM(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src3, double beta,
-							   CvMat *dst, bool src1First) {
+SURVIVE_LOCAL_ONLY void svSYMM(const SvMat *src1, const SvMat *src2, double alpha, const SvMat *src3, double beta,
+							   SvMat *dst, bool src1First) {
 
 	int rows1 = src1->rows;
 	int cols1 = src1->cols;
@@ -83,12 +82,12 @@ SURVIVE_LOCAL_ONLY void cvSYMM(const CvMat *src1, const CvMat *src2, double alph
 	lapack_int ldb = src2->cols;
 
 	if (src3)
-		cvCopy(src3, dst, 0);
+		svCopy(src3, dst, 0);
 	else
 		beta = 0;
 
-	assert(CV_RAW_PTR(dst) != CV_RAW_PTR(src1));
-	assert(CV_RAW_PTR(dst) != CV_RAW_PTR(src2));
+	assert(SV_RAW_PTR(dst) != SV_RAW_PTR(src1));
+	assert(SV_RAW_PTR(dst) != SV_RAW_PTR(src2));
 	/*
 		void cblas_dsymm(OPENBLAS_CONST enum CBLAS_ORDER Order,
 						 OPENBLAS_CONST enum CBLAS_SIDE Side,
@@ -105,11 +104,11 @@ SURVIVE_LOCAL_ONLY void cvSYMM(const CvMat *src1, const CvMat *src2, double alph
 						 OPENBLAS_CONST blasint ldc);
 	*/
 	cblas_symm(CblasRowMajor, src1First ? CblasLeft : CblasRight, CblasUpper, dst->rows, dst->cols, alpha,
-			   CV_RAW_PTR(src1), lda, CV_RAW_PTR(src2), ldb, beta, CV_RAW_PTR(dst), dst->cols);
+			   SV_RAW_PTR(src1), lda, SV_RAW_PTR(src2), ldb, beta, SV_RAW_PTR(dst), dst->cols);
 }
 
 // Special case dst = alpha * src2 * src1 * src2' + beta * src3
-void mulBABt(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src3, double beta, CvMat *dst) {
+void mulBABt(const SvMat *src1, const SvMat *src2, double alpha, const SvMat *src3, double beta, SvMat *dst) {
 	size_t dims = src2->rows;
 	assert(src2->cols == src2->rows);
 	CREATE_STACK_MAT(tmp, dims, dims);
@@ -118,26 +117,26 @@ void mulBABt(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *sr
 	// or some other cache thing matters more than the additional 2x multiplications.
 //#define USE_SYM
 #ifdef USE_SYM
-	cvSYMM(src1, src2, 1, 0, 0, &tmp, false);
-	cvGEMM(&tmp, src2, alpha, src3, beta, dst, CV_GEMM_B_T);
+	svSYMM(src1, src2, 1, 0, 0, &tmp, false);
+	svGEMM(&tmp, src2, alpha, src3, beta, dst, SV_GEMM_B_T);
 #else
-	cvGEMM(src1, src2, 1, 0, 0, &tmp, CV_GEMM_B_T);
-	cvGEMM(src2, &tmp, alpha, src3, beta, dst, 0);
+	svGEMM(src1, src2, 1, 0, 0, &tmp, SV_GEMM_B_T);
+	svGEMM(src2, &tmp, alpha, src3, beta, dst, 0);
 #endif
 }
 // dst = alpha * src1 * src2 + beta * src3
-SURVIVE_LOCAL_ONLY void cvGEMM(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src3, double beta,
-							   CvMat *dst, int tABC) {
+SURVIVE_LOCAL_ONLY void svGEMM(const SvMat *src1, const SvMat *src2, double alpha, const SvMat *src3, double beta,
+							   SvMat *dst, int tABC) {
 
-	int rows1 = (tABC & CV_GEMM_A_T) ? src1->cols : src1->rows;
-	int cols1 = (tABC & CV_GEMM_A_T) ? src1->rows : src1->cols;
+	int rows1 = (tABC & SV_GEMM_A_T) ? src1->cols : src1->rows;
+	int cols1 = (tABC & SV_GEMM_A_T) ? src1->rows : src1->cols;
 
-	int rows2 = (tABC & CV_GEMM_B_T) ? src2->cols : src2->rows;
-	int cols2 = (tABC & CV_GEMM_B_T) ? src2->rows : src2->cols;
+	int rows2 = (tABC & SV_GEMM_B_T) ? src2->cols : src2->rows;
+	int cols2 = (tABC & SV_GEMM_B_T) ? src2->rows : src2->cols;
 
 	if (src3) {
-		int rows3 = (tABC & CV_GEMM_C_T) ? src3->cols : src3->rows;
-		int cols3 = (tABC & CV_GEMM_C_T) ? src3->rows : src3->cols;
+		int rows3 = (tABC & SV_GEMM_C_T) ? src3->cols : src3->rows;
+		int cols3 = (tABC & SV_GEMM_C_T) ? src3->rows : src3->cols;
 		assert(rows3 == dst->rows);
 		assert(cols3 == dst->cols);
 	}
@@ -151,21 +150,21 @@ SURVIVE_LOCAL_ONLY void cvGEMM(const CvMat *src1, const CvMat *src2, double alph
 	lapack_int ldb = src2->cols;
 
 	if (src3)
-		cvCopy(src3, dst, 0);
+		svCopy(src3, dst, 0);
 	else
 		beta = 0;
 
-	assert(CV_RAW_PTR(dst) != CV_RAW_PTR(src1));
-	assert(CV_RAW_PTR(dst) != CV_RAW_PTR(src2));
+	assert(SV_RAW_PTR(dst) != SV_RAW_PTR(src1));
+	assert(SV_RAW_PTR(dst) != SV_RAW_PTR(src2));
 
-	cblas_gemm(CblasRowMajor, (tABC & CV_GEMM_A_T) ? CblasTrans : CblasNoTrans,
-			   (tABC & CV_GEMM_B_T) ? CblasTrans : CblasNoTrans, dst->rows, dst->cols, cols1, alpha, CV_RAW_PTR(src1),
-			   lda, CV_RAW_PTR(src2), ldb, beta, CV_RAW_PTR(dst), dst->cols);
+	cblas_gemm(CblasRowMajor, (tABC & SV_GEMM_A_T) ? CblasTrans : CblasNoTrans,
+			   (tABC & SV_GEMM_B_T) ? CblasTrans : CblasNoTrans, dst->rows, dst->cols, cols1, alpha, SV_RAW_PTR(src1),
+			   lda, SV_RAW_PTR(src2), ldb, beta, SV_RAW_PTR(dst), dst->cols);
 }
 
 // dst = scale * src ^ t * src     iff order == 1
 // dst = scale *     src * src ^ t iff order == 0
-SURVIVE_LOCAL_ONLY void cvMulTransposed(const CvMat *src, CvMat *dst, int order, const CvMat *delta, double scale) {
+SURVIVE_LOCAL_ONLY void svMulTransposed(const SvMat *src, SvMat *dst, int order, const SvMat *delta, double scale) {
 	lapack_int rows = src->rows;
 	lapack_int cols = src->cols;
 
@@ -181,26 +180,26 @@ SURVIVE_LOCAL_ONLY void cvMulTransposed(const CvMat *src, CvMat *dst, int order,
 	lapack_int dstCols = dst->cols;
 
 	cblas_gemm(CblasRowMajor, isAT ? CblasTrans : CblasNoTrans, isBT ? CblasTrans : CblasNoTrans, dst->rows, dst->cols,
-			   order == 1 ? src->rows : src->cols, scale, CV_RAW_PTR(src), src->cols, CV_RAW_PTR(src), src->cols, beta,
-			   CV_RAW_PTR(dst), dstCols);
+			   order == 1 ? src->rows : src->cols, scale, SV_RAW_PTR(src), src->cols, SV_RAW_PTR(src), src->cols, beta,
+			   SV_RAW_PTR(dst), dstCols);
 }
 
 /* IEEE754 constants and macros */
-#define CV_TOGGLE_FLT(x) ((x) ^ ((int)(x) < 0 ? 0x7fffffff : 0))
-#define CV_TOGGLE_DBL(x) ((x) ^ ((int64)(x) < 0 ? CV_BIG_INT(0x7fffffffffffffff) : 0))
+#define SV_TOGGLE_FLT(x) ((x) ^ ((int)(x) < 0 ? 0x7fffffff : 0))
+#define SV_TOGGLE_DBL(x) ((x) ^ ((int64)(x) < 0 ? SV_BIG_INT(0x7fffffffffffffff) : 0))
 
-#define CV_DbgAssert assert
+#define SV_DbgAssert assert
 
-#define CV_CREATE_MAT_HEADER_ALLOCA(stack_mat, rows, cols, type)                                                       \
-	CvMat *stack_mat = cvInitMatHeader(alloca(sizeof(CvMat)), rows, cols, type);
+#define SV_CREATE_MAT_HEADER_ALLOCA(stack_mat, rows, cols, type)                                                       \
+	SvMat *stack_mat = svInitMatHeader(alloca(sizeof(SvMat)), rows, cols, type);
 
-#define CV_CREATE_MAT_ALLOCA(stack_mat, height, width, type)                                                           \
-	CV_CREATE_MAT_HEADER_ALLOCA(stack_mat, height, width, type);                                                       \
+#define SV_CREATE_MAT_ALLOCA(stack_mat, height, width, type)                                                           \
+	SV_CREATE_MAT_HEADER_ALLOCA(stack_mat, height, width, type);                                                       \
 	stack_mat->data.ptr = alloca(mat_size_bytes(stack_mat));
 
-#define CREATE_CV_STACK_MAT(name, rows, cols, type)                                                                    \
+#define CREATE_SV_STACK_MAT(name, rows, cols, type)                                                                    \
 	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
-	CvMat name = cvMat(rows, cols, SURVIVE_CV_F, _##name);
+	SvMat name = svMat(rows, cols, SURVIVE_SV_F, _##name);
 
 static inline lapack_int LAPACKE_getri_static_alloc(int matrix_layout, lapack_int n, FLT *a, lapack_int lda,
 													const lapack_int *ipiv) {
@@ -235,14 +234,14 @@ exit_level_0:
 	return info;
 }
 
-SURVIVE_LOCAL_ONLY double cvInvert(const CvMat *srcarr, CvMat *dstarr, int method) {
+SURVIVE_LOCAL_ONLY double svInvert(const SvMat *srcarr, SvMat *dstarr, int method) {
 	lapack_int inf;
 	lapack_int rows = srcarr->rows;
 	lapack_int cols = srcarr->cols;
 	lapack_int lda = srcarr->cols;
 
-	cvCopy(srcarr, dstarr, 0);
-	FLT *a = CV_RAW_PTR(dstarr);
+	svCopy(srcarr, dstarr, 0);
+	FLT *a = SV_RAW_PTR(dstarr);
 
 #ifdef DEBUG_PRINT
 	printf("a: \n");
@@ -274,23 +273,23 @@ SURVIVE_LOCAL_ONLY double cvInvert(const CvMat *srcarr, CvMat *dstarr, int metho
 	} else if (method == DECOMP_SVD) {
 		// TODO: There is no way this needs this many allocations,
 		// but in my defense I was very tired when I wrote this code
-		CREATE_CV_STACK_MAT(w, 1, MIN(dstarr->rows, dstarr->cols), dstarr->type);
-		CREATE_CV_STACK_MAT(u, dstarr->cols, dstarr->cols, dstarr->type);
-		CREATE_CV_STACK_MAT(v, dstarr->rows, dstarr->rows, dstarr->type);
-		CREATE_CV_STACK_MAT(um, w.cols, w.cols, w.type);
+		CREATE_SV_STACK_MAT(w, 1, MIN(dstarr->rows, dstarr->cols), dstarr->type);
+		CREATE_SV_STACK_MAT(u, dstarr->cols, dstarr->cols, dstarr->type);
+		CREATE_SV_STACK_MAT(v, dstarr->rows, dstarr->rows, dstarr->type);
+		CREATE_SV_STACK_MAT(um, w.cols, w.cols, w.type);
 
-		cvSVD(dstarr, &w, &u, &v, 0);
+		svSVD(dstarr, &w, &u, &v, 0);
 
-		cvSetZero(&um);
+		svSetZero(&um);
 		for (int i = 0; i < w.cols; i++) {
-			cvmSet(&um, i, i, 1. / (_w)[i]);
+			svMatrixSet(&um, i, i, 1. / (_w)[i]);
 		}
 
-		CvMat *tmp = cvCreateMat(dstarr->cols, dstarr->rows, dstarr->type);
-		cvGEMM(&v, &um, 1, 0, 0, tmp, CV_GEMM_A_T);
-		cvGEMM(tmp, &u, 1, 0, 0, dstarr, CV_GEMM_B_T);
+		SvMat *tmp = svCreateMat(dstarr->cols, dstarr->rows, dstarr->type);
+		svGEMM(&v, &um, 1, 0, 0, tmp, SV_GEMM_A_T);
+		svGEMM(tmp, &u, 1, 0, 0, dstarr, SV_GEMM_B_T);
 
-		cvReleaseMat(&tmp);
+		svReleaseMat(&tmp);
 	} else {
 		assert(0 && "Bad argument");
 		return -1;
@@ -299,31 +298,31 @@ SURVIVE_LOCAL_ONLY double cvInvert(const CvMat *srcarr, CvMat *dstarr, int metho
 	return 0;
 }
 
-#define CV_CLONE_MAT_ALLOCA(stack_mat, mat)                                                                            \
-	CV_CREATE_MAT_ALLOCA(stack_mat, mat->rows, mat->cols, mat->type)                                                   \
-	cvCopy(mat, stack_mat, 0);
+#define SV_CLONE_MAT_ALLOCA(stack_mat, mat)                                                                            \
+	SV_CREATE_MAT_ALLOCA(stack_mat, mat->rows, mat->cols, mat->type)                                                   \
+	svCopy(mat, stack_mat, 0);
 
-SURVIVE_LOCAL_ONLY int cvSolve(const CvMat *Aarr, const CvMat *xarr, CvMat *Barr, int method) {
+SURVIVE_LOCAL_ONLY int svSolve(const SvMat *Aarr, const SvMat *Barr, SvMat *xarr, int method) {
 	lapack_int inf;
 	lapack_int arows = Aarr->rows;
 	lapack_int acols = Aarr->cols;
-	lapack_int xcols = xarr->cols;
-	lapack_int xrows = xarr->rows;
+	lapack_int xcols = Barr->cols;
+	lapack_int xrows = Barr->rows;
 	lapack_int lda = acols; // Aarr->step / sizeof(double);
-	lapack_int type = CV_MAT_TYPE(Aarr->type);
+	lapack_int type = SV_MAT_TYPE(Aarr->type);
 
 	if (method == DECOMP_LU) {
-		assert(Aarr->cols == Barr->rows);
-		assert(xarr->rows == Aarr->rows);
-		assert(Barr->cols == xarr->cols);
-		assert(type == CV_MAT_TYPE(Barr->type) && (type == CV_32F || type == CV_64F));
+		assert(Aarr->cols == xarr->rows);
+		assert(Barr->rows == Aarr->rows);
+		assert(xarr->cols == Barr->cols);
+		assert(type == SV_MAT_TYPE(xarr->type) && (type == SV_32F || type == SV_64F));
 
-		cvCopy(xarr, Barr, 0);
+		svCopy(Barr, xarr, 0);
 		FLT *a_ws = alloca(mat_size_bytes(Aarr));
-		memcpy(a_ws, CV_RAW_PTR(Aarr), mat_size_bytes(Aarr));
+		memcpy(a_ws, SV_RAW_PTR(Aarr), mat_size_bytes(Aarr));
 
-		lapack_int brows = Barr->rows;
-		lapack_int bcols = Barr->cols;
+		lapack_int brows = xarr->rows;
+		lapack_int bcols = xarr->cols;
 		lapack_int ldb = bcols; // Barr->step / sizeof(double);
 
 		lapack_int *ipiv = alloca(sizeof(lapack_int) * MIN(Aarr->rows, Aarr->cols));
@@ -341,11 +340,11 @@ SURVIVE_LOCAL_ONLY int cvSolve(const CvMat *Aarr, const CvMat *xarr, CvMat *Barr
 		print_mat(Barr);
 #endif
 
-		inf = LAPACKE_getrs(LAPACK_ROW_MAJOR, CblasNoTrans, arows, bcols, (a_ws), lda, ipiv, CV_RAW_PTR(Barr), ldb);
+		inf = LAPACKE_getrs(LAPACK_ROW_MAJOR, CblasNoTrans, arows, bcols, (a_ws), lda, ipiv, SV_RAW_PTR(xarr), ldb);
 		assert(inf == 0);
 
 		// free(ipiv);
-		// cvReleaseMat(&a_ws);
+		// svReleaseMat(&a_ws);
 	} else if (method == DECOMP_SVD) {
 
 #ifdef DEBUG_PRINT
@@ -353,37 +352,37 @@ SURVIVE_LOCAL_ONLY int cvSolve(const CvMat *Aarr, const CvMat *xarr, CvMat *Barr
 		print_mat(Aarr);
 		print_mat(xarr);
 #endif
-		bool xLargerThanB = xarr->rows > acols;
-		CvMat *xCpy = 0;
+		bool xLargerThanB = Barr->rows > acols;
+		SvMat *xCpy = 0;
 		if (xLargerThanB) {
-			CV_CLONE_MAT_ALLOCA(xCpyStack, xarr);
+			SV_CLONE_MAT_ALLOCA(xCpyStack, Barr);
 			xCpy = xCpyStack;
 		} else {
-			xCpy = Barr;
-			memcpy(CV_RAW_PTR(Barr), CV_RAW_PTR(xarr), mat_size_bytes(xarr));
+			xCpy = xarr;
+			memcpy(SV_RAW_PTR(xarr), SV_RAW_PTR(Barr), mat_size_bytes(Barr));
 		}
 
-		// CvMat *aCpy = cvCloneMat(Aarr);
+		// SvMat *aCpy = svCloneMat(Aarr);
 		FLT *aCpy = alloca(mat_size_bytes(Aarr));
-		memcpy(aCpy, CV_RAW_PTR(Aarr), mat_size_bytes(Aarr));
+		memcpy(aCpy, SV_RAW_PTR(Aarr), mat_size_bytes(Aarr));
 
 		FLT *S = alloca(sizeof(FLT) * MIN(arows, acols));
 		// FLT *S = malloc(sizeof(FLT) * MIN(arows, acols));
 		FLT rcond = -1;
 		lapack_int *rank = alloca(sizeof(lapack_int) * MIN(arows, acols));
 		// lapack_int *rank = malloc(sizeof(lapack_int) * MIN(arows, acols));
-		lapack_int inf = LAPACKE_gelss(LAPACK_ROW_MAJOR, arows, acols, xcols, (aCpy), acols, CV_RAW_PTR(xCpy), xcols, S,
+		lapack_int inf = LAPACKE_gelss(LAPACK_ROW_MAJOR, arows, acols, xcols, (aCpy), acols, SV_RAW_PTR(xCpy), xcols, S,
 									   rcond, rank);
-		assert(Barr->rows == acols);
-		assert(Barr->cols == xCpy->cols);
+		assert(xarr->rows == acols);
+		assert(xarr->cols == xCpy->cols);
 
 		if (xLargerThanB) {
 			xCpy->rows = acols;
-			cvCopy(xCpy, Barr, 0);
-			// cvReleaseMat(&xCpy);
+			svCopy(xCpy, xarr, 0);
+			// svReleaseMat(&xCpy);
 		}
 
-		// cvReleaseMat(&aCpy);
+		// svReleaseMat(&aCpy);
 #ifdef DEBUG_PRINT
 		print_mat(Barr);
 #endif
@@ -392,13 +391,13 @@ SURVIVE_LOCAL_ONLY int cvSolve(const CvMat *Aarr, const CvMat *xarr, CvMat *Barr
 	return 0;
 }
 
-SURVIVE_LOCAL_ONLY void cvTranspose(const CvMat *M, CvMat *dst) {
-	bool inPlace = M == dst || CV_RAW_PTR(M) == CV_RAW_PTR(dst);
-	FLT *src = CV_RAW_PTR(M);
+SURVIVE_LOCAL_ONLY void svTranspose(const SvMat *M, SvMat *dst) {
+	bool inPlace = M == dst || SV_RAW_PTR(M) == SV_RAW_PTR(dst);
+	FLT *src = SV_RAW_PTR(M);
 
 	if (inPlace) {
 		src = alloca(mat_size_bytes(M));
-		memcpy(src, CV_RAW_PTR(M), mat_size_bytes(M));
+		memcpy(src, SV_RAW_PTR(M), mat_size_bytes(M));
 	} else {
 		assert(M->rows == dst->cols);
 		assert(M->cols == dst->rows);
@@ -406,19 +405,19 @@ SURVIVE_LOCAL_ONLY void cvTranspose(const CvMat *M, CvMat *dst) {
 
 	for (unsigned i = 0; i < M->rows; i++) {
 		for (unsigned j = 0; j < M->cols; j++) {
-			CV_RAW_PTR(dst)[j * M->rows + i] = src[i * M->cols + j];
+			SV_RAW_PTR(dst)[j * M->rows + i] = src[i * M->cols + j];
 		}
 	}
 }
 
-SURVIVE_LOCAL_ONLY void cvSVD(CvMat *aarr, CvMat *warr, CvMat *uarr, CvMat *varr, int flags) {
+SURVIVE_LOCAL_ONLY void svSVD(SvMat *aarr, SvMat *warr, SvMat *uarr, SvMat *varr, int flags) {
 	char jobu = 'A';
 	char jobvt = 'A';
 
 	lapack_int inf;
 
-	if ((flags & CV_SVD_MODIFY_A) == 0) {
-		aarr = cvCloneMat(aarr);
+	if ((flags & SV_SVD_MODIFY_A) == 0) {
+		aarr = svCloneMat(aarr);
 	}
 
 	if (uarr == 0)
@@ -429,15 +428,15 @@ SURVIVE_LOCAL_ONLY void cvSVD(CvMat *aarr, CvMat *warr, CvMat *uarr, CvMat *varr
 	FLT *pw, *pu, *pv;
 	lapack_int arows = aarr->rows, acols = aarr->cols;
 
-	pw = warr ? CV_RAW_PTR(warr) : (FLT *)alloca(sizeof(FLT) * arows * acols);
-	pu = uarr ? CV_RAW_PTR(uarr) : (FLT *)alloca(sizeof(FLT) * arows * arows);
-	pv = varr ? CV_RAW_PTR(varr) : (FLT *)alloca(sizeof(FLT) * acols * acols);
+	pw = warr ? SV_RAW_PTR(warr) : (FLT *)alloca(sizeof(FLT) * arows * acols);
+	pu = uarr ? SV_RAW_PTR(uarr) : (FLT *)alloca(sizeof(FLT) * arows * arows);
+	pv = varr ? SV_RAW_PTR(varr) : (FLT *)alloca(sizeof(FLT) * acols * acols);
 
 	lapack_int ulda = uarr ? uarr->cols : acols;
 	lapack_int plda = varr ? varr->cols : acols;
 
 	FLT *superb = alloca(sizeof(FLT) * MIN(arows, acols));
-	inf = LAPACKE_gesvd(LAPACK_ROW_MAJOR, jobu, jobvt, arows, acols, CV_RAW_PTR(aarr), acols, pw, pu, ulda, pv, plda,
+	inf = LAPACKE_gesvd(LAPACK_ROW_MAJOR, jobu, jobvt, arows, acols, SV_RAW_PTR(aarr), acols, pw, pu, ulda, pv, plda,
 						superb);
 
 	// free(superb);
@@ -452,24 +451,24 @@ SURVIVE_LOCAL_ONLY void cvSVD(CvMat *aarr, CvMat *warr, CvMat *uarr, CvMat *varr
 		assert(inf == 0);
 	}
 
-	if (uarr && (flags & CV_SVD_U_T)) {
-		cvTranspose(uarr, uarr);
+	if (uarr && (flags & SV_SVD_U_T)) {
+		svTranspose(uarr, uarr);
 	}
 
-	if (varr && (flags & CV_SVD_V_T) == 0) {
-		cvTranspose(varr, varr);
+	if (varr && (flags & SV_SVD_V_T) == 0) {
+		svTranspose(varr, varr);
 	}
 
-	if ((flags & CV_SVD_MODIFY_A) == 0) {
-		cvReleaseMat(&aarr);
+	if ((flags & SV_SVD_MODIFY_A) == 0) {
+		svReleaseMat(&aarr);
 	}
 }
 
-SURVIVE_LOCAL_ONLY double cvDet(const CvMat *M) {
+SURVIVE_LOCAL_ONLY double svDet(const SvMat *M) {
 	assert(M->rows == M->cols);
-	assert(M->rows <= 3 && "cvDet unimplemented for matrices >3");
+	assert(M->rows <= 3 && "svDet unimplemented for matrices >3");
 
-	FLT *m = CV_RAW_PTR(M);
+	FLT *m = SV_RAW_PTR(M);
 
 	switch (M->rows) {
 	case 1:

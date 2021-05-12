@@ -777,14 +777,14 @@ void DisambiguatorStateBased(SurviveObject *so, const LightcapElement *le) {
 
 	if (so->ctx->disambiguator_data == NULL) {
 		DEBUG_TB("Initializing Global Disambiguator Data");
-		Global_Disambiguator_data_t *d = SV_CALLOC(1, sizeof(Global_Disambiguator_data_t));
+		Global_Disambiguator_data_t *d = SV_CALLOC(sizeof(Global_Disambiguator_data_t));
 		d->ctx = ctx;
 		ctx->disambiguator_data = d;
 	}
 
 	if (so->disambiguator_data == NULL) {
 		DEBUG_TB("Initializing Disambiguator Data for TB %d", so->sensor_ct);
-		Disambiguator_data_t *d = SV_CALLOC(1, sizeof(Disambiguator_data_t) + sizeof(LightcapElement) * so->sensor_ct);
+		Disambiguator_data_t *d = SV_CALLOC(sizeof(Disambiguator_data_t) + sizeof(LightcapElement) * so->sensor_ct);
 		d->so = so;
 		so->disambiguator_data = d;
 	}

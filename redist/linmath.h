@@ -35,7 +35,7 @@ extern "C" {
 
 #define CREATE_STACK_MAT(name, rows, cols)                                                                             \
 	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
-	CvMat name = cvMat(rows, cols, SURVIVE_CV_F, _##name);
+	SvMat name = svMat(rows, cols, SURVIVE_SV_F, _##name);
 
 #ifdef USE_FLOAT
 
@@ -50,9 +50,9 @@ extern "C" {
 #define FLT_FABS__ fabsf
 #define FLT_STRTO strtof
 
-#define SURVIVE_CV_F CV_32F
-#define CV_FLT CV_32F
-#define CV_RAW_PTR(X) ((X)->data.fl)
+#define SURVIVE_SV_F SV_32F
+#define SV_FLT SV_32F
+#define SV_RAW_PTR(X) ((X)->data.fl)
 #define FLT_POW powf
 
 #else
@@ -68,9 +68,9 @@ extern "C" {
 #define FLT_ATAN2 atan2
 #define FLT_FABS__ fabs
 #define FLT_STRTO strtod
-#define SURVIVE_CV_F CV_64F
-#define CV_FLT CV_64F
-#define CV_RAW_PTR(X) ((X)->data.db)
+#define SURVIVE_SV_F SV_64F
+#define SV_FLT SV_64F
+#define SV_RAW_PTR(X) ((X)->data.db)
 #endif
 
 #ifdef TCC
@@ -343,10 +343,10 @@ struct sparse_matrix {
 		.data = alloca(sizeof(FLT) * N_ROWS * N_COLS),                                                                 \
 	};
 
-struct CvMat;
-LINMATH_EXPORT void sparse_multiply_sparse_by_dense_sym(struct CvMat *out, const struct sparse_matrix *lhs,
-														const struct CvMat *rhs);
-LINMATH_EXPORT size_t create_sparse_matrix(struct sparse_matrix *out, const struct CvMat *in);
+struct SvMat;
+LINMATH_EXPORT void sparse_multiply_sparse_by_dense_sym(struct SvMat *out, const struct sparse_matrix *lhs,
+														const struct SvMat *rhs);
+LINMATH_EXPORT size_t create_sparse_matrix(struct sparse_matrix *out, const struct SvMat *in);
 
 /**
  * This is a very specialized matrix function to calculate out = A * B * A^t + C
@@ -356,13 +356,13 @@ LINMATH_EXPORT size_t create_sparse_matrix(struct sparse_matrix *out, const stru
  *
  * At about 20% 0's; this is twice as fast as gemm_ABAt_add
  */
-LINMATH_EXPORT void matrix_ABAt_add(struct CvMat *out, const struct CvMat *A, const struct CvMat *B,
-									const struct CvMat *C);
+LINMATH_EXPORT void matrix_ABAt_add(struct SvMat *out, const struct SvMat *A, const struct SvMat *B,
+									const struct SvMat *C);
 /**
- *  Standard implementation of out = A * B * A^t + C for testing; just uses cvGEMM
+ *  Standard implementation of out = A * B * A^t + C for testing; just uses svGEMM
  */
-LINMATH_EXPORT void gemm_ABAt_add(struct CvMat *out, const struct CvMat *A, const struct CvMat *B,
-								  const struct CvMat *C);
+LINMATH_EXPORT void gemm_ABAt_add(struct SvMat *out, const struct SvMat *A, const struct SvMat *B,
+								  const struct SvMat *C);
 #ifdef __cplusplus
 }
 #endif

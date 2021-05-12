@@ -1,6 +1,6 @@
 #include "barycentric_svd/barycentric_svd.h"
 #include "math.h"
-#include "minimal_opencv.h"
+#include "sv_matrix.h"
 #if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h>
 #endif
@@ -74,7 +74,7 @@ static void PoserDataSVD_destroy(PoserDataSVD *dd) {
 }
 
 static PoserDataSVD *PoserDataSVD_new(SurviveObject *so) {
-	PoserDataSVD *rtn = SV_CALLOC(sizeof(PoserDataSVD), 1);
+	PoserDataSVD *rtn = SV_CALLOC(sizeof(PoserDataSVD));
 	rtn->so = so;
 	rtn->required_meas = survive_configi(so->ctx, "epnp-required-meas", SC_GET, 10);
 
@@ -103,8 +103,8 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 		return rtn;
 	}
 
-	CvMat R = cvMat(3, 3, CV_FLT, r);
-	CvMat T = cvMat(3, 1, CV_FLT, rtn.Pos);
+	SvMat R = svMat(3, 3, SV_FLT, r);
+	SvMat T = svMat(3, 1, SV_FLT, rtn.Pos);
 
 	// Super degenerate inputs will project us basically right in the camera. Detect and reject
 	if (err > 1 || magnitude3d(rtn.Pos) < 0.25 || magnitude3d(rtn.Pos) > 25) {
@@ -126,13 +126,13 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 	// Requested output is camera -> world, so invert
 	if (cameraToWorld) {
 		FLT tmp[3];
-		CvMat Tmp = cvMat(3, 1, CV_FLT, tmp);
-		cvCopy(&T, &Tmp, 0);
+		SvMat Tmp = svMat(3, 1, SV_FLT, tmp);
+		svCopy(&T, &Tmp, 0);
 
 		// Flip the Rotation matrix
-		cvTranspose(&R, &R);
+		svTranspose(&R, &R);
 		// Then 'tvec = -R * tvec'
-		cvGEMM(&R, &Tmp, -1, 0, 0, &T, 0);
+		svGEMM(&R, &Tmp, -1, 0, 0, &T, 0);
 	}
 
 	LinmathQuat tmp;

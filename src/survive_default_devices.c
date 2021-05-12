@@ -14,7 +14,7 @@
 
 SurviveObject *survive_create_device(SurviveContext *ctx, const char *driver_name, void *driver,
 									 const char *device_name, haptic_func fn) {
-	SurviveObject *device = SV_CALLOC(1, sizeof(SurviveObject));
+	SurviveObject *device = SV_CALLOC(sizeof(SurviveObject));
 
 	device->ctx = ctx;
 	device->driver = driver;
@@ -82,7 +82,7 @@ static int ParsePoints(SurviveContext *ctx, SurviveObject *so, char *ct0conf, FL
 	
 	so->sensor_ct = 0;
 	assert(*floats_out == 0);
-	*floats_out = SV_CALLOC(1, sizeof(**floats_out) * 32 * 3);
+	*floats_out = SV_CALLOC(sizeof(**floats_out) * 32 * 3);
 
 	for (int k = 0; k < pts; k++) {
 		tk = &t[2 + k * 4];
@@ -382,7 +382,7 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 
 	SurviveContext *ctx = so->ctx;
 	// From JSMN example.
-	jsmn_parser p;
+	jsmn_parser p = {0};
 	jsmn_init(&p);
 
 	int r = jsmn_parse(&p, ct0conf, len);

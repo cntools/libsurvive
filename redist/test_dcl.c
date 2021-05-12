@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "minimal_opencv.h"
+#include "sv_matrix.h"
 
 void fill_random(FLT *A, int ld, int m, int n) {
 	assert(ld == n);
@@ -85,9 +85,9 @@ void compareToCblasTrans() {
 
 	dclPrint(DMS(em1), m, n);
 
-	CvMat Em1 = cvMat(m, n, CV_FLT, em1);
+	SvMat Em1 = cvMat(m, n, SV_FLT, em1);
 	FLT em1tem1[n][n];
-	CvMat Em1tEm1 = cvMat(n, n, CV_FLT, em1tem1);
+	SvMat Em1tEm1 = cvMat(n, n, SV_FLT, em1tem1);
 	cvMulTransposed(&Em1, &Em1tEm1, 1, 0, 1);
 	print_mat(&Em1tEm1);
 

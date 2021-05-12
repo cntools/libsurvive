@@ -83,7 +83,7 @@ static int survive_get_ids(survive_usb_device_t d, uint16_t *idVendor, uint16_t 
 static const char *survive_usb_error_name(int ret) { return ""; }
 
 static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, struct SurviveUSBInfo *usbInfo) {
-	usbInfo->handle = SV_CALLOC(1, sizeof(struct HIDAPI_USB_Handle_t));
+	usbInfo->handle = SV_CALLOC(sizeof(struct HIDAPI_USB_Handle_t));
 	survive_usb_device_t c = d;
 
 	struct SurviveContext *ctx = sv->ctx;

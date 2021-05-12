@@ -200,7 +200,7 @@ static void sync_fn(SurviveObject *so, survive_channel channel, survive_timecode
 global_scene_solver *global_scene_solver_init(global_scene_solver *driver, SurviveContext *ctx) {
 	driver->ctx = ctx;
 	driver->last_capture_time_cnt = 0;
-	driver->last_capture_time = SV_CALLOC(driver->last_capture_time_cnt, sizeof(survive_long_timecode) * 4);
+	driver->last_capture_time = SV_CALLOC_N(driver->last_capture_time_cnt, sizeof(survive_long_timecode) * 4);
 
 	return driver;
 }

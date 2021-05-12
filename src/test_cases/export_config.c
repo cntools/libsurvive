@@ -4,7 +4,7 @@
 #include "test_case.h"
 
 TEST(Survive, ExportConfig) {
-	SurviveContext *ctx = SV_CALLOC(1, sizeof(SurviveContext));
+	SurviveContext *ctx = SV_CALLOC(sizeof(SurviveContext));
 #define SURVIVE_HOOK_PROCESS_DEF(hook) survive_install_##hook##_fn(ctx, 0);
 #define SURVIVE_HOOK_FEEDBACK_DEF(hook) survive_install_##hook##_fn(ctx, 0);
 #include "survive_hooks.h"

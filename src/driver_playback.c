@@ -250,7 +250,7 @@ static int parse_and_run_config(const char *line, SurvivePlaybackData *driver) {
 	SurviveObject *so = survive_create_device(ctx, "replay", driver, dev, 0);
 	survive_add_object(ctx, so);
 
-	char *config = SV_CALLOC(1, len + 1);
+	char *config = SV_CALLOC(len + 1);
 	memcpy(config, configStart, len);
 
 	if (ctx->configproc(so, config, len) == 0) {
@@ -488,7 +488,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 		return -1;
 	}
 
-	SurvivePlaybackData *sp = SV_CALLOC(1, sizeof(SurvivePlaybackData));
+	SurvivePlaybackData *sp = SV_CALLOC(sizeof(SurvivePlaybackData));
 	sp->ctx = ctx;
 	sp->playback_dir = playback_file;
 
@@ -539,11 +539,11 @@ REGISTER_LINKTIME(DriverRegPlayback)
 #define _GETDELIM_GROWBY 128 /* amount to grow line buffer by */
 #define _GETDELIM_MINLEN 4   /* minimum line buffer size */
 
-ssize_t gzgetdelim(char **RESTRICT_KEYWORD lineptr, size_t *RESTRICT_KEYWORD n, int delimiter,
-				   gzFile RESTRICT_KEYWORD stream) {
-	char *buf, *pos;
-	int c;
-	ssize_t bytes;
+__attribute__((no_sanitize("memory"))) ssize_t gzgetdelim(char **RESTRICT_KEYWORD lineptr, size_t *RESTRICT_KEYWORD n,
+														  int delimiter, gzFile RESTRICT_KEYWORD stream) {
+	char *buf = 0, *pos = 0;
+	int c = 0;
+	ssize_t bytes = 0;
 
 	if (lineptr == NULL || n == NULL) {
 		errno = EINVAL;

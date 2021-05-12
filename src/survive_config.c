@@ -53,7 +53,7 @@ static struct static_conf_t *find_or_create_conf_t(const char *name) {
 		return curr;
 	}
 
-	curr = SV_CALLOC(1, sizeof(struct static_conf_t));
+	curr = SV_CALLOC(sizeof(struct static_conf_t));
 	if (tail)
 		tail->next = curr;
 	if (head == 0)
@@ -1082,7 +1082,7 @@ static void survive_attach_config(SurviveContext *ctx, const char *tag, void * v
 			ul = &((*ul)->next);
 		}
 
-		update_list_t *t = *ul = SV_CALLOC(1, sizeof(update_list_t));
+		update_list_t *t = *ul = SV_CALLOC(sizeof(update_list_t));
 		t->next = 0;
 		t->value = var;
 	}

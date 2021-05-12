@@ -46,13 +46,13 @@ static int dummy_close(struct SurviveContext *ctx, void *_driver) {
 }
 
 int DriverRegDummy(SurviveContext *ctx) {
-	SurviveDriverDummy *sp = SV_CALLOC(1, sizeof(SurviveDriverDummy));
+	SurviveDriverDummy *sp = SV_CALLOC(sizeof(SurviveDriverDummy));
 	sp->ctx = ctx;
 
 	SV_INFO("Setting up dummy driver.");
 
 	// Create a new SurviveObject...
-	SurviveObject *device = SV_CALLOC(1, sizeof(SurviveObject));
+	SurviveObject *device = SV_CALLOC(sizeof(SurviveObject));
 	device->ctx = ctx;
 	device->driver = sp;
 	memcpy(device->codename, "DM0", 4);

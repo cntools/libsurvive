@@ -9,9 +9,9 @@
 #include <malloc.h>
 #endif
 #include <memory.h>
-#include <minimal_opencv.h>
 #include <survive_reproject.h>
 #include <survive_reproject_gen2.h>
+#include <sv_matrix.h>
 
 #include "generated/survive_imu.generated.h"
 
@@ -24,10 +24,10 @@ static SurviveKalmanModel copy_model(const FLT *src, size_t state_size) {
 	return rtn;
 }
 
-static void copy_matrix(CvMat *dst, const FLT *src, size_t src_stride) {
+static void copy_matrix(SvMat *dst, const FLT *src, size_t src_stride) {
 	for (int i = 0; i < dst->cols; i++) {
 		for (int j = 0; j < dst->rows; j++) {
-			cvmSet(dst, j, i, src[i + j * src_stride]);
+			svMatrixSet(dst, j, i, src[i + j * src_stride]);
 		}
 	}
 }
@@ -66,10 +66,10 @@ static void normalize_model(SurviveKalmanTracker *pTracker) {
 	}
 }
 
-static inline void mat_eye_diag(CvMat *m, const FLT *v) {
+static inline void mat_eye_diag(SvMat *m, const FLT *v) {
 	for (int i = 0; i < m->rows; i++) {
 		for (int j = 0; j < m->cols; j++) {
-			CV_FLT_PTR(m)[j * m->cols + i] = i == j ? (v ? v[i] : 1.) : 0.;
+			SV_FLT_PTR(m)[j * m->cols + i] = i == j ? (v ? v[i] : 1.) : 0.;
 		}
 	}
 }
@@ -106,8 +106,8 @@ static inline int get_axis(const struct PoserDataLight *pdl) {
  * and uses that measurement to compare from the actual observed angle. These functions have jacobian functions that
  * correspond to them; see @survive_reproject.c and @survive_reproject_gen2.c
  */
-static bool map_light_data(void *user, const struct CvMat *Z, const struct CvMat *x_t, struct CvMat *y,
-						   struct CvMat *H_k) {
+static bool map_light_data(void *user, const struct SvMat *Z, const struct SvMat *x_t, struct SvMat *y,
+						   struct SvMat *H_k) {
 	struct map_light_data_ctx *cbctx = (struct map_light_data_ctx *)user;
 	const struct PoserDataLight *pdl = cbctx->pdl;
 	const SurviveKalmanTracker *tracker = cbctx->tracker;
@@ -124,17 +124,17 @@ static bool map_light_data(void *user, const struct CvMat *Z, const struct CvMat
 	assert(ctx->bsd[pdl->lh].PositionSet);
 
 	const SurvivePose world2lh = InvertPoseRtn(&ctx->bsd[pdl->lh].Pose);
-	const SurvivePose obj2world = *(SurvivePose *)CV_FLT_PTR(x_t);
+	const SurvivePose obj2world = *(SurvivePose *)SV_FLT_PTR(x_t);
 
 	const FLT *ptInObj = &so->sensor_locations[pdl->sensor_id * 3];
 	FLT h_x = project_fn(&obj2world, ptInObj, &world2lh, &ctx->bsd[pdl->lh].fcal[axis]);
-	CV_FLT_PTR(y)[0] = CV_FLT_PTR(Z)[0] - h_x;
+	SV_FLT_PTR(y)[0] = SV_FLT_PTR(Z)[0] - h_x;
 
-	memset(CV_FLT_PTR(H_k), 0, sizeof(FLT) * H_k->cols * H_k->rows);
+	memset(SV_FLT_PTR(H_k), 0, sizeof(FLT) * H_k->cols * H_k->rows);
 
-	project_jacob_fn(CV_FLT_PTR(H_k), &obj2world, ptInObj, &world2lh, &ctx->bsd[pdl->lh].fcal[axis]);
+	project_jacob_fn(SV_FLT_PTR(H_k), &obj2world, ptInObj, &world2lh, &ctx->bsd[pdl->lh].fcal[axis]);
 	for (int i = 0; i < 7; i++) {
-		if (!isfinite(CV_FLT_PTR(H_k)[i])) {
+		if (!isfinite(SV_FLT_PTR(H_k)[i])) {
 			return false;
 		}
 	}
@@ -169,7 +169,7 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 	tracker->last_light_time = time;
 
 	if (tracker->light_var >= 0) {
-		CvMat Z = cvMat(1, 1, CV_FLT, &data->angle);
+		SvMat Z = svMat(1, 1, SV_FLT, &data->angle);
 		struct map_light_data_ctx cbctx = {
 			.tracker = tracker,
 			.pdl = data,
@@ -238,21 +238,21 @@ struct map_imu_data_ctx {
  * The actual code for this is generated from tools/generate_math_functions/imu_functions.py. It isn't done in
  * C natively to allow for the jacobian code to be generated using symengine
  */
-static bool map_imu_data(void *user, const struct CvMat *Z, const struct CvMat *x_t, struct CvMat *y,
-						 struct CvMat *H_k) {
+static bool map_imu_data(void *user, const struct SvMat *Z, const struct SvMat *x_t, struct SvMat *y,
+						 struct SvMat *H_k) {
 	struct map_imu_data_ctx *fn_ctx = user;
 	FLT h_x[6];
 
 	for (int i = 0; i < H_k->rows * H_k->cols; i++)
-		CV_FLT_PTR(H_k)[i] = NAN;
+		SV_FLT_PTR(H_k)[i] = NAN;
 
 	SurviveContext *ctx = fn_ctx->tracker->so->ctx;
 
-	SV_VERBOSE(600, "X     " Point16_format, LINMATH_VEC16_EXPAND(CV_FLT_PTR(x_t)))
-	SV_VERBOSE(600, "Z     " Point6_format, LINMATH_VEC6_EXPAND(CV_FLT_PTR(Z)))
+	SV_VERBOSE(600, "X     " Point16_format, LINMATH_VEC16_EXPAND(SV_FLT_PTR(x_t)))
+	SV_VERBOSE(600, "Z     " Point6_format, LINMATH_VEC6_EXPAND(SV_FLT_PTR(Z)))
 
-	// SurviveKalmanModel *s = (SurviveKalmanModel *)CV_FLT_PTR(x_t);
-	SurviveKalmanModel s = copy_model(CV_FLT_PTR(x_t), x_t->rows);
+	// SurviveKalmanModel *s = (SurviveKalmanModel *)SV_FLT_PTR(x_t);
+	SurviveKalmanModel s = copy_model(SV_FLT_PTR(x_t), x_t->rows);
 	gen_imu_predict(h_x, &s);
 	assert(H_k->rows * H_k->cols == H_k->cols * 6);
 
@@ -261,8 +261,8 @@ static bool map_imu_data(void *user, const struct CvMat *Z, const struct CvMat *
 	copy_matrix(H_k, _H_k, SURVIVE_MODEL_MAX_STATE_CNT);
 
 	SV_VERBOSE(600, "h_x   " Point6_format, LINMATH_VEC6_EXPAND(h_x))
-	subnd(CV_FLT_PTR(y), CV_FLT_PTR(Z), h_x, Z->rows);
-	SV_VERBOSE(600, "y     " Point6_format, LINMATH_VEC6_EXPAND(CV_FLT_PTR(y)))
+	subnd(SV_FLT_PTR(y), SV_FLT_PTR(Z), h_x, Z->rows);
+	SV_VERBOSE(600, "y     " Point6_format, LINMATH_VEC6_EXPAND(SV_FLT_PTR(y)))
 	return true;
 }
 
@@ -319,7 +319,7 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 			_H[7 + i + (tracker->model.state_cnt * i)] = 1.;
 		}
 
-		CvMat H = cvMat(9, tracker->model.state_cnt, SURVIVE_CV_F, _H);
+		SvMat H = svMat(9, tracker->model.state_cnt, SURVIVE_SV_F, _H);
 		FLT v = 1e-5;
 		FLT R[] = {
 			1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5,
@@ -351,7 +351,7 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 		scale3d(accelgyro, data->accel, tracker->acc_scale);
 		copy3d(accelgyro+3, data->gyro);
 
-		CvMat Z = cvMat(rows, 1, CV_FLT, accelgyro + offset);
+		SvMat Z = svMat(rows, 1, SV_FLT, accelgyro + offset);
 
 		SV_VERBOSE(600, "Integrating IMU " Point6_format " with cov " Point6_format,
 				   LINMATH_VEC6_EXPAND((FLT *)&accelgyro[0]), LINMATH_VEC6_EXPAND(R));
@@ -393,10 +393,10 @@ void survive_kalman_tracker_predict(const SurviveKalmanTracker *tracker, FLT t, 
 	SV_VERBOSE(300, "Predict pose %f %f " SurvivePose_format, t, t - tracker->model.t, SURVIVE_POSE_EXPAND(*out))
 }
 
-static void model_q_fn(void *user, FLT t, const CvMat *x, FLT *q_out) {
+static void model_q_fn(void *user, FLT t, const SvMat *x, FLT *q_out) {
 	SurviveKalmanTracker *tracker = (SurviveKalmanTracker *)user;
 	size_t state_cnt = x->rows;
-	SurviveKalmanModel state = copy_model(CV_FLT_PTR(x), state_cnt);
+	SurviveKalmanModel state = copy_model(SV_FLT_PTR(x), state_cnt);
 
 	/*
 	 * Due to the rotational terms in the model, the process noise covariance is complicated. It mixes a XYZ third order
@@ -493,17 +493,17 @@ static void model_q_fn(void *user, FLT t, const CvMat *x, FLT *q_out) {
  * The prediction model and associated F matrix use generated code to simplifiy the jacobian. This might not be strictly
  * necessary but allows for quicker development.
  */
-static void model_predict(FLT t, const survive_kalman_state_t *k, const CvMat *f_in, CvMat *f_out) {
+static void model_predict(FLT t, const survive_kalman_state_t *k, const SvMat *f_in, SvMat *f_out) {
 	// assert(t > 0);
 
-	SurviveKalmanModel s_in = copy_model(CV_FLT_PTR(f_in), f_in->rows);
+	SurviveKalmanModel s_in = copy_model(SV_FLT_PTR(f_in), f_in->rows);
 	SurviveKalmanModel s_out = {0};
 	gen_kalman_model_predict(s_out.Pose.Pos, t, &s_in);
 
-	memcpy(CV_FLT_PTR(f_out), s_out.Pose.Pos, f_in->rows * sizeof(FLT));
+	memcpy(SV_FLT_PTR(f_out), s_out.Pose.Pos, f_in->rows * sizeof(FLT));
 }
-static void model_predict_jac(FLT t, FLT *f_out, const struct CvMat *x0) {
-	SurviveKalmanModel s = copy_model(CV_FLT_PTR(x0), x0->rows);
+static void model_predict_jac(FLT t, FLT *f_out, const struct SvMat *x0) {
+	SurviveKalmanModel s = copy_model(SV_FLT_PTR(x0), x0->rows);
 
 	size_t state_cnt = x0->rows;
 	if (t == 0) {
@@ -523,8 +523,8 @@ static FLT integrate_pose(SurviveKalmanTracker *tracker, FLT time, const Survive
 		_H[i + i * state_cnt] = 1.;
 	}
 
-	CvMat H = cvMat(7, tracker->model.state_cnt, SURVIVE_CV_F, _H);
-	CvMat Zp = cvMat(7, 1, SURVIVE_CV_F, (void *)pose->Pos);
+	SvMat H = svMat(7, tracker->model.state_cnt, SURVIVE_SV_F, _H);
+	SvMat Zp = svMat(7, 1, SURVIVE_SV_F, (void *)pose->Pos);
 	FLT rtn = 0;
 
 	rtn = survive_kalman_predict_update_state(time, &tracker->model, &Zp, &H, R ? R : tracker->Obs_R, R == 0);

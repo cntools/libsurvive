@@ -220,7 +220,7 @@ static void ingest_config_request(vive_device_inst_t *dev, const struct _usb_hea
 			dev->compressed_data_idx += cnt;
 		}
 	} else {
-		char *uncompressed_data = SV_MALLOC(65536);
+		char *uncompressed_data = SV_CALLOC(65536);
 		SurviveContext *ctx = dev->so->ctx;
 
 		int len = survive_simple_inflate(dev->so->ctx, dev->compressed_data, dev->compressed_data_idx,
@@ -273,7 +273,7 @@ static int usbmon_close(struct SurviveContext *ctx, void *_driver) {
 	return 0;
 }
 static usb_info_t *get_usb_info_from_file(const char *fname) {
-	usb_info_t *rtn = SV_CALLOC(MAX_USB_DEVS, sizeof(usb_info_t));
+	usb_info_t *rtn = SV_CALLOC_N(MAX_USB_DEVS, sizeof(usb_info_t));
 	size_t count = 0;
 	FILE *f = fopen(fname, "r");
 	while (f && !feof(f)) {
@@ -302,7 +302,7 @@ static usb_info_t *get_usb_info_from_os() {
 		return 0;
 
 	count = libusb_get_device_list(context, &list);
-	rtn = (usb_info_t *)SV_CALLOC(count + 1, sizeof(usb_info_t));
+	rtn = (usb_info_t *)SV_CALLOC_N(count + 1, sizeof(usb_info_t));
 	size_t fill_cnt = 0;
 	for (size_t idx = 0; idx < count; ++idx) {
 		libusb_device *device = list[idx];
@@ -810,7 +810,7 @@ static int DriverRegUSBMon_(SurviveContext *ctx, int driver_id) {
 	if (enable && driver_id != 0)
 		return -1;
 
-	SurviveDriverUSBMon *sp = SV_CALLOC(1, sizeof(SurviveDriverUSBMon));
+	SurviveDriverUSBMon *sp = SV_CALLOC(sizeof(SurviveDriverUSBMon));
 	sp->playback_factor = -1;
 	sp->ctx = ctx;
 	sp->passiveMode = !enable && driver_id == 1;

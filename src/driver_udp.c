@@ -90,7 +90,7 @@ static int UDP_close(struct SurviveContext *ctx, void *_driver) {
 }
 
 int DriverRegUDP(SurviveContext *ctx) {
-	SurviveDriverUDP *sp = SV_CALLOC(1, sizeof(SurviveDriverUDP));
+	SurviveDriverUDP *sp = SV_CALLOC(sizeof(SurviveDriverUDP));
 	sp->ctx = ctx;
 
 	SV_INFO("Setting up UDP driver.");

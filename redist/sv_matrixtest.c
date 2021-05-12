@@ -1,15 +1,15 @@
-#include "minimal_opencv.h"
 #include "linmath.h"
 #include "os_generic.h"
+#include "sv_matrix.h"
 #include <assert.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 
-void print_mat(const CvMat *M) {
+void print_mat(const SvMat *M) {
 	for (int i = 0; i < M->rows; i++) {
 		for (int j = 0; j < M->cols; j++) {
-			printf("%f,\t", cvmGet(M, i, j));
+			printf("%f,\t", svMatrixGet(M, i, j));
 		}
 		printf("\n");
 	}
@@ -22,31 +22,31 @@ void print_mat(const CvMat *M) {
 
 void test_gemm() {
   double _2x3[2*3] = {1, 2, 3, 4, 5, 6};
-  CvMat m2x3 = cvMat(2, 3, CV_64F, _2x3);
+  SvMat m2x3 = svMat(2, 3, SV_64F, _2x3);
   
   double _3x2[2*3] = {1, 2, 3, 4, 5, 6};
-  CvMat m3x2 = cvMat(3, 2, CV_64F, _3x2);
+  SvMat m3x2 = svMat(3, 2, SV_64F, _3x2);
   
   double _2x2[2*2] = {1, 2, 3, 4};
-  CvMat m2x2 = cvMat(2, 2, CV_64F, _2x2);
+  SvMat m2x2 = svMat(2, 2, SV_64F, _2x2);
 
   double _3x3[3*3] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-  CvMat m3x3 = cvMat(3, 3, CV_64F, _3x3);
+  SvMat m3x3 = svMat(3, 3, SV_64F, _3x3);
 
-  cvGEMM(&m2x3, &m3x2, 1, 0, 0, &m2x2, 0);
-  cvGEMM(&m3x2, &m2x3, 1, 0, 0, &m3x3, 0);
+  svGEMM(&m2x3, &m3x2, 1, 0, 0, &m2x2, 0);
+  svGEMM(&m3x2, &m2x3, 1, 0, 0, &m3x3, 0);
   PRINT_MAT(m2x3);
   PRINT_MAT(m3x2);
   PRINT_MAT(m3x3);
   PRINT_MAT(m2x2);
 
-  cvGEMM(&m2x3, &m2x3, 1, 0, 0, &m3x3, CV_GEMM_A_T);
-  cvGEMM(&m2x3, &m2x3, 1, 0, 0, &m2x2, CV_GEMM_B_T);
+  svGEMM(&m2x3, &m2x3, 1, 0, 0, &m3x3, SV_GEMM_A_T);
+  svGEMM(&m2x3, &m2x3, 1, 0, 0, &m2x2, SV_GEMM_B_T);
   PRINT_MAT(m3x3);
   PRINT_MAT(m2x2);
 
-  cvGEMM(&m2x3, &m3x2, 1, 0, 0, &m3x3, CV_GEMM_A_T | CV_GEMM_B_T);
-  //  cvGEMM(&m3x2, &m2x3, 1, 0, 0, &m2x2, CV_GEMM_A_T | CV_GEMM_B_T);
+  svGEMM(&m2x3, &m3x2, 1, 0, 0, &m3x3, SV_GEMM_A_T | SV_GEMM_B_T);
+  //  cvGEMM(&m3x2, &m2x3, 1, 0, 0, &m2x2, SV_GEMM_A_T | SV_GEMM_B_T);
 
   PRINT_MAT(m3x3);
 }
@@ -57,11 +57,11 @@ static void test_solve() {
 		double _B[3] = {4, 8, 12};
 		double _x[1] = {0};
 
-		CvMat A = cvMat(3, 1, CV_64F, _A);
-		CvMat B = cvMat(3, 1, CV_64F, _B);
-		CvMat x = cvMat(1, 1, CV_64F, _x);
+		SvMat A = svMat(3, 1, SV_64F, _A);
+		SvMat B = svMat(3, 1, SV_64F, _B);
+		SvMat x = svMat(1, 1, SV_64F, _x);
 
-		cvSolve(&A, &B, &x, CV_SVD);
+		svSolve(&A, &B, &x, SV_SVD);
 
 		assert(fabs(_x[0] - 4) < .001);
 	}
@@ -71,11 +71,11 @@ static void test_solve() {
 		double _B[9] = {4, 5, 6, 7, 8, 9, 10, 11, 12};
 		double _x[3] = {0};
 
-		CvMat A = cvMat(3, 1, CV_64F, _A);
-		CvMat B = cvMat(3, 3, CV_64F, _B);
-		CvMat x = cvMat(1, 3, CV_64F, _x);
+		SvMat A = svMat(3, 1, SV_64F, _A);
+		SvMat B = svMat(3, 3, SV_64F, _B);
+		SvMat x = svMat(1, 3, SV_64F, _x);
 
-		cvSolve(&A, &B, &x, CV_SVD);
+		svSolve(&A, &B, &x, SV_SVD);
 	}
 }
 
@@ -83,17 +83,17 @@ static void test_invert() {
 	printf("Invert:\n");
 
 	double _3x3[3 * 3] = {1, 2, 3, 4, 5, 6, 7, 8, 12};
-	CvMat m3x3 = cvMat(3, 3, CV_64F, _3x3);
+	SvMat m3x3 = svMat(3, 3, SV_64F, _3x3);
 
 	double _d3x3[3 * 3] = {0};
-	CvMat d3x3 = cvMat(3, 3, CV_64F, _d3x3);
+	SvMat d3x3 = svMat(3, 3, SV_64F, _d3x3);
 
 	double _i3x3[3 * 3] = {0};
-	CvMat i3x3 = cvMat(3, 3, CV_64F, _i3x3);
+	SvMat i3x3 = svMat(3, 3, SV_64F, _i3x3);
 
-	cvInvert(&m3x3, &d3x3, DECOMP_LU);
+	svInvert(&m3x3, &d3x3, DECOMP_LU);
 
-	cvGEMM(&m3x3, &d3x3, 1, 0, 0, &i3x3, 0);
+	svGEMM(&m3x3, &d3x3, 1, 0, 0, &i3x3, 0);
 	print_mat(&d3x3);
 	print_mat(&i3x3);
 }
@@ -102,18 +102,18 @@ static void test_svd() {
 	printf("SVD:\n");
 
 	double _3x3[3 * 3] = {1, 2, 3, 4, 5, 6, 7, 8, 12};
-	CvMat m3x3 = cvMat(3, 3, CV_64F, _3x3);
+	SvMat m3x3 = svMat(3, 3, SV_64F, _3x3);
 
 	double _w[3] = {0};
-	CvMat w = cvMat(1, 3, CV_64F, _w);
+	SvMat w = svMat(1, 3, SV_64F, _w);
 
 	double _u[9] = {0};
-	CvMat u = cvMat(3, 3, CV_64F, _u);
+	SvMat u = svMat(3, 3, SV_64F, _u);
 
 	double _v[9] = {0};
-	CvMat v = cvMat(3, 3, CV_64F, _v);
+	SvMat v = svMat(3, 3, SV_64F, _v);
 
-	cvSVD(&m3x3, &w, &u, &v, 0);
+	svSVD(&m3x3, &w, &u, &v, 0);
 
 	PRINT_MAT(w);
 	PRINT_MAT(u);
@@ -122,22 +122,22 @@ static void test_svd() {
 
 static void test_multrans() {
 	double _A[3] = {1, 2, 3};
-	CvMat A = cvMat(3, 1, CV_64F, _A);
+	SvMat A = svMat(3, 1, SV_64F, _A);
 
 	double _B[9];
-	CvMat B = cvMat(3, 3, CV_64F, _B);
+	SvMat B = svMat(3, 3, SV_64F, _B);
 
 	double _C[1];
-	CvMat C = cvMat(1, 1, CV_64F, _C);
+	SvMat C = svMat(1, 1, SV_64F, _C);
 
-	cvMulTransposed(&A, &B, 0, 0, 1);
+	svMulTransposed(&A, &B, 0, 0, 1);
 	PRINT_MAT(B);
 	double ans[] = {1, 2, 3, 2, 4, 6, 3, 6, 9};
 	for (int i = 0; i < 9; i++) {
 		assert(ans[i] == _B[i]);
 	}
 
-	cvMulTransposed(&A, &C, 1, 0, 10);
+	svMulTransposed(&A, &C, 1, 0, 10);
 	PRINT_MAT(C);
 	assert(_C[0] == 140);
 }
@@ -155,8 +155,8 @@ static inline void multiply(int N, const FLT *mat1, const FLT *mat2, FLT *res) {
 
 void test_sparse_matrix() {
 	double _2x3[2 * 3] = {1, 2, 3, 0, 0, 6};
-	CvMat m2x3 = cvMat(2, 3, CV_64F, _2x3);
-	CvMat m3x2 = cvMat(3, 2, CV_64F, _2x3);
+	SvMat m2x3 = svMat(2, 3, SV_64F, _2x3);
+	SvMat m3x2 = svMat(3, 2, SV_64F, _2x3);
 	ALLOC_SPARSE_MATRIX(sm2x3, 2, 3);
 	create_sparse_matrix(&sm2x3, &m2x3);
 
@@ -176,7 +176,7 @@ void test_sparse_matrix() {
 		sparse_multiply_sparse_by_dense_sym(&Rs, &sm2x3, &D);
 		PRINT_MAT(Rs);
 
-		cvGEMM(&m2x3, &D, 1, 0, 0, &Rd, 0);
+		svGEMM(&m2x3, &D, 1, 0, 0, &Rd, 0);
 		PRINT_MAT(Rd);
 
 		for (int i = 0; i < Rd.cols * Rd.rows; i++) {
@@ -228,7 +228,7 @@ void test_speedN(int N) {
 	uint32_t cnts = 100000;
 	double start_gen = OGGetAbsoluteTime();
 	for (int i = 0; i < cnts; i++) {
-		cvGEMM(&A, &B, 1, 0, 0, &C, 0);
+		svGEMM(&A, &B, 1, 0, 0, &C, 0);
 	}
 	double finish = OGGetAbsoluteTime();
 	printf("Test speed %2d cvgemm: %10.2fkhz\n", N, cnts / (finish - start_gen) / 1000.);

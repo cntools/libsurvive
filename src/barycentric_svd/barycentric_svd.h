@@ -2,7 +2,7 @@
 #pragma once
 
 #ifndef WITH_OPENCV
-#include "../../redist/minimal_opencv.h"
+#include "../../redist/sv_matrix.h"
 #else
 #include <opencv/cv.h>
 #endif

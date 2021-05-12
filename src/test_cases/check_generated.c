@@ -6,7 +6,7 @@
 #include <math.h>
 #include <os_generic.h>
 
-#include "minimal_opencv.h"
+#include "sv_matrix.h"
 
 #include "test_case.h"
 
@@ -27,14 +27,14 @@
 
 #define STACK_ALLOC(nmembers) (FLT *)alloca(nmembers * sizeof(FLT))
 
-static void rot_predict_quat(FLT t, const void *k, const CvMat *f_in, CvMat *f_out) {
+static void rot_predict_quat(FLT t, const void *k, const SvMat *f_in, SvMat *f_out) {
 	(void)k;
 
-	const FLT *rot = CV_FLT_PTR(f_in);
-	const FLT *vel = CV_FLT_PTR(f_in) + 4;
-	copy3d(CV_FLT_PTR(f_out) + 4, vel);
+	const FLT *rot = SV_FLT_PTR(f_in);
+	const FLT *vel = SV_FLT_PTR(f_in) + 4;
+	copy3d(SV_FLT_PTR(f_out) + 4, vel);
 
-	survive_apply_ang_velocity(CV_FLT_PTR(f_out), vel, t, rot);
+	survive_apply_ang_velocity(SV_FLT_PTR(f_out), vel, t, rot);
 }
 
 typedef struct survive_calibration_config {
@@ -455,15 +455,15 @@ void check_apply_ang_velocity() {
 }
 #endif
 
-extern void rot_predict_quat(FLT t, const void *k, const CvMat *f_in, CvMat *f_out);
+extern void rot_predict_quat(FLT t, const void *k, const SvMat *f_in, SvMat *f_out);
 
 TEST(Generated, rot_predict_quat) {
 	FLT _mi[7] = { 0 };
 	FLT _mo1[7] = { 0 };
 	FLT _mo2[7] = { 0 };
-	CvMat mi = cvMat(7, 1, CV_64F, _mi);
-	CvMat mo1 = cvMat(7, 1, CV_64F, _mo1);
-	CvMat mo2 = cvMat(7, 1, CV_64F, _mo2);
+	SvMat mi = svMat(7, 1, SV_64F, _mi);
+	SvMat mo1 = svMat(7, 1, SV_64F, _mo1);
+	SvMat mo2 = svMat(7, 1, SV_64F, _mo2);
 
 	FLT t = next_rand(5);
 

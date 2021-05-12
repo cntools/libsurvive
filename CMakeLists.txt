@@ -18,6 +18,7 @@ option(USE_SINGLE_PRECISION "Use float instead of double" OFF)
 option(ENABLE_WARNINGS_AS_ERRORS "Use to flag all warnings as errors" OFF)
 option(USE_HIDAPI "Use HIDAPI instead of libusb" OFF)
 option(USE_ASAN "Use address sanitizer" OFF)
+option(USE_MSAN "Use memory sanitizer" OFF)
 option(ENABLE_TESTS "Enable build / execution of tests" OFF)
 option(USE_HEX_FLOAT_PRINTF "Use hex floats when recording" OFF)
 
@@ -103,7 +104,14 @@ IF(UNIX)
 	      	
 	if(USE_ASAN)
 	  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fsanitize=undefined")
+	  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize=undefined")
+	endif()
+
+	if(USE_MSAN)
+	  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=memory -fsanitize-memory-track-origins -fsanitize=undefined")
+	  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=memory -fsanitize-memory-track-origins -fsanitize=undefined")
 	endif()	    
+	
 ELSEIF(WIN32)
   SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4244 /wd4996 /wd4018 /wd4101 /wd4477 /wd4068 /wd4217")
   set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>)

@@ -323,7 +323,7 @@ void *survive_threaded_poser_thread_fn(void *_poser) {
 }
 
 struct survive_threaded_poser *survive_create_threaded_poser(SurviveObject *so, PoserCB innerPoser) {
-	struct survive_threaded_poser *poser = SV_CALLOC(1, sizeof(struct survive_threaded_poser));
+	struct survive_threaded_poser *poser = SV_CALLOC(sizeof(struct survive_threaded_poser));
 	poser->so = so;
 	poser->innerPoser = innerPoser;
 	poser->data_available = OGCreateConditionVariable();

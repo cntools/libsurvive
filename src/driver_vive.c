@@ -3027,7 +3027,7 @@ int survive_vive_close(SurviveContext *ctx, void *driver) {
 }
 
 int DriverRegHTCVive(SurviveContext *ctx) {
-	SurviveViveData *sv = SV_CALLOC(1, sizeof(SurviveViveData));
+	SurviveViveData *sv = SV_CALLOC(sizeof(SurviveViveData));
 	sv->hmd_imu_index = sv->hmd_mainboard_index = -1;
 
 	survive_attach_configi(ctx, SECONDS_PER_HZ_OUTPUT_TAG, &sv->seconds_per_hz_output);

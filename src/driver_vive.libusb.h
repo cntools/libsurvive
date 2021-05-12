@@ -401,7 +401,7 @@ void handle_config_tx(struct libusb_transfer *transfer) {
 					SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Invalid config for %s", survive_colorize(so->codename));
 					goto cleanup;
 				}
-				packet->usbInfo->so->conf = SV_CALLOC(1, uncompressed_data_len + 1);
+				packet->usbInfo->so->conf = SV_CALLOC(uncompressed_data_len + 1);
 				packet->usbInfo->so->conf_cnt = uncompressed_data_len;
 				memcpy(packet->usbInfo->so->conf, uncompressed_data, uncompressed_data_len);
 				goto setup_next;
@@ -458,7 +458,7 @@ static int survive_start_get_config(SurviveViveData *sv, struct SurviveUSBInfo *
 
 	SurviveContext *ctx = sv->ctx;
 
-	struct survive_config_packet *config_packet = SV_CALLOC(1, sizeof(struct survive_config_packet));
+	struct survive_config_packet *config_packet = SV_CALLOC(sizeof(struct survive_config_packet));
 	usbInfo->cfg_user = config_packet;
 	config_packet->tx = tx;
 

@@ -217,7 +217,7 @@ static int gatt_close(SurviveContext *ctx, void *arg) {
 	return 0;
 }
 int DriverRegGatt(SurviveContext *ctx) {
-	gatt_info *driver = SV_CALLOC(1, sizeof(gatt_info));
+	gatt_info *driver = SV_CALLOC(sizeof(gatt_info));
 	driver->ctx = ctx;
 
 	LIST_INIT(&driver->ble_connections);

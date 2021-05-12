@@ -143,7 +143,7 @@ void survive_ootx_behavior(SurviveObject *so, int8_t bsd_idx, int8_t lh_version,
 			} else {
 				SV_INFO("OOTX not set for LH %d; attaching ootx decoder using device %s", bsd_idx, so->codename);
 			}
-			decoderContext = ctx->bsd[bsd_idx].ootx_data = SV_CALLOC(1, sizeof(ootx_decoder_context));
+			decoderContext = ctx->bsd[bsd_idx].ootx_data = SV_CALLOC(sizeof(ootx_decoder_context));
 			ootx_init_decoder_context(decoderContext, survive_run_time(ctx));
 			decoderContext->user1 = bsd_idx;
 			decoderContext->user = so;

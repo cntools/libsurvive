@@ -6,9 +6,9 @@ static volatile int keepRunning = 1;
 
 #include <assert.h>
 #include <math.h>
-#include <minimal_opencv.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <sv_matrix.h>
 #include <xdo.h>
 
 struct ControllerInfo {

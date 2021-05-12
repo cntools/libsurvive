@@ -69,7 +69,7 @@ if(WIN32)
     set_target_properties(survive PROPERTIES PREFIX "lib")
 endif()
 
-target_link_libraries(survive minimal_opencv ${ADDITIONAL_LIBRARIES} mpfit)
+target_link_libraries(survive survive_matrix ${ADDITIONAL_LIBRARIES} mpfit)
 IF(HAVE_ZLIB_H)
   target_link_libraries(survive z)
 ENDIF()

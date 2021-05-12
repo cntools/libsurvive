@@ -541,7 +541,7 @@ static void run_mpfit_find_3d_structure_async(MPFITData *d, PoserDataLight *pdl,
 
 	struct async_optimizer_user *user_data = opt_buff->user;
 	if (user_data == 0) {
-		user_data = opt_buff->user = SV_CALLOC(1, sizeof(struct survive_async_optimizer));
+		user_data = opt_buff->user = SV_CALLOC(sizeof(struct survive_async_optimizer));
 	}
 
 	user_data->d = d;
@@ -878,7 +878,7 @@ int PoserMPFIT(SurviveObject *so, void **user, PoserData *pd) {
 		return 0;
 	}
 	if (*user == 0) {
-		*user = SV_CALLOC(1, sizeof(MPFITData));
+		*user = SV_CALLOC(sizeof(MPFITData));
 		g.instances++;
 		MPFITData *d = *user;
 

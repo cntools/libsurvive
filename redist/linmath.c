@@ -8,7 +8,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "minimal_opencv.h"
+#include "sv_matrix.h"
 #if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <assert.h>
 #include <malloc.h>
@@ -915,32 +915,32 @@ void KabschCentered(LinmathQuat qout, const FLT *ptsA, const FLT *ptsB, int num_
 void KabschCenteredScaled(LinmathQuat qout, FLT *scale, const FLT *ptsA, const FLT *ptsB, int num_pts) {
 	// Note: The following follows along with https://en.wikipedia.org/wiki/Kabsch_algorithm
 	// for the most part but we use some transpose identities to let avoid unneeded transposes
-	CvMat A = cvMat(num_pts, 3, CV_FLT, (FLT *)ptsA);
-	CvMat B = cvMat(num_pts, 3, CV_FLT, (FLT *)ptsB);
+	SvMat A = svMat(num_pts, 3, SV_FLT, (FLT *)ptsA);
+	SvMat B = svMat(num_pts, 3, SV_FLT, (FLT *)ptsB);
 
 	FLT _C[9] = {0};
-	CvMat C = cvMat(3, 3, CV_FLT, _C);
-	cvGEMM(&B, &A, 1, 0, 0, &C, CV_GEMM_A_T);
+	SvMat C = svMat(3, 3, SV_FLT, _C);
+	svGEMM(&B, &A, 1, 0, 0, &C, SV_GEMM_A_T);
 
 	FLT _U[9] = {0};
 	FLT _W[9] = {0};
 	FLT _VT[9] = {0};
-	CvMat U = cvMat(3, 3, CV_FLT, _U);
-	CvMat W = cvMat(3, 3, CV_FLT, _W);
-	CvMat VT = cvMat(3, 3, CV_FLT, _VT);
+	SvMat U = svMat(3, 3, SV_FLT, _U);
+	SvMat W = svMat(3, 3, SV_FLT, _W);
+	SvMat VT = svMat(3, 3, SV_FLT, _VT);
 
-	cvSVD(&C, &W, &U, &VT, CV_SVD_V_T | CV_SVD_MODIFY_A);
+	svSVD(&C, &W, &U, &VT, SV_SVD_V_T | SV_SVD_MODIFY_A);
 
 	FLT _R[9] = {0};
-	CvMat R = cvMat(3, 3, CV_FLT, _R);
-	cvGEMM(&U, &VT, 1, 0, 0, &R, 0);
+	SvMat R = svMat(3, 3, SV_FLT, _R);
+	svGEMM(&U, &VT, 1, 0, 0, &R, 0);
 
 	// Enforce RH rule
-	if (cvDet(&R) < 0.) {
+	if (svDet(&R) < 0.) {
 		_U[2] *= -1;
 		_U[5] *= -1;
 		_U[8] *= -1;
-		cvGEMM(&U, &VT, 1, 0, 0, &R, 0);
+		svGEMM(&U, &VT, 1, 0, 0, &R, 0);
 	}
 
 	if (scale) {
@@ -1012,8 +1012,8 @@ FLT linmath_normrand(FLT mu, FLT sigma) {
 #define RESTRICT_KEYWORD restrict
 #endif
 
-static inline void sparse_multiply_dense_by_sparse_t_to_sym(struct CvMat *out, const CvMat *lhs,
-															const struct sparse_matrix *rhs, const CvMat *aug) {
+static inline void sparse_multiply_dense_by_sparse_t_to_sym(struct SvMat *out, const SvMat *lhs,
+															const struct sparse_matrix *rhs, const SvMat *aug) {
 	int16_t m = lhs->rows;
 	int16_t k = rhs->cols;
 	int16_t n = rhs->rows;
@@ -1022,14 +1022,14 @@ static inline void sparse_multiply_dense_by_sparse_t_to_sym(struct CvMat *out, c
 	assert(out->cols == rhs->rows);
 	assert(out->cols == out->rows);
 
-	const FLT *RESTRICT_KEYWORD A = CV_FLT_PTR(lhs);
-	FLT *RESTRICT_KEYWORD C = CV_FLT_PTR(out);
+	const FLT *RESTRICT_KEYWORD A = SV_FLT_PTR(lhs);
+	FLT *RESTRICT_KEYWORD C = SV_FLT_PTR(out);
 
 	if (aug == 0) {
 		for (int i = 0; i < m * n; i++)
 			C[i] = 0;
 	} else {
-		memcpy(C, CV_FLT_PTR(aug), sizeof(FLT) * m * n);
+		memcpy(C, SV_FLT_PTR(aug), sizeof(FLT) * m * n);
 	}
 
 	const int16_t *RESTRICT_KEYWORD row_index = rhs->row_index;
@@ -1058,7 +1058,7 @@ static inline void sparse_multiply_dense_by_sparse_t_to_sym(struct CvMat *out, c
 	}
 }
 
-inline void sparse_multiply_sparse_by_dense_sym(struct CvMat *out, const struct sparse_matrix *lhs, const CvMat *rhs) {
+inline void sparse_multiply_sparse_by_dense_sym(struct SvMat *out, const struct sparse_matrix *lhs, const SvMat *rhs) {
 	int16_t m = lhs->rows;
 	int16_t n = rhs->cols;
 	assert(lhs->cols == rhs->rows);
@@ -1066,8 +1066,8 @@ inline void sparse_multiply_sparse_by_dense_sym(struct CvMat *out, const struct 
 	assert(out->cols == rhs->cols);
 	assert(rhs->cols == rhs->rows);
 
-	const FLT *RESTRICT_KEYWORD B = CV_FLT_PTR(rhs);
-	FLT *RESTRICT_KEYWORD C = CV_FLT_PTR(out);
+	const FLT *RESTRICT_KEYWORD B = SV_FLT_PTR(rhs);
+	FLT *RESTRICT_KEYWORD C = SV_FLT_PTR(out);
 
 	for (int i = 0; i < m * n; i++)
 		C[i] = 0;
@@ -1095,7 +1095,7 @@ inline void sparse_multiply_sparse_by_dense_sym(struct CvMat *out, const struct 
 	}
 }
 
-inline size_t create_sparse_matrix(struct sparse_matrix *out, const struct CvMat *in) {
+inline size_t create_sparse_matrix(struct sparse_matrix *out, const struct SvMat *in) {
 	int16_t *col_idxs = out->col_index;
 	int16_t *row_idxs = out->row_index;
 	size_t idx = 0;
@@ -1103,7 +1103,7 @@ inline size_t create_sparse_matrix(struct sparse_matrix *out, const struct CvMat
 	memset(out->row_index, -1, sizeof(uint16_t) * (out->rows + 1));
 	memset(out->col_index, -1, sizeof(uint16_t) * (out->rows * out->cols));
 
-	const FLT *RESTRICT_KEYWORD input = CV_FLT_PTR(in);
+	const FLT *RESTRICT_KEYWORD input = SV_FLT_PTR(in);
 	for (int i = 0; i < in->rows; i++) {
 		*(row_idxs++) = idx;
 		for (int j = 0; j < in->cols; j++) {
@@ -1119,13 +1119,13 @@ inline size_t create_sparse_matrix(struct sparse_matrix *out, const struct CvMat
 	return idx;
 }
 
-inline void gemm_ABAt_add(struct CvMat *out, const struct CvMat *A, const struct CvMat *B, const struct CvMat *C) {
+inline void gemm_ABAt_add(struct SvMat *out, const struct SvMat *A, const struct SvMat *B, const struct SvMat *C) {
 	CREATE_STACK_MAT(tmp, A->rows, B->cols);
-	cvGEMM(A, B, 1, 0, 0, &tmp, 0);
-	cvGEMM(&tmp, A, 1, C, 1, out, CV_GEMM_B_T);
+	svGEMM(A, B, 1, 0, 0, &tmp, 0);
+	svGEMM(&tmp, A, 1, C, 1, out, SV_GEMM_B_T);
 }
 
-void matrix_ABAt_add(struct CvMat *out, const struct CvMat *A, const struct CvMat *B, const struct CvMat *C) {
+void matrix_ABAt_add(struct SvMat *out, const struct SvMat *A, const struct SvMat *B, const struct SvMat *C) {
 	ALLOC_SPARSE_MATRIX(s, A->rows, A->cols);
 	size_t nonzeros = create_sparse_matrix(&s, A);
 
@@ -1167,16 +1167,16 @@ void linmath_find_best_intersection(LinmathPoint3d pt, const struct LinmathLine3
 		FLT d2 = dot3d(n2, lines[i].a);
 
 		for (int j = 0; j < 3; j++) {
-			cvmSet(&A, i * 2 + 0, j, n1[j]);
-			cvmSet(&B, i * 2 + 0, 0, d1);
+			svMatrixSet(&A, i * 2 + 0, j, n1[j]);
+			svMatrixSet(&B, i * 2 + 0, 0, d1);
 
-			cvmSet(&A, i * 2 + 1, j, n2[j]);
-			cvmSet(&B, i * 2 + 1, 0, d2);
+			svMatrixSet(&A, i * 2 + 1, j, n2[j]);
+			svMatrixSet(&B, i * 2 + 1, 0, d2);
 		}
 	}
 
-	CvMat x = cvMat(3, 1, CV_FLT, pt);
-	cvSolve(&A, &B, &x, CV_SVD);
+	SvMat x = svMat(3, 1, SV_FLT, pt);
+	svSolve(&A, &B, &x, SV_SVD);
 }
 
 void linmath_pt_along_line(LinmathPoint3d pt, const struct LinmathLine3d *ray, FLT t) {

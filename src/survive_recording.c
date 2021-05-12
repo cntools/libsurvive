@@ -91,7 +91,7 @@ void survive_recording_config_process(SurviveObject *so, char *ct0conf, int len)
 	if (recordingData == 0 || len < 0)
 		return;
 
-	char *buffer = SV_CALLOC(1, len + 1);
+	char *buffer = SV_CALLOC(len + 1);
 	memcpy(buffer, ct0conf, len);
 	for (int i = 0; i < len; i++)
 		if (buffer[i] == '\n' || buffer[i] == '\r')
@@ -336,7 +336,7 @@ void survive_install_recording(SurviveContext *ctx) {
 	int record_to_stdout = survive_configi(ctx, "record-stdout", SC_GET, 0);
 
 	if (strlen(dataout_file) > 0 || record_to_stdout) {
-		ctx->recptr = SV_CALLOC(1, sizeof(struct SurviveRecordingData));
+		ctx->recptr = SV_CALLOC(sizeof(struct SurviveRecordingData));
 		ctx->recptr->ctx = ctx;
 		if (strlen(dataout_file) > 0) {
 			if (strstr(dataout_file, ".pcap")) {

@@ -4,6 +4,6 @@
 #endif
 
 #ifdef ANDROID
-#define CV_FLT_PTR(m) ((FLT *)((m)->data.ptr))
+#define SV_FLT_PTR(m) ((FLT *)((m)->data.ptr))
 #define DECOMP_LU 2
 #endif

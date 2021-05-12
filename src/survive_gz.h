@@ -13,7 +13,7 @@
 #else
 #include <zlib.h>
 static inline int gzerror_dropin(gzFile f) {
-	int rtn;
+	int rtn = 0;
 	gzerror(f, &rtn);
 	return rtn;
 }

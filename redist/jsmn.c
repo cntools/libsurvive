@@ -160,16 +160,15 @@ static int jsmn_parse_string(jsmn_parser *parser, const char *js,
  * Parse JSON string and fill tokens.
  */
 int jsmn_parse(jsmn_parser *parser, const char *js, size_t len) {
-	int r;
-	int i;
-	jsmntok_t *token;
+	int r = 0;
+	int i = 0;
+	jsmntok_t *token = 0;
 	int count = parser->toknext;
 
 	for (; parser->pos < len && js[parser->pos] != '\0'; parser->pos++) {
-		char c;
-		jsmntype_t type;
+		jsmntype_t type = {0};
 
-		c = js[parser->pos];
+		char c = js[parser->pos];
 		switch (c) {
 			case '{': case '[':
 				count++;

@@ -17,7 +17,7 @@ int PoserKalmanOnly(SurviveObject *so, void **user, PoserData *pd) {
 	struct PoserIMUData_t *dd = *user;
 
 	if (!dd) {
-		*user = dd = SV_CALLOC(1, sizeof(struct PoserIMUData_t));
+		*user = dd = SV_CALLOC(sizeof(struct PoserIMUData_t));
 	}
 
 	switch (pt) {

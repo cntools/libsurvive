@@ -122,7 +122,7 @@ static SurviveSimpleObject *find_or_create_external(SurviveSimpleContext *actx, 
 		}
 	}
 
-	SurviveSimpleObject *so = SV_CALLOC(1, sizeof(struct SurviveSimpleObject));
+	SurviveSimpleObject *so = SV_CALLOC(sizeof(struct SurviveSimpleObject));
 	so->type = SurviveSimpleObject_EXTERNAL;
 	so->actx = actx;
 	strncpy(so->name, name, sizeof(so->name) - 1);
@@ -163,7 +163,7 @@ static void pose_fn(SurviveObject *so, survive_long_timecode timecode, const Sur
 }
 
 static inline SurviveSimpleObject *create_lighthouse(SurviveSimpleContext *actx, size_t i) {
-	SurviveSimpleObject *obj = SV_CALLOC(1, sizeof(struct SurviveSimpleObject));
+	SurviveSimpleObject *obj = SV_CALLOC(sizeof(struct SurviveSimpleObject));
 	obj->data.lh.lighthouse = i;
 	obj->type = SurviveSimpleObject_LIGHTHOUSE;
 	obj->actx = actx;
@@ -260,7 +260,7 @@ static void simple_log_fn(SurviveContext *ctx, SurviveLogLevel logLevel, const c
 static void new_object_fn(SurviveObject *so) {
 	SurviveSimpleContext *actx = so->ctx->user_ptr;
 
-	SurviveSimpleObject *obj = SV_CALLOC(1, sizeof(struct SurviveSimpleObject));
+	SurviveSimpleObject *obj = SV_CALLOC(sizeof(struct SurviveSimpleObject));
 	obj->data.so = so;
 	obj->type = to_simple_type(so->object_type);
 	obj->actx = actx;
@@ -281,7 +281,7 @@ static void new_object_fn(SurviveObject *so) {
 
 SURVIVE_EXPORT SurviveSimpleContext *survive_simple_init_with_logger(int argc, char *const *argv,
 																	 SurviveSimpleLogFn fn) {
-	SurviveSimpleContext *actx = SV_CALLOC(1, sizeof(SurviveSimpleContext));
+	SurviveSimpleContext *actx = SV_CALLOC(sizeof(SurviveSimpleContext));
 	actx->log_fn = fn;
 
 	SurviveContext *ctx = survive_init_with_logger(argc, argv, actx, simple_log_fn);

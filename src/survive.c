@@ -304,11 +304,11 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 	}
 #endif
 
-	SurviveContext *ctx = SV_CALLOC(1, sizeof(SurviveContext));
+	SurviveContext *ctx = SV_CALLOC(sizeof(SurviveContext));
 	ctx->user_ptr = userData;
 	ctx->poll_min_time_ms = 10;
 
-	struct SurviveContext_private *pctx = ctx->private_members = SV_CALLOC(1, sizeof(struct SurviveContext_private));
+	struct SurviveContext_private *pctx = ctx->private_members = SV_CALLOC(sizeof(struct SurviveContext_private));
 
 	pctx->poll_sema = OGCreateSema();
 
@@ -803,7 +803,7 @@ static int threaded_driver_close(struct SurviveContext *ctx, void *_driver) {
 
 bool *survive_add_threaded_driver(SurviveContext *ctx, void *_driver, const char *name, void *(routine)(void *),
 								  DeviceDriverCb close) {
-	struct survive_threaded_driver *driver = SV_CALLOC(1, sizeof(struct survive_threaded_driver));
+	struct survive_threaded_driver *driver = SV_CALLOC(sizeof(struct survive_threaded_driver));
 	driver->driver_data = _driver;
 	driver->close_fn = close;
 

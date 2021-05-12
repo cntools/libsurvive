@@ -626,7 +626,7 @@ SURVIVE_EXPORT SurviveObject *survive_create_simulation_device(SurviveContext *c
 }
 
 int DriverRegSimulator(SurviveContext *ctx) {
-	SurviveDriverSimulator *sp = SV_CALLOC(1, sizeof(SurviveDriverSimulator));
+	SurviveDriverSimulator *sp = SV_CALLOC(sizeof(SurviveDriverSimulator));
 	sp->ctx = ctx;
 	ctx->poll_min_time_ms = 0;
 

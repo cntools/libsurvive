@@ -1,26 +1,26 @@
 #include "../survive_kalman_tracker.h"
 #include "test_case.h"
 #include <math.h>
-#include <minimal_opencv.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sv_matrix.h>
 
 #include "../generated/survive_imu.generated.h"
 #if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include "malloc.h"
 #endif
 
-static void rot_predict_quat(FLT t, const survive_kalman_state_t *k, const CvMat *f_in, CvMat *f_out) {
+static void rot_predict_quat(FLT t, const survive_kalman_state_t *k, const SvMat *f_in, SvMat *f_out) {
 	(void)k;
 
-	const FLT *rot = CV_FLT_PTR(f_in);
-	const FLT *vel = CV_FLT_PTR(f_in) + 4;
-	copy3d(CV_FLT_PTR(f_out) + 4, vel);
+	const FLT *rot = SV_FLT_PTR(f_in);
+	const FLT *vel = SV_FLT_PTR(f_in) + 4;
+	copy3d(SV_FLT_PTR(f_out) + 4, vel);
 
-	survive_apply_ang_velocity(CV_FLT_PTR(f_out), vel, t, rot);
+	survive_apply_ang_velocity(SV_FLT_PTR(f_out), vel, t, rot);
 }
 
-static void rot_f_quat(FLT t, FLT *F, const struct CvMat *x) {
+static void rot_f_quat(FLT t, FLT *F, const struct SvMat *x) {
 	(void)x;
 
 	// assert(fabs(t) < .1 && t >= 0);
@@ -28,7 +28,7 @@ static void rot_f_quat(FLT t, FLT *F, const struct CvMat *x) {
 		t = .11;
 
 	// fprintf(stderr, "F eval: %f " SurvivePose_format "\n", t, SURVIVE_POSE_EXPAND(*(SurvivePose*)x->data.db));
-	gen_imu_rot_f_jac_imu_rot(F, t, CV_FLT_PTR(x));
+	gen_imu_rot_f_jac_imu_rot(F, t, SV_FLT_PTR(x));
 
 	for (int j = 0; j < 49; j++) {
 		assert(!isnan(F[j]));
@@ -150,7 +150,7 @@ int TestKalmanIntegratePose(FLT pvariance, FLT rot_variance) {
 }
 #include "string.h"
 
-static void pos_f(FLT t, FLT *F, const struct CvMat *x) {
+static void pos_f(FLT t, FLT *F, const struct SvMat *x) {
 	(void)x;
 	t = 1;
 	FLT f[36] = {
@@ -159,9 +159,9 @@ static void pos_f(FLT t, FLT *F, const struct CvMat *x) {
 	memcpy(F, f, sizeof(f));
 }
 
-void meas_model(struct CvMat *Z, const struct CvMat *x_t, const FLT *s) {
-	FLT *_h_x = CV_FLT_PTR(Z);
-	FLT *xt = CV_FLT_PTR(x_t);
+void meas_model(struct SvMat *Z, const struct SvMat *x_t, const FLT *s) {
+	FLT *_h_x = SV_FLT_PTR(Z);
+	FLT *xt = SV_FLT_PTR(x_t);
 
 	LinmathPoint3d d;
 
@@ -172,15 +172,15 @@ void meas_model(struct CvMat *Z, const struct CvMat *x_t, const FLT *s) {
 	_h_x[2] = norm3d(d);
 }
 
-static inline void mat_eye(CvMat *m, FLT v) {
+static inline void mat_eye(SvMat *m, FLT v) {
 	for (int i = 0; i < m->rows; i++) {
 		for (int j = 0; j < m->cols; j++) {
-			CV_FLT_PTR(m)[j * m->cols + i] = i == j ? v : 0.;
+			SV_FLT_PTR(m)[j * m->cols + i] = i == j ? v : 0.;
 		}
 	}
 }
 
-bool map_to_obs(void *user, const struct CvMat *Z, const struct CvMat *x_t, struct CvMat *yhat, struct CvMat *H_k) {
+bool map_to_obs(void *user, const struct SvMat *Z, const struct SvMat *x_t, struct SvMat *yhat, struct SvMat *H_k) {
 
 	const FLT *s = (FLT *)user;
 	CREATE_STACK_MAT(h_x_t, 3, 1);
@@ -188,13 +188,13 @@ bool map_to_obs(void *user, const struct CvMat *Z, const struct CvMat *x_t, stru
 
 	CREATE_STACK_MAT(Id, 3, 3);
 	mat_eye(&Id, 1);
-	cvGEMM(&Id, Z, 1., &h_x_t, -1, yhat, 0);
+	svGEMM(&Id, Z, 1., &h_x_t, -1, yhat, 0);
 
-	FLT *xt = CV_FLT_PTR(x_t);
+	FLT *xt = SV_FLT_PTR(x_t);
 	LinmathPoint3d d;
 	sub3d(d, xt, s);
 
-	FLT *H = CV_FLT_PTR(H_k);
+	FLT *H = SV_FLT_PTR(H_k);
 	FLT x = d[0], y = d[1], z = d[2];
 	FLT n2 = (x * x + y * y + z * z);
 	FLT n = sqrtf(n2);
@@ -212,10 +212,10 @@ bool map_to_obs(void *user, const struct CvMat *Z, const struct CvMat *x_t, stru
 	return true;
 }
 
-static inline void mat_eye_diag(CvMat *m, const FLT *v) {
+static inline void mat_eye_diag(SvMat *m, const FLT *v) {
 	for (int i = 0; i < m->rows; i++) {
 		for (int j = 0; j < m->cols; j++) {
-			CV_FLT_PTR(m)[j * m->cols + i] = i == j ? v[i] : 0.;
+			SV_FLT_PTR(m)[j * m->cols + i] = i == j ? v[i] : 0.;
 		}
 	}
 }
@@ -232,15 +232,15 @@ TEST(Kalman, ExampleExtended) {
 	FLT P_init[6] = {1, 1, 1, 0, 0, 0};
 
 	survive_kalman_state_init(&position, 6, pos_f, 0, pos_Q_per_sec, 0);
-	CvMat P = cvMat(6, 6, SURVIVE_CV_F, position.P);
+	SvMat P = svMat(6, 6, SURVIVE_SV_F, position.P);
 	mat_eye_diag(&P, P_init);
 
 	FLT _F[36];
 	pos_f(1, _F, 0);
-	CvMat F = cvMat(6, 6, SURVIVE_CV_F, _F);
+	SvMat F = svMat(6, 6, SURVIVE_SV_F, _F);
 
 	FLT _true_state[] = {9, -12, 0, -1, -2, 0};
-	CvMat true_state = cvMat(6, 1, SURVIVE_CV_F, _true_state);
+	SvMat true_state = svMat(6, 1, SURVIVE_SV_F, _true_state);
 
 	FLT _init_state[] = {10, -10, 0, -1, -2, 0};
 	memcpy(position.state, _init_state, sizeof(_true_state));
@@ -277,10 +277,10 @@ TEST(Kalman, ExampleExtended) {
 		assert(err < 1);
 
 		FLT _next_state[6];
-		CvMat next_state = cvMat(6, 1, SURVIVE_CV_F, _next_state);
-		// SURVIVE_LOCAL_ONLY void cvGEMM(const CvMat *src1, const CvMat *src2, double alpha, const CvMat *src3, double
+		SvMat next_state = svMat(6, 1, SURVIVE_SV_F, _next_state);
+		// SURVIVE_LOCAL_ONLY void cvGEMM(const SvMat *src1, const SvMat *src2, double alpha, const SvMat *src3, double
 		// beta,
-		cvGEMM(&F, &true_state, 1, 0, 0, &next_state, 0);
+		svGEMM(&F, &true_state, 1, 0, 0, &next_state, 0);
 		memcpy(_true_state, _next_state, sizeof(_true_state));
 	}
 
@@ -325,7 +325,7 @@ TEST(Kalman, AngleQuat) {
 		0, 0, 0, 1, 0, 0, 0,
 	};
 	// clang-format on
-	CvMat H = cvMat(4, 7, SURVIVE_CV_F, _H);
+	SvMat H = svMat(4, 7, SURVIVE_SV_F, _H);
 
 	for (int i = 1; i < 100; i++) {
 		FLT t = i * .1;
