@@ -539,8 +539,17 @@ REGISTER_LINKTIME(DriverRegPlayback)
 #define _GETDELIM_GROWBY 128 /* amount to grow line buffer by */
 #define _GETDELIM_MINLEN 4   /* minimum line buffer size */
 
-__attribute__((no_sanitize("memory"))) ssize_t gzgetdelim(char **RESTRICT_KEYWORD lineptr, size_t *RESTRICT_KEYWORD n,
-														  int delimiter, gzFile RESTRICT_KEYWORD stream) {
+#if defined(__has_feature)
+#if __has_feature(memory_sanitizer)
+#define MEMORY_SANITIZER_IGNORE __attribute__((no_sanitize("memory")))
+#endif
+#endif
+#ifndef MEMORY_SANITIZER_IGNORE
+#define MEMORY_SANITIZER_IGNORE
+#endif
+
+MEMORY_SANITIZER_IGNORE ssize_t gzgetdelim(char **RESTRICT_KEYWORD lineptr, size_t *RESTRICT_KEYWORD n, int delimiter,
+										   gzFile RESTRICT_KEYWORD stream) {
 	char *buf = 0, *pos = 0;
 	int c = 0;
 	ssize_t bytes = 0;
