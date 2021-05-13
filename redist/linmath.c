@@ -914,7 +914,7 @@ void KabschCentered(LinmathQuat qout, const FLT *ptsA, const FLT *ptsB, int num_
 }
 void KabschCenteredScaled(LinmathQuat qout, FLT *scale, const FLT *ptsA, const FLT *ptsB, int num_pts) {
 	// Note: The following follows along with https://en.wikipedia.org/wiki/Kabsch_algorithm
-	// for the most part but we use some transpose identities to let avoid unneeded transposes
+	// for the most part but we use some transpose identities to avoid unneeded transposes
 	SvMat A = svMat(num_pts, 3, SV_FLT, (FLT *)ptsA);
 	SvMat B = svMat(num_pts, 3, SV_FLT, (FLT *)ptsB);
 
@@ -1120,7 +1120,7 @@ inline size_t create_sparse_matrix(struct sparse_matrix *out, const struct SvMat
 }
 
 inline void gemm_ABAt_add(struct SvMat *out, const struct SvMat *A, const struct SvMat *B, const struct SvMat *C) {
-	CREATE_STACK_MAT(tmp, A->rows, B->cols);
+	SV_CREATE_STACK_MAT(tmp, A->rows, B->cols);
 	svGEMM(A, B, 1, 0, 0, &tmp, 0);
 	svGEMM(&tmp, A, 1, C, 1, out, SV_GEMM_B_T);
 }
@@ -1129,7 +1129,7 @@ void matrix_ABAt_add(struct SvMat *out, const struct SvMat *A, const struct SvMa
 	ALLOC_SPARSE_MATRIX(s, A->rows, A->cols);
 	size_t nonzeros = create_sparse_matrix(&s, A);
 
-	CREATE_STACK_MAT(tmp, s.rows, B->cols);
+	SV_CREATE_STACK_MAT(tmp, s.rows, B->cols);
 	sparse_multiply_sparse_by_dense_sym(&tmp, &s, B);
 	sparse_multiply_dense_by_sparse_t_to_sym(out, &tmp, &s, C);
 }
@@ -1143,8 +1143,8 @@ void linmath_get_line_dir(LinmathPoint3d dir, const struct LinmathLine3d *ray) {
 
 void linmath_find_best_intersection(LinmathPoint3d pt, const struct LinmathLine3d *lines, size_t num) {
 	// http://mathforum.org/library/drmath/view/69105.html
-	CREATE_STACK_MAT(A, num * 2, 3);
-	CREATE_STACK_MAT(B, num * 2, 1);
+	SV_CREATE_STACK_MAT(A, num * 2, 3);
+	SV_CREATE_STACK_MAT(B, num * 2, 1);
 
 	for (int i = 0; i < num; i++) {
 		LinmathPoint3d dir;

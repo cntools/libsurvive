@@ -5,6 +5,8 @@
 
 #else
 
+#include "linmath.h"
+
 #define SV_SVD 1
 #define SV_SVD_MODIFY_A 1
 #define SV_SVD_SYM 2
@@ -65,14 +67,19 @@ void print_mat(const SvMat *M);
 SvMat *svInitMatHeader(SvMat *arr, int rows, int cols, int type);
 SvMat *svCreateMat(int height, int width, int type);
 
-double svInvert(const SvMat *srcarr, SvMat *dstarr, int method);
+enum svInvertMethod {
+	SV_INVERT_METHOD_SVD,
+	SV_INVERT_METHOD_LU,
+};
+
+double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svInvertMethod method);
 
 void svGEMM(const SvMat *src1, const SvMat *src2, double alpha, const SvMat *src3, double beta, SvMat *dst, int tABC);
 
 /**
  * xarr = argmin_x(Aarr * x - Barr)
  */
-int svSolve(const SvMat *Aarr, const SvMat *Barr, SvMat *xarr, int method);
+int svSolve(const SvMat *Aarr, const SvMat *Barr, SvMat *xarr, enum svInvertMethod method);
 
 void svSetZero(SvMat *arr);
 
@@ -92,9 +99,25 @@ void print_mat(const SvMat *M);
 
 double svDet(const SvMat *M);
 
-extern const int DECOMP_SVD;
-extern const int DECOMP_LU;
+#define SV_CREATE_STACK_MAT(name, rows, cols)                                                                          \
+	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
+	SvMat name = svMat(rows, cols, SURVIVE_SV_F, _##name);
 
+static inline void sv_set_diag(struct SvMat *m, const FLT *v) {
+	for (int i = 0; i < m->rows; i++) {
+		for (int j = 0; j < m->cols; j++) {
+			svMatrixSet(m, i, j, i == j ? v[i] : 0.);
+		}
+	}
+}
+
+static inline void sv_set_diag_val(struct SvMat *m, FLT v) {
+	for (int i = 0; i < m->rows; i++) {
+		for (int j = 0; j < m->cols; j++) {
+			svMatrixSet(m, i, j, i == j ? v : 0.);
+		}
+	}
+}
 #ifdef __cplusplus
 }
 #endif

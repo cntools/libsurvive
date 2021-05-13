@@ -134,7 +134,7 @@ static inline double svMatrixGet(const SvMat *mat, int row, int col) {
 }
 
 /** Inline constructor. No data is allocated internally!!!
- * (Use together with cvCreateData, or use svCreateMat instead to
+ * (Use together with svCreateData, or use svCreateMat instead to
  * get a matrix with allocated data):
  */
 static inline SvMat svMat(int rows, int cols, int type, void *data) {

@@ -183,11 +183,11 @@ static inline void mat_eye(SvMat *m, FLT v) {
 bool map_to_obs(void *user, const struct SvMat *Z, const struct SvMat *x_t, struct SvMat *yhat, struct SvMat *H_k) {
 
 	const FLT *s = (FLT *)user;
-	CREATE_STACK_MAT(h_x_t, 3, 1);
+	SV_CREATE_STACK_MAT(h_x_t, 3, 1);
 	meas_model(&h_x_t, x_t, s);
 
-	CREATE_STACK_MAT(Id, 3, 3);
-	mat_eye(&Id, 1);
+	SV_CREATE_STACK_MAT(Id, 3, 3);
+	sv_set_diag_val(&Id, 1);
 	svGEMM(&Id, Z, 1., &h_x_t, -1, yhat, 0);
 
 	FLT *xt = SV_FLT_PTR(x_t);
@@ -233,7 +233,7 @@ TEST(Kalman, ExampleExtended) {
 
 	survive_kalman_state_init(&position, 6, pos_f, 0, pos_Q_per_sec, 0);
 	SvMat P = svMat(6, 6, SURVIVE_SV_F, position.P);
-	mat_eye_diag(&P, P_init);
+	sv_set_diag(&P, P_init);
 
 	FLT _F[36];
 	pos_f(1, _F, 0);
@@ -249,7 +249,7 @@ TEST(Kalman, ExampleExtended) {
 	position.state[1] += generateGaussianNoise(0, 1);
 
 	FLT meas_s[] = {.002, .002, .002};
-	CREATE_STACK_MAT(Z, 3, 1);
+	SV_CREATE_STACK_MAT(Z, 3, 1);
 
 	for (int i = 1; i < 21; i++) {
 		LinmathPoint3d sensor = {20 + 20 * cos(2. * LINMATHPI / 30 * (i)), 20 + 20 * sin(2. * LINMATHPI / 30 * (i)),
@@ -310,12 +310,12 @@ TEST(Kalman, AngleQuat) {
 	FLT P_init[] = {100, 100, 100, 100, 100, 100, 100};
 	survive_kalman_set_P(&rotation, P_init);
 
-	CREATE_STACK_MAT(true_state, 7, 1);
+	SV_CREATE_STACK_MAT(true_state, 7, 1);
 	FLT true_state_init[7] = {1, 0, 0, 0, 1, 1, -1};
 	memcpy(_true_state, true_state_init, sizeof(true_state_init));
 	memcpy(rotation.state, true_state_init, sizeof(true_state_init));
 
-	CREATE_STACK_MAT(Z, 4, 1);
+	SV_CREATE_STACK_MAT(Z, 4, 1);
 
 	// clang-format off
 	FLT _H[] = {

@@ -91,7 +91,7 @@ static void test_invert() {
 	double _i3x3[3 * 3] = {0};
 	SvMat i3x3 = svMat(3, 3, SV_64F, _i3x3);
 
-	svInvert(&m3x3, &d3x3, DECOMP_LU);
+	svInvert(&m3x3, &d3x3, SV_INVERT_METHOD_LU);
 
 	svGEMM(&m3x3, &d3x3, 1, 0, 0, &i3x3, 0);
 	print_mat(&d3x3);
@@ -162,7 +162,7 @@ void test_sparse_matrix() {
 
 	PRINT_MAT(m2x3);
 
-	CREATE_STACK_MAT(D, 3, 3);
+	SV_CREATE_STACK_MAT(D, 3, 3);
 	for (int i = 0; i < 3; i++) {
 		for (int j = 0; j <= i; j++) {
 			_D[j + 3 * i] = _D[i + 3 * j] = linmath_normrand(0, 100);
@@ -171,8 +171,8 @@ void test_sparse_matrix() {
 	PRINT_MAT(D);
 
 	{
-		CREATE_STACK_MAT(Rd, 2, 3);
-		CREATE_STACK_MAT(Rs, 2, 3);
+		SV_CREATE_STACK_MAT(Rd, 2, 3);
+		SV_CREATE_STACK_MAT(Rs, 2, 3);
 		sparse_multiply_sparse_by_dense_sym(&Rs, &sm2x3, &D);
 		PRINT_MAT(Rs);
 
@@ -185,8 +185,8 @@ void test_sparse_matrix() {
 	}
 
 	{
-		CREATE_STACK_MAT(Rd, 2, 2);
-		CREATE_STACK_MAT(Rs, 2, 2);
+		SV_CREATE_STACK_MAT(Rd, 2, 2);
+		SV_CREATE_STACK_MAT(Rs, 2, 2);
 
 		gemm_ABAt_add(&Rd, &m2x3, &D, 0);
 		PRINT_MAT(Rd);
@@ -205,11 +205,11 @@ void test_sparse_matrix() {
 }
 
 void test_speedN(int N) {
-	CREATE_STACK_MAT(A, N, N);
-	CREATE_STACK_MAT(B, N, N);
-	CREATE_STACK_MAT(C, N, N);
-	CREATE_STACK_MAT(Cs, N, N);
-	CREATE_STACK_MAT(Ct, N, N);
+	SV_CREATE_STACK_MAT(A, N, N);
+	SV_CREATE_STACK_MAT(B, N, N);
+	SV_CREATE_STACK_MAT(C, N, N);
+	SV_CREATE_STACK_MAT(Cs, N, N);
+	SV_CREATE_STACK_MAT(Ct, N, N);
 	for (int i = 0; i < N * N; i++) {
 		_A[i] = (i % 6 == 0) ? linmath_normrand(0, 100) : 0;
 		//_A[i] = linmath_normrand(0, 100);

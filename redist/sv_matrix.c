@@ -83,13 +83,13 @@ SURVIVE_LOCAL_ONLY void svReleaseMat(SvMat **mat) {
 
 /* the alignment of all the allocated buffers */
 #define SV_MALLOC_ALIGN 16
-SURVIVE_LOCAL_ONLY void *cvAlloc(size_t size) { return malloc(size); }
-static inline void *cvAlignPtr(const void *ptr, int align) {
+SURVIVE_LOCAL_ONLY void *svAlloc(size_t size) { return malloc(size); }
+static inline void *svAlignPtr(const void *ptr, int align) {
 	assert((align & (align - 1)) == 0);
 	return (void *)(((size_t)ptr + align - 1) & ~(size_t)(align - 1));
 }
 
-SURVIVE_LOCAL_ONLY void cvCreateData(SvMat *arr) {
+SURVIVE_LOCAL_ONLY void svCreateData(SvMat *arr) {
 	if (SV_IS_MAT_HDR_Z(arr)) {
 		size_t step, total_size;
 		SvMat *mat = (SvMat *)arr;
@@ -108,8 +108,8 @@ SURVIVE_LOCAL_ONLY void cvCreateData(SvMat *arr) {
 		total_size = (size_t)_total_size;
 		if (_total_size != (int64_t)total_size)
 			SV_Error(SV_StsNoMem, "Too big buffer is allocated");
-		mat->refcount = (int *)cvAlloc((size_t)total_size);
-		mat->data.ptr = (unsigned char *)cvAlignPtr(mat->refcount + 1, SV_MALLOC_ALIGN);
+		mat->refcount = (int *)svAlloc((size_t)total_size);
+		mat->data.ptr = (unsigned char *)svAlignPtr(mat->refcount + 1, SV_MALLOC_ALIGN);
 		*mat->refcount = 1;
 	} else if (SV_IS_MATND_HDR(arr)) {
 		assert("There is no support for ND types");
@@ -143,12 +143,12 @@ SvMat *svInitMatHeader(SvMat *arr, int rows, int cols, int type) {
 	return arr;
 }
 
-SURVIVE_LOCAL_ONLY SvMat *cvCreateMatHeader(int rows, int cols, int type) {
-	return svInitMatHeader((SvMat *)cvAlloc(sizeof(SvMat)), rows, cols, type);
+SURVIVE_LOCAL_ONLY SvMat *svCreateMatHeader(int rows, int cols, int type) {
+	return svInitMatHeader((SvMat *)svAlloc(sizeof(SvMat)), rows, cols, type);
 }
 SURVIVE_LOCAL_ONLY SvMat *svCreateMat(int height, int width, int type) {
-	SvMat *arr = cvCreateMatHeader(height, width, type);
-	cvCreateData(arr);
+	SvMat *arr = svCreateMatHeader(height, width, type);
+	svCreateData(arr);
 
 	return arr;
 }

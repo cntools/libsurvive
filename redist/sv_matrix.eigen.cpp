@@ -18,12 +18,12 @@ typedef Eigen::Map<MatrixType> MapType;
 
 #define CONVERT_TO_EIGEN(A) MapType(A ? SV_FLT_PTR(A) : 0, A ? (A)->rows : 0, A ? (A)->cols : 0)
 
-double svInvert(const SvMat *srcarr, SvMat *dstarr, int method) {
+double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svInvertMethod method) {
 	auto src = CONVERT_TO_EIGEN(srcarr);
 	auto dst = CONVERT_TO_EIGEN(dstarr);
 
 	Eigen::internal::set_is_malloc_allowed(false);
-	if (method == DECOMP_LU) {
+	if (method == SV_INVERT_METHOD_LU) {
 		dst.noalias() = src.inverse();
 	} else {
 		dst.noalias() = src.completeOrthogonalDecomposition().pseudoInverse();
@@ -63,7 +63,7 @@ void svGEMM(const SvMat *_src1, const SvMat *_src2, double alpha, const SvMat *_
 const int DECOMP_SVD = 1;
 const int DECOMP_LU = 2;
 
-int svSolve(const SvMat *_Aarr, const SvMat *_Barr, SvMat *_xarr, int method) {
+int svSolve(const SvMat *_Aarr, const SvMat *_Barr, SvMat *_xarr, enum svInvertMethod method) {
 	auto Aarr = CONVERT_TO_EIGEN(_Aarr);
 	auto Barr = CONVERT_TO_EIGEN(_Barr);
 	auto xarr = CONVERT_TO_EIGEN(_xarr);

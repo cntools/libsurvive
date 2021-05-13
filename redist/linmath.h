@@ -33,10 +33,6 @@ extern "C" {
 #define LINMATHPI_2 ((FLT)1.57079632679489661923) /* pi/2 */
 #define LINMATHPI_4 ((FLT)0.78539816339744830962) /* pi/4 */
 
-#define CREATE_STACK_MAT(name, rows, cols)                                                                             \
-	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
-	SvMat name = svMat(rows, cols, SURVIVE_SV_F, _##name);
-
 #ifdef USE_FLOAT
 
 #define FLT float
@@ -363,6 +359,7 @@ LINMATH_EXPORT void matrix_ABAt_add(struct SvMat *out, const struct SvMat *A, co
  */
 LINMATH_EXPORT void gemm_ABAt_add(struct SvMat *out, const struct SvMat *A, const struct SvMat *B,
 								  const struct SvMat *C);
+
 #ifdef __cplusplus
 }
 #endif

@@ -433,12 +433,12 @@ void copy_R_and_t(const FLT R_src[3][3], const FLT t_src[3], FLT R_dst[3][3], FL
 	}
 }
 
-#define CREATE_STACK_MAT(name, rows, cols)                                                                             \
+#define SV_CREATE_STACK_MAT(name, rows, cols)                                                                          \
 	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
 	SvMat name = svMat(rows, cols, SURVIVE_SV_F, _##name);
 
 FLT bc_svd_compute_pose(bc_svd *self, FLT R[3][3], FLT t[3]) {
-	CREATE_STACK_MAT(M, self->meas_cnt, 12);
+	SV_CREATE_STACK_MAT(M, self->meas_cnt, 12);
 	bool colCovered[12] = { 0 };
 	bool has_axis[2] = {false, false};
 	for (int i = 0; i < self->meas_cnt; i++) {

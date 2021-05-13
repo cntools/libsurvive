@@ -324,7 +324,7 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 		FLT R[] = {
 			1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5,
 		};
-		CREATE_STACK_MAT(Z, 9, 1);
+		SV_CREATE_STACK_MAT(Z, 9, 1);
 		memset(_Z, 0, sizeof(FLT) * 9);
 
 		tracker->stats.imu_total_error += survive_kalman_predict_update_state(time, &tracker->model, &Z, &H, R, false);

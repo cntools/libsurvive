@@ -112,7 +112,7 @@ SURVIVE_LOCAL_ONLY void svSYMM(const SvMat *src1, const SvMat *src2, double alph
 void mulBABt(const SvMat *src1, const SvMat *src2, double alpha, const SvMat *src3, double beta, SvMat *dst) {
 	size_t dims = src2->rows;
 	assert(src2->cols == src2->rows);
-	CREATE_STACK_MAT(tmp, dims, dims);
+	SV_CREATE_STACK_MAT(tmp, dims, dims);
 
 	// This has been profiled; and weirdly enough the SYMM version is slower for a 19x19 matrix. Guessing access order
 	// or some other cache thing matters more than the additional 2x multiplications.
@@ -235,7 +235,7 @@ exit_level_0:
 	return info;
 }
 
-SURVIVE_LOCAL_ONLY double svInvert(const SvMat *srcarr, SvMat *dstarr, int method) {
+SURVIVE_LOCAL_ONLY double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svInvertMethod method) {
 	lapack_int inf;
 	lapack_int rows = srcarr->rows;
 	lapack_int cols = srcarr->cols;
@@ -248,7 +248,7 @@ SURVIVE_LOCAL_ONLY double svInvert(const SvMat *srcarr, SvMat *dstarr, int metho
 	printf("a: \n");
 	print_mat(srcarr);
 #endif
-	if (method == DECOMP_LU) {
+	if (method == SV_INVERT_METHOD_LU) {
 		lapack_int *ipiv = alloca(sizeof(lapack_int) * MIN(srcarr->rows, srcarr->cols));
 
 		lapack_int lda_t = MAX(1, rows);
@@ -303,7 +303,7 @@ SURVIVE_LOCAL_ONLY double svInvert(const SvMat *srcarr, SvMat *dstarr, int metho
 	SV_CREATE_MAT_ALLOCA(stack_mat, mat->rows, mat->cols, mat->type)                                                   \
 	svCopy(mat, stack_mat, 0);
 
-SURVIVE_LOCAL_ONLY int svSolve(const SvMat *Aarr, const SvMat *Barr, SvMat *xarr, int method) {
+SURVIVE_LOCAL_ONLY int svSolve(const SvMat *Aarr, const SvMat *Barr, SvMat *xarr, enum svInvertMethod method) {
 	lapack_int inf;
 	lapack_int arows = Aarr->rows;
 	lapack_int acols = Aarr->cols;
@@ -312,7 +312,7 @@ SURVIVE_LOCAL_ONLY int svSolve(const SvMat *Aarr, const SvMat *Barr, SvMat *xarr
 	lapack_int lda = acols; // Aarr->step / sizeof(double);
 	lapack_int type = SV_MAT_TYPE(Aarr->type);
 
-	if (method == DECOMP_LU) {
+	if (method == SV_INVERT_METHOD_LU) {
 		assert(Aarr->cols == xarr->rows);
 		assert(Barr->rows == Aarr->rows);
 		assert(xarr->cols == Barr->cols);
@@ -346,7 +346,7 @@ SURVIVE_LOCAL_ONLY int svSolve(const SvMat *Aarr, const SvMat *Barr, SvMat *xarr
 
 		// free(ipiv);
 		// svReleaseMat(&a_ws);
-	} else if (method == DECOMP_SVD) {
+	} else if (method == SV_INVERT_METHOD_SVD) {
 
 #ifdef DEBUG_PRINT
 		printf("Solve |b - A * x|:\n");
