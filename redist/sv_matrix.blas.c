@@ -200,7 +200,7 @@ SURVIVE_LOCAL_ONLY void svMulTransposed(const SvMat *src, SvMat *dst, int order,
 
 #define CREATE_SV_STACK_MAT(name, rows, cols, type)                                                                    \
 	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
-	SvMat name = svMat(rows, cols, SURVIVE_SV_F, _##name);
+	SvMat name = svMat(rows, cols, _##name);
 
 static inline lapack_int LAPACKE_getri_static_alloc(int matrix_layout, lapack_int n, FLT *a, lapack_int lda,
 													const lapack_int *ipiv) {
@@ -274,10 +274,10 @@ SURVIVE_LOCAL_ONLY double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svIn
 	} else if (method == DECOMP_SVD) {
 		// TODO: There is no way this needs this many allocations,
 		// but in my defense I was very tired when I wrote this code
-		CREATE_SV_STACK_MAT(w, 1, MIN(dstarr->rows, dstarr->cols), dstarr->type);
-		CREATE_SV_STACK_MAT(u, dstarr->cols, dstarr->cols, dstarr->type);
-		CREATE_SV_STACK_MAT(v, dstarr->rows, dstarr->rows, dstarr->type);
-		CREATE_SV_STACK_MAT(um, w.cols, w.cols, w.type);
+		SV_CREATE_STACK_MAT(w, 1, MIN(dstarr->rows, dstarr->cols));
+		SV_CREATE_STACK_MAT(u, dstarr->cols, dstarr->cols);
+		SV_CREATE_STACK_MAT(v, dstarr->rows, dstarr->rows);
+		SV_CREATE_STACK_MAT(um, w.cols, w.cols);
 
 		svSVD(dstarr, &w, &u, &v, 0);
 
@@ -286,7 +286,7 @@ SURVIVE_LOCAL_ONLY double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svIn
 			svMatrixSet(&um, i, i, 1. / (_w)[i]);
 		}
 
-		SvMat *tmp = svCreateMat(dstarr->cols, dstarr->rows, dstarr->type);
+		SvMat *tmp = svCreateMat(dstarr->cols, dstarr->rows);
 		svGEMM(&v, &um, 1, 0, 0, tmp, SV_GEMM_A_T);
 		svGEMM(tmp, &u, 1, 0, 0, dstarr, SV_GEMM_B_T);
 
@@ -388,6 +388,8 @@ SURVIVE_LOCAL_ONLY int svSolve(const SvMat *Aarr, const SvMat *Barr, SvMat *xarr
 		print_mat(Barr);
 #endif
 		assert(inf == 0);
+	} else {
+		assert("Unknown method to solve" && 0);
 	}
 	return 0;
 }

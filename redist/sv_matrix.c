@@ -48,7 +48,8 @@
 
 #define SV_Error(code, msg) assert(0 && msg); // cv::error( code, msg, SV_Func, __FILE__, __LINE__ )
 SURVIVE_LOCAL_ONLY SvMat *svCloneMat(const SvMat *mat) {
-	SvMat *rtn = svCreateMat(mat->rows, mat->cols, mat->type);
+	assert(SV_MAT_TYPE(mat->type) == SV_MAT_TYPE(SV_FLT));
+	SvMat *rtn = svCreateMat(mat->rows, mat->cols);
 	svCopy(mat, rtn, 0);
 	return rtn;
 }
@@ -146,8 +147,8 @@ SvMat *svInitMatHeader(SvMat *arr, int rows, int cols, int type) {
 SURVIVE_LOCAL_ONLY SvMat *svCreateMatHeader(int rows, int cols, int type) {
 	return svInitMatHeader((SvMat *)svAlloc(sizeof(SvMat)), rows, cols, type);
 }
-SURVIVE_LOCAL_ONLY SvMat *svCreateMat(int height, int width, int type) {
-	SvMat *arr = svCreateMatHeader(height, width, type);
+SURVIVE_LOCAL_ONLY SvMat *svCreateMat(int height, int width) {
+	SvMat *arr = svCreateMatHeader(height, width, SV_FLT);
 	svCreateData(arr);
 
 	return arr;

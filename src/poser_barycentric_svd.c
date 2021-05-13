@@ -103,8 +103,8 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 		return rtn;
 	}
 
-	SvMat R = svMat(3, 3, SV_FLT, r);
-	SvMat T = svMat(3, 1, SV_FLT, rtn.Pos);
+	SvMat R = svMat(3, 3, (FLT *)r);
+	SvMat T = svMat(3, 1, rtn.Pos);
 
 	// Super degenerate inputs will project us basically right in the camera. Detect and reject
 	if (err > 1 || magnitude3d(rtn.Pos) < 0.25 || magnitude3d(rtn.Pos) > 25) {
@@ -126,7 +126,7 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 	// Requested output is camera -> world, so invert
 	if (cameraToWorld) {
 		FLT tmp[3];
-		SvMat Tmp = svMat(3, 1, SV_FLT, tmp);
+		SvMat Tmp = svMat(3, 1, tmp);
 		svCopy(&T, &Tmp, 0);
 
 		// Flip the Rotation matrix

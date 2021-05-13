@@ -23,12 +23,12 @@ static void bc_svd_choose_control_points(bc_svd *self) {
 		self->setup.control_points[0][j] /= self->setup.obj_cnt;
 
 	// Take C1, C2, and C3 from PCA on the reference points:
-	SvMat *PW0 = svCreateMat(self->setup.obj_cnt, 3, SV_FLT);
+	SvMat *PW0 = svCreateMat(self->setup.obj_cnt, 3);
 
 	FLT pw0tpw0[3 * 3] = {0}, dc[3], uct[3 * 3];
-	SvMat PW0tPW0 = svMat(3, 3, SV_FLT, pw0tpw0);
-	SvMat DC = svMat(3, 1, SV_FLT, dc);
-	SvMat UCt = svMat(3, 3, SV_FLT, uct);
+	SvMat PW0tPW0 = svMat(3, 3, pw0tpw0);
+	SvMat DC = svMat(3, 1, dc);
+	SvMat UCt = svMat(3, 3, uct);
 
 	for (int i = 0; i < self->setup.obj_cnt; i++)
 		for (int j = 0; j < 3; j++)
@@ -49,8 +49,8 @@ static void bc_svd_choose_control_points(bc_svd *self) {
 
 static void bc_svd_compute_barycentric_coordinates(bc_svd *self) {
 	FLT cc[3 * 3], cc_inv[3 * 3];
-	SvMat CC = svMat(3, 3, SV_FLT, cc);
-	SvMat CC_inv = svMat(3, 3, SV_FLT, cc_inv);
+	SvMat CC = svMat(3, 3, cc);
+	SvMat CC_inv = svMat(3, 3, cc_inv);
 
 	for (int i = 0; i < 3; i++)
 		for (int j = 1; j < 4; j++)
@@ -92,7 +92,7 @@ void bc_svd_dtor(bc_svd *self) {
 	free(self->meas);
 }
 
-FLT bc_svd_compute_R_and_t(bc_svd *self, const FLT *ut, const FLT *betas, FLT R[3][3], FLT t[3]);
+static FLT bc_svd_compute_R_and_t(bc_svd *self, const SvMat *ut, const FLT *betas, FLT R[3][3], FLT t[3]);
 
 FLT dot(const FLT *v1, const FLT *v2) { return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2]; }
 
@@ -146,16 +146,19 @@ void bc_svd_fill_M(bc_svd *self, SvMat *_M, const int row, const FLT *as, int ax
 	}
 }
 
-void bc_svd_compute_ccs(bc_svd *self, const FLT *betas, const FLT *ut) {
+static void bc_svd_compute_ccs(bc_svd *self, const FLT *betas, const SvMat *ut) {
 	for (int i = 0; i < 4; i++)
 		self->control_points_in_camera[i][0] = self->control_points_in_camera[i][1] =
 			self->control_points_in_camera[i][2] = 0.0f;
 
 	for (int i = 0; i < 4; i++) {
-		const FLT *v = ut + 12 * (11 - i);
+		const FLT *v = SV_FLT_PTR(ut) + 12 * (11 - i);
 		for (int j = 0; j < 4; j++)
-			for (int k = 0; k < 3; k++)
+			for (int k = 0; k < 3; k++) {
+				FLT val = svMatrixGet(ut, (11 - i), 3 * j + k);
+				assert(val == v[3 * j + k]);
 				self->control_points_in_camera[j][k] += betas[i] * v[3 * j + k];
+			}
 	}
 }
 
@@ -170,22 +173,16 @@ void bc_svd_compute_pcs(bc_svd *self) {
 	}
 }
 
-void bc_svd_compute_L_6x10(bc_svd *self, const FLT *ut, FLT *l_6x10) {
-	const FLT *v[4];
-
-	v[0] = ut + 12 * 11;
-	v[1] = ut + 12 * 10;
-	v[2] = ut + 12 * 9;
-	v[3] = ut + 12 * 8;
-
+void bc_svd_compute_L_6x10(bc_svd *self, const SvMat *ut, FLT *l_6x10) {
 	FLT dv[4][6][3];
 
 	for (int i = 0; i < 4; i++) {
 		int a = 0, b = 1;
 		for (int j = 0; j < 6; j++) {
-			dv[i][j][0] = v[i][3 * a] - v[i][3 * b];
-			dv[i][j][1] = v[i][3 * a + 1] - v[i][3 * b + 1];
-			dv[i][j][2] = v[i][3 * a + 2] - v[i][3 * b + 2];
+
+			for (int h = 0; h < 3; h++) {
+				dv[i][j][h] = svMatrixGet(ut, 11 - i, 3 * a + h) - svMatrixGet(ut, 11 - i, 3 * b + h);
+			}
 
 			b++;
 			if (b > 3) {
@@ -213,8 +210,8 @@ void bc_svd_compute_L_6x10(bc_svd *self, const FLT *ut, FLT *l_6x10) {
 
 void find_betas_approx_1(const SvMat *L_6x10, const SvMat *Rho, FLT *betas) {
 	FLT l_6x4[6 * 4], b4[4];
-	SvMat L_6x4 = svMat(6, 4, SV_FLT, l_6x4);
-	SvMat B4 = svMat(4, 1, SV_FLT, b4);
+	SvMat L_6x4 = svMat(6, 4, l_6x4);
+	SvMat B4 = svMat(4, 1, b4);
 
 	for (int i = 0; i < 6; i++) {
 		svMatrixSet(&L_6x4, i, 0, svMatrixGet(L_6x10, i, 0));
@@ -353,9 +350,9 @@ void gauss_newton(const SvMat *L_6x10, const SvMat *Rho, FLT betas[4]) {
 	const int iterations_number = 5;
 
 	FLT a[6 * 4], b[6], x[4];
-	SvMat A = svMat(6, 4, SV_FLT, a);
-	SvMat B = svMat(6, 1, SV_FLT, b);
-	SvMat X = svMat(4, 1, SV_FLT, x);
+	SvMat A = svMat(6, 4, a);
+	SvMat B = svMat(6, 1, b);
+	SvMat X = svMat(4, 1, x);
 
 	for (int k = 0; k < iterations_number; k++) {
 		compute_A_and_b_gauss_newton(SV_RAW_PTR(L_6x10), SV_RAW_PTR(Rho), betas, &A, &B);
@@ -368,8 +365,8 @@ void gauss_newton(const SvMat *L_6x10, const SvMat *Rho, FLT betas[4]) {
 
 void find_betas_approx_2(const SvMat *L_6x10, const SvMat *Rho, FLT *betas) {
 	FLT l_6x3[6 * 3], b3[3];
-	SvMat L_6x3 = svMat(6, 3, SV_FLT, l_6x3);
-	SvMat B3 = svMat(3, 1, SV_FLT, b3);
+	SvMat L_6x3 = svMat(6, 3, l_6x3);
+	SvMat B3 = svMat(3, 1, b3);
 
 	for (int i = 0; i < 6; i++) {
 		svMatrixSet(&L_6x3, i, 0, svMatrixGet(L_6x10, i, 0));
@@ -399,8 +396,8 @@ void find_betas_approx_2(const SvMat *L_6x10, const SvMat *Rho, FLT *betas) {
 
 void bc_svd_find_betas_approx_3(bc_svd *self, const SvMat *L_6x10, const SvMat *Rho, FLT *betas) {
 	FLT l_6x5[6 * 5], b5[5];
-	SvMat L_6x5 = svMat(6, 5, SV_FLT, l_6x5);
-	SvMat B5 = svMat(5, 1, SV_FLT, b5);
+	SvMat L_6x5 = svMat(6, 5, l_6x5);
+	SvMat B5 = svMat(5, 1, b5);
 
 	for (int i = 0; i < 6; i++) {
 		svMatrixSet(&L_6x5, i, 0, svMatrixGet(L_6x10, i, 0));
@@ -433,10 +430,6 @@ void copy_R_and_t(const FLT R_src[3][3], const FLT t_src[3], FLT R_dst[3][3], FL
 	}
 }
 
-#define SV_CREATE_STACK_MAT(name, rows, cols)                                                                          \
-	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
-	SvMat name = svMat(rows, cols, SURVIVE_SV_F, _##name);
-
 FLT bc_svd_compute_pose(bc_svd *self, FLT R[3][3], FLT t[3]) {
 	SV_CREATE_STACK_MAT(M, self->meas_cnt, 12);
 	bool colCovered[12] = { 0 };
@@ -465,20 +458,19 @@ FLT bc_svd_compute_pose(bc_svd *self, FLT R[3][3], FLT t[3]) {
 			return -1;
 	}
 
-	FLT mtm[12 * 12], d[12], ut[12 * 12];
-	SvMat MtM = svMat(12, 12, SV_FLT, mtm);
-	SvMat D = svMat(12, 1, SV_FLT, d);
-	SvMat Ut = svMat(12, 12, SV_FLT, ut);
+	SV_CREATE_STACK_MAT(MtM, 12, 12);
+	SV_CREATE_STACK_MAT(D, 12, 1);
+	SV_CREATE_STACK_MAT(Ut, 12, 12);
 
 	svMulTransposed(&M, &MtM, 1, 0, 1);
 
 	svSVD(&MtM, &D, &Ut, 0, SV_SVD_MODIFY_A | SV_SVD_U_T);
 
 	FLT l_6x10[6 * 10], rho[6];
-	SvMat L_6x10 = svMat(6, 10, SV_FLT, l_6x10);
-	SvMat Rho = svMat(6, 1, SV_FLT, rho);
+	SvMat L_6x10 = svMat(6, 10, l_6x10);
+	SvMat Rho = svMat(6, 1, rho);
 
-	bc_svd_compute_L_6x10(self, ut, l_6x10);
+	bc_svd_compute_L_6x10(self, &Ut, l_6x10);
 
 	bc_svd_compute_rho(self, rho);
 
@@ -487,15 +479,15 @@ FLT bc_svd_compute_pose(bc_svd *self, FLT R[3][3], FLT t[3]) {
 
 	find_betas_approx_1(&L_6x10, &Rho, Betas[1]);
 	gauss_newton(&L_6x10, &Rho, Betas[1]);
-	rep_errors[0] = bc_svd_compute_R_and_t(self, ut, Betas[1], Rs[1], ts[1]);
+	rep_errors[0] = bc_svd_compute_R_and_t(self, &Ut, Betas[1], Rs[1], ts[1]);
 
 	find_betas_approx_2(&L_6x10, &Rho, Betas[2]);
 	gauss_newton(&L_6x10, &Rho, Betas[2]);
-	rep_errors[1] = bc_svd_compute_R_and_t(self, ut, Betas[2], Rs[2], ts[2]);
+	rep_errors[1] = bc_svd_compute_R_and_t(self, &Ut, Betas[2], Rs[2], ts[2]);
 
 	bc_svd_find_betas_approx_3(self, &L_6x10, &Rho, Betas[3]);
 	gauss_newton(&L_6x10, &Rho, Betas[3]);
-	rep_errors[2] = bc_svd_compute_R_and_t(self, ut, Betas[3], Rs[3], ts[3]);
+	rep_errors[2] = bc_svd_compute_R_and_t(self, &Ut, Betas[3], Rs[3], ts[3]);
 
 	int N = 0;
 	if (rep_errors[1] < rep_errors[0])
@@ -550,10 +542,10 @@ void bc_svd_estimate_R_and_t(bc_svd *self, FLT R[3][3], FLT t[3]) {
 	}
 
 	FLT abt[3 * 3], abt_d[3], abt_u[3 * 3], abt_v[3 * 3];
-	SvMat ABt = svMat(3, 3, SV_FLT, abt);
-	SvMat ABt_D = svMat(3, 1, SV_FLT, abt_d);
-	SvMat ABt_U = svMat(3, 3, SV_FLT, abt_u);
-	SvMat ABt_V = svMat(3, 3, SV_FLT, abt_v);
+	SvMat ABt = svMat(3, 3, abt);
+	SvMat ABt_D = svMat(3, 1, abt_d);
+	SvMat ABt_U = svMat(3, 3, abt_u);
+	SvMat ABt_V = svMat(3, 3, abt_v);
 
 	svSetZero(&ABt);
 
@@ -613,7 +605,7 @@ void bc_svd_solve_for_sign(bc_svd *self) {
 	}
 }
 
-FLT bc_svd_compute_R_and_t(bc_svd *self, const FLT *ut, const FLT *betas, FLT R[3][3], FLT t[3]) {
+static FLT bc_svd_compute_R_and_t(bc_svd *self, const SvMat *ut, const FLT *betas, FLT R[3][3], FLT t[3]) {
 	bc_svd_compute_ccs(self, betas, ut);
 	bc_svd_compute_pcs(self);
 

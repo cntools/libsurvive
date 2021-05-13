@@ -21,45 +21,45 @@ void print_mat(const SvMat *M) {
 	print_mat(&name);
 
 void test_gemm() {
-  double _2x3[2*3] = {1, 2, 3, 4, 5, 6};
-  SvMat m2x3 = svMat(2, 3, SV_64F, _2x3);
-  
-  double _3x2[2*3] = {1, 2, 3, 4, 5, 6};
-  SvMat m3x2 = svMat(3, 2, SV_64F, _3x2);
-  
-  double _2x2[2*2] = {1, 2, 3, 4};
-  SvMat m2x2 = svMat(2, 2, SV_64F, _2x2);
+	FLT _2x3[2 * 3] = {1, 2, 3, 4, 5, 6};
+	SvMat m2x3 = svMat(2, 3, _2x3);
 
-  double _3x3[3*3] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-  SvMat m3x3 = svMat(3, 3, SV_64F, _3x3);
+	FLT _3x2[2 * 3] = {1, 2, 3, 4, 5, 6};
+	SvMat m3x2 = svMat(3, 2, _3x2);
 
-  svGEMM(&m2x3, &m3x2, 1, 0, 0, &m2x2, 0);
-  svGEMM(&m3x2, &m2x3, 1, 0, 0, &m3x3, 0);
-  PRINT_MAT(m2x3);
-  PRINT_MAT(m3x2);
-  PRINT_MAT(m3x3);
-  PRINT_MAT(m2x2);
+	FLT _2x2[2 * 2] = {1, 2, 3, 4};
+	SvMat m2x2 = svMat(2, 2, _2x2);
 
-  svGEMM(&m2x3, &m2x3, 1, 0, 0, &m3x3, SV_GEMM_A_T);
-  svGEMM(&m2x3, &m2x3, 1, 0, 0, &m2x2, SV_GEMM_B_T);
-  PRINT_MAT(m3x3);
-  PRINT_MAT(m2x2);
+	FLT _3x3[3 * 3] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+	SvMat m3x3 = svMat(3, 3, _3x3);
 
-  svGEMM(&m2x3, &m3x2, 1, 0, 0, &m3x3, SV_GEMM_A_T | SV_GEMM_B_T);
-  //  cvGEMM(&m3x2, &m2x3, 1, 0, 0, &m2x2, SV_GEMM_A_T | SV_GEMM_B_T);
+	svGEMM(&m2x3, &m3x2, 1, 0, 0, &m2x2, 0);
+	svGEMM(&m3x2, &m2x3, 1, 0, 0, &m3x3, 0);
+	PRINT_MAT(m2x3);
+	PRINT_MAT(m3x2);
+	PRINT_MAT(m3x3);
+	PRINT_MAT(m2x2);
 
-  PRINT_MAT(m3x3);
+	svGEMM(&m2x3, &m2x3, 1, 0, 0, &m3x3, SV_GEMM_A_T);
+	svGEMM(&m2x3, &m2x3, 1, 0, 0, &m2x2, SV_GEMM_B_T);
+	PRINT_MAT(m3x3);
+	PRINT_MAT(m2x2);
+
+	svGEMM(&m2x3, &m3x2, 1, 0, 0, &m3x3, SV_GEMM_A_T | SV_GEMM_B_T);
+	//  cvGEMM(&m3x2, &m2x3, 1, 0, 0, &m2x2, SV_GEMM_A_T | SV_GEMM_B_T);
+
+	PRINT_MAT(m3x3);
 }
 
 static void test_solve() {
 	{
-		double _A[3] = {1, 2, 3};
-		double _B[3] = {4, 8, 12};
-		double _x[1] = {0};
+		FLT _A[3] = {1, 2, 3};
+		FLT _B[3] = {4, 8, 12};
+		FLT _x[1] = {0};
 
-		SvMat A = svMat(3, 1, SV_64F, _A);
-		SvMat B = svMat(3, 1, SV_64F, _B);
-		SvMat x = svMat(1, 1, SV_64F, _x);
+		SvMat A = svMat(3, 1, _A);
+		SvMat B = svMat(3, 1, _B);
+		SvMat x = svMat(1, 1, _x);
 
 		svSolve(&A, &B, &x, SV_SVD);
 
@@ -67,13 +67,13 @@ static void test_solve() {
 	}
 
 	{
-		double _A[3] = {1, 2, 3};
-		double _B[9] = {4, 5, 6, 7, 8, 9, 10, 11, 12};
-		double _x[3] = {0};
+		FLT _A[3] = {1, 2, 3};
+		FLT _B[9] = {4, 5, 6, 7, 8, 9, 10, 11, 12};
+		FLT _x[3] = {0};
 
-		SvMat A = svMat(3, 1, SV_64F, _A);
-		SvMat B = svMat(3, 3, SV_64F, _B);
-		SvMat x = svMat(1, 3, SV_64F, _x);
+		SvMat A = svMat(3, 1, _A);
+		SvMat B = svMat(3, 3, _B);
+		SvMat x = svMat(1, 3, _x);
 
 		svSolve(&A, &B, &x, SV_SVD);
 	}
@@ -82,14 +82,14 @@ static void test_solve() {
 static void test_invert() {
 	printf("Invert:\n");
 
-	double _3x3[3 * 3] = {1, 2, 3, 4, 5, 6, 7, 8, 12};
-	SvMat m3x3 = svMat(3, 3, SV_64F, _3x3);
+	FLT _3x3[3 * 3] = {1, 2, 3, 4, 5, 6, 7, 8, 12};
+	SvMat m3x3 = svMat(3, 3, _3x3);
 
-	double _d3x3[3 * 3] = {0};
-	SvMat d3x3 = svMat(3, 3, SV_64F, _d3x3);
+	FLT _d3x3[3 * 3] = {0};
+	SvMat d3x3 = svMat(3, 3, _d3x3);
 
-	double _i3x3[3 * 3] = {0};
-	SvMat i3x3 = svMat(3, 3, SV_64F, _i3x3);
+	FLT _i3x3[3 * 3] = {0};
+	SvMat i3x3 = svMat(3, 3, _i3x3);
 
 	svInvert(&m3x3, &d3x3, SV_INVERT_METHOD_LU);
 
@@ -101,17 +101,17 @@ static void test_invert() {
 static void test_svd() {
 	printf("SVD:\n");
 
-	double _3x3[3 * 3] = {1, 2, 3, 4, 5, 6, 7, 8, 12};
-	SvMat m3x3 = svMat(3, 3, SV_64F, _3x3);
+	FLT _3x3[3 * 3] = {1, 2, 3, 4, 5, 6, 7, 8, 12};
+	SvMat m3x3 = svMat(3, 3, _3x3);
 
-	double _w[3] = {0};
-	SvMat w = svMat(1, 3, SV_64F, _w);
+	FLT _w[3] = {0};
+	SvMat w = svMat(1, 3, _w);
 
-	double _u[9] = {0};
-	SvMat u = svMat(3, 3, SV_64F, _u);
+	FLT _u[9] = {0};
+	SvMat u = svMat(3, 3, _u);
 
-	double _v[9] = {0};
-	SvMat v = svMat(3, 3, SV_64F, _v);
+	FLT _v[9] = {0};
+	SvMat v = svMat(3, 3, _v);
 
 	svSVD(&m3x3, &w, &u, &v, 0);
 
@@ -121,18 +121,18 @@ static void test_svd() {
 }
 
 static void test_multrans() {
-	double _A[3] = {1, 2, 3};
-	SvMat A = svMat(3, 1, SV_64F, _A);
+	FLT _A[3] = {1, 2, 3};
+	SvMat A = svMat(3, 1, _A);
 
-	double _B[9];
-	SvMat B = svMat(3, 3, SV_64F, _B);
+	FLT _B[9];
+	SvMat B = svMat(3, 3, _B);
 
-	double _C[1];
-	SvMat C = svMat(1, 1, SV_64F, _C);
+	FLT _C[1];
+	SvMat C = svMat(1, 1, _C);
 
 	svMulTransposed(&A, &B, 0, 0, 1);
 	PRINT_MAT(B);
-	double ans[] = {1, 2, 3, 2, 4, 6, 3, 6, 9};
+	FLT ans[] = {1, 2, 3, 2, 4, 6, 3, 6, 9};
 	for (int i = 0; i < 9; i++) {
 		assert(ans[i] == _B[i]);
 	}
@@ -154,9 +154,9 @@ static inline void multiply(int N, const FLT *mat1, const FLT *mat2, FLT *res) {
 }
 
 void test_sparse_matrix() {
-	double _2x3[2 * 3] = {1, 2, 3, 0, 0, 6};
-	SvMat m2x3 = svMat(2, 3, SV_64F, _2x3);
-	SvMat m3x2 = svMat(3, 2, SV_64F, _2x3);
+	FLT _2x3[2 * 3] = {1, 2, 3, 0, 0, 6};
+	SvMat m2x3 = svMat(2, 3, _2x3);
+	SvMat m3x2 = svMat(3, 2, _2x3);
 	ALLOC_SPARSE_MATRIX(sm2x3, 2, 3);
 	create_sparse_matrix(&sm2x3, &m2x3);
 

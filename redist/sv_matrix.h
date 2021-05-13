@@ -6,6 +6,7 @@
 #else
 
 #include "linmath.h"
+#include "string.h"
 
 #define SV_SVD 1
 #define SV_SVD_MODIFY_A 1
@@ -65,11 +66,12 @@ extern "C" {
 void print_mat(const SvMat *M);
 
 SvMat *svInitMatHeader(SvMat *arr, int rows, int cols, int type);
-SvMat *svCreateMat(int height, int width, int type);
+SvMat *svCreateMat(int height, int width);
 
 enum svInvertMethod {
-	SV_INVERT_METHOD_SVD,
-	SV_INVERT_METHOD_LU,
+	SV_INVERT_METHOD_UNKNOWN = 0,
+	SV_INVERT_METHOD_SVD = 1,
+	SV_INVERT_METHOD_LU = 2,
 };
 
 double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svInvertMethod method);
@@ -101,7 +103,7 @@ double svDet(const SvMat *M);
 
 #define SV_CREATE_STACK_MAT(name, rows, cols)                                                                          \
 	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
-	SvMat name = svMat(rows, cols, SURVIVE_SV_F, _##name);
+	SvMat name = svMat(rows, cols, _##name);
 
 static inline void sv_set_diag(struct SvMat *m, const FLT *v) {
 	for (int i = 0; i < m->rows; i++) {
@@ -118,6 +120,38 @@ static inline void sv_set_diag_val(struct SvMat *m, FLT v) {
 		}
 	}
 }
+
+static inline void sv_set_zero(struct SvMat *m) { memset(SV_FLT_PTR(m), 0, sizeof(FLT) * m->rows * m->cols); }
+
+/** Inline constructor. No data is allocated internally!!!
+ * (Use together with svCreateData, or use svCreateMat instead to
+ * get a matrix with allocated data):
+ */
+static inline SvMat svMat(int rows, int cols, FLT *data) {
+	SvMat m;
+
+	assert((unsigned)SV_MAT_DEPTH(SV_FLT) <= SV_64F);
+	int type = SV_MAT_TYPE(SV_FLT);
+	m.type = SV_MAT_MAGIC_VAL | SV_MAT_CONT_FLAG | type;
+	m.cols = cols;
+	m.rows = rows;
+	m.step = m.cols * SV_ELEM_SIZE(type);
+	if (!data) {
+		m.data.ptr = (uint8_t *)calloc(1, SV_ELEM_SIZE(type) * m.cols * m.rows);
+	} else {
+		m.data.ptr = (uint8_t *)data;
+	}
+	m.refcount = 0;
+	m.hdr_refcount = 0;
+
+#if SURVIVE_ASAN_CHECKS
+	volatile double v = cvmGet(&m, rows - 1, cols - 1);
+	(void)v;
+#endif
+
+	return m;
+}
+
 #ifdef __cplusplus
 }
 #endif

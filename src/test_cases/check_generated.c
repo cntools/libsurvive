@@ -461,9 +461,9 @@ TEST(Generated, rot_predict_quat) {
 	FLT _mi[7] = { 0 };
 	FLT _mo1[7] = { 0 };
 	FLT _mo2[7] = { 0 };
-	SvMat mi = svMat(7, 1, SV_64F, _mi);
-	SvMat mo1 = svMat(7, 1, SV_64F, _mo1);
-	SvMat mo2 = svMat(7, 1, SV_64F, _mo2);
+	SvMat mi = svMat(7, 1, _mi);
+	SvMat mo1 = svMat(7, 1, _mo1);
+	SvMat mo2 = svMat(7, 1, _mo2);
 
 	FLT t = next_rand(5);
 

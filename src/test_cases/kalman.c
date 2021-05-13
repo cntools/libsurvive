@@ -232,21 +232,21 @@ TEST(Kalman, ExampleExtended) {
 	FLT P_init[6] = {1, 1, 1, 0, 0, 0};
 
 	survive_kalman_state_init(&position, 6, pos_f, 0, pos_Q_per_sec, 0);
-	SvMat P = svMat(6, 6, SURVIVE_SV_F, position.P);
+	SvMat P = position.P;
 	sv_set_diag(&P, P_init);
 
 	FLT _F[36];
 	pos_f(1, _F, 0);
-	SvMat F = svMat(6, 6, SURVIVE_SV_F, _F);
+	SvMat F = svMat(6, 6, _F);
 
 	FLT _true_state[] = {9, -12, 0, -1, -2, 0};
-	SvMat true_state = svMat(6, 1, SURVIVE_SV_F, _true_state);
+	SvMat true_state = svMat(6, 1, _true_state);
 
 	FLT _init_state[] = {10, -10, 0, -1, -2, 0};
-	memcpy(position.state, _init_state, sizeof(_true_state));
+	memcpy(SV_FLT_PTR(&position.state), _init_state, sizeof(_true_state));
 
-	position.state[0] += generateGaussianNoise(0, 1);
-	position.state[1] += generateGaussianNoise(0, 1);
+	SV_FLT_PTR(&position.state)[0] += generateGaussianNoise(0, 1);
+	SV_FLT_PTR(&position.state)[1] += generateGaussianNoise(0, 1);
 
 	FLT meas_s[] = {.002, .002, .002};
 	SV_CREATE_STACK_MAT(Z, 3, 1);
@@ -266,18 +266,19 @@ TEST(Kalman, ExampleExtended) {
 		FLT R[] = {.0004, .0004, 1};
 		survive_kalman_predict_update_state_extended(i, &position, &Z, R, map_to_obs, sensor, 0);
 
-		fprintf(stderr, "Guess  " SurviveVel_format "\n", SURVIVE_VELOCITY_EXPAND(*(SurviveVelocity *)position.state));
+		fprintf(stderr, "Guess  " SurviveVel_format "\n",
+				SURVIVE_VELOCITY_EXPAND(*(SurviveVelocity *)SV_FLT_PTR(&position.state)));
 		fprintf(stderr, "GT     " SurviveVel_format "\n", SURVIVE_VELOCITY_EXPAND(*(SurviveVelocity *)_true_state));
 		fprintf(stderr, "Sensor " Point3_format "\n", LINMATH_VEC3_EXPAND(sensor));
 
 		FLT diff[6];
-		subnd(diff, position.state, _true_state, 6);
+		subnd(diff, SV_FLT_PTR(&position.state), _true_state, 6);
 		FLT err = normnd(diff, 6);
 		fprintf(stderr, "Error %f\n", err);
 		assert(err < 1);
 
 		FLT _next_state[6];
-		SvMat next_state = svMat(6, 1, SURVIVE_SV_F, _next_state);
+		SvMat next_state = svMat(6, 1, _next_state);
 		// SURVIVE_LOCAL_ONLY void cvGEMM(const SvMat *src1, const SvMat *src2, double alpha, const SvMat *src3, double
 		// beta,
 		svGEMM(&F, &true_state, 1, 0, 0, &next_state, 0);
@@ -313,7 +314,7 @@ TEST(Kalman, AngleQuat) {
 	SV_CREATE_STACK_MAT(true_state, 7, 1);
 	FLT true_state_init[7] = {1, 0, 0, 0, 1, 1, -1};
 	memcpy(_true_state, true_state_init, sizeof(true_state_init));
-	memcpy(rotation.state, true_state_init, sizeof(true_state_init));
+	memcpy(SV_FLT_PTR(&rotation.state), true_state_init, sizeof(true_state_init));
 
 	SV_CREATE_STACK_MAT(Z, 4, 1);
 
@@ -325,7 +326,7 @@ TEST(Kalman, AngleQuat) {
 		0, 0, 0, 1, 0, 0, 0,
 	};
 	// clang-format on
-	SvMat H = svMat(4, 7, SURVIVE_SV_F, _H);
+	SvMat H = svMat(4, 7, _H);
 
 	for (int i = 1; i < 100; i++) {
 		FLT t = i * .1;
@@ -338,12 +339,13 @@ TEST(Kalman, AngleQuat) {
 		}
 		quatnormalize(_Z, _Z);
 		survive_kalman_predict_update_state(t, &rotation, &Z, &H, R, 0);
-		quatnormalize(rotation.state, rotation.state);
-		fprintf(stderr, "Guess  " SurvivePose_format "\n", SURVIVE_POSE_EXPAND(*(SurvivePose *)rotation.state));
+		quatnormalize(SV_FLT_PTR(&rotation.state), SV_FLT_PTR(&rotation.state));
+		fprintf(stderr, "Guess  " SurvivePose_format "\n",
+				SURVIVE_POSE_EXPAND(*(SurvivePose *)SV_FLT_PTR(&rotation.state)));
 		fprintf(stderr, "GT     " SurvivePose_format "\n", SURVIVE_POSE_EXPAND(*(SurvivePose *)_true_state));
 
 		FLT diff[7];
-		subnd(diff, rotation.state, _true_state, 7);
+		subnd(diff, SV_FLT_PTR(&rotation.state), _true_state, 7);
 		FLT err = normnd(diff, 7);
 		fprintf(stderr, "Error %f\n", err);
 		assert(err < 1);

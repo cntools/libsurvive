@@ -2,6 +2,7 @@
 #define _SURVIVE_KALMAN_H
 
 #include "survive.h"
+#include "sv_matrix.h"
 
 /**
  * This file contains a generic kalman implementation. survive_kalman_tracker.h/c fills in the actual lighthouse
@@ -28,7 +29,6 @@
  */
 
 struct survive_kalman_state_s;
-struct SvMat;
 
 // Generates the transition matrix F
 typedef void (*kalman_transition_fn_t)(FLT dt, FLT *f_out, const struct SvMat *x0);
@@ -56,12 +56,12 @@ typedef struct survive_kalman_state_s {
 	kalman_process_noise_fn_t Q_fn;
 
 	// Store the current covariance matrix (state_cnt x state_cnt)
-	FLT *P;
+	struct SvMat P;
 
 	// Actual state matrix and whether its stored on the heap. Make no assumptions about how this matrix is organized.
 	// it is always size of state_cnt*sizeof(FLT) though.
 	bool State_is_heap;
-	FLT *state;
+	struct SvMat state;
 
 	// Current time
 	FLT t;

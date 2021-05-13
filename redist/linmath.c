@@ -915,24 +915,24 @@ void KabschCentered(LinmathQuat qout, const FLT *ptsA, const FLT *ptsB, int num_
 void KabschCenteredScaled(LinmathQuat qout, FLT *scale, const FLT *ptsA, const FLT *ptsB, int num_pts) {
 	// Note: The following follows along with https://en.wikipedia.org/wiki/Kabsch_algorithm
 	// for the most part but we use some transpose identities to avoid unneeded transposes
-	SvMat A = svMat(num_pts, 3, SV_FLT, (FLT *)ptsA);
-	SvMat B = svMat(num_pts, 3, SV_FLT, (FLT *)ptsB);
+	SvMat A = svMat(num_pts, 3, (FLT *)ptsA);
+	SvMat B = svMat(num_pts, 3, (FLT *)ptsB);
 
 	FLT _C[9] = {0};
-	SvMat C = svMat(3, 3, SV_FLT, _C);
+	SvMat C = svMat(3, 3, _C);
 	svGEMM(&B, &A, 1, 0, 0, &C, SV_GEMM_A_T);
 
 	FLT _U[9] = {0};
 	FLT _W[9] = {0};
 	FLT _VT[9] = {0};
-	SvMat U = svMat(3, 3, SV_FLT, _U);
-	SvMat W = svMat(3, 3, SV_FLT, _W);
-	SvMat VT = svMat(3, 3, SV_FLT, _VT);
+	SvMat U = svMat(3, 3, _U);
+	SvMat W = svMat(3, 3, _W);
+	SvMat VT = svMat(3, 3, _VT);
 
 	svSVD(&C, &W, &U, &VT, SV_SVD_V_T | SV_SVD_MODIFY_A);
 
 	FLT _R[9] = {0};
-	SvMat R = svMat(3, 3, SV_FLT, _R);
+	SvMat R = svMat(3, 3, _R);
 	svGEMM(&U, &VT, 1, 0, 0, &R, 0);
 
 	// Enforce RH rule
@@ -1175,7 +1175,7 @@ void linmath_find_best_intersection(LinmathPoint3d pt, const struct LinmathLine3
 		}
 	}
 
-	SvMat x = svMat(3, 1, SV_FLT, pt);
+	SvMat x = svMat(3, 1, pt);
 	svSolve(&A, &B, &x, SV_SVD);
 }
 

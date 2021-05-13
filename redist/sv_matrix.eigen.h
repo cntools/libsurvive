@@ -84,31 +84,6 @@ static inline double svMatrixGet(const SvMat *mat, int row, int col) {
 	}
 }
 
-/** Inline constructor. No data is allocated internally!!!
- * (Use together with cvCreateData, or use svCreateMat instead to
- * get a matrix with allocated data):
- */
-static inline SvMat svMat(int rows, int cols, int type, void *data) {
-	SvMat m;
-
-	assert((unsigned)SV_MAT_DEPTH(type) <= SV_64F);
-	type = SV_MAT_TYPE(type);
-	m.type = SV_MAT_MAGIC_VAL | SV_MAT_CONT_FLAG | type;
-	m.cols = cols;
-	m.rows = rows;
-	m.step = m.cols * SV_ELEM_SIZE(type);
-	m.data.ptr = (unsigned char *)data;
-	m.refcount = 0;
-	m.hdr_refcount = 0;
-
-#if SURVIVE_ASAN_CHECKS
-	volatile double v = cvmGet(&m, rows - 1, cols - 1);
-	(void)v;
-#endif
-
-	return m;
-}
-
 /** @brief Sets a specific element of a single-channel floating-point matrix.
 
 The function is a fast replacement for cvSetReal2D in the case of single-channel floating-point
