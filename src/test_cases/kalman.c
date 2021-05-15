@@ -20,7 +20,7 @@ static void rot_predict_quat(FLT t, const survive_kalman_state_t *k, const SvMat
 	survive_apply_ang_velocity(SV_FLT_PTR(f_out), vel, t, rot);
 }
 
-static void rot_f_quat(FLT t, FLT *F, const struct SvMat *x) {
+static void rot_f_quat(FLT t, SvMat *F, const struct SvMat *x) {
 	(void)x;
 
 	// assert(fabs(t) < .1 && t >= 0);
@@ -28,10 +28,12 @@ static void rot_f_quat(FLT t, FLT *F, const struct SvMat *x) {
 		t = .11;
 
 	// fprintf(stderr, "F eval: %f " SurvivePose_format "\n", t, SURVIVE_POSE_EXPAND(*(SurvivePose*)x->data.db));
-	gen_imu_rot_f_jac_imu_rot(F, t, SV_FLT_PTR(x));
+	FLT *f_row = alloca(sizeof(FLT) * F->rows * F->cols);
+	gen_imu_rot_f_jac_imu_rot(f_row, t, SV_FLT_PTR(x));
+	sv_copy_in_row_major(F, f_row, F->cols);
 
 	for (int j = 0; j < 49; j++) {
-		assert(!isnan(F[j]));
+		assert(!isnan(f_row[j]));
 	}
 }
 
@@ -150,18 +152,18 @@ int TestKalmanIntegratePose(FLT pvariance, FLT rot_variance) {
 }
 #include "string.h"
 
-static void pos_f(FLT t, FLT *F, const struct SvMat *x) {
+static void pos_f(FLT t, SvMat *F, const struct SvMat *x) {
 	(void)x;
 	t = 1;
 	FLT f[36] = {
 		1, 0, 0, t, 0, 0, 0, 1, 0, 0, t, 0, 0, 0, 1, 0, 0, t, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1,
 	};
-	memcpy(F, f, sizeof(f));
+	sv_copy_in_row_major(F, f, F->cols);
 }
 
 void meas_model(struct SvMat *Z, const struct SvMat *x_t, const FLT *s) {
-	FLT *_h_x = SV_FLT_PTR(Z);
-	FLT *xt = SV_FLT_PTR(x_t);
+	FLT *_h_x = sv_as_vector(Z);
+	const FLT *xt = sv_as_const_vector(x_t);
 
 	LinmathPoint3d d;
 
@@ -170,14 +172,6 @@ void meas_model(struct SvMat *Z, const struct SvMat *x_t, const FLT *s) {
 	_h_x[0] = atan2(d[0], d[1]);
 	_h_x[1] = atan2(d[2], sqrt(d[0] * d[0] + d[1] * d[1]));
 	_h_x[2] = norm3d(d);
-}
-
-static inline void mat_eye(SvMat *m, FLT v) {
-	for (int i = 0; i < m->rows; i++) {
-		for (int j = 0; j < m->cols; j++) {
-			SV_FLT_PTR(m)[j * m->cols + i] = i == j ? v : 0.;
-		}
-	}
 }
 
 bool map_to_obs(void *user, const struct SvMat *Z, const struct SvMat *x_t, struct SvMat *yhat, struct SvMat *H_k) {
@@ -190,34 +184,27 @@ bool map_to_obs(void *user, const struct SvMat *Z, const struct SvMat *x_t, stru
 	sv_set_diag_val(&Id, 1);
 	svGEMM(&Id, Z, 1., &h_x_t, -1, yhat, 0);
 
-	FLT *xt = SV_FLT_PTR(x_t);
+	const FLT *xt = sv_as_const_vector(x_t);
 	LinmathPoint3d d;
 	sub3d(d, xt, s);
 
-	FLT *H = SV_FLT_PTR(H_k);
 	FLT x = d[0], y = d[1], z = d[2];
 	FLT n2 = (x * x + y * y + z * z);
 	FLT n = sqrtf(n2);
 
-	memset(H, 0, sizeof(FLT) * 3 * 6);
-	H[0] = y / (x * x + y * y);
-	H[1] = -x / (x * x + y * y);
-	H[2] = 0;
-	H[6] = -x * z / n2 / sqrtf(x * x + y * y);
-	H[7] = -y * z / n2 / sqrtf(x * x + y * y);
-	H[8] = 1. / sqrtf(x * x + y * y);
-	H[12] = x / n;
-	H[13] = y / n;
-	H[14] = z / n;
-	return true;
-}
+	sv_set_zero(H_k);
+	svMatrixSet(H_k, 0, 0, y / (x * x + y * y));
+	svMatrixSet(H_k, 0, 1, -x / (x * x + y * y));
+	svMatrixSet(H_k, 0, 2, 0);
 
-static inline void mat_eye_diag(SvMat *m, const FLT *v) {
-	for (int i = 0; i < m->rows; i++) {
-		for (int j = 0; j < m->cols; j++) {
-			SV_FLT_PTR(m)[j * m->cols + i] = i == j ? v[i] : 0.;
-		}
-	}
+	svMatrixSet(H_k, 1, 0, -x * z / n2 / sqrtf(x * x + y * y));
+	svMatrixSet(H_k, 1, 1, -y * z / n2 / sqrtf(x * x + y * y));
+	svMatrixSet(H_k, 1, 2, 1. / sqrtf(x * x + y * y));
+
+	svMatrixSet(H_k, 2, 0, x / n);
+	svMatrixSet(H_k, 2, 1, y / n);
+	svMatrixSet(H_k, 2, 2, z / n);
+	return true;
 }
 
 // https://www.intechopen.com/books/introduction-and-implementations-of-the-kalman-filter/introduction-to-kalman-filter-and-its-applications
@@ -226,18 +213,20 @@ TEST(Kalman, ExampleExtended) {
 
 	survive_kalman_state_t position;
 
-	FLT pos_Q_per_sec[36] = {
+	FLT pos_Q_per_sec_fixed[36] = {
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 25,
 	};
+	SV_CREATE_STACK_MAT(pos_Q_per_sec, 6, 6);
+	sv_copy_in_row_major(&pos_Q_per_sec, pos_Q_per_sec_fixed, 6);
+
 	FLT P_init[6] = {1, 1, 1, 0, 0, 0};
 
-	survive_kalman_state_init(&position, 6, pos_f, 0, pos_Q_per_sec, 0);
+	survive_kalman_state_init(&position, 6, pos_f, 0, &pos_Q_per_sec, 0);
 	SvMat P = position.P;
 	sv_set_diag(&P, P_init);
 
-	FLT _F[36];
-	pos_f(1, _F, 0);
-	SvMat F = svMat(6, 6, _F);
+	SV_CREATE_STACK_MAT(F, 6, 6);
+	pos_f(1, &F, 0);
 
 	FLT _true_state[] = {9, -12, 0, -1, -2, 0};
 	SvMat true_state = svMat(6, 1, _true_state);
@@ -272,17 +261,16 @@ TEST(Kalman, ExampleExtended) {
 		fprintf(stderr, "Sensor " Point3_format "\n", LINMATH_VEC3_EXPAND(sensor));
 
 		FLT diff[6];
-		subnd(diff, SV_FLT_PTR(&position.state), _true_state, 6);
+		subnd(diff, sv_as_const_vector(&position.state), _true_state, 6);
 		FLT err = normnd(diff, 6);
 		fprintf(stderr, "Error %f\n", err);
 		assert(err < 1);
 
-		FLT _next_state[6];
-		SvMat next_state = svMat(6, 1, _next_state);
+		SV_CREATE_STACK_MAT(next_state, 6, 1);
 		// SURVIVE_LOCAL_ONLY void cvGEMM(const SvMat *src1, const SvMat *src2, double alpha, const SvMat *src3, double
 		// beta,
 		svGEMM(&F, &true_state, 1, 0, 0, &next_state, 0);
-		memcpy(_true_state, _next_state, sizeof(_true_state));
+		memcpy(_true_state, sv_as_vector(&next_state), sizeof(_true_state));
 	}
 
 	survive_kalman_state_free(&position);
@@ -295,7 +283,7 @@ TEST(Kalman, AngleQuat) {
 
 	FLT av = 1e0, vv = 1e0;
 	// clang-format off
-	FLT pos_Q_per_sec[49] = {
+	FLT _pos_Q_per_sec[49] = {
 		av, 0, 0, 0, 0, 0, 0,
 		0, av, 0, 0, 0, 0, 0,
 		0,  0,av, 0, 0, 0, 0,
@@ -304,8 +292,10 @@ TEST(Kalman, AngleQuat) {
 		0, 0, 0, 0, 0, vv, 0,
 		0, 0, 0, 0, 0, 0, vv,
 	};
+	SvMat pos_Q_per_sec = svMat(7, 7, _pos_Q_per_sec);
 	// clang-format on
-	survive_kalman_state_init(&rotation, 7, rot_f_quat, 0, pos_Q_per_sec, 0);
+
+	survive_kalman_state_init(&rotation, 7, rot_f_quat, 0, &pos_Q_per_sec, 0);
 	rotation.Predict_fn = rot_predict_quat;
 
 	FLT P_init[] = {100, 100, 100, 100, 100, 100, 100};
@@ -326,7 +316,7 @@ TEST(Kalman, AngleQuat) {
 		0, 0, 0, 1, 0, 0, 0,
 	};
 	// clang-format on
-	SvMat H = svMat(4, 7, _H);
+	SvMat H = svMat_from_row_major(4, 7, _H);
 
 	for (int i = 1; i < 100; i++) {
 		FLT t = i * .1;

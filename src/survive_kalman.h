@@ -31,14 +31,14 @@
 struct survive_kalman_state_s;
 
 // Generates the transition matrix F
-typedef void (*kalman_transition_fn_t)(FLT dt, FLT *f_out, const struct SvMat *x0);
+typedef void (*kalman_transition_fn_t)(FLT dt, struct SvMat *f_out, const struct SvMat *x0);
 
 // Given state x0 and time delta; gives the new state x1. For a linear model, this is just x1 = F * x0
 typedef void (*kalman_predict_fn_t)(FLT dt, const struct survive_kalman_state_s *k, const struct SvMat *x0,
 									struct SvMat *x1);
 
 // Given time and current state, generate the process noise Q_k.
-typedef void (*kalman_process_noise_fn_t)(void *user, FLT dt, const struct SvMat *x, FLT *Q_out);
+typedef void (*kalman_process_noise_fn_t)(void *user, FLT dt, const struct SvMat *x, struct SvMat *Q_out);
 
 // Given a measurement Z, and state X_t, generates both the y difference term and the H jacobian term.
 typedef bool (*kalman_measurement_model_fn_t)(void *user, const struct SvMat *Z, const struct SvMat *x_t,

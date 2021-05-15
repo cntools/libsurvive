@@ -36,30 +36,6 @@ extern "C" {
 #define SV_SUBMAT_FLAG (1 << SV_SUBMAT_FLAG_SHIFT)
 #define SV_IS_SUBMAT(flags) ((flags)&SV_MAT_SUBMAT_FLAG)
 
-typedef uint8_t uchar;
-
-#define SV_IS_MAT_HDR(mat)                                                                                             \
-	((mat) != NULL && (((const SvMat *)(mat))->type & SV_MAGIC_MASK) == SV_MAT_MAGIC_VAL &&                            \
-	 ((const SvMat *)(mat))->cols > 0 && ((const SvMat *)(mat))->rows > 0)
-
-#define SV_IS_MAT_HDR_Z(mat)                                                                                           \
-	((mat) != NULL && (((const SvMat *)(mat))->type & SV_MAGIC_MASK) == SV_MAT_MAGIC_VAL &&                            \
-	 ((const SvMat *)(mat))->cols >= 0 && ((const SvMat *)(mat))->rows >= 0)
-
-#define SV_IS_MAT(mat) (SV_IS_MAT_HDR(mat) && ((const SvMat *)(mat))->data.ptr != NULL)
-
-#define SV_IS_MASK_ARR(mat) (((mat)->type & (SV_MAT_TYPE_MASK & ~SV_8SC1)) == 0)
-
-#define SV_ARE_TYPES_EQ(mat1, mat2) ((((mat1)->type ^ (mat2)->type) & SV_MAT_TYPE_MASK) == 0)
-
-#define SV_ARE_CNS_EQ(mat1, mat2) ((((mat1)->type ^ (mat2)->type) & SV_MAT_CN_MASK) == 0)
-
-#define SV_ARE_DEPTHS_EQ(mat1, mat2) ((((mat1)->type ^ (mat2)->type) & SV_MAT_DEPTH_MASK) == 0)
-
-#define SV_ARE_SIZES_EQ(mat1, mat2) ((mat1)->rows == (mat2)->rows && (mat1)->cols == (mat2)->cols)
-
-#define SV_IS_MAT_CONST(mat) (((mat)->rows | (mat)->cols) == 1)
-
 #define SV_IS_MATND_HDR(mat) ((mat) != NULL && (((const SvMat *)(mat))->type & SV_MAGIC_MASK) == SV_MATND_MAGIC_VAL)
 
 #define SV_IS_MATND(mat) (SV_IS_MATND_HDR(mat) && ((const SvMat *)(mat))->data.ptr != NULL)
@@ -76,85 +52,6 @@ typedef uint8_t uchar;
 #ifndef MAX
 #define MAX(a, b) ((a) < (b) ? (b) : (a))
 #endif
-
-/** Matrix elements are stored row by row. Element (i, j) (i - 0-based row index, j - 0-based column
-index) of a matrix can be retrieved or modified using SV_MAT_ELEM macro:
-
-	uchar pixval = SV_MAT_ELEM(grayimg, uchar, i, j)
-	SV_MAT_ELEM(cameraMatrix, float, 0, 2) = image.width*0.5f;
-
-To access multiple-channel matrices, you can use
-SV_MAT_ELEM(matrix, type, i, j\*nchannels + channel_idx).
-
-@deprecated SvMat is now obsolete; consider using Mat instead.
-*/
-typedef struct SvMat {
-	int type;
-	int step;
-
-	/* for internal use only */
-	int *refcount;
-	int hdr_refcount;
-
-	union {
-		uchar *ptr;
-		short *s;
-		int *i;
-		float *fl;
-		double *db;
-	} data;
-
-	int rows;
-	int cols;
-
-} SvMat;
-
-#define SV_FLT_PTR(m) ((FLT *)((m)->data.ptr))
-
-/*
-The function is a fast replacement for cvGetReal2D in the case of single-channel floating-point
-matrices. It is faster because it is inline, it does fewer checks for array type and array element
-type, and it checks for the row and column ranges only in debug mode.
-@param mat Input matrix
-@param row The zero-based index of row
-@param col The zero-based index of column
- */
-static inline double svMatrixGet(const SvMat *mat, int row, int col) {
-	int type;
-
-	type = SV_MAT_TYPE(mat->type);
-	assert((unsigned)row < (unsigned)mat->rows && (unsigned)col < (unsigned)mat->cols);
-
-	if (type == SV_32FC1)
-		return ((float *)(void *)(mat->data.ptr + (size_t)mat->step * row))[col];
-	else {
-		assert(type == SV_64FC1);
-		return ((double *)(void *)(mat->data.ptr + (size_t)mat->step * row))[col];
-	}
-}
-
-/** @brief Sets a specific element of a single-channel floating-point matrix.
-
-The function is a fast replacement for cvSetReal2D in the case of single-channel floating-point
-matrices. It is faster because it is inline, it does fewer checks for array type and array element
-type, and it checks for the row and column ranges only in debug mode.
-@param mat The matrix
-@param row The zero-based index of row
-@param col The zero-based index of column
-@param value The new value of the matrix element
- */
-static inline void svMatrixSet(SvMat *mat, int row, int col, double value) {
-	int type;
-	type = SV_MAT_TYPE(mat->type);
-	assert((unsigned)row < (unsigned)mat->rows && (unsigned)col < (unsigned)mat->cols);
-
-	if (type == SV_32FC1)
-		((float *)(void *)(mat->data.ptr + (size_t)mat->step * row))[col] = (float)value;
-	else {
-		assert(type == SV_64FC1);
-		((double *)(void *)(mat->data.ptr + (size_t)mat->step * row))[col] = value;
-	}
-}
 
 /** 0x3a50 = 11 10 10 01 01 00 00 ~ array of log2(sizeof(arr_type_elem)) */
 #define SV_ELEM_SIZE(type)                                                                                             \

@@ -6,25 +6,24 @@
 #else
 
 #include "linmath.h"
+#include "math.h"
 #include "string.h"
 
-#define SV_SVD 1
-#define SV_SVD_MODIFY_A 1
-#define SV_SVD_SYM 2
-#define SV_SVD_U_T 2
-#define SV_SVD_V_T 4
+#define SV_FLT_PTR(m) ((FLT *)((m)->data))
 
-#define SV_GEMM_A_T 1
-#define SV_GEMM_B_T 2
-#define SV_GEMM_C_T 4
+typedef struct SvMat {
+	int step;
 
-#define SV_8U 0
-#define SV_8S 1
-#define SV_16U 2
-#define SV_16S 3
-#define SV_32S 4
-#define SV_32F 5
-#define SV_64F 6
+	/* for internal use only */
+	int *refcount;
+	int hdr_refcount;
+
+	FLT *data;
+
+	int rows;
+	int cols;
+
+} SvMat;
 
 #ifdef USE_EIGEN
 #include "sv_matrix.eigen.h"
@@ -36,36 +35,9 @@
 extern "C" {
 #endif
 
-#define SV_IS_MAT_HDR(mat)                                                                                             \
-	((mat) != NULL && (((const SvMat *)(mat))->type & SV_MAGIC_MASK) == SV_MAT_MAGIC_VAL &&                            \
-	 ((const SvMat *)(mat))->cols > 0 && ((const SvMat *)(mat))->rows > 0)
-
-#define SV_IS_MAT_HDR_Z(mat)                                                                                           \
-	((mat) != NULL && (((const SvMat *)(mat))->type & SV_MAGIC_MASK) == SV_MAT_MAGIC_VAL &&                            \
-	 ((const SvMat *)(mat))->cols >= 0 && ((const SvMat *)(mat))->rows >= 0)
-
-#define SV_IS_MAT(mat) (SV_IS_MAT_HDR(mat) && ((const SvMat *)(mat))->data.ptr != NULL)
-
-#define SV_IS_MASK_ARR(mat) (((mat)->type & (SV_MAT_TYPE_MASK & ~SV_8SC1)) == 0)
-
-#define SV_ARE_TYPES_EQ(mat1, mat2) ((((mat1)->type ^ (mat2)->type) & SV_MAT_TYPE_MASK) == 0)
-
-#define SV_ARE_CNS_EQ(mat1, mat2) ((((mat1)->type ^ (mat2)->type) & SV_MAT_CN_MASK) == 0)
-
-#define SV_ARE_DEPTHS_EQ(mat1, mat2) ((((mat1)->type ^ (mat2)->type) & SV_MAT_DEPTH_MASK) == 0)
-
-#define SV_ARE_SIZES_EQ(mat1, mat2) ((mat1)->rows == (mat2)->rows && (mat1)->cols == (mat2)->cols)
-
-#define SV_IS_MAT_CONST(mat) (((mat)->rows | (mat)->cols) == 1)
-
-#define SV_IS_MATND_HDR(mat) ((mat) != NULL && (((const SvMat *)(mat))->type & SV_MAGIC_MASK) == SV_MATND_MAGIC_VAL)
-
-#define SV_IS_MATND(mat) (SV_IS_MATND_HDR(mat) && ((const SvMat *)(mat))->data.ptr != NULL)
-#define SV_MATND_MAGIC_VAL 0x42430000
-
 void print_mat(const SvMat *M);
 
-SvMat *svInitMatHeader(SvMat *arr, int rows, int cols, int type);
+SvMat *svInitMatHeader(SvMat *arr, int rows, int cols);
 SvMat *svCreateMat(int height, int width);
 
 enum svInvertMethod {
@@ -76,7 +48,14 @@ enum svInvertMethod {
 
 double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svInvertMethod method);
 
-void svGEMM(const SvMat *src1, const SvMat *src2, double alpha, const SvMat *src3, double beta, SvMat *dst, int tABC);
+enum svGEMMFlags {
+	SV_GEMM_FLAG_A_T = 1,
+	SV_GEMM_FLAG_B_T = 2,
+	SV_GEMM_FLAG_C_T = 4,
+};
+
+void svGEMM(const SvMat *src1, const SvMat *src2, double alpha, const SvMat *src3, double beta, SvMat *dst,
+			enum svGEMMFlags tABC);
 
 /**
  * xarr = argmin_x(Aarr * x - Barr)
@@ -91,7 +70,9 @@ SvMat *svCloneMat(const SvMat *mat);
 
 void svReleaseMat(SvMat **mat);
 
-void svSVD(SvMat *aarr, SvMat *warr, SvMat *uarr, SvMat *varr, int flags);
+enum svSVDFlags { SV_SVD_MODIFY_A = 1, SV_SVD_U_T = 2, SV_SVD_V_T = 4 };
+
+void svSVD(SvMat *aarr, SvMat *warr, SvMat *uarr, SvMat *varr, enum svSVDFlags flags);
 
 void svMulTransposed(const SvMat *src, SvMat *dst, int order, const SvMat *delta, double scale);
 
@@ -102,13 +83,107 @@ void print_mat(const SvMat *M);
 double svDet(const SvMat *M);
 
 #define SV_CREATE_STACK_MAT(name, rows, cols)                                                                          \
-	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
+	FLT *_##name = alloca((rows) * (cols) * sizeof(FLT));                                                              \
 	SvMat name = svMat(rows, cols, _##name);
+
+static inline void sv_set_zero(struct SvMat *m) { memset(SV_FLT_PTR(m), 0, sizeof(FLT) * m->rows * m->cols); }
+static inline void sv_set_constant(struct SvMat *m, FLT v) {
+	for (int i = 0; i < m->rows * m->cols; i++)
+		SV_FLT_PTR(m)[i] = v;
+}
+
+static inline bool sv_is_finite(struct SvMat *m) {
+	for (int i = 0; i < m->rows * m->cols; i++)
+		if (!isfinite(SV_FLT_PTR(m)[i]))
+			return false;
+	return true;
+}
+
+static inline void sv_matrix_copy(struct SvMat *dst, const struct SvMat *src) {
+	assert(dst->rows == src->rows);
+	assert(dst->cols == src->cols);
+	memcpy(SV_FLT_PTR(dst), SV_FLT_PTR(src), sizeof(FLT) * dst->cols * dst->rows);
+}
+
+static inline FLT *sv_as_vector(struct SvMat *m) {
+	assert(m->rows == 1 || m->cols == 1);
+	return SV_FLT_PTR(m);
+}
+
+static inline const FLT *sv_as_const_vector(const struct SvMat *m) {
+	assert(m->rows == 1 || m->cols == 1);
+	return SV_FLT_PTR(m);
+}
+
+/** Inline constructor. No data is allocated internally!!!
+ * (Use together with svCreateData, or use svCreateMat instead to
+ * get a matrix with allocated data):
+ */
+static inline SvMat svMat(int rows, int cols, FLT *data) {
+	SvMat m;
+
+	m.cols = cols;
+	m.rows = rows;
+#ifndef SV_MATRIX_IS_COL_MAJOR
+	m.step = m.cols;
+#else
+	m.step = m.rows;
+#endif
+
+	if (!data) {
+		m.data = (FLT *)calloc(m.cols * m.rows, sizeof(FLT));
+	} else {
+		m.data = (FLT *)data;
+	}
+	m.refcount = 0;
+	m.hdr_refcount = 0;
+
+#if SURVIVE_ASAN_CHECKS
+	volatile double v = cvmGet(&m, rows - 1, cols - 1);
+	(void)v;
+#endif
+
+	return m;
+}
+
+static inline size_t sv_matrix_idx(const SvMat *mat, int row, int col) {
+	assert((unsigned)row < (unsigned)mat->rows && (unsigned)col < (unsigned)mat->cols);
+#ifndef SV_MATRIX_IS_COL_MAJOR
+	return (size_t)mat->step * row + col;
+#else
+	return (size_t)mat->step * col + row;
+#endif
+}
+
+/*
+The function is a fast replacement for cvGetReal2D in the case of single-channel floating-point
+matrices. It is faster because it is inline, it does fewer checks for array type and array element
+type, and it checks for the row and column ranges only in debug mode.
+@param mat Input matrix
+@param row The zero-based index of row
+@param col The zero-based index of column
+ */
+static inline FLT svMatrixGet(const SvMat *mat, int row, int col) { return mat->data[sv_matrix_idx(mat, row, col)]; }
+
+static inline FLT *svMatrixPtr(const SvMat *mat, int row, int col) { return &mat->data[sv_matrix_idx(mat, row, col)]; }
+/** @brief Sets a specific element of a single-channel floating-point matrix.
+
+The function is a fast replacement for cvSetReal2D in the case of single-channel floating-point
+matrices. It is faster because it is inline, it does fewer checks for array type and array element
+type, and it checks for the row and column ranges only in debug mode.
+@param mat The matrix
+@param row The zero-based index of row
+@param col The zero-based index of column
+@param value The new value of the matrix element
+ */
+static inline void svMatrixSet(SvMat *mat, int row, int col, FLT value) {
+	mat->data[sv_matrix_idx(mat, row, col)] = value;
+}
 
 static inline void sv_set_diag(struct SvMat *m, const FLT *v) {
 	for (int i = 0; i < m->rows; i++) {
 		for (int j = 0; j < m->cols; j++) {
-			svMatrixSet(m, i, j, i == j ? v[i] : 0.);
+			svMatrixSet(m, i, j, i == j ? (v ? v[i] : 1.) : 0.);
 		}
 	}
 }
@@ -121,35 +196,72 @@ static inline void sv_set_diag_val(struct SvMat *m, FLT v) {
 	}
 }
 
-static inline void sv_set_zero(struct SvMat *m) { memset(SV_FLT_PTR(m), 0, sizeof(FLT) * m->rows * m->cols); }
-
-/** Inline constructor. No data is allocated internally!!!
- * (Use together with svCreateData, or use svCreateMat instead to
- * get a matrix with allocated data):
- */
-static inline SvMat svMat(int rows, int cols, FLT *data) {
-	SvMat m;
-
-	assert((unsigned)SV_MAT_DEPTH(SV_FLT) <= SV_64F);
-	int type = SV_MAT_TYPE(SV_FLT);
-	m.type = SV_MAT_MAGIC_VAL | SV_MAT_CONT_FLAG | type;
-	m.cols = cols;
-	m.rows = rows;
-	m.step = m.cols * SV_ELEM_SIZE(type);
-	if (!data) {
-		m.data.ptr = (uint8_t *)calloc(1, SV_ELEM_SIZE(type) * m.cols * m.rows);
-	} else {
-		m.data.ptr = (uint8_t *)data;
+static inline void sv_eye(struct SvMat *m, const FLT *v) {
+	for (int i = 0; i < m->rows; i++) {
+		for (int j = 0; j < m->cols; j++) {
+			svMatrixSet(m, i, j, i == j ? (v ? v[i] : 1.) : 0.);
+		}
 	}
-	m.refcount = 0;
-	m.hdr_refcount = 0;
+}
 
-#if SURVIVE_ASAN_CHECKS
-	volatile double v = cvmGet(&m, rows - 1, cols - 1);
-	(void)v;
+static inline void sv_copy_in_row_major(struct SvMat *dst, const FLT *src, size_t src_stride) {
+	for (int i = 0; i < dst->rows; i++) {
+		for (int j = 0; j < dst->cols; j++) {
+			svMatrixSet(dst, i, j, src[j + i * src_stride]);
+		}
+	}
+}
+static inline FLT sv_sum(const struct SvMat *A) {
+	FLT rtn = 0;
+	for (int i = 0; i < A->rows; i++) {
+		for (int j = 0; j < A->cols; j++) {
+			rtn += svMatrixGet(A, i, j);
+		}
+	}
+	return rtn;
+}
+static inline FLT sv_trace(const struct SvMat *A) {
+	FLT rtn = 0;
+	int min_dim = A->rows;
+	if (min_dim > A->cols)
+		min_dim = A->cols;
+	for (int i = 0; i < min_dim; i++) {
+		for (int j = 0; j < min_dim; j++) {
+			rtn += svMatrixGet(A, i, j);
+		}
+	}
+
+	return rtn;
+}
+
+static inline void sv_copy_data_in(struct SvMat *A, bool isRowMajor, const FLT *d) {
+#ifdef SV_MATRIX_IS_COL_MAJOR
+	bool needsFlip = isRowMajor;
+#else
+	bool needsFlip = !isRowMajor;
 #endif
+	if (needsFlip) {
+		SvMat t = svMat(A->cols, A->rows, (FLT *)d);
+		svTranspose(&t, A);
+	} else {
+		memcpy(A->data, d, A->rows * A->cols * sizeof(FLT));
+	}
+}
 
-	return m;
+static inline void sv_row_major_to_internal(struct SvMat *A, const FLT *d) { sv_copy_data_in(A, true, d); }
+
+static inline void sv_col_major_to_internal(struct SvMat *A, const FLT *d) { sv_copy_data_in(A, false, d); }
+
+static inline SvMat svMat_from_row_major(int rows, int cols, FLT *data) {
+	SvMat rtn = svMat(rows, cols, data);
+	sv_row_major_to_internal(&rtn, data);
+	return rtn;
+}
+
+static inline SvMat svMat_from_col_major(int rows, int cols, FLT *data) {
+	SvMat rtn = svMat(rows, cols, data);
+	sv_col_major_to_internal(&rtn, data);
+	return rtn;
 }
 
 #ifdef __cplusplus

@@ -23,27 +23,29 @@ static void bc_svd_choose_control_points(bc_svd *self) {
 		self->setup.control_points[0][j] /= self->setup.obj_cnt;
 
 	// Take C1, C2, and C3 from PCA on the reference points:
-	SvMat *PW0 = svCreateMat(self->setup.obj_cnt, 3);
+	SV_CREATE_STACK_MAT(PW0, self->setup.obj_cnt, 3);
 
-	FLT pw0tpw0[3 * 3] = {0}, dc[3], uct[3 * 3];
-	SvMat PW0tPW0 = svMat(3, 3, pw0tpw0);
-	SvMat DC = svMat(3, 1, dc);
-	SvMat UCt = svMat(3, 3, uct);
+	SV_CREATE_STACK_MAT(PW0tPW0, 3, 3);
+	SV_CREATE_STACK_MAT(DC, 3, 1);
+	SV_CREATE_STACK_MAT(UCt, 3, 3);
 
 	for (int i = 0; i < self->setup.obj_cnt; i++)
-		for (int j = 0; j < 3; j++)
-			SV_RAW_PTR(PW0)[3 * i + j] = self->setup.obj_pts[i][j] - self->setup.control_points[0][j];
-
-	svMulTransposed(PW0, &PW0tPW0, 1, 0, 1);
+		for (int j = 0; j < 3; j++) {
+			svMatrixSet(&PW0, i, j, self->setup.obj_pts[i][j] - self->setup.control_points[0][j]);
+		}
+	svMulTransposed(&PW0, &PW0tPW0, 1, 0, 1);
 
 	svSVD(&PW0tPW0, &DC, &UCt, 0, SV_SVD_MODIFY_A | SV_SVD_U_T);
 
-	svReleaseMat(&PW0);
-
 	for (int i = 1; i < 4; i++) {
-		FLT k = sqrt(dc[i - 1] / self->setup.obj_cnt);
-		for (int j = 0; j < 3; j++)
-			self->setup.control_points[i][j] = self->setup.control_points[0][j] + k * uct[3 * (i - 1) + j];
+		FLT k = sqrt(sv_as_vector(&DC)[i - 1] / (FLT)self->setup.obj_cnt);
+		for (int j = 0; j < 3; j++) {
+			FLT uct_val = svMatrixGet(&UCt, i - 1, j);
+#ifndef SV_MATRIX_IS_COL_MAJOR
+			assert(uct_val == SV_FLT_PTR(&UCt)[3 * (i - 1) + j]);
+#endif
+			self->setup.control_points[i][j] = self->setup.control_points[0][j] + k * uct_val;
+		}
 	}
 }
 
@@ -53,8 +55,9 @@ static void bc_svd_compute_barycentric_coordinates(bc_svd *self) {
 	SvMat CC_inv = svMat(3, 3, cc_inv);
 
 	for (int i = 0; i < 3; i++)
-		for (int j = 1; j < 4; j++)
-			cc[3 * i + j - 1] = self->setup.control_points[j][i] - self->setup.control_points[0][i];
+		for (int j = 1; j < 4; j++) {
+			svMatrixSet(&CC, i, j - 1, self->setup.control_points[j][i] - self->setup.control_points[0][i]);
+		}
 
 	svInvert(&CC, &CC_inv, 1);
 
@@ -64,9 +67,9 @@ static void bc_svd_compute_barycentric_coordinates(bc_svd *self) {
 		FLT *a = self->setup.alphas[i];
 
 		for (int j = 0; j < 3; j++)
-			a[1 + j] = ci[3 * j] * (pi[0] - self->setup.control_points[0][0]) +
-					   ci[3 * j + 1] * (pi[1] - self->setup.control_points[0][1]) +
-					   ci[3 * j + 2] * (pi[2] - self->setup.control_points[0][2]);
+			a[1 + j] = svMatrixGet(&CC_inv, j, 0) * (pi[0] - self->setup.control_points[0][0]) +
+					   svMatrixGet(&CC_inv, j, 1) * (pi[1] - self->setup.control_points[0][1]) +
+					   svMatrixGet(&CC_inv, j, 2) * (pi[2] - self->setup.control_points[0][2]);
 		a[0] = 1.0f - a[1] - a[2] - a[3];
 	}
 }
@@ -140,8 +143,8 @@ void bc_svd_fill_M(bc_svd *self, SvMat *_M, const int row, const FLT *as, int ax
 
 	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 3; j++) {
-			M[i * 3 + j] = eq[j] * as[i];
-			assert(isfinite(M[i * 3 + j]));
+			svMatrixSet(_M, row, i * 3 + j, eq[j] * as[i]);
+			assert(isfinite(svMatrixGet(_M, row, i * 3 + j)));
 		}
 	}
 }
@@ -152,12 +155,10 @@ static void bc_svd_compute_ccs(bc_svd *self, const FLT *betas, const SvMat *ut) 
 			self->control_points_in_camera[i][2] = 0.0f;
 
 	for (int i = 0; i < 4; i++) {
-		const FLT *v = SV_FLT_PTR(ut) + 12 * (11 - i);
 		for (int j = 0; j < 4; j++)
 			for (int k = 0; k < 3; k++) {
 				FLT val = svMatrixGet(ut, (11 - i), 3 * j + k);
-				assert(val == v[3 * j + k]);
-				self->control_points_in_camera[j][k] += betas[i] * v[3 * j + k];
+				self->control_points_in_camera[j][k] += betas[i] * val;
 			}
 	}
 }
@@ -220,7 +221,7 @@ void find_betas_approx_1(const SvMat *L_6x10, const SvMat *Rho, FLT *betas) {
 		svMatrixSet(&L_6x4, i, 3, svMatrixGet(L_6x10, i, 6));
 	}
 
-	svSolve(&L_6x4, Rho, &B4, SV_SVD);
+	svSolve(&L_6x4, Rho, &B4, SV_INVERT_METHOD_SVD);
 
 	if (b4[0] < 0) {
 		betas[0] = sqrt(-b4[0]);
@@ -283,7 +284,6 @@ void qr_solve(SvMat *A, SvMat *b, SvMat *X) {
 
 		if (eta == 0) {
 			A1[k] = A2[k] = 0.0;
-			// cerr << "God damnit, A is singular, this shouldn't happen." << endl;
 			return;
 		} else {
 			FLT *ppAik = ppAkk, sum = 0.0, inv_eta = 1. / eta;
@@ -374,7 +374,7 @@ void find_betas_approx_2(const SvMat *L_6x10, const SvMat *Rho, FLT *betas) {
 		svMatrixSet(&L_6x3, i, 2, svMatrixGet(L_6x10, i, 2));
 	}
 
-	svSolve(&L_6x3, Rho, &B3, SV_SVD);
+	svSolve(&L_6x3, Rho, &B3, SV_INVERT_METHOD_SVD);
 
 	if (b3[0] < 0) {
 		betas[0] = sqrt(-b3[0]);
@@ -407,7 +407,7 @@ void bc_svd_find_betas_approx_3(bc_svd *self, const SvMat *L_6x10, const SvMat *
 		svMatrixSet(&L_6x5, i, 4, svMatrixGet(L_6x10, i, 4));
 	}
 
-	svSolve(&L_6x5, Rho, &B5, SV_SVD);
+	svSolve(&L_6x5, Rho, &B5, SV_INVERT_METHOD_SVD);
 
 	if (b5[0] < 0) {
 		betas[0] = sqrt(-b5[0]);
@@ -440,10 +440,10 @@ FLT bc_svd_compute_pose(bc_svd *self, FLT R[3][3], FLT t[3]) {
 		bc_svd_fill_M(self, &M, i, self->setup.alphas[obj_pt_idx], meas->axis, meas->angle);
 		has_axis[meas->axis] = true;
 
-		FLT *_M = SV_RAW_PTR(&M) + i * 12;
 		for (int j = 0; j < 12; j++) {
-			assert(isfinite(_M[j]));
-			if (_M[j] != 0.0)
+			FLT v = svMatrixGet(&M, i, j);
+			assert(isfinite(v));
+			if (v != 0.0)
 				colCovered[j] = true;
 		}
 	}
@@ -541,7 +541,7 @@ void bc_svd_estimate_R_and_t(bc_svd *self, FLT R[3][3], FLT t[3]) {
 		pw0[j] /= self->setup.obj_cnt;
 	}
 
-	FLT abt[3 * 3], abt_d[3], abt_u[3 * 3], abt_v[3 * 3];
+	FLT abt[3 * 3] = {0}, abt_d[3], abt_u[3 * 3], abt_v[3 * 3];
 	SvMat ABt = svMat(3, 3, abt);
 	SvMat ABt_D = svMat(3, 1, abt_d);
 	SvMat ABt_U = svMat(3, 3, abt_u);
@@ -560,7 +560,17 @@ void bc_svd_estimate_R_and_t(bc_svd *self, FLT R[3][3], FLT t[3]) {
 		}
 	}
 
+#ifdef SV_MATRIX_IS_COL_MAJOR
+	svTranspose(&ABt, &ABt);
+#endif
+
 	svSVD(&ABt, &ABt_D, &ABt_U, &ABt_V, SV_SVD_MODIFY_A);
+
+#ifdef SV_MATRIX_IS_COL_MAJOR
+	svTranspose(&ABt, &ABt);
+	svTranspose(&ABt_U, &ABt_U);
+	svTranspose(&ABt_V, &ABt_V);
+#endif
 
 	for (int i = 0; i < 3; i++)
 		for (int j = 0; j < 3; j++)

@@ -66,7 +66,7 @@ extern "C" {
 #define FLT_STRTO strtod
 #define SURVIVE_SV_F SV_64F
 #define SV_FLT SV_64F
-#define SV_RAW_PTR(X) ((X)->data.db)
+#define SV_RAW_PTR(X) ((X)->data)
 #endif
 
 #ifdef TCC
@@ -169,6 +169,9 @@ LINMATH_EXPORT void quattomatrix(FLT *matrix44, const LinmathQuat q);
 LINMATH_EXPORT void quattomatrix33(FLT *matrix33, const LinmathQuat qin);
 LINMATH_EXPORT void quatfrommatrix(LinmathQuat q, const FLT *matrix44);
 LINMATH_EXPORT void quatfrommatrix33(LinmathQuat q, const FLT *matrix33);
+
+struct SvMat;
+LINMATH_EXPORT void quatfromsvmatrix(LinmathQuat q, const struct SvMat *matrix33);
 LINMATH_EXPORT void quatgetconjugate(LinmathQuat qout, const LinmathQuat qin);
 
 /***
@@ -340,9 +343,6 @@ struct sparse_matrix {
 	};
 
 struct SvMat;
-LINMATH_EXPORT void sparse_multiply_sparse_by_dense_sym(struct SvMat *out, const struct sparse_matrix *lhs,
-														const struct SvMat *rhs);
-LINMATH_EXPORT size_t create_sparse_matrix(struct sparse_matrix *out, const struct SvMat *in);
 
 /**
  * This is a very specialized matrix function to calculate out = A * B * A^t + C

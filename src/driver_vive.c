@@ -2187,7 +2187,7 @@ static void handle_watchman_v2(SurviveObject *w, uint64_t time_in_us, uint16_t t
 			return;
 		}
 	} else {
-		SV_VERBOSE(100, "%.7f %s ref flag 0x40(0x%x) bytes rest of data %s", survive_run_time(ctx), w->codename, flags,
+		SV_VERBOSE(700, "%.7f %s ref flag 0x40(0x%x) bytes rest of data %s", survive_run_time(ctx), w->codename, flags,
 				   packetToHex(originPayloadPtr, payloadEndPtr));
 	}
 

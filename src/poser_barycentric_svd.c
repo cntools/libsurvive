@@ -103,7 +103,9 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 		return rtn;
 	}
 
-	SvMat R = svMat(3, 3, (FLT *)r);
+	SV_CREATE_STACK_MAT(R, 3, 3);
+	sv_copy_in_row_major(&R, (FLT *)r, 3);
+
 	SvMat T = svMat(3, 1, rtn.Pos);
 
 	// Super degenerate inputs will project us basically right in the camera. Detect and reject
@@ -136,7 +138,7 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 	}
 
 	LinmathQuat tmp;
-	quatfrommatrix33(tmp, r[0]);
+	quatfromsvmatrix(tmp, &R);
 
 	// Typical camera applications have Z facing forward; the vive is contrarian and has Z going out of the
 	// back of the lighthouse. Think of this as a rotation on the Y axis a full 180 degrees -- the quat for that is

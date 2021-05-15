@@ -42,25 +42,22 @@
 #define FLT_FABS__ fabs
 #define FLT_STRTO strtod
 #define SURVIVE_SV_F SV_64F
-#define SV_FLT SV_64F
-#define SV_RAW_PTR(X) ((X)->data.db)
+#define SV_RAW_PTR(X) ((X)->data)
 #endif
 
 #define SV_Error(code, msg) assert(0 && msg); // cv::error( code, msg, SV_Func, __FILE__, __LINE__ )
 SURVIVE_LOCAL_ONLY SvMat *svCloneMat(const SvMat *mat) {
-	assert(SV_MAT_TYPE(mat->type) == SV_MAT_TYPE(SV_FLT));
 	SvMat *rtn = svCreateMat(mat->rows, mat->cols);
 	svCopy(mat, rtn, 0);
 	return rtn;
 }
 
-static size_t mat_size_bytes(const SvMat *mat) { return (size_t)SV_ELEM_SIZE(mat->type) * mat->cols * mat->rows; }
+static size_t mat_size_bytes(const SvMat *mat) { return (size_t)sizeof(FLT) * mat->cols * mat->rows; }
 
 void svCopy(const SvMat *src, SvMat *dest, const SvMat *mask) {
 	assert(mask == 0 && "This isn't implemented yet");
 	assert(src->rows == dest->rows);
 	assert(src->cols == dest->cols);
-	assert(dest->type == src->type);
 	memcpy(SV_RAW_PTR(dest), SV_RAW_PTR(src), mat_size_bytes(src));
 }
 
@@ -91,64 +88,50 @@ static inline void *svAlignPtr(const void *ptr, int align) {
 }
 
 SURVIVE_LOCAL_ONLY void svCreateData(SvMat *arr) {
-	if (SV_IS_MAT_HDR_Z(arr)) {
-		size_t step, total_size;
-		SvMat *mat = (SvMat *)arr;
-		step = mat->step;
+	size_t step, total_size;
+	SvMat *mat = (SvMat *)arr;
+	step = mat->step;
 
-		if (mat->rows == 0 || mat->cols == 0)
-			return;
+	if (mat->rows == 0 || mat->cols == 0)
+		return;
 
-		if (mat->data.ptr != 0)
-			SV_Error(SV_StsError, "Data is already allocated");
+	if (SV_FLT_PTR(mat) != 0)
+		SV_Error(SV_StsError, "Data is already allocated");
 
-		if (step == 0)
-			step = SV_ELEM_SIZE(mat->type) * mat->cols;
+	if (step == 0)
+		step = sizeof(FLT) * mat->cols;
 
-		int64_t _total_size = (int64_t)step * mat->rows + sizeof(int) + SV_MALLOC_ALIGN;
-		total_size = (size_t)_total_size;
-		if (_total_size != (int64_t)total_size)
-			SV_Error(SV_StsNoMem, "Too big buffer is allocated");
-		mat->refcount = (int *)svAlloc((size_t)total_size);
-		mat->data.ptr = (unsigned char *)svAlignPtr(mat->refcount + 1, SV_MALLOC_ALIGN);
-		*mat->refcount = 1;
-	} else if (SV_IS_MATND_HDR(arr)) {
-		assert("There is no support for ND types");
-	} else
-		SV_Error(SV_StsBadArg, "unrecognized or unsupported array type");
+	int64_t _total_size = (int64_t)step * mat->rows + sizeof(int) + SV_MALLOC_ALIGN;
+	total_size = (size_t)_total_size;
+	if (_total_size != (int64_t)total_size)
+		SV_Error(SV_StsNoMem, "Too big buffer is allocated");
+	mat->refcount = (int *)svAlloc((size_t)total_size);
+	mat->data = (FLT *)svAlignPtr(mat->refcount + 1, SV_MALLOC_ALIGN);
+	*mat->refcount = 1;
 }
 
-static void icvCheckHuge(SvMat *arr) {
-	if ((int64_t)arr->step * arr->rows > INT_MAX)
-		arr->type &= ~SV_MAT_CONT_FLAG;
-}
-
-SvMat *svInitMatHeader(SvMat *arr, int rows, int cols, int type) {
-	type = SV_MAT_TYPE(type);
-
+SvMat *svInitMatHeader(SvMat *arr, int rows, int cols) {
 	assert(!(rows < 0 || cols < 0));
 
-	int min_step = SV_ELEM_SIZE(type);
+	int min_step = sizeof(FLT);
 	assert(!(min_step <= 0));
 	min_step *= cols;
 
 	arr->step = min_step;
-	arr->type = SV_MAT_MAGIC_VAL | type | SV_MAT_CONT_FLAG;
 	arr->rows = rows;
 	arr->cols = cols;
-	arr->data.ptr = 0;
+	arr->data = 0;
 	arr->refcount = 0;
 	arr->hdr_refcount = 1;
 
-	icvCheckHuge(arr);
 	return arr;
 }
 
-SURVIVE_LOCAL_ONLY SvMat *svCreateMatHeader(int rows, int cols, int type) {
-	return svInitMatHeader((SvMat *)svAlloc(sizeof(SvMat)), rows, cols, type);
+SURVIVE_LOCAL_ONLY SvMat *svCreateMatHeader(int rows, int cols) {
+	return svInitMatHeader((SvMat *)svAlloc(sizeof(SvMat)), rows, cols);
 }
 SURVIVE_LOCAL_ONLY SvMat *svCreateMat(int height, int width) {
-	SvMat *arr = svCreateMatHeader(height, width, SV_FLT);
+	SvMat *arr = svCreateMatHeader(height, width);
 	svCreateData(arr);
 
 	return arr;

@@ -33,7 +33,7 @@ const int DECOMP_LU = 2;
 
 void print_mat(const SvMat *M);
 
-static size_t mat_size_bytes(const SvMat *mat) { return (size_t)SV_ELEM_SIZE(mat->type) * mat->cols * mat->rows; }
+static size_t mat_size_bytes(const SvMat *mat) { return (size_t)sizeof(FLT) * mat->cols * mat->rows; }
 
 #ifdef USE_FLOAT
 #define cblas_gemm cblas_sgemm
@@ -121,23 +121,23 @@ void mulBABt(const SvMat *src1, const SvMat *src2, double alpha, const SvMat *sr
 	svSYMM(src1, src2, 1, 0, 0, &tmp, false);
 	svGEMM(&tmp, src2, alpha, src3, beta, dst, SV_GEMM_B_T);
 #else
-	svGEMM(src1, src2, 1, 0, 0, &tmp, SV_GEMM_B_T);
+	svGEMM(src1, src2, 1, 0, 0, &tmp, SV_GEMM_FLAG_B_T);
 	svGEMM(src2, &tmp, alpha, src3, beta, dst, 0);
 #endif
 }
 // dst = alpha * src1 * src2 + beta * src3
 SURVIVE_LOCAL_ONLY void svGEMM(const SvMat *src1, const SvMat *src2, double alpha, const SvMat *src3, double beta,
-							   SvMat *dst, int tABC) {
+							   SvMat *dst, enum svGEMMFlags tABC) {
 
-	int rows1 = (tABC & SV_GEMM_A_T) ? src1->cols : src1->rows;
-	int cols1 = (tABC & SV_GEMM_A_T) ? src1->rows : src1->cols;
+	int rows1 = (tABC & SV_GEMM_FLAG_A_T) ? src1->cols : src1->rows;
+	int cols1 = (tABC & SV_GEMM_FLAG_A_T) ? src1->rows : src1->cols;
 
-	int rows2 = (tABC & SV_GEMM_B_T) ? src2->cols : src2->rows;
-	int cols2 = (tABC & SV_GEMM_B_T) ? src2->rows : src2->cols;
+	int rows2 = (tABC & SV_GEMM_FLAG_B_T) ? src2->cols : src2->rows;
+	int cols2 = (tABC & SV_GEMM_FLAG_B_T) ? src2->rows : src2->cols;
 
 	if (src3) {
-		int rows3 = (tABC & SV_GEMM_C_T) ? src3->cols : src3->rows;
-		int cols3 = (tABC & SV_GEMM_C_T) ? src3->rows : src3->cols;
+		int rows3 = (tABC & SV_GEMM_FLAG_C_T) ? src3->cols : src3->rows;
+		int cols3 = (tABC & SV_GEMM_FLAG_C_T) ? src3->rows : src3->cols;
 		assert(rows3 == dst->rows);
 		assert(cols3 == dst->cols);
 	}
@@ -158,9 +158,9 @@ SURVIVE_LOCAL_ONLY void svGEMM(const SvMat *src1, const SvMat *src2, double alph
 	assert(SV_RAW_PTR(dst) != SV_RAW_PTR(src1));
 	assert(SV_RAW_PTR(dst) != SV_RAW_PTR(src2));
 
-	cblas_gemm(CblasRowMajor, (tABC & SV_GEMM_A_T) ? CblasTrans : CblasNoTrans,
-			   (tABC & SV_GEMM_B_T) ? CblasTrans : CblasNoTrans, dst->rows, dst->cols, cols1, alpha, SV_RAW_PTR(src1),
-			   lda, SV_RAW_PTR(src2), ldb, beta, SV_RAW_PTR(dst), dst->cols);
+	cblas_gemm(CblasRowMajor, (tABC & SV_GEMM_FLAG_A_T) ? CblasTrans : CblasNoTrans,
+			   (tABC & SV_GEMM_FLAG_B_T) ? CblasTrans : CblasNoTrans, dst->rows, dst->cols, cols1, alpha,
+			   SV_RAW_PTR(src1), lda, SV_RAW_PTR(src2), ldb, beta, SV_RAW_PTR(dst), dst->cols);
 }
 
 // dst = scale * src ^ t * src     iff order == 1
@@ -191,12 +191,12 @@ SURVIVE_LOCAL_ONLY void svMulTransposed(const SvMat *src, SvMat *dst, int order,
 
 #define SV_DbgAssert assert
 
-#define SV_CREATE_MAT_HEADER_ALLOCA(stack_mat, rows, cols, type)                                                       \
-	SvMat *stack_mat = svInitMatHeader(alloca(sizeof(SvMat)), rows, cols, type);
+#define SV_CREATE_MAT_HEADER_ALLOCA(stack_mat, rows, cols)                                                             \
+	SvMat *stack_mat = svInitMatHeader(alloca(sizeof(SvMat)), rows, cols);
 
-#define SV_CREATE_MAT_ALLOCA(stack_mat, height, width, type)                                                           \
-	SV_CREATE_MAT_HEADER_ALLOCA(stack_mat, height, width, type);                                                       \
-	stack_mat->data.ptr = alloca(mat_size_bytes(stack_mat));
+#define SV_CREATE_MAT_ALLOCA(stack_mat, height, width)                                                                 \
+	SV_CREATE_MAT_HEADER_ALLOCA(stack_mat, height, width);                                                             \
+	(stack_mat)->data = alloca(mat_size_bytes(stack_mat));
 
 #define CREATE_SV_STACK_MAT(name, rows, cols, type)                                                                    \
 	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
@@ -287,8 +287,8 @@ SURVIVE_LOCAL_ONLY double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svIn
 		}
 
 		SvMat *tmp = svCreateMat(dstarr->cols, dstarr->rows);
-		svGEMM(&v, &um, 1, 0, 0, tmp, SV_GEMM_A_T);
-		svGEMM(tmp, &u, 1, 0, 0, dstarr, SV_GEMM_B_T);
+		svGEMM(&v, &um, 1, 0, 0, tmp, SV_GEMM_FLAG_A_T);
+		svGEMM(tmp, &u, 1, 0, 0, dstarr, SV_GEMM_FLAG_B_T);
 
 		svReleaseMat(&tmp);
 	} else {
@@ -300,7 +300,7 @@ SURVIVE_LOCAL_ONLY double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svIn
 }
 
 #define SV_CLONE_MAT_ALLOCA(stack_mat, mat)                                                                            \
-	SV_CREATE_MAT_ALLOCA(stack_mat, mat->rows, mat->cols, mat->type)                                                   \
+	SV_CREATE_MAT_ALLOCA(stack_mat, mat->rows, mat->cols)                                                              \
 	svCopy(mat, stack_mat, 0);
 
 SURVIVE_LOCAL_ONLY int svSolve(const SvMat *Aarr, const SvMat *Barr, SvMat *xarr, enum svInvertMethod method) {
@@ -310,13 +310,11 @@ SURVIVE_LOCAL_ONLY int svSolve(const SvMat *Aarr, const SvMat *Barr, SvMat *xarr
 	lapack_int xcols = Barr->cols;
 	lapack_int xrows = Barr->rows;
 	lapack_int lda = acols; // Aarr->step / sizeof(double);
-	lapack_int type = SV_MAT_TYPE(Aarr->type);
 
 	if (method == SV_INVERT_METHOD_LU) {
 		assert(Aarr->cols == xarr->rows);
 		assert(Barr->rows == Aarr->rows);
 		assert(xarr->cols == Barr->cols);
-		assert(type == SV_MAT_TYPE(xarr->type) && (type == SV_32F || type == SV_64F));
 
 		svCopy(Barr, xarr, 0);
 		FLT *a_ws = alloca(mat_size_bytes(Aarr));
@@ -413,7 +411,7 @@ SURVIVE_LOCAL_ONLY void svTranspose(const SvMat *M, SvMat *dst) {
 	}
 }
 
-SURVIVE_LOCAL_ONLY void svSVD(SvMat *aarr, SvMat *warr, SvMat *uarr, SvMat *varr, int flags) {
+SURVIVE_LOCAL_ONLY void svSVD(SvMat *aarr, SvMat *warr, SvMat *uarr, SvMat *varr, enum svSVDFlags flags) {
 	char jobu = 'A';
 	char jobvt = 'A';
 

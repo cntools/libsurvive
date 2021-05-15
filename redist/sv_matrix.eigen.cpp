@@ -9,10 +9,10 @@
 
 #include <iostream>
 
-#ifdef USE_FLOAT
-typedef Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor, 50, 50> MatrixType;
+#ifdef SV_MATRIX_IS_COL_MAJOR
+typedef Eigen::Matrix<FLT, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor, 50, 50> MatrixType;
 #else
-typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor, 50, 50> MatrixType;
+typedef Eigen::Matrix<FLT, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor, 50, 50> MatrixType;
 #endif
 typedef Eigen::Map<MatrixType> MapType;
 
@@ -31,21 +31,21 @@ double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svInvertMethod method) 
 	return 0;
 }
 
-void svGEMM(const SvMat *_src1, const SvMat *_src2, double alpha, const SvMat *_src3, double beta, SvMat *_dst,
-			int tABC) {
+extern "C" void svGEMM(const SvMat *_src1, const SvMat *_src2, double alpha, const SvMat *_src3, double beta,
+					   SvMat *_dst, enum svGEMMFlags tABC) {
 	auto src1 = CONVERT_TO_EIGEN(_src1);
 	auto src2 = CONVERT_TO_EIGEN(_src2);
 
 	auto dst = CONVERT_TO_EIGEN(_dst);
 
 	Eigen::internal::set_is_malloc_allowed(false);
-	if (tABC & SV_GEMM_A_T)
-		if (tABC & SV_GEMM_B_T)
+	if (tABC & SV_GEMM_FLAG_A_T)
+		if (tABC & SV_GEMM_FLAG_B_T)
 			dst.noalias() = alpha * src1.transpose() * src2.transpose();
 		else
 			dst.noalias() = alpha * src1.transpose() * src2;
 	else {
-		if (tABC & SV_GEMM_B_T)
+		if (tABC & SV_GEMM_FLAG_B_T)
 			dst.noalias() = alpha * src1 * src2.transpose();
 		else
 			dst.noalias() = alpha * src1 * src2;
@@ -53,7 +53,7 @@ void svGEMM(const SvMat *_src1, const SvMat *_src2, double alpha, const SvMat *_
 
 	if (_src3) {
 		auto src3 = CONVERT_TO_EIGEN(_src3);
-		if (tABC & SV_GEMM_C_T)
+		if (tABC & SV_GEMM_FLAG_C_T)
 			dst.noalias() += beta * src3.transpose();
 		else
 			dst.noalias() += beta * src3;
@@ -63,7 +63,7 @@ void svGEMM(const SvMat *_src1, const SvMat *_src2, double alpha, const SvMat *_
 const int DECOMP_SVD = 1;
 const int DECOMP_LU = 2;
 
-int svSolve(const SvMat *_Aarr, const SvMat *_Barr, SvMat *_xarr, enum svInvertMethod method) {
+extern "C" int svSolve(const SvMat *_Aarr, const SvMat *_Barr, SvMat *_xarr, enum svInvertMethod method) {
 	auto Aarr = CONVERT_TO_EIGEN(_Aarr);
 	auto Barr = CONVERT_TO_EIGEN(_Barr);
 	auto xarr = CONVERT_TO_EIGEN(_xarr);
@@ -80,7 +80,7 @@ int svSolve(const SvMat *_Aarr, const SvMat *_Barr, SvMat *_xarr, enum svInvertM
 	return 0;
 }
 
-void svSVD(SvMat *aarr, SvMat *warr, SvMat *uarr, SvMat *varr, int flags) {
+extern "C" void svSVD(SvMat *aarr, SvMat *warr, SvMat *uarr, SvMat *varr, enum svSVDFlags flags) {
 	auto aarrEigen = CONVERT_TO_EIGEN(aarr);
 	auto warrEigen = CONVERT_TO_EIGEN(warr);
 
@@ -140,7 +140,7 @@ void svTranspose(const SvMat *M, SvMat *dst) {
 	auto src = CONVERT_TO_EIGEN(M);
 	auto dstEigen = CONVERT_TO_EIGEN(dst);
 	if (SV_FLT_PTR(M) == SV_FLT_PTR(dst))
-		src.transposeInPlace();
+		dstEigen = src.transpose().eval();
 	else
 		dstEigen.noalias() = src.transpose();
 }

@@ -402,6 +402,39 @@ inline void quattomatrix(FLT *matrix44, const LinmathQuat qin) {
 	matrix44[14] = 0;
 	matrix44[15] = 1;
 }
+LINMATH_EXPORT void quatfromsvmatrix(LinmathQuat q, const struct SvMat *m) {
+	FLT m00 = svMatrixGet(m, 0, 0), m01 = svMatrixGet(m, 0, 1), m02 = svMatrixGet(m, 0, 2), m10 = svMatrixGet(m, 1, 0),
+		m11 = svMatrixGet(m, 1, 1), m12 = svMatrixGet(m, 1, 2), m20 = svMatrixGet(m, 2, 0), m21 = svMatrixGet(m, 2, 1),
+		m22 = svMatrixGet(m, 2, 2);
+
+	FLT tr = m00 + m11 + m22;
+
+	if (tr > 0) {
+		FLT S = sqrt(tr + 1.0) * 2; // S=4*qw
+		q[0] = 0.25 * S;
+		q[1] = (m21 - m12) / S;
+		q[2] = (m02 - m20) / S;
+		q[3] = (m10 - m01) / S;
+	} else if ((m00 > m11) & (m00 > m22)) {
+		FLT S = sqrt(1.0 + m00 - m11 - m22) * 2; // S=4*q[1]
+		q[0] = (m21 - m12) / S;
+		q[1] = 0.25 * S;
+		q[2] = (m01 + m10) / S;
+		q[3] = (m02 + m20) / S;
+	} else if (m11 > m22) {
+		FLT S = sqrt(1.0 + m11 - m00 - m22) * 2; // S=4*q[2]
+		q[0] = (m02 - m20) / S;
+		q[1] = (m01 + m10) / S;
+		q[2] = 0.25 * S;
+		q[3] = (m12 + m21) / S;
+	} else {
+		FLT S = sqrt(1.0 + m22 - m00 - m11) * 2; // S=4*q[3]
+		q[0] = (m10 - m01) / S;
+		q[1] = (m02 + m20) / S;
+		q[2] = (m12 + m21) / S;
+		q[3] = 0.25 * S;
+	}
+}
 inline void quatfrommatrix33(LinmathQuat q, const FLT *m) {
 	FLT m00 = m[0], m01 = m[1], m02 = m[2], m10 = m[3], m11 = m[4], m12 = m[5], m20 = m[6], m21 = m[7], m22 = m[8];
 
@@ -915,12 +948,14 @@ void KabschCentered(LinmathQuat qout, const FLT *ptsA, const FLT *ptsB, int num_
 void KabschCenteredScaled(LinmathQuat qout, FLT *scale, const FLT *ptsA, const FLT *ptsB, int num_pts) {
 	// Note: The following follows along with https://en.wikipedia.org/wiki/Kabsch_algorithm
 	// for the most part but we use some transpose identities to avoid unneeded transposes
-	SvMat A = svMat(num_pts, 3, (FLT *)ptsA);
-	SvMat B = svMat(num_pts, 3, (FLT *)ptsB);
+	SV_CREATE_STACK_MAT(A, num_pts, 3); // (FLT *)ptsA);
+	sv_row_major_to_internal(&A, ptsA);
+	SV_CREATE_STACK_MAT(B, num_pts, 3);
+	sv_row_major_to_internal(&B, ptsB);
 
 	FLT _C[9] = {0};
 	SvMat C = svMat(3, 3, _C);
-	svGEMM(&B, &A, 1, 0, 0, &C, SV_GEMM_A_T);
+	svGEMM(&B, &A, 1, 0, 0, &C, SV_GEMM_FLAG_A_T);
 
 	FLT _U[9] = {0};
 	FLT _W[9] = {0};
@@ -931,15 +966,13 @@ void KabschCenteredScaled(LinmathQuat qout, FLT *scale, const FLT *ptsA, const F
 
 	svSVD(&C, &W, &U, &VT, SV_SVD_V_T | SV_SVD_MODIFY_A);
 
-	FLT _R[9] = {0};
-	SvMat R = svMat(3, 3, _R);
+	SV_CREATE_STACK_MAT(R, 3, 3);
 	svGEMM(&U, &VT, 1, 0, 0, &R, 0);
 
 	// Enforce RH rule
 	if (svDet(&R) < 0.) {
-		_U[2] *= -1;
-		_U[5] *= -1;
-		_U[8] *= -1;
+		for (int i = 0; i < 3; i++)
+			svMatrixSet(&U, i, 2, -svMatrixGet(&U, i, 2));
 		svGEMM(&U, &VT, 1, 0, 0, &R, 0);
 	}
 
@@ -951,7 +984,7 @@ void KabschCenteredScaled(LinmathQuat qout, FLT *scale, const FLT *ptsA, const F
 		*scale = *scale / num_pts;
 	}
 
-	quatfrommatrix33(qout, _R);
+	quatfromsvmatrix(qout, &R);
 }
 
 LINMATH_EXPORT void KabschScaled(LinmathPose *B2Atx, FLT *scale, const FLT *_ptsA, const FLT *_ptsB, int num_pts) {
@@ -1058,7 +1091,8 @@ static inline void sparse_multiply_dense_by_sparse_t_to_sym(struct SvMat *out, c
 	}
 }
 
-inline void sparse_multiply_sparse_by_dense_sym(struct SvMat *out, const struct sparse_matrix *lhs, const SvMat *rhs) {
+static inline void sparse_multiply_sparse_by_dense_sym(struct SvMat *out, const struct sparse_matrix *lhs,
+													   const SvMat *rhs) {
 	int16_t m = lhs->rows;
 	int16_t n = rhs->cols;
 	assert(lhs->cols == rhs->rows);
@@ -1095,7 +1129,7 @@ inline void sparse_multiply_sparse_by_dense_sym(struct SvMat *out, const struct 
 	}
 }
 
-inline size_t create_sparse_matrix(struct sparse_matrix *out, const struct SvMat *in) {
+static inline size_t create_sparse_matrix(struct sparse_matrix *out, const struct SvMat *in) {
 	int16_t *col_idxs = out->col_index;
 	int16_t *row_idxs = out->row_index;
 	size_t idx = 0;
@@ -1122,7 +1156,7 @@ inline size_t create_sparse_matrix(struct sparse_matrix *out, const struct SvMat
 inline void gemm_ABAt_add(struct SvMat *out, const struct SvMat *A, const struct SvMat *B, const struct SvMat *C) {
 	SV_CREATE_STACK_MAT(tmp, A->rows, B->cols);
 	svGEMM(A, B, 1, 0, 0, &tmp, 0);
-	svGEMM(&tmp, A, 1, C, 1, out, SV_GEMM_B_T);
+	svGEMM(&tmp, A, 1, C, 1, out, SV_GEMM_FLAG_B_T);
 }
 
 void matrix_ABAt_add(struct SvMat *out, const struct SvMat *A, const struct SvMat *B, const struct SvMat *C) {
@@ -1176,7 +1210,7 @@ void linmath_find_best_intersection(LinmathPoint3d pt, const struct LinmathLine3
 	}
 
 	SvMat x = svMat(3, 1, pt);
-	svSolve(&A, &B, &x, SV_SVD);
+	svSolve(&A, &B, &x, SV_INVERT_METHOD_SVD);
 }
 
 void linmath_pt_along_line(LinmathPoint3d pt, const struct LinmathLine3d *ray, FLT t) {

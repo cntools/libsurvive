@@ -1,7 +1,9 @@
 SET(SURVIVE_TESTS
         reproject
-        check_generated
+        check_generated barycentric_svd
         kalman rotate_angvel export_config)
+
+set(barycentric_svd_ADDITIONAL_SRCS ../barycentric_svd/barycentric_svd.c)
 
 IF(NOT WIN32)
     LIST(APPEND SURVIVE_TESTS watchman)
@@ -10,7 +12,7 @@ endif()
 SET(SURVIVE_TESTS_EXE)
 foreach(test ${SURVIVE_TESTS})
     list(APPEND SURVIVE_TESTS_EXE test-${test})
-    add_executable(test-${test} ${test}.c main.c)
+    add_executable(test-${test} ${test}.c main.c ${${test}_ADDITIONAL_SRCS})
     target_link_libraries(test-${test} survive ${${test}_ADDITIONAL_LIBS})
     add_test(NAME ${test} COMMAND test-${test})
     add_dependencies(test-${test} survive_plugins)
