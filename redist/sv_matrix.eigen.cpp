@@ -67,8 +67,11 @@ extern "C" int svSolve(const SvMat *_Aarr, const SvMat *_Barr, SvMat *_xarr, enu
 	auto Aarr = CONVERT_TO_EIGEN(_Aarr);
 	auto Barr = CONVERT_TO_EIGEN(_Barr);
 	auto xarr = CONVERT_TO_EIGEN(_xarr);
-	if (method == DECOMP_LU) {
+
+	if (method == SV_INVERT_METHOD_LU) {
 		xarr.noalias() = Aarr.partialPivLu().solve(Barr);
+	} else if (method == SV_INVERT_METHOD_QR) {
+		xarr.noalias() = Aarr.colPivHouseholderQr().solve(Barr);
 	} else {
 		Eigen::internal::set_is_malloc_allowed(true);
 		auto svd = Aarr.bdcSvd(

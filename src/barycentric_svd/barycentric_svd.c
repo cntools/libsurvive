@@ -174,7 +174,7 @@ void bc_svd_compute_pcs(bc_svd *self) {
 	}
 }
 
-void bc_svd_compute_L_6x10(bc_svd *self, const SvMat *ut, FLT *l_6x10) {
+static void bc_svd_compute_L_6x10(bc_svd *self, const SvMat *ut, SvMat *L_6x10) {
 	FLT dv[4][6][3];
 
 	for (int i = 0; i < 4; i++) {
@@ -194,18 +194,16 @@ void bc_svd_compute_L_6x10(bc_svd *self, const SvMat *ut, FLT *l_6x10) {
 	}
 
 	for (int i = 0; i < 6; i++) {
-		FLT *row = l_6x10 + 10 * i;
-
-		row[0] = dot(dv[0][i], dv[0][i]);
-		row[1] = 2.0f * dot(dv[0][i], dv[1][i]);
-		row[2] = dot(dv[1][i], dv[1][i]);
-		row[3] = 2.0f * dot(dv[0][i], dv[2][i]);
-		row[4] = 2.0f * dot(dv[1][i], dv[2][i]);
-		row[5] = dot(dv[2][i], dv[2][i]);
-		row[6] = 2.0f * dot(dv[0][i], dv[3][i]);
-		row[7] = 2.0f * dot(dv[1][i], dv[3][i]);
-		row[8] = 2.0f * dot(dv[2][i], dv[3][i]);
-		row[9] = dot(dv[3][i], dv[3][i]);
+		*svMatrixPtr(L_6x10, i, 0) = dot(dv[0][i], dv[0][i]);
+		*svMatrixPtr(L_6x10, i, 1) = 2.0f * dot(dv[0][i], dv[1][i]);
+		*svMatrixPtr(L_6x10, i, 2) = dot(dv[1][i], dv[1][i]);
+		*svMatrixPtr(L_6x10, i, 3) = 2.0f * dot(dv[0][i], dv[2][i]);
+		*svMatrixPtr(L_6x10, i, 4) = 2.0f * dot(dv[1][i], dv[2][i]);
+		*svMatrixPtr(L_6x10, i, 5) = dot(dv[2][i], dv[2][i]);
+		*svMatrixPtr(L_6x10, i, 6) = 2.0f * dot(dv[0][i], dv[3][i]);
+		*svMatrixPtr(L_6x10, i, 7) = 2.0f * dot(dv[1][i], dv[3][i]);
+		*svMatrixPtr(L_6x10, i, 8) = 2.0f * dot(dv[2][i], dv[3][i]);
+		*svMatrixPtr(L_6x10, i, 9) = dot(dv[3][i], dv[3][i]);
 	}
 }
 
@@ -236,136 +234,47 @@ void find_betas_approx_1(const SvMat *L_6x10, const SvMat *Rho, FLT *betas) {
 	}
 }
 
-void compute_A_and_b_gauss_newton(const FLT *l_6x10, const FLT *rho, FLT betas[4], SvMat *A, SvMat *b) {
+static void compute_A_and_b_gauss_newton(const SvMat *L_6x10, const FLT *rho, FLT betas[4], SvMat *A, SvMat *b) {
 	for (int i = 0; i < 6; i++) {
-		const FLT *rowL = l_6x10 + i * 10;
-		FLT *rowA = SV_RAW_PTR(A) + i * 4;
+		*svMatrixPtr(A, i, 0) = 2 * svMatrixGet(L_6x10, i, 0) * betas[0] + svMatrixGet(L_6x10, i, 1) * betas[1] +
+								svMatrixGet(L_6x10, i, 3) * betas[2] + svMatrixGet(L_6x10, i, 6) * betas[3];
+		*svMatrixPtr(A, i, 1) = svMatrixGet(L_6x10, i, 1) * betas[0] + 2 * svMatrixGet(L_6x10, i, 2) * betas[1] +
+								svMatrixGet(L_6x10, i, 4) * betas[2] + svMatrixGet(L_6x10, i, 7) * betas[3];
+		*svMatrixPtr(A, i, 2) = svMatrixGet(L_6x10, i, 3) * betas[0] + svMatrixGet(L_6x10, i, 4) * betas[1] +
+								2 * svMatrixGet(L_6x10, i, 5) * betas[2] + svMatrixGet(L_6x10, i, 8) * betas[3];
+		*svMatrixPtr(A, i, 3) = svMatrixGet(L_6x10, i, 6) * betas[0] + svMatrixGet(L_6x10, i, 7) * betas[1] +
+								svMatrixGet(L_6x10, i, 8) * betas[2] + 2 * svMatrixGet(L_6x10, i, 9) * betas[3];
 
-		rowA[0] = 2 * rowL[0] * betas[0] + rowL[1] * betas[1] + rowL[3] * betas[2] + rowL[6] * betas[3];
-		rowA[1] = rowL[1] * betas[0] + 2 * rowL[2] * betas[1] + rowL[4] * betas[2] + rowL[7] * betas[3];
-		rowA[2] = rowL[3] * betas[0] + rowL[4] * betas[1] + 2 * rowL[5] * betas[2] + rowL[8] * betas[3];
-		rowA[3] = rowL[6] * betas[0] + rowL[7] * betas[1] + rowL[8] * betas[2] + 2 * rowL[9] * betas[3];
-
-		svMatrixSet(b, i, 0,
-					rho[i] -
-						(rowL[0] * betas[0] * betas[0] + rowL[1] * betas[0] * betas[1] + rowL[2] * betas[1] * betas[1] +
-						 rowL[3] * betas[0] * betas[2] + rowL[4] * betas[1] * betas[2] + rowL[5] * betas[2] * betas[2] +
-						 rowL[6] * betas[0] * betas[3] + rowL[7] * betas[1] * betas[3] + rowL[8] * betas[2] * betas[3] +
-						 rowL[9] * betas[3] * betas[3]));
+		svMatrixSet(
+			b, i, 0,
+			rho[i] -
+				(svMatrixGet(L_6x10, i, 0) * betas[0] * betas[0] + svMatrixGet(L_6x10, i, 1) * betas[0] * betas[1] +
+				 svMatrixGet(L_6x10, i, 2) * betas[1] * betas[1] + svMatrixGet(L_6x10, i, 3) * betas[0] * betas[2] +
+				 svMatrixGet(L_6x10, i, 4) * betas[1] * betas[2] + svMatrixGet(L_6x10, i, 5) * betas[2] * betas[2] +
+				 svMatrixGet(L_6x10, i, 6) * betas[0] * betas[3] + svMatrixGet(L_6x10, i, 7) * betas[1] * betas[3] +
+				 svMatrixGet(L_6x10, i, 8) * betas[2] * betas[3] + svMatrixGet(L_6x10, i, 9) * betas[3] * betas[3]));
 	}
 }
 
-void qr_solve(SvMat *A, SvMat *b, SvMat *X) {
-	static int max_nr = 0;
-	static FLT *A1, *A2;
-
-	const int nr = A->rows;
-	const int nc = A->cols;
-
-	if (max_nr != 0 && max_nr < nr) {
-		free(A1);
-		free(A2);
-	}
-	if (max_nr < nr) {
-		max_nr = nr;
-		A1 = SV_MALLOC(sizeof(FLT) * nr);
-		A2 = SV_MALLOC(sizeof(FLT) * nr);
-	}
-
-	FLT *pA = SV_RAW_PTR(A), *ppAkk = pA;
-	for (int k = 0; k < nc; k++) {
-		FLT *ppAik = ppAkk, eta = fabs(*ppAik);
-		for (int i = k + 1; i < nr; i++) {
-			FLT elt = fabs(*ppAik);
-			if (eta < elt)
-				eta = elt;
-			ppAik += nc;
-		}
-
-		if (eta == 0) {
-			A1[k] = A2[k] = 0.0;
-			return;
-		} else {
-			FLT *ppAik = ppAkk, sum = 0.0, inv_eta = 1. / eta;
-			for (int i = k; i < nr; i++) {
-				*ppAik *= inv_eta;
-				sum += *ppAik * *ppAik;
-				ppAik += nc;
-			}
-			FLT sigma = sqrt(sum);
-			if (*ppAkk < 0)
-				sigma = -sigma;
-			*ppAkk += sigma;
-			A1[k] = sigma * *ppAkk;
-			A2[k] = -eta * sigma;
-			for (int j = k + 1; j < nc; j++) {
-				FLT *ppAik = ppAkk, sum = 0;
-				for (int i = k; i < nr; i++) {
-					sum += *ppAik * ppAik[j - k];
-					ppAik += nc;
-				}
-				FLT tau = sum / A1[k];
-				ppAik = ppAkk;
-				for (int i = k; i < nr; i++) {
-					ppAik[j - k] -= tau * *ppAik;
-					ppAik += nc;
-				}
-			}
-		}
-		ppAkk += nc + 1;
-	}
-
-	// b <- Qt b
-	FLT *ppAjj = pA, *pb = SV_RAW_PTR(b);
-	for (int j = 0; j < nc; j++) {
-		FLT *ppAij = ppAjj, tau = 0;
-		for (int i = j; i < nr; i++) {
-			tau += *ppAij * pb[i];
-			ppAij += nc;
-		}
-		tau /= A1[j];
-		ppAij = ppAjj;
-		for (int i = j; i < nr; i++) {
-			pb[i] -= tau * *ppAij;
-			ppAij += nc;
-		}
-		ppAjj += nc + 1;
-	}
-
-	// X = R-1 b
-	FLT *pX = SV_RAW_PTR(X);
-	pX[nc - 1] = pb[nc - 1] / A2[nc - 1];
-	for (int i = nc - 2; i >= 0; i--) {
-		FLT *ppAij = pA + i * nc + (i + 1), sum = 0;
-
-		for (int j = i + 1; j < nc; j++) {
-			sum += *ppAij * pX[j];
-			ppAij++;
-		}
-		pX[i] = (pb[i] - sum) / A2[i];
-	}
-}
-
-void gauss_newton(const SvMat *L_6x10, const SvMat *Rho, FLT betas[4]) {
+static void gauss_newton(const SvMat *L_6x10, const SvMat *Rho, FLT betas[4]) {
 	const int iterations_number = 5;
 
-	FLT a[6 * 4], b[6], x[4];
-	SvMat A = svMat(6, 4, a);
-	SvMat B = svMat(6, 1, b);
+	FLT x[4];
+	SV_CREATE_STACK_MAT(A, 6, 4);
+	SV_CREATE_STACK_MAT(B, 6, 1);
 	SvMat X = svMat(4, 1, x);
 
 	for (int k = 0; k < iterations_number; k++) {
-		compute_A_and_b_gauss_newton(SV_RAW_PTR(L_6x10), SV_RAW_PTR(Rho), betas, &A, &B);
-		qr_solve(&A, &B, &X);
-
+		compute_A_and_b_gauss_newton(L_6x10, sv_as_const_vector(Rho), betas, &A, &B);
+		svSolve(&A, &B, &X, SV_INVERT_METHOD_QR);
 		for (int i = 0; i < 4; i++)
 			betas[i] += x[i];
 	}
 }
 
-void find_betas_approx_2(const SvMat *L_6x10, const SvMat *Rho, FLT *betas) {
-	FLT l_6x3[6 * 3], b3[3];
-	SvMat L_6x3 = svMat(6, 3, l_6x3);
+static void find_betas_approx_2(const SvMat *L_6x10, const SvMat *Rho, FLT *betas) {
+	FLT b3[3];
+	SV_CREATE_STACK_MAT(L_6x3, 6, 3);
 	SvMat B3 = svMat(3, 1, b3);
 
 	for (int i = 0; i < 6; i++) {
@@ -394,7 +303,7 @@ void find_betas_approx_2(const SvMat *L_6x10, const SvMat *Rho, FLT *betas) {
 // betas10        = [B11 B12 B22 B13 B23 B33 B14 B24 B34 B44]
 // betas_approx_3 = [B11 B12 B22 B13 B23                    ]
 
-void bc_svd_find_betas_approx_3(bc_svd *self, const SvMat *L_6x10, const SvMat *Rho, FLT *betas) {
+static void bc_svd_find_betas_approx_3(bc_svd *self, const SvMat *L_6x10, const SvMat *Rho, FLT *betas) {
 	FLT l_6x5[6 * 5], b5[5];
 	SvMat L_6x5 = svMat(6, 5, l_6x5);
 	SvMat B5 = svMat(5, 1, b5);
@@ -422,7 +331,7 @@ void bc_svd_find_betas_approx_3(bc_svd *self, const SvMat *L_6x10, const SvMat *
 	betas[3] = 0.0;
 }
 
-void copy_R_and_t(const FLT R_src[3][3], const FLT t_src[3], FLT R_dst[3][3], FLT t_dst[3]) {
+static void copy_R_and_t(const FLT R_src[3][3], const FLT t_src[3], FLT R_dst[3][3], FLT t_dst[3]) {
 	for (int i = 0; i < 3; i++) {
 		for (int j = 0; j < 3; j++)
 			R_dst[i][j] = R_src[i][j];
@@ -470,7 +379,7 @@ FLT bc_svd_compute_pose(bc_svd *self, FLT R[3][3], FLT t[3]) {
 	SvMat L_6x10 = svMat(6, 10, l_6x10);
 	SvMat Rho = svMat(6, 1, rho);
 
-	bc_svd_compute_L_6x10(self, &Ut, l_6x10);
+	bc_svd_compute_L_6x10(self, &Ut, &L_6x10);
 
 	bc_svd_compute_rho(self, rho);
 
@@ -588,17 +497,6 @@ void bc_svd_estimate_R_and_t(bc_svd *self, FLT R[3][3], FLT t[3]) {
 	t[0] = pc0[0] - dot(R[0], pw0);
 	t[1] = pc0[1] - dot(R[1], pw0);
 	t[2] = pc0[2] - dot(R[2], pw0);
-}
-
-void print_pose(const FLT R[3][3], const FLT t[3]) {
-	for (unsigned i = 0; i < 3; i++) {
-		for (unsigned j = 0; j < 3; j++) {
-			printf("%g ", R[i][j]);
-		}
-		printf("%g ", t[i]);
-		printf("\n");
-	}
-	printf("\n");
 }
 
 void bc_svd_solve_for_sign(bc_svd *self) {

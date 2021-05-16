@@ -1037,7 +1037,11 @@ FLT linmath_normrand(FLT mu, FLT sigma) {
 
 #pragma GCC push_options
 #pragma GCC optimize("O3")
-#define RM_IDX(row, col, cols) (col + (row * cols))
+#ifndef SV_MATRIX_IS_COL_MAJOR
+#define RM_IDX(row, col, stride) (col + (row * stride))
+#else
+#define RM_IDX(row, col, stride) (row + (col * stride))
+#endif
 
 #ifdef _MSC_VER
 #define RESTRICT_KEYWORD
@@ -1068,8 +1072,8 @@ static inline void sparse_multiply_dense_by_sparse_t_to_sym(struct SvMat *out, c
 	const int16_t *RESTRICT_KEYWORD row_index = rhs->row_index;
 	const int16_t *RESTRICT_KEYWORD col_index = rhs->col_index;
 	const FLT *RESTRICT_KEYWORD data = rhs->data;
-	int16_t out_cols = out->cols;
-	int_fast16_t rhs_cols = rhs->cols;
+	int16_t out_stride = sv_stride(out);
+	int_fast16_t rhs_stride = sv_stride(lhs);
 
 	for (int i = 0; i < n; i++) {
 		int row_start = row_index[i];
@@ -1080,12 +1084,12 @@ static inline void sparse_multiply_dense_by_sparse_t_to_sym(struct SvMat *out, c
 			FLT v = data[z]; // B(i, p)
 
 			for (int j = i; j < m; j++) {
-				FLT r = A[RM_IDX(j, p, rhs_cols)]; // A(j, p)
+				FLT r = A[RM_IDX(j, p, rhs_stride)]; // A(j, p)
 
 				FLT add = v * r;
-				C[RM_IDX(i, j, out_cols)] += add;
+				C[RM_IDX(i, j, out_stride)] += add;
 				if (i != j)
-					C[RM_IDX(j, i, out_cols)] += add;
+					C[RM_IDX(j, i, out_stride)] += add;
 			}
 		}
 	}
@@ -1109,8 +1113,8 @@ static inline void sparse_multiply_sparse_by_dense_sym(struct SvMat *out, const 
 	const int16_t *RESTRICT_KEYWORD row_index = lhs->row_index;
 	const int16_t *RESTRICT_KEYWORD col_index = lhs->col_index;
 	const FLT *RESTRICT_KEYWORD data = lhs->data;
-	int16_t out_cols = out->cols;
-	int_fast16_t rhs_cols = rhs->cols;
+	int16_t out_stride = sv_stride(out);
+	int_fast16_t rhs_stride = sv_stride(rhs);
 
 	for (int i = 0; i < m; i++) {
 		int row_start = row_index[i];
@@ -1121,9 +1125,9 @@ static inline void sparse_multiply_sparse_by_dense_sym(struct SvMat *out, const 
 
 				int p = col_index[z];
 				FLT v = data[z];				   // A(i, p)
-				FLT r = B[RM_IDX(p, j, rhs_cols)]; // B(p, j)
+				FLT r = B[RM_IDX(p, j, rhs_stride)]; // B(p, j)
 
-				C[RM_IDX(i, j, out_cols)] += v * r;
+				C[RM_IDX(i, j, out_stride)] += v * r;
 			}
 		}
 	}
@@ -1141,7 +1145,7 @@ static inline size_t create_sparse_matrix(struct sparse_matrix *out, const struc
 	for (int i = 0; i < in->rows; i++) {
 		*(row_idxs++) = idx;
 		for (int j = 0; j < in->cols; j++) {
-			FLT v = input[RM_IDX(i, j, in->cols)];
+			FLT v = input[RM_IDX(i, j, sv_stride(in))];
 			if (fabs(v) > 1e-10) {
 				idx++;
 				*(col_idxs++) = j;

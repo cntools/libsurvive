@@ -344,7 +344,7 @@ SURVIVE_LOCAL_ONLY int svSolve(const SvMat *Aarr, const SvMat *Barr, SvMat *xarr
 
 		// free(ipiv);
 		// svReleaseMat(&a_ws);
-	} else if (method == SV_INVERT_METHOD_SVD) {
+	} else if (method == SV_INVERT_METHOD_SVD || method == SV_INVERT_METHOD_QR) {
 
 #ifdef DEBUG_PRINT
 		printf("Solve |b - A * x|:\n");
@@ -386,6 +386,8 @@ SURVIVE_LOCAL_ONLY int svSolve(const SvMat *Aarr, const SvMat *Barr, SvMat *xarr
 		print_mat(Barr);
 #endif
 		assert(inf == 0);
+	} else if (false) {
+
 	} else {
 		assert("Unknown method to solve" && 0);
 	}

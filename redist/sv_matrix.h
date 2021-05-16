@@ -44,6 +44,7 @@ enum svInvertMethod {
 	SV_INVERT_METHOD_UNKNOWN = 0,
 	SV_INVERT_METHOD_SVD = 1,
 	SV_INVERT_METHOD_LU = 2,
+	SV_INVERT_METHOD_QR = 3,
 };
 
 double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svInvertMethod method);
@@ -84,7 +85,14 @@ double svDet(const SvMat *M);
 
 #define SV_CREATE_STACK_MAT(name, rows, cols)                                                                          \
 	FLT *_##name = alloca((rows) * (cols) * sizeof(FLT));                                                              \
+	memset(_##name, 0, (rows) * (cols) * sizeof(FLT));                                                                 \
 	SvMat name = svMat(rows, cols, _##name);
+
+#ifndef SV_MATRIX_IS_COL_MAJOR
+static inline int sv_stride(const struct SvMat *m) { return m->rows; }
+#else
+static inline int sv_stride(const struct SvMat *m) { return m->cols; }
+#endif
 
 static inline void sv_set_zero(struct SvMat *m) { memset(SV_FLT_PTR(m), 0, sizeof(FLT) * m->rows * m->cols); }
 static inline void sv_set_constant(struct SvMat *m, FLT v) {

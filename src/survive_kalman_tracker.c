@@ -24,14 +24,6 @@ static SurviveKalmanModel copy_model(const FLT *src, size_t state_size) {
 	return rtn;
 }
 
-static void copy_matrix(SvMat *dst, const FLT *src, size_t src_stride) {
-	for (int i = 0; i < dst->cols; i++) {
-		for (int j = 0; j < dst->rows; j++) {
-			svMatrixSet(dst, j, i, src[i + j * src_stride]);
-		}
-	}
-}
-
 static inline FLT survive_kalman_tracker_position_var2(SurviveKalmanTracker *tracker, FLT *var_diag, size_t cnt) {
 	FLT _var_diag[SURVIVE_MODEL_MAX_STATE_CNT];
 	if (var_diag == 0)
@@ -107,7 +99,7 @@ static bool map_light_data(void *user, const struct SvMat *Z, const struct SvMat
 	assert(ctx->bsd[pdl->lh].PositionSet);
 
 	const SurvivePose world2lh = InvertPoseRtn(&ctx->bsd[pdl->lh].Pose);
-	const SurvivePose obj2world = *(SurvivePose *)SV_FLT_PTR(x_t);
+	const SurvivePose obj2world = *(SurvivePose *)sv_as_const_vector(x_t);
 
 	const FLT *ptInObj = &so->sensor_locations[pdl->sensor_id * 3];
 	FLT h_x = project_fn(&obj2world, ptInObj, &world2lh, &ctx->bsd[pdl->lh].fcal[axis]);
@@ -199,7 +191,7 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 	}
 	SV_VERBOSE(600, "Resultant state %f (%f) (lightcap %2d) (error %e, %e)  " Point16_format, time, delta, data->lh,
 			   tracker->light_residuals[data->lh], tracker->light_residuals_all,
-			   LINMATH_VEC16_EXPAND(SV_FLT_PTR(&tracker->model.state)));
+			   LINMATH_VEC16_EXPAND(sv_as_const_vector(&tracker->model.state)));
 }
 
 struct map_imu_data_ctx {
@@ -230,14 +222,13 @@ static bool map_imu_data(void *user, const struct SvMat *Z, const struct SvMat *
 	SV_VERBOSE(600, "X     " Point16_format, LINMATH_VEC16_EXPAND(sv_as_const_vector(x_t)))
 	SV_VERBOSE(600, "Z     " Point6_format, LINMATH_VEC6_EXPAND(sv_as_const_vector(Z)))
 
-	// SurviveKalmanModel *s = (SurviveKalmanModel *)SV_FLT_PTR(x_t);
 	SurviveKalmanModel s = copy_model(sv_as_const_vector(x_t), x_t->rows);
 	gen_imu_predict(h_x, &s);
 	assert(H_k->rows * H_k->cols == H_k->cols * 6);
 
 	FLT _H_k[6 * SURVIVE_MODEL_MAX_STATE_CNT] = {0};
 	gen_imu_predict_jac_kalman_model(_H_k, &s);
-	copy_matrix(H_k, _H_k, SURVIVE_MODEL_MAX_STATE_CNT);
+	sv_copy_in_row_major(H_k, _H_k, SURVIVE_MODEL_MAX_STATE_CNT);
 
 	SV_VERBOSE(600, "h_x   " Point6_format, LINMATH_VEC6_EXPAND(h_x))
 	subnd(sv_as_vector(y), sv_as_const_vector(Z), h_x, Z->rows);
@@ -351,7 +342,7 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 		tracker->last_imu_time = time;
 
 		SV_VERBOSE(600, "Resultant state %f (imu %e) " Point19_format, time, tracker->imu_residuals,
-				   LINMATH_VEC19_EXPAND(SV_FLT_PTR(&tracker->model.state)));
+				   LINMATH_VEC19_EXPAND(sv_as_const_vector(&tracker->model.state)));
 		normalize_model(tracker);
 	}
 
@@ -375,7 +366,7 @@ void survive_kalman_tracker_predict(const SurviveKalmanTracker *tracker, FLT t, 
 static void model_q_fn(void *user, FLT t, const SvMat *x, struct SvMat *q_out) {
 	SurviveKalmanTracker *tracker = (SurviveKalmanTracker *)user;
 	size_t state_cnt = x->rows;
-	SurviveKalmanModel state = copy_model(SV_FLT_PTR(x), state_cnt);
+	SurviveKalmanModel state = copy_model(sv_as_const_vector(x), state_cnt);
 
 	/*
 	 * Due to the rotational terms in the model, the process noise covariance is complicated. It mixes a XYZ third order
@@ -475,15 +466,15 @@ static void model_q_fn(void *user, FLT t, const SvMat *x, struct SvMat *q_out) {
 static void model_predict(FLT t, const survive_kalman_state_t *k, const SvMat *f_in, SvMat *f_out) {
 	// assert(t > 0);
 
-	SurviveKalmanModel s_in = copy_model(SV_FLT_PTR(f_in), f_in->rows);
+	SurviveKalmanModel s_in = copy_model(sv_as_const_vector(f_in), f_in->rows);
 	SurviveKalmanModel s_out = {0};
 	gen_kalman_model_predict(s_out.Pose.Pos, t, &s_in);
 
-	memcpy(SV_FLT_PTR(f_out), s_out.Pose.Pos, f_in->rows * sizeof(FLT));
+	memcpy(sv_as_vector(f_out), s_out.Pose.Pos, f_in->rows * sizeof(FLT));
 }
 
 static void model_predict_jac(FLT t, struct SvMat *f_out, const struct SvMat *x0) {
-	SurviveKalmanModel s = copy_model(SV_FLT_PTR(x0), x0->rows);
+	SurviveKalmanModel s = copy_model(sv_as_const_vector(x0), x0->rows);
 
 	size_t state_cnt = x0->rows;
 	if (t == 0) {
@@ -496,14 +487,13 @@ static void model_predict_jac(FLT t, struct SvMat *f_out, const struct SvMat *x0
 }
 
 static FLT integrate_pose(SurviveKalmanTracker *tracker, FLT time, const SurvivePose *pose, const FLT *R) {
-	FLT _H[7 * SURVIVE_MODEL_MAX_STATE_CNT] = {0};
+	SV_CREATE_STACK_MAT(H, 7, tracker->model.state_cnt);
 
 	size_t state_cnt = tracker->model.state_cnt;
 	for (int i = 0; i < 7; i++) {
-		_H[i + i * state_cnt] = 1.;
+		svMatrixSet(&H, i, i, 1);
 	}
 
-	SvMat H = svMat(7, tracker->model.state_cnt, _H);
 	SvMat Zp = svMat(7, 1, (void *)pose->Pos);
 	FLT rtn = 0;
 
