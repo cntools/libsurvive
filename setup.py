@@ -1,3 +1,4 @@
+import platform
 from setuptools import dist, find_packages
 dist.Distribution().fetch_build_eggs(['wheel', 'cmake_setuptools'])
 
@@ -15,6 +16,13 @@ with open(os.path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 version = subprocess.check_output(["git", "describe", "--tags", "--long"]).strip().decode('utf-8').replace("-", ".")[1:]
 version = version[:version.rfind("g")-1]
 
+cmake_args=['-DPYTHON_GENERATED_DIR="'+ os.path.dirname(os.path.abspath(__file__))+'/bindings/python/pysurvive/"',
+            "-DBUILD_APPLICATIONS=OFF",
+            "-DLIB_INSTALL_DIR=bindings/python/pysurvive/"]
+
+if platform.system() != 'Windows':
+      cmake_args.append('-DUSE_EIGEN=ON')
+
 setup(name='pysurvive',
       version=version,
       long_description=long_description,
@@ -25,8 +33,5 @@ setup(name='pysurvive',
       package_dir={'pysurvive': 'bindings/python/pysurvive'},
       include_package_data=False,
       license='MIT',
-      cmake_args=['-DPYTHON_GENERATED_DIR="'+ os.path.dirname(os.path.abspath(__file__))+'/bindings/python/pysurvive/"',
-				  "-DBUILD_APPLICATIONS=OFF",
-                  "-DUSE_EIGEN=ON",
-                  "-DLIB_INSTALL_DIR=bindings/python/pysurvive/"]
+      cmake_args=cmake_args
       )

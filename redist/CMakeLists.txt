@@ -22,7 +22,6 @@ endif()
 IF(USE_OPENCV)
 	SET(SURVIVE_MATRIX_SRCS sv_matrix.h)
 ELSEIF(USE_EIGEN)
-    find_package (Eigen3 3.3 REQUIRED NO_MODULE)
     SET(SURVIVE_MATRIX_SRCS sv_matrix.h sv_matrix.c sv_matrix.eigen.cpp)
 ELSE()
 	SET(SURVIVE_MATRIX_SRCS sv_matrix.blas.c sv_matrix.c sv_matrix.h)
@@ -72,12 +71,18 @@ if(LAPACKE_FILE)
   add_definitions(-DLAPACKE_FOLDER)
 endif()
 
-message("Using blas backend ${BLAS_BACKEND}")
+if(USE_EIGEN)
+    message("Using eigen backend")
+else()
+    message("Using blas backend ${BLAS_BACKEND}")
+endif()
 add_library(survive_matrix STATIC ${SURVIVE_MATRIX_SRCS})
 set_target_properties(survive_matrix PROPERTIES FOLDER "libraries")
 
 IF(USE_EIGEN)
-    target_link_libraries(survive_matrix Eigen3::Eigen)
+  add_definitions     ( ${EIGEN3_DEFINITIONS} )
+  include_directories ( ${EIGEN3_INCLUDE_DIRS} )
+
     target_compile_options(survive_matrix PRIVATE -fno-exceptions -fPIC)
 ENDIF()
 
@@ -91,7 +96,7 @@ elseif(WIN32)
   endif(CMAKE_SIZEOF_VOID_P MATCHES 8)
 
   include_directories(${CMAKE_BINARY_DIR}/packages/OpenBLAS.0.2.14.1/lib/native/include/)
-  target_link_libraries(SURVIVE_MATRIX
+  target_link_libraries(survive_matrix
     ${CMAKE_BINARY_DIR}/packages/OpenBLAS.0.2.14.1/lib/native/lib/${WIN_PLATFORM}/libopenblas.dll.a
     )
 
@@ -102,7 +107,7 @@ elseif(WIN32)
     find_program(NUGET nuget HINTS "${CMAKE_BINARY_DIR}" )
   endif()
   message("Nuget is found at ${NUGET}")
-  add_custom_command(TARGET SURVIVE_MATRIX PRE_BUILD COMMAND ${NUGET} restore ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.sln COMMENT "Restoring nuget dependencies")
+  add_custom_command(TARGET survive_matrix PRE_BUILD COMMAND ${NUGET} restore ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.sln COMMENT "Restoring nuget dependencies")
 ENDIF()
 
 IF (ENABLE_TESTS)

@@ -26,6 +26,13 @@ option(USE_OPENCV "Use opencv proper for math operations" OFF)
 option(USE_EIGEN "Use eigen for math operations" OFF)
 option(USE_COLUMN_MAJOR_MATRICES "Use column major matrices for math operations" OFF)
 
+find_package (Eigen3 3 NO_MODULE)
+if(NOT EIGEN3_FOUND)
+    message(WARNING "Could not find eigen; falling back to other backend")
+    set(USE_EIGEN OFF)
+endif()
+
+
 IF(USE_OPENCV)
     add_compile_definitions(USE_OPENCV)
 ELSEIF(USE_EIGEN)
