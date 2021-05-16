@@ -24,12 +24,16 @@ option(USE_HEX_FLOAT_PRINTF "Use hex floats when recording" OFF)
 
 option(USE_OPENCV "Use opencv proper for math operations" OFF)
 option(USE_EIGEN "Use eigen for math operations" OFF)
-
+option(USE_COLUMN_MAJOR_MATRICES "Use column major matrices for math operations" OFF)
 
 IF(USE_OPENCV)
     add_compile_definitions(USE_OPENCV)
 ELSEIF(USE_EIGEN)
     add_compile_definitions(USE_EIGEN)
+
+    if(USE_COLUMN_MAJOR_MATRICES)
+        add_compile_definitions(SV_MATRIX_IS_COL_MAJOR)
+    endif()
 ELSE()
 ENDIF()
 
@@ -97,7 +101,9 @@ option(BUILD_APPLICATIONS "Build the default libsurvive applications" ${NOT_CORE
 #link_directories(${CMAKE_INSTALL_PREFIX}/lib)
 
 IF(UNIX)
-	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=gnu99 -rdynamic -Werror=incompatible-pointer-types -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces -Werror=implicit-function-declaration -Werror=return-type -fvisibility=hidden -Werror=vla -fno-math-errno")
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=gnu99 -Werror=incompatible-pointer-types -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces -Werror=implicit-function-declaration -Werror=return-type -fvisibility=hidden -Werror=vla -fno-math-errno")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -rdynamic")
+
 	if(ENABLE_WARNINGS_AS_ERRORS)
 	  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror")
 	endif()

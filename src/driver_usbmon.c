@@ -557,7 +557,7 @@ void *pcap_thread_fn(void *_driver) {
 		case 0:
 			goto continue_loop;
 		case 1: {
-			const uint8_t *pktData = (uint8_t *)&usbp[1];
+			const uint8_t *pktData = 0;
 			if (driver->datalink == DLT_USBPCAP) {
 				pktData = fill_usb_header(hdr, pkthdr, &usbpcap_translation);
 				usbp = &usbpcap_translation;

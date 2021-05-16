@@ -840,7 +840,7 @@ bool survive_kalman_tracker_check_valid(SurviveKalmanTracker *tracker) {
 		(SurviveSensorActivations_stationary_time(&tracker->so->activations) < tracker->so->timebase_hz / 10);
 
 	for (int i = 0; i < 3; i++) {
-		isValid &= fabsf(tracker->state.Pose.Pos[i]) < 20;
+		isValid &= fabsf((float)tracker->state.Pose.Pos[i]) < 20;
 	}
 
 	if (!isValid) {

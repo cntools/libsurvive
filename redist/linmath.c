@@ -607,7 +607,7 @@ inline void axisanglerotateabout(LinmathAxisAngle out, const LinmathAxisAngle a0
 }
 inline void quatrotateabout(LinmathQuat qout, const LinmathQuat q1, const LinmathQuat q2) {
 	// NOTE: Does not normalize
-	LinmathQuat rtn;
+	LinmathQuat rtn = {0};
 	FLT *p = qout;
 	bool aliased = q1 == qout || q2 == qout;
 	if (aliased) {
@@ -1035,8 +1035,6 @@ FLT linmath_normrand(FLT mu, FLT sigma) {
 	return z0 * sigma + mu;
 }
 
-#pragma GCC push_options
-#pragma GCC optimize("O3")
 #ifndef SV_MATRIX_IS_COL_MAJOR
 #define RM_IDX(row, col, stride) (col + (row * stride))
 #else
@@ -1138,6 +1136,7 @@ static inline size_t create_sparse_matrix(struct sparse_matrix *out, const struc
 	int16_t *row_idxs = out->row_index;
 	size_t idx = 0;
 	FLT *data = out->data;
+	memset(data, 0, sizeof(FLT) * out->rows * out->cols);
 	memset(out->row_index, -1, sizeof(uint16_t) * (out->rows + 1));
 	memset(out->col_index, -1, sizeof(uint16_t) * (out->rows * out->cols));
 
@@ -1171,8 +1170,6 @@ void matrix_ABAt_add(struct SvMat *out, const struct SvMat *A, const struct SvMa
 	sparse_multiply_sparse_by_dense_sym(&tmp, &s, B);
 	sparse_multiply_dense_by_sparse_t_to_sym(out, &tmp, &s, C);
 }
-
-#pragma GCC pop_options
 
 void linmath_get_line_dir(LinmathPoint3d dir, const struct LinmathLine3d *ray) {
 	sub3d(dir, ray->b, ray->a);

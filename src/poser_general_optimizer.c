@@ -75,7 +75,7 @@ static void set_position(SurviveObject *so, uint32_t timecode, const SurvivePose
 	set_position_t *user = _user;
 	assert(user->hasInfo == false);
 	for (int i = 0; i < 3; i++) {
-		if (abs(new_pose->Pos[i]) > 20.) {
+		if (abs((int)new_pose->Pos[i]) > 20.) {
 			SurviveContext *ctx = so->ctx;
 			SV_WARN("Set position has invalid pose " SurvivePose_format, SURVIVE_POSE_EXPAND(*new_pose));
 			return;

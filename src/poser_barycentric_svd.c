@@ -21,7 +21,6 @@ typedef struct {
 	bc_svd bc;
 } PoserDataSVD;
 
-typedef FLT LinmathPoint2d[2];
 static void survive_fill_m(void *user, FLT *eq, int axis, FLT angle) {
 	SurviveObject *so = user;
 

@@ -95,7 +95,7 @@ TEST(BarycentricSVD, Basic) {
 	// assert(err <= 1e-5);
 
 	LinmathQuat tmp;
-	quatfrommatrix33(tmp, (const double *)&R);
+	quatfrommatrix33(tmp, (const FLT *)&R);
 
 	// Typical camera applications have Z facing forward; the vive is contrarian and has Z going out of the
 	// back of the lighthouse. Think of this as a rotation on the Y axis a full 180 degrees -- the quat for that is

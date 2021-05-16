@@ -48,7 +48,6 @@ extern "C" {
 
 #define SURVIVE_SV_F SV_32F
 #define SV_FLT SV_32F
-#define SV_RAW_PTR(X) ((X)->data.fl)
 #define FLT_POW powf
 
 #else
@@ -66,8 +65,9 @@ extern "C" {
 #define FLT_STRTO strtod
 #define SURVIVE_SV_F SV_64F
 #define SV_FLT SV_64F
-#define SV_RAW_PTR(X) ((X)->data)
 #endif
+
+#define SV_RAW_PTR(X) ((X)->data)
 
 #ifdef TCC
 #define FLT_FABS(x) (((x) < 0) ? (-(x)) : (x))

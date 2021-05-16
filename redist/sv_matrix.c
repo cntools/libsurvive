@@ -25,7 +25,6 @@
 
 #define SURVIVE_SV_F SV_32F
 #define SV_FLT SV_32F
-#define SV_RAW_PTR(X) ((X)->data.fl)
 #define FLT_POW powf
 
 #else
@@ -42,8 +41,9 @@
 #define FLT_FABS__ fabs
 #define FLT_STRTO strtod
 #define SURVIVE_SV_F SV_64F
-#define SV_RAW_PTR(X) ((X)->data)
 #endif
+
+#define SV_RAW_PTR(X) ((X)->data)
 
 #define SV_Error(code, msg) assert(0 && msg); // cv::error( code, msg, SV_Func, __FILE__, __LINE__ )
 SURVIVE_LOCAL_ONLY SvMat *svCloneMat(const SvMat *mat) {

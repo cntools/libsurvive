@@ -450,7 +450,7 @@ void bc_svd_estimate_R_and_t(bc_svd *self, FLT R[3][3], FLT t[3]) {
 		pw0[j] /= self->setup.obj_cnt;
 	}
 
-	FLT abt[3 * 3] = {0}, abt_d[3], abt_u[3 * 3], abt_v[3 * 3];
+	FLT abt[3 * 3] = {0}, abt_d[3] = {0}, abt_u[3 * 3] = {0}, abt_v[3 * 3] = {0};
 	SvMat ABt = svMat(3, 3, abt);
 	SvMat ABt_D = svMat(3, 1, abt_d);
 	SvMat ABt_U = svMat(3, 3, abt_u);

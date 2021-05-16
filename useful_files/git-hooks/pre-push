@@ -2,6 +2,34 @@
 set -e
 
 ROOT=`git rev-parse --show-toplevel`
+
+cd $ROOT
+mkdir -p bin_float
+cd bin_float
+cmake -DUSE_ASAN=ON -DENABLE_WARNINGS_AS_ERRORS=ON -DENABLE_TESTS=ON -DUSE_SINGLE_PRECISION=On -DHAVE_FOPENCOOKIE=ON ..
+make -j4 
+make -j4 run_all_tests 
+
+cd $ROOT
+mkdir -p bin_msan
+cd bin_msan
+CC=clang-11 CXX=clang++-11 cmake -DUSE_MSAN=ON -DENABLE_WARNINGS_AS_ERRORS=ON -DENABLE_TESTS=ON -DHAVE_FOPENCOOKIE=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
+make -j4 run_all_tests
+
+cd $ROOT
+mkdir -p bin_eigen
+cd bin_eigen
+cmake -DUSE_ASAN=ON -DENABLE_WARNINGS_AS_ERRORS=ON -DENABLE_TESTS=ON -DUSE_EIGEN=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
+make -j4 
+make -j4 run_all_tests 
+
+cd $ROOT
+mkdir -p bin_eigen_colmajor
+cd bin_eigen_colmajor
+cmake -DUSE_ASAN=ON -DENABLE_WARNINGS_AS_ERRORS=ON -DENABLE_TESTS=ON -DUSE_EIGEN=ON -DUSE_COLUMN_MAJOR_MATRICES=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
+make -j4 
+make -j4 run_all_tests 
+
 cd $ROOT
 mkdir -p bin
 cd bin
@@ -13,14 +41,6 @@ mkdir -p bin_hidapi
 cd bin_hidapi
 cmake -DUSE_ASAN=ON -DENABLE_WARNINGS_AS_ERRORS=ON -DENABLE_TESTS=ON -DUSE_HIDAPI=On -DHAVE_FOPENCOOKIE=ON ..
 make -j4 run_all_tests
-
-
-cd $ROOT
-mkdir -p bin_float
-cd bin_float
-cmake -DUSE_ASAN=ON -DENABLE_WARNINGS_AS_ERRORS=ON -DENABLE_TESTS=ON -DUSE_SINGLE_PRECISION=On -DHAVE_FOPENCOOKIE=ON ..
-make -j4 
-make -j4 run_all_tests 
 
 cd $ROOT
 make

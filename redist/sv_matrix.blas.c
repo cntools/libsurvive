@@ -43,6 +43,7 @@ static size_t mat_size_bytes(const SvMat *mat) { return (size_t)sizeof(FLT) * ma
 #define LAPACKE_getri LAPACKE_sgetri
 #define LAPACKE_gelss LAPACKE_sgelss
 #define LAPACKE_gesvd LAPACKE_sgesvd
+#define LAPACKE_gesvd_work LAPACKE_sgesvd_work
 #define LAPACKE_getri_work LAPACKE_sgetri_work
 #define LAPACKE_ge_trans LAPACKE_sge_trans
 #else
@@ -53,6 +54,7 @@ static size_t mat_size_bytes(const SvMat *mat) { return (size_t)sizeof(FLT) * ma
 #define LAPACKE_getri LAPACKE_dgetri
 #define LAPACKE_gelss LAPACKE_dgelss
 #define LAPACKE_gesvd LAPACKE_dgesvd
+#define LAPACKE_gesvd_work LAPACKE_dgesvd_work
 #define LAPACKE_getri_work LAPACKE_dgetri_work
 #define LAPACKE_ge_trans LAPACKE_dge_trans
 #endif
@@ -202,6 +204,47 @@ SURVIVE_LOCAL_ONLY void svMulTransposed(const SvMat *src, SvMat *dst, int order,
 	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
 	SvMat name = svMat(rows, cols, _##name);
 
+static lapack_int LAPACKE_gesvd_static_alloc(int matrix_layout, char jobu, char jobvt, lapack_int m, lapack_int n,
+											 FLT *a, lapack_int lda, FLT *s, FLT *u, lapack_int ldu, FLT *vt,
+											 lapack_int ldvt, FLT *superb) {
+	lapack_int info = 0;
+	lapack_int lwork = -1;
+	FLT *work = NULL;
+	FLT work_query;
+	lapack_int i;
+	if (matrix_layout != LAPACK_COL_MAJOR && matrix_layout != LAPACK_ROW_MAJOR) {
+		LAPACKE_xerbla("LAPACKE_dgesvd", -1);
+		return -1;
+	}
+
+	/* Query optimal working array(s) size */
+	info = LAPACKE_gesvd_work(matrix_layout, jobu, jobvt, m, n, a, lda, s, u, ldu, vt, ldvt, &work_query, lwork);
+	if (info != 0) {
+		goto exit_level_0;
+	}
+	lwork = (lapack_int)work_query;
+	/* Allocate memory for work arrays */
+	work = (FLT *)alloca(sizeof(FLT) * lwork);
+	memset(work, 0, sizeof(FLT) * lwork);
+
+	if (work == NULL) {
+		info = LAPACK_WORK_MEMORY_ERROR;
+		goto exit_level_0;
+	}
+	/* Call middle-level interface */
+	info = LAPACKE_gesvd_work(matrix_layout, jobu, jobvt, m, n, a, lda, s, u, ldu, vt, ldvt, work, lwork);
+	/* Backup significant data from working array(s) */
+	for (i = 0; i < MIN(m, n) - 1; i++) {
+		superb[i] = work[i + 1];
+	}
+
+exit_level_0:
+	if (info == LAPACK_WORK_MEMORY_ERROR) {
+		LAPACKE_xerbla("LAPACKE_dgesvd", info);
+	}
+	return info;
+}
+
 static inline lapack_int LAPACKE_getri_static_alloc(int matrix_layout, lapack_int n, FLT *a, lapack_int lda,
 													const lapack_int *ipiv) {
 	lapack_int info = 0;
@@ -220,6 +263,7 @@ static inline lapack_int LAPACKE_getri_static_alloc(int matrix_layout, lapack_in
 	lwork = (lapack_int)work_query;
 	/* Allocate memory for work arrays */
 	work = (FLT *)alloca(sizeof(FLT) * lwork);
+	memset(work, 0, sizeof(FLT) * lwork);
 	if (work == NULL) {
 		info = LAPACK_WORK_MEMORY_ERROR;
 		goto exit_level_0;
@@ -369,6 +413,8 @@ SURVIVE_LOCAL_ONLY int svSolve(const SvMat *Aarr, const SvMat *Barr, SvMat *xarr
 		// FLT *S = malloc(sizeof(FLT) * MIN(arows, acols));
 		FLT rcond = -1;
 		lapack_int *rank = alloca(sizeof(lapack_int) * MIN(arows, acols));
+		// memset(rank, 0, sizeof(lapack_int) * MIN(arows, acols));
+
 		// lapack_int *rank = malloc(sizeof(lapack_int) * MIN(arows, acols));
 		lapack_int inf = LAPACKE_gelss(LAPACK_ROW_MAJOR, arows, acols, xcols, (aCpy), acols, SV_RAW_PTR(xCpy), xcols, S,
 									   rcond, rank);
@@ -413,6 +459,17 @@ SURVIVE_LOCAL_ONLY void svTranspose(const SvMat *M, SvMat *dst) {
 	}
 }
 
+#if defined(__has_feature)
+#if __has_feature(memory_sanitizer)
+#define MEMORY_SANITIZER_IGNORE __attribute__((no_sanitize("memory")))
+#endif
+#endif
+#ifndef MEMORY_SANITIZER_IGNORE
+#define MEMORY_SANITIZER_IGNORE
+#endif
+
+#define CALLOCA(size) memset(alloca(size), 0, size)
+
 SURVIVE_LOCAL_ONLY void svSVD(SvMat *aarr, SvMat *warr, SvMat *uarr, SvMat *varr, enum svSVDFlags flags) {
 	char jobu = 'A';
 	char jobvt = 'A';
@@ -428,21 +485,18 @@ SURVIVE_LOCAL_ONLY void svSVD(SvMat *aarr, SvMat *warr, SvMat *uarr, SvMat *varr
 	if (varr == 0)
 		jobvt = 'N';
 
-	FLT *pw, *pu, *pv;
 	lapack_int arows = aarr->rows, acols = aarr->cols;
 
-	pw = warr ? SV_RAW_PTR(warr) : (FLT *)alloca(sizeof(FLT) * arows * acols);
-	pu = uarr ? SV_RAW_PTR(uarr) : (FLT *)alloca(sizeof(FLT) * arows * arows);
-	pv = varr ? SV_RAW_PTR(varr) : (FLT *)alloca(sizeof(FLT) * acols * acols);
+	FLT *pw = warr ? SV_RAW_PTR(warr) : (FLT *)CALLOCA(sizeof(FLT) * arows * acols);
+	FLT *pu = uarr ? SV_RAW_PTR(uarr) : (FLT *)CALLOCA(sizeof(FLT) * arows * arows);
+	FLT *pv = varr ? SV_RAW_PTR(varr) : (FLT *)CALLOCA(sizeof(FLT) * acols * acols);
 
 	lapack_int ulda = uarr ? uarr->cols : acols;
 	lapack_int plda = varr ? varr->cols : acols;
 
-	FLT *superb = alloca(sizeof(FLT) * MIN(arows, acols));
-	inf = LAPACKE_gesvd(LAPACK_ROW_MAJOR, jobu, jobvt, arows, acols, SV_RAW_PTR(aarr), acols, pw, pu, ulda, pv, plda,
-						superb);
-
-	// free(superb);
+	FLT *superb = CALLOCA(sizeof(FLT) * MIN(arows, acols));
+	inf = LAPACKE_gesvd_static_alloc(LAPACK_ROW_MAJOR, jobu, jobvt, arows, acols, SV_RAW_PTR(aarr), acols, pw, pu, ulda,
+									 pv, plda, superb);
 
 	switch (inf) {
 	case -6:

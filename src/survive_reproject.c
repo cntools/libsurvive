@@ -5,8 +5,8 @@
 #include <math.h>
 #include <survive_reproject.h>
 
-#pragma GCC push_options
-#pragma GCC optimize("O3")
+#include "force_O3.h"
+
 #ifdef BUILD_LH1_SUPPORT
 #include "generated/survive_reproject.generated.h"
 #endif
@@ -87,8 +87,6 @@ void survive_apply_bsd_calibration(const SurviveContext *ctx, int lh, const Surv
 	out[0] = in[0] + cal[0].phase;
 	out[1] = in[1] + cal[1].phase;
 }
-
-#pragma GCC pop_options
 
 const survive_reproject_model_t SURVIVE_EXPORT survive_reproject_model = {
 #ifdef BUILD_LH1_SUPPORT
