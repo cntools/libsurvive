@@ -83,8 +83,8 @@ LOCAL_SRC_FILES := \
 ifeq ($(SURVIVE_MATH_BACKEND),eigen)
     LOCAL_HEADER_LIBRARIES := libeigen
     LOCAL_SRC_FILES += \
-        redist/minimal_opencv.c \
-        redist/minimal_opencv.eigen.cpp
+        redist/sv_matrix.c \
+        redist/sv_matrix.eigen.cpp
 endif
 
 ifneq ($(TARGET_SURVIVE_CONFIG_PATH),)
