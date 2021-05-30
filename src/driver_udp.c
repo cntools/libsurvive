@@ -18,7 +18,7 @@
 #include "survive_default_devices.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <strings.h>
 #include <survive.h>
 #include <sys/types.h>
 #include <time.h>
