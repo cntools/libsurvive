@@ -27,7 +27,7 @@ option(DOWNLOAD_EIGEN "Download eigen if it isn't installed on the system" OFF)
 option(USE_EIGEN "Use eigen for math operations" DOWNLOAD_EIGEN)
 option(USE_COLUMN_MAJOR_MATRICES "Use column major matrices for math operations" OFF)
 
-find_package (Eigen3 3 NO_MODULE)
+find_package (Eigen3 3 NO_MODULE NO_CMAKE_FIND_ROOT_PATH)
 if(NOT EIGEN3_FOUND)
   if(DOWNLOAD_EIGEN)
     find_program(GIT git)

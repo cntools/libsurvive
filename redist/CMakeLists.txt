@@ -102,7 +102,7 @@ ELSE()
     find_program(NUGET nuget)
     if(NOT NUGET)
       file(DOWNLOAD https://dist.nuget.org/win-x86-commandline/v5.6.0/nuget.exe "${CMAKE_BINARY_DIR}/nuget.exe"
-	EXPECTED_MD5 3f8a53a524c54cf2e4efb7aea370a977 STATUS status LOG log)
+        EXPECTED_MD5 3f8a53a524c54cf2e4efb7aea370a977 STATUS status LOG log)
       find_program(NUGET nuget HINTS "${CMAKE_BINARY_DIR}" )
     endif()
     message("Nuget is found at ${NUGET}")
