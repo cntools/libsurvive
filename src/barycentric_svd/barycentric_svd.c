@@ -47,6 +47,11 @@ static void bc_svd_choose_control_points(bc_svd *self) {
 			self->setup.control_points[i][j] = self->setup.control_points[0][j] + k * uct_val;
 		}
 	}
+
+	SV_FREE_STACK_MAT(UCt);
+	SV_FREE_STACK_MAT(DC);
+	SV_FREE_STACK_MAT(PW0tPW0);
+	SV_FREE_STACK_MAT(PW0);
 }
 
 static void bc_svd_compute_barycentric_coordinates(bc_svd *self) {
@@ -259,7 +264,7 @@ static void compute_A_and_b_gauss_newton(const SvMat *L_6x10, const FLT *rho, FL
 static void gauss_newton(const SvMat *L_6x10, const SvMat *Rho, FLT betas[4]) {
 	const int iterations_number = 5;
 
-	FLT x[4];
+	FLT x[4] = {0};
 	SV_CREATE_STACK_MAT(A, 6, 4);
 	SV_CREATE_STACK_MAT(B, 6, 1);
 	SvMat X = svMat(4, 1, x);
@@ -270,6 +275,8 @@ static void gauss_newton(const SvMat *L_6x10, const SvMat *Rho, FLT betas[4]) {
 		for (int i = 0; i < 4; i++)
 			betas[i] += x[i];
 	}
+	SV_FREE_STACK_MAT(B);
+	SV_FREE_STACK_MAT(A);
 }
 
 static void find_betas_approx_2(const SvMat *L_6x10, const SvMat *Rho, FLT *betas) {
@@ -298,6 +305,7 @@ static void find_betas_approx_2(const SvMat *L_6x10, const SvMat *Rho, FLT *beta
 
 	betas[2] = 0.0;
 	betas[3] = 0.0;
+	SV_FREE_STACK_MAT(L_6x3);
 }
 
 // betas10        = [B11 B12 B22 B13 B23 B33 B14 B24 B34 B44]
@@ -340,6 +348,10 @@ static void copy_R_and_t(const FLT R_src[3][3], const FLT t_src[3], FLT R_dst[3]
 }
 
 FLT bc_svd_compute_pose(bc_svd *self, FLT R[3][3], FLT t[3]) {
+	FLT Betas[4][4] = {0}, rep_errors[3] = {0};
+	FLT Rs[4][3][3] = {0}, ts[4][3] = {0};
+	int N = 0;
+
 	SV_CREATE_STACK_MAT(M, self->meas_cnt, 12);
 	bool colCovered[12] = { 0 };
 	bool has_axis[2] = {false, false};
@@ -383,9 +395,6 @@ FLT bc_svd_compute_pose(bc_svd *self, FLT R[3][3], FLT t[3]) {
 
 	bc_svd_compute_rho(self, rho);
 
-	FLT Betas[4][4] = {0}, rep_errors[3] = {0};
-	FLT Rs[4][3][3] = {0}, ts[4][3] = {0};
-
 	find_betas_approx_1(&L_6x10, &Rho, Betas[1]);
 	gauss_newton(&L_6x10, &Rho, Betas[1]);
 	rep_errors[0] = bc_svd_compute_R_and_t(self, &Ut, Betas[1], Rs[1], ts[1]);
@@ -398,13 +407,18 @@ FLT bc_svd_compute_pose(bc_svd *self, FLT R[3][3], FLT t[3]) {
 	gauss_newton(&L_6x10, &Rho, Betas[3]);
 	rep_errors[2] = bc_svd_compute_R_and_t(self, &Ut, Betas[3], Rs[3], ts[3]);
 
-	int N = 0;
+	N = 0;
 	if (rep_errors[1] < rep_errors[0])
 		N = 1;
 	if (rep_errors[2] < rep_errors[N])
 		N = 2;
 
 	copy_R_and_t(Rs[N + 1], ts[N + 1], R, t);
+
+	SV_FREE_STACK_MAT(Ut);
+	SV_FREE_STACK_MAT(D);
+	SV_FREE_STACK_MAT(MtM);
+	SV_FREE_STACK_MAT(M);
 
 	return rep_errors[N];
 }

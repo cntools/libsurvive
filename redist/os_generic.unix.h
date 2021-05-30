@@ -78,7 +78,10 @@ OSG_INLINE void *OGJoinThread(og_thread_t ot) {
 	if (!ot) {
 		return 0;
 	}
-	pthread_join(*(pthread_t *)ot, &retval);
+	int rc = pthread_join(*(pthread_t *)ot, &retval);
+	if (rc != 0) {
+		fprintf(stderr, "pthread join error %d\n", rc);
+	}
 	free(ot);
 	return retval;
 }

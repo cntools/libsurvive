@@ -25,7 +25,7 @@ static SurviveKalmanModel copy_model(const FLT *src, size_t state_size) {
 }
 
 static inline FLT survive_kalman_tracker_position_var2(SurviveKalmanTracker *tracker, FLT *var_diag, size_t cnt) {
-	FLT _var_diag[SURVIVE_MODEL_MAX_STATE_CNT];
+	FLT _var_diag[SURVIVE_MODEL_MAX_STATE_CNT] = {0};
 	if (var_diag == 0)
 		var_diag = _var_diag;
 
@@ -298,6 +298,8 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 		sv_set_zero(&Z);
 
 		tracker->stats.imu_total_error += survive_kalman_predict_update_state(time, &tracker->model, &Z, &H, R, false);
+		SV_FREE_STACK_MAT(Z);
+		SV_FREE_STACK_MAT(H);
 	}
 
 	struct map_imu_data_ctx fn_ctx = {.tracker = tracker};
@@ -487,6 +489,7 @@ static void model_predict_jac(FLT t, struct SvMat *f_out, const struct SvMat *x0
 }
 
 static FLT integrate_pose(SurviveKalmanTracker *tracker, FLT time, const SurvivePose *pose, const FLT *R) {
+	FLT rtn = 0;
 	SV_CREATE_STACK_MAT(H, 7, tracker->model.state_cnt);
 
 	size_t state_cnt = tracker->model.state_cnt;
@@ -495,13 +498,12 @@ static FLT integrate_pose(SurviveKalmanTracker *tracker, FLT time, const Survive
 	}
 
 	SvMat Zp = svMat(7, 1, (void *)pose->Pos);
-	FLT rtn = 0;
-
 	rtn = survive_kalman_predict_update_state(time, &tracker->model, &Zp, &H, R ? R : tracker->Obs_R, R == 0);
 
 	SurviveContext *ctx = tracker->so->ctx;
 	SV_VERBOSE(600, "Resultant state %f (pose) " Point16_format, time,
 			   LINMATH_VEC16_EXPAND(sv_as_const_vector(&tracker->model.state)));
+	SV_FREE_STACK_MAT(H);
 	return rtn;
 }
 
@@ -883,7 +885,7 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 	survive_kalman_tracker_predict(tracker, t, &pose);
 
 	size_t state_cnt = tracker->model.state_cnt;
-	FLT var_diag[SURVIVE_MODEL_MAX_STATE_CNT];
+	FLT var_diag[SURVIVE_MODEL_MAX_STATE_CNT] = {0};
 	FLT p_threshold = survive_kalman_tracker_position_var2(tracker, var_diag, 7 + 6);
 	SurviveObject *so = tracker->so;
 	SV_DATA_LOG("tracker_P", var_diag, 7 + 6);

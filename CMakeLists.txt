@@ -121,8 +121,9 @@ IF(UNIX)
 	endif()
 
 	if(USE_MSAN)
-	  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=memory -fsanitize-memory-track-origins -fsanitize=undefined")
-	  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=memory -fsanitize-memory-track-origins -fsanitize=undefined")
+	  SET(MSAN_IGNORE_LIST "${CMAKE_SOURCE_DIR}/useful_files/msan_ignore_list.txt")
+	  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=memory -fsanitize-blacklist=${MSAN_IGNORE_LIST} -fsanitize-memory-track-origins -fsanitize=undefined")
+	  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=memory -fsanitize-blacklist=${MSAN_IGNORE_LIST} -fsanitize-memory-track-origins -fsanitize=undefined")
 	endif()	    
 	
 ELSEIF(WIN32)

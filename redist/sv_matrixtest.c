@@ -206,7 +206,7 @@ static void test_multrans() {
 	PRINT_MAT(C);
 	assert(_C[0] == 140);
 }
-
+/*
 static inline void multiply(int N, const FLT *mat1, const FLT *mat2, FLT *res) {
 	int i, j, k;
 	for (i = 0; i < N; i++) {
@@ -217,7 +217,7 @@ static inline void multiply(int N, const FLT *mat1, const FLT *mat2, FLT *res) {
 		}
 	}
 }
-/*
+
 void test_sparse_matrix() {
 	FLT _2x3[2 * 3] = {1, 2, 3, 0, 0, 6};
 	SvMat m2x3 = svMat(2, 3, _2x3);

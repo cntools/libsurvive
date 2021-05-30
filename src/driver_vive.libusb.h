@@ -70,16 +70,6 @@ static int survive_usb_subsystem_init(SurviveViveData *sv) {
 #endif
 	return rtn;
 }
-static int survive_get_usb_devices(SurviveViveData *sv, survive_usb_devices_t *devs) {
-	return libusb_get_device_list(sv->usbctx, devs);
-}
-static void survive_free_usb_devices(survive_usb_devices_t devs) { libusb_free_device_list(devs, 1); }
-
-typedef int survive_usb_device_enumerator;
-static survive_usb_device_t get_next_device(survive_usb_device_enumerator *iterator, survive_usb_devices_t list) {
-	assert(iterator);
-	return list[(*iterator)++];
-}
 
 int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d);
 int libusb_hotplug(libusb_context *usbctx, libusb_device *device, libusb_hotplug_event event, void *user_data) {
@@ -87,16 +77,26 @@ int libusb_hotplug(libusb_context *usbctx, libusb_device *device, libusb_hotplug
 	SurviveContext *ctx = sv->ctx;
 
 	if (event == LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED) {
+		SV_VERBOSE(100, "Device added %p", device);
 		survive_vive_add_usb_device(sv, device);
+	} else {
+		SV_VERBOSE(100, "Device removed %p", device);
 	}
 
 	return 0;
 }
 static bool setup_hotplug(SurviveViveData *sv) {
-	libusb_hotplug_register_callback(sv->usbctx, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT,
-									 LIBUSB_HOTPLUG_NO_FLAGS, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY,
-									 LIBUSB_HOTPLUG_MATCH_ANY, libusb_hotplug, sv, 0);
-	return 0;
+	int rc = libusb_hotplug_register_callback(
+		sv->usbctx, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE,
+		LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, libusb_hotplug, sv,
+		&sv->callback_handle);
+
+	if (LIBUSB_SUCCESS != rc) {
+		SurviveContext *ctx = sv->ctx;
+		SV_WARN("Could not register hotplug callback err: %d", rc);
+		return rc;
+	}
+	return LIBUSB_SUCCESS;
 }
 
 static int survive_get_ids(survive_usb_device_t d, uint16_t *idVendor, uint16_t *idProduct, uint8_t *class_id) {
@@ -150,34 +150,34 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 		}
 	}
 
-	SV_VERBOSE(40, "Successfully enumerated %s (%d) %04x:%04x", survive_colorize(info->name), conf->bNumInterfaces,
-			   idVendor, idProduct);
+	SV_VERBOSE(40, "Successfully enumerated %s (%d) %04x:%04x at %.7f", survive_colorize(info->name),
+			   conf->bNumInterfaces, idVendor, idProduct, survive_run_time(ctx));
 
-	usleep(100000);
+	// usleep(100000);
 
 cleanup_and_rtn:
 	libusb_free_config_descriptor(conf);
 	return ret;
 }
 
+static inline void survive_close_usb_device(struct SurviveUSBInfo *usbInfo);
+
+static void survive_disconnect_device(SurviveUSBInterface *iface) {
+	iface->ctx = 0;
+	survive_close_usb_device(iface->usbInfo);
+}
 static void handle_transfer(struct libusb_transfer *transfer) {
 	uint64_t time = OGGetAbsoluteTimeUS();
 
 	SurviveUSBInterface *iface = transfer->user_data;
-	if (iface->shutdown) {
-		SurviveContext *ctx = iface->ctx;
-		SV_VERBOSE(100, "Cleaning up transfer on %d %s", iface->which_interface_am_i, survive_colorize(iface->hname));
-		iface->ctx = 0;
-		return;
-	}
-
 	SurviveContext *ctx = iface->ctx;
 
-	if (transfer->status != LIBUSB_TRANSFER_COMPLETED) {
-		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Transfer problem %s %d with %s", libusb_error_name(transfer->status),
-				 transfer->status, iface->hname);
-		iface->ctx = 0;
-		return;
+	if (!iface->shutdown && transfer->status != LIBUSB_TRANSFER_COMPLETED) {
+		goto disconnect;
+	}
+
+	if (iface->shutdown) {
+		goto shutdown;
 	}
 
 	iface->actual_len = transfer->actual_length;
@@ -189,9 +189,8 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 
 	iface->last_submit_time = OGGetAbsoluteTimeUS();
 	if (libusb_submit_transfer(transfer)) {
-		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Error resubmitting transfer for %s", iface->hname);
+		goto shutdown;
 	}
-
 
 	if (iface->max_submit_time < submit_cb_time)
 		iface->max_submit_time = submit_cb_time;
@@ -207,6 +206,23 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 
 	iface->sum_cb_time += cb_time;
 	iface->packet_count++;
+
+	return;
+disconnect:
+	survive_disconnect_device(iface);
+shutdown:
+	SV_VERBOSE(200, "Cleaning up transfer on %d %s", iface->which_interface_am_i, survive_colorize(iface->hname));
+	iface->ctx = 0;
+
+	libusb_release_interface(iface->usbInfo->handle, iface->which_interface_am_i);
+	libusb_free_transfer(iface->transfer);
+	iface->transfer = 0;
+
+	iface->usbInfo->active_transfers--;
+	if (iface->usbInfo->active_transfers == 0) {
+		iface->usbInfo->request_close = true;
+		SV_VERBOSE(100, "Requesting close for %s", survive_colorize_codename(iface->assoc_obj));
+	}
 }
 
 struct survive_config_packet {
@@ -264,18 +280,13 @@ static inline void survive_close_usb_device(struct SurviveUSBInfo *usbInfo) {
 	}
 	for (int j = 0; j < usbInfo->interface_cnt; j++) {
 		SurviveUSBInterface *iface = &usbInfo->interfaces[j];
-		SV_INFO("Cleaning up interface on %d %s", iface->which_interface_am_i, survive_colorize(iface->hname));
-		libusb_cancel_transfer(usbInfo->interfaces[j].transfer);
-		while (usbInfo->interfaces[j].ctx || usbInfo->cfg_user) {
-			survive_release_ctx_lock(ctx);
-			libusb_handle_events(usbInfo->viveData->usbctx);
-			survive_get_ctx_lock(ctx);
-		}
-		libusb_release_interface(usbInfo->handle, usbInfo->interfaces[j].which_interface_am_i);
-		libusb_free_transfer(usbInfo->interfaces[j].transfer);
+		SV_VERBOSE(100, "Cleaning up interface on %d %s %s (%p)", iface->which_interface_am_i,
+				   survive_colorize_codename(iface->usbInfo->so), survive_colorize(iface->hname),
+				   usbInfo->interfaces[j].transfer);
+		if (usbInfo->interfaces[j].transfer)
+			libusb_cancel_transfer(usbInfo->interfaces[j].transfer);
 	}
 
-	libusb_close(usbInfo->handle);
 }
 
 void survive_usb_close(SurviveViveData *sv) { libusb_exit(sv->usbctx); }
@@ -363,7 +374,8 @@ void handle_config_tx(struct libusb_transfer *transfer) {
 	case SURVIVE_CONFIG_STATE_MAGICS:
 		if (!packet->current_magic->magic) {
 			SV_VERBOSE(100, "Magics done in %f sec for %s %s", survive_run_time(ctx) - packet->start_time,
-					   survive_colorize(so->codename), survive_colorize(packet->usbInfo->device_info->name));
+					   so ? survive_colorize(so->codename) : "unknown",
+					   survive_colorize(packet->usbInfo->device_info->name));
 			packet->usbInfo->lightcapMode = LightcapMode_raw0;
 			if (packet->usbInfo->device_info->codename[0] == 0) {
 				packet->state = SURVIVE_CONFIG_STATE_DONE;
@@ -404,6 +416,8 @@ void handle_config_tx(struct libusb_transfer *transfer) {
 				packet->usbInfo->so->conf = SV_CALLOC(uncompressed_data_len + 1);
 				packet->usbInfo->so->conf_cnt = uncompressed_data_len;
 				memcpy(packet->usbInfo->so->conf, uncompressed_data, uncompressed_data_len);
+
+				str_free(&packet->cfg);
 				goto setup_next;
 			}
 			goto resubmit;
@@ -442,12 +456,14 @@ setup_next : {
 	return;
 }
 	cleanup:
-		SV_VERBOSE(100, "Cleanup config for %s %s at %f", survive_colorize(packet->usbInfo->so->codename),
+		SV_VERBOSE(100, "Cleanup config for %s %s at %f", survive_colorize_codename(packet->usbInfo->so),
 				   survive_colorize(packet->usbInfo->device_info->name), survive_run_time(ctx));
 		packet->usbInfo->nextCfgSubmitTime = 0;
 		packet->usbInfo->cfg_user = 0;
-		free(packet);
+		packet->usbInfo->active_transfers--;
 		libusb_free_transfer(transfer);
+		str_free(&packet->cfg);
+		free(packet);
 }
 
 static int survive_start_get_config(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int iface) {
@@ -455,6 +471,7 @@ static int survive_start_get_config(SurviveViveData *sv, struct SurviveUSBInfo *
 	if (!tx) {
 		return -4;
 	}
+	usbInfo->active_transfers++;
 
 	SurviveContext *ctx = sv->ctx;
 

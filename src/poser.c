@@ -329,11 +329,14 @@ struct survive_threaded_poser *survive_create_threaded_poser(SurviveObject *so, 
 	poser->data_available = OGCreateConditionVariable();
 	poser->data_available_lock = OGCreateMutex();
 	poser->active = 1;
+	SurviveContext *ctx = so->ctx;
+	SV_VERBOSE(10, "Creating threaded poser for %s", survive_colorize(so->codename));
 	poser->thread = OGCreateThread(survive_threaded_poser_thread_fn, "threaded poser", poser);
 	return poser;
 }
 int survive_threaded_poser_fn(SurviveObject *so, void **user, PoserData *pd) {
 	struct survive_threaded_poser *self = (struct survive_threaded_poser *)*user;
+	assert(self);
 
 	switch (pd->pt) {
 	case POSERDATA_DISASSOCIATE: {
@@ -354,6 +357,8 @@ int survive_threaded_poser_fn(SurviveObject *so, void **user, PoserData *pd) {
 
 		OGDeleteMutex(self->data_available_lock);
 		OGDeleteConditionVariable(self->data_available);
+		if (so->PoserFnData == self)
+			so->PoserFnData = 0;
 		free(self);
 		*user = 0;
 		return 0;
@@ -369,7 +374,9 @@ int survive_threaded_poser_fn(SurviveObject *so, void **user, PoserData *pd) {
 		return 0;
 	}
 	default: {
-		self->innerPoser(so, &self->innerPoserData, pd);
+		if (self->innerPoser) {
+			self->innerPoser(so, &self->innerPoserData, pd);
+		}
 	}
 	}
 

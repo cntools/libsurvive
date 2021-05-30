@@ -126,6 +126,7 @@ void mulBABt(const SvMat *src1, const SvMat *src2, double alpha, const SvMat *sr
 	svGEMM(src1, src2, 1, 0, 0, &tmp, SV_GEMM_FLAG_B_T);
 	svGEMM(src2, &tmp, alpha, src3, beta, dst, 0);
 #endif
+	SV_FREE_STACK_MAT(tmp);
 }
 // dst = alpha * src1 * src2 + beta * src3
 SURVIVE_LOCAL_ONLY void svGEMM(const SvMat *src1, const SvMat *src2, double alpha, const SvMat *src3, double beta,
@@ -194,11 +195,17 @@ SURVIVE_LOCAL_ONLY void svMulTransposed(const SvMat *src, SvMat *dst, int order,
 #define SV_DbgAssert assert
 
 #define SV_CREATE_MAT_HEADER_ALLOCA(stack_mat, rows, cols)                                                             \
-	SvMat *stack_mat = svInitMatHeader(alloca(sizeof(SvMat)), rows, cols);
+	SvMat *stack_mat = svInitMatHeader(SV_MATRIX_ALLOC(sizeof(SvMat)), rows, cols);
 
 #define SV_CREATE_MAT_ALLOCA(stack_mat, height, width)                                                                 \
 	SV_CREATE_MAT_HEADER_ALLOCA(stack_mat, height, width);                                                             \
-	(stack_mat)->data = alloca(mat_size_bytes(stack_mat));
+	(stack_mat)->data = SV_MATRIX_ALLOC(mat_size_bytes(stack_mat));
+
+#define SV_MAT_ALLOCA_FREE(stack_mat)                                                                                  \
+	{                                                                                                                  \
+		SV_MATRIX_FREE(stack_mat->data);                                                                               \
+		SV_MATRIX_FREE(stack_mat);                                                                                     \
+	}
 
 #define CREATE_SV_STACK_MAT(name, rows, cols, type)                                                                    \
 	FLT *_##name = alloca(rows * cols * sizeof(FLT));                                                                  \
@@ -224,7 +231,7 @@ static lapack_int LAPACKE_gesvd_static_alloc(int matrix_layout, char jobu, char 
 	}
 	lwork = (lapack_int)work_query;
 	/* Allocate memory for work arrays */
-	work = (FLT *)alloca(sizeof(FLT) * lwork);
+	work = (FLT *)SV_MATRIX_ALLOC(sizeof(FLT) * lwork);
 	memset(work, 0, sizeof(FLT) * lwork);
 
 	if (work == NULL) {
@@ -237,6 +244,7 @@ static lapack_int LAPACKE_gesvd_static_alloc(int matrix_layout, char jobu, char 
 	for (i = 0; i < MIN(m, n) - 1; i++) {
 		superb[i] = work[i + 1];
 	}
+	SV_MATRIX_FREE(work);
 
 exit_level_0:
 	if (info == LAPACK_WORK_MEMORY_ERROR) {
@@ -336,6 +344,11 @@ SURVIVE_LOCAL_ONLY double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svIn
 		svGEMM(tmp, &u, 1, 0, 0, dstarr, SV_GEMM_FLAG_B_T);
 
 		svReleaseMat(&tmp);
+
+		SV_FREE_STACK_MAT(um);
+		SV_FREE_STACK_MAT(v);
+		SV_FREE_STACK_MAT(u);
+		SV_FREE_STACK_MAT(w);
 	} else {
 		assert(0 && "Bad argument");
 		return -1;
@@ -348,7 +361,7 @@ SURVIVE_LOCAL_ONLY double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svIn
 	SV_CREATE_MAT_ALLOCA(stack_mat, mat->rows, mat->cols)                                                              \
 	svCopy(mat, stack_mat, 0);
 
-SURVIVE_LOCAL_ONLY int svSolve(const SvMat *Aarr, const SvMat *Barr, SvMat *xarr, enum svInvertMethod method) {
+static int svSolve_LU(const SvMat *Aarr, const SvMat *Barr, SvMat *xarr) {
 	lapack_int inf;
 	lapack_int arows = Aarr->rows;
 	lapack_int acols = Aarr->cols;
@@ -356,89 +369,97 @@ SURVIVE_LOCAL_ONLY int svSolve(const SvMat *Aarr, const SvMat *Barr, SvMat *xarr
 	lapack_int xrows = Barr->rows;
 	lapack_int lda = acols; // Aarr->step / sizeof(double);
 
-	if (method == SV_INVERT_METHOD_LU) {
-		assert(Aarr->cols == xarr->rows);
-		assert(Barr->rows == Aarr->rows);
-		assert(xarr->cols == Barr->cols);
+	assert(Aarr->cols == xarr->rows);
+	assert(Barr->rows == Aarr->rows);
+	assert(xarr->cols == Barr->cols);
 
-		svCopy(Barr, xarr, 0);
-		FLT *a_ws = alloca(mat_size_bytes(Aarr));
-		memcpy(a_ws, SV_RAW_PTR(Aarr), mat_size_bytes(Aarr));
+	svCopy(Barr, xarr, 0);
+	FLT *a_ws = SV_MATRIX_ALLOC(mat_size_bytes(Aarr));
+	memcpy(a_ws, SV_RAW_PTR(Aarr), mat_size_bytes(Aarr));
 
-		lapack_int brows = xarr->rows;
-		lapack_int bcols = xarr->cols;
-		lapack_int ldb = bcols; // Barr->step / sizeof(double);
+	lapack_int brows = xarr->rows;
+	lapack_int bcols = xarr->cols;
+	lapack_int ldb = bcols; // Barr->step / sizeof(double);
 
-		lapack_int *ipiv = alloca(sizeof(lapack_int) * MIN(Aarr->rows, Aarr->cols));
+	lapack_int *ipiv = SV_MATRIX_ALLOC(sizeof(lapack_int) * MIN(Aarr->rows, Aarr->cols));
 
-		inf = LAPACKE_getrf(LAPACK_ROW_MAJOR, arows, acols, (a_ws), lda, ipiv);
-		assert(inf >= 0);
-		if (inf > 0) {
-			printf("Warning: Singular matrix: \n");
-			// print_mat(a_ws);
-		}
-
-#ifdef DEBUG_PRINT
-		printf("Solve A * x = B:\n");
+	inf = LAPACKE_getrf(LAPACK_ROW_MAJOR, arows, acols, (a_ws), lda, ipiv);
+	assert(inf >= 0);
+	if (inf > 0) {
+		printf("Warning: Singular matrix: \n");
 		// print_mat(a_ws);
-		print_mat(Barr);
+	}
+
+#ifdef DEBUG_PRINT
+	printf("Solve A * x = B:\n");
+	// print_mat(a_ws);
+	print_mat(Barr);
 #endif
 
-		inf = LAPACKE_getrs(LAPACK_ROW_MAJOR, CblasNoTrans, arows, bcols, (a_ws), lda, ipiv, SV_RAW_PTR(xarr), ldb);
-		assert(inf == 0);
+	inf = LAPACKE_getrs(LAPACK_ROW_MAJOR, CblasNoTrans, arows, bcols, (a_ws), lda, ipiv, SV_RAW_PTR(xarr), ldb);
+	assert(inf == 0);
 
-		// free(ipiv);
-		// svReleaseMat(&a_ws);
+	SV_MATRIX_FREE(a_ws);
+	SV_MATRIX_FREE(ipiv);
+	return 0;
+}
+
+static inline int svSolve_SVD(const SvMat *Aarr, const SvMat *Barr, SvMat *xarr) {
+	lapack_int arows = Aarr->rows;
+	lapack_int acols = Aarr->cols;
+	lapack_int xcols = Barr->cols;
+
+	bool xLargerThanB = Barr->rows > acols;
+	SvMat *xCpy = 0;
+	if (xLargerThanB) {
+		SV_CLONE_MAT_ALLOCA(xCpyStack, Barr);
+		xCpy = xCpyStack;
+	} else {
+		xCpy = xarr;
+		memcpy(SV_RAW_PTR(xarr), SV_RAW_PTR(Barr), mat_size_bytes(Barr));
+	}
+
+	// SvMat *aCpy = svCloneMat(Aarr);
+	FLT *aCpy = SV_MATRIX_ALLOC(mat_size_bytes(Aarr));
+	memcpy(aCpy, SV_RAW_PTR(Aarr), mat_size_bytes(Aarr));
+
+	FLT *S = SV_MATRIX_ALLOC(sizeof(FLT) * MIN(arows, acols));
+	// FLT *S = malloc(sizeof(FLT) * MIN(arows, acols));
+	FLT rcond = -1;
+	lapack_int *rank = SV_MATRIX_ALLOC(sizeof(lapack_int) * MIN(arows, acols));
+	lapack_int inf =
+		LAPACKE_gelss(LAPACK_ROW_MAJOR, arows, acols, xcols, (aCpy), acols, SV_RAW_PTR(xCpy), xcols, S, rcond, rank);
+	assert(xarr->rows == acols);
+	assert(xarr->cols == xCpy->cols);
+
+	if (xLargerThanB) {
+		xCpy->rows = acols;
+		svCopy(xCpy, xarr, 0);
+		// svReleaseMat(&xCpy);
+	}
+
+	SV_MATRIX_FREE(rank);
+	SV_MATRIX_FREE(aCpy);
+	SV_MATRIX_FREE(S);
+	if (xLargerThanB) {
+		SV_MAT_ALLOCA_FREE(xCpy);
+	}
+
+	assert(inf == 0);
+	if (inf != 0)
+		return inf;
+	return 0;
+}
+
+SURVIVE_LOCAL_ONLY int svSolve(const SvMat *Aarr, const SvMat *Barr, SvMat *xarr, enum svInvertMethod method) {
+	if (method == SV_INVERT_METHOD_LU) {
+		return svSolve_LU(Aarr, Barr, xarr);
 	} else if (method == SV_INVERT_METHOD_SVD || method == SV_INVERT_METHOD_QR) {
-
-#ifdef DEBUG_PRINT
-		printf("Solve |b - A * x|:\n");
-		print_mat(Aarr);
-		print_mat(xarr);
-#endif
-		bool xLargerThanB = Barr->rows > acols;
-		SvMat *xCpy = 0;
-		if (xLargerThanB) {
-			SV_CLONE_MAT_ALLOCA(xCpyStack, Barr);
-			xCpy = xCpyStack;
-		} else {
-			xCpy = xarr;
-			memcpy(SV_RAW_PTR(xarr), SV_RAW_PTR(Barr), mat_size_bytes(Barr));
-		}
-
-		// SvMat *aCpy = svCloneMat(Aarr);
-		FLT *aCpy = alloca(mat_size_bytes(Aarr));
-		memcpy(aCpy, SV_RAW_PTR(Aarr), mat_size_bytes(Aarr));
-
-		FLT *S = alloca(sizeof(FLT) * MIN(arows, acols));
-		// FLT *S = malloc(sizeof(FLT) * MIN(arows, acols));
-		FLT rcond = -1;
-		lapack_int *rank = alloca(sizeof(lapack_int) * MIN(arows, acols));
-		// memset(rank, 0, sizeof(lapack_int) * MIN(arows, acols));
-
-		// lapack_int *rank = malloc(sizeof(lapack_int) * MIN(arows, acols));
-		lapack_int inf = LAPACKE_gelss(LAPACK_ROW_MAJOR, arows, acols, xcols, (aCpy), acols, SV_RAW_PTR(xCpy), xcols, S,
-									   rcond, rank);
-		assert(xarr->rows == acols);
-		assert(xarr->cols == xCpy->cols);
-
-		if (xLargerThanB) {
-			xCpy->rows = acols;
-			svCopy(xCpy, xarr, 0);
-			// svReleaseMat(&xCpy);
-		}
-
-		// svReleaseMat(&aCpy);
-#ifdef DEBUG_PRINT
-		print_mat(Barr);
-#endif
-		assert(inf == 0);
-	} else if (false) {
-
+		return svSolve_SVD(Aarr, Barr, xarr);
 	} else {
 		assert("Unknown method to solve" && 0);
 	}
-	return 0;
+	return -1;
 }
 
 SURVIVE_LOCAL_ONLY void svTranspose(const SvMat *M, SvMat *dst) {

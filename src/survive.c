@@ -620,7 +620,6 @@ int survive_startup(SurviveContext *ctx) {
 	SV_INFO("%s", buffer);
 
 	bool use_async_posers = survive_configi(ctx, THREADED_POSERS_TAG, SC_GET, 0);
-
 	if (use_async_posers) {
 		for (int i = 0; i < ctx->objs_ct; i++) {
 			ctx->objs[i]->PoserFnData = survive_create_threaded_poser(ctx->objs[i], PreferredPoserCB);
@@ -697,6 +696,10 @@ datalog_process_func survive_default_datalog_process = 0;
 #include "survive_hooks.h"
 #include "survive_kalman_tracker.h"
 
+void survive_default_disconnect_process(struct SurviveObject *so) {
+	SurviveContext *ctx = so->ctx;
+	SV_VERBOSE(10, "Disconnecting device %s at %.7f", survive_colorize(so->codename), survive_run_time(ctx));
+}
 void survive_default_new_object_process(SurviveObject *so) {}
 int survive_add_object(SurviveContext *ctx, SurviveObject *obj) {
 	SV_INFO("Adding tracked object %s from %s", survive_colorize(obj->codename), survive_colorize(obj->drivername));
@@ -877,9 +880,10 @@ void survive_close(SurviveContext *ctx) {
 
 	config_save(ctx);
 
-
-	for (int i = 0; i < ctx->objs_ct; i++) {
-		survive_destroy_device(ctx->objs[i]);
+	while (ctx->objs_ct) {
+		size_t objs_ct = ctx->objs_ct;
+		survive_destroy_device(ctx->objs[0]);
+		assert(objs_ct != ctx->objs_ct);
 	}
 
 	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
@@ -1261,4 +1265,8 @@ SURVIVE_EXPORT const char *survive_colorize(const char *str) {
 		snprintf(color_buffer, sizeof(color_buffers[0]), SURVIVE_COLORIZED_FORMAT("%s"), SURVIVE_COLORIZED_STR(str));
 	return color_buffer;
 #endif
+}
+
+SURVIVE_EXPORT const char *survive_colorize_codename(const SurviveObject *so) {
+	return survive_colorize(so ? so->codename : "unknown");
 }

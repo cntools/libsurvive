@@ -1,6 +1,7 @@
 #include "survive_default_devices.h"
 #include "assert.h"
 #include "json_helpers.h"
+#include "survive_internal.h"
 #include "survive_kalman_tracker.h"
 #include <jsmn.h>
 #include <math.h>
@@ -35,36 +36,16 @@ SurviveObject *survive_create_device(SurviveContext *ctx, const char *driver_nam
 
 	SurviveSensorActivations_ctor(device, &device->activations);
 
+	bool use_async_posers = survive_configi(ctx, "threaded-posers", SC_GET, 0);
+	if (use_async_posers) {
+		PoserCB PreferredPoserCB = (PoserCB)GetDriverByConfig(ctx, "Poser", "poser", "MPFIT");
+		device->PoserFnData = survive_create_threaded_poser(device, PreferredPoserCB);
+	}
+
 	device->tracker = SV_MALLOC(sizeof(struct SurviveKalmanTracker));
 	survive_kalman_tracker_init(device->tracker, device);
 
 	return device;
-}
-
-SurviveObject *survive_create_hmd(SurviveContext *ctx, const char *driver_name,
-								  void *driver) {
-	return survive_create_device(ctx, driver_name, driver, "HMD", 0);
-}
-
-SurviveObject *survive_create_wm0(SurviveContext *ctx, const char *driver_name,
-								  void *driver, haptic_func fn) {
-	return survive_create_device(ctx, driver_name, driver, "WM0", fn);
-}
-SurviveObject *survive_create_wm1(SurviveContext *ctx, const char *driver_name,
-								  void *driver, haptic_func fn) {
-	return survive_create_device(ctx, driver_name, driver, "WM1", fn);
-}
-SurviveObject *survive_create_tr0(SurviveContext *ctx, const char *driver_name,
-								  void *driver) {
-	return survive_create_device(ctx, driver_name, driver, "TR0", 0);
-}
-SurviveObject *survive_create_tr1(SurviveContext *ctx, const char *driver_name,
-								  void *driver) {
-	return survive_create_device(ctx, driver_name, driver, "TR1", 0);
-}
-SurviveObject *survive_create_ww0(SurviveContext *ctx, const char *driver_name,
-								  void *driver) {
-	return survive_create_device(ctx, driver_name, driver, "WW0", 0);
 }
 
 static int jsoneq(const char *json, const jsmntok_t *tok, const char *s) {
@@ -488,6 +469,22 @@ int survive_load_htc_config_format_from_file(SurviveObject *so, const char *file
 
 void survive_destroy_device(SurviveObject *so) {
 	SurviveContext *ctx = so->ctx;
+
+	size_t idx = 0;
+	if (ctx->objs) {
+		for (idx = 0; idx < ctx->objs_ct && ctx->objs[idx] != so; idx++)
+			;
+		ctx->objs[idx] = ctx->objs[ctx->objs_ct - 1];
+		ctx->objs_ct--;
+	}
+
+	PoserData pd;
+	pd.pt = POSERDATA_DISASSOCIATE;
+	if (ctx->PoserFn) {
+		ctx->PoserFn(so, &so->PoserFnData, &pd);
+	}
+	SURVIVE_INVOKE_HOOK_SO(lightcap, so, 0);
+
 	SV_VERBOSE(5, "Statistics for %s (driver %s)", so->codename, so->drivername);
 	SV_VERBOSE(5, "\tExtent hits               %6u", so->stats.extent_hits);
 	SV_VERBOSE(5, "\tNaive hits                %6u", so->stats.naive_hits);

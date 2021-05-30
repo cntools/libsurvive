@@ -474,6 +474,7 @@ SURVIVE_EXPORT void survive_apply_ang_velocity(LinmathQuat out, const SurviveAng
 // Accept higher-level data.
 SURVIVE_EXPORT void survive_default_ootx_received_process(struct SurviveContext *ctx, uint8_t bsd_idx);
 
+SURVIVE_EXPORT void survive_default_disconnect_process(struct SurviveObject *so);
 SURVIVE_EXPORT int survive_default_printf_process(struct SurviveContext *ctx, const char *format, ...);
 SURVIVE_EXPORT void survive_default_log_process(struct SurviveContext *ctx, SurviveLogLevel ll, const char *fault);
 SURVIVE_EXPORT void survive_default_lightcap_process(SurviveObject *so, const LightcapElement *element);
@@ -557,6 +558,7 @@ SURVIVE_EXPORT uint8_t survive_map_sensor_id(SurviveObject *so, uint8_t reported
 SURVIVE_EXPORT bool handle_lightcap(SurviveObject *so, const LightcapElement *le);
 
 SURVIVE_EXPORT const char *survive_colorize(const char *str);
+SURVIVE_EXPORT const char *survive_colorize_codename(const SurviveObject *so);
 SURVIVE_EXPORT uint32_t survive_hash(const uint8_t *data, size_t len);
 SURVIVE_EXPORT uint32_t survive_hash_str(const char *str);
 #define SV_CONST_COLOR(str, clr) "\033[0;" #clr "m" fmt "\033[0m"
@@ -588,7 +590,7 @@ SURVIVE_EXPORT uint32_t survive_hash_str(const char *str);
 #define SV_INFO(...)                                                                                                   \
 	{                                                                                                                  \
 		char stbuff[1024];                                                                                             \
-		sprintf(stbuff, __VA_ARGS__);                                                                                  \
+		snprintf(stbuff, sizeof(stbuff), __VA_ARGS__);                                                                 \
 		SV_LOG_NULL_GUARD SURVIVE_INVOKE_HOOK(log, ctx, SURVIVE_LOG_LEVEL_INFO, stbuff);                               \
 	}
 

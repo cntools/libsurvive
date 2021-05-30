@@ -121,7 +121,7 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 		if (cameraToWorld) {
 			SV_WARN("Camera reprojection error was too high: %f for %d meas", err, (int)dd->bc.meas_cnt);
 		}
-		return rtn;
+		goto cleanup;
 	}
 
 	// Requested output is camera -> world, so invert
@@ -151,6 +151,9 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 		rtn.Pos[0] = -rtn.Pos[0];
 		rtn.Pos[2] = -rtn.Pos[2];
 	}
+
+cleanup:
+	SV_FREE_STACK_MAT(R);
 
 	return rtn;
 }

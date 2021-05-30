@@ -985,6 +985,10 @@ void KabschCenteredScaled(LinmathQuat qout, FLT *scale, const FLT *ptsA, const F
 	}
 
 	quatfromsvmatrix(qout, &R);
+
+	SV_FREE_STACK_MAT(R);
+	SV_FREE_STACK_MAT(B);
+	SV_FREE_STACK_MAT(A);
 }
 
 LINMATH_EXPORT void KabschScaled(LinmathPose *B2Atx, FLT *scale, const FLT *_ptsA, const FLT *_ptsB, int num_pts) {
@@ -1160,6 +1164,7 @@ inline void gemm_ABAt_add(struct SvMat *out, const struct SvMat *A, const struct
 	SV_CREATE_STACK_MAT(tmp, A->rows, B->cols);
 	svGEMM(A, B, 1, 0, 0, &tmp, 0);
 	svGEMM(&tmp, A, 1, C, 1, out, SV_GEMM_FLAG_B_T);
+	SV_FREE_STACK_MAT(tmp);
 }
 
 void matrix_ABAt_add(struct SvMat *out, const struct SvMat *A, const struct SvMat *B, const struct SvMat *C) {
@@ -1169,6 +1174,7 @@ void matrix_ABAt_add(struct SvMat *out, const struct SvMat *A, const struct SvMa
 	SV_CREATE_STACK_MAT(tmp, s.rows, B->cols);
 	sparse_multiply_sparse_by_dense_sym(&tmp, &s, B);
 	sparse_multiply_dense_by_sparse_t_to_sym(out, &tmp, &s, C);
+	SV_FREE_STACK_MAT(tmp);
 }
 
 void linmath_get_line_dir(LinmathPoint3d dir, const struct LinmathLine3d *ray) {
@@ -1212,6 +1218,9 @@ void linmath_find_best_intersection(LinmathPoint3d pt, const struct LinmathLine3
 
 	SvMat x = svMat(3, 1, pt);
 	svSolve(&A, &B, &x, SV_INVERT_METHOD_SVD);
+
+	SV_FREE_STACK_MAT(B);
+	SV_FREE_STACK_MAT(A);
 }
 
 void linmath_pt_along_line(LinmathPoint3d pt, const struct LinmathLine3d *ray, FLT t) {

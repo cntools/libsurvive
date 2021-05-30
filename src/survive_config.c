@@ -523,6 +523,9 @@ config_entry *next_unused_entry(config_group *cg, const char * tag) {
 }
 
 const char *config_set_str(config_group *cg, const char *tag, const char *value) {
+	if (cg == 0) {
+		return 0;
+	}
 	OGLockMutex(cg->write_lock);
 
 	config_entry *cv = find_config_entry(cg, tag);

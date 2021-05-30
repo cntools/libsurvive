@@ -83,10 +83,27 @@ void print_mat(const SvMat *M);
 
 double svDet(const SvMat *M);
 
+#define SV_MATRIX_USE_MALLOC
+#ifdef SV_MATRIX_USE_MALLOC
+#define SV_MATRIX_ALLOC(size) calloc(1, size)
+#define SV_MATRIX_FREE(ptr) free(ptr)
+#define SV_MATRIX_STACK_SCOPE_BEGIN {
+#define SV_MATRIX_STACK_SCOPE_END }
+#else
+#define SV_MATRIX_ALLOC(size) memset(alloca(size), 0, size)
+#define SV_MATRIX_FREE(ptr)
+#define SV_MATRIX_STACK_SCOPE_BEGIN
+#define SV_MATRIX_STACK_SCOPE_END
+#endif
+
 #define SV_CREATE_STACK_MAT(name, rows, cols)                                                                          \
-	FLT *_##name = alloca((rows) * (cols) * sizeof(FLT));                                                              \
-	memset(_##name, 0, (rows) * (cols) * sizeof(FLT));                                                                 \
+	SV_MATRIX_STACK_SCOPE_BEGIN                                                                                        \
+	FLT *_##name = SV_MATRIX_ALLOC((rows) * (cols) * sizeof(FLT));                                                     \
 	SvMat name = svMat(rows, cols, _##name);
+
+#define SV_FREE_STACK_MAT(name)                                                                                        \
+	SV_MATRIX_FREE(_##name);                                                                                           \
+	SV_MATRIX_STACK_SCOPE_END
 
 #ifndef SV_MATRIX_IS_COL_MAJOR
 static inline int sv_stride(const struct SvMat *m) { return m->rows; }
@@ -128,7 +145,7 @@ static inline const FLT *sv_as_const_vector(const struct SvMat *m) {
  * get a matrix with allocated data):
  */
 static inline SvMat svMat(int rows, int cols, FLT *data) {
-	SvMat m;
+	SvMat m = {0};
 
 	m.cols = cols;
 	m.rows = rows;

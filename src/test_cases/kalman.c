@@ -204,6 +204,9 @@ bool map_to_obs(void *user, const struct SvMat *Z, const struct SvMat *x_t, stru
 	svMatrixSet(H_k, 2, 0, x / n);
 	svMatrixSet(H_k, 2, 1, y / n);
 	svMatrixSet(H_k, 2, 2, z / n);
+
+	SV_FREE_STACK_MAT(Id);
+	SV_FREE_STACK_MAT(h_x_t);
 	return true;
 }
 
@@ -271,9 +274,13 @@ TEST(Kalman, ExampleExtended) {
 		// beta,
 		svGEMM(&F, &true_state, 1, 0, 0, &next_state, 0);
 		memcpy(_true_state, sv_as_vector(&next_state), sizeof(_true_state));
+		SV_FREE_STACK_MAT(next_state);
 	}
 
 	survive_kalman_state_free(&position);
+	SV_FREE_STACK_MAT(Z);
+	SV_FREE_STACK_MAT(F);
+	SV_FREE_STACK_MAT(pos_Q_per_sec);
 	return 0;
 }
 
@@ -342,7 +349,9 @@ TEST(Kalman, AngleQuat) {
 
 		rot_predict_quat(.1, 0, &true_state, &true_state);
 	}
-
 	survive_kalman_state_free(&rotation);
+	SV_FREE_STACK_MAT(Z);
+	SV_FREE_STACK_MAT(true_state);
+
 	return 0;
 }

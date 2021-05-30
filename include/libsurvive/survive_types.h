@@ -209,6 +209,7 @@ typedef enum {
 typedef void (*survive_driver_fn)();
 
 typedef void (*datalog_process_func)(SurviveObject *so, const char *name, const FLT *v, size_t length);
+typedef void (*disconnect_process_func)(SurviveObject *so);
 typedef int (*printf_process_func)(SurviveContext *ctx, const char *format, ...);
 typedef void (*log_process_func)(SurviveContext *ctx, SurviveLogLevel logLevel, const char *fault);
 typedef void (*report_error_process_func)(SurviveContext *ctx, SurviveError error);
