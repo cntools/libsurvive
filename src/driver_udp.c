@@ -105,7 +105,7 @@ int DriverRegUDP(SurviveContext *ctx) {
 		perror("socket");
 		exit(1);
 	}
-	bzero((char *)&sp->addr, sizeof(sp->addr));
+	memset((char *)&sp->addr, 0, sizeof(sp->addr));
 	sp->addr.sin_family = AF_INET;
 	sp->addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	sp->addr.sin_port = htons(EXAMPLE_PORT);
