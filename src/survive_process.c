@@ -174,14 +174,11 @@ void survive_default_raw_imu_process(SurviveObject *so, int mask, const FLT *acc
 
 	SURVIVE_INVOKE_HOOK_SO(imu, so, 3, agm, timecode, id);
 }
+
 void survive_default_imu_process(SurviveObject *so, int mask, const FLT *accelgyromag, uint32_t timecode, int id) {
 	survive_long_timecode longTimecode = SurviveSensorActivations_long_timecode_imu(&so->activations, timecode);
 	PoserDataIMU imu = {
-		.hdr =
-			{
-				.pt = POSERDATA_IMU,
-				.timecode = SurviveSensorActivations_long_timecode_imu(&so->activations, timecode),
-			},
+		.hdr = {.pt = POSERDATA_IMU, .timecode = longTimecode},
 		.datamask = mask,
 		.accel = {accelgyromag[0], accelgyromag[1], accelgyromag[2]},
 		.gyro = {accelgyromag[3], accelgyromag[4], accelgyromag[5]},
@@ -193,7 +190,7 @@ void survive_default_imu_process(SurviveObject *so, int mask, const FLT *accelgy
 	SurviveContext *ctx = so->ctx;
 
 	SV_VERBOSE(300, "%s %s %x (%7.3f): " Point6_format, survive_colorize(so->codename), survive_colorize("IMU"),
-			   timecode, timecode / 48000000., LINMATH_VEC3_EXPAND(imu.accel), LINMATH_VEC3_EXPAND(imu.gyro))
+			   timecode, longTimecode / 48000000., LINMATH_VEC3_EXPAND(imu.accel), LINMATH_VEC3_EXPAND(imu.gyro))
 	survive_kalman_tracker_integrate_imu(so->tracker, &imu);
 	SURVIVE_POSER_INVOKE(so, &imu);
 

@@ -730,10 +730,10 @@ SurviveVelocity survive_kalman_tracker_velocity(const SurviveKalmanTracker *trac
 	return rtn;
 }
 
-void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
-	SurviveContext *ctx = tracker->so->ctx;
+void survive_kalman_tracker_stats(SurviveKalmanTracker *tracker) {
 	FLT report_runtime = tracker->last_report_time - tracker->first_report_time;
 	FLT imu_runtime = tracker->last_imu_time - tracker->first_imu_time;
+	SurviveContext *ctx = tracker->so->ctx;
 
 	SV_VERBOSE(5, "IMU %s tracker statistics:", tracker->so->codename);
 	SV_VERBOSE(5, "\t%-32s %u", "state_cnt", tracker->model.state_cnt);
@@ -792,8 +792,15 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 			}
 		}
 	}
+	memset(&tracker->stats, 0, sizeof(tracker->stats));
+	tracker->first_report_time = tracker->last_report_time = 0;
 
 	SV_VERBOSE(5, " ");
+}
+void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
+	SurviveContext *ctx = tracker->so->ctx;
+
+	survive_kalman_tracker_stats(tracker);
 
 	survive_kalman_state_free(&tracker->model);
 

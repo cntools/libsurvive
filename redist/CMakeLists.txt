@@ -83,34 +83,31 @@ IF(USE_EIGEN)
   add_definitions     ( ${EIGEN3_DEFINITIONS} )
   include_directories ( ${EIGEN3_INCLUDE_DIRS} )
 
-    target_compile_options(survive_matrix PRIVATE -fno-exceptions -fPIC)
-ENDIF()
+  target_compile_options(survive_matrix PRIVATE -fno-exceptions -fPIC)
+ELSE()
+  IF(UNIX)
+      target_link_libraries(survive_matrix ${BLAS_BACKEND} ${LAPACKE_LOCATION} m)
+  elseif(WIN32)
+    if (CMAKE_SIZEOF_VOID_P MATCHES 8)
+      set(WIN_PLATFORM "x64")
+    else(CMAKE_SIZEOF_VOID_P MATCHES 8)
+      set(WIN_PLATFORM "win32")
+    endif(CMAKE_SIZEOF_VOID_P MATCHES 8)
 
-IF(UNIX)
-  target_link_libraries(survive_matrix m)
-  if(NOT USE_EIGEN)
-    target_link_libraries(survive_matrix ${BLAS_BACKEND} ${LAPACKE_LOCATION} m)
-  endif()
-elseif(WIN32)
-  if (CMAKE_SIZEOF_VOID_P MATCHES 8)
-    set(WIN_PLATFORM "x64")
-  else(CMAKE_SIZEOF_VOID_P MATCHES 8)
-    set(WIN_PLATFORM "win32")
-  endif(CMAKE_SIZEOF_VOID_P MATCHES 8)
+    include_directories(${CMAKE_BINARY_DIR}/packages/OpenBLAS.0.2.14.1/lib/native/include/)
+    target_link_libraries(survive_matrix
+      ${CMAKE_BINARY_DIR}/packages/OpenBLAS.0.2.14.1/lib/native/lib/${WIN_PLATFORM}/libopenblas.dll.a
+      )
 
-  include_directories(${CMAKE_BINARY_DIR}/packages/OpenBLAS.0.2.14.1/lib/native/include/)
-  target_link_libraries(survive_matrix
-    ${CMAKE_BINARY_DIR}/packages/OpenBLAS.0.2.14.1/lib/native/lib/${WIN_PLATFORM}/libopenblas.dll.a
-    )
-
-  find_program(NUGET nuget)
-  if(NOT NUGET)
-    file(DOWNLOAD https://dist.nuget.org/win-x86-commandline/v5.6.0/nuget.exe "${CMAKE_BINARY_DIR}/nuget.exe"
-      EXPECTED_MD5 3f8a53a524c54cf2e4efb7aea370a977 STATUS status LOG log)
-    find_program(NUGET nuget HINTS "${CMAKE_BINARY_DIR}" )
-  endif()
-  message("Nuget is found at ${NUGET}")
-  add_custom_command(TARGET survive_matrix PRE_BUILD COMMAND ${NUGET} restore ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.sln COMMENT "Restoring nuget dependencies")
+    find_program(NUGET nuget)
+    if(NOT NUGET)
+      file(DOWNLOAD https://dist.nuget.org/win-x86-commandline/v5.6.0/nuget.exe "${CMAKE_BINARY_DIR}/nuget.exe"
+	EXPECTED_MD5 3f8a53a524c54cf2e4efb7aea370a977 STATUS status LOG log)
+      find_program(NUGET nuget HINTS "${CMAKE_BINARY_DIR}" )
+    endif()
+    message("Nuget is found at ${NUGET}")
+    add_custom_command(TARGET survive_matrix PRE_BUILD COMMAND ${NUGET} restore ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.sln COMMENT "Restoring nuget dependencies")
+  ENDIF()
 ENDIF()
 
 IF (ENABLE_TESTS)
