@@ -921,8 +921,10 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 	if (tracker->first_report_time == 0) {
 		tracker->first_report_time = t;
 	}
-
 	tracker->last_report_time = t;
-	SURVIVE_INVOKE_HOOK_SO(imupose, so, pd->timecode, &pose);
+
+	if (so->OutPose_timecode < pd->timecode) {
+		SURVIVE_INVOKE_HOOK_SO(imupose, so, pd->timecode, &pose);
+	}
 	SURVIVE_INVOKE_HOOK_SO(velocity, so, pd->timecode, &velocity);
 }

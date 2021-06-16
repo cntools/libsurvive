@@ -212,23 +212,38 @@ void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 		self->last_light_change = self->last_movement = long_timecode;
 	}
 
+	SurviveContext *ctx = self->so->ctx;
 	*angle = lightData->angle;
 	*data_timecode = lightData->hdr.timecode;
 	*length = (uint32_t)(_lightData->length * 48000000);
-	if(lightData->hdr.timecode > self->last_light)
+	if (lightData->hdr.timecode > self->last_light) {
+		if (self->last_light != 0 && lightData->hdr.timecode - self->last_light > 48000000) {
+			SV_ERROR(4, "Bad update");
+		}
+		// SV_WARN("Updating last_light %lx", lightData->hdr.timecode);
 		self->last_light = lightData->hdr.timecode;
+	}
 
-	SurviveContext *ctx = self->so->ctx;
-	if (self->last_imu != 0 && fabs(lightData->hdr.timecode / 48000000. - self->last_imu / 48000000.) > 1)
-		SV_ERROR(4, "%s Bad time %f vs %f", survive_colorize(self->so->codename), lightData->hdr.timecode / 48000000.,
-				 self->last_imu / 48000000.);
+	static int bad_time_cnt = 0;
+	if (self->last_imu != 0 && fabs(lightData->hdr.timecode / 48000000. - self->last_imu / 48000000.) > 1) {
+		bad_time_cnt++;
+		SV_WARN("%s Bad time %f vs %f", survive_colorize(self->so->codename), lightData->hdr.timecode / 48000000.,
+				self->last_imu / 48000000.);
+		if (bad_time_cnt > 10) {
+			SV_ERROR(4, "Too many bad_time events");
+		}
+	}
 	// fprintf(stderr, "lightcap tc: %f\n", lightData->hdr.timecode/ 48000000.);
 }
 
 static inline survive_long_timecode make_long_timecode(survive_long_timecode prev, survive_timecode current) {
 	survive_long_timecode rtn = current | (prev & 0xFFFFFFFF00000000);
+
 	if(rtn < prev && rtn + 0x80000000 < prev) {
 		rtn += 0x100000000;
+	}
+	if (rtn > prev && prev + 0x80000000 < rtn && rtn > 0x100000000) {
+		rtn -= 0x100000000;
 	}
 	return rtn;
 }

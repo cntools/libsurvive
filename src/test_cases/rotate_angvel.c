@@ -65,10 +65,33 @@ TEST(AngularVelocity, find) {
 
 TEST(AngularVelocity, apply) {
 	LinmathQuat a = {1, 0, 0, 0};
-	SurviveAngularVelocity b = {LINMATHPI, 0, 0};
+	SurviveAngularVelocity b = {LINMATHPI, LINMATHPI, LINMATHPI};
 
-	LinmathQuat c;
+	LinmathQuat c = {0};
 	survive_apply_ang_velocity(c, b, 1, a);
+
+	return 0;
+}
+
+TEST(AngularVelocity, apply2) {
+	/*
+	 *
+	 * 06-04 05:55:23.269   753   791 I HMDBridge: Velocity Data:  0.634868 0.149354 0.053309 0.102118 -0.247831
+-4.802000 0.019992 06-04 05:55:23.269   753   791 I HMDBridge: Pose Data Orig: 0.546112 0.831827 -0.011106 -0.098503
+-0.183637 -0.005066 0.649892 06-04 05:55:23.269   753   791 I HMDBridge: Pose Data Proj: 0.539878 0.831712 0.027367
+-0.126641 -0.170945 -0.002080 0.650957
+
+	 */
+	LinmathQuat a = {0.546112, 0.831827, -0.011106, -0.098503};
+	SurviveAngularVelocity b = {0.102118, -0.247831, -4.802000};
+
+	LinmathQuat c = {0};
+	survive_apply_ang_velocity(c, b, 0.019992, a);
+
+	LinmathQuat gt = {0.539878, 0.831712, 0.027367, -0.126641};
+	fprintf(stderr, "%.15f %.15f %.15f %.15f\n", c[0], c[1], c[2], c[3]);
+	fprintf(stderr, "%.15f %.15f %.15f %.15f\n", gt[0], gt[1], gt[2], gt[3]);
+	ASSERT_QUAT_EQ(c, gt);
 
 	return 0;
 }
