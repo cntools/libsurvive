@@ -395,7 +395,7 @@ struct SurviveUSBInfo {
 	FLT nextCfgSubmitTime;
 	void *cfg_user;
 
-	bool request_close;
+	bool request_close, request_reopen;
 };
 
 struct SurviveViveData {
@@ -418,7 +418,9 @@ struct SurviveViveData {
 };
 
 static void parse_tracker_version_info(SurviveObject *so, uint8_t *data, size_t size);
-
+static int AttachInterface(SurviveViveData *sv, struct SurviveUSBInfo *usbObject, const struct Endpoint_t *endpoint,
+						   USBHANDLE devh, usb_callback cb);
+static int survive_vive_send_haptic(SurviveObject *so, FLT frequency, FLT amplitude, FLT duration_seconds);
 #ifdef HIDAPI
 #include "driver_vive.hidapi.h"
 #else
@@ -712,6 +714,7 @@ int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d) {
 
 	SV_VERBOSE(50, "Successfully enumerated %s %04x:%04x", survive_colorize(info->name), idVendor, idProduct);
 
+#ifdef HIDAPI
 	if (usbInfo->device_info->codename[0] != 0) {
 		char codename[4] = {0};
 		strcpy(codename, usbInfo->device_info->codename);
@@ -723,6 +726,7 @@ int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d) {
 		usbInfo->so = so;
 		usbInfo->ownsObject = true;
 	}
+#endif
 
 	survive_start_get_config(sv, usbInfo, 0);
 
@@ -734,12 +738,14 @@ int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d) {
 		}
 	}
 
+#ifdef HIDAPI
 	for (const struct Endpoint_t *endpoint = usbInfo->device_info->endpoints; endpoint->name; endpoint++) {
 		int errorCode = AttachInterface(sv, usbInfo, endpoint, usbInfo->handle, survive_data_cb);
 		if (errorCode < 0) {
 			SV_WARN("Could not attach interface %s: %d", endpoint->name, errorCode);
 		}
 	}
+#endif
 
 	return 0;
 }
@@ -792,8 +798,17 @@ static inline bool survive_handle_close_request_flag(struct SurviveUSBInfo *usbI
 			SURVIVE_INVOKE_HOOK_SO(disconnect, usbInfo->so);
 			survive_destroy_device(usbInfo->so);
 		}
+		survive_usb_device_t dev = 0;
+#ifndef HIDAPI
+		dev = libusb_get_device(usbInfo->handle);
+#endif
+		bool reopen = usbInfo->request_reopen;
 		survive_usb_handle_close(usbInfo->handle);
 		free(usbInfo);
+
+		if (reopen && dev) {
+			survive_vive_add_usb_device(sv, dev);
+		}
 		return true;
 	}
 	return false;
@@ -853,8 +868,8 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 	for (int i = 0; i < sv->udev_cnt; i++) {
 		struct SurviveUSBInfo *usbInfo = sv->udev[i];
 
-		if ((usbInfo->device_info->pid == 0x2102 || usbInfo->device_info->pid == 0x2101) && usbInfo->so->conf == 0 &&
-			sv->requestPairing && (sv->lastPairTime + 1) < now && now > 3) {
+		if ((usbInfo->device_info->pid == 0x2102 || usbInfo->device_info->pid == 0x2101) && usbInfo->so &&
+			usbInfo->so->conf == 0 && sv->requestPairing && (sv->lastPairTime + 1) < now && now > 3) {
 			survive_release_ctx_lock(ctx);
 			int r = update_feature_report(usbInfo->handle, 0, vive_request_pairing, sizeof(vive_request_pairing));
 			survive_get_ctx_lock(ctx);

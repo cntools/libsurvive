@@ -173,6 +173,10 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 
 	SurviveUSBInterface *iface = transfer->user_data;
 	SurviveContext *ctx = iface->ctx;
+	bool attemptReconnect = false;
+	if (!iface->shutdown && transfer->status == LIBUSB_TRANSFER_TIMED_OUT) {
+		goto object_turned_off;
+	}
 
 	if (!iface->shutdown && transfer->status != LIBUSB_TRANSFER_COMPLETED) {
 		goto disconnect;
@@ -190,6 +194,9 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 	uint64_t submit_cb_time = OGGetAbsoluteTimeUS() - iface->last_submit_time;
 
 	iface->last_submit_time = OGGetAbsoluteTimeUS();
+
+	// If we get at least one packet; start applying a timeout
+	transfer->timeout = 1000;
 	if (libusb_submit_transfer(transfer)) {
 		goto shutdown;
 	}
@@ -210,6 +217,8 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 	iface->packet_count++;
 
 	return;
+object_turned_off:
+	iface->usbInfo->request_reopen = true;
 disconnect:
 	survive_disconnect_device(iface);
 shutdown:
@@ -372,6 +381,16 @@ void handle_config_tx(struct libusb_transfer *transfer) {
 		goto cleanup;
 	}
 
+	struct SurviveUSBInfo *usbInfo = packet->usbInfo;
+	if (so == 0) {
+		if (usbInfo->device_info->codename[0] != 0) {
+			so = survive_create_device(ctx, "HTC", usbInfo, usbInfo->device_info->codename, survive_vive_send_haptic);
+			survive_add_object(ctx, so);
+			usbInfo->so = so;
+			usbInfo->ownsObject = true;
+		}
+	}
+
 	switch (packet->state) {
 	case SURVIVE_CONFIG_STATE_MAGICS:
 		if (!packet->current_magic->magic) {
@@ -460,6 +479,15 @@ setup_next : {
 	cleanup:
 		SV_VERBOSE(100, "Cleanup config for %s %s at %f", survive_colorize_codename(packet->usbInfo->so),
 				   survive_colorize(packet->usbInfo->device_info->name), survive_run_time(ctx));
+
+		for (const struct Endpoint_t *endpoint = packet->usbInfo->device_info->endpoints; endpoint->name; endpoint++) {
+			int errorCode =
+				AttachInterface(packet->sv, packet->usbInfo, endpoint, packet->usbInfo->handle, survive_data_cb);
+			if (errorCode < 0) {
+				SV_WARN("Could not attach interface %s: %d", endpoint->name, errorCode);
+			}
+		}
+
 		packet->usbInfo->nextCfgSubmitTime = 0;
 		packet->usbInfo->cfg_user = 0;
 		packet->usbInfo->active_transfers--;

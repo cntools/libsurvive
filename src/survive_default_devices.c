@@ -19,8 +19,15 @@ SurviveObject *survive_create_device(SurviveContext *ctx, const char *driver_nam
 
 	device->ctx = ctx;
 	device->driver = driver;
-	memcpy(device->codename, device_name, strlen(device_name));
+
 	memcpy(device->drivername, driver_name, strlen(driver_name));
+	memcpy(device->codename, device_name, strlen(device_name));
+	for (int i = 0; i < ctx->objs_ct; i++) {
+		if (memcmp(device->codename, ctx->objs[i]->codename, sizeof(driver_name)) == 0) {
+			i = 0;
+			device->codename[2]++;
+		}
+	}
 
 	device->object_type = SURVIVE_OBJECT_TYPE_OTHER;
 	device->timebase_hz = 48000000;
