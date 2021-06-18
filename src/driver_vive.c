@@ -412,8 +412,9 @@ struct SurviveViveData {
 
 	FLT lastPairTime;
 	bool requestPairing;
-
+#ifndef HIDAPI
 	libusb_hotplug_callback_handle callback_handle;
+#endif
 };
 
 static void parse_tracker_version_info(SurviveObject *so, uint8_t *data, size_t size);
@@ -791,7 +792,7 @@ static inline bool survive_handle_close_request_flag(struct SurviveUSBInfo *usbI
 			SURVIVE_INVOKE_HOOK_SO(disconnect, usbInfo->so);
 			survive_destroy_device(usbInfo->so);
 		}
-		libusb_close(usbInfo->handle);
+		survive_usb_handle_close(usbInfo->handle);
 		free(usbInfo);
 		return true;
 	}
@@ -3055,16 +3056,18 @@ void survive_data_cb_locked(uint64_t time_received_us, SurviveUSBInterface *si) 
 
 int survive_vive_close(SurviveContext *ctx, void *driver) {
 	SurviveViveData *sv = driver;
+#ifndef HIDAPI
 	libusb_hotplug_deregister_callback(sv->usbctx, sv->callback_handle);
-
+#endif
 	for (int i = 0; i < sv->udev_cnt; i++) {
 		survive_close_usb_device(sv->udev[i]);
 	}
 	while (sv->udev_cnt) {
+#ifndef HIDAPI
 		survive_release_ctx_lock(ctx);
 		libusb_handle_events(sv->usbctx);
 		survive_get_ctx_lock(ctx);
-
+#endif
 		for (int i = 0; i < sv->udev_cnt; i++) {
 			struct SurviveUSBInfo *usbInfo = sv->udev[i];
 			if (survive_handle_close_request_flag(usbInfo)) {

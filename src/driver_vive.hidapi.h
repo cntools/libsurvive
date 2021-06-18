@@ -58,20 +58,7 @@ static int survive_get_usb_devices(SurviveViveData *sv, survive_usb_devices_t *d
 	return 0;
 }
 static void survive_free_usb_devices(survive_usb_devices_t devs) { hid_free_enumeration(devs); }
-
-typedef survive_usb_device_t survive_usb_device_enumerator;
-static survive_usb_device_t get_next_device(survive_usb_device_enumerator *iterator, survive_usb_devices_t list) {
-	if (*iterator == 0) {
-		return *iterator = list;
-	}
-
-	do {
-		*iterator = ((*iterator)->next);
-	} while (*iterator && (*iterator)->interface_number != 0 && (*iterator)->interface_number != -1);
-
-	return *iterator;
-}
-
+void survive_usb_handle_close(libsurvive_usb_handle *handle) {}
 static int survive_get_ids(survive_usb_device_t d, uint16_t *idVendor, uint16_t *idProduct, uint8_t *class_id) {
 	*idVendor = d->vendor_id;
 	*idProduct = d->product_id;

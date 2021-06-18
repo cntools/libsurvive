@@ -8,6 +8,8 @@ static inline int update_feature_report(libusb_device_handle *dev, uint16_t inte
 								   0x09, 0x300 | data[0], interface, data, datalen, 1000);
 }
 
+void survive_usb_handle_close(libsurvive_usb_handle *handle) { libusb_close(handle); }
+
 void monitor_transfer(struct libusb_transfer *transfer) {
 	assert(transfer->status == 0);
 	libusb_free_transfer(transfer);

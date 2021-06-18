@@ -66,12 +66,14 @@ typedef void (*usb_callback)(uint64_t time_recv_us, struct SurviveUSBInterface *
 struct HIDAPI_USB_Handle_t {
 	hid_device *interfaces[8];
 };
-#define USBHANDLE struct HIDAPI_USB_Handle_t *
+typedef struct HIDAPI_USB_Handle_t libsurvive_usb_handle;
 #define USB_INTERFACE_HANDLE hid_device *
 #else
-#define USBHANDLE libusb_device_handle *
+typedef libusb_device_handle libsurvive_usb_handle;
 #define USB_INTERFACE_HANDLE void *
 #endif
+#define USBHANDLE libsurvive_usb_handle *
+void survive_usb_handle_close(libsurvive_usb_handle *handle);
 
 struct SurviveUSBInfo;
 
