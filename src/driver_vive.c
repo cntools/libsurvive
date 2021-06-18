@@ -999,7 +999,7 @@ static ButtonQueueEntry *incrementAndPostButtonQueue(SurviveObject *so) {
 		return 0;
 
 	ButtonQueueEntry *entry = &(ctx->buttonQueue.entry[ctx->buttonQueue.nextWriteIndex]);
-
+	SV_VERBOSE(100, "%s Button event %d %d", survive_colorize_codename(so), entry->eventType, entry->buttonId);
 	for (int i = 0; i < (sizeof(entry->ids) / sizeof(entry->ids[0])) && entry->ids[i] != 255; i++)
 		so->axis[entry->ids[i]] = entry->axisValues[i];
 
@@ -1682,10 +1682,12 @@ static void handle_battery(SurviveObject *w, uint8_t batStatus) {
 	// int8_t percent = (int8_t)((((FLT)(batStatus & 0x7f)) / 0x7f) * 100);
 	int8_t percent = (batStatus & 0x7fu);
 	bool charging = (batStatus & 0x80) == 0x80;
-	w->charging = charging;
-	w->charge = percent;
-	SurviveContext *ctx = w->ctx;
-	SV_VERBOSE(100, "%s Battery charge %d%%(%s)", w->codename, percent, charging ? "Charging" : "Not charging");
+	if (percent != 0 || charging) {
+		w->charging = charging;
+		w->charge = percent;
+		SurviveContext *ctx = w->ctx;
+		SV_VERBOSE(100, "%s Battery charge %d%%(%s)", w->codename, percent, charging ? "Charging" : "Not charging");
+	}
 }
 
 static bool read_event(SurviveObject *w, uint64_t time_in_us, uint16_t time, uint8_t **readPtr,
