@@ -200,8 +200,8 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 			so->sync_count[bsd_idx] += skipped_syncs;
 			return;
 		} else {
-			SV_VERBOSE(400, "Sync   ch%2d       %6.3fhz (err: %0.6fhz) ootx: %d gen: %d time: %u count: %u", channel,
-					   hz, err, ootx, gen, timecode, so->stats.syncs[bsd_idx]);
+			SV_VERBOSE(400, "%s Sync   ch%2d       %6.3fhz (err: %0.6fhz) ootx: %d gen: %d time: %u count: %u",
+					   survive_colorize(so->codename), channel, hz, err, ootx, gen, timecode, so->stats.syncs[bsd_idx]);
 		}
 
 		so->stats.skipped_syncs[bsd_idx] += skipped_syncs;
@@ -332,9 +332,10 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 	FLT angle = time_since_sync / time_per_rot * 2. * LINMATHPI;
 	FLT angle2 = (time_since_sync + .5 / 48000000.) / time_per_rot * 2. * LINMATHPI;
 
-	SV_VERBOSE(500, "%7.3f Sensor ch%2d.%02d   %+8.3fdeg %12f %d %.16f %u %u", survive_run_time(ctx), channel,
-			   sensor_id, angle / LINMATHPI * 180., angle2 / LINMATHPI * 180., half_clock_flag, time_since_sync,
-			   rotations_since + so->sync_count[bsd_idx], timecode);
+	SV_VERBOSE(450, "%s %7.3f Sensor ch%2d.%02d   %+8.3fdeg %12f %d time_since_sync: %.16f rot: %5u tc: %u",
+			   survive_colorize(so->codename), survive_run_time(ctx), channel, sensor_id, angle / LINMATHPI * 180.,
+			   angle2 / LINMATHPI * 180., half_clock_flag, time_since_sync, rotations_since + so->sync_count[bsd_idx],
+			   timecode);
 
 	FLT angle_for_axis[2] = {angle - 2. / 3. * LINMATHPI, angle - 4. / 3. * LINMATHPI};
 	int8_t plane = determine_plane(so, bsd_idx, angle);
@@ -370,8 +371,8 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 		.plane = plane,
 		.sync = so->sync_count[bsd_idx]};
 
-	SV_VERBOSE(500, "%7.3f Sensor ch%2d.%02d.%d %+8.3fdeg", survive_run_time(ctx), channel, sensor_id, plane,
-			   angle / LINMATHPI * 180.);
+	SV_VERBOSE(500, "%s %7.3f Sensor ch%2d.%02d.%d %+8.3fdeg", survive_colorize(so->codename), survive_run_time(ctx),
+			   channel, sensor_id, plane, angle / LINMATHPI * 180.);
 
 	// Simulate the use of only one lighthouse in playback mode.
 	if (bsd_idx < ctx->activeLighthouses) {

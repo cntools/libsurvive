@@ -327,7 +327,8 @@ SURVIVE_LOCAL_ONLY double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svIn
 
 		svSetZero(&um);
 		for (int i = 0; i < w.cols; i++) {
-			svMatrixSet(&um, i, i, 1. / (_w)[i]);
+			if (_w[i] != 0.0)
+				svMatrixSet(&um, i, i, 1. / (_w)[i]);
 		}
 
 		SvMat *tmp = svCreateMat(dstarr->cols, dstarr->rows);
