@@ -334,6 +334,8 @@ struct survive_threaded_poser *survive_create_threaded_poser(SurviveObject *so, 
 }
 int survive_threaded_poser_fn(SurviveObject *so, void **user, PoserData *pd) {
 	struct survive_threaded_poser *self = (struct survive_threaded_poser *)*user;
+	if (self == 0)
+		return 0;
 
 	switch (pd->pt) {
 	case POSERDATA_DISASSOCIATE: {
@@ -369,7 +371,9 @@ int survive_threaded_poser_fn(SurviveObject *so, void **user, PoserData *pd) {
 		return 0;
 	}
 	default: {
-		self->innerPoser(so, &self->innerPoserData, pd);
+		if (self && self->innerPoser) {
+			self->innerPoser(so, &self->innerPoserData, pd);
+		}
 	}
 	}
 

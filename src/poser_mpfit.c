@@ -146,7 +146,7 @@ static size_t construct_input_from_scene(const MPFITData *d, survive_long_timeco
 		}
 
 		bool isCandidate = !ctx->bsd[lh].PositionSet;
-		size_t candidate_meas = 10;
+		size_t candidate_meas = 8;
 
 		size_t meas_for_lh = 0;
 		for (uint8_t sensor = 0; sensor < so->sensor_ct; sensor++) {

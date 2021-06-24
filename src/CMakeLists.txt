@@ -91,15 +91,28 @@ endif()
 
 
 SET(PLUGINS
-        driver_dummy driver_vive driver_simulator driver_playback
-        disambiguator_statebased
-        poser_dummy poser_mpfit poser_kalman_only
+    driver_dummy driver_vive driver_simulator driver_playback
+    disambiguator_statebased
+    poser_dummy poser_mpfit poser_kalman_only
 	poser_barycentric_svd driver_global_scene_solver
 )
+option(BUILD_CRAZYFLIE_SUPPORT "Build crazyflie driver" OFF)
+if(BUILD_CRAZYFLIE_SUPPORT)
+  find_program(GIT git)
+  if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/crazyflie-link-cpp-src")
+    message("Going...")
+    execute_process(COMMAND ${GIT} clone https://github.com/bitcraze/crazyflie-link-cpp.git "${CMAKE_CURRENT_SOURCE_DIR}/crazyflie-link-cpp-src")
+  endif()
+  message("${CMAKE_MODULE_PATH}")
+  add_subdirectory(crazyflie-link-cpp-src)
+  include_directories(crazyflie-link-cpp-src/include)
+  LIST(APPEND PLUGINS driver_crazyflie)
+  set(driver_crazyflie_ADDITIONAL_LIBS crazyflieLinkCpp)
+endif()
 
 if(BUILD_GATT_SUPPORT)
-	LIST(APPEND PLUGINS  driver_gatt)
-	set(driver_gatt_ADDITIONAL_LIBS gattlib)
+  LIST(APPEND PLUGINS  driver_gatt)
+  set(driver_gatt_ADDITIONAL_LIBS gattlib)
 endif()
 
 if(APPLE)
