@@ -75,7 +75,7 @@ static void PoserDataSVD_destroy(PoserDataSVD *dd) {
 static PoserDataSVD *PoserDataSVD_new(SurviveObject *so) {
 	PoserDataSVD *rtn = SV_CALLOC(sizeof(PoserDataSVD));
 	rtn->so = so;
-	rtn->required_meas = survive_configi(so->ctx, "epnp-required-meas", SC_GET, 10);
+	rtn->required_meas = survive_configi(so->ctx, "epnp-required-meas", SC_GET, 8);
 
 	survive_attach_configf(so->ctx, "max-error", &rtn->max_error_obj);
 	survive_attach_configf(so->ctx, "max-cal-error", &rtn->max_error_cal);

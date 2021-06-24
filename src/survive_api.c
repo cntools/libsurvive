@@ -186,7 +186,7 @@ static inline SurviveSimpleObject *create_lighthouse(SurviveSimpleContext *actx,
 	return obj;
 }
 
-static void lh_fn(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose) {
+static void lh_fn(SurviveContext *ctx, uint8_t lighthouse, const SurvivePose *lighthouse_pose) {
 	SurviveSimpleContext *actx = ctx->user_ptr;
 	OGLockMutex(actx->poll_mutex);
 	survive_default_lighthouse_pose_process(ctx, lighthouse, lighthouse_pose);

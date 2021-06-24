@@ -477,9 +477,10 @@ SURVIVE_EXPORT void survive_default_log_process(struct SurviveContext *ctx, Surv
 SURVIVE_EXPORT void survive_default_lightcap_process(SurviveObject *so, const LightcapElement *element);
 SURVIVE_EXPORT void survive_default_light_process(SurviveObject *so, int sensor_id, int acode, int timeinsweep,
 												  survive_timecode timecode, survive_timecode length, uint32_t lh);
-SURVIVE_EXPORT void survive_default_raw_imu_process(SurviveObject *so, int mode, FLT *accelgyro,
+SURVIVE_EXPORT void survive_default_raw_imu_process(SurviveObject *so, int mode, const FLT *accelgyro,
 													survive_timecode timecode, int id);
-SURVIVE_EXPORT void survive_default_imu_process(SurviveObject *so, int mode, FLT *accelgyro, survive_timecode timecode, int id);
+SURVIVE_EXPORT void survive_default_imu_process(SurviveObject *so, int mode, const FLT *accelgyro,
+												survive_timecode timecode, int id);
 SURVIVE_EXPORT void survive_default_angle_process(SurviveObject *so, int sensor_id, int acode, survive_timecode timecode,
 												  FLT length, FLT angle, uint32_t lh);
 
@@ -505,7 +506,7 @@ SURVIVE_EXPORT void survive_default_external_pose_process(SurviveContext *so, co
 SURVIVE_EXPORT void survive_default_external_velocity_process(SurviveContext *so, const char *name,
 															  const SurviveVelocity *velocity);
 SURVIVE_EXPORT void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse,
-															SurvivePose *lh_pose);
+															const SurvivePose *lh_pose);
 SURVIVE_EXPORT int survive_default_config_process(SurviveObject *so, char *ct0conf, int len);
 SURVIVE_EXPORT void survive_default_gen_detected_process(SurviveObject *so, int lh_version);
 SURVIVE_EXPORT void survive_default_new_object_process(SurviveObject *so);

@@ -105,7 +105,7 @@ void survive_recording_config_process(SurviveObject *so, char *ct0conf, int len)
 	free(buffer);
 }
 
-void survive_recording_lighthouse_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lh_pose) {
+void survive_recording_lighthouse_process(SurviveContext *ctx, uint8_t lighthouse, const SurvivePose *lh_pose) {
 	SurviveRecordingData *recordingData = ctx->recptr;
 	if (recordingData == 0)
 		return;
@@ -205,7 +205,7 @@ void survive_recording_sweep_process(SurviveObject *so, survive_channel channel,
 }
 
 void survive_recording_button_process(SurviveObject *so, enum SurviveInputEvent eventType, enum SurviveButton buttonId,
-									  const enum SurviveAxis *axisId, const float *axisVals) {
+									  const enum SurviveAxis *axisId, const SurviveAxisVal_t *axisVals) {
 	SurviveRecordingData *recordingData = so->ctx->recptr;
 
 	if (!recordingData) {
@@ -283,7 +283,8 @@ void survive_recording_light_process(struct SurviveObject *so, int sensor_id, in
 									  sensor_id, acode, timeinsweep, timecode, length, lh);
 }
 
-void survive_recording_imu_process(struct SurviveObject *so, int mask, FLT *accelgyro, uint32_t timecode, int id) {
+void survive_recording_imu_process(struct SurviveObject *so, int mask, const FLT *accelgyro, uint32_t timecode,
+								   int id) {
 	SurviveRecordingData *recordingData = so->ctx->recptr;
 	if (recordingData == 0)
 		return;
@@ -300,7 +301,8 @@ void survive_recording_imu_process(struct SurviveObject *so, int mask, FLT *acce
 									  accelgyro[8], id);
 }
 
-void survive_recording_raw_imu_process(struct SurviveObject *so, int mask, FLT *accelgyro, uint32_t timecode, int id) {
+void survive_recording_raw_imu_process(struct SurviveObject *so, int mask, const FLT *accelgyro, uint32_t timecode,
+									   int id) {
 	SurviveRecordingData *recordingData = so->ctx->recptr;
 	if (recordingData == 0)
 		return;

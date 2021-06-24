@@ -25,6 +25,7 @@ typedef struct global_scene_solver {
 	bool needsSolve;
 	FLT last_addition;
 
+	imu_process_func imu_fn;
 	sync_process_func prior_sync_fn;
 	light_pulse_process_func prior_light_pulse;
 	ootx_received_process_func prior_ootx_fn;
@@ -70,7 +71,7 @@ static size_t add_scenes(struct global_scene_solver *gss, SurviveObject *so) {
 		}
 	}
 
-	if (scene->meas_cnt > 10) {
+	if (scene->meas_cnt > 4) {
 		gss->scenes_cnt++;
 		rtn++;
 		for (int i = 0; i < ctx->activeLighthouses; i++) {
@@ -188,6 +189,14 @@ static void light_pulse_fn(SurviveObject *so, int sensor_id, int acode, survive_
 	check_for_new_objects(gss);
 	check_object(gss, survive_get_so_idx(so), so);
 }
+static void imu_fn(SurviveObject *so, int mask, const FLT *accelgyro, survive_timecode timecode, int id) {
+	global_scene_solver *gss =
+		(global_scene_solver *)survive_get_driver_by_closefn(so->ctx, DriverRegGlobalSceneSolverClose);
+	gss->imu_fn(so, mask, accelgyro, timecode, id);
+
+	check_for_new_objects(gss);
+	check_object(gss, survive_get_so_idx(so), so);
+}
 static void sync_fn(SurviveObject *so, survive_channel channel, survive_timecode timeofsync, bool ootx, bool gen) {
 	global_scene_solver *gss =
 		(global_scene_solver *)survive_get_driver_by_closefn(so->ctx, DriverRegGlobalSceneSolverClose);
@@ -216,6 +225,7 @@ static void ootx_recv(struct SurviveContext *ctx, uint8_t bsd_idx) {
 int DriverRegGlobalSceneSolver(SurviveContext *ctx) {
 	global_scene_solver *driver = SV_NEW(global_scene_solver, ctx);
 
+	driver->imu_fn = survive_install_imu_fn(ctx, imu_fn);
 	driver->prior_sync_fn = survive_install_sync_fn(ctx, sync_fn);
 	driver->prior_light_pulse = survive_install_light_pulse_fn(ctx, light_pulse_fn);
 	driver->prior_ootx_fn = survive_install_ootx_received_fn(ctx, ootx_recv);

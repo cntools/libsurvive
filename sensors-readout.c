@@ -260,7 +260,7 @@ void light_fn(SurviveObject *so, int sensor_id, int acode, int timeinsweep, surv
 		redraw(so->ctx);
 }
 
-void imu_fn(SurviveObject *so, int mode, FLT *accelgyro, survive_timecode timecode, int id) {
+void imu_fn(SurviveObject *so, int mode, const FLT *accelgyro, survive_timecode timecode, int id) {
 	variance_measure_add(&imu_variance, accelgyro);
 
 	size_t idx = 0;

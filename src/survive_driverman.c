@@ -39,6 +39,10 @@ survive_driver_fn GetDriverWithPrefix(const char *prefix, const char *name) {
 	void *func = 0;
 	int prefixLen = strlen(prefix);
 
+	if (name == 0) {
+		return 0;
+	}
+
 	while ((DriverName = GetDriverNameMatching(prefix, i++))) {
 		survive_driver_fn p = GetDriver(DriverName);
 

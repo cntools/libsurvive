@@ -158,7 +158,7 @@ enum SurviveAxis {
 	SURVIVE_AXIS_IPD = 0,
 	SURVIVE_AXIS_FACE_PROXIMITY = 1
 };
-typedef float SurviveAxisVal_t;
+typedef FLT SurviveAxisVal_t;
 
 typedef enum {
 	SURVIVE_OBJECT_TYPE_UNKNOWN = 0,
@@ -279,7 +279,8 @@ typedef void (*sweep_angle_process_func)(SurviveObject *so, survive_channel chan
  * Raw accelerometer data straight from the device; with no scaling or bias applied. accelgyro is a vector of length
  * 6 in [acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z ]
  */
-typedef void (*raw_imu_process_func)(SurviveObject *so, int mask, FLT *accelgyro, survive_timecode timecode, int id);
+typedef void (*raw_imu_process_func)(SurviveObject *so, int mask, const FLT *accelgyro, survive_timecode timecode,
+									 int id);
 
 /**
  * Processed accelerometer data straight from the device; with no scaling or bias applied. accelgyro is a vector of
@@ -287,7 +288,7 @@ typedef void (*raw_imu_process_func)(SurviveObject *so, int mask, FLT *accelgyro
  * norm of
  * 1. The gyro is in units of radians.
  */
-typedef void (*imu_process_func)(SurviveObject *so, int mask, FLT *accelgyro, survive_timecode timecode, int id);
+typedef void (*imu_process_func)(SurviveObject *so, int mask, const FLT *accelgyro, survive_timecode timecode, int id);
 
 /**
  * A general button press event
@@ -320,7 +321,7 @@ typedef void (*external_velocity_process_func)(SurviveContext *so, const char *n
 /**
  * Called when a lighthouse has a new estimated position.
  */
-typedef void (*lighthouse_pose_process_func)(SurviveContext *ctx, uint8_t bsd_idx, SurvivePose *lighthouse_pose);
+typedef void (*lighthouse_pose_process_func)(SurviveContext *ctx, uint8_t bsd_idx, const SurvivePose *lighthouse_pose);
 
 /**
  * Called when a new object is added into the system.

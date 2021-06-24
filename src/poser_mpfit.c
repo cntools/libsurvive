@@ -775,9 +775,9 @@ bool solve_global_scene(struct SurviveContext *ctx, PoserDataGlobalScenes *gss) 
 															 .lighthouseposeproc = global_lh_pose,
 															 .poseproc = global_pose,
 															 .userdata = &gd}};
-
-			d->opt.seed_poser(so, &d->opt.seed_poser_data, &seed_gss.hdr);
-
+			if (d->opt.seed_poser) {
+				d->opt.seed_poser(so, &d->opt.seed_poser_data, &seed_gss.hdr);
+			}
 			updates |= gd.updated;
 		}
 	}

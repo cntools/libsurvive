@@ -477,7 +477,7 @@ const BaseStationData simulated_bsd[5] = {
 	{.PositionSet = 1, .BaseStationID = 1, .Pose = {.Pos = {0, 0, 6}, .Rot = {1, 0, 0, 0}}, .mode = 4, .OOTXSet = 1},
 };
 
-static void simulation_lh_compare(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose) {
+static void simulation_lh_compare(SurviveContext *ctx, uint8_t lighthouse, const SurvivePose *lighthouse_pose) {
 	const SurviveDriverSimulator *driver = survive_get_driver(ctx, Simulator_poll);
 
 	SV_VERBOSE(50, "Simulation LH%d position " SurvivePose_format "\t", lighthouse,

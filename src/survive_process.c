@@ -60,7 +60,8 @@ void survive_default_ootx_received_process(struct SurviveContext *ctx, uint8_t b
 	config_save(ctx);
 }
 
-void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse, SurvivePose *lighthouse_pose) {
+void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse,
+											 const SurvivePose *lighthouse_pose) {
 	if (lighthouse_pose) {
 		ctx->bsd[lighthouse].Pose = *lighthouse_pose;
 		ctx->bsd[lighthouse].PositionSet = 1;
@@ -160,7 +161,7 @@ static void calibrate_gyro(SurviveObject *so, FLT *agm) {
 	agm[2] *= so->gyro_scale[2];
 }
 
-void survive_default_raw_imu_process(SurviveObject *so, int mask, FLT *accelgyromag, uint32_t timecode, int id) {
+void survive_default_raw_imu_process(SurviveObject *so, int mask, const FLT *accelgyromag, uint32_t timecode, int id) {
 	SurviveContext *ctx = so->ctx;
 
 	FLT agm[9] = {0};
@@ -173,8 +174,8 @@ void survive_default_raw_imu_process(SurviveObject *so, int mask, FLT *accelgyro
 
 	SURVIVE_INVOKE_HOOK_SO(imu, so, 3, agm, timecode, id);
 }
-void survive_default_imu_process( SurviveObject * so, int mask, FLT * accelgyromag, uint32_t timecode, int id )
-{
+void survive_default_imu_process(SurviveObject *so, int mask, const FLT *accelgyromag, uint32_t timecode, int id) {
+	survive_long_timecode longTimecode = SurviveSensorActivations_long_timecode_imu(&so->activations, timecode);
 	PoserDataIMU imu = {
 		.hdr =
 			{
@@ -198,4 +199,3 @@ void survive_default_imu_process( SurviveObject * so, int mask, FLT * accelgyrom
 
 	survive_recording_imu_process(so, mask, accelgyromag, timecode, id);
 }
-
