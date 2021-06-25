@@ -17,6 +17,7 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
   poser.c
   poser_general_optimizer.c
   survive.c
+  survive_buildinfo.c
   survive_api.c
         survive_config.c
   survive_default_devices.c
@@ -50,6 +51,9 @@ if(USE_HIDAPI OR WIN32)
     list(APPEND ADDITIONAL_LIBRARIES udev hidapi-libusb)
   endif()
 endif()
+
+execute_process(COMMAND git describe --dirty WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} OUTPUT_VARIABLE GIT_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
+set_property(SOURCE survive_buildinfo.c PROPERTY COMPILE_DEFINITIONS GIT_VERSION="${GIT_VERSION}")
 
 add_library(survive ${SURVIVE_LIBRARY_TYPE} ${SURVIVE_SRCS})
 

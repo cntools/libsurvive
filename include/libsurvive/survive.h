@@ -391,6 +391,8 @@ SURVIVE_EXPORT void survive_close(SurviveContext *ctx);
 SURVIVE_EXPORT void survive_get_ctx_lock(SurviveContext *ctx);
 SURVIVE_EXPORT void survive_release_ctx_lock(SurviveContext *ctx);
 
+SURVIVE_EXPORT const char *survive_build_tag();
+
 SURVIVE_EXPORT SurviveObject *survive_get_so_by_name(SurviveContext *ctx, const char *name);
 
 // Utilitiy functions.
