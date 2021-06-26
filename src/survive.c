@@ -1069,7 +1069,7 @@ inline void survive_apply_ang_velocity(LinmathQuat out, const SurviveAngularVelo
 static double timestamp_in_s() {
 	static double start_time_s = 0;
 	if (start_time_s == 0.)
-		start_time_s = OGGetAbsoluteTime();
+		start_time_s = OGGetAbsoluteTime() - .001;
 	return OGGetAbsoluteTime() - start_time_s;
 }
 
