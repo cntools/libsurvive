@@ -63,6 +63,7 @@ LOCAL_SRC_FILES := \
     src/survive.c \
     src/survive_api.c \
     src/survive_async_optimizer.c \
+    src/survive_buildinfo.c \
     src/survive_config.c \
     src/survive_default_devices.c \
     src/survive_disambiguator.c \
