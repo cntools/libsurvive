@@ -340,6 +340,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 	int list_for_autocomplete = 0;
 	const char * autocomplete_match[3] = { 0, 0, 0};
 	int showhelp = 0;
+	bool showversion = false;
 	for (; av < argvend; av++) {
 		if ((*av)[0] == '-') {
 			const char *vartoupdate = 0;
@@ -386,9 +387,11 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 				}
 				bool flagArgument = isLast || nextIsOption;
 
-				if ( strcmp( name, "help" ) == 0 )
+				if (strcmp(name, "help") == 0) {
 					showhelp = 1;
-				else if (flagArgument) {
+				} else if (strcmp(name, "version") == 0) {
+					showversion = 1;
+				} else if (flagArgument) {
 					bool value = strncmp("no-", name, 3) != 0;
 					if (value == 0) {
 						name += 3; // Skip "no-"
@@ -483,6 +486,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 	if( showhelp )
 	{
 		// Can't use SV_GENERAL_ERROR here since we don't have a context to send to yet.
+		fprintf(stderr, "libsurvive version %s\n", survive_build_tag());
 		fprintf(stderr, "Available flags:\n");
 		fprintf(stderr, " -h                      - shows help.\n");
 		fprintf(stderr, " -m                      - list parameters, for autocomplete.\n");
@@ -493,7 +497,10 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 		survive_print_known_configs( ctx, 1 );
 		return 0;
 	}
-
+	if (showversion) {
+		fprintf(stderr, "libsurvive version %s\n", survive_build_tag());
+		return 0;
+	}
 	return ctx;
 }
 
