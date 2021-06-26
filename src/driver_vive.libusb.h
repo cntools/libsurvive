@@ -175,10 +175,14 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 	SurviveContext *ctx = iface->ctx;
 	bool attemptReconnect = false;
 	if (!iface->shutdown && transfer->status == LIBUSB_TRANSFER_TIMED_OUT) {
+		SV_WARN("%f %s Device turned off: %d", survive_run_time(ctx), survive_colorize_codename(iface->assoc_obj),
+				transfer->status);
 		goto object_turned_off;
 	}
 
 	if (!iface->shutdown && transfer->status != LIBUSB_TRANSFER_COMPLETED) {
+		SV_WARN("%f %s Device disconnect: %d", survive_run_time(ctx), survive_colorize_codename(iface->assoc_obj),
+				transfer->status);
 		goto disconnect;
 	}
 
