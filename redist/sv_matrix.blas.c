@@ -301,11 +301,11 @@ SURVIVE_LOCAL_ONLY double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svIn
 	print_mat(srcarr);
 #endif
 	if (method == SV_INVERT_METHOD_LU) {
-		lapack_int *ipiv = alloca(sizeof(lapack_int) * MIN(srcarr->rows, srcarr->cols));
+		lapack_int *ipiv = SV_MATRIX_ALLOC(sizeof(lapack_int) * MIN(srcarr->rows, srcarr->cols));
 
 		lapack_int lda_t = MAX(1, rows);
 
-		FLT *a_t = (FLT *)alloca(sizeof(FLT) * lda_t * MAX(1, cols));
+		FLT *a_t = (FLT *)SV_MATRIX_ALLOC(sizeof(FLT) * lda_t * MAX(1, cols));
 		LAPACKE_ge_trans(LAPACK_ROW_MAJOR, rows, cols, a, lda, a_t, lda_t);
 
 		inf = LAPACKE_getrf(LAPACK_COL_MAJOR, rows, cols, a_t, lda, ipiv);
@@ -321,6 +321,8 @@ SURVIVE_LOCAL_ONLY double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svIn
 			// print_mat(srcarr);
 		}
 
+		SV_MATRIX_FREE(a_t);
+		SV_MATRIX_FREE(ipiv);
 		// free(ipiv);
 
 	} else if (method == DECOMP_SVD) {

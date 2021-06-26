@@ -83,7 +83,6 @@ void print_mat(const SvMat *M);
 
 double svDet(const SvMat *M);
 
-#define SV_MATRIX_USE_MALLOC
 #ifdef SV_MATRIX_USE_MALLOC
 #define SV_MATRIX_ALLOC(size) calloc(1, size)
 #define SV_MATRIX_FREE(ptr) free(ptr)
