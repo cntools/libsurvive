@@ -271,6 +271,7 @@ static int survive_config_submit(struct SurviveUSBInfo *usbInfo, int iface) {
 	assert(config_packet->tx);
 	int rc = libusb_submit_transfer(config_packet->tx);
 	if (rc) {
+		SV_WARN("Failed to submit transfer");
 		return -6;
 	}
 	return 0;
@@ -498,12 +499,12 @@ setup_next : {
 
 static int survive_start_get_config(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int iface) {
 	struct libusb_transfer *tx = libusb_alloc_transfer(0);
+	SurviveContext *ctx = sv->ctx;
 	if (!tx) {
+		SV_WARN("Could not allocate transfer frame");
 		return -4;
 	}
 	usbInfo->active_transfers++;
-
-	SurviveContext *ctx = sv->ctx;
 
 	struct survive_config_packet *config_packet = SV_CALLOC(sizeof(struct survive_config_packet));
 	usbInfo->cfg_user = config_packet;
@@ -522,9 +523,9 @@ static int survive_start_get_config(SurviveViveData *sv, struct SurviveUSBInfo *
 	}
 	setup_packet_state(config_packet);
 
-	SV_VERBOSE(100, "Requesting config for %s %p %d",
-			   survive_colorize(usbInfo->so ? usbInfo->so->codename : usbInfo->device_info->name), (void *)tx,
-			   config_packet->state);
+	SV_INFO("Requesting config for %s %p %d",
+			survive_colorize(usbInfo->so ? usbInfo->so->codename : usbInfo->device_info->name), (void *)tx,
+			config_packet->state);
 
 	usbInfo->nextCfgSubmitTime = survive_run_time(ctx);
 

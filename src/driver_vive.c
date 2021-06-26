@@ -682,7 +682,7 @@ int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d) {
 		return -1;
 	}
 
-	SV_VERBOSE(100, "Enumerating USB device %04x:%x4x %s", idVendor, idProduct, survive_colorize(info->name));
+	SV_INFO("Enumerating USB device %04x:%x4x %s", idVendor, idProduct, survive_colorize(info->name));
 	if (info->type == USB_DEV_HMD) {
 		SV_VERBOSE(10, "Mainboard class %d", class_id);
 		if (sv->hmd_mainboard_index != -1 || class_id != 0) {
