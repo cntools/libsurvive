@@ -2,7 +2,6 @@
 
 #ifdef USE_OPENCV
 #include "minimal_opencv.opencv.h"
-
 #else
 
 #include "linmath.h"
@@ -33,6 +32,15 @@ typedef struct SvMat {
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#ifdef __cplusplus
+// Avoids missing-field-initializers errors
+#define ZERO_INITIALIZATION                                                                                            \
+	{}
+#else
+#define ZERO_INITIALIZATION                                                                                            \
+	{ 0 }
 #endif
 
 void print_mat(const SvMat *M);
@@ -144,7 +152,7 @@ static inline const FLT *sv_as_const_vector(const struct SvMat *m) {
  * get a matrix with allocated data):
  */
 static inline SvMat svMat(int rows, int cols, FLT *data) {
-	SvMat m = {0};
+	SvMat m = ZERO_INITIALIZATION;
 
 	m.cols = cols;
 	m.rows = rows;
