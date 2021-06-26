@@ -169,10 +169,11 @@ void load_calibration(SurviveContext *ctx, const char *fn) {
 		if (infos[i].so == 0)
 			i--;
 	}
-	fscanf(f, "\n");
 
 	for (int i = 0; i < 4; i++) {
-		fscanf(f, Point3_sformat "\n", &screen.corners[i][0], &screen.corners[i][1], &screen.corners[i][2]);
+		int corners =
+			fscanf(f, Point3_sformat "\n", &screen.corners[i][0], &screen.corners[i][1], &screen.corners[i][2]);
+		assert(corners == 3);
 	}
 	fclose(f);
 }
@@ -181,7 +182,7 @@ void add_sample(SurviveContext *ctx, struct ScreenInfo *info, struct LinmathLine
 	if (info->total_samples_cnt < 8) {
 		int target = info->total_samples_cnt % 4;
 
-		SV_INFO("Integrating for %d " Point6_format, target, LINMATH_VEC6_EXPAND(ray->a));
+		// SV_INFO("Integrating for %d " Point6_format, target, LINMATH_VEC6_EXPAND(ray->a));
 		copyLine(&info->samples[target][info->samples_cnt[target]], ray);
 		info->samples_cnt[target]++;
 

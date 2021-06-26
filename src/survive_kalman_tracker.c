@@ -698,7 +698,9 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	bool use_kalman = (bool)survive_configi(ctx, "use-kalman", SC_GET, 1);
 	tracker->use_raw_obs = !use_kalman;
 
-	survive_kalman_set_logging_level(ctx->log_level);
+	if (ctx) {
+		survive_kalman_set_logging_level(ctx->log_level);
+	}
 	size_t state_cnt = sizeof(SurviveKalmanModel) / sizeof(FLT);
 
 	if (!tracker->model_gyro_bias) {

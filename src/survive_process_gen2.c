@@ -261,7 +261,7 @@ static inline int8_t determine_plane(SurviveObject *so, int8_t bsd_idx, FLT angl
 
 		FLT err[2] = {0};
 		for (int i = 0; i < 2; i++) {
-			err[i] = fabsf((float)(angle_for_axis[i] - so->activations.angles_center[bsd_idx][i]));
+			err[i] = fabsf((float)(angle_for_axis[i] - so->activations.angles_center_x[bsd_idx][i]));
 			if (isnan(err[i]))
 				err[i] = 1.;
 		}

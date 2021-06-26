@@ -294,6 +294,12 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
 		}
 	}
 }
+static inline FLT norm_pdf(FLT x, FLT std) {
+	const FLT scale = 1. / sqrt(M_PI * 2);
+	FLT ratio = x / std;
+	ratio = (ratio * ratio) * -.5;
+	return scale * exp(ratio);
+}
 
 static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 	struct SurviveObject *so = optimizer->sos[0];
@@ -314,15 +320,20 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 
 	avg_dev = avg_dev / (FLT)valid_meas;
 	SV_DATA_LOG("opt_avg_deviates", &avg_dev, 1);
-
+	if (avg_dev < .01) {
+		avg_dev = .01;
+	}
 	for (int i = 0; i < optimizer->measurementsCnt; i++) {
 		survive_optimizer_measurement *meas = &optimizer->measurements[i];
-		if (fabs(deviates[i]) > avg_dev * 15) {
+		FLT P = norm_pdf(deviates[i], avg_dev);
+		FLT chauvenet_criterion = P * optimizer->measurementsCnt;
+		if (chauvenet_criterion < .5) {
 			meas->invalid = true;
 			optimizer->stats.dropped_meas_cnt++;
 
-			SV_VERBOSE(110, "Ignoring noisy data at lh %d sensor %d axis %d val %f (%7.7f/%7.7f)", meas->lh,
-					   meas->sensor_idx, meas->axis, meas->value, fabs(deviates[i]), avg_dev);
+			SV_VERBOSE(105, "Ignoring noisy data at lh %d sensor %d axis %d val %f (%7.7f/%7.7f) %7.7f %7.7f", meas->lh,
+					   meas->sensor_idx, meas->axis, meas->value, fabs(deviates[i]), avg_dev, P, chauvenet_criterion);
+
 			deviates[i] = 0.;
 		} else {
 			SV_VERBOSE(1000, "Data at lh %d sensor %d axis %d val %f (%7.7f/%7.7f)", meas->lh, meas->sensor_idx,
@@ -354,6 +365,9 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 	FLT unbias_dev = lh_avg_dev / (obs_lhs - 1.);
 	lh_avg_dev = lh_avg_dev / (FLT)obs_lhs;
 
+	if (lh_avg_dev < .01) {
+		lh_avg_dev = 0.01;
+	}
 	SV_DATA_LOG("opt_lh_avg_deviates", &lh_avg_dev, 1);
 
 	if (obs_lhs > 2) {
@@ -363,6 +377,8 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 
 			FLT corrected_dev = unbias_dev - lh_deviates[i] / (obs_lhs - 1.);
 			SV_DATA_LOG("opt_lh_corrected_dev[%d]", &corrected_dev, 1, i);
+			FLT P = norm_pdf(lh_deviates[i], lh_avg_dev);
+			FLT chauvenet_criterion = P * obs_lhs;
 
 			if (lh_deviates[i] > 100 * corrected_dev) {
 				SV_VERBOSE(100, "Data from LH %d seems suspect for %s (%f/%10.10f -- %f)", i,

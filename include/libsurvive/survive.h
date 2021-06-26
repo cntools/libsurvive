@@ -30,7 +30,8 @@ typedef struct SurviveSensorActivations_s {
 
 	// Valid for gen2; somewhat different meaning though -- refers to angle of the rotor when the sweep happened.
 	FLT angles[SENSORS_PER_OBJECT][NUM_GEN2_LIGHTHOUSES][2];				// 2 Axes (Angles in LH space)
-	FLT angles_center[NUM_GEN2_LIGHTHOUSES][2];
+	FLT angles_center_x[NUM_GEN2_LIGHTHOUSES][2];
+	FLT angles_center_dev[NUM_GEN2_LIGHTHOUSES][2];
 	int angles_center_cnt[NUM_GEN2_LIGHTHOUSES][2];
 
 	survive_long_timecode timecode[SENSORS_PER_OBJECT][NUM_GEN2_LIGHTHOUSES][2]; // Timecode per axis in ticks
@@ -66,7 +67,7 @@ SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_long_timecode_ligh
  */
 SURVIVE_EXPORT FLT SurviveSensorActivations_difference(const SurviveSensorActivations *rhs,
         const SurviveSensorActivations *lhs);
-SURVIVE_EXPORT void SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLightGen1 *lightData);
+SURVIVE_EXPORT bool SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLightGen1 *lightData);
 SURVIVE_EXPORT bool SurviveSensorActivations_add_gen2(SurviveSensorActivations *self,
 													  struct PoserDataLightGen2 *lightData);
 
@@ -568,7 +569,7 @@ SURVIVE_EXPORT uint32_t survive_hash_str(const char *str);
 
 #define SV_DATA_LOG(fmt, v, n, ...)                                                                                    \
 	{                                                                                                                  \
-		if (so && so->ctx->datalogproc) {                                                                              \
+		if (so && so->ctx && so->ctx->datalogproc) {                                                                   \
 			char name[128];                                                                                            \
 			snprintf(name, sizeof(name) - 1, fmt, ##__VA_ARGS__);                                                      \
 			SURVIVE_INVOKE_HOOK_SO(datalog, so, name, v, n);                                                           \

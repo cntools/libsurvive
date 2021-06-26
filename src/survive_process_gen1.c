@@ -95,11 +95,12 @@ void survive_default_angle_process(SurviveObject *so, int sensor_id, int acode, 
 	};
 
 	// Simulate the use of only one lighthouse in playback mode.
-	if (lh < ctx->activeLighthouses)
-		SurviveSensorActivations_add(&so->activations, &l);
+	if (lh < ctx->activeLighthouses) {
+		if (SurviveSensorActivations_add(&so->activations, &l)) {
+			survive_kalman_tracker_integrate_light(so->tracker, &l.common);
+			SURVIVE_POSER_INVOKE(so, &l);
+		}
+	}
 
 	survive_recording_angle_process(so, sensor_id, acode, timecode, length, angle, lh);
-
-	survive_kalman_tracker_integrate_light(so->tracker, &l.common);
-	SURVIVE_POSER_INVOKE(so, &l);
 }
