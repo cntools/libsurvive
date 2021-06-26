@@ -523,9 +523,9 @@ static int survive_start_get_config(SurviveViveData *sv, struct SurviveUSBInfo *
 	}
 	setup_packet_state(config_packet);
 
-	SV_INFO("Requesting config for %s %p %d",
-			survive_colorize(usbInfo->so ? usbInfo->so->codename : usbInfo->device_info->name), (void *)tx,
-			config_packet->state);
+	SV_VERBOSE(10, "Requesting config for %s %p %d",
+			   survive_colorize(usbInfo->so ? usbInfo->so->codename : usbInfo->device_info->name), (void *)tx,
+			   config_packet->state);
 
 	usbInfo->nextCfgSubmitTime = survive_run_time(ctx);
 
