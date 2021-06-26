@@ -229,10 +229,11 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 								.lh = bsd_idx,
 							}};
 
-	if (bsd_idx < ctx->activeLighthouses)
+	if (bsd_idx < ctx->activeLighthouses) {
 		if (SurviveSensorActivations_add_gen2(&so->activations, &l) == false) {
 			so->stats.rejected_data[bsd_idx]++;
 		}
+	}
 
 	so->stats.hit_from_lhs[bsd_idx]++;
 

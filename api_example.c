@@ -80,8 +80,10 @@ int main(int argc, char **argv) {
 		}
 		case SurviveSimpleEventType_ConfigEvent: {
 			const struct SurviveSimpleConfigEvent *cfg_event = survive_simple_get_config_event(&event);
-			printf("(%f) %s received configuration of length %u\n", cfg_event->time,
-				   survive_simple_object_name(cfg_event->object), (unsigned)strlen(cfg_event->cfg));
+			printf("(%f) %s received configuration of length %u type %d-%d\n", cfg_event->time,
+				   survive_simple_object_name(cfg_event->object), (unsigned)strlen(cfg_event->cfg),
+				   survive_simple_object_get_type(cfg_event->object),
+				   survive_simple_object_get_subtype(cfg_event->object));
 			break;
 		}
 		case SurviveSimpleEventType_DeviceAdded: {
