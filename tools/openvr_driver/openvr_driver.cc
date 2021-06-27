@@ -101,12 +101,10 @@ struct SurviveObjectOpenVRDriver : public vr::ITrackedDeviceServerDriver {
 
 		const char *name = survive_simple_object_name(surviveSimpleObject);
 		if (strcmp(name, "LH0") == 0) {
-			auto iSPose = InvertPoseRtn(&sPose);
-			// scale3d(lh0position, iSPose.Pos, 1.);
 			DebugDriverLog("lh0position %f %f %f", lh0position[0], lh0position[1], lh0position[2]);
 		}
 
-		vr::DriverPose_t pose = {0};
+		vr::DriverPose_t pose = {};
 		pose.poseIsValid = true;
 		pose.result = vr::TrackingResult_Running_OK;
 		pose.deviceIsConnected = true;

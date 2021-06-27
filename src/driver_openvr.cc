@@ -50,7 +50,7 @@ struct OpenVRDriver {
 	SurviveContext *ctx = nullptr;
 	bool *keep_running = nullptr;
 
-	SurvivePose openvr2survive = {0};
+	SurvivePose openvr2survive = {};
 
 	OpenVRDriver(SurviveContext *ctx) : ctx(ctx) {}
 
@@ -66,7 +66,7 @@ struct OpenVRDriver {
 		int bsd_idx = -1;
 	} tracked_device_t;
 
-	tracked_device_t devices[vr::k_unMaxTrackedDeviceCount] = {0};
+	tracked_device_t devices[vr::k_unMaxTrackedDeviceCount] = {};
 	std::vector<tracked_device_t *> device_list;
 
 	int32_t get_bsd_idx(const tracked_device_t &dev) const {
@@ -169,7 +169,7 @@ struct OpenVRDriver {
 
 		OGUSleep(10000);
 
-		vr::VREvent_t event = {0};
+		vr::VREvent_t event = {};
 		while (vr_system->PollNextEvent(&event, sizeof(event))) {
 			SV_VERBOSE(200, "(OpenVR) Event: %s (%d)",
 					   vr_system->GetEventTypeNameFromEnum(static_cast<vr::EVREventType>(event.eventType)),

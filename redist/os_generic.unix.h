@@ -16,7 +16,7 @@
 OSG_INLINE void OGSleep(int is) { sleep(is); }
 
 OSG_INLINE int OGUSleep(int ius) {
-	struct timespec sleep = {0};
+	struct timespec sleep = {};
 	sleep.tv_nsec = (ius % 1000000) * 1000;
 	sleep.tv_sec = ius / 1000000;
 	return nanosleep(&sleep, 0);
@@ -168,7 +168,7 @@ OSG_INLINE void OGWaitCond(og_cv_t cv, og_mutex_t m) {
 	_OGHandlePosixError("OGWaitCond", pthread_cond_wait((pthread_cond_t *)cv, (pthread_mutex_t *)m));
 }
 OSG_INLINE bool OGWaitCondTimeout(og_cv_t cv, og_mutex_t m, int ms) {
-	struct timespec ts = {0};
+	struct timespec ts = {};
 	clock_gettime(CLOCK_REALTIME, &ts);
 	uint64_t waittil = (uint64_t)ts.tv_sec * 1000000000 + ts.tv_nsec + ms * 1000000;
 
