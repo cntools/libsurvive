@@ -47,7 +47,7 @@ jobs:
 
       - name: Build wheels - Linux
         if: runner.os != 'Windows'
-        run: python -m cibuildwheel --use-binfmt
+        run: python -m cibuildwheel
         env:
           CIBW_MANYLINUX_X86_64_IMAGE: libsurvive_manylinux2014_x86_64
           CIBW_MANYLINUX_AARCH64_IMAGE: libsurvive_manylinux2014_aarch64
