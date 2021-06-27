@@ -43,7 +43,7 @@ jobs:
 
       - name: Install cibuildwheel
         run: |
-          python -m pip install git+https://github.com/russkel/cibuildwheel.git@9347d6b86f4140470ed9249eaa268c3bca90a750
+          python -m pip install cibuildwheel==1.12.0
 
       - name: Build wheels - Linux
         if: runner.os != 'Windows'
@@ -73,3 +73,4 @@ jobs:
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.TWINE_TOKEN }}
+	  
