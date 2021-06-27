@@ -1014,7 +1014,10 @@ static ButtonQueueEntry *incrementAndPostButtonQueue(SurviveObject *so) {
 		return 0;
 
 	ButtonQueueEntry *entry = &(ctx->buttonQueue.entry[ctx->buttonQueue.nextWriteIndex]);
-	SV_VERBOSE(100, "%s Button event %d %d", survive_colorize_codename(so), entry->eventType, entry->buttonId);
+	SV_VERBOSE(100, "%s Button event %s %d %s %f", survive_colorize_codename(so),
+			   SurviveInputEventStr(entry->eventType), entry->buttonId,
+			   SurviveAxisStr(so->object_subtype, entry->ids[0]), entry->axisValues[0]);
+
 	for (int i = 0; i < (sizeof(entry->ids) / sizeof(entry->ids[0])) && entry->ids[i] != 255; i++)
 		so->axis[entry->ids[i]] = entry->axisValues[i];
 
