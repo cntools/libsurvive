@@ -868,8 +868,8 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 	for (int i = 0; i < sv->udev_cnt; i++) {
 		struct SurviveUSBInfo *usbInfo = sv->udev[i];
 
-		if ((usbInfo->device_info->pid == 0x2102 || usbInfo->device_info->pid == 0x2101) && usbInfo->so &&
-			usbInfo->so->conf == 0 && sv->requestPairing && (sv->lastPairTime + 1) < now && now > 3) {
+		if ((usbInfo->device_info->pid == 0x2102 || usbInfo->device_info->pid == 0x2101) && usbInfo->so == 0 &&
+			sv->requestPairing && (sv->lastPairTime + 1) < now && now > 3) {
 			survive_release_ctx_lock(ctx);
 			int r = update_feature_report(usbInfo->handle, 0, vive_request_pairing, sizeof(vive_request_pairing));
 			survive_get_ctx_lock(ctx);
@@ -1014,6 +1014,7 @@ static ButtonQueueEntry *incrementAndPostButtonQueue(SurviveObject *so) {
 		return 0;
 
 	ButtonQueueEntry *entry = &(ctx->buttonQueue.entry[ctx->buttonQueue.nextWriteIndex]);
+
 	SV_VERBOSE(100, "%s Button event %s %d %s %f", survive_colorize_codename(so),
 			   SurviveInputEventStr(entry->eventType), entry->buttonId,
 			   SurviveAxisStr(so->object_subtype, entry->ids[0]), entry->axisValues[0]);
