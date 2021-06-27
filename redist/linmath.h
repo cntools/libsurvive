@@ -33,6 +33,10 @@ extern "C" {
 #define LINMATHPI_2 ((FLT)1.57079632679489661923) /* pi/2 */
 #define LINMATHPI_4 ((FLT)0.78539816339744830962) /* pi/4 */
 
+#ifndef M_PI
+#define M_PI LINMATHPI
+#endif
+
 #ifdef USE_FLOAT
 
 #define FLT float
