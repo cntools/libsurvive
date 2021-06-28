@@ -663,7 +663,7 @@ void global_lh_pose(SurviveObject *so, uint8_t lighthouse, SurvivePose *lighthou
 	SV_VERBOSE(10, "Initial LH pose (%d) " SurvivePose_format, lighthouse, SURVIVE_POSE_EXPAND(*lighthouse_pose));
 }
 
-bool solve_global_scene(struct SurviveContext *ctx, PoserDataGlobalScenes *gss) {
+bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGlobalScenes *gss) {
 	if (gss->scenes_cnt == 0 || gss->scenes == 0)
 		return false;
 
@@ -758,7 +758,6 @@ bool solve_global_scene(struct SurviveContext *ctx, PoserDataGlobalScenes *gss) 
 
 		for (int s = 0; s < scenes_cnt; s++) {
 			SurviveObject *so = gss->scenes[s].so;
-			MPFITData *d = (MPFITData *)so->PoserFnData;
 
 			struct global_data gd = {.camera = survive_optimizer_get_camera(&mpfitctx),
 									 .pose = survive_optimizer_get_pose(&mpfitctx) + s};
@@ -925,7 +924,7 @@ int PoserMPFIT(SurviveObject *so, void **user, PoserData *pd) {
 	case POSERDATA_GLOBAL_SCENES: {
 		d->globalDataAvailable = true;
 		PoserDataGlobalScenes *gs = (PoserDataGlobalScenes *)pd;
-		return solve_global_scene(ctx, gs) ? 0 : -1;
+		return solve_global_scene(ctx, d, gs) ? 0 : -1;
 	}
 	case POSERDATA_SYNC_GEN2:
 	case POSERDATA_SYNC: {
