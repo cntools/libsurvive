@@ -95,6 +95,18 @@ endif
 
 include $(BUILD_SHARED_LIBRARY)
 
+# driver_playback
+include $(CLEAR_VARS)
+LOCAL_MODULE               := libsurvive-plugin-driver_playback
+LOCAL_MODULE_CLASS         := SHARED_LIBRARIES
+LOCAL_CFLAGS               := $(COMMON_CFLAGS)
+LOCAL_C_INCLUDES           := $(COMMON_C_INCLUDES)
+LOCAL_SHARED_LIBRARIES     := libsurvive libz
+LOCAL_SRC_FILES            := src/driver_playback.c
+LOCAL_PROPRIETARY_MODULE   := true
+LOCAL_MODULE_RELATIVE_PATH := libsurvive/plugins
+include $(BUILD_SHARED_LIBRARY)
+
 # driver_vive
 include $(CLEAR_VARS)
 LOCAL_MODULE               := libsurvive-plugin-driver_vive
@@ -127,6 +139,18 @@ LOCAL_CFLAGS               := $(COMMON_CFLAGS)
 LOCAL_C_INCLUDES           := $(COMMON_C_INCLUDES)
 LOCAL_SHARED_LIBRARIES     := libsurvive
 LOCAL_SRC_FILES            := src/poser_barycentric_svd.c
+LOCAL_PROPRIETARY_MODULE   := true
+LOCAL_MODULE_RELATIVE_PATH := libsurvive/plugins
+include $(BUILD_SHARED_LIBRARY)
+
+# poser_kalman
+include $(CLEAR_VARS)
+LOCAL_MODULE               := libsurvive-plugin-poser_kalman_only
+LOCAL_MODULE_CLASS         := SHARED_LIBRARIES
+LOCAL_CFLAGS               := $(COMMON_CFLAGS)
+LOCAL_C_INCLUDES           := $(COMMON_C_INCLUDES)
+LOCAL_SHARED_LIBRARIES     := libsurvive
+LOCAL_SRC_FILES            := src/poser_kalman_only.c
 LOCAL_PROPRIETARY_MODULE   := true
 LOCAL_MODULE_RELATIVE_PATH := libsurvive/plugins
 include $(BUILD_SHARED_LIBRARY)
