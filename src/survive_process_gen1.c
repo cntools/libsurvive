@@ -44,6 +44,7 @@ void survive_default_light_process(SurviveObject *so, int sensor_id, int acode, 
 			.length = length,
 		};
 
+		survive_kalman_tracker_integrate_light(so->tracker, &l.common);
 		SURVIVE_POSER_INVOKE(so, &l);
 		SURVIVE_INVOKE_HOOK_SO(light_pulse, so, sensor_id, acode, timecode, length_sec, lh);
 

@@ -238,6 +238,7 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 	so->stats.hit_from_lhs[bsd_idx]++;
 
 	if (ctx->lh_version != -1) {
+		survive_kalman_tracker_integrate_light(so->tracker, &l.common);
 		SURVIVE_POSER_INVOKE(so, &l);
 	}
 }

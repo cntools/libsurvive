@@ -58,7 +58,6 @@ static inline void arr_eye_diag(FLT *m, int rows, int cols, const FLT *v) {
 }
 
 struct map_light_data_ctx {
-	PoserDataLight *pdl;
 	SurviveKalmanTracker *tracker;
 };
 
@@ -84,7 +83,7 @@ static inline int get_axis(const struct PoserDataLight *pdl) {
 static bool map_light_data(void *user, const struct SvMat *Z, const struct SvMat *x_t, struct SvMat *y,
 						   struct SvMat *H_k) {
 	struct map_light_data_ctx *cbctx = (struct map_light_data_ctx *)user;
-	const struct PoserDataLight *pdl = cbctx->pdl;
+
 	const SurviveKalmanTracker *tracker = cbctx->tracker;
 
 	SurviveObject *so = tracker->so;
@@ -92,31 +91,38 @@ static bool map_light_data(void *user, const struct SvMat *Z, const struct SvMat
 	const survive_reproject_model_t *mdl =
 		tracker->so->ctx->lh_version == 0 ? &survive_reproject_model : &survive_reproject_gen2_model;
 
-	int axis = get_axis(pdl);
-
-	survive_reproject_full_xy_fn_t project_fn = mdl->reprojectAxisFullFn[axis];
-	survive_reproject_axis_jacob_fn_t project_jacob_fn = mdl->reprojectAxisJacobFn[axis];
-	assert(ctx->bsd[pdl->lh].PositionSet);
-
-	const SurvivePose world2lh = InvertPoseRtn(&ctx->bsd[pdl->lh].Pose);
-	const SurvivePose obj2world = *(SurvivePose *)sv_as_const_vector(x_t);
-
-	const FLT *ptInObj = &so->sensor_locations[pdl->sensor_id * 3];
-	FLT h_x = project_fn(&obj2world, ptInObj, &world2lh, &ctx->bsd[pdl->lh].fcal[axis]);
-	sv_as_vector(y)[0] = sv_as_const_vector(Z)[0] - h_x;
-
 	sv_set_zero(H_k);
 
-	project_jacob_fn(sv_as_vector(H_k), &obj2world, ptInObj, &world2lh, &ctx->bsd[pdl->lh].fcal[axis]);
+	FLT *Y = sv_as_vector(y);
+	for (int i = 0; i < tracker->savedLight_idx; i++) {
+		const LightInfo *info = &tracker->savedLight[i];
+		int axis = info->axis;
+
+		survive_reproject_full_xy_fn_t project_fn = mdl->reprojectAxisFullFn[axis];
+		survive_reproject_axis_jacob_fn_t project_jacob_fn = mdl->reprojectAxisJacobFn[axis];
+		assert(ctx->bsd[info->lh].PositionSet);
+
+		const SurvivePose world2lh = InvertPoseRtn(&ctx->bsd[info->lh].Pose);
+		const SurvivePose obj2world = *(SurvivePose *)sv_as_const_vector(x_t);
+
+		const FLT *ptInObj = &so->sensor_locations[info->sensor_idx * 3];
+		FLT h_x = project_fn(&obj2world, ptInObj, &world2lh, &ctx->bsd[info->lh].fcal[axis]);
+		Y[i] = sv_as_const_vector(Z)[i] - h_x;
+		FLT jacobian[7] = {0};
+		project_jacob_fn(jacobian, &obj2world, ptInObj, &world2lh, &ctx->bsd[info->lh].fcal[axis]);
+		for (int j = 0; j < 7; j++) {
+			svMatrixSet(H_k, i, j, jacobian[j]);
+		}
+	}
 	if (!sv_is_finite(H_k))
 		return false;
 
 	return true;
 }
 
-void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, PoserDataLight *data) {
+void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker, PoserData *pd) {
 	SurviveContext *ctx = tracker->so->ctx;
-
+	FLT time = pd->timecode / (FLT)tracker->so->timebase_hz;
 	if (tracker->use_raw_obs) {
 		return;
 	}
@@ -132,27 +138,18 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 		return;
 	}
 
-	if (!ctx->bsd[data->lh].PositionSet) {
+	if (tracker->savedLight_idx == 0) {
 		return;
 	}
 
-	uint32_t meas_cnt = 0, lh_cnt = 0, axis_cnt = 0;
-	SurviveSensorActivations_valid_counts(&tracker->so->activations, 0, &meas_cnt, &lh_cnt, &axis_cnt, 0);
-
-	bool sufficient_measurement = lh_cnt > 1 || (axis_cnt > 1 && meas_cnt > 8);
-
-	FLT time = data->hdr.timecode / (FLT)tracker->so->timebase_hz;
-	FLT delta = time - tracker->model.t;
-
-	if (!sufficient_measurement) {
-		return;
-	}
-
+	tracker->last_light_time = time;
 	if (tracker->light_var >= 0) {
-		SvMat Z = svMat(1, 1, &data->angle);
+		SV_CREATE_STACK_MAT(Z, tracker->savedLight_idx, 1);
+		for (int i = 0; i < tracker->savedLight_idx; i++)
+			svMatrixSet(&Z, i, 0, tracker->savedLight[i].value);
+
 		struct map_light_data_ctx cbctx = {
 			.tracker = tracker,
-			.pdl = data,
 		};
 
 		SurviveObject *so = tracker->so;
@@ -162,44 +159,47 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 			light_var += tracker->obs_pos_var / ((FLT)tracker->stats.lightcap_count + 1.);
 		}
 		SV_DATA_LOG("light_var", &light_var, 1);
-
-		FLT rtn = survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, &light_var, map_light_data,
+		FLT light_vars[32] = {0};
+		for (int i = 0; i < 32; i++)
+			light_vars[i] = light_var;
+		FLT rtn = survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, light_vars, map_light_data,
 															   &cbctx, tracker->adaptive_lightcap);
 		if (!ramp_in && tracker->adaptive_lightcap) {
 			tracker->light_var = light_var;
 		}
-
+		SV_VERBOSE(110, "Light pass error %14.14f", rtn);
 		tracker->stats.lightcap_total_error += rtn;
 
 		tracker->light_residuals_all *= .9;
 		tracker->light_residuals_all += .1 * rtn;
 
-		tracker->light_residuals[data->lh] *= .9;
-		tracker->light_residuals[data->lh] += .1 * rtn;
-
-		tracker->stats.lightcap_error_by_lh[data->lh] += rtn;
-		tracker->stats.lightcap_count_by_lh[data->lh]++;
-
-		assert(data->lh >= 0);
-		assert(data->sensor_id >= 0);
-
 		SV_DATA_LOG("res_error_light_", &rtn, 1);
 		SV_DATA_LOG("res_error_light_avg", &tracker->light_residuals_all, 1);
-		SV_DATA_LOG("res_error_light[%d, %d, %d]", &tracker->light_residuals[data->lh], 1, data->lh, data->sensor_id,
-					get_axis(data));
-
-		if (tracker->light_residuals[data->lh] > .1 && tracker->use_error_for_lh_pos) {
-			// SV_WARN("Light residual for lh%d is too high -- %f", data->lh, tracker->light_residuals[data->lh]);
-			survive_lighthouse_adjust_confidence(ctx, data->lh, -.1);
-		}
 		tracker->stats.lightcap_count++;
 
 		normalize_model(tracker);
-		survive_kalman_tracker_report_state(&data->hdr, tracker);
+		survive_kalman_tracker_report_state(pd, tracker);
 	}
-	SV_VERBOSE(600, "Resultant state %f (%f) (lightcap %2d) (error %e, %e)  " Point16_format, time, delta, data->lh,
-			   tracker->light_residuals[data->lh], tracker->light_residuals_all,
-			   LINMATH_VEC16_EXPAND(sv_as_const_vector(&tracker->model.state)));
+}
+
+void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, PoserDataLight *data) {
+	bool isSync = data->hdr.pt == POSERDATA_SYNC || data->hdr.pt == POSERDATA_SYNC_GEN2;
+	if (isSync) {
+		survive_kalman_tracker_integrate_saved_light(tracker, &data->hdr);
+		tracker->savedLight_idx = 0;
+	} else {
+		LightInfo *info = &tracker->savedLight[tracker->savedLight_idx++];
+
+		info->lh = data->lh;
+		info->value = data->angle;
+		info->axis = get_axis(data);
+		info->sensor_idx = data->sensor_id;
+
+		if (tracker->savedLight_idx >= sizeof(tracker->savedLight) / sizeof(tracker->savedLight[0])) {
+			survive_kalman_tracker_integrate_saved_light(tracker, &data->hdr);
+			tracker->savedLight_idx = 0;
+		}
+	}
 }
 
 struct map_imu_data_ctx {
@@ -299,14 +299,15 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 		}
 
 		FLT v = 1e-5;
-		FLT R[] = {
-			1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5,
-		};
+		SV_CREATE_STACK_MAT(R, 9, 1)
+		sv_set_constant(&R, v);
 		SV_CREATE_STACK_MAT(Z, 9, 1);
 		sv_set_zero(&Z);
 
-		tracker->stats.imu_total_error += survive_kalman_predict_update_state(time, &tracker->model, &Z, &H, R, false);
+		tracker->stats.imu_total_error +=
+			survive_kalman_predict_update_state(time, &tracker->model, &Z, &H, SV_RAW_PTR(&R), false);
 		SV_FREE_STACK_MAT(Z);
+		SV_FREE_STACK_MAT(R);
 		SV_FREE_STACK_MAT(H);
 	}
 
@@ -944,6 +945,7 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 	tracker->last_report_time = t;
 
 	tracker->so->poseConfidence = 1. / p_threshold;
+	SV_VERBOSE(110, "%s confidence %7.7f", survive_colorize_codename(so), 1. / p_threshold);
 	if (so->OutPose_timecode < pd->timecode) {
 		SURVIVE_INVOKE_HOOK_SO(imupose, so, pd->timecode, &pose);
 	}

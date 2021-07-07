@@ -12,6 +12,7 @@
 extern "C" {
 #endif
 
+typedef PoserDataGlobalSceneMeasurement LightInfo;
 /**
  * The kalman model as it pertains to LH tracking has a state space like so:
  *
@@ -92,6 +93,10 @@ typedef struct SurviveKalmanTracker {
 
 	size_t light_rampin_length;
 	bool use_error_for_lh_pos;
+
+	LightInfo savedLight[32];
+	uint32_t savedLight_idx;
+
 } SurviveKalmanTracker;
 
 SURVIVE_EXPORT SurviveVelocity survive_kalman_tracker_velocity(const SurviveKalmanTracker *tracker);
