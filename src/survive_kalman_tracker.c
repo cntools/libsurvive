@@ -517,16 +517,22 @@ static FLT integrate_pose(SurviveKalmanTracker *tracker, FLT time, const Survive
 
 void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTracker *tracker, const SurvivePose *pose,
 												  const FLT *oR) {
-	if (tracker->use_raw_obs) {
-		SurviveObject *so = tracker->so;
+	SurviveObject *so = tracker->so;
+	SurviveContext *ctx = so->ctx;
 
+	if (tracker->show_raw_obs) {
+		char external_name[16] = {0};
+		sprintf(external_name, "%s-raw-obs", so->codename);
+		SURVIVE_INVOKE_HOOK(external_pose, ctx, external_name, pose);
+	}
+
+	if (tracker->use_raw_obs) {
 		SURVIVE_INVOKE_HOOK_SO(imupose, so, pd->timecode, pose);
 		return;
 	}
 
 	survive_long_timecode timecode = pd->timecode;
 
-	struct SurviveContext *ctx = tracker->so->ctx;
 	FLT time = timecode / (FLT)tracker->so->timebase_hz;
 	if (tracker->model.t == 0) {
 		tracker->model.t = time;
@@ -568,6 +574,8 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
 		survive_kalman_tracker_report_state(pd, tracker);
 	}
 }
+
+STATIC_CONFIG_ITEM(KALMAN_SHOW_RAW_OBS, "show-raw-obs", 'i', "Show position of raw poser output", 0)
 
 STATIC_CONFIG_ITEM(KALMAN_USE_ERROR_FOR_LH_CONFIDENCE, "light-error-for-lh-confidence", 'i',
 				   "Whether or not to invalidate LH positions based on kalman errors", 0)
@@ -692,6 +700,7 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	survive_attach_configi(tracker->so->ctx, KALMAN_USE_ADAPTIVE_IMU_TAG, &tracker->adaptive_imu);
 	survive_attach_configi(tracker->so->ctx, KALMAN_USE_ADAPTIVE_LIGHTCAP_TAG, &tracker->adaptive_lightcap);
 	survive_attach_configi(tracker->so->ctx, KALMAN_USE_ADAPTIVE_OBS_TAG, &tracker->adaptive_obs);
+	survive_attach_configi(tracker->so->ctx, KALMAN_SHOW_RAW_OBS_TAG, &tracker->show_raw_obs);
 
 	tracker->use_error_for_lh_pos = survive_configi(ctx, KALMAN_USE_ERROR_FOR_LH_CONFIDENCE_TAG, SC_GET, 1);
 	tracker->light_rampin_length = survive_configi(ctx, KALMAN_LIGHTCAP_RAMPIN_LENGTH_TAG, SC_GET, 5000);
@@ -819,6 +828,7 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 	survive_detach_config(tracker->so->ctx, KALMAN_USE_ADAPTIVE_LIGHTCAP_TAG, &tracker->adaptive_lightcap);
 	survive_detach_config(tracker->so->ctx, KALMAN_USE_ADAPTIVE_OBS_TAG, &tracker->adaptive_obs);
 	survive_detach_config(tracker->so->ctx, KALMAN_LIGHTCAP_REQUIRED_OBS_TAG, &tracker->light_required_obs);
+	survive_detach_config(tracker->so->ctx, KALMAN_SHOW_RAW_OBS_TAG, &tracker->show_raw_obs);
 
 	survive_kalman_tracker_config(tracker, (survive_attach_detach_fn)survive_detach_config);
 }
