@@ -12,6 +12,8 @@
 #include "survive_gz.h"
 
 STATIC_CONFIG_ITEM(PLAYBACK_REPLAY_POSE, "playback-replay-pose", 'i', "Whether or not to output pose", 0)
+STATIC_CONFIG_ITEM(PLAYBACK_REPLAY_EXTERNAL_POSE, "playback-replay-external-pose", 'i',
+				   "Whether or not to output external pose", 0)
 STATIC_CONFIG_ITEM(PLAYBACK, "playback", 's', "File to be used for playback if playing a recording.", 0)
 STATIC_CONFIG_ITEM(PLAYBACK_FACTOR, "playback-factor", 'f',
 				   "Time factor of playback -- 1 is run at the same timing as original, 0 is run as fast as possible.",
@@ -50,9 +52,9 @@ typedef struct SurvivePlaybackData {
 	FLT playback_time;
 	bool hasRawLight;
     bool hasSweepAngle;
-    bool outputExternalPose;
+	bool outputCalculatedPose, outputExternalPose;
 
-    uint32_t total_sleep_time;
+	uint32_t total_sleep_time;
 	bool *keepRunning;
 } SurvivePlaybackData;
 
@@ -214,7 +216,7 @@ static int parse_and_run_lhpose(const char *line, struct SurvivePlaybackData *dr
 					&pose.Rot[0], &pose.Rot[1], &pose.Rot[2], &pose.Rot[3]);
 
 	SurviveContext *ctx = driver->ctx;
-	if (driver->outputExternalPose) {
+	if (driver->outputCalculatedPose) {
 		char buffer[32] = {0};
 		snprintf(buffer, 31, "previous_LH%d", lh);
 		SURVIVE_INVOKE_HOOK(external_pose, ctx, buffer, &pose);
@@ -226,11 +228,13 @@ static int parse_and_run_externalpose(const char *line, SurvivePlaybackData *dri
 	char name[128] = { 0 };
 	SurvivePose pose;
 
-	int rr = sscanf(line, "%s EXTERNAL_POSE " SurvivePose_sformat "\n", name, &pose.Pos[0], &pose.Pos[1], &pose.Pos[2],
-					&pose.Rot[0], &pose.Rot[1], &pose.Rot[2], &pose.Rot[3]);
+	if (driver->outputExternalPose) {
+		int rr = sscanf(line, "%s EXTERNAL_POSE " SurvivePose_sformat "\n", name, &pose.Pos[0], &pose.Pos[1],
+						&pose.Pos[2], &pose.Rot[0], &pose.Rot[1], &pose.Rot[2], &pose.Rot[3]);
 
-	SurviveContext *ctx = driver->ctx;
-	SURVIVE_INVOKE_HOOK(external_pose, ctx, name, &pose);
+		SurviveContext *ctx = driver->ctx;
+		SURVIVE_INVOKE_HOOK(external_pose, ctx, name, &pose);
+	}
 	return 0;
 }
 
@@ -404,7 +408,7 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 				parse_and_run_imu(line, driver, false);
 			break;
 		case 'P':
-			if (strcmp(op, "POSE") == 0 && driver->outputExternalPose)
+			if (strcmp(op, "POSE") == 0 && driver->outputCalculatedPose)
 				parse_and_run_pose(line, driver);
 			break;
 		case 'A':
@@ -492,7 +496,8 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	sp->ctx = ctx;
 	sp->playback_dir = playback_file;
 
-	sp->outputExternalPose = survive_configi(ctx, "playback-replay-pose", SC_GET, 0);
+	sp->outputCalculatedPose = survive_configi(ctx, "playback-replay-pose", SC_GET, 0);
+	sp->outputExternalPose = survive_configi(ctx, PLAYBACK_REPLAY_EXTERNAL_POSE_TAG, SC_GET, 0);
 
 	sp->playback_file = gzopen(playback_file, "r");
 	if (sp->playback_file == 0) {
