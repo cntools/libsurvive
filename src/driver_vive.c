@@ -2649,6 +2649,9 @@ static void parse_tracker_version_info(SurviveObject *so, uint8_t *data, size_t 
 	char fw_name[33] = {0};
 	memcpy(&version_info, data, sizeof(version_info));
 	memcpy(fw_name, version_info.fw_name, 32);
+	for (int i = 0; i < 32; i++) {
+		fw_name[i] = 0x7f & fw_name[i];
+	}
 
 	SV_INFO("Device %s has watchman FW version %u and FPGA version %u/%u/%u; named '%31s'. Hardware id 0x%08x",
 			survive_colorize(so->codename), version_info.revision, version_info.fpga_major_version,
