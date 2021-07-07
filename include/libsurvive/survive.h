@@ -70,7 +70,10 @@ SURVIVE_EXPORT FLT SurviveSensorActivations_difference(const SurviveSensorActiva
 SURVIVE_EXPORT bool SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLightGen1 *lightData);
 SURVIVE_EXPORT bool SurviveSensorActivations_add_gen2(SurviveSensorActivations *self,
 													  struct PoserDataLightGen2 *lightData);
-
+SURVIVE_EXPORT void SurviveSensorActivations_valid_counts(SurviveSensorActivations *self,
+														  survive_long_timecode tolerance, uint32_t *meas_cnt,
+														  uint32_t *lh_count, uint32_t *axis_cnt,
+														  size_t *meas_for_lhs_axis);
 SURVIVE_EXPORT void SurviveSensorActivations_register_runtime(SurviveSensorActivations *self, survive_long_timecode tc,
 															  uint64_t runtime_clock);
 SURVIVE_EXPORT uint64_t SurviveSensorActivations_runtime(SurviveSensorActivations *self, survive_long_timecode tc);

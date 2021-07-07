@@ -186,7 +186,41 @@ reject_data:
 	SurviveSensorActivations_update_center(self, .05, lh, axis, *oldangle, angle);
 	return true;
 }
+SURVIVE_EXPORT void SurviveSensorActivations_valid_counts(SurviveSensorActivations *self,
+														  survive_long_timecode tolerance, uint32_t *meas_cnt,
+														  uint32_t *lh_count, uint32_t *axis_cnt,
+														  size_t *meas_for_lhs_axis) {
+	survive_timecode sensor_time_window = tolerance == 0 ? SurviveSensorActivations_default_tolerance : tolerance;
+	SurviveContext *ctx = self->so->ctx;
+	for (int lh = 0; lh < ctx->activeLighthouses; lh++) {
+		if (!ctx->bsd[lh].PositionSet) {
+			continue;
+		}
+		bool seenLH = false;
+		for (uint8_t sensor = 0; sensor < self->so->sensor_ct; sensor++) {
+			bool seenAxis = false;
+			for (uint8_t axis = 0; axis < 2; axis++) {
+				survive_timecode last_reading =
+					SurviveSensorActivations_time_since_last_reading(self, sensor, lh, axis);
+				bool isReadingValue = last_reading < sensor_time_window;
 
+				if (isReadingValue) {
+					if (meas_cnt)
+						(*meas_cnt)++;
+					if (axis_cnt && !seenAxis)
+						(*axis_cnt)++;
+					if (lh_count && !seenLH)
+						(*lh_count)++;
+					seenLH = true;
+					seenAxis = true;
+					if (meas_for_lhs_axis) {
+						meas_for_lhs_axis[lh * 2 + axis]++;
+					}
+				}
+			}
+		}
+	}
+}
 bool SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct PoserDataLightGen2 *lightData) {
 	self->lh_gen = 1;
 

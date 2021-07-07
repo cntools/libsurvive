@@ -136,9 +136,17 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 		return;
 	}
 
+	uint32_t meas_cnt = 0, lh_cnt = 0, axis_cnt = 0;
+	SurviveSensorActivations_valid_counts(&tracker->so->activations, 0, &meas_cnt, &lh_cnt, &axis_cnt, 0);
+
+	bool sufficient_measurement = lh_cnt > 1 || (axis_cnt > 1 && meas_cnt > 8);
+
 	FLT time = data->hdr.timecode / (FLT)tracker->so->timebase_hz;
 	FLT delta = time - tracker->model.t;
-	tracker->last_light_time = time;
+
+	if (!sufficient_measurement) {
+		return;
+	}
 
 	if (tracker->light_var >= 0) {
 		SvMat Z = svMat(1, 1, &data->angle);
@@ -283,7 +291,7 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 	FLT rotation_variance[] = {1e5, 1e5, 1e5, 1e5, 1e5, 1e5};
 
 	if (time - tracker->last_light_time > .1) {
-		// clang-format off
+		// If we stop seeing light data; tank all velocity / acceleration measurements
 		SV_CREATE_STACK_MAT(H, 9, tracker->model.state_cnt);
 		sv_set_zero(&H);
 		for(int i = 0;i < 9;i++) {
@@ -925,6 +933,7 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 	}
 	tracker->last_report_time = t;
 
+	tracker->so->poseConfidence = 1. / p_threshold;
 	if (so->OutPose_timecode < pd->timecode) {
 		SURVIVE_INVOKE_HOOK_SO(imupose, so, pd->timecode, &pose);
 	}
