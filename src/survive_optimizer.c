@@ -276,7 +276,7 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
 		FLT out[7] = {0};
 
 		if (derivs[jac_offset_obj]) {
-			reprojectModel->reprojectAxisAngleAxisJacobFn[meas->axis](out, pose, pt, world2lh, cal);
+			reprojectModel->reprojectAxisAngleAxisJacobFn[meas->axis](out, pose, pt, world2lh, cal + meas->axis);
 			for (int j = 0; j < 6; j++) {
 				assert(derivs[jac_offset_obj + j]);
 				derivs[jac_offset_obj + j][meas_idx] = isfinite(out[j]) ? out[j] : 0;
@@ -285,7 +285,7 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
 		}
 
 		if (derivs[jac_offset_lh]) {
-			reprojectModel->reprojectAxisAngleAxisJacobLhPoseFn[meas->axis](out, pose, pt, world2lh, cal);
+			reprojectModel->reprojectAxisAngleAxisJacobLhPoseFn[meas->axis](out, pose, pt, world2lh, cal + meas->axis);
 			for (int j = 0; j < 6; j++) {
 				assert(derivs[jac_offset_lh + j]);
 				derivs[jac_offset_lh + j][meas_idx] = isfinite(out[j]) ? out[j] : 0;
