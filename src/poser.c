@@ -36,6 +36,9 @@ STATIC_CONFIG_ITEM(CENTER_ON_LH0, "center-on-lh0", 'i',
 STATIC_CONFIG_ITEM(HAPTIC_ON_CALIBRATE, "haptic-on-calibrate", 'i',
 				   "Trigger a haptic pulse when lighthouse positions are solved", 1);
 
+STATIC_CONFIG_ITEM(LIGHTHOUSE_NORMALIZE_ANGLE, "normalize-lighthouse-angle", 'f',
+				   "Angle about Z to adust calibration by", 0.);
+
 void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world) {
 	SurviveContext *ctx = so->ctx;
 	for (int i = 0; i < 3; i++) {
@@ -183,6 +186,46 @@ int8_t survive_get_reference_bsd(SurviveContext *ctx, SurvivePose *lighthouse_po
 		}
 	}
 	return ref;
+}
+
+void PoserData_normalize_scene(SurviveContext *ctx, SurvivePose *lighthouse_pose, uint32_t lighthouse_count,
+							   SurvivePose *object_pose) {
+	FLT lhNormAngleOffset = survive_configf(ctx, LIGHTHOUSE_NORMALIZE_ANGLE_TAG, SC_GET, 0);
+	uint32_t lh_indices[NUM_GEN2_LIGHTHOUSES] = {0};
+	uint32_t cnt = 0;
+
+	uint32_t reference_basestation = survive_configi(ctx, "reference-basestation", SC_GET, 0);
+	SurvivePose object2arb = *object_pose;
+
+	for (int lh = 0; lh < lighthouse_count; lh++) {
+		SurvivePose lh2object = lighthouse_pose[lh];
+		if (quatmagnitude(lh2object.Rot) != 0.0) {
+			lh_indices[cnt] = lh;
+			uint32_t lh0 = lh_indices[0];
+			bool preferThisBSD = reference_basestation == 0 ? (ctx->bsd[lh].BaseStationID < ctx->bsd[lh0].BaseStationID)
+															: reference_basestation == ctx->bsd[lh].BaseStationID;
+			if (preferThisBSD) {
+				lh_indices[0] = lh;
+				lh_indices[cnt] = lh0;
+			}
+			cnt++;
+		}
+	}
+
+	SurvivePose *preferredLH = &lighthouse_pose[lh_indices[0]];
+	FLT ang = atan2(preferredLH->Pos[1], preferredLH->Pos[0]);
+	FLT ang_target = M_PI / 2. + lhNormAngleOffset * M_PI / 180.;
+	FLT euler[3] = {0, 0, ang_target - ang};
+	SurvivePose arb2world = {0};
+	quatfromeuler(arb2world.Rot, euler);
+
+	ApplyPoseToPose(object_pose, &arb2world, &object2arb);
+	for (int lh = 0; lh < lighthouse_count; lh++) {
+		SurvivePose *lh2object = &lighthouse_pose[lh];
+		if (quatmagnitude(lh2object->Rot) != 0.0) {
+			ApplyPoseToPose(lh2object, &arb2world, lh2object);
+		}
+	}
 }
 
 void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so, SurvivePose *lighthouse_pose,

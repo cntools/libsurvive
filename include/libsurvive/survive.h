@@ -600,7 +600,7 @@ SURVIVE_EXPORT uint32_t survive_hash_str(const char *str);
 
 #define SV_VERBOSE(lvl, ...)                                                                                           \
 	{                                                                                                                  \
-		if (ctx == 0 || ctx->log_level >= lvl) {                                                                       \
+		if (ctx == 0 || ctx->log_level >= (lvl)) {                                                                     \
 			SV_INFO(__VA_ARGS__);                                                                                      \
 		}                                                                                                              \
 	}

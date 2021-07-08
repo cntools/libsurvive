@@ -33,6 +33,9 @@ STATIC_CONFIG_ITEM(USE_JACOBIAN_FUNCTION, "use-jacobian-function", 'i',
 STATIC_CONFIG_ITEM(SENSOR_VARIANCE_PER_SEC, "sensor-variance-per-sec", 'f',
 				   "Variance per second to add to the sensor input -- discounts older data", 0.0)
 STATIC_CONFIG_ITEM(SENSOR_VARIANCE, "sensor-variance", 'f', "Base variance for each sensor input", 1.0)
+STATIC_CONFIG_ITEM(MPFIT_UP_BIAS, "mpfit-up-bias", 'f',
+				   "How much to weight having the accel direction on things pointing up", 1.0)
+
 STATIC_CONFIG_ITEM(DISABLE_LIGHTHOUSE, "disable-lighthouse", 'i', "Disable given lighthouse from tracking", -1)
 STATIC_CONFIG_ITEM(RUN_EVERY_N_SYNCS, "syncs-per-run", 'i', "Number of sync pulses before running optimizer", 1)
 STATIC_CONFIG_ITEM(RUN_POSER_ASYNC, "poser-async", 'i', "Run the poser in it's own thread", 0)
@@ -406,7 +409,7 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 	serialize_mpfit(d, mpfitctx);
 	if (canPossiblySolveLHS || d->alwaysPrecise) {
 		mpfitctx->cfg = survive_optimizer_precise_config();
-		mpfitctx->upVectorBias = 10;
+		mpfitctx->upVectorBias = survive_configf(ctx, MPFIT_UP_BIAS_TAG, SC_GET, 1.);
 	}
 
 	return 0;
@@ -456,15 +459,13 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 			for (int i = 0; i < mpfitctx->cameraLength; i++) {
 				if (has_data_for_lh(meas_for_lhs_axis, i) > 0 && !quatiszero(opt_cameras[i].Rot)) {
 					cameras[i] = InvertPoseRtn(&opt_cameras[i]);
-
-					LinmathPoint3d up = {ctx->bsd[i].accel[0], ctx->bsd[i].accel[1], ctx->bsd[i].accel[2]};
-					normalize3d(up, up);
-					LinmathPoint3d err;
-					quatrotatevector(err, cameras[i].Rot, up);
-					SV_INFO("Solved for %d with error of %f/%10.10f (acc err %5.4f)", i, result->orignorm,
-							result->bestnorm, fabs(err[2] - 1.));
 				}
 			}
+
+			if (!worldEstablished) {
+				PoserData_normalize_scene(ctx, cameras, ctx->activeLighthouses, soLocation);
+			}
+
 			PoserData_lighthouse_poses_func(&pdl->hdr, so, cameras, ctx->activeLighthouses, soLocation);
 		}
 
@@ -472,7 +473,7 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 		rtn = result->bestnorm;
 
 		SV_VERBOSE(
-			110,
+			worldEstablished ? 110 : 100,
 			"MPFIT success %s %f7.5s %f/%10.10f (%3d measurements, %s result, %d lighthouses, %d axis, %6.3fms "
 			"time_window, %2d old_meas (avg %6.3fms) run #%d)",
 			survive_colorize(so->codename), survive_run_time(ctx), result->orignorm, result->bestnorm, (int)meas_size,

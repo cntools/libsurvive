@@ -493,22 +493,19 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 		LinmathPoint3d up = {0};
 		LinmathAxisAngle rot = {};
 		size_t m_idx = up_idx + mpfunc_ctx->measurementsCnt;
-		double gen_err;
+
+		FLT bias = mpfunc_ctx->upVectorBias / (mpfunc_ctx->poseLength + mpfunc_ctx->cameraLength);
+		FLT deriv[3] = {0}, error = 0;
+		size_t deriv_idx = 0;
+
 		if (up_idx < mpfunc_ctx->poseLength) {
 			LinmathAxisAnglePose *pose = (LinmathAxisAnglePose *)(&survive_optimizer_get_pose(mpfunc_ctx)[up_idx]);
 			normalize3d(up, mpfunc_ctx->sos[up_idx]->activations.accel);
 			copy3d(rot, pose->AxisAngleRot);
 
-			gen_err = gen_obj2world_aa_up_err(pose->AxisAngleRot, up);
-			size_t rot_idx = up_idx * 7 + 3;
-			if (derivs && derivs[rot_idx]) {
-				FLT deriv[3] = {0};
-				gen_obj2world_aa_up_err_jac_axis_angle(deriv, pose->AxisAngleRot, up);
-				for (int i = 0; i < 3; i++) {
-					derivs[rot_idx + i][m_idx] = mpfunc_ctx->upVectorBias * deriv[i];
-				}
-			}
-			// fprintf(stderr, "%d %d ",  up_idx, rot_idx);
+			error = gen_obj2world_aa_up_err(pose->AxisAngleRot, up);
+			deriv_idx = up_idx * 7 + 3;
+			gen_obj2world_aa_up_err_jac_axis_angle(deriv, pose->AxisAngleRot, up);
 		} else {
 			size_t lh = up_idx - mpfunc_ctx->poseLength;
 			int8_t *accel = mpfunc_ctx->sos[0]->ctx->bsd[lh].accel;
@@ -519,21 +516,16 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			LinmathAxisAnglePose *world2lh = (LinmathAxisAnglePose *)&cameras[lh];
 			scale3d(rot, world2lh->AxisAngleRot, -1);
 
-			gen_err = gen_world2lh_aa_up_err(world2lh->AxisAngleRot, up);
-			int rot_idx = survive_optimizer_get_camera_index(mpfunc_ctx) + lh * 7 + 3;
-			if (derivs && derivs[rot_idx]) {
-				FLT deriv[3] = {0};
+			if (isfinite(up[0])) {
+				error = gen_world2lh_aa_up_err(world2lh->AxisAngleRot, up);
+				deriv_idx = survive_optimizer_get_camera_index(mpfunc_ctx) + lh * 7 + 3;
 				gen_world2lh_aa_up_err_jac_axis_angle(deriv, world2lh->AxisAngleRot, up);
-				for (int i = 0; i < 3; i++) {
-					derivs[rot_idx + i][m_idx] = mpfunc_ctx->upVectorBias * deriv[i];
-				}
 			}
-			// fprintf(stderr, "%d %d ",  lh, rot_idx);
 		}
-		LinmathPoint3d err;
-		axisanglerotatevector(err, rot, up);
-		deviates[m_idx] = mpfunc_ctx->upVectorBias * (1 - err[2]);
-		// fprintf(stderr, "%d -> %.10f, %.10f\n",  m_idx, 1 - err[2], gen_err);
+		deviates[m_idx] = bias * error;
+		for (int i = 0; i < 3 && derivs && derivs[deriv_idx + i]; i++) {
+			derivs[deriv_idx + i][m_idx] = bias * deriv[i];
+		}
 	}
 	if (mpfunc_ctx->needsFiltering) {
 		assert(derivs == 0);
