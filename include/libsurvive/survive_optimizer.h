@@ -31,6 +31,8 @@ typedef struct survive_optimizer {
 	SurviveObject **sos;
 	survive_optimizer_measurement *measurements;
 	size_t measurementsCnt;
+
+	FLT upVectorBias;
 	FLT current_bias;
 	SurvivePose initialPose;
 

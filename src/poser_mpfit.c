@@ -272,6 +272,16 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 		return -1;
 	}
 
+	if (!worldEstablished) {
+		FLT accel_mag = norm3d(so->activations.accel);
+		const FLT up[3] = {0, 0, 1};
+		if (accel_mag != 0.0 && !isnan(accel_mag)) {
+			quatfrom2vectors(soLocation->Rot, so->activations.accel, up);
+		} else {
+			SV_WARN("Calibration didn't have valid IMU data for %s; couldn't establish 'up' vector.", so->codename);
+		}
+	}
+
 	if (quatiszero(soLocation->Rot))
 		soLocation->Rot[0] = 1;
 
@@ -395,6 +405,7 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 	serialize_mpfit(d, mpfitctx);
 	if (canPossiblySolveLHS || d->alwaysPrecise) {
 		mpfitctx->cfg = survive_optimizer_precise_config();
+		mpfitctx->upVectorBias = 10;
 	}
 
 	return 0;
@@ -436,8 +447,8 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 		quatnormalize(soLocation->Rot, soLocation->Rot);
 
 		if (canPossiblySolveLHS) {
-			if (!worldEstablished)
-				*soLocation = (SurvivePose){0};
+			// if (!worldEstablished)
+			//	*soLocation = (SurvivePose){0};
 
 			SurvivePose *opt_cameras = survive_optimizer_get_camera(mpfitctx);
 			SurvivePose cameras[NUM_GEN2_LIGHTHOUSES] = {0};

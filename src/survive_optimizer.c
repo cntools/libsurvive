@@ -8,6 +8,7 @@
 #include <zlib.h>
 #endif
 
+#include "generated/survive_reproject.aux.generated.h"
 #include "survive_optimizer.h"
 
 #include "mpfit/mpfit.h"
@@ -434,7 +435,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 		}
 	}
 
-	for (int i = 0; i < meas_count; i++) {
+	for (int i = 0; i < mpfunc_ctx->measurementsCnt; i++) {
 		const survive_optimizer_measurement *meas = &mpfunc_ctx->measurements[i];
 		const int lh = meas->lh;
 		const FLT *sensor_points = survive_optimizer_get_sensors(mpfunc_ctx, meas->object);
@@ -488,6 +489,52 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 		}
 	}
 
+	for (size_t up_idx = 0; up_idx < meas_count - mpfunc_ctx->measurementsCnt; up_idx++) {
+		LinmathPoint3d up = {0};
+		LinmathAxisAngle rot = {};
+		size_t m_idx = up_idx + mpfunc_ctx->measurementsCnt;
+		double gen_err;
+		if (up_idx < mpfunc_ctx->poseLength) {
+			LinmathAxisAnglePose *pose = (LinmathAxisAnglePose *)(&survive_optimizer_get_pose(mpfunc_ctx)[up_idx]);
+			normalize3d(up, mpfunc_ctx->sos[up_idx]->activations.accel);
+			copy3d(rot, pose->AxisAngleRot);
+
+			gen_err = gen_obj2world_aa_up_err(pose->AxisAngleRot, up);
+			size_t rot_idx = up_idx * 7 + 3;
+			if (derivs && derivs[rot_idx]) {
+				FLT deriv[3] = {0};
+				gen_obj2world_aa_up_err_jac_axis_angle(deriv, pose->AxisAngleRot, up);
+				for (int i = 0; i < 3; i++) {
+					derivs[rot_idx + i][m_idx] = mpfunc_ctx->upVectorBias * deriv[i];
+				}
+			}
+			// fprintf(stderr, "%d %d ",  up_idx, rot_idx);
+		} else {
+			size_t lh = up_idx - mpfunc_ctx->poseLength;
+			int8_t *accel = mpfunc_ctx->sos[0]->ctx->bsd[lh].accel;
+			for (int i = 0; i < 3; i++)
+				up[i] = accel[i];
+			normalize3d(up, up);
+
+			LinmathAxisAnglePose *world2lh = (LinmathAxisAnglePose *)&cameras[lh];
+			scale3d(rot, world2lh->AxisAngleRot, -1);
+
+			gen_err = gen_world2lh_aa_up_err(world2lh->AxisAngleRot, up);
+			int rot_idx = survive_optimizer_get_camera_index(mpfunc_ctx) + lh * 7 + 3;
+			if (derivs && derivs[rot_idx]) {
+				FLT deriv[3] = {0};
+				gen_world2lh_aa_up_err_jac_axis_angle(deriv, world2lh->AxisAngleRot, up);
+				for (int i = 0; i < 3; i++) {
+					derivs[rot_idx + i][m_idx] = mpfunc_ctx->upVectorBias * deriv[i];
+				}
+			}
+			// fprintf(stderr, "%d %d ",  lh, rot_idx);
+		}
+		LinmathPoint3d err;
+		axisanglerotatevector(err, rot, up);
+		deviates[m_idx] = mpfunc_ctx->upVectorBias * (1 - err[2]);
+		// fprintf(stderr, "%d -> %.10f, %.10f\n",  m_idx, 1 - err[2], gen_err);
+	}
 	if (mpfunc_ctx->needsFiltering) {
 		assert(derivs == 0);
 		filter_measurements(mpfunc_ctx, deviates);
@@ -590,7 +637,8 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 	// MPFit runs on temporary storage; so parameters is manipulated in mpfunc. Save it and restore it here.
 	FLT *params = optimizer->parameters;
 	optimizer->needsFiltering = !optimizer->nofilter;
-	int rtn = mpfit(mpfunc, optimizer->measurementsCnt, survive_optimizer_get_parameters_count(optimizer),
+	size_t extra_meas = optimizer->upVectorBias > 0 ? (optimizer->cameraLength + optimizer->poseLength) : 0;
+	int rtn = mpfit(mpfunc, optimizer->measurementsCnt + extra_meas, survive_optimizer_get_parameters_count(optimizer),
 					optimizer->parameters, optimizer->parameters_info, cfg, optimizer, result);
 	optimizer->parameters = params;
 
