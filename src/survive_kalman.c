@@ -370,7 +370,7 @@ static FLT survive_kalman_predict_update_state_extended_adaptive_internal(FLT t,
 	}
 
 	k->t = t;
-	result = normnd(_y, y.rows * y.cols);
+	result = normnd2(_y, y.rows * y.cols);
 
 	SV_FREE_STACK_MAT(K);
 	SV_FREE_STACK_MAT(HStorage);
