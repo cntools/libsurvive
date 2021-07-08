@@ -11,6 +11,7 @@ if __name__ == "__main__":
 
         for f in common_math.generate:
             generate_ccode(f)
+            generate_jacobians(f)
     else:
         print("#pragma once")
         print("#include \"common.h\"")

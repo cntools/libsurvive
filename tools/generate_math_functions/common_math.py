@@ -246,6 +246,20 @@ def axisanglerotatevector(axis_angle, sensor_pt):
     x, y, z = sensor_pt
     return axisanglerotationmatrix(axis_angle) * sp.Matrix((x, y, z))
 
+def obj2world_aa_up_err(axis_angle, sensor_pt):
+    out = axisanglerotatevector(axis_angle, sensor_pt)
+    return 1 - out[2]
+
+def world2lh_aa_up_err(axis_angle, sensor_pt):
+    [ax,ay,az] = axis_angle
+    out = axisanglerotatevector([-ax,-ay,-az], sensor_pt)
+    return 1 - out[2]
+
+def invertaxisanglerotatevector(axis_angle, sensor_pt):
+    x, y, z = sensor_pt
+    ax, ay, az = axis_angle
+    return axisanglerotationmatrix([-ax,-ay,-az]) * sp.Matrix((x, y, z))
+
 
 def quatgetreciprocal(q):
     return [q[0], -q[1], -q[2], -q[3]]
@@ -348,5 +362,8 @@ generate = [
     quatrotationmatrix,
     sensor_to_world,
     cross,
-    apply_ang_velocity
+    apply_ang_velocity,
+    obj2world_aa_up_err,
+    world2lh_aa_up_err,
+
 ]

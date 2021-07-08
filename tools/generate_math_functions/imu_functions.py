@@ -71,9 +71,6 @@ def kalman_model_predict(t, kalman_model):
 
     return [ *new_pos, *new_rot, *new_vpos, *obj_v.Rot, *obj_acc, *kalman_model.GyroBias ]
 
-import numdifftools
-import numpy as np
-
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--aux":
         pass

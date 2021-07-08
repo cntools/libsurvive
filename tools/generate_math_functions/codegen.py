@@ -240,7 +240,7 @@ def generate_jacobians(func, suffix=None,transpose=False,jac_all=False, jac_over
 
     for name, jac_value in jac_of.items():
         fname = func.__name__  + '_jac_' + name
-        if type(feval) == list:
+        if type(feval) == list or type(feval) == tuple:
             feval = sp.MutableDenseMatrix(feval)
         this_jac = jacobian(feval, jac_value)
         if transpose:
