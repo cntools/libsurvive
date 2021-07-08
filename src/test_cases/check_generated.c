@@ -608,10 +608,35 @@ static void general_gen_reproject_x_gen2(FLT *out, const FLT *_input) {
 	struct reproject_input *input = (struct reproject_input *)_input;
 	*out = gen_reproject_axis_x_gen2(&input->p, input->pt, &input->world2lh, input->fcal);
 }
+static void general_gen_reproject_y_gen2(FLT *out, const FLT *_input) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	*out = gen_reproject_axis_y_gen2(&input->p, input->pt, &input->world2lh, input->fcal + 1);
+}
+
+static void general_gen_reproject_x(FLT *out, const FLT *_input) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	*out = gen_reproject_axis_x(&input->p, input->pt, &input->world2lh, input->fcal);
+}
+static void general_gen_reproject_y(FLT *out, const FLT *_input) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	*out = gen_reproject_axis_y(&input->p, input->pt, &input->world2lh, input->fcal + 1);
+}
 
 static void general_gen_reproject_x_gen2_jac_obj(FLT *out, const FLT *_input) {
 	struct reproject_input *input = (struct reproject_input *)_input;
 	gen_reproject_axis_x_gen2_jac_obj_p(out, &input->p, input->pt, &input->world2lh, input->fcal);
+}
+static void general_gen_reproject_y_gen2_jac_obj(FLT *out, const FLT *_input) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	gen_reproject_axis_y_gen2_jac_obj_p(out, &input->p, input->pt, &input->world2lh, input->fcal + 1);
+}
+static void general_gen_reproject_x_jac_obj(FLT *out, const FLT *_input) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	gen_reproject_axis_x_jac_obj_p(out, &input->p, input->pt, &input->world2lh, input->fcal);
+}
+static void general_gen_reproject_y_jac_obj(FLT *out, const FLT *_input) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	gen_reproject_axis_y_jac_obj_p(out, &input->p, input->pt, &input->world2lh, input->fcal + 1);
 }
 static void general_reproject_x_gen2(FLT *out, const FLT *_input) {
 	struct reproject_input *input = (struct reproject_input *)_input;
@@ -624,6 +649,39 @@ static void general_reproject_x_gen2(FLT *out, const FLT *_input) {
 
 	*out = survive_reproject_axis_x_gen2(input->fcal, t_pt);
 }
+static void general_reproject_y_gen2(FLT *out, const FLT *_input) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+
+	LinmathVec3d world_pt;
+	ApplyPoseToPoint(world_pt, &input->p, input->pt);
+
+	LinmathPoint3d t_pt;
+	ApplyPoseToPoint(t_pt, &input->world2lh, world_pt);
+
+	*out = survive_reproject_axis_y_gen2(input->fcal, t_pt);
+}
+static void general_reproject_x(FLT *out, const FLT *_input) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+
+	LinmathVec3d world_pt;
+	ApplyPoseToPoint(world_pt, &input->p, input->pt);
+
+	LinmathPoint3d t_pt;
+	ApplyPoseToPoint(t_pt, &input->world2lh, world_pt);
+
+	*out = survive_reproject_axis_x(input->fcal, t_pt);
+}
+static void general_reproject_y(FLT *out, const FLT *_input) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+
+	LinmathVec3d world_pt;
+	ApplyPoseToPoint(world_pt, &input->p, input->pt);
+
+	LinmathPoint3d t_pt;
+	ApplyPoseToPoint(t_pt, &input->world2lh, world_pt);
+
+	*out = survive_reproject_axis_y(input->fcal, t_pt);
+}
 
 gen_function_def reproject_axis_x_gen2_def = {
 	.name = "reproject_axis_x_gen2",
@@ -635,4 +693,40 @@ gen_function_def reproject_axis_x_gen2_def = {
 		{.suffix = "obj", .jacobian = general_gen_reproject_x_gen2_jac_obj, .jacobian_length = 7},
 	}};
 
-TEST(Generated, reproject_axis_x) { return test_gen_function_def(&reproject_axis_x_gen2_def); }
+TEST(Generated, reproject_axis_x_gen2) { return test_gen_function_def(&reproject_axis_x_gen2_def); }
+
+gen_function_def reproject_axis_y_gen2_def = {
+	.name = "reproject_axis_y_gen2",
+	.generated = general_gen_reproject_y_gen2,
+	.check = general_reproject_y_gen2,
+	.generate_inputs = generate_reproject_input,
+	.outputs = 1,
+	.jacobians = {
+		{.suffix = "obj", .jacobian = general_gen_reproject_y_gen2_jac_obj, .jacobian_length = 7},
+	}};
+
+TEST(Generated, reproject_axis_y_gen2) { return test_gen_function_def(&reproject_axis_y_gen2_def); }
+
+gen_function_def reproject_axis_x_def = {
+	.name = "reproject_axis_x",
+	.generated = general_gen_reproject_x,
+	.check = general_reproject_x,
+	.generate_inputs = generate_reproject_input,
+	.outputs = 1,
+	.jacobians = {
+		{.suffix = "obj", .jacobian = general_gen_reproject_x_jac_obj, .jacobian_length = 7},
+	}};
+
+TEST(Generated, reproject_axis_x) { return test_gen_function_def(&reproject_axis_x_def); }
+
+gen_function_def reproject_axis_y_def = {
+	.name = "reproject_axis_y",
+	.generated = general_gen_reproject_y,
+	.check = general_reproject_y,
+	.generate_inputs = generate_reproject_input,
+	.outputs = 1,
+	.jacobians = {
+		{.suffix = "obj", .jacobian = general_gen_reproject_y_jac_obj, .jacobian_length = 7},
+	}};
+
+TEST(Generated, reproject_axis_y) { return test_gen_function_def(&reproject_axis_y_def); }
