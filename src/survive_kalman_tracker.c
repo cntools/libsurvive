@@ -254,8 +254,8 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 	SurviveObject *so = tracker->so;
 
 	FLT norm = 1. / norm3d(data->accel);
-	FLT w = SurviveSensorActivations_stationary_time(&tracker->so->activations) > .1 ? tracker->stationary_acc_scale
-																					 : tracker->moving_acc_scale;
+	FLT w = SurviveSensorActivations_stationary_time(&tracker->so->activations) > 4800000 ? tracker->stationary_acc_scale
+																						  : tracker->moving_acc_scale;
 	tracker->acc_scale *= 1. - w;
 	tracker->acc_scale += w * norm;
 
