@@ -144,6 +144,15 @@ void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker,
 
 	tracker->last_light_time = time;
 	if (tracker->light_var >= 0) {
+
+		for (int i = 0; i < tracker->savedLight_idx; i++) {
+			if (!ctx->bsd[tracker->savedLight[i].lh].PositionSet) {
+				tracker->savedLight[i] = tracker->savedLight[tracker->savedLight_idx - 1];
+				tracker->savedLight_idx--;
+				i--;
+			}
+		}
+
 		SV_CREATE_STACK_MAT(Z, tracker->savedLight_idx, 1);
 		for (int i = 0; i < tracker->savedLight_idx; i++)
 			svMatrixSet(&Z, i, 0, tracker->savedLight[i].value);
