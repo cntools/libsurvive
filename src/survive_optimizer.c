@@ -516,9 +516,9 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			LinmathAxisAnglePose *world2lh = (LinmathAxisAnglePose *)&cameras[lh];
 			scale3d(rot, world2lh->AxisAngleRot, -1);
 
+			deriv_idx = survive_optimizer_get_camera_index(mpfunc_ctx) + lh * 7 + 3;
 			if (isfinite(up[0])) {
 				error = gen_world2lh_aa_up_err(world2lh->AxisAngleRot, up);
-				deriv_idx = survive_optimizer_get_camera_index(mpfunc_ctx) + lh * 7 + 3;
 				gen_world2lh_aa_up_err_jac_axis_angle(deriv, world2lh->AxisAngleRot, up);
 			}
 		}
