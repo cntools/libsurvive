@@ -277,6 +277,7 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 		const FLT up[3] = {0, 0, 1};
 		if (accel_mag != 0.0 && !isnan(accel_mag)) {
 			quatfrom2vectors(soLocation->Rot, so->activations.accel, up);
+			so->OutPoseIMU = *soLocation;
 		} else {
 			SV_WARN("Calibration didn't have valid IMU data for %s; couldn't establish 'up' vector.", so->codename);
 		}
