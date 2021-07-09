@@ -674,6 +674,19 @@ const char *survive_config_file_path(struct SurviveContext *ctx, char *path) {
 #endif
 		snprintf(path + idx, FILENAME_MAX - idx, "/%s", configpath);
 	} else {
+		char pathname[512] = {0};
+		strncpy(pathname, configpath, sizeof(pathname) - 1);
+		int i;
+		for (i = strlen(pathname); i > 0 && pathname[i] != '/'; i--)
+			;
+		if (i > 0) {
+			pathname[i] = 0;
+#ifdef _WIN32
+			_mkdir(path);
+#elif __linux__
+			mkdir(pathname, 0755);
+#endif
+		}
 		strncpy(path, configpath, FILENAME_MAX);
 	}
 	return path;
