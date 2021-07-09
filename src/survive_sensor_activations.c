@@ -10,10 +10,14 @@ STATIC_CONFIG_ITEM(MOVMENT_THRESHOLD_ANG, "move-threshold-ang", 'f', "Threshold 
 STATIC_CONFIG_ITEM(FILTER_THRESHOLD_ANG, "filter-threshold-ang-per-sec", 'f',
 				   "Threshold to filter light which changes too fast", 50.)
 
+STATIC_CONFIG_ITEM(FILTER_LIGHT_OUTLIER_CRITERIA, "filter-light-outlier-criteria", 'f',
+				   "Threshold to filter outlier light strikes", 0.5)
+
 static FLT moveThresholdGyro = 0;
 static FLT moveThresholdAcc = 0;
 static FLT moveThresholdAng = 0;
 static FLT filterLightChange = 0;
+static FLT filterOutlierCriteria = 0;
 
 bool SurviveSensorActivations_is_reading_valid(const SurviveSensorActivations *self, survive_long_timecode tolerance,
 											   uint32_t sensor_idx, int lh, int axis) {
@@ -169,7 +173,7 @@ static inline bool SurviveSensorActivations_check_outlier(SurviveSensorActivatio
 		cnt = (int)self->so->sensor_ct;
 
 	FLT chauvenet_criterion = P * cnt;
-	if (chauvenet_criterion < .5) {
+	if (chauvenet_criterion < filterOutlierCriteria) {
 		goto reject_data;
 	}
 
@@ -283,6 +287,7 @@ SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveObject *so, SurviveSens
 		moveThresholdGyro = survive_configf(so->ctx, MOVMENT_THRESHOLD_GYRO_TAG, SC_GET, 0);
 		moveThresholdAng = survive_configf(so->ctx, MOVMENT_THRESHOLD_ANG_TAG, SC_GET, 0);
 		filterLightChange = survive_configf(so->ctx, FILTER_THRESHOLD_ANG_TAG, SC_GET, 0);
+		filterOutlierCriteria = survive_configf(so->ctx, FILTER_LIGHT_OUTLIER_CRITERIA_TAG, SC_GET, 0.5);
 	}
 
 	SurviveSensorActivations_reset(self);
