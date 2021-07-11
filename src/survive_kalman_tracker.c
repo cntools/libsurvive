@@ -17,6 +17,14 @@
 
 #define SURVIVE_MODEL_MAX_STATE_CNT (sizeof(SurviveKalmanModel) / sizeof(FLT))
 
+FLT pid_update(struct pid_t* pid, FLT err, FLT dt) {
+	FLT der = err - pid->err;
+	pid->integration += err;
+	FLT output = pid->Kp * err + (pid->Ki * pid->integration * dt) + (pid->Kd * der /dt);
+	pid->err = err;
+	return output;
+}
+
 static SurviveKalmanModel copy_model(const FLT *src, size_t state_size) {
 	SurviveKalmanModel rtn = {0};
 	assert(state_size >= 7);
@@ -37,6 +45,13 @@ static inline FLT survive_kalman_tracker_position_var2(SurviveKalmanTracker *tra
 }
 
 static void normalize_model(SurviveKalmanTracker *pTracker) {
+	/*
+	FLT d = magnitude3d(pTracker->state.Pose.Rot + 1);
+	pTracker->state.Pose.Rot[0] = 0;
+	if(d < 1) {
+		pTracker->state.Pose.Rot[0] = FLT_SQRT(1 - d * d);
+	}
+*/
 	quatnormalize(pTracker->state.Pose.Rot, pTracker->state.Pose.Rot);
 	for (int i = 0; i < 3; i++) {
 		pTracker->state.GyroBias[i] = linmath_enforce_range(pTracker->state.GyroBias[i], -1e-1, 1e-1);
@@ -269,18 +284,40 @@ STATIC_CONFIG_ITEM(KALMAN_STATIONARY_ACC_SCALE_ALPHA, "kalman-stationary-acc-sca
 				   "Incorporate scale coefficient while not moving", 0.005)
 STATIC_CONFIG_ITEM(KALMAN_MOVING_ACC_SCALE_ALPHA, "kalman-moving-acc-scale-alpha", 'f',
 				   "Incorporate scale coefficient while moving", 0.)
+STATIC_CONFIG_ITEM(KALMAN_ACC_SCALE_KI, "kalman-acc-scale-ki", 'f',
+				   "Incorporate scale coefficient while moving", 0.)
+STATIC_CONFIG_ITEM(KALMAN_ACC_SCALE_KD, "kalman-acc-scale-kd", 'f',
+				   "Incorporate scale coefficient while moving", 0.)
+
+static void tracker_datalog(survive_kalman_state_t* state, const char *desc, const FLT *v, size_t length) {
+	SurviveKalmanTracker *tracker = state->datalog_user;
+	SurviveObject * so = tracker->so;
+
+	if(tracker->datalog_tag == 0)
+		tracker->datalog_tag = "unknown";
+
+	SV_DATA_LOG("%s_%s", v, length, desc, tracker->datalog_tag);
+}
 
 void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDataIMU *data) {
 	SurviveContext *ctx = tracker->so->ctx;
 	SurviveObject *so = tracker->so;
 
-	FLT norm = 1. / norm3d(data->accel);
-	FLT w = SurviveSensorActivations_stationary_time(&tracker->so->activations) > 4800000 ? tracker->stationary_acc_scale
-																						  : tracker->moving_acc_scale;
-	tracker->acc_scale *= 1. - w;
-	tracker->acc_scale += w * norm;
+	FLT time = data->hdr.timecode / (FLT)tracker->so->timebase_hz;
+	FLT time_diff = time - tracker->model.t;
 
-	SV_DATA_LOG("acc_scale", &tracker->acc_scale, 1);
+	FLT norm = norm3d(data->accel);
+	SV_DATA_LOG("acc_norm", &norm, 1);
+	FLT norm_scaled = norm / tracker->acc_scale;
+	SV_DATA_LOG("acc_norm_scaled", &norm_scaled, 1);
+	bool isStationary = SurviveSensorActivations_stationary_time(&tracker->so->activations) > 4800000;
+	if(isStationary) {
+		tracker->acc_scale += pid_update(&tracker->acc_scale_control, norm - tracker->acc_scale, .001);
+
+		SV_DATA_LOG("acc_scale_val", &tracker->acc_scale, 1);
+		SV_DATA_LOG("acc_scale_err", &tracker->acc_scale_control.err, 1);
+		SV_DATA_LOG("acc_scale_int", &tracker->acc_scale_control.integration, 1);
+	}
 
 	if (tracker->use_raw_obs) {
 		return;
@@ -294,9 +331,6 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 	if (tracker->stats.obs_count < 16) {
 		return;
 	}
-
-	FLT time = data->hdr.timecode / (FLT)tracker->so->timebase_hz;
-	FLT time_diff = time - tracker->model.t;
 
 	if (time_diff < -.01) {
 		// SV_WARN("Processing imu data from the past %fs", time - tracker->rot.t);
@@ -353,7 +387,8 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 		int rows = 6;
 		int offset = 0;
 		FLT accelgyro[6];
-		scale3d(accelgyro, data->accel, tracker->acc_scale);
+		scale3d(accelgyro, data->accel, 1. / tracker->acc_scale);
+
 		copy3d(accelgyro+3, data->gyro);
 
 		SvMat Z = svMat(rows, 1, accelgyro + offset);
@@ -725,6 +760,9 @@ static void print_configf(SurviveContext *ctx, const char *tag, FLT *var) { SV_V
 void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *so) {
 	memset(tracker, 0, sizeof(*tracker));
 
+	tracker->acc_scale_control = (struct pid_t){
+		.Kp = 1e-5
+	};
 	tracker->acc_scale = 1.0;
 	tracker->so = so;
 

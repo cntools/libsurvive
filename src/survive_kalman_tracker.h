@@ -101,7 +101,9 @@ typedef struct SurviveKalmanTracker {
 	FLT IMU_R[6 * 6];
 	FLT Lightcap_R;
 
+	struct pid_t acc_scale_control;
 	FLT acc_scale;
+	FLT acc_bias[3];
 
 	size_t light_rampin_length;
 	bool use_error_for_lh_pos;
