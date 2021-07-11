@@ -1064,7 +1064,7 @@ const char *survive_configs(SurviveContext *ctx, const char *tag, char flags, co
 	return def;
 }
 
-static void survive_attach_config(SurviveContext *ctx, const char *tag, void * var, char type )
+SURVIVE_EXPORT void survive_attach_config(SurviveContext *ctx, const char *tag, void * var, char type )
 {
 	if (ctx == 0)
 		return;

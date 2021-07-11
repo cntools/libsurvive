@@ -419,6 +419,7 @@ SURVIVE_EXPORT void survive_config_as_str(SurviveContext *ctx, char *output, siz
 
 SURVIVE_EXPORT const char *survive_configs(SurviveContext *ctx, const char *tag, char flags, const char *def);
 
+SURVIVE_EXPORT void survive_attach_config(SurviveContext *ctx, const char *tag, void * var, char type);
 SURVIVE_EXPORT void survive_attach_configi(SurviveContext *ctx, const char *tag, int32_t *var);
 SURVIVE_EXPORT void survive_attach_configf(SurviveContext *ctx, const char *tag, FLT * var );
 SURVIVE_EXPORT void survive_attach_configs(SurviveContext *ctx, const char *tag, char * var );
@@ -461,6 +462,26 @@ SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel c
 	SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##variable() {                                                             \
 		survive_config_bind_variable(type, name, description, default_value, 0xcafebeef);                              \
 	}
+
+#define STRUCT_CONFIG_SECTION(type) \
+static void type##_bind_variables(SurviveContext* ctx, type* t, bool ctor) {
+
+#define STRUCT_CONFIG_ITEM(variable, name, type, description, default_value, var)                                      \
+	if (t && ctor) {                                                                                                           \
+            var = default_value;                                                                                                           \
+            survive_attach_config(ctx, name, &var, type);                                                                                                           \
+	} else if(t) {                                                                                                       \
+			survive_detach_config(ctx, name, &var);                                                                    \
+	} else {                                                                                                           \
+		survive_config_bind_variable(type, name, description, default_value, 0xcafebeef);                          \
+	}
+
+#define END_STRUCT_CONFIG_SECTION(type)                                                                                \
+	}                                                                                                                  \
+SURVIVE_EXPORT_CONSTRUCTOR void REGISTER##type() { type##_bind_variables(0, 0, 0); }                                  \
+void type##_attach_config(SurviveContext* ctx, type* t) { type##_bind_variables(ctx, t, 1); }                          \
+void type##_detach_config(SurviveContext* ctx, type* t) { type##_bind_variables(ctx, t, 0); }                          \
+
 SURVIVE_EXPORT void survive_config_bind_variable(char vt, const char *name, const char *description,
 												 ...); // Only used at boot.
 

@@ -24,6 +24,8 @@ struct pid_t {
 struct SurviveKalmanTracker_Params {
 	FLT process_weight_acc, process_weight_vel, process_weight_pos;
 	FLT process_weight_ang_velocity, process_weight_rotation;
+	FLT process_weight_acc_bias;
+	FLT process_weight_gyro_bias;
 };
 /**
  * The kalman model as it pertains to LH tracking has a state space like so:

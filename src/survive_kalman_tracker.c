@@ -658,14 +658,6 @@ STATIC_CONFIG_ITEM(KALMAN_USE_ADAPTIVE_IMU, "use-adaptive-imu", 'i', "Use adapti
 STATIC_CONFIG_ITEM(KALMAN_USE_ADAPTIVE_LIGHTCAP, "use-adaptive-lightcap", 'i', "Use adaptive kalman for Lightcap", 0)
 STATIC_CONFIG_ITEM(KALMAN_USE_ADAPTIVE_OBS, "use-adaptive-obs", 'i', "Use adaptive kalman for observations", 0)
 
-STATIC_CONFIG_ITEM(PROCESS_WEIGHT_ACC, "process-weight-acc", 'f', "Acc variance per second", 10.)
-
-STATIC_CONFIG_ITEM(PROCESS_WEIGHT_ANGULAR_VELOCITY, "process-weight-ang-vel", 'f', "Angular velocity variance per second", 1.)
-STATIC_CONFIG_ITEM(PROCESS_WEIGHT_VEL, "process-weight-vel", 'f', "Velocity variance per second", 0.)
-
-STATIC_CONFIG_ITEM(PROCESS_WEIGHT_POS, "process-weight-pos", 'f', "Position variance per second", 0.)
-STATIC_CONFIG_ITEM(PROCESS_WEIGHT_ROTATION, "process-weight-rot", 'f', "Rotation variance per second", 0.)
-
 STATIC_CONFIG_ITEM(KALMAN_MODEL_ACCEL, "model-acc", 'i',
 				   "Whether or not to model the acceleration in the kalman filter", 1)
 STATIC_CONFIG_ITEM(KALMAN_USE_GYRO_BIAS, "model-gyro-bias", 'i',
@@ -690,6 +682,15 @@ STATIC_CONFIG_ITEM(IMU_GYRO_VARIANCE, "imu-gyro-variance", 'f', "Variance of gyr
 STATIC_CONFIG_ITEM(USE_IMU, "use-imu", 'i', "Use the IMU as part of the pose solver", 1)
 STATIC_CONFIG_ITEM(USE_KALMAN, "use-kalman", 'i', "Apply kalman filter as part of the pose solver", 1)
 
+STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
+	STRUCT_CONFIG_ITEM(PROCESS_WEIGHT_ACC_BIAS, "process-weight-acc-bias", 'f', "Acc bias variance per second", 1e-10, t->params.process_weight_acc_bias)
+	STRUCT_CONFIG_ITEM(PROCESS_WEIGHT_ACC, "process-weight-acc", 'f', "Acc variance per second", 1e-2, t->params.process_weight_acc)
+	STRUCT_CONFIG_ITEM(PROCESS_WEIGHT_ANGULAR_VELOCITY, "process-weight-ang-vel", 'f', "Angular velocity variance per second", 1., t->params.process_weight_ang_velocity)
+	STRUCT_CONFIG_ITEM(PROCESS_WEIGHT_VEL, "process-weight-vel", 'f', "Velocity variance per second", 0., t->params.process_weight_vel)
+	STRUCT_CONFIG_ITEM(PROCESS_WEIGHT_POS, "process-weight-pos", 'f', "Position variance per second", 0., t->params.process_weight_pos)
+	STRUCT_CONFIG_ITEM(PROCESS_WEIGHT_ROTATION, "process-weight-rot", 'f', "Rotation variance per second", 1., t->params.process_weight_rotation);
+END_STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
+
 typedef void (*survive_attach_detach_fn)(SurviveContext *ctx, const char *tag, FLT *var);
 
 static void survive_kalman_tracker_config(SurviveKalmanTracker *tracker, survive_attach_detach_fn fn) {
@@ -704,14 +705,7 @@ static void survive_kalman_tracker_config(SurviveKalmanTracker *tracker, survive
 	fn(tracker->so->ctx, OBS_POS_VARIANCE_TAG, &tracker->obs_pos_var);
 	fn(tracker->so->ctx, OBS_ROT_VARIANCE_TAG, &tracker->obs_rot_var);
 	fn(tracker->so->ctx, LIGHT_VARIANCE_TAG, &tracker->light_var);
-
-	fn(tracker->so->ctx, PROCESS_WEIGHT_ACC_TAG, &tracker->params.process_weight_acc);
-	fn(tracker->so->ctx, PROCESS_WEIGHT_VEL_TAG, &tracker->params.process_weight_vel);
-	fn(tracker->so->ctx, PROCESS_WEIGHT_POS_TAG, &tracker->params.process_weight_pos);
-
-	fn(tracker->so->ctx, PROCESS_WEIGHT_ANGULAR_VELOCITY_TAG, &tracker->params.process_weight_ang_velocity);
-	fn(tracker->so->ctx, PROCESS_WEIGHT_ROTATION_TAG, &tracker->params.process_weight_rotation);
-
+	
 	fn(tracker->so->ctx, KALMAN_MOVING_ACC_SCALE_ALPHA_TAG, &tracker->acc_scale_control.Kp);
 	fn(tracker->so->ctx, KALMAN_STATIONARY_ACC_SCALE_ALPHA_TAG, &tracker->acc_scale_control.Kp);
 	fn(tracker->so->ctx, KALMAN_ACC_SCALE_KI_TAG, &tracker->acc_scale_control.Ki);
@@ -784,6 +778,7 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	tracker->use_error_for_lh_pos = survive_configi(ctx, KALMAN_USE_ERROR_FOR_LH_CONFIDENCE_TAG, SC_GET, 1);
 	tracker->light_rampin_length = survive_configi(ctx, KALMAN_LIGHTCAP_RAMPIN_LENGTH_TAG, SC_GET, 5000);
 
+	SurviveKalmanTracker_attach_config(tracker->so->ctx, tracker);
 	survive_kalman_tracker_config(tracker, survive_attach_configf);
 
 	bool use_imu = (bool)survive_configi(ctx, "use-imu", SC_GET, 1);
@@ -911,6 +906,7 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 	survive_detach_config(tracker->so->ctx, KALMAN_LIGHTCAP_REQUIRED_OBS_TAG, &tracker->light_required_obs);
 	survive_detach_config(tracker->so->ctx, KALMAN_SHOW_RAW_OBS_TAG, &tracker->show_raw_obs);
 
+	SurviveKalmanTracker_detach_config(tracker->so->ctx, tracker);
 	survive_kalman_tracker_config(tracker, (survive_attach_detach_fn)survive_detach_config);
 }
 
