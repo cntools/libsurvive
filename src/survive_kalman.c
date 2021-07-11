@@ -30,11 +30,12 @@ static void sv_print_mat_v(int ll, const char *name, const SvMat *M, bool newlin
 		fprintf(stdout, "null%c", term);
 		return;
 	}
-	fprintf(stdout, "%s %d x %d:%c", name, M->rows, M->cols, term);
+	fprintf(stdout, "%4s %2d x %2d:%c", name, M->rows, M->cols, term);
+	FLT scale = sv_sum(M);
 	for (unsigned i = 0; i < M->rows; i++) {
 		for (unsigned j = 0; j < M->cols; j++) {
 			FLT v = svMatrixGet(M, i, j);
-			if (v == 0)
+			if (fabs(v) < scale * 1e-5)
 				fprintf(stdout, "         0,\t");
 			else
 				fprintf(stdout, "%+5.2e,\t", v);
@@ -300,8 +301,7 @@ static FLT survive_kalman_predict_update_state_extended_adaptive_internal(FLT t,
 
 	if (dt > 0) {
 		SV_CREATE_STACK_MAT(F, state_cnt, state_cnt);
-		for (int i = 0; i < state_cnt * state_cnt; i++)
-			_F[i] = NAN;
+		sv_set_constant(&F, NAN);
 
 		k->F_fn(dt, &F, x1);
 		assert(sv_is_finite(&F));
@@ -402,6 +402,7 @@ void survive_kalman_predict_state(FLT t, const survive_kalman_state_t *k, size_t
 		k->Predict_fn(dt, k, x, &tmpOut);
 		copyFrom = _tmpOut;
 	}
+	assert(_out != copyFrom);
 	memcpy(_out, copyFrom + start_index, (end_index - start_index) * sizeof(FLT));
 	SV_FREE_STACK_MAT(tmpOut);
 }

@@ -845,7 +845,8 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 
 void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *tracker, bool allowLHReset) {
 	SurviveContext *ctx = tracker->so->ctx;
-	SV_WARN("Too many failures for %s; reseting calibration %e (%7.4f stationary)", tracker->so->codename,
+	SV_WARN("Too many failures for %s at %f; reseting calibration %e (%7.4f stationary)", survive_colorize_codename(tracker->so),
+			survive_run_time(ctx),
 			tracker->light_residuals_all,
 			SurviveSensorActivations_stationary_time(&tracker->so->activations) / 48000000.);
 	tracker->light_residuals_all = 0;

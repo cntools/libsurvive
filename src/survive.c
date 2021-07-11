@@ -433,6 +433,11 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 	SV_VERBOSE(5, "libsurvive version %s", survive_build_tag());
 	SV_VERBOSE(5, "Config file is %.512s", config_path);
 
+	SV_VERBOSE(100, "Args: ");
+	for(int i = 0;i < argc;i++) {
+		SV_VERBOSE(100, "\t'%s'",argv[i]);
+	}
+
 	const char *record_config_prefix_fields[] = {"record", "usbmon-record", 0};
 	if (!user_set_configfile && find_correct_config_file(ctx, record_config_prefix_fields)) {
 		survive_config_file_path(ctx, config_path);
