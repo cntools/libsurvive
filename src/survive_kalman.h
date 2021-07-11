@@ -65,6 +65,9 @@ typedef struct survive_kalman_state_s {
 
 	// Current time
 	FLT t;
+
+	void *datalog_user;
+	void (*datalog)(struct survive_kalman_state_s *state, const char *name, const FLT *v, size_t length);
 } survive_kalman_state_t;
 
 /**
