@@ -61,6 +61,8 @@ typedef struct SurviveKalmanTracker {
 	SurviveKalmanModel state;
 	survive_kalman_state_t model;
 
+	const char* datalog_tag;
+
 	struct {
 		uint32_t late_imu_dropped;
 		uint32_t late_light_dropped;
