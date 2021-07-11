@@ -422,6 +422,7 @@ static void imu_predict_gyro(FLT *out, SurviveKalmanModel *m) {
 	LinmathQuat w2o;
 	quatgetreciprocal(w2o, m->Pose.Rot);
 	quatrotatevector(out, w2o, m->Velocity.AxisAngleRot);
+	add3d(out, out, m->GyroBias);
 }
 static void imu_predict_up(FLT *out, SurviveKalmanModel *m) {
 	/*
@@ -435,7 +436,7 @@ static void imu_predict_up(FLT *out, SurviveKalmanModel *m) {
 	FLT accInWorld[3] = {0, 0, 1};
 	FLT accInG[3];
 	scale3d(accInG, m->Acc, 1. / g);
-	add3d(accInWorld, accInWorld, m->Acc);
+	add3d(accInWorld, accInWorld, accInG);
 
 	LinmathQuat w2o;
 	quatgetreciprocal(w2o, m->Pose.Rot);
@@ -463,7 +464,7 @@ gen_function_def imu_predict_def = {
 	}};
 
 TEST(Generated, imu_predict) {
-	SurviveKalmanModel m = {.Pose = {.Rot = {1}}, .Acc = {0, 0, 1}};
+	SurviveKalmanModel m = {.Pose = {.Rot = {1}}, .Acc = {0, 0, 9.80665}};
 
 	{
 		FLT imu[6] = {0};
@@ -479,7 +480,7 @@ TEST(Generated, imu_predict) {
 		ASSERT_DOUBLE_ARRAY_EQ(6, imu, imu_gt);
 	}
 	{
-		m.Acc[2] = -1;
+		m.Acc[2] = -9.80665;
 		FLT imu[6] = {0};
 		FLT imu_gt[6] = {0, 0, 0, 0, 0, 0};
 		imu_predict_up(imu, &m);

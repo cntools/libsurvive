@@ -229,17 +229,12 @@ struct map_imu_data_ctx {
  * The actual code for this is generated from tools/generate_math_functions/imu_functions.py. It isn't done in
  * C natively to allow for the jacobian code to be generated using symengine
  */
-static bool map_imu_data(void *user, const struct SvMat *Z, const struct SvMat *x_t, struct SvMat *y,
+bool survive_kalman_tracker_imu_measurement_model(void *user, const struct SvMat *Z, const struct SvMat *x_t, struct SvMat *y,
 						 struct SvMat *H_k) {
-	struct map_imu_data_ctx *fn_ctx = user;
+
 	FLT h_x[6];
 
 	sv_set_constant(H_k, NAN);
-
-	SurviveContext *ctx = fn_ctx->tracker->so->ctx;
-
-	SV_VERBOSE(600, "X     " Point16_format, LINMATH_VEC16_EXPAND(sv_as_const_vector(x_t)))
-	SV_VERBOSE(600, "Z     " Point6_format, LINMATH_VEC6_EXPAND(sv_as_const_vector(Z)))
 
 	SurviveKalmanModel s = copy_model(sv_as_const_vector(x_t), x_t->rows);
 	gen_imu_predict(h_x, &s);
@@ -249,9 +244,24 @@ static bool map_imu_data(void *user, const struct SvMat *Z, const struct SvMat *
 	gen_imu_predict_jac_kalman_model(_H_k, &s);
 	sv_copy_in_row_major(H_k, _H_k, SURVIVE_MODEL_MAX_STATE_CNT);
 
-	SV_VERBOSE(600, "h_x   " Point6_format, LINMATH_VEC6_EXPAND(h_x))
+	struct map_imu_data_ctx *fn_ctx = user;
+
 	subnd(sv_as_vector(y), sv_as_const_vector(Z), h_x, Z->rows);
-	SV_VERBOSE(600, "y     " Point6_format, LINMATH_VEC6_EXPAND(sv_as_const_vector(y)))
+
+	if(fn_ctx) {
+		SurviveKalmanTracker * tracker = fn_ctx->tracker;
+		SurviveObject * so = fn_ctx->tracker->so;
+		SurviveContext *ctx = so->ctx;
+		SV_VERBOSE(600, "X     " Point16_format, LINMATH_VEC16_EXPAND(sv_as_const_vector(x_t)))
+		SV_VERBOSE(600, "Z     " Point6_format, LINMATH_VEC6_EXPAND(sv_as_const_vector(Z)))
+		SV_DATA_LOG("imu_prediction", h_x, 6);
+
+		LinmathVec3d up = {0, 0, 1};
+		LinmathQuat q;
+		quatfrom2vectors(q, Z->data, up);
+		SV_DATA_LOG("perfect_q", q, 4);
+	}
+
 	return true;
 }
 
@@ -390,8 +400,12 @@ void survive_kalman_tracker_predict(const SurviveKalmanTracker *tracker, FLT t, 
 	SV_VERBOSE(300, "Predict pose %f %f " SurvivePose_format, t, t - tracker->model.t, SURVIVE_POSE_EXPAND(*out))
 }
 
-static void model_q_fn(void *user, FLT t, const SvMat *x, struct SvMat *q_out) {
-	SurviveKalmanTracker *tracker = (SurviveKalmanTracker *)user;
+static void survive_kalman_tracker_process_noise_bounce(void *user, FLT t, const SvMat *x, struct SvMat *q_out) {
+	struct SurviveKalmanTracker_Params *params = (struct SurviveKalmanTracker_Params *)user;
+	return survive_kalman_tracker_process_noise(params, t, x, q_out);
+}
+
+void survive_kalman_tracker_process_noise(const struct SurviveKalmanTracker_Params *params, FLT t, const SvMat *x, struct SvMat *q_out) {
 	size_t state_cnt = x->rows;
 	SurviveKalmanModel state = copy_model(sv_as_const_vector(x), state_cnt);
 
@@ -414,11 +428,11 @@ static void model_q_fn(void *user, FLT t, const SvMat *x, struct SvMat *q_out) {
 
 	FLT Q_vel[] = {t3 / 3., t2 / 2., t};
 
-	FLT q_p = tracker->process_weight_acc;
-	FLT p_p = q_p * Q_acc[0] + tracker->process_weight_vel * Q_vel[0] + tracker->process_weight_pos * t;
-	FLT p_v = q_p * Q_acc[1] + tracker->process_weight_vel * Q_vel[1];
+	FLT q_p = params->process_weight_acc;
+	FLT p_p = q_p * Q_acc[0] + params->process_weight_vel * Q_vel[0] + params->process_weight_pos * t;
+	FLT p_v = q_p * Q_acc[1] + params->process_weight_vel * Q_vel[1];
 	FLT p_a = q_p * Q_acc[2];
-	FLT v_v = q_p * Q_acc[3] + tracker->process_weight_vel * Q_vel[2];
+	FLT v_v = q_p * Q_acc[3] + params->process_weight_vel * Q_vel[2];
 	FLT v_a = q_p * Q_acc[4];
 	FLT a_a = q_p * Q_acc[5];
 
@@ -429,17 +443,17 @@ static void model_q_fn(void *user, FLT t, const SvMat *x, struct SvMat *q_out) {
 	  This is a rework using the same methodology. Some helper output functions are in the tools/generate_math_functions
 	  code.
 	 */
-	FLT s_w = tracker->process_weight_ang_velocity;
+	FLT s_w = params->process_weight_ang_velocity;
 	FLT s_f = s_w / 12. * t3;
 	FLT s_s = s_w / 4. * t2;
 	FLT qw = state.Pose.Rot[0], qx = state.Pose.Rot[1], qy = state.Pose.Rot[2], qz = state.Pose.Rot[3];
 	FLT qws = qw * qw, qxs = qx * qx, qys = qy * qy, qzs = qz * qz;
 	FLT qs = qws + qxs + qys + qzs;
 
-	FLT rv = tracker->process_weight_rotation * t;
+	FLT rv = params->process_weight_rotation * t;
 
 	/* The gyro bias is expected to change, but slowly through time */
-	FLT gb = 1e-10 * t;
+	FLT gb = 0 * 1e-10 * t;
 
 
 	// This is the best way I could think to write the final block matrix...
@@ -490,17 +504,18 @@ static void model_q_fn(void *user, FLT t, const SvMat *x, struct SvMat *q_out) {
  * The prediction model and associated F matrix use generated code to simplifiy the jacobian. This might not be strictly
  * necessary but allows for quicker development.
  */
-static void model_predict(FLT t, const survive_kalman_state_t *k, const SvMat *f_in, SvMat *f_out) {
-	// assert(t > 0);
-
+void survive_kalman_tracker_model_predict(FLT t, const survive_kalman_state_t *k, const SvMat *f_in, SvMat *f_out) {
 	SurviveKalmanModel s_in = copy_model(sv_as_const_vector(f_in), f_in->rows);
 	SurviveKalmanModel s_out = {0};
-	gen_kalman_model_predict(s_out.Pose.Pos, t, &s_in);
 
+	struct SurviveKalmanTracker_Params *params = (struct SurviveKalmanTracker_Params *)k->user;
+
+	gen_kalman_model_predict(s_out.Pose.Pos, t, &s_in);
+	quatnormalize(s_out.Pose.Rot, s_out.Pose.Rot);
 	memcpy(sv_as_vector(f_out), s_out.Pose.Pos, f_in->rows * sizeof(FLT));
 }
 
-static void model_predict_jac(FLT t, struct SvMat *f_out, const struct SvMat *x0) {
+void survive_kalman_tracker_predict_jac(FLT t, struct SvMat *f_out, const struct SvMat *x0) {
 	SurviveKalmanModel s = copy_model(sv_as_const_vector(x0), x0->rows);
 
 	size_t state_cnt = x0->rows;
@@ -634,8 +649,8 @@ STATIC_CONFIG_ITEM(OBS_POS_VARIANCE, "obs-pos-variance", 'f', "Variance of posit
 STATIC_CONFIG_ITEM(OBS_ROT_VARIANCE, "obs-rot-variance", 'f', "Variance of rotation integration from light capture",
 				   .01)
 
-STATIC_CONFIG_ITEM(IMU_ACC_VARIANCE, "imu-acc-variance", 'f', "Variance of accelerometer", 1e-3)
-STATIC_CONFIG_ITEM(IMU_GYRO_VARIANCE, "imu-gyro-variance", 'f', "Variance of gyroscope", 1e-2)
+STATIC_CONFIG_ITEM(IMU_ACC_VARIANCE, "imu-acc-variance", 'f', "Variance of accelerometer", 5e-3)
+STATIC_CONFIG_ITEM(IMU_GYRO_VARIANCE, "imu-gyro-variance", 'f', "Variance of gyroscope", 5e-3)
 
 STATIC_CONFIG_ITEM(USE_IMU, "use-imu", 'i', "Use the IMU as part of the pose solver", 1)
 STATIC_CONFIG_ITEM(USE_KALMAN, "use-kalman", 'i', "Apply kalman filter as part of the pose solver", 1)
@@ -655,15 +670,17 @@ static void survive_kalman_tracker_config(SurviveKalmanTracker *tracker, survive
 	fn(tracker->so->ctx, OBS_ROT_VARIANCE_TAG, &tracker->obs_rot_var);
 	fn(tracker->so->ctx, LIGHT_VARIANCE_TAG, &tracker->light_var);
 
-	fn(tracker->so->ctx, PROCESS_WEIGHT_ACC_TAG, &tracker->process_weight_acc);
-	fn(tracker->so->ctx, PROCESS_WEIGHT_VEL_TAG, &tracker->process_weight_vel);
-	fn(tracker->so->ctx, PROCESS_WEIGHT_POS_TAG, &tracker->process_weight_pos);
+	fn(tracker->so->ctx, PROCESS_WEIGHT_ACC_TAG, &tracker->params.process_weight_acc);
+	fn(tracker->so->ctx, PROCESS_WEIGHT_VEL_TAG, &tracker->params.process_weight_vel);
+	fn(tracker->so->ctx, PROCESS_WEIGHT_POS_TAG, &tracker->params.process_weight_pos);
 
-	fn(tracker->so->ctx, PROCESS_WEIGHT_ANGULAR_VELOCITY_TAG, &tracker->process_weight_ang_velocity);
-	fn(tracker->so->ctx, PROCESS_WEIGHT_ROTATION_TAG, &tracker->process_weight_rotation);
+	fn(tracker->so->ctx, PROCESS_WEIGHT_ANGULAR_VELOCITY_TAG, &tracker->params.process_weight_ang_velocity);
+	fn(tracker->so->ctx, PROCESS_WEIGHT_ROTATION_TAG, &tracker->params.process_weight_rotation);
 
-	fn(tracker->so->ctx, KALMAN_MOVING_ACC_SCALE_ALPHA_TAG, &tracker->moving_acc_scale);
-	fn(tracker->so->ctx, KALMAN_STATIONARY_ACC_SCALE_ALPHA_TAG, &tracker->stationary_acc_scale);
+	fn(tracker->so->ctx, KALMAN_MOVING_ACC_SCALE_ALPHA_TAG, &tracker->acc_scale_control.Kp);
+	fn(tracker->so->ctx, KALMAN_STATIONARY_ACC_SCALE_ALPHA_TAG, &tracker->acc_scale_control.Kp);
+	fn(tracker->so->ctx, KALMAN_ACC_SCALE_KI_TAG, &tracker->acc_scale_control.Ki);
+	fn(tracker->so->ctx, KALMAN_ACC_SCALE_KD_TAG, &tracker->acc_scale_control.Kd);
 }
 
 void survive_kalman_tracker_reinit(SurviveKalmanTracker *tracker) {
@@ -680,11 +697,17 @@ void survive_kalman_tracker_reinit(SurviveKalmanTracker *tracker) {
 	size_t state_cnt = tracker->model.state_cnt;
 	sv_set_zero(&tracker->model.P);
 
-	for (int i = 0; i < state_cnt; i++) {
-		svMatrixSet(&tracker->model.P, i, i, 1e3);
-	}
-	for (int i = 16; i < state_cnt; i++) {
-		svMatrixSet(&tracker->model.P, i, i, 1);
+	SurviveKalmanModel initial_variance = {
+		.Pose = {
+			.Pos = {1, 1, 1},
+			.Rot = {1e3, 1e3, 1e3, 1e3}
+		},
+
+		.Acc = {1,1,1}
+	};
+
+	for (int i = 0; i < 16; i++) {
+		svMatrixSet(&tracker->model.P, i, i, 10.);//((FLT*)&initial_variance)[i]);
 	}
 
 	FLT Rrs = tracker->obs_rot_var;
