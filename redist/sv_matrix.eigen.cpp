@@ -39,6 +39,14 @@ double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svInvertMethod method) 
 
 extern "C" void svGEMM(const SvMat *_src1, const SvMat *_src2, double alpha, const SvMat *_src3, double beta,
 					   SvMat *_dst, enum svGEMMFlags tABC) {
+	if (_src3) {
+		assert(_src3->data != _src2->data);
+		assert(_src3->data != _src1->data);
+		assert(_src3->data != _dst->data);
+	}
+	assert(_src2->data != _src1->data);
+	assert(_src2->data != _dst->data);
+	assert(_src1->data != _dst->data);
 	auto src1 = CONVERT_TO_EIGEN(_src1);
 	auto src2 = CONVERT_TO_EIGEN(_src2);
 

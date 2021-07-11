@@ -296,6 +296,13 @@ static inline SvMat svMat_from_col_major(int rows, int cols, FLT *data) {
 	return rtn;
 }
 
+static inline void sv_elementwise_subtract(struct SvMat *dst, const struct SvMat *A, const struct SvMat *B) {
+	for (int i = 0; i < A->rows; i++) {
+		for (int j = 0; j < A->cols; j++) {
+			svMatrixSet(dst, i, j, svMatrixGet(A, i, j) - svMatrixGet(B, i, j));
+		}
+	}
+}
 #ifdef __cplusplus
 }
 #endif

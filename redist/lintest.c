@@ -168,7 +168,17 @@ static void testQuatFind(const LinmathQuat _q1, const LinmathQuat _q2) {
 
 	ASSERT_FLTA_EQUALS(tx_q2, q2, 4);
 }
+static void testQuatRotate() {
+	LinmathPoint3d out;
+	LinmathPoint3d out_gt = {3.0666666666666664, -0.66666666666666607, -1.4666666666666659};
 
+	LinmathPoint3d in = {2, 2, 2};
+	LinmathQuat q = {.1, .5, .2, 0};
+	quatnormalize(q, q);
+
+	quatrotatevector(out, q, in);
+	ASSERT_FLTA_EQUALS(out, out_gt, 3);
+}
 static void testQuatFind_between_vectors(const LinmathPoint3d _tmpA, const LinmathPoint3d _tmpB) {
 	LinmathQuat q;
 	LinmathPoint3d tmpA, tmpB;
@@ -281,6 +291,7 @@ static void testFindBestIntersections() {
 }
 int main()
 {
+	testQuatRotate();
 	testFindBestIntersections();
 
 	testInvertPose();
