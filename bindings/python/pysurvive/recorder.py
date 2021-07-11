@@ -32,7 +32,7 @@ def get_times(d):
 
 
 def get_data(d):
-    return np.array([x[1] for x in d])
+    return np.array(d)[:, 1:]
 
 
 def figsize_or_default(figsize):
@@ -89,7 +89,7 @@ class RecordedData:
         self.angles[key].append([time, angle])
 
     def record_datalog(self, time, name, values):
-        self.datalogs[str(name)].append([time, values])
+        self.datalogs[str(name)].append([time, *values])
 
     def record_angle(self, time, sensor_id, acode, timecode, length, angle, lh):
         key = (sensor_id, lh, acode & 1)
@@ -194,7 +194,7 @@ class RecordedData:
             ax.plot(get_times(accel_running_avg), get_data(accel_running_avg)[:, i], label="Avg" + axes_name[i])
         ax.legend()
 
-    def plot_datalog(self, prefix="", fig=None, plot_num=1, plot_rows=1, plot_cols=1, figsize=None, *args, **kwargs):
+    def plot_datalog(self, prefix="", fig=None, plot_num=1, plot_rows=1, plot_cols=1, figsize=None, start_idx = None, end_idx = None, linestyle='-', *args, **kwargs):
         if fig is None:
             fig = plt.figure(figsize=figsize_or_default(figsize))
         ax = fig.add_subplot(plot_rows, plot_cols, plot_num, title=prefix)
@@ -202,9 +202,10 @@ class RecordedData:
         keys = [k for k in self.datalogs.keys() if k.startswith(prefix)]
         for k in keys:
             times = get_times(self.datalogs[k])
-            data = get_data(self.datalogs[k])
-
-            ax.plot(times, data, '-', linewidth=1, ms=1, label=k)
+            data = get_data(self.datalogs[k])[:,start_idx:end_idx]
+            for idx in range(0, data.shape[1]):
+                label = k + "[" + str(idx + (start_idx if start_idx is not None else 0)) + "]"
+                ax.plot(times, data[:,idx], linestyle, linewidth=1, ms=1, label=label)
         ax.legend()
         fig.tight_layout()
 
