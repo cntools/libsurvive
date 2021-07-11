@@ -150,13 +150,17 @@ static FLT test_gen_jacobian_function(const char *name, generate_input input_fn,
 						int s = n == 0 ? 1 : -1;
 						input_copy[jac_start_idx + i] += s * H;
 						// print_array("Input", input_copy, inputs, 0);
-						nongen(n == 0 ? out : out_pt, input_copy);
-						gen(gen_output, input_copy);
-						FLT err = diff_array(0, gen_output, n == 0 ? out : out_pt, outputs);
-						if (err > 1e-5) {
-							TEST_PRINTF("Gen/nongen mismatch\n");
-						}
+						if (nongen) {
+							nongen(n == 0 ? out : out_pt, input_copy);
+							gen(gen_output, input_copy);
 
+							FLT err = diff_array(0, gen_output, n == 0 ? out : out_pt, outputs);
+							if (err > 1e-5) {
+								TEST_PRINTF("Gen/nongen mismatch\n");
+							}
+						} else {
+							gen(n == 0 ? out : out_pt, input_copy);
+						}
 						// print_array("Output", n == 0 ? out : out_pt, outputs, 0);
 					}
 
@@ -223,6 +227,11 @@ static double run_cycles(general_fn runme, const FLT *inputs, FLT *outputs) {
 
 static FLT test_gen_function(const char *name, generate_input input_fn, general_fn nongen, general_fn generated,
 							 size_t outputs) {
+	if (!nongen) {
+		printf("Testing generated %-32s \n", name);
+		return 0;
+	}
+
 	FLT *output_gen = STACK_ALLOC(outputs), *output = STACK_ALLOC(outputs);
 
 	size_t inputs = input_fn(0) / sizeof(FLT);
@@ -273,8 +282,10 @@ static int test_gen_function_def(const gen_function_def *def) {
 		strcat(name, def->name);
 		strcat(name, "_");
 		strcat(name, jdef->suffix);
-		failed |= test_gen_jacobian_function(name, def->generate_inputs, def->check, def->generated, jdef->jacobian,
-											 def->outputs, jdef->jacobian_start_idx, jdef->jacobian_length) > 1e-5;
+		for (int j = 0; j < 100; j++) {
+			failed |= test_gen_jacobian_function(name, def->generate_inputs, def->check, def->generated, jdef->jacobian,
+												 def->outputs, jdef->jacobian_start_idx, jdef->jacobian_length) > 1e-5;
+		}
 	}
 	return failed ? -1 : 0;
 }
@@ -375,6 +386,108 @@ void random_fcal(BaseStationCal *fcal) {
 	fcal->tilt = next_rand(0.5);
 }
 
+size_t random_kalman_model(FLT *out) {
+	if (out != 0) {
+		SurviveKalmanModel m = {
+			.Pose = random_pose(),
+		};
+		random_point(m.Acc);
+		random_point(m.Velocity.Pos);
+		random_point(m.Velocity.AxisAngleRot);
+		memcpy(out, &m, sizeof(SurviveKalmanModel));
+	}
+	return sizeof(SurviveKalmanModel);
+}
+
+static void general_imu_predict(FLT *out, const FLT *_input) {
+	SurviveKalmanModel *input = (SurviveKalmanModel *)_input;
+	gen_imu_predict(out, input);
+}
+
+static void general_gen_imu_predict_jac_kalman_model(FLT *out, const FLT *_input) {
+	SurviveKalmanModel *input = (SurviveKalmanModel *)_input;
+	gen_imu_predict_jac_kalman_model(out, input);
+}
+
+static void imu_predict_gyro(FLT *out, SurviveKalmanModel *m) {
+	/*
+	 * def imu_predict_gyro(kalman_model):
+		rot = quatgetreciprocal(quatnormalize(kalman_model.Pose.Rot))
+		rotv = quatrotatevector(rot, kalman_model.Velocity.Rot)
+		return [rotv[0] + kalman_model.GyroBias[0],
+				rotv[1] + kalman_model.GyroBias[1],
+				rotv[2] + kalman_model.GyroBias[2]
+		]
+	 */
+	LinmathQuat w2o;
+	quatgetreciprocal(w2o, m->Pose.Rot);
+	quatrotatevector(out, w2o, m->Velocity.AxisAngleRot);
+}
+static void imu_predict_up(FLT *out, SurviveKalmanModel *m) {
+	/*
+	 *     g = 9.80665
+		G = [ kalman_model.Acc[0]/g, kalman_model.Acc[1]/g, 1 + kalman_model.Acc[2]/g]
+		rot = quatgetreciprocal(quatnormalize(kalman_model.Pose.Rot))
+		return quatrotatevector(rot, G)
+
+	 */
+	FLT g = 9.80665;
+	FLT accInWorld[3] = {0, 0, 1};
+	FLT accInG[3];
+	scale3d(accInG, m->Acc, 1. / g);
+	add3d(accInWorld, accInWorld, m->Acc);
+
+	LinmathQuat w2o;
+	quatgetreciprocal(w2o, m->Pose.Rot);
+
+	quatrotatevector(out, w2o, accInWorld);
+}
+
+static void imu_predict(FLT *out, const FLT *m) {
+	/*
+	def imu_predict(kalman_model):
+	return [*imu_predict_up(kalman_model), *imu_predict_gyro(kalman_model)]
+	*/
+	imu_predict_up(out, (SurviveKalmanModel *)m);
+	imu_predict_gyro(out + 3, (SurviveKalmanModel *)m);
+}
+
+gen_function_def imu_predict_def = {
+	.name = "imu_predict",
+	.generated = general_imu_predict,
+	.generate_inputs = random_kalman_model,
+	.check = imu_predict,
+	.outputs = 6,
+	.jacobians = {
+		{.suffix = "kalman_model", .jacobian = general_gen_imu_predict_jac_kalman_model, .jacobian_length = 19},
+	}};
+
+TEST(Generated, imu_predict) {
+	SurviveKalmanModel m = {.Pose = {.Rot = {1}}, .Acc = {0, 0, 1}};
+
+	{
+		FLT imu[6] = {0};
+		FLT imu_gt[6] = {0, 0, 2, 0, 0, 0};
+		imu_predict_up(imu, &m);
+		ASSERT_DOUBLE_ARRAY_EQ(6, imu, imu_gt);
+	}
+	{
+		m.Acc[2] = 0;
+		FLT imu[6] = {0};
+		FLT imu_gt[6] = {0, 0, 1, 0, 0, 0};
+		imu_predict_up(imu, &m);
+		ASSERT_DOUBLE_ARRAY_EQ(6, imu, imu_gt);
+	}
+	{
+		m.Acc[2] = -1;
+		FLT imu[6] = {0};
+		FLT imu_gt[6] = {0, 0, 0, 0, 0, 0};
+		imu_predict_up(imu, &m);
+		ASSERT_DOUBLE_ARRAY_EQ(6, imu, imu_gt);
+	}
+	return test_gen_function_def(&imu_predict_def);
+}
+
 void print_pose(const SurvivePose *pose) {
 	TEST_PRINTF("[%f %f %f] [%f %f %f %f]\n", pose->Pos[0], pose->Pos[1], pose->Pos[2], pose->Rot[0], pose->Rot[1],
 				pose->Rot[2], pose->Rot[3]);
@@ -456,6 +569,21 @@ void check_apply_ang_velocity() {
 #endif
 
 extern void rot_predict_quat(FLT t, const void *k, const SvMat *f_in, SvMat *f_out);
+
+TEST(Generated, imu_predict_up) {
+	SurviveKalmanModel model = {.Pose = {.Rot = {1}}};
+	FLT accel[3] = {linmath_rand(-1, 1), linmath_rand(-1, 1), linmath_rand(-1, 1)};
+	normalize3d(accel, accel);
+
+	LinmathVec3d up = {0, 0, 1};
+	quatfrom2vectors(model.Pose.Rot, accel, up);
+
+	FLT accel_out[3];
+	gen_imu_predict_up(accel_out, &model); // gen_imu_predict_up(accel_out, &model);
+
+	ASSERT_DOUBLE_ARRAY_EQ(3, accel, accel_out);
+	return 0;
+}
 
 TEST(Generated, rot_predict_quat) {
 	FLT _mi[7] = { 0 };

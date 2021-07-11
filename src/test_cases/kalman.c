@@ -355,3 +355,177 @@ TEST(Kalman, AngleQuat) {
 
 	return 0;
 }
+
+typedef struct KalmanModelSim {
+	SurviveKalmanModel sim_state;
+	SurviveKalmanModel true_state;
+	struct SurviveKalmanTracker_Params p;
+	survive_kalman_state_t kalman_t;
+} KalmanModelSim;
+
+struct SurviveKalmanTracker_Params default_params() {
+	return (struct SurviveKalmanTracker_Params){
+		.process_weight_acc = 10.,
+		.process_weight_rotation = 1.,
+		.process_weight_ang_velocity = 1.,
+	};
+}
+
+void KalmanModelSim_init(KalmanModelSim *model) {
+	quatnormalize(model->sim_state.Pose.Rot, model->sim_state.Pose.Rot);
+	quatnormalize(model->true_state.Pose.Rot, model->true_state.Pose.Rot);
+
+	survive_kalman_state_init(
+		&model->kalman_t, sizeof(model->sim_state) / sizeof(FLT), survive_kalman_tracker_predict_jac,
+		(kalman_process_noise_fn_t)survive_kalman_tracker_process_noise, &model->p, (FLT *)&model->sim_state);
+	model->kalman_t.Predict_fn = survive_kalman_tracker_model_predict;
+
+	SurviveKalmanModel initial_variance = {.Pose = {.Pos = {1e10, 1e10, 1e10}, .Rot = {0, 1e10, 1e10, 1e10}},
+										   .Velocity = {.AxisAngleRot = {1e3, 1e3, 1e3}},
+										   .Acc = {1e3, 1e3, 1e3}};
+
+	for (int i = 0; i < model->kalman_t.state_cnt; i++) {
+		svMatrixSet(&model->kalman_t.P, i, i, ((FLT *)&initial_variance)[i]);
+	}
+}
+
+#define KALMAN_MODEL_FORMAT "S: " SurvivePose_format " V: " SurviveVel_format " A: " Point3_format " B: " Point3_format
+#define KALMAN_MODEL_EXPAND(m)                                                                                         \
+	SURVIVE_POSE_EXPAND(m.Pose), SURVIVE_VELOCITY_EXPAND(m.Velocity), LINMATH_VEC3_EXPAND(m.Acc),                      \
+		LINMATH_VEC3_EXPAND(m.GyroBias)
+
+TEST(Kalman, InstFlip) {
+	KalmanModelSim model = {.sim_state =
+								{
+									.Pose = {.Rot = {1, .1}},
+								},
+							.true_state =
+								{
+									.Pose = {.Pos = {10, 10, 10}, .Rot = {0, 1}},
+								},
+							.p = default_params()};
+
+	KalmanModelSim_init(&model);
+
+	fprintf(stderr, "Testing instant flip\n");
+	FLT R[] = {1e-5, 1e-5, 1e-5, 1e-2, 1e-2, 1e-2};
+	// survive_kalman_set_logging_level(10000);
+	for (int i = 0; i < 100; i++) {
+		FLT time = i / 1000.;
+
+		FLT input[6], h_x[6];
+		SvMat Z = svMat(6, 1, input);
+
+		quatnormalize(model.true_state.Pose.Rot, model.true_state.Pose.Rot);
+		gen_imu_predict(input, &model.true_state);
+
+		FLT err = survive_kalman_predict_update_state_extended(time, &model.kalman_t, &Z, R,
+															   survive_kalman_tracker_imu_measurement_model, 0, 0);
+		quatnormalize(model.sim_state.Pose.Rot, model.sim_state.Pose.Rot);
+		fprintf(stderr, "err %.7f Acc: " Point3_format " Vel: " Point3_format " Rotation: " Quat_format "\n", err,
+				LINMATH_VEC3_EXPAND(model.sim_state.Acc), LINMATH_VEC3_EXPAND(model.sim_state.Velocity.Pos),
+				LINMATH_QUAT_EXPAND(model.sim_state.Pose.Rot));
+	}
+	survive_kalman_set_logging_level(0);
+	fprintf(stderr, "\n");
+
+	return 0;
+}
+
+TEST(Kalman, Flip) {
+	KalmanModelSim model = {.sim_state =
+								{
+									.Pose = {.Rot = {1}},
+								},
+							.true_state = {.Pose = {.Rot = {1}}, .Velocity = {.AxisAngleRot = {M_PI}}},
+							.p = default_params()};
+
+	KalmanModelSim_init(&model);
+
+	FLT R[] = {1e-5, 1e-5, 1e-5, 1e-2, 1e-2, 1e-2};
+
+	fprintf(stderr, "Testing flip\n");
+	// survive_kalman_set_logging_level(10000);
+	for (int i = 0; i < 1000; i++) {
+		FLT time = i / 1000.;
+
+		FLT input[6], h_x[6];
+		SvMat Z = svMat(6, 1, input);
+
+		SurviveKalmanModel m;
+		gen_kalman_model_predict((FLT *)&m, 1. / 1000., &model.true_state);
+		model.true_state = m;
+
+		gen_imu_predict(input, &model.true_state);
+
+		FLT err = survive_kalman_predict_update_state_extended(time, &model.kalman_t, &Z, R,
+															   survive_kalman_tracker_imu_measurement_model, 0, 0);
+		quatnormalize(model.sim_state.Pose.Rot, model.sim_state.Pose.Rot);
+
+		fprintf(stderr, "err %f Velocity: " SurviveVel_format " Pose: " SurvivePose_format "\n", err,
+				SURVIVE_VELOCITY_EXPAND(model.sim_state.Velocity), SURVIVE_POSE_EXPAND(model.sim_state.Pose));
+		fprintf(stderr, "             Velocity: " SurviveVel_format " Pose: " SurvivePose_format "\n",
+				SURVIVE_VELOCITY_EXPAND(model.true_state.Velocity), SURVIVE_POSE_EXPAND(model.true_state.Pose));
+	}
+	survive_kalman_set_logging_level(0);
+	fprintf(stderr, "\n");
+
+	return 0;
+}
+
+static void write_state(FILE *f, const SurviveKalmanModel *m) {
+	const FLT *vals = (const FLT *)m;
+	for (int i = 0; i < sizeof(*m) / sizeof(FLT); i++) {
+		fprintf(f, "%7.7f, ", vals[i]);
+	}
+	fprintf(f, "\n");
+}
+
+TEST(Kalman, LiftupSetDown) {
+	KalmanModelSim model = {.sim_state =
+								{
+									.Pose = {.Rot = {1}},
+								},
+							.true_state =
+								{
+									.Pose = {.Rot = {1}},
+								},
+							.p = default_params()};
+
+	KalmanModelSim_init(&model);
+
+	FLT R[] = {1e-5, 1e-5, 1e-5, 1e-2, 1e-2, 1e-2};
+
+	fprintf(stderr, "Testing LiftupSetDown\n");
+	FILE *rf = fopen("real.csv", "w");
+	FILE *sf = fopen("simul.csv", "w");
+	// survive_kalman_set_logging_level(10000);
+	for (int i = 0; i < 1000; i++) {
+		FLT time = i / 1000.;
+
+		FLT input[6], h_x[6];
+		SvMat Z = svMat(6, 1, input);
+
+		model.true_state.Acc[2] = (i > 250 && i < 750) ? -.1 : .1;
+		SurviveKalmanModel m;
+		gen_kalman_model_predict((FLT *)&m, 1. / 1000., &model.true_state);
+		model.true_state = m;
+
+		gen_imu_predict(input, &model.true_state);
+
+		FLT err = survive_kalman_predict_update_state_extended(time, &model.kalman_t, &Z, R,
+															   survive_kalman_tracker_imu_measurement_model, 0, 0);
+		quatnormalize(model.sim_state.Pose.Rot, model.sim_state.Pose.Rot);
+
+		fprintf(stderr, "err %f " KALMAN_MODEL_FORMAT "\n", err, KALMAN_MODEL_EXPAND(model.sim_state));
+		fprintf(stderr, "        %4d " KALMAN_MODEL_FORMAT "\n", i, KALMAN_MODEL_EXPAND(model.true_state));
+		write_state(rf, &model.true_state);
+		write_state(sf, &model.sim_state);
+	}
+	fclose(rf);
+	fclose(sf);
+	survive_kalman_set_logging_level(0);
+	fprintf(stderr, "\n");
+
+	return 0;
+}
