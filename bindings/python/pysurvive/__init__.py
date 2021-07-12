@@ -56,6 +56,12 @@ def install_imu_fn(ctx, fn):
 
     install_generic_process(ctx, fn, default_imu_process, pysurvive_generated.install_imu_fn, imu_process_func, map_args)
 
+def install_raw_imu_fn(ctx, fn):
+    def map_args(ctx, mode, accelgyro, timecode, id):
+        return (ctx, mode, list(map(lambda x: accelgyro[x], range(9))), timecode, id)
+
+    install_generic_process(ctx, fn, default_raw_imu_process, pysurvive_generated.install_raw_imu_fn, raw_imu_process_func, map_args)
+
 
 def install_datalog_fn(ctx, fn):
     def map_args(ctx, name, vals, cnt):

@@ -60,6 +60,9 @@ class RecordedData:
         self.time_since_move = []
         self.poses = []
         self.velocities = []
+        self.raw_gyros = []
+        self.raw_accels = []
+        self.raw_imu_times = []
         self.raw_angles = defaultdict(list)
         self.datalogs = defaultdict(list)
 
@@ -69,6 +72,11 @@ class RecordedData:
         self.accels.append(accelgyro[0:3])
         self.time_since_move.append(pysurvive.SurviveSensorActivations_stationary_time(self.so.contents.activations) /
                                     48000000.)
+
+    def record_raw_imu(self, time, mode, accelgyro, timecode, id):
+        self.raw_imu_times.append(time)
+        self.raw_gyros.append(accelgyro[3:6])
+        self.raw_accels.append(accelgyro[0:3])
 
     def record_pose(self, time, timecode, pose):
         self.poses.append((time, pose))
@@ -441,6 +449,7 @@ def install(ctx):
     pysurvive.install_angle_fn(ctx, partial(cb_fn, RecordedData.record_angle))
     pysurvive.install_light_fn(ctx, partial(cb_fn, RecordedData.record_light))
     pysurvive.install_imu_fn(ctx, partial(cb_fn, RecordedData.record_imu))
+    pysurvive.install_raw_imu_fn(ctx, partial(cb_fn, RecordedData.record_raw_imu))
     pysurvive.install_pose_fn(ctx, partial(cb_fn, RecordedData.record_pose))
     pysurvive.install_velocity_fn(ctx, partial(cb_fn, RecordedData.record_velocity))
     pysurvive.install_sweep_fn(ctx, partial(cb_fn, RecordedData.record_sweep))
