@@ -103,6 +103,7 @@ typedef struct survive_kalman_model_t {
 	SurvivePose Pose;
 	SurviveVelocity Velocity;
 	LinmathVec3d Acc;
+	LinmathVec3d AccBias;
 	LinmathVec3d GyroBias;
 } SurviveKalmanModel;
 

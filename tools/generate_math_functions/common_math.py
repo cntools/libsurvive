@@ -79,17 +79,18 @@ class LinmathAxisAnglePose(SurviveType):
         return self.AxisAngleRot
 
 class SurviveKalmanModel(SurviveType):
-    def __init__(self, p, v, a, b):
+    def __init__(self, p, v, a, accB, b):
         self.Pose = p
         self.Velocity = v
         self.Acc = a
+        self.AccBias = accB
         self.GyroBias = b
 
 def gyro_bias():
     return sp.symbols('gbx, gby, gbz')
 
 def kalman_model():
-    return SurviveKalmanModel(obj_p(), obj_v(), obj_acc(), gyro_bias())
+    return SurviveKalmanModel(obj_p(), obj_v(), obj_acc(), obj_acc_bias(), gyro_bias())
 
 def obj_p():
     if axis_angle_mode:
@@ -130,6 +131,9 @@ def obj_v():
 
 def obj_acc():
     return sp.symbols('acc_x, acc_y, acc_z')
+
+def obj_acc_bias():
+    return sp.symbols('acc_biasx, acc_biasy, acc_biasz')
 
 def lh_p():
     if axis_angle_mode:

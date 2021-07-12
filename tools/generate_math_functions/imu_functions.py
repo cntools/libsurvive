@@ -19,9 +19,15 @@ def imu_rot_f_aa(time, imu_rot_aa):
 
 def imu_predict_up(kalman_model):
     g = 9.80665
+    acc_bias = kalman_model.AccBias
     G = [ kalman_model.Acc[0]/g, kalman_model.Acc[1]/g, 1 + kalman_model.Acc[2]/g]
     rot = quatgetreciprocal(quatnormalize(kalman_model.Pose.Rot))
-    return quatrotatevector(rot, G)
+    GinObj = quatrotatevector(rot, G)
+    return [
+        GinObj[0] + acc_bias[0],
+        GinObj[1] + acc_bias[1],
+        GinObj[2] + acc_bias[2]
+    ]
 
 def imu_predict_gyro(kalman_model):
     rot = quatgetreciprocal(quatnormalize(kalman_model.Pose.Rot))
@@ -69,7 +75,7 @@ def kalman_model_predict(t, kalman_model):
         vpos[2] + obj_acc[2] * t,
     ]
 
-    return [ *new_pos, *new_rot, *new_vpos, *obj_v.Rot, *obj_acc, *kalman_model.GyroBias ]
+    return [ *new_pos, *new_rot, *new_vpos, *obj_v.Rot, *obj_acc, *kalman_model.AccBias, *kalman_model.GyroBias ]
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--aux":
