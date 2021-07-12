@@ -432,7 +432,7 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 			so->sensor_locations[j * 3 + 0] *= 1.0;
 		}
 
-	} else // Verified on WW, Need to verify on Tracker.
+	} else // Verified on WW, Tracker, both RF and wired
 	{
 		// 1G for accelerometer, from MPU6500 datasheet
 		// this can change if the firmware changes the sensitivity.

@@ -34,8 +34,8 @@ int PoserKalmanOnly(SurviveObject *so, void **user, PoserData *pd) {
 			LinmathPoint3d accelNormal;
 			normalize3d(accelNormal, imu->accel);
 			quatfrom2vectors(pose.Rot, accelNormal, up);
-
-			survive_kalman_tracker_integrate_observation(&imu->hdr, so->tracker, &pose, 0);
+			FLT r[7] = { 5, 5, 5 };
+			survive_kalman_tracker_integrate_observation(&imu->hdr, so->tracker, &pose, r);
 			return 0;
 		}
 

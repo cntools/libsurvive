@@ -67,6 +67,9 @@ void user_is_q(void *user, FLT t, const struct SvMat *x, SvMat *Q_out) {
 SURVIVE_EXPORT void survive_kalman_state_reset(survive_kalman_state_t *k) {
 	k->t = 0;
 	sv_set_zero(&k->P);
+
+	k->Q_fn(k->user, 1, &k->state, &k->P);
+	sv_print_mat("initial Pk_k", &k->P, true);
 }
 
 void survive_kalman_state_init(survive_kalman_state_t *k, size_t state_cnt, kalman_transition_fn_t F,

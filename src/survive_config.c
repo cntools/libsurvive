@@ -101,6 +101,13 @@ void survive_config_bind_variable( char vt, const char * name, const char * desc
 	va_end(ap);
 }
 
+SURVIVE_EXPORT void survive_config_bind_variablei(const char *name, const char *description, int def) {
+	survive_config_bind_variable('i', name, description, def, 0xcafebeef);
+}
+SURVIVE_EXPORT void survive_config_bind_variablef(const char *name, const char *description, FLT def) {
+	survive_config_bind_variable('f', name, description, def, 0xcafebeef);
+}
+
 int survive_print_help_for_parameter(SurviveContext *ctx, const char *tomap) {
 	for (struct static_conf_t *config = head; config; config = config->next) {
 		if (strcmp(config->name, tomap) == 0) {
