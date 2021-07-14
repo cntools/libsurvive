@@ -66,6 +66,7 @@ typedef struct survive_kalman_state_s {
 	// Current time
 	FLT t;
 
+	int log_level;
 	void *datalog_user;
 	void (*datalog)(struct survive_kalman_state_s *state, const char *name, const FLT *v, size_t length);
 } survive_kalman_state_t;
@@ -129,5 +130,5 @@ SURVIVE_EXPORT void survive_kalman_state_reset(survive_kalman_state_t *k);
 
 SURVIVE_EXPORT void survive_kalman_state_free(survive_kalman_state_t *k);
 SURVIVE_EXPORT void survive_kalman_set_P(survive_kalman_state_t *k, const FLT *d);
-SURVIVE_EXPORT void survive_kalman_set_logging_level(int verbosity);
+SURVIVE_EXPORT void survive_kalman_set_logging_level(survive_kalman_state_t *k, int verbosity);
 #endif

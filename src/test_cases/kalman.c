@@ -426,7 +426,7 @@ TEST(Kalman, InstFlip) {
 				LINMATH_VEC3_EXPAND(model.sim_state.Acc), LINMATH_VEC3_EXPAND(model.sim_state.Velocity.Pos),
 				LINMATH_QUAT_EXPAND(model.sim_state.Pose.Rot));
 	}
-	survive_kalman_set_logging_level(0);
+
 	fprintf(stderr, "\n");
 
 	return 0;
@@ -467,7 +467,7 @@ TEST(Kalman, Flip) {
 		fprintf(stderr, "             Velocity: " SurviveVel_format " Pose: " SurvivePose_format "\n",
 				SURVIVE_VELOCITY_EXPAND(model.true_state.Velocity), SURVIVE_POSE_EXPAND(model.true_state.Pose));
 	}
-	survive_kalman_set_logging_level(0);
+
 	fprintf(stderr, "\n");
 
 	return 0;
@@ -524,7 +524,7 @@ TEST(Kalman, LiftupSetDown) {
 	}
 	fclose(rf);
 	fclose(sf);
-	survive_kalman_set_logging_level(0);
+
 	fprintf(stderr, "\n");
 
 	return 0;

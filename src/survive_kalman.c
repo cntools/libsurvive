@@ -13,16 +13,15 @@ typedef struct SvMat survive_kalman_gain_matrix;
 
 #define SV_KALMAN_VERBOSE(lvl, fmt, ...)                                                                               \
 	{                                                                                                                  \
-		if (log_level >= lvl) {                                                                                        \
+		if (k->log_level >= lvl) {                                                                                     \
 			fprintf(stdout, fmt "\n", __VA_ARGS__);                                                                    \
 		}                                                                                                              \
 	}
 
-static int log_level = 0;
-void survive_kalman_set_logging_level(int v) { log_level = v; }
+void survive_kalman_set_logging_level(survive_kalman_state_t *k, int v) { k->log_level = v; }
 
-static void sv_print_mat_v(int ll, const char *name, const SvMat *M, bool newlines) {
-	if (log_level < ll) {
+static void sv_print_mat_v(const survive_kalman_state_t *k, int ll, const char *name, const SvMat *M, bool newlines) {
+	if (k->log_level < ll) {
 		return;
 	}
 	char term = newlines ? '\n' : ' ';
@@ -35,7 +34,7 @@ static void sv_print_mat_v(int ll, const char *name, const SvMat *M, bool newlin
 	for (unsigned i = 0; i < M->rows; i++) {
 		for (unsigned j = 0; j < M->cols; j++) {
 			FLT v = svMatrixGet(M, i, j);
-			if (fabs(v) < scale * 1e-5)
+			if (v == 0)
 				fprintf(stdout, "         0,\t");
 			else
 				fprintf(stdout, "%+5.2e,\t", v);
@@ -45,8 +44,8 @@ static void sv_print_mat_v(int ll, const char *name, const SvMat *M, bool newlin
 	}
 	fprintf(stdout, "\n");
 }
-static void sv_print_mat(const char *name, const SvMat *M, bool newlines) {
-	sv_print_mat_v(KALMAN_LOG_LEVEL, name, M, newlines);
+static void sv_print_mat(survive_kalman_state_t *k, const char *name, const SvMat *M, bool newlines) {
+	sv_print_mat_v(k, KALMAN_LOG_LEVEL, name, M, newlines);
 }
 
 static void kalman_linear_predict(FLT t, const survive_kalman_state_t *k, const SvMat *x_t0_t0, SvMat *x_t0_t1) {
@@ -69,7 +68,7 @@ SURVIVE_EXPORT void survive_kalman_state_reset(survive_kalman_state_t *k) {
 	sv_set_zero(&k->P);
 
 	k->Q_fn(k->user, 1, &k->state, &k->P);
-	sv_print_mat("initial Pk_k", &k->P, true);
+	sv_print_mat(k, "initial Pk_k", &k->P, true);
 }
 
 void survive_kalman_state_init(survive_kalman_state_t *k, size_t state_cnt, kalman_transition_fn_t F,
@@ -106,18 +105,18 @@ void survive_kalman_predict_covariance(FLT t, const SvMat *F, const SvMat *x, su
 	int dims = k->state_cnt;
 
 	SvMat *Pk1_k1 = &k->P;
-	sv_print_mat("Pk-1_k-1", Pk1_k1, 1);
+	sv_print_mat(k, "Pk-1_k-1", Pk1_k1, 1);
 	SV_CREATE_STACK_MAT(Q, dims, dims);
 	k->Q_fn(k->user, t, x, &Q);
 
 	// k->P = F * k->P * F^T + Q
 	matrix_ABAt_add(Pk1_k1, F, Pk1_k1, &Q);
 
-	if (log_level >= KALMAN_LOG_LEVEL) {
+	if (k->log_level >= KALMAN_LOG_LEVEL) {
 		SV_KALMAN_VERBOSE(110, "T: %f", t);
-		sv_print_mat("Q", &Q, 1);
-		sv_print_mat("F", F, 1);
-		sv_print_mat("Pk1_k-1", Pk1_k1, 1);
+		sv_print_mat(k, "Q", &Q, 1);
+		sv_print_mat(k, "F", F, 1);
+		sv_print_mat(k, "Pk1_k-1", Pk1_k1, 1);
 	}
 	SV_FREE_STACK_MAT(Q);
 }
@@ -134,14 +133,14 @@ static void survive_kalman_update_covariance(survive_kalman_state_t *k, survive_
 	svGEMM(Pk_k, H, 1, 0, 0, &Pk_k1Ht, SV_GEMM_FLAG_B_T);
 	SV_CREATE_STACK_MAT(S, H->rows, H->rows);
 
-	sv_print_mat("H", H, 1);
-	sv_print_mat("R", R, 1);
+	sv_print_mat(k, "H", H, 1);
+	sv_print_mat(k, "R", R, 1);
 
-	// S = H * P_k|k-1 * H^T
+	// S = H * P_k|k-1 * H^T + R
 	svGEMM(H, &Pk_k1Ht, 1, R, 1, &S, 0);
 
-	sv_print_mat("Pk_k1Ht", &Pk_k1Ht, 1);
-	sv_print_mat("S", &S, 1);
+	sv_print_mat(k, "Pk_k1Ht", &Pk_k1Ht, 1);
+	sv_print_mat(k, "S", &S, 1);
 
 	SV_CREATE_STACK_MAT(iS, H->rows, H->rows);
 
@@ -161,8 +160,9 @@ static void survive_kalman_update_covariance(survive_kalman_state_t *k, survive_
 	if (diag == 0 || non_diag / diag > 1e-5) {
 		svInvert(&S, &iS, SV_INVERT_METHOD_LU);
 	}
-	sv_print_mat("iS", &iS, 1);
+	sv_print_mat(k, "iS", &iS, 1);
 
+	// K = Pk_k1Ht * iS
 	svGEMM(&Pk_k1Ht, &iS, 1, 0, 0, K, 0);
 
 	// Apparently cvEye isn't a thing!?
@@ -181,14 +181,14 @@ static void survive_kalman_update_covariance(survive_kalman_state_t *k, survive_
 	// P_k|k = (I - K * H) * P_k|k-1
 	svGEMM(&ikh, &tmp, 1, 0, 0, Pk_k, 0);
 
-	if (log_level >= KALMAN_LOG_LEVEL) {
+	if (k->log_level >= KALMAN_LOG_LEVEL) {
 		fprintf(stdout, "INFO gain\t");
-		sv_print_mat("K", K, true);
+		sv_print_mat(k, "K", K, true);
 
-		sv_print_mat("ikh", &ikh, true);
+		sv_print_mat(k, "ikh", &ikh, true);
 
 		fprintf(stdout, "INFO new Pk_k\t");
-		sv_print_mat("Pk_k", Pk_k, true);
+		sv_print_mat(k, "Pk_k", Pk_k, true);
 	}
 	SV_FREE_STACK_MAT(tmp);
 	SV_FREE_STACK_MAT(ikh);
@@ -200,9 +200,9 @@ static void survive_kalman_update_covariance(survive_kalman_state_t *k, survive_
 
 static inline void survive_kalman_predict(FLT t, survive_kalman_state_t *k, const SvMat *x_t0_t0, SvMat *x_t0_t1) {
 	// X_k|k-1 = Predict(X_K-1|k-1)
-	if (log_level > KALMAN_LOG_LEVEL) {
+	if (k->log_level > KALMAN_LOG_LEVEL) {
 		fprintf(stdout, "INFO kalman_predict from ");
-		sv_print_mat("x_t0_t0", x_t0_t0, false);
+		sv_print_mat(k, "x_t0_t0", x_t0_t0, false);
 	}
 	assert(sv_as_const_vector(x_t0_t0) != sv_as_const_vector(x_t0_t1));
 	if (t == k->t) {
@@ -211,9 +211,9 @@ static inline void survive_kalman_predict(FLT t, survive_kalman_state_t *k, cons
 		assert(t > k->t);
 		k->Predict_fn(t - k->t, k, x_t0_t0, x_t0_t1);
 	}
-	if (log_level > KALMAN_LOG_LEVEL) {
+	if (k->log_level > KALMAN_LOG_LEVEL) {
 		fprintf(stdout, "INFO kalman_predict to   ");
-		sv_print_mat("x_t0_t1", x_t0_t1, false);
+		sv_print_mat(k, "x_t0_t1", x_t0_t1, false);
 	}
 	if (k->datalog) {
 		SV_CREATE_STACK_MAT(tmp, x_t0_t0->rows, x_t0_t1->cols);
@@ -224,15 +224,15 @@ static inline void survive_kalman_predict(FLT t, survive_kalman_state_t *k, cons
 
 static void linear_update(FLT dt, survive_kalman_state_t *k, const SvMat *y, const SvMat *K, const SvMat *x_t0,
 						  SvMat *x_t1) {
-	if (log_level > KALMAN_LOG_LEVEL || k->datalog) {
-		if (log_level > KALMAN_LOG_LEVEL) {
+	if (k->log_level > KALMAN_LOG_LEVEL || k->datalog) {
+		if (k->log_level > KALMAN_LOG_LEVEL) {
 			fprintf(stdout, "INFO linear_update dt=%f\n", dt);
 		}
-		sv_print_mat("y", y, false);
+		sv_print_mat(k, "y", y, false);
 
 		SV_CREATE_STACK_MAT(tmp, x_t1->rows, x_t1->cols);
 		svGEMM(K, y, 1, 0, 0, &tmp, 0);
-		sv_print_mat("K*y", &tmp, false);
+		sv_print_mat(k, "K*y", &tmp, false);
 		if (k->datalog) {
 			k->datalog(k, "ky_append", sv_as_const_vector(&tmp), tmp.rows);
 		}
@@ -257,7 +257,7 @@ static SvMat *survive_kalman_find_residual(FLT dt, survive_kalman_state_t *k, ka
 		if (okay == false) {
 			return 0;
 		}
-		sv_print_mat_v(600, "Hk", H, true);
+		sv_print_mat_v(k, 600, "Hk", H, true);
 		rtn = H;
 	} else {
 		rtn = (struct SvMat *)user;
@@ -306,9 +306,9 @@ static FLT survive_kalman_predict_update_state_extended_adaptive_internal(FLT t,
 		k->datalog(k, "y", sv_as_const_vector(&y), y.rows);
 	}
 
-	if (log_level > KALMAN_LOG_LEVEL) {
+	if (k->log_level > KALMAN_LOG_LEVEL) {
 		fprintf(stdout, "INFO kalman_predict_update_state_extended t=%f dt=%f ", t, dt);
-		sv_print_mat("Z", Z, false);
+		sv_print_mat(k, "Z", Z, false);
 		fprintf(stdout, "\n");
 	}
 
@@ -334,15 +334,18 @@ static FLT survive_kalman_predict_update_state_extended_adaptive_internal(FLT t,
 	SvMat R = svMat(Z->rows, Z->rows, Rs);
 	if (!adaptive) {
 		sv_set_diag(&R, Rv);
+		if (k->datalog) {
+			k->datalog(k, "R", Rv, Z->rows);
+		}
 	}
 
 	survive_kalman_update_covariance(k, &K, H, &R);
 
 	linear_update(dt, k, &y, &K, &x2, x1);
 
-	if (log_level > KALMAN_LOG_LEVEL) {
+	if (k->log_level > KALMAN_LOG_LEVEL) {
 		fprintf(stdout, "INFO kalman_update to    ");
-		sv_print_mat("x1", x1, false);
+		sv_print_mat(k, "x1", x1, false);
 	}
 
 	if (adaptive) {
@@ -359,10 +362,10 @@ static FLT survive_kalman_predict_update_state_extended_adaptive_internal(FLT t,
 		svGEMM(&Pm, PostH, 1, 0, 0, &Pk_k1Ht, SV_GEMM_FLAG_B_T);
 		svGEMM(PostH, &Pk_k1Ht, 1, 0, 0, &HPkHt, 0);
 
-		sv_print_mat_v(200, "PostH", PostH, true);
-		sv_print_mat_v(200, "PkHt", &Pk_k1Ht, true);
-		sv_print_mat_v(200, "HpkHt", &HPkHt, true);
-		sv_print_mat_v(200, "yyt", &yyt, true);
+		sv_print_mat_v(k, 200, "PostH", PostH, true);
+		sv_print_mat_v(k, 200, "PkHt", &Pk_k1Ht, true);
+		sv_print_mat_v(k, 200, "HpkHt", &HPkHt, true);
+		sv_print_mat_v(k, 200, "yyt", &yyt, true);
 
 		FLT a = .3;
 		FLT b = 1 - a;
@@ -378,7 +381,7 @@ static FLT survive_kalman_predict_update_state_extended_adaptive_internal(FLT t,
 			}
 		}
 
-		sv_print_mat_v(200, "Adaptive R", &R, true);
+		sv_print_mat_v(k, 200, "Adaptive R", &R, true);
 
 		SV_FREE_STACK_MAT(Pk_k1Ht);
 		SV_FREE_STACK_MAT(yyt);
