@@ -189,9 +189,12 @@ static size_t construct_input_from_scene(const MPFITData *d, survive_long_timeco
 				}
 			}
 		}
-		if (isCandidate && meas_for_lh < candidate_meas) {
+		if ((isCandidate && meas_for_lh < candidate_meas) || meas_for_lh < required_meas_for_lh) {
 			meas -= meas_for_lh;
 			rtn -= meas_for_lh;
+
+			for (int axis = 0; axis < 2 && meas_for_lhs_axis; axis++)
+				meas_for_lhs_axis[lh * 2 + axis] = 0;
 		}
 	}
 	return rtn;
