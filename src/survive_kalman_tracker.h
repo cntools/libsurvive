@@ -46,18 +46,19 @@ struct SurviveKalmanTracker_Params {
 typedef struct SurviveKalmanTracker {
 	SurviveObject *so;
 
+	FLT acc_norm_penalty;
 	FLT acc_var;
 	FLT gyro_var;
 	FLT obs_pos_var;
 	FLT obs_rot_var;
 	FLT light_var;
 
+	int light_batchsize;
+
 	FLT last_light_time, last_report_time, first_report_time;
 	FLT first_imu_time, last_imu_time;
 	FLT min_report_time;
 
-	bool model_gyro_bias;
-	bool model_accel;
 	bool use_raw_obs;
 	int adaptive_imu, adaptive_lightcap, adaptive_obs, show_raw_obs;
 
