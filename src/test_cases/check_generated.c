@@ -68,12 +68,14 @@ static void print_array(const char *label, const FLT *a, size_t t, size_t column
 	if (label)
 		TEST_PRINTF("%32s: \t", label);
 	for (int i = 0; i < t; i++) {
-		if (a[i] == 0.0 || (fabs(a[i]) > .000001 && fabs(a[i]) < 1e4))
+		if ((fabs(a[i]) > .000001 && fabs(a[i]) < 1e4))
 			TEST_PRINTF("%+6.6lf"
 						"\t",
 						(double)a[i]);
 		else if (isnan(a[i])) {
 			TEST_PRINTF("%6snan\t", "");
+		} else if (a[i] == 0) {
+			TEST_PRINTF("        0\t");
 		} else {
 			TEST_PRINTF("%+2.3le\t", (double)a[i]);
 		}
@@ -104,6 +106,7 @@ static FLT test_gen_jacobian_function(const char *name, generate_input input_fn,
 									  size_t jac_length) {
 	size_t inputs = input_fn(0) / sizeof(FLT);
 	FLT *output_gen = STACK_ALLOC(outputs * jac_length), *output = STACK_ALLOC(outputs * jac_length);
+	bool failed = false;
 
 	FLT *input = STACK_ALLOC(inputs);
 	for (int n = 0; n < inputs; n++) {
@@ -156,6 +159,7 @@ static FLT test_gen_jacobian_function(const char *name, generate_input input_fn,
 
 							FLT err = diff_array(0, gen_output, n == 0 ? out : out_pt, outputs);
 							if (err > 1e-5) {
+								failed = true;
 								TEST_PRINTF("Gen/nongen mismatch\n");
 							}
 						} else {
@@ -184,15 +188,18 @@ static FLT test_gen_jacobian_function(const char *name, generate_input input_fn,
 		}
 	}
 
-	TEST_PRINTF("Testing generated jacobian %s\n", name);
-	print_array("inputs", input, inputs, 0);
+	if (failed) {
+		TEST_PRINTF("Testing generated jacobian %s\n", name);
+		print_array("inputs", input, inputs, 0);
 
-	print_array("gen jacobian outputs", output_gen, outputs * jac_length, jac_length);
-	print_array("jacobian outputs", output, outputs * jac_length, jac_length);
+		print_array("gen jacobian outputs", output_gen, outputs * jac_length, jac_length);
+		print_array("jacobian outputs", output, outputs * jac_length, jac_length);
 
-	FLT err = print_diff_array("Differences", output, output_gen, outputs * jac_length, jac_length);
-	TEST_PRINTF("SSE: %f\n", err);
-	return err;
+		FLT err = print_diff_array("Differences", output, output_gen, outputs * jac_length, jac_length);
+		TEST_PRINTF("SSE: %f\n", err);
+		return err;
+	}
+	return 0;
 }
 
 typedef struct gen_function_jacobian_def {
@@ -245,6 +252,7 @@ static FLT test_gen_function(const char *name, generate_input input_fn, general_
 		nongen(output, input);
 
 		FLT err = diff_array(0, output, output_gen, outputs);
+		TEST_PRINTF("%s match\n", name);
 		if (err > 1e-5) {
 			TEST_PRINTF("%s eval mismatch: \n", name);
 			print_array("inputs", input, inputs, 0);
@@ -442,6 +450,8 @@ static void imu_predict_up(FLT *out, SurviveKalmanModel *m) {
 	quatgetreciprocal(w2o, m->Pose.Rot);
 
 	quatrotatevector(out, w2o, accInWorld);
+	for (int i = 0; i < 3; i++)
+		out[i] += m->AccBias[i];
 }
 
 static void imu_predict(FLT *out, const FLT *m) {
@@ -453,15 +463,16 @@ static void imu_predict(FLT *out, const FLT *m) {
 	imu_predict_gyro(out + 3, (SurviveKalmanModel *)m);
 }
 
-gen_function_def imu_predict_def = {
-	.name = "imu_predict",
-	.generated = general_imu_predict,
-	.generate_inputs = random_kalman_model,
-	.check = imu_predict,
-	.outputs = 6,
-	.jacobians = {
-		{.suffix = "kalman_model", .jacobian = general_gen_imu_predict_jac_kalman_model, .jacobian_length = 19},
-	}};
+gen_function_def imu_predict_def = {.name = "imu_predict",
+									.generated = general_imu_predict,
+									.generate_inputs = random_kalman_model,
+									.check = imu_predict,
+									.outputs = 6,
+									.jacobians = {
+										{.suffix = "kalman_model",
+										 .jacobian = general_gen_imu_predict_jac_kalman_model,
+										 .jacobian_length = sizeof(SurviveKalmanModel) / sizeof(FLT)},
+									}};
 
 TEST(Generated, imu_predict) {
 	SurviveKalmanModel m = {.Pose = {.Rot = {1}}, .Acc = {0, 0, 9.80665}};
@@ -664,75 +675,6 @@ size_t generate_reproject_input(FLT *out) {
 	return sizeof(struct reproject_input);
 }
 
-static void general_gen_reproject(FLT *out, const FLT *_input) {
-	// static inline void gen_reproject(FLT* out, const SurvivePose* obj_p, const FLT* sensor_pt, const SurvivePose*
-	// lh_p, const BaseStationCal* bsd) {
-	struct reproject_input *input = (struct reproject_input *)_input;
-	gen_reproject(out, &input->p, input->pt, &input->world2lh, input->fcal);
-}
-static void general_gen_reproject_gen2(FLT *out, const FLT *_input) {
-	// static inline void gen_reproject(FLT* out, const SurvivePose* obj_p, const FLT* sensor_pt, const SurvivePose*
-	// lh_p, const BaseStationCal* bsd) {
-	struct reproject_input *input = (struct reproject_input *)_input;
-	gen_reproject_gen2(out, &input->p, input->pt, &input->world2lh, input->fcal);
-}
-
-void general_gen_reproject_jac_obj(FLT *out, const FLT *_input) {
-	// static inline void gen_reproject(FLT* out, const SurvivePose* obj_p, const FLT* sensor_pt, const SurvivePose*
-	// lh_p, const BaseStationCal* bsd) {
-	struct reproject_input *input = (struct reproject_input *)_input;
-	gen_reproject_jac_obj_p(out, &input->p, input->pt, &input->world2lh, input->fcal);
-}
-void general_gen_reproject_gen2_jac_obj(FLT *out, const FLT *_input) {
-	// static inline void gen_reproject(FLT* out, const SurvivePose* obj_p, const FLT* sensor_pt, const SurvivePose*
-	// lh_p, const BaseStationCal* bsd) {
-	struct reproject_input *input = (struct reproject_input *)_input;
-	gen_reproject_gen2_jac_obj_p(out, &input->p, input->pt, &input->world2lh, input->fcal);
-}
-
-static void general_reproject(FLT *out, const FLT *_input) {
-	struct reproject_input *input = (struct reproject_input *)_input;
-	survive_reproject_full(input->fcal, &input->world2lh, &input->p, input->pt, out);
-}
-static void general_reproject_gen2(FLT *out, const FLT *_input) {
-	struct reproject_input *input = (struct reproject_input *)_input;
-	survive_reproject_full_gen2(input->fcal, &input->world2lh, &input->p, input->pt, out);
-}
-
-gen_function_def reproject_def = {
-	.name = "reproject",
-	.generated = general_gen_reproject,
-	.check = general_reproject,
-	.generate_inputs = generate_reproject_input,
-	.outputs = 2,
-	.jacobians = {{.suffix = "obj", .jacobian = general_gen_reproject_jac_obj, .jacobian_length = 7}}};
-
-TEST(Generated, reproject) { return test_gen_function_def(&reproject_def); }
-
-gen_function_def reproject_gen2_def = {
-	.name = "reproject_gen2",
-	.generated = general_gen_reproject_gen2,
-	.check = general_reproject_gen2,
-	.generate_inputs = generate_reproject_input,
-	.outputs = 2,
-	.jacobians = {{.suffix = "obj", .jacobian = general_gen_reproject_gen2_jac_obj, .jacobian_length = 7}}};
-
-TEST(Generated, reproject_gen2) { return test_gen_function_def(&reproject_gen2_def); }
-
-#ifdef HAVE_AUX_GENERATED
-void check_apply_pose() {
-	SurvivePose obj = random_pose();
-	LinmathVec3d pt, out, gen_out;
-	random_point(pt);
-
-	gen_apply_pose_to_pt(out, &obj, pt);
-	ApplyPoseToPoint(gen_out, &obj, pt);
-
-	print_point(out);
-	print_point(gen_out);	
-}
-#endif
-
 static void general_gen_reproject_x_gen2(FLT *out, const FLT *_input) {
 	struct reproject_input *input = (struct reproject_input *)_input;
 	*out = gen_reproject_axis_x_gen2(&input->p, input->pt, &input->world2lh, input->fcal);
@@ -811,6 +753,85 @@ static void general_reproject_y(FLT *out, const FLT *_input) {
 
 	*out = survive_reproject_axis_y(input->fcal, t_pt);
 }
+static void general_gen_reproject(FLT *out, const FLT *_input) {
+	// static inline void gen_reproject(FLT* out, const SurvivePose* obj_p, const FLT* sensor_pt, const SurvivePose*
+	// lh_p, const BaseStationCal* bsd) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	gen_reproject(out, &input->p, input->pt, &input->world2lh, input->fcal);
+}
+static void general_gen_reproject_gen2(FLT *out, const FLT *_input) {
+	// static inline void gen_reproject(FLT* out, const SurvivePose* obj_p, const FLT* sensor_pt, const SurvivePose*
+	// lh_p, const BaseStationCal* bsd) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	gen_reproject_gen2(out, &input->p, input->pt, &input->world2lh, input->fcal);
+}
+
+void general_gen_reproject_jac_obj(FLT *out, const FLT *_input) {
+	// static inline void gen_reproject(FLT* out, const SurvivePose* obj_p, const FLT* sensor_pt, const SurvivePose*
+	// lh_p, const BaseStationCal* bsd) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	gen_reproject_jac_obj_p(out, &input->p, input->pt, &input->world2lh, input->fcal);
+}
+void general_gen_reproject_gen2_jac_obj(FLT *out, const FLT *_input) {
+	// static inline void gen_reproject(FLT* out, const SurvivePose* obj_p, const FLT* sensor_pt, const SurvivePose*
+	// lh_p, const BaseStationCal* bsd) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	gen_reproject_gen2_jac_obj_p(out, &input->p, input->pt, &input->world2lh, input->fcal);
+}
+
+static void general_reproject(FLT *out, const FLT *_input) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	survive_reproject_full(input->fcal, &input->world2lh, &input->p, input->pt, out);
+}
+static void general_reproject_gen2(FLT *out, const FLT *_input) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	survive_reproject_full_gen2(input->fcal, &input->world2lh, &input->p, input->pt, out);
+}
+
+gen_function_def reproject_def = {
+	.name = "reproject",
+	.generated = general_gen_reproject,
+	.check = general_reproject,
+	.generate_inputs = generate_reproject_input,
+	.outputs = 2,
+	.jacobians = {{.suffix = "obj", .jacobian = general_gen_reproject_jac_obj, .jacobian_length = 7}}};
+
+TEST(Generated, reproject) { return test_gen_function_def(&reproject_def); }
+
+gen_function_def reproject_gen2_def = {
+	.name = "reproject_gen2",
+	.generated = general_gen_reproject_gen2,
+	.check = general_reproject_gen2,
+	.generate_inputs = generate_reproject_input,
+	.outputs = 2,
+	.jacobians = {{.suffix = "obj", .jacobian = general_gen_reproject_gen2_jac_obj, .jacobian_length = 7}}};
+
+TEST(Generated, reproject_gen2) {
+	FLT inputs[] = {+4.532471, +1.504555, +2.278860, +0.553159, +0.464419, +0.401467, -0.563165, +0.164194,
+					+0.124270, +0.005944, -0.246393, -0.103026, +0.180054, +0.215506, -0.161558, +0.108294,
+					+0.211122, +0.026800, +0.238683, +0.117266, -0.091412, +2.128406, +3.859190, -4.102889,
+					+0.281242, -0.174546, -0.361296, -0.871723, +0.375631, +0.393990, -0.180330};
+	FLT out[2], out_gen[2];
+
+	general_gen_reproject_y_gen2(out_gen, inputs);
+	general_reproject_y_gen2(out, inputs);
+
+	return test_gen_function_def(&reproject_gen2_def);
+}
+
+#ifdef HAVE_AUX_GENERATED
+void check_apply_pose() {
+	SurvivePose obj = random_pose();
+	LinmathVec3d pt, out, gen_out;
+	random_point(pt);
+
+	gen_apply_pose_to_pt(out, &obj, pt);
+	ApplyPoseToPoint(gen_out, &obj, pt);
+
+	print_point(out);
+	print_point(gen_out);
+}
+#endif
 
 gen_function_def reproject_axis_x_gen2_def = {
 	.name = "reproject_axis_x_gen2",
