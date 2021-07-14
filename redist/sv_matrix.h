@@ -124,7 +124,7 @@ static inline void sv_set_constant(struct SvMat *m, FLT v) {
 		SV_FLT_PTR(m)[i] = v;
 }
 
-static inline bool sv_is_finite(struct SvMat *m) {
+static inline bool sv_is_finite(const struct SvMat *m) {
 	for (int i = 0; i < m->rows * m->cols; i++)
 		if (!isfinite(SV_FLT_PTR(m)[i]))
 			return false;

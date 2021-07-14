@@ -39,7 +39,7 @@ STATIC_CONFIG_ITEM(HAPTIC_ON_CALIBRATE, "haptic-on-calibrate", 'i',
 STATIC_CONFIG_ITEM(LIGHTHOUSE_NORMALIZE_ANGLE, "normalize-lighthouse-angle", 'f',
 				   "Angle about Z to adust calibration by", 0.);
 
-void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world) {
+void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world, FLT error) {
 	SurviveContext *ctx = so->ctx;
 	for (int i = 0; i < 3; i++) {
 		assert(!isnan(imu2world->Pos[i]));
@@ -52,13 +52,16 @@ void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const S
 	if (poser_data->poseproc) {
 		poser_data->poseproc(so, poser_data->timecode, imu2world, poser_data->userdata);
 	} else {
-		survive_kalman_tracker_integrate_observation(poser_data, so->tracker, imu2world, 0);
+		FLT p_e = error;
+		FLT r_e = error;
+		FLT R[7] = {p_e, p_e, p_e, r_e, r_e, r_e, r_e };
+		survive_kalman_tracker_integrate_observation(poser_data, so->tracker, imu2world, R);
 	}
 }
 void PoserData_poser_pose_func_with_velocity(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world,
 											 const SurviveVelocity *velocity) {
 	SURVIVE_INVOKE_HOOK_SO(velocity, so, poser_data->timecode, velocity);
-	PoserData_poser_pose_func(poser_data, so, imu2world);
+	PoserData_poser_pose_func(poser_data, so, imu2world, -1);
 }
 
 void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse,

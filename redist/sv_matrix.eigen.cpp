@@ -72,6 +72,7 @@ extern "C" void svGEMM(const SvMat *_src1, const SvMat *_src2, double alpha, con
 		else
 			dst.noalias() += beta * src3;
 	}
+	assert(sv_is_finite(_dst));
 }
 
 const int DECOMP_SVD = 1;
