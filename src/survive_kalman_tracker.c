@@ -273,13 +273,19 @@ bool survive_kalman_tracker_imu_measurement_model(void *user, const struct SvMat
 		SV_DATA_LOG("imu_prediction", h_x, 6);
 
 		LinmathVec3d up = {0, 0, 1};
-		LinmathQuat q;
+		FLT q[5];
 		LinmathVec3d imuWorld;
 		quatrotatevector(imuWorld, tracker->state.Pose.Rot, Z->data);
 
 		quatfrom2vectors(q, imuWorld, up);
-		quatrotateabout(q, tracker->state.Pose.Rot, q);
-		SV_DATA_LOG("perfect_q", q, 4);
+		q[4] = norm3d(q + 1);
+		quatrotateabout(q, q, tracker->state.Pose.Rot);
+		SV_DATA_LOG("perfect_q", q, 5);
+
+		LinmathVec3d perfect_acc;
+		quatrotatevector(perfect_acc, q, Z->data);
+		perfect_acc[2] -= 1;
+		SV_DATA_LOG("perfect_acc", perfect_acc, 3);
 	}
 
 	return true;

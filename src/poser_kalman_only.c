@@ -31,9 +31,14 @@ int PoserKalmanOnly(SurviveObject *so, void **user, PoserData *pd) {
 		while (so->tracker->stats.obs_count < 30) {
 			SurvivePose pose = {0};
 			LinmathVec3d up = {0, 0, 1};
-			LinmathPoint3d accelNormal;
-			normalize3d(accelNormal, imu->accel);
-			quatfrom2vectors(pose.Rot, accelNormal, up);
+
+			LinmathQuat q;
+			LinmathVec3d imuWorld;
+			quatrotatevector(imuWorld, so->tracker->state.Pose.Rot, imu->accel);
+
+			quatfrom2vectors(q, imuWorld, up);
+			quatrotateabout(pose.Rot, q, so->tracker->state.Pose.Rot);
+
 			FLT r[7] = { 5, 5, 5 };
 			survive_kalman_tracker_integrate_observation(&imu->hdr, so->tracker, &pose, r);
 			return 0;
