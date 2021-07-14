@@ -757,7 +757,9 @@ void survive_kalman_tracker_reinit(SurviveKalmanTracker *tracker) {
 	tracker->state.Pose.Rot[0] = 1;
 
 	survive_kalman_state_reset(&tracker->model);
-
+	for (int i = 0; i < 7; i++) {
+		svMatrixSet(&tracker->model.P, i, i, 1e10);
+	}
 	size_t state_cnt = tracker->model.state_cnt;
 
 	FLT Rrs = tracker->obs_rot_var;
