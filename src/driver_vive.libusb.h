@@ -200,7 +200,7 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 	iface->last_submit_time = OGGetAbsoluteTimeUS();
 
 	// If we get at least one packet; start applying a timeout
-	transfer->timeout = 1000;
+	// transfer->timeout = 1000;
 	if (libusb_submit_transfer(transfer)) {
 		goto shutdown;
 	}

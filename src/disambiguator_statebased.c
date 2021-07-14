@@ -162,7 +162,12 @@ typedef struct {
 	SurviveContext *ctx;
 
 	bool single_60hz_mode;
+	int light_min_length;
 } Global_Disambiguator_data_t;
+
+STRUCT_CONFIG_SECTION(Global_Disambiguator_data_t)
+STRUCT_CONFIG_ITEM("light-min-length", "Minimum length of V1 light to accept.", 100, t->light_min_length);
+END_STRUCT_CONFIG_SECTION(Global_Disambiguator_data_t)
 
 typedef struct {
 	SurviveObject *so;
@@ -647,7 +652,7 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 
 		for (int i = 0; i < d->so->sensor_ct; i++) {
 			LightcapElement le = d->sweep_data[i];
-			if (le.length > 0) {
+			if (le.length > g->light_min_length) {
 				avg_length += le.length;
 				cnt++;
 				// best_timecode = le.timestamp;
@@ -657,6 +662,12 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 			FLT var = 3;
 			size_t minl = DIV_ROUND_CLOSEST(avg_length, cnt * 4);
 			size_t maxl = var * DIV_ROUND_CLOSEST(avg_length, cnt);
+
+			SurviveObject *so = d->so;
+			FLT avg_length_f = avg_length / cnt, maxl_f = maxl, minl_f = minl;
+			SV_DATA_LOG("sweep[%d][%d].avg", &avg_length_f, 1, lh, LSParam_acode(d->state) & 1);
+			SV_DATA_LOG("sweep[%d][%d].maxl", &maxl_f, 1, lh, LSParam_acode(d->state) & 1);
+			SV_DATA_LOG("sweep[%d][%d].minl", &minl_f, 1, lh, LSParam_acode(d->state) & 1);
 
 			for (int i = 0; i < d->so->sensor_ct; i++) {
 				const LightcapElement *le = &d->sweep_data[i];
@@ -758,6 +769,7 @@ void DisambiguatorStateBased(SurviveObject *so, const LightcapElement *le) {
 				SV_VERBOSE(5, "\tdrop_syncs[%d]           %u", i, d->stats.drop_syncs[i]);
 			}
 		}
+		Global_Disambiguator_data_t_detach_config(ctx, ctx->disambiguator_data);
 		free(ctx->disambiguator_data);
 		ctx->disambiguator_data = 0;
 
@@ -780,6 +792,7 @@ void DisambiguatorStateBased(SurviveObject *so, const LightcapElement *le) {
 		Global_Disambiguator_data_t *d = SV_CALLOC(sizeof(Global_Disambiguator_data_t));
 		d->ctx = ctx;
 		ctx->disambiguator_data = d;
+		Global_Disambiguator_data_t_attach_config(ctx, d);
 	}
 
 	if (so->disambiguator_data == NULL) {

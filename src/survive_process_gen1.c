@@ -106,6 +106,8 @@ void survive_default_angle_process(SurviveObject *so, int sensor_id, int acode, 
 		if (SurviveSensorActivations_add(&so->activations, &l)) {
 			survive_kalman_tracker_integrate_light(so->tracker, &l.common);
 			SURVIVE_POSER_INVOKE(so, &l);
+		} else {
+			SV_DATA_LOG("rejected_light[%d][%d][%d]", &angle, 1, sensor_id, lh, acode & 0x1);
 		}
 	}
 
