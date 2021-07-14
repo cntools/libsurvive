@@ -254,6 +254,7 @@ struct BaseStationData {
 	FLT confidence;
 	void *ootx_data;
 	void *user_ptr;
+	bool disable;
 };
 
 struct config_group;

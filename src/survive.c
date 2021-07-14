@@ -460,7 +460,12 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 			ctx->activeLighthouses++;
 			SV_VERBOSE(50, "Adding LH %d mode: %d id: %08x", i, ctx->bsd[i].mode, (unsigned)ctx->bsd[i].BaseStationID);
 		}
-	}
+		char buffer[128] = {0};
+		sprintf(buffer, "lighthouse-%d-disable", i);
+		if (ctx->bsd[i].disable = survive_configi(ctx, buffer, SC_GET, 0)) {
+			SV_WARN("Disabling LH %d", i);
+		}
+	};
 
 	if( list_for_autocomplete )
 	{

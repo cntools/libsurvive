@@ -13,6 +13,9 @@ void survive_default_light_process(SurviveObject *so, int sensor_id, int acode, 
 								   uint32_t length, uint32_t lh) {
 	lh = survive_get_bsd_idx(so->ctx, lh);
 
+	if (so->ctx->bsd[lh].disable)
+		return;
+
 	survive_notify_gen1(so, "Lightcap called");
 
 	SurviveContext *ctx = so->ctx;
@@ -78,6 +81,9 @@ void survive_default_angle_process(SurviveObject *so, int sensor_id, int acode, 
 								   FLT angle, uint32_t lh) {
 	survive_notify_gen1(so, "Default angle called");
 	SurviveContext *ctx = so->ctx;
+
+	if (ctx->bsd[lh].disable)
+		return;
 
 	PoserDataLightGen1 l = {
 		.common =
