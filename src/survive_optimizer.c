@@ -424,18 +424,20 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 	LinmathAxisAnglePose obj2lh[NUM_GEN2_LIGHTHOUSES] = {0};
 
 	int meas_count = m;
+
+	int light_meas = mpfunc_ctx->measurementsCnt;
 	if (mpfunc_ctx->current_bias > 0) {
-		meas_count -= 7;
+		light_meas -= 7;
 		FLT *pp = (FLT *)mpfunc_ctx->initialPose.Pos;
 		for (int i = 0; i < 7; i++) {
-			deviates[i + meas_count] = (p[i] - pp[i]) * mpfunc_ctx->current_bias;
-			if (derivs) {
-				derivs[i][i + meas_count] = mpfunc_ctx->current_bias;
+			deviates[i + light_meas] = (p[i] - pp[i]) * mpfunc_ctx->current_bias;
+			if (derivs && derivs[i]) {
+				derivs[i][i + light_meas] = mpfunc_ctx->current_bias;
 			}
 		}
 	}
 
-	for (int i = 0; i < mpfunc_ctx->measurementsCnt; i++) {
+	for (int i = 0; i < light_meas; i++) {
 		const survive_optimizer_measurement *meas = &mpfunc_ctx->measurements[i];
 		const int lh = meas->lh;
 		const FLT *sensor_points = survive_optimizer_get_sensors(mpfunc_ctx, meas->object);
