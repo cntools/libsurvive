@@ -36,7 +36,7 @@ survive_long_timecode SurviveSensorActivations_last_reading(const SurviveSensorA
 	return data_timecode[axis];
 }
 
-survive_timecode SurviveSensorActivations_time_since_last_reading(const SurviveSensorActivations *self,
+survive_long_timecode SurviveSensorActivations_time_since_last_reading(const SurviveSensorActivations *self,
 																  uint32_t sensor_idx, int lh, int axis) {
 	survive_long_timecode last_reading = SurviveSensorActivations_last_reading(self, sensor_idx, lh, axis);
 	survive_long_timecode timecode_now = self->last_light;
@@ -381,4 +381,4 @@ FLT SurviveSensorActivations_difference(const SurviveSensorActivations *rhs, con
 }
 
 SURVIVE_EXPORT uint32_t SurviveSensorActivations_default_tolerance =
-	(uint32_t)(48000000 /*mhz*/ * (16.7 /*ms*/) / 1000) + 5000;
+	(uint32_t)(2 * 48000000 /*mhz*/ * (16.7 /*ms*/) / 1000) + 5000;

@@ -46,6 +46,7 @@ static void ootx_packet_clbk_d_gen2(ootx_decoder_context *ct, ootx_packet *packe
 	}
 
 	BaseStationData *b = &ctx->bsd[id];
+	b->OOTXChecked |= true;
 
 	bool doSave = b->BaseStationID != v15.id || b->OOTXSet == false;
 
@@ -87,26 +88,33 @@ static void ootx_packet_cblk_d_gen1(ootx_decoder_context *ct, ootx_packet *packe
 	init_lighthouse_info_v6(&v6, packet->data);
 
 	BaseStationData *b = &ctx->bsd[id];
+	b->OOTXChecked = true;
 
+	bool doSave = b->BaseStationID != v6.id || b->OOTXSet == false;
 	b->sys_unlock_count = v6.sys_unlock_count;
-	b->BaseStationID = v6.id;
-	b->fcal[0].phase = v6.fcal_0_phase;
-	b->fcal[1].phase = v6.fcal_1_phase;
-	b->fcal[0].tilt = tan(v6.fcal_0_tilt);
-	b->fcal[1].tilt = tan(v6.fcal_1_tilt); // XXX??? Is this right? See https://github.com/cnlohr/libsurvive/issues/18
-	b->fcal[0].curve = v6.fcal_0_curve;
-	b->fcal[1].curve = v6.fcal_1_curve;
-	b->fcal[0].gibpha = v6.fcal_0_gibphase;
-	b->fcal[1].gibpha = v6.fcal_1_gibphase;
-	b->fcal[0].gibmag = v6.fcal_0_gibmag;
-	b->fcal[1].gibmag = v6.fcal_1_gibmag;
-	b->accel[0] = v6.accel_dir_x;
-	b->accel[1] = v6.accel_dir_y;
-	b->accel[2] = v6.accel_dir_z;
-	b->mode = v6.mode_current;
-	b->OOTXSet = 1;
 
-	SURVIVE_INVOKE_HOOK(ootx_received, ctx, id);
+	if (doSave) {
+		SV_INFO("Got OOTX packet %d %08x", ctx->bsd[id].mode, (unsigned)v6.id);
+
+		b->BaseStationID = v6.id;
+		b->fcal[0].phase = v6.fcal_0_phase;
+		b->fcal[1].phase = v6.fcal_1_phase;
+		b->fcal[0].tilt = tan(v6.fcal_0_tilt);
+		b->fcal[1].tilt = tan(v6.fcal_1_tilt);
+		b->fcal[0].curve = v6.fcal_0_curve;
+		b->fcal[1].curve = v6.fcal_1_curve;
+		b->fcal[0].gibpha = v6.fcal_0_gibphase;
+		b->fcal[1].gibpha = v6.fcal_1_gibphase;
+		b->fcal[0].gibmag = v6.fcal_0_gibmag;
+		b->fcal[1].gibmag = v6.fcal_1_gibmag;
+		b->accel[0] = v6.accel_dir_x;
+		b->accel[1] = v6.accel_dir_y;
+		b->accel[2] = v6.accel_dir_z;
+		b->mode = v6.mode_current;
+		b->OOTXSet = 1;
+
+		SURVIVE_INVOKE_HOOK(ootx_received, ctx, id);
+	}
 }
 void survive_ootx_free_decoder_context(struct SurviveContext *ctx, int bsd_idx) {
 	ootx_decoder_context *decoderContext = ctx->bsd[bsd_idx].ootx_data;
@@ -133,7 +141,7 @@ void survive_ootx_free_decoder_context(struct SurviveContext *ctx, int bsd_idx) 
 }
 void survive_ootx_behavior(SurviveObject *so, int8_t bsd_idx, int8_t lh_version, int ootx) {
 	struct SurviveContext *ctx = so->ctx;
-	if (ctx->bsd[bsd_idx].OOTXSet == false) {
+	if (ctx->bsd[bsd_idx].OOTXChecked == false) {
 		ootx_decoder_context *decoderContext = ctx->bsd[bsd_idx].ootx_data;
 
 		if (decoderContext == 0) {
@@ -155,7 +163,7 @@ void survive_ootx_behavior(SurviveObject *so, int8_t bsd_idx, int8_t lh_version,
 		if (decoderContext->user == so) {
 			ootx_pump_bit(decoderContext, ootx);
 
-			if (ctx->bsd[bsd_idx].OOTXSet) {
+			if (ctx->bsd[bsd_idx].OOTXChecked) {
 				survive_ootx_free_decoder_context(ctx, bsd_idx);
 			}
 		}

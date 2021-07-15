@@ -87,7 +87,7 @@ SURVIVE_EXPORT bool SurviveSensorActivations_is_reading_valid(const SurviveSenso
 															  survive_long_timecode tolerance, uint32_t sensor_idx,
 															  int lh, int axis);
 
-SURVIVE_EXPORT survive_timecode SurviveSensorActivations_time_since_last_reading(const SurviveSensorActivations *self,
+SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_time_since_last_reading(const SurviveSensorActivations *self,
 																				 uint32_t sensor_idx, int lh, int axis);
 
 SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_last_reading(const SurviveSensorActivations *self,
@@ -255,6 +255,7 @@ struct BaseStationData {
 	void *ootx_data;
 	void *user_ptr;
 	bool disable;
+	uint8_t OOTXChecked : 1;
 };
 
 struct config_group;

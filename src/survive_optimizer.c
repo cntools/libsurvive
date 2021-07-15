@@ -315,6 +315,10 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 	size_t valid_meas = 0;
 	for (int i = 0; i < optimizer->measurementsCnt; i++) {
 		survive_optimizer_measurement *meas = &optimizer->measurements[i];
+		SV_DATA_LOG("mpfit_meas_val[%d][%d][%d]", &meas->value, 1, meas->sensor_idx, meas->lh, meas->axis);
+		SV_DATA_LOG("mpfit_meas_var[%d][%d][%d]", &meas->variance, 1, meas->sensor_idx, meas->lh, meas->axis);
+		SV_DATA_LOG("mpfit_meas_err[%d][%d][%d]", deviates, 1, meas->sensor_idx, meas->lh, meas->axis);
+
 		avg_dev += fabs(deviates[i]);
 		valid_meas++;
 	}

@@ -124,6 +124,9 @@ static bool map_light_data(void *user, const struct SvMat *Z, const struct SvMat
 		const FLT *ptInObj = &so->sensor_locations[info->sensor_idx * 3];
 		FLT h_x = project_fn(&obj2world, ptInObj, &world2lh, &ctx->bsd[info->lh].fcal[axis]);
 		Y[i] = sv_as_const_vector(Z)[i] - h_x;
+		SV_DATA_LOG("Z_light[%d][%d][%d]", &info->value, 1, info->lh, info->axis, info->sensor_idx);
+		SV_DATA_LOG("h_light[%d][%d][%d]", &h_x, 1, info->lh, info->axis, info->sensor_idx);
+		SV_DATA_LOG("Y_light[%d][%d][%d]", Y, 1, info->lh, info->axis, info->sensor_idx);
 		FLT jacobian[7] = {0};
 		project_jacob_fn(jacobian, &obj2world, ptInObj, &world2lh, &ctx->bsd[info->lh].fcal[axis]);
 		for (int j = 0; j < 7; j++) {
@@ -170,8 +173,9 @@ void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker,
 		}
 
 		SV_CREATE_STACK_MAT(Z, tracker->savedLight_idx, 1);
-		for (int i = 0; i < tracker->savedLight_idx; i++)
+		for (int i = 0; i < tracker->savedLight_idx; i++) {
 			svMatrixSet(&Z, i, 0, tracker->savedLight[i].value);
+		}
 
 		struct map_light_data_ctx cbctx = {
 			.tracker = tracker,

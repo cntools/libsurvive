@@ -160,7 +160,7 @@ static size_t construct_input_from_scene(const MPFITData *d, survive_long_timeco
 		size_t meas_for_lh = 0;
 		for (uint8_t sensor = 0; sensor < so->sensor_ct; sensor++) {
 			for (uint8_t axis = 0; axis < 2; axis++) {
-				survive_timecode last_reading =
+				survive_long_timecode last_reading =
 					SurviveSensorActivations_time_since_last_reading(scene, sensor, lh, axis);
 				bool isReadingValue = last_reading < sensor_time_window;
 
@@ -171,7 +171,7 @@ static size_t construct_input_from_scene(const MPFITData *d, survive_long_timeco
 					meas->value = a[axis];
 					meas->sensor_idx = sensor;
 					meas->lh = lh;
-					survive_timecode diff = survive_timecode_difference(timecode, scene->timecode[sensor][lh][axis]);
+					survive_long_timecode diff = timecode - scene->timecode[sensor][lh][axis];
 					meas->variance = d->sensor_variance + diff * d->sensor_variance_per_second / (FLT)so->timebase_hz;
 					if (most_recent_time && scene->timecode[sensor][lh][axis] > *most_recent_time) {
 						*most_recent_time = scene->timecode[sensor][lh][axis];
