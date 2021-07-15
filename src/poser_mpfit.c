@@ -977,7 +977,7 @@ int PoserMPFIT(SurviveObject *so, void **user, PoserData *pd) {
 			}
 		}
 		general_optimizer_data_dtor(&d->opt);
-
+		MPFITData_detach_config(ctx, d);
 		survive_detach_config(ctx, "disable-lighthouse", &d->disable_lighthouse);
 		survive_detach_config(ctx, "sensor-variance-per-sec", &d->sensor_variance_per_second);
 		survive_detach_config(ctx, "sensor-variance", &d->sensor_variance);
