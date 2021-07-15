@@ -501,7 +501,7 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 
 		FLT penalty = 1. / pow(2, sensor_ct / 3.) + 1. / pow(2, axis_count * 5);
 		*out = *soLocation;
-		rtn = result->bestnorm + penalty;
+		rtn = result->bestnorm; // + penalty;
 
 		FLT v[] = {axis_count, lh_count, sensor_ct, rtn};
 		SV_DATA_LOG("mpfit_confidence_measures", v, 4);

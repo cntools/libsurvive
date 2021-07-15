@@ -657,7 +657,7 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
 			// Scale up the covariance
 			FLT pS = 10, rS = 1;
 			FLT Raug[] = {pS * tdiff, pS * tdiff, pS * tdiff, rS * tdiff, rS * tdiff, rS * tdiff, rS * tdiff};
-			addnd(R, R, Raug, 7);
+			// addnd(R, R, Raug, 7);
 
 			time = tracker->model.t;
 		} else {
