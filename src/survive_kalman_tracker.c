@@ -705,7 +705,7 @@ STATIC_CONFIG_ITEM(KALMAN_LIGHTCAP_IGNORE_THRESHOLD, "light-ignore-threshold", '
 STATIC_CONFIG_ITEM(KALMAN_LIGHTCAP_REQUIRED_OBS, "light-required-obs", 'i',
 				   "Minimum observations to allow light data into the kalman filter", 16)
 
-STATIC_CONFIG_ITEM(LIGHT_VARIANCE, "light-variance", 'f', "Variance of light sensor readings", 1e-6)
+STATIC_CONFIG_ITEM(LIGHT_VARIANCE, "light-variance", 'f', "Variance of light sensor readings", 1e-1)
 STATIC_CONFIG_ITEM(OBS_POS_VARIANCE, "obs-pos-variance", 'f', "Variance of position integration from light capture",
 				   .02)
 STATIC_CONFIG_ITEM(OBS_ROT_VARIANCE, "obs-rot-variance", 'f', "Variance of rotation integration from light capture",
@@ -715,10 +715,10 @@ STATIC_CONFIG_ITEM(USE_IMU, "use-imu", 'i', "Use the IMU as part of the pose sol
 STATIC_CONFIG_ITEM(USE_KALMAN, "use-kalman", 'i', "Apply kalman filter as part of the pose solver", 1)
 
 STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
-STRUCT_CONFIG_ITEM("process-weight-acc", "Acc variance per second", 1e-5, t->params.process_weight_acc)
+STRUCT_CONFIG_ITEM("process-weight-acc", "Acc variance per second", 0, t->params.process_weight_acc)
 STRUCT_CONFIG_ITEM("process-weight-ang-vel", "Angular velocity variance per second", 10,
 				   t->params.process_weight_ang_velocity)
-STRUCT_CONFIG_ITEM("process-weight-vel", "Velocity variance per second", 1e-1, t->params.process_weight_vel)
+STRUCT_CONFIG_ITEM("process-weight-vel", "Velocity variance per second", .01, t->params.process_weight_vel)
 STRUCT_CONFIG_ITEM("process-weight-pos", "Position variance per second", 0., t->params.process_weight_pos)
 STRUCT_CONFIG_ITEM("process-weight-rot", "Rotation variance per second", 0, t->params.process_weight_rotation)
 STRUCT_CONFIG_ITEM("process-weight-acc-bias", "Acc bias variance per second", 0, t->params.process_weight_acc_bias)
