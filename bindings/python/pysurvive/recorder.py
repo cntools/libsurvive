@@ -301,13 +301,13 @@ class RecordedData:
         ax.legend()
         return 1
 
-    def plot_light_angles(self, fig=None, plot_num=1, plot_rows=1, plot_cols=1, figsize=None, plot_all_light=False,
+    def plot_light_angles(self, fig=None, plot_num=1, plot_rows=1, plot_cols=1, figsize=None, linestyle='.', plot_all_light=False,
                           **kwargs):
         if len(self.angles) == 0:
             return 0
 
         if fig is None:
-            fig = plt.figure()
+            fig = plt.figure(figsize=figsize_or_default(figsize))
 
         def pv(tv):
             time, values = tv
@@ -324,7 +324,7 @@ class RecordedData:
         for k, v in self.angles.items():
             vv = np.array(v)
             if vv.shape[0] > 10:
-                ax.plot(vv[:, 0], vv[:, 1], '.', label=k, linewidth=1)
+                ax.plot(vv[:, 0], vv[:, 1], linestyle, label=k, linewidth=1)
         # ax.legend(ncol=4)
 
         return 1
