@@ -14,6 +14,8 @@ typedef struct SurviveKalmanLighthouse {
 	FLT process_weight_rotation;
 
 	FLT light_variance;
+	FLT light_stationary_mintime;
+	FLT light_stationary_maxtime;
 
 } SurviveKalmanLighthouse;
 

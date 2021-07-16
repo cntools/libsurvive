@@ -6,7 +6,9 @@
 #include "generated/survive_imu.generated.h"
 
 STRUCT_CONFIG_SECTION(SurviveKalmanLighthouse)
-STRUCT_CONFIG_ITEM("lh-light-variance", "", 1e-2, t->light_variance);
+STRUCT_CONFIG_ITEM("lh-light-variance", "", -1e-2, t->light_variance);
+STRUCT_CONFIG_ITEM("lh-light-stationary-time", "", .1, t->light_stationary_mintime);
+STRUCT_CONFIG_ITEM("lh-light-stationary-maxtime", "", 2, t->light_stationary_maxtime);
 END_STRUCT_CONFIG_SECTION(SurviveKalmanLighthouse)
 
 //#define TRACK_IN_WORLD2LH
@@ -126,12 +128,16 @@ static bool map_light_data(void *user, const struct SvMat *Z, const struct SvMat
 void survive_kalman_lighthouse_integrate_light(SurviveKalmanLighthouse *tracker, SurviveObject *so,
 											   PoserDataLight *data) {
 	bool isSync = data->hdr.pt == POSERDATA_SYNC || data->hdr.pt == POSERDATA_SYNC_GEN2;
-	if (isSync || tracker->light_variance < 0)
+	if (isSync || tracker->light_variance < 0 || !tracker->ctx->bsd[tracker->lh].PositionSet)
 		return;
 
-	survive_long_timecode stationary_time = SurviveSensorActivations_stationary_time(&so->activations);
+	FLT stationary_time = SurviveSensorActivations_stationary_time(&so->activations) / (FLT)so->timebase_hz;
 	SurviveContext *ctx = tracker->ctx;
 	FLT time = data->hdr.timecode / (FLT)so->timebase_hz;
+	if (stationary_time < tracker->light_stationary_mintime)
+		return;
+	if (stationary_time > tracker->light_stationary_maxtime && tracker->light_stationary_maxtime > 0)
+		return;
 
 	if (tracker->light_variance >= 0) {
 		SV_CREATE_STACK_MAT(Z, 1, 1);
@@ -151,8 +157,6 @@ void survive_kalman_lighthouse_integrate_light(SurviveKalmanLighthouse *tracker,
 		FLT so_var[3];
 		sv_get_diag(&so->tracker->model.P, so_var, 3);
 		FLT v = tracker->light_variance + norm3d(so_var);
-		if (stationary_time < so->timebase_hz * .1)
-			return;
 
 		FLT light_vars[32] = {0};
 		for (int i = 0; i < 32; i++)
