@@ -311,6 +311,7 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 		worldEstablished |= ctx->bsd[lh].PositionSet;
 
 	survive_optimizer_setup_pose(mpfitctx, 0, !worldEstablished, d->use_jacobian_function_obj);
+	normalize3d(mpfitctx->obj_up_vectors[0], so->activations.accel);
 
 	*soLocation = *survive_object_last_imu2world(so);
 	bool currentPositionValid = quatmagnitude(soLocation->Rot) != 0;
@@ -405,6 +406,7 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 
 	size_t skipped_lh_cnt = 0;
 	for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
+		normalize3d(mpfitctx->cam_up_vectors[lh], ctx->bsd[lh].accel);
 		FLT meas[2] = { meas_for_lhs_axis[2 * lh] + 1e-2 * lh, meas_for_lhs_axis[2 * lh + 1] + 1e-2 * lh + 1e-3};
 		SV_DATA_LOG("meas_for_lh_axis[%d]", meas, 2, lh);
 		if (!so->ctx->bsd[lh].PositionSet) {
