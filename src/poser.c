@@ -1,4 +1,5 @@
 #include "math.h"
+#include "survive_kalman_lighthouses.h"
 #include "survive_kalman_tracker.h"
 #include <assert.h>
 #include <linmath.h>
@@ -169,8 +170,7 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 		for (int i = 0; i < 7; i++)
 			assert(!isnan(((FLT *)&lighthouse2world)[i]));
 
-		so->ctx->bsd[lighthouse].confidence = 1.;
-		SURVIVE_INVOKE_HOOK(lighthouse_pose, so->ctx, lighthouse, &lighthouse2world);
+		survive_kalman_lighthouse_integrate_observation(so->ctx->bsd[lighthouse].tracker, lighthouse_pose, 0);
 	}
 }
 

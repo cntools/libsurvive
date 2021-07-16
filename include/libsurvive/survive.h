@@ -256,6 +256,7 @@ struct BaseStationData {
 	void *user_ptr;
 	bool disable;
 	uint8_t OOTXChecked : 1;
+	struct SurviveKalmanLighthouse *tracker;
 };
 
 struct config_group;

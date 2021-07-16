@@ -15,6 +15,7 @@
 #include "os_generic.h"
 #include "survive_config.h"
 #include "survive_default_devices.h"
+#include "survive_kalman_lighthouses.h"
 #include "survive_recording.h"
 
 #include <stdarg.h>
@@ -227,7 +228,7 @@ SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel c
 
 	for (i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
 		if (ctx->bsd[i].mode == 0xFF) {
-			ctx->bsd[i] = (BaseStationData){0};
+			ctx->bsd[i] = (BaseStationData){.tracker = ctx->bsd[i].tracker};
 			ctx->bsd[i].mode = channel;
 			if (ctx->activeLighthouses < i + 1) {
 				ctx->activeLighthouses = i + 1;
@@ -465,6 +466,9 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 		if (ctx->bsd[i].disable = survive_configi(ctx, buffer, SC_GET, 0)) {
 			SV_WARN("Disabling LH %d", i);
 		}
+
+		ctx->bsd[i].tracker = SV_MALLOC(sizeof(struct SurviveKalmanLighthouse));
+		survive_kalman_lighthouse_init(ctx->bsd[i].tracker, ctx, i);
 	};
 
 	if( list_for_autocomplete )

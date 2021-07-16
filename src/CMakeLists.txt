@@ -31,6 +31,8 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
   survive_process_gen2.c
   survive_sensor_activations.c
   survive_kalman.c
+        survive_kalman_lighthouses.c
+        survive_kalman_lighthouses.h
   barycentric_svd/barycentric_svd.c
   survive_reproject_gen2.c
         survive_process_gen1.c

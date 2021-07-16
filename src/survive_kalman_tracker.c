@@ -14,6 +14,7 @@
 #include <sv_matrix.h>
 
 #include "generated/survive_imu.generated.h"
+#include "survive_kalman_lighthouses.h"
 
 #define SURVIVE_MODEL_MAX_STATE_CNT (sizeof(SurviveKalmanModel) / sizeof(FLT))
 
@@ -213,6 +214,8 @@ void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker,
 }
 
 void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, PoserDataLight *data) {
+	survive_kalman_lighthouse_integrate_light(tracker->so->ctx->bsd[data->lh].tracker, tracker->so, data);
+
 	bool isSync = data->hdr.pt == POSERDATA_SYNC || data->hdr.pt == POSERDATA_SYNC_GEN2;
 	if (isSync) {
 		survive_kalman_tracker_integrate_saved_light(tracker, &data->hdr);
