@@ -214,7 +214,7 @@ SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel c
 
 	if (ctx->lh_version == 0) {
 		if (ctx->bsd[channel].mode == 0xFF) {
-			ctx->bsd[channel] = (BaseStationData){0};
+			ctx->bsd[channel] = (BaseStationData){.tracker = ctx->bsd[channel].tracker};
 			ctx->bsd[channel].mode = channel;
 			ctx->activeLighthouses++;
 			SV_INFO("Adding lighthouse ch %d (cnt: %d)", channel, ctx->activeLighthouses);
