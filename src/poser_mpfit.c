@@ -261,6 +261,33 @@ static inline int get_lh_count(const size_t *meas_for_lhs_axis) {
 	return num_lh;
 }
 
+static void iteration_cb(struct survive_optimizer *opt_ctx, int m, int n, FLT *p, FLT *deviates, FLT **derivs) {
+	MPFITData *d = opt_ctx->user;
+	SurviveContext *ctx = d->opt.so->ctx;
+
+	for (int i = 0; i < d->opt.so->sensor_ct; i++) {
+		LinmathPoint3d pt;
+		ApplyAxisAnglePoseToPoint(pt, (LinmathAxisAnglePose *)&survive_optimizer_get_pose(opt_ctx)[0],
+								  &d->opt.so->sensor_locations[i * 3]);
+		survive_recording_write_to_output(ctx->recptr, "SPHERE %s_%d %f %d " Point3_format "\n", d->opt.so->codename, i,
+										  .005, 0xFF, LINMATH_VEC3_EXPAND(pt));
+	}
+	static int idx = 0;
+	for (int i = 0; i < opt_ctx->cameraLength + opt_ctx->poseLength; i++) {
+		LinmathAxisAnglePose *aa = (LinmathAxisAnglePose *)&survive_optimizer_get_pose(opt_ctx)[i];
+		SurvivePose c = {0};
+		copy3d(c.Pos, aa->Pos);
+		quatfromaxisanglemag(c.Rot, aa->AxisAngleRot);
+
+		if (i > 0) {
+			c = InvertPoseRtn(&c);
+		}
+
+		char label[128] = {0};
+		snprintf(label, 128, "calc_camera[%d][%d]", i, idx++);
+		SURVIVE_INVOKE_HOOK(external_pose, ctx, label, &c);
+	}
+}
 static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer *mpfitctx,
 						   SurviveSensorActivations *scene) {
 	MPFITData *d = user->d;
@@ -290,7 +317,8 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 		return -1;
 	}
 
-	if (!worldEstablished) {
+	FLT upVectorBias = survive_configf(ctx, MPFIT_UP_BIAS_TAG, SC_GET, 1.);
+	if (!worldEstablished && upVectorBias > 0) {
 		FLT accel_mag = norm3d(so->activations.accel);
 		const FLT up[3] = {0, 0, 1};
 		if (accel_mag != 0.0 && !isnan(accel_mag)) {
@@ -430,6 +458,9 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 		mpfitctx->upVectorBias = survive_configf(ctx, MPFIT_UP_BIAS_TAG, SC_GET, 1.);
 	}
 
+	if (canPossiblySolveLHS) {
+		// mpfitctx->iteration_cb = iteration_cb;
+	}
 	return 0;
 }
 
@@ -469,8 +500,8 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 		quatnormalize(soLocation->Rot, soLocation->Rot);
 
 		if (canPossiblySolveLHS) {
-			// if (!worldEstablished)
-			//	*soLocation = (SurvivePose){0};
+			if (!worldEstablished && mpfitctx->upVectorBias <= 0.0)
+				*soLocation = (SurvivePose){0};
 
 			SurvivePose *opt_cameras = survive_optimizer_get_camera(mpfitctx);
 			SurvivePose cameras[NUM_GEN2_LIGHTHOUSES] = {0};
@@ -563,12 +594,12 @@ static FLT run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Surviv
 	SurviveObject *so = d->opt.so;
 	struct SurviveContext *ctx = so->ctx;
 
-	survive_optimizer mpfitctx = {
-		.reprojectModel = ctx->lh_version == 0 ? &survive_reproject_model : &survive_reproject_gen2_model,
-		.poseLength = 1,
-		.cameraLength = so->ctx->activeLighthouses,
-		.current_bias = d->current_bias
-	};
+	survive_optimizer mpfitctx = {.reprojectModel =
+									  ctx->lh_version == 0 ? &survive_reproject_model : &survive_reproject_gen2_model,
+								  .poseLength = 1,
+								  .cameraLength = so->ctx->activeLighthouses,
+								  .current_bias = d->current_bias,
+								  .user = d};
 
 	SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(mpfitctx, so);
 
