@@ -1,8 +1,9 @@
 #include "survive.h"
+#include "survive_kalman_lighthouses.h"
 #include "survive_kalman_tracker.h"
 #include "survive_recording.h"
 
-#define TIMECENTER_TICKS (48000000 / 240) // for now.
+#define TIMECENTER_TICKS (200000 - 4500) // for now.
 
 void survive_default_light_pulse_process(SurviveObject *so, int sensor_id, int acode, survive_timecode timecode,
 										 FLT length, uint32_t lh) {}
