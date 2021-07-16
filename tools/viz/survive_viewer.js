@@ -221,7 +221,8 @@ function redrawCanvas(when) {
 	ctx.strokeStyle = "#ffffff";
 	ctx.beginPath();
 	for (var x = -fov_degrees; x < fov_degrees; x += 10) {
-		var length = Math.abs(x) == 60 ? canvas.width : 10;
+		var length = Math.abs(x) == 60 ? 60 : (Math.abs(x) == 0 ? canvas.width : 10);
+
 		ctx.moveTo(rad_to_x(x / 180 * Math.PI), 0);
 		ctx.lineTo(rad_to_x(x / 180 * Math.PI), length);
 

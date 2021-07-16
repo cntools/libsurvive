@@ -212,6 +212,11 @@ static inline void svMatrixSet(SvMat *mat, int row, int col, FLT value) {
 	mat->data[sv_matrix_idx(mat, row, col)] = value;
 }
 
+static inline void sv_get_diag(const struct SvMat *m, FLT *v, size_t cnt) {
+	for (int i = 0; i < cnt; i++) {
+			v[i] = svMatrixGet(m, i, i);
+	}
+}
 static inline void sv_set_diag(struct SvMat *m, const FLT *v) {
 	for (int i = 0; i < m->rows; i++) {
 		for (int j = 0; j < m->cols; j++) {
@@ -303,6 +308,14 @@ static inline void sv_elementwise_subtract(struct SvMat *dst, const struct SvMat
 		}
 	}
 }
+
+#ifndef SV_MATRIX_IS_COL_MAJOR
+static inline SvMat sv_row(struct SvMat *M, int r) {
+	assert(r < M->rows);
+	return svMat(1, M->cols, M->data + M->step * r);
+}
+#endif
+
 #ifdef __cplusplus
 }
 #endif

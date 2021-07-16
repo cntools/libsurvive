@@ -47,6 +47,7 @@ void survive_default_light_process(SurviveObject *so, int sensor_id, int acode, 
 			.length = length,
 		};
 
+		SV_VERBOSE(600, "%s Sync    %3d.%2d.%d %8u %u", survive_colorize_codename(so), sensor_id, lh, acode & 1, timecode, length);
 		survive_kalman_tracker_integrate_light(so->tracker, &l.common);
 		SURVIVE_POSER_INVOKE(so, &l);
 		SURVIVE_INVOKE_HOOK_SO(light_pulse, so, sensor_id, acode, timecode, length_sec, lh);
@@ -66,10 +67,13 @@ void survive_default_light_process(SurviveObject *so, int sensor_id, int acode, 
 		return;
 	}
 
-	int centered_timeinsweep = (timeinsweep - TIMECENTER_TICKS);
-	FLT angle = centered_timeinsweep * (1. / TIMECENTER_TICKS * 3.14159265359 / 2.0);
+	FLT centered_timeinsweep = (timeinsweep - TIMECENTER_TICKS);
+	FLT angle = centered_timeinsweep * (LINMATHPI_2 / TIMECENTER_TICKS);
 	assert(angle >= -LINMATHPI && angle <= LINMATHPI);
+	// time / center - pi / 2
 
+	SV_DATA_LOG("angle_sweep[%d][%d][%d]", &centered_timeinsweep, 1, sensor_id, lh, acode & 1);
+	SV_VERBOSE(600, "%s Sweep %2d.%2d.%d %8u %f %f %u", survive_colorize_codename(so), sensor_id, lh, acode & 1, timecode, angle, centered_timeinsweep, timeinsweep);
 	SURVIVE_INVOKE_HOOK_SO(angle, so, sensor_id, acode, timecode, length_sec, angle, lh);
 }
 

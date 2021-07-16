@@ -63,6 +63,16 @@ void survive_reproject_full(const BaseStationCal *bcal, const SurvivePose *world
 
 	survive_reproject_xy(bcal, t_pt, out);
 }
+SURVIVE_EXPORT void survive_reproject_full_axisangle(const BaseStationCal *bcal, const LinmathAxisAnglePose *world2lh, const LinmathAxisAnglePose *obj2world,
+													 const LinmathVec3d obj_pt, SurviveAngleReading out) {
+	LinmathVec3d world_pt;
+	ApplyAxisAnglePoseToPoint(world_pt, obj2world, obj_pt);
+
+	LinmathPoint3d t_pt;
+	ApplyAxisAnglePoseToPoint(t_pt, world2lh, world_pt);
+
+	survive_reproject_xy(bcal, t_pt, out);
+}
 void survive_reproject_from_pose_with_bcal(const BaseStationCal *bcal, const SurvivePose *world2lh,
 										   LinmathVec3d const ptInWorld, SurviveAngleReading out) {
 	LinmathPoint3d ptInLh;

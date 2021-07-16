@@ -548,7 +548,7 @@ survive_driver_fn GetDriverByConfig(SurviveContext *ctx, const char *name, const
 		}
 	}
 	if (!func) {
-		SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Error.  Cannot find any valid %s.", name);
+		SV_WARN("Error.  Cannot find any valid %s.", name);
 		return 0;
 	}
 
@@ -676,6 +676,14 @@ int survive_startup(SurviveContext *ctx) {
 			memset(ctx->bsd[i].fcal, 0, sizeof(ctx->bsd[i].fcal));
 		}
 	}
+
+	int ootxuse = survive_configi(ctx, "use-ootx", SC_GET, 1);
+	if (!ootxuse) {
+		for (int i = 0; i < ctx->activeLighthouses; i++) {
+			memset(ctx->bsd[i].fcal, 0, sizeof(ctx->bsd[i].fcal));
+		}
+	}
+
 
 	// If lighthouse positions are known, broadcast them
 	for (int i = 0; i < ctx->activeLighthouses; i++) {

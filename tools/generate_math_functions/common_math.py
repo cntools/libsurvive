@@ -274,8 +274,9 @@ def apply_axisangle_pose_to_pt(obj_p_axisangle, sensor_pt):
 
 
 def invert_pose(obj_p):
-    r = quatgetreciprocal(obj_p.Rot)
-    return (-1 * quatrotatevector(r, obj_p.Pos), r)
+    r = quatgetreciprocal(quatnormalize(obj_p.Rot))
+    X,Y,Z = quatrotatevector(r, obj_p.Pos)
+    return sp.Matrix([-X,-Y,-Z, *r])
 
 def quat2axisangle(q):
     qw, qi, qj, qk = q

@@ -28,9 +28,22 @@ TEST(Reproject, ReprojectTestCase) {
 	return 0;
 }
 
+TEST(Reproject, ReprojectTest) {
+	FLT out1[2], out2[2], out3[2], out4[2];
+	BaseStationCal bsd[2] = { 0 };
+	LinmathPoint3d ptInLH1 = {0, 0, -2};
+	LinmathPoint3d ptInLH2 = {0, -1, -2};
+	LinmathPoint3d ptInLH3 = {0, 1, -2};
+	LinmathPoint3d ptInLH4 = {1, 0, -2};
+	survive_reproject_xy(bsd, ptInLH1, out1);
+	survive_reproject_xy(bsd, ptInLH2, out2);
+	survive_reproject_xy(bsd, ptInLH3, out3);
+	survive_reproject_xy(bsd, ptInLH4, out4);
+
+	return 0;
+}
+
 TEST(Reproject, ReprojectFull) {
-	//	void survive_reproject_full(const BaseStationCal *bcal, const SurvivePose *lh2world, const SurvivePose
-	//*obj2world, 	                            const LinmathVec3d obj_pt, FLT *out) {
 	BaseStationCal cal[2] = { 0 };
 	SurvivePose lh2world = {.Pos = {1, 1, 1}, .Rot = {0, 0, 1, 0}};
 	SurvivePose world2lh = InvertPoseRtn(&lh2world);

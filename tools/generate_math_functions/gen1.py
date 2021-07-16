@@ -28,6 +28,15 @@ def reproject(obj_p, sensor_pt, lh_p, bsd):
     ))
 
 
+def reproject_xy(bsd, sensor_pt):
+    cal0, cal1 = bsd
+    XYZ = sensor_pt
+    return sp.Matrix((
+        reproject_axis(XYZ[0], XYZ[1], -XYZ[2], cal0),
+        reproject_axis(simple_neg(XYZ[1]), XYZ[0], -XYZ[2], cal1)
+    ))
+
+
 def reproject_axis_x(obj_p, sensor_pt, lh_p, bsc0):
     XYZ = sensor_to_world(obj_p, sensor_pt, lh_p)
     return reproject_axis(XYZ[0], XYZ[1], -XYZ[2], bsc0)
@@ -37,9 +46,9 @@ def reproject_axis_y(obj_p, sensor_pt, lh_p, bsc1):
     XYZ = sensor_to_world(obj_p, sensor_pt, lh_p)
     return reproject_axis(simple_neg(XYZ[1]), XYZ[0], -XYZ[2], bsc1)
 
-
 generate = [
     reproject,
     reproject_axis_x,
     reproject_axis_y,
+    reproject_xy
 ]

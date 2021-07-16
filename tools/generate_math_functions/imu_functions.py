@@ -87,6 +87,7 @@ if __name__ == "__main__":
 
         generate_code_and_jacobians(imu_rot_f, transpose=True)
         generate_code_and_jacobians(kalman_model_predict)
+        generate_code_and_jacobians(invert_pose)
         for f in [quatrotatevector, imu_rot_f_aa, imu_correct_up, imu_predict_up, quatrotateabout,
                   imu_predict, imu_predict_gyro]:
 

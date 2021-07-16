@@ -62,7 +62,10 @@ void survive_default_ootx_received_process(struct SurviveContext *ctx, uint8_t b
 
 void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse,
 											 const SurvivePose *lighthouse_pose) {
+	bool notSet = ctx->bsd[lighthouse].PositionSet == 0;
 	if (lighthouse_pose) {
+		for(int i = 0;i < 3;i++) assert(isfinite(lighthouse_pose->Pos[i]));
+		for(int i = 0;i < 4;i++) assert(isfinite(lighthouse_pose->Rot[i]));
 		ctx->bsd[lighthouse].Pose = *lighthouse_pose;
 		ctx->bsd[lighthouse].PositionSet = 1;
 	} else {
@@ -78,9 +81,11 @@ void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighth
 	quatrotatevector(err, lighthouse_pose->Rot, up);
 
 	survive_recording_lighthouse_process(ctx, lighthouse, lighthouse_pose);
-	SV_VERBOSE(10, "Position found for LH %d(ID: %08x, mode: %2d, err: %f) " SurvivePose_format, lighthouse,
-			   (unsigned)ctx->bsd[lighthouse].BaseStationID, ctx->bsd[lighthouse].mode, 1 - err[2],
-			   SURVIVE_POSE_EXPAND(*lighthouse_pose));
+	if(notSet) {
+		SV_VERBOSE(10, "Position found for LH %d(ID: %08x, mode: %2d, err: %f) " SurvivePose_format, lighthouse,
+				   (unsigned)ctx->bsd[lighthouse].BaseStationID, ctx->bsd[lighthouse].mode, 1 - err[2],
+				   SURVIVE_POSE_EXPAND(*lighthouse_pose));
+	}
 }
 
 STATIC_CONFIG_ITEM(SURVIVE_SERIALIZE_DEV_CONFIG, "serialize-device-config", 'i', "Serialize device config files", 0)

@@ -202,7 +202,7 @@ class RecordedData:
             ax.plot(get_times(accel_running_avg), get_data(accel_running_avg)[:, i], label="Avg" + axes_name[i])
         ax.legend()
 
-    def plot_datalog(self, prefix="", fig=None, plot_num=1, plot_rows=1, plot_cols=1, figsize=None, start_idx = None, end_idx = None, linestyle='-', *args, **kwargs):
+    def plot_datalog(self, prefix="", fig=None, plot_num=1, plot_rows=1, plot_cols=1, figsize=None, start_idx = None, end_idx = None, linestyle='-', legend=True, *args, **kwargs):
         if fig is None:
             fig = plt.figure(figsize=figsize_or_default(figsize))
         ax = fig.add_subplot(plot_rows, plot_cols, plot_num, title=prefix)
@@ -214,7 +214,8 @@ class RecordedData:
             for idx in range(0, data.shape[1]):
                 label = k + "[" + str(idx + (start_idx if start_idx is not None else 0)) + "]"
                 ax.plot(times, data[:,idx], linestyle, linewidth=1, ms=1, label=label)
-        ax.legend()
+        if legend:
+            ax.legend()
         fig.tight_layout()
 
     def plot_gyro(self, fig=None, plot_num=1, plot_rows=1, plot_cols=1, figsize=None, *args, **kwargs):

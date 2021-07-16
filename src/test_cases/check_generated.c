@@ -507,42 +507,6 @@ void print_pose(const SurvivePose *pose) {
 
 void print_point(const FLT *Pos) { TEST_PRINTF("[%f %f %f]\n", Pos[0], Pos[1], Pos[2]); }
 
-#ifdef HAVE_AUX_GENERATED
-void check_rotate_vector() {
-	SurvivePose obj = random_pose();
-	FLT pt[3];
-	random_point(pt);
-
-	int cycles = 1000;
-	FLT gen_out[3], out[3];
-	double start, stop;
-	start = OGGetAbsoluteTime();
-	for (int i = 0; i < cycles; i++) {
-		gen_quatrotatevector(gen_out, obj.Rot, pt);
-	}
-	stop = OGGetAbsoluteTime();
-	TEST_PRINTF("gen: %f %f %f (%f)\n", gen_out[0], gen_out[1], gen_out[2], stop - start);
-
-	start = OGGetAbsoluteTime();
-	for (int i = 0; i < cycles; i++) {
-		quatrotatevector(out, obj.Rot, pt);
-	}
-	stop = OGGetAbsoluteTime();
-
-	TEST_PRINTF("%f %f %f (%f)\n", out[0], out[1], out[2], stop - start);
-}
-
-void check_invert() {
-	SurvivePose obj = random_pose();
-	SurvivePose gen_inv, inv;
-	gen_invert_pose(gen_inv.Pos, &obj);
-	InvertPose(&inv, &obj);
-
-	print_pose(&gen_inv);
-	print_pose(&inv);
-}
-#endif
-
 TEST(Generated, reproject_gen2_vals) {
 	BaseStationData bsd = { 0 };
 	double cal[] = {-0.047119140625, 0, 0.15478515625, 2.369140625, -0.00440216064453125, 0.4765625, -0.1766357421875};
@@ -674,6 +638,37 @@ size_t generate_reproject_input(FLT *out) {
 	}
 	return sizeof(struct reproject_input);
 }
+
+struct reproject_input_axisangle {
+	LinmathAxisAnglePose p;
+	BaseStationCal fcal[2];
+	LinmathAxisAnglePose  world2lh;
+	LinmathPoint3d pt;
+};
+size_t generate_pose(FLT* out) {
+	if (out != 0) {
+		SurvivePose * p = (SurvivePose *)out;
+		*p = random_pose();
+	}
+	return sizeof(SurvivePose);
+}
+size_t generate_reproject_input_axisangle(FLT *out) {
+	if (out != 0) {
+		struct reproject_input _s;
+		generate_reproject_input((FLT*)&_s);
+
+		struct reproject_input_axisangle *s = (struct reproject_input_axisangle *)out;
+		memcpy(s->pt, _s.pt, sizeof(s->pt));
+		memcpy(s->fcal, _s.fcal, sizeof(s->fcal));
+		memcpy(s->p.Pos, _s.p.Pos, sizeof(s->p.Pos));
+		memcpy(s->world2lh.Pos, _s.p.Pos, sizeof(s->world2lh.Pos));
+		quattoaxisanglemag(s->p.AxisAngleRot, _s.p.Rot);
+		quattoaxisanglemag(s->world2lh.AxisAngleRot, _s.world2lh.Rot);
+
+	}
+	return sizeof(struct reproject_input_axisangle);
+}
+
 
 static void general_gen_reproject_x_gen2(FLT *out, const FLT *_input) {
 	struct reproject_input *input = (struct reproject_input *)_input;
@@ -880,3 +875,95 @@ gen_function_def reproject_axis_y_def = {
 	}};
 
 TEST(Generated, reproject_axis_y) { return test_gen_function_def(&reproject_axis_y_def); }
+
+
+static void general_gen_reproject_xy(FLT *out, const FLT *_input) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	gen_reproject_xy(out, input->fcal, input->pt);
+}
+static void general_reproject_xy(FLT *out, const FLT *_input) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	survive_reproject_xy(input->fcal, input->pt, out);
+}
+
+static void general_gen_reproject_xy_jac_sensor_pt(FLT *out, const FLT *_input) {
+	struct reproject_input *input = (struct reproject_input *)_input;
+	gen_reproject_xy_jac_sensor_pt(out, input->fcal, input->pt);
+}
+
+gen_function_def reproject_xy_def = {
+	.name = "reproject_xy",
+	.generated = general_gen_reproject_xy,
+	.check = general_reproject_xy,
+	.generate_inputs = generate_reproject_input,
+	.outputs = 2,
+	.jacobians = {
+		{.suffix = "sensor_pt",
+		 .jacobian_start_idx = offsetof(struct reproject_input, pt) / sizeof(FLT),
+		 .jacobian = general_gen_reproject_xy_jac_sensor_pt, .jacobian_length = 3
+		},
+	}};
+
+TEST(Generated, reproject_xy) { return test_gen_function_def(&reproject_xy_def); }
+
+static void general_reproject_axisangle(FLT *out, const FLT *_input) {
+	struct reproject_input_axisangle *input = (struct reproject_input_axisangle *)_input;
+	survive_reproject_full_axisangle(input->fcal, &input->world2lh, &input->p, input->pt, out);
+}
+
+static void general_gen_reproject_xy_axisangle(FLT *out, const FLT *_input) {
+	struct reproject_input_axisangle *input = (struct reproject_input_axisangle *)_input;
+	gen_reproject_axis_angle(out, &input->p, input->pt, &input->world2lh, input->fcal);
+}
+static void general_gen_reproject_xy_jac_lh_axis_angle(FLT *out, const FLT *_input) {
+	struct reproject_input_axisangle *input = (struct reproject_input_axisangle *)_input;
+	gen_reproject_jac_lh_p_axis_angle(out, &input->p, input->pt, &input->world2lh, input->fcal);
+}
+static void general_gen_reproject_xy_jac_obj_axis_angle(FLT *out, const FLT *_input) {
+	struct reproject_input_axisangle *input = (struct reproject_input_axisangle *)_input;
+	gen_reproject_jac_obj_p_axis_angle(out, &input->p, input->pt, &input->world2lh, input->fcal);
+}
+
+gen_function_def reproject_axis_angle = {
+	.name = "reproject_axis_angle",
+	.generated = general_gen_reproject_xy_axisangle,
+	.check = general_reproject_axisangle,
+	.generate_inputs = generate_reproject_input_axisangle,
+	.outputs = 2,
+	.jacobians = {
+		{.suffix = "lh", .jacobian = general_gen_reproject_xy_jac_lh_axis_angle,
+		 .jacobian_start_idx = offsetof(struct reproject_input_axisangle, world2lh) / sizeof(FLT),
+		 .jacobian_length = 7},
+		{.suffix = "obj", .jacobian = general_gen_reproject_xy_jac_obj_axis_angle,
+			.jacobian_start_idx = offsetof(struct reproject_input_axisangle, p) / sizeof(FLT),
+			.jacobian_length = 7},
+	}};
+
+TEST(Generated, reproject_axisangle) { return test_gen_function_def(&reproject_axis_angle); }
+
+
+void general_invert_pose(FLT* out, const FLT* in) {
+	SurvivePose* p = (SurvivePose *)in;
+	InvertPose((LinmathPose *)out, p);
+}
+void general_gen_invert_pose(FLT* out, const FLT* in) {
+	SurvivePose* p = (SurvivePose *)in;
+	gen_invert_pose(out, p);
+}
+void general_gen_invert_pose_jac_obj_p(FLT* out, const FLT* in) {
+	SurvivePose* p = (SurvivePose *)in;
+	gen_invert_pose_jac_obj_p(out, p);
+}
+
+
+gen_function_def invert_pose_def = {
+	.name = "invert_pose",
+	.generated = general_gen_invert_pose,
+	.check = general_invert_pose,
+	.generate_inputs = generate_pose,
+	.outputs = 7,
+	.jacobians = {
+		{.suffix = "obj", .jacobian = general_gen_invert_pose_jac_obj_p, .jacobian_length = 7},
+	}};
+
+TEST(Generated, invert_pose) { return test_gen_function_def(&invert_pose_def); }

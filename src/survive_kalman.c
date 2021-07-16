@@ -71,12 +71,16 @@ SURVIVE_EXPORT void survive_kalman_state_reset(survive_kalman_state_t *k) {
 	sv_print_mat(k, "initial Pk_k", &k->P, true);
 }
 
+static void transition_is_identity(FLT t, struct SvMat *f_out, const struct SvMat *x0) {
+	sv_eye(f_out, 0);
+}
+
 void survive_kalman_state_init(survive_kalman_state_t *k, size_t state_cnt, kalman_transition_fn_t F,
 							   kalman_process_noise_fn_t q_fn, void *user, FLT *state) {
 	memset(k, 0, sizeof(*k));
 
 	k->state_cnt = (int)state_cnt;
-	k->F_fn = F;
+	k->F_fn = F ? F : transition_is_identity;
 	k->Q_fn = q_fn ? q_fn : user_is_q;
 
 	k->P = svMat(k->state_cnt, k->state_cnt, 0);

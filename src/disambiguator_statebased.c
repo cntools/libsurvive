@@ -617,7 +617,7 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 				SV_WARN("Drift in timecodes %s %u", survive_colorize(d->so->codename), delta);
 			}
 			d->mod_offset[LS_Params[d->state].lh] = new_offset;
-			DEBUG_TB("New offset %d (%d)", new_offset, delta);
+			DEBUG_TB("New offset %2d %d (%d)", LS_Params[d->state].lh, new_offset, delta);
 			// Figure out if it looks more like it has data or doesn't. We need this for OOX
 			int lengthData = ACODE_TIMING(LSParam_acode(d->state) | DATA_BIT);
 			int lengthNoData = ACODE_TIMING(LSParam_acode(d->state));

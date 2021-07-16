@@ -22,7 +22,7 @@ SurviveObject *survive_create_device(SurviveContext *ctx, const char *driver_nam
 
 	memcpy(device->drivername, driver_name, strlen(driver_name));
 	memcpy(device->codename, device_name, strlen(device_name));
-	for (int i = 0; i < ctx->objs_ct; i++) {
+	for (int i = 0; ctx && i < ctx->objs_ct; i++) {
 		if (memcmp(device->codename, ctx->objs[i]->codename, sizeof(driver_name)) == 0) {
 			i = 0;
 			device->codename[2]++;
