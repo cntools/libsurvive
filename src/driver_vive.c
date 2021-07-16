@@ -1004,7 +1004,7 @@ static ButtonQueueEntry *incrementAndPostButtonQueue(SurviveObject *so) {
 
 	ButtonQueueEntry *entry = &(ctx->buttonQueue.entry[ctx->buttonQueue.nextWriteIndex]);
 
-	SV_VERBOSE(100, "%s Button event %s %d %s %f", survive_colorize_codename(so),
+	SV_VERBOSE(110, "%s Button event %s %d %s %f", survive_colorize_codename(so),
 			   SurviveInputEventStr(entry->eventType), entry->buttonId,
 			   SurviveAxisStr(so->object_subtype, entry->ids[0]), entry->axisValues[0]);
 
@@ -1694,7 +1694,7 @@ static void handle_battery(SurviveObject *w, uint8_t batStatus) {
 		w->charging = charging;
 		w->charge = percent;
 		SurviveContext *ctx = w->ctx;
-		SV_VERBOSE(100, "%s Battery charge %d%%(%s)", w->codename, percent, charging ? "Charging" : "Not charging");
+		SV_VERBOSE(110, "%s Battery charge %d%%(%s)", w->codename, percent, charging ? "Charging" : "Not charging");
 	}
 }
 
