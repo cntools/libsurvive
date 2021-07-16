@@ -35,7 +35,7 @@ void survive_kalman_lighthouse_report(SurviveKalmanLighthouse *tracker) {
 
 	if (tracker->lh != 0) {
 		survive_recording_write_to_output(tracker->ctx->recptr, "SPHERE lh_conf_size_%d %f %d " Point3_format "\n",
-										  tracker->lh, norm3d(var_diag), 0xFF,
+										  tracker->lh, roundf(100. * norm3d(var_diag)) / 100., 0xFF,
 										  LINMATH_VEC3_EXPAND(lighthouse2world.Pos));
 	}
 
@@ -235,26 +235,35 @@ SURVIVE_EXPORT void survive_kalman_lighthouse_integrate_observation(SurviveKalma
 	SV_CREATE_STACK_MAT(H, 7, tracker->model.state_cnt);
 
 	size_t state_cnt = tracker->model.state_cnt;
-	for (int i = 0; i < state_cnt; i++) {
-		svMatrixSet(&H, i, i, 1);
-	}
+	sv_set_diag_val(&H, 1);
 	FLT variance[7] = {.1, .1, .1, .01, .01, .01, .01};
 	if (_variance) {
 		memcpy(variance, _variance, sizeof(variance));
 	}
+	FLT v = normnd2(variance, 7);
 
+	if (v > 0) {
 #ifdef TRACK_IN_WORLD2LH
-	SurvivePose Z = InvertPoseRtn(pose);
+		SurvivePose Z = InvertPoseRtn(pose);
 #else
-	SurvivePose Z = *pose;
+		SurvivePose Z = *pose;
 #endif
-	SvMat Zp = svMat(7, 1, (void *)&Z);
-	survive_kalman_predict_update_state(0, &tracker->model, &Zp, &H, variance, 0);
+		SvMat Zp = svMat(7, 1, (void *)&Z);
+		survive_kalman_predict_update_state(0, &tracker->model, &Zp, &H, variance, 0);
 
-	if (tracker->lh == 1) {
-		// sv_set_constant(&tracker->model.P, 0);
-		svMatrixSet(&tracker->model.P, 0, 0, 0);
-		svMatrixSet(&tracker->model.P, 1, 1, 0);
+		if (tracker->lh == 1) {
+			// sv_set_constant(&tracker->model.P, 0);
+			svMatrixSet(&tracker->model.P, 0, 0, 0);
+			svMatrixSet(&tracker->model.P, 1, 1, 0);
+		}
+	} else {
+		tracker->state = *pose;
+		sv_set_constant(&tracker->model.P, 1e-10);
 	}
 	survive_kalman_lighthouse_report(tracker);
+}
+void survive_kalman_lighthouse_free(SurviveKalmanLighthouse *tracker) {
+	SurviveKalmanLighthouse_detach_config(tracker->ctx, tracker);
+	survive_kalman_state_free(&tracker->model);
+	free(tracker);
 }

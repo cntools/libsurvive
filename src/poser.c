@@ -66,7 +66,7 @@ void PoserData_poser_pose_func_with_velocity(PoserData *poser_data, SurviveObjec
 }
 
 void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse,
-									SurvivePose *lighthouse_pose, SurvivePose *object_pose) {
+									SurvivePose *lighthouse_pose, FLT var, SurvivePose *object_pose) {
 	if (poser_data && poser_data->lighthouseposeproc) {
 		for (int i = 0; i < 7; i++)
 			assert(!isnan(((FLT *)lighthouse_pose)[i]));
@@ -170,7 +170,17 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 		for (int i = 0; i < 7; i++)
 			assert(!isnan(((FLT *)&lighthouse2world)[i]));
 
-		survive_kalman_lighthouse_integrate_observation(so->ctx->bsd[lighthouse].tracker, lighthouse_pose, 0);
+		FLT p_var = .1, r_var = .01;
+
+		if (var > 0) {
+			// Var is a measure of how much the data going into the computation was varied; so scale
+			p_var = M_PI / var * .0001;
+			r_var = M_PI / var * .00001;
+		} else if (var == 0) {
+			p_var = r_var = 0;
+		}
+		FLT obs_var[7] = {p_var, p_var, p_var, r_var, r_var, r_var, r_var};
+		survive_kalman_lighthouse_integrate_observation(so->ctx->bsd[lighthouse].tracker, lighthouse_pose, obs_var);
 	}
 }
 
@@ -232,7 +242,7 @@ void PoserData_normalize_scene(SurviveContext *ctx, SurvivePose *lighthouse_pose
 }
 
 void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so, SurvivePose *lighthouse_pose,
-									 uint32_t lighthouse_count, SurvivePose *object_pose) {
+									 FLT *variances, uint32_t lighthouse_count, SurvivePose *object_pose) {
 
 	if (poser_data && poser_data->lighthouseposeproc) {
 		for (int lighthouse = 0; lighthouse < lighthouse_count; lighthouse++) {
@@ -290,7 +300,8 @@ void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so, S
 				ApplyPoseToPose(&lh2world, &object2World, &lh2object);
 			}
 
-			PoserData_lighthouse_pose_func(poser_data, so, lh, &lh2world, &object2World);
+			PoserData_lighthouse_pose_func(poser_data, so, lh, &lh2world, variances ? variances[lh] : -1,
+										   &object2World);
 		}
 
 		if (hapticOnCalibrate) {

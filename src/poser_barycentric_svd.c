@@ -219,7 +219,7 @@ void solve_global_scene(struct SurviveObject *so, PoserDataSVD *dd, PoserDataGlo
 					SurvivePose lh2world;
 					ApplyPoseToPose(&lh2world, &obj2world, &lh2obj);
 
-					PoserData_lighthouse_pose_func(&gss->hdr, so, lh, &lh2world, 0);
+					PoserData_lighthouse_pose_func(&gss->hdr, so, lh, &lh2world, -1, 0);
 				} else if (needsObject) {
 					SurvivePose world2lh = gss->world2lhs[lh];
 					SurvivePose lh2world = InvertPoseRtn(&world2lh);
@@ -367,7 +367,7 @@ int PoserBaryCentricSVD(SurviveObject *so, void **user, PoserData *pd) {
 			}
 
 			if (solved) {
-				PoserData_lighthouse_poses_func(pd, so, lh2world, so->ctx->activeLighthouses, &obj2world);
+				PoserData_lighthouse_poses_func(pd, so, lh2world, 0, so->ctx->activeLighthouses, &obj2world);
 			}
 		}
 

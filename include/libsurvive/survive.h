@@ -248,7 +248,7 @@ struct BaseStationData {
 	BaseStationCal fcal[2];
 
 	uint8_t sys_unlock_count;
-	int8_t accel[3]; //"Up" vector
+	LinmathPoint3d accel; //"Up" vector
 	uint8_t mode;
 
 	FLT confidence;

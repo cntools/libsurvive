@@ -917,6 +917,8 @@ void survive_close(SurviveContext *ctx) {
 
 	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
 		survive_ootx_free_decoder_context(ctx, i);
+		survive_kalman_lighthouse_free(ctx->bsd[i].tracker);
+		ctx->bsd[i].tracker = 0;
 	}
 
 	survive_output_callback_stats(ctx);

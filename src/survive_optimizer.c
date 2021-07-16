@@ -512,7 +512,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 
 		if (up_idx < mpfunc_ctx->poseLength) {
 			LinmathAxisAnglePose *pose = (LinmathAxisAnglePose *)(&survive_optimizer_get_pose(mpfunc_ctx)[up_idx]);
-			normalize3d(up, mpfunc_ctx->sos[up_idx]->activations.accel);
+			copy3d(up, mpfunc_ctx->obj_up_vectors[up_idx]);
 			copy3d(rot, pose->AxisAngleRot);
 
 			error = gen_obj2world_aa_up_err(pose->AxisAngleRot, up);
@@ -520,10 +520,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			gen_obj2world_aa_up_err_jac_axis_angle(deriv, pose->AxisAngleRot, up);
 		} else {
 			size_t lh = up_idx - mpfunc_ctx->poseLength;
-			int8_t *accel = mpfunc_ctx->sos[0]->ctx->bsd[lh].accel;
-			for (int i = 0; i < 3; i++)
-				up[i] = accel[i];
-			normalize3d(up, up);
+			normalize3d(up, mpfunc_ctx->obj_up_vectors[up_idx]);
 
 			LinmathAxisAnglePose *world2lh = (LinmathAxisAnglePose *)&cameras[lh];
 			scale3d(rot, world2lh->AxisAngleRot, -1);
@@ -861,8 +858,11 @@ SURVIVE_EXPORT void survive_optimizer_setup_buffers(survive_optimizer *ctx, void
 	memset(so_buffer, 0, sizeof(SurviveObject *) * ctx->poseLength);
 
 	ctx->measurements = (survive_optimizer_measurement *)(measurements_buffer);
-	memset(ctx->measurements, 0,
-		   ctx->poseLength * sizeof(survive_optimizer_measurement) * 2 * sensor_cnt * NUM_GEN2_LIGHTHOUSES);
+	size_t measurementAllocSize =
+		ctx->poseLength * sizeof(survive_optimizer_measurement) * 2 * sensor_cnt * NUM_GEN2_LIGHTHOUSES;
+	memset(ctx->measurements, 0, measurementAllocSize);
+	ctx->obj_up_vectors = measurements_buffer + measurementAllocSize;
+	ctx->cam_up_vectors = ctx->obj_up_vectors + ctx->poseLength;
 	memset(ctx->parameters_info, 0, sizeof(mp_par) * par_count);
 	for (int i = 0; i < survive_optimizer_get_parameters_count(ctx); i++) {
 		ctx->parameters_info[i].fixed = 1;

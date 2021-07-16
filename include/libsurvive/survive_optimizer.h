@@ -32,6 +32,9 @@ typedef struct survive_optimizer {
 	survive_optimizer_measurement *measurements;
 	size_t measurementsCnt;
 
+	LinmathPoint3d *obj_up_vectors;
+	LinmathPoint3d *cam_up_vectors;
+
 	FLT upVectorBias;
 	FLT current_bias;
 	SurvivePose initialPose;
@@ -65,9 +68,10 @@ typedef struct survive_optimizer {
 		size_t sensor_cnt = 32;                                                                                        \
 		void *param_buffer = alloc_fn(((ctx).parameters), par_count * sizeof(FLT));                                    \
 		void *param_info_buffer = alloc_fn(((ctx).parameters_info), par_count * sizeof(struct mp_par_struct));         \
-		void *measurement_buffer =                                                                                     \
-			alloc_fn(((ctx).measurements), (ctx).poseLength * sizeof(survive_optimizer_measurement) * 2 * sensor_cnt * \
-											   NUM_GEN2_LIGHTHOUSES);                                                  \
+		size_t measurementAllocationSize =                                                                             \
+			(ctx).poseLength * sizeof(survive_optimizer_measurement) * 2 * sensor_cnt * NUM_GEN2_LIGHTHOUSES;          \
+		size_t upAllocationSize = sizeof(LinmathPoint3d) * ((ctx).poseLength + (ctx).cameraLength);                    \
+		void *measurement_buffer = alloc_fn(((ctx).measurements), measurementAllocationSize + upAllocationSize);       \
 		void *sos_buffer = alloc_fn((ctx).sos, sizeof(SurviveObject *) * (ctx).poseLength);                            \
 		survive_optimizer_setup_buffers(&(ctx), param_buffer, param_info_buffer, measurement_buffer, sos_buffer);      \
 		SurviveObject *sos[] = {__VA_ARGS__};                                                                          \

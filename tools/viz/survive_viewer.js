@@ -595,11 +595,14 @@ var polys = {};
 function add_sphere(v) {
 	var fv = v.map(parseFloat);
 
-	var geometry = new THREE.SphereGeometry(fv[3], 4, 4);
 	var name = v[2];
 
 	scene.remove(polys[name]);
 
+	if (fv[3] <= 1e-5)
+		return;
+
+	var geometry = new THREE.SphereGeometry(fv[3], 4, 4);
 	var material =
 		new THREE.MeshBasicMaterial({color : fv[4], opacity : .5, transparent : true, side : THREE.DoubleSide});
 

@@ -22,5 +22,6 @@ typedef struct SurviveKalmanLighthouse {
 SURVIVE_EXPORT void survive_kalman_lighthouse_integrate_light(SurviveKalmanLighthouse *tracker, SurviveObject *so,
 															  PoserDataLight *data);
 SURVIVE_EXPORT void survive_kalman_lighthouse_init(SurviveKalmanLighthouse *tracker, SurviveContext *ctx, int lh);
+SURVIVE_EXPORT void survive_kalman_lighthouse_free(SurviveKalmanLighthouse *tracker);
 SURVIVE_EXPORT void survive_kalman_lighthouse_integrate_observation(SurviveKalmanLighthouse *tracker,
 																	const SurvivePose *pose, const FLT *variance);
