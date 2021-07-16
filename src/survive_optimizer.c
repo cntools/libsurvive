@@ -201,14 +201,23 @@ static inline void run_pair_measurement(survive_optimizer *mpfunc_ctx, size_t me
 
 	FLT out[2];
 	reprojectModel->reprojectXY(cal, sensorPtInLH, out);
-
-	deviates[0] = (out[meas[0].axis] - meas[0].value) / meas[0].variance;
-	deviates[1] = (out[meas[1].axis] - meas[1].value) / meas[1].variance;
+	assert(meas[0].axis == 0);
+	assert(meas[1].axis == 1);
+#ifndef NDEBUG
+	if (reprojectModel->reprojectAxisangleFullXyFn[0]) {
+		FLT check[] = {reprojectModel->reprojectAxisangleFullXyFn[0](pose, pt, world2lh, cal),
+					   reprojectModel->reprojectAxisangleFullXyFn[1](pose, pt, world2lh, cal + 1)};
+		for (int i = 0; i < 2; i++)
+			assert(fabs(check[i] - out[i]) < 1e-5);
+	}
+#endif
 
 	FLT MAX_DEVIATE = LINMATHPI;
-	for (int i = 0; i < 2; i++)
+	for (int i = 0; i < 2; i++) {
+		deviates[i] = (out[i] - meas[i].value) / meas[i].variance;
 		if (!isfinite(deviates[i]))
 			deviates[i] = MAX_DEVIATE;
+	}
 
 	if (derivs) {
 		int jac_offset_lh = (lh + mpfunc_ctx->poseLength) * 7;
@@ -336,7 +345,7 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 			meas->invalid = true;
 			optimizer->stats.dropped_meas_cnt++;
 
-			SV_VERBOSE(105, "Ignoring noisy data at lh %d sensor %d axis %d val %f (%7.7f/%7.7f) %7.7f %7.7f", meas->lh,
+			SV_VERBOSE(100, "Ignoring noisy data at lh %d sensor %d axis %d val %f (%7.7f/%7.7f) %7.7f %7.7f", meas->lh,
 					   meas->sensor_idx, meas->axis, meas->value, fabs(deviates[i]), avg_dev, P, chauvenet_criterion);
 
 			deviates[i] = 0.;
@@ -481,9 +490,6 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 		// sensorPtInLH once
 		const bool nextIsPair = i + 1 < m && meas[0].axis == 0 && meas[1].axis == 1 &&
 								meas[0].sensor_idx == meas[1].sensor_idx && !meas[1].invalid;
-
-		LinmathPoint3d sensorPtInLH;
-		ApplyAxisAnglePoseToPoint(sensorPtInLH, &obj2lh[lh], pt);
 
 		if (nextIsPair) {
 			run_pair_measurement(mpfunc_ctx, i, reprojectModel, meas, pose, &obj2lh[lh], world2lh, deviates + i,

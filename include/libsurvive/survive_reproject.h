@@ -48,6 +48,11 @@ typedef void (*survive_reproject_axisangle_full_jac_obj_pose_fn_t)(FLT *out, con
 typedef survive_reproject_axisangle_axis_jacob_fn_t survive_reproject_axisangle_full_jac_lh_pose_fn_t;
 typedef survive_reproject_axisangle_full_jac_obj_pose_fn_t survive_reproject_axisangle_axis_jacob_lh_pose_fn_t;
 
+typedef FLT (*survive_reproject_axisangle_full_xy_fn_t)(const LinmathAxisAnglePose *obj2world,
+														const LinmathVec3d ptInObj,
+														const LinmathAxisAnglePose *world2lh,
+														const BaseStationCal *bcal);
+
 typedef struct survive_reproject_model_t {
 	survive_reproject_xy_fn_t reprojectXY;
 	survive_reproject_axis_fn_t reprojectAxisFn[2];
@@ -59,6 +64,7 @@ typedef struct survive_reproject_model_t {
 	survive_reproject_full_jac_lh_pose_fn_t reprojectFullJacLhPose;
 	survive_reproject_axis_jacob_lh_pose_fn_t reprojectAxisJacobLhPoseFn[2];
 
+	survive_reproject_axisangle_full_xy_fn_t reprojectAxisangleFullXyFn[2];
 	survive_reproject_axisangle_full_jac_obj_pose_fn_t reprojectAxisAngleFullJacObjPose;
 	survive_reproject_axisangle_axis_jacob_fn_t reprojectAxisAngleAxisJacobFn[2];
 
@@ -89,6 +95,9 @@ SURVIVE_EXPORT void survive_reproject_full_y_jac_obj_pose(SurviveAngleReading ou
 
 SURVIVE_EXPORT void survive_reproject_full(const BaseStationCal *bcal, const SurvivePose *world2lh, const SurvivePose *obj2world,
 							const LinmathVec3d ptInObj, SurviveAngleReading out);
+SURVIVE_EXPORT void survive_reproject_full_axisangle(const BaseStationCal *bcal, const LinmathAxisAnglePose *world2lh,
+													 const LinmathAxisAnglePose *obj2world, const LinmathVec3d ptInObj,
+													 SurviveAngleReading out);
 
 // This is given a lighthouse -- in the same system as stored in BaseStationData, and
 // a 3d point and finds what the effective 'angle' value for a given lighthouse system

@@ -213,8 +213,8 @@ static inline void svMatrixSet(SvMat *mat, int row, int col, FLT value) {
 }
 
 static inline void sv_get_diag(const struct SvMat *m, FLT *v, size_t cnt) {
-	for (int i = 0; i < cnt; i++) {
-			v[i] = svMatrixGet(m, i, i);
+	for (size_t i = 0; i < cnt; i++) {
+		v[i] = svMatrixGet(m, i, i);
 	}
 }
 static inline void sv_set_diag(struct SvMat *m, const FLT *v) {
