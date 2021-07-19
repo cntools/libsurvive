@@ -119,8 +119,6 @@ function add_lighthouse(idx, p, q) {
 	scene.add(group);
 }
 
-function run_planes() {}
-
 function get_bvalue(key) {
 	var bvalue_array = {"WW0" : "FF", "TR0" : "00"};
 	var bvalue = bvalue_array[key];
@@ -219,9 +217,19 @@ function redrawCanvas(when) {
 	}
 
 	ctx.strokeStyle = "#ffffff";
-	ctx.beginPath();
+
 	for (var x = -fov_degrees; x < fov_degrees; x += 10) {
-		var length = Math.abs(x) == 60 ? 60 : (Math.abs(x) == 0 ? canvas.width : 10);
+		var length = 10;
+		ctx.beginPath();
+		ctx.setLineDash([])
+		if (Math.abs(x) === 60) {
+			length = canvas.width;
+			ctx.setLineDash([ 5, 15 ])
+		}
+		else if (Math.abs(x) === 0) {
+			length = canvas.width;
+			ctx.setLineDash([ 1, 15 ])
+		}
 
 		ctx.moveTo(rad_to_x(x / 180 * Math.PI), 0);
 		ctx.lineTo(rad_to_x(x / 180 * Math.PI), length);
@@ -234,9 +242,8 @@ function redrawCanvas(when) {
 
 		ctx.moveTo(canvas.width, rad_to_x(x / 180 * Math.PI));
 		ctx.lineTo(canvas.width - length, rad_to_x(x / 180 * Math.PI));
+		ctx.stroke();
 	}
-
-	ctx.stroke();
 
 	for (var key in angles) {
 		for (var lh = 0; lh < 16; lh++) {
@@ -464,6 +471,27 @@ $(function() { $("#imu").change(update_show_imu); });
 function update_fpv() { useFPV = this.checked; }
 $(function() { $("#fpv").change(update_fpv); });
 
+function set_object_position(obj, name = null) {
+	var objr = objs[name ?? obj.tracker];
+
+	objr.group.position.set(obj.position[0], obj.position[1], obj.position[2]);
+	objr.group_rot.quaternion.set(obj.quat[1], obj.quat[2], obj.quat[3], obj.quat[0]);
+	objr.group.verticesNeedUpdate = true;
+	objr.group_rot.verticesNeedUpdate = true;
+
+	if ("HMD" === obj.tracker || "T20" == obj.tracker) {
+		var up = new THREE.Vector3(0, 1, 0);
+		var out = new THREE.Vector3(0, 0, -1);
+
+		fpv_camera.up = up.applyQuaternion(objr.group_rot.quaternion);
+		var lookAt = out.applyQuaternion(objr.group_rot.quaternion);
+		lookAt.add(objr.position);
+
+		fpv_camera.position.set(obj.position[0], obj.position[1], obj.position[2]);
+		fpv_camera.lookAt(lookAt);
+	}
+}
+
 function update_velocity(v) {
 	var obj = {
 		tracker : v[1],
@@ -508,10 +536,7 @@ function update_object(v, allow_unsetup, external) {
 		}
 		objr.poseCnt++;
 
-		objr.group.position.set(obj.position[0], obj.position[1], obj.position[2]);
-		objr.group_rot.quaternion.set(obj.quat[1], obj.quat[2], obj.quat[3], obj.quat[0]);
-		objr.group.verticesNeedUpdate = true;
-		objr.group_rot.verticesNeedUpdate = true;
+		set_object_position(obj);
 
 		if (objr.sensorref)
 			objr.sensorref.visible = showModel;
@@ -535,33 +560,26 @@ function update_object(v, allow_unsetup, external) {
 			record_position(obj.tracker, time, obj);
 		}
 
-		if ("HMD" === obj.tracker || "T20" == obj.tracker) {
-			var up = new THREE.Vector3(0, 1, 0);
-			var out = new THREE.Vector3(0, 0, -1);
-
-			fpv_camera.up = up.applyQuaternion(objr.group_rot.quaternion);
-			var lookAt = out.applyQuaternion(objr.group_rot.quaternion);
-			lookAt.add(objr.position);
-
-			fpv_camera.position.set(obj.position[0], obj.position[1], obj.position[2]);
-			fpv_camera.lookAt(lookAt);
-		}
 	}
 }
 
 var position_history = {};
 var max_time = 0;
 function record_position(name, time, position) {
+	if (isNaN(time))
+		return;
+
 	max_time = Math.max(max_time, time);
-	if (position_history[name] == undefined)
-		position_history[name] = [];
+	$("#time")[0].max = max_time
+	if (position_history[name] === undefined)
+	position_history[name] = [];
 	position_history[name].push({time : time, position : position});
 }
 
 $(function() {
 	tooltip = $("#tooltip");
-	$("#time").on('change mousemove', function(event, ui) {
-		var time = $("#time").val() * max_time / 100.;
+	$("#time").on('change', function(event, ui) {
+		var time = $("#time").val()
 
 		var names = Object.keys(position_history);
 		for (var i = 0; i < names.length; i++) {
@@ -572,9 +590,7 @@ $(function() {
 				;
 
 			var obj = position_history[name][j].position;
-			objs[name].position.set(obj.position[0], obj.position[1], obj.position[2]);
-			objs[name].quaternion.set(obj.quat[1], obj.quat[2], obj.quat[3], obj.quat[0]);
-			objs[name].verticesNeedUpdate = true;
+			set_object_position(obj, name);
 		}
 	});
 });
@@ -859,7 +875,7 @@ function init() {
 	camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
 	camera.up = new THREE.Vector3(0, 0, 1);
 
-	fpv_camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, .1, FAR);
+	fpv_camera = new THREE.PerspectiveCamera(VIEW_ANGLE * 2, ASPECT, .1, FAR);
 	scene.add(fpv_camera);
 
 	// add the camera to the scene
