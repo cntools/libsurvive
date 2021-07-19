@@ -3,7 +3,7 @@
 #include "survive_kalman_tracker.h"
 #include "survive_recording.h"
 
-#define TIMECENTER_TICKS (200000 - 4500) // for now.
+#define TICKS_PER_ROTATION 400000
 
 void survive_default_light_pulse_process(SurviveObject *so, int sensor_id, int acode, survive_timecode timecode,
 										 FLT length, uint32_t lh) {}
@@ -63,18 +63,17 @@ void survive_default_light_process(SurviveObject *so, int sensor_id, int acode, 
 	if (sensor_id < 0)
 		return;
 
-	if (timeinsweep > 2 * TIMECENTER_TICKS) {
+	if (timeinsweep > TICKS_PER_ROTATION) {
 		SV_WARN("Disambiguator gave invalid timeinsweep %s %u", so->codename, timeinsweep);
 		return;
 	}
 
-	FLT centered_timeinsweep = (timeinsweep - TIMECENTER_TICKS);
-	FLT angle = centered_timeinsweep * (LINMATHPI_2 / TIMECENTER_TICKS);
+	FLT angle = timeinsweep * (LINMATHPI / TICKS_PER_ROTATION) - LINMATHPI_2;
 	assert(angle >= -LINMATHPI && angle <= LINMATHPI);
-	// time / center - pi / 2
 
-	SV_DATA_LOG("angle_sweep[%d][%d][%d]", &centered_timeinsweep, 1, sensor_id, lh, acode & 1);
-	SV_VERBOSE(600, "%s Sweep %2d.%2d.%d %8u %f %f %u", survive_colorize_codename(so), sensor_id, lh, acode & 1, timecode, angle, centered_timeinsweep, timeinsweep);
+	SV_DATA_LOG("angle_sweep[%d][%d][%d]", &angle, 1, sensor_id, lh, acode & 1);
+	SV_VERBOSE(600, "%s Sweep %2d.%2d.%d %8u %f %u", survive_colorize_codename(so), sensor_id, lh, acode & 1, timecode,
+			   angle, timeinsweep);
 	SURVIVE_INVOKE_HOOK_SO(angle, so, sensor_id, acode, timecode, length_sec, angle, lh);
 }
 

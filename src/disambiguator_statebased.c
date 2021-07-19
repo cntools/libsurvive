@@ -669,21 +669,21 @@ static void ProcessStateChange(Disambiguator_data_t *d, const LightcapElement *l
 			SV_DATA_LOG("sweep[%d][%d].maxl", &maxl_f, 1, lh, LSParam_acode(d->state) & 1);
 			SV_DATA_LOG("sweep[%d][%d].minl", &minl_f, 1, lh, LSParam_acode(d->state) & 1);
 
+			int acode = LSParam_acode(d->state);
 			for (int i = 0; i < d->so->sensor_ct; i++) {
 				const LightcapElement *le = &d->sweep_data[i];
 				// Only care if we actually have data AND we have a time of last sync. We won't have the latter
 				// if we synced with the LH at certain times.
 				if (le->length > 0 && le->length >= minl && le->length <= maxl) {
 					int le_offset = apply_mod_offset(le->timestamp + le->length / 2, d->mod_offset[lh], end_of_mod);
-					int32_t offset_from = le_offset - LSParam_offset_for_state(d->state - 1 - lh) - 1000 + 100;
-					if (lh)
-						offset_from += 3500;
+					int32_t offset_from = le_offset - LSParam_offset_for_state(d->state - 1 - lh);
+					//					if(acode & 1)
+					//						offset_from += 20000;
 
 					assert(offset_from > 0);
 					// Send the lightburst out.
 					if (d->confidence > 80) {
-						SURVIVE_INVOKE_HOOK_SO(light, d->so, i, LSParam_acode(d->state), offset_from, le->timestamp,
-											   le->length, lh);
+						SURVIVE_INVOKE_HOOK_SO(light, d->so, i, acode, offset_from, le->timestamp, le->length, lh);
 						d->stats.sweep_hit_count++;
 					} else {
 						d->stats.drop_sweeps++;
@@ -742,7 +742,7 @@ static void PropagateState(Disambiguator_data_t *d, const LightcapElement *le) {
 	if (param->is_sweep == 0) {
 		RunACodeCapture(LSParam_acode(d->state), d, le);
 	} else if (le->length > d->sweep_data[le->sensor_id].length &&
-			   le->length < 7000 /*anything above 10k seems to be bullshit?*/) {
+			   le->length < 10000 /*anything above 10k seems to be bullshit?*/) {
 		// Note we only select the highest length one per sweep. Also, we bundle everything up and send it later all at
 		// once.
 		// so that we can do this filtering. Might not be necessary?
