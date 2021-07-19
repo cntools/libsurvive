@@ -47,9 +47,12 @@ static void ootx_packet_clbk_d_gen2(ootx_decoder_context *ct, ootx_packet *packe
 
 	BaseStationData *b = &ctx->bsd[id];
 	b->OOTXChecked |= true;
+	FLT accel[3] = {v15.accel_dir[0], v15.accel_dir[1], v15.accel_dir[2]};
+	bool upChanged = dist3d(b->accel, accel) > 1e-3;
+
 	b->OOTXSet = 1;
 
-	bool doSave = b->BaseStationID != v15.id || b->OOTXSet == false;
+	bool doSave = b->BaseStationID != v15.id || b->OOTXSet == false || upChanged;
 
 	if (doSave) {
 	  SV_INFO("Got OOTX packet %d %08x", ctx->bsd[id].mode, (unsigned)v15.id);
@@ -73,6 +76,8 @@ static void ootx_packet_clbk_d_gen2(ootx_decoder_context *ct, ootx_packet *packe
 		// Although we know this already....
 		b->mode = v15.mode_current & 0x7F;
 
+		survive_reset_lighthouse_position(ctx, id);
+
 		SURVIVE_INVOKE_HOOK(ootx_received, ctx, id);
 	}
 }
@@ -89,8 +94,10 @@ static void ootx_packet_cblk_d_gen1(ootx_decoder_context *ct, ootx_packet *packe
 
 	BaseStationData *b = &ctx->bsd[id];
 	b->OOTXChecked = true;
+	FLT accel[3] = {v6.accel_dir_x, v6.accel_dir_y, v6.accel_dir_z};
+	bool upChanged = dist3d(b->accel, accel) > 1e-3;
 
-	bool doSave = b->BaseStationID != v6.id || b->OOTXSet == false;
+	bool doSave = b->BaseStationID != v6.id || b->OOTXSet == false || upChanged;
 	b->sys_unlock_count = v6.sys_unlock_count;
 	b->OOTXSet = 1;
 
@@ -112,6 +119,8 @@ static void ootx_packet_cblk_d_gen1(ootx_decoder_context *ct, ootx_packet *packe
 		b->accel[1] = v6.accel_dir_y;
 		b->accel[2] = v6.accel_dir_z;
 		b->mode = v6.mode_current;
+
+		survive_reset_lighthouse_position(ctx, id);
 
 		SURVIVE_INVOKE_HOOK(ootx_received, ctx, id);
 	}

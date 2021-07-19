@@ -278,7 +278,7 @@ bool survive_kalman_tracker_imu_measurement_model(void *user, const struct SvMat
 		SurviveKalmanTracker * tracker = fn_ctx->tracker;
 		SurviveObject * so = fn_ctx->tracker->so;
 		SurviveContext *ctx = so->ctx;
-		SV_VERBOSE(600, "X     " Point16_format, LINMATH_VEC16_EXPAND(sv_as_const_vector(x_t)))
+		SV_VERBOSE(600, "X     " Point7_format, LINMATH_VEC7_EXPAND(sv_as_const_vector(x_t)))
 		SV_VERBOSE(600, "Z     " Point6_format, LINMATH_VEC6_EXPAND(sv_as_const_vector(Z)))
 		SV_DATA_LOG("imu_prediction", h_x, 6);
 

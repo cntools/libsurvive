@@ -785,14 +785,16 @@ const void *survive_get_driver_by_closefn(const SurviveContext *ctx, DeviceDrive
 	return 0;
 }
 
+void survive_reset_lighthouse_position(SurviveContext *ctx, int bsd_idx) {
+	ctx->bsd[bsd_idx].PositionSet = false;
+	survive_kalman_tracker_lost_tracking(ctx->objs[bsd_idx]->tracker, false);
+}
+
 void survive_reset_lighthouse_positions(SurviveContext *ctx) {
 	// survive_get_ctx_lock(ctx);
 	SV_VERBOSE(100, "survive_reset_lighthouse_positions called");
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
-		ctx->bsd[i].PositionSet = false;
-	}
-	for (int i = 0; i < ctx->objs_ct; i++) {
-		survive_kalman_tracker_lost_tracking(ctx->objs[i]->tracker, false);
+		survive_reset_lighthouse_position(ctx, i);
 	}
 	// survive_release_ctx_lock(ctx);
 }
