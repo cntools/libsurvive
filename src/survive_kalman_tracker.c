@@ -67,7 +67,7 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("kalman-zvu-stationary", "", 1e-4, t->zvu_stationary_var)
 	STRUCT_CONFIG_ITEM("kalman-zvu-no-light", "", 1e-4, t->zvu_no_light_var)
 
-	STRUCT_CONFIG_ITEM("imu-acc-norm-penalty", "", 1, t->acc_norm_penalty)
+	STRUCT_CONFIG_ITEM("imu-acc-norm-penalty", "", -1, t->acc_norm_penalty)
 	STRUCT_CONFIG_ITEM("imu-acc-variance", "Variance of accelerometer", 5e-3, t->acc_var)
 	STRUCT_CONFIG_ITEM("imu-gyro-variance", "Variance of gyroscope", 5e-3, t->gyro_var)
 
