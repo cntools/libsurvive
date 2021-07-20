@@ -91,6 +91,7 @@ typedef struct MPFITData {
   const char *serialize_prefix;
   MPFITStats stats;
 
+  int record_reprojection_error;
   FLT current_bias;
   bool globalDataAvailable;
   struct survive_async_optimizer *async_optimizer;
@@ -98,17 +99,18 @@ typedef struct MPFITData {
 
 STRUCT_CONFIG_SECTION(MPFITData)
 	STRUCT_CONFIG_ITEM("mpfit-current-bias", "", 0, t->current_bias)
-END_STRUCT_CONFIG_SECTION(MPFITData)
+	STRUCT_CONFIG_ITEM("mpfit-record-reprojection-error", "", 0, t->record_reprojection_error)
+	END_STRUCT_CONFIG_SECTION(MPFITData)
 
-static size_t remove_lh_from_meas(survive_optimizer_measurement *meas, size_t meas_size, int lh) {
-	size_t rtn = meas_size;
-	for (int i = 0; i < rtn; i++) {
-		while (meas[i].lh == lh && i < rtn) {
-			meas[i] = meas[rtn - 1];
-			rtn--;
+	static size_t remove_lh_from_meas(survive_optimizer_measurement *meas, size_t meas_size, int lh) {
+		size_t rtn = meas_size;
+		for (int i = 0; i < rtn; i++) {
+			while (meas[i].lh == lh && i < rtn) {
+				meas[i] = meas[rtn - 1];
+				rtn--;
+			}
 		}
-	}
-	return rtn;
+		return rtn;
 }
 
 struct async_optimizer_user {
@@ -545,6 +547,18 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 		FLT penalty = 1. / pow(2, sensor_ct / 3.) + 1. / pow(2, axis_count * 5);
 		*out = *soLocation;
 		rtn = result->bestnorm; // + penalty;
+
+		if (d->record_reprojection_error) {
+			for (int i = 0; i < mpfitctx->measurementsCnt; i++) {
+				survive_optimizer_measurement *meas = &mpfitctx->measurements[i];
+				SurvivePose world2lh = InvertPoseRtn(&ctx->bsd[meas->lh].Pose);
+				FLT v = survive_reproject_model(ctx)->reprojectAxisFullFn[meas->axis](
+					soLocation, &so->sensor_locations[meas->sensor_idx * 3], &world2lh,
+					ctx->bsd[meas->lh].fcal + meas->axis);
+				survive_recording_write_to_output(ctx->recptr, "%s RA %d %d %f %u\r\n", so->codename, meas->sensor_idx,
+												  meas->axis, v - meas->value, meas->lh);
+			}
+		}
 
 		FLT v[] = {axis_count, lh_count, sensor_ct, rtn};
 		SV_DATA_LOG("mpfit_confidence_measures", v, 4);
