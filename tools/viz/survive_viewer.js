@@ -2,6 +2,7 @@ var objs = {};
 var visible_tolerance = 1608200 * 2;
 var downAxes = {};
 var angles = {};
+var rp_angles = {};
 var ctx;
 var canvas;
 var oldDrawTime = 0;
@@ -276,6 +277,25 @@ function redrawCanvas(when) {
 					ctx.beginPath();
 					ctx.arc(x, y, 1, 0, 2 * Math.PI);
 					ctx.stroke();
+
+					const rpx = rp_angles[key][lh][id][0], rpy = rp_angles[key][lh][id][1];
+					if (isFinite(rpx + rpy)) {
+						scale = 10;
+						var rx = rad_to_x(rpx * scale + ang[0][0])
+						var ry = rad_to_y(rpy * scale + ang[1][0])
+
+						dx = rx;
+						dy = ry;
+
+						ctx.fillStyle = "white";
+						ctx.font = "14px Arial";
+
+						ctx.strokeStyle = "#" + lhColors[lh].toString(16);
+						ctx.beginPath();
+						ctx.moveTo(x, y);
+						ctx.lineTo(dx, dy);
+						ctx.stroke();
+					}
 				}
 		}
 	}
@@ -741,6 +761,22 @@ var survive_log_handlers = {
 
 		angles[obj.tracker][obj.lighthouse][obj.sensor_id][obj.acode & 1] = [ obj.angle, obj.timecode ];
 		timecode[obj.tracker] = obj.timecode;
+	},
+	"RA" : function add_reproject_angle(v, tracker) {
+		var obj = {
+			tracker : v[1],
+			sensor_id : parseInt(v[3]),
+			axis : parseInt(v[4]),
+			angle : parseFloat(v[5]),
+			lighthouse : parseInt(v[6]),
+		};
+
+		rp_angles[obj.tracker] = rp_angles[obj.tracker] || {};
+		rp_angles[obj.tracker][obj.lighthouse] = rp_angles[obj.tracker][obj.lighthouse] || {};
+		rp_angles[obj.tracker][obj.lighthouse][obj.sensor_id] =
+			rp_angles[obj.tracker][obj.lighthouse][obj.sensor_id] || {};
+
+		rp_angles[obj.tracker][obj.lighthouse][obj.sensor_id][obj.axis] = obj.angle;
 	},
 	'LOG' : function(v) {
 		var msg = v.slice(3).join(' ');

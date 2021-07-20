@@ -21,9 +21,6 @@
       <button id="toggleBtn">
         Toggle 2D View
       </button>
-      <div id="cam" style="display:none">
-        <canvas width=800 height=800 id="camcanvas"></canvas>
-      </div>
     </div>
     <div id="fps" style="
     z-index:3;
@@ -31,6 +28,10 @@
     right:20px;
     top:10px;
 ">30fps</div>
+    <div id="cam" style="display:none;position:absolute;right:30px;top:30px;z-index: 100">
+      <canvas width=800 height=800 id="camcanvas"></canvas>
+    </div>
+
     <div id="console" style="
     width: 30%;
     min-width: 200px;
