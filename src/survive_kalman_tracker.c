@@ -123,14 +123,6 @@ static void normalize_model(SurviveKalmanTracker *pTracker) {
 	}
 }
 
-static inline void arr_eye_diag(FLT *m, int rows, int cols, const FLT *v) {
-	for (int i = 0; i < rows; i++) {
-		for (int j = 0; j < cols; j++) {
-			(m)[j * cols + i] = i == j ? (v ? v[i] : 1.) : 0.;
-		}
-	}
-}
-
 struct map_light_data_ctx {
 	SurviveKalmanTracker *tracker;
 };
@@ -761,11 +753,13 @@ void survive_kalman_tracker_reinit(SurviveKalmanTracker *tracker) {
 	FLT Rrs = tracker->obs_rot_var;
 	FLT Rps = tracker->obs_pos_var;
 	FLT Rr[] = {Rrs, Rrs, Rrs, Rrs, Rps, Rps, Rps};
-	arr_eye_diag(tracker->Obs_R, 7, 7, Rr);
+	struct SvMat ObsR = svMat(7, 7, tracker->Obs_R);
+	sv_set_diag(&ObsR, Rr);
 
 	FLT Rimu[] = {tracker->acc_var,	 tracker->acc_var,	tracker->acc_var,
 				  tracker->gyro_var, tracker->gyro_var, tracker->gyro_var};
-	arr_eye_diag(tracker->IMU_R, 6, 6, Rimu);
+	struct SvMat IMU_R = svMat(6, 6, tracker->IMU_R);
+	sv_set_diag(&IMU_R, Rimu);
 
 	FLT var_diag[SURVIVE_MODEL_MAX_STATE_CNT] = {0};
 	FLT p_threshold = survive_kalman_tracker_position_var2(tracker, var_diag, tracker->model.state_cnt);
@@ -1029,8 +1023,6 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 	tracker->last_report_time = t;
 
 	tracker->so->poseConfidence = 1. / p_threshold;
-	// SV_VERBOSE(100, Point3_format " %f", LINMATH_VEC3_EXPAND(tracker->state.Acc),
-	// quatmagnitude(tracker->state.Pose.Rot));
 	SV_VERBOSE(110, "%s confidence %7.7f", survive_colorize_codename(so), 1. / p_threshold);
 	if (so->OutPose_timecode < pd->timecode) {
 		SURVIVE_INVOKE_HOOK_SO(imupose, so, pd->timecode, &pose);
