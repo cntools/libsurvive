@@ -59,7 +59,7 @@ typedef struct SurviveKalmanTracker {
 	FLT first_imu_time, last_imu_time;
 	FLT min_report_time;
 
-	bool use_raw_obs;
+	int use_raw_obs;
 	int adaptive_imu, adaptive_lightcap, adaptive_obs, show_raw_obs;
 
 	FLT light_threshold_var, report_threshold_var, light_error_threshold;
@@ -111,8 +111,8 @@ typedef struct SurviveKalmanTracker {
 	FLT acc_scale;
 	FLT acc_bias[3];
 
-	size_t light_rampin_length;
-	bool use_error_for_lh_pos;
+	int light_rampin_length;
+	int use_error_for_lh_pos;
 
 	LightInfo savedLight[32];
 	uint32_t savedLight_idx;

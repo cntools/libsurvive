@@ -18,6 +18,63 @@
 
 #define SURVIVE_MODEL_MAX_STATE_CNT (sizeof(SurviveKalmanModel) / sizeof(FLT))
 
+// clang-format off
+STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
+	STRUCT_CONFIG_ITEM("light-error-threshold",  "Error limit to invalidate position",
+					   -1., t->light_error_threshold)
+	STRUCT_CONFIG_ITEM("min-report-time",
+					   "Minimum kalman report time in s (-1 defaults to 1. / imu_hz)", -1., t->min_report_time)
+
+	STRUCT_CONFIG_ITEM("use-adaptive-imu",  "Use adaptive kalman for IMU", 0, t->adaptive_imu)
+	STRUCT_CONFIG_ITEM("use-adaptive-lightcap",  "Use adaptive kalman for Lightcap", 0, t->adaptive_lightcap)
+	STRUCT_CONFIG_ITEM("use-adaptive-obs",  "Use adaptive kalman for observations", 0, t->adaptive_obs)
+
+	STRUCT_CONFIG_ITEM("report-ignore-start",  "Number of reports to ignore at startup", 0, t->report_ignore_start)
+	STRUCT_CONFIG_ITEM("report-ignore-threshold",
+					   "Minimum variance to report pose from the kalman filter", 1., t->report_threshold_var)
+	STRUCT_CONFIG_ITEM("light-ignore-threshold",
+					   "Minimum variance to allow light data into the kalman filter", 1., t->light_threshold_var)
+	STRUCT_CONFIG_ITEM("light-required-obs",
+					   "Minimum observations to allow light data into the kalman filter", 16, t->light_required_obs)
+
+	STRUCT_CONFIG_ITEM("light-variance",  "Variance of light sensor readings", 1e-1, t->light_var)
+	STRUCT_CONFIG_ITEM("obs-pos-variance",  "Variance of position integration from light capture",
+					   .02, t->obs_pos_var)
+	STRUCT_CONFIG_ITEM("obs-rot-variance",  "Variance of rotation integration from light capture",
+					   .01, t->obs_rot_var)
+
+	STRUCT_CONFIG_ITEM("use-raw-obs",  "Apply kalman filter as part of the pose solver", 0, t->use_raw_obs)
+
+	STRUCT_CONFIG_ITEM("show-raw-obs", "Show position of raw poser output", 0, t->show_raw_obs)
+
+	STRUCT_CONFIG_ITEM("light-error-for-lh-confidence",
+					   "Whether or not to invalidate LH positions based on kalman errors", 0, t->use_error_for_lh_pos)
+	STRUCT_CONFIG_ITEM("lightcap-rampin-length",
+					   "Number of lightcap measures to ramp in variance", 5000, t->light_rampin_length)
+
+	STRUCT_CONFIG_ITEM("process-weight-acc", "Acc variance per second", 10, t->params.process_weight_acc)
+	STRUCT_CONFIG_ITEM("process-weight-ang-vel", "Angular velocity variance per second", 1,
+					   t->params.process_weight_ang_velocity)
+	STRUCT_CONFIG_ITEM("process-weight-vel", "Velocity variance per second", 0, t->params.process_weight_vel)
+	STRUCT_CONFIG_ITEM("process-weight-pos", "Position variance per second", 0., t->params.process_weight_pos)
+	STRUCT_CONFIG_ITEM("process-weight-rot", "Rotation variance per second", 0, t->params.process_weight_rotation)
+	STRUCT_CONFIG_ITEM("process-weight-acc-bias", "Acc bias variance per second", 0, t->params.process_weight_acc_bias)
+	STRUCT_CONFIG_ITEM("process-weight-gyro-bias", "Gyro bias variance per seconid", 0, t->params.process_weight_gyro_bias)
+
+	STRUCT_CONFIG_ITEM("kalman-acc-scale-kp", "Incorporate scale coefficient while moving", .01, t->acc_scale_control.Kp)
+	STRUCT_CONFIG_ITEM("kalman-acc-scale-ki", "Incorporate scale coefficient while moving", .01, t->acc_scale_control.Ki)
+	STRUCT_CONFIG_ITEM("kalman-zvu-moving", "", 1, t->zvu_moving_var)
+	STRUCT_CONFIG_ITEM("kalman-zvu-stationary", "", 1e-4, t->zvu_stationary_var)
+	STRUCT_CONFIG_ITEM("kalman-zvu-no-light", "", 1e-4, t->zvu_no_light_var)
+
+	STRUCT_CONFIG_ITEM("imu-acc-norm-penalty", "", 1, t->acc_norm_penalty)
+	STRUCT_CONFIG_ITEM("imu-acc-variance", "Variance of accelerometer", 5e-3, t->acc_var)
+	STRUCT_CONFIG_ITEM("imu-gyro-variance", "Variance of gyroscope", 5e-3, t->gyro_var)
+
+	STRUCT_CONFIG_ITEM("light-batch-size", "", -1, t->light_batchsize)
+END_STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
+// clang-format off
+
 FLT pid_update(struct pid_t* pid, FLT err, FLT dt) {
 	FLT der = err - pid->err;
 	pid->integration += err;
@@ -587,10 +644,6 @@ void survive_kalman_tracker_model_predict(FLT t, const survive_kalman_state_t *k
 	gen_kalman_model_predict(s_out.Pose.Pos, t, &s_in);
 	quatnormalize(s_out.Pose.Rot, s_out.Pose.Rot);
 
-	for (int i = 0; i < 3; i++) {
-		// s_out.Velocity.Pos[i] *= .1;
-	}
-
 	memcpy(sv_as_vector(f_out), s_out.Pose.Pos, f_in->rows * sizeof(FLT));
 }
 
@@ -687,75 +740,7 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
 	}
 }
 
-STATIC_CONFIG_ITEM(KALMAN_SHOW_RAW_OBS, "show-raw-obs", 'i', "Show position of raw poser output", 0)
-
-STATIC_CONFIG_ITEM(KALMAN_USE_ERROR_FOR_LH_CONFIDENCE, "light-error-for-lh-confidence", 'i',
-				   "Whether or not to invalidate LH positions based on kalman errors", 0)
-STATIC_CONFIG_ITEM(KALMAN_LIGHTCAP_RAMPIN_LENGTH, "lightcap-rampin-length", 'i',
-				   "Number of lightcap measures to ramp in variance", 5000)
-
-STATIC_CONFIG_ITEM(KALMAN_LIGHT_ERROR_THRESHOLD, "light-error-threshold", 'f', "Error limit to invalidate position",
-				   -1.)
-STATIC_CONFIG_ITEM(KALMAN_MIN_REPORT_TIME, "min-report-time", 'f',
-				   "Minimum kalman report time in s (-1 defaults to 1. / imu_hz)", -1.)
-
-STATIC_CONFIG_ITEM(KALMAN_USE_ADAPTIVE_IMU, "use-adaptive-imu", 'i', "Use adaptive kalman for IMU", 0)
-STATIC_CONFIG_ITEM(KALMAN_USE_ADAPTIVE_LIGHTCAP, "use-adaptive-lightcap", 'i', "Use adaptive kalman for Lightcap", 0)
-STATIC_CONFIG_ITEM(KALMAN_USE_ADAPTIVE_OBS, "use-adaptive-obs", 'i', "Use adaptive kalman for observations", 0)
-
-STATIC_CONFIG_ITEM(KALMAN_REPORT_IGNORE_START, "report-ignore-start", 'i', "Number of reports to ignore at startup", 0)
-STATIC_CONFIG_ITEM(KALMAN_REPORT_IGNORE_THRESHOLD, "report-ignore-threshold", 'f',
-				   "Minimum variance to report pose from the kalman filter", 1.)
-STATIC_CONFIG_ITEM(KALMAN_LIGHTCAP_IGNORE_THRESHOLD, "light-ignore-threshold", 'f',
-				   "Minimum variance to allow light data into the kalman filter", 1.)
-STATIC_CONFIG_ITEM(KALMAN_LIGHTCAP_REQUIRED_OBS, "light-required-obs", 'i',
-				   "Minimum observations to allow light data into the kalman filter", 16)
-
-STATIC_CONFIG_ITEM(LIGHT_VARIANCE, "light-variance", 'f', "Variance of light sensor readings", 1e-1)
-STATIC_CONFIG_ITEM(OBS_POS_VARIANCE, "obs-pos-variance", 'f', "Variance of position integration from light capture",
-				   .02)
-STATIC_CONFIG_ITEM(OBS_ROT_VARIANCE, "obs-rot-variance", 'f', "Variance of rotation integration from light capture",
-				   .01)
-
-STATIC_CONFIG_ITEM(USE_IMU, "use-imu", 'i', "Use the IMU as part of the pose solver", 1)
-STATIC_CONFIG_ITEM(USE_KALMAN, "use-kalman", 'i', "Apply kalman filter as part of the pose solver", 1)
-
-STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
-STRUCT_CONFIG_ITEM("process-weight-acc", "Acc variance per second", 10, t->params.process_weight_acc)
-STRUCT_CONFIG_ITEM("process-weight-ang-vel", "Angular velocity variance per second", 1,
-				   t->params.process_weight_ang_velocity)
-STRUCT_CONFIG_ITEM("process-weight-vel", "Velocity variance per second", 0, t->params.process_weight_vel)
-STRUCT_CONFIG_ITEM("process-weight-pos", "Position variance per second", 0., t->params.process_weight_pos)
-STRUCT_CONFIG_ITEM("process-weight-rot", "Rotation variance per second", 0, t->params.process_weight_rotation)
-STRUCT_CONFIG_ITEM("process-weight-acc-bias", "Acc bias variance per second", 0, t->params.process_weight_acc_bias)
-STRUCT_CONFIG_ITEM("process-weight-gyro-bias", "Gyro bias variance per seconid", 0, t->params.process_weight_gyro_bias)
-
-STRUCT_CONFIG_ITEM("kalman-acc-scale-kp", "Incorporate scale coefficient while moving", .01, t->acc_scale_control.Kp)
-STRUCT_CONFIG_ITEM("kalman-acc-scale-ki", "Incorporate scale coefficient while moving", .01, t->acc_scale_control.Ki)
-STRUCT_CONFIG_ITEM("kalman-zvu-moving", "", 1, t->zvu_moving_var)
-STRUCT_CONFIG_ITEM("kalman-zvu-stationary", "", 1e-4, t->zvu_stationary_var)
-STRUCT_CONFIG_ITEM("kalman-zvu-no-light", "", 1e-4, t->zvu_no_light_var)
-
-STRUCT_CONFIG_ITEM("imu-acc-norm-penalty", "", 1, t->acc_norm_penalty)
-STRUCT_CONFIG_ITEM("imu-acc-variance", "Variance of accelerometer", 5e-3, t->acc_var)
-STRUCT_CONFIG_ITEM("imu-gyro-variance", "Variance of gyroscope", 5e-3, t->gyro_var)
-
-STRUCT_CONFIG_ITEM("light-batch-size", "", -1, t->light_batchsize)
-
-END_STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
-
 typedef void (*survive_attach_detach_fn)(SurviveContext *ctx, const char *tag, FLT *var);
-
-static void survive_kalman_tracker_config(SurviveKalmanTracker *tracker, survive_attach_detach_fn fn) {
-	fn(tracker->so->ctx, KALMAN_MIN_REPORT_TIME_TAG, &tracker->min_report_time);
-	fn(tracker->so->ctx, KALMAN_LIGHT_ERROR_THRESHOLD_TAG, &tracker->light_error_threshold);
-	fn(tracker->so->ctx, KALMAN_LIGHTCAP_IGNORE_THRESHOLD_TAG, &tracker->light_threshold_var);
-	fn(tracker->so->ctx, KALMAN_REPORT_IGNORE_THRESHOLD_TAG, &tracker->report_threshold_var);
-	fn(tracker->so->ctx, OBS_POS_VARIANCE_TAG, &tracker->obs_pos_var);
-	fn(tracker->so->ctx, OBS_ROT_VARIANCE_TAG, &tracker->obs_rot_var);
-	fn(tracker->so->ctx, LIGHT_VARIANCE_TAG, &tracker->light_var);
-
-}
 
 void survive_kalman_tracker_reinit(SurviveKalmanTracker *tracker) {
 	memset(&tracker->stats, 0, sizeof(tracker->stats));
@@ -788,8 +773,6 @@ void survive_kalman_tracker_reinit(SurviveKalmanTracker *tracker) {
 	SV_DATA_LOG("tracker_P", var_diag, tracker->model.state_cnt);
 }
 
-static void print_configf(SurviveContext *ctx, const char *tag, FLT *var) { SV_VERBOSE(10, "\t%-32s %e", tag, *var); }
-
 void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *so) {
 	memset(tracker, 0, sizeof(*tracker));
 
@@ -802,18 +785,7 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	// origin has a variance of 10m; and the quat can be varied by 4 -- which is
 	// more than any actual normalized quat could be off by.
 
-	survive_attach_configi(tracker->so->ctx, KALMAN_REPORT_IGNORE_START_TAG, &tracker->report_ignore_start);
-	survive_attach_configi(tracker->so->ctx, KALMAN_LIGHTCAP_REQUIRED_OBS_TAG, &tracker->light_required_obs);
-	survive_attach_configi(tracker->so->ctx, KALMAN_USE_ADAPTIVE_IMU_TAG, &tracker->adaptive_imu);
-	survive_attach_configi(tracker->so->ctx, KALMAN_USE_ADAPTIVE_LIGHTCAP_TAG, &tracker->adaptive_lightcap);
-	survive_attach_configi(tracker->so->ctx, KALMAN_USE_ADAPTIVE_OBS_TAG, &tracker->adaptive_obs);
-	survive_attach_configi(tracker->so->ctx, KALMAN_SHOW_RAW_OBS_TAG, &tracker->show_raw_obs);
-
-	tracker->use_error_for_lh_pos = survive_configi(ctx, KALMAN_USE_ERROR_FOR_LH_CONFIDENCE_TAG, SC_GET, 1);
-	tracker->light_rampin_length = survive_configi(ctx, KALMAN_LIGHTCAP_RAMPIN_LENGTH_TAG, SC_GET, 5000);
-
 	SurviveKalmanTracker_attach_config(tracker->so->ctx, tracker);
-	survive_kalman_tracker_config(tracker, survive_attach_configf);
 
 	bool use_imu = (bool)survive_configi(ctx, "use-imu", SC_GET, 1);
 	if (!use_imu) {
@@ -854,7 +826,6 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	survive_kalman_tracker_reinit(tracker);
 
 	SV_VERBOSE(10, "Tracker config for %s (%d state count)", survive_colorize_codename(tracker->so), (int)state_cnt);
-	survive_kalman_tracker_config(tracker, print_configf);
 }
 
 SurviveVelocity survive_kalman_tracker_velocity(const SurviveKalmanTracker *tracker) {
@@ -937,15 +908,7 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 
 	survive_kalman_state_free(&tracker->model);
 
-	survive_detach_config(tracker->so->ctx, KALMAN_REPORT_IGNORE_START_TAG, &tracker->report_ignore_start);
-	survive_detach_config(tracker->so->ctx, KALMAN_USE_ADAPTIVE_IMU_TAG, &tracker->adaptive_imu);
-	survive_detach_config(tracker->so->ctx, KALMAN_USE_ADAPTIVE_LIGHTCAP_TAG, &tracker->adaptive_lightcap);
-	survive_detach_config(tracker->so->ctx, KALMAN_USE_ADAPTIVE_OBS_TAG, &tracker->adaptive_obs);
-	survive_detach_config(tracker->so->ctx, KALMAN_LIGHTCAP_REQUIRED_OBS_TAG, &tracker->light_required_obs);
-	survive_detach_config(tracker->so->ctx, KALMAN_SHOW_RAW_OBS_TAG, &tracker->show_raw_obs);
-
 	SurviveKalmanTracker_detach_config(tracker->so->ctx, tracker);
-	survive_kalman_tracker_config(tracker, (survive_attach_detach_fn)survive_detach_config);
 }
 
 void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *tracker, bool allowLHReset) {
