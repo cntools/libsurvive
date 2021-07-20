@@ -20,9 +20,6 @@ static SurvivePose survive_kalman_lighthouse_lh2world(SurviveKalmanLighthouse *t
 static SurvivePose survive_kalman_lighthouse_world2lh(SurviveKalmanLighthouse *tracker) { return tracker->state; }
 #else
 static SurvivePose survive_kalman_lighthouse_lh2world(SurviveKalmanLighthouse *tracker) { return tracker->state; }
-static SurvivePose survive_kalman_lighthouse_world2lh(SurviveKalmanLighthouse *tracker) {
-	return InvertPoseRtn(&tracker->state);
-}
 #endif
 
 void survive_kalman_lighthouse_report(SurviveKalmanLighthouse *tracker) {

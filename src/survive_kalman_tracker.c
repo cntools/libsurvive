@@ -906,6 +906,9 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 }
 
 void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *tracker, bool allowLHReset) {
+	if (tracker == 0)
+		return;
+
 	SurviveContext *ctx = tracker->so->ctx;
 	SV_WARN("Too many failures for %s at %f; reseting calibration %e (%7.4f stationary)", survive_colorize_codename(tracker->so),
 			survive_run_time(ctx),
