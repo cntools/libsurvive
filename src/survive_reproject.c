@@ -4,6 +4,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <survive_reproject.h>
+#include <survive_reproject_gen2.h>
 
 #include "force_O3.h"
 
@@ -98,7 +99,11 @@ void survive_apply_bsd_calibration(const SurviveContext *ctx, int lh, const Surv
 	out[1] = in[1] + cal[1].phase;
 }
 
-const survive_reproject_model_t SURVIVE_EXPORT survive_reproject_model = {
+SURVIVE_EXPORT const survive_reproject_model_t* survive_reproject_model(SurviveContext* ctx) {
+	return ctx->lh_version == 0 ? &survive_reproject_gen1_model : &survive_reproject_gen2_model;
+}
+
+const survive_reproject_model_t SURVIVE_EXPORT survive_reproject_gen1_model = {
 #ifdef BUILD_LH1_SUPPORT
 	.reprojectAxisFn = {survive_reproject_axis_x, survive_reproject_axis_y},
 	.reprojectXY = survive_reproject_xy,

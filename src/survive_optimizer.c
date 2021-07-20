@@ -669,7 +669,7 @@ void survive_optimizer_serialize(const survive_optimizer *opt, const char *fn) {
 	fprintf(f, "object       %s\n", opt->sos[0]->codename);
 	fprintf(f, "currentBias  %+0.16f\n", opt->current_bias);
 	fprintf(f, "initialPose " SurvivePose_format "\n", SURVIVE_POSE_EXPAND(opt->initialPose));
-	fprintf(f, "model        %d\n", opt->reprojectModel != &survive_reproject_model);
+	fprintf(f, "model        %d\n", opt->reprojectModel != &survive_reproject_gen1_model);
 	fprintf(f, "poseLength   %d\n", opt->poseLength);
 	fprintf(f, "cameraLength %d\n", opt->cameraLength);
 	fprintf(f, "ptsLength    %d\n", opt->ptsLength);
@@ -723,7 +723,7 @@ survive_optimizer *survive_optimizer_load(const char *fn) {
 	read_count = fscanf(f, "initialPose " SurvivePose_sformat "\n", SURVIVE_POSE_SCAN_EXPAND(opt->initialPose));
 	int model = 0;
 	read_count = fscanf(f, "model        %d\n", &model);
-	opt->reprojectModel = model == 0 ? &survive_reproject_model : &survive_reproject_gen2_model;
+	opt->reprojectModel = model == 0 ? &survive_reproject_gen1_model : &survive_reproject_gen2_model;
 	read_count = fscanf(f, "poseLength   %d\n", &opt->poseLength);
 	read_count = fscanf(f, "cameraLength %d\n", &opt->cameraLength);
 	read_count = fscanf(f, "ptsLength    %d\n", &opt->ptsLength);

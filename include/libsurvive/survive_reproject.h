@@ -72,7 +72,8 @@ typedef struct survive_reproject_model_t {
 	survive_reproject_axisangle_axis_jacob_lh_pose_fn_t reprojectAxisAngleAxisJacobLhPoseFn[2];
 } survive_reproject_model_t;
 
-SURVIVE_IMPORT extern const survive_reproject_model_t survive_reproject_model;
+SURVIVE_EXPORT const survive_reproject_model_t* survive_reproject_model(SurviveContext* ctx);
+SURVIVE_IMPORT extern const survive_reproject_model_t survive_reproject_gen1_model;
 
 SURVIVE_EXPORT FLT survive_reproject_axis_x(const BaseStationCal *bcal, LinmathVec3d const ptInLh);
 SURVIVE_EXPORT FLT survive_reproject_axis_y(const BaseStationCal *bcal, LinmathVec3d const ptInLh);
