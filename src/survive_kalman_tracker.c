@@ -374,9 +374,12 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 	FLT rotation_variance[] = {1e5, 1e5, 1e5, 1e5, 1e5, 1e5};
 
 	FLT zvu_var = isStationary ? tracker->zvu_stationary_var : tracker->zvu_moving_var;
+	if (time - tracker->last_light_time > .1) {
+		zvu_var = tracker->zvu_no_light_var;
+	}
 	if (zvu_var >= 0) {//time - tracker->last_light_time > .1) {//|| isStationary || fabs(1 - norm) < .001 ) {
 		// If we stop seeing light data; tank all velocity / acceleration measurements
-		size_t row_cnt = 3;
+		size_t row_cnt = 9;
 		SV_CREATE_STACK_MAT(H, row_cnt, tracker->model.state_cnt);
 		sv_set_zero(&H);
 		for (int i = 0; i < row_cnt; i++) {
@@ -718,10 +721,10 @@ STATIC_CONFIG_ITEM(USE_IMU, "use-imu", 'i', "Use the IMU as part of the pose sol
 STATIC_CONFIG_ITEM(USE_KALMAN, "use-kalman", 'i', "Apply kalman filter as part of the pose solver", 1)
 
 STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
-STRUCT_CONFIG_ITEM("process-weight-acc", "Acc variance per second", 0, t->params.process_weight_acc)
-STRUCT_CONFIG_ITEM("process-weight-ang-vel", "Angular velocity variance per second", 10,
+STRUCT_CONFIG_ITEM("process-weight-acc", "Acc variance per second", 10, t->params.process_weight_acc)
+STRUCT_CONFIG_ITEM("process-weight-ang-vel", "Angular velocity variance per second", 1,
 				   t->params.process_weight_ang_velocity)
-STRUCT_CONFIG_ITEM("process-weight-vel", "Velocity variance per second", .01, t->params.process_weight_vel)
+STRUCT_CONFIG_ITEM("process-weight-vel", "Velocity variance per second", 0, t->params.process_weight_vel)
 STRUCT_CONFIG_ITEM("process-weight-pos", "Position variance per second", 0., t->params.process_weight_pos)
 STRUCT_CONFIG_ITEM("process-weight-rot", "Rotation variance per second", 0, t->params.process_weight_rotation)
 STRUCT_CONFIG_ITEM("process-weight-acc-bias", "Acc bias variance per second", 0, t->params.process_weight_acc_bias)
@@ -729,12 +732,13 @@ STRUCT_CONFIG_ITEM("process-weight-gyro-bias", "Gyro bias variance per seconid",
 
 STRUCT_CONFIG_ITEM("kalman-acc-scale-kp", "Incorporate scale coefficient while moving", .01, t->acc_scale_control.Kp)
 STRUCT_CONFIG_ITEM("kalman-acc-scale-ki", "Incorporate scale coefficient while moving", .01, t->acc_scale_control.Ki)
-STRUCT_CONFIG_ITEM("kalman-zvu-moving", "", -1, t->zvu_moving_var)
-STRUCT_CONFIG_ITEM("kalman-zvu-stationary", "", -1, t->zvu_stationary_var)
+STRUCT_CONFIG_ITEM("kalman-zvu-moving", "", 1, t->zvu_moving_var)
+STRUCT_CONFIG_ITEM("kalman-zvu-stationary", "", 1e-4, t->zvu_stationary_var)
+STRUCT_CONFIG_ITEM("kalman-zvu-no-light", "", 1e-4, t->zvu_no_light_var)
 
 STRUCT_CONFIG_ITEM("imu-acc-norm-penalty", "", 1, t->acc_norm_penalty)
-STRUCT_CONFIG_ITEM("imu-acc-variance", "Variance of accelerometer", .05, t->acc_var)
-STRUCT_CONFIG_ITEM("imu-gyro-variance", "Variance of gyroscope", .02, t->gyro_var)
+STRUCT_CONFIG_ITEM("imu-acc-variance", "Variance of accelerometer", 5e-3, t->acc_var)
+STRUCT_CONFIG_ITEM("imu-gyro-variance", "Variance of gyroscope", 5e-3, t->gyro_var)
 
 STRUCT_CONFIG_ITEM("light-batch-size", "", -1, t->light_batchsize)
 

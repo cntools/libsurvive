@@ -64,6 +64,7 @@ typedef struct SurviveKalmanTracker {
 
 	FLT light_threshold_var, report_threshold_var, light_error_threshold;
 	FLT zvu_stationary_var;
+	FLT zvu_no_light_var;
 	FLT zvu_moving_var;
 	int32_t light_required_obs;
 	int32_t report_ignore_start;
