@@ -620,9 +620,7 @@ static FLT run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Surviv
 	SurviveObject *so = d->opt.so;
 	struct SurviveContext *ctx = so->ctx;
 
-	survive_optimizer mpfitctx = {.reprojectModel =
-									  ctx->lh_version == 0 ? &survive_reproject_gen1_model
-																		 : &survive_reproject_gen2_model,
+	survive_optimizer mpfitctx = {.reprojectModel = survive_reproject_model(ctx),
 								  .poseLength = 1,
 								  .cameraLength = so->ctx->activeLighthouses,
 								  .current_bias = d->current_bias,
@@ -733,8 +731,7 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 		meas_cnt += gss->scenes[i].meas_cnt;
 	}
 
-	survive_optimizer mpfitctx = {.reprojectModel =
-									  ctx->lh_version == 1 ? &survive_reproject_gen2_model : &survive_reproject_gen1_model,
+	survive_optimizer mpfitctx = {.reprojectModel = survive_reproject_model(ctx),
 								  .poseLength = scenes_cnt,
 								  .cameraLength = ctx->activeLighthouses,
 								  .measurementsCnt = meas_cnt,

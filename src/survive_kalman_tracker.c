@@ -140,8 +140,7 @@ static bool map_light_data(void *user, const struct SvMat *Z, const struct SvMat
 
 	SurviveObject *so = tracker->so;
 	struct SurviveContext *ctx = tracker->so->ctx;
-	const survive_reproject_model_t *mdl =
-		tracker->so->ctx->lh_version == 0 ? &survive_reproject_gen1_model : &survive_reproject_gen2_model;
+	const survive_reproject_model_t *mdl = survive_reproject_model(ctx);
 
 	sv_set_zero(H_k);
 
