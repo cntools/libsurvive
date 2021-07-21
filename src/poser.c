@@ -439,3 +439,19 @@ int survive_threaded_poser_fn(SurviveObject *so, void **user, PoserData *pd) {
 
 	return 0;
 }
+
+SURVIVE_EXPORT int PoserDataLight_axis(const struct PoserDataLight *pdl) {
+	switch (pdl->hdr.pt) {
+	case POSERDATA_LIGHT:
+	case POSERDATA_SYNC:
+		return (((PoserDataLightGen1 *)pdl)->acode & 1);
+		break;
+	case POSERDATA_SYNC_GEN2:
+	case POSERDATA_LIGHT_GEN2:
+		return ((PoserDataLightGen2 *)pdl)->plane;
+		break;
+	default:
+		assert(0);
+	}
+	return 0;
+}

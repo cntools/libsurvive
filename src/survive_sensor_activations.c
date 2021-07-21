@@ -36,7 +36,7 @@ survive_long_timecode SurviveSensorActivations_last_reading(const SurviveSensorA
 }
 
 survive_long_timecode SurviveSensorActivations_time_since_last_reading(const SurviveSensorActivations *self,
-																  uint32_t sensor_idx, int lh, int axis) {
+																	   uint32_t sensor_idx, int lh, int axis) {
 	survive_long_timecode last_reading = SurviveSensorActivations_last_reading(self, sensor_idx, lh, axis);
 	survive_long_timecode timecode_now = self->last_light;
 
@@ -160,7 +160,8 @@ static inline bool SurviveSensorActivations_check_outlier(SurviveSensorActivatio
 		goto reject_data;
 	}
 
-	FLT dev = linmath_max(self->params.filterVarianceMin, self->angles_center_dev[lh][axis]);
+	FLT measured_dev = self->angles_center_dev[lh][axis];
+	FLT dev = linmath_max(self->params.filterVarianceMin, measured_dev);
 	FLT P = linmath_norm_pdf(angle, self->angles_center_x[lh][axis], dev);
 	int cnt = self->angles_center_cnt[lh][axis];
 
@@ -168,7 +169,8 @@ static inline bool SurviveSensorActivations_check_outlier(SurviveSensorActivatio
 	FLT chauvenet_criterion = P * cnt;
 	SV_DATA_LOG("chauvenet_criterion[%d][%d][%d]", &chauvenet_criterion, 1, sensor_id, lh, axis);
 
-	if (self->params.filterOutlierCriteria > 0 && chauvenet_criterion < self->params.filterOutlierCriteria) {
+	if (measured_dev > 0 && self->params.filterOutlierCriteria > 0 &&
+		chauvenet_criterion < self->params.filterOutlierCriteria) {
 		goto reject_data;
 	}
 
@@ -220,12 +222,16 @@ SURVIVE_EXPORT void SurviveSensorActivations_valid_counts(SurviveSensorActivatio
 }
 bool SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct PoserDataLightGen2 *lightData) {
 	self->lh_gen = 1;
-
-	if(lightData->common.hdr.pt == POSERDATA_LIGHT_GEN2) {
+	if (lightData->common.hdr.pt == POSERDATA_SYNC_GEN2) {
+		SurviveSensorActivations_add_sync(self, &lightData->common);
+	} else if (lightData->common.hdr.pt == POSERDATA_LIGHT_GEN2) {
 		int axis = lightData->plane;
 		PoserDataLight *l = &lightData->common;
 		if (l->sensor_id >= SENSORS_PER_OBJECT)
 			return false;
+
+		self->raw_angles[l->sensor_id][l->lh][axis] = l->angle;
+		self->raw_timecode[l->sensor_id][l->lh][axis] = l->hdr.timecode;
 
 		survive_long_timecode *data_timecode = &self->timecode[l->sensor_id][l->lh][axis];
 		FLT *angle = &self->angles[l->sensor_id][l->lh][axis];
@@ -248,7 +254,7 @@ bool SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct Po
 		}
 	}
 
-	if(lightData->common.hdr.timecode > self->last_light) {
+	if (lightData->common.hdr.timecode > self->last_light) {
 		self->last_light = lightData->common.hdr.timecode;
 	}
 	return true;
@@ -284,55 +290,57 @@ SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveObject *so, SurviveSens
 	self->lh_gen = -1;
 }
 
-void SurviveSensorActivations_add_sync(SurviveSensorActivations *self, struct PoserDataLightGen1 *lightData) {
-	int axis = lightData->acode & 0x1;
-	int lh = lightData->common.lh;
-	bool changes = true;
-	int times_through = 0;
+void SurviveSensorActivations_add_sync(SurviveSensorActivations *self, struct PoserDataLight *lightData) {
+	int lh = lightData->lh;
+	survive_long_timecode timecode = lightData->hdr.timecode;
 
-	FLT mean = 0;
-	FLT deviation = 0;
-	int cnt = 32;
-	int total_angles = 0;
+	for (int axis = 0; axis < 2; axis++) {
+		bool changes = true;
 
-	for (int passes = 0; passes < 2 && changes; passes++) {
-		changes = false;
-		total_angles = 0;
-		struct variance_measure variance_calc = {0};
-		for (int i = 0; i < SENSORS_PER_OBJECT; i++) {
-			survive_long_timecode timecode = self->raw_timecode[i][lh][axis];
-			FLT angle = self->raw_angles[i][lh][axis];
-			bool isRecent = lightData->common.hdr.timecode - timecode < 48000000 / 2;
+		FLT mean = 0;
+		FLT deviation = 0;
+		int cnt = 32;
+		int total_angles = 0;
 
-			if (isRecent && isfinite(angle)) {
-				total_angles++;
+		for (int passes = 0; passes < 2 && changes; passes++) {
+			changes = false;
+			total_angles = 0;
+			struct variance_measure variance_calc = {0};
+			for (int i = 0; i < SENSORS_PER_OBJECT; i++) {
+				survive_long_timecode sensor_timecode = self->raw_timecode[i][lh][axis];
+				FLT angle = self->raw_angles[i][lh][axis];
+				bool isRecent = timecode - sensor_timecode < 48000000 / 2;
 
-				FLT P = linmath_norm_pdf(angle, mean, linmath_max(self->params.filterVarianceMin, deviation));
-				FLT chauvenet_criterion = P * cnt;
-				bool isOutlier =
-					self->params.filterOutlierCriteria > 0 && chauvenet_criterion < self->params.filterOutlierCriteria;
+				if (isRecent && isfinite(angle)) {
+					total_angles++;
 
-				if (!isOutlier) {
-					variance_measure_add(&variance_calc, &angle);
-				} else {
-					changes = true;
+					FLT P = linmath_norm_pdf(angle, mean, linmath_max(self->params.filterVarianceMin, deviation));
+					FLT chauvenet_criterion = P * cnt;
+					bool isOutlier = self->params.filterOutlierCriteria > 0 &&
+									 chauvenet_criterion < self->params.filterOutlierCriteria;
+
+					if (!isOutlier) {
+						variance_measure_add(&variance_calc, &angle);
+					} else {
+						changes = true;
+					}
 				}
+			}
+
+			if (variance_calc.size) {
+				variance_measure_calc(&variance_calc, &deviation);
+				mean = variance_calc.sum[0] / (FLT)variance_calc.n;
+				cnt = (int)variance_calc.n;
 			}
 		}
 
-		if (variance_calc.size) {
-			variance_measure_calc(&variance_calc, &deviation);
-			mean = variance_calc.sum[0] / (FLT)variance_calc.n;
-			cnt = (int)variance_calc.n;
-		}
+		self->angles_center_x[lh][axis] = mean;
+		self->angles_center_dev[lh][axis] = deviation;
+		self->angles_center_cnt[lh][axis] = cnt;
+		struct SurviveObject *so = self->so;
+		SV_DATA_LOG("light_mean[%d][%d]", &mean, 1, lh, axis)
+		SV_DATA_LOG("light_deviation[%d][%d]", &deviation, 1, lh, axis)
 	}
-
-	self->angles_center_x[lh][axis] = mean;
-	self->angles_center_dev[lh][axis] = deviation;
-	self->angles_center_cnt[lh][axis] = cnt;
-	struct SurviveObject *so = self->so;
-	SV_DATA_LOG("light_mean[%d][%d]", &mean, 1, lh, axis)
-	SV_DATA_LOG("light_deviation[%d][%d]", &deviation, 1, lh, axis)
 }
 
 bool SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLightGen1 *_lightData) {
@@ -390,7 +398,7 @@ bool SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 static inline survive_long_timecode make_long_timecode(survive_long_timecode prev, survive_timecode current) {
 	survive_long_timecode rtn = current | (prev & 0xFFFFFFFF00000000);
 
-	if(rtn < prev && rtn + 0x80000000 < prev) {
+	if (rtn < prev && rtn + 0x80000000 < prev) {
 		rtn += 0x100000000;
 	}
 	if (rtn > prev && prev + 0x80000000 < rtn && rtn > 0x100000000) {
@@ -398,21 +406,22 @@ static inline survive_long_timecode make_long_timecode(survive_long_timecode pre
 	}
 	return rtn;
 }
-SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_long_timecode_imu(const SurviveSensorActivations *self, survive_timecode timecode) {
+SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_long_timecode_imu(const SurviveSensorActivations *self,
+																				survive_timecode timecode) {
 	return make_long_timecode(self->last_imu, timecode);
 }
-SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_long_timecode_light(const SurviveSensorActivations *self, survive_timecode timecode) {
+SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_long_timecode_light(const SurviveSensorActivations *self,
+																				  survive_timecode timecode) {
 	return make_long_timecode(self->last_light, timecode);
 }
-
 
 FLT SurviveSensorActivations_difference(const SurviveSensorActivations *rhs, const SurviveSensorActivations *lhs) {
 	FLT rtn = 0;
 	int cnt = 0;
-	for(size_t i = 0;i < SENSORS_PER_OBJECT;i++) {
+	for (size_t i = 0; i < SENSORS_PER_OBJECT; i++) {
 		for (size_t lh = 0; lh < NUM_GEN1_LIGHTHOUSES; lh++) {
-			for(size_t axis = 0;axis < 2;axis++) {
-				if(rhs->lengths[i][lh][axis] > 0 && lhs->lengths[i][lh][axis] > 0) {
+			for (size_t axis = 0; axis < 2; axis++) {
+				if (rhs->lengths[i][lh][axis] > 0 && lhs->lengths[i][lh][axis] > 0) {
 					FLT diff = rhs->angles[i][lh][axis] - lhs->angles[i][lh][axis];
 					rtn += diff * diff;
 					cnt++;

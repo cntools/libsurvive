@@ -127,20 +127,6 @@ struct map_light_data_ctx {
 	SurviveKalmanTracker *tracker;
 };
 
-static inline int get_axis(const struct PoserDataLight *pdl) {
-	switch (pdl->hdr.pt) {
-	case POSERDATA_LIGHT:
-		return (((PoserDataLightGen1 *)pdl)->acode & 1);
-		break;
-	case POSERDATA_LIGHT_GEN2:
-		return ((PoserDataLightGen2 *)pdl)->plane;
-		break;
-	default:
-		assert(0);
-	}
-	return 0;
-}
-
 /**
  * This function reuses the reproject functions to estimate what it thinks the lightcap angle should be based on x_t,
  * and uses that measurement to compare from the actual observed angle. These functions have jacobian functions that
@@ -274,7 +260,7 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 
 		info->lh = data->lh;
 		info->value = data->angle;
-		info->axis = get_axis(data);
+		info->axis = PoserDataLight_axis(data);
 		info->sensor_idx = data->sensor_id;
 	}
 

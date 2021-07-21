@@ -119,6 +119,7 @@ typedef struct PoserDataLightGen2 {
 	uint32_t sync;
 } PoserDataLightGen2;
 
+SURVIVE_EXPORT int PoserDataLight_axis(const struct PoserDataLight *pdl);
 typedef struct {
 	FLT value;
 	uint8_t lh;

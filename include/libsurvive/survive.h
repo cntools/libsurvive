@@ -78,8 +78,7 @@ SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_long_timecode_ligh
  */
 SURVIVE_EXPORT FLT SurviveSensorActivations_difference(const SurviveSensorActivations *rhs,
         const SurviveSensorActivations *lhs);
-SURVIVE_EXPORT void SurviveSensorActivations_add_sync(SurviveSensorActivations *self,
-													  struct PoserDataLightGen1 *lightData);
+SURVIVE_EXPORT void SurviveSensorActivations_add_sync(SurviveSensorActivations *self, struct PoserDataLight *lightData);
 SURVIVE_EXPORT bool SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLightGen1 *lightData);
 SURVIVE_EXPORT bool SurviveSensorActivations_add_gen2(SurviveSensorActivations *self,
 													  struct PoserDataLightGen2 *lightData);
