@@ -278,7 +278,8 @@ function redrawCanvas(when) {
 					ctx.arc(x, y, 1, 0, 2 * Math.PI);
 					ctx.stroke();
 
-					const rpx = rp_angles[key][lh][id][0], rpy = rp_angles[key][lh][id][1];
+					const rp = get_rp_angles(key, lh, id)
+					const rpx = rp[0], rpy = rp[1];
 					if (isFinite(rpx + rpy)) {
 						scale = 10;
 						var rx = rad_to_x(rpx * scale + ang[0][0])
@@ -650,6 +651,13 @@ function add_sphere(v) {
 	scene.add(mesh);
 }
 
+function get_rp_angles(tracker, lighthouse, sensor_id) {
+	rp_angles[tracker] = rp_angles[tracker] || {};
+	rp_angles[tracker][lighthouse] = rp_angles[tracker][lighthouse] || {};
+	rp_angles[tracker][lighthouse][sensor_id] = rp_angles[tracker][lighthouse][sensor_id] || {};
+	return rp_angles[tracker][lighthouse][sensor_id]
+}
+
 function add_poly(v) {
 	var fv = v.map(parseFloat);
 
@@ -771,12 +779,7 @@ var survive_log_handlers = {
 			lighthouse : parseInt(v[6]),
 		};
 
-		rp_angles[obj.tracker] = rp_angles[obj.tracker] || {};
-		rp_angles[obj.tracker][obj.lighthouse] = rp_angles[obj.tracker][obj.lighthouse] || {};
-		rp_angles[obj.tracker][obj.lighthouse][obj.sensor_id] =
-			rp_angles[obj.tracker][obj.lighthouse][obj.sensor_id] || {};
-
-		rp_angles[obj.tracker][obj.lighthouse][obj.sensor_id][obj.axis] = obj.angle;
+		get_rp_angles(obj.tracker, obj.lighthouse, obj.sensor_id)[obj.axis] = obj.angle;
 	},
 	'LOG' : function(v) {
 		var msg = v.slice(3).join(' ');

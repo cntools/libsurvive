@@ -325,6 +325,7 @@ static inline LinmathPose EulerPose2Pose(const LinmathEulerPose *pose) {
 
 LINMATH_EXPORT FLT linmath_rand(FLT min, FLT max);
 LINMATH_EXPORT FLT linmath_normrand(FLT mu, FLT sigma);
+LINMATH_EXPORT FLT linmath_norm_pdf(FLT v, FLT mu, FLT sigma);
 
 LINMATH_EXPORT void linmath_find_best_intersection(LinmathPoint3d pt, const struct LinmathLine3d *lines, size_t num);
 LINMATH_EXPORT void linmath_get_line_dir(LinmathPoint3d dir, const struct LinmathLine3d *ray);

@@ -289,8 +289,10 @@ static void testFindBestIntersections() {
 		assert(err < (sigma + 1e-5));
 	}
 }
+static void testNormPdf() { assertFLTEquals(linmath_norm_pdf(-2, -1.1, 1.34), 0.23760171); }
 int main()
 {
+	testNormPdf();
 	testQuatRotate();
 	testFindBestIntersections();
 

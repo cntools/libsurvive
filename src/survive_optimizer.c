@@ -304,12 +304,6 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
 		}
 	}
 }
-static inline FLT norm_pdf(FLT x, FLT std) {
-	const FLT scale = 1. / sqrt(M_PI * 2);
-	FLT ratio = x / std;
-	ratio = (ratio * ratio) * -.5;
-	return scale * exp(ratio);
-}
 
 static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 	struct SurviveObject *so = optimizer->sos[0];
@@ -339,7 +333,7 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 	}
 	for (int i = 0; i < optimizer->measurementsCnt; i++) {
 		survive_optimizer_measurement *meas = &optimizer->measurements[i];
-		FLT P = norm_pdf(deviates[i], avg_dev);
+		FLT P = linmath_norm_pdf(deviates[i], 0, avg_dev);
 		FLT chauvenet_criterion = P * optimizer->measurementsCnt;
 		if (chauvenet_criterion < .5) {
 			meas->invalid = true;
@@ -391,7 +385,7 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 
 			FLT corrected_dev = unbias_dev - lh_deviates[i] / (obs_lhs - 1.);
 			SV_DATA_LOG("opt_lh_corrected_dev[%d]", &corrected_dev, 1, i);
-			FLT P = norm_pdf(lh_deviates[i], lh_avg_dev);
+			FLT P = linmath_norm_pdf(lh_deviates[i], 0, lh_avg_dev);
 			FLT chauvenet_criterion = P * obs_lhs;
 
 			if (lh_deviates[i] > 100 * corrected_dev) {

@@ -1017,6 +1017,14 @@ inline FLT linmath_rand(FLT min, FLT max) {
 	r += min;
 	return r;
 }
+
+LINMATH_EXPORT FLT linmath_norm_pdf(FLT v, FLT mean, FLT std) {
+	const FLT scale = 1. / sqrt(M_PI * 2) / std;
+	FLT ratio = (v - mean) / std;
+	ratio = (ratio * ratio) * -.5;
+	return scale * exp(ratio);
+}
+
 FLT linmath_normrand(FLT mu, FLT sigma) {
 	static const double epsilon = 0.0000001;
 

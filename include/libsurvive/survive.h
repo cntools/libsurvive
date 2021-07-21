@@ -34,6 +34,8 @@ typedef struct SurviveSensorActivations_s {
 	FLT angles_center_dev[NUM_GEN2_LIGHTHOUSES][2];
 	int angles_center_cnt[NUM_GEN2_LIGHTHOUSES][2];
 
+	FLT raw_angles[SENSORS_PER_OBJECT][NUM_GEN2_LIGHTHOUSES][2];					 // 2 Axes (Angles in LH space)
+	survive_long_timecode raw_timecode[SENSORS_PER_OBJECT][NUM_GEN2_LIGHTHOUSES][2]; // Timecode per axis in ticks
 	survive_long_timecode timecode[SENSORS_PER_OBJECT][NUM_GEN2_LIGHTHOUSES][2]; // Timecode per axis in ticks
 
 	// Valid only for Gen1
@@ -52,6 +54,15 @@ typedef struct SurviveSensorActivations_s {
 	FLT accel[3];
 	FLT gyro[3];
 	FLT mag[3];
+
+	struct SurviveSensorActivations_params {
+		FLT moveThresholdGyro;
+		FLT moveThresholdAcc;
+		FLT moveThresholdAng;
+		FLT filterLightChange;
+		FLT filterOutlierCriteria;
+		FLT filterVarianceMin;
+	} params;
 } SurviveSensorActivations;
 
 struct PoserDataLight;
@@ -67,6 +78,8 @@ SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_long_timecode_ligh
  */
 SURVIVE_EXPORT FLT SurviveSensorActivations_difference(const SurviveSensorActivations *rhs,
         const SurviveSensorActivations *lhs);
+SURVIVE_EXPORT void SurviveSensorActivations_add_sync(SurviveSensorActivations *self,
+													  struct PoserDataLightGen1 *lightData);
 SURVIVE_EXPORT bool SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLightGen1 *lightData);
 SURVIVE_EXPORT bool SurviveSensorActivations_add_gen2(SurviveSensorActivations *self,
 													  struct PoserDataLightGen2 *lightData);

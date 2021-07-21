@@ -48,6 +48,8 @@ void survive_default_light_process(SurviveObject *so, int sensor_id, int acode, 
 			.length = length,
 		};
 
+		SurviveSensorActivations_add_sync(&so->activations, &l);
+
 		SV_VERBOSE(600, "%s Sync    %3d.%2d.%d %8u %u", survive_colorize_codename(so), sensor_id, lh, acode & 1, timecode, length);
 		survive_kalman_tracker_integrate_light(so->tracker, &l.common);
 		SURVIVE_POSER_INVOKE(so, &l);
