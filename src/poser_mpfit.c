@@ -493,6 +493,9 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 	SV_DATA_LOG("mpfit_iterations", &iterations, 1);
 	SV_DATA_LOG("mpfit_nfevals", &fev, 1);
 
+	FLT meas_f = mpfitctx->measurementsCnt;
+	SV_DATA_LOG("mpfit_measurement_cnt", &meas_f, 1);
+
 	bool status_failure = res <= 0;
 	if (status_failure) {
 		SV_WARN("MPFIT status failure %s %f/%f (%d measurements, %d)", survive_colorize(so->codename), result->orignorm,

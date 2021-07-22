@@ -335,7 +335,7 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 		survive_optimizer_measurement *meas = &optimizer->measurements[i];
 		FLT P = linmath_norm_pdf(deviates[i], 0, avg_dev);
 		FLT chauvenet_criterion = P * optimizer->measurementsCnt;
-		if (chauvenet_criterion < .5) {
+		if (chauvenet_criterion < .5 && false) {
 			meas->invalid = true;
 			optimizer->stats.dropped_meas_cnt++;
 

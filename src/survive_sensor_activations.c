@@ -299,12 +299,15 @@ void SurviveSensorActivations_add_sync(SurviveSensorActivations *self, struct Po
 
 		FLT mean = 0;
 		FLT deviation = 0;
-		int cnt = 32;
+		FLT rejected = 0;
+		int cnt = 0;
 		int total_angles = 0;
 
 		for (int passes = 0; passes < 2 && changes; passes++) {
-			changes = false;
+			changes = passes == 0;
 			total_angles = 0;
+			rejected = 0;
+
 			struct variance_measure variance_calc = {0};
 			for (int i = 0; i < SENSORS_PER_OBJECT; i++) {
 				survive_long_timecode sensor_timecode = self->raw_timecode[i][lh][axis];
@@ -314,21 +317,24 @@ void SurviveSensorActivations_add_sync(SurviveSensorActivations *self, struct Po
 				if (isRecent && isfinite(angle)) {
 					total_angles++;
 
-					FLT P = linmath_norm_pdf(angle, mean, linmath_max(self->params.filterVarianceMin, deviation));
+					FLT unbias_deviation = deviation - fabs(mean - angle) / (FLT)cnt;
+					FLT P = linmath_norm_pdf(angle, mean, unbias_deviation);
 					FLT chauvenet_criterion = P * cnt;
 					bool isOutlier = self->params.filterOutlierCriteria > 0 &&
-									 chauvenet_criterion < self->params.filterOutlierCriteria;
+									 chauvenet_criterion < self->params.filterOutlierCriteria && deviation != 0;
 
 					if (!isOutlier) {
 						variance_measure_add(&variance_calc, &angle);
 					} else {
+						rejected++;
 						changes = true;
 					}
 				}
 			}
 
-			if (variance_calc.size) {
+			if (variance_calc.n) {
 				variance_measure_calc(&variance_calc, &deviation);
+				deviation = sqrt(deviation);
 				mean = variance_calc.sum[0] / (FLT)variance_calc.n;
 				cnt = (int)variance_calc.n;
 			}
@@ -340,6 +346,9 @@ void SurviveSensorActivations_add_sync(SurviveSensorActivations *self, struct Po
 		struct SurviveObject *so = self->so;
 		SV_DATA_LOG("light_mean[%d][%d]", &mean, 1, lh, axis)
 		SV_DATA_LOG("light_deviation[%d][%d]", &deviation, 1, lh, axis)
+		FLT cnt_f = cnt;
+		SV_DATA_LOG("light_count[%d][%d]", &cnt_f, 1, lh, axis)
+		SV_DATA_LOG("light_rejected[%d][%d]", &rejected, 1, lh, axis)
 	}
 }
 
