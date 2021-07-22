@@ -42,7 +42,7 @@ STATIC_CONFIG_ITEM(LIGHTHOUSE_GEN, "lighthouse-gen", 'i',
 				   "Which lighthouse gen to use -- 1 for LH1, 2 for LH2, 0 (default) for auto-detect", 0)
 STATIC_CONFIG_ITEM(OUTPUT_CALLBACK_STATS, "output-callback-stats", 'f',
 				   "Print cb stats every given number of seconds. 0 disables this output.", 0.);
-STATIC_CONFIG_ITEM(THREADED_POSERS, "threaded-posers", 'i', "Whether or not to run each poser in their own thread.", 1)
+STATIC_CONFIG_ITEM(THREADED_POSERS, "threaded-posers", 'i', "Whether or not to run each poser in their own thread.", 0)
 
 const char *survive_config_file_name(struct SurviveContext *ctx) {
 	return survive_configs(ctx, "configfile", SC_GET, DEFAULT_CONFIG_PATH);

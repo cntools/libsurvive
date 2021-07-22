@@ -37,7 +37,7 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("light-required-obs",
 					   "Minimum observations to allow light data into the kalman filter", 16, t->light_required_obs)
 
-	STRUCT_CONFIG_ITEM("light-variance",  "Variance of light sensor readings", 1e-1, t->light_var)
+	STRUCT_CONFIG_ITEM("light-variance",  "Variance of light sensor readings", 1e-4, t->light_var)
 	STRUCT_CONFIG_ITEM("obs-pos-variance",  "Variance of position integration from light capture",
 					   .02, t->obs_pos_var)
 	STRUCT_CONFIG_ITEM("obs-rot-variance",  "Variance of rotation integration from light capture",
@@ -63,7 +63,7 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 
 	STRUCT_CONFIG_ITEM("kalman-acc-scale-kp", "Incorporate scale coefficient while moving", .01, t->acc_scale_control.Kp)
 	STRUCT_CONFIG_ITEM("kalman-acc-scale-ki", "Incorporate scale coefficient while moving", .01, t->acc_scale_control.Ki)
-	STRUCT_CONFIG_ITEM("kalman-zvu-moving", "", 1, t->zvu_moving_var)
+	STRUCT_CONFIG_ITEM("kalman-zvu-moving", "", -1, t->zvu_moving_var)
 	STRUCT_CONFIG_ITEM("kalman-zvu-stationary", "", 1e-4, t->zvu_stationary_var)
 	STRUCT_CONFIG_ITEM("kalman-zvu-no-light", "", 1e-4, t->zvu_no_light_var)
 
