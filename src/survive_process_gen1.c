@@ -1,5 +1,6 @@
 #include "survive.h"
 
+#include "ootx_decoder.h"
 #include "survive_kalman_tracker.h"
 #include "survive_recording.h"
 
@@ -51,7 +52,12 @@ void survive_default_light_process(SurviveObject *so, int sensor_id, int acode, 
 		if (sensor_id == -3)
 			SurviveSensorActivations_add_sync(&so->activations, &l.common);
 
-		SV_VERBOSE(600, "%s Sync    %3d.%2d.%d %8u %u", survive_colorize_codename(so), sensor_id, lh, acode & 1, timecode, length);
+		ootx_decoder_context *decoderContext = ctx->bsd[lh].ootx_data;
+		uint32_t ootxOffset = decoderContext ? decoderContext->offset : 0;
+		uint32_t ootxTotalOffset = decoderContext ? decoderContext->total_offset : 0;
+		SV_VERBOSE(600, "%s Sync    %8x %3d.%2d.%d %8u %u %d %d / %d", survive_colorize_codename(so),
+				   ctx->bsd[lh].BaseStationID, sensor_id, lh, acode & 1, timecode, length, acode & 2 > 0, ootxOffset,
+				   ootxTotalOffset);
 		survive_kalman_tracker_integrate_light(so->tracker, &l.common);
 		SURVIVE_POSER_INVOKE(so, &l);
 		SURVIVE_INVOKE_HOOK_SO(light_pulse, so, sensor_id, acode, timecode, length_sec, lh);
@@ -75,8 +81,8 @@ void survive_default_light_process(SurviveObject *so, int sensor_id, int acode, 
 	assert(angle >= -LINMATHPI && angle <= LINMATHPI);
 
 	SV_DATA_LOG("angle_sweep[%d][%d][%d]", &angle, 1, sensor_id, lh, acode & 1);
-	SV_VERBOSE(600, "%s Sweep %2d.%2d.%d %8u %f %u", survive_colorize_codename(so), sensor_id, lh, acode & 1, timecode,
-			   angle, timeinsweep);
+	SV_VERBOSE(600, "%s %s %2d.%2d.%d %8u %f %u %f %u", survive_colorize_codename(so), survive_colorize("SWEEP"),
+			   sensor_id, lh, acode & 1, timecode, angle, timeinsweep, angle / M_PI * 180 + 90., length);
 	SURVIVE_INVOKE_HOOK_SO(angle, so, sensor_id, acode, timecode, length_sec, angle, lh);
 }
 

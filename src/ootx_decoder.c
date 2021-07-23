@@ -68,6 +68,7 @@ static bool ootx_detect_preamble(ootx_decoder_context *ctx, int8_t dbit) {
 void ootx_reset_buffer(ootx_decoder_context *ctx) {
 	ctx->buf_offset = 0;
 	ctx->bits_written = 0;
+	ctx->offset = 0;
 	ctx->found_preamble = 0;
 	*(ctx->payload_size) = 0;
 }
@@ -114,6 +115,8 @@ void ootx_pump_bit(ootx_decoder_context *ctx, int8_t dbit) {
 		}
 	}*/
 
+	ctx->total_offset++;
+	ctx->offset++;
 	++(ctx->bits_processed);
 	ctx->stats.bits_seen++;
 	if ( ootx_detect_preamble(ctx, dbit) ) {

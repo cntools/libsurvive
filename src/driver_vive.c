@@ -2829,9 +2829,9 @@ void survive_data_cb_locked(uint64_t time_received_us, SurviveUSBInterface *si) 
 				le.timestamp = POP4;
 				if (le.sensor_id > 0xfd)
 					continue;
-				SV_VERBOSE(300, "%s %s %7.3f %2u %2u %5u %08x %4d", survive_colorize(obj->codename),
-						   survive_colorize("LIGHTCAP"), le.timestamp / 48000000., id, le.sensor_id, le.length,
-						   le.timestamp, (int)(si->buffer + size - readdata));
+				SV_VERBOSE(300, "%s %s %7.6f %7.6f %2u %2u %5u %08x %4d", survive_colorize(obj->codename),
+						   survive_colorize("LIGHTCAP"), survive_run_time(ctx), le.timestamp / 48000000., id,
+						   le.sensor_id, le.length, le.timestamp, (int)(si->buffer + size - readdata));
 
 				if (obj->ctx->lh_version != 1) {
 					bool success = handle_lightcap(obj, &le);

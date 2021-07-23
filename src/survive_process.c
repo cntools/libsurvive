@@ -81,7 +81,7 @@ void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighth
 	quatrotatevector(err, lighthouse_pose->Rot, up);
 
 	survive_recording_lighthouse_process(ctx, lighthouse, lighthouse_pose);
-	if(notSet) {
+	if (notSet || ctx->log_level >= 100) {
 		SV_VERBOSE(10, "Position found for LH %d(ID: %08x, mode: %2d, err: %f) " SurvivePose_format, lighthouse,
 				   (unsigned)ctx->bsd[lighthouse].BaseStationID, ctx->bsd[lighthouse].mode, 1 - err[2],
 				   SURVIVE_POSE_EXPAND(*lighthouse_pose));

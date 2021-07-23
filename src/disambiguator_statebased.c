@@ -560,8 +560,8 @@ static void RunACodeCapture(int target_acode, Disambiguator_data_t *d, const Lig
 	SurviveContext *ctx = d->so->ctx;
 	Global_Disambiguator_data_t *g = ctx->disambiguator_data;
 
-	SV_VERBOSE(500, "Acode Capture %d (%4d) %4d -- %d or %d", target_acode, error, le->length,
-			   ACODE_TIMING(target_acode), ACODE_TIMING(target_acode | DATA_BIT));
+	DEBUG_TB("Acode Capture %d (%4d) %4d -- %d or %d", target_acode, error, le->length, ACODE_TIMING(target_acode),
+			 ACODE_TIMING(target_acode | DATA_BIT));
 	// Errors do happen; either reflections or some other noise. Our scheme here is to
 	// keep a tally of hits and misses, and if we ever go into the negatives reset
 	// the state machine to find the state again.

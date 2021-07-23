@@ -28,6 +28,8 @@ typedef struct ootx_decoder_context {
 
 	uint32_t preamble;
 	uint8_t bits_processed;
+	uint16_t offset;
+	uint16_t total_offset;
 	uint8_t found_preamble;
 
 	int ignore_sync_bit_error;

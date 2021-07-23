@@ -125,26 +125,32 @@ static void ootx_packet_cblk_d_gen1(ootx_decoder_context *ct, ootx_packet *packe
 		SURVIVE_INVOKE_HOOK(ootx_received, ctx, id);
 	}
 }
+void survive_ootx_dump_decoder_context(struct SurviveContext *ctx, int bsd_idx) {
+	ootx_decoder_context *decoderContext = ctx->bsd[bsd_idx].ootx_data;
+	if (decoderContext == 0)
+		return;
+
+	SV_VERBOSE(105, "OOTX stats for LH%d", bsd_idx);
+	SV_VERBOSE(105, "\tBits seen:         %u (%d bytes)", decoderContext->stats.bits_seen,
+			   decoderContext->stats.bits_seen / 8);
+	SV_VERBOSE(105, "\tBad CRCs:          %u", decoderContext->stats.bad_crcs);
+	SV_VERBOSE(105, "\tBad sync bits:     %u", decoderContext->stats.bad_sync_bits);
+	SV_VERBOSE(105, "\tPackets found:     %u", decoderContext->stats.packets_found);
+	SV_VERBOSE(105, "\tPayload size:      %u", decoderContext->stats.used_bytes);
+	SV_VERBOSE(105, "\tPackage bits:      %u", decoderContext->stats.package_bits);
+	SV_VERBOSE(105, "\tGuessed bits:      %u (%5.2f%%)", decoderContext->stats.guess_bits,
+			   decoderContext->stats.guess_bits / (FLT)decoderContext->stats.package_bits * 100.);
+	FLT d = survive_run_time(ctx) - decoderContext->stats.started_s;
+	SV_VERBOSE(105, "\tTime:              %2.2f (%2.2fb/s, %2.2fb/s)", d, decoderContext->stats.bits_seen / d,
+			   decoderContext->stats.used_bytes * 8 / d);
+}
 void survive_ootx_free_decoder_context(struct SurviveContext *ctx, int bsd_idx) {
 	ootx_decoder_context *decoderContext = ctx->bsd[bsd_idx].ootx_data;
 	ctx->bsd[bsd_idx].ootx_data = 0;
 	if (decoderContext == 0)
 		return;
 
-	SV_VERBOSE(5, "OOTX stats for LH%d", bsd_idx);
-	SV_VERBOSE(5, "\tBits seen:         %u (%d bytes)", decoderContext->stats.bits_seen,
-			   decoderContext->stats.bits_seen / 8);
-	SV_VERBOSE(5, "\tBad CRCs:          %u", decoderContext->stats.bad_crcs);
-	SV_VERBOSE(5, "\tBad sync bits:     %u", decoderContext->stats.bad_sync_bits);
-	SV_VERBOSE(5, "\tPackets found:     %u", decoderContext->stats.packets_found);
-	SV_VERBOSE(5, "\tPayload size:      %u", decoderContext->stats.used_bytes);
-	SV_VERBOSE(5, "\tPackage bits:      %u", decoderContext->stats.package_bits);
-	SV_VERBOSE(5, "\tGuessed bits:      %u (%5.2f%%)", decoderContext->stats.guess_bits,
-			   decoderContext->stats.guess_bits / (FLT)decoderContext->stats.package_bits * 100.);
-	FLT d = survive_run_time(ctx) - decoderContext->stats.started_s;
-	SV_VERBOSE(5, "\tTime:              %2.2f (%2.2fb/s, %2.2fb/s)", d, decoderContext->stats.bits_seen / d,
-			   decoderContext->stats.used_bytes * 8 / d);
-
+	survive_ootx_dump_decoder_context(ctx, bsd_idx);
 	ootx_free_decoder_context(decoderContext);
 	free(decoderContext);
 }
@@ -173,7 +179,9 @@ void survive_ootx_behavior(SurviveObject *so, int8_t bsd_idx, int8_t lh_version,
 			ootx_pump_bit(decoderContext, ootx);
 
 			if (ctx->bsd[bsd_idx].OOTXChecked) {
-				survive_ootx_free_decoder_context(ctx, bsd_idx);
+				ctx->bsd[bsd_idx].OOTXChecked = false;
+				survive_ootx_dump_decoder_context(ctx, bsd_idx);
+				// survive_ootx_free_decoder_context(ctx, bsd_idx);
 			}
 		}
 	}
