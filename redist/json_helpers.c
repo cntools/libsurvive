@@ -123,17 +123,6 @@ char* load_file_to_mem(const char* path) {
 	return JSON_STRING;
 }
 
-static char* substr(const char* str, uint32_t start, uint32_t end, uint32_t npos) {
-	uint32_t l = end-start+1;
-
-	if (end<=start || end>=npos) return NULL;
-
-	char* x = malloc(l);
-	memcpy(x,str+start,l);
-	x[l-1] = '\0';
-	return x;
-}
-
 typedef struct json_stack_entry_s {
 	const char *data;
 	struct json_stack_entry_s *previous;

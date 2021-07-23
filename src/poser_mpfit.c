@@ -268,33 +268,6 @@ static inline int get_lh_count(const size_t *meas_for_lhs_axis) {
 	return num_lh;
 }
 
-static void iteration_cb(struct survive_optimizer *opt_ctx, int m, int n, FLT *p, FLT *deviates, FLT **derivs) {
-	MPFITData *d = opt_ctx->user;
-	SurviveContext *ctx = d->opt.so->ctx;
-
-	for (int i = 0; i < d->opt.so->sensor_ct; i++) {
-		LinmathPoint3d pt;
-		ApplyAxisAnglePoseToPoint(pt, (LinmathAxisAnglePose *)&survive_optimizer_get_pose(opt_ctx)[0],
-								  &d->opt.so->sensor_locations[i * 3]);
-		survive_recording_write_to_output(ctx->recptr, "SPHERE %s_%d %f %d " Point3_format "\n", d->opt.so->codename, i,
-										  .005, 0xFF, LINMATH_VEC3_EXPAND(pt));
-	}
-	static int idx = 0;
-	for (int i = 0; i < opt_ctx->cameraLength + opt_ctx->poseLength; i++) {
-		LinmathAxisAnglePose *aa = (LinmathAxisAnglePose *)&survive_optimizer_get_pose(opt_ctx)[i];
-		SurvivePose c = {0};
-		copy3d(c.Pos, aa->Pos);
-		quatfromaxisanglemag(c.Rot, aa->AxisAngleRot);
-
-		if (i > 0) {
-			c = InvertPoseRtn(&c);
-		}
-
-		char label[128] = {0};
-		snprintf(label, 128, "calc_camera[%d][%d]", i, idx++);
-		SURVIVE_INVOKE_HOOK(external_pose, ctx, label, &c);
-	}
-}
 static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer *mpfitctx,
 						   SurviveSensorActivations *scene) {
 	MPFITData *d = user->d;
