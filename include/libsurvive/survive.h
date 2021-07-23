@@ -363,6 +363,7 @@ struct SurviveContext {
 
 	// Additional details that we don't want / need to expose to every single include
 	void *private_members;
+	bool request_floor_set;
 };
 
 SURVIVE_EXPORT void survive_verify_FLT_size(

@@ -612,6 +612,19 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 static void handle_results(MPFITData *d, PoserDataLight *lightData, FLT error, SurvivePose *estimate) {
 	SurviveObject *so = d->opt.so;
 	if (error > 0) {
+		if (so->object_type == SURVIVE_OBJECT_TYPE_HMD && so->ctx->request_floor_set) {
+			FLT adjust = estimate->Pos[2];
+			estimate->Pos[2] = 0;
+
+			for (int i = 0; i < so->ctx->activeLighthouses; i++) {
+				if (so->ctx->bsd[i].PositionSet) {
+					so->ctx->bsd[i].Pose.Pos[2] -= adjust;
+				}
+				SURVIVE_INVOKE_HOOK(lighthouse_pose, so->ctx, i, &so->ctx->bsd[i].Pose);
+			}
+			so->ctx->request_floor_set = false;
+		}
+
 		PoserData_poser_pose_func(&lightData->hdr, so, estimate, error);
 	}
 }

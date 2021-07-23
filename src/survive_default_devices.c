@@ -453,6 +453,131 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	return 0;
 }
 
+struct lhdb_ctx {
+	uint32_t lh_found;
+	uint32_t serials[NUM_GEN2_LIGHTHOUSES];
+
+	SurvivePose poses[NUM_GEN2_LIGHTHOUSES];
+
+	struct json_stack_entry_s *parsingBSD;
+	FLT pitch, roll;
+};
+static void lhdb_begin_object(struct json_callbacks *cb, struct json_stack_entry_s *obj) {
+	struct lhdb_ctx *ctx = cb->user;
+
+	if (!ctx->parsingBSD && json_has_ancestor_tag("base_stations", obj) &&
+		json_has_ancestor_tag("known_universes", obj)) {
+		ctx->parsingBSD = obj;
+		ctx->lh_found++;
+	}
+}
+static void lhdb_end_object(struct json_callbacks *cb, struct json_stack_entry_s *obj) {
+	struct lhdb_ctx *ctx = cb->user;
+
+	if (obj == ctx->parsingBSD) {
+		ctx->parsingBSD = 0;
+	}
+}
+static void lhdb_tag_value(struct json_callbacks *cb, struct json_stack_entry_s *obj) {
+	struct lhdb_ctx *ctx = cb->user;
+
+	if (strcmp("base_serial_number", json_stack_tag(obj)) == 0) {
+		ctx->serials[ctx->lh_found - 1] = atoi(json_stack_value(obj));
+	} else if (json_has_ancestor_tag("pose", obj)) {
+		FLT *p = &ctx->poses[ctx->lh_found - 1].Pos[0];
+		FLT v = atof(json_stack_value(obj));
+		int idx = json_stack_index(obj);
+		if (idx >= 4) {
+			ctx->poses[ctx->lh_found - 1].Pos[idx - 4] = v;
+		} else if (idx <= 2) {
+			ctx->poses[ctx->lh_found - 1].Rot[idx + 1] = v;
+		} else {
+			ctx->poses[ctx->lh_found - 1].Rot[0] = v;
+		}
+	} else if (strcmp("pitch", json_stack_tag(obj)) == 0 && json_has_ancestor_tag("known_universes", obj)) {
+		ctx->pitch = atof(json_stack_value(obj));
+	} else if (strcmp("roll", json_stack_tag(obj)) == 0 && json_has_ancestor_tag("known_universes", obj)) {
+		ctx->roll = atof(json_stack_value(obj));
+	}
+}
+
+SURVIVE_EXPORT int survive_load_steamvr_lighthousedb(SurviveContext *ctx, char *ct0conf, int len) {
+	if (len == 0)
+		return -1;
+
+	jsmn_parser p = {0};
+	jsmn_init(&p);
+
+	int r = jsmn_parse(&p, ct0conf, len);
+	if (r < 0) {
+		SV_WARN("Failed to parse JSON in lighthouse db: %d\n", r);
+		jsmn_free(&p);
+		return -1;
+	}
+	struct lhdb_ctx lhctx = {0};
+	struct json_callbacks cbs = {.user = &lhctx,
+								 .json_begin_object = lhdb_begin_object,
+								 .json_end_object = lhdb_end_object,
+								 .json_tag_value = lhdb_tag_value};
+	json_run_callbacks(&cbs, ct0conf, len);
+
+	FLT euler[] = {lhctx.roll, lhctx.pitch, 0};
+	LinmathPose vr2bsd = {0, .Rot = {1}};
+	// quatfromeuler(vr2bsd.Rot, euler);
+
+	LinmathQuat q = {1};
+	LinmathPoint3d survivePts[] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+	LinmathPoint3d openvrPts[] = {{1, 0, 0}, {0, 0, -1}, {0, 1, 0}};
+	KabschCentered(q, (FLT *)openvrPts, (FLT *)survivePts, 3);
+	quatrotateabout(vr2bsd.Rot, q, vr2bsd.Rot);
+	SurvivePose bsdup2realup = {0};
+
+	for (int i = 0; i < ctx->activeLighthouses; i++) {
+		for (int j = 0; j < lhctx.lh_found; j++) {
+			if (ctx->bsd[i].BaseStationID == lhctx.serials[j]) {
+				ApplyPoseToPose(&ctx->bsd[i].Pose, &vr2bsd, &lhctx.poses[i]);
+
+				if (quatiszero(bsdup2realup.Rot)) {
+					LinmathPoint3d real_up = {0, 0, 1};
+					LinmathPoint3d bsd_up = {0};
+					normalize3d(bsd_up, ctx->bsd[i].accel);
+					quatrotatevector(bsd_up, ctx->bsd[i].Pose.Rot, bsd_up);
+
+					quatfind_between_vectors(bsdup2realup.Rot, bsd_up, real_up);
+				}
+
+				ApplyPoseToPose(&ctx->bsd[i].Pose, &bsdup2realup, &ctx->bsd[i].Pose);
+
+				ctx->bsd[i].PositionSet = true;
+				ctx->request_floor_set = true;
+			}
+		}
+	}
+
+	SV_VERBOSE(50, "Read lighthouse db config file");
+	jsmn_free(&p);
+	return 0;
+}
+SURVIVE_EXPORT int survive_load_steamvr_lighthousedb_from_file(SurviveContext *ctx, const char *filename) {
+	if (ctx == 0)
+		return -1;
+
+	FILE *fp = fopen(filename, "r");
+	if (fp) {
+		fseek(fp, 0L, SEEK_END);
+		int len = ftell(fp);
+		fseek(fp, 0L, SEEK_SET);
+		if (len > 0) {
+			char *ct0conf = (char *)malloc(len);
+			size_t read = fread(ct0conf, 1, len, fp);
+			survive_load_steamvr_lighthousedb(ctx, ct0conf, len);
+			fclose(fp);
+		}
+		return 0;
+	}
+	return -1;
+}
+
 int survive_load_htc_config_format_from_file(SurviveObject *so, const char *filename) {
 	if (so == 0 || so->ctx == 0)
 		return -1;

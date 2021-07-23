@@ -21,6 +21,8 @@ SURVIVE_EXPORT SurviveObject *survive_create_tr1(SurviveContext *ctx, const char
 SURVIVE_EXPORT SurviveObject *survive_create_ww0(SurviveContext *ctx, const char *driver_name,
 								  void *driver);
 
+SURVIVE_EXPORT int survive_load_steamvr_lighthousedb(SurviveContext *so, char *ct0conf, int length);
+SURVIVE_EXPORT int survive_load_steamvr_lighthousedb_from_file(SurviveContext *ctx, const char *filename);
 SURVIVE_EXPORT int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int length);
 SURVIVE_EXPORT int survive_load_htc_config_format_from_file(SurviveObject *so, const char *filename);
 #endif

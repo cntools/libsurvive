@@ -688,6 +688,17 @@ int survive_startup(SurviveContext *ctx) {
 		}
 	}
 
+	const char *steamvr_path = survive_configs(ctx, "steamvr-calibration", SC_GET, "");
+	if (steamvr_path == 0 || steamvr_path[0] != 0) {
+		char configpath[1024] = {0};
+		if (steamvr_path == 0) {
+			const char *home = getenv("HOME");
+			snprintf(configpath, sizeof(configpath) - 1, "%s/.steam/steam/config/lighthouse/lighthousedb.json", home);
+			steamvr_path = configpath;
+		}
+		survive_load_steamvr_lighthousedb_from_file(ctx, steamvr_path);
+		config_save(ctx);
+	}
 
 	// If lighthouse positions are known, broadcast them
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
