@@ -388,6 +388,7 @@ void KalmanModelSim_init(KalmanModelSim *model) {
 		svMatrixSet(&model->kalman_t.P, i, i, ((FLT *)&initial_variance)[i]);
 	}
 }
+void KalmanModelSim_dtor(KalmanModelSim *model) { survive_kalman_state_free(&model->kalman_t); }
 
 #define KALMAN_MODEL_FORMAT "S: " SurvivePose_format " V: " SurviveVel_format " A: " Point3_format " B: " Point3_format
 #define KALMAN_MODEL_EXPAND(m)                                                                                         \
@@ -426,7 +427,7 @@ TEST(Kalman, InstFlip) {
 				LINMATH_VEC3_EXPAND(model.sim_state.Acc), LINMATH_VEC3_EXPAND(model.sim_state.Velocity.Pos),
 				LINMATH_QUAT_EXPAND(model.sim_state.Pose.Rot));
 	}
-
+	KalmanModelSim_dtor(&model);
 	fprintf(stderr, "\n");
 
 	return 0;
@@ -467,7 +468,7 @@ TEST(Kalman, Flip) {
 		fprintf(stderr, "             Velocity: " SurviveVel_format " Pose: " SurvivePose_format "\n",
 				SURVIVE_VELOCITY_EXPAND(model.true_state.Velocity), SURVIVE_POSE_EXPAND(model.true_state.Pose));
 	}
-
+	KalmanModelSim_dtor(&model);
 	fprintf(stderr, "\n");
 
 	return 0;
@@ -522,6 +523,7 @@ TEST(Kalman, LiftupSetDown) {
 		write_state(rf, &model.true_state);
 		write_state(sf, &model.sim_state);
 	}
+	KalmanModelSim_dtor(&model);
 	fclose(rf);
 	fclose(sf);
 

@@ -639,6 +639,7 @@ void survive_destroy_device(SurviveObject *so) {
 	}
 
 	survive_kalman_tracker_free(so->tracker);
+	SurviveSensorActivations_dtor(so);
 	free(so->tracker);
 	free(so->sensor_locations);
 	free(so->sensor_normals);

@@ -70,6 +70,7 @@ struct PoserDataIMU;
 
 SURVIVE_EXPORT void SurviveSensorActivations_reset(SurviveSensorActivations *self);
 SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveObject *so, SurviveSensorActivations *self);
+SURVIVE_EXPORT void SurviveSensorActivations_dtor(SurviveObject *so);
 SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_long_timecode_imu(const SurviveSensorActivations *self, survive_timecode timecode);
 SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_long_timecode_light(const SurviveSensorActivations *self, survive_timecode timecode);
 

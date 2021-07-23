@@ -289,7 +289,9 @@ SURVIVE_EXPORT void SurviveSensorActivations_ctor(SurviveObject *so, SurviveSens
 	self->so = so;
 	self->lh_gen = -1;
 }
-
+SURVIVE_EXPORT void SurviveSensorActivations_dtor(SurviveObject *so) {
+	SurviveSensorActivations_detach_config(so ? so->ctx : 0, &so->activations);
+}
 void SurviveSensorActivations_add_sync(SurviveSensorActivations *self, struct PoserDataLight *lightData) {
 	int lh = lightData->lh;
 	survive_long_timecode timecode = lightData->hdr.timecode;
