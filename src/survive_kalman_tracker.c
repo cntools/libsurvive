@@ -192,10 +192,6 @@ void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker,
 		return;
 	}
 
-	if (tracker->savedLight_idx == 0) {
-		return;
-	}
-
 	tracker->last_light_time = time;
 	if (tracker->light_var >= 0) {
 
@@ -207,7 +203,11 @@ void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker,
 			}
 		}
 
-		SV_CREATE_STACK_MAT(Z, tracker->savedLight_idx, 1);
+        if (tracker->savedLight_idx == 0) {
+            return;
+        }
+
+        SV_CREATE_STACK_MAT(Z, tracker->savedLight_idx, 1);
 		for (int i = 0; i < tracker->savedLight_idx; i++) {
 			svMatrixSet(&Z, i, 0, tracker->savedLight[i].value);
 		}

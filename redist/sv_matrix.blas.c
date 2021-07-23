@@ -160,7 +160,7 @@ SURVIVE_LOCAL_ONLY void svGEMM(const SvMat *src1, const SvMat *src2, double alph
 
 	assert(SV_RAW_PTR(dst) != SV_RAW_PTR(src1));
 	assert(SV_RAW_PTR(dst) != SV_RAW_PTR(src2));
-
+	assert(dst->cols > 0);
 	cblas_gemm(CblasRowMajor, (tABC & SV_GEMM_FLAG_A_T) ? CblasTrans : CblasNoTrans,
 			   (tABC & SV_GEMM_FLAG_B_T) ? CblasTrans : CblasNoTrans, dst->rows, dst->cols, cols1, alpha,
 			   SV_RAW_PTR(src1), lda, SV_RAW_PTR(src2), ldb, beta, SV_RAW_PTR(dst), dst->cols);
@@ -182,7 +182,7 @@ SURVIVE_LOCAL_ONLY void svMulTransposed(const SvMat *src, SvMat *dst, int order,
 	bool isBT = !isAT;
 
 	lapack_int dstCols = dst->cols;
-
+	assert(dstCols > 0);
 	cblas_gemm(CblasRowMajor, isAT ? CblasTrans : CblasNoTrans, isBT ? CblasTrans : CblasNoTrans, dst->rows, dst->cols,
 			   order == 1 ? src->rows : src->cols, scale, SV_RAW_PTR(src), src->cols, SV_RAW_PTR(src), src->cols, beta,
 			   SV_RAW_PTR(dst), dstCols);
