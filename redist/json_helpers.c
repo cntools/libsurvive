@@ -107,13 +107,6 @@ void json_write_str(FILE* f, const char* tag, const char* v) {
 	fprintf(f, "\"%s\":\"%s\"", tag, v);
 }
 
-
-
-
-void (*json_begin_object)(char* tag) = NULL;
-void (*json_end_object)() = NULL;
-void (*json_tag_value)(char* tag, char** values, uint8_t count) = NULL;
-
 uint32_t JSON_STRING_LEN;
 
 char* load_file_to_mem(const char* path) {
@@ -141,26 +134,109 @@ static char* substr(const char* str, uint32_t start, uint32_t end, uint32_t npos
 	return x;
 }
 
-static uint16_t json_load_array(const char* JSON_STRING, jsmntok_t* tokens, uint16_t size, char* tag) {
-	jsmntok_t* t = tokens;
-	uint16_t i = 0;
+typedef struct json_stack_entry_s {
+	const char *data;
+	struct json_stack_entry_s *previous;
+	int index;
+	jsmntok_t *token, *key;
+} stack_entry_t;
 
-	char** values;
-	values = alloca(sizeof(char*) * size);
-
-	for (i=0;i<size;++i) {
-		t = tokens+i;
-		values[i] = substr(JSON_STRING, t->start, t->end, JSON_STRING_LEN);
-	}
-
-	if (json_tag_value != NULL) json_tag_value(tag, values, (uint8_t)i);
-
-	for (i=0;i<size;++i) free(values[i]);
-
-	return size;
+static const char *json_value(const char *d, jsmntok_t *t) {
+	if (t == 0)
+		return "";
+	return d + t->start;
 }
 
-void json_load_file(const char* path) {
+bool json_has_ancestor_tag(const char *tag, struct json_stack_entry_s *obj) {
+	if (!obj)
+		return false;
+	const char *tag_value = json_stack_tag(obj);
+	if (tag_value && strcmp(tag, tag_value) == 0)
+		return true;
+	return json_has_ancestor_tag(tag, obj->previous);
+}
+int json_stack_index(struct json_stack_entry_s *obj) { return obj->index; }
+const char *json_stack_tag(struct json_stack_entry_s *obj) { return json_value(obj->data, obj->key); }
+const char *json_stack_value(struct json_stack_entry_s *obj) { return json_value(obj->data, obj->token); }
+
+#define INVOKE_CB(cb)                                                                                                  \
+	if (cb)                                                                                                            \
+	cb
+
+static int process_jsontok(struct json_callbacks *cbs, const char *d, stack_entry_t *stack, jsmntok_t *t, int count) {
+	int i, j, k;
+	if (stack) {
+		stack->data = d;
+		stack->token = t;
+	}
+
+	if (count == 0) {
+		return 0;
+	}
+	if (t->type == JSMN_PRIMITIVE) {
+		INVOKE_CB(cbs->json_tag_value)(cbs, stack);
+		return 1;
+	} else if (t->type == JSMN_STRING) {
+		INVOKE_CB(cbs->json_tag_value)(cbs, stack);
+		return 1;
+	} else if (t->type == JSMN_OBJECT) {
+		j = 0;
+		INVOKE_CB(cbs->json_begin_object)(cbs, stack);
+
+		for (i = 0; i < t->size; i++) {
+			stack_entry_t entry = {.key = t + 1 + j, .index = i, .previous = stack};
+			// print_stack_spot(d, &entry);
+			// Skip the key
+			j++;
+			// Read value
+			j += process_jsontok(cbs, d, &entry, t + 1 + j, count - j);
+		}
+		INVOKE_CB(cbs->json_end_object)(cbs, stack);
+		return j + 1;
+	} else if (t->type == JSMN_ARRAY) {
+		INVOKE_CB(cbs->json_begin_array)(cbs, stack);
+		j = 0;
+		for (i = 0; i < t->size; i++) {
+			stack_entry_t entry = {.index = i, .previous = stack};
+			j += process_jsontok(cbs, d, &entry, t + 1 + j, count - j);
+		}
+		INVOKE_CB(cbs->json_end_array)(cbs, stack);
+		return j + 1;
+	}
+	return 0;
+}
+
+int json_run_callbacks(struct json_callbacks *cbs, const char *_JSON_STRING, int JSON_STRING_LEN) {
+	jsmn_parser parser;
+	jsmn_init(&parser);
+	int32_t items = jsmn_parse(&parser, _JSON_STRING, JSON_STRING_LEN);
+	if (items < 0) {
+		return items;
+	}
+	char *JSON_STRING = malloc(JSON_STRING_LEN);
+	memcpy(JSON_STRING, _JSON_STRING, JSON_STRING_LEN);
+
+	jsmntok_t *tokens = parser.token_pool;
+	for (int i = 0; i < items; i++) {
+		JSON_STRING[tokens[i].end] = 0;
+	}
+
+	int16_t children = -1;
+	bool noGlobal = parser.token_pool->type != JSMN_ARRAY && parser.token_pool->type != JSMN_OBJECT;
+	if (noGlobal) {
+		for (int j = 0; j < items;) {
+			stack_entry_t entry = {.key = tokens + j};
+			j++;
+			j += process_jsontok(cbs, JSON_STRING, &entry, tokens + j, items - j);
+		}
+	} else {
+		process_jsontok(cbs, JSON_STRING, 0, parser.token_pool, items);
+	}
+	jsmn_free(&parser);
+	free(JSON_STRING);
+	return items;
+}
+void json_load_file(struct json_callbacks *cbs, const char *path) {
 	uint32_t i = 0;
 
 	char* JSON_STRING = load_file_to_mem(path);
@@ -168,46 +244,8 @@ void json_load_file(const char* path) {
 
 	JSON_STRING_LEN = (uint32_t)strlen(JSON_STRING);
 
-	jsmn_parser parser;
-	jsmn_init(&parser);
-	int32_t items = jsmn_parse(&parser, JSON_STRING, JSON_STRING_LEN);
-    jsmntok_t* tokens = parser.token_pool;
+	json_run_callbacks(cbs, JSON_STRING, JSON_STRING_LEN);
 
-	int16_t children = -1;
-
-	for (i=0; i<(unsigned int)items; i+=2)
-	{
-		//increment i on each successful tag + values combination, not individual tokens
-		jsmntok_t* tag_t = tokens+i;
-		jsmntok_t* value_t = tokens+i+1;
-
-		char* tag = substr(JSON_STRING, tag_t->start, tag_t->end, JSON_STRING_LEN);
-		char* value = substr(JSON_STRING, value_t->start, value_t->end, JSON_STRING_LEN);
-
-		if (value_t->type == JSMN_ARRAY) {
-			i += json_load_array(JSON_STRING, tokens+i+2,value_t->size, tag); //look at array children
-		} else if (value_t->type == JSMN_OBJECT) {
-			if (json_begin_object != NULL) json_begin_object(tag);
-			children = (int16_t)(value_t->size +1); //+1 to account for this loop where we are not yed parsing children
-//			i += decode_jsmn_object(JSON_STRING, tokens+i+2,value_t->size);
-		}
-		else {
-			if (json_tag_value != NULL) json_tag_value(tag, &value, 1);
-		}
-
-		if (children>=0) children--;
-		if (children == 0) {
-			children = -1;
-			if (json_end_object!=NULL) json_end_object();
-		}
-
-//		printf("%d %s \n", value_t->type, tag);
-
-		free(tag);
-		free(value);
-	}
-
-	jsmn_free(&parser);
 	free(JSON_STRING);
 }
 

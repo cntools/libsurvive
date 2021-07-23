@@ -741,11 +741,11 @@ void print_json_value(char *tag, char **values, uint16_t count) {
 config_group *cg_stack[10]; // handle 10 nested objects deep
 uint8_t cg_stack_head = 0;
 
-void handle_config_group(char *tag) {
+void handle_config_group(struct json_callbacks *cbs, struct json_stack_entry_s *obj) {
 	cg_stack_head++;
 	int lh_idx;
 
-	int lhMatch = sscanf(tag, "lighthouse%d", &lh_idx);
+	int lhMatch = sscanf(json_stack_tag(obj), "lighthouse%d", &lh_idx);
 	if (lhMatch == 1) {
 		cg_stack[cg_stack_head] = survive_context->lh_config + lh_idx;
 	} else {
@@ -753,9 +753,9 @@ void handle_config_group(char *tag) {
 	}
 }
 
-void pop_config_group() { cg_stack_head--; }
+void pop_config_group(struct json_callbacks *cbs, struct json_stack_entry_s *obj) { cg_stack_head--; }
 
-int parse_floats(char *tag, char **values, uint8_t count) {
+int parse_floats(const char *tag, const char **values, uint8_t count) {
 	uint16_t i = 0;
 	FLT *f;
 	f = alloca(sizeof(FLT) * count);
@@ -784,20 +784,12 @@ int parse_floats(char *tag, char **values, uint8_t count) {
 	return 1;
 }
 
-int parse_uint32(char *tag, char **values, uint16_t count) {
+int parse_uint32(const char *tag, const char **values, uint16_t count) {
 	uint16_t i = 0;
 	uint32_t *l = alloca(sizeof(uint32_t) * count);
 	char *end = NULL;
 	config_group *cg = cg_stack[cg_stack_head];
 
-	/*
-		//look for non numeric values
-		for(end=values[0];*end!='\0';++end) {
-			if ((*end<48) || (*end>57)) return 0;
-		}
-
-		end=NULL;
-	*/
 	for (i = 0; i < count; ++i) {
 		l[i] = strtoul(values[i], &end, 10);
 		//		if (values[i] == end) return 0; //not an integer
@@ -813,23 +805,45 @@ int parse_uint32(char *tag, char **values, uint16_t count) {
 	return 1;
 }
 
-void handle_tag_value(char *tag, char **values, uint8_t count) {
+static size_t array_size = 0;
+static const char **array_data = 0;
+void handle_array_start(struct json_callbacks *cb, struct json_stack_entry_s *array) { array_size = 1; }
+void handle_array_end(struct json_callbacks *cb, struct json_stack_entry_s *array) {
+	const char *tag = json_stack_tag(array);
+	if (NULL != array_data && NULL != *array_data) {
+		if (parse_uint32(tag, array_data, array_size - 1) == 0) {
+			// parse integers first, stricter rules
+			parse_floats(tag, array_data, array_size - 1);
+		}
+	}
 
+	array_size = 0;
+}
+
+void handle_tag_value(struct json_callbacks *cbs, struct json_stack_entry_s *array) {
+	const char *tag = json_stack_tag(array);
+	const char *value = json_stack_value(array);
+
+	if (array_size > 0) {
+		array_data = realloc(array_data, sizeof(char *) * array_size);
+		array_data[array_size++ - 1] = value;
+		return;
+	}
+	char **values = 0;
+	uint8_t count = 0;
 	// Uncomment for more debugging of input configuration.
 	// print_json_value(tag,values,count);
 
+	if (parse_uint32(tag, &value, 1) > 0)
+		return; // parse integers first, stricter rules
+
+	if (parse_floats(tag, &value, 1) > 0)
+		return;
+
 	config_group *cg = cg_stack[cg_stack_head];
 
-	if (NULL != *values) {
-		if (parse_uint32(tag, values, count) > 0)
-			return; // parse integers first, stricter rules
-
-		if (parse_floats(tag, values, count) > 0)
-			return;
-	}
-
 	// should probably also handle string arrays
-	config_set_str(cg, tag, values[0]);
+	config_set_str(cg, tag, value);
 	//	else if (count>1) config_set_str
 }
 
@@ -842,17 +856,13 @@ void config_read(SurviveContext *sctx, const char *init_path) {
 	} else {
 		survive_config_file_path(sctx, path);
 	}
-	json_begin_object = handle_config_group;
-	json_end_object = pop_config_group;
-	json_tag_value = handle_tag_value;
-
 	cg_stack[0] = sctx->global_config_values;
-
-	json_load_file(path);
-
-	json_begin_object = NULL;
-	json_end_object = NULL;
-	json_tag_value = NULL;
+	struct json_callbacks cbs = {.json_begin_object = handle_config_group,
+								 .json_end_object = pop_config_group,
+								 .json_tag_value = handle_tag_value,
+								 .json_begin_array = handle_array_start,
+								 .json_end_array = handle_array_end};
+	json_load_file(&cbs, path);
 }
 
 static config_entry *sc_search(SurviveContext *ctx, const char *tag) {

@@ -20,9 +20,23 @@ int parse_float_array(char *str, const jsmntok_t *token, FLT **values, uint8_t c
 int parse_int_array_in_place(char *str, const jsmntok_t *token, int *values, uint8_t count);
 int parse_int_array(char *str, const jsmntok_t *token, int **values, uint8_t count);
 
-void json_load_file(const char* path);
-extern void (*json_begin_object)(char* tag);
-extern void (*json_end_object)();
-extern void (*json_tag_value)(char* tag, char** values, uint8_t count);
+struct json_stack_entry_s;
+
+bool json_has_ancestor_tag(const char *tag, struct json_stack_entry_s *obj);
+const char *json_stack_value(struct json_stack_entry_s *obj);
+const char *json_stack_tag(struct json_stack_entry_s *obj);
+int json_stack_index(struct json_stack_entry_s *obj);
+struct json_callbacks {
+	void *user;
+	void (*json_begin_object)(struct json_callbacks *cb, struct json_stack_entry_s *obj);
+	void (*json_end_object)(struct json_callbacks *cb, struct json_stack_entry_s *obj);
+
+	void (*json_begin_array)(struct json_callbacks *cb, struct json_stack_entry_s *array);
+	void (*json_end_array)(struct json_callbacks *cb, struct json_stack_entry_s *array);
+
+	void (*json_tag_value)(struct json_callbacks *cb, struct json_stack_entry_s *array);
+};
+int json_run_callbacks(struct json_callbacks *cbs, const char *json_string, int length);
+void json_load_file(struct json_callbacks *cbs, const char *path);
 
 #endif
