@@ -87,8 +87,6 @@ static void ootx_packet_cblk_d_gen1(ootx_decoder_context *ct, ootx_packet *packe
 	SurviveContext *ctx = ((SurviveObject *)(ct->user))->ctx;
 	int id = ct->user1;
 
-	SV_INFO("Got OOTX packet %d", id);
-
 	lighthouse_info_v6 v6;
 	init_lighthouse_info_v6(&v6, packet->data);
 
@@ -97,12 +95,12 @@ static void ootx_packet_cblk_d_gen1(ootx_decoder_context *ct, ootx_packet *packe
 	FLT accel[3] = {v6.accel_dir_x, v6.accel_dir_y, v6.accel_dir_z};
 	bool upChanged = dist3d(b->accel, accel) > 1e-3;
 
-	bool doSave = b->BaseStationID != v6.id || b->OOTXSet == false || upChanged;
+	bool doSave = b->BaseStationID != v6.id || b->OOTXSet == false || upChanged || b->mode != v6.mode_current;
 	b->sys_unlock_count = v6.sys_unlock_count;
 	b->OOTXSet = 1;
 
 	if (doSave) {
-		SV_INFO("Got OOTX packet %d %08x", ctx->bsd[id].mode, (unsigned)v6.id);
+		SV_VERBOSE(50, "Got OOTX packet %d %08x", ctx->bsd[id].mode, (unsigned)v6.id);
 
 		b->BaseStationID = v6.id;
 		b->fcal[0].phase = v6.fcal_0_phase;
