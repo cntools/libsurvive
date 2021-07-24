@@ -130,7 +130,7 @@ void survive_ootx_dump_decoder_context(struct SurviveContext *ctx, int bsd_idx) 
 	if (decoderContext == 0)
 		return;
 
-	SV_VERBOSE(105, "OOTX stats for LH%d", bsd_idx);
+	SV_VERBOSE(105, "OOTX stats for LH%d (mode: %d, %u)", bsd_idx, ctx->bsd[bsd_idx].mode, ctx->bsd[bsd_idx].BaseStationID);
 	SV_VERBOSE(105, "\tBits seen:         %u (%d bytes)", decoderContext->stats.bits_seen,
 			   decoderContext->stats.bits_seen / 8);
 	SV_VERBOSE(105, "\tBad CRCs:          %u", decoderContext->stats.bad_crcs);
