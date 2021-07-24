@@ -454,6 +454,7 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 }
 
 struct lhdb_ctx {
+	SurviveContext *ctx;
 	uint32_t lh_found;
 	uint32_t serials[NUM_GEN2_LIGHTHOUSES];
 
@@ -463,41 +464,47 @@ struct lhdb_ctx {
 	FLT pitch, roll;
 };
 static void lhdb_begin_object(struct json_callbacks *cb, struct json_stack_entry_s *obj) {
-	struct lhdb_ctx *ctx = cb->user;
+	struct lhdb_ctx *lhdb = cb->user;
 
-	if (!ctx->parsingBSD && json_has_ancestor_tag("base_stations", obj) &&
+	if (!lhdb->parsingBSD && json_has_ancestor_tag("base_stations", obj) &&
 		json_has_ancestor_tag("known_universes", obj)) {
-		ctx->parsingBSD = obj;
-		ctx->lh_found++;
+		lhdb->parsingBSD = obj;
+		lhdb->lh_found++;
+		SurviveContext *ctx = lhdb->ctx;
+		SV_VERBOSE(105, "Found base station object definition");
 	}
 }
 static void lhdb_end_object(struct json_callbacks *cb, struct json_stack_entry_s *obj) {
-	struct lhdb_ctx *ctx = cb->user;
+	struct lhdb_ctx *lhdb = cb->user;
 
-	if (obj == ctx->parsingBSD) {
-		ctx->parsingBSD = 0;
+	if (obj && obj == lhdb->parsingBSD) {
+		lhdb->parsingBSD = 0;
+		SurviveContext *ctx = lhdb->ctx;
+		SV_VERBOSE(105, "Exiting base station object definition");
 	}
 }
 static void lhdb_tag_value(struct json_callbacks *cb, struct json_stack_entry_s *obj) {
-	struct lhdb_ctx *ctx = cb->user;
+	struct lhdb_ctx *lhdb = cb->user;
+	SurviveContext *ctx = lhdb->ctx;
 
 	if (strcmp("base_serial_number", json_stack_tag(obj)) == 0) {
-		ctx->serials[ctx->lh_found - 1] = atoi(json_stack_value(obj));
+		lhdb->serials[lhdb->lh_found - 1] = atoi(json_stack_value(obj));
+		SV_VERBOSE(105, "\tSerial number %8u", lhdb->serials[lhdb->lh_found - 1]);
 	} else if (json_has_ancestor_tag("pose", obj)) {
-		FLT *p = &ctx->poses[ctx->lh_found - 1].Pos[0];
 		FLT v = atof(json_stack_value(obj));
 		int idx = json_stack_index(obj);
 		if (idx >= 4) {
-			ctx->poses[ctx->lh_found - 1].Pos[idx - 4] = v;
+			lhdb->poses[lhdb->lh_found - 1].Pos[idx - 4] = v;
 		} else if (idx <= 2) {
-			ctx->poses[ctx->lh_found - 1].Rot[idx + 1] = v;
+			lhdb->poses[lhdb->lh_found - 1].Rot[idx + 1] = v;
 		} else {
-			ctx->poses[ctx->lh_found - 1].Rot[0] = v;
+			lhdb->poses[lhdb->lh_found - 1].Rot[0] = v;
 		}
+		SV_VERBOSE(105, "\tPose index %d %f", idx, v);
 	} else if (strcmp("pitch", json_stack_tag(obj)) == 0 && json_has_ancestor_tag("known_universes", obj)) {
-		ctx->pitch = atof(json_stack_value(obj));
+		lhdb->pitch = atof(json_stack_value(obj));
 	} else if (strcmp("roll", json_stack_tag(obj)) == 0 && json_has_ancestor_tag("known_universes", obj)) {
-		ctx->roll = atof(json_stack_value(obj));
+		lhdb->roll = atof(json_stack_value(obj));
 	}
 }
 
@@ -514,7 +521,7 @@ SURVIVE_EXPORT int survive_load_steamvr_lighthousedb(SurviveContext *ctx, char *
 		jsmn_free(&p);
 		return -1;
 	}
-	struct lhdb_ctx lhctx = {0};
+	struct lhdb_ctx lhctx = {.ctx = ctx};
 	struct json_callbacks cbs = {.user = &lhctx,
 								 .json_begin_object = lhdb_begin_object,
 								 .json_end_object = lhdb_end_object,
@@ -528,14 +535,17 @@ SURVIVE_EXPORT int survive_load_steamvr_lighthousedb(SurviveContext *ctx, char *
 	LinmathQuat q = {1};
 	LinmathPoint3d survivePts[] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 	LinmathPoint3d openvrPts[] = {{1, 0, 0}, {0, 0, -1}, {0, 1, 0}};
-	KabschCentered(q, (FLT *)openvrPts, (FLT *)survivePts, 3);
+	// KabschCentered(q, (FLT *)openvrPts, (FLT *)survivePts, 3);
 	quatrotateabout(vr2bsd.Rot, q, vr2bsd.Rot);
-	SurvivePose bsdup2realup = {0};
+	SurvivePose bsdup2realup = {.Rot = {0.}};
 
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
 		for (int j = 0; j < lhctx.lh_found; j++) {
 			if (ctx->bsd[i].BaseStationID == lhctx.serials[j]) {
-				ApplyPoseToPose(&ctx->bsd[i].Pose, &vr2bsd, &lhctx.poses[i]);
+				lhctx.poses[j] = InvertPoseRtn(&lhctx.poses[j]);
+				SV_VERBOSE(50, "Basestation ID %8u (%d) has " SurvivePose_format, lhctx.serials[j], i,
+						   SURVIVE_POSE_EXPAND(lhctx.poses[j]));
+				ApplyPoseToPose(&ctx->bsd[i].Pose, &vr2bsd, &lhctx.poses[j]);
 
 				if (quatiszero(bsdup2realup.Rot)) {
 					LinmathPoint3d real_up = {0, 0, 1};
