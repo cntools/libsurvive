@@ -6,7 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define DEBUG_TB(...) SV_VERBOSE(1000, __VA_ARGS__)
+#define DEBUG_TB(...)                                                                                                  \
+	SV_VERBOSE(((Global_Disambiguator_data_t *)d->so->ctx->disambiguator_data)->verbosity, __VA_ARGS__)
 //#define DEBUG_TB(...)
 /**
  * The lighthouses go in the following order:
@@ -163,10 +164,12 @@ typedef struct {
 
 	bool single_60hz_mode;
 	int light_min_length;
+	int verbosity;
 } Global_Disambiguator_data_t;
 
 STRUCT_CONFIG_SECTION(Global_Disambiguator_data_t)
 STRUCT_CONFIG_ITEM("light-min-length", "Minimum length of V1 light to accept.", 100, t->light_min_length);
+STRUCT_CONFIG_ITEM("disambiguator-verbosity", "Verbosity of disambiguator", 1000, t->verbosity);
 END_STRUCT_CONFIG_SECTION(Global_Disambiguator_data_t)
 
 typedef struct {
@@ -790,7 +793,6 @@ void DisambiguatorStateBased(SurviveObject *so, const LightcapElement *le) {
 	}
 
 	if (so->ctx->disambiguator_data == NULL) {
-		DEBUG_TB("Initializing Global Disambiguator Data");
 		Global_Disambiguator_data_t *d = SV_CALLOC(sizeof(Global_Disambiguator_data_t));
 		d->ctx = ctx;
 		ctx->disambiguator_data = d;
@@ -798,7 +800,6 @@ void DisambiguatorStateBased(SurviveObject *so, const LightcapElement *le) {
 	}
 
 	if (so->disambiguator_data == NULL) {
-		DEBUG_TB("Initializing Disambiguator Data for TB %d", so->sensor_ct);
 		Disambiguator_data_t *d = SV_CALLOC(sizeof(Disambiguator_data_t) + sizeof(LightcapElement) * so->sensor_ct);
 		d->so = so;
 		so->disambiguator_data = d;
