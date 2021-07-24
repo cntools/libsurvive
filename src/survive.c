@@ -696,6 +696,7 @@ int survive_startup(SurviveContext *ctx) {
 			snprintf(configpath, sizeof(configpath) - 1, "%s/.steam/steam/config/lighthouse/lighthousedb.json", home);
 			steamvr_path = configpath;
 		}
+		SV_VERBOSE(10, "Attempting to load lighthouse db from %s", steamvr_path);
 		survive_load_steamvr_lighthousedb_from_file(ctx, steamvr_path);
 		config_save(ctx);
 	}

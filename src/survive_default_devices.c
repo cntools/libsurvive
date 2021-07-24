@@ -585,6 +585,8 @@ SURVIVE_EXPORT int survive_load_steamvr_lighthousedb_from_file(SurviveContext *c
 		}
 		return 0;
 	}
+
+	SV_WARN("Could not open lighthouse db file at '%s' (%d)", filename, errno);
 	return -1;
 }
 
