@@ -69,6 +69,7 @@ LOCAL_SRC_FILES := \
     src/survive_disambiguator.c \
     src/survive_driverman.c \
     src/survive_kalman.c \
+    src/survive_kalman_lighthouses.c \
     src/survive_kalman_tracker.c \
     src/survive_optimizer.c \
     src/survive_recording.c \
