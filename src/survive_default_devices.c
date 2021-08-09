@@ -581,6 +581,7 @@ SURVIVE_EXPORT int survive_load_steamvr_lighthousedb_from_file(SurviveContext *c
 			char *ct0conf = (char *)malloc(len);
 			size_t read = fread(ct0conf, 1, len, fp);
 			survive_load_steamvr_lighthousedb(ctx, ct0conf, len);
+			free(ct0conf);
 			fclose(fp);
 		}
 		return 0;
