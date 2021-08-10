@@ -358,13 +358,21 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 	SurvivePose lhs[NUM_GEN2_LIGHTHOUSES] = {0};
 	if (canPossiblySolveLHS) {
 		if (!needsInitialEstimate || general_optimizer_data_record_current_lhs(&d->opt, pdl, lhs)) {
+			uint32_t reference_basestation = survive_configi(ctx, "reference-basestation", SC_GET, 0);
+
 			for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
 				bool needsSolve = !so->ctx->bsd[lh].PositionSet;
 				if (needsSolve) {
-					if (so->ctx->bsd[lh].PositionSet) {
-						memcpy(&lhs[lh], &so->ctx->bsd[lh].Pose, sizeof(SurvivePose));
+					// Reference basestations are used mostly for unit testing; if we can't solve for it we don't solve
+					// for anything
+					if (reference_basestation != 0 && quatiszero(lhs[lh].Rot)) {
+						if (reference_basestation == so->ctx->bsd[lh].BaseStationID) {
+							canPossiblySolveLHS = false;
+						}
 					}
+
 					assert(!isnan(lhs[lh].Rot[0]));
+
 					if (quatiszero(lhs[lh].Rot) && has_data_for_lh(meas_for_lhs_axis, lh)) {
 						SV_WARN("Seed poser failed for %d, not trying to solve LH system", lh);
 						canPossiblySolveLHS = false;
