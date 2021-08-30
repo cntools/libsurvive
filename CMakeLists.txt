@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.12)
 
 project(libsurvive
 	LANGUAGES C CXX
@@ -97,7 +97,7 @@ if(BUILD_STATIC)
   add_definitions(-DSURVIVE_DISABLE_PLUGINS)
 endif()
 
-set(THREADS_PREFER_PTHREAD_FLAG ON)
+set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads)
 
 check_include_file("gattlib.h" HAVE_GATTLIB_H)
