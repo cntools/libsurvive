@@ -1533,7 +1533,7 @@ static int32_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPt
 	}
 
 	times[0] = lastEventTime;
-	SV_VERBOSE(500, "Packet Start Time: %u (0x%x) (ref: %u) Payload: %s", lastEventTime, lastEventTime, reference_time,
+	SV_VERBOSE(750, "Packet Start Time: %u (0x%x) (ref: %u) Payload: %s", lastEventTime, lastEventTime, reference_time,
 			   packetToHex(payloadPtr, payloadEndPtr));
 
 	while (idsPtr + (timeIndex >> 1u) < eventPtr) {
@@ -1558,7 +1558,7 @@ static int32_t read_light_data(SurviveObject *w, uint16_t time, uint8_t **readPt
 		}
 		// Store the event time
 		times[++timeIndex] = lastEventTime;
-		SV_VERBOSE(500, "Time: [%zd] %u (%u) %s", timeIndex, lastEventTime, timeDelta,
+		SV_VERBOSE(750, "Time: [%zd] %u (%u) %s", timeIndex, lastEventTime, timeDelta,
 				   packetToHex(eventPtr + 1, eventPtrStart + 1));
 	}
 
@@ -1583,7 +1583,7 @@ exit_while:
 	for (int i = 0; i < (timeIndex >> 1) + 1; i++) {
 		sensors[i].sensorId = ((*idsPtr) >> 3) & 0x1F;
 		sensors[i].edgeCount = (*idsPtr) & 0x7;
-		SV_VERBOSE(500, "Sensor: %2d Edge: %d (%02x)", sensors[i].sensorId, sensors[i].edgeCount, (*idsPtr));
+		SV_VERBOSE(750, "Sensor: %2d Edge: %d (%02x)", sensors[i].sensorId, sensors[i].edgeCount, (*idsPtr));
 		idsPtr++;
 	}
 
@@ -1644,7 +1644,7 @@ exit_while:
 
 			*(output++) = *ol;
 			output_cnt--;
-			SV_VERBOSE(500, "Light Event [Ordered]: %i [%2i] %u -> %u (%4hu)", i, ol->sensor_id, ol->timestamp,
+			SV_VERBOSE(750, "Light Event [Ordered]: %i [%2i] %u -> %u (%4hu)", i, ol->sensor_id, ol->timestamp,
 					   ol->timestamp + ol->length, ol->length);
 		}
 	}

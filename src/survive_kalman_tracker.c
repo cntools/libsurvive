@@ -456,7 +456,7 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 		FLT *R = rotation_variance;
 		int rows = 6;
 		int offset = 0;
-		FLT accelgyro[6];
+		FLT accelgyro[6] = { 0 };
 		scale3d(accelgyro, data->accel, 1. / tracker->acc_scale);
 
 		copy3d(accelgyro+3, data->gyro);

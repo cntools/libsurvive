@@ -16,8 +16,12 @@ extern "C" {
 
 #ifdef _MSC_VER
 	#define SURVIVE_EXPORT_CONSTRUCTOR SURVIVE_EXPORT
+#if __STDC_VERSION__ == 201710L
+#define COMPILER_HAS_GENERIC_SUPPORT 1
+#endif
 #else
-	#define SURVIVE_EXPORT_CONSTRUCTOR __attribute__((constructor))
+#define COMPILER_HAS_GENERIC_SUPPORT 1
+#define SURVIVE_EXPORT_CONSTRUCTOR __attribute__((constructor))
 #endif
 
 
@@ -441,6 +445,7 @@ SURVIVE_EXPORT void survive_attach_configi(SurviveContext *ctx, const char *tag,
 SURVIVE_EXPORT void survive_attach_configf(SurviveContext *ctx, const char *tag, FLT * var );
 SURVIVE_EXPORT void survive_attach_configs(SurviveContext *ctx, const char *tag, char * var );
 
+#ifdef COMPILER_HAS_GENERIC_SUPPORT
 #define SURVIVE_ATTACH_CONFIG(ctx, name, var) _Generic((var), \
               double*: survive_attach_configf, \
               float*: survive_attach_configf,  \
@@ -452,7 +457,10 @@ SURVIVE_EXPORT void survive_attach_configs(SurviveContext *ctx, const char *tag,
               float*: survive_config_bind_variablef,  \
               int*: survive_config_bind_variablei  \
 )(name, desc, def);
-
+#else
+#define SURVIVE_ATTACH_CONFIG(ctx, name, var)
+#define SURVIVE_CONFIG_BIND_VARIABLE(name, desc, def, var)
+#endif
 SURVIVE_EXPORT void survive_detach_config(SurviveContext *ctx, const char *tag, void * var );
 
 SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel channel);
