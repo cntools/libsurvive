@@ -1,4 +1,4 @@
-# libsurvive ![Build and Test](https://github.com/cntools/libsurvive/workflows/Build%20and%20Test/badge.svg)![Build Nuget](https://github.com/cntools/libsurvive/workflows/Build%20Nuget/badge.svg)![Build Wheels](https://github.com/cntools/libsurvive/workflows/Build%20Wheels/badge.svg)
+# libsurvive [![Build and Test](https://github.com/cntools/libsurvive/workflows/Build%20and%20Test/badge.svg)](https://github.com/cntools/libsurvive/actions/workflows/cmake.yml)[![Build Nuget](https://github.com/cntools/libsurvive/workflows/Build%20Nuget/badge.svg)](https://github.com/cntools/libsurvive/actions/workflows/build_nuget.yml)[![Build Wheels](https://github.com/cntools/libsurvive/workflows/Build%20Wheels/badge.svg)](https://github.com/cntools/libsurvive/actions/workflows/build_wheels.yml)
 
 ![Logo](https://cloud.githubusercontent.com/assets/2748168/24084003/9095c98a-0cb8-11e7-88a3-575f9f4c7bb4.png)
 
