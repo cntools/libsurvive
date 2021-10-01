@@ -81,7 +81,7 @@ set_target_properties(survive_matrix PROPERTIES FOLDER "libraries")
 
 IF(USE_EIGEN)
   add_definitions     ( ${EIGEN3_DEFINITIONS} )
-  include_directories ( ${EIGEN3_INCLUDE_DIRS} )
+  include_directories ( ${EIGEN3_INCLUDE_DIR} )
 
   target_compile_options(survive_matrix PRIVATE -fno-exceptions -fPIC)
 ELSE()

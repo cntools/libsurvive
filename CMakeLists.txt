@@ -29,7 +29,7 @@ option(USE_COLUMN_MAJOR_MATRICES "Use column major matrices for math operations"
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-find_package (Eigen3 3.4)
+find_package (Eigen3 3.3)
 if(NOT EIGEN3_FOUND)
   if(DOWNLOAD_EIGEN)
     find_program(GIT git)
