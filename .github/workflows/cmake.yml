@@ -95,6 +95,7 @@ jobs:
       name: Upload
       if: matrix.build_type == 'Release'
       with:
+        name: libsurvive-${{ matrix.os }}-${{ matrix.build_type }}
         path: | 
           ${{runner.workspace}}/build/${{steps.bundle.outputs.BUNDLE_FILE_NAME}}
           ${{runner.workspace}}/libsurvive/dist/*.whl
