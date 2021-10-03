@@ -3,6 +3,7 @@
 #include <survive_optimizer.h>
 #include <survive_reproject.h>
 #include <survive_reproject_gen2.h>
+#include <stdint.h>
 
 #ifndef NOZLIB
 #include <zlib.h>
@@ -855,7 +856,7 @@ SURVIVE_EXPORT void survive_optimizer_setup_buffers(survive_optimizer *ctx, void
 	size_t measurementAllocSize =
 		ctx->poseLength * sizeof(survive_optimizer_measurement) * 2 * sensor_cnt * NUM_GEN2_LIGHTHOUSES;
 	memset(ctx->measurements, 0, measurementAllocSize);
-	ctx->obj_up_vectors = (uint8_t*)measurements_buffer + measurementAllocSize;
+	ctx->obj_up_vectors = (intptr_t)measurements_buffer + measurementAllocSize;
 	ctx->cam_up_vectors = ctx->obj_up_vectors + ctx->poseLength;
 	memset(ctx->parameters_info, 0, sizeof(mp_par) * par_count);
 	for (int i = 0; i < survive_optimizer_get_parameters_count(ctx); i++) {
