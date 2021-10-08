@@ -14,6 +14,7 @@ jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         build_type: [Release]
         os: [ubuntu-18.04, windows-latest]
@@ -94,6 +95,7 @@ jobs:
       name: Upload
       if: matrix.build_type == 'Release'
       with:
+        name: libsurvive-${{ matrix.os }}-${{ matrix.build_type }}
         path: | 
           ${{runner.workspace}}/build/${{steps.bundle.outputs.BUNDLE_FILE_NAME}}
           ${{runner.workspace}}/libsurvive/dist/*.whl
