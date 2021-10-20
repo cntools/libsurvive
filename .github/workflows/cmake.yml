@@ -53,7 +53,6 @@ jobs:
         python --version
         python -m pip install wheel setuptools
         python setup.py install bdist_wheel -v ${{ steps.flags.outputs.SETUP_PY_FLAGS }}
-        python -m pysurvive --simulator --simulator-time .1 --playback-factor 0
 
     - name: Create Build Environment
       # Some projects don't allow in-source building, so create a separate build directory
