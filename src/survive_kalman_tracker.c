@@ -37,7 +37,7 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("light-required-obs",
 					   "Minimum observations to allow light data into the kalman filter", 16, t->light_required_obs)
 
-	STRUCT_CONFIG_ITEM("light-variance",  "Variance of light sensor readings", 1e-4, t->light_var)
+	STRUCT_CONFIG_ITEM("light-variance",  "Variance of light sensor readings", 1e-6, t->light_var)
 	STRUCT_CONFIG_ITEM("obs-pos-variance",  "Variance of position integration from light capture",
 					   .02, t->obs_pos_var)
 	STRUCT_CONFIG_ITEM("obs-rot-variance",  "Variance of rotation integration from light capture",
@@ -61,17 +61,17 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("process-weight-acc-bias", "Acc bias variance per second", 0, t->params.process_weight_acc_bias)
 	STRUCT_CONFIG_ITEM("process-weight-gyro-bias", "Gyro bias variance per seconid", 0, t->params.process_weight_gyro_bias)
 
-	STRUCT_CONFIG_ITEM("kalman-acc-scale-kp", "Incorporate scale coefficient while moving", .01, t->acc_scale_control.Kp)
-	STRUCT_CONFIG_ITEM("kalman-acc-scale-ki", "Incorporate scale coefficient while moving", .01, t->acc_scale_control.Ki)
+	STRUCT_CONFIG_ITEM("kalman-acc-scale-kp", "Incorporate scale coefficient while moving", 1e-5, t->acc_scale_control.Kp)
+	STRUCT_CONFIG_ITEM("kalman-acc-scale-ki", "Incorporate scale coefficient while moving", 0., t->acc_scale_control.Ki)
 	STRUCT_CONFIG_ITEM("kalman-zvu-moving", "", -1, t->zvu_moving_var)
-	STRUCT_CONFIG_ITEM("kalman-zvu-stationary", "", 1e-4, t->zvu_stationary_var)
-	STRUCT_CONFIG_ITEM("kalman-zvu-no-light", "", 1e-4, t->zvu_no_light_var)
+	STRUCT_CONFIG_ITEM("kalman-zvu-stationary", "", 1e-2, t->zvu_stationary_var)
+        STRUCT_CONFIG_ITEM("kalman-zvu-no-light", "", 1e-4, t->zvu_no_light_var)
 
-	STRUCT_CONFIG_ITEM("imu-acc-norm-penalty", "", -1, t->acc_norm_penalty)
-	STRUCT_CONFIG_ITEM("imu-acc-variance", "Variance of accelerometer", 5e-3, t->acc_var)
-	STRUCT_CONFIG_ITEM("imu-gyro-variance", "Variance of gyroscope", 5e-3, t->gyro_var)
+	STRUCT_CONFIG_ITEM("imu-acc-norm-penalty", "", 0, t->acc_norm_penalty)
+	STRUCT_CONFIG_ITEM("imu-acc-variance", "Variance of accelerometer", 5e-5, t->acc_var)
+	STRUCT_CONFIG_ITEM("imu-gyro-variance", "Variance of gyroscope", 1e-2, t->gyro_var)
 
-	STRUCT_CONFIG_ITEM("light-batch-size", "", -1, t->light_batchsize)
+	STRUCT_CONFIG_ITEM("light-batch-size", "", 0, t->light_batchsize)
 END_STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 // clang-format off
 
