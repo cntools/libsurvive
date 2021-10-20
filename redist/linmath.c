@@ -581,7 +581,7 @@ void quatfind_between_vectors(LinmathQuat q, const LinmathPoint3d _p0, const Lin
 		scale3d(tmp, tmp, LINMATHPI);
 
 		quatfromaxisanglemag(q, tmp);
-	} else if (d >= 1.) {
+	} else if (d > 1.) {
 		quatcopy(q, LinmathQuat_Identity);
 	} else {
 		cross3d(q + 1, p0, p1);

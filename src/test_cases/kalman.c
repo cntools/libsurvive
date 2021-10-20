@@ -380,7 +380,7 @@ void KalmanModelSim_init(KalmanModelSim *model) {
 		(kalman_process_noise_fn_t)survive_kalman_tracker_process_noise, &model->p, (FLT *)&model->sim_state);
 	model->kalman_t.Predict_fn = survive_kalman_tracker_model_predict;
 
-	SurviveKalmanModel initial_variance = {.Pose = {.Pos = {1e10, 1e10, 1e10}, .Rot = {0, 1e10, 1e10, 1e10}},
+	SurviveKalmanModel initial_variance = {.Pose = {.Pos = {1e5, 1e5, 1e5}, .Rot = {0, 1e5, 1e5, 1e5}},
 										   .Velocity = {.AxisAngleRot = {1e3, 1e3, 1e3}},
 										   .Acc = {1e3, 1e3, 1e3}};
 
