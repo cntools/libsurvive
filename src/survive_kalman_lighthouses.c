@@ -220,9 +220,9 @@ void survive_kalman_lighthouse_init(SurviveKalmanLighthouse *tracker, SurviveCon
 							  (FLT *)&tracker->state);
 	tracker->state.Rot[0] = 1;
 	for (int i = 0; i < 3; i++)
-		svMatrixSet(&tracker->model.P, i, i, 1e2);
+		svMatrixSet(&tracker->model.P, i, i, 1e5);
 	for (int i = 3; i < 7; i++)
-		svMatrixSet(&tracker->model.P, i, i, 1.);
+		svMatrixSet(&tracker->model.P, i, i, 1e3);
 }
 
 SURVIVE_EXPORT void survive_kalman_lighthouse_integrate_observation(SurviveKalmanLighthouse *tracker,
