@@ -86,6 +86,12 @@ void survive_recording_write_to_output(struct SurviveRecordingData *recordingDat
 		va_end(args);
 	}
 }
+
+void survive_recording_disconnect_process(struct SurviveObject *so) {
+	SurviveRecordingData *recordingData = so->ctx ? so->ctx->recptr : 0;
+	survive_recording_write_to_output(recordingData, "%s DISCONNECT\r\n", so->codename);
+}
+
 void survive_recording_config_process(SurviveObject *so, char *ct0conf, int len) {
 	SurviveRecordingData *recordingData = so->ctx ? so->ctx->recptr : 0;
 	if (recordingData == 0 || len < 0)

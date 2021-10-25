@@ -784,7 +784,6 @@ static inline bool survive_handle_close_request_flag(struct SurviveUSBInfo *usbI
 			sv->hmd_mainboard_index = -1;
 		sv->udev[idx] = sv->udev[sv->udev_cnt-- - 1];
 		if (usbInfo->ownsObject) {
-			SURVIVE_INVOKE_HOOK_SO(disconnect, usbInfo->so);
 			survive_destroy_device(usbInfo->so);
 		}
 		survive_usb_device_t dev = 0;

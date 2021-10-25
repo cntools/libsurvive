@@ -247,6 +247,11 @@ static int parse_and_run_config(const char *line, SurvivePlaybackData *driver) {
 		dev[i] = *configStart++;
 	}
 
+	SurviveObject *old_so = survive_get_so_by_name(ctx, dev);
+	if (old_so) {
+		survive_destroy_device(old_so);
+	}
+
 	configStart += strlen("CONFIG") + 1;
 
 	size_t len = strlen(configStart);
@@ -434,15 +439,23 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 
 static void *playback_thread(void *_driver) {
 	SurvivePlaybackData *driver = _driver;
+	int last_output_minute = 0;
 	while (driver->keepRunning == 0 || *driver->keepRunning) {
 		double next_time_s_scaled = driver->next_time_s * driver->playback_factor;
 		double time_now = OGRelativeTime() + driver->time_start;
+		int output_minute = (driver->time_now / 60.);
 		if (driver->playback_time >= 0 && driver->time_now > driver->playback_time) {
 			*driver->keepRunning = false;
 			return 0;
 		}
 		if (next_time_s_scaled == 0 || next_time_s_scaled < time_now) {
 			int rtnVal = playback_pump_msg(driver->ctx, driver);
+			SurviveContext *ctx = driver->ctx;
+			if (last_output_minute != output_minute) {
+				SV_VERBOSE(10, "Playback thread played back %6.2fs in %6.2fs real-time... (%6.2fx)", driver->time_now,
+						   time_now, driver->time_now / (time_now + 1e-10));
+				last_output_minute = output_minute;
+			}
 			if (rtnVal < 0)
 				*driver->keepRunning = false;
 		} else {

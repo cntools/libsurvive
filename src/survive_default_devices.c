@@ -615,6 +615,7 @@ int survive_load_htc_config_format_from_file(SurviveObject *so, const char *file
 
 void survive_destroy_device(SurviveObject *so) {
 	SurviveContext *ctx = so->ctx;
+	SURVIVE_INVOKE_HOOK_SO(disconnect, so);
 
 	size_t idx = 0;
 	if (ctx->objs) {

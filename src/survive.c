@@ -739,10 +739,17 @@ datalog_process_func survive_default_datalog_process = 0;
 
 void survive_default_disconnect_process(struct SurviveObject *so) {
 	SurviveContext *ctx = so->ctx;
+	survive_recording_disconnect_process(so);
 	SV_VERBOSE(10, "Disconnecting device %s at %.7f", survive_colorize(so->codename), survive_run_time(ctx));
 }
 void survive_default_new_object_process(SurviveObject *so) {}
 int survive_add_object(SurviveContext *ctx, SurviveObject *obj) {
+
+	if (survive_get_so_by_name(ctx, obj->codename)) {
+		SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Object named %s already exists", obj->codename);
+		return 0;
+	}
+
 	SV_INFO("Adding tracked object %s from %s", survive_colorize(obj->codename), survive_colorize(obj->drivername));
 	int oldct = ctx->objs_ct;
 	ctx->objs = SV_REALLOC(ctx->objs, sizeof(SurviveObject *) * (oldct + 1));
