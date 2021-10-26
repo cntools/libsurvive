@@ -60,6 +60,7 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("process-weight-rot", "Rotation variance per second", 0, t->params.process_weight_rotation)
 	STRUCT_CONFIG_ITEM("process-weight-acc-bias", "Acc bias variance per second", 0, t->params.process_weight_acc_bias)
 	STRUCT_CONFIG_ITEM("process-weight-gyro-bias", "Gyro bias variance per seconid", 0, t->params.process_weight_gyro_bias)
+	STRUCT_CONFIG_ITEM("minimize-state-space", "Minimize the state space", 1, t->minimize_state_space)
 
 	STRUCT_CONFIG_ITEM("kalman-acc-scale-kp", "Incorporate scale coefficient while moving", 1e-5, t->acc_scale_control.Kp)
 	STRUCT_CONFIG_ITEM("kalman-acc-scale-ki", "Incorporate scale coefficient while moving", 0., t->acc_scale_control.Ki)
@@ -776,7 +777,7 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 
 	size_t state_cnt = sizeof(SurviveKalmanModel) / sizeof(FLT);
 
-	if (tracker->params.process_weight_gyro_bias == 0.) {
+	if (tracker->params.process_weight_gyro_bias == 0. && tracker->minimize_state_space == 1) {
 		state_cnt -= 3;
 		if (tracker->params.process_weight_acc_bias == 0.) {
 			state_cnt -= 3;

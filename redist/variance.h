@@ -1,3 +1,4 @@
+#pragma once
 #include "linmath.h"
 
 struct variance_measure {
@@ -33,4 +34,29 @@ static inline void variance_measure_calc(struct variance_measure *meas, FLT *d) 
 	for (int i = 0; i < meas->size; i++) {
 		d[i] = (meas->sumSq[i] - (meas->sum[i] * meas->sum[i]) / meas->n) / meas->n;
 	}
+}
+
+struct variance_tracker {
+	FLT variances[16];
+	size_t counts;
+	struct variance_measure variance;
+};
+
+static inline void variance_tracker_reset(struct variance_tracker *meas) {
+	if (meas->variance.n == 0)
+		return;
+
+	FLT v[16] = {0};
+	variance_measure_calc(&meas->variance, v);
+	addnd(meas->variances, v, meas->variances, meas->variance.size);
+	meas->counts += meas->variance.n;
+	variance_measure_reset(&meas->variance);
+}
+
+static inline void variance_tracker_add(struct variance_tracker *meas, const FLT *d, size_t size) {
+	meas->variance.size = size;
+	variance_measure_add(&meas->variance, d);
+}
+static inline void variance_tracker_calc(struct variance_tracker *meas, FLT *d) {
+	scalend(d, meas->variances, 1. / meas->counts, meas->variance.size);
 }

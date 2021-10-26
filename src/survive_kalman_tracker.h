@@ -59,6 +59,7 @@ typedef struct SurviveKalmanTracker {
 	FLT first_imu_time, last_imu_time;
 	FLT min_report_time;
 
+	int minimize_state_space;
 	int use_raw_obs;
 	int adaptive_imu, adaptive_lightcap, adaptive_obs, show_raw_obs;
 

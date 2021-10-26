@@ -97,7 +97,7 @@ double svDet(const SvMat *M);
 #define SV_MATRIX_STACK_SCOPE_BEGIN {
 #define SV_MATRIX_STACK_SCOPE_END }
 #else
-#define SV_MATRIX_ALLOC(size) memset(alloca(size), 0, size)
+#define SV_MATRIX_ALLOC(size) (memset((size) + memset(alloca((size)*2), 0, size), 0xFF, (size)) - size)
 #define SV_MATRIX_FREE(ptr)
 #define SV_MATRIX_STACK_SCOPE_BEGIN
 #define SV_MATRIX_STACK_SCOPE_END
@@ -241,12 +241,17 @@ static inline void sv_eye(struct SvMat *m, const FLT *v) {
 	}
 }
 
-static inline void sv_copy_in_row_major(struct SvMat *dst, const FLT *src, size_t src_stride) {
-	for (int i = 0; i < dst->rows; i++) {
-		for (int j = 0; j < dst->cols; j++) {
+static inline void sv_copy_in_row_major_roi(struct SvMat *dst, const FLT *src, size_t src_stride, int start_i,
+											int start_j, int end_i, int end_j) {
+	for (int i = start_i; i < end_i; i++) {
+		for (int j = start_j; j < end_j; j++) {
 			svMatrixSet(dst, i, j, src[j + i * src_stride]);
 		}
 	}
+}
+
+static inline void sv_copy_in_row_major(struct SvMat *dst, const FLT *src, size_t src_stride) {
+	sv_copy_in_row_major_roi(dst, src, src_stride, 0, 0, dst->rows, dst->cols);
 }
 static inline FLT sv_sum(const struct SvMat *A) {
 	FLT rtn = 0;
