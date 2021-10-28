@@ -330,6 +330,12 @@ function invertPose(pa, quat) {
 
 	return [ p, iq ];
 }
+function removeFromParent(o) { o.parent.remove(o); }
+function delete_tracked_object(tracker) {
+	removeFromParent(objs[tracker].group);
+	removeFromParent(objs[tracker].group_rot);
+	objs.remove(tracker);
+}
 
 function create_tracked_object(info, external) {
 	var sensorGeometry = new THREE.SphereGeometry(.01, 32, 16);
@@ -704,6 +710,7 @@ var survive_log_handlers = {
 	"VELOCITY" : update_velocity,
 	"EXTERNAL_VELOCITY" : function(v) { update_velocity(v, true, true); },
 	"EXTERNAL_POSE" : function(v) { update_object(v, true, true); },
+	"DISCONNECT" : function(v) { delete_tracked_object(v[1]); },
 	"CONFIG" : function(v, tracker) {
 		var configStr = v.slice(3).join(' ');
 		var config = JSON.parse(configStr);
