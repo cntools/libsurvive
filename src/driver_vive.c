@@ -533,11 +533,15 @@ static int survive_vive_send_haptic(SurviveObject *so, FLT frequency, FLT amplit
 	uint16_t pulse_high16 = pulse_high, pulse_low16 = pulse_low;
 	if (pulse_high > UINT16_MAX)
 		pulse_high16 = UINT16_MAX;
+	if (pulse_high < 0)
+		pulse_high16 = 1;
 	if (pulse_low > UINT16_MAX)
 		pulse_low16 = UINT16_MAX;
+	if (pulse_low < 0)
+		pulse_low16 = 1;
 
-	SV_VERBOSE(100, "Sending haptic pulse to %s %f %f %f", survive_colorize(so->codename), frequency, amplitude,
-			   duration_seconds);
+	SV_VERBOSE(100, "Sending haptic pulse to %s %f %f %f %f %f %d", survive_colorize(so->codename), frequency,
+			   amplitude, duration_seconds, pulse_high, pulse_low, repeat_count);
 	uint8_t vive_controller_haptic_pulse[] = {
 		VIVE_REPORT_COMMAND, VIVE_COMMAND_HAPTIC_PULSE, 0x07,		 0x00,
 		pulse_high16,		 pulse_high16 >> 8u,		pulse_low16, pulse_low16 >> 8u,
