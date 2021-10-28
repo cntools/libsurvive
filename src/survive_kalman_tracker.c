@@ -3,7 +3,6 @@
 #include "math.h"
 #include "survive_internal.h"
 #include "survive_kalman.h"
-#include "survive_kalman_tracker.h"
 #include <assert.h>
 #if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h>
@@ -75,6 +74,15 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("light-batch-size", "", 0, t->light_batchsize)
 END_STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 // clang-format off
+
+static inline void integrate_variance_tracker(SurviveKalmanTracker *tracker, struct variance_tracker* vtracker, const FLT* v, size_t size) {
+	bool isStationary = SurviveSensorActivations_stationary_time(&tracker->so->activations) > 4800000;
+	if(!isStationary) {
+		variance_tracker_reset(vtracker);
+	} else {
+		variance_tracker_add(vtracker, v, size);
+	}
+}
 
 FLT pid_update(struct pid_t* pid, FLT err, FLT dt) {
 	FLT der = err - pid->err;
@@ -262,6 +270,8 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 		info->value = data->angle;
 		info->axis = PoserDataLight_axis(data);
 		info->sensor_idx = data->sensor_id;
+
+		integrate_variance_tracker(tracker, &tracker->light_variance[info->lh][info->sensor_idx][info->axis], &info->value, 1);
 	}
 
 	int batchtrigger = sizeof(tracker->savedLight) / sizeof(tracker->savedLight[0]);
@@ -461,6 +471,8 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 		scale3d(accelgyro, data->accel, 1. / tracker->acc_scale);
 
 		copy3d(accelgyro+3, data->gyro);
+
+		integrate_variance_tracker(tracker, &tracker->imu_variance, accelgyro, 6);
 
 		SvMat Z = svMat(rows, 1, accelgyro + offset);
 
@@ -663,6 +675,8 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
 	SurviveObject *so = tracker->so;
 	SurviveContext *ctx = so->ctx;
 
+	integrate_variance_tracker(tracker, &tracker->pose_variance, (FLT*)pose->Pos, 7);
+
 	if (tracker->show_raw_obs) {
 		char external_name[16] = {0};
 		sprintf(external_name, "%s-raw-obs", so->codename);
@@ -836,16 +850,31 @@ void survive_kalman_tracker_stats(SurviveKalmanTracker *tracker) {
 	SV_VERBOSE(5, "\t%-32s " Point19_format, "Mean reported variance", LINMATH_VEC19_EXPAND(var));
 	scalend(var, tracker->stats.dropped_var, 1. / tracker->stats.reported_poses, SURVIVE_MODEL_MAX_STATE_CNT);
 	SV_VERBOSE(5, "\t%-32s " Point19_format, "Mean dropped variance", LINMATH_VEC19_EXPAND(var));
-
-	SV_VERBOSE(5, "\t%-32s %e (%7u integrations, %7.3fhz)", "Obs error",
+	FLT integration_variance[16];
+	variance_tracker_calc(&tracker->pose_variance, integration_variance);
+	SV_VERBOSE(5, "\t%-32s %e (%7u integrations, %7.3fhz) " Point7_format, "Obs error",
 			   tracker->stats.obs_total_error / (FLT)tracker->stats.obs_count, (unsigned)tracker->stats.obs_count,
-			   (unsigned)tracker->stats.obs_count / report_runtime);
-	SV_VERBOSE(5, "\t%-32s %e (%7u integrations, %7.3fhz)", "Lightcap error",
-			   tracker->stats.lightcap_total_error / (FLT)tracker->stats.lightcap_count,
-			   (unsigned)tracker->stats.lightcap_count, (unsigned)tracker->stats.lightcap_count / report_runtime);
-	SV_VERBOSE(5, "\t%-32s %e (%7u integrations, %7.3fhz)", "IMU error",
+			   (unsigned)tracker->stats.obs_count / report_runtime, LINMATH_VEC7_EXPAND(integration_variance));
+
+	variance_tracker_calc(&tracker->imu_variance, integration_variance);
+	SV_VERBOSE(5, "\t%-32s %e (%7u integrations, %7.3fhz) " Point6_format, "IMU error",
 			   tracker->stats.imu_total_error / (FLT)tracker->stats.imu_count, (unsigned)tracker->stats.imu_count,
-			   (unsigned)tracker->stats.imu_count / imu_runtime);
+			   (unsigned)tracker->stats.imu_count / imu_runtime, LINMATH_VEC6_EXPAND(integration_variance));
+
+	var[0] = 0;
+	for(int lh = 0;lh < NUM_GEN2_LIGHTHOUSES;lh++) {
+		for(int sidx = 0; sidx < tracker->so->sensor_ct;sidx++) {
+			for(int axis = 0;axis < 2;axis++) {
+				if((FLT)tracker->light_variance[lh][sidx][axis].counts) {
+					var[0] += tracker->light_variance[lh][sidx][axis].variances[0] /
+							  (FLT)tracker->light_variance[lh][sidx][axis].counts;
+				}
+			}
+		}
+	}
+	SV_VERBOSE(5, "\t%-32s %e (%7u integrations, %7.3fhz) " FLT_format, "Lightcap error",
+			   tracker->stats.lightcap_total_error / (FLT)tracker->stats.lightcap_count,
+			   (unsigned)tracker->stats.lightcap_count, (unsigned)tracker->stats.lightcap_count / report_runtime, var[0]);
 
 	SV_VERBOSE(5, " ");
 	SV_VERBOSE(5, "\t%-32s " Point3_format, "gyro bias", LINMATH_VEC3_EXPAND(tracker->state.GyroBias));

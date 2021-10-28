@@ -7,6 +7,7 @@
 #include "survive_types.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "variance.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -119,6 +120,9 @@ typedef struct SurviveKalmanTracker {
 	uint32_t savedLight_idx;
 
 	SurviveKalmanModel state;
+
+	struct variance_tracker imu_variance, pose_variance;
+	struct variance_tracker light_variance[NUM_GEN2_LIGHTHOUSES][SENSORS_PER_OBJECT][2];
 } SurviveKalmanTracker;
 
 SURVIVE_EXPORT SurviveVelocity survive_kalman_tracker_velocity(const SurviveKalmanTracker *tracker);
