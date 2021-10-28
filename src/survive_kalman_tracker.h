@@ -27,7 +27,9 @@ struct SurviveKalmanTracker_Params {
 	FLT process_weight_ang_velocity, process_weight_rotation;
 	FLT process_weight_acc_bias;
 	FLT process_weight_gyro_bias;
+	FLT initial_variance_imu_correction;
 };
+
 /**
  * The kalman model as it pertains to LH tracking has a state space like so:
  *
@@ -108,10 +110,6 @@ typedef struct SurviveKalmanTracker {
 	FLT Obs_R[7 * 7];
 	FLT IMU_R[6 * 6];
 	FLT Lightcap_R;
-
-	struct pid_t acc_scale_control;
-	FLT acc_scale;
-	FLT acc_bias[3];
 
 	int light_rampin_length;
 	int use_error_for_lh_pos;
