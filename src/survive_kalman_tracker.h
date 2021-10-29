@@ -27,6 +27,7 @@ struct SurviveKalmanTracker_Params {
 	FLT process_weight_ang_velocity, process_weight_rotation;
 	FLT process_weight_acc_bias;
 	FLT process_weight_gyro_bias;
+	FLT initial_acc_scale_variance;
 	FLT initial_variance_imu_correction;
 };
 
@@ -99,8 +100,12 @@ typedef struct SurviveKalmanTracker {
 		size_t obs_count;
 
 		size_t reported_poses, dropped_poses;
-		FLT dropped_var[19];
-		FLT reported_var[19];
+		FLT dropped_var[sizeof(SurviveKalmanModel) / sizeof(FLT)];
+		FLT reported_var[sizeof(SurviveKalmanModel) / sizeof(FLT)];
+
+		FLT acc_norm;
+		FLT stationary_acc_norm;
+		size_t stationary_imu_count;
 	} stats;
 
 	FLT imu_residuals;
