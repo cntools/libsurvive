@@ -312,81 +312,85 @@ static FLT survive_kalman_predict_update_state_extended_adaptive_internal(FLT t,
 																		  const struct SvMat *Z, FLT *Rv,
 																		  kalman_measurement_model_fn_t Hfn, void *user,
 																		  bool adaptive) {
-	int state_cnt = k->state_cnt;
-	struct SvMat *H = 0;
-	FLT dt = t - k->t;
-	FLT result = 0;
+    int state_cnt = k->state_cnt;
+    struct SvMat *H = 0;
+    FLT dt = t - k->t;
+    FLT result = 0;
 
-	// Anything coming in this soon is liable to spike stuff since dt is so small
-	if (dt < 1e-5) {
-		dt = 0;
-		t = k->t;
-	}
+    // Setup the R matrix.
+    FLT *Rs = adaptive ? Rv : alloca(Z->rows * Z->rows * sizeof(FLT));
+    SvMat R = svMat(Z->rows, Z->rows, Rs);
+    if (!adaptive) {
+        sv_set_diag(&R, Rv);
+        if (k->datalog) {
+            k->datalog(k, "R", Rv, Z->rows);
+        }
+    }
 
-	SV_CREATE_STACK_MAT(Pm, state_cnt, state_cnt);
-	// Adaptive update happens on the covariance matrix prior; so save it.
-	if (adaptive)
-		sv_matrix_copy(&Pm, &k->P);
+    // Anything coming in this soon is liable to spike stuff since dt is so small
+    if (dt < 1e-5) {
+        dt = 0;
+        t = k->t;
+    }
 
-	SV_CREATE_STACK_MAT(y, Z->rows, Z->cols);
+    SV_CREATE_STACK_MAT(Pm, state_cnt, state_cnt);
+    // Adaptive update happens on the covariance matrix prior; so save it.
+    if (adaptive)
+        sv_matrix_copy(&Pm, &k->P);
 
-	// To avoid an unneeded copy, x1 here is both X_k-1|k-1 and X_k|k.
-	// x is X_k|k-1
-	SvMat *x1 = &k->state;
+    SV_CREATE_STACK_MAT(y, Z->rows, Z->cols);
 
-	// Predict x
-	SV_CREATE_STACK_MAT(x2, state_cnt, 1);
-	survive_kalman_predict(t, k, x1, &x2);
+    // To avoid an unneeded copy, x1 here is both X_k-1|k-1 and X_k|k.
+    // x is X_k|k-1
+    SvMat *x1 = &k->state;
 
-	SV_CREATE_STACK_MAT(HStorage, Z->rows, state_cnt);
-	H = survive_kalman_find_residual(dt, k, Hfn, user, Z, &x2, &y, &HStorage);
+    // Run prediction steps -- gets new state, and covariance matrix based on time delta
+    SV_CREATE_STACK_MAT(x2, state_cnt, 1);
+    survive_kalman_predict(t, k, x1, &x2);
+    if (dt > 0) {
+        SV_CREATE_STACK_MAT(F, state_cnt, state_cnt);
+        sv_set_constant(&F, NAN);
 
-	if (k->datalog) {
-		k->datalog(k, "Z", sv_as_const_vector(Z), Z->rows);
-		k->datalog(k, "y", sv_as_const_vector(&y), y.rows);
-	}
+        k->F_fn(dt, &F, x1);
+        assert(sv_is_finite(&F));
 
-	if (k->log_level > KALMAN_LOG_LEVEL) {
-		fprintf(stdout, "INFO kalman_predict_update_state_extended t=%f dt=%f ", t, dt);
-		sv_print_mat(k, "Z", Z, false);
-		fprintf(stdout, "\n");
-	}
+        // Run predict
+        survive_kalman_predict_covariance(dt, &F, &x2, k);SV_FREE_STACK_MAT(F);
+    }
 
-	if (H == 0) {
-		return -1;
-	}
+    {
+        SV_CREATE_STACK_MAT(HStorage, Z->rows, state_cnt);
+        // Find the residual y and possibly also the jacobian H. The user could have passed one in as 'user', or given us
+        // a map function which will calculate it.
+        H = survive_kalman_find_residual(dt, k, Hfn, user, Z, &x2, &y, &HStorage);
 
-	if (dt > 0) {
-		SV_CREATE_STACK_MAT(F, state_cnt, state_cnt);
-		sv_set_constant(&F, NAN);
+        // If the measurement jacobian isn't calculable, the best we can do is just bail.
+        if (H == 0) {
+            return -1;
+        }
 
-		k->F_fn(dt, &F, x1);
-		assert(sv_is_finite(&F));
+        if (k->datalog) {
+            k->datalog(k, "Z", sv_as_const_vector(Z), Z->rows);
+            k->datalog(k, "y", sv_as_const_vector(&y), y.rows);
+        }
 
-		// Run predict
-		survive_kalman_predict_covariance(dt, &F, &x2, k);
-		SV_FREE_STACK_MAT(F);
-	}
+        if (k->log_level > KALMAN_LOG_LEVEL) {
+            fprintf(stdout, "INFO kalman_predict_update_state_extended t=%f dt=%f ", t, dt);
+            sv_print_mat(k, "Z", Z, false);
+            fprintf(stdout, "\n");
+        }
 
-	// Run update; filling in K
-	SV_CREATE_STACK_MAT(K, state_cnt, Z->rows);
-	FLT *Rs = adaptive ? Rv : alloca(Z->rows * Z->rows * sizeof(FLT));
-	SvMat R = svMat(Z->rows, Z->rows, Rs);
-	if (!adaptive) {
-		sv_set_diag(&R, Rv);
-		if (k->datalog) {
-			k->datalog(k, "R", Rv, Z->rows);
-		}
-	}
+        // Run update; filling in K
+        SV_CREATE_STACK_MAT(K, state_cnt, Z->rows);
+        survive_kalman_update_covariance(k, &K, H, &R);
 
-	survive_kalman_update_covariance(k, &K, H, &R);
+        linear_update(dt, k, &y, &K, &x2, x1);
 
-	linear_update(dt, k, &y, &K, &x2, x1);
-
-	if (k->log_level > KALMAN_LOG_LEVEL) {
-		fprintf(stdout, "INFO kalman_update to    ");
-		sv_print_mat(k, "x1", x1, false);
-	}
+        if (k->log_level > KALMAN_LOG_LEVEL) {
+            fprintf(stdout, "INFO kalman_update to    ");
+            sv_print_mat(k, "x1", x1, false);
+        }
+    }
 
 	if (adaptive) {
 		// https://arxiv.org/pdf/1702.00884.pdf
