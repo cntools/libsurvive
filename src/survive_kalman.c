@@ -248,6 +248,31 @@ static void linear_update(FLT dt, survive_kalman_state_t *k, const SvMat *y, con
 	svGEMM(K, y, 1, x_t0, 1, x_t1, 0);
 }
 
+static bool numeric_jacobian(survive_kalman_state_t *k, kalman_measurement_model_fn_t Hfn, void *user, const struct SvMat *Z, const struct SvMat *x, SvMat *H) {
+    SV_CREATE_STACK_MAT(y1, Z->rows, Z->cols);
+    SV_CREATE_STACK_MAT(y2, Z->rows, Z->cols);
+    SV_CREATE_STACK_MAT(temp_x, x->rows, x->cols);
+    sv_matrix_copy(&temp_x, x);
+
+    FLT* xa = sv_as_vector(&temp_x);
+    for(int i = 0;i < k->state_cnt;i++) {
+        FLT s = xa[i] == 0 ? 1e-5 : fabs(xa[i] * 1e-4);
+        xa[i] += s;
+        if(!Hfn(user, Z, &temp_x, &y1, 0))
+            return false;
+
+        xa[i] -= 2*s;
+        if(!Hfn(user, Z, &temp_x, &y2, 0))
+            return false;
+
+        for(int j = 0;j < H->rows;j++) {
+            svMatrixSet(H, j, i, (_y2[j] - _y1[j])/2./s);
+        }
+    }
+
+    return true;
+}
+
 static SvMat *survive_kalman_find_residual(FLT dt, survive_kalman_state_t *k, kalman_measurement_model_fn_t Hfn,
 										   void *user, const struct SvMat *Z, const struct SvMat *x, SvMat *y,
 										   SvMat *H) {
@@ -257,10 +282,21 @@ static SvMat *survive_kalman_find_residual(FLT dt, survive_kalman_state_t *k, ka
 	if (Hfn) {
 		// typedef void (*kalman_measurement_model_fn_t)(void* user, FLT t, const struct SvMat * Z, const struct SvMat
 		// *x_t, struct SvMat* h_x_t, struct SvMat* H_k);
-		bool okay = Hfn(user, Z, x, y, H);
+        bool okay = Hfn(user, Z, x, y, H);
 		if (okay == false) {
 			return 0;
 		}
+
+        if(k->debug_jacobian) {
+            SV_CREATE_STACK_MAT(H_calc, H->rows, H->cols);
+            numeric_jacobian(k, Hfn, user, Z, x, &H_calc);
+            for (int i = 0; i < H->rows * H->cols; i++) {
+                FLT d = fabs(H->data[i] - H_calc.data[i]);
+                if (d > 1e-2) {
+                    fprintf(stderr, "Jacobian error\n");
+                }
+            }
+        }
 		sv_print_mat_v(k, 600, "Hk", H, true);
 		rtn = H;
 	} else {

@@ -158,7 +158,9 @@ static bool map_light_data(void *user, const struct SvMat *Z, const struct SvMat
 	struct SurviveContext *ctx = tracker->so->ctx;
 	const survive_reproject_model_t *mdl = survive_reproject_model(ctx);
 
-	sv_set_zero(H_k);
+	if(H_k) {
+	    sv_set_zero(H_k);
+	}
 
 	FLT *Y = sv_as_vector(y);
 	for (int i = 0; i < tracker->savedLight_idx; i++) {
@@ -180,11 +182,11 @@ static bool map_light_data(void *user, const struct SvMat *Z, const struct SvMat
 		SV_DATA_LOG("Y_light[%d][%d][%d]", Y, 1, info->lh, info->axis, info->sensor_idx);
 		FLT jacobian[7] = {0};
 		project_jacob_fn(jacobian, &obj2world, ptInObj, &world2lh, &ctx->bsd[info->lh].fcal[axis]);
-		for (int j = 0; j < 7; j++) {
+		for (int j = 0; H_k && j < 7; j++) {
 			svMatrixSet(H_k, i, j, jacobian[j]);
 		}
 	}
-	if (!sv_is_finite(H_k))
+	if (H_k && !sv_is_finite(H_k))
 		return false;
 
 	return true;
@@ -312,15 +314,16 @@ bool survive_kalman_tracker_imu_measurement_model(void *user, const struct SvMat
 
 	FLT h_x[6];
 
-	sv_set_constant(H_k, NAN);
-
 	SurviveKalmanModel s = copy_model(sv_as_const_vector(x_t), x_t->rows);
 	gen_imu_predict(h_x, &s);
-	assert(H_k->rows * H_k->cols == H_k->cols * 6);
 
-	FLT _H_k[6 * SURVIVE_MODEL_MAX_STATE_CNT] = {0};
-	gen_imu_predict_jac_kalman_model(_H_k, &s);
-	sv_copy_in_row_major(H_k, _H_k, SURVIVE_MODEL_MAX_STATE_CNT);
+    if(H_k) {
+        sv_set_constant(H_k, NAN);
+        assert(H_k->rows * H_k->cols == H_k->cols * 6);
+        FLT _H_k[6 * SURVIVE_MODEL_MAX_STATE_CNT] = {0};
+        gen_imu_predict_jac_kalman_model(_H_k, &s);
+        sv_copy_in_row_major(H_k, _H_k, SURVIVE_MODEL_MAX_STATE_CNT);
+    }
 
 	struct map_imu_data_ctx *fn_ctx = user;
 

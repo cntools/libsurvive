@@ -51,6 +51,8 @@ typedef struct survive_kalman_state_s {
 
 	void *user;
 
+	bool debug_jacobian;
+
 	kalman_predict_fn_t Predict_fn;
 	kalman_transition_fn_t F_fn;
 	kalman_process_noise_fn_t Q_fn;
