@@ -243,8 +243,8 @@ static inline void sv_eye(struct SvMat *m, const FLT *v) {
 
 static inline void sv_copy_in_row_major_roi(struct SvMat *dst, const FLT *src, size_t src_stride, int start_i,
 											int start_j, int end_i, int end_j) {
-	for (int i = start_i; i < end_i; i++) {
-		for (int j = start_j; j < end_j; j++) {
+	for (int i = start_i; i < linmath_imin(dst->rows, end_i); i++) {
+		for (int j = start_j; j < linmath_imin(dst->cols, end_j); j++) {
 			svMatrixSet(dst, i, j, src[j + i * src_stride]);
 		}
 	}

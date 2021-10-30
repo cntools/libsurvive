@@ -122,7 +122,8 @@ typedef struct SurviveKalmanTracker {
 	LightInfo savedLight[32];
 	uint32_t savedLight_idx;
 
-	SurviveKalmanModel state;
+	SurviveKalmanModel state, previous_state, state_variance;
+    size_t state_variance_count;
 
 	struct variance_tracker imu_variance, pose_variance;
 	struct variance_tracker light_variance[NUM_GEN2_LIGHTHOUSES][SENSORS_PER_OBJECT][2];

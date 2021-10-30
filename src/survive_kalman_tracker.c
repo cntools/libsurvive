@@ -407,7 +407,7 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 	}
 	if (zvu_var >= 0) {//time - tracker->last_light_time > .1) {//|| isStationary || fabs(1 - norm) < .001 ) {
 		// If we stop seeing light data; tank all velocity / acceleration measurements
-		size_t row_cnt = 9;
+		size_t row_cnt = linmath_imin(9, tracker->model.state_cnt - 7);
 		SV_CREATE_STACK_MAT(H, row_cnt, tracker->model.state_cnt);
 		sv_set_zero(&H);
 		for (int i = 0; i < row_cnt; i++) {
@@ -795,7 +795,7 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
             if(tracker->params.initial_variance_imu_correction) break;
             state_cnt -= 4;
             if(tracker->params.initial_acc_scale_variance) break;
-            state_cnt -= 3;
+            state_cnt -= 1;
             if(tracker->params.process_weight_acc) break;
             state_cnt -= 3;
             if(tracker->params.process_weight_ang_velocity) break;
@@ -886,7 +886,7 @@ void survive_kalman_tracker_stats(SurviveKalmanTracker *tracker) {
 
 	SV_VERBOSE(5, " ");
 	SV_VERBOSE(5, "\t%-32s " Point3_format, "gyro bias", LINMATH_VEC3_EXPAND(tracker->state.GyroBias));
-	SV_VERBOSE(5, "\t%-32s " FLT_format, "Lightcap R", tracker->light_var);
+    SV_VERBOSE(5, "\t%-32s " FLT_format, "Lightcap R", tracker->light_var);
 	for (int i = 0; i < 6; i++) {
 		SV_VERBOSE(5, "\t%-32s " Point6_format, i == 0 ? "Gyro R" : "", LINMATH_VEC6_EXPAND(tracker->IMU_R + 6 * i));
 	}
@@ -895,7 +895,11 @@ void survive_kalman_tracker_stats(SurviveKalmanTracker *tracker) {
 				   LINMATH_VEC7_EXPAND(tracker->Obs_R + 7 * i));
 	}
 
-	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
+	FLT* state_variance = (FLT*)&tracker->state_variance;
+    scalend(state_variance, state_variance, 1. / (FLT)tracker->state_variance_count, tracker->model.state_cnt);
+    SV_VERBOSE(5, "\t%-32s " Point26_format, "Observed state variance", LINMATH_VEC26_EXPAND(state_variance));
+
+    for (int i = 0; i < NUM_GEN2_LIGHTHOUSES; i++) {
 		if (tracker->stats.lightcap_count_by_lh[i]) {
 			SV_VERBOSE(5, "\tLighthouse %d", i);
 			SV_VERBOSE(5, "\t\t%-32s %e", "Avg error",
@@ -1046,9 +1050,22 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 	if (tracker->first_report_time == 0) {
 		tracker->first_report_time = t;
 	}
-	tracker->last_report_time = t;
 
 	tracker->so->poseConfidence = 1. / p_threshold;
+
+    if(tracker->last_report_time > 0) {
+        FLT dt = t - tracker->last_report_time;
+        struct survive_kalman_model_t diff = {};
+        subnd((FLT *) &diff, (FLT *) &tracker->state, (FLT *) &tracker->previous_state, state_cnt);
+        scalend((FLT *) &diff, (FLT *) &diff, 1. / dt, state_cnt);
+        mulnd((FLT *) &diff, (FLT *) &diff, (FLT *) &diff, state_cnt);
+        addnd((FLT *) &tracker->state_variance, (FLT *) &tracker->state_variance, (FLT *) &diff, state_cnt);
+        tracker->state_variance_count++;
+    }
+
+    tracker->last_report_time = t;
+
+    tracker->previous_state = tracker->state;
 	SV_VERBOSE(110, "%s confidence %7.7f", survive_colorize_codename(so), 1. / p_threshold);
 	if (so->OutPose_timecode < pd->timecode) {
 		SURVIVE_INVOKE_HOOK_SO(imupose, so, pd->timecode, &pose);
