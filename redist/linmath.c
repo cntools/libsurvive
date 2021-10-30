@@ -37,6 +37,10 @@ LINMATH_EXPORT void subnd(FLT *out, const FLT *a, const FLT *b, size_t size) {
 	for (int i = 0; i < size; i++)
 		out[i] = a[i] - b[i];
 }
+LINMATH_EXPORT void mulnd(FLT *out, const FLT *a, const FLT *b, size_t size) {
+	for (int i = 0; i < size; i++)
+		out[i] = a[i] * b[i];
+}
 inline void add3d(FLT *out, const FLT *a, const FLT *b) {
 	out[0] = a[0] + b[0];
 	out[1] = a[1] + b[1];
