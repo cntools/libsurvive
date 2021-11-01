@@ -187,6 +187,15 @@ SurvivePose *survive_optimizer_get_pose(survive_optimizer *ctx) {
 		return (SurvivePose *)ctx->parameters;
 	return &ctx->initialPose;
 }
+
+static inline FLT fix_infinity(FLT d) {
+	// assert(isfinite(*d));
+	if (!isfinite(d)) {
+		return linmath_enforce_range(d, -1e3, 1e3);
+	}
+	return d;
+}
+
 static inline void run_pair_measurement(survive_optimizer *mpfunc_ctx, size_t meas_idx,
 										const survive_reproject_model_t *reprojectModel,
 										const survive_optimizer_measurement *meas, const LinmathAxisAnglePose *pose,
@@ -242,10 +251,8 @@ static inline void run_pair_measurement(survive_optimizer *mpfunc_ctx, size_t me
 						jout[j + k * 6] = 0;
 					}
 				}
-				derivs[jac_offset_obj + j][meas_idx] = jout[j];
-				derivs[jac_offset_obj + j][meas_idx + 1] = jout[j + 6];
-				assert(isfinite(jout[j]));
-				assert(isfinite(jout[j + 6]));
+				derivs[jac_offset_obj + j][meas_idx] = fix_infinity(jout[j]);
+				derivs[jac_offset_obj + j][meas_idx + 1] = fix_infinity(jout[j + 6]);
 			}
 		}
 
@@ -254,10 +261,8 @@ static inline void run_pair_measurement(survive_optimizer *mpfunc_ctx, size_t me
 			reprojectModel->reprojectAxisAngleFullJacLhPose(out, pose, pt, world2lh, cal);
 			for (int j = 0; j < 6; j++) {
 				assert(derivs[jac_offset_lh + j] && "all 7 parameters should be the same for jacobian calculation");
-				derivs[jac_offset_lh + j][meas_idx] = out[j];
-				derivs[jac_offset_lh + j][meas_idx + 1] = out[j + 6];
-				assert(isfinite(out[j]));
-				assert(isfinite(out[j + 6]));
+				derivs[jac_offset_lh + j][meas_idx] = fix_infinity(out[j]);
+				derivs[jac_offset_lh + j][meas_idx + 1] = fix_infinity(out[j + 6]);
 			}
 		}
 	}
@@ -277,8 +282,7 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
 	ApplyAxisAnglePoseToPoint(sensorPtInLH, obj2lh, pt);
 
 	FLT out = reprojectModel->reprojectAxisFn[meas->axis](cal, sensorPtInLH);
-	deviates[0] = (out - meas->value) / meas->variance;
-	assert(isfinite(deviates[0]));
+	deviates[0] = fix_infinity((out - meas->value) / meas->variance);
 
 	if (derivs) {
 		int jac_offset_lh = (lh + mpfunc_ctx->poseLength) * 7;
@@ -291,7 +295,6 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
 			for (int j = 0; j < 6; j++) {
 				assert(derivs[jac_offset_obj + j]);
 				derivs[jac_offset_obj + j][meas_idx] = isfinite(out[j]) ? out[j] : 0;
-				//assert(isfinite(out[j]));
 			}
 		}
 
@@ -300,7 +303,6 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
 			for (int j = 0; j < 6; j++) {
 				assert(derivs[jac_offset_lh + j]);
 				derivs[jac_offset_lh + j][meas_idx] = isfinite(out[j]) ? out[j] : 0;
-				//assert(isfinite(out[j]));
 			}
 		}
 	}
@@ -528,7 +530,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 		}
 		deviates[m_idx] = bias * error;
 		for (int i = 0; i < 3 && derivs && derivs[deriv_idx + i]; i++) {
-			derivs[deriv_idx + i][m_idx] = bias * deriv[i];
+			derivs[deriv_idx + i][m_idx] = fix_infinity(bias * deriv[i]);
 		}
 	}
 	if (mpfunc_ctx->needsFiltering) {
