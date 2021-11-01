@@ -435,8 +435,14 @@ function create_tracked_object(info, external) {
 	objs[info.tracker].angVelocity =
 		new THREE.Line(angVelocityGeom, new THREE.LineDashedMaterial({color : 0x00FFFF, scale : .1}));
 
+	var accelGeom = new THREE.Geometry();
+	accelGeom.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0));
+	objs[info.tracker].accel =
+		new THREE.Line(accelGeom, new THREE.LineBasicMaterial({color : 0xFF00FF, linewidth : 3}));
+
 	group.add(objs[info.tracker].velocity);
 	group.add(objs[info.tracker].angVelocity);
+	group.add(objs[info.tracker].accel);
 
 	if (external) {
 		external_group.add(group);
@@ -518,7 +524,21 @@ function set_object_position(obj, name = null) {
 		fpv_camera.lookAt(lookAt);
 	}
 }
+function update_fullstate(v) {
+	var obj = {
+		tracker : v[1],
+		position : [ parseFloat(v[3]), parseFloat(v[4]), parseFloat(v[5]) ],
+		quat : [ parseFloat(v[6]), parseFloat(v[7]), parseFloat(v[8]), parseFloat(v[9]) ],
+		accel : [ parseFloat(v[16]), parseFloat(v[17]), parseFloat(v[18]) ],
+	};
 
+	if (objs[obj.tracker] == null || objs[obj.tracker].velocity == null) {
+		return;
+	}
+
+	objs[obj.tracker].accel.geometry.vertices[1].set(obj.accel[0], obj.accel[1], obj.accel[2]);
+	objs[obj.tracker].accel.geometry.verticesNeedUpdate = true;
+}
 function update_velocity(v) {
 	var obj = {
 		tracker : v[1],
@@ -634,7 +654,26 @@ function scrollConsoleToTop() {
 	}
 }
 var polys = {};
+function add_axis(v) {
+	var fv = v.map(parseFloat);
 
+	var name = v[2];
+
+	scene.remove(polys[name]);
+
+	if (fv[3] <= 1e-5)
+		return;
+
+	var group = new THREE.Group();
+	var helper = new THREE.AxesHelper(fv[3]);
+	group.add(helper);
+	group.position.set(fv[4], fv[5], fv[6]);
+	group.quaternion.fromArray([ fv[8], fv[9], fv[10], fv[7] ]);
+	group.tooltip = name;
+	polys[name] = group;
+
+	scene.add(group);
+}
 function add_sphere(v) {
 	var fv = v.map(parseFloat);
 
@@ -706,8 +745,10 @@ var survive_log_handlers = {
 	},
 	"POLY" : add_poly,
 	"SPHERE" : add_sphere,
+	"AXIS" : add_axis,
 	"POSE" : update_object,
 	"VELOCITY" : update_velocity,
+	"FULL_STATE" : update_fullstate,
 	"EXTERNAL_VELOCITY" : function(v) { update_velocity(v, true, true); },
 	"EXTERNAL_POSE" : function(v) { update_object(v, true, true); },
 	"DISCONNECT" : function(v) { delete_tracked_object(v[1]); },
