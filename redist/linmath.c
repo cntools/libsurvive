@@ -29,6 +29,12 @@ inline void sub3d(FLT *out, const FLT *a, const FLT *b) {
 	out[1] = a[1] - b[1];
 	out[2] = a[2] - b[2];
 }
+// out = a + b * s
+LINMATH_EXPORT void addscalednd(FLT *out, const FLT *a, const FLT *b, FLT s, size_t size) {
+	for (int i = 0; i < size; i++)
+		out[i] = a[i] + s * b[i];
+}
+
 LINMATH_EXPORT void addnd(FLT *out, const FLT *a, const FLT *b, size_t size) {
 	for (int i = 0; i < size; i++)
 		out[i] = a[i] + b[i];

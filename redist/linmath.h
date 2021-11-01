@@ -121,6 +121,8 @@ LINMATH_EXPORT void sub3d(FLT *out, const FLT *a, const FLT *b);
 LINMATH_EXPORT void subnd(FLT *out, const FLT *a, const FLT *b, size_t size);
 LINMATH_EXPORT void mulnd(FLT *out, const FLT *a, const FLT *b, size_t size);
 LINMATH_EXPORT void addnd(FLT *out, const FLT *a, const FLT *b, size_t size);
+// out = a + b * s
+LINMATH_EXPORT void addscalednd(FLT *out, const FLT *a, const FLT *b, FLT s, size_t size);
 
 LINMATH_EXPORT void add3d(FLT *out, const FLT *a, const FLT *b);
 

@@ -293,7 +293,6 @@ SURVIVE_LOCAL_ONLY double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svIn
 	lapack_int cols = srcarr->cols;
 	lapack_int lda = srcarr->cols;
 
-	svCopy(srcarr, dstarr, 0);
 	FLT *a = SV_RAW_PTR(dstarr);
 
 #ifdef DEBUG_PRINT
@@ -301,6 +300,7 @@ SURVIVE_LOCAL_ONLY double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svIn
 	print_mat(srcarr);
 #endif
 	if (method == SV_INVERT_METHOD_LU) {
+		svCopy(srcarr, dstarr, 0);
 		lapack_int *ipiv = SV_MATRIX_ALLOC(sizeof(lapack_int) * MIN(srcarr->rows, srcarr->cols));
 
 		lapack_int lda_t = MAX(1, rows);
@@ -328,12 +328,12 @@ SURVIVE_LOCAL_ONLY double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svIn
 	} else if (method == DECOMP_SVD) {
 		// TODO: There is no way this needs this many allocations,
 		// but in my defense I was very tired when I wrote this code
-		SV_CREATE_STACK_MAT(w, 1, MIN(dstarr->rows, dstarr->cols));
-		SV_CREATE_STACK_MAT(u, dstarr->cols, dstarr->cols);
-		SV_CREATE_STACK_MAT(v, dstarr->rows, dstarr->rows);
-		SV_CREATE_STACK_MAT(um, w.cols, w.cols);
+		SV_CREATE_STACK_MAT(w, 1, MIN(srcarr->rows, srcarr->cols));
+		SV_CREATE_STACK_MAT(u, srcarr->rows, srcarr->rows);
+		SV_CREATE_STACK_MAT(v, srcarr->cols, srcarr->cols);
+		SV_CREATE_STACK_MAT(um, srcarr->cols, srcarr->rows);
 
-		svSVD(dstarr, &w, &u, &v, 0);
+		svSVD((SvMat *)srcarr, &w, &u, &v, 0);
 
 		svSetZero(&um);
 		for (int i = 0; i < w.cols; i++) {
@@ -341,7 +341,7 @@ SURVIVE_LOCAL_ONLY double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svIn
 				svMatrixSet(&um, i, i, 1. / (_w)[i]);
 		}
 
-		SvMat *tmp = svCreateMat(dstarr->cols, dstarr->rows);
+		SvMat *tmp = svCreateMat(v.rows, um.cols);
 		svGEMM(&v, &um, 1, 0, 0, tmp, SV_GEMM_FLAG_A_T);
 		svGEMM(tmp, &u, 1, 0, 0, dstarr, SV_GEMM_FLAG_B_T);
 
