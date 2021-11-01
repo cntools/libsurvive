@@ -29,7 +29,7 @@ static void sv_print_mat_v(const survive_kalman_state_t *k, int ll, const char *
 		fprintf(stdout, "null%c", term);
 		return;
 	}
-	fprintf(stdout, "%4s %2d x %2d:%c", name, M->rows, M->cols, term);
+	fprintf(stdout, "%8s %2d x %2d:%c", name, M->rows, M->cols, term);
 	FLT scale = sv_sum(M);
 	for (unsigned i = 0; i < M->rows; i++) {
 		for (unsigned j = 0; j < M->cols; j++) {
@@ -37,7 +37,7 @@ static void sv_print_mat_v(const survive_kalman_state_t *k, int ll, const char *
 			if (v == 0)
 				fprintf(stdout, "         0,\t");
 			else
-				fprintf(stdout, "%+5.2e,\t", v);
+				fprintf(stdout, "%+7.7e,\t", v);
 		}
 		if (newlines)
 			fprintf(stdout, "\n");

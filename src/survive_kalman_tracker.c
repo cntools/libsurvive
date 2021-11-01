@@ -14,6 +14,7 @@
 
 #include "generated/survive_imu.generated.h"
 #include "survive_kalman_lighthouses.h"
+#include "survive_recording.h"
 
 #define SURVIVE_MODEL_MAX_STATE_CNT (sizeof(SurviveKalmanModel) / sizeof(FLT))
 
@@ -251,7 +252,7 @@ void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker,
 		if (!ramp_in && tracker->adaptive_lightcap) {
 			tracker->light_var = light_var;
 		}
-		SV_VERBOSE(110, "Light pass error %14.14f", rtn);
+		SV_VERBOSE(200, "Light pass error %14.14f", rtn);
 		tracker->stats.lightcap_total_error += rtn;
 
 		tracker->light_residuals_all *= .9;
@@ -522,9 +523,9 @@ void survive_kalman_tracker_process_noise(const struct SurviveKalmanTracker_Para
 	 */
 
 	FLT t2 = t * t;
-	FLT t3 = t * t * t;
-	FLT t4 = t2 * t2;
-	FLT t5 = t3 * t2;
+	FLT t3 = t2 * t;
+	FLT t4 = t3 * t;
+	FLT t5 = t4 * t;
 
 	/* ================== Positional ============================== */
 	// Estimation with Applications to Tracking and Navigation: Theory Algorithms and Software Ch 6
@@ -669,9 +670,18 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
 	integrate_variance_tracker(tracker, &tracker->pose_variance, (FLT*)pose->Pos, 7);
 
 	if (tracker->show_raw_obs) {
-		char external_name[16] = {0};
+        static int report_in_imu = -1;
+        if (report_in_imu == -1) {
+            report_in_imu = survive_configi(so->ctx, "report-in-imu", SC_GET, 0);
+        }
+
+        char external_name[16] = {0};
 		sprintf(external_name, "%s-raw-obs", so->codename);
-		SURVIVE_INVOKE_HOOK(external_pose, ctx, external_name, pose);
+		SurvivePose head2world = *pose;
+		if(!report_in_imu) {
+            ApplyPoseToPose(&head2world, pose, &so->head2imu);
+		}
+		SURVIVE_INVOKE_HOOK(external_pose, ctx, external_name, &head2world);
 	}
 
 	if (tracker->use_raw_obs) {
@@ -1073,6 +1083,9 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
     }
 
     tracker->last_report_time = t;
+
+    survive_recording_write_to_output(ctx->recptr, "%s FULL_STATE " Point26_format "\n",
+                                      so->codename, LINMATH_VEC26_EXPAND((FLT*)&tracker->state));
 
     tracker->previous_state = tracker->state;
 	SV_VERBOSE(110, "%s confidence %7.7f", survive_colorize_codename(so), 1. / p_threshold);
