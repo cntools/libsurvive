@@ -52,8 +52,10 @@ bool general_optimizer_data_record_success(GeneralOptimizerData *d, FLT error, c
 	if (d->max_error <= 0 || d->max_error > error) {
 		if (d->successes_to_reset_cntr > 0)
 			d->successes_to_reset_cntr--;
-		if (pose)
+		if (pose) {
 			d->lastSuccess = *pose;
+			d->lastSuccessTime = survive_run_time(d->so->ctx);
+		}
 		d->failures_to_reset_cntr = d->failures_to_reset;
 		d->failures_since_success = 0;
 		d->stats.successes++;

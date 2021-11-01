@@ -22,6 +22,7 @@ typedef struct GeneralOptimizerData {
 	SurviveObject *so;
 
 	SurvivePose lastSuccess;
+	FLT lastSuccessTime;
 } GeneralOptimizerData;
 
 SURVIVE_EXPORT void general_optimizer_data_init(GeneralOptimizerData *d, SurviveObject *so);
