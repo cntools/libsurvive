@@ -33,6 +33,8 @@ struct survive_kalman_state_s;
 // Generates the transition matrix F
 typedef void (*kalman_transition_fn_t)(FLT dt, struct SvMat *f_out, const struct SvMat *x0);
 
+typedef void (*kalman_normalize_fn_t)(void *user, struct SvMat *x);
+
 // Given state x0 and time delta; gives the new state x1. For a linear model, this is just x1 = F * x0
 typedef void (*kalman_predict_fn_t)(FLT dt, const struct survive_kalman_state_s *k, const struct SvMat *x0,
 									struct SvMat *x1);
@@ -43,6 +45,27 @@ typedef void (*kalman_process_noise_fn_t)(void *user, FLT dt, const struct SvMat
 // Given a measurement Z, and state X_t, generates both the y difference term and the H jacobian term.
 typedef bool (*kalman_measurement_model_fn_t)(void *user, const struct SvMat *Z, const struct SvMat *x_t,
 											  struct SvMat *y, struct SvMat *H_k);
+
+typedef struct {
+	kalman_measurement_model_fn_t Hfn;
+	void *user;
+	bool adapative;
+	bool no_backtrack;
+
+	const FLT *max_deltas;
+	struct term_criteria_t {
+		size_t max_iterations;
+		// 1 for stopping as soon as error is less than initial error, INF for not stopping until other criteria. A
+		// value of 0 defaults to 1.
+		FLT error_tol;
+
+		// Absolute error tolerance
+		FLT error;
+
+		// Absolute step size tolerance
+		FLT minimum_step;
+	} term_criteria;
+} survive_kalman_update_extended_params_t;
 
 typedef struct survive_kalman_state_s {
 	// The number of states stored. For instance, something that tracked position and velocity would have 6 states --
@@ -56,6 +79,7 @@ typedef struct survive_kalman_state_s {
 	kalman_predict_fn_t Predict_fn;
 	kalman_transition_fn_t F_fn;
 	kalman_process_noise_fn_t Q_fn;
+	kalman_normalize_fn_t normalize_fn;
 
 	// Store the current covariance matrix (state_cnt x state_cnt)
 	struct SvMat P;
@@ -104,15 +128,14 @@ SURVIVE_EXPORT FLT survive_kalman_predict_update_state(FLT t, survive_kalman_sta
  * @param k kalman state info
  * @param z measurement -- SvMat of n x 1
  * @param R Observation noise -- The diagonal of the measurement covariance matrix; length n
- * @param H Input observation model -- SvMat of n x state_cnt
  * @param Hfn Observation function that gives both the residual vector and the jacobian associated with it.
  * @param adapative Whether or not R is an adaptive matrix. When true, R should be a full n x n matrix.
  *
  * @returns Returns the average residual error
  */
-SURVIVE_EXPORT FLT survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k, const struct SvMat *Z,
-																const FLT *R, kalman_measurement_model_fn_t Hfn,
-																void *user, bool adapative);
+SURVIVE_EXPORT FLT
+survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k, const struct SvMat *Z, const FLT *R,
+											 const survive_kalman_update_extended_params_t *extended_params);
 
 /**
  * Initialize a kalman state object

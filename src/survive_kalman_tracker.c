@@ -116,6 +116,16 @@ static inline FLT survive_kalman_tracker_position_var2(SurviveKalmanTracker *tra
 	return normnd2(var_diag, cnt);
 }
 
+const FLT max_deltas[SURVIVE_MODEL_MAX_STATE_CNT] = {
+        .5, .5, .5, .1, .1, .1, .1
+};
+
+void kalman_model_normalize(void *user, struct SvMat* x) {
+    SurviveKalmanModel state = copy_model(x->data, x->rows);
+    quatnormalize(state.Pose.Rot, state.Pose.Rot);
+    quatnormalize(state.IMUCorrection, state.IMUCorrection);
+    memcpy(x->data, &state, sizeof(FLT) * x->rows);
+}
 static void normalize_model(SurviveKalmanTracker *pTracker) {
 	/*
 	FLT d = magnitude3d(pTracker->state.Pose.Rot + 1);
@@ -162,6 +172,8 @@ static bool map_light_data(void *user, const struct SvMat *Z, const struct SvMat
 	if(H_k) {
 	    sv_set_zero(H_k);
 	}
+    SurvivePose obj2world = *(SurvivePose *)sv_as_const_vector(x_t);
+    quatnormalize(obj2world.Rot, obj2world.Rot);
 
 	FLT *Y = sv_as_vector(y);
 	for (int i = 0; i < tracker->savedLight_idx; i++) {
@@ -173,18 +185,20 @@ static bool map_light_data(void *user, const struct SvMat *Z, const struct SvMat
 		assert(ctx->bsd[info->lh].PositionSet);
 
 		const SurvivePose world2lh = InvertPoseRtn(&ctx->bsd[info->lh].Pose);
-		const SurvivePose obj2world = *(SurvivePose *)sv_as_const_vector(x_t);
 
 		const FLT *ptInObj = &so->sensor_locations[info->sensor_idx * 3];
 		FLT h_x = project_fn(&obj2world, ptInObj, &world2lh, &ctx->bsd[info->lh].fcal[axis]);
 		Y[i] = sv_as_const_vector(Z)[i] - h_x;
+		if(tracker->lightcap_max_error > 0) {
+            Y[i] = linmath_enforce_range(Y[i], -tracker->lightcap_max_error, tracker->lightcap_max_error);
+		}
         SV_DATA_LOG("Z_light[%d][%d][%d]", &info->value, 1, info->lh, info->axis, info->sensor_idx);
 		SV_DATA_LOG("h_light[%d][%d][%d]", &h_x, 1, info->lh, info->axis, info->sensor_idx);
 		SV_DATA_LOG("Y_light[%d][%d][%d]", Y, 1, info->lh, info->axis, info->sensor_idx);
 		FLT jacobian[7] = {0};
 		project_jacob_fn(jacobian, &obj2world, ptInObj, &world2lh, &ctx->bsd[info->lh].fcal[axis]);
 		for (int j = 0; H_k && j < 7; j++) {
-			svMatrixSet(H_k, i, j, jacobian[j]);
+            svMatrixSet(H_k, i, j, jacobian[j]);
 		}
 	}
 	if (H_k && !sv_is_finite(H_k))
@@ -239,15 +253,25 @@ void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker,
 		bool ramp_in = tracker->stats.lightcap_count < tracker->light_rampin_length;
 		FLT light_var = tracker->light_var;
 		if (ramp_in) {
-			light_var += tracker->obs_pos_var / ((FLT)tracker->stats.lightcap_count + 1.);
+			//light_var += tracker->obs_pos_var / ((FLT)tracker->stats.lightcap_count + 1.);
 		}
 		SV_DATA_LOG("light_var", &light_var, 1);
 		FLT light_vars[32] = {0};
 		for (int i = 0; i < 32; i++)
 			light_vars[i] = light_var;
 		tracker->datalog_tag = "light_data";
-		FLT rtn = survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, light_vars, map_light_data,
-															   &cbctx, tracker->adaptive_lightcap);
+
+        survive_kalman_update_extended_params_t params = {
+                .Hfn = map_light_data,
+                .user = &cbctx,
+                .adapative = tracker->adaptive_lightcap,
+                .max_deltas = max_deltas,
+                .term_criteria = {
+                        .max_iterations = 100,
+                        .error = 1e-3
+                }
+        };
+		FLT rtn = survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, light_vars, &params);
 		tracker->datalog_tag = 0;
 		if (!ramp_in && tracker->adaptive_lightcap) {
 			tracker->light_var = light_var;
@@ -466,8 +490,18 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 				   LINMATH_VEC6_EXPAND((FLT *)&accelgyro[0]), LINMATH_VEC6_EXPAND(R));
 
 		tracker->datalog_tag = "imu_meas";
-		FLT err = survive_kalman_predict_update_state_extended(
-			time, &tracker->model, &Z, R, survive_kalman_tracker_imu_measurement_model, &fn_ctx, tracker->adaptive_imu);
+        survive_kalman_update_extended_params_t params = {
+                .Hfn = survive_kalman_tracker_imu_measurement_model,
+                .user = &fn_ctx,
+                .adapative = tracker->adaptive_imu,
+                .max_deltas = max_deltas,
+                .term_criteria = {
+                        .max_iterations = 10,
+                        .error_tol = INFINITY
+                }
+        };
+
+        FLT err = survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, R, &params);
 		tracker->datalog_tag = 0;
 
 		SV_DATA_LOG("res_err_imu", &err, 1);
@@ -836,7 +870,7 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	if (ctx) {
 		survive_kalman_set_logging_level(&tracker->model, ctx->log_level);
 	}
-
+    tracker->model.normalize_fn = kalman_model_normalize;
 	tracker->model.Predict_fn = survive_kalman_tracker_model_predict;
 	tracker->model.datalog_user = tracker;
 	tracker->model.datalog = tracker_datalog;

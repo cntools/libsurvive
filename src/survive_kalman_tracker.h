@@ -116,6 +116,7 @@ typedef struct SurviveKalmanTracker {
 	FLT IMU_R[6 * 6];
 	FLT Lightcap_R;
 
+	FLT lightcap_max_error;
 	int light_rampin_length;
 	int use_error_for_lh_pos;
 

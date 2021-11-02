@@ -192,19 +192,20 @@ bool map_to_obs(void *user, const struct SvMat *Z, const struct SvMat *x_t, stru
 	FLT n2 = (x * x + y * y + z * z);
 	FLT n = sqrtf(n2);
 
-	sv_set_zero(H_k);
-	svMatrixSet(H_k, 0, 0, y / (x * x + y * y));
-	svMatrixSet(H_k, 0, 1, -x / (x * x + y * y));
-	svMatrixSet(H_k, 0, 2, 0);
+	if (H_k) {
+		sv_set_zero(H_k);
+		svMatrixSet(H_k, 0, 0, y / (x * x + y * y));
+		svMatrixSet(H_k, 0, 1, -x / (x * x + y * y));
+		svMatrixSet(H_k, 0, 2, 0);
 
-	svMatrixSet(H_k, 1, 0, -x * z / n2 / sqrtf(x * x + y * y));
-	svMatrixSet(H_k, 1, 1, -y * z / n2 / sqrtf(x * x + y * y));
-	svMatrixSet(H_k, 1, 2, 1. / sqrtf(x * x + y * y));
+		svMatrixSet(H_k, 1, 0, -x * z / n2 / sqrtf(x * x + y * y));
+		svMatrixSet(H_k, 1, 1, -y * z / n2 / sqrtf(x * x + y * y));
+		svMatrixSet(H_k, 1, 2, 1. / sqrtf(x * x + y * y));
 
-	svMatrixSet(H_k, 2, 0, x / n);
-	svMatrixSet(H_k, 2, 1, y / n);
-	svMatrixSet(H_k, 2, 2, z / n);
-
+		svMatrixSet(H_k, 2, 0, x / n);
+		svMatrixSet(H_k, 2, 1, y / n);
+		svMatrixSet(H_k, 2, 2, z / n);
+	}
 	SV_FREE_STACK_MAT(Id);
 	SV_FREE_STACK_MAT(h_x_t);
 	return true;
@@ -256,7 +257,10 @@ TEST(Kalman, ExampleExtended) {
 		}
 
 		FLT R[] = {.0004, .0004, 1};
-		survive_kalman_predict_update_state_extended(i, &position, &Z, R, map_to_obs, sensor, 0);
+
+		survive_kalman_update_extended_params_t params = {
+			.Hfn = map_to_obs, .user = sensor, .term_criteria = {.max_iterations = 10}};
+		survive_kalman_predict_update_state_extended(i, &position, &Z, R, &params);
 
 		fprintf(stderr, "Guess  " SurviveVel_format "\n",
 				SURVIVE_VELOCITY_EXPAND(*(SurviveVelocity *)SV_FLT_PTR(&position.state)));
@@ -420,8 +424,9 @@ TEST(Kalman, InstFlip) {
 		quatnormalize(model.true_state.Pose.Rot, model.true_state.Pose.Rot);
 		gen_imu_predict(input, &model.true_state);
 
-		FLT err = survive_kalman_predict_update_state_extended(time, &model.kalman_t, &Z, R,
-															   survive_kalman_tracker_imu_measurement_model, 0, 0);
+		survive_kalman_update_extended_params_t params = {.Hfn = survive_kalman_tracker_imu_measurement_model,
+														  .term_criteria = {.max_iterations = 10}};
+		FLT err = survive_kalman_predict_update_state_extended(time, &model.kalman_t, &Z, R, &params);
 		quatnormalize(model.sim_state.Pose.Rot, model.sim_state.Pose.Rot);
 		fprintf(stderr, "err %.7f Acc: " Point3_format " Vel: " Point3_format " Rotation: " Quat_format "\n", err,
 				LINMATH_VEC3_EXPAND(model.sim_state.Acc), LINMATH_VEC3_EXPAND(model.sim_state.Velocity.Pos),
@@ -459,8 +464,9 @@ TEST(Kalman, Flip) {
 
 		gen_imu_predict(input, &model.true_state);
 
-		FLT err = survive_kalman_predict_update_state_extended(time, &model.kalman_t, &Z, R,
-															   survive_kalman_tracker_imu_measurement_model, 0, 0);
+		survive_kalman_update_extended_params_t params = {.Hfn = survive_kalman_tracker_imu_measurement_model,
+														  .term_criteria = {.max_iterations = 10}};
+		FLT err = survive_kalman_predict_update_state_extended(time, &model.kalman_t, &Z, R, &params);
 		quatnormalize(model.sim_state.Pose.Rot, model.sim_state.Pose.Rot);
 
 		fprintf(stderr, "err %f Velocity: " SurviveVel_format " Pose: " SurvivePose_format "\n", err,
@@ -513,9 +519,9 @@ TEST(Kalman, LiftupSetDown) {
 		model.true_state = m;
 
 		gen_imu_predict(input, &model.true_state);
-
-		FLT err = survive_kalman_predict_update_state_extended(time, &model.kalman_t, &Z, R,
-															   survive_kalman_tracker_imu_measurement_model, 0, 0);
+		survive_kalman_update_extended_params_t params = {.Hfn = survive_kalman_tracker_imu_measurement_model,
+														  .term_criteria = {.max_iterations = 10}};
+		FLT err = survive_kalman_predict_update_state_extended(time, &model.kalman_t, &Z, R, &params);
 		quatnormalize(model.sim_state.Pose.Rot, model.sim_state.Pose.Rot);
 
 		fprintf(stderr, "err %f " KALMAN_MODEL_FORMAT "\n", err, KALMAN_MODEL_EXPAND(model.sim_state));
