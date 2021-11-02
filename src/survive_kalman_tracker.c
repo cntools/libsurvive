@@ -388,7 +388,7 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 		return;
 	}
 
-	if (tracker->stats.obs_count < 16) {
+	if (tracker->stats.obs_count < 16 && tracker->obs_pos_var > -1) {
 		return;
 	}
 
@@ -533,9 +533,9 @@ void survive_kalman_tracker_process_noise(const struct SurviveKalmanTracker_Para
 
 	// We mix three order models here based on tuning variables.
 	FLT Q_acc[] = {
-	        t4 / 4.,
-	        t3 / 2.,      t2,
-	        t2 / 2.,       t,       1
+	        t5 / 20.,
+	        t4 / 8.,      t3 / 3.,
+	        t3 / 6.,      t2 / 2.,       t
 	};
 	FLT Q_vel[] = {
 	        t3 / 3.,
@@ -621,7 +621,12 @@ void survive_kalman_tracker_model_predict(FLT t, const survive_kalman_state_t *k
 	SurviveKalmanModel s_out = {0};
 
 	struct SurviveKalmanTracker_Params *params = (struct SurviveKalmanTracker_Params *)k->user;
-
+    if(params->process_weight_acc == 0) {
+        scale3d(s_in.Acc, s_in.Acc, 0);
+    }
+    if(params->process_weight_vel == 0) {
+        scalend(s_in.Velocity.Pos, s_in.Velocity.Pos, 0, 6);
+    }
 	quatnormalize(s_in.Pose.Rot, s_in.Pose.Rot);
 	gen_kalman_model_predict(s_out.Pose.Pos, t, &s_in);
 	quatnormalize(s_out.Pose.Rot, s_out.Pose.Rot);
