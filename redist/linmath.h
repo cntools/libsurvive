@@ -151,6 +151,7 @@ LINMATH_EXPORT void copy3d(FLT *out, const FLT *in);
 
 LINMATH_EXPORT FLT magnitude3d(const FLT *a);
 LINMATH_EXPORT FLT dist3d(const FLT *a, const FLT *b);
+LINMATH_EXPORT FLT distnd(const FLT *a, const FLT *b, size_t len);
 LINMATH_EXPORT FLT anglebetween3d(FLT *a, FLT *b);
 
 LINMATH_EXPORT void rotatearoundaxis(FLT *outvec3, const FLT *invec3, const FLT *axis, FLT angle);

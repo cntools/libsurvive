@@ -123,7 +123,14 @@ FLT dist3d(const FLT *a, const FLT *b) {
 	sub3d(tmp, a, b);
 	return magnitude3d(tmp);
 }
-
+LINMATH_EXPORT FLT distnd(const FLT *a, const FLT *b, size_t len) {
+	FLT s = 0;
+	for (int i = 0; i < len; i++) {
+		FLT d = a[i] - b[i];
+		s += d * d;
+	}
+	return FLT_SQRT(s);
+}
 FLT anglebetween3d(FLT *a, FLT *b) {
 	FLT an[3];
 	FLT bn[3];
