@@ -157,7 +157,7 @@ void survive_kalman_lighthouse_integrate_light(SurviveKalmanLighthouse *tracker,
 		for (int i = 0; i < 32; i++)
 			light_vars[i] = v;
 		survive_kalman_update_extended_params_t params = {.Hfn = map_light_data, .user = &cbctx};
-		survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, light_vars, &params);
+		survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, light_vars, &params, 0);
 		survive_kalman_lighthouse_report(tracker);
 	}
 }

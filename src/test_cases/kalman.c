@@ -260,7 +260,7 @@ TEST(Kalman, ExampleExtended) {
 
 		survive_kalman_update_extended_params_t params = {
 			.Hfn = map_to_obs, .user = sensor, .term_criteria = {.max_iterations = 10}};
-		survive_kalman_predict_update_state_extended(i, &position, &Z, R, &params);
+		survive_kalman_predict_update_state_extended(i, &position, &Z, R, &params, 0);
 
 		fprintf(stderr, "Guess  " SurviveVel_format "\n",
 				SURVIVE_VELOCITY_EXPAND(*(SurviveVelocity *)SV_FLT_PTR(&position.state)));
@@ -426,7 +426,7 @@ TEST(Kalman, InstFlip) {
 
 		survive_kalman_update_extended_params_t params = {.Hfn = survive_kalman_tracker_imu_measurement_model,
 														  .term_criteria = {.max_iterations = 10}};
-		FLT err = survive_kalman_predict_update_state_extended(time, &model.kalman_t, &Z, R, &params);
+		FLT err = survive_kalman_predict_update_state_extended(time, &model.kalman_t, &Z, R, &params, 0);
 		quatnormalize(model.sim_state.Pose.Rot, model.sim_state.Pose.Rot);
 		fprintf(stderr, "err %.7f Acc: " Point3_format " Vel: " Point3_format " Rotation: " Quat_format "\n", err,
 				LINMATH_VEC3_EXPAND(model.sim_state.Acc), LINMATH_VEC3_EXPAND(model.sim_state.Velocity.Pos),
@@ -466,7 +466,7 @@ TEST(Kalman, Flip) {
 
 		survive_kalman_update_extended_params_t params = {.Hfn = survive_kalman_tracker_imu_measurement_model,
 														  .term_criteria = {.max_iterations = 10}};
-		FLT err = survive_kalman_predict_update_state_extended(time, &model.kalman_t, &Z, R, &params);
+		FLT err = survive_kalman_predict_update_state_extended(time, &model.kalman_t, &Z, R, &params, 0);
 		quatnormalize(model.sim_state.Pose.Rot, model.sim_state.Pose.Rot);
 
 		fprintf(stderr, "err %f Velocity: " SurviveVel_format " Pose: " SurvivePose_format "\n", err,
@@ -521,7 +521,7 @@ TEST(Kalman, LiftupSetDown) {
 		gen_imu_predict(input, &model.true_state);
 		survive_kalman_update_extended_params_t params = {.Hfn = survive_kalman_tracker_imu_measurement_model,
 														  .term_criteria = {.max_iterations = 10}};
-		FLT err = survive_kalman_predict_update_state_extended(time, &model.kalman_t, &Z, R, &params);
+		FLT err = survive_kalman_predict_update_state_extended(time, &model.kalman_t, &Z, R, &params, 0);
 		quatnormalize(model.sim_state.Pose.Rot, model.sim_state.Pose.Rot);
 
 		fprintf(stderr, "err %f " KALMAN_MODEL_FORMAT "\n", err, KALMAN_MODEL_EXPAND(model.sim_state));

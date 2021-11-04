@@ -92,7 +92,13 @@ void linmath_interpolate(FLT *out, int n, const FLT *A, const FLT *B, FLT t) {
 }
 
 LINMATH_EXPORT FLT dot3d(const FLT *a, const FLT *b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
-
+LINMATH_EXPORT FLT dotnd(const FLT *a, const FLT *b, size_t n) {
+	FLT rtn = 0;
+	for (int i = 0; i < n; i++) {
+		rtn += a[i] * b[i];
+	}
+	return rtn;
+}
 int compare3d(const FLT *a, const FLT *b, FLT epsilon) {
 	if (!a || !b)
 		return 0;

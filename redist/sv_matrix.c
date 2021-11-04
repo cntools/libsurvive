@@ -54,6 +54,30 @@ SURVIVE_LOCAL_ONLY SvMat *svCloneMat(const SvMat *mat) {
 
 static size_t mat_size_bytes(const SvMat *mat) { return (size_t)sizeof(FLT) * mat->cols * mat->rows; }
 
+FLT svNorm(const SvMat *s) { return normnd(s->data, s->cols * s->rows); }
+FLT svNorm2(const SvMat *s) { return normnd2(s->data, s->cols * s->rows); }
+void svSub(SvMat *dest, const SvMat *a, const SvMat *b) {
+	assert(a->cols * a->rows == dest->cols * dest->rows);
+	assert(b->cols * b->rows == dest->cols * dest->rows);
+	subnd(dest->data, a->data, b->data, dest->cols * dest->rows);
+}
+void svAdd(SvMat *dest, const SvMat *a, const SvMat *b) {
+	assert(a->cols * a->rows == dest->cols * dest->rows);
+	assert(b->cols * b->rows == dest->cols * dest->rows);
+	addnd(dest->data, a->data, b->data, dest->cols * dest->rows);
+}
+void svAddScaled(SvMat *dest, const SvMat *a, FLT as, const SvMat *b, FLT bs) {
+	assert(a->cols * a->rows == dest->cols * dest->rows);
+	assert(b->cols * b->rows == dest->cols * dest->rows);
+	for (int i = 0; i < dest->cols * dest->rows; i++) {
+		dest->data[i] = a->data[i] * as + b->data[i] * bs;
+	}
+}
+void svScale(SvMat *dest, const SvMat *a, FLT s) {
+	assert(a->cols * a->rows == dest->cols * dest->rows);
+	scalend(dest->data, a->data, s, dest->cols * dest->rows);
+}
+
 void svCopy(const SvMat *src, SvMat *dest, const SvMat *mask) {
 	assert(mask == 0 && "This isn't implemented yet");
 	assert(src->rows == dest->rows);

@@ -143,6 +143,7 @@ LINMATH_EXPORT void center3d(FLT *out_pts, FLT *out_mean, const FLT *pts, int nu
 LINMATH_EXPORT void mean3d(LinmathVec3d out, const FLT *pts, int num_pts);
 
 LINMATH_EXPORT FLT dot3d(const FLT *a, const FLT *b);
+LINMATH_EXPORT FLT dotnd(const FLT *a, const FLT *b, size_t n);
 
 // Returns 0 if equal.  If either argument is null, 0 will ALWAYS be returned.
 LINMATH_EXPORT int compare3d(const FLT *a, const FLT *b, FLT epsilon);

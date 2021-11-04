@@ -52,20 +52,43 @@ typedef struct {
 	bool adapative;
 	bool no_backtrack;
 
-	const FLT *max_deltas;
 	struct term_criteria_t {
 		size_t max_iterations;
-		// 1 for stopping as soon as error is less than initial error, INF for not stopping until other criteria. A
-		// value of 0 defaults to 1.
-		FLT error_tol;
-
-		// Absolute error tolerance
-		FLT error;
 
 		// Absolute step size tolerance
 		FLT minimum_step;
+
+		// Minimum difference in errors
+		FLT xtol;
 	} term_criteria;
 } survive_kalman_update_extended_params_t;
+
+enum survive_kalman_update_extended_termination_reason {
+	survive_kalman_update_extended_termination_reason_none = 0,
+	survive_kalman_update_extended_termination_reason_invalid_jacobian,
+	survive_kalman_update_extended_termination_reason_maxiter,
+	survive_kalman_update_extended_termination_reason_xtol,
+	survive_kalman_update_extended_termination_reason_step,
+	survive_kalman_update_extended_termination_reason_MAX
+};
+
+typedef struct survive_kalman_update_extended_total_stats_t {
+	FLT bestnorm_acc, orignorm_acc;
+	int total_iterations, total_fevals, total_hevals;
+	int total_runs;
+	int total_failures;
+	size_t stop_reason_counts[survive_kalman_update_extended_termination_reason_MAX];
+} survive_kalman_update_extended_total_stats_t;
+
+struct survive_kalman_update_extended_stats_t {
+	FLT bestnorm;
+	FLT orignorm;
+	int iterations;
+	int fevals, hevals;
+	enum survive_kalman_update_extended_termination_reason stop_reason;
+
+	survive_kalman_update_extended_total_stats_t *total_stats;
+};
 
 typedef struct survive_kalman_state_s {
 	// The number of states stored. For instance, something that tracked position and velocity would have 6 states --
@@ -135,7 +158,8 @@ SURVIVE_EXPORT FLT survive_kalman_predict_update_state(FLT t, survive_kalman_sta
  */
 SURVIVE_EXPORT FLT
 survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k, const struct SvMat *Z, const FLT *R,
-											 const survive_kalman_update_extended_params_t *extended_params);
+											 const survive_kalman_update_extended_params_t *extended_params,
+											 struct survive_kalman_update_extended_stats_t *stats);
 
 /**
  * Initialize a kalman state object
@@ -156,4 +180,9 @@ SURVIVE_EXPORT void survive_kalman_state_reset(survive_kalman_state_t *k);
 SURVIVE_EXPORT void survive_kalman_state_free(survive_kalman_state_t *k);
 SURVIVE_EXPORT void survive_kalman_set_P(survive_kalman_state_t *k, const FLT *d);
 SURVIVE_EXPORT void survive_kalman_set_logging_level(survive_kalman_state_t *k, int verbosity);
+
+SURVIVE_EXPORT FLT survive_kalman_calculate_v(survive_kalman_state_t *k, const struct SvMat *x, const struct SvMat *Z,
+											  const struct SvMat *R,
+											  const survive_kalman_update_extended_params_t *extended_params);
+
 #endif

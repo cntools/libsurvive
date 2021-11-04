@@ -63,6 +63,12 @@ enum svGEMMFlags {
 	SV_GEMM_FLAG_C_T = 4,
 };
 
+FLT svNorm(const SvMat *s);
+FLT svNorm2(const SvMat *s);
+void svSub(SvMat *dest, const SvMat *a, const SvMat *b);
+void svAdd(SvMat *dest, const SvMat *a, const SvMat *b);
+void svAddScaled(SvMat *dest, const SvMat *a, FLT as, const SvMat *b, FLT bs);
+void svScale(SvMat *dest, const SvMat *a, FLT s);
 void svGEMM(const SvMat *src1, const SvMat *src2, double alpha, const SvMat *src3, double beta, SvMat *dst,
 			enum svGEMMFlags tABC);
 
@@ -82,6 +88,8 @@ void svReleaseMat(SvMat **mat);
 enum svSVDFlags { SV_SVD_MODIFY_A = 1, SV_SVD_U_T = 2, SV_SVD_V_T = 4 };
 
 void svSVD(SvMat *aarr, SvMat *warr, SvMat *uarr, SvMat *varr, enum svSVDFlags flags);
+
+void svPow(const SvMat *src, SvMat *dst, FLT pow);
 
 void svMulTransposed(const SvMat *src, SvMat *dst, int order, const SvMat *delta, double scale);
 
