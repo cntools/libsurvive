@@ -72,8 +72,10 @@ static bool map_light_data(void *user, const struct SvMat *Z, const struct SvMat
 	SurviveObject *so = cbctx->so;
 	struct SurviveContext *ctx = so->ctx;
 	const survive_reproject_model_t *mdl = survive_reproject_model(ctx);
-	sv_set_zero(H_k);
 
+	if (H_k) {
+		sv_set_zero(H_k);
+	}
 	FLT *Y = sv_as_vector(y);
 
 	SV_CREATE_STACK_MAT(inv_jacobian_row_ordered, 7, 7);
@@ -85,6 +87,7 @@ static bool map_light_data(void *user, const struct SvMat *Z, const struct SvMat
 	const SurvivePose world2lh = InvertPoseRtn(&lh2world);
 	gen_invert_pose_jac_obj_p(inv_jacobian_row_ordered.data, &lh2world);
 #endif
+	SV_CREATE_STACK_MAT(jacobian, 1, 7);
 	for (int i = 0; i < Z->rows; i++) {
 		const LightInfo *info = &cbctx->savedLight[i];
 		int axis = info->axis;
@@ -101,20 +104,21 @@ static bool map_light_data(void *user, const struct SvMat *Z, const struct SvMat
 		SV_DATA_LOG("h_bsd_light[%d][%d][%d]", &h_x, 1, info->lh, info->axis, info->sensor_idx);
 		SV_DATA_LOG("Y_bsd_light[%d][%d][%d]", Y, 1, info->lh, info->axis, info->sensor_idx);
 
-		SV_CREATE_STACK_MAT(jacobian, 1, 7);
-		project_jacob_fn(sv_as_vector(&jacobian), &obj2world, ptInObj, &world2lh, &ctx->bsd[info->lh].fcal[axis]);
+		if (H_k) {
+			project_jacob_fn(sv_as_vector(&jacobian), &obj2world, ptInObj, &world2lh, &ctx->bsd[info->lh].fcal[axis]);
 
 #ifdef SV_MATRIX_IS_COL_MAJOR
-		svGEMM(&jacobian, &inv_jacobian_row_ordered, 1, 0, 0, H_k, SV_GEMM_FLAG_B_T);
-		Outstanding;
-		Do the slow thing here to copy into H_k;
-		yada
+			svGEMM(&jacobian, &inv_jacobian_row_ordered, 1, 0, 0, H_k, SV_GEMM_FLAG_B_T);
+			Outstanding;
+			Do the slow thing here to copy into H_k;
+			yada
 #else
-		SvMat H_ki = sv_row(H_k, i);
-		svGEMM(&jacobian, &inv_jacobian_row_ordered, 1, 0, 0, &H_ki, 0);
+			SvMat H_ki = sv_row(H_k, i);
+			svGEMM(&jacobian, &inv_jacobian_row_ordered, 1, 0, 0, &H_ki, 0);
 #endif
+		}
 	}
-	if (!sv_is_finite(H_k))
+	if (H_k && !sv_is_finite(H_k))
 		return false;
 
 	return true;
@@ -156,7 +160,8 @@ void survive_kalman_lighthouse_integrate_light(SurviveKalmanLighthouse *tracker,
 		FLT light_vars[32] = {0};
 		for (int i = 0; i < 32; i++)
 			light_vars[i] = v;
-		survive_kalman_update_extended_params_t params = {.Hfn = map_light_data, .user = &cbctx};
+		survive_kalman_update_extended_params_t params = {
+			.Hfn = map_light_data, .user = &cbctx, .term_criteria = {.max_iterations = 100}};
 		survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, light_vars, &params, 0);
 		survive_kalman_lighthouse_report(tracker);
 	}

@@ -253,32 +253,6 @@ static inline void survive_kalman_predict(FLT t, survive_kalman_state_t *k, cons
 	}
 }
 
-static void linear_update(FLT dt, survive_kalman_state_t *k, const SvMat *y, const SvMat *K, const SvMat *x_t0,
-						  SvMat *x_t1) {
-	if (k->log_level > KALMAN_LOG_LEVEL || k->datalog) {
-		if (k->log_level > KALMAN_LOG_LEVEL) {
-			fprintf(stdout, "INFO linear_update dt=%f\n", dt);
-		}
-		sv_print_mat(k, "y", y, false);
-
-		SV_CREATE_STACK_MAT(tmp, x_t1->rows, x_t1->cols);
-		svGEMM(K, y, 1, 0, 0, &tmp, 0);
-		sv_print_mat(k, "K*y", &tmp, false);
-		if (norm3d(tmp.data) > 1) {
-			// assert(false);
-			// fprintf(stderr, "!!!!\n");
-		}
-		if (k->datalog) {
-			k->datalog(k, "ky_append", sv_as_const_vector(&tmp), tmp.rows);
-		}
-		SV_FREE_STACK_MAT(tmp);
-	}
-
-	assert(x_t0 != x_t1);
-	// X_k|k = X_k|k-1 + K * y
-	svGEMM(K, y, 1, x_t0, 1, x_t1, 0);
-}
-
 static bool numeric_jacobian(survive_kalman_state_t *k, kalman_measurement_model_fn_t Hfn, void *user, const struct SvMat *Z, const struct SvMat *x, SvMat *H) {
     SV_CREATE_STACK_MAT(y1, Z->rows, Z->cols);
     SV_CREATE_STACK_MAT(y2, Z->rows, Z->cols);
@@ -334,7 +308,7 @@ static SvMat *survive_kalman_find_residual(survive_kalman_state_t *k, kalman_mea
 
 	return rtn;
 }
-static enum survive_kalman_update_extended_termination_reason
+static inline enum survive_kalman_update_extended_termination_reason
 survive_kalman_termination_criteria(survive_kalman_state_t *k,
 									const survive_kalman_update_extended_params_t *extended_params, FLT initial_error,
 									FLT error, FLT alpha, FLT last_error) {
@@ -354,62 +328,9 @@ survive_kalman_termination_criteria(survive_kalman_state_t *k,
 	return survive_kalman_update_extended_termination_reason_none;
 }
 
-typedef FLT (*backtrack_line_search_fn_t)(void *user, FLT a);
-static inline FLT backtrack_line_search(void *user, FLT *fx, backtrack_line_search_fn_t f, FLT tau, FLT c, FLT m,
-										FLT min_step) {
-	min_step = min_step == 0 ? .05 : min_step;
-	FLT a = 1;
-	FLT fa;
-	FLT fa_best = *fx, a_best = 0;
-	while ((fa = f(user, a)) >= *fx + a * m * c) {
-		if (fa_best > fa) {
-			fa_best = fa;
-			a_best = a;
-		}
-		a = tau * a;
-
-		if (a <= min_step) {
-			*fx = fa_best;
-			return a_best;
-		}
-	}
-	*fx = fa;
-	return a;
-}
-
-typedef struct {
-	survive_kalman_state_t *k;
-	const survive_kalman_update_extended_params_t *extended_params;
-	const SvMat *Z, *x, *H, *x_k_k1;
-	SvMat *p;
-
-	const SvMat *iP, *iR;
-} kalman_backtrack_line_search_ctx;
-
 SURVIVE_EXPORT FLT calculate_v(const struct SvMat *y, const struct SvMat *xDiff, const struct SvMat *iR,
 							   const struct SvMat *iP) {
 	return .5 * (mul_at_b_a(y, iR) + mul_at_b_a(xDiff, iP));
-}
-
-static inline FLT kalman_backtrack_line_search(void *user, FLT a) {
-	kalman_backtrack_line_search_ctx *ls_ctx = user;
-	SV_CREATE_STACK_MAT(y, ls_ctx->Z->rows, ls_ctx->Z->cols);
-	SV_CREATE_STACK_MAT(xn, ls_ctx->x->rows, ls_ctx->x->cols);
-
-	svAddScaled(&xn, ls_ctx->p, a, ls_ctx->x, 1);
-
-	ls_ctx->extended_params->Hfn(ls_ctx->extended_params->user, ls_ctx->Z, &xn, &y, 0);
-
-	SV_CREATE_STACK_MAT(x_diff, xn.rows, 1);
-	svSub(&x_diff, ls_ctx->x_k_k1, &xn);
-
-	FLT V = calculate_v(&y, &x_diff, ls_ctx->iR, ls_ctx->iP);
-	if (ls_ctx->k->log_level > 100) {
-		fprintf(stdout, "%3f: %7.7f ", a, V);
-		sv_print_mat_v(ls_ctx->k, 100, "at x", &xn, false);
-	}
-	assert(V >= 0);
-	return V;
 }
 
 // Extended Kalman Filter Modifications Based on an Optimization View Point
@@ -458,10 +379,6 @@ static FLT survive_kalman_run_iterations(survive_kalman_state_t *k, const struct
 
 	sv_matrix_copy(&x_i, x_k_k1);
 	int iter;
-	if (k->log_level > 100) {
-		fprintf(stdout, "%3d: %7.7f / %7.7f (%f) ", -1, initial_error, 0, 0);
-		sv_print_mat_v(k, 100, "start x", &x_i, false);
-	}
 	int max_iter = extended_params->term_criteria.max_iterations;
 
 	SV_CREATE_STACK_MAT(Hxdiff, Z->rows, 1);
@@ -519,7 +436,7 @@ static FLT survive_kalman_run_iterations(survive_kalman_state_t *k, const struct
 		m = linmath_min(-1e-8, m);
 		FLT c = .5, tau = .5;
 		FLT fa = 0, fa_best = error, a_best = 0;
-		FLT scale = 1;
+		FLT scale = 1.;
 
 		FLT min_step =
 			extended_params->term_criteria.minimum_step == 0 ? .05 : extended_params->term_criteria.minimum_step;
@@ -634,8 +551,9 @@ static FLT survive_kalman_predict_update_state_extended_adaptive_internal(
 
     SV_CREATE_STACK_MAT(Pm, state_cnt, state_cnt);
     // Adaptive update happens on the covariance matrix prior; so save it.
-    if (adaptive)
-        sv_matrix_copy(&Pm, &k->P);
+	if (adaptive) {
+		sv_matrix_copy(&Pm, &k->P);
+	}
 
 	SvMat *x_k_k = &k->state;
 	SV_CREATE_STACK_MAT(x_k1_k1, state_cnt, 1);

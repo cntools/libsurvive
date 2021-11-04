@@ -74,7 +74,7 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("imu-acc-variance", "Variance of accelerometer", 1e-3, t->acc_var)
 	STRUCT_CONFIG_ITEM("imu-gyro-variance", "Variance of gyroscope", 1e-2, t->gyro_var)
 
-	STRUCT_CONFIG_ITEM("light-batch-size", "", 0, t->light_batchsize)
+	STRUCT_CONFIG_ITEM("light-batch-size", "", 32, t->light_batchsize)
 END_STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 // clang-format off
 
