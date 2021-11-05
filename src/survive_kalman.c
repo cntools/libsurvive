@@ -295,7 +295,7 @@ static SvMat *survive_kalman_find_residual(survive_kalman_state_t *k, kalman_mea
 		// k->debug_jacobian = 1;
 		if(k->debug_jacobian) {
             SV_CREATE_STACK_MAT(H_calc, H->rows, H->cols);
-			bool good = true;
+
 			numeric_jacobian(k, Hfn, user, Z, x, &H_calc);
 			fprintf(stderr, "FJAC DEBUG BEGIN %p %d\n", Hfn, Z->rows);
 			for (int i = 0; i < H->rows; i++) {
@@ -308,7 +308,6 @@ static SvMat *survive_kalman_find_residual(survive_kalman_state_t *k, kalman_mea
 					if (diff_abs > 1e-2 && diff_rel > 1e-2) {
 						fprintf(stderr, "FJAC PARM %d\n", j);
 						fprintf(stderr, "%7.7f %7.7f %7.7f %7.7f \n", deriv_u, deriv_n, diff_abs, diff_rel);
-						good = false;
 					}
 				}
 			}

@@ -179,11 +179,9 @@ void run_standard_experiment2(LinmathPoint2d X_out, FLT *P, const survive_kalman
 
 	SV_CREATE_STACK_MAT(Rm, 1, 1);
 	Rm.data[0] = Rv;
-	FLT v = survive_kalman_calculate_v(&state, &state.state, &Z, &Rm, &params);
 
 	for (int i = 0; i < time_steps; i++) {
 		FLT error = survive_kalman_predict_update_state_extended(1, &state, &Z, R, &params, stats);
-		v = survive_kalman_calculate_v(&state, &state.state, &Z, &Rm, &params);
 		printf("%3d: %7.6f %7.6f\n", i, X[0], error);
 	}
 
