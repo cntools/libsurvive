@@ -4093,3 +4093,79 @@ static inline void gen_imu_predict_gyro_jac_kalman_model(FLT* out, const Survive
 	out[80] = 1;
 }
 
+static inline void gen_quatfind(FLT* out, const FLT* q1, const FLT* q2) {
+	const GEN_FLT obj_qw = q1[0];
+	const GEN_FLT obj_qi = q1[1];
+	const GEN_FLT obj_qj = q1[2];
+	const GEN_FLT obj_qk = q1[3];
+	const GEN_FLT q1_w = q2[0];
+	const GEN_FLT q1_x = q2[1];
+	const GEN_FLT q1_y = q2[2];
+	const GEN_FLT q1_z = q2[3];
+
+	out[0] = (q1_x * obj_qi) + (q1_w * obj_qw) + (q1_z * obj_qk) + (q1_y * obj_qj);
+	out[1] = (q1_x * obj_qw) + (-1 * q1_y * obj_qk) + (q1_z * obj_qj) + (-1 * q1_w * obj_qi);
+	out[2] = (q1_x * obj_qk) + (-1 * q1_z * obj_qi) + (-1 * q1_w * obj_qj) + (q1_y * obj_qw);
+	out[3] = (-1 * q1_x * obj_qj) + (-1 * q1_w * obj_qk) + (q1_z * obj_qw) + (q1_y * obj_qi);
+}
+
+// Jacobian of quatfind wrt [obj_qw, obj_qi, obj_qj, obj_qk]
+static inline void gen_quatfind_jac_q1(FLT* out, const FLT* q1, const FLT* q2) {
+	const GEN_FLT obj_qw = q1[0];
+	const GEN_FLT obj_qi = q1[1];
+	const GEN_FLT obj_qj = q1[2];
+	const GEN_FLT obj_qk = q1[3];
+	const GEN_FLT q1_w = q2[0];
+	const GEN_FLT q1_x = q2[1];
+	const GEN_FLT q1_y = q2[2];
+	const GEN_FLT q1_z = q2[3];
+	const GEN_FLT x0 = -1 * q1_w;
+	out[0] = q1_w;
+	out[1] = q1_x;
+	out[2] = q1_y;
+	out[3] = q1_z;
+	out[4] = q1_x;
+	out[5] = x0;
+	out[6] = q1_z;
+	out[7] = -1 * q1_y;
+	out[8] = q1_y;
+	out[9] = -1 * q1_z;
+	out[10] = x0;
+	out[11] = q1_x;
+	out[12] = q1_z;
+	out[13] = q1_y;
+	out[14] = -1 * q1_x;
+	out[15] = x0;
+}
+
+// Jacobian of quatfind wrt [q1_w, q1_x, q1_y, q1_z]
+static inline void gen_quatfind_jac_q2(FLT* out, const FLT* q1, const FLT* q2) {
+	const GEN_FLT obj_qw = q1[0];
+	const GEN_FLT obj_qi = q1[1];
+	const GEN_FLT obj_qj = q1[2];
+	const GEN_FLT obj_qk = q1[3];
+	const GEN_FLT q1_w = q2[0];
+	const GEN_FLT q1_x = q2[1];
+	const GEN_FLT q1_y = q2[2];
+	const GEN_FLT q1_z = q2[3];
+	const GEN_FLT x0 = -1 * obj_qi;
+	const GEN_FLT x1 = -1 * obj_qk;
+	const GEN_FLT x2 = -1 * obj_qj;
+	out[0] = obj_qw;
+	out[1] = obj_qi;
+	out[2] = obj_qj;
+	out[3] = obj_qk;
+	out[4] = x0;
+	out[5] = obj_qw;
+	out[6] = x1;
+	out[7] = obj_qj;
+	out[8] = x2;
+	out[9] = obj_qk;
+	out[10] = obj_qw;
+	out[11] = x0;
+	out[12] = x1;
+	out[13] = x2;
+	out[14] = obj_qi;
+	out[15] = obj_qw;
+}
+

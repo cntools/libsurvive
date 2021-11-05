@@ -326,8 +326,6 @@ SURVIVE_LOCAL_ONLY double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svIn
 		// free(ipiv);
 
 	} else if (method == DECOMP_SVD) {
-		// TODO: There is no way this needs this many allocations,
-		// but in my defense I was very tired when I wrote this code
 		SV_CREATE_STACK_MAT(w, 1, MIN(srcarr->rows, srcarr->cols));
 		SV_CREATE_STACK_MAT(u, srcarr->rows, srcarr->rows);
 		SV_CREATE_STACK_MAT(v, srcarr->cols, srcarr->cols);

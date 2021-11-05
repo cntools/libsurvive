@@ -257,19 +257,8 @@ void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker,
 		FLT light_vars[32] = {0};
 		for (int i = 0; i < 32; i++)
 			light_vars[i] = light_var;
-		tracker->datalog_tag = "light_data";
-
-        survive_kalman_update_extended_params_t params = {
-                .Hfn = map_light_data,
-                .user = &cbctx,
-                .adapative = tracker->adaptive_lightcap,
-                .term_criteria = {
-                        .max_iterations = 3,
-                        .xtol = 1e-2
-                }
-        };
-        struct survive_kalman_update_extended_stats_t stats = { .total_stats = &tracker->stats.light_stats };
-		FLT rtn = survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, light_vars, &params, &stats);
+        tracker->datalog_tag = "light_data";
+        FLT rtn = survive_kalman_meas_model_predict_update(time, &tracker->lightcap_model, &cbctx, &Z, light_vars);
 		tracker->datalog_tag = 0;
 		if (!ramp_in && tracker->adaptive_lightcap) {
 			tracker->light_var = light_var;
@@ -389,6 +378,19 @@ static void tracker_datalog(survive_kalman_state_t* state, const char *desc, con
 	SV_DATA_LOG("%s_%s", v, length, desc, tracker->datalog_tag);
 }
 
+static bool map_obs_data(void *user, const struct SvMat *Z, const struct SvMat *x_t, struct SvMat *y,
+                           struct SvMat *H_k) {
+    SurviveKalmanTracker *tracker = (SurviveKalmanTracker *)user;
+    if(y) {
+        subnd(sv_as_vector(y), sv_as_const_vector(Z), sv_as_const_vector(x_t), 7);
+        //quatfind(sv_as_vector(y) + 3, sv_as_const_vector(x_t) + 3, sv_as_const_vector(Z) + 3);
+        //quatfind(sv_as_vector(y) + 3, sv_as_const_vector(Z) + 3, sv_as_const_vector(x_t) + 3);
+    }
+    if(H_k) {
+        sv_set_diag_val(H_k, 1);
+    }
+    return true;
+}
 void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDataIMU *data) {
 	SurviveContext *ctx = tracker->so->ctx;
 	SurviveObject *so = tracker->so;
@@ -488,23 +490,11 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 				   LINMATH_VEC6_EXPAND((FLT *)&accelgyro[0]), LINMATH_VEC6_EXPAND(R));
 
 		tracker->datalog_tag = "imu_meas";
-        survive_kalman_update_extended_params_t params = {
-                .Hfn = survive_kalman_tracker_imu_measurement_model,
-                .user = &fn_ctx,
-                .adapative = tracker->adaptive_imu,
-                .term_criteria = {
-                        .max_iterations = 3,
-                        .xtol = 1e-2,
-                }
-        };
 
-        struct survive_kalman_update_extended_stats_t stats = {.total_stats = &tracker->stats.imu_stats};
-
-        FLT err = survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, R, &params, &stats);
+        FLT err = survive_kalman_meas_model_predict_update(time, &tracker->imu_model, &fn_ctx, &Z, R);
 		tracker->datalog_tag = 0;
 
-        SV_VERBOSE(200, "imu pass error %14.14f %7.7f", stats.bestnorm, tracker->stats.imu_stats.bestnorm_acc / (FLT)tracker->stats.imu_stats.total_runs);
-		SV_DATA_LOG("res_err_imu", &err, 1);
+        SV_DATA_LOG("res_err_imu", &err, 1);
 		tracker->stats.imu_total_error += err;
 		tracker->imu_residuals *= .9;
 		tracker->imu_residuals += .1 * err;
@@ -683,21 +673,18 @@ void survive_kalman_tracker_predict_jac(FLT t, struct SvMat *f_out, const struct
 
 static FLT integrate_pose(SurviveKalmanTracker *tracker, FLT time, const SurvivePose *pose, const FLT *R) {
 	FLT rtn = 0;
-	SV_CREATE_STACK_MAT(H, 7, tracker->model.state_cnt);
 
 	size_t state_cnt = tracker->model.state_cnt;
-	for (int i = 0; i < 7; i++) {
-		svMatrixSet(&H, i, i, 1);
-	}
-
 	SvMat Zp = svMat(7, 1, (void *)pose->Pos);
 	tracker->datalog_tag = "pose_obs";
-	rtn = survive_kalman_predict_update_state(time, &tracker->model, &Zp, &H, R ? R : tracker->Obs_R, R == 0);
+
+    rtn = survive_kalman_meas_model_predict_update(time, &tracker->obs_model, tracker, &Zp, R ? R : tracker->Obs_R);
+
 	tracker->datalog_tag = 0;
 	SurviveContext *ctx = tracker->so->ctx;
 	SV_VERBOSE(600, "Resultant state %f (pose) " Point16_format, time,
 			   LINMATH_VEC16_EXPAND(sv_as_const_vector(&tracker->model.state)));
-	SV_FREE_STACK_MAT(H);
+
 	return rtn;
 }
 
@@ -875,6 +862,11 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	tracker->model.datalog_user = tracker;
 	tracker->model.datalog = tracker_datalog;
 
+    survive_kalman_meas_model_init(&tracker->model, "imu", &tracker->imu_model, survive_kalman_tracker_imu_measurement_model);
+    survive_kalman_meas_model_init(&tracker->model, "lightcap", &tracker->lightcap_model, map_light_data);
+    survive_kalman_meas_model_init(&tracker->model, "obs", &tracker->obs_model, map_obs_data);
+    survive_kalman_meas_model_init(&tracker->model, "zvu", &tracker->zvu_model, 0);
+
 	survive_kalman_tracker_reinit(tracker);
 
 	SV_VERBOSE(10, "Tracker config for %s (%d state count)", survive_colorize_codename(tracker->so), (int)state_cnt);
@@ -886,13 +878,20 @@ SurviveVelocity survive_kalman_tracker_velocity(const SurviveKalmanTracker *trac
 	return rtn;
 }
 
-static void print_kalman_stats(SurviveContext* ctx, const char* name, struct survive_kalman_update_extended_total_stats_t* total_stats) {
-    SV_VERBOSE(5, "%s Kalman statistics:", name);
-    SV_VERBOSE(5, "\t%-32s %7.7f", "avg bestnorm", total_stats->bestnorm_acc / (FLT)total_stats->total_runs);
-    SV_VERBOSE(5, "\t%-32s %7.7f", "avg orignorm", total_stats->orignorm_acc / (FLT)total_stats->total_runs);
-    SV_VERBOSE(5, "\t%-32s %d", "iterations", total_stats->total_iterations);
-    SV_VERBOSE(5, "\t%-32s %d", "runs", total_stats->total_runs);
-
+static void print_kalman_stats(SurviveContext* ctx, const survive_kalman_meas_model_t * model) {
+    const struct survive_kalman_update_extended_total_stats_t* total_stats = &model->stats;
+    SV_VERBOSE(5, "%s Kalman statistics:", model->name);
+    FLT t = (FLT)total_stats->total_runs;
+    SV_VERBOSE(5, "\t%-32s %6d %7.3f%%", "failures", total_stats->total_failures, 100 * total_stats->total_failures / t);
+    SV_VERBOSE(5, "\t%-32s %7.7f / %7.7f / %7.7f", "avg bestnorm", total_stats->bestnorm_acc / t, total_stats->bestnorm_meas_acc / t, total_stats->bestnorm_delta_acc / t);
+    SV_VERBOSE(5, "\t%-32s %7.7f / %7.7f", "avg orignorm", total_stats->orignorm_acc / t, total_stats->orignorm_meas_acc / t);
+    SV_VERBOSE(5, "\t%-32s %7.7f", "avg step", total_stats->step_acc / (FLT)total_stats->step_cnt);
+    SV_VERBOSE(5, "\t%-32s %6d", "iterations", total_stats->total_iterations);
+    SV_VERBOSE(5, "\t%-32s %6d", "runs", total_stats->total_runs);
+    SV_VERBOSE(5, "\t%-32s", "exit reasons");
+    for(int i = 1;i < survive_kalman_update_extended_termination_reason_MAX;i++) {
+        SV_VERBOSE(5, "\t    %-28s %6u", survive_kalman_update_extended_termination_reason_to_str(i), (int)total_stats->stop_reason_counts[i]);
+    }
 }
 
 void survive_kalman_tracker_stats(SurviveKalmanTracker *tracker) {
@@ -984,8 +983,11 @@ void survive_kalman_tracker_stats(SurviveKalmanTracker *tracker) {
 			}
 		}
 	}
-    print_kalman_stats(ctx, "IMU", &tracker->stats.imu_stats);
-    print_kalman_stats(ctx, "Lightcap", &tracker->stats.light_stats);
+    print_kalman_stats(ctx, &tracker->imu_model);
+    print_kalman_stats(ctx, &tracker->lightcap_model);
+    print_kalman_stats(ctx, &tracker->obs_model);
+    print_kalman_stats(ctx, &tracker->zvu_model);
+
 	memset(&tracker->stats, 0, sizeof(tracker->stats));
 	tracker->first_report_time = tracker->last_report_time = 0;
 

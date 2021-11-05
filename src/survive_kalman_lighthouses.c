@@ -160,9 +160,8 @@ void survive_kalman_lighthouse_integrate_light(SurviveKalmanLighthouse *tracker,
 		FLT light_vars[32] = {0};
 		for (int i = 0; i < 32; i++)
 			light_vars[i] = v;
-		survive_kalman_update_extended_params_t params = {
-			.Hfn = map_light_data, .user = &cbctx, .term_criteria = {.max_iterations = 100}};
-		survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, light_vars, &params, 0);
+
+		survive_kalman_meas_model_predict_update(time, &tracker->lightcap_model, &cbctx, &Z, light_vars);
 		survive_kalman_lighthouse_report(tracker);
 	}
 }
@@ -224,6 +223,9 @@ void survive_kalman_lighthouse_init(SurviveKalmanLighthouse *tracker, SurviveCon
 
 	survive_kalman_state_init(&tracker->model, 7, 0, survive_kalman_lighthouse_process_noise, tracker,
 							  (FLT *)&tracker->state);
+	survive_kalman_meas_model_init(&tracker->model, "lightcap", &tracker->lightcap_model, map_light_data);
+	tracker->lightcap_model.term_criteria = (struct term_criteria_t){.max_iterations = 100};
+
 	tracker->state.Rot[0] = 1;
 	for (int i = 0; i < 3; i++)
 		svMatrixSet(&tracker->model.P, i, i, 1e5);

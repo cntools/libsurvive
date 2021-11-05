@@ -1,5 +1,4 @@
-#ifndef _SURVIVE_KALMAN_H
-#define _SURVIVE_KALMAN_H
+#pragma once
 
 #include "survive.h"
 #include "sv_matrix.h"
@@ -46,22 +45,15 @@ typedef void (*kalman_process_noise_fn_t)(void *user, FLT dt, const struct SvMat
 typedef bool (*kalman_measurement_model_fn_t)(void *user, const struct SvMat *Z, const struct SvMat *x_t,
 											  struct SvMat *y, struct SvMat *H_k);
 
-typedef struct {
-	kalman_measurement_model_fn_t Hfn;
-	void *user;
-	bool adapative;
-	bool no_backtrack;
+typedef struct term_criteria_t {
+	size_t max_iterations;
 
-	struct term_criteria_t {
-		size_t max_iterations;
+	// Absolute step size tolerance
+	FLT minimum_step;
 
-		// Absolute step size tolerance
-		FLT minimum_step;
-
-		// Minimum difference in errors
-		FLT xtol;
-	} term_criteria;
-} survive_kalman_update_extended_params_t;
+	// Minimum difference in errors
+	FLT xtol;
+} term_criteria_t;
 
 enum survive_kalman_update_extended_termination_reason {
 	survive_kalman_update_extended_termination_reason_none = 0,
@@ -71,18 +63,22 @@ enum survive_kalman_update_extended_termination_reason {
 	survive_kalman_update_extended_termination_reason_step,
 	survive_kalman_update_extended_termination_reason_MAX
 };
+const char *
+survive_kalman_update_extended_termination_reason_to_str(enum survive_kalman_update_extended_termination_reason reason);
 
 typedef struct survive_kalman_update_extended_total_stats_t {
-	FLT bestnorm_acc, orignorm_acc;
+	FLT bestnorm_acc, orignorm_acc, bestnorm_meas_acc, bestnorm_delta_acc, orignorm_meas_acc;
 	int total_iterations, total_fevals, total_hevals;
 	int total_runs;
 	int total_failures;
+	FLT step_acc;
+	int step_cnt;
 	size_t stop_reason_counts[survive_kalman_update_extended_termination_reason_MAX];
 } survive_kalman_update_extended_total_stats_t;
 
 struct survive_kalman_update_extended_stats_t {
-	FLT bestnorm;
-	FLT orignorm;
+	FLT bestnorm, bestnorm_meas, bestnorm_delta;
+	FLT orignorm, orignorm_meas;
 	int iterations;
 	int fevals, hevals;
 	enum survive_kalman_update_extended_termination_reason stop_reason;
@@ -96,8 +92,6 @@ typedef struct survive_kalman_state_s {
 	int state_cnt;
 
 	void *user;
-
-	bool debug_jacobian;
 
 	kalman_predict_fn_t Predict_fn;
 	kalman_transition_fn_t F_fn;
@@ -119,6 +113,31 @@ typedef struct survive_kalman_state_s {
 	void *datalog_user;
 	void (*datalog)(struct survive_kalman_state_s *state, const char *name, const FLT *v, size_t length);
 } survive_kalman_state_t;
+
+typedef struct survive_kalman_meas_model {
+	survive_kalman_state_t *k;
+	bool debug_jacobian;
+
+	const char *name;
+	kalman_measurement_model_fn_t Hfn;
+
+	bool adaptive;
+
+	struct term_criteria_t term_criteria;
+	survive_kalman_update_extended_total_stats_t stats;
+} survive_kalman_meas_model_t;
+
+SURVIVE_EXPORT FLT survive_kalman_meas_model_predict_update_stats(FLT t, survive_kalman_meas_model_t *mk, void *user,
+																  const struct SvMat *Z, const FLT *R,
+																  struct survive_kalman_update_extended_stats_t *stats);
+SURVIVE_EXPORT FLT survive_kalman_meas_model_predict_update(FLT t, survive_kalman_meas_model_t *mk, void *user,
+															const struct SvMat *Z, const FLT *R);
+
+/*
+FLT survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k, const struct SvMat *Z, const FLT *R,
+											 const survive_kalman_update_extended_params_t *extended_params,
+											 struct survive_kalman_update_extended_stats_t *stats);
+*/
 
 /**
  * Predict the state at a given delta; doesn't update the covariance matrix
@@ -151,16 +170,17 @@ SURVIVE_EXPORT FLT survive_kalman_predict_update_state(FLT t, survive_kalman_sta
  * @param k kalman state info
  * @param z measurement -- SvMat of n x 1
  * @param R Observation noise -- The diagonal of the measurement covariance matrix; length n
- * @param Hfn Observation function that gives both the residual vector and the jacobian associated with it.
- * @param adapative Whether or not R is an adaptive matrix. When true, R should be a full n x n matrix.
+ * @param extended_params parameters for the non linear update
+ * @param stats store stats if requested
  *
  * @returns Returns the average residual error
  */
+/*
 SURVIVE_EXPORT FLT
 survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k, const struct SvMat *Z, const FLT *R,
 											 const survive_kalman_update_extended_params_t *extended_params,
 											 struct survive_kalman_update_extended_stats_t *stats);
-
+*/
 /**
  * Initialize a kalman state object
  * @param k object to initialize
@@ -175,14 +195,10 @@ survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k, c
 SURVIVE_EXPORT void survive_kalman_state_init(survive_kalman_state_t *k, size_t state_cnt, kalman_transition_fn_t F,
 											  kalman_process_noise_fn_t q_fn, void *user, FLT *state);
 
+SURVIVE_EXPORT void survive_kalman_meas_model_init(survive_kalman_state_t *k, const char *name,
+												   survive_kalman_meas_model_t *mk, kalman_measurement_model_fn_t Hfn);
 SURVIVE_EXPORT void survive_kalman_state_reset(survive_kalman_state_t *k);
 
 SURVIVE_EXPORT void survive_kalman_state_free(survive_kalman_state_t *k);
 SURVIVE_EXPORT void survive_kalman_set_P(survive_kalman_state_t *k, const FLT *d);
 SURVIVE_EXPORT void survive_kalman_set_logging_level(survive_kalman_state_t *k, int verbosity);
-
-SURVIVE_EXPORT FLT survive_kalman_calculate_v(survive_kalman_state_t *k, const struct SvMat *x, const struct SvMat *Z,
-											  const struct SvMat *R,
-											  const survive_kalman_update_extended_params_t *extended_params);
-
-#endif

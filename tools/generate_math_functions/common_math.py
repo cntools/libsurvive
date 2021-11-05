@@ -230,6 +230,8 @@ def quatrotatevector3(q, sensor_pt):
     return quatrotateabout(quatrotateabout(q, pc), qc)[1:]
     #return quatrotationmatrix(q) * sp.Matrix((x, y, z))
 
+def quatfind(q1, q2):
+    return quatrotateabout(q2, quatgetreciprocal(q1))
 
 def axisanglemagnitude(axis_angle):
     qw, qi, qj = axis_angle

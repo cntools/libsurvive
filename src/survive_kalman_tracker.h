@@ -82,6 +82,7 @@ typedef struct SurviveKalmanTracker {
 
 	// Kalman state is layed out as SurviveKalmanModel
 	survive_kalman_state_t model;
+	survive_kalman_meas_model_t obs_model, lightcap_model, imu_model, zvu_model;
 
 	const char* datalog_tag;
 
@@ -107,8 +108,6 @@ typedef struct SurviveKalmanTracker {
 		FLT acc_norm;
 		FLT stationary_acc_norm;
 		size_t stationary_imu_count;
-
-		survive_kalman_update_extended_total_stats_t imu_stats, light_stats;
 	} stats;
 
 	FLT imu_residuals;

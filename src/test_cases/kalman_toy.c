@@ -41,8 +41,7 @@ static bool toy_measurement_model(void *user, const struct SvMat *Z, const struc
 	return true;
 }
 
-void run_standard_experiment(LinmathPoint2d X_out, FLT *P, const survive_kalman_update_extended_params_t *params_in,
-							 int time_steps) {
+void run_standard_experiment(LinmathPoint2d X_out, FLT *P, const term_criteria_t *termCriteria, int time_steps) {
 	LinmathPoint2d true_state = {1.5, 1.5};
 	FLT X[2] = {0.5, 0.1};
 	LinmathPoint2d sensors[2] = {{0, 0}, {1.5, 0}};
@@ -60,17 +59,17 @@ void run_standard_experiment(LinmathPoint2d X_out, FLT *P, const survive_kalman_
 		Z.data[i] = measurement_model(sensors[i], true_state);
 	}
 
-	survive_kalman_update_extended_params_t params = *params_in;
-	params.Hfn = toy_measurement_model;
-	params.user = sensors;
+	struct survive_kalman_meas_model meas_model = {
+		.Hfn = toy_measurement_model,
+		.k = &state,
+		.term_criteria = *termCriteria,
+	};
 
 	SV_CREATE_STACK_MAT(Rm, 2, 2);
 	sv_set_diag(&Rm, R);
 
-	FLT v = survive_kalman_calculate_v(&state, &state.state, &Z, &Rm, &params);
-
 	for (int i = 0; i < time_steps; i++) {
-		survive_kalman_predict_update_state_extended(1, &state, &Z, R, &params, 0);
+		survive_kalman_meas_model_predict_update(1, &meas_model, sensors, &Z, R);
 		printf("%3d: %7.6f %7.6f\n", i, X[0], X[1]);
 	}
 
@@ -114,8 +113,9 @@ TEST(Kalman, EKFTest) {
 
 	FLT X[2];
 	FLT P[4];
-	survive_kalman_update_extended_params_t params = {};
-	run_standard_experiment(X, P, &params, 1);
+	term_criteria_t termCriteria = {};
+
+	run_standard_experiment(X, P, &termCriteria, 1);
 
 	LinmathPoint2d true_state = {1.5, 1.5};
 	FLT error = distnd(X, true_state, 2);
@@ -129,8 +129,8 @@ TEST(Kalman, EKFTest) {
 TEST(Kalman, IEKFTest) {
 	FLT X[2];
 	FLT P[4];
-	survive_kalman_update_extended_params_t params = {.term_criteria = {.max_iterations = 10}};
-	run_standard_experiment(X, P, &params, 1);
+	term_criteria_t termCriteria = {.max_iterations = 10};
+	run_standard_experiment(X, P, &termCriteria, 1);
 
 	LinmathPoint2d true_state = {1.5, 1.5};
 	FLT error = distnd(X, true_state, 2);
@@ -158,14 +158,14 @@ static bool toy_measurement_model2(void *user, const struct SvMat *Z, const stru
 	return true;
 }
 
-void run_standard_experiment2(LinmathPoint2d X_out, FLT *P, const survive_kalman_update_extended_params_t *params_in,
-							  int time_steps, struct survive_kalman_update_extended_stats_t *stats) {
+void run_standard_experiment2(LinmathPoint2d X_out, FLT *P, const term_criteria_t *termCriteria, int time_steps,
+							  struct survive_kalman_update_extended_stats_t *stats) {
 	FLT true_state[] = {1};
 	FLT X[2] = {0.1};
 
 	survive_kalman_state_t state = {};
 	survive_kalman_state_init(&state, 1, transition2, process_noise2, 0, X);
-	state.log_level = 101;
+	state.log_level = 1001;
 	sv_set_diag_val(&state.P, 1);
 
 	SV_CREATE_STACK_MAT(Z, 1, 1);
@@ -174,14 +174,14 @@ void run_standard_experiment2(LinmathPoint2d X_out, FLT *P, const survive_kalman
 
 	Z.data[0] = -true_state[0] * true_state[0];
 
-	survive_kalman_update_extended_params_t params = *params_in;
-	params.Hfn = toy_measurement_model2;
+	survive_kalman_meas_model_t measModel = {
+		.term_criteria = *termCriteria, .Hfn = toy_measurement_model2, .k = &state};
 
 	SV_CREATE_STACK_MAT(Rm, 1, 1);
 	Rm.data[0] = Rv;
 
 	for (int i = 0; i < time_steps; i++) {
-		FLT error = survive_kalman_predict_update_state_extended(1, &state, &Z, R, &params, stats);
+		FLT error = survive_kalman_meas_model_predict_update_stats(1, &measModel, 0, &Z, R, stats);
 		printf("%3d: %7.6f %7.6f\n", i, X[0], error);
 	}
 
@@ -196,9 +196,9 @@ TEST(Kalman, EKFTest2) {
 
 	FLT X;
 	FLT P;
-	survive_kalman_update_extended_params_t params = {};
+	term_criteria_t termCriteria = {};
 
-	run_standard_experiment2(&X, &P, &params, 1, 0);
+	run_standard_experiment2(&X, &P, &termCriteria, 1, 0);
 
 	ASSERT_DOUBLE_EQ(X, expected_X);
 	ASSERT_DOUBLE_EQ(P, expected_P);
@@ -212,15 +212,12 @@ TEST(Kalman, IEKFTest2) {
 
 	FLT X;
 	FLT P;
-	survive_kalman_update_extended_params_t params = {.term_criteria = {
-														  .max_iterations = 5,
-													  }};
+	term_criteria_t termCriteria = {.max_iterations = 5};
 	struct survive_kalman_update_extended_stats_t stats = {};
-	run_standard_experiment2(&X, &P, &params, 1, &stats);
+	run_standard_experiment2(&X, &P, &termCriteria, 1, &stats);
 
 	ASSERT_DOUBLE_EQ(X, expected_X);
 	ASSERT_DOUBLE_EQ(P, expected_P);
-	ASSERT_DOUBLE_EQ(stats.bestnorm, .3949008);
 	ASSERT_DOUBLE_EQ(stats.orignorm, 4.9005);
 
 	return 0;

@@ -6,6 +6,7 @@ typedef struct SurviveKalmanLighthouse {
 	SurvivePose state;
 
 	survive_kalman_state_t model;
+	survive_kalman_meas_model_t lightcap_model;
 
 	SurviveContext *ctx;
 	int lh;

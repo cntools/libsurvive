@@ -216,7 +216,7 @@ TEST(Kalman, ExampleExtended) {
 	// survive_kalman_set_logging_level(1000);
 
 	survive_kalman_state_t position;
-
+	struct survive_kalman_meas_model measModel = {.name = "obs", .Hfn = map_to_obs, .k = &position};
 	FLT pos_Q_per_sec_fixed[36] = {
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 25,
 	};
@@ -258,9 +258,7 @@ TEST(Kalman, ExampleExtended) {
 
 		FLT R[] = {.0004, .0004, 1};
 
-		survive_kalman_update_extended_params_t params = {
-			.Hfn = map_to_obs, .user = sensor, .term_criteria = {.max_iterations = 10}};
-		survive_kalman_predict_update_state_extended(i, &position, &Z, R, &params, 0);
+		survive_kalman_meas_model_predict_update(i, &measModel, sensor, &Z, R);
 
 		fprintf(stderr, "Guess  " SurviveVel_format "\n",
 				SURVIVE_VELOCITY_EXPAND(*(SurviveVelocity *)SV_FLT_PTR(&position.state)));
@@ -365,6 +363,7 @@ typedef struct KalmanModelSim {
 	SurviveKalmanModel true_state;
 	struct SurviveKalmanTracker_Params p;
 	survive_kalman_state_t kalman_t;
+	survive_kalman_meas_model_t imu_model_t;
 } KalmanModelSim;
 
 struct SurviveKalmanTracker_Params default_params() {
@@ -383,7 +382,8 @@ void KalmanModelSim_init(KalmanModelSim *model) {
 		&model->kalman_t, sizeof(model->sim_state) / sizeof(FLT), survive_kalman_tracker_predict_jac,
 		(kalman_process_noise_fn_t)survive_kalman_tracker_process_noise, &model->p, (FLT *)&model->sim_state);
 	model->kalman_t.Predict_fn = survive_kalman_tracker_model_predict;
-
+	survive_kalman_meas_model_init(&model->kalman_t, "imu", &model->imu_model_t,
+								   survive_kalman_tracker_imu_measurement_model);
 	SurviveKalmanModel initial_variance = {.Pose = {.Pos = {1e5, 1e5, 1e5}, .Rot = {0, 1e5, 1e5, 1e5}},
 										   .Velocity = {.AxisAngleRot = {1e3, 1e3, 1e3}},
 										   .Acc = {1e3, 1e3, 1e3}};
@@ -424,9 +424,7 @@ TEST(Kalman, InstFlip) {
 		quatnormalize(model.true_state.Pose.Rot, model.true_state.Pose.Rot);
 		gen_imu_predict(input, &model.true_state);
 
-		survive_kalman_update_extended_params_t params = {.Hfn = survive_kalman_tracker_imu_measurement_model,
-														  .term_criteria = {.max_iterations = 10}};
-		FLT err = survive_kalman_predict_update_state_extended(time, &model.kalman_t, &Z, R, &params, 0);
+		FLT err = survive_kalman_meas_model_predict_update(time, &model.imu_model_t, 0, &Z, R);
 		quatnormalize(model.sim_state.Pose.Rot, model.sim_state.Pose.Rot);
 		fprintf(stderr, "err %.7f Acc: " Point3_format " Vel: " Point3_format " Rotation: " Quat_format "\n", err,
 				LINMATH_VEC3_EXPAND(model.sim_state.Acc), LINMATH_VEC3_EXPAND(model.sim_state.Velocity.Pos),
@@ -464,9 +462,7 @@ TEST(Kalman, Flip) {
 
 		gen_imu_predict(input, &model.true_state);
 
-		survive_kalman_update_extended_params_t params = {.Hfn = survive_kalman_tracker_imu_measurement_model,
-														  .term_criteria = {.max_iterations = 10}};
-		FLT err = survive_kalman_predict_update_state_extended(time, &model.kalman_t, &Z, R, &params, 0);
+		FLT err = survive_kalman_meas_model_predict_update(time, &model.imu_model_t, 0, &Z, R);
 		quatnormalize(model.sim_state.Pose.Rot, model.sim_state.Pose.Rot);
 
 		fprintf(stderr, "err %f Velocity: " SurviveVel_format " Pose: " SurvivePose_format "\n", err,
@@ -519,9 +515,7 @@ TEST(Kalman, LiftupSetDown) {
 		model.true_state = m;
 
 		gen_imu_predict(input, &model.true_state);
-		survive_kalman_update_extended_params_t params = {.Hfn = survive_kalman_tracker_imu_measurement_model,
-														  .term_criteria = {.max_iterations = 10}};
-		FLT err = survive_kalman_predict_update_state_extended(time, &model.kalman_t, &Z, R, &params, 0);
+		FLT err = survive_kalman_meas_model_predict_update(time, &model.imu_model_t, 0, &Z, R);
 		quatnormalize(model.sim_state.Pose.Rot, model.sim_state.Pose.Rot);
 
 		fprintf(stderr, "err %f " KALMAN_MODEL_FORMAT "\n", err, KALMAN_MODEL_EXPAND(model.sim_state));

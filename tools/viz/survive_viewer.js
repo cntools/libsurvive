@@ -525,7 +525,7 @@ function set_object_position(obj, name = null) {
 	}
 }
 
-var covar_canvas = {};
+var covar_canvas = {}, covar_names = {};
 function update_fullcov(v) {
 	if (covar_canvas[v[0]] == null) {
 		const canvas = document.createElement("canvas");
@@ -542,7 +542,7 @@ function update_fullcov(v) {
 		div.style.cssText =
 			"position: absolute;z-index: 11;width: 105px;bottom: 50px;image-rendering: pixelated;right: 225px;color: white;";
 		div.style.right = (5 + Object.keys(covar_canvas).length * 110) + "px";
-
+		covar_names[v[0]] = div;
 		document.body.appendChild(canvas);
 		covar_canvas[v[0]] = canvas;
 	}
@@ -559,8 +559,7 @@ function update_fullcov(v) {
 	// ctx.scale(5,5);
 	const l = Math.floor(Math.sqrt(fv.length))
 	ctx.putImageData(new ImageData(imageData, l, l), 0, 0);
-	ctx.fillStyle = "white";
-	ctx.font = "14px Arial";
+	covar_names[v[0]].innerText = v[0] + " " + fmax;
 }
 
 function update_fullstate(v) {
