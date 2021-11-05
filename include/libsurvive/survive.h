@@ -154,6 +154,7 @@ struct SurviveObject {
 	survive_long_timecode OutPose_timecode;
 
 	SurviveVelocity velocity;
+	LinmathPoint3d acceleration;
 	survive_long_timecode velocity_timecode;
 
 	SurvivePose

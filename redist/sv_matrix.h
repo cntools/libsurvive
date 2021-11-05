@@ -98,13 +98,24 @@ void svTranspose(const SvMat *M, SvMat *dst);
 void print_mat(const SvMat *M);
 
 double svDet(const SvMat *M);
-
+//#define SV_MATRIX_USE_MALLOC
 #ifdef SV_MATRIX_USE_MALLOC
+static inline void sv_check_cleanup(FLT **ptr) {
+	if (*ptr) {
+		free(*ptr);
+	}
+}
+#define SV_MATRIX_ALLOC_ATTRIBUTE __attribute__((__cleanup__(sv_check_cleanup)))
 #define SV_MATRIX_ALLOC(size) calloc(1, size)
-#define SV_MATRIX_FREE(ptr) free(ptr)
-#define SV_MATRIX_STACK_SCOPE_BEGIN {
-#define SV_MATRIX_STACK_SCOPE_END }
+#define SV_MATRIX_FREE(ptr)                                                                                            \
+	{                                                                                                                  \
+		free(ptr);                                                                                                     \
+		(ptr) = 0;                                                                                                     \
+	}
+#define SV_MATRIX_STACK_SCOPE_BEGIN
+#define SV_MATRIX_STACK_SCOPE_END
 #else
+#define SV_MATRIX_ALLOC_ATTRIBUTE 
 #define SV_MATRIX_ALLOC(size) (memset(alloca(size), 0, size))
 #define SV_MATRIX_FREE(ptr)
 #define SV_MATRIX_STACK_SCOPE_BEGIN
@@ -113,7 +124,7 @@ double svDet(const SvMat *M);
 
 #define SV_CREATE_STACK_MAT(name, rows, cols)                                                                          \
 	SV_MATRIX_STACK_SCOPE_BEGIN                                                                                        \
-	FLT *_##name = SV_MATRIX_ALLOC((rows) * (cols) * sizeof(FLT));                                                     \
+	FLT *_##name SV_MATRIX_ALLOC_ATTRIBUTE = SV_MATRIX_ALLOC((rows) * (cols) * sizeof(FLT));                           \
 	SvMat name = svMat(rows, cols, _##name);
 
 #define SV_FREE_STACK_MAT(name)                                                                                        \

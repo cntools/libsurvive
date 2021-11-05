@@ -190,6 +190,7 @@ SurvivePose *survive_optimizer_get_pose(survive_optimizer *ctx) {
 
 static inline FLT fix_infinity(FLT d) {
 	// assert(isfinite(*d));
+	assert(!isnan(d));
 	if (!isfinite(d)) {
 		return linmath_enforce_range(d, -1e3, 1e3);
 	}

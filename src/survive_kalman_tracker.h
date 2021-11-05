@@ -106,6 +106,8 @@ typedef struct SurviveKalmanTracker {
 		FLT acc_norm;
 		FLT stationary_acc_norm;
 		size_t stationary_imu_count;
+
+		survive_kalman_update_extended_total_stats_t imu_stats, light_stats;
 	} stats;
 
 	FLT imu_residuals;

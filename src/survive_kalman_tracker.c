@@ -102,6 +102,7 @@ static SurviveKalmanModel copy_model(const FLT *src, size_t state_size) {
 	};
 	assert(state_size >= 7);
 	memcpy(rtn.Pose.Pos, src, sizeof(FLT) * state_size);
+    quatnormalize(rtn.Pose.Rot, rtn.Pose.Rot);
 	return rtn;
 }
 
@@ -263,17 +264,17 @@ void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker,
                 .user = &cbctx,
                 .adapative = tracker->adaptive_lightcap,
                 .term_criteria = {
-                        .max_iterations = 10,
-                        .xtol = 1e-4
+                        .max_iterations = 3,
+                        .xtol = 1e-2
                 }
         };
-        struct survive_kalman_update_extended_stats_t stats = { 0 };
+        struct survive_kalman_update_extended_stats_t stats = { .total_stats = &tracker->stats.light_stats };
 		FLT rtn = survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, light_vars, &params, &stats);
 		tracker->datalog_tag = 0;
 		if (!ramp_in && tracker->adaptive_lightcap) {
 			tracker->light_var = light_var;
 		}
-		SV_VERBOSE(200, "Light pass error %14.14f", rtn);
+		//SV_VERBOSE(100, "Light pass error %14.14f %7.7f", stats.bestnorm, tracker->stats.light_stats.bestnorm_acc / (FLT)tracker->stats.light_stats.total_runs);
 		tracker->stats.lightcap_total_error += rtn;
 
 		tracker->light_residuals_all *= .9;
@@ -492,16 +493,17 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
                 .user = &fn_ctx,
                 .adapative = tracker->adaptive_imu,
                 .term_criteria = {
-                        .max_iterations = 10,
-                        .xtol = 1e-4
+                        .max_iterations = 3,
+                        .xtol = 1e-2,
                 }
         };
 
-        struct survive_kalman_update_extended_stats_t stats = {};
+        struct survive_kalman_update_extended_stats_t stats = {.total_stats = &tracker->stats.imu_stats};
 
         FLT err = survive_kalman_predict_update_state_extended(time, &tracker->model, &Z, R, &params, &stats);
 		tracker->datalog_tag = 0;
 
+        SV_VERBOSE(200, "imu pass error %14.14f %7.7f", stats.bestnorm, tracker->stats.imu_stats.bestnorm_acc / (FLT)tracker->stats.imu_stats.total_runs);
 		SV_DATA_LOG("res_err_imu", &err, 1);
 		tracker->stats.imu_total_error += err;
 		tracker->imu_residuals *= .9;
@@ -884,10 +886,19 @@ SurviveVelocity survive_kalman_tracker_velocity(const SurviveKalmanTracker *trac
 	return rtn;
 }
 
+static void print_kalman_stats(SurviveContext* ctx, const char* name, struct survive_kalman_update_extended_total_stats_t* total_stats) {
+    SV_VERBOSE(5, "%s Kalman statistics:", name);
+    SV_VERBOSE(5, "\t%-32s %7.7f", "avg bestnorm", total_stats->bestnorm_acc / (FLT)total_stats->total_runs);
+    SV_VERBOSE(5, "\t%-32s %7.7f", "avg orignorm", total_stats->orignorm_acc / (FLT)total_stats->total_runs);
+    SV_VERBOSE(5, "\t%-32s %d", "iterations", total_stats->total_iterations);
+    SV_VERBOSE(5, "\t%-32s %d", "runs", total_stats->total_runs);
+
+}
+
 void survive_kalman_tracker_stats(SurviveKalmanTracker *tracker) {
 	FLT report_runtime = tracker->last_report_time - tracker->first_report_time;
 	FLT imu_runtime = tracker->last_imu_time - tracker->first_imu_time;
-	SurviveContext *ctx = tracker->so->ctx;
+    SurviveContext *ctx = tracker->so->ctx;
 
 	SV_VERBOSE(5, "IMU %s tracker statistics:", tracker->so->codename);
 	SV_VERBOSE(5, "\t%-32s %u", "state_cnt", tracker->model.state_cnt);
@@ -973,6 +984,8 @@ void survive_kalman_tracker_stats(SurviveKalmanTracker *tracker) {
 			}
 		}
 	}
+    print_kalman_stats(ctx, "IMU", &tracker->stats.imu_stats);
+    print_kalman_stats(ctx, "Lightcap", &tracker->stats.light_stats);
 	memset(&tracker->stats, 0, sizeof(tracker->stats));
 	tracker->first_report_time = tracker->last_report_time = 0;
 
@@ -1125,6 +1138,7 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
                                       so->codename, LINMATH_VEC26_EXPAND((FLT*)&tracker->state));
 
     tracker->previous_state = tracker->state;
+    copy3d(so->acceleration, tracker->state.Acc);
 	SV_VERBOSE(110, "%s confidence %7.7f", survive_colorize_codename(so), 1. / p_threshold);
 	if (so->OutPose_timecode < pd->timecode) {
 		SURVIVE_INVOKE_HOOK_SO(imupose, so, pd->timecode, &pose);

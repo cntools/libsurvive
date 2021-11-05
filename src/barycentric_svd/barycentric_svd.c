@@ -55,7 +55,7 @@ static void bc_svd_choose_control_points(bc_svd *self) {
 }
 
 static void bc_svd_compute_barycentric_coordinates(bc_svd *self) {
-	FLT cc[3 * 3], cc_inv[3 * 3];
+	FLT cc[3 * 3] = {0}, cc_inv[3 * 3] = {0};
 	SvMat CC = svMat(3, 3, cc);
 	SvMat CC_inv = svMat(3, 3, cc_inv);
 

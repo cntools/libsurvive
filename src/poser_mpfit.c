@@ -286,6 +286,9 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 		worldEstablished |= ctx->bsd[lh].PositionSet;
 
 	survive_optimizer_setup_pose(mpfitctx, 0, !worldEstablished, d->use_jacobian_function_obj);
+	if (norm3d(so->activations.accel) == 0 || !isfinite(norm3d(so->activations.accel))) {
+		return -2;
+	}
 	normalize3d(mpfitctx->obj_up_vectors[0], so->activations.accel);
 
 	*soLocation = *survive_object_last_imu2world(so);

@@ -121,7 +121,12 @@ bool general_optimizer_data_record_current_lhs(GeneralOptimizerData *d, PoserDat
 	return false;
 }
 bool general_optimizer_data_record_current_pose(GeneralOptimizerData *d, PoserDataLight *l, SurvivePose *soLocation) {
-	*soLocation = *survive_object_last_imu2world(d->so);
+	if (d->lastSuccessTime + .1 > survive_run_time(d->so->ctx)) {
+		*soLocation = d->lastSuccess;
+	} else {
+		*soLocation = *survive_object_last_imu2world(d->so);
+	}
+
 	bool currentPositionValid = quatmagnitude(soLocation->Rot) != 0;
 	SurviveContext *ctx = d->so->ctx;
 
