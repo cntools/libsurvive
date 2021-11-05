@@ -334,7 +334,7 @@ function removeFromParent(o) { o.parent.remove(o); }
 function delete_tracked_object(tracker) {
 	removeFromParent(objs[tracker].group);
 	removeFromParent(objs[tracker].group_rot);
-	objs.remove(tracker);
+	delete objs[tracker]
 }
 
 function create_tracked_object(info, external) {
@@ -524,6 +524,44 @@ function set_object_position(obj, name = null) {
 		fpv_camera.lookAt(lookAt);
 	}
 }
+
+var covar_canvas = {};
+function update_fullcov(v) {
+	if (covar_canvas[v[0]] == null) {
+		const canvas = document.createElement("canvas");
+		canvas.className = "myClass";
+		canvas.id = "myId";
+		canvas.style.cssText =
+			"position: absolute;z-index: 10;width: 105px;height: 105px;bottom:50px;image-rendering: pixelated;"
+		canvas.style.right = (5 + Object.keys(covar_canvas).length * 110) + "px";
+		canvas.width = canvas.height = 21;
+
+		const div = document.createElement("div");
+		div.innerText = v[0];
+		document.body.appendChild(div);
+		div.style.cssText =
+			"position: absolute;z-index: 11;width: 105px;bottom: 50px;image-rendering: pixelated;right: 225px;color: white;";
+		div.style.right = (5 + Object.keys(covar_canvas).length * 110) + "px";
+
+		document.body.appendChild(canvas);
+		covar_canvas[v[0]] = canvas;
+	}
+
+	var fv = v.slice(2).map(parseFloat);
+	let fmax = Math.max(...fv);
+	const fmin = Math.min(...fv);
+	fmax = Math.max(fmax, -fmin);
+	const imageData = Uint8ClampedArray.from(fv.map(x => [...turbo(Math.min(1, Math.abs(x / fmax))), 255]).flat());
+	var canvas = covar_canvas[v[0]];
+
+	var ctx = canvas.getContext("2d");
+	ctx.imageSmoothingEnabled = false;
+	// ctx.scale(5,5);
+	ctx.putImageData(new ImageData(imageData, 21, 21), 0, 0);
+	ctx.fillStyle = "white";
+	ctx.font = "14px Arial";
+}
+
 function update_fullstate(v) {
 	var obj = {
 		tracker : v[1],
@@ -539,6 +577,7 @@ function update_fullstate(v) {
 	objs[obj.tracker].accel.geometry.vertices[1].set(obj.accel[0], obj.accel[1], obj.accel[2]);
 	objs[obj.tracker].accel.geometry.verticesNeedUpdate = true;
 }
+
 function update_velocity(v) {
 	var obj = {
 		tracker : v[1],
@@ -606,7 +645,6 @@ function update_object(v, allow_unsetup, external) {
 			objr.oldPose = obj.position;
 			record_position(obj.tracker, time, obj);
 		}
-
 	}
 }
 
@@ -749,6 +787,7 @@ var survive_log_handlers = {
 	"POSE" : update_object,
 	"VELOCITY" : update_velocity,
 	"FULL_STATE" : update_fullstate,
+	"FULL_COVARIANCE" : update_fullcov,
 	"EXTERNAL_VELOCITY" : function(v) { update_velocity(v, true, true); },
 	"EXTERNAL_POSE" : function(v) { update_object(v, true, true); },
 	"DISCONNECT" : function(v) { delete_tracked_object(v[1]); },

@@ -87,6 +87,26 @@ void survive_recording_write_to_output(struct SurviveRecordingData *recordingDat
 	}
 }
 
+void survive_recording_write_to_output_nopreamble(struct SurviveRecordingData *recordingData, const char *format, ...) {
+	if (!recordingData) {
+		return;
+	}
+
+	if (recordingData->output_file) {
+		va_list args;
+		va_start(args, format);
+		gzvprintf(recordingData->output_file, format, args);
+
+		va_end(args);
+	}
+
+	if (recordingData->alwaysWriteStdOut) {
+		va_list args;
+		va_start(args, format);
+		vfprintf(stdout, format, args);
+		va_end(args);
+	}
+}
 void survive_recording_disconnect_process(struct SurviveObject *so) {
 	SurviveRecordingData *recordingData = so->ctx ? so->ctx->recptr : 0;
 	survive_recording_write_to_output(recordingData, "%s DISCONNECT\r\n", so->codename);

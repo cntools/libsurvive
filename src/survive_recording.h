@@ -31,6 +31,8 @@
 struct SurviveRecordingData;
 SURVIVE_EXPORT void survive_recording_write_to_output(struct SurviveRecordingData *recordingData, const char *format,
 													  ...);
+SURVIVE_EXPORT void survive_recording_write_to_output_nopreamble(struct SurviveRecordingData *recordingData,
+																 const char *format, ...);
 void survive_destroy_recording(SurviveContext *ctx);
 void survive_install_recording(SurviveContext *ctx);
 void survive_recording_config_process(SurviveObject *so, char *ct0conf, int len);

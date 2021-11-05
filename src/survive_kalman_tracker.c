@@ -24,7 +24,7 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 					   -1., t->light_error_threshold)
 	STRUCT_CONFIG_ITEM("min-report-time",
 					   "Minimum kalman report time in s (-1 defaults to 1. / imu_hz)", -1., t->min_report_time)
-
+    STRUCT_CONFIG_ITEM("report-covariance", "Report covariance matrix every n poses", -1, t->report_covariance_cnt);
 	STRUCT_CONFIG_ITEM("use-adaptive-imu",  "Use adaptive kalman for IMU", 0, t->adaptive_imu)
 	STRUCT_CONFIG_ITEM("use-adaptive-lightcap",  "Use adaptive kalman for Lightcap", 0, t->adaptive_lightcap)
 	STRUCT_CONFIG_ITEM("use-adaptive-obs",  "Use adaptive kalman for observations", 0, t->adaptive_obs)
@@ -1134,8 +1134,15 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 
     tracker->last_report_time = t;
 
-    survive_recording_write_to_output(ctx->recptr, "%s FULL_STATE " Point26_format "\n",
-                                      so->codename, LINMATH_VEC26_EXPAND((FLT*)&tracker->state));
+    if(tracker->report_covariance_cnt > 0 && tracker->stats.reported_poses % tracker->report_covariance_cnt == 0) {
+        survive_recording_write_to_output(ctx->recptr, "%s FULL_STATE " Point26_format "\n",
+                                          so->codename, LINMATH_VEC26_EXPAND((FLT*)&tracker->state));
+        survive_recording_write_to_output_nopreamble(ctx->recptr, "%s FULL_COVARIANCE ", so->codename);
+        for (int i = 0; i < state_cnt * state_cnt; i++) {
+            survive_recording_write_to_output_nopreamble(ctx->recptr, "%f ", tracker->model.P.data[i]);
+        }
+        survive_recording_write_to_output_nopreamble(ctx->recptr, "\n");
+    }
 
     tracker->previous_state = tracker->state;
     copy3d(so->acceleration, tracker->state.Acc);
