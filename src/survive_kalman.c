@@ -426,7 +426,7 @@ static FLT survive_kalman_run_iterations(survive_kalman_state_t *k, const struct
 
 		svSub(&x_diff, x_k_k1, &x_i);
 		error = calculate_v(&y, &x_diff, &iR, &iP);
-		assert(error > 0);
+		assert(error >= 0);
 
 		svGEMM(&iR, &y, 1, 0, 0, &iRy, 0);
 		svGEMM(&iP, &x_diff, 1, 0, 0, &iPdx, 0);
