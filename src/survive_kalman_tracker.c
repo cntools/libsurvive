@@ -384,10 +384,22 @@ static bool map_obs_data(void *user, const struct SvMat *Z, const struct SvMat *
     if(y) {
         subnd(sv_as_vector(y), sv_as_const_vector(Z), sv_as_const_vector(x_t), 7);
         //quatfind(sv_as_vector(y) + 3, sv_as_const_vector(x_t) + 3, sv_as_const_vector(Z) + 3);
-        //quatfind(sv_as_vector(y) + 3, sv_as_const_vector(Z) + 3, sv_as_const_vector(x_t) + 3);
+        quatfind(sv_as_vector(y) + 3, sv_as_const_vector(Z) + 3, sv_as_const_vector(x_t) + 3);
+        sv_as_vector(y)[3] = 1 - fabs((sv_as_vector(y) + 3)[0]);
     }
     if(H_k) {
-        sv_set_diag_val(H_k, 1);
+        sv_set_zero(H_k);
+        for(int i = 0;i < 3;i++) {
+            svMatrixSet(H_k, i, i, 1);
+        }
+        FLT jac[16];
+        gen_quatfind_jac_q1(jac, sv_as_const_vector(x_t) + 3, sv_as_const_vector(Z) + 3);
+        //gen_quatfind_jac_q2(jac, sv_as_const_vector(Z) + 3, sv_as_const_vector(x_t) + 3);
+        for(int i = 0;i < 4;i++) {
+            for(int j = 0;j < 4;j++) {
+                svMatrixSet(H_k, i + 3, j + 3, jac[j + i * 4]);
+            }
+        }
     }
     return true;
 }
