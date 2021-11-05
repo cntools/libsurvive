@@ -346,8 +346,9 @@ void apply_attractors(struct SurviveContext *ctx, SurviveDriverSimulator *driver
 	FLT s = 1.;
 
 	LinmathVec3d attractors[] = {{1, 1, 1}, {-1, 0, 1}, {0, -1, .5}};
-	size_t attractor_cnt = survive_configi(ctx, "attractors", SC_GET, sizeof(attractors) / sizeof(LinmathVec3d));
-	if (attractor_cnt > sizeof(attractors) / sizeof(LinmathVec3d)) {
+
+	int attractor_cnt = survive_configi(ctx, "attractors", SC_GET, sizeof(attractors) / sizeof(LinmathVec3d));
+	if (attractor_cnt > (int)(sizeof(attractors) / sizeof(LinmathVec3d))) {
 		attractor_cnt = sizeof(attractors) / sizeof(LinmathVec3d);
 	}
 
@@ -391,12 +392,14 @@ static void apply_initial_position(SurviveDriverSimulator *driver) {
 static void apply_initial_velocity(SurviveDriverSimulator *sp) {
 	SurviveContext *ctx = sp->ctx;
 
-	sp->velocity.AxisAngleRot[0] = sp->velocity.AxisAngleRot[1] = sp->velocity.AxisAngleRot[2] = 1.;
+	int attractor_cnt = survive_configi(ctx, "attractors", SC_GET, 1);
+	if (attractor_cnt >= 0) {
+		sp->velocity.AxisAngleRot[0] = sp->velocity.AxisAngleRot[1] = sp->velocity.AxisAngleRot[2] = 1.;
+	}
 
-	size_t attractor_cnt = survive_configi(ctx, "attractors", SC_GET, 1);
 	if (attractor_cnt == 1) {
 		for (int i = 0; i < 3; i++)
-			sp->velocity.Pos[i] = 2 * rand() / RAND_MAX - 1;
+			sp->velocity.Pos[i] = 2. * rand() / RAND_MAX - 1;
 	}
 }
 
