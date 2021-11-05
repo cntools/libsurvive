@@ -24,6 +24,7 @@ STATIC_CONFIG_ITEM(Simulator_TIME, "simulator-time", 'f', "Seconds to run simula
 STATIC_CONFIG_ITEM(Simulator_OBJ_RADIUS, "simulator-obj-radius", 'f', "Radius of the simulated object", 0.05)
 STATIC_CONFIG_ITEM(Simulator_SHOW_GT_DEVICE, "simulator-show-gt", 'i',
 				   "0: No GT device, 1: Show GT device, 2: Only GT device", 1)
+STATIC_CONFIG_ITEM(Simulator_NOISE_SCALE, "simulator-noise-scale", 'f', "", 1.)
 STATIC_CONFIG_ITEM(Simulator_SENSOR_NOISE, "simulator-sensor-noise", 'f', "Variance of noise to apply to light sensors",
 				   1e-5)
 STATIC_CONFIG_ITEM(Simulator_SENSOR_TIME_JITTER, "simulator-sensor-time-jitter", 'f',
@@ -36,7 +37,7 @@ STATIC_CONFIG_ITEM(Simulator_SENSOR_DROPRATE, "simulator-sensor-droprate", 'f', 
 
 STATIC_CONFIG_ITEM(Simulator_INIT_TIME, "simulator-init-time", 'f', "Init time -- object wont move for this long", 2.)
 STATIC_CONFIG_ITEM(Simulator_FCAL_NOISE, "simulator-fcal-noise", 'f', "Noise to apply to BSD fcal parameters", 0.)
-STATIC_CONFIG_ITEM(Simulator_LH_VERSION, "simulator-lh-gen", 'i', "Lighthouse generation", 2)
+STATIC_CONFIG_ITEM(Simulator_LH_VERSION, "simulator-lh-gen", 'i', "Lighthouse generation", 1)
 
 typedef struct SurviveDriverSimulatorLHState {
 	FLT last_eval_time;
@@ -62,6 +63,7 @@ struct SurviveDriverSimulator {
 	FLT time_last_light;
 	FLT time_last_iterate;
 
+	FLT noise_scale;
 	FLT sensor_var;
 	FLT sensor_droprate;
 	FLT init_time;
@@ -126,17 +128,21 @@ static bool lighthouse_sensor_angle(SurviveDriverSimulator *driver, int lh, size
 		quatrotatevector(normalInLh, world2lh.Rot, normalInWorld);
 
 		FLT facingness = dot3d(normalInLh, dirLh);
-		if (facingness > 0 && linmath_rand(0, 1.) > driver->sensor_droprate) {
+		if (facingness > 0 && linmath_rand(0, 1.) > driver->sensor_droprate * driver->noise_scale) {
 			if (driver->lh_version == 0) {
 				survive_reproject_xy(driver->bsd[lh].fcal, ptInLh, ang);
+				for (int i = 0; i < 2; i++) {
+					if (fabs(ang[i]) > 1.04)
+						return false;
+				}
 			} else {
 				survive_reproject_xy_gen2(driver->bsd[lh].fcal, ptInLh, ang);
-				ang[1] += 4 * LINMATHPI / 3.;
 				ang[0] += 2 * LINMATHPI / 3.;
+				ang[1] += 4 * LINMATHPI / 3.;
 			}
 
 			for (int i = 0; i < 2; i++) {
-				ang[i] += linmath_normrand(0, driver->sensor_var);
+				ang[i] += linmath_normrand(0, driver->sensor_var * driver->noise_scale);
 			}
 			return true;
 		}
@@ -245,8 +251,8 @@ static bool run_imu(struct SurviveContext *ctx, SurviveDriverSimulator *driver, 
 		add3d(accelgyro + 3, accelgyro + 3, driver->gyro_bias);
 
 		for (int i = 0; i < 3; i++) {
-			accelgyro[i] += linmath_normrand(0, driver->acc_var);
-			accelgyro[i + 3] += linmath_normrand(0, driver->gyro_var);
+			accelgyro[i] += linmath_normrand(0, driver->acc_var * driver->noise_scale);
+			accelgyro[i + 3] += linmath_normrand(0, driver->gyro_var * driver->noise_scale);
 		}
 
 		SV_VERBOSE(200, "Ang: " Point3_format, LINMATH_VEC3_EXPAND(driver->velocity.AxisAngleRot));
@@ -257,7 +263,7 @@ static bool run_imu(struct SurviveContext *ctx, SurviveDriverSimulator *driver, 
 		}
 
 		for (int i = 0; i < 3; i++) {
-			driver->gyro_bias[i] += linmath_normrand(0, driver->gyro_bias_scale) * .001;
+			driver->gyro_bias[i] += linmath_normrand(0, driver->gyro_bias_scale * driver->noise_scale) * .001;
 		}
 		driver->time_last_imu = timestamp - 1e-10;
 	}
@@ -329,6 +335,9 @@ static void update_gt_device(struct SurviveContext *ctx, const SurviveDriverSimu
 
 	survive_default_external_pose_process(ctx, "Sim_GT", &head2world);
 	survive_default_external_velocity_process(ctx, "Sim_GT", &driver->velocity);
+	survive_recording_write_to_output(ctx->recptr, "%s FULL_STATE " Point16_format "\n", "Sim_GT",
+									  SURVIVE_POSE_EXPAND(head2world), SURVIVE_VELOCITY_EXPAND(driver->velocity),
+									  LINMATH_VEC3_EXPAND(&driver->accel.Pos[0]));
 }
 void apply_attractors(struct SurviveContext *ctx, SurviveDriverSimulator *driver) {
 	SurviveVelocity accel = {0};
@@ -349,6 +358,9 @@ void apply_attractors(struct SurviveContext *ctx, SurviveDriverSimulator *driver
 		sub3d(acc, attractors[i], driver->position.Pos);
 		FLT r = norm3d(acc);
 		scale3d(acc, acc, s / r / r);
+		if (r < .1) {
+			scale3d(acc, acc, -1);
+		}
 		add3d(accel.Pos, accel.Pos, acc);
 		if (reported == false && ctx->recptr) {
 			survive_recording_write_to_output(ctx->recptr, "SPHERE attractor_%d %f %d " Point3_format "\n", i, .05,
@@ -382,9 +394,9 @@ static void apply_initial_velocity(SurviveDriverSimulator *sp) {
 	sp->velocity.AxisAngleRot[0] = sp->velocity.AxisAngleRot[1] = sp->velocity.AxisAngleRot[2] = 1.;
 
 	size_t attractor_cnt = survive_configi(ctx, "attractors", SC_GET, 1);
-	if (attractor_cnt) {
+	if (attractor_cnt == 1) {
 		for (int i = 0; i < 3; i++)
-			sp->velocity.Pos[i] = 2. * rand() / RAND_MAX - 1.;
+			sp->velocity.Pos[i] = 2 * rand() / RAND_MAX - 1;
 	}
 }
 
@@ -395,7 +407,7 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 	
 	FLT timefactor = linmath_max(survive_configf(ctx, "time-factor", SC_GET, 1.), .00001);
 	// FLT timestamp = timestamp_in_s() / timefactor;
-	FLT timestep = .0001;
+	FLT timestep = .01;
 
 	while (last_time != 0 && last_time + timefactor * timestep > realtime) {
 		survive_release_ctx_lock(ctx);
@@ -496,6 +508,7 @@ static void simulation_compare(SurviveObject *so, survive_long_timecode timecode
 
 	FLT error[7] = {0};
 	FLT verror[6] = {0};
+	FLT aerror[3] = {0};
 	subnd(error, driver->position.Pos, so->OutPoseIMU.Pos, 3);
 
 	for (int i = 0; i < 4; i++)
@@ -503,13 +516,14 @@ static void simulation_compare(SurviveObject *so, survive_long_timecode timecode
 					   so->OutPoseIMU.Rot[i] * (so->OutPoseIMU.Rot[0] > 0 ? 1 : -1);
 
 	subnd(verror, driver->velocity.Pos, so->velocity.Pos, 6);
-
+	subnd(aerror, driver->accel.Pos, so->acceleration, 3);
 	variance_measure_add(&driver->pose_variance, error);
 
 	FLT var[7];
 	variance_measure_calc(&driver->pose_variance, var);
-	SV_VERBOSE(110, "\tSimulation pose error " Point7_format, LINMATH_VEC7_EXPAND(var));
+	SV_VERBOSE(110, "\tSimulation pose error     " Point7_format, LINMATH_VEC7_EXPAND(var));
 	SV_VERBOSE(110, "\tSimulation velocity error " Point6_format, LINMATH_VEC6_EXPAND(verror));
+	SV_VERBOSE(110, "\tSimulation acc error      " Point3_format, LINMATH_VEC3_EXPAND(aerror));
 	bool pos_unsync = norm3d(p.Pos) > .1 || norm3d(p.Rot + 1) > .2;
 	bool unsync = pos_unsync || normnd(verror, 6) > .1;
 	if (unsync || ctx->log_level >= 500) {
@@ -567,13 +581,14 @@ cstring generate_simulated_object(FLT r, size_t sensor_ct) {
 	nor_buf.d[nor_buf.length - 2] = 0;
 	loc.d[loc.length - 2] = 0;
 
-	FLT trackref_from_head[] = {rand(), rand(), rand(), rand(), rand(), rand(), rand()};
-	FLT trackref_from_imu[] = {rand(), rand(), rand(), rand(), rand(), rand(), rand()};
+	FLT trackref_from_head[7] = {0, 0, 0, 1};
+	FLT trackref_from_imu[7] = {0, 0, 0, 1};
+	/*
 	for (int i = 0; i < 7; i++) {
 		trackref_from_head[i] = .1 * (trackref_from_head[i] / RAND_MAX - .5);
 		trackref_from_imu[i] = .1 * (trackref_from_imu[i] / RAND_MAX - .5);
 	}
-
+*/
 	quatnormalize(trackref_from_head, trackref_from_head);
 	quatnormalize(trackref_from_imu, trackref_from_imu);
 
@@ -636,6 +651,7 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	SV_INFO("Setting up Simulator driver.");
 
 	survive_attach_configi(ctx, Simulator_SHOW_GT_DEVICE_TAG, &sp->show_gt_device_cfg);
+	survive_attach_configf(ctx, Simulator_NOISE_SCALE_TAG, &sp->noise_scale);
 	survive_attach_configf(ctx, Simulator_SENSOR_NOISE_TAG, &sp->sensor_var);
 	survive_attach_configf(ctx, Simulator_SENSOR_TIME_JITTER_TAG, &sp->sensor_jitter);
 	survive_attach_configf(ctx, Simulator_GYRO_NOISE_TAG, &sp->gyro_var);
@@ -649,7 +665,7 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	for (int i = 0; i < 3; i++)
 		sp->gyro_bias[i] = linmath_normrand(0, sp->gyro_bias_scale);
 
-	int use_lh2 = survive_configi(ctx, Simulator_LH_VERSION_TAG, SC_GET, 2) == 2;
+	int use_lh2 = survive_configi(ctx, Simulator_LH_VERSION_TAG, SC_GET, 1) == 2;
 	int max_lighthouses = use_lh2 ? 16 : 2;
 	// Create a new SurviveObject...
 	SurviveObject *device = survive_create_simulation_device(ctx, sp, "SM0");
