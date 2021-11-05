@@ -42,7 +42,7 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("obs-pos-variance",  "Variance of position integration from light capture",
 					   1e-4, t->obs_pos_var)
 	STRUCT_CONFIG_ITEM("obs-rot-variance",  "Variance of rotation integration from light capture",
-					   1e-5, t->obs_rot_var)
+					   1e-6, t->obs_rot_var)
 
 	STRUCT_CONFIG_ITEM("use-raw-obs",  "Apply kalman filter as part of the pose solver", 0, t->use_raw_obs)
 
@@ -53,11 +53,11 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("lightcap-rampin-length",
 					   "Number of lightcap measures to ramp in variance", 5000, t->light_rampin_length)
 
-	STRUCT_CONFIG_ITEM("process-weight-acc", "Acc variance per second", 1, t->params.process_weight_acc)
+	STRUCT_CONFIG_ITEM("process-weight-acc", "Acc variance per second", 1e-1, t->params.process_weight_acc)
 	STRUCT_CONFIG_ITEM("process-weight-ang-vel", "Angular velocity variance per second", 1e-2,
 					   t->params.process_weight_ang_velocity)
-	STRUCT_CONFIG_ITEM("process-weight-vel", "Velocity variance per second", 1e-1, t->params.process_weight_vel)
-	STRUCT_CONFIG_ITEM("process-weight-pos", "Position variance per second", 1e-3, t->params.process_weight_pos)
+	STRUCT_CONFIG_ITEM("process-weight-vel", "Velocity variance per second", 1e-2, t->params.process_weight_vel)
+	STRUCT_CONFIG_ITEM("process-weight-pos", "Position variance per second", 0, t->params.process_weight_pos)
 	STRUCT_CONFIG_ITEM("process-weight-rot", "Rotation variance per second", 0, t->params.process_weight_rotation)
 	STRUCT_CONFIG_ITEM("process-weight-acc-bias", "Acc bias variance per second", 0, t->params.process_weight_acc_bias)
 	STRUCT_CONFIG_ITEM("process-weight-gyro-bias", "Gyro bias variance per seconid", 0, t->params.process_weight_gyro_bias)
