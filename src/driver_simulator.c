@@ -634,12 +634,12 @@ SURVIVE_EXPORT SurviveObject *survive_create_simulation_device(SurviveContext *c
 	FLT r = survive_configf(ctx, "simulator-obj-radius", SC_GET, 0.1);
 
 	cstring cfg = generate_simulated_object(r, device->sensor_ct);
-	device->object_type = SURVIVE_OBJECT_TYPE_HMD;
-	device->object_subtype = SURVIVE_OBJECT_SUBTYPE_VIVE_HMD;
-	device->timebase_hz = 48000000;
-	device->imu_freq = 1000.0f;
 
 	SURVIVE_INVOKE_HOOK_SO(config, device, cfg.d, strlen(cfg.d));
+	device->object_type = SURVIVE_OBJECT_TYPE_CONTROLLER;
+	device->object_subtype = SURVIVE_OBJECT_SUBTYPE_WAND;
+	device->timebase_hz = 48000000;
+	device->imu_freq = 1000.0f;
 
 	return device;
 }

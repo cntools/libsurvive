@@ -154,7 +154,6 @@ struct SurviveObject {
 	survive_long_timecode OutPose_timecode;
 
 	SurviveVelocity velocity;
-	LinmathPoint3d acceleration;
 	survive_long_timecode velocity_timecode;
 
 	SurvivePose
@@ -222,6 +221,8 @@ struct SurviveObject {
 		uint32_t extent_hits, extent_misses, naive_hits;
 		FLT min_extent, max_extent;
 	} stats;
+
+	LinmathPoint3d acceleration;
 };
 
 // These exports are mostly for language binding against
