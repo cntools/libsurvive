@@ -557,7 +557,8 @@ function update_fullcov(v) {
 	var ctx = canvas.getContext("2d");
 	ctx.imageSmoothingEnabled = false;
 	// ctx.scale(5,5);
-	ctx.putImageData(new ImageData(imageData, 21, 21), 0, 0);
+	const l = Math.floor(Math.sqrt(fv.length))
+	ctx.putImageData(new ImageData(imageData, l, l), 0, 0);
 	ctx.fillStyle = "white";
 	ctx.font = "14px Arial";
 }
