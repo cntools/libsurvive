@@ -876,6 +876,8 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 
     survive_kalman_meas_model_init(&tracker->model, "imu", &tracker->imu_model, survive_kalman_tracker_imu_measurement_model);
     survive_kalman_meas_model_init(&tracker->model, "lightcap", &tracker->lightcap_model, map_light_data);
+    tracker->lightcap_model.term_criteria.max_iterations = 5;
+
     survive_kalman_meas_model_init(&tracker->model, "obs", &tracker->obs_model, map_obs_data);
     survive_kalman_meas_model_init(&tracker->model, "zvu", &tracker->zvu_model, 0);
 
@@ -892,14 +894,17 @@ SurviveVelocity survive_kalman_tracker_velocity(const SurviveKalmanTracker *trac
 
 static void print_kalman_stats(SurviveContext* ctx, const survive_kalman_meas_model_t * model) {
     const struct survive_kalman_update_extended_total_stats_t* total_stats = &model->stats;
+    if(total_stats->total_runs == 0) return;
+
     SV_VERBOSE(5, "%s Kalman statistics:", model->name);
     FLT t = (FLT)total_stats->total_runs;
     SV_VERBOSE(5, "\t%-32s %6d %7.3f%%", "failures", total_stats->total_failures, 100 * total_stats->total_failures / t);
     SV_VERBOSE(5, "\t%-32s %7.7f / %7.7f / %7.7f", "avg bestnorm", total_stats->bestnorm_acc / t, total_stats->bestnorm_meas_acc / t, total_stats->bestnorm_delta_acc / t);
     SV_VERBOSE(5, "\t%-32s %7.7f / %7.7f", "avg orignorm", total_stats->orignorm_acc / t, total_stats->orignorm_meas_acc / t);
     SV_VERBOSE(5, "\t%-32s %7.7f", "avg step", total_stats->step_acc / (FLT)total_stats->step_cnt);
-    SV_VERBOSE(5, "\t%-32s %6d", "iterations", total_stats->total_iterations);
+    SV_VERBOSE(5, "\t%-32s %6d (%3.2f)", "iterations", total_stats->total_iterations, total_stats->total_iterations / (FLT)total_stats->total_runs);
     SV_VERBOSE(5, "\t%-32s %6d", "runs", total_stats->total_runs);
+    SV_VERBOSE(5, "\t%-32s %6d / %6d", "fevals", total_stats->total_fevals, total_stats->total_hevals);
     SV_VERBOSE(5, "\t%-32s", "exit reasons");
     for(int i = 1;i < survive_kalman_update_extended_termination_reason_MAX;i++) {
         SV_VERBOSE(5, "\t    %-28s %6u", survive_kalman_update_extended_termination_reason_to_str(i), (int)total_stats->stop_reason_counts[i]);

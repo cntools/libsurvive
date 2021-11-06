@@ -40,9 +40,15 @@ static inline FLT mul_at_ib_a(const struct SvMat *A, const struct SvMat *B) {
 
 static inline FLT mul_at_b_a(const struct SvMat *A, const struct SvMat *B) {
 	SV_CREATE_STACK_MAT(V, 1, 1);
-	SV_CREATE_STACK_MAT(AtiB, A->cols, B->cols);
-	svGEMM(A, B, 1, 0, 0, &AtiB, SV_GEMM_FLAG_A_T);
-	svGEMM(&AtiB, A, 1, 0, 0, &V, 0);
+	assert(A->cols == 1);
+	SV_CREATE_STACK_MAT(AtiB, 1, B->rows);
+	if (B->cols > 1) {
+		svGEMM(A, B, 1, 0, 0, &AtiB, SV_GEMM_FLAG_A_T);
+		svGEMM(&AtiB, A, 1, 0, 0, &V, 0);
+	} else {
+		mulnd(AtiB.data, A->data, B->data, B->rows);
+		V.data[0] = dotnd(AtiB.data, A->data, B->rows);
+	}
 	assert(V.data[0] >= 0);
 	return V.data[0];
 }
@@ -94,7 +100,8 @@ SURVIVE_EXPORT void survive_kalman_state_reset(survive_kalman_state_t *k) {
 	k->t = 0;
 	sv_set_zero(&k->P);
 
-	k->Q_fn(k->user, 1e2, &k->state, &k->P);
+	k->Q_fn(k->user, 10, &k->state, &k->P);
+	// printf("!!!! %e\n", svDet(&k->P));
 	sv_print_mat(k, "initial Pk_k", &k->P, true);
 }
 
@@ -107,7 +114,7 @@ SURVIVE_EXPORT void survive_kalman_meas_model_init(survive_kalman_state_t *k, co
 	mk->k = k;
 	mk->name = name;
 	mk->Hfn = Hfn;
-	mk->term_criteria = (struct term_criteria_t){.max_iterations = 5, .xtol = 1e-2, .minimum_step = .05};
+	mk->term_criteria = (struct term_criteria_t){.max_iterations = 0, .xtol = 1e-2, .mtol = 1e-8, .minimum_step = .05};
 }
 
 void survive_kalman_state_init(survive_kalman_state_t *k, size_t state_cnt, kalman_transition_fn_t F,
@@ -150,7 +157,8 @@ void survive_kalman_predict_covariance(FLT t, const SvMat *F, const SvMat *x, su
 
 	// k->P = F * k->P * F^T + Q
 	matrix_ABAt_add(Pk1_k1, F, Pk1_k1, &Q);
-
+	// printf("!!!! %f\n", svDet(Pk1_k1));
+	// assert(svDet(Pk1_k1) >= 0);
 	if (k->log_level >= KALMAN_LOG_LEVEL) {
 		SV_KALMAN_VERBOSE(110, "T: %f", t);
 		sv_print_mat(k, "Q", &Q, 1);
@@ -175,15 +183,23 @@ static void survive_kalman_find_k(survive_kalman_state_t *k, survive_kalman_gain
 	sv_print_mat(k, "R", R, 1);
 
 	// S = H * P_k|k-1 * H^T + R
-	svGEMM(H, &Pk_k1Ht, 1, R, 1, &S, 0);
+	if (R->cols == 1) {
+		svGEMM(H, &Pk_k1Ht, 1, 0, 0, &S, 0);
+		for (int i = 0; i < S.rows; i++)
+			svMatrixSet(&S, i, i, svMatrixGet(&S, i, i) + sv_as_const_vector(R)[i]);
+	} else {
+		svGEMM(H, &Pk_k1Ht, 1, R, 1, &S, 0);
+	}
+
 	assert(sv_is_finite(&S));
 
 	sv_print_mat(k, "Pk_k1Ht", &Pk_k1Ht, 1);
 	sv_print_mat(k, "S", &S, 1);
 
 	SV_CREATE_STACK_MAT(iS, H->rows, H->rows);
-
 	FLT diag = 0, non_diag = 0;
+#define CHECK_DIAG
+#ifdef CHECK_DIAG
 	for (int i = 0; i < H->rows; i++) {
 		for (int j = 0; j < H->rows; j++) {
 			if (i == j) {
@@ -195,7 +211,7 @@ static void survive_kalman_find_k(survive_kalman_state_t *k, survive_kalman_gain
 			}
 		}
 	}
-
+#endif
 	if (diag == 0 || non_diag / diag > 1e-5) {
 		svInvert(&S, &iS, SV_INVERT_METHOD_LU);
 	}
@@ -226,6 +242,8 @@ static void survive_kalman_update_covariance(survive_kalman_state_t *k, const su
 
 	// P_k|k = (I - K * H) * P_k|k-1
 	svGEMM(&ikh, &tmp, 1, 0, 0, Pk_k, 0);
+	// printf("!!!? %7.7f\n", svDet(Pk_k));
+	// assert(svDet(Pk_k) >= 0);
 	assert(sv_is_finite(Pk_k));
 	if (k->log_level >= KALMAN_LOG_LEVEL) {
 		fprintf(stdout, "INFO gain\t");
@@ -348,7 +366,7 @@ survive_kalman_termination_criteria(survive_kalman_state_t *k, const struct term
 		return survive_kalman_update_extended_termination_reason_xtol;
 	}
 
-	if (isfinite(last_error) && error < last_error && last_error - error < term_criteria->xtol * error) {
+	if (isfinite(last_error) && fabs(last_error - error) < term_criteria->xtol * error) {
 		return survive_kalman_update_extended_termination_reason_xtol;
 	}
 	return survive_kalman_update_extended_termination_reason_none;
@@ -379,6 +397,8 @@ const char *survive_kalman_update_extended_termination_reason_to_str(
 		return "MAX";
 	case survive_kalman_update_extended_termination_reason_step:
 		return "step";
+	case survive_kalman_update_extended_termination_reason_mtol:
+		return "mtol";
 	default:
 		return "";
 	}
@@ -414,12 +434,18 @@ static FLT survive_kalman_run_iterations(survive_kalman_state_t *k, const struct
 	SV_CREATE_STACK_MAT(x_i, state_cnt, 1);
 	SV_CREATE_STACK_MAT(x_i_best, state_cnt, 1);
 
-	SV_CREATE_STACK_MAT(iR, meas_cnt, meas_cnt);
-	svInvert(R, &iR, SV_INVERT_METHOD_LU);
+	SV_CREATE_STACK_MAT(iR, meas_cnt, R->cols > 1 ? meas_cnt : 1);
+	if (R->cols > 1) {
+		svInvert(R, &iR, SV_INVERT_METHOD_LU);
+	} else {
+		for (int i = 0; i < meas_cnt; i++) {
+			sv_as_vector(&iR)[i] = sv_as_const_vector(R)[i] == 0 ? 0 : 1. / sv_as_const_vector(R)[i];
+		}
+	}
 	// sv_print_mat_v(k, 100, "iR", &iR, true);
 
 	SV_CREATE_STACK_MAT(iP, state_cnt, state_cnt);
-	svInvert(&k->P, &iP, SV_INVERT_METHOD_SVD);
+	svInvert(&k->P, &iP, SV_INVERT_METHOD_LU);
 	// sv_print_mat_v(k, 100, "iP", &iP, true);
 
 	assert(sv_is_finite(&iP));
@@ -442,7 +468,7 @@ static FLT survive_kalman_run_iterations(survive_kalman_state_t *k, const struct
 	SV_CREATE_STACK_MAT(iPdx, state_cnt, 1);
 	SV_CREATE_STACK_MAT(dVt, state_cnt, 1);
 
-	for (iter = 0; iter < max_iter; iter++) {
+	for (iter = 0; iter < max_iter && stop_reason == survive_kalman_update_extended_termination_reason_none; iter++) {
 		// Find the residual y and possibly also the jacobian H. The user could have passed one in as 'user', or given
 		// us a map function which will calculate it.
 		struct SvMat *HR = survive_kalman_find_residual(mk, user, Z, &x_i, &y, H);
@@ -463,9 +489,13 @@ static FLT survive_kalman_run_iterations(survive_kalman_state_t *k, const struct
 		error = calculate_v(&y, &x_diff, &iR, &iP, &meas_part, iter == 0 ? 0 : &delta_part);
 		assert(error >= 0);
 
-		svGEMM(&iR, &y, 1, 0, 0, &iRy, 0);
 		svGEMM(&iP, &x_diff, 1, 0, 0, &iPdx, 0);
 
+		if (R->cols > 1) {
+			svGEMM(&iR, &y, 1, 0, 0, &iRy, 0);
+		} else {
+			mulnd(iRy.data, iR.data, y.data, iR.rows);
+		}
 		svGEMM(H, &iRy, -1, &iPdx, -1, &dVt, SV_GEMM_FLAG_A_T);
 
 		if (iter == 0) {
@@ -484,16 +514,19 @@ static FLT survive_kalman_run_iterations(survive_kalman_state_t *k, const struct
 			goto end_of_loop;
 		}
 
+		// x_update = K * (z - y - H * Δx)
 		svGEMM(H, &x_diff, 1, 0, 0, &Hxdiff, 0);
-
 		svSub(&y, &y, &Hxdiff);
 		svGEMM(K, &y, 1, &x_diff, 1, &x_update, 0);
 
+		FLT scale = 1.;
 		FLT m = dotnd(dVt.data, x_update.data, state_cnt);
-		m = linmath_min(-1e-8, m);
+		if (fabs(m) < mk->term_criteria.mtol) {
+			stop_reason = survive_kalman_update_extended_termination_reason_mtol;
+			break;
+		}
 		FLT c = .5, tau = .5;
 		FLT fa = 0, fa_best = error, a_best = 0;
-		FLT scale = 1.;
 
 		FLT min_step = mk->term_criteria.minimum_step == 0 ? .05 : mk->term_criteria.minimum_step;
 
@@ -548,11 +581,9 @@ static FLT survive_kalman_run_iterations(survive_kalman_state_t *k, const struct
 					svNorm(&x_update));
 			sv_print_mat_v(k, 1000, "new x", &x_i, false);
 		}
-		if ((stop_reason =
-				 survive_kalman_termination_criteria(k, &mk->term_criteria, initial_error, error, scale, last_error)) >
-			survive_kalman_update_extended_termination_reason_none) {
-			break;
-		}
+		if (stop_reason == survive_kalman_update_extended_termination_reason_none)
+			stop_reason =
+				survive_kalman_termination_criteria(k, &mk->term_criteria, initial_error, error, scale, last_error);
 	}
 	if (stop_reason == survive_kalman_update_extended_termination_reason_none)
 		stop_reason = survive_kalman_update_extended_termination_reason_maxiter;
@@ -616,16 +647,9 @@ static FLT survive_kalman_predict_update_state_extended_adaptive_internal(
     FLT result = 0;
 
     // Setup the R matrix.
-    FLT *Rs = adaptive ? Rv : alloca(Z->rows * Z->rows * sizeof(FLT));
-    SvMat R = svMat(Z->rows, Z->rows, Rs);
-    if (!adaptive) {
-        sv_set_diag(&R, Rv);
-        if (k->datalog) {
-            k->datalog(k, "R", Rv, Z->rows);
-        }
-    }
+	SvMat R = svMat(Z->rows, adaptive ? Z->rows : 1, Rv);
 
-    // Anything coming in this soon is liable to spike stuff since dt is so small
+	// Anything coming in this soon is liable to spike stuff since dt is so small
     if (dt < 1e-5) {
         dt = 0;
         t = k->t;
@@ -666,7 +690,7 @@ static FLT survive_kalman_predict_update_state_extended_adaptive_internal(
 	SV_CREATE_STACK_MAT(K, state_cnt, Z->rows);
 	SV_CREATE_STACK_MAT(HStorage, Z->rows, state_cnt);
 	struct SvMat *H = &HStorage;
-	if (mk->term_criteria.max_iterations > 1) {
+	if (mk->term_criteria.max_iterations > 0) {
 		result = survive_kalman_run_iterations(k, Z, &R, mk, user, &x_k_k1, &K, H, x_k_k, stats);
 		if (result < 0)
 			return result;
@@ -726,7 +750,7 @@ static FLT survive_kalman_predict_update_state_extended_adaptive_internal(
 				// rounding errors can push it over. Absolute value of it here
 				// to preserve a positive diaganol in R.
 				FLT HpkH = i == j ? fabs(_HPkHt[idx]) : _HPkHt[idx];
-				Rs[idx] = a * Rs[idx] + b * (_yyt[idx] + HpkH);
+				Rv[idx] = a * Rv[idx] + b * (_yyt[idx] + HpkH);
 			}
 		}
 

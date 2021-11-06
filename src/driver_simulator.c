@@ -504,8 +504,13 @@ static void simulation_lh_compare(SurviveContext *ctx, uint8_t lighthouse, const
 }
 
 static void simulation_compare(SurviveObject *so, survive_long_timecode timecode, const SurvivePose *imupose) {
+	survive_default_imupose_process(so, timecode, imupose);
+	if (strcmp(so->drivername, "SIM") != 0) {
+		return;
+	}
 	SurviveContext *ctx = so->ctx;
 	SurviveDriverSimulator *driver = so->driver;
+
 	SurvivePose p = InvertPoseRtn(&driver->position);
 	ApplyPoseToPose(&p, &p, &so->OutPoseIMU);
 
@@ -544,8 +549,6 @@ static void simulation_compare(SurviveObject *so, survive_long_timecode timecode
 			SV_VERBOSE(200, "Simulation unsync");
 		}
 	}
-
-	survive_default_imupose_process(so, timecode, imupose);
 }
 
 static int simulator_close(struct SurviveContext *ctx, void *_driver) {

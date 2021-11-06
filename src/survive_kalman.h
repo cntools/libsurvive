@@ -53,6 +53,8 @@ typedef struct term_criteria_t {
 
 	// Minimum difference in errors
 	FLT xtol;
+
+	FLT mtol;
 } term_criteria_t;
 
 enum survive_kalman_update_extended_termination_reason {
@@ -61,6 +63,7 @@ enum survive_kalman_update_extended_termination_reason {
 	survive_kalman_update_extended_termination_reason_maxiter,
 	survive_kalman_update_extended_termination_reason_xtol,
 	survive_kalman_update_extended_termination_reason_step,
+	survive_kalman_update_extended_termination_reason_mtol,
 	survive_kalman_update_extended_termination_reason_MAX
 };
 const char *
