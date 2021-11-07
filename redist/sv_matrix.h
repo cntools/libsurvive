@@ -97,7 +97,7 @@ double svDet(const SvMat *M);
 #define SV_MATRIX_STACK_SCOPE_BEGIN {
 #define SV_MATRIX_STACK_SCOPE_END }
 #else
-#define SV_MATRIX_ALLOC(size) (memset((size) + memset(alloca((size)*2), 0, size), 0xFF, (size)) - size)
+#define SV_MATRIX_ALLOC(size) (memset(alloca(size), 0, size))
 #define SV_MATRIX_FREE(ptr)
 #define SV_MATRIX_STACK_SCOPE_BEGIN
 #define SV_MATRIX_STACK_SCOPE_END
