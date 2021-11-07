@@ -117,7 +117,8 @@ static inline void sv_check_cleanup(FLT **ptr) {
 #else
 #define SV_MATRIX_ALLOC_ATTRIBUTE 
 #define SV_MATRIX_ALLOC(size) (memset(alloca(size), 0, size))
-#define SV_MATRIX_FREE(ptr)
+#define SV_MATRIX_ALLOC_ATTRIBUTE
+#define SV_MATRIX_FREE(ptr) (void)ptr
 #define SV_MATRIX_STACK_SCOPE_BEGIN
 #define SV_MATRIX_STACK_SCOPE_END
 #endif
