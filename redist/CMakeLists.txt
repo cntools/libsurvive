@@ -83,7 +83,12 @@ IF(USE_EIGEN)
   add_definitions     ( ${EIGEN3_DEFINITIONS} )
   include_directories ( ${EIGEN3_INCLUDE_DIR} )
 
-  target_compile_options(survive_matrix PRIVATE -fno-exceptions -fPIC)
+  
+  if(WIN32)
+    target_compile_options(survive_matrix PRIVATE -bigobj)
+  else()
+    target_compile_options(survive_matrix PRIVATE -fno-exceptions -fPIC)
+  endif()
 ELSE()
   IF(UNIX)
       target_link_libraries(survive_matrix ${BLAS_BACKEND} ${LAPACKE_LOCATION} m)

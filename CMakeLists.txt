@@ -29,14 +29,15 @@ option(USE_COLUMN_MAJOR_MATRICES "Use column major matrices for math operations"
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+
 find_package (Eigen3 3.3)
 if(NOT EIGEN3_FOUND)
   if(DOWNLOAD_EIGEN)
     find_program(GIT git)
-    if(NOT EXISTS "${CMAKE_BINARY_DIR}/libeigen-src")
+    if(NOT EXISTS "${CMAKE_BINARY_DIR}/libeigen-src/Eigen")
       execute_process(COMMAND ${GIT} clone -b 3.4 https://gitlab.com/libeigen/eigen.git "${CMAKE_BINARY_DIR}/libeigen-src")
     endif()
-    set(EIGEN3_INCLUDE_DIRS "${CMAKE_BINARY_DIR}/libeigen-src/")
+    set(EIGEN3_INCLUDE_DIR "${CMAKE_BINARY_DIR}/libeigen-src/")
     #find_package (Eigen3 3 NO_MODULE PATHS "${CMAKE_BINARY_DIR}/libeigen-src")
     set(USE_EIGEN ON)
   else()
@@ -125,6 +126,7 @@ IF(UNIX)
 
   SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SHARED_FLAGS} -std=gnu99 -Werror=incompatible-pointer-types -Werror=implicit-function-declaration ")
   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SHARED_FLAGS} -std=c++14")
+  add_definitions("-DCOMPILER_HAS_GENERIC_SUPPORT")
 
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -rdynamic")
 
@@ -144,8 +146,16 @@ IF(UNIX)
 	endif()	    
 	
 ELSEIF(WIN32)
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4244 /wd4996 /wd4018 /wd4101 /wd4477 /wd4068 /wd4217")
-  set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>)
+  try_compile(HAS_GENERIC_SUPPORT ${CMAKE_BINARY_DIR} "${CMAKE_SOURCE_DIR}/useful_files/generic_test.c" OUTPUT_VARIABLE COMPILE_TEST             
+             COMPILE_DEFINITIONS "/std:c11")  
+  message("Has generic support ${HAS_GENERIC_SUPPORT}")
+  add_compile_options(/wd4244 /wd4996 /wd4018 /wd4101 /wd4477 /wd4068 /wd4217)
+  if(HAS_GENERIC_SUPPORT)
+    add_compile_options(/std:c11)
+    add_definitions("-DCOMPILER_HAS_GENERIC_SUPPORT")
+  endif()
+  #set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>)
+  #set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>)
 endif()
 
 include_directories(redist include/libsurvive include)

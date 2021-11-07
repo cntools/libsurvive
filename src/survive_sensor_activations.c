@@ -150,6 +150,8 @@ static inline void SurviveSensorActivations_update_center(SurviveSensorActivatio
 static inline bool SurviveSensorActivations_check_outlier(SurviveSensorActivations *self, int sensor_id, int lh,
 														  int axis, survive_long_timecode timecode, FLT angle) {
 	FLT *oldangle = &self->angles[sensor_id][lh][axis];
+	FLT chauvenet_criterion = -1;
+	FLT P = -1;
 	if (self->angles_center_dev[lh][axis] == 0) {
 		goto accept_data;
 	}
@@ -162,11 +164,11 @@ static inline bool SurviveSensorActivations_check_outlier(SurviveSensorActivatio
 
 	FLT measured_dev = self->angles_center_dev[lh][axis];
 	FLT dev = linmath_max(self->params.filterVarianceMin, measured_dev);
-	FLT P = linmath_norm_pdf(angle, self->angles_center_x[lh][axis], dev);
+	P = linmath_norm_pdf(angle, self->angles_center_x[lh][axis], dev);
 	int cnt = self->angles_center_cnt[lh][axis];
 
 	struct SurviveObject *so = self->so;
-	FLT chauvenet_criterion = P * cnt;
+	chauvenet_criterion = P * cnt;
 	SV_DATA_LOG("chauvenet_criterion[%d][%d][%d]", &chauvenet_criterion, 1, sensor_id, lh, axis);
 
 	if (measured_dev > 0 && self->params.filterOutlierCriteria > 0 &&

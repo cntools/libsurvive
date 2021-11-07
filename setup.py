@@ -17,7 +17,9 @@ version = subprocess.check_output(["git", "describe", "--tags", "--long"]).strip
 version = version[:version.rfind("g")-1]
 
 cmake_args=['-DPYTHON_GENERATED_DIR="'+ os.path.dirname(os.path.abspath(__file__))+'/bindings/python/pysurvive/"',
-            "-DBUILD_APPLICATIONS=OFF",
+            "-DDOWNLOAD_EIGEN=ON",
+            "-DUSE_EIGEN=ON",
+	    "-DBUILD_APPLICATIONS=OFF",
             "-DLIB_INSTALL_DIR=bindings/python/pysurvive/"]
 
 if platform.system() != 'Windows':

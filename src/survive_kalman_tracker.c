@@ -507,7 +507,7 @@ void survive_kalman_tracker_predict(const SurviveKalmanTracker *tracker, FLT t, 
 
 static void survive_kalman_tracker_process_noise_bounce(void *user, FLT t, const SvMat *x, struct SvMat *q_out) {
 	struct SurviveKalmanTracker_Params *params = (struct SurviveKalmanTracker_Params *)user;
-	return survive_kalman_tracker_process_noise(params, t, x, q_out);
+	survive_kalman_tracker_process_noise(params, t, x, q_out);
 }
 
 void survive_kalman_tracker_process_noise(const struct SurviveKalmanTracker_Params *params, FLT t, const SvMat *x, struct SvMat *q_out) {

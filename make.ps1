@@ -27,6 +27,6 @@ if($flag -eq "--nuget") {
 } else {
 	md build-win -ea 0
 	cd build-win
-	cmake ..
+	cmake -DDOWNLOAD_EIGEN=On -DUSE_EIGEN=On ..
 	cmake --build . --config Release
 }

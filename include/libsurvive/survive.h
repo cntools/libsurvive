@@ -13,15 +13,10 @@
 extern "C" {
 #endif
 
-
 #ifdef _MSC_VER
 	#define SURVIVE_EXPORT_CONSTRUCTOR SURVIVE_EXPORT
-#if __STDC_VERSION__ == 201710L
-#define COMPILER_HAS_GENERIC_SUPPORT 1
-#endif
 #else
-#define COMPILER_HAS_GENERIC_SUPPORT 1
-#define SURVIVE_EXPORT_CONSTRUCTOR __attribute__((constructor))
+	#define SURVIVE_EXPORT_CONSTRUCTOR __attribute__((constructor))
 #endif
 
 
