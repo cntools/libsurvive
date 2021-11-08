@@ -286,7 +286,7 @@ static void testFindBestIntersections() {
 		linmath_find_best_intersection(o_pt, lines, num);
 
 		FLT err = dist3d(gt_pt, o_pt);
-		assert(err < (sigma + 1e-5));
+		assert(err < ( sqrt(3 * sigma * sigma) + 1e-5));
 	}
 }
 static void testNormPdf() { assertFLTEquals(linmath_norm_pdf(-2, -1.1, 1.34), 0.23760171); }
