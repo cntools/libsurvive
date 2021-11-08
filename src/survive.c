@@ -616,9 +616,11 @@ int survive_startup(SurviveContext *ctx) {
 			// We load htcvive later if nothing else was loaded
 			if (strcmp("htcvive", driverNameSuffix) != 0) {
 				if (enabled) {
-					callDriver(ctx, DriverName, buffer); // == SURVIVE_DRIVER_NORMAL
+					int driverReturn = callDriver(ctx, DriverName, buffer); // == SURVIVE_DRIVER_NORMAL
 					// Auto drivers dont preclude the default HTC driver
-					loadDefaultDriver &= manually_enabled == false;
+					if (manually_enabled && driverReturn != SURVIVE_DRIVER_PASSIVE) {
+						loadDefaultDriver = false; 
+					}
 				}
 			}
 		}

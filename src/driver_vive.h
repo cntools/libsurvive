@@ -92,10 +92,13 @@ typedef struct SurviveUSBInterface {
 	struct SurviveUSBInfo *usbInfo;
 	SurviveObject *assoc_obj;
 	int actual_len;
+#ifdef HIDAPI
+	uint8_t buffer[INTBUFFSIZE];
+#else
 	uint8_t *buffer;
 	uint8_t swap_buffer[2][INTBUFFSIZE];
 	uint8_t swap_buffer_idx;
-
+#endif
 	usb_callback cb;
 	int which_interface_am_i; // for indexing into uiface
 	const char *hname;		  // human-readable names

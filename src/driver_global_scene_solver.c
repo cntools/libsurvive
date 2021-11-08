@@ -231,7 +231,7 @@ int DriverRegGlobalSceneSolver(SurviveContext *ctx) {
 	driver->prior_ootx_fn = survive_install_ootx_received_fn(ctx, ootx_recv);
 
 	survive_add_driver(ctx, driver, DriverRegGlobalSceneSolverPoll, DriverRegGlobalSceneSolverClose);
-	return 0;
+	return SURVIVE_DRIVER_PASSIVE;
 }
 
 REGISTER_LINKTIME(DriverRegGlobalSceneSolver)
