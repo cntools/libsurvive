@@ -313,7 +313,9 @@ static SvMat *survive_kalman_find_residual(survive_kalman_meas_model_t *mk, void
 	survive_kalman_state_t *k = mk->k;
 	kalman_measurement_model_fn_t Hfn = mk->Hfn;
 
-	sv_set_constant(H, INFINITY);
+	if (H) {
+		sv_set_constant(H, INFINITY);
+	}
 
 	SvMat *rtn = 0;
 	if (Hfn) {
@@ -322,7 +324,7 @@ static SvMat *survive_kalman_find_residual(survive_kalman_meas_model_t *mk, void
 			return 0;
 		}
 		// k->debug_jacobian = 1;
-		if (mk->debug_jacobian) {
+		if (mk->debug_jacobian && H) {
 			SV_CREATE_STACK_MAT(H_calc, H->rows, H->cols);
 
 			numeric_jacobian(k, Hfn, user, Z, x, &H_calc);
@@ -351,7 +353,7 @@ static SvMat *survive_kalman_find_residual(survive_kalman_meas_model_t *mk, void
 		rtn = (struct SvMat *)user;
 		svGEMM(rtn, x, -1, Z, 1, y, 0);
 	}
-	assert(sv_is_finite(rtn));
+	assert(!rtn || sv_is_finite(rtn));
 
 	return rtn;
 }
@@ -723,43 +725,29 @@ static FLT survive_kalman_predict_update_state_extended_adaptive_internal(
 	if (adaptive) {
 		// https://arxiv.org/pdf/1702.00884.pdf
 		SV_CREATE_STACK_MAT(y, Z->rows, Z->cols);
-		SV_CREATE_STACK_MAT(PostHStorage, Z->rows, state_cnt);
-		SV_CREATE_STACK_MAT(HPkHt, Z->rows, Z->rows);
+		SV_CREATE_STACK_MAT(scaled_eTeHPkHt, Z->rows, Z->rows);
 		SV_CREATE_STACK_MAT(yyt, Z->rows, Z->rows);
 
-		SvMat *PostH = survive_kalman_find_residual(mk, user, Z, &x_k1_k1, &y, &PostHStorage);
+		survive_kalman_find_residual(mk, user, Z, x_k_k, &y, 0);
 		svMulTransposed(&y, &yyt, false, 0, 1);
 
 		SV_CREATE_STACK_MAT(Pk_k1Ht, state_cnt, H->rows);
 
-		svGEMM(&Pm, PostH, 1, 0, 0, &Pk_k1Ht, SV_GEMM_FLAG_B_T);
-		svGEMM(PostH, &Pk_k1Ht, 1, 0, 0, &HPkHt, 0);
-
-		sv_print_mat_v(k, 200, "PostH", PostH, true);
-		sv_print_mat_v(k, 200, "PkHt", &Pk_k1Ht, true);
-		sv_print_mat_v(k, 200, "HpkHt", &HPkHt, true);
-		sv_print_mat_v(k, 200, "yyt", &yyt, true);
-
 		FLT a = .3;
 		FLT b = 1 - a;
-		for (int i = 0; i < Z->rows; i++) {
-			for (int j = 0; j < Z->rows; j++) {
-				size_t idx = i + j * Z->rows;
+		svGEMM(&Pm, H, 1, 0, 0, &Pk_k1Ht, SV_GEMM_FLAG_B_T);
+		svGEMM(H, &Pk_k1Ht, b, &yyt, b, &scaled_eTeHPkHt, 0);
 
-				// HPkHt should in theory have positive diagonal but
-				// rounding errors can push it over. Absolute value of it here
-				// to preserve a positive diaganol in R.
-				FLT HpkH = i == j ? fabs(_HPkHt[idx]) : _HPkHt[idx];
-				Rv[idx] = a * Rv[idx] + b * (_yyt[idx] + HpkH);
-			}
-		}
+		sv_print_mat_v(k, 200, "PkHt", &Pk_k1Ht, true);
+		sv_print_mat_v(k, 200, "yyt", &yyt, true);
+
+		svAddScaled(&R, &R, a, &scaled_eTeHPkHt, 1);
 
 		sv_print_mat_v(k, 200, "Adaptive R", &R, true);
 
 		SV_FREE_STACK_MAT(Pk_k1Ht);
 		SV_FREE_STACK_MAT(yyt);
-		SV_FREE_STACK_MAT(HPkHt);
-		SV_FREE_STACK_MAT(PostHStorage);
+		SV_FREE_STACK_MAT(scaled_eTeHPkHt);
 	}
 
 	k->t = t;

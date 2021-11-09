@@ -503,7 +503,8 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 
 		tracker->datalog_tag = "imu_meas";
 
-        FLT err = survive_kalman_meas_model_predict_update(time, &tracker->imu_model, &fn_ctx, &Z, R);
+        FLT err = survive_kalman_meas_model_predict_update(time, &tracker->imu_model, &fn_ctx, &Z,
+                                                           tracker->adaptive_imu ? tracker->IMU_R : R);
 		tracker->datalog_tag = 0;
 
         SV_DATA_LOG("res_err_imu", &err, 1);
@@ -875,10 +876,14 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	tracker->model.datalog = tracker_datalog;
 
     survive_kalman_meas_model_init(&tracker->model, "imu", &tracker->imu_model, survive_kalman_tracker_imu_measurement_model);
+    tracker->imu_model.adaptive = tracker->adaptive_imu;
+
     survive_kalman_meas_model_init(&tracker->model, "lightcap", &tracker->lightcap_model, map_light_data);
     tracker->lightcap_model.term_criteria.max_iterations = 5;
 
     survive_kalman_meas_model_init(&tracker->model, "obs", &tracker->obs_model, map_obs_data);
+    tracker->obs_model.adaptive = tracker->adaptive_obs;
+
     survive_kalman_meas_model_init(&tracker->model, "zvu", &tracker->zvu_model, 0);
 
 	survive_kalman_tracker_reinit(tracker);
