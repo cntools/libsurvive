@@ -505,7 +505,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 		fprintf(stderr, " -h                      - shows help.\n");
 		fprintf(stderr, " -m                      - list parameters, for autocomplete.\n");
 		fprintf(stderr, " -p [poser]              - use a specific poser.\n");
-		fprintf(stderr, " -l [lighthouse count]   - use a specific number of lighthoses.\n");
+		fprintf(stderr, " -l [lighthouse count]   - use a specific number of lighthouses.\n");
 		fprintf(stderr, " -c [config file]        - set config file\n\n");
 
 		survive_print_known_configs( ctx, 1 );
