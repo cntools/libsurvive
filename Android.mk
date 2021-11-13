@@ -7,6 +7,7 @@ else
 endif
 
 COMMON_CFLAGS := \
+    -DGIT_VERSION=\"$(shell git -C $(LOCAL_PATH) describe --dirty)\" \
     -DBUILD_LH1_SUPPORT \
     -DSURVIVE_LIBUSB_UNVER_DIR \
     -Wno-error=unused-function \
