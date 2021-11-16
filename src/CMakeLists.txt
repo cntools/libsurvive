@@ -151,14 +151,19 @@ IF(NOT USE_HIDAPI)
   endif()
 
   set(driver_vive_ADDITIONAL_LIBS ${LIBUSB_LIBRARY})
-endif()
-find_library(PCAP_LIBRARY pcap)
 
-if(PCAP_LIBRARY)
-  list(APPEND PLUGINS driver_usbmon)
-  set(driver_usbmon_ADDITIONAL_LIBS "${PCAP_LIBRARY};z" driver_vive)
-else()
-  message("Can't build usbmon plugin -- pcap library was not found")
+  find_library(PCAP_LIBRARY pcap)
+  if(PCAP_LIBRARY)
+    list(APPEND PLUGINS driver_usbmon)
+    find_path(PCAP_INCLUDE_PATH NAMES pcap.h)
+    if(PCAP_INCLUDE_PATH) 
+      include_directories(${PCAP_INCLUDE_PATH})
+    endif()
+    set(driver_usbmon_ADDITIONAL_LIBS "${PCAP_LIBRARY};z" driver_vive)
+  else()
+    message("Can't build usbmon plugin -- pcap library was not found")
+  endif()
+
 endif()
 
 
