@@ -210,7 +210,7 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 	iface->last_submit_time = OGGetAbsoluteTimeUS();
 
 	// If we get at least one packet; start applying a timeout
-	if (iface->assoc_obj->object_type != SURVIVE_OBJECT_TYPE_HMD) {
+	if (iface->assoc_obj && iface->assoc_obj->object_type != SURVIVE_OBJECT_TYPE_HMD) {
 		transfer->timeout = 1000;
 	}
 	if (libusb_submit_transfer(transfer)) {
