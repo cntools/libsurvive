@@ -184,7 +184,6 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 
 	SurviveUSBInterface *iface = transfer->user_data;
 	SurviveContext *ctx = iface->ctx;
-	bool attemptReconnect = false;
 	if (!iface->shutdown && transfer->status == LIBUSB_TRANSFER_TIMED_OUT) {
 		SV_WARN("%f %s Device turned off: %d", survive_run_time(ctx), survive_colorize_codename(iface->assoc_obj),
 				transfer->status);
@@ -211,8 +210,10 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 	iface->last_submit_time = OGGetAbsoluteTimeUS();
 
 	// If we get at least one packet; start applying a timeout
-	// transfer->timeout = 1000;
-	if (survive_usb_transfer_submit(transfer)) {
+	if (iface->assoc_obj->object_type != SURVIVE_OBJECT_TYPE_HMD) {
+		transfer->timeout = 1000;
+	}
+	if (libusb_submit_transfer(transfer)) {
 		goto shutdown;
 	}
 
