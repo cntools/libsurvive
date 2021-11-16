@@ -194,6 +194,9 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 		return;
 	}
 
+	if (so->ctx->bsd[bsd_idx].disable)
+		return;
+
 	assert(channel <= NUM_GEN2_LIGHTHOUSES);
 
 	survive_recording_sync_process(so, channel, timecode, ootx, gen);
@@ -317,6 +320,9 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 		SV_WARN("Invalid channel requested(%d) for %s", channel, so->codename)
 		return;
 	}
+
+	if (so->ctx->bsd[bsd_idx].disable)
+		return;
 
 	survive_notify_gen2(so, "sweep called");
 
