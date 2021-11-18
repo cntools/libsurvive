@@ -160,8 +160,9 @@ void survive_kalman_lighthouse_integrate_light(SurviveKalmanLighthouse *tracker,
 		FLT light_vars[32] = {0};
 		for (int i = 0; i < 32; i++)
 			light_vars[i] = v;
+		SvMat R = svVec(Z.rows, light_vars);
 
-		survive_kalman_meas_model_predict_update(time, &tracker->lightcap_model, &cbctx, &Z, light_vars);
+		survive_kalman_meas_model_predict_update(time, &tracker->lightcap_model, &cbctx, &Z, &R);
 		survive_kalman_lighthouse_report(tracker);
 	}
 }
@@ -243,6 +244,7 @@ SURVIVE_EXPORT void survive_kalman_lighthouse_integrate_observation(SurviveKalma
 	if (_variance) {
 		memcpy(variance, _variance, sizeof(variance));
 	}
+	SvMat R = svVec(7, variance);
 	FLT v = normnd2(variance, 7);
 
 	if (v > 0) {
@@ -252,7 +254,7 @@ SURVIVE_EXPORT void survive_kalman_lighthouse_integrate_observation(SurviveKalma
 		SurvivePose Z = *pose;
 #endif
 		SvMat Zp = svMat(7, 1, (void *)&Z);
-		survive_kalman_predict_update_state(0, &tracker->model, &Zp, &H, variance, 0);
+		survive_kalman_predict_update_state(0, &tracker->model, &Zp, &H, &R, 0);
 
 		if (tracker->lh == 1) {
 			// sv_set_constant(&tracker->model.P, 0);

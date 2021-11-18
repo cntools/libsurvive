@@ -131,13 +131,13 @@ typedef struct survive_kalman_meas_model {
 } survive_kalman_meas_model_t;
 
 SURVIVE_EXPORT FLT survive_kalman_meas_model_predict_update_stats(FLT t, survive_kalman_meas_model_t *mk, void *user,
-																  const struct SvMat *Z, const FLT *R,
+																  const struct SvMat *Z, SvMat *R,
 																  struct survive_kalman_update_extended_stats_t *stats);
 SURVIVE_EXPORT FLT survive_kalman_meas_model_predict_update(FLT t, survive_kalman_meas_model_t *mk, void *user,
-															const struct SvMat *Z, const FLT *R);
+															const struct SvMat *Z, SvMat *R);
 
 /*
-FLT survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k, const struct SvMat *Z, const FLT *R,
+FLT survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k, const struct SvMat *Z, SvMat* R,
 											 const survive_kalman_update_extended_params_t *extended_params,
 											 struct survive_kalman_update_extended_stats_t *stats);
 */
@@ -164,7 +164,7 @@ SURVIVE_EXPORT void survive_kalman_predict_state(FLT t, const survive_kalman_sta
  *
  */
 SURVIVE_EXPORT FLT survive_kalman_predict_update_state(FLT t, survive_kalman_state_t *k, const struct SvMat *Z,
-													   const struct SvMat *H, const FLT *R, bool adaptive);
+													   const struct SvMat *H, SvMat *R, bool adaptive);
 
 /**
  * Run predict and update, updating the state matrix. This is for non-linear measurement models.
@@ -180,7 +180,7 @@ SURVIVE_EXPORT FLT survive_kalman_predict_update_state(FLT t, survive_kalman_sta
  */
 /*
 SURVIVE_EXPORT FLT
-survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k, const struct SvMat *Z, const FLT *R,
+survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k, const struct SvMat *Z, SvMat* R,
 											 const survive_kalman_update_extended_params_t *extended_params,
 											 struct survive_kalman_update_extended_stats_t *stats);
 */

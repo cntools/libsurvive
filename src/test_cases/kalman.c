@@ -256,9 +256,10 @@ TEST(Kalman, ExampleExtended) {
 			_Z[j] += generateGaussianNoise(0, meas_s[j]);
 		}
 
-		FLT R[] = {.0004, .0004, 1};
+		FLT _R[] = {.0004, .0004, 1};
+		SvMat R = svVec(3, _R);
 
-		survive_kalman_meas_model_predict_update(i, &measModel, sensor, &Z, R);
+		survive_kalman_meas_model_predict_update(i, &measModel, sensor, &Z, &R);
 
 		fprintf(stderr, "Guess  " SurviveVel_format "\n",
 				SURVIVE_VELOCITY_EXPAND(*(SurviveVelocity *)SV_FLT_PTR(&position.state)));
@@ -331,13 +332,14 @@ TEST(Kalman, AngleQuat) {
 		FLT t = i * .1;
 
 		FLT rv = .01;
-		FLT R[] = {rv, rv, rv, rv};
+		FLT _R[] = {rv, rv, rv, rv};
+		SvMat R = svVec(4, _R);
 		memcpy(_Z, _true_state, 4 * sizeof(FLT));
 		for (int j = 0; j < 4; j++) {
-			_Z[j] += generateGaussianNoise(0, R[j]);
+			_Z[j] += generateGaussianNoise(0, _R[j]);
 		}
 		quatnormalize(_Z, _Z);
-		survive_kalman_predict_update_state(t, &rotation, &Z, &H, R, 0);
+		survive_kalman_predict_update_state(t, &rotation, &Z, &H, &R, 0);
 		quatnormalize(SV_FLT_PTR(&rotation.state), SV_FLT_PTR(&rotation.state));
 		fprintf(stderr, "Guess  " SurvivePose_format "\n",
 				SURVIVE_POSE_EXPAND(*(SurvivePose *)SV_FLT_PTR(&rotation.state)));
@@ -413,18 +415,19 @@ TEST(Kalman, InstFlip) {
 	KalmanModelSim_init(&model);
 
 	fprintf(stderr, "Testing instant flip\n");
-	FLT R[] = {1e-5, 1e-5, 1e-5, 1e-2, 1e-2, 1e-2};
+	FLT _R[] = {1e-5, 1e-5, 1e-5, 1e-2, 1e-2, 1e-2};
+	SvMat R = svVec(6, _R);
 	// survive_kalman_set_logging_level(10000);
 	for (int i = 0; i < 100; i++) {
 		FLT time = i / 1000.;
 
 		FLT input[6], h_x[6];
-		SvMat Z = svMat(6, 1, input);
+		SvMat Z = svVec(6, input);
 
 		quatnormalize(model.true_state.Pose.Rot, model.true_state.Pose.Rot);
 		gen_imu_predict(input, &model.true_state);
 
-		FLT err = survive_kalman_meas_model_predict_update(time, &model.imu_model_t, 0, &Z, R);
+		FLT err = survive_kalman_meas_model_predict_update(time, &model.imu_model_t, 0, &Z, &R);
 		quatnormalize(model.sim_state.Pose.Rot, model.sim_state.Pose.Rot);
 		fprintf(stderr, "err %.7f Acc: " Point3_format " Vel: " Point3_format " Rotation: " Quat_format "\n", err,
 				LINMATH_VEC3_EXPAND(model.sim_state.Acc), LINMATH_VEC3_EXPAND(model.sim_state.Velocity.Pos),
@@ -446,8 +449,8 @@ TEST(Kalman, Flip) {
 
 	KalmanModelSim_init(&model);
 
-	FLT R[] = {1e-5, 1e-5, 1e-5, 1e-2, 1e-2, 1e-2};
-
+	FLT _R[] = {1e-5, 1e-5, 1e-5, 1e-2, 1e-2, 1e-2};
+	SvMat R = svVec(6, _R);
 	fprintf(stderr, "Testing flip\n");
 	// survive_kalman_set_logging_level(10000);
 	for (int i = 0; i < 1000; i++) {
@@ -462,7 +465,7 @@ TEST(Kalman, Flip) {
 
 		gen_imu_predict(input, &model.true_state);
 
-		FLT err = survive_kalman_meas_model_predict_update(time, &model.imu_model_t, 0, &Z, R);
+		FLT err = survive_kalman_meas_model_predict_update(time, &model.imu_model_t, 0, &Z, &R);
 		quatnormalize(model.sim_state.Pose.Rot, model.sim_state.Pose.Rot);
 
 		fprintf(stderr, "err %f Velocity: " SurviveVel_format " Pose: " SurvivePose_format "\n", err,
@@ -497,7 +500,8 @@ TEST(Kalman, LiftupSetDown) {
 
 	KalmanModelSim_init(&model);
 
-	FLT R[] = {1e-5, 1e-5, 1e-5, 1e-2, 1e-2, 1e-2};
+	FLT _R[] = {1e-5, 1e-5, 1e-5, 1e-2, 1e-2, 1e-2};
+	SvMat R = svVec(6, _R);
 
 	fprintf(stderr, "Testing LiftupSetDown\n");
 	FILE *rf = fopen("real.csv", "w");
@@ -515,7 +519,7 @@ TEST(Kalman, LiftupSetDown) {
 		model.true_state = m;
 
 		gen_imu_predict(input, &model.true_state);
-		FLT err = survive_kalman_meas_model_predict_update(time, &model.imu_model_t, 0, &Z, R);
+		FLT err = survive_kalman_meas_model_predict_update(time, &model.imu_model_t, 0, &Z, &R);
 		quatnormalize(model.sim_state.Pose.Rot, model.sim_state.Pose.Rot);
 
 		fprintf(stderr, "err %f " KALMAN_MODEL_FORMAT "\n", err, KALMAN_MODEL_EXPAND(model.sim_state));

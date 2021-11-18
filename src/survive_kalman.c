@@ -637,8 +637,10 @@ static FLT survive_kalman_run_iterations(survive_kalman_state_t *k, const struct
 	return initial_error;
 }
 static FLT survive_kalman_predict_update_state_extended_adaptive_internal(
-	FLT t, survive_kalman_state_t *k, void *user, const struct SvMat *Z, FLT *Rv, survive_kalman_meas_model_t *mk,
+	FLT t, survive_kalman_state_t *k, void *user, const struct SvMat *Z, SvMat *R, survive_kalman_meas_model_t *mk,
 	struct survive_kalman_update_extended_stats_t *stats) {
+	assert(R->rows == Z->rows && (R->cols == 1 || R->cols == R->rows));
+	assert(Z->cols == 1);
 
 	kalman_measurement_model_fn_t Hfn = mk->Hfn;
 	bool adaptive = mk->adaptive;
@@ -649,7 +651,10 @@ static FLT survive_kalman_predict_update_state_extended_adaptive_internal(
     FLT result = 0;
 
     // Setup the R matrix.
-	SvMat R = svMat(Z->rows, adaptive ? Z->rows : 1, Rv);
+	if (adaptive && R->rows != R->cols) {
+		assert(false);
+		adaptive = false;
+	}
 
 	// Anything coming in this soon is liable to spike stuff since dt is so small
     if (dt < 1e-5) {
@@ -693,7 +698,7 @@ static FLT survive_kalman_predict_update_state_extended_adaptive_internal(
 	SV_CREATE_STACK_MAT(HStorage, Z->rows, state_cnt);
 	struct SvMat *H = &HStorage;
 	if (mk->term_criteria.max_iterations > 0) {
-		result = survive_kalman_run_iterations(k, Z, &R, mk, user, &x_k_k1, &K, H, x_k_k, stats);
+		result = survive_kalman_run_iterations(k, Z, R, mk, user, &x_k_k1, &K, H, x_k_k, stats);
 		if (result < 0)
 			return result;
 	} else {
@@ -705,7 +710,7 @@ static FLT survive_kalman_predict_update_state_extended_adaptive_internal(
 		}
 
 		// Run update; filling in K
-		survive_kalman_find_k(k, &K, H, &R);
+		survive_kalman_find_k(k, &K, H, R);
 
 		// Calculate the next state
 		svGEMM(&K, &y, 1, &x_k_k1, 1, x_k_k, 0);
@@ -741,9 +746,9 @@ static FLT survive_kalman_predict_update_state_extended_adaptive_internal(
 		sv_print_mat_v(k, 200, "PkHt", &Pk_k1Ht, true);
 		sv_print_mat_v(k, 200, "yyt", &yyt, true);
 
-		svAddScaled(&R, &R, a, &scaled_eTeHPkHt, 1);
+		svAddScaled(R, R, a, &scaled_eTeHPkHt, 1);
 
-		sv_print_mat_v(k, 200, "Adaptive R", &R, true);
+		sv_print_mat_v(k, 200, "Adaptive R", R, true);
 
 		SV_FREE_STACK_MAT(Pk_k1Ht);
 		SV_FREE_STACK_MAT(yyt);
@@ -761,32 +766,32 @@ static FLT survive_kalman_predict_update_state_extended_adaptive_internal(
 }
 
 FLT survive_kalman_meas_model_predict_update_stats(FLT t, struct survive_kalman_meas_model *mk, void *user,
-												   const struct SvMat *Z, const FLT *R,
+												   const struct SvMat *Z, SvMat *R,
 												   struct survive_kalman_update_extended_stats_t *stats) {
-	return survive_kalman_predict_update_state_extended_adaptive_internal(t, mk->k, user, Z, (FLT *)R, mk, stats);
+	return survive_kalman_predict_update_state_extended_adaptive_internal(t, mk->k, user, Z, R, mk, stats);
 }
 
 FLT survive_kalman_meas_model_predict_update(FLT t, struct survive_kalman_meas_model *mk, void *user,
-											 const struct SvMat *Z, const FLT *R) {
+											 const struct SvMat *Z, SvMat *R) {
 	struct survive_kalman_update_extended_stats_t stats = {.total_stats = &mk->stats};
-	return survive_kalman_predict_update_state_extended_adaptive_internal(t, mk->k, user, Z, (FLT *)R, mk, &stats);
+	return survive_kalman_predict_update_state_extended_adaptive_internal(t, mk->k, user, Z, R, mk, &stats);
 }
 
 /*
-FLT survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k, const struct SvMat *Z, const FLT *R,
+FLT survive_kalman_predict_update_state_extended(FLT t, survive_kalman_state_t *k, const struct SvMat *Z, SvMat* R,
 												 const survive_kalman_update_extended_params_t *extended_params,
 												 struct survive_kalman_update_extended_stats_t *stats) {
 	return survive_kalman_predict_update_state_extended_adaptive_internal(t, k, Z, (FLT *)R, extended_params, stats);
 }
 
 FLT survive_kalman_predict_update_state(FLT t, survive_kalman_state_t *k, const struct SvMat *Z, const struct SvMat *H,
-										const FLT *R, bool adaptive) {
+										SvMat* R, bool adaptive) {
 	survive_kalman_update_extended_params_t params = {.user = (void *)H, .adapative = adaptive};
 	return survive_kalman_predict_update_state_extended(t, k, Z, R, &params, 0);
 }
 */
 FLT survive_kalman_predict_update_state(FLT t, survive_kalman_state_t *k, const struct SvMat *Z, const struct SvMat *H,
-										const FLT *R, bool adaptive) {
+										SvMat *R, bool adaptive) {
 	survive_kalman_meas_model_t mk = {.adaptive = adaptive, .k = k};
 	return survive_kalman_meas_model_predict_update(t, &mk, (void *)H, Z, R);
 }

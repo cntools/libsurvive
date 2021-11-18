@@ -53,7 +53,7 @@ void run_standard_experiment(LinmathPoint2d X_out, FLT *P, const term_criteria_t
 
 	SV_CREATE_STACK_MAT(Z, 2, 1);
 	FLT Rv = LINMATHPI * LINMATHPI * 1e-5;
-	FLT R[] = {Rv, Rv};
+	FLT _R[] = {Rv, Rv};
 
 	for (int i = 0; i < 2; i++) {
 		Z.data[i] = measurement_model(sensors[i], true_state);
@@ -65,11 +65,10 @@ void run_standard_experiment(LinmathPoint2d X_out, FLT *P, const term_criteria_t
 		.term_criteria = *termCriteria,
 	};
 
-	SV_CREATE_STACK_MAT(Rm, 2, 2);
-	sv_set_diag(&Rm, R);
+	SvMat R = svVec(2, _R);
 
 	for (int i = 0; i < time_steps; i++) {
-		survive_kalman_meas_model_predict_update(1, &meas_model, sensors, &Z, R);
+		survive_kalman_meas_model_predict_update(1, &meas_model, sensors, &Z, &R);
 		printf("%3d: %7.6f %7.6f\n", i, X[0], X[1]);
 	}
 
@@ -170,8 +169,8 @@ void run_standard_experiment2(LinmathPoint2d X_out, FLT *P, const term_criteria_
 
 	SV_CREATE_STACK_MAT(Z, 1, 1);
 	FLT Rv = .1;
-	FLT R[] = {Rv, Rv};
-
+	FLT _R[] = {Rv, Rv};
+	SvMat R = svVec(2, _R);
 	Z.data[0] = -true_state[0] * true_state[0];
 
 	survive_kalman_meas_model_t measModel = {
@@ -181,7 +180,7 @@ void run_standard_experiment2(LinmathPoint2d X_out, FLT *P, const term_criteria_
 	Rm.data[0] = Rv;
 
 	for (int i = 0; i < time_steps; i++) {
-		FLT error = survive_kalman_meas_model_predict_update_stats(1, &measModel, 0, &Z, R, stats);
+		FLT error = survive_kalman_meas_model_predict_update_stats(1, &measModel, 0, &Z, &R, stats);
 		printf("%3d: %7.6f %7.6f\n", i, X[0], error);
 	}
 

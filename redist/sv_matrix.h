@@ -128,6 +128,11 @@ static inline void sv_check_cleanup(FLT **ptr) {
 	FLT *_##name SV_MATRIX_ALLOC_ATTRIBUTE = SV_MATRIX_ALLOC((rows) * (cols) * sizeof(FLT));                           \
 	SvMat name = svMat(rows, cols, _##name);
 
+#define SV_CREATE_STACK_VEC(name, rows)                                                                                \
+	SV_MATRIX_STACK_SCOPE_BEGIN                                                                                        \
+	FLT *_##name SV_MATRIX_ALLOC_ATTRIBUTE = SV_MATRIX_ALLOC((rows) * sizeof(FLT));                                    \
+	SvMat name = svVec(rows, _##name);
+
 #define SV_FREE_STACK_MAT(name)                                                                                        \
 	SV_MATRIX_FREE(_##name);                                                                                           \
 	SV_MATRIX_STACK_SCOPE_END
@@ -197,7 +202,7 @@ static inline SvMat svMat(int rows, int cols, FLT *data) {
 
 	return m;
 }
-
+static inline SvMat svVec(int rows, FLT *data) { return svMat(rows, 1, data); }
 static inline size_t sv_matrix_idx(const SvMat *mat, int row, int col) {
 	assert((unsigned)row < (unsigned)mat->rows && (unsigned)col < (unsigned)mat->cols);
 #ifndef SV_MATRIX_IS_COL_MAJOR

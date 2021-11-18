@@ -238,7 +238,7 @@ void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker,
             return;
         }
 
-        SV_CREATE_STACK_MAT(Z, tracker->savedLight_idx, 1);
+        SV_CREATE_STACK_VEC(Z, tracker->savedLight_idx);
 		for (int i = 0; i < tracker->savedLight_idx; i++) {
 			svMatrixSet(&Z, i, 0, tracker->savedLight[i].value);
 		}
@@ -257,8 +257,10 @@ void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker,
 		FLT light_vars[32] = {0};
 		for (int i = 0; i < 32; i++)
 			light_vars[i] = light_var;
+		SvMat R = svVec(Z.rows, light_vars);
+
         tracker->datalog_tag = "light_data";
-        FLT rtn = survive_kalman_meas_model_predict_update(time, &tracker->lightcap_model, &cbctx, &Z, light_vars);
+        FLT rtn = survive_kalman_meas_model_predict_update(time, &tracker->lightcap_model, &cbctx, &Z, &R);
 		tracker->datalog_tag = 0;
 		if (!ramp_in && tracker->adaptive_lightcap) {
 			tracker->light_var = light_var;
@@ -461,7 +463,7 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 
 		tracker->datalog_tag = "zvu";
 		tracker->stats.imu_total_error +=
-			survive_kalman_predict_update_state(time, &tracker->model, &Z, &H, SV_RAW_PTR(&R), false);
+			survive_kalman_predict_update_state(time, &tracker->model, &Z, &H, &R, false);
 		tracker->datalog_tag = 0;
 
 		SV_FREE_STACK_MAT(Z);
@@ -487,7 +489,6 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 	}
 
 	if (fn_ctx.use_gyro || fn_ctx.use_accel) {
-		FLT *R = rotation_variance;
 		int rows = 6;
 		int offset = 0;
 		FLT accelgyro[6] = { 0 };
@@ -499,12 +500,12 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 		SvMat Z = svMat(rows, 1, accelgyro + offset);
 
 		SV_VERBOSE(600, "Integrating IMU " Point6_format " with cov " Point6_format,
-				   LINMATH_VEC6_EXPAND((FLT *)&accelgyro[0]), LINMATH_VEC6_EXPAND(R));
+				   LINMATH_VEC6_EXPAND((FLT *)&accelgyro[0]), LINMATH_VEC6_EXPAND(rotation_variance));
 
 		tracker->datalog_tag = "imu_meas";
 
-        FLT err = survive_kalman_meas_model_predict_update(time, &tracker->imu_model, &fn_ctx, &Z,
-                                                           tracker->adaptive_imu ? tracker->IMU_R : R);
+        SvMat R = svMat(6, tracker->adaptive_imu ? 6 : 1, tracker->adaptive_imu ? tracker->IMU_R : rotation_variance);
+        FLT err = survive_kalman_meas_model_predict_update(time, &tracker->imu_model, &fn_ctx, &Z, &R);
 		tracker->datalog_tag = 0;
 
         SV_DATA_LOG("res_err_imu", &err, 1);
@@ -684,14 +685,15 @@ void survive_kalman_tracker_predict_jac(FLT t, struct SvMat *f_out, const struct
 	}
 }
 
-static FLT integrate_pose(SurviveKalmanTracker *tracker, FLT time, const SurvivePose *pose, const FLT *R) {
+static FLT integrate_pose(SurviveKalmanTracker *tracker, FLT time, const SurvivePose *pose, const FLT *Rp) {
 	FLT rtn = 0;
 
 	size_t state_cnt = tracker->model.state_cnt;
 	SvMat Zp = svMat(7, 1, (void *)pose->Pos);
 	tracker->datalog_tag = "pose_obs";
 
-    rtn = survive_kalman_meas_model_predict_update(time, &tracker->obs_model, tracker, &Zp, R ? R : tracker->Obs_R);
+	SvMat R = svMat(7, Rp ? 1 : 7, Rp ? (FLT*)Rp : tracker->Obs_R);
+    rtn = survive_kalman_meas_model_predict_update(time, &tracker->obs_model, tracker, &Zp, &R);
 
 	tracker->datalog_tag = 0;
 	SurviveContext *ctx = tracker->so->ctx;
