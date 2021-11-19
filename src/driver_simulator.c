@@ -26,17 +26,17 @@ STATIC_CONFIG_ITEM(Simulator_SHOW_GT_DEVICE, "simulator-show-gt", 'i',
 				   "0: No GT device, 1: Show GT device, 2: Only GT device", 1)
 STATIC_CONFIG_ITEM(Simulator_NOISE_SCALE, "simulator-noise-scale", 'f', "", 1.)
 STATIC_CONFIG_ITEM(Simulator_SENSOR_NOISE, "simulator-sensor-noise", 'f', "Variance of noise to apply to light sensors",
-				   1e-5)
+				   1e-4)
 STATIC_CONFIG_ITEM(Simulator_SENSOR_TIME_JITTER, "simulator-sensor-time-jitter", 'f',
-				   "Variance of time jitter to apply to light sensors", 1e-3)
+				   "Variance of time jitter to apply to light sensors", 1e-2)
 
 STATIC_CONFIG_ITEM(Simulator_GYRO_NOISE, "simulator-gyro-noise", 'f', "Variance of noise to apply to gyro", 1e-4)
 STATIC_CONFIG_ITEM(Simulator_ACC_NOISE, "simulator-acc-noise", 'f', "Variance of noise to apply to accelerometer", 5e-5)
 STATIC_CONFIG_ITEM(Simulator_GYRO_BIAS, "simulator-gyro-bias", 'f', "Scale of bias to apply to gyro", 1e-1)
-STATIC_CONFIG_ITEM(Simulator_SENSOR_DROPRATE, "simulator-sensor-droprate", 'f', "Chance to drop a sensor reading", .1)
+STATIC_CONFIG_ITEM(Simulator_SENSOR_DROPRATE, "simulator-sensor-droprate", 'f', "Chance to drop a sensor reading", .2)
 
 STATIC_CONFIG_ITEM(Simulator_INIT_TIME, "simulator-init-time", 'f', "Init time -- object wont move for this long", 2.)
-STATIC_CONFIG_ITEM(Simulator_FCAL_NOISE, "simulator-fcal-noise", 'f', "Noise to apply to BSD fcal parameters", 0.)
+STATIC_CONFIG_ITEM(Simulator_FCAL_NOISE, "simulator-fcal-noise", 'f', "Noise to apply to BSD fcal parameters", 1e-3)
 STATIC_CONFIG_ITEM(Simulator_LH_VERSION, "simulator-lh-gen", 'i', "Lighthouse generation", 1)
 
 typedef struct SurviveDriverSimulatorLHState {
