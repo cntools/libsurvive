@@ -16,6 +16,8 @@
 #include "survive_default_devices.h"
 #if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h>
+#include <sv_matrix.h>
+
 #endif
 
 STATIC_CONFIG_ITEM(OPTIMIZER_FTOL, "optimizer-ftol", 'f', "Relative chi-square convergence criterium", 0.)
@@ -151,7 +153,13 @@ int survive_optimizer_get_parameters_count(const survive_optimizer *ctx) {
 	return ctx->cameraLength * 7 + ctx->poseLength * 7 + ctx->ptsLength * 3 +
 		   2 * ctx->cameraLength * sizeof(BaseStationCal) / sizeof(FLT);
 }
-
+int survive_optimizer_get_free_parameters_count(const survive_optimizer *ctx) {
+	int rtn = 0;
+	for (int i = 0; i < survive_optimizer_get_parameters_count(ctx); i++) {
+		rtn += ctx->parameters_info[i].fixed == 0;
+	}
+	return rtn;
+}
 FLT *survive_optimizer_get_sensors(survive_optimizer *ctx, size_t idx) {
 	if (ctx->ptsLength == 0)
 		return ctx->sos[idx]->sensor_locations;
@@ -241,7 +249,7 @@ static inline void run_pair_measurement(survive_optimizer *mpfunc_ctx, size_t me
 			safe_world2lh.AxisAngleRot[0] = 1e-10;
 
 		if (derivs[jac_offset_obj]) {
-			FLT jout[7 * 2] = {0};
+			FLT jout[6 * 2] = {0};
 			// reprojectModel->reprojectFullJacObjPose(out, pose, pt, world2lh, cal);
 			reprojectModel->reprojectAxisAngleFullJacObjPose(jout, pose, pt, world2lh, cal);
 			// SV_INFO("Double obj %3d %3d %f", jac_offset_obj, meas_idx, out[0]);
@@ -603,6 +611,14 @@ static mp_config *survive_optimizer_get_cfg(SurviveContext *ctx) {
 mp_config precise_cfg = {0};
 SURVIVE_EXPORT mp_config *survive_optimizer_precise_config() { return &precise_cfg; }
 
+static inline bool sane_covariance(const SvMat *P) {
+	for (int i = 0; i < P->rows; i++) {
+		if (svMatrixGet(P, i, i) < 0)
+			return false;
+	}
+	return svDet(P) > -1e-10;
+}
+
 int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result) {
 	SurviveContext *ctx = optimizer->sos[0] ? optimizer->sos[0]->ctx : 0;
 
@@ -637,13 +653,43 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 	FLT *params = optimizer->parameters;
 	optimizer->needsFiltering = !optimizer->nofilter;
 	size_t extra_meas = optimizer->upVectorBias > 0 ? (optimizer->cameraLength + optimizer->poseLength) : 0;
+
+	FLT *covar = result->covar_free;
+	int nfree = survive_optimizer_get_free_parameters_count(optimizer);
+	SV_CREATE_STACK_MAT(R_aa, nfree * (covar ? 1 : 0), nfree * (covar ? 1 : 0));
+	result->covar_free = covar ? R_aa.data : 0;
+
 	int rtn = mpfit(mpfunc, optimizer->measurementsCnt + extra_meas, survive_optimizer_get_parameters_count(optimizer),
 					optimizer->parameters, optimizer->parameters_info, cfg, optimizer, result);
 	optimizer->parameters = params;
+	assert(sane_covariance(&R_aa));
+	int totalPoseCount = optimizer->poseLength + optimizer->cameraLength;
+	if (covar) {
+		int totalFreePoseCount = nfree / 6;
+		SV_CREATE_STACK_MAT(G, totalFreePoseCount * 7, totalFreePoseCount * 6);
+		SV_CREATE_STACK_MAT(Gp, 4, 3);
+		SvMat R_q = svMat(totalFreePoseCount * 7, totalFreePoseCount * 7, covar);
 
-	for (int i = 0; i < optimizer->poseLength + optimizer->cameraLength; i++) {
+		sv_set_diag_val(&G, 1);
+
+		for (int z = 0; z < totalFreePoseCount; z++) {
+			gen_axisangle2quat_jac_axis_angle(Gp.data, ((LinmathAxisAnglePose *)&poses[z])->AxisAngleRot);
+			for (int i = 0; i < 4; i++) {
+				for (int j = 0; j < 3; j++) {
+					svMatrixSet(&G, i + z * 7 + 3, j + z * 6 + 3, svMatrixGet(&Gp, i, j));
+				}
+			}
+		}
+
+		gemm_ABAt_add_scaled(&R_q, &G, &R_aa, 0, 1,
+							 result->bestnorm / (optimizer->measurementsCnt - totalFreePoseCount * 6), 0);
+		assert(sane_covariance(&R_q));
+	}
+
+	for (int i = 0; i < totalPoseCount; i++) {
 		quatfromaxisangle(poses[i].Rot, poses[i].Rot, norm3d(poses[i].Rot));
 	}
+
 	return rtn;
 }
 

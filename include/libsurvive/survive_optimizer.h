@@ -94,6 +94,7 @@ typedef struct survive_optimizer {
 SURVIVE_EXPORT void *survive_optimizer_realloc(void *old_ptr, size_t size);
 
 SURVIVE_EXPORT int survive_optimizer_get_parameters_count(const survive_optimizer *ctx);
+SURVIVE_EXPORT int survive_optimizer_get_free_parameters_count(const survive_optimizer *ctx);
 
 SURVIVE_EXPORT size_t survive_optimizer_get_total_buffer_size(const survive_optimizer *ctx);
 
