@@ -613,7 +613,7 @@ static void handle_results(MPFITData *d, PoserDataLight *lightData, FLT error, S
 			so->ctx->request_floor_set = false;
 		}
 
-		PoserData_poser_pose_func(&lightData->hdr, so, estimate, error);
+		PoserData_poser_pose_func(&lightData->hdr, so, estimate, error, 0);
 	}
 }
 
@@ -918,7 +918,7 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 			}
 		}
 
-		PoserData_lighthouse_poses_func(0, mpfitctx.sos[0], cameras, variances, ctx->activeLighthouses,
+		PoserData_lighthouse_poses_func(0, mpfitctx.sos[0], cameras, 0, ctx->activeLighthouses,
 										&survive_optimizer_get_pose(&mpfitctx)[bestObjForCal]);
 
 		for (int i = 0; i < mpfitctx.poseLength; i++) {

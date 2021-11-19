@@ -40,7 +40,7 @@ STATIC_CONFIG_ITEM(HAPTIC_ON_CALIBRATE, "haptic-on-calibrate", 'i',
 STATIC_CONFIG_ITEM(LIGHTHOUSE_NORMALIZE_ANGLE, "normalize-lighthouse-angle", 'f',
 				   "Angle about Z to adust calibration by", 0.);
 
-void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world, FLT error) {
+void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world, FLT error, const struct SvMat* R) {
 	SurviveContext *ctx = so->ctx;
 	for (int i = 0; i < 3; i++) {
 		assert(!isnan(imu2world->Pos[i]));
@@ -53,16 +53,16 @@ void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const S
 	if (poser_data->poseproc) {
 		poser_data->poseproc(so, poser_data->timecode, imu2world, poser_data->userdata);
 	} else {
-		FLT p_e = error;
-		FLT r_e = error;
-		FLT R[7] = {p_e, p_e, p_e, r_e, r_e, r_e, r_e };
+		//FLT p_e = error;
+		//FLT r_e = error;
+		//FLT R[7] = {p_e, p_e, p_e, r_e, r_e, r_e, r_e };
 		survive_kalman_tracker_integrate_observation(poser_data, so->tracker, imu2world, R);
 	}
 }
 void PoserData_poser_pose_func_with_velocity(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world,
 											 const SurviveVelocity *velocity) {
 	SURVIVE_INVOKE_HOOK_SO(velocity, so, poser_data->timecode, velocity);
-	PoserData_poser_pose_func(poser_data, so, imu2world, -1);
+	PoserData_poser_pose_func(poser_data, so, imu2world, -1, 0);
 }
 
 void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse,
@@ -242,7 +242,7 @@ void PoserData_normalize_scene(SurviveContext *ctx, SurvivePose *lighthouse_pose
 }
 
 void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so, SurvivePose *lighthouse_pose,
-									 FLT *variances, uint32_t lighthouse_count, SurvivePose *object_pose) {
+									 const struct SvMat *R, uint32_t lighthouse_count, SurvivePose *object_pose) {
 
 	if (poser_data && poser_data->lighthouseposeproc) {
 		for (int lighthouse = 0; lighthouse < lighthouse_count; lighthouse++) {
@@ -300,7 +300,7 @@ void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so, S
 				ApplyPoseToPose(&lh2world, &object2World, &lh2object);
 			}
 
-			PoserData_lighthouse_pose_func(poser_data, so, lh, &lh2world, variances ? variances[lh] : -1,
+			PoserData_lighthouse_pose_func(poser_data, so, lh, &lh2world, R ? -1 : -1,
 										   &object2World);
 		}
 

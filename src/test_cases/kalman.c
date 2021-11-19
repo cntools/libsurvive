@@ -126,7 +126,9 @@ int TestKalmanIntegratePose(FLT pvariance, FLT rot_variance) {
 		FLT variance[2] = {pvariance, rot_variance};
 		PoserDataLightGen2 pd = {0};
 		pd.common.hdr.timecode = time;
-		survive_kalman_tracker_integrate_observation(&pd.common.hdr, &kpose, &obs, variance);
+		SV_CREATE_STACK_MAT(R, 2, 2);
+		sv_set_diag(&R, variance);
+		survive_kalman_tracker_integrate_observation(&pd.common.hdr, &kpose, &obs, &R);
 
 		SurvivePose estimate;
 		SurviveVelocity estimate_v = survive_kalman_tracker_velocity(&kpose);

@@ -46,7 +46,7 @@ SURVIVE_EXPORT int32_t PoserData_size(const PoserData *poser_data);
  * @param pose The actual object pose. This is in world space, not in LH space. It must represent a transformation from
  * object space of the SO to global space.
  */
-SURVIVE_EXPORT void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const SurvivePose *pose, FLT reprojError);
+SURVIVE_EXPORT void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const SurvivePose *pose, FLT reprojError, const struct SvMat* R);
 
 /**
  * Meant to be used by individual posers to report back their findings on the pose of an object back to the invoker of
@@ -79,7 +79,7 @@ SURVIVE_EXPORT void PoserData_lighthouse_pose_func(PoserData *poser_data, Surviv
 SURVIVE_EXPORT void PoserData_normalize_scene(SurviveContext *ctx, SurvivePose *lighthouse_pose,
 											  uint32_t lighthouse_count, SurvivePose *object_pose);
 SURVIVE_EXPORT void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so,
-													SurvivePose *lighthouse_pose, FLT *variances,
+													SurvivePose *lighthouse_pose, const struct SvMat *R,
 													uint32_t lighthouse_count, SurvivePose *object_pose);
 SURVIVE_EXPORT int8_t survive_get_reference_bsd(SurviveContext *ctx, SurvivePose *lighthouse_pose,
 												uint32_t lighthouse_count);

@@ -685,14 +685,14 @@ void survive_kalman_tracker_predict_jac(FLT t, struct SvMat *f_out, const struct
 	}
 }
 
-static FLT integrate_pose(SurviveKalmanTracker *tracker, FLT time, const SurvivePose *pose, const FLT *Rp) {
+static FLT integrate_pose(SurviveKalmanTracker *tracker, FLT time, const SurvivePose *pose, const struct SvMat *Rp) {
 	FLT rtn = 0;
 
 	size_t state_cnt = tracker->model.state_cnt;
 	SvMat Zp = svMat(7, 1, (void *)pose->Pos);
 	tracker->datalog_tag = "pose_obs";
 
-	SvMat R = svMat(7, Rp ? 1 : 7, Rp ? (FLT*)Rp : tracker->Obs_R);
+	SvMat R = svMat(7, Rp ? Rp->cols : 7, Rp ? Rp->data : tracker->Obs_R);
     rtn = survive_kalman_meas_model_predict_update(time, &tracker->obs_model, tracker, &Zp, &R);
 
 	tracker->datalog_tag = 0;
@@ -704,7 +704,7 @@ static FLT integrate_pose(SurviveKalmanTracker *tracker, FLT time, const Survive
 }
 
 void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTracker *tracker, const SurvivePose *pose,
-												  const FLT *oR) {
+												  const struct SvMat *Ri) {
 	SurviveObject *so = tracker->so;
 	SurviveContext *ctx = so->ctx;
 
@@ -737,12 +737,13 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
 		tracker->model.t = time;
 	}
 
+	/*
 	FLT R[] = {tracker->obs_pos_var, tracker->obs_pos_var, tracker->obs_pos_var, tracker->obs_rot_var,
 			   tracker->obs_rot_var, tracker->obs_rot_var, tracker->obs_rot_var};
 	if (oR) {
 		addnd(R, R, oR, 7);
 	}
-
+*/
 	if (time - tracker->model.t < 0) {
 		if (time - tracker->model.t > -.1) {
 			FLT tdiff = tracker->model.t - time;
@@ -763,7 +764,16 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
 	tracker->last_light_time = time;
 
 	if (tracker->obs_pos_var >= 0 && tracker->obs_rot_var >= 0) {
-		FLT obs_error = integrate_pose(tracker, time, pose, tracker->adaptive_obs ? 0 : R);
+        SV_CREATE_STACK_MAT(R, 7, 7);
+        if(Ri) {
+            svCopy(Ri, &R, 0);
+        }
+        FLT augR[] = {tracker->obs_pos_var, tracker->obs_pos_var, tracker->obs_pos_var, tracker->obs_rot_var,
+                      tracker->obs_rot_var, tracker->obs_rot_var, tracker->obs_rot_var};
+        for(int i =0;i < 7;i++)
+            svMatrixSet(&R, i, i, svMatrixGet(&R, i, i) + augR[i]);
+
+        FLT obs_error = integrate_pose(tracker, time, pose, tracker->adaptive_obs ? 0 : &R);
 		tracker->stats.obs_total_error += obs_error;
 		tracker->stats.obs_count++;
 
