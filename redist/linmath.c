@@ -1192,12 +1192,15 @@ static inline size_t create_sparse_matrix(struct sparse_matrix *out, const struc
 }
 
 inline void gemm_ABAt_add(struct SvMat *out, const struct SvMat *A, const struct SvMat *B, const struct SvMat *C) {
+	gemm_ABAt_add_scaled(out, A, B, C, 1, 1, 1);
+}
+inline void gemm_ABAt_add_scaled(struct SvMat *out, const struct SvMat *A, const struct SvMat *B, const struct SvMat *C,
+								 FLT scale_A, FLT scale_B, FLT scale_C) {
 	SV_CREATE_STACK_MAT(tmp, A->rows, B->cols);
-	svGEMM(A, B, 1, 0, 0, &tmp, 0);
-	svGEMM(&tmp, A, 1, C, 1, out, SV_GEMM_FLAG_B_T);
+	svGEMM(A, B, scale_A * scale_B, 0, 0, &tmp, 0);
+	svGEMM(&tmp, A, 1, C, scale_C, out, SV_GEMM_FLAG_B_T);
 	SV_FREE_STACK_MAT(tmp);
 }
-
 void matrix_ABAt_add(struct SvMat *out, const struct SvMat *A, const struct SvMat *B, const struct SvMat *C) {
 	ALLOC_SPARSE_MATRIX(s, A->rows, A->cols);
 	size_t nonzeros = create_sparse_matrix(&s, A);

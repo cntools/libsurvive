@@ -369,6 +369,11 @@ LINMATH_EXPORT void matrix_ABAt_add(struct SvMat *out, const struct SvMat *A, co
  */
 LINMATH_EXPORT void gemm_ABAt_add(struct SvMat *out, const struct SvMat *A, const struct SvMat *B,
 								  const struct SvMat *C);
+/**
+ *  Standard implementation of out = A * (B*s) * A^t + C for testing; just uses svGEMM
+ */
+LINMATH_EXPORT void gemm_ABAt_add_scaled(struct SvMat *out, const struct SvMat *A, const struct SvMat *B,
+										 const struct SvMat *C, FLT scale_A, FLT scale_B, FLT scale_C);
 
 #ifdef __cplusplus
 }
