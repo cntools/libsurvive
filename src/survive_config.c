@@ -68,6 +68,8 @@ void survive_config_bind_variable( char vt, const char * name, const char * desc
 	va_list ap;
 	va_start(ap, description);
 
+	struct static_conf_t *existing = find_static_conf_t(name);
+	assert(existing == 0);
 	struct static_conf_t *config = find_or_create_conf_t(name);
 
 	if( !config->description ) config->description = description;

@@ -8,8 +8,6 @@
 #include "survive_reproject_gen2.h"
 #include "survive_str.h"
 #include <assert.h>
-#include <json_helpers.h>
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,24 +18,6 @@
 #include "variance.h"
 
 STATIC_CONFIG_ITEM(Simulator_DRIVER_ENABLE, "simulator", 'i', "Load a Simulator driver for testing.", 0)
-STATIC_CONFIG_ITEM(Simulator_TIME, "simulator-time", 'f', "Seconds to run simulator for.", 0.0)
-STATIC_CONFIG_ITEM(Simulator_OBJ_RADIUS, "simulator-obj-radius", 'f', "Radius of the simulated object", 0.05)
-STATIC_CONFIG_ITEM(Simulator_SHOW_GT_DEVICE, "simulator-show-gt", 'i',
-				   "0: No GT device, 1: Show GT device, 2: Only GT device", 1)
-STATIC_CONFIG_ITEM(Simulator_NOISE_SCALE, "simulator-noise-scale", 'f', "", 1.)
-STATIC_CONFIG_ITEM(Simulator_SENSOR_NOISE, "simulator-sensor-noise", 'f', "Variance of noise to apply to light sensors",
-				   1e-4)
-STATIC_CONFIG_ITEM(Simulator_SENSOR_TIME_JITTER, "simulator-sensor-time-jitter", 'f',
-				   "Variance of time jitter to apply to light sensors", 1e-2)
-
-STATIC_CONFIG_ITEM(Simulator_GYRO_NOISE, "simulator-gyro-noise", 'f', "Variance of noise to apply to gyro", 1e-4)
-STATIC_CONFIG_ITEM(Simulator_ACC_NOISE, "simulator-acc-noise", 'f', "Variance of noise to apply to accelerometer", 5e-5)
-STATIC_CONFIG_ITEM(Simulator_GYRO_BIAS, "simulator-gyro-bias", 'f', "Scale of bias to apply to gyro", 1e-1)
-STATIC_CONFIG_ITEM(Simulator_SENSOR_DROPRATE, "simulator-sensor-droprate", 'f', "Chance to drop a sensor reading", .2)
-
-STATIC_CONFIG_ITEM(Simulator_INIT_TIME, "simulator-init-time", 'f', "Init time -- object wont move for this long", 2.)
-STATIC_CONFIG_ITEM(Simulator_FCAL_NOISE, "simulator-fcal-noise", 'f', "Noise to apply to BSD fcal parameters", 1e-3)
-STATIC_CONFIG_ITEM(Simulator_LH_VERSION, "simulator-lh-gen", 'i', "Lighthouse generation", 1)
 
 typedef struct SurviveDriverSimulatorLHState {
 	FLT last_eval_time;
@@ -83,8 +63,38 @@ struct SurviveDriverSimulator {
 
 	pose_process_func pose_fn;
 	lighthouse_pose_process_func lh_fn;
+
+	struct {
+		FLT runtime;
+		FLT obj_radius;
+		FLT fcal_noise;
+		FLT time_factor;
+		int obj_sensors;
+		int attractors;
+	} settings;
 };
 typedef struct SurviveDriverSimulator SurviveDriverSimulator;
+
+// clang-format off
+STRUCT_CONFIG_SECTION(SurviveDriverSimulator)
+    STRUCT_CONFIG_ITEM("simulator-attractors",  "Number on gravity attractors in simulation", 3, t->settings.attractors)
+    STRUCT_CONFIG_ITEM("simulator-obj-sensors",  "Number on sensors on the simulated object", 20, t->settings.obj_sensors)
+    STRUCT_CONFIG_ITEM("simulator-fcal-noise",  "Noise to apply to BSD fcal parameters", 1e-3, t->settings.fcal_noise)
+    STRUCT_CONFIG_ITEM("simulator-init-time", "Init time -- object wont move for this long", 2., t->init_time)
+    STRUCT_CONFIG_ITEM("simulator-gyro-noise", "Variance of noise to apply to gyro", 1e-4, t->gyro_var)
+    STRUCT_CONFIG_ITEM("simulator-acc-noise", "Variance of noise to apply to accelerometer", 5e-5, t->acc_var)
+    STRUCT_CONFIG_ITEM("simulator-gyro-bias", "Scale of bias to apply to gyro", 1e-1, t->gyro_bias_scale)
+
+    STRUCT_CONFIG_ITEM("simulator-sensor-time-jitter", "Variance of time jitter to apply to light sensors", 1e-2, t->sensor_jitter)
+    STRUCT_CONFIG_ITEM("simulator-show-gt","0: No GT device, 1: Show GT device, 2: Only GT device", 1, t->show_gt_device_cfg)
+    STRUCT_CONFIG_ITEM("simulator-sensor-noise", "Variance of noise to apply to light sensors", 1e-4, t->sensor_var)
+    STRUCT_CONFIG_ITEM("simulator-obj-radius", "Radius of the simulated object", 0.05, t->settings.obj_radius)
+    STRUCT_CONFIG_ITEM("simulator-time", "Seconds to run simulator for.", 0.0, t->settings.runtime)
+    STRUCT_CONFIG_ITEM("simulator-sensor-droprate", "Chance to drop a sensor reading", .2, t->sensor_droprate)
+    STRUCT_CONFIG_ITEM("simulator-noise-scale", "", 1., t->noise_scale)
+    STRUCT_CONFIG_ITEM("simulator-lh-gen", "Lighthouse generation", 1, t->lh_version)
+END_STRUCT_CONFIG_SECTION(SurviveDriverSimulator)
+// clang-format on
 
 static double timestamp_in_s() {
 	static double start_time_s = 0;
@@ -347,7 +357,7 @@ void apply_attractors(struct SurviveContext *ctx, SurviveDriverSimulator *driver
 
 	LinmathVec3d attractors[] = {{1, 1, 1}, {-1, 0, 1}, {0, -1, .5}};
 
-	int attractor_cnt = survive_configi(ctx, "attractors", SC_GET, sizeof(attractors) / sizeof(LinmathVec3d));
+	int attractor_cnt = driver->settings.attractors;
 	if (attractor_cnt > (int)(sizeof(attractors) / sizeof(LinmathVec3d))) {
 		attractor_cnt = sizeof(attractors) / sizeof(LinmathVec3d);
 	}
@@ -392,7 +402,7 @@ static void apply_initial_position(SurviveDriverSimulator *driver) {
 static void apply_initial_velocity(SurviveDriverSimulator *sp) {
 	SurviveContext *ctx = sp->ctx;
 
-	int attractor_cnt = survive_configi(ctx, "attractors", SC_GET, 1);
+	int attractor_cnt = sp->settings.attractors;
 	if (attractor_cnt >= 0) {
 		sp->velocity.AxisAngleRot[0] = sp->velocity.AxisAngleRot[1] = sp->velocity.AxisAngleRot[2] = 1.;
 	}
@@ -407,9 +417,8 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 	SurviveDriverSimulator *driver = _driver;
 	static FLT last_time = 0;
 	FLT realtime = timestamp_in_s();
-	
-	FLT timefactor = linmath_max(survive_configf(ctx, "time-factor", SC_GET, 1.), .00001);
-	// FLT timestamp = timestamp_in_s() / timefactor;
+
+	FLT timefactor = driver->settings.time_factor;
 	FLT timestep = .01;
 
 	while (last_time != 0 && last_time + timefactor * timestep > realtime) {
@@ -459,7 +468,7 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 
 	propagate_state(driver, time_diff);
 
-	FLT time = survive_configf(ctx, "simulator-time", SC_GET, 0);
+	FLT time = driver->settings.runtime;
 	if (timestamp - driver->timestart > time && time > 0) {
 		SV_INFO("Simulation finished after %f seconds", realtime);
 		return 1;
@@ -625,16 +634,16 @@ cstring generate_simulated_object(FLT r, size_t sensor_ct) {
 	return cfg;
 }
 
-SURVIVE_EXPORT SurviveObject *survive_create_simulation_device(SurviveContext *ctx, void *driver,
+SURVIVE_EXPORT SurviveObject *survive_create_simulation_device(SurviveContext *ctx, SurviveDriverSimulator *driver,
 															   const char *device_name) {
 	SurviveObject *device = survive_create_device(ctx, "SIM", driver, device_name, 0);
-	device->sensor_ct = survive_configi(ctx, "simulator-obj-sensors", SC_GET, 20);
+	device->sensor_ct = driver->settings.obj_sensors;
 
 	device->head2imu.Rot[0] = 1;
 	device->head2trackref.Rot[0] = 1;
 	device->imu2trackref.Rot[0] = 1;
 
-	FLT r = survive_configf(ctx, "simulator-obj-radius", SC_GET, 0.1);
+	FLT r = driver->settings.obj_radius;
 
 	cstring cfg = generate_simulated_object(r, device->sensor_ct);
 
@@ -656,22 +665,15 @@ int DriverRegSimulator(SurviveContext *ctx) {
 
 	SV_INFO("Setting up Simulator driver.");
 
-	survive_attach_configi(ctx, Simulator_SHOW_GT_DEVICE_TAG, &sp->show_gt_device_cfg);
-	survive_attach_configf(ctx, Simulator_NOISE_SCALE_TAG, &sp->noise_scale);
-	survive_attach_configf(ctx, Simulator_SENSOR_NOISE_TAG, &sp->sensor_var);
-	survive_attach_configf(ctx, Simulator_SENSOR_TIME_JITTER_TAG, &sp->sensor_jitter);
-	survive_attach_configf(ctx, Simulator_GYRO_NOISE_TAG, &sp->gyro_var);
-	survive_attach_configf(ctx, Simulator_ACC_NOISE_TAG, &sp->acc_var);
-	survive_attach_configf(ctx, Simulator_INIT_TIME_TAG, &sp->init_time);
-	survive_attach_configf(ctx, Simulator_SENSOR_DROPRATE_TAG, &sp->sensor_droprate);
+	SurviveDriverSimulator_attach_config(ctx, sp);
+	sp->settings.time_factor = linmath_max(survive_configf(ctx, "time-factor", SC_GET, 1.), .00001);
 
 	sp->pose_variance.size = 7;
 
-	sp->gyro_bias_scale = survive_configf(ctx, Simulator_GYRO_BIAS_TAG, SC_GET, 0);
 	for (int i = 0; i < 3; i++)
 		sp->gyro_bias[i] = linmath_normrand(0, sp->gyro_bias_scale);
 
-	int use_lh2 = survive_configi(ctx, Simulator_LH_VERSION_TAG, SC_GET, 1) == 2;
+	int use_lh2 = sp->lh_version == 2;
 	int max_lighthouses = use_lh2 ? 16 : 2;
 	// Create a new SurviveObject...
 	SurviveObject *device = survive_create_simulation_device(ctx, sp, "SM0");
@@ -729,7 +731,7 @@ int DriverRegSimulator(SurviveContext *ctx) {
 		}
 	}
 
-	FLT fcal_noise = survive_configf(ctx, Simulator_FCAL_NOISE_TAG, SC_GET, 0);
+	FLT fcal_noise = sp->settings.fcal_noise;
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
 		for (int axis = 0; axis < 2; axis++) {
 			for (int cal_idx = 0; cal_idx < sizeof(fcalNoise) / sizeof(FLT); cal_idx++) {
