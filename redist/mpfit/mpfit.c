@@ -950,7 +950,7 @@ L300:
 		}
 
 	/* Compute and return the covariance matrix and/or parameter errors */
-	if (result && (result->covar || result->xerror)) {
+	if (result && (result->covar || result->xerror || result->covar_free)) {
 		mp_covar(nfree, fjac, ldfjac, ipvt, conf.covtol, wa2);
 
 		if (result->covar) {
@@ -962,6 +962,14 @@ L300:
 			for (j = 0; j < nfree; j++) {
 				for (i = 0; i < nfree; i++) {
 					result->covar[ifree[j] * npar + ifree[i]] = fjac[j * ldfjac + i];
+				}
+			}
+		}
+
+		if (result->covar_free) {
+			for (j = 0; j < nfree; j++) {
+				for (i = 0; i < nfree; i++) {
+					result->covar_free[j * nfree + i] = fjac[j * ldfjac + i];
 				}
 			}
 		}
