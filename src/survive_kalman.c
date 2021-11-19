@@ -20,6 +20,14 @@ typedef struct SvMat survive_kalman_gain_matrix;
 
 void survive_kalman_set_logging_level(survive_kalman_state_t *k, int v) { k->log_level = v; }
 
+static inline bool sane_covariance(const SvMat *P) {
+	for (int i = 0; i < P->rows; i++) {
+		if (svMatrixGet(P, i, i) < 0)
+			return false;
+	}
+	return svDet(P) > -1e-10;
+}
+
 static inline FLT mul_at_ib_a(const struct SvMat *A, const struct SvMat *B) {
 	FLT rtn = 0;
 	SV_CREATE_STACK_MAT(V, 1, 1);
@@ -49,7 +57,7 @@ static inline FLT mul_at_b_a(const struct SvMat *A, const struct SvMat *B) {
 		mulnd(AtiB.data, A->data, B->data, B->rows);
 		V.data[0] = dotnd(AtiB.data, A->data, B->rows);
 	}
-	assert(V.data[0] >= 0);
+	// assert(V.data[0] >= 0);
 	return V.data[0];
 }
 
@@ -224,7 +232,7 @@ static void survive_kalman_find_k(survive_kalman_state_t *k, survive_kalman_gain
 }
 
 static void survive_kalman_update_covariance(survive_kalman_state_t *k, const survive_kalman_gain_matrix *K,
-											 const struct SvMat *H) {
+											 const struct SvMat *H, const struct SvMat *R) {
 	int dims = k->state_cnt;
 	// Apparently cvEye isn't a thing!?
 	SV_CREATE_STACK_MAT(eye, dims, dims);
@@ -240,10 +248,34 @@ static void survive_kalman_update_covariance(survive_kalman_state_t *k, const su
 	SV_CREATE_STACK_MAT(tmp, dims, dims);
 	svCopy(Pk_k, &tmp, 0);
 
-	// P_k|k = (I - K * H) * P_k|k-1
-	svGEMM(&ikh, &tmp, 1, 0, 0, Pk_k, 0);
+	SV_CREATE_STACK_MAT(kRkt, dims, dims);
+	bool use_joseph_form = false; // R->rows == R->cols;
+	if (use_joseph_form) {
+		gemm_ABAt_add(&kRkt, K, R, 0);
+		for (int i = 0; i < kRkt.rows; i++) {
+			FLT v = svMatrixGet(&kRkt, i, i);
+			svMatrixSet(&kRkt, i, i, v > 0 ? v : 0);
+		}
+		assert(sane_covariance(&kRkt));
+		gemm_ABAt_add(Pk_k, &ikh, &tmp, &kRkt);
+	} else {
+		// P_k|k = (I - K * H) * P_k|k-1
+		svGEMM(&ikh, &tmp, 1, 0, 0, Pk_k, 0);
+	}
+	for (int i = 0; i < k->P.rows; i++) {
+		svMatrixSet(&k->P, i, i, fabs(svMatrixGet(&k->P, i, i)));
+		for (int j = i + 1; j < k->P.rows; j++) {
+			FLT v1 = svMatrixGet(&k->P, i, j);
+			FLT v2 = svMatrixGet(&k->P, j, i);
+			FLT v = (v1 + v2) / 2.;
+			if (fabs(v) < 1e-10)
+				v = 0;
+			svMatrixSet(&k->P, i, j, v);
+			svMatrixSet(&k->P, j, i, v);
+		}
+	}
 	// printf("!!!? %7.7f\n", svDet(Pk_k));
-	// assert(svDet(Pk_k) >= 0);
+	assert(sane_covariance(Pk_k));
 	assert(sv_is_finite(Pk_k));
 	if (k->log_level >= KALMAN_LOG_LEVEL) {
 		fprintf(stdout, "INFO gain\t");
@@ -448,6 +480,7 @@ static FLT survive_kalman_run_iterations(survive_kalman_state_t *k, const struct
 
 	SV_CREATE_STACK_MAT(iP, state_cnt, state_cnt);
 	svInvert(&k->P, &iP, SV_INVERT_METHOD_LU);
+	assert(sane_covariance(&k->P));
 	// sv_print_mat_v(k, 100, "iP", &iP, true);
 
 	assert(sv_is_finite(&iP));
@@ -636,12 +669,16 @@ static FLT survive_kalman_run_iterations(survive_kalman_state_t *k, const struct
 
 	return initial_error;
 }
+
 static FLT survive_kalman_predict_update_state_extended_adaptive_internal(
 	FLT t, survive_kalman_state_t *k, void *user, const struct SvMat *Z, SvMat *R, survive_kalman_meas_model_t *mk,
 	struct survive_kalman_update_extended_stats_t *stats) {
 	assert(R->rows == Z->rows && (R->cols == 1 || R->cols == R->rows));
 	assert(Z->cols == 1);
 
+	if (R->cols == R->rows) {
+		assert(sane_covariance(R));
+	}
 	kalman_measurement_model_fn_t Hfn = mk->Hfn;
 	bool adaptive = mk->adaptive;
 
@@ -725,7 +762,7 @@ static FLT survive_kalman_predict_update_state_extended_adaptive_internal(
 		sv_print_mat(k, "x1", x_k_k, false);
 	}
 
-	survive_kalman_update_covariance(k, &K, H);
+	survive_kalman_update_covariance(k, &K, H, R);
 
 	if (adaptive) {
 		// https://arxiv.org/pdf/1702.00884.pdf

@@ -44,6 +44,7 @@ STATIC_CONFIG_ITEM(RUN_POSER_ASYNC, "poser-async", 'i', "Run the poser in it's o
 STATIC_CONFIG_ITEM(PRECISE_POSE, "precise", 'i', "Always calculate precise pose", 0)
 STATIC_CONFIG_ITEM(USE_STATIONARY_SENSOR_WINDOW, "use-stationary-sensor-window", 'i',
 				   "Use larger time window when stationary", 1)
+STATIC_CONFIG_ITEM(MPFIT_FULL_COV, "mpfit-use-cov", 'i', "Use the mpfit covariance output", 1)
 
 typedef struct MPFITStats {
 	int meas_failures;
@@ -516,7 +517,9 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 				PoserData_normalize_scene(ctx, cameras, ctx->activeLighthouses, soLocation);
 			}
 
-			PoserData_lighthouse_poses_func(&pdl->hdr, so, cameras, 0, ctx->activeLighthouses, soLocation);
+			SvMat R = svMat(7, 7, result->covar_free);
+			PoserData_lighthouse_poses_func(&pdl->hdr, so, cameras, R.data ? &R : 0, ctx->activeLighthouses,
+											soLocation);
 		}
 
 		int axis_count = 0, lh_count = 0, sensor_ct = 0;
@@ -597,7 +600,7 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 	return rtn;
 }
 
-static void handle_results(MPFITData *d, PoserDataLight *lightData, FLT error, SurvivePose *estimate) {
+static void handle_results(MPFITData *d, PoserDataLight *lightData, FLT error, SurvivePose *estimate, const SvMat *R) {
 	SurviveObject *so = d->opt.so;
 	if (error > 0) {
 		if (so->object_type == SURVIVE_OBJECT_TYPE_HMD && so->ctx->request_floor_set) {
@@ -620,7 +623,7 @@ static void handle_results(MPFITData *d, PoserDataLight *lightData, FLT error, S
 typedef void (*handle_results_fn)(MPFITData *d, PoserDataLight *lightData, FLT error, SurvivePose *estimate);
 
 static FLT run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, SurviveSensorActivations *scene,
-									   SurvivePose *out) {
+									   SurvivePose *out, SvMat *R) {
 	SurviveObject *so = d->opt.so;
 	struct SurviveContext *ctx = so->ctx;
 
@@ -639,7 +642,7 @@ static FLT run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Surviv
 		return setup_results;
 	}
 
-	mp_result result = {0};
+	mp_result result = {.covar_free = survive_optimizer_get_free_parameters_count(&mpfitctx) == 7 && R ? R->data : 0};
 
 	survive_release_ctx_lock(ctx);
 	int res = survive_optimizer_run(&mpfitctx, &result);
@@ -1011,8 +1014,10 @@ int PoserMPFIT(SurviveObject *so, void **user, PoserData *pd) {
 		FLT error = -1;
 		if (++d->syncs_per_run_cnt >= d->syncs_per_run) {
 			d->syncs_per_run_cnt = 0;
-			error = run_mpfit_find_3d_structure(d, lightData, scene, &estimate);
-			handle_results(d, lightData, error, &estimate);
+			SV_CREATE_STACK_MAT(R, 7, 7);
+			bool useCovariance = survive_configf(ctx, MPFIT_FULL_COV_TAG, SC_GET, 1.);
+			error = run_mpfit_find_3d_structure(d, lightData, scene, &estimate, useCovariance ? &R : 0);
+			handle_results(d, lightData, error, &estimate, &R);
 		}
 		return 0;
 	}
