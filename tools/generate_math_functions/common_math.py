@@ -307,7 +307,7 @@ def axisangle2quat(axis_angle):
 
 
 def axisangle2pose(obj_p_axisangle):
-    return obj_p_axisangle.Pos, axisangle2quat(obj_p_axisangle.Rot)
+    return *obj_p_axisangle.Pos, *axisangle2quat(obj_p_axisangle.Rot)
 
 def add3d(a, b):
     return [a[0] + b[0], a[1] + b[1], a[2] + b[2]]
@@ -371,9 +371,10 @@ generate = [
     quatgetreciprocal,
     quatmagnitude,
     quatnormalize,
-        quatrotatevector,
-        quatrotatevector2,
+    quatrotatevector,
+    quatrotatevector2,
     quatrotationmatrix,
+    quat2axisangle,
     sensor_to_world,
     cross,
     apply_ang_velocity,
