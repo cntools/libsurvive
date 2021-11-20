@@ -774,9 +774,11 @@ void DisambiguatorStateBased(SurviveObject *so, const LightcapElement *le) {
 				SV_VERBOSE(5, "\tdrop_syncs[%d]           %u", i, d->stats.drop_syncs[i]);
 			}
 		}
-		Global_Disambiguator_data_t_detach_config(ctx, ctx->disambiguator_data);
-		free(ctx->disambiguator_data);
-		ctx->disambiguator_data = 0;
+		if (ctx->disambiguator_data) {
+			Global_Disambiguator_data_t_detach_config(ctx, ctx->disambiguator_data);
+			free(ctx->disambiguator_data);
+			ctx->disambiguator_data = 0;
+		}
 
 		free(so->disambiguator_data);
 		so->disambiguator_data = 0;

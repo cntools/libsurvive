@@ -616,7 +616,7 @@ static void handle_results(MPFITData *d, PoserDataLight *lightData, FLT error, S
 			so->ctx->request_floor_set = false;
 		}
 
-		PoserData_poser_pose_func(&lightData->hdr, so, estimate, error, 0);
+		PoserData_poser_pose_func(&lightData->hdr, so, estimate, error, R);
 	}
 }
 
@@ -767,7 +767,7 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 				   SURVIVE_POSE_EXPAND(gss->scenes[i].pose), fabs(err_up[2] - 1.));
 		for (int j = 0; j < gss->scenes[i].meas_cnt; j++) {
 			meas->object = i;
-			meas->variance = 1;
+			meas->variance = .01;
 			meas->value = gss->scenes[i].meas[j].value;
 			meas->lh = gss->scenes[i].meas[j].lh;
 			lh_meas[meas->lh]++;
@@ -884,7 +884,6 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 
 		SurvivePose *opt_cameras = survive_optimizer_get_camera(&mpfitctx);
 		SurvivePose cameras[NUM_GEN2_LIGHTHOUSES] = {0};
-		FLT variances[NUM_GEN2_LIGHTHOUSES] = {0};
 
 		for (int i = 0; i < mpfitctx.cameraLength; i++) {
 			if (!quatiszero(opt_cameras[i].Rot) && lh_meas[i] > 0) {
@@ -899,7 +898,6 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 				FLT v1 = 0, v2 = 0;
 				variance_measure_calc(&lh_meas_variance[i * 2], &v1);
 				variance_measure_calc(&lh_meas_variance[i * 2 + 1], &v2);
-				variances[i] = 0; //(v1 + v2) / 2. / (FLT)gss->scenes_cnt;
 			}
 		}
 
@@ -1017,7 +1015,7 @@ int PoserMPFIT(SurviveObject *so, void **user, PoserData *pd) {
 			SV_CREATE_STACK_MAT(R, 7, 7);
 			bool useCovariance = survive_configf(ctx, MPFIT_FULL_COV_TAG, SC_GET, 1.);
 			error = run_mpfit_find_3d_structure(d, lightData, scene, &estimate, useCovariance ? &R : 0);
-			handle_results(d, lightData, error, &estimate, &R);
+			handle_results(d, lightData, error, &estimate, useCovariance ? &R : 0);
 		}
 		return 0;
 	}

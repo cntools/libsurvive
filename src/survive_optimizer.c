@@ -260,8 +260,8 @@ static inline void run_pair_measurement(survive_optimizer *mpfunc_ctx, size_t me
 						jout[j + k * 6] = 0;
 					}
 				}
-				derivs[jac_offset_obj + j][meas_idx] = fix_infinity(jout[j]);
-				derivs[jac_offset_obj + j][meas_idx + 1] = fix_infinity(jout[j + 6]);
+				derivs[jac_offset_obj + j][meas_idx] = fix_infinity(jout[j] / meas[0].variance);
+				derivs[jac_offset_obj + j][meas_idx + 1] = fix_infinity(jout[j + 6] / meas[1].variance);
 			}
 		}
 
@@ -270,8 +270,8 @@ static inline void run_pair_measurement(survive_optimizer *mpfunc_ctx, size_t me
 			reprojectModel->reprojectAxisAngleFullJacLhPose(out, pose, pt, world2lh, cal);
 			for (int j = 0; j < 6; j++) {
 				assert(derivs[jac_offset_lh + j] && "all 7 parameters should be the same for jacobian calculation");
-				derivs[jac_offset_lh + j][meas_idx] = fix_infinity(out[j]);
-				derivs[jac_offset_lh + j][meas_idx + 1] = fix_infinity(out[j + 6]);
+				derivs[jac_offset_lh + j][meas_idx] = fix_infinity(out[j] / meas[0].variance);
+				derivs[jac_offset_lh + j][meas_idx + 1] = fix_infinity(out[j + 6] / meas[1].variance);
 			}
 		}
 	}
@@ -303,7 +303,7 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
 			reprojectModel->reprojectAxisAngleAxisJacobFn[meas->axis](out, pose, pt, world2lh, cal + meas->axis);
 			for (int j = 0; j < 6; j++) {
 				assert(derivs[jac_offset_obj + j]);
-				derivs[jac_offset_obj + j][meas_idx] = isfinite(out[j]) ? out[j] : 0;
+				derivs[jac_offset_obj + j][meas_idx] = isfinite(out[j]) ? out[j] / meas->variance : 0;
 			}
 		}
 
@@ -311,7 +311,7 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
 			reprojectModel->reprojectAxisAngleAxisJacobLhPoseFn[meas->axis](out, pose, pt, world2lh, cal + meas->axis);
 			for (int j = 0; j < 6; j++) {
 				assert(derivs[jac_offset_lh + j]);
-				derivs[jac_offset_lh + j][meas_idx] = isfinite(out[j]) ? out[j] : 0;
+				derivs[jac_offset_lh + j][meas_idx] = isfinite(out[j]) ? out[j] / meas->variance : 0;
 			}
 		}
 	}

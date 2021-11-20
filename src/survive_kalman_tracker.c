@@ -39,7 +39,9 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 
     STRUCT_CONFIG_ITEM("light-max-error",  "Maximum error to integrate into lightcap", -1, t->lightcap_max_error)
     STRUCT_CONFIG_ITEM("light-variance",  "Variance of light sensor readings", 1e-4, t->light_var)
-	STRUCT_CONFIG_ITEM("obs-pos-variance",  "Variance of position integration from light capture",
+    STRUCT_CONFIG_ITEM("obs-cov-scale",  "Covariance matrix scaling for obs",
+                       1, t->obs_cov_scale)
+    STRUCT_CONFIG_ITEM("obs-pos-variance",  "Variance of position integration from light capture",
 					   1e-4, t->obs_pos_var)
 	STRUCT_CONFIG_ITEM("obs-rot-variance",  "Variance of rotation integration from light capture",
 					   1e-6, t->obs_rot_var)
@@ -68,7 +70,7 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 
 	STRUCT_CONFIG_ITEM("kalman-zvu-moving", "", -1, t->zvu_moving_var)
 	STRUCT_CONFIG_ITEM("kalman-zvu-stationary", "", 1e-2, t->zvu_stationary_var)
-        STRUCT_CONFIG_ITEM("kalman-zvu-no-light", "", 1e-4, t->zvu_no_light_var)
+	STRUCT_CONFIG_ITEM("kalman-zvu-no-light", "", 1e-4, t->zvu_no_light_var)
 
 	STRUCT_CONFIG_ITEM("imu-acc-norm-penalty", "", 0, t->acc_norm_penalty)
 	STRUCT_CONFIG_ITEM("imu-acc-variance", "Variance of accelerometer", 1e-3, t->acc_var)
@@ -710,7 +712,7 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
 
 	integrate_variance_tracker(tracker, &tracker->pose_variance, (FLT*)pose->Pos, 7);
 
-	if (tracker->show_raw_obs) {
+    if (tracker->show_raw_obs) {
         static int report_in_imu = -1;
         if (report_in_imu == -1) {
             report_in_imu = survive_configi(so->ctx, "report-in-imu", SC_GET, 0);
@@ -766,12 +768,21 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
 	if (tracker->obs_pos_var >= 0 && tracker->obs_rot_var >= 0) {
         SV_CREATE_STACK_MAT(R, 7, 7);
         if(Ri) {
-            svCopy(Ri, &R, 0);
+            svScale(&R, Ri, tracker->obs_cov_scale);
         }
         FLT augR[] = {tracker->obs_pos_var, tracker->obs_pos_var, tracker->obs_pos_var, tracker->obs_rot_var,
                       tracker->obs_rot_var, tracker->obs_rot_var, tracker->obs_rot_var};
         for(int i =0;i < 7;i++)
             svMatrixSet(&R, i, i, svMatrixGet(&R, i, i) + augR[i]);
+
+
+        if(tracker->report_covariance_cnt > 0 && Ri && Ri->rows == Ri->cols) {
+            survive_recording_write_to_output_nopreamble(ctx->recptr, "%s' FULL_COVARIANCE ", so->codename);
+            for (int i = 0; i < R.cols * R.cols; i++) {
+                survive_recording_write_to_output_nopreamble(ctx->recptr, "%f ", R.data[i]);
+            }
+            survive_recording_write_to_output_nopreamble(ctx->recptr, "\n");
+        }
 
         FLT obs_error = integrate_pose(tracker, time, pose, tracker->adaptive_obs ? 0 : &R);
 		tracker->stats.obs_total_error += obs_error;

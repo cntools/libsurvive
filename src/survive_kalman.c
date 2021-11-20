@@ -133,7 +133,7 @@ void survive_kalman_state_init(survive_kalman_state_t *k, size_t state_cnt, kalm
 	k->F_fn = F ? F : transition_is_identity;
 	k->Q_fn = q_fn ? q_fn : user_is_q;
 
-	k->P = svMat(k->state_cnt, k->state_cnt, 0);
+	k->P = svMatCalloc(k->state_cnt, k->state_cnt);
 
 	k->Predict_fn = kalman_linear_predict;
 	k->user = user;

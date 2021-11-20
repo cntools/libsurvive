@@ -71,6 +71,8 @@ struct SurviveDriverSimulator {
 		FLT time_factor;
 		int obj_sensors;
 		int attractors;
+
+		FLT lh_duty_cycle;
 	} settings;
 };
 typedef struct SurviveDriverSimulator SurviveDriverSimulator;
@@ -93,14 +95,16 @@ STRUCT_CONFIG_SECTION(SurviveDriverSimulator)
     STRUCT_CONFIG_ITEM("simulator-sensor-droprate", "Chance to drop a sensor reading", .2, t->sensor_droprate)
     STRUCT_CONFIG_ITEM("simulator-noise-scale", "", 1., t->noise_scale)
     STRUCT_CONFIG_ITEM("simulator-lh-gen", "Lighthouse generation", 1, t->lh_version)
-END_STRUCT_CONFIG_SECTION(SurviveDriverSimulator)
-// clang-format on
 
-static double timestamp_in_s() {
-	static double start_time_s = 0;
-	if (start_time_s == 0.)
-		start_time_s = OGGetAbsoluteTime();
-	return OGGetAbsoluteTime() - start_time_s;
+    STRUCT_CONFIG_ITEM("simulator-lh-duty-cycle", "Duty cycle of lighthouses", 1., t->settings.lh_duty_cycle)
+END_STRUCT_CONFIG_SECTION(SurviveDriverSimulator)
+	// clang-format on
+
+	static double timestamp_in_s() {
+		static double start_time_s = 0;
+		if (start_time_s == 0.)
+			start_time_s = OGGetAbsoluteTime();
+		return OGGetAbsoluteTime() - start_time_s;
 }
 
 static FLT lighthouse_lasttime_of_angle(SurviveDriverSimulator *driver, int lh, FLT timestamp, FLT angle) {
@@ -119,6 +123,13 @@ FLT lighthouse_angle(SurviveDriverSimulator *driver, int lh, FLT timestamp) {
 static bool lighthouse_sensor_angle(SurviveDriverSimulator *driver, int lh, size_t idx, SurviveAngleReading ang) {
 	SurviveContext *ctx = driver->ctx;
 	FLT *pt = driver->so->sensor_locations + idx * 3;
+
+	if (driver->settings.lh_duty_cycle < 1) {
+		FLT t = driver->current_timestamp + driver->lhstates[lh].start_time;
+		if (fmod(t, 1) > driver->settings.lh_duty_cycle) {
+			return false;
+		}
+	}
 
 	LinmathVec3d ptInWorld;
 	LinmathVec3d normalInWorld;

@@ -46,7 +46,6 @@ extern "C" {
 void print_mat(const SvMat *M);
 
 SvMat *svInitMatHeader(SvMat *arr, int rows, int cols);
-SvMat *svCreateMat(int height, int width);
 
 enum svInvertMethod {
 	SV_INVERT_METHOD_UNKNOWN = 0,
@@ -187,11 +186,7 @@ static inline SvMat svMat(int rows, int cols, FLT *data) {
 	m.step = m.rows;
 #endif
 
-	if (!data) {
-		m.data = (FLT *)calloc(m.cols * m.rows, sizeof(FLT));
-	} else {
-		m.data = (FLT *)data;
-	}
+	m.data = (FLT *)data;
 	m.refcount = 0;
 	m.hdr_refcount = 0;
 
@@ -201,6 +196,10 @@ static inline SvMat svMat(int rows, int cols, FLT *data) {
 #endif
 
 	return m;
+}
+SvMat *svCreateMat(int height, int width);
+static inline SvMat svMatCalloc(int height, int width) {
+	return svMat(height, width, (FLT *)calloc(height * width, sizeof(FLT)));
 }
 static inline SvMat svVec(int rows, FLT *data) { return svMat(rows, 1, data); }
 static inline size_t sv_matrix_idx(const SvMat *mat, int row, int col) {

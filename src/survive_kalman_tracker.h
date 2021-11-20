@@ -53,6 +53,7 @@ typedef struct SurviveKalmanTracker {
 	FLT acc_norm_penalty;
 	FLT acc_var;
 	FLT gyro_var;
+	FLT obs_cov_scale;
 	FLT obs_pos_var;
 	FLT obs_rot_var;
 	FLT light_var;

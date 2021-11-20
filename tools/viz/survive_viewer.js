@@ -551,7 +551,8 @@ function update_fullcov(v) {
 	let fmax = Math.max(...fv);
 	const fmin = Math.min(...fv);
 	fmax = Math.max(fmax, -fmin);
-	const imageData = Uint8ClampedArray.from(fv.map(x => [...turbo(Math.min(1, Math.abs(x / fmax))), 255]).flat());
+	const imageData =
+		Uint8ClampedArray.from(fv.map(x => [...turbo(Math.min(1, Math.abs(fmax != 0 ? x / fmax : 0))), 255]).flat());
 	var canvas = covar_canvas[v[0]];
 
 	var ctx = canvas.getContext("2d");
