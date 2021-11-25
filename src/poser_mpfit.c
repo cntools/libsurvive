@@ -33,7 +33,7 @@ STATIC_CONFIG_ITEM(USE_JACOBIAN_FUNCTION, "use-jacobian-function", 'i',
 				   "If set to false, a slower numerical approximation of the jacobian is used", 1)
 STATIC_CONFIG_ITEM(SENSOR_VARIANCE_PER_SEC, "sensor-variance-per-sec", 'f',
 				   "Variance per second to add to the sensor input -- discounts older data", 0.0)
-STATIC_CONFIG_ITEM(SENSOR_VARIANCE, "sensor-variance", 'f', "Base variance for each sensor input", 1.0)
+STATIC_CONFIG_ITEM(SENSOR_VARIANCE, "sensor-variance", 'f', "Base variance for each sensor input", 1.0e-4)
 STATIC_CONFIG_ITEM(MPFIT_UP_BIAS, "mpfit-up-bias", 'f',
 				   "How much to weight having the accel direction on things pointing up", 1.0)
 
@@ -490,7 +490,7 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 		return -1;
 	}
 
-	bool error_failure = !general_optimizer_data_record_success(&d->opt, result->bestnorm, soLocation);
+	bool error_failure = !general_optimizer_data_record_success(&d->opt, result->bestnorm * d->sensor_variance * d->sensor_variance, soLocation);
 	if (!status_failure && !error_failure) {
 		quatnormalize(soLocation->Rot, soLocation->Rot);
 
@@ -555,11 +555,11 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 
 		SV_VERBOSE(
 			worldEstablished ? 110 : 100,
-			"MPFIT success %s %f7.5s %s %f/%10.10f (%3d measurements, %s result, %d lighthouses, %d axis, %6.3fms "
+			"MPFIT success %s %f7.5s %s %f/%10.10f/%10.10f (%3d measurements, %s result, %d lighthouses, %d axis, %6.3fms "
 			"time_window, %2d old_meas (avg %6.3fms) run #%d)",
 			survive_colorize(so->codename), survive_run_time(ctx),
             survive_colorize(SurviveSensorActivations_stationary_time(&so->activations) > 4800000 ? "STILL" : "MOVE "),
-			result->orignorm, result->bestnorm, (int)meas_size,
+			result->orignorm, result->bestnorm, sqrt(result->bestnorm / (mpfitctx->measurementsCnt - result->nfree + 1) * d->sensor_variance * d->sensor_variance),  (int)meas_size,
 			survive_optimizer_error(res), get_lh_count(meas_for_lhs_axis), get_axis_count(meas_for_lhs_axis),
 			user_data->stats.time_window / 48000000. * 1000., user_data->stats.old_measurements,
 			user_data->stats.old_measurements_age / 48000000. * 1000. / (.001 + user_data->stats.old_measurements),
@@ -767,7 +767,7 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 				   SURVIVE_POSE_EXPAND(gss->scenes[i].pose), fabs(err_up[2] - 1.));
 		for (int j = 0; j < gss->scenes[i].meas_cnt; j++) {
 			meas->object = i;
-			meas->variance = .01;
+			meas->variance = d->sensor_variance;
 			meas->value = gss->scenes[i].meas[j].value;
 			meas->lh = gss->scenes[i].meas[j].lh;
 			lh_meas[meas->lh]++;
@@ -873,7 +873,8 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 	int res = survive_optimizer_run(&mpfitctx, &result);
 	survive_get_ctx_lock(ctx);
 	bool status_failure = res <= 0;
-	if (status_failure || result.bestnorm > 1e-2) {
+	FLT sensor_covariance = d->sensor_variance * d->sensor_variance;
+	if (status_failure || result.bestnorm * sensor_covariance > 1e-2) {
 		SV_WARN("MPFIT status failure %f/%f (%d measurements, %d, %s)", result.orignorm, result.bestnorm,
 				(int)mpfitctx.measurementsCnt, res, survive_optimizer_error(res));
 

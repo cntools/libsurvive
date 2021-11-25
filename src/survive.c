@@ -44,6 +44,11 @@ STATIC_CONFIG_ITEM(OUTPUT_CALLBACK_STATS, "output-callback-stats", 'f',
 				   "Print cb stats every given number of seconds. 0 disables this output.", 0.);
 STATIC_CONFIG_ITEM(THREADED_POSERS, "threaded-posers", 'i', "Whether or not to run each poser in their own thread.", 0)
 
+STATIC_CONFIG_ITEM(LH_0_DISABLE, "lighthouse-0-disable", 'i', "Disable lh at idx 0", 0)
+STATIC_CONFIG_ITEM(LH_1_DISABLE, "lighthouse-1-disable", 'i', "Disable lh at idx 1", 0)
+STATIC_CONFIG_ITEM(LH_2_DISABLE, "lighthouse-2-disable", 'i', "Disable lh at idx 2", 0)
+STATIC_CONFIG_ITEM(LH_3_DISABLE, "lighthouse-3-disable", 'i', "Disable lh at idx 3", 0)
+
 const char *survive_config_file_name(struct SurviveContext *ctx) {
 	return survive_configs(ctx, "configfile", SC_GET, DEFAULT_CONFIG_PATH);
 }
