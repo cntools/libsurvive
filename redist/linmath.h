@@ -102,6 +102,8 @@ typedef struct LinmathAxisAnglePose {
 	LinmathAxisAngle AxisAngleRot;
 } LinmathAxisAnglePose;
 
+typedef LinmathAxisAnglePose LinmathAxisAngleVelocity;
+
 struct LinmathLine3d {
 	LinmathVec3d a, b;
 };
@@ -260,6 +262,8 @@ LINMATH_EXPORT void ApplyPoseToPoint(LinmathPoint3d pout, const LinmathPose *pos
 // This is the quat equivalent of 'pout = lhs_pose * rhs_pose' if poses were a 4x4 matrix in homogenous space
 LINMATH_EXPORT void ApplyPoseToPose(LinmathPose *pout, const LinmathPose *lhs_pose, const LinmathPose *rhs_pose);
 
+LINMATH_EXPORT void ApplyAxisAngleVelocity(LinmathAxisAnglePose *p_1, FLT t, const LinmathAxisAnglePose *p_0,
+										   const LinmathAxisAngleVelocity *vel);
 LINMATH_EXPORT void ApplyAxisAnglePoseToPoint(LinmathPoint3d pout, const LinmathAxisAnglePose *pose,
 											  const LinmathPoint3d pin);
 LINMATH_EXPORT void ApplyAxisAnglePoseToPose(LinmathAxisAnglePose *pout, const LinmathAxisAnglePose *lhs_pose,
@@ -269,9 +273,19 @@ LINMATH_EXPORT void ApplyAxisAnglePoseToPose(LinmathAxisAnglePose *pout, const L
 // Identity ( [0, 0, 0], [1, 0, 0, 0] )
 // by definition.
 LINMATH_EXPORT void InvertPose(LinmathPose *poseout, const LinmathPose *pose_in);
+
 static inline LinmathPose InvertPoseRtn(const LinmathPose *pose_in) {
 	LinmathPose rtn;
+
 	InvertPose(&rtn, pose_in);
+	return rtn;
+}
+
+LINMATH_EXPORT void InvertAAPose(LinmathAxisAnglePose *poseout, const LinmathAxisAnglePose *pose_in);
+static inline LinmathAxisAnglePose InvertAAPoseRtn(const LinmathAxisAnglePose *pose_in) {
+	LinmathAxisAnglePose rtn;
+
+	InvertAAPose(&rtn, pose_in);
 	return rtn;
 }
 
@@ -325,6 +339,19 @@ static inline LinmathPose EulerPose2Pose(const LinmathEulerPose *pose) {
 	LinmathPose p;
 	copy3d(p.Pos, pose->Pos);
 	quatfromeuler(p.Rot, pose->EulerRot);
+	return p;
+}
+
+static inline LinmathAxisAnglePose Pose2AAPose(const LinmathPose *pose) {
+	LinmathAxisAnglePose p;
+	copy3d(p.Pos, pose->Pos);
+	quattoaxisanglemag(p.AxisAngleRot, pose->Rot);
+	return p;
+}
+static inline LinmathPose AAPose2Pose(const LinmathAxisAnglePose *pose) {
+	LinmathPose p;
+	copy3d(p.Pos, pose->Pos);
+	quatfromaxisanglemag(p.Rot, pose->AxisAngleRot);
 	return p;
 }
 

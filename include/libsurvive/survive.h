@@ -535,6 +535,8 @@ SURVIVE_EXPORT void survive_find_ang_velocity(SurviveAngularVelocity out, FLT td
 											  const LinmathQuat to);
 SURVIVE_EXPORT void survive_apply_ang_velocity(LinmathQuat out, const SurviveAngularVelocity v, FLT t,
 											   const LinmathQuat t0);
+SURVIVE_EXPORT void survive_apply_ang_velocity_aa(LinmathAxisAngle out, const SurviveAngularVelocity v, FLT t,
+												  const LinmathAxisAngle t0);
 // Call these from your callback if overridden.
 // Accept higher-level data.
 SURVIVE_EXPORT void survive_default_ootx_received_process(struct SurviveContext *ctx, uint8_t bsd_idx);

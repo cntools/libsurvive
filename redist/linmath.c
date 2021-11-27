@@ -936,6 +936,16 @@ inline void ApplyAxisAnglePoseToPoint(LinmathPoint3d pout, const LinmathAxisAngl
 	for (int i = 0; i < 3; i++)
 		assert(isfinite(pout[i]));
 }
+
+inline void ApplyAxisAngleVelocity(LinmathAxisAnglePose *p_1, FLT t, const LinmathAxisAnglePose *p_0,
+								   const LinmathAxisAngleVelocity *vel) {
+	LinmathVec3d posDisplacement, velDisplacement;
+	scale3d(posDisplacement, vel->Pos, t);
+	scale3d(velDisplacement, vel->AxisAngleRot, t);
+
+	add3d(p_1->Pos, p_0->Pos, posDisplacement);
+	add3d(p_1->AxisAngleRot, p_0->AxisAngleRot, velDisplacement);
+}
 inline void ApplyAxisAnglePoseToPose(LinmathAxisAnglePose *pout, const LinmathAxisAnglePose *lhs_pose,
 									 const LinmathAxisAnglePose *rhs_pose) {
 	ApplyAxisAnglePoseToPoint(pout->Pos, lhs_pose, rhs_pose->Pos);
@@ -945,7 +955,12 @@ inline void ApplyAxisAnglePoseToPose(LinmathAxisAnglePose *pout, const LinmathAx
 	for (int i = 0; i < 3; i++)
 		assert(!isnan(pout->Pos[i]));
 }
+inline void InvertAAPose(LinmathAxisAnglePose *poseout, const LinmathAxisAnglePose *pose) {
+	scale3d(poseout->AxisAngleRot, pose->AxisAngleRot, -1);
 
+	axisanglerotatevector(poseout->Pos, poseout->AxisAngleRot, pose->Pos);
+	scale3d(poseout->Pos, poseout->Pos, -1);
+}
 inline void InvertPose(LinmathPose *poseout, const LinmathPose *pose) {
 	quatgetreciprocal(poseout->Rot, pose->Rot);
 

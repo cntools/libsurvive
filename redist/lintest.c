@@ -290,6 +290,53 @@ static void testFindBestIntersections() {
 	}
 }
 static void testNormPdf() { assertFLTEquals(linmath_norm_pdf(-2, -1.1, 1.34), 0.23760171); }
+
+static LinmathPose randomPose() {
+	LinmathPose out;
+	for (int i = 0; i < 3; i++)
+		out.Pos[i] = linmath_rand(-10, 10);
+	for (int i = 0; i < 4; i++)
+		out.Rot[i] = linmath_rand(-10, 10);
+	quatnormalize(out.Rot, out.Rot);
+	return out;
+}
+static LinmathAxisAnglePose randomAAPose() {
+	LinmathAxisAnglePose out;
+	for (int i = 0; i < 3; i++)
+		out.Pos[i] = linmath_rand(-10, 10);
+	for (int i = 0; i < 3; i++)
+		out.AxisAngleRot[i] = linmath_rand(-2, 2);
+	return out;
+}
+
+static void testAxisAnglePoses() {
+	LinmathPose p1 = randomPose();
+	LinmathAxisAnglePose aa_p1 = Pose2AAPose(&p1);
+	LinmathPose ip1 = InvertPoseRtn(&p1);
+	LinmathAxisAnglePose aa_ip1 = Pose2AAPose(&ip1);
+	LinmathAxisAnglePose aa_ip1p = InvertAAPoseRtn(&aa_p1);
+	ASSERT_FLTA_EQUALS(aa_ip1.Pos, aa_ip1p.Pos, 6);
+
+	LinmathAxisAngleVelocity v = randomAAPose(), v1, v2;
+
+	scalend(v1.Pos, v.Pos, 10, 6);
+	scalend(v2.Pos, v.Pos, -10, 6);
+	LinmathAxisAnglePose iv1 = InvertAAPoseRtn(&v1);
+	LinmathAxisAnglePose iv2 = InvertAAPoseRtn(&v2);
+
+	LinmathPose o2w = randomPose();
+	LinmathPose w2o = InvertPoseRtn(&o2w);
+
+	LinmathPose p2o = AAPose2Pose(&v1);
+	LinmathPose p2w;
+	ApplyPoseToPose(&p2w, &o2w, &p2o);
+	LinmathPose w2p = InvertPoseRtn(&p2w);
+
+	LinmathPose o2p = InvertPoseRtn(&p2o);
+	LinmathPose w2p_;
+	ApplyPoseToPose(&w2p_, &o2p, &w2o);
+}
+
 int main()
 {
 	testNormPdf();
@@ -304,6 +351,8 @@ int main()
 
 	testQuatFinding();
 	testQuatAsAngularVelocity();
+
+	testAxisAnglePoses();
 #if 1
 
 #define NONTRANSPOSED_DAVE
@@ -343,23 +392,6 @@ int main()
 	printf( "%f %f %f\n", PFTHREE( pOut1 ) );
 	printf( "%f %f %f\n", PFTHREE( pOut2 ) );
 
-//	qLH1[1]*=-1;
-//	qLH2[0]*=-1;
-
-/*
-	sub3d( pOut1, pLH1, pNLH1 );
-	sub3d( pOut2, pLH2, pNLH2 );
-
-
-	printf( "%f %f %f\n", PFTHREE( pOut1 ) );
-	printf( "%f %f %f\n", PFTHREE( pOut2 ) );
-
-	quatrotatevector( pOut1, qLH1, pOut1 );
-	quatrotatevector( pOut2, qLH2, pOut2 );
-
-	printf( "%f %f %f\n", PFTHREE( pOut1 ) );
-	printf( "%f %f %f\n", PFTHREE( pOut2 ) );
-*/
 	return 0;
 
 #endif

@@ -1126,6 +1126,12 @@ inline void survive_apply_ang_velocity(LinmathQuat out, const SurviveAngularVelo
 	quatfromaxisanglemag(rot_change, vel);
 	quatrotateabout(out, rot_change, t0);
 }
+inline void survive_apply_ang_velocity_aa(LinmathAxisAngle out, const SurviveAngularVelocity v, FLT t,
+										  const LinmathAxisAngle t0) {
+	SurviveAngularVelocity vel;
+	scale3d(vel, v, t);
+	axisanglerotateabout(out, vel, t0);
+}
 
 static double timestamp_in_s() { return OGGetAbsoluteTime() - OGStartTimeS(); }
 
