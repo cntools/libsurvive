@@ -11,16 +11,75 @@
 extern "C" {
 #endif
 
+enum survive_optimizer_measurement_type {
+	survive_optimizer_measurement_type_none,
+	survive_optimizer_measurement_type_light,
+	survive_optimizer_measurement_type_object_pose,
+	survive_optimizer_measurement_type_object_accel,
+	survive_optimizer_measurement_type_camera_accel,
+};
+
+enum survive_optimizer_parameter_type {
+	survive_optimizer_parameter_none,
+	survive_optimizer_parameter_object_pose,
+	survive_optimizer_parameter_object_velocity,
+	survive_optimizer_parameter_camera,
+	survive_optimizer_parameter_camera_parameters,
+	survive_optimizer_parameter_obj_points,
+};
+
 typedef struct {
 	FLT value;
-	FLT variance;
 	uint8_t lh;
 	uint8_t sensor_idx;
 	uint8_t axis;
 	int object;
+} survive_optimizer_light_measurement;
 
+typedef struct {
+	int object;
+	LinmathAxisAnglePose pose;
+} survive_optimizer_object_pose_measurement;
+
+typedef struct {
+	int object;
+	LinmathVec3d acc;
+} survive_optimizer_object_acc_measurement;
+
+typedef struct {
+	int camera;
+	LinmathVec3d acc;
+} survive_optimizer_camera_acc_measurement;
+
+typedef struct {
+	FLT time;
+	size_t size;
 	bool invalid;
+	FLT variance;
+
+	enum survive_optimizer_measurement_type meas_type;
+
+	union {
+		survive_optimizer_light_measurement light;
+		survive_optimizer_object_pose_measurement pose;
+		survive_optimizer_object_acc_measurement pose_acc;
+		survive_optimizer_camera_acc_measurement camera_acc;
+	};
 } survive_optimizer_measurement;
+
+/*
+typedef struct {
+FLT time;
+FLT value;
+FLT variance;
+uint8_t lh;
+uint8_t sensor_idx;
+uint8_t axis;
+int object;
+
+bool invalid;
+} survive_optimizer_measurement;
+*/
 
 struct mp_par_struct;
 struct mp_result_struct;
@@ -32,15 +91,17 @@ typedef struct survive_optimizer {
 	survive_optimizer_measurement *measurements;
 	size_t measurementsCnt;
 
-	LinmathPoint3d *obj_up_vectors;
-	LinmathPoint3d *cam_up_vectors;
+	// LinmathPoint3d *obj_up_vectors;
+	// LinmathPoint3d *cam_up_vectors;
 
-	FLT upVectorBias;
+	FLT upVectorVariance;
 	FLT current_bias;
 	SurvivePose initialPose;
+	FLT timecode;
 
 	FLT *parameters;
 	struct mp_par_struct *parameters_info;
+	bool disableVelocity;
 
 	int poseLength;
 	int cameraLength;
@@ -65,17 +126,16 @@ typedef struct survive_optimizer {
 #define SURVIVE_OPTIMIZER_SETUP_BUFFERS(ctx, alloc_fn, ...)                                                            \
 	{                                                                                                                  \
 		size_t par_count = survive_optimizer_get_parameters_count(&(ctx));                                             \
-		size_t sensor_cnt = 32;                                                                                        \
+		size_t meas_count = survive_optimizer_get_max_measurements_count(&(ctx));                                      \
 		void *param_buffer = alloc_fn(((ctx).parameters), par_count * sizeof(FLT));                                    \
 		void *param_info_buffer = alloc_fn(((ctx).parameters_info), par_count * sizeof(struct mp_par_struct));         \
-		size_t measurementAllocationSize =                                                                             \
-			(ctx).poseLength * sizeof(survive_optimizer_measurement) * 2 * sensor_cnt * NUM_GEN2_LIGHTHOUSES;          \
+		size_t measurementAllocationSize = meas_count * sizeof(survive_optimizer_measurement);                         \
 		size_t upAllocationSize = sizeof(LinmathPoint3d) * ((ctx).poseLength + (ctx).cameraLength);                    \
 		void *measurement_buffer = alloc_fn(((ctx).measurements), measurementAllocationSize + upAllocationSize);       \
 		void *sos_buffer = alloc_fn((ctx).sos, sizeof(SurviveObject *) * (ctx).poseLength);                            \
-		survive_optimizer_setup_buffers(&(ctx), param_buffer, param_info_buffer, measurement_buffer, sos_buffer);      \
 		SurviveObject *sos[] = {__VA_ARGS__};                                                                          \
-		memcpy((ctx).sos, sos, sizeof(sos));                                                                           \
+		memcpy(sos_buffer, sos, sizeof(sos));                                                                          \
+		survive_optimizer_setup_buffers(&(ctx), param_buffer, param_info_buffer, measurement_buffer, sos_buffer);      \
 	}
 
 #define SURVIVE_OPTIMIZER_ALLOCA(ctx, size) alloca(size)
@@ -93,6 +153,7 @@ typedef struct survive_optimizer {
 
 SURVIVE_EXPORT void *survive_optimizer_realloc(void *old_ptr, size_t size);
 
+SURVIVE_EXPORT int survive_optimizer_get_max_measurements_count(const survive_optimizer *ctx);
 SURVIVE_EXPORT int survive_optimizer_get_parameters_count(const survive_optimizer *ctx);
 SURVIVE_EXPORT int survive_optimizer_get_free_parameters_count(const survive_optimizer *ctx);
 
@@ -103,6 +164,8 @@ SURVIVE_EXPORT void survive_optimizer_setup_buffers(survive_optimizer *ctx, void
 													void *so_buffer);
 
 SURVIVE_EXPORT SurvivePose *survive_optimizer_get_pose(survive_optimizer *ctx);
+SURVIVE_EXPORT int survive_optimizer_get_velocity_index(const survive_optimizer *ctx);
+SURVIVE_EXPORT SurviveVelocity *survive_optimizer_get_velocity(survive_optimizer *ctx);
 
 SURVIVE_EXPORT int survive_optimizer_get_camera_index(const survive_optimizer *ctx);
 
@@ -132,7 +195,8 @@ SURVIVE_EXPORT void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx
 
 SURVIVE_EXPORT const char *survive_optimizer_error(int status);
 
-SURVIVE_EXPORT int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result);
+SURVIVE_EXPORT int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result,
+										 struct SvMat *R);
 
 SURVIVE_EXPORT void survive_optimizer_set_reproject_model(survive_optimizer *optimizer,
 														  const survive_reproject_model_t *reprojectModel);
@@ -149,6 +213,17 @@ SURVIVE_EXPORT int survive_optimizer_nonfixed_cnt(const survive_optimizer *optim
 
 SURVIVE_EXPORT void survive_optimizer_get_nonfixed(const survive_optimizer *optimizer, FLT *params);
 SURVIVE_EXPORT void survive_optimizer_set_nonfixed(survive_optimizer *optimizer, FLT *params);
+
+SURVIVE_EXPORT survive_optimizer_measurement *survive_optimizer_emplace_meas(survive_optimizer *ctx,
+																			 enum survive_optimizer_measurement_type);
+SURVIVE_EXPORT void survive_optimizer_pop_meas(survive_optimizer *ctx, int cnt);
+
+SURVIVE_EXPORT FLT *survive_optimizer_obj_up_vector(survive_optimizer *ctx, int i);
+SURVIVE_EXPORT FLT *survive_optimizer_cam_up_vector(survive_optimizer *ctx, int i);
+SURVIVE_EXPORT void survive_optimizer_set_cam_up_vector(survive_optimizer *ctx, int i, FLT variance,
+														const LinmathVec3d up);
+SURVIVE_EXPORT void survive_optimizer_set_obj_up_vector(survive_optimizer *ctx, int i, FLT variance,
+														const LinmathVec3d up);
 
 #ifdef __cplusplus
 }

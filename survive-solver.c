@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
 	result.covar = alloca(survive_optimizer_get_parameters_count(mpctx) *
 						  survive_optimizer_get_parameters_count(mpctx) * sizeof(double));
 
-	int status = survive_optimizer_run(mpctx, &result);
+	int status = survive_optimizer_run(mpctx, &result, 0);
 
 	FLT lh_errors[NUM_GEN2_LIGHTHOUSES] = {0};
 	size_t lh_cnt[NUM_GEN2_LIGHTHOUSES] = {0};
@@ -63,11 +63,11 @@ int main(int argc, char **argv) {
 	printf("Residuals:\n");
 	for (int i = 0; i < mpctx->measurementsCnt; i++) {
 		survive_optimizer_measurement *meas = &mpctx->measurements[i];
-		printf("%4d LH %2d Axis %d Sensor %2d Object %d Valid %d %+3.5f\n", i, meas->lh, meas->axis, meas->sensor_idx,
-			   meas->object, meas->invalid, result.resid[i]);
+		printf("%4d LH %2d Axis %d Sensor %2d Object %d Valid %d %+3.5f\n", i, meas->light.lh, meas->light.axis,
+			   meas->light.sensor_idx, meas->light.object, meas->invalid, result.resid[i]);
 
-		lh_errors[meas->lh] += fabs(result.resid[i]);
-		lh_cnt[meas->lh]++;
+		lh_errors[meas->light.lh] += fabs(result.resid[i]);
+		lh_cnt[meas->light.lh]++;
 	}
 	printf("\n");
 	printf("LH errors:\n");

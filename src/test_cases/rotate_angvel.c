@@ -1,4 +1,6 @@
 
+#include "../generated/survive_imu.generated.h"
+#include "../src/generated/survive_reproject.aux.generated.h"
 #include "test_case.h"
 #include <linmath.h>
 
@@ -93,5 +95,17 @@ TEST(AngularVelocity, apply2) {
 	fprintf(stderr, "%.15f %.15f %.15f %.15f\n", gt[0], gt[1], gt[2], gt[3]);
 	ASSERT_QUAT_EQ(c, gt);
 
+	return 0;
+}
+
+TEST(AxisAngle, Compose) {
+	LinmathAxisAngle a1 = {.1, .2, .3};
+	LinmathAxisAngle a2 = {-.2, .4, 0};
+	LinmathAxisAngle c1, c2;
+
+	axisanglerotateabout(c1, a1, a2);
+	gen_axisanglecompose(c2, a1, a2);
+
+	ASSERT_DOUBLE_ARRAY_EQ(3, c1, c2);
 	return 0;
 }

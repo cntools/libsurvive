@@ -75,7 +75,6 @@ def kalman_model_predict(t, kalman_model):
         vpos[1] + obj_acc[1] * t,
         vpos[2] + obj_acc[2] * t,
     ]
-
     return [ *new_pos, *new_rot, *new_vpos, *obj_v.Rot, *obj_acc,
              kalman_model.AccScale, *kalman_model.IMUCorrection,
              *kalman_model.AccBias, *kalman_model.GyroBias ]
@@ -90,13 +89,12 @@ if __name__ == "__main__":
 
         generate_code_and_jacobians(imu_rot_f, transpose=True)
         generate_code_and_jacobians(kalman_model_predict)
-        generate_code_and_jacobians(invert_pose)
-        for f in [quatrotatevector, imu_rot_f_aa, imu_correct_up, imu_predict_up, quatrotateabout,
-                  imu_predict, imu_predict_gyro, quatfind, quat2axisangle, axisangle2quat, axisangle2pose]:
+        #generate_code_and_jacobians(invert_pose)
+        for f in [imu_rot_f_aa, imu_correct_up, imu_predict_up, quatrotateabout,
+                  imu_predict, imu_predict_gyro, quatfind]:
 
+            if f in common_math.generate:
+                sys.stderr.write(f, "!!!!!\n")
             generate_ccode(f)
             j = generate_jacobians(f, transpose=f == imu_rot_f)
-
-
-            ##print(j)
 

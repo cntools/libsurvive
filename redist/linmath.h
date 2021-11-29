@@ -146,11 +146,13 @@ LINMATH_EXPORT void mean3d(LinmathVec3d out, const FLT *pts, int num_pts);
 
 LINMATH_EXPORT FLT dot3d(const FLT *a, const FLT *b);
 LINMATH_EXPORT FLT dotnd(const FLT *a, const FLT *b, size_t n);
+LINMATH_EXPORT FLT dotnd_strided(const FLT *a, const FLT *b, size_t n, int a_stride, int b_stride);
 
 // Returns 0 if equal.  If either argument is null, 0 will ALWAYS be returned.
 LINMATH_EXPORT int compare3d(const FLT *a, const FLT *b, FLT epsilon);
 
 LINMATH_EXPORT void copy3d(FLT *out, const FLT *in);
+LINMATH_EXPORT void copynd(FLT *out, const FLT *in, size_t n);
 
 LINMATH_EXPORT FLT magnitude3d(const FLT *a);
 LINMATH_EXPORT FLT dist3d(const FLT *a, const FLT *b);

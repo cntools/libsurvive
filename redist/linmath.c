@@ -99,6 +99,13 @@ LINMATH_EXPORT FLT dotnd(const FLT *a, const FLT *b, size_t n) {
 	}
 	return rtn;
 }
+LINMATH_EXPORT FLT dotnd_strided(const FLT *a, const FLT *b, size_t n, int a_stride, int b_stride) {
+	FLT rtn = 0;
+	for (int i = 0; i < n; i++) {
+		rtn += a[i * a_stride] * b[i * b_stride];
+	}
+	return rtn;
+}
 int compare3d(const FLT *a, const FLT *b, FLT epsilon) {
 	if (!a || !b)
 		return 0;
@@ -122,7 +129,7 @@ inline void copy3d(FLT *out, const FLT *in) {
 	out[1] = in[1];
 	out[2] = in[2];
 }
-
+LINMATH_EXPORT void copynd(FLT *out, const FLT *in, size_t n) { memcpy(out, in, n * sizeof(FLT)); }
 LINMATH_EXPORT FLT magnitude3d(const FLT *a) { return FLT_SQRT(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]); }
 FLT dist3d(const FLT *a, const FLT *b) {
 	LinmathPoint3d tmp;
@@ -617,7 +624,6 @@ inline void quatfind(LinmathQuat q, const LinmathQuat q0, const LinmathQuat q1) 
 	quatgetconjugate(iq0, q0);
 	quatrotateabout(q, q1, iq0);
 }
-
 inline void axisanglerotateabout(LinmathAxisAngle out, const LinmathAxisAngle a0, const LinmathAxisAngle a1) {
 	LinmathQuat q0, q1, qout;
 	quatfromaxisangle(q0, a0, norm3d(a0));

@@ -5,7 +5,7 @@ static void run_buffer(survive_async_optimizer *self, uint8_t idx) {
 	self->active_buffer = idx;
 	OGUnlockMutex(self->active_buffer_lock);
 	self->completed++;
-	int status = survive_optimizer_run(&self->buffers[idx].optimizer, &results);
+	int status = survive_optimizer_run(&self->buffers[idx].optimizer, &results, 0);
 	if (self->cb) {
 		self->cb(&self->buffers[idx], status, &results);
 	}

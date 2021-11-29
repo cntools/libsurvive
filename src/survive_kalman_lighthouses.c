@@ -4,6 +4,7 @@
 #include "survive_reproject_gen2.h"
 
 #include "generated/survive_imu.generated.h"
+#include "generated/survive_reproject.aux.generated.h"
 
 STRUCT_CONFIG_SECTION(SurviveKalmanLighthouse)
 STRUCT_CONFIG_ITEM("lh-light-variance", "", -1e-2, t->light_variance);

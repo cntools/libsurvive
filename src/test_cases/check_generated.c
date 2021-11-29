@@ -13,9 +13,9 @@
 #include "../generated/survive_imu.generated.h"
 #include "../generated/survive_reproject.generated.h"
 
-#ifdef HAVE_AUX_GENERATED
+//#ifdef HAVE_AUX_GENERATED
 #include "../generated/survive_reproject.aux.generated.h"
-#endif
+//#endif
 
 #ifndef M_PI
 #define M_PI LINMATHPI

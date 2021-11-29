@@ -101,24 +101,23 @@ int main(int argc, char **argv) {
 
 	survive_optimizer_setup_pose(&mpfitctx, &object, false, true);
 
-	survive_optimizer_measurement *meas = mpfitctx.measurements;
 	for (int lh = 0; lh < cam_cnt; lh++) {
 		for (int i = 0; i < device->sensor_ct; i++) {
 			SurviveAngleReading ang;
 			if (lighthouse_sensor_angle(device, lh, i, ang, 0)) {
 				for (int j = 0; j < 2; j++) {
-					meas->sensor_idx = i;
-					meas->object = 0;
-					meas->axis = j;
-					meas->lh = lh;
-					meas->value = ang[j];
+					survive_optimizer_measurement *meas =
+						survive_optimizer_emplace_meas(&mpfitctx, survive_optimizer_measurement_type_light);
+					meas->light.sensor_idx = i;
+					meas->light.object = 0;
+					meas->light.axis = j;
+					meas->light.lh = lh;
+					meas->light.value = ang[j];
 					meas->variance = 1;
-					meas++;
 				}
 			}
 		}
 	}
-	mpfitctx.measurementsCnt = meas - mpfitctx.measurements;
 	mpfitctx.cfg = survive_optimizer_precise_config();
 
 	size_t idx = 0;
@@ -138,7 +137,7 @@ int main(int argc, char **argv) {
 
 				SurvivePose orig = *p;
 
-				survive_optimizer_run(&mpfitctx, &result);
+				survive_optimizer_run(&mpfitctx, &result, 0);
 
 				if (norm3d(p->Pos) < .01) {
 					// report_pose(ctx, idx, &orig, 0xFF00);

@@ -1,4 +1,4 @@
-all: ../../src/generated/survive_imu.generated.h ../../src/generated/survive_reproject.generated.h
+all: ../../src/generated/survive_imu.generated.h ../../src/generated/survive_reproject.generated.h ../../src/generated/survive_reproject.aux.generated.h
 
 ../../src/generated/survive_imu.generated.h: imu_functions.py codegen.py  common_math.py
 	python imu_functions.py > ../../src/generated/survive_imu.generated.h

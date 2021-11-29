@@ -21,3 +21,4 @@ if __name__ == "__main__":
             for f in gen2.generate + gen1.generate:
                 generate_ccode(f, suffix=suffix)
                 generate_jacobians(f, suffix=suffix)
+

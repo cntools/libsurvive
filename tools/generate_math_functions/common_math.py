@@ -1,5 +1,5 @@
 import symengine as sp
-from symengine import sqrt, cos, sin, Piecewise, atan2
+from symengine import sqrt, cos, sin, Piecewise, atan2, acos
 import sympy
 
 import math
@@ -56,6 +56,9 @@ axis = sp.symbols('axis')
 
 def axis_angle():
     return sp.symbols('aa_x, aa_y, aa_z')
+
+def axis_angle2():
+    return sp.symbols('aa2_x, aa2_y, aa2_z')
 
 
 obj_rot = (obj_qw, obj_qi, obj_qj, obj_qk)
@@ -238,6 +241,37 @@ def axisanglemagnitude(axis_angle):
     mag = qw * qw + qi * qi + qj * qj
     return sp.sqrt(mag + 1e-10)
 
+def dot3d(a, b):
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+
+def cross3d(a, b):
+    return sp.Matrix([
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ])
+
+
+def axisanglecompose(axis_angle, axis_angle2):
+    a = axisanglemagnitude(axis_angle)
+    ah = axisanglenormalize(axis_angle)
+
+    b = axisanglemagnitude(axis_angle2)
+    bh = axisanglenormalize(axis_angle2)
+
+    sina = sin(a / 2)
+    asina = [ah[0] * sina, ah[1] * sina, ah[2] * sina]
+
+    sinb = sin(b / 2)
+    bsinb = [bh[0] * sinb, bh[1] * sinb, bh[2] * sinb]
+
+    c = 2 * acos(cos(a / 2)*cos(b / 2) - dot3d(asina, bsinb))
+    d = axisanglenormalize(cos(a / 2) * sp.Matrix(bsinb) + cos(b / 2) * sp.Matrix(asina) + cross3d(asina, bsinb))
+    return sp.Matrix([
+            c * d[0],
+            c * d[1],
+            c * d[2]
+        ])
 
 def axisanglerotationmatrix(axis_angle):
     R = axisanglemagnitude(axis_angle)
@@ -331,6 +365,13 @@ def apply_ang_velocity(axis_angle, time, q):
         return quatrotateabout(q1, axisangle2quat(q))
     return quatrotateabout(q1, q)
 
+def apply_ang_velocity_aa(axis_angle, time, axis_angle2):
+    qi, qj, qk = axis_angle
+    q1 = (qi * time, qj * time, qk * time)
+    #q1 = (qi * time, qj * time, qk * time)
+    #return axisanglerotatevector(q1, axis_angle2)
+    return axisanglecompose(q1, axis_angle2)
+
 def apply_kinematics(pos, time, vel, acc=None):
     if acc is None:
         acc = [0, 0, 0]
@@ -361,7 +402,7 @@ def up_in_obj():
 generate = [
     apply_axisangle_pose_to_pt,
     apply_pose_to_pt,
-    axisangle2pose,
+    #axisangle2pose,
     axisangle2quat,
     axisanglemagnitude,
     axisanglenormalize,
@@ -377,8 +418,9 @@ generate = [
     quat2axisangle,
     sensor_to_world,
     cross,
-    apply_ang_velocity,
     obj2world_aa_up_err,
     world2lh_aa_up_err,
-
+    apply_ang_velocity,
+    apply_ang_velocity_aa,
+    axisanglecompose
 ]
