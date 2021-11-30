@@ -91,7 +91,7 @@ typedef struct MPFITData {
   MPFITStats stats;
 
   int record_reprojection_error;
-  FLT current_bias, up_variance;
+  FLT current_bias, obj_up_variance, lh_up_variance;
   int model_velocity;
   bool globalDataAvailable;
   struct survive_async_optimizer *async_optimizer;
@@ -101,8 +101,11 @@ STRUCT_CONFIG_SECTION(MPFITData)
 STRUCT_CONFIG_ITEM("mpfit-model-velocity", "Model velocity in non mpfit process", 1, t->model_velocity)
 STRUCT_CONFIG_ITEM("mpfit-current-bias", "", 0, t->current_bias)
 STRUCT_CONFIG_ITEM("mpfit-record-reprojection-error", "", 0, t->record_reprojection_error)
-STRUCT_CONFIG_ITEM("mpfit-up-variance", "How much to weight having the accel direction on things pointing up", 1.,
-				   t->up_variance)
+STRUCT_CONFIG_ITEM("mpfit-object-up-variance",
+				   "How much to weight having the accel direction on tracked objects pointing up", -1,
+				   t->obj_up_variance)
+STRUCT_CONFIG_ITEM("mpfit-lighthouse-up-variance",
+				   "How much to weight having the accel direction on lighthouses pointing up", 1., t->lh_up_variance)
 END_STRUCT_CONFIG_SECTION(MPFITData)
 
 static size_t remove_lh_from_meas(survive_optimizer *mpfitctx, int lh) {
@@ -295,8 +298,9 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 
 	survive_optimizer_setup_pose(mpfitctx, 0, !worldEstablished, d->use_jacobian_function_obj);
 	SurviveVelocity *velocity = survive_optimizer_get_velocity(mpfitctx);
-	velocity[0] = so->velocity;
-
+	if (velocity) {
+		velocity[0] = so->velocity;
+	}
 	if (norm3d(so->activations.accel) == 0 || !isfinite(norm3d(so->activations.accel))) {
 		return -2;
 	}
@@ -311,7 +315,7 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 		return -1;
 	}
 
-	FLT upVectorBias = d->up_variance;
+	FLT upVectorBias = d->lh_up_variance;
 	if (!worldEstablished && upVectorBias > 0) {
 		FLT accel_mag = norm3d(so->activations.accel);
 		const FLT up[3] = {0, 0, 1};
@@ -399,7 +403,7 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 
 	size_t skipped_lh_cnt = 0;
 	for (int lh = 0; lh < so->ctx->activeLighthouses; lh++) {
-		survive_optimizer_set_cam_up_vector(mpfitctx, lh, mpfitctx->upVectorVariance, ctx->bsd[lh].accel);
+		survive_optimizer_set_cam_up_vector(mpfitctx, lh, d->lh_up_variance, ctx->bsd[lh].accel);
 		FLT meas[2] = { meas_for_lhs_axis[2 * lh] + 1e-2 * lh, meas_for_lhs_axis[2 * lh + 1] + 1e-2 * lh + 1e-3};
 		SV_DATA_LOG("meas_for_lh_axis[%d]", meas, 2, lh);
 		if (!so->ctx->bsd[lh].PositionSet) {
@@ -455,7 +459,6 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 	serialize_mpfit(d, mpfitctx);
 	if (canPossiblySolveLHS || d->alwaysPrecise) {
 		mpfitctx->cfg = survive_optimizer_precise_config();
-		mpfitctx->upVectorVariance = d->up_variance;
 	}
 
 	if (canPossiblySolveLHS) {
@@ -503,7 +506,7 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 		quatnormalize(soLocation->Rot, soLocation->Rot);
 
 		if (canPossiblySolveLHS) {
-			if (!worldEstablished && mpfitctx->upVectorVariance <= 0.0)
+			if (!worldEstablished && mpfitctx->objectUpVectorVariance <= 0.0)
 				*soLocation = (SurvivePose){0};
 
 			SurvivePose *opt_cameras = survive_optimizer_get_camera(mpfitctx);
@@ -643,7 +646,7 @@ static FLT run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Surviv
 								  .cameraLength = so->ctx->activeLighthouses,
 								  .current_bias = d->current_bias,
 								  .timecode = pdl->hdr.timecode / (FLT)so->timebase_hz,
-								  .upVectorVariance = d->up_variance,
+								  .objectUpVectorVariance = d->obj_up_variance,
 								  .disableVelocity = d->model_velocity == false,
 								  .user = d};
 
@@ -755,7 +758,7 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 	survive_optimizer mpfitctx = {.reprojectModel = survive_reproject_model(ctx),
 								  .poseLength = scenes_cnt,
 								  .cameraLength = ctx->activeLighthouses,
-								  .upVectorVariance = d->up_variance,
+								  .objectUpVectorVariance = d->obj_up_variance,
 								  .disableVelocity = d->model_velocity == false,
 								  .nofilter = true};
 
@@ -771,7 +774,7 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 		meas_cnt += gss->scenes[i].meas_cnt;
 		mpfitctx.sos[i] = gss->scenes[i].so;
 
-		survive_optimizer_set_obj_up_vector(&mpfitctx, i, mpfitctx.upVectorVariance, gss->scenes[i].accel);
+		survive_optimizer_set_obj_up_vector(&mpfitctx, i, mpfitctx.objectUpVectorVariance, gss->scenes[i].accel);
 		survive_optimizer_setup_pose_n(&mpfitctx, &gss->scenes[i].pose, i, false, true);
 
 		LinmathPoint3d err_up;

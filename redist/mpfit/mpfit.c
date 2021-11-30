@@ -30,7 +30,7 @@
 /* Forward declarations of functions in this module */
 static int mp_fdjac2(mp_func funct, int m, int n, int *ifree, int npar, FLT *x, FLT *fvec, FLT *fjac, int ldfjac,
 					 FLT epsfcn, FLT *wa, void *priv, int *nfev, FLT *step, FLT *dstep, int *dside, int *qulimited,
-					 FLT *ulimit, int *ddebug, FLT *ddrtol, FLT *ddatol, FLT *wa2, FLT **dvecptr);
+					 FLT *ulimit, int *ddebug, FLT *ddrtol, FLT *ddatol, FLT *wa2, FLT **dvecptr, mp_par *pars);
 static void mp_qrfac(int m, int n, FLT *a, int lda, int pivot, int *ipvt, int lipvt, FLT *rdiag, FLT *acnorm, FLT *wa);
 static void mp_qrsolv(int n, FLT *r, int ldr, int *ipvt, FLT *diag, FLT *qtb, FLT *x, FLT *sdiag, FLT *wa);
 static void mp_lmpar(int n, FLT *r, int ldr, int *ipvt, int *ifree, FLT *diag, FLT *qtb, FLT delta, FLT *par, FLT *x,
@@ -51,7 +51,7 @@ static int mp_covar(int n, FLT *r, int ldr, int *ipvt, FLT tol, FLT *wa);
 /* Macro to safely allocate memory */
 #define mp_malloc(dest, type, size)                                                                                    \
 	(void)(verify_alloc_free_##dest);                                                                                  \
-	dest = (type *)alloca(sizeof(type) * size);                                                                        \
+	dest = (type *)alloca(sizeof(type) * (size));                                                                      \
 	if (dest == 0) {                                                                                                   \
 		info = MP_ERR_MEMORY;                                                                                          \
 		goto CLEANUP;                                                                                                  \
@@ -62,7 +62,9 @@ static int mp_covar(int n, FLT *r, int ldr, int *ipvt, FLT tol, FLT *wa);
 
 //#define mp_free(dest) if(dest) { free(dest); }
 #define mp_free(dest)                                                                                                  \
-	{ (void)(verify_alloc_free_##dest); };
+	{                                                                                                                  \
+		(void)(verify_alloc_free_##dest);                                                                              \
+	};
 /*
  *     **********
  *
@@ -476,7 +478,7 @@ int mpfit(mp_func funct, int m, int npar, FLT *xall, mp_par *pars, mp_config *co
 	ldfjac = m;
 	mp_malloc(diag, FLT, npar);
 	mp_malloc(wa1, FLT, npar);
-	mp_malloc(wa2, FLT, npar);
+	mp_malloc(wa2, FLT, npar > m ? npar : m);
 	mp_malloc(wa3, FLT, npar);
 	mp_malloc(wa4, FLT, m);
 	mp_malloc(ipvt, int, npar);
@@ -520,7 +522,7 @@ OUTER_LOOP:
 
 	/* Calculate the jacobian matrix */
 	iflag = mp_fdjac2(funct, m, nfree, ifree, npar, xnew, fvec, fjac, ldfjac, conf.epsfcn, wa4, private_data, &nfev,
-					  step, dstep, mpside, qulim, ulim, ddebug, ddrtol, ddatol, wa2, dvecptr);
+					  step, dstep, mpside, qulim, ulim, ddebug, ddrtol, ddatol, wa2, dvecptr, pars);
 	if (iflag < 0) {
 		goto CLEANUP;
 	}
@@ -1038,7 +1040,7 @@ CLEANUP:
 
 static int mp_fdjac2(mp_func funct, int m, int n, int *ifree, int npar, FLT *x, FLT *fvec, FLT *fjac, int ldfjac,
 					 FLT epsfcn, FLT *wa, void *priv, int *nfev, FLT *step, FLT *dstep, int *dside, int *qulimited,
-					 FLT *ulimit, int *ddebug, FLT *ddrtol, FLT *ddatol, FLT *wa2, FLT **dvec) {
+					 FLT *ulimit, int *ddebug, FLT *ddrtol, FLT *ddatol, FLT *wa2, FLT **dvec, mp_par *pars) {
 	/*
 	 *     **********
 	 *
@@ -1180,7 +1182,7 @@ static int mp_fdjac2(mp_func funct, int m, int n, int *ifree, int npar, FLT *x, 
 
 			/* Check for debugging */
 			if (debug) {
-				fprintf(stderr, "FJAC PARM %d\n", ifree[j]);
+				fprintf(stderr, "FJAC PARM %d %s\n", ifree[j], pars[ifree[j]].parname);
 			}
 
 			/* Skip parameters already done by user-computed partials */

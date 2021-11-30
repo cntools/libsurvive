@@ -505,6 +505,13 @@ SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel c
 #define STRUCT_CONFIG_SECTION(type) \
 static void type##_bind_variables(SurviveContext* ctx, type* t, bool ctor) {
 
+#define STRUCT_EXISTING_CONFIG_ITEM(name, var)                                                                         \
+	if (t && ctor) {                                                                                                   \
+		SURVIVE_ATTACH_CONFIG(ctx, name, &var);                                                                        \
+	} else if (t) {                                                                                                    \
+		survive_detach_config(ctx, name, &var);                                                                        \
+	}
+
 #define STRUCT_CONFIG_ITEM(name, description, default_value, var)                                      \
 	if (t && ctor) {                                                                                                           \
             var = default_value;                                                                                                           \

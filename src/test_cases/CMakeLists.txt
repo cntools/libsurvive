@@ -67,6 +67,7 @@ ExternalProject_Add(libsurvive-extras-data
         BUILD_COMMAND ""
         INSTALL_COMMAND ""
         CONFIGURE_COMMAND ""
+        UPDATE_DISCONNECTED ON
         SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data
         )
 

@@ -75,11 +75,13 @@ void survive_optimizer_setup_pose_n(survive_optimizer *mpfit_ctx, const SurviveP
 	}
 
 	int v_idx = survive_optimizer_get_velocity_index(mpfit_ctx);
-	survive_optimizer_get_velocity(mpfit_ctx)[n] = (SurviveVelocity){};
-	for (int i = 0; i < 6; i++) {
-		mpfit_ctx->parameters_info[i + v_idx].fixed = mpfit_ctx->disableVelocity || mpfit_ctx->measurementsCnt < 20;
-		mpfit_ctx->parameters_info[i + v_idx].parname = vel_parameter_names[i % 6];
-		mpfit_ctx->parameters_info[i + v_idx].side = 0;
+	if (v_idx >= 0) {
+		survive_optimizer_get_velocity(mpfit_ctx)[n] = (SurviveVelocity){};
+		for (int i = 0; i < 6; i++) {
+			mpfit_ctx->parameters_info[i + v_idx].fixed = mpfit_ctx->disableVelocity || mpfit_ctx->measurementsCnt < 20;
+			mpfit_ctx->parameters_info[i + v_idx].parname = vel_parameter_names[i % 6];
+			mpfit_ctx->parameters_info[i + v_idx].side = 0;
+		}
 	}
 }
 void survive_optimizer_fix_camera(survive_optimizer *mpfit_ctx, int cam_idx) {
@@ -163,8 +165,11 @@ void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx, SurviveContex
 
 int survive_optimizer_get_parameters_count(const survive_optimizer *ctx) {
 	assert(ctx->poseLength < 20);
-	return ctx->cameraLength * 7 + ctx->poseLength * (7 + 6) + ctx->ptsLength * 3 +
-		   2 * ctx->cameraLength * sizeof(BaseStationCal) / sizeof(FLT);
+	int rtn = ctx->cameraLength * 7 + ctx->poseLength * 7 + ctx->ptsLength * 3 +
+			  2 * ctx->cameraLength * sizeof(BaseStationCal) / sizeof(FLT);
+	if (!ctx->disableVelocity)
+		rtn += ctx->poseLength * 6;
+	return rtn;
 }
 int survive_optimizer_get_free_parameters_count(const survive_optimizer *ctx) {
 	int rtn = 0;
@@ -202,6 +207,9 @@ SurvivePose *survive_optimizer_get_camera(survive_optimizer *ctx) {
 }
 
 SURVIVE_EXPORT int survive_optimizer_get_velocity_index(const survive_optimizer *ctx) {
+	if (ctx->disableVelocity) {
+		return -1;
+	}
 	return survive_optimizer_get_calibration_index(ctx) + ctx->cameraLength * 2 * sizeof(BaseStationCal) / sizeof(FLT);
 }
 int survive_optimizer_get_camera_index(const survive_optimizer *ctx) { return ctx->poseLength * 7; }
@@ -213,7 +221,7 @@ SurvivePose *survive_optimizer_get_pose(survive_optimizer *ctx) {
 }
 
 SurviveVelocity *survive_optimizer_get_velocity(survive_optimizer *ctx) {
-	if (ctx->poseLength)
+	if (!ctx->disableVelocity)
 		return (SurviveVelocity *)&ctx->parameters[survive_optimizer_get_velocity_index(ctx)];
 	return 0;
 }
@@ -522,7 +530,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			LinmathAxisAnglePose *world2lh = (LinmathAxisAnglePose *)&cameras[lh];
 			const FLT *pt = &sensor_points[meas->light.sensor_idx * 3];
 
-			if (calced_timecode != meas->time && mpfunc_ctx->disableVelocity == false) {
+			if (calced_timecode != meas->time && !mpfunc_ctx->disableVelocity) {
 				pose_idx = -1;
 			}
 
@@ -566,7 +574,6 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			LinmathPoint3d up = {0};
 			LinmathAxisAngle rot = {0};
 
-			FLT bias = 1. / mpfunc_ctx->upVectorVariance;
 			FLT deriv[3] = {0}, error = 0;
 			size_t deriv_idx = 0;
 
@@ -582,9 +589,9 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 				gen_world2lh_aa_up_err_jac_axis_angle(deriv, world2lh->AxisAngleRot, up);
 			}
 
-			deviates[meas_idx] = bias * error;
+			deviates[meas_idx] = error / meas->variance;
 			for (int i = 0; i < 3 && derivs && derivs[deriv_idx + i]; i++) {
-				derivs[deriv_idx + i][meas_idx] = fix_infinity(bias * deriv[i]);
+				derivs[deriv_idx + i][meas_idx] = fix_infinity(deriv[i] / meas->variance);
 			}
 			break;
 		}
@@ -594,16 +601,16 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			LinmathAxisAngle rot = {0};
 			FLT deriv[3] = {0}, error = 0;
 
-			LinmathAxisAnglePose *pose = (LinmathAxisAnglePose *)(&survive_optimizer_get_pose(mpfunc_ctx)[obj]);
+			LinmathAxisAnglePose *obj2world = (LinmathAxisAnglePose *)(&survive_optimizer_get_pose(mpfunc_ctx)[obj]);
 			copy3d(up, survive_optimizer_obj_up_vector(mpfunc_ctx, obj));
-			copy3d(rot, pose->AxisAngleRot);
+			copy3d(rot, obj2world->AxisAngleRot);
 
-			error = gen_obj2world_aa_up_err(pose->AxisAngleRot, up);
+			error = gen_obj2world_aa_up_err(obj2world->AxisAngleRot, up);
 			int deriv_idx = obj * 7 + 3;
-			gen_obj2world_aa_up_err_jac_axis_angle(deriv, pose->AxisAngleRot, up);
-			deviates[meas_idx] = error / mpfunc_ctx->upVectorVariance;
+			gen_obj2world_aa_up_err_jac_axis_angle(deriv, obj2world->AxisAngleRot, up);
+			deviates[meas_idx] = error / meas->variance;
 			for (int i = 0; i < 3 && derivs && derivs[deriv_idx + i]; i++) {
-				derivs[deriv_idx + i][meas_idx] = fix_infinity(deriv[i] / mpfunc_ctx->upVectorVariance);
+				derivs[deriv_idx + i][meas_idx] = fix_infinity(deriv[i] / meas->variance);
 			}
 			break;
 		}
@@ -1007,14 +1014,15 @@ SURVIVE_EXPORT void survive_optimizer_setup_buffers(survive_optimizer *ctx, void
 		}
 	}
 
-	if (ctx->upVectorVariance != 0) {
+	if (ctx->objectUpVectorVariance > 0) {
 		for (int i = 0; i < ctx->poseLength; i++) {
-			if (isfinite(norm3d(ctx->sos[i]->activations.accel))) {
+			FLT n = norm3d(ctx->sos[i]->activations.accel);
+			if (isfinite(n) && fabs(1 - n) < .01) {
 				survive_optimizer_measurement *meas =
 					survive_optimizer_emplace_meas(ctx, survive_optimizer_measurement_type_object_accel);
 				meas->pose_acc.object = i;
 				normalize3d(meas->pose_acc.acc, ctx->sos[i]->activations.accel);
-				meas->variance = ctx->upVectorVariance;
+				meas->variance = ctx->objectUpVectorVariance;
 			}
 		}
 	}

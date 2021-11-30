@@ -94,7 +94,7 @@ typedef struct survive_optimizer {
 	// LinmathPoint3d *obj_up_vectors;
 	// LinmathPoint3d *cam_up_vectors;
 
-	FLT upVectorVariance;
+	FLT objectUpVectorVariance;
 	FLT current_bias;
 	SurvivePose initialPose;
 	FLT timecode;

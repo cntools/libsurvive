@@ -73,6 +73,7 @@ struct SurviveDriverSimulator {
 		int attractors;
 
 		FLT lh_duty_cycle;
+		int report_in_imu;
 	} settings;
 };
 typedef struct SurviveDriverSimulator SurviveDriverSimulator;
@@ -83,8 +84,8 @@ STRUCT_CONFIG_SECTION(SurviveDriverSimulator)
     STRUCT_CONFIG_ITEM("simulator-obj-sensors",  "Number on sensors on the simulated object", 20, t->settings.obj_sensors)
     STRUCT_CONFIG_ITEM("simulator-fcal-noise",  "Noise to apply to BSD fcal parameters", 1e-3, t->settings.fcal_noise)
     STRUCT_CONFIG_ITEM("simulator-init-time", "Init time -- object wont move for this long", 2., t->init_time)
-    STRUCT_CONFIG_ITEM("simulator-gyro-noise", "Variance of noise to apply to gyro", 1e-4, t->gyro_var)
-    STRUCT_CONFIG_ITEM("simulator-acc-noise", "Variance of noise to apply to accelerometer", 5e-5, t->acc_var)
+    STRUCT_CONFIG_ITEM("simulator-gyro-noise", "Variance of noise to apply to gyro", 1e-3, t->gyro_var)
+    STRUCT_CONFIG_ITEM("simulator-acc-noise", "Variance of noise to apply to accelerometer", 1e-4, t->acc_var)
     STRUCT_CONFIG_ITEM("simulator-gyro-bias", "Scale of bias to apply to gyro", 1e-1, t->gyro_bias_scale)
 
     STRUCT_CONFIG_ITEM("simulator-sensor-time-jitter", "Variance of time jitter to apply to light sensors", 1e-2, t->sensor_jitter)
@@ -97,6 +98,7 @@ STRUCT_CONFIG_SECTION(SurviveDriverSimulator)
     STRUCT_CONFIG_ITEM("simulator-lh-gen", "Lighthouse generation", 1, t->lh_version)
 
     STRUCT_CONFIG_ITEM("simulator-lh-duty-cycle", "Duty cycle of lighthouses", 1., t->settings.lh_duty_cycle)
+    STRUCT_EXISTING_CONFIG_ITEM("report-in-imu",t->settings.report_in_imu)
 END_STRUCT_CONFIG_SECTION(SurviveDriverSimulator)
 	// clang-format on
 
@@ -344,13 +346,8 @@ static void update_gt_device(struct SurviveContext *ctx, const SurviveDriverSimu
 	if (driver->show_gt_device_cfg == 0)
 		return;
 
-	static int report_in_imu = -1;
-	if (report_in_imu == -1) {
-		survive_attach_configi(driver->so->ctx, "report-in-imu", &report_in_imu);
-	}
-
 	SurvivePose head2world = driver->position;
-	if (!report_in_imu) {
+	if (!driver->settings.report_in_imu) {
 		ApplyPoseToPose(&head2world, &driver->position, &driver->so->head2imu);
 	}
 
@@ -580,6 +577,8 @@ static int simulator_close(struct SurviveContext *ctx, void *_driver) {
 	SV_VERBOSE(5, "\tError         " Point7_format, LINMATH_VEC7_EXPAND(var));
 	SV_VERBOSE(5, "\tTracker bias  " Point3_format, LINMATH_VEC3_EXPAND(driver->gyro_bias));
 
+	SurviveDriverSimulator_detach_config(ctx, driver);
+	free(driver);
 	return 0;
 }
 
