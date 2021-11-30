@@ -331,6 +331,9 @@ bool run_light(const struct SurviveContext *ctx, SurviveDriverSimulator *driver,
 static void propagate_state(SurviveDriverSimulator *driver, double time_diff) {
 	SurviveVelocity velGain;
 	scale3d(velGain.Pos, driver->accel.Pos, time_diff);
+	for (int i = 0; i < 3; i++) {
+		driver->accel.AxisAngleRot[i] += linmath_rand(-1e-1, 1e-1);
+	}
 	scale3d(velGain.AxisAngleRot, driver->accel.AxisAngleRot, time_diff);
 
 	add3d(driver->velocity.Pos, driver->velocity.Pos, velGain.Pos);
