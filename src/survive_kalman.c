@@ -21,11 +21,16 @@ typedef struct SvMat survive_kalman_gain_matrix;
 void survive_kalman_set_logging_level(survive_kalman_state_t *k, int v) { k->log_level = v; }
 
 static inline bool sane_covariance(const SvMat *P) {
+#ifndef NDEBUG
 	for (int i = 0; i < P->rows; i++) {
 		if (svMatrixGet(P, i, i) < 0)
 			return false;
 	}
+#ifdef USE_EIGEN
 	return svDet(P) > -1e-10;
+#endif
+#endif
+	return true;
 }
 
 static inline FLT mul_at_ib_a(const struct SvMat *A, const struct SvMat *B) {

@@ -703,11 +703,16 @@ mp_config precise_cfg = {0};
 SURVIVE_EXPORT mp_config *survive_optimizer_precise_config() { return &precise_cfg; }
 
 static inline bool sane_covariance(const SvMat *P) {
+#ifndef NDEBUG
 	for (int i = 0; i < P->rows; i++) {
 		if (svMatrixGet(P, i, i) < 0)
 			return false;
 	}
+#ifdef USE_EIGEN
 	return svDet(P) > -1e-10;
+#endif
+#endif
+	return true;
 }
 
 int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result, struct SvMat *R) {
