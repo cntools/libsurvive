@@ -1197,5 +1197,7 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 	if (so->OutPose_timecode < pd->timecode) {
 		SURVIVE_INVOKE_HOOK_SO(imupose, so, pd->timecode, &pose);
 	}
-	SURVIVE_INVOKE_HOOK_SO(velocity, so, pd->timecode, &velocity);
+	if(tracker->stats.imu_count > 100) {
+        SURVIVE_INVOKE_HOOK_SO(velocity, so, pd->timecode, &velocity);
+    }
 }
