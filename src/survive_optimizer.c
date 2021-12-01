@@ -78,7 +78,7 @@ void survive_optimizer_setup_pose_n(survive_optimizer *mpfit_ctx, const SurviveP
 	if (v_idx >= 0) {
 		survive_optimizer_get_velocity(mpfit_ctx)[n] = (SurviveVelocity){};
 		for (int i = 0; i < 6; i++) {
-			mpfit_ctx->parameters_info[i + v_idx].fixed = mpfit_ctx->disableVelocity || mpfit_ctx->measurementsCnt < 20;
+			mpfit_ctx->parameters_info[i + v_idx].fixed = true;
 			mpfit_ctx->parameters_info[i + v_idx].parname = vel_parameter_names[i % 6];
 			mpfit_ctx->parameters_info[i + v_idx].side = 0;
 		}
