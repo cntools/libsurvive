@@ -91,7 +91,7 @@ typedef struct MPFITData {
   MPFITStats stats;
 
   int record_reprojection_error;
-  FLT current_bias, obj_up_variance, lh_up_variance;
+  FLT current_bias, obj_up_variance, lh_up_variance, stationary_obj_up_variance;
   int model_velocity;
   bool globalDataAvailable;
   struct survive_async_optimizer *async_optimizer;
@@ -104,6 +104,9 @@ STRUCT_CONFIG_ITEM("mpfit-record-reprojection-error", "", 0, t->record_reproject
 STRUCT_CONFIG_ITEM("mpfit-object-up-variance",
 				   "How much to weight having the accel direction on tracked objects pointing up", -1,
 				   t->obj_up_variance)
+STRUCT_CONFIG_ITEM("mpfit-stationary-object-up-variance",
+				   "How much to weight having the accel direction on tracked objects pointing up", 1.,
+				   t->stationary_obj_up_variance)
 STRUCT_CONFIG_ITEM("mpfit-lighthouse-up-variance",
 				   "How much to weight having the accel direction on lighthouses pointing up", 1., t->lh_up_variance)
 END_STRUCT_CONFIG_SECTION(MPFITData)
@@ -641,15 +644,17 @@ static FLT run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Surviv
 	SurviveObject *so = d->opt.so;
 	struct SurviveContext *ctx = so->ctx;
 
+	bool objectStationary = SurviveSensorActivations_stationary_time(&so->activations) > so->timebase_hz;
 	survive_optimizer mpfitctx = {.reprojectModel = survive_reproject_model(ctx),
 								  .poseLength = 1,
 								  .cameraLength = so->ctx->activeLighthouses,
 								  .current_bias = d->current_bias,
 								  .timecode = pdl->hdr.timecode / (FLT)so->timebase_hz,
-								  .objectUpVectorVariance = d->obj_up_variance,
+								  .objectUpVectorVariance =
+									  objectStationary ? d->stationary_obj_up_variance : d->obj_up_variance,
 								  .disableVelocity = d->model_velocity == false,
 								  .user = d};
-
+	// stationary_obj_up_variance;
 	SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(mpfitctx, so);
 
 	struct async_optimizer_user user_data = {.d = d, .pdl = *pdl};
@@ -759,7 +764,7 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 	survive_optimizer mpfitctx = {.reprojectModel = survive_reproject_model(ctx),
 								  .poseLength = scenes_cnt,
 								  .cameraLength = ctx->activeLighthouses,
-								  .objectUpVectorVariance = d->obj_up_variance,
+								  .objectUpVectorVariance = d->stationary_obj_up_variance,
 								  .disableVelocity = d->model_velocity == false,
 								  .nofilter = true};
 
