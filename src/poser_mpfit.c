@@ -652,7 +652,7 @@ static FLT run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Surviv
 								  .timecode = pdl->hdr.timecode / (FLT)so->timebase_hz,
 								  .objectUpVectorVariance =
 									  objectStationary ? d->stationary_obj_up_variance : d->obj_up_variance,
-								  .disableVelocity = d->model_velocity == false,
+								  .disableVelocity = d->model_velocity == false || objectStationary,
 								  .user = d};
 	// stationary_obj_up_variance;
 	SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(mpfitctx, so);
