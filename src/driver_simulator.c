@@ -331,9 +331,6 @@ bool run_light(const struct SurviveContext *ctx, SurviveDriverSimulator *driver,
 static void propagate_state(SurviveDriverSimulator *driver, double time_diff) {
 	SurviveVelocity velGain;
 	scale3d(velGain.Pos, driver->accel.Pos, time_diff);
-	for (int i = 0; i < 3; i++) {
-		driver->accel.AxisAngleRot[i] += linmath_rand(-1e-1, 1e-1);
-	}
 	scale3d(velGain.AxisAngleRot, driver->accel.AxisAngleRot, time_diff);
 
 	add3d(driver->velocity.Pos, driver->velocity.Pos, velGain.Pos);
@@ -457,6 +454,9 @@ static int Simulator_poll(struct SurviveContext *ctx, void *_driver) {
 
 	if (isIniting == false) {
 		apply_attractors(ctx, driver);
+		for (int i = 0; i < 3; i++) {
+			driver->accel.AxisAngleRot[i] += linmath_rand(-1e-1, 1e-1);
+		}
 	}
 
 	survive_long_timecode timecode = (survive_long_timecode)round(timestamp * 48000000.);

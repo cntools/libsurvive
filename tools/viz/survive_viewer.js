@@ -512,7 +512,7 @@ function set_object_position(obj, name = null) {
 	objr.group.verticesNeedUpdate = true;
 	objr.group_rot.verticesNeedUpdate = true;
 
-	if ("HMD" === obj.tracker || "T20" == obj.tracker) {
+	if ("HMD" === obj.tracker || "T20" == obj.tracker || "SM0" == obj.tracker) {
 		var up = new THREE.Vector3(0, 1, 0);
 		var out = new THREE.Vector3(0, 0, -1);
 
