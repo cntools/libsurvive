@@ -1176,6 +1176,7 @@ static int mp_fdjac2(mp_func funct, int m, int n, int *ifree, int npar, FLT *x, 
 	/* Any parameters requiring numerical derivatives */
 	if (has_numerical_deriv)
 		for (j = 0; j < n; j++) { /* Loop thru free parms */
+			ij = j * m;
 			int dsidei = (dside) ? (dside[ifree[j]]) : (0);
 			int debug = ddebug[ifree[j]];
 			FLT dr = ddrtol[ifree[j]], da = ddatol[ifree[j]];
