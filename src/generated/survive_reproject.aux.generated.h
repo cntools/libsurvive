@@ -1651,6 +1651,56 @@ static inline void gen_obj2world_aa_up_err_jac_sensor_pt(FLT *out, const FLT *ax
 	out[2] = (-1 * x0 * x4) + x3;
 }
 
+static inline FLT gen_obj2world_up_err(const FLT *q1, const FLT *sensor_pt) {
+	const GEN_FLT obj_qw = q1[0];
+	const GEN_FLT obj_qi = q1[1];
+	const GEN_FLT obj_qj = q1[2];
+	const GEN_FLT obj_qk = q1[3];
+	const GEN_FLT sensor_x = sensor_pt[0];
+	const GEN_FLT sensor_y = sensor_pt[1];
+	const GEN_FLT sensor_z = sensor_pt[2];
+
+	return 1 + (-1 * (sensor_z +
+					  (2 * ((obj_qi * ((obj_qk * sensor_x) + (-1 * obj_qi * sensor_z) + (obj_qw * sensor_y))) +
+							(-1 * obj_qj * ((obj_qw * sensor_x) + (-1 * obj_qk * sensor_y) + (obj_qj * sensor_z)))))));
+}
+
+// Jacobian of obj2world_up_err wrt [obj_qw, obj_qi, obj_qj, obj_qk]
+static inline void gen_obj2world_up_err_jac_q1(FLT *out, const FLT *q1, const FLT *sensor_pt) {
+	const GEN_FLT obj_qw = q1[0];
+	const GEN_FLT obj_qi = q1[1];
+	const GEN_FLT obj_qj = q1[2];
+	const GEN_FLT obj_qk = q1[3];
+	const GEN_FLT sensor_x = sensor_pt[0];
+	const GEN_FLT sensor_y = sensor_pt[1];
+	const GEN_FLT sensor_z = sensor_pt[2];
+	const GEN_FLT x0 = 2 * obj_qi;
+	const GEN_FLT x1 = 2 * obj_qj;
+	const GEN_FLT x2 = 2 * obj_qk;
+	const GEN_FLT x3 = 2 * obj_qw;
+	const GEN_FLT x4 = 4 * sensor_z;
+	out[0] = (x1 * sensor_x) + (-1 * x0 * sensor_y);
+	out[1] = (x4 * obj_qi) + (-1 * x2 * sensor_x) + (-1 * x3 * sensor_y);
+	out[2] = (-1 * x2 * sensor_y) + (x3 * sensor_x) + (x4 * obj_qj);
+	out[3] = (-1 * x1 * sensor_y) + (-1 * x0 * sensor_x);
+}
+
+// Jacobian of obj2world_up_err wrt [sensor_x, sensor_y, sensor_z]
+static inline void gen_obj2world_up_err_jac_sensor_pt(FLT *out, const FLT *q1, const FLT *sensor_pt) {
+	const GEN_FLT obj_qw = q1[0];
+	const GEN_FLT obj_qi = q1[1];
+	const GEN_FLT obj_qj = q1[2];
+	const GEN_FLT obj_qk = q1[3];
+	const GEN_FLT sensor_x = sensor_pt[0];
+	const GEN_FLT sensor_y = sensor_pt[1];
+	const GEN_FLT sensor_z = sensor_pt[2];
+	const GEN_FLT x0 = 2 * obj_qk;
+	const GEN_FLT x1 = 2 * obj_qw;
+	out[0] = (x1 * obj_qj) + (-1 * x0 * obj_qi);
+	out[1] = (-1 * x0 * obj_qj) + (-1 * x1 * obj_qi);
+	out[2] = -1 + (2 * (obj_qj * obj_qj)) + (2 * (obj_qi * obj_qi));
+}
+
 static inline FLT gen_world2lh_aa_up_err(const FLT *axis_angle, const FLT *sensor_pt) {
 	const GEN_FLT aa_x = axis_angle[0];
 	const GEN_FLT aa_y = axis_angle[1];
@@ -1734,6 +1784,56 @@ static inline void gen_world2lh_aa_up_err_jac_sensor_pt(FLT *out, const FLT *axi
 	out[0] = (-1 * x6 * aa_y) + (-1 * x5 * aa_x);
 	out[1] = (x6 * aa_x) + (-1 * x5 * aa_y);
 	out[2] = (-1 * x0 * x4) + x3;
+}
+
+static inline FLT gen_world2lh_up_err(const FLT *q1, const FLT *sensor_pt) {
+	const GEN_FLT obj_qw = q1[0];
+	const GEN_FLT obj_qi = q1[1];
+	const GEN_FLT obj_qj = q1[2];
+	const GEN_FLT obj_qk = q1[3];
+	const GEN_FLT sensor_x = sensor_pt[0];
+	const GEN_FLT sensor_y = sensor_pt[1];
+	const GEN_FLT sensor_z = sensor_pt[2];
+
+	return 1 + (-1 * (sensor_z +
+					  (2 * ((obj_qi * ((obj_qk * sensor_x) + (-1 * obj_qi * sensor_z) + (obj_qw * sensor_y))) +
+							(-1 * obj_qj * ((obj_qw * sensor_x) + (-1 * obj_qk * sensor_y) + (obj_qj * sensor_z)))))));
+}
+
+// Jacobian of world2lh_up_err wrt [obj_qw, obj_qi, obj_qj, obj_qk]
+static inline void gen_world2lh_up_err_jac_q1(FLT *out, const FLT *q1, const FLT *sensor_pt) {
+	const GEN_FLT obj_qw = q1[0];
+	const GEN_FLT obj_qi = q1[1];
+	const GEN_FLT obj_qj = q1[2];
+	const GEN_FLT obj_qk = q1[3];
+	const GEN_FLT sensor_x = sensor_pt[0];
+	const GEN_FLT sensor_y = sensor_pt[1];
+	const GEN_FLT sensor_z = sensor_pt[2];
+	const GEN_FLT x0 = 2 * obj_qi;
+	const GEN_FLT x1 = 2 * obj_qj;
+	const GEN_FLT x2 = 2 * obj_qk;
+	const GEN_FLT x3 = 2 * obj_qw;
+	const GEN_FLT x4 = 4 * sensor_z;
+	out[0] = (x1 * sensor_x) + (-1 * x0 * sensor_y);
+	out[1] = (x4 * obj_qi) + (-1 * x2 * sensor_x) + (-1 * x3 * sensor_y);
+	out[2] = (-1 * x2 * sensor_y) + (x3 * sensor_x) + (x4 * obj_qj);
+	out[3] = (-1 * x1 * sensor_y) + (-1 * x0 * sensor_x);
+}
+
+// Jacobian of world2lh_up_err wrt [sensor_x, sensor_y, sensor_z]
+static inline void gen_world2lh_up_err_jac_sensor_pt(FLT *out, const FLT *q1, const FLT *sensor_pt) {
+	const GEN_FLT obj_qw = q1[0];
+	const GEN_FLT obj_qi = q1[1];
+	const GEN_FLT obj_qj = q1[2];
+	const GEN_FLT obj_qk = q1[3];
+	const GEN_FLT sensor_x = sensor_pt[0];
+	const GEN_FLT sensor_y = sensor_pt[1];
+	const GEN_FLT sensor_z = sensor_pt[2];
+	const GEN_FLT x0 = 2 * obj_qk;
+	const GEN_FLT x1 = 2 * obj_qw;
+	out[0] = (x1 * obj_qj) + (-1 * x0 * obj_qi);
+	out[1] = (-1 * x0 * obj_qj) + (-1 * x1 * obj_qi);
+	out[2] = -1 + (2 * (obj_qj * obj_qj)) + (2 * (obj_qi * obj_qi));
 }
 
 static inline void gen_apply_ang_velocity(FLT *out, const FLT *axis_angle, const FLT time, const FLT *q) {

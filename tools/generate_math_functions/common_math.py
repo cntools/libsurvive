@@ -297,9 +297,17 @@ def obj2world_aa_up_err(axis_angle, sensor_pt):
     out = axisanglerotatevector(axis_angle, sensor_pt)
     return 1 - out[2]
 
+def obj2world_up_err(q1, sensor_pt):
+    out = quatrotatevector(q1, sensor_pt)
+    return 1 - out[2]
+
 def world2lh_aa_up_err(axis_angle, sensor_pt):
     [ax,ay,az] = axis_angle
     out = axisanglerotatevector([-ax,-ay,-az], sensor_pt)
+    return 1 - out[2]
+
+def world2lh_up_err(q1, sensor_pt):
+    out = quatrotatevector(q1, sensor_pt)
     return 1 - out[2]
 
 def invertaxisanglerotatevector(axis_angle, sensor_pt):
@@ -419,7 +427,9 @@ generate = [
     sensor_to_world,
     cross,
     obj2world_aa_up_err,
+    obj2world_up_err,
     world2lh_aa_up_err,
+    world2lh_up_err,
     apply_ang_velocity,
     apply_ang_velocity_aa,
     axisanglecompose
