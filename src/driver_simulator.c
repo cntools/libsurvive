@@ -590,17 +590,18 @@ cstring generate_simulated_object(FLT r, size_t sensor_ct) {
 	cstring loc = {0}, nor_buf = {0};
 
 	char buffer[1024] = {0};
-
+	FLT scale_error = 1; // linmath_normrand(1, .2);
 	for (int i = 0; i < sensor_ct; i++) {
 		FLT azi = rand();
 		FLT pol = rand();
 		LinmathVec3d normals, locations;
 		normals[0] = locations[0] = r * cos(azi) * sin(pol);
 		normals[1] = locations[1] = r * sin(azi) * sin(pol);
-		normals[2] = locations[2] = r * cos(pol);
+		normals[2] = locations[2] = fabs(r * cos(pol));
 		normalize3d(normals, normals);
 
-		snprintf(buffer, sizeof(buffer), "[%f, %f, %f],\n", locations[0], locations[1], locations[2]);
+		snprintf(buffer, sizeof(buffer), "[%f, %f, %f],\n", scale_error * locations[0], scale_error * locations[1],
+				 scale_error * locations[2]);
 		str_append(&loc, buffer);
 
 		snprintf(buffer, sizeof(buffer), "[%f, %f, %f],\n", normals[0], normals[1], normals[2]);
@@ -684,7 +685,7 @@ int DriverRegSimulator(SurviveContext *ctx) {
 	sp->pose_variance.size = 7;
 
 	for (int i = 0; i < 3; i++)
-		sp->gyro_bias[i] = linmath_normrand(0, sp->gyro_bias_scale);
+		sp->gyro_bias[i] = linmath_normrand(0, sp->gyro_bias_scale * sp->noise_scale);
 
 	int use_lh2 = sp->lh_version == 2;
 	int max_lighthouses = use_lh2 ? 16 : 2;
