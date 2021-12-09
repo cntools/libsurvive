@@ -67,32 +67,27 @@ typedef struct {
 	};
 } survive_optimizer_measurement;
 
-/*
 typedef struct {
-FLT time;
-FLT value;
-FLT variance;
-uint8_t lh;
-uint8_t sensor_idx;
-uint8_t axis;
-int object;
+  size_t size;
+  enum survive_optimizer_parameter_type param_type;
 
-bool invalid;
-} survive_optimizer_measurement;
-*/
+} survive_optimizer_parameter;
+
+typedef struct survive_optimizer_settings {
+    int use_quat_model;
+} survive_optimizer_settings;
 
 struct mp_par_struct;
 struct mp_result_struct;
 
 typedef struct survive_optimizer {
+    const survive_optimizer_settings* settings;
+
 	const survive_reproject_model_t *reprojectModel;
 
 	SurviveObject **sos;
 	survive_optimizer_measurement *measurements;
 	size_t measurementsCnt;
-
-	// LinmathPoint3d *obj_up_vectors;
-	// LinmathPoint3d *cam_up_vectors;
 
 	FLT objectUpVectorVariance;
 	FLT current_bias;
@@ -224,6 +219,8 @@ SURVIVE_EXPORT void survive_optimizer_set_cam_up_vector(survive_optimizer *ctx, 
 														const LinmathVec3d up);
 SURVIVE_EXPORT void survive_optimizer_set_obj_up_vector(survive_optimizer *ctx, int i, FLT variance,
 														const LinmathVec3d up);
+SURVIVE_EXPORT void survive_optimizer_settings_attach_config(SurviveContext* ctx, survive_optimizer_settings* t);
+SURVIVE_EXPORT void survive_optimizer_settings_detach_config(SurviveContext* ctx, survive_optimizer_settings* t);
 
 #ifdef __cplusplus
 }

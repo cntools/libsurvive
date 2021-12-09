@@ -95,6 +95,8 @@ typedef struct MPFITData {
   int model_velocity;
   bool globalDataAvailable;
   struct survive_async_optimizer *async_optimizer;
+
+  survive_optimizer_settings optimizer_settings;
 } MPFITData;
 
 STRUCT_CONFIG_SECTION(MPFITData)
@@ -645,7 +647,9 @@ static FLT run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Surviv
 	struct SurviveContext *ctx = so->ctx;
 
 	bool objectStationary = SurviveSensorActivations_stationary_time(&so->activations) > so->timebase_hz;
-	survive_optimizer mpfitctx = {.reprojectModel = survive_reproject_model(ctx),
+	survive_optimizer mpfitctx = {
+	        .settings = &d->optimizer_settings,
+	        .reprojectModel = survive_reproject_model(ctx),
 								  .poseLength = 1,
 								  .cameraLength = so->ctx->activeLighthouses,
 								  .current_bias = d->current_bias,
@@ -761,7 +765,9 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 		meas_cnt += gss->scenes[i].meas_cnt;
 	}
 
-	survive_optimizer mpfitctx = {.reprojectModel = survive_reproject_model(ctx),
+	survive_optimizer mpfitctx = {
+	        .settings = &d->optimizer_settings,
+	        .reprojectModel = survive_reproject_model(ctx),
 								  .poseLength = scenes_cnt,
 								  .cameraLength = ctx->activeLighthouses,
 								  .objectUpVectorVariance = d->stationary_obj_up_variance,
@@ -818,7 +824,7 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 		if (!ctx->bsd[i].PositionSet) {
 			memset(survive_optimizer_get_camera(&mpfitctx)[i].Rot, 0, sizeof(FLT) * 4);
 		}
-		normalize3d(survive_optimizer_cam_up_vector(&mpfitctx, i), ctx->bsd[i].accel);
+        survive_optimizer_set_cam_up_vector(&mpfitctx, i, d->lh_up_variance, ctx->bsd[i].accel);
 	}
 
 	int worldEstablishedLh = -1;
@@ -1010,6 +1016,8 @@ int PoserMPFIT(SurviveObject *so, void **user, PoserData *pd) {
 		feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 #endif
 		MPFITData_attach_config(ctx, d);
+        survive_optimizer_settings_attach_config(ctx, &d->optimizer_settings);
+
 		SV_VERBOSE(110, "Initializing MPFIT:");
 		SV_VERBOSE(110, "\trequired-meas: %d", d->required_meas);
 		SV_VERBOSE(110, "\ttime-window: %d", d->sensor_time_window);
@@ -1081,6 +1089,7 @@ int PoserMPFIT(SurviveObject *so, void **user, PoserData *pd) {
 		}
 		general_optimizer_data_dtor(&d->opt);
 		MPFITData_detach_config(ctx, d);
+        survive_optimizer_settings_detach_config(ctx, &d->optimizer_settings);
 		survive_detach_config(ctx, "disable-lighthouse", &d->disable_lighthouse);
 		survive_detach_config(ctx, "sensor-variance-per-sec", &d->sensor_variance_per_second);
 		survive_detach_config(ctx, "sensor-variance", &d->sensor_variance);

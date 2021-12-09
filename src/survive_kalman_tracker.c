@@ -775,8 +775,7 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
         for(int i =0;i < 7;i++)
             svMatrixSet(&R, i, i, svMatrixGet(&R, i, i) + augR[i]);
 
-
-        if(tracker->report_covariance_cnt > 0 && Ri && Ri->rows == Ri->cols) {
+        if(tracker->report_covariance_cnt > 0 && Ri && Ri->rows == Ri->cols && (tracker->stats.obs_count % tracker->report_covariance_cnt) == 0) {
             survive_recording_write_to_output_nopreamble(ctx->recptr, "%s' FULL_COVARIANCE ", so->codename);
             for (int i = 0; i < R.cols * R.cols; i++) {
                 survive_recording_write_to_output_nopreamble(ctx->recptr, "%f ", R.data[i]);
