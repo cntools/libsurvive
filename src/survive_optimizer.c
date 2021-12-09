@@ -37,20 +37,21 @@ STATIC_CONFIG_ITEM(OPTIMIZER_NPRINT, "optimizer-nprint", 'i', "", 0)
 
 STRUCT_CONFIG_SECTION(survive_optimizer_settings)
     STRUCT_CONFIG_ITEM("mpfit-quat-model", "Model mpfit as quaternion", 0, t->use_quat_model)
-END_STRUCT_CONFIG_SECTION(survive_optimizer_settings)
+	STRUCT_CONFIG_ITEM("mpfit-no-pair-calc", "Don't process as pairs", 0, t->disallow_pair_calc)
+	END_STRUCT_CONFIG_SECTION(survive_optimizer_settings)
 
-static char *object_parameter_names[] = {"Pose x",	 "Pose y",	 "Pose z",	"Pose Rot w",
-										 "Pose Rot x", "Pose Rot y", "Pose Rot z"};
-static char *vel_parameter_names[] = {"Vel x", "Vel y", "Vel z", "Vel Rot x", "Vel Rot y", "Vel Rot z"};
+	static char *object_parameter_names[] = {"Pose x",	   "Pose y",	 "Pose z",	  "Pose Rot w",
+											 "Pose Rot x", "Pose Rot y", "Pose Rot z"};
+	static char *vel_parameter_names[] = {"Vel x", "Vel y", "Vel z", "Vel Rot x", "Vel Rot y", "Vel Rot z"};
 
-static void setup_pose_param_limits(survive_optimizer *mpfit_ctx, FLT *parameter,
-									struct mp_par_struct *pose_param_info) {
-	for (int i = 0; i < 7; i++) {
-		pose_param_info[i].limited[0] = pose_param_info[i].limited[1] = (i >= 3 ? false : true);
+	static void setup_pose_param_limits(survive_optimizer *mpfit_ctx, FLT *parameter,
+										struct mp_par_struct *pose_param_info) {
+		for (int i = 0; i < 7; i++) {
+			pose_param_info[i].limited[0] = pose_param_info[i].limited[1] = (i >= 3 ? false : true);
 
-		pose_param_info[i].limits[0] = -(i >= 3 ? 1.0001 : 20.);
-		pose_param_info[i].limits[1] = -pose_param_info[i].limits[0];
-	}
+			pose_param_info[i].limits[0] = -(i >= 3 ? 1.0001 : 20.);
+			pose_param_info[i].limits[1] = -pose_param_info[i].limits[0];
+		}
 }
 void survive_optimizer_setup_pose_n(survive_optimizer *mpfit_ctx, const SurvivePose *pose, size_t n, bool isFixed,
 									int use_jacobian_function) {
@@ -625,7 +626,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 				}
 			}
 
-			if (nextIsPair && false) {
+			if (nextIsPair && !mpfunc_ctx->settings->disallow_pair_calc) {
 				run_pair_measurement(mpfunc_ctx, meas_idx, meas, &ang_velocity_jac, &obj2world, &obj2lh[lh], world2lh,
 									 pt,
 									 deviates + meas_idx, derivs);
