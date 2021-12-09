@@ -24,6 +24,7 @@ struct static_conf_t
 		FLT f;
 		int i;
 		char * s;
+		bool b;
 	} data_default;
 	const char * name;
 	const char * description;
@@ -84,6 +85,7 @@ void survive_config_bind_variable( char vt, const char * name, const char * desc
 	switch( vt )
 	{
 	case 'i': config->data_default.i = va_arg(ap, int); break;
+	case 'b': config->data_default.b = va_arg(ap, int); break;
 	case 'f':
 		config->data_default.f = va_arg(ap, double);
 		break;
@@ -109,6 +111,9 @@ SURVIVE_EXPORT void survive_config_bind_variablei(const char *name, const char *
 SURVIVE_EXPORT void survive_config_bind_variablef(const char *name, const char *description, FLT def) {
 	survive_config_bind_variable('f', name, description, def, 0xcafebeef);
 }
+SURVIVE_EXPORT void survive_config_bind_variableb(const char *name, const char *description, bool def) {
+    survive_config_bind_variable('b', name, description, def, 0xcafebeef);
+}
 
 int survive_print_help_for_parameter(SurviveContext *ctx, const char *tomap) {
 	for (struct static_conf_t *config = head; config; config = config->next) {
@@ -127,6 +132,7 @@ int survive_print_help_for_parameter(SurviveContext *ctx, const char *tomap) {
 }
 
 #define USAGE_FORMAT " --%-40s"
+static const char *USAGE_FORMAT_BOOL = USAGE_FORMAT "%15d    ";
 static const char *USAGE_FORMAT_INT = USAGE_FORMAT "%15d    ";
 static const char *USAGE_FORMAT_FLOAT = USAGE_FORMAT "%15f    ";
 static const char *USAGE_FORMAT_STRING = USAGE_FORMAT "%15s    ";
@@ -190,6 +196,16 @@ static void PrintConfigGroup(config_group * grp, const char ** chkval, int * cvs
 	}
 }
 
+static const char* type_to_desc(char config_type) {
+    switch(config_type) {
+        case 'f': return ":float";
+        case 'i': return ":int";
+        case 's': return ":string";
+        case 'b': return ":bool";
+    }
+    return ".";
+}
+
 void survive_print_known_configs( SurviveContext * ctx, int verbose )
 {
 	int i;
@@ -215,7 +231,10 @@ void survive_print_known_configs( SurviveContext * ctx, int verbose )
 				char stobuf[128];
 				switch( config->type )
 				{
-				case 'i':
+                    case 'b':
+                        snprintf(stobuf, 127, USAGE_FORMAT_BOOL, name, config->data_default.b);
+                        break;
+                    case 'i':
 					snprintf(stobuf, 127, USAGE_FORMAT_INT, name, config->data_default.i);
 					break;
 				case 'f':
@@ -229,9 +248,7 @@ void survive_print_known_configs( SurviveContext * ctx, int verbose )
 					assert("Invalid config item" && false);
 				}
 
-				const char *type_desc = (config->type == 'f')
-											? ":float"
-											: (config->type == 'i') ? ":int" : (config->type == 's') ? ":string" : ".";
+				const char *type_desc = type_to_desc(config->type);
 				printf("%s %-12s     %s\n", stobuf, type_desc, config->description);
 			}
 			else
@@ -241,7 +258,8 @@ void survive_print_known_configs( SurviveContext * ctx, int verbose )
 				// Also display '--no-*' formatted options. We only do this for 'i' types since that is how we represent
 				// flags internally; and it'd be sorta useless to have them show up for default-off options. If the
 				// default is not 1, it's either not a flag or already off.
-				if (config->type == 'i' && config->data_default.i == 1)
+				if ((config->type == 'i' && config->data_default.i == 1) ||
+                    (config->type == 'b' && config->data_default.b == 1))
 					printf("--no-%s ", name);
 			}
 		}
@@ -926,6 +944,9 @@ SURVIVE_EXPORT void survive_config_as_str(SurviveContext *ctx, char *output, siz
 	struct static_conf_t *sc = find_static_conf_t(tag);
 	if (sc) {
 		switch (sc->type) {
+		case 'b':
+            snprintf(output, n, "%d", survive_configb(ctx, tag, SC_GET, sc->data_default.b));
+            break;
 		case 'f':
 			snprintf(output, n, "%f", survive_configf(ctx, tag, SC_GET, (float)sc->data_default.f));
 			break;
@@ -1036,6 +1057,38 @@ uint32_t survive_configi(SurviveContext *ctx, const char *tag, char flags, uint3
 	return def;
 }
 
+SURVIVE_EXPORT bool survive_configb(SurviveContext *ctx, const char *tag, char flags, bool def) {
+    if (!(flags & SC_OVERRIDE)) {
+        config_entry *cv = sc_search(ctx, tag);
+        if (cv) {
+            return config_entry_as_uint32_t(cv);
+        }
+    }
+
+    uint32_t statictimedef = def;
+    int i;
+    if( !(flags & SC_OVERRIDE) )
+    {
+        for (struct static_conf_t *config = head; config; config = config->next) {
+            if (strcmp(tag, config->name) == 0) {
+                def = config->data_default.i;
+            }
+        }
+    }
+
+    if (ctx) {
+        // If override is flagged, or, we can't find the variable, ,continue on.
+        if (flags & SC_SETCONFIG) {
+            config_set_uint32(ctx->temporary_config_values, tag, def);
+            config_set_uint32(ctx->global_config_values, tag, def);
+        } else if (flags & SC_SET) {
+            config_set_uint32(ctx->temporary_config_values, tag, def);
+        }
+    }
+
+    return def;
+}
+
 const char *survive_configs(SurviveContext *ctx, const char *tag, char flags, const char *def) {
 	if(ctx == 0)
 		return def;
@@ -1099,6 +1152,10 @@ SURVIVE_EXPORT void survive_attach_config(SurviveContext *ctx, const char *tag, 
 		{
 			*((int*)var) = survive_configi( ctx, tag, SC_SET, 0);
 		}
+        if( type == 'b' )
+        {
+            *((bool*)var) = survive_configb( ctx, tag, SC_SET, 0);
+        }
 		if( type == 'f' )
 		{
 			*((FLT*)var) = survive_configf( ctx, tag, SC_SET, 0);
@@ -1129,6 +1186,10 @@ SURVIVE_EXPORT void survive_attach_config(SurviveContext *ctx, const char *tag, 
 	}
 
 	switch (type) {
+	    case 'b':
+            *((bool *)var) = survive_configb(ctx, tag, SC_GET, 0);
+            SV_VERBOSE(100, "\t%s: %i", tag, *((bool *)var));
+            break;
 	case 'i':
 		*((int *)var) = survive_configi(ctx, tag, SC_GET, 0);
 		SV_VERBOSE(100, "\t%s: %i", tag, *((int *)var));
@@ -1150,6 +1211,9 @@ SURVIVE_EXPORT void survive_attach_config(SurviveContext *ctx, const char *tag, 
 
 SURVIVE_EXPORT void survive_attach_configi(SurviveContext *ctx, const char *tag, int32_t *var) {
 	survive_attach_config( ctx, tag, var, 'i' );
+}
+SURVIVE_EXPORT void survive_attach_configb(SurviveContext *ctx, const char *tag, bool *var) {
+    survive_attach_config( ctx, tag, var, 'b' );
 }
 
 SURVIVE_EXPORT void survive_attach_configf(SurviveContext *ctx, const char *tag, FLT * var )

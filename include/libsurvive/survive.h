@@ -431,6 +431,7 @@ enum survive_config_flags {
 
 SURVIVE_EXPORT bool survive_config_is_set(SurviveContext *ctx, const char *tag);
 SURVIVE_EXPORT FLT survive_configf(SurviveContext *ctx, const char *tag, char flags, FLT def);
+SURVIVE_EXPORT bool survive_configb(SurviveContext *ctx, const char *tag, char flags, bool def);
 SURVIVE_EXPORT uint32_t survive_configi(SurviveContext *ctx, const char *tag, char flags, uint32_t def);
 SURVIVE_EXPORT char survive_config_type(SurviveContext *ctx, const char *tag);
 SURVIVE_EXPORT void survive_config_as_str(SurviveContext *ctx, char *output, size_t n, const char *tag,
@@ -442,18 +443,21 @@ SURVIVE_EXPORT void survive_attach_config(SurviveContext *ctx, const char *tag, 
 SURVIVE_EXPORT void survive_attach_configi(SurviveContext *ctx, const char *tag, int32_t *var);
 SURVIVE_EXPORT void survive_attach_configf(SurviveContext *ctx, const char *tag, FLT * var );
 SURVIVE_EXPORT void survive_attach_configs(SurviveContext *ctx, const char *tag, char * var );
+SURVIVE_EXPORT void survive_attach_configb(SurviveContext *ctx, const char *tag, bool * var );
 
 #ifdef COMPILER_HAS_GENERIC_SUPPORT
 #define SURVIVE_ATTACH_CONFIG(ctx, name, var) _Generic((var), \
               double*: survive_attach_configf, \
               float*: survive_attach_configf,  \
-              int*: survive_attach_configi  \
+              int*: survive_attach_configi,                   \
+              bool*: survive_attach_configb\
 )(ctx, name, var);
 
 #define SURVIVE_CONFIG_BIND_VARIABLE(name, desc, def, var) _Generic((var), \
               double*: survive_config_bind_variablef, \
               float*: survive_config_bind_variablef,  \
-              int*: survive_config_bind_variablei  \
+              int*: survive_config_bind_variablei,                          \
+              bool*: survive_config_bind_variableb  \
 )(name, desc, def);
 
 #define SURVIVE_DETACH_CONFIG(ctx, name, var) survive_detach_config(ctx, name, var)
@@ -530,6 +534,7 @@ void type##_detach_config(SurviveContext* ctx, type* t) { type##_bind_variables(
 
 SURVIVE_EXPORT void survive_config_bind_variable(char vt, const char *name, const char *description, ...); // Only used at boot.
 SURVIVE_EXPORT void survive_config_bind_variablei(const char *name, const char *description, int def);
+SURVIVE_EXPORT void survive_config_bind_variableb(const char *name, const char *description, bool def);
 SURVIVE_EXPORT void survive_config_bind_variablef(const char *name, const char *description, FLT def);
 
 // Read back a human-readable string description of the calibration status
