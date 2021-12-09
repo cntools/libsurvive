@@ -74,8 +74,9 @@ typedef struct {
 } survive_optimizer_parameter;
 
 typedef struct survive_optimizer_settings {
-    int use_quat_model;
-	int disallow_pair_calc;
+	bool use_quat_model;
+	bool disallow_pair_calc;
+	bool optimize_scale;
 } survive_optimizer_settings;
 
 struct mp_par_struct;
@@ -162,6 +163,9 @@ SURVIVE_EXPORT void survive_optimizer_setup_buffers(survive_optimizer *ctx, void
 SURVIVE_EXPORT SurvivePose *survive_optimizer_get_pose(survive_optimizer *ctx);
 SURVIVE_EXPORT int survive_optimizer_get_velocity_index(const survive_optimizer *ctx);
 SURVIVE_EXPORT SurviveVelocity *survive_optimizer_get_velocity(survive_optimizer *ctx);
+
+SURVIVE_EXPORT int survive_optimizer_get_sensor_scale_index(const survive_optimizer *ctx);
+SURVIVE_EXPORT void survive_optimizer_disable_sensor_scale(survive_optimizer *ctx);
 
 SURVIVE_EXPORT int survive_optimizer_get_camera_index(const survive_optimizer *ctx);
 

@@ -36,6 +36,7 @@ SurviveObject *survive_create_device(SurviveContext *ctx, const char *driver_nam
 
 	device->imu2trackref.Rot[0] = 1.;
 	device->head2trackref.Rot[0] = 1.;
+	device->sensor_scale = 1;
 
 	for (int i = 0; i < 3; i++) {
 		device->gyro_scale[i] = device->acc_scale[i] = 1.0;

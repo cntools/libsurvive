@@ -267,6 +267,14 @@ static inline void serialize_mpfit(MPFITData *d, survive_optimizer *mpfitctx) {
 static inline bool has_data_for_lh(const size_t *meas_for_lhs_axis, int lh) {
 	return meas_for_lhs_axis[2 * lh] > 0 && meas_for_lhs_axis[2 * lh + 1] > 0;
 }
+static inline int get_strong_axis_count(const size_t *meas_for_lhs_axis, int min_support) {
+	int num_axis = 0;
+	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES * 2; i++) {
+		if (meas_for_lhs_axis[i] >= min_support)
+			num_axis++;
+	}
+	return num_axis;
+}
 static inline int get_axis_count(const size_t *meas_for_lhs_axis) {
 	int num_axis = 0;
 	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES * 2; i++) {
@@ -466,6 +474,14 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 		mpfitctx->cfg = survive_optimizer_precise_config();
 	}
 
+	if (get_strong_axis_count(meas_for_lhs_axis, 2) < 4) {
+		survive_optimizer_disable_sensor_scale(mpfitctx);
+		SV_VERBOSE(110, "%s Scale solving %d", survive_colorize_codename(so),
+				   get_strong_axis_count(meas_for_lhs_axis, 2));
+	} else {
+		SV_VERBOSE(110, "%s Scale solving", survive_colorize_codename(so));
+	}
+
 	if (canPossiblySolveLHS) {
 		// mpfitctx->iteration_cb = iteration_cb;
 	}
@@ -571,30 +587,42 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 		SV_DATA_LOG("mpfit_confidence_measures", v, 4);
 
 		SurviveVelocity *vel = survive_optimizer_get_velocity(mpfitctx);
-
+		FLT scale = 0;
+		if (mpfitctx->settings->optimize_scale) {
+			int scale_idx = survive_optimizer_get_sensor_scale_index(mpfitctx);
+			scale = mpfitctx->parameters[scale_idx];
+			so->sensor_scale = scale;
+		}
 		SV_VERBOSE(
 			worldEstablished ? 110 : 100,
-			"MPFIT success %s %f7.5s %s %f/%10.10f/%10.10f (%3d measurements, %s result, %d lighthouses, %d axis, %6.3fms "
-			"time_window, %2d old_meas (avg %6.3fms) run #%d)",
+			"MPFIT success %s %f7.5s %s %f/%10.10f/%10.10f (%3d measurements, %s result, %d lighthouses, %d axis, "
+			"%6.3fms "
+			"time_window, %2d old_meas (avg %6.3fms) run #%d) scale %7.7f",
 			survive_colorize(so->codename), survive_run_time(ctx),
-            survive_colorize(SurviveSensorActivations_stationary_time(&so->activations) > 4800000 ? "STILL" : "MOVE "),
-			result->orignorm, result->bestnorm, sqrt(result->bestnorm / (mpfitctx->measurementsCnt - result->nfree + 1) * d->sensor_variance * d->sensor_variance),  (int)meas_size,
-			survive_optimizer_error(res), get_lh_count(meas_for_lhs_axis), get_axis_count(meas_for_lhs_axis),
-			user_data->stats.time_window / 48000000. * 1000., user_data->stats.old_measurements,
+			survive_colorize(SurviveSensorActivations_stationary_time(&so->activations) > 4800000 ? "STILL" : "MOVE "),
+			result->orignorm, result->bestnorm,
+			sqrt(result->bestnorm / (mpfitctx->measurementsCnt - result->nfree + 1) * d->sensor_variance *
+				 d->sensor_variance),
+			(int)meas_size, survive_optimizer_error(res), get_lh_count(meas_for_lhs_axis),
+			get_axis_count(meas_for_lhs_axis), user_data->stats.time_window / 48000000. * 1000.,
+			user_data->stats.old_measurements,
 			user_data->stats.old_measurements_age / 48000000. * 1000. / (.001 + user_data->stats.old_measurements),
-			d->stats.total_runs);
-        SV_VERBOSE(120, "%s from " Point7_format, survive_colorize(so->codename), SURVIVE_POSE_EXPAND(mpfitctx->initialPose));
+			d->stats.total_runs, scale);
+		SV_VERBOSE(120, "%s from " Point7_format, survive_colorize(so->codename), SURVIVE_POSE_EXPAND(mpfitctx->initialPose));
         SV_VERBOSE(120, "%s to   " Point7_format, survive_colorize(so->codename), SURVIVE_POSE_EXPAND(*soLocation));
 	} else {
-		SV_VERBOSE(100,
-				   "MPFIT failure %s %f7.5s %f/%10.10f (%d measurements, %s result, %d lighthouses, %d axis, %d "
-				   "canSolveLHs, %d "
-				   "since success, "
-				   "run #%d)",
-				   survive_colorize(so->codename), survive_run_time(ctx), result->orignorm, result->bestnorm,
-				   (int)meas_size, survive_optimizer_error(res), get_lh_count(meas_for_lhs_axis),
-				   get_axis_count(meas_for_lhs_axis), canPossiblySolveLHS, d->opt.failures_since_success,
-				   d->stats.total_runs);
+		SV_VERBOSE(
+			100,
+			"MPFIT failure %s %f7.5s %f/%10.10f/%10.10f (%d measurements, %s result, %d lighthouses, %d axis, %d "
+			"canSolveLHs, %d "
+			"since success, "
+			"run #%d) scale %7.7f",
+			survive_colorize(so->codename), survive_run_time(ctx), result->orignorm, result->bestnorm,
+			sqrt(result->bestnorm / (mpfitctx->measurementsCnt - result->nfree + 1) * d->sensor_variance *
+				 d->sensor_variance),
+			(int)meas_size, survive_optimizer_error(res), get_lh_count(meas_for_lhs_axis),
+			get_axis_count(meas_for_lhs_axis), canPossiblySolveLHS, d->opt.failures_since_success, d->stats.total_runs,
+			so->sensor_scale);
 
 		if (d->opt.failures_since_success > 10 && d->opt.stats.successes < 10 &&
 			(SurviveSensorActivations_stationary_time(&so->activations) > (48000000 / 10))) {
@@ -672,7 +700,7 @@ static FLT run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Surviv
 
 	int nfree = survive_optimizer_get_free_parameters_count(&mpfitctx);
 	survive_release_ctx_lock(ctx);
-	int res = survive_optimizer_run(&mpfitctx, &result, nfree == 7 ? R : 0);
+	int res = survive_optimizer_run(&mpfitctx, &result, R);
 	survive_get_ctx_lock(ctx);
 
 	return handle_optimizer_results(&mpfitctx, res, &result, &user_data, out);

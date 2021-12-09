@@ -38,6 +38,7 @@ STATIC_CONFIG_ITEM(OPTIMIZER_NPRINT, "optimizer-nprint", 'i', "", 0)
 STRUCT_CONFIG_SECTION(survive_optimizer_settings)
     STRUCT_CONFIG_ITEM("mpfit-quat-model", "Model mpfit as quaternion", 0, t->use_quat_model)
 	STRUCT_CONFIG_ITEM("mpfit-no-pair-calc", "Don't process as pairs", 0, t->disallow_pair_calc)
+	STRUCT_CONFIG_ITEM("mpfit-optimize-scale", "Treat scale as mutable", 0, t->optimize_scale)
 	END_STRUCT_CONFIG_SECTION(survive_optimizer_settings)
 
 	static char *object_parameter_names[] = {"Pose x",	   "Pose y",	 "Pose z",	  "Pose Rot w",
@@ -79,13 +80,29 @@ void survive_optimizer_setup_pose_n(survive_optimizer *mpfit_ctx, const SurviveP
 		}
 	}
 
-	int v_idx = survive_optimizer_get_velocity_index(mpfit_ctx);
-	if (v_idx >= 0) {
+	if (!mpfit_ctx->disableVelocity) {
+		int v_idx = survive_optimizer_get_velocity_index(mpfit_ctx);
 		survive_optimizer_get_velocity(mpfit_ctx)[n] = (SurviveVelocity){};
 		for (int i = 0; i < 6; i++) {
 			mpfit_ctx->parameters_info[i + v_idx].fixed = true;
 			mpfit_ctx->parameters_info[i + v_idx].parname = vel_parameter_names[i % 6];
 			mpfit_ctx->parameters_info[i + v_idx].side = 0;
+		}
+	}
+
+	if (mpfit_ctx->settings->optimize_scale) {
+		int s_idx = survive_optimizer_get_sensor_scale_index(mpfit_ctx);
+		for (int i = 0; i < mpfit_ctx->poseLength; i++) {
+			mpfit_ctx->parameters[s_idx + i] = mpfit_ctx->sos[n]->sensor_scale;
+			mpfit_ctx->parameters_info[i + s_idx].fixed = false;
+			mpfit_ctx->parameters_info[i + s_idx].parname = "scale";
+
+			// mpfit_ctx->parameters_info[i + s_idx].side = 2;
+			// mpfit_ctx->parameters_info[i + s_idx].step = 1e-5;
+
+			mpfit_ctx->parameters_info[i + s_idx].limited[0] = mpfit_ctx->parameters_info[i + s_idx].limited[1] = true;
+			mpfit_ctx->parameters_info[i + s_idx].limits[0] = 1 - .1;
+			mpfit_ctx->parameters_info[i + s_idx].limits[1] = 1 + .1;
 		}
 	}
 }
@@ -174,6 +191,9 @@ int survive_optimizer_get_parameters_count(const survive_optimizer *ctx) {
 			  2 * ctx->cameraLength * sizeof(BaseStationCal) / sizeof(FLT);
 	if (!ctx->disableVelocity)
 		rtn += ctx->poseLength * 6;
+	if (ctx->settings->optimize_scale) {
+		rtn += ctx->poseLength;
+	}
 	return rtn;
 }
 int survive_optimizer_get_free_parameters_count(const survive_optimizer *ctx) {
@@ -212,11 +232,23 @@ SurvivePose *survive_optimizer_get_camera(survive_optimizer *ctx) {
 }
 
 SURVIVE_EXPORT int survive_optimizer_get_velocity_index(const survive_optimizer *ctx) {
-	if (ctx->disableVelocity) {
-		return -1;
-	}
 	return survive_optimizer_get_calibration_index(ctx) + ctx->cameraLength * 2 * sizeof(BaseStationCal) / sizeof(FLT);
 }
+
+SURVIVE_EXPORT int survive_optimizer_get_sensor_scale_index(const survive_optimizer *ctx) {
+	int idx = survive_optimizer_get_velocity_index(ctx);
+	return idx + (ctx->disableVelocity ? 0 : (6 * ctx->poseLength));
+}
+
+SURVIVE_EXPORT void survive_optimizer_disable_sensor_scale(survive_optimizer *ctx) {
+	if (ctx->settings->optimize_scale) {
+		int idx = survive_optimizer_get_sensor_scale_index(ctx);
+		for (int i = idx; i < ctx->poseLength + idx; i++) {
+			ctx->parameters_info[i].fixed = true;
+		}
+	}
+}
+
 int survive_optimizer_get_camera_index(const survive_optimizer *ctx) { return ctx->poseLength * 7; }
 
 SurvivePose *survive_optimizer_get_pose(survive_optimizer *ctx) {
@@ -560,6 +592,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 
 	int meas_count = m;
 	int meas_idx = 0;
+
 	for (int mea_block_idx = 0; mea_block_idx < mpfunc_ctx->measurementsCnt; mea_block_idx++) {
 		survive_optimizer_measurement *meas = &mpfunc_ctx->measurements[mea_block_idx];
 
@@ -581,8 +614,22 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			const int lh = meas->light.lh;
 			const FLT *sensor_points = survive_optimizer_get_sensors(mpfunc_ctx, meas->light.object);
 
-			LinmathDualPose *world2lh = (LinmathDualPose *)&cameras[lh];
-			const FLT *pt = &sensor_points[meas->light.sensor_idx * 3];
+			LinmathDualPose *world2lh = &cameras[lh];
+			const FLT *ptp = &sensor_points[meas->light.sensor_idx * 3];
+			LinmathVec3d pt;
+			copy3d(pt, ptp);
+
+			if (mpfunc_ctx->settings->optimize_scale) {
+				FLT scale = p[survive_optimizer_get_sensor_scale_index(mpfunc_ctx) + meas->light.object];
+				if (scale != 1.0) {
+					SurvivePose imu2trackref = mpfunc_ctx->sos[meas->light.object]->imu2trackref;
+					SurvivePose trackref2imu = InvertPoseRtn(&imu2trackref);
+
+					ApplyPoseToPoint(pt, &imu2trackref, pt);
+					scale3d(pt, pt, scale);
+					ApplyPoseToPoint(pt, &trackref2imu, pt);
+				}
+			}
 
 			if (calced_timecode != meas->time && !mpfunc_ctx->disableVelocity) {
 				pose_idx = -1;

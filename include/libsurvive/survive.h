@@ -223,6 +223,7 @@ struct SurviveObject {
 	} stats;
 
 	LinmathPoint3d acceleration;
+	FLT sensor_scale;
 };
 
 // These exports are mostly for language binding against
