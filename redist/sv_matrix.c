@@ -80,9 +80,13 @@ void svScale(SvMat *dest, const SvMat *a, FLT s) {
 
 void svCopy(const SvMat *src, SvMat *dest, const SvMat *mask) {
 	assert(mask == 0 && "This isn't implemented yet");
-	assert(src->rows == dest->rows);
-	assert(src->cols == dest->cols);
-	memcpy(SV_RAW_PTR(dest), SV_RAW_PTR(src), mat_size_bytes(src));
+	if (src->rows == dest->rows && src->cols == dest->cols) {
+		memcpy(SV_RAW_PTR(dest), SV_RAW_PTR(src), mat_size_bytes(src));
+	} else {
+		for (int i = 0; i < linmath_imin(src->rows, dest->rows); i++)
+			for (int j = 0; j < linmath_imin(src->cols, dest->cols); j++)
+				svMatrixSet(dest, i, j, svMatrixGet(src, i, j));
+	}
 }
 
 SURVIVE_LOCAL_ONLY void svSetZero(SvMat *arr) {
