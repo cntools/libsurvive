@@ -48,6 +48,7 @@ struct SurviveDriverSimulator {
 	FLT sensor_droprate;
 	FLT init_time;
 
+	FLT scale_error;
 	FLT timestart;
 	FLT current_timestamp;
 	int acode;
@@ -124,7 +125,15 @@ FLT lighthouse_angle(SurviveDriverSimulator *driver, int lh, FLT timestamp) {
 }
 static bool lighthouse_sensor_angle(SurviveDriverSimulator *driver, int lh, size_t idx, SurviveAngleReading ang) {
 	SurviveContext *ctx = driver->ctx;
-	FLT *pt = driver->so->sensor_locations + idx * 3;
+	LinmathVec3d pt;
+	copy3d(pt, driver->so->sensor_locations + idx * 3);
+
+	SurvivePose imu2trackref = driver->so->imu2trackref;
+	SurvivePose trackref2imu = InvertPoseRtn(&imu2trackref);
+
+	ApplyPoseToPoint(pt, &imu2trackref, pt);
+	scale3d(pt, pt, driver->scale_error);
+	ApplyPoseToPoint(pt, &trackref2imu, pt);
 
 	if (driver->settings.lh_duty_cycle < 1) {
 		FLT t = driver->current_timestamp + driver->lhstates[lh].start_time;
@@ -590,7 +599,7 @@ cstring generate_simulated_object(FLT r, size_t sensor_ct) {
 	cstring loc = {0}, nor_buf = {0};
 
 	char buffer[1024] = {0};
-	FLT scale_error = 1; // linmath_normrand(1, .2);
+
 	for (int i = 0; i < sensor_ct; i++) {
 		FLT azi = rand();
 		FLT pol = rand();
@@ -600,8 +609,7 @@ cstring generate_simulated_object(FLT r, size_t sensor_ct) {
 		normals[2] = locations[2] = fabs(r * cos(pol));
 		normalize3d(normals, normals);
 
-		snprintf(buffer, sizeof(buffer), "[%f, %f, %f],\n", scale_error * locations[0], scale_error * locations[1],
-				 scale_error * locations[2]);
+		snprintf(buffer, sizeof(buffer), "[%f, %f, %f],\n", locations[0], locations[1], locations[2]);
 		str_append(&loc, buffer);
 
 		snprintf(buffer, sizeof(buffer), "[%f, %f, %f],\n", normals[0], normals[1], normals[2]);
@@ -686,7 +694,7 @@ int DriverRegSimulator(SurviveContext *ctx) {
 
 	for (int i = 0; i < 3; i++)
 		sp->gyro_bias[i] = linmath_normrand(0, sp->gyro_bias_scale * sp->noise_scale);
-
+	sp->scale_error = .97; // linmath_normrand(1, .05);
 	int use_lh2 = sp->lh_version == 2;
 	int max_lighthouses = use_lh2 ? 16 : 2;
 	// Create a new SurviveObject...
@@ -726,7 +734,11 @@ int DriverRegSimulator(SurviveContext *ctx) {
 								.ogeemag = .25};
 
 	if (ctx->activeLighthouses == 0) {
-		for (int i = 0; i < sizeof(simulated_bsd) / sizeof(simulated_bsd[0]); i++) {
+		int lh_count = sizeof(simulated_bsd) / sizeof(simulated_bsd[0]);
+		if (!use_lh2)
+			lh_count = 2;
+
+		for (int i = 0; i < lh_count; i++) {
 			ctx->bsd[i] = simulated_bsd[i];
 
 			for (int axis = 0; axis < 2; axis++) {
