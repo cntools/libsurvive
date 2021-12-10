@@ -76,7 +76,7 @@ typedef struct {
 typedef struct survive_optimizer_settings {
 	bool use_quat_model;
 	bool disallow_pair_calc;
-	bool optimize_scale;
+	FLT optimize_scale_threshold;
 } survive_optimizer_settings;
 
 struct mp_par_struct;

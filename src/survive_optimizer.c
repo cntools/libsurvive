@@ -38,7 +38,7 @@ STATIC_CONFIG_ITEM(OPTIMIZER_NPRINT, "optimizer-nprint", 'i', "", 0)
 STRUCT_CONFIG_SECTION(survive_optimizer_settings)
     STRUCT_CONFIG_ITEM("mpfit-quat-model", "Model mpfit as quaternion", 0, t->use_quat_model)
 	STRUCT_CONFIG_ITEM("mpfit-no-pair-calc", "Don't process as pairs", 0, t->disallow_pair_calc)
-	STRUCT_CONFIG_ITEM("mpfit-optimize-scale", "Treat scale as mutable", 0, t->optimize_scale)
+	STRUCT_CONFIG_ITEM("mpfit-optimize-scale-threshold", "Treat scale as mutable", 1e-10, t->optimize_scale_threshold)
 	END_STRUCT_CONFIG_SECTION(survive_optimizer_settings)
 
 	static char *object_parameter_names[] = {"Pose x",	   "Pose y",	 "Pose z",	  "Pose Rot w",
@@ -90,12 +90,12 @@ void survive_optimizer_setup_pose_n(survive_optimizer *mpfit_ctx, const SurviveP
 		}
 	}
 
-	if (mpfit_ctx->settings->optimize_scale) {
+	if (mpfit_ctx->settings->optimize_scale_threshold >= 0) {
 		int s_idx = survive_optimizer_get_sensor_scale_index(mpfit_ctx);
 		for (int i = 0; i < mpfit_ctx->poseLength; i++) {
 			mpfit_ctx->parameters[s_idx + i] = mpfit_ctx->sos[n]->sensor_scale;
 			struct mp_par_struct *pinfo = &mpfit_ctx->parameters_info[i + s_idx];
-			pinfo->fixed = false;
+			pinfo->fixed = mpfit_ctx->settings->optimize_scale_threshold > mpfit_ctx->sos[n]->sensor_scale_var;
 			pinfo->parname = "scale";
 
 			if (use_jacobian_function != 0) {
@@ -200,7 +200,7 @@ int survive_optimizer_get_parameters_count(const survive_optimizer *ctx) {
 			  2 * ctx->cameraLength * sizeof(BaseStationCal) / sizeof(FLT);
 	if (!ctx->disableVelocity)
 		rtn += ctx->poseLength * 6;
-	if (ctx->settings->optimize_scale) {
+	if (ctx->settings->optimize_scale_threshold >= 0) {
 		rtn += ctx->poseLength;
 	}
 	return rtn;
@@ -250,7 +250,7 @@ SURVIVE_EXPORT int survive_optimizer_get_sensor_scale_index(const survive_optimi
 }
 
 SURVIVE_EXPORT void survive_optimizer_disable_sensor_scale(survive_optimizer *ctx) {
-	if (ctx->settings->optimize_scale) {
+	if (ctx->settings->optimize_scale_threshold >= 0) {
 		int idx = survive_optimizer_get_sensor_scale_index(ctx);
 		for (int i = idx; i < ctx->poseLength + idx; i++) {
 			ctx->parameters_info[i].fixed = true;
@@ -633,7 +633,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			int scale_idx = -1;
 			LinmathVec3d xyzjac_scale = {};
 			bool needsScaleJac = false;
-			if (mpfunc_ctx->settings->optimize_scale) {
+			if (mpfunc_ctx->settings->optimize_scale_threshold >= 0) {
 				scale_idx = survive_optimizer_get_sensor_scale_index(mpfunc_ctx) + meas->light.object;
 				FLT scale = p[scale_idx];
 
@@ -938,7 +938,7 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
     int totalFreePoseCount = nfree / pose_size;
 	if (covar) {
 		SvMat R_q = svMat(R->rows, R->cols, covar);
-		if (optimizer->settings->optimize_scale) {
+		if (optimizer->settings->optimize_scale_threshold >= 0) {
 			int idx = survive_optimizer_get_sensor_scale_index(optimizer);
 			int free_idx = survive_optimizer_nonfixed_index(optimizer, idx);
 			if (free_idx >= 0) {
