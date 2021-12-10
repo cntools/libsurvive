@@ -16,6 +16,9 @@ ogeeMag_0, ogeeMag_1 = sp.symbols('ogeeMag_0, ogeeMag_1')
 def time():
     return sp.symbols('time')
 
+def scale():
+    return sp.symbols('scale')
+
 
 class SurviveType:
     pass
@@ -71,6 +74,11 @@ class SurvivePose(SurviveType):
         self.Pos = p
         self.Rot = r
 
+
+def invert_pose_typed(obj_p):
+    r = quatgetreciprocal(quatnormalize(obj_p.Rot))
+    X,Y,Z = quatrotatevector(r, obj_p.Pos)
+    return SurvivePose([-X,-Y,-Z], r)
 
 class LinmathAxisAnglePose(SurviveType):
     def __init__(self, p, r):
@@ -365,6 +373,10 @@ def sensor_to_world(obj_p, sensor_pt, lh_p):
         return apply_pose_to_pt(lh_p, apply_pose_to_pt(obj_p, sensor_pt))
     return apply_axisangle_pose_to_pt(lh_p, apply_axisangle_pose_to_pt(obj_p, sensor_pt))
 
+def scale_sensor_pt(sensor_pt, obj_p, scale):
+    sensor_pt = apply_pose_to_pt(obj_p, sensor_pt)
+    sensor_pt = [sensor_pt[0] * scale, sensor_pt[1] * scale, sensor_pt[2] * scale]
+    return apply_pose_to_pt(invert_pose_typed(obj_p), sensor_pt)
 
 def apply_ang_velocity(axis_angle, time, q):
     qi, qj, qk = axis_angle
@@ -432,5 +444,6 @@ generate = [
     world2lh_up_err,
     apply_ang_velocity,
     apply_ang_velocity_aa,
-    axisanglecompose
+    axisanglecompose,
+    scale_sensor_pt
 ]

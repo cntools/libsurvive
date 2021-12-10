@@ -94,15 +94,24 @@ void survive_optimizer_setup_pose_n(survive_optimizer *mpfit_ctx, const SurviveP
 		int s_idx = survive_optimizer_get_sensor_scale_index(mpfit_ctx);
 		for (int i = 0; i < mpfit_ctx->poseLength; i++) {
 			mpfit_ctx->parameters[s_idx + i] = mpfit_ctx->sos[n]->sensor_scale;
-			mpfit_ctx->parameters_info[i + s_idx].fixed = false;
-			mpfit_ctx->parameters_info[i + s_idx].parname = "scale";
+			struct mp_par_struct *pinfo = &mpfit_ctx->parameters_info[i + s_idx];
+			pinfo->fixed = false;
+			pinfo->parname = "scale";
 
-			// mpfit_ctx->parameters_info[i + s_idx].side = 2;
-			// mpfit_ctx->parameters_info[i + s_idx].step = 1e-5;
+			if (use_jacobian_function != 0) {
+				if (use_jacobian_function < 0) {
+					pinfo->side = 2;
+					pinfo->deriv_debug = 1;
+					pinfo->deriv_abstol = .0001;
+					pinfo->deriv_reltol = .0001;
+				} else {
+					pinfo->side = 3;
+				}
+			}
 
-			mpfit_ctx->parameters_info[i + s_idx].limited[0] = mpfit_ctx->parameters_info[i + s_idx].limited[1] = true;
-			mpfit_ctx->parameters_info[i + s_idx].limits[0] = 1 - .1;
-			mpfit_ctx->parameters_info[i + s_idx].limits[1] = 1 + .1;
+			pinfo->limited[0] = pinfo->limited[1] = true;
+			pinfo->limits[0] = 1 - .1;
+			pinfo->limits[1] = 1 + .1;
 		}
 	}
 }
@@ -609,7 +618,8 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			const bool nextIsPair =
 				mea_block_idx + 1 < mpfunc_ctx->measurementsCnt && mpfunc_ctx->disableVelocity == true &&
 				meas[1].meas_type == survive_optimizer_measurement_type_light && meas[0].light.axis == 0 &&
-				meas[1].light.axis == 1 && meas[0].light.sensor_idx == meas[1].light.sensor_idx && !meas[1].invalid;
+				meas[1].light.axis == 1 && meas[0].light.sensor_idx == meas[1].light.sensor_idx && !meas[1].invalid &&
+				!mpfunc_ctx->settings->disallow_pair_calc;
 
 			const int lh = meas->light.lh;
 			const FLT *sensor_points = survive_optimizer_get_sensors(mpfunc_ctx, meas->light.object);
@@ -619,16 +629,20 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			LinmathVec3d pt;
 			copy3d(pt, ptp);
 
+			// d a / d s = d a / d xyz * d xyz / d s
+			int scale_idx = -1;
+			LinmathVec3d xyzjac_scale = {};
+			bool needsScaleJac = false;
 			if (mpfunc_ctx->settings->optimize_scale) {
-				FLT scale = p[survive_optimizer_get_sensor_scale_index(mpfunc_ctx) + meas->light.object];
-				if (scale != 1.0) {
-					SurvivePose imu2trackref = mpfunc_ctx->sos[meas->light.object]->imu2trackref;
-					SurvivePose trackref2imu = InvertPoseRtn(&imu2trackref);
+				scale_idx = survive_optimizer_get_sensor_scale_index(mpfunc_ctx) + meas->light.object;
+				FLT scale = p[scale_idx];
 
-					ApplyPoseToPoint(pt, &imu2trackref, pt);
-					scale3d(pt, pt, scale);
-					ApplyPoseToPoint(pt, &trackref2imu, pt);
+				SurvivePose imu2trackref = mpfunc_ctx->sos[meas->light.object]->imu2trackref;
+				needsScaleJac = derivs && scale_idx >= 0 && derivs[scale_idx];
+				if (needsScaleJac) {
+					gen_scale_sensor_pt_jac_scale(xyzjac_scale, pt, &imu2trackref, scale);
 				}
+				gen_scale_sensor_pt(pt, pt, &imu2trackref, scale);
 			}
 
 			if (calced_timecode != meas->time && !mpfunc_ctx->disableVelocity) {
@@ -673,7 +687,25 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 				}
 			}
 
-			if (nextIsPair && !mpfunc_ctx->settings->disallow_pair_calc) {
+			const survive_reproject_model_t *reprojectModel = mpfunc_ctx->reprojectModel;
+			if (needsScaleJac) {
+				for (int meas_idx_jac = 0; meas_idx_jac < (1 + nextIsPair); meas_idx_jac++) {
+					LinmathVec3d ptJac = {};
+					int axis = meas[meas_idx_jac].light.axis;
+					const struct BaseStationCal *cal = survive_optimizer_get_calibration(mpfunc_ctx, lh);
+					if (mpfunc_ctx->settings->use_quat_model) {
+						reprojectModel->reprojectAxisJacobSensorPt[axis](ptJac, &obj2world.quatPose, pt,
+																		 &world2lh->quatPose, cal + axis);
+					} else {
+						reprojectModel->reprojectAxisAngleAxisJacobSensorPt[axis](ptJac, &obj2world.axisAnglePose, pt,
+																				  &world2lh->axisAnglePose, cal + axis);
+					}
+					scale3d(ptJac, ptJac, 1. / meas[meas_idx_jac].variance);
+					derivs[scale_idx][meas_idx + meas_idx_jac] = dot3d(xyzjac_scale, ptJac);
+				}
+			}
+
+			if (nextIsPair) {
 				run_pair_measurement(mpfunc_ctx, meas_idx, meas, &ang_velocity_jac, &obj2world, &obj2lh[lh], world2lh,
 									 pt,
 									 deviates + meas_idx, derivs);
@@ -684,6 +716,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
                                        pt,
 									   deviates + meas_idx, derivs);
 			}
+
 			break;
 		}
 		case survive_optimizer_measurement_type_camera_accel: {
@@ -841,6 +874,18 @@ static inline bool sane_covariance(const SvMat *P) {
 	return true;
 }
 
+int survive_optimizer_nonfixed_index(survive_optimizer *ctx, int idx) {
+	if (ctx->parameters_info[idx].fixed)
+		return -1;
+
+	int rtn = 0;
+	for (int i = 0; i < idx; i++) {
+		if (!ctx->parameters_info[i].fixed)
+			rtn++;
+	}
+	return rtn;
+}
+
 int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result, struct SvMat *R) {
 	SurviveContext *ctx = optimizer->sos[0] ? optimizer->sos[0]->ctx : 0;
 
@@ -891,13 +936,32 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 	int totalPoseCount = optimizer->poseLength + optimizer->cameraLength;
     int pose_size = optimizer->settings->use_quat_model ? 7 : 6;
     int totalFreePoseCount = nfree / pose_size;
-    SvMat R_q = svMat(R->rows , R->cols, covar);
 	if (covar) {
+		SvMat R_q = svMat(R->rows, R->cols, covar);
+		if (optimizer->settings->optimize_scale) {
+			int idx = survive_optimizer_get_sensor_scale_index(optimizer);
+			int free_idx = survive_optimizer_nonfixed_index(optimizer, idx);
+			if (free_idx >= 0) {
+				for (int z = 0; z < 1; z++) {
+					FLT scale_cov = svMatrixGet(&R_aa, free_idx + z, free_idx + z);
+					if (scale_cov > 0) {
+						FLT scale = params[idx + z];
+
+						FLT y = scale - optimizer->sos[z]->sensor_scale;
+						FLT k = optimizer->sos[z]->sensor_scale_var / (optimizer->sos[z]->sensor_scale_var + scale_cov);
+						optimizer->sos[z]->sensor_scale += k * y;
+						optimizer->sos[z]->sensor_scale_var *= (1 - k);
+						// printf("SENSOR_SCALE %s %e %f %e %f %+f %f\n", optimizer->sos[z]->codename, scale_cov, scale,
+						//       optimizer->sos[z]->sensor_scale_var, optimizer->sos[z]->sensor_scale, y, k);
+					}
+				}
+			}
+		}
 		if(optimizer->settings->use_quat_model) {
             svCopy(&R_aa, &R_q, 0);
 		} else {
-            SV_CREATE_STACK_MAT(G, totalFreePoseCount * 7, R->rows);
-            SV_CREATE_STACK_MAT(Gp, 4, 3);
+			SV_CREATE_STACK_MAT(G, R->rows, R_aa.rows);
+			SV_CREATE_STACK_MAT(Gp, 4, 3);
             assert(R->rows == R->cols);
             //assert(R->rows == totalFreePoseCount * 7);
 

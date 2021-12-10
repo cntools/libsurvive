@@ -620,12 +620,12 @@ cstring generate_simulated_object(FLT r, size_t sensor_ct) {
 
 	FLT trackref_from_head[7] = {0, 0, 0, 1};
 	FLT trackref_from_imu[7] = {0, 0, 0, 1};
-	/*
+
 	for (int i = 0; i < 7; i++) {
 		trackref_from_head[i] = .1 * (trackref_from_head[i] / RAND_MAX - .5);
 		trackref_from_imu[i] = .1 * (trackref_from_imu[i] / RAND_MAX - .5);
 	}
-*/
+
 	quatnormalize(trackref_from_head, trackref_from_head);
 	quatnormalize(trackref_from_imu, trackref_from_imu);
 

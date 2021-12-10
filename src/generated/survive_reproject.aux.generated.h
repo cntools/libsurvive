@@ -2872,3 +2872,381 @@ static inline void gen_axisanglecompose_jac_axis_angle2(FLT *out, const FLT *axi
 	out[7] = (-1 * x102 * x112) + (-1 * x100 * x111) + (x80 * x95);
 	out[8] = (-1 * x108 * x112) + (-1 * x107 * x111) + (x80 * x105);
 }
+
+static inline void gen_scale_sensor_pt(FLT *out, const FLT *sensor_pt, const SurvivePose *obj_p, const FLT scale) {
+	const GEN_FLT sensor_x = sensor_pt[0];
+	const GEN_FLT sensor_y = sensor_pt[1];
+	const GEN_FLT sensor_z = sensor_pt[2];
+	const GEN_FLT obj_px = (*obj_p).Pos[0];
+	const GEN_FLT obj_py = (*obj_p).Pos[1];
+	const GEN_FLT obj_pz = (*obj_p).Pos[2];
+	const GEN_FLT obj_qw = (*obj_p).Rot[0];
+	const GEN_FLT obj_qi = (*obj_p).Rot[1];
+	const GEN_FLT obj_qj = (*obj_p).Rot[2];
+	const GEN_FLT obj_qk = (*obj_p).Rot[3];
+	const GEN_FLT x0 = (obj_qk * sensor_x) + (-1 * obj_qi * sensor_z) + (obj_qw * sensor_y);
+	const GEN_FLT x1 = (-1 * obj_qj * sensor_x) + (obj_qw * sensor_z) + (obj_qi * sensor_y);
+	const GEN_FLT x2 = scale * ((2 * ((x1 * obj_qj) + (-1 * x0 * obj_qk))) + obj_px + sensor_x);
+	const GEN_FLT x3 = 1. / sqrt(1e-11 + (obj_qw * obj_qw) + (obj_qi * obj_qi) + (obj_qj * obj_qj) + (obj_qk * obj_qk));
+	const GEN_FLT x4 = x3 * obj_py;
+	const GEN_FLT x5 = x3 * obj_qk;
+	const GEN_FLT x6 = x3 * obj_qi;
+	const GEN_FLT x7 = (x6 * obj_pz) + (x4 * obj_qw) + (-1 * x5 * obj_px);
+	const GEN_FLT x8 = x3 * obj_qw;
+	const GEN_FLT x9 = x3 * obj_qj;
+	const GEN_FLT x10 = x3 * ((x9 * obj_px) + (x8 * obj_pz) + (-1 * x6 * obj_py));
+	const GEN_FLT x11 = (obj_qw * sensor_x) + (-1 * obj_qk * sensor_y) + (obj_qj * sensor_z);
+	const GEN_FLT x12 = scale * ((2 * ((x11 * obj_qk) + (-1 * x1 * obj_qi))) + obj_py + sensor_y);
+	const GEN_FLT x13 = scale * ((2 * ((x0 * obj_qi) + (-1 * x11 * obj_qj))) + obj_pz + sensor_z);
+	const GEN_FLT x14 = (x6 * x13) + (x8 * x12) + (-1 * x2 * x5);
+	const GEN_FLT x15 = (x8 * x13) + (x2 * x9) + (-1 * x6 * x12);
+	const GEN_FLT x16 = x3 * ((x4 * obj_qk) + (-1 * x9 * obj_pz) + (x8 * obj_px));
+	const GEN_FLT x17 = (x5 * x12) + (x2 * x8) + (-1 * x9 * x13);
+	out[0] = (2 * ((-1 * x9 * x15) + (x5 * x14))) + x2 + (-1 * (obj_px + (2 * ((-1 * x10 * obj_qj) + (x5 * x7)))));
+	out[1] =
+		(2 * ((-1 * x5 * x17) + (x6 * x15))) + (-1 * (obj_py + (2 * ((-1 * x16 * obj_qk) + (x10 * obj_qi))))) + x12;
+	out[2] = (2 * ((-1 * x6 * x14) + (x9 * x17))) + (-1 * (obj_pz + (2 * ((-1 * x6 * x7) + (x16 * obj_qj))))) + x13;
+}
+
+// Jacobian of scale_sensor_pt wrt [sensor_x, sensor_y, sensor_z]
+static inline void gen_scale_sensor_pt_jac_sensor_pt(FLT *out, const FLT *sensor_pt, const SurvivePose *obj_p,
+													 const FLT scale) {
+	const GEN_FLT sensor_x = sensor_pt[0];
+	const GEN_FLT sensor_y = sensor_pt[1];
+	const GEN_FLT sensor_z = sensor_pt[2];
+	const GEN_FLT obj_px = (*obj_p).Pos[0];
+	const GEN_FLT obj_py = (*obj_p).Pos[1];
+	const GEN_FLT obj_pz = (*obj_p).Pos[2];
+	const GEN_FLT obj_qw = (*obj_p).Rot[0];
+	const GEN_FLT obj_qi = (*obj_p).Rot[1];
+	const GEN_FLT obj_qj = (*obj_p).Rot[2];
+	const GEN_FLT obj_qk = (*obj_p).Rot[3];
+	const GEN_FLT x0 = 2 * obj_qj;
+	const GEN_FLT x1 = x0 * obj_qw;
+	const GEN_FLT x2 = 2 * obj_qk;
+	const GEN_FLT x3 = x2 * obj_qi;
+	const GEN_FLT x4 = (x3 + (-1 * x1)) * scale;
+	const GEN_FLT x5 = obj_qk * obj_qk;
+	const GEN_FLT x6 = obj_qj * obj_qj;
+	const GEN_FLT x7 = obj_qi * obj_qi;
+	const GEN_FLT x8 = 1. / sqrt(1e-11 + x7 + x6 + (obj_qw * obj_qw) + x5);
+	const GEN_FLT x9 = x8 * obj_qi;
+	const GEN_FLT x10 = x0 * obj_qi;
+	const GEN_FLT x11 = x2 * obj_qw;
+	const GEN_FLT x12 = (x11 + x10) * scale;
+	const GEN_FLT x13 = x8 * x12;
+	const GEN_FLT x14 = -2 * x5;
+	const GEN_FLT x15 = -2 * x6;
+	const GEN_FLT x16 = (1 + x15 + x14) * scale;
+	const GEN_FLT x17 = x8 * obj_qk;
+	const GEN_FLT x18 = (-1 * x17 * x16) + (x4 * x9) + (x13 * obj_qw);
+	const GEN_FLT x19 = x2 * x8;
+	const GEN_FLT x20 = x8 * obj_qj;
+	const GEN_FLT x21 = x8 * obj_qw;
+	const GEN_FLT x22 = (-1 * x13 * obj_qi) + (x20 * x16) + (x4 * x21);
+	const GEN_FLT x23 = x0 * x8;
+	const GEN_FLT x24 = x2 * obj_qj;
+	const GEN_FLT x25 = 2 * obj_qi;
+	const GEN_FLT x26 = x25 * obj_qw;
+	const GEN_FLT x27 = (x26 + x24) * scale;
+	const GEN_FLT x28 = x8 * x27;
+	const GEN_FLT x29 = 1 + (-2 * x7);
+	const GEN_FLT x30 = (x29 + x14) * scale;
+	const GEN_FLT x31 = (x10 + (-1 * x11)) * scale;
+	const GEN_FLT x32 = x8 * x31;
+	const GEN_FLT x33 = (-1 * x32 * obj_qk) + (x28 * obj_qi) + (x30 * x21);
+	const GEN_FLT x34 = (-1 * x9 * x30) + (x32 * obj_qj) + (x28 * obj_qw);
+	const GEN_FLT x35 = (x29 + x15) * scale;
+	const GEN_FLT x36 = (x24 + (-1 * x26)) * scale;
+	const GEN_FLT x37 = x8 * x36;
+	const GEN_FLT x38 = (x1 + x3) * scale;
+	const GEN_FLT x39 = (-1 * x38 * x17) + (x9 * x35) + (x37 * obj_qw);
+	const GEN_FLT x40 = (-1 * x37 * obj_qi) + (x38 * x20) + (x35 * x21);
+	const GEN_FLT x41 = x8 * x25;
+	const GEN_FLT x42 = (-1 * x4 * x20) + (x13 * obj_qk) + (x21 * x16);
+	const GEN_FLT x43 = (-1 * x28 * obj_qj) + (x30 * x17) + (x32 * obj_qw);
+	const GEN_FLT x44 = (-1 * x35 * x20) + (x37 * obj_qk) + (x38 * x21);
+	out[0] = (x19 * x18) + (-1 * x22 * x23) + x16;
+	out[1] = (x33 * x19) + (-1 * x34 * x23) + x31;
+	out[2] = (-1 * x40 * x23) + (x39 * x19) + x38;
+	out[3] = (x41 * x22) + (-1 * x42 * x19) + x12;
+	out[4] = (-1 * x43 * x19) + (x41 * x34) + x30;
+	out[5] = (x40 * x41) + (-1 * x44 * x19) + x36;
+	out[6] = (-1 * x41 * x18) + (x42 * x23) + x4;
+	out[7] = (-1 * x41 * x33) + (x43 * x23) + x27;
+	out[8] = (-1 * x41 * x39) + (x44 * x23) + x35;
+}
+
+// Jacobian of scale_sensor_pt wrt [obj_px, obj_py, obj_pz, obj_qw, obj_qi, obj_qj, obj_qk]
+static inline void gen_scale_sensor_pt_jac_obj_p(FLT *out, const FLT *sensor_pt, const SurvivePose *obj_p,
+												 const FLT scale) {
+	const GEN_FLT sensor_x = sensor_pt[0];
+	const GEN_FLT sensor_y = sensor_pt[1];
+	const GEN_FLT sensor_z = sensor_pt[2];
+	const GEN_FLT obj_px = (*obj_p).Pos[0];
+	const GEN_FLT obj_py = (*obj_p).Pos[1];
+	const GEN_FLT obj_pz = (*obj_p).Pos[2];
+	const GEN_FLT obj_qw = (*obj_p).Rot[0];
+	const GEN_FLT obj_qi = (*obj_p).Rot[1];
+	const GEN_FLT obj_qj = (*obj_p).Rot[2];
+	const GEN_FLT obj_qk = (*obj_p).Rot[3];
+	const GEN_FLT x0 = obj_qj * obj_qj;
+	const GEN_FLT x1 = obj_qw * obj_qw;
+	const GEN_FLT x2 = obj_qk * obj_qk;
+	const GEN_FLT x3 = obj_qi * obj_qi;
+	const GEN_FLT x4 = 1e-11 + x3 + x0 + x1 + x2;
+	const GEN_FLT x5 = 1. / x4;
+	const GEN_FLT x6 = 2 * x5;
+	const GEN_FLT x7 = x0 * x6;
+	const GEN_FLT x8 = -1 + x7 + scale + (-1 * x7 * scale);
+	const GEN_FLT x9 = x2 * x6;
+	const GEN_FLT x10 = x9 + (-1 * x9 * scale);
+	const GEN_FLT x11 = 2 * obj_qk;
+	const GEN_FLT x12 = x5 * x11;
+	const GEN_FLT x13 = x12 * obj_qw;
+	const GEN_FLT x14 = x13 * scale;
+	const GEN_FLT x15 = 2 * obj_qj;
+	const GEN_FLT x16 = x5 * x15;
+	const GEN_FLT x17 = x16 * obj_qi;
+	const GEN_FLT x18 = (-1 * x17) + (x17 * scale);
+	const GEN_FLT x19 = x16 * obj_qw;
+	const GEN_FLT x20 = x19 * scale;
+	const GEN_FLT x21 = x12 * obj_qi;
+	const GEN_FLT x22 = (-1 * x21) + (x21 * scale);
+	const GEN_FLT x23 = obj_qw * sensor_x;
+	const GEN_FLT x24 = obj_qj * sensor_z;
+	const GEN_FLT x25 = obj_qk * sensor_y;
+	const GEN_FLT x26 = (-1 * x25) + x23 + x24;
+	const GEN_FLT x27 = obj_qk * sensor_x;
+	const GEN_FLT x28 = obj_qw * sensor_y;
+	const GEN_FLT x29 = obj_qi * sensor_z;
+	const GEN_FLT x30 = (-1 * x29) + x27 + x28;
+	const GEN_FLT x31 = (2 * ((x30 * obj_qi) + (-1 * x26 * obj_qj))) + obj_pz + sensor_z;
+	const GEN_FLT x32 = 1. / (x4 * sqrt(x4));
+	const GEN_FLT x33 = x32 * scale;
+	const GEN_FLT x34 = x31 * x33;
+	const GEN_FLT x35 = obj_qw * obj_qi;
+	const GEN_FLT x36 = -1 * x34 * x35;
+	const GEN_FLT x37 = 2 * x29;
+	const GEN_FLT x38 = 2 * x27;
+	const GEN_FLT x39 = (x38 + (-1 * x37)) * scale;
+	const GEN_FLT x40 = 1. / sqrt(x4);
+	const GEN_FLT x41 = x40 * obj_qw;
+	const GEN_FLT x42 = obj_qw * sensor_z;
+	const GEN_FLT x43 = obj_qi * sensor_y;
+	const GEN_FLT x44 = obj_qj * sensor_x;
+	const GEN_FLT x45 = (-1 * x44) + x42 + x43;
+	const GEN_FLT x46 = (2 * ((x26 * obj_qk) + (-1 * x45 * obj_qi))) + obj_py + sensor_y;
+	const GEN_FLT x47 = x40 * scale;
+	const GEN_FLT x48 = x46 * x47;
+	const GEN_FLT x49 = 2 * x44;
+	const GEN_FLT x50 = 2 * x43;
+	const GEN_FLT x51 = (x50 + (-1 * x49)) * scale;
+	const GEN_FLT x52 = x40 * obj_qi;
+	const GEN_FLT x53 = x46 * x33;
+	const GEN_FLT x54 = 2 * x25;
+	const GEN_FLT x55 = 2 * x24;
+	const GEN_FLT x56 = (x55 + (-1 * x54)) * scale;
+	const GEN_FLT x57 = x40 * obj_qk;
+	const GEN_FLT x58 = (2 * ((x45 * obj_qj) + (-1 * x30 * obj_qk))) + obj_px + sensor_x;
+	const GEN_FLT x59 = x58 * x33;
+	const GEN_FLT x60 = x59 * obj_qk;
+	const GEN_FLT x61 = x60 * obj_qw;
+	const GEN_FLT x62 = 2 * x40;
+	const GEN_FLT x63 = x62 * ((-1 * x57 * x56) + x61 + (x41 * x39) + (-1 * x1 * x53) + x36 + (x52 * x51) + x48);
+	const GEN_FLT x64 = x47 * x31;
+	const GEN_FLT x65 = x58 * x47;
+	const GEN_FLT x66 = (x65 * obj_qj) + (x64 * obj_qw) + (-1 * x48 * obj_qi);
+	const GEN_FLT x67 = x32 * x15;
+	const GEN_FLT x68 = x67 * obj_qw;
+	const GEN_FLT x69 = obj_qw * obj_qj;
+	const GEN_FLT x70 = -1 * x69 * x59;
+	const GEN_FLT x71 = x40 * obj_qj;
+	const GEN_FLT x72 = x53 * x35;
+	const GEN_FLT x73 = x62 * ((-1 * x52 * x39) + (x71 * x56) + x70 + (x51 * x41) + x72 + x64 + (-1 * x1 * x34));
+	const GEN_FLT x74 = (x64 * obj_qi) + (x48 * obj_qw) + (-1 * x65 * obj_qk);
+	const GEN_FLT x75 = x32 * x11;
+	const GEN_FLT x76 = x75 * obj_qw;
+	const GEN_FLT x77 = x40 * obj_py;
+	const GEN_FLT x78 = x40 * obj_px;
+	const GEN_FLT x79 = x40 * obj_pz;
+	const GEN_FLT x80 = (x79 * obj_qi) + (x77 * obj_qw) + (-1 * x78 * obj_qk);
+	const GEN_FLT x81 = x80 * obj_qw;
+	const GEN_FLT x82 = (x79 * obj_qw) + (x78 * obj_qj) + (-1 * x77 * obj_qi);
+	const GEN_FLT x83 = x32 * obj_px;
+	const GEN_FLT x84 = x83 * obj_qk;
+	const GEN_FLT x85 = x84 * obj_qw;
+	const GEN_FLT x86 = x32 * obj_pz;
+	const GEN_FLT x87 = x86 * obj_qw;
+	const GEN_FLT x88 = -1 * x87 * obj_qi;
+	const GEN_FLT x89 = x32 * obj_py;
+	const GEN_FLT x90 = (-1 * x1 * x89) + x77 + x85 + x88;
+	const GEN_FLT x91 = x62 * obj_qk;
+	const GEN_FLT x92 = x83 * obj_qw;
+	const GEN_FLT x93 = -1 * x92 * obj_qj;
+	const GEN_FLT x94 = x89 * obj_qw;
+	const GEN_FLT x95 = x94 * obj_qi;
+	const GEN_FLT x96 = x62 * (x79 + (-1 * x1 * x86) + x93 + x95);
+	const GEN_FLT x97 = 2 * x28;
+	const GEN_FLT x98 = (x97 + x38 + (-4 * x29)) * scale;
+	const GEN_FLT x99 = x11 * sensor_z;
+	const GEN_FLT x100 = x15 * sensor_y;
+	const GEN_FLT x101 = (x100 + x99) * scale;
+	const GEN_FLT x102 = 2 * x42;
+	const GEN_FLT x103 = scale * ((-4 * x43) + x49 + (-1 * x102));
+	const GEN_FLT x104 =
+		x62 * ((x52 * x98) + (-1 * x3 * x34) + x64 + (-1 * x72) + (-1 * x57 * x101) + (x60 * obj_qi) + (x41 * x103));
+	const GEN_FLT x105 = x67 * obj_qi;
+	const GEN_FLT x106 = x66 * x105;
+	const GEN_FLT x107 = x75 * obj_qi;
+	const GEN_FLT x108 = x80 * x107;
+	const GEN_FLT x109 = x40 * x101;
+	const GEN_FLT x110 = obj_qj * obj_qi;
+	const GEN_FLT x111 =
+		x62 * (x36 + (x109 * obj_qj) + (-1 * x52 * x103) + (x98 * x41) + (-1 * x59 * x110) + (x3 * x53) + (-1 * x48));
+	const GEN_FLT x112 = x82 * x105;
+	const GEN_FLT x113 = x74 * x107;
+	const GEN_FLT x114 = (x3 * x89) + (-1 * x83 * x110) + x88 + (-1 * x77);
+	const GEN_FLT x115 = x62 * obj_qj;
+	const GEN_FLT x116 = x62 * ((x84 * obj_qi) + (-1 * x95) + x79 + (-1 * x3 * x86));
+	const GEN_FLT x117 = x34 * x110;
+	const GEN_FLT x118 = 2 * obj_qi;
+	const GEN_FLT x119 = x118 * sensor_x;
+	const GEN_FLT x120 = (x99 + x119) * scale;
+	const GEN_FLT x121 = x40 * x120;
+	const GEN_FLT x122 = scale * ((-4 * x44) + x50 + x102);
+	const GEN_FLT x123 = obj_qk * obj_qj;
+	const GEN_FLT x124 = x59 * x123;
+	const GEN_FLT x125 = 2 * x23;
+	const GEN_FLT x126 = scale * ((-4 * x24) + (-1 * x125) + x54);
+	const GEN_FLT x127 = (-1 * x117) + (-1 * x57 * x122) + (x52 * x126) + (-1 * x69 * x53) + x124 + (x121 * obj_qw);
+	const GEN_FLT x128 = x69 * x34;
+	const GEN_FLT x129 =
+		(x71 * x122) + (-1 * x121 * obj_qi) + (x41 * x126) + (-1 * x0 * x59) + (x53 * x110) + x65 + (-1 * x128);
+	const GEN_FLT x130 = x75 * obj_qj;
+	const GEN_FLT x131 = 2 * x32;
+	const GEN_FLT x132 = x66 * x131;
+	const GEN_FLT x133 = x62 * x66;
+	const GEN_FLT x134 = x87 * obj_qj;
+	const GEN_FLT x135 = (x89 * x110) + x78 + (-1 * x134) + (-1 * x0 * x83);
+	const GEN_FLT x136 = x82 * x62;
+	const GEN_FLT x137 = x82 * x131;
+	const GEN_FLT x138 = x86 * x110;
+	const GEN_FLT x139 = x84 * obj_qj;
+	const GEN_FLT x140 = x62 * (x139 + (-1 * x138) + (-1 * x94 * obj_qj));
+	const GEN_FLT x141 = x74 * x62;
+	const GEN_FLT x142 = x74 * x131;
+	const GEN_FLT x143 = (x119 + x100) * scale;
+	const GEN_FLT x144 = x34 * obj_qk;
+	const GEN_FLT x145 = scale * (x55 + x125 + (-4 * x25));
+	const GEN_FLT x146 = x53 * obj_qk;
+	const GEN_FLT x147 = x146 * obj_qi;
+	const GEN_FLT x148 = ((-1 * x97) + (-4 * x27) + x37) * scale;
+	const GEN_FLT x149 = (-1 * x144 * obj_qw) + (-1 * x124) + (x41 * x143) + x147 + (x71 * x148) + (-1 * x52 * x145);
+	const GEN_FLT x150 = -1 * x146 * obj_qw;
+	const GEN_FLT x151 =
+		x62 * ((x2 * x59) + (x52 * x143) + (x41 * x145) + (-1 * x57 * x148) + x150 + (-1 * x144 * obj_qi) + (-1 * x65));
+	const GEN_FLT x152 = x89 * obj_qk;
+	const GEN_FLT x153 = x152 * obj_qi;
+	const GEN_FLT x154 = x62 * ((-1 * x139) + x153 + (-1 * x87 * obj_qk));
+	const GEN_FLT x155 = x86 * obj_qk;
+	const GEN_FLT x156 = -1 * x94 * obj_qk;
+	const GEN_FLT x157 = (x2 * x83) + x156 + (-1 * x155 * obj_qi) + (-1 * x78);
+	const GEN_FLT x158 = x80 * x62;
+	const GEN_FLT x159 = x80 * x131;
+	const GEN_FLT x160 = x3 * x6;
+	const GEN_FLT x161 = x160 + (-1 * x160 * scale);
+	const GEN_FLT x162 = x6 * x35;
+	const GEN_FLT x163 = x162 * scale;
+	const GEN_FLT x164 = x12 * obj_qj;
+	const GEN_FLT x165 = (-1 * x164) + (x164 * scale);
+	const GEN_FLT x166 = (x48 * obj_qk) + (x65 * obj_qw) + (-1 * x64 * obj_qj);
+	const GEN_FLT x167 = x75 * x166;
+	const GEN_FLT x168 = (x56 * x41) + x128 + x65 + (x57 * x39) + (-1 * x1 * x59) + (-1 * x71 * x51) + x150;
+	const GEN_FLT x169 = x32 * x118;
+	const GEN_FLT x170 = x169 * obj_qw;
+	const GEN_FLT x171 = x134 + (-1 * x1 * x83) + x156 + x78;
+	const GEN_FLT x172 = (x77 * obj_qk) + (-1 * x79 * obj_qj) + (x78 * obj_qw);
+	const GEN_FLT x173 = x166 * obj_qi;
+	const GEN_FLT x174 =
+		x62 * (x117 + (-1 * x59 * x35) + (-1 * x147) + (x57 * x103) + (-1 * x71 * x98) + (x109 * obj_qw));
+	const GEN_FLT x175 = (-1 * x92 * obj_qi) + (-1 * x153) + x138;
+	const GEN_FLT x176 = x62 * obj_qi;
+	const GEN_FLT x177 = x167 * obj_qj;
+	const GEN_FLT x178 = x172 * x130;
+	const GEN_FLT x179 =
+		(-1 * x64) + (-1 * x53 * x123) + (x57 * x120) + x70 + (x0 * x34) + (-1 * x71 * x126) + (x41 * x122);
+	const GEN_FLT x180 = x62 * ((x0 * x86) + (-1 * x152 * obj_qj) + (-1 * x79) + x93);
+	const GEN_FLT x181 = x166 * x131;
+	const GEN_FLT x182 = x62 * x166;
+	const GEN_FLT x183 = x62 * x172;
+	const GEN_FLT x184 =
+		(-1 * x61) + x48 + (-1 * x2 * x53) + (x57 * x145) + (x34 * x123) + (x41 * x148) + (-1 * x71 * x143);
+	const GEN_FLT x185 = x172 * x131;
+	const GEN_FLT x186 = (-1 * x85) + x77 + (x155 * obj_qj) + (-1 * x2 * x89);
+	out[0] = x10 + x8;
+	out[1] = x18 + x14 + (-1 * x13);
+	out[2] = x22 + (-1 * x20) + x19;
+	out[3] = (-1 * x82 * x68) + (x81 * x75) + (x68 * x66) + (x63 * obj_qk) + (x96 * obj_qj) + (-1 * x73 * obj_qj) +
+			 (-1 * x74 * x76) + (-1 * x91 * x90) + x56;
+	out[4] = (x114 * x115) + (-1 * x113) + (-1 * x116 * obj_qk) + x106 + (x104 * obj_qk) + x108 + (-1 * x112) + x101 +
+			 (-1 * x111 * obj_qj);
+	out[5] = x122 + x136 + (-1 * x140 * obj_qk) + (-1 * x133) + (-1 * x115 * x129) + (x80 * x130) + (x115 * x135) +
+			 (x91 * x127) + (-1 * x74 * x130) + (-1 * x0 * x137) + (x0 * x132);
+	out[6] = x148 + (x154 * obj_qj) + (-1 * x82 * x130) + (-1 * x2 * x142) + (x2 * x159) + x141 + (x151 * obj_qk) +
+			 (-1 * x158) + (-1 * x91 * x157) + (-1 * x115 * x149) + (x66 * x130);
+	out[7] = x18 + (-1 * x14) + x13;
+	out[8] = -1 + x161 + scale + x10;
+	out[9] = x165 + (-1 * x162) + x163;
+	out[10] = (-1 * x96 * obj_qi) + (x82 * x170) + (x167 * obj_qw) + (x73 * obj_qi) + x39 + (-1 * x91 * x168) +
+			  (-1 * x76 * x172) + (x91 * x171) + (-1 * x66 * x170);
+	out[11] = x103 + (-1 * x136) + (-1 * x3 * x132) + (-1 * x114 * x176) + x133 + (x3 * x137) + (-1 * x174 * obj_qk) +
+			  (-1 * x107 * x172) + (x91 * x175) + (x75 * x173) + (x111 * obj_qi);
+	out[12] = (-1 * x176 * x135) + (x180 * obj_qk) + x177 + (-1 * x106) + x112 + (x129 * x176) + (-1 * x91 * x179) +
+			  x120 + (-1 * x178);
+	out[13] = (x91 * x186) + (x82 * x107) + (-1 * x66 * x107) + x145 + (-1 * x2 * x185) + x183 + (x176 * x149) +
+			  (-1 * x91 * x184) + (-1 * x154 * obj_qi) + (x2 * x181) + (-1 * x182);
+	out[14] = x22 + x20 + (-1 * x19);
+	out[15] = x165 + (-1 * x163) + x162;
+	out[16] = x161 + x8;
+	out[17] = x51 + (x68 * x172) + (-1 * x81 * x169) + (-1 * x68 * x166) + (x115 * x168) + (-1 * x63 * obj_qi) +
+			  (x90 * x176) + (x74 * x170) + (-1 * x115 * x171);
+	out[18] = (x116 * obj_qi) + (-1 * x141) + (-1 * x115 * x175) + x158 + (x105 * x172) + (-1 * x67 * x173) +
+			  (x174 * obj_qj) + (-1 * x3 * x159) + (x3 * x142) + x98 + (-1 * x104 * obj_qi);
+	out[19] = (-1 * x80 * x105) + (-1 * x180 * obj_qj) + (x140 * obj_qi) + (x74 * x105) + (-1 * x0 * x181) +
+			  (x115 * x179) + (x0 * x185) + x126 + x182 + (-1 * x127 * x176) + (-1 * x183);
+	out[20] = x143 + (x176 * x157) + x113 + (-1 * x177) + (-1 * x115 * x186) + (x115 * x184) + (-1 * x151 * obj_qi) +
+			  x178 + (-1 * x108);
+}
+
+// Jacobian of scale_sensor_pt wrt [scale]
+static inline void gen_scale_sensor_pt_jac_scale(FLT *out, const FLT *sensor_pt, const SurvivePose *obj_p,
+												 const FLT scale) {
+	const GEN_FLT sensor_x = sensor_pt[0];
+	const GEN_FLT sensor_y = sensor_pt[1];
+	const GEN_FLT sensor_z = sensor_pt[2];
+	const GEN_FLT obj_px = (*obj_p).Pos[0];
+	const GEN_FLT obj_py = (*obj_p).Pos[1];
+	const GEN_FLT obj_pz = (*obj_p).Pos[2];
+	const GEN_FLT obj_qw = (*obj_p).Rot[0];
+	const GEN_FLT obj_qi = (*obj_p).Rot[1];
+	const GEN_FLT obj_qj = (*obj_p).Rot[2];
+	const GEN_FLT obj_qk = (*obj_p).Rot[3];
+	const GEN_FLT x0 = 1. / sqrt(1e-11 + (obj_qw * obj_qw) + (obj_qi * obj_qi) + (obj_qj * obj_qj) + (obj_qk * obj_qk));
+	const GEN_FLT x1 = (obj_qw * sensor_x) + (-1 * obj_qk * sensor_y) + (obj_qj * sensor_z);
+	const GEN_FLT x2 = (obj_qk * sensor_x) + (-1 * obj_qi * sensor_z) + (obj_qw * sensor_y);
+	const GEN_FLT x3 = obj_pz + (2 * ((x2 * obj_qi) + (-1 * x1 * obj_qj))) + sensor_z;
+	const GEN_FLT x4 = x0 * x3;
+	const GEN_FLT x5 = (-1 * obj_qj * sensor_x) + (obj_qw * sensor_z) + (obj_qi * sensor_y);
+	const GEN_FLT x6 = (2 * ((x1 * obj_qk) + (-1 * x5 * obj_qi))) + obj_py + sensor_y;
+	const GEN_FLT x7 = x0 * x6;
+	const GEN_FLT x8 = (2 * ((x5 * obj_qj) + (-1 * x2 * obj_qk))) + obj_px + sensor_x;
+	const GEN_FLT x9 = x0 * x8;
+	const GEN_FLT x10 = 2 * x0;
+	const GEN_FLT x11 = x10 * ((-1 * x9 * obj_qk) + (x4 * obj_qi) + (x7 * obj_qw));
+	const GEN_FLT x12 = x10 * ((-1 * x7 * obj_qi) + (x9 * obj_qj) + (x4 * obj_qw));
+	const GEN_FLT x13 = x10 * ((-1 * x4 * obj_qj) + (x9 * obj_qw) + (x7 * obj_qk));
+	out[0] = x8 + (x11 * obj_qk) + (-1 * x12 * obj_qj);
+	out[1] = x6 + (-1 * x13 * obj_qk) + (x12 * obj_qi);
+	out[2] = x3 + (x13 * obj_qj) + (-1 * x11 * obj_qi);
+}

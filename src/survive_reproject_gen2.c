@@ -175,5 +175,12 @@ const survive_reproject_model_t survive_reproject_gen2_model = {
 	.reprojectAxisAngleFullJacLhPose = gen_reproject_gen2_jac_lh_p_axis_angle,
 	.reprojectAxisAngleAxisJacobLhPoseFn = {gen_reproject_axis_x_gen2_jac_lh_p_axis_angle,
 											gen_reproject_axis_y_gen2_jac_lh_p_axis_angle},
-
-};
+	.reprojectAxisJacobSensorPt =
+		{
+			gen_reproject_axis_x_gen2_jac_sensor_pt,
+			gen_reproject_axis_y_gen2_jac_sensor_pt,
+		},
+	.reprojectAxisAngleAxisJacobSensorPt = {
+		gen_reproject_axis_x_gen2_jac_sensor_pt_axis_angle,
+		gen_reproject_axis_y_gen2_jac_sensor_pt_axis_angle,
+	}};

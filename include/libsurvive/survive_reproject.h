@@ -27,6 +27,13 @@ typedef void (*survive_reproject_xy_fn_t)(const BaseStationCal *bcal, LinmathVec
 typedef FLT (*survive_reproject_full_xy_fn_t)(const SurvivePose *obj2world, const LinmathVec3d ptInObj,
 											  const SurvivePose *world2lh, const BaseStationCal *bcal);
 
+typedef void (*survive_reproject_axis_jacob_sensor_pt_fn_t)(FLT *out, const SurvivePose *obj_p, const FLT *sensor_pt,
+															const SurvivePose *lh_p, const BaseStationCal *bsc0);
+typedef void (*survive_reproject_axisangle_axis_jacob_sensor_pt_fn_t)(FLT *out, const LinmathAxisAnglePose *obj_p,
+																	  const FLT *sensor_pt,
+																	  const LinmathAxisAnglePose *lh_p,
+																	  const BaseStationCal *bsc0);
+
 //
 typedef void (*survive_reproject_axis_jacob_fn_t)(FLT *out, const SurvivePose *, const LinmathPoint3d,
 												  const SurvivePose *, const BaseStationCal *);
@@ -70,6 +77,9 @@ typedef struct survive_reproject_model_t {
 
 	survive_reproject_axisangle_full_jac_lh_pose_fn_t reprojectAxisAngleFullJacLhPose;
 	survive_reproject_axisangle_axis_jacob_lh_pose_fn_t reprojectAxisAngleAxisJacobLhPoseFn[2];
+
+	survive_reproject_axis_jacob_sensor_pt_fn_t reprojectAxisJacobSensorPt[2];
+	survive_reproject_axisangle_axis_jacob_sensor_pt_fn_t reprojectAxisAngleAxisJacobSensorPt[2];
 } survive_reproject_model_t;
 
 SURVIVE_EXPORT const survive_reproject_model_t* survive_reproject_model(SurviveContext* ctx);

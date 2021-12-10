@@ -128,7 +128,7 @@ static bool map_light_data(void *user, const struct SvMat *Z, const struct SvMat
 void survive_kalman_lighthouse_integrate_light(SurviveKalmanLighthouse *tracker, SurviveObject *so,
 											   PoserDataLight *data) {
 	bool isSync = data->hdr.pt == POSERDATA_SYNC || data->hdr.pt == POSERDATA_SYNC_GEN2;
-	if (isSync || tracker->light_variance < 0 || !tracker->ctx->bsd[tracker->lh].PositionSet)
+	if (isSync || tracker == 0 || tracker->light_variance < 0 || !tracker->ctx->bsd[tracker->lh].PositionSet)
 		return;
 
 	FLT stationary_time = SurviveSensorActivations_stationary_time(&so->activations) / (FLT)so->timebase_hz;
@@ -237,6 +237,9 @@ void survive_kalman_lighthouse_init(SurviveKalmanLighthouse *tracker, SurviveCon
 
 SURVIVE_EXPORT void survive_kalman_lighthouse_integrate_observation(SurviveKalmanLighthouse *tracker,
 																	const SurvivePose *pose, const FLT *_variance) {
+	if (tracker == 0)
+		return;
+
 	SV_CREATE_STACK_MAT(H, 7, tracker->model.state_cnt);
 
 	size_t state_cnt = tracker->model.state_cnt;

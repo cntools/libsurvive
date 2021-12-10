@@ -474,12 +474,12 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 		mpfitctx->cfg = survive_optimizer_precise_config();
 	}
 
-	if (get_strong_axis_count(meas_for_lhs_axis, 2) < 4) {
+	if (canPossiblySolveLHS || get_strong_axis_count(meas_for_lhs_axis, 2) < 4) {
 		survive_optimizer_disable_sensor_scale(mpfitctx);
-		SV_VERBOSE(110, "%s Scale solving %d", survive_colorize_codename(so),
-				   get_strong_axis_count(meas_for_lhs_axis, 2));
+		// SV_VERBOSE(110, "%s Scale not solving %d", survive_colorize_codename(so),
+		//		   get_strong_axis_count(meas_for_lhs_axis, 2));
 	} else {
-		SV_VERBOSE(110, "%s Scale solving", survive_colorize_codename(so));
+		// SV_VERBOSE(110, "%s Scale solving", survive_colorize_codename(so));
 	}
 
 	if (canPossiblySolveLHS) {
@@ -587,12 +587,7 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 		SV_DATA_LOG("mpfit_confidence_measures", v, 4);
 
 		SurviveVelocity *vel = survive_optimizer_get_velocity(mpfitctx);
-		FLT scale = 0;
-		if (mpfitctx->settings->optimize_scale) {
-			int scale_idx = survive_optimizer_get_sensor_scale_index(mpfitctx);
-			scale = mpfitctx->parameters[scale_idx];
-			so->sensor_scale = scale;
-		}
+		FLT scale = so->sensor_scale;
 		SV_VERBOSE(
 			worldEstablished ? 110 : 100,
 			"MPFIT success %s %f7.5s %s %f/%10.10f/%10.10f (%3d measurements, %s result, %d lighthouses, %d axis, "

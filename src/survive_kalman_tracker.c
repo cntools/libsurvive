@@ -13,6 +13,7 @@
 #include <sv_matrix.h>
 
 #include "generated/survive_imu.generated.h"
+#include "generated/survive_reproject.aux.generated.h"
 #include "survive_kalman_lighthouses.h"
 #include "survive_recording.h"
 
@@ -186,7 +187,11 @@ static bool map_light_data(void *user, const struct SvMat *Z, const struct SvMat
 
 		const SurvivePose world2lh = InvertPoseRtn(&ctx->bsd[info->lh].Pose);
 
-		const FLT *ptInObj = &so->sensor_locations[info->sensor_idx * 3];
+		const FLT *pt = &so->sensor_locations[info->sensor_idx * 3];
+        SurvivePose imu2trackref = so->imu2trackref;
+        LinmathPoint3d ptInObj;
+        gen_scale_sensor_pt(ptInObj, pt, &imu2trackref, so->sensor_scale);
+
 		FLT h_x = project_fn(&obj2world, ptInObj, &world2lh, &ctx->bsd[info->lh].fcal[axis]);
 		Y[i] = sv_as_const_vector(Z)[i] - h_x;
 		if(tracker->lightcap_max_error > 0) {

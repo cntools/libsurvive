@@ -125,6 +125,16 @@ const survive_reproject_model_t SURVIVE_EXPORT survive_reproject_gen1_model = {
 	.reprojectAxisAngleFullJacLhPose = gen_reproject_jac_lh_p_axis_angle,
 	.reprojectAxisAngleAxisJacobLhPoseFn = {gen_reproject_axis_x_jac_lh_p_axis_angle,
 											gen_reproject_axis_y_jac_lh_p_axis_angle},
+	.reprojectAxisJacobSensorPt =
+		{
+			gen_reproject_axis_x_jac_sensor_pt,
+			gen_reproject_axis_y_jac_sensor_pt,
+		},
+	.reprojectAxisAngleAxisJacobSensorPt =
+		{
+			gen_reproject_axis_x_jac_sensor_pt_axis_angle,
+			gen_reproject_axis_y_jac_sensor_pt_axis_angle,
+		}
 #else
 	0
 #endif
