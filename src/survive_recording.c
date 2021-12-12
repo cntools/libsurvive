@@ -27,24 +27,27 @@
 
 #include "survive_gz.h"
 
-STATIC_CONFIG_ITEM(PLAYBACK_RECORD_RAWLIGHT, "record-rawlight", 'i', "Whether or not to output raw light data", 1)
-STATIC_CONFIG_ITEM(PLAYBACK_RECORD_IMU, "record-imu", 'i', "Whether or not to output imu data", 1)
-STATIC_CONFIG_ITEM(PLAYBACK_RECORD_CAL_IMU, "record-cal-imu", 'i', "Whether or not to output calibrated imu data", 0)
-STATIC_CONFIG_ITEM(PLAYBACK_RECORD_ANGLE, "record-angle", 'i', "Whether or not to output angle data", 1)
-
-
-STATIC_CONFIG_ITEM(RECORD, "record", 's', "File to record to if you wish to make a recording.", "")
-STATIC_CONFIG_ITEM(RECORD_STDOUT, "record-stdout", 'i', "Whether or not to dump recording data to stdout", 0)
-  
 typedef struct SurviveRecordingData {
 	SurviveContext *ctx;
 	bool alwaysWriteStdOut;
 	bool writeRawLight;
-        bool writeIMU;
-		bool writeCalIMU;
-		bool writeAngle;
-		gzFile output_file;
+	bool writeIMU;
+	bool writeCalIMU;
+	bool writeAngle;
+	gzFile output_file;
 } SurviveRecordingData;
+
+// clang-format off
+STRUCT_CONFIG_SECTION(SurviveRecordingData)
+    STRUCT_CONFIG_ITEM("record-rawlight", "Whether or not to output raw light data", 1, t->writeRawLight)
+    STRUCT_CONFIG_ITEM("record-imu", "Whether or not to output imu data", 1, t->writeIMU)
+    STRUCT_CONFIG_ITEM("record-cal-imu", "Whether or not to output calibrated imu data", 0, t->writeCalIMU)
+    STRUCT_CONFIG_ITEM("record-angle", "Whether or not to output angle data", 1, t->writeAngle)
+END_STRUCT_CONFIG_SECTION(SurviveRecordingData)
+// clang-format on
+
+STATIC_CONFIG_ITEM(RECORD, "record", 's', "File to record to if you wish to make a recording.", "")
+STATIC_CONFIG_ITEM(RECORD_STDOUT, "record-stdout", 'i', "Whether or not to dump recording data to stdout", 0)
 
 static void write_to_output_raw(SurviveRecordingData *recordingData, const char *string, int len) {
 	if (recordingData->output_file) {
@@ -358,6 +361,7 @@ void survive_recording_raw_imu_process(struct SurviveObject *so, int mask, const
 
 void survive_destroy_recording(SurviveContext *ctx) {
 	if (ctx->recptr) {
+		SurviveRecordingData_detach_config(ctx, ctx->recptr);
 		gzclose(ctx->recptr->output_file);
 		free(ctx->recptr);
 		ctx->recptr = 0;
@@ -377,6 +381,7 @@ void survive_install_recording(SurviveContext *ctx) {
 	if (strlen(dataout_file) > 0 || record_to_stdout) {
 		ctx->recptr = SV_CALLOC(sizeof(struct SurviveRecordingData));
 		ctx->recptr->ctx = ctx;
+		SurviveRecordingData_attach_config(ctx, ctx->recptr);
 		if (strlen(dataout_file) > 0) {
 			if (strstr(dataout_file, ".pcap")) {
 				int (*usb_driver)(SurviveContext *) = (int (*)(SurviveContext *))GetDriver("DriverRegUSBMon_Record");
@@ -406,11 +411,6 @@ void survive_install_recording(SurviveContext *ctx) {
 		if (record_to_stdout) {
 			SV_INFO("Recording to stdout");
 		}
-
-		ctx->recptr->writeRawLight = survive_configi(ctx, "record-rawlight", SC_GET, 1);
-		ctx->recptr->writeIMU = survive_configi(ctx, "record-imu", SC_GET, 1);
-		ctx->recptr->writeCalIMU = survive_configi(ctx, "record-cal-imu", SC_GET, 0);
-		ctx->recptr->writeAngle = survive_configi(ctx, "record-angle", SC_GET, 1);
 	}
 
 	survive_config_iterate(ctx, survive_record_config, ctx->recptr);
