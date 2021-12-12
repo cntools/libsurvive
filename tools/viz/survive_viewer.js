@@ -263,20 +263,21 @@ function redrawCanvas(when) {
 					var half_fov = 1.0472 * 2.;
 					var x = rad_to_x(ang[0][0]);
 					var y = rad_to_y(ang[1][0]);
-
+					var size = (ang[0][2] + ang[1][2]) / 2.;
+					var radius = Math.max(1, size > 0 ? Math.sqrt(size * 2 / 2e-6) : 2);
 					ctx.fillStyle = "white";
 					ctx.font = "14px Arial";
 					// ctx.fillText(id, x, y);
 
 					ctx.strokeStyle = "#000000"
 					ctx.beginPath();
-					ctx.arc(x, y, 2, 0, 2 * Math.PI);
+					ctx.arc(x, y, radius, 0, 2 * Math.PI);
 					ctx.stroke();
 
-					ctx.strokeStyle = "#" + lhColors[lh].toString(16);
+					ctx.fillStyle = "#" + lhColors[lh].toString(16);
 					ctx.beginPath();
-					ctx.arc(x, y, 1, 0, 2 * Math.PI);
-					ctx.stroke();
+					ctx.arc(x, y, radius - 1, 0, 2 * Math.PI);
+					ctx.fill();
 
 					const rp = get_rp_angles(key, lh, id)
 					const rpx = rp[0], rpy = rp[1];
@@ -837,7 +838,7 @@ var survive_log_handlers = {
 
 		var axis = obj.plane;
 
-		angles[obj.tracker][lighthouse][obj.sensor_id][axis] = [ obj.angle, obj.timecode ];
+		angles[obj.tracker][lighthouse][obj.sensor_id][axis] = [ obj.angle, obj.timecode, -1 ];
 		timecode[obj.tracker] = obj.timecode;
 	},
 	'A' : function(v, tracker) {
@@ -855,7 +856,7 @@ var survive_log_handlers = {
 		angles[obj.tracker][obj.lighthouse] = angles[obj.tracker][obj.lighthouse] || {};
 		angles[obj.tracker][obj.lighthouse][obj.sensor_id] = angles[obj.tracker][obj.lighthouse][obj.sensor_id] || {};
 
-		angles[obj.tracker][obj.lighthouse][obj.sensor_id][obj.acode & 1] = [ obj.angle, obj.timecode ];
+		angles[obj.tracker][obj.lighthouse][obj.sensor_id][obj.acode & 1] = [ obj.angle, obj.timecode, obj.length ];
 		timecode[obj.tracker] = obj.timecode;
 	},
 	"RA" : function add_reproject_angle(v, tracker) {

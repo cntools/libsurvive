@@ -171,7 +171,7 @@ static size_t construct_input_from_scene(const MPFITData *d, survive_long_timeco
 
 		bool isCandidate = !ctx->bsd[lh].PositionSet;
 		size_t candidate_meas = 10;
-		size_t required_meas_for_lh = 4;
+		size_t required_meas_for_lh = 0;
 
 		size_t meas_for_lh = 0;
 		for (uint8_t sensor = 0; sensor < so->sensor_ct; sensor++) {
@@ -320,9 +320,6 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 
 	*soLocation = *survive_object_last_imu2world(so);
 	bool currentPositionValid = quatmagnitude(soLocation->Rot) != 0;
-	if(!isfinite(soLocation->Pos[0])) {
-		mpfitctx->current_bias = 0;
-	}
 
 	if (worldEstablished && !general_optimizer_data_record_current_pose(&d->opt, pdl, soLocation)) {
 		return -1;
@@ -343,10 +340,6 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 	}
 
 	size_t meas_size = construct_input_from_scene(d, pdl->hdr.timecode, scene, meas_for_lhs_axis, mpfitctx, user);
-
-	if (mpfitctx->current_bias > 0) {
-		meas_size += 7;
-	}
 
 	if (worldEstablished && invalid_starting_condition(d, meas_size, meas_for_lhs_axis)) {
 		return -1;
@@ -467,8 +460,6 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 	}
 	 */
 
-	mpfitctx->initialPose = *soLocation;
-
 	serialize_mpfit(d, mpfitctx);
 	if (canPossiblySolveLHS || d->alwaysPrecise) {
 		mpfitctx->cfg = survive_optimizer_precise_config();
@@ -573,13 +564,15 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 		if (d->record_reprojection_error) {
 			for (int i = 0; i < mpfitctx->measurementsCnt; i++) {
 				survive_optimizer_measurement *meas = &mpfitctx->measurements[i];
-				SurvivePose world2lh = InvertPoseRtn(&ctx->bsd[meas->light.lh].Pose);
-				FLT v = survive_reproject_model(ctx)->reprojectAxisFullFn[meas->light.axis](
-					soLocation, &so->sensor_locations[meas->light.sensor_idx * 3], &world2lh,
-					ctx->bsd[meas->light.lh].fcal + meas->light.axis);
-				survive_recording_write_to_output(ctx->recptr, "%s RA %d %d %f %u\r\n", so->codename,
-												  meas->light.sensor_idx, meas->light.axis, v - meas->light.value,
-												  meas->light.lh);
+				if (meas->meas_type == survive_optimizer_measurement_type_light) {
+					SurvivePose world2lh = InvertPoseRtn(&ctx->bsd[meas->light.lh].Pose);
+					FLT v = survive_reproject_model(ctx)->reprojectAxisFullFn[meas->light.axis](
+						soLocation, &so->sensor_locations[meas->light.sensor_idx * 3], &world2lh,
+						ctx->bsd[meas->light.lh].fcal + meas->light.axis);
+					survive_recording_write_to_output(ctx->recptr, "%s RA %d %d %f %u\r\n", so->codename,
+													  meas->light.sensor_idx, meas->light.axis, v - meas->light.value,
+													  meas->light.lh);
+				}
 			}
 		}
 
@@ -603,8 +596,6 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 			user_data->stats.old_measurements,
 			user_data->stats.old_measurements_age / 48000000. * 1000. / (.001 + user_data->stats.old_measurements),
 			d->stats.total_runs, scale);
-		SV_VERBOSE(120, "%s from " Point7_format, survive_colorize(so->codename), SURVIVE_POSE_EXPAND(mpfitctx->initialPose));
-        SV_VERBOSE(120, "%s to   " Point7_format, survive_colorize(so->codename), SURVIVE_POSE_EXPAND(*soLocation));
 	} else {
 		SV_VERBOSE(
 			100,
@@ -675,7 +666,6 @@ static FLT run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Surviv
 	        .reprojectModel = survive_reproject_model(ctx),
 								  .poseLength = 1,
 								  .cameraLength = so->ctx->activeLighthouses,
-								  .current_bias = d->current_bias,
 								  .timecode = pdl->hdr.timecode / (FLT)so->timebase_hz,
 								  .objectUpVectorVariance =
 									  objectStationary ? d->stationary_obj_up_variance : d->obj_up_variance,

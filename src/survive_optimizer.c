@@ -39,6 +39,8 @@ STRUCT_CONFIG_SECTION(survive_optimizer_settings)
     STRUCT_CONFIG_ITEM("mpfit-quat-model", "Model mpfit as quaternion", 0, t->use_quat_model)
 	STRUCT_CONFIG_ITEM("mpfit-no-pair-calc", "Don't process as pairs", 0, t->disallow_pair_calc)
 	STRUCT_CONFIG_ITEM("mpfit-optimize-scale-threshold", "Treat scale as mutable", 1e-10, t->optimize_scale_threshold)
+	STRUCT_CONFIG_ITEM("mpfit-current-pos-bias", "", -1, t->current_pos_bias)
+	STRUCT_CONFIG_ITEM("mpfit-current-rot-bias", "", -1, t->current_rot_bias)
 	END_STRUCT_CONFIG_SECTION(survive_optimizer_settings)
 
 	static char *object_parameter_names[] = {"Pose x",	   "Pose y",	 "Pose z",	  "Pose Rot w",
@@ -72,8 +74,8 @@ void survive_optimizer_setup_pose_n(survive_optimizer *mpfit_ctx, const SurviveP
 			if (use_jacobian_function < 0) {
 				mpfit_ctx->parameters_info[i].side = 2;
 				mpfit_ctx->parameters_info[i].deriv_debug = 1;
-				mpfit_ctx->parameters_info[i].deriv_abstol = .0001;
-				mpfit_ctx->parameters_info[i].deriv_reltol = .0001;
+				mpfit_ctx->parameters_info[i].deriv_abstol = .01;
+				mpfit_ctx->parameters_info[i].deriv_reltol = .01;
 			} else {
 				mpfit_ctx->parameters_info[i].side = 3;
 			}
@@ -263,7 +265,7 @@ int survive_optimizer_get_camera_index(const survive_optimizer *ctx) { return ct
 SurvivePose *survive_optimizer_get_pose(survive_optimizer *ctx) {
 	if (ctx->poseLength)
 		return (SurvivePose *)ctx->parameters;
-	return &ctx->initialPose;
+	return 0;
 }
 
 SurviveVelocity *survive_optimizer_get_velocity(survive_optimizer *ctx) {
@@ -473,15 +475,17 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 	size_t valid_meas = 0;
 	for (int i = 0; i < optimizer->measurementsCnt; i++) {
 		survive_optimizer_measurement *meas = &optimizer->measurements[i];
-		SV_DATA_LOG("mpfit_meas_val[%d][%d][%d]", &meas->light.value, 1, meas->light.sensor_idx, meas->light.lh,
-					meas->light.axis);
-		SV_DATA_LOG("mpfit_meas_var[%d][%d][%d]", &meas->variance, 1, meas->light.sensor_idx, meas->light.lh,
-					meas->light.axis);
-		SV_DATA_LOG("mpfit_meas_err[%d][%d][%d]", deviates, 1, meas->light.sensor_idx, meas->light.lh,
-					meas->light.axis);
+		if (meas->meas_type == survive_optimizer_measurement_type_light) {
+			SV_DATA_LOG("mpfit_meas_val[%d][%d][%d]", &meas->light.value, 1, meas->light.sensor_idx, meas->light.lh,
+						meas->light.axis);
+			SV_DATA_LOG("mpfit_meas_var[%d][%d][%d]", &meas->variance, 1, meas->light.sensor_idx, meas->light.lh,
+						meas->light.axis);
+			SV_DATA_LOG("mpfit_meas_err[%d][%d][%d]", deviates, 1, meas->light.sensor_idx, meas->light.lh,
+						meas->light.axis);
 
-		avg_dev += fabs(deviates[i]);
-		valid_meas++;
+			avg_dev += fabs(deviates[i] * meas->variance);
+			valid_meas++;
+		}
 	}
 
 	avg_dev = avg_dev / (FLT)valid_meas;
@@ -491,27 +495,30 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 	}
 	for (int i = 0; i < optimizer->measurementsCnt; i++) {
 		survive_optimizer_measurement *meas = &optimizer->measurements[i];
-		FLT P = linmath_norm_pdf(deviates[i], 0, avg_dev);
-		FLT chauvenet_criterion = P * optimizer->measurementsCnt;
-		if (chauvenet_criterion < .5 && false) {
-			meas->invalid = true;
-			optimizer->stats.dropped_meas_cnt++;
+		if (meas->meas_type == survive_optimizer_measurement_type_light) {
 
-			SV_VERBOSE(105, "Ignoring noisy data at lh %d sensor %d axis %d val %f (%7.7f/%7.7f) %7.7f %7.7f",
-					   meas->light.lh, meas->light.sensor_idx, meas->light.axis, meas->light.value, fabs(deviates[i]),
-					   avg_dev, P, chauvenet_criterion);
+			FLT P = linmath_norm_pdf(deviates[i] * meas->variance, 0, avg_dev);
+			FLT chauvenet_criterion = P * optimizer->measurementsCnt;
+			if (chauvenet_criterion < .5) {
+				meas->invalid = true;
+				optimizer->stats.dropped_meas_cnt++;
 
-			deviates[i] = 0.;
-		} else {
-			SV_VERBOSE(1000, "Data at lh %d sensor %d axis %d val %f (%7.7f/%7.7f)", meas->light.lh,
-					   meas->light.sensor_idx, meas->light.axis, meas->light.value, fabs(deviates[i]), avg_dev);
+				SV_VERBOSE(105, "Ignoring noisy data at lh %d sensor %d axis %d val %f (%7.7f/%7.7f) %7.7f %7.7f",
+						   meas->light.lh, meas->light.sensor_idx, meas->light.axis, meas->light.value,
+						   fabs(deviates[i] * meas->variance), avg_dev, P, chauvenet_criterion);
+
+				deviates[i] = 0.;
+			} else {
+				SV_VERBOSE(1000, "Data at lh %d sensor %d axis %d val %f (%7.7f/%7.7f)", meas->light.lh,
+						   meas->light.sensor_idx, meas->light.axis, meas->light.value, fabs(deviates[i]), avg_dev);
+			}
 		}
 	}
 
 	for (int i = 0; i < optimizer->measurementsCnt; i++) {
 		survive_optimizer_measurement *meas = &optimizer->measurements[i];
 		if (meas->meas_type == survive_optimizer_measurement_type_light && meas->invalid == false) {
-			lh_deviates[meas->light.lh] += fabs(deviates[i]);
+			lh_deviates[meas->light.lh] += fabs(deviates[i] * meas->variance);
 			lh_meas_cnt[meas->light.lh]++;
 		}
 	}
@@ -653,37 +660,36 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 				calced_timecode = meas->time;
 				pose_idx = meas->light.object;
 				assert(pose_idx < mpfunc_ctx->poseLength);
-				obj2world = *(LinmathDualPose*)(&survive_optimizer_get_pose(mpfunc_ctx)[meas->light.object]);
+				obj2world = *(LinmathDualPose *)(&survive_optimizer_get_pose(mpfunc_ctx)[meas->light.object]);
 
 				if (mpfunc_ctx->disableVelocity == false) {
 					LinmathDualPose dPose = obj2world;
 					FLT diff = mpfunc_ctx->timecode - meas->time;
 					SurviveVelocity *v = survive_optimizer_get_velocity(mpfunc_ctx);
 
-                    if(mpfunc_ctx->settings->use_quat_model) {
-                        addscalednd(dPose.quatPose.Pos, obj2world.quatPose.Pos, v->Pos, -diff, 3);
-                        survive_apply_ang_velocity(dPose.quatPose.Rot, v->AxisAngleRot, -diff,
-                                                   obj2world.quatPose.Rot);
-                        gen_apply_ang_velocity_jac_q(ang_velocity_jac.data, v->AxisAngleRot, -diff,
-                                                                  obj2world.quatPose.Rot);
+					if (mpfunc_ctx->settings->use_quat_model) {
+						addscalednd(dPose.quatPose.Pos, obj2world.quatPose.Pos, v->Pos, -diff, 3);
+						survive_apply_ang_velocity(dPose.quatPose.Rot, v->AxisAngleRot, -diff, obj2world.quatPose.Rot);
+						gen_apply_ang_velocity_jac_q(ang_velocity_jac.data, v->AxisAngleRot, -diff,
+													 obj2world.quatPose.Rot);
 					} else {
-                        addscalednd(dPose.axisAnglePose.Pos, obj2world.axisAnglePose.Pos, v->Pos, -diff, 3);
-                        survive_apply_ang_velocity_aa(dPose.axisAnglePose.AxisAngleRot, v->AxisAngleRot, -diff,
-                                                      obj2world.axisAnglePose.AxisAngleRot);
-                        gen_apply_ang_velocity_aa_jac_axis_angle2(ang_velocity_jac.data, v->AxisAngleRot, -diff,
-                                                                  obj2world.axisAnglePose.AxisAngleRot);
-                    }
+						addscalednd(dPose.axisAnglePose.Pos, obj2world.axisAnglePose.Pos, v->Pos, -diff, 3);
+						survive_apply_ang_velocity_aa(dPose.axisAnglePose.AxisAngleRot, v->AxisAngleRot, -diff,
+													  obj2world.axisAnglePose.AxisAngleRot);
+						gen_apply_ang_velocity_aa_jac_axis_angle2(ang_velocity_jac.data, v->AxisAngleRot, -diff,
+																  obj2world.axisAnglePose.AxisAngleRot);
+					}
 					obj2world = dPose;
 				}
 
-				if(mpfunc_ctx->settings->use_quat_model) {
-                    quatnormalize(obj2world.quatPose.Rot, obj2world.quatPose.Rot);
+				if (mpfunc_ctx->settings->use_quat_model) {
+					quatnormalize(obj2world.quatPose.Rot, obj2world.quatPose.Rot);
 				}
 
 				int lh_count = mpfunc_ctx->cameraLength > 0 ? mpfunc_ctx->cameraLength
 															: mpfunc_ctx->sos[pose_idx]->ctx->activeLighthouses;
 				for (int lh = 0; lh < lh_count; lh++) {
-                    ApplyDualPoseToPose(mpfunc_ctx, &obj2lh[lh], &cameras[lh], &obj2world);
+					ApplyDualPoseToPose(mpfunc_ctx, &obj2lh[lh], &cameras[lh], &obj2world);
 				}
 			}
 
@@ -707,14 +713,12 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 
 			if (nextIsPair) {
 				run_pair_measurement(mpfunc_ctx, meas_idx, meas, &ang_velocity_jac, &obj2world, &obj2lh[lh], world2lh,
-									 pt,
-									 deviates + meas_idx, derivs);
+									 pt, deviates + meas_idx, derivs);
 				meas_idx++;
 				mea_block_idx++;
 			} else {
 				run_single_measurement(mpfunc_ctx, meas_idx, meas, &ang_velocity_jac, &obj2world, &obj2lh[lh], world2lh,
-                                       pt,
-									   deviates + meas_idx, derivs);
+									   pt, deviates + meas_idx, derivs);
 			}
 
 			break;
@@ -728,20 +732,20 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			size_t lh = meas->camera_acc.camera;
 			normalize3d(up, survive_optimizer_cam_up_vector(mpfunc_ctx, lh));
 
-            deriv_idx = survive_optimizer_get_camera_index(mpfunc_ctx) + lh * 7 + 3;
+			deriv_idx = survive_optimizer_get_camera_index(mpfunc_ctx) + lh * 7 + 3;
 
 			LinmathDualPose *world2lh = (LinmathDualPose *)&cameras[lh];
-            if(mpfunc_ctx->settings->use_quat_model) {
-                if (isfinite(up[0])) {
-                    error = gen_world2lh_up_err(world2lh->quatPose.Rot, up);
-                    gen_world2lh_up_err_jac_q1(deriv, world2lh->quatPose.Rot, up);
-                }
+			if (mpfunc_ctx->settings->use_quat_model) {
+				if (isfinite(up[0])) {
+					error = gen_world2lh_up_err(world2lh->quatPose.Rot, up);
+					gen_world2lh_up_err_jac_q1(deriv, world2lh->quatPose.Rot, up);
+				}
 			} else {
-                if (isfinite(up[0])) {
-                    error = gen_world2lh_aa_up_err(world2lh->axisAnglePose.AxisAngleRot, up);
-                    gen_world2lh_aa_up_err_jac_axis_angle(deriv, world2lh->axisAnglePose.AxisAngleRot, up);
-                }
-            }
+				if (isfinite(up[0])) {
+					error = gen_world2lh_aa_up_err(world2lh->axisAnglePose.AxisAngleRot, up);
+					gen_world2lh_aa_up_err_jac_axis_angle(deriv, world2lh->axisAnglePose.AxisAngleRot, up);
+				}
+			}
 
 			deviates[meas_idx] = error / meas->variance;
 			for (int i = 0; i < ang_size && derivs && derivs[deriv_idx + i]; i++) {
@@ -752,43 +756,40 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 		case survive_optimizer_measurement_type_object_accel: {
 			int obj = meas->pose_acc.object;
 			LinmathPoint3d up = {0};
-            copy3d(up, survive_optimizer_obj_up_vector(mpfunc_ctx, obj));
+			copy3d(up, survive_optimizer_obj_up_vector(mpfunc_ctx, obj));
 
 			LinmathAxisAngle rot = {0};
 			FLT deriv[4] = {0}, error = 0;
 
-			LinmathDualPose *obj2world = (LinmathDualPose  *)(&survive_optimizer_get_pose(mpfunc_ctx)[obj]);
-            if(mpfunc_ctx->settings->use_quat_model) {
-                error = gen_obj2world_up_err(obj2world->quatPose.Rot, up);
-                gen_obj2world_up_err_jac_q1(deriv, obj2world->quatPose.Rot, up);
-            } else {
-                error = gen_obj2world_aa_up_err(obj2world->axisAnglePose.AxisAngleRot, up);
-                gen_obj2world_aa_up_err_jac_axis_angle(deriv, obj2world->axisAnglePose.AxisAngleRot, up);
-            }
+			LinmathDualPose *obj2world = (LinmathDualPose *)(&survive_optimizer_get_pose(mpfunc_ctx)[obj]);
+			if (mpfunc_ctx->settings->use_quat_model) {
+				error = gen_obj2world_up_err(obj2world->quatPose.Rot, up);
+				gen_obj2world_up_err_jac_q1(deriv, obj2world->quatPose.Rot, up);
+			} else {
+				error = gen_obj2world_aa_up_err(obj2world->axisAnglePose.AxisAngleRot, up);
+				gen_obj2world_aa_up_err_jac_axis_angle(deriv, obj2world->axisAnglePose.AxisAngleRot, up);
+			}
 
-            int deriv_idx = obj * 7 + 3;
+			int deriv_idx = obj * 7 + 3;
 			deviates[meas_idx] = error / meas->variance;
 			for (int i = 0; i < ang_size && derivs && derivs[deriv_idx + i]; i++) {
 				derivs[deriv_idx + i][meas_idx] = fix_infinity(deriv[i] / meas->variance);
 			}
 			break;
 		}
-		case survive_optimizer_measurement_type_object_pose:
-			assert(false);
-			/*
-			if (mpfunc_ctx->current_bias > 0) {
-				light_meas -= 7;
-				FLT *pp = (FLT *)mpfunc_ctx->initialPose.Pos;
-				for (int i = 0; i < 7; i++) {
-					deviates[i + light_meas] = (p[i] - pp[i]) * mpfunc_ctx->current_bias;
-					if (derivs && derivs[i]) {
-						derivs[i][i + light_meas] = mpfunc_ctx->current_bias;
-					}
+		case survive_optimizer_measurement_type_object_pose: {
+			int jac_offset_obj = meas->pose.object * 7;
+			int pose_size = mpfunc_ctx->settings->use_quat_model ? 7 : 6;
+			FLT *obj2world = (FLT *)(&survive_optimizer_get_pose(mpfunc_ctx)[meas->pose.object]);
+			const FLT *current = &meas->pose.pose.Pos[0];
+			for (int i = 0; i < pose_size; i++) {
+				deviates[meas_idx + i] = (obj2world[i] - current[i]) / meas->variance;
+				if (derivs && derivs[jac_offset_obj]) {
+					derivs[jac_offset_obj + i][meas_idx + i] = 1. / meas->variance;
 				}
 			}
-			 */
 		}
-
+		}
 		meas_idx += meas->size;
 	}
 
@@ -1009,8 +1010,6 @@ void survive_optimizer_serialize(const survive_optimizer *opt, const char *fn) {
 	  return;
 
 	fprintf(f, "object       %s\n", opt->sos[0]->codename);
-	fprintf(f, "currentBias  %+0.16f\n", opt->current_bias);
-	fprintf(f, "initialPose " SurvivePose_format "\n", SURVIVE_POSE_EXPAND(opt->initialPose));
 	fprintf(f, "model        %d\n", opt->reprojectModel != &survive_reproject_gen1_model);
 	fprintf(f, "poseLength   %d\n", opt->poseLength);
 	fprintf(f, "cameraLength %d\n", opt->cameraLength);
@@ -1061,8 +1060,6 @@ survive_optimizer *survive_optimizer_load(const char *fn) {
 	char device_name[LINE_MAX] = {0};
 	opt->poseLength = 1;
 	read_count = fscanf(f, "object       %s\n", device_name);
-	read_count = fscanf(f, "currentBias  " FLT_sformat "\n", &opt->current_bias);
-	read_count = fscanf(f, "initialPose " SurvivePose_sformat "\n", SURVIVE_POSE_SCAN_EXPAND(opt->initialPose));
 	int model = 0;
 	read_count = fscanf(f, "model        %d\n", &model);
 	opt->reprojectModel = model == 0 ? &survive_reproject_gen1_model : &survive_reproject_gen2_model;
@@ -1209,13 +1206,18 @@ SURVIVE_EXPORT void survive_optimizer_setup_buffers(survive_optimizer *ctx, void
 		ctx->parameters_info[i].fixed = 1;
 	}
 
-	if (ctx->current_bias != 0) {
+	if (ctx->settings->current_pos_bias > 0) {
 		for (int i = 0; i < ctx->poseLength; i++) {
-			survive_optimizer_measurement *meas =
-				survive_optimizer_emplace_meas(ctx, survive_optimizer_measurement_type_object_pose);
-			meas->pose.object = i;
-			meas->pose.pose = Pose2AAPose(&ctx->sos[i]->OutPoseIMU);
-			meas->variance = 1. / ctx->current_bias;
+			if (!quatiszero(ctx->sos[i]->OutPoseIMU.Rot)) {
+				survive_optimizer_measurement *meas =
+					survive_optimizer_emplace_meas(ctx, survive_optimizer_measurement_type_object_pose);
+				meas->pose.object = i;
+				meas->pose.pose = ctx->sos[i]->OutPoseIMU;
+				if (!ctx->settings->use_quat_model) {
+					quattoaxisanglemag(meas->pose.pose.Rot, ctx->sos[i]->OutPoseIMU.Rot);
+				}
+				meas->variance = 1. / ctx->settings->current_pos_bias;
+			}
 		}
 	}
 
@@ -1240,11 +1242,11 @@ SURVIVE_EXPORT void *survive_optimizer_realloc(void *old_ptr, size_t size) { ret
 int survive_optimizer_get_max_measurements_count(const survive_optimizer *ctx) {
 	int sensor_cnt = SENSORS_PER_OBJECT;
 	assert(ctx->poseLength > 0 && ctx->poseLength < 20);
-	return ctx->poseLength * 2 * sensor_cnt * NUM_GEN2_LIGHTHOUSES + (ctx->current_bias == 0 ? 0 : ctx->poseLength) +
-		   (ctx->poseLength + ctx->cameraLength);
+	return ctx->poseLength * 2 * sensor_cnt * NUM_GEN2_LIGHTHOUSES +
+		   (ctx->settings->current_pos_bias <= 0 ? 0 : ctx->poseLength) + (ctx->poseLength + ctx->cameraLength);
 }
 
-int meas_size(enum survive_optimizer_measurement_type type) {
+int meas_size(survive_optimizer *ctx, enum survive_optimizer_measurement_type type) {
 	switch (type) {
 	case survive_optimizer_measurement_type_light:
 		return 1;
@@ -1264,7 +1266,7 @@ survive_optimizer_measurement *survive_optimizer_emplace_meas(survive_optimizer 
 	assert(survive_optimizer_get_max_measurements_count(ctx) > ctx->measurementsCnt);
 	survive_optimizer_measurement *rtn = &ctx->measurements[ctx->measurementsCnt++];
 	rtn->meas_type = type;
-	rtn->size = meas_size(type);
+	rtn->size = meas_size(ctx, type);
 	return rtn;
 }
 

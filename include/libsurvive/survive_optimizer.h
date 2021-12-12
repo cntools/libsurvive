@@ -38,7 +38,7 @@ typedef struct {
 
 typedef struct {
 	int object;
-	LinmathAxisAnglePose pose;
+	LinmathPose pose;
 } survive_optimizer_object_pose_measurement;
 
 typedef struct {
@@ -77,6 +77,8 @@ typedef struct survive_optimizer_settings {
 	bool use_quat_model;
 	bool disallow_pair_calc;
 	FLT optimize_scale_threshold;
+	FLT current_pos_bias;
+	FLT current_rot_bias;
 } survive_optimizer_settings;
 
 struct mp_par_struct;
@@ -92,8 +94,6 @@ typedef struct survive_optimizer {
 	size_t measurementsCnt;
 
 	FLT objectUpVectorVariance;
-	FLT current_bias;
-	SurvivePose initialPose;
 	FLT timecode;
 
 	FLT *parameters;
