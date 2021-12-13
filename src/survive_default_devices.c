@@ -414,19 +414,18 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	// Handle device-specific scaling.
 	if (strcmp(so->codename, "HMD") == 0 || so->object_type == SURVIVE_OBJECT_TYPE_HMD) {
 		SV_INFO("%s is treated as HMD device", so->codename);
-		scale3d(so->acc_scale, so->acc_scale, 1. / 8192.0);
+        so->raw_acc_scale = 1. / 8192.;
 		scale3d(so->acc_bias, so->acc_bias, 1. / 1000.); // Odd but seems right.
 		so->imu_freq = HMD_IMU_HZ;
 
 		FLT deg_per_sec = 500;
-		scale3d(so->gyro_scale, so->gyro_scale, deg_per_sec / (1 << 15) * LINMATHPI / 180.);
+        so->raw_gyro_scale = deg_per_sec / (1 << 15) * LINMATHPI / 180.;
 	} else if (memcmp(so->codename, "WM", 2) == 0) {
-		scale3d(so->acc_scale, so->acc_scale, 2. / 8192.0);
+        so->raw_acc_scale = 1. / 8192.;
 		scale3d(so->acc_bias, so->acc_bias, 1. / 1000.); // Need to verify.
 
 		FLT deg_per_sec = 2000;
-		scale3d(so->gyro_scale, so->gyro_scale, deg_per_sec / (1 << 15) * LINMATHPI / 180.);
-
+        so->raw_gyro_scale = deg_per_sec / (1 << 15) * LINMATHPI / 180.;
 		int j;
 		for (j = 0; j < so->sensor_ct; j++) {
 			so->sensor_locations[j * 3 + 0] *= 1.0;
@@ -437,14 +436,14 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 		// 1G for accelerometer, from MPU6500 datasheet
 		// this can change if the firmware changes the sensitivity.
 		// When coming off of USB, these values are in units of .5g -JB
-		scale3d(so->acc_scale, so->acc_scale, 2. / 8192.0);
+        so->raw_acc_scale = 1. / 8192.;
 
 		// If any other device, we know we at least need this.
 		scale3d(so->acc_bias, so->acc_bias, 1. / 1000.);
 
 		// From datasheet, can be 250, 500, 1000, 2000 deg/s range over 16 bits
 		FLT deg_per_sec = 2000;
-		scale3d(so->gyro_scale, so->gyro_scale, deg_per_sec / (1 << 15) * LINMATHPI / 180.);
+        so->raw_gyro_scale = deg_per_sec / (1 << 15) * LINMATHPI / 180.;
 		// scale3d(so->gyro_scale, so->gyro_scale, 3.14159 / 1800. / 1.8);
 	}
 

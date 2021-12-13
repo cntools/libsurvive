@@ -178,6 +178,9 @@ void survive_default_raw_imu_process(SurviveObject *so, int mask, const FLT *acc
 	FLT agm[9] = {0};
 	memcpy(agm, accelgyromag, sizeof(FLT) * 9);
 
+    scale3d(agm, agm, so->raw_acc_scale);
+    scale3d(agm + 3, agm + 3, so->raw_gyro_scale);
+
 	calibrate_acc(so, agm);
 	calibrate_gyro(so, agm + 3);
 

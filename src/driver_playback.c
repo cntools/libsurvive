@@ -53,6 +53,7 @@ typedef struct SurvivePlaybackData {
 	bool hasRawLight;
     bool hasSweepAngle;
 	bool outputCalculatedPose, outputExternalPose;
+    bool hasRawIMU;
 
 	uint32_t total_sleep_time;
 	bool *keepRunning;
@@ -200,8 +201,9 @@ static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver, bool
 	SurviveObject *so = find_or_warn(driver, dev);
 	if (so) {
 		if (raw) {
-			SURVIVE_INVOKE_HOOK_SO(raw_imu, so, mask, accelgyro, timecode, id);
-		} else {
+            driver->hasRawIMU = true;
+            SURVIVE_INVOKE_HOOK_SO(raw_imu, so, mask, accelgyro, timecode, id);
+		} else if(!driver->hasRawIMU){
 			SURVIVE_INVOKE_HOOK_SO(imu, so, mask, accelgyro, timecode, id);
 		}
 	}

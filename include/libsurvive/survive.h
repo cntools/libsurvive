@@ -193,6 +193,7 @@ struct SurviveObject {
 	SurvivePose imu2trackref;
 	SurvivePose head2imu;
 
+	FLT raw_acc_scale, raw_gyro_scale;
 	FLT acc_bias[3];   // size is FLT*3. contains x,y,z
 	FLT acc_scale[3];  // size is FLT*3. contains x,y,z
 	FLT gyro_bias[3];  // size is FLT*3. contains x,y,z
