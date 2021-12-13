@@ -275,6 +275,9 @@ static int parse_and_run_config(const char *line, SurvivePlaybackData *driver) {
 	size_t len = strlen(configStart);
 
 	SurviveObject *so = survive_create_device(ctx, "replay", driver, dev, 0);
+	if(so == 0) {
+        return 0;
+    }
 	survive_add_object(ctx, so);
 
 	char *config = SV_CALLOC(len + 1);

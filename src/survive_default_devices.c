@@ -15,7 +15,12 @@
 
 SurviveObject *survive_create_device(SurviveContext *ctx, const char *driver_name, void *driver,
 									 const char *device_name, haptic_func fn) {
-	SurviveObject *device = SV_CALLOC(sizeof(SurviveObject));
+    const char *blacklist = survive_configs(ctx, "blacklist-devs", SC_GET, "-");
+    if(strstr(blacklist, device_name)) {
+        return 0;
+    }
+
+    SurviveObject *device = SV_CALLOC(sizeof(SurviveObject));
 
 	device->ctx = ctx;
 	device->driver = driver;
