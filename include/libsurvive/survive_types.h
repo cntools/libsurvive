@@ -38,6 +38,7 @@ extern "C" {
 #define _FLT_format(f) _FLT_format2(f)
 #define FLT_format _FLT_format(FLT)
 
+#define Point27_format Point26_format "   " FLT_format
 #define Point26_format Point25_format "   " FLT_format
 #define Point25_format Point24_format "   " FLT_format
 #define Point24_format Point23_format "   " FLT_format
@@ -103,6 +104,7 @@ extern "C" {
 #define LINMATH_VEC24_EXPAND(p) LINMATH_VEC23_EXPAND(p), (p)[23]
 #define LINMATH_VEC25_EXPAND(p) LINMATH_VEC24_EXPAND(p), (p)[24]
 #define LINMATH_VEC26_EXPAND(p) LINMATH_VEC25_EXPAND(p), (p)[25]
+#define LINMATH_VEC27_EXPAND(p) LINMATH_VEC26_EXPAND(p), (p)[26]
 
 #define SURVIVE_VELOCITY_EXPAND(v) LINMATH_VEC3_EXPAND((v).Pos), LINMATH_VEC3_EXPAND((v).AxisAngleRot)
 #define SURVIVE_POSE_EXPAND(p) (p).Pos[0], (p).Pos[1], (p).Pos[2], (p).Rot[0], (p).Rot[1], (p).Rot[2], (p).Rot[3]
@@ -114,13 +116,13 @@ typedef LinmathAxisAngleMag SurviveAngularVelocity;
 typedef LinmathAxisAnglePose SurviveVelocity;
 
 typedef struct survive_kalman_model_t {
-	SurvivePose Pose;
-	SurviveVelocity Velocity;
-	LinmathVec3d Acc;
-	FLT AccScale;
-	LinmathQuat IMUCorrection;
-	LinmathVec3d AccBias;
-	LinmathVec3d GyroBias;
+	SurvivePose Pose;		   // 7
+	SurviveVelocity Velocity;  // 6    13
+	LinmathVec3d Acc;		   // 3    16
+	FLT AccScale;			   // 1    17
+	LinmathQuat IMUCorrection; // 4    21
+	LinmathVec3d AccBias;	   // 3    24
+	LinmathVec3d GyroBias;	   // 3    27
 } SurviveKalmanModel;
 
 //Careful with this, you can't just add another one right now, would take minor changes in survive_data.c and the cal tools.

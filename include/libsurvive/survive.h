@@ -51,6 +51,7 @@ typedef struct SurviveSensorActivations_s {
 	FLT runtime_offset;
 
 	FLT accel[3];
+	FLT last_accel[3];
 	FLT gyro[3];
 	FLT mag[3];
 

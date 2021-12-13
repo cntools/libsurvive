@@ -569,7 +569,15 @@ function update_fullstate(v) {
 		tracker : v[1],
 		position : [ parseFloat(v[3]), parseFloat(v[4]), parseFloat(v[5]) ],
 		quat : [ parseFloat(v[6]), parseFloat(v[7]), parseFloat(v[8]), parseFloat(v[9]) ],
+		velocity : [
+			parseFloat(v[10]), parseFloat(v[11]), parseFloat(v[12]), parseFloat(v[13]), parseFloat(v[14]),
+			parseFloat(v[15])
+		],
 		accel : [ parseFloat(v[16]), parseFloat(v[17]), parseFloat(v[18]) ],
+		accel_scale : parseFloat(v[19]),
+		imu_correction : [ parseFloat(v[20]), parseFloat(v[21]), parseFloat(v[22]), parseFloat(v[23]) ],
+		acc_bias : [ parseFloat(v[24]), parseFloat(v[25]), parseFloat(v[26]) ],
+		gyro_bias : [ parseFloat(v[27]), parseFloat(v[28]), parseFloat(v[29]) ],
 	};
 
 	if (objs[obj.tracker] == null || objs[obj.tracker].velocity == null) {

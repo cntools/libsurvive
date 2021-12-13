@@ -96,7 +96,7 @@ void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct Pos
 		self->imu_init_cnt--;
 		return;
 	}
-
+	copy3d(self->last_accel, imuData->accel);
 	if (isnan(self->accel[0])) {
 		for (int i = 0; i < 3; i++) {
 			self->accel[i] = imuData->accel[i];

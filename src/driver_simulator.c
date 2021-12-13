@@ -101,13 +101,13 @@ STRUCT_CONFIG_SECTION(SurviveDriverSimulator)
     STRUCT_CONFIG_ITEM("simulator-lh-duty-cycle", "Duty cycle of lighthouses", 1., t->settings.lh_duty_cycle)
     STRUCT_EXISTING_CONFIG_ITEM("report-in-imu",t->settings.report_in_imu)
 END_STRUCT_CONFIG_SECTION(SurviveDriverSimulator)
-	// clang-format on
+// clang-format on
 
-	static double timestamp_in_s() {
-		static double start_time_s = 0;
-		if (start_time_s == 0.)
-			start_time_s = OGGetAbsoluteTime();
-		return OGGetAbsoluteTime() - start_time_s;
+static double timestamp_in_s() {
+	static double start_time_s = 0;
+	if (start_time_s == 0.)
+		start_time_s = OGGetAbsoluteTime();
+	return OGGetAbsoluteTime() - start_time_s;
 }
 
 static FLT lighthouse_lasttime_of_angle(SurviveDriverSimulator *driver, int lh, FLT timestamp, FLT angle) {
