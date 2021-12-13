@@ -911,7 +911,7 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 	}
 
 	for (int i = start; i < start + 7; i++) {
-		mpfitctx.parameters_info[i].fixed = true;
+		mpfitctx.mp_parameters_info[i].fixed = true;
 	}
 
 	mp_result result = {0};
