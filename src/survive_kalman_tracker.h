@@ -150,6 +150,7 @@ SURVIVE_EXPORT void survive_kalman_tracker_predict_jac(FLT t, struct SvMat *f_ou
 SURVIVE_EXPORT void survive_kalman_tracker_process_noise(const struct SurviveKalmanTracker_Params* params, FLT t, const SvMat *x, struct SvMat *q_out);
 SURVIVE_EXPORT bool survive_kalman_tracker_imu_measurement_model(void *user, const struct SvMat *Z, const struct SvMat *x_t, struct SvMat *y,
 												  struct SvMat *H_k);
+SURVIVE_EXPORT void survive_kalman_tracker_correct_imu(SurviveKalmanTracker *tracker, LinmathVec3d out, const LinmathVec3d accel);
 #ifdef __cplusplus
 };
 #endif

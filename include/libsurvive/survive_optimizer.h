@@ -114,6 +114,10 @@ typedef struct survive_optimizer {
 		uint32_t total_lh_cnt;
 		uint32_t dropped_meas_cnt;
 		uint32_t dropped_lh_cnt;
+
+		FLT object_up_error; int object_up_error_cnt;
+        FLT sensor_error; int sensor_error_cnt;
+        FLT current_error; int current_error_cnt;
 	} stats;
 
 	void *user;

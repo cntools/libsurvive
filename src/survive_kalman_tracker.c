@@ -319,6 +319,11 @@ struct map_imu_data_ctx {
 	SurviveKalmanTracker *tracker;
 };
 
+SURVIVE_EXPORT void survive_kalman_tracker_correct_imu(SurviveKalmanTracker *tracker, LinmathVec3d out, const LinmathVec3d accel) {
+    for(int i = 0;i < 3;i++) {
+        out[i] = accel[i] / tracker->state.AccScale - tracker->state.AccBias[i];
+    }
+}
 /**
  * The prediction for IMU given x_t is:
  *

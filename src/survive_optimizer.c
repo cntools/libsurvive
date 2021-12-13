@@ -16,6 +16,7 @@
 #include "generated/survive_imu.generated.h"
 #include "mpfit/mpfit.h"
 #include "survive_default_devices.h"
+#include "survive_kalman_tracker.h"
 
 #if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h>
@@ -336,7 +337,10 @@ static inline void run_pair_measurement(survive_optimizer *mpfunc_ctx, size_t me
 #endif
 
 	for (int i = 0; i < 2; i++) {
-		deviates[i] = fix_infinity((out[i] - meas[i].light.value) / meas[i].variance);
+	    FLT error =  fix_infinity(out[i] - meas[i].light.value);
+		deviates[i] = error / meas[i].variance;
+        mpfunc_ctx->stats.sensor_error += error * error;
+        mpfunc_ctx->stats.sensor_error_cnt++;
 	}
 
 	if (derivs) {
@@ -415,7 +419,10 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
     ApplyDualPoseToPoint(mpfunc_ctx, sensorPtInLH, obj2lh, pt);
 
 	FLT out = reprojectModel->reprojectAxisFn[meas->light.axis](cal, sensorPtInLH);
-	deviates[0] = fix_infinity((out - meas->light.value) / meas->variance);
+	FLT error = fix_infinity(out - meas->light.value);
+	deviates[0] = error / meas->variance;
+    mpfunc_ctx->stats.sensor_error += error * error;
+    mpfunc_ctx->stats.sensor_error_cnt++;
 
 	if (derivs) {
         int pose_size = mpfunc_ctx->settings->use_quat_model ? 7 : 6;
@@ -503,7 +510,7 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 				meas->invalid = true;
 				optimizer->stats.dropped_meas_cnt++;
 
-				SV_VERBOSE(105, "Ignoring noisy data at lh %d sensor %d axis %d val %f (%7.7f/%7.7f) %7.7f %7.7f",
+				SV_VERBOSE(105, "Ignoring noisy data at lh %d sensor %d axis %2d val %f (%7.7f/%7.7f) %7.7f %7.7f",
 						   meas->light.lh, meas->light.sensor_idx, meas->light.axis, meas->light.value,
 						   fabs(deviates[i] * meas->variance), avg_dev, P, chauvenet_criterion);
 
@@ -591,7 +598,11 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 	assert(survive_optimizer_get_meas_size(mpfunc_ctx) == m);
 	assert(survive_optimizer_get_parameters_count(mpfunc_ctx) == n);
 
-	mpfunc_ctx->parameters = p;
+    mpfunc_ctx->stats.sensor_error = 0; mpfunc_ctx->stats.sensor_error_cnt = 0;
+    mpfunc_ctx->stats.object_up_error = 0; mpfunc_ctx->stats.object_up_error_cnt = 0;
+    mpfunc_ctx->stats.current_error = 0; mpfunc_ctx->stats.current_error_cnt = 0;
+
+    mpfunc_ctx->parameters = p;
 
 	LinmathDualPose *cameras = (LinmathDualPose*)survive_optimizer_get_camera(mpfunc_ctx);
 
@@ -771,7 +782,9 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			}
 
 			int deriv_idx = obj * 7 + 3;
-			deviates[meas_idx] = error / meas->variance;
+            mpfunc_ctx->stats.object_up_error += error * error;
+            mpfunc_ctx->stats.object_up_error_cnt++;
+            deviates[meas_idx] = error / meas->variance;
 			for (int i = 0; i < ang_size && derivs && derivs[deriv_idx + i]; i++) {
 				derivs[deriv_idx + i][meas_idx] = fix_infinity(deriv[i] / meas->variance);
 			}
@@ -783,7 +796,10 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			FLT *obj2world = (FLT *)(&survive_optimizer_get_pose(mpfunc_ctx)[meas->pose.object]);
 			const FLT *current = &meas->pose.pose.Pos[0];
 			for (int i = 0; i < pose_size; i++) {
+			    FLT error = (obj2world[i] - current[i]);
 				deviates[meas_idx + i] = (obj2world[i] - current[i]) / meas->variance;
+				mpfunc_ctx->stats.current_error += error * error;
+                mpfunc_ctx->stats.current_error_cnt++;
 				if (derivs && derivs[jac_offset_obj]) {
 					derivs[jac_offset_obj + i][meas_idx + i] = 1. / meas->variance;
 				}
@@ -1229,7 +1245,8 @@ SURVIVE_EXPORT void survive_optimizer_setup_buffers(survive_optimizer *ctx, void
                     survive_optimizer_measurement *meas =
                             survive_optimizer_emplace_meas(ctx, survive_optimizer_measurement_type_object_accel);
                     meas->pose_acc.object = i;
-                    normalize3d(meas->pose_acc.acc, ctx->sos[i]->activations.accel);
+                    survive_kalman_tracker_correct_imu(ctx->sos[i]->tracker, meas->pose_acc.acc, ctx->sos[i]->activations.accel);
+                    normalize3d(meas->pose_acc.acc, meas->pose_acc.acc);
                     meas->variance = ctx->objectUpVectorVariance;
                 }
             }

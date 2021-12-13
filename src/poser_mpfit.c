@@ -585,7 +585,7 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 			worldEstablished ? 110 : 100,
 			"MPFIT success %s %f7.5s %s %f/%10.10f/%10.10f (%3d measurements, %s result, %d lighthouses, %d axis, "
 			"%6.3fms "
-			"time_window, %2d old_meas (avg %6.3fms) run #%d) scale %7.7f",
+			"time_window, %2d old_meas (avg %6.3fms) run #%d) scale %7.7f sensor_err %7.7f up_err %7.7f curr_error %7.7f",
 			survive_colorize(so->codename), survive_run_time(ctx),
 			survive_colorize(SurviveSensorActivations_stationary_time(&so->activations) > 4800000 ? "STILL" : "MOVE "),
 			result->orignorm, result->bestnorm,
@@ -595,7 +595,10 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 			get_axis_count(meas_for_lhs_axis), user_data->stats.time_window / 48000000. * 1000.,
 			user_data->stats.old_measurements,
 			user_data->stats.old_measurements_age / 48000000. * 1000. / (.001 + user_data->stats.old_measurements),
-			d->stats.total_runs, scale);
+			d->stats.total_runs, scale,
+			sqrtf(mpfitctx->stats.sensor_error / mpfitctx->stats.sensor_error_cnt),
+			sqrtf(mpfitctx->stats.object_up_error / mpfitctx->stats.object_up_error_cnt),
+            sqrtf(mpfitctx->stats.current_error / mpfitctx->stats.current_error_cnt));
 	} else {
 		SV_VERBOSE(
 			100,
