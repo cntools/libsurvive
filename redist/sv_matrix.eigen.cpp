@@ -37,6 +37,14 @@ double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svInvertMethod method) 
 	return 0;
 }
 
+void svSqRoot(const SvMat *srcarr, SvMat *dstarr) {
+	auto src = CONVERT_TO_EIGEN(srcarr);
+	auto dst = CONVERT_TO_EIGEN(dstarr);
+
+	EIGEN_RUNTIME_SET_IS_MALLOC_ALLOWED(false);
+	dst.noalias() = Eigen::LLT<MatrixType>(src).matrixL().toDenseMatrix();
+}
+
 extern "C" void svGEMM(const SvMat *_src1, const SvMat *_src2, double alpha, const SvMat *_src3, double beta,
 					   SvMat *_dst, enum svGEMMFlags tABC) {
 	if (_src3) {

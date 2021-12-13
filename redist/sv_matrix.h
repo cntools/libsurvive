@@ -55,6 +55,10 @@ enum svInvertMethod {
 };
 
 double svInvert(const SvMat *srcarr, SvMat *dstarr, enum svInvertMethod method);
+#ifdef SV_HAS_SQROOT
+void svSqRoot(const SvMat *srcarr, SvMat *dstarr);
+#endif
+void svRandn(SvMat *dstarr, FLT mu, FLT sigma);
 
 enum svGEMMFlags {
 	SV_GEMM_FLAG_A_T = 1,

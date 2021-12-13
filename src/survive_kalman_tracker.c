@@ -715,10 +715,34 @@ static FLT integrate_pose(SurviveKalmanTracker *tracker, FLT time, const Survive
 	return rtn;
 }
 
+void survive_show_covariance(SurviveObject *so, const SurvivePose *pose, const struct SvMat *Ri, FLT s) {
+#ifdef SV_HAS_SQROOT
+    SurviveContext *ctx = so->ctx;
+    SV_CREATE_STACK_MAT(R, 7, 7);
+    svCopy(Ri, &R, 0);
+    SV_CREATE_STACK_MAT(RL, 7, 7);
+    SV_CREATE_STACK_MAT(X, 7, 1);
+    SV_CREATE_STACK_MAT(Xs, 7, 1);
+    svSqRoot(&R, &RL);
+    for(int i = 0;i < 25;i++) {
+        svRandn(&X, 0, 1);
+        svGEMM(&RL, &X, 1, 0, 0, &Xs, 0);
+        addnd(_Xs, _Xs, pose->Pos, 7);
+        char external_name[16] = {0};
+        sprintf(external_name, "%s-sample_%d", so->codename, i);
+        SurvivePose head2world = *pose;
+        ApplyPoseToPose(&head2world, (SurvivePose *)_Xs, &so->head2imu);
+
+        survive_recording_write_to_output(ctx->recptr, "AXIS %s_sample_%i_%f %f " Point7_format "\n",
+                                          so->codename, i, s, s, SURVIVE_POSE_EXPAND(head2world));
+    }
+#endif
+}
+
 void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTracker *tracker, const SurvivePose *pose,
 												  const struct SvMat *Ri) {
 	SurviveObject *so = tracker->so;
-	SurviveContext *ctx = so->ctx;
+    SurviveContext *ctx = so->ctx;
 
 	integrate_variance_tracker(tracker, &tracker->pose_variance, (FLT*)pose->Pos, 7);
 
@@ -734,7 +758,7 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
 		if(!report_in_imu) {
             ApplyPoseToPose(&head2world, pose, &so->head2imu);
 		}
-		SURVIVE_INVOKE_HOOK(external_pose, ctx, external_name, &head2world);
+        SURVIVE_INVOKE_HOOK(external_pose, ctx, external_name, &head2world);
 	}
 
 	if (tracker->use_raw_obs) {
@@ -791,6 +815,11 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
                 survive_recording_write_to_output_nopreamble(ctx->recptr, "%f ", R.data[i]);
             }
             survive_recording_write_to_output_nopreamble(ctx->recptr, "\n");
+
+            if(true) {
+                survive_show_covariance(so, pose, Ri, .05);
+            }
+
         }
 
         FLT obs_error = integrate_pose(tracker, time, pose, tracker->adaptive_obs ? 0 : &R);
@@ -1198,6 +1227,8 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
             survive_recording_write_to_output_nopreamble(ctx->recptr, "%f ", tracker->model.P.data[i]);
         }
         survive_recording_write_to_output_nopreamble(ctx->recptr, "\n");
+
+        survive_show_covariance(so, &pose, &tracker->model.P, .1);
     }
 
     tracker->previous_state = tracker->state;

@@ -89,6 +89,12 @@ void svCopy(const SvMat *src, SvMat *dest, const SvMat *mask) {
 	}
 }
 
+void svRandn(SvMat *arr, FLT mu, FLT sigma) {
+	for (int i = 0; i < arr->rows; i++)
+		for (int j = 0; j < arr->cols; j++)
+			SV_RAW_PTR(arr)[i * arr->cols + j] = linmath_normrand(mu, sigma);
+}
+
 SURVIVE_LOCAL_ONLY void svSetZero(SvMat *arr) {
 	for (int i = 0; i < arr->rows; i++)
 		for (int j = 0; j < arr->cols; j++)
