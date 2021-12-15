@@ -171,6 +171,22 @@ static int parse_and_run_pose(const char *line, SurvivePlaybackData *driver) {
 	SURVIVE_INVOKE_HOOK(external_pose, ctx, name, &pose);
 	return 0;
 }
+static int parse_and_set_imu_scales(const char* line, SurvivePlaybackData *driver) {
+    char dev[10];
+    int gyro_mode = 0, acc_mode = 0;
+    SurviveContext *ctx = driver->ctx;
+
+    char i_char = 0;
+
+    int rr = sscanf(line, "%s IMU_SCALES %d %d", dev, &gyro_mode, &acc_mode);
+
+    SurviveObject *so = find_or_warn(driver, dev);
+    if (so) {
+        survive_default_set_imu_scale_modes(so, gyro_mode, acc_mode); 
+    }
+
+    return 0;
+}
 static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver, bool raw) {
 	char dev[10];
 	int timecode = 0;
@@ -413,6 +429,9 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 		case 'I':
 			if (op[1] == 0)
 				parse_and_run_imu(line, driver, false);
+			else if(strcmp(op, "IMU_SCALES") == 0) {
+                parse_and_set_imu_scales(line, driver);
+			}
 			break;
 		case 'P':
 			if (strcmp(op, "POSE") == 0 && driver->outputCalculatedPose)

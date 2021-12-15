@@ -59,6 +59,7 @@ void survive_recording_light_process(struct SurviveObject *so, int sensor_id, in
 									 uint32_t timecode, uint32_t length, uint32_t lh);
 
 void survive_recording_imu_process(struct SurviveObject *so, int mask, const FLT *accelgyro, uint32_t timecode, int id);
+void survive_recording_imu_scales(struct SurviveObject *so, int gyro_scale_mode, int acc_scale_mode);
 void survive_recording_raw_imu_process(struct SurviveObject *so, int mask, const FLT *accelgyro, uint32_t timecode,
 									   int id);
 void survive_recording_disconnect_process(struct SurviveObject *so);

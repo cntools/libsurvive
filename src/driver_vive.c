@@ -49,7 +49,7 @@ struct DeviceInfo {
 enum vive_report_ids {
 	// Possibly 0x03 - Gyro range, 0x02 - Accel range
 	// Tracker/lh1/[rf,usb]: (device -> steamvr):  01 03 02
-	VIVE_REPORT_INFO = 1,
+	VIVE_REPORT_IMU_SCALES = 1,
 	VIVE_REPORT_IMU = 0x20,
 	VIVE_REPORT_USB_TRACKER_LIGHTCAP_V1 = 0x21,
 	VIVE_REPORT_RF_WATCHMAN = 0x23,
@@ -138,7 +138,11 @@ enum vive_commands {
 	VIVE_COMMAND_HAPTIC_PULSE = 0x8F,
 
 	// Wants '6f 66 66 21 |    off!' as data
-	VIVE_COMMAND_HAPTIC_POWER_OFF = 0x9F,
+    // -->  22.307137 S: T20 ffff8dc3fcadc000 event_type: S transfer_type: 2 bmRequestType: 0x21 bRequest: 0x09 (SET_CONFIGURATION) wValue: 0x0300 wIndex: 0x0002 wLength:   64 (  64)
+    // 22.3068941 9f 04 6f 66   66 21 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00     |    ..of  f!..  ....  ....  ....  ....  ....  ....
+    //            00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00     |    ....  ....  ....  ....  ....  ....  ....  ....
+    // <--  22.307294 C: T20 ffff8dc3fcadc000 event_type: C transfer_type: 2 0x00 (0x00):
+    VIVE_COMMAND_POWER_OFF = 0x9F,
 
 	// Knuckles/lh2/rf: (steamvr -> device):  be 5b 32 54   11 cf 83 75   53 8a 08 6a   53 58 d0 b1
 	// Tracker/lh1/rf:  (steamvr -> device):  be 5b 32 54   11 cf 83 75   53 8a 08 6a   53 58 d0 b1 |    .[2T  ...u S..j
@@ -2661,8 +2665,8 @@ static void parse_tracker_version_info(SurviveObject *so, uint8_t *data, size_t 
 static void parse_tracker_info(SurviveObject *so, uint8_t id, uint8_t *readdata, size_t size) {
 	SurviveContext *ctx = so->ctx;
 	switch (id) {
-	case VIVE_REPORT_INFO: {
-		SV_INFO("Info 1: 0x%x 0x%x", readdata[0], readdata[1]);
+	case VIVE_REPORT_IMU_SCALES: {
+		SV_INFO("IMU Scales 1: 0x%x 0x%x", readdata[0], readdata[1]);
 		goto dump_data;
 		break;
 	}
@@ -2736,10 +2740,6 @@ void survive_data_cb_locked(uint64_t time_received_us, SurviveUSBInterface *si) 
 	}
 
 	switch (si->which_interface_am_i) {
-	case USB_IF_TRACKER_INFO: {
-		parse_tracker_info(obj, id, readdata, size);
-		break;
-	}
 	case USB_IF_HMD_HEADSET_INFO: {
 		SurviveObject *headset = obj;
 		readdata += 2;
@@ -2953,7 +2953,7 @@ void survive_data_cb_locked(uint64_t time_received_us, SurviveUSBInterface *si) 
 	case USB_IF_TRACKER0_BUTTONS:
 	case USB_IF_TRACKER1_BUTTONS:
 	case USB_IF_W_WATCHMAN1_BUTTONS: {
-		if (VIVE_REPORT_INFO == id) {
+		if (VIVE_REPORT_IMU_SCALES == id) {
 			// 0x00	uint8	1	reportID	HID report identifier(= 1)
 			// 0x02	uint16	2	reportType(? )	0x0B04: Ping(every second) / 0x3C01 : User input
 			// 0x04	uint32	4	reportCount	Counter that increases with every report

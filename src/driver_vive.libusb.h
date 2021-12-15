@@ -258,6 +258,7 @@ struct survive_config_packet {
 		SURVIVE_CONFIG_STATE_CONFIG,
 		SURVIVE_CONFIG_STATE_MAGICS,
 		SURVIVE_CONFIG_STATE_VERSION,
+        SURVIVE_CONFIG_STATE_IMU_SCALES,
 		SURVIVE_CONFIG_STATE_DONE
 	} state;
 	uint16_t stall_counter;
@@ -322,6 +323,14 @@ static inline void setup_version(struct survive_config_packet *packet) {
 							  LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_IN, 0x01,
 							  0x300 | transfer->buffer[8], 0, 256);
 }
+static inline void setup_config_imu_scales(struct survive_config_packet *packet) {
+    struct libusb_transfer *transfer = packet->tx;
+    packet->state = SURVIVE_CONFIG_STATE_IMU_SCALES;
+    transfer->buffer[8] = VIVE_REPORT_IMU_SCALES;
+    libusb_fill_control_setup(transfer->buffer,
+                              LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_IN, 0x01,
+                              0x300 | transfer->buffer[8], 0, 256);
+}
 static inline void setup_magic(struct survive_config_packet *packet) {
 	SurviveContext *ctx = packet->ctx;
 	SurviveObject *so = packet->usbInfo->so;
@@ -351,6 +360,9 @@ static inline void setup_packet_state(struct survive_config_packet *packet) {
 	case SURVIVE_CONFIG_STATE_CONFIG:
 		setup_config_req(packet);
 		break;
+    case SURVIVE_CONFIG_STATE_IMU_SCALES:
+        setup_config_imu_scales(packet);
+        return;
 	case SURVIVE_CONFIG_STATE_DONE:
 		return;
 	}
@@ -457,6 +469,12 @@ void handle_config_tx(struct libusb_transfer *transfer) {
 
 		goto setup_next;
 	}
+    case SURVIVE_CONFIG_STATE_IMU_SCALES: {
+        int gyro_scale_mode = transfer->buffer[1 + 8];
+        int acc_scale_mode = transfer->buffer[1 + 9];
+        survive_default_set_imu_scale_modes(so, gyro_scale_mode, acc_scale_mode);
+        goto setup_next;
+    }
 	default:
 		SV_WARN("Config state machine saw packet of type %d; not sure how to proceed.", cmd);
 		goto cleanup;

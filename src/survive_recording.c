@@ -290,6 +290,16 @@ void survive_recording_light_process(struct SurviveObject *so, int sensor_id, in
 									  sensor_id, acode, timeinsweep, timecode, length, lh);
 }
 
+void survive_recording_imu_scales(struct SurviveObject *so, int gyro_scale_mode, int acc_scale_mode) {
+    SurviveRecordingData *recordingData = so->ctx->recptr;
+    if (recordingData == 0)
+        return;
+
+    survive_recording_write_to_output(recordingData,
+                                      "%s IMU_SCALES %d %d\r\n",
+                                      so->codename, gyro_scale_mode, acc_scale_mode);
+
+}
 void survive_recording_imu_process(struct SurviveObject *so, int mask, const FLT *accelgyro, uint32_t timecode,
 								   int id) {
 	SurviveRecordingData *recordingData = so->ctx->recptr;

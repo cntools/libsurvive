@@ -188,7 +188,14 @@ void survive_default_raw_imu_process(SurviveObject *so, int mask, const FLT *acc
 
 	SURVIVE_INVOKE_HOOK_SO(imu, so, 3, agm, timecode, id);
 }
+void survive_default_set_imu_scale_modes(SurviveObject *so, int gyro_scale_mode, int acc_scale_mode) {
+    survive_recording_imu_scales(so, gyro_scale_mode, acc_scale_mode);
 
+    const FLT gyro_scales[] = { 250, 500, 1000, 2000 };
+    const FLT acc_scales[] = { 2, 4, 8, 16 };
+    if(acc_scale_mode < 4) so->raw_acc_scale = acc_scales[acc_scale_mode] / (FLT)(1 << 15);
+    if(gyro_scale_mode < 4) so->raw_gyro_scale = gyro_scales[gyro_scale_mode] / (FLT)(1 << 15) * LINMATHPI / 180.;
+}
 void survive_default_imu_process(SurviveObject *so, int mask, const FLT *accelgyromag, uint32_t timecode, int id) {
 	survive_long_timecode longTimecode = SurviveSensorActivations_long_timecode_imu(&so->activations, timecode);
 	PoserDataIMU imu = {

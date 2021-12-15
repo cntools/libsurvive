@@ -542,6 +542,7 @@ SURVIVE_EXPORT void survive_default_light_process(SurviveObject *so, int sensor_
 												  survive_timecode timecode, survive_timecode length, uint32_t lh);
 SURVIVE_EXPORT void survive_default_raw_imu_process(SurviveObject *so, int mode, const FLT *accelgyro,
 													survive_timecode timecode, int id);
+SURVIVE_EXPORT void survive_default_set_imu_scale_modes(SurviveObject *so, int gyro_scale_mode, int acc_scale_mode);
 SURVIVE_EXPORT void survive_default_imu_process(SurviveObject *so, int mode, const FLT *accelgyro,
 												survive_timecode timecode, int id);
 SURVIVE_EXPORT void survive_default_angle_process(SurviveObject *so, int sensor_id, int acode, survive_timecode timecode,
