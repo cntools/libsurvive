@@ -238,10 +238,12 @@ const struct DeviceInfo KnownDeviceTypes[] = {
 	 .codename = "WM0",
 	 .endpoints = {{.num = 0x81, .name = "IMU/Lightcap/Buttons", .type = USB_IF_WATCHMAN1}},
 	 .magics =
-		 {// MAGIC_CTOR(true, vive_magic_enable_lighthouse),
-		  // MAGIC_CTOR(true, vive_magic_enable_lighthouse_more),
-		  MAGIC_CTOR(true, vive_magic_protocol_super_magic), MAGIC_CTOR(true, vive_magic_rf_raw_mode_0),
-		  MAGIC_CTOR(true, vive_magic_protocol_switch)}},
+		 {
+			 // MAGIC_CTOR(true, vive_magic_enable_lighthouse),
+			 // MAGIC_CTOR(true, vive_magic_enable_lighthouse_more),
+			 MAGIC_CTOR(true, vive_magic_protocol_super_magic), MAGIC_CTOR(true, vive_magic_rf_raw_mode_0),
+			 // MAGIC_CTOR(true, vive_magic_protocol_switch)
+		 }},
 	{.vid = 0x28de,
 	 .pid = 0x2022,
 	 .type = USB_DEV_TRACKER0,
@@ -281,8 +283,11 @@ const struct DeviceInfo KnownDeviceTypes[] = {
 	 .name = "Knuckles",
 	 .codename = "KN0",
 	 .endpoints = {{.num = 0x81, .name = "IMU/Lightcap/Buttons", .type = USB_IF_WATCHMAN1}},
-	 .magics = {MAGIC_CTOR(true, vive_magic_protocol_super_magic), MAGIC_CTOR(true, vive_magic_rf_raw_mode_0),
-				MAGIC_CTOR(true, vive_magic_protocol_switch)}},
+	 .magics =
+		 {
+			 MAGIC_CTOR(true, vive_magic_protocol_super_magic), MAGIC_CTOR(true, vive_magic_rf_raw_mode_0),
+			 // MAGIC_CTOR(true, vive_magic_protocol_switch)
+		 }},
 	{0}};
 
 // typedef struct SurviveUSBInterface SurviveUSBInterface;
@@ -2617,7 +2622,7 @@ static inline uint32_t read_buffer32(uint8_t *readdata, int idx) {
 
 static uint32_t earliest_working_revision(uint32_t hw_id) { return 1462663157; }
 
-static uint32_t latest_working_revision(uint32_t hw_id) { return 1597880106; }
+static uint32_t latest_working_revision(uint32_t hw_id) { return 1632556731; }
 
 static void parse_tracker_version_info(SurviveObject *so, uint8_t *data, size_t size) {
 	SurviveContext *ctx = so->ctx;
