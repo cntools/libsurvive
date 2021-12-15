@@ -392,6 +392,10 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 
 		survive_get_ctx_lock(ctx);
 		switch (op[0]) {
+		case 'F':
+			if (strcmp(op, "FULL_STATE") == 0) {
+			}
+			break;
 		case 'W':
 			if (op[1] == 0)
 				parse_and_run_sweep(line, driver);
@@ -444,7 +448,7 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 		case 'V':
 			break;
 		default:
-			SV_WARN("Playback doesn't understand '%s' op in '%s'", op, line);
+			SV_WARN("Playback doesn't understand '%.10s' op in '%.20s'", op, line);
 		}
 		survive_release_ctx_lock(ctx);
 
