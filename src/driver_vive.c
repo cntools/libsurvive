@@ -2741,7 +2741,7 @@ void survive_data_cb_locked(uint64_t time_received_us, SurviveUSBInterface *si) 
 	SurviveObject *obj = si->assoc_obj;
 	uint8_t *readdata = si->buffer;
 
-	if (iface == USB_IF_HMD_HEADSET_INFO && obj == 0)
+	if (obj == 0)
 		return;
 
 	int id = POP1;
