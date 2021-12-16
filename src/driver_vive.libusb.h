@@ -382,12 +382,16 @@ void handle_config_tx(struct libusb_transfer *transfer) {
 	if (transfer->status == LIBUSB_TRANSFER_STALL) {
 		SV_VERBOSE(110, "Waiting, Transfer status %d at %f sec for %s", transfer->status,
 				   survive_run_time(ctx) - packet->start_time, survive_colorize(so ? so->codename : "unknown"));
-
+		packet->stall_counter++;
 		if (packet->usbInfo->device_info->codename[0] == 0) {
 			goto cleanup;
 		}
 
 		packet->usbInfo->nextCfgSubmitTime = survive_run_time(ctx) + .02;
+		if (packet->stall_counter > 5) {
+			packet->stall_counter = 0;
+			packet->usbInfo->nextCfgSubmitTime++;
+		}
 		return;
 	}
 	packet->stall_counter = 0;
@@ -511,6 +515,7 @@ setup_next : {
 			}
 		}
 
+		packet->usbInfo->ignoreCnt = 10;
 		packet->usbInfo->nextCfgSubmitTime = 0;
 		packet->usbInfo->cfg_user = 0;
 		packet->usbInfo->active_transfers--;

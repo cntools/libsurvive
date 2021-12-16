@@ -57,6 +57,7 @@ enum vive_report_ids {
 	VIVE_REPORT_USB_LIGHTCAP_REPORT_V1 = 0x25,
 
 	// I've seen this with a byte of data; 01. Maybe this turns on and off?
+	// Note: I've now seen this at connection too? Maybe its just what happens when you hold the button down?
 	VIVE_REPORT_RF_TURN_OFF = 0x26,
 	VIVE_REPORT_USB_LIGHTCAP_REPORT_V2 = 0x27,
 	VIVE_REPORT_USB_LIGHTCAP_REPORT_RAW_MODE_1 = 0x28,
@@ -138,16 +139,20 @@ enum vive_commands {
 	VIVE_COMMAND_HAPTIC_PULSE = 0x8F,
 
 	// Wants '6f 66 66 21 |    off!' as data
-    // -->  22.307137 S: T20 ffff8dc3fcadc000 event_type: S transfer_type: 2 bmRequestType: 0x21 bRequest: 0x09 (SET_CONFIGURATION) wValue: 0x0300 wIndex: 0x0002 wLength:   64 (  64)
-    // 22.3068941 9f 04 6f 66   66 21 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00     |    ..of  f!..  ....  ....  ....  ....  ....  ....
-    //            00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00     |    ....  ....  ....  ....  ....  ....  ....  ....
-    // <--  22.307294 C: T20 ffff8dc3fcadc000 event_type: C transfer_type: 2 0x00 (0x00):
-    VIVE_COMMAND_POWER_OFF = 0x9F,
+	// -->  22.307137 S: T20 ffff8dc3fcadc000 event_type: S transfer_type: 2 bmRequestType: 0x21 bRequest: 0x09
+	// (SET_CONFIGURATION) wValue: 0x0300 wIndex: 0x0002 wLength:   64 (  64)
+	// 22.3068941 9f 04 6f 66   66 21 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00
+	// 00 00 00     |    ..of  f!..  ....  ....  ....  ....  ....  ....
+	//            00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00 00 00 00   00
+	//            00 00 00     |    ....  ....  ....  ....  ....  ....  ....  ....
+	// <--  22.307294 C: T20 ffff8dc3fcadc000 event_type: C transfer_type: 2 0x00 (0x00):
+	VIVE_COMMAND_POWER_OFF = 0x9F,
 
 	// Knuckles/lh2/rf: (steamvr -> device):  be 5b 32 54   11 cf 83 75   53 8a 08 6a   53 58 d0 b1
 	// Tracker/lh1/rf:  (steamvr -> device):  be 5b 32 54   11 cf 83 75   53 8a 08 6a   53 58 d0 b1 |    .[2T  ...u S..j
 	// SX..
-	VIVE_COMMAND_UNKNOWN1 = 0x96,
+	// Note: This is sent regardless of whether there is a device setup
+	VIVE_COMMAND_CONFIGURE_RADIO = 0x96,
 
 	// Info: WM sent command 0xad with 3 bytes:
 	// 01 10 27
@@ -158,7 +163,7 @@ enum vive_commands {
 	//                 (device -> steamvr): 57 16 a0 b9   32 33 46 45   41 33 44 44   44 41 00 00   00 00 00 00   00 00
 	//                 00 00   00 00 00 00   00 00 00 00     |    W...  23FE  A3DD  DA..  ....  ....  ....  ....
 	//                                      00 00 |    ..
-	VIVE_COMMAND_UNKNOWN2 = 0xa1,
+	VIVE_COMMAND_CHECK_ALIVE = 0xa1,
 
 	// Knuckles/lh2/rf: (steamvr->sevice): 00
 	VIVE_COMMAND_UNKNOWN4 = 0xb5,
@@ -187,7 +192,7 @@ static uint8_t vive_magic_protocol_switch[] = {
 	VIVE_REPORT_COMMAND, VIVE_COMMAND_CHANGE_PROTOCOL, 0x3, 0x00, 0x01, 0x00};
 static uint8_t vive_request_pairing[] = {VIVE_REPORT_COMMAND, VIVE_COMMAND_PAIR, 0x03, 0x01, 0x10, 0x27};
 static uint8_t vive_magic_protocol_super_magic[] = {VIVE_REPORT_COMMAND,
-													VIVE_COMMAND_UNKNOWN1,
+													VIVE_COMMAND_CONFIGURE_RADIO,
 													0x10,
 													0xbe,
 													0x5b,
@@ -238,12 +243,10 @@ const struct DeviceInfo KnownDeviceTypes[] = {
 	 .codename = "WM0",
 	 .endpoints = {{.num = 0x81, .name = "IMU/Lightcap/Buttons", .type = USB_IF_WATCHMAN1}},
 	 .magics =
-		 {
-			 // MAGIC_CTOR(true, vive_magic_enable_lighthouse),
-			 // MAGIC_CTOR(true, vive_magic_enable_lighthouse_more),
-			 MAGIC_CTOR(true, vive_magic_protocol_super_magic), MAGIC_CTOR(true, vive_magic_rf_raw_mode_0),
-			 // MAGIC_CTOR(true, vive_magic_protocol_switch)
-		 }},
+		 {// MAGIC_CTOR(true, vive_magic_enable_lighthouse),
+		  // MAGIC_CTOR(true, vive_magic_enable_lighthouse_more),
+		  MAGIC_CTOR(true, vive_magic_protocol_super_magic), MAGIC_CTOR(true, vive_magic_rf_raw_mode_0),
+		  MAGIC_CTOR(true, vive_magic_protocol_switch)}},
 	{.vid = 0x28de,
 	 .pid = 0x2022,
 	 .type = USB_DEV_TRACKER0,
@@ -283,11 +286,8 @@ const struct DeviceInfo KnownDeviceTypes[] = {
 	 .name = "Knuckles",
 	 .codename = "KN0",
 	 .endpoints = {{.num = 0x81, .name = "IMU/Lightcap/Buttons", .type = USB_IF_WATCHMAN1}},
-	 .magics =
-		 {
-			 MAGIC_CTOR(true, vive_magic_protocol_super_magic), MAGIC_CTOR(true, vive_magic_rf_raw_mode_0),
-			 // MAGIC_CTOR(true, vive_magic_protocol_switch)
-		 }},
+	 .magics = {MAGIC_CTOR(true, vive_magic_protocol_super_magic), MAGIC_CTOR(true, vive_magic_rf_raw_mode_0),
+				MAGIC_CTOR(true, vive_magic_protocol_switch)}},
 	{0}};
 
 // typedef struct SurviveUSBInterface SurviveUSBInterface;
@@ -388,6 +388,7 @@ struct SurviveUSBInfo {
 
 	size_t timeWithoutFlag;
 	size_t packetsSeenWaitingForV2;
+	size_t ignoreCnt;
 
 	size_t active_transfers;
 	FLT nextCfgSubmitTime;
@@ -535,7 +536,7 @@ void vive_switch_mode(struct SurviveUSBInfo *driverInfo, enum LightcapMode light
 				}
 			}
 
-			SV_INFO("LightcapMode (%s) %d -> %d", w->codename, driverInfo->lightcapMode, lightcapMode);
+			SV_INFO("LightcapMode (%s) %d -> %d (%x)", w->codename, driverInfo->lightcapMode, lightcapMode, buffer[0]);
 			driverInfo->lightcapMode = lightcapMode;
 
 		} else {
@@ -2234,6 +2235,13 @@ static void handle_watchman_v2(SurviveObject *w, uint64_t time_in_us, uint16_t t
 			uint8_t unknown_byte = POP_BYTE(payloadPtr);
 			break;
 		}
+		case 0x30: {
+			// Only have seen zeros here
+			// Info: 0.5121191 WM0 Unknown metadata marker (40 30) bytes dropping rest of data 40 30 00 00
+			uint8_t unknown_byte1 = POP_BYTE(payloadPtr);
+			uint8_t unknown_byte2 = POP_BYTE(payloadPtr);
+			break;
+		}
 		default:
 			SV_VERBOSE(100, "%.7f %s Unknown metadata marker (%02x %02x) bytes dropping rest of data %s",
 					   survive_run_time(ctx), w->codename, flags, marker_byte,
@@ -2310,12 +2318,15 @@ static bool use_watchman_v2(SurviveObject *w) {
 	}
 }
 
-static void handle_watchman(SurviveObject *w, uint64_t time_in_us, uint8_t *readdata) {
-	struct SurviveUSBInfo *driverInfo = w->driver;
-
+void survive_handle_watchman(SurviveObject *w, uint64_t time_in_us, uint8_t *readdata) {
 	// KASPER'S DECODE
-	SurviveContext *ctx = w->ctx;
+	SurviveContext *ctx = w ? w->ctx : 0;
 
+	struct SurviveUSBInfo *driver = w->driver;
+	if (driver->ignoreCnt) {
+		driver->ignoreCnt--;
+		return;
+	}
 	/*
 	 * ---=== PACKET STRUCTURE ===---
 	 * Key:
@@ -2354,6 +2365,17 @@ static void handle_watchman(SurviveObject *w, uint64_t time_in_us, uint8_t *read
 	 *       b) Compute the remaining bytes after the input/status event has been read (The size of the input/status
 	 *          event is not explicitly provided, so must be implied by the event type.
 	 *   3) Read an interpret any remaining bytes as light data
+	 *
+	 *   Watchman V2:
+	 *
+	 *   Watchman protocol V2 has the same time / size breakdown as V1 but is followed with a flags byte:
+	 *   0bIMPL xxxx
+	 *     ||||
+	 *     ||||- Has Light data
+	 *     |||- Has Input
+	 *     ||- Has Metadata
+	 *     |- Has IMU data
+	 *
 	 */
 
 	uint16_t time = AS_SHORT(readdata[0], readdata[2]);
@@ -2361,7 +2383,6 @@ static void handle_watchman(SurviveObject *w, uint64_t time_in_us, uint8_t *read
 	uint8_t *payloadPtr = &readdata[3];
 	uint8_t *payloadEndPtr = payloadPtr + payloadSize;
 
-	struct SurviveUSBInfo *driver = w->driver;
 	if (use_watchman_v2(w)) {
 		SV_VERBOSE(750, "Watchman v2(%s): '%s'", w->codename, packetToHex(readdata, payloadEndPtr));
 		handle_watchman_v2(w, time_in_us, time, payloadPtr, payloadEndPtr);
@@ -2630,7 +2651,7 @@ static void parse_tracker_version_info(SurviveObject *so, uint8_t *data, size_t 
 #pragma pack(push, 1)
 	struct {
 		uint32_t revision;
-		uint32_t some_other_number;
+		uint32_t board_model;
 		char fw_name[32];
 		uint32_t hardware_id;
 		uint32_t a;
@@ -2638,9 +2659,7 @@ static void parse_tracker_version_info(SurviveObject *so, uint8_t *data, size_t 
 		uint8_t fpga_minor_version;
 		uint8_t fpga_patch_version;
 		uint8_t h;
-		uint8_t flags1, flags2;
-		uint16_t i, j;
-		uint32_t k;
+		uint64_t k;
 	} version_info;
 #pragma pack(pop)
 	char fw_name[33] = {0};
@@ -2650,9 +2669,12 @@ static void parse_tracker_version_info(SurviveObject *so, uint8_t *data, size_t 
 		fw_name[i] = 0x7f & fw_name[i];
 	}
 
-	SV_INFO("Device %s has watchman FW version %u and FPGA version %u/%u/%u; named '%31s'. Hardware id 0x%08x",
+	SV_INFO("Device %s has watchman FW version %u and FPGA version %u/%u/%u; named '%31s'. Hardware id 0x%08x Board "
+			"rev: %d",
 			survive_colorize(so->codename), version_info.revision, version_info.fpga_major_version,
-			version_info.fpga_minor_version, version_info.fpga_patch_version, fw_name, version_info.hardware_id);
+			version_info.fpga_minor_version, version_info.fpga_patch_version, fw_name, version_info.hardware_id,
+			version_info.board_model);
+	SV_VERBOSE(105, "Extra version info: 0x%x / 0x%x / 0x%lx", version_info.a, version_info.h, version_info.k);
 	uint32_t earliest_version = earliest_working_revision(version_info.hardware_id);
 	uint32_t latest_version = latest_working_revision(version_info.hardware_id);
 	if (earliest_version > version_info.revision) {
@@ -2809,10 +2831,10 @@ void survive_data_cb_locked(uint64_t time_received_us, SurviveUSBInterface *si) 
 	case USB_IF_WATCHMAN2: {
 		SurviveObject *w = obj;
 		if (id == VIVE_REPORT_RF_WATCHMAN) {
-			handle_watchman(w, time_received_us, readdata);
+			survive_handle_watchman(w, time_received_us, readdata);
 		} else if (id == VIVE_REPORT_RF_WATCHMANx2) {
-			handle_watchman(w, time_received_us, readdata);
-			handle_watchman(w, time_received_us, readdata + 29);
+			survive_handle_watchman(w, time_received_us, readdata);
+			survive_handle_watchman(w, time_received_us, readdata + 29);
 		} else if (id == VIVE_REPORT_RF_TURN_OFF) {
 			w->ison = 0; // turning off
 		} else if (id != 0) {

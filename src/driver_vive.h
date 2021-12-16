@@ -117,6 +117,6 @@ SURVIVE_EXPORT void survive_data_on_setup_write(SurviveObject *so, uint8_t bmReq
 SURVIVE_EXPORT int parse_watchman_lightcap(struct SurviveContext *ctx, const char *codename, uint8_t time1,
 										   survive_timecode reference_time, uint8_t *readdata, size_t qty,
 										   LightcapElement *les, size_t output_cnt);
-
+SURVIVE_EXPORT void survive_handle_watchman(SurviveObject *w, uint64_t time_in_us, uint8_t *readdata);
 struct SurviveUSBInfo;
 SURVIVE_EXPORT struct SurviveUSBInfo *survive_vive_register_driver(SurviveObject *so, uint16_t vid, uint16_t pid);
