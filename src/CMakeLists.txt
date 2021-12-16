@@ -135,6 +135,7 @@ IF(NOT WIN32)
 
   set(driver_vive_ADDITIONAL_LIBS usb-1.0)
   find_library(PCAP_LIBRARY pcap)
+
   if(PCAP_LIBRARY)
     list(APPEND PLUGINS driver_usbmon)
     set(driver_usbmon_ADDITIONAL_LIBS "${PCAP_LIBRARY};z" driver_vive)

@@ -117,6 +117,7 @@ static survive_usb_device_t get_next_device(survive_usb_device_t d) {
 	return 0; 
 }
 
+int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d);
 static bool setup_hotplug(SurviveViveData *sv) { 
 	survive_usb_devices_t devs;
 	SurviveContext *ctx = sv->ctx;

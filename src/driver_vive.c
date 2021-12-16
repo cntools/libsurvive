@@ -609,7 +609,7 @@ static int AttachInterface(SurviveViveData *sv, struct SurviveUSBInfo *usbObject
 	iface->cb = cb;
 
 #ifdef HIDAPI
-	// What do here?
+	iface->buffer = iface->swap_buffer[0];
 	iface->uh = usbObject->handle->interfaces[endpoint - usbObject->device_info->endpoints];
 	assert(iface->uh);
 
