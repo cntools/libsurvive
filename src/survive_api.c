@@ -178,7 +178,7 @@ static inline SurviveSimpleObject *create_lighthouse(SurviveSimpleContext *actx,
 	OGLockMutex(actx->poll_mutex);
 	SurviveSimpleEvent event = {.event_type = SurviveSimpleEventType_DeviceAdded,
 								.d = {.object_event = {
-										  .time = survive_run_time(ctx),
+										  .time = survive_simple_run_time_since_epoch(actx),
 										  .object = obj,
 									  }}};
 	insert_into_event_buffer(actx, &event);
@@ -208,7 +208,7 @@ static void button_fn(SurviveObject *so, enum SurviveInputEvent eventType, enum 
 
 	SurviveSimpleEvent event = {.event_type = SurviveSimpleEventType_ButtonEvent,
 								.d = {.button_event = {
-										  .time = OGGetAbsoluteTime(),
+										  .time = survive_simple_run_time_since_epoch(actx),
 										  .object = sao,
 										  .event_type = eventType,
 										  .button_id = buttonId,
@@ -231,7 +231,7 @@ static int config_fn(struct SurviveObject *so, char *ct0conf, int len) {
 	sso->type = to_simple_type(so->object_type);
 
 	struct SurviveSimpleEvent event = {.event_type = SurviveSimpleEventType_ConfigEvent,
-									   .d = {.config_event = {.time = survive_run_time(so->ctx),
+									   .d = {.config_event = {.time = survive_simple_run_time_since_epoch(actx),
 															  .object = sso,
 															  .cfg = survive_simple_json_config(sso)}}};
 
@@ -273,7 +273,7 @@ static void new_object_fn(SurviveObject *so) {
 	survive_default_new_object_process(so);
 	SurviveSimpleEvent event = {.event_type = SurviveSimpleEventType_DeviceAdded,
 								.d = {.object_event = {
-										  .time = survive_run_time(so->ctx),
+										  .time = survive_simple_run_time_since_epoch(actx),
 										  .object = obj,
 									  }}};
 	insert_into_event_buffer(actx, &event);
@@ -399,7 +399,7 @@ FLT survive_simple_object_get_latest_velocity(const SurviveSimpleObject *sao, Su
 	case SurviveSimpleObject_LIGHTHOUSE:
 		if (velocity)
 			*velocity = (SurviveVelocity){ 0 };
-		timecode = OGStartTimeS();
+		timecode = survive_simple_run_time_since_epoch(sao->actx);
 		break;
 	case SurviveSimpleObject_HMD:
 	case SurviveSimpleObject_OBJECT:
@@ -430,7 +430,7 @@ FLT survive_simple_object_get_latest_pose(const SurviveSimpleObject *sao, Surviv
 	case SurviveSimpleObject_LIGHTHOUSE: {
 		if (pose)
 			*pose = sao->actx->ctx->bsd[sao->data.lh.lighthouse].Pose;
-		timecode = OGStartTimeS();
+		timecode = survive_simple_run_time_since_epoch(sao->actx);
 		break;
 	}
 	case SurviveSimpleObject_HMD:
@@ -624,6 +624,11 @@ const struct SurviveSimpleObjectEvent *survive_simple_get_object_event(const Sur
 		return NULL;
 	}
 	return NULL;
+}
+FLT survive_simple_run_time_since_epoch(const struct SurviveSimpleContext *actx) {
+	if (actx->ctx == 0)
+		return 0;
+	return survive_run_time_since_epoch(actx->ctx);
 }
 FLT survive_simple_run_time(const struct SurviveSimpleContext *actx) {
 	if (actx->ctx == 0)

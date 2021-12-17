@@ -1122,12 +1122,7 @@ inline void survive_apply_ang_velocity(LinmathQuat out, const SurviveAngularVelo
 	quatrotateabout(out, rot_change, t0);
 }
 
-static double timestamp_in_s() {
-	static double start_time_s = 0;
-	if (start_time_s == 0.)
-		start_time_s = OGGetAbsoluteTime() - .001;
-	return OGGetAbsoluteTime() - start_time_s;
-}
+static double timestamp_in_s() { return OGGetAbsoluteTime() - OGStartTimeS(); }
 
 double survive_run_time(const SurviveContext *ctx) {
 	struct SurviveContext_private *pctx = ctx->private_members;
@@ -1137,6 +1132,8 @@ double survive_run_time(const SurviveContext *ctx) {
 
 	return pctx->lastRunTime = timestamp_in_s();
 }
+
+double survive_run_time_since_epoch(const SurviveContext *ctx) { return survive_run_time(ctx) + OGStartTimeS(); }
 
 double static_time(const SurviveContext *ctx, void *user) {
 	struct SurviveContext_private *pctx = user;

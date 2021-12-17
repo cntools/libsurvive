@@ -197,6 +197,7 @@ survive_simple_get_pose_updated_event(const SurviveSimpleEvent *event);
 SURVIVE_EXPORT const SurviveSimpleConfigEvent *survive_simple_get_config_event(const SurviveSimpleEvent *event);
 
 SURVIVE_EXPORT FLT survive_simple_run_time(const struct SurviveSimpleContext *actx);
+SURVIVE_EXPORT FLT survive_simple_run_time_since_epoch(const struct SurviveSimpleContext *actx);
 
 // The functions in this ifdef allow the possibility of breaking encapsulation and should be regarded as a relatively
 // unstable interface. If you have a use case which requires access to these functions, it means there should likely

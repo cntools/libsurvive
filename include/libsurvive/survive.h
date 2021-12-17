@@ -575,6 +575,7 @@ SURVIVE_EXPORT int survive_default_config_process(SurviveObject *so, char *ct0co
 SURVIVE_EXPORT void survive_default_gen_detected_process(SurviveObject *so, int lh_version);
 SURVIVE_EXPORT void survive_default_new_object_process(SurviveObject *so);
 SURVIVE_EXPORT double survive_run_time(const SurviveContext *ctx);
+SURVIVE_EXPORT double survive_run_time_since_epoch(const SurviveContext *ctx);
 
 SURVIVE_EXPORT size_t survive_input_event_count(const SurviveContext *ctx);
 ////////////////////// Survive Drivers ////////////////////////////
