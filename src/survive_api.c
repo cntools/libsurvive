@@ -208,7 +208,7 @@ static void button_fn(SurviveObject *so, enum SurviveInputEvent eventType, enum 
 
 	SurviveSimpleEvent event = {.event_type = SurviveSimpleEventType_ButtonEvent,
 								.d = {.button_event = {
-										  .time = survive_run_time(so->ctx),
+										  .time = OGGetAbsoluteTime(),
 										  .object = sao,
 										  .event_type = eventType,
 										  .button_id = buttonId,
