@@ -25,7 +25,13 @@ jobs:
           fetch-depth: 0
       - uses: satackey/action-docker-layer-caching@v0.0.8
         if: runner.os != 'Windows'
-          
+
+      - name: Set up QEMU
+        if: runner.os == 'Linux'
+        uses: docker/setup-qemu-action@v1
+        with:
+          platforms: all
+
       - name: Build the Docker image
         working-directory: ${{runner.workspace}}/libsurvive/useful_files
         if: runner.os != 'Windows'
@@ -53,6 +59,7 @@ jobs:
           CIBW_MANYLINUX_AARCH64_IMAGE: libsurvive_manylinux2014_aarch64
           CIBW_BUILD: cp3*manylinux_x86_64 cp3*aarch64*
           CIBW_SKIP: cp35*
+          CIBW_ARCHS_LINUX: x86_64 i686 aarch64
 
 
       - name: Build wheels - Windows
