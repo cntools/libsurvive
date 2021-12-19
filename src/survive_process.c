@@ -13,7 +13,8 @@
 #include "survive_str.h"
 
 void survive_default_button_process(SurviveObject *so, enum SurviveInputEvent eventType, enum SurviveButton buttonId,
-									const enum SurviveAxis *axisIds, const SurviveAxisVal_t *axisValues) {}
+									const enum SurviveAxis *axisIds, const SurviveAxisVal_t *axisValues) {
+}
 
 STATIC_CONFIG_ITEM(REPORT_IN_IMU, "report-in-imu", 'i', "Debug option to output poses in IMU space.", 0)
 void survive_default_imupose_process(SurviveObject *so, survive_long_timecode timecode, const SurvivePose *imu2world) {

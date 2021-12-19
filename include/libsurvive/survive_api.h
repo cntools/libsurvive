@@ -120,6 +120,8 @@ SURVIVE_EXPORT const SurviveSimpleObject *survive_simple_get_next_updated(Surviv
  */
 SURVIVE_EXPORT FLT survive_simple_object_get_latest_pose(const SurviveSimpleObject *sao, SurvivePose *pose);
 
+SURVIVE_EXPORT void survive_simple_object_get_transform_to_imu(const SurviveSimpleObject *sao, SurvivePose *pose);
+
 /**
  * Gets the velocity of a given object
  * @return Time in seconds since epoch of the velocity
@@ -174,6 +176,9 @@ SURVIVE_EXPORT int survive_simple_object_haptic(struct SurviveSimpleObject *sao,
 SURVIVE_EXPORT enum SurviveSimpleObject_type survive_simple_object_get_type(const struct SurviveSimpleObject *sao);
 SURVIVE_EXPORT SurviveAxisVal_t survive_simple_object_get_input_axis(const struct SurviveSimpleObject *sao,
 																	 enum SurviveAxis axis);
+SURVIVE_EXPORT int32_t survive_simple_object_get_button_mask(const struct SurviveSimpleObject *sao);
+SURVIVE_EXPORT int32_t survive_simple_object_get_touch_mask(const struct SurviveSimpleObject *sao);
+
 SURVIVE_EXPORT SurviveSimpleSubobject_type survive_simple_object_get_subtype(const struct SurviveSimpleObject *sao);
 /**
  * Given an event with the type of 'button', it returns the internal ButtonEvent structure. If the type isn't a button,

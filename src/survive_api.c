@@ -422,6 +422,14 @@ FLT survive_simple_object_get_latest_velocity(const SurviveSimpleObject *sao, Su
 	return timecode;
 }
 
+void survive_simple_object_get_transform_to_imu(const SurviveSimpleObject *sao, SurvivePose *pose) {
+    *pose = LinmathPose_Identity;
+    const SurviveObject *so = survive_simple_get_survive_object(sao);
+    if (so == 0)
+        return;
+    *pose = so->head2imu;
+}
+
 FLT survive_simple_object_get_latest_pose(const SurviveSimpleObject *sao, SurvivePose *pose) {
 	FLT timecode = 0;
 	OGLockMutex(sao->actx->poll_mutex);
@@ -613,6 +621,19 @@ SurviveAxisVal_t survive_simple_object_get_input_axis(const struct SurviveSimple
 
 	return so->axis[axis];
 }
+SURVIVE_EXPORT int32_t survive_simple_object_get_button_mask(const struct SurviveSimpleObject *sao) {
+    const SurviveObject *so = survive_simple_get_survive_object(sao);
+    if (so == 0)
+        return 0;
+    return so->buttonmask;
+}
+SURVIVE_EXPORT int32_t survive_simple_object_get_touch_mask(const struct SurviveSimpleObject *sao)  {
+    const SurviveObject *so = survive_simple_get_survive_object(sao);
+    if (so == 0)
+        return 0;
+    return so->touchmask;
+}
+
 const struct SurviveSimpleObjectEvent *survive_simple_get_object_event(const SurviveSimpleEvent *event) {
 	switch (event->event_type) {
 	case SurviveSimpleEventType_DeviceAdded:

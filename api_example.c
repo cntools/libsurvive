@@ -42,8 +42,8 @@ int main(int argc, char **argv) {
 		printf("Found '%s'\n", survive_simple_object_name(it));
 	}
 
-	struct SurviveSimpleEvent event = {0};
-	while (survive_simple_wait_for_event(actx, &event) != SurviveSimpleEventType_Shutdown) {
+    struct SurviveSimpleEvent event = {0};
+    while (survive_simple_wait_for_event(actx, &event) != SurviveSimpleEventType_Shutdown) {
 		switch (event.event_type) {
 		case SurviveSimpleEventType_PoseUpdateEvent: {
 			const struct SurviveSimplePoseUpdatedEvent *pose_event = survive_simple_get_pose_updated_event(&event);
