@@ -45,13 +45,17 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
   ../redist/jsmn.c ../redist/json_helpers.c ../redist/crc32.c
   )
 
-if(USE_HIDAPI OR WIN32)
+if(USE_HIDAPI)
   add_definitions (-DHIDAPI)
   IF(WIN32)
-    SET(SURVIVE_SRCS ${SURVIVE_SRCS} ../redist/hid-windows.c ../winbuild/getdelim.c)
+    SET(SURVIVE_SRCS ${SURVIVE_SRCS} ../redist/hid-windows.c)
   else()
     list(APPEND ADDITIONAL_LIBRARIES udev hidapi-libusb)
   endif()
+endif()
+
+IF(WIN32)
+    SET(SURVIVE_SRCS ${SURVIVE_SRCS} ../winbuild/getdelim.c)
 endif()
 
 execute_process(COMMAND git describe --dirty WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} OUTPUT_VARIABLE GIT_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -115,34 +119,46 @@ if(APPLE)
   message("Adding ${LIBUSB_PREFIX}/include to include directories")
 endif()
 
+
+find_library(LIBUSB_LIBRARY NAMES usb-1.0 libusb-1.0)
+
+IF(WIN32)
+	set(packages_config "<packages><package id=\"libusb\" version=\"1.0.21\" targetFramework=\"native\" /></packages>")
+	file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/packages.config ${packages_config})
+	set(driver_vive_ADDITIONAL_SRCS ${driver_vive_ADDITIONAL_SRCS} ${CMAKE_CURRENT_BINARY_DIR}/packages.config)
+    include_directories("${CMAKE_BINARY_DIR}/packages/libusb.1.0.21/src/include")
+    SET(LIBUSB_LIBRARY "${CMAKE_BINARY_DIR}/packages/libusb.1.0.21/lib/native/${WIN_PLATFORMx}/libusb-1.0.lib")
+endif()
+
 IF(NOT WIN32)
   LIST(APPEND PLUGINS driver_udp)
+ENDIF()
 
-  check_include_file(libusb.h LIBUSB_NO_DIR)
-  check_include_file(libusb-1.0/libusb.h LIBUSB_VER)
-  check_include_file(libusb/libusb.h LIBUSB_NO_VER)
+check_include_file(libusb.h LIBUSB_NO_DIR)
+check_include_file(libusb-1.0/libusb.h LIBUSB_VER)
+check_include_file(libusb/libusb.h LIBUSB_NO_VER)
 
-  if(LIBUSB_NO_DIR)
-    message("Using no dir in libusb path")
-    add_definitions(-DSURVIVE_LIBUSB_NO_DIR)
-  elseif(LIBUSB_VER)
-    message("Using versioned libusb dir")
-    add_definitions(-DSURVIVE_LIBUSB_VER_DIR)
-  elseif(LIBUSB_NO_VER)
-    message("Using non-versioned libusb dir")
-    add_definitions(-DSURVIVE_LIBUSB_UNVER_DIR)
-  endif()
-
-  set(driver_vive_ADDITIONAL_LIBS usb-1.0)
-  find_library(PCAP_LIBRARY pcap)
-
-  if(PCAP_LIBRARY)
-    list(APPEND PLUGINS driver_usbmon)
-    set(driver_usbmon_ADDITIONAL_LIBS "${PCAP_LIBRARY};z" driver_vive)
-  else()
-    message("Can't build usbmon plugin -- pcap library was not found")
-  endif()
+if(LIBUSB_NO_DIR)
+  message("Using no dir in libusb path")
+  add_definitions(-DSURVIVE_LIBUSB_NO_DIR)
+elseif(LIBUSB_VER)
+  message("Using versioned libusb dir")
+  add_definitions(-DSURVIVE_LIBUSB_VER_DIR)
+elseif(LIBUSB_NO_VER)
+  message("Using non-versioned libusb dir")
+  add_definitions(-DSURVIVE_LIBUSB_UNVER_DIR)
 endif()
+
+set(driver_vive_ADDITIONAL_LIBS ${LIBUSB_LIBRARY})
+find_library(PCAP_LIBRARY pcap)
+
+if(PCAP_LIBRARY)
+  list(APPEND PLUGINS driver_usbmon)
+  set(driver_usbmon_ADDITIONAL_LIBS "${PCAP_LIBRARY};z" driver_vive)
+else()
+  message("Can't build usbmon plugin -- pcap library was not found")
+endif()
+
 
 set(poser_barycentric_svd_ADDITIONAL_SRCS barycentric_svd/barycentric_svd.c )
 
@@ -209,6 +225,10 @@ foreach(PLUGIN ${PLUGINS})
   endif()
 endforeach()
 
+IF(WIN32)
+  add_custom_command(TARGET survive PRE_BUILD COMMAND ${NUGET} restore ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.sln COMMENT "Restoring nuget dependencies")
+ENDIF(WIN32)
+
 IF(TARGET CNGFX)
   list(APPEND SURVIVE_EXECUTABLES simple_pose_test)
   set(simple_pose_test_ADDITIONAL_LIBS CNGFX)
@@ -227,18 +247,22 @@ if(WIN32)
   cmake_policy(SET CMP0087 NEW)
   install(CODE "set(CMAKE_GENERATOR_PLATFORM \"${CMAKE_GENERATOR_PLATFORM}\")")
   install(CODE "set(LIB_INSTALL_DIR \"${LIB_INSTALL_DIR}\")")
-  install(CODE [[  
-  file(GET_RUNTIME_DEPENDENCIES LIBRARIES $<TARGET_FILE:survive>
-    RESOLVED_DEPENDENCIES_VAR _r_deps
-    UNRESOLVED_DEPENDENCIES_VAR _u_deps
-	POST_EXCLUDE_REGEXES ".*[Ww][Ii][Nn][Dd][Oo][Ww][Ss][/\\][Ss]ystem32.*"
-  )
-  foreach(_file ${_r_deps})
-    file(INSTALL
-      DESTINATION "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}"
-      TYPE SHARED_LIBRARY     
-      FILES "${_file}"
-    )
-  endforeach()
-]])
+  install(CODE "set(WIN_PLATFORMx \"${WIN_PLATFORMx}\")")
+    install(CODE [[  
+        file(GET_RUNTIME_DEPENDENCIES LIBRARIES $<TARGET_FILE:survive> $<TARGET_FILE:driver_vive>
+        RESOLVED_DEPENDENCIES_VAR _r_deps
+        UNRESOLVED_DEPENDENCIES_VAR _u_deps
+	    POST_EXCLUDE_REGEXES ".*[Ww][Ii][Nn][Dd][Oo][Ww][Ss][/\\][Ss]ystem32.*"
+        DIRECTORIES ${CMAKE_BINARY_DIR}/packages/libusb.1.0.21/lib/native/${WIN_PLATFORMx}/
+        )
+        message("Resolved: ${_r_deps} unresolved: ${_u_deps}")
+        foreach(_file ${_r_deps})
+        file(INSTALL
+            DESTINATION "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}"
+            TYPE SHARED_LIBRARY     
+            FILES "${_file}"
+        )
+        endforeach()
+    ]])
+  
 endif()

@@ -23,12 +23,30 @@ option(ENABLE_TESTS "Enable build / execution of tests" OFF)
 option(USE_HEX_FLOAT_PRINTF "Use hex floats when recording" OFF)
 
 option(USE_OPENCV "Use opencv proper for math operations" OFF)
-option(DOWNLOAD_EIGEN "Download eigen if it isn't installed on the system" OFF)
+option(DOWNLOAD_EIGEN "Download eigen if it isn't installed on the system" ON)
 option(USE_EIGEN "Use eigen for math operations" DOWNLOAD_EIGEN)
 option(USE_COLUMN_MAJOR_MATRICES "Use column major matrices for math operations" OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+IF(WIN32)
+    find_program(NUGET nuget)
+    if(NOT NUGET)
+      file(DOWNLOAD https://dist.nuget.org/win-x86-commandline/v5.6.0/nuget.exe "${CMAKE_BINARY_DIR}/nuget.exe"
+        EXPECTED_MD5 3f8a53a524c54cf2e4efb7aea370a977 STATUS status LOG log)
+      find_program(NUGET nuget HINTS "${CMAKE_BINARY_DIR}" )
+    endif()
+    message("Nuget is found at ${NUGET}")
+
+    if (CMAKE_SIZEOF_VOID_P MATCHES 8)
+      set(WIN_PLATFORM "x64")
+      set(WIN_PLATFORMx "x64")
+    else(CMAKE_SIZEOF_VOID_P MATCHES 8)
+      set(WIN_PLATFORM "win32")
+      set(WIN_PLATFORMx "x32")
+    endif(CMAKE_SIZEOF_VOID_P MATCHES 8)
+
+ENDIF()
 
 find_package (Eigen3 3.3)
 if(NOT EIGEN3_FOUND)
