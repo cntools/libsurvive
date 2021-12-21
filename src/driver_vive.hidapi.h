@@ -3,6 +3,79 @@
 #include <errno.h>
 #include <hidapi.h>
 #include <survive.h>
+#define LIBUSB_TRANSFER_COMPLETED 0
+#define LIBUSB_TRANSFER_STALL -1
+#define LIBUSB_TRANSFER_TIMED_OUT -2
+#define LIBUSB_TRANSFER_NOT_RECENT -3
+
+typedef struct survive_usb_transfer_t {
+	enum survive_usb_transfer_type {
+		survive_usb_transfer_type_read_feature_report,
+		survive_usb_transfer_type_send_feature_report,
+	} type;
+	struct SurviveUSBInfo *dev;
+	void (*cb)(struct survive_usb_transfer_t *);
+	void *user_data;
+	uint8_t *buffer;
+	int status;
+	bool processed;
+	size_t length;
+	size_t actual_length;
+	uint32_t timeout;
+} survive_usb_transfer_t;
+
+static inline uint8_t *survive_usb_transfer_data(survive_usb_transfer_t *tx) { return tx->buffer; }
+
+static inline void *survive_usb_transfer_alloc() { return calloc(1, sizeof(survive_usb_transfer_t)); }
+static inline void survive_usb_transfer_free(survive_usb_transfer_t *tx) { free(tx); }
+static inline int survive_usb_transfer_submit(survive_usb_transfer_t *tx) {
+	int rtn = 0;
+	// char tmp[64];
+	// while (hid_read_timeout(tx->dev->handle->interfaces[0], tmp, sizeof(tmp), 0) > 0) {}
+
+	switch (tx->type) {
+	case survive_usb_transfer_type_read_feature_report: {
+		rtn = hid_get_feature_report(tx->dev->handle->interfaces[0], tx->buffer, tx->actual_length);
+		break;
+	}
+	case survive_usb_transfer_type_send_feature_report: {
+		rtn = hid_send_feature_report(tx->dev->handle->interfaces[0], tx->buffer, tx->length);
+		break;
+	}
+	}
+
+	tx->processed = false;
+	if (rtn > 0) {
+		tx->status = LIBUSB_TRANSFER_COMPLETED;
+		tx->length = rtn;
+	} else if (rtn == -1) {
+		tx->status = -2;
+	} else {
+		tx->status = LIBUSB_TRANSFER_TIMED_OUT;
+	}
+
+	return 0;
+}
+static inline void survive_usb_setup_get_feature_report(survive_usb_transfer_t *tx, uint8_t report_id) {
+	tx->type = survive_usb_transfer_type_read_feature_report;
+	tx->buffer[0] = report_id;
+	tx->length = tx->actual_length;
+}
+
+static inline void survive_usb_setup_update_feature_report(survive_usb_transfer_t *tx, const uint8_t *data,
+														   size_t datalen) {
+	tx->type = survive_usb_transfer_type_send_feature_report;
+	memcpy(tx->buffer, data, datalen);
+	tx->length = datalen;
+}
+
+static inline void survive_usb_setup_control(survive_usb_transfer_t *tx, struct SurviveUSBInfo *usbInfo,
+											 void (*cb)(survive_usb_transfer_t *), void *user, int32_t timeout) {
+	tx->cb = cb;
+	tx->dev = usbInfo;
+	tx->user_data = user;
+	tx->timeout = timeout;
+}
 
 static inline int update_feature_report_async(USBHANDLE dev, uint16_t iface, uint8_t *data, int datalen) {
 	errno = 0;
@@ -43,7 +116,8 @@ static void *HAPIReceiver(void *v) {
 	if (iface->actual_len < 0) {
 		SurviveContext *ctx = iface->sv->ctx;
 		SV_WARN("Error in hid read: %d", iface->actual_len);
-		iface->assoc_obj = 0;
+		iface->usbInfo->request_close = true;
+		// iface->assoc_obj = 0;
 	}
 	// XXX TODO: Mark device as failed.
 	return 0;
@@ -102,6 +176,9 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 			}
 		}
 	}
+
+	SV_VERBOSE(40, "Successfully enumerated %s at %.7f", survive_colorize(usbInfo->device_info->name),
+			   survive_run_time(ctx));
 
 	survive_free_usb_devices(devs);
 
@@ -301,6 +378,8 @@ static void send_devices_magics(SurviveContext *ctx, struct SurviveUSBInfo *usbI
 		}
 	}
 }
+
+/*
 static int survive_config_submit(struct SurviveUSBInfo *usbInfo, int iface) {
 	double time = OGRelativeTime();
 	SurviveViveData *sv = usbInfo->viveData;
@@ -316,8 +395,10 @@ static int survive_config_submit(struct SurviveUSBInfo *usbInfo, int iface) {
 	}
 	return err;
 }
-
+*/
+/*
 static int survive_start_get_config(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int iface) {
 	usbInfo->nextCfgSubmitTime = survive_run_time(usbInfo->so->ctx);
 	return 0;
 }
+ */

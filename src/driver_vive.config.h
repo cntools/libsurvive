@@ -1,0 +1,260 @@
+
+static int survive_config_submit(struct SurviveUSBInfo *usbInfo) {
+	struct survive_config_packet *config_packet = usbInfo->cfg_user;
+	SurviveContext *ctx = config_packet->sv->ctx;
+
+	SV_VERBOSE(110, "Submitting config for %s %s at %f",
+			   survive_colorize(usbInfo->so ? usbInfo->so->codename : usbInfo->device_info->codename),
+			   survive_colorize(usbInfo->device_info->name), usbInfo->nextCfgSubmitTime);
+	usbInfo->nextCfgSubmitTime = 0;
+
+	int rc = survive_usb_transfer_submit(config_packet->tx);
+	if (rc) {
+		SV_WARN("Failed to submit transfer %s %s (%d)", survive_colorize_codename(usbInfo->so),
+				survive_colorize(usbInfo->device_info->name), rc);
+		return -6;
+	}
+	return 0;
+}
+
+static inline void setup_config_req(struct survive_config_packet *config_packet) {
+	config_packet->state = SURVIVE_CONFIG_STATE_CONFIG;
+	survive_usb_setup_get_feature_report(config_packet->tx, VIVE_REPORT_CONFIG_READMODE);
+}
+static inline void setup_version(struct survive_config_packet *packet) {
+	packet->state = SURVIVE_CONFIG_STATE_VERSION;
+	survive_usb_setup_get_feature_report(packet->tx, VIVE_REPORT_VERSION);
+}
+static inline void setup_config_imu_scales(struct survive_config_packet *packet) {
+	packet->state = SURVIVE_CONFIG_STATE_IMU_SCALES;
+	survive_usb_setup_get_feature_report(packet->tx, VIVE_REPORT_IMU_SCALES);
+}
+
+static inline void setup_magic(struct survive_config_packet *packet) {
+	SurviveContext *ctx = packet->ctx;
+	SurviveObject *so = packet->usbInfo->so;
+
+	packet->state = SURVIVE_CONFIG_STATE_MAGICS;
+
+	SV_VERBOSE(100, "Submitting magic %s at %f sec for %s - %s", survive_colorize(packet->current_magic->name),
+			   survive_run_time(ctx) - packet->start_time, survive_colorize(so ? so->codename : "BRD"),
+			   survive_colorize(packet->usbInfo->device_info->name));
+	survive_usb_setup_update_feature_report(packet->tx, packet->current_magic->magic, packet->current_magic->length);
+	do {
+		packet->current_magic++;
+	} while (packet->current_magic->magic && packet->current_magic->code == 0);
+}
+
+void handle_config_tx(survive_usb_transfer_t *transfer);
+static inline void setup_packet_state(struct survive_config_packet *packet) {
+	switch (packet->state) {
+	case SURVIVE_CONFIG_STATE_MAGICS:
+		setup_magic(packet);
+		break;
+	case SURVIVE_CONFIG_STATE_VERSION:
+		setup_version(packet);
+		break;
+	case SURVIVE_CONFIG_STATE_CONFIG:
+		setup_config_req(packet);
+		break;
+	case SURVIVE_CONFIG_STATE_IMU_SCALES:
+		setup_config_imu_scales(packet);
+		return;
+	case SURVIVE_CONFIG_STATE_DONE:
+		return;
+	}
+	survive_usb_setup_control(packet->tx, packet->usbInfo, handle_config_tx, packet, 1000);
+}
+
+void handle_config_tx(survive_usb_transfer_t *transfer) {
+	struct survive_config_packet *packet = transfer->user_data;
+	SurviveContext *ctx = packet->ctx;
+	const uint8_t *buffer = survive_usb_transfer_data(transfer);
+	SurviveObject *so = packet->usbInfo->so;
+	uint8_t cmd = buffer[0];
+
+	if (packet->usbInfo->interfaces[0].shutdown) {
+		goto cleanup;
+	}
+
+	if (transfer->status == LIBUSB_TRANSFER_STALL || transfer->status == LIBUSB_TRANSFER_TIMED_OUT) {
+		SV_VERBOSE(110, "Waiting, Transfer status %d at %f sec for %s", transfer->status,
+				   survive_run_time(ctx) - packet->start_time, survive_colorize(so ? so->codename : "unknown"));
+		packet->stall_counter++;
+		if (packet->usbInfo->device_info->codename[0] == 0) {
+			goto cleanup;
+		}
+
+		packet->usbInfo->nextCfgSubmitTime = survive_run_time(ctx) + .02;
+		if (packet->stall_counter > 5) {
+			packet->stall_counter = 0;
+			packet->usbInfo->nextCfgSubmitTime++;
+		}
+		return;
+	}
+	packet->stall_counter = 0;
+
+	if (transfer->status != LIBUSB_TRANSFER_COMPLETED) {
+		SV_WARN("Transfer status %d at %f sec for %s", transfer->status, survive_run_time(ctx) - packet->start_time,
+				survive_colorize(so ? so->codename : "unknown"));
+		goto cleanup;
+	}
+
+	struct SurviveUSBInfo *usbInfo = packet->usbInfo;
+	if (so == 0) {
+		if (usbInfo->device_info->codename[0] != 0) {
+			so = survive_create_device(ctx, "HTC", usbInfo, usbInfo->device_info->codename, survive_vive_send_haptic);
+			survive_add_object(ctx, so);
+			usbInfo->so = so;
+			usbInfo->ownsObject = true;
+		}
+	}
+
+	switch (packet->state) {
+	case SURVIVE_CONFIG_STATE_MAGICS:
+		if (!packet->current_magic->magic) {
+			SV_VERBOSE(100, "Magics done in %f sec for %s %s", survive_run_time(ctx) - packet->start_time,
+					   so ? survive_colorize(so->codename) : "unknown",
+					   survive_colorize(packet->usbInfo->device_info->name));
+			packet->usbInfo->lightcapMode = LightcapMode_raw0;
+			if (packet->usbInfo->device_info->codename[0] == 0) {
+				packet->state = SURVIVE_CONFIG_STATE_DONE;
+				goto cleanup;
+			}
+
+			goto setup_next;
+		}
+
+		setup_magic(packet);
+		goto resubmit;
+	case SURVIVE_CONFIG_STATE_CONFIG:
+		switch (cmd) {
+		case VIVE_REPORT_CONFIG_READMODE:
+			survive_usb_setup_get_feature_report(transfer, VIVE_REPORT_CONFIG_READ);
+			packet->expected_cfg_length = (buffer[1] << 8 | buffer[2]) + 2;
+			SV_VERBOSE(100, "Config readmode in %f sec for %s expected length: %d",
+					   survive_run_time(ctx) - packet->start_time, survive_colorize(so->codename),
+					   packet->expected_cfg_length);
+			str_ensure_size(&packet->cfg, packet->expected_cfg_length);
+			goto resubmit;
+		case VIVE_REPORT_CONFIG_READ: {
+			SV_VERBOSE(110, "Config response in %f sec for %s %d %d", survive_run_time(ctx) - packet->start_time,
+					   survive_colorize(so->codename), buffer[0], buffer[1]);
+
+			size_t size = buffer[1];
+			str_append_n(&packet->cfg, (const char *)&buffer[2], size);
+			if (size == 0) {
+				if (packet->expected_cfg_length > packet->cfg.length) {
+					SV_WARN("Config request failed; trying again %f %s (%d > %d)",
+							survive_run_time(ctx) - packet->start_time, survive_colorize(so->codename),
+							packet->expected_cfg_length, (int)packet->cfg.length);
+					str_clear(&packet->cfg);
+					setup_config_req(packet);
+					goto resubmit;
+				}
+
+				SV_VERBOSE(100, "Config done in %f sec for %s, len %ld", survive_run_time(ctx) - packet->start_time,
+						   survive_colorize(so->codename), packet->cfg.length);
+
+				uint8_t uncompressed_data[65536];
+				int uncompressed_data_len = survive_simple_inflate(ctx, (uint8_t *)packet->cfg.d, packet->cfg.length,
+																   uncompressed_data, sizeof(uncompressed_data) - 1);
+				if (uncompressed_data_len < 0) {
+					SV_ERROR(SURVIVE_ERROR_INVALID_CONFIG, "Invalid config for %s", survive_colorize(so->codename));
+					goto cleanup;
+				}
+				packet->usbInfo->so->conf = SV_CALLOC(uncompressed_data_len + 1);
+				packet->usbInfo->so->conf_cnt = uncompressed_data_len;
+				memcpy(packet->usbInfo->so->conf, uncompressed_data, uncompressed_data_len);
+
+				str_free(&packet->cfg);
+				goto setup_next;
+			}
+			goto resubmit;
+		}
+		default:
+			SV_ERROR(SURVIVE_ERROR_GENERAL, "Unknown config command 0x%x", cmd);
+		}
+		break;
+	case SURVIVE_CONFIG_STATE_VERSION: {
+		parse_tracker_version_info(packet->usbInfo->so, &buffer[1], transfer->actual_length);
+		SURVIVE_INVOKE_HOOK_SO(config, so, so->conf, so->conf_cnt);
+		SV_VERBOSE(100, "Version done in %f sec for %s", survive_run_time(ctx) - packet->start_time,
+				   survive_colorize(so->codename));
+
+		goto setup_next;
+	}
+	case SURVIVE_CONFIG_STATE_IMU_SCALES: {
+		int gyro_scale_mode = buffer[1];
+		int acc_scale_mode = buffer[2];
+		survive_default_set_imu_scale_modes(so, gyro_scale_mode, acc_scale_mode);
+		goto setup_next;
+	}
+	default:
+		SV_WARN("Config state machine saw packet of type %d at state %d; not sure how to proceed.", cmd, packet->state);
+		goto cleanup;
+	}
+	return;
+
+setup_next : {
+	packet->state++;
+	setup_packet_state(packet);
+	if (packet->state == SURVIVE_CONFIG_STATE_DONE)
+		goto cleanup;
+	else
+		goto resubmit;
+};
+resubmit : {
+	SV_VERBOSE(110, "Resubmit startup packet for %s %s at %f", survive_colorize(packet->usbInfo->so->codename),
+			   survive_colorize(packet->usbInfo->device_info->name), packet->usbInfo->nextCfgSubmitTime);
+	int submit_transfer_error = survive_config_submit(packet->usbInfo);
+	if (submit_transfer_error != 0) {
+		SV_WARN("Config state machine could not submit transfer %d\n", submit_transfer_error);
+		goto cleanup;
+	}
+	return;
+}
+cleanup:
+	SV_VERBOSE(100, "Cleanup config for %s %s at %f", survive_colorize_codename(packet->usbInfo->so),
+			   survive_colorize(packet->usbInfo->device_info->name), survive_run_time(ctx));
+
+	for (const struct Endpoint_t *endpoint = packet->usbInfo->device_info->endpoints; endpoint->name; endpoint++) {
+		int errorCode =
+			AttachInterface(packet->sv, packet->usbInfo, endpoint, packet->usbInfo->handle, survive_data_cb);
+		if (errorCode < 0) {
+			SV_WARN("Could not attach interface %s: %d", endpoint->name, errorCode);
+		}
+	}
+
+	packet->usbInfo->ignoreCnt = 10;
+	packet->usbInfo->nextCfgSubmitTime = 0;
+	packet->usbInfo->cfg_user = 0;
+	packet->usbInfo->active_transfers--;
+
+	survive_usb_transfer_free(transfer);
+	str_free(&packet->cfg);
+	free(packet);
+}
+
+static void survive_config_poll(struct SurviveUSBInfo *usbInfo) {
+	FLT now = survive_run_time(usbInfo->viveData->ctx);
+	bool active = true;
+	while (active || usbInfo->nextCfgSubmitTime > 0 && usbInfo->nextCfgSubmitTime < now) {
+		active = false;
+		if (usbInfo->nextCfgSubmitTime > 0 && usbInfo->nextCfgSubmitTime < now) {
+			survive_config_submit(usbInfo);
+		}
+#ifdef HIDAPI
+		struct survive_config_packet *config_packet = usbInfo->cfg_user;
+		if (config_packet == 0)
+			return;
+
+		void (*cb)(struct survive_usb_transfer_t *) = config_packet->tx->cb;
+		if (!config_packet->tx->processed && cb) {
+			config_packet->tx->processed = true;
+			cb(config_packet->tx);
+		}
+#else
+#endif
+	}
+}

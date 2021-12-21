@@ -392,7 +392,7 @@ struct SurviveUSBInfo {
 
 	size_t active_transfers;
 	FLT nextCfgSubmitTime;
-	void *cfg_user;
+	struct survive_config_packet *cfg_user;
 
 	bool request_close, request_reopen;
 };
@@ -416,15 +416,44 @@ struct SurviveViveData {
 #endif
 };
 
-static void parse_tracker_version_info(SurviveObject *so, uint8_t *data, size_t size);
+static void parse_tracker_version_info(SurviveObject *so, const uint8_t *data, size_t size);
 static int AttachInterface(SurviveViveData *sv, struct SurviveUSBInfo *usbObject, const struct Endpoint_t *endpoint,
 						   USBHANDLE devh, usb_callback cb);
 static int survive_vive_send_haptic(SurviveObject *so, FLT frequency, FLT amplitude, FLT duration_seconds);
+
 #ifdef HIDAPI
 #include "driver_vive.hidapi.h"
 #else
 #include "driver_vive.libusb.h"
 #endif
+
+struct survive_config_packet {
+	SurviveContext *ctx;
+	SurviveViveData *sv;
+	struct SurviveUSBInfo *usbInfo;
+	const struct Magic_t *current_magic;
+
+	uint8_t buffer[256];
+
+	uint16_t expected_cfg_length;
+	cstring cfg;
+	double start_time;
+
+	enum {
+		/**
+		 * CONFIG must come first; it effectively gates progress for controllers which might not be turned on yet.
+		 */
+		SURVIVE_CONFIG_STATE_CONFIG,
+		SURVIVE_CONFIG_STATE_MAGICS,
+		SURVIVE_CONFIG_STATE_VERSION,
+		SURVIVE_CONFIG_STATE_IMU_SCALES,
+		SURVIVE_CONFIG_STATE_DONE
+	} state;
+	uint16_t stall_counter;
+	survive_usb_transfer_t *tx;
+};
+
+#include "driver_vive.config.h"
 
 static inline int update_feature_report_async(USBHANDLE dev, uint16_t iface, uint8_t *data, int datalen);
 
@@ -664,6 +693,7 @@ static const struct DeviceInfo *find_known_device(SurviveContext *ctx, uint16_t 
 	return 0;
 }
 
+static int survive_start_get_config(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int iface);
 int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d) {
 	SurviveContext *ctx = sv->ctx;
 	uint16_t idVendor;
@@ -735,12 +765,14 @@ int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d) {
 	}
 
 #ifdef HIDAPI
+	/*
 	for (const struct Endpoint_t *endpoint = usbInfo->device_info->endpoints; endpoint->name; endpoint++) {
 		int errorCode = AttachInterface(sv, usbInfo, endpoint, usbInfo->handle, survive_data_cb);
 		if (errorCode < 0) {
 			SV_WARN("Could not attach interface %s: %d", endpoint->name, errorCode);
 		}
 	}
+	 */
 #endif
 
 	return 0;
@@ -825,8 +857,44 @@ static inline bool survive_handle_close_request_flag(struct SurviveUSBInfo *usbI
 	return false;
 }
 
-static int survive_start_get_config(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int iface);
+static int survive_start_get_config(SurviveViveData *sv, struct SurviveUSBInfo *usbInfo, int iface) {
+	SurviveContext *ctx = sv->ctx;
+	survive_usb_transfer_t *tx = survive_usb_transfer_alloc();
+	if (!tx) {
+		SV_WARN("Could not allocate transfer frame");
+		return -4;
+	}
+	usbInfo->active_transfers++;
 
+	struct survive_config_packet *config_packet = SV_CALLOC(sizeof(struct survive_config_packet));
+	config_packet->tx = tx;
+	config_packet->tx->buffer = config_packet->buffer;
+	config_packet->tx->actual_length = sizeof(config_packet->buffer);
+
+	usbInfo->cfg_user = config_packet;
+
+	config_packet->ctx = ctx;
+	config_packet->sv = sv;
+	config_packet->usbInfo = usbInfo;
+	config_packet->current_magic = config_packet->usbInfo->device_info->magics;
+
+	USBHANDLE dev = usbInfo->handle;
+	config_packet->start_time = survive_run_time(ctx);
+
+	if (config_packet->usbInfo->device_info->codename[0] == 0) {
+		config_packet->state = SURVIVE_CONFIG_STATE_MAGICS;
+	}
+	setup_packet_state(config_packet);
+
+	SV_VERBOSE(10, "Requesting config for %s %p %d",
+			   survive_colorize(usbInfo->so ? usbInfo->so->codename : usbInfo->device_info->name), (void *)0,
+			   config_packet->state);
+
+	usbInfo->nextCfgSubmitTime = survive_run_time(ctx);
+
+	return 0;
+}
+static void survive_config_poll(struct SurviveUSBInfo *usbInfo);
 int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 	SurviveViveData *sv = v;
 	sv->read_count++;
@@ -888,9 +956,7 @@ int survive_vive_usb_poll(SurviveContext *ctx, void *v) {
 			sv->lastPairTime = now;
 		}
 
-		if (usbInfo->nextCfgSubmitTime > 0 && usbInfo->nextCfgSubmitTime < now) {
-			survive_config_submit(usbInfo, 0);
-		}
+		survive_config_poll(usbInfo);
 
 		if (survive_handle_close_request_flag(usbInfo)) {
 			i--;
@@ -2658,7 +2724,7 @@ static uint32_t earliest_working_revision(uint32_t hw_id) { return 1462663157; }
 
 static uint32_t latest_working_revision(uint32_t hw_id) { return 1632556731; }
 
-static void parse_tracker_version_info(SurviveObject *so, uint8_t *data, size_t size) {
+static void parse_tracker_version_info(SurviveObject *so, const uint8_t *data, size_t size) {
 	SurviveContext *ctx = so->ctx;
 
 #pragma pack(push, 1)
