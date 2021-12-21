@@ -3,14 +3,6 @@ typedef struct libusb_transfer survive_usb_transfer_t;
 typedef libusb_device *survive_usb_device_t;
 typedef libusb_device **survive_usb_devices_t;
 
-static inline int update_feature_report(libusb_device_handle *dev, uint16_t interface, uint8_t *data, int datalen) {
-	//	int xfer;
-	//	int r = libusb_interrupt_transfer(dev, 0x01, data, datalen, &xfer, 1000);
-	//	printf( "XFER: %d / R: %d\n", xfer, r );
-	//	return xfer;
-	return libusb_control_transfer(dev, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_OUT,
-								   0x09, 0x300 | data[0], interface, data, datalen, 1000);
-}
 static inline uint8_t *survive_usb_transfer_data(survive_usb_transfer_t *tx) { return tx->buffer + 8; }
 static inline void *survive_usb_transfer_alloc() { return libusb_alloc_transfer(0); }
 static inline void survive_usb_transfer_free(survive_usb_transfer_t *tx) { libusb_free_transfer(tx); }
@@ -67,22 +59,10 @@ int libusb_control_transfer_async(libusb_device_handle *dev_handle, uint8_t bmRe
 	return wLength;
 }
 
-static inline int update_feature_report_async(libusb_device_handle *dev, uint16_t interface, uint8_t *data,
-											  int datalen) {
+static inline int update_feature_report(libusb_device_handle *dev, uint16_t interface, uint8_t *data, int datalen) {
 	return libusb_control_transfer_async(dev,
 										 LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_OUT,
 										 0x09, 0x300 | data[0], interface, data, datalen, 1000);
-}
-
-static inline int getupdate_feature_report(libusb_device_handle *dev, uint16_t interface, uint8_t *data, int datalen) {
-
-	int ret = libusb_control_transfer(dev, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_IN,
-									  0x01, 0x300 | data[0], interface, data, datalen, 1000);
-	if (ret == -9)
-		return -9;
-	if (ret < 0)
-		return -1;
-	return ret;
 }
 
 static int survive_get_usb_devices(SurviveViveData *sv, survive_usb_devices_t *devs) {
@@ -187,8 +167,6 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 
 	SV_VERBOSE(40, "Successfully enumerated %s (%d) %04x:%04x at %.7f", survive_colorize(info->name),
 			   conf->bNumInterfaces, idVendor, idProduct, survive_run_time(ctx));
-
-	// usleep(100000);
 
 cleanup_and_rtn:
 	libusb_free_config_descriptor(conf);

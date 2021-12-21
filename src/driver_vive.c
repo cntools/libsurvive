@@ -455,8 +455,6 @@ struct survive_config_packet {
 
 #include "driver_vive.config.h"
 
-static inline int update_feature_report_async(USBHANDLE dev, uint16_t iface, uint8_t *data, int datalen);
-
 static bool survive_device_is_rf(const struct DeviceInfo *device_info) {
 	switch (device_info->type) {
 	case USB_DEV_HMD:
@@ -514,8 +512,8 @@ static int survive_vive_send_haptic(SurviveObject *so, FLT frequency, FLT amplit
 
 	struct SurviveUSBInfo *usbInfo = survive_get_usb_info(so);
 
-	int r = update_feature_report_async(usbInfo->handle, 0, vive_controller_haptic_pulse,
-										sizeof(vive_controller_haptic_pulse));
+	int r =
+		update_feature_report(usbInfo->handle, 0, vive_controller_haptic_pulse, sizeof(vive_controller_haptic_pulse));
 
 	if (r != sizeof(vive_controller_haptic_pulse)) {
 		SV_WARN("HAPTIC FAILED %d", r);
@@ -551,15 +549,15 @@ void vive_switch_mode(struct SurviveUSBInfo *driverInfo, enum LightcapMode light
 		}
 
 		if (driverInfo->handle) {
-			int r = update_feature_report_async(driverInfo->handle, 0, buffer, buffer_length);
+			int r = update_feature_report(driverInfo->handle, 0, buffer, buffer_length);
 			if (r != buffer_length) {
 				SV_WARN("Could not send raw mode to %s (%d)", w->codename, r);
 				return;
 			}
 
 			if (!survive_device_is_rf(driverInfo->device_info)) {
-				r = update_feature_report_async(driverInfo->handle, 0, vive_magic_enable_lighthouse_more,
-												sizeof(vive_magic_enable_lighthouse_more));
+				r = update_feature_report(driverInfo->handle, 0, vive_magic_enable_lighthouse_more,
+										  sizeof(vive_magic_enable_lighthouse_more));
 				if (r != buffer_length) {
 					SV_WARN("Could not lighthouse more to %s (%d)", w->codename, r);
 				}
