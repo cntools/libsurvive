@@ -38,6 +38,7 @@ bool handle_lightcap(SurviveObject *so, const LightcapElement *_le) {
 	// Gen2 devices can trigger this on startup; but later packets should
 	// reliably change to lh_version == 1. If we see 50+ lightcap packets
 	// without these gen2 packets we can just call it for gen1.
+	assert(_le->length > 0);
 	if (so->ctx->lh_version == -1) {
 		disambiguate_version *dv = so->disambiguator_data;
 		if (dv == 0) {

@@ -2817,6 +2817,7 @@ void survive_data_cb_locked(uint64_t time_received_us, SurviveUSBInterface *si) 
 	int iface = si->which_interface_am_i;
 	SurviveObject *obj = si->assoc_obj;
 	uint8_t *readdata = si->buffer;
+	uint8_t *enddata = readdata + size;
 
 	if (obj == 0)
 		return;
@@ -2925,7 +2926,8 @@ void survive_data_cb_locked(uint64_t time_received_us, SurviveUSBInterface *si) 
 		bool dump_binary = false;
 		if (id == VIVE_REPORT_USB_LIGHTCAP_REPORT_V1) { // LHv1
 			int i;
-			for (i = 0; i < 9; i++) {
+			for (i = 0; i < 9 && readdata < enddata; i++) {
+				assert((enddata - readdata) >= 7);
 				LightcapElement le;
 				le.sensor_id = POP1;
 				le.length = POP2;

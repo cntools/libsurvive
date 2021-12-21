@@ -131,7 +131,7 @@ void handle_config_tx(survive_usb_transfer_t *transfer) {
 		switch (cmd) {
 		case VIVE_REPORT_CONFIG_READMODE:
 			survive_usb_setup_get_feature_report(transfer, VIVE_REPORT_CONFIG_READ);
-			packet->expected_cfg_length = (buffer[1] << 8 | buffer[2]) + 2;
+			packet->expected_cfg_length = (buffer[1] << 8 | buffer[2]);
 			SV_VERBOSE(100, "Config readmode in %f sec for %s expected length: %d",
 					   survive_run_time(ctx) - packet->start_time, survive_colorize(so->codename),
 					   packet->expected_cfg_length);
@@ -144,6 +144,7 @@ void handle_config_tx(survive_usb_transfer_t *transfer) {
 			size_t size = buffer[1];
 			str_append_n(&packet->cfg, (const char *)&buffer[2], size);
 			if (size == 0) {
+				// NOTE: Sometimes the actual length is 2 bytes longer than advertised; not sure why
 				if (packet->expected_cfg_length > packet->cfg.length) {
 					SV_WARN("Config request failed; trying again %f %s (%d > %d)",
 							survive_run_time(ctx) - packet->start_time, survive_colorize(so->codename),
