@@ -63,6 +63,17 @@ static inline int getupdate_feature_report(libusb_device_handle *dev, uint16_t i
 typedef libusb_device *survive_usb_device_t;
 typedef libusb_device **survive_usb_devices_t;
 
+static int survive_get_usb_devices(SurviveViveData *sv, survive_usb_devices_t *devs) {
+	return libusb_get_device_list(sv->usbctx, devs);
+}
+static void survive_free_usb_devices(survive_usb_devices_t devs) { libusb_free_device_list(devs, 1); }
+
+typedef int survive_usb_device_enumerator;
+static survive_usb_device_t get_next_device(survive_usb_device_enumerator *iterator, survive_usb_devices_t list) {
+	assert(iterator);
+	return list[(*iterator)++];
+}
+
 static int survive_usb_subsystem_init(SurviveViveData *sv) {
 	int rtn = libusb_init(&sv->usbctx);
 #if LIBUSB_API_VERSION < 0x01000106
@@ -137,7 +148,7 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 
 	SurviveContext *ctx = sv->ctx;
 	if (!usbInfo->handle || ret) {
-		SV_WARN("Error: cannot open device \"%s\" with vid/pid %04x:%04x error %d (%s)", survive_colorize(info->name),
+		SV_WARN("Cannot open device \"%s\" with vid/pid %04x:%04x error %d (%s)", survive_colorize(info->name),
 				idVendor, idProduct, ret, libusb_error_name(ret));
 		goto cleanup_and_rtn;
 	}
@@ -276,7 +287,8 @@ static int survive_config_submit(struct SurviveUSBInfo *usbInfo, int iface) {
 	assert(config_packet->tx);
 	int rc = libusb_submit_transfer(config_packet->tx);
 	if (rc) {
-		SV_WARN("Failed to submit transfer");
+		SV_WARN("Failed to submit transfer %s %s (%d)", survive_colorize_codename(usbInfo->so),
+				survive_colorize(usbInfo->device_info->name), rc);
 		return -6;
 	}
 	return 0;

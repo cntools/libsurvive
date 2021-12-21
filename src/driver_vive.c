@@ -682,6 +682,18 @@ int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d) {
 	}
 
 	SV_VERBOSE(10, "Enumerating USB device %04x:%04x %s", idVendor, idProduct, survive_colorize(info->name));
+	
+	struct SurviveUSBInfo *usbInfo = sv->udev[sv->udev_cnt++] = SV_CALLOC(sizeof(struct SurviveUSBInfo));
+	usbInfo->handle = 0;
+	usbInfo->device_info = info;
+	usbInfo->viveData = sv;
+	ret = survive_open_usb_device(sv, d, usbInfo);
+
+	if (ret) {
+		sv->udev_cnt--;
+		return -5;
+	}
+
 	if (info->type == USB_DEV_HMD) {
 		SV_VERBOSE(10, "Mainboard class %d", class_id);
 		if (sv->hmd_mainboard_index != -1 || class_id != 0) {
@@ -696,22 +708,7 @@ int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d) {
 		sv->hmd_imu_index = sv->udev_cnt;
 	}
 
-	struct SurviveUSBInfo *usbInfo = sv->udev[sv->udev_cnt++] = SV_CALLOC(sizeof(struct SurviveUSBInfo));
-	usbInfo->handle = 0;
-	usbInfo->device_info = info;
-	usbInfo->viveData = sv;
-	ret = survive_open_usb_device(sv, d, usbInfo);
-
-	if (ret) {
-		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Error: cannot open device \"%s\" with vid/pid %04x:%04x error %d (%s)",
-				 info->name, idVendor, idProduct, ret, survive_usb_error_name(ret));
-		sv->udev_cnt--;
-		return -5;
-	}
-
 	int *cnt = (sv->cnt_per_device_type + (usbInfo->device_info - KnownDeviceTypes));
-
-	SV_VERBOSE(50, "Successfully enumerated %s %04x:%04x", survive_colorize(info->name), idVendor, idProduct);
 
 #ifdef HIDAPI
 	if (usbInfo->device_info->codename[0] != 0) {
@@ -758,9 +755,25 @@ int survive_usb_init(SurviveViveData *sv) {
 		return r;
 	}
 
-	setup_hotplug(sv);
+	if (setup_hotplug(sv) != 0) {
+		survive_usb_devices_t devs;
+		int ret = survive_get_usb_devices(sv, &devs);
 
-	SV_INFO("All enumerated devices attached.");
+		if (ret < 0) {
+			SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Couldn't get list of USB devices %d (%s)", ret,
+					 survive_usb_error_name(ret));
+			return ret;
+		}
+		
+		// Open all interfaces.
+		survive_usb_device_enumerator e = 0;
+		for (survive_usb_device_t d = 0; (d = get_next_device(&e, devs)) && sv->udev_cnt < MAX_USB_DEVS;) {
+			survive_vive_add_usb_device(sv, d);
+		}
+		survive_free_usb_devices(devs);
+
+		SV_INFO("All enumerated devices attached.");
+	}
 
 	// libUSB initialized.  Continue.
 	return 0;

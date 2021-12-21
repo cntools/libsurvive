@@ -453,8 +453,11 @@ SURVIVE_EXPORT void survive_attach_configs(SurviveContext *ctx, const char *tag,
               float*: survive_config_bind_variablef,  \
               int*: survive_config_bind_variablei  \
 )(name, desc, def);
+
+#define SURVIVE_DETACH_CONFIG(ctx, name, var) survive_detach_config(ctx, name, var)
 #else
 #define SURVIVE_ATTACH_CONFIG(ctx, name, var)
+#define SURVIVE_DETACH_CONFIG(ctx, name, var)
 #define SURVIVE_CONFIG_BIND_VARIABLE(name, desc, def, var)
 #endif
 SURVIVE_EXPORT void survive_detach_config(SurviveContext *ctx, const char *tag, void * var );
@@ -505,7 +508,7 @@ static void type##_bind_variables(SurviveContext* ctx, type* t, bool ctor) {
             var = default_value;                                                                                                           \
             SURVIVE_ATTACH_CONFIG(ctx, name, &var);                                                                                                           \
 	} else if(t) {                                                                                                       \
-			survive_detach_config(ctx, name, &var);                                                                    \
+			SURVIVE_DETACH_CONFIG(ctx, name, &var);                                                                    \
 	} else {                                                                                                           \
 		SURVIVE_CONFIG_BIND_VARIABLE(name, description, default_value, &var);                          \
 	}

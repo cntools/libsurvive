@@ -25,12 +25,22 @@ static const char *get_exe_filename() {
 	return module_path;
 }
 
-static void* survive_load_plugin(const char* path) {
-	return LoadLibrary(path);
+static char error[512];
+
+static void *survive_load_plugin(const char *path) { 
+	SetLastError(0);
+	error[0] = 0;
+	void *rtn = LoadLibrary(path);
+	if (rtn == 0) {
+		FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 
+			0, GetLastError(), 0, error, 512, NULL);
+	
+	}
+	return rtn;
 }
 
 const char* survive_load_plugin_error() {
-	return "";
+	return error;
 }
 
 static const char* plugin_ext() { return ".dll";  }

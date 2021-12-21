@@ -107,11 +107,16 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 
 	return 0;
 }
+typedef survive_usb_device_t survive_usb_device_enumerator;
 
-static survive_usb_device_t get_next_device(survive_usb_device_t d) {
-	for (survive_usb_device_t c = d->next; c; c = c->next) {
-		if (c->vendor_id != d->vendor_id || c->product_id != d->product_id) {
-			return c; 
+static survive_usb_device_t get_next_device(survive_usb_device_enumerator* d, survive_usb_device_t head) {
+	if (*d == 0) {
+		return *d = head;
+	}
+	
+	for (survive_usb_device_t c = (*d)->next; c; c = c->next) {
+		if (c->vendor_id != (*d)->vendor_id || c->product_id != (*d)->product_id) {
+			return *d = c; 
 		}
 	}
 	return 0; 
@@ -119,21 +124,7 @@ static survive_usb_device_t get_next_device(survive_usb_device_t d) {
 
 int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d);
 static bool setup_hotplug(SurviveViveData *sv) { 
-	survive_usb_devices_t devs;
-	SurviveContext *ctx = sv->ctx;
-	int ret = survive_get_usb_devices(sv, &devs);
-	if (ret < 0) {
-		SV_ERROR(SURVIVE_ERROR_HARWARE_FAULT, "Couldn't get list of USB devices %d (%s)", ret,
-				  survive_usb_error_name(ret));
-		return ret;		
-	}
-	// Open all interfaces.
-	for (survive_usb_device_t c = devs; c; c = get_next_device(c)) {
-		survive_vive_add_usb_device(sv, c);	
-	}
-	survive_free_usb_devices(devs);
-
-	return false; 
+	return true; 
 }
 
 static inline void survive_close_usb_device(struct SurviveUSBInfo *usbInfo) {
