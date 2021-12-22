@@ -359,6 +359,11 @@ void SurviveSensorActivations_add_sync(SurviveSensorActivations *self, struct Po
 bool SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDataLightGen1 *_lightData) {
 	self->lh_gen = 0;
 
+	if (self->last_imu == 0)
+		return false;
+
+	SurviveContext *ctx = self->so->ctx;
+
 	int axis = (_lightData->acode & 1);
 	PoserDataLight *lightData = &_lightData->common;
 	survive_long_timecode *data_timecode = &self->timecode[lightData->sensor_id][lightData->lh][axis];
@@ -382,8 +387,6 @@ bool SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 		self->last_light_change = self->last_movement = long_timecode;
 	}
 
-	SurviveContext *ctx = self->so->ctx;
-
 	*angle = lightData->angle;
 	*data_timecode = lightData->hdr.timecode;
 	*length = (uint32_t)(_lightData->length * 48000000);
@@ -395,15 +398,7 @@ bool SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 		self->last_light = lightData->hdr.timecode;
 	}
 
-	static int bad_time_cnt = 0;
-	if (self->last_imu != 0 && fabs(lightData->hdr.timecode / 48000000. - self->last_imu / 48000000.) > 1) {
-		bad_time_cnt++;
-		SV_WARN("%s Bad time %f vs %f", survive_colorize(self->so->codename), lightData->hdr.timecode / 48000000.,
-				self->last_imu / 48000000.);
-		if (bad_time_cnt > 10) {
-			SV_ERROR(4, "Too many bad_time events");
-		}
-	}
+
 	return true;
 	// fprintf(stderr, "lightcap tc: %f\n", lightData->hdr.timecode/ 48000000.);
 }
@@ -423,9 +418,40 @@ SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_long_timecode_imu(
 																				survive_timecode timecode) {
 	return make_long_timecode(self->last_imu, timecode);
 }
+
+#define DIV_ROUND_CLOSEST(n, d) ((((n) < 0) ^ ((d) < 0)) ? (((n) - (d) / 2) / (d)) : (((n) + (d) / 2) / (d)))
 SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_long_timecode_light(const SurviveSensorActivations *self,
 																				  survive_timecode timecode) {
-	return make_long_timecode(self->last_light, timecode);
+	survive_long_timecode initial_time = make_long_timecode(self->last_light, timecode);
+	int64_t time_sync_error = initial_time - self->last_imu;
+	/***
+	  
+	  There obstensibly seems to be a defect in the firmware for at least the LH1 tracking devices. What seems to be
+	happening is that the internal clock for IMU (presumably on the ARM) and lightcap (presumably on the FPGA) can
+	get out of sync by modulo 1^28 counts. This is reproducible by purposefully doing hid_reads with less space
+	than the device wants (>64 bytes). Presumably this causes some kind of backup on the device and maybe an IRQ
+	gets skipped or something. Impossible to say really without seeing source code but the observations are:
+
+	- This can occasionally happen at random. The theory here is that OS's typically interogate HID devices and
+	  seem to trigger the behavior very rarely
+	- When triggered the IMU and lightcap datastreams seem desynced by some multiple of 2^28 / (48mhz) seconds
+	- The only thing that fixes it reliably is a power cycle. USB disconnect / reconnect, device magics, etc etc
+	  don't fix it
+	- Running steamvr tools doesn't fix it but there isn't a change in tracking behavior. So the thinking is that
+	  steamvr mitigates the issue instead of having a way to fix it.
+
+	So with all that said, we mitigate it here by just finding the offset that makes sense and applying it. I
+	suspect that the more consistent clock is the lightcaps, but the IMU comes in at fixed frequencies so we
+	use that as a basis. It's worth noting that I've never seen a system develop this while running; it would
+	likely cause some chaos if it did since it'd kick the kalman out of sorts.
+	***/
+	if (self->last_imu != 0 && abs(time_sync_error) > 48000000) {
+		int64_t offset = 0x10000000;
+		int scale = DIV_ROUND_CLOSEST(time_sync_error, offset);
+		initial_time -= offset * scale;
+	}
+	
+	return initial_time;
 }
 
 FLT SurviveSensorActivations_difference(const SurviveSensorActivations *rhs, const SurviveSensorActivations *lhs) {

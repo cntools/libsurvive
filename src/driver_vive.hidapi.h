@@ -84,7 +84,7 @@ static void *HAPIReceiver(void *v) {
 	SurviveUSBInterface *iface = v;
 	USB_INTERFACE_HANDLE *hp = &iface->uh;
 
-	if ((iface->actual_len = hid_read(*hp, iface->buffer, sizeof(iface->swap_buffer[0]))) > 0) {
+	if ((iface->actual_len = hid_read(*hp, iface->buffer, sizeof(iface->swap_buffer[0]) )) > 0) {
 		// if( iface->actual_len  == 52 ) continue;
 		iface->packet_count++;
 		survive_data_cb(OGGetAbsoluteTimeUS(), iface);

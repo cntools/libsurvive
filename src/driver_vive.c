@@ -50,6 +50,40 @@ enum vive_report_ids {
 	// Possibly 0x03 - Gyro range, 0x02 - Accel range
 	// Tracker/lh1/[rf,usb]: (device -> steamvr):  01 03 02
 	VIVE_REPORT_IMU_SCALES = 1,
+	
+	// You can get this from doing errors in lighthouse_console:
+	/*
+	0300000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000325160d6066f0394c59affa228a02870f7
+
+	missing_rising_edge         : 0
+	backward_time               : 0
+	pulse_queue_overflow        : 0
+	short_sync                  : 0
+	long_sync                   : 0
+	invalid_calibration_size    : 0
+	invalid_calibration_crc     : 0
+	invalid_calibration_version : 0
+	queue_overflow              : 0
+	spammy_sensor               : 0
+	flags                       : 1
+	long_optical_packet_delay   : 0
+
+	0300000000000000000000000080c44300020000000000000000000000000000005700000000000000010000000000000006010000f3ff0357a915ca8ebd47d5
+	missing_rising_edge         : 0
+	backward_time               : 0
+	pulse_queue_overflow        : 0
+	short_sync                  : 4441216
+	long_sync                   : 2
+	invalid_calibration_size    : 0
+	invalid_calibration_crc     : 0
+	invalid_calibration_version : 0
+	queue_overflow              : 87
+	spammy_sensor               : 0
+	flags                       : 1
+	long_optical_packet_delay   : 0
+
+	*/
+	VIVE_REPORT_ERRORS = 0x03,
 	VIVE_REPORT_IMU = 0x20,
 	VIVE_REPORT_USB_TRACKER_LIGHTCAP_V1 = 0x21,
 	VIVE_REPORT_RF_WATCHMAN = 0x23,
@@ -2874,7 +2908,7 @@ void survive_data_cb_locked(uint64_t time_received_us, SurviveUSBInterface *si) 
 	case USB_IF_TRACKER1_IMU: {
 		int i;
 		// printf( "%d -> ", size );
-		for (i = 0; i < 3; i++) {
+		for (i = 0; i < 3 && readdata < enddata; i++) {
 			struct unaligned_16_t *acceldata = (struct unaligned_16_t *)readdata;
 			readdata += 12;
 			uint32_t timecode = POP4;
@@ -2895,6 +2929,9 @@ void survive_data_cb_locked(uint64_t time_received_us, SurviveUSBInterface *si) 
 							  0,
 							  0,
 							  0};
+
+				SV_VERBOSE(300, "%s %s %7.6f %7.6f %2u", survive_colorize(obj->codename),
+						   survive_colorize("IMU"), survive_run_time(ctx), timecode / 48000000., code);
 
 				// assert(timecode <= obj->timebase_hz);
 				SURVIVE_INVOKE_HOOK_SO(raw_imu, obj, 3, agm, timecode, code);
