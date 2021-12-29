@@ -765,13 +765,13 @@ int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d) {
 		if (sv->hmd_mainboard_index != -1 || class_id != 0) {
 			return -3;
 		}
-		sv->hmd_mainboard_index = sv->udev_cnt;
+		sv->hmd_mainboard_index = sv->udev_cnt - 1;
 	} else if (info->type == USB_DEV_HMD_IMU_LH) {
 		if (sv->hmd_imu_index != -1) {
 			SV_WARN("Multiple HMDs are not supported currently.")
 			return -4;
 		}
-		sv->hmd_imu_index = sv->udev_cnt;
+		sv->hmd_imu_index = sv->udev_cnt - 1;
 	}
 
 	int *cnt = (sv->cnt_per_device_type + (usbInfo->device_info - KnownDeviceTypes));
