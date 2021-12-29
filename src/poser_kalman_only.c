@@ -40,7 +40,7 @@ int PoserKalmanOnly(SurviveObject *so, void **user, PoserData *pd) {
 			quatrotateabout(pose.Rot, q, so->tracker->state.Pose.Rot);
 
 			FLT r[7] = { 5, 5, 5 };
-			SvMat R = svVec(7, r);
+			CnMat R = cnVec(7, r);
 			survive_kalman_tracker_integrate_observation(&imu->hdr, so->tracker, &pose, &R);
 			return 0;
 		}

@@ -1,39 +1,43 @@
-#include "../survive_kalman_tracker.h"
+#include "../src/survive_kalman_tracker.h"
 #include "test_case.h"
+#include <cnkalman/kalman.h>
+#include <cnmatrix/cn_matrix.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sv_matrix.h>
 
 #include "../generated/survive_imu.generated.h"
 #if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include "malloc.h"
 #endif
 
-static void rot_predict_quat(FLT t, const survive_kalman_state_t *k, const SvMat *f_in, SvMat *f_out) {
+static void rot_predict_quat(FLT t, const cnkalman_state_t *k, const CnMat *f_in, CnMat *f_out) {
 	(void)k;
 
-	const FLT *rot = SV_FLT_PTR(f_in);
-	const FLT *vel = SV_FLT_PTR(f_in) + 4;
-	copy3d(SV_FLT_PTR(f_out) + 4, vel);
+	const FLT *rot = CN_FLT_PTR(f_in);
+	const FLT *vel = CN_FLT_PTR(f_in) + 4;
+	copy3d(CN_FLT_PTR(f_out) + 4, vel);
 
-	survive_apply_ang_velocity(SV_FLT_PTR(f_out), vel, t, rot);
+	survive_apply_ang_velocity(CN_FLT_PTR(f_out), vel, t, rot);
 }
 
-static void rot_f_quat(FLT t, SvMat *F, const struct SvMat *x) {
-	(void)x;
-
+static void rot_f_quat(FLT t, const struct cnkalman_state_s *k, const struct CnMat *x0, struct CnMat *x1,
+					   struct CnMat *F) {
 	// assert(fabs(t) < .1 && t >= 0);
 	if (fabs(t) > .11)
 		t = .11;
+	if (x1) {
+		rot_predict_quat(t, k, x0, x1);
+	}
+	if (F) {
+		// fprintf(stderr, "F eval: %f " SurvivePose_format "\n", t, SURVIVE_POSE_EXPAND(*(SurvivePose*)x->data.db));
+		FLT *f_row = alloca(sizeof(FLT) * F->rows * F->cols);
+		gen_imu_rot_f_jac_imu_rot(f_row, t, CN_FLT_PTR(x0));
+		cn_copy_in_row_major(F, f_row, F->cols);
 
-	// fprintf(stderr, "F eval: %f " SurvivePose_format "\n", t, SURVIVE_POSE_EXPAND(*(SurvivePose*)x->data.db));
-	FLT *f_row = alloca(sizeof(FLT) * F->rows * F->cols);
-	gen_imu_rot_f_jac_imu_rot(f_row, t, SV_FLT_PTR(x));
-	sv_copy_in_row_major(F, f_row, F->cols);
-
-	for (int j = 0; j < 49; j++) {
-		assert(!isnan(f_row[j]));
+		for (int j = 0; j < 49; j++) {
+			assert(!isnan(f_row[j]));
+		}
 	}
 }
 
@@ -126,8 +130,8 @@ int TestKalmanIntegratePose(FLT pvariance, FLT rot_variance) {
 		FLT variance[2] = {pvariance, rot_variance};
 		PoserDataLightGen2 pd = {0};
 		pd.common.hdr.timecode = time;
-		SV_CREATE_STACK_MAT(R, 2, 2);
-		sv_set_diag(&R, variance);
+		CN_CREATE_STACK_MAT(R, 2, 2);
+		cn_set_diag(&R, variance);
 		survive_kalman_tracker_integrate_observation(&pd.common.hdr, &kpose, &obs, &R);
 
 		SurvivePose estimate;
@@ -154,18 +158,22 @@ int TestKalmanIntegratePose(FLT pvariance, FLT rot_variance) {
 }
 #include "string.h"
 
-static void pos_f(FLT t, SvMat *F, const struct SvMat *x) {
-	(void)x;
-	t = 1;
+void pos_f(FLT dt, const struct cnkalman_state_s *k, const struct CnMat *x0, struct CnMat *x1, struct CnMat *oF) {
+	FLT t = 1;
 	FLT f[36] = {
 		1, 0, 0, t, 0, 0, 0, 1, 0, 0, t, 0, 0, 0, 1, 0, 0, t, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1,
 	};
-	sv_copy_in_row_major(F, f, F->cols);
+	CnMat F = cnMat(6, 6, f);
+	cnkalman_linear_update(&F, x0, x1);
+
+	if (oF) {
+		cnCopy(&F, oF, 0);
+	}
 }
 
-void meas_model(struct SvMat *Z, const struct SvMat *x_t, const FLT *s) {
-	FLT *_h_x = sv_as_vector(Z);
-	const FLT *xt = sv_as_const_vector(x_t);
+void meas_model(struct CnMat *Z, const struct CnMat *x_t, const FLT *s) {
+	FLT *_h_x = cn_as_vector(Z);
+	const FLT *xt = cn_as_const_vector(x_t);
 
 	LinmathPoint3d d;
 
@@ -176,17 +184,17 @@ void meas_model(struct SvMat *Z, const struct SvMat *x_t, const FLT *s) {
 	_h_x[2] = norm3d(d);
 }
 
-bool map_to_obs(void *user, const struct SvMat *Z, const struct SvMat *x_t, struct SvMat *yhat, struct SvMat *H_k) {
+bool map_to_obs(void *user, const struct CnMat *Z, const struct CnMat *x_t, struct CnMat *yhat, struct CnMat *H_k) {
 
 	const FLT *s = (FLT *)user;
-	SV_CREATE_STACK_MAT(h_x_t, 3, 1);
+	CN_CREATE_STACK_MAT(h_x_t, 3, 1);
 	meas_model(&h_x_t, x_t, s);
 
-	SV_CREATE_STACK_MAT(Id, 3, 3);
-	sv_set_diag_val(&Id, 1);
-	svGEMM(&Id, Z, 1., &h_x_t, -1, yhat, 0);
+	CN_CREATE_STACK_MAT(Id, 3, 3);
+	cn_set_diag_val(&Id, 1);
+	cnGEMM(&Id, Z, 1., &h_x_t, -1, yhat, 0);
 
-	const FLT *xt = sv_as_const_vector(x_t);
+	const FLT *xt = cn_as_const_vector(x_t);
 	LinmathPoint3d d;
 	sub3d(d, xt, s);
 
@@ -195,56 +203,56 @@ bool map_to_obs(void *user, const struct SvMat *Z, const struct SvMat *x_t, stru
 	FLT n = sqrtf(n2);
 
 	if (H_k) {
-		sv_set_zero(H_k);
-		svMatrixSet(H_k, 0, 0, y / (x * x + y * y));
-		svMatrixSet(H_k, 0, 1, -x / (x * x + y * y));
-		svMatrixSet(H_k, 0, 2, 0);
+		cn_set_zero(H_k);
+		cnMatrixSet(H_k, 0, 0, y / (x * x + y * y));
+		cnMatrixSet(H_k, 0, 1, -x / (x * x + y * y));
+		cnMatrixSet(H_k, 0, 2, 0);
 
-		svMatrixSet(H_k, 1, 0, -x * z / n2 / sqrtf(x * x + y * y));
-		svMatrixSet(H_k, 1, 1, -y * z / n2 / sqrtf(x * x + y * y));
-		svMatrixSet(H_k, 1, 2, 1. / sqrtf(x * x + y * y));
+		cnMatrixSet(H_k, 1, 0, -x * z / n2 / sqrtf(x * x + y * y));
+		cnMatrixSet(H_k, 1, 1, -y * z / n2 / sqrtf(x * x + y * y));
+		cnMatrixSet(H_k, 1, 2, 1. / sqrtf(x * x + y * y));
 
-		svMatrixSet(H_k, 2, 0, x / n);
-		svMatrixSet(H_k, 2, 1, y / n);
-		svMatrixSet(H_k, 2, 2, z / n);
+		cnMatrixSet(H_k, 2, 0, x / n);
+		cnMatrixSet(H_k, 2, 1, y / n);
+		cnMatrixSet(H_k, 2, 2, z / n);
 	}
-	SV_FREE_STACK_MAT(Id);
-	SV_FREE_STACK_MAT(h_x_t);
+	CN_FREE_STACK_MAT(Id);
+	CN_FREE_STACK_MAT(h_x_t);
 	return true;
 }
 
 // https://www.intechopen.com/books/introduction-and-implementations-of-the-kalman-filter/introduction-to-kalman-filter-and-its-applications
 TEST(Kalman, ExampleExtended) {
-	// survive_kalman_set_logging_level(1000);
+	// cnkalman_set_logging_level(1000);
 
-	survive_kalman_state_t position;
-	struct survive_kalman_meas_model measModel = {.name = "obs", .Hfn = map_to_obs, .k = &position};
+	cnkalman_state_t position;
+	struct cnkalman_meas_model measModel = {.name = "obs", .Hfn = map_to_obs, .k = &position};
 	FLT pos_Q_per_sec_fixed[36] = {
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 25,
 	};
-	SV_CREATE_STACK_MAT(pos_Q_per_sec, 6, 6);
-	sv_copy_in_row_major(&pos_Q_per_sec, pos_Q_per_sec_fixed, 6);
+	CN_CREATE_STACK_MAT(pos_Q_per_sec, 6, 6);
+	cn_copy_in_row_major(&pos_Q_per_sec, pos_Q_per_sec_fixed, 6);
 
 	FLT P_init[6] = {1, 1, 1, 0, 0, 0};
 
-	survive_kalman_state_init(&position, 6, pos_f, 0, &pos_Q_per_sec, 0);
-	SvMat P = position.P;
-	sv_set_diag(&P, P_init);
+	cnkalman_state_init(&position, 6, pos_f, 0, &pos_Q_per_sec, 0);
+	CnMat P = position.P;
+	cn_set_diag(&P, P_init);
 
-	SV_CREATE_STACK_MAT(F, 6, 6);
-	pos_f(1, &F, 0);
+	// CN_CREATE_STACK_MAT(F, 6, 6);
+	// pos_f(1, &F, 0);
 
 	FLT _true_state[] = {9, -12, 0, -1, -2, 0};
-	SvMat true_state = svMat(6, 1, _true_state);
+	CnMat true_state = cnMat(6, 1, _true_state);
 
 	FLT _init_state[] = {10, -10, 0, -1, -2, 0};
-	memcpy(SV_FLT_PTR(&position.state), _init_state, sizeof(_true_state));
+	memcpy(CN_FLT_PTR(&position.state), _init_state, sizeof(_true_state));
 
-	SV_FLT_PTR(&position.state)[0] += generateGaussianNoise(0, 1);
-	SV_FLT_PTR(&position.state)[1] += generateGaussianNoise(0, 1);
+	CN_FLT_PTR(&position.state)[0] += generateGaussianNoise(0, 1);
+	CN_FLT_PTR(&position.state)[1] += generateGaussianNoise(0, 1);
 
 	FLT meas_s[] = {.002, .002, .002};
-	SV_CREATE_STACK_MAT(Z, 3, 1);
+	CN_CREATE_STACK_MAT(Z, 3, 1);
 
 	for (int i = 1; i < 21; i++) {
 		LinmathPoint3d sensor = {20 + 20 * cos(2. * LINMATHPI / 30 * (i)), 20 + 20 * sin(2. * LINMATHPI / 30 * (i)),
@@ -259,39 +267,37 @@ TEST(Kalman, ExampleExtended) {
 		}
 
 		FLT _R[] = {.0004, .0004, 1};
-		SvMat R = svVec(3, _R);
+		CnMat R = cnVec(3, _R);
 
-		survive_kalman_meas_model_predict_update(i, &measModel, sensor, &Z, &R);
+		cnkalman_meas_model_predict_update(i, &measModel, sensor, &Z, &R);
 
 		fprintf(stderr, "Guess  " SurviveVel_format "\n",
-				SURVIVE_VELOCITY_EXPAND(*(SurviveVelocity *)SV_FLT_PTR(&position.state)));
+				SURVIVE_VELOCITY_EXPAND(*(SurviveVelocity *)CN_FLT_PTR(&position.state)));
 		fprintf(stderr, "GT     " SurviveVel_format "\n", SURVIVE_VELOCITY_EXPAND(*(SurviveVelocity *)_true_state));
 		fprintf(stderr, "Sensor " Point3_format "\n", LINMATH_VEC3_EXPAND(sensor));
 
 		FLT diff[6];
-		subnd(diff, sv_as_const_vector(&position.state), _true_state, 6);
+		subnd(diff, cn_as_const_vector(&position.state), _true_state, 6);
 		FLT err = normnd(diff, 6);
 		fprintf(stderr, "Error %f\n", err);
 		assert(err < 1);
 
-		SV_CREATE_STACK_MAT(next_state, 6, 1);
-		// SURVIVE_LOCAL_ONLY void cvGEMM(const SvMat *src1, const SvMat *src2, double alpha, const SvMat *src3, double
-		// beta,
-		svGEMM(&F, &true_state, 1, 0, 0, &next_state, 0);
-		memcpy(_true_state, sv_as_vector(&next_state), sizeof(_true_state));
-		SV_FREE_STACK_MAT(next_state);
+		CN_CREATE_STACK_MAT(next_state, 6, 1);
+		pos_f(1, 0, &true_state, &next_state, 0);
+		memcpy(_true_state, cn_as_vector(&next_state), sizeof(_true_state));
+		CN_FREE_STACK_MAT(next_state);
 	}
 
-	survive_kalman_state_free(&position);
-	SV_FREE_STACK_MAT(Z);
-	SV_FREE_STACK_MAT(F);
-	SV_FREE_STACK_MAT(pos_Q_per_sec);
+	cnkalman_state_free(&position);
+	CN_FREE_STACK_MAT(Z);
+	CN_FREE_STACK_MAT(F);
+	CN_FREE_STACK_MAT(pos_Q_per_sec);
 	return 0;
 }
 
 TEST(Kalman, AngleQuat) {
-	// survive_kalman_set_logging_level(1001);
-	survive_kalman_state_t rotation;
+	// cnkalman_set_logging_level(1001);
+	cnkalman_state_t rotation;
 
 	FLT av = 1e0, vv = 1e0;
 	// clang-format off
@@ -304,21 +310,20 @@ TEST(Kalman, AngleQuat) {
 		0, 0, 0, 0, 0, vv, 0,
 		0, 0, 0, 0, 0, 0, vv,
 	};
-	SvMat pos_Q_per_sec = svMat(7, 7, _pos_Q_per_sec);
+	CnMat pos_Q_per_sec = cnMat(7, 7, _pos_Q_per_sec);
 	// clang-format on
 
-	survive_kalman_state_init(&rotation, 7, rot_f_quat, 0, &pos_Q_per_sec, 0);
-	rotation.Predict_fn = rot_predict_quat;
+	cnkalman_state_init(&rotation, 7, rot_f_quat, 0, &pos_Q_per_sec, 0);
 
 	FLT P_init[] = {100, 100, 100, 100, 100, 100, 100};
-	survive_kalman_set_P(&rotation, P_init);
+	cnkalman_set_P(&rotation, P_init);
 
-	SV_CREATE_STACK_MAT(true_state, 7, 1);
+	CN_CREATE_STACK_MAT(true_state, 7, 1);
 	FLT true_state_init[7] = {1, 0, 0, 0, 1, 1, -1};
 	memcpy(_true_state, true_state_init, sizeof(true_state_init));
-	memcpy(SV_FLT_PTR(&rotation.state), true_state_init, sizeof(true_state_init));
+	memcpy(CN_FLT_PTR(&rotation.state), true_state_init, sizeof(true_state_init));
 
-	SV_CREATE_STACK_MAT(Z, 4, 1);
+	CN_CREATE_STACK_MAT(Z, 4, 1);
 
 	// clang-format off
 	FLT _H[] = {
@@ -328,36 +333,36 @@ TEST(Kalman, AngleQuat) {
 		0, 0, 0, 1, 0, 0, 0,
 	};
 	// clang-format on
-	SvMat H = svMat_from_row_major(4, 7, _H);
+	CnMat H = cnMat_from_row_major(4, 7, _H);
 
 	for (int i = 1; i < 100; i++) {
 		FLT t = i * .1;
 
 		FLT rv = .01;
 		FLT _R[] = {rv, rv, rv, rv};
-		SvMat R = svVec(4, _R);
+		CnMat R = cnVec(4, _R);
 		memcpy(_Z, _true_state, 4 * sizeof(FLT));
 		for (int j = 0; j < 4; j++) {
 			_Z[j] += generateGaussianNoise(0, _R[j]);
 		}
 		quatnormalize(_Z, _Z);
-		survive_kalman_predict_update_state(t, &rotation, &Z, &H, &R, 0);
-		quatnormalize(SV_FLT_PTR(&rotation.state), SV_FLT_PTR(&rotation.state));
+		cnkalman_predict_update_state(t, &rotation, &Z, &H, &R, 0);
+		quatnormalize(CN_FLT_PTR(&rotation.state), CN_FLT_PTR(&rotation.state));
 		fprintf(stderr, "Guess  " SurvivePose_format "\n",
-				SURVIVE_POSE_EXPAND(*(SurvivePose *)SV_FLT_PTR(&rotation.state)));
+				SURVIVE_POSE_EXPAND(*(SurvivePose *)CN_FLT_PTR(&rotation.state)));
 		fprintf(stderr, "GT     " SurvivePose_format "\n", SURVIVE_POSE_EXPAND(*(SurvivePose *)_true_state));
 
 		FLT diff[7];
-		subnd(diff, SV_FLT_PTR(&rotation.state), _true_state, 7);
+		subnd(diff, CN_FLT_PTR(&rotation.state), _true_state, 7);
 		FLT err = normnd(diff, 7);
 		fprintf(stderr, "Error %f\n", err);
 		assert(err < 1);
 
 		rot_predict_quat(.1, 0, &true_state, &true_state);
 	}
-	survive_kalman_state_free(&rotation);
-	SV_FREE_STACK_MAT(Z);
-	SV_FREE_STACK_MAT(true_state);
+	cnkalman_state_free(&rotation);
+	CN_FREE_STACK_MAT(Z);
+	CN_FREE_STACK_MAT(true_state);
 
 	return 0;
 }
@@ -366,8 +371,8 @@ typedef struct KalmanModelSim {
 	SurviveKalmanModel sim_state;
 	SurviveKalmanModel true_state;
 	struct SurviveKalmanTracker_Params p;
-	survive_kalman_state_t kalman_t;
-	survive_kalman_meas_model_t imu_model_t;
+	cnkalman_state_t kalman_t;
+	cnkalman_meas_model_t imu_model_t;
 } KalmanModelSim;
 
 struct SurviveKalmanTracker_Params default_params() {
@@ -382,21 +387,21 @@ void KalmanModelSim_init(KalmanModelSim *model) {
 	quatnormalize(model->sim_state.Pose.Rot, model->sim_state.Pose.Rot);
 	quatnormalize(model->true_state.Pose.Rot, model->true_state.Pose.Rot);
 
-	survive_kalman_state_init(
-		&model->kalman_t, sizeof(model->sim_state) / sizeof(FLT), survive_kalman_tracker_predict_jac,
-		(kalman_process_noise_fn_t)survive_kalman_tracker_process_noise, &model->p, (FLT *)&model->sim_state);
-	model->kalman_t.Predict_fn = survive_kalman_tracker_model_predict;
-	survive_kalman_meas_model_init(&model->kalman_t, "imu", &model->imu_model_t,
-								   survive_kalman_tracker_imu_measurement_model);
+	cnkalman_state_init(&model->kalman_t, sizeof(model->sim_state) / sizeof(FLT), survive_kalman_tracker_predict_jac,
+						(kalman_process_noise_fn_t)survive_kalman_tracker_process_noise, &model->p,
+						(FLT *)&model->sim_state);
+
+	cnkalman_meas_model_init(&model->kalman_t, "imu", &model->imu_model_t,
+							 survive_kalman_tracker_imu_measurement_model);
 	SurviveKalmanModel initial_variance = {.Pose = {.Pos = {1e5, 1e5, 1e5}, .Rot = {0, 1e5, 1e5, 1e5}},
 										   .Velocity = {.AxisAngleRot = {1e3, 1e3, 1e3}},
 										   .Acc = {1e3, 1e3, 1e3}};
 
 	for (int i = 0; i < model->kalman_t.state_cnt; i++) {
-		svMatrixSet(&model->kalman_t.P, i, i, ((FLT *)&initial_variance)[i]);
+		cnMatrixSet(&model->kalman_t.P, i, i, ((FLT *)&initial_variance)[i]);
 	}
 }
-void KalmanModelSim_dtor(KalmanModelSim *model) { survive_kalman_state_free(&model->kalman_t); }
+void KalmanModelSim_dtor(KalmanModelSim *model) { cnkalman_state_free(&model->kalman_t); }
 
 #define KALMAN_MODEL_FORMAT "S: " SurvivePose_format " V: " SurviveVel_format " A: " Point3_format " B: " Point3_format
 #define KALMAN_MODEL_EXPAND(m)                                                                                         \
@@ -418,18 +423,18 @@ TEST(Kalman, InstFlip) {
 
 	fprintf(stderr, "Testing instant flip\n");
 	FLT _R[] = {1e-5, 1e-5, 1e-5, 1e-2, 1e-2, 1e-2};
-	SvMat R = svVec(6, _R);
-	// survive_kalman_set_logging_level(10000);
+	CnMat R = cnVec(6, _R);
+	// cnkalman_set_logging_level(10000);
 	for (int i = 0; i < 100; i++) {
 		FLT time = i / 1000.;
 
 		FLT input[6], h_x[6];
-		SvMat Z = svVec(6, input);
+		CnMat Z = cnVec(6, input);
 
 		quatnormalize(model.true_state.Pose.Rot, model.true_state.Pose.Rot);
 		gen_imu_predict(input, &model.true_state);
 
-		FLT err = survive_kalman_meas_model_predict_update(time, &model.imu_model_t, 0, &Z, &R);
+		FLT err = cnkalman_meas_model_predict_update(time, &model.imu_model_t, 0, &Z, &R);
 		quatnormalize(model.sim_state.Pose.Rot, model.sim_state.Pose.Rot);
 		fprintf(stderr, "err %.7f Acc: " Point3_format " Vel: " Point3_format " Rotation: " Quat_format "\n", err,
 				LINMATH_VEC3_EXPAND(model.sim_state.Acc), LINMATH_VEC3_EXPAND(model.sim_state.Velocity.Pos),
@@ -452,14 +457,14 @@ TEST(Kalman, Flip) {
 	KalmanModelSim_init(&model);
 
 	FLT _R[] = {1e-5, 1e-5, 1e-5, 1e-2, 1e-2, 1e-2};
-	SvMat R = svVec(6, _R);
+	CnMat R = cnVec(6, _R);
 	fprintf(stderr, "Testing flip\n");
-	// survive_kalman_set_logging_level(10000);
+	// cnkalman_set_logging_level(10000);
 	for (int i = 0; i < 1000; i++) {
 		FLT time = i / 1000.;
 
 		FLT input[6], h_x[6];
-		SvMat Z = svMat(6, 1, input);
+		CnMat Z = cnMat(6, 1, input);
 
 		SurviveKalmanModel m;
 		gen_kalman_model_predict((FLT *)&m, 1. / 1000., &model.true_state);
@@ -467,7 +472,7 @@ TEST(Kalman, Flip) {
 
 		gen_imu_predict(input, &model.true_state);
 
-		FLT err = survive_kalman_meas_model_predict_update(time, &model.imu_model_t, 0, &Z, &R);
+		FLT err = cnkalman_meas_model_predict_update(time, &model.imu_model_t, 0, &Z, &R);
 		quatnormalize(model.sim_state.Pose.Rot, model.sim_state.Pose.Rot);
 
 		fprintf(stderr, "err %f Velocity: " SurviveVel_format " Pose: " SurvivePose_format "\n", err,
@@ -503,17 +508,17 @@ TEST(Kalman, LiftupSetDown) {
 	KalmanModelSim_init(&model);
 
 	FLT _R[] = {1e-5, 1e-5, 1e-5, 1e-2, 1e-2, 1e-2};
-	SvMat R = svVec(6, _R);
+	CnMat R = cnVec(6, _R);
 
 	fprintf(stderr, "Testing LiftupSetDown\n");
-	FILE *rf = fopen("real.csv", "w");
-	FILE *sf = fopen("simul.csv", "w");
-	// survive_kalman_set_logging_level(10000);
+	FILE *rf = fopen("real.ccn", "w");
+	FILE *sf = fopen("simul.ccn", "w");
+	// cnkalman_set_logging_level(10000);
 	for (int i = 0; i < 1000; i++) {
 		FLT time = i / 1000.;
 
 		FLT input[6], h_x[6];
-		SvMat Z = svMat(6, 1, input);
+		CnMat Z = cnMat(6, 1, input);
 
 		model.true_state.Acc[2] = (i > 250 && i < 750) ? -.1 : .1;
 		SurviveKalmanModel m;
@@ -521,7 +526,7 @@ TEST(Kalman, LiftupSetDown) {
 		model.true_state = m;
 
 		gen_imu_predict(input, &model.true_state);
-		FLT err = survive_kalman_meas_model_predict_update(time, &model.imu_model_t, 0, &Z, &R);
+		FLT err = cnkalman_meas_model_predict_update(time, &model.imu_model_t, 0, &Z, &R);
 		quatnormalize(model.sim_state.Pose.Rot, model.sim_state.Pose.Rot);
 
 		fprintf(stderr, "err %f " KALMAN_MODEL_FORMAT "\n", err, KALMAN_MODEL_EXPAND(model.sim_state));

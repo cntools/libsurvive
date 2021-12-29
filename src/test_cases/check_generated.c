@@ -6,7 +6,7 @@
 #include <math.h>
 #include <os_generic.h>
 
-#include "sv_matrix.h"
+#include "cnmatrix/cn_matrix.h"
 
 #include "test_case.h"
 
@@ -27,14 +27,14 @@
 
 #define STACK_ALLOC(nmembers) (FLT *)alloca(nmembers * sizeof(FLT))
 
-static void rot_predict_quat(FLT t, const void *k, const SvMat *f_in, SvMat *f_out) {
+static void rot_predict_quat(FLT t, const void *k, const CnMat *f_in, CnMat *f_out) {
 	(void)k;
 
-	const FLT *rot = SV_FLT_PTR(f_in);
-	const FLT *vel = SV_FLT_PTR(f_in) + 4;
-	copy3d(SV_FLT_PTR(f_out) + 4, vel);
+	const FLT *rot = CN_FLT_PTR(f_in);
+	const FLT *vel = CN_FLT_PTR(f_in) + 4;
+	copy3d(CN_FLT_PTR(f_out) + 4, vel);
 
-	survive_apply_ang_velocity(SV_FLT_PTR(f_out), vel, t, rot);
+	survive_apply_ang_velocity(CN_FLT_PTR(f_out), vel, t, rot);
 }
 
 typedef struct survive_calibration_config {
@@ -544,7 +544,7 @@ void check_apply_ang_velocity() {
 }
 #endif
 
-extern void rot_predict_quat(FLT t, const void *k, const SvMat *f_in, SvMat *f_out);
+extern void rot_predict_quat(FLT t, const void *k, const CnMat *f_in, CnMat *f_out);
 
 TEST(Generated, imu_predict_up) {
 	SurviveKalmanModel model = {.Pose = {.Rot = {1}}};
@@ -565,9 +565,9 @@ TEST(Generated, rot_predict_quat) {
 	FLT _mi[7] = { 0 };
 	FLT _mo1[7] = { 0 };
 	FLT _mo2[7] = { 0 };
-	SvMat mi = svMat(7, 1, _mi);
-	SvMat mo1 = svMat(7, 1, _mo1);
-	SvMat mo2 = svMat(7, 1, _mo2);
+	CnMat mi = cnMat(7, 1, _mi);
+	CnMat mo1 = cnMat(7, 1, _mo1);
+	CnMat mo2 = cnMat(7, 1, _mo2);
 
 	FLT t = next_rand(5);
 

@@ -8,7 +8,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "sv_matrix.h"
+#include <cnmatrix/cn_matrix.h>
 #if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <assert.h>
 #include <malloc.h>
@@ -432,10 +432,10 @@ inline void quattomatrix(FLT *matrix44, const LinmathQuat qin) {
 	matrix44[14] = 0;
 	matrix44[15] = 1;
 }
-LINMATH_EXPORT void quatfromsvmatrix(LinmathQuat q, const struct SvMat *m) {
-	FLT m00 = svMatrixGet(m, 0, 0), m01 = svMatrixGet(m, 0, 1), m02 = svMatrixGet(m, 0, 2), m10 = svMatrixGet(m, 1, 0),
-		m11 = svMatrixGet(m, 1, 1), m12 = svMatrixGet(m, 1, 2), m20 = svMatrixGet(m, 2, 0), m21 = svMatrixGet(m, 2, 1),
-		m22 = svMatrixGet(m, 2, 2);
+LINMATH_EXPORT void quatfromcnMatrix(LinmathQuat q, const struct CnMat *m) {
+	FLT m00 = cnMatrixGet(m, 0, 0), m01 = cnMatrixGet(m, 0, 1), m02 = cnMatrixGet(m, 0, 2), m10 = cnMatrixGet(m, 1, 0),
+		m11 = cnMatrixGet(m, 1, 1), m12 = cnMatrixGet(m, 1, 2), m20 = cnMatrixGet(m, 2, 0), m21 = cnMatrixGet(m, 2, 1),
+		m22 = cnMatrixGet(m, 2, 2);
 
 	FLT tr = m00 + m11 + m22;
 
@@ -992,32 +992,32 @@ void KabschCentered(LinmathQuat qout, const FLT *ptsA, const FLT *ptsB, int num_
 void KabschCenteredScaled(LinmathQuat qout, FLT *scale, const FLT *ptsA, const FLT *ptsB, int num_pts) {
 	// Note: The following follows along with https://en.wikipedia.org/wiki/Kabsch_algorithm
 	// for the most part but we use some transpose identities to avoid unneeded transposes
-	SV_CREATE_STACK_MAT(A, num_pts, 3); // (FLT *)ptsA);
-	sv_row_major_to_internal(&A, ptsA);
-	SV_CREATE_STACK_MAT(B, num_pts, 3);
-	sv_row_major_to_internal(&B, ptsB);
+	CN_CREATE_STACK_MAT(A, num_pts, 3); // (FLT *)ptsA);
+	cn_row_major_to_internal(&A, ptsA);
+	CN_CREATE_STACK_MAT(B, num_pts, 3);
+	cn_row_major_to_internal(&B, ptsB);
 
 	FLT _C[9] = {0};
-	SvMat C = svMat(3, 3, _C);
-	svGEMM(&B, &A, 1, 0, 0, &C, SV_GEMM_FLAG_A_T);
+	CnMat C = cnMat(3, 3, _C);
+	cnGEMM(&B, &A, 1, 0, 0, &C, CN_GEMM_FLAG_A_T);
 
 	FLT _U[9] = {0};
 	FLT _W[9] = {0};
 	FLT _VT[9] = {0};
-	SvMat U = svMat(3, 3, _U);
-	SvMat W = svMat(3, 3, _W);
-	SvMat VT = svMat(3, 3, _VT);
+	CnMat U = cnMat(3, 3, _U);
+	CnMat W = cnMat(3, 3, _W);
+	CnMat VT = cnMat(3, 3, _VT);
 
-	svSVD(&C, &W, &U, &VT, SV_SVD_V_T | SV_SVD_MODIFY_A);
+	cnSVD(&C, &W, &U, &VT, CN_SVD_V_T | CN_SVD_MODIFY_A);
 
-	SV_CREATE_STACK_MAT(R, 3, 3);
-	svGEMM(&U, &VT, 1, 0, 0, &R, 0);
+	CN_CREATE_STACK_MAT(R, 3, 3);
+	cnGEMM(&U, &VT, 1, 0, 0, &R, 0);
 
 	// Enforce RH rule
-	if (svDet(&R) < 0.) {
+	if (cnDet(&R) < 0.) {
 		for (int i = 0; i < 3; i++)
-			svMatrixSet(&U, i, 2, -svMatrixGet(&U, i, 2));
-		svGEMM(&U, &VT, 1, 0, 0, &R, 0);
+			cnMatrixSet(&U, i, 2, -cnMatrixGet(&U, i, 2));
+		cnGEMM(&U, &VT, 1, 0, 0, &R, 0);
 	}
 
 	if (scale) {
@@ -1028,11 +1028,11 @@ void KabschCenteredScaled(LinmathQuat qout, FLT *scale, const FLT *ptsA, const F
 		*scale = *scale / num_pts;
 	}
 
-	quatfromsvmatrix(qout, &R);
+	quatfromcnMatrix(qout, &R);
 
-	SV_FREE_STACK_MAT(R);
-	SV_FREE_STACK_MAT(B);
-	SV_FREE_STACK_MAT(A);
+	CN_FREE_STACK_MAT(R);
+	CN_FREE_STACK_MAT(B);
+	CN_FREE_STACK_MAT(A);
 }
 
 LINMATH_EXPORT void KabschScaled(LinmathPose *B2Atx, FLT *scale, const FLT *_ptsA, const FLT *_ptsB, int num_pts) {
@@ -1091,7 +1091,7 @@ FLT linmath_normrand(FLT mu, FLT sigma) {
 	return z0 * sigma + mu;
 }
 
-#ifndef SV_MATRIX_IS_COL_MAJOR
+#ifndef CN_MATRIX_IS_COL_MAJOR
 #define RM_IDX(row, col, stride) (col + (row * stride))
 #else
 #define RM_IDX(row, col, stride) (row + (col * stride))
@@ -1103,8 +1103,8 @@ FLT linmath_normrand(FLT mu, FLT sigma) {
 #define RESTRICT_KEYWORD restrict
 #endif
 
-static inline void sparse_multiply_dense_by_sparse_t_to_sym(struct SvMat *out, const SvMat *lhs,
-															const struct sparse_matrix *rhs, const SvMat *aug) {
+static inline void sparse_multiply_dense_by_sparse_t_to_sym(struct CnMat *out, const CnMat *lhs,
+															const struct sparse_matrix *rhs, const CnMat *aug) {
 	int16_t m = lhs->rows;
 	int16_t k = rhs->cols;
 	int16_t n = rhs->rows;
@@ -1113,21 +1113,21 @@ static inline void sparse_multiply_dense_by_sparse_t_to_sym(struct SvMat *out, c
 	assert(out->cols == rhs->rows);
 	assert(out->cols == out->rows);
 
-	const FLT *RESTRICT_KEYWORD A = SV_FLT_PTR(lhs);
-	FLT *RESTRICT_KEYWORD C = SV_FLT_PTR(out);
+	const FLT *RESTRICT_KEYWORD A = CN_FLT_PTR(lhs);
+	FLT *RESTRICT_KEYWORD C = CN_FLT_PTR(out);
 
 	if (aug == 0) {
 		for (int i = 0; i < m * n; i++)
 			C[i] = 0;
 	} else {
-		memcpy(C, SV_FLT_PTR(aug), sizeof(FLT) * m * n);
+		memcpy(C, CN_FLT_PTR(aug), sizeof(FLT) * m * n);
 	}
 
 	const int16_t *RESTRICT_KEYWORD row_index = rhs->row_index;
 	const int16_t *RESTRICT_KEYWORD col_index = rhs->col_index;
 	const FLT *RESTRICT_KEYWORD data = rhs->data;
-	int16_t out_stride = sv_stride(out);
-	int_fast16_t rhs_stride = sv_stride(lhs);
+	int16_t out_stride = cn_stride(out);
+	int_fast16_t rhs_stride = cn_stride(lhs);
 
 	for (int i = 0; i < n; i++) {
 		int row_start = row_index[i];
@@ -1149,8 +1149,8 @@ static inline void sparse_multiply_dense_by_sparse_t_to_sym(struct SvMat *out, c
 	}
 }
 
-static inline void sparse_multiply_sparse_by_dense_sym(struct SvMat *out, const struct sparse_matrix *lhs,
-													   const SvMat *rhs) {
+static inline void sparse_multiply_sparse_by_dense_sym(struct CnMat *out, const struct sparse_matrix *lhs,
+													   const CnMat *rhs) {
 	int16_t m = lhs->rows;
 	int16_t n = rhs->cols;
 	assert(lhs->cols == rhs->rows);
@@ -1158,8 +1158,8 @@ static inline void sparse_multiply_sparse_by_dense_sym(struct SvMat *out, const 
 	assert(out->cols == rhs->cols);
 	assert(rhs->cols == rhs->rows);
 
-	const FLT *RESTRICT_KEYWORD B = SV_FLT_PTR(rhs);
-	FLT *RESTRICT_KEYWORD C = SV_FLT_PTR(out);
+	const FLT *RESTRICT_KEYWORD B = CN_FLT_PTR(rhs);
+	FLT *RESTRICT_KEYWORD C = CN_FLT_PTR(out);
 
 	for (int i = 0; i < m * n; i++)
 		C[i] = 0;
@@ -1167,8 +1167,8 @@ static inline void sparse_multiply_sparse_by_dense_sym(struct SvMat *out, const 
 	const int16_t *RESTRICT_KEYWORD row_index = lhs->row_index;
 	const int16_t *RESTRICT_KEYWORD col_index = lhs->col_index;
 	const FLT *RESTRICT_KEYWORD data = lhs->data;
-	int16_t out_stride = sv_stride(out);
-	int_fast16_t rhs_stride = sv_stride(rhs);
+	int16_t out_stride = cn_stride(out);
+	int_fast16_t rhs_stride = cn_stride(rhs);
 
 	for (int i = 0; i < m; i++) {
 		int row_start = row_index[i];
@@ -1187,7 +1187,7 @@ static inline void sparse_multiply_sparse_by_dense_sym(struct SvMat *out, const 
 	}
 }
 
-static inline size_t create_sparse_matrix(struct sparse_matrix *out, const struct SvMat *in) {
+static inline size_t create_sparse_matrix(struct sparse_matrix *out, const struct CnMat *in) {
 	int16_t *col_idxs = out->col_index;
 	int16_t *row_idxs = out->row_index;
 	size_t idx = 0;
@@ -1196,11 +1196,11 @@ static inline size_t create_sparse_matrix(struct sparse_matrix *out, const struc
 	memset(out->row_index, -1, sizeof(uint16_t) * (out->rows + 1));
 	memset(out->col_index, -1, sizeof(uint16_t) * (out->rows * out->cols));
 
-	const FLT *RESTRICT_KEYWORD input = SV_FLT_PTR(in);
+	const FLT *RESTRICT_KEYWORD input = CN_FLT_PTR(in);
 	for (int i = 0; i < in->rows; i++) {
 		*(row_idxs++) = idx;
 		for (int j = 0; j < in->cols; j++) {
-			FLT v = input[RM_IDX(i, j, sv_stride(in))];
+			FLT v = input[RM_IDX(i, j, cn_stride(in))];
 			if (fabs(v) > 1e-10) {
 				idx++;
 				*(col_idxs++) = j;
@@ -1212,24 +1212,24 @@ static inline size_t create_sparse_matrix(struct sparse_matrix *out, const struc
 	return idx;
 }
 
-inline void gemm_ABAt_add(struct SvMat *out, const struct SvMat *A, const struct SvMat *B, const struct SvMat *C) {
+inline void gemm_ABAt_add(struct CnMat *out, const struct CnMat *A, const struct CnMat *B, const struct CnMat *C) {
 	gemm_ABAt_add_scaled(out, A, B, C, 1, 1, 1);
 }
-inline void gemm_ABAt_add_scaled(struct SvMat *out, const struct SvMat *A, const struct SvMat *B, const struct SvMat *C,
+inline void gemm_ABAt_add_scaled(struct CnMat *out, const struct CnMat *A, const struct CnMat *B, const struct CnMat *C,
 								 FLT scale_A, FLT scale_B, FLT scale_C) {
-	SV_CREATE_STACK_MAT(tmp, A->rows, B->cols);
-	svGEMM(A, B, scale_A * scale_B, 0, 0, &tmp, 0);
-	svGEMM(&tmp, A, 1, C, scale_C, out, SV_GEMM_FLAG_B_T);
-	SV_FREE_STACK_MAT(tmp);
+	CN_CREATE_STACK_MAT(tmp, A->rows, B->cols);
+	cnGEMM(A, B, scale_A * scale_B, 0, 0, &tmp, 0);
+	cnGEMM(&tmp, A, 1, C, scale_C, out, CN_GEMM_FLAG_B_T);
+	CN_FREE_STACK_MAT(tmp);
 }
-void matrix_ABAt_add(struct SvMat *out, const struct SvMat *A, const struct SvMat *B, const struct SvMat *C) {
+void matrix_ABAt_add(struct CnMat *out, const struct CnMat *A, const struct CnMat *B, const struct CnMat *C) {
 	ALLOC_SPARSE_MATRIX(s, A->rows, A->cols);
 	size_t nonzeros = create_sparse_matrix(&s, A);
 
-	SV_CREATE_STACK_MAT(tmp, s.rows, B->cols);
+	CN_CREATE_STACK_MAT(tmp, s.rows, B->cols);
 	sparse_multiply_sparse_by_dense_sym(&tmp, &s, B);
 	sparse_multiply_dense_by_sparse_t_to_sym(out, &tmp, &s, C);
-	SV_FREE_STACK_MAT(tmp);
+	CN_FREE_STACK_MAT(tmp);
 }
 
 void linmath_get_line_dir(LinmathPoint3d dir, const struct LinmathLine3d *ray) {
@@ -1239,8 +1239,8 @@ void linmath_get_line_dir(LinmathPoint3d dir, const struct LinmathLine3d *ray) {
 
 void linmath_find_best_intersection(LinmathPoint3d pt, const struct LinmathLine3d *lines, size_t num) {
 	// http://mathforum.org/library/drmath/view/69105.html
-	SV_CREATE_STACK_MAT(A, num * 2, 3);
-	SV_CREATE_STACK_MAT(B, num * 2, 1);
+	CN_CREATE_STACK_MAT(A, num * 2, 3);
+	CN_CREATE_STACK_MAT(B, num * 2, 1);
 
 	for (int i = 0; i < num; i++) {
 		LinmathPoint3d dir;
@@ -1263,19 +1263,19 @@ void linmath_find_best_intersection(LinmathPoint3d pt, const struct LinmathLine3
 		FLT d2 = dot3d(n2, lines[i].a);
 
 		for (int j = 0; j < 3; j++) {
-			svMatrixSet(&A, i * 2 + 0, j, n1[j]);
-			svMatrixSet(&B, i * 2 + 0, 0, d1);
+			cnMatrixSet(&A, i * 2 + 0, j, n1[j]);
+			cnMatrixSet(&B, i * 2 + 0, 0, d1);
 
-			svMatrixSet(&A, i * 2 + 1, j, n2[j]);
-			svMatrixSet(&B, i * 2 + 1, 0, d2);
+			cnMatrixSet(&A, i * 2 + 1, j, n2[j]);
+			cnMatrixSet(&B, i * 2 + 1, 0, d2);
 		}
 	}
 
-	SvMat x = svMat(3, 1, pt);
-	svSolve(&A, &B, &x, SV_INVERT_METHOD_SVD);
+	CnMat x = cnMat(3, 1, pt);
+	cnSolve(&A, &B, &x, CN_INVERT_METHOD_SVD);
 
-	SV_FREE_STACK_MAT(B);
-	SV_FREE_STACK_MAT(A);
+	CN_FREE_STACK_MAT(B);
+	CN_FREE_STACK_MAT(A);
 }
 
 void linmath_pt_along_line(LinmathPoint3d pt, const struct LinmathLine3d *ray, FLT t) {

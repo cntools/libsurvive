@@ -5,6 +5,7 @@
 #include "stdlib.h"
 #include "survive.h"
 #if !defined(__FreeBSD__) && !defined(__APPLE__)
+#include <cnmatrix/cn_matrix.h>
 #include <malloc.h>
 #endif
 
@@ -23,48 +24,48 @@ static void bc_svd_choose_control_points(bc_svd *self) {
 		self->setup.control_points[0][j] /= self->setup.obj_cnt;
 
 	// Take C1, C2, and C3 from PCA on the reference points:
-	SV_CREATE_STACK_MAT(PW0, self->setup.obj_cnt, 3);
+	CN_CREATE_STACK_MAT(PW0, self->setup.obj_cnt, 3);
 
-	SV_CREATE_STACK_MAT(PW0tPW0, 3, 3);
-	SV_CREATE_STACK_MAT(DC, 3, 1);
-	SV_CREATE_STACK_MAT(UCt, 3, 3);
+	CN_CREATE_STACK_MAT(PW0tPW0, 3, 3);
+	CN_CREATE_STACK_MAT(DC, 3, 1);
+	CN_CREATE_STACK_MAT(UCt, 3, 3);
 
 	for (int i = 0; i < self->setup.obj_cnt; i++)
 		for (int j = 0; j < 3; j++) {
-			svMatrixSet(&PW0, i, j, self->setup.obj_pts[i][j] - self->setup.control_points[0][j]);
+			cnMatrixSet(&PW0, i, j, self->setup.obj_pts[i][j] - self->setup.control_points[0][j]);
 		}
-	svMulTransposed(&PW0, &PW0tPW0, 1, 0, 1);
+	cnMulTransposed(&PW0, &PW0tPW0, 1, 0, 1);
 
-	svSVD(&PW0tPW0, &DC, &UCt, 0, SV_SVD_MODIFY_A | SV_SVD_U_T);
+	cnSVD(&PW0tPW0, &DC, &UCt, 0, CN_SVD_MODIFY_A | CN_SVD_U_T);
 
 	for (int i = 1; i < 4; i++) {
-		FLT k = sqrt(sv_as_vector(&DC)[i - 1] / (FLT)self->setup.obj_cnt);
+		FLT k = sqrt(cn_as_vector(&DC)[i - 1] / (FLT)self->setup.obj_cnt);
 		for (int j = 0; j < 3; j++) {
-			FLT uct_val = svMatrixGet(&UCt, i - 1, j);
-#ifndef SV_MATRIX_IS_COL_MAJOR
-			assert(uct_val == SV_FLT_PTR(&UCt)[3 * (i - 1) + j]);
+			FLT uct_val = cnMatrixGet(&UCt, i - 1, j);
+#ifndef CN_MATRIX_IS_COL_MAJOR
+			assert(uct_val == CN_FLT_PTR(&UCt)[3 * (i - 1) + j]);
 #endif
 			self->setup.control_points[i][j] = self->setup.control_points[0][j] + k * uct_val;
 		}
 	}
 
-	SV_FREE_STACK_MAT(UCt);
-	SV_FREE_STACK_MAT(DC);
-	SV_FREE_STACK_MAT(PW0tPW0);
-	SV_FREE_STACK_MAT(PW0);
+	CN_FREE_STACK_MAT(UCt);
+	CN_FREE_STACK_MAT(DC);
+	CN_FREE_STACK_MAT(PW0tPW0);
+	CN_FREE_STACK_MAT(PW0);
 }
 
 static void bc_svd_compute_barycentric_coordinates(bc_svd *self) {
 	FLT cc[3 * 3] = {0}, cc_inv[3 * 3] = {0};
-	SvMat CC = svMat(3, 3, cc);
-	SvMat CC_inv = svMat(3, 3, cc_inv);
+	CnMat CC = cnMat(3, 3, cc);
+	CnMat CC_inv = cnMat(3, 3, cc_inv);
 
 	for (int i = 0; i < 3; i++)
 		for (int j = 1; j < 4; j++) {
-			svMatrixSet(&CC, i, j - 1, self->setup.control_points[j][i] - self->setup.control_points[0][i]);
+			cnMatrixSet(&CC, i, j - 1, self->setup.control_points[j][i] - self->setup.control_points[0][i]);
 		}
 
-	svInvert(&CC, &CC_inv, 1);
+	cnInvert(&CC, &CC_inv, 1);
 
 	FLT *ci = cc_inv;
 	for (int i = 0; i < self->setup.obj_cnt; i++) {
@@ -72,9 +73,9 @@ static void bc_svd_compute_barycentric_coordinates(bc_svd *self) {
 		FLT *a = self->setup.alphas[i];
 
 		for (int j = 0; j < 3; j++)
-			a[1 + j] = svMatrixGet(&CC_inv, j, 0) * (pi[0] - self->setup.control_points[0][0]) +
-					   svMatrixGet(&CC_inv, j, 1) * (pi[1] - self->setup.control_points[0][1]) +
-					   svMatrixGet(&CC_inv, j, 2) * (pi[2] - self->setup.control_points[0][2]);
+			a[1 + j] = cnMatrixGet(&CC_inv, j, 0) * (pi[0] - self->setup.control_points[0][0]) +
+					   cnMatrixGet(&CC_inv, j, 1) * (pi[1] - self->setup.control_points[0][1]) +
+					   cnMatrixGet(&CC_inv, j, 2) * (pi[2] - self->setup.control_points[0][2]);
 		a[0] = 1.0f - a[1] - a[2] - a[3];
 	}
 }
@@ -87,6 +88,7 @@ void bc_svd_bc_svd(bc_svd *self, void *user, bc_svd_fill_M_fn fillFn, const Linm
 
 	self->setup.obj_cnt = obj_cnt;
 	self->setup.obj_pts = obj_pts;
+
 	self->setup.alphas = SV_CALLOC_N(obj_cnt, sizeof(self->setup.alphas[0]));
 	self->object_pts_in_camera = SV_CALLOC_N(obj_cnt, sizeof(self->setup.alphas[0]));
 
@@ -100,7 +102,7 @@ void bc_svd_dtor(bc_svd *self) {
 	free(self->meas);
 }
 
-static FLT bc_svd_compute_R_and_t(bc_svd *self, const SvMat *ut, const FLT *betas, FLT R[3][3], FLT t[3]);
+static FLT bc_svd_compute_R_and_t(bc_svd *self, const CnMat *ut, const FLT *betas, FLT R[3][3], FLT t[3]);
 
 FLT dot(const FLT *v1, const FLT *v2) { return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2]; }
 
@@ -140,21 +142,21 @@ void bc_svd_add_correspondence(bc_svd *self, size_t idx, FLT u, FLT v) {
 	}
 }
 
-void bc_svd_fill_M(bc_svd *self, SvMat *_M, const int row, const FLT *as, int axis, FLT angle) {
-	FLT *M = SV_RAW_PTR(_M) + row * 12;
+void bc_svd_fill_M(bc_svd *self, CnMat *_M, const int row, const FLT *as, int axis, FLT angle) {
+	FLT *M = CN_RAW_PTR(_M) + row * 12;
 
 	FLT eq[3] = {NAN, NAN, NAN};
 	self->setup.fillFn(self->setup.user, eq, axis, angle);
 
 	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 3; j++) {
-			svMatrixSet(_M, row, i * 3 + j, eq[j] * as[i]);
-			assert(isfinite(svMatrixGet(_M, row, i * 3 + j)));
+			cnMatrixSet(_M, row, i * 3 + j, eq[j] * as[i]);
+			assert(isfinite(cnMatrixGet(_M, row, i * 3 + j)));
 		}
 	}
 }
 
-static void bc_svd_compute_ccs(bc_svd *self, const FLT *betas, const SvMat *ut) {
+static void bc_svd_compute_ccs(bc_svd *self, const FLT *betas, const CnMat *ut) {
 	for (int i = 0; i < 4; i++)
 		self->control_points_in_camera[i][0] = self->control_points_in_camera[i][1] =
 			self->control_points_in_camera[i][2] = 0.0f;
@@ -162,7 +164,7 @@ static void bc_svd_compute_ccs(bc_svd *self, const FLT *betas, const SvMat *ut) 
 	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 4; j++)
 			for (int k = 0; k < 3; k++) {
-				FLT val = svMatrixGet(ut, (11 - i), 3 * j + k);
+				FLT val = cnMatrixGet(ut, (11 - i), 3 * j + k);
 				self->control_points_in_camera[j][k] += betas[i] * val;
 			}
 	}
@@ -179,7 +181,7 @@ void bc_svd_compute_pcs(bc_svd *self) {
 	}
 }
 
-static void bc_svd_compute_L_6x10(bc_svd *self, const SvMat *ut, SvMat *L_6x10) {
+static void bc_svd_compute_L_6x10(bc_svd *self, const CnMat *ut, CnMat *L_6x10) {
 	FLT dv[4][6][3];
 
 	for (int i = 0; i < 4; i++) {
@@ -187,7 +189,7 @@ static void bc_svd_compute_L_6x10(bc_svd *self, const SvMat *ut, SvMat *L_6x10) 
 		for (int j = 0; j < 6; j++) {
 
 			for (int h = 0; h < 3; h++) {
-				dv[i][j][h] = svMatrixGet(ut, 11 - i, 3 * a + h) - svMatrixGet(ut, 11 - i, 3 * b + h);
+				dv[i][j][h] = cnMatrixGet(ut, 11 - i, 3 * a + h) - cnMatrixGet(ut, 11 - i, 3 * b + h);
 			}
 
 			b++;
@@ -199,32 +201,32 @@ static void bc_svd_compute_L_6x10(bc_svd *self, const SvMat *ut, SvMat *L_6x10) 
 	}
 
 	for (int i = 0; i < 6; i++) {
-		*svMatrixPtr(L_6x10, i, 0) = dot(dv[0][i], dv[0][i]);
-		*svMatrixPtr(L_6x10, i, 1) = 2.0f * dot(dv[0][i], dv[1][i]);
-		*svMatrixPtr(L_6x10, i, 2) = dot(dv[1][i], dv[1][i]);
-		*svMatrixPtr(L_6x10, i, 3) = 2.0f * dot(dv[0][i], dv[2][i]);
-		*svMatrixPtr(L_6x10, i, 4) = 2.0f * dot(dv[1][i], dv[2][i]);
-		*svMatrixPtr(L_6x10, i, 5) = dot(dv[2][i], dv[2][i]);
-		*svMatrixPtr(L_6x10, i, 6) = 2.0f * dot(dv[0][i], dv[3][i]);
-		*svMatrixPtr(L_6x10, i, 7) = 2.0f * dot(dv[1][i], dv[3][i]);
-		*svMatrixPtr(L_6x10, i, 8) = 2.0f * dot(dv[2][i], dv[3][i]);
-		*svMatrixPtr(L_6x10, i, 9) = dot(dv[3][i], dv[3][i]);
+		*cnMatrixPtr(L_6x10, i, 0) = dot(dv[0][i], dv[0][i]);
+		*cnMatrixPtr(L_6x10, i, 1) = 2.0f * dot(dv[0][i], dv[1][i]);
+		*cnMatrixPtr(L_6x10, i, 2) = dot(dv[1][i], dv[1][i]);
+		*cnMatrixPtr(L_6x10, i, 3) = 2.0f * dot(dv[0][i], dv[2][i]);
+		*cnMatrixPtr(L_6x10, i, 4) = 2.0f * dot(dv[1][i], dv[2][i]);
+		*cnMatrixPtr(L_6x10, i, 5) = dot(dv[2][i], dv[2][i]);
+		*cnMatrixPtr(L_6x10, i, 6) = 2.0f * dot(dv[0][i], dv[3][i]);
+		*cnMatrixPtr(L_6x10, i, 7) = 2.0f * dot(dv[1][i], dv[3][i]);
+		*cnMatrixPtr(L_6x10, i, 8) = 2.0f * dot(dv[2][i], dv[3][i]);
+		*cnMatrixPtr(L_6x10, i, 9) = dot(dv[3][i], dv[3][i]);
 	}
 }
 
-void find_betas_approx_1(const SvMat *L_6x10, const SvMat *Rho, FLT *betas) {
+void find_betas_approx_1(const CnMat *L_6x10, const CnMat *Rho, FLT *betas) {
 	FLT l_6x4[6 * 4], b4[4];
-	SvMat L_6x4 = svMat(6, 4, l_6x4);
-	SvMat B4 = svMat(4, 1, b4);
+	CnMat L_6x4 = cnMat(6, 4, l_6x4);
+	CnMat B4 = cnMat(4, 1, b4);
 
 	for (int i = 0; i < 6; i++) {
-		svMatrixSet(&L_6x4, i, 0, svMatrixGet(L_6x10, i, 0));
-		svMatrixSet(&L_6x4, i, 1, svMatrixGet(L_6x10, i, 1));
-		svMatrixSet(&L_6x4, i, 2, svMatrixGet(L_6x10, i, 3));
-		svMatrixSet(&L_6x4, i, 3, svMatrixGet(L_6x10, i, 6));
+		cnMatrixSet(&L_6x4, i, 0, cnMatrixGet(L_6x10, i, 0));
+		cnMatrixSet(&L_6x4, i, 1, cnMatrixGet(L_6x10, i, 1));
+		cnMatrixSet(&L_6x4, i, 2, cnMatrixGet(L_6x10, i, 3));
+		cnMatrixSet(&L_6x4, i, 3, cnMatrixGet(L_6x10, i, 6));
 	}
 
-	svSolve(&L_6x4, Rho, &B4, SV_INVERT_METHOD_SVD);
+	cnSolve(&L_6x4, Rho, &B4, CN_INVERT_METHOD_SVD);
 
 	if (b4[0] < 0) {
 		betas[0] = sqrt(-b4[0]);
@@ -239,58 +241,58 @@ void find_betas_approx_1(const SvMat *L_6x10, const SvMat *Rho, FLT *betas) {
 	}
 }
 
-static void compute_A_and_b_gauss_newton(const SvMat *L_6x10, const FLT *rho, FLT betas[4], SvMat *A, SvMat *b) {
+static void compute_A_and_b_gauss_newton(const CnMat *L_6x10, const FLT *rho, FLT betas[4], CnMat *A, CnMat *b) {
 	for (int i = 0; i < 6; i++) {
-		*svMatrixPtr(A, i, 0) = 2 * svMatrixGet(L_6x10, i, 0) * betas[0] + svMatrixGet(L_6x10, i, 1) * betas[1] +
-								svMatrixGet(L_6x10, i, 3) * betas[2] + svMatrixGet(L_6x10, i, 6) * betas[3];
-		*svMatrixPtr(A, i, 1) = svMatrixGet(L_6x10, i, 1) * betas[0] + 2 * svMatrixGet(L_6x10, i, 2) * betas[1] +
-								svMatrixGet(L_6x10, i, 4) * betas[2] + svMatrixGet(L_6x10, i, 7) * betas[3];
-		*svMatrixPtr(A, i, 2) = svMatrixGet(L_6x10, i, 3) * betas[0] + svMatrixGet(L_6x10, i, 4) * betas[1] +
-								2 * svMatrixGet(L_6x10, i, 5) * betas[2] + svMatrixGet(L_6x10, i, 8) * betas[3];
-		*svMatrixPtr(A, i, 3) = svMatrixGet(L_6x10, i, 6) * betas[0] + svMatrixGet(L_6x10, i, 7) * betas[1] +
-								svMatrixGet(L_6x10, i, 8) * betas[2] + 2 * svMatrixGet(L_6x10, i, 9) * betas[3];
+		*cnMatrixPtr(A, i, 0) = 2 * cnMatrixGet(L_6x10, i, 0) * betas[0] + cnMatrixGet(L_6x10, i, 1) * betas[1] +
+								cnMatrixGet(L_6x10, i, 3) * betas[2] + cnMatrixGet(L_6x10, i, 6) * betas[3];
+		*cnMatrixPtr(A, i, 1) = cnMatrixGet(L_6x10, i, 1) * betas[0] + 2 * cnMatrixGet(L_6x10, i, 2) * betas[1] +
+								cnMatrixGet(L_6x10, i, 4) * betas[2] + cnMatrixGet(L_6x10, i, 7) * betas[3];
+		*cnMatrixPtr(A, i, 2) = cnMatrixGet(L_6x10, i, 3) * betas[0] + cnMatrixGet(L_6x10, i, 4) * betas[1] +
+								2 * cnMatrixGet(L_6x10, i, 5) * betas[2] + cnMatrixGet(L_6x10, i, 8) * betas[3];
+		*cnMatrixPtr(A, i, 3) = cnMatrixGet(L_6x10, i, 6) * betas[0] + cnMatrixGet(L_6x10, i, 7) * betas[1] +
+								cnMatrixGet(L_6x10, i, 8) * betas[2] + 2 * cnMatrixGet(L_6x10, i, 9) * betas[3];
 
-		svMatrixSet(
+		cnMatrixSet(
 			b, i, 0,
 			rho[i] -
-				(svMatrixGet(L_6x10, i, 0) * betas[0] * betas[0] + svMatrixGet(L_6x10, i, 1) * betas[0] * betas[1] +
-				 svMatrixGet(L_6x10, i, 2) * betas[1] * betas[1] + svMatrixGet(L_6x10, i, 3) * betas[0] * betas[2] +
-				 svMatrixGet(L_6x10, i, 4) * betas[1] * betas[2] + svMatrixGet(L_6x10, i, 5) * betas[2] * betas[2] +
-				 svMatrixGet(L_6x10, i, 6) * betas[0] * betas[3] + svMatrixGet(L_6x10, i, 7) * betas[1] * betas[3] +
-				 svMatrixGet(L_6x10, i, 8) * betas[2] * betas[3] + svMatrixGet(L_6x10, i, 9) * betas[3] * betas[3]));
+				(cnMatrixGet(L_6x10, i, 0) * betas[0] * betas[0] + cnMatrixGet(L_6x10, i, 1) * betas[0] * betas[1] +
+				 cnMatrixGet(L_6x10, i, 2) * betas[1] * betas[1] + cnMatrixGet(L_6x10, i, 3) * betas[0] * betas[2] +
+				 cnMatrixGet(L_6x10, i, 4) * betas[1] * betas[2] + cnMatrixGet(L_6x10, i, 5) * betas[2] * betas[2] +
+				 cnMatrixGet(L_6x10, i, 6) * betas[0] * betas[3] + cnMatrixGet(L_6x10, i, 7) * betas[1] * betas[3] +
+				 cnMatrixGet(L_6x10, i, 8) * betas[2] * betas[3] + cnMatrixGet(L_6x10, i, 9) * betas[3] * betas[3]));
 	}
 }
 
-static void gauss_newton(const SvMat *L_6x10, const SvMat *Rho, FLT betas[4]) {
+static void gauss_newton(const CnMat *L_6x10, const CnMat *Rho, FLT betas[4]) {
 	const int iterations_number = 5;
 
 	FLT x[4] = {0};
-	SV_CREATE_STACK_MAT(A, 6, 4);
-	SV_CREATE_STACK_MAT(B, 6, 1);
-	SvMat X = svMat(4, 1, x);
+	CN_CREATE_STACK_MAT(A, 6, 4);
+	CN_CREATE_STACK_MAT(B, 6, 1);
+	CnMat X = cnMat(4, 1, x);
 
 	for (int k = 0; k < iterations_number; k++) {
-		compute_A_and_b_gauss_newton(L_6x10, sv_as_const_vector(Rho), betas, &A, &B);
-		svSolve(&A, &B, &X, SV_INVERT_METHOD_QR);
+		compute_A_and_b_gauss_newton(L_6x10, cn_as_const_vector(Rho), betas, &A, &B);
+		cnSolve(&A, &B, &X, CN_INVERT_METHOD_QR);
 		for (int i = 0; i < 4; i++)
 			betas[i] += x[i];
 	}
-	SV_FREE_STACK_MAT(B);
-	SV_FREE_STACK_MAT(A);
+	CN_FREE_STACK_MAT(B);
+	CN_FREE_STACK_MAT(A);
 }
 
-static void find_betas_approx_2(const SvMat *L_6x10, const SvMat *Rho, FLT *betas) {
+static void find_betas_approx_2(const CnMat *L_6x10, const CnMat *Rho, FLT *betas) {
 	FLT b3[3];
-	SV_CREATE_STACK_MAT(L_6x3, 6, 3);
-	SvMat B3 = svMat(3, 1, b3);
+	CN_CREATE_STACK_MAT(L_6x3, 6, 3);
+	CnMat B3 = cnMat(3, 1, b3);
 
 	for (int i = 0; i < 6; i++) {
-		svMatrixSet(&L_6x3, i, 0, svMatrixGet(L_6x10, i, 0));
-		svMatrixSet(&L_6x3, i, 1, svMatrixGet(L_6x10, i, 1));
-		svMatrixSet(&L_6x3, i, 2, svMatrixGet(L_6x10, i, 2));
+		cnMatrixSet(&L_6x3, i, 0, cnMatrixGet(L_6x10, i, 0));
+		cnMatrixSet(&L_6x3, i, 1, cnMatrixGet(L_6x10, i, 1));
+		cnMatrixSet(&L_6x3, i, 2, cnMatrixGet(L_6x10, i, 2));
 	}
 
-	svSolve(&L_6x3, Rho, &B3, SV_INVERT_METHOD_SVD);
+	cnSolve(&L_6x3, Rho, &B3, CN_INVERT_METHOD_SVD);
 
 	if (b3[0] < 0) {
 		betas[0] = sqrt(-b3[0]);
@@ -305,26 +307,26 @@ static void find_betas_approx_2(const SvMat *L_6x10, const SvMat *Rho, FLT *beta
 
 	betas[2] = 0.0;
 	betas[3] = 0.0;
-	SV_FREE_STACK_MAT(L_6x3);
+	CN_FREE_STACK_MAT(L_6x3);
 }
 
 // betas10        = [B11 B12 B22 B13 B23 B33 B14 B24 B34 B44]
 // betas_approx_3 = [B11 B12 B22 B13 B23                    ]
 
-static void bc_svd_find_betas_approx_3(bc_svd *self, const SvMat *L_6x10, const SvMat *Rho, FLT *betas) {
+static void bc_svd_find_betas_approx_3(bc_svd *self, const CnMat *L_6x10, const CnMat *Rho, FLT *betas) {
 	FLT l_6x5[6 * 5], b5[5];
-	SvMat L_6x5 = svMat(6, 5, l_6x5);
-	SvMat B5 = svMat(5, 1, b5);
+	CnMat L_6x5 = cnMat(6, 5, l_6x5);
+	CnMat B5 = cnMat(5, 1, b5);
 
 	for (int i = 0; i < 6; i++) {
-		svMatrixSet(&L_6x5, i, 0, svMatrixGet(L_6x10, i, 0));
-		svMatrixSet(&L_6x5, i, 1, svMatrixGet(L_6x10, i, 1));
-		svMatrixSet(&L_6x5, i, 2, svMatrixGet(L_6x10, i, 2));
-		svMatrixSet(&L_6x5, i, 3, svMatrixGet(L_6x10, i, 3));
-		svMatrixSet(&L_6x5, i, 4, svMatrixGet(L_6x10, i, 4));
+		cnMatrixSet(&L_6x5, i, 0, cnMatrixGet(L_6x10, i, 0));
+		cnMatrixSet(&L_6x5, i, 1, cnMatrixGet(L_6x10, i, 1));
+		cnMatrixSet(&L_6x5, i, 2, cnMatrixGet(L_6x10, i, 2));
+		cnMatrixSet(&L_6x5, i, 3, cnMatrixGet(L_6x10, i, 3));
+		cnMatrixSet(&L_6x5, i, 4, cnMatrixGet(L_6x10, i, 4));
 	}
 
-	svSolve(&L_6x5, Rho, &B5, SV_INVERT_METHOD_SVD);
+	cnSolve(&L_6x5, Rho, &B5, CN_INVERT_METHOD_SVD);
 
 	if (b5[0] < 0) {
 		betas[0] = sqrt(-b5[0]);
@@ -352,7 +354,7 @@ FLT bc_svd_compute_pose(bc_svd *self, FLT R[3][3], FLT t[3]) {
 	FLT Rs[4][3][3] = {0}, ts[4][3] = {0};
 	int N = 0;
 
-	SV_CREATE_STACK_MAT(M, self->meas_cnt, 12);
+	CN_CREATE_STACK_MAT(M, self->meas_cnt, 12);
 	bool colCovered[12] = { 0 };
 	bool has_axis[2] = {false, false};
 	for (int i = 0; i < self->meas_cnt; i++) {
@@ -362,7 +364,7 @@ FLT bc_svd_compute_pose(bc_svd *self, FLT R[3][3], FLT t[3]) {
 		has_axis[meas->axis] = true;
 
 		for (int j = 0; j < 12; j++) {
-			FLT v = svMatrixGet(&M, i, j);
+			FLT v = cnMatrixGet(&M, i, j);
 			assert(isfinite(v));
 			if (v != 0.0)
 				colCovered[j] = true;
@@ -379,17 +381,17 @@ FLT bc_svd_compute_pose(bc_svd *self, FLT R[3][3], FLT t[3]) {
 			return -1;
 	}
 
-	SV_CREATE_STACK_MAT(MtM, 12, 12);
-	SV_CREATE_STACK_MAT(D, 12, 1);
-	SV_CREATE_STACK_MAT(Ut, 12, 12);
+	CN_CREATE_STACK_MAT(MtM, 12, 12);
+	CN_CREATE_STACK_MAT(D, 12, 1);
+	CN_CREATE_STACK_MAT(Ut, 12, 12);
 
-	svMulTransposed(&M, &MtM, 1, 0, 1);
+	cnMulTransposed(&M, &MtM, 1, 0, 1);
 
-	svSVD(&MtM, &D, &Ut, 0, SV_SVD_MODIFY_A | SV_SVD_U_T);
+	cnSVD(&MtM, &D, &Ut, 0, CN_SVD_MODIFY_A | CN_SVD_U_T);
 
 	FLT l_6x10[6 * 10], rho[6];
-	SvMat L_6x10 = svMat(6, 10, l_6x10);
-	SvMat Rho = svMat(6, 1, rho);
+	CnMat L_6x10 = cnMat(6, 10, l_6x10);
+	CnMat Rho = cnMat(6, 1, rho);
 
 	bc_svd_compute_L_6x10(self, &Ut, &L_6x10);
 
@@ -415,10 +417,10 @@ FLT bc_svd_compute_pose(bc_svd *self, FLT R[3][3], FLT t[3]) {
 
 	copy_R_and_t(Rs[N + 1], ts[N + 1], R, t);
 
-	SV_FREE_STACK_MAT(Ut);
-	SV_FREE_STACK_MAT(D);
-	SV_FREE_STACK_MAT(MtM);
-	SV_FREE_STACK_MAT(M);
+	CN_FREE_STACK_MAT(Ut);
+	CN_FREE_STACK_MAT(D);
+	CN_FREE_STACK_MAT(MtM);
+	CN_FREE_STACK_MAT(M);
 
 	return rep_errors[N];
 }
@@ -465,12 +467,12 @@ void bc_svd_estimate_R_and_t(bc_svd *self, FLT R[3][3], FLT t[3]) {
 	}
 
 	FLT abt[3 * 3] = {0}, abt_d[3] = {0}, abt_u[3 * 3] = {0}, abt_v[3 * 3] = {0};
-	SvMat ABt = svMat(3, 3, abt);
-	SvMat ABt_D = svMat(3, 1, abt_d);
-	SvMat ABt_U = svMat(3, 3, abt_u);
-	SvMat ABt_V = svMat(3, 3, abt_v);
+	CnMat ABt = cnMat(3, 3, abt);
+	CnMat ABt_D = cnMat(3, 1, abt_d);
+	CnMat ABt_U = cnMat(3, 3, abt_u);
+	CnMat ABt_V = cnMat(3, 3, abt_v);
 
-	svSetZero(&ABt);
+	cnSetZero(&ABt);
 
 	for (int i = 0; i < self->setup.obj_cnt; i++) {
 		FLT *pc = self->object_pts_in_camera[i];
@@ -483,16 +485,16 @@ void bc_svd_estimate_R_and_t(bc_svd *self, FLT R[3][3], FLT t[3]) {
 		}
 	}
 
-#ifdef SV_MATRIX_IS_COL_MAJOR
-	svTranspose(&ABt, &ABt);
+#ifdef CN_MATRIX_IS_COL_MAJOR
+	cnTranspose(&ABt, &ABt);
 #endif
 
-	svSVD(&ABt, &ABt_D, &ABt_U, &ABt_V, SV_SVD_MODIFY_A);
+	cnSVD(&ABt, &ABt_D, &ABt_U, &ABt_V, CN_SVD_MODIFY_A);
 
-#ifdef SV_MATRIX_IS_COL_MAJOR
-	svTranspose(&ABt, &ABt);
-	svTranspose(&ABt_U, &ABt_U);
-	svTranspose(&ABt_V, &ABt_V);
+#ifdef CN_MATRIX_IS_COL_MAJOR
+	cnTranspose(&ABt, &ABt);
+	cnTranspose(&ABt_U, &ABt_U);
+	cnTranspose(&ABt_V, &ABt_V);
 #endif
 
 	for (int i = 0; i < 3; i++)
@@ -527,7 +529,7 @@ void bc_svd_solve_for_sign(bc_svd *self) {
 	}
 }
 
-static FLT bc_svd_compute_R_and_t(bc_svd *self, const SvMat *ut, const FLT *betas, FLT R[3][3], FLT t[3]) {
+static FLT bc_svd_compute_R_and_t(bc_svd *self, const CnMat *ut, const FLT *betas, FLT R[3][3], FLT t[3]) {
 	bc_svd_compute_ccs(self, betas, ut);
 	bc_svd_compute_pcs(self);
 

@@ -1,6 +1,6 @@
 #include "barycentric_svd/barycentric_svd.h"
+#include "cnmatrix/cn_matrix.h"
 #include "math.h"
-#include "sv_matrix.h"
 #if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <malloc.h>
 #endif
@@ -102,10 +102,10 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 		return rtn;
 	}
 
-	SV_CREATE_STACK_MAT(R, 3, 3);
-	sv_copy_in_row_major(&R, (FLT *)r, 3);
+	CN_CREATE_STACK_MAT(R, 3, 3);
+	cn_copy_in_row_major(&R, (FLT *)r, 3);
 
-	SvMat T = svMat(3, 1, rtn.Pos);
+	CnMat T = cnMat(3, 1, rtn.Pos);
 
 	// Super degenerate inputs will project us basically right in the camera. Detect and reject
 	if (err > 1 || magnitude3d(rtn.Pos) < 0.25 || magnitude3d(rtn.Pos) > 25) {
@@ -127,17 +127,17 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 	// Requested output is camera -> world, so invert
 	if (cameraToWorld) {
 		FLT tmp[3];
-		SvMat Tmp = svMat(3, 1, tmp);
-		svCopy(&T, &Tmp, 0);
+		CnMat Tmp = cnMat(3, 1, tmp);
+		cnCopy(&T, &Tmp, 0);
 
 		// Flip the Rotation matrix
-		svTranspose(&R, &R);
+		cnTranspose(&R, &R);
 		// Then 'tvec = -R * tvec'
-		svGEMM(&R, &Tmp, -1, 0, 0, &T, 0);
+		cnGEMM(&R, &Tmp, -1, 0, 0, &T, 0);
 	}
 
 	LinmathQuat tmp;
-	quatfromsvmatrix(tmp, &R);
+	quatfromcnMatrix(tmp, &R);
 
 	// Typical camera applications have Z facing forward; the vive is contrarian and has Z going out of the
 	// back of the lighthouse. Think of this as a rotation on the Y axis a full 180 degrees -- the quat for that is
@@ -153,7 +153,7 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 	}
 
 cleanup:
-	SV_FREE_STACK_MAT(R);
+	CN_FREE_STACK_MAT(R);
 
 	return rtn;
 }

@@ -1,6 +1,6 @@
 SET(SURVIVE_TESTS
         reproject
-        check_generated barycentric_svd kalman_toy
+        check_generated barycentric_svd
         kalman rotate_angvel export_config)
 
 set(barycentric_svd_ADDITIONAL_SRCS ../barycentric_svd/barycentric_svd.c)

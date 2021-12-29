@@ -639,7 +639,7 @@ const FLT *config_set_float_a(config_group *cg, const char *tag, const FLT *valu
 }
 
 void _json_write_float_array(FILE *f, const char *tag, FLT *v, uint8_t count) {
-#ifdef USE_DOUBLE
+#ifdef CN_USE_DOUBLE
 	json_write_double_array(f, tag, v, count);
 #else
 	json_write_float_array(f, tag, v, count);

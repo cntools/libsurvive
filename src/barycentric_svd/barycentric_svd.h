@@ -1,12 +1,6 @@
 // This code is mostly adapted from the equivalent bc_svd code
 #pragma once
 
-#ifndef WITH_OPENCV
-#include "../../redist/sv_matrix.h"
-#else
-#include <opencv/cv.h>
-#endif
-
 #include "../redist/linmath.h"
 
 typedef FLT LinmathPoint4d[4];

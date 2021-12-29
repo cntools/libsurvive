@@ -1,0 +1,3 @@
+[submodule "libs/cnkalman"]
+	path = libs/cnkalman
+	url = ../cnkalman.git

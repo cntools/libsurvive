@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-
+          submodules: recursive	  
 
       - name: Deploy nuget package
         working-directory: ${{ github.workspace }}

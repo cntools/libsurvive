@@ -19,8 +19,8 @@
 #include "survive_kalman_tracker.h"
 
 #if !defined(__FreeBSD__) && !defined(__APPLE__)
+#include <cnmatrix/cn_matrix.h>
 #include <malloc.h>
-#include <sv_matrix.h>
 
 #endif
 
@@ -333,13 +333,10 @@ static void ApplyDualPoseToPoint(const survive_optimizer *mpfit_ctx, LinmathVec3
     }
 }
 
-
 static inline void run_pair_measurement(survive_optimizer *mpfunc_ctx, size_t meas_idx,
-										const survive_optimizer_measurement *meas, const SvMat *ang_vel_jacb,
+										const survive_optimizer_measurement *meas, const CnMat *ang_vel_jacb,
 										const LinmathDualPose *obj2world, const LinmathDualPose *obj2lh,
-										const LinmathDualPose *world2lh,
-										const FLT* pt,
-										FLT *deviates, FLT **derivs) {
+										const LinmathDualPose *world2lh, const FLT *pt, FLT *deviates, FLT **derivs) {
 	const survive_reproject_model_t *reprojectModel = mpfunc_ctx->reprojectModel;
 	const int lh = meas->light.lh;
 	const struct BaseStationCal *cal = survive_optimizer_get_calibration(mpfunc_ctx, lh);
@@ -430,11 +427,9 @@ static inline void run_pair_measurement(survive_optimizer *mpfunc_ctx, size_t me
 	}
 }
 static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_idx,
-								   const survive_optimizer_measurement *meas, const SvMat *ang_vel_jacb,
+								   const survive_optimizer_measurement *meas, const CnMat *ang_vel_jacb,
 								   const LinmathDualPose *obj2world, const LinmathDualPose *obj2lh,
-								   const LinmathDualPose *world2lh,
-                                   const FLT *pt,
-								   FLT *deviates, FLT **derivs) {
+								   const LinmathDualPose *world2lh, const FLT *pt, FLT *deviates, FLT **derivs) {
 	const survive_reproject_model_t *reprojectModel = mpfunc_ctx->reprojectModel;
 	SurviveContext *ctx = mpfunc_ctx->sos[0]->ctx;
 	const int lh = meas->light.lh;
@@ -641,8 +636,8 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
     LinmathDualPose obj2lh[NUM_GEN2_LIGHTHOUSES] = {0};
 
     int ang_size = mpfunc_ctx->settings->use_quat_model ? 4 : 3;
-	SV_CREATE_STACK_MAT(ang_velocity_jac, ang_size, ang_size);
-	sv_set_diag_val(&ang_velocity_jac, 1);
+	CN_CREATE_STACK_MAT(ang_velocity_jac, ang_size, ang_size);
+	cn_set_diag_val(&ang_velocity_jac, 1);
 
 	int meas_count = m;
 	int meas_idx = 0;
@@ -905,14 +900,14 @@ static mp_config *survive_optimizer_get_cfg(SurviveContext *ctx) {
 mp_config precise_cfg = {0};
 SURVIVE_EXPORT mp_config *survive_optimizer_precise_config() { return &precise_cfg; }
 
-static inline bool sane_covariance(const SvMat *P) {
+static inline bool sane_covariance(const CnMat *P) {
 #ifndef NDEBUG
 	for (int i = 0; i < P->rows; i++) {
-		if (svMatrixGet(P, i, i) < 0)
+		if (cnMatrixGet(P, i, i) < 0)
 			return false;
 	}
 #ifdef USE_EIGEN
-	return svDet(P) > -1e-10;
+	return cnDet(P) > -1e-10;
 #endif
 #endif
 	return true;
@@ -930,7 +925,7 @@ int survive_optimizer_nonfixed_index(survive_optimizer *ctx, int idx) {
 	return rtn;
 }
 
-int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result, struct SvMat *R) {
+int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result, struct CnMat *R) {
 	SurviveContext *ctx = optimizer->sos[0] ? optimizer->sos[0]->ctx : 0;
 
 	mp_config *cfg = optimizer->cfg;
@@ -970,7 +965,7 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 
 	int nfree = survive_optimizer_get_free_parameters_count(optimizer);
 	FLT *covar = R ? R->data : 0;
-	SV_CREATE_STACK_MAT(R_aa, nfree * (covar ? 1 : 0), nfree * (covar ? 1 : 0));
+	CN_CREATE_STACK_MAT(R_aa, nfree * (covar ? 1 : 0), nfree * (covar ? 1 : 0));
 	result->covar_free = covar ? R_aa.data : 0;
 
 	int rtn = mpfit(mpfunc, meas_count, survive_optimizer_get_parameters_count(optimizer), optimizer->parameters,
@@ -981,13 +976,13 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
     int pose_size = optimizer->settings->use_quat_model ? 7 : 6;
     int totalFreePoseCount = nfree / pose_size;
 	if (covar) {
-		SvMat R_q = svMat(R->rows, R->cols, covar);
+		CnMat R_q = cnMat(R->rows, R->cols, covar);
 		if (optimizer->settings->optimize_scale_threshold >= 0) {
 			int idx = survive_optimizer_get_sensor_scale_index(optimizer);
 			int free_idx = survive_optimizer_nonfixed_index(optimizer, idx);
 			if (free_idx >= 0) {
 				for (int z = 0; z < 1; z++) {
-					FLT scale_cov = svMatrixGet(&R_aa, free_idx + z, free_idx + z);
+					FLT scale_cov = cnMatrixGet(&R_aa, free_idx + z, free_idx + z);
 					if (scale_cov > 0) {
 						FLT scale = params[idx + z];
 
@@ -1002,21 +997,21 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 			}
 		}
 		if(optimizer->settings->use_quat_model) {
-            svCopy(&R_aa, &R_q, 0);
+			cnCopy(&R_aa, &R_q, 0);
 		} else {
-			SV_CREATE_STACK_MAT(G, R->rows, R_aa.rows);
-			SV_CREATE_STACK_MAT(Gp, 4, 3);
-            assert(R->rows == R->cols);
+			CN_CREATE_STACK_MAT(G, R->rows, R_aa.rows);
+			CN_CREATE_STACK_MAT(Gp, 4, 3);
+			assert(R->rows == R->cols);
             //assert(R->rows == totalFreePoseCount * 7);
 
-            sv_set_diag_val(&G, 1);
+			cn_set_diag_val(&G, 1);
 
-            for (int z = 0; z < R->rows / 7; z++) {
+			for (int z = 0; z < R->rows / 7; z++) {
                 gen_axisangle2quat_jac_axis_angle(Gp.data, ((LinmathAxisAnglePose *) &poses[z])->AxisAngleRot);
                 for (int i = 0; i < 4; i++) {
                     for (int j = 0; j < 3; j++) {
-                        svMatrixSet(&G, i + z * 7 + 3, j + z * 6 + 3, svMatrixGet(&Gp, i, j));
-                    }
+						cnMatrixSet(&G, i + z * 7 + 3, j + z * 6 + 3, cnMatrixGet(&Gp, i, j));
+					}
                 }
             }
 

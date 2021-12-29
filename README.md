@@ -46,7 +46,7 @@ Table of Contents
 
 ## Debian
 ```
-git clone git@github.com:cntools/libsurvive.git
+git clone git@github.com:cntools/libsurvive.git --recursive
 cd libsurvive
 sudo cp ./useful_files/81-vive.rules /etc/udev/rules.d/
 sudo udevadm control --reload-rules && udevadm trigger

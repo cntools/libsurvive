@@ -28,7 +28,7 @@ void survive_kalman_lighthouse_report(SurviveKalmanLighthouse *tracker) {
 	SurvivePose lighthouse2world = survive_kalman_lighthouse_lh2world(tracker);
 	FLT var_diag[3] = {0};
 	for (int i = 0; i < 3; i++) {
-		var_diag[i] = svMatrixGet(&tracker->model.P, i, i);
+		var_diag[i] = cnMatrixGet(&tracker->model.P, i, i);
 	}
 
 	if (tracker->lh != 0) {
@@ -38,7 +38,7 @@ void survive_kalman_lighthouse_report(SurviveKalmanLighthouse *tracker) {
 	}
 
 	tracker->ctx->bsd[tracker->lh].confidence = 1. / norm3d(var_diag);
-	assert(sv_is_finite(&tracker->model.state));
+	assert(cn_is_finite(&tracker->model.state));
 
 	SURVIVE_INVOKE_HOOK(lighthouse_pose, tracker->ctx, tracker->lh, &lighthouse2world);
 }
@@ -65,8 +65,8 @@ static inline int get_axis(const struct PoserDataLight *pdl) {
 	}
 	return 0;
 }
-static bool map_light_data(void *user, const struct SvMat *Z, const struct SvMat *x_t, struct SvMat *y,
-						   struct SvMat *H_k) {
+static bool map_light_data(void *user, const struct CnMat *Z, const struct CnMat *x_t, struct CnMat *y,
+						   struct CnMat *H_k) {
 	struct map_light_data_ctx *cbctx = (struct map_light_data_ctx *)user;
 	const SurviveKalmanLighthouse *tracker = cbctx->tracker;
 
@@ -75,20 +75,20 @@ static bool map_light_data(void *user, const struct SvMat *Z, const struct SvMat
 	const survive_reproject_model_t *mdl = survive_reproject_model(ctx);
 
 	if (H_k) {
-		sv_set_zero(H_k);
+		cn_set_zero(H_k);
 	}
-	FLT *Y = sv_as_vector(y);
+	FLT *Y = cn_as_vector(y);
 
-	SV_CREATE_STACK_MAT(inv_jacobian_row_ordered, 7, 7);
+	CN_CREATE_STACK_MAT(inv_jacobian_row_ordered, 7, 7);
 #ifdef TRACK_IN_WORLD2LH
-	const SurvivePose world2lh = *(SurvivePose *)sv_as_const_vector(x_t);
-	sv_eye(&inv_jacobian_row_ordered, 0);
+	const SurvivePose world2lh = *(SurvivePose *)cn_as_const_vector(x_t);
+	cn_eye(&inv_jacobian_row_ordered, 0);
 #else
-	const SurvivePose lh2world = *(SurvivePose *)sv_as_const_vector(x_t);
+	const SurvivePose lh2world = *(SurvivePose *)cn_as_const_vector(x_t);
 	const SurvivePose world2lh = InvertPoseRtn(&lh2world);
 	gen_invert_pose_jac_obj_p(inv_jacobian_row_ordered.data, &lh2world);
 #endif
-	SV_CREATE_STACK_MAT(jacobian, 1, 7);
+	CN_CREATE_STACK_MAT(jacobian, 1, 7);
 	for (int i = 0; i < Z->rows; i++) {
 		const LightInfo *info = &cbctx->savedLight[i];
 		int axis = info->axis;
@@ -100,26 +100,26 @@ static bool map_light_data(void *user, const struct SvMat *Z, const struct SvMat
 
 		const FLT *ptInObj = &so->sensor_locations[info->sensor_idx * 3];
 		FLT h_x = project_fn(&obj2world, ptInObj, &world2lh, &ctx->bsd[info->lh].fcal[axis]);
-		Y[i] = sv_as_const_vector(Z)[i] - h_x;
+		Y[i] = cn_as_const_vector(Z)[i] - h_x;
 		SV_DATA_LOG("Z_bsd_light[%d][%d][%d]", &info->value, 1, info->lh, info->axis, info->sensor_idx);
 		SV_DATA_LOG("h_bsd_light[%d][%d][%d]", &h_x, 1, info->lh, info->axis, info->sensor_idx);
 		SV_DATA_LOG("Y_bsd_light[%d][%d][%d]", Y, 1, info->lh, info->axis, info->sensor_idx);
 
 		if (H_k) {
-			project_jacob_fn(sv_as_vector(&jacobian), &obj2world, ptInObj, &world2lh, &ctx->bsd[info->lh].fcal[axis]);
+			project_jacob_fn(cn_as_vector(&jacobian), &obj2world, ptInObj, &world2lh, &ctx->bsd[info->lh].fcal[axis]);
 
-#ifdef SV_MATRIX_IS_COL_MAJOR
-			svGEMM(&jacobian, &inv_jacobian_row_ordered, 1, 0, 0, H_k, SV_GEMM_FLAG_B_T);
+#ifdef CN_MATRIX_IS_COL_MAJOR
+			cnGEMM(&jacobian, &inv_jacobian_row_ordered, 1, 0, 0, H_k, CN_GEMM_FLAG_B_T);
 			Outstanding;
 			Do the slow thing here to copy into H_k;
 			yada
 #else
-			SvMat H_ki = sv_row(H_k, i);
-			svGEMM(&jacobian, &inv_jacobian_row_ordered, 1, 0, 0, &H_ki, 0);
+			CnMat H_ki = cn_row(H_k, i);
+			cnGEMM(&jacobian, &inv_jacobian_row_ordered, 1, 0, 0, &H_ki, 0);
 #endif
 		}
 	}
-	if (H_k && !sv_is_finite(H_k))
+	if (H_k && !cn_is_finite(H_k))
 		return false;
 
 	return true;
@@ -140,9 +140,9 @@ void survive_kalman_lighthouse_integrate_light(SurviveKalmanLighthouse *tracker,
 		return;
 
 	if (tracker->light_variance >= 0) {
-		SV_CREATE_STACK_MAT(Z, 1, 1);
+		CN_CREATE_STACK_MAT(Z, 1, 1);
 
-		svMatrixSet(&Z, 0, 0, data->angle);
+		cnMatrixSet(&Z, 0, 0, data->angle);
 		struct map_light_data_ctx cbctx = {
 			.tracker = tracker,
 			.so = so,
@@ -155,15 +155,15 @@ void survive_kalman_lighthouse_integrate_light(SurviveKalmanLighthouse *tracker,
 			return;
 
 		FLT so_var[3];
-		sv_get_diag(&so->tracker->model.P, so_var, 3);
+		cn_get_diag(&so->tracker->model.P, so_var, 3);
 		FLT v = tracker->light_variance + norm3d(so_var);
 
 		FLT light_vars[32] = {0};
 		for (int i = 0; i < 32; i++)
 			light_vars[i] = v;
-		SvMat R = svVec(Z.rows, light_vars);
+		CnMat R = cnVec(Z.rows, light_vars);
 
-		survive_kalman_meas_model_predict_update(time, &tracker->lightcap_model, &cbctx, &Z, &R);
+		cnkalman_meas_model_predict_update(time, &tracker->lightcap_model, &cbctx, &Z, &R);
 		survive_kalman_lighthouse_report(tracker);
 	}
 }
@@ -174,10 +174,10 @@ static SurvivePose copy_model(const FLT *src, size_t state_size) {
 	return rtn;
 }
 
-static void survive_kalman_lighthouse_process_noise(void *user, FLT t, const SvMat *x, struct SvMat *q_out) {
+static void survive_kalman_lighthouse_process_noise(void *user, FLT t, const CnMat *x, struct CnMat *q_out) {
 	SurviveKalmanLighthouse *tracker = user;
 	size_t state_cnt = x->rows;
-	SurvivePose state = copy_model(sv_as_const_vector(x), state_cnt);
+	SurvivePose state = copy_model(cn_as_const_vector(x), state_cnt);
 
 	/* ================== Positional ============================== */
 	// Estimation with Applications to Tracking and Navigation: Theory Algorithms and Software Ch 6
@@ -214,7 +214,7 @@ static void survive_kalman_lighthouse_process_noise(void *user, FLT t, const SvM
 		}
 	}
 
-	sv_copy_in_row_major(q_out, Q, 7);
+	cn_copy_in_row_major(q_out, Q, 7);
 }
 
 void survive_kalman_lighthouse_init(SurviveKalmanLighthouse *tracker, SurviveContext *ctx, int lh) {
@@ -223,16 +223,16 @@ void survive_kalman_lighthouse_init(SurviveKalmanLighthouse *tracker, SurviveCon
 	tracker->lh = lh;
 	SurviveKalmanLighthouse_attach_config(ctx, tracker);
 
-	survive_kalman_state_init(&tracker->model, 7, 0, survive_kalman_lighthouse_process_noise, tracker,
-							  (FLT *)&tracker->state);
-	survive_kalman_meas_model_init(&tracker->model, "lightcap", &tracker->lightcap_model, map_light_data);
+	cnkalman_state_init(&tracker->model, 7, 0, survive_kalman_lighthouse_process_noise, tracker,
+						(FLT *)&tracker->state);
+	cnkalman_meas_model_init(&tracker->model, "lightcap", &tracker->lightcap_model, map_light_data);
 	tracker->lightcap_model.term_criteria = (struct term_criteria_t){.max_iterations = 100};
 
 	tracker->state.Rot[0] = 1;
 	for (int i = 0; i < 3; i++)
-		svMatrixSet(&tracker->model.P, i, i, 1e5);
+		cnMatrixSet(&tracker->model.P, i, i, 1e5);
 	for (int i = 3; i < 7; i++)
-		svMatrixSet(&tracker->model.P, i, i, 1e3);
+		cnMatrixSet(&tracker->model.P, i, i, 1e3);
 }
 
 SURVIVE_EXPORT void survive_kalman_lighthouse_integrate_observation(SurviveKalmanLighthouse *tracker,
@@ -240,15 +240,15 @@ SURVIVE_EXPORT void survive_kalman_lighthouse_integrate_observation(SurviveKalma
 	if (tracker == 0)
 		return;
 
-	SV_CREATE_STACK_MAT(H, 7, tracker->model.state_cnt);
+	CN_CREATE_STACK_MAT(H, 7, tracker->model.state_cnt);
 
 	size_t state_cnt = tracker->model.state_cnt;
-	sv_set_diag_val(&H, 1);
+	cn_set_diag_val(&H, 1);
 	FLT variance[7] = {.1, .1, .1, .01, .01, .01, .01};
 	if (_variance) {
 		memcpy(variance, _variance, sizeof(variance));
 	}
-	SvMat R = svVec(7, variance);
+	CnMat R = cnVec(7, variance);
 	FLT v = normnd2(variance, 7);
 
 	if (v > 0) {
@@ -257,22 +257,22 @@ SURVIVE_EXPORT void survive_kalman_lighthouse_integrate_observation(SurviveKalma
 #else
 		SurvivePose Z = *pose;
 #endif
-		SvMat Zp = svMat(7, 1, (void *)&Z);
-		survive_kalman_predict_update_state(0, &tracker->model, &Zp, &H, &R, 0);
+		CnMat Zp = cnMat(7, 1, (void *)&Z);
+		cnkalman_predict_update_state(0, &tracker->model, &Zp, &H, &R, 0);
 
 		if (tracker->lh == 1) {
-			// sv_set_constant(&tracker->model.P, 0);
-			svMatrixSet(&tracker->model.P, 0, 0, 0);
-			svMatrixSet(&tracker->model.P, 1, 1, 0);
+			// cn_set_constant(&tracker->model.P, 0);
+			cnMatrixSet(&tracker->model.P, 0, 0, 0);
+			cnMatrixSet(&tracker->model.P, 1, 1, 0);
 		}
 	} else {
 		tracker->state = *pose;
-		sv_set_constant(&tracker->model.P, 1e-10);
+		cn_set_constant(&tracker->model.P, 1e-10);
 	}
 	survive_kalman_lighthouse_report(tracker);
 }
 void survive_kalman_lighthouse_free(SurviveKalmanLighthouse *tracker) {
 	SurviveKalmanLighthouse_detach_config(tracker->ctx, tracker);
-	survive_kalman_state_free(&tracker->model);
+	cnkalman_state_free(&tracker->model);
 	free(tracker);
 }

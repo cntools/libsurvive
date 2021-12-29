@@ -30,7 +30,6 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
         survive_process.c
   survive_process_gen2.c
   survive_sensor_activations.c
-  survive_kalman.c
         survive_kalman_lighthouses.c
         survive_kalman_lighthouses.h
   barycentric_svd/barycentric_svd.c
@@ -79,7 +78,7 @@ if(WIN32)
     set_target_properties(survive PROPERTIES PREFIX "lib")
 endif()
 
-target_link_libraries(survive survive_matrix ${ADDITIONAL_LIBRARIES} mpfit)
+target_link_libraries(survive ${ADDITIONAL_LIBRARIES} mpfit cnkalman)
 IF(HAVE_ZLIB_H)
   target_link_libraries(survive z)
 ENDIF()

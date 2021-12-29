@@ -1,9 +1,11 @@
 #ifndef _SURVIVE_IMU_H
 #define _SURVIVE_IMU_H
 
+#include <cnkalman/kalman.h>
+
 #include "poser.h"
 #include "survive.h"
-#include "survive_kalman.h"
+
 #include "survive_types.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -82,8 +84,8 @@ typedef struct SurviveKalmanTracker {
 	FLT moving_acc_scale, stationary_acc_scale;
 
 	// Kalman state is layed out as SurviveKalmanModel
-	survive_kalman_state_t model;
-	survive_kalman_meas_model_t obs_model, lightcap_model, imu_model, zvu_model;
+	cnkalman_state_t model;
+	cnkalman_meas_model_t obs_model, lightcap_model, imu_model, zvu_model;
 
 	const char* datalog_tag;
 
@@ -141,15 +143,19 @@ SURVIVE_EXPORT void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *t
 SURVIVE_EXPORT void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, PoserDataLight *data);
 
 SURVIVE_EXPORT void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTracker *tracker,
-																 const SurvivePose *pose, const struct SvMat *R);
+																 const SurvivePose *pose, const struct CnMat *R);
 SURVIVE_EXPORT void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tracker);
 SURVIVE_EXPORT void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *tracker, bool allowLHReset);
 
-SURVIVE_EXPORT void survive_kalman_tracker_model_predict(FLT t, const survive_kalman_state_t *k, const SvMat *f_in, SvMat *f_out);
-SURVIVE_EXPORT void survive_kalman_tracker_predict_jac(FLT t, struct SvMat *f_out, const struct SvMat *x0);
-SURVIVE_EXPORT void survive_kalman_tracker_process_noise(const struct SurviveKalmanTracker_Params* params, FLT t, const SvMat *x, struct SvMat *q_out);
-SURVIVE_EXPORT bool survive_kalman_tracker_imu_measurement_model(void *user, const struct SvMat *Z, const struct SvMat *x_t, struct SvMat *y,
-												  struct SvMat *H_k);
+SURVIVE_EXPORT void survive_kalman_tracker_model_predict(FLT t, const cnkalman_state_t *k, const CnMat *f_in,
+														 CnMat *f_out);
+SURVIVE_EXPORT void survive_kalman_tracker_predict_jac(FLT dt, const struct cnkalman_state_s *k, const struct CnMat *x0,
+													   struct CnMat *x1, struct CnMat *f_out);
+SURVIVE_EXPORT void survive_kalman_tracker_process_noise(const struct SurviveKalmanTracker_Params *params, FLT t,
+														 const CnMat *x, struct CnMat *q_out);
+SURVIVE_EXPORT bool survive_kalman_tracker_imu_measurement_model(void *user, const struct CnMat *Z,
+																 const struct CnMat *x_t, struct CnMat *y,
+																 struct CnMat *H_k);
 SURVIVE_EXPORT void survive_kalman_tracker_correct_imu(SurviveKalmanTracker *tracker, LinmathVec3d out, const LinmathVec3d accel);
 #ifdef __cplusplus
 };

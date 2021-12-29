@@ -211,7 +211,7 @@ SURVIVE_EXPORT void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx
 SURVIVE_EXPORT const char *survive_optimizer_error(int status);
 
 SURVIVE_EXPORT int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result,
-										 struct SvMat *R);
+										 struct CnMat *R);
 
 SURVIVE_EXPORT void survive_optimizer_set_reproject_model(survive_optimizer *optimizer,
 														  const survive_reproject_model_t *reprojectModel);

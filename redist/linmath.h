@@ -10,6 +10,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include <cnmatrix/cn_matrix.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -36,42 +38,6 @@ extern "C" {
 #ifndef M_PI
 #define M_PI LINMATHPI
 #endif
-
-#ifdef USE_FLOAT
-
-#define FLT float
-#define FLT_SQRT sqrtf
-#define FLT_TAN tanf
-#define FLT_SIN sinf
-#define FLT_COS cosf
-#define FLT_ACOS acosf
-#define FLT_ASIN asinf
-#define FLT_ATAN2 atan2f
-#define FLT_FABS__ fabsf
-#define FLT_STRTO strtof
-
-#define SURVIVE_SV_F SV_32F
-#define SV_FLT SV_32F
-#define FLT_POW powf
-
-#else
-
-#define USE_DOUBLE 1
-#define FLT double
-#define FLT_SQRT sqrt
-#define FLT_TAN tan
-#define FLT_SIN sin
-#define FLT_COS cos
-#define FLT_ACOS acos
-#define FLT_ASIN asin
-#define FLT_ATAN2 atan2
-#define FLT_FABS__ fabs
-#define FLT_STRTO strtod
-#define SURVIVE_SV_F SV_64F
-#define SV_FLT SV_64F
-#endif
-
-#define SV_RAW_PTR(X) ((X)->data)
 
 #ifdef TCC
 #define FLT_FABS(x) (((x) < 0) ? (-(x)) : (x))
@@ -183,8 +149,8 @@ LINMATH_EXPORT void quattomatrix33(FLT *matrix33, const LinmathQuat qin);
 LINMATH_EXPORT void quatfrommatrix(LinmathQuat q, const FLT *matrix44);
 LINMATH_EXPORT void quatfrommatrix33(LinmathQuat q, const FLT *matrix33);
 
-struct SvMat;
-LINMATH_EXPORT void quatfromsvmatrix(LinmathQuat q, const struct SvMat *matrix33);
+struct CnMat;
+LINMATH_EXPORT void quatfromcnMatrix(LinmathQuat q, const struct CnMat *matrix33);
 LINMATH_EXPORT void quatgetconjugate(LinmathQuat qout, const LinmathQuat qin);
 
 /***
@@ -381,7 +347,6 @@ struct sparse_matrix {
 		.data = alloca(sizeof(FLT) * N_ROWS * N_COLS),                                                                 \
 	};
 
-struct SvMat;
 
 /**
  * This is a very specialized matrix function to calculate out = A * B * A^t + C
@@ -391,18 +356,18 @@ struct SvMat;
  *
  * At about 20% 0's; this is twice as fast as gemm_ABAt_add
  */
-LINMATH_EXPORT void matrix_ABAt_add(struct SvMat *out, const struct SvMat *A, const struct SvMat *B,
-									const struct SvMat *C);
+LINMATH_EXPORT void matrix_ABAt_add(struct CnMat *out, const struct CnMat *A, const struct CnMat *B,
+									const struct CnMat *C);
 /**
  *  Standard implementation of out = A * B * A^t + C for testing; just uses svGEMM
  */
-LINMATH_EXPORT void gemm_ABAt_add(struct SvMat *out, const struct SvMat *A, const struct SvMat *B,
-								  const struct SvMat *C);
+LINMATH_EXPORT void gemm_ABAt_add(struct CnMat *out, const struct CnMat *A, const struct CnMat *B,
+								  const struct CnMat *C);
 /**
  *  Standard implementation of out = A * (B*s) * A^t + C for testing; just uses svGEMM
  */
-LINMATH_EXPORT void gemm_ABAt_add_scaled(struct SvMat *out, const struct SvMat *A, const struct SvMat *B,
-										 const struct SvMat *C, FLT scale_A, FLT scale_B, FLT scale_C);
+LINMATH_EXPORT void gemm_ABAt_add_scaled(struct CnMat *out, const struct CnMat *A, const struct CnMat *B,
+										 const struct CnMat *C, FLT scale_A, FLT scale_B, FLT scale_C);
 
 #ifdef __cplusplus
 }

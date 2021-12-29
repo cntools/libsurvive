@@ -33,6 +33,10 @@ option(USE_COLUMN_MAJOR_MATRICES "Use column major matrices for math operations"
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+if(USE_SINGLE_PRECISION)
+  add_compile_definitions(CN_USE_FLOAT)
+endif()
+
 IF(WIN32)
     find_program(NUGET nuget)
     if(NOT NUGET)
@@ -144,9 +148,9 @@ option(BUILD_APPLICATIONS "Build the default libsurvive applications" ${NOT_CORE
 #link_directories(${CMAKE_INSTALL_PREFIX}/lib)
 
 IF(UNIX)
-  set(SHARED_FLAGS "-fPIC -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces -Werror=return-type -fvisibility=hidden -Werror=vla -fno-math-errno -Werror=missing-field-initializers -Werror=pointer-arith")
+  set(SHARED_FLAGS "-fPIC -Wall -Wno-unused-variable -Wno-switch -Wno-parentheses -Wno-missing-braces -Werror=return-type -fvisibility=hidden -Werror=vla -fno-math-errno -Werror=pointer-arith")
 
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SHARED_FLAGS} -std=gnu99 -Werror=incompatible-pointer-types -Werror=implicit-function-declaration ")
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SHARED_FLAGS} -std=gnu99 -Werror=incompatible-pointer-types -Werror=implicit-function-declaration -Werror=missing-field-initializers ")
   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SHARED_FLAGS} -std=c++14")
   add_definitions("-DCOMPILER_HAS_GENERIC_SUPPORT")
 
@@ -216,6 +220,8 @@ find_library(OPENVR_LIBRARIES
 SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+add_subdirectory(libs/cnkalman)
 
 add_subdirectory(redist)
 add_subdirectory(src)

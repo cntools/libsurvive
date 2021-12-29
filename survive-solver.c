@@ -4,20 +4,20 @@
 
 #include "src/survive_default_devices.h"
 #include "survive_optimizer.h"
+#include <cnmatrix/cn_matrix.h>
 #include <survive.h>
-#include <sv_matrix.h>
 
-static void sv_print_mat(const char *name, const SvMat *M, bool newlines) {
+static void sv_print_mat(const char *name, const CnMat *M, bool newlines) {
 	char term = newlines ? '\n' : ' ';
 	if (!M) {
 		fprintf(stdout, "null%c", term);
 		return;
 	}
 	fprintf(stdout, "%4s %2d x %2d:%c", name, M->rows, M->cols, term);
-	FLT scale = sv_sum(M);
+	FLT scale = cn_sum(M);
 	for (unsigned i = 0; i < M->rows; i++) {
 		for (unsigned j = 0; j < M->cols; j++) {
-			FLT v = svMatrixGet(M, i, j);
+			FLT v = cnMatrixGet(M, i, j);
 			if (v == 0)
 				fprintf(stdout, "         0,\t");
 			else
@@ -84,7 +84,8 @@ int main(int argc, char **argv) {
 			printf("%4d %+3.5f\n", i, result.xerror[i]);
 	printf("\n");
 	printf("Covariances: \n");
-	SvMat R = svMat(survive_optimizer_get_parameters_count(mpctx), survive_optimizer_get_parameters_count(mpctx), result.covar);
+	CnMat R = cnMat(survive_optimizer_get_parameters_count(mpctx), survive_optimizer_get_parameters_count(mpctx),
+					result.covar);
 	sv_print_mat("Covariances", &R, true);
 
 	printf("MPFIT status %f/%f (%d measurements, %d - %s)\n", result.orignorm, result.bestnorm,

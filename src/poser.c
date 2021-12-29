@@ -40,7 +40,8 @@ STATIC_CONFIG_ITEM(HAPTIC_ON_CALIBRATE, "haptic-on-calibrate", 'i',
 STATIC_CONFIG_ITEM(LIGHTHOUSE_NORMALIZE_ANGLE, "normalize-lighthouse-angle", 'f',
 				   "Angle about Z to adust calibration by", 0.);
 
-void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world, FLT error, const struct SvMat* R) {
+void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world, FLT error,
+							   const struct CnMat *R) {
 	SurviveContext *ctx = so->ctx;
 	for (int i = 0; i < 3; i++) {
 		assert(!isnan(imu2world->Pos[i]));
@@ -242,7 +243,7 @@ void PoserData_normalize_scene(SurviveContext *ctx, SurvivePose *lighthouse_pose
 }
 
 void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so, SurvivePose *lighthouse_pose,
-									 const struct SvMat *R, uint32_t lighthouse_count, SurvivePose *object_pose) {
+									 const struct CnMat *R, uint32_t lighthouse_count, SurvivePose *object_pose) {
 
 	if (poser_data && poser_data->lighthouseposeproc) {
 		for (int lighthouse = 0; lighthouse < lighthouse_count; lighthouse++) {

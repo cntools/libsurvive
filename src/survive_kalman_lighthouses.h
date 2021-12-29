@@ -1,12 +1,12 @@
 #pragma once
-#include "survive_kalman.h"
 #include "survive_kalman_tracker.h"
+#include <cnkalman/kalman.h>
 
 typedef struct SurviveKalmanLighthouse {
 	SurvivePose state;
 
-	survive_kalman_state_t model;
-	survive_kalman_meas_model_t lightcap_model;
+	cnkalman_state_t model;
+	cnkalman_meas_model_t lightcap_model;
 
 	SurviveContext *ctx;
 	int lh;
