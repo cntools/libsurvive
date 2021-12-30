@@ -1,11 +1,5 @@
 LOCAL_PATH := $(call my-dir)
 
-ifneq ($(TARGET_SURVIVE_MATH_BACKEND),)
-    SURVIVE_MATH_BACKEND := $(TARGET_SURVIVE_MATH_BACKEND)
-else
-    SURVIVE_MATH_BACKEND := eigen
-endif
-
 COMMON_CFLAGS := \
     -DGIT_VERSION=\"$(shell git -C $(LOCAL_PATH) describe --dirty)\" \
     -DBUILD_LH1_SUPPORT \
@@ -27,10 +21,6 @@ COMMON_C_INCLUDES := \
     $(LOCAL_PATH)/include/libsurvive \
     $(LOCAL_PATH)/redist
 
-ifeq ($(SURVIVE_MATH_BACKEND),eigen)
-    COMMON_CFLAGS += -DUSE_EIGEN
-endif
-
 include $(CLEAR_VARS)
 LOCAL_MODULE             := libsurvive
 LOCAL_MODULE_CLASS       := SHARED_LIBRARIES
@@ -41,6 +31,14 @@ LOCAL_PROPRIETARY_MODULE := true
 LOCAL_EXPORT_C_INCLUDE_DIRS := \
     $(LOCAL_PATH)/include \
     $(LOCAL_PATH)/redist
+
+LOCAL_STATIC_LIBRARIES := \
+    libcnkalman \
+    libcnmatrix
+
+LOCAL_EXPORT_STATIC_LIBRARY_HEADERS := \
+    libcnkalman \
+    libcnmatrix
 
 LOCAL_SHARED_LIBRARIES := \
     libusb \
@@ -69,7 +67,6 @@ LOCAL_SRC_FILES := \
     src/survive_default_devices.c \
     src/survive_disambiguator.c \
     src/survive_driverman.c \
-    src/survive_kalman.c \
     src/survive_kalman_lighthouses.c \
     src/survive_kalman_tracker.c \
     src/survive_optimizer.c \
@@ -82,13 +79,6 @@ LOCAL_SRC_FILES := \
     src/survive_reproject_gen2.c \
     src/survive_sensor_activations.c \
     src/survive_str.c
-
-ifeq ($(SURVIVE_MATH_BACKEND),eigen)
-    LOCAL_HEADER_LIBRARIES := libeigen
-    LOCAL_SRC_FILES += \
-        redist/sv_matrix.c \
-        redist/sv_matrix.eigen.cpp
-endif
 
 ifneq ($(TARGET_SURVIVE_CONFIG_PATH),)
     LOCAL_CFLAGS += -DSURVIVE_CONFIG_PATH=\"$(TARGET_SURVIVE_CONFIG_PATH)\"
