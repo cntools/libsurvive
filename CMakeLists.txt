@@ -27,11 +27,7 @@ option(ENABLE_TESTS "Enable build / execution of tests" OFF)
 option(USE_HEX_FLOAT_PRINTF "Use hex floats when recording" OFF)
 
 option(USE_OPENCV "Use opencv proper for math operations" OFF)
-option(DOWNLOAD_EIGEN "Download eigen if it isn't installed on the system" ON)
-option(USE_EIGEN "Use eigen for math operations" DOWNLOAD_EIGEN)
 option(USE_COLUMN_MAJOR_MATRICES "Use column major matrices for math operations" OFF)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 if(USE_SINGLE_PRECISION)
   add_compile_definitions(CN_USE_FLOAT)
@@ -55,40 +51,6 @@ IF(WIN32)
     endif(CMAKE_SIZEOF_VOID_P MATCHES 8)
 
 ENDIF()
-
-find_package (Eigen3 3.3)
-if(NOT EIGEN3_FOUND)
-  if(DOWNLOAD_EIGEN)
-    find_program(GIT git)
-    if(NOT EXISTS "${CMAKE_BINARY_DIR}/libeigen-src/Eigen")
-      execute_process(COMMAND ${GIT} clone -b 3.4 https://gitlab.com/libeigen/eigen.git "${CMAKE_BINARY_DIR}/libeigen-src")
-    endif()
-    set(EIGEN3_INCLUDE_DIR "${CMAKE_BINARY_DIR}/libeigen-src/")
-    #find_package (Eigen3 3 NO_MODULE PATHS "${CMAKE_BINARY_DIR}/libeigen-src")
-    set(USE_EIGEN ON)
-  else()
-    message(WARNING "Could not find eigen; falling back to other backend")
-    set(USE_EIGEN OFF)
-  endif()
-endif()
-
-
-IF(USE_OPENCV)
-    add_compile_definitions(USE_OPENCV)
-ELSEIF(USE_EIGEN)
-    add_compile_definitions(USE_EIGEN)
-
-    if(USE_COLUMN_MAJOR_MATRICES)
-        add_compile_definitions(SV_MATRIX_IS_COL_MAJOR)
-    endif()
-ELSE()
-ENDIF()
-
-find_library(CBLAS_LIB NAMES cblas)
-set(USE_OPENBLAS_DEFAULT OFF)
-if(NOT CBLAS_LIB)
-  set(USE_OPENBLAS_DEFAULT ON)
-endif()
 
 option(USE_OPENBLAS "Use OpenBLAS" ${USE_OPENBLAS_DEFAULT})
 option(BUILD_LH1_SUPPORT "Build LH1 support" ON)

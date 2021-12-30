@@ -2,7 +2,7 @@ all: build
 
 build:
 	mkdir -p bin
-	cd bin && cmake .. && cmake --build . 
+	cd bin && cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && cmake --build .  -j4
 
 install: build
 	cd bin && cmake --build . --target install
