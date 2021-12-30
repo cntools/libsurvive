@@ -1228,7 +1228,7 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 
     if(tracker->last_report_time > 0) {
         FLT dt = t - tracker->last_report_time;
-        struct survive_kalman_model_t diff = {};
+        struct survive_kalman_model_t diff = { 0 };
         subnd((FLT *) &diff, (FLT *) &tracker->state, (FLT *) &tracker->previous_state, state_cnt);
         scalend((FLT *) &diff, (FLT *) &diff, 1. / dt, state_cnt);
         mulnd((FLT *) &diff, (FLT *) &diff, (FLT *) &diff, state_cnt);

@@ -85,7 +85,7 @@ void survive_optimizer_setup_pose_n(survive_optimizer *mpfit_ctx, const SurviveP
 
 	if (!mpfit_ctx->disableVelocity) {
 		int v_idx = survive_optimizer_get_velocity_index(mpfit_ctx);
-		survive_optimizer_get_velocity(mpfit_ctx)[n] = (SurviveVelocity){};
+		survive_optimizer_get_velocity(mpfit_ctx)[n] = (SurviveVelocity){0};
 		for (int i = 0; i < 6; i++) {
 			mpfit_ctx->mp_parameters_info[i + v_idx].fixed = true;
 			mpfit_ctx->mp_parameters_info[i + v_idx].parname = vel_parameter_names[i % 6];
@@ -671,7 +671,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 
 			// d a / d s = d a / d xyz * d xyz / d s
 			int scale_idx = -1;
-			LinmathVec3d xyzjac_scale = {};
+			LinmathVec3d xyzjac_scale = {0};
 			bool needsScaleJac = false;
 			if (mpfunc_ctx->settings->optimize_scale_threshold >= 0) {
 				scale_idx = survive_optimizer_get_sensor_scale_index(mpfunc_ctx) + meas->light.object;
@@ -729,7 +729,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			const survive_reproject_model_t *reprojectModel = mpfunc_ctx->reprojectModel;
 			if (needsScaleJac) {
 				for (int meas_idx_jac = 0; meas_idx_jac < (1 + nextIsPair); meas_idx_jac++) {
-					LinmathVec3d ptJac = {};
+					LinmathVec3d ptJac = {0};
 					int axis = meas[meas_idx_jac].light.axis;
 					const struct BaseStationCal *cal = survive_optimizer_get_calibration(mpfunc_ctx, lh);
 					if (mpfunc_ctx->settings->use_quat_model) {

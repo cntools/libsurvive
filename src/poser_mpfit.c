@@ -684,7 +684,7 @@ static FLT run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Surviv
 		return setup_results;
 	}
 
-	mp_result result = {};
+	mp_result result = {0};
 
 	int nfree = survive_optimizer_get_free_parameters_count(&mpfitctx);
 	survive_release_ctx_lock(ctx);
