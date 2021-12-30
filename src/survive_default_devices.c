@@ -434,8 +434,8 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
         }
 	} else if (memcmp(so->codename, "WM", 2) == 0) {
         if(so->raw_acc_scale == 0) {
-            so->raw_acc_scale = 1. / 8192.;
-        }
+			so->raw_acc_scale = 2. / 8192.;
+		}
 		scale3d(so->acc_bias, so->acc_bias, 1. / 1000.); // Need to verify.
 
 		FLT deg_per_sec = 2000;
