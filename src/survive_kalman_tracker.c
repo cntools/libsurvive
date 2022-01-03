@@ -10,6 +10,7 @@
 #include <malloc.h>
 #endif
 #include <memory.h>
+#include <stddef.h>
 #include <survive_reproject.h>
 #include <survive_reproject_gen2.h>
 
