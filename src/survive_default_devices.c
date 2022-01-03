@@ -448,8 +448,8 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 		// this can change if the firmware changes the sensitivity.
 		// When coming off of USB, these values are in units of .5g -JB
 		if(so->raw_acc_scale == 0) {
-            so->raw_acc_scale = 1. / 8192.;
-        }
+			so->raw_acc_scale = 2. / 8192.;
+		}
 		// If any other device, we know we at least need this.
 		scale3d(so->acc_bias, so->acc_bias, 1. / 1000.);
 
