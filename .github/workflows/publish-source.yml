@@ -1,0 +1,43 @@
+name: Publish source
+
+on:
+  push:
+  release:
+    types:
+      - created
+
+jobs:
+  gather-source:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        submodules: recursive
+    - name: Set bundle name
+      id: bundle
+      working-directory: ${{runner.workspace}}/libsurvive      
+      run: echo "::set-output name=BUNDLE_FILE_NAME::libsurvive-$(git describe --tags)-source.zip"
+
+    - name: Remove git directories
+      working-directory: ${{runner.workspace}}/libsurvive
+      run: rm -rf .git
+
+    - uses: actions/upload-artifact@v2
+      name: Upload
+      with:
+        name: ${{ steps.bundle.outputs.BUNDLE_FILE_NAME }}
+        path: ${{runner.workspace}}
+
+    - name: Upload Release Asset
+      id: upload-release-asset
+      continue-on-error: true
+      if: github.event_name == 'release'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.get_release.outputs.upload_url }}
+        asset_path: ${{runner.workspace}}/${{steps.bundle.outputs.BUNDLE_FILE_NAME}}
+        asset_name: ${{steps.bundle.outputs.BUNDLE_FILE_NAME}}
+        asset_content_type: application/zip
