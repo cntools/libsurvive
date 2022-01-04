@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
 	}
 
     struct SurviveSimpleEvent event = {0};
-    while (survive_simple_wait_for_event(actx, &event) != SurviveSimpleEventType_Shutdown) {
+	while (keepRunning && survive_simple_wait_for_event(actx, &event) != SurviveSimpleEventType_Shutdown) {
 		switch (event.event_type) {
 		case SurviveSimpleEventType_PoseUpdateEvent: {
 			const struct SurviveSimplePoseUpdatedEvent *pose_event = survive_simple_get_pose_updated_event(&event);
