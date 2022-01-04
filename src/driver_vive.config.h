@@ -36,9 +36,10 @@ static inline void setup_magic(struct survive_config_packet *packet) {
 
 	packet->state = SURVIVE_CONFIG_STATE_MAGICS;
 
-	SV_VERBOSE(100, "Submitting magic %s at %f sec for %s - %s", survive_colorize(packet->current_magic->name),
-			   survive_run_time(ctx) - packet->start_time, survive_colorize(so ? so->codename : "BRD"),
-			   survive_colorize(packet->usbInfo->device_info->name));
+	SV_VERBOSE(100, "Submitting magic %s at %f sec for %s - %s (length %d)",
+			   survive_colorize(packet->current_magic->name), survive_run_time(ctx) - packet->start_time,
+			   survive_colorize(so ? so->codename : "BRD"), survive_colorize(packet->usbInfo->device_info->name),
+			   (int)packet->current_magic->length);
 	survive_usb_setup_update_feature_report(packet->tx, packet->current_magic->magic, packet->current_magic->length);
 	do {
 		packet->current_magic++;
@@ -111,8 +112,20 @@ void handle_config_tx(survive_usb_transfer_t *transfer) {
 		}
 	}
 
+	size_t tx_length = survive_usb_transfer_length(transfer);
+
 	switch (packet->state) {
 	case SURVIVE_CONFIG_STATE_MAGICS:
+		if (tx_length < packet->current_magic->length) {
+			SV_WARN("Magic for %s was not acked; length %d vs %d", so ? survive_colorize(so->codename) : "unknown",
+					(int)tx_length, (int)packet->current_magic->length);
+			goto resubmit;
+		}
+
+		SV_VERBOSE(110, "Magic inc in %f sec for %s %s %d", survive_run_time(ctx) - packet->start_time,
+				   so ? survive_colorize(so->codename) : "unknown",
+				   survive_colorize(packet->usbInfo->device_info->name), (int)tx_length)
+
 		if (!packet->current_magic->magic) {
 			SV_VERBOSE(100, "Magics done in %f sec for %s %s", survive_run_time(ctx) - packet->start_time,
 					   so ? survive_colorize(so->codename) : "unknown",
@@ -179,7 +192,10 @@ void handle_config_tx(survive_usb_transfer_t *transfer) {
 		}
 		break;
 	case SURVIVE_CONFIG_STATE_VERSION: {
-		parse_tracker_version_info(packet->usbInfo->so, &buffer[1], transfer->actual_length);
+		if (tx_length == 0)
+			goto resubmit;
+
+		parse_tracker_version_info(packet->usbInfo->so, &buffer[1], tx_length);
 		SURVIVE_INVOKE_HOOK_SO(config, so, so->conf, so->conf_cnt);
 		SV_VERBOSE(100, "Version done in %f sec for %s", survive_run_time(ctx) - packet->start_time,
 				   survive_colorize(so->codename));

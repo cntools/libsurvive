@@ -24,9 +24,10 @@ typedef struct survive_usb_transfer_t {
 } survive_usb_transfer_t;
 
 static inline uint8_t *survive_usb_transfer_data(survive_usb_transfer_t *tx) { return tx->buffer; }
-
+static inline size_t survive_usb_transfer_length(survive_usb_transfer_t *tx) { return tx->length; }
 static inline void *survive_usb_transfer_alloc() { return calloc(1, sizeof(survive_usb_transfer_t)); }
 static inline void survive_usb_transfer_free(survive_usb_transfer_t *tx) { free(tx); }
+static inline void survive_usb_transfer_cancel(survive_usb_transfer_t *tx) {}
 static inline int survive_usb_transfer_submit(survive_usb_transfer_t *tx) {
 	int rtn = 0;
 	// char tmp[64];

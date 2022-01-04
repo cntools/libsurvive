@@ -6,6 +6,7 @@ typedef libusb_device **survive_usb_devices_t;
 static inline uint8_t *survive_usb_transfer_data(survive_usb_transfer_t *tx) { return tx->buffer + 8; }
 static inline void *survive_usb_transfer_alloc() { return libusb_alloc_transfer(0); }
 static inline void survive_usb_transfer_free(survive_usb_transfer_t *tx) { libusb_free_transfer(tx); }
+static inline size_t survive_usb_transfer_length(survive_usb_transfer_t *tx) { return tx->actual_length - 8; }
 static inline void survive_usb_transfer_cancel(survive_usb_transfer_t *tx) { libusb_cancel_transfer(tx); }
 static inline int survive_usb_transfer_submit(survive_usb_transfer_t *tx) { return libusb_submit_transfer(tx); }
 static inline void survive_usb_setup_get_feature_report(survive_usb_transfer_t *tx, uint8_t report_id) {
