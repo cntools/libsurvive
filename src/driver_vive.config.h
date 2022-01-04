@@ -72,14 +72,16 @@ void handle_config_tx(survive_usb_transfer_t *transfer) {
 	const uint8_t *buffer = survive_usb_transfer_data(transfer);
 	SurviveObject *so = packet->usbInfo->so;
 	uint8_t cmd = buffer[0];
+	struct SurviveUSBInfo *usbInfo = packet->usbInfo;
 
 	if (packet->usbInfo->interfaces[0].shutdown) {
 		goto cleanup;
 	}
 
 	if (transfer->status == LIBUSB_TRANSFER_STALL || transfer->status == LIBUSB_TRANSFER_TIMED_OUT) {
-		SV_VERBOSE(110, "Waiting, Transfer status %d at %f sec for %s", transfer->status,
-				   survive_run_time(ctx) - packet->start_time, survive_colorize(so ? so->codename : "unknown"));
+		SV_VERBOSE(110, "Waiting, Transfer status %d at %f sec for %s (%d)", transfer->status,
+				   survive_run_time(ctx) - packet->start_time, survive_colorize(so ? so->codename : "unknown"),
+				   packet->usbInfo->request_close);
 		packet->stall_counter++;
 		if (packet->usbInfo->device_info->codename[0] == 0) {
 			goto cleanup;
@@ -100,7 +102,6 @@ void handle_config_tx(survive_usb_transfer_t *transfer) {
 		goto cleanup;
 	}
 
-	struct SurviveUSBInfo *usbInfo = packet->usbInfo;
 	if (so == 0) {
 		if (usbInfo->device_info->codename[0] != 0) {
 			so = survive_create_device(ctx, "HTC", usbInfo, usbInfo->device_info->codename, survive_vive_send_haptic);
@@ -216,14 +217,17 @@ resubmit : {
 	return;
 }
 cleanup:
-	SV_VERBOSE(100, "Cleanup config for %s %s at %f", survive_colorize_codename(packet->usbInfo->so),
-			   survive_colorize(packet->usbInfo->device_info->name), survive_run_time(ctx));
+	SV_VERBOSE(100, "Cleanup config for %s %s at %f %d/%d", survive_colorize_codename(packet->usbInfo->so),
+			   survive_colorize(packet->usbInfo->device_info->name), survive_run_time(ctx),
+			   usbInfo->interfaces[0].shutdown, (int)usbInfo->active_transfers);
 
-	for (const struct Endpoint_t *endpoint = packet->usbInfo->device_info->endpoints; endpoint->name; endpoint++) {
-		int errorCode =
-			AttachInterface(packet->sv, packet->usbInfo, endpoint, packet->usbInfo->handle, survive_data_cb);
-		if (errorCode < 0) {
-			SV_WARN("Could not attach interface %s: %d", endpoint->name, errorCode);
+	if (!usbInfo->interfaces[0].shutdown) {
+		for (const struct Endpoint_t *endpoint = packet->usbInfo->device_info->endpoints; endpoint->name; endpoint++) {
+			int errorCode =
+				AttachInterface(packet->sv, packet->usbInfo, endpoint, packet->usbInfo->handle, survive_data_cb);
+			if (errorCode < 0) {
+				SV_WARN("Could not attach interface %s: %d", endpoint->name, errorCode);
+			}
 		}
 	}
 
@@ -231,6 +235,11 @@ cleanup:
 	packet->usbInfo->nextCfgSubmitTime = 0;
 	packet->usbInfo->cfg_user = 0;
 	packet->usbInfo->active_transfers--;
+
+	if (usbInfo->interfaces[0].shutdown && usbInfo->active_transfers == 0) {
+		usbInfo->request_close = true;
+		SV_VERBOSE(110, "Acking close for %s", survive_colorize_codename(usbInfo->so));
+	}
 
 	survive_usb_transfer_free(transfer);
 	str_free(&packet->cfg);
@@ -258,4 +267,8 @@ static void survive_config_poll(struct SurviveUSBInfo *usbInfo) {
 #else
 #endif
 	}
+}
+
+static void survive_config_cancel(struct survive_config_packet *config_packet) {
+	survive_usb_transfer_cancel(config_packet->tx);
 }

@@ -6,6 +6,7 @@ typedef libusb_device **survive_usb_devices_t;
 static inline uint8_t *survive_usb_transfer_data(survive_usb_transfer_t *tx) { return tx->buffer + 8; }
 static inline void *survive_usb_transfer_alloc() { return libusb_alloc_transfer(0); }
 static inline void survive_usb_transfer_free(survive_usb_transfer_t *tx) { libusb_free_transfer(tx); }
+static inline void survive_usb_transfer_cancel(survive_usb_transfer_t *tx) { libusb_cancel_transfer(tx); }
 static inline int survive_usb_transfer_submit(survive_usb_transfer_t *tx) { return libusb_submit_transfer(tx); }
 static inline void survive_usb_setup_get_feature_report(survive_usb_transfer_t *tx, uint8_t report_id) {
 	tx->buffer[8] = report_id;
@@ -193,6 +194,13 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 	if (!iface->shutdown && transfer->status != LIBUSB_TRANSFER_COMPLETED) {
 		SV_WARN("%f %s Device disconnect: %d", survive_run_time(ctx), survive_colorize_codename(iface->assoc_obj),
 				transfer->status);
+		iface->error_count++;
+		if (iface->error_count++ < 10) {
+			if (libusb_submit_transfer(transfer)) {
+				goto shutdown;
+			}
+		}
+
 		goto disconnect;
 	}
 
@@ -200,6 +208,7 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 		goto shutdown;
 	}
 
+	iface->error_count = 0;
 	iface->actual_len = transfer->actual_length;
 	iface->buffer = iface->swap_buffer[iface->swap_buffer_idx++ % 2];
 
@@ -253,10 +262,13 @@ shutdown:
 }
 
 static int survive_config_submit(struct SurviveUSBInfo *usbInfo);
+static void survive_config_cancel(struct survive_config_packet *cfg);
 static inline void survive_close_usb_device(struct SurviveUSBInfo *usbInfo) {
+	usbInfo->interfaces[0].shutdown = 1;
 	for (size_t j = 0; j < usbInfo->interface_cnt; j++) {
 		usbInfo->interfaces[j].shutdown = 1;
 	}
+
 	SurviveContext *ctx = usbInfo->viveData->ctx;
 	if (usbInfo->nextCfgSubmitTime > 0) {
 		survive_config_submit(usbInfo);
@@ -264,8 +276,15 @@ static inline void survive_close_usb_device(struct SurviveUSBInfo *usbInfo) {
 
 	struct survive_config_packet *cfg = usbInfo->cfg_user;
 	if (cfg) {
-		// libusb_cancel_transfer(cfg->tx);
+		survive_config_cancel(cfg);
 	}
+	if (usbInfo->active_transfers == 0) {
+		usbInfo->request_close = true;
+		SV_VERBOSE(110, "Acking close for %s", survive_colorize_codename(usbInfo->so));
+	}
+
+	SV_VERBOSE(100, "Closing device on %s %p (%p)", survive_colorize_codename(usbInfo->so), cfg, usbInfo);
+
 	for (int j = 0; j < usbInfo->interface_cnt; j++) {
 		SurviveUSBInterface *iface = &usbInfo->interfaces[j];
 		SV_VERBOSE(100, "Cleaning up interface on %d %s %s (%p)", iface->which_interface_am_i,

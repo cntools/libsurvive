@@ -103,6 +103,7 @@ typedef struct SurviveUSBInterface {
 	size_t packet_count;
 
 	uint32_t time_constraint;
+	uint32_t error_count;
 	uint64_t last_submit_time, sum_submit_cb_time, sum_cb_time;
 	uint32_t max_submit_time, max_cb_time, cb_time_violation;
 	bool shutdown;
