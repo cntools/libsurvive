@@ -2785,10 +2785,10 @@ static void parse_tracker_version_info(SurviveObject *so, const uint8_t *data, s
 	}
 
 	SV_INFO("Device %s has watchman FW version %u and FPGA version %u/%u/%u; named '%31s'. Hardware id 0x%08x Board "
-			"rev: %d",
+			"rev: %d (len %d)",
 			survive_colorize(so->codename), version_info.revision, version_info.fpga_major_version,
 			version_info.fpga_minor_version, version_info.fpga_patch_version, fw_name, version_info.hardware_id,
-			version_info.board_model);
+			version_info.board_model, (int)size);
 	SV_VERBOSE(105, "Extra version info: 0x%x / 0x%x / 0x%lx", version_info.a, version_info.h, version_info.k);
 	uint32_t earliest_version = earliest_working_revision(version_info.hardware_id);
 	uint32_t latest_version = latest_working_revision(version_info.hardware_id);

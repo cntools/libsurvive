@@ -5,7 +5,7 @@ static volatile int keepRunning = 1;
 #ifdef __linux__
 
 #include <assert.h>
-#include <cnmatrix/matrix.h>
+#include <cnmatrix/cn_matrix.h>
 #include <math.h>
 #include <signal.h>
 #include <stdlib.h>

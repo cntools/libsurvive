@@ -1188,20 +1188,20 @@ SURVIVE_EXPORT void survive_attach_config(SurviveContext *ctx, const char *tag, 
 	switch (type) {
 	    case 'b':
             *((bool *)var) = survive_configb(ctx, tag, SC_GET, 0);
-            SV_VERBOSE(100, "\t%s: %i", tag, *((bool *)var));
-            break;
+			SV_VERBOSE(110, "\t%s: %i", tag, *((bool *)var));
+			break;
 	case 'i':
 		*((int *)var) = survive_configi(ctx, tag, SC_GET, 0);
-		SV_VERBOSE(100, "\t%s: %i", tag, *((int *)var));
+		SV_VERBOSE(110, "\t%s: %i", tag, *((int *)var));
 		break;
 	case 'f':
 		*((FLT *)var) = survive_configf(ctx, tag, SC_GET, 0);
-		SV_VERBOSE(100, "\t%s: %+f", tag, *((FLT *)var));
+		SV_VERBOSE(110, "\t%s: %+f", tag, *((FLT *)var));
 		break;
 	case 's': {
 		const char *cv = survive_configs(ctx, tag, SC_SET, 0);
 		strcpy(var, cv);
-		SV_VERBOSE(100, "\t%s: '%s'", tag, cv);
+		SV_VERBOSE(110, "\t%s: '%s'", tag, cv);
 		break;
 	}
 	default:

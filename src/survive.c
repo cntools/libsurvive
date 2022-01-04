@@ -436,7 +436,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 		SV_INFO("Initial config file is %s", init_config);
 	}
 	config_read(ctx, config_path);
-	SV_VERBOSE(5, "libsurvive version %s", survive_build_tag());
+	SV_VERBOSE(5, "libsurvive version %s (backend %s)", survive_build_tag(), cnMatrixBackend());
 	SV_VERBOSE(5, "Config file is %.512s", config_path);
 
 	SV_VERBOSE(100, "Args: ");
@@ -517,7 +517,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 		return 0;
 	}
 	if (showversion) {
-		fprintf(stderr, "libsurvive version %s\n", survive_build_tag());
+		fprintf(stderr, "libsurvive version %s (backend: %s)\n", survive_build_tag(), cnMatrixBackend());
 		return 0;
 	}
 	return ctx;

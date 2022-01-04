@@ -955,9 +955,7 @@ inline void ApplyAxisAngleVelocity(LinmathAxisAnglePose *p_1, FLT t, const Linma
 inline void ApplyAxisAnglePoseToPose(LinmathAxisAnglePose *pout, const LinmathAxisAnglePose *lhs_pose,
 									 const LinmathAxisAnglePose *rhs_pose) {
 	ApplyAxisAnglePoseToPoint(pout->Pos, lhs_pose, rhs_pose->Pos);
-
 	axisanglerotateabout(pout->AxisAngleRot, lhs_pose->AxisAngleRot, rhs_pose->AxisAngleRot);
-	// quatrotateabout(pout->Rot, lhs_pose->Rot, rhs_pose->Rot);
 	for (int i = 0; i < 3; i++)
 		assert(!isnan(pout->Pos[i]));
 }

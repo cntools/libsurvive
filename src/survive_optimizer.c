@@ -685,11 +685,12 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 				gen_scale_sensor_pt(pt, pt, &imu2trackref, scale);
 			}
 
+			bool needsNewObj2World = pose_idx != meas->light.object;
 			if (calced_timecode != meas->time && !mpfunc_ctx->disableVelocity) {
-				pose_idx = -1;
+				needsNewObj2World = true;
 			}
 
-			if (pose_idx != meas->light.object) {
+			if (needsNewObj2World) {
 				calced_timecode = meas->time;
 				pose_idx = meas->light.object;
 				assert(pose_idx < mpfunc_ctx->poseLength);
@@ -721,9 +722,18 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 
 				int lh_count = mpfunc_ctx->cameraLength > 0 ? mpfunc_ctx->cameraLength
 															: mpfunc_ctx->sos[pose_idx]->ctx->activeLighthouses;
-				for (int lh = 0; lh < lh_count; lh++) {
-					ApplyDualPoseToPose(mpfunc_ctx, &obj2lh[lh], &cameras[lh], &obj2world);
+
+				// Precalc for all known lighthouses. We don't do this for velocity case since the velocity changes
+				// obj2world constantly
+				if (mpfunc_ctx->disableVelocity) {
+					for (int lh = 0; lh < lh_count; lh++) {
+						ApplyDualPoseToPose(mpfunc_ctx, &obj2lh[lh], &cameras[lh], &obj2world);
+					}
 				}
+			}
+
+			if (!mpfunc_ctx->disableVelocity) {
+				ApplyDualPoseToPose(mpfunc_ctx, &obj2lh[lh], &cameras[lh], &obj2world);
 			}
 
 			const survive_reproject_model_t *reprojectModel = mpfunc_ctx->reprojectModel;
@@ -892,6 +902,8 @@ static mp_config *survive_optimizer_get_cfg(SurviveContext *ctx) {
 		cachedCfg.stepfactor = survive_configf(ctx, OPTIMIZER_STEPFACTOR_TAG, SC_GET, 0);
 		cachedCfg.douserscale = survive_configi(ctx, OPTIMIZER_DOUSERSCALE_TAG, SC_GET, 0);
 		cachedCfg.nprint = survive_configi(ctx, OPTIMIZER_NPRINT_TAG, SC_GET, 0);
+
+		cachedCtx = ctx;
 	}
 	cachedCfg.iterproc = 0;
 	return &cachedCfg;

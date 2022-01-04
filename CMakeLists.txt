@@ -28,6 +28,7 @@ option(USE_HEX_FLOAT_PRINTF "Use hex floats when recording" OFF)
 
 option(USE_OPENCV "Use opencv proper for math operations" OFF)
 option(USE_COLUMN_MAJOR_MATRICES "Use column major matrices for math operations" OFF)
+option(USE_CPU_TUNE "Compile for your specific CPU" OFF)
 
 if(USE_SINGLE_PRECISION)
   add_compile_definitions(CN_USE_FLOAT)
@@ -115,6 +116,10 @@ IF(UNIX)
   SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SHARED_FLAGS} -std=gnu99 -Werror=incompatible-pointer-types -Werror=implicit-function-declaration -Werror=missing-field-initializers ")
   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SHARED_FLAGS} -std=c++14")
   add_definitions("-DCOMPILER_HAS_GENERIC_SUPPORT")
+
+  if(USE_CPU_TUNE)
+      add_compile_options("-mtune=native")
+  endif()
 
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -rdynamic")
 
