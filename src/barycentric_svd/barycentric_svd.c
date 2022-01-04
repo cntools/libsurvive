@@ -9,8 +9,6 @@
 #include <malloc.h>
 #endif
 
-#pragma GCC diagnostic ignored "-Wpedantic"
-
 static void bc_svd_choose_control_points(bc_svd *self) {
 	// Take C0 as the reference points centroid:
 	self->setup.control_points[0][0] = self->setup.control_points[0][1] = self->setup.control_points[0][2] = 0;
@@ -23,23 +21,21 @@ static void bc_svd_choose_control_points(bc_svd *self) {
 	for (int j = 0; j < 3; j++)
 		self->setup.control_points[0][j] /= self->setup.obj_cnt;
 
-	// Take C1, C2, and C3 from PCA on the reference points:
-	CN_CREATE_STACK_MAT(PW0, self->setup.obj_cnt, 3);
-
-	CN_CREATE_STACK_MAT(PW0tPW0, 3, 3);
-	CN_CREATE_STACK_MAT(DC, 3, 1);
+	// Note: The original ePNP paper / implementation has a sophisticated PCA scheme for control points which is
+	// supposed to work better with SFM problems. The scheme can fail pretty hard with vive devices though. The sensor
+	// placement for the HMD is relatively planar and so the control points conform to that plane, and with spotty data
+	// you get degenerate cases. So here we give it a relatively random rotation but centered and it seems pretty robust
+	// overall
+	FLT R[9];
+	LinmathQuat q = {1, 1, 1, 1};
+	quatnormalize(q, q);
+	quattomatrix33(R, q);
 	CN_CREATE_STACK_MAT(UCt, 3, 3);
 
-	for (int i = 0; i < self->setup.obj_cnt; i++)
-		for (int j = 0; j < 3; j++) {
-			cnMatrixSet(&PW0, i, j, self->setup.obj_pts[i][j] - self->setup.control_points[0][j]);
-		}
-	cnMulTransposed(&PW0, &PW0tPW0, 1, 0, 1);
-
-	cnSVD(&PW0tPW0, &DC, &UCt, 0, CN_SVD_MODIFY_A | CN_SVD_U_T);
+	cn_copy_in_row_major(&UCt, R, 3);
 
 	for (int i = 1; i < 4; i++) {
-		FLT k = sqrt(cn_as_vector(&DC)[i - 1] / (FLT)self->setup.obj_cnt);
+		FLT k = sqrt(1. / (FLT)self->setup.obj_cnt);
 		for (int j = 0; j < 3; j++) {
 			FLT uct_val = cnMatrixGet(&UCt, i - 1, j);
 #ifndef CN_MATRIX_IS_COL_MAJOR
@@ -50,9 +46,6 @@ static void bc_svd_choose_control_points(bc_svd *self) {
 	}
 
 	CN_FREE_STACK_MAT(UCt);
-	CN_FREE_STACK_MAT(DC);
-	CN_FREE_STACK_MAT(PW0tPW0);
-	CN_FREE_STACK_MAT(PW0);
 }
 
 static void bc_svd_compute_barycentric_coordinates(bc_svd *self) {
@@ -414,6 +407,8 @@ FLT bc_svd_compute_pose(bc_svd *self, FLT R[3][3], FLT t[3]) {
 		N = 1;
 	if (rep_errors[2] < rep_errors[N])
 		N = 2;
+
+	// printf("BCSVD %f %f %f (%d)\n", rep_errors[0], rep_errors[1], rep_errors[2], N);
 
 	copy_R_and_t(Rs[N + 1], ts[N + 1], R, t);
 

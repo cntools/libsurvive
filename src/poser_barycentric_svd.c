@@ -113,8 +113,8 @@ static SurvivePose solve_correspondence(PoserDataSVD *dd, bool cameraToWorld) {
 		return rtn;
 	}
 
-	SV_VERBOSE(200, "BaryCentricSVD for %s has err %f " SurvivePose_format " (Solving for camera: %d)", so->codename,
-			   err, SURVIVE_POSE_EXPAND(rtn), cameraToWorld);
+	SV_VERBOSE(200, "BaryCentricSVD for %s has err %f " SurvivePose_format " (Solving for camera: %d at %f)",
+			   so->codename, err, SURVIVE_POSE_EXPAND(rtn), cameraToWorld, survive_run_time(ctx));
 
 	FLT allowable_error = (cameraToWorld ? (dd->max_error_cal) : dd->max_error_obj) * 100.0;
 	if (allowable_error < err) {
