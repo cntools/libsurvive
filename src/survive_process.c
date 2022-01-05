@@ -196,6 +196,10 @@ void survive_default_set_imu_scale_modes(SurviveObject *so, int gyro_scale_mode,
     const FLT acc_scales[] = { 2, 4, 8, 16 };
     if(acc_scale_mode < 4) so->raw_acc_scale = acc_scales[acc_scale_mode] / (FLT)(1 << 15);
     if(gyro_scale_mode < 4) so->raw_gyro_scale = gyro_scales[gyro_scale_mode] / (FLT)(1 << 15) * LINMATHPI / 180.;
+
+	SurviveContext *ctx = so->ctx;
+	SV_VERBOSE(100, "Setting %s gyro scale %d(%f) acc scale %d(%f)", survive_colorize_codename(so), gyro_scale_mode,
+			   so->raw_acc_scale, acc_scale_mode, so->raw_gyro_scale);
 }
 void survive_default_imu_process(SurviveObject *so, int mask, const FLT *accelgyromag, uint32_t timecode, int id) {
 	survive_long_timecode longTimecode = SurviveSensorActivations_long_timecode_imu(&so->activations, timecode);

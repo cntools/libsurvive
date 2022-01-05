@@ -634,13 +634,17 @@ void survive_data_on_setup_write(SurviveObject *so, uint8_t bmRequestType, uint8
 		enum LightcapMode m = data[1] == 0 ? LightcapMode_raw0 : data[1] == 1 ? LightcapMode_raw1 : LightcapMode_raw2;
 		SV_INFO("LightcapMode usb %s %d -> %d", so->codename, driverInfo->lightcapMode, m);
 		driverInfo->lightcapMode = m;
+		driverInfo->ignoreCnt = 10;
 	}
 
 	if (is_mode_switch_rf(bmRequestType, bRequest, wValue, wIndex, data, length)) {
 		enum LightcapMode m = data[4] == 0 ? LightcapMode_raw0 : data[7] == 1 ? LightcapMode_raw2 : LightcapMode_raw1;
 		SV_INFO("LightcapMode rf %s %d -> %d", so->codename, driverInfo->lightcapMode, m);
 		driverInfo->lightcapMode = m;
+		driverInfo->ignoreCnt = 10;
 	}
+
+	// SV_INFO("Setup %s write of %x %d", survive_colorize_codename(so), wValue, length);
 }
 
 void survive_data_cb_locked(uint64_t time_received_us, SurviveUSBInterface *si);
@@ -2271,6 +2275,9 @@ static void handle_watchman_v2(SurviveObject *w, uint64_t time_in_us, uint16_t t
 		vive_switch_mode(driverInfo, LightcapMode_raw1);
 		return;
 	}
+	if (driverInfo->lightcapMode == LightcapMode_raw0) {
+		return;
+	}
 
 	uint8_t flags = POP_BYTE(payloadPtr);
 	bool has_errors = false;
@@ -2352,13 +2359,12 @@ static void handle_watchman_v2(SurviveObject *w, uint64_t time_in_us, uint16_t t
 		}
 		case 0x30: {
 			// Only have seen zeros here
-			// Info: 0.5121191 WM0 Unknown metadata marker (40 30) bytes dropping rest of data 40 30 00 00
 			uint8_t unknown_byte1 = POP_BYTE(payloadPtr);
 			uint8_t unknown_byte2 = POP_BYTE(payloadPtr);
 			break;
 		}
 		default:
-			SV_VERBOSE(100, "%.7f %s Unknown metadata marker (%02x %02x) bytes dropping rest of data %s",
+			SV_VERBOSE(100, "%.7f %s Unknown metadata marker in v2 (%02x %02x) bytes dropping rest of data %s",
 					   survive_run_time(ctx), w->codename, flags, marker_byte,
 					   packetToHex(originPayloadPtr, payloadEndPtr));
 			return;

@@ -67,6 +67,30 @@ static inline void setup_packet_state(struct survive_config_packet *packet) {
 	survive_usb_setup_control(packet->tx, packet->usbInfo, handle_config_tx, packet, 1000);
 }
 
+void survive_usb_feature_read(SurviveObject *so, const uint8_t *data, size_t length) {
+	SurviveContext *ctx = so->ctx;
+	switch (data[0]) {
+	case VIVE_REPORT_CHANGE_MODE:
+		SV_VERBOSE(100, "%s new mode %d", survive_colorize_codename(so), data[1]);
+		break;
+	case VIVE_REPORT_IMU_SCALES: {
+		int gyro_scale_mode = data[1];
+		int acc_scale_mode = data[2];
+		survive_default_set_imu_scale_modes(so, gyro_scale_mode, acc_scale_mode);
+		break;
+	}
+	case VIVE_REPORT_VERSION:
+		parse_tracker_version_info(so, data + 1, length - 1);
+		break;
+	case VIVE_REPORT_CONFIG_READMODE:
+	case VIVE_REPORT_CONFIG_READ:
+		break;
+	default:
+		SV_VERBOSE(10, "============== Unknown feature %s read %x %d", survive_colorize_codename(so), data[0],
+				   (int)length);
+		break;
+	}
+}
 void handle_config_tx(survive_usb_transfer_t *transfer) {
 	struct survive_config_packet *packet = transfer->user_data;
 	SurviveContext *ctx = packet->ctx;

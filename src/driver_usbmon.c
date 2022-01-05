@@ -703,8 +703,11 @@ void *pcap_thread_fn(void *_driver) {
 										this_time, color_dev_name, SURVIVE_COLORIZED_DATA(usbp->id), usbp->event_type,
 										usbp->transfer_type, usbp->endpoint_number,
 										survive_usb_interface_str(interface), usbp->data_len);
-
 					survive_dump_buffer(ctx, pktData, usbp->data_len);
+				}
+
+				if (usbp->event_type == 'C' && usbp->transfer_type == 2) {
+					survive_usb_feature_read(dev->so, pktData, usbp->data_len);
 				}
 
 				if (usbp->id == dev->last_config_id && usbp->event_type == 'C' && dev->hasConfiged == false) {
