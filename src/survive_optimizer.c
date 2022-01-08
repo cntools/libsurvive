@@ -912,6 +912,7 @@ static mp_config *survive_optimizer_get_cfg(SurviveContext *ctx) {
 mp_config precise_cfg = {0};
 SURVIVE_EXPORT mp_config *survive_optimizer_precise_config() { return &precise_cfg; }
 
+#ifndef NDEBUG
 static inline bool sane_covariance(const CnMat *P) {
 #ifndef NDEBUG
 	for (int i = 0; i < P->rows; i++) {
@@ -924,6 +925,7 @@ static inline bool sane_covariance(const CnMat *P) {
 #endif
 	return true;
 }
+#endif
 
 int survive_optimizer_nonfixed_index(survive_optimizer *ctx, int idx) {
 	if (ctx->mp_parameters_info[idx].fixed)

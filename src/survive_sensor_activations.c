@@ -121,32 +121,6 @@ void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct Pos
 	}
 }
 
-static inline void SurviveSensorActivations_update_center(SurviveSensorActivations *self, FLT alpha, int lh, int axis,
-														  FLT oldval, FLT angle) {
-	FLT *mean_sum = &self->angles_center_x[lh][axis];
-	FLT *dev = &self->angles_center_dev[lh][axis];
-	int *cnt = &self->angles_center_cnt[lh][axis];
-
-	if (*cnt) {
-		FLT beta = 1. - alpha;
-		*mean_sum *= beta;
-		*dev *= beta;
-		if (!isfinite(oldval))
-			(*cnt)++;
-
-		FLT var = (*mean_sum - angle);
-		*dev += alpha * var * var;
-		*mean_sum += alpha * angle;
-
-		struct SurviveObject *so = self->so;
-		SV_DATA_LOG("light_mean[%d][%d]", mean_sum, 1, lh, axis)
-		SV_DATA_LOG("light_deviation[%d][%d]", dev, 1, lh, axis)
-	} else {
-		(*cnt)++;
-		*mean_sum = angle;
-		*dev = 1.5;
-	}
-}
 static inline bool SurviveSensorActivations_check_outlier(SurviveSensorActivations *self, int sensor_id, int lh,
 														  int axis, survive_long_timecode timecode, FLT angle) {
 	FLT *oldangle = &self->angles[sensor_id][lh][axis];
@@ -445,12 +419,12 @@ SURVIVE_EXPORT survive_long_timecode SurviveSensorActivations_long_timecode_ligh
 	use that as a basis. It's worth noting that I've never seen a system develop this while running; it would
 	likely cause some chaos if it did since it'd kick the kalman out of sorts.
 	***/
-	if (self->last_imu != 0 && abs(time_sync_error) > 48000000) {
+	if (self->last_imu != 0 && labs(time_sync_error) > 48000000) {
 		int64_t offset = 0x10000000;
 		int scale = DIV_ROUND_CLOSEST(time_sync_error, offset);
 		initial_time -= offset * scale;
 	}
-	
+
 	return initial_time;
 }
 
