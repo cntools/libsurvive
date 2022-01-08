@@ -1,3 +1,4 @@
+#include "src/survive_kalman_tracker.h"
 #include <survive.h>
 
 static volatile int keepRunning = 1;
@@ -100,6 +101,7 @@ const char *column_width = "          ";
 static void print_int(int i) { printf("%9d |", i); }
 
 static void print_small(float f) { printf("%+3.2f ", f); }
+static void print_small_sci(float f) { printf("%+2.1e ", f); }
 
 static void print(float f) {
 	if (isnan(f)) {
@@ -140,6 +142,26 @@ char *new_str(const char *s) {
 char *lines[10] = {0};
 size_t lines_idx = 0;
 
+static void draw_model(const SurviveKalmanModel *mdl) {
+	printf("Rot: ");
+	for (int i = 0; i < 4; i++)
+		print_small_sci(mdl->Pose.Rot[i]);
+	printf("Acc: ");
+	print_small_sci(norm3d(mdl->Acc));
+	for (int i = 0; i < 3; i++)
+		print_small_sci(mdl->Acc[i]);
+	printf("Vel: ");
+	for (int i = 0; i < 3; i++)
+		print_small_sci(mdl->Velocity.Pos[i]);
+	for (int i = 0; i < 3; i++)
+		print_small_sci(mdl->Velocity.AxisAngleRot[i]);
+	printf("Fix: ");
+	for (int i = 0; i < 4; i++)
+		print_small_sci(mdl->IMUCorrection[i]);
+	print_small_sci(mdl->AccScale);
+	printf("\n");
+}
+
 int window_rows = -1, window_cols = -1;
 #define gotoxy(x, y) printf("\033[%d;%dH", (y), (x))
 static void redraw(SurviveContext *ctx) {
@@ -172,15 +194,20 @@ static void redraw(SurviveContext *ctx) {
 		variance_measure_calc(&imu_variance, calc_imu_var);
 
 		printf("IMU: %5.1fhz ", imu_time_stats[i].hz);
+		print_small(norm3d(so->activations.last_accel) - 1);
 		for (int i = 0; i < 3; i++)
-			print_small(so->activations.accel[i]);
+			print_small(so->activations.last_accel[i]);
 		for (int i = 0; i < 3; i++)
 			print_small(so->activations.gyro[i]);
 		printf("Var: ");
 		for (int i = 0; i < 6; i++)
-			print_small(calc_imu_var[i]);
-
+			print_small_sci(calc_imu_var[i]);
 		printf("\n");
+
+		draw_model(&so->tracker->state);
+		FLT Pd[sizeof(SurviveKalmanModel) / sizeof(FLT)] = {};
+		cn_get_diag(&so->tracker->model.P, Pd, sizeof(Pd) / sizeof(Pd[0]));
+		draw_model((const SurviveKalmanModel *)Pd);
 
 		printf("|\x1B[4m");
 		const char *labels[] = {"ch.sensor", "Hits",  "Hits/sec", "X",	   "Y",		  "min X", "max X",
