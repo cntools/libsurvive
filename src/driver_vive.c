@@ -720,8 +720,8 @@ static int AttachInterface(SurviveViveData *sv, struct SurviveUSBInfo *usbObject
 }
 
 static const struct DeviceInfo *find_known_device(SurviveContext *ctx, uint16_t idVendor, uint16_t idProduct) {
-	const char *blacklist = survive_configs(ctx, "blacklist-devs", SC_GET, "-");
-	for (const struct DeviceInfo *info = KnownDeviceTypes; info->name; info++) {
+	const char *blacklist = survive_configs(ctx, "blacklist-devs", SC_GET, 0);
+	for (const struct DeviceInfo *info = KnownDeviceTypes; info->name && blacklist; info++) {
 		if (info == 0 || strstr(blacklist, info->name)) {
 			continue;
 		}
