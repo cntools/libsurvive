@@ -2275,9 +2275,6 @@ static void handle_watchman_v2(SurviveObject *w, uint64_t time_in_us, uint16_t t
 		vive_switch_mode(driverInfo, LightcapMode_raw1);
 		return;
 	}
-	if (driverInfo->lightcapMode == LightcapMode_raw0) {
-		return;
-	}
 
 	uint8_t flags = POP_BYTE(payloadPtr);
 	bool has_errors = false;
