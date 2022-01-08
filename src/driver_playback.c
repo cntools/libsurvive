@@ -11,8 +11,8 @@
 
 #include "survive_gz.h"
 
-STATIC_CONFIG_ITEM(PLAYBACK_REPLAY_POSE, "playback-replay-pose", 'i', "Whether or not to output pose", 0)
-STATIC_CONFIG_ITEM(PLAYBACK_REPLAY_EXTERNAL_POSE, "playback-replay-external-pose", 'i',
+STATIC_CONFIG_ITEM(PLAYBACK_REPLAY_POSE, "playback-replay-pose", 'b', "Whether or not to output pose", 0)
+STATIC_CONFIG_ITEM(PLAYBACK_REPLAY_EXTERNAL_POSE, "playback-replay-external-pose", 'b',
 				   "Whether or not to output external pose", 0)
 STATIC_CONFIG_ITEM(PLAYBACK, "playback", 's', "File to be used for playback if playing a recording.", 0)
 STATIC_CONFIG_ITEM(PLAYBACK_FACTOR, "playback-factor", 'f',

@@ -30,7 +30,7 @@
 
 #define DEFAULT_CONFIG_PATH "config.json"
 STATIC_CONFIG_ITEM(SURVIVE_VERBOSE, "v", 'i', "Verbosity level", 0)
-STATIC_CONFIG_ITEM(BLACKLIST_DEVS, "blacklist-devs", 's', "List any devs (or substrings of devs) to blacklist.", "-")
+STATIC_CONFIG_ITEM(BLACKLIST_DEVS, "blacklist-devs", 's', "List any devs (or substrings of devs) to blacklist.", "")
 STATIC_CONFIG_ITEM(CONFIG_FILE, "configfile", 's', "Default configuration file", DEFAULT_CONFIG_PATH)
 STATIC_CONFIG_ITEM(INIT_CONFIG_FILE, "init-configfile", 's', "Initial configuration file", 0)
 STATIC_CONFIG_ITEM(CONFIG_D_CALI, "disable-calibrate", 'i', "Enables or disables calibration", 0)
@@ -297,10 +297,12 @@ static inline bool find_correct_config_file(struct SurviveContext *ctx, const ch
 	return false;
 }
 
-static bool disable_colorization = false;
-SurviveContext *survive_init_internal(int argc, char *const *argv, void *userData, log_process_func log_func) {
-	int i;
+void survive_init_plugins() {
+	static bool loaded = false;
+	if (loaded)
+		return;
 
+	loaded = true;
 	survive_load_plugins(0);
 
 #ifdef RUNTIME_SYMNUM
@@ -309,6 +311,12 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 		did_runtime_symnum = 1;
 	}
 #endif
+}
+static bool disable_colorization = false;
+SurviveContext *survive_init_internal(int argc, char *const *argv, void *userData, log_process_func log_func) {
+	int i;
+
+	survive_init_plugins();
 
 	SurviveContext *ctx = SV_CALLOC(sizeof(SurviveContext));
 	ctx->user_ptr = userData;

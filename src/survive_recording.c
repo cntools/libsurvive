@@ -368,7 +368,8 @@ void survive_destroy_recording(SurviveContext *ctx) {
 	}
 }
 
-void survive_record_config(SurviveContext *ctx, const char *tag, uint8_t type, void *user) {
+void survive_record_config(SurviveContext *ctx, const char *tag, uint8_t type, const char *desc, const char *def_value,
+						   void *user) {
 	char buf[128];
 	survive_config_as_str(ctx, buf, sizeof(buf), tag, "");
 	survive_recording_write_to_output(ctx->recptr, "OPTION %s %c %s\n", tag, type, buf);

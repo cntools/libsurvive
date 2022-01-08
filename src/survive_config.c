@@ -132,14 +132,38 @@ int survive_print_help_for_parameter(SurviveContext *ctx, const char *tomap) {
 }
 
 #define USAGE_FORMAT " --%-40s"
-static const char *USAGE_FORMAT_BOOL = USAGE_FORMAT "%15d    ";
-static const char *USAGE_FORMAT_INT = USAGE_FORMAT "%15d    ";
-static const char *USAGE_FORMAT_FLOAT = USAGE_FORMAT "%15f    ";
-static const char *USAGE_FORMAT_STRING = USAGE_FORMAT "%15s    ";
+static const char *USAGE_FORMAT_BOOL = "%15d    ";
+static const char *USAGE_FORMAT_INT = "%15d    ";
+static const char *USAGE_FORMAT_FLOAT = "%15f    ";
+static const char *USAGE_FORMAT_STRING = "%15s    ";
+
+void survive_default_to_str(struct static_conf_t *config, char *stobuf, size_t len) {
+	switch (config->type) {
+	case 'b':
+		snprintf(stobuf, 127, USAGE_FORMAT_BOOL, config->data_default.b);
+		break;
+	case 'i':
+		snprintf(stobuf, 127, USAGE_FORMAT_INT, config->data_default.i);
+		break;
+	case 'f':
+		snprintf(stobuf, 127, USAGE_FORMAT_FLOAT, config->data_default.f);
+		break;
+	case 's':
+		snprintf(stobuf, 127, USAGE_FORMAT_STRING, config->data_default.s);
+		break;
+	case 'a':
+		snprintf(stobuf, 127, "[FA] %25s  %s\n", config->name, config->description);
+		break;
+	default:
+		assert("Invalid config item" && false);
+	}
+}
 
 void survive_config_iterate(SurviveContext *ctx, survive_config_iterate_fn fn, void *user) {
+	char buffer[128];
 	for (struct static_conf_t *config = head; config; config = config->next) {
-		fn(ctx, config->name, config->type, user);
+		survive_default_to_str(config, buffer, 128);
+		fn(ctx, config->name, config->type, config->description, buffer, user);
 	}
 }
 
@@ -229,27 +253,10 @@ void survive_print_known_configs( SurviveContext * ctx, int verbose )
 			if( verbose )
 			{
 				char stobuf[128];
-				switch( config->type )
-				{
-                    case 'b':
-                        snprintf(stobuf, 127, USAGE_FORMAT_BOOL, name, config->data_default.b);
-                        break;
-                    case 'i':
-					snprintf(stobuf, 127, USAGE_FORMAT_INT, name, config->data_default.i);
-					break;
-				case 'f':
-					snprintf(stobuf, 127, USAGE_FORMAT_FLOAT, name, config->data_default.f);
-					break;
-				case 's':
-					snprintf(stobuf, 127, USAGE_FORMAT_STRING, name, config->data_default.s);
-					break;
-				case 'a':	snprintf( stobuf, 127, "[FA] %25s  %s\n", config->name, config->description ); break;
-				default:
-					assert("Invalid config item" && false);
-				}
+				survive_default_to_str(config, stobuf, 128);
 
 				const char *type_desc = type_to_desc(config->type);
-				printf("%s %-12s     %s\n", stobuf, type_desc, config->description);
+				printf(USAGE_FORMAT "%s %-12s     %s\n", name, stobuf, type_desc, config->description);
 			}
 			else
 			{

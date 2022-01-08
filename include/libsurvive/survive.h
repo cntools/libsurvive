@@ -375,6 +375,7 @@ struct SurviveContext {
 SURVIVE_EXPORT void survive_verify_FLT_size(
 	uint32_t user_size); // Baked in size of FLT to verify users of the library have the correct setting.
 
+SURVIVE_EXPORT void survive_init_plugins();
 SURVIVE_EXPORT SurviveContext *survive_init_internal(int argc, char *const *argv, void *user_ptr,
 													 log_process_func log_func);
 
@@ -432,6 +433,9 @@ enum survive_config_flags {
 	SC_SETCONFIG = 4 // Set, both in-memory and config file.  Use in conjunction with SC_OVERRIDE.
 };
 
+typedef void (*survive_config_iterate_fn)(SurviveContext *ctx, const char *name, uint8_t type, const char *description,
+										  const char *default_value, void *user);
+SURVIVE_EXPORT void survive_config_iterate(SurviveContext *ctx, survive_config_iterate_fn fn, void *user);
 SURVIVE_EXPORT bool survive_config_is_set(SurviveContext *ctx, const char *tag);
 SURVIVE_EXPORT FLT survive_configf(SurviveContext *ctx, const char *tag, char flags, FLT def);
 SURVIVE_EXPORT bool survive_configb(SurviveContext *ctx, const char *tag, char flags, bool def);
