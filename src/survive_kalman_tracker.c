@@ -599,23 +599,24 @@ void survive_kalman_tracker_process_noise(const struct SurviveKalmanTracker_Para
 	FLT t3 = t2 * t;
 	FLT t4 = t3 * t;
 	FLT t5 = t4 * t;
-
+	FLT t6 = t5 * t;
 	/* ================== Positional ============================== */
 	// Estimation with Applications to Tracking and Navigation: Theory Algorithms and Software Ch 6
 	// http://wiki.dmdevelopment.ru/wiki/Download/Books/Digitalimageprocessing/%D0%9D%D0%BE%D0%B2%D0%B0%D1%8F%20%D0%BF%D0%BE%D0%B4%D0%B1%D0%BE%D1%80%D0%BA%D0%B0%20%D0%BA%D0%BD%D0%B8%D0%B3%20%D0%BF%D0%BE%20%D1%86%D0%B8%D1%84%D1%80%D0%BE%D0%B2%D0%BE%D0%B9%20%D0%BE%D0%B1%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B5%20%D1%81%D0%B8%D0%B3%D0%BD%D0%B0%D0%BB%D0%BE%D0%B2/Estimation%20with%20Applications%20to%20Tracking%20and%20Navigation/booktext@id89013302placeboie.pdf
 
 	// We mix three order models here based on tuning variables.
+
 	FLT Q_acc[] = {
-	        t5 / 20.,
-	        t4 / 8.,      t3 / 3.,
-	        t3 / 6.,      t2 / 2.,       t
+		t6 / 36.,
+		t5 / 12.,      t4 / 4.,
+		t4 / 6.,      t3 / 2.,       t2
 	};
 	FLT Q_vel[] = {
-	        t3 / 3.,
-	        t2 / 2.,       t,
+		t4 / 4.,
+		t3 / 2.,       t2,
 	};
 
-	FLT p_p = params->process_weight_acc * Q_acc[0] + params->process_weight_vel * Q_vel[0] + params->process_weight_pos * t;
+	FLT p_p = params->process_weight_acc * Q_acc[0] + params->process_weight_vel * Q_vel[0] + params->process_weight_pos * t2;
 	FLT p_v = params->process_weight_acc * Q_acc[1] + params->process_weight_vel * Q_vel[1];
 	FLT p_a = params->process_weight_acc * Q_acc[3];
 
@@ -637,11 +638,11 @@ void survive_kalman_tracker_process_noise(const struct SurviveKalmanTracker_Para
 	FLT qws = qw * qw, qxs = qx * qx, qys = qy * qy, qzs = qz * qz;
 	FLT qs = qws + qxs + qys + qzs;
 
-	FLT rv = params->process_weight_rotation * t + params->process_weight_ang_velocity * Q_vel[0];
+	FLT rv = params->process_weight_rotation * t2 + params->process_weight_ang_velocity * Q_vel[0];
 
-	FLT ga = params->process_weight_acc_bias * t;
+	FLT ga = params->process_weight_acc_bias * t2;
 	/* The gyro bias is expected to change, but slowly through time */
-	FLT gb = params->process_weight_gyro_bias * t;
+	FLT gb = params->process_weight_gyro_bias * t2;
 
 	FLT Q_POSE_BLOCK[] = {
 //       x        y        z                 qw                 qx                 qy                 qz         vx       vy       vz          avx      avy      avz       ax       ay      az
@@ -994,6 +995,7 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 
     cnkalman_meas_model_init(&tracker->model, "imu", &tracker->imu_model, survive_kalman_tracker_imu_measurement_model);
     tracker->imu_model.adaptive = tracker->adaptive_imu;
+//tracker->imu_model.meas_jacobian_mode = cnkalman_jacobian_mode_debug;
 
     cnkalman_meas_model_init(&tracker->model, "lightcap", &tracker->lightcap_model, map_light_data);
     tracker->lightcap_model.term_criteria.max_iterations = 5;
