@@ -67,14 +67,16 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("process-weight-rot", "Rotation variance per second", 0, t->params.process_weight_rotation)
 	STRUCT_CONFIG_ITEM("process-weight-acc-bias", "Acc bias variance per second", 0, t->params.process_weight_acc_bias)
 	STRUCT_CONFIG_ITEM("process-weight-gyro-bias", "Gyro bias variance per seconid", 0, t->params.process_weight_gyro_bias)
-	STRUCT_CONFIG_ITEM("minimize-state-space", "Minimize the state space", 1, t->minimize_state_space)
+	STRUCT_CONFIG_ITEM("kalman-minimize-state-space", "Minimize the state space", 1, t->minimize_state_space)
 
-    STRUCT_CONFIG_ITEM("kalman-initial-imu-variance", "Initial variance in IMU frame", 1e-5, t->params.initial_variance_imu_correction)
-    STRUCT_CONFIG_ITEM("kalman-initial-acc-scale-variance", "Initial variance in IMU frame", 1e-5, t->params.initial_acc_scale_variance)
+	STRUCT_CONFIG_ITEM("kalman-initial-imu-variance", "Initial variance in IMU frame", 0, t->params.initial_variance_imu_correction)
+    STRUCT_CONFIG_ITEM("kalman-initial-acc-scale-variance", "Initial variance in IMU frame", 0, t->params.initial_acc_scale_variance)
 
 	STRUCT_CONFIG_ITEM("kalman-zvu-moving", "", -1, t->zvu_moving_var)
 	STRUCT_CONFIG_ITEM("kalman-zvu-stationary", "", 1e-2, t->zvu_stationary_var)
 	STRUCT_CONFIG_ITEM("kalman-zvu-no-light", "", 1e-4, t->zvu_no_light_var)
+
+	STRUCT_CONFIG_ITEM("kalman-noise-model", "0 is jerk acceleration model, 1 is simple model", 0, t->noise_model)
 
 	STRUCT_CONFIG_ITEM("imu-acc-norm-penalty", "", 0, t->acc_norm_penalty)
 	STRUCT_CONFIG_ITEM("imu-acc-variance", "Variance of accelerometer", 1e-3, t->acc_var)
