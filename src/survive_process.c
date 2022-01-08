@@ -17,6 +17,7 @@ void survive_default_button_process(SurviveObject *so, enum SurviveInputEvent ev
 }
 
 STATIC_CONFIG_ITEM(REPORT_IN_IMU, "report-in-imu", 'i', "Debug option to output poses in IMU space.", 0)
+STATIC_CONFIG_ITEM(USE_EXTERNAL_LH, "use-external-lighthouse", 'b', "Use external lighthouse if available", 0)
 void survive_default_imupose_process(SurviveObject *so, survive_long_timecode timecode, const SurvivePose *imu2world) {
 	static int report_in_imu = -1;
 	if (report_in_imu == -1) {
@@ -53,6 +54,31 @@ void survive_default_external_velocity_process(SurviveContext *ctx, const char *
 	survive_recording_external_velocity_process(ctx, name, vel);
 }
 void survive_default_external_pose_process(SurviveContext *ctx, const char *name, const SurvivePose *pose) {
+	if (strncmp(name, "LHB", 3) == 0) {
+		bool useExternal = survive_configb(ctx, USE_EXTERNAL_LH_TAG, SC_GET, 0);
+		for (int i = 0; i < ctx->activeLighthouses && useExternal; i++) {
+			char buf[32] = {};
+			snprintf(buf, 32, "LHB-%08X", ctx->bsd[i].BaseStationID);
+			if (strcmp(buf, name) == 0) {
+				// ctx->bsd[i].Pose = *pose;
+				// ctx->bsd[i].PositionSet = 1;
+				SURVIVE_INVOKE_HOOK(lighthouse_pose, ctx, i, pose);
+			}
+		}
+	}
+	for (int i = 0; i < ctx->objs_ct; i++) {
+		SurviveObject *so = ctx->objs[i];
+		if (strcmp(so->serial_number, name) == 0) {
+			SurvivePose out;
+			survive_kalman_tracker_predict(so->tracker, survive_run_time(ctx), &out);
+
+			SurvivePose head2world;
+			ApplyPoseToPose(&head2world, &out, &so->head2imu);
+
+			FLT diff[] = {dist3d(head2world.Pos, pose->Pos), quatdifference(head2world.Rot, pose->Rot)};
+			SV_DATA_LOG("external_diff", diff, 2);
+		}
+	}
 	survive_recording_external_pose_process(ctx, name, pose);
 }
 
