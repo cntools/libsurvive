@@ -460,17 +460,33 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 
 	FLT rotation_variance[] = {1e5, 1e5, 1e5, 1e5, 1e5, 1e5};
 
-	FLT zvu_var = isStationary ? tracker->zvu_stationary_var : tracker->zvu_moving_var;
-	if (time - tracker->last_light_time > .1) {
-		zvu_var = tracker->zvu_no_light_var;
-	}
+	bool no_light = (time - tracker->last_light_time) > .1;
+	FLT zvu_var = (isStationary && tracker->zvu_stationary_var >= 0) ? tracker->zvu_stationary_var :
+				  ((no_light && tracker->zvu_no_light_var >= 0) ? tracker->zvu_no_light_var : tracker->zvu_moving_var);
+	bool disable_ang_vel = no_light && !isStationary;
+
 	if (zvu_var >= 0) {//time - tracker->last_light_time > .1) {//|| isStationary || fabs(1 - norm) < .001 ) {
 		// If we stop seeing light data; tank all velocity / acceleration measurements
-		size_t row_cnt = linmath_imin(9, tracker->model.state_cnt - 7);
+		size_t row_cnt = linmath_imin(9 - disable_ang_vel * 3, tracker->model.state_cnt - 7);
 		CN_CREATE_STACK_MAT(H, row_cnt, tracker->model.state_cnt);
 		cn_set_zero(&H);
-		for (int i = 0; i < row_cnt; i++) {
-			cnMatrixSet(&H, i, 7 + i, 1);
+
+		int vel_idx = offsetof(SurviveKalmanModel, Velocity.Pos[0]) / sizeof(FLT);
+		int acc_idx = offsetof(SurviveKalmanModel, Acc) / sizeof(FLT);
+		int idx = 0;
+		for (idx = 0; idx < 3; idx++) {
+			cnMatrixSet(&H, idx, vel_idx + idx, 1);
+		}
+
+		if(!disable_ang_vel) {
+			for (int i = 0; i < 3; i++) {
+				cnMatrixSet(&H, idx + i, vel_idx + 3 + i, 1);
+			}
+			idx += 3;
+		}
+
+		for (int i = 0; i < 3; i++) {
+			cnMatrixSet(&H, idx + i, acc_idx + i, 1);
 		}
 
 		CN_CREATE_STACK_MAT(R, row_cnt, 1)
