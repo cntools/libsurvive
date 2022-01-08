@@ -304,7 +304,10 @@ SurviveVelocity *survive_optimizer_get_velocity(survive_optimizer *ctx) {
 
 static inline FLT fix_infinity(FLT d) {
 	// assert(isfinite(*d));
-	assert(!isnan(d));
+	// assert(!isnan(d));
+	if (isnan(d)) {
+		return 0;
+	}
 	if (!isfinite(d)) {
 		return linmath_enforce_range(d, -1e3, 1e3);
 	}
@@ -471,7 +474,7 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
 
 			for (int j = 0; j < pose_size; j++) {
 				assert(derivs[jac_offset_obj + j]);
-				derivs[jac_offset_obj + j][meas_idx] = isfinite(out[j]) ? out[j] / meas->variance : 0;
+				derivs[jac_offset_obj + j][meas_idx] = fix_infinity(out[j] / meas->variance);
 			}
 		}
 
@@ -485,7 +488,7 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
             }
 			for (int j = 0; j < pose_size; j++) {
 				assert(derivs[jac_offset_lh + j]);
-				derivs[jac_offset_lh + j][meas_idx] = isfinite(out[j]) ? out[j] / meas->variance : 0;
+				derivs[jac_offset_lh + j][meas_idx] = fix_infinity(out[j] / meas->variance);
 			}
 		}
 	}
@@ -750,7 +753,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 																				  &world2lh->axisAnglePose, cal + axis);
 					}
 					scale3d(ptJac, ptJac, 1. / meas[meas_idx_jac].variance);
-					derivs[scale_idx][meas_idx + meas_idx_jac] = dot3d(xyzjac_scale, ptJac);
+					derivs[scale_idx][meas_idx + meas_idx_jac] = fix_infinity(dot3d(xyzjac_scale, ptJac));
 				}
 			}
 
