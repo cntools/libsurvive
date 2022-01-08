@@ -269,6 +269,8 @@ void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker,
 		CnMat R = cnVec(Z.rows, light_vars);
 
         tracker->datalog_tag = "light_data";
+		if(time < tracker->model.t)
+			time = tracker->model.t;
         FLT rtn = cnkalman_meas_model_predict_update(time, &tracker->lightcap_model, &cbctx, &Z, &R);
 		tracker->datalog_tag = 0;
 		if (!ramp_in && tracker->adaptive_lightcap) {
