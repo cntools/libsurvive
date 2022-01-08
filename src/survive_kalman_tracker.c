@@ -27,7 +27,8 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 					   -1., t->light_error_threshold)
 	STRUCT_CONFIG_ITEM("min-report-time",
 					   "Minimum kalman report time in s (-1 defaults to 1. / imu_hz)", -1., t->min_report_time)
-    STRUCT_CONFIG_ITEM("report-covariance", "Report covariance matrix every n poses", -1, t->report_covariance_cnt);
+	STRUCT_CONFIG_ITEM("report-covariance", "Report covariance matrix every n poses", -1, t->report_covariance_cnt);
+	STRUCT_CONFIG_ITEM("report-sampled-cloud", "Show sample cloud from covariance", false, t->report_sampled_cloud);
 	STRUCT_CONFIG_ITEM("use-adaptive-imu",  "Use adaptive kalman for IMU", 0, t->adaptive_imu)
 	STRUCT_CONFIG_ITEM("use-adaptive-lightcap",  "Use adaptive kalman for Lightcap", 0, t->adaptive_lightcap)
 	STRUCT_CONFIG_ITEM("use-adaptive-obs",  "Use adaptive kalman for observations", 0, t->adaptive_obs)
@@ -750,6 +751,7 @@ void survive_show_covariance(SurviveObject *so, const SurvivePose *pose, const s
         cnRand(&X, 0, 1);
         cnGEMM(&RL, &X, 1, 0, 0, &Xs, 0);
         addnd(_Xs, _Xs, pose->Pos, 7);
+		quatnormalize(&_Xs[3], &_Xs[3]);
         char external_name[16] = {0};
         sprintf(external_name, "%s-sample_%d", so->codename, i);
         SurvivePose head2world = *pose;
@@ -837,7 +839,7 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
             }
             survive_recording_write_to_output_nopreamble(ctx->recptr, "\n");
 
-            if(true) {
+            if(tracker->report_sampled_cloud) {
                 survive_show_covariance(so, pose, Ri, .05);
             }
 
@@ -948,7 +950,21 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	}
 
 	cnkalman_state_init(&tracker->model, state_cnt, survive_kalman_tracker_predict_jac,
-							  survive_kalman_tracker_process_noise_bounce, &tracker->params, (FLT *)&tracker->state);
+						tracker->noise_model == 0 ? survive_kalman_tracker_process_noise_bounce : 0, &tracker->params, (FLT *)&tracker->state);
+
+	if(tracker->noise_model == 1) {
+		for(int i = 0;i < 3;i++) {
+			tracker->process_variance.Pose.Pos[i] = tracker->params.process_weight_pos;
+			tracker->process_variance.Pose.Rot[i] = tracker->params.process_weight_rotation;
+			tracker->process_variance.Velocity.Pos[i] = tracker->params.process_weight_vel;
+			tracker->process_variance.Velocity.AxisAngleRot[i] = tracker->params.process_weight_ang_velocity;
+			tracker->process_variance.Acc[i] = tracker->params.process_weight_acc;
+			tracker->process_variance.AccBias[i] = tracker->params.process_weight_acc_bias;
+		}
+		tracker->process_variance.Pose.Rot[3] = tracker->params.process_weight_rotation;
+
+		tracker->model.state_variance_per_second = cnVec(state_cnt, tracker->process_variance.Pose.Pos);
+	}
 	//tracker->model.transition_jacobian_mode = cnkalman_jacobian_mode_debug;
 	if (ctx) {
 		cnkalman_set_logging_level(&tracker->model, ctx->log_level);
@@ -1066,7 +1082,7 @@ void survive_kalman_tracker_stats(SurviveKalmanTracker *tracker) {
 				   LINMATH_VEC7_EXPAND(tracker->Obs_R + 7 * i));
 	}
 
-	FLT* state_variance = (FLT*)&tracker->state_variance;
+	FLT* state_variance = (FLT*)&tracker->reported_state_variance;
     scalend(state_variance, state_variance, 1. / (FLT)tracker->state_variance_count, tracker->model.state_cnt);
     SV_VERBOSE(5, "\t%-32s " Point26_format, "Observed state variance", LINMATH_VEC26_EXPAND(state_variance));
 
@@ -1235,7 +1251,7 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
         subnd((FLT *) &diff, (FLT *) &tracker->state, (FLT *) &tracker->previous_state, state_cnt);
         scalend((FLT *) &diff, (FLT *) &diff, 1. / dt, state_cnt);
         mulnd((FLT *) &diff, (FLT *) &diff, (FLT *) &diff, state_cnt);
-        addnd((FLT *) &tracker->state_variance, (FLT *) &tracker->state_variance, (FLT *) &diff, state_cnt);
+        addnd((FLT *) &tracker->reported_state_variance, (FLT *) &tracker->reported_state_variance, (FLT *) &diff, state_cnt);
         tracker->state_variance_count++;
     }
 
@@ -1250,7 +1266,9 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
         }
         survive_recording_write_to_output_nopreamble(ctx->recptr, "\n");
 
-        survive_show_covariance(so, &pose, &tracker->model.P, .1);
+		if(tracker->report_sampled_cloud) {
+			survive_show_covariance(so, &pose, &tracker->model.P, .1);
+		}
     }
 
     tracker->previous_state = tracker->state;

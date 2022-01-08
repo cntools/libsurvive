@@ -66,6 +66,7 @@ typedef struct SurviveKalmanTracker {
 	FLT first_imu_time, last_imu_time;
 	FLT min_report_time;
 	int report_covariance_cnt;
+	bool report_sampled_cloud;
 
 	int minimize_state_space;
 	int use_raw_obs;
@@ -74,6 +75,7 @@ typedef struct SurviveKalmanTracker {
 	FLT light_threshold_var, report_threshold_var, light_error_threshold;
 	FLT zvu_stationary_var;
 	FLT zvu_no_light_var;
+	int noise_model;
 	FLT zvu_moving_var;
 	int32_t light_required_obs;
 	int32_t report_ignore_start;
@@ -128,8 +130,9 @@ typedef struct SurviveKalmanTracker {
 	LightInfo savedLight[32];
 	uint32_t savedLight_idx;
 
-	SurviveKalmanModel state, previous_state, state_variance;
-    size_t state_variance_count;
+	SurviveKalmanModel state, previous_state, reported_state_variance, process_variance;
+
+	size_t state_variance_count;
 
 	struct variance_tracker imu_variance, pose_variance;
 	struct variance_tracker light_variance[NUM_GEN2_LIGHTHOUSES][SENSORS_PER_OBJECT][2];
