@@ -2,6 +2,8 @@ import ctypes
 import traceback
 import types
 import os
+from argparse import ArgumentParser
+from collections import defaultdict
 
 import pysurvive.pysurvive_generated
 from pysurvive.pysurvive_generated import *
@@ -103,6 +105,14 @@ def configs(ctx, name, method=SC_GET, default=None):
 def configf(ctx, name, method=SC_GET, default=None):
     return pysurvive_generated.configf(ctx, name, method, default)
 
+def config_items():
+    items = []
+    def fn(so, name, t, desc, default_value, user):
+        items.append((str(name), chr(t), str(desc), str(default_value).strip()))
+        pass
+    pysurvive_generated.config_iterate(None, pysurvive_generated.config_iterate_fn(fn), None)
+    return sorted(items, key=lambda x: x[0])
+
 class SimpleObject:
     ptr = 0
     def __init__(self, ptr):
@@ -147,3 +157,51 @@ class SimpleContext:
             return SimpleObject(ptr)
         return None
 
+def create_argument_parser(parser = None):
+    if parser is None:
+        parser = ArgumentParser()
+
+    parser.add_argument("--websocketd", action='store_true', help="Run libsurvive inside of a websocketd container")
+
+    init_plugins()
+
+    group_cnts = defaultdict(lambda: 0)
+    for item in pysurvive.config_items():
+        group_name = item[0].split("-")[0]
+        group_cnts[group_name] += 1
+
+    groups = {}
+    for k in group_cnts:
+        if group_cnts[k] > 1:
+            groups[k] = parser.add_argument_group(k)
+
+
+    for item in pysurvive.config_items():
+        kwargs = {
+            "help": item[2],
+        }
+        if item[1] == 'f':
+            kwargs["type"] = float
+            kwargs["default"] = float(item[3])
+        elif item[1] == 'b':
+
+            kwargs["action"] = 'store_true'
+            kwargs["default"] = bool(int(item[3]))
+        elif item[1] == 's':
+            kwargs["type"] = str
+            if len(item[3]) and item[3] != "(null)":
+                kwargs["default"] = item[3]
+            if item[2].lower().find("file") >= 0:
+                kwargs["widget"] = "FileChooser"
+        else:
+            kwargs["type"] = int
+            kwargs["default"] = int(item[3])
+        #print(kwargs)
+
+        group_name = item[0].split("-")[0]
+        add_to = parser
+        if group_name in groups:
+            add_to = groups[group_name]
+
+        add_to.add_argument("--" + item[0], **kwargs)
+    return parser

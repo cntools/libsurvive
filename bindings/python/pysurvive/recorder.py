@@ -48,8 +48,9 @@ def kabsch_tx(a, b):
     return r.apply(b - b_center) + a_center
 
 class RecordedData:
-    def __init__(self, so):
+    def __init__(self, so, datalog_whitelist):
         self.so = so
+        self.datalog_whitelist = datalog_whitelist
         self.name = self.so.contents.codename.decode('utf8')
         self.imu_times = []
         self.gyros = []
@@ -97,6 +98,8 @@ class RecordedData:
         self.angles[key].append([time, angle])
 
     def record_datalog(self, time, name, values):
+        if self.datalog_whitelist is not None and str(name) not in self.datalog_whitelist:
+            return
         self.datalogs[str(name)].append([time, *values])
 
     def record_angle(self, time, sensor_id, acode, timecode, length, angle, lh):
@@ -413,14 +416,15 @@ class RecordedData:
 
 
 class Recorder:
-    def __init__(self):
+    def __init__(self, datalog_whitelist = None):
         self.ctx = None
+        self.datalog_whitelist = datalog_whitelist
         self.data = {}
 
     def get(self, so):
         codename = so.contents.codename.decode('utf8')
         if codename not in self.data:
-            self.data[codename] = RecordedData(so)
+            self.data[codename] = RecordedData(so, self.datalog_whitelist)
         return self.data[codename]
 
     def plot(self, fig=None, figsize=None, **kwargs):
@@ -439,8 +443,8 @@ class Recorder:
         fig.tight_layout()
 
 
-def install(ctx):
-    recorder = Recorder()
+def install(ctx, datalogs = None):
+    recorder = Recorder(datalogs)
 
     def cb_fn(class_fn, so, *args):
         dat = recorder.get(so)

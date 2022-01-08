@@ -289,8 +289,8 @@ if(NOT WIN32 AND PYTHON_GENERATED_DIR)
       list(APPEND INCLUDE_FLAGS "-I${include_directory}")
     endforeach()
 
-    #add_custom_target(pysurvive ALL COMMAND ${Python3_EXECUTABLE} ${CTYPESGEN} ${CMAKE_SOURCE_DIR}/include/libsurvive/*.h ${INCLUDE_FLAGS}  --custom-library-loader --no-macros -L$<TARGET_FILE_DIR:survive> -lsurvive
-     # --strip-prefix=survive_ -P Survive -o ${PYTHON_GENERATED_DIR}pysurvive_generated.py)
+    add_custom_target(pysurvive ALL COMMAND ${Python3_EXECUTABLE} ${CTYPESGEN} ${CMAKE_SOURCE_DIR}/include/libsurvive/*.h ${INCLUDE_FLAGS} --no-macros -L$<TARGET_FILE_DIR:survive> -lsurvive
+            --strip-prefix=survive_ -P Survive -o ${PYTHON_GENERATED_DIR}pysurvive_generated.py)
   endif()
 
 endif()
