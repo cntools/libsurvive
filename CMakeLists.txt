@@ -30,6 +30,12 @@ option(USE_OPENCV "Use opencv proper for math operations" OFF)
 option(USE_COLUMN_MAJOR_MATRICES "Use column major matrices for math operations" OFF)
 option(USE_CPU_TUNE "Compile for your specific CPU" OFF)
 
+find_program(CCACHE_FOUND ccache)
+if(CCACHE_FOUND)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache) # Less useful to do it for linking, see edit2
+endif(CCACHE_FOUND)
+
 if(USE_SINGLE_PRECISION)
   add_compile_definitions(CN_USE_FLOAT)
 endif()
@@ -133,9 +139,8 @@ IF(UNIX)
 	endif()
 
 	if(USE_MSAN)
-	  SET(MSAN_IGNORE_LIST "${CMAKE_SOURCE_DIR}/useful_files/msan_ignore_list.txt")
-	  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=memory -fsanitize-blacklist=${MSAN_IGNORE_LIST} -fsanitize-memory-track-origins -fsanitize=undefined")
-	  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=memory -fsanitize-blacklist=${MSAN_IGNORE_LIST} -fsanitize-memory-track-origins -fsanitize=undefined")
+	  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=memory -fsanitize-memory-track-origins -fsanitize=undefined")
+	  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=memory  -fsanitize-memory-track-origins -fsanitize=undefined")
 	endif()	    
 	
 ELSEIF(WIN32)

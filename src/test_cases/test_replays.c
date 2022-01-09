@@ -260,7 +260,8 @@ static int test_path(const char *filename, int main_argc, char **main_argv) {
 	}
 
 	survive_simple_close(actx);
-	if (rctx.mismatched > 0)
+	char *mismatch_flag = getenv("LIBSURVIVE_IGNORE_MISMATCH_TESTS");
+	if (rctx.mismatched > 0 && (mismatch_flag == 0 || strcmp(mismatch_flag, "1") != 0))
 		return -2;
 
 	return rtn;
