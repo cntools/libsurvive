@@ -205,7 +205,7 @@ static void redraw(SurviveContext *ctx) {
 		printf("\n");
 
 		draw_model(&so->tracker->state);
-		FLT Pd[sizeof(SurviveKalmanModel) / sizeof(FLT)] = {};
+		FLT Pd[sizeof(SurviveKalmanModel) / sizeof(FLT)] = {0};
 		cn_get_diag(&so->tracker->model.P, Pd, sizeof(Pd) / sizeof(Pd[0]));
 		draw_model((const SurviveKalmanModel *)Pd);
 

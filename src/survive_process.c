@@ -57,11 +57,9 @@ void survive_default_external_pose_process(SurviveContext *ctx, const char *name
 	if (strncmp(name, "LHB", 3) == 0) {
 		bool useExternal = survive_configb(ctx, USE_EXTERNAL_LH_TAG, SC_GET, 0);
 		for (int i = 0; i < ctx->activeLighthouses && useExternal; i++) {
-			char buf[32] = {};
+			char buf[32] = {0};
 			snprintf(buf, 32, "LHB-%08X", ctx->bsd[i].BaseStationID);
 			if (strcmp(buf, name) == 0) {
-				// ctx->bsd[i].Pose = *pose;
-				// ctx->bsd[i].PositionSet = 1;
 				SURVIVE_INVOKE_HOOK(lighthouse_pose, ctx, i, pose);
 			}
 		}
@@ -77,6 +75,7 @@ void survive_default_external_pose_process(SurviveContext *ctx, const char *name
 
 			FLT diff[] = {dist3d(head2world.Pos, pose->Pos), quatdifference(head2world.Rot, pose->Rot)};
 			SV_DATA_LOG("external_diff", diff, 2);
+			break;
 		}
 	}
 	survive_recording_external_pose_process(ctx, name, pose);
