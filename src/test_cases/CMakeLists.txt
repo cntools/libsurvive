@@ -34,8 +34,12 @@ endif()
 # for a change that let LH be repositioned when it seemed the measurements were off but too many users reported this
 # led perfectly fine LH positions being discarded.
 SET(TEST_EXCLUSION_LIST
-        ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/tracker-bad-tracking.rec.gz
-        ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/tracker-lh-move.pcap.gz)
+  ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/tracker-bad-tracking.rec.gz
+  ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/tracker-lh-move.pcap.gz
+
+  # Ignore this test for now; the GT data on it is noisey
+  ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/index-yank-up-down.rec.gz
+  )
 
 IF(NOT WIN32)
     file(GLOB REC_FILES ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/*.rec.gz)
