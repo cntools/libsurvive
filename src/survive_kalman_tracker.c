@@ -59,12 +59,12 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("lightcap-rampin-length",
 					   "Number of lightcap measures to ramp in variance", 5000, t->light_rampin_length)
 
-	STRUCT_CONFIG_ITEM("process-weight-acc", "Acc variance per second", 1e-1, t->params.process_weight_acc)
-	STRUCT_CONFIG_ITEM("process-weight-ang-vel", "Angular velocity variance per second", 1e-2,
+	STRUCT_CONFIG_ITEM("process-weight-acc", "Acc variance per second", 97, t->params.process_weight_acc)
+	STRUCT_CONFIG_ITEM("process-weight-ang-vel", "Angular velocity variance per second", 60,
 					   t->params.process_weight_ang_velocity)
-	STRUCT_CONFIG_ITEM("process-weight-vel", "Velocity variance per second", 1e-2, t->params.process_weight_vel)
-	STRUCT_CONFIG_ITEM("process-weight-pos", "Position variance per second", 0, t->params.process_weight_pos)
-	STRUCT_CONFIG_ITEM("process-weight-rot", "Rotation variance per second", 0, t->params.process_weight_rotation)
+	STRUCT_CONFIG_ITEM("process-weight-vel", "Velocity variance per second", 4.34302956e-05, t->params.process_weight_vel)
+	STRUCT_CONFIG_ITEM("process-weight-pos", "Position variance per second", 1.19271301e-03, t->params.process_weight_pos)
+	STRUCT_CONFIG_ITEM("process-weight-rot", "Rotation variance per second", 8.10001976e-06, t->params.process_weight_rotation)
 	STRUCT_CONFIG_ITEM("process-weight-acc-bias", "Acc bias variance per second", 0, t->params.process_weight_acc_bias)
 	STRUCT_CONFIG_ITEM("process-weight-gyro-bias", "Gyro bias variance per seconid", 0, t->params.process_weight_gyro_bias)
 	STRUCT_CONFIG_ITEM("kalman-minimize-state-space", "Minimize the state space", 1, t->minimize_state_space)
@@ -76,7 +76,7 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("kalman-zvu-stationary", "", 1e-2, t->zvu_stationary_var)
 	STRUCT_CONFIG_ITEM("kalman-zvu-no-light", "", 1e-4, t->zvu_no_light_var)
 
-	STRUCT_CONFIG_ITEM("kalman-noise-model", "0 is jerk acceleration model, 1 is simple model", 0, t->noise_model)
+	STRUCT_CONFIG_ITEM("kalman-noise-model", "0 is jerk acceleration model, 1 is simple model", 1, t->noise_model)
 
 	STRUCT_CONFIG_ITEM("imu-acc-norm-penalty", "", 0, t->acc_norm_penalty)
 	STRUCT_CONFIG_ITEM("imu-acc-variance", "Variance of accelerometer", 1e-3, t->acc_var)
