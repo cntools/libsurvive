@@ -126,6 +126,7 @@ static inline bool SurviveSensorActivations_check_outlier(SurviveSensorActivatio
 	FLT *oldangle = &self->angles[sensor_id][lh][axis];
 	FLT chauvenet_criterion = -1;
 	FLT P = -1;
+	const char *failure_reason = "None";
 	if (self->angles_center_dev[lh][axis] == 0) {
 		goto accept_data;
 	}
@@ -133,7 +134,7 @@ static inline bool SurviveSensorActivations_check_outlier(SurviveSensorActivatio
 	const survive_long_timecode *data_timecode = &self->timecode[sensor_id][lh][axis];
 	FLT change_rate = fabs(*oldangle - angle) / (FLT)(timecode - *data_timecode) * 48000000.;
 	if (*data_timecode != 0 && change_rate > self->params.filterLightChange && self->params.filterLightChange > -1) {
-		goto reject_data;
+		goto delta_failure;
 	}
 
 	FLT measured_dev = self->angles_center_dev[lh][axis];
@@ -146,29 +147,36 @@ static inline bool SurviveSensorActivations_check_outlier(SurviveSensorActivatio
 
 	if (measured_dev > 0 && self->params.filterOutlierCriteria > 0 &&
 		chauvenet_criterion < self->params.filterOutlierCriteria) {
-		goto reject_data;
+		goto chauvenet_criterion_failure;
 	}
 
 accept_data:
 	if (self->so && self->so->ctx) {
 		SurviveContext *ctx = self->so->ctx;
 
-		SV_VERBOSE(
-			500,
-			"Accepting new: %f(old: %f, mean: %f) for %2d.%2d.%d (Chauvenet: %7.7f) dev: %f measured_dev: %f cnt: %d",
-			angle, *oldangle, self->angles_center_x[lh][axis], lh, sensor_id, axis, chauvenet_criterion, dev,
-			measured_dev, cnt);
+		SV_VERBOSE(500,
+				   "Accepting new: %+7.7f(old: %+7.7f, mean: %+7.7f) for %2d.%2d.%d (Chauvenet: %7.7f) dev: %+7.7f "
+				   "measured_dev: %+7.7f cnt: %d",
+				   angle, *oldangle, self->angles_center_x[lh][axis], lh, sensor_id, axis, chauvenet_criterion, dev,
+				   measured_dev, cnt);
 	}
 	return false;
+chauvenet_criterion_failure:
+	failure_reason = "chauvenet";
+	goto reject_data;
+delta_failure:
+	failure_reason = "delta";
+	goto reject_data;
 reject_data:
 	if (self->so && self->so->ctx) {
 		SurviveContext *ctx = self->so->ctx;
 
-		SV_VERBOSE(105,
-				   "Rejecting outlier new: %f(old: %f, mean: %f) for %2d.%2d.%d (Chauvenet: %7.7f) dev: %f "
-				   "measured_dev: %f cnt: %d",
-				   angle, *oldangle, self->angles_center_x[lh][axis], lh, sensor_id, axis, chauvenet_criterion, dev,
-				   measured_dev, cnt);
+		SV_VERBOSE(
+			105,
+			"Rejecting outlier new: %+7.7f(old: %+7.7f, mean: %+7.7f) for %2d.%2d.%d (Chauvenet: %7.7f) dev: %+7.7f "
+			"measured_dev: %+7.7f cnt: %d (%s)",
+			angle, *oldangle, self->angles_center_x[lh][axis], lh, sensor_id, axis, chauvenet_criterion, dev,
+			measured_dev, cnt, failure_reason);
 	}
 	return true;
 }
