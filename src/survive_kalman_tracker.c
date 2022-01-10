@@ -46,9 +46,9 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
     STRUCT_CONFIG_ITEM("obs-cov-scale",  "Covariance matrix scaling for obs",
                        1, t->obs_cov_scale)
     STRUCT_CONFIG_ITEM("obs-pos-variance",  "Variance of position integration from light capture",
-					   1e-4, t->obs_pos_var)
+					   1e-6, t->obs_pos_var)
 	STRUCT_CONFIG_ITEM("obs-rot-variance",  "Variance of rotation integration from light capture",
-					   1e-3, t->obs_rot_var)
+					   1e-7, t->obs_rot_var)
 
 	STRUCT_CONFIG_ITEM("use-raw-obs",  "Apply kalman filter as part of the pose solver", 0, t->use_raw_obs)
 
