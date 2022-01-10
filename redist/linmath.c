@@ -289,7 +289,7 @@ inline void axisanglefromquat(FLT *angle, FLT *axis, const LinmathQuat q) {
 inline FLT quatdifference(const LinmathQuat q1, const LinmathQuat q2) {
 	LinmathQuat diff;
 	quatfind(diff, q1, q2);
-	return 1. - diff[0];
+	return 1. - fabs(diff[0]);
 }
 FLT quatdist(const LinmathQuat q1, const LinmathQuat q2) {
 	FLT rtn = 0;
@@ -1065,6 +1065,10 @@ LINMATH_EXPORT FLT linmath_norm_pdf(FLT v, FLT mean, FLT std) {
 	FLT ratio = (v - mean) / std;
 	ratio = (ratio * ratio) * -.5;
 	return scale * exp(ratio);
+}
+
+LINMATH_EXPORT FLT linmath_chauvenet_criterion(FLT v, FLT mu, FLT sigma, int n) {
+	return erfcf(fabs(v - mu) / sigma) * n;
 }
 
 FLT linmath_normrand(FLT mu, FLT sigma) {

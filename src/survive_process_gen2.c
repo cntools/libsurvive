@@ -50,7 +50,9 @@ static void ootx_packet_clbk_d_gen2(ootx_decoder_context *ct, ootx_packet *packe
 	FLT accel[3] = {v15.accel_dir[0], v15.accel_dir[1], v15.accel_dir[2]};
 	bool upChanged = norm3d(b->accel) != 0.0 && dist3d(b->accel, accel) > 1e-3;
 
-	SV_VERBOSE(10, "OOTX up direction changed for %x (%f)", b->BaseStationID, norm3d(b->accel));
+	if (upChanged) {
+		SV_VERBOSE(10, "OOTX up direction changed for %x (%f)", b->BaseStationID, norm3d(b->accel));
+	}
 	bool doSave = b->BaseStationID != v15.id || b->OOTXSet == false || upChanged;
 	b->OOTXSet = 1;
 
@@ -353,9 +355,9 @@ SURVIVE_EXPORT void survive_default_sweep_process(SurviveObject *so, survive_cha
 	FLT time_per_rot = 1. / hz;
 	time_since_sync -= time_per_rot * rotations_since;
 
-	if (rotations_since > 5) {
-		SV_VERBOSE(100, "Dropping light data %d %f %f %u", channel, time_since_sync * 1000., time_per_rot * 1000.,
-				   timecode);
+	if (rotations_since > 10) {
+		SV_VERBOSE(100, "Dropping light data ch %d sync: %fms rotations missed: %d (at %u)", channel,
+				   time_since_sync * 1000., rotations_since, timecode);
 		so->stats.dropped_light[bsd_idx]++;
 		return;
 	}

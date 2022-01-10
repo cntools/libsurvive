@@ -529,15 +529,18 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 		survive_optimizer_measurement *meas = &optimizer->measurements[i];
 		if (meas->meas_type == survive_optimizer_measurement_type_light) {
 
-			FLT P = linmath_norm_pdf(deviates[i] * meas->variance, 0, avg_dev);
-			FLT chauvenet_criterion = P * optimizer->measurementsCnt;
-			if (chauvenet_criterion < .5) {
+			FLT chauvenet_criterion =
+				linmath_chauvenet_criterion(deviates[i] * meas->variance, 0, avg_dev, optimizer->measurementsCnt);
+			if (chauvenet_criterion < .5 && false) {
 				meas->invalid = true;
 				optimizer->stats.dropped_meas_cnt++;
 
-				SV_VERBOSE(105, "Ignoring noisy data at lh %d sensor %d axis %2d val %f (%7.7f/%7.7f) %7.7f %7.7f",
+				SV_VERBOSE(105,
+						   "Ignoring noisy data at lh %d sensor %d axis %2d val %f (err: %7.7f/dev: %7.7f/cnt: %d) "
+						   "chauv: %7.7f",
 						   meas->light.lh, meas->light.sensor_idx, meas->light.axis, meas->light.value,
-						   fabs(deviates[i] * meas->variance), avg_dev, P, chauvenet_criterion);
+						   fabs(deviates[i] * meas->variance), avg_dev, optimizer->measurementsCnt,
+						   chauvenet_criterion);
 
 				deviates[i] = 0.;
 			} else {
@@ -583,8 +586,7 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 
 			FLT corrected_dev = unbias_dev - lh_deviates[i] / (obs_lhs - 1.);
 			SV_DATA_LOG("opt_lh_corrected_dev[%d]", &corrected_dev, 1, i);
-			FLT P = linmath_norm_pdf(lh_deviates[i], 0, lh_avg_dev);
-			FLT chauvenet_criterion = P * obs_lhs;
+			FLT chauvenet_criterion = linmath_chauvenet_criterion(lh_deviates[i], 0, lh_avg_dev, obs_lhs);
 
 			if (lh_deviates[i] > 100 * corrected_dev) {
 				SV_VERBOSE(100, "Data from LH %d seems suspect for %s (%f/%10.10f -- %f)", i,

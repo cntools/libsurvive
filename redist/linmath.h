@@ -326,6 +326,7 @@ static inline LinmathPose AAPose2Pose(const LinmathAxisAnglePose *pose) {
 LINMATH_EXPORT FLT linmath_rand(FLT min, FLT max);
 LINMATH_EXPORT FLT linmath_normrand(FLT mu, FLT sigma);
 LINMATH_EXPORT FLT linmath_norm_pdf(FLT v, FLT mu, FLT sigma);
+LINMATH_EXPORT FLT linmath_chauvenet_criterion(FLT v, FLT mu, FLT sigma, int n);
 
 LINMATH_EXPORT void linmath_find_best_intersection(LinmathPoint3d pt, const struct LinmathLine3d *lines, size_t num);
 LINMATH_EXPORT void linmath_get_line_dir(LinmathPoint3d dir, const struct LinmathLine3d *ray);

@@ -138,11 +138,10 @@ static inline bool SurviveSensorActivations_check_outlier(SurviveSensorActivatio
 
 	FLT measured_dev = self->angles_center_dev[lh][axis];
 	FLT dev = linmath_max(self->params.filterVarianceMin, measured_dev);
-	P = linmath_norm_pdf(angle, self->angles_center_x[lh][axis], dev);
 	int cnt = self->angles_center_cnt[lh][axis];
+	chauvenet_criterion = linmath_chauvenet_criterion(angle, self->angles_center_x[lh][axis], dev, cnt);
 
 	struct SurviveObject *so = self->so;
-	chauvenet_criterion = P * cnt;
 	SV_DATA_LOG("chauvenet_criterion[%d][%d][%d]", &chauvenet_criterion, 1, sensor_id, lh, axis);
 
 	if (measured_dev > 0 && self->params.filterOutlierCriteria > 0 &&
@@ -151,13 +150,25 @@ static inline bool SurviveSensorActivations_check_outlier(SurviveSensorActivatio
 	}
 
 accept_data:
+	if (self->so && self->so->ctx) {
+		SurviveContext *ctx = self->so->ctx;
+
+		SV_VERBOSE(
+			500,
+			"Accepting new: %f(old: %f, mean: %f) for %2d.%2d.%d (Chauvenet: %7.7f) dev: %f measured_dev: %f cnt: %d",
+			angle, *oldangle, self->angles_center_x[lh][axis], lh, sensor_id, axis, chauvenet_criterion, dev,
+			measured_dev, cnt);
+	}
 	return false;
 reject_data:
 	if (self->so && self->so->ctx) {
 		SurviveContext *ctx = self->so->ctx;
 
-		SV_VERBOSE(105, "Rejecting outlier %f(%f) for %2d.%2d.%d (P %7.7f, %7.7f)", angle, *oldangle, lh, sensor_id,
-				   axis, P, chauvenet_criterion);
+		SV_VERBOSE(105,
+				   "Rejecting outlier new: %f(old: %f, mean: %f) for %2d.%2d.%d (Chauvenet: %7.7f) dev: %f "
+				   "measured_dev: %f cnt: %d",
+				   angle, *oldangle, self->angles_center_x[lh][axis], lh, sensor_id, axis, chauvenet_criterion, dev,
+				   measured_dev, cnt);
 	}
 	return true;
 }
@@ -296,8 +307,7 @@ void SurviveSensorActivations_add_sync(SurviveSensorActivations *self, struct Po
 					total_angles++;
 
 					FLT unbias_deviation = deviation - fabs(mean - angle) / (FLT)cnt;
-					FLT P = linmath_norm_pdf(angle, mean, unbias_deviation);
-					FLT chauvenet_criterion = P * cnt;
+					FLT chauvenet_criterion = linmath_chauvenet_criterion(angle, mean, unbias_deviation, cnt);
 					bool isOutlier = self->params.filterOutlierCriteria > 0 &&
 									 chauvenet_criterion < self->params.filterOutlierCriteria && deviation != 0;
 
