@@ -78,7 +78,7 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 
 	STRUCT_CONFIG_ITEM("kalman-noise-model", "0 is jerk acceleration model, 1 is simple model", 1, t->noise_model)
 
-	STRUCT_CONFIG_ITEM("imu-acc-norm-penalty", "", 0, t->acc_norm_penalty)
+	STRUCT_CONFIG_ITEM("imu-acc-norm-penalty", "Penalty to IMU variance when reading high accel values", 1e-2, t->acc_norm_penalty)
 	STRUCT_CONFIG_ITEM("imu-acc-variance", "Variance of accelerometer", 1e-3, t->acc_var)
 	STRUCT_CONFIG_ITEM("imu-gyro-variance", "Variance of gyroscope", 1e-2, t->gyro_var)
 
@@ -512,7 +512,8 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 		for (int i = 0; i < 3; i++) {
 			rotation_variance[i] = tracker->acc_var;
 			if (tracker->acc_norm_penalty > 0) {
-				rotation_variance[i] += tracker->acc_norm_penalty * fabs(1 - norm);
+			  FLT ndiff = 1 - norm;
+			  rotation_variance[i] += tracker->acc_norm_penalty * ndiff * ndiff;
 			}
 		}
 	}
