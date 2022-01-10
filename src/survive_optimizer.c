@@ -539,7 +539,7 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 						   "Ignoring noisy data at lh %d sensor %d axis %2d val %f (err: %7.7f/dev: %7.7f/cnt: %d) "
 						   "chauv: %7.7f",
 						   meas->light.lh, meas->light.sensor_idx, meas->light.axis, meas->light.value,
-						   fabs(deviates[i] * meas->variance), avg_dev, optimizer->measurementsCnt,
+						   fabs(deviates[i] * meas->variance), avg_dev, (int)optimizer->measurementsCnt,
 						   chauvenet_criterion);
 
 				deviates[i] = 0.;
