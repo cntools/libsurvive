@@ -2,10 +2,11 @@ import subprocess
 
 import pysurvive
 import sys
+import os
 from gooey import Gooey, GooeyParser
 
 @Gooey(tabbed_groups=True,
-       image_dir="images",
+       image_dir=os.path.dirname(os.path.realpath(__file__)) + "/images",
        use_cmd_args=True,
        program_name="pysurvive",
        richtext_controls=True,
