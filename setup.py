@@ -33,6 +33,7 @@ setup(name='pysurvive',
       url='https://github.com/cntools/libsurvive',
       packages=['pysurvive'],
       package_dir={'pysurvive': 'bindings/python/pysurvive'},
+      install_requires=['gooey'],
       include_package_data=False,
       license='MIT',
       cmake_args=cmake_args
