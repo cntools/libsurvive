@@ -137,6 +137,24 @@ static const char *USAGE_FORMAT_INT = "%15d    ";
 static const char *USAGE_FORMAT_FLOAT = "%15f    ";
 static const char *USAGE_FORMAT_STRING = "%15s    ";
 
+void survive_config_entry_to_str(config_entry *config, char *stobuf, size_t len) {
+	switch (config->type) {
+	case CONFIG_UINT32:
+		snprintf(stobuf, 127, USAGE_FORMAT_INT, config->numeric.i);
+		break;
+	case CONFIG_FLOAT:
+		snprintf(stobuf, 127, USAGE_FORMAT_FLOAT, config->numeric.f);
+		break;
+	case CONFIG_STRING:
+		snprintf(stobuf, 127, USAGE_FORMAT_STRING, config->data);
+		break;
+	case CONFIG_FLOAT_ARRAY:
+		snprintf(stobuf, 127, "[FA] %25s  %s\n", config->tag, "");
+		break;
+	default:
+		assert("Invalid config item" && false);
+	}
+}
 void survive_default_to_str(struct static_conf_t *config, char *stobuf, size_t len) {
 	switch (config->type) {
 	case 'b':
@@ -167,6 +185,31 @@ void survive_config_iterate(SurviveContext *ctx, survive_config_iterate_fn fn, v
 	}
 }
 
+static const char *survive_config_type_to_str(cval_type type) {
+	switch (type) {
+	case CONFIG_FLOAT:
+		return ":float";
+	case CONFIG_UINT32:
+		return ":int";
+	case CONFIG_STRING:
+		return ":string";
+	}
+	return ".";
+}
+static const char *type_to_desc(char config_type) {
+	switch (config_type) {
+	case 'f':
+		return ":float";
+	case 'i':
+		return ":int";
+	case 's':
+		return ":string";
+	case 'b':
+		return ":bool";
+	}
+	return ".";
+}
+
 static void PrintConfigGroup(config_group * grp, const char ** chkval, int * cvs, int verbose )
 {
 	int i, j;
@@ -182,33 +225,16 @@ static void PrintConfigGroup(config_group * grp, const char ** chkval, int * cvs
 			if( verbose )
 			{
 				char stobuf[128];
-				switch( ce->type )
-				{
-				case CONFIG_UINT32:
-					snprintf(stobuf, 127, USAGE_FORMAT_INT, ce->tag, ce->numeric.i);
-					break;
-				case CONFIG_FLOAT:
-					snprintf(stobuf, 127, USAGE_FORMAT_FLOAT, ce->tag, ce->numeric.f);
-					break;
-				case CONFIG_STRING:
-					snprintf(stobuf, 127, USAGE_FORMAT_STRING, ce->tag, ce->data);
-					break;
-				case CONFIG_FLOAT_ARRAY: printf( "[FA] %20s", ce->tag ); break;
-				}
+				survive_config_entry_to_str(ce, stobuf, 128);
 
-				printf("%s %-12s    ", stobuf,
-					   (ce->type == CONFIG_FLOAT)
-						   ? ":float"
-						   : (ce->type == CONFIG_UINT32) ? ":int" : (ce->type == CONFIG_STRING) ? ":string" : ".");
-
-				//Try to get description from the static tags.
-
+				const char *description = "";
 				for (struct static_conf_t *config = head; config; config = config->next) {
 					if (strcmp(config->name, ce->tag) == 0) {
-						printf(" %s", config->description);
+						description = config->description;
 					}
 				}
-				printf( "\n" );
+				printf(USAGE_FORMAT "%s %-12s     %s\n", ce->tag, stobuf, survive_config_type_to_str(ce->type),
+					   description);
 			}
 			else
 			{
@@ -220,15 +246,6 @@ static void PrintConfigGroup(config_group * grp, const char ** chkval, int * cvs
 	}
 }
 
-static const char* type_to_desc(char config_type) {
-    switch(config_type) {
-        case 'f': return ":float";
-        case 'i': return ":int";
-        case 's': return ":string";
-        case 'b': return ":bool";
-    }
-    return ".";
-}
 
 void survive_print_known_configs( SurviveContext * ctx, int verbose )
 {
