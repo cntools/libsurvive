@@ -42,7 +42,7 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 					   "Minimum observations to allow light data into the kalman filter", 16, t->light_required_obs)
 
     STRUCT_CONFIG_ITEM("light-max-error",  "Maximum error to integrate into lightcap", -1, t->lightcap_max_error)
-    STRUCT_CONFIG_ITEM("light-variance",  "Variance of light sensor readings", 1e-4, t->light_var)
+    STRUCT_CONFIG_ITEM("kalman-light-variance",  "Variance of raw light sensor readings", -1, t->light_var)
     STRUCT_CONFIG_ITEM("obs-cov-scale",  "Covariance matrix scaling for obs",
                        1, t->obs_cov_scale)
     STRUCT_CONFIG_ITEM("obs-pos-variance",  "Variance of position integration from light capture",
