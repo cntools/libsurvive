@@ -113,13 +113,15 @@ void survive_default_angle_process(SurviveObject *so, int sensor_id, int acode, 
 		.acode = acode,
 		.length = length,
 	};
-
+	so->stats.hit_from_lhs[lh]++;
 	// Simulate the use of only one lighthouse in playback mode.
 	if (lh < ctx->activeLighthouses) {
 		if (SurviveSensorActivations_add(&so->activations, &l)) {
 			survive_kalman_tracker_integrate_light(so->tracker, &l.common);
+			so->stats.accepted_data[lh]++;
 			SURVIVE_POSER_INVOKE(so, &l);
 		} else {
+			so->stats.rejected_data[lh]++;
 			SV_DATA_LOG("rejected_light[%d][%d][%d]", &angle, 1, sensor_id, lh, acode & 0x1);
 		}
 	}

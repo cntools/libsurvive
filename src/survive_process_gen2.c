@@ -260,6 +260,8 @@ SURVIVE_EXPORT void survive_default_sync_process(SurviveObject *so, survive_chan
 	if (bsd_idx < ctx->activeLighthouses) {
 		if (SurviveSensorActivations_add_gen2(&so->activations, &l) == false) {
 			so->stats.rejected_data[bsd_idx]++;
+		} else {
+			so->stats.accepted_data[bsd_idx]++;
 		}
 	}
 
@@ -412,6 +414,7 @@ SURVIVE_EXPORT void survive_default_sweep_angle_process(SurviveObject *so, survi
 		if (SurviveSensorActivations_add_gen2(&so->activations, &l) == false) {
 			so->stats.rejected_data[bsd_idx]++;
 		} else {
+			so->stats.accepted_data[bsd_idx]++;
 			survive_kalman_tracker_integrate_light(so->tracker, &l.common);
 		}
 	}

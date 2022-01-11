@@ -62,6 +62,7 @@ typedef struct SurviveSensorActivations_s {
 		FLT filterLightChange;
 		FLT filterOutlierCriteria;
 		FLT filterVarianceMin;
+		int filterOutlierMinCount;
 	} params;
 } SurviveSensorActivations;
 
@@ -215,6 +216,7 @@ struct SurviveObject {
 		uint32_t skipped_syncs[NUM_GEN2_LIGHTHOUSES];
 		uint32_t bad_syncs[NUM_GEN2_LIGHTHOUSES];
 		uint32_t hit_from_lhs[NUM_GEN2_LIGHTHOUSES];
+		uint32_t accepted_data[NUM_GEN2_LIGHTHOUSES];
 		uint32_t rejected_data[NUM_GEN2_LIGHTHOUSES];
 		uint32_t dropped_light[NUM_GEN2_LIGHTHOUSES];
 		uint32_t sync_resets[NUM_GEN2_LIGHTHOUSES];

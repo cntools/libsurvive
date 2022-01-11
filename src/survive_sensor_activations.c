@@ -15,6 +15,9 @@ STRUCT_CONFIG_ITEM("filter-light-outlier-criteria", "Threshold to filter outlier
 				   t->params.filterOutlierCriteria)
 STRUCT_CONFIG_ITEM("filter-variance-minimum", "Minimum variance to use in outlier detection", 0.05,
 				   t->params.filterVarianceMin)
+// 11 here means we always allow up to 2 std deviations
+STRUCT_CONFIG_ITEM("filter-outlier-minimum-count", "Assumed minimum population for outlier test", 11,
+				   t->params.filterOutlierMinCount)
 
 END_STRUCT_CONFIG_SECTION(SurviveSensorActivations)
 
@@ -125,7 +128,7 @@ static inline bool SurviveSensorActivations_check_outlier(SurviveSensorActivatio
 														  int axis, survive_long_timecode timecode, FLT angle) {
 	FLT *oldangle = &self->angles[sensor_id][lh][axis];
 	FLT chauvenet_criterion = -1;
-	FLT P = -1;
+	FLT dev = 0;
 	const char *failure_reason = "None";
 	if (self->angles_center_dev[lh][axis] == 0) {
 		goto accept_data;
@@ -138,8 +141,10 @@ static inline bool SurviveSensorActivations_check_outlier(SurviveSensorActivatio
 	}
 
 	FLT measured_dev = self->angles_center_dev[lh][axis];
-	FLT dev = linmath_max(self->params.filterVarianceMin, measured_dev);
+	dev = linmath_max(self->params.filterVarianceMin, measured_dev);
 	int cnt = self->angles_center_cnt[lh][axis];
+	if (cnt < self->params.filterOutlierMinCount)
+		cnt = self->params.filterOutlierMinCount;
 	chauvenet_criterion = linmath_chauvenet_criterion(angle, self->angles_center_x[lh][axis], dev, cnt);
 
 	struct SurviveObject *so = self->so;
@@ -154,11 +159,12 @@ accept_data:
 	if (self->so && self->so->ctx) {
 		SurviveContext *ctx = self->so->ctx;
 
-		SV_VERBOSE(500,
-				   "Accepting new: %+7.7f(old: %+7.7f, mean: %+7.7f) for %2d.%2d.%d (Chauvenet: %7.7f) dev: %+7.7f "
-				   "measured_dev: %+7.7f cnt: %d",
-				   angle, *oldangle, self->angles_center_x[lh][axis], lh, sensor_id, axis, chauvenet_criterion, dev,
-				   measured_dev, cnt);
+		SV_VERBOSE(
+			500,
+			"Accepting new: %+7.7f(old: %+7.7f, mean: %+7.7f, Z: %7.7f) for %2d.%2d.%d (Chauvenet: %7.7f) dev: %+7.7f "
+			"measured_dev: %+7.7f cnt: %d",
+			angle, *oldangle, self->angles_center_x[lh][axis], fabs(angle - self->angles_center_x[lh][axis]) / dev, lh,
+			sensor_id, axis, chauvenet_criterion, dev, measured_dev, cnt);
 	}
 	return false;
 chauvenet_criterion_failure:
@@ -171,12 +177,13 @@ reject_data:
 	if (self->so && self->so->ctx) {
 		SurviveContext *ctx = self->so->ctx;
 
-		SV_VERBOSE(
-			105,
-			"Rejecting outlier new: %+7.7f(old: %+7.7f, mean: %+7.7f) for %2d.%2d.%d (Chauvenet: %7.7f) dev: %+7.7f "
-			"measured_dev: %+7.7f cnt: %d (%s)",
-			angle, *oldangle, self->angles_center_x[lh][axis], lh, sensor_id, axis, chauvenet_criterion, dev,
-			measured_dev, cnt, failure_reason);
+		SV_VERBOSE(105,
+				   "Rejecting outlier new: %+7.7f(old: %+7.7f, mean: %+7.7f, Z: %7.7f) for %2d.%2d.%d (Chauvenet: "
+				   "%7.7f) dev: %+7.7f "
+				   "measured_dev: %+7.7f cnt: %d (%s)",
+				   angle, *oldangle, self->angles_center_x[lh][axis],
+				   fabs(angle - self->angles_center_x[lh][axis]) / dev, lh, sensor_id, axis, chauvenet_criterion, dev,
+				   measured_dev, cnt, survive_colorize(failure_reason));
 	}
 	return true;
 }

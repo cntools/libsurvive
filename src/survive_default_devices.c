@@ -661,7 +661,8 @@ void survive_destroy_device(SurviveObject *so) {
 			SV_VERBOSE(5, "\t\tBad Syncs:         %8u", so->stats.bad_syncs[i]);
 			SV_VERBOSE(5, "\t\tHits:              %8u", so->stats.hit_from_lhs[i]);
 			SV_VERBOSE(5, "\t\tDrops:             %8u", so->stats.dropped_light[i]);
-			SV_VERBOSE(5, "\t\tRejected Data:     %8u", so->stats.rejected_data[i]);
+			SV_VERBOSE(5, "\t\tRejected Data:     %8u (%3.3f%%)", so->stats.rejected_data[i],
+					   so->stats.rejected_data[i] * 100. / (FLT)so->stats.hit_from_lhs[i]);
 		}
 	}
 
