@@ -12,7 +12,7 @@ uint8_t survive_map_sensor_id(SurviveObject *so, uint8_t reported_id) {
 		uint8_t mapped_id = so->channel_map[ole];
 		if (mapped_id >= so->sensor_ct) {
 			SurviveContext *ctx = so->ctx;
-			SV_WARN("Invalid sensor %d detected hit (%d)", mapped_id, ole);
+			SV_VERBOSE(110, "Invalid sensor %d detected hit (%d)", mapped_id, ole);
 			return -1;
 		}
 		return mapped_id;
@@ -85,7 +85,8 @@ bool handle_lightcap(SurviveObject *so, const LightcapElement *_le) {
 	LightcapElement le = *_le;
 	survive_recording_lightcap(so, &le);
 
-	le.sensor_id = survive_map_sensor_id(so, le.sensor_id);
+	uint8_t original_sensor = le.sensor_id;
+	le.sensor_id = survive_map_sensor_id(so, original_sensor);
 	if (le.sensor_id == (uint8_t)-1) {
 		return false;
 	}
