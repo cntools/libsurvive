@@ -1067,8 +1067,11 @@ LINMATH_EXPORT FLT linmath_norm_pdf(FLT v, FLT mean, FLT std) {
 	return scale * exp(ratio);
 }
 
+#ifndef M_SQRT1_2
+#define M_SQRT1_2 0.70710678118654752440 /* 1/sqrt(2) */
+#endif
 LINMATH_EXPORT FLT linmath_chauvenet_criterion(FLT v, FLT mu, FLT sigma, int n) {
-	return erfcf(fabs(v - mu) / sigma) * n;
+	return erfcf((fabs(v - mu) / sigma) * M_SQRT1_2) * n;
 }
 
 FLT linmath_normrand(FLT mu, FLT sigma) {
