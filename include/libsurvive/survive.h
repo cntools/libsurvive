@@ -452,7 +452,7 @@ SURVIVE_EXPORT void survive_attach_configf(SurviveContext *ctx, const char *tag,
 SURVIVE_EXPORT void survive_attach_configs(SurviveContext *ctx, const char *tag, char * var );
 SURVIVE_EXPORT void survive_attach_configb(SurviveContext *ctx, const char *tag, bool * var );
 
-#ifdef COMPILER_HAS_GENERIC_SUPPORT
+#ifndef COMPILER_HAS_NO_GENERIC_SUPPORT
 #define SURVIVE_ATTACH_CONFIG(ctx, name, var) _Generic((var), \
               double*: survive_attach_configf, \
               float*: survive_attach_configf,  \
