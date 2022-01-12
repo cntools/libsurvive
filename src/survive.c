@@ -1132,6 +1132,7 @@ inline void survive_apply_ang_velocity(LinmathQuat out, const SurviveAngularVelo
 	LinmathQuat rot_change;
 	quatfromaxisanglemag(rot_change, vel);
 	quatrotateabout(out, rot_change, t0);
+	quatnormalize(out, out);
 }
 inline void survive_apply_ang_velocity_aa(LinmathAxisAngle out, const SurviveAngularVelocity v, FLT t,
 										  const LinmathAxisAngle t0) {

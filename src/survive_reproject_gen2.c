@@ -74,12 +74,13 @@ static inline FLT survive_reproject_axis_gen2(const BaseStationCal *bcal, FLT X,
 	FLT tanA = FLT_TAN(Ydeg);
 	FLT normXZ = FLT_SQRT(X * X + Z * Z);
 
-	FLT asinArg = linmath_enforce_range(tanA * Y / normXZ, -1, 1);
+	FLT asinArg = tanA * Y / normXZ;
+	FLT asinArg_sanitized = linmath_enforce_range(asinArg, -1, 1);
 
 	FLT sinYdeg = FLT_SIN(Ydeg);
 	FLT cosYdeg = FLT_COS(Ydeg);
 
-	FLT sinPart = FLT_SIN(B - FLT_ASIN(asinArg) + ogeePhase) * ogeeMag;
+	FLT sinPart = FLT_SIN(B - FLT_ASIN(asinArg_sanitized) + ogeePhase) * ogeeMag;
 
 	FLT normXYZ = FLT_SQRT(X * X + Y * Y + Z * Z);
 

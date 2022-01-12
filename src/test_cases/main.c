@@ -20,11 +20,13 @@ int main(int argc, char **argv) {
 		// fprintf(stderr, "Running test %s (%d)\n", DriverName, i);
 		int r = dd();
 		if (r != 0) {
-			fprintf(stderr, "%s output:\n%s\n", DriverName, logs.d);
+			if (logs.d && logs.d[0] != 0) {
+				fprintf(stderr, "%s output:\n%s\n", DriverName, logs.d);
+			}
 			fprintf(stderr, "Test %s reports status %d\n", DriverName, r);
 		}
 		str_clear(&logs);
-		failed &= r == 0;
+		failed |= r != 0;
 	}
 
 	str_free(&logs);
