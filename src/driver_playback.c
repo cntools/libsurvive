@@ -256,6 +256,20 @@ static int parse_and_run_externalpose(const char *line, SurvivePlaybackData *dri
 	return 0;
 }
 
+static int parse_and_run_externalvelocity(const char *line, SurvivePlaybackData *driver) {
+	char name[128] = {0};
+	SurviveVelocity pose;
+
+	if (driver->outputExternalPose) {
+		int rr = sscanf(line, "%s EXTERNAL_VELOCITY " SurviveVel_sformat "\n", name, &pose.Pos[0], &pose.Pos[1],
+						&pose.Pos[2], &pose.AxisAngleRot[0], &pose.AxisAngleRot[1], &pose.AxisAngleRot[2]);
+
+		SurviveContext *ctx = driver->ctx;
+		SURVIVE_INVOKE_HOOK(external_velocity, ctx, name, &pose);
+	}
+	return 0;
+}
+
 static int parse_and_run_config(const char *line, SurvivePlaybackData *driver) {
 	const char *configStart = line;
 	SurviveContext *ctx = driver->ctx;
@@ -411,6 +425,9 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 		case 'E':
 			if (strcmp(op, "EXTERNAL_POSE") == 0) {
 				parse_and_run_externalpose(line, driver);
+				break;
+			} else if (strcmp(op, "EXTERNAL_VELOCITY") == 0) {
+				parse_and_run_externalvelocity(line, driver);
 				break;
 			}
 		case 'C':
