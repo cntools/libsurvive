@@ -68,9 +68,9 @@ typedef struct SurviveKalmanTracker {
 	int report_covariance_cnt;
 	bool report_sampled_cloud;
 
-	int minimize_state_space;
-	int use_raw_obs;
-	int adaptive_imu, adaptive_lightcap, adaptive_obs, show_raw_obs;
+	bool minimize_state_space;
+	bool use_raw_obs;
+	bool adaptive_imu, adaptive_lightcap, adaptive_obs, show_raw_obs;
 
 	FLT light_threshold_var, report_threshold_var, light_error_threshold;
 	FLT zvu_stationary_var;
@@ -125,7 +125,7 @@ typedef struct SurviveKalmanTracker {
 
 	FLT lightcap_max_error;
 	int light_rampin_length;
-	int use_error_for_lh_pos;
+	bool use_error_for_lh_pos;
 
 	LightInfo savedLight[32];
 	uint32_t savedLight_idx;

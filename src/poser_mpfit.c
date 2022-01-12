@@ -29,7 +29,7 @@
 #endif
 
 STATIC_CONFIG_ITEM(SERIALIZE_SOLVE, "serialize-lh-mpfit", 's', "Serialize MPFIT formulization", 0)
-STATIC_CONFIG_ITEM(USE_JACOBIAN_FUNCTION, "use-jacobian-function", 'i',
+STATIC_CONFIG_ITEM(USE_JACOBIAN_FUNCTION, "use-jacobian-function", 'b',
 				   "If set to false, a slower numerical approximation of the jacobian is used", 1)
 STATIC_CONFIG_ITEM(SENSOR_VARIANCE_PER_SEC, "sensor-variance-per-sec", 'f',
 				   "Variance per second to add to the sensor input -- discounts older data", 0.0)
@@ -39,10 +39,10 @@ STATIC_CONFIG_ITEM(DISABLE_LIGHTHOUSE, "disable-lighthouse", 'i', "Disable given
 STATIC_CONFIG_ITEM(RUN_EVERY_N_SYNCS, "syncs-per-run", 'i', "Number of sync pulses before running optimizer", 1)
 STATIC_CONFIG_ITEM(RUN_POSER_ASYNC, "poser-async", 'i', "Run the poser in it's own thread", 0)
 
-STATIC_CONFIG_ITEM(PRECISE_POSE, "precise", 'i', "Always calculate precise pose", 0)
+STATIC_CONFIG_ITEM(PRECISE_POSE, "precise", 'b', "Always calculate precise pose", 0)
 STATIC_CONFIG_ITEM(USE_STATIONARY_SENSOR_WINDOW, "use-stationary-sensor-window", 'i',
 				   "Use larger time window when stationary", 1)
-STATIC_CONFIG_ITEM(MPFIT_FULL_COV, "mpfit-use-cov", 'i', "Use the mpfit covariance output", 1)
+STATIC_CONFIG_ITEM(MPFIT_FULL_COV, "mpfit-use-cov", 'b', "Use the mpfit covariance output", 1)
 
 typedef struct MPFITStats {
 	int meas_failures;

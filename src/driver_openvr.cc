@@ -7,7 +7,7 @@
 #include <os_generic.h>
 #include <vector>
 
-STATIC_CONFIG_ITEM(OpenVR_DRIVER_ENABLE, "openvr", 'i', "Load openvr driver", 0)
+STATIC_CONFIG_ITEM(OpenVR_DRIVER_ENABLE, "openvr", 'b', "Load openvr driver", 0)
 
 bool operator!=(const LinmathPose &a, const LinmathPose &b) {
 	for (int i = 0; i < 3; i++)

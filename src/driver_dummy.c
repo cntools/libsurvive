@@ -8,7 +8,7 @@
 #include <string.h>
 #include <survive.h>
 
-STATIC_CONFIG_ITEM(DUMMY_DRIVER_ENABLE, "dummy-driver-enable", 'i', "Load a dummy driver for testing.", 0)
+STATIC_CONFIG_ITEM(DUMMY_DRIVER_ENABLE, "dummy-driver-enable", 'b', "Load a dummy driver for testing.", 0)
 
 struct SurviveDriverDummy {
 	SurviveContext *ctx;

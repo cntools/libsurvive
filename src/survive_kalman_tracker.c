@@ -50,7 +50,7 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("obs-rot-variance",  "Variance of rotation integration from light capture",
 					   1e-7, t->obs_rot_var)
 
-	STRUCT_CONFIG_ITEM("use-raw-obs",  "Apply kalman filter as part of the pose solver", 0, t->use_raw_obs)
+	STRUCT_CONFIG_ITEM("use-raw-obs",  "If true; the raw position from the solver is used and no filtering is applied", 0, t->use_raw_obs)
 
 	STRUCT_CONFIG_ITEM("show-raw-obs", "Show position of raw poser output", 0, t->show_raw_obs)
 

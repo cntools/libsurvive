@@ -17,7 +17,7 @@
 #include "survive_recording.h"
 #include "variance.h"
 
-STATIC_CONFIG_ITEM(Simulator_DRIVER_ENABLE, "simulator", 'i', "Load a Simulator driver for testing.", 0)
+STATIC_CONFIG_ITEM(Simulator_DRIVER_ENABLE, "simulator", 'b', "Load a Simulator driver for testing.", 0)
 
 typedef struct SurviveDriverSimulatorLHState {
 	FLT last_eval_time;

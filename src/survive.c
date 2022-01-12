@@ -33,21 +33,20 @@ STATIC_CONFIG_ITEM(SURVIVE_VERBOSE, "v", 'i', "Verbosity level", 0)
 STATIC_CONFIG_ITEM(BLACKLIST_DEVS, "blacklist-devs", 's', "List any devs (or substrings of devs) to blacklist.", "")
 STATIC_CONFIG_ITEM(CONFIG_FILE, "configfile", 's', "Default configuration file", DEFAULT_CONFIG_PATH)
 STATIC_CONFIG_ITEM(INIT_CONFIG_FILE, "init-configfile", 's', "Initial configuration file", 0)
-STATIC_CONFIG_ITEM(CONFIG_D_CALI, "disable-calibrate", 'i', "Enables or disables calibration", 0)
-STATIC_CONFIG_ITEM(CONFIG_FAST_CALI, "fast-calibrate", 'i', "Use fast calibration", 0)
-STATIC_CONFIG_ITEM(CONFIG_F_CALI, "force-calibrate", 'i', "Forces calibration even if one exists.", 0)
-STATIC_CONFIG_ITEM(CONFIG_F_OOTX, "force-ootx", 'i', "Forces ootx capture even if its in the config file.", 0)
+STATIC_CONFIG_ITEM(CONFIG_D_CALI, "disable-calibrate", 'b', "Enables or disables calibration", 0)
+STATIC_CONFIG_ITEM(CONFIG_F_CALI, "force-calibrate", 'b', "Forces calibration even if one exists.", 0)
+STATIC_CONFIG_ITEM(CONFIG_F_OOTX, "force-ootx", 'b', "Forces ootx capture even if its in the config file.", 0)
 STATIC_CONFIG_ITEM(CONFIG_LIGHTHOUSE_COUNT, "lighthousecount", 'i', "How many lighthouses to look for.", 0)
 STATIC_CONFIG_ITEM(LIGHTHOUSE_GEN, "lighthouse-gen", 'i',
 				   "Which lighthouse gen to use -- 1 for LH1, 2 for LH2, 0 (default) for auto-detect", 0)
 STATIC_CONFIG_ITEM(OUTPUT_CALLBACK_STATS, "output-callback-stats", 'f',
 				   "Print cb stats every given number of seconds. 0 disables this output.", 0.);
-STATIC_CONFIG_ITEM(THREADED_POSERS, "threaded-posers", 'i', "Whether or not to run each poser in their own thread.", 0)
+STATIC_CONFIG_ITEM(THREADED_POSERS, "threaded-posers", 'b', "Whether or not to run each poser in their own thread.", 0)
 
-STATIC_CONFIG_ITEM(LH_0_DISABLE, "lighthouse-0-disable", 'i', "Disable lh at idx 0", 0)
-STATIC_CONFIG_ITEM(LH_1_DISABLE, "lighthouse-1-disable", 'i', "Disable lh at idx 1", 0)
-STATIC_CONFIG_ITEM(LH_2_DISABLE, "lighthouse-2-disable", 'i', "Disable lh at idx 2", 0)
-STATIC_CONFIG_ITEM(LH_3_DISABLE, "lighthouse-3-disable", 'i', "Disable lh at idx 3", 0)
+STATIC_CONFIG_ITEM(LH_0_DISABLE, "lighthouse-0-disable", 'b', "Disable lh at idx 0", 0)
+STATIC_CONFIG_ITEM(LH_1_DISABLE, "lighthouse-1-disable", 'b', "Disable lh at idx 1", 0)
+STATIC_CONFIG_ITEM(LH_2_DISABLE, "lighthouse-2-disable", 'b', "Disable lh at idx 2", 0)
+STATIC_CONFIG_ITEM(LH_3_DISABLE, "lighthouse-3-disable", 'b', "Disable lh at idx 3", 0)
 
 const char *survive_config_file_name(struct SurviveContext *ctx) {
 	return survive_configs(ctx, "configfile", SC_GET, DEFAULT_CONFIG_PATH);

@@ -31,10 +31,10 @@ SURVIVE_EXPORT int32_t PoserData_size(const PoserData *poser_data) {
 	return 0;
 }
 
-STATIC_CONFIG_ITEM(CENTER_ON_LH0, "center-on-lh0", 'i',
+STATIC_CONFIG_ITEM(CENTER_ON_LH0, "center-on-lh0", 'b',
 				   "Alternative scheme for setting initial position; LH0 is 0, 0 looking in the +X direction", 0)
 
-STATIC_CONFIG_ITEM(HAPTIC_ON_CALIBRATE, "haptic-on-calibrate", 'i',
+STATIC_CONFIG_ITEM(HAPTIC_ON_CALIBRATE, "haptic-on-calibrate", 'b',
 				   "Trigger a haptic pulse when lighthouse positions are solved", 1);
 
 STATIC_CONFIG_ITEM(LIGHTHOUSE_NORMALIZE_ANGLE, "normalize-lighthouse-angle", 'f',

@@ -16,7 +16,7 @@ void survive_default_button_process(SurviveObject *so, enum SurviveInputEvent ev
 									const enum SurviveAxis *axisIds, const SurviveAxisVal_t *axisValues) {
 }
 
-STATIC_CONFIG_ITEM(REPORT_IN_IMU, "report-in-imu", 'i', "Debug option to output poses in IMU space.", 0)
+STATIC_CONFIG_ITEM(REPORT_IN_IMU, "report-in-imu", 'b', "Debug option to output poses in IMU space.", 0)
 STATIC_CONFIG_ITEM(USE_EXTERNAL_LH, "use-external-lighthouse", 'b', "Use external lighthouse if available", 0)
 void survive_default_imupose_process(SurviveObject *so, survive_long_timecode timecode, const SurvivePose *imu2world) {
 	static int report_in_imu = -1;
@@ -114,7 +114,7 @@ void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighth
 	}
 }
 
-STATIC_CONFIG_ITEM(SURVIVE_SERIALIZE_DEV_CONFIG, "serialize-device-config", 'i', "Serialize device config files", 0)
+STATIC_CONFIG_ITEM(SURVIVE_SERIALIZE_DEV_CONFIG, "serialize-device-config", 'b', "Serialize device config files", 0)
 
 int survive_default_config_process(SurviveObject *so, char *ct0conf, int len) {
 	survive_recording_config_process(so, ct0conf, len);

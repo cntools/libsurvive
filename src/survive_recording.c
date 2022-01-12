@@ -47,7 +47,7 @@ END_STRUCT_CONFIG_SECTION(SurviveRecordingData)
 // clang-format on
 
 STATIC_CONFIG_ITEM(RECORD, "record", 's', "File to record to if you wish to make a recording.", "")
-STATIC_CONFIG_ITEM(RECORD_STDOUT, "record-stdout", 'i', "Whether or not to dump recording data to stdout", 0)
+STATIC_CONFIG_ITEM(RECORD_STDOUT, "record-stdout", 'b', "Whether or not to dump recording data to stdout", 0)
 
 static void write_to_output_raw(SurviveRecordingData *recordingData, const char *string, int len) {
 	if (recordingData->output_file) {

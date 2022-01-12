@@ -29,7 +29,7 @@ static void ootx_error_clbk_d(ootx_decoder_context *ct, const char *msg) {
 		SV_INFO("(%d) %s", ctx->bsd[id].mode != 255 ? ctx->bsd[id].mode : id, msg);
 }
 
-STATIC_CONFIG_ITEM(SERIALIZE_OOTX, "serialize-ootx", 'i', "Serialize out ootx", 0)
+STATIC_CONFIG_ITEM(SERIALIZE_OOTX, "serialize-ootx", 'b', "Serialize out ootx", 0)
 static void ootx_packet_clbk_d_gen2(ootx_decoder_context *ct, ootx_packet *packet) {
 	SurviveContext *ctx = ((SurviveObject *)(ct->user))->ctx;
 	int id = ct->user1;

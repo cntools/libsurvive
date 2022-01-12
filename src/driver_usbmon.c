@@ -21,11 +21,11 @@
 
 STATIC_CONFIG_ITEM(USBMON_RECORD, "usbmon-record", 's', "File to save .pcap to.", 0)
 STATIC_CONFIG_ITEM(USBMON_PLAYBACK, "usbmon-playback", 's', "File to replay .pcap from.", 0)
-STATIC_CONFIG_ITEM(USBMON_RECORD_ALL, "usbmon-record-all", 'i', "Whether or not to record all usb traffic", 0)
-STATIC_CONFIG_ITEM(USBMON_OUTPUT_EVERYTHING, "usbmon-output-all", 'i', "Whether or not to log all usb traffic", 0)
-STATIC_CONFIG_ITEM(USBMON_OUTPUT, "usbmon-output", 'i', "Whether or not to log any generic usb traffic", 0)
-STATIC_CONFIG_ITEM(USBMON_ONLY_RECORD, "usbmon-only-record", 'i', "Record only; don't forward to libsurvive", 0)
-STATIC_CONFIG_ITEM(USBMON_ALLOW_FS_CONFIG, "usbmon-allow-fs-config", 'i',
+STATIC_CONFIG_ITEM(USBMON_RECORD_ALL, "usbmon-record-all", 'b', "Whether or not to record all usb traffic", 0)
+STATIC_CONFIG_ITEM(USBMON_OUTPUT_EVERYTHING, "usbmon-output-all", 'b', "Whether or not to log all usb traffic", 0)
+STATIC_CONFIG_ITEM(USBMON_OUTPUT, "usbmon-output", 'b', "Whether or not to log any generic usb traffic", 0)
+STATIC_CONFIG_ITEM(USBMON_ONLY_RECORD, "usbmon-only-record", 'b', "Record only; don't forward to libsurvive", 0)
+STATIC_CONFIG_ITEM(USBMON_ALLOW_FS_CONFIG, "usbmon-allow-fs-config", 'b',
 				   "If we dont see a config section; try to read it from filesystem -- could be very wrong", 0)
 
 typedef struct vive_device_t {

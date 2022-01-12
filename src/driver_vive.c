@@ -851,7 +851,7 @@ int survive_usb_init(SurviveViveData *sv) {
 	return 0;
 }
 
-STATIC_CONFIG_ITEM(PAIR_DEVICE, "pair-device", 'i', "Turn on pairing mode", 0)
+STATIC_CONFIG_ITEM(PAIR_DEVICE, "pair-device", 'b', "Turn on pairing mode", 0)
 STATIC_CONFIG_ITEM(SECONDS_PER_HZ_OUTPUT, "usb-hz-output", 'i', "Seconds between outputing usb stats", -1)
 void survive_vive_usb_close(SurviveViveData *sv) {
 	survive_release_ctx_lock(sv->ctx);
