@@ -706,7 +706,7 @@ void *pcap_thread_fn(void *_driver) {
 					survive_dump_buffer(ctx, pktData, usbp->data_len);
 				}
 
-				if (usbp->event_type == 'C' && usbp->transfer_type == 2) {
+				if (usbp->event_type == 'C' && usbp->transfer_type == 2 && dev->so) {
 					survive_usb_feature_read(dev->so, pktData, usbp->data_len);
 				}
 
