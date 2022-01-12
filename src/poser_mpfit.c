@@ -29,8 +29,8 @@
 #endif
 
 STATIC_CONFIG_ITEM(SERIALIZE_SOLVE, "serialize-lh-mpfit", 's', "Serialize MPFIT formulization", 0)
-STATIC_CONFIG_ITEM(USE_JACOBIAN_FUNCTION, "use-jacobian-function", 'b',
-				   "If set to false, a slower numerical approximation of the jacobian is used", 1)
+STATIC_CONFIG_ITEM(USE_JACOBIAN_FUNCTION, "use-jacobian-function", 'i',
+				   "If set to false, a slower numerical approximation of the jacobian is used. Set to -1 to see debug output", 1)
 STATIC_CONFIG_ITEM(SENSOR_VARIANCE_PER_SEC, "sensor-variance-per-sec", 'f',
 				   "Variance per second to add to the sensor input -- discounts older data", 0.0)
 STATIC_CONFIG_ITEM(SENSOR_VARIANCE, "sensor-variance", 'f', "Base variance for each sensor input", 1.0e-4)
@@ -579,7 +579,6 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 		FLT v[] = {axis_count, lh_count, sensor_ct, rtn};
 		SV_DATA_LOG("mpfit_confidence_measures", v, 4);
 
-		SurviveVelocity *vel = survive_optimizer_get_velocity(mpfitctx);
 		FLT scale = so->sensor_scale;
 		SV_VERBOSE(
 			worldEstablished ? 110 : 100,
