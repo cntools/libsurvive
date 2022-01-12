@@ -92,7 +92,7 @@ typedef struct MPFITData {
 
   int record_reprojection_error;
   FLT current_bias, obj_up_variance, lh_up_variance, stationary_obj_up_variance;
-  int model_velocity;
+  bool model_velocity;
   bool globalDataAvailable;
   struct survive_async_optimizer *async_optimizer;
 
@@ -100,7 +100,7 @@ typedef struct MPFITData {
 } MPFITData;
 
 STRUCT_CONFIG_SECTION(MPFITData)
-STRUCT_CONFIG_ITEM("mpfit-model-velocity", "Model velocity in non mpfit process", 1, t->model_velocity)
+STRUCT_CONFIG_ITEM("mpfit-model-velocity", "Model velocity in non mpfit process", false, t->model_velocity)
 STRUCT_CONFIG_ITEM("mpfit-current-bias", "", 0, t->current_bias)
 STRUCT_CONFIG_ITEM("mpfit-record-reprojection-error", "", 0, t->record_reprojection_error)
 STRUCT_CONFIG_ITEM("mpfit-object-up-variance",
