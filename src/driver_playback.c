@@ -365,7 +365,13 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 			}
 
 			if (sscanf(line, "%lf", &driver->next_time_s) != 1) {
+				size_t n = 0;
 				free(line);
+				line = 0;
+
+				ssize_t r = gzgetline(&line, &n, f);
+				free(line);
+
 				return 0;
 			}
 
@@ -407,7 +413,7 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 		survive_get_ctx_lock(ctx);
 		switch (op[0]) {
 		case 'F':
-			if (strcmp(op, "FULL_STATE") == 0) {
+			if (strcmp(op, "FULL_STATE") == 0 || strcmp(op, "FULL_COVARIANCE") == 0) {
 			}
 			break;
 		case 'W':

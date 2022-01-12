@@ -528,7 +528,8 @@ function set_object_position(obj, name = null) {
 
 var covar_canvas = {}, covar_names = {};
 function update_fullcov(v) {
-	if (covar_canvas[v[0]] == null) {
+	var name = v[1];
+	if (covar_canvas[name] == null) {
 		const canvas = document.createElement("canvas");
 		canvas.className = "myClass";
 		canvas.id = "myId";
@@ -538,30 +539,30 @@ function update_fullcov(v) {
 		canvas.width = canvas.height = 21;
 
 		const div = document.createElement("div");
-		div.innerText = v[0];
+		div.innerText = name;
 		document.body.appendChild(div);
 		div.style.cssText =
 			"position: absolute;z-index: 11;width: 105px;bottom: 50px;image-rendering: pixelated;right: 225px;color: white;";
 		div.style.right = (5 + Object.keys(covar_canvas).length * 110) + "px";
-		covar_names[v[0]] = div;
+		covar_names[name] = div;
 		document.body.appendChild(canvas);
-		covar_canvas[v[0]] = canvas;
+		covar_canvas[name] = canvas;
 	}
 
-	var fv = v.slice(2).map(parseFloat);
+	var fv = v.slice(3).map(parseFloat);
 	let fmax = Math.max(...fv);
 	const fmin = Math.min(...fv);
 	fmax = Math.max(fmax, -fmin);
 	const imageData =
 		Uint8ClampedArray.from(fv.map(x => [...turbo(Math.min(1, Math.abs(fmax != 0 ? x / fmax : 0))), 255]).flat());
-	var canvas = covar_canvas[v[0]];
+	var canvas = covar_canvas[name];
 
 	var ctx = canvas.getContext("2d");
 	ctx.imageSmoothingEnabled = false;
 	// ctx.scale(5,5);
 	const l = Math.floor(Math.sqrt(fv.length))
 	ctx.putImageData(new ImageData(imageData, l, l), 0, 0);
-	covar_names[v[0]].innerText = v[0] + " " + fmax;
+	covar_names[name].innerText = name + " " + fmax;
 }
 
 function update_fullstate(v) {

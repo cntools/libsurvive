@@ -853,7 +853,7 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
             cnMatrixSet(&R, i, i, cnMatrixGet(&R, i, i) + augR[i]);
 
         if(tracker->report_covariance_cnt > 0 && Ri && Ri->rows == Ri->cols && (tracker->stats.obs_count % tracker->report_covariance_cnt) == 0) {
-            survive_recording_write_to_output_nopreamble(ctx->recptr, "%s' FULL_COVARIANCE ", so->codename);
+            survive_recording_write_to_output(ctx->recptr, "%s' FULL_COVARIANCE ", so->codename);
             for (int i = 0; i < R.cols * R.cols; i++) {
                 survive_recording_write_to_output_nopreamble(ctx->recptr, "%f ", R.data[i]);
             }
@@ -1281,7 +1281,7 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
     if(tracker->report_covariance_cnt > 0 && tracker->stats.reported_poses % tracker->report_covariance_cnt == 0) {
         survive_recording_write_to_output(ctx->recptr, "%s FULL_STATE " Point27_format "\n",
                                           so->codename, LINMATH_VEC27_EXPAND((FLT*)&tracker->state));
-        survive_recording_write_to_output_nopreamble(ctx->recptr, "%s FULL_COVARIANCE ", so->codename);
+        survive_recording_write_to_output(ctx->recptr, "%s FULL_COVARIANCE ", so->codename);
         for (int i = 0; i < state_cnt * state_cnt; i++) {
             survive_recording_write_to_output_nopreamble(ctx->recptr, "%f ", tracker->model.P.data[i]);
         }
