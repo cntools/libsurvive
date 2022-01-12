@@ -51,6 +51,17 @@ void survive_default_velocity_process(SurviveObject *so, survive_long_timecode t
 }
 
 void survive_default_external_velocity_process(SurviveContext *ctx, const char *name, const SurviveVelocity *vel) {
+	for (int i = 0; i < ctx->objs_ct; i++) {
+		SurviveObject *so = ctx->objs[i];
+		if (strcmp(so->serial_number, name) == 0) {
+			SurviveVelocity out = survive_kalman_tracker_velocity(so->tracker);
+
+			FLT diff[] = {dist3d(out.Pos, vel->Pos), dist3d(out.AxisAngleRot, vel->AxisAngleRot)};
+			SV_DATA_LOG("external_velocity_diff", diff, 2);
+			break;
+		}
+	}
+
 	survive_recording_external_velocity_process(ctx, name, vel);
 }
 void survive_default_external_pose_process(SurviveContext *ctx, const char *name, const SurvivePose *pose) {
