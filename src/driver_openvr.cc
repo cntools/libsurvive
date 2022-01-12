@@ -3,7 +3,7 @@
 #include <map>
 
 #include <cmath>
-#include <openvr/openvr.h>
+#include <openvr.h>
 #include <os_generic.h>
 #include <vector>
 

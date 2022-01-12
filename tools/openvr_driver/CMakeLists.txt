@@ -1,10 +1,6 @@
 project(openvr_driver C CXX)
 
-get_filename_component(OPENVR_LIB_DIR ${OPENVR_LIBRARIES} DIRECTORY)
-set(OPENVR_INCLUDE_DIR ${OPENVR_LIB_DIR}/../include)
-
-
-include_directories(${OPENVR_INCLUDE_DIR})
+include_directories(${OPENVR_INCLUDE_PATH})
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     add_definitions(-DLINUX -DPOSIX)

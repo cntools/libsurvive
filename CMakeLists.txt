@@ -178,16 +178,11 @@ ENDIF()
 )
 
 find_path(OPENVR_INCLUDE_PATH
-               NAMES openvr/openvr.h openvr/openvr_driver.h
-               PATHS
-               "C:/Program Files (x86)/OpenVRSDK/include"
+          NAMES openvr.h openvr_driver.h
+          PATH_SUFFIXES
+          openvr
+          "C:/Program Files (x86)/OpenVRSDK/include"
 )
-find_library(OPENVR_LIBRARIES
-  NAMES
-  openvr_api
-  PATH_SUFFIXES
-  osx32
-  linux64)
 
 SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)

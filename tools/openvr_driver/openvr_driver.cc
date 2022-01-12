@@ -1,4 +1,4 @@
-#include <openvr/openvr_driver.h>
+#include <openvr_driver.h>
 
 #include <cstring>
 #include <memory>
