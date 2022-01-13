@@ -1033,11 +1033,16 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 					}
                 }
             }
+			gemm_ABAt_add_scaled(&R_q, &G, &R_aa, 0, 1, 1, 0);
 
-            gemm_ABAt_add_scaled(&R_q, &G, &R_aa, 0, 1,
-                                 result->bestnorm / (optimizer->measurementsCnt - totalFreePoseCount * pose_size), 0);
-            assert(sane_covariance(&R_q));
+			// gemm_ABAt_add_scaled(&R_q, &G, &R_aa, 0, 1,
+			// result->bestnorm / (optimizer->measurementsCnt - totalFreePoseCount * pose_size), 0);
+			assert(sane_covariance(&R_q));
         }
+
+		// https://lmfit.github.io/lmfit-py/fitting.html#uncertainties-in-variable-parameters-and-their-correlations
+		FLT rchisqr = result->bestnorm / result->nfree;
+		cn_multiply_scalar(&R_q, &R_q, rchisqr);
 	}
 
     if(!optimizer->settings->use_quat_model) {
