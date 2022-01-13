@@ -481,7 +481,7 @@ SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel c
 
 #define SURVIVE_INVOKE_HOOK(hook, ctx, ...)                                                                            \
 	{                                                                                                                  \
-		if (ctx->hook##proc) {                                                                                         \
+		if (ctx && ctx->hook##proc) {                                                                                         \
 			FLT start_time = OGRelativeTime();                                                                         \
 			ctx->hook##proc(ctx, __VA_ARGS__);                                                                         \
 			FLT this_time = OGRelativeTime() - start_time;                                                             \
@@ -699,8 +699,6 @@ SURVIVE_EXPORT uint32_t survive_hash_str(const char *str);
 		if (ctx)                                                                                                       \
 			SURVIVE_INVOKE_HOOK(report_error, ctx, errorCode);                                                         \
 		SV_LOG_NULL_GUARD SURVIVE_INVOKE_HOOK(log, ctx, SURVIVE_LOG_LEVEL_INFO, stbuff);                               \
-		if (!ctx)                                                                                                      \
-			assert(0);                                                                                                 \
 	}
 
 inline static void *sv_dynamic_ptr_check(char *file, int line, void *ptr) {

@@ -371,6 +371,10 @@ SURVIVE_EXPORT const char *SurviveAxisStr(SurviveObjectSubtype objectSubtype, en
 
 SURVIVE_EXPORT const char *SurviveObjectTypeStr(SurviveObjectType t);
 SURVIVE_EXPORT const char *SurviveObjectSubtypeStr(SurviveObjectSubtype t);
+
+#define SURVIVE_ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+
+
 #ifdef __cplusplus
 };
 #endif

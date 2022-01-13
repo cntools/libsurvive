@@ -11,9 +11,7 @@
 
 #include "generated/survive_reproject.aux.generated.h"
 //#include "generated/survive_imu.generated.h"
-#include "survive_optimizer.h"
 
-#include "generated/survive_imu.generated.h"
 #include "mpfit/mpfit.h"
 #include "survive_default_devices.h"
 #include "survive_kalman_tracker.h"
@@ -66,7 +64,7 @@ void survive_optimizer_setup_pose_n(survive_optimizer *mpfit_ctx, const SurviveP
 
 	setup_pose_param_limits(mpfit_ctx, mpfit_ctx->parameters + n * 7, mpfit_ctx->mp_parameters_info + n * 7);
 
-	for (int i = n * 7; i < 7 * (n + 1); i++) {
+	for (size_t i = n * 7; i < 7 * (n + 1); i++) {
 		mpfit_ctx->mp_parameters_info[i].fixed = isFixed;
 		mpfit_ctx->mp_parameters_info[i].parname = object_parameter_names[i % 7];
 
@@ -77,6 +75,7 @@ void survive_optimizer_setup_pose_n(survive_optimizer *mpfit_ctx, const SurviveP
 				mpfit_ctx->mp_parameters_info[i].deriv_debug = 1;
 				mpfit_ctx->mp_parameters_info[i].deriv_abstol = .01;
 				mpfit_ctx->mp_parameters_info[i].deriv_reltol = .01;
+				mpfit_ctx->mp_parameters_info[i].step = 1e-3;
 			} else {
 				mpfit_ctx->mp_parameters_info[i].side = 3;
 			}
@@ -183,7 +182,7 @@ void survive_optimizer_setup_camera(survive_optimizer *mpfit_ctx, int8_t lh, con
 				mpfit_ctx->mp_parameters_info[i].deriv_debug = 1;
 				mpfit_ctx->mp_parameters_info[i].deriv_abstol = .0001;
 				mpfit_ctx->mp_parameters_info[i].deriv_reltol = .0001;
-
+				mpfit_ctx->mp_parameters_info[i].step = .0001;
 			} else {
 				mpfit_ctx->mp_parameters_info[i].side = 3;
 			}
@@ -434,7 +433,6 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
 								   const LinmathDualPose *obj2world, const LinmathDualPose *obj2lh,
 								   const LinmathDualPose *world2lh, const FLT *pt, FLT *deviates, FLT **derivs) {
 	const survive_reproject_model_t *reprojectModel = mpfunc_ctx->reprojectModel;
-	SurviveContext *ctx = mpfunc_ctx->sos[0]->ctx;
 	const int lh = meas->light.lh;
 
 	const struct BaseStationCal *cal = survive_optimizer_get_calibration(mpfunc_ctx, lh);
@@ -968,11 +966,13 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 			(optimizer->mp_parameters_info[i].limited[1] &&
 			 optimizer->parameters[i] > optimizer->mp_parameters_info[i].limits[1]) ||
 			isnan(optimizer->parameters[i])) {
-			survive_optimizer_serialize(optimizer, "debug.opt");
-			SurviveContext *ctx = optimizer->sos[0]->ctx;
+			SurviveContext *ctx = (optimizer->sos == 0 || optimizer->sos[0] == 0) ? 0 : optimizer->sos[0]->ctx;
 			SV_GENERAL_ERROR("Parameter %s(%d) is invalid. %f <= %f <= %f should be true",
-							 optimizer->mp_parameters_info[i].parname, i, optimizer->mp_parameters_info[i].limits[0],
-							 optimizer->parameters[i], optimizer->mp_parameters_info[i].limits[1])
+							 optimizer->mp_parameters_info[i].parname, i,
+							 optimizer->mp_parameters_info[i].limits[0], optimizer->parameters[i],
+							 optimizer->mp_parameters_info[i].limits[1])
+			survive_optimizer_serialize(optimizer, "debug.opt");
+
 		}
 	}
 #endif
@@ -1066,7 +1066,9 @@ void survive_optimizer_serialize(const survive_optimizer *opt, const char *fn) {
 	if(f == 0)
 	  return;
 
-	fprintf(f, "object       %s\n", opt->sos[0]->codename);
+	if(opt->sos && opt->sos[0])
+		fprintf(f, "object       %s\n", opt->sos[0]->codename);
+
 	fprintf(f, "model        %d\n", opt->reprojectModel != &survive_reproject_gen1_model);
 	fprintf(f, "poseLength   %d\n", opt->poseLength);
 	fprintf(f, "cameraLength %d\n", opt->cameraLength);
@@ -1336,7 +1338,7 @@ int params_size(survive_optimizer *ctx, enum survive_optimizer_parameter_type ty
 	case survive_optimizer_parameter_camera:
 		return 7;
 	case survive_optimizer_parameter_camera_parameters:
-		return sizeof(BaseStationCal) * 2;
+		return sizeof(BaseStationCal) * 2 / sizeof(FLT);
 	case survive_optimizer_parameter_obj_points:
 		return 3;
 	case survive_optimizer_parameter_object_scale:
@@ -1346,7 +1348,18 @@ int params_size(survive_optimizer *ctx, enum survive_optimizer_parameter_type ty
 	}
 	return 0;
 }
-
+static inline const char* params_name(enum survive_optimizer_parameter_type type) {
+	switch(type) {
+	default: return "Unknown";
+	case survive_optimizer_parameter_none: return "None";
+	case survive_optimizer_parameter_object_pose: return "Obj Pose";
+	case survive_optimizer_parameter_object_velocity: return "Velocity";
+	case survive_optimizer_parameter_object_scale: return "Scale";
+	case survive_optimizer_parameter_camera: return "Camera";
+	case survive_optimizer_parameter_camera_parameters: return "Camera cal";
+	case survive_optimizer_parameter_obj_points: return "Points";
+	}
+}
 SURVIVE_EXPORT survive_optimizer_parameter *
 survive_optimizer_emplace_params(survive_optimizer *ctx, enum survive_optimizer_parameter_type type, int n) {
 	assert(survive_optimizer_get_max_parameters_count(ctx) > ctx->parameterBlockCnt);
@@ -1356,6 +1369,10 @@ survive_optimizer_emplace_params(survive_optimizer *ctx, enum survive_optimizer_
 	rtn->size = params_size(ctx, type) * n;
 	rtn->elem_size = n;
 	rtn->pi = &ctx->mp_parameters_info[ctx->parametersCnt];
+	for(int i = 0;i < rtn->size;i++) {
+		rtn->pi[i].fixed = true;
+		rtn->pi[i].parname = params_name(type);
+	}
 	rtn->p = &ctx->parameters[ctx->parametersCnt];
 	ctx->parametersCnt += rtn->size;
 	return rtn;

@@ -141,7 +141,8 @@ typedef struct survive_optimizer {
 		size_t measurementAllocationSize = meas_count * sizeof(survive_optimizer_measurement);                         \
 		size_t upAllocationSize = sizeof(LinmathPoint3d) * ((ctx).poseLength + (ctx).cameraLength);                    \
 		void *measurement_buffer = alloc_fn(((ctx).measurements), measurementAllocationSize + upAllocationSize);       \
-		void *sos_buffer = alloc_fn((ctx).sos, sizeof(SurviveObject *) * (ctx).poseLength);                            \
+		void *sos_buffer = alloc_fn((ctx).sos, sizeof(SurviveObject *) * (ctx).poseLength);                                  \
+        memset(sos_buffer, 0, sizeof(SurviveObject *) * (ctx).poseLength);\
 		SurviveObject *sos[] = {__VA_ARGS__};                                                                          \
 		memcpy(sos_buffer, sos, sizeof(sos));                                                                          \
 		survive_optimizer_setup_buffers(&(ctx), param_buffer, param_info_buffer, mp_param_info_buffer,                 \
@@ -150,9 +151,9 @@ typedef struct survive_optimizer {
 
 #define SURVIVE_OPTIMIZER_ALLOCA(ctx, size) alloca(size)
 #define SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(ctx, ...)                                                                \
-	SURVIVE_OPTIMIZER_SETUP_BUFFERS(ctx, SURVIVE_OPTIMIZER_ALLOCA, __VA_ARGS__)
+	SURVIVE_OPTIMIZER_SETUP_BUFFERS((ctx), SURVIVE_OPTIMIZER_ALLOCA, __VA_ARGS__)
 #define SURVIVE_OPTIMIZER_SETUP_HEAP_BUFFERS(ctx, ...)                                                                 \
-	SURVIVE_OPTIMIZER_SETUP_BUFFERS(ctx, survive_optimizer_realloc, __VA_ARGS__)
+	SURVIVE_OPTIMIZER_SETUP_BUFFERS((ctx), survive_optimizer_realloc, __VA_ARGS__)
 #define SURVIVE_OPTIMIZER_CLEANUP_STACK_BUFFERS(ctx)
 #define SURVIVE_OPTIMIZER_CLEANUP_HEAP_BUFFERS(ctx)                                                                    \
 	{                                                                                                                  \

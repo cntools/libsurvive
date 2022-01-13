@@ -39,7 +39,7 @@ struct mp_par_struct {
 	int limited[2];   /* 1 = low/upper limit; 0 = no limit */
 	FLT limits[2];	  /* lower/upper limit boundary value */
 
-	char *parname;		 /* Name of parameter, or 0 for none */
+	const char *parname;		 /* Name of parameter, or 0 for none */
 	FLT step;			 /* Step size for finite difference */
 	FLT relstep;		 /* Relative step size for finite difference */
 	int side;			 /* Sidedness of finite difference derivative
