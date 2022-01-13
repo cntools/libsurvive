@@ -404,23 +404,10 @@ static bool map_obs_data(void *user, const struct CnMat *Z, const struct CnMat *
     SurviveKalmanTracker *tracker = (SurviveKalmanTracker *)user;
     if(y) {
         subnd(cn_as_vector(y), cn_as_const_vector(Z), cn_as_const_vector(x_t), 7);
-        //quatfind(cn_as_vector(y) + 3, cn_as_const_vector(x_t) + 3, cn_as_const_vector(Z) + 3);
-        quatfind(cn_as_vector(y) + 3, cn_as_const_vector(Z) + 3, cn_as_const_vector(x_t) + 3);
-        cn_as_vector(y)[3] = 1 - fabs((cn_as_vector(y) + 3)[0]);
     }
     if(H_k) {
         cn_set_zero(H_k);
-        for(int i = 0;i < 3;i++) {
-            cnMatrixSet(H_k, i, i, 1);
-        }
-        FLT jac[16];
-        gen_quatfind_jac_q1(jac, cn_as_const_vector(x_t) + 3, cn_as_const_vector(Z) + 3);
-        //gen_quatfind_jac_q2(jac, cn_as_const_vector(Z) + 3, cn_as_const_vector(x_t) + 3);
-        for(int i = 0;i < 4;i++) {
-            for(int j = 0;j < 4;j++) {
-                cnMatrixSet(H_k, i + 3, j + 3, jac[j + i * 4]);
-            }
-        }
+		cn_set_diag_val(H_k, 1);
     }
     return true;
 }
@@ -1002,6 +989,7 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
     tracker->lightcap_model.term_criteria.max_iterations = 5;
 
     cnkalman_meas_model_init(&tracker->model, "obs", &tracker->obs_model, map_obs_data);
+	tracker->obs_model.term_criteria.max_iterations = 1;
     tracker->obs_model.adaptive = tracker->adaptive_obs;
 
     cnkalman_meas_model_init(&tracker->model, "zvu", &tracker->zvu_model, 0);
