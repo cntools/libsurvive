@@ -17,6 +17,10 @@ def imu_rot_f_aa(time, imu_rot_aa):
     ret = (*quat2axisangle(q), *rotv)
     return sp.Matrix(ret)
 
+def quatrotate_small(q, axis_angle):
+    a,b,c = axis_angle
+    return quatrotateabout(q, [1, a/2,b/2,c/2])
+
 def imu_predict_up(kalman_model):
     g = 9.80665
     acc_scale = kalman_model.AccScale
@@ -91,7 +95,7 @@ if __name__ == "__main__":
         generate_code_and_jacobians(kalman_model_predict)
         #generate_code_and_jacobians(invert_pose)
         for f in [imu_rot_f_aa, imu_correct_up, imu_predict_up, quatrotateabout,
-                  imu_predict, imu_predict_gyro, quatfind]:
+                  imu_predict, imu_predict_gyro, quatfind, quatrotate_small]:
 
             if f in common_math.generate:
                 sys.stderr.write(f, "!!!!!\n")

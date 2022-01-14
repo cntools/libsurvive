@@ -3921,3 +3921,83 @@ static inline void gen_quatfind_jac_q2(FLT* out, const FLT* q1, const FLT* q2) {
 	out[15] = obj_qw;
 }
 
+static inline void gen_quatrotate_small(FLT* out, const FLT* q, const FLT* axis_angle) {
+	const GEN_FLT obj_qw = q[0];
+	const GEN_FLT obj_qi = q[1];
+	const GEN_FLT obj_qj = q[2];
+	const GEN_FLT obj_qk = q[3];
+	const GEN_FLT aa_x = axis_angle[0];
+	const GEN_FLT aa_y = axis_angle[1];
+	const GEN_FLT aa_z = axis_angle[2];
+	const GEN_FLT x0 = 1.0/2.0 * aa_z;
+	const GEN_FLT x1 = 1.0/2.0 * aa_y;
+	const GEN_FLT x2 = 1.0/2.0 * aa_x;
+	out[0] = (-1 * x2 * obj_qi) + obj_qw + (-1 * x0 * obj_qk) + (-1 * x1 * obj_qj);
+	out[1] = obj_qi + (x2 * obj_qw) + (-1 * x1 * obj_qk) + (x0 * obj_qj);
+	out[2] = (x1 * obj_qw) + (-1 * x0 * obj_qi) + (x2 * obj_qk) + obj_qj;
+	out[3] = (x1 * obj_qi) + (x0 * obj_qw) + (-1 * x2 * obj_qj) + obj_qk;
+}
+
+// Jacobian of quatrotate_small wrt [obj_qw, obj_qi, obj_qj, obj_qk]
+static inline void gen_quatrotate_small_jac_q(FLT* out, const FLT* q, const FLT* axis_angle) {
+	const GEN_FLT obj_qw = q[0];
+	const GEN_FLT obj_qi = q[1];
+	const GEN_FLT obj_qj = q[2];
+	const GEN_FLT obj_qk = q[3];
+	const GEN_FLT aa_x = axis_angle[0];
+	const GEN_FLT aa_y = axis_angle[1];
+	const GEN_FLT aa_z = axis_angle[2];
+	const GEN_FLT x0 = 1.0/2.0 * aa_x;
+	const GEN_FLT x1 = -1 * x0;
+	const GEN_FLT x2 = 1.0/2.0 * aa_y;
+	const GEN_FLT x3 = -1 * x2;
+	const GEN_FLT x4 = 1.0/2.0 * aa_z;
+	const GEN_FLT x5 = -1 * x4;
+	out[0] = 1;
+	out[1] = x1;
+	out[2] = x3;
+	out[3] = x5;
+	out[4] = x0;
+	out[5] = 1;
+	out[6] = x4;
+	out[7] = x3;
+	out[8] = x2;
+	out[9] = x5;
+	out[10] = 1;
+	out[11] = x0;
+	out[12] = x4;
+	out[13] = x2;
+	out[14] = x1;
+	out[15] = 1;
+}
+
+// Jacobian of quatrotate_small wrt [aa_x, aa_y, aa_z]
+static inline void gen_quatrotate_small_jac_axis_angle(FLT* out, const FLT* q, const FLT* axis_angle) {
+	const GEN_FLT obj_qw = q[0];
+	const GEN_FLT obj_qi = q[1];
+	const GEN_FLT obj_qj = q[2];
+	const GEN_FLT obj_qk = q[3];
+	const GEN_FLT aa_x = axis_angle[0];
+	const GEN_FLT aa_y = axis_angle[1];
+	const GEN_FLT aa_z = axis_angle[2];
+	const GEN_FLT x0 = 1.0/2.0 * obj_qi;
+	const GEN_FLT x1 = -1 * x0;
+	const GEN_FLT x2 = 1.0/2.0 * obj_qj;
+	const GEN_FLT x3 = -1 * x2;
+	const GEN_FLT x4 = 1.0/2.0 * obj_qk;
+	const GEN_FLT x5 = -1 * x4;
+	const GEN_FLT x6 = 1.0/2.0 * obj_qw;
+	out[0] = x1;
+	out[1] = x3;
+	out[2] = x5;
+	out[3] = x6;
+	out[4] = x5;
+	out[5] = x2;
+	out[6] = x4;
+	out[7] = x6;
+	out[8] = x1;
+	out[9] = x3;
+	out[10] = x0;
+	out[11] = x6;
+}
+
