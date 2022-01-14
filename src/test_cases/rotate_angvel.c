@@ -139,33 +139,78 @@ TEST(AxisAngle, Compose) {
 void avg_naive(LinmathQuat out, const LinmathQuat q1, const LinmathQuat q2, FLT t) {
 	LinmathQuat qd;
 	subnd(qd, q1, q2, 4);
+
 	scalend(qd, qd, t, 4);
 	addnd(out, qd, q2, 4);
 	quatnormalize(out, out);
 }
+
+void avg_error_state(LinmathQuat out, const LinmathQuat q1, const LinmathQuat q2, FLT t) {
+	LinmathQuat qd;
+	subnd(qd, q1, q2, 4);
+	scalend(qd, qd, t, 4);
+
+	scalend(qd, qd, .5, 4);
+	qd[0] = 1;
+	quatnormalize(qd, qd);
+
+	quatrotateabout(out, qd, q1);
+	quatnormalize(out, out);
+	for (int i = 0; i < 4; i++)
+		assert(isfinite(out[i]));
+}
 void avg_slerp(LinmathQuat out, const LinmathQuat q1, const LinmathQuat q2, FLT t) { quatslerp(out, q1, q2, t); }
 
-FLT err_ns = 0;
+void avg_find(LinmathQuat out, const LinmathQuat q1, const LinmathQuat q2, FLT t) {
+	LinmathQuat q;
+	quatfind(q, q1, q2);
+	q[0] = 0; // 1 - fabs(q[0]);
+	scalend(q, q, t, 4);
+	// q[0] = 1;
+	// quatnormalize(q, q);
+
+	addnd(out, q, q2, 4);
+	quatnormalize(out, out);
+
+	// quatrotateabout(out, q, q1);
+}
+
+typedef void (*avg_fn)(LinmathQuat out, const LinmathQuat q1, const LinmathQuat q2, FLT t);
+avg_fn avgFns[] = {avg_naive, avg_find, avg_error_state};
+
+FLT avg_errors[SURVIVE_ARRAY_SIZE(avgFns)] = {0};
+int avg_error_failures[SURVIVE_ARRAY_SIZE(avgFns)] = {0};
 int err_cnt = 0;
 void test_approx(LinmathQuat q1, LinmathQuat q2, FLT t) {
-	LinmathQuat q_n, q_s, q_r;
+	LinmathQuat q_s;
 	avg_slerp(q_s, q1, q2, t);
-	avg_naive(q_n, q1, q2, t);
+
 	FLT err_q1 = quatdifference(q1, q_s);
 	FLT err_q2 = quatdifference(q2, q_s);
 	FLT err_q = t * err_q1 + (1 - t) * err_q2;
-	FLT err_n = quatdifference(q_n, q_s) / err_q;
 
-	err_ns += err_n;
+	for (int i = 0; i < SURVIVE_ARRAY_SIZE(avgFns); i++) {
+		LinmathQuat q_;
+		avgFns[i](q_, q1, q2, t);
+		FLT err = quatdifference(q_, q_s) / err_q;
+		avg_errors[i] += err;
+		avg_error_failures[i] += err > 1;
+	}
+
 	err_cnt++;
 }
 
 TEST(Quat, ApproxTest) {
+	LinmathQuat q1 = {0, 1, 0, 0};
+	LinmathQuat q2 = {0, 1, .1, 0};
+	quatnormalize(q2, q2);
+	test_approx(q1, q2, 1);
+
 	srand(42);
 	for (int i = 0; i < 100000; i++) {
 		LinmathQuat q1 = {linmath_rand(-1, 1), linmath_rand(-1, 1), linmath_rand(-1, 1), linmath_rand(-1, 1)};
 		quatnormalize(q1, q1);
-		FLT dx = 1e-5;
+		FLT dx = 1e-2;
 		LinmathQuat t = {1 - linmath_rand(-dx, dx), linmath_rand(-dx, dx), linmath_rand(-dx, dx),
 						 linmath_rand(-dx, dx)};
 		quatnormalize(t, t);
@@ -176,8 +221,11 @@ TEST(Quat, ApproxTest) {
 		test_approx(q1, q2, linmath_rand(0, 1));
 	}
 
-	printf("Avg error: %f\n", err_ns / (FLT)err_cnt);
-	ASSERT_GT(.6, err_ns / (FLT)err_cnt);
+	printf("Avg error: ");
+	for (int i = 0; i < SURVIVE_ARRAY_SIZE(avgFns); i++) {
+		printf("%f %d, ", avg_errors[i] / (FLT)err_cnt, avg_error_failures[i]);
+	}
+	printf("\n");
 
 	return 0;
 }
@@ -215,10 +263,10 @@ TEST(Quat, EdgeCases) {
 	}
 
 	{
-		LinmathQuat q1 = {+0.10277525, -0.41049529, -0.87578141, +0.23224508};
-		LinmathQuat q2 = {-0.10523400, +0.41045850, +0.87538420, -0.23270600};
+		LinmathQuat q1 = {-0.9986694, 0.0515698};
+		LinmathQuat q2 = {-0.9988286, -0.0483884};
 		quatfind(qm, q1, q2);
-		test_approx(q1, q2, .1);
+		test_approx(q1, q2, .5);
 	}
 	return 0;
 }
