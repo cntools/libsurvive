@@ -68,6 +68,7 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("process-weight-acc-bias", "Acc bias variance per second", 0, t->params.process_weight_acc_bias)
 	STRUCT_CONFIG_ITEM("process-weight-gyro-bias", "Gyro bias variance per seconid", 0, t->params.process_weight_gyro_bias)
 	STRUCT_CONFIG_ITEM("kalman-minimize-state-space", "Minimize the state space", 1, t->minimize_state_space)
+	STRUCT_CONFIG_ITEM("kalman-use-error-space", "Model using error state", 0, t->use_error_state)
 
 	STRUCT_CONFIG_ITEM("kalman-initial-imu-variance", "Initial variance in IMU frame", 0, t->params.initial_variance_imu_correction)
     STRUCT_CONFIG_ITEM("kalman-initial-acc-scale-variance", "Initial variance in IMU frame", 0, t->params.initial_acc_scale_variance)
@@ -399,7 +400,52 @@ static void tracker_datalog(cnkalman_state_t* state, const char *desc, const FLT
 	SV_DATA_LOG("%s_%s", v, length, desc, tracker->datalog_tag);
 }
 
-static bool map_obs_data(void *user, const struct CnMat *Z, const struct CnMat *x_t, struct CnMat *y,
+static void error_state_fn(void *user, const struct CnMat *x0, struct CnMat *H, struct CnMat * E_jac_X) {
+	if(H) {
+		FLT jac[12] = { 0 };
+		FLT err[3] = { 0 };
+		gen_quatrotate_small_jac_axis_angle(jac, cn_as_const_vector(x0) + 3, err);
+
+		for (int i = 0;i < 3;i++) cnMatrixSet(H, i, i, 1);
+		for (int i = 0; i < 4; i++) {
+			for (int j = 0; j < 3; j++) {
+				cnMatrixSet(H, 3 + i, 3 + j, jac[j + i * 3]);
+			}
+		}
+		for (int i = 6;i < H->cols;i++)
+			cnMatrixSet(H, i + 1, i, 1);
+	}
+	if(E_jac_X) {
+		FLT jac[16] = { 0 };
+		FLT err[3] = { 0 };
+		gen_quatrotate_small_jac_q(jac, cn_as_const_vector(x0) + 3, err);
+		for (int i = 0;i < 3;i++) cnMatrixSet(E_jac_X, i, i, 1);
+		for (int i = 0; i < 3; i++) {
+			for (int j = 0; j < 4; j++) {
+				cnMatrixSet(E_jac_X, 3 + i, 3 + j, jac[j + i * 4]);
+			}
+		}
+		for (int i = 6;i < E_jac_X->rows;i++)
+			cnMatrixSet(E_jac_X, i, i + 1, 1);
+	}
+}
+
+static void state_update_fn(void *user, const struct CnMat *x0, struct CnMat *Ky, struct CnMat *x1) {
+	LinmathQuat q;
+	gen_quatrotate_small(q, cn_as_const_vector(x0) + 3, cn_as_const_vector(Ky) + 3);
+	for(int i = 0;i < 3;i++) x1->data[i] = x0->data[i] + Ky->data[i];
+	for(int i = 7;i < x1->rows;i++) x1->data[i] = x0->data[i] + Ky->data[i - 1];
+	quatnormalize(x1->data + 3, q);
+}
+/*
+static void error_state_fn(void *user, const struct CnMat *x0, struct CnMat *H) {
+	cn_set_diag_val(H, 1);
+}
+static void state_update_fn(void *user, const struct CnMat *x0, struct CnMat *Ky, struct CnMat *x1) {
+	cn_elementwise_add(x1, x0, Ky);
+}
+*/
+ static bool map_obs_data(void *user, const struct CnMat *Z, const struct CnMat *x_t, struct CnMat *y,
                            struct CnMat *H_k) {
     SurviveKalmanTracker *tracker = (SurviveKalmanTracker *)user;
     if(y) {
@@ -907,7 +953,7 @@ void survive_kalman_tracker_reinit(SurviveKalmanTracker *tracker) {
 	cn_set_diag(&IMU_R, Rimu);
 
 	FLT var_diag[SURVIVE_MODEL_MAX_STATE_CNT] = {0};
-	FLT p_threshold = survive_kalman_tracker_position_var2(tracker, var_diag, tracker->model.state_cnt);
+	FLT p_threshold = survive_kalman_tracker_position_var2(tracker, var_diag, tracker->model.error_state_size);
 	SurviveObject * so = tracker->so;
 	SV_DATA_LOG("tracker_P", var_diag, tracker->model.state_cnt);
 }
@@ -956,28 +1002,47 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	        break;
 	}
 
-	cnkalman_state_init(&tracker->model, state_cnt, survive_kalman_tracker_predict_jac,
-						tracker->noise_model == 0 ? survive_kalman_tracker_process_noise_bounce : 0, &tracker->params, (FLT *)&tracker->state);
-
+	if(tracker->use_error_state) {
+		cnkalman_error_state_init(&tracker->model, state_cnt, state_cnt - 1, survive_kalman_tracker_predict_jac,
+								  tracker->noise_model == 0 ? survive_kalman_tracker_process_noise_bounce : 0,
+								  error_state_fn, &tracker->params, (FLT *)&tracker->state);
+		tracker->model.Update_fn = state_update_fn;
+	} else {
+		cnkalman_state_init(&tracker->model, state_cnt, survive_kalman_tracker_predict_jac,
+								  tracker->noise_model == 0 ? survive_kalman_tracker_process_noise_bounce : 0,
+								  &tracker->params, (FLT *)&tracker->state);
+	}
 	if(tracker->noise_model == 1) {
-		for(int i = 0;i < 3;i++) {
-			tracker->process_variance.Pose.Pos[i] = tracker->params.process_weight_pos;
-			tracker->process_variance.Pose.Rot[i] = tracker->params.process_weight_rotation;
-			tracker->process_variance.Velocity.Pos[i] = tracker->params.process_weight_vel;
-			tracker->process_variance.Velocity.AxisAngleRot[i] = tracker->params.process_weight_ang_velocity;
-			tracker->process_variance.Acc[i] = tracker->params.process_weight_acc;
-			tracker->process_variance.AccBias[i] = tracker->params.process_weight_acc_bias;
+		if(tracker->use_error_state) {
+			SurviveKalmanErrorModel* pv = (SurviveKalmanErrorModel *)&tracker->process_variance;
+			for(int i = 0;i < 3;i++) {
+					pv->Pose.Pos[i] = tracker->params.process_weight_pos;
+					pv->Pose.AxisAngleRot[i] = tracker->params.process_weight_rotation;
+					pv->Velocity.Pos[i] = tracker->params.process_weight_vel;
+					pv->Velocity.AxisAngleRot[i] = tracker->params.process_weight_ang_velocity;
+					pv->Acc[i] = tracker->params.process_weight_acc;
+					pv->AccBias[i] = tracker->params.process_weight_acc_bias;
+				}
+		} else {
+			SurviveKalmanModel* pv = &tracker->process_variance;
+			for(int i = 0;i < 3;i++) {
+				pv->Pose.Pos[i] = tracker->params.process_weight_pos;
+				pv->Pose.Rot[i] = tracker->params.process_weight_rotation;
+				pv->Velocity.Pos[i] = tracker->params.process_weight_vel;
+				pv->Velocity.AxisAngleRot[i] = tracker->params.process_weight_ang_velocity;
+				pv->Acc[i] = tracker->params.process_weight_acc;
+				pv->AccBias[i] = tracker->params.process_weight_acc_bias;
+			}
+			pv->Pose.Rot[3] = tracker->params.process_weight_rotation;
 		}
-		tracker->process_variance.Pose.Rot[3] = tracker->params.process_weight_rotation;
-
-		tracker->model.state_variance_per_second = cnVec(state_cnt, tracker->process_variance.Pose.Pos);
+        tracker->model.state_variance_per_second = cnVec(tracker->model.error_state_size, tracker->process_variance.Pose.Pos);
 	}
 	//tracker->model.transition_jacobian_mode = cnkalman_jacobian_mode_debug;
 	if (ctx) {
 		cnkalman_set_logging_level(&tracker->model, ctx->log_level);
 	}
     tracker->model.normalize_fn = kalman_model_normalize;
-	//tracker->model.Predict_fn = survive_kalman_tracker_model_predict;
+
 	tracker->model.datalog_user = tracker;
 	tracker->model.datalog = tracker_datalog;
 
@@ -989,7 +1054,9 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
     tracker->lightcap_model.term_criteria.max_iterations = 5;
 
     cnkalman_meas_model_init(&tracker->model, "obs", &tracker->obs_model, map_obs_data);
-	tracker->obs_model.term_criteria.max_iterations = 1;
+
+	//tracker->obs_model.term_criteria.max_iterations = 1;
+	//tracker->obs_model.meas_jacobian_mode = cnkalman_jacobian_mode_two_sided;
     tracker->obs_model.adaptive = tracker->adaptive_obs;
 
     cnkalman_meas_model_init(&tracker->model, "zvu", &tracker->zvu_model, 0);
@@ -1223,7 +1290,7 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 
 	size_t state_cnt = tracker->model.state_cnt;
 	FLT var_diag[SURVIVE_MODEL_MAX_STATE_CNT] = {0};
-	FLT p_threshold = survive_kalman_tracker_position_var2(tracker, var_diag, tracker->model.state_cnt);
+	FLT p_threshold = survive_kalman_tracker_position_var2(tracker, var_diag, tracker->model.error_state_size);
 	SV_DATA_LOG("tracker_P", var_diag, tracker->model.state_cnt);
 
 	if ((tracker->report_threshold_var > 0 && p_threshold >= tracker->report_threshold_var) ||
@@ -1270,7 +1337,7 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
         survive_recording_write_to_output(ctx->recptr, "%s FULL_STATE " Point27_format "\n",
                                           so->codename, LINMATH_VEC27_EXPAND((FLT*)&tracker->state));
         survive_recording_write_to_output(ctx->recptr, "%s FULL_COVARIANCE ", so->codename);
-        for (int i = 0; i < state_cnt * state_cnt; i++) {
+        for (int i = 0; i < tracker->model.P.rows * tracker->model.P.cols; i++) {
             survive_recording_write_to_output_nopreamble(ctx->recptr, "%f ", tracker->model.P.data[i]);
         }
         survive_recording_write_to_output_nopreamble(ctx->recptr, "\n");

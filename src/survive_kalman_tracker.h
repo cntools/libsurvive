@@ -68,7 +68,7 @@ typedef struct SurviveKalmanTracker {
 	int report_covariance_cnt;
 	bool report_sampled_cloud;
 
-	bool minimize_state_space;
+	bool minimize_state_space, use_error_state;
 	bool use_raw_obs;
 	bool adaptive_imu, adaptive_lightcap, adaptive_obs, show_raw_obs;
 
@@ -130,7 +130,8 @@ typedef struct SurviveKalmanTracker {
 	LightInfo savedLight[32];
 	uint32_t savedLight_idx;
 
-	SurviveKalmanModel state, previous_state, reported_state_variance, process_variance;
+	SurviveKalmanModel state, previous_state, reported_state_variance;
+	SurviveKalmanModel process_variance;
 
 	size_t state_variance_count;
 
