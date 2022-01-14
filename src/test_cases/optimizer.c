@@ -106,7 +106,7 @@ bool verify_R(CnMat* R, SurvivePose* gt, SurvivePose* modeled) {
 	d.Rot[0] = fabs(1 - fabs(d.Rot[0]));
 	FLT* dd = &d.Pos[0];
 	for(int i = 0;i < 7;i++) {
-		if(fabs(dd[i]) > 3 * v[i])
+		if (fabs(dd[i]) > (10 * v[i] + 1e-6))
 			return false;
 	}
 
@@ -200,6 +200,30 @@ TEST(Optimizer, VelocitySide) {
 	mp_result results = {};
 	SurvivePose output = run(&mpfitctx, &mdl, side_points, SURVIVE_ARRAY_SIZE(side_points) / 3, &results, &R, &velocity);
 	SurviveVelocity v1 = *survive_optimizer_get_velocity(&mpfitctx);
+	// assert(verify_R(&R, &mdl.Pose, &output));
+
+	return 0;
+}
+
+FLT under_specified[] = {
+	-.1, -.5, 0, +.1, -.5, 0, 0, .5, 0,
+};
+
+TEST(Optimizer, SimpleUnderspecced) {
+	survive_optimizer mpfitctx = default_optimizer();
+
+	SurviveKalmanModel mdl = {
+		.Pose = {.Rot = {1, 0, 1, 0}},
+		//.Velocity = { .Pos = { 0, 0, .1}, .AxisAngleRot = {0, 0, .1}},
+		.IMUCorrection = {1},
+		.AccScale = 1,
+	};
+	CnMat R = cnMatCalloc(7, 7);
+
+	mp_result results = {};
+	SurvivePose output =
+		run(&mpfitctx, &mdl, under_specified, SURVIVE_ARRAY_SIZE(under_specified) / 3, &results, &R, 0);
+
 	assert(verify_R(&R, &mdl.Pose, &output));
 
 	return  0;

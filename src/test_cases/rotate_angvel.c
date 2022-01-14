@@ -135,3 +135,90 @@ TEST(AxisAngle, Compose) {
 	ASSERT_DOUBLE_ARRAY_EQ(3, c1, c2);
 	return 0;
 }
+
+void avg_naive(LinmathQuat out, const LinmathQuat q1, const LinmathQuat q2, FLT t) {
+	LinmathQuat qd;
+	subnd(qd, q1, q2, 4);
+	scalend(qd, qd, t, 4);
+	addnd(out, qd, q2, 4);
+	quatnormalize(out, out);
+}
+void avg_slerp(LinmathQuat out, const LinmathQuat q1, const LinmathQuat q2, FLT t) { quatslerp(out, q1, q2, t); }
+
+FLT err_ns = 0;
+int err_cnt = 0;
+void test_approx(LinmathQuat q1, LinmathQuat q2, FLT t) {
+	LinmathQuat q_n, q_s, q_r;
+	avg_slerp(q_s, q1, q2, t);
+	avg_naive(q_n, q1, q2, t);
+	FLT err_q1 = quatdifference(q1, q_s);
+	FLT err_q2 = quatdifference(q2, q_s);
+	FLT err_q = t * err_q1 + (1 - t) * err_q2;
+	FLT err_n = quatdifference(q_n, q_s) / err_q;
+
+	err_ns += err_n;
+	err_cnt++;
+}
+
+TEST(Quat, ApproxTest) {
+	srand(42);
+	for (int i = 0; i < 100000; i++) {
+		LinmathQuat q1 = {linmath_rand(-1, 1), linmath_rand(-1, 1), linmath_rand(-1, 1), linmath_rand(-1, 1)};
+		quatnormalize(q1, q1);
+		FLT dx = 1e-5;
+		LinmathQuat t = {1 - linmath_rand(-dx, dx), linmath_rand(-dx, dx), linmath_rand(-dx, dx),
+						 linmath_rand(-dx, dx)};
+		quatnormalize(t, t);
+
+		LinmathQuat q2;
+		quatrotateabout(q2, q1, t);
+
+		test_approx(q1, q2, linmath_rand(0, 1));
+	}
+
+	printf("Avg error: %f\n", err_ns / (FLT)err_cnt);
+	ASSERT_GT(.6, err_ns / (FLT)err_cnt);
+
+	return 0;
+}
+
+TEST(Quat, EdgeCases) {
+	LinmathQuat qm = {0};
+
+	{
+		LinmathQuat q1 = {0, 1, 0, 0};
+		LinmathQuat q2 = {0, -1, 0, 0};
+		quatfind(qm, q1, q2);
+
+		test_approx(q1, q2, .1);
+		ASSERT_QUAT_EQ(qm, LinmathQuat_Identity);
+	}
+	{
+		LinmathQuat q1 = {0.0007963, 0.5773501, 0.5773501, 0.5773501};
+		LinmathQuat q2 = {-0.0042037, 0.5773452, 0.5773452, 0.5773452};
+		quatfind(qm, q1, q2);
+		test_approx(q1, q2, .1);
+		// ASSERT_QUAT_EQ(qm, LinmathQuat_Identity);
+	}
+	{
+		LinmathQuat q1 = {-0.9999987, 0.0009195, 0.0009195, 0.0009195};
+		LinmathQuat q2 = {-0.9999942, -0.0019672, -0.0019672, -0.0019672};
+		quatfind(qm, q1, q2);
+		test_approx(q1, q2, .1);
+		// ASSERT_QUAT_EQ(qm, LinmathQuat_Identity);
+	}
+	{
+		LinmathQuat q1 = {0.01, +.99};
+		LinmathQuat q2 = {0.01, -.99};
+		quatfind(qm, q1, q2);
+		test_approx(q1, q2, .1);
+	}
+
+	{
+		LinmathQuat q1 = {+0.10277525, -0.41049529, -0.87578141, +0.23224508};
+		LinmathQuat q2 = {-0.10523400, +0.41045850, +0.87538420, -0.23270600};
+		quatfind(qm, q1, q2);
+		test_approx(q1, q2, .1);
+	}
+	return 0;
+}

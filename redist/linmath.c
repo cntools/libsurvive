@@ -623,6 +623,8 @@ inline void quatfind(LinmathQuat q, const LinmathQuat q0, const LinmathQuat q1) 
 	LinmathQuat iq0;
 	quatgetconjugate(iq0, q0);
 	quatrotateabout(q, q1, iq0);
+	if (q[0] == -1)
+		q[0] = 1;
 }
 inline void axisanglerotateabout(LinmathAxisAngle out, const LinmathAxisAngle a0, const LinmathAxisAngle a1) {
 	LinmathQuat q0, q1, qout;

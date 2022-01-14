@@ -1145,8 +1145,8 @@ survive_optimizer *survive_optimizer_load(const char *fn) {
 		struct mp_par_struct *info = &opt->mp_parameters_info[i];
 		read_count = fscanf(f, "\t");
 
-		opt->mp_parameters_info[i].parname = calloc(128, 1);
-		char *b = opt->mp_parameters_info[i].parname;
+		char *b = calloc(128, 1);
+		opt->mp_parameters_info[i].parname = b;
 		char c = fgetc(f);
 		while (c != ':') {
 			*(b++) = c;
