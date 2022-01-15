@@ -818,7 +818,7 @@ static FLT integrate_pose(SurviveKalmanTracker *tracker, FLT time, const Survive
 	return rtn;
 }
 
-void survive_show_covariance(SurviveObject *so, const SurvivePose *pose, const struct CnMat *Ri, FLT s) {
+void survive_show_covariance(SurviveObject *so, const SurvivePose *pose, const struct CnMat *Ri, FLT s, FLT stddev) {
     SurviveContext *ctx = so->ctx;
     CN_CREATE_STACK_MAT(R, 7, 7);
     cnCopy(Ri, &R, 0);
@@ -827,7 +827,7 @@ void survive_show_covariance(SurviveObject *so, const SurvivePose *pose, const s
     CN_CREATE_STACK_MAT(Xs, 7, 1);
     cnSqRootSymmetric(&R, &RL);
     for(int i = 0;i < 25;i++) {
-        cnRand(&X, 0, 1);
+        cnRand(&X, 0, stddev);
         cnGEMM(&RL, &X, 1, 0, 0, &Xs, 0);
         addnd(_Xs, _Xs, pose->Pos, 7);
 		quatnormalize(&_Xs[3], &_Xs[3]);
@@ -918,8 +918,8 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
             }
             survive_recording_write_to_output_nopreamble(ctx->recptr, "\n");
 
-            if(tracker->report_sampled_cloud) {
-                survive_show_covariance(so, pose, Ri, .05);
+            if(tracker->report_sampled_cloud > 0) {
+                survive_show_covariance(so, pose, Ri, .05, tracker->report_sampled_cloud);
             }
 
         }
@@ -1371,8 +1371,8 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
         }
         survive_recording_write_to_output_nopreamble(ctx->recptr, "\n");
 
-		if(tracker->report_sampled_cloud) {
-			survive_show_covariance(so, &pose, &tracker->model.P, .1);
+		if(tracker->report_sampled_cloud > 0) {
+			survive_show_covariance(so, &pose, &tracker->model.P, .1, tracker->report_sampled_cloud);
 		}
     }
 

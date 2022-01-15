@@ -66,7 +66,7 @@ typedef struct SurviveKalmanTracker {
 	FLT first_imu_time, last_imu_time;
 	FLT min_report_time;
 	int report_covariance_cnt;
-	bool report_sampled_cloud;
+	FLT report_sampled_cloud;
 
 	bool minimize_state_space, use_error_state;
 	bool use_raw_obs;

@@ -352,7 +352,7 @@ function delete_tracked_object(tracker) {
 	delete objs[tracker]
 }
 
-function create_tracked_object(info, external) {
+let ellipsoids = {} function create_tracked_object(info, external) {
 	var sensorGeometry = new THREE.SphereGeometry(.01, 32, 16);
 	var group = new THREE.Group();
 	var group_rot = new THREE.Group();
@@ -417,6 +417,32 @@ function create_tracked_object(info, external) {
 			sensorref.add(newSensor);
 		}
 
+		{
+			var geometry = new THREE.SphereGeometry(1, 16, 16);
+			var material = new THREE.MeshBasicMaterial(
+				{color : 0xFF0000, opacity : .75, transparent : true, side : THREE.DoubleSide});
+
+			var mesh = new THREE.Mesh(geometry, material);
+			mesh.position.set(0, 0, 0);
+
+			// mesh.scale.set(1e-4, 1e-4, 1e-4)
+			ellipsoids[info.tracker] = mesh
+
+			group.add(mesh);
+		}
+
+		{
+			var geometry = new THREE.SphereGeometry(1, 16, 16);
+			var material = new THREE.MeshBasicMaterial(
+				{color : 0x00FF00, opacity : .5, transparent : true, side : THREE.DoubleSide});
+
+			var mesh = new THREE.Mesh(geometry, material);
+			mesh.position.set(0, 0, 0);
+			// mesh.scale.set(1e-4, 1e-4, 1e-4)
+			ellipsoids[info.tracker + "'"] = mesh
+
+			group.add(mesh);
+		}
 		group_rot.add(trackref);
 		trackref.add(imuref);
 		trackref.add(sensorref);
@@ -540,6 +566,40 @@ function set_object_position(obj, name = null) {
 	}
 }
 
+function createMat4(A) {
+	let m = new THREE.Matrix4()
+	for (var i = 0; i < 3; i++)
+	for (var j = 0; j < 3; j++) {
+		m.elements[i * 4 + j] = Array.isArray(A[0]) ? A[j][i] : (i == j ? A[i] : 0);
+	}
+	return m;
+}
+
+function update_ellipsoid(name, u, s, v, A) {
+	if (ellipsoids[name]) {
+		var ellipsoid = ellipsoids[name];
+		// console.log(ellipsoids[name])
+		const upscale = name.endsWith("'") ? 2 : 2
+		for (var i = 0; i < 3; i++) {
+			s[i] = Math.max(Math.sqrt(s[i]), 1e-5) * upscale
+		}
+		const um = createMat4(u)
+		const sm = createMat4(s)
+		const vm = createMat4(v)
+		vm.transpose()
+
+		// ellipsoid.scale.set(s[0] * upscale, s[1]  * upscale, s[2] * upscale)
+
+		ellipsoid.matrix.copy(um)
+		ellipsoid.matrix.multiply(sm)
+		ellipsoid.matrix.multiply(vm)
+		// ellipsoid.rotation.setFromRotationMatrix(m)
+		ellipsoid.verticesNeedUpdate = true;
+		ellipsoid.matrixAutoUpdate = false;
+		ellipsoid.matrixWorldNeedsUpdate = true
+		// ellipsoid.geometry.applyMatrix( new THREE.Matrix4().makeScale( s[0], s[1], s[2] ) );
+	}
+}
 var covar_canvas = {}, covar_names = {};
 function update_fullcov(v) {
 	var name = v[1];
@@ -577,6 +637,11 @@ function update_fullcov(v) {
 	const l = Math.floor(Math.sqrt(fv.length))
 	ctx.putImageData(new ImageData(imageData, l, l), 0, 0);
 	covar_names[name].innerText = name + " " + fmax;
+
+	const A = [
+		[ fv[0], fv[1], fv[2] ], [ fv[l], fv[1 + l], fv[2 + l] ], [ fv[2 * l], fv[1 + l * 2], fv[2 + l * 2] ]
+	] const svd_results = SVDJS.SVD(A, true, true)
+	update_ellipsoid(name, svd_results.u, svd_results.q, svd_results.v, A)
 }
 
 function update_fullstate(v) {
