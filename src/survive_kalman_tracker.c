@@ -1,4 +1,5 @@
 #include "survive_kalman_tracker.h"
+#include "generated/kalman_kinematics.gen.h"
 #include "linmath.h"
 #include "math.h"
 #include "survive_internal.h"
@@ -121,6 +122,14 @@ static SurviveKalmanModel copy_model(const FLT *src, size_t state_size) {
 	assert(state_size >= 7);
 	memcpy(rtn.Pose.Pos, src, sizeof(FLT) * state_size);
     quatnormalize(rtn.Pose.Rot, rtn.Pose.Rot);
+	return rtn;
+}
+static SurviveKalmanErrorModel copy_error_model(const CnMat* src) {
+	SurviveKalmanErrorModel rtn = {
+		0
+	};
+	assert(src->rows >= 7);
+	memcpy(rtn.Pose.Pos, src->data, sizeof(FLT) * src->rows);
 	return rtn;
 }
 
@@ -412,42 +421,36 @@ static void tracker_datalog(cnkalman_state_t* state, const char *desc, const FLT
 	SV_DATA_LOG("%s_%s", v, length, desc, tracker->datalog_tag);
 }
 
-static void error_state_fn(void *user, const struct CnMat *x0, struct CnMat *H, struct CnMat * E_jac_X) {
-	if(H) {
-		FLT jac[12] = { 0 };
-		FLT err[3] = { 0 };
-		gen_quatrotate_small_jac_axis_angle(jac, cn_as_const_vector(x0) + 3, err);
-
-		for (int i = 0;i < 3;i++) cnMatrixSet(H, i, i, 1);
-		for (int i = 0; i < 4; i++) {
-			for (int j = 0; j < 3; j++) {
-				cnMatrixSet(H, 3 + i, 3 + j, jac[j + i * 3]);
-			}
-		}
-		for (int i = 6;i < H->cols;i++)
-			cnMatrixSet(H, i + 1, i, 1);
+static void error_state_fn(void *user, const struct CnMat *x0,
+						   const struct CnMat *x1, struct CnMat *E,
+						   struct CnMat *E_jac_x) {
+	SurviveKalmanModel state0 = copy_model(cn_as_const_vector(x0), x0->rows);
+	if(E_jac_x) {
+		gen_SurviveKalmanModelToErrorModel_jac_x1(E_jac_x, &state0, &state0);
 	}
-	if(E_jac_X) {
-		FLT jac[16] = { 0 };
-		FLT err[3] = { 0 };
-		gen_quatrotate_small_jac_q(jac, cn_as_const_vector(x0) + 3, err);
-		for (int i = 0;i < 3;i++) cnMatrixSet(E_jac_X, i, i, 1);
-		for (int i = 0; i < 3; i++) {
-			for (int j = 0; j < 4; j++) {
-				cnMatrixSet(E_jac_X, 3 + i, 3 + j, jac[j + i * 4]);
-			}
-		}
-		for (int i = 6;i < E_jac_X->rows;i++)
-			cnMatrixSet(E_jac_X, i, i + 1, 1);
+
+	if(x1 && E) {
+		SurviveKalmanModel state1 = copy_model(cn_as_const_vector(x1), x1->rows);
+		SurviveKalmanErrorModel error_state = { 0 };
+		gen_SurviveKalmanModelToErrorModel(&error_state, &state1, &state0);
+		memcpy(cn_as_vector(E), &error_state, sizeof(FLT) * E->rows);
 	}
 }
 
-static void state_update_fn(void *user, const struct CnMat *x0, struct CnMat *Ky, struct CnMat *x1) {
-	LinmathQuat q;
-	gen_quatrotate_small(q, cn_as_const_vector(x0) + 3, cn_as_const_vector(Ky) + 3);
-	for(int i = 0;i < 3;i++) x1->data[i] = x0->data[i] + Ky->data[i];
-	for(int i = 7;i < x1->rows;i++) x1->data[i] = x0->data[i] + Ky->data[i - 1];
-	quatnormalize(x1->data + 3, q);
+static void state_update_fn(void *user, const struct CnMat *x0, const struct CnMat *E, struct CnMat *x1, struct CnMat* dX_wrt_error_state) {
+	SurviveKalmanModel state = copy_model(cn_as_const_vector(x0), x0->rows);
+	const FLT* x0v = cn_as_const_vector(x0);
+	if(x1){
+		SurviveKalmanModel _x1 = { 0 };
+		SurviveKalmanErrorModel error_state = copy_error_model(E);
+		gen_SurviveKalmanModelAddErrorModel(&_x1, &state, &error_state);
+		memcpy(cn_as_vector(x1), &_x1, sizeof(FLT) * x1->rows);
+	}
+	if(dX_wrt_error_state){
+		SurviveKalmanErrorModel error_model = { 0 };
+		SurviveKalmanModel state = copy_model(cn_as_const_vector(x0), x0->rows);
+		gen_SurviveKalmanModelAddErrorModel_jac_error_state(dX_wrt_error_state, &state, &error_model);
+	}
 }
 /*
 static void error_state_fn(void *user, const struct CnMat *x0, struct CnMat *H) {
@@ -736,24 +739,6 @@ void survive_kalman_tracker_process_noise(const struct SurviveKalmanTracker_Para
  * The prediction model and associated F matrix use generated code to simplifiy the jacobian. This might not be strictly
  * necessary but allows for quicker development.
  */
-void survive_kalman_tracker_model_predict(FLT t, const cnkalman_state_t *k, const CnMat *f_in, CnMat *f_out) {
-	SurviveKalmanModel s_in = copy_model(cn_as_const_vector(f_in), f_in->rows);
-	SurviveKalmanModel s_out = {0};
-
-	struct SurviveKalmanTracker_Params *params = (struct SurviveKalmanTracker_Params *)k->user;
-    if(params->process_weight_acc == 0) {
-        scale3d(s_in.Acc, s_in.Acc, 0);
-    }
-    if(params->process_weight_vel == 0) {
-        scalend(s_in.Velocity.Pos, s_in.Velocity.Pos, 0, 6);
-    }
-	quatnormalize(s_in.Pose.Rot, s_in.Pose.Rot);
-	gen_kalman_model_predict(s_out.Pose.Pos, t, &s_in);
-	quatnormalize(s_out.Pose.Rot, s_out.Pose.Rot);
-
-	memcpy(cn_as_vector(f_out), s_out.Pose.Pos, f_in->rows * sizeof(FLT));
-}
-
 void survive_kalman_tracker_predict_jac(FLT dt, const struct cnkalman_state_s *k, const struct CnMat *x0, struct CnMat *x1, struct CnMat *f) {
 	SurviveKalmanModel s_in = copy_model(cn_as_const_vector(x0), x0->rows);
 
@@ -768,7 +753,7 @@ void survive_kalman_tracker_predict_jac(FLT dt, const struct cnkalman_state_s *k
 			scalend(s_in.Velocity.Pos, s_in.Velocity.Pos, 0, 6);
 		}
 		quatnormalize(s_in.Pose.Rot, s_in.Pose.Rot);
-		gen_kalman_model_predict(s_out.Pose.Pos, dt, &s_in);
+		gen_SurviveKalmanModelPredict(&s_out, dt, &s_in);
 		quatnormalize(s_out.Pose.Rot, s_out.Pose.Rot);
 
 		memcpy(cn_as_vector(x1), s_out.Pose.Pos, x1->rows * sizeof(FLT));
@@ -779,9 +764,38 @@ void survive_kalman_tracker_predict_jac(FLT dt, const struct cnkalman_state_s *k
 		if (dt == 0) {
 			cn_eye(f, 0);
 		} else {
-			FLT jacobian[SURVIVE_MODEL_MAX_STATE_CNT * SURVIVE_MODEL_MAX_STATE_CNT];
-			gen_kalman_model_predict_jac_kalman_model(jacobian, dt, &s_in);
-			cn_copy_in_row_major(f, jacobian, SURVIVE_MODEL_MAX_STATE_CNT);
+			gen_SurviveKalmanModelPredict_jac_kalman_model(f, dt, &s_in);
+		}
+	}
+}
+
+void survive_kalman_error_tracker_predict_jac(FLT dt, const struct cnkalman_state_s *k, const struct CnMat *x0, struct CnMat *x1, struct CnMat *f) {
+	SurviveKalmanModel s_in = copy_model(cn_as_const_vector(x0), x0->rows);
+	SurviveKalmanErrorModel errorModel = { 0 };
+
+	if(x1) {
+		SurviveKalmanModel s_out = {0};
+
+		struct SurviveKalmanTracker_Params *params = (struct SurviveKalmanTracker_Params *)k->user;
+		if(params->process_weight_acc == 0) {
+			scale3d(s_in.Acc, s_in.Acc, 0);
+		}
+		if(params->process_weight_vel == 0) {
+			scalend(s_in.Velocity.Pos, s_in.Velocity.Pos, 0, 6);
+		}
+		quatnormalize(s_in.Pose.Rot, s_in.Pose.Rot);
+		gen_SurviveKalmanModelPredict(&s_out, dt, &s_in);
+		quatnormalize(s_out.Pose.Rot, s_out.Pose.Rot);
+
+		memcpy(cn_as_vector(x1), s_out.Pose.Pos, x1->rows * sizeof(FLT));
+	}
+
+	if(f) {
+		size_t state_cnt = x0->rows;
+		if (dt == 0) {
+			cn_eye(f, 0);
+		} else {
+			gen_SurviveKalmanModelErrorPredict_jac_error_model(f, dt, &s_in, &errorModel);
 		}
 	}
 }
@@ -1015,10 +1029,11 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	}
 
 	if(tracker->use_error_state) {
-		cnkalman_error_state_init(&tracker->model, state_cnt, state_cnt - 1, survive_kalman_tracker_predict_jac,
+		cnkalman_error_state_init(&tracker->model, state_cnt, state_cnt - 1, survive_kalman_error_tracker_predict_jac,
 								  tracker->noise_model == 0 ? survive_kalman_tracker_process_noise_bounce : 0,
 								  error_state_fn, &tracker->params, (FLT *)&tracker->state);
 		tracker->model.Update_fn = state_update_fn;
+		tracker->model.error_state_transition = true;
 	} else {
 		cnkalman_state_init(&tracker->model, state_cnt, survive_kalman_tracker_predict_jac,
 								  tracker->noise_model == 0 ? survive_kalman_tracker_process_noise_bounce : 0,
