@@ -29,9 +29,6 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 					   "Minimum kalman report time in s (-1 defaults to 1. / imu_hz)", -1., t->min_report_time)
 	STRUCT_CONFIG_ITEM("report-covariance", "Report covariance matrix every n poses", -1, t->report_covariance_cnt);
 	STRUCT_CONFIG_ITEM("report-sampled-cloud", "Show sample cloud from covariance", false, t->report_sampled_cloud);
-	STRUCT_CONFIG_ITEM("use-adaptive-imu",  "Use adaptive kalman for IMU", 0, t->adaptive_imu)
-	STRUCT_CONFIG_ITEM("use-adaptive-lightcap",  "Use adaptive kalman for Lightcap", 0, t->adaptive_lightcap)
-	STRUCT_CONFIG_ITEM("use-adaptive-obs",  "Use adaptive kalman for observations", 0, t->adaptive_obs)
 
 	STRUCT_CONFIG_ITEM("report-ignore-start",  "Number of reports to ignore at startup", 0, t->report_ignore_start)
 	STRUCT_CONFIG_ITEM("report-ignore-threshold",
@@ -85,7 +82,19 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 
 	STRUCT_CONFIG_ITEM("light-batch-size", "", 32, t->light_batchsize)
 END_STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
+
+#define MEAS_MDL_CONFIG(x) \
+STRUCT_NAMED_CONFIG_SECTION(x, cnkalman_meas_model_t) \
+	STRUCT_CONFIG_ITEM("kalman-" #x "-adaptive", "Use adaptive covariance for " #x, 0, t->adaptive) \
+    STRUCT_CONFIG_ITEM("kalman-" #x "-iterations", "Max iterations for " #x, -1, t->term_criteria.max_iterations) \
+    STRUCT_CONFIG_ITEM("kalman-" #x "-jacobian-mode", "Jacobian mode " #x, 0, t->meas_jacobian_mode) \
+END_STRUCT_CONFIG_SECTION(cnkalman_meas_model_t)
 // clang-format off
+
+MEAS_MDL_CONFIG(obs)
+MEAS_MDL_CONFIG(imu)
+MEAS_MDL_CONFIG(lightcap)
+MEAS_MDL_CONFIG(zvu)
 
 static inline void integrate_variance_tracker(SurviveKalmanTracker *tracker, struct variance_tracker* vtracker, const FLT* v, size_t size) {
 	bool isStationary = SurviveSensorActivations_stationary_time(&tracker->so->activations) > 4800000;
@@ -277,7 +286,7 @@ void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker,
 			time = tracker->model.t;
         FLT rtn = cnkalman_meas_model_predict_update(time, &tracker->lightcap_model, &cbctx, &Z, &R);
 		tracker->datalog_tag = 0;
-		if (!ramp_in && tracker->adaptive_lightcap) {
+		if (!ramp_in && tracker->lightcap_model.adaptive) {
 			tracker->light_var = light_var;
 		}
 		//SV_VERBOSE(100, "Light pass error %14.14f %7.7f", stats.bestnorm, tracker->stats.light_stats.bestnorm_acc / (FLT)tracker->stats.light_stats.total_runs);
@@ -369,22 +378,25 @@ bool survive_kalman_tracker_imu_measurement_model(void *user, const struct CnMat
 		SurviveContext *ctx = so->ctx;
 		SV_VERBOSE(600, "X     " Point7_format, LINMATH_VEC7_EXPAND(cn_as_const_vector(x_t)))
 		SV_VERBOSE(600, "Z     " Point6_format, LINMATH_VEC6_EXPAND(cn_as_const_vector(Z)))
-		SV_DATA_LOG("imu_prediction", h_x, 6);
 
-		LinmathVec3d up = {0, 0, 1};
-		FLT q[5];
-		LinmathVec3d imuWorld;
-		quatrotatevector(imuWorld, tracker->state.Pose.Rot, Z->data);
+		if(so->ctx->datalogproc) {
+			SV_DATA_LOG("imu_prediction", h_x, 6);
 
-		quatfrom2vectors(q, imuWorld, up);
-		q[4] = norm3d(q + 1);
-		quatrotateabout(q, q, tracker->state.Pose.Rot);
-		SV_DATA_LOG("perfect_q", q, 5);
+			LinmathVec3d up = {0, 0, 1};
+			FLT q[5];
+			LinmathVec3d imuWorld;
+			quatrotatevector(imuWorld, tracker->state.Pose.Rot, Z->data);
 
-		LinmathVec3d perfect_acc;
-		quatrotatevector(perfect_acc, q, Z->data);
-		perfect_acc[2] -= 1;
-		SV_DATA_LOG("perfect_acc", perfect_acc, 3);
+			quatfrom2vectors(q, imuWorld, up);
+			q[4] = norm3d(q + 1);
+			quatrotateabout(q, q, tracker->state.Pose.Rot);
+			SV_DATA_LOG("perfect_q", q, 5);
+
+			LinmathVec3d perfect_acc;
+			quatrotatevector(perfect_acc, q, Z->data);
+			perfect_acc[2] -= 1;
+			SV_DATA_LOG("perfect_acc", perfect_acc, 3);
+		}
 	}
 
 	return true;
@@ -573,7 +585,7 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 
 		tracker->datalog_tag = "imu_meas";
 
-        CnMat R = cnMat(6, tracker->adaptive_imu ? 6 : 1, tracker->adaptive_imu ? tracker->IMU_R : rotation_variance);
+        CnMat R = cnMat(6, tracker->imu_model.adaptive ? 6 : 1, tracker->imu_model.adaptive ? tracker->IMU_R : rotation_variance);
         FLT err = cnkalman_meas_model_predict_update(time, &tracker->imu_model, &fn_ctx, &Z, &R);
 		tracker->datalog_tag = 0;
 
@@ -898,7 +910,7 @@ void survive_kalman_tracker_integrate_observation(PoserData *pd, SurviveKalmanTr
 
         }
 
-        FLT obs_error = integrate_pose(tracker, time, pose, tracker->adaptive_obs ? 0 : &R);
+        FLT obs_error = integrate_pose(tracker, time, pose, tracker->obs_model.adaptive ? 0 : &R);
 		tracker->stats.obs_total_error += obs_error;
 		tracker->stats.obs_count++;
 
@@ -1047,17 +1059,15 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	tracker->model.datalog = tracker_datalog;
 
     cnkalman_meas_model_init(&tracker->model, "imu", &tracker->imu_model, survive_kalman_tracker_imu_measurement_model);
-    tracker->imu_model.adaptive = tracker->adaptive_imu;
-//tracker->imu_model.meas_jacobian_mode = cnkalman_jacobian_mode_debug;
+	cnkalman_meas_model_t_imu_attach_config(ctx, &tracker->imu_model);
 
     cnkalman_meas_model_init(&tracker->model, "lightcap", &tracker->lightcap_model, map_light_data);
+	cnkalman_meas_model_t_lightcap_attach_config(ctx, &tracker->lightcap_model);
+
     tracker->lightcap_model.term_criteria.max_iterations = 5;
 
     cnkalman_meas_model_init(&tracker->model, "obs", &tracker->obs_model, map_obs_data);
-
-	//tracker->obs_model.term_criteria.max_iterations = 1;
-	//tracker->obs_model.meas_jacobian_mode = cnkalman_jacobian_mode_two_sided;
-    tracker->obs_model.adaptive = tracker->adaptive_obs;
+	cnkalman_meas_model_t_obs_attach_config(ctx, &tracker->obs_model);
 
     cnkalman_meas_model_init(&tracker->model, "zvu", &tracker->zvu_model, 0);
 
@@ -1196,6 +1206,10 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 	survive_kalman_tracker_stats(tracker);
 
 	cnkalman_state_free(&tracker->model);
+
+	cnkalman_meas_model_t_imu_detach_config(tracker->so->ctx, &tracker->imu_model);
+	cnkalman_meas_model_t_obs_detach_config(tracker->so->ctx, &tracker->obs_model);
+	cnkalman_meas_model_t_lightcap_detach_config(tracker->so->ctx, &tracker->lightcap_model);
 
 	SurviveKalmanTracker_detach_config(tracker->so->ctx, tracker);
 }

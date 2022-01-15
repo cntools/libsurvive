@@ -40,7 +40,7 @@ STRUCT_CONFIG_SECTION(survive_optimizer_settings)
 	STRUCT_CONFIG_ITEM("mpfit-optimize-scale-threshold", "Treat scale as mutable", 1e-10, t->optimize_scale_threshold)
 	STRUCT_CONFIG_ITEM("mpfit-current-pos-bias", "", -1, t->current_pos_bias)
 	STRUCT_CONFIG_ITEM("mpfit-current-rot-bias", "", -1, t->current_rot_bias)
-	END_STRUCT_CONFIG_SECTION(survive_optimizer_settings)
+END_STRUCT_CONFIG_SECTION(survive_optimizer_settings)
 
 	static char *object_parameter_names[] = {"Pose x",	   "Pose y",	 "Pose z",	  "Pose Rot w",
 											 "Pose Rot x", "Pose Rot y", "Pose Rot z"};

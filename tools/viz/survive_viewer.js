@@ -56,6 +56,20 @@ function onMouseMove(event) {
 }
 
 $(function() { $("#toggleBtn").click(function() { $("#cam").toggle(); }); });
+$(function() {
+	$("#copy-camera").click(function() {
+		navigator.clipboard.writeText(JSON.stringify({'camera': [camera.position.toArray(), camera.quaternion.toArray()]}));
+	})
+})
+
+document.addEventListener('paste', (event) => {
+	const data = JSON.parse(event.clipboardData.getData("TEXT"))
+	const cameraParams = data['camera'];
+	if(cameraParams) {
+		camera.position.set(...cameraParams[0]);
+		camera.quaternion.set(...cameraParams[1]);
+	}
+});
 
 var lhColors = [
 	0xecba82, 0x4f3920, 0x8c7070, 0xf4eded, 0x4e6e5d, 0x3bc14a, 0x251351, 0xc97b84, 0xa85751, 0x251351, 0xc7eae4,

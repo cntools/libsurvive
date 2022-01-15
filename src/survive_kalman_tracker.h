@@ -70,7 +70,7 @@ typedef struct SurviveKalmanTracker {
 
 	bool minimize_state_space, use_error_state;
 	bool use_raw_obs;
-	bool adaptive_imu, adaptive_lightcap, adaptive_obs, show_raw_obs;
+	bool show_raw_obs;
 
 	FLT light_threshold_var, report_threshold_var, light_error_threshold;
 	FLT zvu_stationary_var;
@@ -151,8 +151,6 @@ SURVIVE_EXPORT void survive_kalman_tracker_integrate_observation(PoserData *pd, 
 SURVIVE_EXPORT void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tracker);
 SURVIVE_EXPORT void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *tracker, bool allowLHReset);
 
-SURVIVE_EXPORT void survive_kalman_tracker_model_predict(FLT t, const cnkalman_state_t *k, const CnMat *f_in,
-														 CnMat *f_out);
 SURVIVE_EXPORT void survive_kalman_tracker_predict_jac(FLT dt, const struct cnkalman_state_s *k, const struct CnMat *x0,
 													   struct CnMat *x1, struct CnMat *f_out);
 SURVIVE_EXPORT void survive_kalman_tracker_process_noise(const struct SurviveKalmanTracker_Params *params, FLT t,
