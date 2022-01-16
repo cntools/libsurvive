@@ -76,9 +76,9 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("kalman-zvu-stationary", "", 1e-2, t->zvu_stationary_var)
 	STRUCT_CONFIG_ITEM("kalman-zvu-no-light", "", 1e-4, t->zvu_no_light_var)
 
-	STRUCT_CONFIG_ITEM("kalman-noise-model", "0 is jerk acceleration model, 1 is simple model", 1, t->noise_model)
+	STRUCT_CONFIG_ITEM("kalman-noise-model", "0 is jerk acceleration model, 1 is simple model", 0, t->noise_model)
 
-	STRUCT_CONFIG_ITEM("imu-acc-norm-penalty", "Penalty to IMU variance when reading high accel values", 1e-2, t->acc_norm_penalty)
+	STRUCT_CONFIG_ITEM("imu-acc-norm-penalty", "Penalty to IMU variance when reading high accel values", 0, t->acc_norm_penalty)
 	STRUCT_CONFIG_ITEM("imu-acc-variance", "Variance of accelerometer", 1e-3, t->acc_var)
 	STRUCT_CONFIG_ITEM("imu-gyro-variance", "Variance of gyroscope", 1e-2, t->gyro_var)
 
