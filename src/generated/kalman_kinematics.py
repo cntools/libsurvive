@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 
+import sympy
 from symengine import atan2, asin, cos, sin, tan, sqrt, Matrix
 import cnkalman.codegen as cg
 import numpy as np
+from scipy.linalg import expm, block_diag
 
 def quatmagnitude(q):
     qw, qi, qj, qk = q

@@ -761,7 +761,7 @@ static inline void gen_SurviveKalmanModelToErrorModel(SurviveKalmanErrorModel *o
 // (*_x1).Pose.Pos[0], (*_x1).Pose.Pos[1], (*_x1).Pose.Pos[2], (*_x1).Pose.Rot[0], (*_x1).Pose.Rot[1],
 // (*_x1).Pose.Rot[2], (*_x1).Pose.Rot[3], (*_x1).Velocity.AxisAngleRot[0], (*_x1).Velocity.AxisAngleRot[1],
 // (*_x1).Velocity.AxisAngleRot[2], (*_x1).Velocity.Pos[0], (*_x1).Velocity.Pos[1], (*_x1).Velocity.Pos[2],
-// <cnkalman.codegen.WrapMember object at 0x7f08ac94cd30>]
+// <cnkalman.codegen.WrapMember object at 0x7f784d529d00>]
 static inline void gen_SurviveKalmanModelToErrorModel_jac_x1(CnMat *Hx, const SurviveKalmanModel *_x1,
 															 const SurviveKalmanModel *_x0) {
 	const FLT x0 = ((*_x1).Pose.Rot[3] * (*_x0).Pose.Rot[1]) + ((*_x1).Pose.Rot[2] * (*_x0).Pose.Rot[0]) +
@@ -900,13 +900,13 @@ static inline void gen_SurviveKalmanModelToErrorModel_jac_x1(CnMat *Hx, const Su
 // (*_x1).Pose.Pos[0], (*_x1).Pose.Pos[1], (*_x1).Pose.Pos[2], (*_x1).Pose.Rot[0], (*_x1).Pose.Rot[1],
 // (*_x1).Pose.Rot[2], (*_x1).Pose.Rot[3], (*_x1).Velocity.AxisAngleRot[0], (*_x1).Velocity.AxisAngleRot[1],
 // (*_x1).Velocity.AxisAngleRot[2], (*_x1).Velocity.Pos[0], (*_x1).Velocity.Pos[1], (*_x1).Velocity.Pos[2],
-// <cnkalman.codegen.WrapMember object at 0x7f08ac94cd30>] Jacobian of SurviveKalmanModelToErrorModel wrt
+// <cnkalman.codegen.WrapMember object at 0x7f784d529d00>] Jacobian of SurviveKalmanModelToErrorModel wrt
 // [(*_x0).AccBias[0], (*_x0).AccBias[1], (*_x0).AccBias[2], (*_x0).Acc[0], (*_x0).Acc[1], (*_x0).Acc[2],
 // (*_x0).GyroBias[0], (*_x0).GyroBias[1], (*_x0).GyroBias[2], (*_x0).IMUCorrection[0], (*_x0).IMUCorrection[1],
 // (*_x0).IMUCorrection[2], (*_x0).IMUCorrection[3], (*_x0).Pose.Pos[0], (*_x0).Pose.Pos[1], (*_x0).Pose.Pos[2],
 // (*_x0).Pose.Rot[0], (*_x0).Pose.Rot[1], (*_x0).Pose.Rot[2], (*_x0).Pose.Rot[3], (*_x0).Velocity.AxisAngleRot[0],
 // (*_x0).Velocity.AxisAngleRot[1], (*_x0).Velocity.AxisAngleRot[2], (*_x0).Velocity.Pos[0], (*_x0).Velocity.Pos[1],
-// (*_x0).Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f08ac950b20>]
+// (*_x0).Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f784d4afaf0>]
 static inline void gen_SurviveKalmanModelToErrorModel_jac_x0(CnMat *Hx, const SurviveKalmanModel *_x1,
 															 const SurviveKalmanModel *_x0) {
 	const FLT x0 = ((*_x1).Pose.Rot[2] * (*_x0).Pose.Rot[3]) + (-1 * (*_x1).Pose.Rot[0] * (*_x0).Pose.Rot[1]) +
@@ -1045,7 +1045,7 @@ static inline void gen_SurviveKalmanModelToErrorModel_jac_x0(CnMat *Hx, const Su
 // (*_x0).Pose.Pos[0], (*_x0).Pose.Pos[1], (*_x0).Pose.Pos[2], (*_x0).Pose.Rot[0], (*_x0).Pose.Rot[1],
 // (*_x0).Pose.Rot[2], (*_x0).Pose.Rot[3], (*_x0).Velocity.AxisAngleRot[0], (*_x0).Velocity.AxisAngleRot[1],
 // (*_x0).Velocity.AxisAngleRot[2], (*_x0).Velocity.Pos[0], (*_x0).Velocity.Pos[1], (*_x0).Velocity.Pos[2],
-// <cnkalman.codegen.WrapMember object at 0x7f08ac950b20>]
+// <cnkalman.codegen.WrapMember object at 0x7f784d4afaf0>]
 static inline void gen_SurviveKalmanModelAddErrorModel(SurviveKalmanModel *out, const SurviveKalmanModel *_x0,
 													   const SurviveKalmanErrorModel *error_state) {
 	const FLT x0 = 0.5 * (*error_state).Pose.AxisAngleRot[2];
@@ -1090,7 +1090,7 @@ static inline void gen_SurviveKalmanModelAddErrorModel(SurviveKalmanModel *out, 
 // (*_x0).Pose.Pos[0], (*_x0).Pose.Pos[1], (*_x0).Pose.Pos[2], (*_x0).Pose.Rot[0], (*_x0).Pose.Rot[1],
 // (*_x0).Pose.Rot[2], (*_x0).Pose.Rot[3], (*_x0).Velocity.AxisAngleRot[0], (*_x0).Velocity.AxisAngleRot[1],
 // (*_x0).Velocity.AxisAngleRot[2], (*_x0).Velocity.Pos[0], (*_x0).Velocity.Pos[1], (*_x0).Velocity.Pos[2],
-// <cnkalman.codegen.WrapMember object at 0x7f08ac8e9f10>]
+// <cnkalman.codegen.WrapMember object at 0x7f784d4c5e20>]
 static inline void gen_SurviveKalmanModelAddErrorModel_jac_x0(CnMat *Hx, const SurviveKalmanModel *_x0,
 															  const SurviveKalmanErrorModel *error_state) {
 	const FLT x0 = 0.5 * (*error_state).Pose.AxisAngleRot[0];
@@ -1186,7 +1186,7 @@ static inline void gen_SurviveKalmanModelAddErrorModel_jac_x0(CnMat *Hx, const S
 // (*_x0).IMUCorrection[3], (*_x0).Pose.Pos[0], (*_x0).Pose.Pos[1], (*_x0).Pose.Pos[2], (*_x0).Pose.Rot[0],
 // (*_x0).Pose.Rot[1], (*_x0).Pose.Rot[2], (*_x0).Pose.Rot[3], (*_x0).Velocity.AxisAngleRot[0],
 // (*_x0).Velocity.AxisAngleRot[1], (*_x0).Velocity.AxisAngleRot[2], (*_x0).Velocity.Pos[0], (*_x0).Velocity.Pos[1],
-// (*_x0).Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f08ac8e9f10>] Jacobian of
+// (*_x0).Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f784d4c5e20>] Jacobian of
 // SurviveKalmanModelAddErrorModel wrt [(*error_state).AccBias[0], (*error_state).AccBias[1], (*error_state).AccBias[2],
 // (*error_state).Acc[0], (*error_state).Acc[1], (*error_state).Acc[2], (*error_state).GyroBias[0],
 // (*error_state).GyroBias[1], (*error_state).GyroBias[2], (*error_state).IMUCorrection[0],
@@ -1195,7 +1195,7 @@ static inline void gen_SurviveKalmanModelAddErrorModel_jac_x0(CnMat *Hx, const S
 // (*error_state).Pose.Pos[0], (*error_state).Pose.Pos[1], (*error_state).Pose.Pos[2],
 // (*error_state).Velocity.AxisAngleRot[0], (*error_state).Velocity.AxisAngleRot[1],
 // (*error_state).Velocity.AxisAngleRot[2], (*error_state).Velocity.Pos[0], (*error_state).Velocity.Pos[1],
-// (*error_state).Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f08ac8ebca0>]
+// (*error_state).Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f784d4c8bb0>]
 static inline void gen_SurviveKalmanModelAddErrorModel_jac_error_state(CnMat *Hx, const SurviveKalmanModel *_x0,
 																	   const SurviveKalmanErrorModel *error_state) {
 	const FLT x0 = 0.5 * (*_x0).Pose.Rot[1];
@@ -1286,7 +1286,7 @@ static inline void gen_SurviveKalmanModelAddErrorModel_jac_error_state(CnMat *Hx
 // (*error_state).Pose.Pos[0], (*error_state).Pose.Pos[1], (*error_state).Pose.Pos[2],
 // (*error_state).Velocity.AxisAngleRot[0], (*error_state).Velocity.AxisAngleRot[1],
 // (*error_state).Velocity.AxisAngleRot[2], (*error_state).Velocity.Pos[0], (*error_state).Velocity.Pos[1],
-// (*error_state).Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f08ac8ebca0>]
+// (*error_state).Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f784d4c8bb0>]
 static inline void gen_SurviveKalmanModelPredict(SurviveKalmanModel *out, const FLT t,
 												 const SurviveKalmanModel *kalman_model) {
 	const FLT x0 = t * t;
@@ -1460,7 +1460,7 @@ static inline void gen_SurviveKalmanModelPredict_jac_t(CnMat *Hx, const FLT t, c
 // (*kalman_model).Pose.Pos[2], (*kalman_model).Pose.Rot[0], (*kalman_model).Pose.Rot[1], (*kalman_model).Pose.Rot[2],
 // (*kalman_model).Pose.Rot[3], (*kalman_model).Velocity.AxisAngleRot[0], (*kalman_model).Velocity.AxisAngleRot[1],
 // (*kalman_model).Velocity.AxisAngleRot[2], (*kalman_model).Velocity.Pos[0], (*kalman_model).Velocity.Pos[1],
-// (*kalman_model).Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f08ac9519d0>]
+// (*kalman_model).Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f784d4d6f40>]
 static inline void gen_SurviveKalmanModelPredict_jac_kalman_model(CnMat *Hx, const FLT t,
 																  const SurviveKalmanModel *kalman_model) {
 	const FLT x0 = t * t;
@@ -1781,7 +1781,7 @@ static inline void gen_SurviveKalmanModelPredict_jac_kalman_model(CnMat *Hx, con
 // (*kalman_model).Pose.Pos[2], (*kalman_model).Pose.Rot[0], (*kalman_model).Pose.Rot[1], (*kalman_model).Pose.Rot[2],
 // (*kalman_model).Pose.Rot[3], (*kalman_model).Velocity.AxisAngleRot[0], (*kalman_model).Velocity.AxisAngleRot[1],
 // (*kalman_model).Velocity.AxisAngleRot[2], (*kalman_model).Velocity.Pos[0], (*kalman_model).Velocity.Pos[1],
-// (*kalman_model).Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f08ac9519d0>]
+// (*kalman_model).Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f784d4d6f40>]
 static inline void gen_SurviveKalmanModelErrorPredict(SurviveKalmanErrorModel *out, const FLT t,
 													  const SurviveKalmanModel *_x0,
 													  const SurviveKalmanErrorModel *error_model) {
@@ -2036,7 +2036,7 @@ static inline void gen_SurviveKalmanModelErrorPredict_jac_t(CnMat *Hx, const FLT
 // (*_x0).Pose.Pos[0], (*_x0).Pose.Pos[1], (*_x0).Pose.Pos[2], (*_x0).Pose.Rot[0], (*_x0).Pose.Rot[1],
 // (*_x0).Pose.Rot[2], (*_x0).Pose.Rot[3], (*_x0).Velocity.AxisAngleRot[0], (*_x0).Velocity.AxisAngleRot[1],
 // (*_x0).Velocity.AxisAngleRot[2], (*_x0).Velocity.Pos[0], (*_x0).Velocity.Pos[1], (*_x0).Velocity.Pos[2],
-// <cnkalman.codegen.WrapMember object at 0x7f08ac8a2bb0>]
+// <cnkalman.codegen.WrapMember object at 0x7f784d48c0a0>]
 static inline void gen_SurviveKalmanModelErrorPredict_jac_x0(CnMat *Hx, const FLT t, const SurviveKalmanModel *_x0,
 															 const SurviveKalmanErrorModel *error_model) {
 	const FLT x0 = t * t;
@@ -2477,7 +2477,7 @@ static inline void gen_SurviveKalmanModelErrorPredict_jac_x0(CnMat *Hx, const FL
 // (*_x0).Pose.Pos[0], (*_x0).Pose.Pos[1], (*_x0).Pose.Pos[2], (*_x0).Pose.Rot[0], (*_x0).Pose.Rot[1],
 // (*_x0).Pose.Rot[2], (*_x0).Pose.Rot[3], (*_x0).Velocity.AxisAngleRot[0], (*_x0).Velocity.AxisAngleRot[1],
 // (*_x0).Velocity.AxisAngleRot[2], (*_x0).Velocity.Pos[0], (*_x0).Velocity.Pos[1], (*_x0).Velocity.Pos[2],
-// <cnkalman.codegen.WrapMember object at 0x7f08ac8a2bb0>] Jacobian of SurviveKalmanModelErrorPredict wrt
+// <cnkalman.codegen.WrapMember object at 0x7f784d48c0a0>] Jacobian of SurviveKalmanModelErrorPredict wrt
 // [(*error_model).AccBias[0], (*error_model).AccBias[1], (*error_model).AccBias[2], (*error_model).Acc[0],
 // (*error_model).Acc[1], (*error_model).Acc[2], (*error_model).GyroBias[0], (*error_model).GyroBias[1],
 // (*error_model).GyroBias[2], (*error_model).IMUCorrection[0], (*error_model).IMUCorrection[1],
@@ -2486,7 +2486,7 @@ static inline void gen_SurviveKalmanModelErrorPredict_jac_x0(CnMat *Hx, const FL
 // (*error_model).Pose.Pos[1], (*error_model).Pose.Pos[2], (*error_model).Velocity.AxisAngleRot[0],
 // (*error_model).Velocity.AxisAngleRot[1], (*error_model).Velocity.AxisAngleRot[2], (*error_model).Velocity.Pos[0],
 // (*error_model).Velocity.Pos[1], (*error_model).Velocity.Pos[2], <cnkalman.codegen.WrapMember object at
-// 0x7f08ac8a9940>]
+// 0x7f784d48cdf0>]
 static inline void gen_SurviveKalmanModelErrorPredict_jac_error_model(CnMat *Hx, const FLT t,
 																	  const SurviveKalmanModel *_x0,
 																	  const SurviveKalmanErrorModel *error_model) {
@@ -2923,4 +2923,4 @@ static inline void gen_SurviveKalmanModelErrorPredict_jac_error_model(CnMat *Hx,
 // (*error_model).Pose.Pos[0], (*error_model).Pose.Pos[1], (*error_model).Pose.Pos[2],
 // (*error_model).Velocity.AxisAngleRot[0], (*error_model).Velocity.AxisAngleRot[1],
 // (*error_model).Velocity.AxisAngleRot[2], (*error_model).Velocity.Pos[0], (*error_model).Velocity.Pos[1],
-// (*error_model).Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f08ac8a9940>]
+// (*error_model).Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f784d48cdf0>]

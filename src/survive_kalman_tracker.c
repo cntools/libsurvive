@@ -57,6 +57,7 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("lightcap-rampin-length",
 					   "Number of lightcap measures to ramp in variance", 5000, t->light_rampin_length)
 
+	STRUCT_CONFIG_ITEM("process-weight-jerk", "Jerk variance per second", 0, t->params.process_weight_jerk)
 	STRUCT_CONFIG_ITEM("process-weight-acc", "Acc variance per second", 97, t->params.process_weight_acc)
 	STRUCT_CONFIG_ITEM("process-weight-ang-vel", "Angular velocity variance per second", 60,
 					   t->params.process_weight_ang_velocity)
@@ -649,29 +650,34 @@ void survive_kalman_tracker_process_noise(const struct SurviveKalmanTracker_Para
 	FLT t4 = t3 * t;
 	FLT t5 = t4 * t;
 	FLT t6 = t5 * t;
+	FLT t7 = t6 * t;
 	/* ================== Positional ============================== */
 	// Estimation with Applications to Tracking and Navigation: Theory Algorithms and Software Ch 6
 	// http://wiki.dmdevelopment.ru/wiki/Download/Books/Digitalimageprocessing/%D0%9D%D0%BE%D0%B2%D0%B0%D1%8F%20%D0%BF%D0%BE%D0%B4%D0%B1%D0%BE%D1%80%D0%BA%D0%B0%20%D0%BA%D0%BD%D0%B8%D0%B3%20%D0%BF%D0%BE%20%D1%86%D0%B8%D1%84%D1%80%D0%BE%D0%B2%D0%BE%D0%B9%20%D0%BE%D0%B1%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B5%20%D1%81%D0%B8%D0%B3%D0%BD%D0%B0%D0%BB%D0%BE%D0%B2/Estimation%20with%20Applications%20to%20Tracking%20and%20Navigation/booktext@id89013302placeboie.pdf
 
 	// We mix three order models here based on tuning variables.
-
+	FLT Q_jerk[] = {
+		t7 / 252.,
+		t6 / 72., t5 /20.,
+		t5 / 30, t4 / 8., t3 / 3.
+	};
 	FLT Q_acc[] = {
-		t6 / 36.,
-		t5 / 12.,      t4 / 4.,
-		t4 / 6.,      t3 / 2.,       t2
+		t5 / 20.,
+		t4 / 8.,      t3 / 3.,
+		t3 / 6.,      t2 / 2.,       t
 	};
 	FLT Q_vel[] = {
-		t4 / 4.,
-		t3 / 2.,       t2,
+		t3 / 3.,
+		t2 / 2.,       t,
 	};
 
-	FLT p_p = params->process_weight_acc * Q_acc[0] + params->process_weight_vel * Q_vel[0] + params->process_weight_pos * t2;
-	FLT p_v = params->process_weight_acc * Q_acc[1] + params->process_weight_vel * Q_vel[1];
-	FLT p_a = params->process_weight_acc * Q_acc[3];
+	FLT p_p = params->process_weight_jerk * Q_jerk[0] + params->process_weight_acc * Q_acc[0] + params->process_weight_vel * Q_vel[0] + params->process_weight_pos * t2;
+	FLT p_v = params->process_weight_jerk * Q_jerk[1] + params->process_weight_acc * Q_acc[1] + params->process_weight_vel * Q_vel[1];
+	FLT p_a = params->process_weight_jerk * Q_jerk[3] + params->process_weight_acc * Q_acc[3];
 
-	FLT v_v = params->process_weight_acc * Q_acc[2] + params->process_weight_vel * Q_vel[2];
-	FLT v_a = params->process_weight_acc * Q_acc[4];
-	FLT a_a = params->process_weight_acc * Q_acc[5];
+	FLT v_v = params->process_weight_jerk * Q_jerk[2] + params->process_weight_acc * Q_acc[2] + params->process_weight_vel * Q_vel[2];
+	FLT v_a = params->process_weight_jerk * Q_jerk[4] + params->process_weight_acc * Q_acc[4];
+	FLT a_a = params->process_weight_jerk * Q_jerk[5] + params->process_weight_acc * Q_acc[5];
 
 
 	/* ================== Rotational ==============================
@@ -1017,7 +1023,7 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
             state_cnt -= 4;
             if(tracker->params.initial_acc_scale_variance) break;
             state_cnt -= 1;
-            if(tracker->params.process_weight_acc) break;
+            if(tracker->params.process_weight_acc || tracker->params.process_weight_jerk) break;
             state_cnt -= 3;
             if(tracker->params.process_weight_ang_velocity) break;
             state_cnt -= 3;

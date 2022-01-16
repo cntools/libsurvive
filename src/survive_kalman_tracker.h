@@ -25,7 +25,7 @@ struct pid_t {
 };
 
 struct SurviveKalmanTracker_Params {
-	FLT process_weight_acc, process_weight_vel, process_weight_pos;
+	FLT process_weight_jerk, process_weight_acc, process_weight_vel, process_weight_pos;
 	FLT process_weight_ang_velocity, process_weight_rotation;
 	FLT process_weight_acc_bias;
 	FLT process_weight_gyro_bias;
