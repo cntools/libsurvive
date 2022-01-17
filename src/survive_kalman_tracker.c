@@ -888,12 +888,7 @@ void survive_kalman_error_tracker_predict_jac(FLT dt, const struct cnkalman_stat
 		SurviveKalmanModel s_out = {0};
 
 		struct SurviveKalmanTracker_Params *params = (struct SurviveKalmanTracker_Params *)k->user;
-		if(params->process_weight_acc == 0) {
-			scale3d(s_in.Acc, s_in.Acc, 0);
-		}
-		if(params->process_weight_vel == 0) {
-			scalend(s_in.Velocity.Pos, s_in.Velocity.Pos, 0, 6);
-		}
+		
 		quatnormalize(s_in.Pose.Rot, s_in.Pose.Rot);
 		gen_SurviveKalmanModelPredict(&s_out, dt, &s_in);
 		quatnormalize(s_out.Pose.Rot, s_out.Pose.Rot);
