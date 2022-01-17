@@ -78,14 +78,15 @@ void survive_default_external_pose_process(SurviveContext *ctx, const char *name
 	for (int i = 0; i < ctx->objs_ct; i++) {
 		SurviveObject *so = ctx->objs[i];
 		if (strcmp(so->serial_number, name) == 0) {
-			SurvivePose out;
-			survive_kalman_tracker_predict(so->tracker, survive_run_time(ctx), &out);
+			SurvivePose out = {0};
+			survive_kalman_tracker_predict(so->tracker, so->tracker->model.t, &out);
+			if (!quatiszero(out.Rot)) {
+				SurvivePose head2world;
+				ApplyPoseToPose(&head2world, &out, &so->head2imu);
 
-			SurvivePose head2world;
-			ApplyPoseToPose(&head2world, &out, &so->head2imu);
-
-			FLT diff[] = {dist3d(head2world.Pos, pose->Pos), quatdifference(head2world.Rot, pose->Rot)};
-			SV_DATA_LOG("external_diff", diff, 2);
+				FLT diff[] = {dist3d(head2world.Pos, pose->Pos), quatdifference(head2world.Rot, pose->Rot)};
+				SV_DATA_LOG("external_diff", diff, 2);
+			}
 			break;
 		}
 	}

@@ -43,7 +43,7 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
     STRUCT_CONFIG_ITEM("kalman-light-variance",  "Variance of raw light sensor readings", -1, t->light_var)
     STRUCT_CONFIG_ITEM("obs-cov-scale",  "Covariance matrix scaling for obs",
                        1, t->obs_cov_scale)
-	STRUCT_CONFIG_ITEM("kalman-obs-as-axisangle",  "Process observation updates as axis angle poses", false, t->obs_axisangle_model)
+	STRUCT_CONFIG_ITEM("kalman-obs-axisangle",  "Process observation updates as axis angle poses", false, t->obs_axisangle_model)
     STRUCT_CONFIG_ITEM("obs-pos-variance",  "Variance of position integration from light capture",
 					   1e-6, t->obs_pos_var)
 	STRUCT_CONFIG_ITEM("obs-rot-variance",  "Variance of rotation integration from light capture",
@@ -68,7 +68,7 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("process-weight-acc-bias", "Acc bias variance per second", 0, t->params.process_weight_acc_bias)
 	STRUCT_CONFIG_ITEM("process-weight-gyro-bias", "Gyro bias variance per seconid", 0, t->params.process_weight_gyro_bias)
 	STRUCT_CONFIG_ITEM("kalman-minimize-state-space", "Minimize the state space", 1, t->minimize_state_space)
-	STRUCT_CONFIG_ITEM("kalman-use-error-space", "Model using error state", 0, t->use_error_state)
+	STRUCT_CONFIG_ITEM("kalman-use-error-space", "Model using error state", true, t->use_error_state)
 
 	STRUCT_CONFIG_ITEM("kalman-initial-imu-variance", "Initial variance in IMU frame", 0, t->params.initial_variance_imu_correction)
     STRUCT_CONFIG_ITEM("kalman-initial-acc-scale-variance", "Initial variance in IMU frame", 0, t->params.initial_acc_scale_variance)
@@ -90,8 +90,8 @@ END_STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 STRUCT_NAMED_CONFIG_SECTION(x, cnkalman_meas_model_t) \
 	STRUCT_CONFIG_ITEM("kalman-" #x "-adaptive", "Use adaptive covariance for " #x, 0, t->adaptive) \
     STRUCT_CONFIG_ITEM("kalman-" #x "-iterations", "Max iterations for " #x, -1, t->term_criteria.max_iterations) \
-    STRUCT_CONFIG_ITEM("kalman-" #x "-jacobian-mode", "Jacobian mode " #x, 0, t->meas_jacobian_mode)              \
-    STRUCT_CONFIG_ITEM("kalman-" #x "-error-state-model", "Jacobian mode " #x, 0, t->error_state_model) \
+    STRUCT_CONFIG_ITEM("kalman-" #x "-jacobian-mode", "Jacobian mode " #x ". -1 for debug, 1 for numerical" , 0, t->meas_jacobian_mode)              \
+    STRUCT_CONFIG_ITEM("kalman-" #x "-error-state-model", "Use error state model jacobian if available " #x, true, t->error_state_model) \
 END_STRUCT_CONFIG_SECTION(cnkalman_meas_model_t)
 // clang-format off
 
@@ -1168,9 +1168,11 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 
     cnkalman_meas_model_init(&tracker->model, "imu", &tracker->imu_model, survive_kalman_tracker_imu_measurement_model);
 	cnkalman_meas_model_t_imu_attach_config(ctx, &tracker->imu_model);
+	tracker->imu_model.error_state_model = false;
 
     cnkalman_meas_model_init(&tracker->model, "lightcap", &tracker->lightcap_model, map_light_data);
 	cnkalman_meas_model_t_lightcap_attach_config(ctx, &tracker->lightcap_model);
+	tracker->lightcap_model.error_state_model = false;
 
     tracker->lightcap_model.term_criteria.max_iterations = 5;
 

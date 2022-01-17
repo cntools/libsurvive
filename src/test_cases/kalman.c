@@ -383,13 +383,17 @@ struct SurviveKalmanTracker_Params default_params() {
 	};
 }
 
+static void survive_kalman_tracker_process_noise_bounce(void *user, FLT t, const CnMat *x, struct CnMat *q_out) {
+	struct SurviveKalmanTracker_Params *params = (struct SurviveKalmanTracker_Params *)user;
+	survive_kalman_tracker_process_noise(params, false, t, x, q_out);
+}
+
 void KalmanModelSim_init(KalmanModelSim *model) {
 	quatnormalize(model->sim_state.Pose.Rot, model->sim_state.Pose.Rot);
 	quatnormalize(model->true_state.Pose.Rot, model->true_state.Pose.Rot);
 
 	cnkalman_state_init(&model->kalman_t, sizeof(model->sim_state) / sizeof(FLT), survive_kalman_tracker_predict_jac,
-						(kalman_process_noise_fn_t)survive_kalman_tracker_process_noise, &model->p,
-						(FLT *)&model->sim_state);
+						survive_kalman_tracker_process_noise_bounce, &model->p, (FLT *)&model->sim_state);
 
 	cnkalman_meas_model_init(&model->kalman_t, "imu", &model->imu_model_t,
 							 survive_kalman_tracker_imu_measurement_model);
