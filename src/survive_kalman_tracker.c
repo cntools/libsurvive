@@ -43,6 +43,7 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
     STRUCT_CONFIG_ITEM("kalman-light-variance",  "Variance of raw light sensor readings", -1, t->light_var)
     STRUCT_CONFIG_ITEM("obs-cov-scale",  "Covariance matrix scaling for obs",
                        1, t->obs_cov_scale)
+	STRUCT_CONFIG_ITEM("kalman-obs-as-axisangle",  "Process observation updates as axis angle poses", false, t->obs_axisangle_model)
     STRUCT_CONFIG_ITEM("obs-pos-variance",  "Variance of position integration from light capture",
 					   1e-6, t->obs_pos_var)
 	STRUCT_CONFIG_ITEM("obs-rot-variance",  "Variance of rotation integration from light capture",
@@ -89,7 +90,8 @@ END_STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 STRUCT_NAMED_CONFIG_SECTION(x, cnkalman_meas_model_t) \
 	STRUCT_CONFIG_ITEM("kalman-" #x "-adaptive", "Use adaptive covariance for " #x, 0, t->adaptive) \
     STRUCT_CONFIG_ITEM("kalman-" #x "-iterations", "Max iterations for " #x, -1, t->term_criteria.max_iterations) \
-    STRUCT_CONFIG_ITEM("kalman-" #x "-jacobian-mode", "Jacobian mode " #x, 0, t->meas_jacobian_mode) \
+    STRUCT_CONFIG_ITEM("kalman-" #x "-jacobian-mode", "Jacobian mode " #x, 0, t->meas_jacobian_mode)              \
+    STRUCT_CONFIG_ITEM("kalman-" #x "-error-state-model", "Jacobian mode " #x, 0, t->error_state_model) \
 END_STRUCT_CONFIG_SECTION(cnkalman_meas_model_t)
 // clang-format off
 
@@ -461,18 +463,90 @@ static void state_update_fn(void *user, const struct CnMat *x0, struct CnMat *Ky
 	cn_elementwise_add(x1, x0, Ky);
 }
 */
- static bool map_obs_data(void *user, const struct CnMat *Z, const struct CnMat *x_t, struct CnMat *y,
-                           struct CnMat *H_k) {
-    SurviveKalmanTracker *tracker = (SurviveKalmanTracker *)user;
-    if(y) {
-        subnd(cn_as_vector(y), cn_as_const_vector(Z), cn_as_const_vector(x_t), 7);
-    }
+static bool map_obs_data(void *user, const struct CnMat *Z, const struct CnMat *x_t, struct CnMat *y,
+								   struct CnMat *H_k) {
+	SurviveKalmanTracker *tracker = (SurviveKalmanTracker *)user;
+	if(y) {
+		subnd(cn_as_vector(y), cn_as_const_vector(Z), cn_as_const_vector(x_t), 7);
+	}
+	if(H_k) {
+		bool errorState = tracker->use_error_state && tracker->obs_model.error_state_model;
+		if(errorState) {
+			state_update_fn(user, x_t, 0, 0, H_k);
+		} else {
+			cn_set_zero(H_k);
+			cn_set_diag_val(H_k, 1);
+		}
+	}
+	return true;
+}
+static bool map_obs_data_axisangle(void *user, const struct CnMat *Z, const struct CnMat *x_t, struct CnMat *y,
+								   struct CnMat *H_k) {
+	SurviveKalmanTracker *tracker = (SurviveKalmanTracker *)user;
+	const SurviveKalmanModel *x0 = (const SurviveKalmanModel *)cn_as_const_vector(x_t);
+
+	SurviveAxisAnglePose yp = { 0 };
+	SurviveAxisAnglePose predictedPose = *(const SurviveAxisAnglePose *)cn_as_const_vector(Z);
+	gen_SurviveObsErrorModelNoFlip(&yp, x0, (const SurviveAxisAnglePose *)cn_as_const_vector(Z));
+	scalend((FLT *)&yp, (FLT *)&yp, -1, 6);
+
+	FLT mag = normnd2(yp.AxisAngleRot, 3);
+	bool hasFlip = mag > M_PI * M_PI;
+	if(hasFlip) {
+		mag = sqrt(mag);
+		scalend(yp.AxisAngleRot, yp.AxisAngleRot, (mag - 2.*M_PI) / mag, 3);
+	}
+	assert(norm3d(yp.AxisAngleRot) < M_PI);
+
+	if(y) {
+		memcpy(cn_as_vector(y), &yp, y->rows * sizeof(FLT));
+	}
     if(H_k) {
-        cn_set_zero(H_k);
-		cn_set_diag_val(H_k, 1);
+		bool errorState = tracker->use_error_state && tracker->obs_model.error_state_model;
+		if(errorState) {
+			SurviveKalmanErrorModel error_model = { 0 };
+			(!hasFlip ?
+			 gen_SurviveObsErrorStateErrorModelNoFlip_jac_err :
+			 gen_SurviveObsErrorStateErrorModelFlip_jac_err)(H_k, x0, &error_model, &predictedPose);
+		} else {
+			(!hasFlip ? gen_SurviveObsErrorModelNoFlip_jac_x0 :
+			 gen_SurviveObsErrorModelFlip_jac_x0)(H_k, x0, &predictedPose);
+		}
     }
     return true;
 }
+
+static FLT integrate_pose(SurviveKalmanTracker *tracker, FLT time, const SurvivePose *pose, const struct CnMat *R_q) {
+	FLT rtn = 0;
+
+	size_t state_cnt = tracker->model.state_cnt;
+	size_t obs_cnt = tracker->obs_axisangle_model ? 6 : 7;
+
+	struct CnMat* Rp = (CnMat*)R_q;
+	CN_CREATE_STACK_MAT(R, obs_cnt, obs_cnt);
+	CN_CREATE_STACK_VEC(Z, obs_cnt);
+	if(tracker->obs_axisangle_model) {
+		LinmathAxisAnglePose poseAA = Pose2AAPose(pose);
+		if(Rp) {
+			survive_covariance_pose2poseAA(&R, pose, R_q);
+		}
+		memcpy(cn_as_vector(&Z), poseAA.Pos, obs_cnt * sizeof(FLT));
+		Rp = &R;
+	} else {
+		memcpy(cn_as_vector(&Z), pose->Pos, obs_cnt * sizeof(FLT));
+	}
+
+	tracker->datalog_tag = "pose_obs";
+    rtn = cnkalman_meas_model_predict_update(time, &tracker->obs_model, tracker, &Z, Rp);
+
+	tracker->datalog_tag = 0;
+	SurviveContext *ctx = tracker->so->ctx;
+	SV_VERBOSE(600, "Resultant state %f (pose) " Point16_format, time,
+			   LINMATH_VEC16_EXPAND(cn_as_const_vector(&tracker->model.state)));
+
+	return rtn;
+}
+
 void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDataIMU *data) {
 	SurviveContext *ctx = tracker->so->ctx;
 	SurviveObject *so = tracker->so;
@@ -837,24 +911,6 @@ void survive_kalman_error_tracker_predict_jac(FLT dt, const struct cnkalman_stat
 	}
 }
 
-static FLT integrate_pose(SurviveKalmanTracker *tracker, FLT time, const SurvivePose *pose, const struct CnMat *Rp) {
-	FLT rtn = 0;
-
-	size_t state_cnt = tracker->model.state_cnt;
-	CnMat Zp = cnMat(7, 1, (void *)pose->Pos);
-	tracker->datalog_tag = "pose_obs";
-
-	CnMat R = cnMat(7, Rp ? Rp->cols : 7, Rp ? Rp->data : tracker->Obs_R);
-    rtn = cnkalman_meas_model_predict_update(time, &tracker->obs_model, tracker, &Zp, &R);
-
-	tracker->datalog_tag = 0;
-	SurviveContext *ctx = tracker->so->ctx;
-	SV_VERBOSE(600, "Resultant state %f (pose) " Point16_format, time,
-			   LINMATH_VEC16_EXPAND(cn_as_const_vector(&tracker->model.state)));
-
-	return rtn;
-}
-
 void survive_show_covariance(SurviveObject *so, const SurvivePose *pose, const struct CnMat *Ri, FLT s, FLT stddev) {
     SurviveContext *ctx = so->ctx;
     CN_CREATE_STACK_MAT(R, 7, 7);
@@ -1118,7 +1174,7 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 
     tracker->lightcap_model.term_criteria.max_iterations = 5;
 
-    cnkalman_meas_model_init(&tracker->model, "obs", &tracker->obs_model, map_obs_data);
+    cnkalman_meas_model_init(&tracker->model, "obs", &tracker->obs_model, tracker->obs_axisangle_model ? map_obs_data_axisangle : map_obs_data);
 	cnkalman_meas_model_t_obs_attach_config(ctx, &tracker->obs_model);
 
     cnkalman_meas_model_init(&tracker->model, "zvu", &tracker->zvu_model, 0);

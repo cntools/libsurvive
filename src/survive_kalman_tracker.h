@@ -58,6 +58,7 @@ typedef struct SurviveKalmanTracker {
 	FLT obs_cov_scale;
 	FLT obs_pos_var;
 	FLT obs_rot_var;
+	bool obs_axisangle_model;
 	FLT light_var;
 
 	int light_batchsize;
