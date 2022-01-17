@@ -339,7 +339,7 @@ def invert_pose(obj_p):
 
 def quat2axisangle(q):
     qw, qi, qj, qk = q
-    mag = qw * qw + qi * qi + qj * qj + 1e-10
+    mag = sqrt(qi*qi+qj*qj+qk*qk + 1e-10)
     angle = 2 * atan2(mag, q[0])
     return q[1] * angle / mag,\
            q[2] * angle / mag,\

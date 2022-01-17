@@ -269,15 +269,27 @@ function redrawCanvas(when) {
 				for (var id in angles[key][lh]) {
 					var ang = angles[key][lh][id];
 
-					if (ang[0] === undefined || ang[1] === undefined ||
-						survive_timecode_difference(when[key], ang[1][1]) > visible_tolerance ||
-						survive_timecode_difference(when[key], ang[0][1]) > visible_tolerance)
-						continue;
+					const x_valid =
+						ang[0] !== undefined && survive_timecode_difference(when[key], ang[0][1]) <= visible_tolerance;
+					const y_valid =
+						ang[1] !== undefined && survive_timecode_difference(when[key], ang[1][1]) <= visible_tolerance;
 
 					var half_fov = 1.0472 * 2.;
-					var x = rad_to_x(ang[0][0]);
-					var y = rad_to_y(ang[1][0]);
-					var size = (ang[0][2] + ang[1][2]) / 2.;
+
+					var x = ang[0] !== undefined ? rad_to_x(ang[0][0]) : 0;
+					var y = ang[1] !== undefined ? rad_to_y(ang[1][0]) : 0;
+
+					if (!x_valid && !y_valid) {
+						continue;
+					}
+					if (!x_valid) {
+						x = lh % 2 ? 10 : canvas.width - 10;
+					}
+					if (!y_valid) {
+						y = lh % 2 ? 10 : canvas.height - 10;
+					}
+
+					var size = (x_valid && y_valid) ? (ang[0][2] + ang[1][2]) / 2. : 5e-6;
 					var radius = Math.max(1, size > 0 ? Math.sqrt(size * 2 / 2e-6) : 2);
 					ctx.fillStyle = "white";
 					ctx.font = "14px Arial";
@@ -300,8 +312,8 @@ function redrawCanvas(when) {
 						var rx = rad_to_x(rpx * scale + ang[0][0])
 						var ry = rad_to_y(rpy * scale + ang[1][0])
 
-						dx = rx;
-						dy = ry;
+						dx = x_valid ? rx : x;
+						dy = y_valid ? ry : y;
 
 						ctx.fillStyle = "white";
 						ctx.font = "14px Arial";
@@ -639,6 +651,48 @@ function update_fullcov(v) {
 	update_ellipsoid(name, svd_results.u, svd_results.q, svd_results.v, A)
 }
 
+function display_matrix(name, rows, cols, fv) {
+	if (covar_canvas[name] == null) {
+		const canvas = document.createElement("canvas");
+		canvas.className = "myClass";
+		canvas.id = "myId";
+		canvas.style.cssText =
+			"position: absolute;z-index: 10;width: 105px;height: 105px;bottom:50px;image-rendering: pixelated;"
+		canvas.style.right = (5 + Object.keys(covar_canvas).length * 110) + "px";
+		canvas.width = canvas.height = 21;
+
+		const div = document.createElement("div");
+		div.innerText = name;
+		document.body.appendChild(div);
+		div.style.cssText =
+			"position: absolute;z-index: 11;width: 105px;bottom: 50px;image-rendering: pixelated;right: 225px;color: white;";
+		div.style.right = (5 + Object.keys(covar_canvas).length * 110) + "px";
+		covar_names[name] = div;
+		document.body.appendChild(canvas);
+		covar_canvas[name] = canvas;
+	}
+
+	let fmax = Math.max(...fv);
+	const fmin = Math.min(...fv);
+	fmax = Math.max(fmax, -fmin);
+	const imageData =
+		Uint8ClampedArray.from(fv.map(x => [...turbo(Math.min(1, Math.abs(fmax != 0 ? x / fmax : 0))), 255]).flat());
+	var canvas = covar_canvas[name];
+
+	var ctx = canvas.getContext("2d");
+	ctx.imageSmoothingEnabled = false;
+	// ctx.scale(5,5);
+
+	ctx.putImageData(new ImageData(imageData, rows, cols), 0, 0);
+	covar_names[name].innerText = name + " " + fmax;
+}
+
+function data_matrix(v) {
+	let name = v[1] + "." + v[3];
+	let rows = parseInt(v[4]), cols = parseInt(v[5]);
+	display_matrix(name, rows, cols, v.slice(6).map(parseFloat));
+}
+
 function update_fullstate(v) {
 	var obj = {
 		tracker : v[1],
@@ -872,6 +926,7 @@ var survive_log_handlers = {
 	"POSE" : update_object,
 	"VELOCITY" : update_velocity,
 	"FULL_STATE" : update_fullstate,
+	"DATA_MATRIX" : data_matrix,
 	"FULL_COVARIANCE" : update_fullcov,
 	"EXTERNAL_VELOCITY" : function(v) { update_velocity(v, true, true); },
 	"EXTERNAL_POSE" : function(v) { update_object(v, true, true); },

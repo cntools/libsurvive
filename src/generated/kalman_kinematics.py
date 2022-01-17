@@ -1,7 +1,9 @@
+import math
 from dataclasses import dataclass
 
 import sympy
-from symengine import atan2, asin, cos, sin, tan, sqrt, Matrix
+from symengine import asin, cos, sin, tan, sqrt, Matrix
+from sympy import atan2
 import cnkalman.codegen as cg
 import numpy as np
 from scipy.linalg import expm, block_diag
@@ -65,6 +67,8 @@ def quattoeuler(q):
         atan2(2 * (q[0] * q[3] + q[1] * q[2]), 1 - 2 * (q[2] * q[2] + q[3] * q[3]))
     ]
 
+
+
 def quatfromeuler(euler):
     X = euler[0] / 2.0
     Y = euler[1] / 2.0
@@ -91,6 +95,14 @@ def axisanglemagnitude(axis_angle):
     mag = qw * qw + qi * qi + qj * qj
     return sqrt(mag + 1e-10)
 
+def quat2axisangle(q):
+    qw, qi, qj, qk = q
+    mag = sqrt(qi*qi+qj*qj+qk*qk + 1e-10)
+    angle = 2 * atan2(mag, q[0])
+    return [q[1] * angle / mag, \
+           q[2] * angle / mag, \
+           q[3] * angle / mag]
+
 def axisangle2quat(axis_angle):
     mag = axisanglemagnitude(axis_angle)
 
@@ -100,6 +112,10 @@ def axisangle2quat(axis_angle):
 
     sn = sin(mag / 2.0)
     return quatnormalize([cos(mag / 2.0), sn * x, sn * y, sn * z])
+
+@cg.generate_code(axis_angle = 3)
+def axisangle2euler(axis_angle):
+    return quattoeuler(axisangle2quat(axis_angle))
 
 
 def apply_ang_velocity(axis_angle, time, q):
@@ -186,15 +202,37 @@ def SurviveKalmanModelPredict(t, kalman_model : SurviveKalmanModel):
         GyroBias=kalman_model.GyroBias
     )
 
+
+@cg.generate_code(x0 = 3)
+def AxisAngleFlip(x0):
+    mag = axisanglemagnitude(x0)
+    return x0 * ((mag - 2.*math.pi) / mag)
+
 @cg.generate_code()
 def SurviveKalmanModelErrorPredict(t, x0 : SurviveKalmanModel, error_model : SurviveKalmanErrorModel):
     x1 = SurviveKalmanModelAddErrorModel(x0, error_model)
     x2 = SurviveKalmanModelPredict(t, x1)
     return SurviveKalmanModelToErrorModel(x2, x0)
 
-q0 = [0, 1, 0, 0]
-q1 = [.447, .8944, 0, 0]
-error_model = GenerateQuatErrorModel(q1, q0)
-rq1 = GenerateQuatModel(q0, error_model)
-print(error_model, rq1.transpose())
-print(quatrotateabout(quatgetreciprocal(q0), q1).transpose())
+def SurviveObsErrorModel(x0: SurviveKalmanModel, Z: SurviveAxisAnglePose, flag):
+    x0aa = SurviveAxisAnglePose(x0.Pose.Pos, quat2axisangle(x0.Pose.Rot))
+    return SurviveAxisAnglePose(x0aa.Pos - Z.Pos,
+                                AxisAngleFlip(x0aa.AxisAngleRot - Z.AxisAngleRot) if flag else (x0aa.AxisAngleRot - Z.AxisAngleRot))
+
+@cg.generate_code()
+def SurviveObsErrorModelNoFlip(x0: SurviveKalmanModel, Z: SurviveAxisAnglePose):
+    return SurviveObsErrorModel(x0, Z, False)
+
+@cg.generate_code()
+def SurviveObsErrorModelFlip(x0: SurviveKalmanModel, Z: SurviveAxisAnglePose):
+    return SurviveObsErrorModel(x0, Z, True)
+
+@cg.generate_code()
+def SurviveObsErrorStateErrorModelNoFlip(x0: SurviveKalmanModel, err: SurviveKalmanErrorModel, Z : SurviveAxisAnglePose):
+    x1 = SurviveKalmanModelAddErrorModel(x0, err)
+    return SurviveObsErrorModel(x1, Z, False)
+
+@cg.generate_code()
+def SurviveObsErrorStateErrorModelFlip(x0: SurviveKalmanModel, err: SurviveKalmanErrorModel, Z : SurviveAxisAnglePose):
+    x1 = SurviveKalmanModelAddErrorModel(x0, err)
+    return SurviveObsErrorModel(x1, Z, True)
