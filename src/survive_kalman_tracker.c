@@ -633,13 +633,15 @@ void survive_kalman_tracker_predict(const SurviveKalmanTracker *tracker, FLT t, 
 
 static void survive_kalman_tracker_process_noise_bounce(void *user, FLT t, const CnMat *x, struct CnMat *q_out) {
 	struct SurviveKalmanTracker_Params *params = (struct SurviveKalmanTracker_Params *)user;
-	survive_kalman_tracker_process_noise(params, t, x, q_out);
+	survive_kalman_tracker_process_noise(params, false, t, x, q_out);
 }
 
-void survive_kalman_tracker_process_noise(const struct SurviveKalmanTracker_Params *params, FLT t, const CnMat *x, struct CnMat *q_out) {
-	size_t state_cnt = x->rows;
-	SurviveKalmanModel state = copy_model(cn_as_const_vector(x), state_cnt);
+static void survive_kalman_tracker_error_process_noise_bounce(void *user, FLT t, const CnMat *x, struct CnMat *q_out) {
+	struct SurviveKalmanTracker_Params *params = (struct SurviveKalmanTracker_Params *)user;
+	survive_kalman_tracker_process_noise(params, true, t, x, q_out);
+}
 
+void survive_kalman_tracker_process_noise(const struct SurviveKalmanTracker_Params *params, bool errorState, FLT t, const CnMat *x, struct CnMat *q_out) {
 	/*
 	 * Due to the rotational terms in the model, the process noise covariance is complicated. It mixes a XYZ third order
 	 * positional model with a second order rotational model with tuning parameters
@@ -687,55 +689,84 @@ void survive_kalman_tracker_process_noise(const struct SurviveKalmanTracker_Para
 	  code.
 	 */
 	FLT s_w = params->process_weight_ang_velocity;
-	FLT s_f = s_w / 12. * t3;
-	FLT s_s = s_w / 4. * t2;
-	FLT qw = state.Pose.Rot[0], qx = state.Pose.Rot[1], qy = state.Pose.Rot[2], qz = state.Pose.Rot[3];
-	FLT qws = qw * qw, qxs = qx * qx, qys = qy * qy, qzs = qz * qz;
-	FLT qs = qws + qxs + qys + qzs;
+	FLT rv =   params->process_weight_ang_velocity * Q_vel[0] + params->process_weight_rotation * t;
+	FLT r_av = params->process_weight_ang_velocity * Q_vel[1];
 
-	FLT rv = params->process_weight_rotation * t2 + params->process_weight_ang_velocity * Q_vel[0];
-
-	FLT ga = params->process_weight_acc_bias * t2;
 	/* The gyro bias is expected to change, but slowly through time */
-	FLT gb = params->process_weight_gyro_bias * t2;
+	FLT ga = params->process_weight_acc_bias * t;
+	FLT gb = params->process_weight_gyro_bias * t;
 
-	FLT Q_POSE_BLOCK[] = {
-//       x        y        z                 qw                 qx                 qy                 qz         vx       vy       vz          avx      avy      avz       ax       ay      az
-	  p_p,       0,       0,                 0,                 0,                 0,                 0,       p_v,       0,       0,           0,       0,       0,     p_a,       0,       0,  // x
-		0,     p_p,       0,                 0,                 0,                 0,                 0,         0,     p_v,       0,           0,       0,       0,       0,     p_a,       0,  // y
-		0,       0,     p_p,                 0,                 0,                 0,                 0,         0,       0,     p_v,           0,       0,       0,       0,       0,     p_a,  // z
+	if(!errorState) {
+		FLT s_f = s_w / 12. * t3;
+		FLT s_s = s_w / 4. * t2;
 
-		0,       0,       0,   rv+s_f*(qs-qws),      s_f*(-qw*qx),      s_f*(-qw*qy),      s_f*(-qw*qz),         0,       0,       0,     -s_s*qx, -s_s*qy, -s_s*qz,       0,       0,       0,  // qw
-		0,       0,       0,      s_f*(-qw*qx),   rv+s_f*(qs-qxs),      s_f*(-qx*qy),      s_f*(-qx*qz),         0,       0,       0,      s_s*qw, -s_s*qz,  s_s*qy,       0,       0,       0,  // qx
-		0,       0,       0,      s_f*(-qw*qy),      s_f*(-qx*qy),   rv+s_f*(qs-qys),      s_f*(-qy*qz),         0,       0,       0,      s_s*qz,  s_s*qw, -s_s*qx,       0,       0,       0,  // qy
-		0,       0,       0,      s_f*(-qw*qz),      s_f*(-qx*qz),      s_f*(-qy*qz),   rv+s_f*(qs-qzs),         0,       0,       0,     -s_s*qy,  s_s*qx,  s_s*qw,       0,       0,       0,  // qz
+		size_t state_cnt = x->rows;
+		SurviveKalmanModel state = copy_model(cn_as_const_vector(x), state_cnt);
 
-	  p_v,       0,       0,                 0,                 0,                 0,                 0,       v_v,       0,       0,           0,       0,       0,     v_a,       0,       0,  // vx
-		0,     p_v,       0,                 0,                 0,                 0,                 0,         0,     v_v,       0,           0,       0,       0,       0,     v_a,       0,  // vy
-		0,       0,     p_v,                 0,                 0,                 0,                 0,         0,       0,     v_v,           0,       0,       0,       0,       0,     v_a,  // vz
+		FLT qw = state.Pose.Rot[0], qx = state.Pose.Rot[1], qy = state.Pose.Rot[2], qz = state.Pose.Rot[3];
+		FLT qws = qw * qw, qxs = qx * qx, qys = qy * qy, qzs = qz * qz;
+		FLT qs = qws + qxs + qys + qzs;
 
-		0,       0,       0,           -s_s*qx,            s_s*qw,            s_s*qz,           -s_s*qy,         0,       0,       0,     s_w * t,       0,       0,       0,       0,       0,  // avx
-		0,       0,       0,           -s_s*qy,           -s_s*qz,            s_s*qw,            s_s*qx,         0,       0,       0,           0, s_w * t,       0,       0,       0,       0,  // avy
-		0,       0,       0,           -s_s*qz,            s_s*qy,           -s_s*qx,            s_s*qw,         0,       0,       0,           0,       0, s_w * t,       0,       0,       0,  // avz
+		FLT Q_POSE_BLOCK[] = {
+	//       x        y        z                 qw                 qx                 qy                 qz         vx       vy       vz          avx      avy      avz       ax       ay      az
+		  p_p,       0,       0,                 0,                 0,                 0,                 0,       p_v,       0,       0,           0,       0,       0,     p_a,       0,       0,  // x
+			0,     p_p,       0,                 0,                 0,                 0,                 0,         0,     p_v,       0,           0,       0,       0,       0,     p_a,       0,  // y
+			0,       0,     p_p,                 0,                 0,                 0,                 0,         0,       0,     p_v,           0,       0,       0,       0,       0,     p_a,  // z
 
-	  p_a,       0,       0,                 0,                 0,                 0,                 0,       v_a,       0,       0,           0,       0,       0,     a_a,       0,       0,  // ax
-		0,     p_a,       0,                 0,                 0,                 0,                 0,         0,     v_a,       0,           0,       0,       0,       0,     a_a,       0,  // ay
-		0,       0,     p_a,                 0,                 0,                 0,                 0,         0,       0,     v_a,           0,       0,       0,       0,       0,     a_a,  // az
+			0,       0,       0,   rv+s_f*(qs-qws),      s_f*(-qw*qx),      s_f*(-qw*qy),      s_f*(-qw*qz),         0,       0,       0,     -s_s*qx, -s_s*qy, -s_s*qz,       0,       0,       0,  // qw
+			0,       0,       0,      s_f*(-qw*qx),   rv+s_f*(qs-qxs),      s_f*(-qx*qy),      s_f*(-qx*qz),         0,       0,       0,      s_s*qw, -s_s*qz,  s_s*qy,       0,       0,       0,  // qx
+			0,       0,       0,      s_f*(-qw*qy),      s_f*(-qx*qy),   rv+s_f*(qs-qys),      s_f*(-qy*qz),         0,       0,       0,      s_s*qz,  s_s*qw, -s_s*qx,       0,       0,       0,  // qy
+			0,       0,       0,      s_f*(-qw*qz),      s_f*(-qx*qz),      s_f*(-qy*qz),   rv+s_f*(qs-qzs),         0,       0,       0,     -s_s*qy,  s_s*qx,  s_s*qw,       0,       0,       0,  // qz
 
-	};
+		  p_v,       0,       0,                 0,                 0,                 0,                 0,       v_v,       0,       0,           0,       0,       0,     v_a,       0,       0,  // vx
+			0,     p_v,       0,                 0,                 0,                 0,                 0,         0,     v_v,       0,           0,       0,       0,       0,     v_a,       0,  // vy
+			0,       0,     p_v,                 0,                 0,                 0,                 0,         0,       0,     v_v,           0,       0,       0,       0,       0,     v_a,  // vz
 
-	for (int i = 0; i < 16; i++) {
-		for(int j = 0;j < i;j++) {
-			assert(Q_POSE_BLOCK[j + i * 16] == Q_POSE_BLOCK[i + j * 16]);
-		}
+			0,       0,       0,           -s_s*qx,            s_s*qw,            s_s*qz,           -s_s*qy,         0,       0,       0,     s_w * t,       0,       0,       0,       0,       0,  // avx
+			0,       0,       0,           -s_s*qy,           -s_s*qz,            s_s*qw,            s_s*qx,         0,       0,       0,           0, s_w * t,       0,       0,       0,       0,  // avy
+			0,       0,       0,           -s_s*qz,            s_s*qy,           -s_s*qx,            s_s*qw,         0,       0,       0,           0,       0, s_w * t,       0,       0,       0,  // avz
+
+		  p_a,       0,       0,                 0,                 0,                 0,                 0,       v_a,       0,       0,           0,       0,       0,     a_a,       0,       0,  // ax
+			0,     p_a,       0,                 0,                 0,                 0,                 0,         0,     v_a,       0,           0,       0,       0,       0,     a_a,       0,  // ay
+			0,       0,     p_a,                 0,                 0,                 0,                 0,         0,       0,     v_a,           0,       0,       0,       0,       0,     a_a,  // az
+
+		};
+		cn_copy_in_row_major_roi(q_out, Q_POSE_BLOCK, 16, 0, 0, 16, 16);
+	} else {
+
+		FLT Q_POSE_BLOCK[] = {
+     //       x        y        z           qx         qy       qz              vx       vy       vz          avx      avy      avz       ax       ay      az
+			p_p,       0,       0,           0,         0,      0,            p_v,       0,       0,           0,       0,       0,     p_a,       0,       0,  // x
+			0,       p_p,       0,           0,         0,      0,              0,     p_v,       0,           0,       0,       0,       0,     p_a,       0,  // y
+			0,         0,     p_p,           0,         0,      0,              0,       0,     p_v,           0,       0,       0,       0,       0,     p_a,  // z
+
+			0,         0,       0,          rv,         0,      0,              0,       0,       0,           r_av,    0,       0,       0,       0,       0,  // qx
+			0,         0,       0,           0,        rv,      0,              0,       0,       0,           0,       r_av,    0,       0,       0,       0,  // qy
+			0,         0,       0,           0,         0,     rv,              0,       0,       0,           0,       0,    r_av,       0,       0,       0,  // qz
+
+			p_v,       0,       0,           0,         0,      0,            v_v,       0,       0,           0,       0,       0,     v_a,       0,       0,  // vx
+			0,       p_v,       0,           0,         0,      0,              0,     v_v,       0,           0,       0,       0,       0,     v_a,       0,  // vy
+			0,         0,     p_v,           0,         0,      0,              0,       0,     v_v,           0,       0,       0,       0,       0,     v_a,  // vz
+
+			0,         0,       0,           r_av,      0,      0,              0,       0,       0,     s_w * t,        0,       0,       0,       0,       0,  // avx
+			0,         0,       0,           0,      r_av,      0,              0,       0,       0,           0,  s_w * t,       0,       0,       0,       0,  // avy
+			0,         0,       0,           0,         0,   r_av,              0,       0,       0,           0,        0, s_w * t,       0,       0,       0,  // avz
+
+			p_a,       0,       0,           0,         0,      0,            v_a,       0,       0,           0,        0,       0,     a_a,       0,       0,  // ax
+			0,       p_a,       0,           0,         0,      0,              0,     v_a,       0,           0,        0,       0,       0,     a_a,       0,  // ay
+			0,         0,     p_a,           0,         0,      0,              0,       0,     v_a,           0,        0,       0,       0,       0,     a_a,  // az
+
+		};
+		cn_copy_in_row_major_roi(q_out, Q_POSE_BLOCK, 15, 0, 0, 15, 15);
 	}
 
-	cn_copy_in_row_major_roi(q_out, Q_POSE_BLOCK, 16, 0, 0, 16, 16);
+	assert(cn_is_symmetrical(q_out));
+
 	for(int i = 0;i < 3;i++) {
-        int accBiasIdx = offsetof(SurviveKalmanModel, AccBias)/sizeof(FLT) + i;
+        int accBiasIdx = (int)(errorState ? offsetof(SurviveKalmanErrorModel , AccBias) : offsetof(SurviveKalmanModel, AccBias)/sizeof(FLT)) + i;
         if(accBiasIdx < q_out->rows) cnMatrixSet(q_out, accBiasIdx, accBiasIdx, ga);
 
-        int gyroBiasIdx = offsetof(SurviveKalmanModel, GyroBias)/sizeof(FLT) + i;
+        int gyroBiasIdx = (int)(errorState ? offsetof(SurviveKalmanErrorModel, GyroBias) : offsetof(SurviveKalmanModel, GyroBias))/sizeof(FLT) + i;
 		if(gyroBiasIdx < q_out->rows) cnMatrixSet(q_out, gyroBiasIdx, gyroBiasIdx, gb);
 	}
 
@@ -1036,7 +1067,7 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 
 	if(tracker->use_error_state) {
 		cnkalman_error_state_init(&tracker->model, state_cnt, state_cnt - 1, survive_kalman_error_tracker_predict_jac,
-								  tracker->noise_model == 0 ? survive_kalman_tracker_process_noise_bounce : 0,
+								  tracker->noise_model == 0 ? survive_kalman_tracker_error_process_noise_bounce : 0,
 								  error_state_fn, &tracker->params, (FLT *)&tracker->state);
 		tracker->model.Update_fn = state_update_fn;
 		tracker->model.error_state_transition = true;
@@ -1369,7 +1400,7 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
     tracker->last_report_time = t;
 
     if(tracker->report_covariance_cnt > 0 && tracker->stats.reported_poses % tracker->report_covariance_cnt == 0) {
-        survive_recording_write_to_output(ctx->recptr, "%s FULL_STATE " Point27_format "\n",
+		survive_recording_write_to_output(ctx->recptr, "%s FULL_STATE " Point27_format "\n",
                                           so->codename, LINMATH_VEC27_EXPAND((FLT*)&tracker->state));
         survive_recording_write_to_output(ctx->recptr, "%s FULL_COVARIANCE ", so->codename);
         for (int i = 0; i < tracker->model.P.rows * tracker->model.P.cols; i++) {

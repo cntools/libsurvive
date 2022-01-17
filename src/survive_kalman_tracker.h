@@ -153,8 +153,8 @@ SURVIVE_EXPORT void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *t
 
 SURVIVE_EXPORT void survive_kalman_tracker_predict_jac(FLT dt, const struct cnkalman_state_s *k, const struct CnMat *x0,
 													   struct CnMat *x1, struct CnMat *f_out);
-SURVIVE_EXPORT void survive_kalman_tracker_process_noise(const struct SurviveKalmanTracker_Params *params, FLT t,
-														 const CnMat *x, struct CnMat *q_out);
+SURVIVE_EXPORT void survive_kalman_tracker_process_noise(const struct SurviveKalmanTracker_Params *params,
+														 bool errorState, FLT t, const CnMat *x, struct CnMat *q_out);
 SURVIVE_EXPORT bool survive_kalman_tracker_imu_measurement_model(void *user, const struct CnMat *Z,
 																 const struct CnMat *x_t, struct CnMat *y,
 																 struct CnMat *H_k);
