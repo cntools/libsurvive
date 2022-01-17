@@ -29,6 +29,8 @@
 #define SYNC_PRINTF "%s Y %"PRI_CHANNEL" %u %"PRI_FLAG" %"PRI_GEN"\n"
 
 struct SurviveRecordingData;
+SURVIVE_EXPORT void survive_recording_write_matrix(struct SurviveRecordingData *recordingData, const SurviveObject *so,
+												   const char *name, const CnMat *M);
 SURVIVE_EXPORT void survive_recording_write_to_output(struct SurviveRecordingData *recordingData, const char *format,
 													  ...);
 SURVIVE_EXPORT void survive_recording_write_to_output_nopreamble(struct SurviveRecordingData *recordingData,

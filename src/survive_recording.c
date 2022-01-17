@@ -65,6 +65,14 @@ static void write_to_output_raw(SurviveRecordingData *recordingData, const char 
 #define FLT_PRINTF "%0.6f "
 #endif
 
+SURVIVE_EXPORT void survive_recording_write_matrix(struct SurviveRecordingData *recordingData, const SurviveObject *so,
+												   const char *name, const CnMat *M) {
+	survive_recording_write_to_output(recordingData, "%s DATA_MATRIX %s %d %d ", so->codename, name, M->rows, M->cols);
+	for (int i = 0; i < M->rows * M->cols; i++) {
+		survive_recording_write_to_output_nopreamble(recordingData, "%f ", M->data[i]);
+	}
+	survive_recording_write_to_output_nopreamble(recordingData, "\n");
+}
 void survive_recording_write_to_output(struct SurviveRecordingData *recordingData, const char *format, ...) {
 	if (!recordingData) {
 		return;
