@@ -164,6 +164,11 @@ struct survive_threaded_poser;
 struct survive_threaded_poser *survive_create_threaded_poser(SurviveObject *so, PoserCB innerPoser);
 int survive_threaded_poser_fn(SurviveObject *so, void **user, PoserData *pd);
 
+void survive_poseAA2pose_jacobian(struct CnMat *G, const LinmathAxisAnglePose *poseAA);
+void survive_pose2poseAA_jacobian(struct CnMat *G, const LinmathPose *pose);
+void survive_covariance_pose2poseAA(struct CnMat *R_aa, const LinmathPose *pose, const struct CnMat *R_q);
+void survive_covariance_poseAA2pose(struct CnMat *R_aa, const LinmathAxisAnglePose *poseAA, const struct CnMat *R_q);
+
 #ifdef __cplusplus
 };
 #endif

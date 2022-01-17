@@ -1,3 +1,4 @@
+#include "generated/survive_reproject.aux.generated.h"
 #include "math.h"
 #include "survive_kalman_lighthouses.h"
 #include "survive_kalman_tracker.h"
@@ -12,6 +13,45 @@
 #include <poser.h>
 #include <stdlib.h>
 #include <string.h>
+
+void survive_poseAA2pose_jacobian(struct CnMat *G, const LinmathAxisAnglePose *poseAA) {
+	CN_CREATE_STACK_MAT(Gp, 4, 3);
+
+	for (int i = 0; i < 3; i++)
+		cnMatrixSet(G, i, i, 1);
+
+	gen_axisangle2quat_jac_axis_angle(Gp.data, poseAA->AxisAngleRot);
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 3; j++) {
+			cnMatrixSet(G, i + 3, j + 3, cnMatrixGet(&Gp, i, j));
+		}
+	}
+}
+
+void survive_pose2poseAA_jacobian(struct CnMat *G, const LinmathPose *pose) {
+	CN_CREATE_STACK_MAT(Gp, 3, 4);
+
+	for (int i = 0; i < 3; i++)
+		cnMatrixSet(G, i, i, 1);
+
+	gen_quat2axisangle_jac_q(Gp.data, pose->Rot);
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 4; j++) {
+			cnMatrixSet(G, i + 3, j + 3, cnMatrixGet(&Gp, i, j));
+		}
+	}
+	assert(cn_is_finite(G));
+}
+void survive_covariance_pose2poseAA(struct CnMat *R_aa, const LinmathPose *pose, const struct CnMat *R_q) {
+	CN_CREATE_STACK_MAT(G, R_aa->rows, R_q->rows);
+	survive_pose2poseAA_jacobian(&G, pose);
+	gemm_ABAt_add_scaled(R_aa, &G, R_q, 0, 1, 1, 0);
+}
+void survive_covariance_poseAA2pose(struct CnMat *R_q, const LinmathAxisAnglePose *poseAA, const struct CnMat *R_aa) {
+	CN_CREATE_STACK_MAT(G, R_q->rows, R_aa->rows);
+	survive_poseAA2pose_jacobian(&G, poseAA);
+	gemm_ABAt_add_scaled(R_q, &G, R_aa, 0, 1, 1, 0);
+}
 
 SURVIVE_EXPORT int32_t PoserData_size(const PoserData *poser_data) {
 	switch (poser_data->pt) {
