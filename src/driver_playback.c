@@ -18,6 +18,7 @@ STATIC_CONFIG_ITEM(PLAYBACK, "playback", 's', "File to be used for playback if p
 STATIC_CONFIG_ITEM(PLAYBACK_FACTOR, "playback-factor", 'f',
 				   "Time factor of playback -- 1 is run at the same timing as original, 0 is run as fast as possible.",
 				   1.0f)
+STATIC_CONFIG_ITEM(PLAYBACK_START_TIME, "playback-start-time", 'f', "Start time of playback", -1.0f)
 STATIC_CONFIG_ITEM(PLAYBACK_TIME, "playback-time", 'f', "End time of playback", -1.0f)
 
 STATIC_CONFIG_ITEM(PLAYBACK_RUN_TIME, "run-time", 'f', "How long to run for", -1.)
@@ -45,11 +46,12 @@ typedef struct SurvivePlaybackData {
     gzFile playback_file;
     int lineno;
 
-    double next_time_s;
 	double time_start;
+	double next_time_s;
 	double time_now;
     FLT playback_factor;
 	FLT playback_time;
+	FLT playback_start_time;
 	bool hasRawLight;
     bool hasSweepAngle;
 	bool outputCalculatedPose, outputExternalPose;
@@ -82,6 +84,9 @@ static SurviveObject *find_or_warn(SurvivePlaybackData *driver, const char *dev)
 }
 
 static int parse_and_run_sweep(char *line, SurvivePlaybackData *driver) {
+	if (driver->time_now < driver->playback_start_time)
+		return 0;
+
 	char dev[10];
 
 	survive_channel channel;
@@ -107,6 +112,9 @@ static int parse_and_run_sweep(char *line, SurvivePlaybackData *driver) {
 }
 
 static int parse_and_run_sync(char *line, SurvivePlaybackData *driver) {
+	if (driver->time_now < driver->playback_start_time)
+		return 0;
+
 	char dev[10];
 
 	survive_channel channel;
@@ -130,6 +138,9 @@ static int parse_and_run_sync(char *line, SurvivePlaybackData *driver) {
 }
 
 static int parse_and_run_sweep_angle(char *line, SurvivePlaybackData *driver) {
+	if (driver->time_now < driver->playback_start_time)
+		return 0;
+
 	char dev[10];
 
 	survive_channel channel;
@@ -188,6 +199,9 @@ static int parse_and_set_imu_scales(const char* line, SurvivePlaybackData *drive
     return 0;
 }
 static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver, bool raw) {
+	if (driver->time_now < driver->playback_start_time)
+		return 0;
+
 	char dev[10];
 	int timecode = 0;
 	FLT accelgyro[9] = { 0 };
@@ -306,6 +320,9 @@ static int parse_and_run_config(const char *line, SurvivePlaybackData *driver) {
 }
 
 static int parse_and_run_rawlight(const char *line, SurvivePlaybackData *driver) {
+	if (driver->time_now < driver->playback_start_time)
+		return 0;
+
 	driver->hasRawLight = 1;
 
 	char dev[10];
@@ -321,6 +338,9 @@ static int parse_and_run_rawlight(const char *line, SurvivePlaybackData *driver)
 }
 
 static int parse_and_run_lightcode(const char *line, SurvivePlaybackData *driver) {
+	if (driver->time_now < driver->playback_start_time)
+		return 0;
+
 	char lhn[10];
 	char axn[10];
 	char dev[10];
@@ -493,6 +513,7 @@ static void *playback_thread(void *_driver) {
 	int last_output_minute = 0;
 	while (driver->keepRunning == 0 || *driver->keepRunning) {
 		double next_time_s_scaled = driver->next_time_s * driver->playback_factor;
+
 		double time_now = OGRelativeTime() + driver->time_start;
 		int output_minute = (driver->time_now / 60.);
 		if (driver->playback_time >= 0 && driver->time_now > driver->playback_time) {
@@ -533,6 +554,7 @@ static int playback_close(struct SurviveContext *ctx, void *_driver) {
 
 	survive_detach_config(ctx, "playback-factor", &driver->playback_factor);
 	survive_detach_config(ctx, "playback-time", &driver->playback_time);
+
 	survive_install_run_time_fn(ctx, 0, 0);
 	free(driver);
 	return 0;
@@ -571,6 +593,7 @@ int DriverRegPlayback(SurviveContext *ctx) {
 	survive_install_run_time_fn(ctx, survive_playback_run_time, sp);
 	survive_attach_configf(ctx, "playback-factor", &sp->playback_factor);
 	survive_attach_configf(ctx, "playback-time", &sp->playback_time);
+	survive_attach_configf(ctx, PLAYBACK_START_TIME_TAG, &sp->playback_start_time);
 
 	SV_INFO("Using playback file '%s' with timefactor of %f until %f", playback_file, sp->playback_factor,
 			sp->playback_time);
@@ -594,7 +617,8 @@ int DriverRegPlayback(SurviveContext *ctx) {
 			sp->time_start = time;
 		}
 	}
-
+	if (sp->time_start < sp->playback_start_time)
+		sp->time_start = sp->playback_start_time;
 	free(line);
 	gzseek(sp->playback_file, 0, SEEK_SET); // same as rewind(f);
 
