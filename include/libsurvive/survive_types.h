@@ -112,6 +112,7 @@ extern "C" {
 	&(p).Pos[0], &(p).Pos[1], &(p).Pos[2], &(p).Rot[0], &(p).Rot[1], &(p).Rot[2], &(p).Rot[3]
 
 typedef LinmathPose SurvivePose;
+typedef LinmathAxisAnglePose SurviveAxisAnglePose;
 typedef LinmathAxisAngleMag SurviveAngularVelocity;
 typedef LinmathAxisAnglePose SurviveVelocity;
 
