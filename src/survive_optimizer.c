@@ -42,18 +42,18 @@ STRUCT_CONFIG_SECTION(survive_optimizer_settings)
 	STRUCT_CONFIG_ITEM("mpfit-current-rot-bias", "", -1, t->current_rot_bias)
 END_STRUCT_CONFIG_SECTION(survive_optimizer_settings)
 
-	static char *object_parameter_names[] = {"Pose x",	   "Pose y",	 "Pose z",	  "Pose Rot w",
-											 "Pose Rot x", "Pose Rot y", "Pose Rot z"};
-	static char *vel_parameter_names[] = {"Vel x", "Vel y", "Vel z", "Vel Rot x", "Vel Rot y", "Vel Rot z"};
+static char *object_parameter_names[] = {"Pose x",	   "Pose y",	 "Pose z",	  "Pose Rot w",
+										 "Pose Rot x", "Pose Rot y", "Pose Rot z"};
+static char *vel_parameter_names[] = {"Vel x", "Vel y", "Vel z", "Vel Rot x", "Vel Rot y", "Vel Rot z"};
 
-	static void setup_pose_param_limits(survive_optimizer *mpfit_ctx, FLT *parameter,
-										struct mp_par_struct *pose_param_info) {
-		for (int i = 0; i < 7; i++) {
-			pose_param_info[i].limited[0] = pose_param_info[i].limited[1] = (i >= 3 ? false : true);
+static void setup_pose_param_limits(survive_optimizer *mpfit_ctx, FLT *parameter,
+									struct mp_par_struct *pose_param_info) {
+	for (int i = 0; i < 7; i++) {
+		pose_param_info[i].limited[0] = pose_param_info[i].limited[1] = (i >= 3 ? false : true);
 
-			pose_param_info[i].limits[0] = -(i >= 3 ? 1.0001 : 20.);
-			pose_param_info[i].limits[1] = -pose_param_info[i].limits[0];
-		}
+		pose_param_info[i].limits[0] = -(i >= 3 ? 1.0001 : 20.);
+		pose_param_info[i].limits[1] = -pose_param_info[i].limits[0];
+	}
 }
 void survive_optimizer_setup_pose_n(survive_optimizer *mpfit_ctx, const SurvivePose *pose, size_t n, bool isFixed,
 									int use_jacobian_function) {
@@ -655,6 +655,21 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 		}
 
 		switch (meas->meas_type) {
+		case survive_optimizer_measurement_type_parameters_bias: {
+			FLT deviation = 0;
+			for (int i = 0; i < mpfunc_ctx->parametersCnt; i++) {
+				if (mpfunc_ctx->parameters_variance[i] > 0) {
+					FLT param_deviation =
+						(mpfunc_ctx->parameters_expected_value[i] - p[i]) / mpfunc_ctx->parameters_variance[i];
+					deviation += param_deviation * param_deviation;
+					if (derivs && derivs[i]) {
+						derivs[i][meas_idx] = 2 * p[i];
+					}
+				}
+			}
+			deviates[meas_idx] = sqrt(deviation);
+			break;
+		}
 		case survive_optimizer_measurement_type_light: {
 			// If the next two measurements are joined; handle the full pair. This lets us just calculate
 			// sensorPtInLH once
@@ -1252,8 +1267,14 @@ SURVIVE_EXPORT void survive_optimizer_setup_buffers(survive_optimizer *ctx, FLT 
 	size_t meas_count = survive_optimizer_get_max_measurements_count(ctx);
 
 	ctx->parameters = (FLT *)parameter_buffer;
-	for (int i = 0; i < par_count; i++)
+	ctx->parameters_variance = parameter_buffer + par_count;
+	ctx->parameters_expected_value = parameter_buffer + 2 * par_count;
+
+	for (int i = 0; i < par_count; i++) {
 		ctx->parameters[i] = NAN;
+		ctx->parameters_variance[i] = -1;
+		ctx->parameters_expected_value[i] = NAN;
+	}
 	ctx->mp_parameters_info = mp_parameter_info_buffer;
 	ctx->parameters_info = parameter_info_buffer;
 	memset(ctx->parameters_info, 0, par_count * sizeof(survive_optimizer_parameter));
@@ -1317,7 +1338,7 @@ int survive_optimizer_get_max_measurements_count(const survive_optimizer *ctx) {
 	int sensor_cnt = SENSORS_PER_OBJECT;
 	assert(ctx->poseLength > 0 && ctx->poseLength < 20);
 	return ctx->poseLength * 2 * sensor_cnt * NUM_GEN2_LIGHTHOUSES +
-		   (ctx->settings->current_pos_bias <= 0 ? 0 : ctx->poseLength) + (ctx->poseLength + ctx->cameraLength);
+		   (ctx->settings->current_pos_bias <= 0 ? 0 : ctx->poseLength) + (ctx->poseLength + ctx->cameraLength) + 1;
 }
 
 int meas_size(survive_optimizer *ctx, enum survive_optimizer_measurement_type type) {
@@ -1329,6 +1350,8 @@ int meas_size(survive_optimizer *ctx, enum survive_optimizer_measurement_type ty
 		return 3;
 	case survive_optimizer_measurement_type_object_pose:
 		return 6;
+	case survive_optimizer_measurement_type_parameters_bias:
+		return 1;
 	default:
 		assert(false);
 	}

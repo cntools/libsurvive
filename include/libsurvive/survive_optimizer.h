@@ -13,6 +13,7 @@ extern "C" {
 
 enum survive_optimizer_measurement_type {
 	survive_optimizer_measurement_type_none,
+	survive_optimizer_measurement_type_parameters_bias,
 	survive_optimizer_measurement_type_light,
 	survive_optimizer_measurement_type_object_pose,
 	survive_optimizer_measurement_type_object_accel,
@@ -101,7 +102,7 @@ typedef struct survive_optimizer {
 
 	struct mp_par_struct *mp_parameters_info;
 	survive_optimizer_parameter *parameters_info;
-	FLT *parameters;
+	FLT *parameters, *parameters_variance, *parameters_expected_value;
 
 	bool disableVelocity;
 
@@ -133,7 +134,7 @@ typedef struct survive_optimizer {
 	{                                                                                                                  \
 		size_t par_count = survive_optimizer_get_max_parameters_count(&(ctx));                                         \
 		size_t meas_count = survive_optimizer_get_max_measurements_count(&(ctx));                                      \
-		FLT *param_buffer = alloc_fn(((ctx).parameters), par_count * sizeof(FLT));                                     \
+		FLT *param_buffer = alloc_fn(((ctx).parameters), 3 * par_count * sizeof(FLT));                                 \
 		mp_par *mp_param_info_buffer =                                                                                 \
 			(mp_par *)alloc_fn(((ctx).mp_parameters_info), par_count * sizeof(struct mp_par_struct));                  \
 		survive_optimizer_parameter *param_info_buffer = (survive_optimizer_parameter *)alloc_fn(                      \
@@ -141,8 +142,8 @@ typedef struct survive_optimizer {
 		size_t measurementAllocationSize = meas_count * sizeof(survive_optimizer_measurement);                         \
 		size_t upAllocationSize = sizeof(LinmathPoint3d) * ((ctx).poseLength + (ctx).cameraLength);                    \
 		void *measurement_buffer = alloc_fn(((ctx).measurements), measurementAllocationSize + upAllocationSize);       \
-		void *sos_buffer = alloc_fn((ctx).sos, sizeof(SurviveObject *) * (ctx).poseLength);                                  \
-        memset(sos_buffer, 0, sizeof(SurviveObject *) * (ctx).poseLength);\
+		void *sos_buffer = alloc_fn((ctx).sos, sizeof(SurviveObject *) * (ctx).poseLength);                            \
+		memset(sos_buffer, 0, sizeof(SurviveObject *) * (ctx).poseLength);                                             \
 		SurviveObject *sos[] = {__VA_ARGS__};                                                                          \
 		memcpy(sos_buffer, sos, sizeof(sos));                                                                          \
 		survive_optimizer_setup_buffers(&(ctx), param_buffer, param_info_buffer, mp_param_info_buffer,                 \
