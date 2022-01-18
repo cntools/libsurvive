@@ -1278,6 +1278,7 @@ SURVIVE_EXPORT void survive_optimizer_setup_buffers(survive_optimizer *ctx, FLT 
 	if (ctx->settings->optimize_scale_threshold >= 0) {
 		survive_optimizer_emplace_params(ctx, survive_optimizer_parameter_object_scale, ctx->poseLength);
 	}
+
 	if (ctx->settings->current_pos_bias > 0) {
 		for (int i = 0; i < ctx->poseLength; i++) {
 			if (!quatiszero(ctx->sos[i]->OutPoseIMU.Rot)) {
