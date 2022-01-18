@@ -837,7 +837,7 @@ void survive_kalman_tracker_process_noise(const struct SurviveKalmanTracker_Para
 	assert(cn_is_symmetrical(q_out));
 
 	for(int i = 0;i < 3;i++) {
-        int accBiasIdx = (int)(errorState ? offsetof(SurviveKalmanErrorModel , AccBias) : offsetof(SurviveKalmanModel, AccBias)/sizeof(FLT)) + i;
+        int accBiasIdx = (int)(errorState ? offsetof(SurviveKalmanErrorModel , AccBias) : offsetof(SurviveKalmanModel, AccBias))/sizeof(FLT) + i;
         if(accBiasIdx < q_out->rows) cnMatrixSet(q_out, accBiasIdx, accBiasIdx, ga);
 
         int gyroBiasIdx = (int)(errorState ? offsetof(SurviveKalmanErrorModel, GyroBias) : offsetof(SurviveKalmanModel, GyroBias))/sizeof(FLT) + i;
@@ -888,7 +888,7 @@ void survive_kalman_error_tracker_predict_jac(FLT dt, const struct cnkalman_stat
 		SurviveKalmanModel s_out = {0};
 
 		struct SurviveKalmanTracker_Params *params = (struct SurviveKalmanTracker_Params *)k->user;
-		
+
 		quatnormalize(s_in.Pose.Rot, s_in.Pose.Rot);
 		gen_SurviveKalmanModelPredict(&s_out, dt, &s_in);
 		quatnormalize(s_out.Pose.Rot, s_out.Pose.Rot);
@@ -1039,7 +1039,7 @@ void survive_kalman_tracker_reinit(SurviveKalmanTracker *tracker) {
 
 	cnkalman_state_reset(&tracker->model);
 	for (int i = 0; i < 7; i++) {
-		//cnMatrixSet(&tracker->model.P, i, i, 10);
+		cnMatrixSet(&tracker->model.P, i, i, cnMatrixGet(&tracker->model.P, i, i) + 10);
 	}
     if (tracker->params.initial_variance_imu_correction != 0) {
 		for(int i = 0;i < 4;i++) {
@@ -1463,6 +1463,17 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 
 		if(tracker->report_sampled_cloud > 0) {
 			survive_show_covariance(so, &pose, &tracker->model.P, .1, tracker->report_sampled_cloud);
+		}
+		int meta_idx = offsetof(SurviveKalmanModel, AccScale) / sizeof(FLT);
+		if(meta_idx < state_cnt) {
+			FLT v[16] = { 0 };
+			memcpy(v, &tracker->state.AccScale, sizeof(FLT) * (state_cnt - meta_idx));
+			CnMat meta = cnVec(state_cnt - meta_idx, v);
+			v[0] = v[0] - 1;
+			v[1] = v[1] - 1;
+			if(cn_norm2(&meta) != 0) {
+				survive_recording_write_matrix(ctx->recptr, so, "meta", &meta);
+			}
 		}
     }
 
