@@ -90,7 +90,8 @@ END_STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 STRUCT_NAMED_CONFIG_SECTION(x, cnkalman_meas_model_t) \
 	STRUCT_CONFIG_ITEM("kalman-" #x "-adaptive", "Use adaptive covariance for " #x, 0, t->adaptive) \
     STRUCT_CONFIG_ITEM("kalman-" #x "-iterations", "Max iterations for " #x, -1, t->term_criteria.max_iterations) \
-    STRUCT_CONFIG_ITEM("kalman-" #x "-jacobian-mode", "Jacobian mode " #x ". -1 for debug, 1 for numerical" , 0, t->meas_jacobian_mode)              \
+    STRUCT_CONFIG_ITEM("kalman-" #x "-jacobian-mode", "Jacobian mode " #x ". -1 for debug, 1 for numerical" , 0, t->meas_jacobian_mode) \
+	STRUCT_CONFIG_ITEM("kalman-" #x "-step-size", "Step size for " #x "." , -1, t->numeric_step_size)              \
     STRUCT_CONFIG_ITEM("kalman-" #x "-error-state-model", "Use error state model jacobian if available " #x, true, t->error_state_model) \
 END_STRUCT_CONFIG_SECTION(cnkalman_meas_model_t)
 // clang-format off
