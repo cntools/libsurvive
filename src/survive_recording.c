@@ -34,6 +34,7 @@ typedef struct SurviveRecordingData {
 	bool writeIMU;
 	bool writeCalIMU;
 	bool writeAngle;
+	bool writeDataMatrix;
 	gzFile output_file;
 } SurviveRecordingData;
 
@@ -42,21 +43,22 @@ STRUCT_CONFIG_SECTION(SurviveRecordingData)
     STRUCT_CONFIG_ITEM("record-rawlight", "Whether or not to output raw light data", 1, t->writeRawLight)
     STRUCT_CONFIG_ITEM("record-imu", "Whether or not to output imu data", 1, t->writeIMU)
     STRUCT_CONFIG_ITEM("record-cal-imu", "Whether or not to output calibrated imu data", 0, t->writeCalIMU)
-    STRUCT_CONFIG_ITEM("record-angle", "Whether or not to output angle data", 1, t->writeAngle)
+	STRUCT_CONFIG_ITEM("record-angle", "Whether or not to output angle data", 1, t->writeAngle)
+	STRUCT_CONFIG_ITEM("record-data-matrices", "Whether or not to output data matrices", 0, t->writeDataMatrix)
 END_STRUCT_CONFIG_SECTION(SurviveRecordingData)
-// clang-format on
+	// clang-format on
 
-STATIC_CONFIG_ITEM(RECORD, "record", 's', "File to record to if you wish to make a recording.", "")
-STATIC_CONFIG_ITEM(RECORD_STDOUT, "record-stdout", 'b', "Whether or not to dump recording data to stdout", 0)
+	STATIC_CONFIG_ITEM(RECORD, "record", 's', "File to record to if you wish to make a recording.", "")
+	STATIC_CONFIG_ITEM(RECORD_STDOUT, "record-stdout", 'b', "Whether or not to dump recording data to stdout", 0)
 
-static void write_to_output_raw(SurviveRecordingData *recordingData, const char *string, int len) {
-	if (recordingData->output_file) {
-		gzwrite(recordingData->output_file, string, len);
-	}
+	static void write_to_output_raw(SurviveRecordingData *recordingData, const char *string, int len) {
+		if (recordingData->output_file) {
+			gzwrite(recordingData->output_file, string, len);
+		}
 
-	if (recordingData->alwaysWriteStdOut) {
-		fwrite(string, 1, len, stdout);
-	}
+		if (recordingData->alwaysWriteStdOut) {
+			fwrite(string, 1, len, stdout);
+		}
 }
 
 #ifdef SURVIVE_HEX_FLOATS
@@ -67,6 +69,10 @@ static void write_to_output_raw(SurviveRecordingData *recordingData, const char 
 
 SURVIVE_EXPORT void survive_recording_write_matrix(struct SurviveRecordingData *recordingData, const SurviveObject *so,
 												   const char *name, const CnMat *M) {
+	if (!recordingData || !recordingData->writeDataMatrix) {
+		return;
+	}
+
 	survive_recording_write_to_output(recordingData, "%s DATA_MATRIX %s %d %d ", so->codename, name, M->rows, M->cols);
 	for (int i = 0; i < M->rows * M->cols; i++) {
 		survive_recording_write_to_output_nopreamble(recordingData, "%f ", M->data[i]);
