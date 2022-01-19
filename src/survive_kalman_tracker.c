@@ -186,7 +186,7 @@ struct map_light_data_ctx {
 typedef void (*SurviveKalmanModel_LightMeas_jac_x0_with_hx)(CnMat* Hx, CnMat* hx, const FLT dt, const SurviveKalmanModel* _x0, const FLT* sensor_pt, const SurvivePose* lh_p, const BaseStationCal* bsc0);
 typedef void (*SurviveKalmanErrorModel_LightMeas_jac_x0_with_hx)(CnMat* Hx, CnMat* hx, const FLT dt, const SurviveKalmanModel* _x0, const SurviveKalmanErrorModel* error_model, const FLT* sensor_pt, const SurvivePose* lh_p, const BaseStationCal* bsc0);
 
-const static SurviveKalmanErrorModel zero_error_model = {};
+const static SurviveKalmanErrorModel zero_error_model = { 0 };
 SurviveKalmanModel_LightMeas_jac_x0_with_hx SurviveKalmanModel_LightMeas_jac_x0_with_hx_fns[2][2] = {
 	{SurviveKalmanModel_LightMeas_x_gen1_jac_x0_with_hx, SurviveKalmanModel_LightMeas_y_gen1_jac_x0_with_hx},
 	{SurviveKalmanModel_LightMeas_x_gen2_jac_x0_with_hx, SurviveKalmanModel_LightMeas_y_gen2_jac_x0_with_hx},
