@@ -183,6 +183,19 @@ struct map_light_data_ctx {
 	SurviveKalmanTracker *tracker;
 };
 
+typedef void (*SurviveKalmanModel_LightMeas_jac_x0_with_hx)(CnMat* Hx, CnMat* hx, const FLT dt, const SurviveKalmanModel* _x0, const FLT* sensor_pt, const SurvivePose* lh_p, const BaseStationCal* bsc0);
+typedef void (*SurviveKalmanErrorModel_LightMeas_jac_x0_with_hx)(CnMat* Hx, CnMat* hx, const FLT dt, const SurviveKalmanModel* _x0, const SurviveKalmanErrorModel* error_model, const FLT* sensor_pt, const SurvivePose* lh_p, const BaseStationCal* bsc0);
+
+const static SurviveKalmanErrorModel zero_error_model = {};
+SurviveKalmanModel_LightMeas_jac_x0_with_hx SurviveKalmanModel_LightMeas_jac_x0_with_hx_fns[2][2] = {
+	{SurviveKalmanModel_LightMeas_x_gen1_jac_x0_with_hx, SurviveKalmanModel_LightMeas_y_gen1_jac_x0_with_hx},
+	{SurviveKalmanModel_LightMeas_x_gen2_jac_x0_with_hx, SurviveKalmanModel_LightMeas_y_gen2_jac_x0_with_hx},
+};
+SurviveKalmanErrorModel_LightMeas_jac_x0_with_hx SurviveKalmanErrorModel_LightMeas_jac_x0_with_hx_fns[2][2] = {
+	{SurviveKalmanErrorModel_LightMeas_x_gen1_jac_x0_with_hx, SurviveKalmanErrorModel_LightMeas_y_gen1_jac_x0_with_hx},
+	{SurviveKalmanErrorModel_LightMeas_x_gen2_jac_x0_with_hx, SurviveKalmanErrorModel_LightMeas_y_gen2_jac_x0_with_hx},
+};
+
 /**
  * This function reuses the reproject functions to estimate what it thinks the lightcap angle should be based on x_t,
  * and uses that measurement to compare from the actual observed angle. These functions have jacobian functions that
@@ -191,6 +204,8 @@ struct map_light_data_ctx {
 static bool map_light_data(void *user, const struct CnMat *Z, const struct CnMat *x_t, struct CnMat *y,
 						   struct CnMat *H_k) {
 	struct map_light_data_ctx *cbctx = (struct map_light_data_ctx *)user;
+
+	SurviveKalmanModel s = copy_model(cn_as_const_vector(x_t), x_t->rows);
 
 	const SurviveKalmanTracker *tracker = cbctx->tracker;
 
@@ -204,13 +219,12 @@ static bool map_light_data(void *user, const struct CnMat *Z, const struct CnMat
     SurvivePose obj2world = *(SurvivePose *)cn_as_const_vector(x_t);
     quatnormalize(obj2world.Rot, obj2world.Rot);
 
+CN_CREATE_STACK_VEC(h_x, 1);
 	FLT *Y = cn_as_vector(y);
 	for (int i = 0; i < tracker->savedLight_idx; i++) {
 		const LightInfo *info = &tracker->savedLight[i];
 		int axis = info->axis;
 
-		survive_reproject_full_xy_fn_t project_fn = mdl->reprojectAxisFullFn[axis];
-		survive_reproject_axis_jacob_fn_t project_jacob_fn = mdl->reprojectAxisJacobFn[axis];
 		assert(ctx->bsd[info->lh].PositionSet);
 
 		const SurvivePose world2lh = InvertPoseRtn(&ctx->bsd[info->lh].Pose);
@@ -220,22 +234,36 @@ static bool map_light_data(void *user, const struct CnMat *Z, const struct CnMat
         LinmathPoint3d ptInObj;
         gen_scale_sensor_pt(ptInObj, pt, &imu2trackref, so->sensor_scale);
 
-		FLT h_x = project_fn(&obj2world, ptInObj, &world2lh, &ctx->bsd[info->lh].fcal[axis]);
-		Y[i] = cn_as_const_vector(Z)[i] - h_x;
-		if(tracker->lightcap_max_error > 0) {
-            Y[i] = linmath_enforce_range(Y[i], -tracker->lightcap_max_error, tracker->lightcap_max_error);
+		FLT t = info->timecode / 48000000. - cbctx->tracker->model.t;
+		t = 0;
+		CnMat H_k_row = {0};
+		if(H_k) {
+			H_k_row = cnMatView(1, H_k->cols, H_k, i, 0);
+		}
+		if(cbctx->tracker->lightcap_model.error_state_model && cbctx->tracker->use_error_state) {
+			assert(H_k == 0 || cbctx->tracker->model.error_state_size == H_k->cols);
+			SurviveKalmanErrorModel_LightMeas_jac_x0_with_hx_fns[ctx->lh_version][info->axis](H_k ? &H_k_row : 0,
+																							  y ? &h_x : 0, t, &s, &zero_error_model, ptInObj, &world2lh, &ctx->bsd[info->lh].fcal[axis]);
+		} else {
+			assert(H_k == 0 || cbctx->tracker->model.state_cnt == H_k->cols);
+			SurviveKalmanModel_LightMeas_jac_x0_with_hx_fns[ctx->lh_version][info->axis](H_k ? &H_k_row : 0,
+																						 y ? &h_x : 0, t, &s, ptInObj, &world2lh, &ctx->bsd[info->lh].fcal[axis]);
+		}
+		if(y) {
+			Y[i] = cn_as_const_vector(Z)[i] - h_x.data[0];
+			if(tracker->lightcap_max_error > 0) {
+				Y[i] = linmath_enforce_range(Y[i], -tracker->lightcap_max_error, tracker->lightcap_max_error);
+			}
+			SV_DATA_LOG("h_light[%d][%d][%d]", h_x.data, 1, info->lh, info->axis, info->sensor_idx);
+			SV_DATA_LOG("Y_light[%d][%d][%d]", Y, 1, info->lh, info->axis, info->sensor_idx);
 		}
         SV_DATA_LOG("Z_light[%d][%d][%d]", &info->value, 1, info->lh, info->axis, info->sensor_idx);
-		SV_DATA_LOG("h_light[%d][%d][%d]", &h_x, 1, info->lh, info->axis, info->sensor_idx);
-		SV_DATA_LOG("Y_light[%d][%d][%d]", Y, 1, info->lh, info->axis, info->sensor_idx);
-		FLT jacobian[7] = {0};
-		project_jacob_fn(jacobian, &obj2world, ptInObj, &world2lh, &ctx->bsd[info->lh].fcal[axis]);
-		for (int j = 0; H_k && j < 7; j++) {
-            cnMatrixSet(H_k, i, j, jacobian[j]);
-		}
 	}
+
 	if (H_k && !cn_is_finite(H_k))
 		return false;
+
+	survive_recording_write_matrix(tracker->so->ctx->recptr, tracker->so, "light-y", y);
 
 	return true;
 }
@@ -330,6 +358,7 @@ void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, Poser
 		info->value = data->angle;
 		info->axis = PoserDataLight_axis(data);
 		info->sensor_idx = data->sensor_id;
+		info->timecode = data->hdr.timecode;
 
 		integrate_variance_tracker(tracker, &tracker->light_variance[info->lh][info->sensor_idx][info->axis], &info->value, 1);
 	}
@@ -389,6 +418,7 @@ bool survive_kalman_tracker_imu_measurement_model(void *user, const struct CnMat
 		SurviveKalmanTracker * tracker = fn_ctx->tracker;
 		SurviveObject * so = fn_ctx->tracker->so;
 		SurviveContext *ctx = so->ctx;
+		survive_recording_write_matrix(tracker->so->ctx->recptr, tracker->so, "imu-y", y);
 		SV_VERBOSE(600, "X     " Point7_format, LINMATH_VEC7_EXPAND(cn_as_const_vector(x_t)))
 		SV_VERBOSE(600, "Z     " Point6_format, LINMATH_VEC6_EXPAND(cn_as_const_vector(Z)))
 
@@ -430,13 +460,13 @@ static void error_state_fn(void *user, const struct CnMat *x0,
 						   struct CnMat *E_jac_x) {
 	SurviveKalmanModel state0 = copy_model(cn_as_const_vector(x0), x0->rows);
 	if(E_jac_x) {
-		gen_SurviveKalmanModelToErrorModel_jac_x1(E_jac_x, &state0, &state0);
+		SurviveKalmanModelToErrorModel_jac_x1(E_jac_x, &state0, &state0);
 	}
 
 	if(x1 && E) {
 		SurviveKalmanModel state1 = copy_model(cn_as_const_vector(x1), x1->rows);
 		SurviveKalmanErrorModel error_state = { 0 };
-		gen_SurviveKalmanModelToErrorModel(&error_state, &state1, &state0);
+		SurviveKalmanModelToErrorModel(&error_state, &state1, &state0);
 		memcpy(cn_as_vector(E), &error_state, sizeof(FLT) * E->rows);
 	}
 }
@@ -447,13 +477,13 @@ static void state_update_fn(void *user, const struct CnMat *x0, const struct CnM
 	if(x1){
 		SurviveKalmanModel _x1 = { 0 };
 		SurviveKalmanErrorModel error_state = copy_error_model(E);
-		gen_SurviveKalmanModelAddErrorModel(&_x1, &state, &error_state);
+		SurviveKalmanModelAddErrorModel(&_x1, &state, &error_state);
 		memcpy(cn_as_vector(x1), &_x1, sizeof(FLT) * x1->rows);
 	}
 	if(dX_wrt_error_state){
 		SurviveKalmanErrorModel error_model = { 0 };
 		SurviveKalmanModel state = copy_model(cn_as_const_vector(x0), x0->rows);
-		gen_SurviveKalmanModelAddErrorModel_jac_error_state(dX_wrt_error_state, &state, &error_model);
+		SurviveKalmanModelAddErrorModel_jac_error_state(dX_wrt_error_state, &state, &error_model);
 	}
 }
 /*
@@ -469,6 +499,7 @@ static bool map_obs_data(void *user, const struct CnMat *Z, const struct CnMat *
 	SurviveKalmanTracker *tracker = (SurviveKalmanTracker *)user;
 	if(y) {
 		subnd(cn_as_vector(y), cn_as_const_vector(Z), cn_as_const_vector(x_t), 7);
+		survive_recording_write_matrix(tracker->so->ctx->recptr, tracker->so, "obs-y", y);
 	}
 	if(H_k) {
 		bool errorState = tracker->use_error_state && tracker->obs_model.error_state_model;
@@ -488,7 +519,7 @@ static bool map_obs_data_axisangle(void *user, const struct CnMat *Z, const stru
 
 	SurviveAxisAnglePose yp = { 0 };
 	SurviveAxisAnglePose predictedPose = *(const SurviveAxisAnglePose *)cn_as_const_vector(Z);
-	gen_SurviveObsErrorModelNoFlip(&yp, x0, (const SurviveAxisAnglePose *)cn_as_const_vector(Z));
+	SurviveObsErrorModelNoFlip(&yp, x0, (const SurviveAxisAnglePose *)cn_as_const_vector(Z));
 	scalend((FLT *)&yp, (FLT *)&yp, -1, 6);
 
 	FLT mag = normnd2(yp.AxisAngleRot, 3);
@@ -507,11 +538,11 @@ static bool map_obs_data_axisangle(void *user, const struct CnMat *Z, const stru
 		if(errorState) {
 			SurviveKalmanErrorModel error_model = { 0 };
 			(!hasFlip ?
-			 gen_SurviveObsErrorStateErrorModelNoFlip_jac_err :
-			 gen_SurviveObsErrorStateErrorModelFlip_jac_err)(H_k, x0, &error_model, &predictedPose);
+			 SurviveObsErrorStateErrorModelNoFlip_jac_err :
+			 SurviveObsErrorStateErrorModelFlip_jac_err)(H_k, x0, &error_model, &predictedPose);
 		} else {
-			(!hasFlip ? gen_SurviveObsErrorModelNoFlip_jac_x0 :
-			 gen_SurviveObsErrorModelFlip_jac_x0)(H_k, x0, &predictedPose);
+			(!hasFlip ? SurviveObsErrorModelNoFlip_jac_x0 :
+			 SurviveObsErrorModelFlip_jac_x0)(H_k, x0, &predictedPose);
 		}
     }
     return true;
@@ -865,7 +896,7 @@ void survive_kalman_tracker_predict_jac(FLT dt, const struct cnkalman_state_s *k
 			scalend(s_in.Velocity.Pos, s_in.Velocity.Pos, 0, 6);
 		}
 		quatnormalize(s_in.Pose.Rot, s_in.Pose.Rot);
-		gen_SurviveKalmanModelPredict(&s_out, dt, &s_in);
+		SurviveKalmanModelPredict(&s_out, dt, &s_in);
 		quatnormalize(s_out.Pose.Rot, s_out.Pose.Rot);
 
 		memcpy(cn_as_vector(x1), s_out.Pose.Pos, x1->rows * sizeof(FLT));
@@ -876,7 +907,7 @@ void survive_kalman_tracker_predict_jac(FLT dt, const struct cnkalman_state_s *k
 		if (dt == 0) {
 			cn_eye(f, 0);
 		} else {
-			gen_SurviveKalmanModelPredict_jac_kalman_model(f, dt, &s_in);
+			SurviveKalmanModelPredict_jac_kalman_model(f, dt, &s_in);
 		}
 	}
 }
@@ -891,7 +922,7 @@ void survive_kalman_error_tracker_predict_jac(FLT dt, const struct cnkalman_stat
 		struct SurviveKalmanTracker_Params *params = (struct SurviveKalmanTracker_Params *)k->user;
 
 		quatnormalize(s_in.Pose.Rot, s_in.Pose.Rot);
-		gen_SurviveKalmanModelPredict(&s_out, dt, &s_in);
+		SurviveKalmanModelPredict(&s_out, dt, &s_in);
 		quatnormalize(s_out.Pose.Rot, s_out.Pose.Rot);
 
 		memcpy(cn_as_vector(x1), s_out.Pose.Pos, x1->rows * sizeof(FLT));
@@ -902,7 +933,7 @@ void survive_kalman_error_tracker_predict_jac(FLT dt, const struct cnkalman_stat
 		if (dt == 0) {
 			cn_eye(f, 0);
 		} else {
-			gen_SurviveKalmanModelErrorPredict_jac_error_model(f, dt, &s_in, &errorModel);
+			SurviveKalmanModelErrorPredict_jac_error_model(f, dt, &s_in, &errorModel);
 		}
 	}
 }
@@ -1168,9 +1199,8 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 
     cnkalman_meas_model_init(&tracker->model, "lightcap", &tracker->lightcap_model, map_light_data);
 	cnkalman_meas_model_t_lightcap_attach_config(ctx, &tracker->lightcap_model);
-	tracker->lightcap_model.error_state_model = false;
-
-    tracker->lightcap_model.term_criteria.max_iterations = 5;
+	//tracker->lightcap_model.error_state_model = false;
+	tracker->lightcap_model.term_criteria.max_iterations = 10;
 
     cnkalman_meas_model_init(&tracker->model, "obs", &tracker->obs_model, tracker->obs_axisangle_model ? map_obs_data_axisangle : map_obs_data);
 	cnkalman_meas_model_t_obs_attach_config(ctx, &tracker->obs_model);

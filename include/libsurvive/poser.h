@@ -126,6 +126,7 @@ typedef struct {
 	uint8_t lh;
 	uint8_t sensor_idx;
 	uint8_t axis;
+	survive_long_timecode timecode;
 } PoserDataGlobalSceneMeasurement;
 
 struct PoserDataGlobalScene {
