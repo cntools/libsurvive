@@ -12,6 +12,8 @@ if(HAVE_FOPENCOOKIE)
 endif()
 
 cnkalman_generate_code(./generated/kalman_kinematics.py)
+cnkalman_generate_code(./generated/lighthouse_gen1.py)
+cnkalman_generate_code(./generated/lighthouse_gen2.py)
 
 SET(SURVIVE_SRCS ${SURVIVE_SRCS}
   ootx_decoder.c
@@ -26,6 +28,8 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
   survive_driverman.c
   survive_kalman_tracker.c
         ./generated/kalman_kinematics.gen.h
+        ./generated/lighthouse_gen1.gen.h
+        ./generated/lighthouse_gen2.gen.h
   survive_optimizer.c
   survive_recording.c        
   survive_plugins.c

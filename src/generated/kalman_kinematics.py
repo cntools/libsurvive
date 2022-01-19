@@ -1,64 +1,11 @@
 import math
-from dataclasses import dataclass
 
-import sympy
-from symengine import asin, cos, sin, tan, sqrt, Matrix
-from sympy import atan2
 import cnkalman.codegen as cg
-import numpy as np
-from scipy.linalg import expm, block_diag
+import lighthouse_gen1
+import lighthouse_gen2
+from common_math import *
+from survive_types import *
 
-def quatmagnitude(q):
-    qw, qi, qj, qk = q
-    return sqrt(qw * qw + qi * qi + qj * qj + qk * qk)
-
-def quatnormalize(q):
-    qw, qi, qj, qk = q
-    mag = quatmagnitude(q)
-    return [qw / mag, qi / mag, qj / mag, qk / mag]
-
-def quatgetreciprocal(q):
-    return [q[0], -q[1], -q[2], -q[3]]
-
-# q1 * q2
-def quatrotateabout(q1, q2):
-    return Matrix([(q1[0] * q2[0]) - (q1[1] * q2[1]) - (q1[2] * q2[2]) - (q1[3] * q2[3]),
-                      (q1[0] * q2[1]) + (q1[1] * q2[0]) + (q1[2] * q2[3]) - (q1[3] * q2[2]),
-                      (q1[0] * q2[2]) - (q1[1] * q2[3]) + (q1[2] * q2[0]) + (q1[3] * q2[1]),
-                      (q1[0] * q2[3]) + (q1[1] * q2[2]) - (q1[2] * q2[1]) + (q1[3] * q2[0])])
-
-def quatfind(q1, q2):
-    return quatrotateabout(q2, quatgetreciprocal(q1))
-
-@dataclass
-class SurvivePose:
-    Pos: np.array = np.array((0, 0, 0))
-    Rot: np.array = np.array((1, 0, 0, 0))
-
-@dataclass
-class SurviveAxisAnglePose:
-    Pos: np.array = np.array((0., 0., 0))
-    AxisAngleRot: np.array = np.array((0, 0, 0))
-
-@dataclass
-class SurviveKalmanModel:
-    Pose: SurvivePose
-    Velocity: SurviveAxisAnglePose
-    Acc: np.array = np.array((0., 0., 0))
-    AccScale: float = 1
-    IMUCorrection: np.array = np.array((1, 0., 0., 0))
-    AccBias: np.array = np.array((0., 0., 0))
-    GyroBias: np.array = np.array((0., 0., 0))
-
-@dataclass
-class SurviveKalmanErrorModel:
-    Pose: SurviveAxisAnglePose
-    Velocity: SurviveAxisAnglePose
-    Acc: np.array = np.array((0., 0., 0))
-    AccScale: float = 1
-    IMUCorrection: np.array = (1, 0., 0., 0)
-    AccBias: np.array = np.array((0., 0., 0))
-    GyroBias: np.array = np.array((0., 0., 0))
 
 def quattoeuler(q):
     return [
@@ -193,7 +140,7 @@ def SurviveKalmanModelPredict(t, kalman_model : SurviveKalmanModel):
     new_rot = apply_ang_velocity(obj_v.AxisAngleRot, t, obj_p.Rot)
 
     return SurviveKalmanModel(
-        Pose=SurvivePose(Pos=pos + vpos * t + obj_acc * (t * t / 2), Rot=new_rot),
+        Pose=SurvivePose(Pos=pos + vpos * t + obj_acc * (Abs(t) * t / 2), Rot=new_rot),
         Velocity=SurviveAxisAnglePose(vpos + obj_acc * t, obj_v.AxisAngleRot),
         Acc=kalman_model.Acc,
         AccScale=kalman_model.AccScale,
@@ -236,3 +183,44 @@ def SurviveObsErrorStateErrorModelNoFlip(x0: SurviveKalmanModel, err: SurviveKal
 def SurviveObsErrorStateErrorModelFlip(x0: SurviveKalmanModel, err: SurviveKalmanErrorModel, Z : SurviveAxisAnglePose):
     x1 = SurviveKalmanModelAddErrorModel(x0, err)
     return SurviveObsErrorModel(x1, Z, True)
+
+def SurviveKalmanModel_LightMeas(dt : float, fn, x0: SurviveKalmanModel, sensor_pt: list, lh_p : SurvivePose,  bsc0 : BaseStationCal):
+    x1 = SurviveKalmanModelPredict(dt, x0)
+    return fn(x1.Pose, sensor_pt, lh_p, bsc0)
+
+def SurviveKalmanErrorModel_LightMeas(dt : float, fn, x0: SurviveKalmanModel, error_model: SurviveKalmanErrorModel, sensor_pt: list, lh_p : SurvivePose,  bsc0 : BaseStationCal):
+    x1 = SurviveKalmanModelAddErrorModel(x0, error_model)
+    x2 = SurviveKalmanModelPredict(dt, x1)
+    return fn(x2.Pose, sensor_pt, lh_p, bsc0)
+
+@cg.generate_code()
+def SurviveKalmanModel_LightMeas_x_gen1(dt : float, x0: SurviveKalmanModel, sensor_pt: list, lh_p : SurvivePose,  bsc0 : BaseStationCal):
+    return SurviveKalmanModel_LightMeas(dt, lighthouse_gen1.reproject_axis_x, x0, sensor_pt, lh_p, bsc0)
+
+@cg.generate_code()
+def SurviveKalmanModel_LightMeas_y_gen1(dt : float, x0: SurviveKalmanModel, sensor_pt: list, lh_p : SurvivePose,  bsc0 : BaseStationCal):
+    return SurviveKalmanModel_LightMeas(dt, lighthouse_gen1.reproject_axis_y, x0, sensor_pt, lh_p, bsc0)
+
+@cg.generate_code()
+def SurviveKalmanModel_LightMeas_x_gen2(dt : float, x0: SurviveKalmanModel, sensor_pt: list, lh_p : SurvivePose,  bsc0 : BaseStationCal):
+    return SurviveKalmanModel_LightMeas(dt, lighthouse_gen2.reproject_axis_x_gen2, x0, sensor_pt, lh_p, bsc0)
+
+@cg.generate_code()
+def SurviveKalmanModel_LightMeas_y_gen2(dt : float, x0: SurviveKalmanModel, sensor_pt: list, lh_p : SurvivePose,  bsc0 : BaseStationCal):
+    return SurviveKalmanModel_LightMeas(dt, lighthouse_gen2.reproject_axis_y_gen2, x0, sensor_pt, lh_p, bsc0)
+
+@cg.generate_code()
+def SurviveKalmanErrorModel_LightMeas_x_gen1(dt : float, x0: SurviveKalmanModel, error_model: SurviveKalmanErrorModel, sensor_pt: list, lh_p : SurvivePose,  bsc0 : BaseStationCal):
+    return SurviveKalmanErrorModel_LightMeas(dt, lighthouse_gen1.reproject_axis_x, x0, error_model, sensor_pt, lh_p, bsc0)
+
+@cg.generate_code()
+def SurviveKalmanErrorModel_LightMeas_y_gen1(dt : float, x0: SurviveKalmanModel, error_model: SurviveKalmanErrorModel, sensor_pt: list, lh_p : SurvivePose,  bsc0 : BaseStationCal):
+    return SurviveKalmanErrorModel_LightMeas(dt, lighthouse_gen1.reproject_axis_y, x0, error_model, sensor_pt, lh_p, bsc0)
+
+@cg.generate_code()
+def SurviveKalmanErrorModel_LightMeas_x_gen2(dt : float, x0: SurviveKalmanModel, error_model: SurviveKalmanErrorModel, sensor_pt: list, lh_p : SurvivePose,  bsc0 : BaseStationCal):
+    return SurviveKalmanErrorModel_LightMeas(dt, lighthouse_gen2.reproject_axis_x_gen2, x0, error_model, sensor_pt, lh_p, bsc0)
+
+@cg.generate_code()
+def SurviveKalmanErrorModel_LightMeas_y_gen2(dt : float, x0: SurviveKalmanModel, error_model: SurviveKalmanErrorModel, sensor_pt: list, lh_p : SurvivePose,  bsc0 : BaseStationCal):
+    return SurviveKalmanErrorModel_LightMeas(dt, lighthouse_gen2.reproject_axis_y_gen2, x0, error_model, sensor_pt, lh_p, bsc0)
