@@ -12,43 +12,39 @@ if(HAVE_FOPENCOOKIE)
 endif()
 
 cnkalman_generate_code(./generated/kalman_kinematics.py)
-cnkalman_generate_code(./generated/lighthouse_gen1.py)
-cnkalman_generate_code(./generated/lighthouse_gen2.py)
 
 SET(SURVIVE_SRCS ${SURVIVE_SRCS}
-  ootx_decoder.c
-  poser.c
-  poser_general_optimizer.c
-  survive.c
-  survive_buildinfo.c
-  survive_api.c
-        survive_config.c
-  survive_default_devices.c
-  survive_disambiguator.c
-  survive_driverman.c
-  survive_kalman_tracker.c
-        ./generated/kalman_kinematics.gen.h
-        ./generated/lighthouse_gen1.gen.h
-        ./generated/lighthouse_gen2.gen.h
-  survive_optimizer.c
-  survive_recording.c        
-  survive_plugins.c
-        survive_process.c
-  survive_process_gen2.c
-  survive_sensor_activations.c
-        survive_kalman_lighthouses.c
-        survive_kalman_lighthouses.h
-  barycentric_svd/barycentric_svd.c
-  survive_reproject_gen2.c
-        survive_process_gen1.c
-        survive_reproject.c
-  lfsr.c
-  lfsr_lh2.c
-  survive_str.h survive_str.c test_cases/str.c
-  survive_async_optimizer.c
-  ../redist/linmath.c ../redist/puff.c ../redist/symbol_enumerator.c
-  ../redist/jsmn.c ../redist/json_helpers.c ../redist/crc32.c
-  )
+    ootx_decoder.c
+    poser.c
+    poser_general_optimizer.c
+    survive.c
+    survive_buildinfo.c
+    survive_api.c
+    survive_config.c
+    survive_default_devices.c
+    survive_disambiguator.c
+    survive_driverman.c
+    survive_kalman_tracker.c
+    ./generated/kalman_kinematics.gen.h
+    survive_optimizer.c
+    survive_recording.c
+    survive_plugins.c
+    survive_process.c
+    survive_process_gen2.c
+    survive_sensor_activations.c
+    survive_kalman_lighthouses.c
+    survive_kalman_lighthouses.h
+    barycentric_svd/barycentric_svd.c
+    survive_reproject_gen2.c
+    survive_process_gen1.c
+    survive_reproject.c
+    lfsr.c
+    lfsr_lh2.c
+    survive_str.h survive_str.c test_cases/str.c
+    survive_async_optimizer.c
+    ../redist/linmath.c ../redist/puff.c ../redist/symbol_enumerator.c
+    ../redist/jsmn.c ../redist/json_helpers.c ../redist/crc32.c
+)
 
 if(USE_HIDAPI)
   add_definitions (-DHIDAPI)
