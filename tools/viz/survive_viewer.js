@@ -683,7 +683,7 @@ function display_matrix(name, rows, cols, fv) {
 	ctx.imageSmoothingEnabled = false;
 	// ctx.scale(5,5);
 
-	ctx.putImageData(new ImageData(imageData, rows, cols), 0, 0);
+	ctx.putImageData(new ImageData(imageData, cols, rows), 0, 0);
 	covar_names[name].innerText = name + " " + fmax;
 }
 

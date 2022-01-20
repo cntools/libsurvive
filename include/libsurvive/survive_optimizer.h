@@ -15,7 +15,6 @@ enum survive_optimizer_measurement_type {
 	survive_optimizer_measurement_type_none,
 	survive_optimizer_measurement_type_parameters_bias,
 	survive_optimizer_measurement_type_light,
-	survive_optimizer_measurement_type_object_pose,
 	survive_optimizer_measurement_type_object_accel,
 	survive_optimizer_measurement_type_camera_accel,
 };
@@ -25,6 +24,7 @@ enum survive_optimizer_parameter_type {
 	survive_optimizer_parameter_object_pose,
 	survive_optimizer_parameter_object_velocity,
 	survive_optimizer_parameter_object_scale,
+	survive_optimizer_parameter_object_lighthouse_correction,
 	survive_optimizer_parameter_camera,
 	survive_optimizer_parameter_camera_parameters,
 	survive_optimizer_parameter_obj_points,
@@ -54,6 +54,11 @@ typedef struct {
 } survive_optimizer_camera_acc_measurement;
 
 typedef struct {
+	int parameter_index;
+	FLT expected_value;
+} survive_optimizer_parameter_bias_measurement;
+
+typedef struct {
 	FLT time;
 	size_t size;
 	bool invalid;
@@ -63,15 +68,16 @@ typedef struct {
 
 	union {
 		survive_optimizer_light_measurement light;
-		survive_optimizer_object_pose_measurement pose;
 		survive_optimizer_object_acc_measurement pose_acc;
 		survive_optimizer_camera_acc_measurement camera_acc;
+		survive_optimizer_parameter_bias_measurement parameter_bias;
 	};
 } survive_optimizer_measurement;
 
 typedef struct {
   size_t size;
   size_t elem_size;
+  size_t p_idx;
   enum survive_optimizer_parameter_type param_type;
   struct mp_par_struct *pi;
   FLT *p;
@@ -79,6 +85,9 @@ typedef struct {
 
 typedef struct survive_optimizer_settings {
 	bool use_quat_model;
+	bool disable_filter;
+	FLT lh_scale_correction;
+	FLT lh_offset_correction;
 	bool disallow_pair_calc;
 	FLT optimize_scale_threshold;
 	FLT current_pos_bias;
@@ -102,7 +111,7 @@ typedef struct survive_optimizer {
 
 	struct mp_par_struct *mp_parameters_info;
 	survive_optimizer_parameter *parameters_info;
-	FLT *parameters, *parameters_variance, *parameters_expected_value;
+	FLT *parameters;
 
 	bool disableVelocity;
 
@@ -124,6 +133,7 @@ typedef struct survive_optimizer {
 		FLT object_up_error; int object_up_error_cnt;
         FLT sensor_error; int sensor_error_cnt;
         FLT current_error; int current_error_cnt;
+		FLT params_error; int params_error_cnt;
 	} stats;
 
 	void *user;
@@ -134,7 +144,7 @@ typedef struct survive_optimizer {
 	{                                                                                                                  \
 		size_t par_count = survive_optimizer_get_max_parameters_count(&(ctx));                                         \
 		size_t meas_count = survive_optimizer_get_max_measurements_count(&(ctx));                                      \
-		FLT *param_buffer = alloc_fn(((ctx).parameters), 3 * par_count * sizeof(FLT));                                 \
+		FLT *param_buffer = alloc_fn(((ctx).parameters), par_count * sizeof(FLT));                                 \
 		mp_par *mp_param_info_buffer =                                                                                 \
 			(mp_par *)alloc_fn(((ctx).mp_parameters_info), par_count * sizeof(struct mp_par_struct));                  \
 		survive_optimizer_parameter *param_info_buffer = (survive_optimizer_parameter *)alloc_fn(                      \

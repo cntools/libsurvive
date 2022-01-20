@@ -15,6 +15,7 @@
 #include "mpfit/mpfit.h"
 #include "survive_default_devices.h"
 #include "survive_kalman_tracker.h"
+#include "survive_recording.h"
 
 #if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include <cnmatrix/cn_matrix.h>
@@ -35,9 +36,12 @@ STATIC_CONFIG_ITEM(OPTIMIZER_NORMTOL, "optimizer-normtol", 'f', "Convergence for
 STATIC_CONFIG_ITEM(OPTIMIZER_NPRINT, "optimizer-nprint", 'i', "", 0)
 
 STRUCT_CONFIG_SECTION(survive_optimizer_settings)
-    STRUCT_CONFIG_ITEM("mpfit-quat-model", "Model mpfit as quaternion", 0, t->use_quat_model)
+	STRUCT_CONFIG_ITEM("mpfit-disable-filter", "Model mpfit as quaternion", 0, t->disable_filter)
+	STRUCT_CONFIG_ITEM("mpfit-quat-model", "Model mpfit as quaternion", 0, t->use_quat_model)
+	STRUCT_CONFIG_ITEM("mpfit-lh-scale-correction", "", 0, t->lh_scale_correction)
+	STRUCT_CONFIG_ITEM("mpfit-lh-offset-correction", "", 0, t->lh_offset_correction)
 	STRUCT_CONFIG_ITEM("mpfit-no-pair-calc", "Don't process as pairs", 0, t->disallow_pair_calc)
-	STRUCT_CONFIG_ITEM("mpfit-optimize-scale-threshold", "Treat scale as mutable", 1e-10, t->optimize_scale_threshold)
+	STRUCT_CONFIG_ITEM("mpfit-optimize-scale-threshold", "Treat scale as mutable", -1, t->optimize_scale_threshold)
 	STRUCT_CONFIG_ITEM("mpfit-current-pos-bias", "", -1, t->current_pos_bias)
 	STRUCT_CONFIG_ITEM("mpfit-current-rot-bias", "", -1, t->current_rot_bias)
 END_STRUCT_CONFIG_SECTION(survive_optimizer_settings)
@@ -55,6 +59,44 @@ static void setup_pose_param_limits(survive_optimizer *mpfit_ctx, FLT *parameter
 		pose_param_info[i].limits[1] = -pose_param_info[i].limits[0];
 	}
 }
+
+int survive_optimizer_get_start_index(const survive_optimizer *ctx, enum survive_optimizer_parameter_type type) {
+	int rtn = 0;
+	for (int i = 0; i < ctx->parameterBlockCnt; i++) {
+		if (ctx->parameters_info[i].param_type == type)
+			return rtn;
+		rtn += ctx->parameters_info[i].size;
+	}
+	return -1;
+}
+int survive_optimizer_get_block_index(const survive_optimizer *ctx, enum survive_optimizer_parameter_type type) {
+	for (int i = 0; i < ctx->parameterBlockCnt; i++) {
+		if (ctx->parameters_info[i].param_type == type)
+			return i;
+	}
+	return -1;
+}
+
+survive_optimizer_parameter *survive_optimizer_get_start_parameter_info(const survive_optimizer *ctx,
+																		enum survive_optimizer_parameter_type type) {
+	int index = survive_optimizer_get_block_index(ctx, type);
+	if (index == -1)
+		return 0;
+	return &ctx->parameters_info[index];
+}
+int get_lighthouse_correction_idx_for(survive_optimizer *optimizer, int obj, int lh, int axis) {
+	survive_optimizer_parameter * lh_correction = survive_optimizer_get_start_parameter_info(optimizer, survive_optimizer_parameter_object_lighthouse_correction);
+	if(!lh_correction) return -1;
+	assert(obj == 0);
+	return lh_correction->p_idx + lh * SURVIVE_CORRECTION_PARAMS + axis;
+}
+FLT get_lighthouse_correction_for(survive_optimizer *optimizer, int obj, int lh, int axis) {
+	assert(axis < SURVIVE_CORRECTION_PARAMS);
+	int idx = get_lighthouse_correction_idx_for(optimizer, obj, lh, axis);
+	if(idx < 0) return 0;
+	return optimizer->parameters[idx];
+}
+
 void survive_optimizer_setup_pose_n(survive_optimizer *mpfit_ctx, const SurvivePose *pose, size_t n, bool isFixed,
 									int use_jacobian_function) {
 	if (pose)
@@ -91,6 +133,38 @@ void survive_optimizer_setup_pose_n(survive_optimizer *mpfit_ctx, const SurviveP
 			mpfit_ctx->mp_parameters_info[i + v_idx].side = 0;
 		}
 	}
+	survive_optimizer_parameter * lh_correction = survive_optimizer_get_start_parameter_info(mpfit_ctx, survive_optimizer_parameter_object_lighthouse_correction);
+	if(lh_correction) {
+		for (int i = 0; i < mpfit_ctx->poseLength; i++) {
+			FLT* lh_obj_params = lh_correction[i].p;
+			SurviveObject * so = mpfit_ctx->sos[i];
+			if (so == 0)
+				break;
+
+			struct mp_par_struct* info = lh_correction[i].pi;
+			for(int lh = 0;lh < NUM_GEN2_LIGHTHOUSES;lh++) {
+				for (int axis = 0; axis < SURVIVE_CORRECTION_PARAMS; axis++) {
+					struct mp_par_struct* p_info = &info[lh*SURVIVE_CORRECTION_PARAMS+axis];
+					p_info->fixed = true;
+					lh_obj_params[lh * SURVIVE_CORRECTION_PARAMS + axis] = so->lh_correction[lh][axis];
+					p_info->step = 1e-5;
+
+					if (use_jacobian_function != 0 && axis != 2) {
+						if (use_jacobian_function < 0) {
+							p_info->side = 2;
+							p_info->deriv_debug = 1;
+							p_info->deriv_abstol = 1e-4;
+							p_info->deriv_reltol = 1e-4;
+							//p_info->step = 1e-1;
+						} else {
+							p_info->side = 3;
+						}
+					}
+
+				}
+			}
+		}
+	}
 
 	if (mpfit_ctx->settings->optimize_scale_threshold >= 0) {
 		int s_idx = survive_optimizer_get_sensor_scale_index(mpfit_ctx);
@@ -114,6 +188,11 @@ void survive_optimizer_setup_pose_n(survive_optimizer *mpfit_ctx, const SurviveP
 			pinfo->limited[0] = pinfo->limited[1] = true;
 			pinfo->limits[0] = 1 - .1;
 			pinfo->limits[1] = 1 + .1;
+
+			survive_optimizer_measurement * meas = survive_optimizer_emplace_meas(mpfit_ctx, survive_optimizer_measurement_type_parameters_bias);
+			meas->variance = mpfit_ctx->sos[n]->sensor_scale_var;
+			meas->parameter_bias.parameter_index = s_idx;
+			meas->parameter_bias.expected_value = mpfit_ctx->sos[n]->sensor_scale;
 		}
 	}
 }
@@ -136,24 +215,6 @@ static char *lh_parameter_names[] = {"LH x",	 "LH y",	 "LH z",	"LH Rot w",
 									 "LH Rot x", "LH Rot y", "LH Rot z"
 
 };
-
-int survive_optimizer_get_start_index(const survive_optimizer *ctx, enum survive_optimizer_parameter_type type) {
-	int rtn = 0;
-	for (int i = 0; i < ctx->parameterBlockCnt; i++) {
-		if (ctx->parameters_info[i].param_type == type)
-			return rtn;
-		rtn += ctx->parameters_info[i].size;
-	}
-	return -1;
-}
-
-survive_optimizer_parameter *survive_optimizer_get_start_parameter_info(const survive_optimizer *ctx,
-																		enum survive_optimizer_parameter_type type) {
-	int index = survive_optimizer_get_start_index(ctx, type);
-	if (index == -1)
-		return 0;
-	return &ctx->parameters_info[index];
-}
 
 void survive_optimizer_setup_camera(survive_optimizer *mpfit_ctx, int8_t lh, const SurvivePose *pose, bool isFixed,
 									int use_jacobian_function) {
@@ -228,6 +289,7 @@ int survive_optimizer_get_max_parameters_count(const survive_optimizer *ctx) {
 	if (ctx->settings->optimize_scale_threshold >= 0) {
 		rtn += ctx->poseLength;
 	}
+	rtn += ctx->poseLength * NUM_GEN2_LIGHTHOUSES * SURVIVE_CORRECTION_PARAMS;
 	return rtn;
 }
 int survive_optimizer_get_parameters_count(const survive_optimizer *ctx) { return ctx->parametersCnt; }
@@ -363,7 +425,9 @@ static inline void run_pair_measurement(survive_optimizer *mpfunc_ctx, size_t me
 #endif
 
 	for (int i = 0; i < 2; i++) {
-	    FLT error =  fix_infinity(out[i] - meas[i].light.value);
+		FLT correction = get_lighthouse_correction_for(mpfunc_ctx, meas->light.object, meas->light.lh, i);
+
+	    FLT error =  fix_infinity(out[i] - meas[i].light.value - correction);
 		deviates[i] = error / meas[i].variance;
         mpfunc_ctx->stats.sensor_error += error * error;
         mpfunc_ctx->stats.sensor_error_cnt++;
@@ -374,6 +438,13 @@ static inline void run_pair_measurement(survive_optimizer *mpfunc_ctx, size_t me
 
 		int jac_offset_lh = (lh + mpfunc_ctx->poseLength) * 7;
 		int jac_offset_obj = meas->light.object * 7;
+
+		for(int i = 0;i < 2;i++) {
+			int p_idx = get_lighthouse_correction_idx_for(mpfunc_ctx, meas->light.object, meas->light.lh, i);
+			if (derivs[p_idx]) {
+				derivs[p_idx][meas_idx + i] = -1. / meas->variance;
+			}
+		}
 
 		LinmathDualPose safe_pose = *obj2world, safe_world2lh = *world2lh;
         if(!mpfunc_ctx->settings->use_quat_model) {
@@ -442,7 +513,10 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
     ApplyDualPoseToPoint(mpfunc_ctx, sensorPtInLH, obj2lh, pt);
 
 	FLT out = reprojectModel->reprojectAxisFn[meas->light.axis](cal, sensorPtInLH);
-	FLT error = fix_infinity(out - meas->light.value);
+	FLT correction = get_lighthouse_correction_for(mpfunc_ctx, meas->light.object, meas->light.lh, meas->light.axis);
+	//SurviveObject * so = mpfunc_ctx->sos[meas->light.object];
+	//assert(so->lh_correction[meas->light.lh][meas->light.axis] == correction);
+	FLT error = fix_infinity(out - meas->light.value - correction);
 	deviates[0] = error / meas->variance;
     mpfunc_ctx->stats.sensor_error += error * error;
     mpfunc_ctx->stats.sensor_error_cnt++;
@@ -451,6 +525,11 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
         int pose_size = mpfunc_ctx->settings->use_quat_model ? 7 : 6;
 		int jac_offset_lh = (lh + mpfunc_ctx->poseLength) * 7;
 		int jac_offset_obj = meas->light.object * 7;
+
+		int p_idx = get_lighthouse_correction_idx_for(mpfunc_ctx, meas->light.object, meas->light.lh, meas->light.axis);
+		if(derivs[p_idx]) {
+			derivs[p_idx][meas_idx] = -1. / meas->variance;
+		}
 
 		FLT out[7] = {0};
 		// d Deviate / d Pose[t - 1] * d Pose[t - 1] / d Pose[t]
@@ -611,7 +690,7 @@ static void filter_measurements(survive_optimizer *optimizer, FLT *deviates) {
 static int survive_optimizer_get_meas_size(const survive_optimizer *ctx) {
 	int rtn = 0;
 	for (int i = 0; i < ctx->measurementsCnt; i++) {
-		assert(ctx->measurements[i].size != 0);
+		assert(ctx->measurements[i].size > 0);
 		rtn += ctx->measurements[i].size;
 	}
 	return rtn;
@@ -656,18 +735,16 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 
 		switch (meas->meas_type) {
 		case survive_optimizer_measurement_type_parameters_bias: {
-			FLT deviation = 0;
-			for (int i = 0; i < mpfunc_ctx->parametersCnt; i++) {
-				if (mpfunc_ctx->parameters_variance[i] > 0) {
-					FLT param_deviation =
-						(mpfunc_ctx->parameters_expected_value[i] - p[i]) / mpfunc_ctx->parameters_variance[i];
-					deviation += param_deviation * param_deviation;
-					if (derivs && derivs[i]) {
-						derivs[i][meas_idx] = 2 * p[i];
-					}
-				}
+			int parameter_index = meas->parameter_bias.parameter_index;
+			FLT expected_value = meas->parameter_bias.expected_value;
+			FLT param_deviation = (p[parameter_index] - expected_value) / (meas->variance + 1e-10);
+			deviates[meas_idx] = param_deviation;
+			if (derivs && derivs[parameter_index]) {
+				derivs[parameter_index][meas_idx] = 1. / (meas->variance + 1e-10);
 			}
-			deviates[meas_idx] = sqrt(deviation);
+
+			mpfunc_ctx->stats.params_error_cnt++;
+			mpfunc_ctx->stats.params_error += deviates[meas_idx] * deviates[meas_idx];
 			break;
 		}
 		case survive_optimizer_measurement_type_light: {
@@ -691,10 +768,12 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			int scale_idx = -1;
 			LinmathVec3d xyzjac_scale = {0};
 			bool needsScaleJac = false;
-			if (mpfunc_ctx->settings->optimize_scale_threshold >= 0) {
+			if (mpfunc_ctx->settings->optimize_scale_threshold >= 0  || mpfunc_ctx->settings->lh_scale_correction > 0) {
 				scale_idx = survive_optimizer_get_sensor_scale_index(mpfunc_ctx) + meas->light.object;
-				FLT scale = p[scale_idx];
-
+				FLT scale = (1 + get_lighthouse_correction_for(mpfunc_ctx, meas->light.object, meas->light.lh, 2));
+				if(scale_idx >= 0) {
+					scale *= p[scale_idx];
+				}
 				SurvivePose imu2trackref = mpfunc_ctx->sos[meas->light.object]->imu2trackref;
 				needsScaleJac = derivs && scale_idx >= 0 && derivs[scale_idx];
 				if (needsScaleJac) {
@@ -840,6 +919,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			}
 			break;
 		}
+			/*
 		case survive_optimizer_measurement_type_object_pose: {
 			int jac_offset_obj = meas->pose.object * 7;
 			int pose_size = mpfunc_ctx->settings->use_quat_model ? 7 : 6;
@@ -855,6 +935,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 				}
 			}
 		}
+			 */
 		}
 		meas_idx += meas->size;
 	}
@@ -867,6 +948,24 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 	if (mpfunc_ctx->iteration_cb) {
 		mpfunc_ctx->iteration_cb(mpfunc_ctx, m, n, p, deviates, derivs);
 	}
+/*
+	CnMat d = cnVec(m, deviates);
+	cn_print_mat(&d);
+	CnMat ps = cnVec(n, p);
+	cn_print_mat(&ps);
+	if(derivs) {
+		CN_CREATE_STACK_MAT(J, m, n);
+		for (int i = 0; i < m; i++) {
+			for (int j = 0; j < n; j++) {
+				if (derivs && derivs[j])
+					cnMatrixSet(&J, i, j, derivs[j][i]);
+				else
+					cnMatrixSet(&J, i, j, NAN);
+			}
+		}
+		cn_print_mat(&J);
+	}*/
+
 	return 0;
 }
 
@@ -957,6 +1056,37 @@ int survive_optimizer_nonfixed_index(survive_optimizer *ctx, int idx) {
 	return rtn;
 }
 
+int meas_cnt_for_obj_lh_axis(survive_optimizer *optimizer, int obj, int lh, int axis) {
+	int rtn = 0;
+	for(int i = 0;i < optimizer->measurementsCnt;i++) {
+		survive_optimizer_measurement * meas = &optimizer->measurements[i];
+		if(meas->meas_type == survive_optimizer_measurement_type_light) {
+			rtn += meas->light.lh == lh && meas->light.object == obj && meas->light.axis == axis;
+		}
+	}
+	return rtn;
+}
+static inline int get_axis_count(const size_t *meas_for_lhs_axis, int min_to_count) {
+	int num_axis = 0;
+	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES * 2; i++) {
+		if (meas_for_lhs_axis[i] > min_to_count)
+			num_axis++;
+	}
+	return num_axis;
+}
+
+int get_meas_for_lhs_axis(survive_optimizer *optimizer, int obj, size_t* meas_for_lhs_axis) {
+	size_t mea_cnt = 0;
+	for(int i = 0;i < optimizer->measurementsCnt;i++) {
+		survive_optimizer_measurement * meas = &optimizer->measurements[i];
+		if(meas->invalid == false && meas->meas_type == survive_optimizer_measurement_type_light) {
+			mea_cnt++;
+			meas_for_lhs_axis[meas->light.lh * 2 + meas->light.axis]++;
+		}
+	}
+	return mea_cnt;
+}
+
 int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result, struct CnMat *R) {
 	SurviveContext *ctx = optimizer->sos[0] ? optimizer->sos[0]->ctx : 0;
 
@@ -965,6 +1095,7 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 		cfg = survive_optimizer_get_cfg(ctx);
 
 	SurvivePose *poses = survive_optimizer_get_pose(optimizer);
+
 
 	if(!optimizer->settings->use_quat_model) {
         for (int i = 0; i < optimizer->poseLength + optimizer->cameraLength; i++) {
@@ -994,7 +1125,42 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 
 	// MPFit runs on temporary storage; so parameters is manipulated in mpfunc. Save it and restore it here.
 	FLT *params = optimizer->parameters;
-	optimizer->needsFiltering = !optimizer->nofilter;
+	optimizer->needsFiltering = !optimizer->nofilter && !optimizer->settings->disable_filter;
+	FLT* deviates = alloca(survive_optimizer_get_meas_size(optimizer) * sizeof(FLT));
+	mpfunc(survive_optimizer_get_meas_size(optimizer), survive_optimizer_get_parameters_count(optimizer), params, deviates, 0, optimizer);
+
+	survive_optimizer_parameter * lh_correction = survive_optimizer_get_start_parameter_info(optimizer, survive_optimizer_parameter_object_lighthouse_correction);
+	if(lh_correction && (optimizer->settings->lh_scale_correction > 0 || optimizer->settings->lh_offset_correction > 0)) {
+		for (int i = 0; i < optimizer->poseLength; i++) {
+			size_t meas_for_lhs_axis[NUM_GEN2_LIGHTHOUSES * 2] = { 0 };
+			size_t valid_meas = get_meas_for_lhs_axis(optimizer, i, meas_for_lhs_axis);
+
+			if(valid_meas < 10 || get_axis_count(meas_for_lhs_axis, 3) <= 3)
+				continue;
+
+			SurviveObject *so = optimizer->sos[i];
+
+			for (int lh = 0; lh < optimizer->cameraLength; lh++) {
+				for (int axis = 0; axis < 3; axis++) {
+					int idx = get_lighthouse_correction_idx_for(optimizer, i, lh, axis);
+					if(axis == 2 || meas_for_lhs_axis[lh * SURVIVE_CORRECTION_PARAMS + i] >= 6) {
+						optimizer->mp_parameters_info[idx].fixed = false;
+
+						survive_optimizer_measurement *meas = survive_optimizer_emplace_meas(
+							optimizer, survive_optimizer_measurement_type_parameters_bias);
+						meas->variance = so->lh_correction_variance[lh][axis];
+						meas->parameter_bias.parameter_index = idx;
+						meas->parameter_bias.expected_value = 0;
+					}
+					SV_VERBOSE(110, "%s %d %d %d %f (%d, %d) %s %d", survive_colorize_codename(so), i, lh, axis, get_lighthouse_correction_for(optimizer, i, lh, axis),
+							   (int)meas_for_lhs_axis[lh * 2 + i], get_axis_count(meas_for_lhs_axis, 0),
+							   optimizer->mp_parameters_info[idx].parname, optimizer->mp_parameters_info[idx].fixed);
+				}
+			}
+		}
+	}
+
+
 	size_t meas_count = survive_optimizer_get_meas_size(optimizer);
 
 	int nfree = survive_optimizer_get_free_parameters_count(optimizer);
@@ -1005,6 +1171,10 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 	int rtn = mpfit(mpfunc, meas_count, survive_optimizer_get_parameters_count(optimizer), optimizer->parameters,
 					optimizer->mp_parameters_info, cfg, optimizer, result);
 	optimizer->parameters = params;
+
+	FLT rchisqr = result->bestnorm / result->nfree;
+	if (optimizer->sos && optimizer->sos[0])
+		survive_recording_write_matrix(ctx->recptr, optimizer->sos[0], 10, "full_cov", &R_aa);
 	assert(sane_covariance(&R_aa));
 	int totalPoseCount = optimizer->poseLength + optimizer->cameraLength;
     int pose_size = optimizer->settings->use_quat_model ? 7 : 6;
@@ -1033,12 +1203,15 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 		if(optimizer->settings->use_quat_model) {
 			cnCopy(&R_aa, &R_q, 0);
 		} else {
+			int idx = survive_optimizer_nonfixed_index(optimizer, survive_optimizer_get_start_index(optimizer, survive_optimizer_parameter_object_lighthouse_correction));
 			CN_CREATE_STACK_MAT(G, R->rows, R_aa.rows);
 			CN_CREATE_STACK_MAT(Gp, 4, 3);
 			assert(R->rows == R->cols);
             //assert(R->rows == totalFreePoseCount * 7);
 
-			cn_set_diag_val(&G, 1);
+			//cn_set_diag_val(&G, 1);
+			for(int i = 0;i < 3;i++)
+				cnMatrixSet(&G, i, i, 1);
 
 			for (int z = 0; z < R->rows / 7; z++) {
                 gen_axisangle2quat_jac_axis_angle(Gp.data, ((LinmathAxisAnglePose *) &poses[z])->AxisAngleRot);
@@ -1056,8 +1229,40 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
         }
 
 		// https://lmfit.github.io/lmfit-py/fitting.html#uncertainties-in-variable-parameters-and-their-correlations
-		FLT rchisqr = result->bestnorm / result->nfree;
+		FLT rchisqr = linmath_max(1, result->bestnorm / 6); //..result->nfree;
 		cn_multiply_scalar(&R_q, &R_q, rchisqr);
+	}
+	bool wasSuccess = result->status > 0;
+
+	if(lh_correction != 0 && wasSuccess) {
+		for (int i = 0; i < optimizer->poseLength; i++) {
+			SurviveObject *so = optimizer->sos[i];
+			struct mp_par_struct *info = lh_correction[i].pi;
+			bool changed = false;
+
+			for (int lh = 0; lh < optimizer->cameraLength; lh++) {
+				for (int axis = 0; axis < SURVIVE_CORRECTION_PARAMS; axis++) {
+
+					int cov_idx = survive_optimizer_nonfixed_index(optimizer, get_lighthouse_correction_idx_for(optimizer, i, lh, axis));
+
+					if(!info[lh * SURVIVE_CORRECTION_PARAMS + axis].fixed) {
+						changed = true;
+						FLT v = rchisqr * cnMatrixGet(&R_aa, cov_idx, cov_idx);
+
+						FLT y = get_lighthouse_correction_for(optimizer, i, lh, axis) - so->lh_correction[lh][axis];
+						FLT k = so->lh_correction_variance[lh][axis] / (so->lh_correction_variance[lh][axis] + v);
+						so->lh_correction[lh][axis] += k * y;
+						so->lh_correction_variance[lh][axis] *= (1 - k);
+						so->lh_correction_variance[lh][axis] += (axis == 2 ? optimizer->settings->lh_scale_correction : optimizer->settings->lh_offset_correction);
+						SV_VERBOSE(110, "%s %d %d %d %+7.16f", survive_colorize_codename(so), i, lh, axis, get_lighthouse_correction_for(optimizer, i, lh, axis));
+					}
+				}
+			}
+			if(changed) {
+				CnMat v = cnMat(2, SURVIVE_CORRECTION_PARAMS, (FLT *)so->lh_correction);
+				survive_recording_write_matrix(ctx->recptr, so, 5, "lhc", &v);
+			}
+		}
 	}
 
     if(!optimizer->settings->use_quat_model) {
@@ -1267,13 +1472,9 @@ SURVIVE_EXPORT void survive_optimizer_setup_buffers(survive_optimizer *ctx, FLT 
 	size_t meas_count = survive_optimizer_get_max_measurements_count(ctx);
 
 	ctx->parameters = (FLT *)parameter_buffer;
-	ctx->parameters_variance = parameter_buffer + par_count;
-	ctx->parameters_expected_value = parameter_buffer + 2 * par_count;
 
 	for (int i = 0; i < par_count; i++) {
 		ctx->parameters[i] = NAN;
-		ctx->parameters_variance[i] = -1;
-		ctx->parameters_expected_value[i] = NAN;
 	}
 	ctx->mp_parameters_info = mp_parameter_info_buffer;
 	ctx->parameters_info = parameter_info_buffer;
@@ -1300,17 +1501,33 @@ SURVIVE_EXPORT void survive_optimizer_setup_buffers(survive_optimizer *ctx, FLT 
 		survive_optimizer_emplace_params(ctx, survive_optimizer_parameter_object_scale, ctx->poseLength);
 	}
 
+	if(true) {
+		survive_optimizer_emplace_params(ctx, survive_optimizer_parameter_object_lighthouse_correction, ctx->poseLength);
+	}
+
 	if (ctx->settings->current_pos_bias > 0) {
 		for (int i = 0; i < ctx->poseLength; i++) {
 			if (!quatiszero(ctx->sos[i]->OutPoseIMU.Rot)) {
-				survive_optimizer_measurement *meas =
-					survive_optimizer_emplace_meas(ctx, survive_optimizer_measurement_type_object_pose);
-				meas->pose.object = i;
-				meas->pose.pose = ctx->sos[i]->OutPoseIMU;
+
+				LinmathDualPose pose = { .quatPose = ctx->sos[i]->OutPoseIMU };
+				CnMat x = cnVec(7,  (FLT*)&pose);
+				CN_CREATE_STACK_VEC(P_q, 7);
+				CN_CREATE_STACK_VEC(P_aa, 6);
+				cnkalman_extrapolate_state(ctx->timecode, &ctx->sos[i]->tracker->model, &x, &P_q);
+
 				if (!ctx->settings->use_quat_model) {
-					quattoaxisanglemag(meas->pose.pose.Rot, ctx->sos[i]->OutPoseIMU.Rot);
+					survive_covariance_pose2poseAA(&P_aa, &pose.quatPose, &P_q);
+					quattoaxisanglemag(pose.axisAnglePose.AxisAngleRot, pose.quatPose.Rot);
 				}
-				meas->variance = 1. / ctx->settings->current_pos_bias;
+
+				assert(i == 0);
+				for(int z = 0; z < (ctx->settings->use_quat_model ? 7 : 6); z++) {
+					survive_optimizer_measurement *meas =
+						survive_optimizer_emplace_meas(ctx, survive_optimizer_measurement_type_parameters_bias);
+					meas->parameter_bias.expected_value = ((FLT*)&pose.quatPose.Pos)[z];
+					meas->parameter_bias.parameter_index = z;
+					meas->variance = sqrt(_P_q[z]) * ctx->settings->current_pos_bias;
+				}
 			}
 		}
 	}
@@ -1338,7 +1555,9 @@ int survive_optimizer_get_max_measurements_count(const survive_optimizer *ctx) {
 	int sensor_cnt = SENSORS_PER_OBJECT;
 	assert(ctx->poseLength > 0 && ctx->poseLength < 20);
 	return ctx->poseLength * 2 * sensor_cnt * NUM_GEN2_LIGHTHOUSES +
-		   (ctx->settings->current_pos_bias <= 0 ? 0 : ctx->poseLength) + (ctx->poseLength + ctx->cameraLength) + 1;
+		   (ctx->settings->current_pos_bias <= 0 ? 0 : ctx->poseLength) + (ctx->poseLength + ctx->cameraLength) +
+		   survive_optimizer_get_max_parameters_count(ctx)
+		;
 }
 
 int meas_size(survive_optimizer *ctx, enum survive_optimizer_measurement_type type) {
@@ -1348,8 +1567,6 @@ int meas_size(survive_optimizer *ctx, enum survive_optimizer_measurement_type ty
 	case survive_optimizer_measurement_type_camera_accel:
 	case survive_optimizer_measurement_type_object_accel:
 		return 3;
-	case survive_optimizer_measurement_type_object_pose:
-		return 6;
 	case survive_optimizer_measurement_type_parameters_bias:
 		return 1;
 	default:
@@ -1372,6 +1589,8 @@ int params_size(survive_optimizer *ctx, enum survive_optimizer_parameter_type ty
 		return 3;
 	case survive_optimizer_parameter_object_scale:
 		return 1;
+	case survive_optimizer_parameter_object_lighthouse_correction:
+		return NUM_GEN2_LIGHTHOUSES * SURVIVE_CORRECTION_PARAMS;
 	default:
 		assert(false);
 	}
@@ -1387,6 +1606,7 @@ static inline const char* params_name(enum survive_optimizer_parameter_type type
 	case survive_optimizer_parameter_camera: return "Camera";
 	case survive_optimizer_parameter_camera_parameters: return "Camera cal";
 	case survive_optimizer_parameter_obj_points: return "Points";
+	case survive_optimizer_parameter_object_lighthouse_correction: return "LH correction";
 	}
 }
 SURVIVE_EXPORT survive_optimizer_parameter *
@@ -1402,8 +1622,10 @@ survive_optimizer_emplace_params(survive_optimizer *ctx, enum survive_optimizer_
 		rtn->pi[i].fixed = true;
 		rtn->pi[i].parname = params_name(type);
 	}
+	rtn->p_idx = ctx->parametersCnt;
 	rtn->p = &ctx->parameters[ctx->parametersCnt];
 	ctx->parametersCnt += rtn->size;
+
 	return rtn;
 }
 survive_optimizer_measurement *survive_optimizer_emplace_meas(survive_optimizer *ctx,

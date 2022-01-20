@@ -228,6 +228,9 @@ struct SurviveObject {
 	LinmathPoint3d acceleration;
 	FLT sensor_scale;
 	FLT sensor_scale_var;
+#define SURVIVE_CORRECTION_PARAMS 3
+	FLT lh_correction[NUM_GEN2_LIGHTHOUSES][SURVIVE_CORRECTION_PARAMS];
+	FLT lh_correction_variance[NUM_GEN2_LIGHTHOUSES][SURVIVE_CORRECTION_PARAMS];
 };
 
 // These exports are mostly for language binding against

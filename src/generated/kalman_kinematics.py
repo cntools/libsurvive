@@ -91,7 +91,7 @@ def GenerateQuatErrorModelApprox(x1, x0):
 @cg.generate_code(x0 = 4, error_state = 3)
 def GenerateQuatModelApprox(x0, error_state):
     a,b,c = error_state
-    return quatrotateabout(x0, [1, a / 2., b / 2., c / 2.])
+    return quatnormalize(quatrotateabout(x0, [1, a / 2., b / 2., c / 2.]))
 
 @cg.generate_code()
 def SurviveKalmanModelToErrorModel(x1: SurviveKalmanModel, x0: SurviveKalmanModel):

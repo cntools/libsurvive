@@ -34,7 +34,7 @@ typedef struct SurviveRecordingData {
 	bool writeIMU;
 	bool writeCalIMU;
 	bool writeAngle;
-	bool writeDataMatrix;
+	int writeDataMatrix;
 	gzFile output_file;
 } SurviveRecordingData;
 
@@ -68,8 +68,8 @@ END_STRUCT_CONFIG_SECTION(SurviveRecordingData)
 #endif
 
 SURVIVE_EXPORT void survive_recording_write_matrix(struct SurviveRecordingData *recordingData, const SurviveObject *so,
-												   const char *name, const CnMat *M) {
-	if (!recordingData || !recordingData->writeDataMatrix) {
+												   int lvl, const char *name, const CnMat *M) {
+	if (!recordingData || recordingData->writeDataMatrix < lvl) {
 		return;
 	}
 

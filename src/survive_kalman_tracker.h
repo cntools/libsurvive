@@ -141,6 +141,7 @@ typedef struct SurviveKalmanTracker {
 } SurviveKalmanTracker;
 
 SURVIVE_EXPORT SurviveVelocity survive_kalman_tracker_velocity(const SurviveKalmanTracker *tracker);
+SURVIVE_EXPORT bool survive_kalman_tracker_predict_variance(const SurviveKalmanTracker *tracker, FLT time, CnMat* P);
 SURVIVE_EXPORT void survive_kalman_tracker_predict(const SurviveKalmanTracker *tracker, FLT time, SurvivePose *out);
 SURVIVE_EXPORT void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *so);
 SURVIVE_EXPORT void survive_kalman_tracker_free(SurviveKalmanTracker *tracker);

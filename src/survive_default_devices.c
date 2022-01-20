@@ -13,10 +13,22 @@
 #define HMD_IMU_HZ 1000.0f
 #define VIVE_DEFAULT_IMU_HZ 250.0f
 
+
+static inline bool check_str(const char* blacklist, const char* name) {
+	const char* s = strstr(blacklist, name);
+	while(s) {
+		if ((s[strlen(name)] == 0 || s[strlen(name)] == ',') && (s == blacklist || s[-1] == ',')) {
+				return true;
+			}
+			s = strstr(s + 1, name);
+	}
+	return false;
+}
+
 SurviveObject *survive_create_device(SurviveContext *ctx, const char *driver_name, void *driver,
 									 const char *device_name, haptic_func fn) {
     const char *blacklist = survive_configs(ctx, "blacklist-devs", SC_GET, "-");
-    if(strstr(blacklist, device_name)) {
+    if(check_str(blacklist, device_name)) {
         return 0;
     }
 

@@ -90,8 +90,8 @@ typedef struct MPFITData {
   const char *serialize_prefix;
   MPFITStats stats;
 
-  int record_reprojection_error;
-  FLT current_bias, obj_up_variance, lh_up_variance, stationary_obj_up_variance;
+  FLT record_reprojection_error;
+  FLT obj_up_variance, lh_up_variance, stationary_obj_up_variance;
   bool model_velocity;
   bool globalDataAvailable;
   struct survive_async_optimizer *async_optimizer;
@@ -101,7 +101,6 @@ typedef struct MPFITData {
 
 STRUCT_CONFIG_SECTION(MPFITData)
 STRUCT_CONFIG_ITEM("mpfit-model-velocity", "Model velocity in non mpfit process", true, t->model_velocity)
-STRUCT_CONFIG_ITEM("mpfit-current-bias", "", 0, t->current_bias)
 STRUCT_CONFIG_ITEM("mpfit-record-reprojection-error", "", 0, t->record_reprojection_error)
 STRUCT_CONFIG_ITEM("mpfit-object-up-variance",
 				   "How much to weight having the accel direction on tracked objects pointing up", -1,
@@ -584,7 +583,7 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 			worldEstablished ? 110 : 100,
 			"MPFIT success %s %f7.5s %s %f/%10.10f/%10.10f (%3d measurements, %s result, %d lighthouses, %d axis, "
 			"%6.3fms "
-			"time_window, %2d old_meas (avg %6.3fms) run #%d) scale %7.7f sensor_err %7.7f up_err %7.7f curr_error %7.7f",
+			"time_window, %2d old_meas (avg %6.3fms) run #%d) scale %7.7f sensor_err %7.7f up_err %7.7f curr_error %7.7f bias %7.7f",
 			survive_colorize(so->codename), survive_run_time(ctx),
 			survive_colorize(SurviveSensorActivations_stationary_time(&so->activations) > 4800000 ? "STILL" : "MOVE "),
 			result->orignorm, result->bestnorm,
@@ -597,20 +596,21 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 			d->stats.total_runs, scale,
 			sqrtf(mpfitctx->stats.sensor_error / mpfitctx->stats.sensor_error_cnt),
 			sqrtf(mpfitctx->stats.object_up_error / mpfitctx->stats.object_up_error_cnt),
-            sqrtf(mpfitctx->stats.current_error / mpfitctx->stats.current_error_cnt));
+            sqrtf(mpfitctx->stats.current_error / mpfitctx->stats.current_error_cnt),
+			sqrtf(mpfitctx->stats.params_error / mpfitctx->stats.params_error_cnt));
 	} else {
 		SV_VERBOSE(
 			100,
 			"MPFIT failure %s %f7.5s %f/%10.10f/%10.10f (%d measurements, %s result, %d lighthouses, %d axis, %d "
 			"canSolveLHs, %d "
 			"since success, "
-			"run #%d) scale %7.7f",
+			"run #%d) scale %7.7f param %7.7f",
 			survive_colorize(so->codename), survive_run_time(ctx), result->orignorm, result->bestnorm,
 			sqrt(result->bestnorm / (mpfitctx->measurementsCnt - result->nfree + 1) * d->sensor_variance *
 				 d->sensor_variance),
 			(int)meas_size, survive_optimizer_error(res), get_lh_count(meas_for_lhs_axis),
 			get_axis_count(meas_for_lhs_axis), canPossiblySolveLHS, d->opt.failures_since_success, d->stats.total_runs,
-			so->sensor_scale);
+			so->sensor_scale, sqrtf(mpfitctx->stats.params_error / mpfitctx->stats.params_error_cnt));
 
 		if (d->opt.failures_since_success > 10 && d->opt.stats.successes < 10 &&
 			(SurviveSensorActivations_stationary_time(&so->activations) > (48000000 / 10))) {

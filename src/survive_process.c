@@ -64,6 +64,14 @@ void survive_default_external_velocity_process(SurviveContext *ctx, const char *
 
 	survive_recording_external_velocity_process(ctx, name, vel);
 }
+static inline bool check_str(const char* blacklist, const char* name) {
+	const char* s = strstr(blacklist, name);
+	if(s) {
+		return (s[strlen(name)] == 0 || s[strlen(name)] == ',') &&
+			(s == blacklist || s[-1] == ',');
+	}
+	return false;
+}
 void survive_default_external_pose_process(SurviveContext *ctx, const char *name, const SurvivePose *pose) {
 	if (strncmp(name, "LHB", 3) == 0) {
 		bool useExternal = survive_configb(ctx, USE_EXTERNAL_LH_TAG, SC_GET, 0);
@@ -90,6 +98,12 @@ void survive_default_external_pose_process(SurviveContext *ctx, const char *name
 			break;
 		}
 	}
+
+	const char *blacklist = survive_configs(ctx, "blacklist-devs", SC_GET, 0);
+	if(check_str(blacklist, name)) {
+		return;
+	}
+
 	survive_recording_external_pose_process(ctx, name, pose);
 }
 

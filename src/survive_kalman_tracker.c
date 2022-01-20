@@ -263,7 +263,7 @@ CN_CREATE_STACK_VEC(h_x, 1);
 	if (H_k && !cn_is_finite(H_k))
 		return false;
 
-	survive_recording_write_matrix(tracker->so->ctx->recptr, tracker->so, "light-y", y);
+	survive_recording_write_matrix(tracker->so->ctx->recptr, tracker->so, 100, "light-y", y);
 
 	return true;
 }
@@ -418,7 +418,7 @@ bool survive_kalman_tracker_imu_measurement_model(void *user, const struct CnMat
 		SurviveKalmanTracker * tracker = fn_ctx->tracker;
 		SurviveObject * so = fn_ctx->tracker->so;
 		SurviveContext *ctx = so->ctx;
-		survive_recording_write_matrix(tracker->so->ctx->recptr, tracker->so, "imu-y", y);
+		survive_recording_write_matrix(tracker->so->ctx->recptr, tracker->so, 100, "imu-y", y);
 		SV_VERBOSE(600, "X     " Point7_format, LINMATH_VEC7_EXPAND(cn_as_const_vector(x_t)))
 		SV_VERBOSE(600, "Z     " Point6_format, LINMATH_VEC6_EXPAND(cn_as_const_vector(Z)))
 
@@ -445,7 +445,7 @@ bool survive_kalman_tracker_imu_measurement_model(void *user, const struct CnMat
 	return true;
 }
 
-static void tracker_datalog(cnkalman_state_t* state, const char *desc, const FLT *v, size_t length) {
+static void tracker_datalog(const cnkalman_state_t* state, const char *desc, const FLT *v, size_t length) {
 	SurviveKalmanTracker *tracker = state->datalog_user;
 	SurviveObject * so = tracker->so;
 
@@ -499,7 +499,7 @@ static bool map_obs_data(void *user, const struct CnMat *Z, const struct CnMat *
 	SurviveKalmanTracker *tracker = (SurviveKalmanTracker *)user;
 	if(y) {
 		subnd(cn_as_vector(y), cn_as_const_vector(Z), cn_as_const_vector(x_t), 7);
-		survive_recording_write_matrix(tracker->so->ctx->recptr, tracker->so, "obs-y", y);
+		survive_recording_write_matrix(tracker->so->ctx->recptr, tracker->so, 100, "obs-y", y);
 	}
 	if(H_k) {
 		bool errorState = tracker->use_error_state && tracker->obs_model.error_state_model;
@@ -730,7 +730,8 @@ void survive_kalman_tracker_predict(const SurviveKalmanTracker *tracker, FLT t, 
 	if (tracker->model.t == 0)
 		return;
 
-	cnkalman_extrapolate_state(t, &tracker->model, 0, 7, out->Pos);
+	CnMat x1 = cnVec(7, out->Pos);
+	cnkalman_extrapolate_state(t, &tracker->model, &x1, 0);
 	quatnormalize(out->Rot, out->Rot);
 
 	struct SurviveContext *ctx = tracker->so->ctx;
@@ -1213,9 +1214,10 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 }
 
 SurviveVelocity survive_kalman_tracker_velocity(const SurviveKalmanTracker *tracker) {
-	SurviveVelocity rtn = {0};
-	cnkalman_extrapolate_state(0, &tracker->model, 7, 13, rtn.Pos);
-	return rtn;
+	SurviveKalmanModel mdl = {0};
+	struct CnMat x1 = cnVec(13, (FLT *)&mdl);
+	cnkalman_extrapolate_state(0, &tracker->model, &x1, 0);
+	return mdl.Velocity;
 }
 
 static void print_kalman_stats(SurviveContext* ctx, const cnkalman_meas_model_t * model) {
@@ -1503,7 +1505,7 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 			v[0] = v[0] - 1;
 			v[1] = v[1] - 1;
 			if(cn_norm2(&meta) != 0) {
-				survive_recording_write_matrix(ctx->recptr, so, "meta", &meta);
+				survive_recording_write_matrix(ctx->recptr, so, 15, "meta", &meta);
 			}
 		}
     }

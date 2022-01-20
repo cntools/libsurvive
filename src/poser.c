@@ -45,7 +45,15 @@ void survive_pose2poseAA_jacobian(struct CnMat *G, const LinmathPose *pose) {
 void survive_covariance_pose2poseAA(struct CnMat *R_aa, const LinmathPose *pose, const struct CnMat *R_q) {
 	CN_CREATE_STACK_MAT(G, R_aa->rows, R_q->rows);
 	survive_pose2poseAA_jacobian(&G, pose);
-	gemm_ABAt_add_scaled(R_aa, &G, R_q, 0, 1, 1, 0);
+	if(R_aa->cols == R_aa->rows) {
+		gemm_ABAt_add_scaled(R_aa, &G, R_q, 0, 1, 1, 0);
+	} else {
+		CN_CREATE_STACK_MAT(R_aa_full, 6, 6);
+		CN_CREATE_STACK_MAT(R_q_full, 7, 7);
+		cn_set_diag(&R_q_full, R_q->data);
+		gemm_ABAt_add_scaled(&R_aa_full, &G, &R_q_full, 0, 1, 1, 0);
+		cn_get_diag(&R_aa_full, cn_as_vector(R_aa), R_aa->rows);
+	}
 }
 void survive_covariance_poseAA2pose(struct CnMat *R_q, const LinmathAxisAnglePose *poseAA, const struct CnMat *R_aa) {
 	CN_CREATE_STACK_MAT(G, R_q->rows, R_aa->rows);
