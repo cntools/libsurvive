@@ -552,6 +552,7 @@ static int playback_close(struct SurviveContext *ctx, void *_driver) {
 		gzclose(driver->playback_file);
 	driver->playback_file = 0;
 
+	survive_detach_config(ctx, PLAYBACK_START_TIME_TAG, &driver->playback_start_time);
 	survive_detach_config(ctx, "playback-factor", &driver->playback_factor);
 	survive_detach_config(ctx, "playback-time", &driver->playback_time);
 

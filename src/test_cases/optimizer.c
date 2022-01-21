@@ -122,7 +122,7 @@ TEST(Optimizer, Simple) {
 		.IMUCorrection = { 1 },
 		.AccScale = 1,
 	};
-	CnMat R = cnMatCalloc(7, 7);
+	CN_CREATE_STACK_MAT(R, 7, 7);
 
 	mp_result results = {};
 	SurvivePose output = run(&mpfitctx, &mdl, points, SURVIVE_ARRAY_SIZE(points) / 3, &results, &R, 0);
@@ -143,7 +143,7 @@ TEST(Optimizer, Velocity) {
 		.IMUCorrection = { 1 },
 		.AccScale = 1,
 	};
-	CnMat R = cnMatCalloc(7, 7);
+	CN_CREATE_STACK_MAT(R, 7, 7);
 
 	mp_result results = {};
 	SurvivePose output = run(&mpfitctx, &mdl, points, SURVIVE_ARRAY_SIZE(points) / 3, &results, &R, 0);
@@ -173,7 +173,7 @@ TEST(Optimizer, SimpleSide) {
 		.IMUCorrection = { 1 },
 		.AccScale = 1,
 	};
-	CnMat R = cnMatCalloc(7, 7);
+	CN_CREATE_STACK_MAT(R, 7, 7);
 
 	mp_result results = {};
 	SurvivePose output = run(&mpfitctx, &mdl, side_points, SURVIVE_ARRAY_SIZE(side_points) / 3, &results, &R, 0);
@@ -194,7 +194,7 @@ TEST(Optimizer, VelocitySide) {
 		.IMUCorrection = { 1 },
 		.AccScale = 1,
 	};
-	CnMat R = cnMatCalloc(7, 7);
+	CN_CREATE_STACK_MAT(R, 7, 7);
 
 	SurviveVelocity velocity = { .Pos = { 0, 0, -.1 }, .AxisAngleRot = { 0, 0, -.1 } };
 	mp_result results = {};
@@ -218,7 +218,7 @@ TEST(Optimizer, SimpleUnderspecced) {
 		.IMUCorrection = {1},
 		.AccScale = 1,
 	};
-	CnMat R = cnMatCalloc(7, 7);
+	CN_CREATE_STACK_MAT(R, 7, 7);
 
 	mp_result results = {};
 	SurvivePose output =
