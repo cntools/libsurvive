@@ -226,7 +226,7 @@ TEST(Kalman, ExampleExtended) {
 	// cnkalman_set_logging_level(1000);
 
 	cnkalman_state_t position;
-	struct cnkalman_meas_model measModel = {.name = "obs", .Hfn = map_to_obs, .k = &position};
+	struct cnkalman_meas_model measModel = {.name = "obs", .Hfn = map_to_obs, .ks = {&position}, .ks_cnt = 1};
 	FLT pos_Q_per_sec_fixed[36] = {
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 25,
 	};
