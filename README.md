@@ -10,7 +10,7 @@ object commercially available.
 
 Since the focus is on tracking; it does not independently run the HMD. For an open souce stack that does that see [monado](https://monado.freedesktop.org/)
 
-Most of the development is discussed on Discord.  [Join the chat and discussion in our discord!](https://discordapp.com/invite/7QbCAGS)
+Most of the development is discussed on Discord.  [Join the chat and discussion in our discord!](https://discordapp.com/invite/7QbCAGS). There is also a [matrix bridge](https://app.element.io/#/room/#libsurvive-main:matrix.org) available to join the discussion. 
 
 An example application is libsurvive running the controllers and HMD in Godot:
 [![Watch video](https://img.youtube.com/vi/yC75XknKTo0/0.jpg)](https://www.youtube.com/watch?v=yC75XknKTo0)
