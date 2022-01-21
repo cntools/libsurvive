@@ -9,6 +9,7 @@
 
 #include "math.h"
 #include "string.h"
+#include "survive_kalman_lighthouses.h"
 #include "survive_kalman_tracker.h"
 #include "survive_str.h"
 
@@ -120,6 +121,7 @@ void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighth
 		for(int i = 0;i < 4;i++) assert(isfinite(lighthouse_pose->Rot[i]));
 		ctx->bsd[lighthouse].Pose = *lighthouse_pose;
 		ctx->bsd[lighthouse].PositionSet = 1;
+		survive_kalman_lighthouse_update_position(ctx->bsd[lighthouse].tracker, lighthouse_pose);
 	} else {
 		ctx->bsd[lighthouse].PositionSet = 0;
 	}

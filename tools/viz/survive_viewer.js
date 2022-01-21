@@ -82,8 +82,9 @@ function add_lighthouse(idx, p, q) {
 	if (lighthouses[idx]) {
 		var group = lighthouses[idx];
 		group.position.fromArray(p);
-		group.quaternion.fromArray([ q[1], q[2], q[3], q[0] ]);
 		group.verticesNeedUpdate = true;
+		group.group_rot.quaternion.fromArray([ q[1], q[2], q[3], q[0] ]);
+		group.group_rot.verticesNeedUpdate = true;
 
 		if (trails) {
 			trails.geometry.vertices.push(trails.geometry.vertices.shift()); // shift the array
@@ -95,12 +96,15 @@ function add_lighthouse(idx, p, q) {
 	}
 
 	var group = new THREE.Group();
+	var group_rot = new THREE.Group();
+	group.add(group_rot);
+	group.group_rot = group_rot;
 	lighthouses[idx] = group;
 
 	var lh = new THREE.AxesHelper(1);
 
 	group.position.fromArray(p);
-	group.quaternion.fromArray([ q[1], q[2], q[3], q[0] ]);
+	group_rot.quaternion.fromArray([ q[1], q[2], q[3], q[0] ]);
 
 	var height = 10;
 
@@ -121,15 +125,32 @@ function add_lighthouse(idx, p, q) {
 		new THREE.MeshBasicMaterial({color : lhColors[idx], flatShading : false, transparent : true, opacity : .75});
 	var lhBox = new THREE.Mesh(lhBoxGeom, lhBoxMaterial);
 	lhBox.tooltip = "Lighthouse " + (idx)
-	group.add(lhBox);
+	group_rot.add(lhBox);
 	console.log(idx, lhColors[idx])
 
 	cone.translateZ(-height / 2);
 	cone.rotateZ(Math.PI / 4);
 	cone.rotateX(Math.PI / 2);
 
-	group.add(cone);
-	group.add(lh);
+	group_rot.add(cone);
+	group_rot.add(lh);
+
+	{
+		var geometry = new THREE.SphereGeometry(1, 16, 16);
+		var material =
+			new THREE.MeshBasicMaterial({color : 0x0000FF, opacity : .25, transparent : true, side : THREE.DoubleSide});
+
+		var mesh = new THREE.Mesh(geometry, material);
+		mesh.position.set(0, 0, 0);
+
+		mesh.scale.set(1e-4, 1e-4, 1e-4)
+
+		let ellipsoid_name = "LH" + idx;
+		mesh.visible = false;
+		ellipsoids[ellipsoid_name] = mesh
+
+		group.add(mesh);
+	}
 
 	scene.add(group);
 }

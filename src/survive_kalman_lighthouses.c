@@ -8,6 +8,7 @@
 
 STRUCT_CONFIG_SECTION(SurviveKalmanLighthouse)
 STRUCT_CONFIG_ITEM("lh-light-variance", "", -1e-2, t->light_variance);
+STRUCT_EXISTING_CONFIG_ITEM("report-covariance", t->report_covariance_cnt);
 STRUCT_CONFIG_ITEM("lh-light-stationary-time", "", .1, t->light_stationary_mintime);
 STRUCT_CONFIG_ITEM("lh-light-stationary-maxtime", "", 2, t->light_stationary_maxtime);
 END_STRUCT_CONFIG_SECTION(SurviveKalmanLighthouse)
@@ -22,6 +23,16 @@ static SurvivePose survive_kalman_lighthouse_world2lh(SurviveKalmanLighthouse *t
 #else
 static SurvivePose survive_kalman_lighthouse_lh2world(SurviveKalmanLighthouse *tracker) { return tracker->state; }
 #endif
+void survive_kalman_lighthouse_update_position(SurviveKalmanLighthouse *tracker, const SurvivePose *pose) {
+	if (tracker->updating == false) {
+		cnSetZero(&tracker->model.P);
+		for (int i = 0; i < 3; i++)
+			cnMatrixSet(&tracker->model.P, i, i, 1);
+		for (int i = 3; i < 7; i++)
+			cnMatrixSet(&tracker->model.P, i, i, 1e-1);
+	}
+	tracker->state = *(pose);
+}
 
 void survive_kalman_lighthouse_report(SurviveKalmanLighthouse *tracker) {
 	quatnormalize(tracker->state.Rot, tracker->state.Rot);
@@ -31,16 +42,27 @@ void survive_kalman_lighthouse_report(SurviveKalmanLighthouse *tracker) {
 		var_diag[i] = cnMatrixGet(&tracker->model.P, i, i);
 	}
 
-	if (tracker->lh != 0) {
-		survive_recording_write_to_output(tracker->ctx->recptr, "SPHERE lh_conf_size_%d %f %d " Point3_format "\n",
-										  tracker->lh, roundf(100. * norm3d(var_diag)) / 100., 0xFF,
-										  LINMATH_VEC3_EXPAND(lighthouse2world.Pos));
-	}
-
 	tracker->ctx->bsd[tracker->lh].confidence = 1. / norm3d(var_diag);
 	assert(cn_is_finite(&tracker->model.state));
 
+	FLT diff_p[7] = {0};
+	subnd(diff_p, lighthouse2world.Pos, tracker->ctx->bsd[tracker->lh].Pose.Pos, 7);
+	FLT diff = normnd2(diff_p, 7);
+	if (diff < 1e-6)
+		return;
+
+	if (tracker->report_covariance_cnt > 0 && tracker->stats.reported_poses % tracker->report_covariance_cnt == 0) {
+		SurviveContext *ctx = tracker->ctx;
+		survive_recording_write_to_output(ctx->recptr, "LH%d FULL_COVARIANCE ", ctx->bsd[tracker->lh].mode);
+		for (int i = 0; i < tracker->model.P.rows * tracker->model.P.cols; i++) {
+			survive_recording_write_to_output_nopreamble(ctx->recptr, "%f ", tracker->model.P.data[i]);
+		}
+		survive_recording_write_to_output_nopreamble(ctx->recptr, "\n");
+	}
+
+	tracker->updating = true;
 	SURVIVE_INVOKE_HOOK(lighthouse_pose, tracker->ctx, tracker->lh, &lighthouse2world);
+	tracker->updating = false;
 }
 
 struct map_light_data_ctx {
@@ -226,7 +248,7 @@ void survive_kalman_lighthouse_init(SurviveKalmanLighthouse *tracker, SurviveCon
 	cnkalman_state_init(&tracker->model, 7, 0, survive_kalman_lighthouse_process_noise, tracker,
 						(FLT *)&tracker->state);
 	cnkalman_meas_model_init(&tracker->model, "lightcap", &tracker->lightcap_model, map_light_data);
-	tracker->lightcap_model.term_criteria = (struct term_criteria_t){.max_iterations = 100};
+	tracker->lightcap_model.term_criteria = (struct term_criteria_t){.max_iterations = 10};
 
 	tracker->state.Rot[0] = 1;
 	for (int i = 0; i < 3; i++)
