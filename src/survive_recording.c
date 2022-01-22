@@ -73,7 +73,8 @@ SURVIVE_EXPORT void survive_recording_write_matrix(struct SurviveRecordingData *
 		return;
 	}
 
-	survive_recording_write_to_output(recordingData, "%s DATA_MATRIX %s %d %d ", so->codename, name, M->rows, M->cols);
+	survive_recording_write_to_output(recordingData, "%s DATA_MATRIX %s %d %d ", so ? so->codename : "g", name, M->rows,
+									  M->cols);
 	for (int i = 0; i < M->rows * M->cols; i++) {
 		survive_recording_write_to_output_nopreamble(recordingData, "%f ", M->data[i]);
 	}

@@ -15,6 +15,7 @@
 #include <survive_reproject.h>
 #include <survive_reproject_gen2.h>
 
+#include "generated/lighthouse_model.gen.h"
 #include "generated/survive_imu.generated.h"
 #include "generated/survive_reproject.aux.generated.h"
 #include "survive_kalman_lighthouses.h"
@@ -40,7 +41,7 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 					   "Minimum observations to allow light data into the kalman filter", 16, t->light_required_obs)
 
     STRUCT_CONFIG_ITEM("light-max-error",  "Maximum error to integrate into lightcap", -1, t->lightcap_max_error)
-    STRUCT_CONFIG_ITEM("kalman-light-variance",  "Variance of raw light sensor readings", -1, t->light_var)
+    STRUCT_CONFIG_ITEM("kalman-light-variance",  "Variance of raw light sensor readings", 1e-3, t->light_var)
     STRUCT_CONFIG_ITEM("obs-cov-scale",  "Covariance matrix scaling for obs",
                        1, t->obs_cov_scale)
 	STRUCT_CONFIG_ITEM("kalman-obs-axisangle",  "Process observation updates as axis angle poses", false, t->obs_axisangle_model)
@@ -55,8 +56,6 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 
 	STRUCT_CONFIG_ITEM("light-error-for-lh-confidence",
 					   "Whether or not to invalidate LH positions based on kalman errors", 0, t->use_error_for_lh_pos)
-	STRUCT_CONFIG_ITEM("lightcap-rampin-length",
-					   "Number of lightcap measures to ramp in variance", 5000, t->light_rampin_length)
 
 	STRUCT_CONFIG_ITEM("process-weight-jerk", "Jerk variance per second", 1874161, t->params.process_weight_jerk)
 	STRUCT_CONFIG_ITEM("process-weight-acc", "Acc variance per second", 0, t->params.process_weight_acc)
@@ -69,6 +68,8 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("process-weight-gyro-bias", "Gyro bias variance per seconid", 0, t->params.process_weight_gyro_bias)
 	STRUCT_CONFIG_ITEM("kalman-minimize-state-space", "Minimize the state space", 1, t->minimize_state_space)
 	STRUCT_CONFIG_ITEM("kalman-use-error-space", "Model using error state", true, t->use_error_state)
+
+    STRUCT_CONFIG_ITEM("kalman-joint-model-lightcap", "Ratio of confidence of LH over tracked object to use joint filter", 1e-2, t->joint_lightcap_ratio)
 
 	STRUCT_CONFIG_ITEM("kalman-initial-imu-variance", "Initial variance in IMU frame", 0, t->params.initial_variance_imu_correction)
     STRUCT_CONFIG_ITEM("kalman-initial-acc-scale-variance", "Initial variance in IMU frame", 0, t->params.initial_acc_scale_variance)
@@ -86,20 +87,13 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("light-batch-size", "", 32, t->light_batchsize)
 END_STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 
-#define MEAS_MDL_CONFIG(x) \
-STRUCT_NAMED_CONFIG_SECTION(x, cnkalman_meas_model_t) \
-	STRUCT_CONFIG_ITEM("kalman-" #x "-adaptive", "Use adaptive covariance for " #x, 0, t->adaptive) \
-    STRUCT_CONFIG_ITEM("kalman-" #x "-iterations", "Max iterations for " #x, -1, t->term_criteria.max_iterations) \
-    STRUCT_CONFIG_ITEM("kalman-" #x "-jacobian-mode", "Jacobian mode " #x ". -1 for debug, 1 for numerical" , 0, t->meas_jacobian_mode) \
-	STRUCT_CONFIG_ITEM("kalman-" #x "-step-size", "Step size for " #x "." , -1, t->numeric_step_size)              \
-    STRUCT_CONFIG_ITEM("kalman-" #x "-error-state-model", "Use error state model jacobian if available " #x, true, t->error_state_model) \
-END_STRUCT_CONFIG_SECTION(cnkalman_meas_model_t)
 // clang-format off
 
-MEAS_MDL_CONFIG(obs)
-MEAS_MDL_CONFIG(imu)
-MEAS_MDL_CONFIG(lightcap)
-MEAS_MDL_CONFIG(zvu)
+MEAS_MDL_CONFIG(obj, obs, 10, -1)
+MEAS_MDL_CONFIG(obj, imu, 0, -1)
+MEAS_MDL_CONFIG(obj, zvu, 0, 0)
+MEAS_MDL_CONFIG(obj, lightcap, 10, .1)
+MEAS_MDL_CONFIG(joint, lightcap, 10, .1)
 
 static inline void integrate_variance_tracker(SurviveKalmanTracker *tracker, struct variance_tracker* vtracker, const FLT* v, size_t size) {
 	bool isStationary = SurviveSensorActivations_stationary_time(&tracker->so->activations) > 4800000;
@@ -126,6 +120,15 @@ static SurviveKalmanModel copy_model(const FLT *src, size_t state_size) {
 	assert(state_size >= 7);
 	memcpy(rtn.Pose.Pos, src, sizeof(FLT) * state_size);
     quatnormalize(rtn.Pose.Rot, rtn.Pose.Rot);
+	return rtn;
+}
+static SurviveJointKalmanModel copy_joint_model(const FLT *src, size_t state_size) {
+	assert(state_size >= 14);
+	SurviveJointKalmanModel rtn = {
+		0
+	};
+	memcpy(&rtn, src, sizeof(FLT) * state_size);
+	quatnormalize(rtn.Lighthouse.Rot, rtn.Lighthouse.Rot);
 	return rtn;
 }
 static SurviveKalmanErrorModel copy_error_model(const CnMat* src) {
@@ -183,6 +186,22 @@ struct map_light_data_ctx {
 	SurviveKalmanTracker *tracker;
 };
 
+typedef void (*SurviveJointKalmanModel_LightMeas_jac_x0_with_hx)(CnMat* Hx, CnMat* hx, const FLT dt, const SurviveJointKalmanModel * _x0, const FLT* sensor_pt, const BaseStationCal* bsc0);
+typedef void (*SurviveJointKalmanErrorModel_LightMeas_jac_x0_with_hx)(CnMat* Hx, CnMat* hx, const FLT dt, const SurviveJointKalmanModel * _x0, const SurviveJointKalmanErrorModel* error_model, const FLT* sensor_pt);
+
+
+const static SurviveJointKalmanErrorModel zero_error_joint_model = { 0 };
+/*
+SurviveJointKalmanModel_LightMeas_jac_x0_with_hx SurviveJointKalmanModel_LightMeas_jac_x0_with_hx_fns[2][2] = {
+	{SurviveJointKalmanModel_LightMeas_x_gen1_jac_x0_with_hx, SurviveJointKalmanModel_LightMeas_y_gen1_jac_x0_with_hx},
+	{SurviveJointKalmanModel_LightMeas_x_gen2_jac_x0_with_hx, SurviveJointKalmanModel_LightMeas_y_gen2_jac_x0_with_hx},
+};
+ */
+SurviveJointKalmanErrorModel_LightMeas_jac_x0_with_hx SurviveJointKalmanErrorModel_LightMeas_jac_x0_with_hx_fns[2][2] = {
+	{SurviveJointKalmanErrorModel_LightMeas_x_gen1_jac_error_model_with_hx, SurviveJointKalmanErrorModel_LightMeas_y_gen1_jac_error_model_with_hx},
+	{SurviveJointKalmanErrorModel_LightMeas_x_gen2_jac_error_model_with_hx, SurviveJointKalmanErrorModel_LightMeas_y_gen2_jac_error_model_with_hx},
+};
+
 typedef void (*SurviveKalmanModel_LightMeas_jac_x0_with_hx)(CnMat* Hx, CnMat* hx, const FLT dt, const SurviveKalmanModel* _x0, const FLT* sensor_pt, const SurvivePose* lh_p, const BaseStationCal* bsc0);
 typedef void (*SurviveKalmanErrorModel_LightMeas_jac_x0_with_hx)(CnMat* Hx, CnMat* hx, const FLT dt, const SurviveKalmanModel* _x0, const SurviveKalmanErrorModel* error_model, const FLT* sensor_pt, const SurvivePose* lh_p, const BaseStationCal* bsc0);
 
@@ -192,10 +211,72 @@ SurviveKalmanModel_LightMeas_jac_x0_with_hx SurviveKalmanModel_LightMeas_jac_x0_
 	{SurviveKalmanModel_LightMeas_x_gen2_jac_x0_with_hx, SurviveKalmanModel_LightMeas_y_gen2_jac_x0_with_hx},
 };
 SurviveKalmanErrorModel_LightMeas_jac_x0_with_hx SurviveKalmanErrorModel_LightMeas_jac_x0_with_hx_fns[2][2] = {
-	{SurviveKalmanErrorModel_LightMeas_x_gen1_jac_x0_with_hx, SurviveKalmanErrorModel_LightMeas_y_gen1_jac_x0_with_hx},
-	{SurviveKalmanErrorModel_LightMeas_x_gen2_jac_x0_with_hx, SurviveKalmanErrorModel_LightMeas_y_gen2_jac_x0_with_hx},
+	{SurviveKalmanErrorModel_LightMeas_x_gen1_jac_error_model_with_hx, SurviveKalmanErrorModel_LightMeas_y_gen1_jac_error_model_with_hx},
+	{SurviveKalmanErrorModel_LightMeas_x_gen2_jac_error_model_with_hx, SurviveKalmanErrorModel_LightMeas_y_gen2_jac_error_model_with_hx},
 };
 
+static bool map_joint_light_data(void *user, const struct CnMat *Z, const struct CnMat *x_t, struct CnMat *y,
+						   struct CnMat *H_k) {
+	struct map_light_data_ctx *cbctx = (struct map_light_data_ctx *)user;
+	const SurviveKalmanTracker *tracker = cbctx->tracker;
+	SurviveObject *so = tracker->so;
+	struct SurviveContext *ctx = tracker->so->ctx;
+
+    struct SurviveJointKalmanModel s = copy_joint_model(cn_as_const_vector(x_t), x_t->rows);
+
+	if(H_k) {
+		cn_set_zero(H_k);
+	}
+
+	CN_CREATE_STACK_VEC(h_x, 1);
+	FLT *Y = cn_as_vector(y);
+	for (int i = 0; i < Z->rows; i++) {
+		const LightInfo *info = &tracker->savedLight[tracker->savedLight_idx + i];
+		int axis = info->axis;
+
+		assert(ctx->bsd[info->lh].PositionSet);
+
+		const FLT *pt = &so->sensor_locations[info->sensor_idx * 3];
+		SurvivePose imu2trackref = so->imu2trackref;
+		LinmathPoint3d ptInObj = { 0 };
+		gen_scale_sensor_pt(ptInObj, pt, &imu2trackref, so->sensor_scale);
+
+		FLT t = info->timecode / 48000000. - cbctx->tracker->model.t;
+		t = 0;
+		CnMat H_k_row = {0};
+		if(H_k) {
+			H_k_row = cnMatView(1, H_k->cols, H_k, i, 0);
+		}
+		if(cbctx->tracker->lightcap_model.error_state_model && cbctx->tracker->use_error_state) {
+			//assert(H_k == 0 || (cbctx->tracker->model.error_state_size + 6) == H_k->cols);
+			SurviveJointKalmanErrorModel_LightMeas_jac_x0_with_hx_fns[ctx->lh_version][info->axis](H_k ? &H_k_row : 0,
+																							  y ? &h_x : 0, t, &s,
+																								   &zero_error_joint_model,
+																								   ptInObj);
+		} else {
+			assert(false);
+			//assert(H_k == 0 || cbctx->tracker->model.state_cnt == H_k->cols);
+			//SurviveJointKalmanModel_LightMeas_jac_x0_with_hx_fns[ctx->lh_version][info->axis](H_k ? &H_k_row : 0,
+			//																			 y ? &h_x : 0, t, &s, ptInObj, &world2lh, &ctx->bsd[info->lh].fcal[axis]);
+		}
+		if(y) {
+			Y[i] = cn_as_const_vector(Z)[i] - h_x.data[0];
+			if(tracker->lightcap_max_error > 0) {
+				Y[i] = linmath_enforce_range(Y[i], -tracker->lightcap_max_error, tracker->lightcap_max_error);
+			}
+			SV_DATA_LOG("h_light[%d][%d][%d]", h_x.data, 1, info->lh, info->axis, info->sensor_idx);
+			SV_DATA_LOG("Y_light[%d][%d][%d]", Y, 1, info->lh, info->axis, info->sensor_idx);
+		}
+		SV_DATA_LOG("Z_light[%d][%d][%d]", &info->value, 1, info->lh, info->axis, info->sensor_idx);
+	}
+
+	if (H_k && !cn_is_finite(H_k))
+		return false;
+
+	survive_recording_write_matrix(tracker->so->ctx->recptr, tracker->so, 100, "light-y", y);
+
+	return true;
+}
 /**
  * This function reuses the reproject functions to estimate what it thinks the lightcap angle should be based on x_t,
  * and uses that measurement to compare from the actual observed angle. These functions have jacobian functions that
@@ -219,10 +300,10 @@ static bool map_light_data(void *user, const struct CnMat *Z, const struct CnMat
     SurvivePose obj2world = *(SurvivePose *)cn_as_const_vector(x_t);
     quatnormalize(obj2world.Rot, obj2world.Rot);
 
-CN_CREATE_STACK_VEC(h_x, 1);
+	CN_CREATE_STACK_VEC(h_x, 1);
 	FLT *Y = cn_as_vector(y);
-	for (int i = 0; i < tracker->savedLight_idx; i++) {
-		const LightInfo *info = &tracker->savedLight[i];
+	for (int i = 0; i < Z->rows; i++) {
+		const LightInfo *info = &tracker->savedLight[tracker->savedLight_idx + i];
 		int axis = info->axis;
 
 		assert(ctx->bsd[info->lh].PositionSet);
@@ -243,11 +324,13 @@ CN_CREATE_STACK_VEC(h_x, 1);
 		if(cbctx->tracker->lightcap_model.error_state_model && cbctx->tracker->use_error_state) {
 			assert(H_k == 0 || cbctx->tracker->model.error_state_size == H_k->cols);
 			SurviveKalmanErrorModel_LightMeas_jac_x0_with_hx_fns[ctx->lh_version][info->axis](H_k ? &H_k_row : 0,
-																							  y ? &h_x : 0, t, &s, &zero_error_model, ptInObj, &world2lh, &ctx->bsd[info->lh].fcal[axis]);
+																							  y ? &h_x : 0, t, &s, &zero_error_model, ptInObj, &world2lh,
+																							  survive_basestation_cal(ctx, info->lh, axis));
 		} else {
 			assert(H_k == 0 || cbctx->tracker->model.state_cnt == H_k->cols);
 			SurviveKalmanModel_LightMeas_jac_x0_with_hx_fns[ctx->lh_version][info->axis](H_k ? &H_k_row : 0,
-																						 y ? &h_x : 0, t, &s, ptInObj, &world2lh, &ctx->bsd[info->lh].fcal[axis]);
+																						 y ? &h_x : 0, t, &s, ptInObj, &world2lh,
+																						 survive_basestation_cal(ctx, info->lh, axis));
 		}
 		if(y) {
 			Y[i] = cn_as_const_vector(Z)[i] - h_x.data[0];
@@ -268,6 +351,15 @@ CN_CREATE_STACK_VEC(h_x, 1);
 	return true;
 }
 
+int sort_by_lh_axis_sensor(const void * _info1, const void * _info2) {
+	const LightInfo* info1 = _info1;
+	const LightInfo* info2 = _info2;
+	if(info1->lh != info2->lh)
+		return (info1->lh > info2->lh) ? -1 : 1;
+	return 0;
+}
+
+
 void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker, PoserData *pd) {
 	SurviveContext *ctx = tracker->so->ctx;
 	FLT time = pd->timecode / (FLT)tracker->so->timebase_hz;
@@ -287,7 +379,9 @@ void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker,
 	}
 
 	tracker->last_light_time = time;
+
 	if (tracker->light_var >= 0) {
+		qsort(tracker->savedLight, tracker->savedLight_idx, sizeof(tracker->savedLight[0]), sort_by_lh_axis_sensor);
 
 		for (int i = 0; i < tracker->savedLight_idx; i++) {
 			if (!ctx->bsd[tracker->savedLight[i].lh].PositionSet) {
@@ -301,41 +395,61 @@ void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker,
             return;
         }
 
-        CN_CREATE_STACK_VEC(Z, tracker->savedLight_idx);
-		for (int i = 0; i < tracker->savedLight_idx; i++) {
-			cnMatrixSet(&Z, i, 0, tracker->savedLight[i].value);
+		FLT rtn = 0;
+		while(tracker->savedLight_idx > 0) {
+			int lh = tracker->savedLight[tracker->savedLight_idx-1].lh;
+			int cnt = 0;
+
+			while(tracker->savedLight_idx > 0) {
+				cnt++;
+				tracker->savedLight_idx--;
+				if(tracker->savedLight_idx > 0 && tracker->savedLight[tracker->savedLight_idx - 1].lh != lh)
+					break;
+			}
+
+			CN_CREATE_STACK_VEC(Z, cnt);
+			for (int i = tracker->savedLight_idx; i < cnt + tracker->savedLight_idx; i++) {
+				assert(tracker->savedLight[i].lh == lh);
+				cnMatrixSet(&Z, i - tracker->savedLight_idx, 0, tracker->savedLight[i].value);
+			}
+
+			struct map_light_data_ctx cbctx = {
+				.tracker = tracker,
+			};
+
+			SurviveObject *so = tracker->so;
+			FLT light_var = tracker->light_var;
+
+			SV_DATA_LOG("light_var", &light_var, 1);
+			FLT light_vars[32] = {0};
+			for (int i = 0; i < 32; i++)
+				light_vars[i] = light_var;
+			CnMat R = cnVec(Z.rows, light_vars);
+
+			tracker->datalog_tag = "light_data";
+			if(time < tracker->model.t)
+				time = tracker->model.t;
+
+			FLT obj_trace = cn_trace(&tracker->model.P);
+			FLT lh_trace = cn_trace(&ctx->bsd[lh].tracker->model.P);
+			FLT ratio = lh_trace / obj_trace;
+			if(tracker->joint_lightcap_ratio >= 0 && tracker->joint_lightcap_ratio < ratio) {
+				tracker->joint_model.ks[0] = &ctx->bsd[lh].tracker->model;
+				//joint_meas.meas_jacobian_mode = cnkalman_jacobian_mode_debug;
+				rtn += cnkalman_meas_model_predict_update(time, &tracker->joint_model, &cbctx, &Z, &R);
+				survive_kalman_lighthouse_report(ctx->bsd[lh].tracker);
+			} else {
+				rtn += cnkalman_meas_model_predict_update(time, &tracker->lightcap_model, &cbctx, &Z, &R);
+			}
 		}
 
-		struct map_light_data_ctx cbctx = {
-			.tracker = tracker,
-		};
-
-		SurviveObject *so = tracker->so;
-		bool ramp_in = tracker->stats.lightcap_count < tracker->light_rampin_length;
-		FLT light_var = tracker->light_var;
-		if (ramp_in) {
-			//light_var += tracker->obs_pos_var / ((FLT)tracker->stats.lightcap_count + 1.);
-		}
-		SV_DATA_LOG("light_var", &light_var, 1);
-		FLT light_vars[32] = {0};
-		for (int i = 0; i < 32; i++)
-			light_vars[i] = light_var;
-		CnMat R = cnVec(Z.rows, light_vars);
-
-        tracker->datalog_tag = "light_data";
-		if(time < tracker->model.t)
-			time = tracker->model.t;
-        FLT rtn = cnkalman_meas_model_predict_update(time, &tracker->lightcap_model, &cbctx, &Z, &R);
 		tracker->datalog_tag = 0;
-		if (!ramp_in && tracker->lightcap_model.adaptive) {
-			tracker->light_var = light_var;
-		}
-		//SV_VERBOSE(100, "Light pass error %14.14f %7.7f", stats.bestnorm, tracker->stats.light_stats.bestnorm_acc / (FLT)tracker->stats.light_stats.total_runs);
 		tracker->stats.lightcap_total_error += rtn;
 
 		tracker->light_residuals_all *= .9;
 		tracker->light_residuals_all += .1 * rtn;
 
+		SurviveObject * so = tracker->so;
 		SV_DATA_LOG("res_error_light_", &rtn, 1);
 		SV_DATA_LOG("res_error_light_avg", &tracker->light_residuals_all, 1);
 		tracker->stats.lightcap_count++;
@@ -345,8 +459,6 @@ void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker,
 }
 
 void survive_kalman_tracker_integrate_light(SurviveKalmanTracker *tracker, PoserDataLight *data) {
-	survive_kalman_lighthouse_integrate_light(tracker->so->ctx->bsd[data->lh].tracker, tracker->so, data);
-
 	bool isSync = data->hdr.pt == POSERDATA_SYNC || data->hdr.pt == POSERDATA_SYNC_GEN2;
 	if (isSync) {
 		survive_kalman_tracker_integrate_saved_light(tracker, &data->hdr);
@@ -652,8 +764,10 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 		cn_set_zero(&Z);
 
 		tracker->datalog_tag = "zvu";
+
 		tracker->stats.imu_total_error +=
-			cnkalman_predict_update_state(time, &tracker->model, &Z, &H, &R, false);
+			cnkalman_meas_model_predict_update(time, &tracker->zvu_model, &H, &Z, &R);
+
 		tracker->datalog_tag = 0;
 
 		CN_FREE_STACK_MAT(Z);
@@ -1072,7 +1186,7 @@ void survive_kalman_tracker_reinit(SurviveKalmanTracker *tracker) {
 
 	cnkalman_state_reset(&tracker->model);
 	for (int i = 0; i < 7; i++) {
-		cnMatrixSet(&tracker->model.P, i, i, cnMatrixGet(&tracker->model.P, i, i) + 10);
+		cnMatrixSet(&tracker->model.P, i, i, cnMatrixGet(&tracker->model.P, i, i) + 1e5);
 	}
     if (tracker->params.initial_variance_imu_correction != 0) {
 		for(int i = 0;i < 4;i++) {
@@ -1194,17 +1308,25 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	tracker->model.datalog_user = tracker;
 	tracker->model.datalog = tracker_datalog;
 
+	cnkalman_state_t* states[] = {0, &tracker->model};
+	cnkalman_meas_model_multi_init(states, 2, "joint lightcap", &tracker->joint_model, map_joint_light_data);
+	cnkalman_meas_model_t_joint_lightcap_attach_config(ctx, &tracker->joint_model);
+	tracker->joint_model.error_state_model = true;
+	if(tracker->joint_model.term_criteria.max_iterations == -1)
+		tracker->joint_model.term_criteria.max_iterations = 10;
+
     cnkalman_meas_model_init(&tracker->model, "imu", &tracker->imu_model, survive_kalman_tracker_imu_measurement_model);
-	cnkalman_meas_model_t_imu_attach_config(ctx, &tracker->imu_model);
+	cnkalman_meas_model_t_obj_imu_attach_config(ctx, &tracker->imu_model);
 	tracker->imu_model.error_state_model = false;
 
     cnkalman_meas_model_init(&tracker->model, "lightcap", &tracker->lightcap_model, map_light_data);
-	cnkalman_meas_model_t_lightcap_attach_config(ctx, &tracker->lightcap_model);
+	cnkalman_meas_model_t_obj_lightcap_attach_config(ctx, &tracker->lightcap_model);
 	//tracker->lightcap_model.error_state_model = false;
 	tracker->lightcap_model.term_criteria.max_iterations = 10;
 
     cnkalman_meas_model_init(&tracker->model, "obs", &tracker->obs_model, tracker->obs_axisangle_model ? map_obs_data_axisangle : map_obs_data);
-	cnkalman_meas_model_t_obs_attach_config(ctx, &tracker->obs_model);
+	cnkalman_meas_model_t_obj_obs_attach_config(ctx, &tracker->obs_model);
+	tracker->obs_model.term_criteria.max_iterations = 10;
 
     cnkalman_meas_model_init(&tracker->model, "zvu", &tracker->zvu_model, 0);
 
@@ -1224,18 +1346,18 @@ static void print_kalman_stats(SurviveContext* ctx, const cnkalman_meas_model_t 
     const struct cnkalman_update_extended_total_stats_t* total_stats = &model->stats;
     if(total_stats->total_runs == 0) return;
 
-    SV_VERBOSE(5, "%s Kalman statistics:", model->name);
+    SV_VERBOSE(5, "\t%s Kalman statistics:", model->name);
     FLT t = (FLT)total_stats->total_runs;
-    SV_VERBOSE(5, "\t%-32s %6d %7.3f%%", "failures", total_stats->total_failures, 100 * total_stats->total_failures / t);
-    SV_VERBOSE(5, "\t%-32s %7.7f / %7.7f / %7.7f", "avg bestnorm", total_stats->bestnorm_acc / t, total_stats->bestnorm_meas_acc / t, total_stats->bestnorm_delta_acc / t);
-    SV_VERBOSE(5, "\t%-32s %7.7f / %7.7f", "avg orignorm", total_stats->orignorm_acc / t, total_stats->orignorm_meas_acc / t);
-    SV_VERBOSE(5, "\t%-32s %7.7f", "avg step", total_stats->step_acc / (FLT)total_stats->step_cnt);
-    SV_VERBOSE(5, "\t%-32s %6d (%3.2f)", "iterations", total_stats->total_iterations, total_stats->total_iterations / (FLT)total_stats->total_runs);
-    SV_VERBOSE(5, "\t%-32s %6d", "runs", total_stats->total_runs);
-    SV_VERBOSE(5, "\t%-32s %6d / %6d", "fevals", total_stats->total_fevals, total_stats->total_hevals);
-    SV_VERBOSE(5, "\t%-32s", "exit reasons");
+    SV_VERBOSE(5, "\t\t%-32s %6d %7.3f%%", "failures", total_stats->total_failures, 100 * total_stats->total_failures / t);
+    SV_VERBOSE(5, "\t\t%-32s %7.7f / %7.7f / %7.7f", "avg bestnorm", total_stats->bestnorm_acc / t, total_stats->bestnorm_meas_acc / t, total_stats->bestnorm_delta_acc / t);
+    SV_VERBOSE(5, "\t\t%-32s %7.7f / %7.7f", "avg orignorm", total_stats->orignorm_acc / t, total_stats->orignorm_meas_acc / t);
+    SV_VERBOSE(5, "\t\t%-32s %7.7f", "avg step", total_stats->step_acc / (FLT)total_stats->step_cnt);
+    SV_VERBOSE(5, "\t\t%-32s %6d (%3.2f)", "iterations", total_stats->total_iterations, total_stats->total_iterations / (FLT)total_stats->total_runs);
+    SV_VERBOSE(5, "\t\t%-32s %6d", "runs", total_stats->total_runs);
+    SV_VERBOSE(5, "\t\t%-32s %6d / %6d", "fevals", total_stats->total_fevals, total_stats->total_hevals);
+    SV_VERBOSE(5, "\t\t%-32s", "exit reasons");
     for(int i = 1;i < cnkalman_update_extended_termination_reason_MAX;i++) {
-        SV_VERBOSE(5, "\t    %-28s %6u", cnkalman_update_extended_termination_reason_to_str(i), (int)total_stats->stop_reason_counts[i]);
+        SV_VERBOSE(5, "\t\t    %-28s %6u", cnkalman_update_extended_termination_reason_to_str(i), (int)total_stats->stop_reason_counts[i]);
     }
 }
 
@@ -1245,7 +1367,8 @@ void survive_kalman_tracker_stats(SurviveKalmanTracker *tracker) {
     SurviveContext *ctx = tracker->so->ctx;
 
 	SV_VERBOSE(5, "IMU %s tracker statistics:", tracker->so->codename);
-	SV_VERBOSE(5, "\t%-32s %u", "state_cnt", tracker->model.state_cnt);
+	SV_VERBOSE(5, "\t%-32s %4u %4u", "state_cnt", tracker->model.state_cnt, tracker->model.error_state_size);
+
 	LinmathQuat q;
 	quatnormalize(q, tracker->state.IMUCorrection); 
 	SV_VERBOSE(5, "\t%-32s (%f) " Point4_format, "IMU Correction", tracker->state.AccScale, LINMATH_VEC4_EXPAND(q));
@@ -1331,7 +1454,8 @@ void survive_kalman_tracker_stats(SurviveKalmanTracker *tracker) {
     print_kalman_stats(ctx, &tracker->imu_model);
     print_kalman_stats(ctx, &tracker->lightcap_model);
     print_kalman_stats(ctx, &tracker->obs_model);
-    print_kalman_stats(ctx, &tracker->zvu_model);
+	print_kalman_stats(ctx, &tracker->zvu_model);
+	print_kalman_stats(ctx, &tracker->joint_model);
 
 	memset(&tracker->stats, 0, sizeof(tracker->stats));
 	tracker->first_report_time = tracker->last_report_time = 0;
@@ -1345,9 +1469,10 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 
 	cnkalman_state_free(&tracker->model);
 
-	cnkalman_meas_model_t_imu_detach_config(tracker->so->ctx, &tracker->imu_model);
-	cnkalman_meas_model_t_obs_detach_config(tracker->so->ctx, &tracker->obs_model);
-	cnkalman_meas_model_t_lightcap_detach_config(tracker->so->ctx, &tracker->lightcap_model);
+	cnkalman_meas_model_t_joint_lightcap_detach_config(tracker->so->ctx, &tracker->joint_model);
+	cnkalman_meas_model_t_obj_imu_detach_config(tracker->so->ctx, &tracker->imu_model);
+	cnkalman_meas_model_t_obj_obs_detach_config(tracker->so->ctx, &tracker->obs_model);
+	cnkalman_meas_model_t_obj_lightcap_detach_config(tracker->so->ctx, &tracker->lightcap_model);
 
 	SurviveKalmanTracker_detach_config(tracker->so->ctx, tracker);
 }

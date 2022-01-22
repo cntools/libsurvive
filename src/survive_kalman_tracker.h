@@ -73,6 +73,7 @@ typedef struct SurviveKalmanTracker {
 	bool use_raw_obs;
 	bool show_raw_obs;
 
+	FLT joint_lightcap_ratio;
 	FLT light_threshold_var, report_threshold_var, light_error_threshold;
 	FLT zvu_stationary_var;
 	FLT zvu_no_light_var;
@@ -84,11 +85,9 @@ typedef struct SurviveKalmanTracker {
 
 	struct SurviveKalmanTracker_Params params;
 
-	FLT moving_acc_scale, stationary_acc_scale;
-
 	// Kalman state is layed out as SurviveKalmanModel
 	cnkalman_state_t model;
-	cnkalman_meas_model_t obs_model, lightcap_model, imu_model, zvu_model;
+	cnkalman_meas_model_t obs_model, lightcap_model, imu_model, zvu_model, joint_model;
 
 	const char* datalog_tag;
 
@@ -161,6 +160,21 @@ SURVIVE_EXPORT bool survive_kalman_tracker_imu_measurement_model(void *user, con
 																 const struct CnMat *x_t, struct CnMat *y,
 																 struct CnMat *H_k);
 SURVIVE_EXPORT void survive_kalman_tracker_correct_imu(SurviveKalmanTracker *tracker, LinmathVec3d out, const LinmathVec3d accel);
+
+#define MEAS_MDL_CONFIG(prefix, x, default_iterations, default_max_error)                                              \
+	STRUCT_NAMED_CONFIG_SECTION(prefix##_##x, cnkalman_meas_model_t)                                                   \
+	STRUCT_CONFIG_ITEM("kalman-" #prefix "-" #x "-adaptive", "Use adaptive covariance for " #x, 0, t->adaptive)        \
+	STRUCT_CONFIG_ITEM("kalman-" #prefix "-" #x "-max-error", "Max tolerable initial error " #x, default_max_error,    \
+					   t->term_criteria.max_error)                                                                     \
+	STRUCT_CONFIG_ITEM("kalman-" #prefix "-" #x "-iterations", "Max iterations for " #x, default_iterations,           \
+					   t->term_criteria.max_iterations)                                                                \
+	STRUCT_CONFIG_ITEM("kalman-" #prefix "-" #x "-jacobian-mode",                                                      \
+					   "Jacobian mode " #x ". -1 for debug, 1 for numerical", 0, t->meas_jacobian_mode)                \
+	STRUCT_CONFIG_ITEM("kalman-" #prefix "-" #x "-step-size", "Step size for " #x ".", -1, t->numeric_step_size)       \
+	STRUCT_CONFIG_ITEM("kalman-" #prefix "-" #x "-error-state-model",                                                  \
+					   "Use error state model jacobian if available " #x, true, t->error_state_model)                  \
+	END_STRUCT_CONFIG_SECTION(cnkalman_meas_model_t)
+
 #ifdef __cplusplus
 };
 #endif

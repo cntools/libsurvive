@@ -258,6 +258,28 @@ typedef struct BaseStationCal {
 	FLT ogeemag;
 } BaseStationCal;
 
+typedef struct SurviveLighthouseKalmanModel {
+	SurvivePose Lighthouse;
+	BaseStationCal BSD0, BSD1;
+} SurviveLighthouseKalmanModel;
+
+typedef struct SurviveLighthouseKalmanErrorModel {
+	LinmathAxisAnglePose Lighthouse;
+	BaseStationCal BSD0, BSD1;
+} SurviveLighthouseKalmanErrorModel;
+
+typedef struct SurviveJointKalmanErrorModel {
+	LinmathAxisAnglePose Lighthouse;
+	BaseStationCal BSD0, BSD1;
+	SurviveKalmanErrorModel Object;
+} SurviveJointKalmanErrorModel;
+
+typedef struct SurviveJointKalmanModel {
+	SurvivePose Lighthouse;
+	BaseStationCal BSD0, BSD1;
+	SurviveKalmanModel Object;
+} SurviveJointKalmanModel;
+
 struct BaseStationData {
 	uint8_t PositionSet : 1;
 
@@ -655,6 +677,7 @@ SURVIVE_EXPORT void survive_reset_lighthouse_position(SurviveContext *ctx, int b
 SURVIVE_EXPORT uint8_t survive_map_sensor_id(SurviveObject *so, uint8_t reported_id);
 SURVIVE_EXPORT bool handle_lightcap(SurviveObject *so, const LightcapElement *le);
 
+SURVIVE_EXPORT BaseStationCal *survive_basestation_cal(SurviveContext *ctx, int lh, int axis);
 SURVIVE_EXPORT const char *survive_colorize(const char *str);
 SURVIVE_EXPORT const char *survive_colorize_codename(const SurviveObject *so);
 SURVIVE_EXPORT uint32_t survive_hash(const uint8_t *data, size_t len);

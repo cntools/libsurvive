@@ -1362,3 +1362,7 @@ SURVIVE_EXPORT const char *survive_colorize(const char *str) {
 SURVIVE_EXPORT const char *survive_colorize_codename(const SurviveObject *so) {
 	return survive_colorize(so ? so->codename : "unknown");
 }
+BaseStationCal *survive_basestation_cal(SurviveContext *ctx, int lh, int axis) {
+	// return &ctx->bsd[lh].fcal[axis];
+	return axis == 0 ? &ctx->bsd[lh].tracker->state.BSD0 : &ctx->bsd[lh].tracker->state.BSD1;
+}

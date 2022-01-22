@@ -10,9 +10,29 @@ from survive_types import *
 def SurvivePoseToErrorModel(x1: SurvivePose, x0: SurvivePose):
     return SurviveAxisAnglePose(
             Pos=x1.Pos - x0.Pos,
-            AxisAngleRot=GenerateQuatErrorModelApprox(x1.Rot, x0.Rot)
+            AxisAngleRot=GenerateQuatErrorModel(x1.Rot, x0.Rot)
     )
 
+@cg.generate_code()
+def SurvivePoseAddErrorModel(x0: SurvivePose, error_state: SurviveAxisAnglePose):
+    return SurvivePose(
+        Pos=x0.Pos + error_state.Pos,
+        Rot=GenerateQuatModel(x0.Rot, error_state.AxisAngleRot)
+    )
+
+@cg.generate_code()
+def SurvivePoseToErrorModelExact(x1: SurvivePose, x0: SurvivePose):
+    return SurviveAxisAnglePose(
+        Pos=x1.Pos - x0.Pos,
+        AxisAngleRot=GenerateQuatErrorModel(x1.Rot, x0.Rot)
+    )
+
+@cg.generate_code()
+def SurvivePoseAddErrorModelExact(x0: SurvivePose, error_state: SurviveAxisAnglePose):
+    return SurvivePose(
+        Pos=x0.Pos + error_state.Pos,
+        Rot=GenerateQuatModel(x0.Rot, error_state.AxisAngleRot)
+    )
 
 @cg.generate_code()
 def SurviveKalmanModelToErrorModel(x1: SurviveKalmanModel, x0: SurviveKalmanModel):
@@ -28,13 +48,6 @@ def SurviveKalmanModelToErrorModel(x1: SurviveKalmanModel, x0: SurviveKalmanMode
         AccBias=x1.AccBias -x0.AccBias,
         GyroBias=x1.GyroBias- x0.GyroBias,
     )
-
-@cg.generate_code()
-def SurvivePoseAddErrorModel(x0: SurvivePose, error_state: SurviveAxisAnglePose):
-    return SurvivePose(
-            Pos=x0.Pos + error_state.Pos,
-            Rot=GenerateQuatModelApprox(x0.Rot, error_state.AxisAngleRot)
-        )
 
 @cg.generate_code()
 def SurviveKalmanModelAddErrorModel(x0: SurviveKalmanModel, error_state: SurviveKalmanErrorModel):

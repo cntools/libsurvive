@@ -41,16 +41,6 @@ class SurviveLighthouseErrorModel:
     Pose: SurviveAxisAnglePose
 
 @dataclass
-class SurviveJointKalmanModel:
-    Object: SurviveKalmanModel
-    Lighthouse: SurvivePose
-
-@dataclass
-class SurviveJointKalmanErrorModel:
-    Object: SurviveKalmanErrorModel
-    Lighthouse: SurviveAxisAnglePose
-
-@dataclass
 class BaseStationCal:
     phase: float = 0
     tilt: float = 0
@@ -59,5 +49,35 @@ class BaseStationCal:
     gibmag: float = 0
     ogeephase: float = 0
     ogeemag: float = 0
+    def __add__(self, other):
+        return BaseStationCal(
+
+        )
+
+@dataclass
+class SurviveJointKalmanModel:
+    Object: SurviveKalmanModel
+    Lighthouse: SurvivePose
+    BSD0: BaseStationCal
+    BSD1: BaseStationCal
+
+@dataclass
+class SurviveLighthouseKalmanModel:
+    Lighthouse: SurvivePose
+    BSD0: BaseStationCal
+    BSD1: BaseStationCal
+
+@dataclass
+class SurviveLighthouseKalmanErrorModel:
+    Lighthouse: SurviveAxisAnglePose
+    BSD0: BaseStationCal
+    BSD1: BaseStationCal
+
+@dataclass
+class SurviveJointKalmanErrorModel:
+    Object: SurviveKalmanErrorModel
+    Lighthouse: SurviveAxisAnglePose
+    BSD0: BaseStationCal
+    BSD1: BaseStationCal
 
 Vec3d = np.array([0, 0, 0])

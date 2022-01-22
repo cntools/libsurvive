@@ -269,7 +269,7 @@ void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx, SurviveContex
 		for (int lh = 0; lh < mpfit_ctx->cameraLength; lh++) {
 			BaseStationCal *fcal = (BaseStationCal *)&bsdParams->p[lh * sizeof(BaseStationCal) * 2];
 			for (int axis = 0; axis < 2; axis++)
-				fcal[axis] = ctx->bsd[lh].fcal[axis];
+				fcal[axis] = *survive_basestation_cal(ctx, lh, axis);
 		}
 	}
 
@@ -315,7 +315,7 @@ int survive_optimizer_get_sensors_index(const survive_optimizer *ctx) {
 BaseStationCal *survive_optimizer_get_calibration(survive_optimizer *ctx, int lh) {
 	int idx = survive_optimizer_get_calibration_index(ctx);
 	if (idx < 0)
-		return ctx->sos[0]->ctx->bsd[lh].fcal;
+		return survive_basestation_cal(ctx->sos[0]->ctx, lh, 0);
 
 	BaseStationCal *base = (BaseStationCal *)(&ctx->parameters[idx]);
 	return &base[2 * lh];
@@ -779,7 +779,9 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 				if (needsScaleJac) {
 					gen_scale_sensor_pt_jac_scale(xyzjac_scale, pt, &imu2trackref, scale);
 				}
-				gen_scale_sensor_pt(pt, pt, &imu2trackref, scale);
+				if (scale != 1) {
+					gen_scale_sensor_pt(pt, pt, &imu2trackref, scale);
+				}
 			}
 
 			bool needsNewObj2World = pose_idx != meas->light.object;
