@@ -33,6 +33,24 @@ class SurviveKalmanErrorModel:
     GyroBias: np.array = np.array((0., 0., 0))
 
 @dataclass
+class SurviveLighthouseModel:
+    Pose: SurvivePose
+
+@dataclass
+class SurviveLighthouseErrorModel:
+    Pose: SurviveAxisAnglePose
+
+@dataclass
+class SurviveJointKalmanModel:
+    Object: SurviveKalmanModel
+    Lighthouse: SurvivePose
+
+@dataclass
+class SurviveJointKalmanErrorModel:
+    Object: SurviveKalmanErrorModel
+    Lighthouse: SurviveAxisAnglePose
+
+@dataclass
 class BaseStationCal:
     phase: float = 0
     tilt: float = 0
