@@ -162,12 +162,12 @@ def apply_ang_velocity(axis_angle, time, q):
 
 # error_state = x0' * x1
 @cg.generate_code(x1 = 4, x0 = 4)
-def GenerateQuatErrorModel(x1, x0):
+def GenerateQuatErrorModelExact(x1, x0):
     return quattoeuler(quatrotateabout(quatgetreciprocal(x0), x1))
 
 # x1 = x0 * error_state
 @cg.generate_code(x0 = 4, error_state = 3)
-def GenerateQuatModel(x0, error_state):
+def GenerateQuatModelExact(x0, error_state):
     return quatrotateabout(x0, quatfromeuler(error_state))
 
 # error_state = x0' * x1
@@ -180,3 +180,14 @@ def GenerateQuatErrorModelApprox(x1, x0):
 def GenerateQuatModelApprox(x0, error_state):
     a,b,c = error_state
     return quatnormalize(quatrotateabout(x0, [1, a / 2., b / 2., c / 2.]))
+
+
+# error_state = x0' * x1
+@cg.generate_code(x1 = 4, x0 = 4)
+def GenerateQuatErrorModel(x1, x0):
+    return GenerateQuatErrorModelApprox(x1, x0)
+
+# x1 = x0 * error_state
+@cg.generate_code(x0 = 4, error_state = 3)
+def GenerateQuatModel(x0, error_state):
+    return GenerateQuatModelApprox(x0, error_state)
