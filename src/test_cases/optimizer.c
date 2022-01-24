@@ -1,4 +1,6 @@
-#include "../generated/survive_imu.generated.h"
+#include "survive.h"
+
+#include "../generated/kalman_kinematics.gen.h"
 #include "survive_optimizer.h"
 #include "test_case.h"
 
@@ -37,8 +39,8 @@ static SurvivePose run(survive_optimizer* mpfitctx, SurviveKalmanModel* mdl, con
 	FLT t = 0;
 	for(int i = 0;i < 2;i++) {
 		t += .1;
-		SurviveKalmanModel tmp;
-		gen_kalman_model_predict((FLT*)&tmp, .1, mdl);
+		SurviveKalmanModel tmp = {0};
+		SurviveKalmanModelPredict(&tmp, .1, mdl);
 		*mdl = tmp;
 		quatnormalize(mdl->Pose.Rot, mdl->Pose.Rot);
 		for(int j = 0;j < points_cnt;j++) {
@@ -116,12 +118,12 @@ bool verify_R(CnMat* R, SurvivePose* gt, SurvivePose* modeled) {
 TEST(Optimizer, Simple) {
 	survive_optimizer mpfitctx = default_optimizer();
 
-	SurviveKalmanModel mdl = {
-		.Pose = { .Rot = { 1, 1, 1, 1 }},
-		.Velocity = { .Pos = { 0, 0, .1}, .AxisAngleRot = {0, 0, .1}},
-		.IMUCorrection = { 1 },
-		.AccScale = 1,
-	};
+	SurviveKalmanModel mdl = {.Pose = {.Rot = {1, 1, 1, 1}},
+							  .Velocity = {.Pos = {0, 0, .1}, .AxisAngleRot = {0, 0, .1}},
+							  .IMUBias = {
+								  .IMUCorrection = {1},
+								  .AccScale = 1,
+							  }};
 	CN_CREATE_STACK_MAT(R, 7, 7);
 
 	mp_result results = {};
@@ -137,12 +139,12 @@ TEST(Optimizer, Velocity) {
 	survive_optimizer mpfitctx = default_optimizer();
 	mpfitctx.disableVelocity = false;
 
-	SurviveKalmanModel mdl = {
-		.Pose = { .Rot = { 1, 1, 1, 1 }},
-		.Velocity = { .Pos = { 0, 0, .1}, .AxisAngleRot = {0, 0, .1}},
-		.IMUCorrection = { 1 },
-		.AccScale = 1,
-	};
+	SurviveKalmanModel mdl = {.Pose = {.Rot = {1, 1, 1, 1}},
+							  .Velocity = {.Pos = {0, 0, .1}, .AxisAngleRot = {0, 0, .1}},
+							  .IMUBias = {
+								  .IMUCorrection = {1},
+								  .AccScale = 1,
+							  }};
 	CN_CREATE_STACK_MAT(R, 7, 7);
 
 	mp_result results = {};
@@ -167,12 +169,12 @@ FLT side_points[] = {
 TEST(Optimizer, SimpleSide) {
 	survive_optimizer mpfitctx = default_optimizer();
 
-	SurviveKalmanModel mdl = {
-		.Pose = { .Rot = { 1, 1, 1, 1 }},
-		.Velocity = { .Pos = { 0, 0, .1}, .AxisAngleRot = {0, 0, .1}},
-		.IMUCorrection = { 1 },
-		.AccScale = 1,
-	};
+	SurviveKalmanModel mdl = {.Pose = {.Rot = {1, 1, 1, 1}},
+							  .Velocity = {.Pos = {0, 0, .1}, .AxisAngleRot = {0, 0, .1}},
+							  .IMUBias = {
+								  .IMUCorrection = {1},
+								  .AccScale = 1,
+							  }};
 	CN_CREATE_STACK_MAT(R, 7, 7);
 
 	mp_result results = {};
@@ -188,12 +190,12 @@ TEST(Optimizer, VelocitySide) {
 	survive_optimizer mpfitctx = default_optimizer();
 	mpfitctx.disableVelocity = false;
 
-	SurviveKalmanModel mdl = {
-		.Pose = { .Rot = { 1, 1, 1, 1 }},
-		.Velocity = { .Pos = { 0, 0, .1}, .AxisAngleRot = {0, 0, .1}},
-		.IMUCorrection = { 1 },
-		.AccScale = 1,
-	};
+	SurviveKalmanModel mdl = {.Pose = {.Rot = {1, 1, 1, 1}},
+							  .Velocity = {.Pos = {0, 0, .1}, .AxisAngleRot = {0, 0, .1}},
+							  .IMUBias = {
+								  .IMUCorrection = {1},
+								  .AccScale = 1,
+							  }};
 	CN_CREATE_STACK_MAT(R, 7, 7);
 
 	SurviveVelocity velocity = { .Pos = { 0, 0, -.1 }, .AxisAngleRot = { 0, 0, -.1 } };
@@ -212,12 +214,12 @@ FLT under_specified[] = {
 TEST(Optimizer, SimpleUnderspecced) {
 	survive_optimizer mpfitctx = default_optimizer();
 
-	SurviveKalmanModel mdl = {
-		.Pose = {.Rot = {1, 0, 1, 0}},
-		//.Velocity = { .Pos = { 0, 0, .1}, .AxisAngleRot = {0, 0, .1}},
-		.IMUCorrection = {1},
-		.AccScale = 1,
-	};
+	SurviveKalmanModel mdl = {.Pose = {.Rot = {1, 0, 1, 0}},
+							  //.Velocity = { .Pos = { 0, 0, .1}, .AxisAngleRot = {0, 0, .1}},
+							  .IMUBias = {
+								  .IMUCorrection = {1},
+								  .AccScale = 1,
+							  }};
 	CN_CREATE_STACK_MAT(R, 7, 7);
 
 	mp_result results = {};

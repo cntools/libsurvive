@@ -10,7 +10,6 @@
 
 #include "test_case.h"
 
-#include "../generated/survive_imu.generated.h"
 #include "../generated/survive_reproject.generated.h"
 
 //#ifdef HAVE_AUX_GENERATED
@@ -161,7 +160,7 @@ static FLT test_gen_jacobian_function(const char *name, generate_input input_fn,
 
 							FLT err = diff_array(0, gen_output, n == 0 ? out : out_pt, outputs);
 							total++;
-							if (err > 1e-4) {
+							if (err > 1e-3) {
 								mismatches++;
 								// failed = true;
 
@@ -269,7 +268,7 @@ static FLT test_gen_function(const char *name, generate_input input_fn, general_
 
 		FLT err = diff_array(0, output, output_gen, outputs);
 
-		if (err > 1e-4) {
+		if (err > 1e-3) {
 			TEST_PRINTF("%s eval mismatch: \n", name);
 			print_array("inputs", input, inputs, 0);
 			print_array("gen outputs", output, outputs, 0);
@@ -300,7 +299,7 @@ static FLT test_gen_function(const char *name, generate_input input_fn, general_
 static int test_gen_function_def(const gen_function_def *def) {
 	bool failed = false;
 	FLT err = test_gen_function(def->name, def->generate_inputs, def->check, def->generated, def->outputs);
-	failed |= err > 1e-5;
+	failed |= err > 1e-3;
 	for (int i = 0; i < 16 && def->jacobians[i].jacobian; i++) {
 		const gen_function_jacobian_def *jdef = &def->jacobians[i];
 		char name[64] = {0};
@@ -322,29 +321,6 @@ static size_t random_quat_quat(FLT *output) {
 	}
 	return sizeof(FLT) * 8;
 }
-
-static void general_gen_quatrotateabout(FLT *out, const FLT *input) { gen_quatrotateabout(out, input, input + 4); }
-static void general_quatrotateabout(FLT *out, const FLT *input) { quatrotateabout(out, input, input + 4); }
-static void general_gen_quatrotateabout_jac_q1(FLT *out, const FLT *input) {
-	gen_quatrotateabout_jac_q1(out, input, input + 4);
-}
-static void general_gen_quatrotateabout_jac_q2(FLT *out, const FLT *input) {
-	gen_quatrotateabout_jac_q2(out, input, input + 4);
-}
-
-gen_function_def quatrotateabout_def = {
-	.name = "quatrotateabout",
-	.generated = general_gen_quatrotateabout,
-	.check = general_quatrotateabout,
-	.generate_inputs = random_quat_quat,
-	.outputs = 4,
-	.jacobians = {{.suffix = "q1", .jacobian = general_gen_quatrotateabout_jac_q1, .jacobian_length = 4},
-				  {.suffix = "q2",
-				   .jacobian = general_gen_quatrotateabout_jac_q2,
-				   .jacobian_length = 4,
-				   .jacobian_start_idx = 4}}};
-
-TEST(Generated, quatrotateabout) { return test_gen_function_def(&quatrotateabout_def); }
 
 static void general_quatrotatevector(FLT *out, const FLT *input) { quatrotatevector(out, input, input + 4); }
 static void general_gen_quatrotatevector(FLT *out, const FLT *input) { gen_quatrotatevector(out, input, input + 4); }
@@ -413,132 +389,6 @@ void random_fcal(BaseStationCal *fcal) {
 	fcal->tilt = next_rand(0.5);
 }
 
-size_t random_kalman_model(FLT *out) {
-	if (out != 0) {
-		SurviveKalmanModel m = {.Pose = random_pose(), .IMUCorrection = {1}};
-		random_point(m.Acc);
-
-		random_point(m.Velocity.Pos);
-		random_point(m.Velocity.AxisAngleRot);
-
-		random_point_mx(m.GyroBias, 1e-3);
-		random_point_mx(m.AccBias, 1e-3);
-		random_point_mx(&m.IMUCorrection[1], 1e-2);
-		quatnormalize(m.IMUCorrection, m.IMUCorrection);
-
-		m.AccScale = 1 + next_rand(1e-2);
-		memcpy(out, &m, sizeof(SurviveKalmanModel));
-	}
-	return sizeof(SurviveKalmanModel);
-}
-
-static void general_imu_predict(FLT *out, const FLT *_input) {
-	SurviveKalmanModel *input = (SurviveKalmanModel *)_input;
-	gen_imu_predict(out, input);
-}
-
-static void general_gen_imu_predict_jac_kalman_model(FLT *out, const FLT *_input) {
-	SurviveKalmanModel *input = (SurviveKalmanModel *)_input;
-	gen_imu_predict_jac_kalman_model(out, input);
-}
-
-static void imu_predict_gyro(FLT *out, SurviveKalmanModel *m) {
-
-	/*
-	rot = quatrotateabout(quatgetreciprocal(quatnormalize(kalman_model.Pose.Rot)),
-	quatnormalize(kalman_model.IMUCorrection)) rotv = quatrotatevector(rot, kalman_model.Velocity.Rot) return [rotv[0] +
-	kalman_model.GyroBias[0], rotv[1] + kalman_model.GyroBias[1], rotv[2] + kalman_model.GyroBias[2]
-	]
-	 */
-	LinmathQuat imu_correction;
-	quatnormalize(imu_correction, m->IMUCorrection);
-	LinmathQuat rot;
-	quatnormalize(rot, m->Pose.Rot);
-	LinmathQuat w2o;
-	quatgetreciprocal(w2o, rot);
-	quatrotateabout(w2o, w2o, imu_correction);
-
-	quatrotatevector(out, w2o, m->Velocity.AxisAngleRot);
-	add3d(out, out, m->GyroBias);
-}
-static void imu_predict_up(FLT *out, SurviveKalmanModel *m) {
-	/*
-	g = 9.80665
-	acc_scale = kalman_model.AccScale
-	acc_bias = kalman_model.AccBias
-	G = [ kalman_model.Acc[0]/g, kalman_model.Acc[1]/g, 1 + kalman_model.Acc[2]/g]
-	rot = quatrotateabout(quatgetreciprocal(quatnormalize(kalman_model.Pose.Rot)),
-	quatnormalize(kalman_model.IMUCorrection)) GinObj = quatrotatevector(rot, G) return [ acc_scale * GinObj[0] +
-	acc_bias[0], acc_scale * GinObj[1] + acc_bias[1], acc_scale * GinObj[2] + acc_bias[2]
-	]
-	*/
-	FLT g = 9.80665;
-	FLT accInWorld[3] = {0, 0, 1};
-	FLT accInG[3];
-
-	scale3d(accInG, m->Acc, 1. / g);
-	add3d(accInWorld, accInWorld, accInG);
-
-	LinmathQuat imu_correction;
-	quatnormalize(imu_correction, m->IMUCorrection);
-	LinmathQuat rot;
-	quatnormalize(rot, m->Pose.Rot);
-	LinmathQuat w2o;
-	quatgetreciprocal(w2o, rot);
-	quatrotateabout(w2o, w2o, imu_correction);
-
-	quatrotatevector(out, w2o, accInWorld);
-	scale3d(out, out, m->AccScale);
-	for (int i = 0; i < 3; i++)
-		out[i] += m->AccBias[i];
-}
-
-static void imu_predict(FLT *out, const FLT *m) {
-	/*
-	def imu_predict(kalman_model):
-	return [*imu_predict_up(kalman_model), *imu_predict_gyro(kalman_model)]
-	*/
-	imu_predict_up(out, (SurviveKalmanModel *)m);
-	imu_predict_gyro(out + 3, (SurviveKalmanModel *)m);
-}
-
-gen_function_def imu_predict_def = {.name = "imu_predict",
-									.generated = general_imu_predict,
-									.generate_inputs = random_kalman_model,
-									.check = imu_predict,
-									.outputs = 6,
-									.jacobians = {
-										{.suffix = "kalman_model",
-										 .jacobian = general_gen_imu_predict_jac_kalman_model,
-										 .jacobian_length = sizeof(SurviveKalmanModel) / sizeof(FLT)},
-									}};
-
-TEST(Generated, imu_predict) {
-	SurviveKalmanModel m = {.Pose = {.Rot = {1}}, .Acc = {0, 0, 9.80665}, .AccScale = 1, .IMUCorrection = {1}};
-
-	{
-		FLT imu[6] = {0};
-		FLT imu_gt[6] = {0, 0, 2, 0, 0, 0};
-		imu_predict_up(imu, &m);
-		ASSERT_DOUBLE_ARRAY_EQ(6, imu, imu_gt);
-	}
-	{
-		m.Acc[2] = 0;
-		FLT imu[6] = {0};
-		FLT imu_gt[6] = {0, 0, 1, 0, 0, 0};
-		imu_predict_up(imu, &m);
-		ASSERT_DOUBLE_ARRAY_EQ(6, imu, imu_gt);
-	}
-	{
-		m.Acc[2] = -9.80665;
-		FLT imu[6] = {0};
-		FLT imu_gt[6] = {0, 0, 0, 0, 0, 0};
-		imu_predict_up(imu, &m);
-		ASSERT_DOUBLE_ARRAY_EQ(6, imu, imu_gt);
-	}
-	return test_gen_function_def(&imu_predict_def);
-}
-
 void print_pose(const SurvivePose *pose) {
 	TEST_PRINTF("[%f %f %f] [%f %f %f %f]\n", pose->Pos[0], pose->Pos[1], pose->Pos[2], pose->Rot[0], pose->Rot[1],
 				pose->Rot[2], pose->Rot[3]);
@@ -584,49 +434,6 @@ void check_apply_ang_velocity() {
 #endif
 
 extern void rot_predict_quat(FLT t, const void *k, const CnMat *f_in, CnMat *f_out);
-
-TEST(Generated, imu_predict_up) {
-	SurviveKalmanModel model = {.Pose = {.Rot = {1}}, .AccScale = 1, .IMUCorrection = {1}};
-	FLT accel[3] = {linmath_rand(-1, 1), linmath_rand(-1, 1), linmath_rand(-1, 1)};
-	normalize3d(accel, accel);
-
-	LinmathVec3d up = {0, 0, 1};
-	quatfrom2vectors(model.Pose.Rot, accel, up);
-
-	FLT accel_out[3];
-	gen_imu_predict_up(accel_out, &model); // gen_imu_predict_up(accel_out, &model);
-
-	ASSERT_DOUBLE_ARRAY_EQ(3, accel, accel_out);
-	return 0;
-}
-
-TEST(Generated, rot_predict_quat) {
-	FLT _mi[7] = { 0 };
-	FLT _mo1[7] = { 0 };
-	FLT _mo2[7] = { 0 };
-	CnMat mi = cnMat(7, 1, _mi);
-	CnMat mo1 = cnMat(7, 1, _mo1);
-	CnMat mo2 = cnMat(7, 1, _mo2);
-
-	FLT t = next_rand(5);
-
-	random_quat(_mi);
-	random_axis_angle(_mi + 4);
-
-	rot_predict_quat(t, 0, &mi, &mo1);
-
-	gen_imu_rot_f(_mo2, t, _mi);
-
-	TEST_PRINTF("Lib: " SurvivePose_format "\n", LINMATH_QUAT_EXPAND(_mo1), LINMATH_VEC3_EXPAND(_mo1 + 4));
-	TEST_PRINTF("Gen: " SurvivePose_format "\t"
-				"\n",
-				LINMATH_QUAT_EXPAND(_mo2), LINMATH_VEC3_EXPAND(_mo2 + 4));
-
-	FLT err = 0;
-	for(int i = 0;i < 7;i++)
-		err += fabs((_mo1[i] - _mo2[i]) * (_mo1[i] - _mo2[i]));
-	return err > 1e-5 ? -1 : 0;
-}
 
 TEST(Generated, Speed) {
 	SurvivePose obj2world = random_pose();

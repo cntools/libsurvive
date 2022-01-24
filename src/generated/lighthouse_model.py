@@ -84,7 +84,6 @@ def SurviveJointKalmanModelAddErrorModel(x0: SurviveJointKalmanModel, error_stat
         BSD1=BaseStationCalAddErrorModel(x0.BSD1, error_state.BSD1),
     )
 
-
 def SurviveJointKalmanModel_LightMeas(dt: float, fn, x0: SurviveJointKalmanModel, sensor_pt: list,
                                       axis: int):
     x1 = SurviveKalmanModelPredict(dt, x0.Object)

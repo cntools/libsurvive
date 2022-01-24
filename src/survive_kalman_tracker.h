@@ -30,6 +30,7 @@ struct SurviveKalmanTracker_Params {
 	FLT process_weight_acc_bias;
 	FLT process_weight_gyro_bias;
 	FLT initial_acc_scale_variance;
+	FLT initial_gyro_variance;
 	FLT initial_variance_imu_correction;
 };
 
@@ -86,7 +87,7 @@ typedef struct SurviveKalmanTracker {
 	struct SurviveKalmanTracker_Params params;
 
 	// Kalman state is layed out as SurviveKalmanModel
-	cnkalman_state_t model;
+	cnkalman_state_t model, imu_bias_model;
 	cnkalman_meas_model_t obs_model, lightcap_model, imu_model, zvu_model, joint_model;
 
 	const char* datalog_tag;

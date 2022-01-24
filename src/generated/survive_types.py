@@ -13,12 +13,23 @@ class SurviveAxisAnglePose:
     AxisAngleRot: np.array = np.array((0, 0, 0))
 
 @dataclass
+class SurviveIMUBiasModel:
+    AccScale: np.array = np.array((0., 0., 0))
+    IMUCorrection: np.array = np.array((1, 0., 0., 0))
+    AccBias: np.array = np.array((0., 0., 0))
+    GyroBias: np.array = np.array((0., 0., 0))
+
+@dataclass
 class SurviveKalmanModel:
     Pose: SurvivePose
     Velocity: SurviveAxisAnglePose
     Acc: np.array = np.array((0., 0., 0))
-    AccScale: float = 1
-    IMUCorrection: np.array = np.array((1, 0., 0., 0))
+    IMUBias: SurviveIMUBiasModel = SurviveIMUBiasModel()
+
+@dataclass
+class SurviveIMUBiasErrorModel:
+    AccScale: np.array = np.array((0., 0., 0))
+    IMUCorrection: np.array = np.array((0., 0., 0))
     AccBias: np.array = np.array((0., 0., 0))
     GyroBias: np.array = np.array((0., 0., 0))
 
@@ -27,10 +38,7 @@ class SurviveKalmanErrorModel:
     Pose: SurviveAxisAnglePose
     Velocity: SurviveAxisAnglePose
     Acc: np.array = np.array((0., 0., 0))
-    AccScale: float = 1
-    IMUCorrection: np.array = (1, 0., 0., 0)
-    AccBias: np.array = np.array((0., 0., 0))
-    GyroBias: np.array = np.array((0., 0., 0))
+    IMUBias: SurviveIMUBiasErrorModel = SurviveIMUBiasErrorModel()
 
 @dataclass
 class SurviveLighthouseModel:

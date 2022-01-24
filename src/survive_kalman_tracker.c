@@ -1,4 +1,5 @@
 #include "survive_kalman_tracker.h"
+#include "generated/imu_model.gen.h"
 #include "generated/kalman_kinematics.gen.h"
 #include "linmath.h"
 #include "math.h"
@@ -16,7 +17,7 @@
 #include <survive_reproject_gen2.h>
 
 #include "generated/lighthouse_model.gen.h"
-#include "generated/survive_imu.generated.h"
+
 #include "generated/survive_reproject.aux.generated.h"
 #include "survive_kalman_lighthouses.h"
 #include "survive_recording.h"
@@ -64,15 +65,16 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("process-weight-vel", "Velocity variance per second", 0, t->params.process_weight_vel)
 	STRUCT_CONFIG_ITEM("process-weight-pos", "Position variance per second", 0, t->params.process_weight_pos)
 	STRUCT_CONFIG_ITEM("process-weight-rot", "Rotation variance per second", 0, t->params.process_weight_rotation)
-	STRUCT_CONFIG_ITEM("process-weight-acc-bias", "Acc bias variance per second", 0, t->params.process_weight_acc_bias)
-	STRUCT_CONFIG_ITEM("process-weight-gyro-bias", "Gyro bias variance per seconid", 0, t->params.process_weight_gyro_bias)
+	STRUCT_CONFIG_ITEM("process-weight-acc-bias", "Acc bias variance per second", 1e-8, t->params.process_weight_acc_bias)
+	STRUCT_CONFIG_ITEM("process-weight-gyro-bias", "Gyro bias variance per second", 1e-8, t->params.process_weight_gyro_bias)
 	STRUCT_CONFIG_ITEM("kalman-minimize-state-space", "Minimize the state space", 1, t->minimize_state_space)
 	STRUCT_CONFIG_ITEM("kalman-use-error-space", "Model using error state", true, t->use_error_state)
 
     STRUCT_CONFIG_ITEM("kalman-joint-model-lightcap", "Ratio of confidence of LH over tracked object to use joint filter", 1e-2, t->joint_lightcap_ratio)
 
-	STRUCT_CONFIG_ITEM("kalman-initial-imu-variance", "Initial variance in IMU frame", 0, t->params.initial_variance_imu_correction)
-    STRUCT_CONFIG_ITEM("kalman-initial-acc-scale-variance", "Initial variance in IMU frame", 0, t->params.initial_acc_scale_variance)
+	STRUCT_CONFIG_ITEM("kalman-initial-imu-variance", "Initial variance in IMU frame", 1e-5, t->params.initial_variance_imu_correction)
+	STRUCT_CONFIG_ITEM("kalman-initial-acc-scale-variance", "Initial variance in IMU frame", 1e-5, t->params.initial_acc_scale_variance)
+	STRUCT_CONFIG_ITEM("kalman-initial-gyro-variance", "Initial variance in gyro", 1e-5, t->params.initial_gyro_variance)
 
 	STRUCT_CONFIG_ITEM("kalman-zvu-moving", "", -1, t->zvu_moving_var)
 	STRUCT_CONFIG_ITEM("kalman-zvu-stationary", "", 1e-2, t->zvu_stationary_var)
@@ -114,12 +116,15 @@ FLT pid_update(struct pid_t* pid, FLT err, FLT dt) {
 
 static SurviveKalmanModel copy_model(const FLT *src, size_t state_size) {
 	SurviveKalmanModel rtn = {
-		.IMUCorrection = { 1. },
-		.AccScale = 1.
+		.IMUBias = {
+				.IMUCorrection = { 1. },
+				.AccScale = { 1., 1, 1 }
+		}
 	};
-	assert(state_size >= 7);
+	assert(state_size >= 7 && state_size * sizeof(FLT) <= sizeof(SurviveKalmanModel));
 	memcpy(rtn.Pose.Pos, src, sizeof(FLT) * state_size);
     quatnormalize(rtn.Pose.Rot, rtn.Pose.Rot);
+	quatnormalize(rtn.IMUBias.IMUCorrection, rtn.IMUBias.IMUCorrection);
 	return rtn;
 }
 static SurviveJointKalmanModel copy_joint_model(const FLT *src, size_t state_size) {
@@ -155,7 +160,7 @@ static inline FLT survive_kalman_tracker_position_var2(SurviveKalmanTracker *tra
 void kalman_model_normalize(void *user, struct CnMat* x) {
     SurviveKalmanModel state = copy_model(x->data, x->rows);
     quatnormalize(state.Pose.Rot, state.Pose.Rot);
-    quatnormalize(state.IMUCorrection, state.IMUCorrection);
+    quatnormalize(state.IMUBias.IMUCorrection, state.IMUBias.IMUCorrection);
     memcpy(x->data, &state, sizeof(FLT) * x->rows);
 }
 static void normalize_model(SurviveKalmanTracker *pTracker) {
@@ -167,12 +172,12 @@ static void normalize_model(SurviveKalmanTracker *pTracker) {
 	}
 */
 	quatnormalize(pTracker->state.Pose.Rot, pTracker->state.Pose.Rot);
-	quatnormalize(pTracker->state.IMUCorrection, pTracker->state.IMUCorrection);
+	quatnormalize(pTracker->state.IMUBias.IMUCorrection, pTracker->state.IMUBias.IMUCorrection);
 
-	pTracker->state.AccScale = linmath_enforce_range(pTracker->state.AccScale, .95, 1.05);
 	for (int i = 0; i < 3; i++) {
-		pTracker->state.GyroBias[i] = linmath_enforce_range(pTracker->state.GyroBias[i], -1e-1, 1e-1);
-		pTracker->state.AccBias[i] = linmath_enforce_range(pTracker->state.AccBias[i], -1e-1, 1e-1);
+		pTracker->state.IMUBias.AccScale[i] = linmath_enforce_range(pTracker->state.IMUBias.AccScale[i], .95, 1.05);
+		pTracker->state.IMUBias.GyroBias[i] = linmath_enforce_range(pTracker->state.IMUBias.GyroBias[i], -1e-1, 1e-1);
+		pTracker->state.IMUBias.AccBias[i] = linmath_enforce_range(pTracker->state.IMUBias.AccBias[i], -1e-1, 1e-1);
 	}
 	for (int i = 0; i < 3; i++) {
 		assert(isfinite(pTracker->state.Pose.Pos[i]));
@@ -492,7 +497,7 @@ struct map_imu_data_ctx {
 
 SURVIVE_EXPORT void survive_kalman_tracker_correct_imu(SurviveKalmanTracker *tracker, LinmathVec3d out, const LinmathVec3d accel) {
     for(int i = 0;i < 3;i++) {
-        out[i] = accel[i] / tracker->state.AccScale - tracker->state.AccBias[i];
+        out[i] = accel[i] / tracker->state.IMUBias.AccScale[i] - tracker->state.IMUBias.AccBias[i];
     }
 }
 /**
@@ -508,23 +513,27 @@ SURVIVE_EXPORT void survive_kalman_tracker_correct_imu(SurviveKalmanTracker *tra
  */
 bool survive_kalman_tracker_imu_measurement_model(void *user, const struct CnMat *Z, const struct CnMat *x_t, struct CnMat *y,
 						 struct CnMat *H_k) {
-
-	FLT h_x[6];
-
-	SurviveKalmanModel s = copy_model(cn_as_const_vector(x_t), x_t->rows);
-	gen_imu_predict(h_x, &s);
-
-    if(H_k) {
-        cn_set_constant(H_k, NAN);
-        assert(H_k->rows * H_k->cols == H_k->cols * 6);
-        FLT _H_k[6 * SURVIVE_MODEL_MAX_STATE_CNT] = {0};
-        gen_imu_predict_jac_kalman_model(_H_k, &s);
-        cn_copy_in_row_major(H_k, _H_k, SURVIVE_MODEL_MAX_STATE_CNT);
-    }
-
 	struct map_imu_data_ctx *fn_ctx = user;
 
-	subnd(cn_as_vector(y), cn_as_const_vector(Z), h_x, Z->rows);
+	CN_CREATE_STACK_VEC(h_x, 6);
+	SurviveKalmanTracker *tracker = (SurviveKalmanTracker *)user;
+
+	SurviveKalmanModel s = copy_model(cn_as_const_vector(x_t), x_t->rows);
+	IMUMeasurementModel(&h_x, &s);
+
+    if(H_k) {
+        assert(H_k->rows * H_k->cols == H_k->cols * 6);
+
+		bool errorState = fn_ctx->tracker->imu_model.error_state_model;
+		if(errorState) {
+			IMUMeasurementErrorModel_jac_error_model(H_k, &s, &zero_error_model);
+		} else {
+			IMUMeasurementModel_jac_model(H_k, &s);
+		}
+
+    }
+
+	subnd(cn_as_vector(y), cn_as_const_vector(Z), cn_as_const_vector(&h_x), Z->rows);
 
 	if(fn_ctx) {
 		SurviveKalmanTracker * tracker = fn_ctx->tracker;
@@ -535,7 +544,7 @@ bool survive_kalman_tracker_imu_measurement_model(void *user, const struct CnMat
 		SV_VERBOSE(600, "Z     " Point6_format, LINMATH_VEC6_EXPAND(cn_as_const_vector(Z)))
 
 		if(so->ctx->datalogproc) {
-			SV_DATA_LOG("imu_prediction", h_x, 6);
+			SV_DATA_LOG("imu_prediction", h_x.data, 6);
 
 			LinmathVec3d up = {0, 0, 1};
 			FLT q[5];
@@ -566,6 +575,28 @@ static void tracker_datalog(const cnkalman_state_t* state, const char *desc, con
 
 	SV_DATA_LOG("%s_%s", v, length, desc, tracker->datalog_tag);
 }
+static SurviveIMUBiasModel copy_imu_bias_model(const struct CnMat *x0) {
+	SurviveIMUBiasModel state = { .IMUCorrection = { 1 }, .AccScale = {1., 1, 1} };
+	assert(x0->rows <= sizeof(SurviveIMUBiasModel) / sizeof(FLT));
+	memcpy(&state, cn_as_const_vector(x0), x0->rows * sizeof(FLT));
+	return state;
+}
+
+static void imu_error_state_fn(void *user, const struct CnMat *x0,
+							   const struct CnMat *x1, struct CnMat *E,
+							   struct CnMat *E_jac_x) {
+	SurviveIMUBiasModel state0 = copy_imu_bias_model(x0);
+	if(E_jac_x) {
+		SurviveIMUBiasModelToErrorModel_jac_x1(E_jac_x, &state0, &state0);
+	}
+
+	if(x1 && E) {
+		SurviveIMUBiasModel state1 = copy_imu_bias_model(x1);
+		SurviveIMUBiasErrorModel error_state = { 0 };
+		SurviveIMUBiasModelToErrorModel(&error_state, &state1, &state0);
+		memcpy(cn_as_vector(E), &error_state, sizeof(FLT) * E->rows);
+	}
+}
 
 static void error_state_fn(void *user, const struct CnMat *x0,
 						   const struct CnMat *x1, struct CnMat *E,
@@ -580,6 +611,22 @@ static void error_state_fn(void *user, const struct CnMat *x0,
 		SurviveKalmanErrorModel error_state = { 0 };
 		SurviveKalmanModelToErrorModel(&error_state, &state1, &state0);
 		memcpy(cn_as_vector(E), &error_state, sizeof(FLT) * E->rows);
+	}
+}
+
+static void imu_bias_update_fn(void *user, const struct CnMat *x0, const struct CnMat *E, struct CnMat *x1, struct CnMat* dX_wrt_error_state) {
+	SurviveIMUBiasModel state = copy_imu_bias_model(x0);
+	const FLT* x0v = cn_as_const_vector(x0);
+	if(x1){
+		SurviveIMUBiasModel _x1 = { 0 };
+		SurviveIMUBiasErrorModel error_state = { 0 };
+		memcpy(&error_state, cn_as_const_vector(E), E->rows * sizeof(FLT));
+		SurviveIMUBiasModelAddErrorModel(&_x1, &state, &error_state);
+		memcpy(cn_as_vector(x1), &_x1, sizeof(FLT) * x1->rows);
+	}
+	if(dX_wrt_error_state){
+		SurviveIMUBiasErrorModel error_model = { 0 };
+		SurviveIMUBiasModelAddErrorModel_jac_error_state(dX_wrt_error_state, &state, &error_model);
 	}
 }
 
@@ -737,7 +784,7 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 	if (zvu_var >= 0) {//time - tracker->last_light_time > .1) {//|| isStationary || fabs(1 - norm) < .001 ) {
 		// If we stop seeing light data; tank all velocity / acceleration measurements
 		size_t row_cnt = linmath_imin(9 - disable_ang_vel * 3, tracker->model.state_cnt - 7);
-		CN_CREATE_STACK_MAT(H, row_cnt, tracker->model.state_cnt);
+		CN_CREATE_STACK_MAT(H, row_cnt, tracker->model.state_cnt + tracker->imu_bias_model.state_cnt);
 		cn_set_zero(&H);
 
 		int vel_idx = offsetof(SurviveKalmanModel, Velocity.Pos[0]) / sizeof(FLT);
@@ -984,10 +1031,10 @@ void survive_kalman_tracker_process_noise(const struct SurviveKalmanTracker_Para
 	assert(cn_is_symmetrical(q_out));
 
 	for(int i = 0;i < 3;i++) {
-        int accBiasIdx = (int)(errorState ? offsetof(SurviveKalmanErrorModel , AccBias) : offsetof(SurviveKalmanModel, AccBias))/sizeof(FLT) + i;
+        int accBiasIdx = (int)(errorState ? offsetof(SurviveKalmanErrorModel , IMUBias.AccBias) : offsetof(SurviveKalmanModel, IMUBias.AccBias))/sizeof(FLT) + i;
         if(accBiasIdx < q_out->rows) cnMatrixSet(q_out, accBiasIdx, accBiasIdx, ga);
 
-        int gyroBiasIdx = (int)(errorState ? offsetof(SurviveKalmanErrorModel, GyroBias) : offsetof(SurviveKalmanModel, GyroBias))/sizeof(FLT) + i;
+        int gyroBiasIdx = (int)(errorState ? offsetof(SurviveKalmanErrorModel, IMUBias.GyroBias) : offsetof(SurviveKalmanModel, IMUBias.GyroBias))/sizeof(FLT) + i;
 		if(gyroBiasIdx < q_out->rows) cnMatrixSet(q_out, gyroBiasIdx, gyroBiasIdx, gb);
 	}
 
@@ -1181,24 +1228,28 @@ void survive_kalman_tracker_reinit(SurviveKalmanTracker *tracker) {
 
 	memset(&tracker->state, 0, sizeof(tracker->state));
 	tracker->state.Pose.Rot[0] = 1;
-	tracker->state.IMUCorrection[0] = 1;
-	tracker->state.AccScale = 1.;
+	tracker->state.IMUBias.IMUCorrection[0] = 1;
+	for(int i = 0;i < 3;i++)
+		tracker->state.IMUBias.AccScale[i] = 1.;
 
 	cnkalman_state_reset(&tracker->model);
 	for (int i = 0; i < 7; i++) {
 		cnMatrixSet(&tracker->model.P, i, i, cnMatrixGet(&tracker->model.P, i, i) + 1e5);
 	}
-    if (tracker->params.initial_variance_imu_correction != 0) {
-		for(int i = 0;i < 4;i++) {
-			int idx = offsetof(SurviveKalmanModel, IMUCorrection) / sizeof(FLT) + i;
-			cnMatrixSet(&tracker->model.P, idx, idx, tracker->params.initial_variance_imu_correction);
-		}
-    }
 
-    if (tracker->params.initial_acc_scale_variance != 0) {
-        int idx = offsetof(SurviveKalmanModel, AccScale) / sizeof(FLT);
-        cnMatrixSet(&tracker->model.P, idx, idx, tracker->params.initial_acc_scale_variance);
-    }
+	SurviveIMUBiasErrorModel initial_variance = {
+		.AccScale = {tracker->params.initial_acc_scale_variance, tracker->params.initial_acc_scale_variance, tracker->params.initial_acc_scale_variance},
+		.GyroBias = {
+			tracker->params.initial_gyro_variance, tracker->params.initial_gyro_variance, tracker->params.initial_gyro_variance
+		},
+		.AccBias = {
+			tracker->params.initial_acc_scale_variance, tracker->params.initial_acc_scale_variance, tracker->params.initial_acc_scale_variance
+		},
+		.IMUCorrection = {
+			tracker->params.initial_variance_imu_correction, tracker->params.initial_variance_imu_correction, tracker->params.initial_variance_imu_correction
+		}
+	};
+	cn_set_diag(&tracker->imu_bias_model.P, (const FLT *)&initial_variance);
 
 	size_t state_cnt = tracker->model.state_cnt;
 
@@ -1240,18 +1291,19 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	bool use_kalman = (bool)survive_configi(ctx, "use-kalman", SC_GET, 1);
 	tracker->use_raw_obs = !use_kalman;
 
-	size_t state_cnt = sizeof(SurviveKalmanModel) / sizeof(FLT);
+	size_t imu_state_cnt = (sizeof(SurviveKalmanModel) - offsetof(SurviveKalmanModel, IMUBias.AccScale)) / sizeof(FLT);
+	size_t state_cnt = (sizeof(SurviveKalmanModel) ) / sizeof(FLT) - imu_state_cnt;
 
 	switch(tracker->minimize_state_space) {
 	    case 1:
-            if(tracker->params.process_weight_gyro_bias) break;
-            state_cnt -= 3;
+			if(tracker->params.process_weight_gyro_bias) break;
+		imu_state_cnt -= 3;
             if(tracker->params.process_weight_acc_bias) break;
-            state_cnt -= 3;
+		imu_state_cnt -= 3;
             if(tracker->params.initial_variance_imu_correction) break;
-            state_cnt -= 4;
+		imu_state_cnt -= 4;
             if(tracker->params.initial_acc_scale_variance) break;
-            state_cnt -= 1;
+		imu_state_cnt -= 1;
             if(tracker->params.process_weight_acc || tracker->params.process_weight_jerk) break;
             state_cnt -= 3;
             if(tracker->params.process_weight_ang_velocity) break;
@@ -1261,6 +1313,13 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
             break;
 	    default:
 	        break;
+	}
+
+	if(imu_state_cnt) {
+		cnkalman_error_state_init(&tracker->imu_bias_model, imu_state_cnt, imu_state_cnt - 1, 0, 0,
+								  imu_error_state_fn, &tracker->params, (FLT*)&tracker->state.IMUBias);
+		tracker->imu_bias_model.Update_fn = imu_bias_update_fn;
+		tracker->model.state_variance_per_second = cnVec(imu_state_cnt, tracker->process_variance.IMUBias.AccScale);
 	}
 
 	if(tracker->use_error_state) {
@@ -1283,7 +1342,7 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 					pv->Velocity.Pos[i] = tracker->params.process_weight_vel;
 					pv->Velocity.AxisAngleRot[i] = tracker->params.process_weight_ang_velocity;
 					pv->Acc[i] = tracker->params.process_weight_acc;
-					pv->AccBias[i] = tracker->params.process_weight_acc_bias;
+					pv->IMUBias.AccBias[i] = tracker->params.process_weight_acc_bias;
 				}
 		} else {
 			SurviveKalmanModel* pv = &tracker->process_variance;
@@ -1293,11 +1352,11 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 				pv->Velocity.Pos[i] = tracker->params.process_weight_vel;
 				pv->Velocity.AxisAngleRot[i] = tracker->params.process_weight_ang_velocity;
 				pv->Acc[i] = tracker->params.process_weight_acc;
-				pv->AccBias[i] = tracker->params.process_weight_acc_bias;
+				pv->IMUBias.AccBias[i] = tracker->params.process_weight_acc_bias;
 			}
 			pv->Pose.Rot[3] = tracker->params.process_weight_rotation;
 		}
-        tracker->model.state_variance_per_second = cnVec(tracker->model.error_state_size, tracker->process_variance.Pose.Pos);
+		tracker->model.state_variance_per_second = cnVec(tracker->model.error_state_size, tracker->process_variance.Pose.Pos);
 	}
 	//tracker->model.transition_jacobian_mode = cnkalman_jacobian_mode_debug;
 	if (ctx) {
@@ -1315,9 +1374,11 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	if(tracker->joint_model.term_criteria.max_iterations == -1)
 		tracker->joint_model.term_criteria.max_iterations = 10;
 
-    cnkalman_meas_model_init(&tracker->model, "imu", &tracker->imu_model, survive_kalman_tracker_imu_measurement_model);
+	cnkalman_state_t* models[] = { &tracker->model, &tracker->imu_bias_model };
+    cnkalman_meas_model_multi_init(models, 2, "imu", &tracker->imu_model, survive_kalman_tracker_imu_measurement_model);
 	cnkalman_meas_model_t_obj_imu_attach_config(ctx, &tracker->imu_model);
-	tracker->imu_model.error_state_model = false;
+
+	cnkalman_meas_model_multi_init(models, 2, "zvu", &tracker->zvu_model, 0);
 
     cnkalman_meas_model_init(&tracker->model, "lightcap", &tracker->lightcap_model, map_light_data);
 	cnkalman_meas_model_t_obj_lightcap_attach_config(ctx, &tracker->lightcap_model);
@@ -1327,8 +1388,6 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
     cnkalman_meas_model_init(&tracker->model, "obs", &tracker->obs_model, tracker->obs_axisangle_model ? map_obs_data_axisangle : map_obs_data);
 	cnkalman_meas_model_t_obj_obs_attach_config(ctx, &tracker->obs_model);
 	tracker->obs_model.term_criteria.max_iterations = 10;
-
-    cnkalman_meas_model_init(&tracker->model, "zvu", &tracker->zvu_model, 0);
 
 	survive_kalman_tracker_reinit(tracker);
 
@@ -1370,8 +1429,11 @@ void survive_kalman_tracker_stats(SurviveKalmanTracker *tracker) {
 	SV_VERBOSE(5, "\t%-32s %4u %4u", "state_cnt", tracker->model.state_cnt, tracker->model.error_state_size);
 
 	LinmathQuat q;
-	quatnormalize(q, tracker->state.IMUCorrection); 
-	SV_VERBOSE(5, "\t%-32s (%f) " Point4_format, "IMU Correction", tracker->state.AccScale, LINMATH_VEC4_EXPAND(q));
+	quatnormalize(q, tracker->state.IMUBias.IMUCorrection);
+	SV_VERBOSE(5, "\t%-32s (" Point3_format ") " Point4_format, "IMU Correction", LINMATH_VEC3_EXPAND(tracker->state.IMUBias.AccScale), LINMATH_VEC4_EXPAND(q));
+	SV_VERBOSE(5, "\t%-32s " Point3_format, "Acc Bias", LINMATH_VEC3_EXPAND(tracker->state.IMUBias.AccBias));
+	SV_VERBOSE(5, "\t%-32s " Point3_format, "Gyro Bias", LINMATH_VEC3_EXPAND(tracker->state.IMUBias.GyroBias));
+
 	SV_VERBOSE(5, "\t%-32s %f", "avg hz", tracker->stats.reported_poses / report_runtime);
 
 	SV_VERBOSE(5, "\t%-32s %u", "late imu", tracker->stats.late_imu_dropped);
@@ -1397,8 +1459,9 @@ void survive_kalman_tracker_stats(SurviveKalmanTracker *tracker) {
 	SV_VERBOSE(5, "\t%-32s %e (%7u integrations, %7.3fhz) " Point6_format, "IMU error",
 			   tracker->stats.imu_total_error / (FLT)tracker->stats.imu_count, (unsigned)tracker->stats.imu_count,
 			   (unsigned)tracker->stats.imu_count / imu_runtime, LINMATH_VEC6_EXPAND(integration_variance));
-	SV_VERBOSE(5, "\t%-32s " FLT_format " " FLT_format, "IMU acc avg norm",
-		   tracker->stats.acc_norm / (FLT)tracker->stats.imu_count,  (FLT)tracker->stats.imu_count / tracker->stats.acc_norm);
+	SV_VERBOSE(5, "\t%-32s " FLT_format " " FLT_format " (%7u)", "IMU acc avg norm",
+		   tracker->stats.acc_norm / (FLT)tracker->stats.imu_count,  (FLT)tracker->stats.imu_count / tracker->stats.acc_norm,
+			   (unsigned)tracker->stats.imu_count);
     SV_VERBOSE(5, "\t%-32s " FLT_format " " FLT_format " (%7u)", "Stationary IMU acc avg norm",
                tracker->stats.stationary_acc_norm / (FLT)tracker->stats.stationary_imu_count,  (FLT)tracker->stats.stationary_imu_count / tracker->stats.stationary_acc_norm,
                (unsigned)tracker->stats.stationary_imu_count);
@@ -1419,7 +1482,7 @@ void survive_kalman_tracker_stats(SurviveKalmanTracker *tracker) {
 			   (unsigned)tracker->stats.lightcap_count, (unsigned)tracker->stats.lightcap_count / report_runtime, var[0]);
 
 	SV_VERBOSE(5, " ");
-	SV_VERBOSE(5, "\t%-32s " Point3_format, "gyro bias", LINMATH_VEC3_EXPAND(tracker->state.GyroBias));
+	SV_VERBOSE(5, "\t%-32s " Point3_format, "gyro bias", LINMATH_VEC3_EXPAND(tracker->state.IMUBias.GyroBias));
     SV_VERBOSE(5, "\t%-32s " FLT_format, "Lightcap R", tracker->light_var);
 	for (int i = 0; i < 6; i++) {
 		SV_VERBOSE(5, "\t%-32s " Point6_format, i == 0 ? "Gyro R" : "", LINMATH_VEC6_EXPAND(tracker->IMU_R + 6 * i));
@@ -1468,6 +1531,7 @@ void survive_kalman_tracker_free(SurviveKalmanTracker *tracker) {
 	survive_kalman_tracker_stats(tracker);
 
 	cnkalman_state_free(&tracker->model);
+	cnkalman_state_free(&tracker->imu_bias_model);
 
 	cnkalman_meas_model_t_joint_lightcap_detach_config(tracker->so->ctx, &tracker->joint_model);
 	cnkalman_meas_model_t_obj_imu_detach_config(tracker->so->ctx, &tracker->imu_model);
@@ -1584,7 +1648,7 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
 
 	SV_VERBOSE(600, "Tracker variance %s " Point16_format, tracker->so->codename, LINMATH_VEC16_EXPAND(var_diag));
 	SV_VERBOSE(600, "Tracker Bias %s     " Point3_format, tracker->so->codename,
-			   LINMATH_VEC3_EXPAND(tracker->state.GyroBias));
+			   LINMATH_VEC3_EXPAND(tracker->state.IMUBias.GyroBias));
 	SV_VERBOSE(600, "%f Tracker report %s   " SurvivePose_format, survive_run_time(ctx), tracker->so->codename,
 			   SURVIVE_POSE_EXPAND(pose));
 
@@ -1618,19 +1682,20 @@ void survive_kalman_tracker_report_state(PoserData *pd, SurviveKalmanTracker *tr
             survive_recording_write_to_output_nopreamble(ctx->recptr, "%f ", tracker->model.P.data[i]);
         }
         survive_recording_write_to_output_nopreamble(ctx->recptr, "\n");
+		survive_recording_write_matrix(ctx->recptr, so, 5, "imu", &tracker->imu_bias_model.P);
 
 		if(tracker->report_sampled_cloud > 0) {
 			survive_show_covariance(so, &pose, &tracker->model.P, .1, tracker->report_sampled_cloud);
 		}
-		int meta_idx = offsetof(SurviveKalmanModel, AccScale) / sizeof(FLT);
-		if(meta_idx < state_cnt) {
+		{
 			FLT v[16] = { 0 };
-			memcpy(v, &tracker->state.AccScale, sizeof(FLT) * (state_cnt - meta_idx));
-			CnMat meta = cnVec(state_cnt - meta_idx, v);
-			v[0] = v[0] - 1;
-			v[1] = v[1] - 1;
+			memcpy(v, &tracker->state.IMUBias.AccScale, sizeof(FLT) * tracker->imu_bias_model.state_cnt);
+			CnMat meta = cnVec(tracker->imu_bias_model.state_cnt, v);
+			for(int i = 0;i < 4;i++)
+				v[i] = v[i] - 1;
+
 			if(cn_norm2(&meta) != 0) {
-				survive_recording_write_matrix(ctx->recptr, so, 15, "meta", &meta);
+				survive_recording_write_matrix(ctx->recptr, so, 10, "meta", &meta);
 			}
 		}
     }

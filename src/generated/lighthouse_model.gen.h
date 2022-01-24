@@ -467,14 +467,14 @@ static inline void SurviveLighthouseKalmanModelToErrorModel(SurviveLighthouseKal
 
 // Jacobian of SurviveLighthouseKalmanModelToErrorModel wrt [(*_x1).Lighthouse.Pos[0], (*_x1).Lighthouse.Pos[1],
 // (*_x1).Lighthouse.Pos[2], (*_x1).Lighthouse.Rot[0], (*_x1).Lighthouse.Rot[1], (*_x1).Lighthouse.Rot[2],
-// (*_x1).Lighthouse.Rot[3], <cnkalman.codegen.WrapMember object at 0x7f61a5863760>, <cnkalman.codegen.WrapMember object
-// at 0x7f61a5863a30>, <cnkalman.codegen.WrapMember object at 0x7f61a5863820>, <cnkalman.codegen.WrapMember object at
-// 0x7f61a5863af0>, <cnkalman.codegen.WrapMember object at 0x7f61a58637c0>, <cnkalman.codegen.WrapMember object at
-// 0x7f61a5863a90>, <cnkalman.codegen.WrapMember object at 0x7f61a58638e0>, <cnkalman.codegen.WrapMember object at
-// 0x7f61a5863bb0>, <cnkalman.codegen.WrapMember object at 0x7f61a5863880>, <cnkalman.codegen.WrapMember object at
-// 0x7f61a5863b50>, <cnkalman.codegen.WrapMember object at 0x7f61a5863550>, <cnkalman.codegen.WrapMember object at
-// 0x7f61a5863970>, <cnkalman.codegen.WrapMember object at 0x7f61a5863700>, <cnkalman.codegen.WrapMember object at
-// 0x7f61a58639d0>]
+// (*_x1).Lighthouse.Rot[3], <cnkalman.codegen.WrapMember object at 0x7f4d1c391760>, <cnkalman.codegen.WrapMember object
+// at 0x7f4d1c391a30>, <cnkalman.codegen.WrapMember object at 0x7f4d1c391820>, <cnkalman.codegen.WrapMember object at
+// 0x7f4d1c391af0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3917c0>, <cnkalman.codegen.WrapMember object at
+// 0x7f4d1c391a90>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3918e0>, <cnkalman.codegen.WrapMember object at
+// 0x7f4d1c391bb0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c391880>, <cnkalman.codegen.WrapMember object at
+// 0x7f4d1c391b50>, <cnkalman.codegen.WrapMember object at 0x7f4d1c391550>, <cnkalman.codegen.WrapMember object at
+// 0x7f4d1c391970>, <cnkalman.codegen.WrapMember object at 0x7f4d1c391700>, <cnkalman.codegen.WrapMember object at
+// 0x7f4d1c3919d0>]
 static inline void SurviveLighthouseKalmanModelToErrorModel_jac_x1(CnMat *Hx, const SurviveLighthouseKalmanModel *_x1,
 																   const SurviveLighthouseKalmanModel *_x0) {
 	const FLT x0 = ((*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[1]) +
@@ -606,23 +606,23 @@ static inline void SurviveLighthouseKalmanModelToErrorModel_jac_x1(CnMat *Hx, co
 
 // Full version Jacobian of SurviveLighthouseKalmanModelToErrorModel wrt [(*_x1).Lighthouse.Pos[0],
 // (*_x1).Lighthouse.Pos[1], (*_x1).Lighthouse.Pos[2], (*_x1).Lighthouse.Rot[0], (*_x1).Lighthouse.Rot[1],
-// (*_x1).Lighthouse.Rot[2], (*_x1).Lighthouse.Rot[3], <cnkalman.codegen.WrapMember object at 0x7f61a5863760>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5863a30>, <cnkalman.codegen.WrapMember object at 0x7f61a5863820>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5863af0>, <cnkalman.codegen.WrapMember object at 0x7f61a58637c0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5863a90>, <cnkalman.codegen.WrapMember object at 0x7f61a58638e0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5863bb0>, <cnkalman.codegen.WrapMember object at 0x7f61a5863880>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5863b50>, <cnkalman.codegen.WrapMember object at 0x7f61a5863550>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5863970>, <cnkalman.codegen.WrapMember object at 0x7f61a5863700>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58639d0>] Jacobian of SurviveLighthouseKalmanModelToErrorModel wrt
+// (*_x1).Lighthouse.Rot[2], (*_x1).Lighthouse.Rot[3], <cnkalman.codegen.WrapMember object at 0x7f4d1c391760>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c391a30>, <cnkalman.codegen.WrapMember object at 0x7f4d1c391820>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c391af0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3917c0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c391a90>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3918e0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c391bb0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c391880>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c391b50>, <cnkalman.codegen.WrapMember object at 0x7f4d1c391550>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c391970>, <cnkalman.codegen.WrapMember object at 0x7f4d1c391700>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3919d0>] Jacobian of SurviveLighthouseKalmanModelToErrorModel wrt
 // [(*_x0).Lighthouse.Pos[0], (*_x0).Lighthouse.Pos[1], (*_x0).Lighthouse.Pos[2], (*_x0).Lighthouse.Rot[0],
 // (*_x0).Lighthouse.Rot[1], (*_x0).Lighthouse.Rot[2], (*_x0).Lighthouse.Rot[3], <cnkalman.codegen.WrapMember object at
-// 0x7f61a5864100>, <cnkalman.codegen.WrapMember object at 0x7f61a58643d0>, <cnkalman.codegen.WrapMember object at
-// 0x7f61a58641c0>, <cnkalman.codegen.WrapMember object at 0x7f61a5864490>, <cnkalman.codegen.WrapMember object at
-// 0x7f61a5864160>, <cnkalman.codegen.WrapMember object at 0x7f61a5864430>, <cnkalman.codegen.WrapMember object at
-// 0x7f61a5864280>, <cnkalman.codegen.WrapMember object at 0x7f61a5864550>, <cnkalman.codegen.WrapMember object at
-// 0x7f61a5864220>, <cnkalman.codegen.WrapMember object at 0x7f61a58644f0>, <cnkalman.codegen.WrapMember object at
-// 0x7f61a5863eb0>, <cnkalman.codegen.WrapMember object at 0x7f61a5864310>, <cnkalman.codegen.WrapMember object at
-// 0x7f61a58640a0>, <cnkalman.codegen.WrapMember object at 0x7f61a5864370>]
+// 0x7f4d1c38eee0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38ea90>, <cnkalman.codegen.WrapMember object at
+// 0x7f4d1c38ebb0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38e9d0>, <cnkalman.codegen.WrapMember object at
+// 0x7f4d1c38ef40>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38ea30>, <cnkalman.codegen.WrapMember object at
+// 0x7f4d1c38ecd0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38e910>, <cnkalman.codegen.WrapMember object at
+// 0x7f4d1c38ec40>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38e970>, <cnkalman.codegen.WrapMember object at
+// 0x7f4d1c38ee20>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38ed60>, <cnkalman.codegen.WrapMember object at
+// 0x7f4d1c38ee80>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38eaf0>]
 static inline void SurviveLighthouseKalmanModelToErrorModel_jac_x0(CnMat *Hx, const SurviveLighthouseKalmanModel *_x1,
 																   const SurviveLighthouseKalmanModel *_x0) {
 	const FLT x0 = ((*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[1]) +
@@ -754,14 +754,14 @@ static inline void SurviveLighthouseKalmanModelToErrorModel_jac_x0(CnMat *Hx, co
 
 // Full version Jacobian of SurviveLighthouseKalmanModelToErrorModel wrt [(*_x0).Lighthouse.Pos[0],
 // (*_x0).Lighthouse.Pos[1], (*_x0).Lighthouse.Pos[2], (*_x0).Lighthouse.Rot[0], (*_x0).Lighthouse.Rot[1],
-// (*_x0).Lighthouse.Rot[2], (*_x0).Lighthouse.Rot[3], <cnkalman.codegen.WrapMember object at 0x7f61a5864100>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58643d0>, <cnkalman.codegen.WrapMember object at 0x7f61a58641c0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5864490>, <cnkalman.codegen.WrapMember object at 0x7f61a5864160>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5864430>, <cnkalman.codegen.WrapMember object at 0x7f61a5864280>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5864550>, <cnkalman.codegen.WrapMember object at 0x7f61a5864220>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58644f0>, <cnkalman.codegen.WrapMember object at 0x7f61a5863eb0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5864310>, <cnkalman.codegen.WrapMember object at 0x7f61a58640a0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5864370>]
+// (*_x0).Lighthouse.Rot[2], (*_x0).Lighthouse.Rot[3], <cnkalman.codegen.WrapMember object at 0x7f4d1c38eee0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c38ea90>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38ebb0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c38e9d0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38ef40>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c38ea30>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38ecd0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c38e910>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38ec40>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c38e970>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38ee20>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c38ed60>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38ee80>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c38eaf0>]
 static inline void SurviveLighthouseKalmanModelAddErrorModel(SurviveLighthouseKalmanModel *out,
 															 const SurviveLighthouseKalmanModel *_x0,
 															 const SurviveLighthouseKalmanErrorModel *error_state) {
@@ -817,14 +817,14 @@ static inline void SurviveLighthouseKalmanModelAddErrorModel(SurviveLighthouseKa
 
 // Jacobian of SurviveLighthouseKalmanModelAddErrorModel wrt [(*_x0).Lighthouse.Pos[0], (*_x0).Lighthouse.Pos[1],
 // (*_x0).Lighthouse.Pos[2], (*_x0).Lighthouse.Rot[0], (*_x0).Lighthouse.Rot[1], (*_x0).Lighthouse.Rot[2],
-// (*_x0).Lighthouse.Rot[3], <cnkalman.codegen.WrapMember object at 0x7f61a5846400>, <cnkalman.codegen.WrapMember object
-// at 0x7f61a58461f0>, <cnkalman.codegen.WrapMember object at 0x7f61a5846550>, <cnkalman.codegen.WrapMember object at
-// 0x7f61a58463d0>, <cnkalman.codegen.WrapMember object at 0x7f61a5846340>, <cnkalman.codegen.WrapMember object at
-// 0x7f61a5846c10>, <cnkalman.codegen.WrapMember object at 0x7f61a58460a0>, <cnkalman.codegen.WrapMember object at
-// 0x7f61a5842b20>, <cnkalman.codegen.WrapMember object at 0x7f61a5846250>, <cnkalman.codegen.WrapMember object at
-// 0x7f61a58427f0>, <cnkalman.codegen.WrapMember object at 0x7f61a5843cd0>, <cnkalman.codegen.WrapMember object at
-// 0x7f61a5846160>, <cnkalman.codegen.WrapMember object at 0x7f61a58439a0>, <cnkalman.codegen.WrapMember object at
-// 0x7f61a5846ca0>]
+// (*_x0).Lighthouse.Rot[3], <cnkalman.codegen.WrapMember object at 0x7f4d1c3864f0>, <cnkalman.codegen.WrapMember object
+// at 0x7f4d1c3867c0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3865b0>, <cnkalman.codegen.WrapMember object at
+// 0x7f4d1c386880>, <cnkalman.codegen.WrapMember object at 0x7f4d1c386550>, <cnkalman.codegen.WrapMember object at
+// 0x7f4d1c386820>, <cnkalman.codegen.WrapMember object at 0x7f4d1c386670>, <cnkalman.codegen.WrapMember object at
+// 0x7f4d1c386940>, <cnkalman.codegen.WrapMember object at 0x7f4d1c386610>, <cnkalman.codegen.WrapMember object at
+// 0x7f4d1c3868e0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3862e0>, <cnkalman.codegen.WrapMember object at
+// 0x7f4d1c386700>, <cnkalman.codegen.WrapMember object at 0x7f4d1c386490>, <cnkalman.codegen.WrapMember object at
+// 0x7f4d1c386760>]
 static inline void
 SurviveLighthouseKalmanModelAddErrorModel_jac_x0(CnMat *Hx, const SurviveLighthouseKalmanModel *_x0,
 												 const SurviveLighthouseKalmanErrorModel *error_state) {
@@ -924,24 +924,24 @@ SurviveLighthouseKalmanModelAddErrorModel_jac_x0(CnMat *Hx, const SurviveLightho
 
 // Full version Jacobian of SurviveLighthouseKalmanModelAddErrorModel wrt [(*_x0).Lighthouse.Pos[0],
 // (*_x0).Lighthouse.Pos[1], (*_x0).Lighthouse.Pos[2], (*_x0).Lighthouse.Rot[0], (*_x0).Lighthouse.Rot[1],
-// (*_x0).Lighthouse.Rot[2], (*_x0).Lighthouse.Rot[3], <cnkalman.codegen.WrapMember object at 0x7f61a5846400>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58461f0>, <cnkalman.codegen.WrapMember object at 0x7f61a5846550>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58463d0>, <cnkalman.codegen.WrapMember object at 0x7f61a5846340>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5846c10>, <cnkalman.codegen.WrapMember object at 0x7f61a58460a0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5842b20>, <cnkalman.codegen.WrapMember object at 0x7f61a5846250>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58427f0>, <cnkalman.codegen.WrapMember object at 0x7f61a5843cd0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5846160>, <cnkalman.codegen.WrapMember object at 0x7f61a58439a0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5846ca0>] Jacobian of SurviveLighthouseKalmanModelAddErrorModel wrt
+// (*_x0).Lighthouse.Rot[2], (*_x0).Lighthouse.Rot[3], <cnkalman.codegen.WrapMember object at 0x7f4d1c3864f0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3867c0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3865b0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c386880>, <cnkalman.codegen.WrapMember object at 0x7f4d1c386550>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c386820>, <cnkalman.codegen.WrapMember object at 0x7f4d1c386670>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c386940>, <cnkalman.codegen.WrapMember object at 0x7f4d1c386610>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3868e0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3862e0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c386700>, <cnkalman.codegen.WrapMember object at 0x7f4d1c386490>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c386760>] Jacobian of SurviveLighthouseKalmanModelAddErrorModel wrt
 // [(*error_state).Lighthouse.AxisAngleRot[0], (*error_state).Lighthouse.AxisAngleRot[1],
 // (*error_state).Lighthouse.AxisAngleRot[2], (*error_state).Lighthouse.Pos[0], (*error_state).Lighthouse.Pos[1],
-// (*error_state).Lighthouse.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f61a58452b0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5845910>, <cnkalman.codegen.WrapMember object at 0x7f61a58453d0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5845b20>, <cnkalman.codegen.WrapMember object at 0x7f61a58450d0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58456d0>, <cnkalman.codegen.WrapMember object at 0x7f61a5845220>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58459d0>, <cnkalman.codegen.WrapMember object at 0x7f61a58455b0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5845820>, <cnkalman.codegen.WrapMember object at 0x7f61a5845040>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5845e50>, <cnkalman.codegen.WrapMember object at 0x7f61a5845550>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5845250>]
+// (*error_state).Lighthouse.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f4d1c386df0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c392100>, <cnkalman.codegen.WrapMember object at 0x7f4d1c386eb0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3921c0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c386e50>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c392160>, <cnkalman.codegen.WrapMember object at 0x7f4d1c386f70>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c392280>, <cnkalman.codegen.WrapMember object at 0x7f4d1c386f10>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c392220>, <cnkalman.codegen.WrapMember object at 0x7f4d1c386c40>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c392040>, <cnkalman.codegen.WrapMember object at 0x7f4d1c386d90>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3920a0>]
 static inline void
 SurviveLighthouseKalmanModelAddErrorModel_jac_error_state(CnMat *Hx, const SurviveLighthouseKalmanModel *_x0,
 														  const SurviveLighthouseKalmanErrorModel *error_state) {
@@ -1133,13 +1133,13 @@ SurviveLighthouseKalmanModelAddErrorModel_jac_error_state(CnMat *Hx, const Survi
 // Full version Jacobian of SurviveLighthouseKalmanModelAddErrorModel wrt [(*error_state).Lighthouse.AxisAngleRot[0],
 // (*error_state).Lighthouse.AxisAngleRot[1], (*error_state).Lighthouse.AxisAngleRot[2],
 // (*error_state).Lighthouse.Pos[0], (*error_state).Lighthouse.Pos[1], (*error_state).Lighthouse.Pos[2],
-// <cnkalman.codegen.WrapMember object at 0x7f61a58452b0>, <cnkalman.codegen.WrapMember object at 0x7f61a5845910>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58453d0>, <cnkalman.codegen.WrapMember object at 0x7f61a5845b20>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58450d0>, <cnkalman.codegen.WrapMember object at 0x7f61a58456d0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5845220>, <cnkalman.codegen.WrapMember object at 0x7f61a58459d0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58455b0>, <cnkalman.codegen.WrapMember object at 0x7f61a5845820>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5845040>, <cnkalman.codegen.WrapMember object at 0x7f61a5845e50>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5845550>, <cnkalman.codegen.WrapMember object at 0x7f61a5845250>]
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c386df0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c392100>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c386eb0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3921c0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c386e50>, <cnkalman.codegen.WrapMember object at 0x7f4d1c392160>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c386f70>, <cnkalman.codegen.WrapMember object at 0x7f4d1c392280>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c386f10>, <cnkalman.codegen.WrapMember object at 0x7f4d1c392220>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c386c40>, <cnkalman.codegen.WrapMember object at 0x7f4d1c392040>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c386d90>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3920a0>]
 static inline void SurviveJointKalmanModelToErrorModel(SurviveJointKalmanErrorModel *out,
 													   const SurviveJointKalmanModel *_x1,
 													   const SurviveJointKalmanModel *_x0) {
@@ -1160,22 +1160,39 @@ static inline void SurviveJointKalmanModelToErrorModel(SurviveJointKalmanErrorMo
 				   ((*_x1).Object.Pose.Rot[0] * (*_x0).Object.Pose.Rot[0]) +
 				   ((*_x1).Object.Pose.Rot[2] * (*_x0).Object.Pose.Rot[2]);
 	const FLT x4 = x0 * x0;
-	const FLT x5 = ((*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[1]) +
-				   (-1 * (*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[2]) +
-				   ((*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[0]) +
-				   (-1 * (*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[3]);
-	const FLT x6 = (-1 * (*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[1]) +
-				   ((*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[0]) +
-				   (-1 * (*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[3]) +
-				   ((*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[2]);
-	const FLT x7 =
+	const FLT x5 = ((*_x1).Object.IMUBias.IMUCorrection[3] * (*_x0).Object.IMUBias.IMUCorrection[1]) +
+				   ((*_x1).Object.IMUBias.IMUCorrection[2] * (*_x0).Object.IMUBias.IMUCorrection[0]) +
+				   (-1 * (*_x1).Object.IMUBias.IMUCorrection[1] * (*_x0).Object.IMUBias.IMUCorrection[3]) +
+				   (-1 * (*_x1).Object.IMUBias.IMUCorrection[0] * (*_x0).Object.IMUBias.IMUCorrection[2]);
+	const FLT x6 = (-1 * (*_x1).Object.IMUBias.IMUCorrection[2] * (*_x0).Object.IMUBias.IMUCorrection[1]) +
+				   (-1 * (*_x1).Object.IMUBias.IMUCorrection[0] * (*_x0).Object.IMUBias.IMUCorrection[3]) +
+				   ((*_x1).Object.IMUBias.IMUCorrection[1] * (*_x0).Object.IMUBias.IMUCorrection[2]) +
+				   ((*_x1).Object.IMUBias.IMUCorrection[3] * (*_x0).Object.IMUBias.IMUCorrection[0]);
+	const FLT x7 = ((*_x1).Object.IMUBias.IMUCorrection[2] * (*_x0).Object.IMUBias.IMUCorrection[3]) +
+				   (-1 * (*_x1).Object.IMUBias.IMUCorrection[0] * (*_x0).Object.IMUBias.IMUCorrection[1]) +
+				   ((*_x1).Object.IMUBias.IMUCorrection[1] * (*_x0).Object.IMUBias.IMUCorrection[0]) +
+				   (-1 * (*_x1).Object.IMUBias.IMUCorrection[3] * (*_x0).Object.IMUBias.IMUCorrection[2]);
+	const FLT x8 = ((*_x1).Object.IMUBias.IMUCorrection[1] * (*_x0).Object.IMUBias.IMUCorrection[1]) +
+				   ((*_x1).Object.IMUBias.IMUCorrection[2] * (*_x0).Object.IMUBias.IMUCorrection[2]) +
+				   ((*_x1).Object.IMUBias.IMUCorrection[0] * (*_x0).Object.IMUBias.IMUCorrection[0]) +
+				   ((*_x1).Object.IMUBias.IMUCorrection[3] * (*_x0).Object.IMUBias.IMUCorrection[3]);
+	const FLT x9 = x5 * x5;
+	const FLT x10 = ((*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[1]) +
+					(-1 * (*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[2]) +
+					((*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[0]) +
+					(-1 * (*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[3]);
+	const FLT x11 = (-1 * (*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[1]) +
+					((*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[0]) +
+					(-1 * (*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[3]) +
+					((*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[2]);
+	const FLT x12 =
 		((*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[1]) + ((*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[2]) +
 		((*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[3]) + ((*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[0]);
-	const FLT x8 = (-1 * (*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[1]) +
-				   ((*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[3]) +
-				   (-1 * (*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[2]) +
-				   ((*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[0]);
-	const FLT x9 = x5 * x5;
+	const FLT x13 = (-1 * (*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[1]) +
+					((*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[3]) +
+					(-1 * (*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[2]) +
+					((*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[0]);
+	const FLT x14 = x10 * x10;
 	out->Object.Pose.Pos[0] = (*_x1).Object.Pose.Pos[0] + (-1 * (*_x0).Object.Pose.Pos[0]);
 	out->Object.Pose.Pos[1] = (*_x1).Object.Pose.Pos[1] + (-1 * (*_x0).Object.Pose.Pos[1]);
 	out->Object.Pose.Pos[2] = (*_x1).Object.Pose.Pos[2] + (-1 * (*_x0).Object.Pose.Pos[2]);
@@ -1194,23 +1211,24 @@ static inline void SurviveJointKalmanModelToErrorModel(SurviveJointKalmanErrorMo
 	out->Object.Acc[0] = (*_x1).Object.Acc[0] + (-1 * (*_x0).Object.Acc[0]);
 	out->Object.Acc[1] = (*_x1).Object.Acc[1] + (-1 * (*_x0).Object.Acc[1]);
 	out->Object.Acc[2] = (*_x1).Object.Acc[2] + (-1 * (*_x0).Object.Acc[2]);
-	out->Object.AccScale = (*_x1).Object.AccScale + (-1 * (*_x0).Object.AccScale);
-	out->Object.IMUCorrection[0] = (*_x1).Object.IMUCorrection[0] + (-1 * (*_x0).Object.IMUCorrection[0]);
-	out->Object.IMUCorrection[1] = (*_x1).Object.IMUCorrection[1] + (-1 * (*_x0).Object.IMUCorrection[1]);
-	out->Object.IMUCorrection[2] = (*_x1).Object.IMUCorrection[2] + (-1 * (*_x0).Object.IMUCorrection[2]);
-	out->Object.IMUCorrection[3] = (*_x1).Object.IMUCorrection[3] + (-1 * (*_x0).Object.IMUCorrection[3]);
-	out->Object.AccBias[0] = (*_x1).Object.AccBias[0] + (-1 * (*_x0).Object.AccBias[0]);
-	out->Object.AccBias[1] = (*_x1).Object.AccBias[1] + (-1 * (*_x0).Object.AccBias[1]);
-	out->Object.AccBias[2] = (*_x1).Object.AccBias[2] + (-1 * (*_x0).Object.AccBias[2]);
-	out->Object.GyroBias[0] = (*_x1).Object.GyroBias[0] + (-1 * (*_x0).Object.GyroBias[0]);
-	out->Object.GyroBias[1] = (*_x1).Object.GyroBias[1] + (-1 * (*_x0).Object.GyroBias[1]);
-	out->Object.GyroBias[2] = (*_x1).Object.GyroBias[2] + (-1 * (*_x0).Object.GyroBias[2]);
+	out->Object.IMUBias.AccScale[0] = (*_x1).Object.IMUBias.AccScale[0] + (-1 * (*_x0).Object.IMUBias.AccScale[0]);
+	out->Object.IMUBias.AccScale[1] = (*_x1).Object.IMUBias.AccScale[1] + (-1 * (*_x0).Object.IMUBias.AccScale[1]);
+	out->Object.IMUBias.AccScale[2] = (*_x1).Object.IMUBias.AccScale[2] + (-1 * (*_x0).Object.IMUBias.AccScale[2]);
+	out->Object.IMUBias.IMUCorrection[0] = atan2(2 * ((x8 * x7) + (x6 * x5)), 1 + (-2 * ((x7 * x7) + x9)));
+	out->Object.IMUBias.IMUCorrection[1] = asin(2 * ((x5 * x8) + (-1 * x6 * x7)));
+	out->Object.IMUBias.IMUCorrection[2] = atan2(2 * ((x6 * x8) + (x5 * x7)), 1 + (-2 * (x9 + (x6 * x6))));
+	out->Object.IMUBias.AccBias[0] = (*_x1).Object.IMUBias.AccBias[0] + (-1 * (*_x0).Object.IMUBias.AccBias[0]);
+	out->Object.IMUBias.AccBias[1] = (*_x1).Object.IMUBias.AccBias[1] + (-1 * (*_x0).Object.IMUBias.AccBias[1]);
+	out->Object.IMUBias.AccBias[2] = (*_x1).Object.IMUBias.AccBias[2] + (-1 * (*_x0).Object.IMUBias.AccBias[2]);
+	out->Object.IMUBias.GyroBias[0] = (*_x1).Object.IMUBias.GyroBias[0] + (-1 * (*_x0).Object.IMUBias.GyroBias[0]);
+	out->Object.IMUBias.GyroBias[1] = (*_x1).Object.IMUBias.GyroBias[1] + (-1 * (*_x0).Object.IMUBias.GyroBias[1]);
+	out->Object.IMUBias.GyroBias[2] = (*_x1).Object.IMUBias.GyroBias[2] + (-1 * (*_x0).Object.IMUBias.GyroBias[2]);
 	out->Lighthouse.Pos[0] = (*_x1).Lighthouse.Pos[0] + (-1 * (*_x0).Lighthouse.Pos[0]);
 	out->Lighthouse.Pos[1] = (*_x1).Lighthouse.Pos[1] + (-1 * (*_x0).Lighthouse.Pos[1]);
 	out->Lighthouse.Pos[2] = (*_x1).Lighthouse.Pos[2] + (-1 * (*_x0).Lighthouse.Pos[2]);
-	out->Lighthouse.AxisAngleRot[0] = atan2(2 * ((x8 * x7) + (x6 * x5)), 1 + (-2 * ((x8 * x8) + x9)));
-	out->Lighthouse.AxisAngleRot[1] = asin(2 * ((x5 * x7) + (-1 * x6 * x8)));
-	out->Lighthouse.AxisAngleRot[2] = atan2(2 * ((x6 * x7) + (x5 * x8)), 1 + (-2 * (x9 + (x6 * x6))));
+	out->Lighthouse.AxisAngleRot[0] = atan2(2 * ((x13 * x12) + (x11 * x10)), 1 + (-2 * ((x13 * x13) + x14)));
+	out->Lighthouse.AxisAngleRot[1] = asin(2 * ((x12 * x10) + (-1 * x13 * x11)));
+	out->Lighthouse.AxisAngleRot[2] = atan2(2 * ((x12 * x11) + (x13 * x10)), 1 + (-2 * (x14 + (x11 * x11))));
 	out->BSD0.phase = (*_x1).BSD0.phase + (-1 * (*_x0).BSD0.phase);
 	out->BSD0.tilt = (*_x1).BSD0.tilt + (-1 * (*_x0).BSD0.tilt);
 	out->BSD0.curve = (*_x1).BSD0.curve + (-1 * (*_x0).BSD0.curve);
@@ -1229,21 +1247,23 @@ static inline void SurviveJointKalmanModelToErrorModel(SurviveJointKalmanErrorMo
 
 // Jacobian of SurviveJointKalmanModelToErrorModel wrt [(*_x1).Lighthouse.Pos[0], (*_x1).Lighthouse.Pos[1],
 // (*_x1).Lighthouse.Pos[2], (*_x1).Lighthouse.Rot[0], (*_x1).Lighthouse.Rot[1], (*_x1).Lighthouse.Rot[2],
-// (*_x1).Lighthouse.Rot[3], (*_x1).Object.AccBias[0], (*_x1).Object.AccBias[1], (*_x1).Object.AccBias[2],
-// (*_x1).Object.Acc[0], (*_x1).Object.Acc[1], (*_x1).Object.Acc[2], (*_x1).Object.GyroBias[0],
-// (*_x1).Object.GyroBias[1], (*_x1).Object.GyroBias[2], (*_x1).Object.IMUCorrection[0], (*_x1).Object.IMUCorrection[1],
-// (*_x1).Object.IMUCorrection[2], (*_x1).Object.IMUCorrection[3], (*_x1).Object.Pose.Pos[0], (*_x1).Object.Pose.Pos[1],
-// (*_x1).Object.Pose.Pos[2], (*_x1).Object.Pose.Rot[0], (*_x1).Object.Pose.Rot[1], (*_x1).Object.Pose.Rot[2],
-// (*_x1).Object.Pose.Rot[3], (*_x1).Object.Velocity.AxisAngleRot[0], (*_x1).Object.Velocity.AxisAngleRot[1],
-// (*_x1).Object.Velocity.AxisAngleRot[2], (*_x1).Object.Velocity.Pos[0], (*_x1).Object.Velocity.Pos[1],
-// (*_x1).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f61a589fc40>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a58518b0>, <cnkalman.codegen.WrapMember object at 0x7f61a5851b80>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5851970>, <cnkalman.codegen.WrapMember object at 0x7f61a5851c40>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5851910>, <cnkalman.codegen.WrapMember object at 0x7f61a5851be0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5851a30>, <cnkalman.codegen.WrapMember object at 0x7f61a5851d00>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a58519d0>, <cnkalman.codegen.WrapMember object at 0x7f61a5851ca0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a58516a0>, <cnkalman.codegen.WrapMember object at 0x7f61a5851ac0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5851850>, <cnkalman.codegen.WrapMember object at 0x7f61a5851b20>]
+// (*_x1).Lighthouse.Rot[3], (*_x1).Object.Acc[0], (*_x1).Object.Acc[1], (*_x1).Object.Acc[2],
+// (*_x1).Object.IMUBias.AccBias[0], (*_x1).Object.IMUBias.AccBias[1], (*_x1).Object.IMUBias.AccBias[2],
+// (*_x1).Object.IMUBias.AccScale[0], (*_x1).Object.IMUBias.AccScale[1], (*_x1).Object.IMUBias.AccScale[2],
+// (*_x1).Object.IMUBias.GyroBias[0], (*_x1).Object.IMUBias.GyroBias[1], (*_x1).Object.IMUBias.GyroBias[2],
+// (*_x1).Object.IMUBias.IMUCorrection[0], (*_x1).Object.IMUBias.IMUCorrection[1],
+// (*_x1).Object.IMUBias.IMUCorrection[2], (*_x1).Object.IMUBias.IMUCorrection[3], (*_x1).Object.Pose.Pos[0],
+// (*_x1).Object.Pose.Pos[1], (*_x1).Object.Pose.Pos[2], (*_x1).Object.Pose.Rot[0], (*_x1).Object.Pose.Rot[1],
+// (*_x1).Object.Pose.Rot[2], (*_x1).Object.Pose.Rot[3], (*_x1).Object.Velocity.AxisAngleRot[0],
+// (*_x1).Object.Velocity.AxisAngleRot[1], (*_x1).Object.Velocity.AxisAngleRot[2], (*_x1).Object.Velocity.Pos[0],
+// (*_x1).Object.Velocity.Pos[1], (*_x1).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f4d1c386f40>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c396250>, <cnkalman.codegen.WrapMember object at 0x7f4d1c396040>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c396310>, <cnkalman.codegen.WrapMember object at 0x7f4d1c386fa0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3962b0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c396100>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3963d0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3960a0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c396370>, <cnkalman.codegen.WrapMember object at 0x7f4d1c386d30>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c396190>, <cnkalman.codegen.WrapMember object at 0x7f4d1c386ee0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3961f0>]
 static inline void SurviveJointKalmanModelToErrorModel_jac_x1(CnMat *Hx, const SurviveJointKalmanModel *_x1,
 															  const SurviveJointKalmanModel *_x0) {
 	const FLT x0 = ((*_x1).Object.Pose.Rot[3] * (*_x0).Object.Pose.Rot[1]) +
@@ -1283,9 +1303,9 @@ static inline void SurviveJointKalmanModelToErrorModel_jac_x1(CnMat *Hx, const S
 	const FLT x22 = 4 * x1;
 	const FLT x23 = x4 * (*_x0).Object.Pose.Rot[3];
 	const FLT x24 = x6 * (*_x0).Object.Pose.Rot[2];
-	const FLT x25 = x2 * (*_x0).Object.Pose.Rot[0];
-	const FLT x26 = x0 * (*_x0).Object.Pose.Rot[1];
-	const FLT x27 = (-1 * x26) + x25;
+	const FLT x25 = x0 * (*_x0).Object.Pose.Rot[1];
+	const FLT x26 = x2 * (*_x0).Object.Pose.Rot[0];
+	const FLT x27 = x26 + (-1 * x25);
 	const FLT x28 = x0 * (*_x0).Object.Pose.Rot[0];
 	const FLT x29 = -4 * x28;
 	const FLT x30 = x6 * (*_x0).Object.Pose.Rot[3];
@@ -1293,7 +1313,7 @@ static inline void SurviveJointKalmanModelToErrorModel_jac_x1(CnMat *Hx, const S
 	const FLT x32 = x2 * (*_x0).Object.Pose.Rot[1];
 	const FLT x33 = x28 + x32;
 	const FLT x34 = (-1 * x31) + x33 + x30;
-	const FLT x35 = -4 * x26;
+	const FLT x35 = -4 * x25;
 	const FLT x36 = 2 * (1. / sqrt(1 + (-4 * (((x0 * x4) + (-1 * x2 * x6)) * ((x0 * x4) + (-1 * x2 * x6))))));
 	const FLT x37 = (-1 * x24) + (-1 * x23);
 	const FLT x38 = x1 + x3;
@@ -1303,62 +1323,119 @@ static inline void SurviveJointKalmanModelToErrorModel_jac_x1(CnMat *Hx, const S
 	const FLT x42 = (x2 * x4) + (x0 * x6);
 	const FLT x43 = 2 * (1. / x41) * x42;
 	const FLT x44 = x41 * (1. / (x41 + (4 * (x42 * x42))));
-	const FLT x45 = ((*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[1]) +
-					(-1 * (*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[2]) +
-					((*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[0]) +
-					(-1 * (*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[3]);
-	const FLT x46 = x45 * (*_x0).Lighthouse.Rot[3];
-	const FLT x47 = (-1 * (*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[1]) +
-					((*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[0]) +
-					(-1 * (*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[3]) +
-					((*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[2]);
-	const FLT x48 = x47 * (*_x0).Lighthouse.Rot[2];
-	const FLT x49 = (-1 * (*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[1]) +
-					((*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[3]) +
-					(-1 * (*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[2]) +
-					((*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[0]);
-	const FLT x50 = x49 * (*_x0).Lighthouse.Rot[0];
-	const FLT x51 =
-		((*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[1]) + ((*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[2]) +
-		((*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[3]) + ((*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[0]);
-	const FLT x52 = x51 * (*_x0).Lighthouse.Rot[1];
-	const FLT x53 = (-1 * x52) + x50;
+	const FLT x45 = ((*_x1).Object.IMUBias.IMUCorrection[3] * (*_x0).Object.IMUBias.IMUCorrection[1]) +
+					((*_x1).Object.IMUBias.IMUCorrection[2] * (*_x0).Object.IMUBias.IMUCorrection[0]) +
+					(-1 * (*_x1).Object.IMUBias.IMUCorrection[1] * (*_x0).Object.IMUBias.IMUCorrection[3]) +
+					(-1 * (*_x1).Object.IMUBias.IMUCorrection[0] * (*_x0).Object.IMUBias.IMUCorrection[2]);
+	const FLT x46 = x45 * (*_x0).Object.IMUBias.IMUCorrection[3];
+	const FLT x47 = (-1 * (*_x1).Object.IMUBias.IMUCorrection[2] * (*_x0).Object.IMUBias.IMUCorrection[1]) +
+					(-1 * (*_x1).Object.IMUBias.IMUCorrection[0] * (*_x0).Object.IMUBias.IMUCorrection[3]) +
+					((*_x1).Object.IMUBias.IMUCorrection[1] * (*_x0).Object.IMUBias.IMUCorrection[2]) +
+					((*_x1).Object.IMUBias.IMUCorrection[3] * (*_x0).Object.IMUBias.IMUCorrection[0]);
+	const FLT x48 = x47 * (*_x0).Object.IMUBias.IMUCorrection[2];
+	const FLT x49 = ((*_x1).Object.IMUBias.IMUCorrection[1] * (*_x0).Object.IMUBias.IMUCorrection[1]) +
+					((*_x1).Object.IMUBias.IMUCorrection[2] * (*_x0).Object.IMUBias.IMUCorrection[2]) +
+					((*_x1).Object.IMUBias.IMUCorrection[0] * (*_x0).Object.IMUBias.IMUCorrection[0]) +
+					((*_x1).Object.IMUBias.IMUCorrection[3] * (*_x0).Object.IMUBias.IMUCorrection[3]);
+	const FLT x50 = x49 * (*_x0).Object.IMUBias.IMUCorrection[1];
+	const FLT x51 = ((*_x1).Object.IMUBias.IMUCorrection[2] * (*_x0).Object.IMUBias.IMUCorrection[3]) +
+					(-1 * (*_x1).Object.IMUBias.IMUCorrection[0] * (*_x0).Object.IMUBias.IMUCorrection[1]) +
+					((*_x1).Object.IMUBias.IMUCorrection[1] * (*_x0).Object.IMUBias.IMUCorrection[0]) +
+					(-1 * (*_x1).Object.IMUBias.IMUCorrection[3] * (*_x0).Object.IMUBias.IMUCorrection[2]);
+	const FLT x52 = x51 * (*_x0).Object.IMUBias.IMUCorrection[0];
+	const FLT x53 = x52 + (-1 * x50);
 	const FLT x54 = x45 * x45;
-	const FLT x55 = 1 + (-2 * ((x49 * x49) + x54));
+	const FLT x55 = 1 + (-2 * ((x51 * x51) + x54));
 	const FLT x56 = 2 * (1. / x55);
-	const FLT x57 = x45 * (*_x0).Lighthouse.Rot[2];
+	const FLT x57 = x45 * (*_x0).Object.IMUBias.IMUCorrection[2];
 	const FLT x58 = 4 * x57;
-	const FLT x59 = x49 * (*_x0).Lighthouse.Rot[1];
+	const FLT x59 = x51 * (*_x0).Object.IMUBias.IMUCorrection[1];
 	const FLT x60 = x55 * x55;
 	const FLT x61 = (x51 * x49) + (x45 * x47);
 	const FLT x62 = 2 * (1. / x60) * x61;
 	const FLT x63 = x60 * (1. / (x60 + (4 * (x61 * x61))));
-	const FLT x64 = x47 * (*_x0).Lighthouse.Rot[3];
-	const FLT x65 = (x51 * (*_x0).Lighthouse.Rot[0]) + x59;
+	const FLT x64 = x47 * (*_x0).Object.IMUBias.IMUCorrection[3];
+	const FLT x65 = x59 + (x49 * (*_x0).Object.IMUBias.IMUCorrection[0]);
 	const FLT x66 = x65 + x57 + (-1 * x64);
 	const FLT x67 = 4 * x46;
-	const FLT x68 = x49 * (*_x0).Lighthouse.Rot[2];
-	const FLT x69 = x51 * (*_x0).Lighthouse.Rot[3];
-	const FLT x70 = x45 * (*_x0).Lighthouse.Rot[1];
-	const FLT x71 = x47 * (*_x0).Lighthouse.Rot[0];
+	const FLT x68 = x51 * (*_x0).Object.IMUBias.IMUCorrection[2];
+	const FLT x69 = x49 * (*_x0).Object.IMUBias.IMUCorrection[3];
+	const FLT x70 = x45 * (*_x0).Object.IMUBias.IMUCorrection[1];
+	const FLT x71 = x47 * (*_x0).Object.IMUBias.IMUCorrection[0];
 	const FLT x72 = x71 + (-1 * x70);
-	const FLT x73 = x45 * (*_x0).Lighthouse.Rot[0];
+	const FLT x73 = x45 * (*_x0).Object.IMUBias.IMUCorrection[0];
 	const FLT x74 = -4 * x73;
-	const FLT x75 = x49 * (*_x0).Lighthouse.Rot[3];
-	const FLT x76 = x51 * (*_x0).Lighthouse.Rot[2];
-	const FLT x77 = x47 * (*_x0).Lighthouse.Rot[1];
+	const FLT x75 = x51 * (*_x0).Object.IMUBias.IMUCorrection[3];
+	const FLT x76 = x49 * (*_x0).Object.IMUBias.IMUCorrection[2];
+	const FLT x77 = x47 * (*_x0).Object.IMUBias.IMUCorrection[1];
 	const FLT x78 = x77 + x73;
 	const FLT x79 = x78 + x75 + (-1 * x76);
 	const FLT x80 = -4 * x70;
-	const FLT x81 = 2 * (1. / sqrt(1 + (-4 * (((x51 * x45) + (-1 * x47 * x49)) * ((x51 * x45) + (-1 * x47 * x49))))));
-	const FLT x82 = (-1 * x68) + (-1 * x69);
+	const FLT x81 = 2 * (1. / sqrt(1 + (-4 * (((x45 * x49) + (-1 * x51 * x47)) * ((x45 * x49) + (-1 * x51 * x47))))));
+	const FLT x82 = (-1 * x69) + (-1 * x68);
 	const FLT x83 = x46 + x48;
 	const FLT x84 = 1 + (-2 * (x54 + (x47 * x47)));
 	const FLT x85 = 2 * (1. / x84);
 	const FLT x86 = x84 * x84;
-	const FLT x87 = (x51 * x47) + (x45 * x49);
+	const FLT x87 = (x47 * x49) + (x51 * x45);
 	const FLT x88 = 2 * (1. / x86) * x87;
 	const FLT x89 = x86 * (1. / (x86 + (4 * (x87 * x87))));
+	const FLT x90 = ((*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[1]) +
+					(-1 * (*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[2]) +
+					((*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[0]) +
+					(-1 * (*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[3]);
+	const FLT x91 = x90 * (*_x0).Lighthouse.Rot[3];
+	const FLT x92 = (-1 * (*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[1]) +
+					((*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[0]) +
+					(-1 * (*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[3]) +
+					((*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[2]);
+	const FLT x93 = x92 * (*_x0).Lighthouse.Rot[2];
+	const FLT x94 = (-1 * (*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[1]) +
+					((*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[3]) +
+					(-1 * (*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[2]) +
+					((*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[0]);
+	const FLT x95 = x94 * (*_x0).Lighthouse.Rot[0];
+	const FLT x96 =
+		((*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[1]) + ((*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[2]) +
+		((*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[3]) + ((*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[0]);
+	const FLT x97 = x96 * (*_x0).Lighthouse.Rot[1];
+	const FLT x98 = (-1 * x97) + x95;
+	const FLT x99 = x90 * x90;
+	const FLT x100 = 1 + (-2 * ((x94 * x94) + x99));
+	const FLT x101 = 2 * (1. / x100);
+	const FLT x102 = x90 * (*_x0).Lighthouse.Rot[2];
+	const FLT x103 = 4 * x102;
+	const FLT x104 = x94 * (*_x0).Lighthouse.Rot[1];
+	const FLT x105 = x100 * x100;
+	const FLT x106 = (x96 * x94) + (x92 * x90);
+	const FLT x107 = 2 * (1. / x105) * x106;
+	const FLT x108 = x105 * (1. / (x105 + (4 * (x106 * x106))));
+	const FLT x109 = x92 * (*_x0).Lighthouse.Rot[3];
+	const FLT x110 = x104 + (x96 * (*_x0).Lighthouse.Rot[0]);
+	const FLT x111 = x102 + x110 + (-1 * x109);
+	const FLT x112 = 4 * x91;
+	const FLT x113 = x94 * (*_x0).Lighthouse.Rot[2];
+	const FLT x114 = x96 * (*_x0).Lighthouse.Rot[3];
+	const FLT x115 = x90 * (*_x0).Lighthouse.Rot[1];
+	const FLT x116 = x92 * (*_x0).Lighthouse.Rot[0];
+	const FLT x117 = x116 + (-1 * x115);
+	const FLT x118 = x90 * (*_x0).Lighthouse.Rot[0];
+	const FLT x119 = -4 * x118;
+	const FLT x120 = x94 * (*_x0).Lighthouse.Rot[3];
+	const FLT x121 = x96 * (*_x0).Lighthouse.Rot[2];
+	const FLT x122 = x92 * (*_x0).Lighthouse.Rot[1];
+	const FLT x123 = x118 + x122;
+	const FLT x124 = x123 + x120 + (-1 * x121);
+	const FLT x125 = -4 * x115;
+	const FLT x126 = 2 * (1. / sqrt(1 + (-4 * (((x90 * x96) + (-1 * x92 * x94)) * ((x90 * x96) + (-1 * x92 * x94))))));
+	const FLT x127 = (-1 * x113) + (-1 * x114);
+	const FLT x128 = x91 + x93;
+	const FLT x129 = 1 + (-2 * (x99 + (x92 * x92)));
+	const FLT x130 = 2 * (1. / x129);
+	const FLT x131 = x129 * x129;
+	const FLT x132 = (x92 * x96) + (x90 * x94);
+	const FLT x133 = 2 * (1. / x131) * x132;
+	const FLT x134 = x131 * (1. / (x131 + (4 * (x132 * x132))));
 	cnSetZero(Hx);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Pose.Pos[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Pose.Pos[0]) / sizeof(FLT), 1);
@@ -1382,7 +1459,7 @@ static inline void SurviveJointKalmanModelToErrorModel_jac_x1(CnMat *Hx, const S
 						offsetof(SurviveJointKalmanModel, Object.Pose.Rot[0]) / sizeof(FLT), x34 * x36);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[1]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Pose.Rot[1]) / sizeof(FLT),
-						x36 * (x37 + x26 + (-1 * x25)));
+						x36 * (x37 + x25 + (-1 * x26)));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[1]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Pose.Rot[2]) / sizeof(FLT), x36 * x21);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[1]) / sizeof(FLT),
@@ -1390,7 +1467,7 @@ static inline void SurviveJointKalmanModelToErrorModel_jac_x1(CnMat *Hx, const S
 						x36 * (x38 + x5 + (-1 * x7)));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Pose.Rot[0]) / sizeof(FLT),
-						((-1 * (x13 + (4 * x19)) * x43) + ((x27 + x37) * x40)) * x44);
+						((-1 * (x13 + (4 * x19)) * x43) + ((x37 + x27) * x40)) * x44);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Pose.Rot[1]) / sizeof(FLT),
 						x44 * ((-1 * x43 * (x22 + (-4 * x3))) + (x40 * (x31 + x33 + (-1 * x30)))));
@@ -1399,7 +1476,7 @@ static inline void SurviveJointKalmanModelToErrorModel_jac_x1(CnMat *Hx, const S
 						x44 * ((-1 * (x29 + (4 * x32)) * x43) + (x40 * (x38 + x8))));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Pose.Rot[3]) / sizeof(FLT),
-						x44 * ((-1 * (x35 + (-4 * x25)) * x43) + (x40 * (x20 + x19 + (-1 * x12)))));
+						x44 * ((-1 * (x35 + (-4 * x26)) * x43) + (x40 * (x20 + x19 + (-1 * x12)))));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Velocity.Pos[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Velocity.Pos[0]) / sizeof(FLT), 1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Velocity.Pos[1]) / sizeof(FLT),
@@ -1418,28 +1495,58 @@ static inline void SurviveJointKalmanModelToErrorModel_jac_x1(CnMat *Hx, const S
 						offsetof(SurviveJointKalmanModel, Object.Acc[1]) / sizeof(FLT), 1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Acc[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Acc[2]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.AccScale) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.AccScale) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUCorrection[0]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.IMUCorrection[0]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUCorrection[1]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.IMUCorrection[1]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUCorrection[2]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.IMUCorrection[2]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUCorrection[3]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.IMUCorrection[3]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.AccBias[0]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.AccBias[0]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.AccBias[1]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.AccBias[1]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.AccBias[2]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.AccBias[2]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.GyroBias[0]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.GyroBias[0]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.GyroBias[1]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.GyroBias[1]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.GyroBias[2]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.GyroBias[2]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.AccScale[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.AccScale[0]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.AccScale[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.AccScale[1]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.AccScale[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.AccScale[2]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						x63 * ((-1 * ((4 * x59) + x58) * x62) + (x56 * (x53 + (-1 * x46) + (-1 * x48)))));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+						x63 * ((-1 * ((-4 * x52) + x67) * x62) + (x66 * x56)));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						x63 * ((-1 * ((-4 * x75) + x74) * x62) + (x56 * (x72 + x68 + x69))));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[3]) / sizeof(FLT),
+						x63 * ((-1 * ((4 * x68) + x80) * x62) + (x79 * x56)));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT), x81 * x79);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+						x81 * (x82 + x70 + (-1 * x71)));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT), x81 * x66);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[3]) / sizeof(FLT),
+						x81 * (x50 + x83 + (-1 * x52)));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						x89 * ((-1 * (x58 + (4 * x64)) * x88) + ((x72 + x82) * x85)));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+						x89 * ((-1 * (x67 + (-4 * x48)) * x88) + (x85 * (x78 + x76 + (-1 * x75)))));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						x89 * ((-1 * (x74 + (4 * x77)) * x88) + ((x83 + x53) * x85)));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[3]) / sizeof(FLT),
+						x89 * ((-1 * (x80 + (-4 * x71)) * x88) + (x85 * (x65 + x64 + (-1 * x57)))));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.AccBias[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.AccBias[0]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.AccBias[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.AccBias[1]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.AccBias[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.AccBias[2]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.GyroBias[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.GyroBias[0]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.GyroBias[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.GyroBias[1]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.GyroBias[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.GyroBias[2]) / sizeof(FLT), 1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.Pos[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Pos[0]) / sizeof(FLT), 1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.Pos[1]) / sizeof(FLT),
@@ -1448,38 +1555,38 @@ static inline void SurviveJointKalmanModelToErrorModel_jac_x1(CnMat *Hx, const S
 						offsetof(SurviveJointKalmanModel, Lighthouse.Pos[2]) / sizeof(FLT), 1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[0]) / sizeof(FLT),
-						x63 * ((-1 * ((4 * x59) + x58) * x62) + (x56 * (x53 + (-1 * x46) + (-1 * x48)))));
+						x108 * ((-1 * ((4 * x104) + x103) * x107) + ((x98 + (-1 * x91) + (-1 * x93)) * x101)));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[1]) / sizeof(FLT),
-						x63 * ((-1 * ((-4 * x50) + x67) * x62) + (x66 * x56)));
+						x108 * ((-1 * x107 * ((-4 * x95) + x112)) + (x101 * x111)));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT),
-						x63 * ((-1 * ((-4 * x75) + x74) * x62) + (x56 * (x72 + x68 + x69))));
+						x108 * ((-1 * ((-4 * x120) + x119) * x107) + (x101 * (x117 + x113 + x114))));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[3]) / sizeof(FLT),
-						x63 * ((-1 * ((4 * x68) + x80) * x62) + (x79 * x56)));
+						x108 * ((-1 * ((4 * x113) + x125) * x107) + (x101 * x124)));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[1]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[0]) / sizeof(FLT), x81 * x79);
+						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[0]) / sizeof(FLT), x124 * x126);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[1]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[1]) / sizeof(FLT),
-						x81 * (x82 + x70 + (-1 * x71)));
+						x126 * (x127 + x115 + (-1 * x116)));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[1]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT), x81 * x66);
+						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT), x111 * x126);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[1]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[3]) / sizeof(FLT),
-						x81 * (x83 + x52 + (-1 * x50)));
+						x126 * (x128 + x97 + (-1 * x95)));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[0]) / sizeof(FLT),
-						x89 * ((-1 * (x58 + (4 * x64)) * x88) + ((x72 + x82) * x85)));
+						((-1 * (x103 + (4 * x109)) * x133) + ((x117 + x127) * x130)) * x134);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[1]) / sizeof(FLT),
-						x89 * ((-1 * (x67 + (-4 * x48)) * x88) + (x85 * (x78 + x76 + (-1 * x75)))));
+						x134 * ((-1 * x133 * (x112 + (-4 * x93))) + (x130 * (x121 + x123 + (-1 * x120)))));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT),
-						x89 * ((-1 * (x74 + (4 * x77)) * x88) + ((x83 + x53) * x85)));
+						x134 * ((-1 * (x119 + (4 * x122)) * x133) + (x130 * (x128 + x98))));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[3]) / sizeof(FLT),
-						x89 * ((-1 * (x80 + (-4 * x71)) * x88) + (x85 * (x65 + (-1 * x57) + x64))));
+						x134 * ((-1 * (x125 + (-4 * x116)) * x133) + (x130 * ((-1 * x102) + x110 + x109))));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, BSD0.phase) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, BSD0.phase) / sizeof(FLT), 1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, BSD0.tilt) / sizeof(FLT),
@@ -1512,153 +1619,213 @@ static inline void SurviveJointKalmanModelToErrorModel_jac_x1(CnMat *Hx, const S
 
 // Full version Jacobian of SurviveJointKalmanModelToErrorModel wrt [(*_x1).Lighthouse.Pos[0], (*_x1).Lighthouse.Pos[1],
 // (*_x1).Lighthouse.Pos[2], (*_x1).Lighthouse.Rot[0], (*_x1).Lighthouse.Rot[1], (*_x1).Lighthouse.Rot[2],
-// (*_x1).Lighthouse.Rot[3], (*_x1).Object.AccBias[0], (*_x1).Object.AccBias[1], (*_x1).Object.AccBias[2],
-// (*_x1).Object.Acc[0], (*_x1).Object.Acc[1], (*_x1).Object.Acc[2], (*_x1).Object.GyroBias[0],
-// (*_x1).Object.GyroBias[1], (*_x1).Object.GyroBias[2], (*_x1).Object.IMUCorrection[0], (*_x1).Object.IMUCorrection[1],
-// (*_x1).Object.IMUCorrection[2], (*_x1).Object.IMUCorrection[3], (*_x1).Object.Pose.Pos[0], (*_x1).Object.Pose.Pos[1],
-// (*_x1).Object.Pose.Pos[2], (*_x1).Object.Pose.Rot[0], (*_x1).Object.Pose.Rot[1], (*_x1).Object.Pose.Rot[2],
-// (*_x1).Object.Pose.Rot[3], (*_x1).Object.Velocity.AxisAngleRot[0], (*_x1).Object.Velocity.AxisAngleRot[1],
-// (*_x1).Object.Velocity.AxisAngleRot[2], (*_x1).Object.Velocity.Pos[0], (*_x1).Object.Velocity.Pos[1],
-// (*_x1).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f61a589fc40>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a58518b0>, <cnkalman.codegen.WrapMember object at 0x7f61a5851b80>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5851970>, <cnkalman.codegen.WrapMember object at 0x7f61a5851c40>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5851910>, <cnkalman.codegen.WrapMember object at 0x7f61a5851be0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5851a30>, <cnkalman.codegen.WrapMember object at 0x7f61a5851d00>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a58519d0>, <cnkalman.codegen.WrapMember object at 0x7f61a5851ca0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a58516a0>, <cnkalman.codegen.WrapMember object at 0x7f61a5851ac0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5851850>, <cnkalman.codegen.WrapMember object at 0x7f61a5851b20>] Jacobian of
-// SurviveJointKalmanModelToErrorModel wrt [(*_x0).Lighthouse.Pos[0], (*_x0).Lighthouse.Pos[1],
-// (*_x0).Lighthouse.Pos[2], (*_x0).Lighthouse.Rot[0], (*_x0).Lighthouse.Rot[1], (*_x0).Lighthouse.Rot[2],
-// (*_x0).Lighthouse.Rot[3], (*_x0).Object.AccBias[0], (*_x0).Object.AccBias[1], (*_x0).Object.AccBias[2],
-// (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2], (*_x0).Object.GyroBias[0],
-// (*_x0).Object.GyroBias[1], (*_x0).Object.GyroBias[2], (*_x0).Object.IMUCorrection[0], (*_x0).Object.IMUCorrection[1],
-// (*_x0).Object.IMUCorrection[2], (*_x0).Object.IMUCorrection[3], (*_x0).Object.Pose.Pos[0], (*_x0).Object.Pose.Pos[1],
-// (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0], (*_x0).Object.Pose.Rot[1], (*_x0).Object.Pose.Rot[2],
-// (*_x0).Object.Pose.Rot[3], (*_x0).Object.Velocity.AxisAngleRot[0], (*_x0).Object.Velocity.AxisAngleRot[1],
-// (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0], (*_x0).Object.Velocity.Pos[1],
-// (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f61a586c2b0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586d040>, <cnkalman.codegen.WrapMember object at 0x7f61a586d310>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586d100>, <cnkalman.codegen.WrapMember object at 0x7f61a586d3d0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586d0a0>, <cnkalman.codegen.WrapMember object at 0x7f61a586d370>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586d1c0>, <cnkalman.codegen.WrapMember object at 0x7f61a586d490>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586d160>, <cnkalman.codegen.WrapMember object at 0x7f61a586d430>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586cdf0>, <cnkalman.codegen.WrapMember object at 0x7f61a586d250>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586cfa0>, <cnkalman.codegen.WrapMember object at 0x7f61a586d2b0>]
+// (*_x1).Lighthouse.Rot[3], (*_x1).Object.Acc[0], (*_x1).Object.Acc[1], (*_x1).Object.Acc[2],
+// (*_x1).Object.IMUBias.AccBias[0], (*_x1).Object.IMUBias.AccBias[1], (*_x1).Object.IMUBias.AccBias[2],
+// (*_x1).Object.IMUBias.AccScale[0], (*_x1).Object.IMUBias.AccScale[1], (*_x1).Object.IMUBias.AccScale[2],
+// (*_x1).Object.IMUBias.GyroBias[0], (*_x1).Object.IMUBias.GyroBias[1], (*_x1).Object.IMUBias.GyroBias[2],
+// (*_x1).Object.IMUBias.IMUCorrection[0], (*_x1).Object.IMUBias.IMUCorrection[1],
+// (*_x1).Object.IMUBias.IMUCorrection[2], (*_x1).Object.IMUBias.IMUCorrection[3], (*_x1).Object.Pose.Pos[0],
+// (*_x1).Object.Pose.Pos[1], (*_x1).Object.Pose.Pos[2], (*_x1).Object.Pose.Rot[0], (*_x1).Object.Pose.Rot[1],
+// (*_x1).Object.Pose.Rot[2], (*_x1).Object.Pose.Rot[3], (*_x1).Object.Velocity.AxisAngleRot[0],
+// (*_x1).Object.Velocity.AxisAngleRot[1], (*_x1).Object.Velocity.AxisAngleRot[2], (*_x1).Object.Velocity.Pos[0],
+// (*_x1).Object.Velocity.Pos[1], (*_x1).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f4d1c386f40>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c396250>, <cnkalman.codegen.WrapMember object at 0x7f4d1c396040>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c396310>, <cnkalman.codegen.WrapMember object at 0x7f4d1c386fa0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3962b0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c396100>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3963d0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3960a0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c396370>, <cnkalman.codegen.WrapMember object at 0x7f4d1c386d30>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c396190>, <cnkalman.codegen.WrapMember object at 0x7f4d1c386ee0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3961f0>] Jacobian of SurviveJointKalmanModelToErrorModel wrt
+// [(*_x0).Lighthouse.Pos[0], (*_x0).Lighthouse.Pos[1], (*_x0).Lighthouse.Pos[2], (*_x0).Lighthouse.Rot[0],
+// (*_x0).Lighthouse.Rot[1], (*_x0).Lighthouse.Rot[2], (*_x0).Lighthouse.Rot[3], (*_x0).Object.Acc[0],
+// (*_x0).Object.Acc[1], (*_x0).Object.Acc[2], (*_x0).Object.IMUBias.AccBias[0], (*_x0).Object.IMUBias.AccBias[1],
+// (*_x0).Object.IMUBias.AccBias[2], (*_x0).Object.IMUBias.AccScale[0], (*_x0).Object.IMUBias.AccScale[1],
+// (*_x0).Object.IMUBias.AccScale[2], (*_x0).Object.IMUBias.GyroBias[0], (*_x0).Object.IMUBias.GyroBias[1],
+// (*_x0).Object.IMUBias.GyroBias[2], (*_x0).Object.IMUBias.IMUCorrection[0], (*_x0).Object.IMUBias.IMUCorrection[1],
+// (*_x0).Object.IMUBias.IMUCorrection[2], (*_x0).Object.IMUBias.IMUCorrection[3], (*_x0).Object.Pose.Pos[0],
+// (*_x0).Object.Pose.Pos[1], (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0], (*_x0).Object.Pose.Rot[1],
+// (*_x0).Object.Pose.Rot[2], (*_x0).Object.Pose.Rot[3], (*_x0).Object.Velocity.AxisAngleRot[0],
+// (*_x0).Object.Velocity.AxisAngleRot[1], (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0],
+// (*_x0).Object.Velocity.Pos[1], (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f4d1c398820>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c398af0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3988e0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c398bb0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c398880>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c398b50>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3989a0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c398c70>, <cnkalman.codegen.WrapMember object at 0x7f4d1c398940>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c398c10>, <cnkalman.codegen.WrapMember object at 0x7f4d1c398610>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c398a30>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3987c0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c398a90>]
 static inline void SurviveJointKalmanModelToErrorModel_jac_x0(CnMat *Hx, const SurviveJointKalmanModel *_x1,
 															  const SurviveJointKalmanModel *_x0) {
-	const FLT x0 = (-1 * (*_x1).Object.Pose.Rot[2] * (*_x0).Object.Pose.Rot[1]) +
-				   ((*_x1).Object.Pose.Rot[1] * (*_x0).Object.Pose.Rot[2]) +
-				   ((*_x1).Object.Pose.Rot[3] * (*_x0).Object.Pose.Rot[0]) +
-				   (-1 * (*_x1).Object.Pose.Rot[0] * (*_x0).Object.Pose.Rot[3]);
-	const FLT x1 = x0 * (*_x1).Object.Pose.Rot[2];
-	const FLT x2 = ((*_x1).Object.Pose.Rot[1] * (*_x0).Object.Pose.Rot[1]) +
-				   ((*_x1).Object.Pose.Rot[3] * (*_x0).Object.Pose.Rot[3]) +
-				   ((*_x1).Object.Pose.Rot[0] * (*_x0).Object.Pose.Rot[0]) +
-				   ((*_x1).Object.Pose.Rot[2] * (*_x0).Object.Pose.Rot[2]);
-	const FLT x3 = x2 * (*_x1).Object.Pose.Rot[1];
-	const FLT x4 = x3 + x1;
-	const FLT x5 = (-1 * (*_x1).Object.Pose.Rot[0] * (*_x0).Object.Pose.Rot[1]) +
-				   ((*_x1).Object.Pose.Rot[1] * (*_x0).Object.Pose.Rot[0]) +
-				   ((*_x1).Object.Pose.Rot[2] * (*_x0).Object.Pose.Rot[3]) +
-				   (-1 * (*_x1).Object.Pose.Rot[3] * (*_x0).Object.Pose.Rot[2]);
-	const FLT x6 = x5 * (*_x1).Object.Pose.Rot[0];
-	const FLT x7 = ((*_x1).Object.Pose.Rot[3] * (*_x0).Object.Pose.Rot[1]) +
+	const FLT x0 = ((*_x1).Object.Pose.Rot[3] * (*_x0).Object.Pose.Rot[1]) +
 				   (-1 * (*_x1).Object.Pose.Rot[0] * (*_x0).Object.Pose.Rot[2]) +
 				   ((*_x1).Object.Pose.Rot[2] * (*_x0).Object.Pose.Rot[0]) +
 				   (-1 * (*_x1).Object.Pose.Rot[1] * (*_x0).Object.Pose.Rot[3]);
-	const FLT x8 = x7 * (*_x1).Object.Pose.Rot[3];
+	const FLT x1 = x0 * (*_x1).Object.Pose.Rot[3];
+	const FLT x2 = (-1 * (*_x1).Object.Pose.Rot[0] * (*_x0).Object.Pose.Rot[1]) +
+				   ((*_x1).Object.Pose.Rot[1] * (*_x0).Object.Pose.Rot[0]) +
+				   ((*_x1).Object.Pose.Rot[2] * (*_x0).Object.Pose.Rot[3]) +
+				   (-1 * (*_x1).Object.Pose.Rot[3] * (*_x0).Object.Pose.Rot[2]);
+	const FLT x3 = x2 * (*_x1).Object.Pose.Rot[0];
+	const FLT x4 = x3 + x1;
+	const FLT x5 = ((*_x1).Object.Pose.Rot[1] * (*_x0).Object.Pose.Rot[1]) +
+				   ((*_x1).Object.Pose.Rot[3] * (*_x0).Object.Pose.Rot[3]) +
+				   ((*_x1).Object.Pose.Rot[0] * (*_x0).Object.Pose.Rot[0]) +
+				   ((*_x1).Object.Pose.Rot[2] * (*_x0).Object.Pose.Rot[2]);
+	const FLT x6 = x5 * (*_x1).Object.Pose.Rot[1];
+	const FLT x7 = (-1 * (*_x1).Object.Pose.Rot[2] * (*_x0).Object.Pose.Rot[1]) +
+				   ((*_x1).Object.Pose.Rot[1] * (*_x0).Object.Pose.Rot[2]) +
+				   ((*_x1).Object.Pose.Rot[3] * (*_x0).Object.Pose.Rot[0]) +
+				   (-1 * (*_x1).Object.Pose.Rot[0] * (*_x0).Object.Pose.Rot[3]);
+	const FLT x8 = x7 * (*_x1).Object.Pose.Rot[2];
 	const FLT x9 = x8 + x6;
-	const FLT x10 = x7 * x7;
-	const FLT x11 = 1 + (-2 * ((x5 * x5) + x10));
+	const FLT x10 = x0 * x0;
+	const FLT x11 = 1 + (-2 * ((x2 * x2) + x10));
 	const FLT x12 = 2 * (1. / x11);
-	const FLT x13 = x7 * (*_x1).Object.Pose.Rot[2];
+	const FLT x13 = x0 * (*_x1).Object.Pose.Rot[2];
 	const FLT x14 = -4 * x13;
-	const FLT x15 = x5 * (*_x1).Object.Pose.Rot[1];
+	const FLT x15 = x2 * (*_x1).Object.Pose.Rot[1];
 	const FLT x16 = x11 * x11;
 	const FLT x17 = (x2 * x5) + (x0 * x7);
 	const FLT x18 = 2 * x17 * (1. / x16);
 	const FLT x19 = x16 * (1. / (x16 + (4 * (x17 * x17))));
-	const FLT x20 = x0 * (*_x1).Object.Pose.Rot[3];
-	const FLT x21 = x20 + (-1 * x2 * (*_x1).Object.Pose.Rot[0]);
-	const FLT x22 = -4 * x8;
-	const FLT x23 = x2 * (*_x1).Object.Pose.Rot[3];
-	const FLT x24 = x0 * (*_x1).Object.Pose.Rot[0];
-	const FLT x25 = x5 * (*_x1).Object.Pose.Rot[2];
-	const FLT x26 = x7 * (*_x1).Object.Pose.Rot[1];
+	const FLT x20 = x7 * (*_x1).Object.Pose.Rot[3];
+	const FLT x21 = x20 + (-1 * x5 * (*_x1).Object.Pose.Rot[0]);
+	const FLT x22 = -4 * x1;
+	const FLT x23 = x5 * (*_x1).Object.Pose.Rot[3];
+	const FLT x24 = x7 * (*_x1).Object.Pose.Rot[0];
+	const FLT x25 = x2 * (*_x1).Object.Pose.Rot[2];
+	const FLT x26 = x0 * (*_x1).Object.Pose.Rot[1];
 	const FLT x27 = x26 + x25;
-	const FLT x28 = x7 * (*_x1).Object.Pose.Rot[0];
+	const FLT x28 = x0 * (*_x1).Object.Pose.Rot[0];
 	const FLT x29 = 4 * x28;
-	const FLT x30 = x5 * (*_x1).Object.Pose.Rot[3];
-	const FLT x31 = (-1 * x28) + x30;
-	const FLT x32 = x2 * (*_x1).Object.Pose.Rot[2];
-	const FLT x33 = x0 * (*_x1).Object.Pose.Rot[1];
-	const FLT x34 = (-1 * x33) + x32;
+	const FLT x30 = x2 * (*_x1).Object.Pose.Rot[3];
+	const FLT x31 = x5 * (*_x1).Object.Pose.Rot[2];
+	const FLT x32 = x7 * (*_x1).Object.Pose.Rot[1];
+	const FLT x33 = (-1 * x32) + x31;
+	const FLT x34 = (-1 * x28) + x30;
 	const FLT x35 = 4 * x26;
-	const FLT x36 = 2 * (1. / sqrt(1 + (-4 * (((x2 * x7) + (-1 * x0 * x5)) * ((x2 * x7) + (-1 * x0 * x5))))));
+	const FLT x36 = 2 * (1. / sqrt(1 + (-4 * (((x0 * x5) + (-1 * x2 * x7)) * ((x0 * x5) + (-1 * x2 * x7))))));
 	const FLT x37 = x23 + x27 + x24;
 	const FLT x38 = x21 + x13 + (-1 * x15);
-	const FLT x39 = 1 + (-2 * (x10 + (x0 * x0)));
+	const FLT x39 = 1 + (-2 * (x10 + (x7 * x7)));
 	const FLT x40 = 2 * (1. / x39);
 	const FLT x41 = x39 * x39;
-	const FLT x42 = (x0 * x2) + (x5 * x7);
+	const FLT x42 = (x5 * x7) + (x0 * x2);
 	const FLT x43 = 2 * (1. / x41) * x42;
 	const FLT x44 = x41 * (1. / (x41 + (4 * (x42 * x42))));
-	const FLT x45 = (-1 * (*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[1]) +
-					((*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[3]) +
-					(-1 * (*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[2]) +
-					((*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[0]);
-	const FLT x46 = x45 * (*_x1).Lighthouse.Rot[0];
-	const FLT x47 = ((*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[1]) +
-					(-1 * (*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[2]) +
-					((*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[0]) +
-					(-1 * (*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[3]);
-	const FLT x48 = x47 * (*_x1).Lighthouse.Rot[3];
+	const FLT x45 = (-1 * (*_x1).Object.IMUBias.IMUCorrection[2] * (*_x0).Object.IMUBias.IMUCorrection[1]) +
+					(-1 * (*_x1).Object.IMUBias.IMUCorrection[0] * (*_x0).Object.IMUBias.IMUCorrection[3]) +
+					((*_x1).Object.IMUBias.IMUCorrection[1] * (*_x0).Object.IMUBias.IMUCorrection[2]) +
+					((*_x1).Object.IMUBias.IMUCorrection[3] * (*_x0).Object.IMUBias.IMUCorrection[0]);
+	const FLT x46 = x45 * (*_x1).Object.IMUBias.IMUCorrection[2];
+	const FLT x47 = ((*_x1).Object.IMUBias.IMUCorrection[1] * (*_x0).Object.IMUBias.IMUCorrection[1]) +
+					((*_x1).Object.IMUBias.IMUCorrection[2] * (*_x0).Object.IMUBias.IMUCorrection[2]) +
+					((*_x1).Object.IMUBias.IMUCorrection[0] * (*_x0).Object.IMUBias.IMUCorrection[0]) +
+					((*_x1).Object.IMUBias.IMUCorrection[3] * (*_x0).Object.IMUBias.IMUCorrection[3]);
+	const FLT x48 = x47 * (*_x1).Object.IMUBias.IMUCorrection[1];
 	const FLT x49 = x48 + x46;
-	const FLT x50 =
-		((*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[1]) + ((*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[2]) +
-		((*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[3]) + ((*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[0]);
-	const FLT x51 = x50 * (*_x1).Lighthouse.Rot[1];
-	const FLT x52 = (-1 * (*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[1]) +
-					((*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[0]) +
-					(-1 * (*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[3]) +
-					((*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[2]);
-	const FLT x53 = x52 * (*_x1).Lighthouse.Rot[2];
+	const FLT x50 = ((*_x1).Object.IMUBias.IMUCorrection[3] * (*_x0).Object.IMUBias.IMUCorrection[1]) +
+					((*_x1).Object.IMUBias.IMUCorrection[2] * (*_x0).Object.IMUBias.IMUCorrection[0]) +
+					(-1 * (*_x1).Object.IMUBias.IMUCorrection[1] * (*_x0).Object.IMUBias.IMUCorrection[3]) +
+					(-1 * (*_x1).Object.IMUBias.IMUCorrection[0] * (*_x0).Object.IMUBias.IMUCorrection[2]);
+	const FLT x51 = x50 * (*_x1).Object.IMUBias.IMUCorrection[3];
+	const FLT x52 = ((*_x1).Object.IMUBias.IMUCorrection[2] * (*_x0).Object.IMUBias.IMUCorrection[3]) +
+					(-1 * (*_x1).Object.IMUBias.IMUCorrection[0] * (*_x0).Object.IMUBias.IMUCorrection[1]) +
+					((*_x1).Object.IMUBias.IMUCorrection[1] * (*_x0).Object.IMUBias.IMUCorrection[0]) +
+					(-1 * (*_x1).Object.IMUBias.IMUCorrection[3] * (*_x0).Object.IMUBias.IMUCorrection[2]);
+	const FLT x53 = x52 * (*_x1).Object.IMUBias.IMUCorrection[0];
 	const FLT x54 = x53 + x51;
-	const FLT x55 = x47 * x47;
-	const FLT x56 = 1 + (-2 * ((x45 * x45) + x55));
+	const FLT x55 = x50 * x50;
+	const FLT x56 = 1 + (-2 * ((x52 * x52) + x55));
 	const FLT x57 = 2 * (1. / x56);
-	const FLT x58 = x47 * (*_x1).Lighthouse.Rot[2];
+	const FLT x58 = x50 * (*_x1).Object.IMUBias.IMUCorrection[2];
 	const FLT x59 = -4 * x58;
-	const FLT x60 = x45 * (*_x1).Lighthouse.Rot[1];
+	const FLT x60 = x52 * (*_x1).Object.IMUBias.IMUCorrection[1];
 	const FLT x61 = x56 * x56;
-	const FLT x62 = (x50 * x45) + (x52 * x47);
+	const FLT x62 = (x52 * x47) + (x50 * x45);
 	const FLT x63 = 2 * (1. / x61) * x62;
 	const FLT x64 = x61 * (1. / (x61 + (4 * (x62 * x62))));
-	const FLT x65 = x52 * (*_x1).Lighthouse.Rot[3];
-	const FLT x66 = x65 + (-1 * x50 * (*_x1).Lighthouse.Rot[0]);
-	const FLT x67 = -4 * x48;
-	const FLT x68 = x50 * (*_x1).Lighthouse.Rot[3];
-	const FLT x69 = x52 * (*_x1).Lighthouse.Rot[0];
-	const FLT x70 = x45 * (*_x1).Lighthouse.Rot[2];
-	const FLT x71 = x47 * (*_x1).Lighthouse.Rot[1];
+	const FLT x65 = x45 * (*_x1).Object.IMUBias.IMUCorrection[3];
+	const FLT x66 = x65 + (-1 * x47 * (*_x1).Object.IMUBias.IMUCorrection[0]);
+	const FLT x67 = -4 * x51;
+	const FLT x68 = x47 * (*_x1).Object.IMUBias.IMUCorrection[3];
+	const FLT x69 = x45 * (*_x1).Object.IMUBias.IMUCorrection[0];
+	const FLT x70 = x52 * (*_x1).Object.IMUBias.IMUCorrection[2];
+	const FLT x71 = x50 * (*_x1).Object.IMUBias.IMUCorrection[1];
 	const FLT x72 = x71 + x70;
-	const FLT x73 = x47 * (*_x1).Lighthouse.Rot[0];
+	const FLT x73 = x50 * (*_x1).Object.IMUBias.IMUCorrection[0];
 	const FLT x74 = 4 * x73;
-	const FLT x75 = x45 * (*_x1).Lighthouse.Rot[3];
-	const FLT x76 = x50 * (*_x1).Lighthouse.Rot[2];
-	const FLT x77 = x52 * (*_x1).Lighthouse.Rot[1];
-	const FLT x78 = (-1 * x77) + x76;
-	const FLT x79 = (-1 * x73) + x75;
+	const FLT x75 = x52 * (*_x1).Object.IMUBias.IMUCorrection[3];
+	const FLT x76 = x75 + (-1 * x73);
+	const FLT x77 = x47 * (*_x1).Object.IMUBias.IMUCorrection[2];
+	const FLT x78 = x45 * (*_x1).Object.IMUBias.IMUCorrection[1];
+	const FLT x79 = (-1 * x78) + x77;
 	const FLT x80 = 4 * x71;
 	const FLT x81 = 2 * (1. / sqrt(1 + (-4 * (((x50 * x47) + (-1 * x52 * x45)) * ((x50 * x47) + (-1 * x52 * x45))))));
 	const FLT x82 = x72 + x68 + x69;
 	const FLT x83 = x66 + x58 + (-1 * x60);
-	const FLT x84 = 1 + (-2 * (x55 + (x52 * x52)));
+	const FLT x84 = 1 + (-2 * (x55 + (x45 * x45)));
 	const FLT x85 = 2 * (1. / x84);
 	const FLT x86 = x84 * x84;
-	const FLT x87 = (x50 * x52) + (x45 * x47);
+	const FLT x87 = (x45 * x47) + (x50 * x52);
 	const FLT x88 = 2 * (1. / x86) * x87;
 	const FLT x89 = x86 * (1. / (x86 + (4 * (x87 * x87))));
+	const FLT x90 = ((*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[1]) +
+					(-1 * (*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[2]) +
+					((*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[0]) +
+					(-1 * (*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[3]);
+	const FLT x91 = x90 * (*_x1).Lighthouse.Rot[3];
+	const FLT x92 = (-1 * (*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[1]) +
+					((*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[3]) +
+					(-1 * (*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[2]) +
+					((*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[0]);
+	const FLT x93 = x92 * (*_x1).Lighthouse.Rot[0];
+	const FLT x94 = x93 + x91;
+	const FLT x95 = (-1 * (*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[1]) +
+					((*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[0]) +
+					(-1 * (*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[3]) +
+					((*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[2]);
+	const FLT x96 = x95 * (*_x1).Lighthouse.Rot[2];
+	const FLT x97 =
+		((*_x1).Lighthouse.Rot[1] * (*_x0).Lighthouse.Rot[1]) + ((*_x1).Lighthouse.Rot[2] * (*_x0).Lighthouse.Rot[2]) +
+		((*_x1).Lighthouse.Rot[3] * (*_x0).Lighthouse.Rot[3]) + ((*_x1).Lighthouse.Rot[0] * (*_x0).Lighthouse.Rot[0]);
+	const FLT x98 = x97 * (*_x1).Lighthouse.Rot[1];
+	const FLT x99 = x98 + x96;
+	const FLT x100 = x90 * x90;
+	const FLT x101 = 1 + (-2 * ((x92 * x92) + x100));
+	const FLT x102 = 2 * (1. / x101);
+	const FLT x103 = x90 * (*_x1).Lighthouse.Rot[2];
+	const FLT x104 = -4 * x103;
+	const FLT x105 = x92 * (*_x1).Lighthouse.Rot[1];
+	const FLT x106 = x101 * x101;
+	const FLT x107 = (x92 * x97) + (x90 * x95);
+	const FLT x108 = 2 * x107 * (1. / x106);
+	const FLT x109 = x106 * (1. / (x106 + (4 * (x107 * x107))));
+	const FLT x110 = x95 * (*_x1).Lighthouse.Rot[3];
+	const FLT x111 = x110 + (-1 * x97 * (*_x1).Lighthouse.Rot[0]);
+	const FLT x112 = -4 * x91;
+	const FLT x113 = x97 * (*_x1).Lighthouse.Rot[3];
+	const FLT x114 = x95 * (*_x1).Lighthouse.Rot[0];
+	const FLT x115 = x92 * (*_x1).Lighthouse.Rot[2];
+	const FLT x116 = x90 * (*_x1).Lighthouse.Rot[1];
+	const FLT x117 = x116 + x115;
+	const FLT x118 = x90 * (*_x1).Lighthouse.Rot[0];
+	const FLT x119 = 4 * x118;
+	const FLT x120 = x92 * (*_x1).Lighthouse.Rot[3];
+	const FLT x121 = x97 * (*_x1).Lighthouse.Rot[2];
+	const FLT x122 = x95 * (*_x1).Lighthouse.Rot[1];
+	const FLT x123 = (-1 * x122) + x121;
+	const FLT x124 = (-1 * x118) + x120;
+	const FLT x125 = 4 * x116;
+	const FLT x126 = 2 * (1. / sqrt(1 + (-4 * (((x90 * x97) + (-1 * x92 * x95)) * ((x90 * x97) + (-1 * x92 * x95))))));
+	const FLT x127 = x117 + x113 + x114;
+	const FLT x128 = x111 + x103 + (-1 * x105);
+	const FLT x129 = 1 + (-2 * (x100 + (x95 * x95)));
+	const FLT x130 = 2 * (1. / x129);
+	const FLT x131 = x129 * x129;
+	const FLT x132 = (x97 * x95) + (x92 * x90);
+	const FLT x133 = 2 * (1. / x131) * x132;
+	const FLT x134 = x131 * (1. / (x131 + (4 * (x132 * x132))));
 	cnSetZero(Hx);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Pose.Pos[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Pose.Pos[0]) / sizeof(FLT), -1);
@@ -1671,32 +1838,32 @@ static inline void SurviveJointKalmanModelToErrorModel_jac_x0(CnMat *Hx, const S
 						((-1 * ((-4 * x15) + x14) * x18) + ((x9 + x4) * x12)) * x19);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Pose.Rot[1]) / sizeof(FLT),
-						x19 * ((-1 * x18 * ((4 * x6) + x22)) + (x12 * (x21 + x15 + (-1 * x13)))));
+						x19 * ((-1 * x18 * ((4 * x3) + x22)) + (x12 * (x21 + x15 + (-1 * x13)))));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Pose.Rot[2]) / sizeof(FLT),
 						x19 * ((-1 * ((4 * x30) + x29) * x18) + (x12 * ((-1 * x23) + x27 + (-1 * x24)))));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Pose.Rot[3]) / sizeof(FLT),
-						((-1 * ((-4 * x25) + x35) * x18) + ((x34 + x31) * x12)) * x19);
+						((-1 * ((-4 * x25) + x35) * x18) + ((x34 + x33) * x12)) * x19);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[1]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Pose.Rot[0]) / sizeof(FLT),
-						x36 * (x34 + x28 + (-1 * x30)));
+						x36 * (x28 + x33 + (-1 * x30)));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[1]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Pose.Rot[1]) / sizeof(FLT), x36 * x37);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[1]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Pose.Rot[2]) / sizeof(FLT), x36 * x38);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[1]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Pose.Rot[3]) / sizeof(FLT),
-						(x9 + (-1 * x3) + (-1 * x1)) * x36);
+						(x4 + (-1 * x6) + (-1 * x8)) * x36);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Pose.Rot[0]) / sizeof(FLT),
 						x44 * ((-1 * (x14 + (-4 * x20)) * x43) + (x40 * x37)));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Pose.Rot[1]) / sizeof(FLT),
-						x44 * ((-1 * x43 * (x22 + (4 * x1))) + (x40 * (x31 + x33 + (-1 * x32)))));
+						x44 * ((-1 * x43 * (x22 + (4 * x8))) + (x40 * (x34 + x32 + (-1 * x31)))));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Pose.Rot[2]) / sizeof(FLT),
-						x44 * ((-1 * (x29 + (-4 * x33)) * x43) + ((x4 + (-1 * x6) + (-1 * x8)) * x40)));
+						x44 * ((-1 * (x29 + (-4 * x32)) * x43) + ((x9 + (-1 * x3) + (-1 * x1)) * x40)));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Pose.Rot[3]) / sizeof(FLT),
 						x44 * ((-1 * (x35 + (4 * x24)) * x43) + (x40 * x38)));
@@ -1718,28 +1885,58 @@ static inline void SurviveJointKalmanModelToErrorModel_jac_x0(CnMat *Hx, const S
 						offsetof(SurviveJointKalmanModel, Object.Acc[1]) / sizeof(FLT), -1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.Acc[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Acc[2]) / sizeof(FLT), -1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.AccScale) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.AccScale) / sizeof(FLT), -1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUCorrection[0]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.IMUCorrection[0]) / sizeof(FLT), -1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUCorrection[1]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.IMUCorrection[1]) / sizeof(FLT), -1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUCorrection[2]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.IMUCorrection[2]) / sizeof(FLT), -1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUCorrection[3]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.IMUCorrection[3]) / sizeof(FLT), -1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.AccBias[0]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.AccBias[0]) / sizeof(FLT), -1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.AccBias[1]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.AccBias[1]) / sizeof(FLT), -1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.AccBias[2]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.AccBias[2]) / sizeof(FLT), -1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.GyroBias[0]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.GyroBias[0]) / sizeof(FLT), -1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.GyroBias[1]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.GyroBias[1]) / sizeof(FLT), -1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.GyroBias[2]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.GyroBias[2]) / sizeof(FLT), -1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.AccScale[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.AccScale[0]) / sizeof(FLT), -1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.AccScale[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.AccScale[1]) / sizeof(FLT), -1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.AccScale[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.AccScale[2]) / sizeof(FLT), -1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						x64 * ((-1 * ((-4 * x60) + x59) * x63) + ((x54 + x49) * x57)));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+						x64 * ((-1 * ((4 * x53) + x67) * x63) + (x57 * (x66 + x60 + (-1 * x58)))));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						x64 * ((-1 * ((4 * x75) + x74) * x63) + (x57 * (x72 + (-1 * x68) + (-1 * x69)))));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[3]) / sizeof(FLT),
+						x64 * ((-1 * ((-4 * x70) + x80) * x63) + ((x79 + x76) * x57)));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						x81 * (x79 + x73 + (-1 * x75)));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT), x81 * x82);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT), x81 * x83);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[3]) / sizeof(FLT),
+						x81 * (x54 + (-1 * x48) + (-1 * x46)));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						x89 * ((-1 * (x59 + (-4 * x65)) * x88) + (x82 * x85)));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+						x89 * ((-1 * (x67 + (4 * x46)) * x88) + (x85 * (x76 + x78 + (-1 * x77)))));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						x89 * ((-1 * (x74 + (-4 * x78)) * x88) + (x85 * (x49 + (-1 * x51) + (-1 * x53)))));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[3]) / sizeof(FLT),
+						x89 * ((-1 * (x80 + (4 * x69)) * x88) + (x83 * x85)));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.AccBias[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.AccBias[0]) / sizeof(FLT), -1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.AccBias[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.AccBias[1]) / sizeof(FLT), -1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.AccBias[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.AccBias[2]) / sizeof(FLT), -1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.GyroBias[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.GyroBias[0]) / sizeof(FLT), -1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.GyroBias[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.GyroBias[1]) / sizeof(FLT), -1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.GyroBias[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.GyroBias[2]) / sizeof(FLT), -1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.Pos[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Pos[0]) / sizeof(FLT), -1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.Pos[1]) / sizeof(FLT),
@@ -1748,38 +1945,38 @@ static inline void SurviveJointKalmanModelToErrorModel_jac_x0(CnMat *Hx, const S
 						offsetof(SurviveJointKalmanModel, Lighthouse.Pos[2]) / sizeof(FLT), -1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[0]) / sizeof(FLT),
-						x64 * ((-1 * ((-4 * x60) + x59) * x63) + ((x54 + x49) * x57)));
+						((-1 * ((-4 * x105) + x104) * x108) + ((x99 + x94) * x102)) * x109);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[1]) / sizeof(FLT),
-						x64 * ((-1 * ((4 * x46) + x67) * x63) + (x57 * (x66 + (-1 * x58) + x60))));
+						x109 * ((-1 * x108 * ((4 * x93) + x112)) + (x102 * (x111 + (-1 * x103) + x105))));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT),
-						x64 * ((-1 * ((4 * x75) + x74) * x63) + (x57 * (x72 + (-1 * x68) + (-1 * x69)))));
+						x109 * ((-1 * ((4 * x120) + x119) * x108) + (x102 * (x117 + (-1 * x113) + (-1 * x114)))));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[3]) / sizeof(FLT),
-						x64 * ((-1 * ((-4 * x70) + x80) * x63) + ((x79 + x78) * x57)));
+						((-1 * ((-4 * x115) + x125) * x108) + ((x124 + x123) * x102)) * x109);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[1]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[0]) / sizeof(FLT),
-						x81 * (x78 + (-1 * x75) + x73));
+						x126 * (x123 + (-1 * x120) + x118));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[1]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[1]) / sizeof(FLT), x81 * x82);
+						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[1]) / sizeof(FLT), x127 * x126);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[1]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT), x81 * x83);
+						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT), x128 * x126);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[1]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[3]) / sizeof(FLT),
-						x81 * (x49 + (-1 * x51) + (-1 * x53)));
+						(x94 + (-1 * x98) + (-1 * x96)) * x126);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[0]) / sizeof(FLT),
-						x89 * ((-1 * (x59 + (-4 * x65)) * x88) + (x82 * x85)));
+						x134 * ((-1 * (x104 + (-4 * x110)) * x133) + (x127 * x130)));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[1]) / sizeof(FLT),
-						x89 * ((-1 * (x67 + (4 * x53)) * x88) + (x85 * (x79 + x77 + (-1 * x76)))));
+						x134 * ((-1 * x133 * (x112 + (4 * x96))) + (x130 * (x124 + x122 + (-1 * x121)))));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT),
-						x89 * ((-1 * (x74 + (-4 * x77)) * x88) + (x85 * (x54 + (-1 * x48) + (-1 * x46)))));
+						x134 * ((-1 * (x119 + (-4 * x122)) * x133) + ((x99 + (-1 * x91) + (-1 * x93)) * x130)));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[3]) / sizeof(FLT),
-						x89 * ((-1 * (x80 + (4 * x69)) * x88) + (x83 * x85)));
+						x134 * ((-1 * (x125 + (4 * x114)) * x133) + (x128 * x130)));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, BSD0.phase) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, BSD0.phase) / sizeof(FLT), -1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanErrorModel, BSD0.tilt) / sizeof(FLT),
@@ -1812,150 +2009,26 @@ static inline void SurviveJointKalmanModelToErrorModel_jac_x0(CnMat *Hx, const S
 
 // Full version Jacobian of SurviveJointKalmanModelToErrorModel wrt [(*_x0).Lighthouse.Pos[0], (*_x0).Lighthouse.Pos[1],
 // (*_x0).Lighthouse.Pos[2], (*_x0).Lighthouse.Rot[0], (*_x0).Lighthouse.Rot[1], (*_x0).Lighthouse.Rot[2],
-// (*_x0).Lighthouse.Rot[3], (*_x0).Object.AccBias[0], (*_x0).Object.AccBias[1], (*_x0).Object.AccBias[2],
-// (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2], (*_x0).Object.GyroBias[0],
-// (*_x0).Object.GyroBias[1], (*_x0).Object.GyroBias[2], (*_x0).Object.IMUCorrection[0], (*_x0).Object.IMUCorrection[1],
-// (*_x0).Object.IMUCorrection[2], (*_x0).Object.IMUCorrection[3], (*_x0).Object.Pose.Pos[0], (*_x0).Object.Pose.Pos[1],
-// (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0], (*_x0).Object.Pose.Rot[1], (*_x0).Object.Pose.Rot[2],
-// (*_x0).Object.Pose.Rot[3], (*_x0).Object.Velocity.AxisAngleRot[0], (*_x0).Object.Velocity.AxisAngleRot[1],
-// (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0], (*_x0).Object.Velocity.Pos[1],
-// (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f61a586c2b0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586d040>, <cnkalman.codegen.WrapMember object at 0x7f61a586d310>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586d100>, <cnkalman.codegen.WrapMember object at 0x7f61a586d3d0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586d0a0>, <cnkalman.codegen.WrapMember object at 0x7f61a586d370>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586d1c0>, <cnkalman.codegen.WrapMember object at 0x7f61a586d490>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586d160>, <cnkalman.codegen.WrapMember object at 0x7f61a586d430>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586cdf0>, <cnkalman.codegen.WrapMember object at 0x7f61a586d250>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586cfa0>, <cnkalman.codegen.WrapMember object at 0x7f61a586d2b0>]
+// (*_x0).Lighthouse.Rot[3], (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2],
+// (*_x0).Object.IMUBias.AccBias[0], (*_x0).Object.IMUBias.AccBias[1], (*_x0).Object.IMUBias.AccBias[2],
+// (*_x0).Object.IMUBias.AccScale[0], (*_x0).Object.IMUBias.AccScale[1], (*_x0).Object.IMUBias.AccScale[2],
+// (*_x0).Object.IMUBias.GyroBias[0], (*_x0).Object.IMUBias.GyroBias[1], (*_x0).Object.IMUBias.GyroBias[2],
+// (*_x0).Object.IMUBias.IMUCorrection[0], (*_x0).Object.IMUBias.IMUCorrection[1],
+// (*_x0).Object.IMUBias.IMUCorrection[2], (*_x0).Object.IMUBias.IMUCorrection[3], (*_x0).Object.Pose.Pos[0],
+// (*_x0).Object.Pose.Pos[1], (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0], (*_x0).Object.Pose.Rot[1],
+// (*_x0).Object.Pose.Rot[2], (*_x0).Object.Pose.Rot[3], (*_x0).Object.Velocity.AxisAngleRot[0],
+// (*_x0).Object.Velocity.AxisAngleRot[1], (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0],
+// (*_x0).Object.Velocity.Pos[1], (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f4d1c398820>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c398af0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3988e0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c398bb0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c398880>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c398b50>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3989a0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c398c70>, <cnkalman.codegen.WrapMember object at 0x7f4d1c398940>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c398c10>, <cnkalman.codegen.WrapMember object at 0x7f4d1c398610>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c398a30>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3987c0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c398a90>]
 static inline void SurviveJointKalmanModelAddErrorModel(SurviveJointKalmanModel *out,
 														const SurviveJointKalmanModel *_x0,
 														const SurviveJointKalmanErrorModel *error_state) {
-	const FLT x0 = 0.5 * (*error_state).Object.Pose.AxisAngleRot[1];
-	const FLT x1 = sin(x0);
-	const FLT x2 = 0.5 * (*error_state).Object.Pose.AxisAngleRot[0];
-	const FLT x3 = sin(x2);
-	const FLT x4 = 0.5 * (*error_state).Object.Pose.AxisAngleRot[2];
-	const FLT x5 = cos(x4);
-	const FLT x6 = x3 * x5;
-	const FLT x7 = cos(x0);
-	const FLT x8 = sin(x4);
-	const FLT x9 = cos(x2);
-	const FLT x10 = x8 * x9;
-	const FLT x11 = (x7 * x10) + (-1 * x1 * x6);
-	const FLT x12 = x3 * x8;
-	const FLT x13 = x5 * x9;
-	const FLT x14 = (x1 * x13) + (x7 * x12);
-	const FLT x15 = (x7 * x13) + (x1 * x12);
-	const FLT x16 = (x6 * x7) + (-1 * x1 * x10);
-	const FLT x17 = 1. / sqrt((x16 * x16) + (x11 * x11) + (x14 * x14) + (x15 * x15));
-	const FLT x18 = x17 * (*_x0).Object.Pose.Rot[3];
-	const FLT x19 = x17 * (*_x0).Object.Pose.Rot[2];
-	const FLT x20 = x15 * x17;
-	const FLT x21 = x17 * x16;
-	const FLT x22 = x14 * x17;
-	const FLT x23 = x11 * x17;
-	const FLT x24 = 0.5 * (*error_state).Lighthouse.AxisAngleRot[1];
-	const FLT x25 = sin(x24);
-	const FLT x26 = 0.5 * (*error_state).Lighthouse.AxisAngleRot[0];
-	const FLT x27 = sin(x26);
-	const FLT x28 = 0.5 * (*error_state).Lighthouse.AxisAngleRot[2];
-	const FLT x29 = cos(x28);
-	const FLT x30 = x29 * x27;
-	const FLT x31 = cos(x26);
-	const FLT x32 = sin(x28);
-	const FLT x33 = cos(x24);
-	const FLT x34 = x32 * x33;
-	const FLT x35 = (x31 * x34) + (-1 * x30 * x25);
-	const FLT x36 = x31 * x25;
-	const FLT x37 = (x36 * x29) + (x34 * x27);
-	const FLT x38 = (x31 * x33 * x29) + (x32 * x25 * x27);
-	const FLT x39 = (x30 * x33) + (-1 * x32 * x36);
-	const FLT x40 = 1. / sqrt((x39 * x39) + (x38 * x38) + (x35 * x35) + (x37 * x37));
-	const FLT x41 = x40 * x35;
-	const FLT x42 = x40 * x37;
-	const FLT x43 = x40 * (*_x0).Lighthouse.Rot[0];
-	const FLT x44 = x40 * x39;
-	const FLT x45 = x40 * x38;
-	out->Object.Pose.Pos[0] = (*_x0).Object.Pose.Pos[0] + (*error_state).Object.Pose.Pos[0];
-	out->Object.Pose.Pos[1] = (*_x0).Object.Pose.Pos[1] + (*error_state).Object.Pose.Pos[1];
-	out->Object.Pose.Pos[2] = (*_x0).Object.Pose.Pos[2] + (*error_state).Object.Pose.Pos[2];
-	out->Object.Pose.Rot[0] = (-1 * x21 * (*_x0).Object.Pose.Rot[1]) + (x20 * (*_x0).Object.Pose.Rot[0]) +
-							  (-1 * x11 * x18) + (-1 * x14 * x19);
-	out->Object.Pose.Rot[1] = (x11 * x19) + (x20 * (*_x0).Object.Pose.Rot[1]) + (-1 * x22 * (*_x0).Object.Pose.Rot[3]) +
-							  (x21 * (*_x0).Object.Pose.Rot[0]);
-	out->Object.Pose.Rot[2] =
-		(x15 * x19) + (x18 * x16) + (-1 * x23 * (*_x0).Object.Pose.Rot[1]) + (x22 * (*_x0).Object.Pose.Rot[0]);
-	out->Object.Pose.Rot[3] = (-1 * x19 * x16) + (x22 * (*_x0).Object.Pose.Rot[1]) + (x23 * (*_x0).Object.Pose.Rot[0]) +
-							  (x20 * (*_x0).Object.Pose.Rot[3]);
-	out->Object.Velocity.Pos[0] = (*_x0).Object.Velocity.Pos[0] + (*error_state).Object.Velocity.Pos[0];
-	out->Object.Velocity.Pos[1] = (*_x0).Object.Velocity.Pos[1] + (*error_state).Object.Velocity.Pos[1];
-	out->Object.Velocity.Pos[2] = (*_x0).Object.Velocity.Pos[2] + (*error_state).Object.Velocity.Pos[2];
-	out->Object.Velocity.AxisAngleRot[0] =
-		(*_x0).Object.Velocity.AxisAngleRot[0] + (*error_state).Object.Velocity.AxisAngleRot[0];
-	out->Object.Velocity.AxisAngleRot[1] =
-		(*_x0).Object.Velocity.AxisAngleRot[1] + (*error_state).Object.Velocity.AxisAngleRot[1];
-	out->Object.Velocity.AxisAngleRot[2] =
-		(*_x0).Object.Velocity.AxisAngleRot[2] + (*error_state).Object.Velocity.AxisAngleRot[2];
-	out->Object.Acc[0] = (*_x0).Object.Acc[0] + (*error_state).Object.Acc[0];
-	out->Object.Acc[1] = (*_x0).Object.Acc[1] + (*error_state).Object.Acc[1];
-	out->Object.Acc[2] = (*_x0).Object.Acc[2] + (*error_state).Object.Acc[2];
-	out->Object.AccScale = (*_x0).Object.AccScale + (*error_state).Object.AccScale;
-	out->Object.IMUCorrection[0] = (*_x0).Object.IMUCorrection[0] + (*error_state).Object.IMUCorrection[0];
-	out->Object.IMUCorrection[1] = (*_x0).Object.IMUCorrection[1] + (*error_state).Object.IMUCorrection[1];
-	out->Object.IMUCorrection[2] = (*_x0).Object.IMUCorrection[2] + (*error_state).Object.IMUCorrection[2];
-	out->Object.IMUCorrection[3] = (*_x0).Object.IMUCorrection[3] + (*error_state).Object.IMUCorrection[3];
-	out->Object.AccBias[0] = (*_x0).Object.AccBias[0] + (*error_state).Object.AccBias[0];
-	out->Object.AccBias[1] = (*_x0).Object.AccBias[1] + (*error_state).Object.AccBias[1];
-	out->Object.AccBias[2] = (*_x0).Object.AccBias[2] + (*error_state).Object.AccBias[2];
-	out->Object.GyroBias[0] = (*_x0).Object.GyroBias[0] + (*error_state).Object.GyroBias[0];
-	out->Object.GyroBias[1] = (*_x0).Object.GyroBias[1] + (*error_state).Object.GyroBias[1];
-	out->Object.GyroBias[2] = (*_x0).Object.GyroBias[2] + (*error_state).Object.GyroBias[2];
-	out->Lighthouse.Pos[0] = (*_x0).Lighthouse.Pos[0] + (*error_state).Lighthouse.Pos[0];
-	out->Lighthouse.Pos[1] = (*_x0).Lighthouse.Pos[1] + (*error_state).Lighthouse.Pos[1];
-	out->Lighthouse.Pos[2] = (*_x0).Lighthouse.Pos[2] + (*error_state).Lighthouse.Pos[2];
-	out->Lighthouse.Rot[0] = (-1 * x44 * (*_x0).Lighthouse.Rot[1]) + (x43 * x38) +
-							 (-1 * x41 * (*_x0).Lighthouse.Rot[3]) + (-1 * x42 * (*_x0).Lighthouse.Rot[2]);
-	out->Lighthouse.Rot[1] = (x45 * (*_x0).Lighthouse.Rot[1]) + (x43 * x39) + (-1 * x42 * (*_x0).Lighthouse.Rot[3]) +
-							 (x41 * (*_x0).Lighthouse.Rot[2]);
-	out->Lighthouse.Rot[2] = (-1 * x41 * (*_x0).Lighthouse.Rot[1]) + (x43 * x37) + (x44 * (*_x0).Lighthouse.Rot[3]) +
-							 (x45 * (*_x0).Lighthouse.Rot[2]);
-	out->Lighthouse.Rot[3] = (x42 * (*_x0).Lighthouse.Rot[1]) + (x43 * x35) + (-1 * x44 * (*_x0).Lighthouse.Rot[2]) +
-							 (x45 * (*_x0).Lighthouse.Rot[3]);
-	out->BSD0.phase = (*error_state).BSD0.phase + (*_x0).BSD0.phase;
-	out->BSD0.tilt = (*error_state).BSD0.tilt + (*_x0).BSD0.tilt;
-	out->BSD0.curve = (*error_state).BSD0.curve + (*_x0).BSD0.curve;
-	out->BSD0.gibpha = (*error_state).BSD0.gibpha + (*_x0).BSD0.gibpha;
-	out->BSD0.gibmag = (*error_state).BSD0.gibmag + (*_x0).BSD0.gibmag;
-	out->BSD0.ogeephase = (*error_state).BSD0.ogeephase + (*_x0).BSD0.ogeephase;
-	out->BSD0.ogeemag = (*error_state).BSD0.ogeemag + (*_x0).BSD0.ogeemag;
-	out->BSD1.phase = (*error_state).BSD1.phase + (*_x0).BSD1.phase;
-	out->BSD1.tilt = (*error_state).BSD1.tilt + (*_x0).BSD1.tilt;
-	out->BSD1.curve = (*error_state).BSD1.curve + (*_x0).BSD1.curve;
-	out->BSD1.gibpha = (*error_state).BSD1.gibpha + (*_x0).BSD1.gibpha;
-	out->BSD1.gibmag = (*error_state).BSD1.gibmag + (*_x0).BSD1.gibmag;
-	out->BSD1.ogeephase = (*error_state).BSD1.ogeephase + (*_x0).BSD1.ogeephase;
-	out->BSD1.ogeemag = (*error_state).BSD1.ogeemag + (*_x0).BSD1.ogeemag;
-}
-
-// Jacobian of SurviveJointKalmanModelAddErrorModel wrt [(*_x0).Lighthouse.Pos[0], (*_x0).Lighthouse.Pos[1],
-// (*_x0).Lighthouse.Pos[2], (*_x0).Lighthouse.Rot[0], (*_x0).Lighthouse.Rot[1], (*_x0).Lighthouse.Rot[2],
-// (*_x0).Lighthouse.Rot[3], (*_x0).Object.AccBias[0], (*_x0).Object.AccBias[1], (*_x0).Object.AccBias[2],
-// (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2], (*_x0).Object.GyroBias[0],
-// (*_x0).Object.GyroBias[1], (*_x0).Object.GyroBias[2], (*_x0).Object.IMUCorrection[0], (*_x0).Object.IMUCorrection[1],
-// (*_x0).Object.IMUCorrection[2], (*_x0).Object.IMUCorrection[3], (*_x0).Object.Pose.Pos[0], (*_x0).Object.Pose.Pos[1],
-// (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0], (*_x0).Object.Pose.Rot[1], (*_x0).Object.Pose.Rot[2],
-// (*_x0).Object.Pose.Rot[3], (*_x0).Object.Velocity.AxisAngleRot[0], (*_x0).Object.Velocity.AxisAngleRot[1],
-// (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0], (*_x0).Object.Velocity.Pos[1],
-// (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f61a58b5310>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586f0a0>, <cnkalman.codegen.WrapMember object at 0x7f61a586f370>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586f160>, <cnkalman.codegen.WrapMember object at 0x7f61a586f430>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586f100>, <cnkalman.codegen.WrapMember object at 0x7f61a586f3d0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586f220>, <cnkalman.codegen.WrapMember object at 0x7f61a586f4f0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586f1c0>, <cnkalman.codegen.WrapMember object at 0x7f61a586f490>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a58b5e50>, <cnkalman.codegen.WrapMember object at 0x7f61a586f2b0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586f040>, <cnkalman.codegen.WrapMember object at 0x7f61a586f310>]
-static inline void SurviveJointKalmanModelAddErrorModel_jac_x0(CnMat *Hx, const SurviveJointKalmanModel *_x0,
-															   const SurviveJointKalmanErrorModel *error_state) {
 	const FLT x0 = 0.5 * (*error_state).Object.Pose.AxisAngleRot[1];
 	const FLT x1 = cos(x0);
 	const FLT x2 = 0.5 * (*error_state).Object.Pose.AxisAngleRot[0];
@@ -1974,6 +2047,166 @@ static inline void SurviveJointKalmanModelAddErrorModel_jac_x0(CnMat *Hx, const 
 	const FLT x15 = (x1 * x14) + (-1 * x7 * x13);
 	const FLT x16 = (x1 * x13) + (-1 * x7 * x14);
 	const FLT x17 = 1. / sqrt((x16 * x16) + (x15 * x15) + (x11 * x11) + (x12 * x12));
+	const FLT x18 = x15 * x17;
+	const FLT x19 = x11 * x17;
+	const FLT x20 = x12 * x17;
+	const FLT x21 = x17 * x16;
+	const FLT x22 = 0.5 * (*error_state).Object.IMUBias.IMUCorrection[1];
+	const FLT x23 = sin(x22);
+	const FLT x24 = 0.5 * (*error_state).Object.IMUBias.IMUCorrection[0];
+	const FLT x25 = sin(x24);
+	const FLT x26 = 0.5 * (*error_state).Object.IMUBias.IMUCorrection[2];
+	const FLT x27 = cos(x26);
+	const FLT x28 = x25 * x27;
+	const FLT x29 = cos(x24);
+	const FLT x30 = cos(x22);
+	const FLT x31 = sin(x26);
+	const FLT x32 = x30 * x31;
+	const FLT x33 = (x32 * x29) + (-1 * x23 * x28);
+	const FLT x34 = x29 * x27;
+	const FLT x35 = (x34 * x23) + (x32 * x25);
+	const FLT x36 = x31 * x23;
+	const FLT x37 = (x30 * x34) + (x36 * x25);
+	const FLT x38 = (x30 * x28) + (-1 * x36 * x29);
+	const FLT x39 = 1. / sqrt((x38 * x38) + (x37 * x37) + (x33 * x33) + (x35 * x35));
+	const FLT x40 = x35 * x39;
+	const FLT x41 = x37 * x39;
+	const FLT x42 = x33 * x39;
+	const FLT x43 = x38 * x39;
+	const FLT x44 = 0.5 * (*error_state).Lighthouse.AxisAngleRot[1];
+	const FLT x45 = sin(x44);
+	const FLT x46 = 0.5 * (*error_state).Lighthouse.AxisAngleRot[2];
+	const FLT x47 = cos(x46);
+	const FLT x48 = 0.5 * (*error_state).Lighthouse.AxisAngleRot[0];
+	const FLT x49 = sin(x48);
+	const FLT x50 = x47 * x49;
+	const FLT x51 = cos(x44);
+	const FLT x52 = cos(x48);
+	const FLT x53 = sin(x46);
+	const FLT x54 = x53 * x52;
+	const FLT x55 = (x54 * x51) + (-1 * x50 * x45);
+	const FLT x56 = x53 * x49;
+	const FLT x57 = x52 * x47;
+	const FLT x58 = (x57 * x45) + (x51 * x56);
+	const FLT x59 = (x51 * x57) + (x56 * x45);
+	const FLT x60 = (x50 * x51) + (-1 * x54 * x45);
+	const FLT x61 = 1. / sqrt((x60 * x60) + (x59 * x59) + (x55 * x55) + (x58 * x58));
+	const FLT x62 = x61 * x55;
+	const FLT x63 = x61 * x58;
+	const FLT x64 = x61 * x59;
+	const FLT x65 = x61 * (*_x0).Lighthouse.Rot[1];
+	const FLT x66 = x60 * x61;
+	const FLT x67 = x61 * (*_x0).Lighthouse.Rot[2];
+	out->Object.Pose.Pos[0] = (*_x0).Object.Pose.Pos[0] + (*error_state).Object.Pose.Pos[0];
+	out->Object.Pose.Pos[1] = (*_x0).Object.Pose.Pos[1] + (*error_state).Object.Pose.Pos[1];
+	out->Object.Pose.Pos[2] = (*_x0).Object.Pose.Pos[2] + (*error_state).Object.Pose.Pos[2];
+	out->Object.Pose.Rot[0] = (x20 * (*_x0).Object.Pose.Rot[0]) + (-1 * x21 * (*_x0).Object.Pose.Rot[1]) +
+							  (-1 * x18 * (*_x0).Object.Pose.Rot[3]) + (-1 * x19 * (*_x0).Object.Pose.Rot[2]);
+	out->Object.Pose.Rot[1] = (x18 * (*_x0).Object.Pose.Rot[2]) + (-1 * x19 * (*_x0).Object.Pose.Rot[3]) +
+							  (x20 * (*_x0).Object.Pose.Rot[1]) + (x21 * (*_x0).Object.Pose.Rot[0]);
+	out->Object.Pose.Rot[2] = (-1 * x18 * (*_x0).Object.Pose.Rot[1]) + (x20 * (*_x0).Object.Pose.Rot[2]) +
+							  (x21 * (*_x0).Object.Pose.Rot[3]) + (x19 * (*_x0).Object.Pose.Rot[0]);
+	out->Object.Pose.Rot[3] = (x19 * (*_x0).Object.Pose.Rot[1]) + (x18 * (*_x0).Object.Pose.Rot[0]) +
+							  (-1 * x21 * (*_x0).Object.Pose.Rot[2]) + (x20 * (*_x0).Object.Pose.Rot[3]);
+	out->Object.Velocity.Pos[0] = (*_x0).Object.Velocity.Pos[0] + (*error_state).Object.Velocity.Pos[0];
+	out->Object.Velocity.Pos[1] = (*_x0).Object.Velocity.Pos[1] + (*error_state).Object.Velocity.Pos[1];
+	out->Object.Velocity.Pos[2] = (*_x0).Object.Velocity.Pos[2] + (*error_state).Object.Velocity.Pos[2];
+	out->Object.Velocity.AxisAngleRot[0] =
+		(*_x0).Object.Velocity.AxisAngleRot[0] + (*error_state).Object.Velocity.AxisAngleRot[0];
+	out->Object.Velocity.AxisAngleRot[1] =
+		(*_x0).Object.Velocity.AxisAngleRot[1] + (*error_state).Object.Velocity.AxisAngleRot[1];
+	out->Object.Velocity.AxisAngleRot[2] =
+		(*_x0).Object.Velocity.AxisAngleRot[2] + (*error_state).Object.Velocity.AxisAngleRot[2];
+	out->Object.Acc[0] = (*_x0).Object.Acc[0] + (*error_state).Object.Acc[0];
+	out->Object.Acc[1] = (*_x0).Object.Acc[1] + (*error_state).Object.Acc[1];
+	out->Object.Acc[2] = (*_x0).Object.Acc[2] + (*error_state).Object.Acc[2];
+	out->Object.IMUBias.AccScale[0] = (*_x0).Object.IMUBias.AccScale[0] + (*error_state).Object.IMUBias.AccScale[0];
+	out->Object.IMUBias.AccScale[1] = (*_x0).Object.IMUBias.AccScale[1] + (*error_state).Object.IMUBias.AccScale[1];
+	out->Object.IMUBias.AccScale[2] = (*_x0).Object.IMUBias.AccScale[2] + (*error_state).Object.IMUBias.AccScale[2];
+	out->Object.IMUBias.IMUCorrection[0] =
+		(-1 * x43 * (*_x0).Object.IMUBias.IMUCorrection[1]) + (-1 * x42 * (*_x0).Object.IMUBias.IMUCorrection[3]) +
+		(-1 * x40 * (*_x0).Object.IMUBias.IMUCorrection[2]) + (x41 * (*_x0).Object.IMUBias.IMUCorrection[0]);
+	out->Object.IMUBias.IMUCorrection[1] =
+		(x41 * (*_x0).Object.IMUBias.IMUCorrection[1]) + (x43 * (*_x0).Object.IMUBias.IMUCorrection[0]) +
+		(-1 * x40 * (*_x0).Object.IMUBias.IMUCorrection[3]) + (x42 * (*_x0).Object.IMUBias.IMUCorrection[2]);
+	out->Object.IMUBias.IMUCorrection[2] =
+		(-1 * x42 * (*_x0).Object.IMUBias.IMUCorrection[1]) + (x40 * (*_x0).Object.IMUBias.IMUCorrection[0]) +
+		(x43 * (*_x0).Object.IMUBias.IMUCorrection[3]) + (x41 * (*_x0).Object.IMUBias.IMUCorrection[2]);
+	out->Object.IMUBias.IMUCorrection[3] =
+		(x40 * (*_x0).Object.IMUBias.IMUCorrection[1]) + (x42 * (*_x0).Object.IMUBias.IMUCorrection[0]) +
+		(x41 * (*_x0).Object.IMUBias.IMUCorrection[3]) + (-1 * x43 * (*_x0).Object.IMUBias.IMUCorrection[2]);
+	out->Object.IMUBias.AccBias[0] = (*_x0).Object.IMUBias.AccBias[0] + (*error_state).Object.IMUBias.AccBias[0];
+	out->Object.IMUBias.AccBias[1] = (*_x0).Object.IMUBias.AccBias[1] + (*error_state).Object.IMUBias.AccBias[1];
+	out->Object.IMUBias.AccBias[2] = (*_x0).Object.IMUBias.AccBias[2] + (*error_state).Object.IMUBias.AccBias[2];
+	out->Object.IMUBias.GyroBias[0] = (*_x0).Object.IMUBias.GyroBias[0] + (*error_state).Object.IMUBias.GyroBias[0];
+	out->Object.IMUBias.GyroBias[1] = (*_x0).Object.IMUBias.GyroBias[1] + (*error_state).Object.IMUBias.GyroBias[1];
+	out->Object.IMUBias.GyroBias[2] = (*_x0).Object.IMUBias.GyroBias[2] + (*error_state).Object.IMUBias.GyroBias[2];
+	out->Lighthouse.Pos[0] = (*_x0).Lighthouse.Pos[0] + (*error_state).Lighthouse.Pos[0];
+	out->Lighthouse.Pos[1] = (*_x0).Lighthouse.Pos[1] + (*error_state).Lighthouse.Pos[1];
+	out->Lighthouse.Pos[2] = (*_x0).Lighthouse.Pos[2] + (*error_state).Lighthouse.Pos[2];
+	out->Lighthouse.Rot[0] = (-1 * x60 * x65) + (x64 * (*_x0).Lighthouse.Rot[0]) +
+							 (-1 * x62 * (*_x0).Lighthouse.Rot[3]) + (-1 * x63 * (*_x0).Lighthouse.Rot[2]);
+	out->Lighthouse.Rot[1] = (x65 * x59) + (x66 * (*_x0).Lighthouse.Rot[0]) + (-1 * x63 * (*_x0).Lighthouse.Rot[3]) +
+							 (x62 * (*_x0).Lighthouse.Rot[2]);
+	out->Lighthouse.Rot[2] =
+		(-1 * x65 * x55) + (x66 * (*_x0).Lighthouse.Rot[3]) + (x63 * (*_x0).Lighthouse.Rot[0]) + (x67 * x59);
+	out->Lighthouse.Rot[3] =
+		(x62 * (*_x0).Lighthouse.Rot[0]) + (x65 * x58) + (-1 * x60 * x67) + (x64 * (*_x0).Lighthouse.Rot[3]);
+	out->BSD0.phase = (*error_state).BSD0.phase + (*_x0).BSD0.phase;
+	out->BSD0.tilt = (*error_state).BSD0.tilt + (*_x0).BSD0.tilt;
+	out->BSD0.curve = (*error_state).BSD0.curve + (*_x0).BSD0.curve;
+	out->BSD0.gibpha = (*error_state).BSD0.gibpha + (*_x0).BSD0.gibpha;
+	out->BSD0.gibmag = (*error_state).BSD0.gibmag + (*_x0).BSD0.gibmag;
+	out->BSD0.ogeephase = (*error_state).BSD0.ogeephase + (*_x0).BSD0.ogeephase;
+	out->BSD0.ogeemag = (*error_state).BSD0.ogeemag + (*_x0).BSD0.ogeemag;
+	out->BSD1.phase = (*error_state).BSD1.phase + (*_x0).BSD1.phase;
+	out->BSD1.tilt = (*error_state).BSD1.tilt + (*_x0).BSD1.tilt;
+	out->BSD1.curve = (*error_state).BSD1.curve + (*_x0).BSD1.curve;
+	out->BSD1.gibpha = (*error_state).BSD1.gibpha + (*_x0).BSD1.gibpha;
+	out->BSD1.gibmag = (*error_state).BSD1.gibmag + (*_x0).BSD1.gibmag;
+	out->BSD1.ogeephase = (*error_state).BSD1.ogeephase + (*_x0).BSD1.ogeephase;
+	out->BSD1.ogeemag = (*error_state).BSD1.ogeemag + (*_x0).BSD1.ogeemag;
+}
+
+// Jacobian of SurviveJointKalmanModelAddErrorModel wrt [(*_x0).Lighthouse.Pos[0], (*_x0).Lighthouse.Pos[1],
+// (*_x0).Lighthouse.Pos[2], (*_x0).Lighthouse.Rot[0], (*_x0).Lighthouse.Rot[1], (*_x0).Lighthouse.Rot[2],
+// (*_x0).Lighthouse.Rot[3], (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2],
+// (*_x0).Object.IMUBias.AccBias[0], (*_x0).Object.IMUBias.AccBias[1], (*_x0).Object.IMUBias.AccBias[2],
+// (*_x0).Object.IMUBias.AccScale[0], (*_x0).Object.IMUBias.AccScale[1], (*_x0).Object.IMUBias.AccScale[2],
+// (*_x0).Object.IMUBias.GyroBias[0], (*_x0).Object.IMUBias.GyroBias[1], (*_x0).Object.IMUBias.GyroBias[2],
+// (*_x0).Object.IMUBias.IMUCorrection[0], (*_x0).Object.IMUBias.IMUCorrection[1],
+// (*_x0).Object.IMUBias.IMUCorrection[2], (*_x0).Object.IMUBias.IMUCorrection[3], (*_x0).Object.Pose.Pos[0],
+// (*_x0).Object.Pose.Pos[1], (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0], (*_x0).Object.Pose.Rot[1],
+// (*_x0).Object.Pose.Rot[2], (*_x0).Object.Pose.Rot[3], (*_x0).Object.Velocity.AxisAngleRot[0],
+// (*_x0).Object.Velocity.AxisAngleRot[1], (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0],
+// (*_x0).Object.Velocity.Pos[1], (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f4d1c38e2e0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c38e220>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38e0a0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c38e520>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38e400>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c38e8b0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38e670>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c387df0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38ed30>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c387dc0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38e490>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c38e430>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38e640>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c38e730>]
+static inline void SurviveJointKalmanModelAddErrorModel_jac_x0(CnMat *Hx, const SurviveJointKalmanModel *_x0,
+															   const SurviveJointKalmanErrorModel *error_state) {
+	const FLT x0 = 0.5 * (*error_state).Object.Pose.AxisAngleRot[1];
+	const FLT x1 = cos(x0);
+	const FLT x2 = 0.5 * (*error_state).Object.Pose.AxisAngleRot[2];
+	const FLT x3 = sin(x2);
+	const FLT x4 = 0.5 * (*error_state).Object.Pose.AxisAngleRot[0];
+	const FLT x5 = sin(x4);
+	const FLT x6 = x3 * x5;
+	const FLT x7 = sin(x0);
+	const FLT x8 = cos(x4);
+	const FLT x9 = cos(x2);
+	const FLT x10 = x8 * x9;
+	const FLT x11 = (x7 * x10) + (x1 * x6);
+	const FLT x12 = (x1 * x10) + (x6 * x7);
+	const FLT x13 = x5 * x9;
+	const FLT x14 = x3 * x8;
+	const FLT x15 = (x1 * x14) + (-1 * x7 * x13);
+	const FLT x16 = (x1 * x13) + (-1 * x7 * x14);
+	const FLT x17 = 1. / sqrt((x16 * x16) + (x15 * x15) + (x11 * x11) + (x12 * x12));
 	const FLT x18 = x12 * x17;
 	const FLT x19 = x17 * x16;
 	const FLT x20 = -1 * x19;
@@ -1981,23 +2214,23 @@ static inline void SurviveJointKalmanModelAddErrorModel_jac_x0(CnMat *Hx, const 
 	const FLT x22 = -1 * x21;
 	const FLT x23 = x15 * x17;
 	const FLT x24 = -1 * x23;
-	const FLT x25 = 0.5 * (*error_state).Lighthouse.AxisAngleRot[1];
-	const FLT x26 = sin(x25);
-	const FLT x27 = 0.5 * (*error_state).Lighthouse.AxisAngleRot[2];
-	const FLT x28 = cos(x27);
-	const FLT x29 = 0.5 * (*error_state).Lighthouse.AxisAngleRot[0];
+	const FLT x25 = 0.5 * (*error_state).Object.IMUBias.IMUCorrection[2];
+	const FLT x26 = cos(x25);
+	const FLT x27 = 0.5 * (*error_state).Object.IMUBias.IMUCorrection[0];
+	const FLT x28 = sin(x27);
+	const FLT x29 = 0.5 * (*error_state).Object.IMUBias.IMUCorrection[1];
 	const FLT x30 = sin(x29);
 	const FLT x31 = x30 * x28;
-	const FLT x32 = sin(x27);
+	const FLT x32 = sin(x25);
 	const FLT x33 = cos(x29);
-	const FLT x34 = cos(x25);
+	const FLT x34 = cos(x27);
 	const FLT x35 = x34 * x33;
 	const FLT x36 = (x32 * x35) + (-1 * x31 * x26);
-	const FLT x37 = x30 * x32;
-	const FLT x38 = x33 * x26;
-	const FLT x39 = (x38 * x28) + (x34 * x37);
-	const FLT x40 = (x35 * x28) + (x37 * x26);
-	const FLT x41 = (x31 * x34) + (-1 * x32 * x38);
+	const FLT x37 = x33 * x28;
+	const FLT x38 = x30 * x34;
+	const FLT x39 = (x38 * x26) + (x32 * x37);
+	const FLT x40 = (x35 * x26) + (x32 * x31);
+	const FLT x41 = (x37 * x26) + (-1 * x32 * x38);
 	const FLT x42 = 1. / sqrt((x41 * x41) + (x40 * x40) + (x36 * x36) + (x39 * x39));
 	const FLT x43 = x40 * x42;
 	const FLT x44 = x41 * x42;
@@ -2006,6 +2239,31 @@ static inline void SurviveJointKalmanModelAddErrorModel_jac_x0(CnMat *Hx, const 
 	const FLT x47 = -1 * x46;
 	const FLT x48 = x42 * x36;
 	const FLT x49 = -1 * x48;
+	const FLT x50 = 0.5 * (*error_state).Lighthouse.AxisAngleRot[1];
+	const FLT x51 = sin(x50);
+	const FLT x52 = 0.5 * (*error_state).Lighthouse.AxisAngleRot[2];
+	const FLT x53 = cos(x52);
+	const FLT x54 = 0.5 * (*error_state).Lighthouse.AxisAngleRot[0];
+	const FLT x55 = sin(x54);
+	const FLT x56 = x53 * x55;
+	const FLT x57 = cos(x50);
+	const FLT x58 = cos(x54);
+	const FLT x59 = sin(x52);
+	const FLT x60 = x58 * x59;
+	const FLT x61 = (x60 * x57) + (-1 * x51 * x56);
+	const FLT x62 = x55 * x59;
+	const FLT x63 = x53 * x58;
+	const FLT x64 = (x63 * x51) + (x62 * x57);
+	const FLT x65 = (x63 * x57) + (x62 * x51);
+	const FLT x66 = (x57 * x56) + (-1 * x60 * x51);
+	const FLT x67 = 1. / sqrt((x66 * x66) + (x65 * x65) + (x61 * x61) + (x64 * x64));
+	const FLT x68 = x67 * x65;
+	const FLT x69 = x67 * x66;
+	const FLT x70 = -1 * x69;
+	const FLT x71 = x64 * x67;
+	const FLT x72 = -1 * x71;
+	const FLT x73 = x61 * x67;
+	const FLT x74 = -1 * x73;
 	cnSetZero(Hx);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.Pose.Pos[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Pose.Pos[0]) / sizeof(FLT), 1);
@@ -2063,28 +2321,56 @@ static inline void SurviveJointKalmanModelAddErrorModel_jac_x0(CnMat *Hx, const 
 						offsetof(SurviveJointKalmanModel, Object.Acc[1]) / sizeof(FLT), 1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.Acc[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Object.Acc[2]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.AccScale) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.AccScale) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUCorrection[0]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.IMUCorrection[0]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUCorrection[1]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.IMUCorrection[1]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUCorrection[2]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.IMUCorrection[2]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUCorrection[3]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.IMUCorrection[3]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.AccBias[0]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.AccBias[0]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.AccBias[1]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.AccBias[1]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.AccBias[2]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.AccBias[2]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.GyroBias[0]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.GyroBias[0]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.GyroBias[1]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.GyroBias[1]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.GyroBias[2]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Object.GyroBias[2]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.AccScale[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.AccScale[0]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.AccScale[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.AccScale[1]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.AccScale[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.AccScale[2]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT), x43);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT), x45);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT), x47);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[3]) / sizeof(FLT), x49);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT), x44);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT), x43);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT), x48);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[3]) / sizeof(FLT), x47);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT), x46);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT), x49);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT), x43);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[3]) / sizeof(FLT), x44);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[3]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT), x48);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[3]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT), x46);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[3]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT), x45);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[3]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[3]) / sizeof(FLT), x43);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.AccBias[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.AccBias[0]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.AccBias[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.AccBias[1]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.AccBias[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.AccBias[2]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.GyroBias[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.GyroBias[0]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.GyroBias[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.GyroBias[1]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.GyroBias[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanModel, Object.IMUBias.GyroBias[2]) / sizeof(FLT), 1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Pos[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Pos[0]) / sizeof(FLT), 1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Pos[1]) / sizeof(FLT),
@@ -2092,37 +2378,37 @@ static inline void SurviveJointKalmanModelAddErrorModel_jac_x0(CnMat *Hx, const 
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Pos[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, Lighthouse.Pos[2]) / sizeof(FLT), 1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[0]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[0]) / sizeof(FLT), x43);
+						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[0]) / sizeof(FLT), x68);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[0]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[1]) / sizeof(FLT), x45);
+						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[1]) / sizeof(FLT), x70);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[0]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT), x47);
+						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT), x72);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[0]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[3]) / sizeof(FLT), x49);
+						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[3]) / sizeof(FLT), x74);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[1]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[0]) / sizeof(FLT), x44);
+						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[0]) / sizeof(FLT), x69);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[1]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[1]) / sizeof(FLT), x43);
+						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[1]) / sizeof(FLT), x68);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[1]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT), x48);
+						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT), x73);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[1]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[3]) / sizeof(FLT), x47);
+						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[3]) / sizeof(FLT), x72);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[0]) / sizeof(FLT), x46);
+						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[0]) / sizeof(FLT), x71);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[1]) / sizeof(FLT), x49);
+						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[1]) / sizeof(FLT), x74);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT), x43);
+						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT), x68);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[3]) / sizeof(FLT), x44);
+						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[3]) / sizeof(FLT), x69);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[3]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[0]) / sizeof(FLT), x48);
+						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[0]) / sizeof(FLT), x73);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[3]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[1]) / sizeof(FLT), x46);
+						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[1]) / sizeof(FLT), x71);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[3]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT), x45);
+						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT), x70);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[3]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[3]) / sizeof(FLT), x43);
+						offsetof(SurviveJointKalmanModel, Lighthouse.Rot[3]) / sizeof(FLT), x68);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, BSD0.phase) / sizeof(FLT),
 						offsetof(SurviveJointKalmanModel, BSD0.phase) / sizeof(FLT), 1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, BSD0.tilt) / sizeof(FLT),
@@ -2155,74 +2441,75 @@ static inline void SurviveJointKalmanModelAddErrorModel_jac_x0(CnMat *Hx, const 
 
 // Full version Jacobian of SurviveJointKalmanModelAddErrorModel wrt [(*_x0).Lighthouse.Pos[0],
 // (*_x0).Lighthouse.Pos[1], (*_x0).Lighthouse.Pos[2], (*_x0).Lighthouse.Rot[0], (*_x0).Lighthouse.Rot[1],
-// (*_x0).Lighthouse.Rot[2], (*_x0).Lighthouse.Rot[3], (*_x0).Object.AccBias[0], (*_x0).Object.AccBias[1],
-// (*_x0).Object.AccBias[2], (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2],
-// (*_x0).Object.GyroBias[0], (*_x0).Object.GyroBias[1], (*_x0).Object.GyroBias[2], (*_x0).Object.IMUCorrection[0],
-// (*_x0).Object.IMUCorrection[1], (*_x0).Object.IMUCorrection[2], (*_x0).Object.IMUCorrection[3],
-// (*_x0).Object.Pose.Pos[0], (*_x0).Object.Pose.Pos[1], (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0],
-// (*_x0).Object.Pose.Rot[1], (*_x0).Object.Pose.Rot[2], (*_x0).Object.Pose.Rot[3],
-// (*_x0).Object.Velocity.AxisAngleRot[0], (*_x0).Object.Velocity.AxisAngleRot[1],
-// (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0], (*_x0).Object.Velocity.Pos[1],
-// (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f61a58b5310>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586f0a0>, <cnkalman.codegen.WrapMember object at 0x7f61a586f370>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586f160>, <cnkalman.codegen.WrapMember object at 0x7f61a586f430>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586f100>, <cnkalman.codegen.WrapMember object at 0x7f61a586f3d0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586f220>, <cnkalman.codegen.WrapMember object at 0x7f61a586f4f0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586f1c0>, <cnkalman.codegen.WrapMember object at 0x7f61a586f490>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a58b5e50>, <cnkalman.codegen.WrapMember object at 0x7f61a586f2b0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a586f040>, <cnkalman.codegen.WrapMember object at 0x7f61a586f310>] Jacobian of
-// SurviveJointKalmanModelAddErrorModel wrt [(*error_state).Lighthouse.AxisAngleRot[0],
-// (*error_state).Lighthouse.AxisAngleRot[1], (*error_state).Lighthouse.AxisAngleRot[2],
-// (*error_state).Lighthouse.Pos[0], (*error_state).Lighthouse.Pos[1], (*error_state).Lighthouse.Pos[2],
-// (*error_state).Object.AccBias[0], (*error_state).Object.AccBias[1], (*error_state).Object.AccBias[2],
-// (*error_state).Object.Acc[0], (*error_state).Object.Acc[1], (*error_state).Object.Acc[2],
-// (*error_state).Object.GyroBias[0], (*error_state).Object.GyroBias[1], (*error_state).Object.GyroBias[2],
-// (*error_state).Object.IMUCorrection[0], (*error_state).Object.IMUCorrection[1],
-// (*error_state).Object.IMUCorrection[2], (*error_state).Object.IMUCorrection[3],
+// (*_x0).Lighthouse.Rot[2], (*_x0).Lighthouse.Rot[3], (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2],
+// (*_x0).Object.IMUBias.AccBias[0], (*_x0).Object.IMUBias.AccBias[1], (*_x0).Object.IMUBias.AccBias[2],
+// (*_x0).Object.IMUBias.AccScale[0], (*_x0).Object.IMUBias.AccScale[1], (*_x0).Object.IMUBias.AccScale[2],
+// (*_x0).Object.IMUBias.GyroBias[0], (*_x0).Object.IMUBias.GyroBias[1], (*_x0).Object.IMUBias.GyroBias[2],
+// (*_x0).Object.IMUBias.IMUCorrection[0], (*_x0).Object.IMUBias.IMUCorrection[1],
+// (*_x0).Object.IMUBias.IMUCorrection[2], (*_x0).Object.IMUBias.IMUCorrection[3], (*_x0).Object.Pose.Pos[0],
+// (*_x0).Object.Pose.Pos[1], (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0], (*_x0).Object.Pose.Rot[1],
+// (*_x0).Object.Pose.Rot[2], (*_x0).Object.Pose.Rot[3], (*_x0).Object.Velocity.AxisAngleRot[0],
+// (*_x0).Object.Velocity.AxisAngleRot[1], (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0],
+// (*_x0).Object.Velocity.Pos[1], (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f4d1c38e2e0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c38e220>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38e0a0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c38e520>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38e400>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c38e8b0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38e670>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c387df0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38ed30>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c387dc0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38e490>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c38e430>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38e640>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c38e730>] Jacobian of SurviveJointKalmanModelAddErrorModel wrt
+// [(*error_state).Lighthouse.AxisAngleRot[0], (*error_state).Lighthouse.AxisAngleRot[1],
+// (*error_state).Lighthouse.AxisAngleRot[2], (*error_state).Lighthouse.Pos[0], (*error_state).Lighthouse.Pos[1],
+// (*error_state).Lighthouse.Pos[2], (*error_state).Object.Acc[0], (*error_state).Object.Acc[1],
+// (*error_state).Object.Acc[2], (*error_state).Object.IMUBias.AccBias[0], (*error_state).Object.IMUBias.AccBias[1],
+// (*error_state).Object.IMUBias.AccBias[2], (*error_state).Object.IMUBias.AccScale[0],
+// (*error_state).Object.IMUBias.AccScale[1], (*error_state).Object.IMUBias.AccScale[2],
+// (*error_state).Object.IMUBias.GyroBias[0], (*error_state).Object.IMUBias.GyroBias[1],
+// (*error_state).Object.IMUBias.GyroBias[2], (*error_state).Object.IMUBias.IMUCorrection[0],
+// (*error_state).Object.IMUBias.IMUCorrection[1], (*error_state).Object.IMUBias.IMUCorrection[2],
 // (*error_state).Object.Pose.AxisAngleRot[0], (*error_state).Object.Pose.AxisAngleRot[1],
 // (*error_state).Object.Pose.AxisAngleRot[2], (*error_state).Object.Pose.Pos[0], (*error_state).Object.Pose.Pos[1],
 // (*error_state).Object.Pose.Pos[2], (*error_state).Object.Velocity.AxisAngleRot[0],
 // (*error_state).Object.Velocity.AxisAngleRot[1], (*error_state).Object.Velocity.AxisAngleRot[2],
 // (*error_state).Object.Velocity.Pos[0], (*error_state).Object.Velocity.Pos[1], (*error_state).Object.Velocity.Pos[2],
-// <cnkalman.codegen.WrapMember object at 0x7f61a586deb0>, <cnkalman.codegen.WrapMember object at 0x7f61a58b17c0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58b1610>, <cnkalman.codegen.WrapMember object at 0x7f61a58b1940>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58b18e0>, <cnkalman.codegen.WrapMember object at 0x7f61a58b1490>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58b14c0>, <cnkalman.codegen.WrapMember object at 0x7f61a58b19d0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58b1b20>, <cnkalman.codegen.WrapMember object at 0x7f61a58b19a0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58b1760>, <cnkalman.codegen.WrapMember object at 0x7f61a58b13a0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58b1430>, <cnkalman.codegen.WrapMember object at 0x7f61a58b1a90>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58b1790>]
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c35f430>, <cnkalman.codegen.WrapMember object at 0x7f4d1c377a90>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c35f1f0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c377f40>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c35f2b0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c377fa0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c35f220>, <cnkalman.codegen.WrapMember object at 0x7f4d1c377d90>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c35f250>, <cnkalman.codegen.WrapMember object at 0x7f4d1c377e50>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c35f880>, <cnkalman.codegen.WrapMember object at 0x7f4d1c35f6d0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c35f730>, <cnkalman.codegen.WrapMember object at 0x7f4d1c377220>]
 static inline void
 SurviveJointKalmanModelAddErrorModel_jac_error_state(CnMat *Hx, const SurviveJointKalmanModel *_x0,
 													 const SurviveJointKalmanErrorModel *error_state) {
-	const FLT x0 = 0.5 * (*error_state).Object.Pose.AxisAngleRot[1];
+	const FLT x0 = 0.5 * (*error_state).Object.Pose.AxisAngleRot[2];
 	const FLT x1 = sin(x0);
-	const FLT x2 = 0.5 * (*error_state).Object.Pose.AxisAngleRot[2];
+	const FLT x2 = 0.5 * (*error_state).Object.Pose.AxisAngleRot[1];
 	const FLT x3 = sin(x2);
 	const FLT x4 = 0.5 * (*error_state).Object.Pose.AxisAngleRot[0];
 	const FLT x5 = cos(x4);
 	const FLT x6 = x3 * x5;
 	const FLT x7 = x1 * x6;
-	const FLT x8 = cos(x0);
-	const FLT x9 = sin(x4);
+	const FLT x8 = sin(x4);
+	const FLT x9 = cos(x0);
 	const FLT x10 = cos(x2);
 	const FLT x11 = x9 * x10;
 	const FLT x12 = x8 * x11;
 	const FLT x13 = x12 + (-1 * x7);
-	const FLT x14 = x3 * x9;
+	const FLT x14 = x1 * x10;
 	const FLT x15 = x8 * x14;
 	const FLT x16 = 0.5 * x15;
-	const FLT x17 = x5 * x10;
-	const FLT x18 = x1 * x17;
-	const FLT x19 = -0.5 * x18;
-	const FLT x20 = x19 + (-1 * x16);
-	const FLT x21 = x1 * x11;
-	const FLT x22 = x6 * x8;
+	const FLT x17 = x6 * x9;
+	const FLT x18 = -0.5 * x17;
+	const FLT x19 = x18 + (-1 * x16);
+	const FLT x20 = x3 * x8;
+	const FLT x21 = x9 * x20;
+	const FLT x22 = x5 * x14;
 	const FLT x23 = x22 + (-1 * x21);
 	const FLT x24 = 2 * x23;
-	const FLT x25 = x8 * x17;
+	const FLT x25 = x5 * x11;
 	const FLT x26 = 0.5 * x25;
-	const FLT x27 = x1 * x14;
+	const FLT x27 = x1 * x20;
 	const FLT x28 = 0.5 * x27;
 	const FLT x29 = x28 + x26;
 	const FLT x30 = 2 * x13;
@@ -2230,7 +2517,7 @@ SurviveJointKalmanModelAddErrorModel_jac_error_state(CnMat *Hx, const SurviveJoi
 	const FLT x32 = -1 * x31;
 	const FLT x33 = 0.5 * x22;
 	const FLT x34 = x33 + x32;
-	const FLT x35 = x18 + x15;
+	const FLT x35 = x17 + x15;
 	const FLT x36 = 2 * x35;
 	const FLT x37 = 0.5 * x12;
 	const FLT x38 = -1 * x37;
@@ -2238,149 +2525,231 @@ SurviveJointKalmanModelAddErrorModel_jac_error_state(CnMat *Hx, const SurviveJoi
 	const FLT x40 = x39 + x38;
 	const FLT x41 = x25 + x27;
 	const FLT x42 = 2 * x41;
-	const FLT x43 = (x40 * x42) + (x24 * x20) + (x34 * x36) + (x30 * x29);
-	const FLT x44 = (x23 * x23) + (x35 * x35) + (x13 * x13) + (x41 * x41);
-	const FLT x45 = 1.0 / 2.0 * (1. / (x44 * sqrt(x44)));
-	const FLT x46 = x43 * x45;
-	const FLT x47 = x46 * x13;
-	const FLT x48 = x46 * x23;
-	const FLT x49 = 1. / sqrt(x44);
-	const FLT x50 = x49 * (*_x0).Object.Pose.Rot[3];
-	const FLT x51 = x50 * x20;
-	const FLT x52 = x45 * (*_x0).Object.Pose.Rot[0];
-	const FLT x53 = x52 * x43;
-	const FLT x54 = x49 * (*_x0).Object.Pose.Rot[2];
-	const FLT x55 = x46 * x35;
-	const FLT x56 = x49 * (*_x0).Object.Pose.Rot[1];
-	const FLT x57 = -1 * x56 * x29;
-	const FLT x58 = x49 * (*_x0).Object.Pose.Rot[0];
-	const FLT x59 = -1 * x33;
-	const FLT x60 = x59 + x32;
-	const FLT x61 = (-1 * x28) + x26;
-	const FLT x62 = -1 * x39;
-	const FLT x63 = x38 + x62;
-	const FLT x64 = x16 + x19;
-	const FLT x65 = (x64 * x42) + (x63 * x24) + (x60 * x30) + (x61 * x36);
-	const FLT x66 = x65 * x41;
-	const FLT x67 = x65 * x23;
-	const FLT x68 = x45 * (*_x0).Object.Pose.Rot[3];
-	const FLT x69 = x65 * x13;
-	const FLT x70 = x69 * x45;
-	const FLT x71 = x64 * x49;
-	const FLT x72 = x45 * (*_x0).Object.Pose.Rot[2];
-	const FLT x73 = x65 * x35;
-	const FLT x74 = -1 * x56 * x20;
-	const FLT x75 = x37 + x62;
-	const FLT x76 = x31 + x59;
-	const FLT x77 = (x30 * x20) + (x76 * x42) + (x24 * x29) + (x75 * x36);
-	const FLT x78 = x77 * x23;
-	const FLT x79 = x50 * x29;
-	const FLT x80 = x77 * x41;
-	const FLT x81 = x76 * x49;
-	const FLT x82 = x45 * (*_x0).Object.Pose.Rot[1];
-	const FLT x83 = x77 * x13;
-	const FLT x84 = x77 * x35;
-	const FLT x85 = x41 * x46;
-	const FLT x86 = x58 * x29;
-	const FLT x87 = x54 * x20;
-	const FLT x88 = x72 * x23;
-	const FLT x89 = x80 * x45;
-	const FLT x90 = x58 * x20;
-	const FLT x91 = x77 * x52;
-	const FLT x92 = x54 * x29;
-	const FLT x93 = x61 * x49;
-	const FLT x94 = 0.5 * (*error_state).Lighthouse.AxisAngleRot[1];
-	const FLT x95 = sin(x94);
-	const FLT x96 = 0.5 * (*error_state).Lighthouse.AxisAngleRot[2];
-	const FLT x97 = cos(x96);
-	const FLT x98 = 0.5 * (*error_state).Lighthouse.AxisAngleRot[0];
-	const FLT x99 = sin(x98);
-	const FLT x100 = x99 * x97;
-	const FLT x101 = x95 * x100;
-	const FLT x102 = cos(x94);
-	const FLT x103 = cos(x98);
-	const FLT x104 = sin(x96);
-	const FLT x105 = x103 * x104;
-	const FLT x106 = x102 * x105;
-	const FLT x107 = x106 + (-1 * x101);
-	const FLT x108 = x99 * x104;
-	const FLT x109 = x102 * x108;
-	const FLT x110 = x97 * x103;
-	const FLT x111 = x95 * x110;
-	const FLT x112 = x111 + x109;
-	const FLT x113 = x95 * x108;
-	const FLT x114 = x102 * x110;
-	const FLT x115 = x114 + x113;
-	const FLT x116 = x95 * x105;
-	const FLT x117 = x100 * x102;
-	const FLT x118 = x117 + (-1 * x116);
-	const FLT x119 = (x118 * x118) + (x115 * x115) + (x107 * x107) + (x112 * x112);
-	const FLT x120 = 1.0 / 2.0 * (1. / (x119 * sqrt(x119)));
-	const FLT x121 = x120 * (*_x0).Lighthouse.Rot[1];
-	const FLT x122 = 0.5 * x114;
-	const FLT x123 = 0.5 * x113;
-	const FLT x124 = x123 + x122;
-	const FLT x125 = 2 * x118;
-	const FLT x126 = 0.5 * x117;
-	const FLT x127 = -1 * x126;
-	const FLT x128 = 0.5 * x116;
-	const FLT x129 = x128 + x127;
-	const FLT x130 = 2 * x115;
-	const FLT x131 = 0.5 * x109;
-	const FLT x132 = -0.5 * x111;
-	const FLT x133 = x132 + (-1 * x131);
-	const FLT x134 = 2 * x133;
-	const FLT x135 = 0.5 * x101;
-	const FLT x136 = -1 * x135;
-	const FLT x137 = 0.5 * x106;
-	const FLT x138 = x137 + x136;
-	const FLT x139 = 2 * x112;
-	const FLT x140 = (x107 * x134) + (x138 * x139) + (x124 * x125) + (x129 * x130);
-	const FLT x141 = x118 * x140;
-	const FLT x142 = 1. / sqrt(x119);
-	const FLT x143 = x142 * (*_x0).Lighthouse.Rot[1];
-	const FLT x144 = -1 * x124 * x143;
-	const FLT x145 = x120 * (*_x0).Lighthouse.Rot[0];
-	const FLT x146 = x115 * x140;
-	const FLT x147 = x142 * (*_x0).Lighthouse.Rot[3];
-	const FLT x148 = x133 * x147;
-	const FLT x149 = x120 * (*_x0).Lighthouse.Rot[3];
-	const FLT x150 = x140 * x149;
-	const FLT x151 = x142 * (*_x0).Lighthouse.Rot[0];
-	const FLT x152 = x142 * (*_x0).Lighthouse.Rot[2];
-	const FLT x153 = x120 * (*_x0).Lighthouse.Rot[2];
-	const FLT x154 = x112 * x140;
-	const FLT x155 = -1 * x137;
-	const FLT x156 = x155 + x136;
-	const FLT x157 = x131 + x132;
-	const FLT x158 = -1 * x128;
-	const FLT x159 = x127 + x158;
-	const FLT x160 = 2 * x107;
-	const FLT x161 = (-1 * x123) + x122;
-	const FLT x162 = (x130 * x157) + (x161 * x139) + (x125 * x156) + (x160 * x159);
-	const FLT x163 = x115 * x162;
-	const FLT x164 = x107 * x162;
-	const FLT x165 = x112 * x162;
-	const FLT x166 = x121 * x162;
-	const FLT x167 = x142 * x157;
-	const FLT x168 = x161 * x142;
-	const FLT x169 = -1 * x133 * x143;
-	const FLT x170 = x135 + x155;
-	const FLT x171 = x126 + x158;
-	const FLT x172 = (x171 * x139) + (x118 * x134) + (x170 * x130) + (x124 * x160);
-	const FLT x173 = x115 * x172;
-	const FLT x174 = x107 * x172;
-	const FLT x175 = x124 * x147;
-	const FLT x176 = x112 * x172;
-	const FLT x177 = x118 * x172;
-	const FLT x178 = x133 * x152;
-	const FLT x179 = x124 * x151;
-	const FLT x180 = x107 * x140;
-	const FLT x181 = x118 * x162;
-	const FLT x182 = x120 * x177;
-	const FLT x183 = x124 * x152;
-	const FLT x184 = x133 * x151;
-	const FLT x185 = x112 * x121;
+	const FLT x43 = (x23 * x23) + (x35 * x35) + (x13 * x13) + (x41 * x41);
+	const FLT x44 = 1.0 / 2.0 * (1. / (x43 * sqrt(x43)));
+	const FLT x45 = ((x40 * x42) + (x24 * x19) + (x34 * x36) + (x30 * x29)) * x44;
+	const FLT x46 = x45 * x13;
+	const FLT x47 = x45 * x23;
+	const FLT x48 = 1. / sqrt(x43);
+	const FLT x49 = x48 * (*_x0).Object.Pose.Rot[3];
+	const FLT x50 = x49 * x19;
+	const FLT x51 = x45 * (*_x0).Object.Pose.Rot[0];
+	const FLT x52 = x48 * (*_x0).Object.Pose.Rot[2];
+	const FLT x53 = x45 * x35;
+	const FLT x54 = x48 * x29;
+	const FLT x55 = -1 * x54 * (*_x0).Object.Pose.Rot[1];
+	const FLT x56 = x48 * (*_x0).Object.Pose.Rot[0];
+	const FLT x57 = -1 * x33;
+	const FLT x58 = x57 + x32;
+	const FLT x59 = x58 * x48;
+	const FLT x60 = (-1 * x28) + x26;
+	const FLT x61 = -1 * x39;
+	const FLT x62 = x38 + x61;
+	const FLT x63 = x16 + x18;
+	const FLT x64 = ((x62 * x24) + (x63 * x42) + (x58 * x30) + (x60 * x36)) * x44;
+	const FLT x65 = x64 * (*_x0).Object.Pose.Rot[0];
+	const FLT x66 = x64 * x23;
+	const FLT x67 = x62 * x48;
+	const FLT x68 = x64 * x13;
+	const FLT x69 = x64 * x35;
+	const FLT x70 = x48 * (*_x0).Object.Pose.Rot[1];
+	const FLT x71 = -1 * x70 * x19;
+	const FLT x72 = x37 + x61;
+	const FLT x73 = x31 + x57;
+	const FLT x74 = ((x73 * x42) + (x24 * x29) + (x30 * x19) + (x72 * x36)) * x44;
+	const FLT x75 = x74 * x23;
+	const FLT x76 = x54 * (*_x0).Object.Pose.Rot[3];
+	const FLT x77 = x74 * (*_x0).Object.Pose.Rot[0];
+	const FLT x78 = x74 * x13;
+	const FLT x79 = x74 * x35;
+	const FLT x80 = x41 * x45;
+	const FLT x81 = x54 * (*_x0).Object.Pose.Rot[0];
+	const FLT x82 = x52 * x19;
+	const FLT x83 = x64 * x41;
+	const FLT x84 = x74 * x41;
+	const FLT x85 = x56 * x19;
+	const FLT x86 = x54 * (*_x0).Object.Pose.Rot[2];
+	const FLT x87 = 0.5 * (*error_state).Object.IMUBias.IMUCorrection[0];
+	const FLT x88 = cos(x87);
+	const FLT x89 = 0.5 * (*error_state).Object.IMUBias.IMUCorrection[2];
+	const FLT x90 = cos(x89);
+	const FLT x91 = 0.5 * (*error_state).Object.IMUBias.IMUCorrection[1];
+	const FLT x92 = cos(x91);
+	const FLT x93 = x92 * x90;
+	const FLT x94 = x88 * x93;
+	const FLT x95 = 0.5 * x94;
+	const FLT x96 = sin(x91);
+	const FLT x97 = sin(x87);
+	const FLT x98 = sin(x89);
+	const FLT x99 = x98 * x97;
+	const FLT x100 = x99 * x96;
+	const FLT x101 = 0.5 * x100;
+	const FLT x102 = x101 + x95;
+	const FLT x103 = x90 * x96;
+	const FLT x104 = x97 * x103;
+	const FLT x105 = x88 * x98;
+	const FLT x106 = x92 * x105;
+	const FLT x107 = x106 + (-1 * x104);
+	const FLT x108 = x92 * x99;
+	const FLT x109 = x88 * x103;
+	const FLT x110 = x109 + x108;
+	const FLT x111 = x94 + x100;
+	const FLT x112 = x96 * x105;
+	const FLT x113 = x93 * x97;
+	const FLT x114 = x113 + (-1 * x112);
+	const FLT x115 = (x114 * x114) + (x107 * x107) + (x111 * x111) + (x110 * x110);
+	const FLT x116 = 1. / sqrt(x115);
+	const FLT x117 = x116 * (*_x0).Object.IMUBias.IMUCorrection[1];
+	const FLT x118 = -1 * x102 * x117;
+	const FLT x119 = 2 * x114;
+	const FLT x120 = 0.5 * x108;
+	const FLT x121 = -0.5 * x109;
+	const FLT x122 = x121 + (-1 * x120);
+	const FLT x123 = 2 * x107;
+	const FLT x124 = 0.5 * x113;
+	const FLT x125 = -1 * x124;
+	const FLT x126 = 0.5 * x112;
+	const FLT x127 = x126 + x125;
+	const FLT x128 = 2 * x111;
+	const FLT x129 = 0.5 * x104;
+	const FLT x130 = -1 * x129;
+	const FLT x131 = 0.5 * x106;
+	const FLT x132 = x131 + x130;
+	const FLT x133 = 2 * x110;
+	const FLT x134 = (x133 * x132) + (x128 * x127) + (x102 * x119) + (x123 * x122);
+	const FLT x135 = 1.0 / 2.0 * (1. / (x115 * sqrt(x115)));
+	const FLT x136 = x107 * x135;
+	const FLT x137 = x134 * x136;
+	const FLT x138 = x110 * x135;
+	const FLT x139 = x134 * x138;
+	const FLT x140 = x116 * x132;
+	const FLT x141 = x116 * (*_x0).Object.IMUBias.IMUCorrection[0];
+	const FLT x142 = x134 * (*_x0).Object.IMUBias.IMUCorrection[0];
+	const FLT x143 = x111 * x135;
+	const FLT x144 = x114 * x135;
+	const FLT x145 = x134 * x144;
+	const FLT x146 = x116 * x122;
+	const FLT x147 = x146 * (*_x0).Object.IMUBias.IMUCorrection[3];
+	const FLT x148 = -1 * x131;
+	const FLT x149 = x148 + x130;
+	const FLT x150 = x120 + x121;
+	const FLT x151 = -1 * x126;
+	const FLT x152 = x125 + x151;
+	const FLT x153 = (-1 * x101) + x95;
+	const FLT x154 = (x133 * x153) + (x123 * x152) + (x119 * x149) + (x128 * x150);
+	const FLT x155 = x144 * x154;
+	const FLT x156 = x135 * x154;
+	const FLT x157 = x107 * x156;
+	const FLT x158 = x138 * x154;
+	const FLT x159 = x116 * x152;
+	const FLT x160 = x116 * x153;
+	const FLT x161 = x116 * x150;
+	const FLT x162 = x111 * x156;
+	const FLT x163 = x129 + x148;
+	const FLT x164 = x124 + x151;
+	const FLT x165 = ((x164 * x133) + (x119 * x122) + (x102 * x123) + (x128 * x163)) * x135;
+	const FLT x166 = x114 * x165;
+	const FLT x167 = x110 * x165;
+	const FLT x168 = x116 * (*_x0).Object.IMUBias.IMUCorrection[2];
+	const FLT x169 = x116 * x163;
+	const FLT x170 = x107 * x165;
+	const FLT x171 = x111 * x165;
+	const FLT x172 = -1 * x146 * (*_x0).Object.IMUBias.IMUCorrection[1];
+	const FLT x173 = x116 * (*_x0).Object.IMUBias.IMUCorrection[3];
+	const FLT x174 = x102 * x173;
+	const FLT x175 = x134 * x143;
+	const FLT x176 = x146 * (*_x0).Object.IMUBias.IMUCorrection[2];
+	const FLT x177 = x102 * x141;
+	const FLT x178 = x102 * x168;
+	const FLT x179 = x146 * (*_x0).Object.IMUBias.IMUCorrection[0];
+	const FLT x180 = 0.5 * (*error_state).Lighthouse.AxisAngleRot[1];
+	const FLT x181 = cos(x180);
+	const FLT x182 = 0.5 * (*error_state).Lighthouse.AxisAngleRot[0];
+	const FLT x183 = cos(x182);
+	const FLT x184 = 0.5 * (*error_state).Lighthouse.AxisAngleRot[2];
+	const FLT x185 = cos(x184);
+	const FLT x186 = x183 * x185;
+	const FLT x187 = x181 * x186;
+	const FLT x188 = 0.5 * x187;
+	const FLT x189 = sin(x182);
+	const FLT x190 = sin(x184);
+	const FLT x191 = sin(x180);
+	const FLT x192 = x190 * x191;
+	const FLT x193 = x189 * x192;
+	const FLT x194 = 0.5 * x193;
+	const FLT x195 = x194 + x188;
+	const FLT x196 = x183 * x192;
+	const FLT x197 = x189 * x185;
+	const FLT x198 = x181 * x197;
+	const FLT x199 = x198 + (-1 * x196);
+	const FLT x200 = 2 * x199;
+	const FLT x201 = 0.5 * x198;
+	const FLT x202 = -1 * x201;
+	const FLT x203 = 0.5 * x196;
+	const FLT x204 = x203 + x202;
+	const FLT x205 = x187 + x193;
+	const FLT x206 = 2 * x205;
+	const FLT x207 = x181 * x190;
+	const FLT x208 = x207 * x189;
+	const FLT x209 = 0.5 * x208;
+	const FLT x210 = x186 * x191;
+	const FLT x211 = -0.5 * x210;
+	const FLT x212 = x211 + (-1 * x209);
+	const FLT x213 = x191 * x197;
+	const FLT x214 = x207 * x183;
+	const FLT x215 = x214 + (-1 * x213);
+	const FLT x216 = 2 * x215;
+	const FLT x217 = 0.5 * x213;
+	const FLT x218 = -1 * x217;
+	const FLT x219 = 0.5 * x214;
+	const FLT x220 = x219 + x218;
+	const FLT x221 = x210 + x208;
+	const FLT x222 = 2 * x221;
+	const FLT x223 = (x220 * x222) + (x212 * x216) + (x200 * x195) + (x204 * x206);
+	const FLT x224 = (x205 * x205) + (x199 * x199) + (x215 * x215) + (x221 * x221);
+	const FLT x225 = 1.0 / 2.0 * (1. / (x224 * sqrt(x224)));
+	const FLT x226 = x225 * x199;
+	const FLT x227 = x223 * x226;
+	const FLT x228 = 1. / sqrt(x224);
+	const FLT x229 = x228 * (*_x0).Lighthouse.Rot[1];
+	const FLT x230 = -1 * x229 * x195;
+	const FLT x231 = x205 * x225;
+	const FLT x232 = x231 * x223;
+	const FLT x233 = x228 * (*_x0).Lighthouse.Rot[3];
+	const FLT x234 = x212 * x233;
+	const FLT x235 = x215 * x225;
+	const FLT x236 = x235 * x223;
+	const FLT x237 = x228 * (*_x0).Lighthouse.Rot[0];
+	const FLT x238 = x228 * (*_x0).Lighthouse.Rot[2];
+	const FLT x239 = x221 * x225;
+	const FLT x240 = x239 * x223;
+	const FLT x241 = -1 * x219;
+	const FLT x242 = x241 + x218;
+	const FLT x243 = x209 + x211;
+	const FLT x244 = -1 * x203;
+	const FLT x245 = x202 + x244;
+	const FLT x246 = (-1 * x194) + x188;
+	const FLT x247 = ((x222 * x246) + (x200 * x242) + (x206 * x243) + (x216 * x245)) * x225;
+	const FLT x248 = x205 * x247;
+	const FLT x249 = x215 * x247;
+	const FLT x250 = x221 * x247;
+	const FLT x251 = x247 * x199;
+	const FLT x252 = x228 * x243;
+	const FLT x253 = x228 * x246;
+	const FLT x254 = -1 * x212 * x229;
+	const FLT x255 = x217 + x241;
+	const FLT x256 = x201 + x244;
+	const FLT x257 = (x256 * x222) + (x212 * x200) + (x206 * x255) + (x216 * x195);
+	const FLT x258 = x231 * x257;
+	const FLT x259 = x257 * (*_x0).Lighthouse.Rot[3];
+	const FLT x260 = x233 * x195;
+	const FLT x261 = x239 * x257;
+	const FLT x262 = x257 * x226;
+	const FLT x263 = x212 * x238;
+	const FLT x264 = x237 * x195;
+	const FLT x265 = x235 * x257;
+	const FLT x266 = x238 * x195;
+	const FLT x267 = x212 * x237;
 	cnSetZero(Hx);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.Pose.Pos[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Object.Pose.Pos[0]) / sizeof(FLT), 1);
@@ -2390,56 +2759,60 @@ SurviveJointKalmanModelAddErrorModel_jac_error_state(CnMat *Hx, const SurviveJoi
 						offsetof(SurviveJointKalmanErrorModel, Object.Pose.Pos[2]) / sizeof(FLT), 1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.Pose.Rot[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[0]) / sizeof(FLT),
-						x57 + (x55 * (*_x0).Object.Pose.Rot[2]) + (x48 * (*_x0).Object.Pose.Rot[3]) +
-							(x47 * (*_x0).Object.Pose.Rot[1]) + (-1 * x51) + (x58 * x40) + (-1 * x54 * x34) +
-							(-1 * x53 * x41));
+						x55 + (x47 * (*_x0).Object.Pose.Rot[3]) + (x53 * (*_x0).Object.Pose.Rot[2]) +
+							(x46 * (*_x0).Object.Pose.Rot[1]) + (x56 * x40) + (-1 * x51 * x41) + (-1 * x50) +
+							(-1 * x52 * x34));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.Pose.Rot[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[1]) / sizeof(FLT),
-						(-1 * x66 * x52) + (x73 * x72) + (-1 * x60 * x56) + (x67 * x68) +
-							(x71 * (*_x0).Object.Pose.Rot[0]) + (-1 * x63 * x50) + (x70 * (*_x0).Object.Pose.Rot[1]) +
-							(-1 * x61 * x54));
+						(x69 * (*_x0).Object.Pose.Rot[2]) + (x63 * x56) + (-1 * x65 * x41) +
+							(x68 * (*_x0).Object.Pose.Rot[1]) + (-1 * x67 * (*_x0).Object.Pose.Rot[3]) +
+							(-1 * x59 * (*_x0).Object.Pose.Rot[1]) + (x66 * (*_x0).Object.Pose.Rot[3]) +
+							(-1 * x60 * x52));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.Pose.Rot[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[2]) / sizeof(FLT),
-						(x84 * x72) + (x82 * x83) + (x78 * x68) + (-1 * x75 * x54) + x74 + (-1 * x79) +
-							(-1 * x80 * x52) + (x81 * (*_x0).Object.Pose.Rot[0]));
+						(x78 * (*_x0).Object.Pose.Rot[1]) + (-1 * x72 * x52) + (x75 * (*_x0).Object.Pose.Rot[3]) +
+							(-1 * x77 * x41) + (x79 * (*_x0).Object.Pose.Rot[2]) + x71 + (-1 * x76) + (x73 * x56));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.Pose.Rot[1]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[0]) / sizeof(FLT),
-						x87 + (-1 * x48 * (*_x0).Object.Pose.Rot[2]) + (-1 * x53 * x13) +
-							(x55 * (*_x0).Object.Pose.Rot[3]) + (x56 * x40) + (-1 * x50 * x34) +
-							(-1 * x85 * (*_x0).Object.Pose.Rot[1]) + x86);
+						x82 + (-1 * x51 * x13) + (x53 * (*_x0).Object.Pose.Rot[3]) + (-1 * x49 * x34) + (x70 * x40) +
+							(-1 * x47 * (*_x0).Object.Pose.Rot[2]) + (-1 * x80 * (*_x0).Object.Pose.Rot[1]) + x81);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.Pose.Rot[1]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[1]) / sizeof(FLT),
-						(x60 * x58) + (-1 * x69 * x52) + (-1 * x82 * x66) + (x63 * x54) + (x73 * x68) +
-							(x71 * (*_x0).Object.Pose.Rot[1]) + (-1 * x61 * x50) + (-1 * x88 * x65));
+						(x67 * (*_x0).Object.Pose.Rot[2]) + (x59 * (*_x0).Object.Pose.Rot[0]) + (x70 * x63) +
+							(-1 * x65 * x13) + (-1 * x83 * (*_x0).Object.Pose.Rot[1]) +
+							(-1 * x66 * (*_x0).Object.Pose.Rot[2]) + (x69 * (*_x0).Object.Pose.Rot[3]) +
+							(-1 * x60 * x49));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.Pose.Rot[1]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[2]) / sizeof(FLT),
-						(-1 * x88 * x77) + (-1 * x91 * x13) + (x84 * x68) + (x81 * (*_x0).Object.Pose.Rot[1]) + x92 +
-							(-1 * x75 * x50) + x90 + (-1 * x89 * (*_x0).Object.Pose.Rot[1]));
+						(-1 * x75 * (*_x0).Object.Pose.Rot[2]) + (-1 * x77 * x13) + (x79 * (*_x0).Object.Pose.Rot[3]) +
+							x86 + (-1 * x84 * (*_x0).Object.Pose.Rot[1]) + (x70 * x73) + (-1 * x72 * x49) + x85);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.Pose.Rot[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[0]) / sizeof(FLT),
-						(x54 * x40) + (-1 * x85 * (*_x0).Object.Pose.Rot[2]) + (x48 * (*_x0).Object.Pose.Rot[1]) + x74 +
-							(-1 * x47 * (*_x0).Object.Pose.Rot[3]) + (-1 * x53 * x35) + (x58 * x34) + x79);
+						(-1 * x51 * x35) + (x52 * x40) + (x56 * x34) + (x47 * (*_x0).Object.Pose.Rot[1]) + x71 +
+							(-1 * x80 * (*_x0).Object.Pose.Rot[2]) + x76 + (-1 * x46 * (*_x0).Object.Pose.Rot[3]));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.Pose.Rot[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[1]) / sizeof(FLT),
-						(x93 * (*_x0).Object.Pose.Rot[0]) + (x64 * x54) + (x60 * x50) + (-1 * x72 * x66) +
-							(-1 * x70 * (*_x0).Object.Pose.Rot[3]) + (x82 * x67) + (-1 * x63 * x56) + (-1 * x73 * x52));
+						(x63 * x52) + (x60 * x56) + (x59 * (*_x0).Object.Pose.Rot[3]) +
+							(-1 * x83 * (*_x0).Object.Pose.Rot[2]) + (x66 * (*_x0).Object.Pose.Rot[1]) +
+							(-1 * x70 * x62) + (-1 * x68 * (*_x0).Object.Pose.Rot[3]) + (-1 * x65 * x35));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.Pose.Rot[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[2]) / sizeof(FLT),
-						(x75 * x58) + x57 + (-1 * x89 * (*_x0).Object.Pose.Rot[2]) + (-1 * x83 * x68) + (x82 * x78) +
-							(-1 * x91 * x35) + (x76 * x54) + x51);
+						(x72 * x56) + (-1 * x78 * (*_x0).Object.Pose.Rot[3]) + (-1 * x84 * (*_x0).Object.Pose.Rot[2]) +
+							x55 + (x73 * x52) + (-1 * x77 * x35) + (x75 * (*_x0).Object.Pose.Rot[1]) + x50);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.Pose.Rot[3]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[0]) / sizeof(FLT),
-						x90 + (x50 * x40) + (x56 * x34) + (-1 * x53 * x23) + (-1 * x92) +
-							(-1 * x55 * (*_x0).Object.Pose.Rot[1]) + (x47 * (*_x0).Object.Pose.Rot[2]) +
-							(-1 * x85 * (*_x0).Object.Pose.Rot[3]));
+						(-1 * x86) + x85 + (x70 * x34) + (-1 * x51 * x23) + (x40 * x49) +
+							(x46 * (*_x0).Object.Pose.Rot[2]) + (-1 * x53 * (*_x0).Object.Pose.Rot[1]) +
+							(-1 * x80 * (*_x0).Object.Pose.Rot[3]));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.Pose.Rot[3]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[1]) / sizeof(FLT),
-						(-1 * x68 * x66) + (x63 * x58) + (-1 * x82 * x73) + (x72 * x69) +
-							(x93 * (*_x0).Object.Pose.Rot[1]) + (-1 * x60 * x54) + (-1 * x67 * x52) + (x64 * x50));
+						(x62 * x56) + (-1 * x69 * (*_x0).Object.Pose.Rot[1]) + (x68 * (*_x0).Object.Pose.Rot[2]) +
+							(-1 * x65 * x23) + (x70 * x60) + (-1 * x59 * (*_x0).Object.Pose.Rot[2]) +
+							(-1 * x83 * (*_x0).Object.Pose.Rot[3]) + (x63 * x49));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.Pose.Rot[3]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Object.Pose.AxisAngleRot[2]) / sizeof(FLT),
-						(-1 * x89 * (*_x0).Object.Pose.Rot[3]) + (x75 * x56) + (-1 * x91 * x23) + (x76 * x50) +
-							(x83 * x72) + x86 + (-1 * x82 * x84) + (-1 * x87));
+						(-1 * x84 * (*_x0).Object.Pose.Rot[3]) + (x73 * x49) + x81 + (x70 * x72) + (-1 * x77 * x23) +
+							(x78 * (*_x0).Object.Pose.Rot[2]) + (-1 * x79 * (*_x0).Object.Pose.Rot[1]) + (-1 * x82));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.Velocity.Pos[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Object.Velocity.Pos[0]) / sizeof(FLT), 1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.Velocity.Pos[1]) / sizeof(FLT),
@@ -2458,28 +2831,108 @@ SurviveJointKalmanModelAddErrorModel_jac_error_state(CnMat *Hx, const SurviveJoi
 						offsetof(SurviveJointKalmanErrorModel, Object.Acc[1]) / sizeof(FLT), 1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.Acc[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Object.Acc[2]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.AccScale) / sizeof(FLT),
-						offsetof(SurviveJointKalmanErrorModel, Object.AccScale) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUCorrection[0]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanErrorModel, Object.IMUCorrection[0]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUCorrection[1]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanErrorModel, Object.IMUCorrection[1]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUCorrection[2]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanErrorModel, Object.IMUCorrection[2]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUCorrection[3]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanErrorModel, Object.IMUCorrection[3]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.AccBias[0]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanErrorModel, Object.AccBias[0]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.AccBias[1]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanErrorModel, Object.AccBias[1]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.AccBias[2]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanErrorModel, Object.AccBias[2]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.GyroBias[0]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanErrorModel, Object.GyroBias[0]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.GyroBias[1]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanErrorModel, Object.GyroBias[1]) / sizeof(FLT), 1);
-	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.GyroBias[2]) / sizeof(FLT),
-						offsetof(SurviveJointKalmanErrorModel, Object.GyroBias[2]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.AccScale[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.AccScale[0]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.AccScale[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.AccScale[1]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.AccScale[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.AccScale[2]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						(-1 * x147) + (x145 * (*_x0).Object.IMUBias.IMUCorrection[1]) + (-1 * x142 * x143) + x118 +
+							(x139 * (*_x0).Object.IMUBias.IMUCorrection[2]) +
+							(x137 * (*_x0).Object.IMUBias.IMUCorrection[3]) +
+							(-1 * x140 * (*_x0).Object.IMUBias.IMUCorrection[2]) + (x127 * x141));
+	cnMatrixOptionalSet(
+		Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+		offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+		(x161 * (*_x0).Object.IMUBias.IMUCorrection[0]) + (-1 * x117 * x149) +
+			(x157 * (*_x0).Object.IMUBias.IMUCorrection[3]) + (x155 * (*_x0).Object.IMUBias.IMUCorrection[1]) +
+			(-1 * x162 * (*_x0).Object.IMUBias.IMUCorrection[0]) +
+			(-1 * x159 * (*_x0).Object.IMUBias.IMUCorrection[3]) + (x158 * (*_x0).Object.IMUBias.IMUCorrection[2]) +
+			(-1 * x160 * (*_x0).Object.IMUBias.IMUCorrection[2]));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						(-1 * x174) + x172 + (-1 * x171 * (*_x0).Object.IMUBias.IMUCorrection[0]) +
+							(x167 * (*_x0).Object.IMUBias.IMUCorrection[2]) +
+							(x166 * (*_x0).Object.IMUBias.IMUCorrection[1]) +
+							(x169 * (*_x0).Object.IMUBias.IMUCorrection[0]) + (-1 * x168 * x164) +
+							(x170 * (*_x0).Object.IMUBias.IMUCorrection[3]));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						x177 + (-1 * x137 * (*_x0).Object.IMUBias.IMUCorrection[2]) + x176 + (-1 * x142 * x144) +
+							(-1 * x175 * (*_x0).Object.IMUBias.IMUCorrection[1]) + (x117 * x127) +
+							(x139 * (*_x0).Object.IMUBias.IMUCorrection[3]) +
+							(-1 * x140 * (*_x0).Object.IMUBias.IMUCorrection[3]));
+	cnMatrixOptionalSet(
+		Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+		offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+		(x159 * (*_x0).Object.IMUBias.IMUCorrection[2]) + (-1 * x162 * (*_x0).Object.IMUBias.IMUCorrection[1]) +
+			(x161 * (*_x0).Object.IMUBias.IMUCorrection[1]) + (x158 * (*_x0).Object.IMUBias.IMUCorrection[3]) +
+			(-1 * x155 * (*_x0).Object.IMUBias.IMUCorrection[0]) + (x141 * x149) +
+			(-1 * x157 * (*_x0).Object.IMUBias.IMUCorrection[2]) +
+			(-1 * x160 * (*_x0).Object.IMUBias.IMUCorrection[3]));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						x179 + (-1 * x164 * x173) + x178 + (-1 * x166 * (*_x0).Object.IMUBias.IMUCorrection[0]) +
+							(x169 * (*_x0).Object.IMUBias.IMUCorrection[1]) +
+							(x167 * (*_x0).Object.IMUBias.IMUCorrection[3]) +
+							(-1 * x170 * (*_x0).Object.IMUBias.IMUCorrection[2]) +
+							(-1 * x171 * (*_x0).Object.IMUBias.IMUCorrection[1]));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						(x127 * x168) + (x140 * (*_x0).Object.IMUBias.IMUCorrection[0]) +
+							(-1 * x175 * (*_x0).Object.IMUBias.IMUCorrection[2]) + x172 +
+							(-1 * x145 * (*_x0).Object.IMUBias.IMUCorrection[3]) + (-1 * x138 * x142) +
+							(x137 * (*_x0).Object.IMUBias.IMUCorrection[1]) + x174);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+						(-1 * x162 * (*_x0).Object.IMUBias.IMUCorrection[2]) +
+							(x160 * (*_x0).Object.IMUBias.IMUCorrection[0]) +
+							(-1 * x158 * (*_x0).Object.IMUBias.IMUCorrection[0]) + (x168 * x150) +
+							(-1 * x159 * (*_x0).Object.IMUBias.IMUCorrection[1]) +
+							(-1 * x155 * (*_x0).Object.IMUBias.IMUCorrection[3]) +
+							(x157 * (*_x0).Object.IMUBias.IMUCorrection[1]) + (x173 * x149));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						(x164 * x141) + (-1 * x171 * (*_x0).Object.IMUBias.IMUCorrection[2]) +
+							(x169 * (*_x0).Object.IMUBias.IMUCorrection[2]) +
+							(-1 * x167 * (*_x0).Object.IMUBias.IMUCorrection[0]) +
+							(x170 * (*_x0).Object.IMUBias.IMUCorrection[1]) + x118 +
+							(-1 * x166 * (*_x0).Object.IMUBias.IMUCorrection[3]) + x147);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[3]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[0]) / sizeof(FLT),
+						(x145 * (*_x0).Object.IMUBias.IMUCorrection[2]) + (x127 * x173) +
+							(x140 * (*_x0).Object.IMUBias.IMUCorrection[1]) + x179 +
+							(-1 * x139 * (*_x0).Object.IMUBias.IMUCorrection[1]) +
+							(-1 * x175 * (*_x0).Object.IMUBias.IMUCorrection[3]) + (-1 * x178) + (-1 * x136 * x142));
+	cnMatrixOptionalSet(
+		Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[3]) / sizeof(FLT),
+		offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[1]) / sizeof(FLT),
+		(x161 * (*_x0).Object.IMUBias.IMUCorrection[3]) + (-1 * x168 * x149) +
+			(x159 * (*_x0).Object.IMUBias.IMUCorrection[0]) + (x160 * (*_x0).Object.IMUBias.IMUCorrection[1]) +
+			(-1 * x162 * (*_x0).Object.IMUBias.IMUCorrection[3]) +
+			(-1 * x158 * (*_x0).Object.IMUBias.IMUCorrection[1]) +
+			(-1 * x157 * (*_x0).Object.IMUBias.IMUCorrection[0]) + (x155 * (*_x0).Object.IMUBias.IMUCorrection[2]));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.IMUCorrection[3]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.IMUCorrection[2]) / sizeof(FLT),
+						(x166 * (*_x0).Object.IMUBias.IMUCorrection[2]) + x177 + (x117 * x164) + (-1 * x176) +
+							(-1 * x167 * (*_x0).Object.IMUBias.IMUCorrection[1]) +
+							(-1 * x171 * (*_x0).Object.IMUBias.IMUCorrection[3]) +
+							(-1 * x170 * (*_x0).Object.IMUBias.IMUCorrection[0]) +
+							(x169 * (*_x0).Object.IMUBias.IMUCorrection[3]));
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.AccBias[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.AccBias[0]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.AccBias[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.AccBias[1]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.AccBias[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.AccBias[2]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.GyroBias[0]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.GyroBias[0]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.GyroBias[1]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.GyroBias[1]) / sizeof(FLT), 1);
+	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Object.IMUBias.GyroBias[2]) / sizeof(FLT),
+						offsetof(SurviveJointKalmanErrorModel, Object.IMUBias.GyroBias[2]) / sizeof(FLT), 1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Pos[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Lighthouse.Pos[0]) / sizeof(FLT), 1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Pos[1]) / sizeof(FLT),
@@ -2488,54 +2941,66 @@ SurviveJointKalmanModelAddErrorModel_jac_error_state(CnMat *Hx, const SurviveJoi
 						offsetof(SurviveJointKalmanErrorModel, Lighthouse.Pos[2]) / sizeof(FLT), 1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[0]) / sizeof(FLT),
-						(x153 * x154) + (-1 * x138 * x152) + (x129 * x151) + x144 + (x121 * x141) + (x107 * x150) +
-							(-1 * x148) + (-1 * x146 * x145));
+						x230 + (-1 * x232 * (*_x0).Lighthouse.Rot[0]) + (x236 * (*_x0).Lighthouse.Rot[3]) +
+							(x240 * (*_x0).Lighthouse.Rot[2]) + (x227 * (*_x0).Lighthouse.Rot[1]) + (-1 * x238 * x220) +
+							(x237 * x204) + (-1 * x234));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[1]) / sizeof(FLT),
-						(-1 * x168 * (*_x0).Lighthouse.Rot[2]) + (x167 * (*_x0).Lighthouse.Rot[0]) + (x118 * x166) +
-							(-1 * x163 * x145) + (x164 * x149) + (-1 * x143 * x156) + (-1 * x147 * x159) +
-							(x165 * x153));
+						(-1 * x253 * (*_x0).Lighthouse.Rot[2]) + (x252 * (*_x0).Lighthouse.Rot[0]) +
+							(x251 * (*_x0).Lighthouse.Rot[1]) + (-1 * x248 * (*_x0).Lighthouse.Rot[0]) +
+							(-1 * x233 * x245) + (x250 * (*_x0).Lighthouse.Rot[2]) + (-1 * x229 * x242) +
+							(x249 * (*_x0).Lighthouse.Rot[3]));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[0]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[2]) / sizeof(FLT),
-						(x170 * x151) + (-1 * x173 * x145) + x169 + (x121 * x177) + (x174 * x149) + (x176 * x153) +
-							(-1 * x175) + (-1 * x171 * x152));
+						(x262 * (*_x0).Lighthouse.Rot[1]) + (x261 * (*_x0).Lighthouse.Rot[2]) +
+							(-1 * x258 * (*_x0).Lighthouse.Rot[0]) + (x237 * x255) + (-1 * x260) + x254 +
+							(x235 * x259) + (-1 * x238 * x256));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[1]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[0]) / sizeof(FLT),
-						x179 + (-1 * x180 * x153) + x178 + (x129 * x143) + (-1 * x138 * x147) + (-1 * x121 * x146) +
-							(-1 * x141 * x145) + (x112 * x150));
+						(-1 * x236 * (*_x0).Lighthouse.Rot[2]) + (x204 * x229) +
+							(-1 * x232 * (*_x0).Lighthouse.Rot[1]) + (-1 * x227 * (*_x0).Lighthouse.Rot[0]) + x263 +
+							(-1 * x233 * x220) + x264 + (x240 * (*_x0).Lighthouse.Rot[3]));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[1]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[1]) / sizeof(FLT),
-						(-1 * x164 * x153) + (x152 * x159) + (x151 * x156) + (x167 * (*_x0).Lighthouse.Rot[1]) +
-							(-1 * x115 * x166) + (-1 * x161 * x147) + (x165 * x149) + (-1 * x181 * x145));
+						(-1 * x249 * (*_x0).Lighthouse.Rot[2]) + (x237 * x242) + (x238 * x245) +
+							(-1 * x248 * (*_x0).Lighthouse.Rot[1]) + (x252 * (*_x0).Lighthouse.Rot[1]) +
+							(x250 * (*_x0).Lighthouse.Rot[3]) + (-1 * x251 * (*_x0).Lighthouse.Rot[0]) +
+							(-1 * x233 * x246));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[1]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[2]) / sizeof(FLT),
-						x184 + (-1 * x121 * x173) + x183 + (x176 * x149) + (-1 * x171 * x147) + (-1 * x174 * x153) +
-							(-1 * x182 * (*_x0).Lighthouse.Rot[0]) + (x170 * x143));
+						x267 + (-1 * x258 * (*_x0).Lighthouse.Rot[1]) + (x239 * x259) +
+							(-1 * x262 * (*_x0).Lighthouse.Rot[0]) + (x255 * x229) +
+							(-1 * x265 * (*_x0).Lighthouse.Rot[2]) + x266 + (-1 * x233 * x256));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[0]) / sizeof(FLT),
-						(-1 * x146 * x153) + (x121 * x180) + (-1 * x145 * x154) + x169 + (x138 * x151) +
-							(-1 * x118 * x150) + (x129 * x152) + x175);
+						(-1 * x232 * (*_x0).Lighthouse.Rot[2]) + (-1 * x240 * (*_x0).Lighthouse.Rot[0]) +
+							(x236 * (*_x0).Lighthouse.Rot[1]) + x254 + (x237 * x220) +
+							(-1 * x227 * (*_x0).Lighthouse.Rot[3]) + (x238 * x204) + x260);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[1]) / sizeof(FLT),
-						(x168 * (*_x0).Lighthouse.Rot[0]) + (-1 * x143 * x159) + (x121 * x164) +
-							(x167 * (*_x0).Lighthouse.Rot[2]) + (-1 * x181 * x149) + (-1 * x163 * x153) +
-							(-1 * x165 * x145) + (x147 * x156));
+						(x253 * (*_x0).Lighthouse.Rot[0]) + (x249 * (*_x0).Lighthouse.Rot[1]) +
+							(x252 * (*_x0).Lighthouse.Rot[2]) + (-1 * x251 * (*_x0).Lighthouse.Rot[3]) +
+							(-1 * x229 * x245) + (-1 * x250 * (*_x0).Lighthouse.Rot[0]) +
+							(-1 * x248 * (*_x0).Lighthouse.Rot[2]) + (x233 * x242));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[2]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[2]) / sizeof(FLT),
-						(-1 * x173 * x153) + (x170 * x152) + (x171 * x151) + (x121 * x174) + (-1 * x177 * x149) + x144 +
-							x148 + (-1 * x176 * x145));
+						(-1 * x258 * (*_x0).Lighthouse.Rot[2]) + (x237 * x256) + (x238 * x255) + (-1 * x259 * x226) +
+							(x265 * (*_x0).Lighthouse.Rot[1]) + x230 + (-1 * x261 * (*_x0).Lighthouse.Rot[0]) + x234);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[3]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[0]) / sizeof(FLT),
-						(x141 * x153) + (-1 * x180 * x145) + (-1 * x115 * x150) + (x138 * x143) + x184 + (x129 * x147) +
-							(-1 * x185 * x140) + (-1 * x183));
+						x267 + (x227 * (*_x0).Lighthouse.Rot[2]) + (x220 * x229) +
+							(-1 * x240 * (*_x0).Lighthouse.Rot[1]) + (-1 * x232 * (*_x0).Lighthouse.Rot[3]) +
+							(-1 * x266) + (-1 * x236 * (*_x0).Lighthouse.Rot[0]) + (x233 * x204));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[3]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[1]) / sizeof(FLT),
-						(-1 * x152 * x156) + (-1 * x163 * x149) + (-1 * x162 * x185) + (-1 * x164 * x145) +
-							(x168 * (*_x0).Lighthouse.Rot[1]) + (x181 * x153) + (x151 * x159) + (x147 * x157));
+						(x237 * x245) + (-1 * x238 * x242) + (-1 * x248 * (*_x0).Lighthouse.Rot[3]) +
+							(-1 * x250 * (*_x0).Lighthouse.Rot[1]) + (-1 * x249 * (*_x0).Lighthouse.Rot[0]) +
+							(x253 * (*_x0).Lighthouse.Rot[1]) + (x251 * (*_x0).Lighthouse.Rot[2]) + (x233 * x243));
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, Lighthouse.Rot[3]) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, Lighthouse.AxisAngleRot[2]) / sizeof(FLT),
-						(-1 * x178) + (x170 * x147) + (-1 * x173 * x149) + (x171 * x143) + (-1 * x174 * x145) +
-							(-1 * x172 * x185) + (x182 * (*_x0).Lighthouse.Rot[2]) + x179);
+						(-1 * x263) + (-1 * x231 * x259) + (x233 * x255) + (-1 * x261 * (*_x0).Lighthouse.Rot[1]) +
+							(x262 * (*_x0).Lighthouse.Rot[2]) + (x256 * x229) + (-1 * x265 * (*_x0).Lighthouse.Rot[0]) +
+							x264);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, BSD0.phase) / sizeof(FLT),
 						offsetof(SurviveJointKalmanErrorModel, BSD0.phase) / sizeof(FLT), 1);
 	cnMatrixOptionalSet(Hx, offsetof(SurviveJointKalmanModel, BSD0.tilt) / sizeof(FLT),
@@ -2569,24 +3034,25 @@ SurviveJointKalmanModelAddErrorModel_jac_error_state(CnMat *Hx, const SurviveJoi
 // Full version Jacobian of SurviveJointKalmanModelAddErrorModel wrt [(*error_state).Lighthouse.AxisAngleRot[0],
 // (*error_state).Lighthouse.AxisAngleRot[1], (*error_state).Lighthouse.AxisAngleRot[2],
 // (*error_state).Lighthouse.Pos[0], (*error_state).Lighthouse.Pos[1], (*error_state).Lighthouse.Pos[2],
-// (*error_state).Object.AccBias[0], (*error_state).Object.AccBias[1], (*error_state).Object.AccBias[2],
 // (*error_state).Object.Acc[0], (*error_state).Object.Acc[1], (*error_state).Object.Acc[2],
-// (*error_state).Object.GyroBias[0], (*error_state).Object.GyroBias[1], (*error_state).Object.GyroBias[2],
-// (*error_state).Object.IMUCorrection[0], (*error_state).Object.IMUCorrection[1],
-// (*error_state).Object.IMUCorrection[2], (*error_state).Object.IMUCorrection[3],
+// (*error_state).Object.IMUBias.AccBias[0], (*error_state).Object.IMUBias.AccBias[1],
+// (*error_state).Object.IMUBias.AccBias[2], (*error_state).Object.IMUBias.AccScale[0],
+// (*error_state).Object.IMUBias.AccScale[1], (*error_state).Object.IMUBias.AccScale[2],
+// (*error_state).Object.IMUBias.GyroBias[0], (*error_state).Object.IMUBias.GyroBias[1],
+// (*error_state).Object.IMUBias.GyroBias[2], (*error_state).Object.IMUBias.IMUCorrection[0],
+// (*error_state).Object.IMUBias.IMUCorrection[1], (*error_state).Object.IMUBias.IMUCorrection[2],
 // (*error_state).Object.Pose.AxisAngleRot[0], (*error_state).Object.Pose.AxisAngleRot[1],
 // (*error_state).Object.Pose.AxisAngleRot[2], (*error_state).Object.Pose.Pos[0], (*error_state).Object.Pose.Pos[1],
 // (*error_state).Object.Pose.Pos[2], (*error_state).Object.Velocity.AxisAngleRot[0],
 // (*error_state).Object.Velocity.AxisAngleRot[1], (*error_state).Object.Velocity.AxisAngleRot[2],
 // (*error_state).Object.Velocity.Pos[0], (*error_state).Object.Velocity.Pos[1], (*error_state).Object.Velocity.Pos[2],
-// <cnkalman.codegen.WrapMember object at 0x7f61a586deb0>, <cnkalman.codegen.WrapMember object at 0x7f61a58b17c0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58b1610>, <cnkalman.codegen.WrapMember object at 0x7f61a58b1940>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58b18e0>, <cnkalman.codegen.WrapMember object at 0x7f61a58b1490>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58b14c0>, <cnkalman.codegen.WrapMember object at 0x7f61a58b19d0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58b1b20>, <cnkalman.codegen.WrapMember object at 0x7f61a58b19a0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58b1760>, <cnkalman.codegen.WrapMember object at 0x7f61a58b13a0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58b1430>, <cnkalman.codegen.WrapMember object at 0x7f61a58b1a90>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58b1790>]
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c35f430>, <cnkalman.codegen.WrapMember object at 0x7f4d1c377a90>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c35f1f0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c377f40>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c35f2b0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c377fa0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c35f220>, <cnkalman.codegen.WrapMember object at 0x7f4d1c377d90>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c35f250>, <cnkalman.codegen.WrapMember object at 0x7f4d1c377e50>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c35f880>, <cnkalman.codegen.WrapMember object at 0x7f4d1c35f6d0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c35f730>, <cnkalman.codegen.WrapMember object at 0x7f4d1c377220>]
 static inline FLT SurviveJointKalmanErrorModel_LightMeas_x_gen1(const FLT dt, const SurviveJointKalmanModel *_x0,
 																const SurviveJointKalmanErrorModel *error_model,
 																const FLT *sensor_pt) {
@@ -2724,21 +3190,23 @@ static inline FLT SurviveJointKalmanErrorModel_LightMeas_x_gen1(const FLT dt, co
 
 // Jacobian of SurviveJointKalmanErrorModel_LightMeas_x_gen1 wrt [(*_x0).Lighthouse.Pos[0], (*_x0).Lighthouse.Pos[1],
 // (*_x0).Lighthouse.Pos[2], (*_x0).Lighthouse.Rot[0], (*_x0).Lighthouse.Rot[1], (*_x0).Lighthouse.Rot[2],
-// (*_x0).Lighthouse.Rot[3], (*_x0).Object.AccBias[0], (*_x0).Object.AccBias[1], (*_x0).Object.AccBias[2],
-// (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2], (*_x0).Object.GyroBias[0],
-// (*_x0).Object.GyroBias[1], (*_x0).Object.GyroBias[2], (*_x0).Object.IMUCorrection[0], (*_x0).Object.IMUCorrection[1],
-// (*_x0).Object.IMUCorrection[2], (*_x0).Object.IMUCorrection[3], (*_x0).Object.Pose.Pos[0], (*_x0).Object.Pose.Pos[1],
-// (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0], (*_x0).Object.Pose.Rot[1], (*_x0).Object.Pose.Rot[2],
-// (*_x0).Object.Pose.Rot[3], (*_x0).Object.Velocity.AxisAngleRot[0], (*_x0).Object.Velocity.AxisAngleRot[1],
-// (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0], (*_x0).Object.Velocity.Pos[1],
-// (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f61a5866340>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a58530d0>, <cnkalman.codegen.WrapMember object at 0x7f61a58533a0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5853190>, <cnkalman.codegen.WrapMember object at 0x7f61a5853460>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5853130>, <cnkalman.codegen.WrapMember object at 0x7f61a5853400>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5853250>, <cnkalman.codegen.WrapMember object at 0x7f61a5853520>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a58531f0>, <cnkalman.codegen.WrapMember object at 0x7f61a58534c0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5866e80>, <cnkalman.codegen.WrapMember object at 0x7f61a58532e0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5853070>, <cnkalman.codegen.WrapMember object at 0x7f61a5853340>]
+// (*_x0).Lighthouse.Rot[3], (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2],
+// (*_x0).Object.IMUBias.AccBias[0], (*_x0).Object.IMUBias.AccBias[1], (*_x0).Object.IMUBias.AccBias[2],
+// (*_x0).Object.IMUBias.AccScale[0], (*_x0).Object.IMUBias.AccScale[1], (*_x0).Object.IMUBias.AccScale[2],
+// (*_x0).Object.IMUBias.GyroBias[0], (*_x0).Object.IMUBias.GyroBias[1], (*_x0).Object.IMUBias.GyroBias[2],
+// (*_x0).Object.IMUBias.IMUCorrection[0], (*_x0).Object.IMUBias.IMUCorrection[1],
+// (*_x0).Object.IMUBias.IMUCorrection[2], (*_x0).Object.IMUBias.IMUCorrection[3], (*_x0).Object.Pose.Pos[0],
+// (*_x0).Object.Pose.Pos[1], (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0], (*_x0).Object.Pose.Rot[1],
+// (*_x0).Object.Pose.Rot[2], (*_x0).Object.Pose.Rot[3], (*_x0).Object.Velocity.AxisAngleRot[0],
+// (*_x0).Object.Velocity.AxisAngleRot[1], (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0],
+// (*_x0).Object.Velocity.Pos[1], (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f4d1c32f2e0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32f5b0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c32f3a0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32f670>, <cnkalman.codegen.WrapMember object at 0x7f4d1c32f340>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32f610>, <cnkalman.codegen.WrapMember object at 0x7f4d1c32f460>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32f730>, <cnkalman.codegen.WrapMember object at 0x7f4d1c32f400>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32f6d0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c398dc0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32f4f0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c32f280>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32f550>]
 static inline void SurviveJointKalmanErrorModel_LightMeas_x_gen1_jac_x0(CnMat *Hx, const FLT dt,
 																		const SurviveJointKalmanModel *_x0,
 																		const SurviveJointKalmanErrorModel *error_model,
@@ -3540,22 +4008,23 @@ static inline void SurviveJointKalmanErrorModel_LightMeas_x_gen1_jac_x0(CnMat *H
 
 // Full version Jacobian of SurviveJointKalmanErrorModel_LightMeas_x_gen1 wrt [(*_x0).Lighthouse.Pos[0],
 // (*_x0).Lighthouse.Pos[1], (*_x0).Lighthouse.Pos[2], (*_x0).Lighthouse.Rot[0], (*_x0).Lighthouse.Rot[1],
-// (*_x0).Lighthouse.Rot[2], (*_x0).Lighthouse.Rot[3], (*_x0).Object.AccBias[0], (*_x0).Object.AccBias[1],
-// (*_x0).Object.AccBias[2], (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2],
-// (*_x0).Object.GyroBias[0], (*_x0).Object.GyroBias[1], (*_x0).Object.GyroBias[2], (*_x0).Object.IMUCorrection[0],
-// (*_x0).Object.IMUCorrection[1], (*_x0).Object.IMUCorrection[2], (*_x0).Object.IMUCorrection[3],
-// (*_x0).Object.Pose.Pos[0], (*_x0).Object.Pose.Pos[1], (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0],
-// (*_x0).Object.Pose.Rot[1], (*_x0).Object.Pose.Rot[2], (*_x0).Object.Pose.Rot[3],
-// (*_x0).Object.Velocity.AxisAngleRot[0], (*_x0).Object.Velocity.AxisAngleRot[1],
-// (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0], (*_x0).Object.Velocity.Pos[1],
-// (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f61a5866340>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a58530d0>, <cnkalman.codegen.WrapMember object at 0x7f61a58533a0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5853190>, <cnkalman.codegen.WrapMember object at 0x7f61a5853460>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5853130>, <cnkalman.codegen.WrapMember object at 0x7f61a5853400>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5853250>, <cnkalman.codegen.WrapMember object at 0x7f61a5853520>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a58531f0>, <cnkalman.codegen.WrapMember object at 0x7f61a58534c0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5866e80>, <cnkalman.codegen.WrapMember object at 0x7f61a58532e0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5853070>, <cnkalman.codegen.WrapMember object at 0x7f61a5853340>]
+// (*_x0).Lighthouse.Rot[2], (*_x0).Lighthouse.Rot[3], (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2],
+// (*_x0).Object.IMUBias.AccBias[0], (*_x0).Object.IMUBias.AccBias[1], (*_x0).Object.IMUBias.AccBias[2],
+// (*_x0).Object.IMUBias.AccScale[0], (*_x0).Object.IMUBias.AccScale[1], (*_x0).Object.IMUBias.AccScale[2],
+// (*_x0).Object.IMUBias.GyroBias[0], (*_x0).Object.IMUBias.GyroBias[1], (*_x0).Object.IMUBias.GyroBias[2],
+// (*_x0).Object.IMUBias.IMUCorrection[0], (*_x0).Object.IMUBias.IMUCorrection[1],
+// (*_x0).Object.IMUBias.IMUCorrection[2], (*_x0).Object.IMUBias.IMUCorrection[3], (*_x0).Object.Pose.Pos[0],
+// (*_x0).Object.Pose.Pos[1], (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0], (*_x0).Object.Pose.Rot[1],
+// (*_x0).Object.Pose.Rot[2], (*_x0).Object.Pose.Rot[3], (*_x0).Object.Velocity.AxisAngleRot[0],
+// (*_x0).Object.Velocity.AxisAngleRot[1], (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0],
+// (*_x0).Object.Velocity.Pos[1], (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f4d1c32f2e0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32f5b0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c32f3a0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32f670>, <cnkalman.codegen.WrapMember object at 0x7f4d1c32f340>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32f610>, <cnkalman.codegen.WrapMember object at 0x7f4d1c32f460>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32f730>, <cnkalman.codegen.WrapMember object at 0x7f4d1c32f400>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32f6d0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c398dc0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32f4f0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c32f280>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32f550>]
 
 static inline void SurviveJointKalmanErrorModel_LightMeas_x_gen1_jac_x0_with_hx(
 	CnMat *Hx, CnMat *hx, const FLT dt, const SurviveJointKalmanModel *_x0,
@@ -3570,24 +4039,25 @@ static inline void SurviveJointKalmanErrorModel_LightMeas_x_gen1_jac_x0_with_hx(
 // Jacobian of SurviveJointKalmanErrorModel_LightMeas_x_gen1 wrt [(*error_model).Lighthouse.AxisAngleRot[0],
 // (*error_model).Lighthouse.AxisAngleRot[1], (*error_model).Lighthouse.AxisAngleRot[2],
 // (*error_model).Lighthouse.Pos[0], (*error_model).Lighthouse.Pos[1], (*error_model).Lighthouse.Pos[2],
-// (*error_model).Object.AccBias[0], (*error_model).Object.AccBias[1], (*error_model).Object.AccBias[2],
 // (*error_model).Object.Acc[0], (*error_model).Object.Acc[1], (*error_model).Object.Acc[2],
-// (*error_model).Object.GyroBias[0], (*error_model).Object.GyroBias[1], (*error_model).Object.GyroBias[2],
-// (*error_model).Object.IMUCorrection[0], (*error_model).Object.IMUCorrection[1],
-// (*error_model).Object.IMUCorrection[2], (*error_model).Object.IMUCorrection[3],
+// (*error_model).Object.IMUBias.AccBias[0], (*error_model).Object.IMUBias.AccBias[1],
+// (*error_model).Object.IMUBias.AccBias[2], (*error_model).Object.IMUBias.AccScale[0],
+// (*error_model).Object.IMUBias.AccScale[1], (*error_model).Object.IMUBias.AccScale[2],
+// (*error_model).Object.IMUBias.GyroBias[0], (*error_model).Object.IMUBias.GyroBias[1],
+// (*error_model).Object.IMUBias.GyroBias[2], (*error_model).Object.IMUBias.IMUCorrection[0],
+// (*error_model).Object.IMUBias.IMUCorrection[1], (*error_model).Object.IMUBias.IMUCorrection[2],
 // (*error_model).Object.Pose.AxisAngleRot[0], (*error_model).Object.Pose.AxisAngleRot[1],
 // (*error_model).Object.Pose.AxisAngleRot[2], (*error_model).Object.Pose.Pos[0], (*error_model).Object.Pose.Pos[1],
 // (*error_model).Object.Pose.Pos[2], (*error_model).Object.Velocity.AxisAngleRot[0],
 // (*error_model).Object.Velocity.AxisAngleRot[1], (*error_model).Object.Velocity.AxisAngleRot[2],
 // (*error_model).Object.Velocity.Pos[0], (*error_model).Object.Velocity.Pos[1], (*error_model).Object.Velocity.Pos[2],
-// <cnkalman.codegen.WrapMember object at 0x7f61a5853a30>, <cnkalman.codegen.WrapMember object at 0x7f61a5867760>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5867a30>, <cnkalman.codegen.WrapMember object at 0x7f61a5867820>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5867af0>, <cnkalman.codegen.WrapMember object at 0x7f61a58677c0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5867a90>, <cnkalman.codegen.WrapMember object at 0x7f61a58678e0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5867bb0>, <cnkalman.codegen.WrapMember object at 0x7f61a5867880>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5867b50>, <cnkalman.codegen.WrapMember object at 0x7f61a58675b0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5867970>, <cnkalman.codegen.WrapMember object at 0x7f61a5867700>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58679d0>]
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c328700>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3283d0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3284c0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c328160>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c328430>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3280d0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c328580>, <cnkalman.codegen.WrapMember object at 0x7f4d1c328250>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c328520>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3281f0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c328850>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3282e0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3286a0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c328370>]
 static inline void SurviveJointKalmanErrorModel_LightMeas_x_gen1_jac_error_model(
 	CnMat *Hx, const FLT dt, const SurviveJointKalmanModel *_x0, const SurviveJointKalmanErrorModel *error_model,
 	const FLT *sensor_pt) {
@@ -4489,24 +4959,25 @@ static inline void SurviveJointKalmanErrorModel_LightMeas_x_gen1_jac_error_model
 // Full version Jacobian of SurviveJointKalmanErrorModel_LightMeas_x_gen1 wrt
 // [(*error_model).Lighthouse.AxisAngleRot[0], (*error_model).Lighthouse.AxisAngleRot[1],
 // (*error_model).Lighthouse.AxisAngleRot[2], (*error_model).Lighthouse.Pos[0], (*error_model).Lighthouse.Pos[1],
-// (*error_model).Lighthouse.Pos[2], (*error_model).Object.AccBias[0], (*error_model).Object.AccBias[1],
-// (*error_model).Object.AccBias[2], (*error_model).Object.Acc[0], (*error_model).Object.Acc[1],
-// (*error_model).Object.Acc[2], (*error_model).Object.GyroBias[0], (*error_model).Object.GyroBias[1],
-// (*error_model).Object.GyroBias[2], (*error_model).Object.IMUCorrection[0], (*error_model).Object.IMUCorrection[1],
-// (*error_model).Object.IMUCorrection[2], (*error_model).Object.IMUCorrection[3],
+// (*error_model).Lighthouse.Pos[2], (*error_model).Object.Acc[0], (*error_model).Object.Acc[1],
+// (*error_model).Object.Acc[2], (*error_model).Object.IMUBias.AccBias[0], (*error_model).Object.IMUBias.AccBias[1],
+// (*error_model).Object.IMUBias.AccBias[2], (*error_model).Object.IMUBias.AccScale[0],
+// (*error_model).Object.IMUBias.AccScale[1], (*error_model).Object.IMUBias.AccScale[2],
+// (*error_model).Object.IMUBias.GyroBias[0], (*error_model).Object.IMUBias.GyroBias[1],
+// (*error_model).Object.IMUBias.GyroBias[2], (*error_model).Object.IMUBias.IMUCorrection[0],
+// (*error_model).Object.IMUBias.IMUCorrection[1], (*error_model).Object.IMUBias.IMUCorrection[2],
 // (*error_model).Object.Pose.AxisAngleRot[0], (*error_model).Object.Pose.AxisAngleRot[1],
 // (*error_model).Object.Pose.AxisAngleRot[2], (*error_model).Object.Pose.Pos[0], (*error_model).Object.Pose.Pos[1],
 // (*error_model).Object.Pose.Pos[2], (*error_model).Object.Velocity.AxisAngleRot[0],
 // (*error_model).Object.Velocity.AxisAngleRot[1], (*error_model).Object.Velocity.AxisAngleRot[2],
 // (*error_model).Object.Velocity.Pos[0], (*error_model).Object.Velocity.Pos[1], (*error_model).Object.Velocity.Pos[2],
-// <cnkalman.codegen.WrapMember object at 0x7f61a5853a30>, <cnkalman.codegen.WrapMember object at 0x7f61a5867760>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5867a30>, <cnkalman.codegen.WrapMember object at 0x7f61a5867820>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5867af0>, <cnkalman.codegen.WrapMember object at 0x7f61a58677c0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5867a90>, <cnkalman.codegen.WrapMember object at 0x7f61a58678e0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5867bb0>, <cnkalman.codegen.WrapMember object at 0x7f61a5867880>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5867b50>, <cnkalman.codegen.WrapMember object at 0x7f61a58675b0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5867970>, <cnkalman.codegen.WrapMember object at 0x7f61a5867700>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58679d0>]
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c328700>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3283d0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3284c0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c328160>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c328430>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3280d0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c328580>, <cnkalman.codegen.WrapMember object at 0x7f4d1c328250>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c328520>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3281f0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c328850>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3282e0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3286a0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c328370>]
 
 static inline void SurviveJointKalmanErrorModel_LightMeas_x_gen1_jac_error_model_with_hx(
 	CnMat *Hx, CnMat *hx, const FLT dt, const SurviveJointKalmanModel *_x0,
@@ -4877,21 +5348,23 @@ static inline FLT SurviveJointKalmanErrorModel_LightMeas_y_gen1(const FLT dt, co
 
 // Jacobian of SurviveJointKalmanErrorModel_LightMeas_y_gen1 wrt [(*_x0).Lighthouse.Pos[0], (*_x0).Lighthouse.Pos[1],
 // (*_x0).Lighthouse.Pos[2], (*_x0).Lighthouse.Rot[0], (*_x0).Lighthouse.Rot[1], (*_x0).Lighthouse.Rot[2],
-// (*_x0).Lighthouse.Rot[3], (*_x0).Object.AccBias[0], (*_x0).Object.AccBias[1], (*_x0).Object.AccBias[2],
-// (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2], (*_x0).Object.GyroBias[0],
-// (*_x0).Object.GyroBias[1], (*_x0).Object.GyroBias[2], (*_x0).Object.IMUCorrection[0], (*_x0).Object.IMUCorrection[1],
-// (*_x0).Object.IMUCorrection[2], (*_x0).Object.IMUCorrection[3], (*_x0).Object.Pose.Pos[0], (*_x0).Object.Pose.Pos[1],
-// (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0], (*_x0).Object.Pose.Rot[1], (*_x0).Object.Pose.Rot[2],
-// (*_x0).Object.Pose.Rot[3], (*_x0).Object.Velocity.AxisAngleRot[0], (*_x0).Object.Velocity.AxisAngleRot[1],
-// (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0], (*_x0).Object.Velocity.Pos[1],
-// (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f61a5874940>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5854d00>, <cnkalman.codegen.WrapMember object at 0x7f61a5854ca0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5854df0>, <cnkalman.codegen.WrapMember object at 0x7f61a5854970>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5854d90>, <cnkalman.codegen.WrapMember object at 0x7f61a5854340>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5854b20>, <cnkalman.codegen.WrapMember object at 0x7f61a5854a60>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5854e50>, <cnkalman.codegen.WrapMember object at 0x7f61a5854a00>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5854ee0>, <cnkalman.codegen.WrapMember object at 0x7f61a5854be0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5854190>, <cnkalman.codegen.WrapMember object at 0x7f61a5854c40>]
+// (*_x0).Lighthouse.Rot[3], (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2],
+// (*_x0).Object.IMUBias.AccBias[0], (*_x0).Object.IMUBias.AccBias[1], (*_x0).Object.IMUBias.AccBias[2],
+// (*_x0).Object.IMUBias.AccScale[0], (*_x0).Object.IMUBias.AccScale[1], (*_x0).Object.IMUBias.AccScale[2],
+// (*_x0).Object.IMUBias.GyroBias[0], (*_x0).Object.IMUBias.GyroBias[1], (*_x0).Object.IMUBias.GyroBias[2],
+// (*_x0).Object.IMUBias.IMUCorrection[0], (*_x0).Object.IMUBias.IMUCorrection[1],
+// (*_x0).Object.IMUBias.IMUCorrection[2], (*_x0).Object.IMUBias.IMUCorrection[3], (*_x0).Object.Pose.Pos[0],
+// (*_x0).Object.Pose.Pos[1], (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0], (*_x0).Object.Pose.Rot[1],
+// (*_x0).Object.Pose.Rot[2], (*_x0).Object.Pose.Rot[3], (*_x0).Object.Velocity.AxisAngleRot[0],
+// (*_x0).Object.Velocity.AxisAngleRot[1], (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0],
+// (*_x0).Object.Velocity.Pos[1], (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f4d1c3388b0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c338b80>, <cnkalman.codegen.WrapMember object at 0x7f4d1c338970>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c338c40>, <cnkalman.codegen.WrapMember object at 0x7f4d1c338910>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c338be0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c338a30>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c338d00>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3389d0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c338ca0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3237f0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c338ac0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c338850>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c338b20>]
 static inline void SurviveJointKalmanErrorModel_LightMeas_y_gen1_jac_x0(CnMat *Hx, const FLT dt,
 																		const SurviveJointKalmanModel *_x0,
 																		const SurviveJointKalmanErrorModel *error_model,
@@ -5695,22 +6168,23 @@ static inline void SurviveJointKalmanErrorModel_LightMeas_y_gen1_jac_x0(CnMat *H
 
 // Full version Jacobian of SurviveJointKalmanErrorModel_LightMeas_y_gen1 wrt [(*_x0).Lighthouse.Pos[0],
 // (*_x0).Lighthouse.Pos[1], (*_x0).Lighthouse.Pos[2], (*_x0).Lighthouse.Rot[0], (*_x0).Lighthouse.Rot[1],
-// (*_x0).Lighthouse.Rot[2], (*_x0).Lighthouse.Rot[3], (*_x0).Object.AccBias[0], (*_x0).Object.AccBias[1],
-// (*_x0).Object.AccBias[2], (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2],
-// (*_x0).Object.GyroBias[0], (*_x0).Object.GyroBias[1], (*_x0).Object.GyroBias[2], (*_x0).Object.IMUCorrection[0],
-// (*_x0).Object.IMUCorrection[1], (*_x0).Object.IMUCorrection[2], (*_x0).Object.IMUCorrection[3],
-// (*_x0).Object.Pose.Pos[0], (*_x0).Object.Pose.Pos[1], (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0],
-// (*_x0).Object.Pose.Rot[1], (*_x0).Object.Pose.Rot[2], (*_x0).Object.Pose.Rot[3],
-// (*_x0).Object.Velocity.AxisAngleRot[0], (*_x0).Object.Velocity.AxisAngleRot[1],
-// (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0], (*_x0).Object.Velocity.Pos[1],
-// (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f61a5874940>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5854d00>, <cnkalman.codegen.WrapMember object at 0x7f61a5854ca0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5854df0>, <cnkalman.codegen.WrapMember object at 0x7f61a5854970>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5854d90>, <cnkalman.codegen.WrapMember object at 0x7f61a5854340>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5854b20>, <cnkalman.codegen.WrapMember object at 0x7f61a5854a60>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5854e50>, <cnkalman.codegen.WrapMember object at 0x7f61a5854a00>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5854ee0>, <cnkalman.codegen.WrapMember object at 0x7f61a5854be0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5854190>, <cnkalman.codegen.WrapMember object at 0x7f61a5854c40>]
+// (*_x0).Lighthouse.Rot[2], (*_x0).Lighthouse.Rot[3], (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2],
+// (*_x0).Object.IMUBias.AccBias[0], (*_x0).Object.IMUBias.AccBias[1], (*_x0).Object.IMUBias.AccBias[2],
+// (*_x0).Object.IMUBias.AccScale[0], (*_x0).Object.IMUBias.AccScale[1], (*_x0).Object.IMUBias.AccScale[2],
+// (*_x0).Object.IMUBias.GyroBias[0], (*_x0).Object.IMUBias.GyroBias[1], (*_x0).Object.IMUBias.GyroBias[2],
+// (*_x0).Object.IMUBias.IMUCorrection[0], (*_x0).Object.IMUBias.IMUCorrection[1],
+// (*_x0).Object.IMUBias.IMUCorrection[2], (*_x0).Object.IMUBias.IMUCorrection[3], (*_x0).Object.Pose.Pos[0],
+// (*_x0).Object.Pose.Pos[1], (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0], (*_x0).Object.Pose.Rot[1],
+// (*_x0).Object.Pose.Rot[2], (*_x0).Object.Pose.Rot[3], (*_x0).Object.Velocity.AxisAngleRot[0],
+// (*_x0).Object.Velocity.AxisAngleRot[1], (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0],
+// (*_x0).Object.Velocity.Pos[1], (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f4d1c3388b0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c338b80>, <cnkalman.codegen.WrapMember object at 0x7f4d1c338970>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c338c40>, <cnkalman.codegen.WrapMember object at 0x7f4d1c338910>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c338be0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c338a30>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c338d00>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3389d0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c338ca0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3237f0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c338ac0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c338850>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c338b20>]
 
 static inline void SurviveJointKalmanErrorModel_LightMeas_y_gen1_jac_x0_with_hx(
 	CnMat *Hx, CnMat *hx, const FLT dt, const SurviveJointKalmanModel *_x0,
@@ -5725,24 +6199,25 @@ static inline void SurviveJointKalmanErrorModel_LightMeas_y_gen1_jac_x0_with_hx(
 // Jacobian of SurviveJointKalmanErrorModel_LightMeas_y_gen1 wrt [(*error_model).Lighthouse.AxisAngleRot[0],
 // (*error_model).Lighthouse.AxisAngleRot[1], (*error_model).Lighthouse.AxisAngleRot[2],
 // (*error_model).Lighthouse.Pos[0], (*error_model).Lighthouse.Pos[1], (*error_model).Lighthouse.Pos[2],
-// (*error_model).Object.AccBias[0], (*error_model).Object.AccBias[1], (*error_model).Object.AccBias[2],
 // (*error_model).Object.Acc[0], (*error_model).Object.Acc[1], (*error_model).Object.Acc[2],
-// (*error_model).Object.GyroBias[0], (*error_model).Object.GyroBias[1], (*error_model).Object.GyroBias[2],
-// (*error_model).Object.IMUCorrection[0], (*error_model).Object.IMUCorrection[1],
-// (*error_model).Object.IMUCorrection[2], (*error_model).Object.IMUCorrection[3],
+// (*error_model).Object.IMUBias.AccBias[0], (*error_model).Object.IMUBias.AccBias[1],
+// (*error_model).Object.IMUBias.AccBias[2], (*error_model).Object.IMUBias.AccScale[0],
+// (*error_model).Object.IMUBias.AccScale[1], (*error_model).Object.IMUBias.AccScale[2],
+// (*error_model).Object.IMUBias.GyroBias[0], (*error_model).Object.IMUBias.GyroBias[1],
+// (*error_model).Object.IMUBias.GyroBias[2], (*error_model).Object.IMUBias.IMUCorrection[0],
+// (*error_model).Object.IMUBias.IMUCorrection[1], (*error_model).Object.IMUBias.IMUCorrection[2],
 // (*error_model).Object.Pose.AxisAngleRot[0], (*error_model).Object.Pose.AxisAngleRot[1],
 // (*error_model).Object.Pose.AxisAngleRot[2], (*error_model).Object.Pose.Pos[0], (*error_model).Object.Pose.Pos[1],
 // (*error_model).Object.Pose.Pos[2], (*error_model).Object.Velocity.AxisAngleRot[0],
 // (*error_model).Object.Velocity.AxisAngleRot[1], (*error_model).Object.Velocity.AxisAngleRot[2],
 // (*error_model).Object.Velocity.Pos[0], (*error_model).Object.Velocity.Pos[1], (*error_model).Object.Velocity.Pos[2],
-// <cnkalman.codegen.WrapMember object at 0x7f61a58545e0>, <cnkalman.codegen.WrapMember object at 0x7f61a58037f0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5803ac0>, <cnkalman.codegen.WrapMember object at 0x7f61a58038b0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5803b80>, <cnkalman.codegen.WrapMember object at 0x7f61a5803850>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5803b20>, <cnkalman.codegen.WrapMember object at 0x7f61a5803970>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5803c40>, <cnkalman.codegen.WrapMember object at 0x7f61a5803910>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5803be0>, <cnkalman.codegen.WrapMember object at 0x7f61a5803640>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5803a00>, <cnkalman.codegen.WrapMember object at 0x7f61a5803790>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5803a60>]
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c33a070>, <cnkalman.codegen.WrapMember object at 0x7f4d1c33a340>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c33a130>, <cnkalman.codegen.WrapMember object at 0x7f4d1c33a400>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c33a0d0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c33a3a0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c33a1f0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c33a4c0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c33a190>, <cnkalman.codegen.WrapMember object at 0x7f4d1c33a460>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c339e80>, <cnkalman.codegen.WrapMember object at 0x7f4d1c33a280>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c339fd0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c33a2e0>]
 static inline void SurviveJointKalmanErrorModel_LightMeas_y_gen1_jac_error_model(
 	CnMat *Hx, const FLT dt, const SurviveJointKalmanModel *_x0, const SurviveJointKalmanErrorModel *error_model,
 	const FLT *sensor_pt) {
@@ -6636,24 +7111,25 @@ static inline void SurviveJointKalmanErrorModel_LightMeas_y_gen1_jac_error_model
 // Full version Jacobian of SurviveJointKalmanErrorModel_LightMeas_y_gen1 wrt
 // [(*error_model).Lighthouse.AxisAngleRot[0], (*error_model).Lighthouse.AxisAngleRot[1],
 // (*error_model).Lighthouse.AxisAngleRot[2], (*error_model).Lighthouse.Pos[0], (*error_model).Lighthouse.Pos[1],
-// (*error_model).Lighthouse.Pos[2], (*error_model).Object.AccBias[0], (*error_model).Object.AccBias[1],
-// (*error_model).Object.AccBias[2], (*error_model).Object.Acc[0], (*error_model).Object.Acc[1],
-// (*error_model).Object.Acc[2], (*error_model).Object.GyroBias[0], (*error_model).Object.GyroBias[1],
-// (*error_model).Object.GyroBias[2], (*error_model).Object.IMUCorrection[0], (*error_model).Object.IMUCorrection[1],
-// (*error_model).Object.IMUCorrection[2], (*error_model).Object.IMUCorrection[3],
+// (*error_model).Lighthouse.Pos[2], (*error_model).Object.Acc[0], (*error_model).Object.Acc[1],
+// (*error_model).Object.Acc[2], (*error_model).Object.IMUBias.AccBias[0], (*error_model).Object.IMUBias.AccBias[1],
+// (*error_model).Object.IMUBias.AccBias[2], (*error_model).Object.IMUBias.AccScale[0],
+// (*error_model).Object.IMUBias.AccScale[1], (*error_model).Object.IMUBias.AccScale[2],
+// (*error_model).Object.IMUBias.GyroBias[0], (*error_model).Object.IMUBias.GyroBias[1],
+// (*error_model).Object.IMUBias.GyroBias[2], (*error_model).Object.IMUBias.IMUCorrection[0],
+// (*error_model).Object.IMUBias.IMUCorrection[1], (*error_model).Object.IMUBias.IMUCorrection[2],
 // (*error_model).Object.Pose.AxisAngleRot[0], (*error_model).Object.Pose.AxisAngleRot[1],
 // (*error_model).Object.Pose.AxisAngleRot[2], (*error_model).Object.Pose.Pos[0], (*error_model).Object.Pose.Pos[1],
 // (*error_model).Object.Pose.Pos[2], (*error_model).Object.Velocity.AxisAngleRot[0],
 // (*error_model).Object.Velocity.AxisAngleRot[1], (*error_model).Object.Velocity.AxisAngleRot[2],
 // (*error_model).Object.Velocity.Pos[0], (*error_model).Object.Velocity.Pos[1], (*error_model).Object.Velocity.Pos[2],
-// <cnkalman.codegen.WrapMember object at 0x7f61a58545e0>, <cnkalman.codegen.WrapMember object at 0x7f61a58037f0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5803ac0>, <cnkalman.codegen.WrapMember object at 0x7f61a58038b0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5803b80>, <cnkalman.codegen.WrapMember object at 0x7f61a5803850>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5803b20>, <cnkalman.codegen.WrapMember object at 0x7f61a5803970>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5803c40>, <cnkalman.codegen.WrapMember object at 0x7f61a5803910>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5803be0>, <cnkalman.codegen.WrapMember object at 0x7f61a5803640>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5803a00>, <cnkalman.codegen.WrapMember object at 0x7f61a5803790>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5803a60>]
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c33a070>, <cnkalman.codegen.WrapMember object at 0x7f4d1c33a340>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c33a130>, <cnkalman.codegen.WrapMember object at 0x7f4d1c33a400>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c33a0d0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c33a3a0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c33a1f0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c33a4c0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c33a190>, <cnkalman.codegen.WrapMember object at 0x7f4d1c33a460>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c339e80>, <cnkalman.codegen.WrapMember object at 0x7f4d1c33a280>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c339fd0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c33a2e0>]
 
 static inline void SurviveJointKalmanErrorModel_LightMeas_y_gen1_jac_error_model_with_hx(
 	CnMat *Hx, CnMat *hx, const FLT dt, const SurviveJointKalmanModel *_x0,
@@ -7034,21 +7510,23 @@ static inline FLT SurviveJointKalmanErrorModel_LightMeas_x_gen2(const FLT dt, co
 
 // Jacobian of SurviveJointKalmanErrorModel_LightMeas_x_gen2 wrt [(*_x0).Lighthouse.Pos[0], (*_x0).Lighthouse.Pos[1],
 // (*_x0).Lighthouse.Pos[2], (*_x0).Lighthouse.Rot[0], (*_x0).Lighthouse.Rot[1], (*_x0).Lighthouse.Rot[2],
-// (*_x0).Lighthouse.Rot[3], (*_x0).Object.AccBias[0], (*_x0).Object.AccBias[1], (*_x0).Object.AccBias[2],
-// (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2], (*_x0).Object.GyroBias[0],
-// (*_x0).Object.GyroBias[1], (*_x0).Object.GyroBias[2], (*_x0).Object.IMUCorrection[0], (*_x0).Object.IMUCorrection[1],
-// (*_x0).Object.IMUCorrection[2], (*_x0).Object.IMUCorrection[3], (*_x0).Object.Pose.Pos[0], (*_x0).Object.Pose.Pos[1],
-// (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0], (*_x0).Object.Pose.Rot[1], (*_x0).Object.Pose.Rot[2],
-// (*_x0).Object.Pose.Rot[3], (*_x0).Object.Velocity.AxisAngleRot[0], (*_x0).Object.Velocity.AxisAngleRot[1],
-// (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0], (*_x0).Object.Velocity.Pos[1],
-// (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f61a5800f10>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a580a3a0>, <cnkalman.codegen.WrapMember object at 0x7f61a580a670>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a580a460>, <cnkalman.codegen.WrapMember object at 0x7f61a580a730>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a580a400>, <cnkalman.codegen.WrapMember object at 0x7f61a580a6d0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a580a520>, <cnkalman.codegen.WrapMember object at 0x7f61a580a7f0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a580a4c0>, <cnkalman.codegen.WrapMember object at 0x7f61a580a790>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a580a190>, <cnkalman.codegen.WrapMember object at 0x7f61a580a5b0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a580a340>, <cnkalman.codegen.WrapMember object at 0x7f61a580a610>]
+// (*_x0).Lighthouse.Rot[3], (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2],
+// (*_x0).Object.IMUBias.AccBias[0], (*_x0).Object.IMUBias.AccBias[1], (*_x0).Object.IMUBias.AccBias[2],
+// (*_x0).Object.IMUBias.AccScale[0], (*_x0).Object.IMUBias.AccScale[1], (*_x0).Object.IMUBias.AccScale[2],
+// (*_x0).Object.IMUBias.GyroBias[0], (*_x0).Object.IMUBias.GyroBias[1], (*_x0).Object.IMUBias.GyroBias[2],
+// (*_x0).Object.IMUBias.IMUCorrection[0], (*_x0).Object.IMUBias.IMUCorrection[1],
+// (*_x0).Object.IMUBias.IMUCorrection[2], (*_x0).Object.IMUBias.IMUCorrection[3], (*_x0).Object.Pose.Pos[0],
+// (*_x0).Object.Pose.Pos[1], (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0], (*_x0).Object.Pose.Rot[1],
+// (*_x0).Object.Pose.Rot[2], (*_x0).Object.Pose.Rot[3], (*_x0).Object.Velocity.AxisAngleRot[0],
+// (*_x0).Object.Velocity.AxisAngleRot[1], (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0],
+// (*_x0).Object.Velocity.Pos[1], (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f4d1c32c430>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32c6a0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c32c730>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32c8e0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c32c040>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32c610>, <cnkalman.codegen.WrapMember object at 0x7f4d1c32c580>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32c820>, <cnkalman.codegen.WrapMember object at 0x7f4d1c32c4c0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32c880>, <cnkalman.codegen.WrapMember object at 0x7f4d1c32c1f0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32c2b0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c32c3a0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32cee0>]
 static inline void SurviveJointKalmanErrorModel_LightMeas_x_gen2_jac_x0(CnMat *Hx, const FLT dt,
 																		const SurviveJointKalmanModel *_x0,
 																		const SurviveJointKalmanErrorModel *error_model,
@@ -8303,22 +8781,23 @@ static inline void SurviveJointKalmanErrorModel_LightMeas_x_gen2_jac_x0(CnMat *H
 
 // Full version Jacobian of SurviveJointKalmanErrorModel_LightMeas_x_gen2 wrt [(*_x0).Lighthouse.Pos[0],
 // (*_x0).Lighthouse.Pos[1], (*_x0).Lighthouse.Pos[2], (*_x0).Lighthouse.Rot[0], (*_x0).Lighthouse.Rot[1],
-// (*_x0).Lighthouse.Rot[2], (*_x0).Lighthouse.Rot[3], (*_x0).Object.AccBias[0], (*_x0).Object.AccBias[1],
-// (*_x0).Object.AccBias[2], (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2],
-// (*_x0).Object.GyroBias[0], (*_x0).Object.GyroBias[1], (*_x0).Object.GyroBias[2], (*_x0).Object.IMUCorrection[0],
-// (*_x0).Object.IMUCorrection[1], (*_x0).Object.IMUCorrection[2], (*_x0).Object.IMUCorrection[3],
-// (*_x0).Object.Pose.Pos[0], (*_x0).Object.Pose.Pos[1], (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0],
-// (*_x0).Object.Pose.Rot[1], (*_x0).Object.Pose.Rot[2], (*_x0).Object.Pose.Rot[3],
-// (*_x0).Object.Velocity.AxisAngleRot[0], (*_x0).Object.Velocity.AxisAngleRot[1],
-// (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0], (*_x0).Object.Velocity.Pos[1],
-// (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f61a5800f10>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a580a3a0>, <cnkalman.codegen.WrapMember object at 0x7f61a580a670>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a580a460>, <cnkalman.codegen.WrapMember object at 0x7f61a580a730>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a580a400>, <cnkalman.codegen.WrapMember object at 0x7f61a580a6d0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a580a520>, <cnkalman.codegen.WrapMember object at 0x7f61a580a7f0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a580a4c0>, <cnkalman.codegen.WrapMember object at 0x7f61a580a790>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a580a190>, <cnkalman.codegen.WrapMember object at 0x7f61a580a5b0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a580a340>, <cnkalman.codegen.WrapMember object at 0x7f61a580a610>]
+// (*_x0).Lighthouse.Rot[2], (*_x0).Lighthouse.Rot[3], (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2],
+// (*_x0).Object.IMUBias.AccBias[0], (*_x0).Object.IMUBias.AccBias[1], (*_x0).Object.IMUBias.AccBias[2],
+// (*_x0).Object.IMUBias.AccScale[0], (*_x0).Object.IMUBias.AccScale[1], (*_x0).Object.IMUBias.AccScale[2],
+// (*_x0).Object.IMUBias.GyroBias[0], (*_x0).Object.IMUBias.GyroBias[1], (*_x0).Object.IMUBias.GyroBias[2],
+// (*_x0).Object.IMUBias.IMUCorrection[0], (*_x0).Object.IMUBias.IMUCorrection[1],
+// (*_x0).Object.IMUBias.IMUCorrection[2], (*_x0).Object.IMUBias.IMUCorrection[3], (*_x0).Object.Pose.Pos[0],
+// (*_x0).Object.Pose.Pos[1], (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0], (*_x0).Object.Pose.Rot[1],
+// (*_x0).Object.Pose.Rot[2], (*_x0).Object.Pose.Rot[3], (*_x0).Object.Velocity.AxisAngleRot[0],
+// (*_x0).Object.Velocity.AxisAngleRot[1], (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0],
+// (*_x0).Object.Velocity.Pos[1], (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f4d1c32c430>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32c6a0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c32c730>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32c8e0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c32c040>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32c610>, <cnkalman.codegen.WrapMember object at 0x7f4d1c32c580>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32c820>, <cnkalman.codegen.WrapMember object at 0x7f4d1c32c4c0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32c880>, <cnkalman.codegen.WrapMember object at 0x7f4d1c32c1f0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32c2b0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c32c3a0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c32cee0>]
 
 static inline void SurviveJointKalmanErrorModel_LightMeas_x_gen2_jac_x0_with_hx(
 	CnMat *Hx, CnMat *hx, const FLT dt, const SurviveJointKalmanModel *_x0,
@@ -8333,24 +8812,25 @@ static inline void SurviveJointKalmanErrorModel_LightMeas_x_gen2_jac_x0_with_hx(
 // Jacobian of SurviveJointKalmanErrorModel_LightMeas_x_gen2 wrt [(*error_model).Lighthouse.AxisAngleRot[0],
 // (*error_model).Lighthouse.AxisAngleRot[1], (*error_model).Lighthouse.AxisAngleRot[2],
 // (*error_model).Lighthouse.Pos[0], (*error_model).Lighthouse.Pos[1], (*error_model).Lighthouse.Pos[2],
-// (*error_model).Object.AccBias[0], (*error_model).Object.AccBias[1], (*error_model).Object.AccBias[2],
 // (*error_model).Object.Acc[0], (*error_model).Object.Acc[1], (*error_model).Object.Acc[2],
-// (*error_model).Object.GyroBias[0], (*error_model).Object.GyroBias[1], (*error_model).Object.GyroBias[2],
-// (*error_model).Object.IMUCorrection[0], (*error_model).Object.IMUCorrection[1],
-// (*error_model).Object.IMUCorrection[2], (*error_model).Object.IMUCorrection[3],
+// (*error_model).Object.IMUBias.AccBias[0], (*error_model).Object.IMUBias.AccBias[1],
+// (*error_model).Object.IMUBias.AccBias[2], (*error_model).Object.IMUBias.AccScale[0],
+// (*error_model).Object.IMUBias.AccScale[1], (*error_model).Object.IMUBias.AccScale[2],
+// (*error_model).Object.IMUBias.GyroBias[0], (*error_model).Object.IMUBias.GyroBias[1],
+// (*error_model).Object.IMUBias.GyroBias[2], (*error_model).Object.IMUBias.IMUCorrection[0],
+// (*error_model).Object.IMUBias.IMUCorrection[1], (*error_model).Object.IMUBias.IMUCorrection[2],
 // (*error_model).Object.Pose.AxisAngleRot[0], (*error_model).Object.Pose.AxisAngleRot[1],
 // (*error_model).Object.Pose.AxisAngleRot[2], (*error_model).Object.Pose.Pos[0], (*error_model).Object.Pose.Pos[1],
 // (*error_model).Object.Pose.Pos[2], (*error_model).Object.Velocity.AxisAngleRot[0],
 // (*error_model).Object.Velocity.AxisAngleRot[1], (*error_model).Object.Velocity.AxisAngleRot[2],
 // (*error_model).Object.Velocity.Pos[0], (*error_model).Object.Velocity.Pos[1], (*error_model).Object.Velocity.Pos[2],
-// <cnkalman.codegen.WrapMember object at 0x7f61a580ad00>, <cnkalman.codegen.WrapMember object at 0x7f61a586aa30>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a586ad00>, <cnkalman.codegen.WrapMember object at 0x7f61a586aaf0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a586adc0>, <cnkalman.codegen.WrapMember object at 0x7f61a586aa90>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a586ad60>, <cnkalman.codegen.WrapMember object at 0x7f61a586abb0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a586ae80>, <cnkalman.codegen.WrapMember object at 0x7f61a586ab50>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a586ae20>, <cnkalman.codegen.WrapMember object at 0x7f61a586a880>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a586ac40>, <cnkalman.codegen.WrapMember object at 0x7f61a586a9d0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a586aca0>]
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3346a0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3387c0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3349d0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3382e0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c334640>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3382b0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c338430>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3381c0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3383d0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c338100>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c334be0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3385b0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3348e0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c338700>]
 static inline void SurviveJointKalmanErrorModel_LightMeas_x_gen2_jac_error_model(
 	CnMat *Hx, const FLT dt, const SurviveJointKalmanModel *_x0, const SurviveJointKalmanErrorModel *error_model,
 	const FLT *sensor_pt) {
@@ -9671,24 +10151,25 @@ static inline void SurviveJointKalmanErrorModel_LightMeas_x_gen2_jac_error_model
 // Full version Jacobian of SurviveJointKalmanErrorModel_LightMeas_x_gen2 wrt
 // [(*error_model).Lighthouse.AxisAngleRot[0], (*error_model).Lighthouse.AxisAngleRot[1],
 // (*error_model).Lighthouse.AxisAngleRot[2], (*error_model).Lighthouse.Pos[0], (*error_model).Lighthouse.Pos[1],
-// (*error_model).Lighthouse.Pos[2], (*error_model).Object.AccBias[0], (*error_model).Object.AccBias[1],
-// (*error_model).Object.AccBias[2], (*error_model).Object.Acc[0], (*error_model).Object.Acc[1],
-// (*error_model).Object.Acc[2], (*error_model).Object.GyroBias[0], (*error_model).Object.GyroBias[1],
-// (*error_model).Object.GyroBias[2], (*error_model).Object.IMUCorrection[0], (*error_model).Object.IMUCorrection[1],
-// (*error_model).Object.IMUCorrection[2], (*error_model).Object.IMUCorrection[3],
+// (*error_model).Lighthouse.Pos[2], (*error_model).Object.Acc[0], (*error_model).Object.Acc[1],
+// (*error_model).Object.Acc[2], (*error_model).Object.IMUBias.AccBias[0], (*error_model).Object.IMUBias.AccBias[1],
+// (*error_model).Object.IMUBias.AccBias[2], (*error_model).Object.IMUBias.AccScale[0],
+// (*error_model).Object.IMUBias.AccScale[1], (*error_model).Object.IMUBias.AccScale[2],
+// (*error_model).Object.IMUBias.GyroBias[0], (*error_model).Object.IMUBias.GyroBias[1],
+// (*error_model).Object.IMUBias.GyroBias[2], (*error_model).Object.IMUBias.IMUCorrection[0],
+// (*error_model).Object.IMUBias.IMUCorrection[1], (*error_model).Object.IMUBias.IMUCorrection[2],
 // (*error_model).Object.Pose.AxisAngleRot[0], (*error_model).Object.Pose.AxisAngleRot[1],
 // (*error_model).Object.Pose.AxisAngleRot[2], (*error_model).Object.Pose.Pos[0], (*error_model).Object.Pose.Pos[1],
 // (*error_model).Object.Pose.Pos[2], (*error_model).Object.Velocity.AxisAngleRot[0],
 // (*error_model).Object.Velocity.AxisAngleRot[1], (*error_model).Object.Velocity.AxisAngleRot[2],
 // (*error_model).Object.Velocity.Pos[0], (*error_model).Object.Velocity.Pos[1], (*error_model).Object.Velocity.Pos[2],
-// <cnkalman.codegen.WrapMember object at 0x7f61a580ad00>, <cnkalman.codegen.WrapMember object at 0x7f61a586aa30>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a586ad00>, <cnkalman.codegen.WrapMember object at 0x7f61a586aaf0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a586adc0>, <cnkalman.codegen.WrapMember object at 0x7f61a586aa90>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a586ad60>, <cnkalman.codegen.WrapMember object at 0x7f61a586abb0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a586ae80>, <cnkalman.codegen.WrapMember object at 0x7f61a586ab50>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a586ae20>, <cnkalman.codegen.WrapMember object at 0x7f61a586a880>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a586ac40>, <cnkalman.codegen.WrapMember object at 0x7f61a586a9d0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a586aca0>]
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3346a0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3387c0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3349d0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3382e0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c334640>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3382b0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c338430>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3381c0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3383d0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c338100>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c334be0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3385b0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3348e0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c338700>]
 
 static inline void SurviveJointKalmanErrorModel_LightMeas_x_gen2_jac_error_model_with_hx(
 	CnMat *Hx, CnMat *hx, const FLT dt, const SurviveJointKalmanModel *_x0,
@@ -10162,21 +10643,23 @@ static inline FLT SurviveJointKalmanErrorModel_LightMeas_y_gen2(const FLT dt, co
 
 // Jacobian of SurviveJointKalmanErrorModel_LightMeas_y_gen2 wrt [(*_x0).Lighthouse.Pos[0], (*_x0).Lighthouse.Pos[1],
 // (*_x0).Lighthouse.Pos[2], (*_x0).Lighthouse.Rot[0], (*_x0).Lighthouse.Rot[1], (*_x0).Lighthouse.Rot[2],
-// (*_x0).Lighthouse.Rot[3], (*_x0).Object.AccBias[0], (*_x0).Object.AccBias[1], (*_x0).Object.AccBias[2],
-// (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2], (*_x0).Object.GyroBias[0],
-// (*_x0).Object.GyroBias[1], (*_x0).Object.GyroBias[2], (*_x0).Object.IMUCorrection[0], (*_x0).Object.IMUCorrection[1],
-// (*_x0).Object.IMUCorrection[2], (*_x0).Object.IMUCorrection[3], (*_x0).Object.Pose.Pos[0], (*_x0).Object.Pose.Pos[1],
-// (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0], (*_x0).Object.Pose.Rot[1], (*_x0).Object.Pose.Rot[2],
-// (*_x0).Object.Pose.Rot[3], (*_x0).Object.Velocity.AxisAngleRot[0], (*_x0).Object.Velocity.AxisAngleRot[1],
-// (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0], (*_x0).Object.Velocity.Pos[1],
-// (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f61a5808df0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a58081c0>, <cnkalman.codegen.WrapMember object at 0x7f61a5804e20>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5804130>, <cnkalman.codegen.WrapMember object at 0x7f61a5804f10>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a58040d0>, <cnkalman.codegen.WrapMember object at 0x7f61a5804eb0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5804fd0>, <cnkalman.codegen.WrapMember object at 0x7f61a5804c40>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5804e50>, <cnkalman.codegen.WrapMember object at 0x7f61a5804bb0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a58081f0>, <cnkalman.codegen.WrapMember object at 0x7f61a5804fa0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5808130>, <cnkalman.codegen.WrapMember object at 0x7f61a5804be0>]
+// (*_x0).Lighthouse.Rot[3], (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2],
+// (*_x0).Object.IMUBias.AccBias[0], (*_x0).Object.IMUBias.AccBias[1], (*_x0).Object.IMUBias.AccBias[2],
+// (*_x0).Object.IMUBias.AccScale[0], (*_x0).Object.IMUBias.AccScale[1], (*_x0).Object.IMUBias.AccScale[2],
+// (*_x0).Object.IMUBias.GyroBias[0], (*_x0).Object.IMUBias.GyroBias[1], (*_x0).Object.IMUBias.GyroBias[2],
+// (*_x0).Object.IMUBias.IMUCorrection[0], (*_x0).Object.IMUBias.IMUCorrection[1],
+// (*_x0).Object.IMUBias.IMUCorrection[2], (*_x0).Object.IMUBias.IMUCorrection[3], (*_x0).Object.Pose.Pos[0],
+// (*_x0).Object.Pose.Pos[1], (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0], (*_x0).Object.Pose.Rot[1],
+// (*_x0).Object.Pose.Rot[2], (*_x0).Object.Pose.Rot[3], (*_x0).Object.Velocity.AxisAngleRot[0],
+// (*_x0).Object.Velocity.AxisAngleRot[1], (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0],
+// (*_x0).Object.Velocity.Pos[1], (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f4d1c38e7c0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c394af0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c394460>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3943d0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3944c0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c394430>, <cnkalman.codegen.WrapMember object at 0x7f4d1c394130>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3942e0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c394160>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c394370>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38e0a0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c394250>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38e850>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c394070>]
 static inline void SurviveJointKalmanErrorModel_LightMeas_y_gen2_jac_x0(CnMat *Hx, const FLT dt,
 																		const SurviveJointKalmanModel *_x0,
 																		const SurviveJointKalmanErrorModel *error_model,
@@ -11446,22 +11929,23 @@ static inline void SurviveJointKalmanErrorModel_LightMeas_y_gen2_jac_x0(CnMat *H
 
 // Full version Jacobian of SurviveJointKalmanErrorModel_LightMeas_y_gen2 wrt [(*_x0).Lighthouse.Pos[0],
 // (*_x0).Lighthouse.Pos[1], (*_x0).Lighthouse.Pos[2], (*_x0).Lighthouse.Rot[0], (*_x0).Lighthouse.Rot[1],
-// (*_x0).Lighthouse.Rot[2], (*_x0).Lighthouse.Rot[3], (*_x0).Object.AccBias[0], (*_x0).Object.AccBias[1],
-// (*_x0).Object.AccBias[2], (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2],
-// (*_x0).Object.GyroBias[0], (*_x0).Object.GyroBias[1], (*_x0).Object.GyroBias[2], (*_x0).Object.IMUCorrection[0],
-// (*_x0).Object.IMUCorrection[1], (*_x0).Object.IMUCorrection[2], (*_x0).Object.IMUCorrection[3],
-// (*_x0).Object.Pose.Pos[0], (*_x0).Object.Pose.Pos[1], (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0],
-// (*_x0).Object.Pose.Rot[1], (*_x0).Object.Pose.Rot[2], (*_x0).Object.Pose.Rot[3],
-// (*_x0).Object.Velocity.AxisAngleRot[0], (*_x0).Object.Velocity.AxisAngleRot[1],
-// (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0], (*_x0).Object.Velocity.Pos[1],
-// (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f61a5808df0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a58081c0>, <cnkalman.codegen.WrapMember object at 0x7f61a5804e20>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5804130>, <cnkalman.codegen.WrapMember object at 0x7f61a5804f10>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a58040d0>, <cnkalman.codegen.WrapMember object at 0x7f61a5804eb0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5804fd0>, <cnkalman.codegen.WrapMember object at 0x7f61a5804c40>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5804e50>, <cnkalman.codegen.WrapMember object at 0x7f61a5804bb0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a58081f0>, <cnkalman.codegen.WrapMember object at 0x7f61a5804fa0>, <cnkalman.codegen.WrapMember
-// object at 0x7f61a5808130>, <cnkalman.codegen.WrapMember object at 0x7f61a5804be0>]
+// (*_x0).Lighthouse.Rot[2], (*_x0).Lighthouse.Rot[3], (*_x0).Object.Acc[0], (*_x0).Object.Acc[1], (*_x0).Object.Acc[2],
+// (*_x0).Object.IMUBias.AccBias[0], (*_x0).Object.IMUBias.AccBias[1], (*_x0).Object.IMUBias.AccBias[2],
+// (*_x0).Object.IMUBias.AccScale[0], (*_x0).Object.IMUBias.AccScale[1], (*_x0).Object.IMUBias.AccScale[2],
+// (*_x0).Object.IMUBias.GyroBias[0], (*_x0).Object.IMUBias.GyroBias[1], (*_x0).Object.IMUBias.GyroBias[2],
+// (*_x0).Object.IMUBias.IMUCorrection[0], (*_x0).Object.IMUBias.IMUCorrection[1],
+// (*_x0).Object.IMUBias.IMUCorrection[2], (*_x0).Object.IMUBias.IMUCorrection[3], (*_x0).Object.Pose.Pos[0],
+// (*_x0).Object.Pose.Pos[1], (*_x0).Object.Pose.Pos[2], (*_x0).Object.Pose.Rot[0], (*_x0).Object.Pose.Rot[1],
+// (*_x0).Object.Pose.Rot[2], (*_x0).Object.Pose.Rot[3], (*_x0).Object.Velocity.AxisAngleRot[0],
+// (*_x0).Object.Velocity.AxisAngleRot[1], (*_x0).Object.Velocity.AxisAngleRot[2], (*_x0).Object.Velocity.Pos[0],
+// (*_x0).Object.Velocity.Pos[1], (*_x0).Object.Velocity.Pos[2], <cnkalman.codegen.WrapMember object at 0x7f4d1c38e7c0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c394af0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c394460>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3943d0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3944c0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c394430>, <cnkalman.codegen.WrapMember object at 0x7f4d1c394130>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3942e0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c394160>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c394370>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38e0a0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c394250>, <cnkalman.codegen.WrapMember object at 0x7f4d1c38e850>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c394070>]
 
 static inline void SurviveJointKalmanErrorModel_LightMeas_y_gen2_jac_x0_with_hx(
 	CnMat *Hx, CnMat *hx, const FLT dt, const SurviveJointKalmanModel *_x0,
@@ -11476,24 +11960,25 @@ static inline void SurviveJointKalmanErrorModel_LightMeas_y_gen2_jac_x0_with_hx(
 // Jacobian of SurviveJointKalmanErrorModel_LightMeas_y_gen2 wrt [(*error_model).Lighthouse.AxisAngleRot[0],
 // (*error_model).Lighthouse.AxisAngleRot[1], (*error_model).Lighthouse.AxisAngleRot[2],
 // (*error_model).Lighthouse.Pos[0], (*error_model).Lighthouse.Pos[1], (*error_model).Lighthouse.Pos[2],
-// (*error_model).Object.AccBias[0], (*error_model).Object.AccBias[1], (*error_model).Object.AccBias[2],
 // (*error_model).Object.Acc[0], (*error_model).Object.Acc[1], (*error_model).Object.Acc[2],
-// (*error_model).Object.GyroBias[0], (*error_model).Object.GyroBias[1], (*error_model).Object.GyroBias[2],
-// (*error_model).Object.IMUCorrection[0], (*error_model).Object.IMUCorrection[1],
-// (*error_model).Object.IMUCorrection[2], (*error_model).Object.IMUCorrection[3],
+// (*error_model).Object.IMUBias.AccBias[0], (*error_model).Object.IMUBias.AccBias[1],
+// (*error_model).Object.IMUBias.AccBias[2], (*error_model).Object.IMUBias.AccScale[0],
+// (*error_model).Object.IMUBias.AccScale[1], (*error_model).Object.IMUBias.AccScale[2],
+// (*error_model).Object.IMUBias.GyroBias[0], (*error_model).Object.IMUBias.GyroBias[1],
+// (*error_model).Object.IMUBias.GyroBias[2], (*error_model).Object.IMUBias.IMUCorrection[0],
+// (*error_model).Object.IMUBias.IMUCorrection[1], (*error_model).Object.IMUBias.IMUCorrection[2],
 // (*error_model).Object.Pose.AxisAngleRot[0], (*error_model).Object.Pose.AxisAngleRot[1],
 // (*error_model).Object.Pose.AxisAngleRot[2], (*error_model).Object.Pose.Pos[0], (*error_model).Object.Pose.Pos[1],
 // (*error_model).Object.Pose.Pos[2], (*error_model).Object.Velocity.AxisAngleRot[0],
 // (*error_model).Object.Velocity.AxisAngleRot[1], (*error_model).Object.Velocity.AxisAngleRot[2],
 // (*error_model).Object.Velocity.Pos[0], (*error_model).Object.Velocity.Pos[1], (*error_model).Object.Velocity.Pos[2],
-// <cnkalman.codegen.WrapMember object at 0x7f61a5804790>, <cnkalman.codegen.WrapMember object at 0x7f61a58788b0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5878550>, <cnkalman.codegen.WrapMember object at 0x7f61a58789a0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5878640>, <cnkalman.codegen.WrapMember object at 0x7f61a5878940>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58785e0>, <cnkalman.codegen.WrapMember object at 0x7f61a5878730>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58783d0>, <cnkalman.codegen.WrapMember object at 0x7f61a58785b0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58786a0>, <cnkalman.codegen.WrapMember object at 0x7f61a5878b20>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58787f0>, <cnkalman.codegen.WrapMember object at 0x7f61a58786d0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5878850>]
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c396340>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3966d0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c396280>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3967f0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3962e0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c396850>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3965e0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c396550>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c396760>, <cnkalman.codegen.WrapMember object at 0x7f4d1c396490>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3961f0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3966a0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c396370>, <cnkalman.codegen.WrapMember object at 0x7f4d1c396400>]
 static inline void SurviveJointKalmanErrorModel_LightMeas_y_gen2_jac_error_model(
 	CnMat *Hx, const FLT dt, const SurviveJointKalmanModel *_x0, const SurviveJointKalmanErrorModel *error_model,
 	const FLT *sensor_pt) {
@@ -12832,24 +13317,25 @@ static inline void SurviveJointKalmanErrorModel_LightMeas_y_gen2_jac_error_model
 // Full version Jacobian of SurviveJointKalmanErrorModel_LightMeas_y_gen2 wrt
 // [(*error_model).Lighthouse.AxisAngleRot[0], (*error_model).Lighthouse.AxisAngleRot[1],
 // (*error_model).Lighthouse.AxisAngleRot[2], (*error_model).Lighthouse.Pos[0], (*error_model).Lighthouse.Pos[1],
-// (*error_model).Lighthouse.Pos[2], (*error_model).Object.AccBias[0], (*error_model).Object.AccBias[1],
-// (*error_model).Object.AccBias[2], (*error_model).Object.Acc[0], (*error_model).Object.Acc[1],
-// (*error_model).Object.Acc[2], (*error_model).Object.GyroBias[0], (*error_model).Object.GyroBias[1],
-// (*error_model).Object.GyroBias[2], (*error_model).Object.IMUCorrection[0], (*error_model).Object.IMUCorrection[1],
-// (*error_model).Object.IMUCorrection[2], (*error_model).Object.IMUCorrection[3],
+// (*error_model).Lighthouse.Pos[2], (*error_model).Object.Acc[0], (*error_model).Object.Acc[1],
+// (*error_model).Object.Acc[2], (*error_model).Object.IMUBias.AccBias[0], (*error_model).Object.IMUBias.AccBias[1],
+// (*error_model).Object.IMUBias.AccBias[2], (*error_model).Object.IMUBias.AccScale[0],
+// (*error_model).Object.IMUBias.AccScale[1], (*error_model).Object.IMUBias.AccScale[2],
+// (*error_model).Object.IMUBias.GyroBias[0], (*error_model).Object.IMUBias.GyroBias[1],
+// (*error_model).Object.IMUBias.GyroBias[2], (*error_model).Object.IMUBias.IMUCorrection[0],
+// (*error_model).Object.IMUBias.IMUCorrection[1], (*error_model).Object.IMUBias.IMUCorrection[2],
 // (*error_model).Object.Pose.AxisAngleRot[0], (*error_model).Object.Pose.AxisAngleRot[1],
 // (*error_model).Object.Pose.AxisAngleRot[2], (*error_model).Object.Pose.Pos[0], (*error_model).Object.Pose.Pos[1],
 // (*error_model).Object.Pose.Pos[2], (*error_model).Object.Velocity.AxisAngleRot[0],
 // (*error_model).Object.Velocity.AxisAngleRot[1], (*error_model).Object.Velocity.AxisAngleRot[2],
 // (*error_model).Object.Velocity.Pos[0], (*error_model).Object.Velocity.Pos[1], (*error_model).Object.Velocity.Pos[2],
-// <cnkalman.codegen.WrapMember object at 0x7f61a5804790>, <cnkalman.codegen.WrapMember object at 0x7f61a58788b0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5878550>, <cnkalman.codegen.WrapMember object at 0x7f61a58789a0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5878640>, <cnkalman.codegen.WrapMember object at 0x7f61a5878940>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58785e0>, <cnkalman.codegen.WrapMember object at 0x7f61a5878730>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58783d0>, <cnkalman.codegen.WrapMember object at 0x7f61a58785b0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58786a0>, <cnkalman.codegen.WrapMember object at 0x7f61a5878b20>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a58787f0>, <cnkalman.codegen.WrapMember object at 0x7f61a58786d0>,
-// <cnkalman.codegen.WrapMember object at 0x7f61a5878850>]
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c396340>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3966d0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c396280>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3967f0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3962e0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c396850>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3965e0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c396550>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c396760>, <cnkalman.codegen.WrapMember object at 0x7f4d1c396490>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c3961f0>, <cnkalman.codegen.WrapMember object at 0x7f4d1c3966a0>,
+// <cnkalman.codegen.WrapMember object at 0x7f4d1c396370>, <cnkalman.codegen.WrapMember object at 0x7f4d1c396400>]
 
 static inline void SurviveJointKalmanErrorModel_LightMeas_y_gen2_jac_error_model_with_hx(
 	CnMat *Hx, CnMat *hx, const FLT dt, const SurviveJointKalmanModel *_x0,

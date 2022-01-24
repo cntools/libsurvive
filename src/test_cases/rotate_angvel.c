@@ -1,5 +1,4 @@
 
-#include "../generated/survive_imu.generated.h"
 #include "../src/generated/survive_reproject.aux.generated.h"
 #include "test_case.h"
 #include <linmath.h>

@@ -4,6 +4,10 @@ import cnkalman.codegen as cg
 import lighthouse_gen1
 import lighthouse_gen2
 from common_math import *
+
+from imu_model import SurviveIMUBiasModelAddErrorModel, SurviveIMUBiasModelToErrorModel, imu_predict_up, \
+    imu_predict_gyro
+
 from survive_types import *
 
 @cg.generate_code()
@@ -43,10 +47,7 @@ def SurviveKalmanModelToErrorModel(x1: SurviveKalmanModel, x0: SurviveKalmanMode
             AxisAngleRot=x1.Velocity.AxisAngleRot-x0.Velocity.AxisAngleRot
         ),
         Acc=x1.Acc - x0.Acc,
-        AccScale=x1.AccScale - x0.AccScale,
-        IMUCorrection=x1.IMUCorrection -x0.IMUCorrection,
-        AccBias=x1.AccBias -x0.AccBias,
-        GyroBias=x1.GyroBias- x0.GyroBias,
+        IMUBias=SurviveIMUBiasModelToErrorModel(x1.IMUBias, x0.IMUBias)
     )
 
 @cg.generate_code()
@@ -58,10 +59,7 @@ def SurviveKalmanModelAddErrorModel(x0: SurviveKalmanModel, error_state: Survive
             AxisAngleRot=x0.Velocity.AxisAngleRot + error_state.Velocity.AxisAngleRot
         ),
         Acc=x0.Acc + error_state.Acc,
-        AccScale=x0.AccScale + error_state.AccScale,
-        IMUCorrection=x0.IMUCorrection + error_state.IMUCorrection,
-        AccBias=x0.AccBias + error_state.AccBias,
-        GyroBias=x0.GyroBias + error_state.GyroBias,
+        IMUBias=SurviveIMUBiasModelAddErrorModel(x0.IMUBias, error_state.IMUBias)
     )
 
 @cg.generate_code()
@@ -78,10 +76,7 @@ def SurviveKalmanModelPredict(t, kalman_model : SurviveKalmanModel):
         Pose=SurvivePose(Pos=pos + vpos * t + obj_acc * (Abs(t) * t / 2), Rot=new_rot),
         Velocity=SurviveAxisAnglePose(vpos + obj_acc * t, obj_v.AxisAngleRot),
         Acc=kalman_model.Acc,
-        AccScale=kalman_model.AccScale,
-        IMUCorrection=kalman_model.IMUCorrection,
-        AccBias=kalman_model.AccBias,
-        GyroBias=kalman_model.GyroBias
+        IMUBias=kalman_model.IMUBias
     )
 
 
@@ -159,3 +154,13 @@ def SurviveKalmanErrorModel_LightMeas_x_gen2(dt : float, x0: SurviveKalmanModel,
 @cg.generate_code()
 def SurviveKalmanErrorModel_LightMeas_y_gen2(dt : float, x0: SurviveKalmanModel, error_model: SurviveKalmanErrorModel, sensor_pt: list, lh_p : SurvivePose,  bsc0 : BaseStationCal):
     return SurviveKalmanErrorModel_LightMeas(dt, lighthouse_gen2.reproject_axis_y_gen2, x0, error_model, sensor_pt, lh_p, bsc0)
+
+@cg.generate_code()
+def IMUMeasurementModel(model: SurviveKalmanModel):
+    return [*imu_predict_up(model), *imu_predict_gyro(model)]
+
+
+@cg.generate_code()
+def IMUMeasurementErrorModel(x0: SurviveKalmanModel, error_model: SurviveKalmanErrorModel):
+    x1 = SurviveKalmanModelAddErrorModel(x0, error_model)
+    return [*imu_predict_up(x1), *imu_predict_gyro(x1)]

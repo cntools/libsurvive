@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../generated/survive_imu.generated.h"
 #if !defined(__FreeBSD__) && !defined(__APPLE__)
 #include "malloc.h"
 #endif
@@ -19,26 +18,6 @@ static void rot_predict_quat(FLT t, const cnkalman_state_t *k, const CnMat *f_in
 	copy3d(CN_FLT_PTR(f_out) + 4, vel);
 
 	survive_apply_ang_velocity(CN_FLT_PTR(f_out), vel, t, rot);
-}
-
-static void rot_f_quat(FLT t, const struct cnkalman_state_s *k, const struct CnMat *x0, struct CnMat *x1,
-					   struct CnMat *F) {
-	// assert(fabs(t) < .1 && t >= 0);
-	if (fabs(t) > .11)
-		t = .11;
-	if (x1) {
-		rot_predict_quat(t, k, x0, x1);
-	}
-	if (F) {
-		// fprintf(stderr, "F eval: %f " SurvivePose_format "\n", t, SURVIVE_POSE_EXPAND(*(SurvivePose*)x->data.db));
-		FLT *f_row = alloca(sizeof(FLT) * F->rows * F->cols);
-		gen_imu_rot_f_jac_imu_rot(f_row, t, CN_FLT_PTR(x0));
-		cn_copy_in_row_major(F, f_row, F->cols);
-
-		for (int j = 0; j < 49; j++) {
-			assert(!isnan(f_row[j]));
-		}
-	}
 }
 
 static const double two_pi = 2.0 * 3.14159265358979323846;
@@ -292,78 +271,6 @@ TEST(Kalman, ExampleExtended) {
 	CN_FREE_STACK_MAT(Z);
 	CN_FREE_STACK_MAT(F);
 	CN_FREE_STACK_MAT(pos_Q_per_sec);
-	return 0;
-}
-
-TEST(Kalman, AngleQuat) {
-	// cnkalman_set_logging_level(1001);
-	cnkalman_state_t rotation;
-
-	FLT av = 1e0, vv = 1e0;
-	// clang-format off
-	FLT _pos_Q_per_sec[49] = {
-		av, 0, 0, 0, 0, 0, 0,
-		0, av, 0, 0, 0, 0, 0,
-		0,  0,av, 0, 0, 0, 0,
-		0,  0, 0, av,0,	0, 0,
-		0, 0, 0, 0, vv, 0, 0,
-		0, 0, 0, 0, 0, vv, 0,
-		0, 0, 0, 0, 0, 0, vv,
-	};
-	CnMat pos_Q_per_sec = cnMat(7, 7, _pos_Q_per_sec);
-	// clang-format on
-
-	cnkalman_state_init(&rotation, 7, rot_f_quat, 0, &pos_Q_per_sec, 0);
-
-	FLT P_init[] = {100, 100, 100, 100, 100, 100, 100};
-	cnkalman_set_P(&rotation, P_init);
-
-	CN_CREATE_STACK_MAT(true_state, 7, 1);
-	FLT true_state_init[7] = {1, 0, 0, 0, 1, 1, -1};
-	memcpy(_true_state, true_state_init, sizeof(true_state_init));
-	memcpy(CN_FLT_PTR(&rotation.state), true_state_init, sizeof(true_state_init));
-
-	CN_CREATE_STACK_MAT(Z, 4, 1);
-
-	// clang-format off
-	FLT _H[] = {
-		1, 0, 0, 0, 0, 0, 0,
-		0, 1, 0, 0, 0, 0, 0,
-		0, 0, 1, 0, 0, 0, 0,
-		0, 0, 0, 1, 0, 0, 0,
-	};
-	// clang-format on
-	CnMat H = cnMat_from_row_major(4, 7, _H);
-
-	for (int i = 1; i < 100; i++) {
-		FLT t = i * .1;
-
-		FLT rv = .01;
-		FLT _R[] = {rv, rv, rv, rv};
-		CnMat R = cnVec(4, _R);
-		memcpy(_Z, _true_state, 4 * sizeof(FLT));
-		for (int j = 0; j < 4; j++) {
-			_Z[j] += generateGaussianNoise(0, _R[j]);
-		}
-		quatnormalize(_Z, _Z);
-		cnkalman_predict_update_state(t, &rotation, &Z, &H, &R, 0);
-		quatnormalize(CN_FLT_PTR(&rotation.state), CN_FLT_PTR(&rotation.state));
-		fprintf(stderr, "Guess  " SurvivePose_format "\n",
-				SURVIVE_POSE_EXPAND(*(SurvivePose *)CN_FLT_PTR(&rotation.state)));
-		fprintf(stderr, "GT     " SurvivePose_format "\n", SURVIVE_POSE_EXPAND(*(SurvivePose *)_true_state));
-
-		FLT diff[7];
-		subnd(diff, CN_FLT_PTR(&rotation.state), _true_state, 7);
-		FLT err = normnd(diff, 7);
-		fprintf(stderr, "Error %f\n", err);
-		assert(err < 1);
-
-		rot_predict_quat(.1, 0, &true_state, &true_state);
-	}
-	cnkalman_state_free(&rotation);
-	CN_FREE_STACK_MAT(Z);
-	CN_FREE_STACK_MAT(true_state);
-
 	return 0;
 }
 

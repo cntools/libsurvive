@@ -157,8 +157,9 @@ static void draw_model(const SurviveKalmanModel *mdl) {
 		print_small_sci(mdl->Velocity.AxisAngleRot[i]);
 	printf("Fix: ");
 	for (int i = 0; i < 4; i++)
-		print_small_sci(mdl->IMUCorrection[i]);
-	print_small_sci(mdl->AccScale);
+		print_small_sci(mdl->IMUBias.IMUCorrection[i]);
+	for (int i = 0; i < 3; i++)
+		print_small_sci(mdl->IMUBias.AccScale[i]);
 	printf("\n");
 }
 

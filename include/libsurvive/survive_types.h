@@ -116,24 +116,32 @@ typedef LinmathAxisAnglePose SurviveAxisAnglePose;
 typedef LinmathAxisAngleMag SurviveAngularVelocity;
 typedef LinmathAxisAnglePose SurviveVelocity;
 
+typedef struct survive_imu_bias_model_t {
+	LinmathVec3d AccScale;	   // 1    17
+	LinmathQuat IMUCorrection; // 4    21
+	LinmathVec3d AccBias;	   // 3    24
+	LinmathVec3d GyroBias;	   // 3    27
+} SurviveIMUBiasModel;
+
+typedef struct survive_imu_bias_error_model_t {
+	LinmathVec3d AccScale;		// 1    17
+	LinmathVec3d IMUCorrection; // 3    20
+	LinmathVec3d AccBias;		// 3    23
+	LinmathVec3d GyroBias;		// 3    26
+} SurviveIMUBiasErrorModel;
+
 typedef struct survive_kalman_model_t {
 	SurvivePose Pose;		   // 7
 	SurviveVelocity Velocity;  // 6    13
 	LinmathVec3d Acc;		   // 3    16
-	FLT AccScale;			   // 1    17
-	LinmathQuat IMUCorrection; // 4    21
-	LinmathVec3d AccBias;	   // 3    24
-	LinmathVec3d GyroBias;	   // 3    27
+	SurviveIMUBiasModel IMUBias;
 } SurviveKalmanModel;
 
 typedef struct survive_kalman_error_model_t {
 	LinmathAxisAnglePose Pose; // 7
 	SurviveVelocity Velocity;  // 6    13
 	LinmathVec3d Acc;		   // 3    16
-	FLT AccScale;			   // 1    17
-	LinmathQuat IMUCorrection; // 4    21
-	LinmathVec3d AccBias;	   // 3    24
-	LinmathVec3d GyroBias;	   // 3    27
+	SurviveIMUBiasErrorModel IMUBias;
 } SurviveKalmanErrorModel;
 
 //Careful with this, you can't just add another one right now, would take minor changes in survive_data.c and the cal tools.

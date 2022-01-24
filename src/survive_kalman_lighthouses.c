@@ -5,7 +5,7 @@
 
 #include "generated/kalman_kinematics.gen.h"
 #include "generated/lighthouse_model.gen.h"
-#include "generated/survive_imu.generated.h"
+//#include "generated/survive_imu.generated.h"
 #include "generated/survive_reproject.aux.generated.h"
 
 // clang-format off
