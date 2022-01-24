@@ -41,7 +41,7 @@ STATIC_CONFIG_ITEM(LIGHTHOUSE_GEN, "lighthouse-gen", 'i',
 				   "Which lighthouse gen to use -- 1 for LH1, 2 for LH2, 0 (default) for auto-detect", 0)
 STATIC_CONFIG_ITEM(OUTPUT_CALLBACK_STATS, "output-callback-stats", 'f',
 				   "Print cb stats every given number of seconds. 0 disables this output.", 0.);
-STATIC_CONFIG_ITEM(THREADED_POSERS, "threaded-posers", 'b', "Whether or not to run each poser in their own thread.", 0)
+STATIC_CONFIG_ITEM(THREADED_POSERS, "threaded-posers", 'b', "Whether or not to run each poser in their own thread.", 1)
 
 STATIC_CONFIG_ITEM(LH_0_DISABLE, "lighthouse-0-disable", 'b', "Disable lh at idx 0", 0)
 STATIC_CONFIG_ITEM(LH_1_DISABLE, "lighthouse-1-disable", 'b', "Disable lh at idx 1", 0)
