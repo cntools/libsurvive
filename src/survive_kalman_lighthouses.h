@@ -5,7 +5,7 @@
 typedef struct SurviveKalmanLighthouse {
 	SurviveLighthouseKalmanModel state;
 
-	cnkalman_state_t model;
+	cnkalman_state_t model, bsd_model;
 	cnkalman_meas_model_t imu_model, obs_model;
 
 	FLT base_variance, up_variance;

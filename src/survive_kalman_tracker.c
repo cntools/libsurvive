@@ -72,12 +72,12 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 
     STRUCT_CONFIG_ITEM("kalman-joint-model-lightcap", "Ratio of confidence of LH over tracked object to use joint filter", 1e-2, t->joint_lightcap_ratio)
 
-	STRUCT_CONFIG_ITEM("kalman-initial-imu-variance", "Initial variance in IMU frame", 1e-5, t->params.initial_variance_imu_correction)
-	STRUCT_CONFIG_ITEM("kalman-initial-acc-scale-variance", "Initial variance in IMU frame", 1e-5, t->params.initial_acc_scale_variance)
-	STRUCT_CONFIG_ITEM("kalman-initial-gyro-variance", "Initial variance in gyro", 1e-5, t->params.initial_gyro_variance)
+	STRUCT_CONFIG_ITEM("kalman-initial-imu-variance", "Initial variance in IMU frame", 1e-6, t->params.initial_variance_imu_correction)
+	STRUCT_CONFIG_ITEM("kalman-initial-acc-scale-variance", "Initial variance in IMU frame", 1e-6, t->params.initial_acc_scale_variance)
+	STRUCT_CONFIG_ITEM("kalman-initial-gyro-variance", "Initial variance in gyro", 1e-6, t->params.initial_gyro_variance)
 
 	STRUCT_CONFIG_ITEM("kalman-zvu-moving", "", -1, t->zvu_moving_var)
-	STRUCT_CONFIG_ITEM("kalman-zvu-stationary", "", 1e-2, t->zvu_stationary_var)
+	STRUCT_CONFIG_ITEM("kalman-zvu-stationary", "", 1e-7, t->zvu_stationary_var)
 	STRUCT_CONFIG_ITEM("kalman-zvu-no-light", "", 1e-4, t->zvu_no_light_var)
 
 	STRUCT_CONFIG_ITEM("kalman-noise-model", "0 is jerk acceleration model, 1 is simple model", 0, t->noise_model)
@@ -440,6 +440,7 @@ void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker,
 			FLT ratio = lh_trace / obj_trace;
 			if(tracker->joint_lightcap_ratio >= 0 && tracker->joint_lightcap_ratio < ratio) {
 				tracker->joint_model.ks[0] = &ctx->bsd[lh].tracker->model;
+				tracker->joint_model.ks[1] = &ctx->bsd[lh].tracker->bsd_model;
 				//joint_meas.meas_jacobian_mode = cnkalman_jacobian_mode_debug;
 				rtn += cnkalman_meas_model_predict_update(time, &tracker->joint_model, &cbctx, &Z, &R);
 				survive_kalman_lighthouse_report(ctx->bsd[lh].tracker);
@@ -1367,8 +1368,8 @@ void survive_kalman_tracker_init(SurviveKalmanTracker *tracker, SurviveObject *s
 	tracker->model.datalog_user = tracker;
 	tracker->model.datalog = tracker_datalog;
 
-	cnkalman_state_t* states[] = {0, &tracker->model};
-	cnkalman_meas_model_multi_init(states, 2, "joint lightcap", &tracker->joint_model, map_joint_light_data);
+	cnkalman_state_t* states[] = {0, 0, &tracker->model};
+	cnkalman_meas_model_multi_init(states, 3, "joint lightcap", &tracker->joint_model, map_joint_light_data);
 	cnkalman_meas_model_t_joint_lightcap_attach_config(ctx, &tracker->joint_model);
 	tracker->joint_model.error_state_model = true;
 	if(tracker->joint_model.term_criteria.max_iterations == -1)

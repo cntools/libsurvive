@@ -114,6 +114,8 @@ void survive_kalman_lighthouse_report(SurviveKalmanLighthouse *tracker) {
 		}
 		survive_recording_write_to_output_nopreamble(ctx->recptr, "\n");
 
+		survive_recording_write_matrix(ctx->recptr, 0, 5, tracker->lh == 0 ? "bsd0" : "bsd1", &tracker->bsd_model.P);
+
 		CN_CREATE_STACK_MAT(BSD, 2, sizeof(BaseStationCal) / sizeof(FLT));
 		memcpy(BSD.data, (FLT *)&tracker->state.BSD0, 2 * sizeof(BaseStationCal));
 		CnMat tempBSD = cnMat(2, sizeof(BaseStationCal) / sizeof(FLT), (FLT *)&ctx->bsd[tracker->lh].fcal);
@@ -164,22 +166,20 @@ static SurviveLighthouseKalmanModel copy_model(const FLT *src, size_t state_size
 }
 static void state_update_fn(void *user, const struct CnMat *x0, const struct CnMat *E, struct CnMat *x1,
 							struct CnMat *dX_wrt_error_state) {
-	SurviveLighthouseKalmanModel state = copy_model(cn_as_const_vector(x0), x0->rows);
-	const FLT *x0v = cn_as_const_vector(x0);
+	assert(x0->rows == 7);
+	SurvivePose state = *(SurvivePose *)cn_as_const_vector(x0);
 	if (x1) {
-		SurviveLighthouseKalmanModel _x1 = {0};
-		SurviveLighthouseKalmanErrorModel error_state =
-			*(const SurviveLighthouseKalmanErrorModel *)cn_as_const_vector(E);
-		SurviveLighthouseKalmanModelAddErrorModel(&_x1, &state, &error_state);
+		SurvivePose _x1 = {0};
+		SurviveAxisAnglePose error_state = *(const SurviveAxisAnglePose *)cn_as_const_vector(E);
+		SurvivePoseAddErrorModel(&_x1, &state, &error_state);
 
-		quatnormalize(_x1.Lighthouse.Rot, _x1.Lighthouse.Rot);
+		quatnormalize(_x1.Rot, _x1.Rot);
 
 		memcpy(cn_as_vector(x1), &_x1, sizeof(FLT) * x1->rows);
 	}
 	if (dX_wrt_error_state) {
-		SurviveLighthouseKalmanErrorModel error_model = {0};
-		SurviveLighthouseKalmanModel state = copy_model(cn_as_const_vector(x0), x0->rows);
-		SurviveLighthouseKalmanModelAddErrorModel_jac_error_state(dX_wrt_error_state, &state, &error_model);
+		SurviveAxisAnglePose error_model = {0};
+		SurvivePoseAddErrorModel_jac_error_state(dX_wrt_error_state, &state, &error_model);
 		assert(cn_is_finite(dX_wrt_error_state));
 	}
 	assert(x1 == 0 || cn_is_finite(x1));
@@ -213,16 +213,21 @@ void survive_kalman_lighthouse_init(SurviveKalmanLighthouse *tracker, SurviveCon
 	tracker->state.Lighthouse.Rot[0] = 1;
 
 	// cnkalman_state_init(&tracker->model, 7, 0, 0, tracker, (FLT*)&tracker->state);
-	cnkalman_error_state_init(&tracker->model, sizeof tracker->state / sizeof(FLT),
-							  sizeof tracker->state / sizeof(FLT) - 1, 0, 0, error_fn, tracker, (FLT *)&tracker->state);
+	cnkalman_state_init(&tracker->bsd_model, sizeof(tracker->state.BSD0) * 2 / sizeof(FLT), 0, 0, tracker,
+						(FLT *)&tracker->state.BSD0);
+
+	cnkalman_error_state_init(&tracker->model, sizeof tracker->state.Lighthouse / sizeof(FLT),
+							  sizeof tracker->state.Lighthouse / sizeof(FLT) - 1, 0, 0, error_fn, tracker,
+							  (FLT *)&tracker->state);
 	tracker->model.Update_fn = state_update_fn;
 
 	for (int i = 1; i < 3; i++) {
 		tracker->variance_per_sec.Lighthouse.Pos[i] = tracker->variance_per_sec.Lighthouse.Pos[0];
 		tracker->variance_per_sec.Lighthouse.AxisAngleRot[i] = tracker->variance_per_sec.Lighthouse.AxisAngleRot[0];
 	}
-	tracker->model.state_variance_per_second =
-		cnVec(sizeof(SurviveLighthouseKalmanErrorModel) / sizeof(FLT), (FLT *)&tracker->variance_per_sec);
+	tracker->model.state_variance_per_second = cnVec(6, (FLT *)&tracker->variance_per_sec);
+
+	tracker->bsd_model.state_variance_per_second = cnVec(14, (FLT *)&tracker->variance_per_sec.BSD0);
 
 	cnkalman_meas_model_init(&tracker->model, "IMU", &tracker->imu_model, lighthouse_integrate_imu_hfn);
 	cnkalman_meas_model_t_lighthouse_imu_attach_config(ctx, &tracker->imu_model);
@@ -241,6 +246,7 @@ void survive_kalman_lighthouse_init(SurviveKalmanLighthouse *tracker, SurviveCon
 		.BSD0 = tracker->initial_variance,
 		.BSD1 = tracker->initial_variance};
 	cn_set_diag(&tracker->model.P, (const FLT *)&baseline);
+	cn_set_diag(&tracker->bsd_model.P, (const FLT *)&baseline.BSD0);
 }
 SURVIVE_EXPORT void survive_kalman_lighthouse_integrate_observation(SurviveKalmanLighthouse *tracker,
 																	const SurvivePose *pose, const FLT *_variance) {
