@@ -17,6 +17,7 @@ typedef struct SurviveKalmanLighthouse {
 
 	bool updating;
 
+	FLT initial_pos_var, initial_rot_var;
 	SurviveLighthouseKalmanErrorModel variance_per_sec;
 	struct {
 		int reported_poses;

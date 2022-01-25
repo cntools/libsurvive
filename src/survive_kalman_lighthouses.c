@@ -13,6 +13,9 @@ STRUCT_CONFIG_SECTION(SurviveKalmanLighthouse)
 	STRUCT_EXISTING_CONFIG_ITEM("report-covariance", t->report_covariance_cnt);
 	STRUCT_CONFIG_ITEM("kalman-lighthouse-up-variance", "", -1, t->up_variance);
 
+
+	STRUCT_CONFIG_ITEM("kalman-lighthouse-initial-pos-variance", "", 1e-1, t->initial_pos_var);
+	STRUCT_CONFIG_ITEM("kalman-lighthouse-initial-rot-variance", "", 1e-2, t->initial_rot_var);
 	STRUCT_CONFIG_ITEM("kalman-pos-variance-per-sec", "", 0, t->variance_per_sec.Lighthouse.Pos[0]);
 	STRUCT_CONFIG_ITEM("kalman-rot-variance-per-sec", "", 0, t->variance_per_sec.Lighthouse.AxisAngleRot[0]);
 
@@ -83,10 +86,10 @@ void survive_kalman_lighthouse_update_position(SurviveKalmanLighthouse *tracker,
 	tracker->state.Lighthouse = *(pose);
 
 	if (tracker->updating == false) {
-		SurviveLighthouseKalmanErrorModel baseline = {
-			.Lighthouse = {.Pos = {1e-1, 1e-1, 1e-1}, .AxisAngleRot = {1e-2, 1e-2, 1e-2}},
-			.BSD0 = tracker->initial_variance,
-			.BSD1 = tracker->initial_variance};
+		FLT pv = tracker->initial_pos_var, rv = tracker->initial_rot_var;
+		SurviveLighthouseKalmanErrorModel baseline = {.Lighthouse = {.Pos = {pv, pv, pv}, .AxisAngleRot = {rv, rv, rv}},
+													  .BSD0 = tracker->initial_variance,
+													  .BSD1 = tracker->initial_variance};
 
 		cnSetZero(&tracker->model.P);
 		cn_set_diag(&tracker->model.P, (const FLT *)&baseline);
@@ -201,7 +204,28 @@ void survive_kalman_lighthouse_ootx(SurviveKalmanLighthouse *tracker) {
 	tracker->state.BSD0 = tracker->ctx->bsd[tracker->lh].fcal[0];
 	tracker->state.BSD1 = tracker->ctx->bsd[tracker->lh].fcal[1];
 }
-
+void minimize_error_state_model_fn(void *user, const struct CnMat *x0, const struct CnMat *x1,
+								   struct CnMat *error_state, struct CnMat *E_jac_x1) {
+	if (error_state) {
+		CnMat x1v = cnMatConstView(error_state->rows, 1, x1, 0, 0);
+		CnMat x0v = cnMatConstView(error_state->rows, 1, x0, 0, 0);
+		cnSub(error_state, &x1v, &x0v);
+	}
+	if (E_jac_x1) {
+		cn_eye(E_jac_x1, 0);
+	}
+}
+void minimize_integrate_update_fn(void *user, const struct CnMat *x0, const struct CnMat *error_state, struct CnMat *x1,
+								  struct CnMat *dX_wrt_error_state) {
+	if (x1) {
+		CnMat x1v = cnMatView(error_state->rows, 1, x1, 0, 0);
+		CnMat x0v = cnMatConstView(error_state->rows, 1, x0, 0, 0);
+		cnAddScaled(&x1v, error_state, 1, &x0v, 1);
+	}
+	if (dX_wrt_error_state) {
+		cn_eye(dX_wrt_error_state, 0);
+	}
+}
 void survive_kalman_lighthouse_init(SurviveKalmanLighthouse *tracker, SurviveContext *ctx, int lh) {
 	memset(tracker, 0, sizeof(*tracker));
 	tracker->ctx = ctx;
@@ -218,8 +242,19 @@ void survive_kalman_lighthouse_init(SurviveKalmanLighthouse *tracker, SurviveCon
 	tracker->state.Lighthouse.Rot[0] = 1;
 
 	// cnkalman_state_init(&tracker->model, 7, 0, 0, tracker, (FLT*)&tracker->state);
-	cnkalman_state_init(&tracker->bsd_model, sizeof(tracker->state.BSD0) * 2 / sizeof(FLT), 0, 0, tracker,
-						(FLT *)&tracker->state.BSD0);
+	SurviveLighthouseKalmanErrorModel baseline = {
+		.Lighthouse = {.Pos = {1e5, 1e5, 1e5}, .AxisAngleRot = {1e5, 1e5, 1e5}},
+		.BSD0 = tracker->initial_variance,
+		.BSD1 = tracker->initial_variance};
+
+	int bsd_state_cnt = sizeof(tracker->state.BSD0) * 2 / sizeof(FLT);
+	while (bsd_state_cnt && ((FLT *)(&baseline.BSD0))[bsd_state_cnt - 1] == 0)
+		bsd_state_cnt--;
+
+	cnkalman_error_state_init(&tracker->bsd_model, sizeof(tracker->state.BSD0) * 2 / sizeof(FLT),
+							  bsd_state_cnt / sizeof(FLT), 0, 0, minimize_error_state_model_fn, tracker,
+							  (FLT *)&tracker->state.BSD0);
+	tracker->bsd_model.Update_fn = minimize_integrate_update_fn;
 
 	cnkalman_error_state_init(&tracker->model, sizeof tracker->state.Lighthouse / sizeof(FLT),
 							  sizeof tracker->state.Lighthouse / sizeof(FLT) - 1, 0, 0, error_fn, tracker,
@@ -232,7 +267,7 @@ void survive_kalman_lighthouse_init(SurviveKalmanLighthouse *tracker, SurviveCon
 	}
 	tracker->model.state_variance_per_second = cnVec(6, (FLT *)&tracker->variance_per_sec);
 
-	tracker->bsd_model.state_variance_per_second = cnVec(14, (FLT *)&tracker->variance_per_sec.BSD0);
+	tracker->bsd_model.state_variance_per_second = cnVec(bsd_state_cnt, (FLT *)&tracker->variance_per_sec.BSD0);
 
 	cnkalman_meas_model_init(&tracker->model, "IMU", &tracker->imu_model, lighthouse_integrate_imu_hfn);
 	cnkalman_meas_model_t_lighthouse_imu_attach_config(ctx, &tracker->imu_model);
@@ -246,10 +281,6 @@ void survive_kalman_lighthouse_init(SurviveKalmanLighthouse *tracker, SurviveCon
 	if (tracker->obs_model.term_criteria.max_iterations == -1)
 		tracker->obs_model.term_criteria.max_iterations = 10;
 
-	SurviveLighthouseKalmanErrorModel baseline = {
-		.Lighthouse = {.Pos = {1e5, 1e5, 1e5}, .AxisAngleRot = {1e5, 1e5, 1e5}},
-		.BSD0 = tracker->initial_variance,
-		.BSD1 = tracker->initial_variance};
 	cn_set_diag(&tracker->model.P, (const FLT *)&baseline);
 	cn_set_diag(&tracker->bsd_model.P, (const FLT *)&baseline.BSD0);
 }
@@ -262,7 +293,8 @@ SURVIVE_EXPORT void survive_kalman_lighthouse_integrate_observation(SurviveKalma
 
 	size_t state_cnt = tracker->model.state_cnt;
 	cn_set_diag_val(&H, 1);
-	FLT variance[7] = {.1, .1, .1, .01, .01, .01, .01};
+	FLT pv = tracker->initial_pos_var, rv = tracker->initial_rot_var;
+	FLT variance[7] = {pv, pv, pv, rv, rv, rv};
 	if (_variance) {
 		memcpy(variance, _variance, sizeof(variance));
 	}

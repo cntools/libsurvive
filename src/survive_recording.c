@@ -69,7 +69,7 @@ END_STRUCT_CONFIG_SECTION(SurviveRecordingData)
 
 SURVIVE_EXPORT void survive_recording_write_matrix(struct SurviveRecordingData *recordingData, const SurviveObject *so,
 												   int lvl, const char *name, const CnMat *M) {
-	if (!recordingData || recordingData->writeDataMatrix < lvl) {
+	if (!recordingData || recordingData->writeDataMatrix < lvl || !M || M->rows == 0 || M->cols == 0) {
 		return;
 	}
 
