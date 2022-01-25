@@ -26,16 +26,6 @@
 
 #define STACK_ALLOC(nmembers) (FLT *)alloca(nmembers * sizeof(FLT))
 
-static void rot_predict_quat(FLT t, const void *k, const CnMat *f_in, CnMat *f_out) {
-	(void)k;
-
-	const FLT *rot = CN_FLT_PTR(f_in);
-	const FLT *vel = CN_FLT_PTR(f_in) + 4;
-	copy3d(CN_FLT_PTR(f_out) + 4, vel);
-
-	survive_apply_ang_velocity(CN_FLT_PTR(f_out), vel, t, rot);
-}
-
 typedef struct survive_calibration_config {
 	FLT phase_scale, tilt_scale, curve_scale, gib_scale;
 } survive_calibration_config;
@@ -314,13 +304,6 @@ static int test_gen_function_def(const gen_function_def *def) {
 	return failed ? -1 : 0;
 }
 
-static size_t random_quat_quat(FLT *output) {
-	if (output) {
-		random_quat(output);
-		random_quat(output + 4);
-	}
-	return sizeof(FLT) * 8;
-}
 
 static void general_quatrotatevector(FLT *out, const FLT *input) { quatrotatevector(out, input, input + 4); }
 static void general_gen_quatrotatevector(FLT *out, const FLT *input) { gen_quatrotatevector(out, input, input + 4); }
