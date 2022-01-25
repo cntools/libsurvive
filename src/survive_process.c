@@ -110,6 +110,7 @@ void survive_default_external_pose_process(SurviveContext *ctx, const char *name
 
 void survive_default_ootx_received_process(struct SurviveContext *ctx, uint8_t bsd_idx) {
 	config_set_lighthouse(ctx->lh_config, &ctx->bsd[bsd_idx], bsd_idx);
+	survive_kalman_lighthouse_ootx(ctx->bsd[bsd_idx].tracker);
 	config_save(ctx);
 }
 

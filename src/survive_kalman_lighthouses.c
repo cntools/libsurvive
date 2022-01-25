@@ -197,6 +197,11 @@ void error_fn(void *user, const struct CnMat *x0, const struct CnMat *x1, struct
 		memcpy(cn_as_vector(E), &error_state, sizeof(FLT) * E->rows);
 	}
 }
+void survive_kalman_lighthouse_ootx(SurviveKalmanLighthouse *tracker) {
+	tracker->state.BSD0 = tracker->ctx->bsd[tracker->lh].fcal[0];
+	tracker->state.BSD1 = tracker->ctx->bsd[tracker->lh].fcal[1];
+}
+
 void survive_kalman_lighthouse_init(SurviveKalmanLighthouse *tracker, SurviveContext *ctx, int lh) {
 	memset(tracker, 0, sizeof(*tracker));
 	tracker->ctx = ctx;
@@ -291,5 +296,6 @@ void survive_kalman_lighthouse_free(SurviveKalmanLighthouse *tracker) {
 	cnkalman_meas_model_t_lighthouse_imu_detach_config(tracker->ctx, &tracker->imu_model);
 	cnkalman_meas_model_t_lighthouse_obs_detach_config(tracker->ctx, &tracker->obs_model);
 	cnkalman_state_free(&tracker->model);
+	cnkalman_state_free(&tracker->bsd_model);
 	free(tracker);
 }
