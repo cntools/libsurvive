@@ -48,10 +48,10 @@ def kabsch_tx(a, b):
     return r.apply(b - b_center) + a_center
 
 class RecordedData:
-    def __init__(self, so, datalog_whitelist):
+    def __init__(self, so, datalog_whitelist, name = None):
         self.so = so
         self.datalog_whitelist = datalog_whitelist
-        self.name = self.so.contents.codename.decode('utf8')
+        self.name = self.so.contents.codename.decode('utf8') if name is None else name
         self.imu_times = []
         self.gyros = []
         self.accels = []
@@ -80,6 +80,10 @@ class RecordedData:
         self.raw_accels.append(accelgyro[0:3])
 
     def record_pose(self, time, timecode, pose):
+        self.poses.append((time, pose))
+    def record_external_velocity(self, time, pose):
+        self.velocities.append((time, pose))
+    def record_external_pose(self, time, pose):
         self.poses.append((time, pose))
 
     def record_velocity(self, time, timecode, velocity):
@@ -427,6 +431,14 @@ class Recorder:
             self.data[codename] = RecordedData(so, self.datalog_whitelist)
         return self.data[codename]
 
+    def get_external(self, codename):
+        try:
+            if codename not in self.data:
+                self.data[codename] = RecordedData(None, self.datalog_whitelist, name= codename)
+            return self.data[codename]
+        except Exception as e:
+            print(codename, e)
+
     def plot(self, fig=None, figsize=None, **kwargs):
         plot_num = 1
         plot_rows = len(self.data.items()) * 8 // 2
@@ -450,6 +462,15 @@ def install(ctx, datalogs = None):
         dat = recorder.get(so)
         time = pysurvive.survive_run_time(so.contents.ctx)
         return class_fn(dat, time, *args)
+
+    def ctx_cb_fn(class_fn, ctx, name, *args):
+        time = pysurvive.survive_run_time(ctx)
+        name = str(name)
+        dat = recorder.get_external(name)
+        return class_fn(dat, time, *args)
+
+    pysurvive.install_external_pose_fn(ctx, partial(ctx_cb_fn, RecordedData.record_external_pose))
+    pysurvive.install_external_velocity_fn(ctx, partial(ctx_cb_fn, RecordedData.record_external_velocity))
 
     pysurvive.install_angle_fn(ctx, partial(cb_fn, RecordedData.record_angle))
     pysurvive.install_light_fn(ctx, partial(cb_fn, RecordedData.record_light))

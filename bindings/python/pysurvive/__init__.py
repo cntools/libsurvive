@@ -77,20 +77,30 @@ def install_light_fn(ctx, fn):
 def install_angle_fn(ctx, fn):
     install_generic_process(ctx, fn, default_angle_process, pysurvive_generated.install_angle_fn, angle_process_func)
 
-def install_button_fn(ctx, fn):
-    install_generic_process(ctx, fn, default_button_process, pysurvive_generated.install_button_fn, button_process_func)
-
 def install_pose_fn(ctx, fn):
     def map_args(so, timecode, pose):
         return (so, timecode, list(pose.contents.Pos) + list(pose.contents.Rot))
 
     install_generic_process(ctx, fn, default_pose_process, pysurvive_generated.install_pose_fn, pose_process_func, map_args)
 
+def install_external_pose_fn(ctx, fn):
+    def map_args(ctx, timecode, pose):
+        return (ctx, timecode, list(pose.contents.Pos) + list(pose.contents.Rot))
+
+    install_generic_process(ctx, fn, default_external_pose_process, pysurvive_generated.install_external_pose_fn, external_pose_process_func, map_args)
+
+
 def install_velocity_fn(ctx, fn):
     def map_args(so, timecode, pose):
         return (so, timecode, list(pose.contents.Pos) + list(pose.contents.AxisAngleRot))
 
     install_generic_process(ctx, fn, default_velocity_process, pysurvive_generated.install_velocity_fn, velocity_process_func, map_args)
+
+def install_external_velocity_fn(ctx, fn):
+    def map_args(ctx, timecode, velocity):
+        return (ctx, timecode, list(velocity.contents.Pos) + list(velocity.contents.AxisAngleRot))
+
+    install_generic_process(ctx, fn, default_external_velocity_process, pysurvive_generated.install_external_velocity_fn, external_velocity_process_func, map_args)
 
 
 def install_sweep_fn(ctx, fn):
@@ -101,6 +111,9 @@ def install_sync_fn(ctx, fn):
 
 def install_sweep_angle_fn(ctx, fn):
     install_generic_process(ctx, fn, default_sweep_angle_process, pysurvive_generated.install_sweep_angle_fn, sweep_angle_process_func)
+    
+def install_button_fn(ctx, fn):
+    install_generic_process(ctx, fn, default_button_process, pysurvive_generated.install_button_fn, button_process_func)
 
 def configs(ctx, name, method=SC_GET, default=None):
     return pysurvive_generated.configs(ctx, name, method, default)
