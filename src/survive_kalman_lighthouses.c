@@ -11,7 +11,7 @@
 // clang-format off
 STRUCT_CONFIG_SECTION(SurviveKalmanLighthouse)
 	STRUCT_EXISTING_CONFIG_ITEM("report-covariance", t->report_covariance_cnt);
-	STRUCT_CONFIG_ITEM("kalman-bsd-up-variance", "", -1, t->up_variance);
+	STRUCT_CONFIG_ITEM("kalman-lighthouse-up-variance", "", -1, t->up_variance);
 
 	STRUCT_CONFIG_ITEM("kalman-pos-variance-per-sec", "", 0, t->variance_per_sec.Lighthouse.Pos[0]);
 	STRUCT_CONFIG_ITEM("kalman-rot-variance-per-sec", "", 0, t->variance_per_sec.Lighthouse.AxisAngleRot[0]);
