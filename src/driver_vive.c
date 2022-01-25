@@ -440,8 +440,7 @@ struct SurviveViveData {
 	int seconds_per_hz_output;
 
 	int cnt_per_device_type[sizeof(KnownDeviceTypes) / sizeof(KnownDeviceTypes[0])];
-	int hmd_mainboard_index;
-	int hmd_imu_index;
+	struct SurviveUSBInfo *hmd_mainboard, *hmd_imu;
 
 	FLT lastPairTime;
 	bool requestPairing;
@@ -766,16 +765,18 @@ int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d) {
 
 	if (info->type == USB_DEV_HMD) {
 		SV_VERBOSE(10, "Mainboard class %d", class_id);
-		if (sv->hmd_mainboard_index != -1 || class_id != 0) {
+		if (sv->hmd_mainboard != 0 || class_id != 0) {
+			free(sv->udev[sv->udev_cnt--]);
+			sv->udev[sv->udev_cnt] = 0;
 			return -3;
 		}
-		sv->hmd_mainboard_index = sv->udev_cnt - 1;
+		sv->hmd_mainboard = usbInfo;
 	} else if (info->type == USB_DEV_HMD_IMU_LH) {
-		if (sv->hmd_imu_index != -1) {
+		if (sv->hmd_imu != 0) {
 			SV_WARN("Multiple HMDs are not supported currently.")
 			return -4;
 		}
-		sv->hmd_imu_index = sv->udev_cnt - 1;
+		sv->hmd_imu = usbInfo;
 	}
 
 	int *cnt = (sv->cnt_per_device_type + (usbInfo->device_info - KnownDeviceTypes));
@@ -798,8 +799,8 @@ int survive_vive_add_usb_device(SurviveViveData *sv, survive_usb_device_t d) {
 
 	// There should only be one HMD, tie the mainboard interface to the surviveobject
 	if (info->type == USB_DEV_HMD_IMU_LH || info->type == USB_DEV_HMD) {
-		if (sv->hmd_imu_index != -1 && sv->hmd_mainboard_index != -1) {
-			sv->udev[sv->hmd_mainboard_index]->so = sv->udev[sv->hmd_imu_index]->so;
+		if (sv->hmd_imu != 0 && sv->hmd_mainboard != 0) {
+			sv->hmd_mainboard->so = sv->hmd_imu->so;
 			usbInfo->ownsObject = false;
 		}
 	}
@@ -863,21 +864,32 @@ void survive_vive_usb_close(SurviveViveData *sv) {
 static inline bool survive_handle_close_request_flag(struct SurviveUSBInfo *usbInfo) {
 	SurviveViveData *sv = usbInfo->viveData;
 	SurviveContext *ctx = sv->ctx;
-	int idx = 0;
-	for (idx = 0; idx < sv->udev_cnt && sv->udev[idx] != usbInfo; idx++)
-		;
 
 	if (usbInfo->request_close) {
-		SV_VERBOSE(10, "Closing device %s (%d/%zu)", survive_colorize_codename(usbInfo->so), idx, sv->udev_cnt);
-		if (idx == sv->hmd_imu_index) {
-			sv->hmd_imu_index = -1;
-			if (sv->hmd_mainboard_index != -1) {
-				sv->udev[sv->hmd_mainboard_index]->so = 0;
+		int idx = 0;
+		for (idx = 0; idx < sv->udev_cnt && sv->udev[idx] != usbInfo; idx++)
+			;
+
+		for (size_t j = 0; j < usbInfo->interface_cnt; j++) {
+			usbInfo->interfaces[j].assoc_obj = 0;
+		}
+
+		SV_VERBOSE(10, "Closing device %s %s (%d/%zu)", survive_colorize_codename(usbInfo->so),
+				   survive_colorize(usbInfo->device_info->name), idx, sv->udev_cnt);
+		if (usbInfo == sv->hmd_imu) {
+			sv->hmd_imu = 0;
+			if (sv->hmd_mainboard != 0) {
+				survive_close_usb_device(sv->hmd_mainboard);
+				sv->hmd_mainboard->so = 0;
 			}
 		}
-		if (idx == sv->hmd_mainboard_index)
-			sv->hmd_mainboard_index = -1;
-		sv->udev[idx] = sv->udev[sv->udev_cnt-- - 1];
+		if (usbInfo == sv->hmd_mainboard)
+			sv->hmd_mainboard = 0;
+
+		sv->udev_cnt--;
+		sv->udev[idx] = sv->udev[sv->udev_cnt];
+		sv->udev[sv->udev_cnt] = 0;
+
 		if (usbInfo->ownsObject) {
 			survive_destroy_device(usbInfo->so);
 		}
@@ -3244,7 +3256,6 @@ int survive_vive_close(SurviveContext *ctx, void *driver) {
 
 int DriverRegHTCVive(SurviveContext *ctx) {
 	SurviveViveData *sv = SV_CALLOC(sizeof(SurviveViveData));
-	sv->hmd_imu_index = sv->hmd_mainboard_index = -1;
 
 	survive_attach_configi(ctx, SECONDS_PER_HZ_OUTPUT_TAG, &sv->seconds_per_hz_output);
 	sv->requestPairing = survive_configi(ctx, PAIR_DEVICE_TAG, SC_GET, 0);

@@ -266,12 +266,15 @@ shutdown:
 
 static int survive_config_submit(struct SurviveUSBInfo *usbInfo);
 static void survive_config_cancel(struct survive_config_packet *cfg);
+static inline bool survive_handle_close_request_flag(struct SurviveUSBInfo *usbInfo);
 static inline void survive_close_usb_device(struct SurviveUSBInfo *usbInfo) {
 	usbInfo->interfaces[0].shutdown = 1;
 	for (size_t j = 0; j < usbInfo->interface_cnt; j++) {
 		usbInfo->interfaces[j].shutdown = 1;
+		usbInfo->interfaces[j].assoc_obj = 0;
 	}
 
+	assert(usbInfo->interfaces[0].assoc_obj == 0);
 	SurviveContext *ctx = usbInfo->viveData->ctx;
 	if (usbInfo->nextCfgSubmitTime > 0) {
 		survive_config_submit(usbInfo);
@@ -283,7 +286,7 @@ static inline void survive_close_usb_device(struct SurviveUSBInfo *usbInfo) {
 	}
 	if (usbInfo->active_transfers == 0) {
 		usbInfo->request_close = true;
-		SV_VERBOSE(110, "Acking close for %s", survive_colorize_codename(usbInfo->so));
+		SV_VERBOSE(100, "Acking close for %s", survive_colorize_codename(usbInfo->so));
 	}
 
 	SV_VERBOSE(100, "Closing device on %s %p (%p)", survive_colorize_codename(usbInfo->so), cfg, usbInfo);
@@ -296,7 +299,6 @@ static inline void survive_close_usb_device(struct SurviveUSBInfo *usbInfo) {
 		if (usbInfo->interfaces[j].transfer)
 			libusb_cancel_transfer(usbInfo->interfaces[j].transfer);
 	}
-
 }
 
 void survive_usb_close(SurviveViveData *sv) { libusb_exit(sv->usbctx); }

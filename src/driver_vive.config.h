@@ -278,7 +278,7 @@ cleanup:
 
 	if (usbInfo->interfaces[0].shutdown && usbInfo->active_transfers == 0) {
 		usbInfo->request_close = true;
-		SV_VERBOSE(110, "Acking close for %s", survive_colorize_codename(usbInfo->so));
+		SV_VERBOSE(100, "Acking close for %s", survive_colorize_codename(usbInfo->so));
 	}
 
 	survive_usb_transfer_free(transfer);
@@ -292,7 +292,10 @@ static void survive_config_poll(struct SurviveUSBInfo *usbInfo) {
 	while (active || usbInfo->nextCfgSubmitTime > 0 && usbInfo->nextCfgSubmitTime < now) {
 		active = false;
 		if (usbInfo->nextCfgSubmitTime > 0 && usbInfo->nextCfgSubmitTime < now) {
-			survive_config_submit(usbInfo);
+			if (survive_config_submit(usbInfo) == -6) {
+				usbInfo->active_transfers--;
+				survive_close_usb_device(usbInfo);
+			}
 		}
 #ifdef HIDAPI
 		struct survive_config_packet *config_packet = usbInfo->cfg_user;
