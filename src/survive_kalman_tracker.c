@@ -42,14 +42,14 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 					   "Minimum observations to allow light data into the kalman filter", 16, t->light_required_obs)
 
     STRUCT_CONFIG_ITEM("light-max-error",  "Maximum error to integrate into lightcap", -1, t->lightcap_max_error)
-    STRUCT_CONFIG_ITEM("kalman-light-variance",  "Variance of raw light sensor readings", 1e-3, t->light_var)
+    STRUCT_CONFIG_ITEM("kalman-light-variance",  "Variance of raw light sensor readings", 1e-2, t->light_var)
     STRUCT_CONFIG_ITEM("obs-cov-scale",  "Covariance matrix scaling for obs",
                        1, t->obs_cov_scale)
 	STRUCT_CONFIG_ITEM("kalman-obs-axisangle",  "Process observation updates as axis angle poses", false, t->obs_axisangle_model)
     STRUCT_CONFIG_ITEM("obs-pos-variance",  "Variance of position integration from light capture",
 					   1e-6, t->obs_pos_var)
 	STRUCT_CONFIG_ITEM("obs-rot-variance",  "Variance of rotation integration from light capture",
-					   1e-7, t->obs_rot_var)
+					   1e-4, t->obs_rot_var)
 
 	STRUCT_CONFIG_ITEM("use-raw-obs",  "If true; the raw position from the solver is used and no filtering is applied", 0, t->use_raw_obs)
 
@@ -70,14 +70,14 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("kalman-minimize-state-space", "Minimize the state space", 1, t->minimize_state_space)
 	STRUCT_CONFIG_ITEM("kalman-use-error-space", "Model using error state", true, t->use_error_state)
 
-    STRUCT_CONFIG_ITEM("kalman-joint-model-lightcap", "Ratio of confidence of LH over tracked object to use joint filter", 1e-2, t->joint_lightcap_ratio)
+    STRUCT_CONFIG_ITEM("kalman-joint-model-lightcap", "Ratio of confidence of LH over tracked object to use joint filter", -1, t->joint_lightcap_ratio)
 
-	STRUCT_CONFIG_ITEM("kalman-initial-imu-variance", "Initial variance in IMU frame", 1e-6, t->params.initial_variance_imu_correction)
-	STRUCT_CONFIG_ITEM("kalman-initial-acc-scale-variance", "Initial variance in IMU frame", 1e-6, t->params.initial_acc_scale_variance)
-	STRUCT_CONFIG_ITEM("kalman-initial-gyro-variance", "Initial variance in gyro", 1e-6, t->params.initial_gyro_variance)
+	STRUCT_CONFIG_ITEM("kalman-initial-imu-variance", "Initial variance in IMU frame", 0, t->params.initial_variance_imu_correction)
+	STRUCT_CONFIG_ITEM("kalman-initial-acc-scale-variance", "Initial variance in IMU frame", 0, t->params.initial_acc_scale_variance)
+	STRUCT_CONFIG_ITEM("kalman-initial-gyro-variance", "Initial variance in gyro", 0, t->params.initial_gyro_variance)
 
 	STRUCT_CONFIG_ITEM("kalman-zvu-moving", "", -1, t->zvu_moving_var)
-	STRUCT_CONFIG_ITEM("kalman-zvu-stationary", "", 1e-7, t->zvu_stationary_var)
+	STRUCT_CONFIG_ITEM("kalman-zvu-stationary", "", 1e-2, t->zvu_stationary_var)
 	STRUCT_CONFIG_ITEM("kalman-zvu-no-light", "", 1e-4, t->zvu_no_light_var)
 
 	STRUCT_CONFIG_ITEM("kalman-noise-model", "0 is jerk acceleration model, 1 is simple model", 0, t->noise_model)
@@ -1234,7 +1234,7 @@ void survive_kalman_tracker_reinit(SurviveKalmanTracker *tracker) {
 		tracker->state.IMUBias.AccScale[i] = 1.;
 
 	cnkalman_state_reset(&tracker->model);
-	for (int i = 0; i < 7; i++) {
+	for (int i = 0; i < 6; i++) {
 		cnMatrixSet(&tracker->model.P, i, i, cnMatrixGet(&tracker->model.P, i, i) + 1e5);
 	}
 
