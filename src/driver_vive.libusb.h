@@ -83,12 +83,16 @@ static survive_usb_device_t get_next_device(survive_usb_device_enumerator *itera
 STATIC_CONFIG_ITEM(LIBUSB_LOG_LEVEL, "libusb-log-level", 'i', "Log level of libusb", LIBUSB_LOG_LEVEL_WARNING)
 static int survive_usb_subsystem_init(SurviveViveData *sv) {
 	int rtn = libusb_init(&sv->usbctx);
+	int log_level = survive_configi(sv->ctx, LIBUSB_LOG_LEVEL_TAG, SC_GET, LIBUSB_LOG_LEVEL_WARNING);
 #if LIBUSB_API_VERSION < 0x01000106
-	libusb_set_debug(NULL, LIBUSB_LOG_LEVEL_WARNING);
+	libusb_set_debug(NULL, log_level);
 #else
-	libusb_set_option(NULL, LIBUSB_OPTION_LOG_LEVEL,
-					  survive_configi(sv->ctx, LIBUSB_LOG_LEVEL_TAG, SC_GET, LIBUSB_LOG_LEVEL_WARNING));
+	libusb_set_option(NULL, LIBUSB_OPTION_LOG_LEVEL, log_level);
 #endif
+
+	const struct libusb_version *v = libusb_get_version();
+	SurviveContext *ctx = sv->ctx;
+	SV_VERBOSE(10, "libusb version %d.%d.%d.%d (log level %d)", v->major, v->minor, v->micro, v->nano, log_level);
 	return rtn;
 }
 
