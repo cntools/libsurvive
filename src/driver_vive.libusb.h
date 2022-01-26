@@ -80,12 +80,14 @@ static survive_usb_device_t get_next_device(survive_usb_device_enumerator *itera
 	return list[(*iterator)++];
 }
 
+STATIC_CONFIG_ITEM(LIBUSB_LOG_LEVEL, "libusb-log-level", 'i', "Log level of libusb", LIBUSB_LOG_LEVEL_WARNING)
 static int survive_usb_subsystem_init(SurviveViveData *sv) {
 	int rtn = libusb_init(&sv->usbctx);
 #if LIBUSB_API_VERSION < 0x01000106
 	libusb_set_debug(NULL, LIBUSB_LOG_LEVEL_WARNING);
 #else
-	libusb_set_option(NULL, LIBUSB_OPTION_LOG_LEVEL, LIBUSB_LOG_LEVEL_WARNING);
+	libusb_set_option(NULL, LIBUSB_OPTION_LOG_LEVEL,
+					  survive_configi(sv->ctx, LIBUSB_LOG_LEVEL_TAG, SC_GET, LIBUSB_LOG_LEVEL_WARNING));
 #endif
 	return rtn;
 }
@@ -105,13 +107,18 @@ int libusb_hotplug(libusb_context *usbctx, libusb_device *device, libusb_hotplug
 	return 0;
 }
 static bool setup_hotplug(SurviveViveData *sv) {
+	SurviveContext *ctx = sv->ctx;
+	if (!libusb_has_capability(LIBUSB_CAP_HAS_HOTPLUG)) {
+		SV_WARN("Hotplug capabilities are not supported on this platform");
+		return 1;
+	}
+
 	int rc = libusb_hotplug_register_callback(
 		sv->usbctx, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE,
 		LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, libusb_hotplug, sv,
 		&sv->callback_handle);
 
 	if (LIBUSB_SUCCESS != rc) {
-		SurviveContext *ctx = sv->ctx;
 		SV_WARN("Could not register hotplug callback err: %d", rc);
 		return rc;
 	}
