@@ -111,6 +111,9 @@ void survive_default_external_pose_process(SurviveContext *ctx, const char *name
 void survive_default_ootx_received_process(struct SurviveContext *ctx, uint8_t bsd_idx) {
 	config_set_lighthouse(ctx->lh_config, &ctx->bsd[bsd_idx], bsd_idx);
 	survive_kalman_lighthouse_ootx(ctx->bsd[bsd_idx].tracker);
+
+	survive_recording_write_to_output(ctx->recptr, "LH_UP %d " Point3_format "\n", ctx->bsd[bsd_idx].mode,
+									  LINMATH_VEC3_EXPAND(ctx->bsd[bsd_idx].accel));
 	config_save(ctx);
 }
 

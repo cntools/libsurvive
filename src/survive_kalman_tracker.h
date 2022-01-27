@@ -30,6 +30,7 @@ struct SurviveKalmanTracker_Params {
 	FLT process_weight_acc_bias;
 	FLT process_weight_gyro_bias;
 	FLT initial_acc_scale_variance;
+	FLT initial_acc_bias_variance, initial_gyro_bias_variance;
 	FLT initial_gyro_variance;
 	FLT initial_variance_imu_correction;
 };

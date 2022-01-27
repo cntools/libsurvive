@@ -294,15 +294,16 @@ SURVIVE_EXPORT void survive_kalman_lighthouse_integrate_observation(SurviveKalma
 	FLT v = cn_trace(&tracker->model.P);
 	bool trustAbsolutely = v > 1e2 || Rlh == 0;
 
-	if (trustAbsolutely) {
+	if (Rlh) {
+		cn_matrix_copy(&R, Rlh);
+	}
+
+	if (!trustAbsolutely) {
 #ifdef TRACK_IN_WORLD2LH
 		SurvivePose Z = InvertPoseRtn(pose);
 #else
 		SurvivePose Z = *pose;
 #endif
-		if(Rlh) {
-			cn_matrix_copy(&R, Rlh);
-		}
 		size_t state_cnt = tracker->model.state_cnt;
 		cn_set_diag_val(&H, 1);
 		FLT pv = tracker->initial_pos_var, rv = tracker->initial_rot_var;

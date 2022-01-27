@@ -734,6 +734,9 @@ int survive_startup(SurviveContext *ctx) {
 
 	// If lighthouse positions are known, broadcast them
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
+		if (ctx->bsd[i].OOTXSet) {
+			SURVIVE_INVOKE_HOOK(ootx_received, ctx, i);
+		}
 		if (ctx->bsd[i].PositionSet) {
 			SURVIVE_INVOKE_HOOK(lighthouse_pose, ctx, i, &ctx->bsd[i].Pose);
 		}

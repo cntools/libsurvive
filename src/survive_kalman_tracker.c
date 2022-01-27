@@ -74,13 +74,14 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("kalman-joint-lightcap-minimum-sensors", "Minimum number of sensors for the joint model to run", 5, t->joint_min_sensor_cnt)
 	STRUCT_CONFIG_ITEM("kalman-lightcap-minimum-sensors", "Minimum number of sensors for the lightcap model to run", 5, t->lightcap_min_sensor_cnt)
 
-	STRUCT_CONFIG_ITEM("kalman-initial-imu-variance", "Initial variance in IMU frame", 0, t->params.initial_variance_imu_correction)
-	STRUCT_CONFIG_ITEM("kalman-initial-acc-scale-variance", "Initial variance in IMU frame", 0, t->params.initial_acc_scale_variance)
-	STRUCT_CONFIG_ITEM("kalman-initial-gyro-variance", "Initial variance in gyro", 0, t->params.initial_gyro_variance)
+	STRUCT_CONFIG_ITEM("kalman-initial-imu-variance", "Initial variance in IMU frame", 1e-9, t->params.initial_variance_imu_correction)
+	STRUCT_CONFIG_ITEM("kalman-initial-acc-scale-variance", "Initial variance in IMU frame", 1e-6, t->params.initial_acc_scale_variance)
+	STRUCT_CONFIG_ITEM("kalman-initial-acc-bias-variance", "Initial variance in IMU frame", 1e-6, t->params.initial_acc_bias_variance)
+	STRUCT_CONFIG_ITEM("kalman-initial-gyro-variance", "Initial variance in gyro", 1e-6, t->params.initial_gyro_variance)
 
 	STRUCT_CONFIG_ITEM("kalman-zvu-moving", "", -1, t->zvu_moving_var)
-	STRUCT_CONFIG_ITEM("kalman-zvu-stationary", "", 1e-2, t->zvu_stationary_var)
-	STRUCT_CONFIG_ITEM("kalman-zvu-no-light", "", 1e-4, t->zvu_no_light_var)
+	STRUCT_CONFIG_ITEM("kalman-zvu-stationary", "", 1e-5, t->zvu_stationary_var)
+	STRUCT_CONFIG_ITEM("kalman-zvu-no-light", "", 1, t->zvu_no_light_var)
 
 	STRUCT_CONFIG_ITEM("kalman-noise-model", "0 is jerk acceleration model, 1 is simple model", 0, t->noise_model)
 
@@ -1260,13 +1261,15 @@ void survive_kalman_tracker_reinit(SurviveKalmanTracker *tracker) {
 		cnMatrixSet(&tracker->model.P, i, i, cnMatrixGet(&tracker->model.P, i, i) + 1e5);
 	}
 
+	cnkalman_state_reset(&tracker->imu_bias_model);
+
 	SurviveIMUBiasErrorModel initial_variance = {
 		.AccScale = {tracker->params.initial_acc_scale_variance, tracker->params.initial_acc_scale_variance, tracker->params.initial_acc_scale_variance},
 		.GyroBias = {
 			tracker->params.initial_gyro_variance, tracker->params.initial_gyro_variance, tracker->params.initial_gyro_variance
 		},
 		.AccBias = {
-			tracker->params.initial_acc_scale_variance, tracker->params.initial_acc_scale_variance, tracker->params.initial_acc_scale_variance
+			tracker->params.initial_acc_bias_variance, tracker->params.initial_acc_bias_variance, tracker->params.initial_acc_bias_variance
 		},
 		.IMUCorrection = {
 			tracker->params.initial_variance_imu_correction, tracker->params.initial_variance_imu_correction, tracker->params.initial_variance_imu_correction

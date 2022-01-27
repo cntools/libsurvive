@@ -106,10 +106,10 @@ STRUCT_CONFIG_ITEM("mpfit-object-up-variance",
 				   "How much to weight having the accel direction on tracked objects pointing up", -1,
 				   t->obj_up_variance)
 STRUCT_CONFIG_ITEM("mpfit-stationary-object-up-variance",
-				   "How much to weight having the accel direction on tracked objects pointing up", 1.,
+				   "How much to weight having the accel direction on tracked objects pointing up", 1e-1,
 				   t->stationary_obj_up_variance)
 STRUCT_CONFIG_ITEM("mpfit-lighthouse-up-variance",
-				   "How much to weight having the accel direction on lighthouses pointing up", 1., t->lh_up_variance)
+				   "How much to weight having the accel direction on lighthouses pointing up", 1e-6, t->lh_up_variance)
 END_STRUCT_CONFIG_SECTION(MPFITData)
 
 static size_t remove_lh_from_meas(survive_optimizer *mpfitctx, int lh) {
@@ -780,14 +780,13 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 		meas_cnt += gss->scenes[i].meas_cnt;
 	}
 
-	survive_optimizer mpfitctx = {
-	        .settings = &d->optimizer_settings,
-	        .reprojectModel = survive_reproject_model(ctx),
+	survive_optimizer mpfitctx = {.settings = &d->optimizer_settings,
+								  .reprojectModel = survive_reproject_model(ctx),
 								  .poseLength = scenes_cnt,
 								  .cameraLength = ctx->activeLighthouses,
 								  .objectUpVectorVariance = d->stationary_obj_up_variance,
 								  .disableVelocity = true,
-								  .nofilter = true};
+								  .nofilter = false};
 
 	SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(mpfitctx, 0);
 
@@ -912,7 +911,7 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 		}
 	}
 
-	for (int i = start; i < start + 7; i++) {
+	for (int i = start; i < start + 3; i++) {
 		mpfitctx.mp_parameters_info[i].fixed = true;
 	}
 
@@ -970,8 +969,6 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 				ApplyPoseToPose(&objUp2World, &objUp2World, &offset);
 			}
 
-
-
 			for (int i = 0; i < mpfitctx.cameraLength; i++) {
 				ApplyPoseToPose(&cameras[i], &objUp2World, &cameras[i]);
 			}
@@ -1003,6 +1000,9 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 			}
 		}
 
+		for (int i = 0; i < mpfitctx.cameraLength; i++) {
+			SV_VERBOSE(10, "Solved scene with lh %d " SurvivePose_format, i, SURVIVE_POSE_EXPAND(cameras[i]));
+		}
 		for (int i = 0; i < ctx->objs_ct; i++) {
 			// survive_kalman_tracker_lost_tracking(ctx->objs[i]->tracker);
 		}

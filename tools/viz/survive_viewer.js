@@ -106,6 +106,13 @@ function add_lighthouse(idx, p, q) {
 	group.position.fromArray(p);
 	group_rot.quaternion.fromArray([ q[1], q[2], q[3], q[0] ]);
 
+	var imuGeom = new THREE.Geometry();
+	imuGeom.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0));
+	var line = new THREE.Line(imuGeom, new THREE.LineBasicMaterial({color : 0xffffff}));
+	line.visible = true;
+	group.imu = imuGeom;
+	group_rot.add(line);
+
 	var height = 10;
 
 	var geometry = new THREE.ConeGeometry(height / Math.cos(60 / 180 * Math.PI), height, 4, 1, true);
@@ -153,6 +160,10 @@ function add_lighthouse(idx, p, q) {
 	}
 
 	scene.add(group);
+
+	if (lighthouse_ups[idx]) {
+		lhup(lighthouse_ups[idx])
+	}
 }
 
 function get_bvalue(key) {
@@ -629,6 +640,17 @@ function update_ellipsoid(name, u, s, v, A) {
 		// ellipsoid.geometry.applyMatrix( new THREE.Matrix4().makeScale( s[0], s[1], s[2] ) );
 	}
 }
+var lighthouse_ups = {};
+function lhup(v) {
+	console.log(v)
+	lighthouse_ups[v[2]] = v;
+	var group = lighthouses[v[2]];
+	if (group) {
+		var fv = v.slice(3).map(parseFloat);
+		group.imu.vertices[1].set(fv[0] / 128., fv[1] / 128., fv[2] / 128.);
+		group.imu.verticesNeedUpdate = true;
+	}
+}
 var covar_canvas = {}, covar_names = {};
 function update_fullcov(v) {
 	var name = v[1];
@@ -949,6 +971,7 @@ var survive_log_handlers = {
 	"FULL_STATE" : update_fullstate,
 	"DATA_MATRIX" : data_matrix,
 	"FULL_COVARIANCE" : update_fullcov,
+	"LH_UP" : lhup,
 	"EXTERNAL_VELOCITY" : function(v) { update_velocity(v, true, true); },
 	"EXTERNAL_POSE" : function(v) { update_object(v, true, true); },
 	"DISCONNECT" : function(v) { delete_tracked_object(v[1]); },
