@@ -388,8 +388,6 @@ void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker,
 	tracker->last_light_time = time;
 
 	if (tracker->light_var >= 0) {
-		qsort(tracker->savedLight, tracker->savedLight_idx, sizeof(tracker->savedLight[0]), sort_by_lh_axis_sensor);
-
 		for (int i = 0; i < tracker->savedLight_idx; i++) {
 			if (!ctx->bsd[tracker->savedLight[i].lh].PositionSet) {
 				tracker->savedLight[i] = tracker->savedLight[tracker->savedLight_idx - 1];
@@ -402,21 +400,42 @@ void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker,
             return;
         }
 
+		bool useJointModel = tracker->joint_lightcap_ratio >= 0;
+		if(useJointModel) {
+			qsort(tracker->savedLight, tracker->savedLight_idx, sizeof(tracker->savedLight[0]), sort_by_lh_axis_sensor);
+		}
+
 		FLT rtn = 0;
 		while(tracker->savedLight_idx > 0) {
 			int lh = tracker->savedLight[tracker->savedLight_idx-1].lh;
 			int cnt = 0;
 
-			while(tracker->savedLight_idx > 0) {
-				cnt++;
-				tracker->savedLight_idx--;
-				if(tracker->savedLight_idx > 0 && tracker->savedLight[tracker->savedLight_idx - 1].lh != lh)
-					break;
+			if(useJointModel) {
+				while(tracker->savedLight_idx > 0) {
+					cnt++;
+					tracker->savedLight_idx--;
+					if(tracker->savedLight_idx > 0 && tracker->savedLight[tracker->savedLight_idx - 1].lh != lh)
+						break;
+				}
+				if (cnt < tracker->joint_min_sensor_cnt) {
+					cnt += tracker->savedLight_idx;
+					tracker->savedLight_idx = 0;
+					useJointModel = false;
+					tracker->stats.joint_model_dropped++;
+				}
+			} else {
+				cnt = tracker->savedLight_idx;
+				tracker->savedLight_idx = 0;
+			}
+
+			if(cnt < tracker->lightcap_min_sensor_cnt) {
+				tracker->stats.lightcap_model_dropped++;
+				return;
 			}
 
 			CN_CREATE_STACK_VEC(Z, cnt);
 			for (int i = tracker->savedLight_idx; i < cnt + tracker->savedLight_idx; i++) {
-				assert(tracker->savedLight[i].lh == lh);
+				assert(useJointModel == false || tracker->savedLight[i].lh == lh);
 				cnMatrixSet(&Z, i - tracker->savedLight_idx, 0, tracker->savedLight[i].value);
 			}
 
@@ -440,14 +459,15 @@ void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker,
 			FLT obj_trace = cn_trace(&tracker->model.P);
 			FLT lh_trace = cn_trace(&ctx->bsd[lh].tracker->model.P);
 			FLT ratio = lh_trace / obj_trace;
-			if(tracker->joint_lightcap_ratio >= 0 && tracker->joint_lightcap_ratio < ratio) {
+			if(useJointModel && tracker->joint_lightcap_ratio < ratio) {
 				tracker->joint_model.ks[0] = &ctx->bsd[lh].tracker->model;
 				tracker->joint_model.ks[1] = &ctx->bsd[lh].tracker->bsd_model;
-				//joint_meas.meas_jacobian_mode = cnkalman_jacobian_mode_debug;
 				rtn += cnkalman_meas_model_predict_update(time, &tracker->joint_model, &cbctx, &Z, &R);
+				tracker->stats.joint_model_sensor_cnt_sum += cnt;
 				survive_kalman_lighthouse_report(ctx->bsd[lh].tracker);
 			} else {
 				rtn += cnkalman_meas_model_predict_update(time, &tracker->lightcap_model, &cbctx, &Z, &R);
+				tracker->stats.lightcap_model_sensor_cnt_sum += cnt;
 			}
 		}
 
@@ -1441,6 +1461,11 @@ void survive_kalman_tracker_stats(SurviveKalmanTracker *tracker) {
 
 	SV_VERBOSE(5, "\t%-32s %u", "late imu", tracker->stats.late_imu_dropped);
 	SV_VERBOSE(5, "\t%-32s %u", "late light", tracker->stats.late_light_dropped);
+	//joint_model_sensor_cnt_sum
+	SV_VERBOSE(5, "\t%-32s %7.7f avg cnt %8d dropped", "joint model", tracker->stats.joint_model_sensor_cnt_sum / (FLT) tracker->joint_model.stats.total_runs,
+			   tracker->stats.joint_model_dropped);
+	SV_VERBOSE(5, "\t%-32s %7.7f avg cnt %8d dropped", "lightcap model", tracker->stats.lightcap_model_sensor_cnt_sum / (FLT) tracker->lightcap_model.stats.total_runs,
+			   tracker->stats.lightcap_model_dropped);
 
 	SV_VERBOSE(5, "\t%-32s %u of %u (%2.2f%%)", "Dropped poses", (unsigned)tracker->stats.dropped_poses,
 			   (unsigned)(tracker->stats.reported_poses + tracker->stats.dropped_poses),
