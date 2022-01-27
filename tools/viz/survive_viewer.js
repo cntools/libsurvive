@@ -718,14 +718,16 @@ function display_matrix(name, rows, cols, fv) {
 	let fmax = Math.max(...fv);
 	const fmin = Math.min(...fv);
 	fmax = Math.max(fmax, -fmin);
+	const scaledData = fv.map(x => Math.min(1, Math.abs(fmax != 0 ? x / fmax : 0)));
 	const imageData =
-		Uint8ClampedArray.from(fv.map(x => [...turbo(Math.min(1, Math.abs(fmax != 0 ? x / fmax : 0))), 255]).flat());
+		Uint8ClampedArray.from(scaledData.map(x => [...turbo(x), 255]).flat());
 	var canvas = covar_canvas[name];
 
 	var ctx = canvas.getContext("2d");
 	ctx.imageSmoothingEnabled = false;
 	// ctx.scale(5,5);
-
+	canvas.width = cols;
+	canvas.height = rows;
 	ctx.putImageData(new ImageData(imageData, cols, rows), 0, 0);
 	covar_names[name].innerText = name + " " + fmax;
 }

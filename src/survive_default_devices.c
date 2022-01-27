@@ -62,7 +62,8 @@ SurviveObject *survive_create_device(SurviveContext *ctx, const char *driver_nam
 
 	SurviveSensorActivations_ctor(device, &device->activations);
 
-	bool use_async_posers = survive_configi(ctx, "threaded-posers", SC_GET, 1);
+	FLT playback_factor = survive_configf(ctx, "playback-factor", SC_GET, 1.);
+	bool use_async_posers = survive_configi(ctx, "threaded-posers", SC_GET, 1) && playback_factor != 0;
 	if (use_async_posers) {
 		PoserCB PreferredPoserCB = (PoserCB)GetDriverByConfig(ctx, "Poser", "poser", "MPFIT");
 		device->PoserFnData = survive_create_threaded_poser(device, PreferredPoserCB);

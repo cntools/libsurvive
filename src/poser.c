@@ -228,11 +228,11 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 
 int8_t survive_get_reference_bsd(SurviveContext *ctx, SurvivePose *lighthouse_pose, uint32_t lighthouse_count) {
 	uint32_t reference_basestation = survive_configi(ctx, "reference-basestation", SC_GET, 0);
-	int8_t ref = 0;
+	int8_t ref = -1;
 	for (int lh = 0; lh < lighthouse_count; lh++) {
 		SurvivePose lh2object = lighthouse_pose[lh];
 		if (quatmagnitude(lh2object.Rot) != 0.0) {
-			uint32_t lh0 = ref;
+			uint32_t lh0 = ref != -1 ? ref : 0;
 			bool preferThisBSD = reference_basestation == 0 ? (ctx->bsd[lh].BaseStationID < ctx->bsd[lh0].BaseStationID)
 															: reference_basestation == ctx->bsd[lh].BaseStationID;
 			if (preferThisBSD) {
@@ -241,6 +241,15 @@ int8_t survive_get_reference_bsd(SurviveContext *ctx, SurvivePose *lighthouse_po
 		}
 	}
 	return ref;
+}
+
+int8_t survive_get_ctx_reference_bsd(SurviveContext *ctx) {
+	SurvivePose cameras[NUM_GEN2_LIGHTHOUSES] =  { 0 };
+	for(int i = 0;i < ctx->activeLighthouses;i++) {
+		if(ctx->bsd[i].PositionSet)
+			cameras[i] = ctx->bsd[i].Pose;
+	}
+	return survive_get_reference_bsd(ctx, cameras, ctx->activeLighthouses);
 }
 
 void PoserData_normalize_scene(SurviveContext *ctx, SurvivePose *lighthouse_pose, uint32_t lighthouse_count,

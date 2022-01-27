@@ -17,6 +17,7 @@ enum survive_optimizer_measurement_type {
 	survive_optimizer_measurement_type_light,
 	survive_optimizer_measurement_type_object_accel,
 	survive_optimizer_measurement_type_camera_accel,
+	survive_optimizer_measurement_type_camera_position,
 };
 
 enum survive_optimizer_parameter_type {
@@ -53,6 +54,14 @@ typedef struct {
 	LinmathVec3d acc;
 } survive_optimizer_camera_acc_measurement;
 
+
+
+typedef struct {
+	int camera;
+	LinmathVec3d pos;
+
+} survive_optimizer_camera_position_measurement;
+
 typedef struct {
 	int parameter_index;
 	FLT expected_value;
@@ -70,6 +79,7 @@ typedef struct {
 		survive_optimizer_light_measurement light;
 		survive_optimizer_object_acc_measurement pose_acc;
 		survive_optimizer_camera_acc_measurement camera_acc;
+		survive_optimizer_camera_position_measurement camera_pos;
 		survive_optimizer_parameter_bias_measurement parameter_bias;
 	};
 } survive_optimizer_measurement;
@@ -114,6 +124,7 @@ typedef struct survive_optimizer {
 	FLT *parameters;
 
 	bool disableVelocity;
+	bool covarAllParams;
 
 	int poseLength;
 	int cameraLength;

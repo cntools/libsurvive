@@ -671,7 +671,8 @@ int survive_startup(SurviveContext *ctx) {
 	buffer[strlen(buffer) - 2] = 0;
 	SV_INFO("%s", buffer);
 
-	bool use_async_posers = survive_configi(ctx, THREADED_POSERS_TAG, SC_GET, 0);
+	FLT playback_factor = survive_configf(ctx, "playback-factor", SC_GET, 1.);
+	bool use_async_posers = survive_configi(ctx, THREADED_POSERS_TAG, SC_GET, 0) && playback_factor != 0.0;
 	if (use_async_posers) {
 		for (int i = 0; i < ctx->objs_ct; i++) {
 			ctx->objs[i]->PoserFnData = survive_create_threaded_poser(ctx->objs[i], PreferredPoserCB);

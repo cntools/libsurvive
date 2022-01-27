@@ -439,6 +439,12 @@ static inline void run_pair_measurement(survive_optimizer *mpfunc_ctx, size_t me
 		int jac_offset_lh = (lh + mpfunc_ctx->poseLength) * 7;
 		int jac_offset_obj = meas->light.object * 7;
 
+		bool needsJacLH = false, needsJacObj = false;
+		for(int i = 0;i < 7;i++) {
+			needsJacLH |= derivs[jac_offset_lh+i] != 0;
+			needsJacObj |= derivs[jac_offset_obj+i] != 0;
+		}
+
 		for(int i = 0;i < 2;i++) {
 			int p_idx = get_lighthouse_correction_idx_for(mpfunc_ctx, meas->light.object, meas->light.lh, i);
 			if (p_idx > -1 && derivs[p_idx]) {
@@ -456,7 +462,7 @@ static inline void run_pair_measurement(survive_optimizer *mpfunc_ctx, size_t me
 
 		// d deviate / d Pose(t-)
 		// d Pose(t-) / d Pose(t)
-		if (derivs[jac_offset_obj]) {
+		if (needsJacObj) {
 			FLT jout[7 * 2] = {0};
             if(mpfunc_ctx->settings->use_quat_model) {
                 reprojectModel->reprojectFullJacObjPose(jout, &obj2world->quatPose, pt, &world2lh->quatPose, cal);
@@ -472,19 +478,20 @@ static inline void run_pair_measurement(survive_optimizer *mpfunc_ctx, size_t me
 			}
 
 			for (int j = 0; j < pose_size; j++) {
-				assert(derivs[jac_offset_obj + j] && "all 7 parameters should be the same for jacobian calculation");
 				for (int k = 0; k < 2; k++) {
 					if (isnan(jout[j + k * pose_size])) {
 						jout[j + k * pose_size] = 0;
 					}
 				}
-				derivs[jac_offset_obj + j][meas_idx] = fix_infinity(jout[j] / meas[0].variance);
-				derivs[jac_offset_obj + j][meas_idx + 1] = fix_infinity(jout[j + pose_size] / meas[1].variance);
+				if(derivs[jac_offset_obj + j]) {
+					derivs[jac_offset_obj + j][meas_idx] = fix_infinity(jout[j] / meas[0].variance);
+					derivs[jac_offset_obj + j][meas_idx + 1] = fix_infinity(jout[j + pose_size] / meas[1].variance);
+				}
 			}
 		}
 
 		// d deviate / d LH
-		if (derivs[jac_offset_lh]) {
+		if (needsJacLH) {
 			FLT out[7 * 2] = {0};
             if(mpfunc_ctx->settings->use_quat_model) {
                 reprojectModel->reprojectFullJacLhPose(out, &obj2world->quatPose, pt, &world2lh->quatPose, cal);
@@ -492,9 +499,10 @@ static inline void run_pair_measurement(survive_optimizer *mpfunc_ctx, size_t me
                 reprojectModel->reprojectAxisAngleFullJacLhPose(out, &obj2world->axisAnglePose, pt, &world2lh->axisAnglePose, cal);
             }
 			for (int j = 0; j < pose_size; j++) {
-				assert(derivs[jac_offset_lh + j] && "all 7 parameters should be the same for jacobian calculation");
-				derivs[jac_offset_lh + j][meas_idx] = fix_infinity(out[j] / meas[0].variance);
-				derivs[jac_offset_lh + j][meas_idx + 1] = fix_infinity(out[j + pose_size] / meas[1].variance);
+				if(derivs[jac_offset_lh + j]) {
+					derivs[jac_offset_lh + j][meas_idx] = fix_infinity(out[j] / meas[0].variance);
+					derivs[jac_offset_lh + j][meas_idx + 1] = fix_infinity(out[j + pose_size] / meas[1].variance);
+				}
 			}
 		}
 	}
@@ -526,6 +534,12 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
 		int jac_offset_lh = (lh + mpfunc_ctx->poseLength) * 7;
 		int jac_offset_obj = meas->light.object * 7;
 
+		bool needsJacLH = false, needsJacObj = false;
+		for(int i = 0;i < 7;i++) {
+			needsJacLH |= derivs[jac_offset_lh+i] != 0;
+			needsJacObj |= derivs[jac_offset_obj+i] != 0;
+		}
+
 		int p_idx = get_lighthouse_correction_idx_for(mpfunc_ctx, meas->light.object, meas->light.lh, meas->light.axis);
 		if(p_idx > -1 && derivs[p_idx]) {
 			derivs[p_idx][meas_idx] = -1. / meas->variance;
@@ -533,7 +547,7 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
 
 		FLT out[7] = {0};
 		// d Deviate / d Pose[t - 1] * d Pose[t - 1] / d Pose[t]
-		if (derivs[jac_offset_obj]) {
+		if (needsJacObj) {
 		    if(mpfunc_ctx->settings->use_quat_model) {
                 reprojectModel->reprojectAxisJacobFn[meas->light.axis](out, &obj2world->quatPose, pt, &world2lh->quatPose,
                                                                                 cal + meas->light.axis);
@@ -550,12 +564,13 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
 			}
 
 			for (int j = 0; j < pose_size; j++) {
-				assert(derivs[jac_offset_obj + j]);
-				derivs[jac_offset_obj + j][meas_idx] = fix_infinity(out[j] / meas->variance);
+				if(derivs[jac_offset_obj + j]) {
+					derivs[jac_offset_obj + j][meas_idx] = fix_infinity(out[j] / meas->variance);
+				}
 			}
 		}
 
-		if (derivs[jac_offset_lh]) {
+		if (needsJacLH) {
             if(mpfunc_ctx->settings->use_quat_model) {
                 reprojectModel->reprojectAxisJacobLhPoseFn[meas->light.axis](out, &obj2world->quatPose, pt, &world2lh->quatPose,
                                                                                       cal + meas->light.axis);
@@ -564,8 +579,10 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
                                                                                       cal + meas->light.axis);
             }
 			for (int j = 0; j < pose_size; j++) {
-				assert(derivs[jac_offset_lh + j]);
-				derivs[jac_offset_lh + j][meas_idx] = fix_infinity(out[j] / meas->variance);
+				if(derivs[jac_offset_lh + j]) {
+					assert(derivs[jac_offset_lh + j]);
+					derivs[jac_offset_lh + j][meas_idx] = fix_infinity(out[j] / meas->variance);
+				}
 			}
 		}
 	}
@@ -718,6 +735,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
     LinmathDualPose obj2lh[NUM_GEN2_LIGHTHOUSES] = {0};
 
     int ang_size = mpfunc_ctx->settings->use_quat_model ? 4 : 3;
+	int pose_size = ang_size + 3;
 	CN_CREATE_STACK_MAT(ang_velocity_jac, ang_size, ang_size);
 	cn_set_diag_val(&ang_velocity_jac, 1);
 
@@ -868,8 +886,11 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 		case survive_optimizer_measurement_type_camera_accel: {
 			LinmathPoint3d up = {0};
 
-			FLT deriv[4] = {0}, error = 0;
+			FLT deriv[4*3] = {0}, error = 0;
 			size_t deriv_idx = 0;
+
+			LinmathPoint3d world_up = {0, 0, 1};
+			LinmathPoint3d predicted = { 0 };
 
 			size_t lh = meas->camera_acc.camera;
 			normalize3d(up, survive_optimizer_cam_up_vector(mpfunc_ctx, lh));
@@ -879,67 +900,91 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			LinmathDualPose *world2lh = (LinmathDualPose *)&cameras[lh];
 			if (mpfunc_ctx->settings->use_quat_model) {
 				if (isfinite(up[0])) {
+					assert(false);
 					error = gen_world2lh_up_err(world2lh->quatPose.Rot, up);
 					gen_world2lh_up_err_jac_q1(deriv, world2lh->quatPose.Rot, up);
 				}
 			} else {
 				if (isfinite(up[0])) {
-					error = gen_world2lh_aa_up_err(world2lh->axisAnglePose.AxisAngleRot, up);
-					gen_world2lh_aa_up_err_jac_axis_angle(deriv, world2lh->axisAnglePose.AxisAngleRot, up);
+					gen_axisanglerotatevector(predicted, world2lh->axisAnglePose.AxisAngleRot, world_up);
+					gen_axisanglerotatevector_jac_axis_angle(deriv, world2lh->axisAnglePose.AxisAngleRot, world_up);
 				}
 			}
 
-			deviates[meas_idx] = error / meas->variance;
-			for (int i = 0; i < ang_size && derivs && derivs[deriv_idx + i]; i++) {
-				derivs[deriv_idx + i][meas_idx] = fix_infinity(deriv[i] / meas->variance);
+			for(int i = 0;i < 3;i++) {
+				deviates[meas_idx + i] = (predicted[i] - up[i]) / meas->variance;
+
+				for (int j = 0; j < ang_size && derivs; j++) {
+					if(derivs[deriv_idx + j]) {
+						derivs[deriv_idx + j][meas_idx + i] = fix_infinity(deriv[i * ang_size + j] / meas->variance);
+					}
+				}
 			}
+
 			mpfunc_ctx->stats.object_up_error += deviates[meas_idx];
 			mpfunc_ctx->stats.object_up_error_cnt ++;
 			break;
 		}
+		case survive_optimizer_measurement_type_camera_position: {
+			LinmathVec3d pos; copy3d(pos, meas->camera_pos.pos);
+			LinmathVec3d predicted;
+
+			int lh = meas->camera_pos.camera;
+			FLT deriv[7 * 3] = { 0 };
+			LinmathDualPose *world2lh = (LinmathDualPose *)&cameras[lh];
+			gen_apply_axisangle_pose_to_pt(predicted, &world2lh->axisAnglePose, pos);
+			gen_apply_axisangle_pose_to_pt_jac_obj_p_axisangle(deriv, &world2lh->axisAnglePose, pos);
+			int deriv_idx = survive_optimizer_get_camera_index(mpfunc_ctx) + lh * 7;
+
+			for(int i = 0;i < 3;i++) {
+				deviates[meas_idx + i] = predicted[i] / meas->variance;
+				for (int j = 0; j < pose_size && derivs; j++) {
+					if(derivs[deriv_idx + j]) {
+						//printf("%7.7f %d %d\n", predicted[i], meas_idx + i, deriv_idx + j);
+						derivs[deriv_idx + j][meas_idx + i] = fix_infinity(deriv[i * pose_size + j] / meas->variance);
+					}
+				}
+			}
+		}
+			break;
 		case survive_optimizer_measurement_type_object_accel: {
 			int obj = meas->pose_acc.object;
 			LinmathPoint3d up = {0};
 			copy3d(up, survive_optimizer_obj_up_vector(mpfunc_ctx, obj));
 
+			LinmathPoint3d world_up = {0, 0, 1};
+			LinmathPoint3d predicted = {0, 0, 1};
+
 			LinmathAxisAngle rot = {0};
-			FLT deriv[4] = {0}, error = 0;
+			FLT deriv[4*3] = {0}, error = 0;
 
 			LinmathDualPose *obj2world = (LinmathDualPose *)(&survive_optimizer_get_pose(mpfunc_ctx)[obj]);
 			if (mpfunc_ctx->settings->use_quat_model) {
+				assert(false);
 				error = gen_obj2world_up_err(obj2world->quatPose.Rot, up);
 				gen_obj2world_up_err_jac_q1(deriv, obj2world->quatPose.Rot, up);
 			} else {
-				error = gen_obj2world_aa_up_err(obj2world->axisAnglePose.AxisAngleRot, up);
-				gen_obj2world_aa_up_err_jac_axis_angle(deriv, obj2world->axisAnglePose.AxisAngleRot, up);
+				gen_axisanglerotatevector(predicted, obj2world->axisAnglePose.AxisAngleRot, up);
+				gen_axisanglerotatevector_jac_axis_angle(deriv, obj2world->axisAnglePose.AxisAngleRot, up);
 			}
 
 			int deriv_idx = obj * 7 + 3;
             mpfunc_ctx->stats.object_up_error += error * error;
             mpfunc_ctx->stats.object_up_error_cnt++;
-            deviates[meas_idx] = error / meas->variance;
-			for (int i = 0; i < ang_size && derivs && derivs[deriv_idx + i]; i++) {
-				derivs[deriv_idx + i][meas_idx] = fix_infinity(deriv[i] / meas->variance);
-			}
-			break;
-		}
-			/*
-		case survive_optimizer_measurement_type_object_pose: {
-			int jac_offset_obj = meas->pose.object * 7;
-			int pose_size = mpfunc_ctx->settings->use_quat_model ? 7 : 6;
-			FLT *obj2world = (FLT *)(&survive_optimizer_get_pose(mpfunc_ctx)[meas->pose.object]);
-			const FLT *current = &meas->pose.pose.Pos[0];
-			for (int i = 0; i < pose_size; i++) {
-			    FLT error = (obj2world[i] - current[i]);
-				deviates[meas_idx + i] = (obj2world[i] - current[i]) / meas->variance;
-				mpfunc_ctx->stats.current_error += error * error;
-                mpfunc_ctx->stats.current_error_cnt++;
-				if (derivs && derivs[jac_offset_obj]) {
-					derivs[jac_offset_obj + i][meas_idx + i] = 1. / meas->variance;
+
+			for(int i = 0;i < 3;i++) {
+				deviates[meas_idx + i] = (predicted[i] - world_up[i]) / meas->variance;
+
+				for (int j = 0; j < ang_size && derivs; j++) {
+					if(derivs[deriv_idx + j]) {
+						derivs[deriv_idx + j][meas_idx + i] = fix_infinity(deriv[i * ang_size + j] / meas->variance);
+					}
 				}
 			}
+
+			break;
 		}
-			 */
+
 		}
 		meas_idx += meas->size;
 	}
@@ -1169,22 +1214,33 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 
 	int nfree = survive_optimizer_get_free_parameters_count(optimizer);
 	FLT *covar = R ? R->data : 0;
-	CN_CREATE_STACK_MAT(R_aa, nfree * (covar ? 1 : 0), nfree * (covar ? 1 : 0));
-	result->covar_free = covar ? R_aa.data : 0;
-
+	int covar_size = optimizer->covarAllParams ? survive_optimizer_get_parameters_count(optimizer) : nfree;
+	CN_CREATE_STACK_MAT(R_aa, covar_size * (covar ? 1 : 0), covar_size * (covar ? 1 : 0));
+	CN_CREATE_STACK_VEC(PS, survive_optimizer_get_parameters_count(optimizer));
+	CN_CREATE_STACK_VEC(MS, survive_optimizer_get_meas_size(optimizer));
+	result->resid = MS.data;
+	result->xerror = PS.data;
+	if(optimizer->covarAllParams) {
+		result->covar = covar ? R_aa.data : 0;
+	} else {
+		result->covar_free = covar ? R_aa.data : 0;
+	}
 	int rtn = mpfit(mpfunc, meas_count, survive_optimizer_get_parameters_count(optimizer), optimizer->parameters,
 					optimizer->mp_parameters_info, cfg, optimizer, result);
 	optimizer->parameters = params;
 
 	FLT rchisqr = result->bestnorm / result->nfree;
-	if (optimizer->sos && optimizer->sos[0])
+	if (ctx)
 		survive_recording_write_matrix(ctx->recptr, optimizer->sos[0], 10, "full_cov", &R_aa);
 	assert(sane_covariance(&R_aa));
 	int totalPoseCount = optimizer->poseLength + optimizer->cameraLength;
     int pose_size = optimizer->settings->use_quat_model ? 7 : 6;
+	if(optimizer->covarAllParams)
+		pose_size = 7;
+
     int totalFreePoseCount = nfree / pose_size;
 	if (covar) {
-		*R = cnMat(R_aa.rows / 6 * 7, R_aa.rows / 6 * 7, R->data);
+		*R = cnMat(R_aa.rows / pose_size * 7, R_aa.rows / pose_size * 7, R->data);
 
 		CnMat R_q = cnMat(R->rows, R->cols, covar);
 		if (optimizer->settings->optimize_scale_threshold >= 0) {
@@ -1213,16 +1269,15 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 			CN_CREATE_STACK_MAT(G, R->rows, R_aa.rows);
 			CN_CREATE_STACK_MAT(Gp, 4, 3);
 			assert(R->rows == R->cols);
-            //assert(R->rows == totalFreePoseCount * 7);
 
 			for (int z = 0; z < R->rows / 7; z++) {
                 gen_axisangle2quat_jac_axis_angle(Gp.data, ((LinmathAxisAnglePose *) &poses[z])->AxisAngleRot);
 				for(int i = 0;i < 3;i++)
-					cnMatrixSet(&G, i + z * 7, i + z * 6, 1);
+					cnMatrixSet(&G, i + z * 7, i + z * pose_size, 1);
 
 				for (int i = 0; i < 4; i++) {
                     for (int j = 0; j < 3; j++) {
-						cnMatrixSet(&G, i + z * 7 + 3, j + z * 6 + 3, cnMatrixGet(&Gp, i, j));
+						cnMatrixSet(&G, i + z * 7 + 3, j + z * pose_size + 3, cnMatrixGet(&Gp, i, j));
 					}
                 }
             }
@@ -1571,6 +1626,8 @@ int meas_size(survive_optimizer *ctx, enum survive_optimizer_measurement_type ty
 		return 1;
 	case survive_optimizer_measurement_type_camera_accel:
 	case survive_optimizer_measurement_type_object_accel:
+		return 3;
+	case survive_optimizer_measurement_type_camera_position:
 		return 3;
 	case survive_optimizer_measurement_type_parameters_bias:
 		return 1;

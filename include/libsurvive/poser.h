@@ -84,6 +84,7 @@ SURVIVE_EXPORT void PoserData_lighthouse_poses_func(PoserData *poser_data, Survi
 													uint32_t lighthouse_count, SurvivePose *object_pose);
 SURVIVE_EXPORT int8_t survive_get_reference_bsd(SurviveContext *ctx, SurvivePose *lighthouse_pose,
 												uint32_t lighthouse_count);
+SURVIVE_EXPORT int8_t survive_get_ctx_reference_bsd(SurviveContext *ctx);
 
 SURVIVE_EXPORT FLT survive_lighthouse_adjust_confidence(SurviveContext *ctx, uint8_t bsd_idx, FLT delta);
 SURVIVE_EXPORT FLT survive_adjust_confidence(SurviveObject *so, FLT delta);
