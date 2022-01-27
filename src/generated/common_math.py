@@ -2,6 +2,8 @@ import sympy
 import cnkalman.codegen as cg
 from cnkalman.codegen import atan2, sqrt, cos, sin, Matrix, Pow, Mul, asin, Abs, tan
 
+from survive_types import *
+
 import symengine
 
 def simple_neg(x):
@@ -59,6 +61,13 @@ def apply_pose_to_pt(obj_p, sensor_pt):
     px, py, pz = obj_p.Pos
     #return quatrotatevector(obj_p.Rot, sensor_pt) + sp.Matrix((px, py, pz))
     return add3d(quatrotatevector(obj_p.Rot, sensor_pt), obj_p.Pos)
+
+@cg.generate_code()
+def apply_pose_to_pose(lhs : SurvivePose, rhs: SurvivePose):
+    return SurvivePose(
+        Pos=apply_pose_to_pt(lhs, rhs.Pos),
+        Rot=quatrotateabout(lhs.Rot, rhs.Rot)
+    )
 
 def axisanglemagnitude(axis_angle):
     qw, qi, qj = axis_angle
