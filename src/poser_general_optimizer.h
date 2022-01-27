@@ -8,7 +8,7 @@ typedef struct GeneralOptimizerData {
 	int successes_to_reset_cntr;
 
 	uint32_t failures_since_success;
-	FLT max_error;
+	FLT max_error, max_cal_error;
 
 	struct {
 		int runs;
@@ -29,7 +29,7 @@ SURVIVE_EXPORT void general_optimizer_data_init(GeneralOptimizerData *d, Survive
 SURVIVE_EXPORT void general_optimizer_data_dtor(GeneralOptimizerData *d);
 
 SURVIVE_EXPORT void general_optimizer_data_record_failure(GeneralOptimizerData *d);
-SURVIVE_EXPORT bool general_optimizer_data_record_success(GeneralOptimizerData *d, FLT error, const SurvivePose *pose);
+SURVIVE_EXPORT bool general_optimizer_data_record_success(GeneralOptimizerData *d, FLT error, const SurvivePose *pose, bool isCal);
 SURVIVE_EXPORT void general_optimizer_data_record_imu(GeneralOptimizerData *d, PoserDataIMU *imu);
 SURVIVE_EXPORT bool general_optimizer_data_record_current_pose(GeneralOptimizerData *d, PoserDataLight *l,
 															   SurvivePose *p);

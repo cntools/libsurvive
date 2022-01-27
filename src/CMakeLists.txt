@@ -11,6 +11,7 @@ if(HAVE_FOPENCOOKIE)
   add_definitions(-DHAVE_FOPENCOOKIE)
 endif()
 
+cnkalman_generate_code(./generated/common_math.py)
 cnkalman_generate_code(./generated/kalman_kinematics.py)
 cnkalman_generate_code(./generated/lighthouse_model.py)
 cnkalman_generate_code(./generated/imu_model.py)
@@ -29,7 +30,8 @@ SET(SURVIVE_SRCS ${SURVIVE_SRCS}
     survive_kalman_tracker.c
     ./generated/kalman_kinematics.gen.h
     ./generated/lighthouse_model.gen.h
-    ./generated/imu_model.gen.h
+        ./generated/imu_model.gen.h
+        ./generated/common_math.gen.h
     survive_optimizer.c
     survive_recording.c
     survive_plugins.c

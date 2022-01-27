@@ -28,7 +28,7 @@ SURVIVE_EXPORT void survive_kalman_lighthouse_init(SurviveKalmanLighthouse *trac
 SURVIVE_EXPORT void survive_kalman_lighthouse_ootx(SurviveKalmanLighthouse *tracker);
 SURVIVE_EXPORT void survive_kalman_lighthouse_free(SurviveKalmanLighthouse *tracker);
 SURVIVE_EXPORT void survive_kalman_lighthouse_integrate_observation(SurviveKalmanLighthouse *tracker,
-																	const SurvivePose *pose, const FLT *variance);
+																	const SurvivePose *pose, const CnMat *variance);
 SURVIVE_EXPORT void survive_kalman_lighthouse_update_position(SurviveKalmanLighthouse *tracker,
 															  const SurvivePose *pose);
 SURVIVE_EXPORT void survive_kalman_lighthouse_report(SurviveKalmanLighthouse *tracker);

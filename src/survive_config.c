@@ -943,7 +943,7 @@ static uint32_t config_entry_as_uint32_t(config_entry *entry) {
 	case CONFIG_UINT32:
 		return entry->numeric.i;
 	case CONFIG_STRING:
-		return (uint32_t)atoi(entry->data);
+		return (uint32_t)strtol(entry->data, 0, 0);
 	case CONFIG_FLOAT_ARRAY:
 	case CONFIG_UNKNOWN:
 		break;

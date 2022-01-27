@@ -7,7 +7,7 @@
 STRUCT_CONFIG_SECTION(SurviveSensorActivations)
 STRUCT_CONFIG_ITEM("move-threshold-gyro", "Threshold to count gyro norms as moving", .075, t->params.moveThresholdGyro)
 STRUCT_CONFIG_ITEM("move-threshold-acc", "Threshold to count acc diff norms as moving", .03, t->params.moveThresholdAcc)
-STRUCT_CONFIG_ITEM("move-threshold-ang", "Threshold to count light angle diffs as moving", .015,
+STRUCT_CONFIG_ITEM("move-threshold-ang", "Threshold to count light angle diffs as moving", .02,
 				   t->params.moveThresholdAng)
 STRUCT_CONFIG_ITEM("filter-threshold-ang-per-sec", "Threshold to filter light which changes too fast", 50.,
 				   t->params.filterLightChange)
@@ -120,7 +120,7 @@ void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct Pos
 	if (norm3d(imuData->gyro) > self->params.moveThresholdGyro ||
 		dist3d(self->accel, imuData->accel) > self->params.moveThresholdAcc) {
 		self->last_movement = imuData->hdr.timecode;
-		// fprintf(stderr, "%f %f\n", norm3d(imuData->gyro), dist3d(self->accel, imuData->accel));
+		//fprintf(stderr, "%f %f\n", norm3d(imuData->gyro), dist3d(self->accel, imuData->accel));
 	}
 }
 
@@ -243,6 +243,7 @@ bool SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct Po
 
 			if (!isnan(*angle) && fabs(*angle - l->angle) > self->params.moveThresholdAng) {
 				self->last_light_change = self->last_movement = long_timecode;
+				//fprintf(stderr, "%f\n", fabs(*angle - l->angle));
 			}
 
 			if (isnan(*angle))
@@ -384,6 +385,7 @@ bool SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 		survive_long_timecode long_timecode = lightData->hdr.timecode;
 		// assert(long_timecode > self->last_movement);
 		self->last_light_change = self->last_movement = long_timecode;
+		//fprintf(stderr, "%f\n", fabs(*angle - lightData->angle));
 	}
 
 	*angle = lightData->angle;

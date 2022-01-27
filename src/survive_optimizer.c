@@ -441,7 +441,7 @@ static inline void run_pair_measurement(survive_optimizer *mpfunc_ctx, size_t me
 
 		for(int i = 0;i < 2;i++) {
 			int p_idx = get_lighthouse_correction_idx_for(mpfunc_ctx, meas->light.object, meas->light.lh, i);
-			if (derivs[p_idx]) {
+			if (p_idx > -1 && derivs[p_idx]) {
 				derivs[p_idx][meas_idx + i] = -1. / meas->variance;
 			}
 		}
@@ -527,7 +527,7 @@ static void run_single_measurement(survive_optimizer *mpfunc_ctx, size_t meas_id
 		int jac_offset_obj = meas->light.object * 7;
 
 		int p_idx = get_lighthouse_correction_idx_for(mpfunc_ctx, meas->light.object, meas->light.lh, meas->light.axis);
-		if(derivs[p_idx]) {
+		if(p_idx > -1 && derivs[p_idx]) {
 			derivs[p_idx][meas_idx] = -1. / meas->variance;
 		}
 
@@ -893,6 +893,8 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			for (int i = 0; i < ang_size && derivs && derivs[deriv_idx + i]; i++) {
 				derivs[deriv_idx + i][meas_idx] = fix_infinity(deriv[i] / meas->variance);
 			}
+			mpfunc_ctx->stats.object_up_error += deviates[meas_idx];
+			mpfunc_ctx->stats.object_up_error_cnt ++;
 			break;
 		}
 		case survive_optimizer_measurement_type_object_accel: {
@@ -1047,7 +1049,7 @@ static inline bool sane_covariance(const CnMat *P) {
 #endif
 
 int survive_optimizer_nonfixed_index(survive_optimizer *ctx, int idx) {
-	if (ctx->mp_parameters_info[idx].fixed)
+	if (idx < 0 || ctx->mp_parameters_info[idx].fixed)
 		return -1;
 
 	int rtn = 0;
@@ -1145,7 +1147,7 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 			for (int lh = 0; lh < optimizer->cameraLength; lh++) {
 				for (int axis = 0; axis < 3; axis++) {
 					int idx = get_lighthouse_correction_idx_for(optimizer, i, lh, axis);
-					if(axis == 2 || meas_for_lhs_axis[lh * SURVIVE_CORRECTION_PARAMS + i] >= 6) {
+					if(idx > -1 && axis == 2 || meas_for_lhs_axis[lh * SURVIVE_CORRECTION_PARAMS + i] >= 6) {
 						optimizer->mp_parameters_info[idx].fixed = false;
 
 						survive_optimizer_measurement *meas = survive_optimizer_emplace_meas(
@@ -1182,6 +1184,8 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
     int pose_size = optimizer->settings->use_quat_model ? 7 : 6;
     int totalFreePoseCount = nfree / pose_size;
 	if (covar) {
+		*R = cnMat(R_aa.rows / 6 * 7, R_aa.rows / 6 * 7, R->data);
+
 		CnMat R_q = cnMat(R->rows, R->cols, covar);
 		if (optimizer->settings->optimize_scale_threshold >= 0) {
 			int idx = survive_optimizer_get_sensor_scale_index(optimizer);
@@ -1211,13 +1215,12 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 			assert(R->rows == R->cols);
             //assert(R->rows == totalFreePoseCount * 7);
 
-			//cn_set_diag_val(&G, 1);
-			for(int i = 0;i < 3;i++)
-				cnMatrixSet(&G, i, i, 1);
-
 			for (int z = 0; z < R->rows / 7; z++) {
                 gen_axisangle2quat_jac_axis_angle(Gp.data, ((LinmathAxisAnglePose *) &poses[z])->AxisAngleRot);
-                for (int i = 0; i < 4; i++) {
+				for(int i = 0;i < 3;i++)
+					cnMatrixSet(&G, i + z * 7, i + z * 6, 1);
+
+				for (int i = 0; i < 4; i++) {
                     for (int j = 0; j < 3; j++) {
 						cnMatrixSet(&G, i + z * 7 + 3, j + z * 6 + 3, cnMatrixGet(&Gp, i, j));
 					}
@@ -1504,7 +1507,7 @@ SURVIVE_EXPORT void survive_optimizer_setup_buffers(survive_optimizer *ctx, FLT 
 	}
 
 	if(true) {
-		survive_optimizer_emplace_params(ctx, survive_optimizer_parameter_object_lighthouse_correction, ctx->poseLength);
+		//survive_optimizer_emplace_params(ctx, survive_optimizer_parameter_object_lighthouse_correction, ctx->poseLength);
 	}
 
 	if (ctx->settings->current_pos_bias > 0) {
@@ -1669,17 +1672,12 @@ void survive_optimizer_set_cam_up_vector(survive_optimizer *ctx, int i, FLT vari
 	if (!isfinite(n) || n == 0)
 		return;
 
-	FLT *storage = survive_optimizer_cam_up_vector(ctx, i);
-	if (storage == 0 && variance > 0) {
+	if (variance > 0) {
 		survive_optimizer_measurement *meas =
 			survive_optimizer_emplace_meas(ctx, survive_optimizer_measurement_type_camera_accel);
 		meas->camera_acc.camera = i;
 		normalize3d(meas->camera_acc.acc, up);
 		meas->variance = variance;
-		storage = meas->camera_acc.acc;
-	}
-	if (storage) {
-		normalize3d(storage, up);
 	}
 }
 

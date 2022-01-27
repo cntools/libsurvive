@@ -70,7 +70,9 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("kalman-minimize-state-space", "Minimize the state space", 1, t->minimize_state_space)
 	STRUCT_CONFIG_ITEM("kalman-use-error-space", "Model using error state", true, t->use_error_state)
 
-    STRUCT_CONFIG_ITEM("kalman-joint-model-lightcap", "Ratio of confidence of LH over tracked object to use joint filter", -1, t->joint_lightcap_ratio)
+	STRUCT_CONFIG_ITEM("kalman-joint-model-lightcap", "Ratio of confidence of LH over tracked object to use joint filter", -1, t->joint_lightcap_ratio)
+	STRUCT_CONFIG_ITEM("kalman-joint-lightcap-minimum-sensors", "Minimum number of sensors for the joint model to run", 5, t->joint_min_sensor_cnt)
+	STRUCT_CONFIG_ITEM("kalman-lightcap-minimum-sensors", "Minimum number of sensors for the lightcap model to run", 5, t->lightcap_min_sensor_cnt)
 
 	STRUCT_CONFIG_ITEM("kalman-initial-imu-variance", "Initial variance in IMU frame", 0, t->params.initial_variance_imu_correction)
 	STRUCT_CONFIG_ITEM("kalman-initial-acc-scale-variance", "Initial variance in IMU frame", 0, t->params.initial_acc_scale_variance)

@@ -29,6 +29,7 @@ void general_optimizer_data_init(GeneralOptimizerData *d, SurviveObject *so) {
 	SurviveContext *ctx = so->ctx;
 
 	survive_attach_configf( ctx, "max-error", &d->max_error );
+	survive_attach_configf( ctx, "max-cal-error", &d->max_cal_error );
 	survive_attach_configi( ctx, "failures-to-reset", &d->failures_to_reset );
 	survive_attach_configi( ctx, "successes-to-reset", &d->successes_to_reset );
 
@@ -47,9 +48,10 @@ void general_optimizer_data_record_failure(GeneralOptimizerData *d) {
 	if (d->failures_to_reset_cntr > 0)
 		d->failures_to_reset_cntr--;
 }
-bool general_optimizer_data_record_success(GeneralOptimizerData *d, FLT error, const SurvivePose *pose) {
+bool general_optimizer_data_record_success(GeneralOptimizerData *d, FLT error, const SurvivePose *pose, bool isCal) {
+	FLT max_error = isCal ? d->max_cal_error : d->max_error;
 	d->stats.runs++;
-	if (d->max_error <= 0 || d->max_error > error) {
+	if (max_error <= 0 || max_error > error) {
 		if (d->successes_to_reset_cntr > 0)
 			d->successes_to_reset_cntr--;
 		if (pose) {

@@ -450,8 +450,6 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 		return -2;
 	}
 
-	mpfitctx->measurementsCnt = meas_size;
-
 	/*
 	if ((d->useKalman || d->useIMU)) {
 		survive_long_timecode tc = so->activations.last_light;
@@ -479,7 +477,7 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 }
 
 static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const mp_result *result,
-									struct async_optimizer_user *user_data, SurvivePose *out) {
+									struct async_optimizer_user *user_data, CnMat *R, SurvivePose *out) {
 	FLT rtn = -1;
 
 	size_t meas_size = mpfitctx->measurementsCnt;
@@ -511,8 +509,9 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 		general_optimizer_data_record_failure(&d->opt);
 		return -1;
 	}
-
-	bool error_failure = !general_optimizer_data_record_success(&d->opt, result->bestnorm * d->sensor_variance * d->sensor_variance, soLocation);
+	bool solvedLHPoses = false;
+	FLT norm_error = result->bestnorm * d->sensor_variance * d->sensor_variance;
+	bool error_failure = !general_optimizer_data_record_success(&d->opt, norm_error, soLocation, canPossiblySolveLHS);
 	if (!status_failure && !error_failure) {
 		quatnormalize(soLocation->Rot, soLocation->Rot);
 
@@ -536,12 +535,12 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 			}
 
 			if (!worldEstablished) {
-				PoserData_normalize_scene(ctx, cameras, ctx->activeLighthouses, soLocation);
+				PoserData_normalize_scene(ctx, cameras, ctx->activeLighthouses, soLocation, R);
 			}
 
-			CnMat R = cnMat(7, 7, result->covar_free);
-			PoserData_lighthouse_poses_func(&pdl->hdr, so, cameras, R.data ? &R : 0, ctx->activeLighthouses,
+			PoserData_lighthouse_poses_func(&pdl->hdr, so, cameras, R, ctx->activeLighthouses,
 											soLocation);
+			solvedLHPoses = true;
 		}
 
 		int axis_count = 0, lh_count = 0, sensor_ct = 0;
@@ -580,7 +579,7 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 
 		FLT scale = so->sensor_scale;
 		SV_VERBOSE(
-			worldEstablished ? 110 : 100,
+			!solvedLHPoses ? 110 : 100,
 			"MPFIT success %s %f7.5s %s %f/%10.10f/%10.10f (%3d measurements, %s result, %d lighthouses, %d axis, "
 			"%6.3fms "
 			"time_window, %2d old_meas (avg %6.3fms) run #%d) scale %7.7f sensor_err %7.7f up_err %7.7f curr_error %7.7f bias %7.7f",
@@ -612,7 +611,7 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 			get_axis_count(meas_for_lhs_axis), canPossiblySolveLHS, d->opt.failures_since_success, d->stats.total_runs,
 			so->sensor_scale, sqrtf(mpfitctx->stats.params_error / mpfitctx->stats.params_error_cnt));
 
-		if (d->opt.failures_since_success > 10 && d->opt.stats.successes < 10 &&
+		if (canPossiblySolveLHS && d->opt.failures_since_success > 10 && d->opt.stats.successes < 10 &&
 			(SurviveSensorActivations_stationary_time(&so->activations) > (48000000 / 10))) {
 			SV_WARN("Tracker lost for %s", so->codename);
 			survive_kalman_tracker_lost_tracking(so->tracker, true);
@@ -688,9 +687,10 @@ static FLT run_mpfit_find_3d_structure(MPFITData *d, PoserDataLight *pdl, Surviv
 	int nfree = survive_optimizer_get_free_parameters_count(&mpfitctx);
 	survive_release_ctx_lock(ctx);
 	int res = survive_optimizer_run(&mpfitctx, &result, R);
+//	cn_print_mat(R);
 	survive_get_ctx_lock(ctx);
 
-	return handle_optimizer_results(&mpfitctx, res, &result, &user_data, out);
+	return handle_optimizer_results(&mpfitctx, res, &result, &user_data, R, out);
 }
 
 static inline void print_stats(SurviveContext *ctx, MPFITStats *stats) {
@@ -786,7 +786,7 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 								  .poseLength = scenes_cnt,
 								  .cameraLength = ctx->activeLighthouses,
 								  .objectUpVectorVariance = d->stationary_obj_up_variance,
-								  .disableVelocity = d->model_velocity == false,
+								  .disableVelocity = true,
 								  .nofilter = true};
 
 	SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(mpfitctx, 0);
@@ -843,9 +843,12 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 	}
 
 	int worldEstablishedLh = -1;
-	for (int lh = 0; lh < ctx->activeLighthouses && worldEstablishedLh == -1; lh++)
-		if (ctx->bsd[lh].PositionSet)
+
+	uint32_t reference_basestation = survive_configi(ctx, "reference-basestation", SC_GET, 0);
+	for (int lh = 0; lh < ctx->activeLighthouses; lh++) {
+		if (ctx->bsd[lh].PositionSet && (worldEstablishedLh == -1 || ctx->bsd[lh].BaseStationID == reference_basestation))
 			worldEstablishedLh = lh;
+	}
 
 	int bestObjForCal = -1;
 	int bestObjForCalSensorCnt = 0;
@@ -917,8 +920,10 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 	mpfitctx.cfg = survive_optimizer_precise_config();
 
 	survive_release_ctx_lock(ctx);
-	int res = survive_optimizer_run(&mpfitctx, &result, 0);
+	CN_CREATE_STACK_MAT(R, (scenes_cnt + ctx->activeLighthouses) * 7, (scenes_cnt + ctx->activeLighthouses) * 7);
+	int res = survive_optimizer_run(&mpfitctx, &result, &R);
 	survive_get_ctx_lock(ctx);
+	survive_recording_write_matrix(ctx->recptr, 0, 5, "GSS", &R);
 	bool status_failure = res <= 0;
 	FLT sensor_covariance = d->sensor_variance * d->sensor_variance;
 	if (status_failure || result.bestnorm * sensor_covariance > 1e-2) {
@@ -957,6 +962,15 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 			FLT euler[3] = {0, 0, ang_target - ang};
 			SurvivePose objUp2World = {0};
 			quatfromeuler(objUp2World.Rot, euler);
+
+			bool centerOnLh0 = survive_configi(ctx, "center-on-lh0", SC_GET, 0);
+			if(centerOnLh0) {
+				SurvivePose offset = { .Rot = {1} };
+				scalend(offset.Pos, reflh2objUp.Pos, -1, 3);
+				ApplyPoseToPose(&objUp2World, &objUp2World, &offset);
+			}
+
+
 
 			for (int i = 0; i < mpfitctx.cameraLength; i++) {
 				ApplyPoseToPose(&cameras[i], &objUp2World, &cameras[i]);
@@ -1062,7 +1076,7 @@ int PoserMPFIT(SurviveObject *so, void **user, PoserData *pd) {
 		FLT error = -1;
 		if (++d->syncs_per_run_cnt >= d->syncs_per_run) {
 			d->syncs_per_run_cnt = 0;
-			CN_CREATE_STACK_MAT(R, 7, 7);
+			CN_CREATE_STACK_MAT(R, 7 * 4, 7 * 4);
 			bool useCovariance = survive_configf(ctx, MPFIT_FULL_COV_TAG, SC_GET, 1.);
 			error = run_mpfit_find_3d_structure(d, lightData, scene, &estimate, useCovariance ? &R : 0);
 			handle_results(d, lightData, error, &estimate, useCovariance ? &R : 0);

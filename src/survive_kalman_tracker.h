@@ -75,6 +75,9 @@ typedef struct SurviveKalmanTracker {
 	bool show_raw_obs;
 
 	FLT joint_lightcap_ratio;
+	int joint_min_sensor_cnt;
+	int lightcap_min_sensor_cnt;
+
 	FLT light_threshold_var, report_threshold_var, light_error_threshold;
 	FLT zvu_stationary_var;
 	FLT zvu_no_light_var;
@@ -114,6 +117,11 @@ typedef struct SurviveKalmanTracker {
 		FLT acc_norm;
 		FLT stationary_acc_norm;
 		size_t stationary_imu_count;
+
+		uint32_t joint_model_dropped;
+		uint32_t joint_model_sensor_cnt_sum;
+		uint32_t lightcap_model_dropped;
+		uint32_t lightcap_model_sensor_cnt_sum;
 	} stats;
 
 	FLT imu_residuals;

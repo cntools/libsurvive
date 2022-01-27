@@ -285,30 +285,37 @@ void survive_kalman_lighthouse_init(SurviveKalmanLighthouse *tracker, SurviveCon
 	cn_set_diag(&tracker->bsd_model.P, (const FLT *)&baseline.BSD0);
 }
 SURVIVE_EXPORT void survive_kalman_lighthouse_integrate_observation(SurviveKalmanLighthouse *tracker,
-																	const SurvivePose *pose, const FLT *_variance) {
+																	const SurvivePose *pose, const CnMat *Rlh) {
 	if (tracker == 0)
 		return;
 
 	CN_CREATE_STACK_MAT(H, 7, tracker->model.state_cnt);
+	CN_CREATE_STACK_MAT(R, 7, 7);
+	FLT v = cn_trace(&tracker->model.P);
+	bool trustAbsolutely = v > 1e2 || Rlh == 0;
 
-	size_t state_cnt = tracker->model.state_cnt;
-	cn_set_diag_val(&H, 1);
-	FLT pv = tracker->initial_pos_var, rv = tracker->initial_rot_var;
-	FLT variance[7] = {pv, pv, pv, rv, rv, rv};
-	if (_variance) {
-		memcpy(variance, _variance, sizeof(variance));
-	}
-	CnMat R = cnVec(7, variance);
-	FLT v = normnd2(variance, 7);
-
-	if (v > 0) {
+	if (trustAbsolutely) {
 #ifdef TRACK_IN_WORLD2LH
 		SurvivePose Z = InvertPoseRtn(pose);
 #else
 		SurvivePose Z = *pose;
 #endif
+		if(Rlh) {
+			cn_matrix_copy(&R, Rlh);
+		}
+		size_t state_cnt = tracker->model.state_cnt;
+		cn_set_diag_val(&H, 1);
+		FLT pv = tracker->initial_pos_var, rv = tracker->initial_rot_var;
+		FLT variance[7] = {pv, pv, pv, rv, rv, rv, rv};
+		CnMat V = cnVec(7, variance);
+		cn_add_diag(&R, &V, 1);
+
 		CnMat Zp = cnMat(7, 1, (void *)&Z);
 		cnkalman_meas_model_predict_update(0, &tracker->obs_model, &H, &Zp, &R);
+		SurviveContext * ctx = tracker->ctx;
+		//cn_print_mat(&R);
+		SV_VERBOSE(10, "Observation for LH %d(ID: %08x)                             " SurvivePose_format, tracker->lh,
+				   (unsigned)ctx->bsd[tracker->lh].BaseStationID, SURVIVE_POSE_EXPAND(Z));
 
 		if (tracker->lh == 0 && false) {
 			// cn_set_constant(&tracker->model.P, 0);
@@ -318,7 +325,7 @@ SURVIVE_EXPORT void survive_kalman_lighthouse_integrate_observation(SurviveKalma
 		}
 	} else {
 		tracker->state.Lighthouse = *pose;
-		cn_set_constant(&tracker->model.P, 1e-10);
+		survive_covariance_pose2poseAA(&tracker->model.P, pose, &R);
 	}
 	integrate_imu(tracker);
 	survive_kalman_lighthouse_report(tracker);

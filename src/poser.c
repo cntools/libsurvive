@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <survive.h>
 
+#include "generated/common_math.gen.h"
+
 #define _USE_MATH_DEFINES // for C
 #include <math.h>
 #include <poser.h>
@@ -105,7 +107,8 @@ void PoserData_poser_pose_func(PoserData *poser_data, SurviveObject *so, const S
 		//FLT p_e = error;
 		//FLT r_e = error;
 		//FLT R[7] = {p_e, p_e, p_e, r_e, r_e, r_e, r_e };
-		survive_kalman_tracker_integrate_observation(poser_data, so->tracker, imu2world, R);
+		CnMat Rt = cnMatConstView(7, 7, R, 0, 0);
+		survive_kalman_tracker_integrate_observation(poser_data, so->tracker, imu2world, &Rt);
 	}
 }
 void PoserData_poser_pose_func_with_velocity(PoserData *poser_data, SurviveObject *so, const SurvivePose *imu2world,
@@ -115,7 +118,7 @@ void PoserData_poser_pose_func_with_velocity(PoserData *poser_data, SurviveObjec
 }
 
 void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse,
-									SurvivePose *lighthouse_pose, FLT var, SurvivePose *object_pose) {
+									SurvivePose *lighthouse_pose, const CnMat * R, SurvivePose *object_pose) {
 	if (poser_data && poser_data->lighthouseposeproc) {
 		for (int i = 0; i < 7; i++)
 			assert(!isnan(((FLT *)lighthouse_pose)[i]));
@@ -130,7 +133,7 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 	} else {
 		const FLT up[3] = {0, 0, 1};
 		SurviveContext *ctx = so->ctx;
-
+		SurvivePose origLHPose = *lighthouse_pose;
 		if (quatmagnitude(lighthouse_pose->Rot) == 0) {
 			SV_INFO("Pose func called with invalid pose.");
 			return;
@@ -219,17 +222,7 @@ void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, ui
 		for (int i = 0; i < 7; i++)
 			assert(!isnan(((FLT *)&lighthouse2world)[i]));
 
-		FLT p_var = .1, r_var = .01;
-
-		if (var > 0) {
-			// Var is a measure of how much the data going into the computation was varied; so scale
-			p_var = M_PI / var * .0001;
-			r_var = M_PI / var * .00001;
-		} else if (var == 0) {
-			p_var = r_var = 0;
-		}
-		FLT obs_var[7] = {p_var, p_var, p_var, r_var, r_var, r_var, r_var};
-		survive_kalman_lighthouse_integrate_observation(so->ctx->bsd[lighthouse].tracker, lighthouse_pose, obs_var);
+		survive_kalman_lighthouse_integrate_observation(so->ctx->bsd[lighthouse].tracker, lighthouse_pose, R);
 	}
 }
 
@@ -251,7 +244,7 @@ int8_t survive_get_reference_bsd(SurviveContext *ctx, SurvivePose *lighthouse_po
 }
 
 void PoserData_normalize_scene(SurviveContext *ctx, SurvivePose *lighthouse_pose, uint32_t lighthouse_count,
-							   SurvivePose *object_pose) {
+							   SurvivePose *object_pose, CnMat* R) {
 	FLT lhNormAngleOffset = survive_configf(ctx, LIGHTHOUSE_NORMALIZE_ANGLE_TAG, SC_GET, 0);
 	uint32_t lh_indices[NUM_GEN2_LIGHTHOUSES] = {0};
 	uint32_t cnt = 0;
@@ -281,11 +274,27 @@ void PoserData_normalize_scene(SurviveContext *ctx, SurvivePose *lighthouse_pose
 	SurvivePose arb2world = {0};
 	quatfromeuler(arb2world.Rot, euler);
 
+	bool centerOnLh0 = survive_configi(ctx, "center-on-lh0", SC_GET, 0);
+	if(centerOnLh0) {
+		SurvivePose offset = { .Rot = {1} };
+		scalend(offset.Pos, preferredLH->Pos, -1, 3);
+		ApplyPoseToPose(&arb2world, &arb2world, &offset);
+	}
+
 	ApplyPoseToPose(object_pose, &arb2world, &object2arb);
+	int lh_idx = 0;
 	for (int lh = 0; lh < lighthouse_count; lh++) {
 		SurvivePose *lh2object = &lighthouse_pose[lh];
 		if (quatmagnitude(lh2object->Rot) != 0.0) {
 			ApplyPoseToPose(lh2object, &arb2world, lh2object);
+
+			if(R) {
+				CnMat LH_R = cnMatConstView(7, 7, R, lh_idx * 7, lh_idx * 7);
+				CN_CREATE_STACK_MAT(jac, 7, 7);
+				apply_pose_to_pose_jac_rhs(&jac, &arb2world, lh2object);
+				cn_ABAt_add(&LH_R, &jac, &LH_R, 0);
+			}
+			lh_idx++;
 		}
 	}
 }
@@ -345,11 +354,14 @@ void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so, S
 			quatnormalize(lh2object.Rot, lh2object.Rot);
 
 			SurvivePose lh2world = lh2object;
+			CnMat LH_R;
+			if(R)
+				LH_R = cnMatConstView(7, 7, R, lh_idx * 7, lh_idx * 7);
 			if (!quatiszero(object2World.Rot) && worldEstablished == false) {
 				ApplyPoseToPose(&lh2world, &object2World, &lh2object);
 			}
 
-			PoserData_lighthouse_pose_func(poser_data, so, lh, &lh2world, R ? -1 : -1,
+			PoserData_lighthouse_pose_func(poser_data, so, lh, &lh2world, R ? &LH_R : 0,
 										   &object2World);
 		}
 

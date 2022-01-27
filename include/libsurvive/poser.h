@@ -76,9 +76,9 @@ SURVIVE_EXPORT void PoserData_poser_pose_func_with_velocity(PoserData *poser_dat
  * @param object_pose This is the assumed or derived position of the tracked object.
  */
 SURVIVE_EXPORT void PoserData_lighthouse_pose_func(PoserData *poser_data, SurviveObject *so, uint8_t lighthouse,
-												   SurvivePose *lighthouse_pose, FLT var, SurvivePose *object_pose);
+												   SurvivePose *lighthouse_pose, const CnMat * R, SurvivePose *object_pose);
 SURVIVE_EXPORT void PoserData_normalize_scene(SurviveContext *ctx, SurvivePose *lighthouse_pose,
-											  uint32_t lighthouse_count, SurvivePose *object_pose);
+											  uint32_t lighthouse_count, SurvivePose *object_pose, CnMat* R);
 SURVIVE_EXPORT void PoserData_lighthouse_poses_func(PoserData *poser_data, SurviveObject *so,
 													SurvivePose *lighthouse_pose, const struct CnMat *R,
 													uint32_t lighthouse_count, SurvivePose *object_pose);
