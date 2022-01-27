@@ -510,7 +510,8 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 		return -1;
 	}
 	bool solvedLHPoses = false;
-	FLT norm_error = result->bestnorm * d->sensor_variance * d->sensor_variance;
+	FLT sensor_error = sqrtf(mpfitctx->stats.sensor_error / mpfitctx->stats.sensor_error_cnt);
+	FLT norm_error = sensor_error; // result->bestnorm * d->sensor_variance * d->sensor_variance;
 	bool error_failure = !general_optimizer_data_record_success(&d->opt, norm_error, soLocation, canPossiblySolveLHS);
 	if (!status_failure && !error_failure) {
 		quatnormalize(soLocation->Rot, soLocation->Rot);
