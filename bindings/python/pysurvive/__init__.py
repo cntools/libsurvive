@@ -77,6 +77,9 @@ def install_light_fn(ctx, fn):
 def install_angle_fn(ctx, fn):
     install_generic_process(ctx, fn, default_angle_process, pysurvive_generated.install_angle_fn, angle_process_func)
 
+def install_button_fn(ctx, fn):
+    install_generic_process(ctx, fn, default_button_process, pysurvive_generated.install_button_fn, button_process_func)
+
 def install_pose_fn(ctx, fn):
     def map_args(so, timecode, pose):
         return (so, timecode, list(pose.contents.Pos) + list(pose.contents.Rot))
