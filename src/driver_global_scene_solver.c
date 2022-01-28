@@ -7,7 +7,7 @@
 #include <survive_optimizer.h>
 #include <survive_reproject_gen2.h>
 
-STATIC_CONFIG_ITEM(GSS_ENABLE, "globalscenesolver", 'b', "Enable global scene solver", 0)
+STATIC_CONFIG_ITEM(GSS_ENABLE, "globalscenesolver", 'i', "Enable global scene solver", 0)
 
 #ifndef GSS_NUM_STORED_SCENES
 #define GSS_NUM_STORED_SCENES 32
@@ -21,6 +21,9 @@ typedef struct global_scene_solver {
 
 	size_t last_capture_time_cnt;
 	survive_long_timecode *last_capture_time;
+
+	int solve_counts;
+	int solve_count_max;
 
 	bool needsSolve;
 	FLT last_addition;
@@ -83,11 +86,14 @@ static size_t add_scenes(struct global_scene_solver *gss, SurviveObject *so) {
 }
 
 static bool run_optimization(global_scene_solver *gss) {
+	if (gss->solve_counts > gss->solve_count_max && gss->solve_count_max > 0)
+		return false;
+
 	PoserDataGlobalScenes pgss = {
 		.hdr = {.pt = POSERDATA_GLOBAL_SCENES}, .scenes_cnt = gss->scenes_cnt, .scenes = gss->scenes};
 	if (pgss.scenes_cnt > GSS_NUM_STORED_SCENES)
 		pgss.scenes_cnt = GSS_NUM_STORED_SCENES;
-
+	gss->solve_counts++;
 	return gss->ctx->PoserFn(gss->ctx->objs[0], &gss->ctx->objs[0]->PoserFnData, (PoserData *)&pgss) == 0;
 }
 
@@ -123,6 +129,9 @@ static void set_needs_solve(global_scene_solver *gss) {
 }
 
 static size_t check_object(global_scene_solver *gss, int i, SurviveObject *so) {
+	if (gss->solve_counts > gss->solve_count_max && gss->solve_count_max > 0)
+		return false;
+
 	size_t scenes_added = 0;
 	SurviveContext *ctx = gss->ctx;
 
@@ -224,6 +233,9 @@ static void ootx_recv(struct SurviveContext *ctx, uint8_t bsd_idx) {
 }
 int DriverRegGlobalSceneSolver(SurviveContext *ctx) {
 	global_scene_solver *driver = SV_NEW(global_scene_solver, ctx);
+
+	int flag = survive_configi(ctx, GSS_ENABLE_TAG, SC_GET, 1);
+	driver->solve_count_max = flag > 1 ? flag : -1;
 
 	driver->imu_fn = survive_install_imu_fn(ctx, imu_fn);
 	driver->prior_sync_fn = survive_install_sync_fn(ctx, sync_fn);
