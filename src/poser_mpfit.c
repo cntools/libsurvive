@@ -937,8 +937,8 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 
 		return false;
 	} else {
-		SV_INFO("MPFIT success %f/%10.10f (%d measurements, %d, %s)", result.orignorm, result.bestnorm,
-				(int)mpfitctx.measurementsCnt, res, survive_optimizer_error(res));
+		SV_INFO("MPFIT success %f/%10.10f (%d measurements, %d, %s, trace %7.7f)", result.orignorm, result.bestnorm,
+				(int)mpfitctx.measurementsCnt, res, survive_optimizer_error(res), cn_trace(&R) / R.rows);
 
 		SurvivePose *opt_cameras = survive_optimizer_get_camera(&mpfitctx);
 		SurvivePose cameras[NUM_GEN2_LIGHTHOUSES] = {0};

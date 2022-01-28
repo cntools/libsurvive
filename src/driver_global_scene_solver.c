@@ -27,11 +27,15 @@ typedef struct global_scene_solver {
 
 	bool needsSolve;
 	FLT last_addition;
+	int desired_coverage;
 
 	imu_process_func imu_fn;
 	sync_process_func prior_sync_fn;
 	light_pulse_process_func prior_light_pulse;
 	ootx_received_process_func prior_ootx_fn;
+
+#define NUM_BINS 5
+	int coverage[NUM_GEN2_LIGHTHOUSES][2][NUM_BINS];
 
 	bool threaded;
 	og_thread_t thread;
@@ -45,6 +49,7 @@ typedef struct global_scene_solver {
 
 STRUCT_CONFIG_SECTION(global_scene_solver)
 STRUCT_CONFIG_ITEM("gss-threaded", "Thread GSS iterations", 1, t->threaded)
+STRUCT_CONFIG_ITEM("gss-desired-coverage", "Number of measurements to saturate a bin", 30, t->desired_coverage)
 END_STRUCT_CONFIG_SECTION(global_scene_solver)
 
 static size_t add_scenes(struct global_scene_solver *gss, SurviveObject *so) {
@@ -64,6 +69,9 @@ static size_t add_scenes(struct global_scene_solver *gss, SurviveObject *so) {
 	scene->meas_cnt = 0;
 	scene->meas = SV_REALLOC(scene->meas, 32 * 2 * ctx->activeLighthouses * sizeof(scene->meas[0]));
 
+	int scene_coverage[NUM_GEN2_LIGHTHOUSES][2][NUM_BINS] = {0};
+
+	bool useful = gss->desired_coverage < 0;
 	size_t lh_meas[NUM_GEN2_LIGHTHOUSES] = {0};
 	for (uint8_t lh = 0; lh < ctx->activeLighthouses; lh++) {
 		for (uint8_t sensor = 0; sensor < so->sensor_ct; sensor++) {
@@ -80,6 +88,17 @@ static size_t add_scenes(struct global_scene_solver *gss, SurviveObject *so) {
 					meas->value = a[axis];
 					meas->sensor_idx = sensor;
 					meas->lh = lh;
+					FLT range = 2.0944; // 120 degrees
+
+					int bin = meas->value / range * NUM_BINS + (NUM_BINS / 2.);
+					if (bin < 0)
+						bin = 0;
+					if (bin >= NUM_BINS)
+						bin = NUM_BINS - 1;
+					scene_coverage[lh][axis][bin]++;
+
+					useful |= gss->coverage[lh][axis][bin] < gss->desired_coverage;
+
 					lh_meas[lh]++;
 					scene->meas_cnt++;
 				}
@@ -87,12 +106,23 @@ static size_t add_scenes(struct global_scene_solver *gss, SurviveObject *so) {
 		}
 	}
 
-	if (scene->meas_cnt > 4) {
+	if (useful && scene->meas_cnt > 4) {
 		gss->scenes_cnt++;
 		rtn++;
+
+		for (uint8_t lh = 0; lh < ctx->activeLighthouses; lh++) {
+			for (uint8_t axis = 0; axis < 2; axis++) {
+				for (int i = 0; i < NUM_BINS; i++) {
+					gss->coverage[lh][axis][i] += scene_coverage[lh][axis][i];
+				}
+			}
+		}
+
 		for (int i = 0; i < ctx->activeLighthouses; i++) {
 			SV_VERBOSE(100, "Scene %d for lh %d", (int)lh_meas[i], i);
 		}
+	} else {
+		SV_VERBOSE(100, "Scene rejected; meas %d", (int)scene->meas_cnt);
 	}
 
 	return rtn;
@@ -174,12 +204,12 @@ static size_t check_object(global_scene_solver *gss, int i, SurviveObject *so) {
 	if (activations_changed && spreadout && light_static && not_moving) {
 		size_t new_scenes = add_scenes(gss, so);
 		if (new_scenes) {
-			gss->last_capture_time[i] = so->activations.last_light_change;
 			scenes_added += new_scenes;
 			SV_VERBOSE(10, "Adding scene (%d) for %s at %6.4f (%f)", (int)gss->scenes_cnt % GSS_NUM_STORED_SCENES,
 					   so->codename, survive_run_time(ctx),
 					   SurviveSensorActivations_stationary_time(&so->activations) / 48000000.);
 		}
+		gss->last_capture_time[i] = so->activations.last_light_change;
 	}
 
 	if (scenes_added) {
@@ -207,6 +237,29 @@ static int DriverRegGlobalSceneSolverPoll(struct SurviveContext *ctx, void *driv
 static int DriverRegGlobalSceneSolverClose(struct SurviveContext *ctx, void *driver) {
 	global_scene_solver *gss = (global_scene_solver *)driver;
 	global_scene_solver_detach_config(ctx, driver);
+
+	SV_VERBOSE(10, "Global Scene Solver:");
+	SV_VERBOSE(10, "\tScenes:       %8d", (int)gss->scenes_cnt);
+	for (int i = 0; i < ctx->activeLighthouses; i++) {
+		for (int j = 0; j < 2; j++) {
+			SV_VERBOSE(10, "\tCoverage %02d.%02d     %4d %4d %4d %4d %4d ", i, j,
+					   LINMATH_VEC5_EXPAND(gss->coverage[i][j]));
+		}
+	}
+
+	if (gss->threaded) {
+		OGLockMutex(gss->data_available_lock);
+		gss->needsSolve = 0;
+		gss->active = 0;
+		OGSignalCond(gss->data_available);
+		OGUnlockMutex(gss->data_available_lock);
+		OGJoinThread(gss->thread);
+		OGDeleteConditionVariable(gss->data_available);
+
+		OGDeleteMutex(gss->data_available_lock);
+	}
+
+	OGDeleteMutex(gss->scenes_lock);
 
 	free(gss->last_capture_time);
 	for (int i = 0; i < GSS_NUM_STORED_SCENES; i++) {
