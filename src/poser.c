@@ -248,7 +248,7 @@ int8_t survive_get_ctx_reference_bsd(SurviveContext *ctx) {
 	SurvivePose cameras[NUM_GEN2_LIGHTHOUSES] =  { 0 };
 	for(int i = 0;i < ctx->activeLighthouses;i++) {
 		if(ctx->bsd[i].PositionSet)
-			cameras[i] = ctx->bsd[i].Pose;
+			cameras[i] = *survive_get_lighthouse_position(ctx, i);
 	}
 	return survive_get_reference_bsd(ctx, cameras, ctx->activeLighthouses);
 }

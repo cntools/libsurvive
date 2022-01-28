@@ -316,7 +316,7 @@ static bool map_light_data(void *user, const struct CnMat *Z, const struct CnMat
 
 		assert(ctx->bsd[info->lh].PositionSet);
 
-		const SurvivePose world2lh = InvertPoseRtn(&ctx->bsd[info->lh].Pose);
+		const SurvivePose world2lh = InvertPoseRtn(survive_get_lighthouse_position(ctx, info->lh));
 
 		const FLT *pt = &so->sensor_locations[info->sensor_idx * 3];
         SurvivePose imu2trackref = so->imu2trackref;

@@ -127,7 +127,7 @@ void survive_kalman_lighthouse_report(SurviveKalmanLighthouse *tracker) {
 	}
 
 	FLT diff_p[7] = {0};
-	subnd(diff_p, lighthouse2world.Pos, tracker->ctx->bsd[tracker->lh].Pose.Pos, 7);
+	subnd(diff_p, lighthouse2world.Pos, survive_get_lighthouse_position(tracker->ctx, tracker->lh)->Pos, 7);
 	FLT diff = normnd2(diff_p, 7);
 	if (diff < 1e-4 && tracker->ctx->bsd[tracker->lh].PositionSet)
 		return;

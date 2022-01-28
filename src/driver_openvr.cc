@@ -108,7 +108,7 @@ struct OpenVRDriver {
 						for (auto &x : basis) {
 							Point3 openvrPt, survivePt;
 							ApplyPoseToPoint(openvrPt.v, &d.vr_pose, x.v);
-							ApplyPoseToPoint(survivePt.v, &ctx->bsd[bsd_idx].Pose, x.v);
+							ApplyPoseToPoint(survivePt.v, survive_get_lighthouse_position(ctx, bsd_idx), x.v);
 
 							openvrPts.push_back(openvrPt);
 							survivePts.push_back(survivePt);

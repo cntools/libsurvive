@@ -843,6 +843,10 @@ void survive_reset_lighthouse_position(SurviveContext *ctx, int bsd_idx) {
 	ctx->bsd[bsd_idx].PositionSet = false;
 }
 
+SURVIVE_EXPORT const SurvivePose *survive_get_lighthouse_position(const SurviveContext *ctx, int bsd_idx) {
+	return &ctx->bsd[bsd_idx].Pose;
+}
+
 void survive_reset_lighthouse_positions(SurviveContext *ctx) {
 	// survive_get_ctx_lock(ctx);
 	SV_VERBOSE(100, "survive_reset_lighthouse_positions called");

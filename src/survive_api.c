@@ -437,7 +437,7 @@ FLT survive_simple_object_get_latest_pose(const SurviveSimpleObject *sao, Surviv
 	switch (sao->type) {
 	case SurviveSimpleObject_LIGHTHOUSE: {
 		if (pose)
-			*pose = sao->actx->ctx->bsd[sao->data.lh.lighthouse].Pose;
+			*pose = *survive_get_lighthouse_position(sao->actx->ctx, sao->data.lh.lighthouse);
 		timecode = survive_simple_run_time_since_epoch(sao->actx);
 		break;
 	}

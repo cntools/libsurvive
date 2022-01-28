@@ -564,7 +564,7 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 			for (int i = 0; i < mpfitctx->measurementsCnt; i++) {
 				survive_optimizer_measurement *meas = &mpfitctx->measurements[i];
 				if (meas->meas_type == survive_optimizer_measurement_type_light) {
-					SurvivePose world2lh = InvertPoseRtn(&ctx->bsd[meas->light.lh].Pose);
+					SurvivePose world2lh = InvertPoseRtn(survive_get_lighthouse_position(ctx, meas->light.lh));
 					FLT v = survive_reproject_model(ctx)->reprojectAxisFullFn[meas->light.axis](
 						soLocation, &so->sensor_locations[meas->light.sensor_idx * 3], &world2lh,
 						ctx->bsd[meas->light.lh].fcal + meas->light.axis);
@@ -645,10 +645,11 @@ static void handle_results(MPFITData *d, PoserDataLight *lightData, FLT error, S
 			estimate->Pos[2] = 0;
 
 			for (int i = 0; i < so->ctx->activeLighthouses; i++) {
+				SurvivePose new_pos = *survive_get_lighthouse_position(so->ctx, i);
 				if (so->ctx->bsd[i].PositionSet) {
-					so->ctx->bsd[i].Pose.Pos[2] -= adjust;
+					new_pos.Pos[2] -= adjust;
 				}
-				SURVIVE_INVOKE_HOOK(lighthouse_pose, so->ctx, i, &so->ctx->bsd[i].Pose);
+				SURVIVE_INVOKE_HOOK(lighthouse_pose, so->ctx, i, &new_pos);
 			}
 			so->ctx->request_floor_set = false;
 		}
@@ -842,7 +843,8 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 		if (!ctx->bsd[i].PositionSet) {
 			memset(survive_optimizer_get_camera(&mpfitctx)[i].Rot, 0, sizeof(FLT) * 4);
 		}
-		SV_VERBOSE(10, "Scene with lh (%d) " SurvivePose_format, i, SURVIVE_POSE_EXPAND(ctx->bsd[i].Pose));
+		SV_VERBOSE(10, "Scene with lh (%d) " SurvivePose_format, i,
+				   SURVIVE_POSE_EXPAND(*survive_get_lighthouse_position(ctx, i)));
 
 		survive_optimizer_set_cam_up_vector(&mpfitctx, i, d->lh_up_variance, ctx->bsd[i].accel);
 	}
@@ -868,7 +870,7 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 		survive_optimizer_measurement* meas = survive_optimizer_emplace_meas(&mpfitctx, survive_optimizer_measurement_type_camera_position);
 		meas->camera_pos.camera = worldEstablishedLh;
 		meas->variance = 1e-3;
-		copy3d(meas->camera_pos.pos, ctx->bsd[worldEstablishedLh].Pose.Pos);
+		copy3d(meas->camera_pos.pos, survive_get_lighthouse_position(ctx, worldEstablishedLh)->Pos);
 		mpfitctx.mp_parameters_info[bestObjForCal* 7].fixed = true;
 		SV_VERBOSE(10, "Locking lh %d to " Point3_format, worldEstablishedLh,
 				   LINMATH_VEC3_EXPAND(meas->camera_pos.pos));

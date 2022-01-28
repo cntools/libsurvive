@@ -672,6 +672,7 @@ SURVIVE_EXPORT bool *survive_add_threaded_driver(SurviveContext *ctx, void *driv
 SURVIVE_EXPORT char *survive_export_config(SurviveObject *so);
 SURVIVE_EXPORT void survive_reset_lighthouse_positions(SurviveContext *ctx);
 SURVIVE_EXPORT void survive_reset_lighthouse_position(SurviveContext *ctx, int bsd_idx);
+SURVIVE_EXPORT const SurvivePose *survive_get_lighthouse_position(const SurviveContext *ctx, int bsd_idx);
 
 // This is the disambiguator function, for taking light timing and figuring out place-in-sweep for a given photodiode.
 SURVIVE_EXPORT uint8_t survive_map_sensor_id(SurviveObject *so, uint8_t reported_id);

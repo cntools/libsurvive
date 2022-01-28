@@ -281,7 +281,7 @@ int PoserBaryCentricSVD(SurviveObject *so, void **user, PoserData *pd) {
 						survive_get_ctx_lock(so->ctx);
 
 						if (quatmagnitude(obj2Lh.Rot) != 0) {
-							SurvivePose *lh2world = &so->ctx->bsd[lh].Pose;
+							SurvivePose *lh2world = survive_get_lighthouse_position(so->ctx, lh);
 
 							ApplyPoseToPose(&objs2world[lh], lh2world, &obj2Lh);
 							meas[lh] = dd->bc.meas_cnt;

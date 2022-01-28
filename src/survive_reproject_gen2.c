@@ -139,7 +139,7 @@ void survive_reproject_from_pose_gen2(const SurviveContext *ctx, int lighthouse,
 
 void survive_reproject_gen2(const SurviveContext *ctx, int lighthouse, LinmathVec3d const ptInWorld,
 							SurviveAngleReading out) {
-	SurvivePose world2lh = InvertPoseRtn(&ctx->bsd[lighthouse].Pose);
+	SurvivePose world2lh = InvertPoseRtn(survive_get_lighthouse_position(ctx, lighthouse));
 	survive_reproject_from_pose_gen2(ctx, lighthouse, &world2lh, ptInWorld, out);
 }
 
