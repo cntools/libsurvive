@@ -923,11 +923,16 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
 		if (quatiszero(survive_optimizer_get_camera(&mpfitctx)[i].Rot)) {
-			// lh_meas[i] = 0;
 			// survive_optimizer_fix_camera(&mpfitctx, i);
-			SurvivePose initial_guess = {.Pos = {0, 0, 10}, .Rot = {1, 0, 0, 0}};
-			survive_optimizer_get_camera(&mpfitctx)[i] = initial_guess;
-			SV_VERBOSE(10, "No estimate for %d", i);
+			if (lh_meas[i] < 5) {
+				lh_meas[i] = 0;
+				survive_optimizer_fix_camera(&mpfitctx, i);
+				SV_VERBOSE(10, "No data for %d", i);
+			} else {
+				SurvivePose initial_guess = {.Pos = {0, 0, 10}, .Rot = {1, 0, 0, 0}};
+				survive_optimizer_get_camera(&mpfitctx)[i] = initial_guess;
+				SV_VERBOSE(10, "No estimate for %d", i);
+			}
 		}
 	}
 
