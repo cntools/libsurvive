@@ -86,6 +86,18 @@ endif
 
 include $(BUILD_SHARED_LIBRARY)
 
+# driver_global_scene_solver
+include $(CLEAR_VARS)
+LOCAL_MODULE               := libsurvive-plugin-driver_global_scene_solver
+LOCAL_MODULE_CLASS         := SHARED_LIBRARIES
+LOCAL_CFLAGS               := $(COMMON_CFLAGS)
+LOCAL_C_INCLUDES           := $(COMMON_C_INCLUDES)
+LOCAL_SHARED_LIBRARIES     := libsurvive libz
+LOCAL_SRC_FILES            := src/driver_global_scene_solver.c
+LOCAL_PROPRIETARY_MODULE   := true
+LOCAL_MODULE_RELATIVE_PATH := libsurvive/plugins
+include $(BUILD_SHARED_LIBRARY)
+
 # driver_playback
 include $(CLEAR_VARS)
 LOCAL_MODULE               := libsurvive-plugin-driver_playback
