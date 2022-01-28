@@ -302,6 +302,11 @@ struct BaseStationData {
 	bool disable;
 	uint8_t OOTXChecked : 1;
 	struct SurviveKalmanLighthouse *tracker;
+
+	FLT old_pos_time;
+	SurvivePose old_pos;
+	FLT true_pos_time;
+	SurvivePose true_pos;
 };
 
 struct config_group;
@@ -397,6 +402,11 @@ struct SurviveContext {
 	// Additional details that we don't want / need to expose to every single include
 	void *private_members;
 	bool request_floor_set;
+
+	struct {
+		FLT lh_max_update, lh_max_nudge_distance;
+		FLT lh_update_velocity;
+	} settings;
 };
 
 SURVIVE_EXPORT void survive_verify_FLT_size(

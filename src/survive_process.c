@@ -121,10 +121,26 @@ void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighth
 											 const SurvivePose *lighthouse_pose) {
 	bool notSet = ctx->bsd[lighthouse].PositionSet == 0;
 	if (lighthouse_pose) {
-		for(int i = 0;i < 3;i++) assert(isfinite(lighthouse_pose->Pos[i]));
-		for(int i = 0;i < 4;i++) assert(isfinite(lighthouse_pose->Rot[i]));
-		ctx->bsd[lighthouse].Pose = *lighthouse_pose;
-		ctx->bsd[lighthouse].PositionSet = 1;
+		for (int i = 0; i < 3; i++)
+			assert(isfinite(lighthouse_pose->Pos[i]));
+		for (int i = 0; i < 4; i++)
+			assert(isfinite(lighthouse_pose->Rot[i]));
+
+		if (ctx->bsd[lighthouse].PositionSet) {
+			FLT d = dist3d(lighthouse_pose->Pos, ctx->bsd[lighthouse].Pose.Pos);
+			if (d < ctx->settings.lh_max_update || d > ctx->settings.lh_max_nudge_distance) {
+				ctx->bsd[lighthouse].Pose = *lighthouse_pose;
+			} else {
+				ctx->bsd[lighthouse].old_pos = ctx->bsd[lighthouse].Pose;
+				ctx->bsd[lighthouse].true_pos = *lighthouse_pose;
+				ctx->bsd[lighthouse].old_pos_time = survive_run_time(ctx);
+				ctx->bsd[lighthouse].true_pos_time =
+					ctx->bsd[lighthouse].old_pos_time + d / ctx->settings.lh_update_velocity;
+			}
+		} else {
+			ctx->bsd[lighthouse].Pose = *lighthouse_pose;
+			ctx->bsd[lighthouse].PositionSet = 1;
+		}
 		survive_kalman_lighthouse_update_position(ctx->bsd[lighthouse].tracker, lighthouse_pose);
 	} else {
 		ctx->bsd[lighthouse].PositionSet = 0;

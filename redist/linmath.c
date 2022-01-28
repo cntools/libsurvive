@@ -723,6 +723,14 @@ inline void quatoddproduct(FLT *outvec3, LinmathQuat qa, LinmathQuat qb) {
 	outvec3[2] = (qa[1] * qb[2]) - (qa[2] * qb[1]);
 }
 
+inline void PoseSlerp(LinmathPose *out, const LinmathPose *start, const LinmathPose *end, FLT t) {
+	LinmathPoint3d delta;
+	sub3d(delta, end->Pos, start->Pos);
+	scale3d(delta, delta, t);
+	add3d(out->Pos, delta, start->Pos);
+
+	quatslerp(out->Rot, start->Rot, end->Rot, t);
+}
 inline void quatslerp(LinmathQuat q, const LinmathQuat qa, const LinmathQuat qb, FLT t) {
 	FLT an[4];
 	FLT bn[4];

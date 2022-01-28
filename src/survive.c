@@ -48,6 +48,15 @@ STATIC_CONFIG_ITEM(LH_1_DISABLE, "lighthouse-1-disable", 'b', "Disable lh at idx
 STATIC_CONFIG_ITEM(LH_2_DISABLE, "lighthouse-2-disable", 'b', "Disable lh at idx 2", 0)
 STATIC_CONFIG_ITEM(LH_3_DISABLE, "lighthouse-3-disable", 'b', "Disable lh at idx 3", 0)
 
+STRUCT_CONFIG_SECTION(SurviveContext)
+STRUCT_CONFIG_ITEM("lighthouse-max-update", "Maximum instant move for a lighthouse", .01, t->settings.lh_max_update);
+STRUCT_CONFIG_ITEM("lighthouse-max-nudge-distance",
+				   "If a proscribed LH move is more than this; do it instantly -- it's too far off to slerp over", 2,
+				   t->settings.lh_max_nudge_distance);
+STRUCT_CONFIG_ITEM("lighthouse-update-velocity", "Allowable velocity to update a lighthouse", 1,
+				   t->settings.lh_update_velocity);
+END_STRUCT_CONFIG_SECTION(SurviveContext)
+
 const char *survive_config_file_name(struct SurviveContext *ctx) {
 	return survive_configs(ctx, "configfile", SC_GET, DEFAULT_CONFIG_PATH);
 }
@@ -457,6 +466,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 		SV_VERBOSE(5, "Config file switched to %.512s", config_path);
 		config_save(ctx);
 	}
+	SurviveContext_attach_config(ctx, ctx);
 
 	ctx->lh_version = -1;
 	ctx->lh_version_configed = survive_configi(ctx, "configed-lighthouse-gen", SC_GET, 0) - 1;
@@ -844,6 +854,22 @@ void survive_reset_lighthouse_position(SurviveContext *ctx, int bsd_idx) {
 }
 
 SURVIVE_EXPORT const SurvivePose *survive_get_lighthouse_position(const SurviveContext *ctx, int bsd_idx) {
+	if (ctx->bsd[bsd_idx].true_pos_time != 0) {
+		SurviveContext *mctx = (SurviveContext *)ctx;
+		FLT t_diff = ctx->bsd[bsd_idx].true_pos_time - ctx->bsd[bsd_idx].old_pos_time;
+		FLT t = (survive_run_time(ctx) - ctx->bsd[bsd_idx].old_pos_time) / t_diff;
+		if (t > 1)
+			t = 1;
+		assert(t > 0);
+		if (t >= 0) {
+			PoseSlerp(&mctx->bsd[bsd_idx].Pose, &ctx->bsd[bsd_idx].old_pos, &ctx->bsd[bsd_idx].true_pos, t);
+		}
+		if (t == 1) {
+			mctx->bsd[bsd_idx].true_pos_time = 0;
+			mctx->bsd[bsd_idx].old_pos_time = NAN;
+		}
+		survive_recording_lighthouse_process(mctx, bsd_idx, &ctx->bsd[bsd_idx].Pose);
+	}
 	return &ctx->bsd[bsd_idx].Pose;
 }
 
@@ -986,7 +1012,9 @@ void survive_close(SurviveContext *ctx) {
 	survive_output_callback_stats(ctx);
 
 	survive_destroy_recording(ctx);
-		
+
+	SurviveContext_detach_config(ctx, ctx);
+
 	destroy_config_group(ctx->global_config_values);
 	destroy_config_group(ctx->temporary_config_values);
 

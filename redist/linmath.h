@@ -230,6 +230,8 @@ LINMATH_EXPORT void ApplyPoseToPoint(LinmathPoint3d pout, const LinmathPose *pos
 // This is the quat equivalent of 'pout = lhs_pose * rhs_pose' if poses were a 4x4 matrix in homogenous space
 LINMATH_EXPORT void ApplyPoseToPose(LinmathPose *pout, const LinmathPose *lhs_pose, const LinmathPose *rhs_pose);
 
+LINMATH_EXPORT void PoseSlerp(LinmathPose *out, const LinmathPose *start, const LinmathPose *end, FLT t);
+
 LINMATH_EXPORT void ApplyAxisAngleVelocity(LinmathAxisAnglePose *p_1, FLT t, const LinmathAxisAnglePose *p_0,
 										   const LinmathAxisAngleVelocity *vel);
 LINMATH_EXPORT void ApplyAxisAnglePoseToPoint(LinmathPoint3d pout, const LinmathAxisAnglePose *pose,
