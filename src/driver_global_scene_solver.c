@@ -32,7 +32,20 @@ typedef struct global_scene_solver {
 	sync_process_func prior_sync_fn;
 	light_pulse_process_func prior_light_pulse;
 	ootx_received_process_func prior_ootx_fn;
+
+	bool threaded;
+	og_thread_t thread;
+	bool active;
+	og_cv_t data_available;
+	og_mutex_t data_available_lock;
+	og_mutex_t scenes_lock;
+	int run_count;
+
 } global_scene_solver;
+
+STRUCT_CONFIG_SECTION(global_scene_solver)
+STRUCT_CONFIG_ITEM("gss-threaded", "Thread GSS iterations", 1, t->threaded)
+END_STRUCT_CONFIG_SECTION(global_scene_solver)
 
 static size_t add_scenes(struct global_scene_solver *gss, SurviveObject *so) {
 	size_t rtn = 0;
@@ -89,12 +102,17 @@ static bool run_optimization(global_scene_solver *gss) {
 	if (gss->solve_counts > gss->solve_count_max && gss->solve_count_max > 0)
 		return false;
 
+	OGLockMutex(gss->scenes_lock);
+
 	PoserDataGlobalScenes pgss = {
 		.hdr = {.pt = POSERDATA_GLOBAL_SCENES}, .scenes_cnt = gss->scenes_cnt, .scenes = gss->scenes};
 	if (pgss.scenes_cnt > GSS_NUM_STORED_SCENES)
 		pgss.scenes_cnt = GSS_NUM_STORED_SCENES;
 	gss->solve_counts++;
-	return gss->ctx->PoserFn(gss->ctx->objs[0], &gss->ctx->objs[0]->PoserFnData, (PoserData *)&pgss) == 0;
+
+	bool success = gss->ctx->PoserFn(gss->ctx->objs[0], &gss->ctx->objs[0]->PoserFnData, (PoserData *)&pgss) == 0;
+	OGUnlockMutex(gss->scenes_lock);
+	return success;
 }
 
 static void notify_global_data_available(global_scene_solver *gss, SurviveObject *so) {
@@ -104,6 +122,9 @@ static void notify_global_data_available(global_scene_solver *gss, SurviveObject
 }
 
 static void check_for_new_objects(global_scene_solver *gss) {
+	if (OGTryLockMutex(gss->scenes_lock) != 0)
+		return;
+
 	SurviveContext *ctx = gss->ctx;
 	if (ctx->objs_ct > gss->last_capture_time_cnt) {
 		gss->last_capture_time = SV_REALLOC(gss->last_capture_time, ctx->objs_ct * sizeof(survive_long_timecode));
@@ -114,6 +135,8 @@ static void check_for_new_objects(global_scene_solver *gss) {
 		}
 		gss->last_capture_time_cnt = ctx->objs_ct;
 	}
+
+	OGUnlockMutex(gss->scenes_lock);
 }
 
 static void set_needs_solve(global_scene_solver *gss) {
@@ -131,6 +154,9 @@ static void set_needs_solve(global_scene_solver *gss) {
 static size_t check_object(global_scene_solver *gss, int i, SurviveObject *so) {
 	if (gss->solve_counts > gss->solve_count_max && gss->solve_count_max > 0)
 		return false;
+
+	if (OGTryLockMutex(gss->scenes_lock) != 0)
+		return 0;
 
 	size_t scenes_added = 0;
 	SurviveContext *ctx = gss->ctx;
@@ -160,9 +186,17 @@ static size_t check_object(global_scene_solver *gss, int i, SurviveObject *so) {
 		set_needs_solve(gss);
 	}
 
+	OGUnlockMutex(gss->scenes_lock);
+
 	if (gss->needsSolve && (gss->last_addition + 1) < survive_run_time(ctx)) {
-		gss->needsSolve = false;
-		run_optimization(gss);
+		if (!gss->threaded) {
+			gss->needsSolve = false;
+			run_optimization(gss);
+		} else {
+			OGLockMutex(gss->data_available_lock);
+			OGSignalCond(gss->data_available);
+			OGUnlockMutex(gss->data_available_lock);
+		}
 	}
 
 	return scenes_added;
@@ -172,6 +206,8 @@ static int DriverRegGlobalSceneSolverPoll(struct SurviveContext *ctx, void *driv
 
 static int DriverRegGlobalSceneSolverClose(struct SurviveContext *ctx, void *driver) {
 	global_scene_solver *gss = (global_scene_solver *)driver;
+	global_scene_solver_detach_config(ctx, driver);
+
 	free(gss->last_capture_time);
 	for (int i = 0; i < GSS_NUM_STORED_SCENES; i++) {
 		free(gss->scenes[i].meas);
@@ -231,8 +267,31 @@ static void ootx_recv(struct SurviveContext *ctx, uint8_t bsd_idx) {
 
 	set_needs_solve(gss);
 }
+
+void *survive_threaded_gss_thread_fn(void *_poser) {
+	struct global_scene_solver *self = (struct global_scene_solver *)_poser;
+	OGLockMutex(self->data_available_lock);
+	while (self->active) {
+		OGWaitCond(self->data_available, self->data_available_lock);
+
+		while (self->needsSolve) {
+			OGUnlockMutex(self->data_available_lock);
+			self->needsSolve = false;
+			survive_get_ctx_lock(self->ctx);
+			run_optimization(self);
+			survive_release_ctx_lock(self->ctx);
+			self->run_count++;
+
+			OGLockMutex(self->data_available_lock);
+		}
+	}
+	OGUnlockMutex(self->data_available_lock);
+	return 0;
+}
+
 int DriverRegGlobalSceneSolver(SurviveContext *ctx) {
 	global_scene_solver *driver = SV_NEW(global_scene_solver, ctx);
+	global_scene_solver_attach_config(ctx, driver);
 
 	int flag = survive_configi(ctx, GSS_ENABLE_TAG, SC_GET, 1);
 	driver->solve_count_max = flag > 1 ? flag : -1;
@@ -241,6 +300,19 @@ int DriverRegGlobalSceneSolver(SurviveContext *ctx) {
 	driver->prior_sync_fn = survive_install_sync_fn(ctx, sync_fn);
 	driver->prior_light_pulse = survive_install_light_pulse_fn(ctx, light_pulse_fn);
 	driver->prior_ootx_fn = survive_install_ootx_received_fn(ctx, ootx_recv);
+
+	FLT playback_factor = survive_configf(ctx, "playback-factor", SC_GET, 1.);
+	if (playback_factor == 0)
+		driver->threaded = false;
+
+	driver->scenes_lock = OGCreateMutex();
+
+	if (driver->threaded) {
+		driver->data_available = OGCreateConditionVariable();
+		driver->data_available_lock = OGCreateMutex();
+		driver->active = 1;
+		driver->thread = OGCreateThread(survive_threaded_gss_thread_fn, "threaded poser", driver);
+	}
 
 	survive_add_driver(ctx, driver, DriverRegGlobalSceneSolverPoll, DriverRegGlobalSceneSolverClose);
 	return SURVIVE_DRIVER_PASSIVE;

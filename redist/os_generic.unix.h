@@ -114,6 +114,13 @@ OSG_INLINE og_mutex_t OGCreateMutex() {
 	return r;
 }
 
+OSG_INLINE int OGTryLockMutex(og_mutex_t om) {
+	if (!om) {
+		return -1;
+	}
+	return pthread_mutex_trylock((pthread_mutex_t *)om);
+}
+
 OSG_INLINE void OGLockMutex(og_mutex_t om) {
 	if (!om) {
 		return;

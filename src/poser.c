@@ -233,8 +233,9 @@ int8_t survive_get_reference_bsd(SurviveContext *ctx, SurvivePose *lighthouse_po
 		SurvivePose lh2object = lighthouse_pose[lh];
 		if (quatmagnitude(lh2object.Rot) != 0.0) {
 			uint32_t lh0 = ref != -1 ? ref : 0;
-			bool preferThisBSD = reference_basestation == 0 ? (ctx->bsd[lh].BaseStationID < ctx->bsd[lh0].BaseStationID)
-															: reference_basestation == ctx->bsd[lh].BaseStationID;
+			bool preferThisBSD = reference_basestation == 0
+									 ? (ctx->bsd[lh].BaseStationID <= ctx->bsd[lh0].BaseStationID)
+									 : reference_basestation == ctx->bsd[lh].BaseStationID;
 			if (preferThisBSD) {
 				ref = lh;
 			}

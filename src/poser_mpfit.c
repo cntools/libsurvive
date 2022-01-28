@@ -842,7 +842,9 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 		if (!ctx->bsd[i].PositionSet) {
 			memset(survive_optimizer_get_camera(&mpfitctx)[i].Rot, 0, sizeof(FLT) * 4);
 		}
-        survive_optimizer_set_cam_up_vector(&mpfitctx, i, d->lh_up_variance, ctx->bsd[i].accel);
+		SV_VERBOSE(10, "Scene with lh (%d) " SurvivePose_format, i, SURVIVE_POSE_EXPAND(ctx->bsd[i].Pose));
+
+		survive_optimizer_set_cam_up_vector(&mpfitctx, i, d->lh_up_variance, ctx->bsd[i].accel);
 	}
 
 	int worldEstablishedLh = survive_get_ctx_reference_bsd(ctx);
@@ -868,6 +870,8 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 		meas->variance = 1e-3;
 		copy3d(meas->camera_pos.pos, ctx->bsd[worldEstablishedLh].Pose.Pos);
 		mpfitctx.mp_parameters_info[bestObjForCal* 7].fixed = true;
+		SV_VERBOSE(10, "Locking lh %d to " Point3_format, worldEstablishedLh,
+				   LINMATH_VEC3_EXPAND(meas->camera_pos.pos));
 	} else {
 		if (quatiszero(survive_optimizer_get_pose(&mpfitctx)[bestObjForCal].Rot)) {
 			const FLT up[3] = {0, 0, 1};
@@ -876,10 +880,7 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 			// quatcopy(survive_optimizer_get_pose(&mpfitctx)[bestObjForCal].Rot, LinmathQuat_Identity);
 		}
 
-		int start = bestObjForCal * 7;
-		for (int i = start; i < start + 3; i++) {
-			mpfitctx.mp_parameters_info[i].fixed = true;
-		}
+		SV_VERBOSE(10, "Locking Obj %d", bestObjForCal);
 	}
 
 	bool updates = true;
