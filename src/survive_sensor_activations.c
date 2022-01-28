@@ -393,9 +393,8 @@ bool SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 	*length = (uint32_t)(_lightData->length * 48000000);
 	if (lightData->hdr.timecode > self->last_light) {
 		if (self->last_light != 0 && lightData->hdr.timecode - self->last_light > 480000000) {
-			SV_ERROR(4, "Bad update");
+			SV_WARN("Bad update");
 		}
-		// SV_WARN("Updating last_light %lx", lightData->hdr.timecode);
 		self->last_light = lightData->hdr.timecode;
 	}
 
