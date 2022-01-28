@@ -106,10 +106,10 @@ STRUCT_CONFIG_ITEM("mpfit-object-up-variance",
 				   "How much to weight having the accel direction on tracked objects pointing up", -1,
 				   t->obj_up_variance)
 STRUCT_CONFIG_ITEM("mpfit-stationary-object-up-variance",
-				   "How much to weight having the accel direction on tracked objects pointing up", 1e-1,
+				   "How much to weight having the accel direction on tracked objects pointing up", 1e-2,
 				   t->stationary_obj_up_variance)
 STRUCT_CONFIG_ITEM("mpfit-lighthouse-up-variance",
-				   "How much to weight having the accel direction on lighthouses pointing up", 1e-6, t->lh_up_variance)
+				   "How much to weight having the accel direction on lighthouses pointing up", 1e-3, t->lh_up_variance)
 END_STRUCT_CONFIG_SECTION(MPFITData)
 
 static size_t remove_lh_from_meas(survive_optimizer *mpfitctx, int lh) {
