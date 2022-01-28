@@ -386,8 +386,6 @@ void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker,
 		return;
 	}
 
-	tracker->last_light_time = time;
-
 	if (tracker->light_var >= 0) {
 		for (int i = 0; i < tracker->savedLight_idx; i++) {
 			if (!ctx->bsd[tracker->savedLight[i].lh].PositionSet) {
@@ -460,6 +458,9 @@ void survive_kalman_tracker_integrate_saved_light(SurviveKalmanTracker *tracker,
 			FLT obj_trace = cn_trace(&tracker->model.P);
 			FLT lh_trace = cn_trace(&ctx->bsd[lh].tracker->model.P);
 			FLT ratio = lh_trace / obj_trace;
+
+			tracker->last_light_time = time;
+
 			if(useJointModel && tracker->joint_lightcap_ratio < ratio) {
 				tracker->joint_model.ks[0] = &ctx->bsd[lh].tracker->model;
 				tracker->joint_model.ks[1] = &ctx->bsd[lh].tracker->bsd_model;
@@ -801,9 +802,12 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 	FLT rotation_variance[] = {1e5, 1e5, 1e5, 1e5, 1e5, 1e5};
 
 	bool no_light = (time - tracker->last_light_time) > .1;
-	FLT zvu_var = (isStationary && tracker->zvu_stationary_var >= 0) ? tracker->zvu_stationary_var :
-				  ((no_light && tracker->zvu_no_light_var >= 0) ? tracker->zvu_no_light_var : tracker->zvu_moving_var);
+	FLT zvu_var = tracker->zvu_moving_var;
+	if(isStationary && tracker->zvu_stationary_var >= 0) zvu_var = linmath_min(tracker->zvu_stationary_var, zvu_var < 0 ? INFINITY : zvu_var);
+	if(no_light && tracker->zvu_no_light_var >= 0) zvu_var = linmath_min(tracker->zvu_no_light_var, zvu_var < 0 ? INFINITY : zvu_var);
+
 	bool disable_ang_vel = no_light && !isStationary;
+	tracker->stats.no_light_imu_count += no_light;
 
 	if (zvu_var >= 0) {//time - tracker->last_light_time > .1) {//|| isStationary || fabs(1 - norm) < .001 ) {
 		// If we stop seeing light data; tank all velocity / acceleration measurements
@@ -1496,6 +1500,8 @@ void survive_kalman_tracker_stats(SurviveKalmanTracker *tracker) {
     SV_VERBOSE(5, "\t%-32s " FLT_format " " FLT_format " (%7u)", "Stationary IMU acc avg norm",
                tracker->stats.stationary_acc_norm / (FLT)tracker->stats.stationary_imu_count,  (FLT)tracker->stats.stationary_imu_count / tracker->stats.stationary_acc_norm,
                (unsigned)tracker->stats.stationary_imu_count);
+	SV_VERBOSE(5, "\t%-32s  %7u", "No light IMU count",
+			   (unsigned)tracker->stats.no_light_imu_count);
 
 	var[0] = 0;
 	for(int lh = 0;lh < NUM_GEN2_LIGHTHOUSES;lh++) {

@@ -119,6 +119,8 @@ typedef struct SurviveKalmanTracker {
 		FLT stationary_acc_norm;
 		size_t stationary_imu_count;
 
+		size_t no_light_imu_count;
+
 		uint32_t joint_model_dropped;
 		uint32_t joint_model_sensor_cnt_sum;
 		uint32_t lightcap_model_dropped;
