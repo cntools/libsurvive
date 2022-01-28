@@ -887,7 +887,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 		case survive_optimizer_measurement_type_camera_accel: {
 			LinmathPoint3d up = {0};
 
-			FLT deriv[4*3] = {0}, error = 0;
+			FLT deriv[4 * 3] = {0};
 			size_t deriv_idx = 0;
 
 			LinmathPoint3d world_up = {0, 0, 1};
@@ -902,8 +902,6 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			if (mpfunc_ctx->settings->use_quat_model) {
 				if (isfinite(up[0])) {
 					assert(false);
-					error = gen_world2lh_up_err(world2lh->quatPose.Rot, up);
-					gen_world2lh_up_err_jac_q1(deriv, world2lh->quatPose.Rot, up);
 				}
 			} else {
 				if (isfinite(up[0])) {
