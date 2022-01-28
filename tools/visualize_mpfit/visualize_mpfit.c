@@ -97,7 +97,7 @@ int main(int argc, char **argv) {
 
 	SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(mpfitctx, device);
 
-	survive_optimizer_setup_cameras(&mpfitctx, ctx, true, true);
+	survive_optimizer_setup_cameras(&mpfitctx, ctx, true, true, true);
 
 	survive_optimizer_setup_pose(&mpfitctx, &object, false, true);
 

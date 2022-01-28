@@ -119,7 +119,7 @@ static size_t add_scenes(struct global_scene_solver *gss, SurviveObject *so) {
 		}
 
 		for (int i = 0; i < ctx->activeLighthouses; i++) {
-			SV_VERBOSE(100, "Scene %d for lh %d", (int)lh_meas[i], i);
+			SV_VERBOSE(100, "Scene %s %d for lh %d", survive_colorize_codename(so), (int)lh_meas[i], i);
 		}
 	} else {
 		SV_VERBOSE(100, "Scene rejected; meas %d", (int)scene->meas_cnt);
@@ -200,7 +200,8 @@ static size_t check_object(global_scene_solver *gss, int i, SurviveObject *so) {
 	bool spreadout = (last_event_time - gss->last_capture_time[i]) > so->timebase_hz * 3;
 	bool light_static = (last_event_time - last_change) > lockout_time;
 	bool not_moving = (standstill_time > SurviveSensorActivations_default_tolerance * 8);
-
+	// SV_VERBOSE(100, "%s %d %d %d %d %lu", survive_colorize_codename(so), activations_changed, spreadout,
+	// light_static, not_moving, gss->last_capture_time[i]);
 	if (activations_changed && spreadout && light_static && not_moving) {
 		size_t new_scenes = add_scenes(gss, so);
 		if (new_scenes) {

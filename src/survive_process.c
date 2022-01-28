@@ -136,6 +136,10 @@ void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighth
 				ctx->bsd[lighthouse].old_pos_time = survive_run_time(ctx);
 				ctx->bsd[lighthouse].true_pos_time =
 					ctx->bsd[lighthouse].old_pos_time + d / ctx->settings.lh_update_velocity;
+
+				SV_VERBOSE(100, "LH %d moving %f over %f seconds (ID: %08x, mode: %2d) " SurvivePose_format, lighthouse,
+						   d, d / ctx->settings.lh_update_velocity, (unsigned)ctx->bsd[lighthouse].BaseStationID,
+						   ctx->bsd[lighthouse].mode, SURVIVE_POSE_EXPAND(*lighthouse_pose));
 			}
 		} else {
 			ctx->bsd[lighthouse].Pose = *lighthouse_pose;
@@ -154,11 +158,15 @@ void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighth
 	LinmathPoint3d err;
 	quatrotatevector(err, lighthouse_pose->Rot, up);
 
-	survive_recording_lighthouse_process(ctx, lighthouse, lighthouse_pose);
+	survive_recording_lighthouse_process(ctx, lighthouse, &ctx->bsd[lighthouse].Pose);
 	if (notSet || ctx->log_level >= 100) {
 		SV_VERBOSE(10, "Position found for LH %d(ID: %08x, mode: %2d, err: %f) " SurvivePose_format, lighthouse,
 				   (unsigned)ctx->bsd[lighthouse].BaseStationID, ctx->bsd[lighthouse].mode, 1 - err[2],
-				   SURVIVE_POSE_EXPAND(*lighthouse_pose));
+				   SURVIVE_POSE_EXPAND(ctx->bsd[lighthouse].Pose));
+		if (ctx->bsd[lighthouse].true_pos_time) {
+			SV_VERBOSE(10, "                                                               " SurvivePose_format,
+					   SURVIVE_POSE_EXPAND(*lighthouse_pose));
+		}
 	}
 }
 

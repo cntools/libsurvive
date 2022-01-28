@@ -83,9 +83,9 @@ void integrate_imu(SurviveKalmanLighthouse *tracker) {
 }
 
 void survive_kalman_lighthouse_update_position(SurviveKalmanLighthouse *tracker, const SurvivePose *pose) {
-	tracker->state.Lighthouse = *(pose);
-
 	if (tracker->updating == false) {
+		tracker->state.Lighthouse = *(pose);
+
 		FLT pv = tracker->initial_pos_var, rv = tracker->initial_rot_var;
 		SurviveLighthouseKalmanErrorModel baseline = {.Lighthouse = {.Pos = {pv, pv, pv}, .AxisAngleRot = {rv, rv, rv}},
 													  .BSD0 = tracker->initial_variance,

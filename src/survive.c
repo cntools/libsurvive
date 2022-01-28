@@ -51,9 +51,9 @@ STATIC_CONFIG_ITEM(LH_3_DISABLE, "lighthouse-3-disable", 'b', "Disable lh at idx
 STRUCT_CONFIG_SECTION(SurviveContext)
 STRUCT_CONFIG_ITEM("lighthouse-max-update", "Maximum instant move for a lighthouse", .01, t->settings.lh_max_update);
 STRUCT_CONFIG_ITEM("lighthouse-max-nudge-distance",
-				   "If a proscribed LH move is more than this; do it instantly -- it's too far off to slerp over", 2,
+				   "If a proscribed LH move is more than this; do it instantly -- it's too far off to slerp over", .1,
 				   t->settings.lh_max_nudge_distance);
-STRUCT_CONFIG_ITEM("lighthouse-update-velocity", "Allowable velocity to update a lighthouse", 1,
+STRUCT_CONFIG_ITEM("lighthouse-update-velocity", "Allowable velocity to update a lighthouse", .1,
 				   t->settings.lh_update_velocity);
 END_STRUCT_CONFIG_SECTION(SurviveContext)
 
@@ -700,6 +700,7 @@ int survive_startup(SurviveContext *ctx) {
 		SV_INFO("Force calibrate flag set -- clearing position on all lighthouses");
 		for (int i = 0; i < ctx->activeLighthouses; i++) {
 			ctx->bsd[i].PositionSet = 0;
+			ctx->bsd[i].Pose = (SurvivePose){0};
 		}
 	}
 
@@ -853,6 +854,12 @@ void survive_reset_lighthouse_position(SurviveContext *ctx, int bsd_idx) {
 	ctx->bsd[bsd_idx].PositionSet = false;
 }
 
+SURVIVE_EXPORT const SurvivePose *survive_get_lighthouse_true_position(const SurviveContext *ctx, int bsd_idx) {
+	if (ctx->bsd[bsd_idx].true_pos_time != 0) {
+		return &ctx->bsd[bsd_idx].true_pos;
+	}
+	return &ctx->bsd[bsd_idx].Pose;
+}
 SURVIVE_EXPORT const SurvivePose *survive_get_lighthouse_position(const SurviveContext *ctx, int bsd_idx) {
 	if (ctx->bsd[bsd_idx].true_pos_time != 0) {
 		SurviveContext *mctx = (SurviveContext *)ctx;

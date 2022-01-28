@@ -301,7 +301,7 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 	struct SurviveContext *ctx = so->ctx;
 
 	SurvivePose *soLocation = survive_optimizer_get_pose(mpfitctx);
-	survive_optimizer_setup_cameras(mpfitctx, so->ctx, true, d->use_jacobian_function_lh);
+	survive_optimizer_setup_cameras(mpfitctx, so->ctx, true, d->use_jacobian_function_lh, false);
 	bool objectStationary = SurviveSensorActivations_stationary_time(&so->activations) > 3 * so->timebase_hz;
 
 	bool worldEstablished = false;
@@ -795,7 +795,7 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 
 	SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(mpfitctx, 0);
 	int useJacobians = 1;
-	survive_optimizer_setup_cameras(&mpfitctx, ctx, false, useJacobians);//d->use_jacobian_function_obj);
+	survive_optimizer_setup_cameras(&mpfitctx, ctx, false, useJacobians, true); // d->use_jacobian_function_obj);
 	size_t lh_meas[NUM_GEN2_LIGHTHOUSES] = {0};
 
 	struct variance_measure lh_meas_variance[NUM_GEN2_LIGHTHOUSES] = {0};
@@ -867,13 +867,19 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 	if (worldEstablishedLh != -1) {
 		//start =
 		//mpfitctx.mp_parameters_info[survive_optimizer_get_camera_index(&mpfitctx) + 7 * worldEstablishedLh].fixed = true;
-		survive_optimizer_measurement* meas = survive_optimizer_emplace_meas(&mpfitctx, survive_optimizer_measurement_type_camera_position);
-		meas->camera_pos.camera = worldEstablishedLh;
-		meas->variance = 1e-3;
+		/*
+		survive_optimizer_measurement* meas = survive_optimizer_emplace_meas(&mpfitctx,
+		survive_optimizer_measurement_type_camera_position); meas->camera_pos.camera = worldEstablishedLh;
+		meas->variance = 1;
 		copy3d(meas->camera_pos.pos, survive_get_lighthouse_position(ctx, worldEstablishedLh)->Pos);
 		mpfitctx.mp_parameters_info[bestObjForCal* 7].fixed = true;
 		SV_VERBOSE(10, "Locking lh %d to " Point3_format, worldEstablishedLh,
 				   LINMATH_VEC3_EXPAND(meas->camera_pos.pos));
+				   */
+		for (int i = 0; i < 3; i++) {
+			mpfitctx.mp_parameters_info[survive_optimizer_get_camera_index(&mpfitctx) + 7 * worldEstablishedLh + i]
+				.fixed = true;
+		}
 	} else {
 		if (quatiszero(survive_optimizer_get_pose(&mpfitctx)[bestObjForCal].Rot)) {
 			const FLT up[3] = {0, 0, 1};
@@ -917,8 +923,10 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
 		if (quatiszero(survive_optimizer_get_camera(&mpfitctx)[i].Rot)) {
-			lh_meas[i] = 0;
-			survive_optimizer_fix_camera(&mpfitctx, i);
+			// lh_meas[i] = 0;
+			// survive_optimizer_fix_camera(&mpfitctx, i);
+			SurvivePose initial_guess = {.Pos = {0, 0, 10}, .Rot = {1, 0, 0, 0}};
+			survive_optimizer_get_camera(&mpfitctx)[i] = initial_guess;
 			SV_VERBOSE(10, "No estimate for %d", i);
 		}
 	}
@@ -933,14 +941,16 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 	survive_recording_write_matrix(ctx->recptr, 0, 5, "GSS", &R);
 	bool status_failure = res <= 0;
 	FLT sensor_covariance = d->sensor_variance * d->sensor_variance;
-	if (status_failure || result.bestnorm * sensor_covariance > 1e-2) {
-		SV_WARN("MPFIT status failure %f/%f (%d measurements, %d, %s)", result.orignorm, result.bestnorm,
-				(int)mpfitctx.measurementsCnt, res, survive_optimizer_error(res));
+	FLT sensor_error = sqrtf(mpfitctx.stats.sensor_error / mpfitctx.stats.sensor_error_cnt);
+	if (status_failure || sensor_error > d->opt.max_cal_error) {
+		SV_WARN("MPFIT status failure %f/%f/%f (%d measurements, %d, %s)", result.orignorm, result.bestnorm,
+				sensor_error, (int)mpfitctx.measurementsCnt, res, survive_optimizer_error(res));
 
 		return false;
 	} else {
-		SV_INFO("MPFIT success %f/%10.10f (%d measurements, %d, %s, trace %7.7f)", result.orignorm, result.bestnorm,
-				(int)mpfitctx.measurementsCnt, res, survive_optimizer_error(res), cn_trace(&R) / R.rows);
+		SV_INFO("MPFIT success %f/%10.10f/%7.7f (%d measurements, %d, %s, trace %7.7f)", result.orignorm,
+				result.bestnorm, sensor_error, (int)mpfitctx.measurementsCnt, res, survive_optimizer_error(res),
+				cn_trace(&R) / R.rows);
 
 		SurvivePose *opt_cameras = survive_optimizer_get_camera(&mpfitctx);
 		SurvivePose cameras[NUM_GEN2_LIGHTHOUSES] = {0};

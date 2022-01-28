@@ -252,9 +252,10 @@ void survive_optimizer_setup_camera(survive_optimizer *mpfit_ctx, int8_t lh, con
 }
 
 void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx, SurviveContext *ctx, bool isFixed,
-									 int use_jacobian_function) {
+									 int use_jacobian_function, bool useTruePosition) {
 	for (int lh = 0; lh < mpfit_ctx->cameraLength; lh++) {
-		const SurvivePose *cam_pos = survive_get_lighthouse_position(ctx, lh);
+		const SurvivePose *cam_pos =
+			useTruePosition ? survive_get_lighthouse_true_position(ctx, lh) : survive_get_lighthouse_position(ctx, lh);
 		if (!quatiszero(cam_pos->Rot))
 			survive_optimizer_setup_camera(mpfit_ctx, lh, cam_pos, isFixed, use_jacobian_function);
 		else {

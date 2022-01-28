@@ -229,7 +229,7 @@ SURVIVE_EXPORT void survive_optimizer_setup_camera(survive_optimizer *mpfit_ctx,
 												   bool isFixed, int use_jacobian_function);
 
 SURVIVE_EXPORT void survive_optimizer_setup_cameras(survive_optimizer *mpfit_ctx, SurviveContext *ctx, bool isFixed,
-													int use_jacobian_function);
+													int use_jacobian_function, bool useTruePosition);
 
 SURVIVE_EXPORT const char *survive_optimizer_error(int status);
 
