@@ -7,7 +7,7 @@
 #include <survive_optimizer.h>
 #include <survive_reproject_gen2.h>
 
-STATIC_CONFIG_ITEM(GSS_ENABLE, "globalscenesolver", 'i', "Enable global scene solver", 0)
+STATIC_CONFIG_ITEM(GSS_ENABLE, "globalscenesolver", 'i', "Enable global scene solver", 1)
 
 #ifndef GSS_NUM_STORED_SCENES
 #define GSS_NUM_STORED_SCENES 32
