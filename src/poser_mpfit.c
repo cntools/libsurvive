@@ -796,7 +796,7 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 	SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(mpfitctx, 0);
 	int useJacobians = 1;
 	survive_optimizer_setup_cameras(&mpfitctx, ctx, false, useJacobians, true); // d->use_jacobian_function_obj);
-	size_t lh_meas[NUM_GEN2_LIGHTHOUSES] = {0};
+	size_t lh_meas[NUM_GEN2_LIGHTHOUSES][2] = {0};
 
 	struct variance_measure lh_meas_variance[NUM_GEN2_LIGHTHOUSES] = {0};
 	// survive_optimizer_measurement *meas = mpfitctx.measurements;
@@ -821,8 +821,8 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 			meas->variance = d->sensor_variance;
 			meas->light.value = gss->scenes[i].meas[j].value;
 			meas->light.lh = gss->scenes[i].meas[j].lh;
-			lh_meas[meas->light.lh]++;
 			meas->light.axis = gss->scenes[i].meas[j].axis;
+			lh_meas[meas->light.lh][meas->light.axis]++;
 			meas->light.sensor_idx = gss->scenes[i].meas[j].sensor_idx;
 			meas->invalid = false;
 
@@ -833,11 +833,12 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
 		if (lh_meas[i] > 0)
-			SV_VERBOSE(10, "%d Measurements for %d", (int)lh_meas[i], i);
+			SV_VERBOSE(10, "%d %d Measurements for %d", (int)lh_meas[i][0], (int)lh_meas[i][1], i);
 
-		if (lh_meas[i] < 5) {
-			lh_meas[i] = 0;
+		if (lh_meas[i][0] < 5 || lh_meas[i][1] < 5) {
+			lh_meas[i][1] = lh_meas[i][0] = 0;
 			survive_optimizer_fix_camera(&mpfitctx, i);
+			survive_optimizer_remove_data_for_lh(&mpfitctx, i);
 		}
 
 		if (!ctx->bsd[i].PositionSet) {
@@ -927,9 +928,10 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
 		if (quatiszero(survive_optimizer_get_camera(&mpfitctx)[i].Rot)) {
 			// survive_optimizer_fix_camera(&mpfitctx, i);
-			if (lh_meas[i] < 5) {
-				lh_meas[i] = 0;
+			if (lh_meas[i][0] < 5 || lh_meas[i][1] < 5) {
+				lh_meas[i][0] = lh_meas[i][1] = 0;
 				survive_optimizer_fix_camera(&mpfitctx, i);
+				survive_optimizer_remove_data_for_lh(&mpfitctx, i);
 				SV_VERBOSE(10, "No data for %d", i);
 			} else {
 				SurvivePose initial_guess = {.Pos = {0, 0, 10}, .Rot = {1, 0, 0, 0}};
@@ -973,7 +975,7 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 		SurvivePose cameras[NUM_GEN2_LIGHTHOUSES] = {0};
 
 		for (int i = 0; i < mpfitctx.cameraLength; i++) {
-			if (!quatiszero(opt_cameras[i].Rot) && lh_meas[i] > 0) {
+			if (!quatiszero(opt_cameras[i].Rot) && lh_meas[i][0] > 0 && lh_meas[i][1] > 0) {
 				cameras[i] = InvertPoseRtn(&opt_cameras[i]);
 
 				LinmathPoint3d up = {ctx->bsd[i].accel[0], ctx->bsd[i].accel[1], ctx->bsd[i].accel[2]};
@@ -990,6 +992,9 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 
 		if (worldEstablishedLh == -1) {
 			int ref = survive_get_reference_bsd(ctx, cameras, mpfitctx.cameraLength);
+			if (ref == -1)
+				return false;
+
 			SurvivePose reflh2objUp = cameras[ref];
 			FLT ang = atan2(reflh2objUp.Pos[1], reflh2objUp.Pos[0]);
 			FLT ang_target = LINMATHPI / 2.;

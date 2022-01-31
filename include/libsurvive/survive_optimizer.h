@@ -220,6 +220,7 @@ SURVIVE_EXPORT void survive_optimizer_setup_pose_n(survive_optimizer *mpfit_ctx,
 												   bool isFixed, int use_jacobian_function);
 
 SURVIVE_EXPORT void survive_optimizer_fix_camera(survive_optimizer *mpfit_ctx, int cam_idx);
+SURVIVE_EXPORT void survive_optimizer_remove_data_for_lh(survive_optimizer *mpfit_ctx, int cam_idx);
 
 SURVIVE_EXPORT void survive_optimizer_setup_pose(survive_optimizer *mpfit_ctx, const SurvivePose *pose, bool isFixed,
 												 int use_jacobian_function);

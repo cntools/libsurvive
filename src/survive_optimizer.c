@@ -196,6 +196,14 @@ void survive_optimizer_setup_pose_n(survive_optimizer *mpfit_ctx, const SurviveP
 		}
 	}
 }
+SURVIVE_EXPORT void survive_optimizer_remove_data_for_lh(survive_optimizer *optimizer, int cam_idx) {
+	for (int i = 0; i < optimizer->measurementsCnt; i++) {
+		survive_optimizer_measurement *meas = &optimizer->measurements[i];
+		if (meas->meas_type == survive_optimizer_measurement_type_light && meas->light.lh == cam_idx) {
+			meas->invalid = true;
+		}
+	}
+}
 void survive_optimizer_fix_camera(survive_optimizer *mpfit_ctx, int cam_idx) {
 	int start = survive_optimizer_get_camera_index(mpfit_ctx) + cam_idx * 7;
 	for (int i = start; i < start + 7; i++) {
@@ -1135,7 +1143,15 @@ int get_meas_for_lhs_axis(survive_optimizer *optimizer, int obj, size_t* meas_fo
 	}
 	return mea_cnt;
 }
-
+void survive_optimizer_remove_invalid_meas(survive_optimizer *optimizer) {
+	for (int i = 0; i < optimizer->measurementsCnt; i++) {
+		if (optimizer->measurements[i].invalid) {
+			optimizer->measurements[i] = optimizer->measurements[optimizer->measurementsCnt - 1];
+			optimizer->measurementsCnt--;
+			i--;
+		}
+	}
+}
 int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result, struct CnMat *R) {
 	SurviveContext *ctx = optimizer->sos[0] ? optimizer->sos[0]->ctx : 0;
 
@@ -1209,6 +1225,7 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 		}
 	}
 
+	survive_optimizer_remove_invalid_meas(optimizer);
 
 	size_t meas_count = survive_optimizer_get_meas_size(optimizer);
 
