@@ -59,7 +59,6 @@ typedef struct {
 typedef struct {
 	int camera;
 	LinmathVec3d pos;
-
 } survive_optimizer_camera_position_measurement;
 
 typedef struct {

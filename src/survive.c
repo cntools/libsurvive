@@ -471,7 +471,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 	ctx->lh_version = -1;
 	ctx->lh_version_configed = survive_configi(ctx, "configed-lighthouse-gen", SC_GET, 0) - 1;
 	ctx->lh_version_forced = survive_configi(ctx, "lighthouse-gen", SC_GET, 0) - 1;
-
+	ctx->floor_offset = survive_configf(ctx, "floor-offset", SC_GET, 0);
 	ctx->activeLighthouses = 0;
 
 	pctx->callbackStatsTimeBetween = survive_configf(ctx, "output-callback-stats", SC_GET, 0.0);
@@ -750,7 +750,7 @@ int survive_startup(SurviveContext *ctx) {
 			SURVIVE_INVOKE_HOOK(ootx_received, ctx, i);
 		}
 		if (ctx->bsd[i].PositionSet) {
-			SURVIVE_INVOKE_HOOK(lighthouse_pose, ctx, i, &ctx->bsd[i].Pose);
+			SURVIVE_INVOKE_HOOK(raw_lighthouse_pose, ctx, i, &ctx->bsd[i].Pose);
 		}
 	}
 
@@ -875,7 +875,9 @@ SURVIVE_EXPORT const SurvivePose *survive_get_lighthouse_position(const SurviveC
 			mctx->bsd[bsd_idx].true_pos_time = 0;
 			mctx->bsd[bsd_idx].old_pos_time = NAN;
 		}
-		survive_recording_lighthouse_process(mctx, bsd_idx, &ctx->bsd[bsd_idx].Pose);
+		SurvivePose p = ctx->bsd[bsd_idx].Pose;
+		p.Pos[2] -= ctx->floor_offset;
+		survive_recording_lighthouse_process(mctx, bsd_idx, &p);
 	}
 	return &ctx->bsd[bsd_idx].Pose;
 }
@@ -1408,4 +1410,11 @@ SURVIVE_EXPORT const char *survive_colorize_codename(const SurviveObject *so) {
 BaseStationCal *survive_basestation_cal(SurviveContext *ctx, int lh, int axis) {
 	return &ctx->bsd[lh].fcal[axis];
 	// return axis == 0 ? &ctx->bsd[lh].tracker->state.BSD0 : &ctx->bsd[lh].tracker->state.BSD1;
+}
+
+SURVIVE_EXPORT FLT survive_get_floor_offset(const SurviveContext* ctx) { return ctx->floor_offset; }
+SURVIVE_EXPORT void survive_set_floor_offset(SurviveContext* ctx, FLT floor_offset_meters) {
+	ctx->floor_offset = floor_offset_meters;
+	survive_configf(ctx, "floor-offset", SC_OVERRIDE | SC_SETCONFIG, floor_offset_meters);
+	config_save(ctx);
 }

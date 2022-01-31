@@ -37,6 +37,8 @@ void survive_default_imupose_process(SurviveObject *so, survive_long_timecode ti
 		assert(!isnan(((FLT *)imu2world)[i]));
 
 	SurviveContext *ctx = so->ctx;
+
+	head2world.Pos[2] -= ctx->floor_offset;
 	SURVIVE_INVOKE_HOOK_SO(pose, so, timecode, &head2world);
 }
 void survive_default_pose_process(SurviveObject *so, survive_long_timecode timecode, const SurvivePose *pose) {
@@ -80,7 +82,7 @@ void survive_default_external_pose_process(SurviveContext *ctx, const char *name
 			char buf[32] = {0};
 			snprintf(buf, 32, "LHB-%08X", ctx->bsd[i].BaseStationID);
 			if (strcmp(buf, name) == 0) {
-				SURVIVE_INVOKE_HOOK(lighthouse_pose, ctx, i, pose);
+				SURVIVE_INVOKE_HOOK(raw_lighthouse_pose, ctx, i, pose);
 			}
 		}
 	}
@@ -117,7 +119,7 @@ void survive_default_ootx_received_process(struct SurviveContext *ctx, uint8_t b
 	config_save(ctx);
 }
 
-void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse,
+void survive_default_raw_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse,
 											 const SurvivePose *lighthouse_pose) {
 	bool notSet = ctx->bsd[lighthouse].PositionSet == 0;
 	if (lighthouse_pose) {
@@ -158,7 +160,6 @@ void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighth
 	LinmathPoint3d err;
 	quatrotatevector(err, lighthouse_pose->Rot, up);
 
-	survive_recording_lighthouse_process(ctx, lighthouse, &ctx->bsd[lighthouse].Pose);
 	if (notSet || ctx->log_level >= 100) {
 		SV_VERBOSE(10, "Position found for LH %d(ID: %08x, mode: %2d, err: %f) " SurvivePose_format, lighthouse,
 				   (unsigned)ctx->bsd[lighthouse].BaseStationID, ctx->bsd[lighthouse].mode, 1 - err[2],
@@ -168,6 +169,16 @@ void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighth
 					   SURVIVE_POSE_EXPAND(*lighthouse_pose));
 		}
 	}
+
+	SurvivePose external_pose = ctx->bsd[lighthouse].Pose;
+	external_pose.Pos[2] -= ctx->floor_offset;
+
+	SURVIVE_INVOKE_HOOK(lighthouse_pose, ctx, lighthouse, &external_pose);
+}
+
+void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse,
+											 const SurvivePose *lighthouse_pose) {
+	survive_recording_lighthouse_process(ctx, lighthouse, lighthouse_pose);
 }
 
 STATIC_CONFIG_ITEM(SURVIVE_SERIALIZE_DEV_CONFIG, "serialize-device-config", 'b', "Serialize device config files", 0)

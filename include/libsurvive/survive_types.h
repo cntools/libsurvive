@@ -363,6 +363,7 @@ typedef void (*external_velocity_process_func)(SurviveContext *so, const char *n
  * Called when a lighthouse has a new estimated position.
  */
 typedef void (*lighthouse_pose_process_func)(SurviveContext *ctx, uint8_t bsd_idx, const SurvivePose *lighthouse_pose);
+typedef void (*raw_lighthouse_pose_process_func)(SurviveContext *ctx, uint8_t bsd_idx, const SurvivePose *lighthouse_pose);
 
 /**
  * Called when a new object is added into the system.

@@ -475,7 +475,7 @@ function create_tracked_object(info, external) {
 	{
 		var geometry = new THREE.SphereGeometry(1, 16, 16);
 		var material = new THREE.MeshBasicMaterial(
-			{color : external ? 0x00FF00 : 0xFF0000, opacity : .75, transparent : true, side : THREE.DoubleSide});
+			{color : external ? 0x00FF00 : 0xFF0000, opacity : .15, transparent : true, side : THREE.DoubleSide});
 
 		var mesh = new THREE.Mesh(geometry, material);
 		mesh.position.set(0, 0, 0);

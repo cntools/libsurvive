@@ -141,6 +141,26 @@ static bool run_optimization(global_scene_solver *gss) {
 	gss->solve_counts++;
 
 	bool success = gss->ctx->PoserFn(gss->ctx->objs[0], &gss->ctx->objs[0]->PoserFnData, (PoserData *)&pgss) == 0;
+	if(success) {
+		FLT min_z = INFINITY;
+		for(int i = 0;i < gss->scenes_cnt;i++) {
+			min_z = linmath_min(min_z, gss->scenes[i].pose.Pos[2]);
+		}
+		if(isfinite(min_z))
+			survive_set_floor_offset(gss->ctx, min_z);
+
+		for (int i = 0; i < gss->scenes_cnt; i++) {
+			SurvivePose p = gss->scenes[i].pose;
+
+			if (!quatiszero(p.Rot)) {
+				p.Pos[2] -= gss->ctx->floor_offset;
+				survive_recording_write_to_output(gss->ctx->recptr, "SPHERE %s_%d %f %d " Point3_format "\n",
+												  gss->scenes[i].so->codename, (int)gss->scenes_cnt, .05, 0xFF,
+												  LINMATH_VEC3_EXPAND(p.Pos));
+			}
+		}
+	}
+
 	OGUnlockMutex(gss->scenes_lock);
 	return success;
 }

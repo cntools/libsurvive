@@ -38,6 +38,7 @@ SURVIVE_HOOK_PROCESS_DEF(velocity)
 
 SURVIVE_HOOK_PROCESS_DEF(external_pose)
 SURVIVE_HOOK_PROCESS_DEF(external_velocity)
+SURVIVE_HOOK_PROCESS_DEF(raw_lighthouse_pose)
 SURVIVE_HOOK_PROCESS_DEF(lighthouse_pose)
 
 SURVIVE_HOOK_PROCESS_DEF(datalog)

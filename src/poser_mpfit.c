@@ -649,7 +649,7 @@ static void handle_results(MPFITData *d, PoserDataLight *lightData, FLT error, S
 				if (so->ctx->bsd[i].PositionSet) {
 					new_pos.Pos[2] -= adjust;
 				}
-				SURVIVE_INVOKE_HOOK(lighthouse_pose, so->ctx, i, &new_pos);
+				SURVIVE_INVOKE_HOOK(raw_lighthouse_pose, so->ctx, i, &new_pos);
 			}
 			so->ctx->request_floor_set = false;
 		}

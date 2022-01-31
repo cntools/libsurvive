@@ -402,6 +402,7 @@ struct SurviveContext {
 	// Additional details that we don't want / need to expose to every single include
 	void *private_members;
 	bool request_floor_set;
+	FLT floor_offset;
 
 	struct {
 		FLT lh_max_update, lh_max_nudge_distance;
@@ -636,6 +637,8 @@ SURVIVE_EXPORT void survive_default_external_pose_process(SurviveContext *so, co
 														  const SurvivePose *pose);
 SURVIVE_EXPORT void survive_default_external_velocity_process(SurviveContext *so, const char *name,
 															  const SurviveVelocity *velocity);
+SURVIVE_EXPORT void survive_default_raw_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse,
+															const SurvivePose *lh_pose);
 SURVIVE_EXPORT void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse,
 															const SurvivePose *lh_pose);
 SURVIVE_EXPORT int survive_default_config_process(SurviveObject *so, char *ct0conf, int len);
@@ -694,6 +697,10 @@ SURVIVE_EXPORT const char *survive_colorize(const char *str);
 SURVIVE_EXPORT const char *survive_colorize_codename(const SurviveObject *so);
 SURVIVE_EXPORT uint32_t survive_hash(const uint8_t *data, size_t len);
 SURVIVE_EXPORT uint32_t survive_hash_str(const char *str);
+
+SURVIVE_EXPORT FLT survive_get_floor_offset(const SurviveContext* ctx);
+SURVIVE_EXPORT void survive_set_floor_offset(SurviveContext* ctx, FLT floor_offset_meters);
+
 #define SV_CONST_COLOR(str, clr) "\033[0;" #clr "m" fmt "\033[0m"
 #define SURVIVE_COLORIZED_FORMAT(fmt) "\033[0;%dm" fmt "\033[0m"
 #define SURVIVE_COLORIZED_DATA(data) (survive_hash((uint8_t *)&(data), sizeof(data)) % 8 + 30), (data)

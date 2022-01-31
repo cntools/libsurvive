@@ -135,7 +135,7 @@ void survive_kalman_lighthouse_report(SurviveKalmanLighthouse *tracker) {
 	tracker->updating = true;
 	// tracker->ctx->bsd[tracker->lh].fcal[0] = tracker->state.BSD0;
 	// tracker->ctx->bsd[tracker->lh].fcal[1] = tracker->state.BSD1;
-	SURVIVE_INVOKE_HOOK(lighthouse_pose, tracker->ctx, tracker->lh, &lighthouse2world);
+	SURVIVE_INVOKE_HOOK(raw_lighthouse_pose, tracker->ctx, tracker->lh, &lighthouse2world);
 	tracker->updating = false;
 }
 
