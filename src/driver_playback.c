@@ -257,6 +257,9 @@ static int parse_and_run_lhpose(const char *line, struct SurvivePlaybackData *dr
 }
 
 static int parse_and_run_externalpose(const char *line, SurvivePlaybackData *driver) {
+	if (driver->time_now < driver->playback_start_time)
+		return 0;
+
 	char name[128] = { 0 };
 	SurvivePose pose;
 
@@ -271,6 +274,9 @@ static int parse_and_run_externalpose(const char *line, SurvivePlaybackData *dri
 }
 
 static int parse_and_run_externalvelocity(const char *line, SurvivePlaybackData *driver) {
+	if (driver->time_now < driver->playback_start_time)
+		return 0;
+
 	char name[128] = {0};
 	SurviveVelocity pose;
 
