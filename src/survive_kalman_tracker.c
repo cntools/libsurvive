@@ -81,7 +81,8 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 
 	STRUCT_CONFIG_ITEM("kalman-zvu-moving", "", -1, t->zvu_moving_var)
 	STRUCT_CONFIG_ITEM("kalman-zvu-stationary", "", 1e-5, t->zvu_stationary_var)
-	STRUCT_CONFIG_ITEM("kalman-zvu-no-light", "", 1, t->zvu_no_light_var)
+	STRUCT_CONFIG_ITEM("kalman-zvu-no-light", "", 1e-4, t->zvu_no_light_var)
+	STRUCT_CONFIG_ITEM("kalman-zvu-no-light-time", "", .1, t->zvu_no_light_time)
 
 	STRUCT_CONFIG_ITEM("kalman-noise-model", "0 is jerk acceleration model, 1 is simple model", 0, t->noise_model)
 
@@ -801,7 +802,7 @@ void survive_kalman_tracker_integrate_imu(SurviveKalmanTracker *tracker, PoserDa
 
 	FLT rotation_variance[] = {1e5, 1e5, 1e5, 1e5, 1e5, 1e5};
 
-	bool no_light = (time - tracker->last_light_time) > .1;
+	bool no_light = (time - tracker->last_light_time) > tracker->zvu_no_light_time;
 	FLT zvu_var = tracker->zvu_moving_var;
 	if(isStationary && tracker->zvu_stationary_var >= 0) zvu_var = linmath_min(tracker->zvu_stationary_var, zvu_var < 0 ? INFINITY : zvu_var);
 	if(no_light && tracker->zvu_no_light_var >= 0) zvu_var = linmath_min(tracker->zvu_no_light_var, zvu_var < 0 ? INFINITY : zvu_var);
