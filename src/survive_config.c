@@ -135,6 +135,7 @@ int survive_print_help_for_parameter(SurviveContext *ctx, const char *tomap) {
 static const char *USAGE_FORMAT_BOOL = "%15d    ";
 static const char *USAGE_FORMAT_INT = "%15d    ";
 static const char *USAGE_FORMAT_FLOAT = "%15f    ";
+static const char *USAGE_FORMAT_SMALL_FLOAT = "%15e    ";
 static const char *USAGE_FORMAT_STRING = "%15s    ";
 
 void survive_config_entry_to_str(config_entry *config, char *stobuf, size_t len) {
@@ -142,9 +143,14 @@ void survive_config_entry_to_str(config_entry *config, char *stobuf, size_t len)
 	case CONFIG_UINT32:
 		snprintf(stobuf, 127, USAGE_FORMAT_INT, config->numeric.i);
 		break;
-	case CONFIG_FLOAT:
-		snprintf(stobuf, 127, USAGE_FORMAT_FLOAT, config->numeric.f);
-		break;
+	case CONFIG_FLOAT: {
+		FLT df = config->numeric.f;
+		if (fabs(df) > .001 || df == 0) {
+			snprintf(stobuf, 127, USAGE_FORMAT_FLOAT, df);
+		} else {
+			snprintf(stobuf, 127, USAGE_FORMAT_SMALL_FLOAT, df);
+		}
+	} break;
 	case CONFIG_STRING:
 		snprintf(stobuf, 127, USAGE_FORMAT_STRING, config->data);
 		break;
@@ -163,9 +169,15 @@ void survive_default_to_str(struct static_conf_t *config, char *stobuf, size_t l
 	case 'i':
 		snprintf(stobuf, 127, USAGE_FORMAT_INT, config->data_default.i);
 		break;
-	case 'f':
-		snprintf(stobuf, 127, USAGE_FORMAT_FLOAT, config->data_default.f);
+	case 'f': {
+		FLT df = config->data_default.f;
+		if (fabs(df) > .001 || df == 0) {
+			snprintf(stobuf, 127, USAGE_FORMAT_FLOAT, df);
+		} else {
+			snprintf(stobuf, 127, USAGE_FORMAT_SMALL_FLOAT, df);
+		}
 		break;
+	}
 	case 's':
 		snprintf(stobuf, 127, USAGE_FORMAT_STRING, config->data_default.s);
 		break;
@@ -971,9 +983,15 @@ SURVIVE_EXPORT void survive_config_as_str(SurviveContext *ctx, char *output, siz
 		case 'b':
             snprintf(output, n, "%d", survive_configb(ctx, tag, SC_GET, sc->data_default.b));
             break;
-		case 'f':
-			snprintf(output, n, "%f", survive_configf(ctx, tag, SC_GET, (float)sc->data_default.f));
+		case 'f': {
+			FLT df = survive_configf(ctx, tag, SC_GET, (float)sc->data_default.f);
+			if (fabs(df) > .001 || df == 0) {
+				snprintf(output, n, "%f", df);
+			} else {
+				snprintf(output, n, "%e", df);
+			}
 			break;
+		}
 		case 'i':
 			snprintf(output, n, "%i", survive_configi(ctx, tag, SC_GET, sc->data_default.i));
 			break;
