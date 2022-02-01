@@ -570,8 +570,9 @@ function update_trails() {
 $(function() { $("#trails").change(update_trails); });
 
 function update_external() {
-	var val = this.checked ? 1.5 : 0;
-	external_group.position.set(0, val, 0);
+	var val = $("#external_displace")[0].checked ? 1.5 : 0;
+	external_group.position.set(external2world[0], external2world[1] + val, external2world[2]);
+	external_group.quaternion.set(external2world[4], external2world[5], external2world[6], external2world[3]);
 }
 $(function() { $("#external_displace").change(update_external); });
 
@@ -954,8 +955,13 @@ function add_poly(v) {
 		scene.add(line);
 	}
 }
+var external2world = [0, 0, 0, 0, 0, 0, 1];
 
 var survive_log_handlers = {
+	"EXTERNAL_TO_WORLD": function(v) {
+		external2world = v.slice(2).map(parseFloat);
+		update_external();
+	},
 	"LH_POSE" : function(v) {
 		var obj = {
 			lighthouse : parseInt(v[1]),
@@ -1118,7 +1124,7 @@ var survive_log_handlers = {
 
 function add_survive_log_handler(name, entry) { survive_log_handlers[name] = entry; }
 function process_survive_handlers(msg) {
-	var s = msg.split(' ').filter(function(x) { return x; });
+	var s = msg.replace('\t', ' ').split(' ').filter(function(x) { return x; });
 	var handled = false;
 	if (survive_log_handlers[s[2]]) {
 		survive_log_handlers[s[2]](s);

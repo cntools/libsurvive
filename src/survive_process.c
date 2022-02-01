@@ -13,6 +13,8 @@
 #include "survive_kalman_tracker.h"
 #include "survive_str.h"
 
+#include "survive_private.h"
+
 void survive_default_button_process(SurviveObject *so, enum SurviveInputEvent eventType, enum SurviveButton buttonId,
 									const enum SurviveAxis *axisIds, const SurviveAxisVal_t *axisValues) {
 }
@@ -75,6 +77,76 @@ static inline bool check_str(const char* blacklist, const char* name) {
 	}
 	return false;
 }
+
+static inline void calculate_external2world(SurviveContext *ctx) {
+	SurvivePose externalLH[NUM_GEN2_LIGHTHOUSES] = { 0 };
+	for(int i = 0;i < SURVIVE_ARRAY_SIZE(ctx->private_members->ExternalPoses) && ctx->private_members->ExternalPoses->name[0] != 0;i++) {
+		for (int j = 0; j < ctx->activeLighthouses; j++) {
+			if(!ctx->bsd[j].PositionSet) continue;
+
+			char buf[32] = {0};
+			snprintf(buf, 32, "LHB-%08X", ctx->bsd[j].BaseStationID);
+			if (strcmp(buf, ctx->private_members->ExternalPoses[i].name) == 0) {
+				externalLH[j] = ctx->private_members->ExternalPoses[i].pose;
+			}
+
+			snprintf(buf, 32, "previous_LH%d", ctx->bsd[j].mode);
+			if (strcmp(buf, ctx->private_members->ExternalPoses[i].name) == 0) {
+				externalLH[j] = ctx->private_members->ExternalPoses[i].pose;
+			}
+		}
+	}
+
+	LinmathVec3d pts[] = {
+		{1, 0, 0},
+		{0, 1, 0},
+		{0, 0, 1},
+	};
+
+	int num_pairs = 0;
+	CN_CREATE_STACK_MAT(ptsExtLH, ctx->activeLighthouses * SURVIVE_ARRAY_SIZE(pts), 3);
+	CN_CREATE_STACK_MAT(ptsWorldLH, ctx->activeLighthouses * SURVIVE_ARRAY_SIZE(pts), 3);
+	for (int j = 0; j < ctx->activeLighthouses; j++) {
+		if (quatiszero(externalLH[j].Rot)) continue;
+
+		for(int h = 0;h < SURVIVE_ARRAY_SIZE(pts);h++) {
+			ApplyPoseToPoint(ptsExtLH.data + (num_pairs) * 3, &externalLH[j], pts[h]);
+			ApplyPoseToPoint(ptsWorldLH.data + (num_pairs) * 3, survive_get_lighthouse_true_position(ctx, j), pts[h]);
+			(ptsWorldLH.data + (num_pairs) * 3)[2] -= ctx->floor_offset;
+			num_pairs++;
+		}
+	}
+	if(num_pairs == 0) {
+		ctx->private_members->external2world = (SurvivePose) { .Rot = { 1 }};
+	} else {
+		Kabsch(&ctx->private_members->external2world, ptsExtLH.data, ptsWorldLH.data, num_pairs);
+		survive_recording_write_to_output(ctx->recptr, "EXTERNAL_TO_WORLD " SurvivePose_format "\n", SURVIVE_POSE_EXPAND(ctx->private_members->external2world));
+	}
+}
+
+const SurvivePose* survive_external_to_world(const SurviveContext *ctx) {
+	return &ctx->private_members->external2world;
+}
+
+static inline void insert_external_pose(SurviveContext *ctx, const char *name, const SurvivePose *pose) {
+	bool isLH = strncmp(name, "LHB-", 4) == 0 ||
+				strncmp(name, "previous_LH", strlen("previous_LH")) == 0;
+
+	for(int i = 0;i < SURVIVE_ARRAY_SIZE(ctx->private_members->ExternalPoses);i++) {
+		if(ctx->private_members->ExternalPoses[i].name[0] == 0) {
+			strncpy(ctx->private_members->ExternalPoses[i].name, name, 16);
+		}
+		if(strncmp(name, ctx->private_members->ExternalPoses[i].name, 16) == 0) {
+			ctx->private_members->ExternalPoses[i].pose = *pose;
+			break;
+		}
+	}
+
+	if(isLH) {
+		calculate_external2world(ctx);
+	}
+}
+
 void survive_default_external_pose_process(SurviveContext *ctx, const char *name, const SurvivePose *pose) {
 	if (strncmp(name, "LHB", 3) == 0) {
 		bool useExternal = survive_configb(ctx, USE_EXTERNAL_LH_TAG, SC_GET, 0);
@@ -107,6 +179,8 @@ void survive_default_external_pose_process(SurviveContext *ctx, const char *name
 		return;
 	}
 
+	insert_external_pose(ctx, name, pose);
+
 	survive_recording_external_pose_process(ctx, name, pose);
 }
 
@@ -131,7 +205,7 @@ void survive_default_raw_lighthouse_pose_process(SurviveContext *ctx, uint8_t li
 		if (ctx->bsd[lighthouse].PositionSet) {
 			FLT d = dist3d(lighthouse_pose->Pos, ctx->bsd[lighthouse].Pose.Pos);
 			if (d < ctx->settings.lh_max_update || d > ctx->settings.lh_max_nudge_distance) {
-				ctx->bsd[lighthouse].Pose = *lighthouse_pose;
+				ctx->bsd[lighthouse].true_pos = ctx->bsd[lighthouse].Pose = *lighthouse_pose;
 			} else {
 				ctx->bsd[lighthouse].old_pos = ctx->bsd[lighthouse].Pose;
 				ctx->bsd[lighthouse].true_pos = *lighthouse_pose;
@@ -144,7 +218,7 @@ void survive_default_raw_lighthouse_pose_process(SurviveContext *ctx, uint8_t li
 						   ctx->bsd[lighthouse].mode, SURVIVE_POSE_EXPAND(*lighthouse_pose));
 			}
 		} else {
-			ctx->bsd[lighthouse].Pose = *lighthouse_pose;
+			ctx->bsd[lighthouse].true_pos = ctx->bsd[lighthouse].Pose = *lighthouse_pose;
 			ctx->bsd[lighthouse].PositionSet = 1;
 		}
 		survive_kalman_lighthouse_update_position(ctx->bsd[lighthouse].tracker, lighthouse_pose);
@@ -172,6 +246,7 @@ void survive_default_raw_lighthouse_pose_process(SurviveContext *ctx, uint8_t li
 
 	SurvivePose external_pose = ctx->bsd[lighthouse].Pose;
 	external_pose.Pos[2] -= ctx->floor_offset;
+	calculate_external2world(ctx);
 
 	SURVIVE_INVOKE_HOOK(lighthouse_pose, ctx, lighthouse, &external_pose);
 }

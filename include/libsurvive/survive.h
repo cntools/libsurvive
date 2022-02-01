@@ -350,6 +350,7 @@ enum SurviveCalFlag {
 	SVCal_All = SVCal_Gib | SVCal_Curve | SVCal_Tilt | SVCal_Phase
 };
 
+struct SurviveContext_private;
 struct SurviveContext {
 	int lh_version_configed;
 	int lh_version_forced;
@@ -400,7 +401,7 @@ struct SurviveContext {
 	struct config_group	*temporary_config_values; // Set per-session, from command-line. Not saved but override global_config_values
 
 	// Additional details that we don't want / need to expose to every single include
-	void *private_members;
+	struct SurviveContext_private *private_members;
 	bool request_floor_set;
 	FLT floor_offset;
 
@@ -647,6 +648,7 @@ SURVIVE_EXPORT void survive_default_new_object_process(SurviveObject *so);
 SURVIVE_EXPORT double survive_run_time(const SurviveContext *ctx);
 SURVIVE_EXPORT double survive_run_time_since_epoch(const SurviveContext *ctx);
 
+SURVIVE_EXPORT const SurvivePose* survive_external_to_world(const SurviveContext *ctx);
 SURVIVE_EXPORT size_t survive_input_event_count(const SurviveContext *ctx);
 ////////////////////// Survive Drivers ////////////////////////////
 

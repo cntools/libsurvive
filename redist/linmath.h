@@ -265,12 +265,12 @@ LINMATH_EXPORT void PoseToMatrix(FLT *mat44, const LinmathPose *pose_in);
 // which transforms from B to A.
 //
 // This assumes that the space A and B share an origin.
-LINMATH_EXPORT void KabschCentered(LinmathQuat B2Atx, const FLT *ptsA, const FLT *ptsB, int num_pts);
-LINMATH_EXPORT void KabschCenteredScaled(LinmathQuat B2Atx, FLT *scale, const FLT *ptsA, const FLT *ptsB, int num_pts);
+LINMATH_EXPORT void KabschCentered(LinmathQuat A2Btx, const FLT *ptsA, const FLT *ptsB, int num_pts);
+LINMATH_EXPORT void KabschCenteredScaled(LinmathQuat A2Btx, FLT *scale, const FLT *ptsA, const FLT *ptsB, int num_pts);
 
 // Same as above except it solves for the center for you
-LINMATH_EXPORT void Kabsch(LinmathPose *B2Atx, const FLT *ptsA, const FLT *ptsB, int num_pts);
-LINMATH_EXPORT void KabschScaled(LinmathPose *B2Atx, FLT *scale, const FLT *ptsA, const FLT *ptsB, int num_pts);
+LINMATH_EXPORT void Kabsch(LinmathPose *A2Btx, const FLT *ptsA, const FLT *ptsB, int num_pts);
+LINMATH_EXPORT void KabschScaled(LinmathPose *A2Btx, FLT *scale, const FLT *ptsA, const FLT *ptsB, int num_pts);
 // Matrix Stuff
 
 typedef struct {

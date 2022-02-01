@@ -448,8 +448,9 @@ FLT survive_simple_object_get_latest_pose(const SurviveSimpleObject *sao, Surviv
 		timecode = SurviveSensorActivations_runtime(&sao->data.so->activations, sao->data.so->OutPose_timecode) * 1e-6;
 		break;
 	case SurviveSimpleObject_EXTERNAL:
-		if (pose)
-			*pose = sao->data.seo.pose;
+		if (pose) {
+			ApplyPoseToPose(pose, survive_external_to_world(sao->actx->ctx), &sao->data.seo.pose);
+		}
 		break;
 
 	default: {

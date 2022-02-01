@@ -157,9 +157,9 @@ void survive_recording_lighthouse_process(SurviveContext *ctx, uint8_t lighthous
 	int8_t mode = ctx->bsd[lighthouse].mode;
 	survive_recording_write_to_output(
 		recordingData,
-		"%d LH_POSE " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF "\r\n", mode,
+		"%d LH_POSE " FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF FLT_PRINTF " %u\r\n", mode,
 		lh_pose->Pos[0], lh_pose->Pos[1], lh_pose->Pos[2], lh_pose->Rot[0], lh_pose->Rot[1], lh_pose->Rot[2],
-		lh_pose->Rot[3]);
+		lh_pose->Rot[3], ctx->bsd[lighthouse].BaseStationID);
 }
 void survive_recording_velocity_process(SurviveObject *so, uint8_t lighthouse, const SurviveVelocity *pose) {
 	SurviveRecordingData *recordingData = so->ctx->recptr;

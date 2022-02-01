@@ -120,29 +120,29 @@ void testApplyPoseToPoint() {
 void testKabsch() {
 	FLT pts[] = {0, 0, 0, 100, 100, 100, 10, 0, 10, 50, 50, 0, 0, 0, 1000, -100, 0, 100};
 
-	LinmathPose tx = {.Pos = { 0 }, .Rot = {4, 3, 2, 1}};
+	LinmathPose pts2txPts = {.Pos = { 0 }, .Rot = {4, 3, 2, 1}};
 
-	LinmathPose tx2 = {.Pos = {1, 2, 3}, .Rot = {1, 2, 3, 4}};
+	LinmathPose pts2tx2Pts = {.Pos = {1, 2, 3}, .Rot = {1, 2, 3, 4}};
 
-	quatnormalize(tx.Rot, tx.Rot);
-	quatnormalize(tx2.Rot, tx2.Rot);
+	quatnormalize(pts2txPts.Rot, pts2txPts.Rot);
+	quatnormalize(pts2tx2Pts.Rot, pts2tx2Pts.Rot);
 
 	const int N = sizeof(pts) / sizeof(FLT) / 3;
 
 	FLT *txPts = alloca(N * 3 * sizeof(FLT));
 	FLT *txPts2 = alloca(N * 3 * sizeof(FLT));
 	for (int i = 0; i < N; i++) {
-		ApplyPoseToPoint(txPts + i * 3, &tx, pts + i * 3);
-		ApplyPoseToPoint(txPts2 + i * 3, &tx2, pts + i * 3);
+		ApplyPoseToPoint(txPts + i * 3, &pts2txPts, pts + i * 3);
+		ApplyPoseToPoint(txPts2 + i * 3, &pts2tx2Pts, pts + i * 3);
 	}
 
 	LinmathQuat should_be_tx = { 0 };
 	KabschCentered(should_be_tx, pts, txPts, N);
-	ASSERT_FLTA_EQUALS(should_be_tx, tx.Rot, 4);
+	ASSERT_FLTA_EQUALS(should_be_tx, pts2txPts.Rot, 4);
 
 	LinmathPose should_be_tx2 = { 0 };
 	Kabsch(&should_be_tx2, pts, txPts2, N);
-	ASSERT_FLTA_EQUALS(should_be_tx2.Pos, tx2.Pos, 7);
+	ASSERT_FLTA_EQUALS(should_be_tx2.Pos, pts2tx2Pts.Pos, 7);
 }
 
 static void testKabsch2() {

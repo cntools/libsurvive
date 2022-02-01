@@ -244,8 +244,9 @@ static int parse_and_run_imu(const char *line, SurvivePlaybackData *driver, bool
 static int parse_and_run_lhpose(const char *line, struct SurvivePlaybackData *driver) {
 	SurvivePose pose;
 	int lh = -1;
-	int rr = sscanf(line, "%d LH_POSE " SurvivePose_sformat "\n", &lh, &pose.Pos[0], &pose.Pos[1], &pose.Pos[2],
-					&pose.Rot[0], &pose.Rot[1], &pose.Rot[2], &pose.Rot[3]);
+	uint32_t basestationId = 0;
+	int rr = sscanf(line, "%d LH_POSE " SurvivePose_sformat "%u\n", &lh, &pose.Pos[0], &pose.Pos[1], &pose.Pos[2],
+					&pose.Rot[0], &pose.Rot[1], &pose.Rot[2], &pose.Rot[3], &basestationId);
 
 	SurviveContext *ctx = driver->ctx;
 	if (driver->outputCalculatedPose) {

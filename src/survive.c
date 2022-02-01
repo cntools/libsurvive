@@ -28,6 +28,8 @@
 #define z_const const
 #endif
 
+#include "survive_private.h"
+
 #define DEFAULT_CONFIG_PATH "config.json"
 STATIC_CONFIG_ITEM(SURVIVE_VERBOSE, "v", 'i', "Verbosity level", 0)
 STATIC_CONFIG_ITEM(BLACKLIST_DEVS, "blacklist-devs", 's', "List any devs (or substrings of devs) to blacklist.", "")
@@ -254,16 +256,6 @@ SURVIVE_EXPORT int8_t survive_get_bsd_idx(SurviveContext *ctx, survive_channel c
 	return -1;
 }
 
-struct SurviveContext_private {
-	og_sema_t poll_sema;
-	survive_run_time_fn runTimeFn;
-	void *runTimeFnUser;
-	double lastRunTime;
-
-	double callbackStatsTimeBetween;
-	double lastCallbackStats;
-};
-
 void survive_get_ctx_lock(SurviveContext *ctx) {
 	struct SurviveContext_private *pctx = ctx->private_members;
 	// SV_VERBOSE(100, "Trying to get lock on %lx", pthread_self());
@@ -331,6 +323,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 	ctx->poll_min_time_ms = 10;
 
 	struct SurviveContext_private *pctx = ctx->private_members = SV_CALLOC(sizeof(struct SurviveContext_private));
+	pctx->external2world.Rot[0] = 1;
 
 	pctx->poll_sema = OGCreateSema();
 
