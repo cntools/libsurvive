@@ -49,7 +49,7 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
     STRUCT_CONFIG_ITEM("obs-pos-variance",  "Variance of position integration from light capture",
 					   1e-6, t->obs_pos_var)
 	STRUCT_CONFIG_ITEM("obs-rot-variance",  "Variance of rotation integration from light capture",
-					   1e-4, t->obs_rot_var)
+					   1e-7, t->obs_rot_var)
 
 	STRUCT_CONFIG_ITEM("use-raw-obs",  "If true; the raw position from the solver is used and no filtering is applied", 0, t->use_raw_obs)
 
@@ -74,7 +74,7 @@ STRUCT_CONFIG_SECTION(SurviveKalmanTracker)
 	STRUCT_CONFIG_ITEM("kalman-joint-lightcap-minimum-sensors", "Minimum number of sensors for the joint model to run", 5, t->joint_min_sensor_cnt)
 	STRUCT_CONFIG_ITEM("kalman-lightcap-minimum-sensors", "Minimum number of sensors for the lightcap model to run", 5, t->lightcap_min_sensor_cnt)
 
-	STRUCT_CONFIG_ITEM("kalman-initial-imu-variance", "Initial variance in IMU frame", 1e-9, t->params.initial_variance_imu_correction)
+	STRUCT_CONFIG_ITEM("kalman-initial-imu-variance", "Initial variance in IMU frame", 0, t->params.initial_variance_imu_correction)
 	STRUCT_CONFIG_ITEM("kalman-initial-acc-scale-variance", "Initial variance in IMU frame", 1e-6, t->params.initial_acc_scale_variance)
 	STRUCT_CONFIG_ITEM("kalman-initial-acc-bias-variance", "Initial variance in IMU frame", 1e-6, t->params.initial_acc_bias_variance)
 	STRUCT_CONFIG_ITEM("kalman-initial-gyro-variance", "Initial variance in gyro", 1e-6, t->params.initial_gyro_variance)
