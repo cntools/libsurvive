@@ -135,6 +135,8 @@ static int test_path(const char *filename, int main_argc, char **main_argv) {
 		"",
 		"--init-configfile",
 		configPath,
+		"--no-gss-auto-floor-height",
+		"--no-gss-threaded",
 		"--playback-replay-pose",
 		"--playback",
 		(char *)filename,

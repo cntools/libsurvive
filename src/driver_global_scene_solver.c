@@ -28,6 +28,7 @@ typedef struct global_scene_solver {
 	bool needsSolve;
 	FLT last_addition;
 	int desired_coverage;
+	bool auto_floor;
 
 	imu_process_func imu_fn;
 	sync_process_func prior_sync_fn;
@@ -48,8 +49,9 @@ typedef struct global_scene_solver {
 } global_scene_solver;
 
 STRUCT_CONFIG_SECTION(global_scene_solver)
-STRUCT_CONFIG_ITEM("gss-threaded", "Thread GSS iterations", 1, t->threaded)
-STRUCT_CONFIG_ITEM("gss-desired-coverage", "Number of measurements to saturate a bin", 30, t->desired_coverage)
+	STRUCT_CONFIG_ITEM("gss-threaded", "Thread GSS iterations", 1, t->threaded)
+	STRUCT_CONFIG_ITEM("gss-desired-coverage", "Number of measurements to saturate a bin", 30, t->desired_coverage)
+	STRUCT_CONFIG_ITEM("gss-auto-floor-height", "Automatically use the lowest position to set the floor offset", 1, t->auto_floor)
 END_STRUCT_CONFIG_SECTION(global_scene_solver)
 
 static size_t add_scenes(struct global_scene_solver *gss, SurviveObject *so) {
@@ -142,12 +144,14 @@ static bool run_optimization(global_scene_solver *gss) {
 
 	bool success = gss->ctx->PoserFn(gss->ctx->objs[0], &gss->ctx->objs[0]->PoserFnData, (PoserData *)&pgss) == 0;
 	if(success) {
-		FLT min_z = INFINITY;
-		for(int i = 0;i < gss->scenes_cnt;i++) {
-			min_z = linmath_min(min_z, gss->scenes[i].pose.Pos[2]);
+		if(gss->auto_floor) {
+			FLT min_z = INFINITY;
+			for (int i = 0; i < gss->scenes_cnt; i++) {
+				min_z = linmath_min(min_z, gss->scenes[i].pose.Pos[2]);
+			}
+			if (isfinite(min_z))
+				survive_set_floor_offset(gss->ctx, min_z);
 		}
-		if(isfinite(min_z))
-			survive_set_floor_offset(gss->ctx, min_z);
 
 		for (int i = 0; i < gss->scenes_cnt; i++) {
 			SurvivePose p = gss->scenes[i].pose;

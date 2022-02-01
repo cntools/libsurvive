@@ -251,6 +251,14 @@ void survive_default_raw_lighthouse_pose_process(SurviveContext *ctx, uint8_t li
 	SURVIVE_INVOKE_HOOK(lighthouse_pose, ctx, lighthouse, &external_pose);
 }
 
+SURVIVE_EXPORT FLT survive_get_floor_offset(const SurviveContext* ctx) { return ctx->floor_offset; }
+SURVIVE_EXPORT void survive_set_floor_offset(SurviveContext* ctx, FLT floor_offset_meters) {
+	ctx->floor_offset = floor_offset_meters;
+	calculate_external2world(ctx);
+	survive_configf(ctx, "floor-offset", SC_OVERRIDE | SC_SETCONFIG, floor_offset_meters);
+	config_save(ctx);
+}
+
 void survive_default_lighthouse_pose_process(SurviveContext *ctx, uint8_t lighthouse,
 											 const SurvivePose *lighthouse_pose) {
 	survive_recording_lighthouse_process(ctx, lighthouse, lighthouse_pose);

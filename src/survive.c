@@ -1404,10 +1404,3 @@ BaseStationCal *survive_basestation_cal(SurviveContext *ctx, int lh, int axis) {
 	return &ctx->bsd[lh].fcal[axis];
 	// return axis == 0 ? &ctx->bsd[lh].tracker->state.BSD0 : &ctx->bsd[lh].tracker->state.BSD1;
 }
-
-SURVIVE_EXPORT FLT survive_get_floor_offset(const SurviveContext* ctx) { return ctx->floor_offset; }
-SURVIVE_EXPORT void survive_set_floor_offset(SurviveContext* ctx, FLT floor_offset_meters) {
-	ctx->floor_offset = floor_offset_meters;
-	survive_configf(ctx, "floor-offset", SC_OVERRIDE | SC_SETCONFIG, floor_offset_meters);
-	config_save(ctx);
-}
