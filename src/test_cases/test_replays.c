@@ -197,7 +197,7 @@ static int test_path(const char *filename, int main_argc, char **main_argv) {
 
 		if (reset_lh) {
 			ctx->bsd[i].PositionSet = 0;
-			ctx->bsd[i].Pose = LinmathPose_Identity;
+			ctx->bsd[i].Pose = (SurvivePose){0};
 			fprintf(stderr, " LH%2d (%08x): " SurvivePose_format "\n", i, ctx->bsd[i].BaseStationID, pose.Pos[0],
 					pose.Pos[1], pose.Pos[2], pose.Rot[0], pose.Rot[1], pose.Rot[2], pose.Rot[3]);
 			if (fabs(pose.Pos[0]) < 1e-10) {

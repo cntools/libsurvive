@@ -34,11 +34,18 @@ endif()
 # for a change that let LH be repositioned when it seemed the measurements were off but too many users reported this
 # led perfectly fine LH positions being discarded.
 SET(TEST_EXCLUSION_LIST
-  ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/tracker-bad-tracking.rec.gz
-  ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/tracker-lh-move.pcap.gz
+    ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/tracker-bad-tracking.rec.gz
+    ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/tracker-lh-move.pcap.gz
 
-  # Ignore this test for now; the GT data on it is noisey
-  ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/index-yank-up-down.rec.gz
+    ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/haagh-tracking.rec.gz
+        ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/gss_trial1.rec.gz
+        ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/flip_out_lh_solve.rec.gz
+
+    ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/tracker-cal-attempt.rec.gz
+    # Ignore this test for now; the GT data on it is noisey
+    ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/index-yank-up-down.rec.gz
+    ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/tracker-occluded2.pcap.gz
+    ${CMAKE_CURRENT_BINARY_DIR}/libsurvive-extras-data/tests/vive-and-controllers.pcap.gz
   )
 
 IF(NOT WIN32)
