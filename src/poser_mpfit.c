@@ -92,6 +92,7 @@ typedef struct MPFITData {
 
   FLT record_reprojection_error;
   FLT obj_up_variance, lh_up_variance, calibration_stationary_obj_up_variance, stationary_obj_up_variance;
+  FLT sensor_variance_cal;
   bool model_velocity;
   bool globalDataAvailable;
   struct survive_async_optimizer *async_optimizer;
@@ -100,6 +101,7 @@ typedef struct MPFITData {
 } MPFITData;
 
 STRUCT_CONFIG_SECTION(MPFITData)
+STRUCT_CONFIG_ITEM("mpfit-cal-sensor-variance", "Light sensor variance for calibration", 1e-4, t->sensor_variance_cal)
 STRUCT_CONFIG_ITEM("mpfit-model-velocity", "Model velocity in non mpfit process", true, t->model_velocity)
 STRUCT_CONFIG_ITEM("mpfit-record-reprojection-error", "", 0, t->record_reprojection_error)
 STRUCT_CONFIG_ITEM("mpfit-object-up-variance",
@@ -821,7 +823,7 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 			survive_optimizer_measurement *meas =
 				survive_optimizer_emplace_meas(&mpfitctx, survive_optimizer_measurement_type_light);
 			meas->light.object = i;
-			meas->variance = d->sensor_variance;
+			meas->variance = d->sensor_variance_cal;
 			meas->light.value = gss->scenes[i].meas[j].value;
 			meas->light.lh = gss->scenes[i].meas[j].lh;
 			meas->light.axis = gss->scenes[i].meas[j].axis;
@@ -970,9 +972,10 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 
 		return false;
 	} else {
-		SV_INFO("MPFIT success %f/%10.10f/%7.7f (%d measurements, %d, %s, trace %7.7f)", result.orignorm,
-				result.bestnorm, sensor_error, (int)mpfitctx.measurementsCnt, res, survive_optimizer_error(res),
-				cn_trace(&R) / R.rows);
+		SV_INFO("MPFIT success %f/%10.10f/%7.7f (%d measurements, %d, %s, %d iters, up err %7.7f, trace %7.7f)",
+				result.orignorm, result.bestnorm, sensor_error, (int)mpfitctx.measurementsCnt, res,
+				survive_optimizer_error(res), result.niter,
+				mpfitctx.stats.object_up_error / mpfitctx.stats.object_up_error_cnt, cn_trace(&R) / R.rows);
 
 		SurvivePose *opt_cameras = survive_optimizer_get_camera(&mpfitctx);
 		SurvivePose cameras[NUM_GEN2_LIGHTHOUSES] = {0};
@@ -1033,8 +1036,9 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 			quatrotatevector(err_up, p->Rot, gss->scenes[i].accel);
 			normalize3d(err_up, err_up);
 
-			SV_VERBOSE(10, "Solved scene with pose (%s) " SurvivePose_format " %5.4f", mpfitctx.sos[i]->codename,
-					   SURVIVE_POSE_EXPAND(*p), fabs(err_up[2] - 1));
+			SV_VERBOSE(10, "Solved scene with pose (%s) " SurvivePose_format " %5.4f " Point3_format,
+					   mpfitctx.sos[i]->codename, SURVIVE_POSE_EXPAND(*p), fabs(err_up[2] - 1),
+					   LINMATH_VEC3_EXPAND(err_up));
 
 			if (!quatiszero(p->Rot)) {
 				survive_recording_write_to_output(ctx->recptr, "SPHERE %s_%d %f %d " Point3_format "\n",

@@ -929,7 +929,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 				}
 			}
 
-			mpfunc_ctx->stats.object_up_error += deviates[meas_idx];
+			mpfunc_ctx->stats.object_up_error += deviates[meas_idx] * deviates[meas_idx];
 			mpfunc_ctx->stats.object_up_error_cnt ++;
 			break;
 		}

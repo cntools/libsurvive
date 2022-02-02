@@ -110,7 +110,7 @@ static inline void calculate_external2world(SurviveContext *ctx) {
 	} else {
 		KabschPoses(&ctx->private_members->external2world, externalLH, bsds, num_poses);
 		// Kabsch(&ctx->private_members->external2world, ptsExtLH.data, ptsWorldLH.data, num_pairs);
-		SV_VERBOSE(100, "external2world " SurvivePose_format,
+		SV_VERBOSE(110, "external2world " SurvivePose_format,
 				   SURVIVE_POSE_EXPAND(ctx->private_members->external2world));
 		survive_recording_write_to_output(ctx->recptr, "EXTERNAL_TO_WORLD " SurvivePose_format "\n", SURVIVE_POSE_EXPAND(ctx->private_members->external2world));
 	}
