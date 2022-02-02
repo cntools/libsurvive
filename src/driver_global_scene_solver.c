@@ -145,7 +145,7 @@ static bool run_optimization(global_scene_solver *gss) {
 	bool success = gss->ctx->PoserFn(gss->ctx->objs[0], &gss->ctx->objs[0]->PoserFnData, (PoserData *)&pgss) == 0;
 	if(success) {
 		if(gss->auto_floor) {
-			FLT min_z = INFINITY;
+			FLT min_z = gss->ctx->floor_offset;
 			for (int i = 0; i < gss->scenes_cnt; i++) {
 				min_z = linmath_min(min_z, gss->scenes[i].pose.Pos[2]);
 			}
