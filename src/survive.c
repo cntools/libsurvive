@@ -1141,7 +1141,10 @@ inline void survive_apply_ang_velocity_aa(LinmathAxisAngle out, const SurviveAng
 	axisanglerotateabout(out, vel, t0);
 }
 
-static double timestamp_in_s() { return OGGetAbsoluteTime() - OGStartTimeS(); }
+/***
+ * We add a small offset here so survive_run_tim can never be 0
+ */
+static double timestamp_in_s() { return OGGetAbsoluteTime() - OGStartTimeS() + 1e-3; }
 
 double survive_run_time(const SurviveContext *ctx) {
 	struct SurviveContext_private *pctx = ctx->private_members;

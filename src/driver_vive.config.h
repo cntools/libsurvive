@@ -6,7 +6,7 @@ static int survive_config_submit(struct SurviveUSBInfo *usbInfo) {
 	SV_VERBOSE(110, "Submitting config for %s %s at %f",
 			   survive_colorize(usbInfo->so ? usbInfo->so->codename : usbInfo->device_info->codename),
 			   survive_colorize(usbInfo->device_info->name), usbInfo->nextCfgSubmitTime);
-	usbInfo->nextCfgSubmitTime = 0;
+	usbInfo->nextCfgSubmitTime = -1;
 
 	int rc = survive_usb_transfer_submit(config_packet->tx);
 	if (rc) {
@@ -272,7 +272,7 @@ cleanup:
 	}
 
 	packet->usbInfo->ignoreCnt = 10;
-	packet->usbInfo->nextCfgSubmitTime = 0;
+	packet->usbInfo->nextCfgSubmitTime = -1;
 	packet->usbInfo->cfg_user = 0;
 	packet->usbInfo->active_transfers--;
 
@@ -289,9 +289,9 @@ cleanup:
 static void survive_config_poll(struct SurviveUSBInfo *usbInfo) {
 	FLT now = survive_run_time(usbInfo->viveData->ctx);
 	bool active = true;
-	while (active || usbInfo->nextCfgSubmitTime > 0 && usbInfo->nextCfgSubmitTime < now) {
+	while (active || usbInfo->nextCfgSubmitTime >= 0 && usbInfo->nextCfgSubmitTime < now) {
 		active = false;
-		if (usbInfo->nextCfgSubmitTime > 0 && usbInfo->nextCfgSubmitTime < now) {
+		if (usbInfo->nextCfgSubmitTime >= 0 && usbInfo->nextCfgSubmitTime < now) {
 			if (survive_config_submit(usbInfo) == -6) {
 				usbInfo->active_transfers--;
 				survive_close_usb_device(usbInfo);

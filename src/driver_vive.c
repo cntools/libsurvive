@@ -2279,7 +2279,7 @@ static void handle_watchman_v2(SurviveObject *w, uint64_t time_in_us, uint16_t t
 	struct SurviveContext *ctx = w->ctx;
 	const uint8_t *originPayloadPtr = payloadPtr;
 	struct SurviveUSBInfo *driverInfo = w->driver;
-	if (driverInfo->nextCfgSubmitTime > 0) {
+	if (driverInfo->nextCfgSubmitTime >= 0) {
 		return;
 	}
 

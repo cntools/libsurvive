@@ -276,7 +276,7 @@ static inline void survive_close_usb_device(struct SurviveUSBInfo *usbInfo) {
 
 	assert(usbInfo->interfaces[0].assoc_obj == 0);
 	SurviveContext *ctx = usbInfo->viveData->ctx;
-	if (usbInfo->nextCfgSubmitTime > 0) {
+	if (usbInfo->nextCfgSubmitTime >= 0) {
 		survive_config_submit(usbInfo);
 	}
 
