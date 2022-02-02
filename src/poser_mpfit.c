@@ -112,7 +112,7 @@ STRUCT_CONFIG_ITEM("mpfit-stationary-object-up-variance",
 				   t->stationary_obj_up_variance)
 STRUCT_CONFIG_ITEM("mpfit-cal-stationary-object-up-variance",
 				   "How much to weight having the accel direction on tracked objects pointing up during calibration",
-				   1e-4, t->calibration_stationary_obj_up_variance)
+				   1e-3, t->calibration_stationary_obj_up_variance)
 STRUCT_CONFIG_ITEM("mpfit-lighthouse-up-variance",
 				   "How much to weight having the accel direction on lighthouses pointing up", 1e-2, t->lh_up_variance)
 END_STRUCT_CONFIG_SECTION(MPFITData)
