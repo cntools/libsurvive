@@ -182,6 +182,25 @@ static int parse_and_run_pose(const char *line, SurvivePlaybackData *driver) {
 	SURVIVE_INVOKE_HOOK(external_pose, ctx, name, &pose);
 	return 0;
 }
+
+static int parse_and_run_velocity(const char *line, SurvivePlaybackData *driver) {
+	char name[128] = "replay_";
+	SurviveVelocity velocity;
+
+	int rr =
+		sscanf(line, "%s VELOCITY " SurviveVel_sformat "\r\n", name + strlen(name), &velocity.Pos[0], &velocity.Pos[1],
+			   &velocity.Pos[2], &velocity.AxisAngleRot[0], &velocity.AxisAngleRot[1], &velocity.AxisAngleRot[2]);
+
+	SurviveContext *ctx = driver->ctx;
+	if (rr != 7) {
+		SV_WARN("Only got %d values for a pose", rr);
+		return 0;
+	}
+
+	SURVIVE_INVOKE_HOOK(external_velocity, ctx, name, &velocity);
+	return 0;
+}
+
 static int parse_and_set_imu_scales(const char* line, SurvivePlaybackData *driver) {
     char dev[10];
     int gyro_mode = 0, acc_mode = 0;
@@ -501,6 +520,8 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 			break;
 		case 'A':
 		case 'V':
+			if (strcmp(op, "VELOCITY") == 0 && driver->outputCalculatedPose)
+				parse_and_run_velocity(line, driver);
 			break;
 		default:
 			SV_WARN("Playback doesn't understand '%.10s' op in '%.20s'", op, line);
