@@ -432,9 +432,12 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 			return 0;
 		}
 
-		if (strcmp(dev, "OPTION") == 0) {
-			free(line);
-			return 0;
+		const char *ignore_ops[] = {"OPTION", "EXTERNAL_TO_WORLD", "SPHERE", "LH_UP"};
+		for (int i = 0; i < SURVIVE_ARRAY_SIZE(ignore_ops); i++) {
+			if (strcmp(dev, ignore_ops[i]) == 0) {
+				free(line);
+				return 0;
+			}
 		}
 
 		survive_get_ctx_lock(ctx);
@@ -442,6 +445,8 @@ static int playback_pump_msg(struct SurviveContext *ctx, void *_driver) {
 		case 'F':
 			if (strcmp(op, "FULL_STATE") == 0 || strcmp(op, "FULL_COVARIANCE") == 0) {
 			}
+			break;
+		case 'D':
 			break;
 		case 'W':
 			if (op[1] == 0)
