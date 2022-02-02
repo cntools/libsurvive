@@ -268,6 +268,7 @@ LINMATH_EXPORT void PoseToMatrix(FLT *mat44, const LinmathPose *pose_in);
 LINMATH_EXPORT void KabschCentered(LinmathQuat A2Btx, const FLT *ptsA, const FLT *ptsB, int num_pts);
 LINMATH_EXPORT void KabschCenteredScaled(LinmathQuat A2Btx, FLT *scale, const FLT *ptsA, const FLT *ptsB, int num_pts);
 
+LINMATH_EXPORT void KabschPoses(LinmathPose *A2Btx, const LinmathPose *ptsA, const LinmathPose *ptsB, int num_poses);
 // Same as above except it solves for the center for you
 LINMATH_EXPORT void Kabsch(LinmathPose *A2Btx, const FLT *ptsA, const FLT *ptsB, int num_pts);
 LINMATH_EXPORT void KabschScaled(LinmathPose *A2Btx, FLT *scale, const FLT *ptsA, const FLT *ptsB, int num_pts);

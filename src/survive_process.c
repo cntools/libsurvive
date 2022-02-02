@@ -80,6 +80,8 @@ static inline bool check_str(const char* blacklist, const char* name) {
 
 static inline void calculate_external2world(SurviveContext *ctx) {
 	SurvivePose externalLH[NUM_GEN2_LIGHTHOUSES] = { 0 };
+	SurvivePose bsds[NUM_GEN2_LIGHTHOUSES] = {0};
+	int num_poses = 0;
 	for(int i = 0;i < SURVIVE_ARRAY_SIZE(ctx->private_members->ExternalPoses) && ctx->private_members->ExternalPoses->name[0] != 0;i++) {
 		for (int j = 0; j < ctx->activeLighthouses; j++) {
 			if(!ctx->bsd[j].PositionSet) continue;
@@ -87,39 +89,29 @@ static inline void calculate_external2world(SurviveContext *ctx) {
 			char buf[32] = {0};
 			snprintf(buf, 32, "LHB-%08X", ctx->bsd[j].BaseStationID);
 			if (strcmp(buf, ctx->private_members->ExternalPoses[i].name) == 0) {
-				externalLH[j] = ctx->private_members->ExternalPoses[i].pose;
-			}
-
-			snprintf(buf, 32, "previous_LH%d", ctx->bsd[j].mode);
-			if (strcmp(buf, ctx->private_members->ExternalPoses[i].name) == 0) {
-				externalLH[j] = ctx->private_members->ExternalPoses[i].pose;
+				externalLH[num_poses] = ctx->private_members->ExternalPoses[i].pose;
+				bsds[num_poses] = *survive_get_lighthouse_true_position(ctx, j);
+				bsds[num_poses].Pos[2] -= ctx->floor_offset;
+				num_poses++;
+			} else {
+				snprintf(buf, 32, "previous_LH%d", ctx->bsd[j].mode);
+				if (strcmp(buf, ctx->private_members->ExternalPoses[i].name) == 0) {
+					externalLH[num_poses] = ctx->private_members->ExternalPoses[i].pose;
+					bsds[num_poses] = *survive_get_lighthouse_true_position(ctx, j);
+					bsds[num_poses].Pos[2] -= ctx->floor_offset;
+					num_poses++;
+				}
 			}
 		}
 	}
 
-	LinmathVec3d pts[] = {
-		{1, 0, 0},
-		{0, 1, 0},
-		{0, 0, 1},
-	};
-
-	int num_pairs = 0;
-	CN_CREATE_STACK_MAT(ptsExtLH, ctx->activeLighthouses * SURVIVE_ARRAY_SIZE(pts), 3);
-	CN_CREATE_STACK_MAT(ptsWorldLH, ctx->activeLighthouses * SURVIVE_ARRAY_SIZE(pts), 3);
-	for (int j = 0; j < ctx->activeLighthouses; j++) {
-		if (quatiszero(externalLH[j].Rot)) continue;
-
-		for(int h = 0;h < SURVIVE_ARRAY_SIZE(pts);h++) {
-			ApplyPoseToPoint(ptsExtLH.data + (num_pairs) * 3, &externalLH[j], pts[h]);
-			ApplyPoseToPoint(ptsWorldLH.data + (num_pairs) * 3, survive_get_lighthouse_true_position(ctx, j), pts[h]);
-			(ptsWorldLH.data + (num_pairs) * 3)[2] -= ctx->floor_offset;
-			num_pairs++;
-		}
-	}
-	if(num_pairs == 0) {
+	if (num_poses == 0) {
 		ctx->private_members->external2world = (SurvivePose) { .Rot = { 1 }};
 	} else {
-		Kabsch(&ctx->private_members->external2world, ptsExtLH.data, ptsWorldLH.data, num_pairs);
+		KabschPoses(&ctx->private_members->external2world, externalLH, bsds, num_poses);
+		// Kabsch(&ctx->private_members->external2world, ptsExtLH.data, ptsWorldLH.data, num_pairs);
+		SV_VERBOSE(100, "external2world " SurvivePose_format,
+				   SURVIVE_POSE_EXPAND(ctx->private_members->external2world));
 		survive_recording_write_to_output(ctx->recptr, "EXTERNAL_TO_WORLD " SurvivePose_format "\n", SURVIVE_POSE_EXPAND(ctx->private_members->external2world));
 	}
 }

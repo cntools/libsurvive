@@ -232,11 +232,20 @@ static int test_path(const char *filename, int main_argc, char **main_argv) {
 		}
 	}
 
+	SurvivePose currentLH[NUM_GEN2_LIGHTHOUSES] = {0};
+	for (int i = 0; i < ctx->activeLighthouses; i++) {
+		currentLH[i] = ctx->bsd[i].Pose;
+	}
+
+	SurvivePose original2current;
+	KabschPoses(&original2current, originalLH, currentLH, NUM_GEN2_LIGHTHOUSES);
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
 		SurvivePose pose = originalLH[i];
 		fprintf(stderr, " LH%2d (%08x): " SurvivePose_format "\n", i, ctx->bsd[i].BaseStationID,
 				SURVIVE_POSE_EXPAND(ctx->bsd[i].Pose));
 		FLT err[2] = {0};
+		ApplyPoseToPose(&pose, &original2current, &pose);
+
 		if (!quatiszero(pose.Rot))
 			diff(err, &pose, &ctx->bsd[i].Pose);
 

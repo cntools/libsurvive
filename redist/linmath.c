@@ -1057,6 +1057,34 @@ LINMATH_EXPORT void KabschScaled(LinmathPose *B2Atx, FLT *scale, const FLT *_pts
 	quatrotatevector(centerA, B2Atx->Rot, centerA);
 	sub3d(B2Atx->Pos, centerB, centerA);
 }
+LINMATH_EXPORT void KabschPoses(LinmathPose *A2Btx, const LinmathPose *posesA, const LinmathPose *posesB,
+								int num_poses) {
+	LinmathVec3d pts[] = {
+		{1, 0, 0},
+		{0, 1, 0},
+		{0, 0, 1},
+	};
+
+	int num_pts = num_poses * sizeof(pts) / sizeof(pts[0]);
+	FLT *ptsA = alloca(num_pts * 3 * sizeof(FLT));
+	FLT *ptsB = alloca(num_pts * 3 * sizeof(FLT));
+
+	int num_pairs = 0;
+	for (int j = 0; j < num_poses; j++) {
+		if (quatiszero(posesB[j].Rot) || quatiszero(posesA[j].Rot))
+			continue;
+
+		for (int h = 0; h < sizeof(pts) / sizeof(pts[0]); h++) {
+			ApplyPoseToPoint(ptsA + num_pairs * 3, &posesA[j], pts[h]);
+			ApplyPoseToPoint(ptsB + num_pairs * 3, &posesB[j], pts[h]);
+			num_pairs++;
+		}
+	}
+	*A2Btx = (LinmathPose){0};
+	if (num_pairs > 0) {
+		Kabsch(A2Btx, ptsA, ptsB, num_pairs);
+	}
+}
 LINMATH_EXPORT void Kabsch(LinmathPose *B2Atx, const FLT *_ptsA, const FLT *_ptsB, int num_pts) {
 	KabschScaled(B2Atx, 0, _ptsA, _ptsB, num_pts);
 }
