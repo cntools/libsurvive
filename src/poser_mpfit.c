@@ -91,7 +91,7 @@ typedef struct MPFITData {
   MPFITStats stats;
 
   FLT record_reprojection_error;
-  FLT obj_up_variance, lh_up_variance, stationary_obj_up_variance;
+  FLT obj_up_variance, lh_up_variance, calibration_stationary_obj_up_variance, stationary_obj_up_variance;
   bool model_velocity;
   bool globalDataAvailable;
   struct survive_async_optimizer *async_optimizer;
@@ -108,6 +108,9 @@ STRUCT_CONFIG_ITEM("mpfit-object-up-variance",
 STRUCT_CONFIG_ITEM("mpfit-stationary-object-up-variance",
 				   "How much to weight having the accel direction on tracked objects pointing up", 1e-2,
 				   t->stationary_obj_up_variance)
+STRUCT_CONFIG_ITEM("mpfit-cal-stationary-object-up-variance",
+				   "How much to weight having the accel direction on tracked objects pointing up during calibration",
+				   1e-4, t->calibration_stationary_obj_up_variance)
 STRUCT_CONFIG_ITEM("mpfit-lighthouse-up-variance",
 				   "How much to weight having the accel direction on lighthouses pointing up", 1e-2, t->lh_up_variance)
 END_STRUCT_CONFIG_SECTION(MPFITData)
@@ -788,7 +791,7 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 								  .reprojectModel = survive_reproject_model(ctx),
 								  .poseLength = scenes_cnt,
 								  .cameraLength = ctx->activeLighthouses,
-								  .objectUpVectorVariance = d->stationary_obj_up_variance,
+								  .objectUpVectorVariance = d->calibration_stationary_obj_up_variance,
 								  .disableVelocity = true,
 								  .covarAllParams = true,
 								  .nofilter = scenes_cnt < 8};
