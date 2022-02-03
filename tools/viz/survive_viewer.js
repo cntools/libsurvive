@@ -156,7 +156,7 @@ function add_lighthouse(idx, p, q) {
 		mesh.visible = false;
 		ellipsoids[ellipsoid_name] = mesh
 
-		group.add(mesh);
+		group_rot.add(mesh);
 	}
 
 	scene.add(group);
@@ -619,7 +619,7 @@ function update_ellipsoid(name, u, s, v, A) {
 	if (ellipsoids[name]) {
 		var ellipsoid = ellipsoids[name];
 		// console.log(ellipsoids[name])
-		const upscale = name.endsWith("'") ? 2 : 2
+		const upscale = name.endsWith("'") ? 2 : 100;
 		for (var i = 0; i < 3; i++) {
 			s[i] = Math.max(Math.sqrt(s[i]), 1e-5) * upscale
 		}

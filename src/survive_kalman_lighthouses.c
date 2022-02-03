@@ -294,7 +294,7 @@ SURVIVE_EXPORT void survive_kalman_lighthouse_integrate_observation(SurviveKalma
 	CN_CREATE_STACK_MAT(H, 7, tracker->model.state_cnt);
 	CN_CREATE_STACK_MAT(R, 7, 7);
 	FLT v = cn_trace(&tracker->model.P);
-	bool trustAbsolutely = v > 1e2 || Rlh == 0;
+	bool trustAbsolutely = v > 1e2 || Rlh == 0 || true;
 
 	if (Rlh) {
 		cn_matrix_copy(&R, Rlh);
