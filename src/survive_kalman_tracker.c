@@ -1606,9 +1606,10 @@ void survive_kalman_tracker_lost_tracking(SurviveKalmanTracker *tracker, bool al
 	}
 
 	if (!objectsAreValid) {
+	  ctx->floor_offset = 0;
 		for (int lh = 0; lh < ctx->activeLighthouses; lh++) {
 			ctx->bsd[lh].PositionSet = 0;
-			SV_WARN("LH%d %f", lh, tracker->light_residuals[lh]);
+			SV_WARN("Lost tracking for LH%d %f", lh, tracker->light_residuals[lh]);
 		}
 	}
 }

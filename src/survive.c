@@ -691,6 +691,7 @@ int survive_startup(SurviveContext *ctx) {
 	int calibrateMandatory = survive_configi(ctx, "force-calibrate", SC_GET, 0);
 	if (calibrateMandatory) {
 		SV_INFO("Force calibrate flag set -- clearing position on all lighthouses");
+		ctx->floor_offset = 0;
 		for (int i = 0; i < ctx->activeLighthouses; i++) {
 			ctx->bsd[i].PositionSet = 0;
 			ctx->bsd[i].Pose = (SurvivePose){0};
@@ -878,6 +879,7 @@ SURVIVE_EXPORT const SurvivePose *survive_get_lighthouse_position(const SurviveC
 void survive_reset_lighthouse_positions(SurviveContext *ctx) {
 	// survive_get_ctx_lock(ctx);
 	SV_VERBOSE(100, "survive_reset_lighthouse_positions called");
+	ctx->floor_offset = 0;
 	for (int i = 0; i < ctx->activeLighthouses; i++) {
 		survive_reset_lighthouse_position(ctx, i);
 	}
