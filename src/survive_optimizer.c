@@ -204,6 +204,22 @@ SURVIVE_EXPORT void survive_optimizer_remove_data_for_lh(survive_optimizer *opti
 		}
 	}
 }
+
+void survive_optimizer_fix_obj_yaw(survive_optimizer *mpfit_ctx, int obj_idx) {
+	survive_optimizer_measurement *meas =
+		survive_optimizer_emplace_meas(mpfit_ctx, survive_optimizer_measurement_type_fixed_rotation);
+	meas->variance = 1e-7;
+	meas->fixed_rotation.obj = obj_idx;
+	LinmathPoint3d dir = {1, 0, 0};
+
+	LinmathPoint3d pdir;
+	quatrotatevector(pdir, survive_optimizer_get_pose(mpfit_ctx)[obj_idx].Rot, dir);
+	// Plane that goes through (0, 0, 0), (0, 0, 1), and pdir
+	copy3d(meas->fixed_rotation.match_vec, dir);
+	meas->fixed_rotation.plane[0] = -pdir[1];
+	meas->fixed_rotation.plane[1] = pdir[0];
+	meas->fixed_rotation.plane[2] = 0;
+}
 void survive_optimizer_fix_camera(survive_optimizer *mpfit_ctx, int cam_idx) {
 	int start = survive_optimizer_get_camera_index(mpfit_ctx) + cam_idx * 7;
 	for (int i = start; i < start + 7; i++) {
@@ -898,6 +914,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 
 			FLT deriv[4 * 3] = {0};
 			size_t deriv_idx = 0;
+			FLT error = 0;
 
 			LinmathPoint3d world_up = {0, 0, 1};
 			LinmathPoint3d predicted = { 0 };
@@ -920,7 +937,9 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			}
 
 			for(int i = 0;i < 3;i++) {
-				deviates[meas_idx + i] = (predicted[i] - up[i]) / meas->variance;
+				FLT e = predicted[i] - up[i];
+				deviates[meas_idx + i] = e / meas->variance;
+				error += e;
 
 				for (int j = 0; j < ang_size && derivs; j++) {
 					if(derivs[deriv_idx + j]) {
@@ -929,7 +948,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 				}
 			}
 
-			mpfunc_ctx->stats.object_up_error += deviates[meas_idx] * deviates[meas_idx];
+			mpfunc_ctx->stats.object_up_error += error * error;
 			mpfunc_ctx->stats.object_up_error_cnt ++;
 			break;
 		}
@@ -955,10 +974,40 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			}
 		}
 			break;
+		case survive_optimizer_measurement_type_fixed_rotation: {
+			int obj = meas->fixed_rotation.obj;
+
+			LinmathPoint3d predicted = {0, 0, 1};
+			FLT deriv[4 * 3] = {0};
+
+			LinmathDualPose *obj2world = (LinmathDualPose *)(&survive_optimizer_get_pose(mpfunc_ctx)[obj]);
+			if (mpfunc_ctx->settings->use_quat_model) {
+				assert(false);
+			} else {
+				gen_axisanglerotatevector(predicted, obj2world->axisAnglePose.AxisAngleRot,
+										  meas->fixed_rotation.match_vec);
+				gen_axisanglerotatevector_jac_axis_angle(deriv, obj2world->axisAnglePose.AxisAngleRot,
+														 meas->fixed_rotation.match_vec);
+			}
+			const FLT *pl = meas->fixed_rotation.plane;
+			FLT error = dot3d(predicted, pl);
+			deviates[meas_idx] = error / meas->variance;
+
+			int deriv_idx = obj * 7 + 3;
+			for (int j = 0; j < ang_size && derivs; j++) {
+				if (derivs[deriv_idx + j]) {
+					derivs[deriv_idx + j][meas_idx] = fix_infinity(
+						(pl[0] * deriv[j + 0] + pl[1] * deriv[j + 1 * ang_size] + pl[2] * deriv[j + 2 * ang_size]) /
+						meas->variance);
+				}
+			}
+
+			break;
+		}
 		case survive_optimizer_measurement_type_object_accel: {
 			int obj = meas->pose_acc.object;
 			LinmathPoint3d up = {0};
-			copy3d(up, survive_optimizer_obj_up_vector(mpfunc_ctx, obj));
+			copy3d(up, meas->pose_acc.acc);
 
 			LinmathPoint3d world_up = {0, 0, 1};
 			LinmathPoint3d predicted = {0, 0, 1};
@@ -969,7 +1018,6 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			LinmathDualPose *obj2world = (LinmathDualPose *)(&survive_optimizer_get_pose(mpfunc_ctx)[obj]);
 			if (mpfunc_ctx->settings->use_quat_model) {
 				assert(false);
-				error = gen_obj2world_up_err(obj2world->quatPose.Rot, up);
 				gen_obj2world_up_err_jac_q1(deriv, obj2world->quatPose.Rot, up);
 			} else {
 				gen_axisanglerotatevector(predicted, obj2world->axisAnglePose.AxisAngleRot, up);
@@ -977,11 +1025,11 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			}
 
 			int deriv_idx = obj * 7 + 3;
-            mpfunc_ctx->stats.object_up_error += error * error;
-            mpfunc_ctx->stats.object_up_error_cnt++;
 
 			for(int i = 0;i < 3;i++) {
-				deviates[meas_idx + i] = (predicted[i] - world_up[i]) / meas->variance;
+				FLT e = predicted[i] - world_up[i];
+				deviates[meas_idx + i] = e / meas->variance;
+				error += e;
 
 				for (int j = 0; j < ang_size && derivs; j++) {
 					if(derivs[deriv_idx + j]) {
@@ -989,6 +1037,9 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 					}
 				}
 			}
+
+			mpfunc_ctx->stats.object_up_error += error * error;
+			mpfunc_ctx->stats.object_up_error_cnt++;
 
 			break;
 		}
@@ -1149,6 +1200,23 @@ void survive_optimizer_remove_invalid_meas(survive_optimizer *optimizer) {
 			optimizer->measurements[i] = optimizer->measurements[optimizer->measurementsCnt - 1];
 			optimizer->measurementsCnt--;
 			i--;
+		}
+	}
+}
+SURVIVE_EXPORT void survive_optimizer_covariance_expand(survive_optimizer *optimizer, const struct CnMat *R_free,
+														struct CnMat *R) {
+	cn_set_zero(R);
+	int idx = 0;
+	int *ifree = alloca(sizeof(int) * R_free->rows);
+	assert(R_free->rows == survive_optimizer_get_free_parameters_count(optimizer));
+	for (int i = 0; i < optimizer->parametersCnt; i++) {
+		if (!optimizer->mp_parameters_info[i].fixed) {
+			ifree[idx++] = i;
+		}
+	}
+	for (int i = 0; i < R_free->rows; i++) {
+		for (int j = 0; j < R_free->rows; j++) {
+			cnMatrixSet(R, ifree[i], ifree[j], cnMatrixGet(R_free, i, j));
 		}
 	}
 }
@@ -1661,6 +1729,8 @@ int survive_optimizer_get_max_measurements_count(const survive_optimizer *ctx) {
 int meas_size(survive_optimizer *ctx, enum survive_optimizer_measurement_type type) {
 	switch (type) {
 	case survive_optimizer_measurement_type_light:
+		return 1;
+	case survive_optimizer_measurement_type_fixed_rotation:
 		return 1;
 	case survive_optimizer_measurement_type_camera_accel:
 	case survive_optimizer_measurement_type_object_accel:

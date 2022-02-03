@@ -16,6 +16,7 @@ enum survive_optimizer_measurement_type {
 	survive_optimizer_measurement_type_parameters_bias,
 	survive_optimizer_measurement_type_light,
 	survive_optimizer_measurement_type_object_accel,
+	survive_optimizer_measurement_type_fixed_rotation,
 	survive_optimizer_measurement_type_camera_accel,
 	survive_optimizer_measurement_type_camera_position,
 };
@@ -54,7 +55,11 @@ typedef struct {
 	LinmathVec3d acc;
 } survive_optimizer_camera_acc_measurement;
 
-
+typedef struct {
+	int obj;
+	LinmathVec3d match_vec;
+	LinmathVec3d plane;
+} survive_optimizer_fixed_rotation_measurement;
 
 typedef struct {
 	int camera;
@@ -79,6 +84,7 @@ typedef struct {
 		survive_optimizer_object_acc_measurement pose_acc;
 		survive_optimizer_camera_acc_measurement camera_acc;
 		survive_optimizer_camera_position_measurement camera_pos;
+		survive_optimizer_fixed_rotation_measurement fixed_rotation;
 		survive_optimizer_parameter_bias_measurement parameter_bias;
 	};
 } survive_optimizer_measurement;
@@ -220,6 +226,8 @@ SURVIVE_EXPORT void survive_optimizer_setup_pose_n(survive_optimizer *mpfit_ctx,
 												   bool isFixed, int use_jacobian_function);
 
 SURVIVE_EXPORT void survive_optimizer_fix_camera(survive_optimizer *mpfit_ctx, int cam_idx);
+SURVIVE_EXPORT void survive_optimizer_fix_obj_yaw(survive_optimizer *mpfit_ctx, int obj_idx);
+
 SURVIVE_EXPORT void survive_optimizer_remove_data_for_lh(survive_optimizer *mpfit_ctx, int cam_idx);
 
 SURVIVE_EXPORT void survive_optimizer_setup_pose(survive_optimizer *mpfit_ctx, const SurvivePose *pose, bool isFixed,
@@ -235,6 +243,8 @@ SURVIVE_EXPORT const char *survive_optimizer_error(int status);
 
 SURVIVE_EXPORT int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct *result,
 										 struct CnMat *R);
+SURVIVE_EXPORT void survive_optimizer_covariance_expand(survive_optimizer *optimizer, const struct CnMat *R_free,
+														struct CnMat *R);
 
 SURVIVE_EXPORT void survive_optimizer_set_reproject_model(survive_optimizer *optimizer,
 														  const survive_reproject_model_t *reprojectModel);
