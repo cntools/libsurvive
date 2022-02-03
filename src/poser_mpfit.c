@@ -481,6 +481,19 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 	return 0;
 }
 
+
+void print_stats_results(SurviveContext* ctx, const survive_optimizer *mpfitctx, const mp_result *result, int verbosity) {
+	SV_VERBOSE(
+		verbosity,
+		"Results %10.10f/%10.10f %d iter %s (%3d meas, %3d pars (%3d free), %d lhs, %d dev "
+		"sensor_err %7.7f up_err %7.7f bias %7.7f",
+		result->orignorm, result->bestnorm, result->niter, survive_optimizer_error(result->status),
+		(int)mpfitctx->measurementsCnt, (int)mpfitctx->parametersCnt, result->nfree,
+		mpfitctx->cameraLength, mpfitctx->poseLength,
+		sqrtf(mpfitctx->stats.sensor_error / mpfitctx->stats.sensor_error_cnt),
+		sqrtf(mpfitctx->stats.object_up_error / mpfitctx->stats.object_up_error_cnt),
+		sqrtf(mpfitctx->stats.params_error / mpfitctx->stats.params_error_cnt));
+}
 static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const mp_result *result,
 									struct async_optimizer_user *user_data, CnMat *R, SurvivePose *out) {
 	FLT rtn = -1;
@@ -588,7 +601,7 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 			!solvedLHPoses ? 110 : 100,
 			"MPFIT success %s %f7.5s %s %f/%10.10f/%10.10f (%3d measurements, %s result, %d lighthouses, %d axis, "
 			"%6.3fms "
-			"time_window, %2d old_meas (avg %6.3fms) run #%d) scale %7.7f sensor_err %7.7f up_err %7.7f curr_error %7.7f bias %7.7f",
+			"time_window, %2d old_meas (avg %6.3fms) run #%d) scale %7.7f sensor_err %7.7f up_err %7.7f bias %7.7f",
 			survive_colorize(so->codename), survive_run_time(ctx),
 			survive_colorize(SurviveSensorActivations_stationary_time(&so->activations) > 4800000 ? "STILL" : "MOVE "),
 			result->orignorm, result->bestnorm,
@@ -601,7 +614,6 @@ static FLT handle_optimizer_results(survive_optimizer *mpfitctx, int res, const 
 			d->stats.total_runs, scale,
 			sqrtf(mpfitctx->stats.sensor_error / mpfitctx->stats.sensor_error_cnt),
 			sqrtf(mpfitctx->stats.object_up_error / mpfitctx->stats.object_up_error_cnt),
-            sqrtf(mpfitctx->stats.current_error / mpfitctx->stats.current_error_cnt),
 			sqrtf(mpfitctx->stats.params_error / mpfitctx->stats.params_error_cnt));
 	} else {
 		SV_VERBOSE(
@@ -976,6 +988,8 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 				result.orignorm, result.bestnorm, sensor_error, (int)mpfitctx.measurementsCnt, res,
 				survive_optimizer_error(res), result.niter,
 				mpfitctx.stats.object_up_error / mpfitctx.stats.object_up_error_cnt, cn_trace(&R) / R.rows);
+
+		print_stats_results(ctx, &mpfitctx, &result, 100);
 
 		SurvivePose *opt_cameras = survive_optimizer_get_camera(&mpfitctx);
 		SurvivePose cameras[NUM_GEN2_LIGHTHOUSES] = {0};

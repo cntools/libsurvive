@@ -731,7 +731,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 
     mpfunc_ctx->stats.sensor_error = 0; mpfunc_ctx->stats.sensor_error_cnt = 0;
     mpfunc_ctx->stats.object_up_error = 0; mpfunc_ctx->stats.object_up_error_cnt = 0;
-    mpfunc_ctx->stats.current_error = 0; mpfunc_ctx->stats.current_error_cnt = 0;
+    mpfunc_ctx->stats.params_error = 0; mpfunc_ctx->stats.params_error_cnt = 0;
 
     mpfunc_ctx->parameters = p;
 
