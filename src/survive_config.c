@@ -409,6 +409,7 @@ bool config_read_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8
 	bsd->mode = config_read_uint32(cg, "mode", 0);
 
 	config_read_float_array(cg, "pose", &bsd->Pose.Pos[0], defaults, 7);
+	config_read_float_array(cg, "variance", &bsd->variance.Pos[0], defaults, 6);
 
 	FLT accel[3] = {0};
 	config_read_float_array(cg, "accel", accel, defaults, 3);
@@ -446,6 +447,7 @@ void config_set_lighthouse(config_group *lh_config, BaseStationData *bsd, uint8_
 	config_set_uint32(cg, "id", bsd->BaseStationID);
 	config_set_uint32(cg, "mode", bsd->mode);
 	config_set_float_a(cg, "pose", &bsd->Pose.Pos[0], 7);
+	config_set_float_a(cg, "variance", &bsd->variance.Pos[0], 6);
 	config_set_uint32(cg, "unlock_count", bsd->sys_unlock_count);
 	FLT accel[] = {bsd->accel[0], bsd->accel[1], bsd->accel[2]};
 	config_set_float_a(cg, "accel", accel, 3);

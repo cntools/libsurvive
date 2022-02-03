@@ -109,7 +109,21 @@ void survive_kalman_lighthouse_report(SurviveKalmanLighthouse *tracker) {
 	tracker->ctx->bsd[tracker->lh].confidence = 1. / norm3d(var_diag);
 	assert(cn_is_finite(&tracker->model.state));
 
-	if (tracker->report_covariance_cnt > 0 && tracker->stats.reported_poses % tracker->report_covariance_cnt == 0) {
+	cn_get_diag(&tracker->model.P, (FLT *)&tracker->ctx->bsd[tracker->lh].variance, 6);
+	SurviveContext *ctx = tracker->ctx;
+	SV_VERBOSE(100, "LH%d %s " Point6_format, tracker->lh, survive_colorize("variance"),
+			   LINMATH_VEC6_EXPAND(((FLT *)&tracker->ctx->bsd[tracker->lh].variance)));
+
+	FLT diff_p[7] = {0};
+	subnd(diff_p, lighthouse2world.Pos, survive_get_lighthouse_position(tracker->ctx, tracker->lh)->Pos, 7);
+	FLT diff = normnd2(diff_p, 7);
+	if (diff > 1e-4 || !tracker->ctx->bsd[tracker->lh].PositionSet) {
+		tracker->updating = true;
+		SURVIVE_INVOKE_HOOK(raw_lighthouse_pose, tracker->ctx, tracker->lh, &lighthouse2world);
+		tracker->updating = false;
+	}
+
+	if (tracker->report_covariance_cnt > 0 && ++tracker->stats.reported_poses % tracker->report_covariance_cnt == 0) {
 		SurviveContext *ctx = tracker->ctx;
 		survive_recording_write_to_output(ctx->recptr, "LH%d FULL_COVARIANCE ", ctx->bsd[tracker->lh].mode);
 		for (int i = 0; i < tracker->model.P.rows * tracker->model.P.cols; i++) {
@@ -125,18 +139,6 @@ void survive_kalman_lighthouse_report(SurviveKalmanLighthouse *tracker) {
 		cn_elementwise_subtract(&BSD, &BSD, &tempBSD);
 		survive_recording_write_matrix(ctx->recptr, 0, 5, tracker->lh == 0 ? "LH0" : "LH1", &BSD);
 	}
-
-	FLT diff_p[7] = {0};
-	subnd(diff_p, lighthouse2world.Pos, survive_get_lighthouse_position(tracker->ctx, tracker->lh)->Pos, 7);
-	FLT diff = normnd2(diff_p, 7);
-	if (diff < 1e-4 && tracker->ctx->bsd[tracker->lh].PositionSet)
-		return;
-
-	tracker->updating = true;
-	// tracker->ctx->bsd[tracker->lh].fcal[0] = tracker->state.BSD0;
-	// tracker->ctx->bsd[tracker->lh].fcal[1] = tracker->state.BSD1;
-	SURVIVE_INVOKE_HOOK(raw_lighthouse_pose, tracker->ctx, tracker->lh, &lighthouse2world);
-	tracker->updating = false;
 }
 
 struct map_light_data_ctx {

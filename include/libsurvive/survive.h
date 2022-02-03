@@ -302,6 +302,7 @@ struct BaseStationData {
 	bool disable;
 	uint8_t OOTXChecked : 1;
 	struct SurviveKalmanLighthouse *tracker;
+	SurviveAxisAnglePose variance;
 
 	FLT old_pos_time;
 	SurvivePose old_pos;
