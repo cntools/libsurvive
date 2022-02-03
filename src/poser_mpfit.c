@@ -807,7 +807,6 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 								  .cameraLength = ctx->activeLighthouses,
 								  .objectUpVectorVariance = d->calibration_stationary_obj_up_variance,
 								  .disableVelocity = true,
-								  .covarAllParams = true,
 								  .nofilter = scenes_cnt < 8};
 
 	SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(mpfitctx, 0);

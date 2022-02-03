@@ -1161,23 +1161,40 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 
 	SurvivePose *poses = survive_optimizer_get_pose(optimizer);
 
-
+	int nonfixed_quat_cnt = 0;
+	int *quat_idxs = alloca(sizeof(int) * (optimizer->poseLength + optimizer->cameraLength));
+	int *quat_free_idxs = alloca(sizeof(int) * (optimizer->poseLength + optimizer->cameraLength));
+	//int *quat_idxs = alloca(sizeof(int) * (optimizer->poseLength + optimizer->cameraLength));
+	int fixed_idxs = 0;
 	if(!optimizer->settings->use_quat_model) {
+		int nfree_til = 0;
         for (int i = 0; i < optimizer->poseLength + optimizer->cameraLength; i++) {
+			for(int j = 0;j < 3;j++)
+				nfree_til += !optimizer->mp_parameters_info[i * 7 + j].fixed;
             quattoaxisanglemag(poses[i].Rot, poses[i].Rot);
             poses[i].Rot[3] = 0; // NAN;
+			if(optimizer->mp_parameters_info[i * 7 + 6].fixed == false) {
+				quat_free_idxs[nonfixed_quat_cnt] = nfree_til;
+				quat_idxs[nonfixed_quat_cnt++] = i * 7 + 3;
+				nfree_til+=4;
+			}
 			optimizer->mp_parameters_info[i * 7 + 6].fixed = true;
 		}
     }
 
 #ifndef NDEBUG
 	for (int i = 0; i < survive_optimizer_get_parameters_count(optimizer); i++) {
+		SurviveContext *ctx = (optimizer->sos == 0 || optimizer->sos[0] == 0) ? 0 : optimizer->sos[0]->ctx;
+		//SV_VERBOSE(100, "Parameter %s(%d) is %d",
+		//				 optimizer->mp_parameters_info[i].parname, i,
+		//				 optimizer->mp_parameters_info[i].fixed)
+
 		if ((optimizer->mp_parameters_info[i].limited[0] &&
 			 optimizer->parameters[i] < optimizer->mp_parameters_info[i].limits[0]) ||
 			(optimizer->mp_parameters_info[i].limited[1] &&
 			 optimizer->parameters[i] > optimizer->mp_parameters_info[i].limits[1]) ||
 			isnan(optimizer->parameters[i])) {
-			SurviveContext *ctx = (optimizer->sos == 0 || optimizer->sos[0] == 0) ? 0 : optimizer->sos[0]->ctx;
+
 			SV_GENERAL_ERROR("Parameter %s(%d) is invalid. %f <= %f <= %f should be true",
 							 optimizer->mp_parameters_info[i].parname, i,
 							 optimizer->mp_parameters_info[i].limits[0], optimizer->parameters[i],
@@ -1231,33 +1248,32 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 
 	int nfree = survive_optimizer_get_free_parameters_count(optimizer);
 	FLT *covar = R ? R->data : 0;
-	int covar_size = optimizer->covarAllParams ? survive_optimizer_get_parameters_count(optimizer) : nfree;
+	int covar_size = nfree;
 	CN_CREATE_STACK_MAT(R_aa, covar_size * (covar ? 1 : 0), covar_size * (covar ? 1 : 0));
-	CN_CREATE_STACK_VEC(PS, survive_optimizer_get_parameters_count(optimizer));
-	CN_CREATE_STACK_VEC(MS, survive_optimizer_get_meas_size(optimizer));
-	result->resid = MS.data;
-	result->xerror = PS.data;
-	if(optimizer->covarAllParams) {
-		result->covar = covar ? R_aa.data : 0;
-	} else {
-		result->covar_free = covar ? R_aa.data : 0;
-	}
+	result->covar_free = covar ? R_aa.data : 0;
+
+	int param_cnt = survive_optimizer_get_parameters_count(optimizer);
+	//CN_CREATE_STACK_VEC(PS, survive_optimizer_get_parameters_count(optimizer));
+	//result->xerror = PS.data;
+	//CN_CREATE_STACK_VEC(MS, survive_optimizer_get_meas_size(optimizer));
+	//result->resid = MS.data;
+	//CN_CREATE_STACK_MAT(J, nfree, meas_count);
+	//result->jac = J.data;
+
 	int rtn = mpfit(mpfunc, meas_count, survive_optimizer_get_parameters_count(optimizer), optimizer->parameters,
 					optimizer->mp_parameters_info, cfg, optimizer, result);
 	optimizer->parameters = params;
 
-	FLT rchisqr = result->bestnorm / result->nfree;
+	FLT rchisqr = linmath_max(1, result->bestnorm / nfree);
 	if (ctx)
 		survive_recording_write_matrix(ctx->recptr, optimizer->sos[0], 10, "full_cov", &R_aa);
 	assert(sane_covariance(&R_aa));
 	int totalPoseCount = optimizer->poseLength + optimizer->cameraLength;
     int pose_size = optimizer->settings->use_quat_model ? 7 : 6;
-	if(optimizer->covarAllParams)
-		pose_size = 7;
 
     int totalFreePoseCount = nfree / pose_size;
 	if (covar) {
-		*R = cnMat(R_aa.rows / pose_size * 7, R_aa.rows / pose_size * 7, R->data);
+		*R = cnMat(R_aa.rows + nonfixed_quat_cnt, R_aa.rows + nonfixed_quat_cnt, R->data);
 
 		CnMat R_q = cnMat(R->rows, R->cols, covar);
 		if (optimizer->settings->optimize_scale_threshold >= 0) {
@@ -1273,8 +1289,6 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 						FLT k = optimizer->sos[z]->sensor_scale_var / (optimizer->sos[z]->sensor_scale_var + scale_cov);
 						optimizer->sos[z]->sensor_scale += k * y;
 						optimizer->sos[z]->sensor_scale_var *= (1 - k);
-						// printf("SENSOR_SCALE %s %e %f %e %f %+f %f\n", optimizer->sos[z]->codename, scale_cov, scale,
-						//       optimizer->sos[z]->sensor_scale_var, optimizer->sos[z]->sensor_scale, y, k);
 					}
 				}
 			}
@@ -1284,30 +1298,36 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
 		} else {
 			int idx = survive_optimizer_nonfixed_index(optimizer, survive_optimizer_get_start_index(optimizer, survive_optimizer_parameter_object_lighthouse_correction));
 			CN_CREATE_STACK_MAT(G, R->rows, R_aa.rows);
+			CN_CREATE_STACK_MAT(G2, R->rows, R_aa.rows);
 			CN_CREATE_STACK_MAT(Gp, 4, 3);
 			assert(R->rows == R->cols);
 
-			for (int z = 0; z < R->rows / 7; z++) {
-                gen_axisangle2quat_jac_axis_angle(Gp.data, ((LinmathAxisAnglePose *) &poses[z])->AxisAngleRot);
-				for(int i = 0;i < 3;i++)
-					cnMatrixSet(&G, i + z * 7, i + z * pose_size, 1);
+			int cidx = 0;
+			for (int z = 0; z < nonfixed_quat_cnt;z++) {
+				int idx = quat_free_idxs[z];
+				for(;cidx < idx;cidx++)
+					cnMatrixSet(&G, cidx, cidx - z, 1);
 
+				gen_axisangle2quat_jac_axis_angle(Gp.data, params + idx);
 				for (int i = 0; i < 4; i++) {
-                    for (int j = 0; j < 3; j++) {
-						cnMatrixSet(&G, i + z * 7 + 3, j + z * pose_size + 3, cnMatrixGet(&Gp, i, j));
+					for (int j = 0; j < 3; j++) {
+						cnMatrixSet(&G, i + cidx, j + cidx - z, cnMatrixGet(&Gp, i, j));
 					}
-                }
-            }
+				}
+				cidx += 4;
+			}
+			for(;cidx < R->rows;cidx++) cnMatrixSet(&G, cidx, cidx - nonfixed_quat_cnt, 1);
+
 			gemm_ABAt_add_scaled(&R_q, &G, &R_aa, 0, 1, 1, 0);
 
-			// gemm_ABAt_add_scaled(&R_q, &G, &R_aa, 0, 1,
-			// result->bestnorm / (optimizer->measurementsCnt - totalFreePoseCount * pose_size), 0);
 			assert(sane_covariance(&R_q));
         }
 
 		// https://lmfit.github.io/lmfit-py/fitting.html#uncertainties-in-variable-parameters-and-their-correlations
-		FLT rchisqr = linmath_max(1, result->bestnorm / 6); //..result->nfree;
-		cn_multiply_scalar(&R_q, &R_q, rchisqr);
+
+		if(!optimizer->dontScaleCov) {
+			cn_multiply_scalar(&R_q, &R_q, rchisqr);
+		}
 	}
 	bool wasSuccess = result->status > 0;
 
@@ -1345,6 +1365,7 @@ int survive_optimizer_run(survive_optimizer *optimizer, struct mp_result_struct 
     if(!optimizer->settings->use_quat_model) {
         for (int i = 0; i < totalPoseCount; i++) {
             quatfromaxisangle(poses[i].Rot, poses[i].Rot, norm3d(poses[i].Rot));
+			optimizer->mp_parameters_info[i * 7 + 6].fixed = optimizer->mp_parameters_info[i * 7 + 5].fixed;
         }
     }
 

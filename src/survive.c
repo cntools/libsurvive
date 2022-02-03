@@ -855,6 +855,7 @@ SURVIVE_EXPORT const SurvivePose *survive_get_lighthouse_true_position(const Sur
 	return &ctx->bsd[bsd_idx].Pose;
 }
 SURVIVE_EXPORT const SurvivePose *survive_get_lighthouse_position(const SurviveContext *ctx, int bsd_idx) {
+	assert(bsd_idx >= 0);
 	if (ctx->bsd[bsd_idx].true_pos_time != 0) {
 		SurviveContext *mctx = (SurviveContext *)ctx;
 		FLT t_diff = ctx->bsd[bsd_idx].true_pos_time - ctx->bsd[bsd_idx].old_pos_time;

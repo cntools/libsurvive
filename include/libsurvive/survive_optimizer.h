@@ -123,7 +123,7 @@ typedef struct survive_optimizer {
 	FLT *parameters;
 
 	bool disableVelocity;
-	bool covarAllParams;
+	bool dontScaleCov;
 
 	int poseLength;
 	int cameraLength;
