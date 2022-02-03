@@ -120,6 +120,7 @@ struct mp_result_struct {
 				npar-vector, or 0 if not desired */
 	FLT *covar;		  /* Final parameter covariance matrix
 					 npar x npar array, or 0 if not desired */
+	FLT *jac;		  /* Jacobian of all parameters -- npar x meas */
 	FLT *covar_free;
 	char version[20]; /* MPFIT version string */
 };

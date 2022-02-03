@@ -559,6 +559,15 @@ OUTER_LOOP:
 		}
 	}
 
+	if (result && result->jac) {
+		assert(ldfjac == m);
+		for (j = 0; j < nfree; j++) {
+			for (i = 0; i < m; i++) {
+				result->jac[j * m + i] = fjac[j * ldfjac + i];
+			}
+		}
+	}
+
 	/* Compute the QR factorization of the jacobian */
 	mp_qrfac(m, nfree, fjac, ldfjac, 1, ipvt, nfree, wa1, wa2, wa3);
 
