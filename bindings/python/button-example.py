@@ -12,7 +12,7 @@ def button_func(obj, eventtype, buttonid, axisids, axisvals):
     elif eventtype == pysurvive.SURVIVE_INPUT_EVENT_BUTTON_UP:
         eventstring = "UP"
     else:
-        eventstring = "%d"(eventtype)
+        eventstring = "%d" % (eventtype)
     print("Button %d on %s generated event %s"%(buttonid, obj.contents.codename.decode('utf8'), eventstring))
 
 
