@@ -739,6 +739,59 @@ static int survive_optimizer_get_meas_size(const survive_optimizer *ctx) {
 	return rtn;
 }
 
+static void handle_accel_meas(survive_optimizer *mpfunc_ctx, survive_optimizer_measurement *meas, int meas_idx,
+							  FLT *deviates, FLT **derivs) {
+	int ang_size = mpfunc_ctx->settings->use_quat_model ? 4 : 3;
+
+	FLT deriv[4 * 3] = {0};
+	size_t deriv_idx = 0;
+
+	LinmathPoint3d world_up = {0, 0, 1};
+
+	LinmathDualPose *pose = 0;
+	FLT *expected = 0;
+	FLT *tx_input = 0;
+	if (meas->meas_type == survive_optimizer_measurement_type_object_accel) {
+		int obj = meas->pose_acc.object;
+		pose = (LinmathDualPose *)(&survive_optimizer_get_pose(mpfunc_ctx)[obj]);
+		deriv_idx = obj * 7 + 3;
+
+		tx_input = meas->pose_acc.acc;
+		expected = world_up;
+	} else {
+		size_t lh = meas->camera_acc.camera;
+		pose = &((LinmathDualPose *)survive_optimizer_get_camera(mpfunc_ctx))[lh];
+		deriv_idx = survive_optimizer_get_camera_index(mpfunc_ctx) + lh * 7 + 3;
+
+		tx_input = world_up;
+		expected = meas->camera_acc.acc;
+	}
+
+	LinmathPoint3d predicted = {0};
+	if (mpfunc_ctx->settings->use_quat_model) {
+		assert(false);
+	} else {
+		gen_axisanglerotatevector(predicted, pose->axisAnglePose.AxisAngleRot, tx_input);
+		gen_axisanglerotatevector_jac_axis_angle(deriv, pose->axisAnglePose.AxisAngleRot, tx_input);
+	}
+
+	FLT error = 0;
+	for (int i = 0; i < 3; i++) {
+		FLT e = predicted[i] - expected[i];
+		deviates[meas_idx + i] = e / meas->variance;
+		error += e;
+
+		for (int j = 0; j < ang_size && derivs; j++) {
+			if (derivs[deriv_idx + j]) {
+				derivs[deriv_idx + j][meas_idx + i] = fix_infinity(deriv[i * ang_size + j] / meas->variance);
+			}
+		}
+	}
+
+	mpfunc_ctx->stats.object_up_error += error * error;
+	mpfunc_ctx->stats.object_up_error_cnt++;
+}
+
 static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *private) {
 	survive_optimizer *mpfunc_ctx = private;
 
@@ -760,7 +813,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 	LinmathDualPose obj2world = {0};
     LinmathDualPose obj2lh[NUM_GEN2_LIGHTHOUSES] = {0};
 
-    int ang_size = mpfunc_ctx->settings->use_quat_model ? 4 : 3;
+	int ang_size = mpfunc_ctx->settings->use_quat_model ? 4 : 3;
 	int pose_size = ang_size + 3;
 	CN_CREATE_STACK_MAT(ang_velocity_jac, ang_size, ang_size);
 	cn_set_diag_val(&ang_velocity_jac, 1);
@@ -910,46 +963,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			break;
 		}
 		case survive_optimizer_measurement_type_camera_accel: {
-			LinmathPoint3d up = {0};
-
-			FLT deriv[4 * 3] = {0};
-			size_t deriv_idx = 0;
-			FLT error = 0;
-
-			LinmathPoint3d world_up = {0, 0, 1};
-			LinmathPoint3d predicted = { 0 };
-
-			size_t lh = meas->camera_acc.camera;
-			normalize3d(up, survive_optimizer_cam_up_vector(mpfunc_ctx, lh));
-
-			deriv_idx = survive_optimizer_get_camera_index(mpfunc_ctx) + lh * 7 + 3;
-
-			LinmathDualPose *world2lh = (LinmathDualPose *)&cameras[lh];
-			if (mpfunc_ctx->settings->use_quat_model) {
-				if (isfinite(up[0])) {
-					assert(false);
-				}
-			} else {
-				if (isfinite(up[0])) {
-					gen_axisanglerotatevector(predicted, world2lh->axisAnglePose.AxisAngleRot, world_up);
-					gen_axisanglerotatevector_jac_axis_angle(deriv, world2lh->axisAnglePose.AxisAngleRot, world_up);
-				}
-			}
-
-			for(int i = 0;i < 3;i++) {
-				FLT e = predicted[i] - up[i];
-				deviates[meas_idx + i] = e / meas->variance;
-				error += e;
-
-				for (int j = 0; j < ang_size && derivs; j++) {
-					if(derivs[deriv_idx + j]) {
-						derivs[deriv_idx + j][meas_idx + i] = fix_infinity(deriv[i * ang_size + j] / meas->variance);
-					}
-				}
-			}
-
-			mpfunc_ctx->stats.object_up_error += error * error;
-			mpfunc_ctx->stats.object_up_error_cnt ++;
+			handle_accel_meas(mpfunc_ctx, meas, meas_idx, deviates, derivs);
 			break;
 		}
 		case survive_optimizer_measurement_type_camera_position: {
@@ -1005,42 +1019,7 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			break;
 		}
 		case survive_optimizer_measurement_type_object_accel: {
-			int obj = meas->pose_acc.object;
-			LinmathPoint3d up = {0};
-			copy3d(up, meas->pose_acc.acc);
-
-			LinmathPoint3d world_up = {0, 0, 1};
-			LinmathPoint3d predicted = {0, 0, 1};
-
-			LinmathAxisAngle rot = {0};
-			FLT deriv[4*3] = {0}, error = 0;
-
-			LinmathDualPose *obj2world = (LinmathDualPose *)(&survive_optimizer_get_pose(mpfunc_ctx)[obj]);
-			if (mpfunc_ctx->settings->use_quat_model) {
-				assert(false);
-				gen_obj2world_up_err_jac_q1(deriv, obj2world->quatPose.Rot, up);
-			} else {
-				gen_axisanglerotatevector(predicted, obj2world->axisAnglePose.AxisAngleRot, up);
-				gen_axisanglerotatevector_jac_axis_angle(deriv, obj2world->axisAnglePose.AxisAngleRot, up);
-			}
-
-			int deriv_idx = obj * 7 + 3;
-
-			for(int i = 0;i < 3;i++) {
-				FLT e = predicted[i] - world_up[i];
-				deviates[meas_idx + i] = e / meas->variance;
-				error += e;
-
-				for (int j = 0; j < ang_size && derivs; j++) {
-					if(derivs[deriv_idx + j]) {
-						derivs[deriv_idx + j][meas_idx + i] = fix_infinity(deriv[i * ang_size + j] / meas->variance);
-					}
-				}
-			}
-
-			mpfunc_ctx->stats.object_up_error += error * error;
-			mpfunc_ctx->stats.object_up_error_cnt++;
-
+			handle_accel_meas(mpfunc_ctx, meas, meas_idx, deviates, derivs);
 			break;
 		}
 
@@ -1842,6 +1821,7 @@ void survive_optimizer_set_cam_up_vector(survive_optimizer *ctx, int i, FLT vari
 			survive_optimizer_emplace_meas(ctx, survive_optimizer_measurement_type_camera_accel);
 		meas->camera_acc.camera = i;
 		normalize3d(meas->camera_acc.acc, up);
+		assert(isfinite(meas->camera_acc.acc[0]));
 		meas->variance = variance;
 	}
 }
