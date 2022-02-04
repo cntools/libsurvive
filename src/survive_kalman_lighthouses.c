@@ -86,15 +86,28 @@ void survive_kalman_lighthouse_update_position(SurviveKalmanLighthouse *tracker,
 	if (tracker->updating == false) {
 		tracker->state.Lighthouse = *(pose);
 
-		FLT pv = tracker->initial_pos_var, rv = tracker->initial_rot_var;
-		SurviveLighthouseKalmanErrorModel baseline = {.Lighthouse = {.Pos = {pv, pv, pv}, .AxisAngleRot = {rv, rv, rv}},
-													  .BSD0 = tracker->initial_variance,
-													  .BSD1 = tracker->initial_variance};
+		SurviveContext *ctx = tracker->ctx;
+		if (normnd(ctx->bsd[tracker->lh].variance.Pos, 6) > 0) {
+			cn_set_diag(&tracker->model.P, (const FLT *)ctx->bsd[tracker->lh].variance.Pos);
+			cnCopy(&tracker->model.P, &tracker->push_cov, 0);
 
-		cnSetZero(&tracker->model.P);
-		cn_set_diag(&tracker->model.P, (const FLT *)&baseline);
+			SurvivePose min_error = {.Pos = {1e-5, 1e-5, 1e-5}, .Rot = {1e-6, 1e-6, 1e-6, 1e-6}};
+			CnMat minError = cnVec(7, min_error.Pos);
+			cn_add_diag(&tracker->push_cov, &minError, 5);
 
-		integrate_imu(tracker);
+			tracker->state.Lighthouse = ctx->bsd[tracker->lh].Pose;
+			tracker->push_state = tracker->state;
+		} else {
+			FLT pv = tracker->initial_pos_var, rv = tracker->initial_rot_var;
+			SurviveLighthouseKalmanErrorModel baseline = {
+				.Lighthouse = {.Pos = {pv, pv, pv}, .AxisAngleRot = {rv, rv, rv}},
+				.BSD0 = tracker->initial_variance,
+				.BSD1 = tracker->initial_variance};
+
+			cnSetZero(&tracker->model.P);
+			cn_set_diag(&tracker->model.P, (const FLT *)&baseline);
+			integrate_imu(tracker);
+		}
 	}
 }
 
@@ -113,6 +126,8 @@ void survive_kalman_lighthouse_report(SurviveKalmanLighthouse *tracker) {
 	SurviveContext *ctx = tracker->ctx;
 	SV_VERBOSE(100, "LH%d %s " Point6_format, tracker->lh, survive_colorize("variance"),
 			   LINMATH_VEC6_EXPAND(((FLT *)&tracker->ctx->bsd[tracker->lh].variance)));
+	SV_VERBOSE(100, "LH%d %s " Point7_format, tracker->lh, survive_colorize("pose    "),
+			   LINMATH_VEC7_EXPAND(((FLT *)&tracker->state.Lighthouse)));
 
 	FLT diff_p[7] = {0};
 	subnd(diff_p, lighthouse2world.Pos, survive_get_lighthouse_position(tracker->ctx, tracker->lh)->Pos, 7);
@@ -283,9 +298,23 @@ void survive_kalman_lighthouse_init(SurviveKalmanLighthouse *tracker, SurviveCon
 	if (tracker->obs_model.term_criteria.max_iterations == -1)
 		tracker->obs_model.term_criteria.max_iterations = 10;
 
+	tracker->push_cov = cnMat(tracker->model.error_state_size, tracker->model.error_state_size, tracker->push_cov_data);
+
 	cn_set_diag(&tracker->model.P, (const FLT *)&baseline);
 	cn_set_diag(&tracker->bsd_model.P, (const FLT *)&baseline.BSD0);
 }
+
+void survive_kalman_lighthouse_reset(SurviveKalmanLighthouse *tracker) {
+	SurviveLighthouseKalmanErrorModel baseline = {
+		.Lighthouse = {.Pos = {1e5, 1e5, 1e5}, .AxisAngleRot = {1e5, 1e5, 1e5}},
+		.BSD0 = tracker->initial_variance,
+		.BSD1 = tracker->initial_variance};
+
+	cn_set_zero(&tracker->push_cov);
+	cn_set_diag(&tracker->model.P, (const FLT *)&baseline);
+	cn_set_diag(&tracker->bsd_model.P, (const FLT *)&baseline.BSD0);
+}
+
 SURVIVE_EXPORT void survive_kalman_lighthouse_integrate_observation(SurviveKalmanLighthouse *tracker,
 																	const SurvivePose *pose, const CnMat *Rlh) {
 	if (tracker == 0)
@@ -294,7 +323,7 @@ SURVIVE_EXPORT void survive_kalman_lighthouse_integrate_observation(SurviveKalma
 	CN_CREATE_STACK_MAT(H, 7, tracker->model.state_cnt);
 	CN_CREATE_STACK_MAT(R, 7, 7);
 	FLT v = cn_trace(&tracker->model.P);
-	bool trustAbsolutely = v > 1e2 || Rlh == 0 || true;
+	bool trustAbsolutely = v > 1e2 || Rlh == 0 || cn_trace(&tracker->push_cov) == 0;
 
 	if (Rlh) {
 		cn_matrix_copy(&R, Rlh);
@@ -306,26 +335,27 @@ SURVIVE_EXPORT void survive_kalman_lighthouse_integrate_observation(SurviveKalma
 #else
 		SurvivePose Z = *pose;
 #endif
-		size_t state_cnt = tracker->model.state_cnt;
 		cn_set_diag_val(&H, 1);
-		FLT pv = tracker->initial_pos_var, rv = tracker->initial_rot_var;
-		FLT variance[7] = {pv, pv, pv, rv, rv, rv, rv};
-		CnMat V = cnVec(7, variance);
-		cn_add_diag(&R, &V, 1);
+
+		if (cn_trace(&tracker->push_cov) > 0) {
+			cnCopy(&tracker->push_cov, &tracker->model.P, 0);
+			tracker->state = tracker->push_state;
+		}
+
+		FLT v[7] = {0};
+		cn_get_diag(&R, v, 7);
+
+		SurvivePose min_error = {.Pos = {1e-5, 1e-5, 1e-5}, .Rot = {1e-6, 1e-6, 1e-6, 1e-6}};
+		CnMat minError = cnVec(7, min_error.Pos);
+		cn_add_diag(&R, &minError, 1);
 
 		CnMat Zp = cnMat(7, 1, (void *)&Z);
 		cnkalman_meas_model_predict_update(0, &tracker->obs_model, &H, &Zp, &R);
 		SurviveContext * ctx = tracker->ctx;
-		//cn_print_mat(&R);
-		SV_VERBOSE(10, "Observation for LH %d(ID: %08x)                             " SurvivePose_format, tracker->lh,
-				   (unsigned)ctx->bsd[tracker->lh].BaseStationID, SURVIVE_POSE_EXPAND(Z));
 
-		if (tracker->lh == 0 && false) {
-			// cn_set_constant(&tracker->model.P, 0);
-			cnMatrixSet(&tracker->model.P, 0, 0, 0);
-			cnMatrixSet(&tracker->model.P, 1, 1, 0);
-			cnMatrixSet(&tracker->model.P, 2, 2, 0);
-		}
+		SV_VERBOSE(10, "Observation for LH %d(ID: %08x) " SurvivePose_format " R " SurvivePose_format, tracker->lh,
+				   (unsigned)ctx->bsd[tracker->lh].BaseStationID, SURVIVE_POSE_EXPAND(Z), LINMATH_VEC7_EXPAND(v));
+
 	} else {
 		tracker->state.Lighthouse = *pose;
 		survive_covariance_pose2poseAA(&tracker->model.P, pose, &R);

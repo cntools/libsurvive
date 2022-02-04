@@ -887,12 +887,17 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 						 up);
 	}
 
-	for (int i = 0; i < 3; i++) {
-		mpfitctx.mp_parameters_info[bestObjForCal * 7 + i].fixed = true;
+	if (worldEstablishedLh != -1) {
+		survive_optimizer_fix_cam_pos(&mpfitctx, worldEstablishedLh);
+		survive_optimizer_fix_cam_yaw(&mpfitctx, worldEstablishedLh);
+		SV_VERBOSE(10, "Locking LH %d", worldEstablishedLh);
+	} else {
+		for (int i = 0; i < 3; i++) {
+			mpfitctx.mp_parameters_info[bestObjForCal * 7 + i].fixed = true;
+		}
+		survive_optimizer_fix_obj_yaw(&mpfitctx, bestObjForCal);
+		SV_VERBOSE(10, "Locking Obj %d", bestObjForCal);
 	}
-	survive_optimizer_fix_obj_yaw(&mpfitctx, bestObjForCal);
-
-	SV_VERBOSE(10, "Locking Obj %d", bestObjForCal);
 
 	bool updates = true;
 	while (updates) {

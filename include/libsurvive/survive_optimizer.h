@@ -57,6 +57,7 @@ typedef struct {
 
 typedef struct {
 	int obj;
+	bool conjugate;
 	LinmathVec3d match_vec;
 	LinmathVec3d plane;
 } survive_optimizer_fixed_rotation_measurement;
@@ -227,6 +228,8 @@ SURVIVE_EXPORT void survive_optimizer_setup_pose_n(survive_optimizer *mpfit_ctx,
 
 SURVIVE_EXPORT void survive_optimizer_fix_camera(survive_optimizer *mpfit_ctx, int cam_idx);
 SURVIVE_EXPORT void survive_optimizer_fix_obj_yaw(survive_optimizer *mpfit_ctx, int obj_idx);
+SURVIVE_EXPORT void survive_optimizer_fix_cam_yaw(survive_optimizer *mpfit_ctx, int lh_idx);
+SURVIVE_EXPORT void survive_optimizer_fix_cam_pos(survive_optimizer *mpfit_ctx, int lh_idx);
 
 SURVIVE_EXPORT void survive_optimizer_remove_data_for_lh(survive_optimizer *mpfit_ctx, int cam_idx);
 

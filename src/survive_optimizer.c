@@ -205,6 +205,34 @@ SURVIVE_EXPORT void survive_optimizer_remove_data_for_lh(survive_optimizer *opti
 	}
 }
 
+SURVIVE_EXPORT void survive_optimizer_fix_cam_pos(survive_optimizer *mpfit_ctx, int lh_idx) {
+	survive_optimizer_measurement *meas =
+		survive_optimizer_emplace_meas(mpfit_ctx, survive_optimizer_measurement_type_camera_position);
+	meas->variance = 1e-7;
+	meas->camera_pos.camera = lh_idx;
+	SurvivePose *cam = &survive_optimizer_get_camera(mpfit_ctx)[lh_idx];
+	SurvivePose p = InvertPoseRtn(cam);
+	copy3d(meas->camera_pos.pos, p.Pos);
+}
+void survive_optimizer_fix_cam_yaw(survive_optimizer *mpfit_ctx, int lh_idx) {
+	survive_optimizer_measurement *meas =
+		survive_optimizer_emplace_meas(mpfit_ctx, survive_optimizer_measurement_type_fixed_rotation);
+	meas->variance = 1e-7;
+	meas->fixed_rotation.obj = mpfit_ctx->poseLength + lh_idx;
+	LinmathPoint3d dir = {1, 0, 0};
+
+	LinmathPoint3d pdir;
+	LinmathQuat q;
+	quatgetconjugate(q, survive_optimizer_get_camera(mpfit_ctx)[lh_idx].Rot);
+	quatrotatevector(pdir, q, dir);
+
+	// Plane that goes through (0, 0, 0), (0, 0, 1), and pdir
+	copy3d(meas->fixed_rotation.match_vec, dir);
+	meas->fixed_rotation.conjugate = true;
+	meas->fixed_rotation.plane[0] = -pdir[1];
+	meas->fixed_rotation.plane[1] = pdir[0];
+	meas->fixed_rotation.plane[2] = 0;
+}
 void survive_optimizer_fix_obj_yaw(survive_optimizer *mpfit_ctx, int obj_idx) {
 	survive_optimizer_measurement *meas =
 		survive_optimizer_emplace_meas(mpfit_ctx, survive_optimizer_measurement_type_fixed_rotation);
@@ -998,10 +1026,12 @@ static int mpfunc(int m, int n, FLT *p, FLT *deviates, FLT **derivs, void *priva
 			if (mpfunc_ctx->settings->use_quat_model) {
 				assert(false);
 			} else {
-				gen_axisanglerotatevector(predicted, obj2world->axisAnglePose.AxisAngleRot,
-										  meas->fixed_rotation.match_vec);
-				gen_axisanglerotatevector_jac_axis_angle(deriv, obj2world->axisAnglePose.AxisAngleRot,
-														 meas->fixed_rotation.match_vec);
+				LinmathVec3d r;
+				scale3d(r, obj2world->axisAnglePose.AxisAngleRot, meas->fixed_rotation.conjugate ? -1 : 1);
+
+				gen_axisanglerotatevector(predicted, r, meas->fixed_rotation.match_vec);
+				gen_axisanglerotatevector_jac_axis_angle(deriv, r, meas->fixed_rotation.match_vec);
+				scalend(deriv, deriv, meas->fixed_rotation.conjugate ? -1 : 1, 9);
 			}
 			const FLT *pl = meas->fixed_rotation.plane;
 			FLT error = dot3d(predicted, pl);

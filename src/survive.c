@@ -846,7 +846,9 @@ const void *survive_get_driver_by_closefn(const SurviveContext *ctx, DeviceDrive
 
 void survive_reset_lighthouse_position(SurviveContext *ctx, int bsd_idx) {
 	ctx->bsd[bsd_idx].PositionSet = false;
-}
+	ctx->bsd[bsd_idx].variance = (SurviveVelocity){0};
+	survive_kalman_lighthouse_reset(ctx->bsd[bsd_idx].tracker);
+};
 
 SURVIVE_EXPORT const SurvivePose *survive_get_lighthouse_true_position(const SurviveContext *ctx, int bsd_idx) {
 	if (ctx->bsd[bsd_idx].true_pos_time != 0) {

@@ -178,8 +178,8 @@ static int test_path(const char *filename, int main_argc, char **main_argv) {
 	SurviveContext *ctx = survive_simple_get_ctx(actx);
 	bool reset_lh = !survive_configi(ctx, "test-replay-dont-reset-lh", SC_GET, false);
 
-	for (int i = 0; i < NUM_GEN2_LIGHTHOUSES && reset_lh; i++) {
-		ctx->bsd[i].PositionSet = false;
+	if (reset_lh) {
+		survive_reset_lighthouse_positions(ctx);
 	}
 
 	SurvivePose originalLH[NUM_GEN2_LIGHTHOUSES] = {0};
