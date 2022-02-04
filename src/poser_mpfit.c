@@ -334,8 +334,8 @@ static int setup_optimizer(struct async_optimizer_user *user, survive_optimizer 
 		FLT accel_mag = norm3d(so->activations.accel);
 		const FLT up[3] = {0, 0, 1};
 		if (accel_mag != 0.0 && !isnan(accel_mag)) {
-			quatfrom2vectors(soLocation->Rot, so->activations.accel, up);
-			so->OutPoseIMU = *soLocation;
+			// quatfrom2vectors(soLocation->Rot, so->activations.accel, up);
+			// so->OutPoseIMU = *soLocation;
 		}
 	}
 
@@ -788,7 +788,8 @@ void global_lh_pose(SurviveObject *so, uint8_t lighthouse, SurvivePose *lighthou
 	gd->updated |= true;
 
 	SurviveContext *ctx = so->ctx;
-	SV_VERBOSE(10, "Initial LH pose (%d) " SurvivePose_format, lighthouse, SURVIVE_POSE_EXPAND(*lighthouse_pose));
+	SV_VERBOSE(10, "Initial LH pose from %s (%d) " SurvivePose_format, survive_colorize_codename(so), lighthouse,
+			   SURVIVE_POSE_EXPAND(*lighthouse_pose));
 }
 
 bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGlobalScenes *gss) {
@@ -887,7 +888,7 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 	}
 
 	for (int i = 0; i < 3; i++) {
-		mpfitctx.mp_parameters_info[bestObjForCal + i].fixed = true;
+		mpfitctx.mp_parameters_info[bestObjForCal * 7 + i].fixed = true;
 	}
 	survive_optimizer_fix_obj_yaw(&mpfitctx, bestObjForCal);
 
