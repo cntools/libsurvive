@@ -7,6 +7,14 @@
 #include <stdio.h>
 #include <string.h>
 
+
+#ifdef _WIN32
+#include <string.h>
+#define strcasecmp _stricmp
+#else // assuming POSIX or BSD compliant system
+#include <strings.h>
+#endif
+
 static survive_driver_fn Drivers[MAX_DRIVERS];
 static const char *DriverNames[MAX_DRIVERS];
 static int NrDrivers;
@@ -60,7 +68,7 @@ const char *GetDriverNameMatching(const char *prefix, int place) {
 	int prefixlen = (int)strlen(prefix);
 
 	for (i = 0; i < NrDrivers; i++) {
-		if (strncmp(prefix, DriverNames[i], prefixlen) == 0)
+		if (strncasecmp(prefix, DriverNames[i], prefixlen) == 0)
 			if (0 == (place--))
 				return DriverNames[i];
 	}

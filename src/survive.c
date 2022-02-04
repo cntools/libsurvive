@@ -590,6 +590,19 @@ static inline SurviveDeviceDriverReturn callDriver(SurviveContext *ctx, const ch
 	}
 	return r;
 }
+
+static void warn_missing_drivers(SurviveContext *ctx, const char* name) {
+  int manually_enabled = survive_config_is_set(ctx, name);
+  char buffer[64];
+  snprintf(buffer, 64, "DriverReg%s", name);
+  const void* driver = GetDriverNameMatching(buffer, 0);
+  if(manually_enabled && driver == 0) {
+    SV_WARN("Could not find manually specified driver '%s'. Please make sure it is configured to build (eg ENABLE_driver_%s is 'ON' in CMakeCache.txt) and has all required dependencies. Run with an environment variable `SURVIVE_PLUGIN_DEBUG=1` for information on the plugin search path(s).", name, name);
+    SV_INFO("Available drivers:");
+    ListDrivers();
+  }
+}
+
 int survive_startup(SurviveContext *ctx) {
 	ctx->state = SURVIVE_RUNNING;
 
@@ -607,6 +620,10 @@ int survive_startup(SurviveContext *ctx) {
 
 	const char *DriverName;
 
+	warn_missing_drivers(ctx, "openvr");
+	warn_missing_drivers(ctx, "playback");
+	warn_missing_drivers(ctx, "usbmon");
+	
 	bool loadDefaultDriver = true;
 	char buffer[1024] = "Loaded drivers: ";
 	{
