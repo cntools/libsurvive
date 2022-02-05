@@ -10,7 +10,7 @@
 
 #ifdef _WIN32
 #include <string.h>
-#define strcasecmp _stricmp
+#define strncasecmp _strnicmp
 #else // assuming POSIX or BSD compliant system
 #include <strings.h>
 #endif
