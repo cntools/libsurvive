@@ -96,7 +96,7 @@ OSG_INLINE void OGCancelThread(og_thread_t ot);
 OSG_INLINE og_mutex_t OGCreateMutex();
 
 OSG_INLINE void OGLockMutex(og_mutex_t om);
-
+OSG_INLINE int OGTryLockMutex(og_mutex_t om);
 OSG_INLINE void OGUnlockMutex(og_mutex_t om);
 
 OSG_INLINE void OGDeleteMutex(og_mutex_t om);

@@ -69,6 +69,7 @@ OSG_INLINE og_mutex_t OGCreateMutex() {
 	return mutex;
 }
 
+OSG_INLINE int OGTryLockMutex(og_mutex_t om) { return TryEnterCriticalSection((CRITICAL_SECTION *)om) == 0; }
 OSG_INLINE void OGLockMutex(og_mutex_t om) { EnterCriticalSection((CRITICAL_SECTION*)om); }
 
 OSG_INLINE void OGUnlockMutex(og_mutex_t om) { LeaveCriticalSection((CRITICAL_SECTION*)om); }
