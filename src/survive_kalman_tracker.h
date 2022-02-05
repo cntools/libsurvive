@@ -181,8 +181,6 @@ SURVIVE_EXPORT void survive_kalman_tracker_correct_imu(SurviveKalmanTracker *tra
 					   t->term_criteria.max_error)                                                                     \
 	STRUCT_CONFIG_ITEM("kalman-" #prefix "-" #x "-iterations", "Max iterations for " #x, default_iterations,           \
 					   t->term_criteria.max_iterations)                                                                \
-	STRUCT_CONFIG_ITEM("kalman-" #prefix "-" #x "-jacobian-mode",                                                      \
-					   "Jacobian mode " #x ". -1 for debug, 1 for numerical", 0, t->meas_jacobian_mode)                \
 	STRUCT_CONFIG_ITEM("kalman-" #prefix "-" #x "-step-size", "Step size for " #x ".", -1, t->numeric_step_size)       \
 	STRUCT_CONFIG_ITEM("kalman-" #prefix "-" #x "-error-state-model",                                                  \
 					   "Use error state model jacobian if available " #x, true, t->error_state_model)                  \
