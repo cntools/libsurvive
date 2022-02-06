@@ -10,7 +10,7 @@ survive_optimizer_settings settings = {
 
 static SurvivePose run(survive_optimizer* mpfitctx, SurviveKalmanModel* mdl, const FLT* points, size_t points_cnt, mp_result* result, CnMat* R, const SurviveVelocity* vel) {
 	mpfitctx->ptsLength = points_cnt;
-	SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(*mpfitctx);
+	SURVIVE_OPTIMIZER_SETUP_STACK_BUFFERS(*mpfitctx, 0);
 
 	quatnormalize(mdl->Pose.Rot, mdl->Pose.Rot);
 	SurvivePose lh_pose = {
@@ -126,7 +126,7 @@ TEST(Optimizer, Simple) {
 							  }};
 	CN_CREATE_STACK_MAT(R, 7, 7);
 
-	mp_result results = {};
+	mp_result results = {0};
 	SurvivePose output = run(&mpfitctx, &mdl, points, SURVIVE_ARRAY_SIZE(points) / 3, &results, &R, 0);
 
 	assert(results.bestnorm < 1e1);
@@ -147,7 +147,7 @@ TEST(Optimizer, Velocity) {
 							  }};
 	CN_CREATE_STACK_MAT(R, 7, 7);
 
-	mp_result results = {};
+	mp_result results = {0};
 	SurvivePose output = run(&mpfitctx, &mdl, points, SURVIVE_ARRAY_SIZE(points) / 3, &results, &R, 0);
 	assert(results.bestnorm < 1e-5);
 
@@ -177,7 +177,7 @@ TEST(Optimizer, SimpleSide) {
 							  }};
 	CN_CREATE_STACK_MAT(R, 7, 7);
 
-	mp_result results = {};
+	mp_result results = {0};
 	SurvivePose output = run(&mpfitctx, &mdl, side_points, SURVIVE_ARRAY_SIZE(side_points) / 3, &results, &R, 0);
 
 	//assert(verify_R(&R, &mdl.Pose, &output));
@@ -199,7 +199,7 @@ TEST(Optimizer, VelocitySide) {
 	CN_CREATE_STACK_MAT(R, 7, 7);
 
 	SurviveVelocity velocity = { .Pos = { 0, 0, -.1 }, .AxisAngleRot = { 0, 0, -.1 } };
-	mp_result results = {};
+	mp_result results = {0};
 	SurvivePose output = run(&mpfitctx, &mdl, side_points, SURVIVE_ARRAY_SIZE(side_points) / 3, &results, &R, &velocity);
 	SurviveVelocity v1 = *survive_optimizer_get_velocity(&mpfitctx);
 	// assert(verify_R(&R, &mdl.Pose, &output));
@@ -222,7 +222,7 @@ TEST(Optimizer, SimpleUnderspecced) {
 							  }};
 	CN_CREATE_STACK_MAT(R, 7, 7);
 
-	mp_result results = {};
+	mp_result results = {0};
 	SurvivePose output =
 		run(&mpfitctx, &mdl, under_specified, SURVIVE_ARRAY_SIZE(under_specified) / 3, &results, &R, 0);
 
