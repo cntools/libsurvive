@@ -122,10 +122,9 @@ will either cause SteamVR to lose connection to the device or will compete for b
 
 Calibration is the process which establishes where the lighthouses are set up in relation to the tracked objects. The
 first time you run libsurvive, it can take up to ten seconds to communicate with the lighthouses and figure out where 
-they are. During this time you should not move the devices.
+they are. 
 
-Calibration should work with any device, but the HMD gives the best results due to it's size and number of sensors. If
-the HMD and other controllers are present at startup, it will automatically prioritize using the data from the HMD.
+Calibration will continuously integrate objects data so long as they are momentarily stationary. Due to this, you might notice lighthouses shift slighty while it gets a good lock. Subsequent runs should shift much less. 
 
 Once you do this one time, it is saved in `config.json` in `XDG_CONFIG_HOME/libsurvive`. If you delete this file, it will simply
 recalibrate; but it is faster to use the `--force-calibrate` flag. Some drivers change the name of this file -- notably recordings will instead use `<event_file>.json`. 
@@ -139,28 +138,6 @@ calibrate.
 available. If one of the calibrated lighthouses are moved, you either have to redo calibration by deleting the config.json
 file or passing `--force-calibrate` into any of the libsurvive tools.**
 
-Version 1 systems will have an output that looks roughly like:
-
-```
-Info: Stage 2 good - continuing. 32 1 0
-Info: Stage 2 good - continuing. 32 1 1
-Info: Stage 2 good - continuing. 32 1 2
-Info: Stage 2 good - continuing. 32 1 3
-Info: Stage 2 good - continuing. 32 1 4
-Info: Stage 2 moving to stage 3. 32 1 5
-Lighthouse Pose: [0][ 0.28407975, 0.93606335,-0.37406892] [ 0.05594964,-0.33792987, 0.93887696, 0.03439615]
-Info: Stage 4 succeeded.
-```
-[For reference, here is an older recording of how a properly running calibration looks like](https://haagch.frickel.club/Peek%202018-02-21%2023-23.webm).
-
-Version 2 systems will have output that looks something like:
-```
-Info: Attempting to solve for 0 with 30 meas
-Info: Attempting to solve for 1 with 21 meas
-Info: Solved for 0 with error of 0.005446/0.000000
-Info: Solved for 1 with error of 0.005446/0.000000
-Info: Using LH 0 (d99e7eac) as reference lighthouse
-```
 
 ## Visualization
 
