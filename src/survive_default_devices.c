@@ -389,6 +389,9 @@ static int process_jsontok(scratch_space_t *scratch, char *d, stack_entry_t *sta
 	return 0;
 }
 
+STATIC_CONFIG_ITEM(IGNORE_CONFIG_IMU_BIAS, "ignore-config-imu-bias", 'b',
+				   "Ignore the bias set for imu devices in the config", 0)
+
 int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 	if (len == 0)
 		return -1;
@@ -477,6 +480,15 @@ int survive_load_htc_config_format(SurviveObject *so, char *ct0conf, int len) {
 		// scale3d(so->gyro_scale, so->gyro_scale, 3.14159 / 1800. / 1.8);
 	}
 
+	if (survive_configb(ctx, IGNORE_CONFIG_IMU_BIAS_TAG, SC_GET, 0)) {
+		scale3d(so->gyro_bias, so->gyro_bias, 0);
+		scale3d(so->acc_bias, so->acc_bias, 0);
+	}
+
+	SV_VERBOSE(110, "Device %s has gyro bias " Point3_format " scale " Point3_format, survive_colorize_codename(so),
+			   LINMATH_VEC3_EXPAND(so->gyro_bias), LINMATH_VEC3_EXPAND(so->gyro_scale));
+	SV_VERBOSE(110, "Device %s has acc bias  " Point3_format " scale " Point3_format, survive_colorize_codename(so),
+			   LINMATH_VEC3_EXPAND(so->acc_bias), LINMATH_VEC3_EXPAND(so->acc_scale));
 	SV_VERBOSE(50, "Read config for %s", survive_colorize(so->codename));
 	jsmn_free(&p);
 	return 0;

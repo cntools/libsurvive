@@ -120,6 +120,9 @@ void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct Pos
 	if (norm3d(imuData->gyro) > self->params.moveThresholdGyro ||
 		dist3d(self->accel, imuData->accel) > self->params.moveThresholdAcc) {
 		self->last_movement = imuData->hdr.timecode;
+		SurviveContext *ctx = self->so->ctx;
+		SV_VERBOSE(200, "%s moved (gyro %7.7f, acc %7.7f)", survive_colorize_codename(so), norm3d(imuData->gyro),
+				   dist3d(self->accel, imuData->accel));
 		//fprintf(stderr, "%f %f\n", norm3d(imuData->gyro), dist3d(self->accel, imuData->accel));
 	}
 }
@@ -243,6 +246,8 @@ bool SurviveSensorActivations_add_gen2(SurviveSensorActivations *self, struct Po
 
 			if (!isnan(*angle) && fabs(*angle - l->angle) > self->params.moveThresholdAng) {
 				self->last_light_change = self->last_movement = long_timecode;
+				SurviveContext *ctx = self->so->ctx;
+				SV_VERBOSE(200, "%s moved (light)", survive_colorize_codename(self->so));
 				//fprintf(stderr, "%f\n", fabs(*angle - l->angle));
 			}
 
@@ -385,6 +390,8 @@ bool SurviveSensorActivations_add(SurviveSensorActivations *self, struct PoserDa
 		survive_long_timecode long_timecode = lightData->hdr.timecode;
 		// assert(long_timecode > self->last_movement);
 		self->last_light_change = self->last_movement = long_timecode;
+		SurviveContext *ctx = self->so->ctx;
+		SV_VERBOSE(200, "%s moved (light)", survive_colorize_codename(self->so));
 		//fprintf(stderr, "%f\n", fabs(*angle - lightData->angle));
 	}
 
