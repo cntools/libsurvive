@@ -19,6 +19,10 @@ jobs:
       working-directory: ${{runner.workspace}}/libsurvive      
       run: echo "::set-output name=BUNDLE_FILE_NAME::libsurvive-$(git describe --tags)-source.zip"
 
+    - name: Generate version
+      working-directory: ${{runner.workspace}}/libsurvive
+      run: git describe --dirty --tags > VERSION
+
     - name: Remove git directories
       working-directory: ${{runner.workspace}}/libsurvive
       run: rm -rf .git
