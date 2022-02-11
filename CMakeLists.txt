@@ -12,7 +12,7 @@ if(ANDROID)
 endif()
 
 macro(VERBOSE_OPTION ARG DESC)
-    option(ARG DESC ${ARGN})
+    option(${ARG} ${DESC} ${ARGN})
     message("-- Option: ${ARG}: ${ARGN}")
 endmacro()
 
