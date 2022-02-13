@@ -221,6 +221,7 @@ typedef enum {
 
 typedef uint32_t survive_timecode;
 typedef uint64_t survive_long_timecode;
+typedef uint64_t survive_us;
 
 // Lighthouse gen 2 channel/mode
 typedef uint8_t survive_channel;

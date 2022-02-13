@@ -15,6 +15,22 @@
 double ros_offset = 0;
 SurviveSimpleContext *actx = 0;
 
+static ros::Time rostime_from_survivetime(FLT timecode) {
+    return ros::Time().fromSec(timecode + ros_offset);
+}
+
+static geometry_msgs::Transform ros_from_pose(const SurvivePose* pose) {
+    geometry_msgs::Transform tx;
+    tx.translation.x = pose->Pos[0];
+    tx.translation.y = pose->Pos[1];
+    tx.translation.z = pose->Pos[2];
+    tx.rotation.w = pose->Rot[0];
+    tx.rotation.x = pose->Rot[1];
+    tx.rotation.y = pose->Rot[2];
+    tx.rotation.z = pose->Rot[3];
+    return tx;
+}
+
 bool publish_pose(tf::TransformBroadcaster &broadcaster, uint32_t seq, const SurviveSimpleObject *it) {
 	SurvivePose pose = {};
 	geometry_msgs::TransformStamped pose_msg = {};
@@ -23,19 +39,13 @@ bool publish_pose(tf::TransformBroadcaster &broadcaster, uint32_t seq, const Sur
 		timecode = survive_simple_run_time(actx);
 	}
 	if (timecode > 0) {
-        std::string name = survive_simple_object_name(it);
+        std::string name = survive_simple_serial_number(it);
 
 		pose_msg.header.seq = seq++;
-		pose_msg.header.stamp = ros::Time::now(); // ros::Time().fromSec(timecode + ros_offset);
+		pose_msg.header.stamp = rostime_from_survivetime(timecode);
 		pose_msg.header.frame_id = "libsurvive_world";
 		pose_msg.child_frame_id = name;
-		pose_msg.transform.translation.x = pose.Pos[0];
-		pose_msg.transform.translation.y = pose.Pos[1];
-		pose_msg.transform.translation.z = pose.Pos[2];
-		pose_msg.transform.rotation.w = pose.Rot[0];
-		pose_msg.transform.rotation.x = pose.Rot[1];
-		pose_msg.transform.rotation.y = pose.Rot[2];
-		pose_msg.transform.rotation.z = pose.Rot[3];
+		pose_msg.transform = ros_from_pose(&pose);
 
 		broadcaster.sendTransform(pose_msg);
 
@@ -44,16 +54,10 @@ bool publish_pose(tf::TransformBroadcaster &broadcaster, uint32_t seq, const Sur
         imu2head = InvertPoseRtn(&imu2head);
 
         pose_msg.header.seq = seq++;
-        pose_msg.header.stamp = ros::Time::now(); // ros::Time().fromSec(timecode + ros_offset);
+        pose_msg.header.stamp = rostime_from_survivetime(timecode);
         pose_msg.header.frame_id = name;
         pose_msg.child_frame_id = name + "_imu";
-        pose_msg.transform.translation.x = imu2head.Pos[0];
-        pose_msg.transform.translation.y = imu2head.Pos[1];
-        pose_msg.transform.translation.z = imu2head.Pos[2];
-        pose_msg.transform.rotation.w = imu2head.Rot[0];
-        pose_msg.transform.rotation.x = imu2head.Rot[1];
-        pose_msg.transform.rotation.y = imu2head.Rot[2];
-        pose_msg.transform.rotation.z = imu2head.Rot[3];
+        pose_msg.transform = ros_from_pose(&imu2head);
 
         broadcaster.sendTransform(pose_msg);
 
@@ -63,18 +67,19 @@ bool publish_pose(tf::TransformBroadcaster &broadcaster, uint32_t seq, const Sur
 }
 
 
-void publish_control_state(ros::Publisher &publisher, uint32_t seq, const SurviveSimpleObject *it) {
+static void publish_control_state(ros::Publisher &publisher, uint32_t seq, const struct SurviveSimpleButtonEvent *button_event) {
     sensor_msgs::Joy joyMsg;
-    joyMsg.header.frame_id = survive_simple_object_name(it);
+    auto obj = button_event->object;
+    joyMsg.header.frame_id = survive_simple_serial_number(button_event->object);
     joyMsg.header.seq = seq;
-    joyMsg.header.stamp = ros::Time::now();
+    joyMsg.header.stamp = rostime_from_survivetime(button_event->time);
 
     joyMsg.axes.resize(SURVIVE_MAX_AXIS_COUNT);
     joyMsg.buttons.resize(SURVIVE_BUTTON_MAX * 2);
 
-    int64_t mask = survive_simple_object_get_button_mask(it) | (survive_simple_object_get_touch_mask(it) << SURVIVE_BUTTON_MAX);
+    int64_t mask = survive_simple_object_get_button_mask(obj) | (survive_simple_object_get_touch_mask(obj) << SURVIVE_BUTTON_MAX);
     for(int i = 0;i < SURVIVE_MAX_AXIS_COUNT;i++) {
-        joyMsg.axes[i] = (float)survive_simple_object_get_input_axis(it, (enum SurviveAxis)i);
+        joyMsg.axes[i] = (float)survive_simple_object_get_input_axis(obj, (enum SurviveAxis)i);
     }
     for(int i = 0;i < mask;i++) {
         joyMsg.buttons[i] = (mask >> i) & 1;
@@ -88,9 +93,9 @@ static void imu_func(SurviveObject *so, int mask, const FLT *accelgyromag, uint3
     if(imuPublisher) {
         static int imuSeq = 0;
         sensor_msgs::Imu imu;
-        imu.header.frame_id = std::string(so->codename) + "_imu";
+        imu.header.frame_id = std::string(so->serial_number) + "_imu";
         imu.header.seq = imuSeq++;
-        imu.header.stamp = ros::Time::now();
+        imu.header.stamp = rostime_from_survivetime(1e-6 * SurviveSensorActivations_runtime(&so->activations, so->activations.last_imu));
 
         imu.angular_velocity.x = accelgyromag[3];
         imu.angular_velocity.y = accelgyromag[4];
@@ -104,14 +109,45 @@ static void imu_func(SurviveObject *so, int mask, const FLT *accelgyromag, uint3
     }
 }
 
+SurviveSimpleContext * actx_from_ros(ros::NodeHandle& n) {
+    std::vector<std::string> arg_names, arg_values;
+    n.getParamNames(arg_names);
+    std::vector<const char *> params;
+    auto node_name = ros::this_node::getName();
+    params.push_back(node_name.c_str());
+    for (auto &k : arg_names) {
+        if(k.find(node_name + "/") == 0) {
+            std::string local_name = k.c_str() + node_name.size() + 1;
+            arg_values.emplace_back("--" + local_name);
+
+            double vf;
+            std::string v;
+            if(n.getParam(k, v)) {
+                arg_values.emplace_back(v);
+            } else if(n.getParam(k, vf)) {
+                if(vf == std::round(vf)) {
+                    arg_values.emplace_back(std::to_string((int)vf));
+                } else {
+                    arg_values.emplace_back(std::to_string(vf));
+                }
+            }
+        }
+    }
+    for (auto &v : arg_values) {
+        params.push_back(v.c_str());
+    }
+    return survive_simple_init(params.size(), (char **) &params[0]);
+}
+
 int main(int argc, char **argv) {
 
 	std::map<std::string, ros::Publisher> publishers;
 
-	ros::init(argc, argv, "libsurvive");
+	std::string node_name = "libsurvive";
+	ros::init(argc, argv, node_name);
 	ros::NodeHandle n;
 
-	actx = survive_simple_init(argc, argv);
+    actx = actx_from_ros(n);
 
 	if (actx == nullptr) // implies -help or similiar
 		return 0;
@@ -120,8 +156,8 @@ int main(int argc, char **argv) {
     survive_install_imu_fn(ctx, imu_func);
 
     auto now = survive_simple_run_time(actx);
-	auto ros_now = ros::Time::now();
-	ros_offset = ros_now.toSec() - now;
+	auto ros_now = ros::Time::now().toSec();
+	ros_offset = ros_now - now;
 
 	survive_simple_start_thread(actx);
 
@@ -142,15 +178,15 @@ int main(int argc, char **argv) {
             }
             case SurviveSimpleEventType_ButtonEvent: {
                 const struct SurviveSimpleButtonEvent *button_event = survive_simple_get_button_event(&event);
-                publish_control_state(joyPublisher, seq++, button_event->object);
+                publish_control_state(joyPublisher, seq++, button_event);
                 break;
             }
             case SurviveSimpleEventType_None:
                 break;
         }
 
-		now = survive_simple_run_time(actx);
-		if (now > last_chirp + 3) {
+		ros_now = ros::Time::now().toSec();
+		if (ros_now > last_chirp + 3) {
 			last_chirp = now;
 			for (const SurviveSimpleObject *it = survive_simple_get_first_object(actx); it != 0;
 				 it = survive_simple_get_next_object(actx, it)) {

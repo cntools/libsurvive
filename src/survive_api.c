@@ -502,7 +502,7 @@ const char *survive_simple_serial_number(const SurviveSimpleObject *sao) {
 		return sao->data.so->serial_number;
 	case SurviveSimpleObject_EXTERNAL:
 	default:
-		return "";
+		return survive_simple_object_name(sao);
 	}
 }
 SURVIVE_EXPORT const char *survive_simple_json_config(const SurviveSimpleObject *sao) {

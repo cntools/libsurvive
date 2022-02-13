@@ -79,8 +79,8 @@ survive_long_timecode SurviveSensorActivations_stationary_time(const SurviveSens
 }
 
 void SurviveSensorActivations_register_runtime(SurviveSensorActivations *self, survive_long_timecode tc,
-											   uint64_t runtime_clock) {
-	double runtime_offset = runtime_clock - (uint64_t)(tc * 0.0208333333);
+											   uint64_t runtime_clock_us) {
+	double runtime_offset = runtime_clock_us - (uint64_t)(tc * 0.0208333333);
 	if (self->runtime_offset == 0)
 		self->runtime_offset = runtime_offset;
 	else {
@@ -88,7 +88,7 @@ void SurviveSensorActivations_register_runtime(SurviveSensorActivations *self, s
 	}
 }
 
-uint64_t SurviveSensorActivations_runtime(SurviveSensorActivations *self, survive_long_timecode tc) {
+survive_us SurviveSensorActivations_runtime(SurviveSensorActivations *self, survive_long_timecode tc) {
 	return self->runtime_offset + (uint64_t)(tc * 0.0208333333);
 }
 

@@ -89,8 +89,12 @@ SURVIVE_EXPORT void SurviveSensorActivations_valid_counts(SurviveSensorActivatio
 														  uint32_t *lh_count, uint32_t *axis_cnt,
 														  size_t *meas_for_lhs_axis);
 SURVIVE_EXPORT void SurviveSensorActivations_register_runtime(SurviveSensorActivations *self, survive_long_timecode tc,
-															  uint64_t runtime_clock);
-SURVIVE_EXPORT uint64_t SurviveSensorActivations_runtime(SurviveSensorActivations *self, survive_long_timecode tc);
+															  uint64_t runtime_clock_us);
+/**
+ * @param tc Relative timecode in 48mhz ticks
+ * @return Global time in us
+ */
+SURVIVE_EXPORT survive_us SurviveSensorActivations_runtime(SurviveSensorActivations *self, survive_long_timecode tc);
 SURVIVE_EXPORT void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct PoserDataIMU *imuData);
 
 /**
