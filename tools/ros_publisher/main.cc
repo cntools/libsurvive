@@ -186,7 +186,7 @@ int main(int argc, char **argv) {
         }
 
 		ros_now = ros::Time::now().toSec();
-		if (ros_now > last_chirp + 3) {
+		if (ros_now > last_chirp + .25) {
 			last_chirp = now;
 			for (const SurviveSimpleObject *it = survive_simple_get_first_object(actx); it != 0;
 				 it = survive_simple_get_next_object(actx, it)) {
