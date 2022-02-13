@@ -1,5 +1,4 @@
-#ifndef SURVIVE_STR_H
-#define SURVIVE_STR_H
+#pragma once
 #include "survive_types.h"
 #include <stdlib.h>
 
@@ -16,4 +15,3 @@ SURVIVE_EXPORT int str_append_printf(cstring *str, const char *format, ...);
 SURVIVE_EXPORT void str_free(cstring *str);
 SURVIVE_EXPORT void str_clear(cstring *str);
 SURVIVE_EXPORT void str_append_n(cstring* cstr, const char* buffer, size_t len);
-#endif

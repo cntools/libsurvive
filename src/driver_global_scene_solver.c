@@ -142,7 +142,7 @@ static bool run_optimization(global_scene_solver *gss) {
 		pgss.scenes_cnt = GSS_NUM_STORED_SCENES;
 	gss->solve_counts++;
 
-	bool success = gss->ctx->PoserFn(gss->ctx->objs[0], &gss->ctx->objs[0]->PoserFnData, (PoserData *)&pgss) == 0;
+	bool success = gss->ctx->PoserFn(gss->ctx->objs[0], (PoserData *)&pgss) == 0;
 	if(success) {
 		if(gss->auto_floor) {
 			FLT min_z = gss->ctx->floor_offset;
@@ -172,7 +172,7 @@ static bool run_optimization(global_scene_solver *gss) {
 static void notify_global_data_available(global_scene_solver *gss, SurviveObject *so) {
 	PoserDataGlobalScenes pgss = {.hdr = {.pt = POSERDATA_GLOBAL_SCENES}, .scenes_cnt = 0, .scenes = 0};
 
-	gss->ctx->PoserFn(so, &so->PoserFnData, (PoserData *)&pgss);
+	gss->ctx->PoserFn(so, (PoserData *)&pgss);
 }
 
 static void check_for_new_objects(global_scene_solver *gss) {

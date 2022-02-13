@@ -408,7 +408,7 @@ SURVIVE_EXPORT FLT survive_adjust_confidence(SurviveObject *so, FLT delta) {
 
 void survive_poser_invoke(SurviveObject *so, PoserData *poserData, size_t poserDataSize) {
 	if (so->ctx->PoserFn) {
-		so->ctx->PoserFn(so, &so->PoserFnData, poserData);
+		so->ctx->PoserFn(so, poserData);
 	}
 }
 
@@ -422,7 +422,6 @@ struct survive_threaded_poser {
 
 	SurviveObject *so;
 	PoserCB innerPoser;
-	void *innerPoserData;
 
 	uint32_t run_count, new_data_count;
 };
@@ -439,7 +438,7 @@ void *survive_threaded_poser_thread_fn(void *_poser) {
 			OGUnlockMutex(self->data_available_lock);
 
 			survive_get_ctx_lock(self->so->ctx);
-			self->innerPoser(so, &self->innerPoserData, &self->PoserData.pd);
+			self->innerPoser(so, &self->PoserData.pd);
 			survive_release_ctx_lock(self->so->ctx);
 			self->run_count++;
 
@@ -462,7 +461,8 @@ struct survive_threaded_poser *survive_create_threaded_poser(SurviveObject *so, 
 	poser->thread = OGCreateThread(survive_threaded_poser_thread_fn, "threaded poser", poser);
 	return poser;
 }
-int survive_threaded_poser_fn(SurviveObject *so, void **user, PoserData *pd) {
+int survive_threaded_poser_fn(SurviveObject *so, PoserData *pd) {
+	void **user = survive_object_plugin_data(so, survive_threaded_poser_fn);
 	struct survive_threaded_poser *self = (struct survive_threaded_poser *)*user;
 	assert(self);
 
@@ -476,7 +476,7 @@ int survive_threaded_poser_fn(SurviveObject *so, void **user, PoserData *pd) {
 		OGJoinThread(self->thread);
 		survive_get_ctx_lock(self->so->ctx);
 
-		self->innerPoser(so, &self->innerPoserData, pd);
+		self->innerPoser(so, pd);
 
 		SurviveContext *ctx = so->ctx;
 		SV_VERBOSE(5, "Threaded stats:");
@@ -485,8 +485,6 @@ int survive_threaded_poser_fn(SurviveObject *so, void **user, PoserData *pd) {
 
 		OGDeleteMutex(self->data_available_lock);
 		OGDeleteConditionVariable(self->data_available);
-		if (so->PoserFnData == self)
-			so->PoserFnData = 0;
 		free(self);
 		*user = 0;
 		return 0;
@@ -503,7 +501,7 @@ int survive_threaded_poser_fn(SurviveObject *so, void **user, PoserData *pd) {
 	}
 	default: {
 		if (self->innerPoser) {
-			self->innerPoser(so, &self->innerPoserData, pd);
+			self->innerPoser(so, pd);
 		}
 	}
 	}

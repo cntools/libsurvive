@@ -165,7 +165,7 @@ struct SurviveObject {
 	SurvivePose
 		FromLHPose[NUM_GEN2_LIGHTHOUSES]; // Filled out by poser, contains computed position from each lighthouse.
 
-	void *PoserFnData; // Initialized to zero, configured by poser, can be anything the poser wants.
+	// void *PoserFnData; // Initialized to zero, configured by poser, can be anything the poser wants.
 
 	// Device-specific information about the location of the sensors.  This data will be used by the poser.
 	// These are stored in the IMU's coordinate frame so that posers don't have to do a ton of manipulation
@@ -235,6 +235,10 @@ struct SurviveObject {
 #define SURVIVE_CORRECTION_PARAMS 3
 	FLT lh_correction[NUM_GEN2_LIGHTHOUSES][SURVIVE_CORRECTION_PARAMS];
 	FLT lh_correction_variance[NUM_GEN2_LIGHTHOUSES][SURVIVE_CORRECTION_PARAMS];
+
+	// Plugins / posers / etc can add to this entry list via `survive_object_plugin_data`
+	SurvivePluginPair *PluginDataEntries;
+	size_t PluginDataEntries_cnt, PluginDataEntries_space;
 };
 
 // These exports are mostly for language binding against

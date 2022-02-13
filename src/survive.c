@@ -678,7 +678,8 @@ int survive_startup(SurviveContext *ctx) {
 	bool use_async_posers = survive_configi(ctx, THREADED_POSERS_TAG, SC_GET, 0) && playback_factor != 0.0;
 	if (use_async_posers) {
 		for (int i = 0; i < ctx->objs_ct; i++) {
-			ctx->objs[i]->PoserFnData = survive_create_threaded_poser(ctx->objs[i], PreferredPoserCB);
+			*survive_object_plugin_data(ctx->objs[i], survive_threaded_poser_fn) =
+				survive_create_threaded_poser(ctx->objs[i], PreferredPoserCB);
 		}
 		ctx->PoserFn = survive_threaded_poser_fn;
 	} else {
@@ -996,7 +997,7 @@ void survive_close(SurviveContext *ctx) {
 		PoserData pd;
 		pd.pt = POSERDATA_DISASSOCIATE;
 		if (ctx->PoserFn) {
-			ctx->PoserFn(ctx->objs[i], &ctx->objs[i]->PoserFnData, &pd);
+			ctx->PoserFn(ctx->objs[i], &pd);
 		}
 		SURVIVE_INVOKE_HOOK_SO(lightcap, ctx->objs[i], 0);
 	}
@@ -1169,6 +1170,25 @@ const char *survive_object_codename(SurviveObject *so) { return so->codename; }
 const char *survive_object_drivername(SurviveObject *so) { return so->drivername; }
 int8_t survive_object_charge(SurviveObject *so) { return so->charge; }
 bool survive_object_charging(SurviveObject *so) { return so->charging; }
+
+SURVIVE_EXPORT SurvivePluginData *survive_object_plugin_data(SurviveObject *so, SurvivePluginKey k) {
+	for (size_t i = 0; i < so->PluginDataEntries_cnt; i++) {
+		if (so->PluginDataEntries[i].key == k) {
+			return &so->PluginDataEntries[i].data;
+		}
+	}
+
+	if (so->PluginDataEntries_cnt >= so->PluginDataEntries_space) {
+		so->PluginDataEntries_space += 8;
+		so->PluginDataEntries =
+			SV_REALLOC(so->PluginDataEntries, sizeof(SurvivePluginPair) * so->PluginDataEntries_space);
+	}
+
+	so->PluginDataEntries_cnt++;
+	so->PluginDataEntries[so->PluginDataEntries_cnt - 1].key = k;
+	so->PluginDataEntries[so->PluginDataEntries_cnt - 1].data = 0;
+	return &so->PluginDataEntries[so->PluginDataEntries_cnt - 1].data;
+}
 
 const SurvivePose *survive_object_pose(SurviveObject *so) { return &so->OutPose; }
 

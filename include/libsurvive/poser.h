@@ -156,15 +156,16 @@ union PoserDataAll {
 
 struct SurviveSensorActivations_s;
 
-//When you write your posers, use the following definition, and register with REGISTER_LINKTIME.
-typedef int (*PoserCB)(SurviveObject *so, void **user, PoserData *pd);
+// When you write your posers, use the following definition, and register with REGISTER_LINKTIME. To have your own data
+// associated with the poser, invoke `survive_object_plugin_data` with the poser fn as the key.
+typedef int (*PoserCB)(SurviveObject *so, PoserData *pd);
 
 #define SURVIVE_POSER_INVOKE(so, poserData) survive_poser_invoke(so, (PoserData *)poserData, sizeof(*poserData));
 void survive_poser_invoke(SurviveObject *so, PoserData *poserData, size_t poserDataSize);
 
 struct survive_threaded_poser;
 struct survive_threaded_poser *survive_create_threaded_poser(SurviveObject *so, PoserCB innerPoser);
-int survive_threaded_poser_fn(SurviveObject *so, void **user, PoserData *pd);
+int survive_threaded_poser_fn(SurviveObject *so, PoserData *pd);
 
 void survive_poseAA2pose_jacobian(struct CnMat *G, const LinmathAxisAnglePose *poseAA);
 void survive_pose2poseAA_jacobian(struct CnMat *G, const LinmathPose *pose);

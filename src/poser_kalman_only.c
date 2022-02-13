@@ -11,9 +11,10 @@ struct PoserIMUData_t {
 	bool inited;
 };
 
-int PoserKalmanOnly(SurviveObject *so, void **user, PoserData *pd) {
+int PoserKalmanOnly(SurviveObject *so, PoserData *pd) {
 	PoserType pt = pd->pt;
 	SurviveContext *ctx = so->ctx;
+	void **user = survive_object_plugin_data(so, PoserKalmanOnly);
 	struct PoserIMUData_t *dd = *user;
 
 	if (!dd) {

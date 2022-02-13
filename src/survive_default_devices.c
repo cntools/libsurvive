@@ -66,7 +66,8 @@ SurviveObject *survive_create_device(SurviveContext *ctx, const char *driver_nam
 	bool use_async_posers = survive_configi(ctx, "threaded-posers", SC_GET, 1) && playback_factor != 0;
 	if (use_async_posers) {
 		PoserCB PreferredPoserCB = (PoserCB)GetDriverByConfig(ctx, "Poser", "poser", "MPFIT");
-		device->PoserFnData = survive_create_threaded_poser(device, PreferredPoserCB);
+		*survive_object_plugin_data(device, survive_threaded_poser_fn) =
+			survive_create_threaded_poser(device, PreferredPoserCB);
 	}
 
 	device->tracker = SV_MALLOC(sizeof(struct SurviveKalmanTracker));
@@ -669,7 +670,7 @@ void survive_destroy_device(SurviveObject *so) {
 	PoserData pd;
 	pd.pt = POSERDATA_DISASSOCIATE;
 	if (ctx->PoserFn) {
-		ctx->PoserFn(so, &so->PoserFnData, &pd);
+		ctx->PoserFn(so, &pd);
 	}
 	SURVIVE_INVOKE_HOOK_SO(lightcap, so, 0);
 
@@ -701,5 +702,7 @@ void survive_destroy_device(SurviveObject *so) {
 	free(so->sensor_normals);
 	free(so->conf);
 	free(so->channel_map);
+	free(so->PluginDataEntries);
+	so->PluginDataEntries_space = so->PluginDataEntries_cnt = 0;
 	free(so);
 }

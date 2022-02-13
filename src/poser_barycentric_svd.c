@@ -234,16 +234,20 @@ void solve_global_scene(struct SurviveObject *so, PoserDataSVD *dd, PoserDataGlo
 		}
 	}
 }
-int PoserBaryCentricSVD(SurviveObject *so, void **user, PoserData *pd) {
+int PoserBaryCentricSVD(SurviveObject *so, PoserData *pd) {
 	PoserType pt = pd->pt;
 	SurviveContext *ctx = so->ctx;
+	void **user = survive_object_plugin_data(so, PoserBaryCentricSVD);
+
 	PoserDataSVD *dd = *user;
 
 	if (pt == POSERDATA_DISASSOCIATE && dd == 0)
 		return 0;
 
-	if (!dd)
+	if (!dd) {
+
 		*user = dd = PoserDataSVD_new(so);
+	}
 
 	switch (pt) {
 	case POSERDATA_GLOBAL_SCENES: {

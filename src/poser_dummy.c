@@ -8,9 +8,10 @@ typedef struct
 	//Stuff
 } DummyData;
 
-int PoserDummy(SurviveObject *so, void **user, PoserData *pd) {
+int PoserDummy(SurviveObject *so, PoserData *pd) {
 	PoserType pt = pd->pt;
 	SurviveContext * ctx = so->ctx;
+	void **user = survive_object_plugin_data(so, PoserDummy);
 	DummyData *dd = *user;
 
 	if (!dd)

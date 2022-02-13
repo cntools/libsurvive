@@ -383,6 +383,16 @@ typedef enum SurviveDeviceDriverReturn {
 	SURVIVE_DRIVER_PASSIVE = 1 // No errors, but driver is a passive one; still allow loading default drivers.
 } SurviveDeviceDriverReturn;
 
+typedef void *SurvivePluginData;
+typedef void *SurvivePluginKey;
+
+typedef struct SurvivePluginPair {
+	SurvivePluginKey key;
+	SurvivePluginData data;
+} SurvivePluginPair;
+
+SURVIVE_EXPORT SurvivePluginData *survive_object_plugin_data(SurviveObject *so, SurvivePluginKey k);
+
 typedef int (*DeviceDriverCb)(struct SurviveContext *ctx, void *driver);
 typedef int (*DeviceDriverMagicCb)( struct SurviveContext * ctx, void * driver, int magic_code, void * data, int datalen );
 

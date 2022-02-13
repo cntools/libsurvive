@@ -923,8 +923,9 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 															 .poseproc = global_pose,
 															 .userdata = &gd}};
 			if (d->opt.seed_poser) {
-				d->opt.seed_poser(so, &d->opt.seed_poser_data, &seed_gss.hdr);
+				d->opt.seed_poser(so, &seed_gss.hdr);
 			}
+
 			updates |= gd.updated;
 		}
 	}
@@ -1057,7 +1058,8 @@ bool solve_global_scene(struct SurviveContext *ctx, MPFITData *d, PoserDataGloba
 
 	return true;
 }
-int PoserMPFIT(SurviveObject *so, void **user, PoserData *pd) {
+int PoserMPFIT(SurviveObject *so, PoserData *pd) {
+	void **user = survive_object_plugin_data(so, PoserMPFIT);
 	SurviveContext *ctx = so->ctx;
 	if (*user == 0 && pd->pt == POSERDATA_DISASSOCIATE) {
 		return 0;

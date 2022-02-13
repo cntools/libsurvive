@@ -114,7 +114,7 @@ bool general_optimizer_data_record_current_lhs(GeneralOptimizerData *d, PoserDat
 		pl->hdr.userdata = &locations;
 		pl->assume_current_pose = true;
 
-		driver(d->so, &d->seed_poser_data, &pl->hdr);
+		driver(d->so, &pl->hdr);
 
 		d->stats.poser_seed_runs++;
 
@@ -149,7 +149,7 @@ bool general_optimizer_data_record_current_pose(GeneralOptimizerData *d, PoserDa
 			pl->hdr.userdata = &locations;
 			pl->no_lighthouse_solve = true;
 
-			driver(d->so, &d->seed_poser_data, &pl->hdr);
+			driver(d->so, &pl->hdr);
 
 			d->stats.poser_seed_runs++;
 
@@ -171,7 +171,7 @@ bool general_optimizer_data_record_current_pose(GeneralOptimizerData *d, PoserDa
 
 void general_optimizer_data_record_imu(GeneralOptimizerData *d, PoserDataIMU *imu) {
 	if (d->seed_poser) {
-		d->seed_poser(d->so, &d->seed_poser_data, &imu->hdr);
+		d->seed_poser(d->so, &imu->hdr);
 	}
 }
 
@@ -187,7 +187,7 @@ void general_optimizer_data_dtor(GeneralOptimizerData *d) {
 		PoserData pd;
 		pd.pt = POSERDATA_DISASSOCIATE;
 
-		d->seed_poser(d->so, &d->seed_poser_data, &pd);
+		d->seed_poser(d->so, &pd);
 	}
 	SV_INFO("\tseed runs         %d / %d", d->stats.poser_seed_runs, d->stats.runs);
 	SV_INFO("\terror failures    %d", d->stats.error_failures);
