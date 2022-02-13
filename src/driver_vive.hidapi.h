@@ -103,6 +103,13 @@ typedef struct hid_device_info *survive_usb_devices_t;
 static int survive_usb_subsystem_init(SurviveViveData *sv) { return hid_init(); }
 static int survive_get_usb_devices(SurviveViveData *sv, survive_usb_devices_t *devs) {
 	*devs = hid_enumerate(0, 0);
+	SurviveContext * ctx = sv->ctx;
+    int cnt = 0;
+	for(survive_usb_devices_t d = *devs; d; d = d->next) {
+	    cnt++;
+        SV_VERBOSE(110, "HID Enumerate %04x:%04x:%02d (%S) %4d/%4d/%4d path: %s", d->vendor_id, d->product_id, d->interface_number, d->serial_number, d->release_number, d->usage, d->usage_page, d->path);
+	}
+    SV_VERBOSE(110, "HID Enumeration finished %d devices", cnt);
 	return 0;
 }
 static void survive_free_usb_devices(survive_usb_devices_t devs) { hid_free_enumeration(devs); }
@@ -119,7 +126,6 @@ static const char *survive_usb_error_name(int ret) { return ""; }
 
 static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, struct SurviveUSBInfo *usbInfo) {
 	usbInfo->handle = SV_CALLOC(sizeof(struct HIDAPI_USB_Handle_t));
-	survive_usb_device_t c = d;
 
 	struct SurviveContext *ctx = sv->ctx;
 
@@ -141,7 +147,7 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 		int interface_num = c->interface_number;
 		interface_num = interface_num < 0 ? 0 : interface_num;
 		if (c && c->serial_number && wcscmp(c->serial_number, d->serial_number) == 0) {
-
+            SV_VERBOSE(100, "Opening %04x:%04x:%02d (%S) (path %s)", c->vendor_id, c->vendor_id, interface_num, d->serial_number, c->path);
 			usbInfo->handle->interfaces[interface_num] = hid_open_path(c->path);
 
 			if (!usbInfo->handle->interfaces[interface_num]) {
