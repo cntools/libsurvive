@@ -864,7 +864,7 @@ SURVIVE_EXPORT const SurvivePose *survive_get_lighthouse_position(const SurviveC
 		FLT t = (survive_run_time(ctx) - ctx->bsd[bsd_idx].old_pos_time) / t_diff;
 		if (t > 1)
 			t = 1;
-		assert(t > 0);
+		assert(t >= 0);
 		if (t >= 0) {
 			PoseSlerp(&mctx->bsd[bsd_idx].Pose, &ctx->bsd[bsd_idx].old_pos, &ctx->bsd[bsd_idx].true_pos, t);
 		}
