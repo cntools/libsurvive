@@ -246,8 +246,12 @@ static int test_path(const char *filename, int main_argc, char **main_argv) {
 		FLT err[2] = {0};
 		ApplyPoseToPose(&pose, &original2current, &pose);
 
-		if (!quatiszero(pose.Rot))
+		if (!quatiszero(pose.Rot) && !quatiszero(ctx->bsd[i].Pose.Rot))
 			diff(err, &pose, &ctx->bsd[i].Pose);
+
+		if(!quatiszero(pose.Rot) && ctx->bsd[i].PositionSet == 0) {
+		    err[0] = INFINITY;
+		}
 
 		fprintf(stderr, "                  " SurvivePose_format "\terr: %f %f\n", pose.Pos[0], pose.Pos[1], pose.Pos[2],
 				pose.Rot[0], pose.Rot[1], pose.Rot[2], pose.Rot[3], err[0], err[1]);

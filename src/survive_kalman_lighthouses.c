@@ -92,7 +92,7 @@ void survive_kalman_lighthouse_update_position(SurviveKalmanLighthouse *tracker,
 			cnCopy(&tracker->model.P, &tracker->push_cov, 0);
 
 			SurvivePose min_error = {.Pos = {1e-5, 1e-5, 1e-5}, .Rot = {1e-6, 1e-6, 1e-6, 1e-6}};
-			CnMat minError = cnVec(7, min_error.Pos);
+			CnMat minError = cnVec(6, min_error.Pos);
 			cn_add_diag(&tracker->push_cov, &minError, 5);
 
 			tracker->state.Lighthouse = ctx->bsd[tracker->lh].Pose;
