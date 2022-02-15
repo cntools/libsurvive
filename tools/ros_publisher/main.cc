@@ -31,7 +31,7 @@ static geometry_msgs::Transform ros_from_pose(const SurvivePose* pose) {
     return tx;
 }
 
-bool publish_pose(tf::TransformBroadcaster &broadcaster, uint32_t seq, const SurviveSimpleObject *it) {
+bool publish_pose(tf::TransformBroadcaster &broadcaster, uint32_t seq, const SurviveSimpleObject *it, FLT time = -1) {
 	SurvivePose pose = {};
 	geometry_msgs::TransformStamped pose_msg = {};
 	auto timecode = survive_simple_object_get_latest_pose(it, &pose);
@@ -39,10 +39,11 @@ bool publish_pose(tf::TransformBroadcaster &broadcaster, uint32_t seq, const Sur
 		timecode = survive_simple_run_time(actx);
 	}
 	if (timecode > 0) {
+	    time = time == -1 ? timecode : time;
         std::string name = survive_simple_serial_number(it);
 
 		pose_msg.header.seq = seq++;
-		pose_msg.header.stamp = rostime_from_survivetime(timecode);
+		pose_msg.header.stamp = rostime_from_survivetime(time);
 		pose_msg.header.frame_id = "libsurvive_world";
 		pose_msg.child_frame_id = name;
 		pose_msg.transform = ros_from_pose(&pose);
@@ -54,7 +55,7 @@ bool publish_pose(tf::TransformBroadcaster &broadcaster, uint32_t seq, const Sur
         imu2head = InvertPoseRtn(&imu2head);
 
         pose_msg.header.seq = seq++;
-        pose_msg.header.stamp = rostime_from_survivetime(timecode);
+        pose_msg.header.stamp = rostime_from_survivetime(time);
         pose_msg.header.frame_id = name;
         pose_msg.child_frame_id = name + "_imu";
         pose_msg.transform = ros_from_pose(&imu2head);
@@ -173,7 +174,9 @@ int main(int argc, char **argv) {
         switch (event.event_type) {
             case SurviveSimpleEventType_PoseUpdateEvent: {
                 const struct SurviveSimplePoseUpdatedEvent *pose_event = survive_simple_get_pose_updated_event(&event);
-                publish_pose(broadcaster, seq++, pose_event->object);
+                if(survive_simple_object_get_type(pose_event->object) != SurviveSimpleObject_LIGHTHOUSE) {
+                    publish_pose(broadcaster, seq++, pose_event->object);
+                }
                 break;
             }
             case SurviveSimpleEventType_ButtonEvent: {
@@ -191,7 +194,7 @@ int main(int argc, char **argv) {
 			for (const SurviveSimpleObject *it = survive_simple_get_first_object(actx); it != 0;
 				 it = survive_simple_get_next_object(actx, it)) {
 				if (survive_simple_object_get_type(it) == SurviveSimpleObject_LIGHTHOUSE) {
-					publish_pose(broadcaster, seq++, it);
+					publish_pose(broadcaster, seq++, it, ros_now);
 				}
 			}
 		}
