@@ -1,10 +1,10 @@
 prefix=@CMAKE_INSTALL_PREFIX@
 exec_prefix=@CMAKE_INSTALL_PREFIX@
 libdir=${exec_prefix}/@CMAKE_INSTALL_LIBDIR@
-includedir=${prefix}/include/libsurvive
+includedir=${prefix}/include
 
 Name: @CMAKE_PROJECT_NAME@
 Description: Libsurvive
 Version: 0
 Libs: -L${libdir} -lsurvive @EXTRA_LIBS@
-Cflags: -I${includedir} -I${includedir}/redist
+Cflags: -I${includedir} -I${includedir}/libsurvive -I${includedir}/redist
