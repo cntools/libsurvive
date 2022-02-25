@@ -193,6 +193,12 @@ SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/cnkalman/CMakeLists.txt")
+  find_program(GIT git)
+  message("Submodule seems empty; populating...")
+  execute_process(COMMAND ${GIT} submodule update --init --recursive WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+endif()
+
 add_subdirectory(libs/cnkalman)
 
 add_subdirectory(redist)
