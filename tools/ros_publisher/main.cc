@@ -5,6 +5,7 @@
 #include <os_generic.h>
 
 #include "ros/ros.h"
+#include <std_msgs/String.h>
 #include <sensor_msgs/Joy.h>
 #include <sensor_msgs/Imu.h>
 #include <geometry_msgs/PointStamped.h>
@@ -14,9 +15,87 @@
 
 double ros_offset = 0;
 SurviveSimpleContext *actx = 0;
+std::unique_ptr<ros::NodeHandle> n;
 
 static ros::Time rostime_from_survivetime(FLT timecode) {
     return ros::Time().fromSec(timecode + ros_offset);
+}
+
+static std::string sanitize(const std::string& serial) {
+    std::string r = serial;
+    for(char & i : r) {
+        if(i == '-') i = '_';
+    }
+    return r;
+}
+struct ObjectPublishers {
+    ros::NodeHandle obj_n;
+    ros::Publisher joyPublisher, imuPublisher, configPublisher;
+    SurviveObject* so;
+
+    ObjectPublishers(SurviveObject* so) : obj_n(*n, sanitize(so->serial_number)), so(so) {
+        configPublisher = obj_n.advertise<std_msgs::String>("config", 1, true);
+        joyPublisher = obj_n.advertise<sensor_msgs::Joy>("joy", 1);
+        imuPublisher = obj_n.advertise<sensor_msgs::Imu>("imu", 1);
+    }
+
+    int joy_seq = 0, imu_seq = 0;
+    std::string serial_number() const {
+        return so->serial_number;
+    }
+    void publish(const struct SurviveSimpleButtonEvent *button_event) {
+        sensor_msgs::Joy joyMsg;
+        auto obj = button_event->object;
+        joyMsg.header.frame_id = survive_simple_serial_number(button_event->object);
+        joyMsg.header.seq = joy_seq++;
+        joyMsg.header.stamp = rostime_from_survivetime(button_event->time);
+
+        joyMsg.axes.resize(SURVIVE_MAX_AXIS_COUNT);
+        joyMsg.buttons.resize(SURVIVE_BUTTON_MAX * 2);
+
+        int64_t mask = survive_simple_object_get_button_mask(obj) | (survive_simple_object_get_touch_mask(obj) << SURVIVE_BUTTON_MAX);
+        for(int i = 0;i < SURVIVE_MAX_AXIS_COUNT;i++) {
+            joyMsg.axes[i] = (float)survive_simple_object_get_input_axis(obj, (enum SurviveAxis)i);
+        }
+        for(int i = 0;i < mask;i++) {
+            joyMsg.buttons[i] = (mask >> i) & 1;
+        }
+
+        joyPublisher.publish(joyMsg);
+    }
+    void publish(const struct SurviveSimpleConfigEvent *cfg_event) const {
+        std_msgs::String cfgMsg;
+        cfgMsg.data = cfg_event->cfg;
+        configPublisher.publish(cfgMsg);
+    }
+    void publish(int mask, const FLT *accelgyromag, uint32_t timecode, int id) {
+        sensor_msgs::Imu imu;
+        imu.header.frame_id = std::string(serial_number()) + "_imu";
+        imu.header.seq = imu_seq++;
+        imu.header.stamp = rostime_from_survivetime(1e-6 * SurviveSensorActivations_runtime(&so->activations, so->activations.last_imu));
+
+        imu.angular_velocity.x = accelgyromag[3];
+        imu.angular_velocity.y = accelgyromag[4];
+        imu.angular_velocity.z = accelgyromag[5];
+
+        imu.linear_acceleration.x = accelgyromag[0] * 9.80665;
+        imu.linear_acceleration.y = accelgyromag[1] * 9.80665;
+        imu.linear_acceleration.z = accelgyromag[2] * 9.80665;
+
+        imuPublisher.publish(imu);
+    }
+};
+
+std::map<std::string, std::shared_ptr<ObjectPublishers>> objectPublishers;
+std::shared_ptr<ObjectPublishers> getPublishers(SurviveObject* so) {
+    std::string serial = so->serial_number;
+    if(objectPublishers[serial] == 0) {
+        objectPublishers[serial] = std::make_shared<ObjectPublishers>(so);
+    }
+    return objectPublishers[serial];
+}
+std::shared_ptr<ObjectPublishers> getPublishers(SurviveSimpleObject * aso) {
+    return getPublishers(survive_simple_get_survive_object(aso));
 }
 
 static geometry_msgs::Transform ros_from_pose(const SurvivePose* pose) {
@@ -67,46 +146,10 @@ bool publish_pose(tf::TransformBroadcaster &broadcaster, uint32_t seq, const Sur
 	return false;
 }
 
-
-static void publish_control_state(ros::Publisher &publisher, uint32_t seq, const struct SurviveSimpleButtonEvent *button_event) {
-    sensor_msgs::Joy joyMsg;
-    auto obj = button_event->object;
-    joyMsg.header.frame_id = survive_simple_serial_number(button_event->object);
-    joyMsg.header.seq = seq;
-    joyMsg.header.stamp = rostime_from_survivetime(button_event->time);
-
-    joyMsg.axes.resize(SURVIVE_MAX_AXIS_COUNT);
-    joyMsg.buttons.resize(SURVIVE_BUTTON_MAX * 2);
-
-    int64_t mask = survive_simple_object_get_button_mask(obj) | (survive_simple_object_get_touch_mask(obj) << SURVIVE_BUTTON_MAX);
-    for(int i = 0;i < SURVIVE_MAX_AXIS_COUNT;i++) {
-        joyMsg.axes[i] = (float)survive_simple_object_get_input_axis(obj, (enum SurviveAxis)i);
-    }
-    for(int i = 0;i < mask;i++) {
-        joyMsg.buttons[i] = (mask >> i) & 1;
-    }
-}
-
-ros::Publisher imuPublisher;
-
 static void imu_func(SurviveObject *so, int mask, const FLT *accelgyromag, uint32_t timecode, int id) {
     survive_default_imu_process(so, mask, accelgyromag, timecode, id);
-    if(imuPublisher) {
-        static int imuSeq = 0;
-        sensor_msgs::Imu imu;
-        imu.header.frame_id = std::string(so->serial_number) + "_imu";
-        imu.header.seq = imuSeq++;
-        imu.header.stamp = rostime_from_survivetime(1e-6 * SurviveSensorActivations_runtime(&so->activations, so->activations.last_imu));
-
-        imu.angular_velocity.x = accelgyromag[3];
-        imu.angular_velocity.y = accelgyromag[4];
-        imu.angular_velocity.z = accelgyromag[5];
-
-        imu.linear_acceleration.x = accelgyromag[0] * 9.80665;
-        imu.linear_acceleration.y = accelgyromag[1] * 9.80665;
-        imu.linear_acceleration.z = accelgyromag[2] * 9.80665;
-
-        imuPublisher.publish(imu);
+    if(auto pub = getPublishers(so)) {
+        pub->publish(mask, accelgyromag, timecode, id);
     }
 }
 
@@ -146,9 +189,8 @@ int main(int argc, char **argv) {
 
 	std::string node_name = "libsurvive";
 	ros::init(argc, argv, node_name);
-	ros::NodeHandle n;
-
-    actx = actx_from_ros(n);
+    n = std::make_unique<ros::NodeHandle>("libsurvive");
+    actx = actx_from_ros(*n);
 
 	if (actx == nullptr) // implies -help or similiar
 		return 0;
@@ -163,9 +205,7 @@ int main(int argc, char **argv) {
 	survive_simple_start_thread(actx);
 
 	tf::TransformBroadcaster broadcaster;
-    auto joyPublisher = n.advertise<sensor_msgs::Joy>("joy", 1);
-    imuPublisher = n.advertise<sensor_msgs::Imu>("imu", 1);
-	uint32_t seq = 1;
+    uint32_t seq = 1;
 
 	auto last_chirp = now;
 
@@ -181,8 +221,16 @@ int main(int argc, char **argv) {
             }
             case SurviveSimpleEventType_ButtonEvent: {
                 const struct SurviveSimpleButtonEvent *button_event = survive_simple_get_button_event(&event);
-                publish_control_state(joyPublisher, seq++, button_event);
+                if(auto pub = getPublishers(button_event->object)) {
+                    pub->publish(button_event);
+                }
                 break;
+            }
+            case SurviveSimpleEventType_ConfigEvent: {
+                const struct SurviveSimpleConfigEvent *configEvent = survive_simple_get_config_event(&event);
+                if(auto pub = getPublishers(configEvent->object)) {
+                    pub->publish(configEvent);
+                }
             }
             case SurviveSimpleEventType_None:
                 break;
