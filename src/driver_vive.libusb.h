@@ -200,9 +200,14 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 	SurviveUSBInterface *iface = transfer->user_data;
 	SurviveContext *ctx = iface->ctx;
 	if (!iface->shutdown && transfer->status == LIBUSB_TRANSFER_TIMED_OUT) {
-		SV_WARN("%f %s Device turned off: %d", survive_run_time(ctx), survive_colorize_codename(iface->assoc_obj),
-				transfer->status);
-		goto object_turned_off;
+        iface->consecutive_timeouts++;
+        if(iface->consecutive_timeouts >= 3) {
+            SV_WARN("%f %s Device turned off: %d", survive_run_time(ctx), survive_colorize_codename(iface->assoc_obj),
+                    transfer->status);
+            goto object_turned_off;
+        } else {
+            return;
+        }
 	}
 
 	if (!iface->shutdown && transfer->status != LIBUSB_TRANSFER_COMPLETED) {
@@ -236,6 +241,7 @@ static void handle_transfer(struct libusb_transfer *transfer) {
 	if (iface->assoc_obj && iface->assoc_obj->object_type != SURVIVE_OBJECT_TYPE_HMD) {
 		transfer->timeout = 1000;
 	}
+    iface->consecutive_timeouts = 0;
 	if (libusb_submit_transfer(transfer)) {
 		goto shutdown;
 	}

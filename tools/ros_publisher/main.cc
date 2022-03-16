@@ -34,6 +34,7 @@ struct ObjectPublishers {
     SurviveObject* so;
 
     ObjectPublishers(SurviveObject* so) : obj_n(*n, sanitize(so->serial_number)), so(so) {
+        assert(so != 0);
         configPublisher = obj_n.advertise<std_msgs::String>("config", 1, true);
         joyPublisher = obj_n.advertise<sensor_msgs::Joy>("joy", 1);
         imuPublisher = obj_n.advertise<sensor_msgs::Imu>("imu", 1);
@@ -88,6 +89,8 @@ struct ObjectPublishers {
 
 std::map<std::string, std::shared_ptr<ObjectPublishers>> objectPublishers;
 std::shared_ptr<ObjectPublishers> getPublishers(SurviveObject* so) {
+    if(so == 0) return 0;
+
     std::string serial = so->serial_number;
     if(objectPublishers[serial] == 0) {
         objectPublishers[serial] = std::make_shared<ObjectPublishers>(so);

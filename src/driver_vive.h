@@ -102,6 +102,7 @@ typedef struct SurviveUSBInterface {
 	const char *hname;		  // human-readable names
 	size_t packet_count;
 
+	uint32_t consecutive_timeouts;
 	uint32_t time_constraint;
 	uint32_t error_count;
 	uint64_t last_submit_time, sum_submit_cb_time, sum_cb_time;
