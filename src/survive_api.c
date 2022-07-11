@@ -206,6 +206,8 @@ static void button_fn(SurviveObject *so, enum SurviveInputEvent eventType, enum 
 	survive_default_button_process(so, eventType, buttonId, axisIds, axisVals);
 	struct SurviveSimpleObject *sao = so->user_ptr;
 
+	sao->has_update = true;
+
 	SurviveSimpleEvent event = {.event_type = SurviveSimpleEventType_ButtonEvent,
 								.d = {.button_event = {
 										  .time = survive_simple_run_time_since_epoch(actx),
@@ -219,6 +221,7 @@ static void button_fn(SurviveObject *so, enum SurviveInputEvent eventType, enum 
 		event.d.button_event.axis_ids[i] = axisIds[i];
 		event.d.button_event.axis_val[i] = axisVals[i];
 	}
+
 	insert_into_event_buffer(actx, &event);
 }
 

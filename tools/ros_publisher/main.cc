@@ -17,6 +17,14 @@ double ros_offset = 0;
 SurviveSimpleContext *actx = 0;
 std::unique_ptr<ros::NodeHandle> n;
 
+static ros::Publisher& rootJoyPublisher() {
+	static std::unique_ptr<ros::Publisher> root;
+	if(!root) {
+		root = std::make_unique<ros::Publisher>(n->advertise<sensor_msgs::Joy>("/joy", 1));
+	}
+	return *root;
+}
+
 static ros::Time rostime_from_survivetime(FLT timecode) {
     return ros::Time().fromSec(timecode + ros_offset);
 }
@@ -58,11 +66,12 @@ struct ObjectPublishers {
         for(int i = 0;i < SURVIVE_MAX_AXIS_COUNT;i++) {
             joyMsg.axes[i] = (float)survive_simple_object_get_input_axis(obj, (enum SurviveAxis)i);
         }
-        for(int i = 0;i < mask;i++) {
+        for(int i = 0;i < mask && i < joyMsg.buttons.size();i++) {
             joyMsg.buttons[i] = (mask >> i) & 1;
         }
 
         joyPublisher.publish(joyMsg);
+		rootJoyPublisher().publish(joyMsg);
     }
     void publish(const struct SurviveSimpleConfigEvent *cfg_event) const {
         std_msgs::String cfgMsg;
