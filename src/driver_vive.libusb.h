@@ -181,6 +181,7 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 			}
 		}
 		if (interface_is_microphone) {
+		        SV_VERBOSE(10, "Not claiming interface %d of %s since it is an audio interface", j, survive_colorize(info->name));
 			continue;
 		}
 
