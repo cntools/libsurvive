@@ -20,7 +20,7 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
           submodules: recursive
@@ -69,7 +69,7 @@ jobs:
         env:
           CIBW_BUILD: cp3*win*64 
           CIBW_SKIP: cp35* cp36*
-          CIBW_ENVIRONMENT: "CMAKE_GENERATOR='Visual Studio 16 2019'"
+          CIBW_ENVIRONMENT: "CMAKE_GENERATOR='Visual Studio 17 2022'"
 
       - uses: actions/upload-artifact@v2
         name: Upload
