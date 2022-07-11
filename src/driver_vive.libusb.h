@@ -172,6 +172,18 @@ static int survive_open_usb_device(SurviveViveData *sv, survive_usb_device_t d, 
 
 	libusb_set_auto_detach_kernel_driver(usbInfo->handle, 1);
 	for (int j = 0; j < conf->bNumInterfaces; j++) {
+		bool interface_is_microphone = false;
+
+		for (int k = 0; k < conf->interface[j].num_altsetting; k++) {
+			const struct libusb_interface_descriptor *d = &conf->interface[j].altsetting[k];
+			if (d->bInterfaceClass == LIBUSB_CLASS_AUDIO) {
+				interface_is_microphone = true;
+			}
+		}
+		if (interface_is_microphone) {
+			continue;
+		}
+
 		ret = libusb_claim_interface(usbInfo->handle, j);
 		if (ret != 0) {
 			SV_WARN("Could not claim interface %d of %s: %d %s", j, survive_colorize(info->name), ret,
