@@ -14,6 +14,9 @@ sensors-readout
 api_example
 build*
 
+# clangd cache
+.cache/
+
 # Temp files
 *~
 */\#*\#
