@@ -2072,10 +2072,13 @@ static int parse_and_process_raw1_lightcap(SurviveObject *obj, uint16_t time, ui
 			// second LH to find out...
 
 			if ((data & 0x0Au) != 0) {
-				// Currently I've only ever seen 0x1 if the 1 bit is set; I doubt they left 3 bits on the table
-				// though....
-				SV_WARN("Not entirely sure what this data is; errors may occur (%d, 0x%02x)\n", idx, data);
-				dump_binary = true;
+				static int unknown_count = 0;
+				if(unknown_count++ < 10) {
+					// Currently I've only ever seen 0x1 if the 1 bit is set; I doubt they left 3 bits on the table
+					// though....
+					SV_WARN("Not entirely sure what this data is; errors may occur (%d, 0x%02x)\n", idx, data);
+					dump_binary = true;
+				}
 				// has_errors = true;
 				goto exit_loop;
 			}
