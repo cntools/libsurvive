@@ -1728,7 +1728,7 @@ SURVIVE_EXPORT void *survive_optimizer_realloc(void *old_ptr, size_t size) { ret
 
 int survive_optimizer_get_max_measurements_count(const survive_optimizer *ctx) {
 	int sensor_cnt = SENSORS_PER_OBJECT;
-	assert(ctx->poseLength > 0 && ctx->poseLength < 20);
+	assert(ctx->poseLength > 0);
 	return ctx->poseLength * 2 * sensor_cnt * NUM_GEN2_LIGHTHOUSES +
 		   (ctx->settings->current_pos_bias <= 0 ? 0 : ctx->poseLength) + (ctx->poseLength + ctx->cameraLength) +
 		   survive_optimizer_get_max_parameters_count(ctx)
