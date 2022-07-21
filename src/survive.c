@@ -313,6 +313,36 @@ void survive_init_plugins() {
 #endif
 }
 static bool disable_colorization = false;
+static void survive_process_env(SurviveContext *ctx, bool only_print) {
+	char ** env;
+#if defined(WIN) && (_MSC_VER >= 1900)
+	env = *__p__environ();
+#else
+	extern char ** environ;
+	env = environ;
+#endif
+
+#define ENV_PREFIX "SURVIVE_"
+	for (env; *env; ++env) {
+		if(strncmp(*env, ENV_PREFIX, strlen(ENV_PREFIX)) == 0) {
+			const char* entry = *env + strlen(ENV_PREFIX);
+			char tag[32] = {};
+			const char* value = strchr(entry, '=') + 1;
+			int offset = value - entry - 1;
+			if(offset > 32) continue;
+			for(int i = 0; i < offset; i++) tag[i] = tolower(entry[i]);
+			if(tag) {
+				if(only_print) {
+					SV_VERBOSE(100, "\t[ENV]'%s'",*env);
+				} else {
+					survive_configs(ctx, tag, SC_OVERRIDE | SC_SET, value);
+				}
+			}
+		}
+	}
+
+}
+
 SurviveContext *survive_init_internal(int argc, char *const *argv, void *userData, log_process_func log_func) {
 	int i;
 
@@ -421,6 +451,8 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 		}
 	}
 
+	survive_process_env(ctx, false);
+
 	const char *log_file = survive_configs(ctx, "log", SC_GET, 0);
 	int record_to_stdout = survive_configi(ctx, "record-stdout", SC_GET, 0);
 	if (log_file || record_to_stdout)
@@ -452,6 +484,7 @@ SurviveContext *survive_init_internal(int argc, char *const *argv, void *userDat
 	for(int i = 0;i < argc;i++) {
 		SV_VERBOSE(100, "\t'%s'",argv[i]);
 	}
+	survive_process_env(ctx, true);
 
 	const char *record_config_prefix_fields[] = {"record", "usbmon-record", 0};
 	if (!user_set_configfile && find_correct_config_file(ctx, record_config_prefix_fields)) {
