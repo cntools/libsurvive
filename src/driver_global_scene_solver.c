@@ -368,6 +368,13 @@ void *survive_threaded_gss_thread_fn(void *_poser) {
 }
 
 int DriverRegGlobalSceneSolver(SurviveContext *ctx) {
+	int disableCalibrate = survive_configi(ctx, "disable-calibrate", SC_GET, 0);
+
+	if(disableCalibrate) {
+		SV_VERBOSE(10, "Not running global solver since disable-calibrate is specfied");
+		return SURVIVE_DRIVER_NORMAL;
+	}
+
 	global_scene_solver *driver = SV_NEW(global_scene_solver, ctx);
 	global_scene_solver_attach_config(ctx, driver);
 

@@ -323,7 +323,7 @@ static void survive_process_env(SurviveContext *ctx, bool only_print) {
 #endif
 
 #define ENV_PREFIX "SURVIVE_"
-	for (env; *env; ++env) {
+	for (; *env; ++env) {
 		if(strncmp(*env, ENV_PREFIX, strlen(ENV_PREFIX)) == 0) {
 			const char* entry = *env + strlen(ENV_PREFIX);
 			char tag[32] = {};
@@ -331,7 +331,7 @@ static void survive_process_env(SurviveContext *ctx, bool only_print) {
 			int offset = value - entry - 1;
 			if(offset > 32) continue;
 			for(int i = 0; i < offset; i++) tag[i] = tolower(entry[i]);
-			if(tag) {
+			if(tag[0]) {
 				if(only_print) {
 					SV_VERBOSE(100, "\t[ENV]'%s'",*env);
 				} else {
