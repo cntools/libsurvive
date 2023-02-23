@@ -19,8 +19,6 @@ jobs:
 
       - name: Deploy nuget package
         working-directory: ${{ github.workspace }}
-        env:
-          NUGET_TOKEN: ${{ secrets.NUGET_TOKEN }}
         run: .\make.ps1 --nuget
 
       - uses: actions/upload-artifact@v2
