@@ -1,0 +1,26 @@
+FROM ros:noetic-ros-core-focal
+RUN mkdir /source
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN rm -f /etc/apt/apt.conf.d/docker-clean; echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
+RUN --mount=type=cache,target=/var/cache/apt --mount=type=cache,target=/var/lib/apt \
+ apt update && apt-get install --no-install-recommends -y \
+    build-essential \
+    udev usbutils	 \
+    libtool \
+    libeigen3-dev \
+    git libusb-dev libusb-1.0-0-dev \
+    ros-noetic-tf
+
+SHELL ["/bin/bash", "-c"]
+
+RUN --mount=type=bind,target=/source,source=.,rw --mount=type=cache,target=/build/libsurvive,id=build-survive \
+    mkdir -p /build/libsurvive && \
+    source "/opt/ros/noetic/setup.bash" && \
+    cd /build/libsurvive && cmake -DCMAKE_INSTALL_PREFIX=/opt/ros/noetic -DCMAKE_BUILD_TYPE=Release /source && make -j4 install
+
+RUN mkdir -p /root/.config
+
+ENTRYPOINT ["./ros_entrypoint.sh", "rosrun", "survive_publisher", "node"]
+CMD ["_v:=100"]
