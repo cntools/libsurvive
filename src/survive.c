@@ -326,7 +326,7 @@ static void survive_process_env(SurviveContext *ctx, bool only_print) {
 	for (; *env; ++env) {
 		if(strncmp(*env, ENV_PREFIX, strlen(ENV_PREFIX)) == 0) {
 			const char* entry = *env + strlen(ENV_PREFIX);
-			char tag[32] = {};
+			char tag[32] = { 0 };
 			const char* value = strchr(entry, '=') + 1;
 			int offset = value - entry - 1;
 			if(offset > 32) continue;

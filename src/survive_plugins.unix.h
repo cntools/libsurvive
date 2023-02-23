@@ -35,7 +35,7 @@ static const char *get_so_filename() {
 }
 
 static const char *get_exe_filename() {
-	static char exe_path[PATH_MAX] = {};
+	static char exe_path[PATH_MAX] = { 0 };
 	if (exe_path[0] == 0) {
 		size_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path));
 		exe_path[len] = 0;

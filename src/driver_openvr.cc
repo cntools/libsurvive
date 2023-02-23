@@ -27,7 +27,7 @@ static SurvivePose survivePoseFromDevicePose(const vr::TrackedDevicePose_t &dpos
 	FLT matrix33[] = {mat[0][0], mat[0][1], mat[0][2], mat[1][0], mat[1][1],
 					  mat[1][2], mat[2][0], mat[2][1], mat[2][2]};
 
-	SurvivePose p = {};
+	SurvivePose p = { 0 };
 	for (int i = 0; i < 3; i++) {
 		p.Pos[i] = mat[i][3];
 	}
@@ -36,7 +36,7 @@ static SurvivePose survivePoseFromDevicePose(const vr::TrackedDevicePose_t &dpos
 }
 
 static SurviveVelocity surviveVelocityFromDevicePose(const vr::TrackedDevicePose_t &dpose) {
-	SurviveVelocity p = {};
+	SurviveVelocity p = { 0 };
 
 	for (int i = 0; i < 3; i++) {
 		p.Pos[i] = dpose.vVelocity.v[i];
@@ -50,7 +50,7 @@ struct OpenVRDriver {
 	SurviveContext *ctx = nullptr;
 	bool *keep_running = nullptr;
 
-	SurvivePose openvr2survive = {};
+	SurvivePose openvr2survive = { 0 };
 
 	OpenVRDriver(SurviveContext *ctx) : ctx(ctx) {}
 
@@ -66,7 +66,7 @@ struct OpenVRDriver {
 		int bsd_idx = -1;
 	} tracked_device_t;
 
-	tracked_device_t devices[vr::k_unMaxTrackedDeviceCount] = {};
+	tracked_device_t devices[vr::k_unMaxTrackedDeviceCount] = { 0 };
 	std::vector<tracked_device_t *> device_list;
 
 	int32_t get_bsd_idx(const tracked_device_t &dev) const {
@@ -129,7 +129,7 @@ struct OpenVRDriver {
 	SurviveVelocity velToLibsurviveWorld(const SurviveVelocity &poseInOpenVR) {
 		SurvivePose OpenVr2Survive = getOpenVr2Survive();
 		if (quatiszero(OpenVr2Survive.Rot))
-			return {};
+			return { 0 };
 
 		SurviveVelocity rtn;
 		quatrotatevector(rtn.Pos, OpenVr2Survive.Rot, poseInOpenVR.Pos);
@@ -147,7 +147,7 @@ struct OpenVRDriver {
 	SurvivePose txToLibsurviveWorld(const SurvivePose &poseInOpenVR) {
 		SurvivePose OpenVr2Survive = getOpenVr2Survive();
 		if (quatiszero(OpenVr2Survive.Rot))
-			return {};
+			return { 0 };
 
 		SurvivePose rtn;
 		ApplyPoseToPose(&rtn, &OpenVr2Survive, &poseInOpenVR);
@@ -169,7 +169,7 @@ struct OpenVRDriver {
 
 		OGUSleep(10000);
 
-		vr::VREvent_t event = {};
+		vr::VREvent_t event = { 0 };
 		while (vr_system->PollNextEvent(&event, sizeof(event))) {
 			SV_VERBOSE(200, "(OpenVR) Event: %s (%d)",
 					   vr_system->GetEventTypeNameFromEnum(static_cast<vr::EVREventType>(event.eventType)),
@@ -182,7 +182,7 @@ struct OpenVRDriver {
 			}
 		}
 
-		vr::TrackedDevicePose_t trackedDevicePoses[vr::k_unMaxTrackedDeviceCount] = {};
+		vr::TrackedDevicePose_t trackedDevicePoses[vr::k_unMaxTrackedDeviceCount] = { 0 };
 		vr_system->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseRawAndUncalibrated, 0, trackedDevicePoses,
 												   vr::k_unMaxTrackedDeviceCount);
 
