@@ -56,10 +56,10 @@ jobs:
         if: runner.os != 'Windows'
         run: python -m cibuildwheel
         env:
+          CIBW_BEFORE_ALL: "git config --global --add safe.directory /project"
           CIBW_MANYLINUX_X86_64_IMAGE: libsurvive_manylinux2014_x86_64
           CIBW_MANYLINUX_AARCH64_IMAGE: libsurvive_manylinux2014_aarch64
           CIBW_BUILD: cp3*manylinux_x86_64 cp3*manylinux_aarch64* 
-          CIBW_SKIP: cp35* cp36*
           CIBW_ARCHS_LINUX: x86_64 i686 aarch64
 
 
@@ -67,8 +67,8 @@ jobs:
         if: runner.os == 'Windows'
         run: python -m cibuildwheel
         env:
+          CIBW_BEFORE_ALL: "git config --global --add safe.directory /project"
           CIBW_BUILD: cp3*win*64 
-          CIBW_SKIP: cp35* cp36*
           CIBW_ENVIRONMENT: "CMAKE_GENERATOR='Visual Studio 17 2022'"
 
       - uses: actions/upload-artifact@v2
