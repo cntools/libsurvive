@@ -94,7 +94,7 @@ survive_us SurviveSensorActivations_runtime(SurviveSensorActivations *self, surv
 
 void SurviveSensorActivations_add_imu(SurviveSensorActivations *self, struct PoserDataIMU *imuData) {
 	self->last_imu = imuData->hdr.timecode;
-	// fprintf(stderr, "imu tc: %f\n", self->last_imu/ 48000000.);
+	//fprintf(stderr, "imu tc: %f\n", self->last_imu/ 48000000.);
 	if (self->imu_init_cnt > 0) {
 		self->imu_init_cnt--;
 		return;

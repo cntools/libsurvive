@@ -656,6 +656,7 @@ SURVIVE_EXPORT void survive_default_gen_detected_process(SurviveObject *so, int 
 SURVIVE_EXPORT void survive_default_new_object_process(SurviveObject *so);
 SURVIVE_EXPORT double survive_run_time(const SurviveContext *ctx);
 SURVIVE_EXPORT double survive_run_time_since_epoch(const SurviveContext *ctx);
+SURVIVE_EXPORT double survive_time_to_time_since_epoch(const SurviveContext *ctx, double t);
 
 SURVIVE_EXPORT const SurvivePose* survive_external_to_world(const SurviveContext *ctx);
 SURVIVE_EXPORT size_t survive_input_event_count(const SurviveContext *ctx);

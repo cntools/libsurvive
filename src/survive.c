@@ -1268,6 +1268,7 @@ double survive_run_time(const SurviveContext *ctx) {
 	return pctx->lastRunTime = timestamp_in_s();
 }
 
+double survive_time_to_time_since_epoch(const SurviveContext *ctx, double t) { return t + OGStartTimeS(); }
 double survive_run_time_since_epoch(const SurviveContext *ctx) { return survive_run_time(ctx) + OGStartTimeS(); }
 
 double static_time(const SurviveContext *ctx, void *user) {

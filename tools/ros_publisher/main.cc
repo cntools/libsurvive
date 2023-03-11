@@ -13,7 +13,6 @@
 #include <tf/tf.h>
 #include <tf/transform_broadcaster.h>
 
-double ros_offset = 0;
 SurviveSimpleContext *actx = 0;
 std::unique_ptr<ros::NodeHandle> n;
 
@@ -26,7 +25,7 @@ static ros::Publisher& rootJoyPublisher() {
 }
 
 static ros::Time rostime_from_survivetime(FLT timecode) {
-    return ros::Time().fromSec(timecode + ros_offset);
+    return ros::Time().fromSec(timecode);
 }
 
 static std::string sanitize(const std::string& serial) {
@@ -82,7 +81,10 @@ struct ObjectPublishers {
         sensor_msgs::Imu imu;
         imu.header.frame_id = std::string(serial_number()) + "_imu";
         imu.header.seq = imu_seq++;
-        imu.header.stamp = rostime_from_survivetime(1e-6 * SurviveSensorActivations_runtime(&so->activations, so->activations.last_imu));
+		//printf("!!!! %u\n", timecode);
+		auto long_timecode = SurviveSensorActivations_long_timecode_imu(&so->activations, timecode);
+        imu.header.stamp = rostime_from_survivetime(SurviveSensorActivations_runtime(&so->activations, long_timecode)*1e-6);
+		//printf("!!!! %ld %f %f\n", long_timecode, SurviveSensorActivations_runtime(&so->activations, long_timecode)*1e-6, so->activations.runtime_offset);
 
         imu.angular_velocity.x = accelgyromag[3];
         imu.angular_velocity.y = accelgyromag[4];
@@ -211,8 +213,6 @@ int main(int argc, char **argv) {
     survive_install_imu_fn(ctx, imu_func);
 
     auto now = survive_simple_run_time_since_epoch(actx);
-	auto ros_now = ros::Time::now().toSec();
-	ros_offset = ros_now - now;
 
 	survive_simple_start_thread(actx);
 
@@ -248,7 +248,7 @@ int main(int argc, char **argv) {
                 break;
         }
 
-		ros_now = ros::Time::now().toSec();
+		auto ros_now = ros::Time::now().toSec();
 		if (ros_now > last_chirp + .25) {
 			last_chirp = now;
 			for (const SurviveSimpleObject *it = survive_simple_get_first_object(actx); it != 0;
