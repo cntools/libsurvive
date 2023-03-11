@@ -1,6 +1,6 @@
 import sympy
 import cnkalman.codegen as cg
-from cnkalman.codegen import atan2, sqrt, cos, sin, Matrix, Pow, Mul, asin, Abs, tan
+from cnkalman.codegen import atan2, sqrt, cos, sin, Matrix, Mul, asin, tan
 
 from survive_types import *
 

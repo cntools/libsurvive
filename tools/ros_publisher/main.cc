@@ -210,7 +210,7 @@ int main(int argc, char **argv) {
     auto ctx = survive_simple_get_ctx(actx);
     survive_install_imu_fn(ctx, imu_func);
 
-    auto now = survive_simple_run_time(actx);
+    auto now = survive_simple_run_time_since_epoch(actx);
 	auto ros_now = ros::Time::now().toSec();
 	ros_offset = ros_now - now;
 
