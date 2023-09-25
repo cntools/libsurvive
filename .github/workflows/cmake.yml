@@ -17,9 +17,9 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release]
-        os: [ubuntu-18.04, windows-latest]
+        os: [ubuntu-20.04, windows-latest]
         include:
-        - os: ubuntu-18.04
+        - os: ubuntu-20.04
           build_type: Debug
           config_flags: "-DUSE_ASAN=ON"
           deps: libasan6
