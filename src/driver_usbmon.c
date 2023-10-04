@@ -790,7 +790,7 @@ static int gzip_cookie_close(void *cookie) { return gzclose((gzFile)cookie); }
 
 static ssize_t gzip_cookie_read(void *cookie, char *buf, size_t nbytes) { return gzread((gzFile)cookie, buf, nbytes); }
 
-int gzip_cookie_seek(void *cookie, off64_t *pos, int __w) { return gzseek((gzFile)cookie, *pos, __w); }
+int gzip_cookie_seek(void *cookie, z_off_t *pos, int __w) { return gzseek((gzFile)cookie, *pos, __w); }
 
 cookie_io_functions_t gzip_cookie = {
 	.close = gzip_cookie_close, .write = gzip_cookie_write, .read = gzip_cookie_read, .seek = gzip_cookie_seek};
