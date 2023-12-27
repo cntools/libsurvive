@@ -218,35 +218,50 @@ static uint8_t vive_magic_power_off[] = {
 static uint8_t vive_magic_raw_mode_1[] = {VIVE_REPORT_CHANGE_MODE, 0x01, 0x00, 0x00, 0x00};
 static uint8_t vive_request_version_info[] = {VIVE_REPORT_VERSION};
 
+#ifdef __linux__
+static uint8_t vive_magic_rf_raw_mode_0[] = {
+#else
 // Windows needs 64 size for the wireless dongle
 static uint8_t vive_magic_rf_raw_mode_0[64] = {
+#endif
 	VIVE_REPORT_COMMAND, VIVE_COMMAND_CHANGE_PROTOCOL, 0x6, 0x01, 0x00, 0x00, 0x02, 0x00, 0x00};
 static uint8_t vive_magic_rf_raw_mode_1[] = {
 	VIVE_REPORT_COMMAND, VIVE_COMMAND_CHANGE_PROTOCOL, 0x6, 0x01, 0x01, 0x00, 0x02, 0x00, 0x00};
+
+#ifdef __linux__
+static uint8_t vive_magic_protocol_switch[] = {
+#else
 // Windows needs 64 size for the wireless dongle
 static uint8_t vive_magic_protocol_switch[64] = {
+#endif
 	VIVE_REPORT_COMMAND, VIVE_COMMAND_CHANGE_PROTOCOL, 0x3, 0x00, 0x01, 0x00};
 static uint8_t vive_request_pairing[] = {VIVE_REPORT_COMMAND, VIVE_COMMAND_PAIR, 0x03, 0x01, 0x10, 0x27};
+
+#ifdef __linux__
+static uint8_t vive_magic_protocol_super_magic[] = {
+#else
 // Windows needs 64 size for the wireless dongle
-static uint8_t vive_magic_protocol_super_magic[64] = {VIVE_REPORT_COMMAND,
-													VIVE_COMMAND_CONFIGURE_RADIO,
-													0x10,
-													0xbe,
-													0x5b,
-													0x32,
-													0x54,
-													0x11,
-													0xcf,
-													0x83,
-													0x75,
-													0x53,
-													0x8a,
-													0x08,
-													0x6a,
-													0x53,
-													0x58,
-													0xd0,
-													0xb1};
+static uint8_t vive_magic_protocol_super_magic[64] = {
+#endif
+	VIVE_REPORT_COMMAND,
+	VIVE_COMMAND_CONFIGURE_RADIO,
+	0x10,
+	0xbe,
+	0x5b,
+	0x32,
+	0x54,
+	0x11,
+	0xcf,
+	0x83,
+	0x75,
+	0x53,
+	0x8a,
+	0x08,
+	0x6a,
+	0x53,
+	0x58,
+	0xd0,
+	0xb1};
 
 #define MAGIC_CTOR(ison, buffer)                                                                                       \
 	{ .name = #buffer, .code = ison, .magic = buffer, .length = sizeof(buffer) }
