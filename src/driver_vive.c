@@ -568,7 +568,7 @@ void vive_switch_mode(struct SurviveUSBInfo *driverInfo, enum LightcapMode light
 	SurviveObject *w = driverInfo->so;
 	if (driverInfo->timeWithoutFlag == 0) {
 		driverInfo->timeWithoutFlag = 1;
-		uint8_t buffer[9] = {0};
+		uint8_t buffer[64] = {0};
 		size_t buffer_length = 0;
 		if (survive_device_is_rf(driverInfo->device_info)) {
 			buffer[0] = VIVE_REPORT_COMMAND;
