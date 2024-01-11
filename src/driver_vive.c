@@ -219,16 +219,16 @@ static uint8_t vive_magic_raw_mode_1[] = {VIVE_REPORT_CHANGE_MODE, 0x01, 0x00, 0
 static uint8_t vive_request_version_info[] = {VIVE_REPORT_VERSION};
 
 // Windows needs 64 size for the wireless dongle
-static uint8_t vive_magic_rf_raw_mode_0[64] = {
+static uint8_t vive_magic_rf_raw_mode_0[MAGIC_COMMAND_LENGTH] = {
 	VIVE_REPORT_COMMAND, VIVE_COMMAND_CHANGE_PROTOCOL, 0x6, 0x01, 0x00, 0x00, 0x02, 0x00, 0x00};
 static uint8_t vive_magic_rf_raw_mode_1[] = {
 	VIVE_REPORT_COMMAND, VIVE_COMMAND_CHANGE_PROTOCOL, 0x6, 0x01, 0x01, 0x00, 0x02, 0x00, 0x00};
 // Windows needs 64 size for the wireless dongle
-static uint8_t vive_magic_protocol_switch[64] = {
+static uint8_t vive_magic_protocol_switch[MAGIC_COMMAND_LENGTH] = {
 	VIVE_REPORT_COMMAND, VIVE_COMMAND_CHANGE_PROTOCOL, 0x3, 0x00, 0x01, 0x00};
 static uint8_t vive_request_pairing[] = {VIVE_REPORT_COMMAND, VIVE_COMMAND_PAIR, 0x03, 0x01, 0x10, 0x27};
 // Windows needs 64 size for the wireless dongle
-static uint8_t vive_magic_protocol_super_magic[64] = {VIVE_REPORT_COMMAND,
+static uint8_t vive_magic_protocol_super_magic[MAGIC_COMMAND_LENGTH] = {VIVE_REPORT_COMMAND,
 													VIVE_COMMAND_CONFIGURE_RADIO,
 													0x10,
 													0xbe,
@@ -581,11 +581,11 @@ void vive_switch_mode(struct SurviveUSBInfo *driverInfo, enum LightcapMode light
 			buffer[6] = 2;
 			buffer[7] = lightcapMode == LightcapMode_raw2 ? 1 : 0;
 			buffer[8] = 0;
-			buffer_length = 9;
+			buffer_length = 64;
 		} else {
 			buffer[0] = VIVE_REPORT_CHANGE_MODE;
 			buffer[1] = (lightcapMode == LightcapMode_raw1) ? 1 : (lightcapMode == LightcapMode_raw2) ? 3 : 0;
-			buffer_length = 5;
+			buffer_length = 64;
 		}
 
 		if (driverInfo->handle) {
