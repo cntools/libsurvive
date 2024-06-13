@@ -1,8 +1,8 @@
 import platform
 from setuptools import dist, find_packages
-dist.Distribution().fetch_build_eggs(['wheel', 'cmake_setuptools'])
+# dist.Distribution().fetch_build_eggs(['wheel', 'cmake_setuptools'])
 
-dist.Distribution().fetch_build_eggs(['cmake_setuptools', 'scikit-build'])
+# dist.Distribution().fetch_build_eggs(['cmake_setuptools', 'scikit-build'])
 
 from skbuild import setup    
 import os
