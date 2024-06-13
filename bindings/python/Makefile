@@ -1,7 +1,7 @@
-_libsurvive.so: ../../lib/libsurvive.so
-	cp ../../lib/libsurvive.so _libsurvive.so
+_libsurvive.so: ../../bin/libsurvive.so
+	cp ../../bin/libsurvive.so pysurvive/libsurvive.so
 
-../../lib/libsurvive.so: .always
+../../bin/libsurvive.so: .always
 	cd ../.. && make clean all 
 
 .always:
