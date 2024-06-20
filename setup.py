@@ -2,7 +2,6 @@ import os
 import platform
 import subprocess
 
-from setuptools import dist, find_packages
 from skbuild import setup
 
 this_directory = os.path.abspath(os.path.dirname(__file__))
