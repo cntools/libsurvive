@@ -54,6 +54,16 @@ STRUCT_CONFIG_SECTION(global_scene_solver)
 	STRUCT_CONFIG_ITEM("gss-auto-floor-height", "Automatically use the lowest position to set the floor offset", 1, t->auto_floor)
 END_STRUCT_CONFIG_SECTION(global_scene_solver)
 
+static bool scene_object_alive(SurviveContext *ctx, const SurviveObject *so, const SurviveObject *candidate) {
+	if (candidate == so)
+		return true;
+	for (int i = 0; i < ctx->objs_ct; i++) {
+		if (candidate == ctx->objs[i])
+			return true;
+	}
+	return false;
+}
+
 static size_t add_scenes(struct global_scene_solver *gss, SurviveObject *so) {
 	size_t rtn = 0;
 	SurviveContext *ctx = so->ctx;
@@ -62,31 +72,28 @@ static size_t add_scenes(struct global_scene_solver *gss, SurviveObject *so) {
 
 	SurviveSensorActivations *activations = &so->activations;
 
-	// TT clean up scenes with invalid SurviveObjects
-	unsigned int free_idx = 0;
-	for (int i = 0; i < GSS_NUM_STORED_SCENES; i++) {
-		if (gss->scenes[i].so == NULL) {
-			continue;
-		}
-		
-		bool is_still_valid = false;
-		if (gss->scenes[i].so == so) {
-			is_still_valid = true;
-		}
-		for (int j = 0; j < ctx->objs_ct; j++) {
-			if (gss->scenes[i].so == ctx->objs[j]) {
-				is_still_valid = true;
-			}
-		}
+	// Drop stored scenes whose SurviveObject no longer exists (e.g. a tracker that was turned off and on again).
+	size_t stored = gss->scenes_cnt < GSS_NUM_STORED_SCENES ? gss->scenes_cnt : GSS_NUM_STORED_SCENES;
+	size_t kept = 0;
+	for (size_t i = 0; i < stored; i++) {
+		bool invalid = !scene_object_alive(ctx, so, gss->scenes[i].so);
 
-		if (is_still_valid) {
-			gss->scenes[free_idx].so = gss->scenes[i].so;
-			free_idx++;
+		if (invalid) {
+			SV_WARN("in GlobalSceneSolver: deleted scene %d with SurviveObject at address %p", (int)i,
+					(void *)gss->scenes[i].so);
+			gss->scenes[i].so = NULL;
 		} else {
-			SV_WARN("in GlobalSceneSolver: deleted scene %d with SurviveObject at adress &%p", i, (void* )so);
+			if (kept != i) {
+				struct PoserDataGlobalScene tmp = gss->scenes[kept];
+				gss->scenes[kept] = gss->scenes[i];
+				gss->scenes[i] = tmp;
+			}
+			kept++;
 		}
 	}
-	gss->scenes_cnt = free_idx;
+	// Only touch the ring position when something was actually removed
+	if (kept != stored)
+		gss->scenes_cnt = kept;
 
 	struct PoserDataGlobalScene *scene = &gss->scenes[gss->scenes_cnt % GSS_NUM_STORED_SCENES];
 
@@ -172,14 +179,14 @@ static bool run_optimization(global_scene_solver *gss) {
 	if(success) {
 		if(gss->auto_floor) {
 			FLT min_z = gss->ctx->floor_offset;
-			for (int i = 0; i < gss->scenes_cnt; i++) {
+			for (int i = 0; i < pgss.scenes_cnt; i++) {
 				min_z = linmath_min(min_z, gss->scenes[i].pose.Pos[2]);
 			}
 			if (isfinite(min_z))
 				survive_set_floor_offset(gss->ctx, min_z);
 		}
 
-		for (int i = 0; i < gss->scenes_cnt; i++) {
+		for (int i = 0; i < pgss.scenes_cnt; i++) {
 			SurvivePose p = gss->scenes[i].pose;
 
 			if (!quatiszero(p.Rot)) {
